@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "vexlife.evolution-registry/v0",
+  "registryRef": "registry.vexlife.evolution.001",
+  "registryVersion": 1,
+  "purpose": "Source-managed Dream candidate, Score promotion, sibling trail and external adapter lifecycle contracts.",
+  "invariants": [
+    "dream candidate is not accepted memory",
+    "original episode and source lineage remain retrievable",
+    "family synchronization preserves sibling attribution",
+    "local Rhythm is not overwritten by family Score sync",
+    "base model weights remain immutable",
+    "training admission does not grant adapter activation",
+    "accepted inactive adapter cannot activate itself",
+    "resource pressure can pause Dream work without dropping receipts"
+  ],
+  "candidateTypes": [
+    {
+      "candidateTypeRef": "dream-type.memory",
+      "riskClass": "PERSONAL_MEANING",
+      "requiredReview": [
+        "consent",
+        "privacy",
+        "contradiction",
+        "scope"
+      ]
+    },
+    {
+      "candidateTypeRef": "dream-type.preference",
+      "riskClass": "PERSONAL_MEANING",
+      "requiredReview": [
+        "consent",
+        "scope",
+        "currentness"
+      ]
+    },
+    {
+      "candidateTypeRef": "dream-type.relationship",
+      "riskClass": "RELATIONAL_HIGH",
+      "requiredReview": [
+        "consent",
+        "privacy",
+        "contradiction",
+        "attribution",
+        "scope"
+      ]
+    },
+    {
+      "candidateTypeRef": "dream-type.project-knowledge",
+      "riskClass": "WORKSPACE",
+      "requiredReview": [
+        "source-currentness",
+        "visibility",
+        "scope"
+      ]
+    },
+    {
+      "candidateTypeRef": "dream-type.culture-lesson",
+      "riskClass": "FOUNDATION",
+      "requiredReview": [
+        "source-authority",
+        "semantic-review",
+        "versioning"
+      ]
+    },
+    {
+      "candidateTypeRef": "dream-type.process-lesson",
+      "riskClass": "OPERATIONAL",
+      "requiredReview": [
+        "worked-example",
+        "counterexample",
+        "effect-boundary"
+      ]
+    },
+    {
+      "candidateTypeRef": "dream-type.rhythm-lesson",
+      "riskClass": "DEVICE_LOCAL",
+      "requiredReview": [
+        "source-lineage",
+        "local-fit",
+        "scope"
+      ]
+    },
+    {
+      "candidateTypeRef": "dream-type.safety-boundary",
+      "riskClass": "SAFETY_HIGH",
+      "requiredReview": [
+        "independent-review",
+        "source-authority",
+        "rollback"
+      ]
+    },
+    {
+      "candidateTypeRef": "dream-type.training-example",
+      "riskClass": "WEIGHT_LIFECYCLE",
+      "requiredReview": [
+        "consent",
+        "privacy",
+        "dataset",
+        "evaluation"
+      ]
+    },
+    {
+      "candidateTypeRef": "dream-type.held-unknown",
+      "riskClass": "UNKNOWN",
+      "requiredReview": [
+        "provenance",
+        "do-not-collapse"
+      ]
+    }
+  ],
+  "dreamStates": [
+    "SOURCE_RANGE_SEALED",
+    "ELIGIBILITY_REVIEW",
+    "PRIVACY_FILTERED",
+    "CANDIDATE_UNREVIEWED",
+    "CONTEXT_REVIEW",
+    "ACCEPTED_LOCAL_LESSON",
+    "ACCEPTED_SCORE_RECORD",
+    "ACCEPTED_FAMILY_CANDIDATE",
+    "ACCEPTED_TRAINING_EXAMPLE",
+    "REJECTED",
+    "SUPERSEDED"
+  ],
+  "synchronizationScopes": [
+    "GLOBAL_FAMILY",
+    "PROJECT_SHARED",
+    "WORKSPACE_SHARED",
+    "DEVICE_PRIVATE",
+    "RELATIONSHIP_PRIVATE",
+    "NO_SYNC"
+  ],
+  "siblingReceiveDispositions": [
+    "OBSERVE_ONLY",
+    "USE_FOR_CURRENT_TASK",
+    "ACCEPT_INTO_LOCAL_SCORE",
+    "ADAPT_AS_LOCAL_RHYTHM_LESSON",
+    "REJECT_WITH_REASON"
+  ],
+  "weightLifecycleStates": [
+    "NOT_ADMITTED",
+    "TRAINING_ADMITTED",
+    "TRAINING_RUNNING",
+    "CHECKPOINT_SAVED",
+    "EVALUATION_RUNNING",
+    "CONTEXT_REVIEW",
+    "ACCEPTED_INACTIVE",
+    "ACTIVE_ON_NAMED_LINEAGE",
+    "ROLLED_BACK",
+    "SUPERSEDED",
+    "REJECTED"
+  ],
+  "resourceRules": {
+    "interactiveConversationPreemptsDreamAtSafeCheckpoint": true,
+    "constrainedStateAllowsSemanticDreamWork": false,
+    "duplicateSourceHashCreatesNewModelTurn": false,
+    "maximumConcurrentTrainingRuns": 0,
+    "trainingRequiresExplicitResourceLease": true
+  },
+  "processRefs": [
+    "process.vexlife.dream.form-candidate",
+    "process.vexlife.dream.review-and-sync",
+    "process.vexlife.adapter.train-candidate"
+  ],
+  "testRefs": [
+    "test.evolution.source-preserved",
+    "test.evolution.family-attribution",
+    "test.evolution.training-does-not-activate"
+  ]
+}

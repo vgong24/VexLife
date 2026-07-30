@@ -1,0 +1,87 @@
+[
+  {
+    "exampleRef": "example.vexlife.role-switching-bug-to-addressed-channel.001",
+    "formedFromProcessRef": "process.vexlife.conversation.send-addressed",
+    "sourceRefs": [
+      "user-feedback.vex-home.role-switching"
+    ],
+    "inputBindings": {
+      "speakerRef": "person.victor",
+      "recipientRef": "role.vex.guide",
+      "channelKind": "DIRECT"
+    },
+    "observedOutcome": "Role selector replaced by explicit addressed channel; sibling raw context remains isolated.",
+    "correctionsLearned": [
+      "speaker identity and recipient identity must both be explicit",
+      "switching a role cannot silently switch responder within an undirected stream"
+    ]
+  },
+  {
+    "exampleRef": "example.vexlife.guide-screen-frame.001",
+    "formedFromProcessRef": "process.vexlife.navigation.semantic-transition",
+    "sourceRefs": [
+      "user-feedback.vex-home.guide-binding-invalid"
+    ],
+    "inputBindings": {
+      "elementRef": "element.project.self-development",
+      "destinationScreenRef": "screen.vexlife.chat"
+    },
+    "observedOutcome": "Guide receives selected project, thread, channel, element and breadcrumb from semantic navigation.",
+    "correctionsLearned": [
+      "route name alone is not a screen frame",
+      "pointer logging is not required for semantic awareness"
+    ]
+  },
+  {
+    "exampleRef": "example.vexlife.scroll-vs-zoom.001",
+    "formedFromProcessRef": "process.vexlife.experience.resolve-interaction",
+    "sourceRefs": [
+      "user-feedback.vexlife.terrain-gesture-usability"
+    ],
+    "inputBindings": {
+      "surfaceKind": "TERRAIN_CANVAS",
+      "inputType": "MOUSE_WHEEL",
+      "gestureRef": "gesture.vexlife.content-scroll"
+    },
+    "observedOutcome": "Ordinary wheel movement scrolls/pans; zoom requires a visible control or pinch and never hijacks browser magnification.",
+    "correctionsLearned": [
+      "do not inherit browser-specific scroll-to-zoom behavior as a universal contract",
+      "gesture meaning belongs to surface plus input plus accessibility context"
+    ]
+  },
+  {
+    "exampleRef": "example.vexlife.dream.sibling-attribution.001",
+    "formedFromProcessRef": "process.vexlife.dream.review-and-sync",
+    "formedFromTemplateVersion": 1,
+    "sourceRefs": [
+      "docs/DEVICE-FAMILY-SCORE-RHYTHM.md",
+      "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md"
+    ],
+    "inputBindings": {
+      "sourceLineageRef": "companion-lineage.windows",
+      "targetLineageRef": "companion-lineage.macbook"
+    },
+    "renderedOutput": "MacBook sibling candidate preserves Windows source attribution and remains observe-only pending local decision.",
+    "observedOutcome": "No lineage collapse and no automatic Score promotion.",
+    "correctionsLearned": [
+      "Shared Score is not shared lived experience."
+    ]
+  },
+  {
+    "exampleRef": "example.vexlife.roadmap.bounded-codex-packet.001",
+    "formedFromProcessRef": "process.vexlife.roadmap.compile-work-packet",
+    "formedFromTemplateVersion": 1,
+    "sourceRefs": [
+      "blueprint/implementation-plan.json"
+    ],
+    "inputBindings": {
+      "workRef": "work.vexlife.browser.addressed-conversation",
+      "platform": "browser"
+    },
+    "renderedOutput": "One work unit, direct dependencies, exact path family, required tests and exclusions.",
+    "observedOutcome": "Agent can orient without reading every blueprint and history file.",
+    "correctionsLearned": [
+      "Packet compilation does not grant source mutation authority."
+    ]
+  }
+]

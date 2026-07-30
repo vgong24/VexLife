@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "files": [
+    {
+      "path": "blueprint/process-factory/templates.json",
+      "bytes": 5297,
+      "sha256": "ef4be3e077ecf3397fba37cb36e9b0f096e3154d61fcbda749389db4a3e2a34c"
+    },
+    {
+      "path": "blueprint/process-factory/worked-examples.json",
+      "bytes": 3485,
+      "sha256": "c1923db71d440bfd87852df1890a37e371d2d1f1cf50ccdd1456d6fd4c86a13e"
+    },
+    {
+      "path": "blueprint/process-factory.json",
+      "bytes": 755,
+      "sha256": "bdf15cd66e784928905966f8927abaddf23ab77543d5b4731d761941eaebfeaa"
+    },
+    {
+      "path": "blueprint/review-lens-registry.json",
+      "bytes": 10353,
+      "sha256": "dcceb87a089d56ff2cfc969e5e4e3a0ed6b67864561a9b339cadd74b9220b0f0"
+    },
+    {
+      "path": "blueprint/strings/en.json",
+      "bytes": 3766,
+      "sha256": "15137b57c8af817f19df012801df602420512a5b9ba1c75f58bdaa6c1c1575a5"
+    },
+    {
+      "path": "blueprint/strings/ja.json",
+      "bytes": 4412,
+      "sha256": "6e771a3fc45679ab6ae31bff8c8b91a479882964b1ef2996eabf8dd7821dc079"
+    },
+    {
+      "path": "blueprint/strings/zh.json",
+      "bytes": 3654,
+      "sha256": "b8b28e57eff7e1d8f601115f89a1148f071f182ba1c9e6ee3077961be43a13ce"
+    },
+    {
+      "path": "blueprint/vexlife.blueprint.json",
+      "bytes": 1121,
+      "sha256": "eee6437f0bbd9234713472b2f57831e9dda136a5ebdf2470a88136f3ad1ba4bc"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "bytes": 8447,
+      "sha256": "31de1cf0fe842a424bc01055982aaf8b77aa3b1f9dc93ac594f40b9fc97ca42e"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 4604,
+      "sha256": "a042bbb08b039e4c6c9eb1f0a682ccbe845c0641f9b841c9632c38c0be45355d"
+    },
+    {
+      "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
+      "bytes": 2475,
+      "sha256": "20e4159c562ec46bfad7643dabb45f047aa005e699811358d87acdd5694ac5c1"
+    },
+    {
+      "path": "docs/BOOTSTRAP-AND-MODELS.md",
+      "bytes": 3702,
+      "sha256": "e697115a440123151adb49783bc8e01d38af81a873018f083ba2d539a9f35bf6"
+    },
+    {
+      "path": "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",
+      "bytes": 5401,
+      "sha256": "8494d6011f999860ad503b7b9b6e74dfe5247e6de050e48fc32e5a85961d2726"
+    },
+    {
+      "path": "docs/CAPABILITY-AND-TOOL-ATLAS.md",
+      "bytes": 2804,
+      "sha256": "3fe5ca6e4421ea2963ad3c94c01e12fc80507fb30f48ece736dca060668dba52"
+    },
+    {
+      "path": "docs/CODEX-PORT-HANDOFF.md",
+      "bytes": 2139,
+      "sha256": "f35e68e5e4784764276df73c4b8e9f263991ad30ee116a128636f404aea0c517"
+    },
+    {
+      "path": "docs/CULTURE.md",
+      "bytes": 4806,
+      "sha256": "1b5a606f744ae22e4be5e8f7853a1bd383b0dd2a1136f4861b4377567a0d1653"
+    },
+    {
+      "path": "docs/DESKTOP-FIRST-EXECUTION-WAVE.md",
+      "bytes": 1592,
+      "sha256": "9b90b23b93ac51fd9d71f3699abd5966bb0d38f3553a502e5646ddf0a3ef0ca5"
+    },
+    {
+      "path": "docs/DEVICE-FAMILY-SCORE-RHYTHM.md",
+      "bytes": 3016,
+      "sha256": "bbdc2c9b2874bd99bf7affe7bec6a7a0f8c0b80041c3bbee902620f8173f7440"
+    },
+    {
+      "path": "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
+      "bytes": 6002,
+      "sha256": "9f9b0a1ea6a1c739479018f28d172bedfca34d27ebc26bcf03195d78eb169bbc"
+    },
+    {
+      "path": "docs/EXPERIENCE-GESTURES-AND-VESSELS.md",
+      "bytes": 4158,
+      "sha256": "0b800aa690bf2b542a6451dba474174ef1c48274f708c66f26f65b01b8fbfb79"
+    },
+    {
+      "path": "docs/FOUNDATION-CULTURE-COVERAGE-MAP.md",
+      "bytes": 10250,
+      "sha256": "c4364d889ba4ff14f16ca6c622893c44c58a2b3b304989dbf4dec0b9ab9c9c5e"
+    },
+    {
+      "path": "docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md",
+      "bytes": 8248,
+      "sha256": "d4d753973c19ed42eff3edebde7110716def1d3ba53f76d0e39985d6e7dff8f2"
+    },
+    {
+      "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
+      "bytes": 3310,
+      "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
+    },
+    {
+      "path": "docs/INTERFACE-BUILDER.md",
+      "bytes": 3664,
+      "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
+    }
+  ]
+}

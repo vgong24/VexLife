@@ -1,0 +1,185 @@
+[
+  {
+    "workRef": "work.vexlife.platform.android.adopt",
+    "purpose": "Adopt accepted blueprint in Kotlin/Compose with StateFlow and native permission evidence.",
+    "distance": "POST_DEMO",
+    "milestoneRef": "milestone.vexlife.native-wave",
+    "dependsOn": [
+      "work.vexlife.public.port"
+    ],
+    "pathScope": [
+      "platforms/android/**"
+    ],
+    "ownershipRoleRef": "role.vex.android-developer",
+    "parallelGroupRef": "parallel.native",
+    "requiredSourceRefs": [
+      "platform.android"
+    ],
+    "requiredTestRefs": [
+      "test.platform.android.conformance"
+    ],
+    "outputRefs": [
+      "conformance.platform.android"
+    ],
+    "effectBoundary": "NATIVE_CANDIDATE_BRANCH_ONLY",
+    "completionGate": "compile, UI, accessibility, lifecycle and permission evidence accepted",
+    "platformRefs": [
+      "platform.android"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.platform.ios.adopt",
+    "purpose": "Adopt accepted blueprint in SwiftUI with structured concurrency and entitlement evidence.",
+    "distance": "POST_DEMO",
+    "milestoneRef": "milestone.vexlife.native-wave",
+    "dependsOn": [
+      "work.vexlife.public.port"
+    ],
+    "pathScope": [
+      "platforms/ios/**"
+    ],
+    "ownershipRoleRef": "role.vex.ios-developer",
+    "parallelGroupRef": "parallel.native",
+    "requiredSourceRefs": [
+      "platform.ios"
+    ],
+    "requiredTestRefs": [
+      "test.platform.ios.conformance"
+    ],
+    "outputRefs": [
+      "conformance.platform.ios"
+    ],
+    "effectBoundary": "NATIVE_CANDIDATE_BRANCH_ONLY",
+    "completionGate": "compile, UI, accessibility, lifecycle and entitlement evidence accepted",
+    "platformRefs": [
+      "platform.ios"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.platform.windows.adopt",
+    "purpose": "Build the Windows desktop Home Node, local model/runtime supervisor, Vex Home gateway and first complete native VexLife shell.",
+    "distance": "NEXT_AFTER_FOUNDATION_REVIEW",
+    "milestoneRef": "milestone.vexlife.desktop-home-bridge-wave",
+    "dependsOn": [
+      "work.vexlife.public.port",
+      "work.vexlife.bootstrap.cross-platform",
+      "work.vexlife.model.external-provisioning",
+      "work.vexlife.home-bridge.contract",
+      "work.vexlife.repository-health"
+    ],
+    "pathScope": [
+      "platforms/windows/**"
+    ],
+    "ownershipRoleRef": "role.vex.windows-developer",
+    "parallelGroupRef": "parallel.native",
+    "requiredSourceRefs": [
+      "platform.windows",
+      "bridge.vexlife.personal-home.001",
+      "registry.vexlife.features.001"
+    ],
+    "requiredTestRefs": [
+      "test.platform.windows.conformance",
+      "test.bridge.single-writer-home",
+      "test.bridge.no-direct-model-exposure",
+      "test.localization.coverage",
+      "test.feature.required-lenses"
+    ],
+    "outputRefs": [
+      "conformance.platform.windows",
+      "home-node.vexlife.windows.reference"
+    ],
+    "effectBoundary": "NATIVE_CANDIDATE_BRANCH_ONLY",
+    "completionGate": "compile, UI, accessibility, localization, process/filesystem, Home gateway and model-isolation evidence accepted",
+    "platformRefs": [
+      "platform.windows"
+    ],
+    "exclusions": [
+      "no mobile implementation",
+      "no hosted account service",
+      "no automatic public exposure"
+    ],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.platform.macos.adopt",
+    "purpose": "Build the macOS VexLife shell as a trusted remote surface to the Windows Home Node plus an explicit local-sibling bootstrap/fallback.",
+    "distance": "NEXT_AFTER_FOUNDATION_REVIEW",
+    "milestoneRef": "milestone.vexlife.desktop-home-bridge-wave",
+    "dependsOn": [
+      "work.vexlife.public.port",
+      "work.vexlife.bootstrap.cross-platform",
+      "work.vexlife.home-bridge.contract",
+      "work.vexlife.repository-health"
+    ],
+    "pathScope": [
+      "platforms/macos/**"
+    ],
+    "ownershipRoleRef": "role.vex.macos-developer",
+    "parallelGroupRef": "parallel.native",
+    "requiredSourceRefs": [
+      "platform.macos",
+      "bridge.vexlife.personal-home.001",
+      "registry.vexlife.features.001"
+    ],
+    "requiredTestRefs": [
+      "test.platform.macos.conformance",
+      "test.bridge.remote-vs-sibling-identity",
+      "test.bridge.pairing-replay",
+      "test.bridge.capability-intersection",
+      "test.localization.coverage",
+      "test.feature.required-lenses"
+    ],
+    "outputRefs": [
+      "conformance.platform.macos",
+      "remote-surface.vexlife.macos.reference"
+    ],
+    "effectBoundary": "NATIVE_CANDIDATE_BRANCH_ONLY",
+    "completionGate": "compile, UI, accessibility, localization, pairing, revocation, remote identity and local-sibling disclosure evidence accepted",
+    "platformRefs": [
+      "platform.macos"
+    ],
+    "exclusions": [
+      "no Android/iOS implementation",
+      "no silent fallback identity substitution",
+      "no raw Vex Home replication"
+    ],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.adapter.training-proof",
+    "purpose": "Prove isolated reviewed adapter training, evaluation, inactive acceptance and rollback.",
+    "distance": "RESEARCH",
+    "milestoneRef": "milestone.vexlife.model-evolution",
+    "dependsOn": [
+      "work.vexlife.dream.sync",
+      "work.vexlife.model.external-provisioning"
+    ],
+    "pathScope": [
+      "VexLife/training/**",
+      "VexLife/test/evolution.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.model-steward",
+    "parallelGroupRef": "parallel.research",
+    "requiredSourceRefs": [
+      "registry.vexlife.evolution.001"
+    ],
+    "requiredTestRefs": [
+      "test.evolution.training-does-not-activate",
+      "test.evolution.rollback"
+    ],
+    "outputRefs": [
+      "adapter-checkpoint.vexlife.candidate"
+    ],
+    "effectBoundary": "EXPLICIT_TRAINING_AND_DEVICE_ACTIVATION_AUTHORITY_REQUIRED",
+    "completionGate": "candidate accepted inactive; separate explicit activation and rollback proven",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  }
+]

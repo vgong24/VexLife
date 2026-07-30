@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="VexLife universal blueprint browser reference">
+  <title>VexLife Browser Reference</title>
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+  <div id="app" class="app-shell" data-node-ref="product.vexlife">
+    <header class="topbar" data-node-ref="screen.vexlife.shell">
+      <button class="brand" data-node-ref="product.vexlife" type="button" aria-label="VexLife home">
+        <span class="brand-mark" aria-hidden="true">V</span>
+        <span><strong data-i18n="product.vexlife.name">VexLife</strong><small>Universal companion blueprint</small></span>
+      </button>
+      <nav class="primary-nav" aria-label="Primary" data-node-ref="region.shell.primary-nav">
+        <button type="button" class="nav-button" data-action="select-view" data-view="chat" data-node-ref="element.nav.chat" data-selection-group="selection.primary-view" data-i18n="nav.chat">Chat</button>
+        <button type="button" class="nav-button" data-action="select-view" data-view="terrain" data-node-ref="element.nav.terrain" data-selection-group="selection.primary-view" data-i18n="nav.terrain">Terrain</button>
+        <button type="button" class="nav-button" data-action="select-view" data-view="health" data-node-ref="element.nav.health" data-selection-group="selection.primary-view" data-i18n="nav.health">Health</button>
+      </nav>
+      <div class="top-actions" data-node-ref="region.shell.assistance">
+        <label class="language-control" data-node-ref="element.language.selector">
+          <span class="sr-only" data-i18n="language.label">Language</span>
+          <select id="languageSelect" data-node-ref="element.language.selector" data-selection-group="selection.language" aria-label="Language">
+            <option value="en">EN</option>
+            <option value="zh">中文</option>
+            <option value="ja">日本語</option>
+          </select>
+        </label>
+        <button type="button" id="guideToggle" class="guide-toggle" data-node-ref="element.guide.toggle"><span aria-hidden="true">✦</span><span data-i18n="guide.title">Vex Guide</span></button>
+      </div>
+    </header>
+
+    <aside class="project-rail" aria-label="Projects" data-node-ref="region.chat.project-rail">
+      <div class="rail-heading"><span><small>WORKSPACE</small><strong data-i18n="region.projects.label">Projects</strong></span><button type="button" class="icon-button" data-node-ref="element.project.create" aria-label="Add project">+</button></div>
+      <div id="projectList" class="project-list"></div>
+      <button id="architectureButton" class="architecture-button" data-node-ref="element.architecture.open" type="button">⌾ How VexLife is built</button>
+    </aside>
+
+    <main class="main-surface">
+      <section id="view-chat" class="view" data-view-panel="chat" data-node-ref="screen.vexlife.chat">
+        <header class="view-heading">
+          <div><small id="chatEyebrow">CONVERSATION</small><h1 id="threadTitle">Open conversation</h1><p id="threadDescription">A direct conversation with explicit speaker and recipient identity.</p></div>
+          <div class="presence" id="presence"></div>
+        </header>
+        <div id="channelTabs" class="channel-tabs" role="tablist" data-node-ref="region.chat.channels"></div>
+        <div class="conversation-layout">
+          <section class="feed-card" aria-label="Messages" data-node-ref="region.chat.feed">
+            <div id="messageFeed" class="message-feed" tabindex="0" data-node-ref="element.chat.feed"></div>
+            <button id="newMessagesButton" class="new-messages" data-node-ref="element.messages.jump-latest" type="button" hidden><span id="newMessagesCount">0</span> <span data-i18n="messages.new">New messages</span></button>
+            <form id="composer" class="composer" data-node-ref="element.chat.composer">
+              <div class="composer-address" id="composerAddress"></div>
+              <textarea id="messageInput" rows="3" data-i18n-placeholder="composer.placeholder" placeholder="Write to the selected conversation…"></textarea>
+              <div class="composer-footer"><span id="composerHint">Channel-scoped context · tools and access loaded by role</span><button type="submit" data-node-ref="element.chat.composer" data-i18n="composer.send">Send</button></div>
+            </form>
+          </section>
+          <aside class="context-card" aria-label="Current context">
+            <small>CONTEXT</small><h2>Current frame</h2><div id="contextSummary"></div>
+            <button id="addGroupButton" data-node-ref="element.channel.add-group" type="button" class="secondary-button" data-i18n="channel.add-group">Add to group</button>
+          </aside>
+        </div>
+      </section>
+
+      <section id="view-terrain" class="view" data-view-panel="terrain" data-node-ref="screen.vexlife.terrain" hidden>
+        <header class="view-heading"><div><small>LIVING ORCHESTRATION</small><h1 data-i18n="screen.terrain.title">Terrain</h1><p>Drag higher-level nodes, collapse their children, and inspect canonical relationships without changing them.</p></div><button id="terrainReset" data-node-ref="element.terrain.reset" class="secondary-button" type="button" data-i18n="terrain.reset">Reset layout</button></header>
+        <div class="terrain-layout">
+          <div id="terrainCanvas" class="terrain-canvas" data-node-ref="element.terrain.canvas"><svg id="terrainEdges" class="terrain-edges" aria-hidden="true"></svg><div id="terrainNodes"></div></div>
+          <aside class="terrain-detail" data-node-ref="element.terrain.details"><small data-i18n="terrain.details">Selected node</small><div id="terrainDetail"><p>Select a node to inspect it.</p></div></aside>
+        </div>
+      </section>
+
+      <section id="view-health" class="view" data-view-panel="health" data-node-ref="screen.vexlife.health" hidden>
+        <header class="view-heading"><div><small>LOCAL ENVIRONMENT</small><h1 data-i18n="screen.health.title">Health</h1><p data-i18n="health.summary">Your local Vex environment is healthy.</p></div><span class="status-pill healthy">● HEALTHY</span></header>
+        <div class="health-grid" data-node-ref="region.health.summary">
+          <article data-component-ref="component.vexlife.health-card" data-instance-ref="instance.health-card.model"><small data-i18n="health.model">Model</small><h2>Available</h2><p>One physical worker · logical roles serialized</p></article>
+          <article data-component-ref="component.vexlife.health-card" data-instance-ref="instance.health-card.context"><small data-i18n="health.context">Context</small><h2>Within budget</h2><p>Current frame and channel scope are bounded</p></article>
+          <article data-component-ref="component.vexlife.health-card" data-instance-ref="instance.health-card.work"><small data-i18n="health.work">Work</small><h2>Quiet</h2><p>No heavy background process is active</p></article>
+          <article data-component-ref="component.vexlife.health-card" data-instance-ref="instance.health-card.continuity"><small data-i18n="health.continuity">Continuity</small><h2>Recoverable</h2><p>Raw history, current pointers, and device lineage are distinct</p></article>
+        </div>
+        <details class="technical-details"><summary data-node-ref="element.health.technical-toggle" data-i18n="health.technical">Technical details</summary><pre id="technicalHealth"></pre></details>
+      </section>
+    </main>
+  </div>
+
+  <section id="guideWindow" class="guide-window" role="dialog" aria-label="Vex Guide" data-i18n-aria-label="guide.title" data-node-ref="element.guide.window" hidden>
+    <header id="guideHandle" class="guide-header">
+      <div class="guide-title"><span class="guide-orb" aria-hidden="true">✦</span><span><small>PRIVATE ASSISTANCE</small><strong data-i18n="guide.title">Vex Guide</strong></span></div>
+      <div class="guide-controls"><button id="guideMinimize" data-node-ref="element.guide.minimize" type="button" aria-label="Minimize" data-i18n-aria-label="guide.minimize">—</button><button id="guideClose" data-node-ref="element.guide.close" type="button" aria-label="Close" data-i18n-aria-label="guide.close">×</button></div>
+    </header>
+    <div id="guideBody" class="guide-body">
+      <div class="guide-location"><span id="guideBreadcrumb"></span><small id="guideTrajectory"></small></div>
+      <div id="guideMessages" class="guide-messages"></div>
+      <div class="guide-prompts"><button type="button" data-node-ref="element.guide.ask-current" data-guide-question="current" data-i18n="guide.ask.current">What am I looking at?</button><button type="button" data-node-ref="element.guide.ask-next" data-guide-question="next" data-i18n="guide.mode.next">Recommended next step</button><button type="button" data-node-ref="element.guide.ask-protects" data-guide-question="protects" data-i18n="guide.ask.protects">What protects me?</button></div>
+      <form id="guideComposer" class="guide-composer"><input id="guideInput" data-node-ref="element.guide.composer" data-i18n-placeholder="guide.placeholder" placeholder="Ask Vex Guide about this screen…"><button type="submit" data-node-ref="element.guide.composer">↑</button></form>
+    </div>
+  </section>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
+<!-- [VXG RealForever] -->

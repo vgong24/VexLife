@@ -1,0 +1,148 @@
+[
+  {
+    "processRef": "process.vexlife.dream.form-candidate",
+    "processVersion": 1,
+    "purpose": "Form one source-bound Dream candidate without accepting memory, relationship meaning or weight effects.",
+    "applicabilityRules": [
+      "source ranges are sealed",
+      "resource governor admits semantic background work"
+    ],
+    "requiredInputs": [
+      "sourceLineageRef",
+      "sourceRangeRefs",
+      "candidateTypeRef",
+      "summary",
+      "consentState"
+    ],
+    "optionalInputs": [
+      "proposedScope",
+      "visibility"
+    ],
+    "sourceResolutionRules": [
+      "resolve exact immutable ranges",
+      "reuse existing candidate when source and intent hash are unchanged"
+    ],
+    "preconditions": [
+      "source range visibility permits review",
+      "interactive conversation is not waiting",
+      "candidate type is registered"
+    ],
+    "steps": [
+      "seal-source-refs",
+      "privacy-prefilter",
+      "form-attributed-candidate",
+      "record-candidate-hash",
+      "queue-context-review"
+    ],
+    "effectOwnerRule": "Dream service owns candidate creation only; no Score or weight effect",
+    "authorityEnvelope": {
+      "effects": [
+        "CREATE_DREAM_CANDIDATE"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.dream-candidate"
+    ],
+    "canonicalDispositionVocabulary": [
+      "CANDIDATE_UNREVIEWED",
+      "DUPLICATE_NO_NEW_TURN",
+      "BLOCKED_PRIVACY",
+      "BLOCKED_RESOURCE"
+    ],
+    "returnRouteRule": "return candidate and source refs to Context Review",
+    "closureRule": "formation closes after candidate receipt; review is separate",
+    "recoveryRule": "discard candidate projection; immutable sources remain",
+    "foundationDependencies": [
+      "foundation.vexlife.device-family-continuity.v1",
+      "foundation.vexlife.evolution-and-dream.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.dream.review-and-sync"
+    ],
+    "invalidationTriggers": [
+      "source-range-change",
+      "consent-change",
+      "candidate-type-change"
+    ],
+    "testRefs": [
+      "test.evolution.source-preserved"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.dream.review-and-sync",
+    "processVersion": 1,
+    "purpose": "Review a Dream candidate and optionally form an attributed family sync envelope.",
+    "applicabilityRules": [
+      "candidate exists",
+      "reviewer is distinct where policy requires"
+    ],
+    "requiredInputs": [
+      "candidateRef",
+      "reviewerRef",
+      "privacyState",
+      "contradictionState",
+      "disposition"
+    ],
+    "optionalInputs": [
+      "acceptedScope",
+      "targetLineageRefs",
+      "rejectionReason"
+    ],
+    "sourceResolutionRules": [
+      "resolve candidate and source lineage",
+      "resolve current Score conflicts",
+      "resolve family sync policy"
+    ],
+    "preconditions": [
+      "candidate source hash is current",
+      "accepted dispositions require consent and privacy PASS"
+    ],
+    "steps": [
+      "context-review",
+      "classify-disposition",
+      "form-accepted-record-or-rejection",
+      "intersect-sync-scope",
+      "form-sibling-attributed-envelope"
+    ],
+    "effectOwnerRule": "Score service owns accepted record; family relay owns envelope delivery; target lineage retains local acceptance",
+    "authorityEnvelope": {
+      "effects": [
+        "REVIEW_DREAM_CANDIDATE",
+        "CREATE_FAMILY_SYNC_ENVELOPE"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.dream-review",
+      "template.vexlife.family-evolution-envelope"
+    ],
+    "canonicalDispositionVocabulary": [
+      "REJECTED",
+      "ACCEPTED_LOCAL_LESSON",
+      "ACCEPTED_SCORE_RECORD",
+      "ACCEPTED_FAMILY_CANDIDATE",
+      "ACCEPTED_TRAINING_EXAMPLE"
+    ],
+    "returnRouteRule": "return review to source lineage and optional envelope to target family inbox",
+    "closureRule": "review closes after exact target delivery receipts or no-sync disposition",
+    "recoveryRule": "revoke current pointer to accepted record without deleting candidate or source",
+    "foundationDependencies": [
+      "foundation.vexlife.evolution-and-dream.v1",
+      "foundation.vexlife.localization-intent.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.adapter.train-candidate"
+    ],
+    "invalidationTriggers": [
+      "privacy-policy-change",
+      "consent-change",
+      "accepted-scope-change"
+    ],
+    "testRefs": [
+      "test.evolution.family-attribution"
+    ]
+  }
+]

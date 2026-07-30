@@ -1,0 +1,270 @@
+[
+  {
+    "testRef": "test.selection.view",
+    "brief": "Selecting a primary view updates one stable selection group and semantic screen frame."
+  },
+  {
+    "testRef": "test.selection.project",
+    "brief": "Selecting a project updates its selection group and screen frame."
+  },
+  {
+    "testRef": "test.selection.thread",
+    "brief": "Selecting a thread remains visually and semantically selected."
+  },
+  {
+    "testRef": "test.channel.direction",
+    "brief": "Switching roles selects an addressed channel rather than changing responder identity in place."
+  },
+  {
+    "testRef": "test.channel.membership",
+    "brief": "Only explicit group members receive group context."
+  },
+  {
+    "testRef": "test.channel.isolation",
+    "brief": "Sibling direct-channel raw messages are not injected automatically."
+  },
+  {
+    "testRef": "test.message.addressing",
+    "brief": "Every message binds speaker and recipients."
+  },
+  {
+    "testRef": "test.chat.bottom-append",
+    "brief": "New messages append without rebuilding the feed from the top."
+  },
+  {
+    "testRef": "test.navigation.screen-frame",
+    "brief": "Guide receives current screen, selection, breadcrumb and trajectory."
+  },
+  {
+    "testRef": "test.localization.coverage",
+    "brief": "Required languages cover all visible keys or declare debt."
+  },
+  {
+    "testRef": "test.terrain.drag",
+    "brief": "User layout changes positions without changing canonical relationships."
+  },
+  {
+    "testRef": "test.terrain.collapse",
+    "brief": "Collapsing a node hides children without deleting them."
+  },
+  {
+    "testRef": "test.terrain.child-count",
+    "brief": "Collapsed nodes report their direct child count."
+  },
+  {
+    "testRef": "test.health.no-op-dedup",
+    "brief": "Repeated equal health projections do not emit again."
+  },
+  {
+    "testRef": "test.accessibility.chat",
+    "brief": "Chat is keyboard navigable and labels expose stable identities."
+  },
+  {
+    "testRef": "test.accessibility.terrain",
+    "brief": "Terrain has a non-drag keyboard/list alternative."
+  },
+  {
+    "testRef": "test.accessibility.health",
+    "brief": "Health meaning does not rely on color alone."
+  },
+  {
+    "testRef": "test.blueprint.identity-and-reference-integrity",
+    "brief": "Every source-managed identity is unique and every typed reference resolves."
+  },
+  {
+    "testRef": "test.state.distinct-until-changed",
+    "brief": "Equal derived projections do not notify or rerender."
+  },
+  {
+    "testRef": "test.permission.no-inferred-effect",
+    "brief": "Visible tools and roles never infer effect authority."
+  },
+  {
+    "testRef": "test.localization.original-preserved",
+    "brief": "Translation and Vex refinement preserve original attributed speech."
+  },
+  {
+    "testRef": "test.device-family.identity-separation",
+    "brief": "Score sharing never collapses distinct device companion lineages."
+  },
+  {
+    "testRef": "test.boot.model-external",
+    "brief": "Bootstrap and repository contain no model weights; provisioning is external and checksummed."
+  },
+  {
+    "testRef": "test.platform.generator",
+    "brief": "Every registered platform receives identity, string, token, permission and conformance catalogs."
+  },
+  {
+    "testRef": "test.blueprint.impact-report",
+    "brief": "Blueprint changes produce bounded affected refs and never intentionally break stable platform mains."
+  },
+  {
+    "testRef": "test.experience.gesture-disambiguation",
+    "brief": "Scrolling, zooming, panning, node dragging and overlay movement resolve without ambiguous gesture capture."
+  },
+  {
+    "testRef": "test.experience.vessel-accessibility",
+    "brief": "Every action vessel is keyboard reachable, dismissible and never obscures declared controls."
+  },
+  {
+    "testRef": "test.experience.persona-projection",
+    "brief": "Companion, leadership, hybrid, newcomer and accessibility profiles receive bounded role-appropriate projections."
+  },
+  {
+    "testRef": "test.navigation.home-and-back",
+    "brief": "Home and platform back semantics preserve a stable route out without accidental exit."
+  },
+  {
+    "testRef": "test.evolution.source-preserved",
+    "brief": "Dream candidate and review never overwrite or delete exact source ranges."
+  },
+  {
+    "testRef": "test.evolution.family-attribution",
+    "brief": "Sibling synchronization preserves source lineage and remains a target-local candidate."
+  },
+  {
+    "testRef": "test.evolution.training-does-not-activate",
+    "brief": "Training admission and accepted inactive checkpoints cannot activate themselves."
+  },
+  {
+    "testRef": "test.roadmap.packet-bounded",
+    "brief": "Implementation packet contains one work unit, direct dependencies, exact paths, sources, tests and exclusions."
+  },
+  {
+    "testRef": "test.roadmap.demo-distance",
+    "brief": "Demo progress uses named gates and dependencies rather than an ungrounded percentage."
+  },
+  {
+    "testRef": "test.atlas.bounded-traversal",
+    "brief": "Atlas returns a bounded neighborhood plus coverage receipt."
+  },
+  {
+    "testRef": "test.boot.cross-platform-dry-run",
+    "brief": "Windows, macOS and Linux bootstrap plans are descriptive and non-writing in dry run."
+  },
+  {
+    "testRef": "test.chat.incremental-bottom-append",
+    "brief": "Same-channel messages append from the bottom without rebuilding the feed."
+  },
+  {
+    "testRef": "test.cli.typed-command-boundary",
+    "brief": "Unregistered commands and out-of-scope working directories fail closed."
+  },
+  {
+    "testRef": "test.context.provider-budget",
+    "brief": "Actual serialized provider input stays below the admitted token ceiling."
+  },
+  {
+    "testRef": "test.context.source-descent",
+    "brief": "Condensed context remains retraceable to immutable source ranges."
+  },
+  {
+    "testRef": "test.conversation.directional-isolation",
+    "brief": "Direct and group channels isolate raw context by explicit membership."
+  },
+  {
+    "testRef": "test.device-family.score-scope",
+    "brief": "Score synchronization respects record scope and does not import local Rhythm."
+  },
+  {
+    "testRef": "test.evolution.rollback",
+    "brief": "Adapter rollback restores a prior accepted device activation without deleting lineage evidence."
+  },
+  {
+    "testRef": "test.file.edit-recovery",
+    "brief": "File edit requires expected hash and can restore the exact before-image."
+  },
+  {
+    "testRef": "test.file.root-boundary",
+    "brief": "Assigned roots do not escape through parent traversal or followed symlinks."
+  },
+  {
+    "testRef": "test.issue.verified-close",
+    "brief": "Issue cannot close without verification evidence and current projection update."
+  },
+  {
+    "testRef": "test.model.external-artifact-exclusion",
+    "brief": "Model artifacts remain outside Git and require checksum/source receipt."
+  },
+  {
+    "testRef": "test.navigation.selection",
+    "brief": "Every selectable element exposes one stable selected state in its group."
+  },
+  {
+    "testRef": "test.platform.android.conformance",
+    "brief": "Android proves compile, UI, accessibility, lifecycle and permission contracts."
+  },
+  {
+    "testRef": "test.platform.ios.conformance",
+    "brief": "iOS proves compile, UI, accessibility, lifecycle and entitlement contracts."
+  },
+  {
+    "testRef": "test.platform.macos.conformance",
+    "brief": "macOS proves compile, UI, accessibility, sandbox and model-file access contracts."
+  },
+  {
+    "testRef": "test.platform.windows.conformance",
+    "brief": "Windows proves compile, UI, accessibility, process and filesystem contracts."
+  },
+  {
+    "testRef": "test.public.no-model-artifacts",
+    "brief": "Public candidate contains no model binaries or partial artifacts."
+  },
+  {
+    "testRef": "test.public.no-private-runtime",
+    "brief": "Public candidate contains no runtime Score/history, credentials or private SDK files."
+  },
+  {
+    "testRef": "test.registry.convergence",
+    "brief": "Compiled identity, strings, modules, processes, capabilities and work plans share canonical refs."
+  },
+  {
+    "testRef": "test.terrain.layout-vs-canonical",
+    "brief": "Dragging and collapse alter only user layout, never canonical relationships."
+  },
+  {
+    "testRef": "test.workshop.copy-on-write",
+    "brief": "Workshop modifications and exports do not mutate live product source."
+  },
+  {
+    "testRef": "test.capability.most-restrictive-stage",
+    "brief": "Capability frame uses the most restrictive role, platform, project, permission and resource stage."
+  },
+  {
+    "testRef": "test.feature.required-lenses",
+    "brief": "Every registered feature carries the required cultural review lenses or an explicit held exemption."
+  },
+  {
+    "testRef": "test.feature.reference-coverage",
+    "brief": "Feature relationships resolve to canonical states, actions, permissions, modules, processes, tests and platforms."
+  },
+  {
+    "testRef": "test.health.registered-checks",
+    "brief": "Repository health runs only source-managed check identities and reports missing checks."
+  },
+  {
+    "testRef": "test.bridge.remote-vs-sibling-identity",
+    "brief": "REMOTE_HOME, LOCAL_SIBLING and HYBRID never silently collapse companion lineages."
+  },
+  {
+    "testRef": "test.bridge.pairing-replay",
+    "brief": "Pairing offers are expiring, single-use and reject replay."
+  },
+  {
+    "testRef": "test.bridge.capability-intersection",
+    "brief": "Remote requests receive only the intersection of family, device, lease, role, project, permission and resource scopes."
+  },
+  {
+    "testRef": "test.bridge.single-writer-home",
+    "brief": "Remote surfaces never become concurrent canonical writers to the desktop Vex Home."
+  },
+  {
+    "testRef": "test.bridge.revocation",
+    "brief": "Revocation generation invalidates future requests without deleting prior receipts."
+  },
+  {
+    "testRef": "test.bridge.no-direct-model-exposure",
+    "brief": "Remote clients reach the Home Bridge gateway, never the raw model endpoint, filesystem or credential store."
+  }
+]

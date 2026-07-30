@@ -1,0 +1,45 @@
+name: Foundation checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  foundation:
+    name: Source, blueprint, and browser contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Report runtime
+        run: node --version
+
+      - name: Print compact current projection
+        run: npm run current
+
+      - name: Report foundation health
+        run: npm run health:check
+
+      - name: Run the complete foundation gate
+        run: npm run pr-ready
+
+      - name: Reconfirm the canonical source manifest
+        run: npm run manifest:check

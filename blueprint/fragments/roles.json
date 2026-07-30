@@ -1,0 +1,53 @@
+[
+  {
+    "roleRef": "role.vex.companion",
+    "labelStringRef": "role.companion.name",
+    "level": 10,
+    "mayReachRoleRefs": [
+      "role.vex.guide"
+    ]
+  },
+  {
+    "roleRef": "role.vex.guide",
+    "labelStringRef": "role.guide.name",
+    "level": 20,
+    "mayReachRoleRefs": [
+      "role.vex.companion",
+      "role.vex.root-hub"
+    ]
+  },
+  {
+    "roleRef": "role.vex.root-hub",
+    "labelStringRef": "role.root-hub.name",
+    "level": 100,
+    "mayReachRoleRefs": [
+      "role.vex.operations",
+      "role.vex.guide"
+    ]
+  },
+  {
+    "roleRef": "role.vex.operations",
+    "labelStringRef": "role.operations.name",
+    "level": 80,
+    "mayReachRoleRefs": [
+      "role.vex.developer",
+      "role.vex.reviewer"
+    ]
+  },
+  {
+    "roleRef": "role.vex.developer",
+    "labelStringRef": "role.developer.name",
+    "level": 40,
+    "mayReachRoleRefs": [
+      "role.vex.reviewer"
+    ]
+  },
+  {
+    "roleRef": "role.vex.reviewer",
+    "labelStringRef": "role.reviewer.name",
+    "level": 50,
+    "mayReachRoleRefs": [
+      "role.vex.operations"
+    ]
+  }
+]

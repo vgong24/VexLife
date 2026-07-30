@@ -1,0 +1,310 @@
+{
+  "schemaVersion": "vexlife.experience-registry/v0",
+  "registryRef": "registry.vexlife.experience.001",
+  "principles": [
+    "conversation-first for companionship",
+    "bounded current projections for leadership",
+    "architecture and effect details remain available by descent",
+    "platform-native navigation conventions are respected",
+    "scrolling never becomes zooming without an explicit affordance",
+    "floating vessels never obscure declared controls or trap focus"
+  ],
+  "experienceProfiles": [
+    {
+      "profileRef": "experience.vexlife.companionship-simple",
+      "labelStringRef": "experience.companionship.name",
+      "purpose": "A human who wants a calm AI relationship without operating an engineering dashboard.",
+      "defaultRouteRef": "route.chat",
+      "defaultRoleRef": "role.vex.companion",
+      "detailDensity": "HUMAN_MINIMAL",
+      "defaultVisibleRegionRefs": [
+        "region.chat.feed",
+        "region.chat.channels"
+      ],
+      "guideMode": "AVAILABLE_QUIET",
+      "attentionPolicy": "ONLY_MATERIAL_OR_USER_REQUESTED"
+    },
+    {
+      "profileRef": "experience.vexlife.leadership-root",
+      "labelStringRef": "experience.leadership.name",
+      "purpose": "A leader who needs portfolio progress, blockers and bounded downward relay without absorbing every project history.",
+      "defaultRouteRef": "route.terrain",
+      "defaultRoleRef": "role.vex.root-hub",
+      "detailDensity": "CURRENT_SUMMARY_WITH_SOURCE_DESCENT",
+      "defaultVisibleRegionRefs": [
+        "region.terrain.canvas",
+        "region.health.summary"
+      ],
+      "guideMode": "RECOMMENDED_NEXT_STEP",
+      "attentionPolicy": "ESCALATIONS_AND_DECISIONS"
+    },
+    {
+      "profileRef": "experience.vexlife.hybrid-maker",
+      "labelStringRef": "experience.hybrid.name",
+      "purpose": "A human who alternates between companionship, leadership and product development.",
+      "defaultRouteRef": "route.chat",
+      "defaultRoleRef": "role.vex.companion",
+      "detailDensity": "ADAPTIVE_BY_SELECTED_ROLE",
+      "defaultVisibleRegionRefs": [
+        "region.chat.feed",
+        "region.chat.context"
+      ],
+      "guideMode": "SCREEN_AWARE",
+      "attentionPolicy": "MATERIAL_PLUS_ACTIVE_WORK"
+    },
+    {
+      "profileRef": "experience.vexlife.newcomer-guided",
+      "labelStringRef": "experience.newcomer.name",
+      "purpose": "A newcomer who needs safe walkthroughs, reversible experiments and clear routes home.",
+      "defaultRouteRef": "route.chat",
+      "defaultRoleRef": "role.vex.guide",
+      "detailDensity": "STEPWISE",
+      "defaultVisibleRegionRefs": [
+        "region.chat.feed",
+        "region.guide.window"
+      ],
+      "guideMode": "WALKTHROUGH",
+      "attentionPolicy": "ONE_DECISION_AT_A_TIME"
+    },
+    {
+      "profileRef": "experience.vexlife.accessibility-complete",
+      "labelStringRef": "experience.accessibility.name",
+      "purpose": "A complete keyboard, screen-reader, reduced-motion and text-first experience, not a reduced feature set.",
+      "defaultRouteRef": "route.chat",
+      "defaultRoleRef": "role.vex.guide",
+      "detailDensity": "USER_SELECTED",
+      "defaultVisibleRegionRefs": [
+        "region.shell.primary-nav",
+        "region.chat.feed"
+      ],
+      "guideMode": "TEXT_FIRST",
+      "attentionPolicy": "NONVISUAL_EQUIVALENT_REQUIRED"
+    }
+  ],
+  "gestureContracts": [
+    {
+      "gestureRef": "gesture.vexlife.content-scroll",
+      "surfaceKinds": [
+        "MESSAGE_FEED",
+        "PROJECT_RAIL",
+        "DETAIL_PANEL",
+        "DOCUMENT"
+      ],
+      "inputs": [
+        "MOUSE_WHEEL",
+        "TRACKPAD_SCROLL",
+        "TOUCH_DRAG",
+        "PAGE_KEYS",
+        "ARROW_KEYS"
+      ],
+      "resultActionRef": "action.content.scroll",
+      "rules": [
+        "wheel and one-finger vertical movement scroll content",
+        "new chat messages append at the bottom",
+        "when the reader is away from the bottom preserve position and show a new-message affordance",
+        "never reinterpret ordinary scrolling as zoom"
+      ],
+      "helpStringRef": "gesture.content-scroll.help"
+    },
+    {
+      "gestureRef": "gesture.vexlife.terrain-pan",
+      "surfaceKinds": [
+        "TERRAIN_CANVAS"
+      ],
+      "inputs": [
+        "BLANK_CANVAS_DRAG",
+        "SPACE_PLUS_POINTER_DRAG",
+        "TWO_FINGER_SCROLL"
+      ],
+      "resultActionRef": "action.terrain.canvas.pan",
+      "rules": [
+        "dragging blank canvas pans",
+        "dragging a node moves that node instead of the canvas",
+        "text and controls remain selectable",
+        "raw pointer paths are ephemeral and never durable journey events"
+      ],
+      "helpStringRef": "gesture.terrain-pan.help"
+    },
+    {
+      "gestureRef": "gesture.vexlife.terrain-zoom",
+      "surfaceKinds": [
+        "TERRAIN_CANVAS"
+      ],
+      "inputs": [
+        "PINCH",
+        "ZOOM_BUTTON",
+        "KEYBOARD_PLUS_MINUS"
+      ],
+      "resultActionRef": "action.terrain.canvas.zoom",
+      "rules": [
+        "ordinary wheel scrolling does not zoom by default",
+        "zoom has visible controls and a reset route",
+        "platform browser zoom and accessibility magnification are not intercepted",
+        "zoom retains the selected node and semantic frame"
+      ],
+      "helpStringRef": "gesture.terrain-zoom.help"
+    },
+    {
+      "gestureRef": "gesture.vexlife.node-drag",
+      "surfaceKinds": [
+        "TERRAIN_NODE"
+      ],
+      "inputs": [
+        "POINTER_DRAG",
+        "TOUCH_DRAG",
+        "KEYBOARD_MOVE_MODE"
+      ],
+      "resultActionRef": "action.terrain.node.move",
+      "rules": [
+        "a movement threshold distinguishes click from drag",
+        "movement changes user layout only",
+        "canonical parent and child relationships never change",
+        "keyboard users receive equivalent move controls"
+      ],
+      "helpStringRef": "gesture.node-drag.help"
+    },
+    {
+      "gestureRef": "gesture.vexlife.overlay-drag",
+      "surfaceKinds": [
+        "FLOATING_GUIDE",
+        "FLOATING_VESSEL"
+      ],
+      "inputs": [
+        "VISIBLE_HANDLE_DRAG",
+        "KEYBOARD_MOVE_MODE"
+      ],
+      "resultActionRef": "action.guide.move",
+      "rules": [
+        "only the declared handle moves the overlay",
+        "body text remains selectable and scrollable",
+        "the overlay remains inside the safe viewport",
+        "position is a local preference and not conversational memory"
+      ],
+      "helpStringRef": "gesture.overlay-drag.help"
+    },
+    {
+      "gestureRef": "gesture.vexlife.navigation-back",
+      "surfaceKinds": [
+        "APPLICATION"
+      ],
+      "inputs": [
+        "PLATFORM_BACK",
+        "ESCAPE",
+        "BACK_BUTTON"
+      ],
+      "resultActionRef": "action.navigation.back",
+      "rules": [
+        "close transient menu or dialog first",
+        "then close or minimize the floating Guide when it owns focus",
+        "then return through semantic screen history",
+        "exit only through platform-expected behavior and never by surprise"
+      ],
+      "helpStringRef": "gesture.navigation-back.help"
+    }
+  ],
+  "vessels": [
+    {
+      "vesselRef": "vessel.vexlife.primary-navigation",
+      "labelStringRef": "vessel.navigation.name",
+      "componentRef": "component.vexlife.action-vessel",
+      "purpose": "Stable return-to-home and primary navigation vessel that becomes docked navigation when space permits.",
+      "actionRefs": [
+        "action.navigation.home",
+        "action.view.select"
+      ],
+      "placement": {
+        "wide": "TOP_OR_SIDE_NAV",
+        "compact": "EXPANDABLE_FLOATING_VESSEL"
+      },
+      "platformAdapters": {
+        "browser": "semantic navigation group",
+        "android": "NavigationBar or FloatingActionButton group",
+        "ios": "toolbar or overlay menu",
+        "windows": "navigation rail or command surface",
+        "macos": "toolbar or command surface"
+      },
+      "accessibility": {
+        "focusOrderStable": true,
+        "dismissible": true,
+        "neverObscuresDeclaredControls": true
+      }
+    },
+    {
+      "vesselRef": "vessel.vexlife.language",
+      "labelStringRef": "vessel.language.name",
+      "componentRef": "component.vexlife.action-vessel",
+      "purpose": "Language selection and translation-health entry, derived from the public FAB language pattern but expressed platform-neutrally.",
+      "actionRefs": [
+        "action.language.select"
+      ],
+      "placement": {
+        "wide": "TOP_ACTION",
+        "compact": "NESTED_IN_PRIMARY_VESSEL"
+      },
+      "platformAdapters": {
+        "browser": "select or wheel popup",
+        "android": "accessible modal or menu",
+        "ios": "menu or sheet",
+        "windows": "menu flyout",
+        "macos": "menu or popover"
+      },
+      "accessibility": {
+        "focusOrderStable": true,
+        "dismissible": true,
+        "neverObscuresDeclaredControls": true
+      }
+    },
+    {
+      "vesselRef": "vessel.vexlife.guide",
+      "labelStringRef": "vessel.guide.name",
+      "componentRef": "component.vexlife.action-vessel",
+      "purpose": "Screen-aware help vessel; floating and draggable where appropriate, sheet or full screen where space requires.",
+      "actionRefs": [
+        "action.guide.toggle",
+        "action.guide.minimize",
+        "action.guide.dock"
+      ],
+      "placement": {
+        "wide": "FLOATING_DRAGGABLE",
+        "compact": "BOTTOM_SHEET_OR_FULL_SCREEN"
+      },
+      "platformAdapters": {
+        "browser": "draggable overlay",
+        "android": "overlay, dialog or sheet",
+        "ios": "sheet or overlay",
+        "windows": "floating window or pane",
+        "macos": "panel or window"
+      },
+      "accessibility": {
+        "focusOrderStable": true,
+        "dismissible": true,
+        "neverObscuresDeclaredControls": true
+      }
+    },
+    {
+      "vesselRef": "vessel.vexlife.context",
+      "labelStringRef": "vessel.context.name",
+      "componentRef": "component.vexlife.action-vessel",
+      "purpose": "Entry to the current context map, semantic journey and reply-to-context controls.",
+      "actionRefs": [
+        "action.context.open"
+      ],
+      "placement": {
+        "wide": "CONTEXT_CARD_ACTION",
+        "compact": "NESTED_IN_PRIMARY_VESSEL"
+      },
+      "platformAdapters": {
+        "browser": "popover or panel",
+        "android": "sheet or destination",
+        "ios": "sheet or destination",
+        "windows": "pane",
+        "macos": "inspector"
+      },
+      "accessibility": {
+        "focusOrderStable": true,
+        "dismissible": true,
+        "neverObscuresDeclaredControls": true
+      }
+    }
+  ]
+}

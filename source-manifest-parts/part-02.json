@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "files": [
+    {
+      "path": "blueprint/fragments/screens/terrain.json",
+      "bytes": 2797,
+      "sha256": "039409728d40a4cb1cd86b604e5261dfc1ab35f783c6eb1235b6c3a236b0e73b"
+    },
+    {
+      "path": "blueprint/fragments/state-domains.json",
+      "bytes": 4088,
+      "sha256": "6fca62558eface00f1f0e7105863c1257679a4b0379a20aa3bb99024e6c866a5"
+    },
+    {
+      "path": "blueprint/fragments/terrain.json",
+      "bytes": 2192,
+      "sha256": "97b969a3274de72ddecad98d4bc629b314922b86e8b39fd10c601269dae668a1"
+    },
+    {
+      "path": "blueprint/fragments/tests.json",
+      "bytes": 10013,
+      "sha256": "cbac19f2eb321e111340ae39577fb996b7f8f6d7f300734c1f6ef8b48196b62f"
+    },
+    {
+      "path": "blueprint/home-bridge-registry.json",
+      "bytes": 3411,
+      "sha256": "62dbac41ccdc555935a3f4395233a1edc9e955c2a3931b3c219317506c4a59da"
+    },
+    {
+      "path": "blueprint/implementation/milestones.json",
+      "bytes": 1960,
+      "sha256": "ef8ff8ba6c5e876f7544936f07299866485188e5642161970de1422c4432e1da"
+    },
+    {
+      "path": "blueprint/implementation/work-units-experience-and-runtime.json",
+      "bytes": 9947,
+      "sha256": "1411264ccd30923679a34736b227e03836203c0848de4b22b6cae48aaa158c63"
+    },
+    {
+      "path": "blueprint/implementation/work-units-foundation.json",
+      "bytes": 7536,
+      "sha256": "de6ae9c6d68eecf1f35fab2aba4855dec0ccec22546aefcaac353f4cf5196078"
+    },
+    {
+      "path": "blueprint/implementation/work-units-native-and-research.json",
+      "bytes": 6417,
+      "sha256": "68a96ab008d549df3aa53c3c12089522131041397c132f7e3a4ee3f1e8ebb63b"
+    },
+    {
+      "path": "blueprint/implementation/work-units-orchestration-and-publication.json",
+      "bytes": 2364,
+      "sha256": "a02c771147276262289c51f111c7ecf429540d887cdcf96668af3639742f95f5"
+    },
+    {
+      "path": "blueprint/implementation-plan.json",
+      "bytes": 1633,
+      "sha256": "00bee4274babf471c5ab82939aebe0fd7ed2d862558df8d94250e660335dc3cb"
+    },
+    {
+      "path": "blueprint/model-profiles.example.json",
+      "bytes": 635,
+      "sha256": "92b99a29e5eaed1253cf10540e85654c09a55114a88e2b6e8f417c6b979afc10"
+    },
+    {
+      "path": "blueprint/module-registry/browser.json",
+      "bytes": 4952,
+      "sha256": "6957cc2a2021e71b240f090016652274e9cc981d896e5ef380e79be863c6b531"
+    },
+    {
+      "path": "blueprint/module-registry/core.json",
+      "bytes": 12132,
+      "sha256": "a4d36786fafab24ff8ce843008dae85c7a3a5293f1b2d364184d861b08341fc4"
+    },
+    {
+      "path": "blueprint/module-registry/governance-and-bridge.json",
+      "bytes": 5976,
+      "sha256": "afecd455dbc4e0ba9bf14e3391cb37eb9ef020e65f712c62bee081070c209ecd"
+    },
+    {
+      "path": "blueprint/module-registry/scripts.json",
+      "bytes": 5942,
+      "sha256": "ec2d19ca17750a39bf38abcc00e4bb281530d2ec32c67c0da2f21a1645436104"
+    },
+    {
+      "path": "blueprint/module-registry.json",
+      "bytes": 398,
+      "sha256": "10a5964604ac02d5588c00167872b8e3b9756596f944bc10f46e3f3aec80b7d2"
+    },
+    {
+      "path": "blueprint/platforms.json",
+      "bytes": 986,
+      "sha256": "17e4ec4ae0e058f6703870c2b2c1d468acb3383b19c25f6999eb2912195a8123"
+    },
+    {
+      "path": "blueprint/process-factory/foundations.json",
+      "bytes": 7225,
+      "sha256": "24ea68bda62700e5a0ce07f104b58be97d751111eceebd8a7993c3b144a20208"
+    },
+    {
+      "path": "blueprint/process-factory/processes-conversation-and-interface.json",
+      "bytes": 6475,
+      "sha256": "6f5cd28263a94381c9bc9709b70b107dc0f076b716dab07dd3ad3a8baf309022"
+    },
+    {
+      "path": "blueprint/process-factory/processes-core.json",
+      "bytes": 15505,
+      "sha256": "7a2960b8b96d6345141a724231903a05906cbcf53ecdc57f4dd061d4559a60b8"
+    },
+    {
+      "path": "blueprint/process-factory/processes-evolution.json",
+      "bytes": 4612,
+      "sha256": "21f4b1ae2d961e51f01e4eca95ab95e69ef66b45f0ca25070a996e9971c674fb"
+    },
+    {
+      "path": "blueprint/process-factory/processes-health-and-bridge.json",
+      "bytes": 11192,
+      "sha256": "1f5f69cdf9398c6a254e1e7a4418eb6d2f1125f89b196d65e7112ac171ad5ee0"
+    },
+    {
+      "path": "blueprint/process-factory/processes-operations-and-publication.json",
+      "bytes": 16160,
+      "sha256": "35c984bd6df8a1d78ea3489265ffcf679f6b75383f9ff9c545485146bba218b9"
+    }
+  ]
+}

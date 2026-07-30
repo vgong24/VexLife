@@ -1,0 +1,85 @@
+{
+  "screenRef": "screen.vexlife.terrain",
+  "routeRef": "route.terrain",
+  "titleStringRef": "screen.terrain.title",
+  "stateSelectorRefs": [
+    "selector.terrain.current",
+    "selector.terrain.layout"
+  ],
+  "regions": [
+    {
+      "regionRef": "region.terrain.canvas",
+      "labelStringRef": "region.terrain.label",
+      "elements": [
+        {
+          "elementRef": "element.terrain.canvas",
+          "kind": "TERRAIN_CANVAS",
+          "labelStringRef": "region.terrain.label",
+          "testRefs": [
+            "test.terrain.drag",
+            "test.terrain.collapse",
+            "test.terrain.child-count"
+          ],
+          "conceptRef": "concept.element.terrain.canvas",
+          "interactionRef": "interaction.terrain.canvas",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-canvas",
+          "accessibility": {
+            "role": "region",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.canvas"
+          }
+        },
+        {
+          "elementRef": "element.terrain.reset",
+          "conceptRef": "concept.element.terrain.reset",
+          "interactionRef": "interaction.terrain.reset",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-reset",
+          "kind": "TERRAIN_RESET",
+          "labelStringRef": "terrain.reset",
+          "actionRef": "action.terrain.layout.reset",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.reset"
+          },
+          "testRefs": [
+            "test.terrain.drag"
+          ]
+        },
+        {
+          "elementRef": "element.terrain.details",
+          "conceptRef": "concept.element.terrain.details",
+          "interactionRef": "interaction.terrain.details",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-detail",
+          "kind": "TERRAIN_DETAIL",
+          "labelStringRef": "terrain.details",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "region",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.details"
+          },
+          "testRefs": [
+            "test.accessibility.terrain"
+          ]
+        }
+      ],
+      "conceptRef": "concept.region.terrain.canvas",
+      "navigationNodeRef": "nav.region.terrain.canvas"
+    }
+  ],
+  "testRefs": [
+    "test.accessibility.terrain"
+  ],
+  "conceptRef": "concept.screen.vexlife.terrain",
+  "navigationNodeRef": "nav.screen.vexlife.terrain"
+}

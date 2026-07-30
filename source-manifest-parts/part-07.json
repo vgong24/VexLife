@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "files": [
+    {
+      "path": "start-vexlife.cmd",
+      "bytes": 238,
+      "sha256": "bcf9aefdb6b7caad1486c228a72981111aa8534ed92a9eadacde5b57f9a42bca"
+    },
+    {
+      "path": "start-vexlife.ps1",
+      "bytes": 409,
+      "sha256": "3a449fa55f66aa98878de571d955edda1db840ff0e0b257e9263dc429cac005e"
+    },
+    {
+      "path": "start-vexlife.sh",
+      "bytes": 281,
+      "sha256": "6e2344723c0871ce76111d5fc298ebbbf3257a898bb7069a590a96f616184376"
+    },
+    {
+      "path": "test/boot.test.mjs",
+      "bytes": 2224,
+      "sha256": "1b2d90c0c9978e696e4efb41a285834e54b54f3b74a33723272e6e22f20a3e1b"
+    },
+    {
+      "path": "test/browser.test.mjs",
+      "bytes": 4447,
+      "sha256": "80b104b9e5baccf2c2ac021f166c63a47f531a3b98c8d2e055f914d74194e0bb"
+    },
+    {
+      "path": "test/capability.test.mjs",
+      "bytes": 1797,
+      "sha256": "92df93aefc984c19f8f9484c7c3a8df4dda0d7e01e4dfdac752615e6ab94db17"
+    },
+    {
+      "path": "test/core.test.mjs",
+      "bytes": 7231,
+      "sha256": "f33948c44c7fa69cc818447c5b52e9c77c2c20a928889986c7c3dffaf79f9bd7"
+    },
+    {
+      "path": "test/evolution.test.mjs",
+      "bytes": 4073,
+      "sha256": "4e58c160bb6b17ed784523310cffe61ab604f868f2e79ce8f6f2e22727bc58c6"
+    },
+    {
+      "path": "test/experience.test.mjs",
+      "bytes": 2215,
+      "sha256": "82366babcef80194d3a214efe9c8455a0920f1c3d2e0a7bb8701f3156810bbd0"
+    },
+    {
+      "path": "test/foundation-health.test.mjs",
+      "bytes": 4011,
+      "sha256": "ce54b6ef1550aa0fa00fac6cb2a53f28158b9fb9c2c7f7413e67285c488494bd"
+    },
+    {
+      "path": "test/generator.test.mjs",
+      "bytes": 1047,
+      "sha256": "9a8d9b2f861082184ee4f96e1647d6ef937efa9554184e2da2939d3586b10c3a"
+    },
+    {
+      "path": "test/home-bridge.test.mjs",
+      "bytes": 6260,
+      "sha256": "404b142053da2eb58c693a288304ef77c7fdeb396f19cc732b82a72108a2951b"
+    },
+    {
+      "path": "test/implementation-plan.test.mjs",
+      "bytes": 2795,
+      "sha256": "8d0b308711a726c0228f3556120e40fb4ef911e85e5c0b95b3356b5694f097b1"
+    },
+    {
+      "path": "test/model-provision.test.mjs",
+      "bytes": 1971,
+      "sha256": "2975c38e03eb343680a51011de95e494c8f4b30defa0ad02329c28ebde719949"
+    },
+    {
+      "path": "test/registry.test.mjs",
+      "bytes": 5094,
+      "sha256": "af3bb7241afc131a07918fd8a4a1297b8f4cca6cfb537c63ff34075b89654972"
+    },
+    {
+      "path": "test/source-manifest.test.mjs",
+      "bytes": 1011,
+      "sha256": "201ce3029b4550e32c5ad96fbac6e76912bfb5ae5016d4e91e3a278dc835a6ce"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "bytes": 1755,
+      "sha256": "feb1e5113d8b35370d60f9ea0060e84583b5f4b77485569f279feac04ccbb4b0"
+    },
+    {
+      "path": "TRADEMARKS.md",
+      "bytes": 1123,
+      "sha256": "3d48ffcfe5ca82ea75e221b5d4c2272a9a7382a0103993fefb9f0f3a3efd9c62"
+    },
+    {
+      "path": "VEXLIFE.md",
+      "bytes": 1962,
+      "sha256": "61341584560ae3acddc73a93d3288375ea6338f5d896896be23581c0c54960f4"
+    }
+  ]
+}

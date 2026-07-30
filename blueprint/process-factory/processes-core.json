@@ -1,0 +1,509 @@
+[
+  {
+    "processRef": "process.vexlife.interface.render",
+    "processVersion": 1,
+    "purpose": "Resolve a universal screen contract into one platform-native bounded projection.",
+    "applicabilityRules": [
+      "screenRef exists",
+      "platformRef registered"
+    ],
+    "requiredInputs": [
+      "screenRef",
+      "platformRef",
+      "localeRef",
+      "selectorSnapshotRefs"
+    ],
+    "optionalInputs": [
+      "selectedNodeRef",
+      "guideFrameRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve screen and elements from compiled registry",
+      "resolve strings from requested locale with declared fallback",
+      "resolve design tokens by semantic token ref"
+    ],
+    "preconditions": [
+      "blueprint validation passes",
+      "platform adoption state is not BLOCKED"
+    ],
+    "steps": [
+      "resolve-screen-neighborhood",
+      "resolve-visible-string-projections",
+      "resolve-state-selectors",
+      "emit-platform-render-contract"
+    ],
+    "effectOwnerRule": "platform adapter owns rendering only",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.platform-render-contract"
+    ],
+    "canonicalDispositionVocabulary": [
+      "RENDER_CONTRACT_READY",
+      "PLATFORM_ADOPTION_REQUIRED",
+      "MISSING_CURRENT_SOURCE"
+    ],
+    "returnRouteRule": "return platform render receipt to caller",
+    "closureRule": "close after render receipt hash is recorded",
+    "recoveryRule": "discard derived render and rebuild from current blueprint",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.localization-intent.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "platform.browser",
+      "platform.android",
+      "platform.ios",
+      "platform.windows",
+      "platform.macos"
+    ],
+    "invalidationTriggers": [
+      "screen-contract-change",
+      "string-contract-change",
+      "design-token-change"
+    ],
+    "testRefs": [
+      "test.navigation.screen-frame",
+      "test.localization.coverage"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.communication.translate-and-refine",
+    "processVersion": 1,
+    "purpose": "Create reviewable language or Vex-refinement projections while preserving original attributed speech.",
+    "applicabilityRules": [
+      "source message exists",
+      "requested recipient locale is supported or explicitly held"
+    ],
+    "requiredInputs": [
+      "messageRef",
+      "targetLocaleRef",
+      "projectionKind"
+    ],
+    "optionalInputs": [
+      "senderReviewRequired",
+      "uncertaintyNotes"
+    ],
+    "sourceResolutionRules": [
+      "load original message by ref",
+      "load bounded conversation intention frame",
+      "load target locale catalog and recipient preference"
+    ],
+    "preconditions": [
+      "original content hash matches",
+      "translator role is attributed"
+    ],
+    "steps": [
+      "derive-intention-preserving-candidate",
+      "record-source-hash",
+      "present-sender-review-when-required",
+      "append-projection"
+    ],
+    "effectOwnerRule": "sender decides whether a refinement candidate becomes sent content",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_PROJECTION"
+      ],
+      "pathScope": [
+        "vex-home/message-projections"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.message-projection"
+    ],
+    "canonicalDispositionVocabulary": [
+      "PROJECTION_READY",
+      "SENDER_REVIEW_REQUIRED",
+      "UNCERTAINTY_REQUIRES_CLARIFICATION"
+    ],
+    "returnRouteRule": "return original and projection side by side",
+    "closureRule": "close after sender disposition or explicit cancel",
+    "recoveryRule": "remove active projection pointer; preserve projection history",
+    "foundationDependencies": [
+      "foundation.vexlife.localization-intent.v1",
+      "foundation.vexlife.identity-lattice.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "service.conversation",
+      "service.localization"
+    ],
+    "invalidationTriggers": [
+      "original-content-change",
+      "recipient-locale-change",
+      "translation-policy-change"
+    ],
+    "testRefs": [
+      "test.localization.original-preserved",
+      "test.localization.coverage"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.device.bootstrap",
+    "processVersion": 1,
+    "purpose": "Create a recoverable device-local Vex Home and distinct companion lineage without model artifacts in Git.",
+    "applicabilityRules": [
+      "target home is absent or an explicit migration is selected"
+    ],
+    "requiredInputs": [
+      "personRef",
+      "familyRef",
+      "deviceName",
+      "platformRef",
+      "homePath"
+    ],
+    "optionalInputs": [
+      "modelProfileRef",
+      "scoreImportPlanRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve platform boot adapter",
+      "resolve local filesystem conventions",
+      "resolve model profile without downloading during dry run"
+    ],
+    "preconditions": [
+      "home path is writable",
+      "existing home is preserved and classified"
+    ],
+    "steps": [
+      "create-device-lineage",
+      "create-home-directories",
+      "write-empty-score-policy",
+      "write-local-rhythm-origin",
+      "emit-model-provisioning-next-step"
+    ],
+    "effectOwnerRule": "bootstrap host code owns filesystem creation",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_CREATE"
+      ],
+      "pathScope": [
+        "selected-vex-home"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.bootstrap-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "BOOTSTRAP_READY",
+      "EXISTING_HOME_REQUIRES_MIGRATION",
+      "PLATFORM_PREREQUISITE_MISSING"
+    ],
+    "returnRouteRule": "return one exact next action to the human",
+    "closureRule": "close after boot receipt and home manifest read-back",
+    "recoveryRule": "quarantine partial home; never overwrite existing home",
+    "foundationDependencies": [
+      "foundation.vexlife.device-family-continuity.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "platform.browser",
+      "platform.android",
+      "platform.ios",
+      "platform.windows",
+      "platform.macos"
+    ],
+    "invalidationTriggers": [
+      "home-layout-change",
+      "device-identity-change",
+      "model-profile-change"
+    ],
+    "testRefs": [
+      "test.device-family.identity-separation",
+      "test.boot.model-external"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.interface.register-node",
+    "processVersion": 1,
+    "purpose": "Register one screen, region, element or component once and derive identity, localization, navigation, Terrain, permission and test relationships.",
+    "applicabilityRules": [
+      "source concept is stable enough to name",
+      "parent contract exists"
+    ],
+    "requiredInputs": [
+      "nodeRef",
+      "nodeKind",
+      "conceptRef",
+      "parentRef",
+      "labelStringRef",
+      "platformScope"
+    ],
+    "optionalInputs": [
+      "actionRef",
+      "permissionRef",
+      "selectionGroupRef",
+      "terrainNodeRef",
+      "gestureRefs",
+      "aliasRefs"
+    ],
+    "sourceResolutionRules": [
+      "resolve parent from compiled identity registry",
+      "reject duplicate canonical ref or alias",
+      "resolve label key across required languages"
+    ],
+    "preconditions": [
+      "identity foundation current",
+      "localization foundation current"
+    ],
+    "steps": [
+      "register-canonical-identity",
+      "register-localization-usage",
+      "register-navigation-edge",
+      "register-action-and-permission-edge",
+      "register-terrain-and-test-edges",
+      "emit-impact-projection"
+    ],
+    "effectOwnerRule": "registry compiler writes derived projections; source author writes canonical entry",
+    "authorityEnvelope": {
+      "effects": [
+        "WRITE_CANONICAL_BLUEPRINT_ENTRY",
+        "REGENERATE_DERIVED_PROJECTIONS"
+      ],
+      "pathScope": [
+        "blueprint/**",
+        "generated/**"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.registered-interface-node"
+    ],
+    "canonicalDispositionVocabulary": [
+      "NODE_REGISTERED",
+      "DUPLICATE_IDENTITY",
+      "MISSING_PARENT",
+      "LOCALIZATION_DEBT",
+      "PERMISSION_CONTRACT_REQUIRED"
+    ],
+    "returnRouteRule": "return registered ref, affected projection refs and validation receipt",
+    "closureRule": "close after registry, localization and reference validation pass",
+    "recoveryRule": "remove candidate entry or restore prior blueprint object; derived projections rebuild",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.localization-intent.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "registry.vexlife.compiled-identities.001",
+      "registry.vexlife.strings.001",
+      "registry.vexlife.navigation.001"
+    ],
+    "invalidationTriggers": [
+      "identity-change",
+      "parent-change",
+      "label-key-change",
+      "action-or-permission-change"
+    ],
+    "testRefs": [
+      "test.blueprint.identity-and-reference-integrity",
+      "test.localization.coverage"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.adapter.train-candidate",
+    "processVersion": 1,
+    "purpose": "Admit an isolated adapter training run from reviewed examples without granting activation.",
+    "applicabilityRules": [
+      "all examples are ACCEPTED_TRAINING_EXAMPLE",
+      "frozen evaluation exists"
+    ],
+    "requiredInputs": [
+      "acceptedExampleRefs",
+      "evaluationManifestRef",
+      "privacyReceiptRefs",
+      "resourceLeaseRef"
+    ],
+    "optionalInputs": [
+      "baseModelHash",
+      "runtimeManifestRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve immutable accepted records",
+      "resolve exact base model and evaluation hashes"
+    ],
+    "preconditions": [
+      "training authority is explicit",
+      "hardware resource lease is current",
+      "activationRequested is false"
+    ],
+    "steps": [
+      "assemble-dataset-manifest",
+      "verify-privacy-coverage",
+      "run-isolated-training",
+      "save-checkpoint-manifest",
+      "evaluate",
+      "return-context-review"
+    ],
+    "effectOwnerRule": "model steward owns isolated candidate training; activation remains a separate named-device effect",
+    "authorityEnvelope": {
+      "effects": [
+        "TRAIN_ADAPTER_CANDIDATE"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.adapter-training-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "TRAINING_ADMISSION_READY",
+      "BLOCKED_UNREVIEWED_EXAMPLES",
+      "ACCEPTED_INACTIVE",
+      "REJECTED"
+    ],
+    "returnRouteRule": "return checkpoint and evaluation evidence to Context Review",
+    "closureRule": "training closes at accepted inactive, rejected or exact failure receipt",
+    "recoveryRule": "delete isolated candidate artifacts only after receipt; accepted prior adapter remains unchanged",
+    "foundationDependencies": [
+      "foundation.vexlife.evolution-and-dream.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "device-local-explicit-adapter-activation"
+    ],
+    "invalidationTriggers": [
+      "base-model-change",
+      "evaluation-change",
+      "privacy-receipt-change"
+    ],
+    "testRefs": [
+      "test.evolution.training-does-not-activate"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.roadmap.compile-work-packet",
+    "processVersion": 1,
+    "purpose": "Compile the smallest dependency- and path-complete implementation packet for one Codex or platform lane.",
+    "applicabilityRules": [
+      "workRef exists",
+      "implementation plan validates"
+    ],
+    "requiredInputs": [
+      "workRef",
+      "currentBlueprintHash",
+      "acceptedWorkRefs"
+    ],
+    "optionalInputs": [
+      "platformRef",
+      "recipientRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve one work unit",
+      "resolve direct dependencies",
+      "resolve implicated source and test refs only"
+    ],
+    "preconditions": [
+      "blueprint hash is current",
+      "path overlap state is known"
+    ],
+    "steps": [
+      "resolve-work-unit",
+      "calculate-unmet-dependencies",
+      "bind-exact-path-scope",
+      "bind-source-and-test-refs",
+      "emit-no-authority-packet"
+    ],
+    "effectOwnerRule": "roadmap compiler produces a no-effect packet; Operations separately grants claims and authority",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_IMPLEMENTATION_PLAN"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.implementation-packet"
+    ],
+    "canonicalDispositionVocabulary": [
+      "PACKET_READY_NO_AUTHORITY",
+      "WAITING_DEPENDENCIES",
+      "BLOCKED_PLATFORM_NOT_APPLICABLE",
+      "BLOCKED_PATH_OVERLAP"
+    ],
+    "returnRouteRule": "return packet to requesting Operations or platform lane",
+    "closureRule": "packet compile closes after hash receipt",
+    "recoveryRule": "discard generated packet and recompile from current plan",
+    "foundationDependencies": [
+      "foundation.vexlife.implementation-roadmap.v1",
+      "foundation.vexlife.identity-lattice.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "Codex",
+      "platform-adoption-lanes"
+    ],
+    "invalidationTriggers": [
+      "work-unit-change",
+      "dependency-change",
+      "path-scope-change",
+      "blueprint-hash-change"
+    ],
+    "testRefs": [
+      "test.roadmap.packet-bounded"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.demo.evaluate-distance",
+    "processVersion": 1,
+    "purpose": "Project demo progress from named work gates without inventing an ungrounded percentage.",
+    "applicabilityRules": [
+      "implementation plan validates"
+    ],
+    "requiredInputs": [
+      "completedWorkRefs",
+      "currentPlanRef"
+    ],
+    "optionalInputs": [
+      "targetDate",
+      "heldWorkRefs"
+    ],
+    "sourceResolutionRules": [
+      "resolve milestones and work dependencies",
+      "compute longest incomplete dependency path"
+    ],
+    "preconditions": [
+      "completed refs have accepted evidence"
+    ],
+    "steps": [
+      "classify-milestones",
+      "count-named-gates",
+      "find-blocked-and-ready-lanes",
+      "project-next-safe-actions"
+    ],
+    "effectOwnerRule": "projection service owns human-readable status only",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_IMPLEMENTATION_PLAN"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.demo-distance"
+    ],
+    "canonicalDispositionVocabulary": [
+      "FOUNDATION_ACTIVE",
+      "DEMO_PATH_ACTIVE",
+      "DEMO_READY",
+      "HELD_TRUE_DECISION"
+    ],
+    "returnRouteRule": "publish compact Terrain and Root Hub projection",
+    "closureRule": "projection supersedes when plan or evidence changes",
+    "recoveryRule": "rebuild from accepted evidence; never edit progress by hand",
+    "foundationDependencies": [
+      "foundation.vexlife.implementation-roadmap.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "screen.vexlife.terrain",
+      "role.vex.root-hub"
+    ],
+    "invalidationTriggers": [
+      "work-evidence-change",
+      "plan-change"
+    ],
+    "testRefs": [
+      "test.roadmap.demo-distance"
+    ]
+  }
+]

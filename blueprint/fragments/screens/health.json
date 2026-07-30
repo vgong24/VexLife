@@ -1,0 +1,62 @@
+{
+  "screenRef": "screen.vexlife.health",
+  "routeRef": "route.health",
+  "titleStringRef": "screen.health.title",
+  "stateSelectorRefs": [
+    "selector.health.human",
+    "selector.health.technical"
+  ],
+  "regions": [
+    {
+      "regionRef": "region.health.summary",
+      "labelStringRef": "region.health.label",
+      "elements": [
+        {
+          "elementRef": "element.health.summary",
+          "kind": "HEALTH_SUMMARY",
+          "labelStringRef": "health.ok",
+          "testRefs": [
+            "test.health.no-op-dedup"
+          ],
+          "conceptRef": "concept.element.health.summary",
+          "interactionRef": "interaction.health.summary",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.health-summary",
+          "accessibility": {
+            "role": "region",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.health.summary"
+          }
+        },
+        {
+          "elementRef": "element.health.technical-toggle",
+          "conceptRef": "concept.element.health.technical-toggle",
+          "interactionRef": "interaction.health.technical-toggle",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.disclosure",
+          "kind": "DISCLOSURE",
+          "labelStringRef": "health.technical",
+          "actionRef": "action.health.technical.toggle",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.health.technical-toggle"
+          },
+          "testRefs": [
+            "test.accessibility.health"
+          ]
+        }
+      ],
+      "conceptRef": "concept.region.health.summary",
+      "navigationNodeRef": "nav.region.health.summary"
+    }
+  ],
+  "testRefs": [
+    "test.accessibility.health"
+  ],
+  "conceptRef": "concept.screen.vexlife.health",
+  "navigationNodeRef": "nav.screen.vexlife.health"
+}

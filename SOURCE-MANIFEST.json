@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest/v0",
+  "manifestRef": "source-manifest.vexlife.universal-blueprint.001",
+  "rootRef": "source-root.vexlife.universal-blueprint",
+  "excludedClasses": [
+    "generated output",
+    "runtime state",
+    "model artifacts",
+    "node dependencies",
+    "Git internals"
+  ],
+  "fileCount": 163,
+  "treeSha256": "5b79ad6b435ecb7238200d791c6702ebfaff43f7e12b30b53f40035ed8236a50",
+  "composition": "GENERATED_FRAGMENT_COMPOSITION",
+  "parts": [
+    "source-manifest-parts/part-01.json",
+    "source-manifest-parts/part-02.json",
+    "source-manifest-parts/part-03.json",
+    "source-manifest-parts/part-04.json",
+    "source-manifest-parts/part-05.json",
+    "source-manifest-parts/part-06.json",
+    "source-manifest-parts/part-07.json"
+  ]
+}

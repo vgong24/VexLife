@@ -1,0 +1,145 @@
+{
+  "schemaVersion": "vexlife.capability-registry/v0",
+  "registryRef": "registry.vexlife.capabilities.001",
+  "registryVersion": 1,
+  "stages": [
+    "DISCOVERABLE",
+    "EXPLAINABLE",
+    "REQUESTABLE",
+    "ADMITTED",
+    "EXECUTABLE",
+    "COMPLETED"
+  ],
+  "invariants": [
+    "seeing a capability never grants execution",
+    "role project platform permission and resource scopes intersect",
+    "unknown capability state is non-executable",
+    "every effect returns a receipt",
+    "fresh model turns receive a generated capability frame"
+  ],
+  "capabilities": [
+    {
+      "capabilityRef": "capability.vexlife.navigation",
+      "purpose": "Navigate registered screens, regions, elements and semantic journeys.",
+      "actionRefs": ["action.view.select", "action.project.select", "action.thread.select", "action.channel.select", "action.navigation.back", "action.navigation.home"],
+      "permissionRef": "permission.none",
+      "effectClass": "LOCAL_NAVIGATION",
+      "defaultStage": "EXECUTABLE",
+      "roleRefs": ["role.vex.companion", "role.vex.guide", "role.vex.root-hub", "role.vex.operations", "role.vex.developer", "role.vex.reviewer"],
+      "platformRefs": ["platform.browser", "platform.android", "platform.ios", "platform.windows", "platform.macos"],
+      "resourceClass": "CPU_LIGHT"
+    },
+    {
+      "capabilityRef": "capability.vexlife.file.read",
+      "purpose": "Read every assigned file type through project-root and role filters.",
+      "actionRefs": ["action.file.root.assign", "action.file.read"],
+      "permissionRef": "permission.file.read",
+      "effectClass": "BOUNDED_LOCAL_READ",
+      "defaultStage": "REQUESTABLE",
+      "roleRefs": ["role.vex.guide", "role.vex.root-hub", "role.vex.operations", "role.vex.developer", "role.vex.reviewer"],
+      "platformRefs": ["platform.android", "platform.ios", "platform.windows", "platform.macos", "platform.browser"],
+      "resourceClass": "IO_BOUNDED",
+      "notes": ["browser requires a local bridge or supported file-system API", "secrets and Git internals need stronger grants"]
+    },
+    {
+      "capabilityRef": "capability.vexlife.file.edit-with-recovery",
+      "purpose": "Edit an assigned file with expected hash, recovery copy and atomic replacement.",
+      "actionRefs": ["action.file.edit-with-recovery"],
+      "permissionRef": "permission.file.edit",
+      "effectClass": "RECOVERY_GUARDED_LOCAL_WRITE",
+      "defaultStage": "REQUESTABLE",
+      "roleRefs": ["role.vex.developer"],
+      "platformRefs": ["platform.android", "platform.ios", "platform.windows", "platform.macos", "platform.browser"],
+      "resourceClass": "IO_BOUNDED"
+    },
+    {
+      "capabilityRef": "capability.vexlife.cli.typed",
+      "purpose": "Execute registered typed commands with schema, working scope and resource envelope.",
+      "actionRefs": ["action.cli.execute"],
+      "permissionRef": "permission.cli.execute",
+      "effectClass": "TYPED_LOCAL_PROCESS",
+      "defaultStage": "REQUESTABLE",
+      "roleRefs": ["role.vex.operations", "role.vex.developer", "role.vex.reviewer"],
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.browser"],
+      "resourceClass": "COMMAND_DECLARED"
+    },
+    {
+      "capabilityRef": "capability.vexlife.workshop",
+      "purpose": "Create, discuss, review and export copy-on-write feature candidates without live apply.",
+      "actionRefs": ["action.workshop.create-candidate", "action.workshop.export"],
+      "permissionRef": "permission.workshop.mutate",
+      "effectClass": "COPY_ON_WRITE_WORKSHOP",
+      "defaultStage": "REQUESTABLE",
+      "roleRefs": ["role.vex.operations", "role.vex.developer", "role.vex.reviewer"],
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "resourceClass": "WORK_DECLARED"
+    },
+    {
+      "capabilityRef": "capability.vexlife.issue-war-room",
+      "purpose": "Triage deduplicated issues, convene bounded role channels and verify closure.",
+      "actionRefs": ["action.issue.triage", "action.issue.approve-implementation"],
+      "permissionRef": "permission.issue.approve",
+      "effectClass": "WORK_APPROVAL",
+      "defaultStage": "EXPLAINABLE",
+      "roleRefs": ["role.vex.root-hub", "role.vex.operations", "role.vex.developer", "role.vex.reviewer", "role.vex.guide"],
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "resourceClass": "MODEL_SERIALIZED"
+    },
+    {
+      "capabilityRef": "capability.vexlife.github.publication",
+      "purpose": "Prepare a public-safe manifest, commit locally and push a non-forced branch after exact confirmation.",
+      "actionRefs": ["action.github.prepare-publication", "action.github.commit", "action.github.push-branch"],
+      "permissionRef": "permission.github.publish",
+      "effectClass": "PUBLIC_EXTERNAL",
+      "defaultStage": "EXPLAINABLE",
+      "roleRefs": ["role.vex.operations", "role.vex.developer"],
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos"],
+      "resourceClass": "NETWORK_BOUNDED",
+      "notes": ["credentials remain in Git or GitHub CLI", "force push and history rewrite are not included"]
+    },
+    {
+      "capabilityRef": "capability.vexlife.model.provision",
+      "purpose": "Connect an existing endpoint or download an external checksummed device-compatible model.",
+      "actionRefs": ["action.model.provision"],
+      "permissionRef": "permission.model.provision",
+      "effectClass": "EXTERNAL_ARTIFACT_DOWNLOAD",
+      "defaultStage": "REQUESTABLE",
+      "roleRefs": ["role.vex.operations"],
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android"],
+      "resourceClass": "NETWORK_DISK_HEAVY"
+    },
+    {
+      "capabilityRef": "capability.vexlife.score-family-sync",
+      "purpose": "Synchronize explicit accepted Score projections while preserving sibling lineage attribution.",
+      "actionRefs": ["action.score.sync"],
+      "permissionRef": "permission.score.sync",
+      "effectClass": "SCOPED_FAMILY_SYNC",
+      "defaultStage": "EXPLAINABLE",
+      "roleRefs": ["role.vex.companion", "role.vex.guide", "role.vex.operations"],
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "resourceClass": "NETWORK_OR_EXPORT_BOUNDED"
+    },
+    {
+      "capabilityRef": "capability.vexlife.dream-review",
+      "purpose": "Form and review source-bound Dream candidates without automatic memory or weight effects.",
+      "actionRefs": ["action.dream.form", "action.dream.review"],
+      "permissionRef": "permission.dream.review",
+      "effectClass": "DURABLE_MEANING_REVIEW",
+      "defaultStage": "EXPLAINABLE",
+      "roleRefs": ["role.vex.companion", "role.vex.guide", "role.vex.operations", "role.vex.reviewer"],
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "resourceClass": "MODEL_BACKGROUND_PREEMPTIBLE"
+    },
+    {
+      "capabilityRef": "capability.vexlife.adapter.training",
+      "purpose": "Run an isolated reviewed adapter candidate and return evaluation evidence; activation is separate.",
+      "actionRefs": ["action.adapter.train-candidate"],
+      "permissionRef": "permission.adapter.train",
+      "effectClass": "ISOLATED_MODEL_TRAINING",
+      "defaultStage": "DISCOVERABLE",
+      "roleRefs": ["role.vex.operations", "role.vex.reviewer"],
+      "platformRefs": ["platform.windows", "platform.macos"],
+      "resourceClass": "GPU_HEAVY_EXPLICIT_LEASE"
+    }
+  ]
+}

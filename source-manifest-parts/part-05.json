@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "files": [
+    {
+      "path": "reference/browser/modules/terrain-controller.js",
+      "bytes": 5977,
+      "sha256": "dcffc8e3e52c35bea8262c2b6546c7079bc3025883518a210ed0db8efb1dd02a"
+    },
+    {
+      "path": "reference/browser/README.md",
+      "bytes": 898,
+      "sha256": "df56100f04b33c3b5c61d46565277a5025fb72632408679a1fee5c2f2d06d93f"
+    },
+    {
+      "path": "scripts/bootstrap.mjs",
+      "bytes": 804,
+      "sha256": "7bb74626c8bb61e58fa608ec950263908f1af9819307d6426142f655002a4ccc"
+    },
+    {
+      "path": "scripts/bridge-check.mjs",
+      "bytes": 543,
+      "sha256": "6c753287c11e71cb5f397a1562d1a794256fe6dac3c52a7e6316504a86882734"
+    },
+    {
+      "path": "scripts/build-projections.mjs",
+      "bytes": 1875,
+      "sha256": "df09880041da5c58ba3c220a90912eabfa39aa7f08eab48b2d59dc31221255d0"
+    },
+    {
+      "path": "scripts/check-syntax.mjs",
+      "bytes": 1187,
+      "sha256": "c09a16c78e67eae90abf371867053419f85674ebd02e976fd2183f91152b1a22"
+    },
+    {
+      "path": "scripts/create-platform.mjs",
+      "bytes": 924,
+      "sha256": "9b45829d8820e51431c22b0adb0314537403df32360a99d5f2e5c1c7bbbf74ba"
+    },
+    {
+      "path": "scripts/current.mjs",
+      "bytes": 398,
+      "sha256": "3667a1198ddde6514e222b6851314ee76e5d75478379902822d55937eb7faab8"
+    },
+    {
+      "path": "scripts/doctor.mjs",
+      "bytes": 1053,
+      "sha256": "e8ab8189be33ffe19cfead82db1162fdc7c7f477f4282b267af551423936cfd1"
+    },
+    {
+      "path": "scripts/evolution-summary.mjs",
+      "bytes": 725,
+      "sha256": "c6ac13ab39f729bfa6515fd77087e3c4ed848537dc6a03ba35137ef2c4ea5979"
+    },
+    {
+      "path": "scripts/feature-check.mjs",
+      "bytes": 669,
+      "sha256": "aa990b433e4597d9e55cc9857696fd673a05b7af997674c7ff9165a48d28008f"
+    },
+    {
+      "path": "scripts/feature-scaffold.mjs",
+      "bytes": 1251,
+      "sha256": "54e2d40632300c0da19d2411c5a3a201fb76d1ee4f7e616263f2978ecd398447"
+    },
+    {
+      "path": "scripts/health-check.mjs",
+      "bytes": 1274,
+      "sha256": "6c059bb07caa271e7625ebe716e5ea484bd84652fc19ca9f213e6f6e52e33ba7"
+    },
+    {
+      "path": "scripts/impact-report.mjs",
+      "bytes": 679,
+      "sha256": "32aade5c1aafe11498c924be9d8c9371e3330ff619f09c9ec478e83d0aee8eab"
+    },
+    {
+      "path": "scripts/implementation-packet.mjs",
+      "bytes": 1364,
+      "sha256": "9eeb77cd282f639a89953d4aad8f23a38e25a8a01d8c6c6986d5f34dafdb7eb5"
+    },
+    {
+      "path": "scripts/localization-check.mjs",
+      "bytes": 901,
+      "sha256": "18bc4e340b8a62142dc9484524895cb357ca53360ecd057a69d11b6a82c5e719"
+    },
+    {
+      "path": "scripts/provision-model.mjs",
+      "bytes": 3545,
+      "sha256": "1702751be8439f43a6d61c4e9dbde8784a934c3d3a09c3e5b80ada83cc864edf"
+    },
+    {
+      "path": "scripts/public-safety-check.mjs",
+      "bytes": 2298,
+      "sha256": "520f3a1793f2504105c3d6cd2c82070dbbf6419415bf39f7b9613e2cd4be3cf1"
+    },
+    {
+      "path": "scripts/registry-summary.mjs",
+      "bytes": 317,
+      "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
+    },
+    {
+      "path": "scripts/serve-browser.mjs",
+      "bytes": 1528,
+      "sha256": "c00be2e2a257c5f7ca4bd5ac7f03b550cf04254e65e2fc06f5564410c744a835"
+    },
+    {
+      "path": "scripts/source-manifest.mjs",
+      "bytes": 2197,
+      "sha256": "7473c61fab4387ed3df5e8a161a67390204ba50ac6dc6b6e7f1d7f95a9dae0e8"
+    },
+    {
+      "path": "scripts/validate-blueprint.mjs",
+      "bytes": 433,
+      "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 2223,
+      "sha256": "6df36f60ca2bd4598886f9d45cdaf837706d2bc500fa63ed7abf17908ec58e79"
+    },
+    {
+      "path": "src/core/atlas.mjs",
+      "bytes": 3026,
+      "sha256": "a62a9408b464cf7114ef7f3a1568449fbf416dd1d3b14dd863941c820a8a7b36"
+    }
+  ]
+}

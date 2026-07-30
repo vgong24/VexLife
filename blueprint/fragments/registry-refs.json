@@ -1,0 +1,11 @@
+{
+  "moduleRegistryRef": "registry.vexlife.modules.001",
+  "processFactoryRef": "factory.vexlife.processes.001",
+  "compiledIdentityRegistryRef": "registry.vexlife.compiled-identities.001",
+  "stringRegistryRef": "registry.vexlife.strings.001",
+  "navigationRegistryRef": "registry.vexlife.navigation.001",
+  "experienceRegistryRef": "registry.vexlife.experience.001",
+  "evolutionRegistryRef": "registry.vexlife.evolution.001",
+  "implementationPlanRef": "plan.vexlife.foundation-to-demo.001",
+  "capabilityRegistryRef": "registry.vexlife.capabilities.001"
+}

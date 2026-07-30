@@ -1,0 +1,92 @@
+[
+  {
+    "terrainNodeRef": "terrain.project.root-hub",
+    "parentRef": null,
+    "labelStringRef": "project.root-hub.name",
+    "kind": "PROJECT",
+    "defaultPosition": {
+      "x": 710,
+      "y": 60
+    }
+  },
+  {
+    "terrainNodeRef": "terrain.project.self-development",
+    "parentRef": "terrain.project.root-hub",
+    "labelStringRef": "project.self-development.name",
+    "kind": "PROJECT",
+    "defaultPosition": {
+      "x": 710,
+      "y": 250
+    }
+  },
+  {
+    "terrainNodeRef": "terrain.thread.open-conversation",
+    "parentRef": "terrain.project.self-development",
+    "labelStringRef": "thread.open-conversation.name",
+    "kind": "THREAD",
+    "defaultPosition": {
+      "x": 710,
+      "y": 430
+    }
+  },
+  {
+    "terrainNodeRef": "terrain.project.vex-home-product",
+    "parentRef": "terrain.project.root-hub",
+    "labelStringRef": "project.vex-home.name",
+    "kind": "PROJECT",
+    "defaultPosition": {
+      "x": 70,
+      "y": 250
+    }
+  },
+  {
+    "terrainNodeRef": "terrain.thread.guided-fresh",
+    "parentRef": "terrain.project.vex-home-product",
+    "labelStringRef": "thread.guided-fresh.name",
+    "kind": "THREAD",
+    "defaultPosition": {
+      "x": 70,
+      "y": 430
+    }
+  },
+  {
+    "terrainNodeRef": "terrain.thread.product-workshop",
+    "parentRef": "terrain.project.vex-home-product",
+    "labelStringRef": "thread.product-workshop.name",
+    "kind": "THREAD",
+    "defaultPosition": {
+      "x": 70,
+      "y": 610
+    }
+  },
+  {
+    "terrainNodeRef": "terrain.project.local-vex",
+    "parentRef": "terrain.project.root-hub",
+    "labelStringRef": "project.local-vex.name",
+    "kind": "PROJECT",
+    "defaultPosition": {
+      "x": 390,
+      "y": 250
+    }
+  },
+  {
+    "terrainNodeRef": "terrain.thread.foundation",
+    "parentRef": "terrain.project.local-vex",
+    "labelStringRef": "thread.foundation.name",
+    "kind": "THREAD",
+    "defaultPosition": {
+      "x": 390,
+      "y": 430
+    }
+  },
+  {
+    "terrainNodeRef": "terrain.thread.root-welcome",
+    "parentRef": "terrain.project.root-hub",
+    "labelStringRef": "thread.root-welcome.name",
+    "kind": "THREAD",
+    "defaultPosition": {
+      "x": 1030,
+      "y": 250
+    }
+  }
+]

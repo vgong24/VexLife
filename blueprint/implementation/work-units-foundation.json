@@ -1,0 +1,223 @@
+[
+  {
+    "workRef": "work.vexlife.blueprint.core",
+    "purpose": "Establish culture, universal identities, permissions and source boundaries.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.foundation",
+    "dependsOn": [],
+    "pathScope": [
+      "VexLife/README.md",
+      "VexLife/VEXLIFE.md",
+      "VexLife/docs/**",
+      "VexLife/blueprint/vexlife.blueprint.json"
+    ],
+    "ownershipRoleRef": "role.vex.architect",
+    "parallelGroupRef": "parallel.foundation",
+    "requiredSourceRefs": [
+      "blueprint.vexlife.universal.001"
+    ],
+    "requiredTestRefs": [
+      "test.blueprint.identity-and-reference-integrity"
+    ],
+    "outputRefs": [
+      "blueprint.vexlife.universal.001"
+    ],
+    "effectBoundary": "SOURCE_ONLY_NO_RUNTIME_EFFECT",
+    "completionGate": "blueprint validation and independent architecture review",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.registry.compiler",
+    "purpose": "Compile identity, localization, module, process and bounded Atlas registries.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.foundation",
+    "dependsOn": [
+      "work.vexlife.blueprint.core"
+    ],
+    "pathScope": [
+      "VexLife/src/core/registry.mjs",
+      "VexLife/src/core/atlas.mjs",
+      "VexLife/blueprint/module-registry.json",
+      "VexLife/blueprint/process-factory.json",
+      "VexLife/test/registry.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.foundation",
+    "requiredSourceRefs": [
+      "registry.vexlife.compiled.001",
+      "factory.vexlife.processes.001"
+    ],
+    "requiredTestRefs": [
+      "test.atlas.bounded-traversal",
+      "test.registry.convergence"
+    ],
+    "outputRefs": [
+      "registry.vexlife.compiled.001"
+    ],
+    "effectBoundary": "LOCAL_DERIVED_PROJECTION_ONLY",
+    "completionGate": "registry and Atlas tests pass",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.state.relay",
+    "purpose": "Implement immutable cells, combined selectors and semantic no-op suppression.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.foundation",
+    "dependsOn": [
+      "work.vexlife.blueprint.core"
+    ],
+    "pathScope": [
+      "VexLife/src/core/state-relay.mjs",
+      "VexLife/test/core.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.foundation",
+    "requiredSourceRefs": [
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "requiredTestRefs": [
+      "test.state.distinct-until-changed"
+    ],
+    "outputRefs": [
+      "module.vexlife.core.state-relay"
+    ],
+    "effectBoundary": "LOCAL_STATE_ONLY",
+    "completionGate": "no-op updates emit no projection",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.interface.builder",
+    "purpose": "Implement super-functions, design tokens, localization identity and action vessels.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.foundation",
+    "dependsOn": [
+      "work.vexlife.registry.compiler",
+      "work.vexlife.state.relay"
+    ],
+    "pathScope": [
+      "VexLife/src/core/interface-builder.mjs",
+      "VexLife/src/core/localization.mjs",
+      "VexLife/src/core/experience.mjs",
+      "VexLife/blueprint/design-tokens.json",
+      "VexLife/blueprint/experience-registry.json",
+      "VexLife/blueprint/strings/**"
+    ],
+    "ownershipRoleRef": "role.vex.designer-developer",
+    "parallelGroupRef": "parallel.interface",
+    "requiredSourceRefs": [
+      "component.vexlife.action-vessel",
+      "foundation.vexlife.localization-intent.v1"
+    ],
+    "requiredTestRefs": [
+      "test.localization.coverage",
+      "test.experience.gesture-disambiguation"
+    ],
+    "outputRefs": [
+      "registry.vexlife.experience.001"
+    ],
+    "effectBoundary": "SOURCE_AND_DERIVED_UI_CONTRACTS",
+    "completionGate": "all visible identities localized and accessible",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.navigation.lattice",
+    "purpose": "Implement screen/region/element identities, semantic journeys, selection and screen frames.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.browser-reference",
+    "dependsOn": [
+      "work.vexlife.interface.builder"
+    ],
+    "pathScope": [
+      "VexLife/src/core/navigation.mjs",
+      "VexLife/src/core/journey.mjs",
+      "VexLife/reference/browser/**",
+      "VexLife/test/browser.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.browser",
+    "requiredSourceRefs": [
+      "screen.vexlife.chat",
+      "registry.vexlife.navigation.001"
+    ],
+    "requiredTestRefs": [
+      "test.navigation.screen-frame",
+      "test.navigation.selection"
+    ],
+    "outputRefs": [
+      "screen-frame.vexlife.current"
+    ],
+    "effectBoundary": "LOCAL_NAVIGATION_ONLY",
+    "completionGate": "Guide receives exact selected node and breadcrumb",
+    "platformRefs": [
+      "platform.browser"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.repository-health",
+    "purpose": "Implement source-managed feature registration, cultural review lenses, build-health checks and compact architecture projections.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.foundation",
+    "dependsOn": [
+      "work.vexlife.registry.compiler",
+      "work.vexlife.state.relay"
+    ],
+    "pathScope": [
+      "VexLife/blueprint/feature-registry.json",
+      "VexLife/blueprint/review-lens-registry.json",
+      "VexLife/blueprint/build-health-registry.json",
+      "VexLife/src/core/feature-registry.mjs",
+      "VexLife/src/core/build-health.mjs",
+      "VexLife/scripts/feature-*.mjs",
+      "VexLife/scripts/health-check.mjs",
+      "VexLife/scripts/current.mjs",
+      "VexLife/scripts/build-projections.mjs",
+      "VexLife/test/foundation-health.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.operations",
+    "parallelGroupRef": "parallel.foundation-health",
+    "requiredSourceRefs": [
+      "foundation.vexlife.culture-build-health.v1",
+      "registry.vexlife.features.001",
+      "registry.vexlife.review-lenses.001",
+      "registry.vexlife.build-health.001"
+    ],
+    "requiredTestRefs": [
+      "test.feature.required-lenses",
+      "test.feature.reference-coverage",
+      "test.health.registered-checks",
+      "test.health.no-op-dedup"
+    ],
+    "outputRefs": [
+      "projection.health.repository",
+      "projection.impact.cross-platform"
+    ],
+    "effectBoundary": "SOURCE_AND_DERIVED_PROJECTION_ONLY",
+    "completionGate": "new feature registration cannot pass while cultural, identity, localization, permission, platform, proof or visibility obligations are missing",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [
+      "no runtime model invocation",
+      "no platform conformance claim"
+    ],
+    "returnRoute": "return health and impact receipt to blueprint conformance matrix"
+  }
+]

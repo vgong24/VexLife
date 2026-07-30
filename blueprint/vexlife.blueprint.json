@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "vexlife.universal-blueprint/v0",
+  "blueprintRef": "blueprint.vexlife.universal.001",
+  "version": "0.4.0-foundation-rc1",
+  "contractVersion": 1,
+  "composition": "CANONICAL_FRAGMENT_COMPOSITION",
+  "includes": {
+    "product": "blueprint/fragments/product.json",
+    "invariants": "blueprint/fragments/invariants.json",
+    "stateDomains": "blueprint/fragments/state-domains.json",
+    "roles": "blueprint/fragments/roles.json",
+    "permissions": "blueprint/fragments/permissions.json",
+    "actions": "blueprint/fragments/actions.json",
+    "terrain": "blueprint/fragments/terrain.json",
+    "platforms": "blueprint/fragments/platform-bindings.json",
+    "tests": "blueprint/fragments/tests.json",
+    "registryRefs": "blueprint/fragments/registry-refs.json",
+    "components": "blueprint/fragments/components.json",
+    "screens": [
+      "blueprint/fragments/screens/shell.json",
+      "blueprint/fragments/screens/chat.json",
+      "blueprint/fragments/screens/terrain.json",
+      "blueprint/fragments/screens/health.json",
+      "blueprint/fragments/screens/guide-overlay.json"
+    ]
+  }
+}

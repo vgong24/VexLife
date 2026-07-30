@@ -1,0 +1,215 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.feature-registry",
+    "path": "src/core/feature-registry.mjs",
+    "role": "Validates feature contracts, derives required cultural lenses and emits safe feature scaffolds.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.features.001",
+      "registry.vexlife.review-lenses.001",
+      "module.vexlife.core.blueprint"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.feature-check",
+      "module.vexlife.script.feature-scaffold"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/feature-registry.json",
+      "blueprint/review-lens-registry.json",
+      "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.home-bridge",
+    "path": "src/core/home-bridge.mjs",
+    "role": "Pure pairing, capability-lease, identity-mode, request-admission and revocation contracts for trusted remote surfaces.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "bridge.vexlife.personal-home.001",
+      "registry.vexlife.capabilities.001"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.bridge-check"
+    ],
+    "tests": [
+      "test/home-bridge.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/home-bridge-registry.json",
+      "docs/HOME-BRIDGE-REMOTE-SURFACES.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.build-health",
+    "path": "src/core/build-health.mjs",
+    "role": "Validates source-managed repository checks and derives compact semantic current/health projections.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.build-health.001",
+      "registry.vexlife.review-lenses.001"
+    ],
+    "writes": [
+      "generated/architecture/** when explicitly invoked"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.health-check",
+      "module.vexlife.script.current",
+      "module.vexlife.script.build-projections"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json",
+      "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.feature-check",
+    "path": "scripts/feature-check.mjs",
+    "role": "Checks feature relationships and required cultural-lens coverage.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.feature-registry"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run feature:check"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/feature-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.feature-scaffold",
+    "path": "scripts/feature-scaffold.mjs",
+    "role": "Prints a complete feature contract skeleton; writes only with explicit --out and --write.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.feature-registry"
+    ],
+    "writes": [
+      "caller-selected safe relative path only"
+    ],
+    "loadedBy": [
+      "npm run feature:scaffold"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.bridge-check",
+    "path": "scripts/bridge-check.mjs",
+    "role": "Validates bridge modes, pairing, lease, transport and test contracts.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.home-bridge"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run bridge:check"
+    ],
+    "tests": [
+      "test/home-bridge.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/home-bridge-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.health-check",
+    "path": "scripts/health-check.mjs",
+    "role": "Validates registered repository health and emits a compact health state.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.build-health",
+      "module.vexlife.core.blueprint"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run health:check"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.current",
+    "path": "scripts/current.mjs",
+    "role": "Prints one bounded current foundation projection instead of a full source dump.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.build-health",
+      "module.vexlife.core.blueprint"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run current"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "docs/NEWCOMER-MAP.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.localization-check",
+    "path": "scripts/localization-check.mjs",
+    "role": "Verifies visible and feature-bound localization keys across required languages.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.blueprint",
+      "registry.vexlife.features.001"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run localization:check"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/strings/**",
+      "blueprint/feature-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.build-projections",
+    "path": "scripts/build-projections.mjs",
+    "role": "Generates current, registry, feature, lens and bridge projections from canonical sources.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.registry",
+      "module.vexlife.core.build-health"
+    ],
+    "writes": [
+      "generated/architecture/**"
+    ],
+    "loadedBy": [
+      "npm run projections:build"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/**",
+      "generated/architecture/**"
+    ]
+  }
+]

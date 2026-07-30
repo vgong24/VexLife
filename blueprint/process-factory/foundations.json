@@ -1,0 +1,227 @@
+[
+  {
+    "foundationRef": "foundation.vexlife.identity-lattice.v1",
+    "foundationVersion": 1,
+    "purpose": "Stable product, platform, screen, region, element, string, action, permission, role and Terrain identities.",
+    "ownedContracts": [
+      "stableRef",
+      "parentRef",
+      "conceptRef",
+      "aliasRefs",
+      "stateHash"
+    ],
+    "invalidationSelectors": [
+      "identity-or-key-change",
+      "parent-relationship-change"
+    ],
+    "revalidationProcedureRef": "test.blueprint.identity-and-reference-integrity"
+  },
+  {
+    "foundationRef": "foundation.vexlife.state-relay.v1",
+    "foundationVersion": 1,
+    "purpose": "Immutable domain ownership, narrow selectors, combine and semantic distinct-until-changed delivery.",
+    "ownedContracts": [
+      "StateCell",
+      "CombinedProjection",
+      "semanticEquality",
+      "noOpSuppression"
+    ],
+    "invalidationSelectors": [
+      "state-owner-change",
+      "selector-input-change",
+      "semantic-equality-change"
+    ],
+    "revalidationProcedureRef": "test.state.distinct-until-changed"
+  },
+  {
+    "foundationRef": "foundation.vexlife.permission-effects.v1",
+    "foundationVersion": 1,
+    "purpose": "Tool visibility, permission, resource and effect admission remain separate and most-restrictive.",
+    "ownedContracts": [
+      "permissionRef",
+      "effectClass",
+      "authorityEnvelope",
+      "resourceEnvelope",
+      "recoveryRoute"
+    ],
+    "invalidationSelectors": [
+      "authority-change",
+      "security-or-privacy-change",
+      "resource-boundary-change"
+    ],
+    "revalidationProcedureRef": "test.permission.no-inferred-effect"
+  },
+  {
+    "foundationRef": "foundation.vexlife.localization-intent.v1",
+    "foundationVersion": 1,
+    "purpose": "Stable string identities and attributed original, translated and Vex-refined communication projections.",
+    "ownedContracts": [
+      "stringRef",
+      "sourceLocale",
+      "translationProjection",
+      "originalContentHash",
+      "senderAcceptance"
+    ],
+    "invalidationSelectors": [
+      "string-key-change",
+      "translation-contract-change",
+      "attribution-change"
+    ],
+    "revalidationProcedureRef": "test.localization.original-preserved"
+  },
+  {
+    "foundationRef": "foundation.vexlife.device-family-continuity.v1",
+    "foundationVersion": 1,
+    "purpose": "One human may host multiple device-local companion lineages with scoped Score sharing and local Rhythm.",
+    "ownedContracts": [
+      "familyRef",
+      "companionLineageRef",
+      "deviceRef",
+      "scoreProjectionRef",
+      "rhythmRef",
+      "siblingTrailRef"
+    ],
+    "invalidationSelectors": [
+      "lineage-collapse",
+      "score-scope-change",
+      "rhythm-import-change"
+    ],
+    "revalidationProcedureRef": "test.device-family.identity-separation"
+  },
+  {
+    "foundationRef": "foundation.vexlife.experience-interaction.v1",
+    "foundationVersion": 1,
+    "purpose": "Persona-bounded projections, platform-adaptive action vessels and unambiguous gesture/navigation semantics.",
+    "ownedContracts": [
+      "experienceProfileRef",
+      "gestureRef",
+      "vesselRef",
+      "defaultRouteRef",
+      "platformAdapter",
+      "accessibility"
+    ],
+    "invalidationSelectors": [
+      "gesture-change",
+      "navigation-change",
+      "vessel-placement-change",
+      "accessibility-change"
+    ],
+    "revalidationProcedureRef": "test.experience.gesture-disambiguation"
+  },
+  {
+    "foundationRef": "foundation.vexlife.evolution-and-dream.v1",
+    "foundationVersion": 1,
+    "purpose": "Dream candidate formation, Context Review, scoped Score promotion, sibling attribution and separate adapter lifecycle.",
+    "ownedContracts": [
+      "DreamCandidate",
+      "DreamReview",
+      "FamilyEvolutionEnvelope",
+      "TrainingAdmission",
+      "AdapterActivationReceipt"
+    ],
+    "invalidationSelectors": [
+      "candidate-type-change",
+      "consent-change",
+      "family-sync-scope-change",
+      "training-or-activation-change"
+    ],
+    "revalidationProcedureRef": "test.evolution.source-preserved"
+  },
+  {
+    "foundationRef": "foundation.vexlife.implementation-roadmap.v1",
+    "foundationVersion": 1,
+    "purpose": "Dependency-distance roadmap, bounded Codex packets, platform adoption waves and exact demo gates.",
+    "ownedContracts": [
+      "ImplementationPlan",
+      "WorkUnit",
+      "ImplementationPacket",
+      "DemoDistanceProjection",
+      "ConformanceReturn"
+    ],
+    "invalidationSelectors": [
+      "dependency-change",
+      "path-scope-change",
+      "demo-contract-change",
+      "platform-adoption-change"
+    ],
+    "revalidationProcedureRef": "test.roadmap.packet-bounded"
+  },
+  {
+    "foundationRef": "foundation.vexlife.capability-atlas.v1",
+    "foundationVersion": 1,
+    "purpose": "Fresh role/platform/project capability frames with staged visibility, permission, resource and effect boundaries.",
+    "ownedContracts": [
+      "CapabilityRegistry",
+      "CapabilityFrame",
+      "CapabilityStage",
+      "CommandAtlas",
+      "ToolReceipt"
+    ],
+    "invalidationSelectors": [
+      "capability-change",
+      "role-visibility-change",
+      "permission-change",
+      "resource-class-change"
+    ],
+    "revalidationProcedureRef": "test.capability.most-restrictive-stage"
+  },
+  {
+    "foundationRef": "foundation.vexlife.workshop-issue-publication.v1",
+    "foundationVersion": 1,
+    "purpose": "Copy-on-write feature development, deduplicated issues, bounded war rooms and public-safe repository publication.",
+    "ownedContracts": [
+      "WorkshopCandidate",
+      "IssueFingerprint",
+      "WarRoom",
+      "PublicationManifest",
+      "GitReceipt"
+    ],
+    "invalidationSelectors": [
+      "workshop-apply-change",
+      "issue-lifecycle-change",
+      "public-exclusion-change",
+      "git-effect-change"
+    ],
+    "revalidationProcedureRef": "test.public.no-private-runtime"
+  },
+  {
+    "foundationRef": "foundation.vexlife.culture-build-health.v1",
+    "foundationVersion": 1,
+    "purpose": "Source-managed cultural lenses, feature registration, impact analysis and repository health so correct practices are executable and low-friction.",
+    "ownedContracts": [
+      "ReviewLensRegistry",
+      "FeatureRegistry",
+      "BuildHealthRegistry",
+      "FeatureScaffold",
+      "CrossPlatformImpactReceipt"
+    ],
+    "invalidationSelectors": [
+      "review-lens-change",
+      "feature-contract-change",
+      "health-check-change",
+      "projection-change"
+    ],
+    "revalidationProcedureRef": "test.feature.required-lenses"
+  },
+  {
+    "foundationRef": "foundation.vexlife.home-bridge.v1",
+    "foundationVersion": 1,
+    "purpose": "Trusted-device remote access to one desktop Vex Home, separated from local sibling synchronization.",
+    "ownedContracts": [
+      "HomeBridgeRegistry",
+      "PairingOffer",
+      "DeviceMembership",
+      "CapabilityLease",
+      "RemoteRequestEnvelope",
+      "ConnectionHealthProjection"
+    ],
+    "invalidationSelectors": [
+      "pairing-change",
+      "lease-change",
+      "transport-change",
+      "identity-mode-change",
+      "gateway-change"
+    ],
+    "revalidationProcedureRef": "test.bridge.capability-intersection"
+  }
+]

@@ -1,0 +1,161 @@
+{
+  "screenRef": "screen.vexlife.shell",
+  "conceptRef": "concept.screen.vexlife.shell",
+  "navigationNodeRef": "nav.screen.vexlife.shell",
+  "routeRef": "route.shell",
+  "titleStringRef": "screen.shell.title",
+  "stateSelectorRefs": [
+    "selector.primary-view",
+    "selector.localization",
+    "selector.current-screen-frame"
+  ],
+  "testRefs": [
+    "test.selection.view",
+    "test.navigation.screen-frame",
+    "test.localization.coverage"
+  ],
+  "regions": [
+    {
+      "regionRef": "region.shell.primary-nav",
+      "conceptRef": "concept.region.shell.primary-nav",
+      "navigationNodeRef": "nav.region.shell.primary-nav",
+      "labelStringRef": "region.navigation.label",
+      "elements": [
+        {
+          "elementRef": "element.nav.home",
+          "conceptRef": "concept.element.nav.home",
+          "interactionRef": "interaction.nav.home",
+          "navigationRef": "navpath.shell.home",
+          "journeyEventTypeRef": "journey.home",
+          "kind": "HOME_ACTION",
+          "labelStringRef": "nav.home",
+          "actionRef": "action.navigation.home",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.nav.home"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.nav.chat",
+          "conceptRef": "concept.element.nav.chat",
+          "interactionRef": "interaction.nav.chat",
+          "navigationRef": "navpath.shell.chat",
+          "journeyEventTypeRef": "journey.view-select",
+          "kind": "VIEW_SELECTOR",
+          "labelStringRef": "nav.chat",
+          "actionRef": "action.view.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.primary-view",
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "tab",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.nav.chat"
+          },
+          "testRefs": [
+            "test.selection.view"
+          ]
+        },
+        {
+          "elementRef": "element.nav.terrain",
+          "conceptRef": "concept.element.nav.terrain",
+          "interactionRef": "interaction.nav.terrain",
+          "navigationRef": "navpath.shell.terrain",
+          "journeyEventTypeRef": "journey.view-select",
+          "kind": "VIEW_SELECTOR",
+          "labelStringRef": "nav.terrain",
+          "actionRef": "action.view.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.primary-view",
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "tab",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.nav.terrain"
+          },
+          "testRefs": [
+            "test.selection.view"
+          ]
+        },
+        {
+          "elementRef": "element.nav.health",
+          "conceptRef": "concept.element.nav.health",
+          "interactionRef": "interaction.nav.health",
+          "navigationRef": "navpath.shell.health",
+          "journeyEventTypeRef": "journey.view-select",
+          "kind": "VIEW_SELECTOR",
+          "labelStringRef": "nav.health",
+          "actionRef": "action.view.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.primary-view",
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "tab",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.nav.health"
+          },
+          "testRefs": [
+            "test.selection.view"
+          ]
+        }
+      ]
+    },
+    {
+      "regionRef": "region.shell.assistance",
+      "conceptRef": "concept.region.shell.assistance",
+      "navigationNodeRef": "nav.region.shell.assistance",
+      "labelStringRef": "region.assistance.label",
+      "elements": [
+        {
+          "elementRef": "element.language.selector",
+          "conceptRef": "concept.element.language.selector",
+          "interactionRef": "interaction.language.selector",
+          "navigationRef": "navpath.shell.language",
+          "journeyEventTypeRef": "journey.language-select",
+          "kind": "LANGUAGE_SELECTOR",
+          "labelStringRef": "language.label",
+          "actionRef": "action.language.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.language",
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "combobox",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.language.selector"
+          },
+          "testRefs": [
+            "test.localization.coverage"
+          ]
+        },
+        {
+          "elementRef": "element.guide.toggle",
+          "conceptRef": "concept.element.guide.toggle",
+          "interactionRef": "interaction.guide.toggle",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.guide-toggle",
+          "kind": "GUIDE_TOGGLE",
+          "labelStringRef": "guide.title",
+          "actionRef": "action.guide.toggle",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.toggle"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+name: DCO
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  signoff:
+    name: Signed-off-by
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out pull-request head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Verify every pull-request commit
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          failures=0
+          commit_count=0
+
+          while IFS= read -r commit_sha; do
+            if [[ -z "${commit_sha}" ]]; then
+              continue
+            fi
+
+            commit_count=$((commit_count + 1))
+            author_name="$(git show -s --format=%an "${commit_sha}")"
+            author_email="$(git show -s --format=%ae "${commit_sha}")"
+            expected_signoff="Signed-off-by: ${author_name} <${author_email}>"
+
+            if ! git show -s --format=%B "${commit_sha}" |
+              grep -Fxiq -- "${expected_signoff}"; then
+              echo "::error::Missing author-matching DCO sign-off on ${commit_sha}: expected '${expected_signoff}'"
+              failures=$((failures + 1))
+            fi
+          done < <(git rev-list --reverse "${BASE_SHA}..${HEAD_SHA}")
+
+          if [[ "${commit_count}" -eq 0 ]]; then
+            echo "::error::No pull-request commits were found in ${BASE_SHA}..${HEAD_SHA}"
+            exit 1
+          fi
+
+          if [[ "${failures}" -ne 0 ]]; then
+            echo "${failures} commit(s) failed the DCO 1.1 sign-off check."
+            exit 1
+          fi
+
+          echo "All ${commit_count} pull-request commit(s) contain an author-matching DCO sign-off."

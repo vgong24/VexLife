@@ -1,0 +1,75 @@
+[
+  {
+    "workRef": "work.vexlife.workshop.issue-war-room",
+    "purpose": "Integrate isolated feature workshop, issue fingerprinting and bounded war-room relay.",
+    "distance": "NEAR_DEMO",
+    "milestoneRef": "milestone.vexlife.work-orchestration",
+    "dependsOn": [
+      "work.vexlife.registry.compiler",
+      "work.vexlife.browser.addressed-conversation"
+    ],
+    "pathScope": [
+      "VexLife/src/workshop/**",
+      "VexLife/src/issues/**",
+      "VexLife/reference/browser/**",
+      "VexLife/test/workflows/**"
+    ],
+    "ownershipRoleRef": "role.vex.operations",
+    "parallelGroupRef": "parallel.orchestration",
+    "requiredSourceRefs": [
+      "process.vexlife.platform.adopt-blueprint"
+    ],
+    "requiredTestRefs": [
+      "test.workshop.copy-on-write",
+      "test.issue.verified-close"
+    ],
+    "outputRefs": [
+      "feature-candidate.vexlife",
+      "war-room.vexlife"
+    ],
+    "effectBoundary": "WORKSHOP_COPY_ONLY_NO_LIVE_APPLY",
+    "completionGate": "candidate export and verified issue closure proven",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.public.port",
+    "purpose": "Port reviewed VexLife tree to dedicated repository with safety manifest.",
+    "distance": "NEAR_DEMO",
+    "milestoneRef": "milestone.vexlife.public-port",
+    "dependsOn": [
+      "work.vexlife.browser.guide-terrain",
+      "work.vexlife.bootstrap.cross-platform"
+    ],
+    "pathScope": [
+      "VexLife/**"
+    ],
+    "ownershipRoleRef": "role.vex.operations",
+    "parallelGroupRef": "parallel.publication",
+    "requiredSourceRefs": [
+      "docs/CODEX-PORT-HANDOFF.md"
+    ],
+    "requiredTestRefs": [
+      "test.public.no-private-runtime",
+      "test.public.no-model-artifacts"
+    ],
+    "outputRefs": [
+      "repository.vgong24.VexLife"
+    ],
+    "effectBoundary": "PUBLICATION_REQUIRES_EXPLICIT_VICTOR_CONFIRMATION",
+    "completionGate": "manifest, secret scan, license state and draft PR reviewed",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [
+      "private SDK files outside VexLife",
+      "runtime Score/history",
+      "credentials",
+      "model artifacts"
+    ],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  }
+]

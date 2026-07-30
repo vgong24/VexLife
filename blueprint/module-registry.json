@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "vexlife.module-registry/v0",
+  "registryRef": "registry.vexlife.modules.001",
+  "composition": "CANONICAL_FRAGMENT_COMPOSITION",
+  "includes": {
+    "modules": [
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "blueprint/module-registry/browser.json",
+      "blueprint/module-registry/governance-and-bridge.json"
+    ]
+  }
+}
