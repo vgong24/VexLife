@@ -601,7 +601,7 @@
   {
     "moduleRef": "module.vexlife.core.scheduler-runtime-trust",
     "path": "src/core/scheduler-runtime-trust.mjs",
-    "role": "Validates the canonical scheduler registry and externally sourced runtime identity, currentness, canonical clock, expiry, lease lifecycle and exact mock-tool contracts.",
+    "role": "Validates the canonical scheduler registry, externally sourced runtime identity, live observed-clock currentness, explicit lease lifecycle and exact normal-success/mock-tool simulation contracts.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
@@ -629,7 +629,7 @@
   {
     "moduleRef": "module.vexlife.core.state",
     "path": "src/core/state.mjs",
-    "role": "Owns one canonical scheduler aggregate for queue, worker, leases, resources, checkpoints, cancellation and relay truth, then derives distinct-until-changed runtime, Terrain, Health and Guide projections.",
+    "role": "Owns one canonical scheduler aggregate for observed clock, queue, worker, leases, completion, continuations, checkpoints, cancellation and relay truth, then derives distinct-until-changed projections.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "module.vexlife.core.state-relay"
@@ -649,7 +649,7 @@
   {
     "moduleRef": "module.vexlife.core.resource-admission",
     "path": "src/core/resource-admission.mjs",
-    "role": "Forms deterministic current hardware snapshots and fails closed when CPU, RAM, GPU, VRAM, model, heavy-tool, interactive-wait or thermal state cannot admit a lease.",
+    "role": "Forms deterministic hardware snapshots and fails closed unless CPU, RAM, GPU, VRAM, model, tool, wait and thermal evidence remains active at the exact scheduler observation.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
@@ -671,7 +671,7 @@
   {
     "moduleRef": "module.vexlife.core.context-lease",
     "path": "src/core/context-lease.mjs",
-    "role": "Forms one ref-only token-bounded context lease per worker and suppresses equal semantic selections and duplicate observation reinjection.",
+    "role": "Forms one ref-only token-bounded context lease per worker and admits successor observation reinjection only through a scheduler-issued authorization receipt.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
@@ -693,7 +693,7 @@
   {
     "moduleRef": "module.vexlife.core.intent-checkpoint",
     "path": "src/core/intent-checkpoint.mjs",
-    "role": "Preserves exact safe pause lineage, releases worker/resource leases and revalidates graph, trust, resources, capabilities, effects and source hashes before resume.",
+    "role": "Derives exact safe pause lineage, validates one receipt for each of six prior leases, and revalidates graph, trust, resources, capabilities, effects and sources before resume.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
@@ -714,7 +714,7 @@
   {
     "moduleRef": "module.vexlife.core.tool-result-relay",
     "path": "src/core/tool-result-relay.mjs",
-    "role": "Validates exact typed mock tool calls and rejects wrong, stale, duplicate, late, schema or generation-mismatched results before once-only bounded reinjection.",
+    "role": "Durably restores canonical typed mock-call ledgers, transitions held calls through explicit successor-lease actions, and rejects wrong, stale, duplicate, late or mismatched results.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
@@ -735,7 +735,7 @@
   {
     "moduleRef": "module.vexlife.core.intent-scheduler",
     "path": "src/core/intent-scheduler.mjs",
-    "role": "Admits exact validated workgraph nodes, selects with deterministic priority and fairness, leases one physical worker, and checkpoints or cancels without discarding lineage.",
+    "role": "Admits exact workgraph nodes, leases one physical worker, completes successfully, checkpoints, preserves preempted continuations or cancels without discarding lineage.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-orchestration.001",

@@ -143,6 +143,9 @@ const REQUIRED_FIELD_SETS = {
     'resourceSnapshotFingerprint',
     'sourceBindings',
     'leaseReleaseReceipts',
+    'leaseReleaseLifecycle',
+    'priorLeaseFingerprints',
+    'transitionedLeaseFingerprints',
     'formedAt',
     'semanticFingerprint'
   ],
@@ -580,7 +583,7 @@ export function validateIntegratedSchedulerSimulationReceipt(receipt, {
   if (receipt?.finalProjection?.health?.state === 'CLEAR') {
     errors.push('simulation receipt incorrectly projects released or cancelled leases as CLEAR');
   }
-  for (const phase of ['initial', 'checkpointReleased', 'resumed', 'cancelled']) {
+  for (const phase of ['initial', 'checkpointReleased', 'resumed', 'completed']) {
     for (const lease of ['worker', 'context', 'resource', 'capability', 'effect', 'occupancy']) {
       if (!HASH_PATTERN.test(receipt?.leaseFingerprints?.[phase]?.[lease] ?? '')) {
         errors.push(`simulation receipt missing ${phase} ${lease} lease fingerprint`);
@@ -591,11 +594,18 @@ export function validateIntegratedSchedulerSimulationReceipt(receipt, {
     'toolCallFingerprint',
     'observationFingerprint',
     'checkpointFingerprint',
-    'cancellationFingerprint',
+    'completionFingerprint',
+    'returnRouteFingerprint',
+    'successorAuthorizationFingerprint',
+    'separateCancellationFingerprint',
     'relayLedgerFingerprint',
     'finalAggregateFingerprint'
   ]) {
     if (!HASH_PATTERN.test(receipt?.[field] ?? '')) errors.push(`simulation receipt missing ${field}`);
+  }
+  if (receipt?.separateCancellationProof?.phase !== 'CANCELLED' ||
+      JSON.stringify(receipt?.separateCancellationProof?.leaseLifecycle) !== JSON.stringify(['CANCELLED'])) {
+    errors.push('simulation receipt separate cancellation proof mismatch');
   }
   if (!HASH_PATTERN.test(receipt?.semanticFingerprint ?? '')) {
     errors.push('simulation receipt missing semanticFingerprint');

@@ -28,8 +28,8 @@
     {
       "path": "scripts/health-check.mjs",
       "mode": "100644",
-      "bytes": 6589,
-      "sha256": "5000788601b0fc9241b4ff2264ffa9486a2de17aebcc8ca1e2a79da4b69a846f"
+      "bytes": 6712,
+      "sha256": "fc5b3631a44ff71d206f610815a9087ee90d8fb20abfc479c69aa04ce2d13f24"
     },
     {
       "path": "scripts/impact-report.mjs",
@@ -82,8 +82,8 @@
     {
       "path": "scripts/pr-ready.mjs",
       "mode": "100644",
-      "bytes": 8069,
-      "sha256": "f458e6f71df3c005ab6068f7f08b57a95bfd3dba0d2a54fcc2c27be7f28cb4a7"
+      "bytes": 8154,
+      "sha256": "ac2478a5090e2a10fa7d17a50572b8503dbcf40c5c60963e067de8b98075c995"
     },
     {
       "path": "scripts/provision-model.mjs",
@@ -112,8 +112,8 @@
     {
       "path": "scripts/scheduler-simulate.mjs",
       "mode": "100644",
-      "bytes": 22989,
-      "sha256": "c565970596aa89280bef89c06bbb74a3db389450cb378d802e20d5d612deb7d2"
+      "bytes": 25417,
+      "sha256": "21ea982f66761c229fc2f08fb94d678aa59ba29d0c3a753b826b1881c4296a63"
     },
     {
       "path": "scripts/scheduler-status.mjs",

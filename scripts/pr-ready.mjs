@@ -9,7 +9,7 @@ import { deriveRepositoryHealth, validateBuildHealthRegistry } from '../src/core
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { validateIntegratedSchedulerSimulationReceipt } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
-import { writeJson } from '../src/core/utils.mjs';
+import { resolveSafeGeneratedReceiptPath, writeJson } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -22,6 +22,11 @@ if (args.some((item, index) => item !== '--receipt' && index !== receiptIndex + 
   console.error('Usage: npm run pr-ready -- [--receipt generated/health/pr-ready.json]');
   process.exit(2);
 }
+const receiptPath = resolveSafeGeneratedReceiptPath(
+  ROOT,
+  receiptIndex >= 0 ? args[receiptIndex + 1] : 'generated/health/pr-ready.json',
+  'PR-ready receipt path'
+);
 
 const bundle = loadBlueprint(ROOT);
 const registry = validateBuildHealthRegistry(bundle.buildHealth, bundle.reviewLenses);
@@ -162,7 +167,6 @@ const receipt = {
   checkResults,
   health: projection
 };
-const receiptPath = path.resolve(ROOT, receiptIndex >= 0 ? args[receiptIndex + 1] : 'generated/health/pr-ready.json');
 fs.mkdirSync(path.dirname(receiptPath), { recursive: true });
 writeJson(receiptPath, receipt);
 console.log(JSON.stringify({

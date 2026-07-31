@@ -270,7 +270,7 @@
       "checkRef": "check.intent-scheduler",
       "command": "npm run scheduler:check",
       "category": "ARCHITECTURE",
-      "purpose": "Canonical Blueprint/Atlas scheduler composition, external runtime currentness, scheduler-owned fairness, transactional lease release, fresh-generation resume, restart-safe exact-context mock relay, bounded shared projections and the complete deterministic no-effect lifecycle receipt validate.",
+      "purpose": "Canonical scheduler composition, live-clock currentness, exact normal completion, preserved preemption continuation, six-lease checkpoint release, durable held-tool relay, scheduler-authorized successor context, safe receipt paths and the deterministic no-effect lifecycle receipt validate.",
       "lensRefs": [
         "lens.vexlife.intent-and-placement",
         "lens.vexlife.identity-lattice",

@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -9,11 +11,12 @@ import {
   validateBlueprint
 } from '../src/core/blueprint.mjs';
 import { createContextLease } from '../src/core/context-lease.mjs';
-import { validateCheckpointResume } from '../src/core/intent-checkpoint.mjs';
+import { createIntentCheckpoint, validateCheckpointResume } from '../src/core/intent-checkpoint.mjs';
 import {
   admitIntentSchedulerQueue,
   createCapabilityLease,
   createEffectLease,
+  createWorkCompletionReceipt,
   selectNextAdmittedNode,
   SingleWorkerIntentScheduler,
   WorkerLeaseAuthority
@@ -35,7 +38,7 @@ import {
   validateIntentSchedulerRegistry
 } from '../src/core/scheduler-runtime-trust.mjs';
 import { createToolCall, ToolResultRelay } from '../src/core/tool-result-relay.mjs';
-import { semanticHash } from '../src/core/utils.mjs';
+import { resolveSafeGeneratedReceiptPath, semanticHash } from '../src/core/utils.mjs';
 import { runSchedulerSimulation } from '../scripts/scheduler-simulate.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -343,13 +346,12 @@ function contextInput(generation = 1, overrides = {}) {
     observedAt: resume ? RESUME_OBSERVED : OBSERVED,
     expiresAt: resume ? RESUME_EXPIRES : EXPIRES,
     checkpointReturnRef: 'return-route.scheduler.checkpoint',
-    authorizedObservationRefs: [],
     ...overrides
   };
 }
 
 function makeScheduler({
-  relay = new ToolResultRelay(),
+  relay = new ToolResultRelay(null, { schedulerRegistry }),
   authority = new WorkerLeaseAuthority({ sourceRef: 'source.intent-scheduler.test-runtime' }),
   schedulerInstanceRef = `instance.intent-scheduler.test.${schedulerInstanceSequence += 1}`
 } = {}) {
@@ -392,6 +394,9 @@ function checkpointInput(fixture, ref = 'checkpoint.scheduler.test', pendingTool
 }
 
 function toolCallFrom(fixture, overrides = {}) {
+  const bindingObservedAt = overrides.bindingObservedAt ?? OBSERVED;
+  const inputOverrides = { ...overrides };
+  delete inputOverrides.bindingObservedAt;
   return createToolCall({
     toolCallRef: 'tool-call.scheduler.test',
     workNodeRef: fixture.queue.selected.workNodeRef,
@@ -405,7 +410,7 @@ function toolCallFrom(fixture, overrides = {}) {
     proposedAt: OBSERVED,
     timeoutAt: EXPIRES,
     cancellationPolicy: 'CHECKPOINT_THEN_CANCEL',
-    ...overrides
+    ...inputOverrides
   }, {
     contextLease: fixture.active.contextLease,
     capabilityLease: fixture.active.capabilityLease,
@@ -414,7 +419,7 @@ function toolCallFrom(fixture, overrides = {}) {
     workerLease: fixture.active.workerLease,
     runtimeTrustSnapshot: fixture.runtime,
     schedulerRegistry,
-    observedAt: OBSERVED
+    observedAt: bindingObservedAt
   });
 }
 
@@ -445,6 +450,26 @@ function exactResult(call, overrides = {}) {
     artifactRefs: [],
     ...overrides
   };
+}
+
+function completionFor({ candidate, active, runtime }, completedAt, overrides = {}) {
+  const node = candidate.nodes.find((item) => item.workNodeRef === active.active.workNodeRef);
+  return createWorkCompletionReceipt({
+    completionReceiptRef: `completion.${node.workNodeRef}.${active.active.schedulerGeneration}`,
+    workNodeRef: node.workNodeRef,
+    nodeFingerprint: node.semanticFingerprint,
+    graphFingerprint: candidate.semanticFingerprint,
+    runtimeSnapshotFingerprint: runtime.semanticFingerprint,
+    schedulerGeneration: active.active.schedulerGeneration,
+    expectedTransitionRef: node.expectedTransitionRef,
+    completionGateRefs: node.completionGateRefs,
+    returnRouteRef: node.returnRouteRef,
+    completedAt,
+    currentness: 'CURRENT',
+    lifecycle: 'ACTIVE',
+    state: 'COMPLETED',
+    ...overrides
+  });
 }
 
 test('S0 non-green workgraph exposes candidate-only ready nodes and admits zero', () => {
@@ -512,7 +537,7 @@ test('S4 retained interactive preemption completes checkpoint to fresh-generatio
   ]);
   const runtime = makeScheduler();
   runtime.scheduler.admit(background.candidate, background.options);
-  runtime.scheduler.leaseSelected(contextInput());
+  const backgroundRunning = runtime.scheduler.leaseSelected(contextInput());
 
   const interactive = admission([
     workNode('work.scheduler.interactive', { interactiveHumanTurn: true })
@@ -523,7 +548,7 @@ test('S4 retained interactive preemption completes checkpoint to fresh-generatio
   assert.equal(runtime.scheduler.aggregate.pendingPreemption.admissionFingerprint, incomingQueue.admissionReceipt.semanticFingerprint);
 
   const checkpointed = runtime.scheduler.checkpoint(
-    checkpointInput({ queue: background.options ? runtime.scheduler.queue : null, active: { contextLease: { leaseRef: 'unused' } } }),
+    checkpointInput({ queue: runtime.scheduler.queue, active: backgroundRunning }),
     { releaseReceiptRef: 'release.scheduler.preemption', releasedAt: CHECKPOINT_AT }
   );
   const completed = runtime.scheduler.resume(checkpointed.checkpoint.checkpointRef, {
@@ -780,26 +805,26 @@ test('S11 tool call resolves canonical tool/effect/schema/executor identities an
 test('S12 relay rejects wrong context/effect/schema, expiry, restart replay, and cancellation races', () => {
   const fixture = activeFixture('work.scheduler.tool-relay');
   const call = toolCallFrom(fixture);
-  const relay = new ToolResultRelay();
+  const relay = new ToolResultRelay(null, { schedulerRegistry });
   relay.register(call);
   const base = exactResult(call);
   assert.equal(relay.accept({ ...base, contextLeaseRef: 'context.same-node.wrong' }, { receivedAt: RESULT_AT }).reason, 'CONTEXT_LEASE_MISMATCH');
   assert.equal(relay.accept({ ...base, effectRef: 'effect.mock.wrong' }, { receivedAt: RESULT_AT }).reason, 'WRONG_EFFECT');
   assert.equal(relay.accept({ ...base, schemaRef: 'schema.unknown/v0' }, { receivedAt: RESULT_AT }).reason, 'RESULT_SCHEMA_MISMATCH');
   assert.equal(relay.accept(base, { receivedAt: RESULT_AT }).accepted, true);
-  const restoredAccepted = new ToolResultRelay(relay.snapshot);
+  const restoredAccepted = new ToolResultRelay(relay.snapshot, { schedulerRegistry });
   assert.equal(restoredAccepted.accept(base, { receivedAt: RESULT_AT }).reason, 'DUPLICATE_RESULT');
   assert.equal(restoredAccepted.reinject(fixture.active.contextLease, relay.snapshot.entries[0].observation, { observedAt: RESULT_AT }).accepted, true);
-  const restoredReinjected = new ToolResultRelay(restoredAccepted.snapshot);
+  const restoredReinjected = new ToolResultRelay(restoredAccepted.snapshot, { schedulerRegistry });
   assert.equal(
     restoredReinjected.reinject(fixture.active.contextLease, restoredAccepted.snapshot.entries[0].observation, { observedAt: RESULT_AT }).reason,
     'OBSERVATION_ALREADY_REINJECTED'
   );
 
-  const lateRelay = new ToolResultRelay();
+  const lateRelay = new ToolResultRelay(null, { schedulerRegistry });
   lateRelay.register(call);
   assert.equal(lateRelay.accept(base, { receivedAt: EXPIRES }).reason, 'LATE_RESULT');
-  const cancelledRelay = new ToolResultRelay();
+  const cancelledRelay = new ToolResultRelay(null, { schedulerRegistry });
   cancelledRelay.register(call);
   cancelledRelay.cancel(call.toolCallRef, {
     receiptRef: 'receipt.tool.cancelled',
@@ -809,42 +834,67 @@ test('S12 relay rejects wrong context/effect/schema, expiry, restart replay, and
   assert.equal(cancelledRelay.accept(base, { receivedAt: RESULT_AT }).reason, 'UNKNOWN_OR_STALE_TOOL_CALL');
 });
 
-test('S13 observation reinjection requires the exact origin or an explicitly authorized successor context', () => {
+test('S13 observation reinjection requires scheduler-issued successor authorization', () => {
   const fixture = activeFixture('work.scheduler.successor-context');
   const call = toolCallFrom(fixture);
-  const relay = new ToolResultRelay();
-  relay.register(call);
-  const accepted = relay.accept(exactResult(call), { receivedAt: RESULT_AT });
+  fixture.relay.register(call);
+  const accepted = fixture.relay.accept(exactResult(call), { receivedAt: RESULT_AT });
   const wrongContext = createContextLease({
     ...fixture.active.contextLease,
     leaseRef: 'context-lease.scheduler.same-node-wrong',
     semanticFingerprint: undefined
   }).lease;
   assert.match(
-    relay.reinject(wrongContext, accepted.observation, { observedAt: RESULT_AT }).reason,
+    fixture.relay.reinject(wrongContext, accepted.observation, { observedAt: RESULT_AT }).reason,
     /CONTEXT_REINJECTION_REJECTED/
   );
-  const successor = createContextLease({
-    ...fixture.active.contextLease,
-    leaseRef: 'context-lease.scheduler.authorized-successor',
-    schedulerGeneration: 2,
-    runtimeSnapshotFingerprint: '1'.repeat(64),
-    resourceLeaseFingerprint: '2'.repeat(64),
-    capabilityLeaseFingerprint: '3'.repeat(64),
-    effectLeaseFingerprint: '4'.repeat(64),
-    cancellationTokenRef: 'cancellation-token.scheduler.successor',
-    formedAt: RESULT_AT,
-    observedAt: CHECKPOINT_AT,
-    expiresAt: EXPIRES,
-    successorOfContextLeaseRef: fixture.active.contextLease.leaseRef,
-    authorizedObservationRefs: [accepted.observation.observationRef],
-    semanticFingerprint: undefined
-  }).lease;
-  const reinjected = relay.reinject(successor, accepted.observation, { observedAt: CHECKPOINT_AT });
+  const checkpointed = fixture.scheduler.checkpoint(
+    checkpointInput(fixture, 'checkpoint.scheduler.successor-context'),
+    { releaseReceiptRef: 'release.scheduler.successor-context', releasedAt: CHECKPOINT_AT }
+  );
+  const freshResource = resource(2);
+  const fresh = admission([fixture.candidate.nodes[0]], {
+    generation: 2,
+    candidate: fixture.candidate,
+    trust: fixture.trust,
+    resourceSnapshot: freshResource,
+    runtime: runtimeTrust(freshResource, 2)
+  });
+  const resumed = fixture.scheduler.resume(checkpointed.checkpoint.checkpointRef, {
+    graph: fixture.candidate,
+    options: fresh.options,
+    sourceBindings: SOURCE_BINDINGS,
+    contextInput: contextInput(2),
+    authorizeObservationRef: accepted.observation.observationRef
+  });
+  assert.ok(resumed.successorContextAuthorization.semanticFingerprint);
+  const invented = structuredClone(resumed.contextLease);
+  invented.successorContextAuthorization.observationFingerprint = '0'.repeat(64);
+  invented.semanticFingerprint = undefined;
+  assert.throws(() => createContextLease(invented, {
+    priorLease: checkpointed.transitionedLeases.context,
+    priorLeaseFingerprint: checkpointed.checkpoint.priorLeaseFingerprints.context,
+    expectedSchedulerIssuerRef: fixture.scheduler.schedulerInstanceRef
+  }), /authorization fingerprint mismatch/);
+  const selfAuthored = structuredClone(resumed.contextLease);
+  selfAuthored.successorContextAuthorization.schedulerIssuerRef = 'scheduler.invented';
+  selfAuthored.successorContextAuthorization.semanticFingerprint = undefined;
+  selfAuthored.semanticFingerprint = undefined;
+  assert.throws(() => createContextLease(selfAuthored, {
+    priorLease: checkpointed.transitionedLeases.context,
+    priorLeaseFingerprint: checkpointed.checkpoint.priorLeaseFingerprints.context,
+    expectedSchedulerIssuerRef: fixture.scheduler.schedulerInstanceRef
+  }), /not issued by the active scheduler/);
+  const reinjected = fixture.relay.reinject(resumed.contextLease, accepted.observation, { observedAt: RESUME_OBSERVED });
   assert.equal(reinjected.accepted, true);
   assert.equal(reinjected.frame.originatingContextLeaseRef, fixture.active.contextLease.leaseRef);
-  assert.equal(reinjected.frame.contextLeaseRef, successor.leaseRef);
+  assert.equal(reinjected.frame.contextLeaseRef, resumed.contextLease.leaseRef);
   assert.equal(reinjected.frame.rawResultIncluded, false);
+  fixture.scheduler.cancelActive({
+    releaseReceiptRef: 'release.scheduler.successor-context.complete',
+    releasedAt: CANCEL_AT,
+    reason: 'TEST_COMPLETE'
+  });
 });
 
 test('S14 cancellation closes pending relay work, consumes leases, preserves lineage, and blocks re-lease', () => {
@@ -886,6 +936,249 @@ test('S15 Queue, Terrain, Health and Guide derive from one scheduler aggregate t
   assert.equal(fixture.scheduler.projections.health.value.state, 'ATTENTION');
   assert.equal(fixture.scheduler.projections.guide.value.nextSafeAction, 'FORM_FRESH_RUNTIME_AND_RESUME');
   assert.equal(fixture.scheduler.projections.runtime.value.rawMachineDumpIncluded, false);
+});
+
+test('S17 exact normal completion closes six leases and preserves the return route distinctly from cancellation', () => {
+  const fixture = activeFixture('work.scheduler.complete');
+  const node = fixture.candidate.nodes[0];
+  const receipt = completionFor(fixture, CHECKPOINT_AT);
+  assert.throws(() => fixture.scheduler.completeActive({
+    completionReceipt: receipt,
+    currentNodeFingerprint: '0'.repeat(64),
+    expectedTransitionRef: node.expectedTransitionRef,
+    completionGateRefs: node.completionGateRefs,
+    returnRouteRef: node.returnRouteRef,
+    releaseReceiptRef: 'release.scheduler.complete.wrong',
+    completedAt: CHECKPOINT_AT
+  }), /completion receipt nodeFingerprint mismatch/);
+  const completed = fixture.scheduler.completeActive({
+    completionReceipt: receipt,
+    currentNodeFingerprint: node.semanticFingerprint,
+    expectedTransitionRef: node.expectedTransitionRef,
+    completionGateRefs: node.completionGateRefs,
+    returnRouteRef: node.returnRouteRef,
+    releaseReceiptRef: 'release.scheduler.complete',
+    completedAt: CHECKPOINT_AT
+  });
+  assert.equal(completed.state, 'COMPLETED');
+  assert.equal(completed.leaseTransitionReceipts.length, 6);
+  assert.ok(Object.values(completed.transitionedLeases).every((lease) => lease.lifecycle === 'RELEASED'));
+  assert.equal(completed.returnRouteReceipt.returnRouteRef, node.returnRouteRef);
+  assert.equal(fixture.scheduler.queue.state, 'COMPLETED');
+  assert.equal(fixture.scheduler.projections.guide.value.whatIsHappeningNow, 'COMPLETED:CLOSED');
+});
+
+test('S18 preemption retains exact admission identity and resumes prior background continuation', () => {
+  const background = admission([workNode('work.scheduler.roundtrip-background', { priorityClass: 'LOW', background: true })]);
+  const runtime = makeScheduler();
+  runtime.scheduler.admit(background.candidate, background.options);
+  const backgroundRunning = runtime.scheduler.leaseSelected(contextInput());
+  const heldCall = toolCallFrom({ ...background, ...runtime, queue: runtime.scheduler.queue, active: backgroundRunning }, {
+    toolCallRef: 'tool-call.scheduler.roundtrip-held'
+  });
+  runtime.relay.register(heldCall);
+
+  const interactive = admission([workNode('work.scheduler.roundtrip-interactive', { interactiveHumanTurn: true })], { generation: 2 });
+  const incomingQueue = admitIntentSchedulerQueue(interactive.candidate, interactive.options);
+  runtime.scheduler.requestPreemption(incomingQueue);
+  const checkpointed = runtime.scheduler.checkpoint(
+    checkpointInput({ queue: runtime.scheduler.queue, active: backgroundRunning }, 'checkpoint.scheduler.roundtrip', heldCall.toolCallRef),
+    { releaseReceiptRef: 'release.scheduler.roundtrip', releasedAt: CHECKPOINT_AT }
+  );
+  const rebuilt = structuredClone(interactive.options);
+  rebuilt.capabilityLeaseByNodeRef['work.scheduler.roundtrip-interactive'].leaseRef += '.rebuilt';
+  assert.throws(() => runtime.scheduler.resume(checkpointed.checkpoint.checkpointRef, {
+    graph: interactive.candidate,
+    options: rebuilt,
+    sourceBindings: SOURCE_BINDINGS,
+    contextInput: contextInput(2),
+    completePreemption: true
+  }), /admission does not match retained incoming candidate identity/);
+  const foreground = runtime.scheduler.resume(checkpointed.checkpoint.checkpointRef, {
+    graph: interactive.candidate,
+    options: interactive.options,
+    sourceBindings: SOURCE_BINDINGS,
+    contextInput: contextInput(2),
+    completePreemption: true
+  });
+  const foregroundFixture = { candidate: interactive.candidate, active: foreground, runtime: interactive.runtime };
+  const node = interactive.candidate.nodes[0];
+  const completed = runtime.scheduler.completeActive({
+    completionReceipt: completionFor(foregroundFixture, RESUME_OBSERVED),
+    currentNodeFingerprint: node.semanticFingerprint,
+    expectedTransitionRef: node.expectedTransitionRef,
+    completionGateRefs: node.completionGateRefs,
+    returnRouteRef: node.returnRouteRef,
+    releaseReceiptRef: 'release.scheduler.roundtrip.foreground',
+    completedAt: RESUME_OBSERVED
+  });
+  assert.equal(completed.state, 'CONTINUATION_READY');
+  assert.equal(runtime.relay.snapshot.entries[0].state, 'HELD');
+  assert.equal(runtime.scheduler.projections.health.value.state, 'ATTENTION');
+
+  const continuationResource = resource(3);
+  const continuation = admission(background.candidate.nodes, {
+    generation: 3,
+    candidate: background.candidate,
+    trust: background.trust,
+    resourceSnapshot: continuationResource,
+    runtime: runtimeTrust(continuationResource, 3)
+  });
+  const resumed = runtime.scheduler.resumeContinuation({
+    graph: background.candidate,
+    options: continuation.options,
+    sourceBindings: SOURCE_BINDINGS,
+    contextInput: contextInput(3)
+  });
+  assert.equal(resumed.state, 'PREEMPTED_WORK_RESUMED');
+  assert.equal(resumed.active.workNodeRef, 'work.scheduler.roundtrip-background');
+  runtime.scheduler.cancelActive({
+    releaseReceiptRef: 'release.scheduler.roundtrip.background',
+    releasedAt: CANCEL_AT,
+    reason: 'ROUNDTRIP_TEST_COMPLETE'
+  });
+  assert.equal(runtime.relay.snapshot.entries[0].state, 'CLOSED');
+});
+
+test('S19 checkpoint derives lineage and requires the exact six-lease same-lifecycle release set', () => {
+  const fixture = activeFixture('work.scheduler.exact-checkpoint');
+  const invented = checkpointInput(fixture, 'checkpoint.scheduler.invented-lineage');
+  invented.selectedContextRefs = ['context.invented'];
+  assert.throws(() => fixture.scheduler.checkpoint(invented, {
+    releaseReceiptRef: 'release.scheduler.invented-lineage',
+    releasedAt: CHECKPOINT_AT
+  }), /canonical scheduler lineage exactly/);
+  assert.ok(fixture.scheduler.active);
+  const checkpointed = fixture.scheduler.checkpoint(
+    checkpointInput(fixture, 'checkpoint.scheduler.exact-release'),
+    { releaseReceiptRef: 'release.scheduler.exact-release', releasedAt: CHECKPOINT_AT }
+  );
+  const candidate = structuredClone(checkpointed.checkpoint);
+  candidate.semanticFingerprint = undefined;
+  assert.throws(() => createIntentCheckpoint({
+    ...candidate,
+    leaseReleaseReceipts: candidate.leaseReleaseReceipts.slice(1)
+  }), /exactly six/);
+  assert.throws(() => createIntentCheckpoint({
+    ...candidate,
+    leaseReleaseReceipts: [...candidate.leaseReleaseReceipts.slice(0, 5), candidate.leaseReleaseReceipts[0]]
+  }), /receipt refs must be unique/);
+  const wrongLease = structuredClone(candidate.leaseReleaseReceipts);
+  wrongLease[0].leaseRef = 'lease.invented';
+  assert.throws(() => createIntentCheckpoint({ ...candidate, leaseReleaseReceipts: wrongLease }), /one exact/);
+  const mixed = structuredClone(candidate.leaseReleaseReceipts);
+  mixed[0].lifecycle = 'CANCELLED';
+  assert.throws(() => createIntentCheckpoint({ ...candidate, leaseReleaseReceipts: mixed }), /one explicit lifecycle/);
+});
+
+test('S20 relay restore and held-call actions require canonical fingerprints and fresh successor leases', () => {
+  const fixture = activeFixture('work.scheduler.durable-relay');
+  const heldCall = toolCallFrom(fixture, { toolCallRef: 'tool-call.scheduler.durable-held' });
+  fixture.relay.register(heldCall);
+  const checkpointed = fixture.scheduler.checkpoint(
+    checkpointInput(fixture, 'checkpoint.scheduler.durable-relay', heldCall.toolCallRef),
+    { releaseReceiptRef: 'release.scheduler.durable-relay', releasedAt: CHECKPOINT_AT }
+  );
+  assert.throws(() => new ToolResultRelay({ ...fixture.relay.snapshot, semanticFingerprint: undefined }, { schedulerRegistry }), /requires its canonical fingerprint/);
+  const tampered = structuredClone(fixture.relay.snapshot);
+  tampered.entries[0].call.semanticFingerprint = '0'.repeat(64);
+  assert.throws(() => new ToolResultRelay(tampered, { schedulerRegistry }), /tool call semantic fingerprint mismatch/);
+
+  const freshResource = resource(2);
+  const fresh = admission([fixture.candidate.nodes[0]], {
+    generation: 2,
+    candidate: fixture.candidate,
+    trust: fixture.trust,
+    resourceSnapshot: freshResource,
+    runtime: runtimeTrust(freshResource, 2)
+  });
+  const resumed = fixture.scheduler.resume(checkpointed.checkpoint.checkpointRef, {
+    graph: fixture.candidate,
+    options: fresh.options,
+    sourceBindings: SOURCE_BINDINGS,
+    contextInput: contextInput(2)
+  });
+  const resumedFixture = { queue: resumed.queue, active: resumed, runtime: fresh.runtime };
+  for (const action of ['RESUME', 'REISSUE', 'SUPERSEDE', 'CLOSE']) {
+    const restored = new ToolResultRelay(fixture.relay.snapshot, { schedulerRegistry });
+    const successorCall = action === 'CLOSE' ? null : toolCallFrom(resumedFixture, {
+      toolCallRef: `tool-call.scheduler.durable-${action.toLowerCase()}`,
+      proposedAt: RESUME_OBSERVED,
+      timeoutAt: RESUME_EXPIRES,
+      bindingObservedAt: RESUME_OBSERVED
+    });
+    const transition = restored.transitionHeld(heldCall.toolCallRef, {
+      action,
+      checkpointRef: checkpointed.checkpoint.checkpointRef,
+      successorCall,
+      successorContextLeaseRef: successorCall?.contextLeaseRef ?? null,
+      receiptRef: `receipt.scheduler.durable-${action.toLowerCase()}`,
+      transitionedAt: RESUME_OBSERVED
+    });
+    assert.equal(transition.changed, true);
+    assert.equal(restored.snapshot.entries.find((item) => item.toolCallRef === heldCall.toolCallRef).state, 'CLOSED');
+    if (successorCall) assert.equal(restored.snapshot.entries.find((item) => item.toolCallRef === successorCall.toolCallRef).state, 'PENDING');
+  }
+  fixture.scheduler.cancelActive({
+    releaseReceiptRef: 'release.scheduler.durable-relay.complete',
+    releasedAt: CANCEL_AT,
+    reason: 'TEST_COMPLETE'
+  });
+});
+
+test('S21 live observed clock expires active evidence and tool times remain monotonic', () => {
+  const fixture = activeFixture('work.scheduler.live-clock');
+  const advanced = fixture.scheduler.advanceObservedClock({ observedAt: EXPIRES, eventRef: 'clock.scheduler.test.expired' });
+  assert.equal(advanced.health.state, 'BLOCKED');
+  assert.ok(advanced.health.reasonRefs.some((reason) => reason.includes('EXPIRED')));
+
+  const expiredResource = resource(1, {
+    observedAt: '2026-07-31T12:03:00.000Z',
+    expiresAt: '2026-07-31T12:04:00.000Z'
+  });
+  const expired = admission([workNode('work.scheduler.resource-expired-at-admission')], {
+    resourceSnapshot: expiredResource,
+    runtime: runtimeTrust(expiredResource)
+  });
+  assert.equal(admitIntentSchedulerQueue(expired.candidate, expired.options).state, 'BLOCKED');
+
+  const resultFixture = activeFixture('work.scheduler.result-time');
+  const call = toolCallFrom(resultFixture, { toolCallRef: 'tool-call.scheduler.result-time' });
+  resultFixture.relay.register(call);
+  assert.equal(resultFixture.relay.accept(exactResult(call), { receivedAt: FORMED }).reason, 'RESULT_BEFORE_PROPOSAL');
+  assert.throws(() => resultFixture.relay.hold(call.toolCallRef, {
+    receiptRef: 'receipt.scheduler.hold-before-proposal',
+    heldAt: FORMED,
+    checkpointRef: 'checkpoint.scheduler.time'
+  }), /hold time must be monotonic/);
+});
+
+test('S22 generated receipt paths reject absolute, traversal, non-generated and symlink escapes portably', () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-receipt-path-'));
+  try {
+    fs.mkdirSync(path.join(temporaryRoot, 'generated', 'health'), { recursive: true });
+    const safePosix = resolveSafeGeneratedReceiptPath(temporaryRoot, 'generated/health/proof.json');
+    const safeWindows = resolveSafeGeneratedReceiptPath(temporaryRoot, 'generated\\health\\proof-win.json');
+    assert.equal(path.dirname(safePosix), path.join(temporaryRoot, 'generated', 'health'));
+    assert.equal(path.dirname(safeWindows), path.join(temporaryRoot, 'generated', 'health'));
+    for (const unsafe of [
+      '../proof.json',
+      'generated/health/../../proof.json',
+      'artifacts/proof.json',
+      '/tmp/proof.json',
+      'C:\\temp\\proof.json'
+    ]) assert.throws(() => resolveSafeGeneratedReceiptPath(temporaryRoot, unsafe), /safe relative path|under generated\/health/);
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-receipt-outside-'));
+    const link = path.join(temporaryRoot, 'generated', 'health', 'linked');
+    try {
+      fs.symlinkSync(outside, link, process.platform === 'win32' ? 'junction' : 'dir');
+      assert.throws(() => resolveSafeGeneratedReceiptPath(temporaryRoot, 'generated/health/linked/proof.json'), /symbolic link/);
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true });
+    }
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test('S16 scheduler registry is canonical in Blueprint/Atlas, omission fails, and the complete no-effect loop passes', () => {
@@ -939,6 +1232,9 @@ test('S16 scheduler registry is canonical in Blueprint/Atlas, omission fails, an
   assert.equal(simulation.externalEffectsExecuted, false);
   assert.equal(simulation.orphanedPendingToolCalls, 0);
   assert.equal(simulation.finalProjection.health.state, 'ATTENTION');
+  assert.equal(simulation.finalProjection.runtime.phase, 'COMPLETED');
+  assert.equal(simulation.separateCancellationProof.phase, 'CANCELLED');
+  assert.deepEqual(simulation.separateCancellationProof.leaseLifecycle, ['CANCELLED']);
   const simulationBindings = {
     schedulerRegistry,
     blueprintHash: simulation.blueprintHash,

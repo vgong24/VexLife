@@ -385,7 +385,7 @@
   },
   {
     "testRef": "test.intent-scheduler.tool-result-reinjection",
-    "brief": "An accepted result becomes one bounded observation only in the exact origin context or an explicitly authorized successor context."
+    "brief": "An accepted result becomes one bounded observation only in the exact origin context or a successor context carrying the scheduler-issued authorization receipt."
   },
   {
     "testRef": "test.intent-scheduler.cancellation-lineage",
@@ -398,5 +398,29 @@
   {
     "testRef": "test.intent-scheduler.full-gate",
     "brief": "Canonical scheduler composition and the complete deterministic no-effect journey receipt are bound into PR-ready, Health, manifest, browser, portability and DCO gates."
+  },
+  {
+    "testRef": "test.intent-scheduler.normal-completion",
+    "brief": "Exact node, transition, gate, completion and return-route evidence closes successful work distinctly from cancellation with six explicit lease releases."
+  },
+  {
+    "testRef": "test.intent-scheduler.preemption-continuation",
+    "brief": "Background work checkpoints, exact interactive admission preempts it, and fresh runtime evidence resumes the preserved background continuation."
+  },
+  {
+    "testRef": "test.intent-scheduler.checkpoint-exact-release-set",
+    "brief": "Checkpoint lineage is scheduler-derived and exactly six unique same-lifecycle lease receipts bind each prior and transitioned fingerprint."
+  },
+  {
+    "testRef": "test.intent-scheduler.durable-held-tool",
+    "brief": "Relay restoration revalidates canonical calls, observations, transitions and ledger identity while held calls resume, reissue, supersede or close without orphaning."
+  },
+  {
+    "testRef": "test.intent-scheduler.live-clock",
+    "brief": "Monotonic observed-clock advancement expires active evidence without a model turn and rejects resource or result timing outside exact intervals."
+  },
+  {
+    "testRef": "test.intent-scheduler.safe-receipt-path",
+    "brief": "Scheduler, PR-ready and Health receipt arguments reject absolute, traversal, symlink and non-generated destinations on Windows and Linux."
   }
 ]

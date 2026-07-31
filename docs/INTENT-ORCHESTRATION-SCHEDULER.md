@@ -10,7 +10,8 @@ validated workgraph
 → exact admission receipt
 → one physical model-worker lease
 → one bounded context lease
-→ checkpoint or exact mock tool observation
+→ exact mock observation / scheduler-authorized successor context
+→ normal completion or recoverable checkpoint continuation
 → bounded Queue / Terrain / Health / Guide projections
 ```
 
@@ -33,8 +34,9 @@ state.tool-result-relay  service.tool-result-relay
 ```
 
 `src/core/state.mjs` owns one canonical scheduler aggregate containing queue,
-generation, fairness, active work, every lease transition, checkpoints,
-cancellation and the durable relay ledger. Queue, Terrain, Health and Guide are
+generation, observed clock, fairness, active work, normal completion, preempted
+continuations, every lease transition, checkpoints, cancellation and the
+durable relay ledger. Queue, Terrain, Health and Guide are
 selectors over that aggregate. They do not keep duplicate scheduler truth.
 Equal semantic output produces no new revision.
 
@@ -81,12 +83,16 @@ scheduler-owned, source-bound deferral count, oldest ready generation and then
 stable work-node ref. Callers cannot inject fairness truth. Priority changes
 never delete the workgraph or its source.
 
-An interactive arrival can request preemption of background work. The active
+An interactive arrival can request preemption of background work. The retained
+incoming admission must match its complete fingerprint plus runtime, worker,
+graph and node identities. The active
 lease remains live until `checkpoint` records a safe boundary and
 transactionally consumes admission plus worker, context, resource, occupancy,
-capability and effect leases. Completion re-admits and selects the retained
-interactive candidate through the normal fresh-generation path. There is no
-asynchronous source-discarding interrupt.
+capability and effect leases. Preemption re-admits the retained interactive
+candidate through the normal fresh-generation path while preserving the prior
+checkpoint as a continuation. Foreground completion or cancellation exposes
+that continuation for fresh-evidence resume. There is no asynchronous
+source-discarding interrupt.
 
 ## Context and resource leases
 
@@ -101,7 +107,10 @@ while the exact lease and every binding remain active and unexpired.
 A resource snapshot uses explicit CPU concurrency/load, RAM, GPU/VRAM, model
 residency, active model/tool state, interactive wait, background admission,
 thermal/power state, source identity, evidence hash, formation, observation and
-expiry. A registered external runtime authority forms that evidence; the
+expiry. Resource evidence must still cover the scheduler aggregate's exact
+current observed-clock event. Advancing that clock recomputes Health, so expired
+active evidence becomes blocked without another model turn. A registered
+external runtime authority forms that evidence; the
 scheduler cannot self-certify it. A platform without thermal telemetry uses
 `NOT_EXPOSED`; `UNKNOWN` is never treated as capacity. The implementation
 consumes supplied deterministic snapshots and does not probe or mutate a real
@@ -109,17 +118,22 @@ machine.
 
 ## Checkpoint and recovery
 
-A checkpoint preserves the graph/trust identities, prior scheduler generation,
-last completed step, selected refs, produced artifact/receipt refs, open
-questions, pending tool call, paired source refs/hashes and next safe action.
-Formation requires immutable release receipts for admission and every lease.
+A checkpoint derives active context, source, admission, worker and lease lineage
+from the scheduler aggregate. Caller substitution is rejected. Additional
+artifact or receipt refs require canonical active/relay evidence. Formation
+requires exactly one unique immutable release receipt for worker, context,
+resource, capability, effect and occupancy, each binding the prior and
+transitioned fingerprints under one explicit lifecycle.
 
 Resume revalidates the graph, trust, changed-but-sufficient external resource
 evidence, capability and effect bindings, paired source hashes, and an advanced
 scheduler generation. Every fresh lease is formed through normal admission and
 selection; prior leases cannot be replayed. Drift becomes `HELD_UNKNOWN` or
-`BLOCKED`. Cancellation closes pending relay entries, consumes every lease and
-records the work, graph, source and receipt lineage.
+`BLOCKED`. `completeActive` separately requires the exact node fingerprint,
+expected transition, completion gates, one current completion receipt and
+return route; it emits completion, six lease-transition and return-route
+receipts and projects `COMPLETED/CLOSED`. Cancellation remains a distinct
+alternative transition.
 
 ## Typed mock tool boundary
 
@@ -128,18 +142,21 @@ The model may propose a typed call. Deterministic code validates:
 ```text
 pending toolCallRef
 canonical tool + effect + argument/result schemas + executor
-work node + exact origin context or authorized successor context
+work node + exact origin context or scheduler-authorized successor context
 worker + context + capability + effect + resource leases
 runtime snapshot + scheduler generation + cancellation token
 timeout + cancellation policy
 ```
 
-Wrong-context, wrong-effect, stale, duplicate, late, schema-mismatched,
-generation-mismatched, post-restart replayed or cancellation-racing results fail
-closed. The serializable relay ledger preserves exact state across restart. One
-accepted result becomes one bounded observation; artifacts remain external by
-ref and raw logs are excluded. Reinjection into the origin or an explicitly
-authorized successor context is once-only.
+Wrong-context, wrong-effect, stale, duplicate, before-proposal, late,
+schema-mismatched, generation-mismatched, post-restart replayed or
+cancellation-racing results fail closed. Restore always recomputes the whole
+ledger and validates every call, observation, canonical tool/effect/schema/
+executor identity, transition receipt and legal state progression. Held calls
+support explicit `RESUME`, `REISSUE`, `SUPERSEDE` and `CLOSE` actions bound to
+their checkpoint and a fresh successor context lease. Successor reinjection is
+once-only and requires a scheduler-issued authorization receipt binding the
+prior context/observation and every fresh runtime/lease/generation identity.
 
 This implementation is deliberately a fake/model-free and mock-tool contract.
 It does not download or invoke a model, expose a raw model endpoint, execute
@@ -156,21 +173,27 @@ npm run pr-ready
 npm run health:check
 ```
 
-`scheduler:simulate` performs the complete registered journey: validated graph,
+`scheduler:simulate` performs the complete success journey: validated graph,
 external simulated runtime evidence, admission, every lease, canonical mock
-tool call/result, once-only reinjection, checkpoint and transactional release,
-changed-but-sufficient resource evidence, fresh-generation resume, and
-cancellation closure. It writes
+tool call/result, checkpoint and transactional release,
+changed-but-sufficient resource evidence, fresh-generation resume,
+scheduler-authorized once-only reinjection, and normal completion. A separate
+alternative journey proves cancellation. All `--receipt` arguments for this
+command, `pr-ready`, and `health-check` are confined to safe repository-relative
+`generated/health/**` paths and reject absolute, traversal, symlink and
+non-generated destinations. The simulation writes
 `generated/health/intent-scheduler-simulation.json`, bound to the exact
 candidate/checkout/base, source tree, Blueprint, scheduler registry and all
 lifecycle fingerprints. `pr-ready` and `health:check` independently reject a
 missing, stale, malformed, self-certified, effectful or orphaned receipt.
 
-The S0–S16 tests cover zero admission for non-green graphs, exact receipts,
+The S0–S22 tests cover zero admission for non-green graphs, exact receipts,
 single-worker exclusion, visible logical branches, checkpoint-only preemption,
 fairness, resource failure, context budgets/no-ops, checkpoint/resume,
-tool-call/result matching, cancellation lineage, bounded projections, and full
-registration.
+normal completion, full preemption continuation, derived six-lease checkpoint
+lineage, durable held-tool restore/actions, scheduler-issued successor context,
+live-clock/tool-time progression, safe receipt paths, cancellation lineage,
+bounded projections, and full registration.
 
 ## Held successor boundary
 

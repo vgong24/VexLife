@@ -1,4 +1,7 @@
-import { createContextLease } from './context-lease.mjs';
+import {
+  createContextLease,
+  createSuccessorContextAuthorization
+} from './context-lease.mjs';
 import {
   canonicalSourceBindings,
   createIntentCheckpoint,
@@ -6,6 +9,7 @@ import {
 } from './intent-checkpoint.mjs';
 import {
   createResourceLease,
+  evaluateCurrentResourceAdmission,
   evaluateResourceAdmission,
   releaseResourceLease
 } from './resource-admission.mjs';
@@ -13,6 +17,7 @@ import {
   assertActiveInterval,
   assertCurrentLease,
   assertSourceHash,
+  parseCanonicalTimestamp,
   resolveMockToolContract,
   transitionLease,
   WorkerLeaseAuthority
@@ -46,11 +51,36 @@ function missingFields(value, fields) {
   return fields.filter((field) => value?.[field] === undefined || value?.[field] === null || value?.[field] === '');
 }
 
+function canonicalRefs(values = []) {
+  if (!Array.isArray(values) || values.some((value) => typeof value !== 'string' || !value)) {
+    throw new Error('lineage refs must be stable non-empty strings');
+  }
+  return [...new Set(values)].sort();
+}
+
+function requireExactRefs(provided, expected, label) {
+  if (JSON.stringify(canonicalRefs(provided)) !== JSON.stringify(canonicalRefs(expected))) {
+    throw new Error(`${label} must match canonical scheduler lineage exactly`);
+  }
+}
+
 function finalized(value) {
   const candidate = clone(value);
   delete candidate.semanticFingerprint;
   candidate.semanticFingerprint = semanticHash(candidate);
   return freeze(candidate);
+}
+
+function observedClockReceipt(observedAt, eventRef) {
+  parseCanonicalTimestamp(observedAt, 'scheduler observed clock');
+  if (!eventRef) throw new Error('scheduler observed clock requires eventRef');
+  return finalized({
+    schemaVersion: 'vexlife.intent-scheduler-observed-clock/v1',
+    clockRef: 'clock.intent-scheduler.canonical-utc',
+    eventRef,
+    observedAt,
+    currentness: 'CURRENT'
+  });
 }
 
 function exactRuntimeLease(input, {
@@ -209,6 +239,41 @@ export function createSchedulerOccupancy(input, {
     leaseRef: input.occupancyRef,
     ...clone(input)
   });
+}
+
+export function createWorkCompletionReceipt(input) {
+  const required = [
+    'completionReceiptRef',
+    'workNodeRef',
+    'nodeFingerprint',
+    'graphFingerprint',
+    'runtimeSnapshotFingerprint',
+    'schedulerGeneration',
+    'expectedTransitionRef',
+    'completionGateRefs',
+    'returnRouteRef',
+    'completedAt',
+    'currentness',
+    'lifecycle',
+    'state'
+  ];
+  const missing = missingFields(input, required);
+  if (missing.length) throw new Error(`work completion receipt missing required fields: ${missing.join(', ')}`);
+  if (input.currentness !== 'CURRENT' || input.lifecycle !== 'ACTIVE' || input.state !== 'COMPLETED') {
+    throw new Error('work completion receipt must be current ACTIVE completion evidence');
+  }
+  parseCanonicalTimestamp(input.completedAt, 'work completion completedAt');
+  const receipt = {
+    schemaVersion: 'vexlife.intent-work-completion-receipt/v1',
+    ...clone(input),
+    completionGateRefs: canonicalRefs(input.completionGateRefs)
+  };
+  delete receipt.semanticFingerprint;
+  receipt.semanticFingerprint = semanticHash(receipt);
+  if (input.semanticFingerprint && input.semanticFingerprint !== receipt.semanticFingerprint) {
+    throw new Error('work completion receipt semantic fingerprint mismatch');
+  }
+  return freeze(receipt);
 }
 
 export function schedulingClass(node) {
@@ -464,7 +529,11 @@ export function admitIntentSchedulerQueue(graph, {
     } catch (error) {
       reasons.push(`EFFECT:${error.message}`);
     }
-    resourceAdmission = evaluateResourceAdmission(resourceSnapshot, resourceRequestByNodeRef[node.workNodeRef] ?? {});
+    resourceAdmission = evaluateCurrentResourceAdmission(
+      resourceSnapshot,
+      resourceRequestByNodeRef[node.workNodeRef] ?? {},
+      { observedAt }
+    );
     if (!resourceAdmission.admitted) reasons.push(...resourceAdmission.reasons.map((item) => `RESOURCE:${item}`));
     const entry = candidateEntry(
       node,
@@ -661,6 +730,7 @@ export class SingleWorkerIntentScheduler {
   get active() { return this.#state.aggregate.value.active; }
   get queue() { return this.#state.aggregate.value.queue; }
   get aggregate() { return this.#state.aggregate.value; }
+  get continuations() { return clone(this.#state.aggregate.value.continuations); }
   get projections() { return this.#state; }
 
   #commit(event) {
@@ -669,10 +739,34 @@ export class SingleWorkerIntentScheduler {
     return next;
   }
 
+  advanceObservedClock({ observedAt, eventRef = `clock.intent-scheduler.advance.${this.generation}` }) {
+    const current = this.#state.aggregate.value.observedClock?.observedAt;
+    const nextEpoch = parseCanonicalTimestamp(observedAt, 'scheduler observed clock');
+    if (current && nextEpoch < parseCanonicalTimestamp(current, 'current scheduler observed clock')) {
+      throw new Error('scheduler observed clock must advance monotonically');
+    }
+    const receipt = observedClockReceipt(observedAt, eventRef);
+    this.#commit({
+      type: 'CLOCK_ADVANCED',
+      transitionRef: `transition.intent-scheduler.clock.${this.generation}.${receipt.semanticFingerprint.slice(0, 12)}`,
+      observedClock: receipt
+    });
+    return {
+      changed: current !== observedAt,
+      observedClock: clone(receipt),
+      health: clone(this.#state.health.value)
+    };
+  }
+
   admit(graph, options) {
     const current = this.#state.aggregate.value;
     if (current.active) throw new Error('cannot replace scheduler admission while a worker lease is active');
     if (current.phase === 'PAUSED') throw new Error('paused work must use the explicit resume transition');
+    if (current.observedClock &&
+        parseCanonicalTimestamp(options.observedAt, 'admission observedAt') <
+          parseCanonicalTimestamp(current.observedClock.observedAt, 'scheduler observed clock')) {
+      throw new Error('admission observed clock must be monotonic');
+    }
     const generation = options.schedulerGeneration ?? current.generation + 1;
     if (generation <= current.generation) throw new Error('scheduler generation must advance');
     const queue = admitIntentSchedulerQueue(graph, {
@@ -689,12 +783,17 @@ export class SingleWorkerIntentScheduler {
       queue,
       resourceSnapshot: options.resourceSnapshot,
       runtimeTrustSnapshot: options.runtimeTrustSnapshot,
-      fairnessLedger: queue.fairnessLedger
+      fairnessLedger: queue.fairnessLedger,
+      observedClock: observedClockReceipt(options.observedAt, `clock.intent-scheduler.admit.${generation}`)
     });
     return queue;
   }
 
-  #formActive(queue, contextInput) {
+  #formActive(queue, contextInput, {
+    priorContextLease = null,
+    priorContextLeaseFingerprint = null,
+    successorContextAuthorization = null
+  } = {}) {
     if (queue?.state !== 'ADMITTED' || !queue.selected) {
       return { admitted: false, state: 'BLOCKED', reason: 'NO_ADMITTED_SELECTED_NODE' };
     }
@@ -717,7 +816,12 @@ export class SingleWorkerIntentScheduler {
       cancellationTokenRef: contextInput.cancellationTokenRef,
       observedAt,
       currentness: 'CURRENT',
-      lifecycle: 'ACTIVE'
+      lifecycle: 'ACTIVE',
+      ...(successorContextAuthorization ? { successorContextAuthorization } : {})
+    }, {
+      priorLease: priorContextLease,
+      priorLeaseFingerprint: priorContextLeaseFingerprint,
+      expectedSchedulerIssuerRef: successorContextAuthorization ? this.#instanceRef : null
     });
     const workerLease = finalized({
       schemaVersion: 'vexlife.intent-worker-lease/v1',
@@ -823,6 +927,9 @@ export class SingleWorkerIntentScheduler {
       activeWorkNodeRef: aggregate.active.workNodeRef,
       incomingWorkNodeRef: incomingQueue.selected.workNodeRef,
       incomingNodeFingerprint: incomingQueue.selected.nodeFingerprint,
+      incomingWorkerRef: incomingQueue.admissionReceipt.workerRef,
+      incomingRuntimeSnapshotRef: incomingQueue.runtimeSnapshotRef,
+      incomingRuntimeSnapshotFingerprint: incomingQueue.runtimeSnapshotFingerprint,
       graphRef: incomingQueue.graphRef,
       graphFingerprint: incomingQueue.graphFingerprint,
       admissionReceiptRef: incomingQueue.admissionReceipt.admissionReceiptRef,
@@ -849,6 +956,11 @@ export class SingleWorkerIntentScheduler {
 
   #transitionActiveLeases({ releaseReceiptRef, transitionedAt, reason, lifecycle }) {
     const aggregate = this.#state.aggregate.value;
+    if (aggregate.observedClock &&
+        parseCanonicalTimestamp(transitionedAt, 'lease transitionedAt') <
+          parseCanonicalTimestamp(aggregate.observedClock.observedAt, 'scheduler observed clock')) {
+      throw new Error('lease transition time must be monotonic with the scheduler clock');
+    }
     const active = aggregate.active;
     const ledger = aggregate.leaseLedger;
     const current = {
@@ -876,7 +988,8 @@ export class SingleWorkerIntentScheduler {
     const resource = releaseResourceLease(current.resource, {
       releaseReceiptRef: `${releaseReceiptRef}.resource`,
       releasedAt: transitionedAt,
-      reason
+      reason,
+      lifecycle
     });
     const context = transitionLease(current.context, {
       lifecycle,
@@ -903,6 +1016,7 @@ export class SingleWorkerIntentScheduler {
       reason
     });
     return {
+      priorLeases: current,
       transitionedLeases: {
         worker: worker.lease,
         resource: resource.releasedLease,
@@ -928,6 +1042,16 @@ export class SingleWorkerIntentScheduler {
     if (checkpointInput.workNodeRef !== aggregate.active.workNodeRef) {
       throw new Error('active worker lease does not match checkpoint work node');
     }
+    const active = aggregate.active;
+    requireExactRefs(checkpointInput.selectedContextRefs ?? [], [active.contextLeaseRef], 'checkpoint selected context refs');
+    requireExactRefs(checkpointInput.selectedSourceRefs ?? [], active.sourceRefs, 'checkpoint selected source refs');
+    const relayArtifacts = (this.#relay?.snapshot.entries ?? [])
+      .filter((item) => item.call?.workNodeRef === active.workNodeRef && item.observation)
+      .flatMap((item) => item.observation.artifactRefs ?? []);
+    const canonicalArtifacts = canonicalRefs([...(active.artifactRefs ?? []), ...relayArtifacts]);
+    const canonicalReceipts = canonicalRefs(active.receiptRefs ?? []);
+    requireExactRefs(checkpointInput.producedArtifactRefs ?? [], canonicalArtifacts, 'checkpoint produced artifact refs');
+    requireExactRefs(checkpointInput.producedReceiptRefs ?? [], canonicalReceipts, 'checkpoint produced receipt refs');
     const pendingEntry = checkpointInput.pendingToolCallRef && checkpointInput.pendingToolCallRef !== 'NONE'
       ? this.#relay?.snapshot.entries.find((item) => item.toolCallRef === checkpointInput.pendingToolCallRef)
       : null;
@@ -947,9 +1071,12 @@ export class SingleWorkerIntentScheduler {
       reason: 'CHECKPOINT',
       lifecycle: 'RELEASED'
     });
-    const active = aggregate.active;
     const checkpoint = createIntentCheckpoint({
       ...checkpointInput,
+      selectedSourceRefs: canonicalRefs(active.sourceRefs),
+      selectedContextRefs: [active.contextLeaseRef],
+      producedArtifactRefs: canonicalArtifacts,
+      producedReceiptRefs: canonicalReceipts,
       graphFingerprint: active.graphFingerprint,
       trustSnapshotFingerprint: active.trustSnapshotFingerprint,
       runtimeSnapshotFingerprint: active.runtimeSnapshotFingerprint,
@@ -964,6 +1091,11 @@ export class SingleWorkerIntentScheduler {
       resourceSnapshotFingerprint: aggregate.resource.semanticFingerprint,
       sourceBindings: canonicalSourceBindings(checkpointInput.sourceBindings),
       leaseReleaseReceipts: transitions.receipts,
+      leaseReleaseLifecycle: 'RELEASED',
+      priorLeaseFingerprints: Object.fromEntries(Object.entries(transitions.priorLeases)
+        .map(([kind, lease]) => [kind, lease.semanticFingerprint])),
+      transitionedLeaseFingerprints: Object.fromEntries(Object.entries(transitions.transitionedLeases)
+        .map(([kind, lease]) => [kind, lease.semanticFingerprint])),
       formedAt: checkpointInput.formedAt
     });
     const queue = consumeAdmission(aggregate.queue, {
@@ -980,7 +1112,8 @@ export class SingleWorkerIntentScheduler {
       queue,
       transitionedLeases: transitions.transitionedLeases,
       pendingPreemption: aggregate.pendingPreemption,
-      relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger
+      relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,
+      observedClock: observedClockReceipt(releasedAt, `clock.intent-scheduler.checkpoint.${aggregate.generation}`)
     });
     return {
       checkpoint,
@@ -990,15 +1123,55 @@ export class SingleWorkerIntentScheduler {
     };
   }
 
+  #successorAuthorization(checkpoint, queue, contextInput, observationRef, issuedAt) {
+    if (!observationRef) return null;
+    const entry = (this.#relay?.snapshot.entries ?? []).find((item) =>
+      item.observation?.observationRef === observationRef &&
+      ['ACCEPTED', 'REINJECTED'].includes(item.state)
+    );
+    if (!entry ||
+        entry.observation.contextLeaseRef !== checkpoint.priorContextLeaseRef ||
+        entry.observation.contextLeaseFingerprint !== checkpoint.priorLeaseFingerprints.context ||
+        entry.observation.workNodeRef !== checkpoint.workNodeRef) {
+      throw new Error('successor observation is not exact canonical checkpoint evidence');
+    }
+    return createSuccessorContextAuthorization({
+      authorizationRef: `authorization.intent-scheduler.successor.${checkpoint.checkpointRef}.${queue.generation}.${observationRef}`,
+      schedulerIssuerRef: this.#instanceRef,
+      checkpointRef: checkpoint.checkpointRef,
+      priorContextLeaseRef: checkpoint.priorContextLeaseRef,
+      priorContextLeaseFingerprint: checkpoint.priorLeaseFingerprints.context,
+      observationRef,
+      observationFingerprint: entry.observation.semanticFingerprint,
+      runtimeSnapshotFingerprint: queue.runtimeSnapshotFingerprint,
+      contextLeaseRef: contextInput.leaseRef,
+      resourceLeaseFingerprint: queue.resourceLease.semanticFingerprint,
+      capabilityLeaseFingerprint: queue.selectedBindings.capabilityLease.semanticFingerprint,
+      effectLeaseFingerprint: queue.selectedBindings.effectLease.semanticFingerprint,
+      workerLeaseRef: `worker-lease.${this.#workerRef}.${queue.generation}`,
+      schedulerGeneration: queue.generation,
+      cancellationTokenRef: contextInput.cancellationTokenRef,
+      issuedAt
+    });
+  }
+
   resume(checkpointRef, {
     graph,
     options,
     contextInput,
     sourceBindings,
-    completePreemption = false
+    completePreemption = false,
+    authorizeObservationRef = null
   }) {
     const aggregate = this.#state.aggregate.value;
-    if (aggregate.active || aggregate.phase !== 'PAUSED') throw new Error('resume requires exactly one paused scheduler aggregate');
+    if (aggregate.active || !['PAUSED', 'CONTINUATION_READY'].includes(aggregate.phase)) {
+      throw new Error('resume requires exactly one paused or continuation-ready scheduler aggregate');
+    }
+    if (aggregate.observedClock &&
+        parseCanonicalTimestamp(options.observedAt, 'resume observedAt') <
+          parseCanonicalTimestamp(aggregate.observedClock.observedAt, 'scheduler observed clock')) {
+      throw new Error('resume observed clock must be monotonic');
+    }
     const checkpoint = aggregate.checkpoints.find((item) => item.checkpointRef === checkpointRef);
     if (!checkpoint || checkpoint.currentState !== 'PAUSED_AT_CHECKPOINT') {
       throw new Error('resume requires a current paused checkpoint');
@@ -1020,6 +1193,10 @@ export class SingleWorkerIntentScheduler {
           queue.selected.nodeFingerprint !== pending.incomingNodeFingerprint ||
           queue.graphFingerprint !== pending.graphFingerprint ||
           queue.admissionReceipt.admissionReceiptRef !== pending.admissionReceiptRef ||
+          queue.admissionReceipt.semanticFingerprint !== pending.admissionFingerprint ||
+          queue.admissionReceipt.workerRef !== pending.incomingWorkerRef ||
+          queue.runtimeSnapshotRef !== pending.incomingRuntimeSnapshotRef ||
+          queue.runtimeSnapshotFingerprint !== pending.incomingRuntimeSnapshotFingerprint ||
           queue.generation !== pending.requestedGeneration) {
         throw new Error('fresh preemption admission does not match retained incoming candidate identity');
       }
@@ -1043,9 +1220,23 @@ export class SingleWorkerIntentScheduler {
       });
       if (!validation.admitted) throw new Error(`checkpoint resume validation failed: ${validation.reasons.join(', ')}`);
     }
+    const priorContextLease = aggregate.leaseLedger[checkpoint.priorContextLeaseRef];
+    const successorContextAuthorization = completePreemption
+      ? null
+      : this.#successorAuthorization(
+        checkpoint,
+        queue,
+        contextInput,
+        authorizeObservationRef,
+        options.observedAt
+      );
     const formed = this.#formActive(queue, {
       ...contextInput,
       runtimeTrustSnapshot: options.runtimeTrustSnapshot
+    }, {
+      priorContextLease,
+      priorContextLeaseFingerprint: checkpoint.priorLeaseFingerprints.context,
+      successorContextAuthorization
     });
     if (!formed.admitted) throw new Error(`fresh resume worker lease failed: ${formed.reason}`);
     this.#commit({
@@ -1057,7 +1248,8 @@ export class SingleWorkerIntentScheduler {
       resourceSnapshot: options.resourceSnapshot,
       runtimeTrustSnapshot: options.runtimeTrustSnapshot,
       fairnessLedger: queue.fairnessLedger,
-      leases: formed.leases
+      leases: formed.leases,
+      observedClock: observedClockReceipt(options.observedAt, `clock.intent-scheduler.resume.${generation}`)
     });
     return {
       admitted: true,
@@ -1070,23 +1262,127 @@ export class SingleWorkerIntentScheduler {
       capabilityLease: clone(formed.leases.capability),
       effectLease: clone(formed.leases.effect),
       occupancy: clone(formed.leases.occupancy),
-      workerLease: clone(formed.leases.worker)
+      workerLease: clone(formed.leases.worker),
+      successorContextAuthorization: successorContextAuthorization ? clone(successorContextAuthorization) : null
+    };
+  }
+
+  resumeContinuation({
+    graph,
+    options,
+    contextInput,
+    sourceBindings,
+    authorizeObservationRef = null
+  }) {
+    const continuation = this.#state.aggregate.value.continuations.at(-1);
+    if (!continuation) throw new Error('no preempted continuation is ready');
+    const result = this.resume(continuation.checkpointRef, {
+      graph,
+      options,
+      contextInput,
+      sourceBindings,
+      authorizeObservationRef
+    });
+    return { ...result, state: 'PREEMPTED_WORK_RESUMED', continuation };
+  }
+
+  #closeUnownedRelayCalls({ releaseReceiptRef, releasedAt, reason }) {
+    const retained = new Set(this.#state.aggregate.value.continuations
+      .map((item) => item.pendingToolCallRef)
+      .filter((ref) => ref && ref !== 'NONE'));
+    for (const entry of this.#relay?.snapshot.entries ?? []) {
+      if (!['PENDING', 'HELD', 'ACCEPTED'].includes(entry.state)) continue;
+      if (entry.state === 'HELD' && retained.has(entry.toolCallRef)) continue;
+      this.#relay.cancel(entry.toolCallRef, {
+        receiptRef: `${releaseReceiptRef}.tool.${entry.toolCallRef}`,
+        closedAt: releasedAt,
+        reason
+      });
+    }
+  }
+
+  completeActive({
+    completionReceipt,
+    currentNodeFingerprint,
+    expectedTransitionRef,
+    completionGateRefs,
+    returnRouteRef,
+    releaseReceiptRef,
+    completedAt
+  }) {
+    const aggregate = this.#state.aggregate.value;
+    if (!aggregate.active) throw new Error('no active worker lease to complete');
+    const admission = aggregate.queue.admissionReceipt;
+    const exact = createWorkCompletionReceipt(completionReceipt);
+    requireExactRefs(completionGateRefs, admission.completionGateRefs, 'completion gates');
+    for (const [field, expected] of [
+      ['workNodeRef', aggregate.active.workNodeRef],
+      ['nodeFingerprint', currentNodeFingerprint],
+      ['graphFingerprint', aggregate.active.graphFingerprint],
+      ['runtimeSnapshotFingerprint', aggregate.active.runtimeSnapshotFingerprint],
+      ['schedulerGeneration', aggregate.active.schedulerGeneration],
+      ['expectedTransitionRef', expectedTransitionRef],
+      ['returnRouteRef', returnRouteRef],
+      ['completedAt', completedAt]
+    ]) if (exact[field] !== expected) throw new Error(`completion receipt ${field} mismatch`);
+    if (currentNodeFingerprint !== admission.nodeFingerprint ||
+        expectedTransitionRef !== admission.expectedTransitionRef ||
+        returnRouteRef !== admission.returnRouteRef) {
+      throw new Error('completion evidence does not match current admitted node transition');
+    }
+    requireExactRefs(exact.completionGateRefs, admission.completionGateRefs, 'completion receipt gates');
+    this.#closeUnownedRelayCalls({ releaseReceiptRef, releasedAt: completedAt, reason: 'WORK_COMPLETED' });
+    const transitions = this.#transitionActiveLeases({
+      releaseReceiptRef,
+      transitionedAt: completedAt,
+      reason: 'WORK_COMPLETED',
+      lifecycle: 'RELEASED'
+    });
+    const returnRouteReceipt = finalized({
+      schemaVersion: 'vexlife.intent-return-route-receipt/v1',
+      returnRouteReceiptRef: `${exact.completionReceiptRef}.return-route`,
+      completionReceiptRef: exact.completionReceiptRef,
+      workNodeRef: exact.workNodeRef,
+      graphFingerprint: exact.graphFingerprint,
+      schedulerGeneration: exact.schedulerGeneration,
+      expectedTransitionRef,
+      returnRouteRef,
+      state: 'RETURN_ROUTE_PRESERVED',
+      completedAt
+    });
+    const queue = consumeAdmission(aggregate.queue, {
+      state: 'COMPLETED',
+      lifecycle: 'CLOSED',
+      transitionedAt: completedAt,
+      reason: 'WORK_COMPLETED',
+      transitionedLeases: transitions.transitionedLeases
+    });
+    this.#commit({
+      type: 'COMPLETED',
+      transitionRef: `transition.intent-scheduler.complete.${aggregate.generation}`,
+      queue,
+      transitionedLeases: transitions.transitionedLeases,
+      completionReceipt: exact,
+      returnRouteReceipt,
+      relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,
+      observedClock: observedClockReceipt(completedAt, `clock.intent-scheduler.complete.${aggregate.generation}`)
+    });
+    return {
+      changed: true,
+      state: this.#state.aggregate.value.phase,
+      completionReceipt: clone(exact),
+      returnRouteReceipt: clone(returnRouteReceipt),
+      leaseTransitionReceipts: transitions.receipts,
+      transitionedLeases: transitions.transitionedLeases,
+      continuation: clone(this.#state.aggregate.value.continuations.at(-1) ?? null),
+      relayLedger: this.#relay?.snapshot ?? null
     };
   }
 
   cancelActive({ releaseReceiptRef, releasedAt, reason = 'CANCELLED_BY_CALLER' }) {
     const aggregate = this.#state.aggregate.value;
     if (!aggregate.active) return { changed: false, reason: 'NO_ACTIVE_WORK' };
-    for (const entry of this.#relay?.snapshot.entries ?? []) {
-      if (['PENDING', 'HELD', 'ACCEPTED'].includes(entry.state) &&
-          entry.call?.cancellationTokenRef === aggregate.active.cancellationTokenRef) {
-        this.#relay.cancel(entry.toolCallRef, {
-          receiptRef: `${releaseReceiptRef}.tool.${entry.toolCallRef}`,
-          closedAt: releasedAt,
-          reason
-        });
-      }
-    }
+    this.#closeUnownedRelayCalls({ releaseReceiptRef, releasedAt, reason });
     const transitions = this.#transitionActiveLeases({
       releaseReceiptRef,
       transitionedAt: releasedAt,
@@ -1125,14 +1421,16 @@ export class SingleWorkerIntentScheduler {
       transitionRef: `transition.intent-scheduler.cancel.${aggregate.generation}`,
       queue,
       transitionedLeases: transitions.transitionedLeases,
-      relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger
+      relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,
+      observedClock: observedClockReceipt(releasedAt, `clock.intent-scheduler.cancel.${aggregate.generation}`)
     });
     return {
       changed: true,
       cancellationReceipt,
       leaseTransitionReceipts: transitions.receipts,
       transitionedLeases: transitions.transitionedLeases,
-      relayLedger: this.#relay?.snapshot ?? null
+      relayLedger: this.#relay?.snapshot ?? null,
+      continuation: clone(this.#state.aggregate.value.continuations.at(-1) ?? null)
     };
   }
 

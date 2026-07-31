@@ -268,6 +268,9 @@
     "resourceSnapshotFingerprint",
     "sourceBindings",
     "leaseReleaseReceipts",
+    "leaseReleaseLifecycle",
+    "priorLeaseFingerprints",
+    "transitionedLeaseFingerprints",
     "formedAt",
     "semanticFingerprint"
   ],
@@ -415,11 +418,11 @@
       "WORKER_LEASED",
       "MOCK_TOOL_PROPOSED",
       "MOCK_TOOL_RESULT_ACCEPTED",
-      "OBSERVATION_REINJECTED_ONCE",
       "CHECKPOINT_RELEASED",
       "FRESH_RESOURCE_OBSERVED",
       "FRESH_GENERATION_RESUMED",
-      "CANCELLED_CLOSED"
+      "OBSERVATION_REINJECTED_ONCE",
+      "COMPLETED_CLOSED"
     ],
     "externalEffectsExecuted": false
   },
@@ -468,7 +471,13 @@
     "test.intent-scheduler.tool-result-reinjection",
     "test.intent-scheduler.cancellation-lineage",
     "test.intent-scheduler.bounded-projections",
-    "test.intent-scheduler.full-gate"
+    "test.intent-scheduler.full-gate",
+    "test.intent-scheduler.normal-completion",
+    "test.intent-scheduler.preemption-continuation",
+    "test.intent-scheduler.checkpoint-exact-release-set",
+    "test.intent-scheduler.durable-held-tool",
+    "test.intent-scheduler.live-clock",
+    "test.intent-scheduler.safe-receipt-path"
   ],
   "successorBoundaries": [
     "Intent Orchestration 3/3 Burden Release and Continuity Evolution Router is registration-only and held.",

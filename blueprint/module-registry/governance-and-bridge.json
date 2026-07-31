@@ -131,7 +131,7 @@
   {
     "moduleRef": "module.vexlife.script.health-check",
     "path": "scripts/health-check.mjs",
-    "role": "Validates registered repository health, exact PR-ready bindings and the current complete scheduler simulation receipt before emitting a compact health state.",
+    "role": "Validates registered repository health, a safe generated receipt path, exact PR-ready bindings and the current complete scheduler simulation receipt before emitting a compact health state.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "module.vexlife.core.build-health",

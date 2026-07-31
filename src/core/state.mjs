@@ -50,7 +50,10 @@ export function createInitialSchedulerAggregate() {
     active: null,
     resource: null,
     runtimeTrust: null,
+    observedClock: null,
     checkpoints: [],
+    continuations: [],
+    terminalReceipts: [],
     fairnessLedger: {},
     pendingPreemption: null,
     leaseLedger: {},
@@ -82,6 +85,7 @@ export function reduceSchedulerAggregate(current, event) {
       next.runtimeTrust = clone(event.runtimeTrustSnapshot);
       next.fairnessLedger = clone(event.fairnessLedger);
       next.pendingPreemption = null;
+      if (event.observedClock) next.observedClock = clone(event.observedClock);
       break;
     case 'LEASED':
       next.phase = 'RUNNING';
@@ -99,7 +103,18 @@ export function reduceSchedulerAggregate(current, event) {
       next.checkpoints = [...next.checkpoints, clone(event.checkpoint)];
       for (const lease of Object.values(event.transitionedLeases)) next.leaseLedger[lease.leaseRef] = clone(lease);
       next.pendingPreemption = event.pendingPreemption ? clone(event.pendingPreemption) : null;
+      if (event.pendingPreemption && !next.continuations.some((item) => item.checkpointRef === event.checkpoint.checkpointRef)) {
+        next.continuations.push({
+          checkpointRef: event.checkpoint.checkpointRef,
+          workNodeRef: event.checkpoint.workNodeRef,
+          graphFingerprint: event.checkpoint.graphFingerprint,
+          priorSchedulerGeneration: event.checkpoint.priorSchedulerGeneration,
+          pendingToolCallRef: event.checkpoint.pendingToolCallRef,
+          state: 'PREEMPTED_PAUSED'
+        });
+      }
       if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
+      if (event.observedClock) next.observedClock = clone(event.observedClock);
       break;
     case 'RESUMED':
       next.phase = 'RUNNING';
@@ -116,13 +131,30 @@ export function reduceSchedulerAggregate(current, event) {
       );
       for (const lease of Object.values(event.leases)) next.leaseLedger[lease.leaseRef] = clone(lease);
       next.pendingPreemption = null;
+      if (event.checkpointRef) {
+        next.continuations = next.continuations.filter((item) => item.checkpointRef !== event.checkpointRef);
+      }
+      if (event.observedClock) next.observedClock = clone(event.observedClock);
+      break;
+    case 'COMPLETED':
+      next.phase = next.continuations.length ? 'CONTINUATION_READY' : 'COMPLETED';
+      next.active = null;
+      next.queue = clone(event.queue);
+      for (const lease of Object.values(event.transitionedLeases)) next.leaseLedger[lease.leaseRef] = clone(lease);
+      next.terminalReceipts.push(clone(event.completionReceipt), clone(event.returnRouteReceipt));
+      if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
+      if (event.observedClock) next.observedClock = clone(event.observedClock);
       break;
     case 'CANCELLED':
-      next.phase = 'CANCELLED';
+      next.phase = next.continuations.length ? 'CONTINUATION_READY' : 'CANCELLED';
       next.active = null;
       next.queue = clone(event.queue);
       for (const lease of Object.values(event.transitionedLeases)) next.leaseLedger[lease.leaseRef] = clone(lease);
       if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
+      if (event.observedClock) next.observedClock = clone(event.observedClock);
+      break;
+    case 'CLOCK_ADVANCED':
+      next.observedClock = clone(event.observedClock);
       break;
     case 'RELAY_SYNC':
       next.relayLedger = clone(event.relayLedger);
@@ -149,18 +181,29 @@ function runtimeHealth(aggregate) {
   }
   if (aggregate.active) {
     const expires = Date.parse(aggregate.active.expiresAt);
-    const observed = Date.parse(aggregate.active.observedAt);
+    const observed = Date.parse(aggregate.observedClock?.observedAt ?? aggregate.active.observedAt);
     if (!Number.isFinite(expires) || !Number.isFinite(observed) || observed >= expires) {
       blocking.push('ACTIVE_WORKER_LEASE_EXPIRED');
     }
     for (const leaseRef of aggregate.active.leaseRefs ?? []) {
-      if (aggregate.leaseLedger[leaseRef]?.lifecycle !== 'ACTIVE') blocking.push(`ACTIVE_LEASE_NOT_CURRENT:${leaseRef}`);
+      const lease = aggregate.leaseLedger[leaseRef];
+      if (lease?.lifecycle !== 'ACTIVE') blocking.push(`ACTIVE_LEASE_NOT_CURRENT:${leaseRef}`);
+      if (Number.isFinite(observed) && observed >= Date.parse(lease?.expiresAt)) {
+        blocking.push(`ACTIVE_LEASE_EXPIRED:${leaseRef}`);
+      }
     }
+    if (Number.isFinite(observed) && observed >= Date.parse(aggregate.resource?.expiresAt)) blocking.push('RESOURCE_EVIDENCE_EXPIRED');
+    if (Number.isFinite(observed) && observed >= Date.parse(aggregate.runtimeTrust?.expiresAt)) blocking.push('RUNTIME_EVIDENCE_EXPIRED');
   }
   const openRelayEntries = (aggregate.relayLedger?.entries ?? []).filter((item) => ['PENDING', 'HELD'].includes(item.state));
   for (const entry of openRelayEntries) {
     const heldAtCheckpoint = aggregate.phase === 'PAUSED' && entry.state === 'HELD';
-    if (!aggregate.active && !heldAtCheckpoint) blocking.push(`ORPHANED_PENDING_TOOL_CALL:${entry.toolCallRef}`);
+    const heldForContinuation = entry.state === 'HELD' && aggregate.continuations.some((item) =>
+      item.pendingToolCallRef === entry.toolCallRef
+    );
+    if (!aggregate.active && !heldAtCheckpoint && !heldForContinuation) {
+      blocking.push(`ORPHANED_PENDING_TOOL_CALL:${entry.toolCallRef}`);
+    }
   }
   const terminalLeases = Object.values(aggregate.leaseLedger ?? {}).filter((lease) =>
     ['RELEASED', 'SUPERSEDED', 'CANCELLED'].includes(lease.lifecycle)
@@ -168,6 +211,8 @@ function runtimeHealth(aggregate) {
   if (terminalLeases.length && !aggregate.active) attention.push('LEASES_RELEASED');
   if (aggregate.phase === 'PAUSED') attention.push('WORK_PAUSED_AT_CHECKPOINT');
   if (aggregate.phase === 'CANCELLED') attention.push('WORK_CANCELLED_CLOSED');
+  if (aggregate.phase === 'COMPLETED') attention.push('WORK_COMPLETED_CLOSED');
+  if (aggregate.phase === 'CONTINUATION_READY') attention.push('PREEMPTED_WORK_CONTINUATION_READY');
   if (aggregate.queue.state === 'BLOCKED') blocking.push(...(aggregate.queue.blocked ?? [])
     .flatMap((item) => item.reasonRefs ?? [])
     .slice(0, 8));
@@ -211,6 +256,8 @@ export function createIntentSchedulerState({ aggregate = createInitialSchedulerA
       currentState: item.currentState,
       nextSafeAction: item.nextSafeAction
     })),
+    observedClock: current.observedClock ? clone(current.observedClock) : null,
+    continuations: current.continuations.map((item) => clone(item)),
     pendingPreemption: current.pendingPreemption ? {
       incomingWorkNodeRef: current.pendingPreemption.incomingWorkNodeRef,
       admissionReceiptRef: current.pendingPreemption.admissionReceiptRef,
@@ -259,6 +306,10 @@ export function createIntentSchedulerState({ aggregate = createInitialSchedulerA
         ? `PAUSED:${value.checkpoints.at(-1)?.workNodeRef ?? 'UNKNOWN'}`
         : value.phase === 'CANCELLED'
           ? 'CANCELLED:CLOSED'
+          : value.phase === 'COMPLETED'
+            ? 'COMPLETED:CLOSED'
+            : value.phase === 'CONTINUATION_READY'
+              ? `CONTINUATION_READY:${value.continuations.at(-1)?.workNodeRef ?? 'UNKNOWN'}`
           : value.queue.selectedWorkNodeRef
             ? `READY:${value.queue.selectedWorkNodeRef}`
             : 'NO_ADMITTED_WORK',
@@ -269,6 +320,10 @@ export function createIntentSchedulerState({ aggregate = createInitialSchedulerA
         ? 'FORM_FRESH_RUNTIME_AND_RESUME'
         : value.phase === 'CANCELLED'
           ? 'NO_ACTION_CLOSED'
+          : value.phase === 'COMPLETED'
+            ? 'NO_ACTION_CLOSED'
+            : value.phase === 'CONTINUATION_READY'
+              ? 'FORM_FRESH_RUNTIME_AND_RESUME_PREEMPTED_WORK'
           : value.queue.selectedWorkNodeRef
             ? 'LEASE_SELECTED_NODE'
             : 'REPAIR_OR_WAIT',

@@ -1049,7 +1049,7 @@
   {
     "processRef": "process.vexlife.intent.scheduler-checkpoint-resume",
     "processVersion": 1,
-    "purpose": "Pause only at a declared safe checkpoint, transactionally consume admission and every active lease, and resume via normal fresh-generation selection only after exact revalidation.",
+    "purpose": "Complete normally or pause at a scheduler-derived safe checkpoint, transactionally transition exactly six active leases with one explicit lifecycle, and resume preserved continuations through fresh exact admission.",
     "applicabilityRules": [
       "one active worker lease exists or one preserved checkpoint is selected"
     ],
@@ -1066,7 +1066,8 @@
     ],
     "sourceResolutionRules": [
       "resolve exact checkpoint and immutable release receipts",
-      "revalidate paired source refs and hashes"
+      "revalidate paired source refs and hashes",
+      "resolve exact node completion gates, expected transition and return route"
     ],
     "preconditions": [
       "pause occurs only after lastCompletedStep",
@@ -1076,6 +1077,7 @@
     "steps": [
       "record-safe-checkpoint",
       "transactionally-release-worker-context-resource-occupancy-capability-effect-and-admission",
+      "complete-with-one-current-receipt-or-preserve-preempted-continuation",
       "revalidate-graph-trust-resource-capability-effect-source",
       "re-admit-and-select-fresh-generation-or-route-recovery"
     ],
@@ -1094,7 +1096,9 @@
       "READY",
       "BLOCKED",
       "HELD_UNKNOWN",
-      "CANCELLED"
+      "CANCELLED",
+      "COMPLETED",
+      "CONTINUATION_READY"
     ],
     "returnRouteRule": "return exact resume admission or recovery reason",
     "closureRule": "checkpoint closes only after resume, cancellation or explicit recovery disposition",
@@ -1115,13 +1119,16 @@
     "testRefs": [
       "test.intent-scheduler.checkpoint-release",
       "test.intent-scheduler.resume-revalidate",
-      "test.intent-scheduler.cancellation-lineage"
+      "test.intent-scheduler.cancellation-lineage",
+      "test.intent-scheduler.normal-completion",
+      "test.intent-scheduler.preemption-continuation",
+      "test.intent-scheduler.checkpoint-exact-release-set"
     ]
   },
   {
     "processRef": "process.vexlife.intent.scheduler-tool-relay",
     "processVersion": 1,
-    "purpose": "Resolve one canonical typed mock tool/effect/schema/executor contract, durably validate its exact active runtime and lease context, and accept exactly one matching bounded result for origin-or-authorized-successor reinjection.",
+    "purpose": "Resolve one canonical typed mock tool/effect/schema/executor contract, durably restore and validate its exact history, transition held calls through explicit continuation actions, and accept one bounded result for scheduler-authorized reinjection.",
     "applicabilityRules": [
       "one active context lease and exact pending mock tool call exist"
     ],
@@ -1152,6 +1159,8 @@
     "steps": [
       "validate-typed-call-and-leases",
       "durably-register-one-pending-call",
+      "restore-and-revalidate-ledger-call-observation-and-transition-fingerprints",
+      "resume-reissue-supersede-or-close-held-call-against-successor-lease",
       "match-result-schema-node-tool-effect-context-generation",
       "close-cancelled-or-expired-call",
       "reinject-one-bounded-observation-to-origin-or-authorized-successor"
@@ -1190,13 +1199,14 @@
     "testRefs": [
       "test.intent-scheduler.tool-lease-boundary",
       "test.intent-scheduler.tool-result-rejection",
-      "test.intent-scheduler.tool-result-reinjection"
+      "test.intent-scheduler.tool-result-reinjection",
+      "test.intent-scheduler.durable-held-tool"
     ]
   },
   {
     "processRef": "process.vexlife.intent.scheduler-project-runtime",
     "processVersion": 1,
-    "purpose": "Derive compact Intent Queue, Terrain, Health and Guide projections from one canonical scheduler aggregate without duplicating queue, active, generation, lease or relay truth.",
+    "purpose": "Derive compact Intent Queue, Terrain, Health and Guide projections from one canonical scheduler aggregate without duplicating observed-clock, completion, continuation, queue, active, lease or relay truth.",
     "applicabilityRules": [
       "scheduler state owner exists"
     ],
@@ -1212,7 +1222,8 @@
     ],
     "preconditions": [
       "raw machine dumps remain excluded",
-      "released, expired, orphaned or cancelled leases never project CLEAR"
+      "released, expired, orphaned or cancelled leases never project CLEAR",
+      "clock advancement recomputes currentness without another model turn"
     ],
     "steps": [
       "read-one-canonical-aggregate",
@@ -1256,7 +1267,8 @@
     ],
     "testRefs": [
       "test.intent-scheduler.context-no-op",
-      "test.intent-scheduler.bounded-projections"
+      "test.intent-scheduler.bounded-projections",
+      "test.intent-scheduler.live-clock"
     ]
   }
 ]

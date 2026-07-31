@@ -149,7 +149,7 @@
   },
   {
     "workRef": "work.vexlife.intent-orchestration-scheduler",
-    "purpose": "Implement Intent Orchestration 2/3 as canonical single-worker scheduling with externally current runtime evidence, scheduler-owned fairness, transactionally consumed exact leases, fresh-generation checkpoint recovery, restart-safe exact-context mock tool-result reinjection, bounded projections and a complete deterministic no-effect Health receipt.",
+    "purpose": "Implement Intent Orchestration 2/3 as canonical single-worker scheduling with live-clock evidence, exact normal completion, preserved preemption continuations, scheduler-derived six-lease checkpoints, durable held-tool relay, scheduler-authorized successor contexts, safe receipt paths and a deterministic no-effect Health receipt.",
     "distance": "NOW",
     "milestoneRef": "milestone.vexlife.work-orchestration",
     "dependsOn": [
@@ -178,12 +178,14 @@
       "src/core/intent-checkpoint.mjs",
       "src/core/tool-result-relay.mjs",
       "src/core/state.mjs",
+      "src/core/utils.mjs",
       "scripts/scheduler-check.mjs",
       "scripts/scheduler-simulate.mjs",
       "scripts/scheduler-status.mjs",
       "scripts/pr-ready.mjs",
       "scripts/health-check.mjs",
       "test/intent-scheduler.test.mjs",
+      "test/foundation-health.test.mjs",
       "test/registry.test.mjs",
       "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
       "README.md",
@@ -216,7 +218,13 @@
       "test.intent-scheduler.tool-result-reinjection",
       "test.intent-scheduler.cancellation-lineage",
       "test.intent-scheduler.bounded-projections",
-      "test.intent-scheduler.full-gate"
+      "test.intent-scheduler.full-gate",
+      "test.intent-scheduler.normal-completion",
+      "test.intent-scheduler.preemption-continuation",
+      "test.intent-scheduler.checkpoint-exact-release-set",
+      "test.intent-scheduler.durable-held-tool",
+      "test.intent-scheduler.live-clock",
+      "test.intent-scheduler.safe-receipt-path"
     ],
     "outputRefs": [
       "registry.vexlife.intent-scheduler.001",

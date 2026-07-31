@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import {
+  createWorkCompletionReceipt,
   SingleWorkerIntentScheduler,
   WorkerLeaseAuthority
 } from '../src/core/intent-scheduler.mjs';
@@ -18,7 +19,12 @@ import { createResourceSnapshot } from '../src/core/resource-admission.mjs';
 import { createSchedulerRuntimeTrustSnapshot } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 import { createToolCall, ToolResultRelay } from '../src/core/tool-result-relay.mjs';
-import { readJson, semanticHash, writeJson } from '../src/core/utils.mjs';
+import {
+  readJson,
+  resolveSafeGeneratedReceiptPath,
+  semanticHash,
+  writeJson
+} from '../src/core/utils.mjs';
 
 const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FORMED = '2026-07-31T00:00:00.000Z';
@@ -194,9 +200,7 @@ function schedulerOptions({
 function contextInput(generation, {
   formedAt,
   observedAt,
-  expiresAt,
-  successorOfContextLeaseRef = null,
-  authorizedObservationRefs = []
+  expiresAt
 }) {
   return {
     leaseRef: `context-lease.scheduler.simulation.${generation}`,
@@ -218,9 +222,7 @@ function contextInput(generation, {
     formedAt,
     observedAt,
     expiresAt,
-    checkpointReturnRef: 'return-route.intent.verify-transition',
-    successorOfContextLeaseRef,
-    authorizedObservationRefs
+    checkpointReturnRef: 'return-route.intent.verify-transition'
   };
 }
 
@@ -260,6 +262,11 @@ export function runSchedulerSimulation({
   const bundle = loadBlueprint(root);
   const registry = bundle.intentRegistry;
   const schedulerRegistry = bundle.schedulerRegistry;
+  const target = resolveSafeGeneratedReceiptPath(
+    root,
+    receiptPath ?? schedulerRegistry.simulationContract.receiptPath,
+    'scheduler simulation receipt path'
+  );
   const trustSnapshot = readJson(path.join(root, 'blueprint/intent-trust-snapshot.json'));
   const journeyStates = ['WORKGRAPH_VALIDATED'];
 
@@ -357,7 +364,7 @@ export function runSchedulerSimulation({
     observedAt: OBSERVED,
     expiresAt: EXPIRES
   });
-  const relay = new ToolResultRelay();
+  const relay = new ToolResultRelay(null, { schedulerRegistry });
   const authority = new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef });
   const scheduler = new SingleWorkerIntentScheduler({
     workerRef: runtimeOne.workerRef,
@@ -408,11 +415,6 @@ export function runSchedulerSimulation({
   });
   if (!accepted.accepted) throw new Error(`simulation mock result was rejected: ${accepted.reason}`);
   journeyStates.push('MOCK_TOOL_RESULT_ACCEPTED');
-  const reinjected = relay.reinject(running.contextLease, accepted.observation, { observedAt: RESULT_AT });
-  if (!reinjected.accepted) throw new Error(`simulation observation was not reinjected: ${reinjected.reason}`);
-  scheduler.syncRelayState();
-  journeyStates.push('OBSERVATION_REINJECTED_ONCE');
-
   const sourceBindings = [{
     sourceRef: 'blueprint/intent-scheduler-registry.json',
     sourceHash: semanticHash(schedulerRegistry)
@@ -471,22 +473,68 @@ export function runSchedulerSimulation({
     contextInput: contextInput(2, {
       formedAt: RESUME_FORMED,
       observedAt: RESUME_OBSERVED,
-      expiresAt: RESUME_EXPIRES,
-      successorOfContextLeaseRef: running.contextLease.leaseRef,
-      authorizedObservationRefs: [accepted.observation.observationRef]
-    })
+      expiresAt: RESUME_EXPIRES
+    }),
+    authorizeObservationRef: accepted.observation.observationRef
   });
   if (resumed.state !== 'RESUMED') throw new Error('simulation did not resume with fresh generation');
   journeyStates.push('FRESH_GENERATION_RESUMED');
-  const cancelled = scheduler.cancelActive({
-    releaseReceiptRef: 'release.scheduler.simulation.cancel.2',
-    releasedAt: CANCEL_AT,
-    reason: 'SIMULATION_COMPLETE'
+  const reinjected = relay.reinject(resumed.contextLease, accepted.observation, { observedAt: RESUME_OBSERVED });
+  if (!reinjected.accepted) throw new Error(`simulation successor observation was not reinjected: ${reinjected.reason}`);
+  scheduler.syncRelayState();
+  journeyStates.push('OBSERVATION_REINJECTED_ONCE');
+  const completionReceipt = createWorkCompletionReceipt({
+    completionReceiptRef: 'receipt.scheduler.simulation.completion.2',
+    workNodeRef: node.workNodeRef,
+    nodeFingerprint: node.semanticFingerprint,
+    graphFingerprint: graph.semanticFingerprint,
+    runtimeSnapshotFingerprint: runtimeTwo.semanticFingerprint,
+    schedulerGeneration: 2,
+    expectedTransitionRef: node.expectedTransitionRef,
+    completionGateRefs: node.completionGateRefs,
+    returnRouteRef: node.returnRouteRef,
+    completedAt: CANCEL_AT,
+    currentness: 'CURRENT',
+    lifecycle: 'ACTIVE',
+    state: 'COMPLETED'
   });
-  if (!cancelled.changed || scheduler.projections.health.value.state === 'CLEAR') {
-    throw new Error('simulation cancellation did not close leases or remained incorrectly CLEAR');
+  const completed = scheduler.completeActive({
+    completionReceipt,
+    currentNodeFingerprint: node.semanticFingerprint,
+    expectedTransitionRef: node.expectedTransitionRef,
+    completionGateRefs: node.completionGateRefs,
+    returnRouteRef: node.returnRouteRef,
+    releaseReceiptRef: 'release.scheduler.simulation.complete.2',
+    completedAt: CANCEL_AT
+  });
+  if (!completed.changed || scheduler.aggregate.phase !== 'COMPLETED' || scheduler.projections.health.value.state === 'CLEAR') {
+    throw new Error('simulation normal completion did not close leases distinctly');
   }
-  journeyStates.push('CANCELLED_CLOSED');
+  journeyStates.push('COMPLETED_CLOSED');
+
+  const cancellationRelay = new ToolResultRelay(null, { schedulerRegistry });
+  const cancellationScheduler = new SingleWorkerIntentScheduler({
+    workerRef: runtimeOne.workerRef,
+    schedulerInstanceRef: 'instance.intent-scheduler.simulation.cancellation',
+    schedulerRegistry,
+    runtimeAuthority: authority,
+    toolRelay: cancellationRelay
+  });
+  cancellationScheduler.admit(graph, optionsOne);
+  const cancellationRunning = cancellationScheduler.leaseSelected(contextInput(1, {
+    formedAt: FORMED,
+    observedAt: OBSERVED,
+    expiresAt: EXPIRES
+  }));
+  if (!cancellationRunning.admitted) throw new Error('separate cancellation journey could not lease worker');
+  const cancelled = cancellationScheduler.cancelActive({
+    releaseReceiptRef: 'release.scheduler.simulation.cancellation-alternative',
+    releasedAt: CHECKPOINT_AT,
+    reason: 'SIMULATED_USER_CANCELLED'
+  });
+  if (!cancelled.changed || cancellationScheduler.aggregate.phase !== 'CANCELLED') {
+    throw new Error('separate cancellation journey did not close as cancellation');
+  }
 
   const requiredJourney = schedulerRegistry.simulationContract.requiredJourneyStates;
   const journeyComplete = JSON.stringify(journeyStates) === JSON.stringify(requiredJourney);
@@ -512,7 +560,7 @@ export function runSchedulerSimulation({
       effect: resumed.effectLease.semanticFingerprint,
       occupancy: resumed.occupancy.semanticFingerprint
     },
-    cancelled: Object.fromEntries(Object.entries(cancelled.transitionedLeases)
+    completed: Object.fromEntries(Object.entries(completed.transitionedLeases)
       .map(([key, lease]) => [key, lease.semanticFingerprint]))
   };
   const receipt = {
@@ -552,7 +600,15 @@ export function runSchedulerSimulation({
     toolCallFingerprint: toolCall.semanticFingerprint,
     observationFingerprint: accepted.observation.semanticFingerprint,
     checkpointFingerprint: checkpointed.checkpoint.semanticFingerprint,
-    cancellationFingerprint: cancelled.cancellationReceipt.semanticFingerprint,
+    completionFingerprint: completed.completionReceipt.semanticFingerprint,
+    returnRouteFingerprint: completed.returnRouteReceipt.semanticFingerprint,
+    successorAuthorizationFingerprint: resumed.successorContextAuthorization.semanticFingerprint,
+    separateCancellationFingerprint: cancelled.cancellationReceipt.semanticFingerprint,
+    separateCancellationProof: {
+      phase: cancellationScheduler.aggregate.phase,
+      cancellationReceiptFingerprint: cancelled.cancellationReceipt.semanticFingerprint,
+      leaseLifecycle: [...new Set(Object.values(cancelled.transitionedLeases).map((lease) => lease.lifecycle))]
+    },
     relayLedgerFingerprint: relay.snapshot.semanticFingerprint,
     finalAggregateFingerprint: scheduler.aggregate.semanticFingerprint,
     finalProjection: {
@@ -567,7 +623,6 @@ export function runSchedulerSimulation({
     formedAt: new Date().toISOString()
   };
   receipt.semanticFingerprint = semanticHash(receipt);
-  const target = path.resolve(root, receiptPath ?? schedulerRegistry.simulationContract.receiptPath);
   if (writeReceipt) {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     writeJson(target, receipt);

@@ -192,7 +192,7 @@ npm run intent:check             # immutable intent and deterministic workgraph 
 npm run intent:plan -- --fixture <safe-repository-relative-json-path>
 npm run intent:status -- --graph <safe-repository-relative-json-path>
 npm run scheduler:check          # canonical scheduler composition plus complete deterministic lifecycle receipt
-npm run scheduler:simulate       # fake-model/mock-tool lease→checkpoint→fresh-resume→cancel; no external effects
+npm run scheduler:simulate       # fake-model/mock-tool checkpoint→fresh-resume→complete plus separate cancel; no effects
 npm run scheduler:status -- --fixture <safe-repository-relative-json-path>
 npm run localization:check       # required visible strings across supported languages
 npm run check                    # complete deterministic foundation gate
@@ -218,10 +218,12 @@ merge, publication, native-platform, or model authority.
 The shared [Intent Orchestration Scheduler](docs/INTENT-ORCHESTRATION-SCHEDULER.md)
 adds externally current runtime admission, one physical model-worker lease,
 scheduler-owned fairness, transactionally consumed
-context/resource/capability/effect leases, checkpoint-to-fresh-generation
-preemption and restart-safe exact-context mock tool-result reinjection. Logical
+context/resource/capability/effect leases, exact normal completion, preserved
+checkpoint-to-fresh-generation preemption continuations, durable held-tool
+relay, scheduler-authorized successor contexts, and live-clock expiry. Logical
 ready branches remain visible records, while Queue, Terrain, Health and Guide
-derive from one canonical aggregate. This contract provisions no real model and
+derive from one canonical aggregate. Effectful receipt arguments are confined
+to safe `generated/health/**` paths. This contract provisions no real model and
 executes no external effect.
 
 Run `npm run orient` before broad reading. Read only the returned

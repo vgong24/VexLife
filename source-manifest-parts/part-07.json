@@ -40,8 +40,8 @@
     {
       "path": "src/core/context-lease.mjs",
       "mode": "100644",
-      "bytes": 6823,
-      "sha256": "4c16e4a9409f402dc9bff2757e9e5f61fa6c3c3239e9a4ac2d9284c4c5a732ff"
+      "bytes": 11526,
+      "sha256": "3109d7e7075ba5508523704fe15e328d93f4d36cb04fe0e45e2abeec5225c456"
     },
     {
       "path": "src/core/conversation.mjs",
@@ -94,8 +94,8 @@
     {
       "path": "src/core/intent-checkpoint.mjs",
       "mode": "100644",
-      "bytes": 8639,
-      "sha256": "887bb6ccbe31fbe6741001f22a142143cc907519734335ecd27f36e0abc4c95c"
+      "bytes": 10659,
+      "sha256": "362321f878e75f75359f09f13ae2edbae525e72740ac38bd4504695774f21520"
     },
     {
       "path": "src/core/intent-projection.mjs",
@@ -106,8 +106,8 @@
     {
       "path": "src/core/intent-scheduler.mjs",
       "mode": "100644",
-      "bytes": 43347,
-      "sha256": "3025e29e57eb90c9a8a844064ea8a2d083bc24928010a144a6bc9011d9533192"
+      "bytes": 57196,
+      "sha256": "281e71659ab72999a6b38a32f7e48abe2b4424d068374aec7fb0518e8440e563"
     },
     {
       "path": "src/core/intent-validation.mjs",

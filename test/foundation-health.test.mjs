@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -134,7 +133,8 @@ test('health command accepts only an exact-head executed-current receipt', () =>
   const simulation = runSchedulerSimulation({ root: ROOT, writeReceipt: true }).receipt;
   const source = buildSourceManifest(ROOT);
   const repository = collectRepositoryEvidence(ROOT);
-  const receiptPath = path.join(os.tmpdir(), `vexlife-health-${process.pid}-${Date.now()}.json`);
+  const receiptArg = `generated/health/vexlife-health-${process.pid}-${Date.now()}.json`;
+  const receiptPath = path.join(ROOT, ...receiptArg.split('/'));
   const checkResults = bundle.buildHealth.checks.map((check) => ({
     checkRef: check.checkRef,
     semanticState: 'PASSED',
@@ -175,13 +175,13 @@ test('health command accepts only an exact-head executed-current receipt', () =>
   };
   try {
     fs.writeFileSync(receiptPath, JSON.stringify(receipt));
-    const current = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptPath], { cwd: ROOT, encoding: 'utf8' });
+    const current = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
     assert.equal(current.status, 0, current.stderr);
     assert.equal(JSON.parse(current.stdout).receiptState, 'EXECUTED_CURRENT');
     assert.equal(JSON.parse(current.stdout).state, 'HEALTHY');
 
     fs.writeFileSync(receiptPath, JSON.stringify({ ...receipt, candidateHeadSha: '0'.repeat(40) }));
-    const stale = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptPath], { cwd: ROOT, encoding: 'utf8' });
+    const stale = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
     assert.equal(stale.status, 1);
     assert.equal(JSON.parse(stale.stdout).receiptState, 'STALE');
     assert.equal(JSON.parse(stale.stdout).state, 'ATTENTION');
@@ -191,18 +191,30 @@ test('health command accepts only an exact-head executed-current receipt', () =>
       ...receipt,
       schedulerSimulation: { ...receipt.schedulerSimulation, semanticFingerprint: '0'.repeat(64) }
     }));
-    const unbound = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptPath], { cwd: ROOT, encoding: 'utf8' });
+    const unbound = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
     assert.equal(unbound.status, 1);
     assert.equal(JSON.parse(unbound.stdout).receiptState, 'INVALID');
     assert.match(JSON.parse(unbound.stdout).errors.join('\n'), /does not exactly bind/);
 
     fs.writeFileSync(receiptPath, JSON.stringify({ ...receipt, checkResults: checkResults.slice(1) }));
-    const incomplete = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptPath], { cwd: ROOT, encoding: 'utf8' });
+    const incomplete = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
     assert.equal(incomplete.status, 1);
     assert.equal(JSON.parse(incomplete.stdout).receiptState, 'INVALID');
     assert.match(JSON.parse(incomplete.stdout).errors.join('\n'), /check coverage/);
   } finally {
     fs.rmSync(receiptPath, { force: true });
+  }
+});
+
+test('effectful receipt CLI arguments fail closed outside generated/health', () => {
+  for (const [script, unsafe] of [
+    ['scripts/scheduler-simulate.mjs', '../scheduler-proof.json'],
+    ['scripts/pr-ready.mjs', 'artifacts/pr-ready.json'],
+    ['scripts/health-check.mjs', path.resolve(ROOT, 'generated/health/absolute.json')]
+  ]) {
+    const result = spawnSync(process.execPath, [script, '--receipt', unsafe], { cwd: ROOT, encoding: 'utf8' });
+    assert.notEqual(result.status, 0);
+    assert.match(`${result.stderr}\n${result.stdout}`, /safe relative path|under generated\/health/);
   }
 });
 

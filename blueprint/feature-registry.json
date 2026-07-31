@@ -662,7 +662,7 @@
     },
     {
       "featureRef": "feature.vexlife.intent-orchestration-scheduler",
-      "purpose": "Run accepted intent workgraphs through one deterministic physical model worker using canonical externally current runtime evidence, scheduler-owned fairness, transactionally consumed leases, safe fresh-generation resume, restart-safe once-only mock tool-result reinjection, and bounded human projections.",
+      "purpose": "Run accepted intent workgraphs through one deterministic physical model worker with exact normal completion, preserved preemption continuations, scheduler-derived checkpoints, durable held-tool relay, scheduler-authorized successor contexts, live-clock currentness, and bounded human projections.",
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.intent-scheduler",
@@ -723,7 +723,13 @@
         "test.intent-scheduler.tool-result-reinjection",
         "test.intent-scheduler.cancellation-lineage",
         "test.intent-scheduler.bounded-projections",
-        "test.intent-scheduler.full-gate"
+        "test.intent-scheduler.full-gate",
+        "test.intent-scheduler.normal-completion",
+        "test.intent-scheduler.preemption-continuation",
+        "test.intent-scheduler.checkpoint-exact-release-set",
+        "test.intent-scheduler.durable-held-tool",
+        "test.intent-scheduler.live-clock",
+        "test.intent-scheduler.safe-receipt-path"
       ],
       "platformRefs": [
         "platform.browser",

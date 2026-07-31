@@ -46,14 +46,14 @@
     {
       "path": "src/core/resource-admission.mjs",
       "mode": "100644",
-      "bytes": 8179,
-      "sha256": "be7c6358dd8887b408cfad889691ed55e274d7263a8150190cd3d5af7828455c"
+      "bytes": 8827,
+      "sha256": "bf8115c712f638e15e48bd68769a5f6ab3d032dcce0fb723b7a2edef715268b9"
     },
     {
       "path": "src/core/scheduler-runtime-trust.mjs",
       "mode": "100644",
-      "bytes": 24398,
-      "sha256": "1ffe8a33b816c78e3a9e69be6c8514ab2d35df58fc27f209f86c637038b8a59a"
+      "bytes": 24859,
+      "sha256": "663216f2169a95f5ae39f99385a4f1d198fbb808ba4c3b8cefaaf466f8abf01e"
     },
     {
       "path": "src/core/source-manifest.mjs",
@@ -70,8 +70,8 @@
     {
       "path": "src/core/state.mjs",
       "mode": "100644",
-      "bytes": 12009,
-      "sha256": "af349eca8b03409b49fd495105f98a5f5f60beb6f46702973ee6ed4064fe8e2a"
+      "bytes": 15210,
+      "sha256": "daecf32097cc4e045f65a65d735222b42ccfced185a51f669832b56ec34f8217"
     },
     {
       "path": "src/core/terrain.mjs",
@@ -82,14 +82,14 @@
     {
       "path": "src/core/tool-result-relay.mjs",
       "mode": "100644",
-      "bytes": 15327,
-      "sha256": "a92121366e6f593b86b1d5ded8fa39885bb7fd0f6ce86aae429b33a56b887de9"
+      "bytes": 25468,
+      "sha256": "3c6337229040dc63f741ea7d39d0f40351d75f96ea6a45dd84a1c667216e4f5a"
     },
     {
       "path": "src/core/utils.mjs",
       "mode": "100644",
-      "bytes": 1198,
-      "sha256": "c6b3ecea9d51072ac8c5014a57e2ebf085c83e3d6f82e22458c4a9d613d72b9c"
+      "bytes": 2222,
+      "sha256": "d08c8c46b27db6f4414762b7f83a23e20ba7c841c0c348c7e9ed06b1ba916a16"
     },
     {
       "path": "start-vexlife.cmd",

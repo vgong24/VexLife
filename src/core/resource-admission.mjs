@@ -149,6 +149,26 @@ export function evaluateResourceAdmission(snapshot, request = {}) {
   };
 }
 
+export function evaluateCurrentResourceAdmission(snapshot, request = {}, { observedAt } = {}) {
+  const admission = evaluateResourceAdmission(snapshot, request);
+  if (!admission.admitted) return admission;
+  try {
+    assertActiveInterval({
+      formedAt: snapshot.formedAt,
+      observedAt,
+      expiresAt: snapshot.expiresAt
+    }, 'resource admission observation');
+  } catch (error) {
+    return {
+      ...admission,
+      admitted: false,
+      state: 'BLOCKED',
+      reasons: [`RESOURCE_NOT_CURRENT_AT_ADMISSION:${error.message}`]
+    };
+  }
+  return admission;
+}
+
 export function createResourceLease({
   leaseRef,
   workerRef,
@@ -162,7 +182,7 @@ export function createResourceLease({
   expiresAt,
   observedAt
 }) {
-  const admission = evaluateResourceAdmission(resourceSnapshot, request);
+  const admission = evaluateCurrentResourceAdmission(resourceSnapshot, request, { observedAt });
   if (!admission.admitted) throw new Error(`resource admission failed: ${admission.reasons.join(', ')}`);
   if (!leaseRef || !workerRef || !workNodeRef || !graphFingerprint || !formedAt || !expiresAt || !observedAt) {
     throw new Error('resource lease requires exact lease, worker, node, graph, and canonical time bindings');
@@ -202,10 +222,12 @@ export function createResourceLease({
 export function releaseResourceLease(lease, {
   releaseReceiptRef,
   releasedAt,
-  reason = 'CHECKPOINT'
+  reason = 'CHECKPOINT',
+  lifecycle
 }) {
+  if (!lifecycle) throw new Error('resource lease release requires explicit lifecycle');
   const transitioned = transitionLease(lease, {
-    lifecycle: reason.includes('CANCEL') ? 'CANCELLED' : 'RELEASED',
+    lifecycle,
     receiptRef: releaseReceiptRef,
     transitionedAt: releasedAt,
     reason

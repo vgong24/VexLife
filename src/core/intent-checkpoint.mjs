@@ -30,6 +30,9 @@ const REQUIRED_FIELDS = [
   'resourceSnapshotFingerprint',
   'sourceBindings',
   'leaseReleaseReceipts',
+  'leaseReleaseLifecycle',
+  'priorLeaseFingerprints',
+  'transitionedLeaseFingerprints',
   'formedAt'
 ];
 
@@ -84,6 +87,50 @@ export function buildCheckpointFingerprint(checkpoint) {
   return semanticHash(candidate);
 }
 
+export function validateExactCheckpointReleaseSet(input) {
+  const kinds = ['worker', 'context', 'resource', 'capability', 'effect', 'occupancy'];
+  const priorRefs = {
+    worker: input.priorWorkerLeaseRef,
+    context: input.priorContextLeaseRef,
+    resource: input.priorResourceLeaseRef,
+    capability: input.priorCapabilityLeaseRef,
+    effect: input.priorEffectLeaseRef,
+    occupancy: input.priorOccupancyRef
+  };
+  const refs = Object.values(priorRefs);
+  if (refs.some((ref) => !ref) || new Set(refs).size !== kinds.length) {
+    throw new Error('checkpoint prior lease refs must identify six unique leases');
+  }
+  if (!['RELEASED', 'CANCELLED', 'SUPERSEDED'].includes(input.leaseReleaseLifecycle)) {
+    throw new Error('checkpoint release lifecycle is invalid');
+  }
+  if (!Array.isArray(input.leaseReleaseReceipts) || input.leaseReleaseReceipts.length !== kinds.length) {
+    throw new Error('checkpoint requires exactly six lease release receipts');
+  }
+  const receiptRefs = input.leaseReleaseReceipts.map((item) => item?.receiptRef);
+  if (receiptRefs.some((ref) => !ref) || new Set(receiptRefs).size !== kinds.length) {
+    throw new Error('checkpoint lease release receipt refs must be unique');
+  }
+  for (const kind of kinds) {
+    const matches = input.leaseReleaseReceipts.filter((item) => item.leaseRef === priorRefs[kind]);
+    if (matches.length !== 1) throw new Error(`checkpoint requires one exact ${kind} lease release receipt`);
+    const receipt = matches[0];
+    if (receipt.lifecycle !== input.leaseReleaseLifecycle) {
+      throw new Error('checkpoint lease release receipts must share one explicit lifecycle');
+    }
+    if (receipt.priorLeaseFingerprint !== input.priorLeaseFingerprints?.[kind] ||
+        receipt.transitionedLeaseFingerprint !== input.transitionedLeaseFingerprints?.[kind]) {
+      throw new Error(`checkpoint ${kind} lease release fingerprint mismatch`);
+    }
+    const semantic = clone(receipt);
+    delete semantic.semanticFingerprint;
+    if (semanticHash(semantic) !== receipt.semanticFingerprint) {
+      throw new Error(`checkpoint ${kind} lease release receipt fingerprint mismatch`);
+    }
+  }
+  return true;
+}
+
 export function createIntentCheckpoint(input) {
   const missing = REQUIRED_FIELDS.filter((field) => input?.[field] === undefined || input?.[field] === null || input?.[field] === '');
   if (missing.length) throw new Error(`checkpoint missing required fields: ${missing.join(', ')}`);
@@ -94,10 +141,7 @@ export function createIntentCheckpoint(input) {
     throw new Error('checkpoint currentState must be PAUSED_AT_CHECKPOINT');
   }
   parseCanonicalTimestamp(input.formedAt, 'checkpoint.formedAt');
-  const receiptStates = new Set((input.leaseReleaseReceipts ?? []).map((item) => item.lifecycle));
-  if (!receiptStates.has('RELEASED') || (input.leaseReleaseReceipts?.length ?? 0) < 5) {
-    throw new Error('checkpoint requires transactional release receipts for every active lease');
-  }
+  validateExactCheckpointReleaseSet(input);
   const checkpoint = {
     schemaVersion: 'vexlife.intent-checkpoint/v1',
     ...clone(input)
