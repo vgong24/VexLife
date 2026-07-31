@@ -247,6 +247,24 @@
         "lens.vexlife.resource-and-context"
       ],
       "blocking": true
+    },
+    {
+      "checkRef": "check.intent-orchestration",
+      "command": "npm run intent:check",
+      "category": "ARCHITECTURE",
+      "purpose": "Immutable intent, deterministic workgraph admission, lifecycle, evidence, convergence, compact projection, and held successor boundaries validate.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true
     }
   ]
 }

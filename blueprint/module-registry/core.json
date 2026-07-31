@@ -527,5 +527,71 @@
       "AGENTS.md",
       "VEXLIFE.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.intent-workgraph",
+    "path": "src/core/intent-workgraph.mjs",
+    "role": "Creates deeply immutable intent envelopes and workgraph snapshots, appends exact receipts, and suppresses equal semantic transitions.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-orchestration.001",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.intent-validation",
+      "module.vexlife.core.intent-projection"
+    ],
+    "tests": [
+      "test/intent-workgraph.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/intent-validation.mjs",
+      "src/core/intent-projection.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.intent-validation",
+    "path": "src/core/intent-validation.mjs",
+    "role": "Deterministically validates intent lifecycle, bindings, dependency acyclicity, exact completion evidence, ready sets, and parent convergence.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-orchestration.001",
+      "module.vexlife.core.intent-workgraph"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.intent-projection",
+      "module.vexlife.script.intent-check",
+      "module.vexlife.script.intent-plan",
+      "module.vexlife.script.intent-status"
+    ],
+    "tests": [
+      "test/intent-workgraph.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-orchestration-registry.json",
+      "blueprint/process-factory/processes-core.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.intent-projection",
+    "path": "src/core/intent-projection.mjs",
+    "role": "Projects a bounded Intent Queue status and one deterministic next-safe-action without copying heavy context or granting execution authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.intent-validation"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.intent-plan",
+      "module.vexlife.script.intent-status"
+    ],
+    "tests": [
+      "test/intent-workgraph.test.mjs"
+    ],
+    "changeMap": [
+      "docs/INTENT-ORCHESTRATION-SPINE.md"
+    ]
   }
 ]

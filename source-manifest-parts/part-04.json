@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/BOOTSTRAP-AND-MODELS.md",
+      "mode": "100644",
+      "bytes": 3695,
+      "sha256": "b524de20db45461f2c2dd7a8b0244bb0f2c2563c7f1b8fdf7db08a86a217a080"
+    },
+    {
       "path": "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",
       "mode": "100644",
       "bytes": 9064,
@@ -68,6 +74,12 @@
       "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
     },
     {
+      "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
+      "mode": "100644",
+      "bytes": 5624,
+      "sha256": "993bdf258aba8a69c4131e4430d123d55d1332ec007a47b76874235534be2d23"
+    },
+    {
       "path": "docs/INTERFACE-BUILDER.md",
       "mode": "100644",
       "bytes": 3664,
@@ -130,20 +142,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 2392,
-      "sha256": "b5d462ef99d1e87a2fb8ea04a3f61fc52d0a181fb1639475d55dcaf9b621c74a"
-    },
-    {
-      "path": "reference/browser/README.md",
-      "mode": "100644",
-      "bytes": 898,
-      "sha256": "df56100f04b33c3b5c61d46565277a5025fb72632408679a1fee5c2f2d06d93f"
-    },
-    {
-      "path": "reference/browser/app.css",
-      "mode": "100644",
-      "bytes": 12669,
-      "sha256": "69e8869423e5a548914b491ae38d00e2a3e3641b193b9ff783ab7e472cd09334"
+      "bytes": 2551,
+      "sha256": "47de56c8f33f0e9b6c1fc5c6ce604737a6e46d315aa411aaab4b97afc22a167b"
     }
   ]
 }

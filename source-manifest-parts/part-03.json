@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "blueprint/intent-orchestration-registry.json",
+      "mode": "100644",
+      "bytes": 3710,
+      "sha256": "971de027d6cc52da8c21576a6a68059e5c8420d52f09ad355d421aebe6ebf5ba"
+    },
+    {
       "path": "blueprint/model-profiles.example.json",
       "mode": "100644",
       "bytes": 635,
@@ -22,8 +28,8 @@
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 15211,
-      "sha256": "c9c14ee173ee2811ca165ff7a5e9e1377ac3f9a48f47a453ac5ba8222e544607"
+      "bytes": 17380,
+      "sha256": "65d6d1f92125fc2510a0be6067784e24c2a693a32f06bbaa3b9ab25b3029912a"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -34,8 +40,8 @@
     {
       "path": "blueprint/module-registry/scripts.json",
       "mode": "100644",
-      "bytes": 10883,
-      "sha256": "4c4119ba2015eb355563a26e807b2c5b5d1801032117615edbad5a2d684468c3"
+      "bytes": 12836,
+      "sha256": "cd9344f46854057f6118ebccaef88a3adc29fba955b3cf33215c388e86b5ec5a"
     },
     {
       "path": "blueprint/orientation.json",
@@ -70,8 +76,8 @@
     {
       "path": "blueprint/process-factory/processes-core.json",
       "mode": "100644",
-      "bytes": 15505,
-      "sha256": "7a2960b8b96d6345141a724231903a05906cbcf53ecdc57f4dd061d4559a60b8"
+      "bytes": 28105,
+      "sha256": "45392d315f84686f840066215fa7e11383c222c1a26af19405e5834ea7e5fd77"
     },
     {
       "path": "blueprint/process-factory/processes-evolution.json",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 2475,
       "sha256": "20e4159c562ec46bfad7643dabb45f047aa005e699811358d87acdd5694ac5c1"
-    },
-    {
-      "path": "docs/BOOTSTRAP-AND-MODELS.md",
-      "mode": "100644",
-      "bytes": 3695,
-      "sha256": "b524de20db45461f2c2dd7a8b0244bb0f2c2563c7f1b8fdf7db08a86a217a080"
     }
   ]
 }

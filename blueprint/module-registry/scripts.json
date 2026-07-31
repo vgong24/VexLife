@@ -391,5 +391,69 @@
       ".github/workflows/check.yml",
       "blueprint/build-health-registry.json"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.intent-check",
+    "path": "scripts/intent-check.mjs",
+    "role": "Validates the intent-orchestration contract and its canonical state, process, module, feature, test, health, and implementation-work registrations.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.intent-orchestration.001",
+      "module.vexlife.core.intent-validation",
+      "module.vexlife.core.blueprint"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run intent:check",
+      "npm run pr-ready"
+    ],
+    "tests": [
+      "test/intent-workgraph.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.intent-plan",
+    "path": "scripts/intent-plan.mjs",
+    "role": "Validates one repository-relative intent fixture and returns an acyclic no-authority plan projection.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.intent-orchestration.001",
+      "module.vexlife.core.intent-projection",
+      "module.vexlife.core.blueprint"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run intent:plan"
+    ],
+    "tests": [
+      "test/intent-workgraph.test.mjs"
+    ],
+    "changeMap": [
+      "docs/INTENT-ORCHESTRATION-SPINE.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.intent-status",
+    "path": "scripts/intent-status.mjs",
+    "role": "Projects what is active, ready, waiting, human-held, blocked, recently completed, and next-safe from one repository-relative workgraph.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.intent-orchestration.001",
+      "module.vexlife.core.intent-projection",
+      "module.vexlife.core.blueprint"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run intent:status"
+    ],
+    "tests": [
+      "test/intent-workgraph.test.mjs"
+    ],
+    "changeMap": [
+      "docs/INTENT-ORCHESTRATION-SPINE.md"
+    ]
   }
 ]

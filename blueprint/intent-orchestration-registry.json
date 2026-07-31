@@ -1,0 +1,142 @@
+{
+  "schemaVersion": "vexlife.intent-orchestration-registry/v0",
+  "registryRef": "registry.vexlife.intent-orchestration.001",
+  "registryVersion": 1,
+  "systemRef": "system.vexlife.intent-orchestration-spine",
+  "humanProjectionName": "Intent Queue",
+  "canonicalStructureName": "Intent Workgraph",
+  "purpose": "Preserve human intent, admit bounded deterministic workgraphs, and project one next safe action without granting execution authority.",
+  "ordinaryRuntimeFrame": [
+    "base-model",
+    "foundation-kernel.compact",
+    "intent-frame.current",
+    "atlas-descent.bounded",
+    "accepted-culture-score-rhythm-lessons.by-ref"
+  ],
+  "intentEnvelopeRequiredFields": [
+    "intentRef",
+    "originMessageRef",
+    "originSpeakerRef",
+    "recipientRoleRef",
+    "projectRef",
+    "threadRef",
+    "channelRef",
+    "originalContentHash",
+    "desiredOutcome",
+    "constraints",
+    "createdAt",
+    "sourceLineageRef"
+  ],
+  "workNodeRequiredFields": [
+    "workNodeRef",
+    "rootIntentRef",
+    "purpose",
+    "processRef",
+    "state",
+    "dependencyRefs",
+    "childRefs",
+    "roleRef",
+    "priorityClass",
+    "applicableCultureRefs",
+    "applicableLessonRefs",
+    "applicableBurdenReleaseRefs",
+    "capabilityEnvelopeRef",
+    "effectEnvelopeRef",
+    "resourceEnvelopeRef",
+    "expectedTransitionRef",
+    "completionGateRefs",
+    "returnRouteRef",
+    "sourceRefs",
+    "createdAt",
+    "semanticFingerprint"
+  ],
+  "transitionRequiredFields": [
+    "transitionRef",
+    "workNodeRef",
+    "priorState",
+    "nextState",
+    "reason",
+    "actorRef",
+    "processRef",
+    "sourceRefs",
+    "createdAt",
+    "semanticFingerprint"
+  ],
+  "lifecycleStates": [
+    "CAPTURED",
+    "NEEDS_CLARIFICATION",
+    "DECOMPOSED",
+    "PLAN_VALIDATED",
+    "WAITING_DEPENDENCIES",
+    "READY",
+    "WAITING_RESOURCE",
+    "CONTEXT_ADMITTED",
+    "RUNNING",
+    "WAITING_TOOL",
+    "WAITING_HUMAN",
+    "VERIFYING",
+    "COMPLETED",
+    "CONVERGED",
+    "CLOSED",
+    "BLOCKED",
+    "FAILED_RECOVERABLE",
+    "PAUSED_AT_CHECKPOINT",
+    "SUPERSEDED",
+    "CANCELLED",
+    "HELD_UNKNOWN"
+  ],
+  "terminalStates": [
+    "CLOSED",
+    "SUPERSEDED",
+    "CANCELLED"
+  ],
+  "nonGreenStates": [
+    "NEEDS_CLARIFICATION",
+    "WAITING_DEPENDENCIES",
+    "WAITING_RESOURCE",
+    "WAITING_TOOL",
+    "WAITING_HUMAN",
+    "BLOCKED",
+    "FAILED_RECOVERABLE",
+    "PAUSED_AT_CHECKPOINT",
+    "HELD_UNKNOWN"
+  ],
+  "activeSemanticDuplicateExemptStates": [
+    "CLOSED",
+    "SUPERSEDED",
+    "CANCELLED"
+  ],
+  "processRefs": [
+    "process.vexlife.intent.capture",
+    "process.vexlife.intent.decompose-candidate",
+    "process.vexlife.intent.validate-workgraph",
+    "process.vexlife.intent.project-ready-set",
+    "process.vexlife.intent.verify-transition",
+    "process.vexlife.intent.converge-parent"
+  ],
+  "priorityVocabulary": [
+    "IMMEDIATE",
+    "HIGH",
+    "NORMAL",
+    "LOW"
+  ],
+  "bindingRefPrefixes": {
+    "roleRef": "role.",
+    "capabilityEnvelopeRef": "capability-envelope.",
+    "effectEnvelopeRef": "effect-envelope.",
+    "resourceEnvelopeRef": "resource-envelope.",
+    "completionGateRefs": "completion-gate.",
+    "returnRouteRef": "return-route."
+  },
+  "receiptStates": [
+    "PROVEN",
+    "REJECTED",
+    "HELD_UNKNOWN"
+  ],
+  "successorBoundaries": [
+    "Intent Orchestration 2/3 scheduler, resource leases, checkpoint/resume, and tool-result reinjection are registration-only and held.",
+    "Intent Orchestration 3/3 Burden Release and Continuity Evolution Router is registration-only and held.",
+    "Native platform adoption remains held pending accepted shared contracts.",
+    "No model weight training, removal, activation, or direct tool authority is granted."
+  ]
+}

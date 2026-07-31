@@ -123,5 +123,10 @@
     "stateRef": "state.capabilities",
     "ownerRef": "service.capability-atlas",
     "brief": "Role/platform/project capability stages and exact tool availability."
+  },
+  {
+    "stateRef": "state.intent-workgraph",
+    "ownerRef": "service.intent-orchestration",
+    "brief": "Immutable human intent, attributed interpretations, admitted workgraph nodes, exact transition receipts, and bounded next-safe-action projections."
   }
 ]
