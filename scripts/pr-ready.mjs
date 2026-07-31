@@ -22,8 +22,12 @@ if (!registry.ok || !blueprint.ok) {
 }
 const initialSource = buildSourceManifest(ROOT);
 const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const npmCliPath = process.env.npm_execpath;
 const checkResultsByRef = new Map();
-const commandPattern = /^npm run ([A-Za-z0-9:_-]+)$/;
+const commandPattern = /^npm (?:(?:run ([A-Za-z0-9:_-]+))|(test))$/;
+const runRegisteredScript = (script) => npmCliPath
+  ? spawnSync(process.execPath, [npmCliPath, 'run', script], { cwd: ROOT, stdio: 'inherit' })
+  : spawnSync(npmExecutable, ['run', script], { cwd: ROOT, stdio: 'inherit', shell: process.platform === 'win32' });
 
 for (const check of bundle.buildHealth.checks) {
   const match = check.command.match(commandPattern);
@@ -31,13 +35,14 @@ for (const check of bundle.buildHealth.checks) {
     checkResultsByRef.set(check.checkRef, { checkRef: check.checkRef, state: 'BLOCKED', executed: false, currentness: 'UNKNOWN', detailRef: `UNSUPPORTED_COMMAND:${check.command}` });
     continue;
   }
-  const result = spawnSync(npmExecutable, ['run', match[1]], { cwd: ROOT, stdio: 'inherit' });
+  const result = runRegisteredScript(match[1] ?? match[2]);
+  if (result.error) console.error(`${check.checkRef}: ${result.error.message}`);
   checkResultsByRef.set(check.checkRef, {
     checkRef: check.checkRef,
     state: result.status === 0 ? 'PASSED' : 'FAILED',
     executed: true,
     currentness: 'CURRENT',
-    detailRef: check.command
+    detailRef: result.error ? `${check.command}#${result.error.code ?? 'SPAWN_ERROR'}` : check.command
   });
 }
 

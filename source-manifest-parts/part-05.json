@@ -108,8 +108,8 @@
     },
     {
       "path": "scripts/pr-ready.mjs",
-      "bytes": 3648,
-      "sha256": "61ce2b882fe1cccba9e8425d5c024babaadb63b697969b6512310b37748352b2"
+      "bytes": 4090,
+      "sha256": "80569bfb3e26c77d31127ef80a85dd51a5b5f87a096a87f915ecd7229f521504"
     },
     {
       "path": "scripts/provision-model.mjs",
