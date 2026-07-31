@@ -36,7 +36,13 @@ immutable domain state
 → render only the affected interface region
 ```
 
-The implementation is dependency-free Node/JavaScript so a fresh checkout can validate and generate scaffolds without installing a framework. Platform adapters are expected to use their native strengths: Kotlin/Compose and coroutines on Android/Desktop, SwiftUI and structured concurrency on Apple platforms, and semantic DOM/accessibility primitives in the browser.
+The source and runtime core remain dependency-free Node/JavaScript. The
+automated browser-evidence lane declares one pinned Playwright development
+dependency so a fresh checkout can execute the real headless-browser contract
+reproducibly. Platform adapters are expected to use their native strengths:
+Kotlin/Compose and coroutines on Android/Desktop, SwiftUI and structured
+concurrency on Apple platforms, and semantic DOM/accessibility primitives in
+the browser.
 
 ## Quick start
 
@@ -44,6 +50,8 @@ Requirements:
 
 - Node.js 20 or newer.
 - Git is recommended but not required for local validation.
+- Run `npm ci` before the complete gate and `npx playwright install chromium`
+  once per environment that will execute browser integration.
 - A local model binary is **not stored in Git**. VexLife can connect to an existing OpenAI-compatible endpoint or provision an externally hosted model after verifying its checksum.
 
 ### macOS / Linux
@@ -173,7 +181,8 @@ The canonical composition entry is [`blueprint/vexlife.blueprint.json`](blueprin
 ## Commands
 
 ```bash
-npm run orient -- --visibility PRIVATE --pr 1 --work-ref <work.ref>
+npm run orient
+npm run orient -- --visibility <PRIVATE|PUBLIC> --lifecycle <PRIVATE_STAGING|PUBLIC_RELEASE_CANDIDATE|PUBLIC_ACTIVE> --pr <number> --work-ref <work.ref>
 npm run atlas:query -- --intent "<bounded intent>" --depth 2 --limit 8 --tokens 1200
 npm run module:describe -- --module-ref <module.ref>
 npm run current                  # compact current foundation and held-boundary projection
@@ -188,6 +197,7 @@ npm run public-safety:check      # reject private/model/secret publication hazar
 npm run manifest:check           # verify the exact public-candidate source tree
 npm run platform:all             # generate all platform adoption scaffolds
 npm run browser:start            # serve the working browser reference
+npm run browser:integration      # execute the integration contract in a real headless browser
 npm run bootstrap -- --dry-run   # inspect local-home creation without writing
 npm run evolution:summary         # inspect Dream/Score/adapter lifecycle registry
 npm run implementation:packet -- --work-ref <work.ref> --platform browser
@@ -263,7 +273,7 @@ Start it with `npm run browser:start` and open `http://127.0.0.1:18110`.
 
 ## Public-candidate boundary
 
-This directory contains no personal runtime history, credentials, model weights, private training data or machine-specific home paths. A later public `VexLife` repository can be created by porting this directory with the exact source and release receipts preserved.
+This directory contains no personal runtime history, credentials, model weights, private training data or machine-specific home paths. The dedicated repository already exists; any private-to-public transition is a separate, explicit release process with no automatic publication authority.
 
 ## License and publication state
 
@@ -290,7 +300,7 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - [`docs/BLUEPRINT-CHANGE-PROPAGATION.md`](docs/BLUEPRINT-CHANGE-PROPAGATION.md)
 - [`docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md`](docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md)
 - [`docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md`](docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md)
-- [`docs/CODEX-PORT-HANDOFF.md`](docs/CODEX-PORT-HANDOFF.md)
+- [`docs/FOUNDATION-ORIGIN-RECEIPT.md`](docs/FOUNDATION-ORIGIN-RECEIPT.md)
 
 ## Choose your route
 

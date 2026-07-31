@@ -16,9 +16,17 @@ concurrency:
 
 jobs:
   foundation:
-    name: Source, blueprint, and browser contracts
+    name: Source, blueprint, and actual browser contracts
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      VEXLIFE_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+      VEXLIFE_PR_NUMBER: ${{ github.event.pull_request.number }}
+      VEXLIFE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      VEXLIFE_WORK_REF: ${{ github.event_name == 'pull_request' && 'work.vexlife.pull-request-review' || '' }}
+      VEXLIFE_CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      VEXLIFE_TESTED_MERGE_SHA: ${{ github.event_name == 'pull_request' && github.sha || '' }}
+      VEXLIFE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
 
     steps:
       - name: Check out source
@@ -32,11 +40,13 @@ jobs:
       - name: Report runtime
         run: node --version
 
+      - name: Install declared dependencies
+        run: npm ci
+
+      - name: Install deterministic Chromium runtime
+        run: npx playwright install --with-deps chromium
+
       - name: Ground bounded repository orientation
-        env:
-          VEXLIFE_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
-          VEXLIFE_PR_NUMBER: ${{ github.event.pull_request.number }}
-          VEXLIFE_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: npm run orient
 
       - name: Run the complete foundation gate
@@ -44,6 +54,16 @@ jobs:
 
       - name: Verify executed current health receipt
         run: npm run health:check
+
+      - name: Preserve exact browser and health receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vexlife-exact-check-receipts
+          path: |
+            generated/health/browser-integration.json
+            generated/health/pr-ready.json
+          if-no-files-found: error
 
       - name: Reconfirm the canonical source manifest
         run: npm run manifest:check

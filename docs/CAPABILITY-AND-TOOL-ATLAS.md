@@ -71,7 +71,8 @@ model asks Atlas for details only if needed:
 Cold readers first ground the repository and then use only bounded descent:
 
 ```bash
-npm run orient -- --visibility PRIVATE --pr 1 --work-ref <work.ref>
+npm run orient
+npm run orient -- --visibility <PRIVATE|PUBLIC> --lifecycle <PRIVATE_STAGING|PUBLIC_RELEASE_CANDIDATE|PUBLIC_ACTIVE> --pr <number> --work-ref <work.ref>
 npm run atlas:query -- --intent "<task intent>" --start <optional.ref> --edges <optional.edge.type> --depth 2 --limit 8 --tokens 1200
 npm run module:describe -- --module-ref <module.ref>
 ```

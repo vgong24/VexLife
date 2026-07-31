@@ -2,6 +2,26 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "scripts/orient.mjs",
+      "bytes": 5945,
+      "sha256": "fc0d8a9b421107d5364ffed2c18060f80c8ab7334c2063868707fcfedb1e1f06"
+    },
+    {
+      "path": "scripts/pr-ready.mjs",
+      "bytes": 5566,
+      "sha256": "a780e87c84a6e7861ccccd4d011e8cf7c0820ad5b5040abd5a49972c880a5670"
+    },
+    {
+      "path": "scripts/provision-model.mjs",
+      "bytes": 3545,
+      "sha256": "1702751be8439f43a6d61c4e9dbde8784a934c3d3a09c3e5b80ada83cc864edf"
+    },
+    {
+      "path": "scripts/public-safety-check.mjs",
+      "bytes": 948,
+      "sha256": "ce93d4ead2d7cdf1b221a63be589f693c77e676c3dfebe67e8af1492d2e1c3fd"
+    },
+    {
       "path": "scripts/registry-summary.mjs",
       "bytes": 317,
       "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
@@ -15,6 +35,11 @@
       "path": "scripts/source-manifest.mjs",
       "bytes": 2197,
       "sha256": "7473c61fab4387ed3df5e8a161a67390204ba50ac6dc6b6e7f1d7f95a9dae0e8"
+    },
+    {
+      "path": "scripts/test-structured.mjs",
+      "bytes": 1218,
+      "sha256": "02da952dd3e34fe20796b4a4175844b89b3bce7854fddf8dc0b871416a4c476a"
     },
     {
       "path": "scripts/validate-blueprint.mjs",
@@ -43,13 +68,18 @@
     },
     {
       "path": "src/core/build-health.mjs",
-      "bytes": 3948,
-      "sha256": "4c76293faf2b988c298e1a24e35e782352634eb624f633ef80cf8bf63c9cf0d8"
+      "bytes": 4344,
+      "sha256": "462112c34ac3acbab20efebd2f295a6fdac5813cff053df91358d281030c963d"
     },
     {
       "path": "src/core/capability.mjs",
       "bytes": 2361,
       "sha256": "00a60fd3f0491923109720586d0f69d6fddfc21b8c57dc540e066434980cba54"
+    },
+    {
+      "path": "src/core/check-result.mjs",
+      "bytes": 3466,
+      "sha256": "448fdea1519cad9db9116dd3f370bf42bd7d354ecf417865f8f1eb91e67c3b8f"
     },
     {
       "path": "src/core/conversation.mjs",
@@ -90,36 +120,6 @@
       "path": "src/core/implementation-plan.mjs",
       "bytes": 5655,
       "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
-    },
-    {
-      "path": "src/core/interface-builder.mjs",
-      "bytes": 8289,
-      "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
-    },
-    {
-      "path": "src/core/journey.mjs",
-      "bytes": 1243,
-      "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
-    },
-    {
-      "path": "src/core/localization.mjs",
-      "bytes": 2991,
-      "sha256": "7422edc1bbf79dec7b376765273deb3b05c022e2214bdc92ac5e570306de2682"
-    },
-    {
-      "path": "src/core/model-provision.mjs",
-      "bytes": 2525,
-      "sha256": "374ea58d83bdd34a007ac5a1291738531117062d6963742d87c3db08f352b9ed"
-    },
-    {
-      "path": "src/core/navigation.mjs",
-      "bytes": 3771,
-      "sha256": "4570ebc451dfffbf22085f881d1477b9ba6cce146294c907d9a7ba05fabac9c3"
-    },
-    {
-      "path": "src/core/platform-generator.mjs",
-      "bytes": 6677,
-      "sha256": "b37018abb34ef7e1aa27111cb5a125fd13782ef586c6c80127357d48084488bf"
     }
   ]
 }

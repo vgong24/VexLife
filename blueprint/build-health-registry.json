@@ -4,6 +4,65 @@
   "registryVersion": 1,
   "purpose": "One source-managed list of mandatory health checks and the lenses each protects.",
   "semanticNoOpRule": "Equal check inputs and outputs do not create another durable health transition.",
+  "checkResultContract": {
+    "schemaVersion": "vexlife.check-result-contract/v0",
+    "contractRef": "contract.vexlife.check-result-admission.001",
+    "outputFormat": "FINAL_JSON_OBJECT",
+    "stateField": "state",
+    "currentnessField": "currentness",
+    "transportStates": [
+      "EXECUTED",
+      "SPAWN_FAILED",
+      "TIMED_OUT"
+    ],
+    "semanticStates": [
+      "PASSED",
+      "ATTENTION",
+      "NOT_RUN",
+      "UNKNOWN",
+      "STALE",
+      "BLOCKED",
+      "FAILED"
+    ],
+    "stateAdmission": {
+      "PASSED": [
+        "GROUNDED",
+        "VALID",
+        "CLEAR",
+        "PASS",
+        "SYNTAX_VALID",
+        "FEATURE_REGISTRY_VALID",
+        "HOME_BRIDGE_CONTRACT_VALID",
+        "LOCALIZATION_COVERAGE_VALID",
+        "PUBLIC_SAFETY_CLEAR",
+        "SOURCE_MANIFEST_CURRENT",
+        "ARCHITECTURE_PROJECTIONS_WRITTEN",
+        "DOCTOR_VALID",
+        "CURRENT"
+      ],
+      "ATTENTION": [
+        "ATTENTION"
+      ],
+      "NOT_RUN": [
+        "NOT_RUN",
+        "REGISTERED_NOT_EXECUTED"
+      ],
+      "UNKNOWN": [
+        "UNKNOWN"
+      ],
+      "STALE": [
+        "STALE"
+      ],
+      "BLOCKED": [
+        "BLOCKED"
+      ],
+      "FAILED": [
+        "FAILED"
+      ]
+    },
+    "defaultUnparseableSemanticState": "BLOCKED",
+    "defaultTimeoutMs": 120000
+  },
   "checks": [
     {
       "checkRef": "check.orientation",
@@ -149,16 +208,31 @@
       "blocking": true
     },
     {
-      "checkRef": "check.browser-smoke",
+      "checkRef": "check.browser-structure",
       "command": "npm run browser:check",
       "category": "EXPERIENCE",
-      "purpose": "Browser source parses; PR lane must also run a real HTTP/render smoke.",
+      "purpose": "Browser entry and integration source parse as structural evidence only.",
       "lensRefs": [
         "lens.vexlife.usability-and-journey",
         "lens.vexlife.design-system",
         "lens.vexlife.accessibility"
       ],
       "blocking": true
+    },
+    {
+      "checkRef": "check.browser-integration",
+      "command": "npm run browser:integration",
+      "category": "EXPERIENCE",
+      "purpose": "A real headless browser executes project-thread-channel isolation and rendered EN/ZH/JA stable-intent behavior.",
+      "lensRefs": [
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.design-system",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.state-and-currentness"
+      ],
+      "blocking": true,
+      "timeoutMs": 120000
     },
     {
       "checkRef": "check.current",

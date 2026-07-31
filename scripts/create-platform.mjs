@@ -19,7 +19,13 @@ if (!all && !supportedPlatforms.includes(platform)) {
 for (const item of selected) {
   const target = all ? path.join(out, item) : out;
   const result = generatePlatform({ project, platform: item, outDir: target });
-  console.log(`${item}: ${result.outDir}`);
+  console.error(`${item}: ${result.outDir}`);
 }
+console.log(JSON.stringify({
+  schemaVersion: 'vexlife.check-command-result/v0',
+  state: 'PASS',
+  currentness: 'CURRENT',
+  platforms: selected
+}, null, 2));
 
 // [VXG RealForever]

@@ -2,6 +2,11 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "blueprint/process-factory/processes-health-and-bridge.json",
+      "bytes": 11192,
+      "sha256": "1f5f69cdf9398c6a254e1e7a4418eb6d2f1125f89b196d65e7112ac171ad5ee0"
+    },
+    {
       "path": "blueprint/process-factory/processes-operations-and-publication.json",
       "bytes": 16160,
       "sha256": "35c984bd6df8a1d78ea3489265ffcf679f6b75383f9ff9c545485146bba218b9"
@@ -68,18 +73,13 @@
     },
     {
       "path": "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",
-      "bytes": 5975,
-      "sha256": "5478cd2ef9b7a5ae8c5b8e312d60eefab91f88cf5b0460431ae4f91ed81c9bcc"
+      "bytes": 6584,
+      "sha256": "84ece4569448a69a3d25711cb88a88964b19b48147ad809b830b9a5aeb4ce6ee"
     },
     {
       "path": "docs/CAPABILITY-AND-TOOL-ATLAS.md",
-      "bytes": 3345,
-      "sha256": "9801e28874a2beed878b35bb7e7555c7c99d43ce8174fee9b86666178780c6dc"
-    },
-    {
-      "path": "docs/CODEX-PORT-HANDOFF.md",
-      "bytes": 2136,
-      "sha256": "40c15b7ed7aa1e7bca0489c0bd8f964dbc8e40ce1c033f71a029c53aa4036b68"
+      "bytes": 3445,
+      "sha256": "4b190d30e93d6eb39bffbc782dc3cc04a2fa49b5c349bd783ba08cfd7fc0cfed"
     },
     {
       "path": "docs/CULTURE.md",
@@ -117,9 +117,9 @@
       "sha256": "d4d753973c19ed42eff3edebde7110716def1d3ba53f76d0e39985d6e7dff8f2"
     },
     {
-      "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
-      "bytes": 3310,
-      "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
+      "path": "docs/FOUNDATION-ORIGIN-RECEIPT.md",
+      "bytes": 1624,
+      "sha256": "3e912fd27db597b16db0a063e82f010469278e6c2557977045df9c834a7fa9e9"
     }
   ]
 }

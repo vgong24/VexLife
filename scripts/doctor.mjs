@@ -10,6 +10,8 @@ const validation = validateBlueprint(loadBlueprint());
 const endpoint = process.env.VEX_MODEL_ENDPOINT || null;
 const report = {
   schemaVersion: 'vexlife.doctor/v0',
+  state: validation.ok ? 'DOCTOR_VALID' : 'FAILED',
+  currentness: 'CURRENT',
   node: process.version,
   platform: process.platform,
   architecture: process.arch,

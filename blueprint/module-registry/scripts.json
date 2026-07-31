@@ -232,6 +232,8 @@
     "reads": [
       "blueprint/orientation.json",
       "module.vexlife.core.blueprint",
+      "module.vexlife.core.orientation",
+      "module.vexlife.core.repository-evidence",
       "module.vexlife.core.source-manifest"
     ],
     "writes": [],
@@ -291,7 +293,9 @@
     "platformScope": "BUILD_TIME",
     "reads": [
       "registry.vexlife.build-health.001",
+      "module.vexlife.core.check-result",
       "module.vexlife.core.build-health",
+      "module.vexlife.core.repository-evidence",
       "module.vexlife.core.source-manifest"
     ],
     "writes": [
@@ -301,10 +305,75 @@
       "npm run pr-ready"
     ],
     "tests": [
-      "test/foundation-health.test.mjs"
+      "test/foundation-health.test.mjs",
+      "test/pr-ready-attention.e2e.mjs"
     ],
     "changeMap": [
       "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.test-structured",
+    "path": "scripts/test-structured.mjs",
+    "role": "Runs deterministic and bounded end-to-end Node tests and emits the final machine-readable result contract.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "test/*.test.mjs",
+      "test/*.e2e.mjs"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm test"
+    ],
+    "tests": [
+      "test/check-result.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.browser-structure-check",
+    "path": "scripts/browser-structure-check.mjs",
+    "role": "Reports browser JavaScript parsing as structural source evidence only.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "reference/browser/app.js",
+      "reference/browser/integration-test.js"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run browser:check"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/browser-integration.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.browser-integration",
+    "path": "scripts/browser-integration.mjs",
+    "role": "Starts the local server, executes the integration contract in a real headless browser and writes an exact candidate/tested-source receipt.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "module.vexlife.core.repository-evidence",
+      "module.vexlife.core.source-manifest",
+      "reference/browser/integration-test.js"
+    ],
+    "writes": [
+      "generated/health/browser-integration.json"
+    ],
+    "loadedBy": [
+      "npm run browser:integration"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      ".github/workflows/check.yml",
+      "blueprint/build-health-registry.json"
     ]
   }
 ]

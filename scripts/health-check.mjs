@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import { validateBuildHealthRegistry, deriveRepositoryHealth } from '../src/core/build-health.mjs';
+import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -18,18 +18,23 @@ const bundle = loadBlueprint(ROOT);
 const registry = validateBuildHealthRegistry(bundle.buildHealth, bundle.reviewLenses);
 const blueprint = validateBlueprint(bundle);
 const sourceManifest = buildSourceManifest(ROOT);
-const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' });
-const headSha = head.status === 0 ? head.stdout.trim() : null;
+const repository = collectRepositoryEvidence(ROOT);
 let receipt = null;
 let receiptState = 'NOT_RUN';
 const receiptErrors = [];
 if (fs.existsSync(receiptPath)) {
   try {
     receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
-    const bindingCurrent = receipt.schemaVersion === 'vexlife.pr-ready-receipt/v0' &&
-      receipt.headSha === headSha &&
+    const bindingCurrent = receipt.schemaVersion === 'vexlife.pr-ready-receipt/v1' &&
+      receipt.state === 'PR_READY_PASSED' &&
+      receipt.candidateHeadSha === repository.git.candidateHeadSha &&
+      receipt.testedCheckoutSha === repository.git.checkoutSha &&
+      receipt.testedMergeSha === repository.git.testedMergeSha &&
+      receipt.baseSha === repository.git.baseSha &&
       receipt.sourceTreeSha256 === sourceManifest.treeSha256 &&
-      receipt.blueprintHash === blueprint.semanticHash;
+      receipt.blueprintHash === blueprint.semanticHash &&
+      receipt.checkResultContractRef === bundle.buildHealth.checkResultContract.contractRef &&
+      receipt.sourceStability?.state === 'PASS';
     if (!bindingCurrent) {
       receiptState = 'STALE';
     } else if (!Array.isArray(receipt.checkResults)) {
@@ -54,7 +59,8 @@ const checkResults = receiptState === 'EXECUTED_CURRENT'
   ? receipt.checkResults
   : bundle.buildHealth.checks.map((item) => ({
       checkRef: item.checkRef,
-      state: item.checkRef === 'check.blueprint' ? (blueprint.ok ? 'PASSED' : 'FAILED') : receiptState === 'STALE' ? 'UNKNOWN' : 'NOT_RUN',
+      semanticState: item.checkRef === 'check.blueprint' ? (blueprint.ok ? 'PASSED' : 'FAILED') : receiptState === 'STALE' ? 'UNKNOWN' : 'NOT_RUN',
+      transportState: item.checkRef === 'check.blueprint' ? 'EXECUTED' : null,
       executed: item.checkRef === 'check.blueprint',
       currentness: item.checkRef === 'check.blueprint' ? 'CURRENT' : receiptState === 'STALE' ? 'STALE' : 'UNKNOWN',
       detailRef: item.command
@@ -66,6 +72,10 @@ console.log(JSON.stringify({
   receiptState,
   receiptPath: path.relative(ROOT, receiptPath).split(path.sep).join('/'),
   registryChecks: registry.stats.checks,
+  candidateHeadSha: repository.git.candidateHeadSha,
+  testedCheckoutSha: repository.git.checkoutSha,
+  testedMergeSha: repository.git.testedMergeSha,
+  baseSha: repository.git.baseSha,
   blueprintHash: blueprint.semanticHash,
   sourceTreeSha256: sourceManifest.treeSha256,
   receiptSummary: projection.receiptSummary,

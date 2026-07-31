@@ -1,8 +1,10 @@
 import { semanticHash } from './utils.mjs';
+import { validateCheckResultContract } from './check-result.mjs';
 
 export function validateBuildHealthRegistry(registry, reviewLenses) {
   const errors = [];
   if (!registry?.registryRef) errors.push('build health registry missing registryRef');
+  errors.push(...validateCheckResultContract(registry?.checkResultContract).errors);
   const lensRefs = new Set((reviewLenses?.lenses ?? []).map((item) => item.lensRef));
   const checkRefs = new Set();
   const commands = new Set();
@@ -20,16 +22,23 @@ export function validateBuildHealthRegistry(registry, reviewLenses) {
 }
 
 export function deriveRepositoryHealth({ sourceTreeRef, blueprintHash, checkResults = [], previousProjection = null } = {}) {
-  const failed = checkResults.filter((item) => item.state === 'FAILED' || item.state === 'BLOCKED');
-  const passedCurrent = checkResults.filter((item) => item.state === 'PASSED' && item.executed === true && item.currentness === 'CURRENT');
+  const stateOf = (item) => item.semanticState ?? item.state;
+  const failed = checkResults.filter((item) => stateOf(item) === 'FAILED' || stateOf(item) === 'BLOCKED');
+  const passedCurrent = checkResults.filter((item) =>
+    stateOf(item) === 'PASSED' &&
+    item.transportState !== 'SPAWN_FAILED' &&
+    item.transportState !== 'TIMED_OUT' &&
+    item.executed === true &&
+    item.currentness === 'CURRENT'
+  );
   const unresolved = checkResults.filter((item) => !failed.includes(item) && !passedCurrent.includes(item));
   const state = failed.length ? 'BLOCKED' : checkResults.length > 0 && unresolved.length === 0 ? 'HEALTHY' : 'ATTENTION';
   const semantic = {
     sourceTreeRef,
     blueprintHash,
     state,
-    checks: checkResults.map(({ checkRef, state, detailRef = null, executed = false, currentness = 'UNKNOWN' }) => ({
-      checkRef, state, detailRef, executed, currentness
+    checks: checkResults.map(({ checkRef, state, semanticState = state, transportState = null, detailRef = null, executed = false, currentness = 'UNKNOWN' }) => ({
+      checkRef, semanticState, transportState, detailRef, executed, currentness
     })).sort((a, b) => a.checkRef.localeCompare(b.checkRef))
   };
   const projection = {

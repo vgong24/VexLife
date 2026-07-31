@@ -96,7 +96,7 @@ test('demo conversations enforce project-thread-channel ownership keys', () => {
   assert.equal(data.messages.size, data.channels.length);
 });
 
-test('real browser integration exercises isolation and rendered EN ZH JA Guide intent behavior', () => {
+test('browser integration source structurally declares isolation and rendered EN ZH JA Guide intent behavior', () => {
   const integration = fs.readFileSync(new URL('../reference/browser/integration-test.js', import.meta.url), 'utf8');
   for (const language of ['en', 'zh', 'ja']) assert.match(integration, new RegExp(`['"]${language}['"]`));
   for (const intentRef of ['intent.guide.current', 'intent.guide.next', 'intent.guide.protects']) {

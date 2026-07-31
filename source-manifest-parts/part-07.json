@@ -2,6 +2,41 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "src/core/interface-builder.mjs",
+      "bytes": 8289,
+      "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
+    },
+    {
+      "path": "src/core/journey.mjs",
+      "bytes": 1243,
+      "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
+    },
+    {
+      "path": "src/core/localization.mjs",
+      "bytes": 2991,
+      "sha256": "7422edc1bbf79dec7b376765273deb3b05c022e2214bdc92ac5e570306de2682"
+    },
+    {
+      "path": "src/core/model-provision.mjs",
+      "bytes": 2525,
+      "sha256": "374ea58d83bdd34a007ac5a1291738531117062d6963742d87c3db08f352b9ed"
+    },
+    {
+      "path": "src/core/navigation.mjs",
+      "bytes": 3771,
+      "sha256": "4570ebc451dfffbf22085f881d1477b9ba6cce146294c907d9a7ba05fabac9c3"
+    },
+    {
+      "path": "src/core/orientation.mjs",
+      "bytes": 5190,
+      "sha256": "15278cdbc1b351261fde688eba7c1acdffaefb78b8006a7c1c2d7caab5c33302"
+    },
+    {
+      "path": "src/core/platform-generator.mjs",
+      "bytes": 6677,
+      "sha256": "b37018abb34ef7e1aa27111cb5a125fd13782ef586c6c80127357d48084488bf"
+    },
+    {
       "path": "src/core/process-factory.mjs",
       "bytes": 5817,
       "sha256": "bc94fe52e382231594ce63dff3c36a7dff6480afef1f45c3a158c88bc4d27f22"
@@ -15,6 +50,11 @@
       "path": "src/core/registry.mjs",
       "bytes": 17490,
       "sha256": "3553db45b88e44235167d644f2b277917cba4516e2dac95a2c07e7dddc89775d"
+    },
+    {
+      "path": "src/core/repository-evidence.mjs",
+      "bytes": 2315,
+      "sha256": "0bb8f99f78b7bcbb84ab352b066fe6dbba6411be2cba26a1d8ff47d99a75b9c5"
     },
     {
       "path": "src/core/source-manifest.mjs",
@@ -58,13 +98,18 @@
     },
     {
       "path": "test/browser.test.mjs",
-      "bytes": 7973,
-      "sha256": "5e254290a8eae457a54b9f6a2501312f229d49d0c48512ddf193eabacc87f562"
+      "bytes": 7987,
+      "sha256": "fccdd090b99f3e7c28809db36bafc0461b5bbdcacca771adf1f961fd88476813"
     },
     {
       "path": "test/capability.test.mjs",
       "bytes": 1797,
       "sha256": "92df93aefc984c19f8f9484c7c3a8df4dda0d7e01e4dfdac752615e6ab94db17"
+    },
+    {
+      "path": "test/check-result.test.mjs",
+      "bytes": 2127,
+      "sha256": "574c01e5a9f5e5eefacc2ef35d4dd3944a6cbed87f1e6c965d71e7983433210a"
     },
     {
       "path": "test/core.test.mjs",
@@ -75,51 +120,6 @@
       "path": "test/evolution.test.mjs",
       "bytes": 4073,
       "sha256": "4e58c160bb6b17ed784523310cffe61ab604f868f2e79ce8f6f2e22727bc58c6"
-    },
-    {
-      "path": "test/experience.test.mjs",
-      "bytes": 2215,
-      "sha256": "82366babcef80194d3a214efe9c8455a0920f1c3d2e0a7bb8701f3156810bbd0"
-    },
-    {
-      "path": "test/fixtures/public-safety/cases.json",
-      "bytes": 795,
-      "sha256": "fc8f7a2303ce6c2d12ca4ceeb8d67e766f9f81aba03a4ffb9cf26545b3eed6f6"
-    },
-    {
-      "path": "test/foundation-health.test.mjs",
-      "bytes": 8481,
-      "sha256": "26f9b36e6371aa46ccf8ac1fc89d67acd23b815930b896b51a5942fe3a648ccc"
-    },
-    {
-      "path": "test/generator.test.mjs",
-      "bytes": 1047,
-      "sha256": "9a8d9b2f861082184ee4f96e1647d6ef937efa9554184e2da2939d3586b10c3a"
-    },
-    {
-      "path": "test/home-bridge.test.mjs",
-      "bytes": 6260,
-      "sha256": "404b142053da2eb58c693a288304ef77c7fdeb396f19cc732b82a72108a2951b"
-    },
-    {
-      "path": "test/implementation-plan.test.mjs",
-      "bytes": 3627,
-      "sha256": "54abd63988c9c8eb35a06cc590d29d9dcda2a43ded37bab1c8cd24f5e75f785f"
-    },
-    {
-      "path": "test/model-provision.test.mjs",
-      "bytes": 1971,
-      "sha256": "2975c38e03eb343680a51011de95e494c8f4b30defa0ad02329c28ebde719949"
-    },
-    {
-      "path": "test/orientation.test.mjs",
-      "bytes": 2247,
-      "sha256": "692c3cb8df8cea76046112e19db476163a8aa9fb7976fd89635549bc33583610"
-    },
-    {
-      "path": "test/public-safety.test.mjs",
-      "bytes": 3919,
-      "sha256": "194b7be177367dd255be65380765e97ac74bdd88e4c15d3e40caa7a901e13177"
     }
   ]
 }

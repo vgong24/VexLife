@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Universal VexLife interface, state, identity, localization and platform blueprint foundation",
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node scripts/test-structured.mjs",
     "syntax:check": "node scripts/check-syntax.mjs",
     "blueprint:check": "node scripts/validate-blueprint.mjs",
     "public-safety:check": "node scripts/public-safety-check.mjs",
@@ -21,7 +21,8 @@
     "registry:summary": "node scripts/registry-summary.mjs",
     "doctor": "node scripts/doctor.mjs",
     "impact:report": "node scripts/impact-report.mjs",
-    "browser:check": "node --check reference/browser/app.js && node --check reference/browser/integration-test.js",
+    "browser:check": "node scripts/browser-structure-check.mjs",
+    "browser:integration": "node scripts/browser-integration.mjs",
     "experience:summary": "node -e \"import('./src/core/blueprint.mjs').then(async m=>{const b=m.loadBlueprint(); console.log(JSON.stringify({profiles:b.experience.experienceProfiles.length,gestures:b.experience.gestureContracts.length,vessels:b.experience.vessels.length},null,2))})\"",
     "implementation:packet": "node scripts/implementation-packet.mjs",
     "evolution:summary": "node scripts/evolution-summary.mjs",
@@ -33,6 +34,9 @@
     "current": "node scripts/current.mjs",
     "projections:build": "node scripts/build-projections.mjs",
     "pr-ready": "node scripts/pr-ready.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
   },
   "engines": {
     "node": ">=20"

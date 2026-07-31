@@ -2,6 +2,11 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
+      "bytes": 3310,
+      "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
+    },
+    {
       "path": "docs/INTERFACE-BUILDER.md",
       "bytes": 3664,
       "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
@@ -62,9 +67,14 @@
       "sha256": "8c815676ba8e0e4b954aee0a5505e8706fec63bdbe911acda5c31dab2790df8a"
     },
     {
+      "path": "package-lock.json",
+      "bytes": 1844,
+      "sha256": "533db6182bcabd097bcd260d1fbbb414c730c71944843dfc483aa51a1bf9eac3"
+    },
+    {
       "path": "package.json",
-      "bytes": 2316,
-      "sha256": "5d729764567ba4b754671c03d672c905daa6e9300b8aef126e21e80ce36b5a46"
+      "bytes": 2392,
+      "sha256": "b5d462ef99d1e87a2fb8ea04a3f61fc52d0a181fb1639475d55dcaf9b621c74a"
     },
     {
       "path": "PROVENANCE.md",
@@ -78,8 +88,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 14327,
-      "sha256": "06e1a6cbcc84c2b0ae249f0800971ab1f4ce0796b2dda9ff6b49fa878803d0c1"
+      "bytes": 14797,
+      "sha256": "9698266753b12e330d025760d62aba7deb8941d370234369d6441873e04292f1"
     },
     {
       "path": "reference/browser/app.css",
@@ -110,16 +120,6 @@
       "path": "reference/browser/modules/chat-controller.js",
       "bytes": 14195,
       "sha256": "243729f83fc820311fbce9ed2af920ffd07efa8d053e88f7b5eca6d9f5a00d24"
-    },
-    {
-      "path": "reference/browser/modules/demo-data.js",
-      "bytes": 9551,
-      "sha256": "c22665335377dfe25440dde530cb0af7e273cea6fcc5fa0f0984a3c97d7eeb48"
-    },
-    {
-      "path": "reference/browser/modules/dom.js",
-      "bytes": 1472,
-      "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
     }
   ]
 }

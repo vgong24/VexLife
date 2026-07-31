@@ -15,6 +15,7 @@ npm run localization:check
 npm run check
 npm run pr-ready
 npm run health:check
+npm run browser:integration
 ```
 
 `npm run orient` grounds the exact repository, branch, HEAD, upstream relation,
@@ -22,12 +23,20 @@ working tree, visibility, current PR/work, blueprint and source-manifest
 freshness, held boundaries, required sources, and next route. `npm run current`
 is a compact foundation projection.
 
-`npm run pr-ready` executes every source-registered check and writes an
-exact-HEAD receipt under `generated/health/`. `npm run health:check` reports
-`HEALTHY` only when that receipt is executed, current for HEAD/source/blueprint,
-and every registered result passed. `REGISTERED_NOT_EXECUTED`, `NOT_RUN`,
-`UNKNOWN`, stale, or unexecuted pass-like states remain `ATTENTION`; executed
-current failures are `BLOCKED`.
+`npm run pr-ready` executes every source-registered check and writes a receipt
+under `generated/health/` that separates candidate head, tested checkout or
+synthetic merge, base, source tree and blueprint. `npm run health:check` reports
+`HEALTHY` only when that receipt is executed, current for all of those bindings,
+and every registered result passed.
+
+The registry owns one machine-readable result-admission contract. Every command
+preserves transport (`EXECUTED`, `SPAWN_FAILED`, or `TIMED_OUT`) separately from
+semantic state (`PASSED`, `ATTENTION`, `NOT_RUN`, `UNKNOWN`, `STALE`, `BLOCKED`,
+or `FAILED`). Exit code zero is never sufficient for admission. Recognized
+executed-current `GROUNDED`, `VALID`, `CLEAR`, and `PASS` results may become
+`PASSED`; attention, unknown, not-run, or stale output remains unresolved;
+blocked or failed output blocks Health; unparseable output follows the
+source-managed fail-closed contract.
 
 ## Registering a feature
 
@@ -111,7 +120,8 @@ public safety and license posture
 deterministic tests
 source manifest
 platform scaffold generation
-browser source/smoke proof
+browser structural source proof
+actual headless browser integration with preserved receipt
 compact current projection
 ```
 

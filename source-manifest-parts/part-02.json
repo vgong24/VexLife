@@ -2,6 +2,11 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "blueprint/fragments/screens/shell.json",
+      "bytes": 5530,
+      "sha256": "436259b71eacf2b3c43582290d3d90956c014f2ba1b89dd41baff7e740f5ea3c"
+    },
+    {
       "path": "blueprint/fragments/screens/terrain.json",
       "bytes": 2797,
       "sha256": "039409728d40a4cb1cd86b604e5261dfc1ab35f783c6eb1235b6c3a236b0e73b"
@@ -48,8 +53,8 @@
     },
     {
       "path": "blueprint/implementation/work-units-orchestration-and-publication.json",
-      "bytes": 2324,
-      "sha256": "f6242f1d06260af4576935f956ee9b6a83d14ae0ba04bc259091a29b3786a141"
+      "bytes": 2441,
+      "sha256": "bd37537ccd7618d8709c2d9fbab0e4f03f62b33e68fcb710836afaef1de6561a"
     },
     {
       "path": "blueprint/implementation-plan.json",
@@ -68,8 +73,8 @@
     },
     {
       "path": "blueprint/module-registry/core.json",
-      "bytes": 12713,
-      "sha256": "78d65cd7ba79e07c81ade88f40ffa048b87ac985143a0ab2e0edd31c42fc59c7"
+      "bytes": 14606,
+      "sha256": "1642d085badb4022031f2f7f81ccf588a08d21596c84dfac0a031469f060f88a"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -78,8 +83,8 @@
     },
     {
       "path": "blueprint/module-registry/scripts.json",
-      "bytes": 8311,
-      "sha256": "8e96d7e48671eb707c757f4b4055f200baebd20a89314458304bafebf12efb7d"
+      "bytes": 10355,
+      "sha256": "4851d90e68a7cc227b7587c27cd05d312a0dfbdb464003f1e56528fcd38d3eff"
     },
     {
       "path": "blueprint/module-registry.json",
@@ -88,8 +93,8 @@
     },
     {
       "path": "blueprint/orientation.json",
-      "bytes": 971,
-      "sha256": "f213894af5db33a9fe1cc9b01b10a2c2281c7f7f3f79a075b229c76c252e8f4b"
+      "bytes": 1535,
+      "sha256": "d12d084cda737bff3978aa4dd1d037e29e660d734e57de86748c72a084ed63b8"
     },
     {
       "path": "blueprint/platforms.json",
@@ -115,11 +120,6 @@
       "path": "blueprint/process-factory/processes-evolution.json",
       "bytes": 4612,
       "sha256": "21f4b1ae2d961e51f01e4eca95ab95e69ef66b45f0ca25070a996e9971c674fb"
-    },
-    {
-      "path": "blueprint/process-factory/processes-health-and-bridge.json",
-      "bytes": 11192,
-      "sha256": "1f5f69cdf9398c6a254e1e7a4418eb6d2f1125f89b196d65e7112ac171ad5ee0"
     }
   ]
 }

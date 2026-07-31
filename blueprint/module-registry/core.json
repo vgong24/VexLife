@@ -448,5 +448,69 @@
       "PUBLIC-SAFETY-MANIFEST.json",
       ".gitignore"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.check-result",
+    "path": "src/core/check-result.mjs",
+    "role": "Admits machine-readable command results by transport, semantic state, currentness and the source-managed check-result contract.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.build-health.001"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.pr-ready"
+    ],
+    "tests": [
+      "test/check-result.test.mjs",
+      "test/pr-ready-attention.e2e.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json",
+      "src/core/build-health.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.repository-evidence",
+    "path": "src/core/repository-evidence.mjs",
+    "role": "Separates live candidate head, tested checkout or merge, base, branch, upstream and repository identity evidence.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "Git worktree and explicit environment receipts"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.orient",
+      "module.vexlife.script.pr-ready",
+      "module.vexlife.script.browser-integration"
+    ],
+    "tests": [
+      "test/orientation.test.mjs",
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      ".github/workflows/check.yml"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.orientation",
+    "path": "src/core/orientation.mjs",
+    "role": "Derives lifecycle-safe bounded orientation from stable repository identity plus live or explicit current-work evidence.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "blueprint/orientation.json",
+      "module.vexlife.core.repository-evidence"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.orient"
+    ],
+    "tests": [
+      "test/orientation.test.mjs"
+    ],
+    "changeMap": [
+      "AGENTS.md",
+      "VEXLIFE.md"
+    ]
   }
 ]

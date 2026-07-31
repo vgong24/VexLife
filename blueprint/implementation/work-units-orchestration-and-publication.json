@@ -37,7 +37,7 @@
   },
   {
     "workRef": "work.vexlife.public.port",
-    "purpose": "Port reviewed VexLife tree to dedicated repository with safety manifest.",
+    "purpose": "Review private origin and prepare explicit private→public release.",
     "distance": "NEAR_DEMO",
     "milestoneRef": "milestone.vexlife.public-port",
     "dependsOn": [
@@ -50,7 +50,8 @@
     "ownershipRoleRef": "role.vex.operations",
     "parallelGroupRef": "parallel.publication",
     "requiredSourceRefs": [
-      "docs/CODEX-PORT-HANDOFF.md"
+      "docs/FOUNDATION-ORIGIN-RECEIPT.md",
+      "docs/OPEN-SOURCE-LEGAL-STEWARDSHIP.md"
     ],
     "requiredTestRefs": [
       "test.public.no-private-runtime",
@@ -60,7 +61,7 @@
       "repository.vgong24.VexLife"
     ],
     "effectBoundary": "PUBLICATION_REQUIRES_EXPLICIT_VICTOR_CONFIRMATION",
-    "completionGate": "manifest, secret scan, license state and draft PR reviewed",
+    "completionGate": "explicit private-to-public lifecycle decision, current manifest, safety scan, legal review and human publication confirmation",
     "platformRefs": [
       "platform.any"
     ],

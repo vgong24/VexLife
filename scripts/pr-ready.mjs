@@ -4,85 +4,134 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
+import { admitCheckResult } from '../src/core/check-result.mjs';
 import { deriveRepositoryHealth, validateBuildHealthRegistry } from '../src/core/build-health.mjs';
+import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 import { writeJson } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const args = process.argv.slice(2);
+const receiptIndex = args.indexOf('--receipt');
+if (receiptIndex >= 0 && !args[receiptIndex + 1]) {
+  console.error('Usage: npm run pr-ready -- [--receipt generated/health/pr-ready.json]');
+  process.exit(2);
+}
+if (args.some((item, index) => item !== '--receipt' && index !== receiptIndex + 1)) {
+  console.error('Usage: npm run pr-ready -- [--receipt generated/health/pr-ready.json]');
+  process.exit(2);
+}
+
 const bundle = loadBlueprint(ROOT);
 const registry = validateBuildHealthRegistry(bundle.buildHealth, bundle.reviewLenses);
 const blueprint = validateBlueprint(bundle);
 if (!registry.ok || !blueprint.ok) {
   console.error(JSON.stringify({
-    state: 'PR_READY_BLOCKED_INVALID_REGISTRY',
+    state: 'BLOCKED',
+    semanticState: 'BLOCKED',
     registryErrors: registry.errors,
     blueprintErrors: blueprint.errors
   }, null, 2));
   process.exit(1);
 }
+
 const initialSource = buildSourceManifest(ROOT);
 const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const npmCliPath = process.env.npm_execpath;
-const checkResultsByRef = new Map();
 const commandPattern = /^npm (?:(?:run ([A-Za-z0-9:_-]+))|(test))$/;
-const runRegisteredScript = (script) => npmCliPath
-  ? spawnSync(process.execPath, [npmCliPath, 'run', script], { cwd: ROOT, stdio: 'inherit' })
-  : spawnSync(npmExecutable, ['run', script], { cwd: ROOT, stdio: 'inherit', shell: process.platform === 'win32' });
+const contract = bundle.buildHealth.checkResultContract;
+const checkResults = [];
+
+function runRegisteredCommand(command, timeoutMs) {
+  const match = command.match(commandPattern);
+  if (!match) {
+    return {
+      transportState: 'SPAWN_FAILED',
+      exitCode: null,
+      stdout: '',
+      stderr: `unsupported registered command: ${command}`,
+      timedOutAfterMs: null
+    };
+  }
+  const npmArgs = match[1] ? ['run', match[1]] : ['test'];
+  const options = {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: process.env,
+    timeout: timeoutMs,
+    maxBuffer: 32 * 1024 * 1024
+  };
+  const result = npmCliPath
+    ? spawnSync(process.execPath, [npmCliPath, ...npmArgs], options)
+    : spawnSync(npmExecutable, npmArgs, { ...options, shell: process.platform === 'win32' });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  const timedOut = result.error?.code === 'ETIMEDOUT';
+  return {
+    transportState: timedOut ? 'TIMED_OUT' : result.error ? 'SPAWN_FAILED' : 'EXECUTED',
+    exitCode: Number.isInteger(result.status) ? result.status : null,
+    stdout: result.stdout ?? '',
+    stderr: result.error?.message ?? result.stderr ?? '',
+    timedOutAfterMs: timedOut ? timeoutMs : null
+  };
+}
 
 for (const check of bundle.buildHealth.checks) {
-  const match = check.command.match(commandPattern);
-  if (!match) {
-    checkResultsByRef.set(check.checkRef, { checkRef: check.checkRef, state: 'BLOCKED', executed: false, currentness: 'UNKNOWN', detailRef: `UNSUPPORTED_COMMAND:${check.command}` });
-    continue;
-  }
-  const result = runRegisteredScript(match[1] ?? match[2]);
-  if (result.error) console.error(`${check.checkRef}: ${result.error.message}`);
-  checkResultsByRef.set(check.checkRef, {
+  const timeoutMs = check.timeoutMs ?? contract.defaultTimeoutMs;
+  const transport = runRegisteredCommand(check.command, timeoutMs);
+  checkResults.push(admitCheckResult({
     checkRef: check.checkRef,
-    state: result.status === 0 ? 'PASSED' : 'FAILED',
-    executed: true,
-    currentness: 'CURRENT',
-    detailRef: result.error ? `${check.command}#${result.error.code ?? 'SPAWN_ERROR'}` : check.command
-  });
+    command: check.command,
+    contract,
+    ...transport
+  }));
 }
 
-const checkResults = bundle.buildHealth.checks.map((check) => checkResultsByRef.get(check.checkRef) ?? ({
-  checkRef: check.checkRef,
-  state: 'NOT_RUN',
-  executed: false,
-  currentness: 'UNKNOWN',
-  detailRef: check.command
-}));
 const finalSource = buildSourceManifest(ROOT);
-if (initialSource.treeSha256 !== finalSource.treeSha256) {
-  checkResults.push({ checkRef: 'check.pr-ready-source-stability', state: 'BLOCKED', executed: true, currentness: 'CURRENT', detailRef: 'source tree changed while checks executed' });
-}
+const sourceStability = {
+  state: initialSource.treeSha256 === finalSource.treeSha256 ? 'PASS' : 'BLOCKED',
+  initialSourceTreeSha256: initialSource.treeSha256,
+  finalSourceTreeSha256: finalSource.treeSha256
+};
 const { projection } = deriveRepositoryHealth({
   sourceTreeRef: finalSource.treeSha256,
   blueprintHash: blueprint.semanticHash,
   checkResults
 });
-const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' });
+const repository = collectRepositoryEvidence(ROOT);
+const allCurrentPassed = projection.state === 'HEALTHY' && sourceStability.state === 'PASS';
 const receipt = {
-  schemaVersion: 'vexlife.pr-ready-receipt/v0',
+  schemaVersion: 'vexlife.pr-ready-receipt/v1',
   receiptRef: `receipt.vexlife.pr-ready.${finalSource.treeSha256.slice(0, 24)}`,
-  state: projection.state === 'HEALTHY' ? 'PR_READY_PASSED' : 'PR_READY_FAILED',
-  headSha: head.status === 0 ? head.stdout.trim() : null,
+  state: allCurrentPassed ? 'PR_READY_PASSED' : 'PR_READY_FAILED',
+  headSha: repository.git.candidateHeadSha,
+  candidateHeadSha: repository.git.candidateHeadSha,
+  testedCheckoutSha: repository.git.checkoutSha,
+  testedMergeSha: repository.git.testedMergeSha,
+  baseSha: repository.git.baseSha,
   sourceTreeSha256: finalSource.treeSha256,
   blueprintHash: blueprint.semanticHash,
   formedAt: new Date().toISOString(),
+  checkResultContractRef: contract.contractRef,
+  sourceStability,
   checkResults,
   health: projection
 };
-const receiptPath = path.join(ROOT, 'generated/health/pr-ready.json');
+const receiptPath = path.resolve(ROOT, receiptIndex >= 0 ? args[receiptIndex + 1] : 'generated/health/pr-ready.json');
 fs.mkdirSync(path.dirname(receiptPath), { recursive: true });
 writeJson(receiptPath, receipt);
 console.log(JSON.stringify({
   state: receipt.state,
+  currentness: 'CURRENT',
   receiptPath: path.relative(ROOT, receiptPath).split(path.sep).join('/'),
-  headSha: receipt.headSha,
+  candidateHeadSha: receipt.candidateHeadSha,
+  testedCheckoutSha: receipt.testedCheckoutSha,
+  testedMergeSha: receipt.testedMergeSha,
+  baseSha: receipt.baseSha,
   sourceTreeSha256: receipt.sourceTreeSha256,
   blueprintHash: receipt.blueprintHash,
+  checkResultContractRef: receipt.checkResultContractRef,
+  sourceStability: receipt.sourceStability.state,
   receiptSummary: projection.receiptSummary,
   blockingCheckRefs: projection.blockingCheckRefs,
   unresolvedCheckRefs: projection.unresolvedCheckRefs

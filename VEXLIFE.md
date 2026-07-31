@@ -7,8 +7,10 @@ held boundaries and next route:
 npm run orient
 ```
 
-Read only the `requiredSources` returned by that receipt. Then descend through the
-smallest relevant Atlas neighborhood or one exact module:
+Missing lifecycle, visibility or current-work evidence remains visibly
+`UNKNOWN`; supply bounded inputs or a generated current-work projection when
+needed. Read only the `requiredSources` returned by the receipt. Then descend
+through the smallest relevant Atlas neighborhood or one exact module:
 
 ```bash
 npm run atlas:query -- --intent "describe the current task" --limit 8 --depth 2

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import { deriveRequiredLensRefs, scaffoldFeatureContract, validateFeatureRegistry, validateReviewLensRegistry } from '../src/core/feature-registry.mjs';
 import { deriveRepositoryHealth, compactCurrentProjection, validateBuildHealthRegistry } from '../src/core/build-health.mjs';
+import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 
 const bundle = loadBlueprint();
@@ -87,7 +88,8 @@ test('equal semantic health inputs do not create another current transition', ()
 test('repository health is healthy only from executed current receipts', () => {
   const checkResults = bundle.buildHealth.checks.map((check) => ({
     checkRef: check.checkRef,
-    state: 'PASSED',
+    semanticState: 'PASSED',
+    transportState: 'EXECUTED',
     executed: true,
     currentness: 'CURRENT',
     detailRef: check.command
@@ -120,7 +122,7 @@ test('executed current failure blocks repository health', () => {
   const result = deriveRepositoryHealth({
     sourceTreeRef: 'tree.current',
     blueprintHash: 'blueprint.current',
-    checkResults: [{ checkRef: 'check.example', state: 'FAILED', executed: true, currentness: 'CURRENT' }]
+    checkResults: [{ checkRef: 'check.example', semanticState: 'FAILED', transportState: 'EXECUTED', executed: true, currentness: 'CURRENT' }]
   });
   assert.equal(result.projection.state, 'BLOCKED');
   assert.deepEqual(result.projection.blockingCheckRefs, ['check.example']);
@@ -129,21 +131,28 @@ test('executed current failure blocks repository health', () => {
 test('health command accepts only an exact-head executed-current receipt', () => {
   const validation = validateBlueprint(bundle);
   const source = buildSourceManifest(ROOT);
-  const git = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' });
-  assert.equal(git.status, 0, git.stderr);
+  const repository = collectRepositoryEvidence(ROOT);
   const receiptPath = path.join(os.tmpdir(), `vexlife-health-${process.pid}-${Date.now()}.json`);
   const checkResults = bundle.buildHealth.checks.map((check) => ({
     checkRef: check.checkRef,
-    state: 'PASSED',
+    semanticState: 'PASSED',
+    transportState: 'EXECUTED',
     executed: true,
     currentness: 'CURRENT',
     detailRef: check.command
   }));
   const receipt = {
-    schemaVersion: 'vexlife.pr-ready-receipt/v0',
-    headSha: git.stdout.trim(),
+    schemaVersion: 'vexlife.pr-ready-receipt/v1',
+    state: 'PR_READY_PASSED',
+    headSha: repository.git.candidateHeadSha,
+    candidateHeadSha: repository.git.candidateHeadSha,
+    testedCheckoutSha: repository.git.checkoutSha,
+    testedMergeSha: repository.git.testedMergeSha,
+    baseSha: repository.git.baseSha,
     sourceTreeSha256: source.treeSha256,
     blueprintHash: validation.semanticHash,
+    checkResultContractRef: bundle.buildHealth.checkResultContract.contractRef,
+    sourceStability: { state: 'PASS' },
     checkResults
   };
   try {
@@ -153,7 +162,7 @@ test('health command accepts only an exact-head executed-current receipt', () =>
     assert.equal(JSON.parse(current.stdout).receiptState, 'EXECUTED_CURRENT');
     assert.equal(JSON.parse(current.stdout).state, 'HEALTHY');
 
-    fs.writeFileSync(receiptPath, JSON.stringify({ ...receipt, headSha: '0'.repeat(40) }));
+    fs.writeFileSync(receiptPath, JSON.stringify({ ...receipt, candidateHeadSha: '0'.repeat(40) }));
     const stale = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptPath], { cwd: ROOT, encoding: 'utf8' });
     assert.equal(stale.status, 1);
     assert.equal(JSON.parse(stale.stdout).receiptState, 'STALE');

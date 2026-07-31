@@ -1,0 +1,38 @@
+{
+  "evidence": {
+    "repository": {
+      "slug": "vgong24/VexLife",
+      "remoteUrl": "https://github.com/vgong24/VexLife.git"
+    },
+    "git": {
+      "checkoutSha": "3333333333333333333333333333333333333333",
+      "branch": "feature/bounded-correction",
+      "branchSource": "ENVIRONMENT_RECEIPT",
+      "detached": true,
+      "checkoutKind": "SYNTHETIC_MERGE",
+      "candidateHeadSha": "2222222222222222222222222222222222222222",
+      "testedMergeSha": "3333333333333333333333333333333333333333",
+      "baseSha": "0000000000000000000000000000000000000000",
+      "upstreamRef": null,
+      "upstreamSha": null,
+      "ahead": null,
+      "behind": null,
+      "workingTree": "CLEAN",
+      "changedPaths": 0
+    }
+  },
+  "currentWork": {
+    "visibility": "PRIVATE",
+    "visibilitySource": "ENVIRONMENT_RECEIPT",
+    "prNumber": 7,
+    "prSource": "ENVIRONMENT_RECEIPT",
+    "workRef": "work.vexlife.bounded-correction",
+    "workSource": "ENVIRONMENT_RECEIPT",
+    "priorReviewedHead": "0000000000000000000000000000000000000000",
+    "commitsAbovePriorHead": 1
+  },
+  "lifecycle": {
+    "state": "PRIVATE_STAGING",
+    "source": "ENVIRONMENT_RECEIPT"
+  }
+}

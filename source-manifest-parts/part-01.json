@@ -18,8 +18,8 @@
     },
     {
       "path": ".github/workflows/check.yml",
-      "bytes": 1264,
-      "sha256": "17c6b46ee22cfa763747cd664583d3c984504dda14c7d8ab96265d43cb6a7df6"
+      "bytes": 2192,
+      "sha256": "71b99bb7bead93b7b32e01b8f29f6bdb4c20631bb88cac1e9063016ad4050c0f"
     },
     {
       "path": ".github/workflows/dco.yml",
@@ -32,9 +32,14 @@
       "sha256": "5b2256d47cb3ac885f15e52a6a2caafc5b91ecff8752db07ff8fb75477e8aefa"
     },
     {
+      "path": "AGENTS.md",
+      "bytes": 172,
+      "sha256": "3eb76629cf2e2406b17c8691933af6e0fd623040ac509893fcd9143527bba4a5"
+    },
+    {
       "path": "blueprint/build-health-registry.json",
-      "bytes": 6002,
-      "sha256": "6d6d835018347eb193edb0b6b731eed0d021781a9757ce145b32564fc9342d3e"
+      "bytes": 7872,
+      "sha256": "810226098a92095616fb3f8abc75e16ad301e8944484fb6c8bb9a31feb14c2e9"
     },
     {
       "path": "blueprint/capability-registry.json",
@@ -115,11 +120,6 @@
       "path": "blueprint/fragments/screens/health.json",
       "bytes": 2012,
       "sha256": "7233df7f67f26905297cbf7b6784de020a43c17514888954a373720a333f48db"
-    },
-    {
-      "path": "blueprint/fragments/screens/shell.json",
-      "bytes": 5530,
-      "sha256": "436259b71eacf2b3c43582290d3d90956c014f2ba1b89dd41baff7e740f5ea3c"
     }
   ]
 }
