@@ -330,5 +330,109 @@
   {
     "testRef": "test.intent.full-gate",
     "brief": "Intent validation is registered in the full PR-ready gate and the canonical source manifest remains required."
+  },
+  {
+    "testRef": "test.intent-scheduler.non-green-zero-admission",
+    "brief": "Blocked, attention, stale or unknown workgraphs expose candidate-only readiness and admit zero scheduler nodes."
+  },
+  {
+    "testRef": "test.intent-scheduler.exact-admission-binding",
+    "brief": "Scheduler admission binds exact graph, source hashes, external runtime trust, canonical clock interval, node, occupancy, resource, capability, effect, transition, gate and return identities."
+  },
+  {
+    "testRef": "test.intent-scheduler.single-worker",
+    "brief": "One registered physical worker source rejects concurrent leases across distinct scheduler instances and active admission replacement."
+  },
+  {
+    "testRef": "test.intent-scheduler.logical-branches",
+    "brief": "Several logical ready branches remain visible while only one physical model-worker lease is formed."
+  },
+  {
+    "testRef": "test.intent-scheduler.interactive-preemption",
+    "brief": "Interactive work outranks background work and preemption performs checkpoint, transactional release, re-admission and fresh-generation worker selection."
+  },
+  {
+    "testRef": "test.intent-scheduler.fairness",
+    "brief": "Scheduler-owned source-bound deferral and age evidence prevents multi-generation starvation without violating interactive background holds."
+  },
+  {
+    "testRef": "test.intent-scheduler.resource-fail-closed",
+    "brief": "Unknown, expired, self-certified, malformed or insufficient external CPU, RAM, GPU, VRAM, model, thermal or concurrency evidence blocks admission."
+  },
+  {
+    "testRef": "test.intent-scheduler.context-budget",
+    "brief": "One active context lease stays within the hard token budget and contains bounded refs instead of heavy payloads."
+  },
+  {
+    "testRef": "test.intent-scheduler.context-no-op",
+    "brief": "Equal semantic context selection suppresses another lease only while the exact context and all bound leases remain current and active."
+  },
+  {
+    "testRef": "test.intent-scheduler.checkpoint-release",
+    "brief": "Checkpoint transactionally consumes admission, worker, context, resource, occupancy, capability and effect leases while preserving exact paired source-hash, receipt and next-action lineage."
+  },
+  {
+    "testRef": "test.intent-scheduler.resume-revalidate",
+    "brief": "Resume accepts changed-but-sufficient external resources only after fresh graph, trust, capability, effect, source-hash and generation validation, rejecting every prior lease."
+  },
+  {
+    "testRef": "test.intent-scheduler.tool-lease-boundary",
+    "brief": "A typed mock tool call resolves canonical tool/effect/schema/executor identities and requires exact active worker, context, capability, effect, resource and runtime bindings."
+  },
+  {
+    "testRef": "test.intent-scheduler.tool-result-rejection",
+    "brief": "Wrong-context, wrong-effect, wrong-schema, stale, duplicate, late, replayed-after-restart, generation-mismatched or cancellation-racing results fail closed."
+  },
+  {
+    "testRef": "test.intent-scheduler.tool-result-reinjection",
+    "brief": "An accepted result becomes one bounded observation only in the exact origin context or a successor context carrying the scheduler-issued authorization receipt."
+  },
+  {
+    "testRef": "test.intent-scheduler.cancellation-lineage",
+    "brief": "Cancellation closes pending relay work, consumes every lease, preserves work/source/artifact/receipt lineage and blocks re-lease."
+  },
+  {
+    "testRef": "test.intent-scheduler.bounded-projections",
+    "brief": "Queue, Terrain, Health and Guide derive bounded why-visible projections from one aggregate and never project released, expired, orphaned or cancelled truth as CLEAR."
+  },
+  {
+    "testRef": "test.intent-scheduler.full-gate",
+    "brief": "Canonical scheduler composition and the complete deterministic no-effect journey receipt are bound into PR-ready, Health, manifest, browser, portability and DCO gates."
+  },
+  {
+    "testRef": "test.intent-scheduler.normal-completion",
+    "brief": "Exact node, transition, gate, completion and return-route evidence closes successful work distinctly from cancellation with six explicit lease releases."
+  },
+  {
+    "testRef": "test.intent-scheduler.preemption-continuation",
+    "brief": "Background work checkpoints, exact interactive admission preempts it, and fresh runtime evidence resumes the preserved background continuation."
+  },
+  {
+    "testRef": "test.intent-scheduler.checkpoint-exact-release-set",
+    "brief": "Checkpoint lineage is scheduler-derived and exactly six unique same-lifecycle lease receipts bind each prior and transitioned fingerprint."
+  },
+  {
+    "testRef": "test.intent-scheduler.durable-held-tool",
+    "brief": "Held calls resume, reissue, supersede or close only through scheduler-owned authorization; direct held cancellation is rejected before mutation and accepted scheduler closure keeps relay and aggregate convergent."
+  },
+  {
+    "testRef": "test.intent-scheduler.live-clock",
+    "brief": "Monotonic observed-clock advancement expires active evidence without a model turn and rejects resource or result timing outside exact intervals."
+  },
+  {
+    "testRef": "test.intent-scheduler.safe-receipt-path",
+    "brief": "Scheduler, PR-ready and Health receipt arguments reject absolute, traversal, symlink and non-generated destinations on Windows and Linux."
+  },
+  {
+    "testRef": "test.intent-scheduler.external-completion-verifier",
+    "brief": "A source-managed deterministic external verifier rejects self-certified, unchanged, stale, wrong-gate, wrong-source and conflicting evidence, plus consumption before observation, at/after expiry or behind the scheduler clock."
+  },
+  {
+    "testRef": "test.intent-scheduler.workgraph-completion-convergence",
+    "brief": "Verified scheduler completion reduces canonical Workgraph transitions and an Intent receipt that retain exact verification and gate-observation refs/hashes so dependents and parent convergence consume one current lineage."
+  },
+  {
+    "testRef": "test.intent-scheduler.relay-replay-state-machine",
+    "brief": "Relay restore replays one registered typed event contract per legal edge, cross-checks observation/context/checkpoint/cancellation/scheduler/successor lineage, rejects wrong-schema legal edges and continues a valid restart exactly once."
   }
 ]

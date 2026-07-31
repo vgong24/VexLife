@@ -265,6 +265,24 @@
         "lens.vexlife.assurance-and-adversarial"
       ],
       "blocking": true
+    },
+    {
+      "checkRef": "check.intent-scheduler",
+      "command": "npm run scheduler:check",
+      "category": "ARCHITECTURE",
+      "purpose": "Canonical scheduler composition, live-clock completion consumption currentness with exact Workgraph evidence lineage, preserved preemption continuation, six-lease checkpoint release, typed relay-event replay, scheduler-exclusive held-tool disposition and closure, scheduler-authorized successor context, safe receipt paths and the deterministic no-effect lifecycle receipt validate.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true
     }
   ]
 }

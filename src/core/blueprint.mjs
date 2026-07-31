@@ -10,6 +10,7 @@ import { validateReviewLensRegistry, validateFeatureRegistry } from './feature-r
 import { validateHomeBridgeRegistry } from './home-bridge.mjs';
 import { validateBuildHealthRegistry } from './build-health.mjs';
 import { validateIntentRegistry } from './intent-validation.mjs';
+import { validateIntentSchedulerRegistry } from './scheduler-runtime-trust.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const VEXLIFE_ROOT = path.resolve(HERE, '../..');
@@ -54,15 +55,48 @@ export function loadBlueprint(root = VEXLIFE_ROOT) {
   const buildHealth = optionalJson(path.join(root, 'blueprint/build-health-registry.json'), { checks: [] });
   const bridge = optionalJson(path.join(root, 'blueprint/home-bridge-registry.json'), {});
   const intentRegistry = blueprint.intentOrchestration ?? null;
+  const schedulerRegistry = blueprint.intentScheduler ?? null;
   const strings = Object.fromEntries(blueprint.product.requiredLanguages.map((language) => [
     language,
     readJson(path.join(root, `blueprint/strings/${language}.json`))
   ]));
-  return { blueprint, tokens, platforms, strings, factory, modules, experience, evolution, implementationPlan, capabilities, reviewLenses, featureRegistry, buildHealth, bridge, intentRegistry, root };
+  return {
+    blueprint,
+    tokens,
+    platforms,
+    strings,
+    factory,
+    modules,
+    experience,
+    evolution,
+    implementationPlan,
+    capabilities,
+    reviewLenses,
+    featureRegistry,
+    buildHealth,
+    bridge,
+    intentRegistry,
+    schedulerRegistry,
+    root
+  };
 }
 
 function collectRefs(bundle) {
-  const { blueprint, factory, modules, experience, evolution, implementationPlan, capabilities, reviewLenses, featureRegistry, buildHealth, bridge, intentRegistry } = bundle;
+  const {
+    blueprint,
+    factory,
+    modules,
+    experience,
+    evolution,
+    implementationPlan,
+    capabilities,
+    reviewLenses,
+    featureRegistry,
+    buildHealth,
+    bridge,
+    intentRegistry,
+    schedulerRegistry
+  } = bundle;
   const refs = [];
   const add = (kind, ref) => refs.push({ kind, ref });
   add('blueprint', blueprint.blueprintRef);
@@ -124,6 +158,29 @@ function collectRefs(bundle) {
   for (const item of intentRegistry?.projectionIdentities ?? []) add('intent-projection', item.projectionRef);
   for (const item of Object.values(intentRegistry?.attributedProjectionContracts ?? {})) add('intent-attributed-contract', item.contractRef);
   for (const item of intentRegistry?.knownIntentProcessRoutes ?? []) add('intent-resolution', item.resolutionRef);
+  if (schedulerRegistry?.registryRef) add('intent-scheduler-registry', schedulerRegistry.registryRef);
+  if (schedulerRegistry?.systemRef) add('intent-scheduler-system', schedulerRegistry.systemRef);
+  if (schedulerRegistry?.canonicalSourceRef) add('intent-scheduler-source', schedulerRegistry.canonicalSourceRef);
+  for (const item of schedulerRegistry?.priorityClassIdentities ?? []) add('intent-scheduler-priority', item.priorityClassRef);
+  for (const item of schedulerRegistry?.policyIdentities ?? []) add('intent-scheduler-policy', item.policyRef);
+  for (const item of schedulerRegistry?.requiredFieldContracts ?? []) add('intent-scheduler-field-contract', item.contractRef);
+  if (schedulerRegistry?.runtimeTrustContract?.contractRef) add('intent-scheduler-runtime-contract', schedulerRegistry.runtimeTrustContract.contractRef);
+  if (schedulerRegistry?.runtimeTrustContract?.clockRef) add('intent-scheduler-clock', schedulerRegistry.runtimeTrustContract.clockRef);
+  for (const item of schedulerRegistry?.runtimeSourceIdentities ?? []) {
+    add('intent-scheduler-runtime-source', item.sourceRef);
+    add('intent-scheduler-runtime-authority', item.authorityRef);
+  }
+  for (const item of schedulerRegistry?.workerIdentities ?? []) add('intent-scheduler-worker', item.workerRef);
+  for (const item of schedulerRegistry?.mockToolContracts ?? []) {
+    add('intent-scheduler-mock-tool-contract', item.contractRef);
+    add('intent-scheduler-mock-tool', item.toolRef);
+    add('intent-scheduler-mock-effect', item.effectRef);
+    add('intent-scheduler-argument-schema', item.argumentSchemaRef);
+    add('intent-scheduler-result-schema', item.resultSchemaRef);
+    add('intent-scheduler-executor', item.executorRef);
+  }
+  if (schedulerRegistry?.simulationContract?.contractRef) add('intent-scheduler-simulation-contract', schedulerRegistry.simulationContract.contractRef);
+  for (const item of schedulerRegistry?.projectionIdentities ?? []) add('intent-scheduler-projection', item.projectionRef);
   return refs;
 }
 
@@ -257,6 +314,31 @@ export function validateBlueprint(bundle) {
   }
   const intentValidation = validateIntentRegistry(bundle.intentRegistry);
   errors.push(...intentValidation.errors.map((error) => `intent registry: ${error}`));
+  if (!blueprint.intentScheduler) errors.push('universal blueprint missing intentScheduler composition');
+  else if (!bundle.schedulerRegistry) errors.push('loaded bundle missing canonical intent scheduler registry');
+  else if (semanticHash(blueprint.intentScheduler) !== semanticHash(bundle.schedulerRegistry)) {
+    errors.push('universal blueprint intentScheduler composition does not match loaded scheduler registry');
+  }
+  const schedulerValidation = validateIntentSchedulerRegistry(bundle.schedulerRegistry);
+  errors.push(...schedulerValidation.errors.map((error) => `intent scheduler registry: ${error}`));
+  const processRefs = new Set(factory.processes.map((item) => item.processRef));
+  const moduleRefs = new Set((bundle.modules?.modules ?? []).map((item) => item.moduleRef));
+  for (const processRef of bundle.schedulerRegistry?.processRefs ?? []) {
+    if (!processRefs.has(processRef)) errors.push(`intent scheduler registry references missing process ${processRef}`);
+  }
+  for (const testRef of bundle.schedulerRegistry?.testRefs ?? []) {
+    if (!testRefs.has(testRef)) errors.push(`intent scheduler registry references missing test ${testRef}`);
+  }
+  for (const moduleRef of [
+    'module.vexlife.core.scheduler-runtime-trust',
+    'module.vexlife.core.resource-admission',
+    'module.vexlife.core.context-lease',
+    'module.vexlife.core.intent-checkpoint',
+    'module.vexlife.core.tool-result-relay',
+    'module.vexlife.core.intent-scheduler'
+  ]) {
+    if (!moduleRefs.has(moduleRef)) errors.push(`intent scheduler registry requires missing module ${moduleRef}`);
+  }
 
   let registryStats = null;
   try {
@@ -286,9 +368,27 @@ export function validateBlueprint(bundle) {
       features: featureValidation.stats.features,
       healthChecks: healthValidation.stats.checks,
       bridgeModes: bridgeValidation.stats.modes,
+      schedulerOwnedRefs: schedulerValidation.stats.ownedRefs,
       registryEntries: registryStats?.entries ?? 0
     },
-    semanticHash: semanticHash({ blueprint, tokens, platforms, strings, factory, modules: bundle.modules, experience: bundle.experience, evolution: bundle.evolution, implementationPlan: bundle.implementationPlan, capabilities: bundle.capabilities, reviewLenses: bundle.reviewLenses, featureRegistry: bundle.featureRegistry, buildHealth: bundle.buildHealth, bridge: bundle.bridge, intentRegistry: bundle.intentRegistry })
+    semanticHash: semanticHash({
+      blueprint,
+      tokens,
+      platforms,
+      strings,
+      factory,
+      modules: bundle.modules,
+      experience: bundle.experience,
+      evolution: bundle.evolution,
+      implementationPlan: bundle.implementationPlan,
+      capabilities: bundle.capabilities,
+      reviewLenses: bundle.reviewLenses,
+      featureRegistry: bundle.featureRegistry,
+      buildHealth: bundle.buildHealth,
+      bridge: bundle.bridge,
+      intentRegistry: bundle.intentRegistry,
+      schedulerRegistry: bundle.schedulerRegistry
+    })
   };
 }
 
@@ -296,7 +396,7 @@ export function buildIdentityIndex(blueprintOrBundle) {
   const bundle = blueprintOrBundle.blueprint ? blueprintOrBundle : {
     blueprint: blueprintOrBundle, strings: { [blueprintOrBundle.product.defaultLanguage]: {} },
     factory: { foundations: [], processes: [], templates: [], workedExamples: [] }, modules: { modules: [] },
-    experience: { experienceProfiles: [], gestureContracts: [], vessels: [] }, evolution: { candidateTypes: [] }, implementationPlan: { milestones: [], workUnits: [] }, capabilities: { capabilities: [] }, reviewLenses: { lenses: [] }, featureRegistry: { features: [] }, buildHealth: { checks: [] }, bridge: {}, intentRegistry: blueprintOrBundle.intentOrchestration ?? null
+    experience: { experienceProfiles: [], gestureContracts: [], vessels: [] }, evolution: { candidateTypes: [] }, implementationPlan: { milestones: [], workUnits: [] }, capabilities: { capabilities: [] }, reviewLenses: { lenses: [] }, featureRegistry: { features: [] }, buildHealth: { checks: [] }, bridge: {}, intentRegistry: blueprintOrBundle.intentOrchestration ?? null, schedulerRegistry: blueprintOrBundle.intentScheduler ?? null
   };
   return [...compileRegistryPack(bundle).entries.values()].map((entry) => ({
     ref: entry.ref,

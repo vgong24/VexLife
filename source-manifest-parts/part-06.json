@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/doctor.mjs",
+      "mode": "100644",
+      "bytes": 1131,
+      "sha256": "60fa71ce359bc99cc1e4f6dc6340707fd370ebadb772d5da28b4f07e756b86b8"
+    },
+    {
+      "path": "scripts/evolution-summary.mjs",
+      "mode": "100644",
+      "bytes": 725,
+      "sha256": "c6ac13ab39f729bfa6515fd77087e3c4ed848537dc6a03ba35137ef2c4ea5979"
+    },
+    {
       "path": "scripts/feature-check.mjs",
       "mode": "100644",
       "bytes": 669,
@@ -16,8 +28,8 @@
     {
       "path": "scripts/health-check.mjs",
       "mode": "100644",
-      "bytes": 4445,
-      "sha256": "058af3242401385888954c6221915b8d8ca61ea4478a70ce4fdb60bbe5f0d7f7"
+      "bytes": 6712,
+      "sha256": "fc5b3631a44ff71d206f610815a9087ee90d8fb20abfc479c69aa04ce2d13f24"
     },
     {
       "path": "scripts/impact-report.mjs",
@@ -70,8 +82,8 @@
     {
       "path": "scripts/pr-ready.mjs",
       "mode": "100644",
-      "bytes": 5566,
-      "sha256": "a780e87c84a6e7861ccccd4d011e8cf7c0820ad5b5040abd5a49972c880a5670"
+      "bytes": 8154,
+      "sha256": "ac2478a5090e2a10fa7d17a50572b8503dbcf40c5c60963e067de8b98075c995"
     },
     {
       "path": "scripts/provision-model.mjs",
@@ -90,6 +102,24 @@
       "mode": "100644",
       "bytes": 317,
       "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
+    },
+    {
+      "path": "scripts/scheduler-check.mjs",
+      "mode": "100644",
+      "bytes": 5149,
+      "sha256": "bd738bf39c00d23a08aa8e5a1e5886c4d7cfc87b280f2b2da634526538964939"
+    },
+    {
+      "path": "scripts/scheduler-simulate.mjs",
+      "mode": "100644",
+      "bytes": 32557,
+      "sha256": "355c3e03d6bc8f7530dfda8cc09fe67f281438a7aedd75ff5a0767586d566b50"
+    },
+    {
+      "path": "scripts/scheduler-status.mjs",
+      "mode": "100644",
+      "bytes": 3002,
+      "sha256": "413f1c0d7736176efbb4da2ce8601917c06ab22dc34496f1f31b2a48dc691b02"
     },
     {
       "path": "scripts/serve-browser.mjs",
@@ -114,36 +144,6 @@
       "mode": "100644",
       "bytes": 433,
       "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
-    },
-    {
-      "path": "src/core/atlas.mjs",
-      "mode": "100644",
-      "bytes": 3026,
-      "sha256": "a62a9408b464cf7114ef7f3a1568449fbf416dd1d3b14dd863941c820a8a7b36"
-    },
-    {
-      "path": "src/core/blueprint.mjs",
-      "mode": "100644",
-      "bytes": 20964,
-      "sha256": "09a2ee710603c61005e307c9d94b6318fa8a75e203361e23722949390c15a832"
-    },
-    {
-      "path": "src/core/boot.mjs",
-      "mode": "100644",
-      "bytes": 6968,
-      "sha256": "3d257e4f5dd6f9a35a6ad341a6dae66242ee7aad8f2e06422b163342f22a05b0"
-    },
-    {
-      "path": "src/core/build-health.mjs",
-      "mode": "100644",
-      "bytes": 4344,
-      "sha256": "462112c34ac3acbab20efebd2f295a6fdac5813cff053df91358d281030c963d"
-    },
-    {
-      "path": "src/core/capability.mjs",
-      "mode": "100644",
-      "bytes": 2361,
-      "sha256": "00a60fd3f0491923109720586d0f69d6fddfc21b8c57dc540e066434980cba54"
     }
   ]
 }

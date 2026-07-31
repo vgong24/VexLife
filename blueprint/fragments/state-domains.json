@@ -128,5 +128,25 @@
     "stateRef": "state.intent-workgraph",
     "ownerRef": "service.intent-orchestration",
     "brief": "Immutable human intent, attributed interpretations, admitted workgraph nodes, exact transition receipts, and bounded next-safe-action projections."
+  },
+  {
+    "stateRef": "state.intent-scheduler",
+    "ownerRef": "service.intent-scheduler",
+    "brief": "One canonical aggregate owns observed clock, physical worker, admitted queue, source-bound fairness, generation, externally verified Workgraph completion, preempted continuations, held-tool dispositions, every lease transition, checkpoint, relay and cancellation truth used by bounded Queue/Terrain/Health/Guide projections."
+  },
+  {
+    "stateRef": "state.context-lease",
+    "ownerRef": "service.context-lease",
+    "brief": "One bounded ref-only context selection per active physical worker with explicit token admission, semantic no-op suppression and scheduler-issued successor-observation authorization."
+  },
+  {
+    "stateRef": "state.intent-checkpoint",
+    "ownerRef": "service.intent-checkpoint",
+    "brief": "Recoverable pause and resume lineage derived from the scheduler aggregate and bound to the exact six-lease release set, graph, trust, resource and source identities."
+  },
+  {
+    "stateRef": "state.tool-result-relay",
+    "ownerRef": "service.tool-result-relay",
+    "brief": "Durably restorable typed mock calls whose current state is derived by replaying one registered transition graph, with scheduler-owned held-call dispositions, exact successor lineage, bounded observations and once-only reinjection."
   }
 ]

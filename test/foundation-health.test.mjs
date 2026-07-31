@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +9,7 @@ import { deriveRequiredLensRefs, scaffoldFeatureContract, validateFeatureRegistr
 import { deriveRepositoryHealth, compactCurrentProjection, validateBuildHealthRegistry } from '../src/core/build-health.mjs';
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
+import { runSchedulerSimulation } from '../scripts/scheduler-simulate.mjs';
 
 const bundle = loadBlueprint();
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -130,9 +130,11 @@ test('executed current failure blocks repository health', () => {
 
 test('health command accepts only an exact-head executed-current receipt', () => {
   const validation = validateBlueprint(bundle);
+  const simulation = runSchedulerSimulation({ root: ROOT, writeReceipt: true }).receipt;
   const source = buildSourceManifest(ROOT);
   const repository = collectRepositoryEvidence(ROOT);
-  const receiptPath = path.join(os.tmpdir(), `vexlife-health-${process.pid}-${Date.now()}.json`);
+  const receiptArg = `generated/health/vexlife-health-${process.pid}-${Date.now()}.json`;
+  const receiptPath = path.join(ROOT, ...receiptArg.split('/'));
   const checkResults = bundle.buildHealth.checks.map((check) => ({
     checkRef: check.checkRef,
     semanticState: 'PASSED',
@@ -153,29 +155,66 @@ test('health command accepts only an exact-head executed-current receipt', () =>
     blueprintHash: validation.semanticHash,
     checkResultContractRef: bundle.buildHealth.checkResultContract.contractRef,
     sourceStability: { state: 'PASS' },
+    schedulerSimulation: {
+      receiptPath: bundle.schedulerRegistry.simulationContract.receiptPath,
+      state: 'EXECUTED_CURRENT',
+      receiptRef: simulation.receiptRef,
+      contractRef: simulation.contractRef,
+      semanticFingerprint: simulation.semanticFingerprint,
+      sourceTreeSha256: simulation.sourceTreeSha256,
+      blueprintHash: simulation.blueprintHash,
+      schedulerRegistryHash: simulation.schedulerRegistryHash,
+      journeyStates: simulation.journeyStates,
+      finalHealthState: simulation.finalProjection.health.state,
+      orphanedPendingToolCalls: simulation.orphanedPendingToolCalls,
+      externalEffectsExecuted: simulation.externalEffectsExecuted,
+      selfCertifiedRuntimeEvidence: simulation.selfCertifiedRuntimeEvidence,
+      errors: []
+    },
     checkResults
   };
   try {
     fs.writeFileSync(receiptPath, JSON.stringify(receipt));
-    const current = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptPath], { cwd: ROOT, encoding: 'utf8' });
+    const current = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
     assert.equal(current.status, 0, current.stderr);
     assert.equal(JSON.parse(current.stdout).receiptState, 'EXECUTED_CURRENT');
     assert.equal(JSON.parse(current.stdout).state, 'HEALTHY');
 
     fs.writeFileSync(receiptPath, JSON.stringify({ ...receipt, candidateHeadSha: '0'.repeat(40) }));
-    const stale = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptPath], { cwd: ROOT, encoding: 'utf8' });
+    const stale = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
     assert.equal(stale.status, 1);
     assert.equal(JSON.parse(stale.stdout).receiptState, 'STALE');
     assert.equal(JSON.parse(stale.stdout).state, 'ATTENTION');
     assert.ok(JSON.parse(stale.stdout).unresolvedCheckRefs.length > 0);
 
+    fs.writeFileSync(receiptPath, JSON.stringify({
+      ...receipt,
+      schedulerSimulation: { ...receipt.schedulerSimulation, semanticFingerprint: '0'.repeat(64) }
+    }));
+    const unbound = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(unbound.status, 1);
+    assert.equal(JSON.parse(unbound.stdout).receiptState, 'INVALID');
+    assert.match(JSON.parse(unbound.stdout).errors.join('\n'), /does not exactly bind/);
+
     fs.writeFileSync(receiptPath, JSON.stringify({ ...receipt, checkResults: checkResults.slice(1) }));
-    const incomplete = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptPath], { cwd: ROOT, encoding: 'utf8' });
+    const incomplete = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
     assert.equal(incomplete.status, 1);
     assert.equal(JSON.parse(incomplete.stdout).receiptState, 'INVALID');
     assert.match(JSON.parse(incomplete.stdout).errors.join('\n'), /check coverage/);
   } finally {
     fs.rmSync(receiptPath, { force: true });
+  }
+});
+
+test('effectful receipt CLI arguments fail closed outside generated/health', () => {
+  for (const [script, unsafe] of [
+    ['scripts/scheduler-simulate.mjs', '../scheduler-proof.json'],
+    ['scripts/pr-ready.mjs', 'artifacts/pr-ready.json'],
+    ['scripts/health-check.mjs', path.resolve(ROOT, 'generated/health/absolute.json')]
+  ]) {
+    const result = spawnSync(process.execPath, [script, '--receipt', unsafe], { cwd: ROOT, encoding: 'utf8' });
+    assert.notEqual(result.status, 0);
+    assert.match(`${result.stderr}\n${result.stdout}`, /safe relative path|under generated\/health/);
   }
 });
 

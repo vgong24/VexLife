@@ -46,7 +46,22 @@ function addUsage(map, stringRef, consumerRef) {
   map.set(stringRef, set);
 }
 
-export function compileRegistryPack({ blueprint, strings, factory, modules = null, experience = null, evolution = null, implementationPlan = null, capabilities = null, reviewLenses = null, featureRegistry = null, buildHealth = null, bridge = null, intentRegistry = blueprint?.intentOrchestration ?? null }) {
+export function compileRegistryPack({
+  blueprint,
+  strings,
+  factory,
+  modules = null,
+  experience = null,
+  evolution = null,
+  implementationPlan = null,
+  capabilities = null,
+  reviewLenses = null,
+  featureRegistry = null,
+  buildHealth = null,
+  bridge = null,
+  intentRegistry = blueprint?.intentOrchestration ?? null,
+  schedulerRegistry = blueprint?.intentScheduler ?? null
+}) {
   const registry = new IdentityRegistry({ registryRef: blueprint.registryRefs?.compiledIdentityRegistryRef });
   const stringUsage = new Map();
 
@@ -142,6 +157,199 @@ export function compileRegistryPack({ blueprint, strings, factory, modules = nul
           { type: 'PARENT', to: intentRegistry.systemRef },
           { type: 'RESOLVES_TO_PROCESS', to: route.processRef }
         ]
+      });
+    }
+  }
+
+  if (schedulerRegistry?.registryRef) {
+    const sourceRef = schedulerRegistry.canonicalSourceRef;
+    const sourceEdge = { type: 'SOURCE', to: sourceRef };
+    registry.register({
+      ref: sourceRef,
+      kind: 'SOURCE_CONTRACT',
+      brief: schedulerRegistry.canonicalSource.path,
+      path: schedulerRegistry.canonicalSource.path,
+      sourceClass: schedulerRegistry.canonicalSource.sourceClass
+    });
+    registry.register({
+      ref: schedulerRegistry.registryRef,
+      kind: 'INTENT_SCHEDULER_REGISTRY',
+      brief: schedulerRegistry.purpose,
+      version: schedulerRegistry.registryVersion,
+      sourceRef,
+      edges: [
+        sourceEdge,
+        { type: 'SYSTEM', to: schedulerRegistry.systemRef }
+      ]
+    });
+    registry.register({
+      ref: schedulerRegistry.systemRef,
+      kind: 'SYSTEM',
+      brief: schedulerRegistry.purpose,
+      parentRef: schedulerRegistry.registryRef,
+      sourceRef,
+      edges: [
+        { type: 'PARENT', to: schedulerRegistry.registryRef },
+        sourceEdge,
+        ...(schedulerRegistry.priorityClassIdentities ?? []).map((item) => ({ type: 'PRIORITY_CLASS', to: item.priorityClassRef })),
+        ...(schedulerRegistry.policyIdentities ?? []).map((item) => ({ type: 'POLICY', to: item.policyRef })),
+        ...(schedulerRegistry.requiredFieldContracts ?? []).map((item) => ({ type: 'REQUIRED_FIELD_CONTRACT', to: item.contractRef })),
+        ...(schedulerRegistry.projectionIdentities ?? []).map((item) => ({ type: 'PROJECTS', to: item.projectionRef })),
+        ...(schedulerRegistry.processRefs ?? []).map((to) => ({ type: 'PROCESS', to })),
+        ...(schedulerRegistry.testRefs ?? []).map((to) => ({ type: 'PROVED_BY', to })),
+        { type: 'RUNTIME_TRUST', to: schedulerRegistry.runtimeTrustContract.contractRef },
+        { type: 'SIMULATION_CONTRACT', to: schedulerRegistry.simulationContract.contractRef }
+      ]
+    });
+    for (const item of schedulerRegistry.priorityClassIdentities ?? []) {
+      registry.register({
+        ...item,
+        ref: item.priorityClassRef,
+        kind: 'INTENT_SCHEDULER_PRIORITY_CLASS',
+        brief: item.name,
+        parentRef: schedulerRegistry.systemRef,
+        sourceRef,
+        edges: [{ type: 'PARENT', to: schedulerRegistry.systemRef }, sourceEdge]
+      });
+    }
+    for (const item of schedulerRegistry.policyIdentities ?? []) {
+      registry.register({
+        ...item,
+        ref: item.policyRef,
+        kind: 'INTENT_SCHEDULER_POLICY',
+        brief: item.policyKind,
+        parentRef: schedulerRegistry.systemRef,
+        sourceRef,
+        policy: schedulerRegistry[item.sourceField],
+        edges: [{ type: 'PARENT', to: schedulerRegistry.systemRef }, sourceEdge]
+      });
+    }
+    for (const item of schedulerRegistry.requiredFieldContracts ?? []) {
+      registry.register({
+        ...item,
+        ref: item.contractRef,
+        kind: 'INTENT_SCHEDULER_REQUIRED_FIELD_CONTRACT',
+        brief: item.contractKind,
+        parentRef: schedulerRegistry.systemRef,
+        sourceRef,
+        requiredFields: schedulerRegistry[item.sourceField],
+        edges: [{ type: 'PARENT', to: schedulerRegistry.systemRef }, sourceEdge]
+      });
+    }
+    registry.register({
+      ...schedulerRegistry.runtimeTrustContract,
+      ref: schedulerRegistry.runtimeTrustContract.contractRef,
+      kind: 'INTENT_SCHEDULER_RUNTIME_TRUST_CONTRACT',
+      brief: schedulerRegistry.runtimeTrustContract.purpose,
+      parentRef: schedulerRegistry.systemRef,
+      sourceRef,
+      edges: [
+        { type: 'PARENT', to: schedulerRegistry.systemRef },
+        { type: 'CLOCK', to: schedulerRegistry.runtimeTrustContract.clockRef },
+        ...(schedulerRegistry.runtimeSourceIdentities ?? []).map((item) => ({ type: 'RUNTIME_SOURCE', to: item.sourceRef })),
+        ...(schedulerRegistry.workerIdentities ?? []).map((item) => ({ type: 'WORKER', to: item.workerRef })),
+        sourceEdge
+      ]
+    });
+    registry.register({
+      ref: schedulerRegistry.runtimeTrustContract.clockRef,
+      kind: 'CANONICAL_CLOCK',
+      brief: schedulerRegistry.runtimeTrustContract.activeWindowRule,
+      parentRef: schedulerRegistry.runtimeTrustContract.contractRef,
+      sourceRef,
+      edges: [{ type: 'PARENT', to: schedulerRegistry.runtimeTrustContract.contractRef }, sourceEdge]
+    });
+    for (const item of schedulerRegistry.runtimeSourceIdentities ?? []) {
+      registry.register({
+        ...item,
+        ref: item.sourceRef,
+        kind: 'INTENT_SCHEDULER_RUNTIME_SOURCE',
+        brief: item.evidenceClass,
+        parentRef: schedulerRegistry.runtimeTrustContract.contractRef,
+        sourceRef,
+        edges: [
+          { type: 'PARENT', to: schedulerRegistry.runtimeTrustContract.contractRef },
+          { type: 'AUTHORITY', to: item.authorityRef },
+          sourceEdge
+        ]
+      });
+      registry.register({
+        ref: item.authorityRef,
+        kind: 'INTENT_SCHEDULER_RUNTIME_AUTHORITY',
+        brief: item.sourceRef,
+        parentRef: item.sourceRef,
+        sourceRef,
+        edges: [{ type: 'PARENT', to: item.sourceRef }, sourceEdge]
+      });
+    }
+    for (const item of schedulerRegistry.workerIdentities ?? []) {
+      registry.register({
+        ...item,
+        ref: item.workerRef,
+        kind: 'INTENT_SCHEDULER_WORKER',
+        brief: item.workerKind,
+        parentRef: schedulerRegistry.runtimeTrustContract.contractRef,
+        sourceRef,
+        edges: [{ type: 'PARENT', to: schedulerRegistry.runtimeTrustContract.contractRef }, sourceEdge]
+      });
+    }
+    for (const item of schedulerRegistry.mockToolContracts ?? []) {
+      registry.register({
+        ...item,
+        ref: item.contractRef,
+        kind: 'INTENT_SCHEDULER_MOCK_TOOL_CONTRACT',
+        brief: `${item.toolRef} -> ${item.resultSchemaRef}`,
+        parentRef: schedulerRegistry.systemRef,
+        sourceRef,
+        edges: [
+          { type: 'PARENT', to: schedulerRegistry.systemRef },
+          { type: 'TOOL', to: item.toolRef },
+          { type: 'EFFECT', to: item.effectRef },
+          { type: 'ARGUMENT_SCHEMA', to: item.argumentSchemaRef },
+          { type: 'RESULT_SCHEMA', to: item.resultSchemaRef },
+          { type: 'EXECUTOR', to: item.executorRef },
+          sourceEdge
+        ]
+      });
+      for (const [ref, kind, brief] of [
+        [item.toolRef, 'INTENT_SCHEDULER_MOCK_TOOL', item.contractRef],
+        [item.effectRef, 'INTENT_SCHEDULER_MOCK_EFFECT', item.contractRef],
+        [item.argumentSchemaRef, 'INTENT_SCHEDULER_ARGUMENT_SCHEMA', item.contractRef],
+        [item.resultSchemaRef, 'INTENT_SCHEDULER_RESULT_SCHEMA', item.contractRef],
+        [item.executorRef, 'INTENT_SCHEDULER_MOCK_EXECUTOR', item.contractRef]
+      ]) {
+        registry.register({
+          ref,
+          kind,
+          brief,
+          parentRef: item.contractRef,
+          sourceRef,
+          edges: [{ type: 'PARENT', to: item.contractRef }, sourceEdge]
+        });
+      }
+    }
+    registry.register({
+      ...schedulerRegistry.simulationContract,
+      ref: schedulerRegistry.simulationContract.contractRef,
+      kind: 'INTENT_SCHEDULER_SIMULATION_CONTRACT',
+      brief: schedulerRegistry.simulationContract.receiptPath,
+      parentRef: schedulerRegistry.systemRef,
+      sourceRef,
+      edges: [
+        { type: 'PARENT', to: schedulerRegistry.systemRef },
+        { type: 'PROVED_BY', to: schedulerRegistry.simulationContract.checkRef },
+        sourceEdge
+      ]
+    });
+    for (const item of schedulerRegistry.projectionIdentities ?? []) {
+      registry.register({
+        ...item,
+        ref: item.projectionRef,
+        kind: 'INTENT_SCHEDULER_PROJECTION',
+        brief: item.brief,
+        parentRef: schedulerRegistry.systemRef,
+        sourceRef,
+        edges: [{ type: 'PARENT', to: schedulerRegistry.systemRef }, sourceEdge]
       });
     }
   }

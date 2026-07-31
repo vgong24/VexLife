@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('orientation ATTENTION remains unresolved through pr-ready and repository Health', () => {
-  const receiptPath = path.join(os.tmpdir(), `vexlife-pr-ready-attention-${process.pid}-${Date.now()}.json`);
+  const receiptArg = `generated/health/vexlife-pr-ready-attention-${process.pid}-${Date.now()}.json`;
+  const receiptPath = path.join(ROOT, ...receiptArg.split('/'));
   const environment = { ...process.env, VEXLIFE_NESTED_PR_READY: '1' };
   for (const name of [
     'VEXLIFE_REPOSITORY_VISIBILITY',
@@ -23,7 +23,7 @@ test('orientation ATTENTION remains unresolved through pr-ready and repository H
     'VEXLIFE_BASE_SHA'
   ]) delete environment[name];
   try {
-    const prReady = spawnSync(process.execPath, ['scripts/pr-ready.mjs', '--receipt', receiptPath], {
+    const prReady = spawnSync(process.execPath, ['scripts/pr-ready.mjs', '--receipt', receiptArg], {
       cwd: ROOT,
       env: environment,
       encoding: 'utf8',
@@ -41,7 +41,7 @@ test('orientation ATTENTION remains unresolved through pr-ready and repository H
     assert.ok(receipt.health.receiptSummary.executedCurrentPassed < receipt.health.receiptSummary.total);
     assert.ok(receipt.health.unresolvedCheckRefs.includes('check.orientation'));
 
-    const health = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptPath], {
+    const health = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], {
       cwd: ROOT,
       env: environment,
       encoding: 'utf8'

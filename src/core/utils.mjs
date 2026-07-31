@@ -29,10 +29,35 @@ export function writeJson(filePath, value) {
 }
 
 export function requireSafeRelativePath(value, label = 'path') {
-  if (!value || path.isAbsolute(value) || value.split(/[\\/]/).includes('..')) {
+  if (!value || path.isAbsolute(value) || path.win32.isAbsolute(value) || path.posix.isAbsolute(value) ||
+      value.split(/[\\/]/).includes('..')) {
     throw new Error(`${label} must be a safe relative path`);
   }
   return value;
+}
+
+export function resolveSafeGeneratedReceiptPath(root, value, label = 'receipt path') {
+  requireSafeRelativePath(value, label);
+  const normalized = value.replace(/\\/g, '/');
+  if (!normalized.startsWith('generated/health/') || normalized.endsWith('/')) {
+    throw new Error(`${label} must be under generated/health/`);
+  }
+  const repositoryRoot = path.resolve(root);
+  const target = path.resolve(repositoryRoot, ...normalized.split('/'));
+  const relative = path.relative(repositoryRoot, target);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error(`${label} escapes the repository`);
+  }
+
+  let cursor = repositoryRoot;
+  for (const segment of relative.split(path.sep)) {
+    cursor = path.join(cursor, segment);
+    if (!fs.existsSync(cursor)) continue;
+    if (fs.lstatSync(cursor).isSymbolicLink()) {
+      throw new Error(`${label} must not traverse a symbolic link`);
+    }
+  }
+  return target;
 }
 
 // [VXG RealForever]

@@ -305,14 +305,16 @@
   {
     "moduleRef": "module.vexlife.script.pr-ready",
     "path": "scripts/pr-ready.mjs",
-    "role": "Executes every registered repository check and writes a current exact-head health receipt without inferring unexecuted success.",
+    "role": "Executes every registered repository check and writes a current exact-head Health receipt only under the safe generated receipt area while binding the deterministic scheduler simulation.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "registry.vexlife.build-health.001",
       "module.vexlife.core.check-result",
       "module.vexlife.core.build-health",
       "module.vexlife.core.repository-evidence",
-      "module.vexlife.core.source-manifest"
+      "module.vexlife.core.source-manifest",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "generated/health/intent-scheduler-simulation.json"
     ],
     "writes": [
       "generated/health/pr-ready.json"
@@ -454,6 +456,78 @@
     ],
     "changeMap": [
       "docs/INTENT-ORCHESTRATION-SPINE.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.scheduler-check",
+    "path": "scripts/scheduler-check.mjs",
+    "role": "Validates the source-managed scheduler registry through universal Blueprint and Atlas, then executes the complete deterministic no-effect lifecycle and writes its exact-context receipt.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.blueprint",
+      "module.vexlife.core.registry",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.script.scheduler-simulate"
+    ],
+    "writes": [
+      "generated/health/intent-scheduler-simulation.json"
+    ],
+    "loadedBy": [
+      "npm run scheduler:check",
+      "npm run pr-ready"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.scheduler-simulate",
+    "path": "scripts/scheduler-simulate.mjs",
+    "role": "Runs the deterministic fake-model/mock-tool lifecycle through typed relay restore, rejected out-of-band held closure, scheduler-owned disposition, checkpoint resume, once-only reinjection, consumption-current external completion and exact-lineage Workgraph convergence, with cancellation separate.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.intent-scheduler",
+      "module.vexlife.core.intent-completion-verifier",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.tool-result-relay"
+    ],
+    "writes": [
+      "generated/health/intent-scheduler-simulation.json"
+    ],
+    "loadedBy": [
+      "npm run scheduler:simulate"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs",
+      "test/intent-completion-verifier.test.mjs"
+    ],
+    "changeMap": [
+      "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.scheduler-status",
+    "path": "scripts/scheduler-status.mjs",
+    "role": "Validates one safe repository-relative scheduler fixture and emits a bounded Intent Queue runtime status without raw graph, context or machine dumps.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.intent-scheduler"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run scheduler:status"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
     ]
   }
 ]

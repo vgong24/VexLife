@@ -656,9 +656,126 @@
         "projection.intent.next-safe-action"
       ],
       "knownGaps": [
-        "scheduler and physical model-worker arbitration held for Intent Orchestration 2/3",
         "Burden Release and Continuity Evolution Router held for Intent Orchestration 3/3",
         "native platform adoption held pending accepted shared contract"
+      ]
+    },
+    {
+      "featureRef": "feature.vexlife.intent-orchestration-scheduler",
+      "purpose": "Run accepted intent workgraphs through one deterministic physical model worker with consumption-current externally verified completion and exact Workgraph evidence lineage, preserved preemption continuations, scheduler-derived checkpoints, typed relay replay, scheduler-exclusive held-tool closure, scheduler-authorized successor contexts, live-clock currentness, and bounded human projections.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "state.intent-scheduler",
+        "process.vexlife.intent.scheduler-admit",
+        "module.vexlife.core.intent-scheduler"
+      ],
+      "stateRefs": [
+        "state.intent-workgraph",
+        "state.intent-scheduler",
+        "state.context-lease",
+        "state.resource",
+        "state.intent-checkpoint",
+        "state.tool-result-relay",
+        "state.terrain",
+        "state.health",
+        "state.guide"
+      ],
+      "actionRefs": [
+        "action.architecture.open"
+      ],
+      "permissionRefs": [
+        "permission.roadmap.read"
+      ],
+      "processRefs": [
+        "process.vexlife.intent.scheduler-admit",
+        "process.vexlife.intent.scheduler-select",
+        "process.vexlife.intent.scheduler-checkpoint-resume",
+        "process.vexlife.intent.scheduler-tool-relay",
+        "process.vexlife.intent.scheduler-project-runtime"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.state",
+      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.context-lease",
+        "module.vexlife.core.intent-checkpoint",
+        "module.vexlife.core.intent-completion-verifier",
+        "module.vexlife.core.tool-result-relay",
+        "module.vexlife.core.intent-scheduler",
+        "module.vexlife.script.scheduler-check",
+        "module.vexlife.script.scheduler-simulate",
+        "module.vexlife.script.scheduler-status"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.intent-scheduler.non-green-zero-admission",
+        "test.intent-scheduler.exact-admission-binding",
+        "test.intent-scheduler.single-worker",
+        "test.intent-scheduler.logical-branches",
+        "test.intent-scheduler.interactive-preemption",
+        "test.intent-scheduler.fairness",
+        "test.intent-scheduler.resource-fail-closed",
+        "test.intent-scheduler.context-budget",
+        "test.intent-scheduler.context-no-op",
+        "test.intent-scheduler.checkpoint-release",
+        "test.intent-scheduler.resume-revalidate",
+        "test.intent-scheduler.tool-lease-boundary",
+        "test.intent-scheduler.tool-result-rejection",
+        "test.intent-scheduler.tool-result-reinjection",
+        "test.intent-scheduler.cancellation-lineage",
+        "test.intent-scheduler.bounded-projections",
+        "test.intent-scheduler.full-gate",
+        "test.intent-scheduler.normal-completion",
+        "test.intent-scheduler.preemption-continuation",
+        "test.intent-scheduler.checkpoint-exact-release-set",
+        "test.intent-scheduler.durable-held-tool",
+        "test.intent-scheduler.live-clock",
+        "test.intent-scheduler.safe-receipt-path",
+        "test.intent-scheduler.external-completion-verifier",
+        "test.intent-scheduler.workgraph-completion-convergence",
+        "test.intent-scheduler.relay-replay-state-machine"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "DETERMINISTIC_SINGLE_WORKER_RESOURCE_LEASED",
+      "dataClass": "PRIVATE_INTENT_CONTEXT_AND_TOOL_OBSERVATIONS_BY_REF",
+      "effectClass": "BOUNDED_MOCK_TOOL_EFFECTS_ONLY",
+      "concurrencyClass": "ONE_MODEL_WORKER_CHECKPOINT_PREEMPTION",
+      "rollbackRouteRef": "process.vexlife.intent.scheduler-checkpoint-resume",
+      "projectionRefs": [
+        "projection.intent-scheduler.runtime",
+        "projection.intent-scheduler.terrain",
+        "projection.intent-scheduler.health",
+        "projection.intent-scheduler.guide"
+      ],
+      "knownGaps": [
+        "Intent Orchestration 3/3 Burden Release and Continuity Evolution Router remains held",
+        "native platform adoption remains held",
+        "real model provisioning and inference remain held",
+        "real shell, Git, filesystem, network and publication effects remain held"
       ]
     }
   ]

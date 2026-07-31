@@ -7,8 +7,9 @@ import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import { admitCheckResult } from '../src/core/check-result.mjs';
 import { deriveRepositoryHealth, validateBuildHealthRegistry } from '../src/core/build-health.mjs';
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
+import { validateIntegratedSchedulerSimulationReceipt } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
-import { writeJson } from '../src/core/utils.mjs';
+import { resolveSafeGeneratedReceiptPath, writeJson } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -21,6 +22,11 @@ if (args.some((item, index) => item !== '--receipt' && index !== receiptIndex + 
   console.error('Usage: npm run pr-ready -- [--receipt generated/health/pr-ready.json]');
   process.exit(2);
 }
+const receiptPath = resolveSafeGeneratedReceiptPath(
+  ROOT,
+  receiptIndex >= 0 ? args[receiptIndex + 1] : 'generated/health/pr-ready.json',
+  'PR-ready receipt path'
+);
 
 const bundle = loadBlueprint(ROOT);
 const registry = validateBuildHealthRegistry(bundle.buildHealth, bundle.reviewLenses);
@@ -93,13 +99,56 @@ const sourceStability = {
   initialSourceTreeSha256: initialSource.treeSha256,
   finalSourceTreeSha256: finalSource.treeSha256
 };
+const repository = collectRepositoryEvidence(ROOT);
+const simulationReceiptPath = path.resolve(ROOT, bundle.schedulerRegistry.simulationContract.receiptPath);
+let simulationReceipt = null;
+let simulationReceiptError = null;
+try {
+  simulationReceipt = JSON.parse(fs.readFileSync(simulationReceiptPath, 'utf8'));
+} catch (error) {
+  simulationReceiptError = `integrated scheduler simulation receipt unavailable: ${error.message}`;
+}
+const simulationValidation = validateIntegratedSchedulerSimulationReceipt(simulationReceipt, {
+  schedulerRegistry: bundle.schedulerRegistry,
+  blueprintHash: blueprint.semanticHash,
+  sourceTreeSha256: finalSource.treeSha256,
+  repositoryGit: repository.git
+});
+if (simulationReceiptError) simulationValidation.errors.unshift(simulationReceiptError);
+simulationValidation.ok = simulationValidation.errors.length === 0;
+simulationValidation.state = simulationValidation.ok ? 'EXECUTED_CURRENT' : 'INVALID';
+if (!simulationValidation.ok) {
+  const schedulerResult = checkResults.find((item) => item.checkRef === bundle.schedulerRegistry.simulationContract.checkRef);
+  if (schedulerResult) {
+    schedulerResult.semanticState = 'BLOCKED';
+    schedulerResult.currentness = 'UNKNOWN';
+    schedulerResult.detailRef = simulationValidation.errors.join('; ');
+  }
+}
 const { projection } = deriveRepositoryHealth({
   sourceTreeRef: finalSource.treeSha256,
   blueprintHash: blueprint.semanticHash,
   checkResults
 });
-const repository = collectRepositoryEvidence(ROOT);
-const allCurrentPassed = projection.state === 'HEALTHY' && sourceStability.state === 'PASS';
+const allCurrentPassed = projection.state === 'HEALTHY' &&
+  sourceStability.state === 'PASS' &&
+  simulationValidation.ok;
+const schedulerSimulation = {
+  receiptPath: path.relative(ROOT, simulationReceiptPath).split(path.sep).join('/'),
+  state: simulationValidation.state,
+  receiptRef: simulationReceipt?.receiptRef ?? null,
+  contractRef: simulationReceipt?.contractRef ?? null,
+  semanticFingerprint: simulationReceipt?.semanticFingerprint ?? null,
+  sourceTreeSha256: simulationReceipt?.sourceTreeSha256 ?? null,
+  blueprintHash: simulationReceipt?.blueprintHash ?? null,
+  schedulerRegistryHash: simulationReceipt?.schedulerRegistryHash ?? null,
+  journeyStates: simulationReceipt?.journeyStates ?? [],
+  finalHealthState: simulationReceipt?.finalProjection?.health?.state ?? null,
+  orphanedPendingToolCalls: simulationReceipt?.orphanedPendingToolCalls ?? null,
+  externalEffectsExecuted: simulationReceipt?.externalEffectsExecuted ?? null,
+  selfCertifiedRuntimeEvidence: simulationReceipt?.selfCertifiedRuntimeEvidence ?? null,
+  errors: simulationValidation.errors
+};
 const receipt = {
   schemaVersion: 'vexlife.pr-ready-receipt/v1',
   receiptRef: `receipt.vexlife.pr-ready.${finalSource.treeSha256.slice(0, 24)}`,
@@ -114,10 +163,10 @@ const receipt = {
   formedAt: new Date().toISOString(),
   checkResultContractRef: contract.contractRef,
   sourceStability,
+  schedulerSimulation,
   checkResults,
   health: projection
 };
-const receiptPath = path.resolve(ROOT, receiptIndex >= 0 ? args[receiptIndex + 1] : 'generated/health/pr-ready.json');
 fs.mkdirSync(path.dirname(receiptPath), { recursive: true });
 writeJson(receiptPath, receipt);
 console.log(JSON.stringify({
@@ -132,6 +181,8 @@ console.log(JSON.stringify({
   blueprintHash: receipt.blueprintHash,
   checkResultContractRef: receipt.checkResultContractRef,
   sourceStability: receipt.sourceStability.state,
+  schedulerSimulation: receipt.schedulerSimulation.state,
+  schedulerSimulationReceiptFingerprint: receipt.schedulerSimulation.semanticFingerprint,
   receiptSummary: projection.receiptSummary,
   blockingCheckRefs: projection.blockingCheckRefs,
   unresolvedCheckRefs: projection.unresolvedCheckRefs

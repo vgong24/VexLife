@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import { validateBuildHealthRegistry, deriveRepositoryHealth } from '../src/core/build-health.mjs';
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
+import { validateIntegratedSchedulerSimulationReceipt } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
+import { resolveSafeGeneratedReceiptPath } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const receiptIndex = process.argv.indexOf('--receipt');
@@ -13,7 +15,11 @@ if (receiptIndex >= 0 && !process.argv[receiptIndex + 1]) {
   console.error('Usage: npm run health:check -- [--receipt generated/health/pr-ready.json]');
   process.exit(2);
 }
-const receiptPath = path.resolve(ROOT, receiptIndex >= 0 ? process.argv[receiptIndex + 1] : 'generated/health/pr-ready.json');
+const receiptPath = resolveSafeGeneratedReceiptPath(
+  ROOT,
+  receiptIndex >= 0 ? process.argv[receiptIndex + 1] : 'generated/health/pr-ready.json',
+  'Health receipt path'
+);
 const bundle = loadBlueprint(ROOT);
 const registry = validateBuildHealthRegistry(bundle.buildHealth, bundle.reviewLenses);
 const blueprint = validateBlueprint(bundle);
@@ -22,6 +28,7 @@ const repository = collectRepositoryEvidence(ROOT);
 let receipt = null;
 let receiptState = 'NOT_RUN';
 const receiptErrors = [];
+let schedulerSimulationState = 'NOT_RUN';
 if (fs.existsSync(receiptPath)) {
   try {
     receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
@@ -47,7 +54,38 @@ if (fs.existsSync(receiptPath)) {
         receiptState = 'INVALID';
         receiptErrors.push('current receipt check coverage does not exactly match the build-health registry');
       } else {
-        receiptState = 'EXECUTED_CURRENT';
+        const simulationPath = path.resolve(ROOT, bundle.schedulerRegistry.simulationContract.receiptPath);
+        let simulationReceipt = null;
+        try {
+          simulationReceipt = JSON.parse(fs.readFileSync(simulationPath, 'utf8'));
+        } catch (error) {
+          receiptErrors.push(`integrated scheduler simulation receipt unavailable: ${error.message}`);
+        }
+        const simulationValidation = validateIntegratedSchedulerSimulationReceipt(simulationReceipt, {
+          schedulerRegistry: bundle.schedulerRegistry,
+          blueprintHash: blueprint.semanticHash,
+          sourceTreeSha256: sourceManifest.treeSha256,
+          repositoryGit: repository.git
+        });
+        receiptErrors.push(...simulationValidation.errors);
+        const embedded = receipt.schedulerSimulation;
+        if (embedded?.state !== 'EXECUTED_CURRENT' ||
+            embedded?.receiptPath !== bundle.schedulerRegistry.simulationContract.receiptPath ||
+            embedded?.semanticFingerprint !== simulationReceipt?.semanticFingerprint ||
+            embedded?.sourceTreeSha256 !== sourceManifest.treeSha256 ||
+            embedded?.blueprintHash !== blueprint.semanticHash ||
+            embedded?.schedulerRegistryHash !== simulationReceipt?.schedulerRegistryHash ||
+            JSON.stringify(embedded?.journeyStates ?? []) !== JSON.stringify(simulationReceipt?.journeyStates ?? []) ||
+            embedded?.orphanedPendingToolCalls !== 0 ||
+            embedded?.externalEffectsExecuted !== false ||
+            embedded?.selfCertifiedRuntimeEvidence !== false ||
+            (embedded?.errors ?? []).length !== 0) {
+          receiptErrors.push('PR-ready receipt does not exactly bind the current integrated scheduler simulation receipt');
+        }
+        schedulerSimulationState = simulationValidation.ok && receiptErrors.length === 0
+          ? 'EXECUTED_CURRENT'
+          : 'INVALID';
+        receiptState = schedulerSimulationState === 'EXECUTED_CURRENT' ? 'EXECUTED_CURRENT' : 'INVALID';
       }
     }
   } catch {
@@ -70,6 +108,7 @@ const errors = [...registry.errors, ...(blueprint.ok ? [] : blueprint.errors), .
 console.log(JSON.stringify({
   state: errors.length ? 'REPOSITORY_HEALTH_INVALID' : projection.state,
   receiptState,
+  schedulerSimulationState,
   receiptPath: path.relative(ROOT, receiptPath).split(path.sep).join('/'),
   registryChecks: registry.stats.checks,
   candidateHeadSha: repository.git.candidateHeadSha,
