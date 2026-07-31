@@ -378,6 +378,7 @@
   ],
   "relayTransitionReceiptRequiredFields": [
     "receiptRef",
+    "eventContractRef",
     "toolCallRef",
     "priorState",
     "nextState",
@@ -403,6 +404,8 @@
       "externalEffectsExecuted": false
     },
     "activeWindowRule": "formedAt <= observedAt < expiresAt",
+    "consumptionWindowRule": "formedAt <= observedAt <= consumedAt < expiresAt AND consumedAt >= schedulerObservedAt",
+    "canonicalWorkgraphLineageRule": "transition and Intent receipt bind exact verification receipt/fingerprint plus every gate-result/source-observation ref/hash",
     "selfCertificationAllowed": false
   },
   "relayStateMachine": {
@@ -429,6 +432,92 @@
       "CLOSED": []
     }
   },
+  "relayTransitionContracts": [
+    {
+      "contractRef": "contract.intent-scheduler.relay-event.hold",
+      "eventKind": "HOLD",
+      "priorState": "PENDING",
+      "nextState": "HELD",
+      "receiptSchemaVersion": "vexlife.intent-tool-call-hold/v1",
+      "requiredFields": [
+        "checkpointRef",
+        "workNodeRef",
+        "schedulerGeneration",
+        "heldAt"
+      ]
+    },
+    {
+      "contractRef": "contract.intent-scheduler.relay-event.accept",
+      "eventKind": "ACCEPT",
+      "priorState": "PENDING",
+      "nextState": "ACCEPTED",
+      "receiptSchemaVersion": "vexlife.intent-tool-call-acceptance/v1",
+      "requiredFields": [
+        "observationRef",
+        "observationFingerprint"
+      ]
+    },
+    {
+      "contractRef": "contract.intent-scheduler.relay-event.cancel-pending",
+      "eventKind": "CANCEL_CLOSE",
+      "priorState": "PENDING",
+      "nextState": "CLOSED",
+      "receiptSchemaVersion": "vexlife.intent-tool-call-cancellation/v1",
+      "requiredFields": [
+        "workNodeRef",
+        "schedulerGeneration",
+        "cancellationTokenRef",
+        "reason",
+        "closedAt"
+      ]
+    },
+    {
+      "contractRef": "contract.intent-scheduler.relay-event.held-disposition",
+      "eventKind": "HELD_DISPOSITION",
+      "priorState": "HELD",
+      "nextState": "CLOSED",
+      "receiptSchemaVersion": "vexlife.intent-held-tool-transition/v2",
+      "requiredFields": [
+        "checkpointRef",
+        "action",
+        "schedulerAuthorizationRef",
+        "schedulerAuthorizationFingerprint",
+        "schedulerAuthorization",
+        "schedulerInstanceRef",
+        "priorContextLeaseRef",
+        "priorSemanticPurposeFingerprint",
+        "priorSchedulerGeneration"
+      ]
+    },
+    {
+      "contractRef": "contract.intent-scheduler.relay-event.reinject",
+      "eventKind": "REINJECT",
+      "priorState": "ACCEPTED",
+      "nextState": "REINJECTED",
+      "receiptSchemaVersion": "vexlife.intent-tool-observation-reinjection/v1",
+      "requiredFields": [
+        "contextLeaseRef",
+        "observationRef",
+        "observationFingerprint"
+      ]
+    },
+    {
+      "contractRef": "contract.intent-scheduler.relay-event.cancel-accepted",
+      "eventKind": "CANCEL_CLOSE",
+      "priorState": "ACCEPTED",
+      "nextState": "CLOSED",
+      "receiptSchemaVersion": "vexlife.intent-tool-call-cancellation/v1",
+      "requiredFields": [
+        "workNodeRef",
+        "schedulerGeneration",
+        "cancellationTokenRef",
+        "observationRef",
+        "observationFingerprint",
+        "reason",
+        "closedAt"
+      ]
+    }
+  ],
   "heldToolReplacementPolicies": [
     {
       "replacementPolicyRef": "policy.intent-scheduler.held-tool-replacement",
@@ -530,6 +619,8 @@
       "MOCK_TOOL_PROPOSED",
       "MOCK_TOOL_RESULT_ACCEPTED",
       "CHECKPOINT_RELEASED",
+      "TYPED_RELAY_REPLAY_CURRENT",
+      "OUT_OF_BAND_HELD_CLOSE_REJECTED_UNCHANGED",
       "FRESH_RESOURCE_OBSERVED",
       "HELD_TOOL_DISPOSITION_COMMITTED",
       "FRESH_GENERATION_RESUMED",

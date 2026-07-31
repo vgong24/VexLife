@@ -413,7 +413,7 @@
   },
   {
     "testRef": "test.intent-scheduler.durable-held-tool",
-    "brief": "Relay restoration revalidates canonical calls, observations, transitions and ledger identity while held calls resume, reissue, supersede or close without orphaning."
+    "brief": "Held calls resume, reissue, supersede or close only through scheduler-owned authorization; direct held cancellation is rejected before mutation and accepted scheduler closure keeps relay and aggregate convergent."
   },
   {
     "testRef": "test.intent-scheduler.live-clock",
@@ -425,14 +425,14 @@
   },
   {
     "testRef": "test.intent-scheduler.external-completion-verifier",
-    "brief": "A source-managed deterministic external verifier rejects self-certified, unchanged, stale, wrong-gate, wrong-source and conflicting completion evidence."
+    "brief": "A source-managed deterministic external verifier rejects self-certified, unchanged, stale, wrong-gate, wrong-source and conflicting evidence, plus consumption before observation, at/after expiry or behind the scheduler clock."
   },
   {
     "testRef": "test.intent-scheduler.workgraph-completion-convergence",
-    "brief": "Verified scheduler completion reduces canonical Workgraph transitions and an Intent receipt so dependents become ready and parent convergence can proceed."
+    "brief": "Verified scheduler completion reduces canonical Workgraph transitions and an Intent receipt that retain exact verification and gate-observation refs/hashes so dependents and parent convergence consume one current lineage."
   },
   {
     "testRef": "test.intent-scheduler.relay-replay-state-machine",
-    "brief": "Relay restore replays the registered transition graph from PENDING, derives current state, rejects illegal histories and continues a valid restart exactly once."
+    "brief": "Relay restore replays one registered typed event contract per legal edge, cross-checks observation/context/checkpoint/cancellation/scheduler/successor lineage, rejects wrong-schema legal edges and continues a valid restart exactly once."
   }
 ]

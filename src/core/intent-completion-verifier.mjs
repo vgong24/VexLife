@@ -7,7 +7,8 @@ import { validateIntentWorkgraph } from './intent-validation.mjs';
 import {
   assertActiveInterval,
   assertSourceHash,
-  INTENT_SCHEDULER_REQUIRED_FIELD_SETS
+  INTENT_SCHEDULER_REQUIRED_FIELD_SETS,
+  parseCanonicalTimestamp
 } from './scheduler-runtime-trust.mjs';
 import { semanticHash } from './utils.mjs';
 
@@ -40,7 +41,11 @@ export function validateCompletionVerifierContract(schedulerRegistry) {
   }
   if (contract.evidenceClass !== 'DETERMINISTIC_FAKE_EXTERNAL_VERIFIER' ||
       contract.selfCertificationAllowed !== false ||
-      contract.activeWindowRule !== 'formedAt <= observedAt < expiresAt') {
+      contract.activeWindowRule !== 'formedAt <= observedAt < expiresAt' ||
+      contract.consumptionWindowRule !==
+        'formedAt <= observedAt <= consumedAt < expiresAt AND consumedAt >= schedulerObservedAt' ||
+      contract.canonicalWorkgraphLineageRule !==
+        'transition and Intent receipt bind exact verification receipt/fingerprint plus every gate-result/source-observation ref/hash') {
     throw new Error('completion verifier contract is not bounded deterministic external evidence');
   }
   if (contract.sourceDescriptor?.sourceRef !== contract.sourceRef ||
@@ -91,6 +96,7 @@ function canonicalGateResult(input, bindings, contract) {
     returnRouteRef: bindings.returnRouteRef,
     observedBeforeState: input.observedBeforeState,
     observedAfterState: input.observedAfterState,
+    formedAt: bindings.formedAt,
     observedAt: bindings.observedAt,
     expiresAt: bindings.expiresAt,
     selfCertified: false
@@ -158,6 +164,7 @@ export class DeterministicFakeCompletionVerifier {
       expectedTransitionRef: node.expectedTransitionRef,
       returnRouteRef: node.returnRouteRef,
       observedBeforeState: node.state,
+      formedAt: evidence.formedAt,
       observedAt: evidence.observedAt,
       expiresAt: evidence.expiresAt
     };
@@ -202,12 +209,15 @@ export function assertCanonicalCompletionVerification(verification, {
   runtimeTrustSnapshot,
   schedulerInstanceRef,
   schedulerGeneration,
-  schedulerRegistry
+  schedulerRegistry,
+  consumedAt = null,
+  schedulerObservedAt = null
 }) {
   const contract = validateCompletionVerifierContract(schedulerRegistry);
   requireFields(verification, INTENT_SCHEDULER_REQUIRED_FIELD_SETS.completionVerificationRequiredFields,
     'completion verification receipt');
   assertCanonical(verification, 'completion verification receipt');
+  assertActiveInterval(verification, 'completion verification receipt');
   if (verification.selfCertified !== false || verification.currentness !== 'CURRENT' ||
       verification.contractRef !== contract.contractRef || verification.verifierRef !== contract.verifierRef ||
       verification.verifierSourceRef !== contract.sourceRef || verification.verifierSourceHash !== contract.sourceHash ||
@@ -258,6 +268,9 @@ export function assertCanonicalCompletionVerification(verification, {
       returnRouteRef: node.returnRouteRef,
       observedBeforeState: node.state,
       observedAfterState: 'COMPLETED',
+      formedAt: verification.formedAt,
+      observedAt: verification.observedAt,
+      expiresAt: verification.expiresAt,
       currentness: 'CURRENT',
       result: 'PASSED',
       selfCertified: false
@@ -266,7 +279,60 @@ export function assertCanonicalCompletionVerification(verification, {
   if (JSON.stringify([...gateRefs].sort()) !== JSON.stringify(requiredGates)) {
     throw new Error('completion verification references a wrong or stale gate');
   }
+  if (consumedAt !== null) {
+    const consumed = parseCanonicalTimestamp(consumedAt, 'completion verification consumedAt');
+    const observed = parseCanonicalTimestamp(verification.observedAt, 'completion verification observedAt');
+    const expires = parseCanonicalTimestamp(verification.expiresAt, 'completion verification expiresAt');
+    if (consumed < observed) throw new Error('completion cannot precede verification observation');
+    if (consumed >= expires) throw new Error('completion verification expired before consumption');
+    if (schedulerObservedAt === null) {
+      throw new Error('completion consumption requires the canonical scheduler observed clock');
+    }
+    const schedulerObserved = parseCanonicalTimestamp(schedulerObservedAt, 'scheduler observed clock');
+    if (consumed < schedulerObserved) {
+      throw new Error('completion cannot precede the canonical scheduler observed clock');
+    }
+  }
   return freeze(clone(verification));
+}
+
+function completionEvidenceLineage(verification) {
+  const gateEvidence = verification.gateResultReceipts.map((gate) => ({
+    completionGateRef: gate.completionGateRef,
+    gateResultRef: gate.gateResultRef,
+    gateResultFingerprint: gate.semanticFingerprint,
+    sourceObservationRef: gate.sourceObservationRef,
+    sourceObservationHash: gate.sourceObservationHash
+  })).sort((left, right) => left.completionGateRef.localeCompare(right.completionGateRef));
+  const lineage = {
+    schemaVersion: 'vexlife.intent-completion-evidence-lineage/v1',
+    verificationReceiptRef: verification.verificationReceiptRef,
+    verificationFingerprint: verification.semanticFingerprint,
+    gateEvidence
+  };
+  lineage.semanticFingerprint = semanticHash(lineage);
+  return freeze(lineage);
+}
+
+function assertUnusedCompletionEvidence(graph, lineage) {
+  const prior = [...graph.transitions, ...graph.receipts]
+    .map((item) => item.completionEvidenceLineage)
+    .filter(Boolean);
+  for (const existing of prior) {
+    if (existing.verificationReceiptRef === lineage.verificationReceiptRef) {
+      if (existing.verificationFingerprint === lineage.verificationFingerprint) {
+        throw new Error('completion verification evidence has already been consumed');
+      }
+      throw new Error('completion verification receipt ref conflicts with prior Workgraph evidence');
+    }
+    if (existing.verificationFingerprint === lineage.verificationFingerprint) {
+      throw new Error('completion verification fingerprint replay is not allowed');
+    }
+    const existingGateRefs = new Set((existing.gateEvidence ?? []).map((item) => item.gateResultRef));
+    if (lineage.gateEvidence.some((item) => existingGateRefs.has(item.gateResultRef))) {
+      throw new Error('completion gate evidence conflicts with prior Workgraph evidence');
+    }
+  }
 }
 
 function exactTerminalReceipt(graph, node) {
@@ -290,6 +356,7 @@ export function reduceVerifiedWorkCompletion({
   runtimeTrustSnapshot,
   schedulerInstanceRef,
   schedulerGeneration,
+  schedulerObservedAt,
   registeredProcessRefs = intentRegistry?.processRefs ?? [],
   registeredRoleRefs = [],
   trustSnapshot = null
@@ -299,8 +366,20 @@ export function reduceVerifiedWorkCompletion({
     runtimeTrustSnapshot,
     schedulerInstanceRef,
     schedulerGeneration,
-    schedulerRegistry
+    schedulerRegistry,
+    consumedAt: completedAt,
+    schedulerObservedAt
   });
+  const evidenceLineage = completionEvidenceLineage(canonicalVerification);
+  assertUnusedCompletionEvidence(graph, evidenceLineage);
+  const evidenceSourceRefs = [
+    evidenceLineage.verificationReceiptRef,
+    ...evidenceLineage.gateEvidence.flatMap((item) => [item.gateResultRef, item.sourceObservationRef])
+  ];
+  const evidenceSourceHashes = [
+    evidenceLineage.verificationFingerprint,
+    ...evidenceLineage.gateEvidence.flatMap((item) => [item.gateResultFingerprint, item.sourceObservationHash])
+  ];
   const node = graph.nodes.find((item) => item.workNodeRef === canonicalVerification.workNodeRef);
   let current = graph;
   const transitions = [];
@@ -319,7 +398,8 @@ export function reduceVerifiedWorkCompletion({
       actorRef,
       actorRoleRef,
       processRef,
-      sourceRefs: [canonicalVerification.verifierSourceRef],
+      sourceRefs: evidenceSourceRefs,
+      completionEvidenceLineage: clone(evidenceLineage),
       createdAt: completedAt
     }, intentRegistry);
     if (!result.changed) throw new Error('completion reducer produced a duplicate canonical transition');
@@ -336,8 +416,9 @@ export function reduceVerifiedWorkCompletion({
     sourceState: 'COMPLETED',
     state: 'PROVEN',
     currentness: 'CURRENT',
-    sourceRefs: [canonicalVerification.verifierSourceRef],
-    sourceHashes: [canonicalVerification.verifierSourceHash],
+    sourceRefs: evidenceSourceRefs,
+    sourceHashes: evidenceSourceHashes,
+    completionEvidenceLineage: clone(evidenceLineage),
     formedAt: completedAt,
     formationRef: canonicalVerification.formationRef
   }, intentRegistry);
@@ -366,6 +447,7 @@ export function reduceVerifiedWorkCompletion({
     transitions,
     canonicalTransition: finalTransition,
     completionReceipt,
+    completionEvidenceLineage: evidenceLineage,
     dependentReadyRefs,
     parentConvergenceReadyRefs,
     validation

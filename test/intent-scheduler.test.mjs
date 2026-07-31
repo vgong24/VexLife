@@ -950,6 +950,49 @@ test('S15 Queue, Terrain, Health and Guide derive from one scheduler aggregate t
 });
 
 test('S17 exact normal completion closes six leases and preserves the return route distinctly from cancellation', () => {
+  const beforeObservation = activeFixture('work.scheduler.complete-before-observation');
+  assert.throws(() => beforeObservation.scheduler.completeActive({
+    graph: beforeObservation.candidate,
+    intentRegistry,
+    trustSnapshot: beforeObservation.trust,
+    registeredProcessRefs,
+    registeredRoleRefs,
+    completionEvidence: completionFor(beforeObservation, CHECKPOINT_AT, { formedAt: OBSERVED }),
+    completionReceiptRef: 'completion.work.scheduler.complete-before-observation',
+    releaseReceiptRef: 'release.scheduler.complete-before-observation',
+    completedAt: RESULT_AT
+  }), /cannot precede verification observation/);
+
+  const expired = activeFixture('work.scheduler.complete-expired');
+  assert.throws(() => expired.scheduler.completeActive({
+    graph: expired.candidate,
+    intentRegistry,
+    trustSnapshot: expired.trust,
+    registeredProcessRefs,
+    registeredRoleRefs,
+    completionEvidence: completionFor(expired, RESULT_AT, { expiresAt: CHECKPOINT_AT }),
+    completionReceiptRef: 'completion.work.scheduler.complete-expired',
+    releaseReceiptRef: 'release.scheduler.complete-expired',
+    completedAt: CHECKPOINT_AT
+  }), /expired before consumption/);
+
+  const advancedClock = activeFixture('work.scheduler.complete-advanced-clock');
+  advancedClock.scheduler.advanceObservedClock({
+    observedAt: CANCEL_AT,
+    eventRef: 'clock.scheduler.complete-advanced-clock'
+  });
+  assert.throws(() => advancedClock.scheduler.completeActive({
+    graph: advancedClock.candidate,
+    intentRegistry,
+    trustSnapshot: advancedClock.trust,
+    registeredProcessRefs,
+    registeredRoleRefs,
+    completionEvidence: completionFor(advancedClock, CHECKPOINT_AT),
+    completionReceiptRef: 'completion.work.scheduler.complete-advanced-clock',
+    releaseReceiptRef: 'release.scheduler.complete-advanced-clock',
+    completedAt: CHECKPOINT_AT
+  }), /cannot precede the canonical scheduler observed clock/);
+
   const fixture = activeFixture('work.scheduler.complete');
   const node = fixture.candidate.nodes[0];
   const evidence = completionFor(fixture, CHECKPOINT_AT);
@@ -981,6 +1024,14 @@ test('S17 exact normal completion closes six leases and preserves the return rou
   assert.equal(completed.returnRouteReceipt.returnRouteRef, node.returnRouteRef);
   assert.equal(completed.workgraph.nodes.find((item) => item.workNodeRef === node.workNodeRef).state, 'COMPLETED');
   assert.equal(completed.canonicalWorkgraphTransition.transitionRef, node.expectedTransitionRef);
+  assert.equal(completed.completionEvidenceLineage.verificationReceiptRef,
+    completed.completionVerification.verificationReceiptRef);
+  assert.ok(completed.canonicalWorkgraphTransition.sourceRefs.includes(
+    completed.completionVerification.verificationReceiptRef));
+  assert.ok(completed.completionReceipt.sourceHashes.includes(
+    completed.completionVerification.gateResultReceipts[0].semanticFingerprint));
+  assert.equal(completed.returnRouteReceipt.completionEvidenceLineageFingerprint,
+    completed.completionEvidenceLineage.semanticFingerprint);
   assert.equal(fixture.scheduler.queue.state, 'COMPLETED');
   assert.equal(fixture.scheduler.projections.guide.value.whatIsHappeningNow, 'COMPLETED:CLOSED');
 });
@@ -1202,11 +1253,15 @@ test('S20 relay restore and held-call actions require scheduler ownership, exact
     checkpointInput(divergent, 'checkpoint.scheduler.durable-divergent', divergentCall.toolCallRef),
     { releaseReceiptRef: 'release.scheduler.durable-divergent', releasedAt: CHECKPOINT_AT }
   );
-  divergent.relay.cancel(divergentCall.toolCallRef, {
+  const relayBeforeRejectedClose = divergent.relay.snapshot.semanticFingerprint;
+  const aggregateBeforeRejectedClose = divergent.scheduler.aggregate.semanticFingerprint;
+  assert.throws(() => divergent.relay.cancel(divergentCall.toolCallRef, {
     receiptRef: 'receipt.scheduler.manual-relay-close',
     closedAt: RESUME_OBSERVED,
     reason: 'MANUAL_OUTSIDE_AGGREGATE'
-  });
+  }), /held tool close requires scheduler-owned disposition before mutation/);
+  assert.equal(divergent.relay.snapshot.semanticFingerprint, relayBeforeRejectedClose);
+  assert.equal(divergent.scheduler.aggregate.semanticFingerprint, aggregateBeforeRejectedClose);
   const divergentResource = resource(2);
   const divergentFresh = admission([divergent.candidate.nodes[0]], {
     generation: 2,
@@ -1215,7 +1270,7 @@ test('S20 relay restore and held-call actions require scheduler ownership, exact
     resourceSnapshot: divergentResource,
     runtime: runtimeTrust(divergentResource, 2)
   });
-  assert.throws(() => divergent.scheduler.resume(divergentCheckpoint.checkpoint.checkpointRef, {
+  const schedulerClosed = divergent.scheduler.resume(divergentCheckpoint.checkpoint.checkpointRef, {
     graph: divergent.candidate,
     options: divergentFresh.options,
     sourceBindings: SOURCE_BINDINGS,
@@ -1225,7 +1280,33 @@ test('S20 relay restore and held-call actions require scheduler ownership, exact
       authorizationRef: 'authorization.scheduler.divergent',
       receiptRef: 'receipt.scheduler.divergent'
     }
-  }), /relay ledger diverged from the scheduler aggregate/);
+  });
+  assert.equal(schedulerClosed.heldToolDisposition.receipt.action, 'CLOSE');
+  assert.equal(schedulerClosed.heldToolDisposition.receipt.schedulerAuthorization.action, 'CLOSE');
+  assert.equal(divergent.relay.snapshot.semanticFingerprint,
+    divergent.scheduler.aggregate.relayLedger.semanticFingerprint);
+
+  const terminal = activeFixture('work.scheduler.terminal-held-close');
+  const terminalCall = toolCallFrom(terminal, { toolCallRef: 'tool-call.scheduler.terminal-held-close' });
+  terminal.relay.register(terminalCall);
+  terminal.relay.hold(terminalCall.toolCallRef, {
+    receiptRef: 'receipt.scheduler.terminal-held',
+    heldAt: CHECKPOINT_AT,
+    checkpointRef: 'checkpoint.scheduler.terminal-held'
+  });
+  terminal.scheduler.syncRelayState();
+  const terminalCancelled = terminal.scheduler.cancelActive({
+    releaseReceiptRef: 'release.scheduler.terminal-held',
+    releasedAt: CANCEL_AT,
+    reason: 'TERMINAL_SCHEDULER_CANCEL'
+  });
+  const terminalEntry = terminal.relay.snapshot.entries.find((item) => item.toolCallRef === terminalCall.toolCallRef);
+  assert.equal(terminalEntry.state, 'CLOSED');
+  assert.equal(terminalEntry.transitionReceipts.at(-1).action, 'CLOSE');
+  assert.equal(terminalEntry.transitionReceipts.at(-1).schedulerAuthorization.terminalDispositionReason,
+    'TERMINAL_SCHEDULER_CANCEL');
+  assert.equal(terminalCancelled.relayLedger.semanticFingerprint,
+    terminal.scheduler.aggregate.relayLedger.semanticFingerprint);
 });
 
 test('S21 live observed clock expires active evidence and tool times remain monotonic', () => {

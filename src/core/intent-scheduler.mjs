@@ -1374,12 +1374,62 @@ export class SingleWorkerIntentScheduler {
   }
 
   #closeUnownedRelayCalls({ releaseReceiptRef, releasedAt, reason }) {
-    const retained = new Set(this.#state.aggregate.value.continuations
+    const aggregate = this.#state.aggregate.value;
+    const retained = new Set(aggregate.continuations
       .map((item) => item.pendingToolCallRef)
       .filter((ref) => ref && ref !== 'NONE'));
     for (const entry of this.#relay?.snapshot.entries ?? []) {
       if (!['PENDING', 'HELD', 'ACCEPTED'].includes(entry.state)) continue;
       if (entry.state === 'HELD' && retained.has(entry.toolCallRef)) continue;
+      if (entry.state === 'HELD') {
+        if (!aggregate.active) throw new Error('scheduler terminal held close requires an active aggregate');
+        const active = aggregate.active;
+        const leases = {
+          worker: aggregate.leaseLedger[active.workerLeaseRef],
+          context: aggregate.leaseLedger[active.contextLeaseRef],
+          resource: aggregate.leaseLedger[active.resourceLeaseRef],
+          capability: aggregate.leaseLedger[active.capabilityLeaseRef],
+          effect: aggregate.leaseLedger[active.effectLeaseRef]
+        };
+        if (Object.values(leases).some((lease) => !lease?.semanticFingerprint)) {
+          throw new Error('scheduler terminal held close requires exact active leases');
+        }
+        const hold = entry.transitionReceipts.at(-1);
+        const authorization = finalized({
+          schemaVersion: 'vexlife.intent-held-tool-scheduler-authorization/v1',
+          authorizationRef: `${releaseReceiptRef}.tool.${entry.toolCallRef}.authorization`,
+          schedulerInstanceRef: this.#instanceRef,
+          checkpointRef: hold.checkpointRef,
+          priorToolCallRef: entry.toolCallRef,
+          workNodeRef: entry.call.workNodeRef,
+          action: 'CLOSE',
+          runtimeSnapshotFingerprint: active.runtimeSnapshotFingerprint,
+          schedulerGeneration: active.schedulerGeneration,
+          cancellationTokenRef: active.cancellationTokenRef,
+          workerLeaseRef: leases.worker.leaseRef,
+          workerLeaseFingerprint: leases.worker.semanticFingerprint,
+          contextLeaseRef: leases.context.leaseRef,
+          contextLeaseFingerprint: leases.context.semanticFingerprint,
+          resourceLeaseRef: leases.resource.leaseRef,
+          resourceLeaseFingerprint: leases.resource.semanticFingerprint,
+          capabilityLeaseRef: leases.capability.leaseRef,
+          capabilityLeaseFingerprint: leases.capability.semanticFingerprint,
+          effectLeaseRef: leases.effect.leaseRef,
+          effectLeaseFingerprint: leases.effect.semanticFingerprint,
+          terminalDispositionReason: reason,
+          formedAt: releasedAt
+        });
+        const closed = this.#relay.transitionHeld(entry.toolCallRef, {
+          action: 'CLOSE',
+          checkpointRef: hold.checkpointRef,
+          schedulerAuthorization: authorization,
+          schedulerCapability: this.#relayCapability,
+          receiptRef: `${releaseReceiptRef}.tool.${entry.toolCallRef}`,
+          transitionedAt: releasedAt
+        });
+        if (!closed.changed) throw new Error(`scheduler terminal held close failed: ${closed.reason}`);
+        continue;
+      }
       this.#relay.cancel(entry.toolCallRef, {
         receiptRef: `${releaseReceiptRef}.tool.${entry.toolCallRef}`,
         closedAt: releasedAt,
@@ -1416,6 +1466,21 @@ export class SingleWorkerIntentScheduler {
       schedulerGeneration: aggregate.active.schedulerGeneration,
       evidence: completionEvidence
     });
+    const priorVerifications = aggregate.terminalReceipts.filter((item) =>
+      item.schemaVersion === completionVerification.schemaVersion
+    );
+    for (const prior of priorVerifications) {
+      if (prior.semanticFingerprint === completionVerification.semanticFingerprint) {
+        throw new Error('completion verification replay is not allowed');
+      }
+      if (prior.verificationReceiptRef === completionVerification.verificationReceiptRef) {
+        throw new Error('completion verification receipt ref conflicts with prior scheduler evidence');
+      }
+      const priorGateRefs = new Set(prior.gateResultReceipts.map((item) => item.gateResultRef));
+      if (completionVerification.gateResultReceipts.some((item) => priorGateRefs.has(item.gateResultRef))) {
+        throw new Error('completion gate evidence conflicts with prior scheduler evidence');
+      }
+    }
     const workgraphResult = reduceVerifiedWorkCompletion({
       graph,
       verification: completionVerification,
@@ -1429,6 +1494,7 @@ export class SingleWorkerIntentScheduler {
       runtimeTrustSnapshot: aggregate.runtimeTrust,
       schedulerInstanceRef: this.#instanceRef,
       schedulerGeneration: aggregate.active.schedulerGeneration,
+      schedulerObservedAt: aggregate.observedClock?.observedAt,
       registeredProcessRefs,
       registeredRoleRefs,
       trustSnapshot
@@ -1447,6 +1513,7 @@ export class SingleWorkerIntentScheduler {
       completionReceiptRef: exact.receiptRef,
       completionVerificationRef: completionVerification.verificationReceiptRef,
       completionVerificationFingerprint: completionVerification.semanticFingerprint,
+      completionEvidenceLineageFingerprint: workgraphResult.completionEvidenceLineage.semanticFingerprint,
       canonicalWorkgraphTransitionRef: workgraphResult.canonicalTransition.transitionRef,
       canonicalWorkgraphTransitionFingerprint: workgraphResult.canonicalTransition.semanticFingerprint,
       workNodeRef: exact.workNodeRef,
@@ -1481,6 +1548,7 @@ export class SingleWorkerIntentScheduler {
       changed: true,
       state: this.#state.aggregate.value.phase,
       completionVerification: clone(completionVerification),
+      completionEvidenceLineage: clone(workgraphResult.completionEvidenceLineage),
       workgraph: clone(workgraphResult.graph),
       workgraphTransitions: clone(workgraphResult.transitions),
       canonicalWorkgraphTransition: clone(workgraphResult.canonicalTransition),

@@ -1134,7 +1134,7 @@
   {
     "processRef": "process.vexlife.intent.scheduler-tool-relay",
     "processVersion": 1,
-    "purpose": "Resolve one canonical typed mock tool/effect/schema/executor contract, replay its registered transition graph from PENDING to derive current state, accept scheduler-owned held-call dispositions with exact fresh lease lineage, and route one bounded result for authorized reinjection.",
+    "purpose": "Resolve one canonical typed mock tool/effect/schema/executor contract, replay one registered typed event/receipt contract per legal edge from PENDING, require scheduler ownership for every held close, and route one bounded result for authorized reinjection.",
     "applicabilityRules": [
       "one active context lease and exact pending mock tool call exist"
     ],
@@ -1162,14 +1162,17 @@
       "tool is deterministic fake or mock",
       "result contract and timeout are explicit",
       "durable relay state has no accepted, reinjected, cancelled or timed-out duplicate",
-      "supplied relay state exactly equals replay-derived state"
+      "supplied relay state exactly equals replay-derived state",
+      "each edge receipt matches its registered schema and observation, context, checkpoint, cancellation, scheduler-authorization, successor and source lineage"
     ],
     "steps": [
       "validate-typed-call-and-leases",
       "durably-register-one-pending-call",
       "restore-and-replay-registered-relay-transition-graph-from-pending",
+      "resolve-and-validate-the-exact-typed-event-contract-for-each-edge",
       "derive-current-state-and-reject-terminal-reversal-duplicate-conflict-or-out-of-order-history",
       "scheduler-commits-resume-reissue-supersede-or-close-before-running-against-exact-fresh-leases",
+      "reject-public-held-close-before-mutation-and-use-scheduler-authorized-terminal-closure",
       "match-result-schema-node-tool-effect-context-generation",
       "close-cancelled-or-expired-call",
       "reinject-one-bounded-observation-to-origin-or-authorized-successor"
@@ -1191,7 +1194,7 @@
       "CANCELLED"
     ],
     "returnRouteRule": "return one bounded observation or exact rejection reason",
-    "closureRule": "pending call closes at one accepted result, timeout or cancellation",
+    "closureRule": "pending or accepted calls close at one accepted result, timeout or cancellation; held calls close only through an exact scheduler disposition",
     "recoveryRule": "reject stale result and issue a new exact call only after revalidation",
     "foundationDependencies": [
       "foundation.vexlife.permission-effects.v1",

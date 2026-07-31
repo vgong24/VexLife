@@ -149,7 +149,7 @@
   },
   {
     "workRef": "work.vexlife.intent-orchestration-scheduler",
-    "purpose": "Implement Intent Orchestration 2/3 as canonical single-worker scheduling with live-clock evidence, source-managed external completion verification and Workgraph convergence, preserved preemption continuations, scheduler-derived six-lease checkpoints, scheduler-owned held-tool disposition, replay-derived relay state, scheduler-authorized successor contexts, safe receipt paths and a deterministic no-effect Health receipt.",
+    "purpose": "Implement Intent Orchestration 2/3 as canonical single-worker scheduling with consumption-current external completion verification and exact Workgraph evidence lineage, preserved preemption continuations, scheduler-derived six-lease checkpoints, typed relay-event replay, scheduler-exclusive held-tool disposition/closure, scheduler-authorized successor contexts, safe receipt paths and a deterministic no-effect Health receipt.",
     "distance": "NOW",
     "milestoneRef": "milestone.vexlife.work-orchestration",
     "dependsOn": [

@@ -487,7 +487,7 @@
   {
     "moduleRef": "module.vexlife.script.scheduler-simulate",
     "path": "scripts/scheduler-simulate.mjs",
-    "role": "Runs the deterministic fake-model/mock-tool lifecycle through scheduler-owned held-call disposition, replay-derived relay state, checkpoint resume, once-only reinjection, external completion verification and authoritative Workgraph convergence, with cancellation separate.",
+    "role": "Runs the deterministic fake-model/mock-tool lifecycle through typed relay restore, rejected out-of-band held closure, scheduler-owned disposition, checkpoint resume, once-only reinjection, consumption-current external completion and exact-lineage Workgraph convergence, with cancellation separate.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "registry.vexlife.intent-scheduler.001",

@@ -58,8 +58,8 @@
     {
       "path": "src/core/scheduler-runtime-trust.mjs",
       "mode": "100644",
-      "bytes": 28319,
-      "sha256": "9ee4c2c6c88ebda9d46a6852ce24e93d3eebe3192dac5d2e70868bdbae7c5ac9"
+      "bytes": 33626,
+      "sha256": "a7ebf4e3df7e6889ccc173a5e610d4d4eeefe4de320dc79d3f0e30b42a15df67"
     },
     {
       "path": "src/core/source-manifest.mjs",
@@ -88,8 +88,8 @@
     {
       "path": "src/core/tool-result-relay.mjs",
       "mode": "100644",
-      "bytes": 35892,
-      "sha256": "72b2d178c192d7a60c0a9e66eaf5bb3a07d34babe58a7eb9df5b7c4002300762"
+      "bytes": 44550,
+      "sha256": "0483c2d41e660d1402723921ddb92ac014218905b431c1df15d20e7174caeb4b"
     },
     {
       "path": "src/core/utils.mjs",

@@ -233,6 +233,7 @@ const REQUIRED_FIELD_SETS = {
   ],
   relayTransitionReceiptRequiredFields: [
     'receiptRef',
+    'eventContractRef',
     'toolCallRef',
     'priorState',
     'nextState',
@@ -329,6 +330,7 @@ export function validateIntentSchedulerRegistry(registry) {
   for (const item of registry?.priorityClassIdentities ?? []) own(item.priorityClassRef, 'priority class');
   for (const item of registry?.policyIdentities ?? []) own(item.policyRef, 'scheduler policy');
   for (const item of registry?.requiredFieldContracts ?? []) own(item.contractRef, 'required-field contract');
+  for (const item of registry?.relayTransitionContracts ?? []) own(item.contractRef, 'relay typed event contract');
   for (const item of registry?.projectionIdentities ?? []) own(item.projectionRef, 'scheduler projection');
   own(registry?.runtimeTrustContract?.contractRef, 'runtime trust contract');
   own(registry?.runtimeTrustContract?.clockRef, 'runtime clock');
@@ -398,7 +400,11 @@ export function validateIntentSchedulerRegistry(registry) {
   if (completion?.contractRef !== 'contract.intent-scheduler.completion-verifier-currentness' ||
       completion?.evidenceClass !== 'DETERMINISTIC_FAKE_EXTERNAL_VERIFIER' ||
       completion?.selfCertificationAllowed !== false ||
-      completion?.activeWindowRule !== 'formedAt <= observedAt < expiresAt') {
+      completion?.activeWindowRule !== 'formedAt <= observedAt < expiresAt' ||
+      completion?.consumptionWindowRule !==
+        'formedAt <= observedAt <= consumedAt < expiresAt AND consumedAt >= schedulerObservedAt' ||
+      completion?.canonicalWorkgraphLineageRule !==
+        'transition and Intent receipt bind exact verification receipt/fingerprint plus every gate-result/source-observation ref/hash') {
     errors.push('completion verifier contract is not the registered deterministic external verifier');
   }
   if (completion?.sourceDescriptor && completion.sourceHash !== semanticHash(completion.sourceDescriptor)) {
@@ -416,6 +422,34 @@ export function validateIntentSchedulerRegistry(registry) {
       JSON.stringify(relayMachine?.terminalStates) !== JSON.stringify(['REINJECTED', 'CLOSED']) ||
       JSON.stringify(relayMachine?.allowedTransitions) !== JSON.stringify(expectedRelayMachine)) {
     errors.push('relay state machine does not match the registered replay graph');
+  }
+  const expectedRelayContracts = [
+    ['contract.intent-scheduler.relay-event.hold', 'HOLD', 'PENDING', 'HELD', 'vexlife.intent-tool-call-hold/v1',
+      ['checkpointRef', 'workNodeRef', 'schedulerGeneration', 'heldAt']],
+    ['contract.intent-scheduler.relay-event.accept', 'ACCEPT', 'PENDING', 'ACCEPTED', 'vexlife.intent-tool-call-acceptance/v1',
+      ['observationRef', 'observationFingerprint']],
+    ['contract.intent-scheduler.relay-event.cancel-pending', 'CANCEL_CLOSE', 'PENDING', 'CLOSED', 'vexlife.intent-tool-call-cancellation/v1',
+      ['workNodeRef', 'schedulerGeneration', 'cancellationTokenRef', 'reason', 'closedAt']],
+    ['contract.intent-scheduler.relay-event.held-disposition', 'HELD_DISPOSITION', 'HELD', 'CLOSED', 'vexlife.intent-held-tool-transition/v2',
+      ['checkpointRef', 'action', 'schedulerAuthorizationRef', 'schedulerAuthorizationFingerprint', 'schedulerAuthorization',
+        'schedulerInstanceRef', 'priorContextLeaseRef', 'priorSemanticPurposeFingerprint', 'priorSchedulerGeneration']],
+    ['contract.intent-scheduler.relay-event.reinject', 'REINJECT', 'ACCEPTED', 'REINJECTED', 'vexlife.intent-tool-observation-reinjection/v1',
+      ['contextLeaseRef', 'observationRef', 'observationFingerprint']],
+    ['contract.intent-scheduler.relay-event.cancel-accepted', 'CANCEL_CLOSE', 'ACCEPTED', 'CLOSED', 'vexlife.intent-tool-call-cancellation/v1',
+      ['workNodeRef', 'schedulerGeneration', 'cancellationTokenRef', 'observationRef', 'observationFingerprint', 'reason', 'closedAt']]
+  ];
+  const relayContracts = registry?.relayTransitionContracts ?? [];
+  if (relayContracts.length !== expectedRelayContracts.length ||
+      new Set(relayContracts.map((item) => item.contractRef)).size !== relayContracts.length) {
+    errors.push('relay typed event contracts must register exactly one contract per legal edge');
+  }
+  for (const [contractRef, eventKind, priorState, nextState, receiptSchemaVersion, requiredFields] of expectedRelayContracts) {
+    const contract = relayContracts.find((item) => item.priorState === priorState && item.nextState === nextState);
+    if (!contract || contract.contractRef !== contractRef || contract.eventKind !== eventKind ||
+        contract.receiptSchemaVersion !== receiptSchemaVersion ||
+        requiredFields.some((field) => !contract.requiredFields?.includes(field))) {
+      errors.push(`relay typed event contract mismatch for ${priorState} -> ${nextState}`);
+    }
   }
   if (!(registry?.heldToolReplacementPolicies ?? []).some((item) =>
     item.replacementPolicyRef === 'policy.intent-scheduler.held-tool-replacement' && item.allowedReasonRefs?.length
@@ -665,6 +699,7 @@ export function validateIntegratedSchedulerSimulationReceipt(receipt, {
     'heldToolDispositionFingerprint',
     'heldToolAuthorizationFingerprint',
     'completionVerificationFingerprint',
+    'completionEvidenceLineageFingerprint',
     'workgraphTransitionFingerprint',
     'completionFingerprint',
     'returnRouteFingerprint',
@@ -683,9 +718,36 @@ export function validateIntegratedSchedulerSimulationReceipt(receipt, {
       receipt?.workgraphConvergenceProof?.parentConvergenceReadyRefs?.length !== 1) {
     errors.push('simulation receipt Workgraph convergence proof mismatch');
   }
+  const completionLineage = receipt?.completionCurrentnessAndLineageProof;
+  if (!completionLineage ||
+      parseCanonicalTimestamp(completionLineage.verificationObservedAt, 'simulation completion observedAt') >
+        parseCanonicalTimestamp(completionLineage.consumedAt, 'simulation completion consumedAt') ||
+      parseCanonicalTimestamp(completionLineage.consumedAt, 'simulation completion consumedAt') >=
+        parseCanonicalTimestamp(completionLineage.verificationExpiresAt, 'simulation completion expiresAt') ||
+      parseCanonicalTimestamp(completionLineage.consumedAt, 'simulation completion consumedAt') <
+        parseCanonicalTimestamp(completionLineage.schedulerObservedAtBeforeCompletion, 'simulation scheduler observedAt') ||
+      !completionLineage.canonicalTransitionSourceRefs?.includes(completionLineage.verificationReceiptRef) ||
+      !completionLineage.canonicalReceiptSourceRefs?.includes(completionLineage.verificationReceiptRef) ||
+      !HASH_PATTERN.test(completionLineage.verificationFingerprint ?? '') ||
+      !completionLineage.canonicalReceiptSourceHashes?.includes(completionLineage.verificationFingerprint) ||
+      !(completionLineage.gateEvidence ?? []).every((gate) =>
+        completionLineage.canonicalReceiptSourceRefs.includes(gate.gateResultRef) &&
+        completionLineage.canonicalReceiptSourceRefs.includes(gate.sourceObservationRef) &&
+        completionLineage.canonicalReceiptSourceHashes.includes(gate.gateResultFingerprint) &&
+        completionLineage.canonicalReceiptSourceHashes.includes(gate.sourceObservationHash))) {
+    errors.push('simulation receipt completion currentness/evidence lineage proof mismatch');
+  }
+  const typedContractRefs = (schedulerRegistry?.relayTransitionContracts ?? [])
+    .map((item) => item.contractRef).sort();
   if (receipt?.relayReplayProof?.registeredStateMachineRef !== schedulerRegistry?.relayStateMachine?.policyRef ||
       receipt?.relayReplayProof?.heldPriorState !== 'HELD' ||
-      receipt?.relayReplayProof?.derivedTerminalState !== 'CLOSED') {
+      receipt?.relayReplayProof?.derivedTerminalState !== 'CLOSED' ||
+      JSON.stringify(receipt?.relayReplayProof?.typedEventContractRefs) !== JSON.stringify(typedContractRefs) ||
+      receipt?.relayReplayProof?.outOfBandHeldCloseRejectedBeforeMutation !== true ||
+      !HASH_PATTERN.test(receipt?.relayReplayProof?.replayedHeldLedgerFingerprint ?? '') ||
+      receipt?.relayReplayProof?.replayedHeldLedgerFingerprint !==
+        receipt?.relayReplayProof?.rejectedClosePreservedLedgerFingerprint ||
+      !HASH_PATTERN.test(receipt?.relayReplayProof?.schedulerAuthorizationFingerprint ?? '')) {
     errors.push('simulation receipt held relay replay proof mismatch');
   }
   if (receipt?.separateCancellationProof?.phase !== 'CANCELLED' ||

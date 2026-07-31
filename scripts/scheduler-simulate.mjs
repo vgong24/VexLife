@@ -493,6 +493,27 @@ export function runSchedulerSimulation({
     throw new Error('released checkpoint leases incorrectly projected CLEAR Health');
   }
   journeyStates.push('CHECKPOINT_RELEASED');
+  const replayedHeldRelay = new ToolResultRelay(relay.snapshot, { schedulerRegistry });
+  if (replayedHeldRelay.snapshot.semanticFingerprint !== relay.snapshot.semanticFingerprint ||
+      replayedHeldRelay.snapshot.entries.find((item) => item.toolCallRef === heldToolCall.toolCallRef)?.state !== 'HELD') {
+    throw new Error('simulation typed relay replay did not derive the exact held state');
+  }
+  journeyStates.push('TYPED_RELAY_REPLAY_CURRENT');
+  const heldBeforeRejectedClose = relay.snapshot.semanticFingerprint;
+  let rejectedOutOfBandHeldClose = false;
+  try {
+    relay.cancel(heldToolCall.toolCallRef, {
+      receiptRef: 'receipt.scheduler.simulation.out-of-band-held-close',
+      closedAt: RESUME_FORMED,
+      reason: 'OUT_OF_BAND_CLOSE'
+    });
+  } catch (error) {
+    rejectedOutOfBandHeldClose = /scheduler-owned disposition before mutation/.test(error.message);
+  }
+  if (!rejectedOutOfBandHeldClose || relay.snapshot.semanticFingerprint !== heldBeforeRejectedClose) {
+    throw new Error('simulation did not reject out-of-band held closure before mutation');
+  }
+  journeyStates.push('OUT_OF_BAND_HELD_CLOSE_REJECTED_UNCHANGED');
 
   const resourceTwo = runtimeResource(2, {
     formedAt: RESUME_FORMED,
@@ -683,6 +704,7 @@ export function runSchedulerSimulation({
     heldToolDispositionFingerprint: resumed.heldToolDisposition.receipt.semanticFingerprint,
     heldToolAuthorizationFingerprint: resumed.heldToolDisposition.authorization.semanticFingerprint,
     completionVerificationFingerprint: completed.completionVerification.semanticFingerprint,
+    completionEvidenceLineageFingerprint: completed.completionEvidenceLineage.semanticFingerprint,
     workgraphTransitionFingerprint: completed.canonicalWorkgraphTransition.semanticFingerprint,
     completionFingerprint: completed.completionReceipt.semanticFingerprint,
     returnRouteFingerprint: completed.returnRouteReceipt.semanticFingerprint,
@@ -695,12 +717,29 @@ export function runSchedulerSimulation({
       dependentReadyRefs: completed.dependentReadyRefs,
       parentConvergenceReadyRefs: completed.parentConvergenceReadyRefs
     },
+    completionCurrentnessAndLineageProof: {
+      verificationObservedAt: completed.completionVerification.observedAt,
+      consumedAt: CANCEL_AT,
+      verificationExpiresAt: completed.completionVerification.expiresAt,
+      schedulerObservedAtBeforeCompletion: RESUME_OBSERVED,
+      verificationReceiptRef: completed.completionEvidenceLineage.verificationReceiptRef,
+      verificationFingerprint: completed.completionEvidenceLineage.verificationFingerprint,
+      gateEvidence: completed.completionEvidenceLineage.gateEvidence,
+      canonicalTransitionSourceRefs: completed.canonicalWorkgraphTransition.sourceRefs,
+      canonicalReceiptSourceRefs: completed.completionReceipt.sourceRefs,
+      canonicalReceiptSourceHashes: completed.completionReceipt.sourceHashes
+    },
     relayReplayProof: {
       registeredStateMachineRef: schedulerRegistry.relayStateMachine.policyRef,
+      typedEventContractRefs: schedulerRegistry.relayTransitionContracts.map((item) => item.contractRef).sort(),
+      replayedHeldLedgerFingerprint: replayedHeldRelay.snapshot.semanticFingerprint,
       heldPriorState: 'HELD',
       disposition: resumed.heldToolDisposition.receipt.action,
       derivedTerminalState: relay.snapshot.entries.find((item) => item.toolCallRef === heldToolCall.toolCallRef).state,
-      successorToolCallRef: resumed.heldToolDisposition.successorCall.toolCallRef
+      successorToolCallRef: resumed.heldToolDisposition.successorCall.toolCallRef,
+      schedulerAuthorizationFingerprint: resumed.heldToolDisposition.authorization.semanticFingerprint,
+      outOfBandHeldCloseRejectedBeforeMutation: rejectedOutOfBandHeldClose,
+      rejectedClosePreservedLedgerFingerprint: heldBeforeRejectedClose
     },
     separateCancellationFingerprint: cancelled.cancellationReceipt.semanticFingerprint,
     separateCancellationProof: {

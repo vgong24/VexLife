@@ -112,8 +112,8 @@
     {
       "path": "scripts/scheduler-simulate.mjs",
       "mode": "100644",
-      "bytes": 30076,
-      "sha256": "91e868d4dcf6b152395c63c62bdde2870b0fe30282f514a419c8e68a49b72db1"
+      "bytes": 32557,
+      "sha256": "355c3e03d6bc8f7530dfda8cc09fe67f281438a7aedd75ff5a0767586d566b50"
     },
     {
       "path": "scripts/scheduler-status.mjs",

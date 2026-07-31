@@ -70,14 +70,14 @@
     {
       "path": "test/intent-completion-verifier.test.mjs",
       "mode": "100644",
-      "bytes": 16834,
-      "sha256": "aee28e70a3f7416d6ec27844e2425cba5464edcdcdf2c31b87a4cf76715e0b60"
+      "bytes": 23417,
+      "sha256": "7fc06f3b73338fec2e2e3ab94495fd1c48cf76383e392ad19e445294235fbe6d"
     },
     {
       "path": "test/intent-scheduler.test.mjs",
       "mode": "100644",
-      "bytes": 62476,
-      "sha256": "a59f0b1f189a3fd575616f79ef0651b44ecc69e210017ef4772b87d1e17087e3"
+      "bytes": 66828,
+      "sha256": "cca892ac718148d1410b3381d7472310f576e63d567a0970208c42c11ad84379"
     },
     {
       "path": "test/intent-workgraph.test.mjs",

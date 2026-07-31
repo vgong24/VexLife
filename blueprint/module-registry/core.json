@@ -601,7 +601,7 @@
   {
     "moduleRef": "module.vexlife.core.scheduler-runtime-trust",
     "path": "src/core/scheduler-runtime-trust.mjs",
-    "role": "Validates the canonical scheduler registry, externally sourced runtime and completion-verifier identities, live observed-clock currentness, replay state-machine contracts, explicit lease lifecycle and exact no-effect simulation receipts.",
+    "role": "Validates the canonical scheduler registry, externally sourced runtime and completion-verifier identities, completion consumption against the live observed clock, typed relay-event contracts, explicit lease lifecycle and exact no-effect simulation receipts.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
@@ -715,7 +715,7 @@
   {
     "moduleRef": "module.vexlife.core.intent-completion-verifier",
     "path": "src/core/intent-completion-verifier.mjs",
-    "role": "Uses the registered deterministic external verifier to bind current gate results and reduce canonical Workgraph completion transitions plus exact Intent receipts.",
+    "role": "Revalidates deterministic external completion at exact consumption time and reduces canonical Workgraph transitions plus Intent receipts that retain exact verification and gate-observation refs, fingerprints and source hashes.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-orchestration.001",
@@ -740,7 +740,7 @@
   {
     "moduleRef": "module.vexlife.core.tool-result-relay",
     "path": "src/core/tool-result-relay.mjs",
-    "role": "Replays canonical typed mock-call ledgers from PENDING, derives current state, accepts held-call transitions only through scheduler-owned exact fresh-lease capability, and rejects illegal history or mismatched results.",
+    "role": "Replays canonical mock-call ledgers through one registered typed contract per legal edge, derives current state, cross-checks event-specific lineage, and permits every held close only through scheduler-owned capability and authorization.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
@@ -761,7 +761,7 @@
   {
     "moduleRef": "module.vexlife.core.intent-scheduler",
     "path": "src/core/intent-scheduler.mjs",
-    "role": "Admits exact workgraph nodes, leases one physical worker, commits held-call dispositions before resume, reduces externally verified completion into authoritative Workgraph truth, preserves continuations or cancels without discarding lineage.",
+    "role": "Admits exact workgraph nodes, leases one physical worker, owns every held-call disposition/terminal close, and consumes externally verified completion only while current into authoritative Workgraph truth with exact evidence lineage.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-orchestration.001",

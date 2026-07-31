@@ -219,7 +219,7 @@ test('S23 external completion verifier rejects self-certification, unchanged sta
   }), /verifierSourceRef mismatch/);
 });
 
-test('S24 verified completion reaches authoritative Workgraph COMPLETED, readies its dependent and unlocks parent convergence', () => {
+test('S24 completion is current at consumption and carries exact evidence into Workgraph convergence', () => {
   const { graph, main, dependent, parent, trustSnapshot } = graphFixture();
   const runtimeTrustSnapshot = { semanticFingerprint: 'b'.repeat(64), schedulerGeneration: 2 };
   const verifier = new DeterministicFakeCompletionVerifier({ schedulerRegistry });
@@ -230,12 +230,13 @@ test('S24 verified completion reaches authoritative Workgraph COMPLETED, readies
     schedulerGeneration: 2,
     evidence: completionEvidence(graph, main)
   });
-  const result = reduceVerifiedWorkCompletion({
-    graph,
-    verification,
+  const reduce = ({ candidateGraph = graph, candidateVerification = verification, completedAt = OBSERVED,
+    schedulerObservedAt = OBSERVED } = {}) => reduceVerifiedWorkCompletion({
+    graph: candidateGraph,
+    verification: candidateVerification,
     actorRef: 'vex.test',
     actorRoleRef: 'role.vex.developer',
-    completedAt: OBSERVED,
+    completedAt,
     receiptRef: 'receipt.completion-verifier.test'
   }, {
     intentRegistry,
@@ -243,13 +244,33 @@ test('S24 verified completion reaches authoritative Workgraph COMPLETED, readies
     runtimeTrustSnapshot,
     schedulerInstanceRef: 'instance.completion-verifier.test',
     schedulerGeneration: 2,
+    schedulerObservedAt,
     registeredProcessRefs,
     registeredRoleRefs,
     trustSnapshot
   });
+  assert.throws(() => reduce({ completedAt: FORMED, schedulerObservedAt: FORMED }),
+    /cannot precede verification observation/);
+  assert.throws(() => reduce({ completedAt: EXPIRES }), /expired before consumption/);
+  assert.throws(() => reduce({ completedAt: OBSERVED, schedulerObservedAt: EXPIRES }),
+    /cannot precede the canonical scheduler observed clock/);
+  const staleSerialized = structuredClone(verification);
+  staleSerialized.expiresAt = OBSERVED;
+  delete staleSerialized.semanticFingerprint;
+  staleSerialized.semanticFingerprint = semanticHash(staleSerialized);
+  assert.throws(() => reduce({ candidateVerification: staleSerialized }),
+    /formedAt <= observedAt < expiresAt/);
+  const result = reduce();
   assert.equal(result.graph.nodes.find((item) => item.workNodeRef === main.workNodeRef).state, 'COMPLETED');
   assert.equal(result.canonicalTransition.transitionRef, main.expectedTransitionRef);
   assert.equal(result.completionReceipt.expectedTransitionRef, main.expectedTransitionRef);
+  assert.ok(result.canonicalTransition.sourceRefs.includes(verification.verificationReceiptRef));
+  assert.equal(result.canonicalTransition.completionEvidenceLineage.verificationFingerprint,
+    verification.semanticFingerprint);
+  assert.ok(result.completionReceipt.sourceRefs.includes(verification.gateResultReceipts[0].gateResultRef));
+  assert.ok(result.completionReceipt.sourceHashes.includes(verification.gateResultReceipts[0].semanticFingerprint));
+  assert.equal(result.completionReceipt.completionEvidenceLineage.semanticFingerprint,
+    result.completionEvidenceLineage.semanticFingerprint);
   assert.deepEqual(result.dependentReadyRefs, [dependent.workNodeRef]);
   assert.deepEqual(result.parentConvergenceReadyRefs, [parent.workNodeRef]);
   assert.equal(validateIntentWorkgraph(result.graph, {
@@ -258,6 +279,8 @@ test('S24 verified completion reaches authoritative Workgraph COMPLETED, readies
     registeredRoleRefs,
     trustSnapshot
   }).ok, true);
+  assert.throws(() => reduce({ candidateGraph: result.graph }),
+    /current graph\/runtime\/scheduler binding mismatch|node transition binding mismatch/);
 });
 
 function canonicalRelayCall() {
@@ -346,10 +369,14 @@ function relayResult(call) {
   };
 }
 
-function forgedTransition(call, priorState, nextState, sequence, receiptRef) {
+function forgedTransition(call, priorState, nextState, sequence, receiptRef, overrides = {}) {
+  const contract = schedulerRegistry.relayTransitionContracts.find((item) =>
+    item.priorState === priorState && item.nextState === nextState
+  );
   const receipt = {
-    schemaVersion: 'vexlife.intent-tool-call-cancellation/v1',
+    schemaVersion: contract?.receiptSchemaVersion ?? 'vexlife.intent-tool-call-cancellation/v1',
     receiptRef,
+    eventContractRef: contract?.contractRef ?? 'contract.intent-scheduler.relay-event.invalid',
     toolCallRef: call.toolCallRef,
     priorState,
     nextState,
@@ -358,7 +385,8 @@ function forgedTransition(call, priorState, nextState, sequence, receiptRef) {
     sourceRef: call.sourceEvidenceRef,
     sourceHash: call.sourceEvidenceHash,
     formationRef: 'formation.intent-scheduler.relay-transition.v1',
-    transitionedAt: OBSERVED
+    transitionedAt: OBSERVED,
+    ...overrides
   };
   receipt.semanticFingerprint = semanticHash(receipt);
   return receipt;
@@ -371,7 +399,7 @@ function refingerprintLedger(snapshot) {
   return ledger;
 }
 
-test('S25 relay restore derives state by replay, rejects illegal terminal histories and continues a valid restart once', () => {
+test('S25 relay restore enforces typed event semantics, terminal history and once-only restart continuation', () => {
   const call = canonicalRelayCall();
   const relay = new ToolResultRelay(null, { schedulerRegistry });
   relay.register(call);
@@ -381,21 +409,100 @@ test('S25 relay restore derives state by replay, rejects illegal terminal histor
   const restoredAccepted = new ToolResultRelay(restoredPending.snapshot, { schedulerRegistry });
   assert.equal(restoredAccepted.accept(relayResult(call), { receivedAt: OBSERVED }).reason, 'DUPLICATE_RESULT');
 
-  const mismatch = structuredClone(relay.snapshot);
-  mismatch.entries[0].transitionReceipts = [forgedTransition(call, 'PENDING', 'HELD', 0, 'receipt.relay.held')];
+  const heldRelay = new ToolResultRelay(null, { schedulerRegistry });
+  heldRelay.register(call);
+  heldRelay.hold(call.toolCallRef, {
+    receiptRef: 'receipt.relay.held',
+    heldAt: OBSERVED,
+    checkpointRef: 'checkpoint.relay-replay.test'
+  });
+  const mismatch = structuredClone(heldRelay.snapshot);
+  mismatch.entries[0].state = 'PENDING';
   assert.throws(() => new ToolResultRelay(refingerprintLedger(mismatch), { schedulerRegistry }), /supplied state does not match replay-derived state/);
 
-  const outOfOrder = structuredClone(relay.snapshot);
-  outOfOrder.entries[0].state = 'CLOSED';
-  outOfOrder.entries[0].transitionReceipts = [forgedTransition(call, 'PENDING', 'CLOSED', 1, 'receipt.relay.out-of-order')];
+  const closedRelay = new ToolResultRelay(null, { schedulerRegistry });
+  closedRelay.register(call);
+  closedRelay.cancel(call.toolCallRef, { receiptRef: 'receipt.relay.closed', closedAt: OBSERVED });
+  const outOfOrder = structuredClone(closedRelay.snapshot);
+  outOfOrder.entries[0].transitionReceipts[0].sequence = 1;
+  delete outOfOrder.entries[0].transitionReceipts[0].semanticFingerprint;
+  outOfOrder.entries[0].transitionReceipts[0].semanticFingerprint =
+    semanticHash(outOfOrder.entries[0].transitionReceipts[0]);
   assert.throws(() => new ToolResultRelay(refingerprintLedger(outOfOrder), { schedulerRegistry }), /sequence is out of order/);
 
-  const terminalThenAccept = structuredClone(relay.snapshot);
+  const wrongSchema = structuredClone(heldRelay.snapshot);
+  wrongSchema.entries[0].transitionReceipts[0].schemaVersion = 'vexlife.intent-tool-call-cancellation/v1';
+  delete wrongSchema.entries[0].transitionReceipts[0].semanticFingerprint;
+  wrongSchema.entries[0].transitionReceipts[0].semanticFingerprint =
+    semanticHash(wrongSchema.entries[0].transitionReceipts[0]);
+  assert.throws(() => new ToolResultRelay(refingerprintLedger(wrongSchema), { schedulerRegistry }),
+    /registered typed event contract/);
+
+  const wrongSource = structuredClone(heldRelay.snapshot);
+  wrongSource.entries[0].transitionReceipts[0].sourceHash = 'f'.repeat(64);
+  delete wrongSource.entries[0].transitionReceipts[0].semanticFingerprint;
+  wrongSource.entries[0].transitionReceipts[0].semanticFingerprint =
+    semanticHash(wrongSource.entries[0].transitionReceipts[0]);
+  assert.throws(() => new ToolResultRelay(refingerprintLedger(wrongSource), { schedulerRegistry }),
+    /typed relay transition source\/formation lineage mismatch/);
+
+  const wrongObservation = structuredClone(restoredPending.snapshot);
+  wrongObservation.entries[0].transitionReceipts[0].observationRef = 'observation.relay-replay.wrong';
+  delete wrongObservation.entries[0].transitionReceipts[0].semanticFingerprint;
+  wrongObservation.entries[0].transitionReceipts[0].semanticFingerprint =
+    semanticHash(wrongObservation.entries[0].transitionReceipts[0]);
+  assert.throws(() => new ToolResultRelay(refingerprintLedger(wrongObservation), { schedulerRegistry }),
+    /typed ACCEPT receipt observation lineage mismatch/);
+
+  const wrongCancellation = structuredClone(closedRelay.snapshot);
+  wrongCancellation.entries[0].transitionReceipts[0].cancellationTokenRef = 'token.relay-replay.wrong';
+  delete wrongCancellation.entries[0].transitionReceipts[0].semanticFingerprint;
+  wrongCancellation.entries[0].transitionReceipts[0].semanticFingerprint =
+    semanticHash(wrongCancellation.entries[0].transitionReceipts[0]);
+  assert.throws(() => new ToolResultRelay(refingerprintLedger(wrongCancellation), { schedulerRegistry }),
+    /typed CANCEL\/CLOSE receipt cancellation lineage mismatch/);
+
+  const observationWithoutAccept = structuredClone(closedRelay.snapshot);
+  observationWithoutAccept.entries[0].observation = restoredPending.snapshot.entries[0].observation;
+  assert.throws(() => new ToolResultRelay(refingerprintLedger(observationWithoutAccept), { schedulerRegistry }),
+    /observation exists without a typed ACCEPT event/);
+
+  const wrongContext = structuredClone(restoredPending.snapshot);
+  const acceptedEntry = wrongContext.entries[0];
+  acceptedEntry.state = 'REINJECTED';
+  acceptedEntry.reinjectedContextLeaseRef = 'context-lease.relay-replay.successor';
+  acceptedEntry.transitionReceipts.push(forgedTransition(call, 'ACCEPTED', 'REINJECTED', 1,
+    'receipt.relay.reinjected', {
+      contextLeaseRef: 'context-lease.relay-replay.wrong',
+      observationRef: acceptedEntry.observation.observationRef,
+      observationFingerprint: acceptedEntry.observation.semanticFingerprint
+    }));
+  assert.throws(() => new ToolResultRelay(refingerprintLedger(wrongContext), { schedulerRegistry }),
+    /typed REINJECT receipt observation\/context lineage mismatch/);
+
+  const missingAuthorization = structuredClone(heldRelay.snapshot);
+  const heldEntry = missingAuthorization.entries[0];
+  heldEntry.state = 'CLOSED';
+  heldEntry.transitionReceipts.push(forgedTransition(call, 'HELD', 'CLOSED', 1,
+    'receipt.relay.held-close', {
+      checkpointRef: 'checkpoint.relay-replay.test',
+      action: 'CLOSE',
+      schedulerAuthorizationRef: 'authorization.relay-replay.test',
+      schedulerAuthorizationFingerprint: '8'.repeat(64),
+      schedulerInstanceRef: call.schedulerInstanceRef,
+      priorContextLeaseRef: call.contextLeaseRef,
+      priorSemanticPurposeFingerprint: call.semanticPurposeFingerprint,
+      priorSchedulerGeneration: call.schedulerGeneration
+    }));
+  assert.throws(() => new ToolResultRelay(refingerprintLedger(missingAuthorization), { schedulerRegistry }),
+    /missing required fields: schedulerAuthorization/);
+
+  const terminalThenAccept = structuredClone(closedRelay.snapshot);
   terminalThenAccept.entries[0].state = 'ACCEPTED';
-  terminalThenAccept.entries[0].transitionReceipts = [
-    forgedTransition(call, 'PENDING', 'CLOSED', 0, 'receipt.relay.closed'),
+  terminalThenAccept.entries[0].observation = restoredPending.snapshot.entries[0].observation;
+  terminalThenAccept.entries[0].transitionReceipts.push(
     forgedTransition(call, 'CLOSED', 'ACCEPTED', 1, 'receipt.relay.accepted-after-close')
-  ];
+  );
   assert.throws(() => new ToolResultRelay(refingerprintLedger(terminalThenAccept), { schedulerRegistry }), /illegal state progression|after a terminal state/);
 });
 

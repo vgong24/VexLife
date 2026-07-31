@@ -10,8 +10,8 @@
     {
       "path": "blueprint/intent-scheduler-registry.json",
       "mode": "100644",
-      "bytes": 18582,
-      "sha256": "0409d86e503229b7e7002382715e2092c14667257bbab569f2653d062c484dc4"
+      "bytes": 21581,
+      "sha256": "f58dbfb14c45ac60a32176474d462aa8354428f0bff5be8f685aff516c1c02b9"
     },
     {
       "path": "blueprint/intent-trust-snapshot.json",
@@ -40,8 +40,8 @@
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 24704,
-      "sha256": "feda5cf06aa040b6a2b28fafb167b5e89ecac39bc276e86b98e6a75ef27e71f2"
+      "bytes": 24799,
+      "sha256": "72a5981e289141fac28886d899cab3af35df9f036b84fd1f3c1ca4c566084cb3"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -52,8 +52,8 @@
     {
       "path": "blueprint/module-registry/scripts.json",
       "mode": "100644",
-      "bytes": 15564,
-      "sha256": "aa31689c952feb5da2d1b0690b256e56396a6a4af260cdfa2cc7836eba5d2eb7"
+      "bytes": 15589,
+      "sha256": "6536edefc780c37ee3dbe977e5d8967261abdfaf6b3fcb6b53a97778729ddad8"
     },
     {
       "path": "blueprint/orientation.json",
@@ -88,8 +88,8 @@
     {
       "path": "blueprint/process-factory/processes-core.json",
       "mode": "100644",
-      "bytes": 41981,
-      "sha256": "950017288daae869c2c099c79666d0a4f79d828f1336ce2c2b04f047517f2d6e"
+      "bytes": 42364,
+      "sha256": "0353a455f9054f3e5c85b82da02ad25fe862a941770def9f8ad77989e65414c3"
     },
     {
       "path": "blueprint/process-factory/processes-evolution.json",
