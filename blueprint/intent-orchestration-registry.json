@@ -1,0 +1,373 @@
+{
+  "schemaVersion": "vexlife.intent-orchestration-registry/v0",
+  "registryRef": "registry.vexlife.intent-orchestration.001",
+  "registryVersion": 3,
+  "systemRef": "system.vexlife.intent-orchestration-spine",
+  "humanProjectionName": "Intent Queue",
+  "canonicalStructureName": "Intent Workgraph",
+  "purpose": "Preserve human intent, admit bounded deterministic workgraphs, and project one next safe action without granting execution authority.",
+  "ordinaryRuntimeFrame": [
+    "base-model",
+    "foundation-kernel.compact",
+    "intent-frame.current",
+    "atlas-descent.bounded",
+    "accepted-culture-score-rhythm-lessons.by-ref"
+  ],
+  "intentEnvelopeRequiredFields": [
+    "intentRef",
+    "originMessageRef",
+    "originSpeakerRef",
+    "recipientRoleRef",
+    "projectRef",
+    "threadRef",
+    "channelRef",
+    "originalContentHash",
+    "desiredOutcome",
+    "constraints",
+    "createdAt",
+    "sourceLineageRef",
+    "semanticFingerprint"
+  ],
+  "workNodeRequiredFields": [
+    "workNodeRef",
+    "rootIntentRef",
+    "purpose",
+    "processRef",
+    "initialState",
+    "state",
+    "dependencyRefs",
+    "dependencyRequirements",
+    "childRefs",
+    "roleRef",
+    "priorityClass",
+    "applicableCultureRefs",
+    "applicableLessonRefs",
+    "applicableBurdenReleaseRefs",
+    "capabilityEnvelopeRef",
+    "effectEnvelopeRef",
+    "resourceEnvelopeRef",
+    "expectedTransitionRef",
+    "completionGateRefs",
+    "returnRouteRef",
+    "sourceRefs",
+    "createdAt",
+    "semanticFingerprint"
+  ],
+  "transitionRequiredFields": [
+    "transitionRef",
+    "workNodeRef",
+    "sequence",
+    "priorState",
+    "nextState",
+    "reason",
+    "actorRef",
+    "actorRoleRef",
+    "processRef",
+    "sourceRefs",
+    "createdAt",
+    "semanticFingerprint"
+  ],
+  "receiptRequiredFields": [
+    "receiptRef",
+    "workNodeRef",
+    "expectedTransitionRef",
+    "nodeSemanticFingerprint",
+    "disposition",
+    "sourceState",
+    "state",
+    "currentness",
+    "sourceRefs",
+    "sourceHashes",
+    "formedAt",
+    "formationRef",
+    "semanticFingerprint"
+  ],
+  "attributedProjectionContracts": {
+    "interpretation": {
+      "contractRef": "contract.intent.attributed-interpretation",
+      "requiredFields": [
+        "interpretationRef",
+        "sourceIntentRef",
+        "actorRef",
+        "actorRoleRef",
+        "formedAt",
+        "sourceRefs",
+        "authorityDisposition",
+        "effectDisposition",
+        "contentRef",
+        "semanticFingerprint"
+      ]
+    },
+    "plan": {
+      "contractRef": "contract.intent.attributed-plan",
+      "requiredFields": [
+        "planRef",
+        "sourceIntentRef",
+        "actorRef",
+        "actorRoleRef",
+        "formedAt",
+        "sourceRefs",
+        "authorityDisposition",
+        "effectDisposition",
+        "planContentRef",
+        "semanticFingerprint"
+      ]
+    },
+    "authorization": {
+      "contractRef": "contract.intent.attributed-authorization",
+      "requiredFields": [
+        "authorizationRef",
+        "sourceIntentRef",
+        "actorRef",
+        "actorRoleRef",
+        "formedAt",
+        "sourceRefs",
+        "authorityDisposition",
+        "effectDisposition",
+        "effectEnvelopeRef",
+        "decisionRef",
+        "semanticFingerprint"
+      ]
+    }
+  },
+  "authorityDispositions": [
+    "NO_AUTHORITY",
+    "AUTHORIZED_BOUNDED",
+    "DENIED",
+    "HELD_UNKNOWN"
+  ],
+  "effectDispositions": [
+    "NO_EFFECTS",
+    "EFFECT_ENVELOPE_BOUND",
+    "DENIED",
+    "HELD_UNKNOWN"
+  ],
+  "lifecycleStates": [
+    "CAPTURED",
+    "NEEDS_CLARIFICATION",
+    "DECOMPOSED",
+    "PLAN_VALIDATED",
+    "WAITING_DEPENDENCIES",
+    "READY",
+    "WAITING_RESOURCE",
+    "CONTEXT_ADMITTED",
+    "RUNNING",
+    "WAITING_TOOL",
+    "WAITING_HUMAN",
+    "VERIFYING",
+    "COMPLETED",
+    "CONVERGED",
+    "CLOSED",
+    "BLOCKED",
+    "FAILED_RECOVERABLE",
+    "PAUSED_AT_CHECKPOINT",
+    "SUPERSEDED",
+    "CANCELLED",
+    "HELD_UNKNOWN"
+  ],
+  "lifecycleStateRefs": [
+    { "state": "CAPTURED", "ref": "lifecycle.intent.captured" },
+    { "state": "NEEDS_CLARIFICATION", "ref": "lifecycle.intent.needs-clarification" },
+    { "state": "DECOMPOSED", "ref": "lifecycle.intent.decomposed" },
+    { "state": "PLAN_VALIDATED", "ref": "lifecycle.intent.plan-validated" },
+    { "state": "WAITING_DEPENDENCIES", "ref": "lifecycle.intent.waiting-dependencies" },
+    { "state": "READY", "ref": "lifecycle.intent.ready" },
+    { "state": "WAITING_RESOURCE", "ref": "lifecycle.intent.waiting-resource" },
+    { "state": "CONTEXT_ADMITTED", "ref": "lifecycle.intent.context-admitted" },
+    { "state": "RUNNING", "ref": "lifecycle.intent.running" },
+    { "state": "WAITING_TOOL", "ref": "lifecycle.intent.waiting-tool" },
+    { "state": "WAITING_HUMAN", "ref": "lifecycle.intent.waiting-human" },
+    { "state": "VERIFYING", "ref": "lifecycle.intent.verifying" },
+    { "state": "COMPLETED", "ref": "lifecycle.intent.completed" },
+    { "state": "CONVERGED", "ref": "lifecycle.intent.converged" },
+    { "state": "CLOSED", "ref": "lifecycle.intent.closed" },
+    { "state": "BLOCKED", "ref": "lifecycle.intent.blocked" },
+    { "state": "FAILED_RECOVERABLE", "ref": "lifecycle.intent.failed-recoverable" },
+    { "state": "PAUSED_AT_CHECKPOINT", "ref": "lifecycle.intent.paused-at-checkpoint" },
+    { "state": "SUPERSEDED", "ref": "lifecycle.intent.superseded" },
+    { "state": "CANCELLED", "ref": "lifecycle.intent.cancelled" },
+    { "state": "HELD_UNKNOWN", "ref": "lifecycle.intent.held-unknown" }
+  ],
+  "allowedFormationStates": [
+    "CAPTURED"
+  ],
+  "allowedTransitions": {
+    "CAPTURED": ["NEEDS_CLARIFICATION", "DECOMPOSED", "CANCELLED", "HELD_UNKNOWN"],
+    "NEEDS_CLARIFICATION": ["DECOMPOSED", "WAITING_HUMAN", "CANCELLED", "HELD_UNKNOWN"],
+    "DECOMPOSED": ["PLAN_VALIDATED", "NEEDS_CLARIFICATION", "BLOCKED", "CANCELLED"],
+    "PLAN_VALIDATED": ["WAITING_DEPENDENCIES", "READY", "BLOCKED", "CANCELLED"],
+    "WAITING_DEPENDENCIES": ["READY", "BLOCKED", "CANCELLED", "HELD_UNKNOWN"],
+    "READY": ["WAITING_RESOURCE", "CONTEXT_ADMITTED", "RUNNING", "CANCELLED", "HELD_UNKNOWN"],
+    "WAITING_RESOURCE": ["READY", "CONTEXT_ADMITTED", "CANCELLED", "HELD_UNKNOWN"],
+    "CONTEXT_ADMITTED": ["RUNNING", "WAITING_TOOL", "WAITING_HUMAN", "CANCELLED"],
+    "RUNNING": ["WAITING_TOOL", "WAITING_HUMAN", "VERIFYING", "FAILED_RECOVERABLE", "PAUSED_AT_CHECKPOINT", "CANCELLED"],
+    "WAITING_TOOL": ["RUNNING", "VERIFYING", "FAILED_RECOVERABLE", "CANCELLED", "HELD_UNKNOWN"],
+    "WAITING_HUMAN": ["READY", "RUNNING", "VERIFYING", "CANCELLED", "HELD_UNKNOWN"],
+    "VERIFYING": ["COMPLETED", "FAILED_RECOVERABLE", "BLOCKED", "CANCELLED", "HELD_UNKNOWN"],
+    "COMPLETED": ["CONVERGED", "CLOSED", "SUPERSEDED"],
+    "CONVERGED": ["CLOSED", "SUPERSEDED"],
+    "FAILED_RECOVERABLE": ["READY", "PAUSED_AT_CHECKPOINT", "BLOCKED", "CANCELLED"],
+    "PAUSED_AT_CHECKPOINT": ["READY", "CANCELLED", "HELD_UNKNOWN"],
+    "BLOCKED": ["READY", "CANCELLED", "HELD_UNKNOWN"],
+    "HELD_UNKNOWN": ["NEEDS_CLARIFICATION", "READY", "BLOCKED", "CANCELLED"],
+    "CLOSED": [],
+    "SUPERSEDED": [],
+    "CANCELLED": []
+  },
+  "cancellationSettledStates": [
+    "COMPLETED",
+    "CONVERGED",
+    "CLOSED",
+    "SUPERSEDED",
+    "CANCELLED"
+  ],
+  "cancellationPolicy": {
+    "CAPTURED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "NEEDS_CLARIFICATION": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "DECOMPOSED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "PLAN_VALIDATED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_DEPENDENCIES": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "READY": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_RESOURCE": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "CONTEXT_ADMITTED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "RUNNING": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_TOOL": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_HUMAN": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "VERIFYING": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "COMPLETED": { "mode": "PRESERVE_SETTLED" },
+    "CONVERGED": { "mode": "PRESERVE_SETTLED" },
+    "CLOSED": { "mode": "PRESERVE_SETTLED" },
+    "BLOCKED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "FAILED_RECOVERABLE": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "PAUSED_AT_CHECKPOINT": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "SUPERSEDED": { "mode": "PRESERVE_SETTLED" },
+    "CANCELLED": { "mode": "PRESERVE_SETTLED" },
+    "HELD_UNKNOWN": { "mode": "TRANSITION", "targetState": "CANCELLED" }
+  },
+  "terminalStates": [
+    "CLOSED",
+    "SUPERSEDED",
+    "CANCELLED"
+  ],
+  "nonGreenStates": [
+    "NEEDS_CLARIFICATION",
+    "WAITING_DEPENDENCIES",
+    "WAITING_RESOURCE",
+    "WAITING_TOOL",
+    "WAITING_HUMAN",
+    "BLOCKED",
+    "FAILED_RECOVERABLE",
+    "PAUSED_AT_CHECKPOINT",
+    "HELD_UNKNOWN"
+  ],
+  "activeSemanticDuplicateExemptStates": [
+    "CLOSED",
+    "SUPERSEDED",
+    "CANCELLED"
+  ],
+  "processRefs": [
+    "process.vexlife.intent.capture",
+    "process.vexlife.intent.decompose-candidate",
+    "process.vexlife.intent.validate-workgraph",
+    "process.vexlife.intent.project-ready-set",
+    "process.vexlife.intent.verify-transition",
+    "process.vexlife.intent.converge-parent"
+  ],
+  "knownIntentProcessRoutes": [
+    {
+      "resolutionRef": "resolution.intent.capture",
+      "intentKey": "CAPTURE_INTENT",
+      "processRef": "process.vexlife.intent.capture"
+    },
+    {
+      "resolutionRef": "resolution.intent.validate-workgraph",
+      "intentKey": "VALIDATE_WORKGRAPH",
+      "processRef": "process.vexlife.intent.validate-workgraph"
+    }
+  ],
+  "priorityVocabulary": [
+    "IMMEDIATE",
+    "HIGH",
+    "NORMAL",
+    "LOW"
+  ],
+  "bindingFields": [
+    "capabilityEnvelopeRef",
+    "effectEnvelopeRef",
+    "resourceEnvelopeRef",
+    "expectedTransitionRef",
+    "completionGateRefs",
+    "returnRouteRef"
+  ],
+  "trustedSnapshotSchemaVersion": "vexlife.intent-trust-snapshot/v0",
+  "trustedSnapshotRequiredFields": [
+    "schemaVersion",
+    "snapshotRef",
+    "sourceRef",
+    "sourceHash",
+    "formationRef",
+    "formedAt",
+    "currentness",
+    "bindingRefs",
+    "actorRefs",
+    "decisionRefs",
+    "authorizationBindings",
+    "semanticFingerprint"
+  ],
+  "trustedAuthorizationBindingRequiredFields": [
+    "authorizationRef",
+    "actorRef",
+    "actorRoleRef",
+    "decisionRef",
+    "effectEnvelopeRef",
+    "authorityDisposition",
+    "effectDisposition"
+  ],
+  "bindingRefPrefixes": {
+    "roleRef": "role.",
+    "capabilityEnvelopeRef": "capability-envelope.",
+    "effectEnvelopeRef": "effect-envelope.",
+    "resourceEnvelopeRef": "resource-envelope.",
+    "expectedTransitionRef": "expected-transition.",
+    "completionGateRefs": "completion-gate.",
+    "returnRouteRef": "return-route."
+  },
+  "receiptContract": {
+    "contractRef": "contract.intent.receipt.current-exact",
+    "purpose": "Bind one current receipt to the exact node fingerprint, expected transition, disposition, source state, formation identity, and source evidence."
+  },
+  "receiptStates": [
+    "PROVEN",
+    "REJECTED",
+    "HELD_UNKNOWN"
+  ],
+  "receiptStateRefs": [
+    { "state": "PROVEN", "ref": "receipt-state.intent.proven" },
+    { "state": "REJECTED", "ref": "receipt-state.intent.rejected" },
+    { "state": "HELD_UNKNOWN", "ref": "receipt-state.intent.held-unknown" }
+  ],
+  "receiptCurrentnessStates": [
+    "CURRENT",
+    "SUPERSEDED"
+  ],
+  "projectionIdentities": [
+    {
+      "projectionRef": "projection.intent.plan",
+      "brief": "Deterministic bounded workgraph admission projection."
+    },
+    {
+      "projectionRef": "projection.intent.status",
+      "brief": "Compact Intent Queue with bounded waiting and blocking reasons."
+    },
+    {
+      "projectionRef": "projection.intent.next-safe-action",
+      "brief": "Exactly one proposed next safe action with no execution authority."
+    }
+  ],
+  "successorBoundaries": [
+    "Intent Orchestration 2/3 scheduler, resource leases, checkpoint/resume, and tool-result reinjection are registration-only and held.",
+    "Intent Orchestration 3/3 Burden Release and Continuity Evolution Router is registration-only and held.",
+    "Native platform adoption remains held pending accepted shared contracts.",
+    "No model weight training, removal, activation, or direct tool authority is granted."
+  ]
+}

@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "blueprint/intent-orchestration-registry.json",
+      "mode": "100644",
+      "bytes": 12497,
+      "sha256": "27a7a4ab77811c4af2567a0a9d39bbdbbe088c5f22b6a9ba1635e67d95363f1f"
+    },
+    {
+      "path": "blueprint/intent-trust-snapshot.json",
+      "mode": "100644",
+      "bytes": 1694,
+      "sha256": "b141f88a81e7f17602a39896abce5d9631f2fef36afcdbfe7663bb0543a94f39"
+    },
+    {
       "path": "blueprint/model-profiles.example.json",
       "mode": "100644",
       "bytes": 635,
@@ -22,8 +34,8 @@
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 15211,
-      "sha256": "c9c14ee173ee2811ca165ff7a5e9e1377ac3f9a48f47a453ac5ba8222e544607"
+      "bytes": 17600,
+      "sha256": "007f21b15b40834d923935642745c0bb892d3a4e3ca1f42d1106e79f1b981127"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -34,8 +46,8 @@
     {
       "path": "blueprint/module-registry/scripts.json",
       "mode": "100644",
-      "bytes": 10883,
-      "sha256": "4c4119ba2015eb355563a26e807b2c5b5d1801032117615edbad5a2d684468c3"
+      "bytes": 12836,
+      "sha256": "cd9344f46854057f6118ebccaef88a3adc29fba955b3cf33215c388e86b5ec5a"
     },
     {
       "path": "blueprint/orientation.json",
@@ -70,8 +82,8 @@
     {
       "path": "blueprint/process-factory/processes-core.json",
       "mode": "100644",
-      "bytes": 15505,
-      "sha256": "7a2960b8b96d6345141a724231903a05906cbcf53ecdc57f4dd061d4559a60b8"
+      "bytes": 28105,
+      "sha256": "45392d315f84686f840066215fa7e11383c222c1a26af19405e5834ea7e5fd77"
     },
     {
       "path": "blueprint/process-factory/processes-evolution.json",
@@ -130,20 +142,8 @@
     {
       "path": "blueprint/vexlife.blueprint.json",
       "mode": "100644",
-      "bytes": 1121,
-      "sha256": "eee6437f0bbd9234713472b2f57831e9dda136a5ebdf2470a88136f3ad1ba4bc"
-    },
-    {
-      "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
-      "mode": "100644",
-      "bytes": 2475,
-      "sha256": "20e4159c562ec46bfad7643dabb45f047aa005e699811358d87acdd5694ac5c1"
-    },
-    {
-      "path": "docs/BOOTSTRAP-AND-MODELS.md",
-      "mode": "100644",
-      "bytes": 3695,
-      "sha256": "b524de20db45461f2c2dd7a8b0244bb0f2c2563c7f1b8fdf7db08a86a217a080"
+      "bytes": 1196,
+      "sha256": "9e1626b356908ac6d300e3a4b6558ca9dd4da7ab9ca1e8cd141942d2ac02cc54"
     }
   ]
 }

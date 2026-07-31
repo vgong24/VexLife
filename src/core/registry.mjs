@@ -46,13 +46,105 @@ function addUsage(map, stringRef, consumerRef) {
   map.set(stringRef, set);
 }
 
-export function compileRegistryPack({ blueprint, strings, factory, modules = null, experience = null, evolution = null, implementationPlan = null, capabilities = null, reviewLenses = null, featureRegistry = null, buildHealth = null, bridge = null }) {
+export function compileRegistryPack({ blueprint, strings, factory, modules = null, experience = null, evolution = null, implementationPlan = null, capabilities = null, reviewLenses = null, featureRegistry = null, buildHealth = null, bridge = null, intentRegistry = blueprint?.intentOrchestration ?? null }) {
   const registry = new IdentityRegistry({ registryRef: blueprint.registryRefs?.compiledIdentityRegistryRef });
   const stringUsage = new Map();
 
   registry.register({ ref: blueprint.blueprintRef, kind: 'BLUEPRINT', brief: blueprint.product.productRef, version: blueprint.version });
   registry.register({ ref: blueprint.product.productRef, kind: 'PRODUCT', brief: blueprint.product.displayNameStringRef });
   addUsage(stringUsage, blueprint.product.displayNameStringRef, blueprint.product.productRef);
+
+  if (intentRegistry?.registryRef) {
+    registry.register({
+      ref: intentRegistry.registryRef,
+      kind: 'INTENT_REGISTRY',
+      brief: intentRegistry.purpose,
+      version: intentRegistry.registryVersion,
+      sourceRef: 'blueprint/intent-orchestration-registry.json',
+      edges: [{ type: 'SYSTEM', to: intentRegistry.systemRef }]
+    });
+    registry.register({
+      ref: intentRegistry.systemRef,
+      kind: 'SYSTEM',
+      brief: intentRegistry.purpose,
+      parentRef: intentRegistry.registryRef,
+      sourceRef: 'blueprint/intent-orchestration-registry.json',
+      edges: [
+        { type: 'PARENT', to: intentRegistry.registryRef },
+        ...(intentRegistry.lifecycleStateRefs ?? []).map((item) => ({ type: 'LIFECYCLE_STATE', to: item.ref })),
+        ...(intentRegistry.projectionIdentities ?? []).map((item) => ({ type: 'PROJECTS', to: item.projectionRef }))
+      ]
+    });
+    for (const item of intentRegistry.lifecycleStateRefs ?? []) {
+      registry.register({
+        ref: item.ref,
+        kind: 'INTENT_LIFECYCLE_STATE',
+        brief: item.state,
+        state: item.state,
+        parentRef: intentRegistry.systemRef,
+        sourceRef: 'blueprint/intent-orchestration-registry.json',
+        edges: [{ type: 'PARENT', to: intentRegistry.systemRef }]
+      });
+    }
+    if (intentRegistry.receiptContract?.contractRef) {
+      registry.register({
+        ref: intentRegistry.receiptContract.contractRef,
+        kind: 'INTENT_RECEIPT_CONTRACT',
+        brief: intentRegistry.receiptContract.purpose,
+        parentRef: intentRegistry.systemRef,
+        requiredFields: intentRegistry.receiptRequiredFields,
+        sourceRef: 'blueprint/intent-orchestration-registry.json',
+        edges: [{ type: 'PARENT', to: intentRegistry.systemRef }]
+      });
+    }
+    for (const item of intentRegistry.receiptStateRefs ?? []) {
+      registry.register({
+        ref: item.ref,
+        kind: 'INTENT_RECEIPT_STATE',
+        brief: item.state,
+        state: item.state,
+        parentRef: intentRegistry.receiptContract.contractRef,
+        sourceRef: 'blueprint/intent-orchestration-registry.json',
+        edges: [{ type: 'PARENT', to: intentRegistry.receiptContract.contractRef }]
+      });
+    }
+    for (const item of intentRegistry.projectionIdentities ?? []) {
+      registry.register({
+        ref: item.projectionRef,
+        kind: 'INTENT_PROJECTION',
+        brief: item.brief,
+        parentRef: intentRegistry.systemRef,
+        sourceRef: 'blueprint/intent-orchestration-registry.json',
+        edges: [{ type: 'PARENT', to: intentRegistry.systemRef }]
+      });
+    }
+    for (const [projectionKind, contract] of Object.entries(intentRegistry.attributedProjectionContracts ?? {})) {
+      registry.register({
+        ref: contract.contractRef,
+        kind: 'INTENT_ATTRIBUTED_PROJECTION_CONTRACT',
+        brief: projectionKind,
+        projectionKind,
+        parentRef: intentRegistry.systemRef,
+        requiredFields: contract.requiredFields,
+        sourceRef: 'blueprint/intent-orchestration-registry.json',
+        edges: [{ type: 'PARENT', to: intentRegistry.systemRef }]
+      });
+    }
+    for (const route of intentRegistry.knownIntentProcessRoutes ?? []) {
+      registry.register({
+        ...route,
+        ref: route.resolutionRef,
+        kind: 'INTENT_PROCESS_RESOLUTION',
+        brief: `${route.intentKey} -> ${route.processRef}`,
+        parentRef: intentRegistry.systemRef,
+        sourceRef: 'blueprint/intent-orchestration-registry.json',
+        edges: [
+          { type: 'PARENT', to: intentRegistry.systemRef },
+          { type: 'RESOLVES_TO_PROCESS', to: route.processRef }
+        ]
+      });
+    }
+  }
 
   for (const domain of blueprint.stateDomains) registry.register({ ref: domain.stateRef, kind: 'STATE_DOMAIN', brief: domain.brief, ownerRef: domain.ownerRef, edges: [{ type: 'OWNER', to: domain.ownerRef }] });
   for (const role of blueprint.roles) {

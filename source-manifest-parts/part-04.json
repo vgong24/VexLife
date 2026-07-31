@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
+      "mode": "100644",
+      "bytes": 2475,
+      "sha256": "20e4159c562ec46bfad7643dabb45f047aa005e699811358d87acdd5694ac5c1"
+    },
+    {
+      "path": "docs/BOOTSTRAP-AND-MODELS.md",
+      "mode": "100644",
+      "bytes": 3695,
+      "sha256": "b524de20db45461f2c2dd7a8b0244bb0f2c2563c7f1b8fdf7db08a86a217a080"
+    },
+    {
       "path": "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",
       "mode": "100644",
       "bytes": 9064,
@@ -68,6 +80,12 @@
       "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
     },
     {
+      "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
+      "mode": "100644",
+      "bytes": 10152,
+      "sha256": "25489693bcff73c5954982ba9d722d951cd486cd6fb8037c3108a3ea16091ce2"
+    },
+    {
       "path": "docs/INTERFACE-BUILDER.md",
       "mode": "100644",
       "bytes": 3664,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 1844,
       "sha256": "533db6182bcabd097bcd260d1fbbb414c730c71944843dfc483aa51a1bf9eac3"
-    },
-    {
-      "path": "package.json",
-      "mode": "100644",
-      "bytes": 2392,
-      "sha256": "b5d462ef99d1e87a2fb8ea04a3f61fc52d0a181fb1639475d55dcaf9b621c74a"
-    },
-    {
-      "path": "reference/browser/README.md",
-      "mode": "100644",
-      "bytes": 898,
-      "sha256": "df56100f04b33c3b5c61d46565277a5025fb72632408679a1fee5c2f2d06d93f"
-    },
-    {
-      "path": "reference/browser/app.css",
-      "mode": "100644",
-      "bytes": 12669,
-      "sha256": "69e8869423e5a548914b491ae38d00e2a3e3641b193b9ff783ab7e472cd09334"
     }
   ]
 }

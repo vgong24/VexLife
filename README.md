@@ -188,6 +188,9 @@ npm run module:describe -- --module-ref <module.ref>
 npm run current                  # compact current foundation and held-boundary projection
 npm run feature:check            # feature relationships and cultural review lenses
 npm run bridge:check             # remote/local sibling identity and trusted-device bridge contracts
+npm run intent:check             # immutable intent and deterministic workgraph contracts
+npm run intent:plan -- --fixture <safe-repository-relative-json-path>
+npm run intent:status -- --graph <safe-repository-relative-json-path>
 npm run localization:check       # required visible strings across supported languages
 npm run check                    # complete deterministic foundation gate
 npm run pr-ready                 # execute every registered check and write a current exact-head receipt
@@ -202,6 +205,12 @@ npm run bootstrap -- --dry-run   # inspect local-home creation without writing
 npm run evolution:summary         # inspect Dream/Score/adapter lifecycle registry
 npm run implementation:packet -- --work-ref <work.ref> --platform browser
 ```
+
+The shared [Intent Orchestration Spine](docs/INTENT-ORCHESTRATION-SPINE.md)
+preserves the human request as an immutable envelope, validates a bounded
+directed workgraph deterministically, and projects a humane **Intent Queue**.
+An admitted plan and its next-safe-action projection grant no tool, mutation,
+merge, publication, native-platform, or model authority.
 
 Run `npm run orient` before broad reading. Read only the returned
 `requiredSources`, then use the bounded Atlas or exact-module command. `npm run

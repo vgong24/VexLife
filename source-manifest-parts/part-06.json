@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/feature-check.mjs",
+      "mode": "100644",
+      "bytes": 669,
+      "sha256": "aa990b433e4597d9e55cc9857696fd673a05b7af997674c7ff9165a48d28008f"
+    },
+    {
+      "path": "scripts/feature-scaffold.mjs",
+      "mode": "100644",
+      "bytes": 1251,
+      "sha256": "54e2d40632300c0da19d2411c5a3a201fb76d1ee4f7e616263f2978ecd398447"
+    },
+    {
+      "path": "scripts/health-check.mjs",
+      "mode": "100644",
+      "bytes": 4445,
+      "sha256": "058af3242401385888954c6221915b8d8ca61ea4478a70ce4fdb60bbe5f0d7f7"
+    },
+    {
       "path": "scripts/impact-report.mjs",
       "mode": "100644",
       "bytes": 679,
@@ -12,6 +30,24 @@
       "mode": "100644",
       "bytes": 1364,
       "sha256": "9eeb77cd282f639a89953d4aad8f23a38e25a8a01d8c6c6986d5f34dafdb7eb5"
+    },
+    {
+      "path": "scripts/intent-check.mjs",
+      "mode": "100644",
+      "bytes": 4897,
+      "sha256": "b22bdf5047bd96452f388f89307ea0868c8a55a8b54667dae6c0fa840810d49a"
+    },
+    {
+      "path": "scripts/intent-plan.mjs",
+      "mode": "100644",
+      "bytes": 2303,
+      "sha256": "288dca471a0981f758b9dbec7a8434c9a01d49e63ccf89d7c6771ec74f065e7b"
+    },
+    {
+      "path": "scripts/intent-status.mjs",
+      "mode": "100644",
+      "bytes": 2471,
+      "sha256": "0242e0bf344cefd1026c7cf397a821bc02fec7a08cfa04818f7e37e25d1cc3b0"
     },
     {
       "path": "scripts/localization-check.mjs",
@@ -88,8 +124,8 @@
     {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
-      "bytes": 19345,
-      "sha256": "98ed134602c1632392674792c2a2ffcdd21f6b6cc3c44c63616933d4403cd208"
+      "bytes": 20964,
+      "sha256": "09a2ee710603c61005e307c9d94b6318fa8a75e203361e23722949390c15a832"
     },
     {
       "path": "src/core/boot.mjs",
@@ -108,42 +144,6 @@
       "mode": "100644",
       "bytes": 2361,
       "sha256": "00a60fd3f0491923109720586d0f69d6fddfc21b8c57dc540e066434980cba54"
-    },
-    {
-      "path": "src/core/check-result.mjs",
-      "mode": "100644",
-      "bytes": 3466,
-      "sha256": "448fdea1519cad9db9116dd3f370bf42bd7d354ecf417865f8f1eb91e67c3b8f"
-    },
-    {
-      "path": "src/core/conversation.mjs",
-      "mode": "100644",
-      "bytes": 2171,
-      "sha256": "7087c6116acac848adff99a6a060bd67afd4e303df539782442ea1d2cc036331"
-    },
-    {
-      "path": "src/core/device-family.mjs",
-      "mode": "100644",
-      "bytes": 2254,
-      "sha256": "db0e21e48b2d7c2a9ad4ef1a518b0e64a4e057a3d7a2ed1b2de5aefb21203579"
-    },
-    {
-      "path": "src/core/evolution.mjs",
-      "mode": "100644",
-      "bytes": 6024,
-      "sha256": "ada1ff11441316443f616e95212338d931e0af12839d699829e5910f47d6cc25"
-    },
-    {
-      "path": "src/core/experience.mjs",
-      "mode": "100644",
-      "bytes": 4744,
-      "sha256": "e14e96c19e4feea4060fc56dfe9f3b77d8daea494cdb1e2a782ffe363e4c2e5a"
-    },
-    {
-      "path": "src/core/feature-registry.mjs",
-      "mode": "100644",
-      "bytes": 8167,
-      "sha256": "14937478c5512706fe208a6959aa9dbb47061fed3e5adb4692339e18f4db3884"
     }
   ]
 }

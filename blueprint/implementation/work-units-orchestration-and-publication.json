@@ -72,5 +72,79 @@
       "model artifacts"
     ],
     "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.intent-orchestration-spine",
+    "purpose": "Implement Intent Orchestration 1/3 immutable intent envelopes, deterministic workgraph admission, lifecycle evidence, convergence, and compact no-authority projections.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.work-orchestration",
+    "dependsOn": [
+      "work.vexlife.registry.compiler",
+      "work.vexlife.state.relay",
+      "work.vexlife.repository-health"
+    ],
+    "pathScope": [
+      "blueprint/vexlife.blueprint.json",
+      "blueprint/intent-orchestration-registry.json",
+      "blueprint/intent-trust-snapshot.json",
+      "blueprint/fragments/state-domains.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/feature-registry.json",
+      "blueprint/build-health-registry.json",
+      "blueprint/process-factory/processes-core.json",
+      "blueprint/implementation/work-units-orchestration-and-publication.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "src/core/blueprint.mjs",
+      "src/core/registry.mjs",
+      "src/core/intent-workgraph.mjs",
+      "src/core/intent-validation.mjs",
+      "src/core/intent-projection.mjs",
+      "scripts/intent-check.mjs",
+      "scripts/intent-plan.mjs",
+      "scripts/intent-status.mjs",
+      "test/intent-workgraph.test.mjs",
+      "docs/INTENT-ORCHESTRATION-SPINE.md",
+      "README.md",
+      "package.json",
+      "SOURCE-MANIFEST.json",
+      "source-manifest-parts/**"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.orchestration",
+    "requiredSourceRefs": [
+      "state.intent-workgraph",
+      "process.vexlife.intent.validate-workgraph",
+      "feature.vexlife.intent-orchestration-spine"
+    ],
+    "requiredTestRefs": [
+      "test.intent.original-immutable",
+      "test.intent.cycle-self-rejected",
+      "test.intent.binding-fail-closed",
+      "test.intent.dependency-receipts",
+      "test.intent.completion-evidence",
+      "test.intent.parent-convergence",
+      "test.intent.held-unknown-visible",
+      "test.intent.registry-resolution",
+      "test.intent.full-gate"
+    ],
+    "outputRefs": [
+      "registry.vexlife.intent-orchestration.001",
+      "module.vexlife.core.intent-workgraph",
+      "projection.intent.status"
+    ],
+    "effectBoundary": "SOURCE_AND_NO_AUTHORITY_DERIVED_PROJECTIONS_ONLY",
+    "completionGate": "all intent contract tests, PR-ready checks, exact manifest, and independent exact-head review pass",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [
+      "no Intent Orchestration 2/3 scheduler implementation",
+      "no Intent Orchestration 3/3 Burden Release router implementation",
+      "no native platform implementation",
+      "no model weight mutation",
+      "no execution authority from an admitted plan"
+    ],
+    "returnRoute": "return exact intent contract, Health, manifest, and PR evidence through issue #2"
   }
 ]

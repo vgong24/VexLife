@@ -15,6 +15,7 @@
     "platforms": "blueprint/fragments/platform-bindings.json",
     "tests": "blueprint/fragments/tests.json",
     "registryRefs": "blueprint/fragments/registry-refs.json",
+    "intentOrchestration": "blueprint/intent-orchestration-registry.json",
     "components": "blueprint/fragments/components.json",
     "screens": [
       "blueprint/fragments/screens/shell.json",

@@ -266,5 +266,69 @@
   {
     "testRef": "test.bridge.no-direct-model-exposure",
     "brief": "Remote clients reach the Home Bridge gateway, never the raw model endpoint, filesystem or credential store."
+  },
+  {
+    "testRef": "test.intent.original-immutable",
+    "brief": "The original intent envelope remains deeply immutable while interpretations and plans stay attributed projections."
+  },
+  {
+    "testRef": "test.intent.simple-process-resolution",
+    "brief": "A simple known intent resolves one registered process without gaining execution authority."
+  },
+  {
+    "testRef": "test.intent.acyclic-decomposition",
+    "brief": "A complex intent validates as one acyclic dependency workgraph."
+  },
+  {
+    "testRef": "test.intent.cycle-self-rejected",
+    "brief": "Self-dependencies and dependency cycles fail closed with exact path evidence."
+  },
+  {
+    "testRef": "test.intent.active-semantic-dedup",
+    "brief": "Semantic duplicates in active scope are rejected unless prior work is explicitly superseded, cancelled, or closed."
+  },
+  {
+    "testRef": "test.intent.binding-fail-closed",
+    "brief": "Missing process, capability, effect, resource, completion-gate, or return-route bindings fail closed."
+  },
+  {
+    "testRef": "test.intent.dependency-receipts",
+    "brief": "The ready set changes only after exact dependency receipts are present and proven."
+  },
+  {
+    "testRef": "test.intent.completion-evidence",
+    "brief": "COMPLETED requires exact expected-transition evidence."
+  },
+  {
+    "testRef": "test.intent.mutation-head-transition",
+    "brief": "An unchanged implementation head cannot prove a mutation transition."
+  },
+  {
+    "testRef": "test.intent.parent-convergence",
+    "brief": "A parent cannot converge or close before every required child has a terminal disposition and exact receipt."
+  },
+  {
+    "testRef": "test.intent.held-unknown-visible",
+    "brief": "HELD_UNKNOWN remains visible and cannot become a green plan."
+  },
+  {
+    "testRef": "test.intent.cancellation-lineage",
+    "brief": "Cancellation preserves the source, node, and descendant lineage."
+  },
+  {
+    "testRef": "test.intent.transition-no-op",
+    "brief": "An equal semantic transition does not append another durable transition."
+  },
+  {
+    "testRef": "test.intent.compact-source-descent",
+    "brief": "Compact status omits heavy payloads while preserving exact source-descent refs."
+  },
+  {
+    "testRef": "test.intent.registry-resolution",
+    "brief": "Intent processes, modules, tests, feature, state, and implementation work resolve through canonical registries and Atlas."
+  },
+  {
+    "testRef": "test.intent.full-gate",
+    "brief": "Intent validation is registered in the full PR-ready gate and the canonical source manifest remains required."
   }
 ]

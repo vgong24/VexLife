@@ -505,5 +505,404 @@
     "testRefs": [
       "test.roadmap.demo-distance"
     ]
+  },
+  {
+    "processRef": "process.vexlife.intent.capture",
+    "processVersion": 1,
+    "purpose": "Capture one immutable human intent envelope while keeping interpretation, plan, authorization, and effects separate.",
+    "applicabilityRules": [
+      "origin message and addressing refs exist"
+    ],
+    "requiredInputs": [
+      "intentRef",
+      "originMessageRef",
+      "originalContentHash",
+      "desiredOutcome",
+      "sourceLineageRef"
+    ],
+    "optionalInputs": [
+      "constraints",
+      "clarificationCandidateRefs"
+    ],
+    "sourceResolutionRules": [
+      "resolve exact origin message and addressing",
+      "copy refs and content hash rather than mutable payloads"
+    ],
+    "preconditions": [
+      "origin content hash is current",
+      "speaker and recipient roles are explicit"
+    ],
+    "steps": [
+      "validate-origin-addressing",
+      "form-immutable-intent-envelope",
+      "record-source-lineage",
+      "return-captured-intent-ref"
+    ],
+    "effectOwnerRule": "intent service owns immutable capture only; no plan or tool authority is implied",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.addressed-message"
+    ],
+    "canonicalDispositionVocabulary": [
+      "CAPTURED",
+      "NEEDS_CLARIFICATION",
+      "HELD_UNKNOWN"
+    ],
+    "returnRouteRule": "return immutable intent ref and one clarification need if present",
+    "closureRule": "capture closes after source hash and lineage are recorded",
+    "recoveryRule": "supersede an incorrect attributed projection; never rewrite original intent",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.intent.decompose-candidate"
+    ],
+    "invalidationTriggers": [
+      "origin-message-currentness-change",
+      "addressing-change"
+    ],
+    "testRefs": [
+      "test.intent.original-immutable",
+      "test.intent.simple-process-resolution"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.intent.decompose-candidate",
+    "processVersion": 1,
+    "purpose": "Form an attributed candidate workgraph using refs to bounded source without admitting execution.",
+    "applicabilityRules": [
+      "immutable intent envelope exists"
+    ],
+    "requiredInputs": [
+      "rootIntentRef",
+      "candidateNodeRefs",
+      "sourceRefs"
+    ],
+    "optionalInputs": [
+      "contextPlanRefs",
+      "clarificationRefs"
+    ],
+    "sourceResolutionRules": [
+      "resolve bounded Atlas neighborhoods",
+      "keep lessons, relationships, and architecture external by ref"
+    ],
+    "preconditions": [
+      "intent source lineage is current",
+      "candidate author is attributed"
+    ],
+    "steps": [
+      "resolve-bounded-source-refs",
+      "form-candidate-nodes",
+      "bind-dependencies-and-return-routes",
+      "emit-no-authority-candidate"
+    ],
+    "effectOwnerRule": "a model or deterministic proposer may form a candidate; deterministic validation owns admission",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.implementation-packet"
+    ],
+    "canonicalDispositionVocabulary": [
+      "DECOMPOSED",
+      "NEEDS_CLARIFICATION",
+      "HELD_UNKNOWN"
+    ],
+    "returnRouteRule": "return candidate graph to deterministic validation",
+    "closureRule": "decomposition closes at attributed candidate or explicit clarification",
+    "recoveryRule": "discard candidate projection and re-form from immutable intent",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.intent.validate-workgraph"
+    ],
+    "invalidationTriggers": [
+      "intent-envelope-change",
+      "source-ref-currentness-change"
+    ],
+    "testRefs": [
+      "test.intent.acyclic-decomposition",
+      "test.intent.compact-source-descent"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.intent.validate-workgraph",
+    "processVersion": 1,
+    "purpose": "Deterministically admit only acyclic, source-bound, fully bound workgraphs and preserve unknowns.",
+    "applicabilityRules": [
+      "candidate graph and intent envelope exist"
+    ],
+    "requiredInputs": [
+      "graphRef",
+      "rootIntentRef",
+      "nodeRefs"
+    ],
+    "optionalInputs": [
+      "priorGraphRef",
+      "supersessionRefs"
+    ],
+    "sourceResolutionRules": [
+      "resolve processes, roles, envelopes, gates, and routes through canonical refs",
+      "resolve active semantic fingerprints within exact graph scope"
+    ],
+    "preconditions": [
+      "intent registry is current",
+      "candidate grants no execution authority"
+    ],
+    "steps": [
+      "reject-duplicate-and-missing-refs",
+      "reject-self-dependencies-and-cycles",
+      "validate-bindings-and-lifecycle",
+      "preserve-held-unknown",
+      "emit-admission-receipt"
+    ],
+    "effectOwnerRule": "deterministic validator owns plan admission only and grants no tool, mutation, or execution authority",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.implementation-packet"
+    ],
+    "canonicalDispositionVocabulary": [
+      "PLAN_VALIDATED",
+      "BLOCKED",
+      "HELD_UNKNOWN"
+    ],
+    "returnRouteRule": "return exact validation errors or admitted graph hash",
+    "closureRule": "validation closes only at current deterministic receipt",
+    "recoveryRule": "repair candidate source and validate again; never coerce unknown green",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.intent.project-ready-set"
+    ],
+    "invalidationTriggers": [
+      "node-change",
+      "binding-change",
+      "dependency-change",
+      "receipt-change"
+    ],
+    "testRefs": [
+      "test.intent.cycle-self-rejected",
+      "test.intent.active-semantic-dedup",
+      "test.intent.binding-fail-closed",
+      "test.intent.held-unknown-visible"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.intent.project-ready-set",
+    "processVersion": 1,
+    "purpose": "Calculate deterministic ready, waiting, blocked, terminal, human-held, and next-safe-action projections from exact receipts.",
+    "applicabilityRules": [
+      "workgraph validation is current"
+    ],
+    "requiredInputs": [
+      "graphRef",
+      "nodeStates",
+      "receiptRefs"
+    ],
+    "optionalInputs": [
+      "recentTransitionLimit"
+    ],
+    "sourceResolutionRules": [
+      "resolve exact dependency receipts",
+      "project refs and compact labels rather than heavy context"
+    ],
+    "preconditions": [
+      "graph hash matches validation receipt"
+    ],
+    "steps": [
+      "classify-node-sets",
+      "verify-dependency-receipts",
+      "identify-human-gates",
+      "choose-one-next-safe-action",
+      "emit-compact-source-descendable-status"
+    ],
+    "effectOwnerRule": "projection service owns read-only status; a ready node receives no execution authority",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "READY",
+      "WAITING_DEPENDENCIES",
+      "WAITING_HUMAN",
+      "BLOCKED",
+      "HELD_UNKNOWN"
+    ],
+    "returnRouteRule": "return humane Intent Queue projection plus exact source descent",
+    "closureRule": "projection supersedes when graph or receipt hash changes",
+    "recoveryRule": "discard projection and rebuild from immutable graph and receipts",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.identity-lattice.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "projection.intent.status",
+      "projection.intent.next-safe-action"
+    ],
+    "invalidationTriggers": [
+      "node-state-change",
+      "dependency-receipt-change",
+      "human-disposition-change"
+    ],
+    "testRefs": [
+      "test.intent.dependency-receipts",
+      "test.intent.compact-source-descent"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.intent.verify-transition",
+    "processVersion": 1,
+    "purpose": "Verify that expected source or effect transitions actually occurred before a node becomes completed.",
+    "applicabilityRules": [
+      "node is VERIFYING and expected transition ref exists"
+    ],
+    "requiredInputs": [
+      "workNodeRef",
+      "expectedTransitionRef",
+      "evidenceRefs"
+    ],
+    "optionalInputs": [
+      "beforeImplementationHead",
+      "afterImplementationHead"
+    ],
+    "sourceResolutionRules": [
+      "resolve exact before and after evidence",
+      "bind evidence to node, transition, and source refs"
+    ],
+    "preconditions": [
+      "evidence currentness is known",
+      "unchanged mutation heads are not proof"
+    ],
+    "steps": [
+      "resolve-expected-transition",
+      "compare-before-and-after-evidence",
+      "reject-stale-or-unchanged-proof",
+      "emit-proven-rejected-or-held-receipt"
+    ],
+    "effectOwnerRule": "verification reads evidence only; the original effect owner remains separately accountable",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "PROVEN",
+      "REJECTED",
+      "HELD_UNKNOWN"
+    ],
+    "returnRouteRule": "return exact transition receipt to workgraph",
+    "closureRule": "verification closes at current evidence disposition",
+    "recoveryRule": "return node to recoverable or blocked state without deleting evidence",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.intent.converge-parent"
+    ],
+    "invalidationTriggers": [
+      "expected-transition-change",
+      "evidence-currentness-change",
+      "implementation-head-change"
+    ],
+    "testRefs": [
+      "test.intent.completion-evidence",
+      "test.intent.mutation-head-transition"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.intent.converge-parent",
+    "processVersion": 1,
+    "purpose": "Converge or close a parent only after every required child has an exact terminal disposition and receipt.",
+    "applicabilityRules": [
+      "parent has declared child refs"
+    ],
+    "requiredInputs": [
+      "parentWorkNodeRef",
+      "childRefs",
+      "childReceiptRefs"
+    ],
+    "optionalInputs": [
+      "cancelledChildRefs",
+      "supersededChildRefs"
+    ],
+    "sourceResolutionRules": [
+      "resolve every declared child and exact receipt",
+      "preserve cancelled and superseded lineage"
+    ],
+    "preconditions": [
+      "parent graph hash is current",
+      "all child dispositions are explicit"
+    ],
+    "steps": [
+      "resolve-required-children",
+      "verify-terminal-dispositions",
+      "verify-exact-child-receipts",
+      "emit-convergence-or-held-receipt"
+    ],
+    "effectOwnerRule": "convergence records graph disposition only and grants no successor-lane authority",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "CONVERGED",
+      "CLOSED",
+      "BLOCKED",
+      "HELD_UNKNOWN"
+    ],
+    "returnRouteRule": "return parent disposition and missing child evidence",
+    "closureRule": "parent closes only after current exact child receipts",
+    "recoveryRule": "reopen validation from preserved child lineage; never synthesize missing receipts",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.identity-lattice.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "projection.intent.status"
+    ],
+    "invalidationTriggers": [
+      "child-state-change",
+      "child-receipt-change",
+      "parent-child-binding-change"
+    ],
+    "testRefs": [
+      "test.intent.parent-convergence",
+      "test.intent.cancellation-lineage",
+      "test.intent.transition-no-op"
+    ]
   }
 ]
