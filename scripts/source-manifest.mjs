@@ -19,7 +19,7 @@ function writeSplitManifest(actual) {
     writeJson(path.join(partsRoot, name), { schemaVersion: 'vexlife.source-manifest-part/v0', files: part });
     partRefs.push(`source-manifest-parts/${name}`);
   }
-  const { files, ...descriptor } = actual;
+  const { files, candidate, ...descriptor } = actual;
   writeJson(manifestPath, { ...descriptor, composition: 'GENERATED_FRAGMENT_COMPOSITION', parts: partRefs });
 }
 
@@ -31,18 +31,85 @@ function readSplitManifest() {
   return { ...metadata, files };
 }
 
-const actual = buildSourceManifest(root);
-if (process.argv.includes('--write')) {
-  writeSplitManifest(actual);
-  console.log(JSON.stringify({ state: 'SOURCE_MANIFEST_WRITTEN', fileCount: actual.fileCount, parts: Math.ceil(actual.fileCount / 24), treeSha256: actual.treeSha256 }, null, 2));
-} else {
-  if (!fs.existsSync(manifestPath)) {
-    console.error('SOURCE-MANIFEST.json is missing; run npm run manifest:write');
-    process.exit(1);
+try {
+  const actual = buildSourceManifest(root);
+  if (actual.candidate.state !== 'CURRENT') {
+    console.log(
+      JSON.stringify(
+        {
+          state: 'SOURCE_MANIFEST_BLOCKED',
+          currentness: 'BLOCKED',
+          candidateState: actual.candidate.state,
+          candidateBlockers: actual.candidate.blockers,
+          fileCount: actual.fileCount,
+          treeSha256: actual.treeSha256
+        },
+        null,
+        2
+      )
+    );
+    process.exitCode = 1;
+  } else if (process.argv.includes('--write')) {
+    writeSplitManifest(actual);
+    console.log(
+      JSON.stringify(
+        {
+          state: 'SOURCE_MANIFEST_WRITTEN',
+          currentness: 'CURRENT',
+          sourceKind: actual.sourceKind,
+          fileCount: actual.fileCount,
+          parts: Math.ceil(actual.fileCount / 24),
+          treeSha256: actual.treeSha256
+        },
+        null,
+        2
+      )
+    );
+  } else {
+    if (!fs.existsSync(manifestPath)) {
+      console.log(
+        JSON.stringify(
+          {
+            state: 'SOURCE_MANIFEST_BLOCKED',
+            currentness: 'BLOCKED',
+            reason: 'SOURCE_MANIFEST_MISSING',
+            path: 'SOURCE-MANIFEST.json'
+          },
+          null,
+          2
+        )
+      );
+      process.exitCode = 1;
+    } else {
+      const comparison = compareSourceManifest(readSplitManifest(), actual);
+      console.log(
+        JSON.stringify(
+          {
+            state: comparison.ok ? 'SOURCE_MANIFEST_CURRENT' : 'SOURCE_MANIFEST_DRIFT',
+            currentness: comparison.ok ? 'CURRENT' : 'STALE',
+            ...comparison
+          },
+          null,
+          2
+        )
+      );
+      if (!comparison.ok) process.exitCode = 1;
+    }
   }
-  const comparison = compareSourceManifest(readSplitManifest(), actual);
-  console.log(JSON.stringify({ state: comparison.ok ? 'SOURCE_MANIFEST_CURRENT' : 'SOURCE_MANIFEST_DRIFT', ...comparison }, null, 2));
-  if (!comparison.ok) process.exitCode = 1;
+} catch (error) {
+  console.log(
+    JSON.stringify(
+      {
+        state: 'SOURCE_MANIFEST_BLOCKED',
+        currentness: 'BLOCKED',
+        reason: 'GIT_CANDIDATE_UNAVAILABLE',
+        detail: error.message
+      },
+      null,
+      2
+    )
+  );
+  process.exitCode = 1;
 }
 
 // [VXG RealForever]

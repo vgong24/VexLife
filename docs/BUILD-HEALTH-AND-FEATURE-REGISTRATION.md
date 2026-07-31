@@ -38,6 +38,32 @@ executed-current `GROUNDED`, `VALID`, `CLEAR`, and `PASS` results may become
 blocked or failed output blocks Health; unparseable output follows the
 source-managed fail-closed contract.
 
+## Git-canonical source manifest
+
+`npm run manifest:check` derives candidate membership and bytes from the Git
+index. It reads each stage-zero index blob, orders paths by their UTF-8 Git path
+bytes and excludes the manifest descriptor/fragments plus registered generated,
+runtime, model, dependency and tool-local classes. The same staged Git source
+therefore has the same tree hash on Windows and Linux regardless of checkout
+line endings or ignored ambient files.
+
+The index is the candidate source boundary, not permission to omit worktree
+state. The check reports `SOURCE_MANIFEST_BLOCKED` when it finds:
+
+```text
+unresolved index entries
+unsupported index entries
+unstaged tracked source
+non-ignored untracked source
+```
+
+Each blocker and each stored-versus-candidate missing, extra, changed or
+reordered class reports a deterministic bounded path list plus its full count
+and truncation state. To update the manifest deliberately, stage the cohesive
+source candidate first, run `npm run manifest:write`, inspect the resulting
+self-files, then stage them. Manifest self-files never hash themselves and do
+not make the candidate unstable.
+
 ## Registering a feature
 
 Start with a no-write scaffold:

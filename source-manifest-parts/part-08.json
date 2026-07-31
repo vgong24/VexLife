@@ -2,6 +2,21 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "test/check-result.test.mjs",
+      "bytes": 2127,
+      "sha256": "574c01e5a9f5e5eefacc2ef35d4dd3944a6cbed87f1e6c965d71e7983433210a"
+    },
+    {
+      "path": "test/core.test.mjs",
+      "bytes": 7231,
+      "sha256": "f33948c44c7fa69cc818447c5b52e9c77c2c20a928889986c7c3dffaf79f9bd7"
+    },
+    {
+      "path": "test/evolution.test.mjs",
+      "bytes": 4073,
+      "sha256": "4e58c160bb6b17ed784523310cffe61ab604f868f2e79ce8f6f2e22727bc58c6"
+    },
+    {
       "path": "test/experience.test.mjs",
       "bytes": 2215,
       "sha256": "82366babcef80194d3a214efe9c8455a0920f1c3d2e0a7bb8701f3156810bbd0"
@@ -78,23 +93,8 @@
     },
     {
       "path": "test/source-manifest.test.mjs",
-      "bytes": 1011,
-      "sha256": "201ce3029b4550e32c5ad96fbac6e76912bfb5ae5016d4e91e3a278dc835a6ce"
-    },
-    {
-      "path": "THIRD_PARTY_NOTICES.md",
-      "bytes": 1755,
-      "sha256": "feb1e5113d8b35370d60f9ea0060e84583b5f4b77485569f279feac04ccbb4b0"
-    },
-    {
-      "path": "TRADEMARKS.md",
-      "bytes": 1123,
-      "sha256": "3d48ffcfe5ca82ea75e221b5d4c2272a9a7382a0103993fefb9f0f3a3efd9c62"
-    },
-    {
-      "path": "VEXLIFE.md",
-      "bytes": 1935,
-      "sha256": "65e46c0255029379fe7db3f053af949393fa242c7c01433873cf328d92b88546"
+      "bytes": 7884,
+      "sha256": "5cd66e4f3b4aa59b1bf590f57f9a417abdeba31904e085241b46870e56503194"
     }
   ]
 }

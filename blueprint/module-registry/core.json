@@ -420,14 +420,28 @@
   {
     "moduleRef": "module.vexlife.core.source-manifest",
     "path": "src/core/source-manifest.mjs",
-    "role": "Builds a deterministic public-candidate source manifest while excluding generated, runtime and model state.",
-    "reads": [],
+    "role": "Builds a cross-platform deterministic manifest from Git-index canonical blobs and reports bounded unresolved, unstaged, untracked and path-drift evidence.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "Git index canonical blobs",
+      "Git worktree and untracked-source status"
+    ],
     "writes": [],
-    "consumers": [],
+    "loadedBy": [
+      "module.vexlife.script.source-manifest",
+      "module.vexlife.script.orient",
+      "module.vexlife.script.pr-ready",
+      "module.vexlife.script.browser-integration"
+    ],
     "tests": [
       "test/source-manifest.test.mjs"
     ],
-    "changeMap": []
+    "changeMap": [
+      "scripts/source-manifest.mjs",
+      "SOURCE-MANIFEST.json",
+      "source-manifest-parts/*.json",
+      "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+    ]
   },
   {
     "moduleRef": "module.vexlife.core.public-safety",

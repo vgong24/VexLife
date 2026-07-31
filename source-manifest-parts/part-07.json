@@ -2,6 +2,21 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "src/core/home-bridge.mjs",
+      "bytes": 7921,
+      "sha256": "3ceef5d425232ec90b4d59a6e9a8b66510124d0f748ebd695a437e56a48cda81"
+    },
+    {
+      "path": "src/core/impact.mjs",
+      "bytes": 2182,
+      "sha256": "ff17dd8fc7281c6399d6bc172fc5d28df2b9a5262bfd26a2340e67f9430798f7"
+    },
+    {
+      "path": "src/core/implementation-plan.mjs",
+      "bytes": 5655,
+      "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
+    },
+    {
       "path": "src/core/interface-builder.mjs",
       "bytes": 8289,
       "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
@@ -58,8 +73,8 @@
     },
     {
       "path": "src/core/source-manifest.mjs",
-      "bytes": 2065,
-      "sha256": "a9ad390a3cf17d6b4f88fe8f1f830d9e3bfbeb63ff496168ddd57f61f1d75873"
+      "bytes": 10400,
+      "sha256": "f481245a64a8207897425e666f70a66223385e72f7c4b31fd6f24be6304919db"
     },
     {
       "path": "src/core/state-relay.mjs",
@@ -105,21 +120,6 @@
       "path": "test/capability.test.mjs",
       "bytes": 1797,
       "sha256": "92df93aefc984c19f8f9484c7c3a8df4dda0d7e01e4dfdac752615e6ab94db17"
-    },
-    {
-      "path": "test/check-result.test.mjs",
-      "bytes": 2127,
-      "sha256": "574c01e5a9f5e5eefacc2ef35d4dd3944a6cbed87f1e6c965d71e7983433210a"
-    },
-    {
-      "path": "test/core.test.mjs",
-      "bytes": 7231,
-      "sha256": "f33948c44c7fa69cc818447c5b52e9c77c2c20a928889986c7c3dffaf79f9bd7"
-    },
-    {
-      "path": "test/evolution.test.mjs",
-      "bytes": 4073,
-      "sha256": "4e58c160bb6b17ed784523310cffe61ab604f868f2e79ce8f6f2e22727bc58c6"
     }
   ]
 }

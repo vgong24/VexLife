@@ -2,6 +2,31 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "reference/browser/app.js",
+      "bytes": 4772,
+      "sha256": "d33047cdc90f19766f02d01e1093b295d775032ca5d77cf7220b3ddec218a946"
+    },
+    {
+      "path": "reference/browser/index.html",
+      "bytes": 10602,
+      "sha256": "872b8c8a398b33d575c274b622524aad2b32b233fe7f8ca11907208a1ba0be95"
+    },
+    {
+      "path": "reference/browser/integration-test.js",
+      "bytes": 7483,
+      "sha256": "7f602d6486b5da811f80117ec0315c93c193501ac88958bed42d089508313562"
+    },
+    {
+      "path": "reference/browser/modules/browser-bundle.js",
+      "bytes": 1305,
+      "sha256": "4356abfe264acbff90800ed872ab1a184f11314d96300836a420fb1fef59e2aa"
+    },
+    {
+      "path": "reference/browser/modules/chat-controller.js",
+      "bytes": 14195,
+      "sha256": "243729f83fc820311fbce9ed2af920ffd07efa8d053e88f7b5eca6d9f5a00d24"
+    },
+    {
       "path": "reference/browser/modules/demo-data.js",
       "bytes": 9551,
       "sha256": "c22665335377dfe25440dde530cb0af7e273cea6fcc5fa0f0984a3c97d7eeb48"
@@ -25,11 +50,6 @@
       "path": "reference/browser/modules/terrain-controller.js",
       "bytes": 6248,
       "sha256": "fd5d7155956b92b4630034cfc649915ef52df0548c69e3993f120421965cd31e"
-    },
-    {
-      "path": "reference/browser/README.md",
-      "bytes": 898,
-      "sha256": "df56100f04b33c3b5c61d46565277a5025fb72632408679a1fee5c2f2d06d93f"
     },
     {
       "path": "scripts/atlas-query.mjs",
@@ -100,26 +120,6 @@
       "path": "scripts/health-check.mjs",
       "bytes": 4445,
       "sha256": "058af3242401385888954c6221915b8d8ca61ea4478a70ce4fdb60bbe5f0d7f7"
-    },
-    {
-      "path": "scripts/impact-report.mjs",
-      "bytes": 679,
-      "sha256": "32aade5c1aafe11498c924be9d8c9371e3330ff619f09c9ec478e83d0aee8eab"
-    },
-    {
-      "path": "scripts/implementation-packet.mjs",
-      "bytes": 1364,
-      "sha256": "9eeb77cd282f639a89953d4aad8f23a38e25a8a01d8c6c6986d5f34dafdb7eb5"
-    },
-    {
-      "path": "scripts/localization-check.mjs",
-      "bytes": 901,
-      "sha256": "18bc4e340b8a62142dc9484524895cb357ca53360ecd057a69d11b6a82c5e719"
-    },
-    {
-      "path": "scripts/module-describe.mjs",
-      "bytes": 1018,
-      "sha256": "0b3c6ba42dabf658063d7185d365abcb58ce5991e1fbd44fa9d7dae6f8f27968"
     }
   ]
 }

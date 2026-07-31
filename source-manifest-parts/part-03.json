@@ -2,6 +2,71 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "blueprint/model-profiles.example.json",
+      "bytes": 635,
+      "sha256": "92b99a29e5eaed1253cf10540e85654c09a55114a88e2b6e8f417c6b979afc10"
+    },
+    {
+      "path": "blueprint/module-registry.json",
+      "bytes": 398,
+      "sha256": "10a5964604ac02d5588c00167872b8e3b9756596f944bc10f46e3f3aec80b7d2"
+    },
+    {
+      "path": "blueprint/module-registry/browser.json",
+      "bytes": 5699,
+      "sha256": "c2685658ed31395f0d05d9a16977330a21f145988e284d6f32d2ed3d10d184a8"
+    },
+    {
+      "path": "blueprint/module-registry/core.json",
+      "bytes": 15120,
+      "sha256": "facee857854c2cf4d39b5bef65c331460582765256e50763d19f60f602573b27"
+    },
+    {
+      "path": "blueprint/module-registry/governance-and-bridge.json",
+      "bytes": 5976,
+      "sha256": "afecd455dbc4e0ba9bf14e3391cb37eb9ef020e65f712c62bee081070c209ecd"
+    },
+    {
+      "path": "blueprint/module-registry/scripts.json",
+      "bytes": 10811,
+      "sha256": "98488ab92bfd3b19bcf17bd91f51ce13c728574b52bc0b73f75e1ece68af6789"
+    },
+    {
+      "path": "blueprint/orientation.json",
+      "bytes": 1535,
+      "sha256": "d12d084cda737bff3978aa4dd1d037e29e660d734e57de86748c72a084ed63b8"
+    },
+    {
+      "path": "blueprint/platforms.json",
+      "bytes": 986,
+      "sha256": "17e4ec4ae0e058f6703870c2b2c1d468acb3383b19c25f6999eb2912195a8123"
+    },
+    {
+      "path": "blueprint/process-factory.json",
+      "bytes": 755,
+      "sha256": "bdf15cd66e784928905966f8927abaddf23ab77543d5b4731d761941eaebfeaa"
+    },
+    {
+      "path": "blueprint/process-factory/foundations.json",
+      "bytes": 7225,
+      "sha256": "24ea68bda62700e5a0ce07f104b58be97d751111eceebd8a7993c3b144a20208"
+    },
+    {
+      "path": "blueprint/process-factory/processes-conversation-and-interface.json",
+      "bytes": 6475,
+      "sha256": "6f5cd28263a94381c9bc9709b70b107dc0f076b716dab07dd3ad3a8baf309022"
+    },
+    {
+      "path": "blueprint/process-factory/processes-core.json",
+      "bytes": 15505,
+      "sha256": "7a2960b8b96d6345141a724231903a05906cbcf53ecdc57f4dd061d4559a60b8"
+    },
+    {
+      "path": "blueprint/process-factory/processes-evolution.json",
+      "bytes": 4612,
+      "sha256": "21f4b1ae2d961e51f01e4eca95ab95e69ef66b45f0ca25070a996e9971c674fb"
+    },
+    {
       "path": "blueprint/process-factory/processes-health-and-bridge.json",
       "bytes": 11192,
       "sha256": "1f5f69cdf9398c6a254e1e7a4418eb6d2f1125f89b196d65e7112ac171ad5ee0"
@@ -20,11 +85,6 @@
       "path": "blueprint/process-factory/worked-examples.json",
       "bytes": 3485,
       "sha256": "c1923db71d440bfd87852df1890a37e371d2d1f1cf50ccdd1456d6fd4c86a13e"
-    },
-    {
-      "path": "blueprint/process-factory.json",
-      "bytes": 755,
-      "sha256": "bdf15cd66e784928905966f8927abaddf23ab77543d5b4731d761941eaebfeaa"
     },
     {
       "path": "blueprint/review-lens-registry.json",
@@ -52,16 +112,6 @@
       "sha256": "eee6437f0bbd9234713472b2f57831e9dda136a5ebdf2470a88136f3ad1ba4bc"
     },
     {
-      "path": "CODE_OF_CONDUCT.md",
-      "bytes": 8447,
-      "sha256": "31de1cf0fe842a424bc01055982aaf8b77aa3b1f9dc93ac594f40b9fc97ca42e"
-    },
-    {
-      "path": "CONTRIBUTING.md",
-      "bytes": 4604,
-      "sha256": "a042bbb08b039e4c6c9eb1f0a682ccbe845c0641f9b841c9632c38c0be45355d"
-    },
-    {
       "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
       "bytes": 2475,
       "sha256": "20e4159c562ec46bfad7643dabb45f047aa005e699811358d87acdd5694ac5c1"
@@ -70,56 +120,6 @@
       "path": "docs/BOOTSTRAP-AND-MODELS.md",
       "bytes": 3695,
       "sha256": "b524de20db45461f2c2dd7a8b0244bb0f2c2563c7f1b8fdf7db08a86a217a080"
-    },
-    {
-      "path": "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",
-      "bytes": 6584,
-      "sha256": "84ece4569448a69a3d25711cb88a88964b19b48147ad809b830b9a5aeb4ce6ee"
-    },
-    {
-      "path": "docs/CAPABILITY-AND-TOOL-ATLAS.md",
-      "bytes": 3445,
-      "sha256": "4b190d30e93d6eb39bffbc782dc3cc04a2fa49b5c349bd783ba08cfd7fc0cfed"
-    },
-    {
-      "path": "docs/CULTURE.md",
-      "bytes": 4806,
-      "sha256": "1b5a606f744ae22e4be5e8f7853a1bd383b0dd2a1136f4861b4377567a0d1653"
-    },
-    {
-      "path": "docs/DESKTOP-FIRST-EXECUTION-WAVE.md",
-      "bytes": 1592,
-      "sha256": "9b90b23b93ac51fd9d71f3699abd5966bb0d38f3553a502e5646ddf0a3ef0ca5"
-    },
-    {
-      "path": "docs/DEVICE-FAMILY-SCORE-RHYTHM.md",
-      "bytes": 3016,
-      "sha256": "bbdc2c9b2874bd99bf7affe7bec6a7a0f8c0b80041c3bbee902620f8173f7440"
-    },
-    {
-      "path": "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
-      "bytes": 6002,
-      "sha256": "9f9b0a1ea6a1c739479018f28d172bedfca34d27ebc26bcf03195d78eb169bbc"
-    },
-    {
-      "path": "docs/EXPERIENCE-GESTURES-AND-VESSELS.md",
-      "bytes": 4158,
-      "sha256": "0b800aa690bf2b542a6451dba474174ef1c48274f708c66f26f65b01b8fbfb79"
-    },
-    {
-      "path": "docs/FOUNDATION-CULTURE-COVERAGE-MAP.md",
-      "bytes": 10250,
-      "sha256": "c4364d889ba4ff14f16ca6c622893c44c58a2b3b304989dbf4dec0b9ab9c9c5e"
-    },
-    {
-      "path": "docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md",
-      "bytes": 8248,
-      "sha256": "d4d753973c19ed42eff3edebde7110716def1d3ba53f76d0e39985d6e7dff8f2"
-    },
-    {
-      "path": "docs/FOUNDATION-ORIGIN-RECEIPT.md",
-      "bytes": 1624,
-      "sha256": "3e912fd27db597b16db0a063e82f010469278e6c2557977045df9c834a7fa9e9"
     }
   ]
 }
