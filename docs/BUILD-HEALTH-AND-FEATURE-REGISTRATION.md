@@ -41,11 +41,43 @@ source-managed fail-closed contract.
 ## Git-canonical source manifest
 
 `npm run manifest:check` derives candidate membership and bytes from the Git
-index. It reads each stage-zero index blob, orders paths by their UTF-8 Git path
-bytes and excludes the manifest descriptor/fragments plus registered generated,
-runtime, model, dependency and tool-local classes. The same staged Git source
-therefore has the same tree hash on Windows and Linux regardless of checkout
-line endings or ignored ambient files.
+index. Every source record carries the canonical Git mode, UTF-8 path, blob byte
+count and SHA-256; all four participate in the tree hash. It reads each
+stage-zero index blob and orders paths by their UTF-8 Git path bytes. The same
+staged Git source therefore has the same tree hash on Windows and Linux
+regardless of checkout line endings or ignored ambient files, while an
+executable or symlink mode transition changes candidate identity.
+
+The descriptor exposes the effective exclusion rules used by the implementation:
+
+```text
+rootFiles
+  SOURCE-MANIFEST.json
+
+rootDirectories
+  .agents/
+  .codex/
+  .git/
+  .vexlife/
+  artifacts/
+  generated/
+  models/
+  runtime/
+  source-manifest-parts/
+
+anyDepthDirectories
+  node_modules/
+
+ignoredUntrackedPolicy
+  GIT_EXCLUDE_STANDARD
+```
+
+Root anchoring is intentional: `src/runtime/**`, `src/models/**`,
+`src/generated/**` and `src/artifacts/**` are ordinary candidate source and are
+never omitted because of a nested directory name. Only dependency directories
+named `node_modules` are excluded at any depth. Manifest contract metadata is
+content-addressed during comparison so descriptor policy cannot drift silently
+from the effective implementation.
 
 The index is the candidate source boundary, not permission to omit worktree
 state. The check reports `SOURCE_MANIFEST_BLOCKED` when it finds:
@@ -63,6 +95,15 @@ and truncation state. To update the manifest deliberately, stage the cohesive
 source candidate first, run `npm run manifest:write`, inspect the resulting
 self-files, then stage them. Manifest self-files never hash themselves and do
 not make the candidate unstable.
+
+The Foundation checks workflow also runs one lightweight manifest-portability
+contract on both `ubuntu-latest` and `windows-latest`. Each matrix leg checks out
+the exact candidate head, executes the same `manifest:check`, logs and preserves
+a JSON receipt, and binds the result to runner OS/architecture, candidate head,
+base, manifest/record/part schemas, contract hash, tree hash and path
+differences.
+The complete Linux foundation and real-browser job remains a separate required
+proof.
 
 ## Registering a feature
 

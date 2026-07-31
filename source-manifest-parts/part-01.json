@@ -1,123 +1,147 @@
 {
-  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
       "path": ".gitattributes",
+      "mode": "100644",
       "bytes": 126,
       "sha256": "cfe2af774fb53d19a16565f6ffc7d1f5cbf4e6a99f90fbc3e439703fd602abda"
     },
     {
       "path": ".github/CODEOWNERS",
+      "mode": "100644",
       "bytes": 1008,
       "sha256": "5e76ef69e75962e5c66c28701af0d92e95c9fac133780b5df6b1a36edea4db1a"
     },
     {
       "path": ".github/pull_request_template.md",
+      "mode": "100644",
       "bytes": 2626,
       "sha256": "78eb10d48cefa84c16444d98416c22fb0ec324d3d429f00a93a5b5f1ee7ba55f"
     },
     {
       "path": ".github/workflows/check.yml",
-      "bytes": 2192,
-      "sha256": "71b99bb7bead93b7b32e01b8f29f6bdb4c20631bb88cac1e9063016ad4050c0f"
+      "mode": "100644",
+      "bytes": 6620,
+      "sha256": "e2d79f0e86337b68eaa096ae808882ac08f58dadfe7eb875e4478e151e2aae36"
     },
     {
       "path": ".github/workflows/dco.yml",
+      "mode": "100644",
       "bytes": 1952,
       "sha256": "a5c7792901222d2f04eaa8c87d5d51d9ee55e208eceb2784d27b0966c06d5e98"
     },
     {
       "path": ".gitignore",
+      "mode": "100644",
       "bytes": 142,
       "sha256": "5b2256d47cb3ac885f15e52a6a2caafc5b91ecff8752db07ff8fb75477e8aefa"
     },
     {
       "path": "AGENTS.md",
+      "mode": "100644",
       "bytes": 172,
       "sha256": "3eb76629cf2e2406b17c8691933af6e0fd623040ac509893fcd9143527bba4a5"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
+      "mode": "100644",
       "bytes": 8447,
       "sha256": "31de1cf0fe842a424bc01055982aaf8b77aa3b1f9dc93ac594f40b9fc97ca42e"
     },
     {
       "path": "CONTRIBUTING.md",
+      "mode": "100644",
       "bytes": 4604,
       "sha256": "a042bbb08b039e4c6c9eb1f0a682ccbe845c0641f9b841c9632c38c0be45355d"
     },
     {
       "path": "GOVERNANCE.md",
+      "mode": "100644",
       "bytes": 2756,
       "sha256": "5f7395f25b10f3ca9ed898d2e36fb2b347730e47996403e171b284cd8a7a8d13"
     },
     {
       "path": "LICENSE",
+      "mode": "100644",
       "bytes": 16726,
       "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
     },
     {
       "path": "LICENSE-POLICY.md",
+      "mode": "100644",
       "bytes": 2318,
       "sha256": "8c815676ba8e0e4b954aee0a5505e8706fec63bdbe911acda5c31dab2790df8a"
     },
     {
       "path": "PROVENANCE.md",
+      "mode": "100644",
       "bytes": 3001,
       "sha256": "94bc806ae54fa7faeb15616ea897568b90ae3d7dbd6c9d4d340ead8b7c379892"
     },
     {
       "path": "PUBLIC-SAFETY-MANIFEST.json",
+      "mode": "100644",
       "bytes": 1915,
       "sha256": "05421af74cf1ee0edac60a636e9a9b0c716629c634029088b783b2ec9eb082a3"
     },
     {
       "path": "README.md",
+      "mode": "100644",
       "bytes": 14797,
       "sha256": "9698266753b12e330d025760d62aba7deb8941d370234369d6441873e04292f1"
     },
     {
       "path": "SECURITY.md",
+      "mode": "100644",
       "bytes": 2223,
       "sha256": "6df36f60ca2bd4598886f9d45cdaf837706d2bc500fa63ed7abf17908ec58e79"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
+      "mode": "100644",
       "bytes": 1755,
       "sha256": "feb1e5113d8b35370d60f9ea0060e84583b5f4b77485569f279feac04ccbb4b0"
     },
     {
       "path": "TRADEMARKS.md",
+      "mode": "100644",
       "bytes": 1123,
       "sha256": "3d48ffcfe5ca82ea75e221b5d4c2272a9a7382a0103993fefb9f0f3a3efd9c62"
     },
     {
       "path": "VEXLIFE.md",
+      "mode": "100644",
       "bytes": 1935,
       "sha256": "65e46c0255029379fe7db3f053af949393fa242c7c01433873cf328d92b88546"
     },
     {
       "path": "blueprint/build-health-registry.json",
-      "bytes": 8050,
-      "sha256": "3271246db8343aa1c88bee0ceaee93d7d810cab9af80f4c96d11df36297c6ef0"
+      "mode": "100644",
+      "bytes": 8071,
+      "sha256": "c0718df3bac3b45a5a9929dc876d642cbf8529a24be894d41986a412d7124a47"
     },
     {
       "path": "blueprint/capability-registry.json",
+      "mode": "100644",
       "bytes": 7654,
       "sha256": "32bbd35fc40fcd432e128987a28c3a9208107f48bbbf148e3acb58293594dc62"
     },
     {
       "path": "blueprint/design-tokens.json",
+      "mode": "100644",
       "bytes": 1467,
       "sha256": "02d506c365ebb1bf0f8e6fed1d6a6c8652692b9c2c3d59b114fc7f489b023aad"
     },
     {
       "path": "blueprint/evolution-registry.json",
+      "mode": "100644",
       "bytes": 4379,
       "sha256": "c598884b7aa15738a000cbffd6b288894e59c95e81d458891a109166a2a51b15"
     },
     {
       "path": "blueprint/experience-registry.json",
+      "mode": "100644",
       "bytes": 10626,
       "sha256": "a6078a44aeb4c9f775ecdeae6def53e8f0a7c293c8a4a06c666250296e22f595"
     }

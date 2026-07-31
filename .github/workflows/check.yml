@@ -67,3 +67,98 @@ jobs:
 
       - name: Reconfirm the canonical source manifest
         run: npm run manifest:check
+
+  manifest-portability:
+    name: Source manifest portability (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux
+            name: Linux
+            runner: ubuntu-latest
+          - id: windows
+            name: Windows
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Verify and preserve canonical manifest receipt
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $expectedHead = '${{ github.event.pull_request.head.sha || github.sha }}'
+          $baseSha = '${{ github.event.pull_request.base.sha || github.event.before }}'
+          $checkedOutHead = (git rev-parse HEAD).Trim()
+          $npmCommand = if ($IsWindows) { 'npm.cmd' } else { 'npm' }
+          $manifestOutput = (& $npmCommand run --silent manifest:check 2>&1 | Out-String).Trim()
+          $manifestExitCode = $LASTEXITCODE
+          Write-Output $manifestOutput
+
+          $manifestResult = $null
+          try {
+            $manifestResult = $manifestOutput | ConvertFrom-Json
+          } catch {
+            Write-Output "Manifest output was not parseable JSON: $($_.Exception.Message)"
+          }
+          $descriptor = Get-Content -Raw SOURCE-MANIFEST.json | ConvertFrom-Json
+          $manifestState = if ($null -ne $manifestResult) { $manifestResult.state } else { 'UNPARSEABLE' }
+          $candidateState = if ($null -ne $manifestResult) { $manifestResult.candidateState } else { 'UNKNOWN' }
+          $treeSha256 = if ($null -ne $manifestResult) { $manifestResult.actualTreeSha256 } else { $null }
+          $contractSha256 = if ($null -ne $manifestResult) { $manifestResult.actualContractSha256 } else { $null }
+          $pathDifferences = if ($null -ne $manifestResult) { $manifestResult.pathDifferences } else { $null }
+          $passed = (
+            $manifestExitCode -eq 0 -and
+            $manifestState -eq 'SOURCE_MANIFEST_CURRENT' -and
+            $candidateState -eq 'CURRENT' -and
+            $checkedOutHead -eq $expectedHead
+          )
+          $receiptState = if ($passed) { 'PASS' } else { 'FAILED' }
+          $receiptCurrentness = if ($passed) { 'CURRENT' } else { 'BLOCKED' }
+          $receipt = [ordered]@{
+            schemaVersion = 'vexlife.source-manifest-portability-receipt/v0'
+            state = $receiptState
+            currentness = $receiptCurrentness
+            command = 'npm run --silent manifest:check'
+            runnerOs = '${{ runner.os }}'
+            runnerArchitecture = '${{ runner.arch }}'
+            candidateHeadSha = $expectedHead
+            checkedOutHeadSha = $checkedOutHead
+            baseSha = $baseSha
+            manifestSchemaVersion = $descriptor.schemaVersion
+            sourceRecordSchemaVersion = $descriptor.sourceRecordSchemaVersion
+            partSchemaVersion = $descriptor.partSchemaVersion
+            manifestState = $manifestState
+            candidateState = $candidateState
+            treeSha256 = $treeSha256
+            contractSha256 = $contractSha256
+            pathDifferences = $pathDifferences
+            exitCode = $manifestExitCode
+          }
+          New-Item -ItemType Directory -Force generated/health | Out-Null
+          $receiptPath = 'generated/health/source-manifest-portability-${{ matrix.id }}.json'
+          $receiptJson = $receipt | ConvertTo-Json -Depth 10
+          $receiptJson | Set-Content -Encoding utf8 $receiptPath
+          Write-Output $receiptJson
+          if (-not $passed) {
+            throw "Source manifest portability contract failed on ${{ runner.os }}"
+          }
+
+      - name: Preserve exact portability receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vexlife-source-manifest-portability-${{ matrix.id }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: generated/health/source-manifest-portability-${{ matrix.id }}.json
+          if-no-files-found: error

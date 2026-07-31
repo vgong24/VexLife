@@ -1,21 +1,43 @@
 {
-  "schemaVersion": "vexlife.source-manifest/v1",
+  "schemaVersion": "vexlife.source-manifest/v2",
   "manifestRef": "source-manifest.vexlife.universal-blueprint.001",
   "rootRef": "source-root.vexlife.universal-blueprint",
+  "sourceRecordSchemaVersion": "vexlife.source-manifest-record/v1",
+  "partSchemaVersion": "vexlife.source-manifest-part/v1",
   "sourceKind": "GIT_INDEX_CANONICAL_BLOBS",
   "pathOrder": "GIT_PATH_UTF8_BYTE_ORDER",
+  "exclusionRules": {
+    "rootFiles": [
+      "SOURCE-MANIFEST.json"
+    ],
+    "rootDirectories": [
+      ".agents",
+      ".codex",
+      ".git",
+      ".vexlife",
+      "artifacts",
+      "generated",
+      "models",
+      "runtime",
+      "source-manifest-parts"
+    ],
+    "anyDepthDirectories": [
+      "node_modules"
+    ],
+    "ignoredUntrackedPolicy": "GIT_EXCLUDE_STANDARD"
+  },
   "excludedClasses": [
     "manifest self-files",
     "Git-ignored ambient files",
-    "tool-local artifacts",
-    "generated output",
-    "runtime state",
-    "model artifacts",
-    "node dependencies",
+    "root-anchored tool-local artifacts",
+    "root-anchored generated output",
+    "root-anchored runtime state",
+    "root-anchored model artifacts",
+    "any-depth node dependencies",
     "Git internals"
   ],
   "fileCount": 187,
-  "treeSha256": "bcd303e097112ca7d932b33fb46e8845d15f8eb3969c3b8e014ee9a4d63dc0df",
+  "treeSha256": "a128b9eb164c123a2e3fbc052bac9b1916a2a8fb660f51ef8424f0b7b8288382",
   "composition": "GENERATED_FRAGMENT_COMPOSITION",
   "parts": [
     "source-manifest-parts/part-01.json",

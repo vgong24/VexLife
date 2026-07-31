@@ -4,19 +4,25 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { semanticHash } from './utils.mjs';
 
-const EXCLUDED_DIRECTORY_SEGMENTS = new Set([
-  '.agents',
-  '.codex',
-  '.git',
-  '.vexlife',
-  'artifacts',
-  'generated',
-  'models',
-  'node_modules',
-  'runtime',
-  'source-manifest-parts'
-]);
-const EXCLUDED_ROOT_FILES = new Set(['SOURCE-MANIFEST.json']);
+const EXCLUSION_RULES = Object.freeze({
+  rootFiles: Object.freeze(['SOURCE-MANIFEST.json']),
+  rootDirectories: Object.freeze([
+    '.agents',
+    '.codex',
+    '.git',
+    '.vexlife',
+    'artifacts',
+    'generated',
+    'models',
+    'runtime',
+    'source-manifest-parts'
+  ]),
+  anyDepthDirectories: Object.freeze(['node_modules']),
+  ignoredUntrackedPolicy: 'GIT_EXCLUDE_STANDARD'
+});
+const EXCLUDED_ROOT_FILES = new Set(EXCLUSION_RULES.rootFiles);
+const EXCLUDED_ROOT_DIRECTORIES = new Set(EXCLUSION_RULES.rootDirectories);
+const EXCLUDED_ANY_DEPTH_DIRECTORIES = new Set(EXCLUSION_RULES.anyDepthDirectories);
 const SUPPORTED_BLOB_MODES = new Set(['100644', '100755', '120000']);
 const ZERO_OBJECT_ID = /^0+$/u;
 const DEFAULT_PATH_DIAGNOSTIC_LIMIT = 24;
@@ -79,7 +85,9 @@ function compareGitPaths(left, right) {
 
 function isExcludedPath(relativePath) {
   if (EXCLUDED_ROOT_FILES.has(relativePath)) return true;
-  return relativePath.split('/').some((segment) => EXCLUDED_DIRECTORY_SEGMENTS.has(segment));
+  const segments = relativePath.split('/');
+  if (segments.length > 1 && EXCLUDED_ROOT_DIRECTORIES.has(segments[0])) return true;
+  return segments.some((segment) => EXCLUDED_ANY_DEPTH_DIRECTORIES.has(segment));
 }
 
 function boundedPaths(paths, limit = DEFAULT_PATH_DIAGNOSTIC_LIMIT) {
@@ -170,6 +178,7 @@ function hashIndexEntries(root, entries) {
     const content = contentByObjectId.get(entry.objectId);
     return {
       path: entry.path,
+      mode: entry.mode,
       bytes: content.length,
       sha256: crypto.createHash('sha256').update(content).digest('hex')
     };
@@ -182,19 +191,27 @@ export function buildSourceManifest(root, { maxPathDiagnostics = DEFAULT_PATH_DI
   const files = hashIndexEntries(repositoryRoot, indexState.entries);
   const blockers = collectCandidateBlockers(repositoryRoot, indexState, maxPathDiagnostics);
   return {
-    schemaVersion: 'vexlife.source-manifest/v1',
+    schemaVersion: 'vexlife.source-manifest/v2',
     manifestRef: 'source-manifest.vexlife.universal-blueprint.001',
     rootRef: 'source-root.vexlife.universal-blueprint',
+    sourceRecordSchemaVersion: 'vexlife.source-manifest-record/v1',
+    partSchemaVersion: 'vexlife.source-manifest-part/v1',
     sourceKind: 'GIT_INDEX_CANONICAL_BLOBS',
     pathOrder: 'GIT_PATH_UTF8_BYTE_ORDER',
+    exclusionRules: {
+      rootFiles: [...EXCLUSION_RULES.rootFiles],
+      rootDirectories: [...EXCLUSION_RULES.rootDirectories],
+      anyDepthDirectories: [...EXCLUSION_RULES.anyDepthDirectories],
+      ignoredUntrackedPolicy: EXCLUSION_RULES.ignoredUntrackedPolicy
+    },
     excludedClasses: [
       'manifest self-files',
       'Git-ignored ambient files',
-      'tool-local artifacts',
-      'generated output',
-      'runtime state',
-      'model artifacts',
-      'node dependencies',
+      'root-anchored tool-local artifacts',
+      'root-anchored generated output',
+      'root-anchored runtime state',
+      'root-anchored model artifacts',
+      'any-depth node dependencies',
       'Git internals'
     ],
     fileCount: files.length,
@@ -222,7 +239,12 @@ function comparePathRecords(expectedFiles, actualFiles, maxPathDiagnostics) {
     .filter((relativePath) => {
       const expectedFile = expectedByPath.get(relativePath);
       const actualFile = actualByPath.get(relativePath);
-      return actualFile && (expectedFile.bytes !== actualFile.bytes || expectedFile.sha256 !== actualFile.sha256);
+      return (
+        actualFile &&
+        (expectedFile.mode !== actualFile.mode ||
+          expectedFile.bytes !== actualFile.bytes ||
+          expectedFile.sha256 !== actualFile.sha256)
+      );
     });
   const reordered = actualFiles
     .map((file, index) => ({ actualPath: file.path, expectedPath: expectedFiles[index]?.path }))
@@ -236,6 +258,20 @@ function comparePathRecords(expectedFiles, actualFiles, maxPathDiagnostics) {
   };
 }
 
+function manifestContract(manifest) {
+  return {
+    schemaVersion: manifest.schemaVersion ?? null,
+    manifestRef: manifest.manifestRef ?? null,
+    rootRef: manifest.rootRef ?? null,
+    sourceRecordSchemaVersion: manifest.sourceRecordSchemaVersion ?? null,
+    partSchemaVersion: manifest.partSchemaVersion ?? null,
+    sourceKind: manifest.sourceKind ?? null,
+    pathOrder: manifest.pathOrder ?? null,
+    exclusionRules: manifest.exclusionRules ?? null,
+    excludedClasses: manifest.excludedClasses ?? null
+  };
+}
+
 export function compareSourceManifest(
   expected,
   actual,
@@ -244,6 +280,9 @@ export function compareSourceManifest(
   const pathDifferences = comparePathRecords(expected.files, actual.files, maxPathDiagnostics);
   const candidateState = actual.candidate?.state ?? 'CURRENT';
   const schemaMatches = expected.schemaVersion === actual.schemaVersion;
+  const expectedContractSha256 = semanticHash(manifestContract(expected));
+  const actualContractSha256 = semanticHash(manifestContract(actual));
+  const contractMatches = expectedContractSha256 === actualContractSha256;
   const treeMatches = expected.treeSha256 === actual.treeSha256;
   const fileCountMatches = expected.fileCount === actual.fileCount;
   const pathsMatch =
@@ -252,10 +291,19 @@ export function compareSourceManifest(
     pathDifferences.changed.total === 0 &&
     pathDifferences.reordered.total === 0;
   return {
-    ok: candidateState === 'CURRENT' && schemaMatches && treeMatches && fileCountMatches && pathsMatch,
+    ok:
+      candidateState === 'CURRENT' &&
+      schemaMatches &&
+      contractMatches &&
+      treeMatches &&
+      fileCountMatches &&
+      pathsMatch,
     candidateState,
     candidateBlockers: actual.candidate?.blockers ?? [],
     schemaMatches,
+    contractMatches,
+    expectedContractSha256,
+    actualContractSha256,
     expectedSchemaVersion: expected.schemaVersion ?? null,
     actualSchemaVersion: actual.schemaVersion ?? null,
     expectedTreeSha256: expected.treeSha256,

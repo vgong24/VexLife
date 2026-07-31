@@ -420,7 +420,7 @@
   {
     "moduleRef": "module.vexlife.core.source-manifest",
     "path": "src/core/source-manifest.mjs",
-    "role": "Builds a cross-platform deterministic manifest from Git-index canonical blobs and reports bounded unresolved, unstaged, untracked and path-drift evidence.",
+    "role": "Builds a cross-platform deterministic manifest from canonical Git modes and index blobs, applies explicit anchored exclusion rules, and reports bounded unresolved, unstaged, untracked and path-drift evidence.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "Git index canonical blobs",
@@ -440,6 +440,7 @@
       "scripts/source-manifest.mjs",
       "SOURCE-MANIFEST.json",
       "source-manifest-parts/*.json",
+      ".github/workflows/check.yml",
       "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
     ]
   },

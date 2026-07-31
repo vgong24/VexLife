@@ -1,123 +1,147 @@
 {
-  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
       "path": "src/core/home-bridge.mjs",
+      "mode": "100644",
       "bytes": 7921,
       "sha256": "3ceef5d425232ec90b4d59a6e9a8b66510124d0f748ebd695a437e56a48cda81"
     },
     {
       "path": "src/core/impact.mjs",
+      "mode": "100644",
       "bytes": 2182,
       "sha256": "ff17dd8fc7281c6399d6bc172fc5d28df2b9a5262bfd26a2340e67f9430798f7"
     },
     {
       "path": "src/core/implementation-plan.mjs",
+      "mode": "100644",
       "bytes": 5655,
       "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
     },
     {
       "path": "src/core/interface-builder.mjs",
+      "mode": "100644",
       "bytes": 8289,
       "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
     },
     {
       "path": "src/core/journey.mjs",
+      "mode": "100644",
       "bytes": 1243,
       "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
     },
     {
       "path": "src/core/localization.mjs",
+      "mode": "100644",
       "bytes": 2991,
       "sha256": "7422edc1bbf79dec7b376765273deb3b05c022e2214bdc92ac5e570306de2682"
     },
     {
       "path": "src/core/model-provision.mjs",
+      "mode": "100644",
       "bytes": 2525,
       "sha256": "374ea58d83bdd34a007ac5a1291738531117062d6963742d87c3db08f352b9ed"
     },
     {
       "path": "src/core/navigation.mjs",
+      "mode": "100644",
       "bytes": 3771,
       "sha256": "4570ebc451dfffbf22085f881d1477b9ba6cce146294c907d9a7ba05fabac9c3"
     },
     {
       "path": "src/core/orientation.mjs",
+      "mode": "100644",
       "bytes": 5190,
       "sha256": "15278cdbc1b351261fde688eba7c1acdffaefb78b8006a7c1c2d7caab5c33302"
     },
     {
       "path": "src/core/platform-generator.mjs",
+      "mode": "100644",
       "bytes": 6677,
       "sha256": "b37018abb34ef7e1aa27111cb5a125fd13782ef586c6c80127357d48084488bf"
     },
     {
       "path": "src/core/process-factory.mjs",
+      "mode": "100644",
       "bytes": 5817,
       "sha256": "bc94fe52e382231594ce63dff3c36a7dff6480afef1f45c3a158c88bc4d27f22"
     },
     {
       "path": "src/core/public-safety.mjs",
+      "mode": "100644",
       "bytes": 5576,
       "sha256": "88af603fcbfb2f1572633a1530a5eccc874ade81dff91b704b69f165f4952e8e"
     },
     {
       "path": "src/core/registry.mjs",
+      "mode": "100644",
       "bytes": 17490,
       "sha256": "3553db45b88e44235167d644f2b277917cba4516e2dac95a2c07e7dddc89775d"
     },
     {
       "path": "src/core/repository-evidence.mjs",
+      "mode": "100644",
       "bytes": 2315,
       "sha256": "0bb8f99f78b7bcbb84ab352b066fe6dbba6411be2cba26a1d8ff47d99a75b9c5"
     },
     {
       "path": "src/core/source-manifest.mjs",
-      "bytes": 10400,
-      "sha256": "f481245a64a8207897425e666f70a66223385e72f7c4b31fd6f24be6304919db"
+      "mode": "100644",
+      "bytes": 12328,
+      "sha256": "36aff4bd6f3d9cdc418550dc97e15b5df43d68ed52b9aef81e43abb53f273f3e"
     },
     {
       "path": "src/core/state-relay.mjs",
+      "mode": "100644",
       "bytes": 2512,
       "sha256": "6db63d09620aeea24b4f66f36384201495a65e75efc81ca9dbe75f99787923c7"
     },
     {
       "path": "src/core/terrain.mjs",
+      "mode": "100644",
       "bytes": 1793,
       "sha256": "1e079ae812b256f5000a6c3c03da7bae3b81d9ec166237de8c6820f24cb6f063"
     },
     {
       "path": "src/core/utils.mjs",
+      "mode": "100644",
       "bytes": 1198,
       "sha256": "c6b3ecea9d51072ac8c5014a57e2ebf085c83e3d6f82e22458c4a9d613d72b9c"
     },
     {
       "path": "start-vexlife.cmd",
+      "mode": "100644",
       "bytes": 238,
       "sha256": "bcf9aefdb6b7caad1486c228a72981111aa8534ed92a9eadacde5b57f9a42bca"
     },
     {
       "path": "start-vexlife.ps1",
+      "mode": "100644",
       "bytes": 409,
       "sha256": "3a449fa55f66aa98878de571d955edda1db840ff0e0b257e9263dc429cac005e"
     },
     {
       "path": "start-vexlife.sh",
+      "mode": "100644",
       "bytes": 281,
       "sha256": "6e2344723c0871ce76111d5fc298ebbbf3257a898bb7069a590a96f616184376"
     },
     {
       "path": "test/boot.test.mjs",
+      "mode": "100644",
       "bytes": 2359,
       "sha256": "b0b3e2a104221ead20bacb62141395583dd12802221480c09aaa0722a11a936f"
     },
     {
       "path": "test/browser.test.mjs",
+      "mode": "100644",
       "bytes": 7987,
       "sha256": "fccdd090b99f3e7c28809db36bafc0461b5bbdcacca771adf1f961fd88476813"
     },
     {
       "path": "test/capability.test.mjs",
+      "mode": "100644",
       "bytes": 1797,
       "sha256": "92df93aefc984c19f8f9484c7c3a8df4dda0d7e01e4dfdac752615e6ab94db17"
     }

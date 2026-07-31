@@ -1,123 +1,147 @@
 {
-  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
       "path": "blueprint/feature-registry.json",
+      "mode": "100644",
       "bytes": 19014,
       "sha256": "fcf41969b06c90fed48ee287373eba627db8a8b99fc349850a36dd9a06ae62d8"
     },
     {
       "path": "blueprint/fragments/actions.json",
+      "mode": "100644",
       "bytes": 12437,
       "sha256": "fa5e9c73a509ab32ffbae89457663bbd1330cf6a397389eb317a784c8d5dff01"
     },
     {
       "path": "blueprint/fragments/components.json",
+      "mode": "100644",
       "bytes": 4170,
       "sha256": "90e4b271ae63907380e9d88aafe922bbbc5f39f3595161b81f8be1d28ce164af"
     },
     {
       "path": "blueprint/fragments/invariants.json",
+      "mode": "100644",
       "bytes": 836,
       "sha256": "62ea748af23ee6f265a0935f2f8cd50415b20f982a8806516b6bc4271b9c06e4"
     },
     {
       "path": "blueprint/fragments/permissions.json",
+      "mode": "100644",
       "bytes": 3328,
       "sha256": "d98dfcb6d716026a9d77ddbbb7ddb4b41d84e1868debeda8052ec1b986711ff7"
     },
     {
       "path": "blueprint/fragments/platform-bindings.json",
+      "mode": "100644",
       "bytes": 585,
       "sha256": "bfeacc77230759ef11fbc53208e5251dcc69055057fe3ffd7b94fac68484f54f"
     },
     {
       "path": "blueprint/fragments/product.json",
+      "mode": "100644",
       "bytes": 222,
       "sha256": "f4d30dd6dfffc0bade909f42a9fe269474c591ffb477f52aa9a0a54c3c1fb291"
     },
     {
       "path": "blueprint/fragments/registry-refs.json",
+      "mode": "100644",
       "bytes": 560,
       "sha256": "71328fb08cbcf61290092b3c5d600263e94b5fc2c75d8660c2acb51c4ad9a08a"
     },
     {
       "path": "blueprint/fragments/roles.json",
+      "mode": "100644",
       "bytes": 1071,
       "sha256": "9aaae12530ee155fdff1662ecaebc1612350b0de51d7777057dd7942b1e04528"
     },
     {
       "path": "blueprint/fragments/screens/chat.json",
+      "mode": "100644",
       "bytes": 16474,
       "sha256": "4d05be7cd1dcd1d47f6b1ef6e4a143b47577d6bc8359446c844e8d35d7b0a707"
     },
     {
       "path": "blueprint/fragments/screens/guide-overlay.json",
+      "mode": "100644",
       "bytes": 6041,
       "sha256": "e672f7cde783f3c85e5dea70ad803b91f93088848e61bb26ab7b367d31b8b1a0"
     },
     {
       "path": "blueprint/fragments/screens/health.json",
+      "mode": "100644",
       "bytes": 2012,
       "sha256": "7233df7f67f26905297cbf7b6784de020a43c17514888954a373720a333f48db"
     },
     {
       "path": "blueprint/fragments/screens/shell.json",
+      "mode": "100644",
       "bytes": 5530,
       "sha256": "436259b71eacf2b3c43582290d3d90956c014f2ba1b89dd41baff7e740f5ea3c"
     },
     {
       "path": "blueprint/fragments/screens/terrain.json",
+      "mode": "100644",
       "bytes": 2797,
       "sha256": "039409728d40a4cb1cd86b604e5261dfc1ab35f783c6eb1235b6c3a236b0e73b"
     },
     {
       "path": "blueprint/fragments/state-domains.json",
+      "mode": "100644",
       "bytes": 4088,
       "sha256": "6fca62558eface00f1f0e7105863c1257679a4b0379a20aa3bb99024e6c866a5"
     },
     {
       "path": "blueprint/fragments/terrain.json",
+      "mode": "100644",
       "bytes": 2192,
       "sha256": "97b969a3274de72ddecad98d4bc629b314922b86e8b39fd10c601269dae668a1"
     },
     {
       "path": "blueprint/fragments/tests.json",
+      "mode": "100644",
       "bytes": 10013,
       "sha256": "cbac19f2eb321e111340ae39577fb996b7f8f6d7f300734c1f6ef8b48196b62f"
     },
     {
       "path": "blueprint/home-bridge-registry.json",
+      "mode": "100644",
       "bytes": 3411,
       "sha256": "62dbac41ccdc555935a3f4395233a1edc9e955c2a3931b3c219317506c4a59da"
     },
     {
       "path": "blueprint/implementation-plan.json",
+      "mode": "100644",
       "bytes": 1633,
       "sha256": "00bee4274babf471c5ab82939aebe0fd7ed2d862558df8d94250e660335dc3cb"
     },
     {
       "path": "blueprint/implementation/milestones.json",
+      "mode": "100644",
       "bytes": 1960,
       "sha256": "ef8ff8ba6c5e876f7544936f07299866485188e5642161970de1422c4432e1da"
     },
     {
       "path": "blueprint/implementation/work-units-experience-and-runtime.json",
+      "mode": "100644",
       "bytes": 9707,
       "sha256": "18928a865f9683bc0838e8d9371fd05ffd4c2effca9b54529a8233695884bcfd"
     },
     {
       "path": "blueprint/implementation/work-units-foundation.json",
+      "mode": "100644",
       "bytes": 7288,
       "sha256": "df7e10ccb551870f7f05963c188a26df93fc38fd91e442eac57a8fb6ec7e475b"
     },
     {
       "path": "blueprint/implementation/work-units-native-and-research.json",
+      "mode": "100644",
       "bytes": 6401,
       "sha256": "404bee80b33ce86950d94bdbc90da4b91fe9fe67cdb08796ebcdc0996271a719"
     },
     {
       "path": "blueprint/implementation/work-units-orchestration-and-publication.json",
+      "mode": "100644",
       "bytes": 2441,
       "sha256": "bd37537ccd7618d8709c2d9fbab0e4f03f62b33e68fcb710836afaef1de6561a"
     }

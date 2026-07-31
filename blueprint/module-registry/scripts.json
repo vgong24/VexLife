@@ -200,7 +200,7 @@
   {
     "moduleRef": "module.vexlife.script.source-manifest",
     "path": "scripts/source-manifest.mjs",
-    "role": "Writes or verifies the Git-index canonical source manifest and emits bounded current, drift, or blocked evidence.",
+    "role": "Writes or verifies the mode-complete Git-index canonical source manifest and emits bounded current, contract-drift, path-drift, or blocked evidence.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "module.vexlife.core.source-manifest",
@@ -221,6 +221,7 @@
     "changeMap": [
       "src/core/source-manifest.mjs",
       "blueprint/build-health-registry.json",
+      ".github/workflows/check.yml",
       "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
     ]
   },

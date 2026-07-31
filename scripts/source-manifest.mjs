@@ -16,7 +16,7 @@ function writeSplitManifest(actual) {
   for (let index = 0; index < actual.files.length; index += 24) {
     const part = actual.files.slice(index, index + 24);
     const name = `part-${String(partRefs.length + 1).padStart(2, '0')}.json`;
-    writeJson(path.join(partsRoot, name), { schemaVersion: 'vexlife.source-manifest-part/v0', files: part });
+    writeJson(path.join(partsRoot, name), { schemaVersion: actual.partSchemaVersion, files: part });
     partRefs.push(`source-manifest-parts/${name}`);
   }
   const { files, candidate, ...descriptor } = actual;
@@ -26,7 +26,15 @@ function writeSplitManifest(actual) {
 function readSplitManifest() {
   const descriptor = readJson(manifestPath);
   if (!descriptor.parts) return descriptor;
-  const files = descriptor.parts.flatMap((partRef) => readJson(path.join(root, partRef)).files);
+  const files = descriptor.parts.flatMap((partRef) => {
+    const part = readJson(path.join(root, partRef));
+    if (descriptor.partSchemaVersion && part.schemaVersion !== descriptor.partSchemaVersion) {
+      throw new Error(
+        `Source manifest part schema mismatch: ${partRef} expected=${descriptor.partSchemaVersion} actual=${part.schemaVersion}`
+      );
+    }
+    return part.files;
+  });
   const { parts, composition, ...metadata } = descriptor;
   return { ...metadata, files };
 }
