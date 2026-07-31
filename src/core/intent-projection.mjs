@@ -7,14 +7,19 @@ const PRIORITY_ORDER = new Map([
   ['LOW', 3]
 ]);
 
-function compactNode(node) {
+function compactNode(node, detail = {}) {
   return {
     workNodeRef: node.workNodeRef,
     purpose: node.purpose,
     state: node.state,
     priorityClass: node.priorityClass,
     processRef: node.processRef,
-    returnRouteRef: node.returnRouteRef
+    returnRouteRef: node.returnRouteRef,
+    waitingReason: detail.waitingReason ?? null,
+    unmetDependencyRefs: detail.unmetDependencyRefs ?? [],
+    blockingReasonRef: detail.blockingReasonRef ?? null,
+    requiredHumanDecisionRef: detail.requiredHumanDecisionRef ?? null,
+    evidenceSourceRefs: detail.evidenceSourceRefs ?? []
   };
 }
 
@@ -72,13 +77,24 @@ function nextSafeAction(graph, validation, sets) {
 export function projectIntentStatus(graph, {
   registry,
   registeredProcessRefs = registry?.processRefs ?? [],
-  registeredRoleRefs = null,
+  registeredRoleRefs = [],
+  registeredBindingRefs = graph?.bindingRefs ?? {},
+  bindingResolver = null,
   recentLimit = 5
 } = {}) {
-  const validation = validateIntentWorkgraph(graph, { registry, registeredProcessRefs, registeredRoleRefs });
+  const validation = validateIntentWorkgraph(graph, {
+    registry,
+    registeredProcessRefs,
+    registeredRoleRefs,
+    registeredBindingRefs,
+    bindingResolver
+  });
   const sets = projectIntentSets(graph, { registry });
   const byRef = new Map(graph.nodes.map((node) => [node.workNodeRef, node]));
-  const compactRefs = (refs) => refs.map((ref) => compactNode(byRef.get(ref))).filter(Boolean);
+  const compactRefs = (refs) => refs.map((ref) => {
+    const node = byRef.get(ref);
+    return node ? compactNode(node, sets.detailsByRef[ref]) : null;
+  }).filter(Boolean);
   const happening = graph.nodes.filter((node) => ['CONTEXT_ADMITTED', 'RUNNING', 'WAITING_TOOL', 'VERIFYING'].includes(node.state));
   const needsHuman = graph.nodes.filter((node) => ['NEEDS_CLARIFICATION', 'WAITING_HUMAN', 'HELD_UNKNOWN'].includes(node.state));
   const recentlyCompleted = graph.transitions
@@ -97,10 +113,10 @@ export function projectIntentStatus(graph, {
     currentness: 'CURRENT',
     graphRef: graph.graphRef,
     intentRef: graph.rootIntentRef,
-    whatIsHappeningNow: sortNodes(happening).map(compactNode),
+    whatIsHappeningNow: sortNodes(happening).map((node) => compactNode(node, sets.detailsByRef[node.workNodeRef])),
     ready: compactRefs(sets.ready),
     waiting: compactRefs(sets.waiting),
-    needsHuman: sortNodes(needsHuman).map(compactNode),
+    needsHuman: sortNodes(needsHuman).map((node) => compactNode(node, sets.detailsByRef[node.workNodeRef])),
     blocked: compactRefs(sets.blocked),
     recentlyCompleted,
     nextSafeAction: nextSafeAction(graph, validation, sets),

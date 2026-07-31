@@ -28,20 +28,20 @@
     {
       "path": "scripts/intent-check.mjs",
       "mode": "100644",
-      "bytes": 3492,
-      "sha256": "ca1b2ca60fbacea5cf439b43030f43d62d640a7207bfa0f6eeb320985dc167c8"
+      "bytes": 4037,
+      "sha256": "16e79bdda39a28d71c2df929bf0ad6e276985b0e05b5b137e9a385f03d36d1dd"
     },
     {
       "path": "scripts/intent-plan.mjs",
       "mode": "100644",
-      "bytes": 1573,
-      "sha256": "4e2bc1807aa1a72fc25e8b279867307bd15aaec1a7c26682b2e280dad5151693"
+      "bytes": 1565,
+      "sha256": "1436ee1fa9acea562848ead72adde02a432a8b0b37a4c039d1e1aae1754c138e"
     },
     {
       "path": "scripts/intent-status.mjs",
       "mode": "100644",
-      "bytes": 1739,
-      "sha256": "d9b5ce551a84bfda5112b2da7162b8403f3f43714e1e97f9b2f650fc7811e650"
+      "bytes": 1731,
+      "sha256": "e71b2d647dbf7c40b9a43527c07be10c86fd28bdaaa91720727ce9e10157897e"
     },
     {
       "path": "scripts/localization-check.mjs",
@@ -118,8 +118,8 @@
     {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
-      "bytes": 19345,
-      "sha256": "98ed134602c1632392674792c2a2ffcdd21f6b6cc3c44c63616933d4403cd208"
+      "bytes": 20964,
+      "sha256": "09a2ee710603c61005e307c9d94b6318fa8a75e203361e23722949390c15a832"
     },
     {
       "path": "src/core/boot.mjs",

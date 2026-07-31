@@ -52,20 +52,20 @@
     {
       "path": "src/core/intent-projection.mjs",
       "mode": "100644",
-      "bytes": 4906,
-      "sha256": "f2a1c1122b1ed422c4fe066a47340445b42265d9134de936159f83af21031a56"
+      "bytes": 5535,
+      "sha256": "165f306b87c9eef8747c8d22a6374c77077eb4ecea644a57e958f44691a39756"
     },
     {
       "path": "src/core/intent-validation.mjs",
       "mode": "100644",
-      "bytes": 13717,
-      "sha256": "a03cac574fceeb3452afb05e2ffeab27cb82090aa24498a13bec2af701c0ea53"
+      "bytes": 24061,
+      "sha256": "13e44c9bcf08c5ddf333a4a96c0cfc70b1abbd09dff0f64fa668c92def8de68d"
     },
     {
       "path": "src/core/intent-workgraph.mjs",
       "mode": "100644",
-      "bytes": 6190,
-      "sha256": "c3896f788b9bc0812f2cd6d6d419ba13334f25b0d60241f33b7850a0d4832b28"
+      "bytes": 16176,
+      "sha256": "eb7fc301c70f5f6afeca7abeec89afd790679937ced92328ee6755dca87f9099"
     },
     {
       "path": "src/core/interface-builder.mjs",
@@ -124,8 +124,8 @@
     {
       "path": "src/core/registry.mjs",
       "mode": "100644",
-      "bytes": 17490,
-      "sha256": "3553db45b88e44235167d644f2b277917cba4516e2dac95a2c07e7dddc89775d"
+      "bytes": 21228,
+      "sha256": "e63ea351f07c29b48a8bddc5103ea979cd5ea619ec98c85da7dfc167c03aee33"
     },
     {
       "path": "src/core/repository-evidence.mjs",

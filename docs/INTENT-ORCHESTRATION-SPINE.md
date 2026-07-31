@@ -39,16 +39,29 @@ what actually occurred
 ```
 
 `createIntentEnvelope` requires stable addressing, project/thread/channel,
-content hash, desired outcome, constraints, timestamp, and source lineage. The
-returned envelope is deeply frozen. Interpretations, plans, authorizations,
-transitions, and effect receipts live in separate append-only collections.
+content hash, desired outcome, constraints, timestamp, and source lineage. Its
+semantic fingerprint is formed canonically by source and any differing supplied
+fingerprint fails closed. The returned envelope is deeply frozen.
+
+Interpretations, plans, authorizations, transitions, and effect receipts live
+in separate append-only collections. Their constructors require exact source
+Intent, actor and role attribution, formation time, bounded source refs,
+canonical fingerprints, and explicit authority/effect dispositions. A proposed
+plan is always `NO_AUTHORITY` and `NO_EFFECTS`; an authorization remains bound
+to an explicit effect envelope and is not execution.
 
 ## Workgraph node and lifecycle
 
 Each node binds its purpose to a registered process, role, priority, dependency
 and child refs, compact context/culture/lesson refs, capability/effect/resource
 envelopes, expected transition, completion gates, return route, sources,
-timestamp, and semantic fingerprint.
+initial state, timestamp, and source-managed semantic fingerprint. Set-like refs
+are normalized before hashing. Caller-controlled fingerprints are rejected.
+
+Each dependency has an explicit requirement naming the exact dependency,
+expected transition, and allowed result dispositions. Every typed binding
+resolves through an exact supplied canonical/runtime binding set or resolver;
+a plausible prefix is never sufficient.
 
 The canonical lifecycle vocabulary is source-managed in
 `blueprint/intent-orchestration-registry.json`:
@@ -77,10 +90,18 @@ CANCELLED
 HELD_UNKNOWN
 ```
 
-Every transition records prior and next state, reason, actor/process, sources,
-timestamp, and semantic fingerprint. An equal semantic transition appends
-nothing. Cancellation and supersession change disposition without deleting
-source, node, descendant, or receipt lineage.
+Every transition records a per-node sequence, prior and next state,
+reason, actor/process, sources, timestamp, and canonical fingerprint. The
+validator replays each node ledger from its formed state, rejects disconnected
+or retrograde history, and requires the replay result to equal current node
+state. An equal transition anywhere in the exact node ledger appends nothing.
+Branch cancellation transitions every active descendant while preserving deep
+source, node, transition, and receipt lineage.
+
+Every immutable graph snapshot is re-fingerprinted after a receipt, transition,
+or cancellation. Its identity covers the immutable Intent, full semantic
+node/edge/state content, attributed projections, transition and receipt
+ledgers, exact binding sets, and derived current pointers.
 
 ## Deterministic admission
 
@@ -88,10 +109,17 @@ source, node, descendant, or receipt lineage.
 
 - duplicate refs or active semantic duplicates;
 - self-dependencies, missing dependencies, or cycles;
+- asymmetric, multi-parent, or cyclic containment;
+- disconnected transition ledgers or a final-state mismatch;
 - unknown lifecycle or priority values;
 - missing process, role, capability, effect, resource, completion-gate,
   expected-transition, source, or return-route bindings;
-- `COMPLETED` without exact expected-transition evidence;
+- stale/non-canonical Intent, node, transition, receipt, graph, or current-pointer
+  fingerprints;
+- stale, wrong-transition, wrong-node, conflicting, or duplicate current
+  receipts;
+- `COMPLETED` without one exact current expected-transition receipt bound to
+  node fingerprint, source state, disposition, source hashes, and formation;
 - a mutation receipt whose before and after implementation heads are equal;
 - parent `CONVERGED` or `CLOSED` without exact terminal child dispositions and
   receipts.
@@ -99,8 +127,17 @@ source, node, descendant, or receipt lineage.
 `HELD_UNKNOWN` is an attention state. It remains visible and non-green.
 
 The ready set is receipt-bound: a node with declared dependencies is not ready
-until each exact dependency has a current `PROVEN` receipt. A polished model
-proposal cannot bypass this deterministic admission.
+until each edge has exactly one unambiguous current `PROVEN` receipt matching
+the dependency node fingerprint, required expected transition, current source
+state, and allowed disposition. A polished model proposal cannot bypass this
+deterministic admission.
+
+## Exact known-intent resolution
+
+The source-managed registry owns a deliberately small exact
+known-intent-to-process table. `resolveKnownIntent` returns one process only for
+one exact match. Zero matches remain `HELD_UNKNOWN`; multiple matches become
+`NEEDS_CLARIFICATION`. Every outcome carries `NO_EXECUTION_AUTHORITY`.
 
 ## Compact human projection
 
@@ -116,7 +153,9 @@ What was recently completed?
 What is the one next safe action?
 ```
 
-It carries refs, small labels, states, and return routes. It does not copy large
+It carries refs, small labels, states, return routes, bounded waiting reasons,
+unmet dependency refs, blocking reason refs, required human decision refs, and
+at most a small set of evidence/source-descent refs. It does not copy large
 lesson, relationship, architecture, prompt, or source payloads. Explicit
 `sourceDescent` refs and the detail command keep the raw graph available.
 
@@ -131,9 +170,11 @@ npm run intent:status -- --graph <safe-repository-relative-json-path>
 npm run intent:status -- --graph <safe-repository-relative-json-path> --detail
 ```
 
-`intent:check` validates the source-managed contract and its canonical state,
-process, module, feature, test, build-health, and implementation-work
-registrations. `intent:plan` returns validation order and node sets.
+`intent:check` validates the source-managed contract and its canonical
+Blueprint composition plus compiled Atlas registry, system, lifecycle, receipt,
+projection, attributed-contract, resolution, process, module, feature, test,
+build-health, and implementation-work identities. `intent:plan` returns
+validation order and node sets.
 `intent:status` returns the compact Intent Queue; `--detail` is the explicit
 raw-graph descent.
 

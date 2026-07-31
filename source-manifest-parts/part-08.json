@@ -130,8 +130,8 @@
     {
       "path": "test/intent-workgraph.test.mjs",
       "mode": "100644",
-      "bytes": 14839,
-      "sha256": "93f6cd7a83833290aa32c29dae31514f64be20a58a98a0f655e8d36165117867"
+      "bytes": 21493,
+      "sha256": "9100762051f2daf71392f418c5b3a583599668438e05fde2cd181c20ad2810b6"
     },
     {
       "path": "test/model-provision.test.mjs",

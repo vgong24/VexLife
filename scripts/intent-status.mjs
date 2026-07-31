@@ -27,13 +27,14 @@ if (!fs.existsSync(graphPath)) {
   process.exit(1);
 }
 
-const registry = readJson(path.join(root, 'blueprint/intent-orchestration-registry.json'));
 const bundle = loadBlueprint(root);
+const registry = bundle.intentRegistry;
 const graph = readJson(graphPath);
 const projection = projectIntentStatus(graph, {
   registry,
   registeredProcessRefs: bundle.factory.processes.map((item) => item.processRef),
-  registeredRoleRefs: bundle.blueprint.roles.map((item) => item.roleRef)
+  registeredRoleRefs: bundle.blueprint.roles.map((item) => item.roleRef),
+  registeredBindingRefs: graph.bindingRefs
 });
 console.log(JSON.stringify(detail ? { ...projection, detail: graph } : projection, null, 2));
 if (projection.state === 'BLOCKED') process.exitCode = 1;

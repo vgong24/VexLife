@@ -4,8 +4,8 @@
     {
       "path": "blueprint/intent-orchestration-registry.json",
       "mode": "100644",
-      "bytes": 3710,
-      "sha256": "971de027d6cc52da8c21576a6a68059e5c8420d52f09ad355d421aebe6ebf5ba"
+      "bytes": 10260,
+      "sha256": "da7ed7d6f3bb38fdc8b15050e27a748ade3470f7b740688ab77879c71a655193"
     },
     {
       "path": "blueprint/model-profiles.example.json",
@@ -28,8 +28,8 @@
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 17380,
-      "sha256": "65d6d1f92125fc2510a0be6067784e24c2a693a32f06bbaa3b9ab25b3029912a"
+      "bytes": 17600,
+      "sha256": "007f21b15b40834d923935642745c0bb892d3a4e3ca1f42d1106e79f1b981127"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -136,8 +136,8 @@
     {
       "path": "blueprint/vexlife.blueprint.json",
       "mode": "100644",
-      "bytes": 1121,
-      "sha256": "eee6437f0bbd9234713472b2f57831e9dda136a5ebdf2470a88136f3ad1ba4bc"
+      "bytes": 1196,
+      "sha256": "9e1626b356908ac6d300e3a4b6558ca9dd4da7ab9ca1e8cd141942d2ac02cc54"
     },
     {
       "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",

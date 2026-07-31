@@ -3,13 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { validateIntentRegistry } from '../src/core/intent-validation.mjs';
-import { readJson } from '../src/core/utils.mjs';
+import { compileRegistryPack } from '../src/core/registry.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const registry = readJson(path.join(root, 'blueprint/intent-orchestration-registry.json'));
 const bundle = loadBlueprint(root);
+const registry = bundle.intentRegistry;
 const contract = validateIntentRegistry(registry);
 const errors = [...contract.errors];
+const compiled = compileRegistryPack(bundle);
 
 const requiredModuleRefs = [
   'module.vexlife.core.intent-workgraph',
@@ -46,6 +47,16 @@ for (const ref of [
   'test.intent.registry-resolution',
   'test.intent.full-gate'
 ]) if (!testRefs.has(ref)) errors.push(`canonical test registry missing ${ref}`);
+for (const ref of [
+  registry.registryRef,
+  registry.systemRef,
+  registry.receiptContract.contractRef,
+  ...registry.lifecycleStateRefs.map((item) => item.ref),
+  ...registry.receiptStateRefs.map((item) => item.ref),
+  ...registry.projectionIdentities.map((item) => item.projectionRef),
+  ...Object.values(registry.attributedProjectionContracts).map((item) => item.contractRef),
+  ...registry.knownIntentProcessRoutes.map((item) => item.resolutionRef)
+]) if (!compiled.get(ref)) errors.push(`compiled Atlas registry missing ${ref}`);
 
 const result = {
   schemaVersion: 'vexlife.intent-check-result/v0',

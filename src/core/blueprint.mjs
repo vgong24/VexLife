@@ -9,6 +9,7 @@ import { validateImplementationPlan } from './implementation-plan.mjs';
 import { validateReviewLensRegistry, validateFeatureRegistry } from './feature-registry.mjs';
 import { validateHomeBridgeRegistry } from './home-bridge.mjs';
 import { validateBuildHealthRegistry } from './build-health.mjs';
+import { validateIntentRegistry } from './intent-validation.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const VEXLIFE_ROOT = path.resolve(HERE, '../..');
@@ -52,15 +53,16 @@ export function loadBlueprint(root = VEXLIFE_ROOT) {
   const featureRegistry = optionalJson(path.join(root, 'blueprint/feature-registry.json'), { features: [] });
   const buildHealth = optionalJson(path.join(root, 'blueprint/build-health-registry.json'), { checks: [] });
   const bridge = optionalJson(path.join(root, 'blueprint/home-bridge-registry.json'), {});
+  const intentRegistry = blueprint.intentOrchestration ?? null;
   const strings = Object.fromEntries(blueprint.product.requiredLanguages.map((language) => [
     language,
     readJson(path.join(root, `blueprint/strings/${language}.json`))
   ]));
-  return { blueprint, tokens, platforms, strings, factory, modules, experience, evolution, implementationPlan, capabilities, reviewLenses, featureRegistry, buildHealth, bridge, root };
+  return { blueprint, tokens, platforms, strings, factory, modules, experience, evolution, implementationPlan, capabilities, reviewLenses, featureRegistry, buildHealth, bridge, intentRegistry, root };
 }
 
 function collectRefs(bundle) {
-  const { blueprint, factory, modules, experience, evolution, implementationPlan, capabilities, reviewLenses, featureRegistry, buildHealth, bridge } = bundle;
+  const { blueprint, factory, modules, experience, evolution, implementationPlan, capabilities, reviewLenses, featureRegistry, buildHealth, bridge, intentRegistry } = bundle;
   const refs = [];
   const add = (kind, ref) => refs.push({ kind, ref });
   add('blueprint', blueprint.blueprintRef);
@@ -114,6 +116,14 @@ function collectRefs(bundle) {
   for (const item of buildHealth?.checks ?? []) add('health-check', item.checkRef);
   if (bridge?.bridgeRef) add('home-bridge', bridge.bridgeRef);
   for (const item of bridge?.transportAdapters ?? []) add('transport', item.transportRef);
+  if (intentRegistry?.registryRef) add('intent-registry', intentRegistry.registryRef);
+  if (intentRegistry?.systemRef) add('intent-system', intentRegistry.systemRef);
+  for (const item of intentRegistry?.lifecycleStateRefs ?? []) add('intent-lifecycle-state', item.ref);
+  if (intentRegistry?.receiptContract?.contractRef) add('intent-receipt-contract', intentRegistry.receiptContract.contractRef);
+  for (const item of intentRegistry?.receiptStateRefs ?? []) add('intent-receipt-state', item.ref);
+  for (const item of intentRegistry?.projectionIdentities ?? []) add('intent-projection', item.projectionRef);
+  for (const item of Object.values(intentRegistry?.attributedProjectionContracts ?? {})) add('intent-attributed-contract', item.contractRef);
+  for (const item of intentRegistry?.knownIntentProcessRoutes ?? []) add('intent-resolution', item.resolutionRef);
   return refs;
 }
 
@@ -241,6 +251,12 @@ export function validateBlueprint(bundle) {
   errors.push(...healthValidation.errors.map((error) => `build health registry: ${error}`));
   const bridgeValidation = validateHomeBridgeRegistry(bundle.bridge, { testRefs });
   errors.push(...bridgeValidation.errors.map((error) => `home bridge registry: ${error}`));
+  if (!blueprint.intentOrchestration) errors.push('universal blueprint missing intentOrchestration composition');
+  else if (semanticHash(blueprint.intentOrchestration) !== semanticHash(bundle.intentRegistry)) {
+    errors.push('universal blueprint intentOrchestration composition does not match loaded intent registry');
+  }
+  const intentValidation = validateIntentRegistry(bundle.intentRegistry);
+  errors.push(...intentValidation.errors.map((error) => `intent registry: ${error}`));
 
   let registryStats = null;
   try {
@@ -272,7 +288,7 @@ export function validateBlueprint(bundle) {
       bridgeModes: bridgeValidation.stats.modes,
       registryEntries: registryStats?.entries ?? 0
     },
-    semanticHash: semanticHash({ blueprint, tokens, platforms, strings, factory, modules: bundle.modules, experience: bundle.experience, evolution: bundle.evolution, implementationPlan: bundle.implementationPlan, capabilities: bundle.capabilities, reviewLenses: bundle.reviewLenses, featureRegistry: bundle.featureRegistry, buildHealth: bundle.buildHealth, bridge: bundle.bridge })
+    semanticHash: semanticHash({ blueprint, tokens, platforms, strings, factory, modules: bundle.modules, experience: bundle.experience, evolution: bundle.evolution, implementationPlan: bundle.implementationPlan, capabilities: bundle.capabilities, reviewLenses: bundle.reviewLenses, featureRegistry: bundle.featureRegistry, buildHealth: bundle.buildHealth, bridge: bundle.bridge, intentRegistry: bundle.intentRegistry })
   };
 }
 
@@ -280,7 +296,7 @@ export function buildIdentityIndex(blueprintOrBundle) {
   const bundle = blueprintOrBundle.blueprint ? blueprintOrBundle : {
     blueprint: blueprintOrBundle, strings: { [blueprintOrBundle.product.defaultLanguage]: {} },
     factory: { foundations: [], processes: [], templates: [], workedExamples: [] }, modules: { modules: [] },
-    experience: { experienceProfiles: [], gestureContracts: [], vessels: [] }, evolution: { candidateTypes: [] }, implementationPlan: { milestones: [], workUnits: [] }, capabilities: { capabilities: [] }, reviewLenses: { lenses: [] }, featureRegistry: { features: [] }, buildHealth: { checks: [] }, bridge: {}
+    experience: { experienceProfiles: [], gestureContracts: [], vessels: [] }, evolution: { candidateTypes: [] }, implementationPlan: { milestones: [], workUnits: [] }, capabilities: { capabilities: [] }, reviewLenses: { lenses: [] }, featureRegistry: { features: [] }, buildHealth: { checks: [] }, bridge: {}, intentRegistry: blueprintOrBundle.intentOrchestration ?? null
   };
   return [...compileRegistryPack(bundle).entries.values()].map((entry) => ({
     ref: entry.ref,

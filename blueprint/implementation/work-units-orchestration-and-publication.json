@@ -84,6 +84,7 @@
       "work.vexlife.repository-health"
     ],
     "pathScope": [
+      "blueprint/vexlife.blueprint.json",
       "blueprint/intent-orchestration-registry.json",
       "blueprint/fragments/state-domains.json",
       "blueprint/fragments/tests.json",
@@ -93,6 +94,8 @@
       "blueprint/implementation/work-units-orchestration-and-publication.json",
       "blueprint/module-registry/core.json",
       "blueprint/module-registry/scripts.json",
+      "src/core/blueprint.mjs",
+      "src/core/registry.mjs",
       "src/core/intent-workgraph.mjs",
       "src/core/intent-validation.mjs",
       "src/core/intent-projection.mjs",

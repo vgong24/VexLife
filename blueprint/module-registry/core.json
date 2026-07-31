@@ -37,12 +37,13 @@
   {
     "moduleRef": "module.vexlife.core.registry",
     "path": "src/core/registry.mjs",
-    "role": "Compile identity, interface, string, navigation, process and module registries from canonical sources.",
+    "role": "Compile identity, interface, string, navigation, process, Intent Orchestration and module registries from canonical sources.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "blueprint.vexlife.universal.001",
       "factory.vexlife.processes.001",
-      "registry.vexlife.modules.001"
+      "registry.vexlife.modules.001",
+      "registry.vexlife.intent-orchestration.001"
     ],
     "writes": [],
     "loadedBy": [],
@@ -153,7 +154,7 @@
   {
     "moduleRef": "module.vexlife.core.blueprint",
     "path": "src/core/blueprint.mjs",
-    "role": "Load and validate the universal blueprint, factory, catalogs, module map and compiled registry.",
+    "role": "Load and validate the universal blueprint, Intent Orchestration registry, factory, catalogs, module map and compiled registry.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "blueprint/vexlife.blueprint.json",
@@ -161,6 +162,7 @@
       "blueprint/platforms.json",
       "blueprint/process-factory.json",
       "blueprint/module-registry.json",
+      "blueprint/intent-orchestration-registry.json",
       "blueprint/strings/*.json",
       "blueprint/experience-registry.json"
     ],
@@ -531,7 +533,7 @@
   {
     "moduleRef": "module.vexlife.core.intent-workgraph",
     "path": "src/core/intent-workgraph.mjs",
-    "role": "Creates deeply immutable intent envelopes and workgraph snapshots, appends exact receipts, and suppresses equal semantic transitions.",
+    "role": "Creates canonical deeply immutable intent, attributed projection, receipt, transition and workgraph snapshots with exact known-intent resolution.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-orchestration.001",
@@ -553,7 +555,7 @@
   {
     "moduleRef": "module.vexlife.core.intent-validation",
     "path": "src/core/intent-validation.mjs",
-    "role": "Deterministically validates intent lifecycle, bindings, dependency acyclicity, exact completion evidence, ready sets, and parent convergence.",
+    "role": "Deterministically validates canonical identity, exact typed bindings and receipts, replayed lifecycle ledgers, containment lineage, ready sets, and parent convergence.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-orchestration.001",
@@ -577,7 +579,7 @@
   {
     "moduleRef": "module.vexlife.core.intent-projection",
     "path": "src/core/intent-projection.mjs",
-    "role": "Projects a bounded Intent Queue status and one deterministic next-safe-action without copying heavy context or granting execution authority.",
+    "role": "Projects a bounded Intent Queue with waiting/blocking why refs and one deterministic next-safe-action without copying heavy context or granting execution authority.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "module.vexlife.core.intent-validation"
