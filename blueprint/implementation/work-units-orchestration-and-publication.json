@@ -149,7 +149,7 @@
   },
   {
     "workRef": "work.vexlife.intent-orchestration-scheduler",
-    "purpose": "Implement Intent Orchestration 2/3 as canonical single-worker scheduling with live-clock evidence, exact normal completion, preserved preemption continuations, scheduler-derived six-lease checkpoints, durable held-tool relay, scheduler-authorized successor contexts, safe receipt paths and a deterministic no-effect Health receipt.",
+    "purpose": "Implement Intent Orchestration 2/3 as canonical single-worker scheduling with live-clock evidence, source-managed external completion verification and Workgraph convergence, preserved preemption continuations, scheduler-derived six-lease checkpoints, scheduler-owned held-tool disposition, replay-derived relay state, scheduler-authorized successor contexts, safe receipt paths and a deterministic no-effect Health receipt.",
     "distance": "NOW",
     "milestoneRef": "milestone.vexlife.work-orchestration",
     "dependsOn": [
@@ -172,6 +172,7 @@
       "src/core/blueprint.mjs",
       "src/core/registry.mjs",
       "src/core/intent-scheduler.mjs",
+      "src/core/intent-completion-verifier.mjs",
       "src/core/scheduler-runtime-trust.mjs",
       "src/core/context-lease.mjs",
       "src/core/resource-admission.mjs",
@@ -185,6 +186,7 @@
       "scripts/pr-ready.mjs",
       "scripts/health-check.mjs",
       "test/intent-scheduler.test.mjs",
+      "test/intent-completion-verifier.test.mjs",
       "test/foundation-health.test.mjs",
       "test/registry.test.mjs",
       "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
@@ -224,12 +226,16 @@
       "test.intent-scheduler.checkpoint-exact-release-set",
       "test.intent-scheduler.durable-held-tool",
       "test.intent-scheduler.live-clock",
-      "test.intent-scheduler.safe-receipt-path"
+      "test.intent-scheduler.safe-receipt-path",
+      "test.intent-scheduler.external-completion-verifier",
+      "test.intent-scheduler.workgraph-completion-convergence",
+      "test.intent-scheduler.relay-replay-state-machine"
     ],
     "outputRefs": [
       "registry.vexlife.intent-scheduler.001",
       "contract.intent-scheduler.integrated-simulation/v1",
       "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.intent-completion-verifier",
       "module.vexlife.core.intent-scheduler",
       "projection.intent-scheduler.runtime"
     ],

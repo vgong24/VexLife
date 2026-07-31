@@ -39,7 +39,7 @@ function canonicalToolCall(call, schedulerRegistry = null) {
   const semantic = clone(call);
   delete semantic.semanticFingerprint;
   if (semanticHash(semantic) !== call.semanticFingerprint) throw new Error('tool call semantic fingerprint mismatch');
-  if (schedulerRegistry) {
+    if (schedulerRegistry) {
     const contract = resolveMockToolContract(schedulerRegistry, { toolRef: call.toolRef, effectRef: call.effectRef });
     for (const [field, expected] of [
       ['toolContractRef', contract.contractRef],
@@ -49,6 +49,9 @@ function canonicalToolCall(call, schedulerRegistry = null) {
       ['maxObservationBytes', contract.maxObservationBytes]
     ]) if (call[field] !== expected) throw new Error(`tool call canonical ${field} mismatch`);
     if (semanticHash(call.arguments) !== call.argumentHash) throw new Error('tool call argument fingerprint mismatch');
+    if (toolSemanticPurpose(call) !== call.semanticPurposeFingerprint) {
+      throw new Error('tool call semantic purpose fingerprint mismatch');
+    }
   }
   return freeze(clone(call));
 }
@@ -81,23 +84,40 @@ function canonicalObservation(observation, call) {
   return freeze(clone(observation));
 }
 
-function canonicalTransitionReceipt(receipt) {
-  if (!receipt?.receiptRef || !receipt.state || !receipt.semanticFingerprint) {
-    throw new Error('tool relay transition receipt is incomplete');
-  }
+function canonicalTransitionReceipt(receipt, schedulerRegistry) {
+  requireFields(receipt, INTENT_SCHEDULER_REQUIRED_FIELD_SETS.relayTransitionReceiptRequiredFields,
+    'tool relay transition receipt');
   const semantic = clone(receipt);
   delete semantic.semanticFingerprint;
   if (semanticHash(semantic) !== receipt.semanticFingerprint) {
     throw new Error('tool relay transition receipt fingerprint mismatch');
   }
-  const legal = (
-    receipt.schemaVersion === 'vexlife.intent-tool-call-hold/v0' && receipt.state === 'HELD' && receipt.heldAt
-  ) || (
-    ['vexlife.intent-tool-call-cancellation/v1', 'vexlife.intent-held-tool-transition/v1'].includes(receipt.schemaVersion) &&
-      receipt.state === 'CLOSED' && (receipt.closedAt || receipt.transitionedAt)
-  );
-  if (!legal) throw new Error('tool relay transition receipt has an illegal state progression');
+  if (receipt.currentness !== 'CURRENT') throw new Error('tool relay transition receipt is not current');
+  if (!Number.isInteger(receipt.sequence) || receipt.sequence < 0) {
+    throw new Error('tool relay transition receipt sequence is invalid');
+  }
+  assertSourceHash(receipt.sourceHash, 'tool relay transition sourceHash');
+  parseCanonicalTimestamp(receipt.transitionedAt, 'tool relay transitionedAt');
+  const allowed = schedulerRegistry?.relayStateMachine?.allowedTransitions?.[receipt.priorState] ?? [];
+  if (!allowed.includes(receipt.nextState)) {
+    throw new Error(`tool relay transition receipt has an illegal state progression ${receipt.priorState} -> ${receipt.nextState}`);
+  }
   return freeze(clone(receipt));
+}
+
+function transitionReceipt(entry, input) {
+  const receipt = {
+    ...clone(input),
+    toolCallRef: entry.toolCallRef,
+    priorState: entry.state,
+    sequence: entry.transitionReceipts.length,
+    currentness: 'CURRENT',
+    sourceRef: entry.call.sourceEvidenceRef,
+    sourceHash: entry.call.sourceEvidenceHash,
+    formationRef: 'formation.intent-scheduler.relay-transition.v1'
+  };
+  receipt.semanticFingerprint = semanticHash(receipt);
+  return freeze(receipt);
 }
 
 function canonicalLedger(input, { schedulerRegistry = null, restoring = false } = {}) {
@@ -118,14 +138,14 @@ function canonicalLedger(input, { schedulerRegistry = null, restoring = false } 
     }
     entry.call = canonicalToolCall(entry.call, schedulerRegistry);
     if (entry.call.toolCallRef !== entry.toolCallRef) throw new Error('tool relay entry/call ref mismatch');
-    entry.transitionReceipts = (entry.transitionReceipts ?? []).map(canonicalTransitionReceipt);
+    entry.transitionReceipts = (entry.transitionReceipts ?? [])
+      .map((receipt) => canonicalTransitionReceipt(receipt, schedulerRegistry));
     if (entry.transitionReceipts.some((receipt) => receipt.toolCallRef !== entry.toolCallRef)) {
       throw new Error('tool relay transition receipt call mismatch');
     }
     if (entry.observation) entry.observation = canonicalObservation(entry.observation, entry.call);
     const transitionTimes = entry.transitionReceipts.map((receipt) =>
-      parseCanonicalTimestamp(receipt.heldAt ?? receipt.closedAt ?? receipt.transitionedAt, 'tool relay transition time')
-    );
+      parseCanonicalTimestamp(receipt.transitionedAt, 'tool relay transition time'));
     const proposedAt = parseCanonicalTimestamp(entry.call.proposedAt, 'tool relay call proposedAt');
     if (transitionTimes.some((time, index) => time < proposedAt || (index > 0 && time < transitionTimes[index - 1]))) {
       throw new Error('tool relay transition history is not monotonic');
@@ -137,10 +157,20 @@ function canonicalLedger(input, { schedulerRegistry = null, restoring = false } 
         throw new Error('tool relay observation time is outside the canonical call interval');
       }
     }
+    let replayedState = schedulerRegistry?.relayStateMachine?.initialState ?? 'PENDING';
+    let terminalSeen = false;
+    for (const [index, receipt] of entry.transitionReceipts.entries()) {
+      if (terminalSeen) throw new Error('tool relay transition occurs after a terminal state');
+      if (receipt.sequence !== index) throw new Error('tool relay transition sequence is out of order');
+      if (receipt.priorState !== replayedState) throw new Error('tool relay transition prior state does not match replay');
+      replayedState = receipt.nextState;
+      if ((schedulerRegistry?.relayStateMachine?.terminalStates ?? []).includes(replayedState)) terminalSeen = true;
+    }
+    if (entry.state !== replayedState) throw new Error('tool relay supplied state does not match replay-derived state');
     if (entry.state === 'PENDING' && (entry.observation || entry.transitionReceipts.length)) {
       throw new Error('pending tool relay entry has impossible history');
     }
-    if (entry.state === 'HELD' && (entry.observation || entry.transitionReceipts.at(-1)?.state !== 'HELD')) {
+    if (entry.state === 'HELD' && (entry.observation || entry.transitionReceipts.at(-1)?.nextState !== 'HELD')) {
       throw new Error('held tool relay entry has impossible history');
     }
     if (['ACCEPTED', 'REINJECTED'].includes(entry.state) && !entry.observation) {
@@ -149,8 +179,22 @@ function canonicalLedger(input, { schedulerRegistry = null, restoring = false } 
     if (entry.state === 'REINJECTED' && !entry.reinjectedContextLeaseRef) {
       throw new Error('reinjected tool relay entry is missing successor context identity');
     }
-    if (entry.state === 'CLOSED' && entry.transitionReceipts.at(-1)?.state !== 'CLOSED') {
+    if (entry.state === 'CLOSED' && entry.transitionReceipts.at(-1)?.nextState !== 'CLOSED') {
       throw new Error('closed tool relay entry is missing a terminal receipt');
+    }
+  }
+  for (const entry of ledger.entries) {
+    for (const receipt of entry.transitionReceipts.filter((item) => item.schemaVersion === 'vexlife.intent-held-tool-transition/v2')) {
+      const successor = receipt.successorToolCallRef
+        ? ledger.entries.find((item) => item.toolCallRef === receipt.successorToolCallRef)
+        : null;
+      if (receipt.action === 'CLOSE' && successor) throw new Error('closed held call cannot name a successor');
+      if (receipt.action !== 'CLOSE' && !successor) throw new Error('held transition successor lineage is missing');
+      if (successor && (
+        successor.call.predecessorToolCallRef !== entry.toolCallRef ||
+        successor.call.heldDisposition !== receipt.action ||
+        successor.call.semanticPurposeFingerprint !== receipt.successorSemanticPurposeFingerprint
+      )) throw new Error('held transition successor lineage mismatch');
     }
   }
   ledger.semanticFingerprint = semanticHash({
@@ -176,6 +220,21 @@ function requireExactLease(lease, label, call, runtimeTrustSnapshot, observedAt)
   });
   if (lease.workNodeRef !== call.workNodeRef) throw new Error(`${label} lease work node mismatch`);
   if (lease.graphFingerprint !== call.graphFingerprint) throw new Error(`${label} lease graph fingerprint mismatch`);
+}
+
+function toolSemanticPurpose(call) {
+  return semanticHash({
+    workNodeRef: call.workNodeRef,
+    toolContractRef: call.toolContractRef,
+    toolRef: call.toolRef,
+    effectRef: call.effectRef,
+    argumentSchemaRef: call.argumentSchemaRef,
+    argumentHash: call.argumentHash,
+    resultSchemaRef: call.resultSchemaRef,
+    executorRef: call.executorRef,
+    sourceEvidenceRef: call.sourceEvidenceRef,
+    sourceEvidenceHash: call.sourceEvidenceHash
+  });
 }
 
 export function createToolCall(input, {
@@ -221,6 +280,7 @@ export function createToolCall(input, {
   const call = {
     schemaVersion: 'vexlife.intent-tool-call/v1',
     toolCallRef: input.toolCallRef,
+    schedulerInstanceRef: workerLease?.schedulerInstanceRef,
     workNodeRef: input.workNodeRef,
     workerRef: workerLease?.workerRef,
     workerLeaseRef: workerLease?.leaseRef,
@@ -252,8 +312,13 @@ export function createToolCall(input, {
     proposedAt: input.proposedAt,
     timeoutAt: input.timeoutAt,
     cancellationPolicy: input.cancellationPolicy,
+    predecessorToolCallRef: input.predecessorToolCallRef ?? null,
+    heldDisposition: input.heldDisposition ?? null,
+    replacementPolicyRef: input.replacementPolicyRef ?? null,
+    replacementReasonRef: input.replacementReasonRef ?? null,
     externalEffectsExecuted: false
   };
+  call.semanticPurposeFingerprint = toolSemanticPurpose(call);
   if (!runtimeTrustSnapshot?.semanticFingerprint ||
       runtimeTrustSnapshot.schedulerGeneration !== call.schedulerGeneration ||
       runtimeTrustSnapshot.workerRef !== call.workerRef) {
@@ -277,6 +342,7 @@ export function createToolCall(input, {
   if (!(capabilityLease.toolRefs ?? []).includes(call.toolRef)) throw new Error('capability lease does not admit canonical tool');
   if (!(effectLease.allowedEffectRefs ?? []).includes(call.effectRef)) throw new Error('effect lease does not admit exact effect');
   if (effectLease.effectDisposition !== 'EFFECT_ENVELOPE_BOUND') throw new Error('effect lease does not admit bounded effect');
+  if (call.schedulerInstanceRef !== workerLease.schedulerInstanceRef) throw new Error('tool call scheduler instance mismatch');
   call.semanticFingerprint = semanticHash(call);
   return freeze(call);
 }
@@ -325,6 +391,8 @@ function exactResultMismatch(call, result) {
 export class ToolResultRelay {
   #ledger;
   #schedulerRegistry;
+  #schedulerCapability = null;
+  #schedulerInstanceRef = null;
 
   constructor(snapshot = null, { schedulerRegistry = null } = {}) {
     this.#schedulerRegistry = schedulerRegistry;
@@ -336,6 +404,18 @@ export class ToolResultRelay {
 
   get snapshot() {
     return clone(this.#ledger);
+  }
+
+  bindSchedulerOwnership(schedulerInstanceRef, capability) {
+    if (!schedulerInstanceRef || !capability || typeof capability !== 'object') {
+      throw new Error('relay scheduler ownership requires an instance and private capability');
+    }
+    if (this.#schedulerCapability && (
+      this.#schedulerCapability !== capability || this.#schedulerInstanceRef !== schedulerInstanceRef
+    )) throw new Error('relay scheduler ownership cannot be rebound');
+    this.#schedulerCapability = capability;
+    this.#schedulerInstanceRef = schedulerInstanceRef;
+    return { bound: true, schedulerInstanceRef };
   }
 
   #replace(entry) {
@@ -427,12 +507,21 @@ export class ToolResultRelay {
     };
     observation.semanticFingerprint = semanticHash(observation);
     const frozenObservation = freeze(observation);
+    const receipt = transitionReceipt(entry, {
+      schemaVersion: 'vexlife.intent-tool-call-acceptance/v1',
+      receiptRef: `${call.toolCallRef}.accepted.${entry.transitionReceipts.length}`,
+      nextState: 'ACCEPTED',
+      observationRef: frozenObservation.observationRef,
+      observationFingerprint: frozenObservation.semanticFingerprint,
+      transitionedAt: receivedAt
+    });
     this.#replace(freeze({
       ...clone(entry),
       state: 'ACCEPTED',
-      observation: frozenObservation
+      observation: frozenObservation,
+      transitionReceipts: [...entry.transitionReceipts, receipt]
     }));
-    return { accepted: true, state: 'ACCEPTED', observation: frozenObservation };
+    return { accepted: true, state: 'ACCEPTED', observation: frozenObservation, receipt };
   }
 
   reinject(contextLease, observation, { observedAt }) {
@@ -448,12 +537,22 @@ export class ToolResultRelay {
       return reject(`CONTEXT_REINJECTION_REJECTED:${error.message}`, observation.toolCallRef);
     }
     if (!result.changed) return reject(result.reason, observation.toolCallRef);
+    const receipt = transitionReceipt(entry, {
+      schemaVersion: 'vexlife.intent-tool-observation-reinjection/v1',
+      receiptRef: `${entry.toolCallRef}.reinjected.${entry.transitionReceipts.length}`,
+      nextState: 'REINJECTED',
+      contextLeaseRef: contextLease.leaseRef,
+      observationRef: observation.observationRef,
+      observationFingerprint: observation.semanticFingerprint,
+      transitionedAt: observedAt
+    });
     this.#replace(freeze({
       ...clone(entry),
       state: 'REINJECTED',
-      reinjectedContextLeaseRef: contextLease.leaseRef
+      reinjectedContextLeaseRef: contextLease.leaseRef,
+      transitionReceipts: [...entry.transitionReceipts, receipt]
     }));
-    return { accepted: true, state: 'REINJECTED', ...result };
+    return { accepted: true, state: 'REINJECTED', receipt, ...result };
   }
 
   hold(toolCallRef, {
@@ -467,17 +566,16 @@ export class ToolResultRelay {
     const proposed = parseCanonicalTimestamp(entry.call.proposedAt, 'tool call proposedAt');
     const timeout = parseCanonicalTimestamp(entry.call.timeoutAt, 'tool call timeoutAt');
     if (held < proposed || held >= timeout) throw new Error('tool call hold time must be monotonic and before timeout');
-    const receipt = {
-      schemaVersion: 'vexlife.intent-tool-call-hold/v0',
+    const receipt = transitionReceipt(entry, {
+      schemaVersion: 'vexlife.intent-tool-call-hold/v1',
       receiptRef,
-      toolCallRef,
+      nextState: 'HELD',
       checkpointRef,
       workNodeRef: entry.call.workNodeRef,
       schedulerGeneration: entry.call.schedulerGeneration,
       heldAt,
-      state: 'HELD'
-    };
-    receipt.semanticFingerprint = semanticHash(receipt);
+      transitionedAt: heldAt
+    });
     this.#replace(freeze({
       ...clone(entry),
       state: 'HELD',
@@ -503,18 +601,17 @@ export class ToolResultRelay {
     if (priorTimes.some((prior) => closed < prior)) {
       throw new Error('tool call close time must be monotonic');
     }
-    const receipt = {
+    const receipt = transitionReceipt(entry, {
       schemaVersion: 'vexlife.intent-tool-call-cancellation/v1',
       receiptRef,
-      toolCallRef,
+      nextState: 'CLOSED',
       workNodeRef: entry.call.workNodeRef,
       schedulerGeneration: entry.call.schedulerGeneration,
       cancellationTokenRef: entry.call.cancellationTokenRef,
       reason,
-      state: 'CLOSED',
-      closedAt
-    };
-    receipt.semanticFingerprint = semanticHash(receipt);
+      closedAt,
+      transitionedAt: closedAt
+    });
     this.#replace(freeze({
       ...clone(entry),
       state: 'CLOSED',
@@ -527,12 +624,16 @@ export class ToolResultRelay {
     action,
     checkpointRef,
     successorCall = null,
-    successorContextLeaseRef = null,
+    schedulerAuthorization,
+    schedulerCapability = null,
     receiptRef,
     transitionedAt
   }) {
     const entry = this.#entry(toolCallRef);
     if (!entry || entry.state !== 'HELD') return { changed: false, reason: 'NO_HELD_TOOL_CALL' };
+    if (!this.#schedulerCapability || schedulerCapability !== this.#schedulerCapability) {
+      throw new Error('held tool transition requires scheduler-owned relay capability');
+    }
     if (!['RESUME', 'REISSUE', 'SUPERSEDE', 'CLOSE'].includes(action)) {
       throw new Error('held tool transition action is invalid');
     }
@@ -541,41 +642,131 @@ export class ToolResultRelay {
     const transitioned = parseCanonicalTimestamp(transitionedAt, 'held tool transitionedAt');
     const held = parseCanonicalTimestamp(hold.heldAt, 'held tool heldAt');
     if (transitioned < held) throw new Error('held tool transition time must be monotonic');
+    if (!schedulerAuthorization?.semanticFingerprint) {
+      throw new Error('held tool transition requires scheduler-owned authorization');
+    }
+    const authorizationSemantic = clone(schedulerAuthorization);
+    delete authorizationSemantic.semanticFingerprint;
+    if (semanticHash(authorizationSemantic) !== schedulerAuthorization.semanticFingerprint) {
+      throw new Error('held tool scheduler authorization fingerprint mismatch');
+    }
+    requireFields(schedulerAuthorization, [
+      'authorizationRef',
+      'schedulerInstanceRef',
+      'checkpointRef',
+      'priorToolCallRef',
+      'workNodeRef',
+      'action',
+      'runtimeSnapshotFingerprint',
+      'schedulerGeneration',
+      'cancellationTokenRef',
+      'workerLeaseRef',
+      'workerLeaseFingerprint',
+      'contextLeaseRef',
+      'contextLeaseFingerprint',
+      'resourceLeaseRef',
+      'resourceLeaseFingerprint',
+      'capabilityLeaseRef',
+      'capabilityLeaseFingerprint',
+      'effectLeaseRef',
+      'effectLeaseFingerprint',
+      'formedAt'
+    ], 'held tool scheduler authorization');
+    if (schedulerAuthorization.schedulerInstanceRef !== entry.call.schedulerInstanceRef ||
+        schedulerAuthorization.checkpointRef !== checkpointRef ||
+        schedulerAuthorization.priorToolCallRef !== entry.call.toolCallRef ||
+        schedulerAuthorization.workNodeRef !== entry.call.workNodeRef ||
+        schedulerAuthorization.action !== action ||
+        schedulerAuthorization.schedulerGeneration <= entry.call.schedulerGeneration) {
+      throw new Error('held tool transition has wrong scheduler, checkpoint, call or generation');
+    }
     let canonicalSuccessor = null;
     if (action !== 'CLOSE') {
       canonicalSuccessor = canonicalToolCall(successorCall, this.#schedulerRegistry);
-      if (!successorContextLeaseRef ||
-          canonicalSuccessor.contextLeaseRef !== successorContextLeaseRef ||
-          canonicalSuccessor.workNodeRef !== entry.call.workNodeRef ||
-          canonicalSuccessor.schedulerGeneration <= entry.call.schedulerGeneration ||
+      if (canonicalSuccessor.workNodeRef !== entry.call.workNodeRef ||
+          canonicalSuccessor.schedulerInstanceRef !== schedulerAuthorization.schedulerInstanceRef ||
+          canonicalSuccessor.schedulerGeneration !== schedulerAuthorization.schedulerGeneration ||
           canonicalSuccessor.toolCallRef === entry.call.toolCallRef) {
         throw new Error('held tool successor call does not bind fresh checkpoint leases');
+      }
+      for (const [field, expected] of [
+        ['runtimeSnapshotFingerprint', schedulerAuthorization.runtimeSnapshotFingerprint],
+        ['cancellationTokenRef', schedulerAuthorization.cancellationTokenRef],
+        ['workerLeaseRef', schedulerAuthorization.workerLeaseRef],
+        ['contextLeaseRef', schedulerAuthorization.contextLeaseRef],
+        ['contextLeaseFingerprint', schedulerAuthorization.contextLeaseFingerprint],
+        ['resourceLeaseRef', schedulerAuthorization.resourceLeaseRef],
+        ['resourceLeaseFingerprint', schedulerAuthorization.resourceLeaseFingerprint],
+        ['capabilityLeaseRef', schedulerAuthorization.capabilityLeaseRef],
+        ['capabilityLeaseFingerprint', schedulerAuthorization.capabilityLeaseFingerprint],
+        ['effectLeaseRef', schedulerAuthorization.effectLeaseRef],
+        ['effectLeaseFingerprint', schedulerAuthorization.effectLeaseFingerprint]
+      ]) if (canonicalSuccessor[field] !== expected) throw new Error(`held tool successor ${field} mismatch`);
+      if (canonicalSuccessor.predecessorToolCallRef !== entry.call.toolCallRef ||
+          canonicalSuccessor.heldDisposition !== action) {
+        throw new Error('held tool successor does not bind disposition lineage');
+      }
+      if (['RESUME', 'REISSUE'].includes(action) &&
+          canonicalSuccessor.semanticPurposeFingerprint !== entry.call.semanticPurposeFingerprint) {
+        throw new Error(`${action} must preserve the original semantic tool purpose`);
+      }
+      if (action === 'SUPERSEDE') {
+        const replacement = (this.#schedulerRegistry?.heldToolReplacementPolicies ?? []).find((item) =>
+          item.replacementPolicyRef === schedulerAuthorization.replacementPolicyRef &&
+          item.allowedReasonRefs.includes(schedulerAuthorization.replacementReasonRef));
+        if (!replacement || canonicalSuccessor.replacementPolicyRef !== schedulerAuthorization.replacementPolicyRef ||
+            canonicalSuccessor.replacementReasonRef !== schedulerAuthorization.replacementReasonRef) {
+          throw new Error('SUPERSEDE requires a registered replacement policy and reason');
+        }
       }
       if (parseCanonicalTimestamp(canonicalSuccessor.proposedAt, 'held tool successor proposedAt') < transitioned) {
         throw new Error('held tool successor proposal must be monotonic');
       }
     }
-    const receipt = {
-      schemaVersion: 'vexlife.intent-held-tool-transition/v1',
+    const receipt = transitionReceipt(entry, {
+      schemaVersion: 'vexlife.intent-held-tool-transition/v2',
       receiptRef,
-      toolCallRef,
+      nextState: 'CLOSED',
       checkpointRef,
       action,
+      schedulerAuthorizationRef: schedulerAuthorization.authorizationRef,
+      schedulerAuthorizationFingerprint: schedulerAuthorization.semanticFingerprint,
+      schedulerInstanceRef: schedulerAuthorization.schedulerInstanceRef,
       priorContextLeaseRef: entry.call.contextLeaseRef,
       successorToolCallRef: canonicalSuccessor?.toolCallRef ?? null,
       successorContextLeaseRef: canonicalSuccessor?.contextLeaseRef ?? null,
+      priorSemanticPurposeFingerprint: entry.call.semanticPurposeFingerprint,
+      successorSemanticPurposeFingerprint: canonicalSuccessor?.semanticPurposeFingerprint ?? null,
       priorSchedulerGeneration: entry.call.schedulerGeneration,
       successorSchedulerGeneration: canonicalSuccessor?.schedulerGeneration ?? null,
-      state: 'CLOSED',
+      replacementPolicyRef: schedulerAuthorization.replacementPolicyRef ?? null,
+      replacementReasonRef: schedulerAuthorization.replacementReasonRef ?? null,
       transitionedAt
-    };
-    receipt.semanticFingerprint = semanticHash(receipt);
-    this.#replace(freeze({
+    });
+    const closedEntry = freeze({
       ...clone(entry),
       state: 'CLOSED',
       transitionReceipts: [...entry.transitionReceipts, freeze(receipt)]
-    }));
-    if (canonicalSuccessor) this.register(canonicalSuccessor);
+    });
+    if (canonicalSuccessor && this.#entry(canonicalSuccessor.toolCallRef)) {
+      throw new Error('held tool successor call ref already exists');
+    }
+    const successorEntry = canonicalSuccessor ? freeze({
+      toolCallRef: canonicalSuccessor.toolCallRef,
+      state: 'PENDING',
+      call: clone(canonicalSuccessor),
+      observation: null,
+      transitionReceipts: [],
+      reinjectedContextLeaseRef: null
+    }) : null;
+    this.#ledger = canonicalLedger({
+      relayRef: this.#ledger.relayRef,
+      entries: [
+        ...this.#ledger.entries.filter((item) => ![entry.toolCallRef, canonicalSuccessor?.toolCallRef].includes(item.toolCallRef)),
+        closedEntry,
+        ...(successorEntry ? [successorEntry] : [])
+      ]
+    }, { schedulerRegistry: this.#schedulerRegistry });
     return {
       changed: true,
       action,

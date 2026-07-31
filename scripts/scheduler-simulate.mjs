@@ -5,7 +5,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import {
-  createWorkCompletionReceipt,
   SingleWorkerIntentScheduler,
   WorkerLeaseAuthority
 } from '../src/core/intent-scheduler.mjs';
@@ -287,6 +286,7 @@ export function runSchedulerSimulation({
   const node = createWorkNode({
     workNodeRef: 'work.scheduler.simulation',
     rootIntentRef: intent.intentRef,
+    parentWorkNodeRef: 'work.scheduler.simulation.parent',
     purpose: 'Execute one complete deterministic scheduler loop',
     processRef: 'process.vexlife.intent.validate-workgraph',
     state: 'READY',
@@ -306,33 +306,62 @@ export function runSchedulerSimulation({
     sourceRefs: ['blueprint/intent-scheduler-registry.json'],
     createdAt: FORMED
   }, registry);
-  const states = ['DECOMPOSED', 'PLAN_VALIDATED', 'READY'];
-  let priorState = 'CAPTURED';
-  const transitions = states.map((nextState, sequence) => {
-    const transition = {
-      transitionRef: `transition.scheduler.simulation.${sequence}`,
-      workNodeRef: node.workNodeRef,
-      sequence,
-      priorState,
-      nextState,
-      reason: 'source-managed deterministic simulation',
-      actorRef: 'person.vexlife.owner',
-      actorRoleRef: 'role.vex.operations',
-      processRef: 'process.vexlife.intent.verify-transition',
-      sourceRefs: ['blueprint/intent-scheduler-registry.json'],
-      createdAt: `2026-07-31T00:00:0${sequence}.000Z`
-    };
-    priorState = nextState;
-    return transition;
+  const dependentNode = createWorkNode({
+    ...node,
+    semanticFingerprint: undefined,
+    workNodeRef: 'work.scheduler.simulation.dependent',
+    parentWorkNodeRef: null,
+    purpose: 'Become ready only after exact scheduler completion evidence',
+    dependencyRefs: [node.workNodeRef],
+    dependencyRequirements: [{
+      dependencyWorkNodeRef: node.workNodeRef,
+      expectedTransitionRef: node.expectedTransitionRef,
+      allowedDispositions: ['COMPLETED']
+    }],
+    childRefs: []
+  }, registry);
+  const parentNode = createWorkNode({
+    ...node,
+    semanticFingerprint: undefined,
+    workNodeRef: 'work.scheduler.simulation.parent',
+    parentWorkNodeRef: null,
+    purpose: 'Converge only after exact terminal child evidence',
+    state: 'WAITING_DEPENDENCIES',
+    dependencyRefs: [],
+    childRefs: [node.workNodeRef]
+  }, registry);
+  const nodes = [node, dependentNode, parentNode];
+  const transitions = nodes.flatMap((workNode) => {
+    const states = workNode.state === 'WAITING_DEPENDENCIES'
+      ? ['DECOMPOSED', 'PLAN_VALIDATED', 'WAITING_DEPENDENCIES']
+      : ['DECOMPOSED', 'PLAN_VALIDATED', 'READY'];
+    let priorState = 'CAPTURED';
+    return states.map((nextState, sequence) => {
+      const transition = {
+        transitionRef: `transition.scheduler.simulation.${workNode.workNodeRef}.${sequence}`,
+        workNodeRef: workNode.workNodeRef,
+        sequence,
+        priorState,
+        nextState,
+        reason: 'source-managed deterministic simulation',
+        actorRef: 'person.vexlife.owner',
+        actorRoleRef: 'role.vex.operations',
+        processRef: 'process.vexlife.intent.verify-transition',
+        sourceRefs: ['blueprint/intent-scheduler-registry.json'],
+        createdAt: `2026-07-31T00:00:0${sequence}.000Z`
+      };
+      priorState = nextState;
+      return transition;
+    });
   });
   const bindingRefs = Object.fromEntries(registry.bindingFields.map((field) => [
     field,
-    Array.isArray(node[field]) ? node[field] : [node[field]]
+    [...new Set(nodes.flatMap((item) => Array.isArray(item[field]) ? item[field] : [item[field]]).filter(Boolean))].sort()
   ]));
   const graph = createIntentWorkgraph({
     graphRef: 'intent-workgraph.scheduler.simulation',
     intent,
-    nodes: [node],
+    nodes,
     transitions,
     receipts: [],
     bindingRefs,
@@ -415,6 +444,30 @@ export function runSchedulerSimulation({
   });
   if (!accepted.accepted) throw new Error(`simulation mock result was rejected: ${accepted.reason}`);
   journeyStates.push('MOCK_TOOL_RESULT_ACCEPTED');
+  const heldToolCall = createToolCall({
+    toolCallRef: 'tool-call.scheduler.simulation.held.1',
+    workNodeRef: node.workNodeRef,
+    toolRef: 'tool.mock.inspect',
+    effectRef: 'effect.mock.read',
+    arguments: { sourceRef: 'blueprint/intent-scheduler-registry.json' },
+    schedulerGeneration: 1,
+    cancellationTokenRef: running.contextLease.cancellationTokenRef,
+    sourceEvidenceRef: 'source.blueprint.intent-scheduler-registry',
+    sourceEvidenceHash: semanticHash(schedulerRegistry),
+    proposedAt: RESULT_AT,
+    timeoutAt: EXPIRES,
+    cancellationPolicy: 'CHECKPOINT_THEN_CANCEL'
+  }, {
+    contextLease: running.contextLease,
+    capabilityLease: running.capabilityLease,
+    effectLease: running.effectLease,
+    resourceLease: running.resourceLease,
+    workerLease: running.workerLease,
+    runtimeTrustSnapshot: runtimeOne,
+    schedulerRegistry,
+    observedAt: RESULT_AT
+  });
+  relay.register(heldToolCall);
   const sourceBindings = [{
     sourceRef: 'blueprint/intent-scheduler-registry.json',
     sourceHash: semanticHash(schedulerRegistry)
@@ -429,7 +482,7 @@ export function runSchedulerSimulation({
     producedReceiptRefs: [queue.admissionReceipt.admissionReceiptRef],
     openQuestions: [],
     nextSafeAction: 'RESUME_WITH_FRESH_RUNTIME',
-    pendingToolCallRef: 'NONE',
+    pendingToolCallRef: heldToolCall.toolCallRef,
     sourceBindings,
     formedAt: CHECKPOINT_AT
   }, {
@@ -475,41 +528,68 @@ export function runSchedulerSimulation({
       observedAt: RESUME_OBSERVED,
       expiresAt: RESUME_EXPIRES
     }),
-    authorizeObservationRef: accepted.observation.observationRef
+    authorizeObservationRef: accepted.observation.observationRef,
+    heldToolDisposition: {
+      action: 'RESUME',
+      authorizationRef: 'authorization.scheduler.simulation.held.resume.2',
+      receiptRef: 'receipt.scheduler.simulation.held.resume.2',
+      successorCallInput: {
+        toolCallRef: 'tool-call.scheduler.simulation.held.resume.2',
+        proposedAt: RESUME_OBSERVED,
+        timeoutAt: RESUME_EXPIRES
+      }
+    }
   });
   if (resumed.state !== 'RESUMED') throw new Error('simulation did not resume with fresh generation');
+  journeyStates.push('HELD_TOOL_DISPOSITION_COMMITTED');
   journeyStates.push('FRESH_GENERATION_RESUMED');
   const reinjected = relay.reinject(resumed.contextLease, accepted.observation, { observedAt: RESUME_OBSERVED });
   if (!reinjected.accepted) throw new Error(`simulation successor observation was not reinjected: ${reinjected.reason}`);
   scheduler.syncRelayState();
   journeyStates.push('OBSERVATION_REINJECTED_ONCE');
-  const completionReceipt = createWorkCompletionReceipt({
-    completionReceiptRef: 'receipt.scheduler.simulation.completion.2',
+  const completionEvidence = {
+    verificationReceiptRef: 'verification.scheduler.simulation.completion.2',
     workNodeRef: node.workNodeRef,
     nodeFingerprint: node.semanticFingerprint,
+    graphRef: graph.graphRef,
     graphFingerprint: graph.semanticFingerprint,
     runtimeSnapshotFingerprint: runtimeTwo.semanticFingerprint,
+    schedulerInstanceRef: scheduler.schedulerInstanceRef,
     schedulerGeneration: 2,
     expectedTransitionRef: node.expectedTransitionRef,
-    completionGateRefs: node.completionGateRefs,
+    gateObservations: node.completionGateRefs.map((completionGateRef) => ({
+      gateResultRef: `gate-result.scheduler.simulation.${completionGateRef}.2`,
+      completionGateRef,
+      sourceObservationRef: `observation.scheduler.simulation.completion.${completionGateRef}.2`,
+      sourceObservationHash: semanticHash({ completionGateRef, state: 'COMPLETED', observedAt: CANCEL_AT }),
+      observedBeforeState: node.state,
+      observedAfterState: 'COMPLETED',
+      result: 'PASSED'
+    })),
+    observedBeforeState: node.state,
+    observedAfterState: 'COMPLETED',
     returnRouteRef: node.returnRouteRef,
-    completedAt: CANCEL_AT,
-    currentness: 'CURRENT',
-    lifecycle: 'ACTIVE',
-    state: 'COMPLETED'
-  });
+    formedAt: RESUME_FORMED,
+    observedAt: CANCEL_AT,
+    expiresAt: RESUME_EXPIRES,
+    selfCertified: false
+  };
   const completed = scheduler.completeActive({
-    completionReceipt,
-    currentNodeFingerprint: node.semanticFingerprint,
-    expectedTransitionRef: node.expectedTransitionRef,
-    completionGateRefs: node.completionGateRefs,
-    returnRouteRef: node.returnRouteRef,
+    graph,
+    intentRegistry: registry,
+    trustSnapshot,
+    registeredProcessRefs: bundle.factory.processes.map((item) => item.processRef),
+    registeredRoleRefs: bundle.blueprint.roles.map((item) => item.roleRef),
+    completionEvidence,
+    completionReceiptRef: 'receipt.scheduler.simulation.completion.2',
     releaseReceiptRef: 'release.scheduler.simulation.complete.2',
     completedAt: CANCEL_AT
   });
   if (!completed.changed || scheduler.aggregate.phase !== 'COMPLETED' || scheduler.projections.health.value.state === 'CLEAR') {
     throw new Error('simulation normal completion did not close leases distinctly');
   }
+  journeyStates.push('WORKGRAPH_COMPLETION_VERIFIED');
+  journeyStates.push('DEPENDENT_READY_PARENT_CONVERGENCE_PROVEN');
   journeyStates.push('COMPLETED_CLOSED');
 
   const cancellationRelay = new ToolResultRelay(null, { schedulerRegistry });
@@ -600,9 +680,28 @@ export function runSchedulerSimulation({
     toolCallFingerprint: toolCall.semanticFingerprint,
     observationFingerprint: accepted.observation.semanticFingerprint,
     checkpointFingerprint: checkpointed.checkpoint.semanticFingerprint,
+    heldToolDispositionFingerprint: resumed.heldToolDisposition.receipt.semanticFingerprint,
+    heldToolAuthorizationFingerprint: resumed.heldToolDisposition.authorization.semanticFingerprint,
+    completionVerificationFingerprint: completed.completionVerification.semanticFingerprint,
+    workgraphTransitionFingerprint: completed.canonicalWorkgraphTransition.semanticFingerprint,
     completionFingerprint: completed.completionReceipt.semanticFingerprint,
     returnRouteFingerprint: completed.returnRouteReceipt.semanticFingerprint,
     successorAuthorizationFingerprint: resumed.successorContextAuthorization.semanticFingerprint,
+    workgraphConvergenceProof: {
+      priorNodeState: node.state,
+      finalNodeState: completed.workgraph.nodes.find((item) => item.workNodeRef === node.workNodeRef).state,
+      canonicalTransitionRef: completed.canonicalWorkgraphTransition.transitionRef,
+      canonicalReceiptRef: completed.completionReceipt.receiptRef,
+      dependentReadyRefs: completed.dependentReadyRefs,
+      parentConvergenceReadyRefs: completed.parentConvergenceReadyRefs
+    },
+    relayReplayProof: {
+      registeredStateMachineRef: schedulerRegistry.relayStateMachine.policyRef,
+      heldPriorState: 'HELD',
+      disposition: resumed.heldToolDisposition.receipt.action,
+      derivedTerminalState: relay.snapshot.entries.find((item) => item.toolCallRef === heldToolCall.toolCallRef).state,
+      successorToolCallRef: resumed.heldToolDisposition.successorCall.toolCallRef
+    },
     separateCancellationFingerprint: cancelled.cancellationReceipt.semanticFingerprint,
     separateCancellationProof: {
       phase: cancellationScheduler.aggregate.phase,

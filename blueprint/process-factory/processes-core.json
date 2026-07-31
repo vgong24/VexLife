@@ -1049,7 +1049,7 @@
   {
     "processRef": "process.vexlife.intent.scheduler-checkpoint-resume",
     "processVersion": 1,
-    "purpose": "Complete normally or pause at a scheduler-derived safe checkpoint, transactionally transition exactly six active leases with one explicit lifecycle, and resume preserved continuations through fresh exact admission.",
+    "purpose": "Pause at a scheduler-derived safe checkpoint, transactionally transition exactly six active leases, require one scheduler-owned held-call disposition before resumed RUNNING, or complete through an external verifier and canonical Workgraph reducer.",
     "applicabilityRules": [
       "one active worker lease exists or one preserved checkpoint is selected"
     ],
@@ -1058,7 +1058,8 @@
       "graphFingerprint",
       "schedulerGeneration",
       "nextSafeAction",
-      "sourceHashBindings"
+      "sourceHashBindings",
+      "completionVerificationReceipt"
     ],
     "optionalInputs": [
       "pendingToolCallRef",
@@ -1067,17 +1068,20 @@
     "sourceResolutionRules": [
       "resolve exact checkpoint and immutable release receipts",
       "revalidate paired source refs and hashes",
-      "resolve exact node completion gates, expected transition and return route"
+      "resolve exact node completion gates, expected transition and return route",
+      "resolve registered external verifier source, formation and current gate-result receipts"
     ],
     "preconditions": [
       "pause occurs only after lastCompletedStep",
       "resume generation advances",
-      "no prior lease remains active"
+      "no prior lease remains active",
+      "a checkpoint carrying a held call has exactly one scheduler disposition before RUNNING"
     ],
     "steps": [
       "record-safe-checkpoint",
       "transactionally-release-worker-context-resource-occupancy-capability-effect-and-admission",
-      "complete-with-one-current-receipt-or-preserve-preempted-continuation",
+      "verify-external-gate-results-and-reduce-workgraph-running-verifying-completed-with-one-intent-receipt",
+      "commit-resume-reissue-supersede-or-close-held-call-through-scheduler-aggregate",
       "revalidate-graph-trust-resource-capability-effect-source",
       "re-admit-and-select-fresh-generation-or-route-recovery"
     ],
@@ -1122,13 +1126,15 @@
       "test.intent-scheduler.cancellation-lineage",
       "test.intent-scheduler.normal-completion",
       "test.intent-scheduler.preemption-continuation",
-      "test.intent-scheduler.checkpoint-exact-release-set"
+      "test.intent-scheduler.checkpoint-exact-release-set",
+      "test.intent-scheduler.external-completion-verifier",
+      "test.intent-scheduler.workgraph-completion-convergence"
     ]
   },
   {
     "processRef": "process.vexlife.intent.scheduler-tool-relay",
     "processVersion": 1,
-    "purpose": "Resolve one canonical typed mock tool/effect/schema/executor contract, durably restore and validate its exact history, transition held calls through explicit continuation actions, and accept one bounded result for scheduler-authorized reinjection.",
+    "purpose": "Resolve one canonical typed mock tool/effect/schema/executor contract, replay its registered transition graph from PENDING to derive current state, accept scheduler-owned held-call dispositions with exact fresh lease lineage, and route one bounded result for authorized reinjection.",
     "applicabilityRules": [
       "one active context lease and exact pending mock tool call exist"
     ],
@@ -1141,7 +1147,8 @@
       "argumentSchemaRef",
       "resultSchemaRef",
       "executorRef",
-      "schedulerGeneration"
+      "schedulerGeneration",
+      "schedulerInstanceRef"
     ],
     "optionalInputs": [
       "artifactRefs"
@@ -1154,13 +1161,15 @@
     "preconditions": [
       "tool is deterministic fake or mock",
       "result contract and timeout are explicit",
-      "durable relay state has no accepted, reinjected, cancelled or timed-out duplicate"
+      "durable relay state has no accepted, reinjected, cancelled or timed-out duplicate",
+      "supplied relay state exactly equals replay-derived state"
     ],
     "steps": [
       "validate-typed-call-and-leases",
       "durably-register-one-pending-call",
-      "restore-and-revalidate-ledger-call-observation-and-transition-fingerprints",
-      "resume-reissue-supersede-or-close-held-call-against-successor-lease",
+      "restore-and-replay-registered-relay-transition-graph-from-pending",
+      "derive-current-state-and-reject-terminal-reversal-duplicate-conflict-or-out-of-order-history",
+      "scheduler-commits-resume-reissue-supersede-or-close-before-running-against-exact-fresh-leases",
       "match-result-schema-node-tool-effect-context-generation",
       "close-cancelled-or-expired-call",
       "reinject-one-bounded-observation-to-origin-or-authorized-successor"
@@ -1200,7 +1209,8 @@
       "test.intent-scheduler.tool-lease-boundary",
       "test.intent-scheduler.tool-result-rejection",
       "test.intent-scheduler.tool-result-reinjection",
-      "test.intent-scheduler.durable-held-tool"
+      "test.intent-scheduler.durable-held-tool",
+      "test.intent-scheduler.relay-replay-state-machine"
     ]
   },
   {

@@ -91,6 +91,16 @@
       "policyRef": "policy.intent-scheduler.mock-tool-effect",
       "policyKind": "DETERMINISTIC_MOCK_EFFECT_ONLY",
       "sourceField": "toolEffectPolicy"
+    },
+    {
+      "policyRef": "policy.intent-scheduler.relay-state-machine",
+      "policyKind": "REPLAY_DERIVED_RELAY_STATE",
+      "sourceField": "relayStateMachine"
+    },
+    {
+      "policyRef": "policy.intent-scheduler.held-tool-replacement",
+      "policyKind": "SCHEDULER_OWNED_HELD_TOOL_REPLACEMENT",
+      "sourceField": "heldToolReplacementPolicies"
     }
   ],
   "requiredFieldContracts": [
@@ -128,6 +138,16 @@
       "contractRef": "contract.intent-scheduler.tool-result-match-fields",
       "contractKind": "MOCK_TOOL_RESULT_MATCH",
       "sourceField": "toolResultMatchFields"
+    },
+    {
+      "contractRef": "contract.intent-scheduler.completion-verifier-currentness",
+      "contractKind": "EXTERNALLY_VERIFIED_COMPLETION",
+      "sourceField": "completionVerificationRequiredFields"
+    },
+    {
+      "contractRef": "contract.intent-scheduler.relay-transition-replay",
+      "contractKind": "REPLAYABLE_RELAY_TRANSITION",
+      "sourceField": "relayTransitionReceiptRequiredFields"
     }
   ],
   "admissionRequiredFields": [
@@ -276,6 +296,7 @@
   ],
   "toolCallRequiredFields": [
     "toolCallRef",
+    "schedulerInstanceRef",
     "workNodeRef",
     "workerRef",
     "workerLeaseRef",
@@ -288,6 +309,7 @@
     "effectRef",
     "argumentSchemaRef",
     "argumentHash",
+    "semanticPurposeFingerprint",
     "capabilityLeaseRef",
     "capabilityLeaseFingerprint",
     "effectLeaseRef",
@@ -326,6 +348,95 @@
     "sourceEvidenceRef",
     "sourceEvidenceHash",
     "schemaRef"
+  ],
+  "completionVerificationRequiredFields": [
+    "verificationReceiptRef",
+    "contractRef",
+    "verifierRef",
+    "verifierSourceRef",
+    "verifierSourceHash",
+    "formationRef",
+    "workNodeRef",
+    "nodeFingerprint",
+    "graphRef",
+    "graphFingerprint",
+    "runtimeSnapshotFingerprint",
+    "schedulerInstanceRef",
+    "schedulerGeneration",
+    "expectedTransitionRef",
+    "completionGateRefs",
+    "gateResultReceipts",
+    "observedBeforeState",
+    "observedAfterState",
+    "returnRouteRef",
+    "formedAt",
+    "observedAt",
+    "expiresAt",
+    "currentness",
+    "selfCertified",
+    "semanticFingerprint"
+  ],
+  "relayTransitionReceiptRequiredFields": [
+    "receiptRef",
+    "toolCallRef",
+    "priorState",
+    "nextState",
+    "sequence",
+    "currentness",
+    "sourceRef",
+    "sourceHash",
+    "formationRef",
+    "transitionedAt",
+    "semanticFingerprint"
+  ],
+  "completionVerifierContract": {
+    "contractRef": "contract.intent-scheduler.completion-verifier-currentness",
+    "verifierRef": "verifier.intent-scheduler.deterministic-fake",
+    "sourceRef": "source.intent-scheduler.completion-verifier.deterministic-fake",
+    "sourceHash": "603e5175165096692f76c48d2c8ab6be128b3e147c7b211cfe388b783db71551",
+    "formationRef": "formation.intent-scheduler.completion-verifier.v1",
+    "evidenceClass": "DETERMINISTIC_FAKE_EXTERNAL_VERIFIER",
+    "sourceDescriptor": {
+      "sourceRef": "source.intent-scheduler.completion-verifier.deterministic-fake",
+      "sourceClass": "DETERMINISTIC_FAKE_EXTERNAL_VERIFIER",
+      "implementationPath": "src/core/intent-completion-verifier.mjs",
+      "externalEffectsExecuted": false
+    },
+    "activeWindowRule": "formedAt <= observedAt < expiresAt",
+    "selfCertificationAllowed": false
+  },
+  "relayStateMachine": {
+    "policyRef": "policy.intent-scheduler.relay-state-machine",
+    "initialState": "PENDING",
+    "terminalStates": [
+      "REINJECTED",
+      "CLOSED"
+    ],
+    "allowedTransitions": {
+      "PENDING": [
+        "HELD",
+        "ACCEPTED",
+        "CLOSED"
+      ],
+      "HELD": [
+        "CLOSED"
+      ],
+      "ACCEPTED": [
+        "REINJECTED",
+        "CLOSED"
+      ],
+      "REINJECTED": [],
+      "CLOSED": []
+    }
+  },
+  "heldToolReplacementPolicies": [
+    {
+      "replacementPolicyRef": "policy.intent-scheduler.held-tool-replacement",
+      "allowedReasonRefs": [
+        "reason.intent-scheduler.capability-replacement",
+        "reason.intent-scheduler.context-replacement"
+      ]
+    }
   ],
   "runtimeTrustContract": {
     "contractRef": "contract.intent-scheduler.runtime-trust-clock",
@@ -420,8 +531,11 @@
       "MOCK_TOOL_RESULT_ACCEPTED",
       "CHECKPOINT_RELEASED",
       "FRESH_RESOURCE_OBSERVED",
+      "HELD_TOOL_DISPOSITION_COMMITTED",
       "FRESH_GENERATION_RESUMED",
       "OBSERVATION_REINJECTED_ONCE",
+      "WORKGRAPH_COMPLETION_VERIFIED",
+      "DEPENDENT_READY_PARENT_CONVERGENCE_PROVEN",
       "COMPLETED_CLOSED"
     ],
     "externalEffectsExecuted": false
@@ -477,7 +591,10 @@
     "test.intent-scheduler.checkpoint-exact-release-set",
     "test.intent-scheduler.durable-held-tool",
     "test.intent-scheduler.live-clock",
-    "test.intent-scheduler.safe-receipt-path"
+    "test.intent-scheduler.safe-receipt-path",
+    "test.intent-scheduler.external-completion-verifier",
+    "test.intent-scheduler.workgraph-completion-convergence",
+    "test.intent-scheduler.relay-replay-state-machine"
   ],
   "successorBoundaries": [
     "Intent Orchestration 3/3 Burden Release and Continuity Evolution Router is registration-only and held.",

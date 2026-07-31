@@ -270,7 +270,7 @@
       "checkRef": "check.intent-scheduler",
       "command": "npm run scheduler:check",
       "category": "ARCHITECTURE",
-      "purpose": "Canonical scheduler composition, live-clock currentness, exact normal completion, preserved preemption continuation, six-lease checkpoint release, durable held-tool relay, scheduler-authorized successor context, safe receipt paths and the deterministic no-effect lifecycle receipt validate.",
+      "purpose": "Canonical scheduler composition, live-clock currentness, source-managed external completion verification with Workgraph convergence, preserved preemption continuation, six-lease checkpoint release, scheduler-owned held-tool disposition, replay-derived relay state, scheduler-authorized successor context, safe receipt paths and the deterministic no-effect lifecycle receipt validate.",
       "lensRefs": [
         "lens.vexlife.intent-and-placement",
         "lens.vexlife.identity-lattice",

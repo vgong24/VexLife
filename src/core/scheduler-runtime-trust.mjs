@@ -151,6 +151,7 @@ const REQUIRED_FIELD_SETS = {
   ],
   toolCallRequiredFields: [
     'toolCallRef',
+    'schedulerInstanceRef',
     'workNodeRef',
     'workerRef',
     'workerLeaseRef',
@@ -163,6 +164,7 @@ const REQUIRED_FIELD_SETS = {
     'effectRef',
     'argumentSchemaRef',
     'argumentHash',
+    'semanticPurposeFingerprint',
     'capabilityLeaseRef',
     'capabilityLeaseFingerprint',
     'effectLeaseRef',
@@ -201,6 +203,46 @@ const REQUIRED_FIELD_SETS = {
     'sourceEvidenceRef',
     'sourceEvidenceHash',
     'schemaRef'
+  ],
+  completionVerificationRequiredFields: [
+    'verificationReceiptRef',
+    'contractRef',
+    'verifierRef',
+    'verifierSourceRef',
+    'verifierSourceHash',
+    'formationRef',
+    'workNodeRef',
+    'nodeFingerprint',
+    'graphRef',
+    'graphFingerprint',
+    'runtimeSnapshotFingerprint',
+    'schedulerInstanceRef',
+    'schedulerGeneration',
+    'expectedTransitionRef',
+    'completionGateRefs',
+    'gateResultReceipts',
+    'observedBeforeState',
+    'observedAfterState',
+    'returnRouteRef',
+    'formedAt',
+    'observedAt',
+    'expiresAt',
+    'currentness',
+    'selfCertified',
+    'semanticFingerprint'
+  ],
+  relayTransitionReceiptRequiredFields: [
+    'receiptRef',
+    'toolCallRef',
+    'priorState',
+    'nextState',
+    'sequence',
+    'currentness',
+    'sourceRef',
+    'sourceHash',
+    'formationRef',
+    'transitionedAt',
+    'semanticFingerprint'
   ]
 };
 
@@ -352,6 +394,32 @@ export function validateIntentSchedulerRegistry(registry) {
   if (registry?.resourceUnknownPolicy !== 'UNKNOWN_IS_NOT_SPARE_CAPACITY') {
     errors.push('unknown resource state must fail closed');
   }
+  const completion = registry?.completionVerifierContract;
+  if (completion?.contractRef !== 'contract.intent-scheduler.completion-verifier-currentness' ||
+      completion?.evidenceClass !== 'DETERMINISTIC_FAKE_EXTERNAL_VERIFIER' ||
+      completion?.selfCertificationAllowed !== false ||
+      completion?.activeWindowRule !== 'formedAt <= observedAt < expiresAt') {
+    errors.push('completion verifier contract is not the registered deterministic external verifier');
+  }
+  if (completion?.sourceDescriptor && completion.sourceHash !== semanticHash(completion.sourceDescriptor)) {
+    errors.push('completion verifier source hash mismatch');
+  }
+  const relayMachine = registry?.relayStateMachine;
+  const expectedRelayMachine = {
+    PENDING: ['HELD', 'ACCEPTED', 'CLOSED'],
+    HELD: ['CLOSED'],
+    ACCEPTED: ['REINJECTED', 'CLOSED'],
+    REINJECTED: [],
+    CLOSED: []
+  };
+  if (relayMachine?.initialState !== 'PENDING' ||
+      JSON.stringify(relayMachine?.terminalStates) !== JSON.stringify(['REINJECTED', 'CLOSED']) ||
+      JSON.stringify(relayMachine?.allowedTransitions) !== JSON.stringify(expectedRelayMachine)) {
+    errors.push('relay state machine does not match the registered replay graph');
+  }
+  if (!(registry?.heldToolReplacementPolicies ?? []).some((item) =>
+    item.replacementPolicyRef === 'policy.intent-scheduler.held-tool-replacement' && item.allowedReasonRefs?.length
+  )) errors.push('held tool replacement policy is missing');
   return {
     ok: errors.length === 0,
     errors,
@@ -594,6 +662,10 @@ export function validateIntegratedSchedulerSimulationReceipt(receipt, {
     'toolCallFingerprint',
     'observationFingerprint',
     'checkpointFingerprint',
+    'heldToolDispositionFingerprint',
+    'heldToolAuthorizationFingerprint',
+    'completionVerificationFingerprint',
+    'workgraphTransitionFingerprint',
     'completionFingerprint',
     'returnRouteFingerprint',
     'successorAuthorizationFingerprint',
@@ -602,6 +674,19 @@ export function validateIntegratedSchedulerSimulationReceipt(receipt, {
     'finalAggregateFingerprint'
   ]) {
     if (!HASH_PATTERN.test(receipt?.[field] ?? '')) errors.push(`simulation receipt missing ${field}`);
+  }
+  if (receipt?.workgraphConvergenceProof?.priorNodeState === receipt?.workgraphConvergenceProof?.finalNodeState ||
+      receipt?.workgraphConvergenceProof?.finalNodeState !== 'COMPLETED' ||
+      !receipt?.workgraphConvergenceProof?.canonicalTransitionRef ||
+      !receipt?.workgraphConvergenceProof?.canonicalReceiptRef ||
+      receipt?.workgraphConvergenceProof?.dependentReadyRefs?.length !== 1 ||
+      receipt?.workgraphConvergenceProof?.parentConvergenceReadyRefs?.length !== 1) {
+    errors.push('simulation receipt Workgraph convergence proof mismatch');
+  }
+  if (receipt?.relayReplayProof?.registeredStateMachineRef !== schedulerRegistry?.relayStateMachine?.policyRef ||
+      receipt?.relayReplayProof?.heldPriorState !== 'HELD' ||
+      receipt?.relayReplayProof?.derivedTerminalState !== 'CLOSED') {
+    errors.push('simulation receipt held relay replay proof mismatch');
   }
   if (receipt?.separateCancellationProof?.phase !== 'CANCELLED' ||
       JSON.stringify(receipt?.separateCancellationProof?.leaseLifecycle) !== JSON.stringify(['CANCELLED'])) {

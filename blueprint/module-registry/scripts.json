@@ -487,11 +487,12 @@
   {
     "moduleRef": "module.vexlife.script.scheduler-simulate",
     "path": "scripts/scheduler-simulate.mjs",
-    "role": "Runs the deterministic fake-model/mock-tool lifecycle through checkpoint resume, scheduler-authorized reinjection and normal completion, with cancellation separate and output confined to the safe generated receipt area.",
+    "role": "Runs the deterministic fake-model/mock-tool lifecycle through scheduler-owned held-call disposition, replay-derived relay state, checkpoint resume, once-only reinjection, external completion verification and authoritative Workgraph convergence, with cancellation separate.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
       "module.vexlife.core.intent-scheduler",
+      "module.vexlife.core.intent-completion-verifier",
       "module.vexlife.core.scheduler-runtime-trust",
       "module.vexlife.core.tool-result-relay"
     ],
@@ -502,7 +503,8 @@
       "npm run scheduler:simulate"
     ],
     "tests": [
-      "test/intent-scheduler.test.mjs"
+      "test/intent-scheduler.test.mjs",
+      "test/intent-completion-verifier.test.mjs"
     ],
     "changeMap": [
       "docs/INTENT-ORCHESTRATION-SCHEDULER.md"

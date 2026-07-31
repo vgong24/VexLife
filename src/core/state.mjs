@@ -53,6 +53,7 @@ export function createInitialSchedulerAggregate() {
     observedClock: null,
     checkpoints: [],
     continuations: [],
+    heldToolDispositions: [],
     terminalReceipts: [],
     fairnessLedger: {},
     pendingPreemption: null,
@@ -134,6 +135,8 @@ export function reduceSchedulerAggregate(current, event) {
       if (event.checkpointRef) {
         next.continuations = next.continuations.filter((item) => item.checkpointRef !== event.checkpointRef);
       }
+      if (event.heldToolDisposition) next.heldToolDispositions.push(clone(event.heldToolDisposition));
+      if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
       if (event.observedClock) next.observedClock = clone(event.observedClock);
       break;
     case 'COMPLETED':
@@ -141,7 +144,12 @@ export function reduceSchedulerAggregate(current, event) {
       next.active = null;
       next.queue = clone(event.queue);
       for (const lease of Object.values(event.transitionedLeases)) next.leaseLedger[lease.leaseRef] = clone(lease);
-      next.terminalReceipts.push(clone(event.completionReceipt), clone(event.returnRouteReceipt));
+      next.terminalReceipts.push(
+        clone(event.completionVerification),
+        clone(event.workgraphTransition),
+        clone(event.completionReceipt),
+        clone(event.returnRouteReceipt)
+      );
       if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
       if (event.observedClock) next.observedClock = clone(event.observedClock);
       break;

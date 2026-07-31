@@ -34,9 +34,10 @@ state.tool-result-relay  service.tool-result-relay
 ```
 
 `src/core/state.mjs` owns one canonical scheduler aggregate containing queue,
-generation, observed clock, fairness, active work, normal completion, preempted
-continuations, every lease transition, checkpoints, cancellation and the
-durable relay ledger. Queue, Terrain, Health and Guide are
+generation, observed clock, fairness, active work, externally verified
+Workgraph completion, preempted continuations, scheduler-owned held-tool
+dispositions, every lease transition, checkpoints, cancellation and the
+durable replayable relay ledger. Queue, Terrain, Health and Guide are
 selectors over that aggregate. They do not keep duplicate scheduler truth.
 Equal semantic output produces no new revision.
 
@@ -129,11 +130,22 @@ Resume revalidates the graph, trust, changed-but-sufficient external resource
 evidence, capability and effect bindings, paired source hashes, and an advanced
 scheduler generation. Every fresh lease is formed through normal admission and
 selection; prior leases cannot be replayed. Drift becomes `HELD_UNKNOWN` or
-`BLOCKED`. `completeActive` separately requires the exact node fingerprint,
-expected transition, completion gates, one current completion receipt and
-return route; it emits completion, six lease-transition and return-route
-receipts and projects `COMPLETED/CLOSED`. Cancellation remains a distinct
-alternative transition.
+`BLOCKED`. A checkpoint carrying a held tool call cannot return `RUNNING`
+until the scheduler has atomically committed exactly one `RESUME`, `REISSUE`,
+`SUPERSEDE`, or `CLOSE` disposition against the new runtime and every fresh
+worker/context/resource/capability/effect lease.
+
+`completeActive` accepts no caller-authored completion receipt. The registered
+deterministic external verifier forms current gate-result receipts bound to its
+source/formation identity and hash, the exact before/after node state, node and
+graph fingerprints, runtime snapshot, scheduler instance/generation, expected
+transition, and return route. Self-certified, unchanged, stale, wrong-gate,
+wrong-source, duplicate, or conflicting evidence fails closed. Accepted
+evidence is consumed by the canonical reducer, which records
+`READY -> RUNNING -> VERIFYING -> COMPLETED`, appends the exact current Intent
+receipt, readies exact-receipt dependents, and makes eligible parent convergence
+visible. Only then are six leases released and `COMPLETED/CLOSED` projected.
+Cancellation remains a distinct alternative transition.
 
 ## Typed mock tool boundary
 
@@ -151,10 +163,17 @@ timeout + cancellation policy
 Wrong-context, wrong-effect, stale, duplicate, before-proposal, late,
 schema-mismatched, generation-mismatched, post-restart replayed or
 cancellation-racing results fail closed. Restore always recomputes the whole
-ledger and validates every call, observation, canonical tool/effect/schema/
-executor identity, transition receipt and legal state progression. Held calls
-support explicit `RESUME`, `REISSUE`, `SUPERSEDE` and `CLOSE` actions bound to
-their checkpoint and a fresh successor context lease. Successor reinjection is
+ledger and replays the registered state machine from `PENDING`; stored
+`entry.state` is accepted only when it equals the replayed state. Each receipt
+carries prior/next state, sequence/currentness and source lineage. Terminal
+reversal, close-then-accept/reinject, hold-after-close, duplicate/conflicting
+terminal receipts, out-of-order history and supplied/replayed mismatch fail
+closed. Held calls support `RESUME`, `REISSUE`, `SUPERSEDE` and `CLOSE` only
+through the scheduler aggregate, bound to the checkpoint, scheduler instance,
+runtime, generation/token, and exact fresh worker/context/resource/capability/
+effect leases. `RESUME` and `REISSUE` preserve semantic purpose and retry
+lineage; `SUPERSEDE` requires a registered replacement policy and reason;
+`CLOSE` has no successor. Successor reinjection is
 once-only and requires a scheduler-issued authorization receipt binding the
 prior context/observation and every fresh runtime/lease/generation identity.
 
@@ -169,15 +188,18 @@ npm run scheduler:check
 npm run scheduler:simulate
 npm run scheduler:status -- --fixture <safe-repository-relative-json-path>
 node --test test/intent-scheduler.test.mjs
+node --test test/intent-completion-verifier.test.mjs
 npm run pr-ready
 npm run health:check
 ```
 
 `scheduler:simulate` performs the complete success journey: validated graph,
 external simulated runtime evidence, admission, every lease, canonical mock
-tool call/result, checkpoint and transactional release,
-changed-but-sufficient resource evidence, fresh-generation resume,
-scheduler-authorized once-only reinjection, and normal completion. A separate
+tool call/result, checkpoint and transactional release, one scheduler-owned
+held-call disposition, changed-but-sufficient resource evidence,
+fresh-generation resume, scheduler-authorized once-only reinjection, external
+completion verification, authoritative Workgraph completion, dependent
+readiness, parent convergence eligibility, and normal close. A separate
 alternative journey proves cancellation. All `--receipt` arguments for this
 command, `pr-ready`, and `health-check` are confined to safe repository-relative
 `generated/health/**` paths and reject absolute, traversal, symlink and
@@ -187,13 +209,15 @@ candidate/checkout/base, source tree, Blueprint, scheduler registry and all
 lifecycle fingerprints. `pr-ready` and `health:check` independently reject a
 missing, stale, malformed, self-certified, effectful or orphaned receipt.
 
-The S0–S22 tests cover zero admission for non-green graphs, exact receipts,
+The S0–S25 tests cover zero admission for non-green graphs, exact receipts,
 single-worker exclusion, visible logical branches, checkpoint-only preemption,
 fairness, resource failure, context budgets/no-ops, checkpoint/resume,
-normal completion, full preemption continuation, derived six-lease checkpoint
-lineage, durable held-tool restore/actions, scheduler-issued successor context,
-live-clock/tool-time progression, safe receipt paths, cancellation lineage,
-bounded projections, and full registration.
+externally verified completion, full preemption continuation, derived six-lease
+checkpoint lineage, scheduler-owned held-tool restore/actions, replay-derived
+relay state, scheduler-issued successor context, authoritative Workgraph
+convergence, live-clock/tool-time progression, safe receipt paths, cancellation
+lineage, bounded projections, and full registration. The dedicated verifier
+and replay cases extend the registered suite through S25.
 
 ## Held successor boundary
 

@@ -27,6 +27,11 @@ import {
   reduceSchedulerAggregate
 } from './state.mjs';
 import { validateIntentWorkgraph } from './intent-validation.mjs';
+import {
+  DeterministicFakeCompletionVerifier,
+  reduceVerifiedWorkCompletion
+} from './intent-completion-verifier.mjs';
+import { createToolCall } from './tool-result-relay.mjs';
 import { semanticHash } from './utils.mjs';
 
 const CLASS_ORDER = new Map([
@@ -239,41 +244,6 @@ export function createSchedulerOccupancy(input, {
     leaseRef: input.occupancyRef,
     ...clone(input)
   });
-}
-
-export function createWorkCompletionReceipt(input) {
-  const required = [
-    'completionReceiptRef',
-    'workNodeRef',
-    'nodeFingerprint',
-    'graphFingerprint',
-    'runtimeSnapshotFingerprint',
-    'schedulerGeneration',
-    'expectedTransitionRef',
-    'completionGateRefs',
-    'returnRouteRef',
-    'completedAt',
-    'currentness',
-    'lifecycle',
-    'state'
-  ];
-  const missing = missingFields(input, required);
-  if (missing.length) throw new Error(`work completion receipt missing required fields: ${missing.join(', ')}`);
-  if (input.currentness !== 'CURRENT' || input.lifecycle !== 'ACTIVE' || input.state !== 'COMPLETED') {
-    throw new Error('work completion receipt must be current ACTIVE completion evidence');
-  }
-  parseCanonicalTimestamp(input.completedAt, 'work completion completedAt');
-  const receipt = {
-    schemaVersion: 'vexlife.intent-work-completion-receipt/v1',
-    ...clone(input),
-    completionGateRefs: canonicalRefs(input.completionGateRefs)
-  };
-  delete receipt.semanticFingerprint;
-  receipt.semanticFingerprint = semanticHash(receipt);
-  if (input.semanticFingerprint && input.semanticFingerprint !== receipt.semanticFingerprint) {
-    throw new Error('work completion receipt semantic fingerprint mismatch');
-  }
-  return freeze(receipt);
 }
 
 export function schedulingClass(node) {
@@ -702,6 +672,8 @@ export class SingleWorkerIntentScheduler {
   #schedulerRegistry;
   #authority;
   #relay;
+  #relayCapability;
+  #completionVerifier;
   #state;
 
   constructor({
@@ -709,7 +681,8 @@ export class SingleWorkerIntentScheduler {
     schedulerInstanceRef,
     schedulerRegistry,
     runtimeAuthority = null,
-    toolRelay = null
+    toolRelay = null,
+    completionVerifier = null
   }) {
     if (!workerRef) throw new Error('single-worker scheduler requires workerRef');
     if (!schedulerInstanceRef) throw new Error('single-worker scheduler requires schedulerInstanceRef');
@@ -721,6 +694,9 @@ export class SingleWorkerIntentScheduler {
       sourceRef: schedulerRegistry.runtimeSourceIdentities[0].sourceRef
     });
     this.#relay = toolRelay;
+    this.#relayCapability = {};
+    if (this.#relay) this.#relay.bindSchedulerOwnership(this.#instanceRef, this.#relayCapability);
+    this.#completionVerifier = completionVerifier ?? new DeterministicFakeCompletionVerifier({ schedulerRegistry });
     this.#state = createIntentSchedulerState();
   }
 
@@ -1155,13 +1131,97 @@ export class SingleWorkerIntentScheduler {
     });
   }
 
+  #applyHeldToolDisposition(checkpoint, disposition, formed, observedAt) {
+    const entry = this.#relay?.snapshot.entries.find((item) => item.toolCallRef === checkpoint.pendingToolCallRef);
+    if (!entry || entry.state !== 'HELD') throw new Error('checkpoint held tool call is not current in the relay aggregate');
+    if (!['RESUME', 'REISSUE', 'SUPERSEDE', 'CLOSE'].includes(disposition?.action)) {
+      throw new Error('checkpoint carrying a held tool call requires one scheduler disposition before RUNNING');
+    }
+    const action = disposition.action;
+    const leases = formed.leases;
+    const authorization = finalized({
+      schemaVersion: 'vexlife.intent-held-tool-scheduler-authorization/v1',
+      authorizationRef: disposition.authorizationRef,
+      schedulerInstanceRef: this.#instanceRef,
+      checkpointRef: checkpoint.checkpointRef,
+      priorToolCallRef: entry.toolCallRef,
+      workNodeRef: formed.active.workNodeRef,
+      action,
+      runtimeSnapshotFingerprint: formed.runtimeTrustSnapshot.semanticFingerprint,
+      schedulerGeneration: formed.active.schedulerGeneration,
+      cancellationTokenRef: formed.active.cancellationTokenRef,
+      workerLeaseRef: leases.worker.leaseRef,
+      workerLeaseFingerprint: leases.worker.semanticFingerprint,
+      contextLeaseRef: leases.context.leaseRef,
+      contextLeaseFingerprint: leases.context.semanticFingerprint,
+      resourceLeaseRef: leases.resource.leaseRef,
+      resourceLeaseFingerprint: leases.resource.semanticFingerprint,
+      capabilityLeaseRef: leases.capability.leaseRef,
+      capabilityLeaseFingerprint: leases.capability.semanticFingerprint,
+      effectLeaseRef: leases.effect.leaseRef,
+      effectLeaseFingerprint: leases.effect.semanticFingerprint,
+      replacementPolicyRef: disposition.replacementPolicyRef ?? null,
+      replacementReasonRef: disposition.replacementReasonRef ?? null,
+      formedAt: observedAt
+    });
+    let successorCall = null;
+    if (action !== 'CLOSE') {
+      const prior = entry.call;
+      const replacement = disposition.successorCallInput ?? {};
+      const preservesPurpose = ['RESUME', 'REISSUE'].includes(action);
+      successorCall = createToolCall({
+        toolCallRef: replacement.toolCallRef,
+        workNodeRef: formed.active.workNodeRef,
+        toolRef: preservesPurpose ? prior.toolRef : replacement.toolRef,
+        effectRef: preservesPurpose ? prior.effectRef : replacement.effectRef,
+        arguments: preservesPurpose ? prior.arguments : replacement.arguments,
+        schedulerGeneration: formed.active.schedulerGeneration,
+        cancellationTokenRef: formed.active.cancellationTokenRef,
+        sourceEvidenceRef: preservesPurpose ? prior.sourceEvidenceRef : replacement.sourceEvidenceRef,
+        sourceEvidenceHash: preservesPurpose ? prior.sourceEvidenceHash : replacement.sourceEvidenceHash,
+        proposedAt: replacement.proposedAt ?? observedAt,
+        timeoutAt: replacement.timeoutAt,
+        cancellationPolicy: preservesPurpose ? prior.cancellationPolicy : replacement.cancellationPolicy,
+        predecessorToolCallRef: prior.toolCallRef,
+        heldDisposition: action,
+        replacementPolicyRef: action === 'SUPERSEDE' ? disposition.replacementPolicyRef : null,
+        replacementReasonRef: action === 'SUPERSEDE' ? disposition.replacementReasonRef : null
+      }, {
+        contextLease: leases.context,
+        capabilityLease: leases.capability,
+        effectLease: leases.effect,
+        resourceLease: leases.resource,
+        workerLease: leases.worker,
+        runtimeTrustSnapshot: formed.runtimeTrustSnapshot,
+        schedulerRegistry: this.#schedulerRegistry,
+        observedAt
+      });
+    }
+    const transition = this.#relay.transitionHeld(entry.toolCallRef, {
+      action,
+      checkpointRef: checkpoint.checkpointRef,
+      successorCall,
+      schedulerAuthorization: authorization,
+      schedulerCapability: this.#relayCapability,
+      receiptRef: disposition.receiptRef,
+      transitionedAt: observedAt
+    });
+    if (!transition.changed) throw new Error(`held tool scheduler disposition failed: ${transition.reason}`);
+    return freeze({
+      authorization,
+      receipt: transition.receipt,
+      successorCall: transition.successorCall
+    });
+  }
+
   resume(checkpointRef, {
     graph,
     options,
     contextInput,
     sourceBindings,
     completePreemption = false,
-    authorizeObservationRef = null
+    authorizeObservationRef = null,
+    heldToolDisposition = null
   }) {
     const aggregate = this.#state.aggregate.value;
     if (aggregate.active || !['PAUSED', 'CONTINUATION_READY'].includes(aggregate.phase)) {
@@ -1176,12 +1236,20 @@ export class SingleWorkerIntentScheduler {
     if (!checkpoint || checkpoint.currentState !== 'PAUSED_AT_CHECKPOINT') {
       throw new Error('resume requires a current paused checkpoint');
     }
+    if (this.#relay && this.#relay.snapshot.semanticFingerprint !== aggregate.relayLedger.semanticFingerprint) {
+      throw new Error('relay ledger diverged from the scheduler aggregate');
+    }
+    const carriesHeldTool = !completePreemption && checkpoint.pendingToolCallRef !== 'NONE';
+    if (carriesHeldTool && !['RESUME', 'REISSUE', 'SUPERSEDE', 'CLOSE'].includes(heldToolDisposition?.action)) {
+      throw new Error('checkpoint carrying a held tool call requires one scheduler disposition before RUNNING');
+    }
     const generation = options.schedulerGeneration ?? aggregate.generation + 1;
     if (generation <= aggregate.generation) throw new Error('resume scheduler generation must advance');
     const queue = admitIntentSchedulerQueue(graph, {
       ...options,
       schedulerRegistry: this.#schedulerRegistry,
       workerRef: this.#workerRef,
+      schedulerInstanceRef: this.#instanceRef,
       schedulerGeneration: generation,
       fairnessLedger: aggregate.fairnessLedger
     });
@@ -1239,6 +1307,20 @@ export class SingleWorkerIntentScheduler {
       successorContextAuthorization
     });
     if (!formed.admitted) throw new Error(`fresh resume worker lease failed: ${formed.reason}`);
+    let dispositionResult = null;
+    try {
+      if (carriesHeldTool) {
+        dispositionResult = this.#applyHeldToolDisposition(checkpoint, heldToolDisposition, formed, options.observedAt);
+      }
+    } catch (error) {
+      this.#authority.release(formed.leases.worker, {
+        lifecycle: 'CANCELLED',
+        receiptRef: `${heldToolDisposition?.receiptRef ?? checkpoint.checkpointRef}.failed.worker`,
+        transitionedAt: options.observedAt,
+        reason: 'HELD_TOOL_DISPOSITION_REJECTED'
+      });
+      throw error;
+    }
     this.#commit({
       type: 'RESUMED',
       transitionRef: `transition.intent-scheduler.resume.${generation}`,
@@ -1249,6 +1331,8 @@ export class SingleWorkerIntentScheduler {
       runtimeTrustSnapshot: options.runtimeTrustSnapshot,
       fairnessLedger: queue.fairnessLedger,
       leases: formed.leases,
+      heldToolDisposition: dispositionResult,
+      relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,
       observedClock: observedClockReceipt(options.observedAt, `clock.intent-scheduler.resume.${generation}`)
     });
     return {
@@ -1263,7 +1347,8 @@ export class SingleWorkerIntentScheduler {
       effectLease: clone(formed.leases.effect),
       occupancy: clone(formed.leases.occupancy),
       workerLease: clone(formed.leases.worker),
-      successorContextAuthorization: successorContextAuthorization ? clone(successorContextAuthorization) : null
+      successorContextAuthorization: successorContextAuthorization ? clone(successorContextAuthorization) : null,
+      heldToolDisposition: dispositionResult ? clone(dispositionResult) : null
     };
   }
 
@@ -1272,7 +1357,8 @@ export class SingleWorkerIntentScheduler {
     options,
     contextInput,
     sourceBindings,
-    authorizeObservationRef = null
+    authorizeObservationRef = null,
+    heldToolDisposition = null
   }) {
     const continuation = this.#state.aggregate.value.continuations.at(-1);
     if (!continuation) throw new Error('no preempted continuation is ready');
@@ -1281,7 +1367,8 @@ export class SingleWorkerIntentScheduler {
       options,
       contextInput,
       sourceBindings,
-      authorizeObservationRef
+      authorizeObservationRef,
+      heldToolDisposition
     });
     return { ...result, state: 'PREEMPTED_WORK_RESUMED', continuation };
   }
@@ -1302,35 +1389,51 @@ export class SingleWorkerIntentScheduler {
   }
 
   completeActive({
-    completionReceipt,
-    currentNodeFingerprint,
-    expectedTransitionRef,
-    completionGateRefs,
-    returnRouteRef,
+    graph,
+    intentRegistry,
+    trustSnapshot,
+    registeredProcessRefs = intentRegistry?.processRefs ?? [],
+    registeredRoleRefs = [],
+    completionEvidence,
+    completionReceiptRef,
     releaseReceiptRef,
     completedAt
   }) {
     const aggregate = this.#state.aggregate.value;
     if (!aggregate.active) throw new Error('no active worker lease to complete');
     const admission = aggregate.queue.admissionReceipt;
-    const exact = createWorkCompletionReceipt(completionReceipt);
-    requireExactRefs(completionGateRefs, admission.completionGateRefs, 'completion gates');
-    for (const [field, expected] of [
-      ['workNodeRef', aggregate.active.workNodeRef],
-      ['nodeFingerprint', currentNodeFingerprint],
-      ['graphFingerprint', aggregate.active.graphFingerprint],
-      ['runtimeSnapshotFingerprint', aggregate.active.runtimeSnapshotFingerprint],
-      ['schedulerGeneration', aggregate.active.schedulerGeneration],
-      ['expectedTransitionRef', expectedTransitionRef],
-      ['returnRouteRef', returnRouteRef],
-      ['completedAt', completedAt]
-    ]) if (exact[field] !== expected) throw new Error(`completion receipt ${field} mismatch`);
-    if (currentNodeFingerprint !== admission.nodeFingerprint ||
-        expectedTransitionRef !== admission.expectedTransitionRef ||
-        returnRouteRef !== admission.returnRouteRef) {
-      throw new Error('completion evidence does not match current admitted node transition');
+    if (!graph?.semanticFingerprint || graph.semanticFingerprint !== aggregate.active.graphFingerprint ||
+        completionEvidence?.workNodeRef !== aggregate.active.workNodeRef ||
+        completionEvidence?.nodeFingerprint !== admission.nodeFingerprint ||
+        completionEvidence?.expectedTransitionRef !== admission.expectedTransitionRef ||
+        completionEvidence?.returnRouteRef !== admission.returnRouteRef) {
+      throw new Error('completion evidence does not match the exact current admitted Workgraph node');
     }
-    requireExactRefs(exact.completionGateRefs, admission.completionGateRefs, 'completion receipt gates');
+    const completionVerification = this.#completionVerifier.verify({
+      graph,
+      runtimeTrustSnapshot: aggregate.runtimeTrust,
+      schedulerInstanceRef: this.#instanceRef,
+      schedulerGeneration: aggregate.active.schedulerGeneration,
+      evidence: completionEvidence
+    });
+    const workgraphResult = reduceVerifiedWorkCompletion({
+      graph,
+      verification: completionVerification,
+      actorRef: aggregate.runtimeTrust.actorRef,
+      actorRoleRef: aggregate.runtimeTrust.roleRef,
+      completedAt,
+      receiptRef: completionReceiptRef
+    }, {
+      intentRegistry,
+      schedulerRegistry: this.#schedulerRegistry,
+      runtimeTrustSnapshot: aggregate.runtimeTrust,
+      schedulerInstanceRef: this.#instanceRef,
+      schedulerGeneration: aggregate.active.schedulerGeneration,
+      registeredProcessRefs,
+      registeredRoleRefs,
+      trustSnapshot
+    });
+    const exact = workgraphResult.completionReceipt;
     this.#closeUnownedRelayCalls({ releaseReceiptRef, releasedAt: completedAt, reason: 'WORK_COMPLETED' });
     const transitions = this.#transitionActiveLeases({
       releaseReceiptRef,
@@ -1340,13 +1443,18 @@ export class SingleWorkerIntentScheduler {
     });
     const returnRouteReceipt = finalized({
       schemaVersion: 'vexlife.intent-return-route-receipt/v1',
-      returnRouteReceiptRef: `${exact.completionReceiptRef}.return-route`,
-      completionReceiptRef: exact.completionReceiptRef,
+      returnRouteReceiptRef: `${exact.receiptRef}.return-route`,
+      completionReceiptRef: exact.receiptRef,
+      completionVerificationRef: completionVerification.verificationReceiptRef,
+      completionVerificationFingerprint: completionVerification.semanticFingerprint,
+      canonicalWorkgraphTransitionRef: workgraphResult.canonicalTransition.transitionRef,
+      canonicalWorkgraphTransitionFingerprint: workgraphResult.canonicalTransition.semanticFingerprint,
       workNodeRef: exact.workNodeRef,
-      graphFingerprint: exact.graphFingerprint,
-      schedulerGeneration: exact.schedulerGeneration,
-      expectedTransitionRef,
-      returnRouteRef,
+      priorGraphFingerprint: graph.semanticFingerprint,
+      completedGraphFingerprint: workgraphResult.graph.semanticFingerprint,
+      schedulerGeneration: aggregate.active.schedulerGeneration,
+      expectedTransitionRef: admission.expectedTransitionRef,
+      returnRouteRef: admission.returnRouteRef,
       state: 'RETURN_ROUTE_PRESERVED',
       completedAt
     });
@@ -1362,6 +1470,8 @@ export class SingleWorkerIntentScheduler {
       transitionRef: `transition.intent-scheduler.complete.${aggregate.generation}`,
       queue,
       transitionedLeases: transitions.transitionedLeases,
+      completionVerification,
+      workgraphTransition: workgraphResult.canonicalTransition,
       completionReceipt: exact,
       returnRouteReceipt,
       relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,
@@ -1370,7 +1480,13 @@ export class SingleWorkerIntentScheduler {
     return {
       changed: true,
       state: this.#state.aggregate.value.phase,
+      completionVerification: clone(completionVerification),
+      workgraph: clone(workgraphResult.graph),
+      workgraphTransitions: clone(workgraphResult.transitions),
+      canonicalWorkgraphTransition: clone(workgraphResult.canonicalTransition),
       completionReceipt: clone(exact),
+      dependentReadyRefs: clone(workgraphResult.dependentReadyRefs),
+      parentConvergenceReadyRefs: clone(workgraphResult.parentConvergenceReadyRefs),
       returnRouteReceipt: clone(returnRouteReceipt),
       leaseTransitionReceipts: transitions.receipts,
       transitionedLeases: transitions.transitionedLeases,

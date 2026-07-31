@@ -699,6 +699,7 @@
       "module.vexlife.core.scheduler-runtime-trust",
       "module.vexlife.core.context-lease",
         "module.vexlife.core.intent-checkpoint",
+        "module.vexlife.core.intent-completion-verifier",
         "module.vexlife.core.tool-result-relay",
         "module.vexlife.core.intent-scheduler",
         "module.vexlife.script.scheduler-check",
@@ -729,7 +730,10 @@
         "test.intent-scheduler.checkpoint-exact-release-set",
         "test.intent-scheduler.durable-held-tool",
         "test.intent-scheduler.live-clock",
-        "test.intent-scheduler.safe-receipt-path"
+        "test.intent-scheduler.safe-receipt-path",
+        "test.intent-scheduler.external-completion-verifier",
+        "test.intent-scheduler.workgraph-completion-convergence",
+        "test.intent-scheduler.relay-replay-state-machine"
       ],
       "platformRefs": [
         "platform.browser",

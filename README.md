@@ -218,9 +218,11 @@ merge, publication, native-platform, or model authority.
 The shared [Intent Orchestration Scheduler](docs/INTENT-ORCHESTRATION-SCHEDULER.md)
 adds externally current runtime admission, one physical model-worker lease,
 scheduler-owned fairness, transactionally consumed
-context/resource/capability/effect leases, exact normal completion, preserved
-checkpoint-to-fresh-generation preemption continuations, durable held-tool
-relay, scheduler-authorized successor contexts, and live-clock expiry. Logical
+context/resource/capability/effect leases, source-managed external completion
+verification with authoritative Workgraph convergence, preserved
+checkpoint-to-fresh-generation preemption continuations, scheduler-owned
+held-tool dispositions, replay-derived relay state, scheduler-authorized
+successor contexts, and live-clock expiry. Logical
 ready branches remain visible records, while Queue, Terrain, Health and Guide
 derive from one canonical aggregate. Effectful receipt arguments are confined
 to safe `generated/health/**` paths. This contract provisions no real model and

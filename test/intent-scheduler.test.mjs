@@ -16,7 +16,6 @@ import {
   admitIntentSchedulerQueue,
   createCapabilityLease,
   createEffectLease,
-  createWorkCompletionReceipt,
   selectNextAdmittedNode,
   SingleWorkerIntentScheduler,
   WorkerLeaseAuthority
@@ -454,22 +453,34 @@ function exactResult(call, overrides = {}) {
 
 function completionFor({ candidate, active, runtime }, completedAt, overrides = {}) {
   const node = candidate.nodes.find((item) => item.workNodeRef === active.active.workNodeRef);
-  return createWorkCompletionReceipt({
-    completionReceiptRef: `completion.${node.workNodeRef}.${active.active.schedulerGeneration}`,
+  return {
+    verificationReceiptRef: `verification.${node.workNodeRef}.${active.active.schedulerGeneration}`,
     workNodeRef: node.workNodeRef,
     nodeFingerprint: node.semanticFingerprint,
+    graphRef: candidate.graphRef,
     graphFingerprint: candidate.semanticFingerprint,
     runtimeSnapshotFingerprint: runtime.semanticFingerprint,
+    schedulerInstanceRef: active.active.schedulerInstanceRef,
     schedulerGeneration: active.active.schedulerGeneration,
     expectedTransitionRef: node.expectedTransitionRef,
-    completionGateRefs: node.completionGateRefs,
+    gateObservations: node.completionGateRefs.map((completionGateRef) => ({
+      gateResultRef: `gate-result.${completionGateRef}.${active.active.schedulerGeneration}`,
+      completionGateRef,
+      sourceObservationRef: `observation.completion.${completionGateRef}`,
+      sourceObservationHash: semanticHash({ completionGateRef, completedAt, state: 'COMPLETED' }),
+      observedBeforeState: node.state,
+      observedAfterState: 'COMPLETED',
+      result: 'PASSED'
+    })),
+    observedBeforeState: node.state,
+    observedAfterState: 'COMPLETED',
     returnRouteRef: node.returnRouteRef,
-    completedAt,
-    currentness: 'CURRENT',
-    lifecycle: 'ACTIVE',
-    state: 'COMPLETED',
+    formedAt: completedAt,
+    observedAt: completedAt,
+    expiresAt: runtime.expiresAt,
+    selfCertified: false,
     ...overrides
-  });
+  };
 }
 
 test('S0 non-green workgraph exposes candidate-only ready nodes and admits zero', () => {
@@ -941,22 +952,26 @@ test('S15 Queue, Terrain, Health and Guide derive from one scheduler aggregate t
 test('S17 exact normal completion closes six leases and preserves the return route distinctly from cancellation', () => {
   const fixture = activeFixture('work.scheduler.complete');
   const node = fixture.candidate.nodes[0];
-  const receipt = completionFor(fixture, CHECKPOINT_AT);
+  const evidence = completionFor(fixture, CHECKPOINT_AT);
   assert.throws(() => fixture.scheduler.completeActive({
-    completionReceipt: receipt,
-    currentNodeFingerprint: '0'.repeat(64),
-    expectedTransitionRef: node.expectedTransitionRef,
-    completionGateRefs: node.completionGateRefs,
-    returnRouteRef: node.returnRouteRef,
+    graph: fixture.candidate,
+    intentRegistry,
+    trustSnapshot: fixture.trust,
+    registeredProcessRefs,
+    registeredRoleRefs,
+    completionEvidence: { ...evidence, nodeFingerprint: '0'.repeat(64) },
+    completionReceiptRef: `completion.${node.workNodeRef}.wrong`,
     releaseReceiptRef: 'release.scheduler.complete.wrong',
     completedAt: CHECKPOINT_AT
-  }), /completion receipt nodeFingerprint mismatch/);
+  }), /completion evidence does not match/);
   const completed = fixture.scheduler.completeActive({
-    completionReceipt: receipt,
-    currentNodeFingerprint: node.semanticFingerprint,
-    expectedTransitionRef: node.expectedTransitionRef,
-    completionGateRefs: node.completionGateRefs,
-    returnRouteRef: node.returnRouteRef,
+    graph: fixture.candidate,
+    intentRegistry,
+    trustSnapshot: fixture.trust,
+    registeredProcessRefs,
+    registeredRoleRefs,
+    completionEvidence: evidence,
+    completionReceiptRef: `completion.${node.workNodeRef}`,
     releaseReceiptRef: 'release.scheduler.complete',
     completedAt: CHECKPOINT_AT
   });
@@ -964,6 +979,8 @@ test('S17 exact normal completion closes six leases and preserves the return rou
   assert.equal(completed.leaseTransitionReceipts.length, 6);
   assert.ok(Object.values(completed.transitionedLeases).every((lease) => lease.lifecycle === 'RELEASED'));
   assert.equal(completed.returnRouteReceipt.returnRouteRef, node.returnRouteRef);
+  assert.equal(completed.workgraph.nodes.find((item) => item.workNodeRef === node.workNodeRef).state, 'COMPLETED');
+  assert.equal(completed.canonicalWorkgraphTransition.transitionRef, node.expectedTransitionRef);
   assert.equal(fixture.scheduler.queue.state, 'COMPLETED');
   assert.equal(fixture.scheduler.projections.guide.value.whatIsHappeningNow, 'COMPLETED:CLOSED');
 });
@@ -1004,11 +1021,13 @@ test('S18 preemption retains exact admission identity and resumes prior backgrou
   const foregroundFixture = { candidate: interactive.candidate, active: foreground, runtime: interactive.runtime };
   const node = interactive.candidate.nodes[0];
   const completed = runtime.scheduler.completeActive({
-    completionReceipt: completionFor(foregroundFixture, RESUME_OBSERVED),
-    currentNodeFingerprint: node.semanticFingerprint,
-    expectedTransitionRef: node.expectedTransitionRef,
-    completionGateRefs: node.completionGateRefs,
-    returnRouteRef: node.returnRouteRef,
+    graph: interactive.candidate,
+    intentRegistry,
+    trustSnapshot: interactive.trust,
+    registeredProcessRefs,
+    registeredRoleRefs,
+    completionEvidence: completionFor(foregroundFixture, RESUME_OBSERVED),
+    completionReceiptRef: `completion.${node.workNodeRef}`,
     releaseReceiptRef: 'release.scheduler.roundtrip.foreground',
     completedAt: RESUME_OBSERVED
   });
@@ -1028,7 +1047,12 @@ test('S18 preemption retains exact admission identity and resumes prior backgrou
     graph: background.candidate,
     options: continuation.options,
     sourceBindings: SOURCE_BINDINGS,
-    contextInput: contextInput(3)
+    contextInput: contextInput(3),
+    heldToolDisposition: {
+      action: 'CLOSE',
+      authorizationRef: 'authorization.scheduler.roundtrip.close',
+      receiptRef: 'receipt.scheduler.roundtrip.close'
+    }
   });
   assert.equal(resumed.state, 'PREEMPTED_WORK_RESUMED');
   assert.equal(resumed.active.workNodeRef, 'work.scheduler.roundtrip-background');
@@ -1071,59 +1095,137 @@ test('S19 checkpoint derives lineage and requires the exact six-lease same-lifec
   assert.throws(() => createIntentCheckpoint({ ...candidate, leaseReleaseReceipts: mixed }), /one explicit lifecycle/);
 });
 
-test('S20 relay restore and held-call actions require canonical fingerprints and fresh successor leases', () => {
-  const fixture = activeFixture('work.scheduler.durable-relay');
-  const heldCall = toolCallFrom(fixture, { toolCallRef: 'tool-call.scheduler.durable-held' });
-  fixture.relay.register(heldCall);
-  const checkpointed = fixture.scheduler.checkpoint(
-    checkpointInput(fixture, 'checkpoint.scheduler.durable-relay', heldCall.toolCallRef),
-    { releaseReceiptRef: 'release.scheduler.durable-relay', releasedAt: CHECKPOINT_AT }
-  );
-  assert.throws(() => new ToolResultRelay({ ...fixture.relay.snapshot, semanticFingerprint: undefined }, { schedulerRegistry }), /requires its canonical fingerprint/);
-  const tampered = structuredClone(fixture.relay.snapshot);
-  tampered.entries[0].call.semanticFingerprint = '0'.repeat(64);
-  assert.throws(() => new ToolResultRelay(tampered, { schedulerRegistry }), /tool call semantic fingerprint mismatch/);
-
-  const freshResource = resource(2);
-  const fresh = admission([fixture.candidate.nodes[0]], {
-    generation: 2,
-    candidate: fixture.candidate,
-    trust: fixture.trust,
-    resourceSnapshot: freshResource,
-    runtime: runtimeTrust(freshResource, 2)
-  });
-  const resumed = fixture.scheduler.resume(checkpointed.checkpoint.checkpointRef, {
-    graph: fixture.candidate,
-    options: fresh.options,
-    sourceBindings: SOURCE_BINDINGS,
-    contextInput: contextInput(2)
-  });
-  const resumedFixture = { queue: resumed.queue, active: resumed, runtime: fresh.runtime };
+test('S20 relay restore and held-call actions require scheduler ownership, exact fresh leases and registered lineage', () => {
   for (const action of ['RESUME', 'REISSUE', 'SUPERSEDE', 'CLOSE']) {
-    const restored = new ToolResultRelay(fixture.relay.snapshot, { schedulerRegistry });
-    const successorCall = action === 'CLOSE' ? null : toolCallFrom(resumedFixture, {
+    const fixture = activeFixture(`work.scheduler.durable-relay-${action.toLowerCase()}`);
+    const heldCall = toolCallFrom(fixture, { toolCallRef: `tool-call.scheduler.durable-held-${action.toLowerCase()}` });
+    fixture.relay.register(heldCall);
+    const checkpointed = fixture.scheduler.checkpoint(
+      checkpointInput(fixture, `checkpoint.scheduler.durable-relay-${action.toLowerCase()}`, heldCall.toolCallRef),
+      { releaseReceiptRef: `release.scheduler.durable-relay-${action.toLowerCase()}`, releasedAt: CHECKPOINT_AT }
+    );
+    const heldSnapshot = fixture.relay.snapshot;
+    assert.throws(() => new ToolResultRelay({ ...fixture.relay.snapshot, semanticFingerprint: undefined }, { schedulerRegistry }), /requires its canonical fingerprint/);
+    const tampered = structuredClone(fixture.relay.snapshot);
+    tampered.entries[0].call.semanticFingerprint = '0'.repeat(64);
+    assert.throws(() => new ToolResultRelay(tampered, { schedulerRegistry }), /tool call semantic fingerprint mismatch/);
+
+    const freshResource = resource(2);
+    const fresh = admission([fixture.candidate.nodes[0]], {
+      generation: 2,
+      candidate: fixture.candidate,
+      trust: fixture.trust,
+      resourceSnapshot: freshResource,
+      runtime: runtimeTrust(freshResource, 2)
+    });
+    assert.throws(() => fixture.scheduler.resume(checkpointed.checkpoint.checkpointRef, {
+      graph: fixture.candidate,
+      options: fresh.options,
+      sourceBindings: SOURCE_BINDINGS,
+      contextInput: contextInput(2)
+    }), /requires one scheduler disposition before RUNNING/);
+    const successorCallInput = action === 'CLOSE' ? null : {
       toolCallRef: `tool-call.scheduler.durable-${action.toLowerCase()}`,
+      toolRef: 'tool.mock.inspect',
+      effectRef: 'effect.mock.read',
+      arguments: { sourceRef: 'source.work.test' },
+      sourceEvidenceRef: heldCall.sourceEvidenceRef,
+      sourceEvidenceHash: heldCall.sourceEvidenceHash,
       proposedAt: RESUME_OBSERVED,
       timeoutAt: RESUME_EXPIRES,
-      bindingObservedAt: RESUME_OBSERVED
+      cancellationPolicy: heldCall.cancellationPolicy
+    };
+    const resumed = fixture.scheduler.resume(checkpointed.checkpoint.checkpointRef, {
+      graph: fixture.candidate,
+      options: fresh.options,
+      sourceBindings: SOURCE_BINDINGS,
+      contextInput: contextInput(2),
+      heldToolDisposition: {
+        action,
+        authorizationRef: `authorization.scheduler.durable-${action.toLowerCase()}`,
+        receiptRef: `receipt.scheduler.durable-${action.toLowerCase()}`,
+        successorCallInput,
+        replacementPolicyRef: action === 'SUPERSEDE' ? 'policy.intent-scheduler.held-tool-replacement' : null,
+        replacementReasonRef: action === 'SUPERSEDE' ? 'reason.intent-scheduler.context-replacement' : null
+      }
     });
-    const transition = restored.transitionHeld(heldCall.toolCallRef, {
-      action,
-      checkpointRef: checkpointed.checkpoint.checkpointRef,
-      successorCall,
-      successorContextLeaseRef: successorCall?.contextLeaseRef ?? null,
-      receiptRef: `receipt.scheduler.durable-${action.toLowerCase()}`,
-      transitionedAt: RESUME_OBSERVED
+    assert.equal(resumed.state, 'RESUMED');
+    assert.equal(resumed.heldToolDisposition.receipt.action, action);
+    assert.equal(fixture.relay.snapshot.entries.find((item) => item.toolCallRef === heldCall.toolCallRef).state, 'CLOSED');
+    if (successorCallInput) {
+      const successor = fixture.relay.snapshot.entries.find((item) => item.toolCallRef === successorCallInput.toolCallRef);
+      assert.equal(successor.state, 'PENDING');
+      assert.equal(successor.call.predecessorToolCallRef, heldCall.toolCallRef);
+      assert.equal(successor.call.schedulerInstanceRef, fixture.scheduler.schedulerInstanceRef);
+      if (['RESUME', 'REISSUE'].includes(action)) {
+        assert.equal(successor.call.semanticPurposeFingerprint, heldCall.semanticPurposeFingerprint);
+      }
+      const wrongContext = structuredClone(resumed.heldToolDisposition.successorCall);
+      wrongContext.contextLeaseRef = 'context-lease.forged';
+      delete wrongContext.semanticFingerprint;
+      wrongContext.semanticFingerprint = semanticHash(wrongContext);
+      const restoredWrongContext = new ToolResultRelay(heldSnapshot, { schedulerRegistry });
+      assert.throws(() => restoredWrongContext.transitionHeld(heldCall.toolCallRef, {
+        action,
+        checkpointRef: checkpointed.checkpoint.checkpointRef,
+        successorCall: wrongContext,
+        schedulerAuthorization: resumed.heldToolDisposition.authorization,
+        receiptRef: `receipt.scheduler.durable-forged-context-${action.toLowerCase()}`,
+        transitionedAt: RESUME_OBSERVED
+      }), /scheduler-owned relay capability/);
+
+      const wrongScheduler = structuredClone(resumed.heldToolDisposition.authorization);
+      wrongScheduler.schedulerInstanceRef = 'instance.scheduler.forged';
+      delete wrongScheduler.semanticFingerprint;
+      wrongScheduler.semanticFingerprint = semanticHash(wrongScheduler);
+      const restoredWrongScheduler = new ToolResultRelay(heldSnapshot, { schedulerRegistry });
+      assert.throws(() => restoredWrongScheduler.transitionHeld(heldCall.toolCallRef, {
+        action,
+        checkpointRef: checkpointed.checkpoint.checkpointRef,
+        successorCall: resumed.heldToolDisposition.successorCall,
+        schedulerAuthorization: wrongScheduler,
+        receiptRef: `receipt.scheduler.durable-forged-scheduler-${action.toLowerCase()}`,
+        transitionedAt: RESUME_OBSERVED
+      }), /scheduler-owned relay capability/);
+    }
+    fixture.scheduler.cancelActive({
+      releaseReceiptRef: `release.scheduler.durable-relay-complete-${action.toLowerCase()}`,
+      releasedAt: CANCEL_AT,
+      reason: 'TEST_COMPLETE'
     });
-    assert.equal(transition.changed, true);
-    assert.equal(restored.snapshot.entries.find((item) => item.toolCallRef === heldCall.toolCallRef).state, 'CLOSED');
-    if (successorCall) assert.equal(restored.snapshot.entries.find((item) => item.toolCallRef === successorCall.toolCallRef).state, 'PENDING');
   }
-  fixture.scheduler.cancelActive({
-    releaseReceiptRef: 'release.scheduler.durable-relay.complete',
-    releasedAt: CANCEL_AT,
-    reason: 'TEST_COMPLETE'
+
+  const divergent = activeFixture('work.scheduler.durable-relay-divergent');
+  const divergentCall = toolCallFrom(divergent, { toolCallRef: 'tool-call.scheduler.durable-divergent' });
+  divergent.relay.register(divergentCall);
+  const divergentCheckpoint = divergent.scheduler.checkpoint(
+    checkpointInput(divergent, 'checkpoint.scheduler.durable-divergent', divergentCall.toolCallRef),
+    { releaseReceiptRef: 'release.scheduler.durable-divergent', releasedAt: CHECKPOINT_AT }
+  );
+  divergent.relay.cancel(divergentCall.toolCallRef, {
+    receiptRef: 'receipt.scheduler.manual-relay-close',
+    closedAt: RESUME_OBSERVED,
+    reason: 'MANUAL_OUTSIDE_AGGREGATE'
   });
+  const divergentResource = resource(2);
+  const divergentFresh = admission([divergent.candidate.nodes[0]], {
+    generation: 2,
+    candidate: divergent.candidate,
+    trust: divergent.trust,
+    resourceSnapshot: divergentResource,
+    runtime: runtimeTrust(divergentResource, 2)
+  });
+  assert.throws(() => divergent.scheduler.resume(divergentCheckpoint.checkpoint.checkpointRef, {
+    graph: divergent.candidate,
+    options: divergentFresh.options,
+    sourceBindings: SOURCE_BINDINGS,
+    contextInput: contextInput(2),
+    heldToolDisposition: {
+      action: 'CLOSE',
+      authorizationRef: 'authorization.scheduler.divergent',
+      receiptRef: 'receipt.scheduler.divergent'
+    }
+  }), /relay ledger diverged from the scheduler aggregate/);
 });
 
 test('S21 live observed clock expires active evidence and tool times remain monotonic', () => {
