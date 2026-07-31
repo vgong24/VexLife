@@ -51,10 +51,12 @@
         "UNKNOWN"
       ],
       "STALE": [
-        "STALE"
+        "STALE",
+        "SOURCE_MANIFEST_DRIFT"
       ],
       "BLOCKED": [
-        "BLOCKED"
+        "BLOCKED",
+        "SOURCE_MANIFEST_BLOCKED"
       ],
       "FAILED": [
         "FAILED"
@@ -164,7 +166,7 @@
       "checkRef": "check.manifest",
       "command": "npm run manifest:check",
       "category": "PROVENANCE",
-      "purpose": "Exact source tree matches the content-addressed manifest.",
+      "purpose": "Exact Git modes, index blobs, and exclusion contract match the content-addressed manifest; unresolved, unstaged, or non-ignored untracked source fails closed with bounded path diagnostics.",
       "lensRefs": [
         "lens.vexlife.recovery-migration-continuity",
         "lens.vexlife.legal-provenance-stewardship"
