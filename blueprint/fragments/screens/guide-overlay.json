@@ -1,0 +1,172 @@
+{
+  "screenRef": "screen.vexlife.guide-overlay",
+  "conceptRef": "concept.screen.vexlife.guide-overlay",
+  "navigationNodeRef": "nav.screen.vexlife.guide-overlay",
+  "routeRef": "route.guide-overlay",
+  "titleStringRef": "guide.title",
+  "stateSelectorRefs": [
+    "selector.current-screen-frame",
+    "selector.guide.conversation",
+    "selector.guide.placement"
+  ],
+  "testRefs": [
+    "test.navigation.screen-frame"
+  ],
+  "regions": [
+    {
+      "regionRef": "region.guide.window",
+      "conceptRef": "concept.region.guide.window",
+      "navigationNodeRef": "nav.region.guide.window",
+      "labelStringRef": "guide.title",
+      "elements": [
+        {
+          "elementRef": "element.guide.window",
+          "conceptRef": "concept.element.guide.window",
+          "interactionRef": "interaction.guide.window",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.floating-guide",
+          "kind": "FLOATING_GUIDE",
+          "labelStringRef": "guide.title",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "dialog",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.window"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.guide.minimize",
+          "conceptRef": "concept.element.guide.minimize",
+          "interactionRef": "interaction.guide.minimize",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.guide-minimize",
+          "kind": "GUIDE_MINIMIZE",
+          "labelStringRef": "guide.minimize",
+          "actionRef": "action.guide.minimize",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.minimize"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.guide.close",
+          "conceptRef": "concept.element.guide.close",
+          "interactionRef": "interaction.guide.close",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.guide-close",
+          "kind": "GUIDE_CLOSE",
+          "labelStringRef": "guide.close",
+          "actionRef": "action.guide.close",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.close"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.guide.ask-current",
+          "conceptRef": "concept.element.guide.ask-current",
+          "interactionRef": "interaction.guide.ask-current",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.guide-prompt",
+          "kind": "GUIDE_PROMPT",
+          "labelStringRef": "guide.ask.current",
+          "actionRef": "action.guide.ask",
+          "permissionRef": "permission.conversation.send",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.ask-current"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.guide.ask-next",
+          "conceptRef": "concept.element.guide.ask-next",
+          "interactionRef": "interaction.guide.ask-next",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.guide-prompt",
+          "kind": "GUIDE_PROMPT",
+          "labelStringRef": "guide.mode.next",
+          "actionRef": "action.guide.ask",
+          "permissionRef": "permission.conversation.send",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.ask-next"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.guide.ask-protects",
+          "conceptRef": "concept.element.guide.ask-protects",
+          "interactionRef": "interaction.guide.ask-protects",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.guide-prompt",
+          "kind": "GUIDE_PROMPT",
+          "labelStringRef": "guide.ask.protects",
+          "actionRef": "action.guide.ask",
+          "permissionRef": "permission.conversation.send",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.ask-protects"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.guide.composer",
+          "conceptRef": "concept.element.guide.composer",
+          "interactionRef": "interaction.guide.composer",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.guide-composer",
+          "kind": "GUIDE_COMPOSER",
+          "labelStringRef": "guide.placeholder",
+          "actionRef": "action.guide.ask",
+          "permissionRef": "permission.conversation.send",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.composer"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        }
+      ]
+    }
+  ]
+}

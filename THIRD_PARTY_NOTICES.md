@@ -1,0 +1,40 @@
+# Third-party notices
+
+The foundation launch-pack audit found no npm dependency, development dependency,
+lockfile, vendored package, external browser asset, or CDN asset. Runtime source
+imports use Node.js built-ins or local modules. No other third-party code was
+identified in launch pack v0.4; this is a provenance record, not a warranty about
+all possible rights.
+
+## Contributor Covenant 3.0
+
+`CODE_OF_CONDUCT.md` is adapted from Contributor Covenant 3.0, permanently
+available at <https://www.contributor-covenant.org/version/3/0/> and sourced from
+the Organization for Ethical Source repository at commit
+`7255a28d23d5bc296de2e4e4e9bb5ee1126f1345`.
+
+Contributor Covenant is stewarded by the Organization for Ethical Source and
+licensed under Creative Commons Attribution-ShareAlike 4.0 International:
+<https://creativecommons.org/licenses/by-sa/4.0/>.
+
+## Developer Certificate of Origin 1.1
+
+`CONTRIBUTING.md` reproduces the Developer's Certificate of Origin 1.1 verbatim.
+Copyright (C) 2004, 2006 The Linux Foundation and its contributors. Everyone is
+permitted to copy and distribute verbatim copies of that document, but changing it
+is not allowed. Canonical source: <https://developercertificate.org/>.
+
+## GitHub Actions
+
+The CI workflows reference, but do not vendor:
+
+- `actions/checkout` v4.2.2 at commit
+  `11bd71901bbe5b1630ceea73d27597364c9af683`, licensed under MIT.
+- `actions/setup-node` v4.4.0 at commit
+  `49933ea5288caeca8642d1e84afbd3f7d6820020`, licensed under MIT.
+
+Their repositories and controlling license files remain the authoritative notices.
+Any future dependency or third-party material must record its exact origin,
+version, license, required notices, and preferred source before admission.
+
+<!-- [VXG RealForever] -->

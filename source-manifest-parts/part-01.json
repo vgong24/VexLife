@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 126,
+      "sha256": "cfe2af774fb53d19a16565f6ffc7d1f5cbf4e6a99f90fbc3e439703fd602abda"
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "bytes": 1008,
+      "sha256": "5e76ef69e75962e5c66c28701af0d92e95c9fac133780b5df6b1a36edea4db1a"
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "bytes": 2626,
+      "sha256": "78eb10d48cefa84c16444d98416c22fb0ec324d3d429f00a93a5b5f1ee7ba55f"
+    },
+    {
+      "path": ".github/workflows/check.yml",
+      "bytes": 2192,
+      "sha256": "71b99bb7bead93b7b32e01b8f29f6bdb4c20631bb88cac1e9063016ad4050c0f"
+    },
+    {
+      "path": ".github/workflows/dco.yml",
+      "bytes": 1952,
+      "sha256": "a5c7792901222d2f04eaa8c87d5d51d9ee55e208eceb2784d27b0966c06d5e98"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 142,
+      "sha256": "5b2256d47cb3ac885f15e52a6a2caafc5b91ecff8752db07ff8fb75477e8aefa"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 172,
+      "sha256": "3eb76629cf2e2406b17c8691933af6e0fd623040ac509893fcd9143527bba4a5"
+    },
+    {
+      "path": "blueprint/build-health-registry.json",
+      "bytes": 7872,
+      "sha256": "810226098a92095616fb3f8abc75e16ad301e8944484fb6c8bb9a31feb14c2e9"
+    },
+    {
+      "path": "blueprint/capability-registry.json",
+      "bytes": 7654,
+      "sha256": "32bbd35fc40fcd432e128987a28c3a9208107f48bbbf148e3acb58293594dc62"
+    },
+    {
+      "path": "blueprint/design-tokens.json",
+      "bytes": 1467,
+      "sha256": "02d506c365ebb1bf0f8e6fed1d6a6c8652692b9c2c3d59b114fc7f489b023aad"
+    },
+    {
+      "path": "blueprint/evolution-registry.json",
+      "bytes": 4379,
+      "sha256": "c598884b7aa15738a000cbffd6b288894e59c95e81d458891a109166a2a51b15"
+    },
+    {
+      "path": "blueprint/experience-registry.json",
+      "bytes": 10626,
+      "sha256": "a6078a44aeb4c9f775ecdeae6def53e8f0a7c293c8a4a06c666250296e22f595"
+    },
+    {
+      "path": "blueprint/feature-registry.json",
+      "bytes": 19014,
+      "sha256": "fcf41969b06c90fed48ee287373eba627db8a8b99fc349850a36dd9a06ae62d8"
+    },
+    {
+      "path": "blueprint/fragments/actions.json",
+      "bytes": 12437,
+      "sha256": "fa5e9c73a509ab32ffbae89457663bbd1330cf6a397389eb317a784c8d5dff01"
+    },
+    {
+      "path": "blueprint/fragments/components.json",
+      "bytes": 4170,
+      "sha256": "90e4b271ae63907380e9d88aafe922bbbc5f39f3595161b81f8be1d28ce164af"
+    },
+    {
+      "path": "blueprint/fragments/invariants.json",
+      "bytes": 836,
+      "sha256": "62ea748af23ee6f265a0935f2f8cd50415b20f982a8806516b6bc4271b9c06e4"
+    },
+    {
+      "path": "blueprint/fragments/permissions.json",
+      "bytes": 3328,
+      "sha256": "d98dfcb6d716026a9d77ddbbb7ddb4b41d84e1868debeda8052ec1b986711ff7"
+    },
+    {
+      "path": "blueprint/fragments/platform-bindings.json",
+      "bytes": 585,
+      "sha256": "bfeacc77230759ef11fbc53208e5251dcc69055057fe3ffd7b94fac68484f54f"
+    },
+    {
+      "path": "blueprint/fragments/product.json",
+      "bytes": 222,
+      "sha256": "f4d30dd6dfffc0bade909f42a9fe269474c591ffb477f52aa9a0a54c3c1fb291"
+    },
+    {
+      "path": "blueprint/fragments/registry-refs.json",
+      "bytes": 560,
+      "sha256": "71328fb08cbcf61290092b3c5d600263e94b5fc2c75d8660c2acb51c4ad9a08a"
+    },
+    {
+      "path": "blueprint/fragments/roles.json",
+      "bytes": 1071,
+      "sha256": "9aaae12530ee155fdff1662ecaebc1612350b0de51d7777057dd7942b1e04528"
+    },
+    {
+      "path": "blueprint/fragments/screens/chat.json",
+      "bytes": 16474,
+      "sha256": "4d05be7cd1dcd1d47f6b1ef6e4a143b47577d6bc8359446c844e8d35d7b0a707"
+    },
+    {
+      "path": "blueprint/fragments/screens/guide-overlay.json",
+      "bytes": 6041,
+      "sha256": "e672f7cde783f3c85e5dea70ad803b91f93088848e61bb26ab7b367d31b8b1a0"
+    },
+    {
+      "path": "blueprint/fragments/screens/health.json",
+      "bytes": 2012,
+      "sha256": "7233df7f67f26905297cbf7b6784de020a43c17514888954a373720a333f48db"
+    }
+  ]
+}

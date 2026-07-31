@@ -1,0 +1,141 @@
+#!/usr/bin/env node
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
+import { admitCheckResult } from '../src/core/check-result.mjs';
+import { deriveRepositoryHealth, validateBuildHealthRegistry } from '../src/core/build-health.mjs';
+import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
+import { buildSourceManifest } from '../src/core/source-manifest.mjs';
+import { writeJson } from '../src/core/utils.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const args = process.argv.slice(2);
+const receiptIndex = args.indexOf('--receipt');
+if (receiptIndex >= 0 && !args[receiptIndex + 1]) {
+  console.error('Usage: npm run pr-ready -- [--receipt generated/health/pr-ready.json]');
+  process.exit(2);
+}
+if (args.some((item, index) => item !== '--receipt' && index !== receiptIndex + 1)) {
+  console.error('Usage: npm run pr-ready -- [--receipt generated/health/pr-ready.json]');
+  process.exit(2);
+}
+
+const bundle = loadBlueprint(ROOT);
+const registry = validateBuildHealthRegistry(bundle.buildHealth, bundle.reviewLenses);
+const blueprint = validateBlueprint(bundle);
+if (!registry.ok || !blueprint.ok) {
+  console.error(JSON.stringify({
+    state: 'BLOCKED',
+    semanticState: 'BLOCKED',
+    registryErrors: registry.errors,
+    blueprintErrors: blueprint.errors
+  }, null, 2));
+  process.exit(1);
+}
+
+const initialSource = buildSourceManifest(ROOT);
+const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const npmCliPath = process.env.npm_execpath;
+const commandPattern = /^npm (?:(?:run ([A-Za-z0-9:_-]+))|(test))$/;
+const contract = bundle.buildHealth.checkResultContract;
+const checkResults = [];
+
+function runRegisteredCommand(command, timeoutMs) {
+  const match = command.match(commandPattern);
+  if (!match) {
+    return {
+      transportState: 'SPAWN_FAILED',
+      exitCode: null,
+      stdout: '',
+      stderr: `unsupported registered command: ${command}`,
+      timedOutAfterMs: null
+    };
+  }
+  const npmArgs = match[1] ? ['run', match[1]] : ['test'];
+  const options = {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: process.env,
+    timeout: timeoutMs,
+    maxBuffer: 32 * 1024 * 1024
+  };
+  const result = npmCliPath
+    ? spawnSync(process.execPath, [npmCliPath, ...npmArgs], options)
+    : spawnSync(npmExecutable, npmArgs, { ...options, shell: process.platform === 'win32' });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  const timedOut = result.error?.code === 'ETIMEDOUT';
+  return {
+    transportState: timedOut ? 'TIMED_OUT' : result.error ? 'SPAWN_FAILED' : 'EXECUTED',
+    exitCode: Number.isInteger(result.status) ? result.status : null,
+    stdout: result.stdout ?? '',
+    stderr: result.error?.message ?? result.stderr ?? '',
+    timedOutAfterMs: timedOut ? timeoutMs : null
+  };
+}
+
+for (const check of bundle.buildHealth.checks) {
+  const timeoutMs = check.timeoutMs ?? contract.defaultTimeoutMs;
+  const transport = runRegisteredCommand(check.command, timeoutMs);
+  checkResults.push(admitCheckResult({
+    checkRef: check.checkRef,
+    command: check.command,
+    contract,
+    ...transport
+  }));
+}
+
+const finalSource = buildSourceManifest(ROOT);
+const sourceStability = {
+  state: initialSource.treeSha256 === finalSource.treeSha256 ? 'PASS' : 'BLOCKED',
+  initialSourceTreeSha256: initialSource.treeSha256,
+  finalSourceTreeSha256: finalSource.treeSha256
+};
+const { projection } = deriveRepositoryHealth({
+  sourceTreeRef: finalSource.treeSha256,
+  blueprintHash: blueprint.semanticHash,
+  checkResults
+});
+const repository = collectRepositoryEvidence(ROOT);
+const allCurrentPassed = projection.state === 'HEALTHY' && sourceStability.state === 'PASS';
+const receipt = {
+  schemaVersion: 'vexlife.pr-ready-receipt/v1',
+  receiptRef: `receipt.vexlife.pr-ready.${finalSource.treeSha256.slice(0, 24)}`,
+  state: allCurrentPassed ? 'PR_READY_PASSED' : 'PR_READY_FAILED',
+  headSha: repository.git.candidateHeadSha,
+  candidateHeadSha: repository.git.candidateHeadSha,
+  testedCheckoutSha: repository.git.checkoutSha,
+  testedMergeSha: repository.git.testedMergeSha,
+  baseSha: repository.git.baseSha,
+  sourceTreeSha256: finalSource.treeSha256,
+  blueprintHash: blueprint.semanticHash,
+  formedAt: new Date().toISOString(),
+  checkResultContractRef: contract.contractRef,
+  sourceStability,
+  checkResults,
+  health: projection
+};
+const receiptPath = path.resolve(ROOT, receiptIndex >= 0 ? args[receiptIndex + 1] : 'generated/health/pr-ready.json');
+fs.mkdirSync(path.dirname(receiptPath), { recursive: true });
+writeJson(receiptPath, receipt);
+console.log(JSON.stringify({
+  state: receipt.state,
+  currentness: 'CURRENT',
+  receiptPath: path.relative(ROOT, receiptPath).split(path.sep).join('/'),
+  candidateHeadSha: receipt.candidateHeadSha,
+  testedCheckoutSha: receipt.testedCheckoutSha,
+  testedMergeSha: receipt.testedMergeSha,
+  baseSha: receipt.baseSha,
+  sourceTreeSha256: receipt.sourceTreeSha256,
+  blueprintHash: receipt.blueprintHash,
+  checkResultContractRef: receipt.checkResultContractRef,
+  sourceStability: receipt.sourceStability.state,
+  receiptSummary: projection.receiptSummary,
+  blockingCheckRefs: projection.blockingCheckRefs,
+  unresolvedCheckRefs: projection.unresolvedCheckRefs
+}, null, 2));
+if (receipt.state !== 'PR_READY_PASSED') process.exitCode = 1;
+
+// [VXG RealForever]

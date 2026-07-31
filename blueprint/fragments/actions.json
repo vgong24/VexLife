@@ -1,0 +1,543 @@
+[
+  {
+    "actionRef": "action.view.select",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "screenRef": "ref"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.selection",
+      "state.navigation",
+      "state.journey"
+    ]
+  },
+  {
+    "actionRef": "action.project.select",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "projectRef": "ref"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.selection",
+      "state.navigation",
+      "state.journey"
+    ]
+  },
+  {
+    "actionRef": "action.thread.select",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "threadRef": "ref"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.selection",
+      "state.navigation",
+      "state.journey"
+    ]
+  },
+  {
+    "actionRef": "action.channel.select",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "channelRef": "ref"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.selection",
+      "state.navigation",
+      "state.journey"
+    ]
+  },
+  {
+    "actionRef": "action.message.send",
+    "permissionRef": "permission.conversation.send",
+    "inputSchema": {
+      "channelRef": "ref",
+      "content": "string"
+    },
+    "effectClass": "LOCAL_APPEND",
+    "outputStateRefs": [
+      "state.messages",
+      "state.context"
+    ]
+  },
+  {
+    "actionRef": "action.guide.toggle",
+    "permissionRef": "permission.none",
+    "inputSchema": {},
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.guide",
+      "state.navigation"
+    ]
+  },
+  {
+    "actionRef": "action.language.select",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "language": "string"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.localization",
+      "state.navigation"
+    ]
+  },
+  {
+    "actionRef": "action.terrain.node.select",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "nodeRef": "ref"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain",
+      "state.selection",
+      "state.navigation"
+    ]
+  },
+  {
+    "actionRef": "action.terrain.node.move",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "nodeRef": "ref",
+      "x": "number",
+      "y": "number"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain",
+      "state.selection",
+      "state.navigation"
+    ]
+  },
+  {
+    "actionRef": "action.terrain.node.collapse",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "nodeRef": "ref",
+      "collapsed": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain",
+      "state.selection",
+      "state.navigation"
+    ]
+  },
+  {
+    "actionRef": "action.thread.delete",
+    "permissionRef": "permission.thread.delete",
+    "inputSchema": {
+      "threadRef": "ref",
+      "confirmation": "string"
+    },
+    "effectClass": "RECOVERABLE_DELETE",
+    "outputStateRefs": [
+      "state.projects",
+      "state.context"
+    ]
+  },
+  {
+    "actionRef": "action.folder.assign",
+    "permissionRef": "permission.folder.assign",
+    "inputSchema": {
+      "projectRef": "ref",
+      "path": "path",
+      "mode": "enum"
+    },
+    "effectClass": "ACCESS_GRANT",
+    "outputStateRefs": [
+      "state.permissions",
+      "state.projects"
+    ]
+  },
+  {
+    "actionRef": "action.channel.group.add-member",
+    "permissionRef": "permission.conversation.send",
+    "inputSchema": {
+      "channelRef": "ref",
+      "memberRef": "ref"
+    },
+    "effectClass": "LOCAL_APPEND",
+    "outputStateRefs": [
+      "state.channels",
+      "state.context"
+    ]
+  },
+  {
+    "actionRef": "action.project.create",
+    "permissionRef": "permission.project.create",
+    "inputSchema": {
+      "title": "string"
+    },
+    "effectClass": "LOCAL_APPEND",
+    "outputStateRefs": [
+      "state.projects"
+    ]
+  },
+  {
+    "actionRef": "action.architecture.open",
+    "permissionRef": "permission.none",
+    "inputSchema": {},
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.guide",
+      "state.navigation",
+      "state.journey"
+    ]
+  },
+  {
+    "actionRef": "action.messages.jump-latest",
+    "permissionRef": "permission.none",
+    "inputSchema": {},
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.navigation"
+    ]
+  },
+  {
+    "actionRef": "action.terrain.layout.reset",
+    "permissionRef": "permission.none",
+    "inputSchema": {},
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain",
+      "state.navigation",
+      "state.journey"
+    ]
+  },
+  {
+    "actionRef": "action.guide.minimize",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "minimized": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.guide"
+    ]
+  },
+  {
+    "actionRef": "action.guide.close",
+    "permissionRef": "permission.none",
+    "inputSchema": {},
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.guide"
+    ]
+  },
+  {
+    "actionRef": "action.guide.ask",
+    "permissionRef": "permission.conversation.send",
+    "inputSchema": {
+      "question": "string",
+      "screenFrameRef": "ref"
+    },
+    "effectClass": "LOCAL_APPEND",
+    "outputStateRefs": [
+      "state.guide",
+      "state.messages"
+    ]
+  },
+  {
+    "actionRef": "action.health.technical.toggle",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "expanded": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.health"
+    ]
+  },
+  {
+    "actionRef": "action.content.scroll",
+    "effectClass": "READ_ONLY",
+    "permissionRef": "permission.none",
+    "outputStateRefs": []
+  },
+  {
+    "actionRef": "action.terrain.canvas.pan",
+    "effectClass": "READ_ONLY",
+    "permissionRef": "permission.none",
+    "outputStateRefs": [
+      "state.terrain"
+    ]
+  },
+  {
+    "actionRef": "action.terrain.canvas.zoom",
+    "effectClass": "READ_ONLY",
+    "permissionRef": "permission.none",
+    "outputStateRefs": [
+      "state.terrain"
+    ]
+  },
+  {
+    "actionRef": "action.guide.move",
+    "effectClass": "READ_ONLY",
+    "permissionRef": "permission.none",
+    "outputStateRefs": [
+      "state.guide"
+    ]
+  },
+  {
+    "actionRef": "action.guide.dock",
+    "effectClass": "READ_ONLY",
+    "permissionRef": "permission.none",
+    "outputStateRefs": [
+      "state.guide"
+    ]
+  },
+  {
+    "actionRef": "action.navigation.back",
+    "effectClass": "READ_ONLY",
+    "permissionRef": "permission.none",
+    "outputStateRefs": [
+      "state.navigation"
+    ]
+  },
+  {
+    "actionRef": "action.navigation.home",
+    "effectClass": "READ_ONLY",
+    "permissionRef": "permission.none",
+    "outputStateRefs": [
+      "state.navigation",
+      "state.selection"
+    ]
+  },
+  {
+    "actionRef": "action.vessel.expand",
+    "effectClass": "READ_ONLY",
+    "permissionRef": "permission.none",
+    "outputStateRefs": [
+      "state.navigation"
+    ]
+  },
+  {
+    "actionRef": "action.context.open",
+    "effectClass": "READ_ONLY",
+    "permissionRef": "permission.none",
+    "outputStateRefs": [
+      "state.context"
+    ]
+  },
+  {
+    "actionRef": "action.file.root.assign",
+    "permissionRef": "permission.folder.assign",
+    "inputSchema": {
+      "path": "absolute-path",
+      "projectRef": "ref",
+      "mode": "enum"
+    },
+    "effectClass": "ACCESS_GRANT",
+    "outputStateRefs": [
+      "state.files",
+      "state.permissions"
+    ]
+  },
+  {
+    "actionRef": "action.file.read",
+    "permissionRef": "permission.file.read",
+    "inputSchema": {
+      "rootRef": "ref",
+      "relativePath": "string",
+      "expectedHash": "sha256-optional"
+    },
+    "effectClass": "BOUNDED_LOCAL_READ",
+    "outputStateRefs": [
+      "state.files"
+    ]
+  },
+  {
+    "actionRef": "action.file.edit-with-recovery",
+    "permissionRef": "permission.file.edit",
+    "inputSchema": {
+      "rootRef": "ref",
+      "relativePath": "string",
+      "expectedHash": "sha256",
+      "contentRef": "ref"
+    },
+    "effectClass": "RECOVERY_GUARDED_LOCAL_WRITE",
+    "outputStateRefs": [
+      "state.files"
+    ]
+  },
+  {
+    "actionRef": "action.cli.execute",
+    "permissionRef": "permission.cli.execute",
+    "inputSchema": {
+      "commandRef": "ref",
+      "parameters": "object",
+      "workingScopeRef": "ref"
+    },
+    "effectClass": "TYPED_LOCAL_PROCESS",
+    "outputStateRefs": [
+      "state.cli",
+      "state.resource"
+    ]
+  },
+  {
+    "actionRef": "action.github.prepare-publication",
+    "permissionRef": "permission.github.publish",
+    "inputSchema": {
+      "repositoryRef": "ref",
+      "sourceManifestRef": "ref"
+    },
+    "effectClass": "PUBLIC_EXTERNAL_PLAN",
+    "outputStateRefs": [
+      "state.github"
+    ]
+  },
+  {
+    "actionRef": "action.github.commit",
+    "permissionRef": "permission.github.publish",
+    "inputSchema": {
+      "repositoryRef": "ref",
+      "branchRef": "ref",
+      "pathRefs": "array",
+      "message": "string"
+    },
+    "effectClass": "GIT_LOCAL_COMMIT",
+    "outputStateRefs": [
+      "state.github"
+    ]
+  },
+  {
+    "actionRef": "action.github.push-branch",
+    "permissionRef": "permission.github.publish",
+    "inputSchema": {
+      "repositoryRef": "ref",
+      "branchRef": "ref",
+      "expectedRemoteRef": "ref"
+    },
+    "effectClass": "PUBLIC_EXTERNAL",
+    "outputStateRefs": [
+      "state.github"
+    ]
+  },
+  {
+    "actionRef": "action.workshop.create-candidate",
+    "permissionRef": "permission.workshop.mutate",
+    "inputSchema": {
+      "featureRef": "ref",
+      "sourceVersionRef": "ref"
+    },
+    "effectClass": "COPY_ON_WRITE_WORKSHOP",
+    "outputStateRefs": [
+      "state.workshop"
+    ]
+  },
+  {
+    "actionRef": "action.workshop.export",
+    "permissionRef": "permission.workshop.mutate",
+    "inputSchema": {
+      "featureRef": "ref",
+      "revisionRef": "ref",
+      "reviewRef": "ref",
+      "approvalRef": "ref"
+    },
+    "effectClass": "LOCAL_EXPORT",
+    "outputStateRefs": [
+      "state.workshop"
+    ]
+  },
+  {
+    "actionRef": "action.issue.triage",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "issueRef": "ref",
+      "classification": "enum"
+    },
+    "effectClass": "LOCAL_APPEND",
+    "outputStateRefs": [
+      "state.issues"
+    ]
+  },
+  {
+    "actionRef": "action.issue.approve-implementation",
+    "permissionRef": "permission.issue.approve",
+    "inputSchema": {
+      "issueRef": "ref",
+      "scopeRef": "ref",
+      "consequenceSummaryRef": "ref"
+    },
+    "effectClass": "WORK_APPROVAL",
+    "outputStateRefs": [
+      "state.issues"
+    ]
+  },
+  {
+    "actionRef": "action.model.provision",
+    "permissionRef": "permission.model.provision",
+    "inputSchema": {
+      "profileRef": "ref",
+      "url": "https-url",
+      "sha256": "sha256",
+      "licenseReceiptRef": "ref"
+    },
+    "effectClass": "EXTERNAL_ARTIFACT_DOWNLOAD",
+    "outputStateRefs": [
+      "state.model",
+      "state.resource"
+    ]
+  },
+  {
+    "actionRef": "action.score.sync",
+    "permissionRef": "permission.score.sync",
+    "inputSchema": {
+      "acceptedRecordRef": "ref",
+      "targetLineageRefs": "array",
+      "scope": "enum"
+    },
+    "effectClass": "SCOPED_FAMILY_SYNC",
+    "outputStateRefs": [
+      "state.device-family",
+      "state.evolution"
+    ]
+  },
+  {
+    "actionRef": "action.dream.form",
+    "permissionRef": "permission.dream.candidate",
+    "inputSchema": {
+      "sourceRangeRefs": "array",
+      "candidateTypeRef": "ref",
+      "consentState": "enum"
+    },
+    "effectClass": "LOCAL_CANDIDATE_APPEND",
+    "outputStateRefs": [
+      "state.evolution"
+    ]
+  },
+  {
+    "actionRef": "action.dream.review",
+    "permissionRef": "permission.dream.review",
+    "inputSchema": {
+      "candidateRef": "ref",
+      "disposition": "enum",
+      "acceptedScope": "enum-optional"
+    },
+    "effectClass": "DURABLE_MEANING_REVIEW",
+    "outputStateRefs": [
+      "state.evolution",
+      "state.device-family"
+    ]
+  },
+  {
+    "actionRef": "action.adapter.train-candidate",
+    "permissionRef": "permission.adapter.train",
+    "inputSchema": {
+      "acceptedExampleRefs": "array",
+      "evaluationManifestRef": "ref",
+      "resourceLeaseRef": "ref"
+    },
+    "effectClass": "ISOLATED_MODEL_TRAINING",
+    "outputStateRefs": [
+      "state.evolution",
+      "state.resource"
+    ]
+  }
+]

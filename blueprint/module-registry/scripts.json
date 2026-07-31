@@ -1,0 +1,379 @@
+[
+  {
+    "moduleRef": "module.vexlife.script.validate-blueprint",
+    "path": "scripts/validate-blueprint.mjs",
+    "role": "CLI validation entry for blueprint, registries, factory and module coverage.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.blueprint"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run blueprint:check"
+    ],
+    "tests": [
+      "test/core.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.script.create-platform",
+    "path": "scripts/create-platform.mjs",
+    "role": "CLI generator for one or every platform adoption scaffold.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.platform-generator"
+    ],
+    "writes": [
+      "caller-selected generated directory"
+    ],
+    "loadedBy": [
+      "npm run platform:all"
+    ],
+    "tests": [
+      "test/generator.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.script.bootstrap",
+    "path": "scripts/bootstrap.mjs",
+    "role": "CLI wrapper for dry-run or applied device-home bootstrap.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.boot"
+    ],
+    "writes": [
+      "selected Vex Home"
+    ],
+    "loadedBy": [
+      "start-vexlife.sh",
+      "start-vexlife.ps1",
+      "start-vexlife.cmd"
+    ],
+    "tests": [
+      "test/boot.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.script.provision-model",
+    "path": "scripts/provision-model.mjs",
+    "role": "External HTTPS model download with exact checksum and repository exclusion.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint/model-profiles.example.json"
+    ],
+    "writes": [
+      "selected Vex Home models directory"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/boot.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.script.serve-browser",
+    "path": "scripts/serve-browser.mjs",
+    "role": "Dependency-free localhost server for the browser reference.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/**",
+      "blueprint/**"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run browser:start"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.script.registry-summary",
+    "path": "scripts/registry-summary.mjs",
+    "role": "Print a compact human/machine registry projection without dumping every relationship.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.registry"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run registry:summary"
+    ],
+    "tests": [
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/registry.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.doctor",
+    "path": "scripts/doctor.mjs",
+    "role": "Report platform, Vex Home, model-endpoint and blueprint readiness without changing state.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.boot",
+      "module.vexlife.core.blueprint"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run doctor"
+    ],
+    "tests": [
+      "test/boot.test.mjs"
+    ],
+    "changeMap": [
+      "docs/BOOTSTRAP-AND-MODELS.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.impact-report",
+    "path": "scripts/impact-report.mjs",
+    "role": "Compare two blueprint versions and emit bounded affected identities and platform adoption scope.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.impact"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run impact:report"
+    ],
+    "tests": [
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "docs/BLUEPRINT-CHANGE-PROPAGATION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.implementation-packet",
+    "path": "scripts/implementation-packet.mjs",
+    "role": "CLI projection of one implementation work unit, direct dependencies, exact paths, tests and exclusions.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.implementation-plan",
+      "blueprint.vexlife.universal.001"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/implementation-plan.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/implementation-plan.mjs",
+      "blueprint/implementation-plan.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.evolution-summary",
+    "path": "scripts/evolution-summary.mjs",
+    "role": "Human-readable compact projection of Dream/Score/adapter lifecycle registry size and current semantic hash.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.evolution.001"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/evolution.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.check-syntax",
+    "path": "scripts/check-syntax.mjs",
+    "role": "Runs dependency-free syntax validation over JavaScript and module sources.",
+    "reads": [],
+    "writes": [],
+    "consumers": [],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.script.source-manifest",
+    "path": "scripts/source-manifest.mjs",
+    "role": "Writes or verifies the deterministic source manifest used by review and repository porting.",
+    "reads": [],
+    "writes": [],
+    "consumers": [],
+    "tests": [
+      "test/source-manifest.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.script.public-safety-check",
+    "path": "scripts/public-safety-check.mjs",
+    "role": "Scans the candidate source tree for forbidden artifacts, secret-like content and unsafe publication policy.",
+    "reads": [
+      "module.vexlife.core.public-safety",
+      "PUBLIC-SAFETY-MANIFEST.json"
+    ],
+    "writes": [],
+    "consumers": [],
+    "tests": [
+      "test/public-safety.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.script.orient",
+    "path": "scripts/orient.mjs",
+    "role": "Grounds the bounded repository, Git, visibility, active work, blueprint freshness, held boundaries, required sources, and exact next route.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "blueprint/orientation.json",
+      "module.vexlife.core.blueprint",
+      "module.vexlife.core.orientation",
+      "module.vexlife.core.repository-evidence",
+      "module.vexlife.core.source-manifest"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run orient"
+    ],
+    "tests": [
+      "test/orientation.test.mjs"
+    ],
+    "changeMap": [
+      "VEXLIFE.md",
+      "docs/CAPABILITY-AND-TOOL-ATLAS.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.atlas-query",
+    "path": "scripts/atlas-query.mjs",
+    "role": "Runs an intent-first Atlas query with explicit depth, result, and token bounds.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.atlas"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run atlas:query"
+    ],
+    "tests": [
+      "test/orientation.test.mjs"
+    ],
+    "changeMap": [
+      "docs/CAPABILITY-AND-TOOL-ATLAS.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.module-describe",
+    "path": "scripts/module-describe.mjs",
+    "role": "Describes one exact registered module without broad repository traversal.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "blueprint/module-registry/*.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run module:describe"
+    ],
+    "tests": [
+      "test/orientation.test.mjs"
+    ],
+    "changeMap": [
+      "docs/CAPABILITY-AND-TOOL-ATLAS.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.pr-ready",
+    "path": "scripts/pr-ready.mjs",
+    "role": "Executes every registered repository check and writes a current exact-head health receipt without inferring unexecuted success.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.build-health.001",
+      "module.vexlife.core.check-result",
+      "module.vexlife.core.build-health",
+      "module.vexlife.core.repository-evidence",
+      "module.vexlife.core.source-manifest"
+    ],
+    "writes": [
+      "generated/health/pr-ready.json"
+    ],
+    "loadedBy": [
+      "npm run pr-ready"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs",
+      "test/pr-ready-attention.e2e.mjs"
+    ],
+    "changeMap": [
+      "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.test-structured",
+    "path": "scripts/test-structured.mjs",
+    "role": "Runs deterministic and bounded end-to-end Node tests and emits the final machine-readable result contract.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "test/*.test.mjs",
+      "test/*.e2e.mjs"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm test"
+    ],
+    "tests": [
+      "test/check-result.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.browser-structure-check",
+    "path": "scripts/browser-structure-check.mjs",
+    "role": "Reports browser JavaScript parsing as structural source evidence only.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "reference/browser/app.js",
+      "reference/browser/integration-test.js"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run browser:check"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/browser-integration.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.browser-integration",
+    "path": "scripts/browser-integration.mjs",
+    "role": "Starts the local server, executes the integration contract in a real headless browser and writes an exact candidate/tested-source receipt.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "module.vexlife.core.repository-evidence",
+      "module.vexlife.core.source-manifest",
+      "reference/browser/integration-test.js"
+    ],
+    "writes": [
+      "generated/health/browser-integration.json"
+    ],
+    "loadedBy": [
+      "npm run browser:integration"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      ".github/workflows/check.yml",
+      "blueprint/build-health-registry.json"
+    ]
+  }
+]

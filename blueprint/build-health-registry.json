@@ -1,0 +1,250 @@
+{
+  "schemaVersion": "vexlife.build-health-registry/v0",
+  "registryRef": "registry.vexlife.build-health.001",
+  "registryVersion": 1,
+  "purpose": "One source-managed list of mandatory health checks and the lenses each protects.",
+  "semanticNoOpRule": "Equal check inputs and outputs do not create another durable health transition.",
+  "checkResultContract": {
+    "schemaVersion": "vexlife.check-result-contract/v0",
+    "contractRef": "contract.vexlife.check-result-admission.001",
+    "outputFormat": "FINAL_JSON_OBJECT",
+    "stateField": "state",
+    "currentnessField": "currentness",
+    "transportStates": [
+      "EXECUTED",
+      "SPAWN_FAILED",
+      "TIMED_OUT"
+    ],
+    "semanticStates": [
+      "PASSED",
+      "ATTENTION",
+      "NOT_RUN",
+      "UNKNOWN",
+      "STALE",
+      "BLOCKED",
+      "FAILED"
+    ],
+    "stateAdmission": {
+      "PASSED": [
+        "GROUNDED",
+        "VALID",
+        "CLEAR",
+        "PASS",
+        "SYNTAX_VALID",
+        "FEATURE_REGISTRY_VALID",
+        "HOME_BRIDGE_CONTRACT_VALID",
+        "LOCALIZATION_COVERAGE_VALID",
+        "PUBLIC_SAFETY_CLEAR",
+        "SOURCE_MANIFEST_CURRENT",
+        "ARCHITECTURE_PROJECTIONS_WRITTEN",
+        "DOCTOR_VALID",
+        "CURRENT"
+      ],
+      "ATTENTION": [
+        "ATTENTION"
+      ],
+      "NOT_RUN": [
+        "NOT_RUN",
+        "REGISTERED_NOT_EXECUTED"
+      ],
+      "UNKNOWN": [
+        "UNKNOWN"
+      ],
+      "STALE": [
+        "STALE"
+      ],
+      "BLOCKED": [
+        "BLOCKED"
+      ],
+      "FAILED": [
+        "FAILED"
+      ]
+    },
+    "defaultUnparseableSemanticState": "BLOCKED",
+    "defaultTimeoutMs": 120000
+  },
+  "checks": [
+    {
+      "checkRef": "check.orientation",
+      "command": "npm run orient",
+      "category": "CURRENTNESS",
+      "purpose": "Exact repository, Git, visibility, current work, blueprint freshness, held boundaries, required sources, and next route are grounded.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.resource-and-context"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.syntax",
+      "command": "npm run syntax:check",
+      "category": "CODE",
+      "purpose": "Syntax parses for registered JS modules.",
+      "lensRefs": [
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.blueprint",
+      "command": "npm run blueprint:check",
+      "category": "ARCHITECTURE",
+      "purpose": "Identity, refs, contracts and cross-registry relationships validate.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.visibility-terrain-health"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.feature",
+      "command": "npm run feature:check",
+      "category": "ARCHITECTURE",
+      "purpose": "Every feature carries required relationships and review lenses.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.visibility-terrain-health"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.bridge",
+      "command": "npm run bridge:check",
+      "category": "SECURITY",
+      "purpose": "Home Bridge identity, pairing, leases and single-writer invariants validate.",
+      "lensRefs": [
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.localization",
+      "command": "npm run localization:check",
+      "category": "LOCALIZATION",
+      "purpose": "Every visible string and feature localization dependency is covered.",
+      "lensRefs": [
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.design-system"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.public-safety",
+      "command": "npm run public-safety:check",
+      "category": "LEGAL_SECURITY",
+      "purpose": "No private/model/secret material or forbidden effect policy enters public candidate.",
+      "lensRefs": [
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.security-privacy-permission"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.tests",
+      "command": "npm test",
+      "category": "ASSURANCE",
+      "purpose": "Deterministic contract and regression tests pass.",
+      "lensRefs": [
+        "lens.vexlife.assurance-and-adversarial",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.recovery-migration-continuity"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.manifest",
+      "command": "npm run manifest:check",
+      "category": "PROVENANCE",
+      "purpose": "Exact source tree matches the content-addressed manifest.",
+      "lensRefs": [
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.legal-provenance-stewardship"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.platform-scaffolds",
+      "command": "npm run platform:all",
+      "category": "PLATFORM",
+      "purpose": "All registered platform adoption catalogs generate from the same blueprint.",
+      "lensRefs": [
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.design-system",
+        "lens.vexlife.accessibility"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.projections",
+      "command": "npm run projections:build",
+      "category": "ARCHITECTURE",
+      "purpose": "Human-readable architecture projections regenerate from the current blueprint.",
+      "lensRefs": [
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.recovery-migration-continuity"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.doctor",
+      "command": "npm run doctor",
+      "category": "ENVIRONMENT",
+      "purpose": "The exact host environment and unavailable model or Home evidence are reported honestly.",
+      "lensRefs": [
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.visibility-terrain-health"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.browser-structure",
+      "command": "npm run browser:check",
+      "category": "EXPERIENCE",
+      "purpose": "Browser entry and integration source parse as structural evidence only.",
+      "lensRefs": [
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.design-system",
+        "lens.vexlife.accessibility"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.browser-integration",
+      "command": "npm run browser:integration",
+      "category": "EXPERIENCE",
+      "purpose": "A real headless browser executes project-thread-channel isolation and rendered EN/ZH/JA stable-intent behavior.",
+      "lensRefs": [
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.design-system",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.state-and-currentness"
+      ],
+      "blocking": true,
+      "timeoutMs": 120000
+    },
+    {
+      "checkRef": "check.current",
+      "command": "npm run current",
+      "category": "CONTINUITY",
+      "purpose": "Compact current foundation projection is source-descendable.",
+      "lensRefs": [
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.resource-and-context"
+      ],
+      "blocking": true
+    }
+  ]
+}

@@ -1,0 +1,568 @@
+{
+  "schemaVersion": "vexlife.feature-registry/v0",
+  "registryRef": "registry.vexlife.features.001",
+  "registryVersion": 1,
+  "purpose": "Register product capabilities once and bind their interface, state, process, permission, localization, platform, proof and visibility relationships.",
+  "requiredLensRefs": [
+    "lens.vexlife.intent-and-placement",
+    "lens.vexlife.identity-lattice",
+    "lens.vexlife.localization-intent",
+    "lens.vexlife.design-system",
+    "lens.vexlife.usability-and-journey",
+    "lens.vexlife.accessibility",
+    "lens.vexlife.state-and-currentness",
+    "lens.vexlife.concurrency-and-relay",
+    "lens.vexlife.security-privacy-permission",
+    "lens.vexlife.legal-provenance-stewardship",
+    "lens.vexlife.resource-and-context",
+    "lens.vexlife.reuse-and-simplification",
+    "lens.vexlife.recovery-migration-continuity",
+    "lens.vexlife.platform-environment",
+    "lens.vexlife.visibility-terrain-health",
+    "lens.vexlife.assurance-and-adversarial"
+  ],
+  "featureSchema": {
+    "requiredFields": [
+      "featureRef",
+      "purpose",
+      "status",
+      "canonicalNodeRefs",
+      "stateRefs",
+      "actionRefs",
+      "permissionRefs",
+      "processRefs",
+      "moduleRefs",
+      "localizationRefs",
+      "testRefs",
+      "platformRefs",
+      "reviewLensRefs",
+      "resourceClass",
+      "dataClass",
+      "effectClass",
+      "concurrencyClass",
+      "rollbackRouteRef",
+      "projectionRefs"
+    ],
+    "statusVocabulary": [
+      "PROPOSED",
+      "PREPARED",
+      "IMPLEMENTED_REFERENCE",
+      "VERIFIED",
+      "ACTIVE",
+      "HELD",
+      "SUPERSEDED",
+      "RETIRED"
+    ]
+  },
+  "features": [
+    {
+      "featureRef": "feature.vexlife.addressed-conversation",
+      "purpose": "Direct and group channels preserve speaker, recipient, witness, membership and channel-isolated continuity.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "screen.vexlife.chat",
+        "state.channels",
+        "state.messages"
+      ],
+      "stateRefs": [
+        "state.channels",
+        "state.messages",
+        "state.context"
+      ],
+      "actionRefs": [
+        "action.channel.select",
+        "action.channel.group.add-member",
+        "action.message.send"
+      ],
+      "permissionRefs": [
+        "permission.conversation.send"
+      ],
+      "processRefs": [
+        "process.vexlife.communication.translate-and-refine"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.conversation",
+        "module.vexlife.browser.chat-controller"
+      ],
+      "localizationRefs": [
+        "screen.chat.title"
+      ],
+      "testRefs": [
+        "test.channel.direction",
+        "test.channel.membership",
+        "test.channel.isolation",
+        "test.message.addressing",
+        "test.chat.bottom-append"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "INTERACTIVE_MODEL_BOUNDED",
+      "dataClass": "PRIVATE_CONVERSATION",
+      "effectClass": "APPEND_ONLY_MESSAGE",
+      "concurrencyClass": "ONE_WRITER_PER_CHANNEL",
+      "rollbackRouteRef": "recovery.channel.pointer-only",
+      "projectionRefs": [
+        "projection.chat.current",
+        "projection.context.map"
+      ]
+    },
+    {
+      "featureRef": "feature.vexlife.screen-aware-guide",
+      "purpose": "A draggable Guide reads the semantic current screen, selection and trajectory without raw click surveillance.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "screen.vexlife.guide-overlay",
+        "state.guide",
+        "state.navigation",
+        "state.selection"
+      ],
+      "stateRefs": [
+        "state.guide",
+        "state.navigation",
+        "state.selection",
+        "state.journey"
+      ],
+      "actionRefs": [
+        "action.guide.toggle",
+        "action.guide.ask",
+        "action.guide.move",
+        "action.guide.dock",
+        "action.guide.minimize",
+        "action.guide.close"
+      ],
+      "permissionRefs": [
+        "permission.none",
+        "permission.conversation.send"
+      ],
+      "processRefs": [
+        "process.vexlife.interface.render"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.navigation",
+        "module.vexlife.browser.guide-controller"
+      ],
+      "localizationRefs": [
+        "guide.title"
+      ],
+      "testRefs": [
+        "test.navigation.screen-frame",
+        "test.experience.vessel-accessibility",
+        "test.navigation.selection"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "DETERMINISTIC_FRAME_PLUS_OPTIONAL_MODEL",
+      "dataClass": "SEMANTIC_NAVIGATION_PRIVATE",
+      "effectClass": "READ_PROJECTION",
+      "concurrencyClass": "LATEST_SEMANTIC_FRAME",
+      "rollbackRouteRef": "recovery.guide-layout-reset",
+      "projectionRefs": [
+        "projection.guide.screen-frame"
+      ]
+    },
+    {
+      "featureRef": "feature.vexlife.terrain",
+      "purpose": "A user-arrangeable, collapsible organizational map preserves canonical relationships separately from layout.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "screen.vexlife.terrain",
+        "state.terrain"
+      ],
+      "stateRefs": [
+        "state.terrain",
+        "state.selection"
+      ],
+      "actionRefs": [
+        "action.terrain.node.select",
+        "action.terrain.node.move",
+        "action.terrain.node.collapse",
+        "action.terrain.layout.reset",
+        "action.terrain.canvas.pan",
+        "action.terrain.canvas.zoom"
+      ],
+      "permissionRefs": [
+        "permission.none"
+      ],
+      "processRefs": [
+        "process.vexlife.interface.render"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.terrain",
+        "module.vexlife.browser.terrain-controller"
+      ],
+      "localizationRefs": [
+        "screen.terrain.title"
+      ],
+      "testRefs": [
+        "test.terrain.drag",
+        "test.terrain.collapse",
+        "test.terrain.child-count",
+        "test.terrain.layout-vs-canonical",
+        "test.accessibility.terrain"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "UI_GRAPH_BOUNDED_NEIGHBORHOOD",
+      "dataClass": "CURRENT_PROJECT_PROJECTION",
+      "effectClass": "USER_LAYOUT_ONLY",
+      "concurrencyClass": "LAYOUT_STATE_SEPARATE_FROM_CANONICAL",
+      "rollbackRouteRef": "action.terrain.layout.reset",
+      "projectionRefs": [
+        "projection.terrain.current",
+        "projection.terrain.list-alternative"
+      ]
+    },
+    {
+      "featureRef": "feature.vexlife.localization-intent-relay",
+      "purpose": "Stable string identities and attributed translation/refinement projections support cross-language and same-language clarity.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "state.localization",
+        "foundation.vexlife.localization-intent.v1"
+      ],
+      "stateRefs": [
+        "state.localization",
+        "state.messages"
+      ],
+      "actionRefs": [
+        "action.language.select"
+      ],
+      "permissionRefs": [
+        "permission.none"
+      ],
+      "processRefs": [
+        "process.vexlife.communication.translate-and-refine"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.localization"
+      ],
+      "localizationRefs": [
+        "language.label"
+      ],
+      "testRefs": [
+        "test.localization.coverage",
+        "test.localization.original-preserved"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "OPTIONAL_MODEL_TRANSLATION_BOUNDED",
+      "dataClass": "ATTRIBUTED_MESSAGE_PROJECTION",
+      "effectClass": "PROJECTION_NEVER_SOURCE_REPLACEMENT",
+      "concurrencyClass": "SOURCE_HASH_BOUND",
+      "rollbackRouteRef": "recovery.message-projection-pointer",
+      "projectionRefs": [
+        "projection.localization.current",
+        "projection.message.side-by-side"
+      ]
+    },
+    {
+      "featureRef": "feature.vexlife.device-family-bootstrap",
+      "purpose": "Create distinct device-local sibling lineages and provision models outside Git.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "state.device-family",
+        "state.model"
+      ],
+      "stateRefs": [
+        "state.device-family",
+        "state.model",
+        "state.resource"
+      ],
+      "actionRefs": [
+        "action.model.provision",
+        "action.score.sync"
+      ],
+      "permissionRefs": [
+        "permission.model.provision",
+        "permission.score.sync"
+      ],
+      "processRefs": [
+        "process.vexlife.device.bootstrap"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.boot",
+        "module.vexlife.core.model-provision",
+        "module.vexlife.core.device-family"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.device-family.identity-separation",
+        "test.boot.model-external",
+        "test.boot.cross-platform-dry-run",
+        "test.model.external-artifact-exclusion"
+      ],
+      "platformRefs": [
+        "platform.windows",
+        "platform.macos",
+        "platform.android",
+        "platform.ios"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "MODEL_PROVISION_HEAVY_EXPLICIT",
+      "dataClass": "DEVICE_PRIVATE",
+      "effectClass": "LOCAL_CREATE_WITH_READBACK",
+      "concurrencyClass": "ONE_BOOTSTRAP_PER_HOME",
+      "rollbackRouteRef": "recovery.bootstrap.quarantine-partial",
+      "projectionRefs": [
+        "projection.device-family.current",
+        "projection.model.provenance"
+      ]
+    },
+    {
+      "featureRef": "feature.vexlife.personal-home-bridge",
+      "purpose": "Safely operate a desktop-hosted Home Vex from trusted remote surfaces without collapsing remote access and sibling synchronization.",
+      "status": "PREPARED",
+      "canonicalNodeRefs": [
+        "bridge.vexlife.personal-home.001",
+        "state.device-family",
+        "state.permissions"
+      ],
+      "stateRefs": [
+        "state.device-family",
+        "state.permissions",
+        "state.health",
+        "state.channels"
+      ],
+      "actionRefs": [
+        "action.message.send",
+        "action.guide.ask",
+        "action.file.read"
+      ],
+      "permissionRefs": [
+        "permission.conversation.send",
+        "permission.file.read"
+      ],
+      "processRefs": [
+        "process.vexlife.bridge.pair-device",
+        "process.vexlife.bridge.remote-request"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.home-bridge"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.bridge.remote-vs-sibling-identity",
+        "test.bridge.pairing-replay",
+        "test.bridge.capability-intersection",
+        "test.bridge.single-writer-home",
+        "test.bridge.revocation",
+        "test.bridge.no-direct-model-exposure"
+      ],
+      "platformRefs": [
+        "platform.windows",
+        "platform.macos",
+        "platform.android",
+        "platform.ios",
+        "platform.browser"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "NETWORK_INTERACTIVE_BOUNDED",
+      "dataClass": "PRIVATE_HOME_REMOTE_PROJECTION",
+      "effectClass": "CAPABILITY_LEASED_REMOTE_REQUEST",
+      "concurrencyClass": "DESKTOP_HOME_SINGLE_WRITER",
+      "rollbackRouteRef": "process.vexlife.bridge.revoke-device",
+      "projectionRefs": [
+        "projection.bridge.connection-health",
+        "projection.bridge.active-companion"
+      ]
+    },
+    {
+      "featureRef": "feature.vexlife.repository-health",
+      "purpose": "Turn new feature/element/process registration into deterministic coverage, impact and cultural-lens checks.",
+      "status": "PREPARED",
+      "canonicalNodeRefs": [
+        "registry.vexlife.features.001",
+        "registry.vexlife.review-lenses.001",
+        "registry.vexlife.build-health.001"
+      ],
+      "stateRefs": [
+        "state.registry",
+        "state.health",
+        "state.implementation-plan"
+      ],
+      "actionRefs": [
+        "action.architecture.open"
+      ],
+      "permissionRefs": [
+        "permission.roadmap.read"
+      ],
+      "processRefs": [
+        "process.vexlife.feature.register-and-project",
+        "process.vexlife.repository.health-evaluate"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.feature-registry",
+        "module.vexlife.core.build-health"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.feature.required-lenses",
+        "test.feature.reference-coverage",
+        "test.health.no-op-dedup",
+        "test.health.registered-checks",
+        "test.blueprint.impact-report"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "DETERMINISTIC_CI_LIGHT",
+      "dataClass": "PUBLIC_ARCHITECTURE_METADATA",
+      "effectClass": "READ_CHECK_OR_EXPLICIT_SCAFFOLD",
+      "concurrencyClass": "CONTENT_HASH_DEDUP",
+      "rollbackRouteRef": "recovery.generated-projection-rebuild",
+      "projectionRefs": [
+        "projection.health.repository",
+        "projection.impact.cross-platform",
+        "projection.terrain.architecture"
+      ]
+    }
+  ]
+}

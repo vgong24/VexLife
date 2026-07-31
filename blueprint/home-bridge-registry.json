@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "vexlife.home-bridge-registry/v0",
+  "bridgeRef": "bridge.vexlife.personal-home.001",
+  "bridgeVersion": 1,
+  "purpose": "Accountless-first trusted-device access to a desktop-hosted canonical Vex Home, with honest local sibling alternatives.",
+  "modes": [
+    "REMOTE_HOME",
+    "LOCAL_SIBLING",
+    "HYBRID"
+  ],
+  "identityClasses": [
+    "personRef",
+    "familyRef",
+    "companionLineageRef",
+    "deviceRef",
+    "homeNodeRef",
+    "instanceRef",
+    "occupancyRef",
+    "accountRef_optional",
+    "transportRef"
+  ],
+  "connectionStates": [
+    "UNPAIRED",
+    "PAIRING_OFFERED",
+    "PAIRING_APPROVED",
+    "LEASE_ACTIVE",
+    "CONNECTED_DIRECT",
+    "CONNECTED_RELAYED",
+    "HOME_UNREACHABLE",
+    "LEASE_EXPIRED",
+    "REVOKED"
+  ],
+  "invariants": [
+    "remote surface never becomes the Home writer",
+    "local sibling is a distinct lineage",
+    "mode switches are announced before message delivery",
+    "model endpoint remains loopback/private behind the gateway",
+    "pairing offers are short-lived and single-use",
+    "every request intersects family, device, lease, role, project, tool and resource scopes",
+    "revocation blocks future requests without erasing prior receipts",
+    "transport security does not replace application authorization"
+  ],
+  "pairingContract": {
+    "offerFields": [
+      "pairingRef",
+      "homeNodeRef",
+      "homePublicKey",
+      "oneTimeNonceHash",
+      "humanFingerprint",
+      "requestedCapabilityRefs",
+      "expiresAt"
+    ],
+    "approvalFields": [
+      "deviceRef",
+      "devicePublicKey",
+      "approvedCapabilityRefs",
+      "approvedBy",
+      "approvedAt"
+    ],
+    "replayAllowed": false
+  },
+  "leaseContract": {
+    "leaseFields": [
+      "leaseRef",
+      "deviceRef",
+      "homeNodeRef",
+      "capabilityRefs",
+      "projectRefs",
+      "issuedAt",
+      "expiresAt",
+      "revocationGeneration"
+    ],
+    "defaultPersistence": "EXPIRING_RENEWABLE",
+    "implicitAdmin": false
+  },
+  "transportAdapters": [
+    {
+      "transportRef": "transport.vexlife.tailscale",
+      "state": "RECOMMENDED_PERSONAL_ADAPTER",
+      "notes": "Private network path; application pairing still required."
+    },
+    {
+      "transportRef": "transport.vexlife.wireguard",
+      "state": "SUPPORTED_CONTRACT",
+      "notes": "Self-managed network option."
+    },
+    {
+      "transportRef": "transport.vexlife.loopback",
+      "state": "REFERENCE_LOCAL",
+      "notes": "Local development and tests."
+    },
+    {
+      "transportRef": "transport.vexlife.hosted-relay",
+      "state": "HELD_FUTURE",
+      "notes": "Optional rendezvous/relay, never canonical identity or storage."
+    }
+  ],
+  "requestEnvelopeFields": [
+    "requestRef",
+    "deviceRef",
+    "leaseRef",
+    "channelRef",
+    "speakerRef",
+    "recipientRefs",
+    "actionRef",
+    "expectedCurrentStateRef",
+    "resourceEnvelopeRef",
+    "idempotencyKey",
+    "sentAt"
+  ],
+  "responseEnvelopeFields": [
+    "requestRef",
+    "receiptRef",
+    "homeNodeRef",
+    "companionLineageRef",
+    "state",
+    "projectionRefs",
+    "newCurrentStateRef",
+    "resourceReceiptRef",
+    "returnedAt"
+  ],
+  "testRefs": [
+    "test.bridge.remote-vs-sibling-identity",
+    "test.bridge.pairing-replay",
+    "test.bridge.capability-intersection",
+    "test.bridge.single-writer-home",
+    "test.bridge.revocation",
+    "test.bridge.no-direct-model-exposure"
+  ]
+}

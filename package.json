@@ -1,0 +1,44 @@
+{
+  "name": "vexlife-universal-blueprint",
+  "version": "0.4.0-foundation-rc1",
+  "private": true,
+  "type": "module",
+  "description": "Universal VexLife interface, state, identity, localization and platform blueprint foundation",
+  "scripts": {
+    "test": "node scripts/test-structured.mjs",
+    "syntax:check": "node scripts/check-syntax.mjs",
+    "blueprint:check": "node scripts/validate-blueprint.mjs",
+    "public-safety:check": "node scripts/public-safety-check.mjs",
+    "manifest:write": "node scripts/source-manifest.mjs --write",
+    "manifest:check": "node scripts/source-manifest.mjs",
+    "platform:all": "node scripts/create-platform.mjs --all --out generated",
+    "browser:start": "node scripts/serve-browser.mjs",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "orient": "node scripts/orient.mjs",
+    "atlas:query": "node scripts/atlas-query.mjs",
+    "module:describe": "node scripts/module-describe.mjs",
+    "check": "npm run syntax:check && npm run blueprint:check && npm run feature:check && npm run bridge:check && npm run localization:check && npm run public-safety:check && npm test && npm run manifest:check",
+    "registry:summary": "node scripts/registry-summary.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "impact:report": "node scripts/impact-report.mjs",
+    "browser:check": "node scripts/browser-structure-check.mjs",
+    "browser:integration": "node scripts/browser-integration.mjs",
+    "experience:summary": "node -e \"import('./src/core/blueprint.mjs').then(async m=>{const b=m.loadBlueprint(); console.log(JSON.stringify({profiles:b.experience.experienceProfiles.length,gestures:b.experience.gestureContracts.length,vessels:b.experience.vessels.length},null,2))})\"",
+    "implementation:packet": "node scripts/implementation-packet.mjs",
+    "evolution:summary": "node scripts/evolution-summary.mjs",
+    "feature:check": "node scripts/feature-check.mjs",
+    "feature:scaffold": "node scripts/feature-scaffold.mjs",
+    "bridge:check": "node scripts/bridge-check.mjs",
+    "localization:check": "node scripts/localization-check.mjs",
+    "health:check": "node scripts/health-check.mjs",
+    "current": "node scripts/current.mjs",
+    "projections:build": "node scripts/build-projections.mjs",
+    "pr-ready": "node scripts/pr-ready.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

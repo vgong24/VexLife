@@ -1,0 +1,143 @@
+[
+  {
+    "componentRef": "component.vexlife.project-entry",
+    "purpose": "Reusable project selector with currentness, description and bounded recent-thread projection.",
+    "instanceRefPattern": "instance.project-entry.{projectRef}",
+    "slots": [
+      {
+        "slotRef": "slot.project-entry.select",
+        "kind": "PROJECT_SELECTOR",
+        "actionRef": "action.project.select"
+      },
+      {
+        "slotRef": "slot.project-entry.health",
+        "kind": "STATUS_PROJECTION",
+        "actionRef": null
+      }
+    ]
+  },
+  {
+    "componentRef": "component.vexlife.thread-entry",
+    "purpose": "Reusable thread selector with topic, count and selected state.",
+    "instanceRefPattern": "instance.thread-entry.{threadRef}",
+    "slots": [
+      {
+        "slotRef": "slot.thread-entry.select",
+        "kind": "THREAD_SELECTOR",
+        "actionRef": "action.thread.select"
+      },
+      {
+        "slotRef": "slot.thread-entry.count",
+        "kind": "COUNT_PROJECTION",
+        "actionRef": null
+      }
+    ]
+  },
+  {
+    "componentRef": "component.vexlife.channel-tab",
+    "purpose": "Addressed conversation-channel selector.",
+    "instanceRefPattern": "instance.channel-tab.{channelRef}",
+    "slots": [
+      {
+        "slotRef": "slot.channel-tab.select",
+        "kind": "CHANNEL_SELECTOR",
+        "actionRef": "action.channel.select"
+      }
+    ]
+  },
+  {
+    "componentRef": "component.vexlife.message-row",
+    "purpose": "Immutable speaker-to-recipient message projection.",
+    "instanceRefPattern": "instance.message-row.{messageRef}",
+    "slots": [
+      {
+        "slotRef": "slot.message-row.identity",
+        "kind": "SPEAKER_RECIPIENT_HEADER",
+        "actionRef": null
+      },
+      {
+        "slotRef": "slot.message-row.content",
+        "kind": "MESSAGE_CONTENT",
+        "actionRef": null
+      }
+    ]
+  },
+  {
+    "componentRef": "component.vexlife.terrain-node",
+    "purpose": "Draggable/collapsible Terrain node whose layout is separate from canonical relationships.",
+    "instanceRefPattern": "instance.terrain-node.{terrainNodeRef}",
+    "slots": [
+      {
+        "slotRef": "slot.terrain-node.select",
+        "kind": "TERRAIN_SELECTOR",
+        "actionRef": "action.terrain.node.select"
+      },
+      {
+        "slotRef": "slot.terrain-node.drag",
+        "kind": "TERRAIN_DRAG_HANDLE",
+        "actionRef": "action.terrain.node.move"
+      },
+      {
+        "slotRef": "slot.terrain-node.collapse",
+        "kind": "TERRAIN_COLLAPSE",
+        "actionRef": "action.terrain.node.collapse"
+      },
+      {
+        "slotRef": "slot.terrain-node.child-count",
+        "kind": "COUNT_PROJECTION",
+        "actionRef": null
+      }
+    ]
+  },
+  {
+    "componentRef": "component.vexlife.health-card",
+    "purpose": "Human-readable health projection over one semantic state.",
+    "instanceRefPattern": "instance.health-card.{healthRef}",
+    "slots": [
+      {
+        "slotRef": "slot.health-card.status",
+        "kind": "STATUS_PROJECTION",
+        "actionRef": null
+      },
+      {
+        "slotRef": "slot.health-card.details",
+        "kind": "DETAIL_PROJECTION",
+        "actionRef": null
+      }
+    ]
+  },
+  {
+    "componentRef": "component.vexlife.guide-message",
+    "purpose": "Private Guide conversation message.",
+    "instanceRefPattern": "instance.guide-message.{messageRef}",
+    "slots": [
+      {
+        "slotRef": "slot.guide-message.content",
+        "kind": "MESSAGE_CONTENT",
+        "actionRef": null
+      }
+    ]
+  },
+  {
+    "componentRef": "component.vexlife.action-vessel",
+    "purpose": "Platform-adaptive floating or docked action vessel derived from one stable identity and slot contract.",
+    "instanceRefPattern": "instance.action-vessel.{vesselRef}",
+    "slots": [
+      {
+        "slotRef": "slot.action-vessel.trigger",
+        "kind": "VESSEL_TRIGGER",
+        "actionRef": "action.vessel.expand"
+      },
+      {
+        "slotRef": "slot.action-vessel.menu",
+        "kind": "VESSEL_ACTION_GROUP",
+        "actionRef": null
+      },
+      {
+        "slotRef": "slot.action-vessel.status",
+        "kind": "STATUS_PROJECTION",
+        "actionRef": null
+      }
+    ]
+  }
+]

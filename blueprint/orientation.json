@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "vexlife.repository-orientation/v1",
+  "orientationRef": "orientation.vexlife.dedicated-repository.001",
+  "stableRepositoryIdentity": {
+    "repositoryRef": "github.vgong24.VexLife",
+    "slug": "vgong24/VexLife",
+    "primaryBranch": "main"
+  },
+  "lifecycleContracts": [
+    {
+      "state": "PRIVATE_STAGING",
+      "allowedVisibilities": [
+        "PRIVATE"
+      ],
+      "publicationAuthority": "NONE"
+    },
+    {
+      "state": "PUBLIC_RELEASE_CANDIDATE",
+      "allowedVisibilities": [
+        "PRIVATE"
+      ],
+      "publicationAuthority": "EXPLICIT_HUMAN_CONFIRMATION_REQUIRED"
+    },
+    {
+      "state": "PUBLIC_ACTIVE",
+      "allowedVisibilities": [
+        "PUBLIC"
+      ],
+      "publicationAuthority": "NO_AUTOMATIC_PUBLICATION"
+    }
+  ],
+  "requiredSources": [
+    "docs/CULTURE.md",
+    "docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md",
+    "docs/FOUNDATION-CULTURE-COVERAGE-MAP.md",
+    "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+  ],
+  "heldBoundaries": [
+    "no model artifacts in Git",
+    "no automatic publication authority",
+    "no platform conformance from generated scaffold alone",
+    "no remote surface write authority outside Home Bridge capability lease",
+    "no silent identity substitution between remote Home and local sibling"
+  ],
+  "routeRefs": {
+    "activePr": "route.vexlife.active-pr-review",
+    "acceptedMain": "route.vexlife.accepted-main",
+    "publicActive": "route.vexlife.public-active",
+    "unknown": "route.vexlife.current-work-unknown"
+  }
+}

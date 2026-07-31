@@ -1,0 +1,18 @@
+[
+  "oneCanonicalBlueprintManyPlatformProjections",
+  "stableIdentityIndependentOfVisibleLabel",
+  "stateDomainsHaveOneOwner",
+  "derivedProjectionsDistinctUntilChanged",
+  "originalMessageNeverOverwrittenByTranslation",
+  "toolVisibilityDoesNotGrantEffectAuthority",
+  "sharedScoreDoesNotCollapseDeviceLineages",
+  "modelArtifactsRemainOutsideGit",
+  "registriesAreSourceAddressableAndGeneratedFromCanonicalIdentities",
+  "semanticNavigationNotRawPointerLogging",
+  "processFactoryFailsClosedOnMissingMutableInputs",
+  "platformAdaptersImplementContractsWithoutOwningCompanionIdentity",
+  "journeyHistoryPreservesMeaningWithoutEnteringEveryContext",
+  "dreamCandidatesNeverBecomeMemoryOrWeightsWithoutExplicitReview",
+  "familyScoreSyncNeverCollapsesDeviceCompanionLineages",
+  "implementationPacketsRouteWorkButNeverGrantAuthority"
+]

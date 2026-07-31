@@ -1,0 +1,293 @@
+[
+  {
+    "workRef": "work.vexlife.browser.addressed-conversation",
+    "purpose": "Implement direct/group channels and bottom-append incremental chat.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.browser-reference",
+    "dependsOn": [
+      "work.vexlife.navigation.lattice"
+    ],
+    "pathScope": [
+      "src/core/conversation.mjs",
+      "reference/browser/**",
+      "test/core.test.mjs",
+      "test/browser.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.browser",
+    "requiredSourceRefs": [
+      "state.conversations",
+      "process.vexlife.conversation.send-addressed"
+    ],
+    "requiredTestRefs": [
+      "test.conversation.directional-isolation",
+      "test.chat.incremental-bottom-append"
+    ],
+    "outputRefs": [
+      "channel.vexlife.direct",
+      "channel.vexlife.group"
+    ],
+    "effectBoundary": "LOCAL_CONVERSATION_ONLY",
+    "completionGate": "speaker, recipient and witness context remain explicit",
+    "platformRefs": [
+      "platform.browser"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.browser.guide-terrain",
+    "purpose": "Implement floating screen-aware Guide and draggable/collapsible Terrain.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.browser-reference",
+    "dependsOn": [
+      "work.vexlife.navigation.lattice",
+      "work.vexlife.state.relay"
+    ],
+    "pathScope": [
+      "src/core/terrain.mjs",
+      "reference/browser/**",
+      "test/browser.test.mjs",
+      "test/experience.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.designer-developer",
+    "parallelGroupRef": "parallel.browser",
+    "requiredSourceRefs": [
+      "vessel.vexlife.guide",
+      "screen.vexlife.terrain"
+    ],
+    "requiredTestRefs": [
+      "test.experience.vessel-accessibility",
+      "test.terrain.layout-vs-canonical"
+    ],
+    "outputRefs": [
+      "terrain-layout.vexlife.local",
+      "screen-frame.vexlife.current"
+    ],
+    "effectBoundary": "LOCAL_UI_PREFERENCE_ONLY",
+    "completionGate": "Guide never blocks controls and Terrain layout does not rewrite graph",
+    "platformRefs": [
+      "platform.browser"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.bootstrap.cross-platform",
+    "purpose": "Create Windows/macOS/Linux local-home bootstrap and honest device lineage.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "dependsOn": [
+      "work.vexlife.blueprint.core"
+    ],
+    "pathScope": [
+      "src/core/boot.mjs",
+      "src/core/device-family.mjs",
+      "scripts/bootstrap.mjs",
+      "start-vexlife.*",
+      "test/boot.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.runtime",
+    "requiredSourceRefs": [
+      "foundation.vexlife.device-family-continuity.v1"
+    ],
+    "requiredTestRefs": [
+      "test.device-family.identity-separation",
+      "test.boot.cross-platform-dry-run"
+    ],
+    "outputRefs": [
+      "vex-home.device-local"
+    ],
+    "effectBoundary": "LOCAL_FILESYSTEM_WITH_EXPLICIT_HOME",
+    "completionGate": "fresh device creates sibling lineage without overwriting existing home",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.model.external-provisioning",
+    "purpose": "Provision or connect model outside Git with checksum, license and hardware receipts.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "dependsOn": [
+      "work.vexlife.bootstrap.cross-platform"
+    ],
+    "pathScope": [
+      "scripts/provision-model.mjs",
+      "blueprint/model-profiles.example.json",
+      "docs/BOOTSTRAP-AND-MODELS.md",
+      "test/boot.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.runtime",
+    "requiredSourceRefs": [
+      "model-profile.external-gguf"
+    ],
+    "requiredTestRefs": [
+      "test.model.external-artifact-exclusion"
+    ],
+    "outputRefs": [
+      "model-artifact.device-local"
+    ],
+    "effectBoundary": "NETWORK_DOWNLOAD_ONLY_AFTER_EXPLICIT_OPERATOR_INPUT",
+    "completionGate": "model remains outside Git and checksum is proven",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.context.current-frame",
+    "purpose": "Implement token-budgeted context frames, segments and source descent.",
+    "distance": "NEAR_DEMO",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.state.relay",
+      "work.vexlife.browser.addressed-conversation"
+    ],
+    "pathScope": [
+      "src/core/context/**",
+      "test/context/**"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "state.context",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "requiredTestRefs": [
+      "test.context.provider-budget",
+      "test.context.source-descent"
+    ],
+    "outputRefs": [
+      "context-frame.vexlife.current"
+    ],
+    "effectBoundary": "LOCAL_CONTEXT_INDEX_ONLY",
+    "completionGate": "actual serialized model input remains under budget",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.score.family-sync",
+    "purpose": "Implement scoped accepted Score records and attributed sibling trails.",
+    "distance": "NEAR_DEMO",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.bootstrap.cross-platform",
+      "work.vexlife.context.current-frame"
+    ],
+    "pathScope": [
+      "src/core/device-family.mjs",
+      "src/core/score/**",
+      "test/evolution.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "registry.vexlife.evolution.001"
+    ],
+    "requiredTestRefs": [
+      "test.device-family.score-scope",
+      "test.evolution.family-attribution"
+    ],
+    "outputRefs": [
+      "score-projection.vexlife.family"
+    ],
+    "effectBoundary": "LOCAL_AND_EXPLICIT_SYNC_ADAPTER_ONLY",
+    "completionGate": "lineages remain distinct and conflicts require review",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.dream.sync",
+    "purpose": "Implement Dream candidate, review, family envelope and training admission paths.",
+    "distance": "NEAR_DEMO",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.score.family-sync"
+    ],
+    "pathScope": [
+      "src/core/evolution.mjs",
+      "blueprint/evolution-registry.json",
+      "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
+      "test/evolution.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.architect-developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "registry.vexlife.evolution.001",
+      "process.vexlife.dream.review-and-sync"
+    ],
+    "requiredTestRefs": [
+      "test.evolution.source-preserved",
+      "test.evolution.training-does-not-activate"
+    ],
+    "outputRefs": [
+      "dream-candidate.vexlife",
+      "training-admission.vexlife"
+    ],
+    "effectBoundary": "NO_AUTOMATIC_MEMORY_OR_WEIGHT_EFFECT",
+    "completionGate": "reviewed candidate path proven; activation remains separate",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.home-bridge.contract",
+    "purpose": "Implement trusted-device pairing, capability leases, remote-vs-sibling identity and desktop single-writer Home Bridge contracts.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "dependsOn": [
+      "work.vexlife.registry.compiler",
+      "work.vexlife.state.relay",
+      "work.vexlife.bootstrap.cross-platform"
+    ],
+    "pathScope": [
+      "blueprint/home-bridge-registry.json",
+      "src/core/home-bridge.mjs",
+      "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
+      "test/home-bridge.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.operations",
+    "parallelGroupRef": "parallel.bridge-contract",
+    "requiredSourceRefs": [
+      "foundation.vexlife.home-bridge.v1",
+      "bridge.vexlife.personal-home.001"
+    ],
+    "requiredTestRefs": [
+      "test.bridge.remote-vs-sibling-identity",
+      "test.bridge.pairing-replay",
+      "test.bridge.capability-intersection",
+      "test.bridge.single-writer-home",
+      "test.bridge.revocation",
+      "test.bridge.no-direct-model-exposure"
+    ],
+    "outputRefs": [
+      "bridge.vexlife.personal-home.001",
+      "contract.vexlife.bridge.request-envelope"
+    ],
+    "effectBoundary": "CONTRACT_ONLY_NO_NETWORK_LISTENER",
+    "completionGate": "remote access, local sibling and hybrid modes are identity-safe and fail closed before platform gateway work",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [
+      "no hosted account service",
+      "no public port exposure",
+      "no raw model endpoint exposure"
+    ],
+    "returnRoute": "return bridge contract receipt to desktop platform wave"
+  }
+]

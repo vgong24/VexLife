@@ -1,0 +1,219 @@
+[
+  {
+    "processRef": "process.vexlife.navigation.semantic-transition",
+    "processVersion": 1,
+    "purpose": "Translate an interface action into one source-addressable semantic journey step.",
+    "applicabilityRules": [
+      "elementRef registered",
+      "interactionRef registered"
+    ],
+    "requiredInputs": [
+      "elementRef",
+      "currentScreenFrameRef",
+      "actionRef",
+      "subjectRef"
+    ],
+    "optionalInputs": [
+      "destinationScreenRef",
+      "destinationRouteRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve parent screen and region",
+      "resolve navigation path and selection group"
+    ],
+    "preconditions": [
+      "action is permitted for current role",
+      "destination is registered or explicitly external"
+    ],
+    "steps": [
+      "resolve-element",
+      "apply-selection",
+      "derive-next-screen-frame",
+      "append-distinct-journey-event"
+    ],
+    "effectOwnerRule": "navigation service owns semantic route state",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_NAVIGATION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.navigation-event"
+    ],
+    "canonicalDispositionVocabulary": [
+      "NAVIGATED",
+      "NO_SEMANTIC_CHANGE",
+      "DESTINATION_BLOCKED"
+    ],
+    "returnRouteRule": "publish current screen frame to Guide and selected view",
+    "closureRule": "event closes after state projection receipt",
+    "recoveryRule": "restore prior screen frame by journey ref without deleting history",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "service.navigation",
+      "service.guide",
+      "service.terrain"
+    ],
+    "invalidationTriggers": [
+      "element-parent-change",
+      "route-change",
+      "selection-group-change"
+    ],
+    "testRefs": [
+      "test.navigation.screen-frame",
+      "test.selection.project",
+      "test.selection.thread"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.conversation.send-addressed",
+    "processVersion": 1,
+    "purpose": "Append an immutable speaker-to-recipient message to one explicit channel.",
+    "applicabilityRules": [
+      "speaker and recipients are channel members"
+    ],
+    "requiredInputs": [
+      "channelRef",
+      "speakerRef",
+      "recipientRefs",
+      "originalLanguage",
+      "originalContent"
+    ],
+    "optionalInputs": [
+      "replyToMessageRef",
+      "contextRangeRefs"
+    ],
+    "sourceResolutionRules": [
+      "resolve current channel membership",
+      "resolve channel-scoped context only"
+    ],
+    "preconditions": [
+      "message input fits resource/context admission",
+      "conversation permission is active"
+    ],
+    "steps": [
+      "validate-addressing",
+      "append-original-message",
+      "advance-channel-context-pointer",
+      "project-new-message"
+    ],
+    "effectOwnerRule": "conversation service owns append; model may draft but does not write directly",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_APPEND"
+      ],
+      "pathScope": [
+        "vex-home/messages"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.addressed-message"
+    ],
+    "canonicalDispositionVocabulary": [
+      "MESSAGE_APPENDED",
+      "MEMBERSHIP_INVALID",
+      "CONTEXT_BUDGET_BLOCKED"
+    ],
+    "returnRouteRule": "notify only current channel subscribers",
+    "closureRule": "message event is terminal after append receipt",
+    "recoveryRule": "append correction or retraction; never silently overwrite original",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "service.context",
+      "service.guide",
+      "service.translation"
+    ],
+    "invalidationTriggers": [
+      "channel-membership-change",
+      "message-envelope-change"
+    ],
+    "testRefs": [
+      "test.message.addressing",
+      "test.channel.isolation",
+      "test.chat.bottom-append"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.experience.resolve-interaction",
+    "processVersion": 1,
+    "purpose": "Resolve one platform input into an unambiguous semantic action without confusing scroll, zoom, pan, node drag or overlay movement.",
+    "applicabilityRules": [
+      "surface and input are registered"
+    ],
+    "requiredInputs": [
+      "surfaceKind",
+      "inputType",
+      "gestureRef",
+      "currentScreenFrameRef"
+    ],
+    "optionalInputs": [
+      "modifiers",
+      "accessibilityMode",
+      "platformRef"
+    ],
+    "sourceResolutionRules": [
+      "match gesture registry by surface and input",
+      "prefer platform accessibility convention",
+      "reject ambiguous same-priority matches"
+    ],
+    "preconditions": [
+      "experience registry current"
+    ],
+    "steps": [
+      "collect-candidate-gestures",
+      "apply-surface-and-modifier-rules",
+      "reject-ambiguity",
+      "emit-semantic-action",
+      "append-distinct-journey-event-if-meaning-changed"
+    ],
+    "effectOwnerRule": "platform adapter owns raw input; navigation/terrain/guide service owns semantic action",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_INPUT",
+        "UPDATE_LOCAL_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.interaction-resolution"
+    ],
+    "canonicalDispositionVocabulary": [
+      "INTERACTION_RESOLVED",
+      "NO_MATCH",
+      "AMBIGUOUS_BLOCKED",
+      "ACCESSIBILITY_OVERRIDE"
+    ],
+    "returnRouteRule": "return resolved action and whether a semantic journey event was formed",
+    "closureRule": "close after action is emitted or ambiguity is surfaced",
+    "recoveryRule": "discard ephemeral raw input; semantic state remains unchanged",
+    "foundationDependencies": [
+      "foundation.vexlife.experience-interaction.v1",
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "platform.browser",
+      "platform.android",
+      "platform.ios",
+      "platform.windows",
+      "platform.macos"
+    ],
+    "invalidationTriggers": [
+      "gesture-change",
+      "platform-input-change",
+      "accessibility-change"
+    ],
+    "testRefs": [
+      "test.experience.gesture-disambiguation",
+      "test.navigation.home-and-back"
+    ]
+  }
+]

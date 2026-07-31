@@ -1,0 +1,127 @@
+[
+  {
+    "stateRef": "state.navigation",
+    "ownerRef": "service.navigation",
+    "brief": "Current semantic route, selected node and bounded trajectory."
+  },
+  {
+    "stateRef": "state.selection",
+    "ownerRef": "service.selection",
+    "brief": "Selected project, thread, channel, view and Terrain node."
+  },
+  {
+    "stateRef": "state.projects",
+    "ownerRef": "service.projects",
+    "brief": "Projects, links, attention and startup foundations."
+  },
+  {
+    "stateRef": "state.channels",
+    "ownerRef": "service.conversation",
+    "brief": "Addressed direct, group, relay and war-room channels."
+  },
+  {
+    "stateRef": "state.messages",
+    "ownerRef": "service.conversation",
+    "brief": "Immutable speaker-to-recipient message envelopes."
+  },
+  {
+    "stateRef": "state.context",
+    "ownerRef": "service.context",
+    "brief": "Current frames, sealed ranges and source descent."
+  },
+  {
+    "stateRef": "state.guide",
+    "ownerRef": "service.guide",
+    "brief": "Floating Guide placement and current screen frame."
+  },
+  {
+    "stateRef": "state.terrain",
+    "ownerRef": "service.terrain",
+    "brief": "Canonical graph plus user layout and collapse projection."
+  },
+  {
+    "stateRef": "state.localization",
+    "ownerRef": "service.localization",
+    "brief": "Current locale, catalogs and translation debt."
+  },
+  {
+    "stateRef": "state.permissions",
+    "ownerRef": "service.permissions",
+    "brief": "Platform and project capability stages."
+  },
+  {
+    "stateRef": "state.device-family",
+    "ownerRef": "service.device-family",
+    "brief": "Device lineages, sibling trails, Score scopes and local Rhythm."
+  },
+  {
+    "stateRef": "state.registry",
+    "ownerRef": "service.registry",
+    "brief": "Canonical identity, string, module, interface and process registries."
+  },
+  {
+    "stateRef": "state.journey",
+    "ownerRef": "service.navigation",
+    "brief": "Append-only semantic traversal events and bounded current trajectory."
+  },
+  {
+    "stateRef": "state.process-plans",
+    "ownerRef": "service.process-factory",
+    "brief": "Compiled no-effect plans, source bindings and execution receipts."
+  },
+  {
+    "stateRef": "state.resource",
+    "ownerRef": "service.resource-governor",
+    "brief": "Current hardware pressure, context budget and admitted leases."
+  },
+  {
+    "stateRef": "state.health",
+    "ownerRef": "service.health",
+    "brief": "Human-readable semantic health transitions over technical evidence."
+  },
+  {
+    "stateRef": "state.evolution",
+    "ownerRef": "service.evolution",
+    "brief": "Dream candidates, reviews, family envelopes, training admissions and adapter states."
+  },
+  {
+    "stateRef": "state.implementation-plan",
+    "ownerRef": "service.roadmap",
+    "brief": "Dependency-distance milestones, bounded work packets and platform conformance returns."
+  },
+  {
+    "stateRef": "state.files",
+    "ownerRef": "service.file-access",
+    "brief": "Project-assigned roots, metadata, reads, recovery copies and file-effect receipts."
+  },
+  {
+    "stateRef": "state.cli",
+    "ownerRef": "service.command-atlas",
+    "brief": "Typed command plans, execution state and bounded stdout/stderr receipts."
+  },
+  {
+    "stateRef": "state.github",
+    "ownerRef": "service.github-broker",
+    "brief": "Repository currentness, publication plans, commits, pushes and external receipts."
+  },
+  {
+    "stateRef": "state.workshop",
+    "ownerRef": "service.workshop",
+    "brief": "Copy-on-write feature candidates, discussions, reviews, approvals and exports."
+  },
+  {
+    "stateRef": "state.issues",
+    "ownerRef": "service.issue-war-room",
+    "brief": "Deduplicated issues, triage, investigation, approval, implementation and verification."
+  },
+  {
+    "stateRef": "state.model",
+    "ownerRef": "service.model-runtime",
+    "brief": "External model profiles, endpoint/artifact currentness and device-local runtime health."
+  },
+  {
+    "stateRef": "state.capabilities",
+    "ownerRef": "service.capability-atlas",
+    "brief": "Role/platform/project capability stages and exact tool availability."
+  }
+]

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "files": [
+    {
+      "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
+      "bytes": 3310,
+      "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
+    },
+    {
+      "path": "docs/INTERFACE-BUILDER.md",
+      "bytes": 3664,
+      "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
+    },
+    {
+      "path": "docs/MULTILINGUAL-INTENT-RELAY.md",
+      "bytes": 2152,
+      "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
+    },
+    {
+      "path": "docs/NEWCOMER-MAP.md",
+      "bytes": 5418,
+      "sha256": "fa851e7174736adf4714fb532cb79528405dac4e3b3091de28a8d6bb1d4a993a"
+    },
+    {
+      "path": "docs/OPEN-SOURCE-LEGAL-STEWARDSHIP.md",
+      "bytes": 14522,
+      "sha256": "60e4398cd0c35a86a1e7b6797ca085fc41cd2e32341cfb0ec5446df252f3854e"
+    },
+    {
+      "path": "docs/PLATFORM-ARCHITECTURE.md",
+      "bytes": 3951,
+      "sha256": "85d89ff187d1d06198f8a816aab4938d39ad37f2deca4d53fb1aec86facad969"
+    },
+    {
+      "path": "docs/REGISTRIES-AND-PROCESS-FACTORY.md",
+      "bytes": 3816,
+      "sha256": "e131684893e95b9d07ed412ed4aff1daee7e3f85b2eb487729612d21cf311648"
+    },
+    {
+      "path": "docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md",
+      "bytes": 6513,
+      "sha256": "1dc8db34e5d3e98de2d3befbdbca655617c9b19fb35c9dc276994fa98e60d74f"
+    },
+    {
+      "path": "docs/SECURITY-PERMISSION-EFFECTS.md",
+      "bytes": 2170,
+      "sha256": "251360fab4c5908cb00574ad4704a97a5b2e79bc00e9119fc32b310c75e43ed4"
+    },
+    {
+      "path": "docs/UNIVERSAL-BLUEPRINT.md",
+      "bytes": 3917,
+      "sha256": "497eddccd7fb2f06eb9c6ae2f9d26238ea48f16a80f33d87eeb497fa71cfbfa0"
+    },
+    {
+      "path": "GOVERNANCE.md",
+      "bytes": 2756,
+      "sha256": "5f7395f25b10f3ca9ed898d2e36fb2b347730e47996403e171b284cd8a7a8d13"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 16726,
+      "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+    },
+    {
+      "path": "LICENSE-POLICY.md",
+      "bytes": 2318,
+      "sha256": "8c815676ba8e0e4b954aee0a5505e8706fec63bdbe911acda5c31dab2790df8a"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 1844,
+      "sha256": "533db6182bcabd097bcd260d1fbbb414c730c71944843dfc483aa51a1bf9eac3"
+    },
+    {
+      "path": "package.json",
+      "bytes": 2392,
+      "sha256": "b5d462ef99d1e87a2fb8ea04a3f61fc52d0a181fb1639475d55dcaf9b621c74a"
+    },
+    {
+      "path": "PROVENANCE.md",
+      "bytes": 3001,
+      "sha256": "94bc806ae54fa7faeb15616ea897568b90ae3d7dbd6c9d4d340ead8b7c379892"
+    },
+    {
+      "path": "PUBLIC-SAFETY-MANIFEST.json",
+      "bytes": 1915,
+      "sha256": "05421af74cf1ee0edac60a636e9a9b0c716629c634029088b783b2ec9eb082a3"
+    },
+    {
+      "path": "README.md",
+      "bytes": 14797,
+      "sha256": "9698266753b12e330d025760d62aba7deb8941d370234369d6441873e04292f1"
+    },
+    {
+      "path": "reference/browser/app.css",
+      "bytes": 12669,
+      "sha256": "69e8869423e5a548914b491ae38d00e2a3e3641b193b9ff783ab7e472cd09334"
+    },
+    {
+      "path": "reference/browser/app.js",
+      "bytes": 4772,
+      "sha256": "d33047cdc90f19766f02d01e1093b295d775032ca5d77cf7220b3ddec218a946"
+    },
+    {
+      "path": "reference/browser/index.html",
+      "bytes": 10602,
+      "sha256": "872b8c8a398b33d575c274b622524aad2b32b233fe7f8ca11907208a1ba0be95"
+    },
+    {
+      "path": "reference/browser/integration-test.js",
+      "bytes": 7483,
+      "sha256": "7f602d6486b5da811f80117ec0315c93c193501ac88958bed42d089508313562"
+    },
+    {
+      "path": "reference/browser/modules/browser-bundle.js",
+      "bytes": 1305,
+      "sha256": "4356abfe264acbff90800ed872ab1a184f11314d96300836a420fb1fef59e2aa"
+    },
+    {
+      "path": "reference/browser/modules/chat-controller.js",
+      "bytes": 14195,
+      "sha256": "243729f83fc820311fbce9ed2af920ffd07efa8d053e88f7b5eca6d9f5a00d24"
+    }
+  ]
+}

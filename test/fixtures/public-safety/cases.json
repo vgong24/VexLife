@@ -1,0 +1,21 @@
+{
+  "forbidden": [
+    { "pattern": "*.gguf", "path": "weights/model.gguf" },
+    { "pattern": "*.safetensors", "path": "weights/model.safetensors" },
+    { "pattern": "*.onnx", "path": "weights/model.onnx" },
+    { "pattern": "*.bin", "path": "artifacts/payload.bin" },
+    { "pattern": ".env", "path": ".env" },
+    { "pattern": ".env.*", "path": "config/.env.local" },
+    { "pattern": "runtime/**", "path": "runtime/state.json" },
+    { "pattern": "models/**", "path": "models/manifest.json" },
+    { "pattern": ".vexlife/**", "path": ".vexlife/home.json" }
+  ],
+  "allowedBinary": {
+    "path": "test/fixtures/public-safety/allowed/sample.dat",
+    "bytesBase64": "AAFWRVhMSUZF/w=="
+  },
+  "blockedBinary": {
+    "path": "assets/undeclared.dat",
+    "bytesBase64": "AAFWRVhMSUZF/w=="
+  }
+}

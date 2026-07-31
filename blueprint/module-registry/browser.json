@@ -1,0 +1,206 @@
+[
+  {
+    "moduleRef": "module.vexlife.browser.document",
+    "path": "reference/browser/index.html",
+    "role": "Semantic product shell whose interactive elements carry stable data-node-ref identities.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/vexlife.blueprint.json",
+      "blueprint/strings/*.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js",
+      "reference/browser/app.css"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.styles",
+    "path": "reference/browser/app.css",
+    "role": "Browser design-token projection, accessibility sizing, responsive layout and low-motion behavior.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/design-tokens.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "reference/browser/index.html"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/design-tokens.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.adapter",
+    "path": "reference/browser/app.js",
+    "role": "Working browser adapter for selection, channels, bottom append, localization, screen-aware Guide and Terrain.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/design-tokens.json",
+      "blueprint/strings/*.json",
+      "blueprint/vexlife.blueprint.json",
+      "reference/browser/modules/**"
+    ],
+    "writes": [
+      "browser localStorage for user layout/language only"
+    ],
+    "loadedBy": [
+      "reference/browser/index.html"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/modules/**",
+      "src/core/conversation.mjs",
+      "src/core/localization.mjs",
+      "src/core/navigation.mjs",
+      "src/core/terrain.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.bundle-loader",
+    "path": "reference/browser/modules/browser-bundle.js",
+    "role": "Loads the composed universal blueprint and language/design catalogs for the browser projection.",
+    "reads": [],
+    "writes": [],
+    "consumers": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.demo-data",
+    "path": "reference/browser/modules/demo-data.js",
+    "role": "Provides synthetic projects, roles, addressed channels and initial local UI state for the public reference.",
+    "reads": [],
+    "writes": [],
+    "consumers": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.dom",
+    "path": "reference/browser/modules/dom.js",
+    "role": "Owns small DOM, storage, escaping and interface-entry helper primitives.",
+    "reads": [],
+    "writes": [],
+    "consumers": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.navigation-controller",
+    "path": "reference/browser/modules/navigation-controller.js",
+    "role": "Owns semantic screen frames, bounded journey events, breadcrumbs and universal selection behavior.",
+    "reads": [],
+    "writes": [],
+    "consumers": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.chat-controller",
+    "path": "reference/browser/modules/chat-controller.js",
+    "role": "Owns addressed direct/group chat, project/thread/channel selection and incremental bottom append.",
+    "reads": [],
+    "writes": [],
+    "consumers": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.terrain-controller",
+    "path": "reference/browser/modules/terrain-controller.js",
+    "role": "Owns draggable/collapsible user Terrain layout without mutating canonical relationships.",
+    "reads": [],
+    "writes": [],
+    "consumers": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.guide-controller",
+    "path": "reference/browser/modules/guide-controller.js",
+    "role": "Owns the floating screen-aware Vex Guide overlay and semantic navigation explanations.",
+    "reads": [],
+    "writes": [],
+    "consumers": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.integration-test",
+    "path": "reference/browser/integration-test.js",
+    "role": "Runs real rendered project-thread-channel isolation and EN/ZH/JA stable Guide-intent behavior in the browser reference.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.js",
+      "blueprint/strings/*.json"
+    ],
+    "writes": [
+      "in-page integration receipt only"
+    ],
+    "loadedBy": [
+      "reference/browser/app.js?integration=1"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/modules/chat-controller.js",
+      "reference/browser/modules/guide-controller.js",
+      "reference/browser/modules/demo-data.js"
+    ]
+  }
+]

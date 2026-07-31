@@ -1,0 +1,516 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.utils",
+    "path": "src/core/utils.mjs",
+    "role": "Canonical JSON, hashing and bounded token-estimation helpers.",
+    "platformScope": "UNIVERSAL",
+    "reads": [],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/core.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/state-relay.mjs",
+      "src/core/atlas.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.state-relay",
+    "path": "src/core/state-relay.mjs",
+    "role": "Immutable state cells, combined narrow projections and semantic distinct-until-changed delivery.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/core.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/navigation.mjs",
+      "src/core/terrain.mjs",
+      "src/core/localization.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.registry",
+    "path": "src/core/registry.mjs",
+    "role": "Compile identity, interface, string, navigation, process and module registries from canonical sources.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint.vexlife.universal.001",
+      "factory.vexlife.processes.001",
+      "registry.vexlife.modules.001"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/blueprint.mjs",
+      "src/core/atlas.mjs",
+      "src/core/platform-generator.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.interface-builder",
+    "path": "src/core/interface-builder.mjs",
+    "role": "Language-neutral super-functions for screen, region and element contracts.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.registry"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/vexlife.blueprint.json",
+      "src/core/platform-generator.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.process-factory",
+    "path": "src/core/process-factory.mjs",
+    "role": "Compile source-bound no-effect process plans that fail closed on missing inputs, stale foundations, authority or resources.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint/process-factory.json",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/process-factory.json",
+      "src/core/registry.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.journey",
+    "path": "src/core/journey.mjs",
+    "role": "Append-only semantic journey events with no-op suppression and bounded current trajectory.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/navigation.mjs",
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.navigation",
+    "path": "src/core/navigation.mjs",
+    "role": "Navigation Lattice, semantic screen frame, breadcrumbs and universal selection groups.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.state-relay",
+      "module.vexlife.core.journey"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/core.test.mjs",
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js",
+      "blueprint/vexlife.blueprint.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.atlas",
+    "path": "src/core/atlas.mjs",
+    "role": "Bounded token-aware identity and relationship traversal with coverage receipts.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils",
+      "module.vexlife.core.registry"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/core.test.mjs",
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/blueprint.mjs",
+      "blueprint/module-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.blueprint",
+    "path": "src/core/blueprint.mjs",
+    "role": "Load and validate the universal blueprint, factory, catalogs, module map and compiled registry.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint/vexlife.blueprint.json",
+      "blueprint/design-tokens.json",
+      "blueprint/platforms.json",
+      "blueprint/process-factory.json",
+      "blueprint/module-registry.json",
+      "blueprint/strings/*.json",
+      "blueprint/experience-registry.json"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/core.test.mjs",
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/validate-blueprint.mjs",
+      "src/core/platform-generator.mjs",
+      "src/core/experience.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.localization",
+    "path": "src/core/localization.mjs",
+    "role": "Locale projection plus attributed original, translation and Vex-refinement message contracts.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.localization",
+      "foundation.vexlife.localization-intent.v1"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/core.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/strings/*.json",
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.conversation",
+    "path": "src/core/conversation.mjs",
+    "role": "Addressed direct/group channel and immutable message-envelope contracts.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.channels",
+      "state.messages"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/core.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js",
+      "src/core/localization.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.terrain",
+    "path": "src/core/terrain.mjs",
+    "role": "Canonical Terrain relationships plus separate movable/collapsible user-layout state.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.terrain"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/core.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js",
+      "blueprint/vexlife.blueprint.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.device-family",
+    "path": "src/core/device-family.mjs",
+    "role": "Distinct device companion lineages, scoped Score sync, local Rhythm and sibling trails.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "foundation.vexlife.device-family-continuity.v1"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/core.test.mjs",
+      "test/boot.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/boot.mjs",
+      "docs/DEVICE-FAMILY-SCORE-RHYTHM.md",
+      "src/core/evolution.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.boot",
+    "path": "src/core/boot.mjs",
+    "role": "Cross-platform device-local Vex Home planning and non-destructive initialization.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.device-family"
+    ],
+    "writes": [
+      "selected ~/.vexlife home only"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/boot.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/bootstrap.mjs",
+      "scripts/provision-model.mjs",
+      "docs/BOOTSTRAP-AND-MODELS.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.impact",
+    "path": "src/core/impact.mjs",
+    "role": "Compute bounded blueprint change impact and downstream adoption surface without breaking stable mains.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint.vexlife.universal.001"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/platform-generator.mjs",
+      "docs/BLUEPRINT-CHANGE-PROPAGATION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.platform-generator",
+    "path": "src/core/platform-generator.mjs",
+    "role": "Generate platform-native adoption catalogs, stubs, process/permission manifests and conformance receipts.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.blueprint",
+      "module.vexlife.core.registry",
+      "module.vexlife.core.experience"
+    ],
+    "writes": [
+      "caller-selected generated directory"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/generator.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/platforms.json",
+      "docs/PLATFORM-ARCHITECTURE.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.experience",
+    "path": "src/core/experience.mjs",
+    "role": "Experience profiles, platform-adaptive action vessels and unambiguous gesture resolution.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.experience.001",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.blueprint",
+      "module.vexlife.core.platform-generator"
+    ],
+    "tests": [
+      "test/experience.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/experience-registry.json",
+      "docs/EXPERIENCE-GESTURES-AND-VESSELS.md",
+      "src/core/platform-generator.mjs",
+      "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.evolution",
+    "path": "src/core/evolution.mjs",
+    "role": "Dream candidate, Context Review, family attribution and training-admission boundary helpers.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.evolution.001",
+      "module.vexlife.core.device-family"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "process.vexlife.dream.form-candidate",
+      "process.vexlife.dream.review-and-sync",
+      "process.vexlife.adapter.train-candidate"
+    ],
+    "tests": [
+      "test/evolution.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
+      "src/core/device-family.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.implementation-plan",
+    "path": "src/core/implementation-plan.mjs",
+    "role": "Validate dependency-distance work graphs and compile bounded no-authority Codex/platform packets.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "plan.vexlife.foundation-to-demo.001",
+      "blueprint.vexlife.universal.001"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "script.vexlife.implementation-packet",
+      "process.vexlife.roadmap.compile-work-packet"
+    ],
+    "tests": [
+      "test/implementation-plan.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/implementation-plan.json",
+      "docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.capability",
+    "path": "src/core/capability.mjs",
+    "role": "Compile fresh role/platform/project/permission/resource capability frames without inferred execution.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.capabilities.001"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "model-turn-context-assembler",
+      "role-orientation"
+    ],
+    "tests": [
+      "test/capability.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/capability-registry.json",
+      "docs/CAPABILITY-AND-TOOL-ATLAS.md",
+      "blueprint/vexlife.blueprint.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.model-provision",
+    "path": "src/core/model-provision.mjs",
+    "role": "Validates external model provisioning requests and forms inactive artifact manifests without storing models in Git.",
+    "reads": [],
+    "writes": [],
+    "consumers": [],
+    "tests": [
+      "test/model-provision.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.core.source-manifest",
+    "path": "src/core/source-manifest.mjs",
+    "role": "Builds a deterministic public-candidate source manifest while excluding generated, runtime and model state.",
+    "reads": [],
+    "writes": [],
+    "consumers": [],
+    "tests": [
+      "test/source-manifest.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.core.public-safety",
+    "path": "src/core/public-safety.mjs",
+    "role": "Compiles forbidden path and binary classifications from the canonical public-safety manifest and scans exact repository-relative paths.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "PUBLIC-SAFETY-MANIFEST.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.public-safety-check"
+    ],
+    "tests": [
+      "test/public-safety.test.mjs"
+    ],
+    "changeMap": [
+      "PUBLIC-SAFETY-MANIFEST.json",
+      ".gitignore"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.check-result",
+    "path": "src/core/check-result.mjs",
+    "role": "Admits machine-readable command results by transport, semantic state, currentness and the source-managed check-result contract.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.build-health.001"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.pr-ready"
+    ],
+    "tests": [
+      "test/check-result.test.mjs",
+      "test/pr-ready-attention.e2e.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json",
+      "src/core/build-health.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.repository-evidence",
+    "path": "src/core/repository-evidence.mjs",
+    "role": "Separates live candidate head, tested checkout or merge, base, branch, upstream and repository identity evidence.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "Git worktree and explicit environment receipts"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.orient",
+      "module.vexlife.script.pr-ready",
+      "module.vexlife.script.browser-integration"
+    ],
+    "tests": [
+      "test/orientation.test.mjs",
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      ".github/workflows/check.yml"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.orientation",
+    "path": "src/core/orientation.mjs",
+    "role": "Derives lifecycle-safe bounded orientation from stable repository identity plus live or explicit current-work evidence.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "blueprint/orientation.json",
+      "module.vexlife.core.repository-evidence"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.orient"
+    ],
+    "tests": [
+      "test/orientation.test.mjs"
+    ],
+    "changeMap": [
+      "AGENTS.md",
+      "VEXLIFE.md"
+    ]
+  }
+]

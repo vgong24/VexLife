@@ -1,0 +1,434 @@
+{
+  "screenRef": "screen.vexlife.chat",
+  "routeRef": "route.chat",
+  "titleStringRef": "screen.chat.title",
+  "stateSelectorRefs": [
+    "selector.project-rail",
+    "selector.active-channel",
+    "selector.current-screen-frame"
+  ],
+  "regions": [
+    {
+      "regionRef": "region.chat.project-rail",
+      "labelStringRef": "region.projects.label",
+      "elements": [
+        {
+          "elementRef": "element.project.self-development",
+          "kind": "PROJECT_SELECTOR",
+          "labelStringRef": "project.self-development.name",
+          "actionRef": "action.project.select",
+          "selectionGroupRef": "selection.project",
+          "terrainNodeRef": "terrain.project.self-development",
+          "testRefs": [
+            "test.selection.project"
+          ],
+          "conceptRef": "concept.element.project.self-development",
+          "interactionRef": "interaction.project.self-development",
+          "navigationRef": "navpath.project.self-development",
+          "journeyEventTypeRef": "journey.project-selector",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.project.self-development"
+          }
+        },
+        {
+          "elementRef": "element.thread.open-conversation",
+          "kind": "THREAD_SELECTOR",
+          "labelStringRef": "thread.open-conversation.name",
+          "actionRef": "action.thread.select",
+          "selectionGroupRef": "selection.thread",
+          "terrainNodeRef": "terrain.thread.open-conversation",
+          "testRefs": [
+            "test.selection.thread"
+          ],
+          "conceptRef": "concept.element.thread.open-conversation",
+          "interactionRef": "interaction.thread.open-conversation",
+          "navigationRef": "navpath.thread.open-conversation",
+          "journeyEventTypeRef": "journey.thread-selector",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.thread.open-conversation"
+          }
+        },
+        {
+          "elementRef": "element.project.root-hub",
+          "kind": "PROJECT_SELECTOR",
+          "labelStringRef": "project.root-hub.name",
+          "actionRef": "action.project.select",
+          "selectionGroupRef": "selection.project",
+          "terrainNodeRef": "terrain.project.root-hub",
+          "testRefs": [
+            "test.selection.project"
+          ],
+          "conceptRef": "concept.element.project.root-hub",
+          "interactionRef": "interaction.project.root-hub",
+          "navigationRef": "navpath.project.root-hub",
+          "journeyEventTypeRef": "journey.project-selector",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.project.root-hub"
+          }
+        },
+        {
+          "elementRef": "element.project.vex-home-product",
+          "conceptRef": "concept.element.project.vex-home-product",
+          "interactionRef": "interaction.project.vex-home-product",
+          "navigationRef": "navpath.project.vex-home-product",
+          "journeyEventTypeRef": "journey.project-selector",
+          "kind": "PROJECT_SELECTOR",
+          "labelStringRef": "project.vex-home.name",
+          "actionRef": "action.project.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.project",
+          "terrainNodeRef": "terrain.project.vex-home-product",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.project.vex-home-product"
+          },
+          "testRefs": [
+            "test.selection.project"
+          ]
+        },
+        {
+          "elementRef": "element.thread.guided-fresh",
+          "conceptRef": "concept.element.thread.guided-fresh",
+          "interactionRef": "interaction.thread.guided-fresh",
+          "navigationRef": "navpath.thread.guided-fresh",
+          "journeyEventTypeRef": "journey.thread-selector",
+          "kind": "THREAD_SELECTOR",
+          "labelStringRef": "thread.guided-fresh.name",
+          "actionRef": "action.thread.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.thread",
+          "terrainNodeRef": "terrain.thread.guided-fresh",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.thread.guided-fresh"
+          },
+          "testRefs": [
+            "test.selection.thread"
+          ]
+        },
+        {
+          "elementRef": "element.thread.product-workshop",
+          "conceptRef": "concept.element.thread.product-workshop",
+          "interactionRef": "interaction.thread.product-workshop",
+          "navigationRef": "navpath.thread.product-workshop",
+          "journeyEventTypeRef": "journey.thread-selector",
+          "kind": "THREAD_SELECTOR",
+          "labelStringRef": "thread.product-workshop.name",
+          "actionRef": "action.thread.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.thread",
+          "terrainNodeRef": "terrain.thread.product-workshop",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.thread.product-workshop"
+          },
+          "testRefs": [
+            "test.selection.thread"
+          ]
+        },
+        {
+          "elementRef": "element.project.local-vex",
+          "conceptRef": "concept.element.project.local-vex",
+          "interactionRef": "interaction.project.local-vex",
+          "navigationRef": "navpath.project.local-vex",
+          "journeyEventTypeRef": "journey.project-selector",
+          "kind": "PROJECT_SELECTOR",
+          "labelStringRef": "project.local-vex.name",
+          "actionRef": "action.project.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.project",
+          "terrainNodeRef": "terrain.project.local-vex",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.project.local-vex"
+          },
+          "testRefs": [
+            "test.selection.project"
+          ]
+        },
+        {
+          "elementRef": "element.thread.foundation",
+          "conceptRef": "concept.element.thread.foundation",
+          "interactionRef": "interaction.thread.foundation",
+          "navigationRef": "navpath.thread.foundation",
+          "journeyEventTypeRef": "journey.thread-selector",
+          "kind": "THREAD_SELECTOR",
+          "labelStringRef": "thread.foundation.name",
+          "actionRef": "action.thread.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.thread",
+          "terrainNodeRef": "terrain.thread.foundation",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.thread.foundation"
+          },
+          "testRefs": [
+            "test.selection.thread"
+          ]
+        },
+        {
+          "elementRef": "element.thread.root-welcome",
+          "conceptRef": "concept.element.thread.root-welcome",
+          "interactionRef": "interaction.thread.root-welcome",
+          "navigationRef": "navpath.thread.root-welcome",
+          "journeyEventTypeRef": "journey.thread-selector",
+          "kind": "THREAD_SELECTOR",
+          "labelStringRef": "thread.root-welcome.name",
+          "actionRef": "action.thread.select",
+          "permissionRef": null,
+          "selectionGroupRef": "selection.thread",
+          "terrainNodeRef": "terrain.thread.root-welcome",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.thread.root-welcome"
+          },
+          "testRefs": [
+            "test.selection.thread"
+          ]
+        },
+        {
+          "elementRef": "element.project.create",
+          "conceptRef": "concept.element.project.create",
+          "interactionRef": "interaction.project.create",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.project-create",
+          "kind": "PROJECT_CREATE",
+          "labelStringRef": "project.create",
+          "actionRef": "action.project.create",
+          "permissionRef": "permission.project.create",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.project.create"
+          },
+          "testRefs": [
+            "test.permission.no-inferred-effect"
+          ]
+        },
+        {
+          "elementRef": "element.architecture.open",
+          "conceptRef": "concept.element.architecture.open",
+          "interactionRef": "interaction.architecture.open",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.architecture-open",
+          "kind": "ARCHITECTURE_OPEN",
+          "labelStringRef": "architecture.open",
+          "actionRef": "action.architecture.open",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.architecture.open"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        }
+      ],
+      "conceptRef": "concept.region.chat.project-rail",
+      "navigationNodeRef": "nav.region.chat.project-rail"
+    },
+    {
+      "regionRef": "region.chat.channels",
+      "labelStringRef": "region.channels.label",
+      "elements": [
+        {
+          "elementRef": "element.channel.companion",
+          "kind": "CHANNEL_SELECTOR",
+          "labelStringRef": "channel.companion.name",
+          "actionRef": "action.channel.select",
+          "selectionGroupRef": "selection.channel",
+          "testRefs": [
+            "test.channel.direction"
+          ],
+          "conceptRef": "concept.element.channel.companion",
+          "interactionRef": "interaction.channel.companion",
+          "navigationRef": "navpath.channel.companion",
+          "journeyEventTypeRef": "journey.channel-selector",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.channel.companion"
+          }
+        },
+        {
+          "elementRef": "element.channel.guide",
+          "kind": "CHANNEL_SELECTOR",
+          "labelStringRef": "channel.guide.name",
+          "actionRef": "action.channel.select",
+          "selectionGroupRef": "selection.channel",
+          "testRefs": [
+            "test.channel.direction"
+          ],
+          "conceptRef": "concept.element.channel.guide",
+          "interactionRef": "interaction.channel.guide",
+          "navigationRef": "navpath.channel.guide",
+          "journeyEventTypeRef": "journey.channel-selector",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.channel.guide"
+          }
+        },
+        {
+          "elementRef": "element.channel.root-hub",
+          "kind": "CHANNEL_SELECTOR",
+          "labelStringRef": "channel.root-hub.name",
+          "actionRef": "action.channel.select",
+          "selectionGroupRef": "selection.channel",
+          "testRefs": [
+            "test.channel.direction"
+          ],
+          "conceptRef": "concept.element.channel.root-hub",
+          "interactionRef": "interaction.channel.root-hub",
+          "navigationRef": "navpath.channel.root-hub",
+          "journeyEventTypeRef": "journey.channel-selector",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.channel.root-hub"
+          }
+        },
+        {
+          "elementRef": "element.channel.group",
+          "kind": "CHANNEL_SELECTOR",
+          "labelStringRef": "channel.group.name",
+          "actionRef": "action.channel.select",
+          "selectionGroupRef": "selection.channel",
+          "testRefs": [
+            "test.channel.membership"
+          ],
+          "conceptRef": "concept.element.channel.group",
+          "interactionRef": "interaction.channel.group",
+          "navigationRef": "navpath.channel.group",
+          "journeyEventTypeRef": "journey.channel-selector",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.channel.group"
+          }
+        }
+      ],
+      "conceptRef": "concept.region.chat.channels",
+      "navigationNodeRef": "nav.region.chat.channels"
+    },
+    {
+      "regionRef": "region.chat.feed",
+      "labelStringRef": "region.feed.label",
+      "elements": [
+        {
+          "elementRef": "element.chat.feed",
+          "kind": "MESSAGE_FEED",
+          "labelStringRef": "region.feed.label",
+          "testRefs": [
+            "test.chat.bottom-append",
+            "test.channel.isolation"
+          ],
+          "conceptRef": "concept.element.chat.feed",
+          "interactionRef": "interaction.chat.feed",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.message-feed",
+          "accessibility": {
+            "role": "region",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.chat.feed"
+          }
+        },
+        {
+          "elementRef": "element.chat.composer",
+          "kind": "MESSAGE_COMPOSER",
+          "labelStringRef": "composer.placeholder",
+          "actionRef": "action.message.send",
+          "permissionRef": "permission.conversation.send",
+          "testRefs": [
+            "test.message.addressing"
+          ],
+          "conceptRef": "concept.element.chat.composer",
+          "interactionRef": "interaction.chat.composer",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.message-composer",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.chat.composer"
+          }
+        }
+      ],
+      "conceptRef": "concept.region.chat.feed",
+      "navigationNodeRef": "nav.region.chat.feed"
+    },
+    {
+      "regionRef": "region.chat.context",
+      "conceptRef": "concept.region.chat.context",
+      "navigationNodeRef": "nav.region.chat.context",
+      "labelStringRef": "region.context.label",
+      "elements": [
+        {
+          "elementRef": "element.messages.jump-latest",
+          "conceptRef": "concept.element.messages.jump-latest",
+          "interactionRef": "interaction.messages.jump-latest",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.jump-latest",
+          "kind": "JUMP_LATEST",
+          "labelStringRef": "messages.new",
+          "actionRef": "action.messages.jump-latest",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.messages.jump-latest"
+          },
+          "testRefs": [
+            "test.chat.bottom-append"
+          ]
+        },
+        {
+          "elementRef": "element.channel.add-group",
+          "conceptRef": "concept.element.channel.add-group",
+          "interactionRef": "interaction.channel.add-group",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.group-member-action",
+          "kind": "GROUP_MEMBER_ACTION",
+          "labelStringRef": "channel.add-group",
+          "actionRef": "action.channel.group.add-member",
+          "permissionRef": "permission.conversation.send",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.channel.add-group"
+          },
+          "testRefs": [
+            "test.channel.membership"
+          ]
+        }
+      ]
+    }
+  ],
+  "testRefs": [
+    "test.navigation.screen-frame",
+    "test.localization.coverage",
+    "test.accessibility.chat"
+  ],
+  "conceptRef": "concept.screen.vexlife.chat",
+  "navigationNodeRef": "nav.screen.vexlife.chat"
+}
