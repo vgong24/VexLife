@@ -4,8 +4,14 @@
     {
       "path": "blueprint/intent-orchestration-registry.json",
       "mode": "100644",
-      "bytes": 10260,
-      "sha256": "da7ed7d6f3bb38fdc8b15050e27a748ade3470f7b740688ab77879c71a655193"
+      "bytes": 12497,
+      "sha256": "27a7a4ab77811c4af2567a0a9d39bbdbbe088c5f22b6a9ba1635e67d95363f1f"
+    },
+    {
+      "path": "blueprint/intent-trust-snapshot.json",
+      "mode": "100644",
+      "bytes": 1694,
+      "sha256": "b141f88a81e7f17602a39896abce5d9631f2fef36afcdbfe7663bb0543a94f39"
     },
     {
       "path": "blueprint/model-profiles.example.json",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 1196,
       "sha256": "9e1626b356908ac6d300e3a4b6558ca9dd4da7ab9ca1e8cd141942d2ac02cc54"
-    },
-    {
-      "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
-      "mode": "100644",
-      "bytes": 2475,
-      "sha256": "20e4159c562ec46bfad7643dabb45f047aa005e699811358d87acdd5694ac5c1"
     }
   ]
 }

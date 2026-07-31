@@ -47,8 +47,11 @@ Interpretations, plans, authorizations, transitions, and effect receipts live
 in separate append-only collections. Their constructors require exact source
 Intent, actor and role attribution, formation time, bounded source refs,
 canonical fingerprints, and explicit authority/effect dispositions. A proposed
-plan is always `NO_AUTHORITY` and `NO_EFFECTS`; an authorization remains bound
-to an explicit effect envelope and is not execution.
+interpretation or plan is always `NO_AUTHORITY` and `NO_EFFECTS`. Actor roles
+resolve through the canonical role registry and actors through a current
+external trust snapshot. An authorization is admitted only when its exact
+actor, role, decision, effect envelope, and dispositions match one current
+trusted authorization binding; even then, the projection is not execution.
 
 ## Workgraph node and lifecycle
 
@@ -58,10 +61,18 @@ envelopes, expected transition, completion gates, return route, sources,
 initial state, timestamp, and source-managed semantic fingerprint. Set-like refs
 are normalized before hashing. Caller-controlled fingerprints are rejected.
 
+New nodes form only in the source-managed `CAPTURED` state. A later lifecycle
+state must be reproduced by a complete validated transition ledger; callers
+cannot set `initialState` to the current state and erase formation history.
+
 Each dependency has an explicit requirement naming the exact dependency,
 expected transition, and allowed result dispositions. Every typed binding
-resolves through an exact supplied canonical/runtime binding set or resolver;
-a plausible prefix is never sufficient.
+in the graph is only a claim. It resolves through an external source-managed or
+runtime trust snapshot carrying an exact source ref/hash, formation identity,
+currentness, and canonical fingerprint. The graph cannot certify a fabricated
+binding by copying it into its own `bindingRefs`, and a plausible prefix is
+never sufficient. The repository-managed reference snapshot lives at
+`blueprint/intent-trust-snapshot.json`.
 
 The canonical lifecycle vocabulary is source-managed in
 `blueprint/intent-orchestration-registry.json`:
@@ -90,18 +101,28 @@ CANCELLED
 HELD_UNKNOWN
 ```
 
-Every transition records a per-node sequence, prior and next state,
-reason, actor/process, sources, timestamp, and canonical fingerprint. The
-validator replays each node ledger from its formed state, rejects disconnected
-or retrograde history, and requires the replay result to equal current node
-state. An equal transition anywhere in the exact node ledger appends nothing.
-Branch cancellation transitions every active descendant while preserving deep
-source, node, transition, and receipt lineage.
+Every transition records a per-node sequence, prior and next state, reason,
+actor, canonical actor role, registered process, sources, timestamp, and
+canonical fingerprint. Before replay, the validator proves every required
+field, known node, non-negative integer sequence, lifecycle state, process,
+actor, role, source, and fingerprint. It then replays each node ledger from its
+formed state, rejects disconnected or retrograde history, and requires the
+replay result to equal current node state. The current pointer comes from the
+highest validated sequence, never input array order. An equal transition
+anywhere in the exact node ledger appends nothing.
+
+The registry declares one cancellation disposition for every lifecycle state.
+Every active state, including `VERIFYING`, admits a source-preserving transition
+to `CANCELLED`; completed or already terminal outcomes are preserved. Branch
+cancellation preflights the whole descendant set and forms one immutable graph
+snapshot, so an invalid descendant policy cannot expose a partially cancelled
+result.
 
 Every immutable graph snapshot is re-fingerprinted after a receipt, transition,
 or cancellation. Its identity covers the immutable Intent, full semantic
 node/edge/state content, attributed projections, transition and receipt
-ledgers, exact binding sets, and derived current pointers.
+ledgers, exact binding claims, and derived current pointers. The external trust
+snapshot remains a distinct authority input and is never copied into the graph.
 
 ## Deterministic admission
 
@@ -111,9 +132,13 @@ ledgers, exact binding sets, and derived current pointers.
 - self-dependencies, missing dependencies, or cycles;
 - asymmetric, multi-parent, or cyclic containment;
 - disconnected transition ledgers or a final-state mismatch;
+- direct formation outside the source-managed `CAPTURED` state;
+- unknown-node, non-integer, unattributed, or unresolved-process transitions;
 - unknown lifecycle or priority values;
 - missing process, role, capability, effect, resource, completion-gate,
   expected-transition, source, or return-route bindings;
+- absent, stale, malformed, or self-declared-only trust evidence;
+- fabricated projection actors/roles or authorization decisions/effects;
 - stale/non-canonical Intent, node, transition, receipt, graph, or current-pointer
   fingerprints;
 - stale, wrong-transition, wrong-node, conflicting, or duplicate current
@@ -165,16 +190,19 @@ Every projected next action declares `NO_EXECUTION_AUTHORITY`.
 
 ```bash
 npm run intent:check
-npm run intent:plan -- --fixture <safe-repository-relative-json-path>
-npm run intent:status -- --graph <safe-repository-relative-json-path>
-npm run intent:status -- --graph <safe-repository-relative-json-path> --detail
+npm run intent:plan -- --fixture <safe-repository-relative-json-path> [--trust-snapshot <safe-repository-relative-json-path>]
+npm run intent:status -- --graph <safe-repository-relative-json-path> [--trust-snapshot <safe-repository-relative-json-path>]
+npm run intent:status -- --graph <safe-repository-relative-json-path> [--trust-snapshot <safe-repository-relative-json-path>] --detail
 ```
 
 `intent:check` validates the source-managed contract and its canonical
 Blueprint composition plus compiled Atlas registry, system, lifecycle, receipt,
 projection, attributed-contract, resolution, process, module, feature, test,
 build-health, and implementation-work identities. `intent:plan` returns
-validation order and node sets.
+validation order and node sets. Both file commands load the current
+source-managed trust snapshot by default; a bounded runtime snapshot may be
+supplied explicitly and is validated against the same provenance/currentness
+contract.
 `intent:status` returns the compact Intent Queue; `--detail` is the explicit
 raw-graph descent.
 

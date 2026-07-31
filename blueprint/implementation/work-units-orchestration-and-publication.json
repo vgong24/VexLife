@@ -86,6 +86,7 @@
     "pathScope": [
       "blueprint/vexlife.blueprint.json",
       "blueprint/intent-orchestration-registry.json",
+      "blueprint/intent-trust-snapshot.json",
       "blueprint/fragments/state-domains.json",
       "blueprint/fragments/tests.json",
       "blueprint/feature-registry.json",

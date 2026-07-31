@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/orientation.test.mjs",
+      "mode": "100644",
+      "bytes": 5222,
+      "sha256": "a3664bc4b599262c63ab0df609cf3b04ca383008ee491cdf66653ab2236e6b20"
+    },
+    {
       "path": "test/pr-ready-attention.e2e.mjs",
       "mode": "100644",
       "bytes": 2242,

@@ -78,16 +78,14 @@ export function projectIntentStatus(graph, {
   registry,
   registeredProcessRefs = registry?.processRefs ?? [],
   registeredRoleRefs = [],
-  registeredBindingRefs = graph?.bindingRefs ?? {},
-  bindingResolver = null,
+  trustSnapshot = null,
   recentLimit = 5
 } = {}) {
   const validation = validateIntentWorkgraph(graph, {
     registry,
     registeredProcessRefs,
     registeredRoleRefs,
-    registeredBindingRefs,
-    bindingResolver
+    trustSnapshot
   });
   const sets = projectIntentSets(graph, { registry });
   const byRef = new Map(graph.nodes.map((node) => [node.workNodeRef, node]));

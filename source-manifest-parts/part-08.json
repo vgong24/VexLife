@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/state-relay.mjs",
+      "mode": "100644",
+      "bytes": 2512,
+      "sha256": "6db63d09620aeea24b4f66f36384201495a65e75efc81ca9dbe75f99787923c7"
+    },
+    {
       "path": "src/core/terrain.mjs",
       "mode": "100644",
       "bytes": 1793,
@@ -130,20 +136,14 @@
     {
       "path": "test/intent-workgraph.test.mjs",
       "mode": "100644",
-      "bytes": 21493,
-      "sha256": "9100762051f2daf71392f418c5b3a583599668438e05fde2cd181c20ad2810b6"
+      "bytes": 31577,
+      "sha256": "2c5e76b50ec7f810b43800cc831b613673b7e636e910b0bfa45194af9af27656"
     },
     {
       "path": "test/model-provision.test.mjs",
       "mode": "100644",
       "bytes": 1971,
       "sha256": "2975c38e03eb343680a51011de95e494c8f4b30defa0ad02329c28ebde719949"
-    },
-    {
-      "path": "test/orientation.test.mjs",
-      "mode": "100644",
-      "bytes": 5222,
-      "sha256": "a3664bc4b599262c63ab0df609cf3b04ca383008ee491cdf66653ab2236e6b20"
     }
   ]
 }

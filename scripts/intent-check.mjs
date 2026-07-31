@@ -2,14 +2,23 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
-import { validateIntentRegistry } from '../src/core/intent-validation.mjs';
+import { validateIntentRegistry, validateIntentTrustSnapshot } from '../src/core/intent-validation.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
+import { readJson } from '../src/core/utils.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bundle = loadBlueprint(root);
 const registry = bundle.intentRegistry;
-const contract = validateIntentRegistry(registry);
+const registeredProcessRefs = bundle.factory.processes.map((item) => item.processRef);
+const registeredRoleRefs = bundle.blueprint.roles.map((item) => item.roleRef);
+const trustSnapshot = readJson(path.join(root, 'blueprint/intent-trust-snapshot.json'));
+const contract = validateIntentRegistry(registry, { registeredProcessRefs });
 const errors = [...contract.errors];
+const trustContract = validateIntentTrustSnapshot(trustSnapshot, {
+  registry,
+  registeredRoleRefs
+});
+errors.push(...trustContract.errors.map((error) => `source-managed trust snapshot: ${error}`));
 const compiled = compileRegistryPack(bundle);
 
 const requiredModuleRefs = [
@@ -69,6 +78,14 @@ const result = {
   processRefs: contract.stats.processRefs,
   moduleRefs: requiredModuleRefs.length,
   registeredTests: [...testRefs].filter((ref) => ref.startsWith('test.intent.')).length,
+  trustSnapshot: {
+    snapshotRef: trustSnapshot.snapshotRef,
+    sourceRef: trustSnapshot.sourceRef,
+    sourceHash: trustSnapshot.sourceHash,
+    formationRef: trustSnapshot.formationRef,
+    currentness: trustSnapshot.currentness,
+    semanticFingerprint: trustSnapshot.semanticFingerprint
+  },
   errors
 };
 console.log(JSON.stringify(result, null, 2));

@@ -9,6 +9,7 @@ import {
   appendReceipt,
   cancelIntentBranch,
   createIntentEnvelope,
+  createIntentTrustSnapshot,
   createIntentWorkgraph,
   createWorkNode,
   isDeeplyFrozen,
@@ -16,7 +17,11 @@ import {
   resolveKnownIntent
 } from '../src/core/intent-workgraph.mjs';
 import { projectIntentStatus } from '../src/core/intent-projection.mjs';
-import { validateIntentRegistry, validateIntentWorkgraph } from '../src/core/intent-validation.mjs';
+import {
+  validateIntentRegistry,
+  validateIntentTrustSnapshot,
+  validateIntentWorkgraph
+} from '../src/core/intent-validation.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
 import { readJson } from '../src/core/utils.mjs';
 
@@ -25,6 +30,7 @@ const bundle = loadBlueprint(root);
 const registry = bundle.intentRegistry;
 const registeredProcessRefs = bundle.factory.processes.map((item) => item.processRef);
 const registeredRoleRefs = bundle.blueprint.roles.map((item) => item.roleRef);
+const sourceManagedTrustSnapshot = readJson(path.join(root, 'blueprint/intent-trust-snapshot.json'));
 
 function envelope(overrides = {}) {
   return createIntentEnvelope({
@@ -79,7 +85,50 @@ function bindingRefs(nodes) {
   ]));
 }
 
+function transitionPath(initialState, targetState) {
+  if (initialState === targetState) return [];
+  const queue = [[initialState, []]];
+  const visited = new Set([initialState]);
+  while (queue.length) {
+    const [state, pathStates] = queue.shift();
+    for (const nextState of registry.allowedTransitions[state] ?? []) {
+      if (visited.has(nextState)) continue;
+      const nextPath = [...pathStates, nextState];
+      if (nextState === targetState) return nextPath;
+      visited.add(nextState);
+      queue.push([nextState, nextPath]);
+    }
+  }
+  throw new Error(`no source-managed formation path ${initialState} -> ${targetState}`);
+}
+
+function formationTransitions(nodes) {
+  return nodes.flatMap((workNode) => {
+    let priorState = workNode.initialState;
+    return transitionPath(workNode.initialState, workNode.state).map((nextState, sequence) => {
+      const transition = {
+        transitionRef: `transition.formation.${workNode.workNodeRef}.${sequence}`,
+        workNodeRef: workNode.workNodeRef,
+        sequence,
+        priorState,
+        nextState,
+        reason: 'source-managed test formation history',
+        actorRef: 'vex.test',
+        actorRoleRef: 'role.vex.developer',
+        processRef: 'process.vexlife.intent.verify-transition',
+        sourceRefs: [`source.formation.${workNode.workNodeRef}`],
+        createdAt: `2026-07-31T00:00:${String(sequence + 10).padStart(2, '0')}.000Z`
+      };
+      priorState = nextState;
+      return transition;
+    });
+  });
+}
+
 function graph(nodes, overrides = {}) {
+  const transitions = Object.hasOwn(overrides, 'transitions')
+    ? overrides.transitions
+    : formationTransitions(nodes);
   return createIntentWorkgraph({
     graphRef: 'intent-workgraph.test',
     intent: envelope(),
@@ -87,7 +136,7 @@ function graph(nodes, overrides = {}) {
     interpretations: [],
     proposedPlans: [],
     authorizations: [],
-    transitions: [],
+    transitions,
     receipts: [],
     bindingRefs: bindingRefs(nodes),
     createdAt: '2026-07-31T00:00:00.000Z',
@@ -95,17 +144,54 @@ function graph(nodes, overrides = {}) {
   }, registry);
 }
 
-function options(candidate) {
+function trustSnapshot(candidate, overrides = {}) {
+  const authorizationBindings = (candidate.authorizations ?? []).map((item) => ({
+    authorizationRef: item.authorizationRef,
+    actorRef: item.actorRef,
+    actorRoleRef: item.actorRoleRef,
+    decisionRef: item.decisionRef,
+    effectEnvelopeRef: item.effectEnvelopeRef,
+    authorityDisposition: item.authorityDisposition,
+    effectDisposition: item.effectDisposition
+  }));
+  const trustedBindings = bindingRefs(candidate.nodes);
+  trustedBindings.effectEnvelopeRef = [...new Set([
+    ...trustedBindings.effectEnvelopeRef,
+    ...authorizationBindings.map((item) => item.effectEnvelopeRef)
+  ])].sort();
+  return createIntentTrustSnapshot({
+    schemaVersion: 'vexlife.intent-trust-snapshot/v0',
+    snapshotRef: 'trust-snapshot.test.current',
+    sourceRef: 'test/intent-workgraph.test.mjs#runtime-trust-snapshot',
+    formationRef: 'formation.test.intent-trust.current',
+    formedAt: '2026-07-31T00:00:00.000Z',
+    currentness: 'CURRENT',
+    bindingRefs: trustedBindings,
+    actorRefs: [...new Set([
+      'vex.test',
+      'person.test.human',
+      ...(candidate.transitions ?? []).map((item) => item.actorRef),
+      ...(candidate.interpretations ?? []).map((item) => item.actorRef),
+      ...(candidate.proposedPlans ?? []).map((item) => item.actorRef),
+      ...(candidate.authorizations ?? []).map((item) => item.actorRef)
+    ])].sort(),
+    decisionRefs: [...new Set(authorizationBindings.map((item) => item.decisionRef))].sort(),
+    authorizationBindings,
+    ...overrides
+  }, registry);
+}
+
+function options(candidate, trusted = trustSnapshot(candidate)) {
   return {
     registry,
     registeredProcessRefs,
     registeredRoleRefs,
-    registeredBindingRefs: candidate.bindingRefs
+    trustSnapshot: trusted
   };
 }
 
-function validate(candidate) {
-  return validateIntentWorkgraph(candidate, options(candidate));
+function validate(candidate, trusted = trustSnapshot(candidate)) {
+  return validateIntentWorkgraph(candidate, options(candidate, trusted));
 }
 
 function provenReceipt(workNode, overrides = {}) {
@@ -159,7 +245,7 @@ function authorization() {
     authorizationRef: 'authorization.test.1',
     sourceIntentRef: 'intent.test.root',
     actorRef: 'person.test.human',
-    actorRoleRef: 'role.vex.owner',
+    actorRoleRef: 'role.vex.operations',
     formedAt: '2026-07-31T00:00:03.000Z',
     sourceRefs: ['source.authorization.test'],
     authorityDisposition: 'AUTHORIZED_BOUNDED',
@@ -184,13 +270,31 @@ test('T0 original intent and attributed projections are canonical, immutable, an
   assert.equal(isDeeplyFrozen(candidate), true);
   assert.equal(candidate.intent.desiredOutcome.summary, 'Prove bounded intent orchestration');
   assert.equal(candidate.proposedPlans[0].authorityDisposition, 'NO_AUTHORITY');
+  assert.equal(validate(candidate).state, 'PLAN_VALIDATED');
   assert.throws(() => graph([node('work.test.invalid-plan')], {
     proposedPlans: [{ ...plan(), authorityDisposition: 'AUTHORIZED_BOUNDED' }]
   }), /plan must remain|semanticFingerprint|NO_AUTHORITY/);
+  assert.throws(() => graph([node('work.test.invalid-interpretation')], {
+    interpretations: [{ ...interpretation(), authorityDisposition: 'AUTHORIZED_BOUNDED' }]
+  }), /interpretation must remain|semanticFingerprint|NO_AUTHORITY/);
+
+  const trusted = trustSnapshot(candidate);
+  const fabricatedRole = graph([node('work.test.fabricated-role')], {
+    interpretations: [{ ...interpretation(), actorRoleRef: 'role.fabricated' }]
+  });
+  assert.ok(validate(fabricatedRole, trusted).errors.some((error) => error.includes('unresolved actor role')));
+  const fabricatedEffect = graph([node('work.test.fabricated-effect')], {
+    authorizations: [{ ...authorization(), effectEnvelopeRef: 'effect-envelope.fabricated' }]
+  });
+  assert.ok(validate(fabricatedEffect, trusted).errors.some((error) => error.includes('unresolved authorization effect')));
+  const invalidDecision = graph([node('work.test.invalid-decision')], {
+    authorizations: [{ ...authorization(), decisionRef: 'decision.fabricated' }]
+  });
+  assert.ok(validate(invalidDecision, trusted).errors.some((error) => error.includes('unresolved decision')));
 });
 
 test('T1 exact known-intent resolution handles one, zero, and ambiguous matches without authority', () => {
-  assert.deepEqual(validateIntentRegistry(registry).errors, []);
+  assert.deepEqual(validateIntentRegistry(registry, { registeredProcessRefs }).errors, []);
   const exact = resolveKnownIntent('CAPTURE_INTENT', registry);
   assert.equal(exact.state, 'RESOLVED');
   assert.equal(exact.processRef, 'process.vexlife.intent.capture');
@@ -267,13 +371,23 @@ test('T4 canonical node fingerprints reject caller control, normalize sets, and 
 });
 
 test('T5 every typed binding resolves exactly; plausible prefixes alone fail closed', () => {
+  const trustedCandidate = graph([node('work.test.broken')]);
+  const trusted = trustSnapshot(trustedCandidate);
   const broken = node('work.test.broken', { capabilityEnvelopeRef: 'capability-envelope.plausible-but-missing' });
-  const refs = bindingRefs([broken]);
-  refs.capabilityEnvelopeRef = [];
-  const candidate = graph([broken], { bindingRefs: refs });
-  const result = validate(candidate);
+  const candidate = graph([broken]);
+  const result = validate(candidate, trusted);
   assert.equal(result.state, 'BLOCKED');
   assert.ok(result.errors.some((error) => error.includes('unresolved capabilityEnvelopeRef')));
+  assert.equal(candidate.bindingRefs.capabilityEnvelopeRef.includes(broken.capabilityEnvelopeRef), true);
+
+  const missingTrust = validateIntentWorkgraph(candidate, {
+    registry,
+    registeredProcessRefs,
+    registeredRoleRefs
+  });
+  assert.ok(missingTrust.errors.some((error) => error.includes('trusted intent snapshot is required')));
+  const staleTrust = trustSnapshot(trustedCandidate, { currentness: 'SUPERSEDED' });
+  assert.ok(validate(candidate, staleTrust).errors.some((error) => error.includes('not CURRENT')));
 
   const missingRole = validateIntentWorkgraph(graph([node('work.test.role')]), {
     ...options(graph([node('work.test.role')])),
@@ -372,33 +486,41 @@ test('T10 HELD_UNKNOWN remains visible with a bounded human why and no authority
   assert.equal(status.nextSafeAction.authority, 'NO_EXECUTION_AUTHORITY');
 });
 
-test('T11 branch cancellation transitions deep descendants and preserves all source lineage', () => {
-  const grandchild = node('work.test.cancel-grandchild', {
-    state: 'READY',
-    parentWorkNodeRef: 'work.test.cancel-child'
-  });
-  const child = node('work.test.cancel-child', {
-    state: 'READY',
-    parentWorkNodeRef: 'work.test.cancel-parent',
-    childRefs: [grandchild.workNodeRef]
-  });
-  const parent = node('work.test.cancel-parent', {
-    state: 'READY',
-    childRefs: [child.workNodeRef]
-  });
-  const candidate = graph([parent, child, grandchild]);
-  const result = cancelIntentBranch(candidate, parent.workNodeRef, {
+test('T11 branch cancellation is total and atomic across mixed active states with source lineage', () => {
+  const states = ['READY', 'RUNNING', 'WAITING_TOOL', 'VERIFYING', 'FAILED_RECOVERABLE', 'PAUSED_AT_CHECKPOINT'];
+  const nodes = states.map((state, index) => node(`work.test.cancel-${index}`, {
+    state,
+    parentWorkNodeRef: index === 0 ? null : `work.test.cancel-${index - 1}`,
+    childRefs: index === states.length - 1 ? [] : [`work.test.cancel-${index + 1}`],
+    ...(state === 'FAILED_RECOVERABLE' ? { blockingReasonRef: 'reason.intent.recoverable-test-failure' } : {})
+  }));
+  const candidate = graph(nodes);
+  const result = cancelIntentBranch(candidate, nodes[0].workNodeRef, {
     transitionRef: 'transition.test.cancel-branch',
     reason: 'human cancelled bounded branch',
     actorRef: 'person.test.human',
+    actorRoleRef: 'role.vex.operations',
     processRef: 'process.vexlife.intent.converge-parent',
     sourceRefs: ['source.cancellation.request'],
     createdAt: '2026-07-31T00:02:00.000Z'
   }, registry);
-  assert.equal(result.transitions.length, 3);
-  assert.deepEqual(result.graph.nodes.map((item) => item.state), ['CANCELLED', 'CANCELLED', 'CANCELLED']);
-  assert.ok(result.preservedSourceRefs.includes(`source.${grandchild.workNodeRef}`));
+  assert.equal(result.transitions.length, states.length);
+  assert.deepEqual(result.graph.nodes.map((item) => item.state), states.map(() => 'CANCELLED'));
+  assert.ok(result.preservedSourceRefs.includes(`source.${nodes.at(-1).workNodeRef}`));
   assert.equal(validate(result.graph).state, 'PLAN_VALIDATED');
+
+  const brokenPolicy = structuredClone(registry);
+  brokenPolicy.cancellationPolicy.VERIFYING = { mode: 'TRANSITION', targetState: 'READY' };
+  assert.throws(() => cancelIntentBranch(candidate, nodes[0].workNodeRef, {
+    transitionRef: 'transition.test.cancel-atomic',
+    reason: 'prove cancellation preflight is atomic',
+    actorRef: 'person.test.human',
+    actorRoleRef: 'role.vex.operations',
+    processRef: 'process.vexlife.intent.converge-parent',
+    sourceRefs: ['source.cancellation.atomic'],
+    createdAt: '2026-07-31T00:02:30.000Z'
+  }, brokenPolicy), /cancellation policy disallows/);
+  assert.deepEqual(candidate.nodes.map((item) => item.state), states);
 });
 
 test('T12 transition ledgers replay per node, reject disallowed/disconnected history, and refresh graph identity', () => {
@@ -411,7 +533,8 @@ test('T12 transition ledgers replay per node, reject disallowed/disconnected his
     priorState: 'CAPTURED',
     nextState: 'DECOMPOSED',
     reason: 'candidate decomposition formed',
-    actorRef: 'role.vex.developer',
+    actorRef: 'vex.test',
+    actorRoleRef: 'role.vex.developer',
     processRef: 'process.vexlife.intent.decompose-candidate',
     sourceRefs: ['source.transition.test'],
     createdAt: '2026-07-31T00:03:00.000Z'
@@ -433,9 +556,63 @@ test('T12 transition ledgers replay per node, reject disallowed/disconnected his
     nextState: 'RUNNING'
   }, registry), /disallowed intent transition/);
 
-  const disconnected = structuredClone(first.graph);
-  disconnected.transitions[0].priorState = 'READY';
+  assert.throws(() => node('work.test.direct-completed', {
+    initialState: 'COMPLETED',
+    state: 'COMPLETED'
+  }), /not an allowed formation state/);
+
+  const unknownTransition = graph([node('work.test.known-transition-node', { state: 'CAPTURED' })], {
+    transitions: [{
+      ...transition,
+      transitionRef: 'transition.test.unknown-node',
+      workNodeRef: 'work.test.unknown-transition-node',
+      sequence: 0
+    }]
+  });
+  assert.ok(validate(unknownTransition).errors.some((error) => error.includes('unknown work node')));
+
+  const attributedNode = node('work.test.transition-attribution', { state: 'DECOMPOSED' });
+  const unresolvedAttribution = graph([attributedNode], {
+    transitions: [{
+      ...transition,
+      transitionRef: 'transition.test.unresolved-attribution',
+      workNodeRef: attributedNode.workNodeRef,
+      processRef: 'process.fabricated',
+      actorRef: 'actor.fabricated',
+      sequence: 0
+    }]
+  });
+  const attributionTrust = trustSnapshot(unresolvedAttribution, {
+    actorRefs: ['vex.test']
+  });
+  const attributionResult = validate(unresolvedAttribution, attributionTrust);
+  assert.ok(attributionResult.errors.some((error) => error.includes('unresolved process')));
+  assert.ok(attributionResult.errors.some((error) => error.includes('unresolved actor actor.fabricated')));
+
+  const disconnectedNode = node('work.test.disconnected-transition', { state: 'RUNNING' });
+  const disconnected = graph([disconnectedNode], {
+    transitions: [{
+      ...transition,
+      transitionRef: 'transition.test.disconnected',
+      workNodeRef: disconnectedNode.workNodeRef,
+      priorState: 'READY',
+      nextState: 'RUNNING',
+      sequence: 0
+    }]
+  });
   assert.ok(validate(disconnected).errors.some((error) => error.includes('disconnected')));
+
+  const orderedNode = node('work.test.reversed-order', { state: 'PLAN_VALIDATED' });
+  const ordered = graph([orderedNode]);
+  const reversed = graph([orderedNode], { transitions: [...ordered.transitions].reverse() });
+  assert.equal(validate(reversed).state, 'PLAN_VALIDATED');
+  assert.equal(
+    reversed.currentPointers.transitionByWorkNodeRef[orderedNode.workNodeRef],
+    ordered.transitions.find((item) => item.sequence === 1).transitionRef
+  );
+  const missingAttribution = structuredClone(ordered);
+  delete missingAttribution.transitions[0].actorRoleRef;
+  assert.ok(validate(missingAttribution).errors.some((error) => error.includes('missing actorRoleRef')));
 });
 
 test('T13 compact projection answers what is waiting or blocked and omits heavy payloads', () => {
@@ -460,6 +637,17 @@ test('T13 compact projection answers what is waiting or blocked and omits heavy 
 });
 
 test('T14 universal Blueprint hash and Atlas compose every Intent registry identity', () => {
+  assert.deepEqual(validateIntentRegistry(registry, { registeredProcessRefs }).errors, []);
+  assert.deepEqual(validateIntentTrustSnapshot(sourceManagedTrustSnapshot, {
+    registry,
+    registeredRoleRefs
+  }).errors, []);
+  const malformedTrust = structuredClone(sourceManagedTrustSnapshot);
+  delete malformedTrust.authorizationBindings[0].authorizationRef;
+  assert.ok(validateIntentTrustSnapshot(malformedTrust, {
+    registry,
+    registeredRoleRefs
+  }).errors.some((error) => error.includes('missing authorizationRef')));
   const compiled = compileRegistryPack(bundle);
   const atlas = new Atlas(buildIdentityIndex(bundle));
   for (const ref of [
@@ -488,6 +676,26 @@ test('T14 universal Blueprint hash and Atlas compose every Intent registry ident
     intentRegistry: changedRegistry
   };
   assert.notEqual(validateBlueprint(changed).semanticHash, validateBlueprint(bundle).semanticHash);
+
+  const omittedLifecycle = structuredClone(registry);
+  omittedLifecycle.lifecycleStateRefs = omittedLifecycle.lifecycleStateRefs.filter((item) => item.state !== 'READY');
+  assert.ok(validateIntentRegistry(omittedLifecycle, { registeredProcessRefs }).errors
+    .some((error) => error.includes('exactly cover declared states')));
+
+  const duplicateIdentity = structuredClone(registry);
+  duplicateIdentity.projectionIdentities.push(structuredClone(duplicateIdentity.projectionIdentities[0]));
+  assert.ok(validateIntentRegistry(duplicateIdentity, { registeredProcessRefs }).errors
+    .some((error) => error.includes('duplicate intent projection ref')));
+
+  const unknownTarget = structuredClone(registry);
+  unknownTarget.allowedTransitions.CAPTURED.push('STATE_FABRICATED');
+  assert.ok(validateIntentRegistry(unknownTarget, { registeredProcessRefs }).errors
+    .some((error) => error.includes('unknown target')));
+
+  const unknownProcess = structuredClone(registry);
+  unknownProcess.knownIntentProcessRoutes[0].processRef = 'process.fabricated';
+  assert.ok(validateIntentRegistry(unknownProcess, { registeredProcessRefs }).errors
+    .some((error) => error.includes('unknown intent process')));
 });
 
 test('T15 full gate and v2 manifest registrations remain source-managed', () => {
@@ -499,6 +707,7 @@ test('T15 full gate and v2 manifest registrations remain source-managed', () => 
   assert.ok(health.checks.some((check) => check.checkRef === 'check.manifest' && check.blocking));
   assert.equal(manifest.schemaVersion, 'vexlife.source-manifest/v2');
   assert.equal(fs.existsSync(path.join(root, 'scripts/intent-check.mjs')), true);
+  assert.equal(fs.existsSync(path.join(root, 'blueprint/intent-trust-snapshot.json')), true);
 });
 
 // [VXG RealForever]

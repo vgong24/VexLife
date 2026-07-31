@@ -3,6 +3,8 @@ import {
   buildAttributedProjectionFingerprint,
   buildGraphSnapshotFingerprint,
   buildIntentFingerprint,
+  buildIntentTrustSnapshotFingerprint,
+  buildIntentTrustSourceHash,
   buildReceiptFingerprint,
   buildTransitionFingerprint,
   buildWorkNodeFingerprint
@@ -33,6 +35,30 @@ function uniqueRefs(items, field, label, errors) {
     else refs.add(ref);
   }
   return refs;
+}
+
+function uniqueValues(values, label, errors) {
+  const seen = new Set();
+  for (const value of values ?? []) {
+    if (!value) errors.push(`${label} contains an empty value`);
+    else if (seen.has(value)) errors.push(`duplicate ${label} ${value}`);
+    else seen.add(value);
+  }
+  return seen;
+}
+
+function sameValues(left, right) {
+  return JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+}
+
+function validateStateRefCoverage(states, entries, label, errors) {
+  const stateSet = uniqueValues(states, `${label} state`, errors);
+  const entryStates = uniqueValues((entries ?? []).map((item) => item?.state), `${label} ref state`, errors);
+  uniqueRefs(entries ?? [], 'ref', label, errors);
+  if (!sameValues(stateSet, entryStates)) {
+    errors.push(`${label} refs must exactly cover declared states`);
+  }
+  return stateSet;
 }
 
 function detectCycle(nodesByRef, edgeField) {
@@ -109,7 +135,17 @@ function requirementFor(node, dependencyRef) {
   return (node.dependencyRequirements ?? []).find((item) => item.dependencyWorkNodeRef === dependencyRef);
 }
 
-function validateProjectionCollection(items, contract, refField, label, graph, registry, errors) {
+function validateProjectionCollection(
+  items,
+  contract,
+  refField,
+  label,
+  graph,
+  registry,
+  registeredRoles,
+  trustedActors,
+  errors
+) {
   uniqueRefs(items, refField, label, errors);
   for (const item of items) {
     for (const field of missingFields(item, contract?.requiredFields ?? [])) {
@@ -128,27 +164,176 @@ function validateProjectionCollection(items, contract, refField, label, graph, r
     if (!(registry.effectDispositions ?? []).includes(item.effectDisposition)) {
       errors.push(`${item?.[refField]} has invalid effect disposition ${item.effectDisposition}`);
     }
-  }
-}
-
-function validateAttributedProjections(graph, registry, errors) {
-  const contracts = registry.attributedProjectionContracts ?? {};
-  validateProjectionCollection(graph.interpretations ?? [], contracts.interpretation, 'interpretationRef', 'interpretation', graph, registry, errors);
-  validateProjectionCollection(graph.proposedPlans ?? [], contracts.plan, 'planRef', 'plan', graph, registry, errors);
-  validateProjectionCollection(graph.authorizations ?? [], contracts.authorization, 'authorizationRef', 'authorization', graph, registry, errors);
-  for (const plan of graph.proposedPlans ?? []) {
-    if (plan.authorityDisposition !== 'NO_AUTHORITY' || plan.effectDisposition !== 'NO_EFFECTS') {
-      errors.push(`${plan.planRef} plan must remain NO_AUTHORITY and NO_EFFECTS`);
+    if (!registeredRoles.has(item.actorRoleRef)) {
+      errors.push(`${item?.[refField]} references unresolved actor role ${item.actorRoleRef}`);
+    }
+    if (!trustedActors.has(item.actorRef)) {
+      errors.push(`${item?.[refField]} references unresolved actor ${item.actorRef}`);
     }
   }
 }
 
-function validateBinding(node, field, values, registered, resolver, errors) {
+function validateAttributedProjections(
+  graph,
+  registry,
+  registeredRoles,
+  trustSnapshot,
+  trustSnapshotValid,
+  errors
+) {
+  const contracts = registry.attributedProjectionContracts ?? {};
+  const trustedActors = trustSnapshotValid ? new Set(trustSnapshot.actorRefs ?? []) : new Set();
+  validateProjectionCollection(
+    graph.interpretations ?? [],
+    contracts.interpretation,
+    'interpretationRef',
+    'interpretation',
+    graph,
+    registry,
+    registeredRoles,
+    trustedActors,
+    errors
+  );
+  validateProjectionCollection(
+    graph.proposedPlans ?? [],
+    contracts.plan,
+    'planRef',
+    'plan',
+    graph,
+    registry,
+    registeredRoles,
+    trustedActors,
+    errors
+  );
+  validateProjectionCollection(
+    graph.authorizations ?? [],
+    contracts.authorization,
+    'authorizationRef',
+    'authorization',
+    graph,
+    registry,
+    registeredRoles,
+    trustedActors,
+    errors
+  );
+  for (const item of [...(graph.interpretations ?? []), ...(graph.proposedPlans ?? [])]) {
+    if (item.authorityDisposition !== 'NO_AUTHORITY' || item.effectDisposition !== 'NO_EFFECTS') {
+      errors.push(`${projectionIdentity(item)} must remain NO_AUTHORITY and NO_EFFECTS`);
+    }
+  }
+  const trustedEffects = trustSnapshotValid
+    ? new Set(trustSnapshot.bindingRefs?.effectEnvelopeRef ?? [])
+    : new Set();
+  const trustedDecisions = trustSnapshotValid ? new Set(trustSnapshot.decisionRefs ?? []) : new Set();
+  const trustedAuthorizations = trustSnapshotValid ? trustSnapshot.authorizationBindings ?? [] : [];
+  for (const authorization of graph.authorizations ?? []) {
+    if (!trustedEffects.has(authorization.effectEnvelopeRef)) {
+      errors.push(`${authorization.authorizationRef} references unresolved authorization effect ${authorization.effectEnvelopeRef}`);
+    }
+    if (!trustedDecisions.has(authorization.decisionRef)) {
+      errors.push(`${authorization.authorizationRef} references unresolved decision ${authorization.decisionRef}`);
+    }
+    const exact = trustedAuthorizations.filter((binding) =>
+      binding.authorizationRef === authorization.authorizationRef &&
+      binding.actorRef === authorization.actorRef &&
+      binding.actorRoleRef === authorization.actorRoleRef &&
+      binding.decisionRef === authorization.decisionRef &&
+      binding.effectEnvelopeRef === authorization.effectEnvelopeRef &&
+      binding.authorityDisposition === authorization.authorityDisposition &&
+      binding.effectDisposition === authorization.effectDisposition
+    );
+    if (exact.length !== 1) {
+      errors.push(`${authorization.authorizationRef} does not resolve exactly through the trusted authorization snapshot`);
+    }
+  }
+}
+
+function projectionIdentity(item) {
+  return item.interpretationRef ?? item.planRef ?? item.authorizationRef ?? 'unknown attributed projection';
+}
+
+function validateBinding(node, field, values, registered, errors) {
   for (const ref of Array.isArray(values) ? values : [values]) {
     if (!ref) continue;
-    const resolved = resolver ? resolver(field, ref, node) : registered.has(ref);
-    if (!resolved) errors.push(`${node.workNodeRef} references unresolved ${field} ${ref}`);
+    if (!registered.has(ref)) errors.push(`${node.workNodeRef} references unresolved ${field} ${ref}`);
   }
+}
+
+export function validateIntentTrustSnapshot(snapshot, {
+  registry,
+  registeredRoleRefs = []
+} = {}) {
+  const errors = [];
+  if (!snapshot) {
+    return { ok: false, current: false, errors: ['trusted intent snapshot is required'] };
+  }
+  if (snapshot.schemaVersion !== registry?.trustedSnapshotSchemaVersion) {
+    errors.push('unexpected intent trust snapshot schema');
+  }
+  for (const field of missingFields(snapshot, registry?.trustedSnapshotRequiredFields ?? [])) {
+    errors.push(`intent trust snapshot missing ${field}`);
+  }
+  if (snapshot.currentness !== 'CURRENT') errors.push('intent trust snapshot is not CURRENT');
+  if (!/^[a-f0-9]{64}$/.test(snapshot.sourceHash ?? '')) {
+    errors.push('intent trust snapshot sourceHash must be a lowercase SHA-256');
+  } else if (snapshot.sourceHash !== buildIntentTrustSourceHash(snapshot)) {
+    errors.push('intent trust snapshot sourceHash does not match its exact identity set');
+  }
+  if (snapshot.semanticFingerprint !== buildIntentTrustSnapshotFingerprint(snapshot)) {
+    errors.push('intent trust snapshot has a stale or non-canonical semantic fingerprint');
+  }
+  const expectedBindingFields = new Set(registry?.bindingFields ?? []);
+  const actualBindingFields = new Set(Object.keys(snapshot.bindingRefs ?? {}));
+  if (!sameValues(expectedBindingFields, actualBindingFields)) {
+    errors.push('intent trust snapshot binding fields must exactly cover the registry binding fields');
+  }
+  for (const field of expectedBindingFields) {
+    uniqueValues(snapshot.bindingRefs?.[field] ?? [], `trusted ${field}`, errors);
+  }
+  const actorRefs = uniqueValues(snapshot.actorRefs ?? [], 'trusted actor ref', errors);
+  const decisionRefs = uniqueValues(snapshot.decisionRefs ?? [], 'trusted decision ref', errors);
+  const authorizationRefs = uniqueRefs(
+    snapshot.authorizationBindings ?? [],
+    'authorizationRef',
+    'trusted authorization binding',
+    errors
+  );
+  const registeredRoles = new Set(registeredRoleRefs);
+  for (const binding of snapshot.authorizationBindings ?? []) {
+    for (const field of missingFields(binding, registry?.trustedAuthorizationBindingRequiredFields ?? [])) {
+      errors.push(`${binding.authorizationRef ?? 'unknown authorization binding'} missing ${field}`);
+    }
+    if (!actorRefs.has(binding.actorRef)) {
+      errors.push(`${binding.authorizationRef} references untrusted actor ${binding.actorRef}`);
+    }
+    if (!registeredRoles.has(binding.actorRoleRef)) {
+      errors.push(`${binding.authorizationRef} references unregistered actor role ${binding.actorRoleRef}`);
+    }
+    if (!decisionRefs.has(binding.decisionRef)) {
+      errors.push(`${binding.authorizationRef} references untrusted decision ${binding.decisionRef}`);
+    }
+    if (!(snapshot.bindingRefs?.effectEnvelopeRef ?? []).includes(binding.effectEnvelopeRef)) {
+      errors.push(`${binding.authorizationRef} references untrusted effect envelope ${binding.effectEnvelopeRef}`);
+    }
+    if (!(registry.authorityDispositions ?? []).includes(binding.authorityDisposition)) {
+      errors.push(`${binding.authorizationRef} has invalid trusted authority disposition ${binding.authorityDisposition}`);
+    }
+    if (!(registry.effectDispositions ?? []).includes(binding.effectDisposition)) {
+      errors.push(`${binding.authorizationRef} has invalid trusted effect disposition ${binding.effectDisposition}`);
+    }
+  }
+  return {
+    ok: errors.length === 0,
+    current: errors.length === 0 && snapshot.currentness === 'CURRENT',
+    errors,
+    stats: {
+      bindingFields: actualBindingFields.size,
+      actors: actorRefs.size,
+      decisions: decisionRefs.size,
+      authorizations: authorizationRefs.size
+    },
+    semanticHash: semanticHash(snapshot)
+  };
 }
 
 function validateReceiptContracts(graph, registry, nodesByRef, errors) {
@@ -200,18 +385,52 @@ function validateReceiptContracts(graph, registry, nodesByRef, errors) {
   }
 }
 
-function validateTransitionLedgers(graph, registry, nodesByRef, errors) {
+function validateTransitionLedgers(
+  graph,
+  registry,
+  nodesByRef,
+  registeredProcesses,
+  registeredRoles,
+  trustedActors,
+  errors
+) {
   const byNode = new Map();
   for (const transition of graph.transitions ?? []) {
-    const ledger = byNode.get(transition.workNodeRef) ?? [];
-    ledger.push(transition);
-    byNode.set(transition.workNodeRef, ledger);
+    const transitionErrorsBefore = errors.length;
+    for (const field of missingFields(transition, registry.transitionRequiredFields ?? [])) {
+      errors.push(`${transition.transitionRef ?? 'unknown transition'} missing ${field}`);
+    }
+    if (!nodesByRef.has(transition.workNodeRef)) {
+      errors.push(`${transition.transitionRef} references unknown work node ${transition.workNodeRef}`);
+    }
+    if (!Number.isInteger(transition.sequence) || transition.sequence < 0) {
+      errors.push(`${transition.transitionRef} sequence must be a non-negative integer`);
+    }
+    if (!(registry.lifecycleStates ?? []).includes(transition.priorState) ||
+        !(registry.lifecycleStates ?? []).includes(transition.nextState)) {
+      errors.push(`${transition.transitionRef} references an unknown lifecycle state`);
+    }
+    if (!registeredProcesses.has(transition.processRef)) {
+      errors.push(`${transition.transitionRef} references unresolved process ${transition.processRef}`);
+    }
+    if (!registeredRoles.has(transition.actorRoleRef)) {
+      errors.push(`${transition.transitionRef} references unresolved actor role ${transition.actorRoleRef}`);
+    }
+    if (!trustedActors.has(transition.actorRef)) {
+      errors.push(`${transition.transitionRef} references unresolved actor ${transition.actorRef}`);
+    }
+    if (!(transition.sourceRefs?.length)) errors.push(`${transition.transitionRef} missing source refs`);
     if (transition.semanticFingerprint !== buildTransitionFingerprint(transition)) {
       errors.push(`${transition.transitionRef} has non-canonical semantic fingerprint`);
     }
+    if (errors.length !== transitionErrorsBefore) continue;
+    const ledger = byNode.get(transition.workNodeRef) ?? [];
+    ledger.push(transition);
+    byNode.set(transition.workNodeRef, ledger);
   }
   for (const node of nodesByRef.values()) {
-    const ledger = (byNode.get(node.workNodeRef) ?? []).sort((left, right) => left.sequence - right.sequence);
+    const ledger = [...(byNode.get(node.workNodeRef) ?? [])].sort((left, right) =>
+      left.sequence - right.sequence || left.transitionRef.localeCompare(right.transitionRef));
     const fingerprints = new Set();
     let replayState = node.initialState;
     for (const [index, transition] of ledger.entries()) {
@@ -230,6 +449,7 @@ function validateTransitionLedgers(graph, registry, nodesByRef, errors) {
       errors.push(`${node.workNodeRef} final state ${node.state} does not match replay state ${replayState}`);
     }
   }
+  return [...byNode.values()].flat();
 }
 
 function validateContainment(nodesByRef, registry, errors) {
@@ -307,23 +527,115 @@ function validateParentConvergence(node, nodesByRef, graph, errors) {
   }
 }
 
-export function validateIntentRegistry(registry) {
+export function validateIntentRegistry(registry, {
+  registeredProcessRefs = registry?.processRefs ?? []
+} = {}) {
   const errors = [];
   if (registry?.schemaVersion !== 'vexlife.intent-orchestration-registry/v0') errors.push('unexpected intent registry schema');
   if (!registry?.registryRef) errors.push('intent registry missing registryRef');
   if (!registry?.systemRef) errors.push('intent registry missing systemRef');
-  const lifecycle = new Set(registry?.lifecycleStates ?? []);
-  for (const state of Object.keys(registry?.allowedTransitions ?? {})) {
+  const lifecycle = validateStateRefCoverage(
+    registry?.lifecycleStates ?? [],
+    registry?.lifecycleStateRefs ?? [],
+    'intent lifecycle',
+    errors
+  );
+  const receiptStates = validateStateRefCoverage(
+    registry?.receiptStates ?? [],
+    registry?.receiptStateRefs ?? [],
+    'intent receipt state',
+    errors
+  );
+  const transitionSources = new Set(Object.keys(registry?.allowedTransitions ?? {}));
+  if (!sameValues(lifecycle, transitionSources)) {
+    errors.push('intent allowedTransitions must declare exactly one entry for every lifecycle state');
+  }
+  for (const [state, targets] of Object.entries(registry?.allowedTransitions ?? {})) {
+    uniqueValues(targets, `${state} transition target`, errors);
     if (!lifecycle.has(state)) errors.push(`intent registry missing lifecycle state ${state}`);
+    for (const target of targets ?? []) {
+      if (!lifecycle.has(target)) errors.push(`intent transition ${state} references unknown target ${target}`);
+    }
   }
+  const formationStates = uniqueValues(registry?.allowedFormationStates ?? [], 'allowed formation state', errors);
+  if (formationStates.size === 0) errors.push('intent registry missing allowed formation states');
+  for (const state of formationStates) {
+    if (!lifecycle.has(state)) errors.push(`intent formation policy references unknown state ${state}`);
+  }
+  const cancellationStates = new Set(Object.keys(registry?.cancellationPolicy ?? {}));
+  if (!sameValues(lifecycle, cancellationStates)) {
+    errors.push('intent cancellation policy must exactly cover every lifecycle state');
+  }
+  const cancellationSettled = new Set(registry?.cancellationSettledStates ?? []);
+  for (const state of lifecycle) {
+    const policy = registry?.cancellationPolicy?.[state];
+    if (!policy) continue;
+    if (policy.mode === 'PRESERVE_SETTLED') {
+      if (!cancellationSettled.has(state)) {
+        errors.push(`intent cancellation policy may not preserve runnable state ${state}`);
+      }
+    } else if (policy.mode === 'TRANSITION') {
+      if (!policy.targetState || !(registry.allowedTransitions?.[state] ?? []).includes(policy.targetState)) {
+        errors.push(`intent cancellation policy for ${state} is not an allowed transition`);
+      }
+      if (!cancellationSettled.has(policy.targetState)) {
+        errors.push(`intent cancellation target ${policy.targetState} for ${state} is not settled`);
+      }
+    } else {
+      errors.push(`intent cancellation policy for ${state} has invalid mode ${policy.mode}`);
+    }
+  }
+  for (const state of cancellationSettled) {
+    if (!lifecycle.has(state)) errors.push(`intent cancellation settled state ${state} is unknown`);
+  }
+  const processRefs = uniqueValues(registry?.processRefs ?? [], 'intent process ref', errors);
+  const canonicalProcesses = new Set(registeredProcessRefs);
   for (const ref of REQUIRED_PROCESS_REFS) {
-    if (!(registry?.processRefs ?? []).includes(ref)) errors.push(`intent registry missing process ${ref}`);
+    if (!processRefs.has(ref)) errors.push(`intent registry missing process ${ref}`);
   }
+  const knownIntentKeys = uniqueValues(
+    (registry?.knownIntentProcessRoutes ?? []).map((route) => route.intentKey),
+    'known intent route key',
+    errors
+  );
+  const knownRouteRefs = uniqueRefs(
+    registry?.knownIntentProcessRoutes ?? [],
+    'resolutionRef',
+    'known intent route',
+    errors
+  );
+  for (const route of registry?.knownIntentProcessRoutes ?? []) {
+    if (!processRefs.has(route.processRef)) {
+      errors.push(`${route.resolutionRef} references unknown intent process ${route.processRef}`);
+    }
+    if (!canonicalProcesses.has(route.processRef)) {
+      errors.push(`${route.resolutionRef} references non-canonical process ${route.processRef}`);
+    }
+  }
+  uniqueRefs(registry?.projectionIdentities ?? [], 'projectionRef', 'intent projection', errors);
+  const contractRefs = uniqueValues(
+    [
+      registry?.receiptContract?.contractRef,
+      ...Object.values(registry?.attributedProjectionContracts ?? {}).map((contract) => contract.contractRef)
+    ].filter(Boolean),
+    'intent contract ref',
+    errors
+  );
+  const identityRefs = [
+    ...(registry?.lifecycleStateRefs ?? []).map((item) => item.ref),
+    ...(registry?.receiptStateRefs ?? []).map((item) => item.ref),
+    ...(registry?.projectionIdentities ?? []).map((item) => item.projectionRef),
+    ...contractRefs,
+    ...knownRouteRefs
+  ];
+  uniqueValues(identityRefs, 'intent registry identity ref', errors);
   for (const field of [
     'intentEnvelopeRequiredFields',
     'workNodeRequiredFields',
     'transitionRequiredFields',
     'receiptRequiredFields',
+    'trustedSnapshotRequiredFields',
+    'trustedAuthorizationBindingRequiredFields',
     'lifecycleStateRefs',
     'receiptStateRefs',
     'projectionIdentities',
@@ -335,11 +647,12 @@ export function validateIntentRegistry(registry) {
     errors,
     stats: {
       lifecycleStates: lifecycle.size,
-      processRefs: registry?.processRefs?.length ?? 0,
+      receiptStates: receiptStates.size,
+      processRefs: processRefs.size,
       intentFields: registry?.intentEnvelopeRequiredFields?.length ?? 0,
       workNodeFields: registry?.workNodeRequiredFields?.length ?? 0,
       receiptFields: registry?.receiptRequiredFields?.length ?? 0,
-      knownIntentRoutes: registry?.knownIntentProcessRoutes?.length ?? 0
+      knownIntentRoutes: knownIntentKeys.size
     },
     semanticHash: semanticHash(registry ?? {})
   };
@@ -349,11 +662,19 @@ export function validateIntentWorkgraph(graph, {
   registry,
   registeredProcessRefs = registry?.processRefs ?? [],
   registeredRoleRefs = [],
-  registeredBindingRefs = graph?.bindingRefs ?? {},
-  bindingResolver = null
+  trustSnapshot = null
 } = {}) {
   const errors = [];
   const attentions = [];
+  const registeredProcesses = new Set(registeredProcessRefs);
+  const registeredRoles = new Set(registeredRoleRefs);
+  const trustValidation = validateIntentTrustSnapshot(trustSnapshot, {
+    registry,
+    registeredRoleRefs
+  });
+  errors.push(...trustValidation.errors.map((error) => `trust snapshot: ${error}`));
+  const trustSnapshotValid = trustValidation.ok && trustValidation.current;
+  const trustedActors = trustSnapshotValid ? new Set(trustSnapshot.actorRefs ?? []) : new Set();
   if (graph?.schemaVersion !== 'vexlife.intent-workgraph/v0') errors.push('unexpected workgraph schema');
   if (!graph?.graphRef) errors.push('workgraph missing graphRef');
   if (!graph?.intent) errors.push('workgraph missing immutable intent');
@@ -365,17 +686,14 @@ export function validateIntentWorkgraph(graph, {
   if (graph?.semanticFingerprint !== buildGraphSnapshotFingerprint(graph)) {
     errors.push('workgraph semantic fingerprint is stale or non-canonical');
   }
-  const expectedCurrentPointers = {
-    transitionByWorkNodeRef: Object.fromEntries((graph?.transitions ?? []).map((item) => [item.workNodeRef, item.transitionRef])),
-    currentReceiptRefs: (graph?.receipts ?? [])
-      .filter((item) => item.currentness === 'CURRENT')
-      .map((item) => item.receiptRef)
-      .sort()
-  };
-  if (semanticHash(graph?.currentPointers ?? null) !== semanticHash(expectedCurrentPointers)) {
-    errors.push('workgraph current pointers are stale or non-canonical');
-  }
-  validateAttributedProjections(graph, registry, errors);
+  validateAttributedProjections(
+    graph,
+    registry,
+    registeredRoles,
+    trustSnapshot,
+    trustSnapshotValid,
+    errors
+  );
 
   const nodeRefs = uniqueRefs(graph?.nodes ?? [], 'workNodeRef', 'work node', errors);
   uniqueRefs(graph?.transitions ?? [], 'transitionRef', 'transition', errors);
@@ -383,10 +701,18 @@ export function validateIntentWorkgraph(graph, {
   const nodesByRef = new Map((graph?.nodes ?? []).filter((node) => node.workNodeRef).map((node) => [node.workNodeRef, node]));
   const lifecycle = new Set(registry?.lifecycleStates ?? []);
   const priorities = new Set(registry?.priorityVocabulary ?? []);
-  const registeredProcesses = new Set(registeredProcessRefs);
-  const registeredRoles = new Set(registeredRoleRefs);
+  const allowedFormationStates = new Set(registry?.allowedFormationStates ?? []);
   const activeFingerprints = new Map();
   const duplicateExemptStates = new Set(registry?.activeSemanticDuplicateExemptStates ?? []);
+  const graphBindingClaims = Object.fromEntries((registry?.bindingFields ?? []).map((field) => [
+    field,
+    [...new Set((graph?.nodes ?? [])
+      .flatMap((node) => Array.isArray(node[field]) ? node[field] : [node[field]])
+      .filter(Boolean))].sort()
+  ]));
+  if (semanticHash(graph?.bindingRefs ?? {}) !== semanticHash(graphBindingClaims)) {
+    errors.push('workgraph bindingRefs must exactly describe node binding claims');
+  }
 
   for (const node of graph?.nodes ?? []) {
     for (const field of missingFields(node, registry.workNodeRequiredFields)) errors.push(`${node.workNodeRef ?? 'unknown work node'} missing ${field}`);
@@ -394,6 +720,9 @@ export function validateIntentWorkgraph(graph, {
     if (node.semanticFingerprint !== buildWorkNodeFingerprint(node)) errors.push(`${node.workNodeRef} has non-canonical semantic fingerprint`);
     if (node.rootIntentRef !== graph.rootIntentRef) errors.push(`${node.workNodeRef} root intent mismatch`);
     if (!lifecycle.has(node.initialState) || !lifecycle.has(node.state)) errors.push(`${node.workNodeRef} has unknown lifecycle state`);
+    if (!allowedFormationStates.has(node.initialState)) {
+      errors.push(`${node.workNodeRef} initial state ${node.initialState} is not allowed by the formation policy`);
+    }
     if (!registeredProcesses.has(node.processRef)) errors.push(`${node.workNodeRef} references missing process ${node.processRef}`);
     if (!registeredRoles.has(node.roleRef)) errors.push(`${node.workNodeRef} references missing role ${node.roleRef}`);
     if (!priorities.has(node.priorityClass)) errors.push(`${node.workNodeRef} has unknown priority ${node.priorityClass}`);
@@ -414,8 +743,10 @@ export function validateIntentWorkgraph(graph, {
     for (const field of registry.bindingFields ?? []) {
       const values = node[field];
       if (!values || (Array.isArray(values) && values.length === 0)) errors.push(`${node.workNodeRef} missing ${field}`);
-      const registered = new Set(registeredBindingRefs[field] ?? []);
-      validateBinding(node, field, values, registered, bindingResolver, errors);
+      const registered = trustSnapshotValid
+        ? new Set(trustSnapshot.bindingRefs?.[field] ?? [])
+        : new Set();
+      validateBinding(node, field, values, registered, errors);
     }
     if (!duplicateExemptStates.has(node.state)) {
       const priorRef = activeFingerprints.get(node.semanticFingerprint);
@@ -432,7 +763,36 @@ export function validateIntentWorkgraph(graph, {
   }
 
   validateReceiptContracts(graph, registry, nodesByRef, errors);
-  validateTransitionLedgers(graph, registry, nodesByRef, errors);
+  const validatedTransitions = validateTransitionLedgers(
+    graph,
+    registry,
+    nodesByRef,
+    registeredProcesses,
+    registeredRoles,
+    trustedActors,
+    errors
+  );
+  const currentTransitions = new Map();
+  for (const transition of validatedTransitions) {
+    const prior = currentTransitions.get(transition.workNodeRef);
+    if (!prior ||
+        transition.sequence > prior.sequence ||
+        (transition.sequence === prior.sequence && transition.transitionRef.localeCompare(prior.transitionRef) > 0)) {
+      currentTransitions.set(transition.workNodeRef, transition);
+    }
+  }
+  const expectedCurrentPointers = {
+    transitionByWorkNodeRef: Object.fromEntries([...currentTransitions.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([ref, transition]) => [ref, transition.transitionRef])),
+    currentReceiptRefs: (graph?.receipts ?? [])
+      .filter((item) => item.currentness === 'CURRENT')
+      .map((item) => item.receiptRef)
+      .sort()
+  };
+  if (semanticHash(graph?.currentPointers ?? null) !== semanticHash(expectedCurrentPointers)) {
+    errors.push('workgraph current pointers are stale or non-canonical');
+  }
   const dependencyCycle = detectCycle(nodesByRef, 'dependencyRefs');
   if (dependencyCycle) errors.push(`workgraph cycle ${dependencyCycle.join(' -> ')}`);
   const hierarchyCycle = validateContainment(nodesByRef, registry, errors);

@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
+      "mode": "100644",
+      "bytes": 2475,
+      "sha256": "20e4159c562ec46bfad7643dabb45f047aa005e699811358d87acdd5694ac5c1"
+    },
+    {
       "path": "docs/BOOTSTRAP-AND-MODELS.md",
       "mode": "100644",
       "bytes": 3695,
@@ -76,8 +82,8 @@
     {
       "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
       "mode": "100644",
-      "bytes": 8068,
-      "sha256": "2d16d27b9d20e2c7c6677a335ed2d3fc8363a358379ff14d1140cfb091d49f2a"
+      "bytes": 10152,
+      "sha256": "25489693bcff73c5954982ba9d722d951cd486cd6fb8037c3108a3ea16091ce2"
     },
     {
       "path": "docs/INTERFACE-BUILDER.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 1844,
       "sha256": "533db6182bcabd097bcd260d1fbbb414c730c71944843dfc483aa51a1bf9eac3"
-    },
-    {
-      "path": "package.json",
-      "mode": "100644",
-      "bytes": 2551,
-      "sha256": "47de56c8f33f0e9b6c1fc5c6ce604737a6e46d315aa411aaab4b97afc22a167b"
     }
   ]
 }

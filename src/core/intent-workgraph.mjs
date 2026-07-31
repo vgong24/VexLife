@@ -22,6 +22,36 @@ function canonicalSet(values = []) {
   return [...new Set(clone(values))].sort();
 }
 
+function normalizedAuthorizationBinding(binding) {
+  return {
+    authorizationRef: binding.authorizationRef,
+    actorRef: binding.actorRef,
+    actorRoleRef: binding.actorRoleRef,
+    decisionRef: binding.decisionRef,
+    effectEnvelopeRef: binding.effectEnvelopeRef,
+    authorityDisposition: binding.authorityDisposition,
+    effectDisposition: binding.effectDisposition
+  };
+}
+
+function normalizedTrustSnapshot(input) {
+  const snapshot = clone(input ?? {});
+  delete snapshot.semanticFingerprint;
+  snapshot.bindingRefs = Object.fromEntries(Object.entries(snapshot.bindingRefs ?? {})
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([field, refs]) => [field, canonicalSet(refs)]));
+  snapshot.actorRefs = canonicalSet(snapshot.actorRefs);
+  snapshot.decisionRefs = canonicalSet(snapshot.decisionRefs);
+  snapshot.authorizationBindings = [...(snapshot.authorizationBindings ?? [])]
+    .map(normalizedAuthorizationBinding)
+    .sort((left, right) =>
+      String(left.authorizationRef ?? '').localeCompare(String(right.authorizationRef ?? '')) ||
+      String(left.actorRef ?? '').localeCompare(String(right.actorRef ?? '')) ||
+      String(left.decisionRef ?? '').localeCompare(String(right.decisionRef ?? ''))
+    );
+  return snapshot;
+}
+
 function assertFingerprint(supplied, canonical, label) {
   if (supplied && supplied !== canonical) {
     throw new Error(`${label} semanticFingerprint does not match canonical snapshot identity`);
@@ -93,17 +123,56 @@ export function buildReceiptFingerprint(input) {
   return semanticHash(snapshot);
 }
 
+export function buildIntentTrustSourceHash(input) {
+  const snapshot = normalizedTrustSnapshot(input);
+  return semanticHash({
+    bindingRefs: snapshot.bindingRefs,
+    actorRefs: snapshot.actorRefs,
+    decisionRefs: snapshot.decisionRefs,
+    authorizationBindings: snapshot.authorizationBindings
+  });
+}
+
+export function buildIntentTrustSnapshotFingerprint(input) {
+  return semanticHash(normalizedTrustSnapshot(input));
+}
+
+export function createIntentTrustSnapshot(input, registry) {
+  const requiredFields = registry?.trustedSnapshotRequiredFields ?? [];
+  requireFields(
+    input,
+    requiredFields.filter((field) => !['sourceHash', 'semanticFingerprint'].includes(field)),
+    'intent trust snapshot'
+  );
+  const candidate = normalizedTrustSnapshot(input);
+  candidate.sourceHash = assertFingerprint(
+    input.sourceHash,
+    buildIntentTrustSourceHash(candidate),
+    'intent trust snapshot source'
+  );
+  candidate.semanticFingerprint = assertFingerprint(
+    input.semanticFingerprint,
+    buildIntentTrustSnapshotFingerprint(candidate),
+    'intent trust snapshot'
+  );
+  requireFields(candidate, requiredFields, 'intent trust snapshot');
+  return deepFreeze(candidate);
+}
+
 function projectionRef(item) {
   return item.interpretationRef ?? item.planRef ?? item.authorizationRef ?? '';
 }
 
 export function buildGraphSnapshotFingerprint(graph) {
   const transitions = [...(graph.transitions ?? [])].sort((left, right) =>
-    left.workNodeRef.localeCompare(right.workNodeRef) ||
-    left.sequence - right.sequence ||
-    left.transitionRef.localeCompare(right.transitionRef)
+    String(left?.workNodeRef ?? '').localeCompare(String(right?.workNodeRef ?? '')) ||
+    (Number.isFinite(left?.sequence) && Number.isFinite(right?.sequence)
+      ? left.sequence - right.sequence
+      : String(left?.sequence ?? '').localeCompare(String(right?.sequence ?? ''))) ||
+    String(left?.transitionRef ?? '').localeCompare(String(right?.transitionRef ?? ''))
   );
-  const receipts = [...(graph.receipts ?? [])].sort((left, right) => left.receiptRef.localeCompare(right.receiptRef));
+  const receipts = [...(graph.receipts ?? [])].sort((left, right) =>
+    String(left?.receiptRef ?? '').localeCompare(String(right?.receiptRef ?? '')));
   return semanticHash({
     graphRef: graph.graphRef,
     rootIntentRef: graph.rootIntentRef,
@@ -111,7 +180,8 @@ export function buildGraphSnapshotFingerprint(graph) {
     interpretations: [...(graph.interpretations ?? [])].sort((left, right) => projectionRef(left).localeCompare(projectionRef(right))),
     proposedPlans: [...(graph.proposedPlans ?? [])].sort((left, right) => projectionRef(left).localeCompare(projectionRef(right))),
     authorizations: [...(graph.authorizations ?? [])].sort((left, right) => projectionRef(left).localeCompare(projectionRef(right))),
-    nodes: [...(graph.nodes ?? [])].sort((left, right) => left.workNodeRef.localeCompare(right.workNodeRef))
+    nodes: [...(graph.nodes ?? [])].sort((left, right) =>
+      String(left?.workNodeRef ?? '').localeCompare(String(right?.workNodeRef ?? '')))
       .map((node) => ({ ...normalizedNodeSnapshot(node), semanticFingerprint: node.semanticFingerprint })),
     transitions,
     receipts,
@@ -123,9 +193,22 @@ export function buildGraphSnapshotFingerprint(graph) {
   });
 }
 
-function currentPointers(transitions, receipts) {
+function currentPointers(nodes, transitions, receipts) {
+  const nodeRefs = new Set(nodes.map((node) => node.workNodeRef));
   const transitionByWorkNodeRef = {};
-  for (const transition of transitions) transitionByWorkNodeRef[transition.workNodeRef] = transition.transitionRef;
+  const currentTransitions = new Map();
+  for (const transition of transitions) {
+    if (!nodeRefs.has(transition.workNodeRef) || !Number.isInteger(transition.sequence) || transition.sequence < 0) continue;
+    const prior = currentTransitions.get(transition.workNodeRef);
+    if (!prior ||
+        transition.sequence > prior.sequence ||
+        (transition.sequence === prior.sequence && transition.transitionRef.localeCompare(prior.transitionRef) > 0)) {
+      currentTransitions.set(transition.workNodeRef, transition);
+    }
+  }
+  for (const [workNodeRef, transition] of [...currentTransitions.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+    transitionByWorkNodeRef[workNodeRef] = transition.transitionRef;
+  }
   const receiptRefs = receipts
     .filter((receipt) => receipt.currentness === 'CURRENT')
     .map((receipt) => receipt.receiptRef)
@@ -136,7 +219,7 @@ function currentPointers(transitions, receipts) {
 function formGraphSnapshot(input, suppliedFingerprint = null) {
   const snapshot = {
     ...clone(input),
-    currentPointers: currentPointers(input.transitions ?? [], input.receipts ?? [])
+    currentPointers: currentPointers(input.nodes ?? [], input.transitions ?? [], input.receipts ?? [])
   };
   snapshot.semanticFingerprint = assertFingerprint(
     suppliedFingerprint,
@@ -179,9 +262,9 @@ function createAttributedProjection(input, registry, contractKey, label) {
     ...clone(input),
     sourceRefs: canonicalSet(input.sourceRefs)
   };
-  if (contractKey === 'plan' &&
+  if (['interpretation', 'plan'].includes(contractKey) &&
       (candidate.authorityDisposition !== 'NO_AUTHORITY' || candidate.effectDisposition !== 'NO_EFFECTS')) {
-    throw new Error('attributed plan must remain NO_AUTHORITY and NO_EFFECTS');
+    throw new Error(`attributed ${contractKey} must remain NO_AUTHORITY and NO_EFFECTS`);
   }
   candidate.semanticFingerprint = assertFingerprint(
     input.semanticFingerprint,
@@ -206,10 +289,14 @@ export function createAttributedAuthorization(input, registry) {
 
 export function createWorkNode(input, registry) {
   const dependencyRefs = canonicalSet(input.dependencyRefs);
+  const initialState = input.initialState ?? registry?.allowedFormationStates?.[0];
+  if (!(registry?.allowedFormationStates ?? []).includes(initialState)) {
+    throw new Error(`work node initialState ${initialState} is not an allowed formation state`);
+  }
   const candidate = {
     ...clone(input),
     parentWorkNodeRef: input.parentWorkNodeRef ?? null,
-    initialState: input.initialState ?? input.state,
+    initialState,
     contextPlanRef: input.contextPlanRef ?? null,
     dependencyRefs,
     dependencyRequirements: clone(input.dependencyRequirements ?? dependencyRefs.map((dependencyWorkNodeRef) => ({
@@ -235,6 +322,9 @@ export function createWorkNode(input, registry) {
 
 export function createIntentTransition(input, registry) {
   requireFields(input, registry.transitionRequiredFields.filter((field) => field !== 'semanticFingerprint'), 'intent transition');
+  if (!Number.isInteger(input.sequence) || input.sequence < 0) {
+    throw new Error('intent transition sequence must be a non-negative integer');
+  }
   const candidate = { ...clone(input), sourceRefs: canonicalSet(input.sourceRefs) };
   candidate.semanticFingerprint = assertFingerprint(
     input.semanticFingerprint,
@@ -314,9 +404,11 @@ export function recordIntentTransition(graph, transition, registry) {
   const node = graph.nodes.find((item) => item.workNodeRef === transition.workNodeRef);
   if (!node) throw new Error(`unknown work node ${transition.workNodeRef}`);
   const ledger = graph.transitions.filter((item) => item.workNodeRef === transition.workNodeRef);
+  const nextSequence = ledger.reduce((highest, item) =>
+    Number.isInteger(item.sequence) ? Math.max(highest, item.sequence) : highest, -1) + 1;
   const normalized = createIntentTransition({
     ...clone(transition),
-    sequence: transition.sequence ?? ledger.length
+    sequence: transition.sequence ?? nextSequence
   }, registry);
   if (ledger.some((item) => item.semanticFingerprint === normalized.semanticFingerprint)) {
     return { changed: false, graph, reason: 'SEMANTIC_NO_OP' };
@@ -360,21 +452,49 @@ export function cancelIntentBranch(graph, workNodeRef, transitionInput, registry
     throw new Error(`unknown work node ${workNodeRef}`);
   }
   const branchRefs = descendantRefs(graph, workNodeRef);
-  let current = graph;
+  const existingTransitionRefs = new Set(graph.transitions.map((item) => item.transitionRef));
+  const stateByNodeRef = new Map();
   const transitions = [];
   for (const [index, ref] of branchRefs.entries()) {
-    const node = current.nodes.find((item) => item.workNodeRef === ref);
-    if ([...(registry.terminalStates ?? []), 'COMPLETED', 'CONVERGED'].includes(node.state)) continue;
-    const result = recordIntentTransition(current, {
+    const node = graph.nodes.find((item) => item.workNodeRef === ref);
+    const policy = registry.cancellationPolicy?.[node.state];
+    if (!policy) throw new Error(`missing cancellation policy for ${node.state}`);
+    if (policy.mode === 'PRESERVE_SETTLED') continue;
+    if (policy.mode !== 'TRANSITION' || !policy.targetState) {
+      throw new Error(`invalid cancellation policy for ${node.state}`);
+    }
+    if (!transitionAllowed(registry, node.state, policy.targetState)) {
+      throw new Error(`cancellation policy disallows ${node.state} -> ${policy.targetState}`);
+    }
+    const transitionRef = index === 0 ? transitionInput.transitionRef : `${transitionInput.transitionRef}.${index}`;
+    if (existingTransitionRefs.has(transitionRef)) {
+      throw new Error(`duplicate cancellation transition ref ${transitionRef}`);
+    }
+    existingTransitionRefs.add(transitionRef);
+    const ledger = graph.transitions.filter((item) => item.workNodeRef === ref);
+    const sequence = ledger.reduce((highest, item) =>
+      Number.isInteger(item.sequence) ? Math.max(highest, item.sequence) : highest, -1) + 1;
+    const transition = createIntentTransition({
       ...clone(transitionInput),
-      transitionRef: index === 0 ? transitionInput.transitionRef : `${transitionInput.transitionRef}.${index}`,
+      transitionRef,
       workNodeRef: ref,
       priorState: node.state,
-      nextState: 'CANCELLED'
+      nextState: policy.targetState,
+      sequence
     }, registry);
-    current = result.graph;
-    if (result.changed) transitions.push(result.transition);
+    transitions.push(transition);
+    stateByNodeRef.set(ref, policy.targetState);
   }
+  const nodes = graph.nodes.map((node) => stateByNodeRef.has(node.workNodeRef)
+    ? { ...clone(node), state: stateByNodeRef.get(node.workNodeRef) }
+    : clone(node));
+  const current = transitions.length
+    ? formGraphSnapshot({
+      ...clone(graph),
+      nodes,
+      transitions: [...clone(graph.transitions), ...clone(transitions)]
+    })
+    : graph;
   return {
     changed: transitions.length > 0,
     graph: current,

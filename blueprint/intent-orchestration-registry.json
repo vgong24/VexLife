@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.intent-orchestration-registry/v0",
   "registryRef": "registry.vexlife.intent-orchestration.001",
-  "registryVersion": 2,
+  "registryVersion": 3,
   "systemRef": "system.vexlife.intent-orchestration-spine",
   "humanProjectionName": "Intent Queue",
   "canonicalStructureName": "Intent Workgraph",
@@ -61,6 +61,7 @@
     "nextState",
     "reason",
     "actorRef",
+    "actorRoleRef",
     "processRef",
     "sourceRefs",
     "createdAt",
@@ -187,6 +188,9 @@
     { "state": "CANCELLED", "ref": "lifecycle.intent.cancelled" },
     { "state": "HELD_UNKNOWN", "ref": "lifecycle.intent.held-unknown" }
   ],
+  "allowedFormationStates": [
+    "CAPTURED"
+  ],
   "allowedTransitions": {
     "CAPTURED": ["NEEDS_CLARIFICATION", "DECOMPOSED", "CANCELLED", "HELD_UNKNOWN"],
     "NEEDS_CLARIFICATION": ["DECOMPOSED", "WAITING_HUMAN", "CANCELLED", "HELD_UNKNOWN"],
@@ -199,7 +203,7 @@
     "RUNNING": ["WAITING_TOOL", "WAITING_HUMAN", "VERIFYING", "FAILED_RECOVERABLE", "PAUSED_AT_CHECKPOINT", "CANCELLED"],
     "WAITING_TOOL": ["RUNNING", "VERIFYING", "FAILED_RECOVERABLE", "CANCELLED", "HELD_UNKNOWN"],
     "WAITING_HUMAN": ["READY", "RUNNING", "VERIFYING", "CANCELLED", "HELD_UNKNOWN"],
-    "VERIFYING": ["COMPLETED", "FAILED_RECOVERABLE", "BLOCKED", "HELD_UNKNOWN"],
+    "VERIFYING": ["COMPLETED", "FAILED_RECOVERABLE", "BLOCKED", "CANCELLED", "HELD_UNKNOWN"],
     "COMPLETED": ["CONVERGED", "CLOSED", "SUPERSEDED"],
     "CONVERGED": ["CLOSED", "SUPERSEDED"],
     "FAILED_RECOVERABLE": ["READY", "PAUSED_AT_CHECKPOINT", "BLOCKED", "CANCELLED"],
@@ -209,6 +213,36 @@
     "CLOSED": [],
     "SUPERSEDED": [],
     "CANCELLED": []
+  },
+  "cancellationSettledStates": [
+    "COMPLETED",
+    "CONVERGED",
+    "CLOSED",
+    "SUPERSEDED",
+    "CANCELLED"
+  ],
+  "cancellationPolicy": {
+    "CAPTURED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "NEEDS_CLARIFICATION": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "DECOMPOSED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "PLAN_VALIDATED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_DEPENDENCIES": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "READY": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_RESOURCE": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "CONTEXT_ADMITTED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "RUNNING": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_TOOL": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_HUMAN": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "VERIFYING": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "COMPLETED": { "mode": "PRESERVE_SETTLED" },
+    "CONVERGED": { "mode": "PRESERVE_SETTLED" },
+    "CLOSED": { "mode": "PRESERVE_SETTLED" },
+    "BLOCKED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "FAILED_RECOVERABLE": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "PAUSED_AT_CHECKPOINT": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "SUPERSEDED": { "mode": "PRESERVE_SETTLED" },
+    "CANCELLED": { "mode": "PRESERVE_SETTLED" },
+    "HELD_UNKNOWN": { "mode": "TRANSITION", "targetState": "CANCELLED" }
   },
   "terminalStates": [
     "CLOSED",
@@ -264,6 +298,30 @@
     "expectedTransitionRef",
     "completionGateRefs",
     "returnRouteRef"
+  ],
+  "trustedSnapshotSchemaVersion": "vexlife.intent-trust-snapshot/v0",
+  "trustedSnapshotRequiredFields": [
+    "schemaVersion",
+    "snapshotRef",
+    "sourceRef",
+    "sourceHash",
+    "formationRef",
+    "formedAt",
+    "currentness",
+    "bindingRefs",
+    "actorRefs",
+    "decisionRefs",
+    "authorizationBindings",
+    "semanticFingerprint"
+  ],
+  "trustedAuthorizationBindingRequiredFields": [
+    "authorizationRef",
+    "actorRef",
+    "actorRoleRef",
+    "decisionRef",
+    "effectEnvelopeRef",
+    "authorityDisposition",
+    "effectDisposition"
   ],
   "bindingRefPrefixes": {
     "roleRef": "role.",
