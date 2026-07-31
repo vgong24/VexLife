@@ -455,5 +455,66 @@
     "changeMap": [
       "docs/INTENT-ORCHESTRATION-SPINE.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.scheduler-check",
+    "path": "scripts/scheduler-check.mjs",
+    "role": "Validates scheduler registry invariants and exact canonical state, process, module, feature, test, health and work-unit registrations.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.blueprint"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run scheduler:check",
+      "npm run pr-ready"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.scheduler-simulate",
+    "path": "scripts/scheduler-simulate.mjs",
+    "role": "Runs one deterministic no-effect fake scheduler demonstration using source-managed trust and synthetic resource inputs.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.intent-scheduler"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run scheduler:simulate"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.scheduler-status",
+    "path": "scripts/scheduler-status.mjs",
+    "role": "Validates one safe repository-relative scheduler fixture and emits a bounded Intent Queue runtime status without raw graph, context or machine dumps.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.intent-scheduler"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run scheduler:status"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
+    ]
   }
 ]

@@ -595,5 +595,134 @@
     "changeMap": [
       "docs/INTENT-ORCHESTRATION-SPINE.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.state",
+    "path": "src/core/state.mjs",
+    "role": "Owns scheduler queue, active worker, resource and checkpoint cells and derives distinct-until-changed runtime, Terrain, Health and Guide projections.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.state-relay"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.intent-scheduler"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/fragments/state-domains.json",
+      "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.resource-admission",
+    "path": "src/core/resource-admission.mjs",
+    "role": "Forms deterministic current hardware snapshots and fails closed when CPU, RAM, GPU, VRAM, model, heavy-tool, interactive-wait or thermal state cannot admit a lease.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.intent-scheduler",
+      "module.vexlife.core.intent-checkpoint"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-scheduler-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.context-lease",
+    "path": "src/core/context-lease.mjs",
+    "role": "Forms one ref-only token-bounded context lease per worker and suppresses equal semantic selections and duplicate observation reinjection.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.intent-scheduler",
+      "module.vexlife.core.tool-result-relay"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-scheduler-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.intent-checkpoint",
+    "path": "src/core/intent-checkpoint.mjs",
+    "role": "Preserves exact safe pause lineage, releases worker/resource leases and revalidates graph, trust, resources, capabilities, effects and source hashes before resume.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.resource-admission"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.intent-scheduler"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-scheduler-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.tool-result-relay",
+    "path": "src/core/tool-result-relay.mjs",
+    "role": "Validates exact typed mock tool calls and rejects wrong, stale, duplicate, late, schema or generation-mismatched results before once-only bounded reinjection.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.context-lease"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.intent-scheduler"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-scheduler-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.intent-scheduler",
+    "path": "src/core/intent-scheduler.mjs",
+    "role": "Admits exact validated workgraph nodes, selects with deterministic priority and fairness, leases one physical worker, and checkpoints or cancels without discarding lineage.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-orchestration.001",
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.intent-validation",
+      "module.vexlife.core.context-lease",
+      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.intent-checkpoint",
+      "module.vexlife.core.state"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.scheduler-simulate",
+      "module.vexlife.script.scheduler-status"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-scheduler-registry.json",
+      "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
+    ]
   }
 ]

@@ -2,10 +2,46 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/atlas.mjs",
+      "mode": "100644",
+      "bytes": 3026,
+      "sha256": "a62a9408b464cf7114ef7f3a1568449fbf416dd1d3b14dd863941c820a8a7b36"
+    },
+    {
+      "path": "src/core/blueprint.mjs",
+      "mode": "100644",
+      "bytes": 20964,
+      "sha256": "09a2ee710603c61005e307c9d94b6318fa8a75e203361e23722949390c15a832"
+    },
+    {
+      "path": "src/core/boot.mjs",
+      "mode": "100644",
+      "bytes": 6968,
+      "sha256": "3d257e4f5dd6f9a35a6ad341a6dae66242ee7aad8f2e06422b163342f22a05b0"
+    },
+    {
+      "path": "src/core/build-health.mjs",
+      "mode": "100644",
+      "bytes": 4344,
+      "sha256": "462112c34ac3acbab20efebd2f295a6fdac5813cff053df91358d281030c963d"
+    },
+    {
+      "path": "src/core/capability.mjs",
+      "mode": "100644",
+      "bytes": 2361,
+      "sha256": "00a60fd3f0491923109720586d0f69d6fddfc21b8c57dc540e066434980cba54"
+    },
+    {
       "path": "src/core/check-result.mjs",
       "mode": "100644",
       "bytes": 3466,
       "sha256": "448fdea1519cad9db9116dd3f370bf42bd7d354ecf417865f8f1eb91e67c3b8f"
+    },
+    {
+      "path": "src/core/context-lease.mjs",
+      "mode": "100644",
+      "bytes": 4603,
+      "sha256": "74e8d9d4dd0778af7d9f3f8a70c5f853b4dfd6df3e27ade35207ed03f9f2664e"
     },
     {
       "path": "src/core/conversation.mjs",
@@ -56,10 +92,22 @@
       "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
     },
     {
+      "path": "src/core/intent-checkpoint.mjs",
+      "mode": "100644",
+      "bytes": 6466,
+      "sha256": "0bf63ccd3310a6b437dd1a6c2b379c7f19aaacf3701b3ef51325bc03ffc523ee"
+    },
+    {
       "path": "src/core/intent-projection.mjs",
       "mode": "100644",
       "bytes": 5452,
       "sha256": "cffe6f351d90941366f748c7e03fae7a2bcae86abc6464f19776ebaf341b4a7f"
+    },
+    {
+      "path": "src/core/intent-scheduler.mjs",
+      "mode": "100644",
+      "bytes": 18784,
+      "sha256": "174be163fb76b8e9f67d96c74a5b965e90392afc16065cdef7d82ea441006865"
     },
     {
       "path": "src/core/intent-validation.mjs",
@@ -96,54 +144,6 @@
       "mode": "100644",
       "bytes": 2525,
       "sha256": "374ea58d83bdd34a007ac5a1291738531117062d6963742d87c3db08f352b9ed"
-    },
-    {
-      "path": "src/core/navigation.mjs",
-      "mode": "100644",
-      "bytes": 3771,
-      "sha256": "4570ebc451dfffbf22085f881d1477b9ba6cce146294c907d9a7ba05fabac9c3"
-    },
-    {
-      "path": "src/core/orientation.mjs",
-      "mode": "100644",
-      "bytes": 5190,
-      "sha256": "15278cdbc1b351261fde688eba7c1acdffaefb78b8006a7c1c2d7caab5c33302"
-    },
-    {
-      "path": "src/core/platform-generator.mjs",
-      "mode": "100644",
-      "bytes": 6677,
-      "sha256": "b37018abb34ef7e1aa27111cb5a125fd13782ef586c6c80127357d48084488bf"
-    },
-    {
-      "path": "src/core/process-factory.mjs",
-      "mode": "100644",
-      "bytes": 5817,
-      "sha256": "bc94fe52e382231594ce63dff3c36a7dff6480afef1f45c3a158c88bc4d27f22"
-    },
-    {
-      "path": "src/core/public-safety.mjs",
-      "mode": "100644",
-      "bytes": 5576,
-      "sha256": "88af603fcbfb2f1572633a1530a5eccc874ade81dff91b704b69f165f4952e8e"
-    },
-    {
-      "path": "src/core/registry.mjs",
-      "mode": "100644",
-      "bytes": 21228,
-      "sha256": "e63ea351f07c29b48a8bddc5103ea979cd5ea619ec98c85da7dfc167c03aee33"
-    },
-    {
-      "path": "src/core/repository-evidence.mjs",
-      "mode": "100644",
-      "bytes": 2315,
-      "sha256": "0bb8f99f78b7bcbb84ab352b066fe6dbba6411be2cba26a1d8ff47d99a75b9c5"
-    },
-    {
-      "path": "src/core/source-manifest.mjs",
-      "mode": "100644",
-      "bytes": 12328,
-      "sha256": "36aff4bd6f3d9cdc418550dc97e15b5df43d68ed52b9aef81e43abb53f273f3e"
     }
   ]
 }

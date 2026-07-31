@@ -904,5 +904,347 @@
       "test.intent.cancellation-lineage",
       "test.intent.transition-no-op"
     ]
+  },
+  {
+    "processRef": "process.vexlife.intent.scheduler-admit",
+    "processVersion": 1,
+    "purpose": "Fail closed unless one current validated workgraph node has exact trust, occupancy, resource, capability, effect, transition, gate and return bindings.",
+    "applicabilityRules": [
+      "workgraph state is exactly PLAN_VALIDATED"
+    ],
+    "requiredInputs": [
+      "graphFingerprint",
+      "trustSnapshotFingerprint",
+      "resourceSnapshotFingerprint",
+      "candidateWorkNodeRef",
+      "schedulerGeneration"
+    ],
+    "optionalInputs": [
+      "candidateOnlyReadyRefs"
+    ],
+    "sourceResolutionRules": [
+      "resolve exact graph and trust sources",
+      "keep non-admitted candidates explicitly labelled"
+    ],
+    "preconditions": [
+      "all currentness values are CURRENT",
+      "unknown resource state is not spare capacity"
+    ],
+    "steps": [
+      "validate-workgraph-currentness",
+      "validate-exact-node-and-occupancy",
+      "validate-resource-capability-effect-leases",
+      "emit-admission-or-blocked-receipt"
+    ],
+    "effectOwnerRule": "deterministic scheduler admission grants only one bounded worker lease and never infers tool authority",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "ADMITTED",
+      "BLOCKED",
+      "HELD_UNKNOWN"
+    ],
+    "returnRouteRule": "return exact admission receipt or bounded reasons",
+    "closureRule": "admission supersedes when any bound fingerprint or scheduler generation changes",
+    "recoveryRule": "repair or refresh exact input and re-admit; never coerce unknown green",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.intent.scheduler-select"
+    ],
+    "invalidationTriggers": [
+      "graph-change",
+      "trust-change",
+      "resource-change",
+      "lease-generation-change"
+    ],
+    "testRefs": [
+      "test.intent-scheduler.non-green-zero-admission",
+      "test.intent-scheduler.exact-admission-binding",
+      "test.intent-scheduler.resource-fail-closed"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.intent.scheduler-select",
+    "processVersion": 1,
+    "purpose": "Select one admitted logical node for one physical worker using deterministic priority and bounded fairness.",
+    "applicabilityRules": [
+      "one or more exact admitted ready nodes exist"
+    ],
+    "requiredInputs": [
+      "admittedReadyRefs",
+      "schedulerGeneration",
+      "workerRef",
+      "interactiveWaitState"
+    ],
+    "optionalInputs": [
+      "readySinceGeneration"
+    ],
+    "sourceResolutionRules": [
+      "read logical node metadata by ref",
+      "do not load dormant model contexts"
+    ],
+    "preconditions": [
+      "physical worker has no active lease",
+      "background work is held while interactive work waits"
+    ],
+    "steps": [
+      "classify-priority",
+      "apply-interactive-background-boundary",
+      "apply-bounded-fairness",
+      "lease-one-worker"
+    ],
+    "effectOwnerRule": "scheduler owns one worker lease; selected work receives no authority beyond exact leases",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "RUNNING",
+      "WAITING_RESOURCE",
+      "BLOCKED"
+    ],
+    "returnRouteRule": "return selected node and exact worker lease",
+    "closureRule": "selection closes at worker lease, checkpoint or explicit no-admitted-work",
+    "recoveryRule": "release at checkpoint and reselect from preserved queue state",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.intent.scheduler-checkpoint-resume",
+      "process.vexlife.intent.scheduler-tool-relay"
+    ],
+    "invalidationTriggers": [
+      "priority-change",
+      "interactive-wait-change",
+      "worker-lease-change"
+    ],
+    "testRefs": [
+      "test.intent-scheduler.single-worker",
+      "test.intent-scheduler.logical-branches",
+      "test.intent-scheduler.interactive-preemption",
+      "test.intent-scheduler.fairness"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.intent.scheduler-checkpoint-resume",
+    "processVersion": 1,
+    "purpose": "Pause only at a declared safe checkpoint, release worker/resource leases, and resume only after exact revalidation.",
+    "applicabilityRules": [
+      "one active worker lease exists or one preserved checkpoint is selected"
+    ],
+    "requiredInputs": [
+      "workNodeRef",
+      "graphFingerprint",
+      "schedulerGeneration",
+      "nextSafeAction",
+      "sourceHashes"
+    ],
+    "optionalInputs": [
+      "pendingToolCallRef",
+      "openQuestions"
+    ],
+    "sourceResolutionRules": [
+      "resolve exact checkpoint and release receipts",
+      "revalidate implicated source hashes"
+    ],
+    "preconditions": [
+      "pause occurs only after lastCompletedStep",
+      "resume generation advances"
+    ],
+    "steps": [
+      "record-safe-checkpoint",
+      "release-worker-and-resource",
+      "revalidate-graph-trust-resource-capability-effect-source",
+      "resume-or-route-recovery"
+    ],
+    "effectOwnerRule": "checkpoint service preserves lineage and releases leases; stale replay receives no worker",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "PAUSED_AT_CHECKPOINT",
+      "READY",
+      "BLOCKED",
+      "HELD_UNKNOWN",
+      "CANCELLED"
+    ],
+    "returnRouteRule": "return exact resume admission or recovery reason",
+    "closureRule": "checkpoint closes only after resume, cancellation or explicit recovery disposition",
+    "recoveryRule": "hold stale checkpoint and form a new current route without silent replay",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.intent.scheduler-select"
+    ],
+    "invalidationTriggers": [
+      "graph-fingerprint-change",
+      "trust-fingerprint-change",
+      "source-hash-change",
+      "lease-change"
+    ],
+    "testRefs": [
+      "test.intent-scheduler.checkpoint-release",
+      "test.intent-scheduler.resume-revalidate",
+      "test.intent-scheduler.cancellation-lineage"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.intent.scheduler-tool-relay",
+    "processVersion": 1,
+    "purpose": "Validate one typed mock tool call and accept exactly one matching bounded result observation for reinjection.",
+    "applicabilityRules": [
+      "one active context lease and exact pending mock tool call exist"
+    ],
+    "requiredInputs": [
+      "toolCallRef",
+      "workNodeRef",
+      "contextLeaseRef",
+      "toolRef",
+      "schedulerGeneration"
+    ],
+    "optionalInputs": [
+      "artifactRefs"
+    ],
+    "sourceResolutionRules": [
+      "match exact capability, effect and resource leases",
+      "keep raw logs and large artifacts external by ref"
+    ],
+    "preconditions": [
+      "tool is deterministic fake or mock",
+      "result contract and timeout are explicit"
+    ],
+    "steps": [
+      "validate-typed-call-and-leases",
+      "register-one-pending-call",
+      "match-result-schema-node-tool-generation",
+      "reinject-one-bounded-observation"
+    ],
+    "effectOwnerRule": "deterministic relay owns validation and mock routing; the model never executes effects directly",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "WAITING_TOOL",
+      "ACCEPTED",
+      "REJECTED",
+      "CANCELLED"
+    ],
+    "returnRouteRule": "return one bounded observation or exact rejection reason",
+    "closureRule": "pending call closes at one accepted result, timeout or cancellation",
+    "recoveryRule": "reject stale result and issue a new exact call only after revalidation",
+    "foundationDependencies": [
+      "foundation.vexlife.permission-effects.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.intent.scheduler-project-runtime"
+    ],
+    "invalidationTriggers": [
+      "context-lease-change",
+      "tool-timeout",
+      "scheduler-generation-change"
+    ],
+    "testRefs": [
+      "test.intent-scheduler.tool-lease-boundary",
+      "test.intent-scheduler.tool-result-rejection",
+      "test.intent-scheduler.tool-result-reinjection"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.intent.scheduler-project-runtime",
+    "processVersion": 1,
+    "purpose": "Derive compact Intent Queue, Terrain, Health and Guide projections from the same scheduler, workgraph and resource state owners.",
+    "applicabilityRules": [
+      "scheduler state owner exists"
+    ],
+    "requiredInputs": [
+      "queueState",
+      "activeState",
+      "resourceState",
+      "checkpointState"
+    ],
+    "optionalInputs": [
+      "recentReasonLimit"
+    ],
+    "sourceResolutionRules": [
+      "select bounded fields from canonical owners",
+      "suppress equal semantic projections"
+    ],
+    "preconditions": [
+      "raw machine dumps remain excluded"
+    ],
+    "steps": [
+      "combine-source-owners",
+      "project-runtime",
+      "select-terrain-health-guide",
+      "suppress-semantic-no-op"
+    ],
+    "effectOwnerRule": "projection service owns read-only views and grants no worker or tool authority",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "CLEAR",
+      "ATTENTION",
+      "BLOCKED",
+      "HELD_UNKNOWN"
+    ],
+    "returnRouteRule": "return bounded source-descendable projections",
+    "closureRule": "projection supersedes only when semantic source selection changes",
+    "recoveryRule": "rebuild projection from canonical owners",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "projection.intent-scheduler.runtime",
+      "projection.intent-scheduler.terrain",
+      "projection.intent-scheduler.health",
+      "projection.intent-scheduler.guide"
+    ],
+    "invalidationTriggers": [
+      "queue-change",
+      "active-lease-change",
+      "resource-change",
+      "checkpoint-change"
+    ],
+    "testRefs": [
+      "test.intent-scheduler.context-no-op",
+      "test.intent-scheduler.bounded-projections"
+    ]
   }
 ]

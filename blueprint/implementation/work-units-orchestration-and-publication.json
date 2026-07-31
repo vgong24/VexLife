@@ -146,5 +146,83 @@
       "no execution authority from an admitted plan"
     ],
     "returnRoute": "return exact intent contract, Health, manifest, and PR evidence through issue #2"
+  },
+  {
+    "workRef": "work.vexlife.intent-orchestration-scheduler",
+    "purpose": "Implement Intent Orchestration 2/3 deterministic single-worker scheduling, exact leases, checkpoint recovery, mock tool-result reinjection and bounded human runtime projections.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.work-orchestration",
+    "dependsOn": [
+      "work.vexlife.intent-orchestration-spine",
+      "work.vexlife.state.relay",
+      "work.vexlife.repository-health"
+    ],
+    "pathScope": [
+      "blueprint/intent-scheduler-registry.json",
+      "blueprint/vexlife.blueprint.json",
+      "blueprint/fragments/state-domains.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/feature-registry.json",
+      "blueprint/build-health-registry.json",
+      "blueprint/process-factory/processes-core.json",
+      "blueprint/implementation/work-units-orchestration-and-publication.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "src/core/intent-scheduler.mjs",
+      "src/core/context-lease.mjs",
+      "src/core/resource-admission.mjs",
+      "src/core/intent-checkpoint.mjs",
+      "src/core/tool-result-relay.mjs",
+      "src/core/state.mjs",
+      "scripts/scheduler-check.mjs",
+      "scripts/scheduler-simulate.mjs",
+      "scripts/scheduler-status.mjs",
+      "test/intent-scheduler.test.mjs",
+      "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
+      "README.md",
+      "package.json",
+      "SOURCE-MANIFEST.json",
+      "source-manifest-parts/**"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.orchestration",
+    "requiredSourceRefs": [
+      "state.intent-scheduler",
+      "process.vexlife.intent.scheduler-admit",
+      "feature.vexlife.intent-orchestration-scheduler"
+    ],
+    "requiredTestRefs": [
+      "test.intent-scheduler.non-green-zero-admission",
+      "test.intent-scheduler.exact-admission-binding",
+      "test.intent-scheduler.single-worker",
+      "test.intent-scheduler.interactive-preemption",
+      "test.intent-scheduler.resource-fail-closed",
+      "test.intent-scheduler.context-budget",
+      "test.intent-scheduler.checkpoint-release",
+      "test.intent-scheduler.resume-revalidate",
+      "test.intent-scheduler.tool-result-rejection",
+      "test.intent-scheduler.tool-result-reinjection",
+      "test.intent-scheduler.cancellation-lineage",
+      "test.intent-scheduler.bounded-projections",
+      "test.intent-scheduler.full-gate"
+    ],
+    "outputRefs": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.intent-scheduler",
+      "projection.intent-scheduler.runtime"
+    ],
+    "effectBoundary": "DETERMINISTIC_FAKE_MODEL_AND_MOCK_TOOL_RUNTIME_ONLY",
+    "completionGate": "all scheduler contract tests, PR-ready checks, exact manifest, browser and Windows/Linux portability, DCO, and independent exact-head review pass",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [
+      "no Intent Orchestration 3/3 Burden Release or Continuity Evolution Router implementation",
+      "no Windows, macOS, Android or iOS implementation",
+      "no real model download, provisioning or inference",
+      "no arbitrary shell, Git, filesystem, network or publication effects",
+      "no model weight training, removal or activation"
+    ],
+    "returnRoute": "return exact scheduler contract, Health, manifest, workflow and PR evidence through issue #6"
   }
 ]

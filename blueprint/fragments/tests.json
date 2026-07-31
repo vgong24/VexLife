@@ -330,5 +330,73 @@
   {
     "testRef": "test.intent.full-gate",
     "brief": "Intent validation is registered in the full PR-ready gate and the canonical source manifest remains required."
+  },
+  {
+    "testRef": "test.intent-scheduler.non-green-zero-admission",
+    "brief": "Blocked, attention, stale or unknown workgraphs expose candidate-only readiness and admit zero scheduler nodes."
+  },
+  {
+    "testRef": "test.intent-scheduler.exact-admission-binding",
+    "brief": "Scheduler admission binds exact graph, trust, node, occupancy, resource, capability, effect, transition, gate and return identities."
+  },
+  {
+    "testRef": "test.intent-scheduler.single-worker",
+    "brief": "One physical model worker cannot hold two active context or resource leases."
+  },
+  {
+    "testRef": "test.intent-scheduler.logical-branches",
+    "brief": "Several logical ready branches remain visible while only one physical model-worker lease is formed."
+  },
+  {
+    "testRef": "test.intent-scheduler.interactive-preemption",
+    "brief": "Interactive work outranks background work and may preempt only after a declared safe checkpoint."
+  },
+  {
+    "testRef": "test.intent-scheduler.fairness",
+    "brief": "Bounded generation-based fairness prevents indefinite starvation without violating interactive background holds."
+  },
+  {
+    "testRef": "test.intent-scheduler.resource-fail-closed",
+    "brief": "Unknown or insufficient CPU, RAM, GPU, VRAM, model, thermal or concurrency state blocks resource admission."
+  },
+  {
+    "testRef": "test.intent-scheduler.context-budget",
+    "brief": "One active context lease stays within the hard token budget and contains bounded refs instead of heavy payloads."
+  },
+  {
+    "testRef": "test.intent-scheduler.context-no-op",
+    "brief": "Equal semantic context selection suppresses another lease transition."
+  },
+  {
+    "testRef": "test.intent-scheduler.checkpoint-release",
+    "brief": "Checkpoint releases worker and resource leases while preserving exact source, receipt and next-action lineage."
+  },
+  {
+    "testRef": "test.intent-scheduler.resume-revalidate",
+    "brief": "Resume revalidates graph, trust, resource, capability, effect and source hashes and rejects stale replay."
+  },
+  {
+    "testRef": "test.intent-scheduler.tool-lease-boundary",
+    "brief": "A typed mock tool call requires exact context, capability, effect and resource leases."
+  },
+  {
+    "testRef": "test.intent-scheduler.tool-result-rejection",
+    "brief": "Wrong, stale, duplicate, late, schema-mismatched or generation-mismatched tool results fail closed."
+  },
+  {
+    "testRef": "test.intent-scheduler.tool-result-reinjection",
+    "brief": "An accepted tool result becomes one bounded observation in exactly the matching context."
+  },
+  {
+    "testRef": "test.intent-scheduler.cancellation-lineage",
+    "brief": "Cancellation releases leases and preserves work, source, artifact and receipt lineage."
+  },
+  {
+    "testRef": "test.intent-scheduler.bounded-projections",
+    "brief": "Queue, Terrain, Health and Guide derive bounded why-visible projections from the same state owners."
+  },
+  {
+    "testRef": "test.intent-scheduler.full-gate",
+    "brief": "Scheduler validation is registered in the full PR-ready, manifest, browser, portability and DCO gates."
   }
 ]

@@ -265,6 +265,24 @@
         "lens.vexlife.assurance-and-adversarial"
       ],
       "blocking": true
+    },
+    {
+      "checkRef": "check.intent-scheduler",
+      "command": "npm run scheduler:check",
+      "category": "ARCHITECTURE",
+      "purpose": "Single-worker scheduling, exact context/resource/capability/effect leases, checkpoint recovery, mock tool-result reinjection, and bounded shared projections validate.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true
     }
   ]
 }

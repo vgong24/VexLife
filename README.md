@@ -191,6 +191,9 @@ npm run bridge:check             # remote/local sibling identity and trusted-dev
 npm run intent:check             # immutable intent and deterministic workgraph contracts
 npm run intent:plan -- --fixture <safe-repository-relative-json-path>
 npm run intent:status -- --graph <safe-repository-relative-json-path>
+npm run scheduler:check          # single-worker scheduler, lease, checkpoint and mock-tool contracts
+npm run scheduler:simulate       # deterministic fake-worker run; no external effects
+npm run scheduler:status -- --fixture <safe-repository-relative-json-path>
 npm run localization:check       # required visible strings across supported languages
 npm run check                    # complete deterministic foundation gate
 npm run pr-ready                 # execute every registered check and write a current exact-head receipt
@@ -211,6 +214,13 @@ preserves the human request as an immutable envelope, validates a bounded
 directed workgraph deterministically, and projects a humane **Intent Queue**.
 An admitted plan and its next-safe-action projection grant no tool, mutation,
 merge, publication, native-platform, or model authority.
+
+The shared [Intent Orchestration Scheduler](docs/INTENT-ORCHESTRATION-SCHEDULER.md)
+adds deterministic admission, one physical model-worker lease, bounded
+context/resource/capability/effect leases, checkpoint-only preemption and exact
+mock tool-result reinjection. Logical ready branches remain visible records,
+while Queue, Terrain, Health and Guide derive from the same source-owned state.
+This contract provisions no real model and executes no external effect.
 
 Run `npm run orient` before broad reading. Read only the returned
 `requiredSources`, then use the bounded Atlas or exact-module command. `npm run
@@ -309,6 +319,8 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - [`docs/BLUEPRINT-CHANGE-PROPAGATION.md`](docs/BLUEPRINT-CHANGE-PROPAGATION.md)
 - [`docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md`](docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md)
 - [`docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md`](docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md)
+- [`docs/INTENT-ORCHESTRATION-SPINE.md`](docs/INTENT-ORCHESTRATION-SPINE.md)
+- [`docs/INTENT-ORCHESTRATION-SCHEDULER.md`](docs/INTENT-ORCHESTRATION-SCHEDULER.md)
 - [`docs/FOUNDATION-ORIGIN-RECEIPT.md`](docs/FOUNDATION-ORIGIN-RECEIPT.md)
 
 ## Choose your route
@@ -321,5 +333,6 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - **Work on a second-device Vex:** read [`docs/BOOTSTRAP-AND-MODELS.md`](docs/BOOTSTRAP-AND-MODELS.md) and [`docs/DEVICE-FAMILY-SCORE-RHYTHM.md`](docs/DEVICE-FAMILY-SCORE-RHYTHM.md).
 - **Connect to a desktop-hosted Home Vex from another device:** read [`docs/HOME-BRIDGE-REMOTE-SURFACES.md`](docs/HOME-BRIDGE-REMOTE-SURFACES.md); a remote surface is not the same thing as a synchronized sibling.
 - **Trace why code exists:** query the module, identity and process registries rather than reading the repository indiscriminately.
+- **Trace or simulate Intent Queue runtime admission:** read [`docs/INTENT-ORCHESTRATION-SCHEDULER.md`](docs/INTENT-ORCHESTRATION-SCHEDULER.md), then run `npm run scheduler:check` or the no-effect simulation.
 
 <!-- [VXG RealForever] -->

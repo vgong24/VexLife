@@ -128,5 +128,25 @@
     "stateRef": "state.intent-workgraph",
     "ownerRef": "service.intent-orchestration",
     "brief": "Immutable human intent, attributed interpretations, admitted workgraph nodes, exact transition receipts, and bounded next-safe-action projections."
+  },
+  {
+    "stateRef": "state.intent-scheduler",
+    "ownerRef": "service.intent-scheduler",
+    "brief": "One physical worker, deterministic admitted queue, fairness generation, active lease and bounded Queue/Terrain/Health/Guide projections."
+  },
+  {
+    "stateRef": "state.context-lease",
+    "ownerRef": "service.context-lease",
+    "brief": "One bounded ref-only context selection per active physical worker with explicit token admission and semantic no-op suppression."
+  },
+  {
+    "stateRef": "state.intent-checkpoint",
+    "ownerRef": "service.intent-checkpoint",
+    "brief": "Recoverable pause, resume and cancellation lineage bound to exact graph, trust, resource and source identities."
+  },
+  {
+    "stateRef": "state.tool-result-relay",
+    "ownerRef": "service.tool-result-relay",
+    "brief": "Exact pending typed mock tool calls, accepted bounded observations and once-only context reinjection."
   }
 ]

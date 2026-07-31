@@ -2,10 +2,22 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/UNIVERSAL-BLUEPRINT.md",
+      "mode": "100644",
+      "bytes": 3917,
+      "sha256": "497eddccd7fb2f06eb9c6ae2f9d26238ea48f16a80f33d87eeb497fa71cfbfa0"
+    },
+    {
+      "path": "package-lock.json",
+      "mode": "100644",
+      "bytes": 1844,
+      "sha256": "533db6182bcabd097bcd260d1fbbb414c730c71944843dfc483aa51a1bf9eac3"
+    },
+    {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 2551,
-      "sha256": "47de56c8f33f0e9b6c1fc5c6ce604737a6e46d315aa411aaab4b97afc22a167b"
+      "bytes": 2736,
+      "sha256": "f8aacdfe6c202869432637b8ccc122ad012c4c02d6713b4f1be718c9423a5a3d"
     },
     {
       "path": "reference/browser/README.md",
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 480,
       "sha256": "5bbf6d97e952f7ff8fd23fa2d8e9a3bea355452dabd1c1d5a1377975bf30fa49"
-    },
-    {
-      "path": "scripts/doctor.mjs",
-      "mode": "100644",
-      "bytes": 1131,
-      "sha256": "60fa71ce359bc99cc1e4f6dc6340707fd370ebadb772d5da28b4f07e756b86b8"
-    },
-    {
-      "path": "scripts/evolution-summary.mjs",
-      "mode": "100644",
-      "bytes": 725,
-      "sha256": "c6ac13ab39f729bfa6515fd77087e3c4ed848537dc6a03ba35137ef2c4ea5979"
     }
   ]
 }

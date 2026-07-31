@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "blueprint/vexlife.blueprint.json",
+      "mode": "100644",
+      "bytes": 1263,
+      "sha256": "fe7e295b8d37f6ceafaf145eafc2bff92bb48b5f825f8e9f366b36789ef0db9f"
+    },
+    {
       "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
       "mode": "100644",
       "bytes": 2475,
@@ -80,6 +86,12 @@
       "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
     },
     {
+      "path": "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
+      "mode": "100644",
+      "bytes": 6316,
+      "sha256": "cdecb91c208277d2db607cccd9148df1bb7b250eb8241cc98bf1ff41b972e149"
+    },
+    {
       "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
       "mode": "100644",
       "bytes": 10152,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 2170,
       "sha256": "251360fab4c5908cb00574ad4704a97a5b2e79bc00e9119fc32b310c75e43ed4"
-    },
-    {
-      "path": "docs/UNIVERSAL-BLUEPRINT.md",
-      "mode": "100644",
-      "bytes": 3917,
-      "sha256": "497eddccd7fb2f06eb9c6ae2f9d26238ea48f16a80f33d87eeb497fa71cfbfa0"
-    },
-    {
-      "path": "package-lock.json",
-      "mode": "100644",
-      "bytes": 1844,
-      "sha256": "533db6182bcabd097bcd260d1fbbb414c730c71944843dfc483aa51a1bf9eac3"
     }
   ]
 }
