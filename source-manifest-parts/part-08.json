@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v0",
+  "files": [
+    {
+      "path": "test/registry.test.mjs",
+      "bytes": 5094,
+      "sha256": "af3bb7241afc131a07918fd8a4a1297b8f4cca6cfb537c63ff34075b89654972"
+    },
+    {
+      "path": "test/source-manifest.test.mjs",
+      "bytes": 1011,
+      "sha256": "201ce3029b4550e32c5ad96fbac6e76912bfb5ae5016d4e91e3a278dc835a6ce"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "bytes": 1755,
+      "sha256": "feb1e5113d8b35370d60f9ea0060e84583b5f4b77485569f279feac04ccbb4b0"
+    },
+    {
+      "path": "TRADEMARKS.md",
+      "bytes": 1123,
+      "sha256": "3d48ffcfe5ca82ea75e221b5d4c2272a9a7382a0103993fefb9f0f3a3efd9c62"
+    },
+    {
+      "path": "VEXLIFE.md",
+      "bytes": 1780,
+      "sha256": "38426cab0ce396d1f32a66db7baec6ebe32db5ef387340a242cd815e82f7fdbd"
+    }
+  ]
+}

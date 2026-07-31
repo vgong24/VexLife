@@ -109,7 +109,11 @@ or an explicitly checksummed external artifact:
 node scripts/provision-model.mjs \
   --url "https://example.invalid/model.gguf" \
   --sha256 "<expected-sha256>" \
-  --name "local-model.gguf"
+  --name "local-model.gguf" \
+  --source-ref "source.model.example" \
+  --license-ref "license.model.example" \
+  --runtime-family "llama.cpp" \
+  --hardware-profile "hardware.local-device"
 ```
 
 The provisioner refuses a download without an expected SHA-256 and stores the artifact under the local Vex Home, never under the repository.
@@ -169,12 +173,15 @@ The canonical composition entry is [`blueprint/vexlife.blueprint.json`](blueprin
 ## Commands
 
 ```bash
+npm run orient -- --visibility PRIVATE --pr 1 --work-ref <work.ref>
+npm run atlas:query -- --intent "<bounded intent>" --depth 2 --limit 8 --tokens 1200
+npm run module:describe -- --module-ref <module.ref>
 npm run current                  # compact current foundation and held-boundary projection
 npm run feature:check            # feature relationships and cultural review lenses
 npm run bridge:check             # remote/local sibling identity and trusted-device bridge contracts
 npm run localization:check       # required visible strings across supported languages
 npm run check                    # complete deterministic foundation gate
-npm run pr-ready                 # check + platform generation + projections + doctor + browser source check
+npm run pr-ready                 # execute every registered check and write a current exact-head receipt
 npm test                         # deterministic contract tests
 npm run blueprint:check          # validate identities, refs and language coverage
 npm run public-safety:check      # reject private/model/secret publication hazards
@@ -183,8 +190,14 @@ npm run platform:all             # generate all platform adoption scaffolds
 npm run browser:start            # serve the working browser reference
 npm run bootstrap -- --dry-run   # inspect local-home creation without writing
 npm run evolution:summary         # inspect Dream/Score/adapter lifecycle registry
-node scripts/implementation-packet.mjs --work-ref <work.ref> --platform browser
+npm run implementation:packet -- --work-ref <work.ref> --platform browser
 ```
+
+Run `npm run orient` before broad reading. Read only the returned
+`requiredSources`, then use the bounded Atlas or exact-module command. `npm run
+health:check` reports `HEALTHY` only when an executed `npm run pr-ready` receipt
+matches the current HEAD, source tree, and blueprint hash; missing, unknown, or
+stale receipts remain visible as `ATTENTION`.
 
 Generate one platform:
 

@@ -1,8 +1,14 @@
 node_modules/
 generated/
+.env
+.env.*
 .vexlife/
 runtime/
 models/
+*.pem
+*.key
+*.p12
+*.pfx
 *.gguf
 *.bin
 *.safetensors

@@ -6,6 +6,18 @@
   "semanticNoOpRule": "Equal check inputs and outputs do not create another durable health transition.",
   "checks": [
     {
+      "checkRef": "check.orientation",
+      "command": "npm run orient",
+      "category": "CURRENTNESS",
+      "purpose": "Exact repository, Git, visibility, current work, blueprint freshness, held boundaries, required sources, and next route are grounded.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.resource-and-context"
+      ],
+      "blocking": true
+    },
+    {
       "checkRef": "check.syntax",
       "command": "npm run syntax:check",
       "category": "CODE",
@@ -67,18 +79,6 @@
       "blocking": true
     },
     {
-      "checkRef": "check.health",
-      "command": "npm run health:check",
-      "category": "ASSURANCE",
-      "purpose": "Registered checks, projections and semantic currentness validate.",
-      "lensRefs": [
-        "lens.vexlife.assurance-and-adversarial",
-        "lens.vexlife.platform-environment",
-        "lens.vexlife.recovery-migration-continuity"
-      ],
-      "blocking": true
-    },
-    {
       "checkRef": "check.public-safety",
       "command": "npm run public-safety:check",
       "category": "LEGAL_SECURITY",
@@ -121,6 +121,30 @@
         "lens.vexlife.platform-environment",
         "lens.vexlife.design-system",
         "lens.vexlife.accessibility"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.projections",
+      "command": "npm run projections:build",
+      "category": "ARCHITECTURE",
+      "purpose": "Human-readable architecture projections regenerate from the current blueprint.",
+      "lensRefs": [
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.recovery-migration-continuity"
+      ],
+      "blocking": true
+    },
+    {
+      "checkRef": "check.doctor",
+      "command": "npm run doctor",
+      "category": "ENVIRONMENT",
+      "purpose": "The exact host environment and unavailable model or Home evidence are reported honestly.",
+      "lensRefs": [
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.visibility-terrain-health"
       ],
       "blocking": true
     },

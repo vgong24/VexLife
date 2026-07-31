@@ -1,5 +1,15 @@
 import { semanticHash } from './utils.mjs';
 
+export function validateRepositoryContractPath(contractPath) {
+  if (typeof contractPath !== 'string' || contractPath.trim() === '') return { ok: false, error: 'path must be a non-empty string' };
+  const normalized = contractPath.replaceAll('\\', '/');
+  if (normalized.startsWith('/') || /^[A-Za-z]:\//.test(normalized)) return { ok: false, error: 'path must be repository-root-relative' };
+  const lower = normalized.toLowerCase();
+  if (lower === 'vexlife' || lower.startsWith('vexlife/')) return { ok: false, error: 'nested VexLife root is forbidden in the dedicated repository' };
+  if (normalized.split('/').includes('..')) return { ok: false, error: 'parent traversal is forbidden' };
+  return { ok: true, path: normalized.replace(/^\.\//, '') };
+}
+
 export function validateImplementationPlan(plan) {
   const errors = [];
   const milestones = new Set((plan.milestones ?? []).map((item) => item.milestoneRef));
@@ -10,6 +20,10 @@ export function validateImplementationPlan(plan) {
     works.set(work.workRef, work);
     if (!milestones.has(work.milestoneRef)) errors.push(`${work.workRef} references missing milestone ${work.milestoneRef}`);
     if (!(work.pathScope ?? []).length) errors.push(`${work.workRef} missing pathScope`);
+    for (const contractPath of work.pathScope ?? []) {
+      const pathValidation = validateRepositoryContractPath(contractPath);
+      if (!pathValidation.ok) errors.push(`${work.workRef} invalid pathScope ${contractPath}: ${pathValidation.error}`);
+    }
     if (!(work.requiredTestRefs ?? []).length) errors.push(`${work.workRef} missing requiredTestRefs`);
     if (!work.effectBoundary) errors.push(`${work.workRef} missing effectBoundary`);
   }

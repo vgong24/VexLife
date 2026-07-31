@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "vexlife.repository-orientation/v0",
+  "orientationRef": "orientation.vexlife.dedicated-repository.001",
+  "repositoryRef": "github.vgong24.VexLife",
+  "repositorySlug": "vgong24/VexLife",
+  "requiredVisibility": "PRIVATE",
+  "primaryBranch": "main",
+  "activeBranch": "VXG-073026-codex-vexlife-foundation-origin",
+  "activePr": 1,
+  "priorReviewedHead": "5054dcb94c769a58b1b332f7abadcad06a31338d",
+  "currentWorkRef": "work.vexlife.foundation.corrections",
+  "requiredSources": [
+    "docs/CULTURE.md",
+    "docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md",
+    "docs/FOUNDATION-CULTURE-COVERAGE-MAP.md",
+    "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+  ],
+  "exactNextRoute": {
+    "routeRef": "route.vexlife.foundation-correction-review",
+    "action": "Review the new correction head on draft PR #1 against the six requested proofs.",
+    "held": "Do not merge, publish, claim acceptance, or admit the desktop implementation wave."
+  }
+}

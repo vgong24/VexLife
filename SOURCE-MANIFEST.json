@@ -9,8 +9,8 @@
     "node dependencies",
     "Git internals"
   ],
-  "fileCount": 163,
-  "treeSha256": "5b79ad6b435ecb7238200d791c6702ebfaff43f7e12b30b53f40035ed8236a50",
+  "fileCount": 173,
+  "treeSha256": "a7a627e837c7cc2836883c17038d740fec64274122e42c8fe1c6e4e8e2529061",
   "composition": "GENERATED_FRAGMENT_COMPOSITION",
   "parts": [
     "source-manifest-parts/part-01.json",
@@ -19,6 +19,7 @@
     "source-manifest-parts/part-04.json",
     "source-manifest-parts/part-05.json",
     "source-manifest-parts/part-06.json",
-    "source-manifest-parts/part-07.json"
+    "source-manifest-parts/part-07.json",
+    "source-manifest-parts/part-08.json"
   ]
 }

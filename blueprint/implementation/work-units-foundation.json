@@ -6,10 +6,10 @@
     "milestoneRef": "milestone.vexlife.foundation",
     "dependsOn": [],
     "pathScope": [
-      "VexLife/README.md",
-      "VexLife/VEXLIFE.md",
-      "VexLife/docs/**",
-      "VexLife/blueprint/vexlife.blueprint.json"
+      "README.md",
+      "VEXLIFE.md",
+      "docs/**",
+      "blueprint/vexlife.blueprint.json"
     ],
     "ownershipRoleRef": "role.vex.architect",
     "parallelGroupRef": "parallel.foundation",
@@ -39,11 +39,11 @@
       "work.vexlife.blueprint.core"
     ],
     "pathScope": [
-      "VexLife/src/core/registry.mjs",
-      "VexLife/src/core/atlas.mjs",
-      "VexLife/blueprint/module-registry.json",
-      "VexLife/blueprint/process-factory.json",
-      "VexLife/test/registry.test.mjs"
+      "src/core/registry.mjs",
+      "src/core/atlas.mjs",
+      "blueprint/module-registry.json",
+      "blueprint/process-factory.json",
+      "test/registry.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.developer",
     "parallelGroupRef": "parallel.foundation",
@@ -75,8 +75,8 @@
       "work.vexlife.blueprint.core"
     ],
     "pathScope": [
-      "VexLife/src/core/state-relay.mjs",
-      "VexLife/test/core.test.mjs"
+      "src/core/state-relay.mjs",
+      "test/core.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.developer",
     "parallelGroupRef": "parallel.foundation",
@@ -107,12 +107,12 @@
       "work.vexlife.state.relay"
     ],
     "pathScope": [
-      "VexLife/src/core/interface-builder.mjs",
-      "VexLife/src/core/localization.mjs",
-      "VexLife/src/core/experience.mjs",
-      "VexLife/blueprint/design-tokens.json",
-      "VexLife/blueprint/experience-registry.json",
-      "VexLife/blueprint/strings/**"
+      "src/core/interface-builder.mjs",
+      "src/core/localization.mjs",
+      "src/core/experience.mjs",
+      "blueprint/design-tokens.json",
+      "blueprint/experience-registry.json",
+      "blueprint/strings/**"
     ],
     "ownershipRoleRef": "role.vex.designer-developer",
     "parallelGroupRef": "parallel.interface",
@@ -144,10 +144,10 @@
       "work.vexlife.interface.builder"
     ],
     "pathScope": [
-      "VexLife/src/core/navigation.mjs",
-      "VexLife/src/core/journey.mjs",
-      "VexLife/reference/browser/**",
-      "VexLife/test/browser.test.mjs"
+      "src/core/navigation.mjs",
+      "src/core/journey.mjs",
+      "reference/browser/**",
+      "test/browser.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.developer",
     "parallelGroupRef": "parallel.browser",
@@ -180,16 +180,16 @@
       "work.vexlife.state.relay"
     ],
     "pathScope": [
-      "VexLife/blueprint/feature-registry.json",
-      "VexLife/blueprint/review-lens-registry.json",
-      "VexLife/blueprint/build-health-registry.json",
-      "VexLife/src/core/feature-registry.mjs",
-      "VexLife/src/core/build-health.mjs",
-      "VexLife/scripts/feature-*.mjs",
-      "VexLife/scripts/health-check.mjs",
-      "VexLife/scripts/current.mjs",
-      "VexLife/scripts/build-projections.mjs",
-      "VexLife/test/foundation-health.test.mjs"
+      "blueprint/feature-registry.json",
+      "blueprint/review-lens-registry.json",
+      "blueprint/build-health-registry.json",
+      "src/core/feature-registry.mjs",
+      "src/core/build-health.mjs",
+      "scripts/feature-*.mjs",
+      "scripts/health-check.mjs",
+      "scripts/current.mjs",
+      "scripts/build-projections.mjs",
+      "test/foundation-health.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.operations",
     "parallelGroupRef": "parallel.foundation-health",

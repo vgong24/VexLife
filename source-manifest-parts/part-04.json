@@ -2,14 +2,19 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "docs/INTERFACE-BUILDER.md",
+      "bytes": 3664,
+      "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
+    },
+    {
       "path": "docs/MULTILINGUAL-INTENT-RELAY.md",
       "bytes": 2152,
       "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
     },
     {
       "path": "docs/NEWCOMER-MAP.md",
-      "bytes": 5374,
-      "sha256": "8f2c8d1aeaa409bb9650dcb3d8253b7514f6299ecf85d0bc6143f80bc9516af2"
+      "bytes": 5418,
+      "sha256": "fa851e7174736adf4714fb532cb79528405dac4e3b3091de28a8d6bb1d4a993a"
     },
     {
       "path": "docs/OPEN-SOURCE-LEGAL-STEWARDSHIP.md",
@@ -58,38 +63,43 @@
     },
     {
       "path": "package.json",
-      "bytes": 2195,
-      "sha256": "e3a69b5508cc43d44028575d376156e489d1a6cd91856063bdf8491d34c134c3"
+      "bytes": 2316,
+      "sha256": "5d729764567ba4b754671c03d672c905daa6e9300b8aef126e21e80ce36b5a46"
     },
     {
       "path": "PROVENANCE.md",
-      "bytes": 2877,
-      "sha256": "ffb373a7b5dbebd09b2972be066b93e80680355742459df7b601801e96a0791b"
+      "bytes": 3001,
+      "sha256": "94bc806ae54fa7faeb15616ea897568b90ae3d7dbd6c9d4d340ead8b7c379892"
     },
     {
       "path": "PUBLIC-SAFETY-MANIFEST.json",
-      "bytes": 1740,
-      "sha256": "32e54c1ab3727c01fa1ae2bd969d6cfdd5d088f196af20c7b93c8fcf64c49454"
+      "bytes": 1915,
+      "sha256": "05421af74cf1ee0edac60a636e9a9b0c716629c634029088b783b2ec9eb082a3"
     },
     {
       "path": "README.md",
-      "bytes": 13615,
-      "sha256": "2f2651e036ce070c4a13bb89088451e41572dc4b622ca75df47433a1a01dff52"
+      "bytes": 14327,
+      "sha256": "06e1a6cbcc84c2b0ae249f0800971ab1f4ce0796b2dda9ff6b49fa878803d0c1"
     },
     {
       "path": "reference/browser/app.css",
-      "bytes": 12623,
-      "sha256": "b8f7caacada3d5980383df03db7bd97c6a146b9c3ba74f7482c45e4ae75d3bb2"
+      "bytes": 12669,
+      "sha256": "69e8869423e5a548914b491ae38d00e2a3e3641b193b9ff783ab7e472cd09334"
     },
     {
       "path": "reference/browser/app.js",
-      "bytes": 4064,
-      "sha256": "d12ca625cf6de5443c1f744c5810d400e446e39d5e4e88b16c84f2b554209ecb"
+      "bytes": 4772,
+      "sha256": "d33047cdc90f19766f02d01e1093b295d775032ca5d77cf7220b3ddec218a946"
     },
     {
       "path": "reference/browser/index.html",
-      "bytes": 9432,
-      "sha256": "327ba5f2e5629660047f12c816af9b64da2ecd3f7f9180ccbfbd1485de235ad9"
+      "bytes": 10602,
+      "sha256": "872b8c8a398b33d575c274b622524aad2b32b233fe7f8ca11907208a1ba0be95"
+    },
+    {
+      "path": "reference/browser/integration-test.js",
+      "bytes": 7483,
+      "sha256": "7f602d6486b5da811f80117ec0315c93c193501ac88958bed42d089508313562"
     },
     {
       "path": "reference/browser/modules/browser-bundle.js",
@@ -98,28 +108,18 @@
     },
     {
       "path": "reference/browser/modules/chat-controller.js",
-      "bytes": 11839,
-      "sha256": "b2dc14337a2d5e34c3e81c81086e20814f4836da9638245418be20da63248fee"
+      "bytes": 14195,
+      "sha256": "243729f83fc820311fbce9ed2af920ffd07efa8d053e88f7b5eca6d9f5a00d24"
     },
     {
       "path": "reference/browser/modules/demo-data.js",
-      "bytes": 5054,
-      "sha256": "f2b8d30bb57731f7a9ce22048c6ddcdf335f661e3bf6eacbe7e71b217e982f0c"
+      "bytes": 9551,
+      "sha256": "c22665335377dfe25440dde530cb0af7e273cea6fcc5fa0f0984a3c97d7eeb48"
     },
     {
       "path": "reference/browser/modules/dom.js",
       "bytes": 1472,
       "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
-    },
-    {
-      "path": "reference/browser/modules/guide-controller.js",
-      "bytes": 4656,
-      "sha256": "39a7eb904264017ad2fc25e9808ea1e13dee5fceb0448bca7e4af4febaa9ede0"
-    },
-    {
-      "path": "reference/browser/modules/navigation-controller.js",
-      "bytes": 2133,
-      "sha256": "3095ff35b0a0b61ba9f5c9fbc6741ae98ef6b0805654babeccb3405bab74eef7"
     }
   ]
 }

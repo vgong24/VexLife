@@ -82,13 +82,13 @@ This is the honest current boundary. A future occupancy-transfer protocol may be
 The provisioning command requires provenance and compatibility fields in addition to a checksum:
 
 ```bash
-node scripts/provision-model.mjs \\
-  --url "https://<artifact-host>/<model>.gguf" \\
-  --sha256 "<64-hex>" \\
-  --name "<model>.gguf" \\
-  --source-ref "source.model.<id>" \\
-  --license-ref "license.model.<id>" \\
-  --runtime-family "llama.cpp" \\
+node scripts/provision-model.mjs \
+  --url "https://<artifact-host>/<model>.gguf" \
+  --sha256 "<64-hex>" \
+  --name "<model>.gguf" \
+  --source-ref "source.model.<id>" \
+  --license-ref "license.model.<id>" \
+  --runtime-family "llama.cpp" \
   --hardware-profile "hardware.<device-profile>"
 ```
 

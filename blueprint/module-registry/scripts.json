@@ -213,12 +213,98 @@
     "moduleRef": "module.vexlife.script.public-safety-check",
     "path": "scripts/public-safety-check.mjs",
     "role": "Scans the candidate source tree for forbidden artifacts, secret-like content and unsafe publication policy.",
-    "reads": [],
+    "reads": [
+      "module.vexlife.core.public-safety",
+      "PUBLIC-SAFETY-MANIFEST.json"
+    ],
     "writes": [],
     "consumers": [],
     "tests": [
-      "test/source-manifest.test.mjs"
+      "test/public-safety.test.mjs"
     ],
     "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.script.orient",
+    "path": "scripts/orient.mjs",
+    "role": "Grounds the bounded repository, Git, visibility, active work, blueprint freshness, held boundaries, required sources, and exact next route.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "blueprint/orientation.json",
+      "module.vexlife.core.blueprint",
+      "module.vexlife.core.source-manifest"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run orient"
+    ],
+    "tests": [
+      "test/orientation.test.mjs"
+    ],
+    "changeMap": [
+      "VEXLIFE.md",
+      "docs/CAPABILITY-AND-TOOL-ATLAS.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.atlas-query",
+    "path": "scripts/atlas-query.mjs",
+    "role": "Runs an intent-first Atlas query with explicit depth, result, and token bounds.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.atlas"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run atlas:query"
+    ],
+    "tests": [
+      "test/orientation.test.mjs"
+    ],
+    "changeMap": [
+      "docs/CAPABILITY-AND-TOOL-ATLAS.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.module-describe",
+    "path": "scripts/module-describe.mjs",
+    "role": "Describes one exact registered module without broad repository traversal.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "blueprint/module-registry/*.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run module:describe"
+    ],
+    "tests": [
+      "test/orientation.test.mjs"
+    ],
+    "changeMap": [
+      "docs/CAPABILITY-AND-TOOL-ATLAS.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.pr-ready",
+    "path": "scripts/pr-ready.mjs",
+    "role": "Executes every registered repository check and writes a current exact-head health receipt without inferring unexecuted success.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.build-health.001",
+      "module.vexlife.core.build-health",
+      "module.vexlife.core.source-manifest"
+    ],
+    "writes": [
+      "generated/health/pr-ready.json"
+    ],
+    "loadedBy": [
+      "npm run pr-ready"
+    ],
+    "tests": [
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+    ]
   }
 ]

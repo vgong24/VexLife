@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.public-safety-manifest/v0",
   "manifestRef": "public-safety.vexlife.blueprint-foundation.001",
-  "candidateSourcePath": "VexLife/**",
+  "candidateSourcePath": "**",
   "licenseState": "SELECTED_MPL_2_0_PRIVATE_STAGING",
   "publicationState": "PRIVATE_STAGING_REQUIRES_REVIEW_BEFORE_PUBLIC",
   "allowedContentClasses": [
@@ -18,7 +18,7 @@
     "personal Score, Rhythm, sibling trails and Dream candidates",
     "runtime logs and machine-specific Vex Home contents",
     "model weights, adapters, optimizer states and training datasets",
-    "private Vextreme-SDK implementation outside VexLife/**"
+    "private Vextreme-SDK implementation outside this repository root"
   ],
   "forbiddenArtifactPatterns": [
     "*.gguf",
@@ -30,6 +30,14 @@
     "runtime/**",
     "models/**",
     ".vexlife/**"
+  ],
+  "scanExclusionPatterns": [
+    ".git/**",
+    "node_modules/**",
+    "generated/**"
+  ],
+  "allowedBinaryPatterns": [
+    "test/fixtures/public-safety/allowed/*.dat"
   ],
   "prePublicationChecks": [
     "exact source commit and independent review known",

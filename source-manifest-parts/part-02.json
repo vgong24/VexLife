@@ -33,23 +33,23 @@
     },
     {
       "path": "blueprint/implementation/work-units-experience-and-runtime.json",
-      "bytes": 9947,
-      "sha256": "1411264ccd30923679a34736b227e03836203c0848de4b22b6cae48aaa158c63"
+      "bytes": 9707,
+      "sha256": "18928a865f9683bc0838e8d9371fd05ffd4c2effca9b54529a8233695884bcfd"
     },
     {
       "path": "blueprint/implementation/work-units-foundation.json",
-      "bytes": 7536,
-      "sha256": "de6ae9c6d68eecf1f35fab2aba4855dec0ccec22546aefcaac353f4cf5196078"
+      "bytes": 7288,
+      "sha256": "df7e10ccb551870f7f05963c188a26df93fc38fd91e442eac57a8fb6ec7e475b"
     },
     {
       "path": "blueprint/implementation/work-units-native-and-research.json",
-      "bytes": 6417,
-      "sha256": "68a96ab008d549df3aa53c3c12089522131041397c132f7e3a4ee3f1e8ebb63b"
+      "bytes": 6401,
+      "sha256": "404bee80b33ce86950d94bdbc90da4b91fe9fe67cdb08796ebcdc0996271a719"
     },
     {
       "path": "blueprint/implementation/work-units-orchestration-and-publication.json",
-      "bytes": 2364,
-      "sha256": "a02c771147276262289c51f111c7ecf429540d887cdcf96668af3639742f95f5"
+      "bytes": 2324,
+      "sha256": "f6242f1d06260af4576935f956ee9b6a83d14ae0ba04bc259091a29b3786a141"
     },
     {
       "path": "blueprint/implementation-plan.json",
@@ -63,13 +63,13 @@
     },
     {
       "path": "blueprint/module-registry/browser.json",
-      "bytes": 4952,
-      "sha256": "6957cc2a2021e71b240f090016652274e9cc981d896e5ef380e79be863c6b531"
+      "bytes": 5699,
+      "sha256": "c2685658ed31395f0d05d9a16977330a21f145988e284d6f32d2ed3d10d184a8"
     },
     {
       "path": "blueprint/module-registry/core.json",
-      "bytes": 12132,
-      "sha256": "a4d36786fafab24ff8ce843008dae85c7a3a5293f1b2d364184d861b08341fc4"
+      "bytes": 12713,
+      "sha256": "78d65cd7ba79e07c81ade88f40ffa048b87ac985143a0ab2e0edd31c42fc59c7"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -78,13 +78,18 @@
     },
     {
       "path": "blueprint/module-registry/scripts.json",
-      "bytes": 5942,
-      "sha256": "ec2d19ca17750a39bf38abcc00e4bb281530d2ec32c67c0da2f21a1645436104"
+      "bytes": 8311,
+      "sha256": "8e96d7e48671eb707c757f4b4055f200baebd20a89314458304bafebf12efb7d"
     },
     {
       "path": "blueprint/module-registry.json",
       "bytes": 398,
       "sha256": "10a5964604ac02d5588c00167872b8e3b9756596f944bc10f46e3f3aec80b7d2"
+    },
+    {
+      "path": "blueprint/orientation.json",
+      "bytes": 971,
+      "sha256": "f213894af5db33a9fe1cc9b01b10a2c2281c7f7f3f79a075b229c76c252e8f4b"
     },
     {
       "path": "blueprint/platforms.json",
@@ -115,11 +120,6 @@
       "path": "blueprint/process-factory/processes-health-and-bridge.json",
       "bytes": 11192,
       "sha256": "1f5f69cdf9398c6a254e1e7a4418eb6d2f1125f89b196d65e7112ac171ad5ee0"
-    },
-    {
-      "path": "blueprint/process-factory/processes-operations-and-publication.json",
-      "bytes": 16160,
-      "sha256": "35c984bd6df8a1d78ea3489265ffcf679f6b75383f9ff9c545485146bba218b9"
     }
   ]
 }

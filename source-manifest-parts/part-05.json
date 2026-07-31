@@ -2,14 +2,29 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "reference/browser/modules/guide-controller.js",
+      "bytes": 6258,
+      "sha256": "0d967057c53642a4d106ea00949d82073a9088aab5e57b6293e3ea9e78998326"
+    },
+    {
+      "path": "reference/browser/modules/navigation-controller.js",
+      "bytes": 2133,
+      "sha256": "3095ff35b0a0b61ba9f5c9fbc6741ae98ef6b0805654babeccb3405bab74eef7"
+    },
+    {
       "path": "reference/browser/modules/terrain-controller.js",
-      "bytes": 5977,
-      "sha256": "dcffc8e3e52c35bea8262c2b6546c7079bc3025883518a210ed0db8efb1dd02a"
+      "bytes": 6248,
+      "sha256": "fd5d7155956b92b4630034cfc649915ef52df0548c69e3993f120421965cd31e"
     },
     {
       "path": "reference/browser/README.md",
       "bytes": 898,
       "sha256": "df56100f04b33c3b5c61d46565277a5025fb72632408679a1fee5c2f2d06d93f"
+    },
+    {
+      "path": "scripts/atlas-query.mjs",
+      "bytes": 1748,
+      "sha256": "83538b7a319375c8208e281033e049dca1c3224fee0efdb73b0ebde05fc3a327"
     },
     {
       "path": "scripts/bootstrap.mjs",
@@ -63,8 +78,8 @@
     },
     {
       "path": "scripts/health-check.mjs",
-      "bytes": 1274,
-      "sha256": "6c059bb07caa271e7625ebe716e5ea484bd84652fc19ca9f213e6f6e52e33ba7"
+      "bytes": 3829,
+      "sha256": "22f2027b02e41dd89cca8ec1f28c5464c4fffa8f7517a7f9f02d26f8fcfdb2cc"
     },
     {
       "path": "scripts/impact-report.mjs",
@@ -82,44 +97,29 @@
       "sha256": "18bc4e340b8a62142dc9484524895cb357ca53360ecd057a69d11b6a82c5e719"
     },
     {
+      "path": "scripts/module-describe.mjs",
+      "bytes": 1018,
+      "sha256": "0b3c6ba42dabf658063d7185d365abcb58ce5991e1fbd44fa9d7dae6f8f27968"
+    },
+    {
+      "path": "scripts/orient.mjs",
+      "bytes": 6226,
+      "sha256": "505fe7a6468f433824666b9602925eb359a59bfaaefd82c5c6a234f3bea13c48"
+    },
+    {
+      "path": "scripts/pr-ready.mjs",
+      "bytes": 3648,
+      "sha256": "61ce2b882fe1cccba9e8425d5c024babaadb63b697969b6512310b37748352b2"
+    },
+    {
       "path": "scripts/provision-model.mjs",
       "bytes": 3545,
       "sha256": "1702751be8439f43a6d61c4e9dbde8784a934c3d3a09c3e5b80ada83cc864edf"
     },
     {
       "path": "scripts/public-safety-check.mjs",
-      "bytes": 2298,
-      "sha256": "520f3a1793f2504105c3d6cd2c82070dbbf6419415bf39f7b9613e2cd4be3cf1"
-    },
-    {
-      "path": "scripts/registry-summary.mjs",
-      "bytes": 317,
-      "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
-    },
-    {
-      "path": "scripts/serve-browser.mjs",
-      "bytes": 1528,
-      "sha256": "c00be2e2a257c5f7ca4bd5ac7f03b550cf04254e65e2fc06f5564410c744a835"
-    },
-    {
-      "path": "scripts/source-manifest.mjs",
-      "bytes": 2197,
-      "sha256": "7473c61fab4387ed3df5e8a161a67390204ba50ac6dc6b6e7f1d7f95a9dae0e8"
-    },
-    {
-      "path": "scripts/validate-blueprint.mjs",
-      "bytes": 433,
-      "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
-    },
-    {
-      "path": "SECURITY.md",
-      "bytes": 2223,
-      "sha256": "6df36f60ca2bd4598886f9d45cdaf837706d2bc500fa63ed7abf17908ec58e79"
-    },
-    {
-      "path": "src/core/atlas.mjs",
-      "bytes": 3026,
-      "sha256": "a62a9408b464cf7114ef7f3a1568449fbf416dd1d3b14dd863941c820a8a7b36"
+      "bytes": 948,
+      "sha256": "ce93d4ead2d7cdf1b221a63be589f693c77e676c3dfebe67e8af1492d2e1c3fd"
     }
   ]
 }

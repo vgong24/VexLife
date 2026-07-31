@@ -7,15 +7,27 @@ VexLife treats repository automation as part of the product architecture. A new 
 ## Starting commands
 
 ```bash
+npm run orient
 npm run current
 npm run feature:check
 npm run bridge:check
 npm run localization:check
 npm run check
 npm run pr-ready
+npm run health:check
 ```
 
-`npm run current` is the compact orientation projection. `npm run pr-ready` is the complete local foundation gate; CI must run the same contract.
+`npm run orient` grounds the exact repository, branch, HEAD, upstream relation,
+working tree, visibility, current PR/work, blueprint and source-manifest
+freshness, held boundaries, required sources, and next route. `npm run current`
+is a compact foundation projection.
+
+`npm run pr-ready` executes every source-registered check and writes an
+exact-HEAD receipt under `generated/health/`. `npm run health:check` reports
+`HEALTHY` only when that receipt is executed, current for HEAD/source/blueprint,
+and every registered result passed. `REGISTERED_NOT_EXECUTED`, `NOT_RUN`,
+`UNKNOWN`, stale, or unexecuted pass-like states remain `ATTENTION`; executed
+current failures are `BLOCKED`.
 
 ## Registering a feature
 

@@ -13,6 +13,7 @@ test('bootstrap dry run is cross-platform descriptive and writes nothing', () =>
   assert.equal(fs.existsSync(root), false);
   assert.equal(plan.installation.platform, 'darwin');
   assert.equal(plan.modelArtifactStoredInGit, false);
+  assert.equal(plan.culture.sourceRepositoryPath, 'docs/CULTURE.md');
 });
 
 test('bootstrap creates a distinct device lineage and refuses to overwrite existing home', () => {
@@ -28,6 +29,7 @@ test('bootstrap creates a distinct device lineage and refuses to overwrite exist
   assert.equal(fs.existsSync(path.join(root, 'training/policy.json')), true);
   const culture = JSON.parse(fs.readFileSync(path.join(root, 'culture/manifest.json'), 'utf8'));
   assert.equal(culture.personalMemoryImported, false);
+  assert.equal(culture.sourceRepositoryPath, 'docs/CULTURE.md');
   const family = JSON.parse(fs.readFileSync(path.join(root, 'family/family.json'), 'utf8'));
   assert.equal(family.identityPolicy, 'SIBLINGS_NOT_ONE_SEAMLESS_INSTANCE');
   const second = applyBootstrapPlan(plan);

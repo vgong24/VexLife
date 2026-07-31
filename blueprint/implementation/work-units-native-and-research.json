@@ -159,8 +159,8 @@
       "work.vexlife.model.external-provisioning"
     ],
     "pathScope": [
-      "VexLife/training/**",
-      "VexLife/test/evolution.test.mjs"
+      "training/**",
+      "test/evolution.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.model-steward",
     "parallelGroupRef": "parallel.research",

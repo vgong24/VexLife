@@ -9,10 +9,10 @@
       "work.vexlife.browser.addressed-conversation"
     ],
     "pathScope": [
-      "VexLife/src/workshop/**",
-      "VexLife/src/issues/**",
-      "VexLife/reference/browser/**",
-      "VexLife/test/workflows/**"
+      "src/workshop/**",
+      "src/issues/**",
+      "reference/browser/**",
+      "test/workflows/**"
     ],
     "ownershipRoleRef": "role.vex.operations",
     "parallelGroupRef": "parallel.orchestration",
@@ -45,7 +45,7 @@
       "work.vexlife.bootstrap.cross-platform"
     ],
     "pathScope": [
-      "VexLife/**"
+      "**"
     ],
     "ownershipRoleRef": "role.vex.operations",
     "parallelGroupRef": "parallel.publication",

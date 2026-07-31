@@ -4,13 +4,13 @@
 
 ## Mission
 
-Port the accepted `VexLife/` directory from `vgong24/Vextreme-SDK` into a dedicated public-candidate `vgong24/VexLife` repository without importing private SDK history, runtime data, credentials or model artifacts.
+Maintain the accepted VexLife source directly at the root of the dedicated public-candidate `vgong24/VexLife` repository without importing private SDK history, runtime data, credentials or model artifacts.
 
 ## Source boundary
 
 ```text
-sourceRepository=vgong24/Vextreme-SDK
-sourcePath=VexLife/**
+sourceRepository=vgong24/VexLife
+sourcePath=**
 targetRepository=vgong24/VexLife
 targetVisibility=PUBLIC_AFTER_EXPLICIT_VICTOR_CONFIRMATION
 ```
@@ -31,7 +31,7 @@ targetVisibility=PUBLIC_AFTER_EXPLICIT_VICTOR_CONFIRMATION
 ## Stop conditions
 
 - source commit or review identity unknown;
-- private SDK implementation outside `VexLife/` is required by the target;
+- private SDK implementation outside the dedicated repository root is required by the target;
 - model binaries, runtime history or personal Score data are present;
 - license differs from the selected MPL-2.0 posture or contribution provenance differs from DCO 1.1;
 - target visibility conflicts with Victor's explicit instruction;

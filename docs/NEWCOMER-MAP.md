@@ -117,7 +117,7 @@ blueprint/module-registry.json
 blueprint/process-factory.json
 blueprint/capability-registry.json
 npm run registry:summary
-npm run impact:report -- --changed-ref <ref>
+npm run impact:report -- --before <before-blueprint.json> --after <after-blueprint.json>
 ```
 
 The module registry answers which source owns a behavior, what it reads, which tests prove it and what else to inspect. The process factory answers how a high-level intent becomes a bounded, source-resolved plan. `blueprint/implementation-plan.json` and `scripts/implementation-packet.mjs` then give a Codex or platform builder the smallest dependency-complete work packet without granting authority.

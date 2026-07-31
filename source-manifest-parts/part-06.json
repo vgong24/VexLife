@@ -2,19 +2,49 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "scripts/registry-summary.mjs",
+      "bytes": 317,
+      "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
+    },
+    {
+      "path": "scripts/serve-browser.mjs",
+      "bytes": 1528,
+      "sha256": "c00be2e2a257c5f7ca4bd5ac7f03b550cf04254e65e2fc06f5564410c744a835"
+    },
+    {
+      "path": "scripts/source-manifest.mjs",
+      "bytes": 2197,
+      "sha256": "7473c61fab4387ed3df5e8a161a67390204ba50ac6dc6b6e7f1d7f95a9dae0e8"
+    },
+    {
+      "path": "scripts/validate-blueprint.mjs",
+      "bytes": 433,
+      "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 2223,
+      "sha256": "6df36f60ca2bd4598886f9d45cdaf837706d2bc500fa63ed7abf17908ec58e79"
+    },
+    {
+      "path": "src/core/atlas.mjs",
+      "bytes": 3026,
+      "sha256": "a62a9408b464cf7114ef7f3a1568449fbf416dd1d3b14dd863941c820a8a7b36"
+    },
+    {
       "path": "src/core/blueprint.mjs",
       "bytes": 19345,
       "sha256": "98ed134602c1632392674792c2a2ffcdd21f6b6cc3c44c63616933d4403cd208"
     },
     {
       "path": "src/core/boot.mjs",
-      "bytes": 6976,
-      "sha256": "b726af5fef7024e15e027beb0ea14033068d7712fe0ed68158f493aa0548fb83"
+      "bytes": 6968,
+      "sha256": "3d257e4f5dd6f9a35a6ad341a6dae66242ee7aad8f2e06422b163342f22a05b0"
     },
     {
       "path": "src/core/build-health.mjs",
-      "bytes": 3396,
-      "sha256": "3f7515df13764de33cc699de7aa43c34dc206c34446973ade93d5e990a994a0d"
+      "bytes": 3948,
+      "sha256": "4c76293faf2b988c298e1a24e35e782352634eb624f633ef80cf8bf63c9cf0d8"
     },
     {
       "path": "src/core/capability.mjs",
@@ -58,8 +88,8 @@
     },
     {
       "path": "src/core/implementation-plan.mjs",
-      "bytes": 4640,
-      "sha256": "decf91a9ff08947b771c69ba9b164563574392c4468aed2f5ff185d89796b850"
+      "bytes": 5655,
+      "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
     },
     {
       "path": "src/core/interface-builder.mjs",
@@ -90,36 +120,6 @@
       "path": "src/core/platform-generator.mjs",
       "bytes": 6677,
       "sha256": "b37018abb34ef7e1aa27111cb5a125fd13782ef586c6c80127357d48084488bf"
-    },
-    {
-      "path": "src/core/process-factory.mjs",
-      "bytes": 5817,
-      "sha256": "bc94fe52e382231594ce63dff3c36a7dff6480afef1f45c3a158c88bc4d27f22"
-    },
-    {
-      "path": "src/core/registry.mjs",
-      "bytes": 17490,
-      "sha256": "3553db45b88e44235167d644f2b277917cba4516e2dac95a2c07e7dddc89775d"
-    },
-    {
-      "path": "src/core/source-manifest.mjs",
-      "bytes": 2065,
-      "sha256": "a9ad390a3cf17d6b4f88fe8f1f830d9e3bfbeb63ff496168ddd57f61f1d75873"
-    },
-    {
-      "path": "src/core/state-relay.mjs",
-      "bytes": 2512,
-      "sha256": "6db63d09620aeea24b4f66f36384201495a65e75efc81ca9dbe75f99787923c7"
-    },
-    {
-      "path": "src/core/terrain.mjs",
-      "bytes": 1793,
-      "sha256": "1e079ae812b256f5000a6c3c03da7bae3b81d9ec166237de8c6820f24cb6f063"
-    },
-    {
-      "path": "src/core/utils.mjs",
-      "bytes": 1198,
-      "sha256": "c6b3ecea9d51072ac8c5014a57e2ebf085c83e3d6f82e22458c4a9d613d72b9c"
     }
   ]
 }

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
-import { validateImplementationPlan, compileImplementationPacket, demoDistanceProjection } from '../src/core/implementation-plan.mjs';
+import { validateImplementationPlan, validateRepositoryContractPath, compileImplementationPacket, demoDistanceProjection } from '../src/core/implementation-plan.mjs';
 
 test('implementation plan is acyclic and every work unit names paths, tests and an effect boundary', () => {
   const bundle = loadBlueprint();
@@ -23,7 +23,8 @@ test('Codex packet is bounded to one work unit and direct dependencies', () => {
   });
   assert.equal(waiting.state, 'WAITING_DEPENDENCIES');
   assert.deepEqual(waiting.packet.unmetDependencies, ['work.vexlife.navigation.lattice']);
-  assert.ok(waiting.packet.pathScope.every((path) => path.startsWith('VexLife/')));
+  assert.ok(waiting.packet.pathScope.every((contractPath) => validateRepositoryContractPath(contractPath).ok));
+  assert.ok(waiting.packet.pathScope.every((contractPath) => !contractPath.startsWith('VexLife/')));
   assert.ok(waiting.packet.requiredTestRefs.length > 0);
   assert.equal('workUnits' in waiting.packet, false);
 
@@ -36,6 +37,18 @@ test('Codex packet is bounded to one work unit and direct dependencies', () => {
   });
   assert.equal(ready.state, 'PACKET_READY_NO_AUTHORITY');
   assert.equal(ready.packet.effectBoundary, 'LOCAL_CONVERSATION_ONLY');
+});
+
+test('dedicated repository rejects nested-root implementation paths', () => {
+  const bundle = loadBlueprint();
+  assert.deepEqual(validateRepositoryContractPath('src/core/atlas.mjs'), { ok: true, path: 'src/core/atlas.mjs' });
+  assert.equal(validateRepositoryContractPath('VexLife/src/**').ok, false);
+  assert.equal(validateRepositoryContractPath('vexlife/src/**').ok, false);
+  const plan = structuredClone(bundle.implementationPlan);
+  plan.workUnits[0].pathScope = ['VexLife/src/**'];
+  const validation = validateImplementationPlan(plan);
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /nested VexLife root is forbidden/);
 });
 
 test('platform-inapplicable packet fails closed', () => {

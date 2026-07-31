@@ -2,6 +2,11 @@
   "schemaVersion": "vexlife.source-manifest-part/v0",
   "files": [
     {
+      "path": "blueprint/process-factory/processes-operations-and-publication.json",
+      "bytes": 16160,
+      "sha256": "35c984bd6df8a1d78ea3489265ffcf679f6b75383f9ff9c545485146bba218b9"
+    },
+    {
       "path": "blueprint/process-factory/templates.json",
       "bytes": 5297,
       "sha256": "ef4be3e077ecf3397fba37cb36e9b0f096e3154d61fcbda749389db4a3e2a34c"
@@ -23,18 +28,18 @@
     },
     {
       "path": "blueprint/strings/en.json",
-      "bytes": 3766,
-      "sha256": "15137b57c8af817f19df012801df602420512a5b9ba1c75f58bdaa6c1c1575a5"
+      "bytes": 9327,
+      "sha256": "11389c7bc8f19bbbd289aff406bb0b54268bf79dfa4bd3a8d3e4ecf898e14b26"
     },
     {
       "path": "blueprint/strings/ja.json",
-      "bytes": 4412,
-      "sha256": "6e771a3fc45679ab6ae31bff8c8b91a479882964b1ef2996eabf8dd7821dc079"
+      "bytes": 11186,
+      "sha256": "51731af4bfacda49c7af4423f5da81e95d91eae665a64e72eb4c954593789859"
     },
     {
       "path": "blueprint/strings/zh.json",
-      "bytes": 3654,
-      "sha256": "b8b28e57eff7e1d8f601115f89a1148f071f182ba1c9e6ee3077961be43a13ce"
+      "bytes": 8837,
+      "sha256": "b7eac38573565038ad1d244e23f0412b5310e20f62d6359a8686b7e2487a52f7"
     },
     {
       "path": "blueprint/vexlife.blueprint.json",
@@ -58,23 +63,23 @@
     },
     {
       "path": "docs/BOOTSTRAP-AND-MODELS.md",
-      "bytes": 3702,
-      "sha256": "e697115a440123151adb49783bc8e01d38af81a873018f083ba2d539a9f35bf6"
+      "bytes": 3695,
+      "sha256": "b524de20db45461f2c2dd7a8b0244bb0f2c2563c7f1b8fdf7db08a86a217a080"
     },
     {
       "path": "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",
-      "bytes": 5401,
-      "sha256": "8494d6011f999860ad503b7b9b6e74dfe5247e6de050e48fc32e5a85961d2726"
+      "bytes": 5975,
+      "sha256": "5478cd2ef9b7a5ae8c5b8e312d60eefab91f88cf5b0460431ae4f91ed81c9bcc"
     },
     {
       "path": "docs/CAPABILITY-AND-TOOL-ATLAS.md",
-      "bytes": 2804,
-      "sha256": "3fe5ca6e4421ea2963ad3c94c01e12fc80507fb30f48ece736dca060668dba52"
+      "bytes": 3345,
+      "sha256": "9801e28874a2beed878b35bb7e7555c7c99d43ce8174fee9b86666178780c6dc"
     },
     {
       "path": "docs/CODEX-PORT-HANDOFF.md",
-      "bytes": 2139,
-      "sha256": "f35e68e5e4784764276df73c4b8e9f263991ad30ee116a128636f404aea0c517"
+      "bytes": 2136,
+      "sha256": "40c15b7ed7aa1e7bca0489c0bd8f964dbc8e40ce1c033f71a029c53aa4036b68"
     },
     {
       "path": "docs/CULTURE.md",
@@ -115,11 +120,6 @@
       "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
       "bytes": 3310,
       "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
-    },
-    {
-      "path": "docs/INTERFACE-BUILDER.md",
-      "bytes": 3664,
-      "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
     }
   ]
 }

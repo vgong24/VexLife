@@ -8,10 +8,10 @@
       "work.vexlife.navigation.lattice"
     ],
     "pathScope": [
-      "VexLife/src/core/conversation.mjs",
-      "VexLife/reference/browser/**",
-      "VexLife/test/core.test.mjs",
-      "VexLife/test/browser.test.mjs"
+      "src/core/conversation.mjs",
+      "reference/browser/**",
+      "test/core.test.mjs",
+      "test/browser.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.developer",
     "parallelGroupRef": "parallel.browser",
@@ -45,10 +45,10 @@
       "work.vexlife.state.relay"
     ],
     "pathScope": [
-      "VexLife/src/core/terrain.mjs",
-      "VexLife/reference/browser/**",
-      "VexLife/test/browser.test.mjs",
-      "VexLife/test/experience.test.mjs"
+      "src/core/terrain.mjs",
+      "reference/browser/**",
+      "test/browser.test.mjs",
+      "test/experience.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.designer-developer",
     "parallelGroupRef": "parallel.browser",
@@ -81,11 +81,11 @@
       "work.vexlife.blueprint.core"
     ],
     "pathScope": [
-      "VexLife/src/core/boot.mjs",
-      "VexLife/src/core/device-family.mjs",
-      "VexLife/scripts/bootstrap.mjs",
-      "VexLife/start-vexlife.*",
-      "VexLife/test/boot.test.mjs"
+      "src/core/boot.mjs",
+      "src/core/device-family.mjs",
+      "scripts/bootstrap.mjs",
+      "start-vexlife.*",
+      "test/boot.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.developer",
     "parallelGroupRef": "parallel.runtime",
@@ -116,10 +116,10 @@
       "work.vexlife.bootstrap.cross-platform"
     ],
     "pathScope": [
-      "VexLife/scripts/provision-model.mjs",
-      "VexLife/blueprint/model-profiles.example.json",
-      "VexLife/docs/BOOTSTRAP-AND-MODELS.md",
-      "VexLife/test/boot.test.mjs"
+      "scripts/provision-model.mjs",
+      "blueprint/model-profiles.example.json",
+      "docs/BOOTSTRAP-AND-MODELS.md",
+      "test/boot.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.developer",
     "parallelGroupRef": "parallel.runtime",
@@ -150,8 +150,8 @@
       "work.vexlife.browser.addressed-conversation"
     ],
     "pathScope": [
-      "VexLife/src/core/context/**",
-      "VexLife/test/context/**"
+      "src/core/context/**",
+      "test/context/**"
     ],
     "ownershipRoleRef": "role.vex.developer",
     "parallelGroupRef": "parallel.continuity",
@@ -184,9 +184,9 @@
       "work.vexlife.context.current-frame"
     ],
     "pathScope": [
-      "VexLife/src/core/device-family.mjs",
-      "VexLife/src/core/score/**",
-      "VexLife/test/evolution.test.mjs"
+      "src/core/device-family.mjs",
+      "src/core/score/**",
+      "test/evolution.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.developer",
     "parallelGroupRef": "parallel.continuity",
@@ -217,10 +217,10 @@
       "work.vexlife.score.family-sync"
     ],
     "pathScope": [
-      "VexLife/src/core/evolution.mjs",
-      "VexLife/blueprint/evolution-registry.json",
-      "VexLife/docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
-      "VexLife/test/evolution.test.mjs"
+      "src/core/evolution.mjs",
+      "blueprint/evolution-registry.json",
+      "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
+      "test/evolution.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.architect-developer",
     "parallelGroupRef": "parallel.continuity",
@@ -255,10 +255,10 @@
       "work.vexlife.bootstrap.cross-platform"
     ],
     "pathScope": [
-      "VexLife/blueprint/home-bridge-registry.json",
-      "VexLife/src/core/home-bridge.mjs",
-      "VexLife/docs/HOME-BRIDGE-REMOTE-SURFACES.md",
-      "VexLife/test/home-bridge.test.mjs"
+      "blueprint/home-bridge-registry.json",
+      "src/core/home-bridge.mjs",
+      "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
+      "test/home-bridge.test.mjs"
     ],
     "ownershipRoleRef": "role.vex.operations",
     "parallelGroupRef": "parallel.bridge-contract",

@@ -7,7 +7,7 @@ launch pack. It does not import Git history from Vextreme-SDK.
 packageFile=VexLife-foundation-launch-pack-v0.4.zip
 packageRef=package.vexlife.foundation-launch.0.4
 sourceVersion=0.4.0-foundation-rc1
-sourceRoot=source/VexLife/
+sourceRoot=<historical-package-source-directory>
 sourceFileCount=149
 sourceTreeSha256=27d04726b0e6a64f3557ad2cf5db4039518bcfb45a6fc0512ecb3482d97330dd
 blueprintSemanticHash=6a122cefdbefe4308a7f4736579496276af4e1a35a1cec2fe058fd0c4ec8bceb
@@ -23,8 +23,9 @@ The supplied canonical source manifest was independently checked at 149 files an
 the stated source tree hash. The composed universal blueprint was independently
 validated at the stated semantic hash before repository mutation.
 
-Only the contents inside the pack's `source/VexLife/` boundary were ported to the
-repository root. No private SDK history, source outside that boundary, credential,
+Only the canonical source payload inside the historical package was ported to this
+dedicated repository root. The archive-internal directory name is provenance only
+and is not a current path contract. No private SDK history, source outside that boundary, credential,
 personal data, runtime history, Score, Rhythm, model artifact, or private Vex Home
 payload was imported. The pack does not provide an upstream private-source commit,
 so none is fabricated here; the hashes above establish the clean content origin.

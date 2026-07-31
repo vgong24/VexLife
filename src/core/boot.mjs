@@ -45,7 +45,7 @@ export function buildBootstrapPlan({
     installation,
     culture: {
       culturePackRef: 'culture-pack.vexlife.public-blueprint.001',
-      sourceRepositoryPath: 'VexLife/docs/CULTURE.md',
+      sourceRepositoryPath: 'docs/CULTURE.md',
       sourceSha256: sha256Text(cultureText),
       text: cultureText,
       state: 'PUBLIC_BLUEPRINT_CULTURE_PROJECTION_INSTALLED',

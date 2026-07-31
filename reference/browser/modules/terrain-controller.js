@@ -20,15 +20,15 @@ export function createTerrainController({ state, blueprint, t, navigation }) {
   }
   function render() {
     const host = $('#terrainCanvas');
-    [...host.querySelectorAll('.terrain-card')].forEach((element) => element.remove());
+    [...host.querySelectorAll('.terrain-node')].forEach((element) => element.remove());
     for (const node of blueprint.terrain) {
       if (isTerrainHidden(node.terrainNodeRef)) continue;
       const pos = terrainPosition(node); const children = childrenByTerrainRef.get(node.terrainNodeRef) || [];
-      const card = document.createElement('article'); card.className = 'terrain-card';
+      const card = document.createElement('article'); card.className = 'terrain-node';
       card.dataset.nodeRef = node.terrainNodeRef; card.dataset.selectionGroup = 'selection.terrain-node';
       card.dataset.componentRef = 'component.vexlife.terrain-node'; card.dataset.instanceRef = `instance.terrain-node.${node.terrainNodeRef}`;
       card.style.left = `${pos.x}px`; card.style.top = `${pos.y}px`; card.classList.toggle('is-selected', state.terrain.selected === node.terrainNodeRef);
-      card.innerHTML = `<h3>${escapeHtml(t(node.labelStringRef))}</h3><p>${escapeHtml(node.kind)} · canonical parent preserved</p><footer><span class="child-badge" title="Direct children">${children.length}</span>${children.length ? `<button type="button" data-collapse>${state.terrain.collapsed.includes(node.terrainNodeRef) ? escapeHtml(t('terrain.expand')) : escapeHtml(t('terrain.collapse'))}</button>` : ''}</footer>`;
+      card.innerHTML = `<h3>${escapeHtml(t(node.labelStringRef))}</h3><p>${escapeHtml(t('terrain.node-summary', { kind: t(`terrain.kind.${node.kind.toLowerCase()}`) }))}</p><footer><span class="child-badge" title="${escapeHtml(t('terrain.direct-children'))}">${children.length}</span>${children.length ? `<button type="button" data-collapse>${state.terrain.collapsed.includes(node.terrainNodeRef) ? escapeHtml(t('terrain.expand')) : escapeHtml(t('terrain.collapse'))}</button>` : ''}</footer>`;
       card.addEventListener('click', (event) => {
         if (event.target.closest('[data-collapse]')) return;
         state.terrain.selected = node.terrainNodeRef;
@@ -75,9 +75,9 @@ export function createTerrainController({ state, blueprint, t, navigation }) {
   }
   function renderDetail() {
     const host = $('#terrainDetail'); const node = terrainByRef.get(state.terrain.selected);
-    if (!node) { host.innerHTML = '<p>Select a node to inspect it.</p>'; return; }
+    if (!node) { host.innerHTML = `<p>${escapeHtml(t('terrain.empty-detail'))}</p>`; return; }
     const children = childrenByTerrainRef.get(node.terrainNodeRef) || [];
-    host.innerHTML = `<h2>${escapeHtml(t(node.labelStringRef))}</h2><p>${escapeHtml(node.terrainNodeRef)}</p><dl><dt>Kind</dt><dd>${escapeHtml(node.kind)}</dd><dt>Children</dt><dd>${children.length}</dd><dt>Collapsed</dt><dd>${state.terrain.collapsed.includes(node.terrainNodeRef) ? 'Yes' : 'No'}</dd><dt>Canonical parent</dt><dd>${escapeHtml(node.parentRef || 'ROOT')}</dd></dl>`;
+    host.innerHTML = `<h2>${escapeHtml(t(node.labelStringRef))}</h2><p>${escapeHtml(node.terrainNodeRef)}</p><dl><dt>${escapeHtml(t('terrain.kind'))}</dt><dd>${escapeHtml(t(`terrain.kind.${node.kind.toLowerCase()}`))}</dd><dt>${escapeHtml(t('terrain.children'))}</dt><dd>${children.length}</dd><dt>${escapeHtml(t('terrain.collapsed'))}</dt><dd>${escapeHtml(t(state.terrain.collapsed.includes(node.terrainNodeRef) ? 'terrain.yes' : 'terrain.no'))}</dd><dt>${escapeHtml(t('terrain.canonical-parent'))}</dt><dd>${escapeHtml(node.parentRef || t('terrain.root'))}</dd></dl>`;
   }
   $('#terrainReset').addEventListener('click', () => { state.terrain = { positions: {}, collapsed: [], selected: null }; render(); });
   return { render, toggle, renderDetail };

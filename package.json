@@ -14,11 +14,14 @@
     "platform:all": "node scripts/create-platform.mjs --all --out generated",
     "browser:start": "node scripts/serve-browser.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
+    "orient": "node scripts/orient.mjs",
+    "atlas:query": "node scripts/atlas-query.mjs",
+    "module:describe": "node scripts/module-describe.mjs",
     "check": "npm run syntax:check && npm run blueprint:check && npm run feature:check && npm run bridge:check && npm run localization:check && npm run public-safety:check && npm test && npm run manifest:check",
     "registry:summary": "node scripts/registry-summary.mjs",
     "doctor": "node scripts/doctor.mjs",
     "impact:report": "node scripts/impact-report.mjs",
-    "browser:check": "node --check reference/browser/app.js",
+    "browser:check": "node --check reference/browser/app.js && node --check reference/browser/integration-test.js",
     "experience:summary": "node -e \"import('./src/core/blueprint.mjs').then(async m=>{const b=m.loadBlueprint(); console.log(JSON.stringify({profiles:b.experience.experienceProfiles.length,gestures:b.experience.gestureContracts.length,vessels:b.experience.vessels.length},null,2))})\"",
     "implementation:packet": "node scripts/implementation-packet.mjs",
     "evolution:summary": "node scripts/evolution-summary.mjs",
@@ -29,7 +32,7 @@
     "health:check": "node scripts/health-check.mjs",
     "current": "node scripts/current.mjs",
     "projections:build": "node scripts/build-projections.mjs",
-    "pr-ready": "npm run check && npm run platform:all && npm run projections:build && npm run doctor && npm run browser:check"
+    "pr-ready": "node scripts/pr-ready.mjs"
   },
   "engines": {
     "node": ">=20"

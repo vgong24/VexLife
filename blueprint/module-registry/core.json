@@ -428,5 +428,25 @@
       "test/source-manifest.test.mjs"
     ],
     "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.core.public-safety",
+    "path": "src/core/public-safety.mjs",
+    "role": "Compiles forbidden path and binary classifications from the canonical public-safety manifest and scans exact repository-relative paths.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "PUBLIC-SAFETY-MANIFEST.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.public-safety-check"
+    ],
+    "tests": [
+      "test/public-safety.test.mjs"
+    ],
+    "changeMap": [
+      "PUBLIC-SAFETY-MANIFEST.json",
+      ".gitignore"
+    ]
   }
 ]

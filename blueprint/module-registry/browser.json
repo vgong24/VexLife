@@ -178,5 +178,29 @@
     "changeMap": [
       "reference/browser/app.js"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.integration-test",
+    "path": "reference/browser/integration-test.js",
+    "role": "Runs real rendered project-thread-channel isolation and EN/ZH/JA stable Guide-intent behavior in the browser reference.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.js",
+      "blueprint/strings/*.json"
+    ],
+    "writes": [
+      "in-page integration receipt only"
+    ],
+    "loadedBy": [
+      "reference/browser/app.js?integration=1"
+    ],
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/modules/chat-controller.js",
+      "reference/browser/modules/guide-controller.js",
+      "reference/browser/modules/demo-data.js"
+    ]
   }
 ]

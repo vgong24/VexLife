@@ -21,19 +21,29 @@ export function validateBuildHealthRegistry(registry, reviewLenses) {
 
 export function deriveRepositoryHealth({ sourceTreeRef, blueprintHash, checkResults = [], previousProjection = null } = {}) {
   const failed = checkResults.filter((item) => item.state === 'FAILED' || item.state === 'BLOCKED');
-  const unknown = checkResults.filter((item) => item.state === 'UNKNOWN');
-  const state = failed.length ? 'BLOCKED' : unknown.length ? 'ATTENTION' : 'HEALTHY';
+  const passedCurrent = checkResults.filter((item) => item.state === 'PASSED' && item.executed === true && item.currentness === 'CURRENT');
+  const unresolved = checkResults.filter((item) => !failed.includes(item) && !passedCurrent.includes(item));
+  const state = failed.length ? 'BLOCKED' : checkResults.length > 0 && unresolved.length === 0 ? 'HEALTHY' : 'ATTENTION';
   const semantic = {
     sourceTreeRef,
     blueprintHash,
     state,
-    checks: checkResults.map(({ checkRef, state, detailRef = null }) => ({ checkRef, state, detailRef })).sort((a, b) => a.checkRef.localeCompare(b.checkRef))
+    checks: checkResults.map(({ checkRef, state, detailRef = null, executed = false, currentness = 'UNKNOWN' }) => ({
+      checkRef, state, detailRef, executed, currentness
+    })).sort((a, b) => a.checkRef.localeCompare(b.checkRef))
   };
   const projection = {
     schemaVersion: 'vexlife.repository-health/v0',
     ...semantic,
     blockingCheckRefs: failed.map((item) => item.checkRef).sort(),
-    unknownCheckRefs: unknown.map((item) => item.checkRef).sort(),
+    unresolvedCheckRefs: unresolved.map((item) => item.checkRef).sort(),
+    executedCurrentCheckRefs: passedCurrent.map((item) => item.checkRef).sort(),
+    receiptSummary: {
+      total: checkResults.length,
+      executedCurrentPassed: passedCurrent.length,
+      unresolved: unresolved.length,
+      failed: failed.length
+    },
     semanticHash: semanticHash(semantic)
   };
   return {

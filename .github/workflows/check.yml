@@ -32,14 +32,18 @@ jobs:
       - name: Report runtime
         run: node --version
 
-      - name: Print compact current projection
-        run: npm run current
-
-      - name: Report foundation health
-        run: npm run health:check
+      - name: Ground bounded repository orientation
+        env:
+          VEXLIFE_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+          VEXLIFE_PR_NUMBER: ${{ github.event.pull_request.number }}
+          VEXLIFE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: npm run orient
 
       - name: Run the complete foundation gate
         run: npm run pr-ready
+
+      - name: Verify executed current health receipt
+        run: npm run health:check
 
       - name: Reconfirm the canonical source manifest
         run: npm run manifest:check
