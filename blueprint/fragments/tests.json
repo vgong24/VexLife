@@ -337,11 +337,11 @@
   },
   {
     "testRef": "test.intent-scheduler.exact-admission-binding",
-    "brief": "Scheduler admission binds exact graph, trust, node, occupancy, resource, capability, effect, transition, gate and return identities."
+    "brief": "Scheduler admission binds exact graph, source hashes, external runtime trust, canonical clock interval, node, occupancy, resource, capability, effect, transition, gate and return identities."
   },
   {
     "testRef": "test.intent-scheduler.single-worker",
-    "brief": "One physical model worker cannot hold two active context or resource leases."
+    "brief": "One registered physical worker source rejects concurrent leases across distinct scheduler instances and active admission replacement."
   },
   {
     "testRef": "test.intent-scheduler.logical-branches",
@@ -349,15 +349,15 @@
   },
   {
     "testRef": "test.intent-scheduler.interactive-preemption",
-    "brief": "Interactive work outranks background work and may preempt only after a declared safe checkpoint."
+    "brief": "Interactive work outranks background work and preemption performs checkpoint, transactional release, re-admission and fresh-generation worker selection."
   },
   {
     "testRef": "test.intent-scheduler.fairness",
-    "brief": "Bounded generation-based fairness prevents indefinite starvation without violating interactive background holds."
+    "brief": "Scheduler-owned source-bound deferral and age evidence prevents multi-generation starvation without violating interactive background holds."
   },
   {
     "testRef": "test.intent-scheduler.resource-fail-closed",
-    "brief": "Unknown or insufficient CPU, RAM, GPU, VRAM, model, thermal or concurrency state blocks resource admission."
+    "brief": "Unknown, expired, self-certified, malformed or insufficient external CPU, RAM, GPU, VRAM, model, thermal or concurrency evidence blocks admission."
   },
   {
     "testRef": "test.intent-scheduler.context-budget",
@@ -365,38 +365,38 @@
   },
   {
     "testRef": "test.intent-scheduler.context-no-op",
-    "brief": "Equal semantic context selection suppresses another lease transition."
+    "brief": "Equal semantic context selection suppresses another lease only while the exact context and all bound leases remain current and active."
   },
   {
     "testRef": "test.intent-scheduler.checkpoint-release",
-    "brief": "Checkpoint releases worker and resource leases while preserving exact source, receipt and next-action lineage."
+    "brief": "Checkpoint transactionally consumes admission, worker, context, resource, occupancy, capability and effect leases while preserving exact paired source-hash, receipt and next-action lineage."
   },
   {
     "testRef": "test.intent-scheduler.resume-revalidate",
-    "brief": "Resume revalidates graph, trust, resource, capability, effect and source hashes and rejects stale replay."
+    "brief": "Resume accepts changed-but-sufficient external resources only after fresh graph, trust, capability, effect, source-hash and generation validation, rejecting every prior lease."
   },
   {
     "testRef": "test.intent-scheduler.tool-lease-boundary",
-    "brief": "A typed mock tool call requires exact context, capability, effect and resource leases."
+    "brief": "A typed mock tool call resolves canonical tool/effect/schema/executor identities and requires exact active worker, context, capability, effect, resource and runtime bindings."
   },
   {
     "testRef": "test.intent-scheduler.tool-result-rejection",
-    "brief": "Wrong, stale, duplicate, late, schema-mismatched or generation-mismatched tool results fail closed."
+    "brief": "Wrong-context, wrong-effect, wrong-schema, stale, duplicate, late, replayed-after-restart, generation-mismatched or cancellation-racing results fail closed."
   },
   {
     "testRef": "test.intent-scheduler.tool-result-reinjection",
-    "brief": "An accepted tool result becomes one bounded observation in exactly the matching context."
+    "brief": "An accepted result becomes one bounded observation only in the exact origin context or an explicitly authorized successor context."
   },
   {
     "testRef": "test.intent-scheduler.cancellation-lineage",
-    "brief": "Cancellation releases leases and preserves work, source, artifact and receipt lineage."
+    "brief": "Cancellation closes pending relay work, consumes every lease, preserves work/source/artifact/receipt lineage and blocks re-lease."
   },
   {
     "testRef": "test.intent-scheduler.bounded-projections",
-    "brief": "Queue, Terrain, Health and Guide derive bounded why-visible projections from the same state owners."
+    "brief": "Queue, Terrain, Health and Guide derive bounded why-visible projections from one aggregate and never project released, expired, orphaned or cancelled truth as CLEAR."
   },
   {
     "testRef": "test.intent-scheduler.full-gate",
-    "brief": "Scheduler validation is registered in the full PR-ready, manifest, browser, portability and DCO gates."
+    "brief": "Canonical scheduler composition and the complete deterministic no-effect journey receipt are bound into PR-ready, Health, manifest, browser, portability and DCO gates."
   }
 ]

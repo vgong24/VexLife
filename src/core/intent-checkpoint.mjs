@@ -1,4 +1,8 @@
-import { evaluateResourceAdmission, releaseResourceLease } from './resource-admission.mjs';
+import { evaluateResourceAdmission } from './resource-admission.mjs';
+import {
+  assertCurrentLease,
+  parseCanonicalTimestamp
+} from './scheduler-runtime-trust.mjs';
 import { semanticHash } from './utils.mjs';
 
 const REQUIRED_FIELDS = [
@@ -6,6 +10,7 @@ const REQUIRED_FIELDS = [
   'workNodeRef',
   'graphFingerprint',
   'trustSnapshotFingerprint',
+  'runtimeSnapshotFingerprint',
   'priorSchedulerGeneration',
   'lastCompletedStep',
   'currentState',
@@ -16,12 +21,24 @@ const REQUIRED_FIELDS = [
   'openQuestions',
   'nextSafeAction',
   'pendingToolCallRef',
-  'capabilityLeaseRef',
-  'effectLeaseRef',
+  'priorOccupancyRef',
+  'priorCapabilityLeaseRef',
+  'priorEffectLeaseRef',
+  'priorResourceLeaseRef',
+  'priorContextLeaseRef',
+  'priorWorkerLeaseRef',
   'resourceSnapshotFingerprint',
-  'sourceHashes',
-  'resourceReleaseReceipt',
+  'sourceBindings',
+  'leaseReleaseReceipts',
   'formedAt'
+];
+
+const REF_ARRAY_FIELDS = [
+  'selectedSourceRefs',
+  'selectedContextRefs',
+  'producedArtifactRefs',
+  'producedReceiptRefs',
+  'openQuestions'
 ];
 
 function clone(value) {
@@ -34,22 +51,36 @@ function freeze(value) {
   return Object.freeze(value);
 }
 
-function canonical(values, field) {
+function canonicalRefs(values, field) {
+  if (!Array.isArray(values) || values.some((item) => typeof item !== 'string' || !item)) {
+    throw new Error(`${field} must be an array of stable refs`);
+  }
+  return [...new Set(values)].sort();
+}
+
+export function canonicalSourceBindings(values, field = 'sourceBindings') {
   if (!Array.isArray(values)) throw new Error(`${field} must be an array`);
-  return [...new Set(values.map((item) => typeof item === 'string' ? item : JSON.stringify(item)))].sort();
+  const normalized = values.map((item) => {
+    if (!item?.sourceRef || !/^[a-f0-9]{64}$/.test(String(item.sourceHash ?? ''))) {
+      throw new Error(`${field} requires exact sourceRef/sourceHash pairs`);
+    }
+    return { sourceRef: item.sourceRef, sourceHash: item.sourceHash };
+  }).sort((left, right) =>
+    left.sourceRef.localeCompare(right.sourceRef) || left.sourceHash.localeCompare(right.sourceHash)
+  );
+  const keys = normalized.map((item) => `${item.sourceRef}\u0000${item.sourceHash}`);
+  if (new Set(keys).size !== keys.length) throw new Error(`${field} contains duplicate source/hash pairs`);
+  return normalized;
 }
 
 export function buildCheckpointFingerprint(checkpoint) {
   const candidate = clone(checkpoint);
   delete candidate.semanticFingerprint;
-  for (const field of [
-    'selectedSourceRefs',
-    'selectedContextRefs',
-    'producedArtifactRefs',
-    'producedReceiptRefs',
-    'openQuestions',
-    'sourceHashes'
-  ]) candidate[field] = canonical(candidate[field] ?? [], field);
+  for (const field of REF_ARRAY_FIELDS) candidate[field] = canonicalRefs(candidate[field] ?? [], field);
+  candidate.sourceBindings = canonicalSourceBindings(candidate.sourceBindings ?? []);
+  candidate.leaseReleaseReceipts = [...(candidate.leaseReleaseReceipts ?? [])]
+    .map((item) => clone(item))
+    .sort((left, right) => left.receiptRef.localeCompare(right.receiptRef));
   return semanticHash(candidate);
 }
 
@@ -59,20 +90,22 @@ export function createIntentCheckpoint(input) {
   if (!Number.isInteger(input.priorSchedulerGeneration) || input.priorSchedulerGeneration < 0) {
     throw new Error('checkpoint priorSchedulerGeneration must be a non-negative integer');
   }
-  if (input.currentState !== 'PAUSED_AT_CHECKPOINT') throw new Error('checkpoint currentState must be PAUSED_AT_CHECKPOINT');
-  if (input.resourceReleaseReceipt.state !== 'RELEASED') throw new Error('checkpoint requires a released resource receipt');
+  if (input.currentState !== 'PAUSED_AT_CHECKPOINT') {
+    throw new Error('checkpoint currentState must be PAUSED_AT_CHECKPOINT');
+  }
+  parseCanonicalTimestamp(input.formedAt, 'checkpoint.formedAt');
+  const receiptStates = new Set((input.leaseReleaseReceipts ?? []).map((item) => item.lifecycle));
+  if (!receiptStates.has('RELEASED') || (input.leaseReleaseReceipts?.length ?? 0) < 5) {
+    throw new Error('checkpoint requires transactional release receipts for every active lease');
+  }
   const checkpoint = {
-    schemaVersion: 'vexlife.intent-checkpoint/v0',
+    schemaVersion: 'vexlife.intent-checkpoint/v1',
     ...clone(input)
   };
-  for (const field of [
-    'selectedSourceRefs',
-    'selectedContextRefs',
-    'producedArtifactRefs',
-    'producedReceiptRefs',
-    'openQuestions',
-    'sourceHashes'
-  ]) checkpoint[field] = canonical(checkpoint[field] ?? [], field);
+  for (const field of REF_ARRAY_FIELDS) checkpoint[field] = canonicalRefs(checkpoint[field] ?? [], field);
+  checkpoint.sourceBindings = canonicalSourceBindings(checkpoint.sourceBindings);
+  checkpoint.leaseReleaseReceipts = [...checkpoint.leaseReleaseReceipts]
+    .sort((left, right) => left.receiptRef.localeCompare(right.receiptRef));
   checkpoint.semanticFingerprint = buildCheckpointFingerprint(checkpoint);
   if (input.semanticFingerprint && input.semanticFingerprint !== checkpoint.semanticFingerprint) {
     throw new Error('checkpoint semanticFingerprint does not match canonical identity');
@@ -80,66 +113,70 @@ export function createIntentCheckpoint(input) {
   return freeze(checkpoint);
 }
 
-export function checkpointActiveLease({
-  checkpointInput,
-  activeLease,
-  resourceLease,
-  releaseReceiptRef,
-  releasedAt
-}) {
-  if (!activeLease || activeLease.workNodeRef !== checkpointInput.workNodeRef) {
-    throw new Error('active worker lease does not match checkpoint work node');
-  }
-  if (!resourceLease || resourceLease.leaseRef !== activeLease.resourceLeaseRef) {
-    throw new Error('active worker resource lease does not match checkpoint');
-  }
-  const resourceReleaseReceipt = releaseResourceLease(resourceLease, {
-    releaseReceiptRef,
-    releasedAt,
-    reason: 'CHECKPOINT'
-  });
-  const checkpoint = createIntentCheckpoint({
-    ...checkpointInput,
-    graphFingerprint: activeLease.graphFingerprint,
-    priorSchedulerGeneration: activeLease.generation,
-    currentState: 'PAUSED_AT_CHECKPOINT',
-    resourceReleaseReceipt
-  });
-  const workerReleaseReceipt = {
-    schemaVersion: 'vexlife.intent-worker-release-receipt/v0',
-    releaseReceiptRef: `${releaseReceiptRef}.worker`,
-    workerLeaseRef: activeLease.workerLeaseRef,
-    workerRef: activeLease.workerRef,
-    workNodeRef: activeLease.workNodeRef,
-    schedulerGeneration: activeLease.generation,
-    reason: 'CHECKPOINT',
-    releasedAt,
-    state: 'RELEASED'
-  };
-  workerReleaseReceipt.semanticFingerprint = semanticHash(workerReleaseReceipt);
-  return { checkpoint, resourceReleaseReceipt, workerReleaseReceipt: freeze(workerReleaseReceipt) };
-}
-
 export function validateCheckpointResume(checkpoint, {
   graphFingerprint,
   trustSnapshotFingerprint,
-  capabilityLeaseRef,
-  effectLeaseRef,
+  runtimeTrustSnapshot,
+  occupancy,
+  capabilityLease,
+  effectLease,
   resourceSnapshot,
   resourceRequest,
-  sourceHashes = [],
-  schedulerGeneration
+  resourceLease,
+  sourceBindings = [],
+  schedulerGeneration,
+  observedAt
 }) {
   const staleReasons = [];
   const blockedReasons = [];
+  let currentSourceBindings = [];
+  if (checkpoint.currentState !== 'PAUSED_AT_CHECKPOINT') blockedReasons.push('CHECKPOINT_NOT_PAUSED');
   if (checkpoint.graphFingerprint !== graphFingerprint) staleReasons.push('GRAPH_FINGERPRINT_STALE');
   if (checkpoint.trustSnapshotFingerprint !== trustSnapshotFingerprint) staleReasons.push('TRUST_SNAPSHOT_STALE');
-  if (checkpoint.resourceSnapshotFingerprint !== resourceSnapshot?.semanticFingerprint) staleReasons.push('RESOURCE_SNAPSHOT_STALE');
-  if (semanticHash([...checkpoint.sourceHashes].sort()) !== semanticHash([...sourceHashes].sort())) staleReasons.push('SOURCE_HASHES_STALE');
-  if (checkpoint.capabilityLeaseRef !== capabilityLeaseRef) blockedReasons.push('CAPABILITY_LEASE_MISMATCH');
-  if (checkpoint.effectLeaseRef !== effectLeaseRef) blockedReasons.push('EFFECT_LEASE_MISMATCH');
+  try {
+    const priorSources = canonicalSourceBindings(checkpoint.sourceBindings);
+    currentSourceBindings = canonicalSourceBindings(sourceBindings);
+    if (semanticHash(priorSources) !== semanticHash(currentSourceBindings)) staleReasons.push('SOURCE_BINDINGS_STALE');
+  } catch {
+    staleReasons.push('SOURCE_BINDINGS_INVALID');
+  }
   if (!Number.isInteger(schedulerGeneration) || schedulerGeneration <= checkpoint.priorSchedulerGeneration) {
     blockedReasons.push('SCHEDULER_GENERATION_NOT_ADVANCED');
+  }
+  if (!runtimeTrustSnapshot?.semanticFingerprint ||
+      runtimeTrustSnapshot.schedulerGeneration !== schedulerGeneration ||
+      runtimeTrustSnapshot.semanticFingerprint === checkpoint.runtimeSnapshotFingerprint) {
+    staleReasons.push('RUNTIME_TRUST_NOT_FRESH');
+  }
+  if (!resourceSnapshot?.semanticFingerprint ||
+      resourceSnapshot.semanticFingerprint === checkpoint.resourceSnapshotFingerprint ||
+      resourceSnapshot.generation !== schedulerGeneration) {
+    staleReasons.push('RESOURCE_SNAPSHOT_NOT_FRESH');
+  }
+  if (!occupancy?.occupancyRef ||
+      occupancy.occupancyRef === checkpoint.priorOccupancyRef ||
+      occupancy.schedulerGeneration !== schedulerGeneration ||
+      occupancy.runtimeSnapshotFingerprint !== runtimeTrustSnapshot?.semanticFingerprint ||
+      occupancy.currentness !== 'CURRENT' ||
+      occupancy.lifecycle !== 'ACTIVE') {
+    blockedReasons.push('OCCUPANCY_NOT_FRESH_CURRENT');
+  }
+  for (const [label, lease, priorRef] of [
+    ['CAPABILITY', capabilityLease, checkpoint.priorCapabilityLeaseRef],
+    ['EFFECT', effectLease, checkpoint.priorEffectLeaseRef],
+    ['RESOURCE', resourceLease, checkpoint.priorResourceLeaseRef]
+  ]) {
+    try {
+      assertCurrentLease(lease, {
+        label: label.toLowerCase(),
+        observedAt,
+        schedulerGeneration,
+        runtimeSnapshotFingerprint: runtimeTrustSnapshot?.semanticFingerprint
+      });
+      if (lease.leaseRef === priorRef) blockedReasons.push(`${label}_LEASE_NOT_FRESH`);
+    } catch (error) {
+      blockedReasons.push(`${label}_LEASE_INVALID:${error.message}`);
+    }
   }
   const resource = evaluateResourceAdmission(resourceSnapshot, resourceRequest);
   if (!resource.admitted) blockedReasons.push(...resource.reasons.map((reason) => `RESOURCE:${reason}`));
@@ -155,11 +192,15 @@ export function validateCheckpointResume(checkpoint, {
       checkpointFingerprint: checkpoint.semanticFingerprint,
       graphFingerprint,
       trustSnapshotFingerprint,
-      capabilityLeaseRef,
-      effectLeaseRef,
+      runtimeSnapshotFingerprint: runtimeTrustSnapshot?.semanticFingerprint,
+      occupancyFingerprint: occupancy?.semanticFingerprint,
+      capabilityLeaseFingerprint: capabilityLease?.semanticFingerprint,
+      effectLeaseFingerprint: effectLease?.semanticFingerprint,
       resourceSnapshotFingerprint: resourceSnapshot?.semanticFingerprint,
-      sourceHashes: [...sourceHashes].sort(),
+      resourceLeaseFingerprint: resourceLease?.semanticFingerprint,
+      sourceBindings: currentSourceBindings,
       schedulerGeneration,
+      observedAt,
       reasons
     })
   };

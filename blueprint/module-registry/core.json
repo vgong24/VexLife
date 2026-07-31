@@ -37,13 +37,14 @@
   {
     "moduleRef": "module.vexlife.core.registry",
     "path": "src/core/registry.mjs",
-    "role": "Compile identity, interface, string, navigation, process, Intent Orchestration and module registries from canonical sources.",
+    "role": "Compile identity, interface, string, navigation, process, Intent Orchestration, Intent Scheduler and module registries from canonical sources.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "blueprint.vexlife.universal.001",
       "factory.vexlife.processes.001",
       "registry.vexlife.modules.001",
-      "registry.vexlife.intent-orchestration.001"
+      "registry.vexlife.intent-orchestration.001",
+      "registry.vexlife.intent-scheduler.001"
     ],
     "writes": [],
     "loadedBy": [],
@@ -154,7 +155,7 @@
   {
     "moduleRef": "module.vexlife.core.blueprint",
     "path": "src/core/blueprint.mjs",
-    "role": "Load and validate the universal blueprint, Intent Orchestration registry, factory, catalogs, module map and compiled registry.",
+    "role": "Load and validate the universal blueprint, Intent Orchestration and Intent Scheduler registries, factory, catalogs, module map and compiled registry.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "blueprint/vexlife.blueprint.json",
@@ -163,6 +164,7 @@
       "blueprint/process-factory.json",
       "blueprint/module-registry.json",
       "blueprint/intent-orchestration-registry.json",
+      "blueprint/intent-scheduler-registry.json",
       "blueprint/strings/*.json",
       "blueprint/experience-registry.json"
     ],
@@ -597,9 +599,37 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.scheduler-runtime-trust",
+    "path": "src/core/scheduler-runtime-trust.mjs",
+    "role": "Validates the canonical scheduler registry and externally sourced runtime identity, currentness, canonical clock, expiry, lease lifecycle and exact mock-tool contracts.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "clock.intent-scheduler.canonical-utc",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.blueprint",
+      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.context-lease",
+      "module.vexlife.core.intent-checkpoint",
+      "module.vexlife.core.tool-result-relay",
+      "module.vexlife.core.intent-scheduler"
+    ],
+    "tests": [
+      "test/intent-scheduler.test.mjs",
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-scheduler-registry.json",
+      "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.state",
     "path": "src/core/state.mjs",
-    "role": "Owns scheduler queue, active worker, resource and checkpoint cells and derives distinct-until-changed runtime, Terrain, Health and Guide projections.",
+    "role": "Owns one canonical scheduler aggregate for queue, worker, leases, resources, checkpoints, cancellation and relay truth, then derives distinct-until-changed runtime, Terrain, Health and Guide projections.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "module.vexlife.core.state-relay"
@@ -623,6 +653,7 @@
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.scheduler-runtime-trust",
       "module.vexlife.core.utils"
     ],
     "writes": [],
@@ -644,6 +675,7 @@
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.scheduler-runtime-trust",
       "module.vexlife.core.utils"
     ],
     "writes": [],
@@ -665,7 +697,8 @@
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
-      "module.vexlife.core.resource-admission"
+      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.scheduler-runtime-trust"
     ],
     "writes": [],
     "loadedBy": [
@@ -685,7 +718,8 @@
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
-      "module.vexlife.core.context-lease"
+      "module.vexlife.core.context-lease",
+      "module.vexlife.core.scheduler-runtime-trust"
     ],
     "writes": [],
     "loadedBy": [
@@ -710,7 +744,8 @@
       "module.vexlife.core.context-lease",
       "module.vexlife.core.resource-admission",
       "module.vexlife.core.intent-checkpoint",
-      "module.vexlife.core.state"
+      "module.vexlife.core.state",
+      "module.vexlife.core.scheduler-runtime-trust"
     ],
     "writes": [],
     "loadedBy": [

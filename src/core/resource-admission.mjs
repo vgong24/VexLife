@@ -1,8 +1,17 @@
+import {
+  assertActiveInterval,
+  assertSourceHash,
+  transitionLease
+} from './scheduler-runtime-trust.mjs';
 import { semanticHash } from './utils.mjs';
 
 const SNAPSHOT_FIELDS = [
   'snapshotRef',
   'generation',
+  'sourceRef',
+  'sourceHash',
+  'formationRef',
+  'evidenceClass',
   'cpuLoadPct',
   'cpuConcurrencyLimit',
   'cpuActiveCount',
@@ -18,7 +27,9 @@ const SNAPSHOT_FIELDS = [
   'backgroundWorkAdmission',
   'thermalPowerState',
   'currentness',
-  'formedAt'
+  'formedAt',
+  'observedAt',
+  'expiresAt'
 ];
 
 function clone(value) {
@@ -58,17 +69,32 @@ export function createResourceSnapshot(input) {
     'vramReservedMb'
   ]) assertNonNegativeNumber(input[field], field);
   if (input.cpuLoadPct > 100) throw new Error('cpuLoadPct must not exceed 100');
-  if (!Number.isInteger(input.generation) || input.generation < 0) throw new Error('resource snapshot generation must be a non-negative integer');
+  if (!Number.isInteger(input.generation) || input.generation < 0) {
+    throw new Error('resource snapshot generation must be a non-negative integer');
+  }
   for (const field of ['gpuAvailable', 'modelResident', 'activeModelTurn', 'activeHeavyTool']) {
     if (typeof input[field] !== 'boolean') throw new Error(`${field} must be a known boolean`);
   }
-  if (!['IDLE', 'WAITING'].includes(input.interactiveWaitState)) throw new Error('interactiveWaitState must be IDLE or WAITING');
-  if (!['ADMITTED', 'HELD'].includes(input.backgroundWorkAdmission)) throw new Error('backgroundWorkAdmission must be ADMITTED or HELD');
+  if (!['IDLE', 'WAITING'].includes(input.interactiveWaitState)) {
+    throw new Error('interactiveWaitState must be IDLE or WAITING');
+  }
+  if (!['ADMITTED', 'HELD'].includes(input.backgroundWorkAdmission)) {
+    throw new Error('backgroundWorkAdmission must be ADMITTED or HELD');
+  }
   if (!['NOMINAL', 'CONSTRAINED', 'NOT_EXPOSED'].includes(input.thermalPowerState)) {
     throw new Error('thermalPowerState must be NOMINAL, CONSTRAINED, or NOT_EXPOSED');
   }
+  if (!['SIMULATED_CURRENT', 'LIVE_RUNTIME_CURRENT'].includes(input.evidenceClass)) {
+    throw new Error('resource snapshot evidenceClass is not externally recognizable');
+  }
   if (input.currentness !== 'CURRENT') throw new Error('resource snapshot currentness must be CURRENT');
-  const candidate = clone(input);
+  assertSourceHash(input.sourceHash, 'resource snapshot sourceHash');
+  assertActiveInterval(input, 'resource snapshot');
+  const candidate = {
+    schemaVersion: 'vexlife.intent-resource-snapshot/v1',
+    ...clone(input)
+  };
+  delete candidate.semanticFingerprint;
   candidate.semanticFingerprint = buildResourceSnapshotFingerprint(candidate);
   if (input.semanticFingerprint && input.semanticFingerprint !== candidate.semanticFingerprint) {
     throw new Error('resource snapshot semanticFingerprint does not match canonical identity');
@@ -105,7 +131,9 @@ export function evaluateResourceAdmission(snapshot, request = {}) {
   if (normalized.heavyTool && current.activeHeavyTool) reasons.push('HEAVY_TOOL_BUSY');
   if (normalized.background && current.interactiveWaitState === 'WAITING') reasons.push('INTERACTIVE_WORK_WAITING');
   if (normalized.background && current.backgroundWorkAdmission !== 'ADMITTED') reasons.push('BACKGROUND_WORK_HELD');
-  if (current.thermalPowerState === 'CONSTRAINED' && (normalized.heavyTool || normalized.vramMb > 0)) reasons.push('THERMAL_POWER_CONSTRAINED');
+  if (current.thermalPowerState === 'CONSTRAINED' && (normalized.heavyTool || normalized.vramMb > 0)) {
+    reasons.push('THERMAL_POWER_CONSTRAINED');
+  }
   return {
     admitted: reasons.length === 0,
     state: reasons.length ? 'BLOCKED' : 'ADMITTED',
@@ -127,32 +155,45 @@ export function createResourceLease({
   workNodeRef,
   graphFingerprint,
   schedulerGeneration,
+  runtimeTrustSnapshot,
   resourceSnapshot,
   request,
   formedAt,
-  expiresAt
+  expiresAt,
+  observedAt
 }) {
   const admission = evaluateResourceAdmission(resourceSnapshot, request);
   if (!admission.admitted) throw new Error(`resource admission failed: ${admission.reasons.join(', ')}`);
-  if (!leaseRef || !workerRef || !workNodeRef || !graphFingerprint || !formedAt || !expiresAt) {
-    throw new Error('resource lease requires exact lease, worker, node, graph, and time bindings');
+  if (!leaseRef || !workerRef || !workNodeRef || !graphFingerprint || !formedAt || !expiresAt || !observedAt) {
+    throw new Error('resource lease requires exact lease, worker, node, graph, and canonical time bindings');
   }
   if (!Number.isInteger(schedulerGeneration) || schedulerGeneration < 0) {
     throw new Error('resource lease schedulerGeneration must be a non-negative integer');
   }
+  if (!runtimeTrustSnapshot?.semanticFingerprint ||
+      runtimeTrustSnapshot.schedulerGeneration !== schedulerGeneration ||
+      runtimeTrustSnapshot.workerRef !== workerRef ||
+      runtimeTrustSnapshot.resourceSnapshotFingerprint !== resourceSnapshot.semanticFingerprint) {
+    throw new Error('resource lease runtime trust binding mismatch');
+  }
+  assertActiveInterval({ formedAt, observedAt, expiresAt }, 'resource lease');
   const lease = {
-    schemaVersion: 'vexlife.intent-resource-lease/v0',
+    schemaVersion: 'vexlife.intent-resource-lease/v1',
     leaseRef,
     workerRef,
     workNodeRef,
     graphFingerprint,
+    runtimeSnapshotRef: runtimeTrustSnapshot.snapshotRef,
+    runtimeSnapshotFingerprint: runtimeTrustSnapshot.semanticFingerprint,
     schedulerGeneration,
     resourceSnapshotRef: admission.snapshotRef,
     resourceSnapshotFingerprint: admission.snapshotFingerprint,
     request: admission.request,
     formedAt,
     expiresAt,
-    currentness: 'CURRENT'
+    observedAt,
+    currentness: 'CURRENT',
+    lifecycle: 'ACTIVE'
   };
   lease.semanticFingerprint = semanticHash(lease);
   return freeze(lease);
@@ -163,21 +204,16 @@ export function releaseResourceLease(lease, {
   releasedAt,
   reason = 'CHECKPOINT'
 }) {
-  if (!lease?.leaseRef || lease.currentness !== 'CURRENT') throw new Error('only a current resource lease can be released');
-  if (!releaseReceiptRef || !releasedAt) throw new Error('resource release requires receiptRef and releasedAt');
-  const receipt = {
-    schemaVersion: 'vexlife.intent-resource-release-receipt/v0',
-    releaseReceiptRef,
-    resourceLeaseRef: lease.leaseRef,
-    workerRef: lease.workerRef,
-    workNodeRef: lease.workNodeRef,
-    schedulerGeneration: lease.schedulerGeneration,
-    reason,
-    releasedAt,
-    state: 'RELEASED'
+  const transitioned = transitionLease(lease, {
+    lifecycle: reason.includes('CANCEL') ? 'CANCELLED' : 'RELEASED',
+    receiptRef: releaseReceiptRef,
+    transitionedAt: releasedAt,
+    reason
+  });
+  return {
+    releasedLease: transitioned.lease,
+    releaseReceipt: transitioned.receipt
   };
-  receipt.semanticFingerprint = semanticHash(receipt);
-  return freeze(receipt);
 }
 
 // [VXG RealForever]

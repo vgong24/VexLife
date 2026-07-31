@@ -1,76 +1,110 @@
 #!/usr/bin/env node
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadBlueprint } from '../src/core/blueprint.mjs';
-import { readJson, semanticHash } from '../src/core/utils.mjs';
+import {
+  buildIdentityIndex,
+  loadBlueprint,
+  validateBlueprint
+} from '../src/core/blueprint.mjs';
+import { Atlas } from '../src/core/atlas.mjs';
+import { compileRegistryPack } from '../src/core/registry.mjs';
+import { validateIntentSchedulerRegistry } from '../src/core/scheduler-runtime-trust.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
+import { runSchedulerSimulation } from './scheduler-simulate.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bundle = loadBlueprint(root);
-const registry = readJson(path.join(root, 'blueprint/intent-scheduler-registry.json'));
-const composed = bundle.blueprint.intentScheduler;
-const errors = [];
+const schedulerRegistry = bundle.schedulerRegistry;
+const schedulerValidation = validateIntentSchedulerRegistry(schedulerRegistry);
+const blueprintValidation = validateBlueprint(bundle);
+const errors = [
+  ...schedulerValidation.errors.map((error) => `scheduler registry: ${error}`),
+  ...(blueprintValidation.ok ? [] : blueprintValidation.errors.map((error) => `blueprint: ${error}`))
+];
 
-if (registry.schemaVersion !== 'vexlife.intent-scheduler-registry/v0') errors.push('unexpected scheduler registry schema');
-if (semanticHash(registry) !== semanticHash(composed)) errors.push('universal blueprint scheduler composition does not match source registry');
-if (registry.physicalWorkerPolicy?.modelInferenceConcurrency !== 1) errors.push('modelInferenceConcurrency must equal one');
-if (registry.physicalWorkerPolicy?.backgroundModelConcurrencyWhileInteractiveWaits !== 0) errors.push('background concurrency must be zero while interactive work waits');
-if (registry.physicalWorkerPolicy?.activeContextLeasesPerWorker !== 1) errors.push('active context leases per worker must equal one');
-if (registry.resourceUnknownPolicy !== 'UNKNOWN_IS_NOT_SPARE_CAPACITY') errors.push('unknown resource state must fail closed');
-if (!(registry.fairnessPolicy?.maxDeferrals > 0)) errors.push('bounded fairness maxDeferrals must be positive');
-
-for (const [field, minimum] of [
-  ['admissionRequiredFields', 20],
-  ['contextLeaseRequiredFields', 18],
-  ['resourceSnapshotRequiredFields', 18],
-  ['resourceLeaseRequiredFields', 12],
-  ['checkpointRequiredFields', 20],
-  ['toolCallRequiredFields', 14],
-  ['toolResultMatchFields', 6]
-]) {
-  if ((registry[field]?.length ?? 0) < minimum) errors.push(`${field} is incomplete`);
-  if (new Set(registry[field] ?? []).size !== (registry[field]?.length ?? 0)) errors.push(`${field} contains duplicates`);
+if (semanticHash(bundle.blueprint.intentScheduler) !== semanticHash(schedulerRegistry)) {
+  errors.push('canonical bundle scheduler composition does not match universal Blueprint');
 }
 
-const stateRefs = new Set(bundle.blueprint.stateDomains.map((item) => item.stateRef));
-const processRefs = new Set(bundle.factory.processes.map((item) => item.processRef));
-const moduleRefs = new Set(bundle.modules.modules.map((item) => item.moduleRef));
-const testRefs = new Set(bundle.blueprint.tests.map((item) => item.testRef));
-const featureRefs = new Set(bundle.featureRegistry.features.map((item) => item.featureRef));
-const checkRefs = new Set(bundle.buildHealth.checks.map((item) => item.checkRef));
-const workRefs = new Set(bundle.implementationPlan.workUnits.map((item) => item.workRef));
-
-for (const ref of ['state.intent-scheduler', 'state.context-lease', 'state.intent-checkpoint', 'state.tool-result-relay']) {
-  if (!stateRefs.has(ref)) errors.push(`canonical state registry missing ${ref}`);
+let registry = null;
+try {
+  registry = compileRegistryPack(bundle);
+  for (const ref of [
+    schedulerRegistry.registryRef,
+    schedulerRegistry.systemRef,
+    schedulerRegistry.canonicalSourceRef,
+    schedulerRegistry.runtimeTrustContract.contractRef,
+    schedulerRegistry.runtimeTrustContract.clockRef,
+    schedulerRegistry.simulationContract.contractRef,
+    ...schedulerRegistry.priorityClassIdentities.map((item) => item.priorityClassRef),
+    ...schedulerRegistry.policyIdentities.map((item) => item.policyRef),
+    ...schedulerRegistry.requiredFieldContracts.map((item) => item.contractRef),
+    ...schedulerRegistry.runtimeSourceIdentities.flatMap((item) => [item.sourceRef, item.authorityRef]),
+    ...schedulerRegistry.workerIdentities.map((item) => item.workerRef),
+    ...schedulerRegistry.mockToolContracts.flatMap((item) => [
+      item.contractRef,
+      item.toolRef,
+      item.effectRef,
+      item.argumentSchemaRef,
+      item.resultSchemaRef,
+      item.executorRef
+    ]),
+    ...schedulerRegistry.projectionIdentities.map((item) => item.projectionRef),
+    ...schedulerRegistry.processRefs,
+    ...schedulerRegistry.testRefs
+  ]) registry.require(ref);
+} catch (error) {
+  errors.push(`canonical scheduler registry compilation failed: ${error.message}`);
 }
-for (const ref of registry.processRefs ?? []) if (!processRefs.has(ref)) errors.push(`canonical process registry missing ${ref}`);
+
+const atlas = new Atlas(buildIdentityIndex(bundle));
+const atlasResult = atlas.query({
+  startRefs: [schedulerRegistry.registryRef],
+  depthLimit: 2,
+  resultLimit: 64,
+  tokenBudget: 12000
+});
 for (const ref of [
-  'module.vexlife.core.state',
-  'module.vexlife.core.resource-admission',
-  'module.vexlife.core.context-lease',
-  'module.vexlife.core.intent-checkpoint',
-  'module.vexlife.core.tool-result-relay',
-  'module.vexlife.core.intent-scheduler',
-  'module.vexlife.script.scheduler-check',
-  'module.vexlife.script.scheduler-simulate',
-  'module.vexlife.script.scheduler-status'
-]) if (!moduleRefs.has(ref)) errors.push(`canonical module registry missing ${ref}`);
-for (const ref of registry.testRefs ?? []) if (!testRefs.has(ref)) errors.push(`canonical test registry missing ${ref}`);
-if (!featureRefs.has('feature.vexlife.intent-orchestration-scheduler')) errors.push('feature registry missing scheduler feature');
-if (!checkRefs.has('check.intent-scheduler')) errors.push('build health registry missing scheduler check');
-if (!workRefs.has('work.vexlife.intent-orchestration-scheduler')) errors.push('implementation plan missing scheduler work unit');
+  schedulerRegistry.registryRef,
+  schedulerRegistry.systemRef,
+  schedulerRegistry.canonicalSourceRef,
+  schedulerRegistry.runtimeTrustContract.contractRef,
+  schedulerRegistry.simulationContract.contractRef
+]) {
+  if (!atlasResult.results.some((item) => item.ref === ref)) errors.push(`bounded scheduler Atlas traversal did not resolve ${ref}`);
+}
+
+let simulation = null;
+try {
+  simulation = runSchedulerSimulation({ root, writeReceipt: true });
+  if (simulation.receipt.state !== 'PASS') errors.push('integrated scheduler simulation did not pass');
+  if (simulation.receipt.externalEffectsExecuted !== false) errors.push('integrated scheduler simulation executed an external effect');
+  if (simulation.receipt.orphanedPendingToolCalls !== 0) errors.push('integrated scheduler simulation left an orphaned tool call');
+  if (simulation.receipt.selfCertifiedRuntimeEvidence !== false) errors.push('integrated scheduler simulation used self-certified runtime evidence');
+} catch (error) {
+  errors.push(`integrated scheduler simulation failed: ${error.message}`);
+}
 
 const result = {
-  schemaVersion: 'vexlife.intent-scheduler-check-result/v0',
+  schemaVersion: 'vexlife.intent-scheduler-check-result/v1',
   state: errors.length ? 'FAILED' : 'VALID',
   currentness: 'CURRENT',
   schedulerState: errors.length ? 'INTENT_SCHEDULER_INVALID' : 'INTENT_SCHEDULER_VALID',
-  registryRef: registry.registryRef,
-  systemRef: registry.systemRef,
-  modelInferenceConcurrency: registry.physicalWorkerPolicy?.modelInferenceConcurrency,
-  priorityClasses: registry.priorityClasses?.length ?? 0,
-  registeredProcesses: registry.processRefs?.length ?? 0,
-  registeredTests: registry.testRefs?.length ?? 0,
-  semanticHash: semanticHash(registry),
+  registryRef: schedulerRegistry?.registryRef ?? null,
+  systemRef: schedulerRegistry?.systemRef ?? null,
+  canonicalSourceRef: schedulerRegistry?.canonicalSourceRef ?? null,
+  modelInferenceConcurrency: schedulerRegistry?.physicalWorkerPolicy?.modelInferenceConcurrency,
+  priorityClasses: schedulerRegistry?.priorityClassIdentities?.length ?? 0,
+  registeredProcesses: schedulerRegistry?.processRefs?.length ?? 0,
+  registeredTests: schedulerRegistry?.testRefs?.length ?? 0,
+  canonicalRegistryEntries: registry?.entries.size ?? 0,
+  schedulerOwnedRefs: schedulerValidation.stats.ownedRefs,
+  atlasResolvedRefs: atlasResult.results.length,
+  schedulerRegistryHash: semanticHash(schedulerRegistry),
+  blueprintHash: blueprintValidation.semanticHash,
+  simulationReceiptPath: simulation?.receiptPath ?? schedulerRegistry?.simulationContract?.receiptPath ?? null,
+  simulationReceiptFingerprint: simulation?.receipt.semanticFingerprint ?? null,
+  simulationJourneyStates: simulation?.receipt.journeyStates ?? [],
   errors
 };
 console.log(JSON.stringify(result, null, 2));

@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/experience.test.mjs",
+      "mode": "100644",
+      "bytes": 2215,
+      "sha256": "82366babcef80194d3a214efe9c8455a0920f1c3d2e0a7bb8701f3156810bbd0"
+    },
+    {
       "path": "test/fixtures/orientation/accepted-main.json",
       "mode": "100644",
       "bytes": 1054,
@@ -34,8 +40,8 @@
     {
       "path": "test/foundation-health.test.mjs",
       "mode": "100644",
-      "bytes": 8968,
-      "sha256": "12cbe956bebd8ac2a82969cbc211b0b3d8ac794da2a150864ec68dba0222194e"
+      "bytes": 10436,
+      "sha256": "f0fdce326a4892e929493dd8d8a5a254b7def90a63f9e2b91b8fd51e6a57ec85"
     },
     {
       "path": "test/generator.test.mjs",
@@ -58,8 +64,8 @@
     {
       "path": "test/intent-scheduler.test.mjs",
       "mode": "100644",
-      "bytes": 25969,
-      "sha256": "a83dc72080bd6c8bb129e6738c66e6e4bab82827d581ef75c353948d99e84354"
+      "bytes": 41782,
+      "sha256": "2bc7fa463ffe71a7c45ee78a0d6ad14fc0a9cb50ebcbfa57fc4b343601bad970"
     },
     {
       "path": "test/intent-workgraph.test.mjs",
@@ -94,8 +100,8 @@
     {
       "path": "test/registry.test.mjs",
       "mode": "100644",
-      "bytes": 5094,
-      "sha256": "af3bb7241afc131a07918fd8a4a1297b8f4cca6cfb537c63ff34075b89654972"
+      "bytes": 6659,
+      "sha256": "3a970e2aca2145b6fe6e2120c4930b34ef0547545cab1e421bd5a69c6286b6da"
     },
     {
       "path": "test/source-manifest.test.mjs",

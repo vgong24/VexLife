@@ -32,9 +32,11 @@ state.intent-checkpoint  service.intent-checkpoint
 state.tool-result-relay  service.tool-result-relay
 ```
 
-`src/core/state.mjs` combines those owners into one bounded runtime projection.
-Terrain, Health and Guide are selectors over that projection. Equal semantic
-output produces no new revision.
+`src/core/state.mjs` owns one canonical scheduler aggregate containing queue,
+generation, fairness, active work, every lease transition, checkpoints,
+cancellation and the durable relay ledger. Queue, Terrain, Health and Guide are
+selectors over that aggregate. They do not keep duplicate scheduler truth.
+Equal semantic output produces no new revision.
 
 ## Admission
 
@@ -47,6 +49,8 @@ For the selected node, the admission receipt binds:
 ```text
 graph ref + fingerprint
 trust snapshot ref + source + source hash + fingerprint + formation
+external runtime snapshot + registered source/authority/worker + fingerprint
+canonical formedAt <= observedAt < expiresAt interval
 resource snapshot + exact resource lease
 work node ref + node fingerprint
 actor/role occupancy + writer claim
@@ -72,13 +76,17 @@ BACKGROUND
 
 Interactive work always wins while waiting. Background work is not admitted
 against an interactive wait. Outside that boundary, a node deferred for the
-source-managed maximum generation count wins the non-interactive pool by oldest
-ready generation and then stable work-node ref. Priority changes never delete
-the workgraph or its source.
+canonical maximum generation count wins the non-interactive pool by
+scheduler-owned, source-bound deferral count, oldest ready generation and then
+stable work-node ref. Callers cannot inject fairness truth. Priority changes
+never delete the workgraph or its source.
 
 An interactive arrival can request preemption of background work. The active
-lease remains live until `checkpoint` records a safe boundary and release
-receipts. There is no asynchronous source-discarding interrupt.
+lease remains live until `checkpoint` records a safe boundary and
+transactionally consumes admission plus worker, context, resource, occupancy,
+capability and effect leases. Completion re-admits and selects the retained
+interactive candidate through the normal fresh-generation path. There is no
+asynchronous source-discarding interrupt.
 
 ## Context and resource leases
 
@@ -87,26 +95,31 @@ Atlas/source selections, culture, lessons and release material. Whole graphs,
 message histories, architecture documents, raw logs and artifact payloads are
 rejected. Estimated input plus reserved output must fit the hard token limit.
 The context semantic fingerprint excludes lease identity and time, allowing an
-equal selection to reuse the current lease without another transition.
+equal selection to reuse the current lease without another transition only
+while the exact lease and every binding remain active and unexpired.
 
 A resource snapshot uses explicit CPU concurrency/load, RAM, GPU/VRAM, model
-residency, active model/tool state, interactive wait, background admission and
-thermal/power state. A platform without thermal telemetry uses `NOT_EXPOSED`;
-`UNKNOWN` is never treated as capacity. The implementation consumes supplied
-deterministic snapshots and does not probe or mutate a real machine.
+residency, active model/tool state, interactive wait, background admission,
+thermal/power state, source identity, evidence hash, formation, observation and
+expiry. A registered external runtime authority forms that evidence; the
+scheduler cannot self-certify it. A platform without thermal telemetry uses
+`NOT_EXPOSED`; `UNKNOWN` is never treated as capacity. The implementation
+consumes supplied deterministic snapshots and does not probe or mutate a real
+machine.
 
 ## Checkpoint and recovery
 
 A checkpoint preserves the graph/trust identities, prior scheduler generation,
 last completed step, selected refs, produced artifact/receipt refs, open
-questions, pending tool call, source hashes and next safe action. Formation
-requires resource and worker release receipts.
+questions, pending tool call, paired source refs/hashes and next safe action.
+Formation requires immutable release receipts for admission and every lease.
 
-Resume revalidates the graph, trust, current resource admission, capability and
-effect bindings, implicated source hashes, and an advanced scheduler
-generation. Drift becomes `HELD_UNKNOWN` or `BLOCKED`; it is never replayed as
-current work. Cancellation likewise releases the resource lease and records
-the work, graph, source and receipt lineage.
+Resume revalidates the graph, trust, changed-but-sufficient external resource
+evidence, capability and effect bindings, paired source hashes, and an advanced
+scheduler generation. Every fresh lease is formed through normal admission and
+selection; prior leases cannot be replayed. Drift becomes `HELD_UNKNOWN` or
+`BLOCKED`. Cancellation closes pending relay entries, consumes every lease and
+records the work, graph, source and receipt lineage.
 
 ## Typed mock tool boundary
 
@@ -114,18 +127,19 @@ The model may propose a typed call. Deterministic code validates:
 
 ```text
 pending toolCallRef
-work node + context lease
-tool ref + argument schema/hash
-capability + effect + resource leases
-scheduler generation
-result schema
+canonical tool + effect + argument/result schemas + executor
+work node + exact origin context or authorized successor context
+worker + context + capability + effect + resource leases
+runtime snapshot + scheduler generation + cancellation token
 timeout + cancellation policy
 ```
 
-Wrong, stale, duplicate, late, schema-mismatched or generation-mismatched
-results fail closed. One accepted result becomes one bounded observation;
-artifacts remain external by ref and raw logs are excluded. Reinjection into the
-matching context is once-only.
+Wrong-context, wrong-effect, stale, duplicate, late, schema-mismatched,
+generation-mismatched, post-restart replayed or cancellation-racing results fail
+closed. The serializable relay ledger preserves exact state across restart. One
+accepted result becomes one bounded observation; artifacts remain external by
+ref and raw logs are excluded. Reinjection into the origin or an explicitly
+authorized successor context is once-only.
 
 This implementation is deliberately a fake/model-free and mock-tool contract.
 It does not download or invoke a model, expose a raw model endpoint, execute
@@ -142,8 +156,15 @@ npm run pr-ready
 npm run health:check
 ```
 
-`scheduler:simulate` uses a deterministic synthetic resource snapshot and
-source-managed trust bindings. It executes no external effects.
+`scheduler:simulate` performs the complete registered journey: validated graph,
+external simulated runtime evidence, admission, every lease, canonical mock
+tool call/result, once-only reinjection, checkpoint and transactional release,
+changed-but-sufficient resource evidence, fresh-generation resume, and
+cancellation closure. It writes
+`generated/health/intent-scheduler-simulation.json`, bound to the exact
+candidate/checkout/base, source tree, Blueprint, scheduler registry and all
+lifecycle fingerprints. `pr-ready` and `health:check` independently reject a
+missing, stale, malformed, self-certified, effectful or orphaned receipt.
 
 The S0–S16 tests cover zero admission for non-green graphs, exact receipts,
 single-worker exclusion, visible logical branches, checkpoint-only preemption,

@@ -34,8 +34,8 @@
     {
       "path": "src/core/registry.mjs",
       "mode": "100644",
-      "bytes": 21228,
-      "sha256": "e63ea351f07c29b48a8bddc5103ea979cd5ea619ec98c85da7dfc167c03aee33"
+      "bytes": 29148,
+      "sha256": "ab038f7b6dcf94bfd1a1df8b1bff1c8bc5513b322e100217da7ab27548028613"
     },
     {
       "path": "src/core/repository-evidence.mjs",
@@ -46,8 +46,14 @@
     {
       "path": "src/core/resource-admission.mjs",
       "mode": "100644",
-      "bytes": 7194,
-      "sha256": "f026914d38bf1e22e6865609daa8122d8d137397aa545749f3bcd6afec164473"
+      "bytes": 8179,
+      "sha256": "be7c6358dd8887b408cfad889691ed55e274d7263a8150190cd3d5af7828455c"
+    },
+    {
+      "path": "src/core/scheduler-runtime-trust.mjs",
+      "mode": "100644",
+      "bytes": 24398,
+      "sha256": "1ffe8a33b816c78e3a9e69be6c8514ab2d35df58fc27f209f86c637038b8a59a"
     },
     {
       "path": "src/core/source-manifest.mjs",
@@ -64,8 +70,8 @@
     {
       "path": "src/core/state.mjs",
       "mode": "100644",
-      "bytes": 4837,
-      "sha256": "ee82c7642fcc95df0732e7448d9ba665cff44ff9a43b17a1ac45c4913ddc81dc"
+      "bytes": 12009,
+      "sha256": "af349eca8b03409b49fd495105f98a5f5f60beb6f46702973ee6ed4064fe8e2a"
     },
     {
       "path": "src/core/terrain.mjs",
@@ -76,8 +82,8 @@
     {
       "path": "src/core/tool-result-relay.mjs",
       "mode": "100644",
-      "bytes": 7050,
-      "sha256": "c148cac9f2603e820ed9dc0eaf28ded2f062cb5aca87012e11727d75e6a25537"
+      "bytes": 15327,
+      "sha256": "a92121366e6f593b86b1d5ded8fa39885bb7fd0f6ce86aae429b33a56b887de9"
     },
     {
       "path": "src/core/utils.mjs",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 4073,
       "sha256": "4e58c160bb6b17ed784523310cffe61ab604f868f2e79ce8f6f2e22727bc58c6"
-    },
-    {
-      "path": "test/experience.test.mjs",
-      "mode": "100644",
-      "bytes": 2215,
-      "sha256": "82366babcef80194d3a214efe9c8455a0920f1c3d2e0a7bb8701f3156810bbd0"
     }
   ]
 }

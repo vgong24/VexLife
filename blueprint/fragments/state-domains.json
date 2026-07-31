@@ -132,7 +132,7 @@
   {
     "stateRef": "state.intent-scheduler",
     "ownerRef": "service.intent-scheduler",
-    "brief": "One physical worker, deterministic admitted queue, fairness generation, active lease and bounded Queue/Terrain/Health/Guide projections."
+    "brief": "One canonical aggregate owns the physical worker, admitted queue, source-bound fairness, generation, every lease transition, checkpoint, relay and cancellation truth used by bounded Queue/Terrain/Health/Guide projections."
   },
   {
     "stateRef": "state.context-lease",

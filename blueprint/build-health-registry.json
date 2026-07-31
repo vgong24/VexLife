@@ -270,7 +270,7 @@
       "checkRef": "check.intent-scheduler",
       "command": "npm run scheduler:check",
       "category": "ARCHITECTURE",
-      "purpose": "Single-worker scheduling, exact context/resource/capability/effect leases, checkpoint recovery, mock tool-result reinjection, and bounded shared projections validate.",
+      "purpose": "Canonical Blueprint/Atlas scheduler composition, external runtime currentness, scheduler-owned fairness, transactional lease release, fresh-generation resume, restart-safe exact-context mock relay, bounded shared projections and the complete deterministic no-effect lifecycle receipt validate.",
       "lensRefs": [
         "lens.vexlife.intent-and-placement",
         "lens.vexlife.identity-lattice",

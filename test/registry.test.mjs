@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
+import { buildIdentityIndex, loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
+import { Atlas } from '../src/core/atlas.mjs';
 import { compileRegistryPack, buildRegistryProjection } from '../src/core/registry.mjs';
+import { validateIntentSchedulerRegistry } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildInterfaceContracts } from '../src/core/interface-builder.mjs';
 import { ProcessFactory, validateProcessFactory } from '../src/core/process-factory.mjs';
 import { JourneyLedger } from '../src/core/journey.mjs';
@@ -24,6 +26,34 @@ test('compiled registries converge identity, strings, modules and processes', ()
   const summary = buildRegistryProjection(registry);
   assert.ok(summary.entryCount > 100);
   assert.ok(summary.byKind.ELEMENT > 10);
+});
+
+test('scheduler registry composes universally, resolves through Atlas, and omission or malformed trust fails closed', () => {
+  const schedulerValidation = validateIntentSchedulerRegistry(bundle.schedulerRegistry);
+  assert.equal(schedulerValidation.ok, true, schedulerValidation.errors.join('\n'));
+  assert.deepEqual(bundle.blueprint.intentScheduler, bundle.schedulerRegistry);
+  const registry = compileRegistryPack(bundle);
+  for (const ref of [
+    bundle.schedulerRegistry.registryRef,
+    bundle.schedulerRegistry.runtimeTrustContract.contractRef,
+    bundle.schedulerRegistry.runtimeTrustContract.clockRef,
+    bundle.schedulerRegistry.simulationContract.contractRef
+  ]) assert.equal(registry.require(ref).ref, ref);
+  const atlas = new Atlas(buildIdentityIndex(bundle));
+  const traversal = atlas.query({
+    startRefs: [bundle.schedulerRegistry.registryRef],
+    depthLimit: 2,
+    resultLimit: 64,
+    tokenBudget: 12000
+  });
+  assert.ok(traversal.results.some((item) => item.ref === bundle.schedulerRegistry.simulationContract.contractRef));
+
+  const omitted = structuredClone(bundle);
+  delete omitted.schedulerRegistry;
+  assert.equal(validateBlueprint(omitted).ok, false);
+  const malformed = structuredClone(bundle.schedulerRegistry);
+  malformed.runtimeTrustContract.clockRef = 'clock.intent-scheduler.invented';
+  assert.equal(validateIntentSchedulerRegistry(malformed).ok, false);
 });
 
 test('interface builder super-functions preserve component and element relationships', () => {

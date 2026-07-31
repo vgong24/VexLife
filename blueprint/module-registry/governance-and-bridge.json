@@ -131,11 +131,14 @@
   {
     "moduleRef": "module.vexlife.script.health-check",
     "path": "scripts/health-check.mjs",
-    "role": "Validates registered repository health and emits a compact health state.",
+    "role": "Validates registered repository health, exact PR-ready bindings and the current complete scheduler simulation receipt before emitting a compact health state.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "module.vexlife.core.build-health",
-      "module.vexlife.core.blueprint"
+      "module.vexlife.core.blueprint",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "generated/health/pr-ready.json",
+      "generated/health/intent-scheduler-simulation.json"
     ],
     "writes": [],
     "loadedBy": [

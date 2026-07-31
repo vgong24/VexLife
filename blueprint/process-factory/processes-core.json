@@ -908,13 +908,14 @@
   {
     "processRef": "process.vexlife.intent.scheduler-admit",
     "processVersion": 1,
-    "purpose": "Fail closed unless one current validated workgraph node has exact trust, occupancy, resource, capability, effect, transition, gate and return bindings.",
+    "purpose": "Fail closed unless one current validated workgraph node has exact source-hash, external runtime trust, canonical clock/expiry, occupancy, resource, capability, effect, transition, gate and return bindings.",
     "applicabilityRules": [
       "workgraph state is exactly PLAN_VALIDATED"
     ],
     "requiredInputs": [
       "graphFingerprint",
       "trustSnapshotFingerprint",
+      "runtimeSnapshotFingerprint",
       "resourceSnapshotFingerprint",
       "candidateWorkNodeRef",
       "schedulerGeneration"
@@ -923,15 +924,18 @@
       "candidateOnlyReadyRefs"
     ],
     "sourceResolutionRules": [
-      "resolve exact graph and trust sources",
+      "resolve exact graph, trust and registered runtime authority sources",
       "keep non-admitted candidates explicitly labelled"
     ],
     "preconditions": [
       "all currentness values are CURRENT",
+      "formedAt is not after observedAt and observedAt is strictly before expiresAt",
+      "runtime evidence is externally formed by a registered source and authority",
       "unknown resource state is not spare capacity"
     ],
     "steps": [
       "validate-workgraph-currentness",
+      "validate-runtime-source-authority-clock-and-expiry",
       "validate-exact-node-and-occupancy",
       "validate-resource-capability-effect-leases",
       "emit-admission-or-blocked-receipt"
@@ -976,7 +980,7 @@
   {
     "processRef": "process.vexlife.intent.scheduler-select",
     "processVersion": 1,
-    "purpose": "Select one admitted logical node for one physical worker using deterministic priority and bounded fairness.",
+    "purpose": "Select one admitted logical node for one physical worker using deterministic priority and scheduler-owned source-bound bounded fairness.",
     "applicabilityRules": [
       "one or more exact admitted ready nodes exist"
     ],
@@ -984,13 +988,15 @@
       "admittedReadyRefs",
       "schedulerGeneration",
       "workerRef",
+      "runtimeSourceRef",
       "interactiveWaitState"
     ],
     "optionalInputs": [
-      "readySinceGeneration"
+      "readySinceGeneration",
+      "fairnessLedger"
     ],
     "sourceResolutionRules": [
-      "read logical node metadata by ref",
+      "read logical node and deferral metadata by exact source ref",
       "do not load dormant model contexts"
     ],
     "preconditions": [
@@ -1000,7 +1006,7 @@
     "steps": [
       "classify-priority",
       "apply-interactive-background-boundary",
-      "apply-bounded-fairness",
+      "apply-scheduler-owned-source-bound-fairness",
       "lease-one-worker"
     ],
     "effectOwnerRule": "scheduler owns one worker lease; selected work receives no authority beyond exact leases",
@@ -1043,7 +1049,7 @@
   {
     "processRef": "process.vexlife.intent.scheduler-checkpoint-resume",
     "processVersion": 1,
-    "purpose": "Pause only at a declared safe checkpoint, release worker/resource leases, and resume only after exact revalidation.",
+    "purpose": "Pause only at a declared safe checkpoint, transactionally consume admission and every active lease, and resume via normal fresh-generation selection only after exact revalidation.",
     "applicabilityRules": [
       "one active worker lease exists or one preserved checkpoint is selected"
     ],
@@ -1052,25 +1058,26 @@
       "graphFingerprint",
       "schedulerGeneration",
       "nextSafeAction",
-      "sourceHashes"
+      "sourceHashBindings"
     ],
     "optionalInputs": [
       "pendingToolCallRef",
       "openQuestions"
     ],
     "sourceResolutionRules": [
-      "resolve exact checkpoint and release receipts",
-      "revalidate implicated source hashes"
+      "resolve exact checkpoint and immutable release receipts",
+      "revalidate paired source refs and hashes"
     ],
     "preconditions": [
       "pause occurs only after lastCompletedStep",
-      "resume generation advances"
+      "resume generation advances",
+      "no prior lease remains active"
     ],
     "steps": [
       "record-safe-checkpoint",
-      "release-worker-and-resource",
+      "transactionally-release-worker-context-resource-occupancy-capability-effect-and-admission",
       "revalidate-graph-trust-resource-capability-effect-source",
-      "resume-or-route-recovery"
+      "re-admit-and-select-fresh-generation-or-route-recovery"
     ],
     "effectOwnerRule": "checkpoint service preserves lineage and releases leases; stale replay receives no worker",
     "authorityEnvelope": {
@@ -1114,7 +1121,7 @@
   {
     "processRef": "process.vexlife.intent.scheduler-tool-relay",
     "processVersion": 1,
-    "purpose": "Validate one typed mock tool call and accept exactly one matching bounded result observation for reinjection.",
+    "purpose": "Resolve one canonical typed mock tool/effect/schema/executor contract, durably validate its exact active runtime and lease context, and accept exactly one matching bounded result for origin-or-authorized-successor reinjection.",
     "applicabilityRules": [
       "one active context lease and exact pending mock tool call exist"
     ],
@@ -1123,24 +1130,31 @@
       "workNodeRef",
       "contextLeaseRef",
       "toolRef",
+      "effectRef",
+      "argumentSchemaRef",
+      "resultSchemaRef",
+      "executorRef",
       "schedulerGeneration"
     ],
     "optionalInputs": [
       "artifactRefs"
     ],
     "sourceResolutionRules": [
-      "match exact capability, effect and resource leases",
+      "resolve canonical tool/effect/schema/executor identities",
+      "match exact worker, context, capability, effect, resource and runtime leases",
       "keep raw logs and large artifacts external by ref"
     ],
     "preconditions": [
       "tool is deterministic fake or mock",
-      "result contract and timeout are explicit"
+      "result contract and timeout are explicit",
+      "durable relay state has no accepted, reinjected, cancelled or timed-out duplicate"
     ],
     "steps": [
       "validate-typed-call-and-leases",
-      "register-one-pending-call",
-      "match-result-schema-node-tool-generation",
-      "reinject-one-bounded-observation"
+      "durably-register-one-pending-call",
+      "match-result-schema-node-tool-effect-context-generation",
+      "close-cancelled-or-expired-call",
+      "reinject-one-bounded-observation-to-origin-or-authorized-successor"
     ],
     "effectOwnerRule": "deterministic relay owns validation and mock routing; the model never executes effects directly",
     "authorityEnvelope": {
@@ -1182,28 +1196,26 @@
   {
     "processRef": "process.vexlife.intent.scheduler-project-runtime",
     "processVersion": 1,
-    "purpose": "Derive compact Intent Queue, Terrain, Health and Guide projections from the same scheduler, workgraph and resource state owners.",
+    "purpose": "Derive compact Intent Queue, Terrain, Health and Guide projections from one canonical scheduler aggregate without duplicating queue, active, generation, lease or relay truth.",
     "applicabilityRules": [
       "scheduler state owner exists"
     ],
     "requiredInputs": [
-      "queueState",
-      "activeState",
-      "resourceState",
-      "checkpointState"
+      "schedulerAggregate"
     ],
     "optionalInputs": [
       "recentReasonLimit"
     ],
     "sourceResolutionRules": [
-      "select bounded fields from canonical owners",
+      "select bounded fields from the canonical aggregate owner",
       "suppress equal semantic projections"
     ],
     "preconditions": [
-      "raw machine dumps remain excluded"
+      "raw machine dumps remain excluded",
+      "released, expired, orphaned or cancelled leases never project CLEAR"
     ],
     "steps": [
-      "combine-source-owners",
+      "read-one-canonical-aggregate",
       "project-runtime",
       "select-terrain-health-guide",
       "suppress-semantic-no-op"

@@ -662,7 +662,7 @@
     },
     {
       "featureRef": "feature.vexlife.intent-orchestration-scheduler",
-      "purpose": "Run accepted intent workgraphs through one deterministic physical model worker with exact leases, safe checkpoints, once-only mock tool-result reinjection, and bounded human projections.",
+      "purpose": "Run accepted intent workgraphs through one deterministic physical model worker using canonical externally current runtime evidence, scheduler-owned fairness, transactionally consumed leases, safe fresh-generation resume, restart-safe once-only mock tool-result reinjection, and bounded human projections.",
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.intent-scheduler",
@@ -695,8 +695,9 @@
       ],
       "moduleRefs": [
         "module.vexlife.core.state",
-        "module.vexlife.core.resource-admission",
-        "module.vexlife.core.context-lease",
+      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.context-lease",
         "module.vexlife.core.intent-checkpoint",
         "module.vexlife.core.tool-result-relay",
         "module.vexlife.core.intent-scheduler",

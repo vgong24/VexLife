@@ -30,9 +30,11 @@ const bundle = loadBlueprint(root);
 const fixture = readJson(fixturePath);
 const queue = admitIntentSchedulerQueue(fixture.graph, {
   intentRegistry: bundle.intentRegistry,
+  schedulerRegistry: bundle.schedulerRegistry,
   registeredProcessRefs: bundle.factory.processes.map((item) => item.processRef),
   registeredRoleRefs: bundle.blueprint.roles.map((item) => item.roleRef),
   trustSnapshot: fixture.trustSnapshot,
+  runtimeTrustSnapshot: fixture.runtimeTrustSnapshot,
   resourceSnapshot: fixture.resourceSnapshot,
   resourceRequestByNodeRef: fixture.resourceRequestByNodeRef,
   occupancyByNodeRef: fixture.occupancyByNodeRef,
@@ -42,8 +44,10 @@ const queue = admitIntentSchedulerQueue(fixture.graph, {
   workerRef: fixture.workerRef,
   schedulerGeneration: fixture.schedulerGeneration,
   fairnessMaxDeferrals: fixture.fairnessMaxDeferrals,
+  fairnessLedger: fixture.fairnessLedger,
   formedAt: fixture.formedAt,
-  expiresAt: fixture.expiresAt
+  expiresAt: fixture.expiresAt,
+  observedAt: fixture.observedAt
 });
 console.log(JSON.stringify({
   schemaVersion: 'vexlife.intent-scheduler-status/v0',
@@ -58,7 +62,8 @@ console.log(JSON.stringify({
   admissionReceiptRef: queue.admissionReceipt?.admissionReceiptRef ?? null,
   sourceDescent: {
     fixture: args[fixtureIndex + 1],
-    registryRef: 'registry.vexlife.intent-scheduler.001'
+    registryRef: bundle.schedulerRegistry.registryRef,
+    runtimeSnapshotRef: fixture.runtimeTrustSnapshot?.snapshotRef ?? null
   },
   rawGraphIncluded: false,
   rawResourceSnapshotIncluded: false

@@ -191,8 +191,8 @@ npm run bridge:check             # remote/local sibling identity and trusted-dev
 npm run intent:check             # immutable intent and deterministic workgraph contracts
 npm run intent:plan -- --fixture <safe-repository-relative-json-path>
 npm run intent:status -- --graph <safe-repository-relative-json-path>
-npm run scheduler:check          # single-worker scheduler, lease, checkpoint and mock-tool contracts
-npm run scheduler:simulate       # deterministic fake-worker run; no external effects
+npm run scheduler:check          # canonical scheduler composition plus complete deterministic lifecycle receipt
+npm run scheduler:simulate       # fake-model/mock-tool lease→checkpoint→fresh-resume→cancel; no external effects
 npm run scheduler:status -- --fixture <safe-repository-relative-json-path>
 npm run localization:check       # required visible strings across supported languages
 npm run check                    # complete deterministic foundation gate
@@ -216,17 +216,20 @@ An admitted plan and its next-safe-action projection grant no tool, mutation,
 merge, publication, native-platform, or model authority.
 
 The shared [Intent Orchestration Scheduler](docs/INTENT-ORCHESTRATION-SCHEDULER.md)
-adds deterministic admission, one physical model-worker lease, bounded
-context/resource/capability/effect leases, checkpoint-only preemption and exact
-mock tool-result reinjection. Logical ready branches remain visible records,
-while Queue, Terrain, Health and Guide derive from the same source-owned state.
-This contract provisions no real model and executes no external effect.
+adds externally current runtime admission, one physical model-worker lease,
+scheduler-owned fairness, transactionally consumed
+context/resource/capability/effect leases, checkpoint-to-fresh-generation
+preemption and restart-safe exact-context mock tool-result reinjection. Logical
+ready branches remain visible records, while Queue, Terrain, Health and Guide
+derive from one canonical aggregate. This contract provisions no real model and
+executes no external effect.
 
 Run `npm run orient` before broad reading. Read only the returned
 `requiredSources`, then use the bounded Atlas or exact-module command. `npm run
 health:check` reports `HEALTHY` only when an executed `npm run pr-ready` receipt
-matches the current HEAD, source tree, and blueprint hash; missing, unknown, or
-stale receipts remain visible as `ATTENTION`.
+matches the current HEAD, source tree and Blueprint hash and exactly binds the
+complete current scheduler simulation receipt; missing, unknown, stale,
+self-certified, effectful or orphaned evidence remains non-green.
 
 Generate one platform:
 

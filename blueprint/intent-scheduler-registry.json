@@ -1,11 +1,18 @@
 {
-  "schemaVersion": "vexlife.intent-scheduler-registry/v0",
+  "schemaVersion": "vexlife.intent-scheduler-registry/v1",
   "registryRef": "registry.vexlife.intent-scheduler.001",
   "registryVersion": 1,
   "systemRef": "system.vexlife.intent-scheduler",
+  "canonicalSourceRef": "source.blueprint.intent-scheduler-registry",
+  "canonicalSource": {
+    "sourceRef": "source.blueprint.intent-scheduler-registry",
+    "path": "blueprint/intent-scheduler-registry.json",
+    "sourceClass": "SOURCE_MANAGED_BLUEPRINT"
+  },
   "humanProjectionName": "Intent Queue runtime",
   "purpose": "Admit one exact validated workgraph node at a time to one physical model worker with bounded context, resource, capability and effect leases, recoverable checkpoints, and exact mock tool-result reinjection.",
   "physicalWorkerPolicy": {
+    "policyRef": "policy.intent-scheduler.physical-worker",
     "modelInferenceConcurrency": 1,
     "backgroundModelConcurrencyWhileInteractiveWaits": 0,
     "activeContextLeasesPerWorker": 1,
@@ -19,6 +26,33 @@
     "NORMAL",
     "BACKGROUND"
   ],
+  "priorityClassIdentities": [
+    {
+      "priorityClassRef": "priority.intent-scheduler.interactive",
+      "name": "INTERACTIVE",
+      "rank": 0
+    },
+    {
+      "priorityClassRef": "priority.intent-scheduler.expedite",
+      "name": "EXPEDITE",
+      "rank": 1
+    },
+    {
+      "priorityClassRef": "priority.intent-scheduler.recovery",
+      "name": "RECOVERY",
+      "rank": 2
+    },
+    {
+      "priorityClassRef": "priority.intent-scheduler.normal",
+      "name": "NORMAL",
+      "rank": 3
+    },
+    {
+      "priorityClassRef": "priority.intent-scheduler.background",
+      "name": "BACKGROUND",
+      "rank": 4
+    }
+  ],
   "priorityRules": {
     "INTERACTIVE": "explicit interactive human turn",
     "EXPEDITE": "IMMEDIATE or HIGH work",
@@ -27,10 +61,75 @@
     "BACKGROUND": "LOW or explicitly deferrable background work"
   },
   "fairnessPolicy": {
+    "policyRef": "policy.intent-scheduler.fairness",
     "maxDeferrals": 3,
     "rule": "Oldest admitted work beyond maxDeferrals wins within the non-interactive pool; interactive wait still holds all background model work.",
     "sourceDiscardAllowed": false
   },
+  "policyIdentities": [
+    {
+      "policyRef": "policy.intent-scheduler.physical-worker",
+      "policyKind": "PHYSICAL_WORKER",
+      "sourceField": "physicalWorkerPolicy"
+    },
+    {
+      "policyRef": "policy.intent-scheduler.fairness",
+      "policyKind": "SCHEDULER_OWNED_FAIRNESS",
+      "sourceField": "fairnessPolicy"
+    },
+    {
+      "policyRef": "policy.intent-scheduler.resource-unknown",
+      "policyKind": "FAIL_CLOSED_RESOURCE_UNKNOWN",
+      "sourceField": "resourceUnknownPolicy"
+    },
+    {
+      "policyRef": "policy.intent-scheduler.checkpoint-replay",
+      "policyKind": "FRESH_GENERATION_CHECKPOINT_REPLAY",
+      "sourceField": "checkpointReplayPolicy"
+    },
+    {
+      "policyRef": "policy.intent-scheduler.mock-tool-effect",
+      "policyKind": "DETERMINISTIC_MOCK_EFFECT_ONLY",
+      "sourceField": "toolEffectPolicy"
+    }
+  ],
+  "requiredFieldContracts": [
+    {
+      "contractRef": "contract.intent-scheduler.admission-fields",
+      "contractKind": "ADMISSION_RECEIPT",
+      "sourceField": "admissionRequiredFields"
+    },
+    {
+      "contractRef": "contract.intent-scheduler.context-lease-fields",
+      "contractKind": "CONTEXT_LEASE",
+      "sourceField": "contextLeaseRequiredFields"
+    },
+    {
+      "contractRef": "contract.intent-scheduler.resource-snapshot-fields",
+      "contractKind": "RESOURCE_SNAPSHOT",
+      "sourceField": "resourceSnapshotRequiredFields"
+    },
+    {
+      "contractRef": "contract.intent-scheduler.resource-lease-fields",
+      "contractKind": "RESOURCE_LEASE",
+      "sourceField": "resourceLeaseRequiredFields"
+    },
+    {
+      "contractRef": "contract.intent-scheduler.checkpoint-fields",
+      "contractKind": "CHECKPOINT",
+      "sourceField": "checkpointRequiredFields"
+    },
+    {
+      "contractRef": "contract.intent-scheduler.tool-call-fields",
+      "contractKind": "MOCK_TOOL_CALL",
+      "sourceField": "toolCallRequiredFields"
+    },
+    {
+      "contractRef": "contract.intent-scheduler.tool-result-match-fields",
+      "contractKind": "MOCK_TOOL_RESULT_MATCH",
+      "sourceField": "toolResultMatchFields"
+    }
+  ],
   "admissionRequiredFields": [
     "schedulerGeneration",
     "workerRef",
@@ -41,6 +140,10 @@
     "trustSnapshotSourceHash",
     "trustSnapshotFingerprint",
     "trustSnapshotFormationRef",
+    "runtimeSnapshotRef",
+    "runtimeSnapshotFingerprint",
+    "runtimeEvidenceClass",
+    "observedAt",
     "resourceSnapshotRef",
     "resourceSnapshotFingerprint",
     "resourceLeaseRef",
@@ -59,7 +162,9 @@
     "completionGateRefs",
     "returnRouteRef",
     "formedAt",
+    "expiresAt",
     "currentness",
+    "lifecycle",
     "semanticFingerprint"
   ],
   "contextLeaseRequiredFields": [
@@ -68,6 +173,12 @@
     "workNodeRef",
     "graphFingerprint",
     "trustSnapshotFingerprint",
+    "runtimeSnapshotFingerprint",
+    "schedulerGeneration",
+    "resourceLeaseFingerprint",
+    "capabilityLeaseFingerprint",
+    "effectLeaseFingerprint",
+    "cancellationTokenRef",
     "foundationKernelRef",
     "roleFrameRef",
     "intentFrameRef",
@@ -81,13 +192,19 @@
     "hardTokenLimit",
     "formedAt",
     "expiresAt",
+    "observedAt",
     "currentness",
+    "lifecycle",
     "checkpointReturnRef",
     "semanticFingerprint"
   ],
   "resourceSnapshotRequiredFields": [
     "snapshotRef",
     "generation",
+    "sourceRef",
+    "sourceHash",
+    "formationRef",
+    "evidenceClass",
     "cpuLoadPct",
     "cpuConcurrencyLimit",
     "cpuActiveCount",
@@ -104,6 +221,8 @@
     "thermalPowerState",
     "currentness",
     "formedAt",
+    "observedAt",
+    "expiresAt",
     "semanticFingerprint"
   ],
   "resourceLeaseRequiredFields": [
@@ -111,13 +230,17 @@
     "workerRef",
     "workNodeRef",
     "graphFingerprint",
+    "runtimeSnapshotRef",
+    "runtimeSnapshotFingerprint",
     "schedulerGeneration",
     "resourceSnapshotRef",
     "resourceSnapshotFingerprint",
     "request",
     "formedAt",
     "expiresAt",
+    "observedAt",
     "currentness",
+    "lifecycle",
     "semanticFingerprint"
   ],
   "checkpointRequiredFields": [
@@ -125,6 +248,7 @@
     "workNodeRef",
     "graphFingerprint",
     "trustSnapshotFingerprint",
+    "runtimeSnapshotFingerprint",
     "priorSchedulerGeneration",
     "lastCompletedStep",
     "currentState",
@@ -135,26 +259,45 @@
     "openQuestions",
     "nextSafeAction",
     "pendingToolCallRef",
-    "capabilityLeaseRef",
-    "effectLeaseRef",
+    "priorOccupancyRef",
+    "priorCapabilityLeaseRef",
+    "priorEffectLeaseRef",
+    "priorResourceLeaseRef",
+    "priorContextLeaseRef",
+    "priorWorkerLeaseRef",
     "resourceSnapshotFingerprint",
-    "sourceHashes",
-    "resourceReleaseReceipt",
+    "sourceBindings",
+    "leaseReleaseReceipts",
     "formedAt",
     "semanticFingerprint"
   ],
   "toolCallRequiredFields": [
     "toolCallRef",
     "workNodeRef",
+    "workerRef",
+    "workerLeaseRef",
+    "graphFingerprint",
+    "trustSnapshotFingerprint",
+    "runtimeSnapshotFingerprint",
     "contextLeaseRef",
+    "contextLeaseFingerprint",
     "toolRef",
+    "effectRef",
     "argumentSchemaRef",
     "argumentHash",
     "capabilityLeaseRef",
+    "capabilityLeaseFingerprint",
     "effectLeaseRef",
+    "effectLeaseFingerprint",
     "resourceLeaseRef",
-    "expectedResultContract",
+    "resourceLeaseFingerprint",
+    "resultSchemaRef",
+    "executorRef",
     "schedulerGeneration",
+    "cancellationTokenRef",
+    "sourceEvidenceRef",
+    "sourceEvidenceHash",
+    "proposedAt",
     "timeoutAt",
     "cancellationPolicy",
     "semanticFingerprint"
@@ -162,11 +305,124 @@
   "toolResultMatchFields": [
     "toolCallRef",
     "workNodeRef",
+    "workerRef",
+    "workerLeaseRef",
+    "graphFingerprint",
+    "trustSnapshotFingerprint",
+    "runtimeSnapshotFingerprint",
     "contextLeaseRef",
+    "contextLeaseFingerprint",
     "toolRef",
+    "effectRef",
+    "capabilityLeaseFingerprint",
+    "effectLeaseFingerprint",
+    "resourceLeaseFingerprint",
     "schedulerGeneration",
+    "cancellationTokenRef",
+    "executorRef",
+    "sourceEvidenceRef",
+    "sourceEvidenceHash",
     "schemaRef"
   ],
+  "runtimeTrustContract": {
+    "contractRef": "contract.intent-scheduler.runtime-trust-clock",
+    "clockRef": "clock.intent-scheduler.canonical-utc",
+    "purpose": "Externally source scheduler runtime identity, currentness, observed time and expiry before deterministic admission.",
+    "evidenceClasses": [
+      "SIMULATED_CURRENT",
+      "LIVE_RUNTIME_CURRENT"
+    ],
+    "requiredFields": [
+      "snapshotRef",
+      "sourceRef",
+      "sourceHash",
+      "formationRef",
+      "evidenceClass",
+      "schedulerGeneration",
+      "formedAt",
+      "observedAt",
+      "expiresAt",
+      "workerRef",
+      "actorRef",
+      "roleRef",
+      "claimRef",
+      "occupancyRef",
+      "leaseAuthorityRef",
+      "resourceSnapshotRef",
+      "resourceSnapshotFingerprint",
+      "currentness",
+      "semanticFingerprint"
+    ],
+    "activeWindowRule": "formedAt <= observedAt < expiresAt",
+    "selfCertificationAllowed": false
+  },
+  "runtimeSourceIdentities": [
+    {
+      "sourceRef": "source.intent-scheduler.simulation-runtime",
+      "evidenceClass": "SIMULATED_CURRENT",
+      "authorityRef": "authority.intent-scheduler.simulation-runtime",
+      "liveRuntime": false
+    },
+    {
+      "sourceRef": "source.intent-scheduler.test-runtime",
+      "evidenceClass": "SIMULATED_CURRENT",
+      "authorityRef": "authority.intent-scheduler.test-runtime",
+      "liveRuntime": false
+    }
+  ],
+  "workerIdentities": [
+    {
+      "workerRef": "worker.model.mock.primary",
+      "workerKind": "DETERMINISTIC_FAKE_MODEL",
+      "evidenceClasses": [
+        "SIMULATED_CURRENT"
+      ]
+    },
+    {
+      "workerRef": "worker.model.test.primary",
+      "workerKind": "DETERMINISTIC_TEST_MODEL",
+      "evidenceClasses": [
+        "SIMULATED_CURRENT"
+      ]
+    }
+  ],
+  "mockToolContracts": [
+    {
+      "contractRef": "contract.intent-scheduler.mock-tool.inspect/v0",
+      "toolRef": "tool.mock.inspect",
+      "effectRef": "effect.mock.read",
+      "argumentSchemaRef": "schema.tool.mock.inspect/v0",
+      "resultSchemaRef": "schema.tool.mock.result/v0",
+      "executorRef": "executor.mock.deterministic.inspect",
+      "requiredArgumentFields": [
+        "sourceRef"
+      ],
+      "requiredResultFields": [
+        "summaryRef"
+      ],
+      "maxObservationBytes": 1024,
+      "externalEffectsExecuted": false
+    }
+  ],
+  "simulationContract": {
+    "contractRef": "contract.intent-scheduler.integrated-simulation/v1",
+    "receiptPath": "generated/health/intent-scheduler-simulation.json",
+    "checkRef": "check.intent-scheduler",
+    "requiredJourneyStates": [
+      "WORKGRAPH_VALIDATED",
+      "RUNTIME_SNAPSHOT_CURRENT",
+      "QUEUE_ADMITTED",
+      "WORKER_LEASED",
+      "MOCK_TOOL_PROPOSED",
+      "MOCK_TOOL_RESULT_ACCEPTED",
+      "OBSERVATION_REINJECTED_ONCE",
+      "CHECKPOINT_RELEASED",
+      "FRESH_RESOURCE_OBSERVED",
+      "FRESH_GENERATION_RESUMED",
+      "CANCELLED_CLOSED"
+    ],
+    "externalEffectsExecuted": false
+  },
   "resourceUnknownPolicy": "UNKNOWN_IS_NOT_SPARE_CAPACITY",
   "checkpointReplayPolicy": "REVALIDATE_GRAPH_TRUST_RESOURCE_CAPABILITY_EFFECT_AND_SOURCE_HASHES_OR_FAIL_CLOSED",
   "toolEffectPolicy": "MODEL_PROPOSES_TYPED_CALL_DETERMINISTIC_CODE_VALIDATES_MOCK_ONLY",

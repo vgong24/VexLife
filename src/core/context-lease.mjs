@@ -1,3 +1,7 @@
+import {
+  assertActiveInterval,
+  assertCurrentLease
+} from './scheduler-runtime-trust.mjs';
 import { semanticHash } from './utils.mjs';
 
 const REQUIRED_FIELDS = [
@@ -6,6 +10,12 @@ const REQUIRED_FIELDS = [
   'workNodeRef',
   'graphFingerprint',
   'trustSnapshotFingerprint',
+  'runtimeSnapshotFingerprint',
+  'schedulerGeneration',
+  'resourceLeaseFingerprint',
+  'capabilityLeaseFingerprint',
+  'effectLeaseFingerprint',
+  'cancellationTokenRef',
   'foundationKernelRef',
   'roleFrameRef',
   'intentFrameRef',
@@ -19,7 +29,9 @@ const REQUIRED_FIELDS = [
   'hardTokenLimit',
   'formedAt',
   'expiresAt',
+  'observedAt',
   'currentness',
+  'lifecycle',
   'checkpointReturnRef'
 ];
 
@@ -29,7 +41,8 @@ const REF_ARRAY_FIELDS = [
   'applicableCultureRefs',
   'applicableLessonRefs',
   'applicableReleaseRefs',
-  'observationRefs'
+  'observationRefs',
+  'authorizedObservationRefs'
 ];
 
 const HEAVY_PAYLOAD_FIELDS = [
@@ -61,7 +74,7 @@ function canonicalRefs(value, field) {
 
 export function buildContextLeaseFingerprint(lease) {
   const candidate = clone(lease);
-  for (const field of ['schemaVersion', 'leaseRef', 'formedAt', 'expiresAt', 'semanticFingerprint']) delete candidate[field];
+  for (const field of ['schemaVersion', 'leaseRef', 'formedAt', 'expiresAt', 'observedAt', 'semanticFingerprint']) delete candidate[field];
   for (const field of REF_ARRAY_FIELDS) candidate[field] = [...new Set(candidate[field] ?? [])].sort();
   return semanticHash(candidate);
 }
@@ -75,12 +88,18 @@ export function createContextLease(input, { priorLease = null } = {}) {
   for (const field of ['inputTokenEstimate', 'reservedOutputTokens', 'hardTokenLimit']) {
     if (!Number.isInteger(input[field]) || input[field] < 0) throw new Error(`${field} must be a non-negative integer`);
   }
+  if (!Number.isInteger(input.schedulerGeneration) || input.schedulerGeneration < 0) {
+    throw new Error('context lease schedulerGeneration must be a non-negative integer');
+  }
   if (input.hardTokenLimit === 0 || input.inputTokenEstimate + input.reservedOutputTokens > input.hardTokenLimit) {
     throw new Error('context lease token budget does not fit hardTokenLimit');
   }
-  if (input.currentness !== 'CURRENT') throw new Error('context lease currentness must be CURRENT');
+  if (input.currentness !== 'CURRENT' || input.lifecycle !== 'ACTIVE') {
+    throw new Error('context lease must be current and ACTIVE');
+  }
+  assertActiveInterval(input, 'context lease');
   const lease = {
-    schemaVersion: 'vexlife.intent-context-lease/v0',
+    schemaVersion: 'vexlife.intent-context-lease/v1',
     ...clone(input)
   };
   for (const field of REF_ARRAY_FIELDS) lease[field] = canonicalRefs(lease[field] ?? [], field);
@@ -88,28 +107,60 @@ export function createContextLease(input, { priorLease = null } = {}) {
   if (input.semanticFingerprint && input.semanticFingerprint !== lease.semanticFingerprint) {
     throw new Error('context lease semanticFingerprint does not match canonical selection');
   }
-  if (priorLease?.currentness === 'CURRENT' &&
+  if (priorLease &&
       priorLease.workerRef === lease.workerRef &&
       priorLease.semanticFingerprint === lease.semanticFingerprint) {
-    return { changed: false, lease: priorLease, reason: 'SEMANTIC_NO_OP' };
+    try {
+      assertCurrentLease(priorLease, {
+        label: 'prior context',
+        observedAt: lease.observedAt,
+        schedulerGeneration: lease.schedulerGeneration,
+        runtimeSnapshotFingerprint: lease.runtimeSnapshotFingerprint
+      });
+      return { changed: false, lease: priorLease, reason: 'SEMANTIC_NO_OP' };
+    } catch {
+      // Expired, released, superseded, or stale-generation prior leases cannot be reused.
+    }
   }
   return { changed: true, lease: freeze(lease), reason: 'CONTEXT_SELECTION_CHANGED' };
 }
 
-export function reinjectBoundedObservation(contextLease, observation) {
-  if (!contextLease?.leaseRef || contextLease.currentness !== 'CURRENT') throw new Error('current context lease is required');
+export function reinjectBoundedObservation(contextLease, observation, { observedAt } = {}) {
+  assertCurrentLease(contextLease, {
+    label: 'context',
+    observedAt,
+    schedulerGeneration: contextLease?.schedulerGeneration,
+    runtimeSnapshotFingerprint: contextLease?.runtimeSnapshotFingerprint
+  });
   if (!observation?.observationRef || observation.workNodeRef !== contextLease.workNodeRef) {
     throw new Error('observation does not match context lease work node');
+  }
+  const exactOrigin = observation.contextLeaseRef === contextLease.leaseRef &&
+    observation.contextLeaseFingerprint === contextLease.semanticFingerprint &&
+    observation.schedulerGeneration === contextLease.schedulerGeneration;
+  const explicitSuccessor = contextLease.successorOfContextLeaseRef === observation.contextLeaseRef &&
+    (contextLease.authorizedObservationRefs ?? []).includes(observation.observationRef) &&
+    contextLease.schedulerGeneration > observation.schedulerGeneration;
+  if (!exactOrigin && !explicitSuccessor) {
+    throw new Error('observation does not match the exact originating or authorized successor context');
+  }
+  if (observation.graphFingerprint !== contextLease.graphFingerprint ||
+      observation.trustSnapshotFingerprint !== contextLease.trustSnapshotFingerprint) {
+    throw new Error('observation graph or trust binding does not match context');
   }
   const existing = new Set(contextLease.observationRefs ?? []);
   if (existing.has(observation.observationRef)) {
     return { changed: false, frame: contextLease, reason: 'OBSERVATION_ALREADY_REINJECTED' };
   }
   const frame = {
-    schemaVersion: 'vexlife.intent-context-observation-frame/v0',
+    schemaVersion: 'vexlife.intent-context-observation-frame/v1',
     contextLeaseRef: contextLease.leaseRef,
+    originatingContextLeaseRef: observation.contextLeaseRef,
     workNodeRef: contextLease.workNodeRef,
     graphFingerprint: contextLease.graphFingerprint,
+    trustSnapshotFingerprint: contextLease.trustSnapshotFingerprint,
+    runtimeSnapshotFingerprint: contextLease.runtimeSnapshotFingerprint,
+    schedulerGeneration: contextLease.schedulerGeneration,
     observationRefs: [...existing, observation.observationRef].sort(),
     artifactRefs: [...new Set(observation.artifactRefs ?? [])].sort(),
     rawResultIncluded: false

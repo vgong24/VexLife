@@ -10,8 +10,8 @@
     {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
-      "bytes": 20964,
-      "sha256": "09a2ee710603c61005e307c9d94b6318fa8a75e203361e23722949390c15a832"
+      "bytes": 25139,
+      "sha256": "494951ade7de5a7c808516e40f30aa9c902eac7f5dbb860dc4e27e99167affa9"
     },
     {
       "path": "src/core/boot.mjs",
@@ -40,8 +40,8 @@
     {
       "path": "src/core/context-lease.mjs",
       "mode": "100644",
-      "bytes": 4603,
-      "sha256": "74e8d9d4dd0778af7d9f3f8a70c5f853b4dfd6df3e27ade35207ed03f9f2664e"
+      "bytes": 6823,
+      "sha256": "4c16e4a9409f402dc9bff2757e9e5f61fa6c3c3239e9a4ac2d9284c4c5a732ff"
     },
     {
       "path": "src/core/conversation.mjs",
@@ -94,8 +94,8 @@
     {
       "path": "src/core/intent-checkpoint.mjs",
       "mode": "100644",
-      "bytes": 6466,
-      "sha256": "0bf63ccd3310a6b437dd1a6c2b379c7f19aaacf3701b3ef51325bc03ffc523ee"
+      "bytes": 8639,
+      "sha256": "887bb6ccbe31fbe6741001f22a142143cc907519734335ecd27f36e0abc4c95c"
     },
     {
       "path": "src/core/intent-projection.mjs",
@@ -106,8 +106,8 @@
     {
       "path": "src/core/intent-scheduler.mjs",
       "mode": "100644",
-      "bytes": 18784,
-      "sha256": "174be163fb76b8e9f67d96c74a5b965e90392afc16065cdef7d82ea441006865"
+      "bytes": 43347,
+      "sha256": "3025e29e57eb90c9a8a844064ea8a2d083bc24928010a144a6bc9011d9533192"
     },
     {
       "path": "src/core/intent-validation.mjs",
