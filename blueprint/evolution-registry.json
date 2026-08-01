@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.evolution-registry/v1",
   "registryRef": "registry.vexlife.evolution.001",
-  "registryVersion": 3,
+  "registryVersion": 4,
   "systemRef": "system.vexlife.continuity-and-evolution",
   "canonicalSourceRef": "source.blueprint.evolution-registry",
   "canonicalSource": {
@@ -21,6 +21,8 @@
       "contract.vexlife.continuity-context-review/v1",
       "contract.vexlife.burden-release/v1",
       "contract.vexlife.continuity-recurrence/v1",
+      "contract.vexlife.continuity-current-record-set-receipt/v1",
+      "contract.vexlife.continuity-aggregate-projection-receipt/v1",
       "contract.continuity-evolution.integrated-simulation/v1"
     ]
   },
@@ -43,9 +45,12 @@
     "duplicate source evidence does not create another semantic model turn",
     "training research remains NOT_ADMITTED and maximumConcurrentTrainingRuns remains zero",
     "accepted deterministic invariant candidates remain inactive until a separate effect implementation lane",
-    "Queue, Terrain, Health, Guide and evolution projections derive from one canonical state aggregate"
-    ,"scope class never substitutes for one exact source-derived target identity"
-    ,"simulation-only authority remains inactive and visibly non-live through every compact projection"
+    "Queue, Terrain, Health, Guide and evolution projections derive from one canonical state aggregate",
+    "scope class never substitutes for one exact source-derived target identity",
+    "simulation-only authority remains inactive and visibly non-live through every compact projection",
+    "human, transient and Burden projections recompute exact candidate, route, review, authority, target and source meaning from aggregate-owned lineage",
+    "applicable continuity consumes an exact content-addressed conflict-free current-record-set receipt and excludes every superseded record",
+    "accepted Burden deauthorization is private to canonical aggregate-owned route, review policy and recorded simulated-current authority evidence"
   ],
   "observationTypes": [
     "CONVERSATION_EPISODE_RANGE",
@@ -129,6 +134,18 @@
       "contractRef": "contract.vexlife.continuity-recurrence/v1",
       "contractKind": "RECURRENCE_CHAIN",
       "sourceRef": "source.blueprint.evolution-registry"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-current-record-set-receipt/v1",
+      "contractKind": "CONTENT_ADDRESSED_CURRENT_RECORD_SET",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "currentRecordSet"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-aggregate-projection-receipt/v1",
+      "contractKind": "AGGREGATE_OWNED_PROJECTION_LINEAGE",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "aggregateProjection"
     },
     {
       "contractRef": "contract.continuity-evolution.integrated-simulation/v1",
@@ -301,6 +318,58 @@
       "subjectRefs",
       "applicable",
       "scopeTargetRef",
+      "semanticFingerprint"
+    ]
+  },
+  "currentRecordSet": {
+    "contractRef": "contract.vexlife.continuity-current-record-set-receipt/v1",
+    "sourceRef": "source.blueprint.evolution-registry",
+    "sourceField": "currentRecordSet",
+    "requiredFields": [
+      "schemaVersion",
+      "aggregateFingerprint",
+      "recordBindings",
+      "supersessionBindings",
+      "state",
+      "currentRecordRefs",
+      "supersededRecordRefs",
+      "conflicts",
+      "silentOverwriteAllowed",
+      "currentRecordSetRef",
+      "semanticFingerprint"
+    ]
+  },
+  "aggregateProjection": {
+    "contractRef": "contract.vexlife.continuity-aggregate-projection-receipt/v1",
+    "sourceRef": "source.blueprint.evolution-registry",
+    "sourceField": "aggregateProjection",
+    "requiredFields": [
+      "schemaVersion",
+      "projectionKind",
+      "aggregateFingerprint",
+      "sourceRef",
+      "sourceFingerprint",
+      "candidateRef",
+      "candidateFingerprint",
+      "routeRef",
+      "routeFingerprint",
+      "reviewRef",
+      "reviewFingerprint",
+      "recordClass",
+      "scope",
+      "scopeTargetRef",
+      "scopeTargetFingerprint",
+      "requiredAcceptanceRefs",
+      "acceptedByRefs",
+      "authorityEvidenceRefs",
+      "authorityEvidenceClass",
+      "acceptanceDisposition",
+      "burdenRef",
+      "burdenIdentityFingerprint",
+      "burdenSourceFingerprint",
+      "currentRecordSetRef",
+      "currentRecordSetFingerprint",
+      "projectionReceiptRef",
       "semanticFingerprint"
     ]
   },
@@ -668,7 +737,11 @@
     "projection.continuity-evolution.queue",
     "projection.continuity-evolution.terrain",
     "projection.continuity-evolution.health",
-    "projection.continuity-evolution.guide"
+    "projection.continuity-evolution.guide",
+    "projection.continuity-evolution.human-record",
+    "projection.continuity-evolution.burden-release",
+    "projection.continuity-evolution.transient-context",
+    "projection.continuity-evolution.applicable-current-set"
   ],
   "projectionIdentities": [
     { "projectionRef": "projection.continuity-evolution.current", "projectionKind": "CURRENT" },
@@ -677,6 +750,9 @@
     { "projectionRef": "projection.continuity-evolution.health", "projectionKind": "HEALTH" },
     { "projectionRef": "projection.continuity-evolution.guide", "projectionKind": "GUIDE" },
     { "projectionRef": "projection.continuity-evolution.human-record", "projectionKind": "HUMAN_RECORD" },
+    { "projectionRef": "projection.continuity-evolution.burden-release", "projectionKind": "BURDEN_RELEASE" },
+    { "projectionRef": "projection.continuity-evolution.transient-context", "projectionKind": "TRANSIENT_CONTEXT" },
+    { "projectionRef": "projection.continuity-evolution.applicable-current-set", "projectionKind": "APPLICABLE_CURRENT_SET" },
     { "projectionRef": "projection.continuity-evolution.sibling-observe-only", "projectionKind": "SIBLING_OBSERVE_ONLY" }
   ],
   "processRefs": [
@@ -709,6 +785,9 @@
       "review",
       "authorityEvidence",
       "acceptedRecord",
+      "currentRecordSet",
+      "recordProjection",
+      "burdenProjection",
       "authorityDisposition",
       "applicableProjection"
     ],
@@ -757,7 +836,10 @@
     "test.continuity-evolution.e22-full-gate",
     "test.continuity-evolution.c11-exact-scope-target",
     "test.continuity-evolution.c12-reviewed-burden-meaning",
-    "test.continuity-evolution.c13-simulation-authority-projection"
+    "test.continuity-evolution.c13-simulation-authority-projection",
+    "test.continuity-evolution.c14-aggregate-owned-projection",
+    "test.continuity-evolution.c15-current-set-applicability",
+    "test.continuity-evolution.c16-canonical-burden-policy"
   ],
   "successorBoundaries": [
     "Runtime Failure & Recovery Spine",

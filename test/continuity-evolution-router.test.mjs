@@ -31,7 +31,16 @@ import {
   transitionBurdenRelease,
   validateBurdenRelease
 } from '../src/core/burden-release.mjs';
-import { createContinuityEvolutionEvent, createContinuityEvolutionState, createInitialContinuityEvolutionAggregate } from '../src/core/state.mjs';
+import {
+  createContinuityCurrentRecordSetReceipt,
+  createContinuityEvolutionEvent,
+  createContinuityEvolutionState,
+  createInitialContinuityEvolutionAggregate,
+  projectAggregateApplicableContinuity,
+  projectAggregateOwnedBurdenRelease,
+  projectAggregateOwnedContinuityRecord,
+  projectAggregateOwnedTransientContinuityContext
+} from '../src/core/state.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 import { runContinuityEvolutionSimulation } from '../scripts/evolution-simulate.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
@@ -40,6 +49,7 @@ const FORMED = '2026-07-31T20:00:00.000Z';
 const REVIEWED = '2026-07-31T20:01:00.000Z';
 const ACCEPTED = '2026-07-31T20:02:00.000Z';
 const EXPIRES = '2026-07-31T20:10:00.000Z';
+const CANDIDATE_OBSERVATIONS = new Map();
 
 function observation(suffix = 'base', overrides = {}) {
   const sourceLineageRef = overrides.sourceLineageRef ?? 'lineage.vex.test';
@@ -64,8 +74,9 @@ function observation(suffix = 'base', overrides = {}) {
 }
 
 function candidate(suffix = 'base', overrides = {}) {
-  return formContinuityCandidate({
-    observations: [observation(suffix)],
+  const observations = overrides.observations ?? [observation(suffix)];
+  const formed = formContinuityCandidate({
+    observations,
     candidateKind: 'CORRECTION',
     summaryRef: `summary.continuity.candidate.${suffix}`,
     authoredByRef: 'role.vex.context-maintainer',
@@ -83,6 +94,8 @@ function candidate(suffix = 'base', overrides = {}) {
     formedAt: FORMED,
     ...overrides
   });
+  CANDIDATE_OBSERVATIONS.set(formed.candidateRef, observations);
+  return formed;
 }
 
 function acceptedReview(inputCandidate, overrides = {}) {
@@ -126,9 +139,18 @@ function authorityEvidence(inputCandidate, route, review, overrides = {}) {
 
 function accept(inputCandidate, overrides = {}, reviewOverrides = {}) {
   const { route, review } = acceptedReview(inputCandidate, reviewOverrides);
+  const evidence = authorityEvidence(inputCandidate, route, review);
+  const aggregate = createInitialContinuityEvolutionAggregate();
+  aggregate.observations = structuredClone(CANDIDATE_OBSERVATIONS.get(inputCandidate.candidateRef) ?? []);
+  aggregate.candidates = [structuredClone(inputCandidate)];
+  aggregate.reviews = [structuredClone(review)];
+  aggregate.authorityEvidence = structuredClone(evidence);
+  delete aggregate.semanticFingerprint;
+  aggregate.semanticFingerprint = semanticHash(aggregate);
   return acceptContinuityCandidate(inputCandidate, review, {
     acceptedAt: ACCEPTED,
-    authorityEvidence: authorityEvidence(inputCandidate, route, review),
+    authorityEvidence: evidence,
+    aggregate,
     ...overrides
   });
 }
@@ -183,12 +205,48 @@ function refingerprint(value, refField, prefix, changes) {
   return { ...core, [refField]: `${prefix}.${semanticFingerprint.slice(0, 24)}`, semanticFingerprint };
 }
 
+function refingerprintAggregate(aggregate, changes = {}) {
+  const core = { ...structuredClone(aggregate), ...changes };
+  delete core.semanticFingerprint;
+  return { ...core, semanticFingerprint: semanticHash(core) };
+}
+
 function expectAggregateRejectsUnchanged(state, event, pattern) {
   const before = semanticHash(state.aggregate.value);
   const revision = state.aggregate.revision;
   assert.throws(() => state.record(createContinuityEvolutionEvent(event)), pattern);
   assert.equal(semanticHash(state.aggregate.value), before);
   assert.equal(state.aggregate.revision, revision);
+}
+
+function recordLineageIntoState(state, inputCandidate, review, evidence, record, suffix = 'projection') {
+  const events = [
+    ...(CANDIDATE_OBSERVATIONS.get(inputCandidate.candidateRef) ?? []).map((source, index) => ({
+      type: 'OBSERVATION_SEALED', transitionRef: `transition.${suffix}.observation.${index}`, observation: source
+    })),
+    { type: 'CANDIDATE_FORMED', transitionRef: `transition.${suffix}.candidate`, candidate: inputCandidate },
+    { type: 'REVIEW_RECORDED', transitionRef: `transition.${suffix}.review`, review },
+    ...evidence.map((item, index) => ({
+      type: 'AUTHORITY_EVIDENCE_RECORDED', transitionRef: `transition.${suffix}.authority.${index}`, evidence: item
+    })),
+    { type: 'RECORD_ACCEPTED', transitionRef: `transition.${suffix}.record`, record }
+  ];
+  for (const event of events) state.record(createContinuityEvolutionEvent(event));
+  return state;
+}
+
+function stateWithAcceptedRecord(inputCandidate, review, evidence, record, suffix = 'projection') {
+  const state = createContinuityEvolutionState();
+  recordLineageIntoState(state, inputCandidate, review, evidence, record, suffix);
+  return state;
+}
+
+function aggregateProjectionFixture(inputCandidate, record, suffix = 'projection') {
+  const { route, review } = acceptedReview(inputCandidate);
+  const evidence = authorityEvidence(inputCandidate, route, review);
+  const state = stateWithAcceptedRecord(inputCandidate, review, evidence, record, suffix);
+  const currentRecordSetReceipt = createContinuityCurrentRecordSetReceipt(state.aggregate.value);
+  return { state, route, review, evidence, currentRecordSetReceipt };
 }
 
 test('E0 exact source tuples remain immutable and retrievable after acceptance', () => {
@@ -270,10 +328,15 @@ test('E9–E11 Burden Release replays exact lifecycle and preserves protected bo
     'NAMED', 'RECOGNIZED', 'RELEASE_PROPOSED', 'CONTEXT_REVIEW', 'ACCEPTED_DEAUTHORIZED'
   ]);
   assert.equal(record.burdenRelease.claimsParameterDeletion, false);
-  const { route, review } = acceptedReview(formed);
-  const projection = projectBurdenRelease(record.burdenRelease, { candidate: formed, route, review });
+  const fixture = aggregateProjectionFixture(formed, record, 'e9');
+  const projection = projectAggregateOwnedBurdenRelease({
+    aggregate: fixture.state.aggregate.value,
+    acceptedRecordRef: record.acceptedRecordRef,
+    acceptedRecordFingerprint: record.semanticFingerprint
+  });
   assert.ok(projection.protectedCapabilities.includes('uncertainty'));
   assert.ok(projection.prohibitedOvercorrections.includes('unsupported certainty'));
+  fixture.state.dispose();
 });
 
 test('E12 unresolved contradiction routes HELD_UNKNOWN and cannot be accepted', () => {
@@ -335,7 +398,7 @@ test('E17 exact duplicate recurrence is a semantic no-op', () => {
   const formed = burdenCandidate('e17', { observations: [source] });
   const { route, review } = acceptedReview(formed);
   const evidence = authorityEvidence(formed, route, review);
-  const record = acceptContinuityCandidate(formed, review, { acceptedAt: ACCEPTED, authorityEvidence: evidence });
+  const record = accept(formed);
   const recurring = recurrenceObservation(record, 'e17-recurrence');
   const first = recordContinuityRecurrence({ acceptedRecord: record, observation: recurring, observedAt: '2026-07-31T20:03:00.000Z' });
   const duplicate = recordContinuityRecurrence({ acceptedRecord: record, observation: recurring, priorEvidence: first, observedAt: '2026-07-31T20:03:00.000Z' });
@@ -365,15 +428,18 @@ test('E18 training research remains NOT_ADMITTED and cannot activate weights', (
 test('E19 applicable projection contains bounded refs, not historical payloads', () => {
   const formed = burdenCandidate('e19');
   const record = accept(formed);
-  const projection = projectApplicableContinuity({
-    records: [record],
+  const fixture = aggregateProjectionFixture(formed, record, 'e19');
+  const projection = projectAggregateApplicableContinuity({
+    aggregate: fixture.state.aggregate.value,
+    currentRecordSetReceipt: fixture.currentRecordSetReceipt,
     applicableScopeTargets: [formed.scopeTarget],
     allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT'],
-    tokenBudget: 160
+    tokenBudget: 256
   });
   assert.deepEqual(projection.selectedRecordRefs, [record.acceptedRecordRef]);
   assert.ok(projection.usedTokens <= projection.tokenBudget);
   assert.equal(JSON.stringify(projection).includes('source-range.test'), false);
+  fixture.state.dispose();
 });
 
 test('E20 one continuity work node completes through the accepted scheduler', () => {
@@ -390,7 +456,7 @@ test('E21 projections and Health derive exact record conflict state from one agg
   const formed = burdenCandidate('e21', { observations: [source] });
   const { route, review } = acceptedReview(formed);
   const evidence = authorityEvidence(formed, route, review);
-  const record = acceptContinuityCandidate(formed, review, { acceptedAt: ACCEPTED, authorityEvidence: evidence });
+  const record = accept(formed);
   const state = createContinuityEvolutionState();
   for (const event of [
     { type: 'OBSERVATION_SEALED', transitionRef: 'transition.e21.1', observation: source },
@@ -457,18 +523,12 @@ test('C8 aggregate events reject canonical but unowned causal lineage without mu
   const storedCandidate = burdenCandidate('c8-stored', { observations: [storedSource] });
   const storedLineage = acceptedReview(storedCandidate);
   const storedEvidence = authorityEvidence(storedCandidate, storedLineage.route, storedLineage.review);
-  const storedRecord = acceptContinuityCandidate(storedCandidate, storedLineage.review, {
-    acceptedAt: ACCEPTED,
-    authorityEvidence: storedEvidence
-  });
+  const storedRecord = accept(storedCandidate);
   const foreignSource = observation('c8-foreign');
   const foreignCandidate = burdenCandidate('c8-foreign', { observations: [foreignSource] });
   const foreignLineage = acceptedReview(foreignCandidate);
   const foreignEvidence = authorityEvidence(foreignCandidate, foreignLineage.route, foreignLineage.review);
-  const foreignRecord = acceptContinuityCandidate(foreignCandidate, foreignLineage.review, {
-    acceptedAt: ACCEPTED,
-    authorityEvidence: foreignEvidence
-  });
+  const foreignRecord = accept(foreignCandidate);
 
   const candidateState = createContinuityEvolutionState();
   candidateState.record(createContinuityEvolutionEvent({ type: 'OBSERVATION_SEALED', transitionRef: 'transition.c8.candidate.source', observation: storedSource }));
@@ -613,10 +673,7 @@ test('C9 acceptance consumes exact external simulated-current authority and Burd
   });
   assert.throws(() => acceptContinuityCandidate(formed, review, { acceptedAt: ACCEPTED, authorityEvidence: [expiredEvidence] }), /not current/);
 
-  const accepted = acceptContinuityCandidate(formed, review, {
-    acceptedAt: ACCEPTED,
-    authorityEvidence: [createContinuityAcceptanceEvidence({ candidate: formed, route, review, authoritySnapshot: baseSnapshot })]
-  });
+  const accepted = accept(formed);
   let release = createBurdenRelease(accepted.burdenRelease.sourceForm);
   for (const [index, nextState] of ['NAMED', 'RECOGNIZED', 'RELEASE_PROPOSED', 'CONTEXT_REVIEW'].entries()) {
     release = transitionBurdenRelease(release, {
@@ -635,7 +692,7 @@ test('C9 acceptance consumes exact external simulated-current authority and Burd
     actorRef: 'role.vex.context-maintainer',
     acceptedAt: ACCEPTED,
     authorityEvidence: foreignEvidence
-  }), /source\/scope\/subjects|evidence/);
+  }), /private to aggregate-owned canonical continuity acceptance/);
   assert.throws(() => acceptBurdenRelease(release, {
     candidate: formed,
     route,
@@ -643,15 +700,21 @@ test('C9 acceptance consumes exact external simulated-current authority and Burd
     actorRef: 'role.vex.context-maintainer',
     acceptedAt: ACCEPTED,
     authorityEvidence: accepted.acceptanceEvidenceRefs
-  }), /stable refs|evidence/);
+  }), /private to aggregate-owned canonical continuity acceptance/);
   const detachedProjectionInput = structuredClone(accepted.burdenRelease);
   detachedProjectionInput.acceptanceEvidence = [];
   delete detachedProjectionInput.semanticFingerprint;
   detachedProjectionInput.semanticFingerprint = semanticHash(detachedProjectionInput);
-  assert.throws(() => projectBurdenRelease(detachedProjectionInput, { candidate: formed, route, review }), /replay|evidence/);
-  const projection = projectBurdenRelease(accepted.burdenRelease, { candidate: formed, route, review });
+  assert.throws(() => projectBurdenRelease(detachedProjectionInput, { candidate: formed, route, review }), /aggregate-owned accepted record/);
+  const fixture = aggregateProjectionFixture(formed, accepted, 'c9');
+  const projection = projectAggregateOwnedBurdenRelease({
+    aggregate: fixture.state.aggregate.value,
+    acceptedRecordRef: accepted.acceptedRecordRef,
+    acceptedRecordFingerprint: accepted.semanticFingerprint
+  });
   assert.deepEqual(projection.authoritySnapshotRefs, accepted.burdenRelease.authoritySnapshotRefs);
   assert.equal(projection.rawSourceContentIncluded, false);
+  fixture.state.dispose();
 });
 
 test('C10 nested v1 contract fields exactly match runtime objects', () => {
@@ -669,7 +732,7 @@ test('C10 nested v1 contract fields exactly match runtime objects', () => {
     expiresAt: EXPIRES
   });
   const evidence = createContinuityAcceptanceEvidence({ candidate: formed, route, review, authoritySnapshot });
-  const record = acceptContinuityCandidate(formed, review, { acceptedAt: ACCEPTED, authorityEvidence: [evidence] });
+  const record = accept(formed);
   assert.deepEqual(Object.keys(review), CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS);
   assert.deepEqual(Object.keys(formed.scopeTarget), CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
   assert.deepEqual(Object.keys(authoritySnapshot), CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
@@ -737,14 +800,24 @@ test('C11 exact scope targets isolate leases, durable applicability, conflicts, 
   const projectRecordB = accept(projectCandidateB);
   assert.notEqual(projectRecordA.scopeTargetRef, projectRecordB.scopeTargetRef);
   assert.equal(validateContinuityRecordSet([projectRecordA, projectRecordB]).state, 'CURRENT');
-  const applicable = projectApplicableContinuity({
-    records: [projectRecordA, projectRecordB],
+  const projectState = createContinuityEvolutionState();
+  const projectLineageA = acceptedReview(projectCandidateA);
+  const projectEvidenceA = authorityEvidence(projectCandidateA, projectLineageA.route, projectLineageA.review);
+  const projectLineageB = acceptedReview(projectCandidateB);
+  const projectEvidenceB = authorityEvidence(projectCandidateB, projectLineageB.route, projectLineageB.review);
+  recordLineageIntoState(projectState, projectCandidateA, projectLineageA.review, projectEvidenceA, projectRecordA, 'c11-project-a');
+  recordLineageIntoState(projectState, projectCandidateB, projectLineageB.review, projectEvidenceB, projectRecordB, 'c11-project-b');
+  const projectCurrentSet = createContinuityCurrentRecordSetReceipt(projectState.aggregate.value);
+  const applicable = projectAggregateApplicableContinuity({
+    aggregate: projectState.aggregate.value,
+    currentRecordSetReceipt: projectCurrentSet,
     applicableScopeTargets: [projectCandidateA.scopeTarget],
     allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT'],
-    tokenBudget: 160
+    tokenBudget: 256
   });
   assert.deepEqual(applicable.selectedRecordRefs, [projectRecordA.acceptedRecordRef]);
-  assert.throws(() => projectApplicableContinuity({ records: [projectRecordA], applicableScopes: ['PROJECT'] }), /exact canonical scope targets/);
+  assert.throws(() => projectApplicableContinuity({ records: [projectRecordA], applicableScopes: ['PROJECT'] }), /aggregate-owned current-record-set/);
+  projectState.dispose();
   const successor = accept(projectCandidateB, { acceptedAt: '2026-07-31T20:03:00.000Z' }, { supersedesRef: projectRecordA.acceptedRecordRef });
   assert.throws(() => supersedeContinuityRecord(projectRecordA, successor, {
     rollbackRef: 'rollback.c11.cross-project',
@@ -755,10 +828,7 @@ test('C11 exact scope targets isolate leases, durable applicability, conflicts, 
   const recurrenceCandidate = burdenCandidate('c11-recurrence', { observations: [recurrenceSource] });
   const recurrenceLineage = acceptedReview(recurrenceCandidate);
   const recurrenceAuthority = authorityEvidence(recurrenceCandidate, recurrenceLineage.route, recurrenceLineage.review);
-  const recurrenceRecord = acceptContinuityCandidate(recurrenceCandidate, recurrenceLineage.review, {
-    acceptedAt: ACCEPTED,
-    authorityEvidence: recurrenceAuthority
-  });
+  const recurrenceRecord = accept(recurrenceCandidate);
   const recurrenceObservationExact = recurrenceObservation(recurrenceRecord, 'c11-recurrence-observation');
   const recurrenceExact = recordContinuityRecurrence({
     acceptedRecord: recurrenceRecord,
@@ -793,7 +863,7 @@ test('C12 Burden acceptance and projection bind the exact reviewed inner meaning
   const formed = burdenCandidate('c12');
   const { route, review } = acceptedReview(formed);
   const evidence = authorityEvidence(formed, route, review);
-  const accepted = acceptContinuityCandidate(formed, review, { acceptedAt: ACCEPTED, authorityEvidence: evidence });
+  const accepted = accept(formed);
   const replayToReview = (sourceForm, suffix) => {
     let release = createBurdenRelease(sourceForm);
     for (const [index, nextState] of ['NAMED', 'RECOGNIZED', 'RELEASE_PROPOSED', 'CONTEXT_REVIEW'].entries()) release = transitionBurdenRelease(release, {
@@ -810,17 +880,15 @@ test('C12 Burden acceptance and projection bind the exact reviewed inner meaning
     transitionedAt: ACCEPTED,
     authorityEvidence: evidence
   }), /public Burden Release transition/);
-  const canonicalAccepted = acceptBurdenRelease(canonicalAtReview, {
+  assert.throws(() => acceptBurdenRelease(canonicalAtReview, {
     candidate: formed,
     route,
     review,
     actorRef: review.reviewerRef,
     acceptedAt: ACCEPTED,
     authorityEvidence: evidence
-  });
-  assert.equal(canonicalAccepted.state, 'ACCEPTED_DEAUTHORIZED');
-  assert.equal(canonicalAccepted.burdenRef, accepted.burdenRelease.burdenRef);
-  assert.equal(canonicalAccepted.identityFingerprint, accepted.burdenRelease.identityFingerprint);
+  }), /private to aggregate-owned canonical continuity acceptance/);
+  assert.equal(accepted.burdenRelease.state, 'ACCEPTED_DEAUTHORIZED');
 
   const otherTarget = burdenCandidate('c12-other', {
     observations: [observation('c12-other', { sourceLineageRef: 'lineage.vex.other', sourceRecipientRefs: ['lineage.vex.other'] })],
@@ -849,36 +917,50 @@ test('C12 Burden acceptance and projection bind the exact reviewed inner meaning
       actorRef: review.reviewerRef,
       acceptedAt: ACCEPTED,
       authorityEvidence: evidence
-    }), /differs from the exact reviewed candidate source form/);
-    assert.throws(() => projectBurdenRelease(substituted, { candidate: formed, route, review }), /exact reviewed candidate source form/);
+    }), /private to aggregate-owned canonical continuity acceptance/);
+    assert.throws(() => projectBurdenRelease(substituted, { candidate: formed, route, review }), /aggregate-owned accepted record/);
   }
-  const projection = projectBurdenRelease(accepted.burdenRelease, { candidate: formed, route, review });
+  const fixture = aggregateProjectionFixture(formed, accepted, 'c12');
+  const projection = projectAggregateOwnedBurdenRelease({
+    aggregate: fixture.state.aggregate.value,
+    acceptedRecordRef: accepted.acceptedRecordRef,
+    acceptedRecordFingerprint: accepted.semanticFingerprint
+  });
   assert.equal(projection.burdenRef, accepted.burdenReleaseRef);
   assert.equal(projection.scopeTargetRef, formed.scopeTargetRef);
+  fixture.state.dispose();
 });
 
 test('C13 simulation-only authority remains negative in records, projections, applicability and Health', () => {
   const formed = burdenCandidate('c13');
   const record = accept(formed);
-  for (const value of [record, projectContinuityRecord(record)]) {
+  const fixture = aggregateProjectionFixture(formed, record, 'c13');
+  const recordProjection = projectAggregateOwnedContinuityRecord({
+    aggregate: fixture.state.aggregate.value,
+    acceptedRecordRef: record.acceptedRecordRef,
+    acceptedRecordFingerprint: record.semanticFingerprint
+  });
+  for (const value of [record, recordProjection]) {
     assert.equal(value.authorityEvidenceClass, 'SIMULATED_CURRENT');
     assert.equal(value.simulatedAuthority, true);
     assert.equal(value.liveAuthorityGranted, false);
     assert.equal(value.externalEffectsAuthorized, false);
     assert.equal(value.acceptanceDisposition, 'SIMULATION_ONLY_INACTIVE');
   }
-  assert.equal(projectContinuityRecord(record).nextSafeAction, 'USE_ONLY_IN_EXPLICIT_SIMULATED_CURRENT_CONTEXT');
-  const defaultLiveContext = projectApplicableContinuity({
-    records: [record],
+  assert.equal(recordProjection.nextSafeAction, 'USE_ONLY_IN_EXPLICIT_SIMULATED_CURRENT_CONTEXT');
+  const defaultLiveContext = projectAggregateApplicableContinuity({
+    aggregate: fixture.state.aggregate.value,
+    currentRecordSetReceipt: fixture.currentRecordSetReceipt,
     applicableScopeTargets: [formed.scopeTarget],
-    tokenBudget: 160
+    tokenBudget: 256
   });
   assert.deepEqual(defaultLiveContext.selectedRecordRefs, []);
-  const simulationContext = projectApplicableContinuity({
-    records: [record],
+  const simulationContext = projectAggregateApplicableContinuity({
+    aggregate: fixture.state.aggregate.value,
+    currentRecordSetReceipt: fixture.currentRecordSetReceipt,
     applicableScopeTargets: [formed.scopeTarget],
     allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT'],
-    tokenBudget: 160
+    tokenBudget: 256
   });
   assert.deepEqual(simulationContext.selectedRecordRefs, [record.acceptedRecordRef]);
   assert.equal(simulationContext.selected[0].acceptanceDisposition, 'SIMULATION_ONLY_INACTIVE');
@@ -887,12 +969,12 @@ test('C13 simulation-only authority remains negative in records, projections, ap
     liveAuthorityGranted: true,
     liveApplicabilityGranted: true
   });
-  assert.throws(() => projectContinuityRecord(promoted), /simulation-only authority disposition/);
+  assert.throws(() => projectContinuityRecord(promoted), /aggregate-owned record/);
   assert.throws(() => projectApplicableContinuity({
     records: [promoted],
     applicableScopeTargets: [formed.scopeTarget],
     allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT']
-  }), /simulation-only authority disposition/);
+  }), /aggregate-owned current-record-set/);
   const aggregate = structuredClone(createInitialContinuityEvolutionAggregate());
   aggregate.acceptedRecords = [promoted];
   delete aggregate.semanticFingerprint;
@@ -911,15 +993,18 @@ test('C13 simulation-only authority remains negative in records, projections, ap
     { publicationAuthorityActive: true }
   ]) {
     const invalid = refingerprint(record, 'acceptedRecordRef', 'accepted-continuity-record', changes);
-    assert.throws(() => projectContinuityRecord(invalid), /simulation-only authority disposition|weight\/effect authority/);
+    assert.throws(() => projectContinuityRecord(invalid), /aggregate-owned record/);
   }
 
   const mixed = refingerprint(record, 'acceptedRecordRef', 'accepted-continuity-record', {
     authorityEvidenceClass: 'MIXED_SIMULATED_AND_LIVE'
   });
-  assert.throws(() => projectContinuityRecord(mixed), /simulation-only authority disposition/);
-  const { route, review } = acceptedReview(formed);
-  const burdenProjection = projectBurdenRelease(record.burdenRelease, { candidate: formed, route, review });
+  assert.throws(() => projectContinuityRecord(mixed), /aggregate-owned record/);
+  const burdenProjection = projectAggregateOwnedBurdenRelease({
+    aggregate: fixture.state.aggregate.value,
+    acceptedRecordRef: record.acceptedRecordRef,
+    acceptedRecordFingerprint: record.semanticFingerprint
+  });
   assert.equal(burdenProjection.liveAuthorityGranted, false);
   assert.equal(burdenProjection.acceptanceDisposition, 'SIMULATION_ONLY_INACTIVE');
   assert.equal(burdenProjection.nextSafeAction, 'USE_ONLY_IN_EXPLICIT_SIMULATED_CURRENT_CONTEXT');
@@ -946,14 +1031,253 @@ test('C13 simulation-only authority remains negative in records, projections, ap
   assert.equal(context.authorityEvidenceClass, 'SIMULATED_CURRENT');
   assert.equal(context.acceptanceDisposition, 'SIMULATION_ONLY_INACTIVE');
   assert.equal(context.liveApplicabilityGranted, false);
+  const contextEvidence = authorityEvidence(currentCandidate, currentLineage.route, currentLineage.review);
+  const contextState = createContinuityEvolutionState();
+  for (const event of [
+    ...(CANDIDATE_OBSERVATIONS.get(currentCandidate.candidateRef) ?? []).map((source, index) => ({
+      type: 'OBSERVATION_SEALED', transitionRef: `transition.c13.context.observation.${index}`, observation: source
+    })),
+    { type: 'CANDIDATE_FORMED', transitionRef: 'transition.c13.context.candidate', candidate: currentCandidate },
+    { type: 'REVIEW_RECORDED', transitionRef: 'transition.c13.context.review', review: currentLineage.review },
+    ...contextEvidence.map((item, index) => ({ type: 'AUTHORITY_EVIDENCE_RECORDED', transitionRef: `transition.c13.context.authority.${index}`, evidence: item })),
+    { type: 'CONTEXT_APPLIED', transitionRef: 'transition.c13.context.applied', context }
+  ]) contextState.record(createContinuityEvolutionEvent(event));
+  const contextProjection = projectAggregateOwnedTransientContinuityContext({
+    aggregate: contextState.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint
+  });
+  assert.equal(contextProjection.acceptanceDisposition, 'SIMULATION_ONLY_INACTIVE');
+  contextState.dispose();
+  fixture.state.dispose();
+});
+
+test('C14 projections require exact aggregate-owned record or context meaning without mutation', () => {
+  const formed = burdenCandidate('c14');
+  const record = accept(formed);
+  const fixture = aggregateProjectionFixture(formed, record, 'c14');
+  const before = semanticHash(fixture.state.aggregate.value);
+  const revision = fixture.state.aggregate.revision;
+  const projection = projectAggregateOwnedContinuityRecord({
+    aggregate: fixture.state.aggregate.value,
+    acceptedRecordRef: record.acceptedRecordRef,
+    acceptedRecordFingerprint: record.semanticFingerprint
+  });
+  assert.equal(projection.aggregateProjectionReceipt.sourceRef, record.acceptedRecordRef);
+  assert.equal(projection.aggregateProjectionReceipt.currentRecordSetRef, fixture.currentRecordSetReceipt.currentRecordSetRef);
+
+  const otherTarget = burdenCandidate('c14-other', {
+    observations: [observation('c14-other', { sourceLineageRef: 'lineage.vex.other', sourceRecipientRefs: ['lineage.vex.other'] })],
+    aboutSelfRefs: ['lineage.vex.other'],
+    affectedPartyRefs: ['lineage.vex.other']
+  }).scopeTarget;
+  const substitutions = [
+    { recordClass: 'VEX_SELF_PREFERENCE' },
+    { candidateRef: 'continuity-candidate.substituted', candidateFingerprint: semanticHash({ candidate: 'substituted' }) },
+    { routeRef: 'continuity-route.substituted', routeFingerprint: semanticHash({ route: 'substituted' }) },
+    { reviewRef: 'continuity-context-review.substituted', reviewFingerprint: semanticHash({ review: 'substituted' }) },
+    { summaryRef: 'summary.substituted' },
+    { sourceBindings: record.sourceBindings.map((item) => ({ ...item, sourceHash: semanticHash({ source: item.rangeRef }) })) },
+    { scopeTargetRef: otherTarget.scopeTargetRef, scopeTargetFingerprint: otherTarget.semanticFingerprint },
+    { acceptanceDisposition: 'LIVE' }
+  ];
+  for (const changes of substitutions) {
+    const forged = refingerprint(record, 'acceptedRecordRef', 'accepted-continuity-record', changes);
+    const forgedAggregate = refingerprintAggregate(fixture.state.aggregate.value, { acceptedRecords: [forged] });
+    assert.throws(() => projectAggregateOwnedContinuityRecord({
+      aggregate: forgedAggregate,
+      acceptedRecordRef: forged.acceptedRecordRef,
+      acceptedRecordFingerprint: forged.semanticFingerprint
+    }), /aggregate-owned|detached|mismatch|Burden|authority/);
+  }
+  assert.throws(() => projectContinuityRecord(record), /aggregate-owned record/);
+
+  const contextCandidate = candidate('c14-context', { candidateScope: 'CURRENT_TURN', signals: {} });
+  const contextLineage = acceptedReview(contextCandidate);
+  const contextEvidence = authorityEvidence(contextCandidate, contextLineage.route, contextLineage.review);
+  const contextLease = createCurrentContextLease({
+    candidate: contextCandidate,
+    route: contextLineage.route,
+    review: contextLineage.review,
+    leaseRef: 'lease.c14.context',
+    turnRef: 'turn.test.c14-context',
+    threadRef: 'thread.test',
+    channelRef: 'channel.test',
+    formedAt: REVIEWED,
+    observedAt: REVIEWED,
+    expiresAt: EXPIRES
+  });
+  const context = acceptContinuityCandidate(contextCandidate, contextLineage.review, {
+    acceptedAt: ACCEPTED,
+    authorityEvidence: contextEvidence,
+    currentContextLease: contextLease
+  });
+  const contextState = createContinuityEvolutionState();
+  for (const event of [
+    ...(CANDIDATE_OBSERVATIONS.get(contextCandidate.candidateRef) ?? []).map((source, index) => ({
+      type: 'OBSERVATION_SEALED', transitionRef: `transition.c14.context.observation.${index}`, observation: source
+    })),
+    { type: 'CANDIDATE_FORMED', transitionRef: 'transition.c14.context.candidate', candidate: contextCandidate },
+    { type: 'REVIEW_RECORDED', transitionRef: 'transition.c14.context.review', review: contextLineage.review },
+    ...contextEvidence.map((item, index) => ({ type: 'AUTHORITY_EVIDENCE_RECORDED', transitionRef: `transition.c14.context.authority.${index}`, evidence: item })),
+    { type: 'CONTEXT_APPLIED', transitionRef: 'transition.c14.context.applied', context }
+  ]) contextState.record(createContinuityEvolutionEvent(event));
+  assert.equal(projectAggregateOwnedTransientContinuityContext({
+    aggregate: contextState.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint
+  }).aggregateProjectionReceipt.sourceRef, context.contextRecordRef);
+  const detachedContext = refingerprint(context, 'contextRecordRef', 'transient-continuity-context', { summaryRef: 'summary.detached' });
+  const detachedAggregate = refingerprintAggregate(contextState.aggregate.value, { transientContexts: [detachedContext] });
+  assert.throws(() => projectAggregateOwnedTransientContinuityContext({
+    aggregate: detachedAggregate,
+    contextRecordRef: detachedContext.contextRecordRef,
+    contextRecordFingerprint: detachedContext.semanticFingerprint
+  }), /aggregate-owned|detached/);
+  assert.equal(semanticHash(fixture.state.aggregate.value), before);
+  assert.equal(fixture.state.aggregate.revision, revision);
+  contextState.dispose();
+  fixture.state.dispose();
+});
+
+test('C15 applicable projection consumes only an exact conflict-free current record set', () => {
+  const priorCandidate = candidate('c15-prior');
+  const priorLineage = acceptedReview(priorCandidate);
+  const priorEvidence = authorityEvidence(priorCandidate, priorLineage.route, priorLineage.review);
+  const prior = accept(priorCandidate);
+  const successorCandidate = candidate('c15-successor');
+  const successorLineage = acceptedReview(successorCandidate, { supersedesRef: prior.acceptedRecordRef });
+  const successorEvidence = authorityEvidence(successorCandidate, successorLineage.route, successorLineage.review);
+  const successor = accept(successorCandidate, { acceptedAt: '2026-07-31T20:03:00.000Z' }, { supersedesRef: prior.acceptedRecordRef });
+  assert.equal(prior.scopeTargetFingerprint, successor.scopeTargetFingerprint);
+
+  const conflictState = createContinuityEvolutionState();
+  recordLineageIntoState(conflictState, priorCandidate, priorLineage.review, priorEvidence, prior, 'c15-conflict-prior');
+  recordLineageIntoState(conflictState, successorCandidate, successorLineage.review, successorEvidence, successor, 'c15-conflict-successor');
+  const conflictReceipt = createContinuityCurrentRecordSetReceipt(conflictState.aggregate.value);
+  assert.equal(conflictReceipt.state, 'HELD_CONFLICT');
+  assert.throws(() => projectAggregateApplicableContinuity({
+    aggregate: conflictState.aggregate.value,
+    currentRecordSetReceipt: conflictReceipt,
+    applicableScopeTargets: [successorCandidate.scopeTarget],
+    allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT']
+  }), /HELD_CONFLICT/);
+
+  const state = createContinuityEvolutionState();
+  recordLineageIntoState(state, priorCandidate, priorLineage.review, priorEvidence, prior, 'c15-prior');
+  for (const event of [
+    ...(CANDIDATE_OBSERVATIONS.get(successorCandidate.candidateRef) ?? []).map((source, index) => ({
+      type: 'OBSERVATION_SEALED', transitionRef: `transition.c15.successor.observation.${index}`, observation: source
+    })),
+    { type: 'CANDIDATE_FORMED', transitionRef: 'transition.c15.successor.candidate', candidate: successorCandidate },
+    { type: 'REVIEW_RECORDED', transitionRef: 'transition.c15.successor.review', review: successorLineage.review },
+    ...successorEvidence.map((item, index) => ({ type: 'AUTHORITY_EVIDENCE_RECORDED', transitionRef: `transition.c15.successor.authority.${index}`, evidence: item }))
+  ]) state.record(createContinuityEvolutionEvent(event));
+  const transaction = supersedeContinuityRecord(prior, successor, {
+    rollbackRef: 'rollback.c15',
+    supersededAt: '2026-07-31T20:03:00.000Z'
+  });
+  state.record(createContinuityEvolutionEvent({
+    type: 'RECORD_SUPERSEDED', transitionRef: 'transition.c15.superseded', transaction, successor
+  }));
+  const receipt = createContinuityCurrentRecordSetReceipt(state.aggregate.value);
+  assert.equal(receipt.state, 'CURRENT');
+  assert.deepEqual(receipt.currentRecordRefs, [successor.acceptedRecordRef]);
+  assert.deepEqual(receipt.supersededRecordRefs, [prior.acceptedRecordRef]);
+  const applicable = projectAggregateApplicableContinuity({
+    aggregate: state.aggregate.value,
+    currentRecordSetReceipt: receipt,
+    requestedRecordRefs: [successor.acceptedRecordRef],
+    applicableScopeTargets: [successorCandidate.scopeTarget],
+    allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT'],
+    tokenBudget: 256
+  });
+  assert.deepEqual(applicable.selectedRecordRefs, [successor.acceptedRecordRef]);
+  assert.throws(() => projectAggregateApplicableContinuity({
+    aggregate: state.aggregate.value,
+    currentRecordSetReceipt: receipt,
+    requestedRecordRefs: [prior.acceptedRecordRef],
+    applicableScopeTargets: [priorCandidate.scopeTarget],
+    allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT']
+  }), /absent from the exact current set/);
+  const staleReceipt = refingerprint(receipt, 'currentRecordSetRef', 'continuity-current-record-set-receipt', {
+    aggregateFingerprint: semanticHash({ aggregate: 'stale' })
+  });
+  assert.throws(() => projectAggregateApplicableContinuity({
+    aggregate: state.aggregate.value,
+    currentRecordSetReceipt: staleReceipt,
+    applicableScopeTargets: [successorCandidate.scopeTarget],
+    allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT']
+  }), /missing, stale or substituted/);
+  const wrongTransaction = refingerprint(transaction, 'supersessionRef', 'continuity-supersession', {
+    priorRecordFingerprint: semanticHash({ prior: 'wrong' })
+  });
+  const wrongAggregate = refingerprintAggregate(state.aggregate.value, { supersessions: [wrongTransaction] });
+  assert.throws(() => createContinuityCurrentRecordSetReceipt(wrongAggregate), /supersession|prior/);
+  conflictState.dispose();
+  state.dispose();
+});
+
+test('C16 Burden acceptance enforces canonical route, policy and aggregate-recorded authority', () => {
+  const formed = burdenCandidate('c16');
+  const record = accept(formed);
+  const fixture = aggregateProjectionFixture(formed, record, 'c16');
+  const before = semanticHash(fixture.state.aggregate.value);
+  const revision = fixture.state.aggregate.revision;
+  const replay = acceptContinuityCandidate(formed, fixture.review, {
+    acceptedAt: ACCEPTED,
+    authorityEvidence: fixture.evidence,
+    aggregate: fixture.state.aggregate.value
+  });
+  assert.equal(replay.semanticFingerprint, record.semanticFingerprint);
+
+  const unrecordedAggregate = refingerprintAggregate(fixture.state.aggregate.value, { authorityEvidence: [] });
+  assert.throws(() => acceptContinuityCandidate(formed, fixture.review, {
+    acceptedAt: ACCEPTED,
+    authorityEvidence: fixture.evidence,
+    aggregate: unrecordedAggregate
+  }), /not aggregate-recorded/);
+  const forgedPolicy = refingerprint(fixture.review, 'reviewRef', 'continuity-review', {
+    requiredAcceptanceRefs: ['lineage.vex.other']
+  });
+  assert.throws(() => acceptContinuityCandidate(formed, forgedPolicy, {
+    acceptedAt: ACCEPTED,
+    authorityEvidence: fixture.evidence,
+    aggregate: fixture.state.aggregate.value
+  }), /review|policy|required acceptance/);
+  const forgedRouteReview = refingerprint(fixture.review, 'reviewRef', 'continuity-review', {
+    routeRef: 'continuity-route.forged',
+    routeFingerprint: semanticHash({ route: 'forged' })
+  });
+  assert.throws(() => acceptContinuityCandidate(formed, forgedRouteReview, {
+    acceptedAt: ACCEPTED,
+    authorityEvidence: fixture.evidence,
+    aggregate: fixture.state.aggregate.value
+  }), /route|review/);
+  assert.throws(() => acceptBurdenRelease(record.burdenRelease, {
+    candidate: formed,
+    route: fixture.route,
+    review: fixture.review,
+    authorityEvidenceRefs: fixture.evidence.map((item) => item.acceptanceEvidenceRef)
+  }), /private to aggregate-owned canonical continuity acceptance/);
+  assert.equal(semanticHash(fixture.state.aggregate.value), before);
+  assert.equal(fixture.state.aggregate.revision, revision);
+  fixture.state.dispose();
 });
 
 test('private human projection exposes reviewed refs rather than arbitrary summary text', () => {
-  const record = accept(candidate('privacy'));
-  const projection = projectContinuityRecord(record);
+  const formed = candidate('privacy');
+  const record = accept(formed);
+  const fixture = aggregateProjectionFixture(formed, record, 'privacy');
+  const projection = projectAggregateOwnedContinuityRecord({
+    aggregate: fixture.state.aggregate.value,
+    acceptedRecordRef: record.acceptedRecordRef,
+    acceptedRecordFingerprint: record.semanticFingerprint
+  });
   assert.equal(projection.observedPatternOrPreferenceRef, 'summary.continuity.candidate.privacy');
   assert.equal(projection.sourceSupport.rawContentIncluded, false);
   assert.equal('summary' in projection, false);
+  fixture.state.dispose();
 });
 
 // [VXG RealForever]

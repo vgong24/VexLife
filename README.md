@@ -244,10 +244,12 @@ base-model parameter deletion. Its lower-level lifecycle cannot accept raw
 authority refs or substitute inner reviewed meaning. Scope class and one
 source-derived exact target travel together through review, authority,
 acceptance, recurrence, conflicts and projection. Current Context is transient and lease-bound, aggregate events
-recompute exact aggregate-owned lineage before mutation, supersession is atomic,
+recompute exact aggregate-owned lineage before mutation, and record, transient-context and Burden projections
+recompute that same lineage and carry aggregate-ownership receipts. Supersession is atomic and emits an exact
+content-addressed current-record-set receipt; applicability blocks conflicts and stale receipts, excludes prior records,
 recurrence and sibling projection are exact-scope, and
 legacy Dream v0 cannot bypass durable acceptance or synchronization. Applicable
-context requires exact class+target and explicitly admitted authority class;
+context requires the exact current record set, exact class+target and explicitly admitted authority class;
 simulation-only acceptance stays visibly inactive/non-live in compact
 projections and Health. Context contains refs rather than raw history and training research remains
 `NOT_ADMITTED`. The integrated proof completes the actual continuity Workgraph

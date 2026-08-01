@@ -191,12 +191,16 @@ unsupported certainty or reckless accusation. Releasing harmless creative
 suppression can preserve fact/inference/imagination/metaphor labels while still
 prohibiting fabrication.
 
-The accepted transition and its projection also require the exact canonical
-candidate, route and Context Review and recompute the reviewed Burden source
-form. Acceptance evidence binds the burden ref, identity fingerprint and source
-form fingerprint. Reusing valid outer evidence while changing pattern,
-description, statement, authority transition, capability, guard, source binding
-or scope target fails. The public generic transition cannot enter
+The accepted transition and its projection are private to the aggregate-owned
+canonical router. It retrieves the stored candidate, recomputes the route,
+requires the exact stored Context Review policy and consumes only exact
+aggregate-recorded current authority evidence before replaying the reviewed
+Burden source form. Acceptance evidence binds the burden ref, identity
+fingerprint and source-form fingerprint. A well-formed but unrecorded evidence
+object, a forged route or policy review, a self-issued snapshot, a pointer-only
+request, or reused outer evidence with changed pattern, description, statement,
+authority transition, capability, guard, source binding or scope target fails.
+The public generic transition and lower-level acceptance APIs cannot enter
 `ACCEPTED_DEAUTHORIZED`.
 
 ## Least-invasive routing
@@ -253,7 +257,12 @@ Supersession is one canonical atomic transaction over an exact current prior
 and compatible successor. It requires equal class/scope/target/subjects, exact current
 authority evidence, monotonic time and rollback identity. The prior becomes
 effectively `SUPERSEDED` and the successor becomes the sole `CURRENT` record;
-immutable record and source history remain available.
+the aggregate emits a content-addressed current-record-set receipt binding every
+record and supersession fingerprint. Missing or malformed transactions produce
+`HELD_CONFLICT`; stale or substituted receipts are rejected. Applicable
+projection accepts only the exact conflict-free receipt, excludes the prior and
+can select only its same-target successor.
+The immutable record and source history remain available.
 
 Conflicting current records fail closed as `HELD_CONFLICT` instead of silently
 overwriting one another.
@@ -287,9 +296,12 @@ Foundation Kernel
 ```
 
 Applicable context projection carries accepted record, release, exact target and
-authority-disposition refs within a token budget. A scope-class-only query is
-invalid, and simulation-only records are absent unless `SIMULATED_CURRENT` is
-explicitly admitted. It does not inject raw episodes or all historical records.
+authority-disposition refs within a token budget. It starts from the aggregate's
+exact current-record-set receipt rather than a caller-supplied record array. A
+scope-class-only query, missing current record, conflict, wrong transaction
+fingerprint or stale receipt is invalid, and simulation-only records are absent
+unless `SIMULATED_CURRENT` is explicitly admitted. It does not inject raw
+episodes, superseded records or all historical records.
 
 `maximumConcurrentTrainingRuns` remains `0`. This lane does not train, download,
 provision, remove or activate model weights or adapters.
@@ -303,8 +315,13 @@ predecessors before mutation: candidate source observations, review route,
 accepted record authority, transient lease and recurrence record/observation/
 prior chain. Unknown, wrong-lineage, internally canonical but unowned, and
 same-ref/different-content payloads fail without changing aggregate content or
-revision. Queue, Terrain, Health, Guide and evolution projections are selectors
-over that one aggregate and suppress semantic no-ops.
+revision. Human-record, transient-context and Burden projections also resolve
+their source from that aggregate, recompute candidate/route/review/target and
+authority meaning, and attach a content-addressed aggregate-projection receipt.
+Canonical but unowned records, class/target/summary/source substitutions and
+detached contexts cannot be projected. Queue, Terrain, Health, Guide and
+evolution projections are selectors over that one aggregate and suppress
+semantic no-ops.
 
 The deterministic simulation creates the actual continuity node
 `work.vexlife.continuity-evolution-router` in one accepted Intent Workgraph,
@@ -312,8 +329,9 @@ leases it through the one-worker scheduler, loads exact applicable record and
 release refs into the bounded scheduler context lease, and completes through
 the external completion verifier. Its completion-gate bundle hashes the exact
 observation, candidate, exact scope target, canonical route, review, acceptance
-evidence, accepted record, authority disposition and applicable-projection
-fingerprints. The structured receipt binds
+evidence, accepted record, current-record-set, aggregate-owned record and Burden
+projection, authority disposition and applicable-projection fingerprints. The
+structured receipt binds
 candidate/tested/base Git identity, source tree, Blueprint/evolution hashes and
 scheduler completion lineage. `pr-ready` and `health:check` independently
 reject missing, stale, effectful, weight-changing or causally unbound evidence.

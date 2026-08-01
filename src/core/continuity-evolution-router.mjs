@@ -1,5 +1,4 @@
 import {
-  acceptBurdenRelease,
   createContinuityAuthoritySnapshot,
   createBurdenRelease,
   transitionBurdenRelease,
@@ -813,6 +812,119 @@ function formReviewedBurdenRelease(candidate, route, review) {
   });
 }
 
+function validateAggregateSnapshot(aggregate) {
+  if (!aggregate || aggregate.schemaVersion !== 'vexlife.continuity-evolution-aggregate/v1' ||
+      aggregate.currentness !== 'CURRENT' || !SHA256.test(aggregate.semanticFingerprint ?? '')) {
+    throw new Error('Burden Release acceptance requires an exact current continuity aggregate');
+  }
+  const core = structuredClone(aggregate);
+  const fingerprint = core.semanticFingerprint;
+  delete core.semanticFingerprint;
+  if (semanticHash(core) !== fingerprint) throw new Error('continuity aggregate fingerprint mismatch');
+  return aggregate;
+}
+
+function validateAggregateOwnedBurdenAcceptance(aggregate, candidate, route, review, authorityEvidence) {
+  validateAggregateSnapshot(aggregate);
+  const storedCandidate = aggregate.candidates?.find((item) => item.candidateRef === candidate.candidateRef);
+  const storedReview = aggregate.reviews?.find((item) => item.reviewRef === review.reviewRef);
+  if (!storedCandidate || storedCandidate.semanticFingerprint !== candidate.semanticFingerprint ||
+      semanticHash(storedCandidate) !== semanticHash(candidate)) {
+    throw new Error('Burden Release candidate is not exact aggregate-owned current lineage');
+  }
+  const observations = candidate.observationBindings.map((binding) => {
+    const stored = aggregate.observations?.find((item) => item.observationRef === binding.observationRef);
+    if (!stored || stored.semanticFingerprint !== binding.observationFingerprint) {
+      throw new Error('Burden Release candidate source is not exact aggregate-owned observation lineage');
+    }
+    validateContinuityObservation(stored);
+    return stored;
+  });
+  const expectedTarget = deriveContinuityScopeTarget({
+    observations,
+    scopeClass: candidate.candidateScope,
+    aboutSelfRefs: candidate.aboutSelfRefs,
+    affectedPartyRefs: candidate.affectedPartyRefs,
+    institutionalAuthorityRefs: candidate.institutionalAuthorityRefs,
+    admittedTargetLineageRefs: candidate.admittedTargetLineageRefs
+  });
+  if (expectedTarget.semanticFingerprint !== candidate.scopeTargetFingerprint ||
+      expectedTarget.scopeTargetRef !== candidate.scopeTargetRef ||
+      !storedReview || storedReview.semanticFingerprint !== review.semanticFingerprint ||
+      semanticHash(storedReview) !== semanticHash(review)) {
+    throw new Error('Burden Release route or Context Review is not exact aggregate-owned policy');
+  }
+  validateContinuityCandidate(storedCandidate);
+  const canonicalRoute = routeContinuityCandidate(storedCandidate);
+  if (canonicalRoute.semanticFingerprint !== route.semanticFingerprint || canonicalRoute.routeRef !== route.routeRef) {
+    throw new Error('Burden Release route is not canonical aggregate-owned policy');
+  }
+  validateContinuityContextReview(storedCandidate, canonicalRoute, storedReview);
+  for (const supplied of authorityEvidence) {
+    const stored = aggregate.authorityEvidence?.find((item) => item.acceptanceEvidenceRef === supplied.acceptanceEvidenceRef);
+    if (!stored || stored.semanticFingerprint !== supplied.semanticFingerprint || semanticHash(stored) !== semanticHash(supplied)) {
+      throw new Error('Burden Release authority evidence is well-formed but not aggregate-recorded current evidence');
+    }
+    validateContinuityAcceptanceEvidence(stored, { candidate: storedCandidate, route: canonicalRoute, review: storedReview });
+  }
+}
+
+function acceptReviewedBurdenRelease(release, { candidate, route, review, authorityEvidence, actorRef, acceptedAt, evaluationRefs }) {
+  validateBurdenRelease(release);
+  const expected = formReviewedBurdenRelease(candidate, route, review);
+  if (release.state !== 'CONTEXT_REVIEW' || release.burdenRef !== expected.burdenRef ||
+      release.identityFingerprint !== expected.identityFingerprint ||
+      semanticHash(release.sourceForm) !== semanticHash(expected.sourceForm)) {
+    throw new Error('Burden Release acceptance requires the exact canonical reviewed source form at CONTEXT_REVIEW');
+  }
+  const accepted = stableRefs(authorityEvidence.map((item) => item.authorityRef), 'Burden Release acceptedByRefs', { required: true });
+  if (!exactRefs(accepted, review.requiredAcceptanceRefs)) {
+    throw new Error('Burden Release cannot deauthorize influence without exact canonical authority policy');
+  }
+  const evidence = [...authorityEvidence]
+    .map((item) => structuredClone(item))
+    .sort((left, right) => left.acceptanceEvidenceRef.localeCompare(right.acceptanceEvidenceRef));
+  const acceptanceEvidenceRefs = stableRefs(evidence.map((item) => item.acceptanceEvidenceRef), 'Burden Release acceptanceEvidenceRefs', { required: true });
+  const authoritySnapshotRefs = stableRefs(evidence.map((item) => item.authoritySnapshotRef), 'Burden Release authoritySnapshotRefs', { required: true });
+  const transitionedAt = canonicalTimestamp(acceptedAt, 'Burden Release acceptedAt');
+  afterOrEqual(transitionedAt, release.lastTransition?.transitionedAt ?? release.formedAt, 'Burden Release transition', { strict: true });
+  const receiptCore = {
+    schemaVersion: 'vexlife.burden-release-transition/v1',
+    burdenRef: release.burdenRef,
+    sequence: release.transitionReceipts.length,
+    priorState: release.state,
+    nextState: 'ACCEPTED_DEAUTHORIZED',
+    actorRef,
+    transitionedAt,
+    reason: 'EXACT_SCOPE_INFLUENCE_DEAUTHORIZED',
+    priorReleaseFingerprint: release.semanticFingerprint,
+    acceptedByRefs: accepted,
+    authorityEvidence: evidence,
+    acceptanceEvidenceRefs,
+    authoritySnapshotRefs,
+    evaluationRefs: stableRefs(evaluationRefs ?? [], 'Burden Release evaluationRefs'),
+    recurrenceState: 'MONITORING_AVAILABLE'
+  };
+  const transitionRef = `burden-release-transition.${semanticHash(receiptCore).slice(0, 24)}`;
+  const receiptWithoutFingerprint = { ...receiptCore, transitionRef };
+  const receipt = deepFreeze({ ...receiptWithoutFingerprint, semanticFingerprint: semanticHash(receiptWithoutFingerprint) });
+  const core = structuredClone(release);
+  delete core.semanticFingerprint;
+  core.state = 'ACCEPTED_DEAUTHORIZED';
+  core.acceptedByRefs = accepted;
+  core.acceptanceEvidence = evidence;
+  core.acceptanceEvidenceRefs = acceptanceEvidenceRefs;
+  core.authoritySnapshotRefs = authoritySnapshotRefs;
+  core.acceptedAt = transitionedAt;
+  core.evaluationRefs = receipt.evaluationRefs;
+  core.recurrenceState = receipt.recurrenceState;
+  core.transitionReceipts = [...release.transitionReceipts, receipt];
+  core.lastTransition = receipt;
+  const acceptedRelease = deepFreeze({ ...core, semanticFingerprint: semanticHash(core) });
+  validateBurdenRelease(acceptedRelease);
+  return acceptedRelease;
+}
+
 function acceptedBurden(candidate, review, acceptedByRefs, authorityEvidence, acceptedAt) {
   const route = routeContinuityCandidate(candidate);
   let release = formReviewedBurdenRelease(candidate, route, review);
@@ -825,7 +937,7 @@ function acceptedBurden(candidate, review, acceptedByRefs, authorityEvidence, ac
   release = transitionBurdenRelease(release, {
     nextState: 'CONTEXT_REVIEW', actorRef: review.reviewerRef, transitionedAt: review.reviewedAt, reason: review.reviewRef
   });
-  return acceptBurdenRelease(release, {
+  return acceptReviewedBurdenRelease(release, {
     candidate,
     route,
     review,
@@ -843,6 +955,9 @@ export function acceptContinuityCandidate(candidate, review, input) {
   afterOrEqual(acceptedAt, review.reviewedAt, 'continuity acceptance', { strict: true });
   const { accepted, evidence } = requireAcceptableReview(candidate, route, review, input.acceptedByRefs, input.authorityEvidence, acceptedAt);
   const disposition = authorityDisposition(evidence);
+  if (route.proposedPrimaryDestination === 'BURDEN_RELEASE') {
+    validateAggregateOwnedBurdenAcceptance(input.aggregate, candidate, route, review, evidence);
+  }
   if (route.proposedPrimaryDestination === 'CURRENT_CONTEXT') {
     const lease = input.currentContextLease;
     assertCanonical(lease, 'contextBindingRef', 'continuity-current-context', 'current-context lease');
@@ -963,9 +1078,38 @@ export function validateAcceptedContinuityRecord(record) {
   }
   if (!exactRefs(record.acceptedByRefs, record.requiredAcceptanceRefs) || record.acceptanceEvidence?.length !== record.requiredAcceptanceRefs.length ||
       !exactRefs(record.acceptanceEvidenceRefs, stableRefs(record.acceptanceEvidence.map((item) => item.acceptanceEvidenceRef), 'acceptanceEvidenceRefs', { required: true }))) throw new Error('accepted record acceptance evidence coverage mismatch');
-  for (const evidence of record.acceptanceEvidence) validateContinuityAcceptanceEvidence(evidence, { acceptedAt: record.acceptedAt });
+  for (const evidence of record.acceptanceEvidence) {
+    validateContinuityAcceptanceEvidence(evidence, { acceptedAt: record.acceptedAt });
+    if (evidence.candidateRef !== record.candidateRef || evidence.candidateFingerprint !== record.candidateFingerprint ||
+        evidence.routeRef !== record.routeRef || evidence.routeFingerprint !== record.routeFingerprint ||
+        evidence.reviewRef !== record.reviewRef || evidence.reviewFingerprint !== record.reviewFingerprint ||
+        evidence.recordClass !== record.recordClass || evidence.scope !== record.scope ||
+        evidence.scopeTargetRef !== record.scopeTargetRef || evidence.scopeTargetFingerprint !== record.scopeTargetFingerprint ||
+        evidence.evidenceClass !== record.authorityEvidenceClass || evidence.simulatedAuthority !== record.simulatedAuthority ||
+        evidence.liveAuthorityGranted !== record.liveAuthorityGranted ||
+        evidence.externalEffectsAuthorized !== record.externalEffectsAuthorized ||
+        evidence.acceptanceDisposition !== record.acceptanceDisposition ||
+        !record.acceptedByRefs.includes(evidence.authorityRef)) {
+      throw new Error('accepted record outer meaning is detached from its candidate/route/review/authority evidence');
+    }
+  }
   authorityDisposition(record.acceptanceEvidence);
-  if (record.burdenRelease) validateBurdenRelease(record.burdenRelease);
+  if (record.burdenRelease) {
+    validateBurdenRelease(record.burdenRelease);
+    if (record.recordClass !== 'BURDEN_RELEASE' || record.burdenReleaseRef !== record.burdenRelease.burdenRef ||
+        record.burdenRelease.candidateRef !== record.candidateRef ||
+        record.burdenRelease.candidateFingerprint !== record.candidateFingerprint ||
+        record.burdenRelease.routeRef !== record.routeRef || record.burdenRelease.routeFingerprint !== record.routeFingerprint ||
+        record.burdenRelease.reviewRef !== record.reviewRef || record.burdenRelease.reviewFingerprint !== record.reviewFingerprint ||
+        record.burdenRelease.scope !== record.scope || record.burdenRelease.scopeTargetRef !== record.scopeTargetRef ||
+        record.burdenRelease.scopeTargetFingerprint !== record.scopeTargetFingerprint ||
+        !exactRefs(record.burdenRelease.acceptanceEvidenceRefs, record.acceptanceEvidenceRefs)) {
+      throw new Error('accepted record Burden meaning is detached from its exact outer lineage');
+    }
+  } else if (record.recordClass === 'BURDEN_RELEASE' || record.burdenReleaseRef !== null ||
+      record.acceptanceEvidence.some((item) => item.burdenRef !== null)) {
+    throw new Error('accepted Burden record is missing exact reviewed Burden meaning');
+  }
   if (record.weightActivationState !== 'INACTIVE' || record.effectAuthorityActive !== false) throw new Error('accepted continuity record implies active weight/effect authority');
   return record;
 }
@@ -1025,14 +1169,22 @@ export function validateContinuityRecordSet(records, supersessions = []) {
     groups.set(key, [...(groups.get(key) ?? []), record]);
   }
   const conflicts = [...groups.values()].filter((group) => group.length > 1).map((group) => group.map((record) => record.acceptedRecordRef).sort());
-  return deepFreeze({
+  return fingerprinted({
     schemaVersion: 'vexlife.continuity-record-set-validation/v1',
+    recordBindings: records.map((record) => ({
+      acceptedRecordRef: record.acceptedRecordRef,
+      acceptedRecordFingerprint: record.semanticFingerprint
+    })).sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef)),
+    supersessionBindings: supersessions.map((transaction) => ({
+      supersessionRef: transaction.supersessionRef,
+      supersessionFingerprint: transaction.semanticFingerprint
+    })).sort((left, right) => left.supersessionRef.localeCompare(right.supersessionRef)),
     state: conflicts.length ? 'HELD_CONFLICT' : 'CURRENT',
     currentRecordRefs: current.map((record) => record.acceptedRecordRef).sort(),
     supersededRecordRefs: [...superseded].sort(),
     conflicts,
     silentOverwriteAllowed: false
-  });
+  }, 'currentRecordSetRef', 'continuity-current-record-set');
 }
 
 export function createFamilySynchronizationReview(record, { targetLineageRefs, reviewerRef, privacyEvidenceRef, formedAt, expiresAt }) {
@@ -1226,12 +1378,29 @@ export function validateTransientContinuityContext(context) {
       !exactRefs(context.acceptanceEvidenceRefs, stableRefs(context.acceptanceEvidence.map((item) => item.acceptanceEvidenceRef), 'transient acceptanceEvidenceRefs', { required: true }))) {
     throw new Error('transient continuity context does not bind exact lease/lineage/evidence');
   }
-  for (const evidence of context.acceptanceEvidence) validateContinuityAcceptanceEvidence(evidence, { acceptedAt: context.acceptedAt });
+  for (const evidence of context.acceptanceEvidence) {
+    validateContinuityAcceptanceEvidence(evidence, { acceptedAt: context.acceptedAt });
+    if (evidence.candidateRef !== context.candidateRef || evidence.candidateFingerprint !== context.candidateFingerprint ||
+        evidence.routeRef !== context.routeRef || evidence.routeFingerprint !== context.routeFingerprint ||
+        evidence.reviewRef !== context.reviewRef || evidence.reviewFingerprint !== context.reviewFingerprint ||
+        evidence.recordClass !== 'CURRENT_CONTEXT' || evidence.scope !== context.scope ||
+        evidence.scopeTargetRef !== context.scopeTargetRef || evidence.scopeTargetFingerprint !== context.scopeTargetFingerprint ||
+        evidence.evidenceClass !== context.authorityEvidenceClass || evidence.simulatedAuthority !== context.simulatedAuthority ||
+        evidence.liveAuthorityGranted !== context.liveAuthorityGranted ||
+        evidence.externalEffectsAuthorized !== context.externalEffectsAuthorized ||
+        evidence.acceptanceDisposition !== context.acceptanceDisposition ||
+        !context.acceptedByRefs.includes(evidence.authorityRef)) {
+      throw new Error('transient context outer meaning is detached from its candidate/route/review/authority evidence');
+    }
+  }
   authorityDisposition(context.acceptanceEvidence);
   return context;
 }
 
 export function projectApplicableContinuity({ records, applicableScopeTargets, allowedAuthorityEvidenceClasses = [], tokenBudget = 256 }) {
+  void records; void applicableScopeTargets; void allowedAuthorityEvidenceClasses; void tokenBudget;
+  throw new Error('applicable continuity projection requires the aggregate-owned current-record-set boundary');
+  /* Legacy formatter retained below only as an unreachable shape reference until the next schema-removal lane. */
   if (!Array.isArray(applicableScopeTargets) || applicableScopeTargets.length === 0) {
     throw new Error('applicable continuity requires exact canonical scope targets, not scope classes alone');
   }
@@ -1288,6 +1457,9 @@ export function projectApplicableContinuity({ records, applicableScopeTargets, a
 }
 
 export function projectContinuityRecord(record) {
+  void record;
+  throw new Error('continuity record projection requires an exact aggregate-owned record');
+  /* Legacy formatter retained below only as an unreachable shape reference until the next schema-removal lane. */
   validateAcceptedContinuityRecord(record);
   return deepFreeze({
     schemaVersion: 'vexlife.continuity-human-projection/v1',

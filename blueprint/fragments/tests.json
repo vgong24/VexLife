@@ -538,5 +538,17 @@
   {
     "testRef": "test.continuity-evolution.c13-simulation-authority-projection",
     "brief": "Simulation-only authority remains explicitly non-live and inactive in accepted/transient records, compact projections, applicability and Health; promotion, mixing and family delivery fail closed."
+  },
+  {
+    "testRef": "test.continuity-evolution.c14-aggregate-owned-projection",
+    "brief": "Record, transient-context and Burden projections resolve exact aggregate-owned candidate, route, review, target, authority and source meaning; detached or substituted canonical payloads fail without mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c15-current-set-applicability",
+    "brief": "Applicable continuity consumes the exact content-addressed aggregate current-record-set receipt, blocks conflicts and stale receipts, excludes prior records and selects only the same-target supersession successor."
+  },
+  {
+    "testRef": "test.continuity-evolution.c16-canonical-burden-policy",
+    "brief": "Burden deauthorization is accepted only through canonical aggregate-owned routing, exact Context Review policy and exact recorded simulated-current authority evidence; lower-level pointer-only acceptance stays sealed."
   }
 ]

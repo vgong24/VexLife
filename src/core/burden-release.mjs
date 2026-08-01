@@ -487,61 +487,14 @@ export function acceptBurdenRelease(release, {
   acceptedAt = new Date().toISOString(),
   evaluationRefs = release.evaluationRefs
 }) {
-  validateBurdenRelease(release);
-  validateReviewedBurdenMeaning(release, candidate, route, review);
-  if (release.state !== 'CONTEXT_REVIEW') throw new Error('Burden Release acceptance requires replayed CONTEXT_REVIEW history');
-  const evidence = [...(authorityEvidence ?? [])];
-  const acceptedByRefs = refs(evidence.map((item) => item.actorRef), 'acceptedByRefs');
-  return applyTransition(release, {
-    nextState: 'ACCEPTED_DEAUTHORIZED',
-    actorRef,
-    acceptedByRefs,
-    authorityEvidence: evidence,
-    acceptedAt,
-    evaluationRefs,
-    recurrenceState: 'MONITORING_AVAILABLE',
-    transitionedAt: acceptedAt,
-    reason: 'EXACT_SCOPE_INFLUENCE_DEAUTHORIZED'
-  });
+  void release; void candidate; void route; void review; void authorityEvidence;
+  void actorRef; void acceptedAt; void evaluationRefs;
+  throw new Error('lower-level Burden Release acceptance is private to aggregate-owned canonical continuity acceptance');
 }
 
 export function projectBurdenRelease(release, { candidate, route, review } = {}) {
-  validateBurdenRelease(release);
-  validateReviewedBurdenMeaning(release, candidate, route, review);
-  if (['ACCEPTED_DEAUTHORIZED', 'MONITORED_FOR_RECURRENCE', 'REOPENED', 'SUPERSEDED'].includes(release.state)) {
-    for (const evidence of release.acceptanceEvidence) validateAcceptanceEvidence(evidence, release, release.acceptedAt);
-  }
-  return deepFreeze({
-    schemaVersion: 'vexlife.burden-release-projection/v1',
-    burdenRef: release.burdenRef,
-    patternRef: `pattern.${release.identityFingerprint.slice(0, 24)}`,
-    change: release.authorityTransition,
-    formerAuthority: release.formerAuthority,
-    currentAuthority: release.currentAuthority,
-    protectedCapabilities: [...release.protectedCapabilities],
-    prohibitedOvercorrections: [...release.prohibitedOvercorrections],
-    scope: release.scope,
-    scopeTargetRef: release.scopeTargetRef,
-    scopeTargetFingerprint: release.scopeTargetFingerprint,
-    state: release.state,
-    recurrenceState: release.recurrenceState,
-    transitionReceiptRefs: release.transitionReceipts.map((item) => item.transitionRef),
-    authoritySnapshotRefs: [...release.authoritySnapshotRefs],
-    authorityEvidenceClass: release.acceptanceEvidence[0]?.evidenceClass ?? null,
-    simulatedAuthority: release.acceptanceEvidence[0]?.simulatedAuthority ?? false,
-    liveAuthorityGranted: release.acceptanceEvidence[0]?.liveAuthorityGranted ?? false,
-    externalEffectsAuthorized: release.acceptanceEvidence[0]?.externalEffectsAuthorized ?? false,
-    acceptanceDisposition: release.acceptanceEvidence[0]?.acceptanceDisposition ?? 'NOT_ACCEPTED',
-    claimsParameterDeletion: false,
-    rawSourceContentIncluded: false,
-    nextSafeAction: release.acceptanceEvidence[0]?.acceptanceDisposition === 'SIMULATION_ONLY_INACTIVE'
-      ? 'USE_ONLY_IN_EXPLICIT_SIMULATED_CURRENT_CONTEXT'
-      : ['ACCEPTED_DEAUTHORIZED', 'MONITORED_FOR_RECURRENCE'].includes(release.state)
-      ? 'MONITOR_EXACT_PATTERN_WITHOUT_SCOPE_BROADENING'
-      : release.state === 'REOPENED'
-        ? 'RETURN_TO_CONTEXT_REVIEW'
-        : 'COMPLETE_EXACT_ACCEPTANCE_REVIEW'
-  });
+  void release; void candidate; void route; void review;
+  throw new Error('Burden Release projection requires an exact aggregate-owned accepted record');
 }
 
 // [VXG RealForever]

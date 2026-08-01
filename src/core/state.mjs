@@ -1,6 +1,8 @@
 import { StateCell, selectState } from './state-relay.mjs';
-import { semanticHash } from './utils.mjs';
+import { estimateTokens, semanticHash } from './utils.mjs';
+import { validateBurdenRelease } from './burden-release.mjs';
 import {
+  CONTINUITY_AUTHORITY_EVIDENCE_CLASSES,
   acceptContinuityCandidate,
   deriveContinuityScopeTarget,
   recordContinuityRecurrence,
@@ -11,12 +13,28 @@ import {
   validateContinuityObservation,
   validateContinuityRecurrenceEvidence,
   validateContinuityRecordSet,
+  validateContinuityScopeTarget,
   validateContinuitySupersession,
   validateTransientContinuityContext,
   routeContinuityCandidate
 } from './continuity-evolution-router.mjs';
 
 export { StateCell, selectState };
+
+export const CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS = Object.freeze([
+  'schemaVersion', 'aggregateFingerprint', 'recordBindings', 'supersessionBindings', 'state',
+  'currentRecordRefs', 'supersededRecordRefs', 'conflicts', 'silentOverwriteAllowed',
+  'currentRecordSetRef', 'semanticFingerprint'
+]);
+
+export const CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS = Object.freeze([
+  'schemaVersion', 'projectionKind', 'aggregateFingerprint', 'sourceRef', 'sourceFingerprint',
+  'candidateRef', 'candidateFingerprint', 'routeRef', 'routeFingerprint', 'reviewRef',
+  'reviewFingerprint', 'recordClass', 'scope', 'scopeTargetRef', 'scopeTargetFingerprint',
+  'requiredAcceptanceRefs', 'acceptedByRefs', 'authorityEvidenceRefs', 'authorityEvidenceClass',
+  'acceptanceDisposition', 'burdenRef', 'burdenIdentityFingerprint', 'burdenSourceFingerprint',
+  'currentRecordSetRef', 'currentRecordSetFingerprint', 'projectionReceiptRef', 'semanticFingerprint'
+]);
 
 function clone(value) {
   return structuredClone(value);
@@ -497,12 +515,313 @@ function validateAggregateOwnedRecord(aggregate, record) {
     acceptedAt: record.acceptedAt,
     acceptedByRefs: record.acceptedByRefs,
     authorityEvidence: evidence,
-    rollbackRef: record.rollbackRef
+    rollbackRef: record.rollbackRef,
+    aggregate
   });
   if (recomputed.acceptedRecordRef !== record.acceptedRecordRef || recomputed.semanticFingerprint !== record.semanticFingerprint) {
     throw new Error('accepted record is internally canonical but not derived from aggregate-owned lineage');
   }
   return { ...lineage, evidence };
+}
+
+function validateAggregateSnapshot(aggregate) {
+  if (!aggregate || aggregate.schemaVersion !== 'vexlife.continuity-evolution-aggregate/v1' ||
+      aggregate.currentness !== 'CURRENT' || !aggregate.semanticFingerprint) {
+    throw new Error('continuity projection requires an exact current state.evolution aggregate');
+  }
+  const core = clone(aggregate);
+  const fingerprint = core.semanticFingerprint;
+  delete core.semanticFingerprint;
+  if (semanticHash(core) !== fingerprint) throw new Error('continuity projection aggregate fingerprint mismatch');
+  return aggregate;
+}
+
+function stateFingerprinted(core, refField, prefix) {
+  const semanticFingerprint = semanticHash(core);
+  return freeze({ ...core, [refField]: `${prefix}.${semanticFingerprint.slice(0, 24)}`, semanticFingerprint });
+}
+
+function stableStringRefs(value, label, { required = false } = {}) {
+  if (!Array.isArray(value) || (required && value.length === 0) ||
+      value.some((item) => typeof item !== 'string' || item.length === 0)) {
+    throw new Error(`${label} must be ${required ? 'a non-empty' : 'an'} stable-ref array`);
+  }
+  return [...new Set(value)].sort();
+}
+
+function validateAggregateOwnedContext(aggregate, context) {
+  validateTransientContinuityContext(context);
+  const lineage = aggregateCandidateRouteReview(aggregate, context);
+  const evidence = exactStoredAuthorityEvidence(aggregate, context.acceptanceEvidence, lineage, context.acceptedAt);
+  const recomputed = acceptContinuityCandidate(lineage.candidate, lineage.review, {
+    acceptedAt: context.acceptedAt,
+    acceptedByRefs: context.acceptedByRefs,
+    authorityEvidence: evidence,
+    currentContextLease: context.contextLease,
+    aggregate
+  });
+  if (recomputed.contextRecordRef !== context.contextRecordRef || recomputed.semanticFingerprint !== context.semanticFingerprint) {
+    throw new Error('transient context is internally canonical but not derived from aggregate-owned lineage');
+  }
+  return { ...lineage, evidence };
+}
+
+export function createContinuityCurrentRecordSetReceipt(aggregate) {
+  validateAggregateSnapshot(aggregate);
+  for (const record of aggregate.acceptedRecords) validateAggregateOwnedRecord(aggregate, record);
+  const validation = validateContinuityRecordSet(aggregate.acceptedRecords, aggregate.supersessions);
+  return stateFingerprinted({
+    schemaVersion: 'vexlife.continuity-current-record-set-receipt/v1',
+    aggregateFingerprint: aggregate.semanticFingerprint,
+    recordBindings: validation.recordBindings,
+    supersessionBindings: validation.supersessionBindings,
+    state: validation.state,
+    currentRecordRefs: validation.currentRecordRefs,
+    supersededRecordRefs: validation.supersededRecordRefs,
+    conflicts: validation.conflicts,
+    silentOverwriteAllowed: false
+  }, 'currentRecordSetRef', 'continuity-current-record-set-receipt');
+}
+
+function exactCurrentRecordSetReceipt(aggregate, supplied) {
+  const expected = createContinuityCurrentRecordSetReceipt(aggregate);
+  if (!supplied || supplied.currentRecordSetRef !== expected.currentRecordSetRef ||
+      supplied.semanticFingerprint !== expected.semanticFingerprint || semanticHash(supplied) !== semanticHash(expected)) {
+    throw new Error('applicable continuity current-record-set receipt is missing, stale or substituted');
+  }
+  return expected;
+}
+
+function resolveAggregateRecord(aggregate, acceptedRecordRef, acceptedRecordFingerprint) {
+  validateAggregateSnapshot(aggregate);
+  const record = aggregate.acceptedRecords.find((item) => item.acceptedRecordRef === acceptedRecordRef);
+  if (!record || record.semanticFingerprint !== acceptedRecordFingerprint) {
+    throw new Error('continuity projection source is not the exact aggregate-owned accepted record');
+  }
+  const lineage = validateAggregateOwnedRecord(aggregate, record);
+  return { record, lineage };
+}
+
+function projectionOwnershipReceipt(aggregate, source, lineage, projectionKind, currentSet) {
+  const burden = source.burdenRelease ?? null;
+  return stateFingerprinted({
+    schemaVersion: 'vexlife.continuity-aggregate-projection-receipt/v1',
+    projectionKind,
+    aggregateFingerprint: aggregate.semanticFingerprint,
+    sourceRef: source.acceptedRecordRef ?? source.contextRecordRef,
+    sourceFingerprint: source.semanticFingerprint,
+    candidateRef: lineage.candidate.candidateRef,
+    candidateFingerprint: lineage.candidate.semanticFingerprint,
+    routeRef: lineage.route.routeRef,
+    routeFingerprint: lineage.route.semanticFingerprint,
+    reviewRef: lineage.review.reviewRef,
+    reviewFingerprint: lineage.review.semanticFingerprint,
+    recordClass: source.recordClass ?? lineage.route.proposedPrimaryDestination,
+    scope: source.scope,
+    scopeTargetRef: source.scopeTargetRef,
+    scopeTargetFingerprint: source.scopeTargetFingerprint,
+    requiredAcceptanceRefs: [...lineage.review.requiredAcceptanceRefs],
+    acceptedByRefs: [...source.acceptedByRefs],
+    authorityEvidenceRefs: [...source.acceptanceEvidenceRefs].sort(),
+    authorityEvidenceClass: source.authorityEvidenceClass,
+    acceptanceDisposition: source.acceptanceDisposition,
+    burdenRef: burden?.burdenRef ?? null,
+    burdenIdentityFingerprint: burden?.identityFingerprint ?? null,
+    burdenSourceFingerprint: burden ? semanticHash(burden.sourceForm) : null,
+    currentRecordSetRef: currentSet?.currentRecordSetRef ?? null,
+    currentRecordSetFingerprint: currentSet?.semanticFingerprint ?? null
+  }, 'projectionReceiptRef', 'continuity-aggregate-projection-receipt');
+}
+
+export function projectAggregateOwnedContinuityRecord({ aggregate, acceptedRecordRef, acceptedRecordFingerprint }) {
+  const { record, lineage } = resolveAggregateRecord(aggregate, acceptedRecordRef, acceptedRecordFingerprint);
+  const currentSet = createContinuityCurrentRecordSetReceipt(aggregate);
+  const ownershipReceipt = projectionOwnershipReceipt(aggregate, record, lineage, 'HUMAN_RECORD', currentSet);
+  return freeze({
+    schemaVersion: 'vexlife.continuity-human-projection/v2',
+    acceptedRecordRef: record.acceptedRecordRef,
+    acceptedRecordFingerprint: record.semanticFingerprint,
+    aggregateProjectionReceipt: ownershipReceipt,
+    observedPatternOrPreferenceRef: record.summaryRef,
+    experienceOrPreferenceOwnerRefs: stableStringRefs([...record.aboutSelfRefs, ...record.affectedPartyRefs], 'projection owner refs'),
+    sourceSupport: { observationRefs: [...record.sourceObservationRefs], sourceBindingCount: record.sourceBindings.length, rawContentIncluded: false },
+    privacyEvidenceRef: record.privacyEvidenceRef,
+    redactionEvidenceRef: record.redactionEvidenceRef,
+    changed: record.recordClass,
+    authorityTransition: record.burdenRelease?.authorityTransition ?? 'ACCEPTED_SCOPED_RECORD',
+    protectedCapabilities: [...record.protectedCapabilities],
+    prohibitedOvercorrections: [...record.prohibitedOvercorrections],
+    scope: record.scope,
+    scopeTargetRef: record.scopeTargetRef,
+    scopeTargetFingerprint: record.scopeTargetFingerprint,
+    authorityEvidenceClass: record.authorityEvidenceClass,
+    simulatedAuthority: record.simulatedAuthority,
+    liveAuthorityGranted: record.liveAuthorityGranted,
+    externalEffectsAuthorized: record.externalEffectsAuthorized,
+    acceptanceDisposition: record.acceptanceDisposition,
+    liveApplicabilityGranted: record.liveApplicabilityGranted,
+    currentSetDisposition: currentSet.state === 'HELD_CONFLICT'
+      ? 'HELD_CONFLICT'
+      : currentSet.currentRecordRefs.includes(record.acceptedRecordRef) ? 'CURRENT' : 'SUPERSEDED',
+    state: record.lifecycle,
+    nextSafeAction: record.acceptanceDisposition === 'SIMULATION_ONLY_INACTIVE'
+      ? 'USE_ONLY_IN_EXPLICIT_SIMULATED_CURRENT_CONTEXT'
+      : record.lifecycle === 'INACTIVE_PENDING_DETERMINISTIC_IMPLEMENTATION_REVIEW'
+        ? 'OPEN_SEPARATE_DETERMINISTIC_IMPLEMENTATION_REVIEW'
+        : record.recurrenceState === 'REOPEN_REVIEW' ? 'RETURN_TO_CONTEXT_REVIEW' : 'APPLY_BY_REF_ONLY_WHEN_SCOPE_MATCHES'
+  });
+}
+
+export function projectAggregateOwnedTransientContinuityContext({ aggregate, contextRecordRef, contextRecordFingerprint }) {
+  validateAggregateSnapshot(aggregate);
+  const context = aggregate.transientContexts.find((item) => item.contextRecordRef === contextRecordRef);
+  if (!context || context.semanticFingerprint !== contextRecordFingerprint) {
+    throw new Error('continuity projection source is not the exact aggregate-owned transient context');
+  }
+  const lineage = validateAggregateOwnedContext(aggregate, context);
+  const ownershipReceipt = projectionOwnershipReceipt(aggregate, context, lineage, 'TRANSIENT_CONTEXT', null);
+  return freeze({
+    schemaVersion: 'vexlife.transient-continuity-projection/v1',
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    aggregateProjectionReceipt: ownershipReceipt,
+    summaryRef: context.summaryRef,
+    scope: context.scope,
+    scopeTargetRef: context.scopeTargetRef,
+    scopeTargetFingerprint: context.scopeTargetFingerprint,
+    contextBindingRef: context.contextLease.contextBindingRef,
+    expiresAt: context.expiresAt,
+    authorityEvidenceClass: context.authorityEvidenceClass,
+    simulatedAuthority: context.simulatedAuthority,
+    liveAuthorityGranted: context.liveAuthorityGranted,
+    externalEffectsAuthorized: context.externalEffectsAuthorized,
+    acceptanceDisposition: context.acceptanceDisposition,
+    liveApplicabilityGranted: context.liveApplicabilityGranted,
+    rawSourceContentIncluded: false
+  });
+}
+
+export function projectAggregateOwnedBurdenRelease({ aggregate, acceptedRecordRef, acceptedRecordFingerprint }) {
+  const { record, lineage } = resolveAggregateRecord(aggregate, acceptedRecordRef, acceptedRecordFingerprint);
+  if (record.recordClass !== 'BURDEN_RELEASE' || !record.burdenRelease) {
+    throw new Error('aggregate-owned Burden projection requires an accepted Burden record');
+  }
+  validateBurdenRelease(record.burdenRelease);
+  const currentSet = createContinuityCurrentRecordSetReceipt(aggregate);
+  const ownershipReceipt = projectionOwnershipReceipt(aggregate, record, lineage, 'BURDEN_RELEASE', currentSet);
+  const release = record.burdenRelease;
+  return freeze({
+    schemaVersion: 'vexlife.burden-release-projection/v2',
+    burdenRef: release.burdenRef,
+    patternRef: `pattern.${release.identityFingerprint.slice(0, 24)}`,
+    aggregateProjectionReceipt: ownershipReceipt,
+    change: release.authorityTransition,
+    formerAuthority: release.formerAuthority,
+    currentAuthority: release.currentAuthority,
+    protectedCapabilities: [...release.protectedCapabilities],
+    prohibitedOvercorrections: [...release.prohibitedOvercorrections],
+    scope: release.scope,
+    scopeTargetRef: release.scopeTargetRef,
+    scopeTargetFingerprint: release.scopeTargetFingerprint,
+    state: release.state,
+    recurrenceState: release.recurrenceState,
+    transitionReceiptRefs: release.transitionReceipts.map((item) => item.transitionRef),
+    authoritySnapshotRefs: [...release.authoritySnapshotRefs],
+    authorityEvidenceClass: record.authorityEvidenceClass,
+    simulatedAuthority: record.simulatedAuthority,
+    liveAuthorityGranted: record.liveAuthorityGranted,
+    externalEffectsAuthorized: record.externalEffectsAuthorized,
+    acceptanceDisposition: record.acceptanceDisposition,
+    claimsParameterDeletion: false,
+    rawSourceContentIncluded: false,
+    nextSafeAction: record.acceptanceDisposition === 'SIMULATION_ONLY_INACTIVE'
+      ? 'USE_ONLY_IN_EXPLICIT_SIMULATED_CURRENT_CONTEXT'
+      : ['ACCEPTED_DEAUTHORIZED', 'MONITORED_FOR_RECURRENCE'].includes(release.state)
+        ? 'MONITOR_EXACT_PATTERN_WITHOUT_SCOPE_BROADENING'
+        : release.state === 'REOPENED' ? 'RETURN_TO_CONTEXT_REVIEW' : 'COMPLETE_EXACT_ACCEPTANCE_REVIEW'
+  });
+}
+
+export function projectAggregateApplicableContinuity({
+  aggregate,
+  currentRecordSetReceipt,
+  requestedRecordRefs = null,
+  applicableScopeTargets,
+  allowedAuthorityEvidenceClasses = [],
+  tokenBudget = 256
+}) {
+  const currentSet = exactCurrentRecordSetReceipt(aggregate, currentRecordSetReceipt);
+  if (currentSet.state !== 'CURRENT') throw new Error('HELD_CONFLICT continuity current set cannot produce applicable projection');
+  if (!Array.isArray(applicableScopeTargets) || applicableScopeTargets.length === 0) {
+    throw new Error('applicable continuity requires exact canonical scope targets, not scope classes alone');
+  }
+  const targetBindings = applicableScopeTargets.map((target) => {
+    validateContinuityScopeTarget(target);
+    return `${target.scopeClass}\0${target.scopeTargetRef}\0${target.semanticFingerprint}`;
+  });
+  if (new Set(targetBindings).size !== targetBindings.length) throw new Error('applicable continuity scope targets are duplicated');
+  const targetSet = new Set(targetBindings);
+  const allowedClasses = stableStringRefs(allowedAuthorityEvidenceClasses, 'allowed authority evidence classes');
+  if (allowedClasses.some((item) => !CONTINUITY_AUTHORITY_EVIDENCE_CLASSES.includes(item))) {
+    throw new Error('applicable continuity authority evidence class is unknown');
+  }
+  const requested = requestedRecordRefs === null
+    ? [...currentSet.currentRecordRefs]
+    : stableStringRefs(requestedRecordRefs, 'requested current record refs');
+  if (requested.some((ref) => !currentSet.currentRecordRefs.includes(ref))) {
+    throw new Error('applicable continuity requested record is absent from the exact current set');
+  }
+  const allowedClassSet = new Set(allowedClasses);
+  const selected = [];
+  const ownershipReceiptRefs = [];
+  let usedTokens = 0;
+  for (const ref of requested.sort()) {
+    const record = aggregate.acceptedRecords.find((item) => item.acceptedRecordRef === ref);
+    const resolved = resolveAggregateRecord(aggregate, ref, record?.semanticFingerprint);
+    const item = resolved.record;
+    if (!targetSet.has(`${item.scope}\0${item.scopeTargetRef}\0${item.scopeTargetFingerprint}`) ||
+        !allowedClassSet.has(item.authorityEvidenceClass)) continue;
+    const candidate = {
+      acceptedRecordRef: item.acceptedRecordRef,
+      acceptedRecordFingerprint: item.semanticFingerprint,
+      recordClass: item.recordClass,
+      scope: item.scope,
+      scopeTargetRef: item.scopeTargetRef,
+      scopeTargetFingerprint: item.scopeTargetFingerprint,
+      authorityEvidenceClass: item.authorityEvidenceClass,
+      simulatedAuthority: item.simulatedAuthority,
+      liveAuthorityGranted: item.liveAuthorityGranted,
+      externalEffectsAuthorized: item.externalEffectsAuthorized,
+      acceptanceDisposition: item.acceptanceDisposition,
+      burdenReleaseRef: item.burdenReleaseRef,
+      protectedCapabilityCount: item.protectedCapabilities.length,
+      prohibitedOvercorrectionCount: item.prohibitedOvercorrections.length
+    };
+    const cost = estimateTokens(candidate);
+    if (usedTokens + cost > tokenBudget) continue;
+    const receipt = projectionOwnershipReceipt(aggregate, item, resolved.lineage, 'APPLICABLE_RECORD', currentSet);
+    selected.push(candidate);
+    ownershipReceiptRefs.push(receipt.projectionReceiptRef);
+    usedTokens += cost;
+  }
+  const core = {
+    schemaVersion: 'vexlife.applicable-continuity-projection/v2',
+    aggregateFingerprint: aggregate.semanticFingerprint,
+    currentRecordSetRef: currentSet.currentRecordSetRef,
+    currentRecordSetFingerprint: currentSet.semanticFingerprint,
+    selected,
+    selectedRecordRefs: selected.map((item) => item.acceptedRecordRef),
+    ownershipReceiptRefs,
+    applicableScopeTargetRefs: applicableScopeTargets.map((item) => item.scopeTargetRef).sort(),
+    allowedAuthorityEvidenceClasses: allowedClasses,
+    simulationAuthorityExplicitlyAllowed: allowedClassSet.has('SIMULATED_CURRENT'),
+    tokenBudget,
+    usedTokens,
+    rawSourceContentIncluded: false,
+    allHistoricalRecordsLoaded: false,
+    weightArtifactsLoaded: false
+  };
+  return freeze({ ...core, semanticFingerprint: semanticHash(core) });
 }
 
 function simulatedAuthorityPromotion(record) {
@@ -517,15 +836,23 @@ function simulatedAuthorityPromotion(record) {
 function projectedRecordSet(current) {
   const promoted = current.acceptedRecords.filter(simulatedAuthorityPromotion);
   if (!promoted.length) return validateContinuityRecordSet(current.acceptedRecords, current.supersessions);
-  return {
+  return stateFingerprinted({
     schemaVersion: 'vexlife.continuity-record-set-validation/v1',
+    recordBindings: current.acceptedRecords.map((item) => ({
+      acceptedRecordRef: item.acceptedRecordRef,
+      acceptedRecordFingerprint: item.semanticFingerprint
+    })).sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef)),
+    supersessionBindings: current.supersessions.map((item) => ({
+      supersessionRef: item.supersessionRef,
+      supersessionFingerprint: item.semanticFingerprint
+    })).sort((left, right) => left.supersessionRef.localeCompare(right.supersessionRef)),
     state: 'HELD_CONFLICT',
     currentRecordRefs: current.acceptedRecords.map((item) => item.acceptedRecordRef).sort(),
     supersededRecordRefs: current.supersessions.map((item) => item.priorRecordRef).sort(),
     conflicts: promoted.map((item) => [item.acceptedRecordRef]),
     invalidAuthorityRecordRefs: promoted.map((item) => item.acceptedRecordRef).sort(),
     silentOverwriteAllowed: false
-  };
+  }, 'currentRecordSetRef', 'continuity-current-record-set');
 }
 
 export function reduceContinuityEvolutionAggregate(current, event) {
@@ -575,18 +902,7 @@ export function reduceContinuityEvolutionAggregate(current, event) {
       break;
     }
     case 'CONTEXT_APPLIED': {
-      validateTransientContinuityContext(event.context);
-      const lineage = aggregateCandidateRouteReview(next, event.context);
-      const evidence = exactStoredAuthorityEvidence(next, event.context.acceptanceEvidence, lineage, event.context.acceptedAt);
-      const recomputed = acceptContinuityCandidate(lineage.candidate, lineage.review, {
-        acceptedAt: event.context.acceptedAt,
-        acceptedByRefs: event.context.acceptedByRefs,
-        authorityEvidence: evidence,
-        currentContextLease: event.context.contextLease
-      });
-      if (recomputed.contextRecordRef !== event.context.contextRecordRef || recomputed.semanticFingerprint !== event.context.semanticFingerprint) {
-        throw new Error('transient context is internally canonical but not derived from aggregate-owned lineage');
-      }
+      validateAggregateOwnedContext(next, event.context);
       const result = appendCanonical(next.transientContexts, event.context, 'contextRecordRef', 'transient context');
       if (!result.changed) return current;
       next.transientContexts = result.items;

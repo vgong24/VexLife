@@ -10,7 +10,6 @@ import {
   createContinuityContextReview,
   createContinuityObservation,
   formContinuityCandidate,
-  projectApplicableContinuity,
   recordContinuityRecurrence,
   routeContinuityCandidate
 } from '../src/core/continuity-evolution-router.mjs';
@@ -20,7 +19,14 @@ import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { createResourceSnapshot } from '../src/core/resource-admission.mjs';
 import { createSchedulerRuntimeTrustSnapshot } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
-import { createContinuityEvolutionEvent, createContinuityEvolutionState } from '../src/core/state.mjs';
+import {
+  createContinuityCurrentRecordSetReceipt,
+  createContinuityEvolutionEvent,
+  createContinuityEvolutionState,
+  projectAggregateApplicableContinuity,
+  projectAggregateOwnedBurdenRelease,
+  projectAggregateOwnedContinuityRecord
+} from '../src/core/state.mjs';
 import { readJson, resolveSafeGeneratedReceiptPath, semanticHash, writeJson } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -336,6 +342,14 @@ export function validateContinuityEvolutionSimulationReceipt(receipt, { evolutio
       receipt.scopeTargetFingerprint !== receipt.continuityGateBindings?.scopeTarget?.fingerprint) {
     errors.push('continuity receipt does not preserve the exact scope-target binding');
   }
+  if (receipt.currentRecordSetRef !== receipt.continuityGateBindings?.currentRecordSet?.ref ||
+      receipt.currentRecordSetFingerprint !== receipt.continuityGateBindings?.currentRecordSet?.fingerprint ||
+      receipt.recordProjectionReceiptRef !== receipt.continuityGateBindings?.recordProjection?.ref ||
+      receipt.recordProjectionReceiptFingerprint !== receipt.continuityGateBindings?.recordProjection?.fingerprint ||
+      receipt.burdenProjectionReceiptRef !== receipt.continuityGateBindings?.burdenProjection?.ref ||
+      receipt.burdenProjectionReceiptFingerprint !== receipt.continuityGateBindings?.burdenProjection?.fingerprint) {
+    errors.push('continuity receipt does not preserve aggregate-owned projection/current-set bindings');
+  }
   if (receipt.authorityEvidenceClass !== 'SIMULATED_CURRENT' ||
       receipt.acceptanceDisposition !== 'SIMULATION_ONLY_INACTIVE' ||
       receipt.liveAuthorityGranted !== false || receipt.externalEffectsAuthorized !== false) {
@@ -436,14 +450,31 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     })
   });
   state.record(createContinuityEvolutionEvent({ type: 'AUTHORITY_EVIDENCE_RECORDED', transitionRef: 'transition.continuity.simulation.authority', evidence: authorityEvidence }));
-  const record = acceptContinuityCandidate(candidate, review, { authorityEvidence: [authorityEvidence], acceptedAt: ACCEPTED, rollbackRef: 'rollback.continuity.simulation.pattern' });
+  const record = acceptContinuityCandidate(candidate, review, {
+    authorityEvidence: [authorityEvidence],
+    acceptedAt: ACCEPTED,
+    rollbackRef: 'rollback.continuity.simulation.pattern',
+    aggregate: state.aggregate.value
+  });
   state.record(createContinuityEvolutionEvent({ type: 'RECORD_ACCEPTED', transitionRef: 'transition.continuity.simulation.accepted', record }));
   journeyStates.push('BURDEN_RELEASE_ACCEPTED_DEAUTHORIZED');
-  const applicable = projectApplicableContinuity({
-    records: [record],
+  const currentRecordSetReceipt = createContinuityCurrentRecordSetReceipt(state.aggregate.value);
+  const recordProjection = projectAggregateOwnedContinuityRecord({
+    aggregate: state.aggregate.value,
+    acceptedRecordRef: record.acceptedRecordRef,
+    acceptedRecordFingerprint: record.semanticFingerprint
+  });
+  const burdenProjection = projectAggregateOwnedBurdenRelease({
+    aggregate: state.aggregate.value,
+    acceptedRecordRef: record.acceptedRecordRef,
+    acceptedRecordFingerprint: record.semanticFingerprint
+  });
+  const applicable = projectAggregateApplicableContinuity({
+    aggregate: state.aggregate.value,
+    currentRecordSetReceipt,
     applicableScopeTargets: [candidate.scopeTarget],
     allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT'],
-    tokenBudget: 160
+    tokenBudget: 256
   });
   journeyStates.push('BOUNDED_CONTEXT_REFS_PROJECTED');
   const recurrenceObservation = createContinuityObservation({
@@ -488,6 +519,15 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     review: { ref: review.reviewRef, fingerprint: review.semanticFingerprint },
     authorityEvidence: { ref: authorityEvidence.acceptanceEvidenceRef, fingerprint: authorityEvidence.semanticFingerprint },
     acceptedRecord: { ref: record.acceptedRecordRef, fingerprint: record.semanticFingerprint },
+    currentRecordSet: { ref: currentRecordSetReceipt.currentRecordSetRef, fingerprint: currentRecordSetReceipt.semanticFingerprint },
+    recordProjection: {
+      ref: recordProjection.aggregateProjectionReceipt.projectionReceiptRef,
+      fingerprint: recordProjection.aggregateProjectionReceipt.semanticFingerprint
+    },
+    burdenProjection: {
+      ref: burdenProjection.aggregateProjectionReceipt.projectionReceiptRef,
+      fingerprint: burdenProjection.aggregateProjectionReceipt.semanticFingerprint
+    },
     authorityDisposition: {
       ref: `authority-disposition.${semanticHash({
         authorityEvidenceClass: record.authorityEvidenceClass,
@@ -544,6 +584,12 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     liveAuthorityGranted: record.liveAuthorityGranted,
     externalEffectsAuthorized: record.externalEffectsAuthorized,
     burdenReleaseRef: record.burdenReleaseRef,
+    currentRecordSetRef: currentRecordSetReceipt.currentRecordSetRef,
+    currentRecordSetFingerprint: currentRecordSetReceipt.semanticFingerprint,
+    recordProjectionReceiptRef: recordProjection.aggregateProjectionReceipt.projectionReceiptRef,
+    recordProjectionReceiptFingerprint: recordProjection.aggregateProjectionReceipt.semanticFingerprint,
+    burdenProjectionReceiptRef: burdenProjection.aggregateProjectionReceipt.projectionReceiptRef,
+    burdenProjectionReceiptFingerprint: burdenProjection.aggregateProjectionReceipt.semanticFingerprint,
     applicableRecordRefs: applicable.selectedRecordRefs,
     applicableProjectionFingerprint: applicable.semanticFingerprint,
     recurrenceRef: recurrence.recurrenceRef,
@@ -579,7 +625,23 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
   const target = resolveSafeGeneratedReceiptPath(root, receiptPath, 'continuity evolution simulation receipt path');
   if (writeReceipt) writeJson(target, receipt);
   state.dispose();
-  return { receipt, receiptPath: path.relative(root, target).split(path.sep).join('/'), observation, candidate, route, review, authorityEvidence, record, recurrence, duplicate, applicable, schedulerJourney };
+  return {
+    receipt,
+    receiptPath: path.relative(root, target).split(path.sep).join('/'),
+    observation,
+    candidate,
+    route,
+    review,
+    authorityEvidence,
+    record,
+    recordProjection,
+    burdenProjection,
+    currentRecordSetReceipt,
+    recurrence,
+    duplicate,
+    applicable,
+    schedulerJourney
+  };
 }
 
 const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);

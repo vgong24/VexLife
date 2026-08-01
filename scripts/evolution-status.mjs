@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-import { projectBurdenRelease } from '../src/core/burden-release.mjs';
-import { projectContinuityRecord } from '../src/core/continuity-evolution-router.mjs';
 import { runContinuityEvolutionSimulation } from './evolution-simulate.mjs';
 
 if (process.argv.slice(2).length) {
@@ -13,12 +11,8 @@ console.log(JSON.stringify({
   schemaVersion: 'vexlife.continuity-evolution-status/v0',
   state: result.receipt.state,
   currentness: result.receipt.currentness,
-  record: projectContinuityRecord(result.record),
-  burdenRelease: projectBurdenRelease(result.record.burdenRelease, {
-    candidate: result.candidate,
-    route: result.route,
-    review: result.review
-  }),
+  record: result.recordProjection,
+  burdenRelease: result.burdenProjection,
   recurrence: {
     recurrenceRef: result.recurrence.recurrenceRef,
     state: result.recurrence.recurrenceState,

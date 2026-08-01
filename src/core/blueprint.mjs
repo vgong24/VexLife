@@ -21,6 +21,10 @@ import {
   CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
   CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS
 } from './continuity-evolution-router.mjs';
+import {
+  CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS
+} from './state.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const VEXLIFE_ROOT = path.resolve(HERE, '../..');
@@ -305,12 +309,16 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
   exactRequiredFields('acceptance evidence', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
   exactRequiredFields('authority snapshot', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
   exactRequiredFields('scope target', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
+  exactRequiredFields('current record set', evolution.currentRecordSet?.requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
+  exactRequiredFields('aggregate projection', evolution.aggregateProjection?.requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
   const expectedContractSources = new Map([
     ['contract.vexlife.continuity-scope-target/v1', 'scopeTarget'],
     ['contract.vexlife.continuity-acceptance-evidence/v1', 'acceptanceEvidence'],
     ['contract.vexlife.continuity-authority-snapshot/v1', 'authorityTrust'],
     ['contract.vexlife.continuity-context-review/v1', 'contextReview'],
-    ['contract.vexlife.burden-release/v1', 'burdenRelease']
+    ['contract.vexlife.burden-release/v1', 'burdenRelease'],
+    ['contract.vexlife.continuity-current-record-set-receipt/v1', 'currentRecordSet'],
+    ['contract.vexlife.continuity-aggregate-projection-receipt/v1', 'aggregateProjection']
   ]);
   for (const [contractRef, sourceField] of expectedContractSources) {
     const contract = (evolution.contractIdentities ?? []).find((item) => item.contractRef === contractRef);
@@ -336,6 +344,8 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
     evolution.authorityTrust?.contractRef,
     evolution.acceptanceEvidence?.contractRef,
     evolution.scopeTarget?.contractRef,
+    evolution.currentRecordSet?.contractRef,
+    evolution.aggregateProjection?.contractRef,
     evolution.burdenRelease?.contractRef,
     evolution.contextReview?.contractRef,
     evolution.recurrencePolicy?.contractRef,
