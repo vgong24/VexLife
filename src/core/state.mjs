@@ -1,7 +1,10 @@
 import { StateCell, selectState } from './state-relay.mjs';
 import { semanticHash } from './utils.mjs';
 import {
+  acceptContinuityCandidate,
+  recordContinuityRecurrence,
   validateAcceptedContinuityRecord,
+  validateContinuityAcceptanceEvidence,
   validateContinuityCandidate,
   validateContinuityContextReview,
   validateContinuityObservation,
@@ -373,6 +376,7 @@ export function createInitialContinuityEvolutionAggregate() {
     observations: [],
     candidates: [],
     reviews: [],
+    authorityEvidence: [],
     acceptedRecords: [],
     transientContexts: [],
     supersessions: [],
@@ -415,6 +419,80 @@ function appendCanonical(items, value, refField, label) {
   return { items: [...items, clone(value)], changed: true };
 }
 
+function exactSemanticValue(left, right) {
+  return semanticHash(left) === semanticHash(right);
+}
+
+function exactStoredCandidateSources(aggregate, candidate) {
+  const observations = candidate.sourceObservationRefs.map((ref) => {
+    const observation = aggregate.observations.find((item) => item.observationRef === ref);
+    if (!observation) throw new Error(`candidate references unsealed observation ${ref}`);
+    return observation;
+  });
+  const expectedRefs = observations.map((item) => item.observationRef).sort();
+  const expectedObservationBindings = observations.map((item) => ({
+    observationRef: item.observationRef,
+    observationFingerprint: item.semanticFingerprint
+  })).sort((left, right) => left.observationRef.localeCompare(right.observationRef));
+  const expectedFingerprints = expectedObservationBindings.map((item) => item.observationFingerprint);
+  const expectedLineages = [...new Set(observations.map((item) => item.sourceLineageRef))].sort();
+  const expectedBindings = observations.flatMap((observation) => observation.sourceBindings.map((binding) => ({
+    observationRef: observation.observationRef,
+    sourceLineageRef: binding.sourceLineageRef,
+    rangeRef: binding.rangeRef,
+    sourceHash: binding.sourceHash
+  }))).sort((left, right) => `${left.observationRef}\0${left.sourceLineageRef}\0${left.rangeRef}`
+    .localeCompare(`${right.observationRef}\0${right.sourceLineageRef}\0${right.rangeRef}`));
+  if (!exactSemanticValue(candidate.observationBindings, expectedObservationBindings) ||
+      !exactSemanticValue(candidate.sourceObservationRefs, expectedRefs) ||
+      !exactSemanticValue(candidate.sourceObservationFingerprints, expectedFingerprints) ||
+      !exactSemanticValue(candidate.sourceLineageRefs, expectedLineages) ||
+      !exactSemanticValue(candidate.sourceBindings, expectedBindings)) {
+    throw new Error('candidate does not bind the exact stored observation fingerprints and source tuples');
+  }
+  return observations;
+}
+
+function aggregateCandidateRouteReview(aggregate, { candidateRef, candidateFingerprint, routeRef, routeFingerprint, reviewRef, reviewFingerprint }) {
+  const candidate = aggregate.candidates.find((item) => item.candidateRef === candidateRef);
+  if (!candidate || candidate.semanticFingerprint !== candidateFingerprint) throw new Error('payload candidate is not the exact aggregate-owned candidate');
+  exactStoredCandidateSources(aggregate, candidate);
+  const route = routeContinuityCandidate(candidate);
+  if (route.routeRef !== routeRef || route.semanticFingerprint !== routeFingerprint) throw new Error('payload route is not the recomputed aggregate-owned route');
+  const review = aggregate.reviews.find((item) => item.reviewRef === reviewRef);
+  if (!review || review.semanticFingerprint !== reviewFingerprint) throw new Error('payload review is not the exact aggregate-owned review');
+  validateContinuityContextReview(candidate, route, review);
+  return { candidate, route, review };
+}
+
+function exactStoredAuthorityEvidence(aggregate, supplied, lineage, acceptedAt) {
+  const evidence = supplied.map((item) => {
+    const stored = aggregate.authorityEvidence.find((candidate) => candidate.acceptanceEvidenceRef === item.acceptanceEvidenceRef);
+    if (!stored || stored.semanticFingerprint !== item.semanticFingerprint || !exactSemanticValue(stored, item)) {
+      throw new Error('payload authority evidence is not exact current aggregate-owned evidence');
+    }
+    return validateContinuityAcceptanceEvidence(stored, { ...lineage, acceptedAt });
+  });
+  if (new Set(evidence.map((item) => item.acceptanceEvidenceRef)).size !== evidence.length) throw new Error('payload authority evidence is duplicated');
+  return evidence;
+}
+
+function validateAggregateOwnedRecord(aggregate, record) {
+  validateAcceptedContinuityRecord(record);
+  const lineage = aggregateCandidateRouteReview(aggregate, record);
+  const evidence = exactStoredAuthorityEvidence(aggregate, record.acceptanceEvidence, lineage, record.acceptedAt);
+  const recomputed = acceptContinuityCandidate(lineage.candidate, lineage.review, {
+    acceptedAt: record.acceptedAt,
+    acceptedByRefs: record.acceptedByRefs,
+    authorityEvidence: evidence,
+    rollbackRef: record.rollbackRef
+  });
+  if (recomputed.acceptedRecordRef !== record.acceptedRecordRef || recomputed.semanticFingerprint !== record.semanticFingerprint) {
+    throw new Error('accepted record is internally canonical but not derived from aggregate-owned lineage');
+  }
+  return { ...lineage, evidence };
+}
+
 export function reduceContinuityEvolutionAggregate(current, event) {
   validateEvent(event);
   const next = clone(current);
@@ -428,7 +506,7 @@ export function reduceContinuityEvolutionAggregate(current, event) {
     }
     case 'CANDIDATE_FORMED': {
       validateContinuityCandidate(event.candidate);
-      for (const ref of event.candidate.sourceObservationRefs) if (!next.observations.some((item) => item.observationRef === ref)) throw new Error(`candidate references unsealed observation ${ref}`);
+      exactStoredCandidateSources(next, event.candidate);
       const result = appendCanonical(next.candidates, event.candidate, 'candidateRef', 'candidate');
       if (!result.changed) return current;
       next.candidates = result.items;
@@ -446,9 +524,16 @@ export function reduceContinuityEvolutionAggregate(current, event) {
       }
       break;
     }
+    case 'AUTHORITY_EVIDENCE_RECORDED': {
+      const lineage = aggregateCandidateRouteReview(next, event.evidence);
+      validateContinuityAcceptanceEvidence(event.evidence, lineage);
+      const result = appendCanonical(next.authorityEvidence, event.evidence, 'acceptanceEvidenceRef', 'authority evidence');
+      if (!result.changed) return current;
+      next.authorityEvidence = result.items;
+      break;
+    }
     case 'RECORD_ACCEPTED': {
-      validateAcceptedContinuityRecord(event.record);
-      if (!next.reviews.some((item) => item.reviewRef === event.record.reviewRef && item.semanticFingerprint === event.record.reviewFingerprint)) throw new Error('accepted record references unknown or conflicting review');
+      validateAggregateOwnedRecord(next, event.record);
       const result = appendCanonical(next.acceptedRecords, event.record, 'acceptedRecordRef', 'accepted record');
       if (!result.changed) return current;
       next.acceptedRecords = result.items;
@@ -456,6 +541,17 @@ export function reduceContinuityEvolutionAggregate(current, event) {
     }
     case 'CONTEXT_APPLIED': {
       validateTransientContinuityContext(event.context);
+      const lineage = aggregateCandidateRouteReview(next, event.context);
+      const evidence = exactStoredAuthorityEvidence(next, event.context.acceptanceEvidence, lineage, event.context.acceptedAt);
+      const recomputed = acceptContinuityCandidate(lineage.candidate, lineage.review, {
+        acceptedAt: event.context.acceptedAt,
+        acceptedByRefs: event.context.acceptedByRefs,
+        authorityEvidence: evidence,
+        currentContextLease: event.context.contextLease
+      });
+      if (recomputed.contextRecordRef !== event.context.contextRecordRef || recomputed.semanticFingerprint !== event.context.semanticFingerprint) {
+        throw new Error('transient context is internally canonical but not derived from aggregate-owned lineage');
+      }
       const result = appendCanonical(next.transientContexts, event.context, 'contextRecordRef', 'transient context');
       if (!result.changed) return current;
       next.transientContexts = result.items;
@@ -464,18 +560,51 @@ export function reduceContinuityEvolutionAggregate(current, event) {
     case 'RECURRENCE_RECORDED': {
       if (event.evidence.changed === false) {
         const prior = next.recurrenceEvidence.find((item) => item.acceptedRecordRef === event.evidence.acceptedRecordRef);
+        const expectedDuplicate = prior ? {
+          ...clone(prior),
+          changed: false,
+          duplicateSuppressed: true,
+          semanticModelTurnRequired: false,
+          scopeBroadened: false,
+          weightRouteState: 'NOT_ADMITTED'
+        } : null;
         if (!prior || prior.recurrenceRef !== event.evidence.recurrenceRef || prior.semanticFingerprint !== event.evidence.semanticFingerprint ||
-            event.evidence.duplicateSuppressed !== true || event.evidence.semanticModelTurnRequired !== false) {
+            event.evidence.duplicateSuppressed !== true || event.evidence.semanticModelTurnRequired !== false ||
+            !exactSemanticValue(event.evidence, expectedDuplicate)) {
           throw new Error('duplicate recurrence no-op does not bind exact current evidence');
         }
         return current;
       }
       if (next.recurrenceEvidence.some((item) => item.semanticFingerprint === event.evidence.semanticFingerprint)) return current;
       validateContinuityRecurrenceEvidence(event.evidence);
+      const record = next.acceptedRecords.find((item) => item.acceptedRecordRef === event.evidence.acceptedRecordRef);
+      if (!record || record.semanticFingerprint !== event.evidence.acceptedRecordFingerprint) throw new Error('recurrence does not bind an exact aggregate-owned accepted record');
+      validateAggregateOwnedRecord(next, record);
       const sameRef = next.recurrenceEvidence.find((item) => item.recurrenceRef === event.evidence.recurrenceRef);
       if (sameRef && sameRef.semanticFingerprint !== event.evidence.semanticFingerprint) throw new Error('recurrence same-ref/different-content conflict');
       const prior = next.recurrenceEvidence.find((item) => item.acceptedRecordRef === event.evidence.acceptedRecordRef);
       if (prior && (event.evidence.priorRecurrenceRef !== prior.recurrenceRef || event.evidence.priorRecurrenceFingerprint !== prior.semanticFingerprint)) throw new Error('recurrence event does not advance exact prior chain');
+      const priorRefs = new Set(prior?.observationBindings.map((item) => item.observationRef) ?? []);
+      const newBindings = event.evidence.observationBindings.filter((item) => !priorRefs.has(item.observationRef));
+      if (newBindings.length !== 1 || event.evidence.observationBindings.length !== (prior?.observationBindings.length ?? 0) + 1) {
+        throw new Error('recurrence event must add exactly one aggregate-owned sealed observation');
+      }
+      for (const binding of event.evidence.observationBindings) {
+        const observation = next.observations.find((item) => item.observationRef === binding.observationRef);
+        if (!observation || observation.semanticFingerprint !== binding.observationFingerprint) throw new Error('recurrence references unknown or conflicting sealed observation');
+      }
+      const observation = next.observations.find((item) => item.observationRef === newBindings[0].observationRef);
+      const recomputed = recordContinuityRecurrence({
+        acceptedRecord: record,
+        observation,
+        priorEvidence: prior ?? null,
+        scope: event.evidence.scope,
+        reopenThreshold: event.evidence.reopenThreshold,
+        observedAt: event.evidence.observedAt
+      });
+      if (recomputed.recurrenceRef !== event.evidence.recurrenceRef || recomputed.semanticFingerprint !== event.evidence.semanticFingerprint) {
+        throw new Error('recurrence is internally canonical but not derived from aggregate-owned record/observation lineage');
+      }
       next.recurrenceEvidence = [...next.recurrenceEvidence.filter((item) => item.acceptedRecordRef !== event.evidence.acceptedRecordRef), clone(event.evidence)];
       break;
     }
@@ -483,7 +612,7 @@ export function reduceContinuityEvolutionAggregate(current, event) {
       const prior = next.acceptedRecords.find((item) => item.acceptedRecordRef === event.transaction?.priorRecordRef);
       if (!prior || prior.semanticFingerprint !== event.transaction.priorRecordFingerprint) throw new Error('supersession prior is not the exact current aggregate record');
       if (next.supersessions.some((item) => item.priorRecordRef === prior.acceptedRecordRef)) throw new Error('supersession prior is already superseded');
-      validateAcceptedContinuityRecord(event.successor);
+      validateAggregateOwnedRecord(next, event.successor);
       validateContinuitySupersession(event.transaction, [prior, event.successor]);
       const result = appendCanonical(next.acceptedRecords, event.successor, 'acceptedRecordRef', 'supersession successor');
       if (!result.changed) throw new Error('supersession successor must be a new exact record');
@@ -497,6 +626,7 @@ export function reduceContinuityEvolutionAggregate(current, event) {
   next.observations.sort((left, right) => left.observationRef.localeCompare(right.observationRef));
   next.candidates.sort((left, right) => left.candidateRef.localeCompare(right.candidateRef));
   next.reviews.sort((left, right) => left.reviewRef.localeCompare(right.reviewRef));
+  next.authorityEvidence.sort((left, right) => left.acceptanceEvidenceRef.localeCompare(right.acceptanceEvidenceRef));
   next.acceptedRecords.sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef));
   next.transientContexts.sort((left, right) => left.contextRecordRef.localeCompare(right.contextRecordRef));
   next.supersessions.sort((left, right) => left.supersessionRef.localeCompare(right.supersessionRef));

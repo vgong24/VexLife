@@ -236,10 +236,14 @@ The shared [Burden Release and Continuity Evolution Router](docs/BURDEN-RELEASE-
 completes Intent Orchestration 3/3. It seals immutable exact source tuples,
 keeps human, Vex and relationship preferences separate, routes each candidate
 to one least-invasive destination, and requires expiring source-managed
-acceptance evidence. Burden Release starts at `OBSERVED` and replays every
+acceptance evidence from a separately registered deterministic simulated-current
+authority snapshot that grants no live authority or effect. Burden Release
+starts at `OBSERVED` and replays every
 transition before exact-scope influence deauthorization; it never claims
-base-model parameter deletion. Current Context is transient and lease-bound,
-supersession is atomic, recurrence and sibling projection are exact-scope, and
+base-model parameter deletion. Its lower-level lifecycle cannot accept raw
+authority refs. Current Context is transient and lease-bound, aggregate events
+recompute exact aggregate-owned lineage before mutation, supersession is atomic,
+recurrence and sibling projection are exact-scope, and
 legacy Dream v0 cannot bypass durable acceptance or synchronization. Applicable
 context contains refs rather than raw history and training research remains
 `NOT_ADMITTED`. The integrated proof completes the actual continuity Workgraph

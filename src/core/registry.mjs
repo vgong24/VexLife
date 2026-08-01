@@ -480,6 +480,7 @@ export function compileRegistryPack({
       edges: [
         { type: 'PARENT', to: evolution.registryRef },
         { type: 'CANONICAL_SOURCE', to: evolution.canonicalSourceRef },
+        ...(evolution.authorityTrustSources ?? []).map((item) => ({ type: 'AUTHORITY_SOURCE', to: item.authoritySourceRef })),
         ...(evolution.system.contractRefs ?? []).map((to) => ({ type: 'CONTRACT', to })),
         ...(evolution.processRefs ?? []).map((to) => ({ type: 'PROCESS', to })),
         ...(evolution.moduleRefs ?? []).map((to) => ({ type: 'MODULE', to })),
@@ -493,10 +494,23 @@ export function compileRegistryPack({
       kind: 'EVOLUTION_CONTRACT',
       brief: contract.contractKind,
       parentRef: evolution.systemRef,
+      requiredFields: evolution[contract.sourceField]?.requiredFields ?? null,
       edges: [
         { type: 'PARENT', to: evolution.systemRef },
         { type: 'CANONICAL_SOURCE', to: evolution.canonicalSourceRef },
         ...(evolution.testRefs ?? []).map((to) => ({ type: 'PROVED_BY', to }))
+      ]
+    });
+    for (const authoritySource of evolution.authorityTrustSources ?? []) registry.register({
+      ...authoritySource,
+      ref: authoritySource.authoritySourceRef,
+      kind: 'EVOLUTION_AUTHORITY_SOURCE',
+      brief: authoritySource.authorityMode,
+      parentRef: evolution.systemRef,
+      edges: [
+        { type: 'PARENT', to: evolution.systemRef },
+        { type: 'CANONICAL_SOURCE', to: authoritySource.sourceRef },
+        { type: 'CONTRACT', to: evolution.authorityTrust.contractRef }
       ]
     });
     for (const origin of evolution.behaviorOriginIdentities ?? []) registry.register({

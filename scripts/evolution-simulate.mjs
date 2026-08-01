@@ -6,6 +6,7 @@ import {
   acceptContinuityCandidate,
   classifyBehaviorOrigin,
   createContinuityAcceptanceEvidence,
+  createContinuityAuthoritySnapshot,
   createContinuityContextReview,
   createContinuityObservation,
   formContinuityCandidate,
@@ -410,9 +411,21 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
   state.record(createContinuityEvolutionEvent({ type: 'REVIEW_RECORDED', transitionRef: 'transition.continuity.simulation.review', review }));
   journeyStates.push('CONTEXT_REVIEW_PRODUCED', 'LEAST_INVASIVE_ROUTE_SELECTED', 'REQUIRED_ACCEPTANCE_RESOLVED');
   const authorityEvidence = createContinuityAcceptanceEvidence({
-    candidate, route, review, actorRef: sourceLineageRef, authorityRef: sourceLineageRef,
-    formedAt: REVIEWED, observedAt: REVIEWED, expiresAt: EXPIRES
+    candidate,
+    route,
+    review,
+    authoritySnapshot: createContinuityAuthoritySnapshot({
+      actorRef: sourceLineageRef,
+      authorityRef: sourceLineageRef,
+      subjectRefs: review.requiredAcceptanceRefs,
+      scope: candidate.candidateScope,
+      recordClass: route.proposedPrimaryDestination,
+      formedAt: REVIEWED,
+      observedAt: REVIEWED,
+      expiresAt: EXPIRES
+    })
   });
+  state.record(createContinuityEvolutionEvent({ type: 'AUTHORITY_EVIDENCE_RECORDED', transitionRef: 'transition.continuity.simulation.authority', evidence: authorityEvidence }));
   const record = acceptContinuityCandidate(candidate, review, { authorityEvidence: [authorityEvidence], acceptedAt: ACCEPTED, rollbackRef: 'rollback.continuity.simulation.pattern' });
   state.record(createContinuityEvolutionEvent({ type: 'RECORD_ACCEPTED', transitionRef: 'transition.continuity.simulation.accepted', record }));
   journeyStates.push('BURDEN_RELEASE_ACCEPTED_DEAUTHORIZED');
@@ -444,6 +457,7 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     }
   });
   const recurrence = recordContinuityRecurrence({ acceptedRecord: record, observation: recurrenceObservation, observedAt: RECURRED });
+  state.record(createContinuityEvolutionEvent({ type: 'OBSERVATION_SEALED', transitionRef: 'transition.continuity.simulation.recurrence-observation', observation: recurrenceObservation }));
   state.record(createContinuityEvolutionEvent({ type: 'RECURRENCE_RECORDED', transitionRef: 'transition.continuity.simulation.recurrence', evidence: recurrence }));
   journeyStates.push('RECURRENCE_EVIDENCE_OBSERVED');
   const beforeDuplicateRevision = state.aggregate.revision;

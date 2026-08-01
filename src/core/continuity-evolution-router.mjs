@@ -1,7 +1,9 @@
 import {
   acceptBurdenRelease,
+  createContinuityAuthoritySnapshot,
   createBurdenRelease,
   transitionBurdenRelease,
+  validateContinuityAuthoritySnapshot,
   validateBurdenRelease
 } from './burden-release.mjs';
 import { estimateTokens, semanticHash } from './utils.mjs';
@@ -38,6 +40,27 @@ export const CONTINUITY_LINKED_DESTINATIONS = Object.freeze([
 export const CONTINUITY_CURRENTNESS_STATES = Object.freeze(['CURRENT', 'STALE', 'SUPERSEDED', 'REOPENED', 'REJECTED', 'TRANSIENT']);
 export const CONTINUITY_VISIBILITY_STATES = Object.freeze(['PRIVATE', 'RELATIONSHIP_PRIVATE', 'PROJECT_PRIVATE', 'INSTITUTION_INTERNAL', 'PUBLIC_SAFE', 'REDACTED']);
 export const CONTINUITY_SYNCHRONIZATION_SCOPES = Object.freeze(['GLOBAL_FAMILY', 'PROJECT_SHARED', 'WORKSPACE_SHARED', 'DEVICE_PRIVATE', 'RELATIONSHIP_PRIVATE', 'FAMILY_CANDIDATE', 'NO_SYNC']);
+
+export { createContinuityAuthoritySnapshot, validateContinuityAuthoritySnapshot };
+
+export const CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS = Object.freeze([
+  'schemaVersion', 'candidateRef', 'candidateFingerprint', 'routeRef', 'routeFingerprint',
+  'sourceObservationRefs', 'sourceBindings', 'originClassification', 'originConfidence',
+  'observedConsequence', 'candidateScope', 'proposedPrimaryDestination', 'proposedLinkedDestinations',
+  'privacyState', 'privacyEvidenceRef', 'redactionEvidenceRef', 'consentState', 'contradictionState',
+  'attributionState', 'currentnessState', 'summaryRef', 'protectedCapabilities',
+  'prohibitedOvercorrections', 'requiredAcceptanceRefs', 'reviewerRef', 'reviewDisposition',
+  'acceptedRecordRef', 'rejectionReason', 'supersedesRef', 'reviewedAt',
+  'acceptanceAuthorityGrantedByReviewerRole', 'sourceHistoryDeleted', 'reviewRef', 'semanticFingerprint'
+]);
+
+export const CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS = Object.freeze([
+  'schemaVersion', 'candidateRef', 'candidateFingerprint', 'routeRef', 'routeFingerprint',
+  'reviewRef', 'reviewFingerprint', 'authoritySnapshotRef', 'authoritySnapshotFingerprint',
+  'authoritySnapshot', 'actorRef', 'authorityRef', 'recordClass', 'subjectRefs', 'scope',
+  'sourceRef', 'sourceHash', 'formationRef', 'formedAt', 'observedAt', 'expiresAt',
+  'currentness', 'evidenceClass', 'liveAuthorityGranted', 'acceptanceEvidenceRef', 'semanticFingerprint'
+]);
 
 const TERMINAL_REVIEW_DISPOSITIONS = new Set(['ACCEPTED', 'REJECTED', 'HELD', 'REVISE']);
 const NON_ACCEPTABLE_DESTINATIONS = new Set(['HELD_UNKNOWN', 'REJECTED']);
@@ -227,6 +250,13 @@ export function formContinuityCandidate(input) {
   const visibilityScope = input.visibilityScope ?? 'PRIVATE';
   if (!CONTINUITY_VISIBILITY_STATES.includes(visibilityScope)) throw new Error(`unknown visibilityScope ${visibilityScope}`);
   const observations = input.observations.map(validateContinuityObservation);
+  const observationBindings = observations.map((item) => ({
+    observationRef: item.observationRef,
+    observationFingerprint: item.semanticFingerprint
+  })).sort((left, right) => left.observationRef.localeCompare(right.observationRef));
+  if (new Set(observationBindings.map((item) => item.observationRef)).size !== observationBindings.length) {
+    throw new Error('candidate observations must be unique exact ref/fingerprint bindings');
+  }
   const originClassification = validateBehaviorOrigin(input.originClassification ?? classifyBehaviorOrigin());
   const formedAt = canonicalTimestamp(input.formedAt ?? new Date().toISOString(), 'candidate formedAt');
   for (const observation of observations) afterOrEqual(formedAt, observation.formedAt, 'candidate formation');
@@ -235,8 +265,9 @@ export function formContinuityCandidate(input) {
     candidateKind: input.candidateKind,
     summaryRef: input.summaryRef,
     sourceBindings: aggregateObservationSources(observations),
-    sourceObservationRefs: stableRefs(observations.map((item) => item.observationRef), 'sourceObservationRefs', { required: true }),
-    sourceObservationFingerprints: stableRefs(observations.map((item) => item.semanticFingerprint), 'sourceObservationFingerprints', { required: true }),
+    observationBindings,
+    sourceObservationRefs: observationBindings.map((item) => item.observationRef),
+    sourceObservationFingerprints: observationBindings.map((item) => item.observationFingerprint),
     sourceLineageRefs: stableRefs(observations.map((item) => item.sourceLineageRef), 'sourceLineageRefs', { required: true }),
     authoredByRef: input.authoredByRef,
     aboutSelfRefs: stableRefs(input.aboutSelfRefs ?? [], 'aboutSelfRefs'),
@@ -271,7 +302,21 @@ export function validateContinuityCandidate(candidate) {
   if (candidate.schemaVersion !== 'vexlife.continuity-candidate/v1') throw new Error('continuity candidate schema mismatch');
   validateBehaviorOrigin(candidate.originClassification);
   canonicalTimestamp(candidate.formedAt, 'candidate formedAt');
-  canonicalSourceBindings(candidate.sourceBindings, 'candidate sourceBindings');
+  const bindings = canonicalSourceBindings(candidate.sourceBindings, 'candidate sourceBindings');
+  if (!Array.isArray(candidate.observationBindings) || candidate.observationBindings.length === 0 ||
+      candidate.observationBindings.some((item) => !item?.observationRef || !SHA256.test(item?.observationFingerprint ?? '')) ||
+      new Set(candidate.observationBindings.map((item) => item.observationRef)).size !== candidate.observationBindings.length) {
+    throw new Error('continuity candidate requires unique exact observation ref/fingerprint bindings');
+  }
+  const normalizedObservationBindings = [...candidate.observationBindings]
+    .sort((left, right) => left.observationRef.localeCompare(right.observationRef));
+  if (JSON.stringify(candidate.observationBindings) !== JSON.stringify(normalizedObservationBindings) ||
+      !exactRefs(candidate.sourceObservationRefs, normalizedObservationBindings.map((item) => item.observationRef)) ||
+      !exactRefs(candidate.sourceObservationFingerprints, normalizedObservationBindings.map((item) => item.observationFingerprint)) ||
+      bindings.some((item) => !candidate.sourceObservationRefs.includes(item.observationRef)) ||
+      candidate.sourceObservationRefs.some((ref) => !bindings.some((item) => item.observationRef === ref))) {
+    throw new Error('continuity candidate observation compatibility fields do not match exact bindings');
+  }
   if (!CONTINUITY_SCOPE_CLASSES.includes(candidate.candidateScope) ||
       !CONTINUITY_SYNCHRONIZATION_SCOPES.includes(candidate.synchronizationScope) ||
       !CONTINUITY_VISIBILITY_STATES.includes(candidate.visibilityScope) ||
@@ -438,48 +483,74 @@ function acceptanceSubjects(candidate, route) {
   return stableRefs([...candidate.aboutSelfRefs, ...(route.proposedPrimaryDestination === 'BURDEN_RELEASE' && candidate.candidateScope === 'RELATIONSHIP' ? candidate.affectedPartyRefs : [])], 'acceptance subjects', { required: true });
 }
 
-export function createContinuityAcceptanceEvidence({ candidate, route, review, actorRef, authorityRef = actorRef, formedAt, observedAt, expiresAt, currentness = 'CURRENT', sourceRef = review.reviewRef, sourceHash = review.semanticFingerprint, formationRef = review.reviewRef }) {
+export function createContinuityAcceptanceEvidence({ candidate, route, review, authoritySnapshot }) {
   validateContinuityContextReview(candidate, route, review);
-  if (!actorRef || !authorityRef || !sourceRef || !formationRef || !SHA256.test(sourceHash ?? '')) throw new Error('acceptance evidence requires exact actor, authority, source/hash and formation');
-  const formed = canonicalTimestamp(formedAt ?? review.reviewedAt, 'acceptance evidence formedAt');
-  const observed = canonicalTimestamp(observedAt ?? formed, 'acceptance evidence observedAt');
-  const expires = canonicalTimestamp(expiresAt, 'acceptance evidence expiresAt');
-  afterOrEqual(formed, review.reviewedAt, 'acceptance evidence formation');
-  afterOrEqual(observed, formed, 'acceptance evidence observation');
-  afterOrEqual(expires, observed, 'acceptance evidence expiry', { strict: true });
-  if (currentness !== 'CURRENT') throw new Error('acceptance evidence must be CURRENT when formed');
-  if (!review.requiredAcceptanceRefs.includes(authorityRef)) throw new Error('acceptance evidence authority is not required by canonical policy');
-  if (actorRef !== authorityRef) throw new Error('delegated acceptance requires a separately source-managed delegate policy');
+  const snapshot = validateContinuityAuthoritySnapshot(authoritySnapshot);
+  afterOrEqual(snapshot.formedAt, review.reviewedAt, 'authority snapshot formation');
+  if (!review.requiredAcceptanceRefs.includes(snapshot.authorityRef)) throw new Error('authority snapshot is not required by canonical policy');
+  if (snapshot.actorRef !== snapshot.authorityRef) throw new Error('delegated acceptance requires a separately source-managed delegate policy');
+  if (snapshot.recordClass !== route.proposedPrimaryDestination || snapshot.scope !== candidate.candidateScope ||
+      !exactRefs(snapshot.subjectRefs, acceptanceSubjects(candidate, route))) {
+    throw new Error('authority snapshot does not exactly bind record class, subjects and scope');
+  }
+  if ([candidate.candidateRef, review.reviewRef].includes(snapshot.sourceRef) ||
+      [candidate.candidateRef, review.reviewRef].includes(snapshot.formationRef)) {
+    throw new Error('candidate and Context Review cannot issue their own authority evidence');
+  }
   return fingerprinted({
     schemaVersion: 'vexlife.continuity-acceptance-evidence/v1',
-    actorRef,
-    authorityRef,
+    candidateRef: candidate.candidateRef,
+    candidateFingerprint: candidate.semanticFingerprint,
+    routeRef: route.routeRef,
+    routeFingerprint: route.semanticFingerprint,
+    reviewRef: review.reviewRef,
+    reviewFingerprint: review.semanticFingerprint,
+    authoritySnapshotRef: snapshot.authoritySnapshotRef,
+    authoritySnapshotFingerprint: snapshot.semanticFingerprint,
+    authoritySnapshot: snapshot,
+    actorRef: snapshot.actorRef,
+    authorityRef: snapshot.authorityRef,
     recordClass: route.proposedPrimaryDestination,
     subjectRefs: acceptanceSubjects(candidate, route),
     scope: candidate.candidateScope,
-    sourceRef,
-    sourceHash,
-    formationRef,
-    formedAt: formed,
-    observedAt: observed,
-    expiresAt: expires,
-    currentness
+    sourceRef: snapshot.sourceRef,
+    sourceHash: snapshot.sourceHash,
+    formationRef: snapshot.formationRef,
+    formedAt: snapshot.formedAt,
+    observedAt: snapshot.observedAt,
+    expiresAt: snapshot.expiresAt,
+    currentness: snapshot.currentness,
+    evidenceClass: snapshot.evidenceClass,
+    liveAuthorityGranted: false
   }, 'acceptanceEvidenceRef', 'continuity-acceptance-evidence');
 }
 
 export function validateContinuityAcceptanceEvidence(evidence, { candidate, route, review, acceptedAt = null } = {}) {
   assertCanonical(evidence, 'acceptanceEvidenceRef', 'continuity-acceptance-evidence', 'continuity acceptance evidence');
-  if (evidence.schemaVersion !== 'vexlife.continuity-acceptance-evidence/v1' || evidence.currentness !== 'CURRENT') throw new Error('acceptance evidence is stale or has wrong schema');
+  const snapshot = validateContinuityAuthoritySnapshot(evidence.authoritySnapshot, { observedAt: acceptedAt });
+  if (evidence.schemaVersion !== 'vexlife.continuity-acceptance-evidence/v1' || evidence.currentness !== 'CURRENT' ||
+      evidence.evidenceClass !== 'SIMULATED_CURRENT' || evidence.liveAuthorityGranted !== false ||
+      evidence.authoritySnapshotRef !== snapshot.authoritySnapshotRef || evidence.authoritySnapshotFingerprint !== snapshot.semanticFingerprint ||
+      evidence.actorRef !== snapshot.actorRef || evidence.authorityRef !== snapshot.authorityRef ||
+      evidence.recordClass !== snapshot.recordClass || evidence.scope !== snapshot.scope ||
+      !exactRefs(evidence.subjectRefs, snapshot.subjectRefs) || evidence.sourceRef !== snapshot.sourceRef ||
+      evidence.sourceHash !== snapshot.sourceHash || evidence.formationRef !== snapshot.formationRef ||
+      evidence.formedAt !== snapshot.formedAt || evidence.observedAt !== snapshot.observedAt || evidence.expiresAt !== snapshot.expiresAt) {
+    throw new Error('acceptance evidence is stale, self-issued or detached from its exact authority snapshot');
+  }
   for (const [field, label] of [['formedAt', 'formedAt'], ['observedAt', 'observedAt'], ['expiresAt', 'expiresAt']]) canonicalTimestamp(evidence[field], `acceptance evidence ${label}`);
   afterOrEqual(evidence.observedAt, evidence.formedAt, 'acceptance evidence');
   afterOrEqual(evidence.expiresAt, evidence.observedAt, 'acceptance evidence expiry', { strict: true });
   if (acceptedAt && (Date.parse(acceptedAt) < Date.parse(evidence.observedAt) || Date.parse(acceptedAt) >= Date.parse(evidence.expiresAt))) throw new Error('acceptance evidence is not current at acceptance');
   if (candidate && route && review) {
     validateContinuityContextReview(candidate, route, review);
-    if (evidence.recordClass !== route.proposedPrimaryDestination || evidence.scope !== candidate.candidateScope ||
-        evidence.sourceRef !== review.reviewRef || evidence.sourceHash !== review.semanticFingerprint || evidence.formationRef !== review.reviewRef ||
+    if (evidence.candidateRef !== candidate.candidateRef || evidence.candidateFingerprint !== candidate.semanticFingerprint ||
+        evidence.routeRef !== route.routeRef || evidence.routeFingerprint !== route.semanticFingerprint ||
+        evidence.reviewRef !== review.reviewRef || evidence.reviewFingerprint !== review.semanticFingerprint ||
+        evidence.recordClass !== route.proposedPrimaryDestination || evidence.scope !== candidate.candidateScope ||
         !exactRefs(evidence.subjectRefs, acceptanceSubjects(candidate, route)) || evidence.actorRef !== evidence.authorityRef ||
-        !review.requiredAcceptanceRefs.includes(evidence.authorityRef)) throw new Error('acceptance evidence does not exactly bind actor/subject/scope/source/policy');
+        !review.requiredAcceptanceRefs.includes(evidence.authorityRef) || [candidate.candidateRef, review.reviewRef].includes(evidence.sourceRef) ||
+        [candidate.candidateRef, review.reviewRef].includes(evidence.formationRef)) throw new Error('acceptance evidence does not exactly bind aggregate lineage, actor, subject, scope, source and policy');
   }
   return evidence;
 }
@@ -533,8 +604,15 @@ function transitionTime(start, offsetMs, ceiling) {
 function acceptedBurden(candidate, review, acceptedByRefs, authorityEvidence, acceptedAt) {
   const spec = candidate.burdenRelease;
   if (!spec) throw new Error('BURDEN_RELEASE route requires a Burden Release contract payload');
+  const route = routeContinuityCandidate(candidate);
   let release = createBurdenRelease({
     ...spec,
+    candidateRef: candidate.candidateRef,
+    candidateFingerprint: candidate.semanticFingerprint,
+    routeRef: route.routeRef,
+    routeFingerprint: route.semanticFingerprint,
+    reviewRef: review.reviewRef,
+    reviewFingerprint: review.semanticFingerprint,
     sourceObservationRefs: candidate.sourceObservationRefs,
     sourceBindings: candidate.sourceBindings,
     suspectedOrigin: spec.suspectedOrigin ?? candidate.originClassification.classification,
@@ -556,8 +634,7 @@ function acceptedBurden(candidate, review, acceptedByRefs, authorityEvidence, ac
     nextState: 'CONTEXT_REVIEW', actorRef: review.reviewerRef, transitionedAt: review.reviewedAt, reason: review.reviewRef
   });
   return acceptBurdenRelease(release, {
-    acceptedByRefs,
-    acceptanceEvidenceRefs: authorityEvidence.map((item) => item.acceptanceEvidenceRef),
+    authorityEvidence,
     actorRef: review.reviewerRef,
     acceptedAt,
     evaluationRefs: review.proposedLinkedDestinations.includes('COUNTEREXAMPLE_EVALUATION') ? [`counterexample-evaluation.${review.reviewRef}`] : []
@@ -577,10 +654,15 @@ export function acceptContinuityCandidate(candidate, review, input) {
     return fingerprinted({
       schemaVersion: 'vexlife.transient-continuity-context/v1',
       candidateRef: candidate.candidateRef,
+      candidateFingerprint: candidate.semanticFingerprint,
+      routeRef: route.routeRef,
+      routeFingerprint: route.semanticFingerprint,
       reviewRef: review.reviewRef,
+      reviewFingerprint: review.semanticFingerprint,
       summaryRef: candidate.summaryRef,
       scope: candidate.candidateScope,
       acceptedByRefs: accepted,
+      acceptanceEvidence: evidence,
       acceptanceEvidenceRefs: evidence.map((item) => item.acceptanceEvidenceRef),
       contextLease: lease,
       formedAt: candidate.formedAt,
@@ -599,6 +681,8 @@ export function acceptContinuityCandidate(candidate, review, input) {
     schemaVersion: 'vexlife.accepted-continuity-record/v1',
     candidateRef: candidate.candidateRef,
     candidateFingerprint: candidate.semanticFingerprint,
+    routeRef: route.routeRef,
+    routeFingerprint: route.semanticFingerprint,
     reviewRef: review.reviewRef,
     reviewFingerprint: review.semanticFingerprint,
     sourceObservationRefs: [...candidate.sourceObservationRefs],
@@ -799,8 +883,8 @@ export function recordContinuityRecurrence({ acceptedRecord, observation, priorE
   if (!binding || binding.acceptedRecordRef !== acceptedRecord.acceptedRecordRef || binding.acceptedRecordFingerprint !== acceptedRecord.semanticFingerprint ||
       binding.burdenReleaseRef !== acceptedRecord.burdenReleaseRef || !exactRefs(binding.evaluationRefs, acceptedRecord.burdenRelease?.evaluationRefs ?? [])) throw new Error('recurrence observation does not bind exact accepted record/pattern/evaluation');
   if (priorEvidence) {
-    assertCanonical(priorEvidence, 'recurrenceRef', 'continuity-recurrence', 'prior recurrence evidence');
-    if (priorEvidence.observationFingerprints.includes(observation.semanticFingerprint)) return deepFreeze({
+    validateContinuityRecurrenceEvidence(priorEvidence);
+    if (priorEvidence.observationBindings.some((item) => item.observationRef === observation.observationRef && item.observationFingerprint === observation.semanticFingerprint)) return deepFreeze({
       ...priorEvidence,
       changed: false,
       duplicateSuppressed: true,
@@ -813,8 +897,14 @@ export function recordContinuityRecurrence({ acceptedRecord, observation, priorE
   const time = canonicalTimestamp(observedAt, 'recurrence observedAt');
   afterOrEqual(time, observation.formedAt, 'recurrence observation time');
   if (priorEvidence) afterOrEqual(time, priorEvidence.observedAt, 'recurrence chain', { strict: true });
-  const observationFingerprints = stableRefs([...(priorEvidence?.observationFingerprints ?? []), observation.semanticFingerprint], 'observationFingerprints', { required: true });
-  const recurrenceCount = observationFingerprints.length;
+  const observationBindings = [...(priorEvidence?.observationBindings ?? []), {
+    observationRef: observation.observationRef,
+    observationFingerprint: observation.semanticFingerprint
+  }].sort((left, right) => left.observationRef.localeCompare(right.observationRef));
+  if (new Set(observationBindings.map((item) => item.observationRef)).size !== observationBindings.length) throw new Error('recurrence contains same-ref/different-evidence conflict');
+  const observationRefs = observationBindings.map((item) => item.observationRef);
+  const observationFingerprints = observationBindings.map((item) => item.observationFingerprint);
+  const recurrenceCount = observationBindings.length;
   const recurrenceState = recurrenceCount >= reopenThreshold ? 'REOPEN_REVIEW' : 'MONITORING';
   return fingerprinted({
     schemaVersion: 'vexlife.continuity-recurrence-evidence/v1',
@@ -826,8 +916,10 @@ export function recordContinuityRecurrence({ acceptedRecord, observation, priorE
     scope,
     priorRecurrenceRef: priorEvidence?.recurrenceRef ?? null,
     priorRecurrenceFingerprint: priorEvidence?.semanticFingerprint ?? null,
-    observationRefs: stableRefs([...(priorEvidence?.observationRefs ?? []), observation.observationRef], 'observationRefs', { required: true }),
+    observationBindings,
+    observationRefs,
     observationFingerprints,
+    reopenThreshold,
     recurrenceCount,
     recurrenceState,
     changed: true,
@@ -848,8 +940,12 @@ export function validateContinuityRecurrenceEvidence(evidence) {
   }
   canonicalTimestamp(evidence.observedAt, 'recurrence observedAt');
   if (!evidence.acceptedRecordRef || !evidence.acceptedRecordFingerprint || !evidence.burdenReleaseRef ||
+      !Number.isInteger(evidence.reopenThreshold) || evidence.reopenThreshold < 1 ||
+      !Array.isArray(evidence.observationBindings) ||
       evidence.recurrenceCount !== evidence.observationFingerprints.length ||
-      evidence.observationRefs.length !== evidence.observationFingerprints.length) {
+      evidence.observationRefs.length !== evidence.observationFingerprints.length ||
+      evidence.observationBindings.length !== evidence.observationRefs.length ||
+      evidence.observationBindings.some((item, index) => item.observationRef !== evidence.observationRefs[index] || item.observationFingerprint !== evidence.observationFingerprints[index])) {
     throw new Error('continuity recurrence evidence exact chain coverage mismatch');
   }
   return evidence;
@@ -864,6 +960,15 @@ export function validateTransientContinuityContext(context) {
   canonicalTimestamp(context.acceptedAt, 'transient context acceptedAt');
   canonicalTimestamp(context.expiresAt, 'transient context expiresAt');
   afterOrEqual(context.expiresAt, context.acceptedAt, 'transient context expiry', { strict: true });
+  assertCanonical(context.contextLease, 'contextBindingRef', 'continuity-current-context', 'transient context lease');
+  if (context.contextLease.candidateRef !== context.candidateRef || context.contextLease.reviewRef !== context.reviewRef ||
+      context.contextLease.expiresAt !== context.expiresAt || !context.candidateFingerprint || !context.routeRef ||
+      !context.routeFingerprint || !context.reviewFingerprint ||
+      context.acceptanceEvidence?.length !== context.acceptedByRefs?.length ||
+      !exactRefs(context.acceptanceEvidenceRefs, stableRefs(context.acceptanceEvidence.map((item) => item.acceptanceEvidenceRef), 'transient acceptanceEvidenceRefs', { required: true }))) {
+    throw new Error('transient continuity context does not bind exact lease/lineage/evidence');
+  }
+  for (const evidence of context.acceptanceEvidence) validateContinuityAcceptanceEvidence(evidence, { acceptedAt: context.acceptedAt });
   return context;
 }
 

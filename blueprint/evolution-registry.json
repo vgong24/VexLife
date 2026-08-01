@@ -16,6 +16,7 @@
     "contractRefs": [
       "contract.vexlife.continuity-observation/v1",
       "contract.vexlife.continuity-acceptance-evidence/v1",
+      "contract.vexlife.continuity-authority-snapshot/v1",
       "contract.vexlife.continuity-context-review/v1",
       "contract.vexlife.burden-release/v1",
       "contract.vexlife.continuity-recurrence/v1",
@@ -94,17 +95,26 @@
     {
       "contractRef": "contract.vexlife.continuity-acceptance-evidence/v1",
       "contractKind": "CURRENT_ACCEPTANCE_AUTHORITY",
-      "sourceRef": "source.blueprint.evolution-registry"
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "acceptanceEvidence"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-authority-snapshot/v1",
+      "contractKind": "SIMULATED_CURRENT_AUTHORITY_SNAPSHOT",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "authorityTrust"
     },
     {
       "contractRef": "contract.vexlife.continuity-context-review/v1",
       "contractKind": "CONTEXT_REVIEW",
-      "sourceRef": "source.blueprint.evolution-registry"
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "contextReview"
     },
     {
       "contractRef": "contract.vexlife.burden-release/v1",
       "contractKind": "BURDEN_RELEASE_LIFECYCLE",
-      "sourceRef": "source.blueprint.evolution-registry"
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "burdenRelease"
     },
     {
       "contractRef": "contract.vexlife.continuity-recurrence/v1",
@@ -117,6 +127,85 @@
       "sourceRef": "source.blueprint.evolution-registry"
     }
   ],
+  "authorityTrustSources": [
+    {
+      "schemaVersion": "vexlife.continuity-authority-source/v1",
+      "authoritySourceRef": "authority-source.vexlife.continuity-simulation",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "authorityTrustSources",
+      "evidenceClass": "SIMULATED_CURRENT",
+      "currentness": "CURRENT",
+      "authorityMode": "DETERMINISTIC_NO_EFFECT_SIMULATION",
+      "liveAuthorityGranted": false,
+      "externalEffectsAuthorized": false,
+      "semanticFingerprint": "0046ce51212a6459240254cff656dfe4069db90a30afc2f173789270a9510ea9"
+    }
+  ],
+  "authorityTrust": {
+    "contractRef": "contract.vexlife.continuity-authority-snapshot/v1",
+    "authoritySourceRef": "authority-source.vexlife.continuity-simulation",
+    "sourceRef": "source.blueprint.evolution-registry",
+    "sourceField": "authorityTrustSources",
+    "evidenceClass": "SIMULATED_CURRENT",
+    "currentness": "CURRENT",
+    "authorityMode": "DETERMINISTIC_NO_EFFECT_SIMULATION",
+    "liveAuthorityGranted": false,
+    "externalEffectsAuthorized": false,
+    "requiredFields": [
+      "schemaVersion",
+      "authoritySourceRef",
+      "authoritySourceFingerprint",
+      "sourceRef",
+      "sourceHash",
+      "formationRef",
+      "evidenceClass",
+      "actorRef",
+      "authorityRef",
+      "subjectRefs",
+      "scope",
+      "recordClass",
+      "formedAt",
+      "observedAt",
+      "expiresAt",
+      "currentness",
+      "simulatedAuthority",
+      "liveAuthorityGranted",
+      "externalEffectsAuthorized",
+      "authoritySnapshotRef",
+      "semanticFingerprint"
+    ]
+  },
+  "acceptanceEvidence": {
+    "contractRef": "contract.vexlife.continuity-acceptance-evidence/v1",
+    "requiredFields": [
+      "schemaVersion",
+      "candidateRef",
+      "candidateFingerprint",
+      "routeRef",
+      "routeFingerprint",
+      "reviewRef",
+      "reviewFingerprint",
+      "authoritySnapshotRef",
+      "authoritySnapshotFingerprint",
+      "authoritySnapshot",
+      "actorRef",
+      "authorityRef",
+      "recordClass",
+      "subjectRefs",
+      "scope",
+      "sourceRef",
+      "sourceHash",
+      "formationRef",
+      "formedAt",
+      "observedAt",
+      "expiresAt",
+      "currentness",
+      "evidenceClass",
+      "liveAuthorityGranted",
+      "acceptanceEvidenceRef",
+      "semanticFingerprint"
+    ]
+  },
   "behaviorOriginClasses": [
     "BASE_MODEL_PRIOR",
     "SYSTEM_OR_PROVIDER_POLICY",
@@ -260,9 +349,15 @@
       "RETIRED"
     ],
     "requiredFields": [
-      "burdenRef",
+      "schemaVersion",
+      "candidateRef",
+      "candidateFingerprint",
+      "routeRef",
+      "routeFingerprint",
+      "reviewRef",
+      "reviewFingerprint",
       "sourceObservationRefs",
-      "sourceRangeRefs",
+      "sourceBindings",
       "patternName",
       "patternDescription",
       "suspectedOrigin",
@@ -275,10 +370,26 @@
       "protectedCapabilities",
       "prohibitedOvercorrections",
       "scope",
+      "requiredAcceptanceRefs",
+      "formedAt",
+      "supersedesRef",
+      "burdenRef",
+      "identityFingerprint",
+      "sourceForm",
+      "authorityTransition",
       "acceptedByRefs",
+      "acceptanceEvidence",
+      "acceptanceEvidenceRefs",
+      "authoritySnapshotRefs",
       "evaluationRefs",
       "recurrenceState",
-      "formedAt",
+      "state",
+      "acceptedAt",
+      "transitionReceipts",
+      "lastTransition",
+      "claimsParameterDeletion",
+      "changesBaseModelWeights",
+      "adjudicatesMetaphysicalTruth",
       "semanticFingerprint"
     ],
     "acceptedMeaning": "The named pattern no longer has accepted governing authority inside its exact scope.",
@@ -287,9 +398,13 @@
   "contextReview": {
     "contractRef": "contract.vexlife.continuity-context-review/v1",
     "requiredFields": [
+      "schemaVersion",
       "candidateRef",
+      "candidateFingerprint",
+      "routeRef",
+      "routeFingerprint",
       "sourceObservationRefs",
-      "sourceRangeRefs",
+      "sourceBindings",
       "originClassification",
       "originConfidence",
       "observedConsequence",
@@ -297,15 +412,26 @@
       "proposedPrimaryDestination",
       "proposedLinkedDestinations",
       "privacyState",
+      "privacyEvidenceRef",
+      "redactionEvidenceRef",
       "consentState",
       "contradictionState",
       "attributionState",
       "currentnessState",
+      "summaryRef",
       "protectedCapabilities",
       "prohibitedOvercorrections",
       "requiredAcceptanceRefs",
       "reviewerRef",
-      "reviewDisposition"
+      "reviewDisposition",
+      "acceptedRecordRef",
+      "rejectionReason",
+      "supersedesRef",
+      "reviewedAt",
+      "acceptanceAuthorityGrantedByReviewerRole",
+      "sourceHistoryDeleted",
+      "reviewRef",
+      "semanticFingerprint"
     ],
     "acceptanceIsNeverDerivedFrom": [
       "tool visibility",

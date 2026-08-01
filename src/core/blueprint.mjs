@@ -11,6 +11,15 @@ import { validateHomeBridgeRegistry } from './home-bridge.mjs';
 import { validateBuildHealthRegistry } from './build-health.mjs';
 import { validateIntentRegistry } from './intent-validation.mjs';
 import { validateIntentSchedulerRegistry } from './scheduler-runtime-trust.mjs';
+import {
+  BURDEN_RELEASE_REQUIRED_FIELDS,
+  CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATION_AUTHORITY_SOURCE
+} from './burden-release.mjs';
+import {
+  CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
+  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS
+} from './continuity-evolution-router.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const VEXLIFE_ROOT = path.resolve(HERE, '../..');
@@ -138,6 +147,7 @@ function collectRefs(bundle) {
   if (evolution?.canonicalSourceRef) add('evolution-source', evolution.canonicalSourceRef);
   if (evolution?.systemRef) add('evolution-system', evolution.systemRef);
   for (const item of evolution?.contractIdentities ?? []) add('evolution-contract', item.contractRef);
+  for (const item of evolution?.authorityTrustSources ?? []) add('evolution-authority-source', item.authoritySourceRef);
   for (const item of evolution?.behaviorOriginIdentities ?? []) add('evolution-origin', item.originRef);
   for (const item of evolution?.scopeIdentities ?? []) add('evolution-scope', item.scopeRef);
   for (const item of evolution?.primaryDestinationIdentities ?? []) add('evolution-primary-destination', item.destinationRef);
@@ -269,6 +279,7 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
     }
   };
   collect('contracts', evolution.contractIdentities, 'contractRef');
+  collect('authority trust sources', evolution.authorityTrustSources, 'authoritySourceRef');
   collect('behavior origins', evolution.behaviorOriginIdentities, 'originRef', 'value', evolution.behaviorOriginClasses);
   collect('scopes', evolution.scopeIdentities, 'scopeRef', 'value', evolution.scopeClasses);
   collect('primary destinations', evolution.primaryDestinationIdentities, 'destinationRef', 'value', evolution.primaryDestinations);
@@ -283,7 +294,44 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
       errors.push(`${contract.contractRef ?? 'evolution contract'} has malformed kind or sourceRef`);
     }
   }
+  const exactRequiredFields = (label, actual, expected) => {
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      errors.push(`evolution registry ${label} requiredFields do not exactly match the implementation contract`);
+    }
+  };
+  exactRequiredFields('Burden Release', evolution.burdenRelease?.requiredFields, BURDEN_RELEASE_REQUIRED_FIELDS);
+  exactRequiredFields('context review', evolution.contextReview?.requiredFields, CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS);
+  exactRequiredFields('acceptance evidence', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
+  exactRequiredFields('authority snapshot', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
+  const expectedContractSources = new Map([
+    ['contract.vexlife.continuity-acceptance-evidence/v1', 'acceptanceEvidence'],
+    ['contract.vexlife.continuity-authority-snapshot/v1', 'authorityTrust'],
+    ['contract.vexlife.continuity-context-review/v1', 'contextReview'],
+    ['contract.vexlife.burden-release/v1', 'burdenRelease']
+  ]);
+  for (const [contractRef, sourceField] of expectedContractSources) {
+    const contract = (evolution.contractIdentities ?? []).find((item) => item.contractRef === contractRef);
+    if (contract?.sourceField !== sourceField || contract?.sourceRef !== evolution.canonicalSourceRef) {
+      errors.push(`evolution contract ${contractRef} does not resolve its exact canonical nested source`);
+    }
+  }
+  const authoritySource = (evolution.authorityTrustSources ?? [])[0];
+  if ((evolution.authorityTrustSources ?? []).length !== 1 ||
+      semanticHash(authoritySource) !== semanticHash(CONTINUITY_SIMULATION_AUTHORITY_SOURCE) ||
+      evolution.authorityTrust?.contractRef !== 'contract.vexlife.continuity-authority-snapshot/v1' ||
+      evolution.authorityTrust?.authoritySourceRef !== authoritySource?.authoritySourceRef ||
+      evolution.authorityTrust?.sourceRef !== authoritySource?.sourceRef ||
+      evolution.authorityTrust?.sourceField !== authoritySource?.sourceField ||
+      evolution.authorityTrust?.evidenceClass !== authoritySource?.evidenceClass ||
+      evolution.authorityTrust?.currentness !== authoritySource?.currentness ||
+      evolution.authorityTrust?.authorityMode !== authoritySource?.authorityMode ||
+      evolution.authorityTrust?.liveAuthorityGranted !== false ||
+      evolution.authorityTrust?.externalEffectsAuthorized !== false) {
+    errors.push('evolution authority trust does not exactly bind the registered simulated-current no-effect source');
+  }
   for (const ref of [
+    evolution.authorityTrust?.contractRef,
+    evolution.acceptanceEvidence?.contractRef,
     evolution.burdenRelease?.contractRef,
     evolution.contextReview?.contractRef,
     evolution.recurrencePolicy?.contractRef,

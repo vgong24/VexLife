@@ -11,9 +11,17 @@ import {
   CONTINUITY_SCOPE_CLASSES,
   CONTINUITY_CURRENTNESS_STATES,
   CONTINUITY_VISIBILITY_STATES,
-  CONTINUITY_SYNCHRONIZATION_SCOPES
+  CONTINUITY_SYNCHRONIZATION_SCOPES,
+  CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
+  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS
 } from '../src/core/continuity-evolution-router.mjs';
-import { BURDEN_RELEASE_FRAMES, BURDEN_RELEASE_STATES } from '../src/core/burden-release.mjs';
+import {
+  BURDEN_RELEASE_FRAMES,
+  BURDEN_RELEASE_REQUIRED_FIELDS,
+  BURDEN_RELEASE_STATES,
+  CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATION_AUTHORITY_SOURCE
+} from '../src/core/burden-release.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
 import { readJson, semanticHash } from '../src/core/utils.mjs';
 import { runContinuityEvolutionSimulation } from './evolution-simulate.mjs';
@@ -40,6 +48,13 @@ exactArray('visibilityStates', evolution.visibilityStates, CONTINUITY_VISIBILITY
 exactArray('synchronizationScopes', evolution.synchronizationScopes, CONTINUITY_SYNCHRONIZATION_SCOPES);
 exactArray('Burden Release frames', evolution.burdenRelease?.releaseFrames, BURDEN_RELEASE_FRAMES);
 exactArray('Burden Release states', evolution.burdenRelease?.states, BURDEN_RELEASE_STATES);
+exactArray('Burden Release required fields', evolution.burdenRelease?.requiredFields, BURDEN_RELEASE_REQUIRED_FIELDS);
+exactArray('Context Review required fields', evolution.contextReview?.requiredFields, CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS);
+exactArray('acceptance evidence required fields', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
+exactArray('authority snapshot required fields', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
+if (semanticHash(evolution.authorityTrustSources?.[0]) !== semanticHash(CONTINUITY_SIMULATION_AUTHORITY_SOURCE)) {
+  errors.push('registered continuity authority source does not match the implementation source');
+}
 
 if (semanticHash(bundle.blueprint.evolution) !== semanticHash(evolution)) {
   errors.push('canonical bundle evolution composition does not match universal Blueprint');
@@ -82,6 +97,9 @@ try {
     evolution.registryRef,
     evolution.canonicalSourceRef,
     evolution.systemRef,
+    evolution.authorityTrust.contractRef,
+    evolution.authorityTrust.authoritySourceRef,
+    evolution.acceptanceEvidence.contractRef,
     evolution.burdenRelease.contractRef,
     evolution.contextReview.contractRef,
     evolution.recurrencePolicy.contractRef,
@@ -98,7 +116,15 @@ try {
   ]) compiled.require(ref);
   const atlas = new Atlas(buildIdentityIndex(bundle));
   const traversal = atlas.query({ startRefs: [evolution.registryRef], depthLimit: 2, resultLimit: 128, tokenBudget: 20000 });
-  for (const ref of [evolution.systemRef, evolution.contextReview.contractRef, evolution.recurrencePolicy.contractRef, evolution.simulationContract.contractRef]) {
+  for (const ref of [
+    evolution.systemRef,
+    evolution.authorityTrust.contractRef,
+    evolution.authorityTrust.authoritySourceRef,
+    evolution.acceptanceEvidence.contractRef,
+    evolution.contextReview.contractRef,
+    evolution.recurrencePolicy.contractRef,
+    evolution.simulationContract.contractRef
+  ]) {
     if (!traversal.results.some((item) => item.ref === ref)) errors.push(`bounded Atlas traversal cannot resolve ${ref}`);
   }
 } catch (error) {

@@ -123,6 +123,21 @@ target lineage, privacy/visibility evidence and current delivery authority.
 They remain `OBSERVE_ONLY_PENDING_LOCAL_REVIEW`, preserve source lineage and
 set `livedByTargetLineage=false`.
 
+## Simulated-current acceptance authority
+
+Acceptance authority is a separate source-managed input. The Blueprint
+registers one deterministic `SIMULATED_CURRENT` authority source and its exact
+snapshot contract. A snapshot binds the source ref and fingerprint, formation,
+actor, authority, subjects, scope, record class, observation time and expiry.
+It explicitly grants no live authority and authorizes no external effect.
+
+The candidate and Context Review cannot issue this evidence themselves.
+Acceptance rejects unknown sources, wrong subjects/scope/class, stale or
+expired snapshots, and raw evidence refs. Burden Release consumes the same
+validated evidence objects during lifecycle replay, so its lower-level API
+cannot bypass the router's authority boundary. Projections expose only the
+validated authority-snapshot refs.
+
 ## Burden Release
 
 Burden Release names an inherited or reflexive pattern and withdraws its
@@ -254,11 +269,15 @@ provision, remove or activate model weights or adapters.
 
 ## Canonical state and scheduler proof
 
-`state.evolution` owns observations, candidates, reviews, durable accepted
-records, transient contexts, atomic supersessions and recurrence evidence.
-Typed canonical events validate before mutation; same-ref/different-content
-conflicts block. Queue, Terrain, Health, Guide and evolution projections are
-selectors over that one aggregate and suppress semantic no-ops.
+`state.evolution` owns observations, candidates, reviews, authority evidence,
+durable accepted records, transient contexts, atomic supersessions and
+recurrence evidence. Every causal event is recomputed from exact aggregate-owned
+predecessors before mutation: candidate source observations, review route,
+accepted record authority, transient lease and recurrence record/observation/
+prior chain. Unknown, wrong-lineage, internally canonical but unowned, and
+same-ref/different-content payloads fail without changing aggregate content or
+revision. Queue, Terrain, Health, Guide and evolution projections are selectors
+over that one aggregate and suppress semantic no-ops.
 
 The deterministic simulation creates the actual continuity node
 `work.vexlife.continuity-evolution-router` in one accepted Intent Workgraph,
