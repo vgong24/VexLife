@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "vexlife.runtime-recovery-registry/v0",
+  "schemaVersion": "vexlife.runtime-recovery-registry/v1",
   "registryRef": "registry.vexlife.runtime-recovery.001",
   "registryVersion": 1,
   "purpose": "Own one deterministic no-effect failure, recovery, retry, checkpoint, context, rollback, replay and projection contract before any later real runtime effect may be admitted.",
@@ -10,7 +10,7 @@
   },
   "systemRef": "system.vexlife.runtime-failure-recovery",
   "failureEnvelope": {
-    "contractRef": "contract.vexlife.runtime-failure-envelope/v0",
+    "contractRef": "contract.vexlife.runtime-failure-envelope/v1",
     "identityRule": "failureRef and semanticFingerprint derive from the complete canonical source-bound envelope; a thrown string or stack is evidence input only",
     "requiredFields": [
       "failureRef",
@@ -27,6 +27,8 @@
       "retriableClass",
       "partialEffectState",
       "humanAttentionClass",
+      "classificationSourceRef",
+      "classificationEvidenceFingerprint",
       "evidenceRefs",
       "semanticFingerprint"
     ]
@@ -68,11 +70,13 @@
     "TERMINAL_BLOCK"
   ],
   "retryPolicy": {
-    "contractRef": "contract.vexlife.runtime-retry-policy/v0",
+    "contractRef": "contract.vexlife.runtime-retry-policy/v1",
     "budgetRef": "budget.vexlife.runtime-recovery.default",
     "maximumAttemptCount": 3,
     "maximumRepeatedIdenticalFailureCount": 2,
     "maximumWallTimeClass": "SHORT_DETERMINISTIC",
+    "maximumWallTimeMs": 5000,
+    "maximumTotalWallTimeMs": 15000,
     "freshCurrentnessRequired": true,
     "freshResourceAdmissionRequired": true,
     "freshContextAdmissionRequired": true,
@@ -82,7 +86,7 @@
     "recursiveRetryAllowed": false
   },
   "checkpointContract": {
-    "contractRef": "contract.vexlife.runtime-recovery-checkpoint/v0",
+    "contractRef": "contract.vexlife.runtime-recovery-checkpoint/v1",
     "requiresAcceptedSchedulerCheckpointFingerprint": true,
     "requiresExactSixLeaseReleaseFingerprints": true,
     "freshGenerationRequired": true,
@@ -96,7 +100,7 @@
     ]
   },
   "contextRecoveryContract": {
-    "contractRef": "contract.vexlife.runtime-context-recovery/v0",
+    "contractRef": "contract.vexlife.runtime-context-recovery/v1",
     "modelInvocationBeforeFitAllowed": false,
     "invisibleTruncationAllowed": false,
     "sourceHistoryDeletionClaimAllowed": false,
@@ -115,39 +119,78 @@
     ]
   },
   "transactionalRecoveryContract": {
-    "contractRef": "contract.vexlife.runtime-transactional-recovery/v0",
+    "contractRef": "contract.vexlife.runtime-transactional-recovery/v1",
     "requiredEvidence": [
       "expectedBeforeFingerprint",
       "observedBeforeFingerprint",
       "partialResultFingerprint",
       "rollbackReadBackFingerprint",
-      "lastKnownGoodRef"
+      "lastKnownGoodRef",
+      "lastKnownGoodExpectedFingerprint",
+      "lastKnownGoodReadBackFingerprint",
+      "quarantineRef",
+      "quarantineReason"
     ],
     "rollbackFailureGreenAllowed": false,
     "admittedAdapterClass": "DETERMINISTIC_NO_EFFECT"
   },
   "recoveryAggregate": {
-    "contractRef": "contract.vexlife.runtime-recovery-aggregate/v0",
+    "contractRef": "contract.vexlife.runtime-recovery-aggregate/v1",
     "stateOwnerRef": "state.runtime-recovery",
     "requiredFields": [
       "aggregateRef",
       "workNodeRef",
       "sourceStateFingerprint",
+      "initialSchedulerGeneration",
       "schedulerGeneration",
       "phase",
+      "eventLedger",
+      "activeAttempt",
       "activeFailure",
+      "activePolicyDecision",
+      "currentRecoveryReceipt",
+      "currentCheckpointAdmission",
+      "currentRecoveryActionReceipt",
       "attemptLedger",
+      "failureHistory",
       "retryBudget",
+      "retryBudgetFingerprint",
       "checkpointLineage",
+      "continuationLineage",
+      "contextRecoveryReceipts",
+      "resourceRecoveryReceipts",
       "rollbackLineage",
       "quarantinedRefs",
       "lastKnownGoodRefs",
       "humanDecisionGates",
       "terminalRecoveryReceipts",
       "acceptedExternalEvents",
+      "lastSuccessfulExecutionReceipt",
+      "recoveryConvergenceReceipt",
+      "recoveredFailure",
       "semanticFingerprint"
     ],
-    "replayRule": "exact event refs are accepted once; same-ref/different-content and stale generation evidence fail closed",
+    "eventTypes": [
+      "ATTEMPT_STARTED",
+      "ATTEMPT_SUCCEEDED",
+      "ATTEMPT_FAILED",
+      "FAILURE_ACTIVATED",
+      "CHECKPOINT_ADMITTED",
+      "POLICY_DECIDED",
+      "CONTEXT_RECOVERED",
+      "RESOURCE_RECOVERED",
+      "ROLLBACK_ATTEMPTED",
+      "ROLLBACK_VERIFIED",
+      "LAST_KNOWN_GOOD_RESTORED",
+      "QUARANTINED",
+      "HUMAN_DECISION_REQUESTED",
+      "RECOVERY_ACTION_APPLIED",
+      "GENERATION_CONTINUED",
+      "EXTERNAL_EVENT_ACCEPTED",
+      "RECOVERY_CONVERGED",
+      "TERMINAL_CLOSED"
+    ],
+    "replayRule": "typed content-addressed events are the only mutation route; restore replays legal edges and recomputes phase, budget use, generation, current pointers, recovery lineages and unique terminal state",
     "semanticNoOpRule": "equal aggregate projection fingerprints do not emit another Queue, Terrain, Health or Guide revision"
   },
   "projectionIdentities": [
@@ -210,23 +253,24 @@
     "test.runtime-recovery.r24-full-gate"
   ],
   "simulationContract": {
-    "contractRef": "contract.runtime-recovery.integrated-simulation/v0",
+    "contractRef": "contract.runtime-recovery.integrated-simulation/v1",
     "checkRef": "check.runtime-recovery",
     "receiptPath": "generated/health/runtime-recovery-simulation.json",
-    "workNodeRef": "work.scheduler.simulation",
+    "workNodeRef": "work.runtime-recovery.simulation",
     "requiredJourneyStates": [
-      "WORK_ADMITTED",
-      "DETERMINISTIC_EXECUTOR_THROWN",
-      "CANONICAL_FAILURE_FORMED",
-      "CHECKPOINT_AND_SIX_LEASE_TRANSITION_BOUND",
-      "SOURCE_MANAGED_RETRY_ADMITTED",
-      "CONTEXT_AND_RESOURCE_REDUCTION_PROVEN",
+      "RECOVERY_WORK_NODE_ADMITTED",
+      "TOTAL_BOUNDARY_FAILURE_TYPED",
+      "EXACT_SCHEDULER_CHECKPOINT_AND_SIX_RELEASES",
+      "CHECKPOINT_ADMISSION_RECORDED",
+      "EXACT_SOURCE_POLICY_DECIDED",
+      "AGGREGATE_OWNED_RECOVERY_ACTION_APPLIED",
+      "QUARANTINE_ATTENTION_OWNED",
+      "FRESH_GENERATION_AND_SIX_LEASES_CONTINUED",
       "FRESH_GENERATION_RETRY_SUCCEEDED",
-      "ROLLBACK_AND_LAST_KNOWN_GOOD_PROVEN",
-      "RESTART_AND_REPLAY_REJECTED",
-      "WORKGRAPH_COMPLETION_FINGERPRINT_BOUND",
-      "RECOVERY_TERMINAL_RECEIPT_FORMED",
-      "QUEUE_TERRAIN_HEALTH_GUIDE_PROJECTED"
+      "REPLAY_DERIVED_AGGREGATE_RESTORED",
+      "WORKGRAPH_CAUSAL_RECOVERY_VERIFIED",
+      "TERMINAL_RECOVERY_CLOSED",
+      "HUMAN_PROJECTIONS_RETAIN_RECOVERY_EVIDENCE"
     ],
     "requiredSchedulerBindings": [
       "checkpointFingerprint",

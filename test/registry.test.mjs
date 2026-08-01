@@ -75,7 +75,7 @@ test('scheduler registry composes universally, resolves through Atlas, and omiss
 
 test('runtime recovery registry composes through the universal Blueprint and bounded feature Atlas', () => {
   const recovery = bundle.blueprint.runtimeRecovery;
-  assert.equal(recovery.schemaVersion, 'vexlife.runtime-recovery-registry/v0');
+  assert.equal(recovery.schemaVersion, 'vexlife.runtime-recovery-registry/v1');
   assert.deepEqual(recovery.failureClasses, FAILURE_CLASSES);
   assert.deepEqual(recovery.executorOutcomes, EXECUTOR_OUTCOMES);
   assert.deepEqual(recovery.recoveryActions, RECOVERY_ACTIONS);
@@ -105,7 +105,7 @@ test('runtime recovery registry composes through the universal Blueprint and bou
     sourceStateFingerprint: semanticHash(malformed),
     schedulerGeneration: 0,
     retryBudget: malformed.retryPolicy
-  }, { registry: malformed }), /maximumAttemptCount/);
+  }, { registry: malformed }), /registry retry budget is missing or not exactly bounded/);
 });
 
 test('Evolution composes universally, resolves through Atlas, and malformed or duplicate identity fails closed', () => {

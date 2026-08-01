@@ -152,6 +152,6 @@
   {
     "stateRef": "state.runtime-recovery",
     "ownerRef": "service.runtime-recovery",
-    "brief": "One content-addressed aggregate owns active failure, attempts, bounded retry budget, exact checkpoint and rollback lineage, quarantine, last-known-good, human decision, replay and terminal recovery truth for compact Queue, Terrain, Health and Guide projections."
+    "brief": "One replay-derived content-addressed aggregate owns active failure, exact attempt chronology and registry budget, scheduler checkpoint and six-lease lineage, policy and recovery actions, quarantine, last-known-good, human decision and unique terminal recovery truth for compact Queue, Terrain, Health and Guide projections."
   }
 ]

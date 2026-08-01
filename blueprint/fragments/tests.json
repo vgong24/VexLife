@@ -589,11 +589,11 @@
   },
   {
     "testRef": "test.runtime-recovery.r0-totality",
-    "brief": "Every admitted deterministic executor boundary returns one canonical outcome; thrown values cannot escape, disappear or become success."
+    "brief": "Every admitted synchronous deterministic executor boundary returns one canonical outcome; malformed, async and thenable inputs reject as typed mutation-free boundary results."
   },
   {
     "testRef": "test.runtime-recovery.r1-canonical-identity",
-    "brief": "Failure identity is source, work, generation, operation, attempt and transition bound, content-addressed and replayable."
+    "brief": "Failure identity is source-classified, work, generation, operation, attempt and transition bound, content-addressed and replayable; caller hints cannot weaken it."
   },
   {
     "testRef": "test.runtime-recovery.r2-malformed-visible",
@@ -601,7 +601,7 @@
   },
   {
     "testRef": "test.runtime-recovery.r3-bounded-budget",
-    "brief": "Attempt, wall-time and identical-recurrence budgets are finite and source-managed."
+    "brief": "Attempt, per-attempt wall-time, total wall-time and identical-recurrence budgets match the registry exactly and are source-managed."
   },
   {
     "testRef": "test.runtime-recovery.r4-recurrence-stop",
@@ -609,11 +609,11 @@
   },
   {
     "testRef": "test.runtime-recovery.r5-checkpoint-required",
-    "brief": "Consequential retry is never authorized without one exact current checkpoint."
+    "brief": "Consequential recovery is never authorized without one exact current scheduler checkpoint, all six releases and an exact checkpoint-admission receipt."
   },
   {
     "testRef": "test.runtime-recovery.r6-fresh-generation",
-    "brief": "Failure checkpointing binds six released leases and old scheduler generations cannot resume."
+    "brief": "Failure checkpointing binds six released leases, seals the old generation and continuation consumes six fresh leases from a scheduler-issued next generation."
   },
   {
     "testRef": "test.runtime-recovery.r7-resource-reduction",
@@ -653,7 +653,7 @@
   },
   {
     "testRef": "test.runtime-recovery.r16-replay-once",
-    "brief": "Duplicate, replayed, stale and same-ref/different-content events reject once-only."
+    "brief": "Reducer replay derives all aggregate state; duplicate terminal, impossible-order, stale and same-ref/different-content events reject once-only without mutation."
   },
   {
     "testRef": "test.runtime-recovery.r17-checkpoint-rejection",
@@ -661,7 +661,7 @@
   },
   {
     "testRef": "test.runtime-recovery.r18-rollback-failure",
-    "brief": "Rollback failure becomes quarantine or block and never restores green Health."
+    "brief": "Aggregate-owned rollback, last-known-good and quarantine actions require exact read-back evidence; unresolved quarantine never restores green Health."
   },
   {
     "testRef": "test.runtime-recovery.r19-last-known-good",
@@ -681,7 +681,7 @@
   },
   {
     "testRef": "test.runtime-recovery.r23-integrated-scheduler-workgraph",
-    "brief": "The integrated no-effect journey binds exact scheduler checkpoint, completion verification, evidence lineage and Workgraph transition fingerprints into the terminal recovery receipt."
+    "brief": "One actual scheduler-owned recovery Workgraph journey binds failure, policy, checkpoint, six release/fresh leases, action, success and convergence evidence into completion verification and the terminal receipt."
   },
   {
     "testRef": "test.runtime-recovery.r24-full-gate",

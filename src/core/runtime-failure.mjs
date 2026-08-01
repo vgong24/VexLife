@@ -57,6 +57,8 @@ export const FAILURE_ENVELOPE_REQUIRED_FIELDS = Object.freeze([
   'retriableClass',
   'partialEffectState',
   'humanAttentionClass',
+  'classificationSourceRef',
+  'classificationEvidenceFingerprint',
   'evidenceRefs',
   'semanticFingerprint'
 ]);
@@ -100,19 +102,6 @@ function assertFingerprint(value, label) {
   if (!/^[a-f0-9]{64}$/.test(String(value ?? ''))) throw new Error(`${label} must be a SHA-256 fingerprint`);
 }
 
-function inferFailureClass(error) {
-  const explicit = error?.failureClass ?? error?.code;
-  if (FAILURE_CLASSES.includes(explicit)) return explicit;
-  const text = `${error?.name ?? ''} ${error?.message ?? error ?? ''}`.toLowerCase();
-  if (/range|bounds|index/.test(text)) return 'INVALID_INDEX_OR_BOUNDS';
-  if (/invalid state|state transition/.test(text)) return 'INVALID_STATE_TRANSITION';
-  if (/malformed|parse|schema/.test(text)) return 'MALFORMED_INPUT_OR_RESULT';
-  if (/context|token budget|hard limit/.test(text)) return 'CONTEXT_BUDGET_EXCEEDED';
-  if (/timeout/.test(text)) return 'MODEL_TIMEOUT_SIMULATED';
-  if (/resource|memory exhausted/.test(text)) return 'RESOURCE_EXHAUSTION_SIMULATED';
-  return error instanceof Error ? 'UNEXPECTED_EXCEPTION' : 'UNKNOWN_FAILURE';
-}
-
 function canonicalErrorEvidence(error) {
   const evidence = {
     name: typeof error?.name === 'string' && error.name ? error.name : 'UnknownThrownValue',
@@ -121,6 +110,95 @@ function canonicalErrorEvidence(error) {
   };
   evidence.evidenceFingerprint = semanticHash(evidence);
   return evidence;
+}
+
+export function createSourceManagedFailureEvidence({
+  failureClass,
+  sourceRef,
+  error,
+  currentness = 'CURRENT'
+}) {
+  if (!FAILURE_CLASSES.includes(failureClass)) throw new Error('source-managed failure evidence class is invalid');
+  if (!sourceRef) throw new Error('source-managed failure evidence requires sourceRef');
+  if (currentness !== 'CURRENT') throw new Error('source-managed failure evidence must be CURRENT');
+  const errorEvidence = canonicalErrorEvidence(error);
+  const evidence = {
+    schemaVersion: 'vexlife.runtime-failure-classification-evidence/v0',
+    failureClass,
+    sourceRef,
+    errorEvidenceFingerprint: errorEvidence.evidenceFingerprint,
+    currentness
+  };
+  evidence.semanticFingerprint = semanticHash(evidence);
+  evidence.evidenceRef = `evidence.runtime-failure.classification.${evidence.semanticFingerprint.slice(0, 32)}`;
+  return freeze(evidence);
+}
+
+function canonicalClassification(input, errorEvidence, error) {
+  const supplied = error?.sourceManagedFailureEvidence ?? input?.sourceManagedFailureEvidence ?? null;
+  if (supplied) {
+    const canonical = createSourceManagedFailureEvidence({
+      failureClass: supplied.failureClass,
+      sourceRef: supplied.sourceRef,
+      error,
+      currentness: supplied.currentness
+    });
+    if (canonical.errorEvidenceFingerprint !== errorEvidence.evidenceFingerprint ||
+        canonical.semanticFingerprint !== supplied.semanticFingerprint ||
+        canonical.evidenceRef !== supplied.evidenceRef) {
+      throw new Error('source-managed failure classification evidence mismatch');
+    }
+    return canonical;
+  }
+  if (FAILURE_CLASSES.includes(input?.failureClass) && input?.classificationSourceRef &&
+      input?.classificationEvidenceFingerprint) {
+    const canonical = createSourceManagedFailureEvidence({
+      failureClass: input.failureClass,
+      sourceRef: input.classificationSourceRef,
+      error: error ?? input.errorEvidence,
+      currentness: 'CURRENT'
+    });
+    if (canonical.errorEvidenceFingerprint !== errorEvidence.evidenceFingerprint ||
+        canonical.semanticFingerprint !== input.classificationEvidenceFingerprint) {
+      throw new Error('failure classification evidence fingerprint mismatch');
+    }
+    return canonical;
+  }
+  const fallback = {
+    failureClass: error instanceof Error ? 'UNEXPECTED_EXCEPTION' : 'UNKNOWN_FAILURE',
+    sourceRef: 'source.runtime-recovery.default-unexpected',
+    errorEvidenceFingerprint: errorEvidence.evidenceFingerprint,
+    currentness: 'CURRENT'
+  };
+  fallback.semanticFingerprint = semanticHash(fallback);
+  fallback.evidenceRef = `evidence.runtime-failure.classification.${fallback.semanticFingerprint.slice(0, 32)}`;
+  return freeze(fallback);
+}
+
+const RETRIABLE_SEVERITY = Object.freeze({
+  RETRY_WITH_CURRENT_ADMISSION: 0,
+  RETRY_REDUCED_BUDGET: 1,
+  RECOVER_BEFORE_RETRY: 2,
+  UNKNOWN_REQUIRES_DECISION: 3,
+  NOT_RETRIABLE: 4
+});
+const PARTIAL_EFFECT_SEVERITY = Object.freeze({
+  NONE: 0,
+  POSSIBLE: 1,
+  CONFIRMED_REVERSIBLE: 2,
+  UNKNOWN: 3,
+  CONFIRMED_IRREVERSIBLE: 4
+});
+const HUMAN_ATTENTION_SEVERITY = Object.freeze({
+  NONE: 0,
+  ONLY_IF_RECOVERY_EXHAUSTED: 1,
+  DECISION_REQUIRED: 2,
+  IMMEDIATE: 3
+});
+
+function noWeaker(supplied, sourceManaged, vocabulary, severity) {
+  if (!vocabulary.includes(supplied)) return sourceManaged;
+  return severity[supplied] > severity[sourceManaged] ? supplied : sourceManaged;
 }
 
 export function buildFailureFingerprint(input) {
@@ -133,13 +211,12 @@ export function buildFailureFingerprint(input) {
 
 export function createFailureEnvelope(input, { registry = null } = {}) {
   const error = input?.error;
-  const failureClass = FAILURE_CLASSES.includes(input?.failureClass)
-    ? input.failureClass
-    : inferFailureClass(error);
+  const errorEvidence = canonicalErrorEvidence(error ?? input?.errorEvidence ?? 'unknown failure');
+  const classification = canonicalClassification(input, errorEvidence, error ?? input?.errorEvidence);
+  const failureClass = classification.failureClass;
   const defaults = CLASS_DEFAULTS[failureClass] ?? CLASS_DEFAULTS.UNKNOWN_FAILURE;
-  const errorEvidence = canonicalErrorEvidence(error ?? input?.errorEvidence ?? failureClass);
   const candidate = {
-    schemaVersion: 'vexlife.runtime-failure-envelope/v0',
+    schemaVersion: 'vexlife.runtime-failure-envelope/v1',
     failureClass,
     originRef: input?.originRef,
     workNodeRef: input?.workNodeRef,
@@ -150,11 +227,14 @@ export function createFailureEnvelope(input, { registry = null } = {}) {
     expectedTransitionRef: input?.expectedTransitionRef,
     observedAt: input?.observedAt,
     currentness: input?.currentness ?? 'CURRENT',
-    retriableClass: input?.retriableClass ?? defaults[0],
-    partialEffectState: input?.partialEffectState ?? error?.partialEffectState ?? defaults[1],
-    humanAttentionClass: input?.humanAttentionClass ?? error?.humanAttentionClass ?? defaults[2],
+    retriableClass: noWeaker(input?.retriableClass, defaults[0], RETRIABLE_CLASSES, RETRIABLE_SEVERITY),
+    partialEffectState: noWeaker(input?.partialEffectState, defaults[1], PARTIAL_EFFECT_STATES, PARTIAL_EFFECT_SEVERITY),
+    humanAttentionClass: noWeaker(input?.humanAttentionClass, defaults[2], HUMAN_ATTENTION_CLASSES, HUMAN_ATTENTION_SEVERITY),
+    classificationSourceRef: classification.sourceRef,
+    classificationEvidenceFingerprint: classification.semanticFingerprint,
     evidenceRefs: canonicalRefs([
       ...(input?.evidenceRefs ?? []),
+      classification.evidenceRef,
       `evidence.runtime-failure.${errorEvidence.evidenceFingerprint.slice(0, 32)}`
     ]),
     errorEvidence
@@ -207,7 +287,7 @@ export function validateFailureEnvelope(value, options = {}) {
 }
 
 export function normalizeThrownFailure(error, context, options = {}) {
-  return createFailureEnvelope({ ...context, error, failureClass: error?.failureClass }, options);
+  return createFailureEnvelope({ ...context, error }, options);
 }
 
 // [VXG RealForever]

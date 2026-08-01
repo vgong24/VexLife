@@ -1608,7 +1608,7 @@
   {
     "processRef": "process.vexlife.runtime.recover-execute",
     "processVersion": 1,
-    "purpose": "Resolve bounded recovery from current policy, checkpoint, lease, resource, context, before-image and replay evidence, then retry, wait, split, roll back, restore, quarantine, ask or block without caller-authored authority.",
+    "purpose": "Resolve and record bounded recovery only through replayed typed events that bind exact source policy, scheduler checkpoint and six releases, context/resource/rollback evidence, scheduler-issued continuation and causal Workgraph completion without caller-authored authority.",
     "applicabilityRules": [
       "one canonical active failure exists"
     ],
@@ -1616,10 +1616,11 @@
       "failureEnvelope",
       "recoveryAggregate",
       "retryPolicy",
-      "currentAdmissionEvidence"
+      "currentAdmissionEvidence",
+      "schedulerCheckpoint",
+      "sixLeaseReleaseReceipts"
     ],
     "optionalInputs": [
-      "recoveryCheckpoint",
       "beforeImage",
       "lastKnownGoodRef",
       "smallestHumanQuestionRef"
@@ -1635,12 +1636,14 @@
       "no real effect adapter is admitted in this implementation wave"
     ],
     "steps": [
-      "resolve-policy",
-      "checkpoint-and-transition-leases",
-      "revalidate-context-and-resource",
-      "retry-or-rollback-or-quarantine",
+      "record-exact-checkpoint-admission",
+      "record-source-policy-decision",
+      "apply-aggregate-owned-recovery-action",
+      "consume-scheduler-issued-continuation-and-six-fresh-leases",
+      "retry-and-replay-aggregate",
+      "form-causal-recovery-convergence",
       "verify-workgraph-completion",
-      "form-terminal-recovery-receipt"
+      "form-unique-terminal-recovery-receipt"
     ],
     "effectOwnerRule": "source policy and accepted scheduler evidence own recovery admission; callers cannot grant retries, scope or authority",
     "authorityEnvelope": {
@@ -1666,7 +1669,7 @@
       "TERMINAL_BLOCK"
     ],
     "returnRouteRule": "return exact recovery receipt, preserved refs, next safe action and smallest human decision if any",
-    "closureRule": "close only through exact success, quarantine, human gate or terminal block receipt",
+    "closureRule": "successful closure is unique and consumes the aggregate-owned success plus exact scheduler checkpoint, causal completion gate evidence, verification, Workgraph transition, completion and return-route receipts; quarantine, human gates and blocks remain held",
     "recoveryRule": "rollback failure remains quarantined or blocked and never projects green Health",
     "foundationDependencies": [
       "foundation.vexlife.state-relay.v1"

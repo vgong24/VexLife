@@ -355,7 +355,7 @@
   },
   {
     "workRef": "work.vexlife.runtime-failure-recovery",
-    "purpose": "Implement one deterministic no-effect Runtime Failure & Recovery Spine with content-addressed failures, total executor outcomes, source-managed bounded recovery, exact scheduler checkpoint and lease lineage, context/resource reduction, transactional rollback/quarantine, restart/replay protection, canonical projections and exact PR-ready/Health receipt admission.",
+    "purpose": "Implement one deterministic no-effect Runtime Failure & Recovery Spine whose typed total boundary, exact registry budget, scheduler checkpoint/six-lease handoff, replay-derived aggregate, aggregate-owned actions and causally completed Workgraph journey fail closed under substitution.",
     "distance": "NOW",
     "milestoneRef": "milestone.vexlife.work-orchestration",
     "dependsOn": [
@@ -433,18 +433,18 @@
       "registry.vexlife.runtime-recovery.001",
       "source.blueprint.runtime-recovery-registry",
       "system.vexlife.runtime-failure-recovery",
-      "contract.vexlife.runtime-failure-envelope/v0",
-      "contract.vexlife.runtime-retry-policy/v0",
-      "contract.vexlife.runtime-recovery-checkpoint/v0",
-      "contract.vexlife.runtime-context-recovery/v0",
-      "contract.vexlife.runtime-transactional-recovery/v0",
-      "contract.vexlife.runtime-recovery-aggregate/v0",
-      "contract.runtime-recovery.integrated-simulation/v0",
+      "contract.vexlife.runtime-failure-envelope/v1",
+      "contract.vexlife.runtime-retry-policy/v1",
+      "contract.vexlife.runtime-recovery-checkpoint/v1",
+      "contract.vexlife.runtime-context-recovery/v1",
+      "contract.vexlife.runtime-transactional-recovery/v1",
+      "contract.vexlife.runtime-recovery-aggregate/v1",
+      "contract.runtime-recovery.integrated-simulation/v1",
       "module.vexlife.core.runtime-recovery",
       "projection.runtime-recovery.health"
     ],
     "effectBoundary": "DETERMINISTIC_NO_EFFECT_FAILURE_AND_RECOVERY_FIXTURES_ONLY",
-    "completionGate": "R0-R24 and adversarial fixtures, an exact structured scheduler/Workgraph-bound runtime recovery receipt admitted independently by PR-ready and Health, exact source manifest, browser, Windows/Linux portability, normal DCO commits and independent exact-head review pass",
+    "completionGate": "C1-C5 and R0-R24 adversarial fixtures, one exact structured scheduler/Workgraph-bound runtime recovery receipt admitted independently by PR-ready and Health, exact source manifest, browser, Windows/Linux portability, normal DCO commits and independent exact-head review pass",
     "platformRefs": [
       "platform.any"
     ],

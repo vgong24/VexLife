@@ -1,3 +1,4 @@
+import { parseCanonicalTimestamp } from './scheduler-runtime-trust.mjs';
 import { validateFailureEnvelope } from './runtime-failure.mjs';
 import { semanticHash } from './utils.mjs';
 
@@ -23,6 +24,24 @@ export const EXECUTOR_OUTCOMES = Object.freeze([
 ]);
 
 const RETRY_ACTIONS = new Set(['RETRY_SAME_BUDGET', 'RETRY_REDUCED_BUDGET']);
+const CONSEQUENT_RECOVERY_ACTIONS = new Set([
+  ...RETRY_ACTIONS,
+  'CONDENSE_CONTEXT_AND_REACQUIRE',
+  'SPLIT_WORK_NODE',
+  'ROLLBACK_TO_BEFORE_IMAGE',
+  'RESTORE_LAST_KNOWN_GOOD',
+  'QUARANTINE_ADAPTER_OR_ARTIFACT'
+]);
+
+function clone(value) {
+  return structuredClone(value);
+}
+
+function freeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const item of Object.values(value)) freeze(item);
+  return Object.freeze(value);
+}
 
 function outcomeFor(action) {
   if (action === 'REQUEST_HUMAN_DECISION') return 'FAILED_NEEDS_HUMAN';
@@ -39,7 +58,11 @@ function matchingAttempts(aggregate, failure) {
 
 function policyAction(failure) {
   if (failure.partialEffectState === 'CONFIRMED_IRREVERSIBLE') return 'QUARANTINE_ADAPTER_OR_ARTIFACT';
-  if (['CONFIRMED_REVERSIBLE', 'POSSIBLE'].includes(failure.partialEffectState)) return 'ROLLBACK_TO_BEFORE_IMAGE';
+  if (['CONFIRMED_REVERSIBLE', 'POSSIBLE', 'UNKNOWN'].includes(failure.partialEffectState)) {
+    return failure.failureClass === 'ROLLBACK_FAILED_SIMULATED'
+      ? 'QUARANTINE_ADAPTER_OR_ARTIFACT'
+      : 'ROLLBACK_TO_BEFORE_IMAGE';
+  }
   switch (failure.failureClass) {
     case 'CONTEXT_BUDGET_EXCEEDED': return 'CONDENSE_CONTEXT_AND_REACQUIRE';
     case 'MODEL_TIMEOUT_SIMULATED': return 'RETRY_SAME_BUDGET';
@@ -59,12 +82,74 @@ function policyAction(failure) {
   }
 }
 
+function validateContentAddressedReceipt(value, {
+  schemaVersion,
+  refField,
+  label
+}) {
+  if (!value || value.schemaVersion !== schemaVersion || !value[refField]) {
+    throw new Error(`${label} is missing or has the wrong schema`);
+  }
+  const candidate = clone(value);
+  delete candidate.semanticFingerprint;
+  delete candidate[refField];
+  const fingerprint = semanticHash(candidate);
+  if (fingerprint !== value.semanticFingerprint || !value[refField].endsWith(fingerprint.slice(0, 32))) {
+    throw new Error(`${label} content-addressed identity mismatch`);
+  }
+  return value;
+}
+
+function validateCheckpointAdmission(value, aggregate, failure) {
+  const canonical = validateContentAddressedReceipt(value, {
+    schemaVersion: 'vexlife.runtime-recovery-checkpoint-admission/v1',
+    refField: 'admissionRef',
+    label: 'checkpoint admission receipt'
+  });
+  if (!canonical.admitted || canonical.state !== 'ADMITTED' || canonical.currentness !== 'CURRENT' ||
+      canonical.workNodeRef !== aggregate.workNodeRef ||
+      canonical.sourceStateFingerprint !== aggregate.sourceStateFingerprint ||
+      canonical.failureFingerprint !== failure.semanticFingerprint ||
+      canonical.priorSchedulerGeneration !== aggregate.schedulerGeneration ||
+      canonical.nextSchedulerGeneration <= canonical.priorSchedulerGeneration) {
+    throw new Error('checkpoint admission is not exact current recovery evidence');
+  }
+  return canonical;
+}
+
+function validateSourceAdmission(value, aggregate, failure, kind) {
+  const schemas = {
+    context: ['vexlife.runtime-context-recovery-receipt/v1', 'contextRecoveryReceiptRef'],
+    resource: ['vexlife.runtime-resource-recovery-receipt/v1', 'resourceRecoveryReceiptRef']
+  };
+  const [schemaVersion, refField] = schemas[kind];
+  const canonical = validateContentAddressedReceipt(value, {
+    schemaVersion,
+    refField,
+    label: `${kind} recovery admission receipt`
+  });
+  if (canonical.currentness !== 'CURRENT' || canonical.workNodeRef !== aggregate.workNodeRef ||
+      canonical.sourceStateFingerprint !== aggregate.sourceStateFingerprint ||
+      canonical.failureFingerprint !== failure.semanticFingerprint) {
+    throw new Error(`${kind} recovery admission is stale or detached`);
+  }
+  return canonical;
+}
+
+export function validateRecoveryPolicyDecision(value) {
+  return validateContentAddressedReceipt(value, {
+    schemaVersion: 'vexlife.runtime-recovery-policy-decision/v1',
+    refField: 'decisionRef',
+    label: 'recovery policy decision'
+  });
+}
+
 export function resolveRecoveryPolicy({
   failure,
   aggregate,
-  checkpoint = null,
-  resourceAdmission = null,
-  contextAdmission = null,
+  checkpointAdmission = null,
+  resourceAdmissionReceipt = null,
+  contextAdmissionReceipt = null,
   authorityBoundary = 'UNCHANGED',
   observedAt,
   registry,
@@ -75,16 +160,37 @@ export function resolveRecoveryPolicy({
   }
   const validation = validateFailureEnvelope(failure, { registry });
   if (!validation.ok) throw new Error(`recovery policy requires a canonical failure: ${validation.errors.join(', ')}`);
-  const budget = aggregate?.retryBudget ?? registry?.retryPolicy;
-  if (!budget) throw new Error('recovery policy requires source-managed retry budget');
-  const attempts = aggregate?.attemptLedger?.length ?? 0;
+  if (aggregate?.activeFailure?.semanticFingerprint !== failure.semanticFingerprint) {
+    throw new Error('recovery policy failure is not active in the canonical aggregate');
+  }
+  const budget = registry?.retryPolicy;
+  if (!budget) throw new Error('recovery policy requires the registry retry budget');
+  const budgetFingerprint = semanticHash(budget);
+  if (aggregate.retryBudgetFingerprint !== budgetFingerprint ||
+      semanticHash(aggregate.retryBudget) !== budgetFingerprint) {
+    throw new Error('recovery policy rejected substituted or reset retry budget');
+  }
+  const observedEpoch = parseCanonicalTimestamp(observedAt, 'recovery policy observedAt');
+  const attempts = aggregate.attemptLedger.length;
   const repeated = matchingAttempts(aggregate, failure).length;
+  const firstStart = aggregate.attemptLedger[0]?.startedAt;
+  const totalElapsedMs = firstStart ? observedEpoch - parseCanonicalTimestamp(firstStart, 'first attempt startedAt') : 0;
   let action = policyAction(failure);
-  const reasons = [`FAILURE_CLASS:${failure.failureClass}`];
+  const reasons = [`FAILURE_CLASS:${failure.failureClass}`, 'REGISTRY_BUDGET_EXACT'];
+  let exactCheckpoint = null;
+  let exactContext = null;
+  let exactResource = null;
+
+  if (checkpointAdmission) exactCheckpoint = validateCheckpointAdmission(checkpointAdmission, aggregate, failure);
+  if (contextAdmissionReceipt) exactContext = validateSourceAdmission(contextAdmissionReceipt, aggregate, failure, 'context');
+  if (resourceAdmissionReceipt) exactResource = validateSourceAdmission(resourceAdmissionReceipt, aggregate, failure, 'resource');
 
   if (authorityBoundary !== 'UNCHANGED') {
     action = 'TERMINAL_BLOCK';
     reasons.push('AUTHORITY_BOUNDARY_CHANGED');
+  } else if (totalElapsedMs > budget.maximumTotalWallTimeMs) {
+    action = failure.humanAttentionClass === 'NONE' ? 'TERMINAL_BLOCK' : 'REQUEST_HUMAN_DECISION';
+    reasons.push('MAXIMUM_TOTAL_WALL_TIME_REACHED');
   } else if (attempts >= budget.maximumAttemptCount) {
     action = failure.humanAttentionClass === 'NONE' ? 'TERMINAL_BLOCK' : 'REQUEST_HUMAN_DECISION';
     reasons.push('MAXIMUM_ATTEMPT_COUNT_REACHED');
@@ -93,52 +199,67 @@ export function resolveRecoveryPolicy({
     reasons.push('IDENTICAL_FAILURE_RECURRENCE_THRESHOLD_REACHED');
   }
 
-  if (failure.failureClass === 'RESOURCE_EXHAUSTION_SIMULATED' && resourceAdmission?.admitted === false) {
-    action = resourceAdmission.reducedBudgetAdmitted ? 'RETRY_REDUCED_BUDGET' : 'CHECKPOINT_AND_WAIT';
-    reasons.push('CURRENT_RESOURCE_ADMISSION_REQUIRED');
-  }
-  if (failure.failureClass === 'CONTEXT_BUDGET_EXCEEDED' && contextAdmission?.fits === false) {
-    action = contextAdmission.canCondense ? 'CONDENSE_CONTEXT_AND_REACQUIRE'
-      : contextAdmission.canSplit ? 'SPLIT_WORK_NODE'
-        : contextAdmission.clarificationRef ? 'REQUEST_HUMAN_DECISION' : 'TERMINAL_BLOCK';
-    reasons.push('CURRENT_CONTEXT_ADMISSION_REQUIRED');
-  }
-
-  let retryAuthorized = RETRY_ACTIONS.has(action);
-  if (retryAuthorized) {
-    const checkpointCurrent = checkpoint?.currentness === 'CURRENT' &&
-      checkpoint.workNodeRef === failure.workNodeRef &&
-      checkpoint.sourceStateFingerprint === failure.sourceStateFingerprint &&
-      checkpoint.schedulerGeneration === failure.schedulerGeneration;
-    if (!checkpointCurrent) {
+  if (failure.failureClass === 'RESOURCE_EXHAUSTION_SIMULATED') {
+    if (!exactResource) {
       action = 'CHECKPOINT_AND_WAIT';
-      retryAuthorized = false;
-      reasons.push('CURRENT_EXACT_CHECKPOINT_REQUIRED');
+      reasons.push('EXACT_CURRENT_RESOURCE_RECOVERY_RECEIPT_REQUIRED');
     } else {
-      reasons.push('CURRENT_EXACT_CHECKPOINT_PRESENT');
+      action = exactResource.reducedBudgetAdmitted ? 'RETRY_REDUCED_BUDGET' : 'CHECKPOINT_AND_WAIT';
+      reasons.push('EXACT_CURRENT_RESOURCE_RECOVERY_RECEIPT_CONSUMED');
+    }
+  }
+  if (failure.failureClass === 'CONTEXT_BUDGET_EXCEEDED') {
+    if (!exactContext) {
+      action = 'CHECKPOINT_AND_WAIT';
+      reasons.push('EXACT_CURRENT_CONTEXT_RECOVERY_RECEIPT_REQUIRED');
+    } else {
+      action = exactContext.action;
+      reasons.push('EXACT_CURRENT_CONTEXT_RECOVERY_RECEIPT_CONSUMED');
     }
   }
 
+  let actionAuthorized = true;
+  if (CONSEQUENT_RECOVERY_ACTIONS.has(action)) {
+    if (!exactCheckpoint) {
+      action = 'CHECKPOINT_AND_WAIT';
+      actionAuthorized = false;
+      reasons.push('EXACT_CURRENT_CHECKPOINT_ADMISSION_REQUIRED');
+    } else {
+      reasons.push('EXACT_CURRENT_CHECKPOINT_ADMISSION_CONSUMED');
+    }
+  }
+  const retryAuthorized = RETRY_ACTIONS.has(action) && actionAuthorized;
   const decision = {
-    schemaVersion: 'vexlife.runtime-recovery-policy-decision/v0',
+    schemaVersion: 'vexlife.runtime-recovery-policy-decision/v1',
     failureRef: failure.failureRef,
     failureFingerprint: failure.semanticFingerprint,
     action,
     executorOutcome: outcomeFor(action),
+    actionAuthorized,
     retryAuthorized,
     retryBudgetRef: budget.budgetRef,
+    retryBudgetFingerprint: budgetFingerprint,
     attemptCount: attempts,
     identicalFailureCount: repeated,
     maximumAttemptCount: budget.maximumAttemptCount,
     maximumRepeatedIdenticalFailureCount: budget.maximumRepeatedIdenticalFailureCount,
     maximumWallTimeClass: budget.maximumWallTimeClass,
+    maximumWallTimeMs: budget.maximumWallTimeMs,
+    maximumTotalWallTimeMs: budget.maximumTotalWallTimeMs,
+    observedTotalWallTimeMs: totalElapsedMs,
+    checkpointAdmissionRef: exactCheckpoint?.admissionRef ?? null,
+    checkpointAdmissionFingerprint: exactCheckpoint?.semanticFingerprint ?? null,
+    contextAdmissionRef: exactContext?.contextRecoveryReceiptRef ?? null,
+    contextAdmissionFingerprint: exactContext?.semanticFingerprint ?? null,
+    resourceAdmissionRef: exactResource?.resourceRecoveryReceiptRef ?? null,
+    resourceAdmissionFingerprint: exactResource?.semanticFingerprint ?? null,
     authorityBoundary,
     observedAt,
     reasons
   };
   decision.semanticFingerprint = semanticHash(decision);
   decision.decisionRef = `decision.runtime-recovery.${decision.semanticFingerprint.slice(0, 32)}`;
-  return Object.freeze(decision);
+  return freeze(decision);
 }
 
 // [VXG RealForever]

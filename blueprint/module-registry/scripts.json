@@ -615,7 +615,7 @@
   {
     "moduleRef": "module.vexlife.script.recovery-check",
     "path": "scripts/recovery-check.mjs",
-    "role": "Validates canonical runtime recovery composition, vocabulary, registration, bounded Atlas resolution, held boundaries and the exact integrated no-effect recovery receipt.",
+    "role": "Validates canonical runtime recovery composition, replay/event vocabulary, exact registry budgets, bounded Atlas resolution, held boundaries and the current causally completed no-effect recovery receipt.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "state.runtime-recovery",
@@ -642,14 +642,16 @@
   {
     "moduleRef": "module.vexlife.script.recovery-simulate",
     "path": "scripts/recovery-simulate.mjs",
-    "role": "Runs deterministic exception, canonical failure, checkpoint, bounded retry, context/resource reduction, rollback/quarantine, restart/replay and exact scheduler/Workgraph completion through one causally bound no-effect receipt.",
+    "role": "Runs one real recovery Intent Workgraph node through typed failure, exact scheduler checkpoint and six releases, aggregate-owned recovery, scheduler-issued generation with six fresh leases, replay restore, causal completion verification and terminal closure in one no-effect receipt.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "state.runtime-recovery",
       "state.intent-scheduler",
       "module.vexlife.core.runtime-recovery",
       "module.vexlife.core.recovery-fault-injector",
-      "module.vexlife.script.scheduler-simulate"
+      "module.vexlife.core.intent-scheduler",
+      "module.vexlife.core.intent-workgraph",
+      "module.vexlife.core.scheduler-runtime-trust"
     ],
     "writes": [
       "generated/health/runtime-recovery-simulation.json"

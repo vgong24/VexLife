@@ -88,8 +88,8 @@
     {
       "path": "README.md",
       "mode": "100644",
-      "bytes": 20887,
-      "sha256": "b5f996d3442ac53af0e4c99e41d0ea3aac29f558e31861a4319ffd69045b3e57"
+      "bytes": 20954,
+      "sha256": "fe1b909d35e1faf8af7b198d8c5c5e61728a3cacd1f666f999edd41e49ee1f68"
     },
     {
       "path": "SECURITY.md",
@@ -118,8 +118,8 @@
     {
       "path": "blueprint/build-health-registry.json",
       "mode": "100644",
-      "bytes": 11928,
-      "sha256": "edb0ab527efc25033ed38720c0392cbbbe3d2df48fe637795719818b6233d9a8"
+      "bytes": 11933,
+      "sha256": "c2baabe371daf58109fcd9d23434c96485ec5161f8fd9a23c92a385c42f1c42e"
     },
     {
       "path": "blueprint/capability-registry.json",

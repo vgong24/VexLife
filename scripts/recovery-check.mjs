@@ -8,7 +8,8 @@ import {
   FAILURE_ENVELOPE_REQUIRED_FIELDS
 } from '../src/core/runtime-failure.mjs';
 import {
-  RECOVERY_AGGREGATE_REQUIRED_FIELDS
+  RECOVERY_AGGREGATE_REQUIRED_FIELDS,
+  RECOVERY_EVENT_TYPES
 } from '../src/core/runtime-recovery.mjs';
 import {
   EXECUTOR_OUTCOMES,
@@ -27,7 +28,7 @@ function exactArray(label, actual, expected) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) errors.push(`${label} does not match source implementation vocabulary`);
 }
 
-if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v0') {
+if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v1') {
   errors.push('runtime recovery registry is missing or has the wrong schema');
 } else {
   exactArray('failureClasses', registry.failureClasses, FAILURE_CLASSES);
@@ -35,11 +36,17 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
   exactArray('recoveryActions', registry.recoveryActions, RECOVERY_ACTIONS);
   exactArray('failure envelope required fields', registry.failureEnvelope.requiredFields, FAILURE_ENVELOPE_REQUIRED_FIELDS);
   exactArray('recovery aggregate required fields', registry.recoveryAggregate.requiredFields, RECOVERY_AGGREGATE_REQUIRED_FIELDS);
+  exactArray('recovery event types', registry.recoveryAggregate.eventTypes, RECOVERY_EVENT_TYPES);
   if (semanticHash(bundle.blueprint.runtimeRecovery) !== semanticHash(registry)) {
     errors.push('canonical runtime recovery composition does not match universal Blueprint');
   }
   if (registry.retryPolicy.recursiveRetryAllowed !== false || registry.retryPolicy.callerMayResetBudget !== false ||
       registry.retryPolicy.callerMayBroadenAuthority !== false) errors.push('retry authority boundary is not fail-closed');
+  if (!Number.isInteger(registry.retryPolicy.maximumWallTimeMs) ||
+      !Number.isInteger(registry.retryPolicy.maximumTotalWallTimeMs) ||
+      registry.retryPolicy.maximumTotalWallTimeMs < registry.retryPolicy.maximumWallTimeMs) {
+    errors.push('retry wall-time budget is not exact and bounded');
+  }
   if (registry.simulationContract.externalEffectsExecuted !== false || registry.simulationContract.realModelInvoked !== false ||
       registry.simulationContract.modelWeightsChanged !== false) errors.push('simulation contract crosses a held effect boundary');
 }

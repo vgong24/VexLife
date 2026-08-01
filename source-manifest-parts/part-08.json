@@ -106,14 +106,14 @@
     {
       "path": "src/core/recovery-fault-injector.mjs",
       "mode": "100644",
-      "bytes": 6066,
-      "sha256": "a4230cf8e39c44eb448bca8a245a309385f938d1257ab1c0366e79a8d1d9ecc6"
+      "bytes": 7053,
+      "sha256": "e2ffe6050369c167bdae1d45422bb15331d9d5de1e4b67a6109aa2964cde5b81"
     },
     {
       "path": "src/core/recovery-policy.mjs",
       "mode": "100644",
-      "bytes": 5944,
-      "sha256": "bc8179afb4493d2663845edd0314b42328ea2275af3119f8eab5b97bbe846bda"
+      "bytes": 11103,
+      "sha256": "e5bc06fb03f4aeac4adeae672f57370751d1c97998c35468105880394c13a433"
     },
     {
       "path": "src/core/registry.mjs",
@@ -136,14 +136,14 @@
     {
       "path": "src/core/runtime-failure.mjs",
       "mode": "100644",
-      "bytes": 9408,
-      "sha256": "3cef1821cc976eb61a07e2b1c932e840efd80c85569fa397ee0b2934af6c2aeb"
+      "bytes": 12359,
+      "sha256": "489bc763553616d534f15339c4f2092bf4c63ead9b3d8c6a678355313869dd65"
     },
     {
       "path": "src/core/runtime-recovery.mjs",
       "mode": "100644",
-      "bytes": 25006,
-      "sha256": "e2bb66c8c940c79413bb1f638b050e3fbe3a8aa778a8dbb69b1fad1824f01398"
+      "bytes": 83059,
+      "sha256": "d61aeb9a69385ba0723669014d1a15afe703a403900b6e34b37698ce5a7d2083"
     }
   ]
 }

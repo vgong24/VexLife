@@ -382,6 +382,6 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - **Connect to a desktop-hosted Home Vex from another device:** read [`docs/HOME-BRIDGE-REMOTE-SURFACES.md`](docs/HOME-BRIDGE-REMOTE-SURFACES.md); a remote surface is not the same thing as a synchronized sibling.
 - **Trace why code exists:** query the module, identity and process registries rather than reading the repository indiscriminately.
 - **Trace or simulate Intent Queue runtime admission:** read [`docs/INTENT-ORCHESTRATION-SCHEDULER.md`](docs/INTENT-ORCHESTRATION-SCHEDULER.md), then run `npm run scheduler:check` or the no-effect simulation.
-- **Trace or simulate failure and recovery:** read [`docs/RUNTIME-FAILURE-AND-RECOVERY.md`](docs/RUNTIME-FAILURE-AND-RECOVERY.md), then run `npm run recovery:check`, `npm run recovery:simulate` or `npm run recovery:status`; these execute deterministic fixtures only.
+- **Trace or simulate failure and recovery:** read [`docs/RUNTIME-FAILURE-AND-RECOVERY.md`](docs/RUNTIME-FAILURE-AND-RECOVERY.md), then run `npm run recovery:check`, `npm run recovery:simulate` or `npm run recovery:status`; these execute deterministic no-effect fixtures through one actual scheduler-owned recovery Workgraph journey.
 
 <!-- [VXG RealForever] -->

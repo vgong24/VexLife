@@ -1,4 +1,5 @@
 import { semanticHash } from './utils.mjs';
+import { createSourceManagedFailureEvidence } from './runtime-failure.mjs';
 
 function clone(value) {
   return structuredClone(value);
@@ -23,6 +24,11 @@ export class SimulatedRuntimeFailure extends Error {
     this.partialEffectState = partialEffectState;
     this.humanAttentionClass = humanAttentionClass;
     this.evidenceRefs = [...evidenceRefs];
+    this.sourceManagedFailureEvidence = createSourceManagedFailureEvidence({
+      failureClass,
+      sourceRef: 'source.runtime-recovery.deterministic-fault-plan',
+      error: this
+    });
   }
 }
 
@@ -116,7 +122,7 @@ export function simulateTransactionalRecovery({
   const before = adapter.read();
   if (before.fingerprint !== expectedBeforeFingerprint) {
     const blocked = {
-      schemaVersion: 'vexlife.runtime-transactional-recovery-receipt/v0',
+      schemaVersion: 'vexlife.runtime-transactional-recovery-receipt/v1',
       rollbackReceiptRef,
       operationRef,
       adapterRef: adapter.adapterRef,
@@ -125,10 +131,15 @@ export function simulateTransactionalRecovery({
       expectedBeforeFingerprint,
       observedBeforeFingerprint: before.fingerprint,
       partialResultFingerprint: null,
+      rollbackReadBackFingerprint: null,
       rollbackVerified: false,
       lastKnownGoodRef,
+      lastKnownGoodExpectedFingerprint: adapter.fingerprints.lastKnownGood,
+      lastKnownGoodReadBackFingerprint: null,
       lastKnownGoodRestored: false,
       quarantined: false,
+      quarantineRef: null,
+      quarantineReason: null,
       externalEffectsExecuted: false,
       observedAt
     };
@@ -145,18 +156,22 @@ export function simulateTransactionalRecovery({
   }
   if (!failure) throw new Error('transactional fault fixture did not produce the required partial result');
   let rollbackVerified = false;
+  let rollbackReadBackFingerprint = null;
   let lastKnownGoodRestored = false;
+  let lastKnownGoodReadBackFingerprint = null;
   let quarantined = false;
   let state = 'ROLLED_BACK';
   let reason = failure.failureClass;
   try {
     const rolledBack = adapter.rollback();
+    rollbackReadBackFingerprint = rolledBack.fingerprint;
     rollbackVerified = rolledBack.fingerprint === before.fingerprint;
     if (!rollbackVerified) throw new Error('rollback read-back fingerprint mismatch');
   } catch (rollbackError) {
     reason = rollbackError.failureClass ?? 'ROLLBACK_READBACK_FAILED';
     try {
       const restored = adapter.restoreLastKnownGood();
+      lastKnownGoodReadBackFingerprint = restored.fingerprint;
       lastKnownGoodRestored = restored.fingerprint === adapter.fingerprints.lastKnownGood;
       state = lastKnownGoodRestored ? 'LAST_KNOWN_GOOD_RESTORED' : 'QUARANTINED';
       quarantined = !lastKnownGoodRestored;
@@ -166,7 +181,7 @@ export function simulateTransactionalRecovery({
     }
   }
   const receipt = {
-    schemaVersion: 'vexlife.runtime-transactional-recovery-receipt/v0',
+    schemaVersion: 'vexlife.runtime-transactional-recovery-receipt/v1',
     rollbackReceiptRef,
     operationRef,
     adapterRef: adapter.adapterRef,
@@ -175,10 +190,15 @@ export function simulateTransactionalRecovery({
     expectedBeforeFingerprint,
     observedBeforeFingerprint: before.fingerprint,
     partialResultFingerprint: partial?.fingerprint ?? null,
+    rollbackReadBackFingerprint,
     rollbackVerified,
     lastKnownGoodRef,
+    lastKnownGoodExpectedFingerprint: adapter.fingerprints.lastKnownGood,
+    lastKnownGoodReadBackFingerprint,
     lastKnownGoodRestored,
     quarantined,
+    quarantineRef: quarantined ? `quarantine.runtime-recovery.${adapter.adapterRef}` : null,
+    quarantineReason: quarantined ? reason : null,
     externalEffectsExecuted: false,
     observedAt
   };
