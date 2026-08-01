@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildIdentityIndex, loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
+import { buildIdentityIndex, loadBlueprint, validateBlueprint, validateEvolutionRegistry } from '../src/core/blueprint.mjs';
 import { Atlas } from '../src/core/atlas.mjs';
 import { compileRegistryPack, buildRegistryProjection } from '../src/core/registry.mjs';
 import { validateIntentSchedulerRegistry } from '../src/core/scheduler-runtime-trust.mjs';
@@ -8,6 +8,19 @@ import { buildInterfaceContracts } from '../src/core/interface-builder.mjs';
 import { ProcessFactory, validateProcessFactory } from '../src/core/process-factory.mjs';
 import { JourneyLedger } from '../src/core/journey.mjs';
 import { buildBlueprintImpact } from '../src/core/impact.mjs';
+import { BURDEN_RELEASE_REQUIRED_FIELDS, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS } from '../src/core/burden-release.mjs';
+import {
+  CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
+  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
+  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS,
+  CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS
+} from '../src/core/continuity-evolution-router.mjs';
+import {
+  CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS
+} from '../src/core/state.mjs';
 
 const bundle = loadBlueprint();
 
@@ -54,6 +67,129 @@ test('scheduler registry composes universally, resolves through Atlas, and omiss
   const malformed = structuredClone(bundle.schedulerRegistry);
   malformed.runtimeTrustContract.clockRef = 'clock.intent-scheduler.invented';
   assert.equal(validateIntentSchedulerRegistry(malformed).ok, false);
+});
+
+test('Evolution composes universally, resolves through Atlas, and malformed or duplicate identity fails closed', () => {
+  const evolutionValidation = validateEvolutionRegistry(bundle.evolution, bundle);
+  assert.equal(evolutionValidation.ok, true, evolutionValidation.errors.join('\n'));
+  assert.deepEqual(bundle.blueprint.evolution, bundle.evolution);
+  const registry = compileRegistryPack(bundle);
+  for (const ref of [
+    bundle.evolution.registryRef,
+    bundle.evolution.canonicalSourceRef,
+    bundle.evolution.systemRef,
+    bundle.evolution.burdenRelease.contractRef,
+    bundle.evolution.authorityTrust.contractRef,
+    bundle.evolution.authorityTrust.authoritySourceRef,
+    bundle.evolution.acceptanceEvidence.contractRef,
+    bundle.evolution.scopeTarget.contractRef,
+    bundle.evolution.supersessionTransaction.contractRef,
+    bundle.evolution.currentRecordSet.contractRef,
+    bundle.evolution.simulatedClock.contractRef,
+    bundle.evolution.simulatedClock.clockSourceRef,
+    bundle.evolution.projectionClock.contractRef,
+    bundle.evolution.aggregateProjection.contractRef,
+    bundle.evolution.contextReview.contractRef,
+    bundle.evolution.recurrencePolicy.contractRef,
+    bundle.evolution.simulationContract.contractRef,
+    bundle.evolution.acceptancePolicies[0].policyRef,
+    bundle.evolution.projectionIdentities[0].projectionRef
+  ]) assert.equal(registry.require(ref).ref, ref);
+  assert.deepEqual(registry.require(bundle.evolution.burdenRelease.contractRef).requiredFields, BURDEN_RELEASE_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.contextReview.contractRef).requiredFields, CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.acceptanceEvidence.contractRef).requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.authorityTrust.contractRef).requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.scopeTarget.contractRef).requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.supersessionTransaction.contractRef).requiredFields, CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.currentRecordSet.contractRef).requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.simulatedClock.contractRef).requiredFields, CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.projectionClock.contractRef).requiredFields, CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.aggregateProjection.contractRef).requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
+  const atlas = new Atlas(buildIdentityIndex(bundle));
+  const traversal = atlas.query({ startRefs: [bundle.evolution.registryRef], depthLimit: 2, resultLimit: 128, tokenBudget: 20000 });
+  for (const ref of [
+    bundle.evolution.systemRef,
+    bundle.evolution.contextReview.contractRef,
+    bundle.evolution.authorityTrust.contractRef,
+    bundle.evolution.authorityTrust.authoritySourceRef,
+    bundle.evolution.scopeTarget.contractRef,
+    bundle.evolution.supersessionTransaction.contractRef,
+    bundle.evolution.currentRecordSet.contractRef,
+    bundle.evolution.simulatedClock.contractRef,
+    bundle.evolution.simulatedClock.clockSourceRef,
+    bundle.evolution.projectionClock.contractRef,
+    bundle.evolution.aggregateProjection.contractRef,
+    bundle.evolution.projectionIdentities[0].projectionRef
+  ]) {
+    assert.ok(traversal.results.some((item) => item.ref === ref), ref);
+  }
+
+  const omitted = structuredClone(bundle);
+  delete omitted.blueprint.evolution;
+  assert.equal(validateBlueprint(omitted).ok, false);
+  const malformed = structuredClone(bundle);
+  malformed.evolution.canonicalSource.field = 'invented';
+  malformed.blueprint.evolution = structuredClone(malformed.evolution);
+  assert.equal(validateBlueprint(malformed).ok, false);
+  const duplicate = structuredClone(bundle);
+  duplicate.evolution.scopeIdentities[1].scopeRef = duplicate.evolution.scopeIdentities[0].scopeRef;
+  duplicate.blueprint.evolution = structuredClone(duplicate.evolution);
+  assert.equal(validateBlueprint(duplicate).ok, false);
+  assert.throws(() => compileRegistryPack(duplicate), /duplicate registry ref/);
+
+  const legacyBurden = structuredClone(bundle.evolution);
+  legacyBurden.burdenRelease.requiredFields[2] = 'sourceRangeRefs';
+  assert.equal(validateEvolutionRegistry(legacyBurden, bundle).ok, false);
+  const omittedContext = structuredClone(bundle.evolution);
+  omittedContext.contextReview.requiredFields.splice(1, 1);
+  assert.equal(validateEvolutionRegistry(omittedContext, bundle).ok, false);
+  const inventedAuthority = structuredClone(bundle.evolution);
+  inventedAuthority.authorityTrust.requiredFields.push('inventedLiveAuthority');
+  assert.equal(validateEvolutionRegistry(inventedAuthority, bundle).ok, false);
+  const wrongNestedSource = structuredClone(bundle.evolution);
+  wrongNestedSource.contractIdentities.find((item) => item.contractRef === wrongNestedSource.acceptanceEvidence.contractRef).sourceField = 'contextReview';
+  assert.equal(validateEvolutionRegistry(wrongNestedSource, bundle).ok, false);
+  const omittedScopeTarget = structuredClone(bundle.evolution);
+  omittedScopeTarget.scopeTarget.requiredFields.splice(3, 1);
+  assert.equal(validateEvolutionRegistry(omittedScopeTarget, bundle).ok, false);
+  const inventedScopeTarget = structuredClone(bundle.evolution);
+  inventedScopeTarget.scopeTarget.requiredFields.push('callerSelectedTarget');
+  assert.equal(validateEvolutionRegistry(inventedScopeTarget, bundle).ok, false);
+  const wrongScopeTargetSource = structuredClone(bundle.evolution);
+  wrongScopeTargetSource.contractIdentities.find((item) => item.contractRef === wrongScopeTargetSource.scopeTarget.contractRef).sourceField = 'contextReview';
+  assert.equal(validateEvolutionRegistry(wrongScopeTargetSource, bundle).ok, false);
+  const omittedCurrentSet = structuredClone(bundle.evolution);
+  omittedCurrentSet.currentRecordSet.requiredFields.splice(2, 1);
+  assert.equal(validateEvolutionRegistry(omittedCurrentSet, bundle).ok, false);
+  const staleSupersession = structuredClone(bundle.evolution);
+  staleSupersession.supersessionTransaction.requiredFields.splice(8, 1);
+  assert.equal(validateEvolutionRegistry(staleSupersession, bundle).ok, false);
+  const staleSimulatedClock = structuredClone(bundle.evolution);
+  staleSimulatedClock.simulatedClock.requiredFields.splice(9, 1);
+  assert.equal(validateEvolutionRegistry(staleSimulatedClock, bundle).ok, false);
+  const inventedClockSource = structuredClone(bundle.evolution);
+  inventedClockSource.clockTrustSources[0].liveClockGranted = true;
+  assert.equal(validateEvolutionRegistry(inventedClockSource, bundle).ok, false);
+  const staleProjectionClock = structuredClone(bundle.evolution);
+  staleProjectionClock.projectionClock.requiredFields.splice(5, 1);
+  assert.equal(validateEvolutionRegistry(staleProjectionClock, bundle).ok, false);
+  const wrongProjectionClockSource = structuredClone(bundle.evolution);
+  wrongProjectionClockSource.contractIdentities.find((item) => item.contractRef === wrongProjectionClockSource.projectionClock.contractRef).sourceField = 'currentRecordSet';
+  assert.equal(validateEvolutionRegistry(wrongProjectionClockSource, bundle).ok, false);
+  const inventedProjectionReceipt = structuredClone(bundle.evolution);
+  inventedProjectionReceipt.aggregateProjection.requiredFields.push('callerSuppliedMeaning');
+  assert.equal(validateEvolutionRegistry(inventedProjectionReceipt, bundle).ok, false);
+  const wrongProjectionSource = structuredClone(bundle.evolution);
+  wrongProjectionSource.contractIdentities.find((item) => item.contractRef === wrongProjectionSource.aggregateProjection.contractRef).sourceField = 'scopeTarget';
+  assert.equal(validateEvolutionRegistry(wrongProjectionSource, bundle).ok, false);
+
+  const changed = structuredClone(bundle);
+  changed.evolution.purpose = `${changed.evolution.purpose} Semantic registry change.`;
+  changed.blueprint.evolution = structuredClone(changed.evolution);
+  const baselineHash = validateBlueprint(bundle).semanticHash;
+  const changedValidation = validateBlueprint(changed);
+  assert.equal(changedValidation.ok, true, changedValidation.errors.join('\n'));
+  assert.notEqual(changedValidation.semanticHash, baselineHash);
 });
 
 test('interface builder super-functions preserve component and element relationships', () => {

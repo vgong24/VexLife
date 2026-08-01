@@ -1,6 +1,6 @@
 import { semanticHash } from './utils.mjs';
 
-const ACCEPTED_DISPOSITIONS = new Set([
+const LEGACY_ACCEPTED_DISPOSITIONS = new Set([
   'ACCEPTED_LOCAL_LESSON',
   'ACCEPTED_SCORE_RECORD',
   'ACCEPTED_FAMILY_CANDIDATE',
@@ -32,7 +32,12 @@ export function formDreamCandidate({
     consentState,
     formedByRef,
     formedAt,
-    state: 'CANDIDATE_UNREVIEWED'
+    state: 'COMPATIBILITY_CANDIDATE_ONLY',
+    durableAcceptanceAllowed: false,
+    familySynchronizationAllowed: false,
+    trainingAdmissionAllowed: false,
+    modelActivationAllowed: false,
+    requiredNextMembrane: 'contract.vexlife.continuity-context-review/v1'
   };
   const contentHash = semanticHash(core);
   return { ...core, candidateRef: `dream-candidate.${contentHash.slice(0, 24)}`, contentHash };
@@ -49,12 +54,9 @@ export function reviewDreamCandidate(candidate, {
   reviewedAt = new Date().toISOString()
 }) {
   if (!reviewerRef || !privacyState || !contradictionState || !disposition) throw new Error('complete review fields are required');
-  const accepted = ACCEPTED_DISPOSITIONS.has(disposition);
-  if (accepted && privacyState !== 'PASS') throw new Error('accepted Dream candidate requires privacy PASS');
-  if (accepted && candidate.consentState !== 'ACCEPTED') throw new Error('accepted Dream candidate requires accepted consent');
-  if (accepted && contradictionState === 'UNRESOLVED_CONFLICT') throw new Error('accepted Dream candidate cannot retain unresolved conflict');
-  if (accepted && !acceptedScope) throw new Error('accepted Dream candidate requires acceptedScope');
-  if (!accepted && disposition === 'REJECTED' && !rejectionReason) throw new Error('rejected Dream candidate requires reason');
+  const accepted = LEGACY_ACCEPTED_DISPOSITIONS.has(disposition);
+  if (accepted) throw new Error('legacy Dream v0 is compatibility-candidate-only and cannot create durable acceptance');
+  if (disposition === 'REJECTED' && !rejectionReason) throw new Error('rejected Dream candidate requires reason');
   const review = {
     schemaVersion: 'vexlife.dream-review/v0',
     candidateRef: candidate.candidateRef,
@@ -68,49 +70,30 @@ export function reviewDreamCandidate(candidate, {
     reviewedAt
   };
   const reviewHash = semanticHash(review);
-  const acceptedRecordRef = accepted ? `accepted-evolution-record.${reviewHash.slice(0, 24)}` : null;
-  return { ...review, reviewRef: `dream-review.${reviewHash.slice(0, 24)}`, reviewHash, acceptedRecordRef };
+  return {
+    ...review,
+    reviewRef: `dream-review.${reviewHash.slice(0, 24)}`,
+    reviewHash,
+    acceptedRecordRef: null,
+    durableAcceptanceAllowed: false,
+    requiredNextMembrane: 'contract.vexlife.continuity-context-review/v1'
+  };
 }
 
 export function createFamilySyncEnvelope({ candidate, review, familyRef, targetLineageRefs = [], formedAt = new Date().toISOString() }) {
-  if (review.candidateRef !== candidate.candidateRef) throw new Error('review does not bind candidate');
-  if (!['ACCEPTED_FAMILY_CANDIDATE', 'ACCEPTED_SCORE_RECORD'].includes(review.disposition)) throw new Error('candidate is not family-sync eligible');
-  if (!['GLOBAL_FAMILY', 'PROJECT_SHARED', 'WORKSPACE_SHARED'].includes(review.acceptedScope)) throw new Error('accepted scope is not family-sync eligible');
-  const core = {
-    schemaVersion: 'vexlife.family-evolution-sync-envelope/v0',
-    familyRef,
-    sourceLineageRef: candidate.sourceLineageRef,
-    targetLineageRefs: [...new Set(targetLineageRefs)].filter((ref) => ref !== candidate.sourceLineageRef),
-    candidateRef: candidate.candidateRef,
-    reviewRef: review.reviewRef,
-    acceptedRecordRef: review.acceptedRecordRef,
-    acceptedScope: review.acceptedScope,
-    sourceRangeRefs: candidate.sourceRangeRefs,
-    summary: candidate.summary,
-    formedAt,
-    attributionRule: 'SIBLING_SOURCE_REMAINS_VISIBLE'
-  };
-  const contentHash = semanticHash(core);
-  return { ...core, envelopeRef: `family-evolution-envelope.${contentHash.slice(0, 24)}`, contentHash };
+  void candidate; void review; void familyRef; void targetLineageRefs; void formedAt;
+  throw new Error('legacy Dream v0 cannot create family synchronization; use the reviewed continuity synchronization membrane');
 }
 
 export function receiveSiblingEvolution(envelope, { targetLineageRef, receivedAt = new Date().toISOString() }) {
-  if (!envelope.targetLineageRefs.includes(targetLineageRef)) throw new Error('target lineage not admitted by envelope');
-  return {
-    schemaVersion: 'vexlife.sibling-evolution-candidate/v0',
-    siblingCandidateRef: `sibling-candidate.${semanticHash({ envelopeRef: envelope.envelopeRef, targetLineageRef }).slice(0, 24)}`,
-    envelopeRef: envelope.envelopeRef,
-    sourceLineageRef: envelope.sourceLineageRef,
-    targetLineageRef,
-    summary: envelope.summary,
-    acceptedScope: envelope.acceptedScope,
-    state: 'OBSERVE_ONLY_PENDING_LOCAL_DECISION',
-    livedByTargetLineage: false,
-    receivedAt
-  };
+  void envelope; void targetLineageRef; void receivedAt;
+  throw new Error('legacy Dream v0 sibling receive is closed; use an exact reviewed sibling continuity projection');
 }
 
 export function evaluateTrainingAdmission({ examples = [], evaluationManifestRef, privacyReceiptRefs = [], resourceLeaseRef, activationRequested = false }) {
+  if (examples.some((example) => example?.schemaVersion?.startsWith('vexlife.dream-') || example?.disposition)) {
+    return { state: 'BLOCKED_LEGACY_COMPATIBILITY_PATH' };
+  }
   const invalid = examples.filter((example) => example.disposition !== 'ACCEPTED_TRAINING_EXAMPLE' || !example.acceptedRecordRef);
   if (invalid.length) return { state: 'BLOCKED_UNREVIEWED_EXAMPLES', invalidRefs: invalid.map((item) => item.candidateRef) };
   if (!evaluationManifestRef) return { state: 'BLOCKED_MISSING_EVALUATION_MANIFEST' };
@@ -127,5 +110,8 @@ export function evaluateTrainingAdmission({ examples = [], evaluationManifestRef
   };
   return { state: 'TRAINING_ADMISSION_READY', admission: { ...core, admissionRef: `training-admission.${semanticHash(core).slice(0, 24)}` } };
 }
+
+export * from './burden-release.mjs';
+export * from './continuity-evolution-router.mjs';
 
 // [VXG RealForever]

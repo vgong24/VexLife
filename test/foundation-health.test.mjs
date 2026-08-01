@@ -10,6 +10,7 @@ import { deriveRepositoryHealth, compactCurrentProjection, validateBuildHealthRe
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 import { runSchedulerSimulation } from '../scripts/scheduler-simulate.mjs';
+import { runContinuityEvolutionSimulation } from '../scripts/evolution-simulate.mjs';
 
 const bundle = loadBlueprint();
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -131,6 +132,7 @@ test('executed current failure blocks repository health', () => {
 test('health command accepts only an exact-head executed-current receipt', () => {
   const validation = validateBlueprint(bundle);
   const simulation = runSchedulerSimulation({ root: ROOT, writeReceipt: true }).receipt;
+  const continuity = runContinuityEvolutionSimulation({ root: ROOT, writeReceipt: true }).receipt;
   const source = buildSourceManifest(ROOT);
   const repository = collectRepositoryEvidence(ROOT);
   const receiptArg = `generated/health/vexlife-health-${process.pid}-${Date.now()}.json`;
@@ -171,6 +173,32 @@ test('health command accepts only an exact-head executed-current receipt', () =>
       selfCertifiedRuntimeEvidence: simulation.selfCertifiedRuntimeEvidence,
       errors: []
     },
+    continuitySimulation: {
+      receiptPath: bundle.evolution.simulationContract.receiptPath,
+      state: 'EXECUTED_CURRENT',
+      receiptRef: continuity.receiptRef,
+      contractRef: continuity.contractRef,
+      semanticFingerprint: continuity.semanticFingerprint,
+      candidateHeadSha: continuity.candidateHeadSha,
+      testedCheckoutSha: continuity.testedCheckoutSha,
+      testedMergeSha: continuity.testedMergeSha,
+      baseSha: continuity.baseSha,
+      sourceTreeSha256: continuity.sourceTreeSha256,
+      blueprintHash: continuity.blueprintHash,
+      evolutionRegistryHash: continuity.evolutionRegistryHash,
+      journeyStates: continuity.journeyStates,
+      continuityGateBindings: continuity.continuityGateBindings,
+      canonicalWorkNodeRef: continuity.canonicalWorkNodeRef,
+      canonicalWorkNodeFinalState: continuity.canonicalWorkNodeFinalState,
+      schedulerContextLeaseFingerprint: continuity.schedulerContextLeaseFingerprint,
+      schedulerCompletionVerificationFingerprint: continuity.schedulerCompletionVerificationFingerprint,
+      schedulerCompletionEvidenceLineageFingerprint: continuity.schedulerCompletionEvidenceLineageFingerprint,
+      schedulerWorkgraphTransitionFingerprint: continuity.schedulerWorkgraphTransitionFingerprint,
+      schedulerCompletionFingerprint: continuity.schedulerCompletionFingerprint,
+      externalEffectsExecuted: continuity.externalEffectsExecuted,
+      modelWeightsChanged: continuity.modelWeightsChanged,
+      errors: []
+    },
     checkResults
   };
   try {
@@ -195,6 +223,15 @@ test('health command accepts only an exact-head executed-current receipt', () =>
     assert.equal(unbound.status, 1);
     assert.equal(JSON.parse(unbound.stdout).receiptState, 'INVALID');
     assert.match(JSON.parse(unbound.stdout).errors.join('\n'), /does not exactly bind/);
+
+    fs.writeFileSync(receiptPath, JSON.stringify({
+      ...receipt,
+      continuitySimulation: { ...receipt.continuitySimulation, semanticFingerprint: '0'.repeat(64) }
+    }));
+    const continuityUnbound = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(continuityUnbound.status, 1);
+    assert.equal(JSON.parse(continuityUnbound.stdout).receiptState, 'INVALID');
+    assert.match(JSON.parse(continuityUnbound.stdout).errors.join('\n'), /continuity evolution simulation receipt/);
 
     fs.writeFileSync(receiptPath, JSON.stringify({ ...receipt, checkResults: checkResults.slice(1) }));
     const incomplete = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });

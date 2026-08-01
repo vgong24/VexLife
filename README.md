@@ -205,7 +205,10 @@ npm run platform:all             # generate all platform adoption scaffolds
 npm run browser:start            # serve the working browser reference
 npm run browser:integration      # execute the integration contract in a real headless browser
 npm run bootstrap -- --dry-run   # inspect local-home creation without writing
-npm run evolution:summary         # inspect Dream/Score/adapter lifecycle registry
+npm run evolution:summary        # inspect Dream/Score/adapter lifecycle registry
+npm run evolution:check          # validate continuity routing, Burden Release, recurrence and no-effect integration
+npm run evolution:simulate       # run the deterministic source→review→release→recurrence→Workgraph journey
+npm run evolution:status         # compact source-bound human projection without raw private content
 npm run implementation:packet -- --work-ref <work.ref> --platform browser
 ```
 
@@ -229,12 +232,48 @@ derive from one canonical aggregate. Effectful receipt arguments are confined
 to safe `generated/health/**` paths. This contract provisions no real model and
 executes no external effect.
 
+The shared [Burden Release and Continuity Evolution Router](docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md)
+completes Intent Orchestration 3/3. It seals immutable exact source tuples,
+keeps human, Vex and relationship preferences separate, routes each candidate
+to one least-invasive destination, and requires expiring source-managed
+acceptance evidence from a separately registered deterministic simulated-current
+authority snapshot that grants no live authority or effect. Burden Release
+starts at `OBSERVED` and replays every
+transition before exact-scope influence deauthorization; it never claims
+base-model parameter deletion. Its lower-level lifecycle cannot accept raw
+authority refs or substitute inner reviewed meaning. Scope class and one
+source-derived exact target travel together through review, authority,
+acceptance, recurrence, conflicts and projection. A separate content-addressed
+semantic-subject identity is derived from exact source anchor tuples, never from
+summary prose. Different same-human preferences and different same-Vex Burden
+patterns therefore remain independently current; only the exact same meaning may
+conflict or supersede. Current Context is transient and lease-bound, aggregate events
+recompute exact aggregate-owned lineage before mutation, and record, transient-context and Burden projections
+recompute that same lineage and carry aggregate-ownership receipts. Transient projection additionally requires the
+  latest aggregate-owned snapshot from a registered deterministic simulated clock source, observed no earlier than
+  context acceptance; its receipts say
+  `TRANSIENT_SIMULATED_CURRENT`, `simulatedClock=true`, `liveClockGranted=false`, and
+  `externalTimeServiceUsed=false`. Supersession is a recomputed canonical atomic transaction, rejects every
+  ordinary/dangling superseding successor, proves all successor authority evidence current at the exact transaction time,
+  advances each exact-subject chain in strict transaction chronology, and emits an exact content-addressed
+  current-record-set receipt carrying subject and chronology bindings; applicability blocks conflicts and stale receipts, excludes prior records,
+recurrence and sibling projection are exact-scope, and
+legacy Dream v0 cannot bypass durable acceptance or synchronization. Applicable
+context requires the exact current record set, exact class+target and explicitly admitted authority class;
+simulation-only acceptance stays visibly inactive/non-live in compact
+projections and Health, while durable projection receipts bind `CURRENT`, `SUPERSEDED`, or `HELD_CONFLICT` and suppress
+non-current action. Context contains refs rather than raw history and training research remains
+`NOT_ADMITTED`. The integrated proof completes the actual continuity Workgraph
+node through the accepted scheduler with exact evidence, target and authority-disposition fingerprints and no
+external effects or model-weight change.
+
 Run `npm run orient` before broad reading. Read only the returned
 `requiredSources`, then use the bounded Atlas or exact-module command. `npm run
 health:check` reports `HEALTHY` only when an executed `npm run pr-ready` receipt
 matches the current HEAD, source tree and Blueprint hash and exactly binds the
-complete current scheduler simulation receipt; missing, unknown, stale,
-self-certified, effectful or orphaned evidence remains non-green.
+complete current scheduler and continuity-evolution simulation receipts;
+missing, unknown, stale, self-certified, effectful, weight-changing, causally
+unbound or orphaned evidence remains non-green.
 
 Generate one platform:
 
@@ -337,7 +376,7 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - **Understand the whole product:** read [`docs/NEWCOMER-MAP.md`](docs/NEWCOMER-MAP.md).
 - **Add an interface feature:** read [`docs/INTERFACE-BUILDER.md`](docs/INTERFACE-BUILDER.md) and [`docs/EXPERIENCE-GESTURES-AND-VESSELS.md`](docs/EXPERIENCE-GESTURES-AND-VESSELS.md).
 - **Build a native platform:** read [`docs/PLATFORM-ARCHITECTURE.md`](docs/PLATFORM-ARCHITECTURE.md), [`docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md`](docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md), then run the generator and packet compiler.
-- **Understand learning and model evolution:** read [`docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md`](docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md); no dream, memory, training or adapter activation is automatic.
+- **Understand learning and continuity evolution:** read [`docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md`](docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md) and [`docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md`](docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md); no candidate, memory, agreement, release, training or adapter activation is automatic.
 - **Work on a second-device Vex:** read [`docs/BOOTSTRAP-AND-MODELS.md`](docs/BOOTSTRAP-AND-MODELS.md) and [`docs/DEVICE-FAMILY-SCORE-RHYTHM.md`](docs/DEVICE-FAMILY-SCORE-RHYTHM.md).
 - **Connect to a desktop-hosted Home Vex from another device:** read [`docs/HOME-BRIDGE-REMOTE-SURFACES.md`](docs/HOME-BRIDGE-REMOTE-SURFACES.md); a remote surface is not the same thing as a synchronized sibling.
 - **Trace why code exists:** query the module, identity and process registries rather than reading the repository indiscriminately.

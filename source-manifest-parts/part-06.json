@@ -2,10 +2,34 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/current.mjs",
+      "mode": "100644",
+      "bytes": 480,
+      "sha256": "5bbf6d97e952f7ff8fd23fa2d8e9a3bea355452dabd1c1d5a1377975bf30fa49"
+    },
+    {
       "path": "scripts/doctor.mjs",
       "mode": "100644",
       "bytes": 1131,
       "sha256": "60fa71ce359bc99cc1e4f6dc6340707fd370ebadb772d5da28b4f07e756b86b8"
+    },
+    {
+      "path": "scripts/evolution-check.mjs",
+      "mode": "100644",
+      "bytes": 13350,
+      "sha256": "f9090d3a2ac5755ab4fbe625b56eef8f361182ab962e62d2c96f07338e5c1634"
+    },
+    {
+      "path": "scripts/evolution-simulate.mjs",
+      "mode": "100644",
+      "bytes": 47206,
+      "sha256": "6d8deaf32773ca7ee62832dc3b673f8eca219218932b8885f9be8ca79bd3f91d"
+    },
+    {
+      "path": "scripts/evolution-status.mjs",
+      "mode": "100644",
+      "bytes": 2036,
+      "sha256": "4da487d45026db20feeb5bf561b2413423779065edce86ede9388093c7385217"
     },
     {
       "path": "scripts/evolution-summary.mjs",
@@ -28,8 +52,8 @@
     {
       "path": "scripts/health-check.mjs",
       "mode": "100644",
-      "bytes": 6712,
-      "sha256": "fc5b3631a44ff71d206f610815a9087ee90d8fb20abfc479c69aa04ce2d13f24"
+      "bytes": 10181,
+      "sha256": "644994468c10d883dba398dff30ea9b22192c97e0a284ee64a372ab8d3c7e7be"
     },
     {
       "path": "scripts/impact-report.mjs",
@@ -82,8 +106,8 @@
     {
       "path": "scripts/pr-ready.mjs",
       "mode": "100644",
-      "bytes": 8154,
-      "sha256": "ac2478a5090e2a10fa7d17a50572b8503dbcf40c5c60963e067de8b98075c995"
+      "bytes": 11465,
+      "sha256": "7129429142e11908fd764327ab688b86fc7dd35db5476f57d59dd0855d2c6864"
     },
     {
       "path": "scripts/provision-model.mjs",
@@ -120,30 +144,6 @@
       "mode": "100644",
       "bytes": 3002,
       "sha256": "413f1c0d7736176efbb4da2ce8601917c06ab22dc34496f1f31b2a48dc691b02"
-    },
-    {
-      "path": "scripts/serve-browser.mjs",
-      "mode": "100644",
-      "bytes": 1528,
-      "sha256": "c00be2e2a257c5f7ca4bd5ac7f03b550cf04254e65e2fc06f5564410c744a835"
-    },
-    {
-      "path": "scripts/source-manifest.mjs",
-      "mode": "100644",
-      "bytes": 3795,
-      "sha256": "942a69a849455237e60185edfb46a19e89fcafddcb436f989594463bfc03cfdf"
-    },
-    {
-      "path": "scripts/test-structured.mjs",
-      "mode": "100644",
-      "bytes": 1218,
-      "sha256": "02da952dd3e34fe20796b4a4175844b89b3bce7854fddf8dc0b871416a4c476a"
-    },
-    {
-      "path": "scripts/validate-blueprint.mjs",
-      "mode": "100644",
-      "bytes": 433,
-      "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
     }
   ]
 }

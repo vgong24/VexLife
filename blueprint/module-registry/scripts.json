@@ -186,6 +186,87 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.script.evolution-check",
+    "path": "scripts/evolution-check.mjs",
+    "role": "Validates universal Blueprint/Atlas continuity-evolution composition, exact registered vocabularies and the current structured scheduler/Workgraph no-effect receipt with all seven causal bindings.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.evolution.001",
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.burden-release",
+      "module.vexlife.script.evolution-simulate"
+    ],
+    "writes": [
+      "generated/health/continuity-evolution-simulation.json"
+    ],
+    "loadedBy": [
+      "check.continuity-evolution"
+    ],
+    "tests": [
+      "test/continuity-evolution-router.test.mjs",
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "blueprint/build-health-registry.json",
+      "package.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.evolution-simulate",
+    "path": "scripts/evolution-simulate.mjs",
+    "role": "Runs exact source, candidate, route, policy/evidence review, replayed Burden Release, atomic record, bounded projection and recurrence through the real registered scheduler/Workgraph node, emitting the structured seven-binding completion receipt with no external effects.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.evolution.001",
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.burden-release",
+      "module.vexlife.core.state",
+      "module.vexlife.core.intent-workgraph",
+      "module.vexlife.core.context-lease",
+      "module.vexlife.core.intent-completion-verifier",
+      "module.vexlife.core.intent-scheduler"
+    ],
+    "writes": [
+      "generated/health/continuity-evolution-simulation.json"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.evolution-check",
+      "module.vexlife.script.evolution-status"
+    ],
+    "tests": [
+      "test/continuity-evolution-router.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "blueprint/intent-scheduler-registry.json",
+      "src/core/intent-workgraph.mjs",
+      "src/core/context-lease.mjs",
+      "src/core/intent-completion-verifier.mjs",
+      "src/core/intent-scheduler.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.evolution-status",
+    "path": "scripts/evolution-status.mjs",
+    "role": "Projects a compact human-readable pattern, source, authority, protection, scope, recurrence and next-safe-action status without raw private source content.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.evolution.001",
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.burden-release",
+      "module.vexlife.script.evolution-simulate"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/continuity-evolution-router.test.mjs"
+    ],
+    "changeMap": [
+      "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.script.check-syntax",
     "path": "scripts/check-syntax.mjs",
     "role": "Runs dependency-free syntax validation over JavaScript and module sources.",
@@ -305,7 +386,7 @@
   {
     "moduleRef": "module.vexlife.script.pr-ready",
     "path": "scripts/pr-ready.mjs",
-    "role": "Executes every registered repository check and writes a current exact-head Health receipt only under the safe generated receipt area while binding the deterministic scheduler simulation.",
+    "role": "Executes every registered repository check and writes a current exact-head Health receipt only under the safe generated receipt area while independently admitting exact scheduler and continuity-evolution structured receipts.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "registry.vexlife.build-health.001",
@@ -314,7 +395,8 @@
       "module.vexlife.core.repository-evidence",
       "module.vexlife.core.source-manifest",
       "module.vexlife.core.scheduler-runtime-trust",
-      "generated/health/intent-scheduler-simulation.json"
+      "generated/health/intent-scheduler-simulation.json",
+      "generated/health/continuity-evolution-simulation.json"
     ],
     "writes": [
       "generated/health/pr-ready.json"

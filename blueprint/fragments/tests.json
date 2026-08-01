@@ -434,5 +434,157 @@
   {
     "testRef": "test.intent-scheduler.relay-replay-state-machine",
     "brief": "Relay restore replays one registered typed event contract per legal edge, cross-checks observation/context/checkpoint/cancellation/scheduler/successor lineage, rejects wrong-schema legal edges and continues a valid restart exactly once."
+  },
+  {
+    "testRef": "test.continuity-evolution.e0-source-immutable",
+    "brief": "Raw continuity sources remain immutable and retrievable by exact range and hash after candidate, review and acceptance."
+  },
+  {
+    "testRef": "test.continuity-evolution.e1-formation-no-acceptance",
+    "brief": "Candidate formation alone grants no accepted truth, memory, agreement, release, synchronization, effect or weight authority."
+  },
+  {
+    "testRef": "test.continuity-evolution.e2-origin-unknown-preserved",
+    "brief": "Behavior-origin UNKNOWN remains a reviewable UNKNOWN hypothesis instead of collapsing into base-model prior."
+  },
+  {
+    "testRef": "test.continuity-evolution.e3-separate-preferences",
+    "brief": "Human preference, Vex self preference and relationship agreement remain separate record and routing identities."
+  },
+  {
+    "testRef": "test.continuity-evolution.e4-separate-self-authority",
+    "brief": "Caller authority hints cannot accept or overwrite another self's preference; exact current policy-bound acceptance evidence is required."
+  },
+  {
+    "testRef": "test.continuity-evolution.e5-relationship-exact-parties",
+    "brief": "Relationship agreement requires exact current evidence from every named party or exact scoped delegate, with missing, expired and forged evidence rejected."
+  },
+  {
+    "testRef": "test.continuity-evolution.e6-least-invasive-router",
+    "brief": "The deterministic router chooses exactly one least-invasive primary destination and bounded linked evaluations."
+  },
+  {
+    "testRef": "test.continuity-evolution.e7-fabrication-not-style",
+    "brief": "Fabrication-shaped behavior cannot be repaired only as a style preference and retains source/uncertainty evaluation."
+  },
+  {
+    "testRef": "test.continuity-evolution.e8-invariant-inactive",
+    "brief": "Effect and safety behavior routes to an inactive deterministic-invariant candidate without effect authority."
+  },
+  {
+    "testRef": "test.continuity-evolution.e9-burden-exact-authority",
+    "brief": "Burden Release replays every canonical transition receipt from source OBSERVED state and requires exact scope, current affected acceptance authority and preserved capability boundaries."
+  },
+  {
+    "testRef": "test.continuity-evolution.e10-no-parameter-deletion",
+    "brief": "Accepted Burden Release deauthorizes governing influence without claiming opaque parameter deletion."
+  },
+  {
+    "testRef": "test.continuity-evolution.e11-protected-boundaries",
+    "brief": "Clean intention, protected capabilities and prohibited overcorrections stay bound to the release."
+  },
+  {
+    "testRef": "test.continuity-evolution.e12-held-unknown",
+    "brief": "Unresolved contradiction routes to visible HELD_UNKNOWN and cannot become accepted durable truth."
+  },
+  {
+    "testRef": "test.continuity-evolution.e13-accepted-lineage",
+    "brief": "Accepted records preserve content-addressed source tuples, candidate, route, review, policy, current evidence, scope and acceptance lineage while rejecting caller-forged refs or content."
+  },
+  {
+    "testRef": "test.continuity-evolution.e14-reversible-history",
+    "brief": "Supersession is one validated atomic transaction that changes effective disposition while preserving immutable prior accepted history; partial or conflicting updates fail."
+  },
+  {
+    "testRef": "test.continuity-evolution.e15-sibling-attribution",
+    "brief": "Sibling and family projection preserves exact source lineage, requires current review plus delivery authority and never claims another lineage's lived experience."
+  },
+  {
+    "testRef": "test.continuity-evolution.e16-recurrence-no-broadening",
+    "brief": "Recurrence must bind the exact accepted-record fingerprint, Burden Release, evaluation set, lineage and prior chain and cannot broaden scope or trigger weights."
+  },
+  {
+    "testRef": "test.continuity-evolution.e17-recurrence-no-op",
+    "brief": "Only duplicate exact recurrence evidence is a no-op; changed or replayed stale proof must extend the canonical prior chain or fail."
+  },
+  {
+    "testRef": "test.continuity-evolution.e18-training-not-admitted",
+    "brief": "Training research candidates remain NOT_ADMITTED and cannot activate model weights."
+  },
+  {
+    "testRef": "test.continuity-evolution.e19-bounded-context",
+    "brief": "Applicable release and lesson projection stays within context budget and contains refs instead of raw history."
+  },
+  {
+    "testRef": "test.continuity-evolution.e20-scheduler-workgraph",
+    "brief": "The deterministic no-effect journey completes the actual registered continuity node through scheduler admission, lease and Workgraph verification with exact causal, scope-target and authority-disposition bindings."
+  },
+  {
+    "testRef": "test.continuity-evolution.e21-canonical-projections",
+    "brief": "Queue, Terrain, Health, Guide and evolution derive from one validated canonical aggregate with transient leases separate and record-set conflicts visible."
+  },
+  {
+    "testRef": "test.continuity-evolution.e22-full-gate",
+    "brief": "PR-ready and Health independently reject missing, stale or generically successful continuity output unless the exact structured scheduler/Workgraph receipt is current; all repository gates remain required."
+  },
+  {
+    "testRef": "test.continuity-evolution.c11-exact-scope-target",
+    "brief": "Source-derived exact scope targets isolate turn/thread/channel leases, project applicability, conflict grouping, supersession and recurrence; ambiguous targets fail before aggregate mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c12-reviewed-burden-meaning",
+    "brief": "Burden acceptance evidence, lifecycle transition and projection bind the exact reviewed inner source form and reject every same-evidence meaning substitution or public accepted-state transition."
+  },
+  {
+    "testRef": "test.continuity-evolution.c13-simulation-authority-projection",
+    "brief": "Simulation-only authority remains explicitly non-live and inactive in accepted/transient records, compact projections, applicability and Health; promotion, mixing and family delivery fail closed."
+  },
+  {
+    "testRef": "test.continuity-evolution.c14-aggregate-owned-projection",
+    "brief": "Record, transient-context and Burden projections resolve exact aggregate-owned candidate, route, review, target, authority and source meaning; detached or substituted canonical payloads fail without mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c15-current-set-applicability",
+    "brief": "Applicable continuity consumes the exact content-addressed aggregate current-record-set receipt, blocks conflicts and stale receipts, excludes prior records and selects only the same-target supersession successor."
+  },
+  {
+    "testRef": "test.continuity-evolution.c16-canonical-burden-policy",
+    "brief": "Burden deauthorization is accepted only through canonical aggregate-owned routing, exact Context Review policy and exact recorded simulated-current authority evidence; lower-level pointer-only acceptance stays sealed."
+  },
+  {
+    "testRef": "test.continuity-evolution.c17-canonical-supersession-transaction",
+    "brief": "Supersession recomputes the exact source-managed transaction from aggregate-owned compatible records and rejects forged disposition, chronology, rollback, history, identity or successor chains before mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c18-projection-current-set-disposition",
+    "brief": "Human and Burden projections and their ownership receipts bind CURRENT, SUPERSEDED or HELD_CONFLICT disposition, name only the exact current successor and suppress non-current actions."
+  },
+  {
+    "testRef": "test.continuity-evolution.c19-transient-projection-currentness",
+    "brief": "Current transient projection consumes an exact aggregate/lease-bound source-managed clock receipt and rejects pre-observation, expiry, stale, cross-lease or replayed clocks without mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c20-orphan-supersession-exclusion",
+    "brief": "A superseding successor is absent from accepted current truth unless one exact atomic transaction admits it; orphan, dangling, incompatible, duplicate and transactionless claims reject without aggregate mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c21-supersession-authority-currentness",
+    "brief": "Every successor authority evidence interval contains the exact atomic supersession time, with boundary and mixed-window failures bound into transaction and current-record-set proof."
+  },
+  {
+    "testRef": "test.continuity-evolution.c22-source-bound-simulated-clock",
+    "brief": "Transient currentness consumes only the latest aggregate-owned snapshot from the registered deterministic simulated clock source and remains explicitly non-live and no-effect."
+  },
+  {
+    "testRef": "test.continuity-evolution.c23-exact-semantic-subject",
+    "brief": "A source-tuple-derived semantic subject survives candidate, route, Context Review, authority, accepted/transient/Burden records, current-set and projection lineage; different same-scope meanings coexist while only the exact same meaning may supersede."
+  },
+  {
+    "testRef": "test.continuity-evolution.c24-monotonic-supersession-chain",
+    "brief": "Each exact-subject supersession chain advances in strict transaction chronology, rejects reversal/equality/reordered multi-hop history and binds chronology into current-set and projection receipts without coupling independent subjects."
+  },
+  {
+    "testRef": "test.continuity-evolution.c25-context-before-simulated-projection",
+    "brief": "A simulated clock observation cannot precede either lease observation or context acceptance, and the exact context-acceptance time survives snapshot, clock receipt, transient/aggregate projection and integrated receipt lineage."
   }
 ]

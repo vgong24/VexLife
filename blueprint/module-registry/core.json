@@ -344,25 +344,84 @@
   {
     "moduleRef": "module.vexlife.core.evolution",
     "path": "src/core/evolution.mjs",
-    "role": "Dream candidate, Context Review, family attribution and training-admission boundary helpers.",
+    "role": "Compatibility entrypoint whose legacy Dream v0 path can form review-only candidates but cannot accept, synchronize or enter training; durable continuity authority is delegated to the v1 router and replayed Burden Release contracts.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.evolution.001",
-      "module.vexlife.core.device-family"
+      "module.vexlife.core.device-family",
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.burden-release"
     ],
     "writes": [],
     "loadedBy": [
       "process.vexlife.dream.form-candidate",
       "process.vexlife.dream.review-and-sync",
+      "process.vexlife.continuity.observe-route-review",
+      "process.vexlife.continuity.accept-and-project",
       "process.vexlife.adapter.train-candidate"
     ],
     "tests": [
-      "test/evolution.test.mjs"
+      "test/evolution.test.mjs",
+      "test/continuity-evolution-router.test.mjs"
     ],
     "changeMap": [
       "blueprint/evolution-registry.json",
       "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
+      "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md",
       "src/core/device-family.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.continuity-evolution-router",
+    "path": "src/core/continuity-evolution-router.mjs",
+    "role": "Validates exact source/hash/time/currentness tuples, derives content-addressed observations and candidates, routes least-invasively, requires policy-first current acceptance evidence, issues transient current-context leases, commits atomic supersessions, verifies family authority and exact recurrence chains, and projects privacy-bounded refs.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.evolution.001",
+      "module.vexlife.core.burden-release",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "process.vexlife.continuity.observe-route-review",
+      "process.vexlife.continuity.accept-and-project",
+      "process.vexlife.continuity.monitor-recurrence",
+      "module.vexlife.core.evolution",
+      "module.vexlife.script.evolution-simulate",
+      "module.vexlife.script.evolution-status"
+    ],
+    "tests": [
+      "test/continuity-evolution-router.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "src/core/burden-release.mjs",
+      "src/core/state.mjs",
+      "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.burden-release",
+    "path": "src/core/burden-release.mjs",
+    "role": "Owns and replays the OBSERVED-to-ACCEPTED Burden Release transition ledger with canonical transition receipts, exact source/scope/authority evidence and capability boundaries, deauthorizing influence without metaphysical adjudication or opaque parameter deletion.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.evolution.001",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.evolution",
+      "module.vexlife.script.evolution-status"
+    ],
+    "tests": [
+      "test/continuity-evolution-router.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "src/core/continuity-evolution-router.mjs",
+      "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md"
     ]
   },
   {
@@ -630,21 +689,24 @@
   {
     "moduleRef": "module.vexlife.core.state",
     "path": "src/core/state.mjs",
-    "role": "Owns one canonical scheduler aggregate for observed clock, queue, worker, leases, completion, continuations, checkpoints, cancellation and relay truth, then derives distinct-until-changed projections.",
+    "role": "Validates typed scheduler and continuity events into canonical aggregates, rejects same-ref content conflicts, keeps transient contexts separate, applies atomic supersessions and exact recurrence chains, then derives distinct Queue, Terrain, Health, Guide and bounded current projections.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "module.vexlife.core.state-relay"
     ],
     "writes": [],
     "loadedBy": [
-      "module.vexlife.core.intent-scheduler"
+      "module.vexlife.core.intent-scheduler",
+      "module.vexlife.script.evolution-simulate"
     ],
     "tests": [
-      "test/intent-scheduler.test.mjs"
+      "test/intent-scheduler.test.mjs",
+      "test/continuity-evolution-router.test.mjs"
     ],
     "changeMap": [
       "blueprint/fragments/state-domains.json",
-      "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
+      "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
+      "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md"
     ]
   },
   {

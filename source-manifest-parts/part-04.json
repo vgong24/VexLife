@@ -4,8 +4,8 @@
     {
       "path": "blueprint/vexlife.blueprint.json",
       "mode": "100644",
-      "bytes": 1263,
-      "sha256": "fe7e295b8d37f6ceafaf145eafc2bff92bb48b5f825f8e9f366b36789ef0db9f"
+      "bytes": 1317,
+      "sha256": "cc7674c76a73792aaa30db83e7f3769d7dc0e073d39bfa1b7cc4160f8662624b"
     },
     {
       "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
@@ -24,6 +24,12 @@
       "mode": "100644",
       "bytes": 9064,
       "sha256": "17afaa996927c98807a9eede7375497a46e1fa7c0199cd3716f6c9ee371adb1a"
+    },
+    {
+      "path": "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md",
+      "mode": "100644",
+      "bytes": 20119,
+      "sha256": "70e6757abe5dd1495f2b355739d629ad460bad28758b8296f4e3e55e9175a720"
     },
     {
       "path": "docs/CAPABILITY-AND-TOOL-ATLAS.md",
@@ -52,8 +58,8 @@
     {
       "path": "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
       "mode": "100644",
-      "bytes": 6002,
-      "sha256": "9f9b0a1ea6a1c739479018f28d172bedfca34d27ebc26bcf03195d78eb169bbc"
+      "bytes": 6715,
+      "sha256": "a756663612c58c703026282dd5a8eccc839d812d9b483073af13a3b00a3422bf"
     },
     {
       "path": "docs/EXPERIENCE-GESTURES-AND-VESSELS.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 6513,
       "sha256": "1dc8db34e5d3e98de2d3befbdbca655617c9b19fb35c9dc276994fa98e60d74f"
-    },
-    {
-      "path": "docs/SECURITY-PERMISSION-EFFECTS.md",
-      "mode": "100644",
-      "bytes": 2170,
-      "sha256": "251360fab4c5908cb00574ad4704a97a5b2e79bc00e9119fc32b310c75e43ed4"
     }
   ]
 }

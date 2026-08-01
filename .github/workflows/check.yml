@@ -62,6 +62,7 @@ jobs:
           name: vexlife-exact-check-receipts
           path: |
             generated/health/browser-integration.json
+            generated/health/continuity-evolution-simulation.json
             generated/health/intent-scheduler-simulation.json
             generated/health/pr-ready.json
           if-no-files-found: error

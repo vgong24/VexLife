@@ -9,6 +9,7 @@ import { deriveRepositoryHealth, validateBuildHealthRegistry } from '../src/core
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { validateIntegratedSchedulerSimulationReceipt } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
+import { validateContinuityEvolutionSimulationReceipt } from './evolution-simulate.mjs';
 import { resolveSafeGeneratedReceiptPath, writeJson } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -125,6 +126,31 @@ if (!simulationValidation.ok) {
     schedulerResult.detailRef = simulationValidation.errors.join('; ');
   }
 }
+const continuityReceiptPath = path.resolve(ROOT, bundle.evolution.simulationContract.receiptPath);
+let continuityReceipt = null;
+let continuityReceiptError = null;
+try {
+  continuityReceipt = JSON.parse(fs.readFileSync(continuityReceiptPath, 'utf8'));
+} catch (error) {
+  continuityReceiptError = `continuity evolution simulation receipt unavailable: ${error.message}`;
+}
+const continuityValidation = validateContinuityEvolutionSimulationReceipt(continuityReceipt, {
+  evolutionRegistry: bundle.evolution,
+  blueprintHash: blueprint.semanticHash,
+  sourceTreeSha256: finalSource.treeSha256,
+  repositoryGit: repository.git
+});
+if (continuityReceiptError) continuityValidation.errors.unshift(continuityReceiptError);
+continuityValidation.ok = continuityValidation.errors.length === 0;
+continuityValidation.state = continuityValidation.ok ? 'EXECUTED_CURRENT' : 'INVALID';
+if (!continuityValidation.ok) {
+  const continuityResult = checkResults.find((item) => item.checkRef === bundle.evolution.simulationContract.checkRef);
+  if (continuityResult) {
+    continuityResult.semanticState = 'BLOCKED';
+    continuityResult.currentness = 'UNKNOWN';
+    continuityResult.detailRef = continuityValidation.errors.join('; ');
+  }
+}
 const { projection } = deriveRepositoryHealth({
   sourceTreeRef: finalSource.treeSha256,
   blueprintHash: blueprint.semanticHash,
@@ -132,7 +158,8 @@ const { projection } = deriveRepositoryHealth({
 });
 const allCurrentPassed = projection.state === 'HEALTHY' &&
   sourceStability.state === 'PASS' &&
-  simulationValidation.ok;
+  simulationValidation.ok &&
+  continuityValidation.ok;
 const schedulerSimulation = {
   receiptPath: path.relative(ROOT, simulationReceiptPath).split(path.sep).join('/'),
   state: simulationValidation.state,
@@ -149,6 +176,32 @@ const schedulerSimulation = {
   selfCertifiedRuntimeEvidence: simulationReceipt?.selfCertifiedRuntimeEvidence ?? null,
   errors: simulationValidation.errors
 };
+const continuitySimulation = {
+  receiptPath: path.relative(ROOT, continuityReceiptPath).split(path.sep).join('/'),
+  state: continuityValidation.state,
+  receiptRef: continuityReceipt?.receiptRef ?? null,
+  contractRef: continuityReceipt?.contractRef ?? null,
+  semanticFingerprint: continuityReceipt?.semanticFingerprint ?? null,
+  candidateHeadSha: continuityReceipt?.candidateHeadSha ?? null,
+  testedCheckoutSha: continuityReceipt?.testedCheckoutSha ?? null,
+  testedMergeSha: continuityReceipt?.testedMergeSha ?? null,
+  baseSha: continuityReceipt?.baseSha ?? null,
+  sourceTreeSha256: continuityReceipt?.sourceTreeSha256 ?? null,
+  blueprintHash: continuityReceipt?.blueprintHash ?? null,
+  evolutionRegistryHash: continuityReceipt?.evolutionRegistryHash ?? null,
+  journeyStates: continuityReceipt?.journeyStates ?? [],
+  continuityGateBindings: continuityReceipt?.continuityGateBindings ?? {},
+  canonicalWorkNodeRef: continuityReceipt?.canonicalWorkNodeRef ?? null,
+  canonicalWorkNodeFinalState: continuityReceipt?.canonicalWorkNodeFinalState ?? null,
+  schedulerContextLeaseFingerprint: continuityReceipt?.schedulerContextLeaseFingerprint ?? null,
+  schedulerCompletionVerificationFingerprint: continuityReceipt?.schedulerCompletionVerificationFingerprint ?? null,
+  schedulerCompletionEvidenceLineageFingerprint: continuityReceipt?.schedulerCompletionEvidenceLineageFingerprint ?? null,
+  schedulerWorkgraphTransitionFingerprint: continuityReceipt?.schedulerWorkgraphTransitionFingerprint ?? null,
+  schedulerCompletionFingerprint: continuityReceipt?.schedulerCompletionFingerprint ?? null,
+  externalEffectsExecuted: continuityReceipt?.externalEffectsExecuted ?? null,
+  modelWeightsChanged: continuityReceipt?.modelWeightsChanged ?? null,
+  errors: continuityValidation.errors
+};
 const receipt = {
   schemaVersion: 'vexlife.pr-ready-receipt/v1',
   receiptRef: `receipt.vexlife.pr-ready.${finalSource.treeSha256.slice(0, 24)}`,
@@ -164,6 +217,7 @@ const receipt = {
   checkResultContractRef: contract.contractRef,
   sourceStability,
   schedulerSimulation,
+  continuitySimulation,
   checkResults,
   health: projection
 };
@@ -183,6 +237,8 @@ console.log(JSON.stringify({
   sourceStability: receipt.sourceStability.state,
   schedulerSimulation: receipt.schedulerSimulation.state,
   schedulerSimulationReceiptFingerprint: receipt.schedulerSimulation.semanticFingerprint,
+  continuitySimulation: receipt.continuitySimulation.state,
+  continuitySimulationReceiptFingerprint: receipt.continuitySimulation.semanticFingerprint,
   receiptSummary: projection.receiptSummary,
   blockingCheckRefs: projection.blockingCheckRefs,
   unresolvedCheckRefs: projection.unresolvedCheckRefs

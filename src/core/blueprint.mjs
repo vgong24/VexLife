@@ -11,6 +11,25 @@ import { validateHomeBridgeRegistry } from './home-bridge.mjs';
 import { validateBuildHealthRegistry } from './build-health.mjs';
 import { validateIntentRegistry } from './intent-validation.mjs';
 import { validateIntentSchedulerRegistry } from './scheduler-runtime-trust.mjs';
+import {
+  BURDEN_RELEASE_REQUIRED_FIELDS,
+  CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATION_AUTHORITY_SOURCE
+} from './burden-release.mjs';
+import {
+  CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
+  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
+  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS,
+  CONTINUITY_SUBJECT_REQUIRED_FIELDS,
+  CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS
+} from './continuity-evolution-router.mjs';
+import {
+  CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SOURCE
+} from './state.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const VEXLIFE_ROOT = path.resolve(HERE, '../..');
@@ -135,6 +154,16 @@ function collectRefs(bundle) {
   for (const item of experience?.gestureContracts ?? []) add('gesture', item.gestureRef);
   for (const item of experience?.vessels ?? []) add('vessel', item.vesselRef);
   if (evolution?.registryRef) add('evolution-registry', evolution.registryRef);
+  if (evolution?.canonicalSourceRef) add('evolution-source', evolution.canonicalSourceRef);
+  if (evolution?.systemRef) add('evolution-system', evolution.systemRef);
+  for (const item of evolution?.contractIdentities ?? []) add('evolution-contract', item.contractRef);
+  for (const item of evolution?.authorityTrustSources ?? []) add('evolution-authority-source', item.authoritySourceRef);
+  for (const item of evolution?.behaviorOriginIdentities ?? []) add('evolution-origin', item.originRef);
+  for (const item of evolution?.scopeIdentities ?? []) add('evolution-scope', item.scopeRef);
+  for (const item of evolution?.primaryDestinationIdentities ?? []) add('evolution-primary-destination', item.destinationRef);
+  for (const item of evolution?.linkedDestinationIdentities ?? []) add('evolution-linked-destination', item.destinationRef);
+  for (const item of evolution?.acceptancePolicies ?? []) add('evolution-acceptance-policy', item.policyRef);
+  for (const item of evolution?.projectionIdentities ?? []) add('evolution-projection', item.projectionRef);
   for (const item of evolution?.candidateTypes ?? []) add('dream-candidate-type', item.candidateTypeRef);
   if (implementationPlan?.planRef) add('implementation-plan', implementationPlan.planRef);
   if (implementationPlan?.demoContractRef) add('demo-contract', implementationPlan.demoContractRef);
@@ -217,6 +246,178 @@ function validateModuleRegistry(bundle, errors) {
     if (!module.role) errors.push(`${module.moduleRef} missing role`);
   }
   if (!modules.length) errors.push('module registry is empty');
+}
+
+export function validateEvolutionRegistry(evolution, bundle = null) {
+  const errors = [];
+  if (!evolution || typeof evolution !== 'object') {
+    return { ok: false, errors: ['evolution registry is missing'], stats: { ownedRefs: 0 } };
+  }
+  for (const field of ['registryRef', 'systemRef', 'canonicalSourceRef', 'purpose']) {
+    if (!evolution[field]) errors.push(`evolution registry missing ${field}`);
+  }
+  if (evolution.canonicalSource?.sourceRef !== evolution.canonicalSourceRef ||
+      evolution.canonicalSource?.path !== 'blueprint/evolution-registry.json' ||
+      evolution.canonicalSource?.field !== 'evolution' ||
+      evolution.canonicalSource?.compositionRef !== 'blueprint.vexlife.universal.001') {
+    errors.push('evolution registry canonical source identity/path/field/composition is malformed');
+  }
+  if (evolution.system?.systemRef !== evolution.systemRef ||
+      evolution.system?.sourceRef !== evolution.canonicalSourceRef) {
+    errors.push('evolution registry system does not bind the canonical source');
+  }
+
+  const ownedRefs = [];
+  const collect = (label, items, refField, valueField = null, vocabulary = null) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      errors.push(`evolution registry ${label} is empty`);
+      return;
+    }
+    const refs = new Set();
+    const values = [];
+    for (const item of items) {
+      if (!item?.[refField]) errors.push(`evolution registry ${label} item missing ${refField}`);
+      else if (refs.has(item[refField])) errors.push(`evolution registry ${label} duplicate ${item[refField]}`);
+      else { refs.add(item[refField]); ownedRefs.push(item[refField]); }
+      if (valueField) {
+        if (!item?.[valueField]) errors.push(`evolution registry ${label} item missing ${valueField}`);
+        values.push(item?.[valueField]);
+      }
+    }
+    if (vocabulary && JSON.stringify(values) !== JSON.stringify(vocabulary)) {
+      errors.push(`evolution registry ${label} does not exactly cover its canonical vocabulary`);
+    }
+  };
+  collect('contracts', evolution.contractIdentities, 'contractRef');
+  collect('authority trust sources', evolution.authorityTrustSources, 'authoritySourceRef');
+  collect('clock trust sources', evolution.clockTrustSources, 'clockSourceRef');
+  collect('behavior origins', evolution.behaviorOriginIdentities, 'originRef', 'value', evolution.behaviorOriginClasses);
+  collect('scopes', evolution.scopeIdentities, 'scopeRef', 'value', evolution.scopeClasses);
+  collect('primary destinations', evolution.primaryDestinationIdentities, 'destinationRef', 'value', evolution.primaryDestinations);
+  collect('linked destinations', evolution.linkedDestinationIdentities, 'destinationRef', 'value', evolution.linkedDestinations);
+  collect('acceptance policies', evolution.acceptancePolicies, 'policyRef', 'recordClass');
+  collect('projections', evolution.projectionIdentities, 'projectionRef', 'projectionKind');
+  collect('candidate types', evolution.candidateTypes, 'candidateTypeRef');
+
+  const contractRefs = new Set((evolution.contractIdentities ?? []).map((item) => item.contractRef));
+  for (const contract of evolution.contractIdentities ?? []) {
+    if (!contract.contractKind || contract.sourceRef !== evolution.canonicalSourceRef) {
+      errors.push(`${contract.contractRef ?? 'evolution contract'} has malformed kind or sourceRef`);
+    }
+  }
+  const exactRequiredFields = (label, actual, expected) => {
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      errors.push(`evolution registry ${label} requiredFields do not exactly match the implementation contract`);
+    }
+  };
+  exactRequiredFields('Burden Release', evolution.burdenRelease?.requiredFields, BURDEN_RELEASE_REQUIRED_FIELDS);
+  exactRequiredFields('context review', evolution.contextReview?.requiredFields, CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS);
+  exactRequiredFields('acceptance evidence', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
+  exactRequiredFields('authority snapshot', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
+  exactRequiredFields('scope target', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
+  exactRequiredFields('continuity subject', evolution.continuitySubject?.requiredFields, CONTINUITY_SUBJECT_REQUIRED_FIELDS);
+  exactRequiredFields('supersession transaction', evolution.supersessionTransaction?.requiredFields, CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS);
+  exactRequiredFields('current record set', evolution.currentRecordSet?.requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
+  exactRequiredFields('simulated clock snapshot', evolution.simulatedClock?.requiredFields, CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS);
+  exactRequiredFields('projection clock', evolution.projectionClock?.requiredFields, CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS);
+  exactRequiredFields('aggregate projection', evolution.aggregateProjection?.requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
+  const expectedContractSources = new Map([
+    ['contract.vexlife.continuity-scope-target/v1', 'scopeTarget'],
+    ['contract.vexlife.continuity-subject/v1', 'continuitySubject'],
+    ['contract.vexlife.continuity-acceptance-evidence/v1', 'acceptanceEvidence'],
+    ['contract.vexlife.continuity-authority-snapshot/v1', 'authorityTrust'],
+    ['contract.vexlife.continuity-context-review/v1', 'contextReview'],
+    ['contract.vexlife.burden-release/v1', 'burdenRelease'],
+    ['contract.vexlife.continuity-supersession-transaction/v1', 'supersessionTransaction'],
+    ['contract.vexlife.continuity-current-record-set-receipt/v1', 'currentRecordSet'],
+    ['contract.vexlife.continuity-simulated-clock-snapshot/v1', 'simulatedClock'],
+    ['contract.vexlife.continuity-projection-clock-receipt/v2', 'projectionClock'],
+    ['contract.vexlife.continuity-aggregate-projection-receipt/v1', 'aggregateProjection']
+  ]);
+  for (const [contractRef, sourceField] of expectedContractSources) {
+    const contract = (evolution.contractIdentities ?? []).find((item) => item.contractRef === contractRef);
+    if (contract?.sourceField !== sourceField || contract?.sourceRef !== evolution.canonicalSourceRef) {
+      errors.push(`evolution contract ${contractRef} does not resolve its exact canonical nested source`);
+    }
+  }
+  const authoritySource = (evolution.authorityTrustSources ?? [])[0];
+  if ((evolution.authorityTrustSources ?? []).length !== 1 ||
+      semanticHash(authoritySource) !== semanticHash(CONTINUITY_SIMULATION_AUTHORITY_SOURCE) ||
+      evolution.authorityTrust?.contractRef !== 'contract.vexlife.continuity-authority-snapshot/v1' ||
+      evolution.authorityTrust?.authoritySourceRef !== authoritySource?.authoritySourceRef ||
+      evolution.authorityTrust?.sourceRef !== authoritySource?.sourceRef ||
+      evolution.authorityTrust?.sourceField !== authoritySource?.sourceField ||
+      evolution.authorityTrust?.evidenceClass !== authoritySource?.evidenceClass ||
+      evolution.authorityTrust?.currentness !== authoritySource?.currentness ||
+      evolution.authorityTrust?.authorityMode !== authoritySource?.authorityMode ||
+      evolution.authorityTrust?.liveAuthorityGranted !== false ||
+      evolution.authorityTrust?.externalEffectsAuthorized !== false) {
+    errors.push('evolution authority trust does not exactly bind the registered simulated-current no-effect source');
+  }
+  const clockSource = (evolution.clockTrustSources ?? [])[0];
+  if ((evolution.clockTrustSources ?? []).length !== 1 ||
+      semanticHash(clockSource) !== semanticHash(CONTINUITY_SIMULATED_CLOCK_SOURCE) ||
+      evolution.simulatedClock?.contractRef !== 'contract.vexlife.continuity-simulated-clock-snapshot/v1' ||
+      evolution.simulatedClock?.clockSourceRef !== clockSource?.clockSourceRef ||
+      evolution.simulatedClock?.sourceRef !== clockSource?.sourceRef ||
+      evolution.simulatedClock?.evidenceClass !== clockSource?.evidenceClass ||
+      evolution.simulatedClock?.currentness !== clockSource?.currentness ||
+      evolution.simulatedClock?.clockMode !== clockSource?.clockMode ||
+      evolution.simulatedClock?.simulatedClock !== true ||
+      evolution.simulatedClock?.liveClockGranted !== false ||
+      evolution.simulatedClock?.externalTimeServiceUsed !== false) {
+    errors.push('evolution clock trust does not exactly bind the registered deterministic simulated-current no-effect source');
+  }
+  for (const ref of [
+    evolution.authorityTrust?.contractRef,
+    evolution.acceptanceEvidence?.contractRef,
+    evolution.scopeTarget?.contractRef,
+    evolution.continuitySubject?.contractRef,
+    evolution.supersessionTransaction?.contractRef,
+    evolution.currentRecordSet?.contractRef,
+    evolution.simulatedClock?.contractRef,
+    evolution.projectionClock?.contractRef,
+    evolution.aggregateProjection?.contractRef,
+    evolution.burdenRelease?.contractRef,
+    evolution.contextReview?.contractRef,
+    evolution.recurrencePolicy?.contractRef,
+    evolution.simulationContract?.contractRef
+  ]) if (!contractRefs.has(ref)) errors.push(`evolution registry nested contract is not canonically registered: ${ref}`);
+  for (const ref of evolution.system?.contractRefs ?? []) {
+    if (!contractRefs.has(ref)) errors.push(`evolution system references missing contract ${ref}`);
+  }
+  for (const policy of evolution.acceptancePolicies ?? []) {
+    if (!policy.recordClass || !policy.authorityRule) errors.push(`${policy.policyRef ?? 'acceptance policy'} is malformed`);
+  }
+  const projectionRefs = new Set((evolution.projectionIdentities ?? []).map((item) => item.projectionRef));
+  for (const ref of evolution.projectionRefs ?? []) {
+    if (!projectionRefs.has(ref)) errors.push(`evolution projection identity missing ${ref}`);
+  }
+  if (!(evolution.observationRequiredFields ?? []).includes('sourceBindings') ||
+      (evolution.observationRequiredFields ?? []).some((field) => ['sourceRangeRefs', 'sourceHashes'].includes(field))) {
+    errors.push('evolution observation contract must require exact sourceBindings instead of parallel arrays');
+  }
+  if (!(evolution.acceptedRecordRequiredFields ?? []).includes('sourceBindings') ||
+      !(evolution.acceptedRecordRequiredFields ?? []).includes('acceptanceEvidenceRefs') ||
+      !(evolution.acceptedRecordRequiredFields ?? []).includes('scopeTargetRef') ||
+      !(evolution.acceptedRecordRequiredFields ?? []).includes('acceptanceDisposition')) {
+    errors.push('evolution accepted-record contract is missing source, exact-target or authority-disposition fields');
+  }
+  if (evolution.resourceRules?.maximumConcurrentTrainingRuns !== 0 ||
+      evolution.recurrencePolicy?.automaticWeightEscalationAllowed !== false ||
+      evolution.simulationContract?.externalEffectsExecuted !== false ||
+      evolution.simulationContract?.modelWeightsChanged !== false) {
+    errors.push('evolution registry violates sealed no-effect/no-weight boundaries');
+  }
+  if (bundle) {
+    const processRefs = new Set((bundle.factory?.processes ?? []).map((item) => item.processRef));
+    const moduleRefs = new Set((bundle.modules?.modules ?? []).map((item) => item.moduleRef));
+    const testRefs = new Set((bundle.blueprint?.tests ?? []).map((item) => item.testRef));
+    for (const ref of evolution.processRefs ?? []) if (!processRefs.has(ref)) errors.push(`evolution registry references missing process ${ref}`);
+    for (const ref of evolution.moduleRefs ?? []) if (!moduleRefs.has(ref)) errors.push(`evolution registry references missing module ${ref}`);
+    for (const ref of evolution.testRefs ?? []) if (!testRefs.has(ref)) errors.push(`evolution registry references missing test ${ref}`);
+  }
+  return { ok: errors.length === 0, errors, stats: { ownedRefs: ownedRefs.length + 3 } };
 }
 
 export function validateBlueprint(bundle) {
@@ -321,6 +522,13 @@ export function validateBlueprint(bundle) {
   }
   const schedulerValidation = validateIntentSchedulerRegistry(bundle.schedulerRegistry);
   errors.push(...schedulerValidation.errors.map((error) => `intent scheduler registry: ${error}`));
+  if (!blueprint.evolution) errors.push('universal blueprint missing evolution composition');
+  else if (!bundle.evolution) errors.push('loaded bundle missing canonical evolution registry');
+  else if (semanticHash(blueprint.evolution) !== semanticHash(bundle.evolution)) {
+    errors.push('universal blueprint evolution composition does not match loaded evolution registry');
+  }
+  const evolutionValidation = validateEvolutionRegistry(bundle.evolution, bundle);
+  errors.push(...evolutionValidation.errors.map((error) => `evolution registry: ${error}`));
   const processRefs = new Set(factory.processes.map((item) => item.processRef));
   const moduleRefs = new Set((bundle.modules?.modules ?? []).map((item) => item.moduleRef));
   for (const processRef of bundle.schedulerRegistry?.processRefs ?? []) {
@@ -369,6 +577,7 @@ export function validateBlueprint(bundle) {
       healthChecks: healthValidation.stats.checks,
       bridgeModes: bridgeValidation.stats.modes,
       schedulerOwnedRefs: schedulerValidation.stats.ownedRefs,
+      evolutionOwnedRefs: evolutionValidation.stats.ownedRefs,
       registryEntries: registryStats?.entries ?? 0
     },
     semanticHash: semanticHash({

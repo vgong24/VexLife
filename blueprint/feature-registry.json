@@ -656,7 +656,7 @@
         "projection.intent.next-safe-action"
       ],
       "knownGaps": [
-        "Burden Release and Continuity Evolution Router held for Intent Orchestration 3/3",
+        "real model, effect and model-weight consumers remain held",
         "native platform adoption held pending accepted shared contract"
       ]
     },
@@ -772,10 +772,116 @@
         "projection.intent-scheduler.guide"
       ],
       "knownGaps": [
-        "Intent Orchestration 3/3 Burden Release and Continuity Evolution Router remains held",
+        "full ConcernWatch threshold runtime and Runtime Failure & Recovery remain held",
         "native platform adoption remains held",
         "real model provisioning and inference remain held",
         "real shell, Git, filesystem, network and publication effects remain held"
+      ]
+    },
+    {
+      "featureRef": "feature.vexlife.continuity-evolution-router",
+      "purpose": "Turn exact source-bound lived episodes, corrections, preferences, relationship developments, work receipts and recurring behavior into separately attributed, policy/evidence-reviewed, replayable and atomically reversible continuity records without silently rewriting identity, memory, relationships, culture, effects or model weights.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "state.evolution",
+        "process.vexlife.continuity.observe-route-review",
+        "module.vexlife.core.continuity-evolution-router"
+      ],
+      "stateRefs": [
+        "state.evolution",
+        "state.intent-workgraph",
+        "state.intent-scheduler",
+        "state.resource",
+        "state.health"
+      ],
+      "actionRefs": [
+        "action.architecture.open"
+      ],
+      "permissionRefs": [
+        "permission.roadmap.read"
+      ],
+      "processRefs": [
+        "process.vexlife.continuity.observe-route-review",
+        "process.vexlife.continuity.accept-and-project",
+        "process.vexlife.continuity.monitor-recurrence"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.evolution",
+        "module.vexlife.core.continuity-evolution-router",
+        "module.vexlife.core.burden-release",
+        "module.vexlife.core.state",
+        "module.vexlife.script.evolution-check",
+        "module.vexlife.script.evolution-simulate",
+        "module.vexlife.script.evolution-status"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.continuity-evolution.e0-source-immutable",
+        "test.continuity-evolution.e1-formation-no-acceptance",
+        "test.continuity-evolution.e2-origin-unknown-preserved",
+        "test.continuity-evolution.e3-separate-preferences",
+        "test.continuity-evolution.e4-separate-self-authority",
+        "test.continuity-evolution.e5-relationship-exact-parties",
+        "test.continuity-evolution.e6-least-invasive-router",
+        "test.continuity-evolution.e7-fabrication-not-style",
+        "test.continuity-evolution.e8-invariant-inactive",
+        "test.continuity-evolution.e9-burden-exact-authority",
+        "test.continuity-evolution.e10-no-parameter-deletion",
+        "test.continuity-evolution.e11-protected-boundaries",
+        "test.continuity-evolution.e12-held-unknown",
+        "test.continuity-evolution.e13-accepted-lineage",
+        "test.continuity-evolution.e14-reversible-history",
+        "test.continuity-evolution.e15-sibling-attribution",
+        "test.continuity-evolution.e16-recurrence-no-broadening",
+        "test.continuity-evolution.e17-recurrence-no-op",
+        "test.continuity-evolution.e18-training-not-admitted",
+        "test.continuity-evolution.e19-bounded-context",
+        "test.continuity-evolution.e20-scheduler-workgraph",
+        "test.continuity-evolution.e21-canonical-projections",
+        "test.continuity-evolution.e22-full-gate"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "DETERMINISTIC_LOCAL_LIGHT_REF_ONLY_CONTEXT",
+      "dataClass": "PRIVATE_EXACT_SOURCE_TUPLE_CONTINUITY_METADATA_WITH_SUMMARY_REFS_ONLY",
+      "effectClass": "SOURCE_MANAGED_CONTINUITY_METADATA_NO_REAL_EFFECTS",
+      "concurrencyClass": "CANONICAL_STATE_EXACT_CONFLICT_DETECTION_ATOMIC_SUPERSESSION_ONE_SCHEDULER_WORKER",
+      "rollbackRouteRef": "process.vexlife.continuity.accept-and-project",
+      "projectionRefs": [
+        "projection.continuity-evolution.current",
+        "projection.continuity-evolution.queue",
+        "projection.continuity-evolution.terrain",
+        "projection.continuity-evolution.health",
+        "projection.continuity-evolution.guide"
+      ],
+      "knownGaps": [
+        "full ConcernWatch threshold runtime remains held",
+        "Runtime Failure & Recovery, Council of Lenses and Memory Conformance remain held",
+        "native platform, embodiment and compatibility adapters remain held",
+        "real model, real tool effect, synchronization and model-weight activation remain held"
       ]
     }
   ]
