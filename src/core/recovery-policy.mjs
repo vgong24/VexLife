@@ -57,23 +57,24 @@ function matchingAttempts(aggregate, failure) {
 }
 
 function policyAction(failure) {
+  switch (failure.failureClass) {
+    case 'PARTIAL_WRITE_SIMULATED': return 'ROLLBACK_TO_BEFORE_IMAGE';
+    case 'ROLLBACK_FAILED_SIMULATED': return 'QUARANTINE_ADAPTER_OR_ARTIFACT';
+    case 'DISK_FULL_SIMULATED':
+    case 'NETWORK_INTERRUPTION_SIMULATED': return 'CHECKPOINT_AND_WAIT';
+    case 'PROCESS_TERMINATED_SIMULATED': return 'RESTORE_LAST_KNOWN_GOOD';
+    default: break;
+  }
   if (failure.partialEffectState === 'CONFIRMED_IRREVERSIBLE') return 'QUARANTINE_ADAPTER_OR_ARTIFACT';
   if (['CONFIRMED_REVERSIBLE', 'POSSIBLE', 'UNKNOWN'].includes(failure.partialEffectState)) {
-    return failure.failureClass === 'ROLLBACK_FAILED_SIMULATED'
-      ? 'QUARANTINE_ADAPTER_OR_ARTIFACT'
-      : 'ROLLBACK_TO_BEFORE_IMAGE';
+    return 'ROLLBACK_TO_BEFORE_IMAGE';
   }
   switch (failure.failureClass) {
     case 'CONTEXT_BUDGET_EXCEEDED': return 'CONDENSE_CONTEXT_AND_REACQUIRE';
     case 'MODEL_TIMEOUT_SIMULATED': return 'RETRY_SAME_BUDGET';
     case 'RESOURCE_EXHAUSTION_SIMULATED': return 'RETRY_REDUCED_BUDGET';
-    case 'PROCESS_TERMINATED_SIMULATED': return 'RESTORE_LAST_KNOWN_GOOD';
-    case 'DISK_FULL_SIMULATED': return 'CHECKPOINT_AND_WAIT';
-    case 'NETWORK_INTERRUPTION_SIMULATED': return 'CHECKPOINT_AND_WAIT';
-    case 'PARTIAL_WRITE_SIMULATED': return 'ROLLBACK_TO_BEFORE_IMAGE';
     case 'DUPLICATE_OR_REPLAYED_EVENT': return 'TERMINAL_BLOCK';
     case 'STALE_OR_CORRUPTED_CHECKPOINT': return 'TERMINAL_BLOCK';
-    case 'ROLLBACK_FAILED_SIMULATED': return 'QUARANTINE_ADAPTER_OR_ARTIFACT';
     case 'UNKNOWN_FAILURE': return 'REQUEST_HUMAN_DECISION';
     case 'INVALID_INDEX_OR_BOUNDS':
     case 'INVALID_STATE_TRANSITION':
@@ -107,9 +108,12 @@ function validateCheckpointAdmission(value, aggregate, failure) {
     label: 'checkpoint admission receipt'
   });
   if (!canonical.admitted || canonical.state !== 'ADMITTED' || canonical.currentness !== 'CURRENT' ||
+      canonical.aggregateRef !== aggregate.aggregateRef ||
       canonical.workNodeRef !== aggregate.workNodeRef ||
       canonical.sourceStateFingerprint !== aggregate.sourceStateFingerprint ||
       canonical.failureFingerprint !== failure.semanticFingerprint ||
+      !canonical.schedulerConsumptionRef || !canonical.schedulerConsumptionFingerprint ||
+      !canonical.onceOnlyActivationRef || canonical.leaseReleaseFingerprints?.length !== 6 ||
       canonical.priorSchedulerGeneration !== aggregate.schedulerGeneration ||
       canonical.nextSchedulerGeneration <= canonical.priorSchedulerGeneration) {
     throw new Error('checkpoint admission is not exact current recovery evidence');

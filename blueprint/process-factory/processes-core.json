@@ -1550,13 +1550,13 @@
       "observedAt"
     ],
     "optionalInputs": [
-      "typedFailureClass",
-      "partialEffectState",
+      "errorEvidence",
       "evidenceRefs"
     ],
     "sourceResolutionRules": [
-      "resolve class and defaults from registry.vexlife.runtime-recovery.001",
+      "resolve class and defaults only from one registered exact classifier source, adapter and content-addressed plan in registry.vexlife.runtime-recovery.001",
       "treat thrown text and stack identity as evidence input only",
+      "attach a rejection handler before returning the typed unsupported outcome for any rejected thenable",
       "derive failureRef and semanticFingerprint from canonical content"
     ],
     "preconditions": [
@@ -1608,7 +1608,7 @@
   {
     "processRef": "process.vexlife.runtime.recover-execute",
     "processVersion": 1,
-    "purpose": "Resolve and record bounded recovery only through replayed typed events that bind exact source policy, scheduler checkpoint and six releases, context/resource/rollback evidence, scheduler-issued continuation and causal Workgraph completion without caller-authored authority.",
+    "purpose": "Resolve and record bounded recovery only through edge-specific semantic replay that binds one scheduler-owned checkpoint/release activation, exact action evidence matrix, recovery-output-consuming resume receipt and causal Workgraph completion without caller-authored authority.",
     "applicabilityRules": [
       "one canonical active failure exists"
     ],
@@ -1618,6 +1618,7 @@
       "retryPolicy",
       "currentAdmissionEvidence",
       "schedulerCheckpoint",
+      "schedulerCheckpointConsumptionReceipt",
       "sixLeaseReleaseReceipts"
     ],
     "optionalInputs": [
@@ -1627,7 +1628,9 @@
     ],
     "sourceResolutionRules": [
       "resolve action only from current runtime recovery registry policy",
-      "consume exact accepted scheduler checkpoint and six-lease transition fingerprints",
+      "consume exact accepted scheduler checkpoint, once-only aggregate/failure activation and six unique release fingerprints",
+      "enforce the selected action's required, optional and forbidden evidence before mutation",
+      "consume applicable context/resource recovery outputs only through one scheduler-owned resume receipt",
       "reject budget reset, stale generation, wrong source and broadened authority"
     ],
     "preconditions": [
@@ -1636,10 +1639,11 @@
       "no real effect adapter is admitted in this implementation wave"
     ],
     "steps": [
-      "record-exact-checkpoint-admission",
+      "record-exact-checkpoint-consumption-and-admission",
       "record-source-policy-decision",
-      "apply-aggregate-owned-recovery-action",
-      "consume-scheduler-issued-continuation-and-six-fresh-leases",
+      "replay-edge-specific-source-managed-evidence",
+      "apply-action-specific-aggregate-owned-recovery",
+      "consume-scheduler-resume-receipt-and-six-fresh-leases",
       "retry-and-replay-aggregate",
       "form-causal-recovery-convergence",
       "verify-workgraph-completion",

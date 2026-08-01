@@ -712,7 +712,7 @@
   {
     "moduleRef": "module.vexlife.core.resource-admission",
     "path": "src/core/resource-admission.mjs",
-    "role": "Forms deterministic hardware snapshots and fails closed unless CPU, RAM, GPU, VRAM, model, tool, wait and thermal evidence remains active at the exact scheduler observation.",
+    "role": "Forms deterministic hardware snapshots and current resource leases, optionally binding an exact recovery-reduced request/admission receipt, and fails closed unless CPU, RAM, GPU, VRAM, model, tool, wait and thermal evidence remains active at the scheduler observation.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
@@ -823,7 +823,7 @@
   {
     "moduleRef": "module.vexlife.core.intent-scheduler",
     "path": "src/core/intent-scheduler.mjs",
-    "role": "Admits exact workgraph nodes, leases one physical worker, owns every held-call disposition/terminal close, and consumes externally verified completion only while current into authoritative Workgraph truth with exact evidence lineage.",
+    "role": "Admits exact Workgraph nodes, leases one physical worker, owns held-call disposition/terminal close, issues once-only recovery checkpoint consumption and recovery-output-consuming resume receipts, and consumes externally verified completion only while current into authoritative Workgraph truth.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-orchestration.001",
@@ -853,7 +853,7 @@
   {
     "moduleRef": "module.vexlife.core.runtime-failure",
     "path": "src/core/runtime-failure.mjs",
-    "role": "Forms and validates content-addressed source/work/generation/operation/attempt-bound failure envelopes from source-managed classification evidence while preventing caller hints, thrown strings and stacks from weakening canonical state.",
+    "role": "Forms and validates content-addressed source/work/generation/operation/attempt-bound failure envelopes from registered exact classifier source/adapter/plan evidence while keeping executor fields evidentiary and canonical class/policy defaults authoritative.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "state.runtime-recovery",
@@ -899,7 +899,7 @@
   {
     "moduleRef": "module.vexlife.core.runtime-recovery",
     "path": "src/core/runtime-recovery.mjs",
-    "role": "Owns the typed total executor boundary and replay-derived recovery aggregate, consumes exact scheduler checkpoint/six-lease handoffs, records policy and recovery actions only as typed events, closes through scheduler Workgraph causal evidence and retains changed-only Queue/Terrain/Health/Guide recovery evidence.",
+    "role": "Owns rejected-thenable-safe total boundaries and edge-specific semantic replay, consumes scheduler-owned once-only checkpoint/six-release claims, enforces action evidence matrices, validates recovery-derived context/resource leases through one scheduler resume receipt, and closes through exact Workgraph causal evidence.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "state.runtime-recovery",
@@ -927,7 +927,7 @@
   {
     "moduleRef": "module.vexlife.core.recovery-fault-injector",
     "path": "src/core/recovery-fault-injector.mjs",
-    "role": "Provides source-classified deterministic no-effect timeout, exhaustion, termination, disk, partial-write, network and rollback fixtures plus exact before-image, partial-result, read-back, last-known-good and quarantine receipts.",
+    "role": "Provides registered deterministic classifier-plan fixtures and admitted no-effect transactional adapter/fault-plan evidence for timeout, exhaustion, termination, wait, partial-write, rollback, last-known-good and quarantine routes.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "state.runtime-recovery",

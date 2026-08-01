@@ -886,7 +886,7 @@
     },
     {
       "featureRef": "feature.vexlife.runtime-failure-recovery",
-      "purpose": "Turn every unexpected deterministic executor failure into one typed, source-classified and replay-derived recovery route whose exact scheduler checkpoint, six released/fresh leases, policy, rollback and Workgraph completion evidence preserve work and fail closed under substitution.",
+      "purpose": "Turn every unexpected deterministic executor failure into one typed registered-classifier route whose edge-specific replay, once-only scheduler checkpoint/release ownership, action evidence matrix and recovery-output-consuming continuation preserve work and fail closed under substitution.",
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.runtime-recovery",
@@ -978,7 +978,7 @@
       "resourceClass": "DETERMINISTIC_LOCAL_LIGHT_BOUNDED_RETRY_AND_CONTEXT_FIXTURES",
       "dataClass": "CONTENT_ADDRESSED_FAILURE_RECOVERY_METADATA_WITH_REF_ONLY_SOURCE_DESCENT",
       "effectClass": "DETERMINISTIC_NO_EFFECT_FAILURE_RECOVERY_SIMULATION_ONLY",
-      "concurrencyClass": "ONE_REPLAY_DERIVED_AGGREGATE_SCHEDULER_ISSUED_GENERATIONS_ONCE_ONLY_EVENTS",
+      "concurrencyClass": "ONE_TYPED_REPLAY_AGGREGATE_ONE_CHECKPOINT_ACTIVATION_ONE_SCHEDULER_RESUME_RECEIPT_PER_RECOVERY_BRANCH",
       "rollbackRouteRef": "process.vexlife.runtime.recover-execute",
       "projectionRefs": [
         "projection.runtime-recovery.queue",

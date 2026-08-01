@@ -34,8 +34,8 @@
     {
       "path": "src/core/intent-scheduler.mjs",
       "mode": "100644",
-      "bytes": 67254,
-      "sha256": "64778cec590f78628140852dbfe7a97270798c55a51a05e9e3acff33bdc92515"
+      "bytes": 81702,
+      "sha256": "ce16c486bafb1cf12a7319e324c1fbd08243f0c6cf53b376e309bbe30d503d4d"
     },
     {
       "path": "src/core/intent-validation.mjs",
@@ -106,14 +106,14 @@
     {
       "path": "src/core/recovery-fault-injector.mjs",
       "mode": "100644",
-      "bytes": 7053,
-      "sha256": "e2ffe6050369c167bdae1d45422bb15331d9d5de1e4b67a6109aa2964cde5b81"
+      "bytes": 7940,
+      "sha256": "324c35bae728682a276222f264e146097ed7f9eeec8dc807b1af77fc6e91a5d9"
     },
     {
       "path": "src/core/recovery-policy.mjs",
       "mode": "100644",
-      "bytes": 11103,
-      "sha256": "e5bc06fb03f4aeac4adeae672f57370751d1c97998c35468105880394c13a433"
+      "bytes": 11272,
+      "sha256": "17f0fac68ecea371d5ae568a9945f1d9c29859d33cc7b55a7816fa88edff6625"
     },
     {
       "path": "src/core/registry.mjs",
@@ -130,20 +130,20 @@
     {
       "path": "src/core/resource-admission.mjs",
       "mode": "100644",
-      "bytes": 8827,
-      "sha256": "bf8115c712f638e15e48bd68769a5f6ab3d032dcce0fb723b7a2edef715268b9"
+      "bytes": 8924,
+      "sha256": "36e4b449574fbd2195254b6d3b56178202154f2ca8a41485f212e405c5fd45e2"
     },
     {
       "path": "src/core/runtime-failure.mjs",
       "mode": "100644",
-      "bytes": 12359,
-      "sha256": "489bc763553616d534f15339c4f2092bf4c63ead9b3d8c6a678355313869dd65"
+      "bytes": 17093,
+      "sha256": "5060f21bb284ffe1ee5f59358de0e9770bcdb5f1f646004e8beecf0e0a496c15"
     },
     {
       "path": "src/core/runtime-recovery.mjs",
       "mode": "100644",
-      "bytes": 83059,
-      "sha256": "d61aeb9a69385ba0723669014d1a15afe703a403900b6e34b37698ce5a7d2083"
+      "bytes": 117960,
+      "sha256": "03dd4be9ca4313810b9d92d02b4613dd6cebb9846ff4643c64e35462fbe2b145"
     }
   ]
 }

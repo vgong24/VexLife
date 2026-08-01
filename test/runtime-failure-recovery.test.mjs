@@ -8,6 +8,7 @@ import {
   closeRecoveredExecution,
   createRecoveryAggregate,
   createRecoveryContinuation,
+  createRecoveryConvergenceReceipt,
   executeWithRecoveryBoundary,
   projectRecoveryAggregate,
   recordExternalRecoveryEvent,
@@ -19,8 +20,8 @@ import {
 import { createFailureEnvelope, validateFailureEnvelope } from '../src/core/runtime-failure.mjs';
 import { resolveRecoveryPolicy } from '../src/core/recovery-policy.mjs';
 import {
+  createDeterministicFaultInjector,
   createNoEffectTransactionalAdapter,
-  SimulatedRuntimeFailure,
   simulateTransactionalRecovery
 } from '../src/core/recovery-fault-injector.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
@@ -84,15 +85,20 @@ function rechain(events) {
 
 test('C1 source-managed classification ignores weakening error hints and keeps content-addressed identity', () => {
   const owner = aggregate();
+  const executor = createDeterministicFaultInjector({
+    planRef: 'classifier-plan.runtime-recovery.test.classification',
+    failures: [{
+      attempt: 1,
+      failureClass: 'PARTIAL_WRITE_SIMULATED',
+      message: 'partial write',
+      partialEffectState: 'NONE',
+      humanAttentionClass: 'NONE'
+    }]
+  });
   const result = executeWithRecoveryBoundary({
     aggregate: owner,
     registry,
-    executor: () => {
-      throw new SimulatedRuntimeFailure('PARTIAL_WRITE_SIMULATED', 'partial write', {
-        partialEffectState: 'NONE',
-        humanAttentionClass: 'NONE'
-      });
-    },
+    executor,
     context: context('attempt.classification.1')
   });
   assert.equal(result.status, 'FAILED_RECOVERABLE');
@@ -105,9 +111,26 @@ test('C1 source-managed classification ignores weakening error hints and keeps c
     failureRef: 'failure.forged',
     error: result.failure.errorEvidence
   }, { registry }), /failureRef/);
+  assert.throws(() => createFailureEnvelope({
+    ...result.failure,
+    failureClass: 'MODEL_TIMEOUT_SIMULATED',
+    error: result.failure.errorEvidence
+  }, { registry }), /caller-selected failure class/);
+  const forgedClassifier = structuredClone(result.failure);
+  forgedClassifier.classificationEvidence.sourceRef = 'source.runtime-recovery.unknown-forged';
+  assert.throws(() => createFailureEnvelope({
+    ...forgedClassifier,
+    error: forgedClassifier.errorEvidence
+  }, { registry }), /not registered|forged/);
+  const sameRefDifferentContent = structuredClone(result.failure);
+  sameRefDifferentContent.classificationEvidence.errorEvidenceFingerprint = '0'.repeat(64);
+  assert.throws(() => createFailureEnvelope({
+    ...sameRefDifferentContent,
+    error: sameRefDifferentContent.errorEvidence
+  }, { registry }), /forged|same-ref/);
 });
 
-test('C1 every malformed, stale, replayed, over-budget, async, or thenable boundary input is typed and mutation-free', () => {
+test('C1 every malformed, stale, replayed, over-budget, async, or thenable boundary input is typed and mutation-free', async () => {
   const owner = aggregate();
   for (const candidate of [
     { executor: null, context: context('attempt.reject.invalid-executor') },
@@ -154,13 +177,30 @@ test('C1 every malformed, stale, replayed, over-budget, async, or thenable bound
   });
   assert.equal(substituted.admitted, false);
   assert.match(substituted.boundaryRejection.reasonCode, /PRE_ADMISSION/);
+
+  const unhandled = [];
+  const observeUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', observeUnhandled);
+  const rejectedThenable = executeWithRecoveryBoundary({
+    aggregate: owner,
+    registry,
+    executor: () => Promise.reject(new Error('deterministic rejected thenable')),
+    context: context('attempt.reject.rejected-thenable')
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  process.off('unhandledRejection', observeUnhandled);
+  assert.equal(rejectedThenable.boundaryRejection.reasonCode, 'THENABLE_EXECUTOR_UNSUPPORTED');
+  assert.deepEqual(unhandled, []);
 });
 
 test('C1 admitted attempts record canonical start/failure/success chronology and exact wall-time budget', () => {
   const failed = executeWithRecoveryBoundary({
     aggregate: aggregate(),
     registry,
-    executor: () => { throw new SimulatedRuntimeFailure('MODEL_TIMEOUT_SIMULATED', 'timeout'); },
+    executor: createDeterministicFaultInjector({
+      planRef: 'classifier-plan.runtime-recovery.test.chronology',
+      failures: [{ failureClass: 'MODEL_TIMEOUT_SIMULATED', message: 'timeout' }]
+    }),
     context: context('attempt.chronology.failed')
   });
   assert.deepEqual(failed.aggregate.eventLedger.map((item) => item.type), [
@@ -210,7 +250,7 @@ test('C2 checkpoint admission consumes the exact scheduler checkpoint and six re
 });
 
 test('C2 continuation requires scheduler-issued fresh generation and six fresh, unreused leases', () => {
-  const { actionAggregate, checkpointAdmission, resumed, continuation } = integrated.artifacts;
+  const { actionAggregate, checkpointAdmission, resumed, continuation, schedulerAggregateAfterResume } = integrated.artifacts;
   assert.equal(continuation.priorSchedulerGeneration, 1);
   assert.equal(continuation.nextSchedulerGeneration, 2);
   assert.equal(Object.keys(continuation.freshLeaseFingerprints).length, 6);
@@ -222,10 +262,11 @@ test('C2 continuation requires scheduler-issued fresh generation and six fresh, 
       ...structuredClone(resumed),
       contextLease: { ...structuredClone(resumed.contextLease), leaseRef: priorContextRef }
     },
+    schedulerAggregate: schedulerAggregateAfterResume,
     schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery',
     observedAt: '2026-08-01T00:00:04.000Z',
     registry
-  }), /reused prior generation identity/);
+  }), /exact scheduler resume|reused prior generation identity/);
 
   const oldGenerationRetry = executeWithRecoveryBoundary({
     aggregate: integrated.artifacts.failedAggregate,
@@ -235,6 +276,47 @@ test('C2 continuation requires scheduler-issued fresh generation and six fresh, 
   });
   assert.equal(oldGenerationRetry.admitted, false);
   assert.equal(oldGenerationRetry.aggregate.semanticFingerprint, integrated.artifacts.failedAggregate.semanticFingerprint);
+});
+
+test('C8 scheduler checkpoint activation and six releases are aggregate/failure owned and single-use', () => {
+  const { checkpoint, schedulerCheckpoint, schedulerConsumption, checkpointAdmission, actionAggregate } = integrated.artifacts;
+  const otherFailure = executeWithRecoveryBoundary({
+    aggregate: aggregate({ aggregateRef: 'aggregate.runtime-recovery.other-owner' }),
+    registry,
+    executor: createDeterministicFaultInjector({
+      planRef: 'classifier-plan.runtime-recovery.test.other-owner',
+      failures: [{ failureClass: 'MODEL_TIMEOUT_SIMULATED' }]
+    }),
+    context: context('attempt.other-owner.1')
+  });
+  const crossOwner = admitRecoveryCheckpoint(checkpoint, otherFailure.aggregate, {
+    schedulerCheckpoint,
+    schedulerConsumptionReceipt: schedulerConsumption,
+    nextSchedulerGeneration: 2,
+    currentSourceStateFingerprint: sourceStateFingerprint,
+    observedAt: T2,
+    registry
+  });
+  assert.equal(crossOwner.admitted, false);
+  assert.match(crossOwner.reasons.join(','), /CONSUMPTION|CORRUPTED/);
+
+  assert.throws(() => recordRecoveryCheckpointAdmission(
+    actionAggregate,
+    checkpoint,
+    checkpointAdmission,
+    { schedulerConsumptionReceipt: schedulerConsumption, registry }
+  ), /activation|released lease|order|current/i);
+
+  const forgedConsumption = structuredClone(schedulerConsumption);
+  forgedConsumption.failureRef = 'failure.runtime-recovery.forged';
+  assert.equal(admitRecoveryCheckpoint(checkpoint, integrated.artifacts.failedAggregate, {
+    schedulerCheckpoint,
+    schedulerConsumptionReceipt: forgedConsumption,
+    nextSchedulerGeneration: 2,
+    currentSourceStateFingerprint: sourceStateFingerprint,
+    observedAt: T2,
+    registry
+  }).admitted, false);
 });
 
 test('C3 restore replays the typed ledger and rejects budget reset, impossible order, forged final state, and duplicate terminal closure', () => {
@@ -305,6 +387,44 @@ test('C3 replay rejects same-ref/different-content and stale external events wit
   assert.equal(stale.aggregate.semanticFingerprint, accepted.aggregate.semanticFingerprint);
 });
 
+test('C7 typed semantic replay rejects self-consistent forged context and action edge payloads', () => {
+  const contextBranch = integrated.artifacts.representativeActions.find((item) => item.name === 'context-condensation');
+  const contextEvents = structuredClone(contextBranch.aggregate.eventLedger);
+  const contextEvent = contextEvents.find((item) => item.type === 'CONTEXT_RECOVERED');
+  contextEvent.payload.receipt.immutableSourceCoverage[0].end += 1;
+  delete contextEvent.payload.receipt.contextRecoveryReceiptRef;
+  delete contextEvent.payload.receipt.semanticFingerprint;
+  contextEvent.payload.receipt.semanticFingerprint = semanticHash(contextEvent.payload.receipt);
+  contextEvent.payload.receipt.contextRecoveryReceiptRef =
+    `receipt.runtime-recovery.context.${contextEvent.payload.receipt.semanticFingerprint.slice(0, 32)}`;
+  assert.throws(() => createRecoveryAggregate({
+    aggregateRef: contextBranch.aggregate.aggregateRef,
+    workNodeRef: contextBranch.aggregate.workNodeRef,
+    sourceStateFingerprint,
+    schedulerGeneration: 1,
+    retryBudget: registry.retryPolicy,
+    eventLedger: rechain(contextEvents)
+  }, { registry }), /canonical source replay|detached/);
+
+  const directBranch = integrated.artifacts.representativeActions.find((item) => item.name === 'direct-timeout-retry');
+  const actionEvents = structuredClone(directBranch.aggregate.eventLedger);
+  const actionEvent = actionEvents.find((item) => item.type === 'RECOVERY_ACTION_APPLIED');
+  actionEvent.payload.receipt.action = 'RETRY_REDUCED_BUDGET';
+  delete actionEvent.payload.receipt.actionReceiptRef;
+  delete actionEvent.payload.receipt.semanticFingerprint;
+  actionEvent.payload.receipt.semanticFingerprint = semanticHash(actionEvent.payload.receipt);
+  actionEvent.payload.receipt.actionReceiptRef =
+    `receipt.runtime-recovery.action.${actionEvent.payload.receipt.semanticFingerprint.slice(0, 32)}`;
+  assert.throws(() => createRecoveryAggregate({
+    aggregateRef: directBranch.aggregate.aggregateRef,
+    workNodeRef: directBranch.aggregate.workNodeRef,
+    sourceStateFingerprint,
+    schedulerGeneration: 1,
+    retryBudget: registry.retryPolicy,
+    eventLedger: rechain(actionEvents)
+  }, { registry }), /exact active decision|semantic replay/);
+});
+
 test('C4 selected recovery actions, rollback/LKG/quarantine, and human gates are aggregate-owned and visible', () => {
   assert.ok(integrated.aggregate.currentRecoveryActionReceipt);
   assert.equal(integrated.aggregate.rollbackLineage.length, 1);
@@ -317,34 +437,8 @@ test('C4 selected recovery actions, rollback/LKG/quarantine, and human gates are
   assert.equal(integrated.quarantineProjection.health.state, 'ATTENTION');
   assert.equal(integrated.quarantineProjection.guide.remainsBlocked, true);
 
-  let humanOwner = aggregate({ aggregateRef: 'aggregate.runtime-recovery.human' });
-  const humanFailure = executeWithRecoveryBoundary({
-    aggregate: humanOwner,
-    registry,
-    executor: () => { throw new SimulatedRuntimeFailure('INVALID_STATE_TRANSITION', 'human decision required'); },
-    context: context('attempt.human.1')
-  });
-  humanOwner = humanFailure.aggregate;
-  const humanAdmission = admitRecoveryCheckpoint(integrated.artifacts.checkpoint, humanOwner, {
-    schedulerCheckpoint: integrated.artifacts.schedulerCheckpoint,
-    nextSchedulerGeneration: 2,
-    currentSourceStateFingerprint: sourceStateFingerprint,
-    observedAt: T2,
-    registry
-  });
-  humanOwner = recordRecoveryCheckpointAdmission(humanOwner, integrated.artifacts.checkpoint, humanAdmission, { registry });
-  const humanDecision = recordRecoveryPolicyDecision(humanOwner, {
-    checkpointAdmission: humanAdmission,
-    observedAt: T2,
-    registry
-  });
-  humanOwner = applyRecoveryAction({
-    aggregate: humanDecision.aggregate,
-    policyDecision: humanDecision.policyDecision,
-    checkpointAdmission: humanAdmission,
-    observedAt: T2,
-    registry
-  }).aggregate;
+  const humanBranch = integrated.artifacts.representativeActions.find((item) => item.name === 'human-decision-hold');
+  const humanOwner = humanBranch.aggregate;
   assert.equal(humanOwner.phase, 'WAITING_HUMAN');
   assert.equal(humanOwner.humanDecisionGates.length, 1);
   assert.equal(projectRecoveryAggregate(humanOwner).projection.guide.victorNeeded, true);
@@ -369,6 +463,90 @@ test('C4 transactional receipts bind before/partial/read-back/LKG/quarantine evi
   assert.equal(receipt.externalEffectsExecuted, false);
 });
 
+test('C9 all ten actions use exact evidence matrices and only completable actions converge', () => {
+  const representatives = integrated.artifacts.representativeActions;
+  const byAction = new Map(representatives.map((item) => [item.action, item]));
+  byAction.set(
+    integrated.quarantineAggregate.currentRecoveryActionReceipt.action,
+    { actionReceipt: integrated.quarantineAggregate.currentRecoveryActionReceipt, aggregate: integrated.quarantineAggregate }
+  );
+  assert.deepEqual([...byAction.keys()].sort(), [...registry.recoveryActions].sort());
+  for (const matrix of registry.recoveryActionEvidenceMatrix) {
+    const branch = byAction.get(matrix.action);
+    const roles = branch.actionReceipt.evidence.map((item) => item.role);
+    assert.equal(matrix.required.every((role) => roles.includes(role)), true, matrix.action);
+    assert.equal(roles.every((role) => matrix.required.includes(role) || matrix.optional.includes(role)), true, matrix.action);
+    assert.equal(branch.actionReceipt.disposition, matrix.disposition);
+    assert.equal(branch.actionReceipt.continuationRequired, matrix.continuationRequired);
+    assert.equal(branch.actionReceipt.completionEligible, matrix.completionEligible);
+    if (matrix.continuationRequired) {
+      assert.ok(branch.convergenceFingerprint, matrix.action);
+    } else {
+      assert.throws(() => createRecoveryConvergenceReceipt(branch.aggregate, { formedAt: T2, registry }),
+        /missing one or more required causal inputs|completionEligible|convergence/);
+    }
+  }
+  const wait = byAction.get('CHECKPOINT_AND_WAIT');
+  assert.deepEqual(wait.actionReceipt.evidence.map((item) => item.role), ['externalResume', 'externalWait']);
+  assert.equal(wait.waitResumeReceipt.state, 'RESUMED_CURRENT');
+  const split = byAction.get('SPLIT_WORK_NODE');
+  assert.equal(split.splitWorkRouteReceipt.childWorkNodeRef, split.contextProof.splitWorkNodeRef);
+});
+
+test('C10 scheduler resume receipt consumes exact action-specific context and resource outputs', () => {
+  const contextBranch = integrated.artifacts.representativeActions.find((item) => item.name === 'context-condensation');
+  assert.equal(contextBranch.continuation.contextRecoveryReceiptFingerprint, contextBranch.contextProof.semanticFingerprint);
+  assert.equal(contextBranch.continuation.schedulerResumeReceipt.contextBindingFingerprint,
+    contextBranch.continuation.schedulerResumeReceipt.contextLeaseRecoveryBindingFingerprint);
+  const genericContext = structuredClone(contextBranch.resumed);
+  genericContext.contextLease.selectedSourceRefs = ['blueprint/runtime-recovery-registry.json'];
+  assert.throws(() => createRecoveryContinuation({
+    aggregate: contextBranch.actionReceipt
+      ? contextBranch.aggregate.eventLedger.some((item) => item.type === 'RECOVERY_CONVERGED')
+        ? createRecoveryAggregate({
+          aggregateRef: contextBranch.aggregate.aggregateRef,
+          workNodeRef: contextBranch.aggregate.workNodeRef,
+          sourceStateFingerprint,
+          schedulerGeneration: 1,
+          retryBudget: registry.retryPolicy,
+          eventLedger: contextBranch.aggregate.eventLedger.slice(0,
+            contextBranch.aggregate.eventLedger.findIndex((item) => item.type === 'GENERATION_CONTINUED'))
+        }, { registry })
+        : contextBranch.aggregate
+      : contextBranch.aggregate,
+    checkpointAdmission: contextBranch.checkpointAdmission,
+    resumed: genericContext,
+    schedulerAggregate: contextBranch.schedulerAggregateAfterResume,
+    schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.context-condensation',
+    observedAt: '2026-08-01T00:00:04.000Z',
+    registry
+  }), /fingerprint mismatch|exact scheduler resume/);
+
+  const resourceBranch = integrated.artifacts.representativeActions.find((item) => item.name === 'resource-reduced-retry');
+  assert.equal(resourceBranch.continuation.resourceRecoveryReceiptFingerprint, resourceBranch.resourceProof.semanticFingerprint);
+  assert.equal(resourceBranch.resumed.resourceLease.recoveryBinding.reducedRequestFingerprint,
+    semanticHash(resourceBranch.resourceProof.reducedRequest));
+  const detachedResource = structuredClone(resourceBranch.resumed);
+  detachedResource.resourceLease.request.ramMb += 1;
+  assert.throws(() => createRecoveryContinuation({
+    aggregate: createRecoveryAggregate({
+      aggregateRef: resourceBranch.aggregate.aggregateRef,
+      workNodeRef: resourceBranch.aggregate.workNodeRef,
+      sourceStateFingerprint,
+      schedulerGeneration: 1,
+      retryBudget: registry.retryPolicy,
+      eventLedger: resourceBranch.aggregate.eventLedger.slice(0,
+        resourceBranch.aggregate.eventLedger.findIndex((item) => item.type === 'GENERATION_CONTINUED'))
+    }, { registry }),
+    checkpointAdmission: resourceBranch.checkpointAdmission,
+    resumed: detachedResource,
+    schedulerAggregate: resourceBranch.schedulerAggregateAfterResume,
+    schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.resource-reduced-retry',
+    observedAt: '2026-08-01T00:00:04.000Z',
+    registry
+  }), /fingerprint mismatch|exact scheduler resume/);
+});
+
 test('C5 one actual recovery Workgraph node consumes convergence evidence and terminal closure rejects substitutions', () => {
   const receipt = integrated.receipt;
   const blueprint = validateBlueprint(bundle);
@@ -386,7 +564,9 @@ test('C5 one actual recovery Workgraph node consumes convergence evidence and te
   assert.equal(validation.ok, true, validation.errors.join('\n'));
   assert.equal(receipt.schedulerWorkgraphCausalRecoveryProof.independentSchedulerSimulationUsed, false);
   assert.equal(receipt.schedulerWorkgraphCausalRecoveryProof.exactGateCoverage, true);
-  assert.equal(receipt.schedulerWorkgraphCausalRecoveryProof.recoveryConvergenceReceipt.causalEvidence.length, 23);
+  assert.equal(receipt.schedulerWorkgraphCausalRecoveryProof.recoveryConvergenceReceipt.causalEvidence.length, 22);
+  assert.equal(receipt.schedulerWorkgraphCausalRecoveryProof.recoveryConvergenceReceipt.causalEvidence
+    .some((item) => item.completionGateRef === 'completion-gate.runtime-recovery.context'), false);
   assert.equal(receipt.schedulerWorkgraphCausalRecoveryProof.gateEvidence[0].sourceObservationHash,
     receipt.schedulerWorkgraphCausalRecoveryProof.recoveryConvergenceReceipt.semanticFingerprint);
   assert.equal(receipt.terminalReceipt.schedulerCheckpointFingerprint, receipt.schedulerBindings.checkpointFingerprint);

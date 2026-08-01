@@ -589,11 +589,11 @@
   },
   {
     "testRef": "test.runtime-recovery.r0-totality",
-    "brief": "Every admitted synchronous deterministic executor boundary returns one canonical outcome; malformed, async and thenable inputs reject as typed mutation-free boundary results."
+    "brief": "Every admitted synchronous deterministic executor boundary returns one canonical outcome; malformed and async inputs reject mutation-free, and resolved/rejected thenables reject typed with rejected promises consumed before return."
   },
   {
     "testRef": "test.runtime-recovery.r1-canonical-identity",
-    "brief": "Failure identity is source-classified, work, generation, operation, attempt and transition bound, content-addressed and replayable; caller hints cannot weaken it."
+    "brief": "Failure identity binds one registered classifier source/adapter/content-addressed plan plus work, generation, operation, attempt and transition; executor hints cannot select class or policy defaults."
   },
   {
     "testRef": "test.runtime-recovery.r2-malformed-visible",
@@ -609,11 +609,11 @@
   },
   {
     "testRef": "test.runtime-recovery.r5-checkpoint-required",
-    "brief": "Consequential recovery is never authorized without one exact current scheduler checkpoint, all six releases and an exact checkpoint-admission receipt."
+    "brief": "Consequential recovery is never authorized without one scheduler-owned current-pointer consumption receipt binding the exact aggregate/failure/checkpoint, all six unique releases and once-only activation to the admission."
   },
   {
     "testRef": "test.runtime-recovery.r6-fresh-generation",
-    "brief": "Failure checkpointing binds six released leases, seals the old generation and continuation consumes six fresh leases from a scheduler-issued next generation."
+    "brief": "Failure checkpointing seals six released leases and the old generation; continuation consumes the exact action/admission and any applicable context/resource recovery through one scheduler resume receipt plus six fresh leases."
   },
   {
     "testRef": "test.runtime-recovery.r7-resource-reduction",
@@ -653,7 +653,7 @@
   },
   {
     "testRef": "test.runtime-recovery.r16-replay-once",
-    "brief": "Reducer replay derives all aggregate state; duplicate terminal, impossible-order, stale and same-ref/different-content events reject once-only without mutation."
+    "brief": "Every registered event enforces one exact payload schema and semantic constructor/replayer; forged edge receipts, wrong action/evidence, duplicate terminal, impossible order, stale and same-ref/different-content history reject before mutation."
   },
   {
     "testRef": "test.runtime-recovery.r17-checkpoint-rejection",
@@ -669,7 +669,7 @@
   },
   {
     "testRef": "test.runtime-recovery.r20-human-decision",
-    "brief": "Human decision is explicit, source-routed and limited to the smallest necessary question."
+    "brief": "Human decision uses an aggregate-derived content-addressed gate limited to the smallest necessary question; caller-shaped gates and terminal holds presented as completable success reject."
   },
   {
     "testRef": "test.runtime-recovery.r21-canonical-projections",
@@ -681,7 +681,7 @@
   },
   {
     "testRef": "test.runtime-recovery.r23-integrated-scheduler-workgraph",
-    "brief": "One actual scheduler-owned recovery Workgraph journey binds failure, policy, checkpoint, six release/fresh leases, action, success and convergence evidence into completion verification and the terminal receipt."
+    "brief": "One actual scheduler-owned recovery Workgraph journey binds only its action-specific evidence into completion, while representative direct/context/resource/transaction/wait/split/human/block/quarantine journeys prove every matrix and scheduler continuation consumption route."
   },
   {
     "testRef": "test.runtime-recovery.r24-full-gate",

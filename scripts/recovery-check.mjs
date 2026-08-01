@@ -37,6 +37,40 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
   exactArray('failure envelope required fields', registry.failureEnvelope.requiredFields, FAILURE_ENVELOPE_REQUIRED_FIELDS);
   exactArray('recovery aggregate required fields', registry.recoveryAggregate.requiredFields, RECOVERY_AGGREGATE_REQUIRED_FIELDS);
   exactArray('recovery event types', registry.recoveryAggregate.eventTypes, RECOVERY_EVENT_TYPES);
+  const classifierSources = registry.classifierContract?.sources ?? [];
+  if (!registry.classifierContract?.executorFieldsAreEvidenceOnly ||
+      !registry.classifierContract?.canonicalDefaultsArePolicyAuthority ||
+      classifierSources.length < 4 || new Set(classifierSources.map((item) => item.sourceRef)).size !== classifierSources.length ||
+      classifierSources.some((item) => !item.adapterRef || !item.allowedFailureClasses?.length)) {
+    errors.push('classifier source/adapter provenance contract is incomplete');
+  }
+  const eventContracts = registry.recoveryAggregate.eventPayloadContracts ?? [];
+  if (eventContracts.length !== RECOVERY_EVENT_TYPES.length ||
+      new Set(eventContracts.map((item) => item.type)).size !== RECOVERY_EVENT_TYPES.length ||
+      RECOVERY_EVENT_TYPES.some((type) => !eventContracts.some((item) => item.type === type && item.fields?.length))) {
+    errors.push('edge-specific typed event payload contracts are incomplete');
+  }
+  const actionMatrix = registry.recoveryActionEvidenceMatrix ?? [];
+  if (actionMatrix.length !== RECOVERY_ACTIONS.length ||
+      new Set(actionMatrix.map((item) => item.action)).size !== RECOVERY_ACTIONS.length ||
+      RECOVERY_ACTIONS.some((action) => !actionMatrix.some((item) => item.action === action)) ||
+      actionMatrix.some((item) => !Array.isArray(item.required) || !Array.isArray(item.optional) ||
+        !Array.isArray(item.forbidden) || typeof item.continuationRequired !== 'boolean' ||
+        typeof item.completionEligible !== 'boolean')) {
+    errors.push('action-specific recovery evidence matrix is incomplete');
+  }
+  if (!registry.checkpointContract.requiresSchedulerOwnedCurrentPointerConsumptionReceipt ||
+      !registry.checkpointContract.bindsExactAggregateAndFailure ||
+      !registry.checkpointContract.onceOnlyActivationRequired ||
+      registry.checkpointContract.releasedLeaseReuseAllowed !== false) {
+    errors.push('checkpoint/release single-use ownership contract is incomplete');
+  }
+  if (!registry.schedulerContinuationContract?.requiresSchedulerOwnedResumeReceipt ||
+      !registry.schedulerContinuationContract?.requiresExactActionAndCheckpointAdmission ||
+      !registry.schedulerContinuationContract?.requiresSixFreshLeases ||
+      registry.schedulerContinuationContract?.genericContextOrDetachedResourceSubstitutionAllowed !== false) {
+    errors.push('scheduler recovery-output consumption contract is incomplete');
+  }
   if (semanticHash(bundle.blueprint.runtimeRecovery) !== semanticHash(registry)) {
     errors.push('canonical runtime recovery composition does not match universal Blueprint');
   }

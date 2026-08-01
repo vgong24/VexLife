@@ -118,8 +118,8 @@
     {
       "path": "blueprint/build-health-registry.json",
       "mode": "100644",
-      "bytes": 11933,
-      "sha256": "c2baabe371daf58109fcd9d23434c96485ec5161f8fd9a23c92a385c42f1c42e"
+      "bytes": 11974,
+      "sha256": "dbe797a8554bef3b9fd9975faadc2b40d1b2dde9eb09f11c14d86f2dcadc8e5b"
     },
     {
       "path": "blueprint/capability-registry.json",

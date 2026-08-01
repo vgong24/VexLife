@@ -28,9 +28,61 @@
       "partialEffectState",
       "humanAttentionClass",
       "classificationSourceRef",
+      "classificationAdapterRef",
+      "classifierPlanRef",
       "classificationEvidenceFingerprint",
+      "classificationEvidence",
       "evidenceRefs",
       "semanticFingerprint"
+    ]
+  },
+  "classifierContract": {
+    "contractRef": "contract.vexlife.runtime-failure-classifier/v1",
+    "executorFieldsAreEvidenceOnly": true,
+    "canonicalDefaultsArePolicyAuthority": true,
+    "currentnessRequired": "CURRENT",
+    "sources": [
+      {
+        "sourceRef": "source.runtime-recovery.default-unexpected",
+        "adapterRef": "adapter.runtime-recovery.classifier.default-unexpected",
+        "allowedFailureClasses": [
+          "UNEXPECTED_EXCEPTION",
+          "UNKNOWN_FAILURE"
+        ]
+      },
+      {
+        "sourceRef": "source.runtime-recovery.deterministic-fault-plan",
+        "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan",
+        "allowedFailureClasses": [
+          "CONTEXT_BUDGET_EXCEEDED",
+          "MODEL_TIMEOUT_SIMULATED",
+          "RESOURCE_EXHAUSTION_SIMULATED",
+          "PROCESS_TERMINATED_SIMULATED",
+          "DISK_FULL_SIMULATED",
+          "PARTIAL_WRITE_SIMULATED",
+          "NETWORK_INTERRUPTION_SIMULATED",
+          "ROLLBACK_FAILED_SIMULATED",
+          "INVALID_INDEX_OR_BOUNDS",
+          "INVALID_STATE_TRANSITION",
+          "MALFORMED_INPUT_OR_RESULT",
+          "DUPLICATE_OR_REPLAYED_EVENT",
+          "STALE_OR_CORRUPTED_CHECKPOINT"
+        ]
+      },
+      {
+        "sourceRef": "source.runtime-recovery.internal.partial-success",
+        "adapterRef": "adapter.runtime-recovery.classifier.internal-boundary",
+        "allowedFailureClasses": [
+          "MALFORMED_INPUT_OR_RESULT"
+        ]
+      },
+      {
+        "sourceRef": "source.runtime-recovery.internal.malformed-input",
+        "adapterRef": "adapter.runtime-recovery.classifier.internal-boundary",
+        "allowedFailureClasses": [
+          "UNKNOWN_FAILURE"
+        ]
+      }
     ]
   },
   "failureClasses": [
@@ -69,6 +121,18 @@
     "REQUEST_HUMAN_DECISION",
     "TERMINAL_BLOCK"
   ],
+  "recoveryActionEvidenceMatrix": [
+    { "action": "RETRY_SAME_BUDGET", "required": [], "optional": [], "forbidden": ["context", "resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "RETRY_REDUCED_BUDGET", "required": ["resource"], "optional": [], "forbidden": ["context", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "CHECKPOINT_AND_WAIT", "required": ["externalWait", "externalResume"], "optional": [], "forbidden": ["context", "resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": true, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "CONDENSE_CONTEXT_AND_REACQUIRE", "required": ["context"], "optional": [], "forbidden": ["resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "SPLIT_WORK_NODE", "required": ["context", "splitRoute"], "optional": [], "forbidden": ["resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "ROLLBACK_TO_BEFORE_IMAGE", "required": ["transaction"], "optional": ["lastKnownGood"], "forbidden": ["context", "resource", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "RESTORE_LAST_KNOWN_GOOD", "required": ["transaction", "lastKnownGood"], "optional": [], "forbidden": ["context", "resource", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "QUARANTINE_ADAPTER_OR_ARTIFACT", "required": ["transaction", "quarantine"], "optional": [], "forbidden": ["context", "resource", "lastKnownGood", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "QUARANTINED", "continuationRequired": false, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": false },
+    { "action": "REQUEST_HUMAN_DECISION", "required": ["humanGate"], "optional": [], "forbidden": ["context", "resource", "transaction", "lastKnownGood", "quarantine", "externalWait", "externalResume", "splitRoute"], "disposition": "WAITING_HUMAN", "continuationRequired": false, "externalWaitRequired": false, "humanDecisionRequired": true, "completionEligible": false },
+    { "action": "TERMINAL_BLOCK", "required": [], "optional": [], "forbidden": ["context", "resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "BLOCKED", "continuationRequired": false, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": false }
+  ],
   "retryPolicy": {
     "contractRef": "contract.vexlife.runtime-retry-policy/v1",
     "budgetRef": "budget.vexlife.runtime-recovery.default",
@@ -89,6 +153,10 @@
     "contractRef": "contract.vexlife.runtime-recovery-checkpoint/v1",
     "requiresAcceptedSchedulerCheckpointFingerprint": true,
     "requiresExactSixLeaseReleaseFingerprints": true,
+    "requiresSchedulerOwnedCurrentPointerConsumptionReceipt": true,
+    "bindsExactAggregateAndFailure": true,
+    "onceOnlyActivationRequired": true,
+    "releasedLeaseReuseAllowed": false,
     "freshGenerationRequired": true,
     "rejects": [
       "STALE",
@@ -118,6 +186,15 @@
       "TERMINAL_BLOCK"
     ]
   },
+  "schedulerContinuationContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-scheduler-continuation/v1",
+    "requiresSchedulerOwnedResumeReceipt": true,
+    "requiresExactActionAndCheckpointAdmission": true,
+    "requiresSixFreshLeases": true,
+    "contextActionsConsumeExactCoverageSummaryPreservationAndTokenBindings": true,
+    "resourceActionsConsumeExactReducedRequestAndAdmission": true,
+    "genericContextOrDetachedResourceSubstitutionAllowed": false
+  },
   "transactionalRecoveryContract": {
     "contractRef": "contract.vexlife.runtime-transactional-recovery/v1",
     "requiredEvidence": [
@@ -132,7 +209,25 @@
       "quarantineReason"
     ],
     "rollbackFailureGreenAllowed": false,
-    "admittedAdapterClass": "DETERMINISTIC_NO_EFFECT"
+    "admittedAdapterClass": "DETERMINISTIC_NO_EFFECT",
+    "admittedAdapters": [
+      {
+        "adapterRef": "adapter.runtime-recovery.no-effect",
+        "effectClass": "DETERMINISTIC_NO_EFFECT",
+        "allowedFaultPlanRefs": [
+          "fault-plan.runtime-recovery.partial-write.rollback-restores",
+          "fault-plan.runtime-recovery.partial-write.rollback-fails-lkg-restores",
+          "fault-plan.runtime-recovery.partial-write.rollback-and-lkg-fail"
+        ]
+      },
+      {
+        "adapterRef": "adapter.runtime-recovery.no-effect.quarantine",
+        "effectClass": "DETERMINISTIC_NO_EFFECT",
+        "allowedFaultPlanRefs": [
+          "fault-plan.runtime-recovery.partial-write.rollback-and-lkg-fail"
+        ]
+      }
+    ]
   },
   "recoveryAggregate": {
     "contractRef": "contract.vexlife.runtime-recovery-aggregate/v1",
@@ -189,6 +284,26 @@
       "EXTERNAL_EVENT_ACCEPTED",
       "RECOVERY_CONVERGED",
       "TERMINAL_CLOSED"
+    ],
+    "eventPayloadContracts": [
+      { "type": "ATTEMPT_STARTED", "fields": ["attempt"] },
+      { "type": "ATTEMPT_SUCCEEDED", "fields": ["attemptRef", "completedAt", "executionReceipt"] },
+      { "type": "ATTEMPT_FAILED", "fields": ["failure"] },
+      { "type": "FAILURE_ACTIVATED", "fields": ["failure"] },
+      { "type": "CHECKPOINT_ADMITTED", "fields": ["admission", "checkpoint", "schedulerConsumptionReceipt"] },
+      { "type": "POLICY_DECIDED", "fields": ["authorityBoundary", "checkpointAdmission", "contextAdmissionReceipt", "decision", "recoveryReceipt", "resourceAdmissionReceipt"] },
+      { "type": "CONTEXT_RECOVERED", "fields": ["receipt"] },
+      { "type": "RESOURCE_RECOVERED", "fields": ["receipt"] },
+      { "type": "ROLLBACK_ATTEMPTED", "fields": ["receipt"] },
+      { "type": "ROLLBACK_VERIFIED", "fields": ["receipt"] },
+      { "type": "LAST_KNOWN_GOOD_RESTORED", "fields": ["receipt"] },
+      { "type": "QUARANTINED", "fields": ["receipt"] },
+      { "type": "HUMAN_DECISION_REQUESTED", "fields": ["gate"] },
+      { "type": "RECOVERY_ACTION_APPLIED", "fields": ["receipt"] },
+      { "type": "GENERATION_CONTINUED", "fields": ["continuation"] },
+      { "type": "EXTERNAL_EVENT_ACCEPTED", "fields": ["event"] },
+      { "type": "RECOVERY_CONVERGED", "fields": ["receipt"] },
+      { "type": "TERMINAL_CLOSED", "fields": ["receipt"] }
     ],
     "replayRule": "typed content-addressed events are the only mutation route; restore replays legal edges and recomputes phase, budget use, generation, current pointers, recovery lineages and unique terminal state",
     "semanticNoOpRule": "equal aggregate projection fingerprints do not emit another Queue, Terrain, Health or Guide revision"

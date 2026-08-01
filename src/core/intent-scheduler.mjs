@@ -399,6 +399,7 @@ export function admitIntentSchedulerQueue(graph, {
   capabilityLeaseByNodeRef = {},
   effectLeaseByNodeRef = {},
   resourceLeaseRefByNodeRef = {},
+  recoveryResourceBindingByNodeRef = {},
   workerRef,
   schedulerGeneration,
   fairnessMaxDeferrals = schedulerRegistry?.fairnessPolicy?.maxDeferrals ?? 3,
@@ -559,6 +560,7 @@ export function admitIntentSchedulerQueue(graph, {
     runtimeTrustSnapshot,
     resourceSnapshot,
     request: resourceRequestByNodeRef[node.workNodeRef] ?? {},
+    recoveryBinding: recoveryResourceBindingByNodeRef[node.workNodeRef] ?? null,
     formedAt,
     expiresAt,
     observedAt
@@ -675,6 +677,8 @@ export class SingleWorkerIntentScheduler {
   #relayCapability;
   #completionVerifier;
   #state;
+  #recoveryCheckpointConsumptions;
+  #recoveryReleasedLeaseConsumptions;
 
   constructor({
     workerRef,
@@ -698,6 +702,8 @@ export class SingleWorkerIntentScheduler {
     if (this.#relay) this.#relay.bindSchedulerOwnership(this.#instanceRef, this.#relayCapability);
     this.#completionVerifier = completionVerifier ?? new DeterministicFakeCompletionVerifier({ schedulerRegistry });
     this.#state = createIntentSchedulerState();
+    this.#recoveryCheckpointConsumptions = new Map();
+    this.#recoveryReleasedLeaseConsumptions = new Set();
   }
 
   get workerRef() { return this.#workerRef; }
@@ -1099,6 +1105,168 @@ export class SingleWorkerIntentScheduler {
     };
   }
 
+  claimRecoveryCheckpoint(checkpointRef, {
+    aggregateRef,
+    failureRef,
+    failureFingerprint,
+    sourceStateFingerprint,
+    observedAt
+  }) {
+    const aggregate = this.#state.aggregate.value;
+    const checkpoint = aggregate.checkpoints.find((item) => item.checkpointRef === checkpointRef);
+    parseCanonicalTimestamp(observedAt, 'recovery checkpoint claim observedAt');
+    if (aggregate.phase !== 'PAUSED' || aggregate.active || !checkpoint ||
+        checkpoint.currentState !== 'PAUSED_AT_CHECKPOINT') {
+      throw new Error('recovery checkpoint claim requires the scheduler current paused pointer');
+    }
+    if (!aggregateRef || !failureRef || !/^[a-f0-9]{64}$/.test(String(failureFingerprint ?? '')) ||
+        !/^[a-f0-9]{64}$/.test(String(sourceStateFingerprint ?? ''))) {
+      throw new Error('recovery checkpoint claim requires exact aggregate, failure, and source identity');
+    }
+    if (this.#recoveryCheckpointConsumptions.has(checkpointRef)) {
+      throw new Error('scheduler checkpoint already has a recovery owner');
+    }
+    const releaseFingerprints = checkpoint.leaseReleaseReceipts.map((item) => item.semanticFingerprint).sort();
+    if (releaseFingerprints.length !== 6 || new Set(releaseFingerprints).size !== 6 ||
+        releaseFingerprints.some((fingerprint) => this.#recoveryReleasedLeaseConsumptions.has(fingerprint))) {
+      throw new Error('scheduler checkpoint release set is incomplete or already consumed');
+    }
+    const activationFingerprint = semanticHash({
+      schedulerInstanceRef: this.#instanceRef,
+      aggregateRef,
+      failureRef,
+      failureFingerprint,
+      checkpointRef,
+      checkpointFingerprint: checkpoint.semanticFingerprint,
+      releaseFingerprints
+    });
+    const receipt = finalized({
+      schemaVersion: 'vexlife.intent-scheduler-recovery-checkpoint-consumption/v1',
+      consumptionRef: `consumption.intent-scheduler.recovery.${activationFingerprint.slice(0, 32)}`,
+      onceOnlyActivationRef: `activation.intent-scheduler.recovery.${activationFingerprint.slice(0, 32)}`,
+      schedulerInstanceRef: this.#instanceRef,
+      schedulerAggregateFingerprint: aggregate.semanticFingerprint,
+      schedulerPhase: aggregate.phase,
+      checkpointCurrentState: checkpoint.currentState,
+      checkpointRef,
+      checkpointFingerprint: checkpoint.semanticFingerprint,
+      workNodeRef: checkpoint.workNodeRef,
+      priorSchedulerGeneration: checkpoint.priorSchedulerGeneration,
+      aggregateRef,
+      failureRef,
+      failureFingerprint,
+      sourceStateFingerprint,
+      leaseReleaseReceiptRefs: checkpoint.leaseReleaseReceipts.map((item) => item.receiptRef).sort(),
+      leaseReleaseFingerprints: releaseFingerprints,
+      state: 'CLAIMED_CURRENT',
+      currentness: 'CURRENT',
+      observedAt
+    });
+    this.#recoveryCheckpointConsumptions.set(checkpointRef, receipt);
+    for (const fingerprint of releaseFingerprints) this.#recoveryReleasedLeaseConsumptions.add(fingerprint);
+    return clone(receipt);
+  }
+
+  #validateRecoveryResume(checkpoint, recovery, options, contextInput) {
+    if (!recovery) return null;
+    const consumption = recovery.checkpointConsumptionReceipt;
+    const admission = recovery.checkpointAdmission;
+    const action = recovery.actionReceipt;
+    const context = recovery.contextRecoveryReceipt ?? null;
+    const resource = recovery.resourceRecoveryReceipt ?? null;
+    const stored = this.#recoveryCheckpointConsumptions.get(checkpoint.checkpointRef);
+    const assertFinalized = (value, schemaVersion, label) => {
+      if (!value || value.schemaVersion !== schemaVersion || !value.semanticFingerprint) {
+        throw new Error(`${label} is missing or has the wrong schema`);
+      }
+      const candidate = clone(value);
+      delete candidate.semanticFingerprint;
+      const contentAddressedRefFields = {
+        'vexlife.runtime-recovery-checkpoint-admission/v1': 'admissionRef',
+        'vexlife.runtime-recovery-action-receipt/v1': 'actionReceiptRef',
+        'vexlife.runtime-context-recovery-receipt/v1': 'contextRecoveryReceiptRef',
+        'vexlife.runtime-resource-recovery-receipt/v1': 'resourceRecoveryReceiptRef'
+      };
+      if (contentAddressedRefFields[schemaVersion]) delete candidate[contentAddressedRefFields[schemaVersion]];
+      if (semanticHash(candidate) !== value.semanticFingerprint) throw new Error(`${label} fingerprint mismatch`);
+      return value;
+    };
+    assertFinalized(consumption, 'vexlife.intent-scheduler-recovery-checkpoint-consumption/v1', 'recovery checkpoint consumption');
+    assertFinalized(admission, 'vexlife.runtime-recovery-checkpoint-admission/v1', 'recovery checkpoint admission');
+    assertFinalized(action, 'vexlife.runtime-recovery-action-receipt/v1', 'recovery action receipt');
+    if (!stored || stored.semanticFingerprint !== consumption.semanticFingerprint ||
+        consumption.checkpointRef !== checkpoint.checkpointRef ||
+        consumption.checkpointFingerprint !== checkpoint.semanticFingerprint ||
+        consumption.checkpointCurrentState !== 'PAUSED_AT_CHECKPOINT' ||
+        consumption.state !== 'CLAIMED_CURRENT' || consumption.currentness !== 'CURRENT' ||
+        admission.schedulerCheckpointRef !== checkpoint.checkpointRef ||
+        admission.schedulerConsumptionFingerprint !== consumption.semanticFingerprint ||
+        admission.onceOnlyActivationRef !== consumption.onceOnlyActivationRef ||
+        action.aggregateRef !== consumption.aggregateRef ||
+        action.failureFingerprint !== consumption.failureFingerprint ||
+        action.checkpointAdmissionFingerprint !== admission.semanticFingerprint ||
+        action.disposition !== 'RECOVERING') {
+      throw new Error('recovery resume evidence is stale, detached, terminal, or not scheduler-owned');
+    }
+    const requiresContext = ['CONDENSE_CONTEXT_AND_REACQUIRE', 'SPLIT_WORK_NODE'].includes(action.action);
+    const requiresResource = action.action === 'RETRY_REDUCED_BUDGET';
+    if (Boolean(context) !== requiresContext || Boolean(resource) !== requiresResource) {
+      throw new Error('recovery resume supplied missing or cross-action context/resource evidence');
+    }
+    let contextBinding = null;
+    if (context) {
+      assertFinalized(context, 'vexlife.runtime-context-recovery-receipt/v1', 'context recovery receipt');
+      const expectedSources = [...new Set(context.immutableSourceCoverage.map((item) => item.sourceRef))].sort();
+      contextBinding = {
+        contextRecoveryReceiptRef: context.contextRecoveryReceiptRef,
+        contextRecoveryReceiptFingerprint: context.semanticFingerprint,
+        immutableSourceCoverage: clone(context.immutableSourceCoverage),
+        deterministicSummaryBindings: clone(context.deterministicSummaryBindings),
+        preservedIntentRef: context.preservedIntentRef,
+        preservedInterpretationRef: context.preservedInterpretationRef,
+        preservedUnknownRefs: clone(context.preservedUnknownRefs),
+        preservedAuthorityRef: context.preservedAuthorityRef,
+        returnRouteRef: context.returnRouteRef,
+        inputTokenEstimate: context.candidateInputTokenEstimate,
+        reservedOutputTokens: context.reservedOutputTokens,
+        hardTokenLimit: context.hardTokenLimit
+      };
+      const observedContext = {
+        contextRecoveryReceiptRef: contextInput.contextRecoveryReceiptRef,
+        contextRecoveryReceiptFingerprint: contextInput.contextRecoveryReceiptFingerprint,
+        immutableSourceCoverage: contextInput.immutableSourceCoverage,
+        deterministicSummaryBindings: contextInput.deterministicSummaryBindings,
+        preservedIntentRef: contextInput.preservedIntentRef,
+        preservedInterpretationRef: contextInput.preservedInterpretationRef,
+        preservedUnknownRefs: contextInput.preservedUnknownRefs,
+        preservedAuthorityRef: contextInput.preservedAuthorityRef,
+        returnRouteRef: contextInput.checkpointReturnRef,
+        inputTokenEstimate: contextInput.inputTokenEstimate,
+        reservedOutputTokens: contextInput.reservedOutputTokens,
+        hardTokenLimit: contextInput.hardTokenLimit
+      };
+      if (semanticHash(observedContext) !== semanticHash(contextBinding) ||
+          semanticHash([...(contextInput.selectedSourceRefs ?? [])].sort()) !== semanticHash(expectedSources)) {
+        throw new Error('scheduler context input did not derive from the exact recovery context receipt');
+      }
+    }
+    let resourceBinding = null;
+    if (resource) {
+      assertFinalized(resource, 'vexlife.runtime-resource-recovery-receipt/v1', 'resource recovery receipt');
+      const request = options.resourceRequestByNodeRef?.[checkpoint.workNodeRef] ?? {};
+      if (semanticHash(request) !== semanticHash(resource.reducedRequest)) {
+        throw new Error('scheduler resource request differs from exact reduced recovery request');
+      }
+      resourceBinding = {
+        resourceRecoveryReceiptRef: resource.resourceRecoveryReceiptRef,
+        resourceRecoveryReceiptFingerprint: resource.semanticFingerprint,
+        reducedAdmissionFingerprint: resource.reducedAdmissionFingerprint,
+        reducedRequestFingerprint: semanticHash(resource.reducedRequest)
+      };
+    }
+    return Object.freeze({ consumption, admission, action, context, resource, contextBinding, resourceBinding });
+  }
+
   #successorAuthorization(checkpoint, queue, contextInput, observationRef, issuedAt) {
     if (!observationRef) return null;
     const entry = (this.#relay?.snapshot.entries ?? []).find((item) =>
@@ -1221,7 +1389,8 @@ export class SingleWorkerIntentScheduler {
     sourceBindings,
     completePreemption = false,
     authorizeObservationRef = null,
-    heldToolDisposition = null
+    heldToolDisposition = null,
+    recovery = null
   }) {
     const aggregate = this.#state.aggregate.value;
     if (aggregate.active || !['PAUSED', 'CONTINUATION_READY'].includes(aggregate.phase)) {
@@ -1245,8 +1414,15 @@ export class SingleWorkerIntentScheduler {
     }
     const generation = options.schedulerGeneration ?? aggregate.generation + 1;
     if (generation <= aggregate.generation) throw new Error('resume scheduler generation must advance');
+    const recoveryResume = completePreemption ? null : this.#validateRecoveryResume(checkpoint, recovery, options, contextInput);
     const queue = admitIntentSchedulerQueue(graph, {
       ...options,
+      ...(recoveryResume?.resourceBinding ? {
+        recoveryResourceBindingByNodeRef: {
+          ...(options.recoveryResourceBindingByNodeRef ?? {}),
+          [checkpoint.workNodeRef]: recoveryResume.resourceBinding
+        }
+      } : {}),
       schedulerRegistry: this.#schedulerRegistry,
       workerRef: this.#workerRef,
       schedulerInstanceRef: this.#instanceRef,
@@ -1321,7 +1497,7 @@ export class SingleWorkerIntentScheduler {
       });
       throw error;
     }
-    this.#commit({
+    const committed = this.#commit({
       type: 'RESUMED',
       transitionRef: `transition.intent-scheduler.resume.${generation}`,
       checkpointRef: completePreemption ? null : checkpointRef,
@@ -1335,6 +1511,68 @@ export class SingleWorkerIntentScheduler {
       relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,
       observedClock: observedClockReceipt(options.observedAt, `clock.intent-scheduler.resume.${generation}`)
     });
+    const currentCheckpoint = committed.checkpoints.find((item) => item.checkpointRef === checkpointRef);
+    const recoveryResumeReceipt = recoveryResume ? finalized({
+      schemaVersion: 'vexlife.intent-scheduler-recovery-resume-receipt/v1',
+      resumeReceiptRef: `receipt.intent-scheduler.recovery-resume.${recoveryResume.consumption.onceOnlyActivationRef.split('.').at(-1)}.${generation}`,
+      schedulerInstanceRef: this.#instanceRef,
+      schedulerPriorAggregateFingerprint: aggregate.semanticFingerprint,
+      schedulerCurrentAggregateFingerprint: committed.semanticFingerprint,
+      checkpointConsumptionRef: recoveryResume.consumption.consumptionRef,
+      checkpointConsumptionFingerprint: recoveryResume.consumption.semanticFingerprint,
+      onceOnlyActivationRef: recoveryResume.consumption.onceOnlyActivationRef,
+      checkpointRef,
+      checkpointFingerprint: checkpoint.semanticFingerprint,
+      checkpointCurrentState: currentCheckpoint?.currentState,
+      checkpointCurrentPointerFingerprint: semanticHash({
+        checkpointRef,
+        currentState: currentCheckpoint?.currentState,
+        resumedByWorkerLeaseRef: currentCheckpoint?.resumedByWorkerLeaseRef
+      }),
+      aggregateRef: recoveryResume.action.aggregateRef,
+      failureRef: recoveryResume.action.failureRef,
+      failureFingerprint: recoveryResume.action.failureFingerprint,
+      action: recoveryResume.action.action,
+      actionReceiptRef: recoveryResume.action.actionReceiptRef,
+      actionReceiptFingerprint: recoveryResume.action.semanticFingerprint,
+      checkpointAdmissionRef: recoveryResume.admission.admissionRef,
+      checkpointAdmissionFingerprint: recoveryResume.admission.semanticFingerprint,
+      contextRecoveryReceiptRef: recoveryResume.context?.contextRecoveryReceiptRef ?? null,
+      contextRecoveryReceiptFingerprint: recoveryResume.context?.semanticFingerprint ?? null,
+      contextBindingFingerprint: recoveryResume.contextBinding ? semanticHash(recoveryResume.contextBinding) : null,
+      resourceRecoveryReceiptRef: recoveryResume.resource?.resourceRecoveryReceiptRef ?? null,
+      resourceRecoveryReceiptFingerprint: recoveryResume.resource?.semanticFingerprint ?? null,
+      reducedRequestFingerprint: recoveryResume.resource ? semanticHash(recoveryResume.resource.reducedRequest) : null,
+      reducedAdmissionFingerprint: recoveryResume.resource?.reducedAdmissionFingerprint ?? null,
+      schedulerGeneration: generation,
+      queueAdmissionRef: queue.admissionReceipt.admissionReceiptRef,
+      queueAdmissionFingerprint: queue.admissionReceipt.semanticFingerprint,
+      freshLeaseRefs: Object.fromEntries(Object.entries(formed.leases).map(([kind, lease]) => [
+        kind,
+        kind === 'occupancy' ? lease.occupancyRef : lease.leaseRef
+      ])),
+      freshLeaseFingerprints: Object.fromEntries(Object.entries(formed.leases).map(([kind, lease]) => [kind, lease.semanticFingerprint])),
+      contextLeaseRecoveryBindingFingerprint: formed.leases.context.contextRecoveryReceiptFingerprint
+        ? semanticHash({
+          contextRecoveryReceiptRef: formed.leases.context.contextRecoveryReceiptRef,
+          contextRecoveryReceiptFingerprint: formed.leases.context.contextRecoveryReceiptFingerprint,
+          immutableSourceCoverage: formed.leases.context.immutableSourceCoverage,
+          deterministicSummaryBindings: formed.leases.context.deterministicSummaryBindings,
+          preservedIntentRef: formed.leases.context.preservedIntentRef,
+          preservedInterpretationRef: formed.leases.context.preservedInterpretationRef,
+          preservedUnknownRefs: formed.leases.context.preservedUnknownRefs,
+          preservedAuthorityRef: formed.leases.context.preservedAuthorityRef,
+          returnRouteRef: formed.leases.context.checkpointReturnRef,
+          inputTokenEstimate: formed.leases.context.inputTokenEstimate,
+          reservedOutputTokens: formed.leases.context.reservedOutputTokens,
+          hardTokenLimit: formed.leases.context.hardTokenLimit
+        }) : null,
+      resourceLeaseRecoveryBindingFingerprint: formed.leases.resource.recoveryBinding
+        ? semanticHash(formed.leases.resource.recoveryBinding) : null,
+      state: 'RECOVERY_OUTPUTS_CONSUMED_CURRENT',
+      currentness: 'CURRENT',
+      observedAt: options.observedAt
+    }) : null;
     return {
       admitted: true,
       state: completePreemption ? 'PREEMPTION_COMPLETED' : 'RESUMED',
@@ -1347,6 +1585,7 @@ export class SingleWorkerIntentScheduler {
       effectLease: clone(formed.leases.effect),
       occupancy: clone(formed.leases.occupancy),
       workerLease: clone(formed.leases.worker),
+      recoveryResumeReceipt: recoveryResumeReceipt ? clone(recoveryResumeReceipt) : null,
       successorContextAuthorization: successorContextAuthorization ? clone(successorContextAuthorization) : null,
       heldToolDisposition: dispositionResult ? clone(dispositionResult) : null
     };

@@ -307,7 +307,7 @@
       "checkRef": "check.runtime-recovery",
       "command": "npm run recovery:check",
       "category": "RELIABILITY",
-      "purpose": "Typed total failure boundaries, exact source-managed budgets and chronology, scheduler checkpoint/six-lease handoff, replay-derived aggregate state, aggregate-owned recovery actions, retained human evidence and one causally completed scheduler Workgraph no-effect receipt validate; PR-ready and Health independently reject missing, stale or substituted recovery evidence.",
+      "purpose": "Rejected-thenable totality, registered classifier provenance, edge-specific semantic replay, scheduler-owned once-only checkpoint/six-release consumption, action-specific convergence, recovery-output-consuming scheduler continuation, retained human evidence and one causally completed no-effect Workgraph receipt validate; PR-ready and Health independently reject missing, stale or substituted recovery evidence.",
       "lensRefs": [
         "lens.vexlife.intent-and-placement",
         "lens.vexlife.identity-lattice",

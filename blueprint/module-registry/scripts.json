@@ -642,7 +642,7 @@
   {
     "moduleRef": "module.vexlife.script.recovery-simulate",
     "path": "scripts/recovery-simulate.mjs",
-    "role": "Runs one real recovery Intent Workgraph node through typed failure, exact scheduler checkpoint and six releases, aggregate-owned recovery, scheduler-issued generation with six fresh leases, replay restore, causal completion verification and terminal closure in one no-effect receipt.",
+    "role": "Runs one real recovery Intent Workgraph through typed failure, scheduler-owned checkpoint/release consumption, action-specific recovery, recovery-output-consuming resume, replay restore and causal terminal closure, plus bounded representative journeys for every registered action and a distinct quarantine scheduler lineage.",
     "platformScope": "BUILD_TIME",
     "reads": [
       "state.runtime-recovery",

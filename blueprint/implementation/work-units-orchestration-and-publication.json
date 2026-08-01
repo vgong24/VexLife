@@ -378,6 +378,8 @@
       "src/core/runtime-recovery.mjs",
       "src/core/recovery-policy.mjs",
       "src/core/recovery-fault-injector.mjs",
+      "src/core/intent-scheduler.mjs",
+      "src/core/resource-admission.mjs",
       "scripts/recovery-check.mjs",
       "scripts/recovery-simulate.mjs",
       "scripts/recovery-status.mjs",
@@ -444,7 +446,7 @@
       "projection.runtime-recovery.health"
     ],
     "effectBoundary": "DETERMINISTIC_NO_EFFECT_FAILURE_AND_RECOVERY_FIXTURES_ONLY",
-    "completionGate": "C1-C5 and R0-R24 adversarial fixtures, one exact structured scheduler/Workgraph-bound runtime recovery receipt admitted independently by PR-ready and Health, exact source manifest, browser, Windows/Linux portability, normal DCO commits and independent exact-head review pass",
+    "completionGate": "C1-C10 and R0-R24 adversarial fixtures, including rejected-thenable consumption, classifier provenance, typed semantic replay, checkpoint/release single-use, all action matrices and scheduler continuation consumption; one exact Workgraph-bound receipt remains independently admitted by PR-ready and Health with manifest, browser, Windows/Linux portability, DCO and exact-head review",
     "platformRefs": [
       "platform.any"
     ],

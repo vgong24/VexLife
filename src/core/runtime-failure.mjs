@@ -58,7 +58,10 @@ export const FAILURE_ENVELOPE_REQUIRED_FIELDS = Object.freeze([
   'partialEffectState',
   'humanAttentionClass',
   'classificationSourceRef',
+  'classificationAdapterRef',
+  'classifierPlanRef',
   'classificationEvidenceFingerprint',
+  'classificationEvidence',
   'evidenceRefs',
   'semanticFingerprint'
 ]);
@@ -79,6 +82,34 @@ const CLASS_DEFAULTS = Object.freeze({
   STALE_OR_CORRUPTED_CHECKPOINT: ['NOT_RETRIABLE', 'NONE', 'DECISION_REQUIRED'],
   ROLLBACK_FAILED_SIMULATED: ['NOT_RETRIABLE', 'UNKNOWN', 'IMMEDIATE'],
   UNKNOWN_FAILURE: ['UNKNOWN_REQUIRES_DECISION', 'UNKNOWN', 'DECISION_REQUIRED']
+});
+
+const EXECUTOR_CLASSIFIERS = new WeakMap();
+const DEFAULT_CLASSIFIER_PLANS = Object.freeze({
+  unexpected: Object.freeze({
+    planRef: 'classifier-plan.runtime-recovery.default-unexpected',
+    sourceRef: 'source.runtime-recovery.default-unexpected',
+    adapterRef: 'adapter.runtime-recovery.classifier.default-unexpected',
+    failureClass: 'UNEXPECTED_EXCEPTION'
+  }),
+  unknown: Object.freeze({
+    planRef: 'classifier-plan.runtime-recovery.default-unknown',
+    sourceRef: 'source.runtime-recovery.default-unexpected',
+    adapterRef: 'adapter.runtime-recovery.classifier.default-unexpected',
+    failureClass: 'UNKNOWN_FAILURE'
+  }),
+  malformedInput: Object.freeze({
+    planRef: 'classifier-plan.runtime-recovery.internal-malformed-input',
+    sourceRef: 'source.runtime-recovery.internal.malformed-input',
+    adapterRef: 'adapter.runtime-recovery.classifier.internal-boundary',
+    failureClass: 'UNKNOWN_FAILURE'
+  }),
+  partialSuccess: Object.freeze({
+    planRef: 'classifier-plan.runtime-recovery.internal-partial-success',
+    sourceRef: 'source.runtime-recovery.internal.partial-success',
+    adapterRef: 'adapter.runtime-recovery.classifier.internal-boundary',
+    failureClass: 'MALFORMED_INPUT_OR_RESULT'
+  })
 });
 
 function clone(value) {
@@ -112,93 +143,152 @@ function canonicalErrorEvidence(error) {
   return evidence;
 }
 
-export function createSourceManagedFailureEvidence({
-  failureClass,
-  sourceRef,
-  error,
-  currentness = 'CURRENT'
-}) {
-  if (!FAILURE_CLASSES.includes(failureClass)) throw new Error('source-managed failure evidence class is invalid');
-  if (!sourceRef) throw new Error('source-managed failure evidence requires sourceRef');
-  if (currentness !== 'CURRENT') throw new Error('source-managed failure evidence must be CURRENT');
-  const errorEvidence = canonicalErrorEvidence(error);
+function classifierPlanFingerprint(plan) {
+  return semanticHash({
+    planRef: plan.planRef,
+    sourceRef: plan.sourceRef,
+    adapterRef: plan.adapterRef,
+    plan: plan.planEntries ?? [{ attempt: 1, failureClass: plan.failureClass }]
+  });
+}
+
+function registeredClassifierSource(registry, sourceRef) {
+  return registry?.classifierContract?.sources?.find((source) => source.sourceRef === sourceRef) ?? null;
+}
+
+function formClassificationEvidence(plan, errorEvidence, registry) {
+  if (!plan?.planRef || !plan?.sourceRef || !plan?.adapterRef || !FAILURE_CLASSES.includes(plan.failureClass)) {
+    throw new Error('classifier plan is malformed');
+  }
+  const registered = registeredClassifierSource(registry, plan.sourceRef);
+  if (!registered || registered.adapterRef !== plan.adapterRef ||
+      !registered.allowedFailureClasses?.includes(plan.failureClass)) {
+    throw new Error('classifier source/adapter/class is not registered');
+  }
+  const classifierPlan = clone(plan.planEntries ?? [{ attempt: 1, failureClass: plan.failureClass }]);
+  const classifiedAttempt = plan.classifiedAttempt ?? 1;
+  const planned = classifierPlan.find((item) => item.attempt === classifiedAttempt);
+  if (!planned || planned.failureClass !== plan.failureClass ||
+      classifierPlan.some((item) => !Number.isInteger(item.attempt) || item.attempt < 1 ||
+        !registered.allowedFailureClasses.includes(item.failureClass))) {
+    throw new Error('classifier plan does not issue the selected failure class for this attempt');
+  }
   const evidence = {
-    schemaVersion: 'vexlife.runtime-failure-classification-evidence/v0',
-    failureClass,
-    sourceRef,
+    schemaVersion: 'vexlife.runtime-failure-classification-evidence/v1',
+    sourceRef: plan.sourceRef,
+    adapterRef: plan.adapterRef,
+    classifierPlanRef: plan.planRef,
+    classifierPlan,
+    classifierPlanFingerprint: plan.planFingerprint ?? classifierPlanFingerprint({ ...plan, planEntries: classifierPlan }),
+    classifiedAttempt,
+    failureClass: plan.failureClass,
     errorEvidenceFingerprint: errorEvidence.evidenceFingerprint,
-    currentness
+    currentness: 'CURRENT'
   };
   evidence.semanticFingerprint = semanticHash(evidence);
   evidence.evidenceRef = `evidence.runtime-failure.classification.${evidence.semanticFingerprint.slice(0, 32)}`;
   return freeze(evidence);
 }
 
-function canonicalClassification(input, errorEvidence, error) {
-  const supplied = error?.sourceManagedFailureEvidence ?? input?.sourceManagedFailureEvidence ?? null;
-  if (supplied) {
-    const canonical = createSourceManagedFailureEvidence({
-      failureClass: supplied.failureClass,
-      sourceRef: supplied.sourceRef,
-      error,
-      currentness: supplied.currentness
-    });
-    if (canonical.errorEvidenceFingerprint !== errorEvidence.evidenceFingerprint ||
-        canonical.semanticFingerprint !== supplied.semanticFingerprint ||
-        canonical.evidenceRef !== supplied.evidenceRef) {
-      throw new Error('source-managed failure classification evidence mismatch');
-    }
-    return canonical;
+function validateClassificationEvidence(value, errorEvidence, registry) {
+  if (!value || value.schemaVersion !== 'vexlife.runtime-failure-classification-evidence/v1' ||
+      value.currentness !== 'CURRENT') {
+    throw new Error('classifier evidence is missing, stale, or has the wrong schema');
   }
-  if (FAILURE_CLASSES.includes(input?.failureClass) && input?.classificationSourceRef &&
-      input?.classificationEvidenceFingerprint) {
-    const canonical = createSourceManagedFailureEvidence({
-      failureClass: input.failureClass,
-      sourceRef: input.classificationSourceRef,
-      error: error ?? input.errorEvidence,
-      currentness: 'CURRENT'
-    });
-    if (canonical.errorEvidenceFingerprint !== errorEvidence.evidenceFingerprint ||
-        canonical.semanticFingerprint !== input.classificationEvidenceFingerprint) {
-      throw new Error('failure classification evidence fingerprint mismatch');
-    }
-    return canonical;
+  const canonical = formClassificationEvidence({
+    planRef: value.classifierPlanRef,
+    sourceRef: value.sourceRef,
+    adapterRef: value.adapterRef,
+    failureClass: value.failureClass,
+    planEntries: value.classifierPlan,
+    classifiedAttempt: value.classifiedAttempt,
+    planFingerprint: value.classifierPlanFingerprint
+  }, errorEvidence, registry);
+  if (canonical.errorEvidenceFingerprint !== value.errorEvidenceFingerprint ||
+      canonical.semanticFingerprint !== value.semanticFingerprint ||
+      canonical.evidenceRef !== value.evidenceRef ||
+      classifierPlanFingerprint({
+        planRef: value.classifierPlanRef,
+        sourceRef: value.sourceRef,
+        adapterRef: value.adapterRef,
+        failureClass: value.failureClass,
+        planEntries: value.classifierPlan
+      }) !== value.classifierPlanFingerprint) {
+    throw new Error('classifier evidence is forged or same-ref/different-content');
   }
-  const fallback = {
-    failureClass: error instanceof Error ? 'UNEXPECTED_EXCEPTION' : 'UNKNOWN_FAILURE',
-    sourceRef: 'source.runtime-recovery.default-unexpected',
-    errorEvidenceFingerprint: errorEvidence.evidenceFingerprint,
-    currentness: 'CURRENT'
-  };
-  fallback.semanticFingerprint = semanticHash(fallback);
-  fallback.evidenceRef = `evidence.runtime-failure.classification.${fallback.semanticFingerprint.slice(0, 32)}`;
-  return freeze(fallback);
+  return canonical;
 }
 
-const RETRIABLE_SEVERITY = Object.freeze({
-  RETRY_WITH_CURRENT_ADMISSION: 0,
-  RETRY_REDUCED_BUDGET: 1,
-  RECOVER_BEFORE_RETRY: 2,
-  UNKNOWN_REQUIRES_DECISION: 3,
-  NOT_RETRIABLE: 4
-});
-const PARTIAL_EFFECT_SEVERITY = Object.freeze({
-  NONE: 0,
-  POSSIBLE: 1,
-  CONFIRMED_REVERSIBLE: 2,
-  UNKNOWN: 3,
-  CONFIRMED_IRREVERSIBLE: 4
-});
-const HUMAN_ATTENTION_SEVERITY = Object.freeze({
-  NONE: 0,
-  ONLY_IF_RECOVERY_EXHAUSTED: 1,
-  DECISION_REQUIRED: 2,
-  IMMEDIATE: 3
-});
+export function createDeterministicClassifiedExecutor({
+  sourceRef,
+  adapterRef,
+  planRef,
+  plan,
+  invoke
+}) {
+  if (typeof invoke !== 'function' || !Array.isArray(plan) || !sourceRef || !adapterRef || !planRef) {
+    throw new Error('deterministic classified executor formation is malformed');
+  }
+  const normalizedPlan = plan.map((item) => ({
+    attempt: item.attempt,
+    failureClass: item.failureClass
+  }));
+  if (normalizedPlan.some((item) => !Number.isInteger(item.attempt) || item.attempt < 1 ||
+      !FAILURE_CLASSES.includes(item.failureClass))) {
+    throw new Error('deterministic classifier plan contains an invalid attempt or failure class');
+  }
+  const descriptor = freeze({
+    sourceRef,
+    adapterRef,
+    planRef,
+    planFingerprint: semanticHash({ sourceRef, adapterRef, planRef, plan: normalizedPlan }),
+    plan: normalizedPlan
+  });
+  let callCount = 0;
+  const executor = (...args) => {
+    callCount += 1;
+    return invoke(callCount, ...args);
+  };
+  Object.defineProperty(executor, 'callCount', { get: () => callCount });
+  Object.defineProperty(executor, 'classifierPlanRef', { value: planRef, enumerable: false });
+  EXECUTOR_CLASSIFIERS.set(executor, { descriptor, currentAttempt: () => callCount });
+  return executor;
+}
 
-function noWeaker(supplied, sourceManaged, vocabulary, severity) {
-  if (!vocabulary.includes(supplied)) return sourceManaged;
-  return severity[supplied] > severity[sourceManaged] ? supplied : sourceManaged;
+export function classifyThrownFailure(executor, error, { registry } = {}) {
+  const errorEvidence = canonicalErrorEvidence(error);
+  const binding = typeof executor === 'function' ? EXECUTOR_CLASSIFIERS.get(executor) : null;
+  if (binding) {
+    const attempt = binding.currentAttempt();
+    const planned = binding.descriptor.plan.find((item) => item.attempt === attempt);
+    if (planned) {
+      return formClassificationEvidence({
+        planRef: binding.descriptor.planRef,
+        sourceRef: binding.descriptor.sourceRef,
+        adapterRef: binding.descriptor.adapterRef,
+        failureClass: planned.failureClass,
+        planEntries: binding.descriptor.plan,
+        classifiedAttempt: attempt,
+        planFingerprint: binding.descriptor.planFingerprint
+      }, errorEvidence, registry);
+    }
+  }
+  const fallback = error instanceof Error ? DEFAULT_CLASSIFIER_PLANS.unexpected : DEFAULT_CLASSIFIER_PLANS.unknown;
+  return formClassificationEvidence(fallback, errorEvidence, registry);
+}
+
+export function classifyInternalRuntimeFailure(kind, error, { registry } = {}) {
+  const plan = kind === 'PARTIAL_SUCCESS'
+    ? DEFAULT_CLASSIFIER_PLANS.partialSuccess
+    : DEFAULT_CLASSIFIER_PLANS.malformedInput;
+  return formClassificationEvidence(plan, canonicalErrorEvidence(error), registry);
+}
+
+function canonicalClassification(input, errorEvidence, error, registry, suppliedEvidence = null) {
+  const supplied = suppliedEvidence ?? input?.classificationEvidence ?? null;
+  if (supplied) return validateClassificationEvidence(supplied, errorEvidence, registry);
+  const fallback = error instanceof Error ? DEFAULT_CLASSIFIER_PLANS.unexpected : DEFAULT_CLASSIFIER_PLANS.unknown;
+  return formClassificationEvidence(fallback, errorEvidence, registry);
 }
 
 export function buildFailureFingerprint(input) {
@@ -212,8 +302,17 @@ export function buildFailureFingerprint(input) {
 export function createFailureEnvelope(input, { registry = null } = {}) {
   const error = input?.error;
   const errorEvidence = canonicalErrorEvidence(error ?? input?.errorEvidence ?? 'unknown failure');
-  const classification = canonicalClassification(input, errorEvidence, error ?? input?.errorEvidence);
+  const classification = canonicalClassification(
+    input,
+    errorEvidence,
+    error ?? input?.errorEvidence,
+    registry,
+    input?.classificationEvidence
+  );
   const failureClass = classification.failureClass;
+  if (input?.failureClass && input.failureClass !== failureClass) {
+    throw new Error('caller-selected failure class differs from canonical classifier output');
+  }
   const defaults = CLASS_DEFAULTS[failureClass] ?? CLASS_DEFAULTS.UNKNOWN_FAILURE;
   const candidate = {
     schemaVersion: 'vexlife.runtime-failure-envelope/v1',
@@ -227,11 +326,14 @@ export function createFailureEnvelope(input, { registry = null } = {}) {
     expectedTransitionRef: input?.expectedTransitionRef,
     observedAt: input?.observedAt,
     currentness: input?.currentness ?? 'CURRENT',
-    retriableClass: noWeaker(input?.retriableClass, defaults[0], RETRIABLE_CLASSES, RETRIABLE_SEVERITY),
-    partialEffectState: noWeaker(input?.partialEffectState, defaults[1], PARTIAL_EFFECT_STATES, PARTIAL_EFFECT_SEVERITY),
-    humanAttentionClass: noWeaker(input?.humanAttentionClass, defaults[2], HUMAN_ATTENTION_CLASSES, HUMAN_ATTENTION_SEVERITY),
+    retriableClass: defaults[0],
+    partialEffectState: defaults[1],
+    humanAttentionClass: defaults[2],
     classificationSourceRef: classification.sourceRef,
+    classificationAdapterRef: classification.adapterRef,
+    classifierPlanRef: classification.classifierPlanRef,
     classificationEvidenceFingerprint: classification.semanticFingerprint,
+    classificationEvidence: classification,
     evidenceRefs: canonicalRefs([
       ...(input?.evidenceRefs ?? []),
       classification.evidenceRef,
@@ -287,7 +389,9 @@ export function validateFailureEnvelope(value, options = {}) {
 }
 
 export function normalizeThrownFailure(error, context, options = {}) {
-  return createFailureEnvelope({ ...context, error }, options);
+  const classificationEvidence = options.classificationEvidence ??
+    classifyThrownFailure(options.executor, error, { registry: options.registry });
+  return createFailureEnvelope({ ...context, error, classificationEvidence }, options);
 }
 
 // [VXG RealForever]

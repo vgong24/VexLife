@@ -18,7 +18,10 @@ import {
   createRecoveryCheckpoint,
   createRecoveryContinuation,
   createRecoveryConvergenceReceipt,
+  createHumanDecisionGate,
   createRecoveryResourceReceipt,
+  createRecoveryWaitResumeReceipt,
+  createSplitWorkRouteReceipt,
   executeWithRecoveryBoundary,
   projectRecoveryAggregate,
   recordExternalRecoveryEvent,
@@ -47,23 +50,36 @@ const RECOVERED_AT = '2026-08-01T00:00:04.000Z';
 const SUCCEEDED_AT = '2026-08-01T00:00:05.000Z';
 const COMPLETED_AT = '2026-08-01T00:00:06.000Z';
 const EXPIRES_AT = '2026-08-01T00:01:00.000Z';
-const RECOVERY_CAUSAL_EVIDENCE_GATE_REFS = Object.freeze([
-  'completion-gate.runtime-recovery.failure',
-  'completion-gate.runtime-recovery.policy',
-  'completion-gate.runtime-recovery.scheduler-checkpoint',
-  ...['worker', 'context', 'resource', 'capability', 'effect', 'occupancy']
-    .map((kind) => `completion-gate.runtime-recovery.released-${kind}-lease`),
-  'completion-gate.runtime-recovery.checkpoint-admission',
-  'completion-gate.runtime-recovery.context',
-  'completion-gate.runtime-recovery.resource',
-  'completion-gate.runtime-recovery.rollback',
-  'completion-gate.runtime-recovery.last-known-good',
-  'completion-gate.runtime-recovery.action',
-  'completion-gate.runtime-recovery.continuation',
-  ...['worker', 'context', 'resource', 'capability', 'effect', 'occupancy']
-    .map((kind) => `completion-gate.runtime-recovery.fresh-${kind}-lease`),
-  'completion-gate.runtime-recovery.success'
-].sort());
+function expectedActionSpecificCausalGateRefs(actionReceipt) {
+  const roleNames = {
+    context: 'context',
+    resource: 'resource',
+    transaction: 'rollback',
+    lastKnownGood: 'last-known-good',
+    quarantine: 'quarantine',
+    humanGate: 'human-gate',
+    externalWait: 'external-wait',
+    externalResume: 'external-resume',
+    splitRoute: 'split-route'
+  };
+  return [
+    'completion-gate.runtime-recovery.failure',
+    'completion-gate.runtime-recovery.policy',
+    'completion-gate.runtime-recovery.scheduler-checkpoint',
+    ...['worker', 'context', 'resource', 'capability', 'effect', 'occupancy']
+      .map((kind) => `completion-gate.runtime-recovery.released-${kind}-lease`),
+    'completion-gate.runtime-recovery.checkpoint-admission',
+    'completion-gate.runtime-recovery.action',
+    ...(actionReceipt?.evidence ?? []).map((item) => `completion-gate.runtime-recovery.${roleNames[item.role]}`),
+    ...(actionReceipt?.continuationRequired ? [
+      'completion-gate.runtime-recovery.scheduler-resume',
+      'completion-gate.runtime-recovery.continuation',
+      ...['worker', 'context', 'resource', 'capability', 'effect', 'occupancy']
+        .map((kind) => `completion-gate.runtime-recovery.fresh-${kind}-lease`)
+    ] : []),
+    'completion-gate.runtime-recovery.success'
+  ].sort();
+}
 
 function deadline(startedAt, budgetMs) {
   return new Date(Date.parse(startedAt) + budgetMs).toISOString();
@@ -210,6 +226,28 @@ function contextInput(generation, { formedAt, observedAt }) {
     observedAt,
     expiresAt: EXPIRES_AT,
     checkpointReturnRef: 'return-route.intent.verify-transition'
+  };
+}
+
+function contextInputFromRecovery(generation, receipt, { formedAt, observedAt, suffix = generation } = {}) {
+  return {
+    ...contextInput(generation, { formedAt, observedAt }),
+    leaseRef: `context-lease.runtime-recovery.${suffix}`,
+    cancellationTokenRef: `cancellation-token.runtime-recovery.${suffix}`,
+    intentFrameRef: receipt.preservedIntentRef,
+    selectedSourceRefs: [...new Set(receipt.immutableSourceCoverage.map((item) => item.sourceRef))].sort(),
+    inputTokenEstimate: receipt.candidateInputTokenEstimate,
+    reservedOutputTokens: receipt.reservedOutputTokens,
+    hardTokenLimit: receipt.hardTokenLimit,
+    checkpointReturnRef: receipt.returnRouteRef,
+    contextRecoveryReceiptRef: receipt.contextRecoveryReceiptRef,
+    contextRecoveryReceiptFingerprint: receipt.semanticFingerprint,
+    immutableSourceCoverage: receipt.immutableSourceCoverage,
+    deterministicSummaryBindings: receipt.deterministicSummaryBindings,
+    preservedIntentRef: receipt.preservedIntentRef,
+    preservedInterpretationRef: receipt.preservedInterpretationRef,
+    preservedUnknownRefs: receipt.preservedUnknownRefs,
+    preservedAuthorityRef: receipt.preservedAuthorityRef
   };
 }
 
@@ -364,6 +402,302 @@ function completionEvidence(node, graph, runtimeTwo, scheduler, convergence) {
   };
 }
 
+function runRepresentativeActionBranch({
+  name,
+  failureClass,
+  mode,
+  bundle,
+  registry,
+  graph,
+  node,
+  trustSnapshot,
+  sourceStateFingerprint
+}) {
+  const resourceOne = runtimeResource(1, sourceStateFingerprint, {
+    formedAt: FORMED,
+    observedAt: OBSERVED,
+    cpuLoadPct: 10,
+    ramAvailableMb: 8192
+  });
+  const runtimeOne = runtimeTrust(bundle.schedulerRegistry, resourceOne, 1, { formedAt: FORMED, observedAt: OBSERVED });
+  const optionsOne = schedulerOptions({
+    bundle, graph, node, trustSnapshot, resourceSnapshot: resourceOne, runtimeTrustSnapshot: runtimeOne,
+    generation: 1, formedAt: FORMED, observedAt: OBSERVED
+  });
+  const scheduler = new SingleWorkerIntentScheduler({
+    workerRef: runtimeOne.workerRef,
+    schedulerInstanceRef: `instance.intent-scheduler.runtime-recovery.${name}`,
+    schedulerRegistry: bundle.schedulerRegistry,
+    runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef })
+  });
+  const queue = scheduler.admit(graph, optionsOne);
+  const running = scheduler.leaseSelected({
+    ...contextInput(1, { formedAt: FORMED, observedAt: OBSERVED }),
+    leaseRef: `context-lease.runtime-recovery.${name}.1`,
+    cancellationTokenRef: `cancellation-token.runtime-recovery.${name}.1`
+  });
+  if (queue.state !== 'ADMITTED' || !running.admitted) throw new Error(`${name} representative scheduler branch was not admitted`);
+  let owner = createRecoveryAggregate({
+    aggregateRef: `aggregate.runtime-recovery.representative.${name}`,
+    workNodeRef: node.workNodeRef,
+    sourceStateFingerprint,
+    schedulerGeneration: 1,
+    retryBudget: registry.retryPolicy
+  }, { registry });
+  const executor = createDeterministicFaultInjector({
+    planRef: `classifier-plan.runtime-recovery.representative.${name}`,
+    failures: [{ attempt: 1, failureClass, message: `${name} deterministic failure` }],
+    successValue: { state: 'PASS', partialEffectState: 'NONE', branchRef: name }
+  });
+  const failed = executeWithRecoveryBoundary({
+    aggregate: owner,
+    executor,
+    registry,
+    context: boundaryContext(owner, `attempt.runtime-recovery.${name}.1`, 1, OBSERVED, FAILED_AT)
+  });
+  owner = failed.aggregate;
+  const sourceBindings = [{ sourceRef: 'blueprint/runtime-recovery-registry.json', sourceHash: sourceStateFingerprint }];
+  const checkpointed = scheduler.checkpoint({
+    checkpointRef: `checkpoint.runtime-recovery.scheduler.${name}.1`,
+    workNodeRef: node.workNodeRef,
+    lastCompletedStep: `typed-${name}-failure-formed`,
+    selectedSourceRefs: ['blueprint/runtime-recovery-registry.json'],
+    selectedContextRefs: [running.contextLease.leaseRef],
+    producedArtifactRefs: [],
+    producedReceiptRefs: [queue.admissionReceipt.admissionReceiptRef],
+    openQuestions: [],
+    nextSafeAction: 'FOLLOW_EXACT_RECOVERY_MATRIX',
+    pendingToolCallRef: 'NONE',
+    sourceBindings,
+    formedAt: FAILED_AT
+  }, { releaseReceiptRef: `release.runtime-recovery.checkpoint.${name}.1`, releasedAt: FAILED_AT });
+  const consumption = scheduler.claimRecoveryCheckpoint(checkpointed.checkpoint.checkpointRef, {
+    aggregateRef: owner.aggregateRef,
+    failureRef: failed.failure.failureRef,
+    failureFingerprint: failed.failure.semanticFingerprint,
+    sourceStateFingerprint,
+    observedAt: FAILED_AT
+  });
+  const checkpoint = createRecoveryCheckpoint({
+    schedulerCheckpoint: checkpointed.checkpoint,
+    schedulerConsumptionReceipt: consumption,
+    aggregateRef: owner.aggregateRef,
+    failureRef: failed.failure.failureRef,
+    failureFingerprint: failed.failure.semanticFingerprint,
+    sourceStateFingerprint,
+    selectedSourceRanges: [{ sourceRef: 'blueprint/runtime-recovery-registry.json', start: 0, end: 1 }],
+    preservedIntentRef: 'intent.runtime-recovery.simulation',
+    preservedInterpretationRef: `interpretation.runtime-recovery.${name}`,
+    preservedUnknownRefs: ['unknown.runtime-recovery.none'],
+    preservedAuthorityRef: 'authority.runtime-recovery.no-effect-only',
+    returnRouteRef: node.returnRouteRef,
+    formedAt: FAILED_AT
+  });
+  const admission = admitRecoveryCheckpoint(checkpoint, owner, {
+    schedulerCheckpoint: checkpointed.checkpoint,
+    schedulerConsumptionReceipt: consumption,
+    nextSchedulerGeneration: 2,
+    currentSourceStateFingerprint: sourceStateFingerprint,
+    observedAt: FAILED_AT,
+    registry
+  });
+  owner = recordRecoveryCheckpointAdmission(owner, checkpoint, admission, {
+    schedulerConsumptionReceipt: consumption,
+    registry
+  });
+  const resourceTwo = runtimeResource(2, sourceStateFingerprint, {
+    formedAt: FAILED_AT,
+    observedAt: RECOVERED_AT,
+    cpuLoadPct: 94,
+    ramAvailableMb: 2048
+  });
+  let contextProof = null;
+  let resourceProof = null;
+  if (['context', 'split'].includes(mode)) {
+    contextProof = mode === 'context'
+      ? contextReceipt(owner, admission, failed.failure, FAILED_AT, RECOVERED_AT)
+      : recoverContextBudget({
+        workNodeRef: owner.workNodeRef,
+        sourceStateFingerprint,
+        failureFingerprint: failed.failure.semanticFingerprint,
+        checkpointAdmission: admission,
+        sourceSegments: [{
+          sourceRef: 'message.runtime-recovery.oversize', start: 0, end: 1000,
+          tokenEstimate: 1900, eligibleForCondensation: false
+        }],
+        intentRef: 'intent.runtime-recovery.simulation',
+        interpretationRef: `interpretation.runtime-recovery.${name}`,
+        unknownRefs: ['unknown.runtime-recovery.none'],
+        authorityRef: 'authority.runtime-recovery.no-effect-only',
+        returnRouteRef: node.returnRouteRef,
+        inputTokenEstimate: 1900,
+        reservedOutputTokens: 400,
+        hardTokenLimit: 1600,
+        splitWorkNodeRef: `work.runtime-recovery.split-child.${name}`,
+        formedAt: FAILED_AT,
+        observedAt: RECOVERED_AT
+      });
+  }
+  if (mode === 'resource') {
+    resourceProof = createRecoveryResourceReceipt({
+      workNodeRef: owner.workNodeRef,
+      sourceStateFingerprint,
+      failureFingerprint: failed.failure.semanticFingerprint,
+      checkpointAdmission: admission,
+      resourceSnapshot: resourceTwo,
+      deniedRequest: { cpuSlots: 4, ramMb: 1800, modelTurn: true },
+      reducedRequest: { cpuSlots: 1, ramMb: 512, modelTurn: true },
+      observedAt: RECOVERED_AT
+    });
+  }
+  const decided = recordRecoveryPolicyDecision(owner, {
+    checkpointAdmission: admission,
+    contextAdmissionReceipt: contextProof,
+    resourceAdmissionReceipt: resourceProof,
+    observedAt: RECOVERED_AT,
+    registry
+  });
+  owner = decided.aggregate;
+  let transaction = null;
+  if (['transaction', 'restore'].includes(mode)) {
+    transaction = simulateTransactionalRecovery({
+      adapter: createNoEffectTransactionalAdapter({
+        initialState: { branch: name, state: 'before' },
+        attemptedState: { branch: name, state: 'partial' },
+        rollbackFails: mode === 'restore'
+      }),
+      operationRef: failed.failure.operationRef,
+      expectedBeforeFingerprint: semanticHash({ branch: name, state: 'before' }),
+      rollbackReceiptRef: `receipt.runtime-recovery.rollback.${name}`,
+      lastKnownGoodRef: `state.runtime-recovery.last-known-good.${name}`,
+      observedAt: RECOVERED_AT
+    });
+  }
+  const gate = mode === 'human'
+    ? createHumanDecisionGate({ aggregate: owner, policyDecision: decided.policyDecision, observedAt: RECOVERED_AT, registry })
+    : null;
+  const wait = mode === 'wait'
+    ? createRecoveryWaitResumeReceipt({
+      aggregate: owner,
+      policyDecision: decided.policyDecision,
+      waitedAt: FAILED_AT,
+      resumedAt: RECOVERED_AT,
+      resumeSourceRef: `source.runtime-recovery.wait.${name}`,
+      registry
+    })
+    : null;
+  const split = mode === 'split'
+    ? createSplitWorkRouteReceipt({
+      aggregate: owner,
+      policyDecision: decided.policyDecision,
+      contextRecoveryReceipt: contextProof,
+      childWorkNodeRef: contextProof.splitWorkNodeRef,
+      observedAt: RECOVERED_AT,
+      registry
+    })
+    : null;
+  const action = applyRecoveryAction({
+    aggregate: owner,
+    policyDecision: decided.policyDecision,
+    checkpointAdmission: admission,
+    contextRecoveryReceipt: contextProof,
+    resourceRecoveryReceipt: resourceProof,
+    transactionalRecoveryReceipt: transaction,
+    humanDecisionGate: gate,
+    waitResumeReceipt: wait,
+    splitWorkRouteReceipt: split,
+    observedAt: RECOVERED_AT,
+    registry
+  });
+  owner = action.aggregate;
+  const continuable = action.actionReceipt.continuationRequired;
+  let continuation = null;
+  let succeeded = null;
+  let convergence = null;
+  let resumed = null;
+  let schedulerAggregateAfterResume = null;
+  if (continuable) {
+    const runtimeTwo = runtimeTrust(bundle.schedulerRegistry, resourceTwo, 2, {
+      formedAt: FAILED_AT,
+      observedAt: RECOVERED_AT
+    });
+    const optionsTwo = schedulerOptions({
+      bundle, graph, node, trustSnapshot, resourceSnapshot: resourceTwo, runtimeTrustSnapshot: runtimeTwo,
+      generation: 2, formedAt: FAILED_AT, observedAt: RECOVERED_AT
+    });
+    if (resourceProof) optionsTwo.resourceRequestByNodeRef[node.workNodeRef] = resourceProof.reducedRequest;
+    const nextContext = contextProof
+      ? contextInputFromRecovery(2, contextProof, { formedAt: FAILED_AT, observedAt: RECOVERED_AT, suffix: `${name}.2` })
+      : {
+        ...contextInput(2, { formedAt: FAILED_AT, observedAt: RECOVERED_AT }),
+        leaseRef: `context-lease.runtime-recovery.${name}.2`,
+        cancellationTokenRef: `cancellation-token.runtime-recovery.${name}.2`
+      };
+    resumed = scheduler.resume(checkpointed.checkpoint.checkpointRef, {
+      graph,
+      options: optionsTwo,
+      sourceBindings,
+      contextInput: nextContext,
+      recovery: {
+        checkpointConsumptionReceipt: consumption,
+        checkpointAdmission: admission,
+        actionReceipt: action.actionReceipt,
+        contextRecoveryReceipt: contextProof,
+        resourceRecoveryReceipt: resourceProof
+      }
+    });
+    schedulerAggregateAfterResume = structuredClone(scheduler.aggregate);
+    continuation = createRecoveryContinuation({
+      aggregate: owner,
+      checkpointAdmission: admission,
+      resumed,
+      schedulerAggregate: schedulerAggregateAfterResume,
+      schedulerInstanceRef: scheduler.schedulerInstanceRef,
+      observedAt: RECOVERED_AT,
+      registry
+    });
+    owner = continueRecoveryGeneration(owner, continuation, { registry });
+    succeeded = executeWithRecoveryBoundary({
+      aggregate: owner,
+      executor,
+      registry,
+      context: boundaryContext(owner, `attempt.runtime-recovery.${name}.2`, 2, RECOVERED_AT, SUCCEEDED_AT)
+    });
+    owner = succeeded.aggregate;
+    convergence = createRecoveryConvergenceReceipt(owner, { formedAt: SUCCEEDED_AT, registry });
+    owner = recordRecoveryConvergence(owner, convergence, { registry });
+  }
+  return Object.freeze({
+    name,
+    action: decided.policyDecision.action,
+    expectedAction: action.actionReceipt.action,
+    disposition: action.actionReceipt.disposition,
+    continuationRequired: action.actionReceipt.continuationRequired,
+    completionEligible: action.actionReceipt.completionEligible,
+    evidenceRoles: action.actionReceipt.evidence.map((item) => item.role),
+    continuationFingerprint: continuation?.semanticFingerprint ?? null,
+    schedulerResumeFingerprint: continuation?.schedulerResumeReceiptFingerprint ?? null,
+    convergenceFingerprint: convergence?.semanticFingerprint ?? null,
+    finalPhase: owner.phase,
+    aggregate: owner,
+    actionReceipt: action.actionReceipt,
+    checkpoint,
+    admission,
+    consumption,
+    contextProof,
+    resourceProof,
+    transaction,
+    humanGate: gate,
+    waitResumeReceipt: wait,
+    splitWorkRouteReceipt: split,
+    succeeded,
+    resumed,
+    schedulerAggregateAfterResume,
+    checkpointAdmission: admission,
+    continuation
+  });
+}
+
 export function validateIntegratedRecoverySimulationReceipt(receipt, {
   runtimeRecoveryRegistry,
   blueprintHash,
@@ -395,14 +729,24 @@ export function validateIntegratedRecoverySimulationReceipt(receipt, {
     errors.push('executor totality journey outcomes are not exact');
   }
   if (receipt.boundaryTotalityAndSourcePolicyProof?.preAdmissionTyped !== true ||
-      receipt.boundaryTotalityAndSourcePolicyProof?.thenableRejectedTyped !== true ||
+      receipt.boundaryTotalityAndSourcePolicyProof?.resolvedThenableRejectedTyped !== true ||
+      receipt.boundaryTotalityAndSourcePolicyProof?.rejectedThenableRejectedTyped !== true ||
+      receipt.boundaryTotalityAndSourcePolicyProof?.rejectedThenableConsumed !== true ||
+      !runtimeRecoveryRegistry.classifierContract.sources.some((source) =>
+        source.sourceRef === receipt.boundaryTotalityAndSourcePolicyProof?.classifierSourceRef &&
+        source.adapterRef === receipt.boundaryTotalityAndSourcePolicyProof?.classifierAdapterRef) ||
+      !receipt.boundaryTotalityAndSourcePolicyProof?.classifierPlanRef ||
+      !receipt.boundaryTotalityAndSourcePolicyProof?.classifierEvidenceFingerprint ||
       receipt.boundaryTotalityAndSourcePolicyProof?.registryBudgetFingerprint !== semanticHash(runtimeRecoveryRegistry.retryPolicy) ||
       receipt.boundaryTotalityAndSourcePolicyProof?.callerHintsCannotWeaken !== true) {
     errors.push('boundary/source-policy proof is incomplete');
   }
   if (receipt.checkpointFreshGenerationSixLeaseProof?.releasedLeaseCount !== 6 ||
       receipt.checkpointFreshGenerationSixLeaseProof?.freshLeaseCount !== 6 ||
-      receipt.checkpointFreshGenerationSixLeaseProof?.generationAdvanced !== true) {
+      receipt.checkpointFreshGenerationSixLeaseProof?.generationAdvanced !== true ||
+      !receipt.checkpointFreshGenerationSixLeaseProof?.schedulerConsumptionFingerprint ||
+      !receipt.checkpointFreshGenerationSixLeaseProof?.onceOnlyActivationRef ||
+      !receipt.checkpointFreshGenerationSixLeaseProof?.schedulerResumeFingerprint) {
     errors.push('checkpoint/fresh-generation/six-lease proof is incomplete');
   }
   if (receipt.replayedAggregateProof?.restoredFingerprint !== receipt.replayedAggregateProof?.serializedFingerprint ||
@@ -416,6 +760,24 @@ export function validateIntegratedRecoverySimulationReceipt(receipt, {
       receipt.aggregateOwnedRecoveryActionProof?.quarantineHealth !== 'ATTENTION') {
     errors.push('aggregate-owned recovery action proof is incomplete');
   }
+  const actionJourneys = receipt.actionSpecificRecoveryProof?.journeys ?? [];
+  const actionJourneyByAction = new Map(actionJourneys.map((item) => [item.action, item]));
+  const quarantineJourney = receipt.actionSpecificRecoveryProof?.quarantine;
+  if (quarantineJourney?.action) actionJourneyByAction.set(quarantineJourney.action, quarantineJourney);
+  if (receipt.actionSpecificRecoveryProof?.matrixFingerprint !== semanticHash(runtimeRecoveryRegistry.recoveryActionEvidenceMatrix) ||
+      runtimeRecoveryRegistry.recoveryActions.some((action) => !actionJourneyByAction.has(action)) ||
+      runtimeRecoveryRegistry.recoveryActionEvidenceMatrix.some((matrix) => {
+        const journey = actionJourneyByAction.get(matrix.action);
+        if (!journey || journey.disposition !== matrix.disposition) return true;
+        const roles = journey.evidenceRoles ?? [];
+        if (matrix.required.some((role) => !roles.includes(role)) ||
+            roles.some((role) => !matrix.required.includes(role) && !matrix.optional.includes(role))) return true;
+        return matrix.continuationRequired
+          ? (!journey.schedulerResumeFingerprint || !journey.convergenceFingerprint)
+          : Boolean(journey.convergenceFingerprint);
+      })) {
+    errors.push('action-specific recovery journey/matrix proof is incomplete');
+  }
   const causalProof = receipt.schedulerWorkgraphCausalRecoveryProof;
   const convergence = causalProof?.recoveryConvergenceReceipt;
   const convergenceCanonical = convergence ? structuredClone(convergence) : null;
@@ -426,6 +788,8 @@ export function validateIntegratedRecoverySimulationReceipt(receipt, {
   const convergenceFingerprint = convergenceCanonical ? semanticHash(convergenceCanonical) : null;
   const causalEvidence = convergence?.causalEvidence ?? [];
   const causalGateRefs = causalEvidence.map((item) => item.completionGateRef).sort();
+  const actionReceipt = receipt.aggregateOwnedRecoveryActionProof?.actionReceipt;
+  const expectedCausalGateRefs = expectedActionSpecificCausalGateRefs(actionReceipt);
   const causalFingerprintsValid = causalEvidence.every((item) =>
     item.sourceObservationRef && /^[a-f0-9]{64}$/.test(String(item.sourceObservationHash ?? '')));
   const releasedEvidenceFingerprints = causalEvidence
@@ -439,20 +803,25 @@ export function validateIntegratedRecoverySimulationReceipt(receipt, {
       convergence?.state !== 'RECOVERY_ACTIONS_CONVERGED' ||
       convergenceFingerprint !== convergence?.semanticFingerprint ||
       convergence?.convergenceReceiptRef !== `receipt.runtime-recovery.convergence.${String(convergenceFingerprint).slice(0, 32)}` ||
-      JSON.stringify(causalGateRefs) !== JSON.stringify(RECOVERY_CAUSAL_EVIDENCE_GATE_REFS) ||
+      JSON.stringify(causalGateRefs) !== JSON.stringify(expectedCausalGateRefs) ||
       causalFingerprintsValid !== true ||
-      new Set(causalGateRefs).size !== RECOVERY_CAUSAL_EVIDENCE_GATE_REFS.length ||
+      new Set(causalGateRefs).size !== expectedCausalGateRefs.length ||
       convergence?.failureFingerprint !== receipt.canonicalFailure?.semanticFingerprint ||
       convergence?.decisionFingerprint !== receipt.boundaryTotalityAndSourcePolicyProof?.policyDecisionFingerprint ||
       convergence?.actionReceiptFingerprint !== receipt.aggregateOwnedRecoveryActionProof?.actionReceiptFingerprint ||
       convergence?.successExecutionFingerprint !== receipt.terminalReceipt?.successExecutionFingerprint ||
       causalByGate['completion-gate.runtime-recovery.scheduler-checkpoint']?.sourceObservationHash !== receipt.checkpointFreshGenerationSixLeaseProof?.schedulerCheckpointFingerprint ||
       causalByGate['completion-gate.runtime-recovery.checkpoint-admission']?.sourceObservationHash !== receipt.checkpointFreshGenerationSixLeaseProof?.checkpointAdmissionFingerprint ||
-      causalByGate['completion-gate.runtime-recovery.context']?.sourceObservationHash !== receipt.aggregateOwnedRecoveryActionProof?.contextRecoveryFingerprint ||
-      causalByGate['completion-gate.runtime-recovery.resource']?.sourceObservationHash !== receipt.aggregateOwnedRecoveryActionProof?.resourceRecoveryFingerprint ||
+      (receipt.aggregateOwnedRecoveryActionProof?.contextRecoveryFingerprint
+        ? causalByGate['completion-gate.runtime-recovery.context']?.sourceObservationHash !== receipt.aggregateOwnedRecoveryActionProof.contextRecoveryFingerprint
+        : causalByGate['completion-gate.runtime-recovery.context'] !== undefined) ||
+      (receipt.aggregateOwnedRecoveryActionProof?.resourceRecoveryFingerprint
+        ? causalByGate['completion-gate.runtime-recovery.resource']?.sourceObservationHash !== receipt.aggregateOwnedRecoveryActionProof.resourceRecoveryFingerprint
+        : causalByGate['completion-gate.runtime-recovery.resource'] !== undefined) ||
       causalByGate['completion-gate.runtime-recovery.rollback']?.sourceObservationHash !== receipt.aggregateOwnedRecoveryActionProof?.transactionalRecoveryFingerprint ||
       causalByGate['completion-gate.runtime-recovery.last-known-good']?.sourceObservationHash !== receipt.aggregateOwnedRecoveryActionProof?.lastKnownGoodReadBackFingerprint ||
       causalByGate['completion-gate.runtime-recovery.action']?.sourceObservationHash !== receipt.aggregateOwnedRecoveryActionProof?.actionReceiptFingerprint ||
+      causalByGate['completion-gate.runtime-recovery.scheduler-resume']?.sourceObservationHash !== receipt.checkpointFreshGenerationSixLeaseProof?.schedulerResumeFingerprint ||
       causalByGate['completion-gate.runtime-recovery.continuation']?.sourceObservationHash !== receipt.checkpointFreshGenerationSixLeaseProof?.continuationFingerprint ||
       JSON.stringify(releasedEvidenceFingerprints) !== JSON.stringify(Object.values(receipt.checkpointFreshGenerationSixLeaseProof?.releasedLeaseFingerprints ?? {}).sort()) ||
       JSON.stringify(freshEvidenceFingerprints) !== JSON.stringify(Object.values(receipt.checkpointFreshGenerationSixLeaseProof?.freshLeaseFingerprints ?? {}).sort())) {
@@ -544,6 +913,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     retryBudget: registry.retryPolicy
   }, { registry });
   const executor = createDeterministicFaultInjector({
+    planRef: 'classifier-plan.runtime-recovery.simulation.main',
     failures: [{ attempt: 1, failureClass: 'PARTIAL_WRITE_SIMULATED', message: 'deterministic partial write' }],
     successValue: { state: 'PASS', partialEffectState: 'NONE', outputRef: 'output.runtime-recovery.simulation' }
   });
@@ -573,8 +943,19 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     formedAt: FAILED_AT
   }, { releaseReceiptRef: 'release.runtime-recovery.checkpoint.1', releasedAt: FAILED_AT });
   journeyStates.push('EXACT_SCHEDULER_CHECKPOINT_AND_SIX_RELEASES');
+  const schedulerConsumption = scheduler.claimRecoveryCheckpoint(checkpointed.checkpoint.checkpointRef, {
+    aggregateRef: aggregate.aggregateRef,
+    failureRef: failed.failure.failureRef,
+    failureFingerprint: failed.failure.semanticFingerprint,
+    sourceStateFingerprint,
+    observedAt: FAILED_AT
+  });
   const checkpoint = createRecoveryCheckpoint({
     schedulerCheckpoint: checkpointed.checkpoint,
+    schedulerConsumptionReceipt: schedulerConsumption,
+    aggregateRef: aggregate.aggregateRef,
+    failureRef: failed.failure.failureRef,
+    failureFingerprint: failed.failure.semanticFingerprint,
     sourceStateFingerprint,
     selectedSourceRanges: [{ sourceRef: 'blueprint/runtime-recovery-registry.json', start: 0, end: 1 }],
     preservedIntentRef: 'intent.runtime-recovery.simulation',
@@ -586,12 +967,16 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
   });
   const checkpointAdmission = admitRecoveryCheckpoint(checkpoint, aggregate, {
     schedulerCheckpoint: checkpointed.checkpoint,
+    schedulerConsumptionReceipt: schedulerConsumption,
     nextSchedulerGeneration: 2,
     currentSourceStateFingerprint: sourceStateFingerprint,
     observedAt: FAILED_AT,
     registry
   });
-  aggregate = recordRecoveryCheckpointAdmission(aggregate, checkpoint, checkpointAdmission, { registry });
+  aggregate = recordRecoveryCheckpointAdmission(aggregate, checkpoint, checkpointAdmission, {
+    schedulerConsumptionReceipt: schedulerConsumption,
+    registry
+  });
   journeyStates.push('CHECKPOINT_ADMISSION_RECORDED');
 
   const resourceTwo = runtimeResource(2, sourceStateFingerprint, {
@@ -613,8 +998,6 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
   });
   const decided = recordRecoveryPolicyDecision(aggregate, {
     checkpointAdmission,
-    contextAdmissionReceipt: contextProof,
-    resourceAdmissionReceipt: resourceProof,
     observedAt: RECOVERED_AT,
     registry
   });
@@ -639,8 +1022,6 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     aggregate,
     policyDecision: decided.policyDecision,
     checkpointAdmission,
-    contextRecoveryReceipt: contextProof,
-    resourceRecoveryReceipt: resourceProof,
     transactionalRecoveryReceipt: transaction,
     observedAt: RECOVERED_AT,
     registry
@@ -655,26 +1036,85 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     schedulerGeneration: 1,
     retryBudget: registry.retryPolicy
   }, { registry });
+  const quarantineScheduler = new SingleWorkerIntentScheduler({
+    workerRef: runtimeOne.workerRef,
+    schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.quarantine',
+    schedulerRegistry: bundle.schedulerRegistry,
+    runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef })
+  });
+  const quarantineQueue = quarantineScheduler.admit(graph, optionsOne);
+  const quarantineRunning = quarantineScheduler.leaseSelected({
+    ...contextInput(1, { formedAt: FORMED, observedAt: OBSERVED }),
+    leaseRef: 'context-lease.runtime-recovery.quarantine.1',
+    cancellationTokenRef: 'cancellation-token.runtime-recovery.quarantine.1'
+  });
+  if (quarantineQueue.state !== 'ADMITTED' || !quarantineRunning.admitted) {
+    throw new Error('quarantine proof did not receive its own scheduler-owned running lineage');
+  }
+  const quarantineExecutor = createDeterministicFaultInjector({
+    planRef: 'classifier-plan.runtime-recovery.simulation.quarantine',
+    failures: [{ attempt: 1, failureClass: 'ROLLBACK_FAILED_SIMULATED', message: 'deterministic rollback and restore failure' }]
+  });
   const quarantineFailure = executeWithRecoveryBoundary({
     aggregate: quarantineAggregate,
-    executor: () => {
-      const fault = createDeterministicFaultInjector({
-        failures: [{ attempt: 1, failureClass: 'ROLLBACK_FAILED_SIMULATED', message: 'deterministic rollback and restore failure' }]
-      });
-      return fault();
-    },
+    executor: quarantineExecutor,
     registry,
     context: boundaryContext(quarantineAggregate, 'attempt.runtime-recovery.quarantine.1', 1, OBSERVED, FAILED_AT)
   });
   quarantineAggregate = quarantineFailure.aggregate;
-  const quarantineAdmission = admitRecoveryCheckpoint(checkpoint, quarantineAggregate, {
-    schedulerCheckpoint: checkpointed.checkpoint,
+  const quarantineCheckpointed = quarantineScheduler.checkpoint({
+    checkpointRef: 'checkpoint.runtime-recovery.scheduler.quarantine.1',
+    workNodeRef: node.workNodeRef,
+    lastCompletedStep: 'typed-quarantine-failure-formed',
+    selectedSourceRefs: ['blueprint/runtime-recovery-registry.json'],
+    selectedContextRefs: [quarantineRunning.contextLease.leaseRef],
+    producedArtifactRefs: [],
+    producedReceiptRefs: [quarantineQueue.admissionReceipt.admissionReceiptRef],
+    openQuestions: [],
+    nextSafeAction: 'HOLD_QUARANTINE_FOR_REVIEW',
+    pendingToolCallRef: 'NONE',
+    sourceBindings,
+    formedAt: FAILED_AT
+  }, { releaseReceiptRef: 'release.runtime-recovery.checkpoint.quarantine.1', releasedAt: FAILED_AT });
+  const quarantineConsumption = quarantineScheduler.claimRecoveryCheckpoint(
+    quarantineCheckpointed.checkpoint.checkpointRef,
+    {
+      aggregateRef: quarantineAggregate.aggregateRef,
+      failureRef: quarantineFailure.failure.failureRef,
+      failureFingerprint: quarantineFailure.failure.semanticFingerprint,
+      sourceStateFingerprint,
+      observedAt: FAILED_AT
+    }
+  );
+  const quarantineCheckpoint = createRecoveryCheckpoint({
+    schedulerCheckpoint: quarantineCheckpointed.checkpoint,
+    schedulerConsumptionReceipt: quarantineConsumption,
+    aggregateRef: quarantineAggregate.aggregateRef,
+    failureRef: quarantineFailure.failure.failureRef,
+    failureFingerprint: quarantineFailure.failure.semanticFingerprint,
+    sourceStateFingerprint,
+    selectedSourceRanges: [{ sourceRef: 'blueprint/runtime-recovery-registry.json', start: 0, end: 1 }],
+    preservedIntentRef: 'intent.runtime-recovery.simulation',
+    preservedInterpretationRef: 'interpretation.runtime-recovery.simulation.quarantine',
+    preservedUnknownRefs: ['unknown.runtime-recovery.none'],
+    preservedAuthorityRef: 'authority.runtime-recovery.no-effect-only',
+    returnRouteRef: node.returnRouteRef,
+    formedAt: FAILED_AT
+  });
+  const quarantineAdmission = admitRecoveryCheckpoint(quarantineCheckpoint, quarantineAggregate, {
+    schedulerCheckpoint: quarantineCheckpointed.checkpoint,
+    schedulerConsumptionReceipt: quarantineConsumption,
     nextSchedulerGeneration: 2,
     currentSourceStateFingerprint: sourceStateFingerprint,
     observedAt: FAILED_AT,
     registry
   });
-  quarantineAggregate = recordRecoveryCheckpointAdmission(quarantineAggregate, checkpoint, quarantineAdmission, { registry });
+  quarantineAggregate = recordRecoveryCheckpointAdmission(
+    quarantineAggregate,
+    quarantineCheckpoint,
+    quarantineAdmission,
+    { schedulerConsumptionReceipt: quarantineConsumption, registry }
+  );
   const quarantineDecision = recordRecoveryPolicyDecision(quarantineAggregate, {
     checkpointAdmission: quarantineAdmission,
     observedAt: RECOVERED_AT,
@@ -709,6 +1149,28 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
   }
   journeyStates.push('QUARANTINE_ATTENTION_OWNED');
 
+  const representativeActions = [
+    ['direct-timeout-retry', 'MODEL_TIMEOUT_SIMULATED', 'direct'],
+    ['context-condensation', 'CONTEXT_BUDGET_EXCEEDED', 'context'],
+    ['resource-reduced-retry', 'RESOURCE_EXHAUSTION_SIMULATED', 'resource'],
+    ['transactional-rollback', 'PARTIAL_WRITE_SIMULATED', 'transaction'],
+    ['last-known-good-restore', 'PROCESS_TERMINATED_SIMULATED', 'restore'],
+    ['external-wait-resume', 'NETWORK_INTERRUPTION_SIMULATED', 'wait'],
+    ['split-work-return', 'CONTEXT_BUDGET_EXCEEDED', 'split'],
+    ['human-decision-hold', 'INVALID_STATE_TRANSITION', 'human'],
+    ['terminal-block', 'STALE_OR_CORRUPTED_CHECKPOINT', 'terminal']
+  ].map(([name, failureClass, mode]) => runRepresentativeActionBranch({
+    name,
+    failureClass,
+    mode,
+    bundle,
+    registry,
+    graph,
+    node,
+    trustSnapshot,
+    sourceStateFingerprint
+  }));
+
   const runtimeTwo = runtimeTrust(bundle.schedulerRegistry, resourceTwo, 2, {
     formedAt: FAILED_AT,
     observedAt: RECOVERED_AT
@@ -720,12 +1182,19 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       generation: 2, formedAt: FAILED_AT, observedAt: RECOVERED_AT
     }),
     sourceBindings,
-    contextInput: contextInput(2, { formedAt: FAILED_AT, observedAt: RECOVERED_AT })
+    contextInput: contextInput(2, { formedAt: FAILED_AT, observedAt: RECOVERED_AT }),
+    recovery: {
+      checkpointConsumptionReceipt: schedulerConsumption,
+      checkpointAdmission,
+      actionReceipt: action.actionReceipt
+    }
   });
+  const schedulerAggregateAfterResume = structuredClone(scheduler.aggregate);
   const continuation = createRecoveryContinuation({
     aggregate,
     checkpointAdmission,
     resumed,
+    schedulerAggregate: schedulerAggregateAfterResume,
     schedulerInstanceRef: scheduler.schedulerInstanceRef,
     observedAt: RECOVERED_AT,
     registry
@@ -817,11 +1286,32 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
   const sourceManifest = buildSourceManifest(root);
   const blueprint = validateBlueprint(bundle);
   const eventTypes = new Set(aggregate.eventLedger.map((item) => item.type));
-  const requiredReplayEvents = RECOVERY_EVENT_TYPES.filter((type) => ![
-    'ROLLBACK_VERIFIED', 'QUARANTINED', 'HUMAN_DECISION_REQUESTED'
-  ].includes(type));
+  const semanticReplayEventTypes = new Set([
+    ...eventTypes,
+    ...quarantineAggregate.eventLedger.map((item) => item.type),
+    ...representativeActions.flatMap((item) => item.aggregate.eventLedger.map((event) => event.type))
+  ]);
   const exactGateCoverage = semanticHash(completed.completionEvidenceLineage.gateEvidence.map((item) => item.completionGateRef).sort()) ===
     semanticHash([...RECOVERY_COMPLETION_GATE_REFS].sort());
+  const thenableAggregate = () => createRecoveryAggregate({
+    aggregateRef: 'aggregate.runtime-recovery.thenable-proof',
+    workNodeRef: node.workNodeRef,
+    sourceStateFingerprint,
+    schedulerGeneration: 1,
+    retryBudget: registry.retryPolicy
+  }, { registry });
+  const resolvedThenable = executeWithRecoveryBoundary({
+    aggregate: thenableAggregate(),
+    executor: () => Promise.resolve({ state: 'PASS' }),
+    registry,
+    context: boundaryContext(thenableAggregate(), 'attempt.runtime-recovery.thenable.resolve.1', 1, OBSERVED, FAILED_AT)
+  });
+  const rejectedThenable = executeWithRecoveryBoundary({
+    aggregate: thenableAggregate(),
+    executor: () => Promise.reject(new Error('deterministic rejected thenable proof')),
+    registry,
+    context: boundaryContext(thenableAggregate(), 'attempt.runtime-recovery.thenable.reject.1', 1, OBSERVED, FAILED_AT)
+  });
   const receipt = {
     schemaVersion: 'vexlife.runtime-recovery-simulation-receipt/v1',
     receiptRef: `receipt.runtime-recovery.simulation.${sourceManifest.treeSha256.slice(0, 24)}`,
@@ -841,37 +1331,30 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     finalExecutorOutcome: succeeded.status,
     boundaryTotalityAndSourcePolicyProof: {
       preAdmissionTyped: true,
-      thenableRejectedTyped: executeWithRecoveryBoundary({
-        aggregate: createRecoveryAggregate({
-          aggregateRef: 'aggregate.runtime-recovery.thenable-proof',
-          workNodeRef: node.workNodeRef,
-          sourceStateFingerprint,
-          schedulerGeneration: 1,
-          retryBudget: registry.retryPolicy
-        }, { registry }),
-        executor: () => Promise.resolve({ state: 'PASS' }),
-        registry,
-        context: boundaryContext(createRecoveryAggregate({
-          aggregateRef: 'aggregate.runtime-recovery.thenable-proof',
-          workNodeRef: node.workNodeRef,
-          sourceStateFingerprint,
-          schedulerGeneration: 1,
-          retryBudget: registry.retryPolicy
-        }, { registry }), 'attempt.runtime-recovery.thenable.1', 1, OBSERVED, FAILED_AT)
-      }).boundaryRejection?.reasonCode === 'THENABLE_EXECUTOR_UNSUPPORTED',
+      resolvedThenableRejectedTyped: resolvedThenable.boundaryRejection?.reasonCode === 'THENABLE_EXECUTOR_UNSUPPORTED',
+      rejectedThenableRejectedTyped: rejectedThenable.boundaryRejection?.reasonCode === 'THENABLE_EXECUTOR_UNSUPPORTED',
+      rejectedThenableConsumed: rejectedThenable.boundaryRejection?.rejectionConsumptionState === 'REJECTION_HANDLER_ATTACHED',
       registryBudgetFingerprint: aggregate.retryBudgetFingerprint,
       callerHintsCannotWeaken: failed.failure.partialEffectState === 'CONFIRMED_REVERSIBLE',
+      classifierSourceRef: failed.failure.classificationSourceRef,
+      classifierAdapterRef: failed.failure.classificationAdapterRef,
+      classifierPlanRef: failed.failure.classifierPlanRef,
+      classifierEvidenceFingerprint: failed.failure.classificationEvidenceFingerprint,
       policyDecisionFingerprint: decided.policyDecision.semanticFingerprint
     },
     checkpointFreshGenerationSixLeaseProof: {
       schedulerCheckpointRef: checkpointed.checkpoint.checkpointRef,
       schedulerCheckpointFingerprint: checkpointed.checkpoint.semanticFingerprint,
+      schedulerConsumptionRef: schedulerConsumption.consumptionRef,
+      schedulerConsumptionFingerprint: schedulerConsumption.semanticFingerprint,
+      onceOnlyActivationRef: schedulerConsumption.onceOnlyActivationRef,
       checkpointAdmissionRef: checkpointAdmission.admissionRef,
       checkpointAdmissionFingerprint: checkpointAdmission.semanticFingerprint,
       releasedLeaseCount: checkpointed.leaseReleaseReceipts.length,
       releasedLeaseFingerprints: Object.fromEntries(checkpointed.leaseReleaseReceipts.map((item) => [item.leaseRef, item.semanticFingerprint])),
       continuationRef: continuation.continuationRef,
       continuationFingerprint: continuation.semanticFingerprint,
+      schedulerResumeFingerprint: continuation.schedulerResumeReceiptFingerprint,
       freshLeaseCount: Object.keys(continuation.freshLeaseFingerprints).length,
       freshLeaseFingerprints: continuation.freshLeaseFingerprints,
       generationAdvanced: continuation.priorSchedulerGeneration === 1 && continuation.nextSchedulerGeneration === 2
@@ -882,7 +1365,8 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       finalReplayedFingerprint: restoreRecoveryAggregate(serializeRecoveryAggregate(aggregate, { registry }), { registry }).semanticFingerprint,
       eventCount: aggregate.eventLedger.length,
       eventTypes: [...eventTypes].sort(),
-      requiredEventTypesCovered: requiredReplayEvents.every((type) => eventTypes.has(type)),
+      semanticReplayEventTypes: [...semanticReplayEventTypes].sort(),
+      requiredEventTypesCovered: RECOVERY_EVENT_TYPES.every((type) => semanticReplayEventTypes.has(type)),
       duplicateChanged: duplicateExternal.changed,
       staleChanged: staleExternal.changed,
       illegalHistoryRejected
@@ -890,8 +1374,9 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     aggregateOwnedRecoveryActionProof: {
       actionReceiptRef: action.actionReceipt.actionReceiptRef,
       actionReceiptFingerprint: action.actionReceipt.semanticFingerprint,
-      contextRecoveryFingerprint: contextProof.semanticFingerprint,
-      resourceRecoveryFingerprint: resourceProof.semanticFingerprint,
+      actionReceipt: action.actionReceipt,
+      contextRecoveryFingerprint: null,
+      resourceRecoveryFingerprint: null,
       transactionalRecoveryFingerprint: transaction.semanticFingerprint,
       lastKnownGoodReadBackFingerprint: transaction.lastKnownGoodReadBackFingerprint,
       rollbackLineageCount: closed.aggregate.rollbackLineage.length,
@@ -900,6 +1385,32 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       quarantineRefs: quarantineAggregate.quarantinedRefs,
       quarantineHealth: quarantineProjection.health.state,
       quarantineGuideBlocked: quarantineProjection.guide.remainsBlocked
+    },
+    actionSpecificRecoveryProof: {
+      matrixFingerprint: semanticHash(registry.recoveryActionEvidenceMatrix),
+      journeys: representativeActions.map((item) => ({
+        name: item.name,
+        action: item.action,
+        disposition: item.disposition,
+        continuationRequired: item.continuationRequired,
+        completionEligible: item.completionEligible,
+        evidenceRoles: item.evidenceRoles,
+        schedulerResumeFingerprint: item.schedulerResumeFingerprint,
+        convergenceFingerprint: item.convergenceFingerprint,
+        finalPhase: item.finalPhase
+      })),
+      quarantine: {
+        action: quarantineAggregate.currentRecoveryActionReceipt.action,
+        disposition: quarantineAggregate.currentRecoveryActionReceipt.disposition,
+        evidenceRoles: quarantineAggregate.currentRecoveryActionReceipt.evidence.map((item) => item.role),
+        continuationRequired: false,
+        completionEligible: false,
+        schedulerResumeFingerprint: null,
+        convergenceFingerprint: null,
+        finalPhase: quarantineAggregate.phase,
+        checkpointFingerprint: quarantineCheckpoint.semanticFingerprint,
+        schedulerConsumptionFingerprint: quarantineConsumption.semanticFingerprint
+      }
     },
     schedulerWorkgraphCausalRecoveryProof: {
       independentSchedulerSimulationUsed: false,
@@ -955,6 +1466,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       failedAggregate: failed.aggregate,
       checkpoint,
       schedulerCheckpoint: checkpointed.checkpoint,
+      schedulerConsumption,
       checkpointAdmission,
       checkpointedAggregate: decided.aggregate,
       contextProof,
@@ -963,12 +1475,14 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       actionReceipt: action.actionReceipt,
       actionAggregate: action.aggregate,
       resumed,
+      schedulerAggregateAfterResume,
       continuation,
       continuedAggregate: succeeded.aggregate,
       succeeded,
       convergence,
       convergedAggregate,
-      completed
+      completed,
+      representativeActions
     })
   });
 }

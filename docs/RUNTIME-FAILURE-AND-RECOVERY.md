@@ -25,7 +25,8 @@ The write side is [`blueprint/runtime-recovery-registry.json`](../blueprint/runt
 - the complete failure, executor-outcome, recovery-action and typed-event vocabularies;
 - the failure envelope and replay-derived recovery aggregate contracts;
 - exact attempt, recurrence, per-attempt wall-time and total wall-time bounds;
-- checkpoint, context, resource and transactional recovery requirements;
+- registered classifier sources/adapters, typed event payload schemas and action-specific evidence matrices;
+- checkpoint single-use ownership, context, resource and transactional recovery requirements;
 - compact projection identities;
 - the integrated scheduler/Workgraph receipt contract and held boundaries.
 
@@ -47,7 +48,7 @@ src/core/recovery-fault-injector.mjs
 
 ## Typed total boundary and exact budgets
 
-Every canonical failure binds its source, work node, scheduler generation, operation, attempt, expected transition, source-state fingerprint, exact time, classification evidence and bounded evidence refs. `failureRef` is derived from its semantic fingerprint. Caller-authored classification hints cannot weaken source-managed retry, partial-effect or human-attention defaults.
+Every canonical failure binds its registered classifier source, exact adapter, content-addressed classifier plan, work node, scheduler generation, operation, attempt, expected transition, source-state fingerprint, exact time, classification evidence and bounded evidence refs. `failureRef` is derived from its semantic fingerprint. Executor error fields remain evidence only: the canonical classifier issues the failure class and exact retry, partial-effect and human-attention defaults.
 
 Every admitted synchronous boundary returns exactly one of:
 
@@ -59,36 +60,36 @@ FAILED_QUARANTINED
 FAILED_BLOCKED
 ```
 
-Malformed, stale, replayed, wrong-generation, over-budget, async-function and thenable inputs are rejected as typed boundary results without mutating the aggregate. Admitted attempts record exact start and success/failure chronology. Recovery uses the registry budget verbatim; callers cannot replace or reset it.
+Malformed, stale, replayed, wrong-generation, over-budget and async-function inputs are rejected as typed boundary results without mutating the aggregate. Both resolved and rejected thenables receive the same typed unsupported result; rejected thenables have a rejection handler attached before return so no rejection escapes the boundary. Admitted attempts record exact start and success/failure chronology. Recovery uses the registry budget verbatim; callers cannot replace or reset it.
 
 ## Scheduler checkpoint and continuation
 
-Consequential recovery consumes one exact accepted scheduler checkpoint and the scheduler's six worker, context, resource, capability, effect and occupancy release receipts. The checkpoint must bind the same work node and source state, seal the old generation and admit the next generation exactly once.
+Consequential recovery consumes one exact accepted scheduler checkpoint and the scheduler's six worker, context, resource, capability, effect and occupancy release receipts. Before admission, the scheduler issues one current-pointer consumption receipt binding the checkpoint and release set to the exact aggregate, active failure and once-only activation ref. The checkpoint must bind the same work node and source state, seal the old generation and admit the next generation exactly once. Cross-aggregate, cross-failure, duplicate, post-continuation and release-reuse attempts fail closed.
 
-Retry then consumes the scheduler-issued resume result and six fresh leases for the new generation. Raw checkpoints, stale generations, reused lease fingerprints, caller-invented generations and same-ref/different-content substitutions fail closed.
+Retry then consumes one scheduler-owned recovery resume receipt and six fresh leases for the new generation. That receipt binds the exact action and checkpoint admission. For context actions it also binds immutable source coverage, summaries, intent, interpretation, unknowns, authority, return route and token budget into the new context lease. For resource actions it binds the exact reduced request and admission into the new resource lease. Raw checkpoints, generic context substitutions, detached resource leases, stale generations, reused lease fingerprints, caller-invented generations and same-ref/different-content substitutions fail closed.
 
 ## Replay-derived aggregate
 
-Typed, content-addressed events are the only mutation path. Reducer replay derives phase, attempt chronology, budget use, active failure, checkpoint and continuation lineage, current policy and action receipts, rollback/last-known-good/quarantine evidence, accepted external events, convergence and terminal state.
+Typed, content-addressed events are the only mutation path. Every registered event has one exact payload schema and semantic replayer. Replay reconstructs context receipts from their source segments, resource receipts from the exact snapshot and requests, transactional outcomes from a registered no-effect adapter/fault plan, human gates from aggregate-owned policy, action receipts from the registered evidence matrix, scheduler continuation from its consumption receipt, and terminal closure from its canonical scheduler evidence.
 
 Serialization persists the event ledger and derived snapshot. Restore replays the ledger and compares every persisted derived field with the replay result. Impossible order, budget reset, forged final state, duplicate terminal closure, stale external events and same-ref/different-content events are rejected. Exact duplicates are semantic no-ops.
 
 ## Aggregate-owned recovery actions
 
-Policy decisions do not directly mutate runtime state. The aggregate records the selected action and consumes the exact evidence required by that action:
+Policy decisions do not directly mutate runtime state. The registry names required, optional and forbidden evidence, disposition, continuation need, wait/human requirement and completion eligibility for every action. The aggregate records the selected action and consumes only its exact evidence:
 
 - context condensation and preservation receipts;
 - resource-reduction receipts;
 - before-image, partial-result and rollback read-back receipts;
 - exact last-known-good expected/read-back fingerprints;
 - quarantine ownership and reasons;
-- explicit smallest-question human gates.
+- current external wait/resume events, split-child return routes and explicit source-managed smallest-question human gates.
 
 Rollback failure never restores green Health. A failed last-known-good read-back keeps the adapter or artifact quarantined. Human projections retain what failed, the active route, preserved evidence, recovered attempt/generation, terminal proof, quarantine and decision-gate state after recovery activity.
 
 ## Causal Workgraph completion
 
-`recovery:simulate` creates one actual registered recovery Workgraph node and advances it through the accepted scheduler APIs. The recovery convergence receipt content-addresses the exact failure, policy, scheduler checkpoint, six release receipts, checkpoint admission, context/resource recovery, rollback/last-known-good evidence, action receipt, continuation, six fresh leases and successful execution.
+`recovery:simulate` creates one actual registered recovery Workgraph node and advances it through the accepted scheduler APIs. Its primary convergence receipt contains the fixed checkpoint lineage, only the evidence allowed for the selected rollback action, the scheduler-owned resume/continuation, six fresh leases and successful execution. Separate deterministic branches cover direct retry, context recovery, resource reduction, rollback, last-known-good restore, external wait/resume, split return, human hold, terminal block and quarantine; the quarantine proof owns a distinct scheduler checkpoint and release lineage.
 
 The Workgraph completion verifier consumes that convergence receipt as its registered completion-gate observation. Terminal closure then consumes the full canonical scheduler checkpoint, completion verification, evidence lineage, Workgraph transition, completion and return-route receipts. A successful executor result alone cannot close recovery, and substituted scheduler or causal evidence fails closed.
 

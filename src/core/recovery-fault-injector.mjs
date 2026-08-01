@@ -1,5 +1,5 @@
 import { semanticHash } from './utils.mjs';
-import { createSourceManagedFailureEvidence } from './runtime-failure.mjs';
+import { createDeterministicClassifiedExecutor } from './runtime-failure.mjs';
 
 function clone(value) {
   return structuredClone(value);
@@ -24,16 +24,16 @@ export class SimulatedRuntimeFailure extends Error {
     this.partialEffectState = partialEffectState;
     this.humanAttentionClass = humanAttentionClass;
     this.evidenceRefs = [...evidenceRefs];
-    this.sourceManagedFailureEvidence = createSourceManagedFailureEvidence({
-      failureClass,
-      sourceRef: 'source.runtime-recovery.deterministic-fault-plan',
-      error: this
-    });
   }
 }
 
-export function createDeterministicFaultInjector({ failures = [], successValue = { state: 'PASS' } } = {}) {
-  let callCount = 0;
+export function createDeterministicFaultInjector({
+  failures = [],
+  successValue = { state: 'PASS' },
+  planRef = 'classifier-plan.runtime-recovery.deterministic-fixture',
+  sourceRef = 'source.runtime-recovery.deterministic-fault-plan',
+  adapterRef = 'adapter.runtime-recovery.classifier.deterministic-fault-plan'
+} = {}) {
   const plan = failures.map((item, index) => ({
     attempt: item.attempt ?? index + 1,
     failureClass: item.failureClass,
@@ -42,16 +42,17 @@ export function createDeterministicFaultInjector({ failures = [], successValue =
     humanAttentionClass: item.humanAttentionClass ?? null,
     evidenceRefs: item.evidenceRefs ?? []
   }));
-  const executor = () => {
-    callCount += 1;
-    const fault = plan.find((item) => item.attempt === callCount);
-    if (fault) {
-      throw new SimulatedRuntimeFailure(fault.failureClass, fault.message, fault);
+  return createDeterministicClassifiedExecutor({
+    sourceRef,
+    adapterRef,
+    planRef,
+    plan,
+    invoke(attempt) {
+      const fault = plan.find((item) => item.attempt === attempt);
+      if (fault) throw new SimulatedRuntimeFailure(fault.failureClass, fault.message, fault);
+      return clone(successValue);
     }
-    return clone(successValue);
-  };
-  Object.defineProperty(executor, 'callCount', { get: () => callCount });
-  return executor;
+  });
 }
 
 export function createNoEffectTransactionalAdapter({
@@ -66,10 +67,29 @@ export function createNoEffectTransactionalAdapter({
   let current = clone(initialState);
   const before = clone(initialState);
   const lastKnownGood = clone(lastKnownGoodState);
+  const faultPlanRef = rollbackFails
+    ? (restoreFails
+      ? 'fault-plan.runtime-recovery.partial-write.rollback-and-lkg-fail'
+      : 'fault-plan.runtime-recovery.partial-write.rollback-fails-lkg-restores')
+    : 'fault-plan.runtime-recovery.partial-write.rollback-restores';
+  const recoveryContract = {
+    schemaVersion: 'vexlife.runtime-transactional-adapter-contract/v1',
+    adapterRef,
+    effectClass: 'DETERMINISTIC_NO_EFFECT',
+    faultPlanRef,
+    partialWrite,
+    rollbackFails,
+    restoreFails,
+    beforeFingerprint: semanticHash(before),
+    attemptedFingerprint: semanticHash(attemptedState),
+    lastKnownGoodFingerprint: semanticHash(lastKnownGood)
+  };
+  recoveryContract.semanticFingerprint = semanticHash(recoveryContract);
   const read = () => freeze({ value: clone(current), fingerprint: semanticHash(current) });
   return Object.freeze({
     adapterRef,
     effectClass: 'DETERMINISTIC_NO_EFFECT',
+    recoveryContract: freeze(recoveryContract),
     read,
     attemptTransition() {
       current = partialWrite ? clone(attemptedState) : clone(before);
@@ -126,6 +146,7 @@ export function simulateTransactionalRecovery({
       rollbackReceiptRef,
       operationRef,
       adapterRef: adapter.adapterRef,
+      adapterContract: adapter.recoveryContract,
       state: 'BLOCKED',
       reason: 'EXPECTED_BEFORE_FINGERPRINT_MISMATCH',
       expectedBeforeFingerprint,
@@ -185,6 +206,7 @@ export function simulateTransactionalRecovery({
     rollbackReceiptRef,
     operationRef,
     adapterRef: adapter.adapterRef,
+    adapterContract: adapter.recoveryContract,
     state,
     reason,
     expectedBeforeFingerprint,
