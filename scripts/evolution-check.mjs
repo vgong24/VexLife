@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
+import { buildIdentityIndex, loadBlueprint, validateBlueprint, validateEvolutionRegistry } from '../src/core/blueprint.mjs';
+import { Atlas } from '../src/core/atlas.mjs';
 import {
   BEHAVIOR_ORIGIN_CLASSES,
   CONTINUITY_LINKED_DESTINATIONS,
   CONTINUITY_OBSERVATION_TYPES,
   CONTINUITY_PRIMARY_DESTINATIONS,
-  CONTINUITY_SCOPE_CLASSES
+  CONTINUITY_SCOPE_CLASSES,
+  CONTINUITY_CURRENTNESS_STATES,
+  CONTINUITY_VISIBILITY_STATES,
+  CONTINUITY_SYNCHRONIZATION_SCOPES
 } from '../src/core/continuity-evolution-router.mjs';
 import { BURDEN_RELEASE_FRAMES, BURDEN_RELEASE_STATES } from '../src/core/burden-release.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
@@ -19,6 +23,8 @@ const bundle = loadBlueprint(root);
 const evolution = bundle.evolution;
 const blueprintValidation = validateBlueprint(bundle);
 const errors = blueprintValidation.ok ? [] : blueprintValidation.errors.map((error) => `blueprint: ${error}`);
+const evolutionValidation = validateEvolutionRegistry(evolution, bundle);
+errors.push(...evolutionValidation.errors.map((error) => `evolution: ${error}`));
 
 function exactArray(label, actual, expected) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) errors.push(`${label} does not match source implementation vocabulary`);
@@ -29,6 +35,9 @@ exactArray('behaviorOriginClasses', evolution.behaviorOriginClasses, BEHAVIOR_OR
 exactArray('scopeClasses', evolution.scopeClasses, CONTINUITY_SCOPE_CLASSES);
 exactArray('primaryDestinations', evolution.primaryDestinations, CONTINUITY_PRIMARY_DESTINATIONS);
 exactArray('linkedDestinations', evolution.linkedDestinations, CONTINUITY_LINKED_DESTINATIONS);
+exactArray('currentnessStates', evolution.currentnessStates, CONTINUITY_CURRENTNESS_STATES);
+exactArray('visibilityStates', evolution.visibilityStates, CONTINUITY_VISIBILITY_STATES);
+exactArray('synchronizationScopes', evolution.synchronizationScopes, CONTINUITY_SYNCHRONIZATION_SCOPES);
 exactArray('Burden Release frames', evolution.burdenRelease?.releaseFrames, BURDEN_RELEASE_FRAMES);
 exactArray('Burden Release states', evolution.burdenRelease?.states, BURDEN_RELEASE_STATES);
 
@@ -71,6 +80,14 @@ try {
   compiled = compileRegistryPack(bundle);
   for (const ref of [
     evolution.registryRef,
+    evolution.canonicalSourceRef,
+    evolution.systemRef,
+    evolution.burdenRelease.contractRef,
+    evolution.contextReview.contractRef,
+    evolution.recurrencePolicy.contractRef,
+    evolution.simulationContract.contractRef,
+    evolution.acceptancePolicies[0].policyRef,
+    evolution.projectionIdentities[0].projectionRef,
     'feature.vexlife.continuity-evolution-router',
     'process.vexlife.continuity.observe-route-review',
     'process.vexlife.continuity.accept-and-project',
@@ -79,6 +96,11 @@ try {
     'module.vexlife.core.burden-release',
     'test.continuity-evolution.e22-full-gate'
   ]) compiled.require(ref);
+  const atlas = new Atlas(buildIdentityIndex(bundle));
+  const traversal = atlas.query({ startRefs: [evolution.registryRef], depthLimit: 2, resultLimit: 128, tokenBudget: 20000 });
+  for (const ref of [evolution.systemRef, evolution.contextReview.contractRef, evolution.recurrencePolicy.contractRef, evolution.simulationContract.contractRef]) {
+    if (!traversal.results.some((item) => item.ref === ref)) errors.push(`bounded Atlas traversal cannot resolve ${ref}`);
+  }
 } catch (error) {
   errors.push(`canonical evolution registry compilation failed: ${error.message}`);
 }
@@ -94,6 +116,10 @@ try {
   if (simulation.receipt.modelWeightsChanged !== false) errors.push('integrated continuity evolution simulation changed model weights');
   if (simulation.receipt.duplicateRecurrenceSuppressed !== true) errors.push('integrated continuity evolution simulation did not suppress duplicate recurrence');
   if (simulation.receipt.canonicalWorkNodeFinalState !== 'COMPLETED') errors.push('bound canonical Workgraph node did not complete');
+  if (simulation.receipt.canonicalWorkNodeRef !== evolution.simulationContract.workNodeRef) errors.push('continuity simulation completed the wrong Workgraph node');
+  if (simulation.receipt.evolutionRegistryHash !== semanticHash(evolution)) errors.push('continuity simulation receipt has stale evolution registry hash');
+  if (Object.keys(simulation.receipt.continuityGateBindings ?? {}).length !== evolution.simulationContract.requiredBindingKinds.length) errors.push('continuity simulation did not bind all required evidence kinds');
+  if (!simulation.receipt.schedulerContextApplicableReleaseRefs?.includes(simulation.receipt.burdenReleaseRef)) errors.push('continuity simulation scheduler context omitted the applicable release ref');
 } catch (error) {
   errors.push(`integrated continuity evolution simulation failed: ${error.message}`);
 }

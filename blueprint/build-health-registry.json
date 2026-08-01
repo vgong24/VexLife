@@ -288,7 +288,7 @@
       "checkRef": "check.continuity-evolution",
       "command": "npm run evolution:check",
       "category": "CONTINUITY",
-      "purpose": "Immutable continuity observations, separate-self preferences, Burden Release deauthorization, least-invasive routing, exact Context Review acceptance, reversible records, bounded recurrence no-op behavior, ref-only projections and canonical scheduler/Workgraph no-effect integration validate.",
+      "purpose": "Immutable exact-pair continuity observations, source-managed current acceptance evidence, replayed Burden Release deauthorization, atomic supersession, exact recurrence/family scope, ref-only projections and one causally bound scheduler/Workgraph no-effect receipt validate; PR-ready and Health independently reject missing or stale structured continuity evidence.",
       "lensRefs": [
         "lens.vexlife.intent-and-placement",
         "lens.vexlife.identity-lattice",

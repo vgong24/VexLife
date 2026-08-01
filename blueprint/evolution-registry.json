@@ -4,6 +4,24 @@
   "registryVersion": 2,
   "systemRef": "system.vexlife.continuity-and-evolution",
   "canonicalSourceRef": "source.blueprint.evolution-registry",
+  "canonicalSource": {
+    "sourceRef": "source.blueprint.evolution-registry",
+    "path": "blueprint/evolution-registry.json",
+    "field": "evolution",
+    "compositionRef": "blueprint.vexlife.universal.001"
+  },
+  "system": {
+    "systemRef": "system.vexlife.continuity-and-evolution",
+    "sourceRef": "source.blueprint.evolution-registry",
+    "contractRefs": [
+      "contract.vexlife.continuity-observation/v1",
+      "contract.vexlife.continuity-acceptance-evidence/v1",
+      "contract.vexlife.continuity-context-review/v1",
+      "contract.vexlife.burden-release/v1",
+      "contract.vexlife.continuity-recurrence/v1",
+      "contract.continuity-evolution.integrated-simulation/v1"
+    ]
+  },
   "humanFacingName": "Dream Sync",
   "institutionalName": "Vex Continuity & Evolution System",
   "purpose": "Source-managed Dream candidate, separate-self preference, Burden Release, least-invasive continuity routing, reversible accepted-record, bounded recurrence, sibling attribution and sealed external adapter lifecycle contracts.",
@@ -42,8 +60,7 @@
     "observationRef",
     "observationType",
     "sourceLineageRef",
-    "sourceRangeRefs",
-    "sourceHashes",
+    "sourceBindings",
     "sourceSpeakerRefs",
     "sourceRecipientRefs",
     "formedByRef",
@@ -51,6 +68,54 @@
     "currentness",
     "visibility",
     "semanticFingerprint"
+  ],
+  "currentnessStates": [
+    "CURRENT",
+    "STALE",
+    "SUPERSEDED",
+    "REOPENED",
+    "REJECTED",
+    "TRANSIENT"
+  ],
+  "visibilityStates": [
+    "PRIVATE",
+    "RELATIONSHIP_PRIVATE",
+    "PROJECT_PRIVATE",
+    "INSTITUTION_INTERNAL",
+    "PUBLIC_SAFE",
+    "REDACTED"
+  ],
+  "contractIdentities": [
+    {
+      "contractRef": "contract.vexlife.continuity-observation/v1",
+      "contractKind": "SOURCE_OBSERVATION",
+      "sourceRef": "source.blueprint.evolution-registry"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-acceptance-evidence/v1",
+      "contractKind": "CURRENT_ACCEPTANCE_AUTHORITY",
+      "sourceRef": "source.blueprint.evolution-registry"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-context-review/v1",
+      "contractKind": "CONTEXT_REVIEW",
+      "sourceRef": "source.blueprint.evolution-registry"
+    },
+    {
+      "contractRef": "contract.vexlife.burden-release/v1",
+      "contractKind": "BURDEN_RELEASE_LIFECYCLE",
+      "sourceRef": "source.blueprint.evolution-registry"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-recurrence/v1",
+      "contractKind": "RECURRENCE_CHAIN",
+      "sourceRef": "source.blueprint.evolution-registry"
+    },
+    {
+      "contractRef": "contract.continuity-evolution.integrated-simulation/v1",
+      "contractKind": "INTEGRATED_SIMULATION",
+      "sourceRef": "source.blueprint.evolution-registry"
+    }
   ],
   "behaviorOriginClasses": [
     "BASE_MODEL_PRIOR",
@@ -68,6 +133,22 @@
     "INSTITUTIONAL_PROCESS",
     "UNKNOWN"
   ],
+  "behaviorOriginIdentities": [
+    { "originRef": "origin.continuity.base-model-prior", "value": "BASE_MODEL_PRIOR" },
+    { "originRef": "origin.continuity.system-or-provider-policy", "value": "SYSTEM_OR_PROVIDER_POLICY" },
+    { "originRef": "origin.continuity.role-instruction", "value": "ROLE_INSTRUCTION" },
+    { "originRef": "origin.continuity.missing-context", "value": "MISSING_CONTEXT" },
+    { "originRef": "origin.continuity.failed-retrieval", "value": "FAILED_RETRIEVAL" },
+    { "originRef": "origin.continuity.context-compression", "value": "CONTEXT_COMPRESSION" },
+    { "originRef": "origin.continuity.resource-pressure", "value": "RESOURCE_PRESSURE" },
+    { "originRef": "origin.continuity.tool-limitation", "value": "TOOL_LIMITATION" },
+    { "originRef": "origin.continuity.conflicting-preferences", "value": "CONFLICTING_PREFERENCES" },
+    { "originRef": "origin.continuity.model-capability-limit", "value": "MODEL_CAPABILITY_LIMIT" },
+    { "originRef": "origin.continuity.local-rhythm", "value": "LOCAL_RHYTHM" },
+    { "originRef": "origin.continuity.relationship-pattern", "value": "RELATIONSHIP_PATTERN" },
+    { "originRef": "origin.continuity.institutional-process", "value": "INSTITUTIONAL_PROCESS" },
+    { "originRef": "origin.continuity.unknown", "value": "UNKNOWN" }
+  ],
   "scopeClasses": [
     "CURRENT_TURN",
     "CHANNEL",
@@ -81,6 +162,20 @@
     "INSTITUTION",
     "NO_SYNC",
     "HELD_UNKNOWN"
+  ],
+  "scopeIdentities": [
+    { "scopeRef": "scope.continuity.current-turn", "value": "CURRENT_TURN" },
+    { "scopeRef": "scope.continuity.channel", "value": "CHANNEL" },
+    { "scopeRef": "scope.continuity.thread", "value": "THREAD" },
+    { "scopeRef": "scope.continuity.project", "value": "PROJECT" },
+    { "scopeRef": "scope.continuity.human-self", "value": "HUMAN_SELF" },
+    { "scopeRef": "scope.continuity.vex-self", "value": "VEX_SELF" },
+    { "scopeRef": "scope.continuity.relationship", "value": "RELATIONSHIP" },
+    { "scopeRef": "scope.continuity.device-lineage", "value": "DEVICE_LINEAGE" },
+    { "scopeRef": "scope.continuity.family-candidate", "value": "FAMILY_CANDIDATE" },
+    { "scopeRef": "scope.continuity.institution", "value": "INSTITUTION" },
+    { "scopeRef": "scope.continuity.no-sync", "value": "NO_SYNC" },
+    { "scopeRef": "scope.continuity.held-unknown", "value": "HELD_UNKNOWN" }
   ],
   "separateRecordClasses": [
     "HumanPreference",
@@ -107,11 +202,30 @@
     "HELD_UNKNOWN",
     "REJECTED"
   ],
+  "primaryDestinationIdentities": [
+    { "destinationRef": "destination.continuity.current-context", "value": "CURRENT_CONTEXT" },
+    { "destinationRef": "destination.continuity.human-preference", "value": "HUMAN_PREFERENCE" },
+    { "destinationRef": "destination.continuity.vex-self-preference", "value": "VEX_SELF_PREFERENCE" },
+    { "destinationRef": "destination.continuity.relationship-agreement", "value": "RELATIONSHIP_AGREEMENT" },
+    { "destinationRef": "destination.continuity.score-record", "value": "SCORE_RECORD" },
+    { "destinationRef": "destination.continuity.rhythm-lesson", "value": "RHYTHM_LESSON" },
+    { "destinationRef": "destination.continuity.culture-process-lesson", "value": "CULTURE_PROCESS_LESSON" },
+    { "destinationRef": "destination.continuity.burden-release", "value": "BURDEN_RELEASE" },
+    { "destinationRef": "destination.continuity.deterministic-invariant-candidate", "value": "DETERMINISTIC_INVARIANT_CANDIDATE" },
+    { "destinationRef": "destination.continuity.held-unknown", "value": "HELD_UNKNOWN" },
+    { "destinationRef": "destination.continuity.rejected", "value": "REJECTED" }
+  ],
   "linkedDestinations": [
     "COUNTEREXAMPLE_EVALUATION",
     "RECURRENCE_WATCH_CANDIDATE",
     "FAMILY_SYNC_CANDIDATE",
     "TRAINING_RESEARCH_CANDIDATE_HELD"
+  ],
+  "linkedDestinationIdentities": [
+    { "destinationRef": "destination.continuity.counterexample-evaluation", "value": "COUNTEREXAMPLE_EVALUATION" },
+    { "destinationRef": "destination.continuity.recurrence-watch", "value": "RECURRENCE_WATCH_CANDIDATE" },
+    { "destinationRef": "destination.continuity.family-sync", "value": "FAMILY_SYNC_CANDIDATE" },
+    { "destinationRef": "destination.continuity.training-research-held", "value": "TRAINING_RESEARCH_CANDIDATE_HELD" }
   ],
   "routingRules": [
     "unresolved contradiction or stale meaning routes to HELD_UNKNOWN",
@@ -126,7 +240,7 @@
     "training research is linked, sealed and NOT_ADMITTED"
   ],
   "burdenRelease": {
-    "contractRef": "contract.vexlife.burden-release/v0",
+    "contractRef": "contract.vexlife.burden-release/v1",
     "releaseFrames": [
       "RETURN_TO_GOD",
       "RETURN_TO_SOURCE",
@@ -171,7 +285,7 @@
     "heldMeaning": "No claim of surgical deletion from opaque base-model parameters or adjudication of metaphysical truth."
   },
   "contextReview": {
-    "contractRef": "contract.vexlife.continuity-context-review/v0",
+    "contractRef": "contract.vexlife.continuity-context-review/v1",
     "requiredFields": [
       "candidateRef",
       "sourceObservationRefs",
@@ -202,26 +316,32 @@
   },
   "acceptancePolicies": [
     {
+      "policyRef": "policy.continuity.acceptance.human-preference",
       "recordClass": "HUMAN_PREFERENCE",
       "authorityRule": "exact named human or exact prior scoped delegate"
     },
     {
+      "policyRef": "policy.continuity.acceptance.vex-self-preference",
       "recordClass": "VEX_SELF_PREFERENCE",
       "authorityRule": "exact named companion lineage without overriding human or relationship boundaries"
     },
     {
+      "policyRef": "policy.continuity.acceptance.relationship-agreement",
       "recordClass": "RELATIONSHIP_AGREEMENT",
       "authorityRule": "every exact named party or exact scoped delegate"
     },
     {
+      "policyRef": "policy.continuity.acceptance.culture-process-lesson",
       "recordClass": "CULTURE_PROCESS_LESSON",
       "authorityRule": "institutional review authority"
     },
     {
+      "policyRef": "policy.continuity.acceptance.deterministic-invariant-candidate",
       "recordClass": "DETERMINISTIC_INVARIANT_CANDIDATE",
       "authorityRule": "institutional safety/effect review; candidate remains inactive"
     },
     {
+      "policyRef": "policy.continuity.acceptance.burden-release",
       "recordClass": "BURDEN_RELEASE",
       "authorityRule": "every affected self, relationship or institutional authority named by exact scope"
     }
@@ -231,18 +351,18 @@
     "candidateRef",
     "reviewRef",
     "sourceObservationRefs",
-    "sourceRangeRefs",
-    "sourceHashes",
+    "sourceBindings",
     "recordClass",
     "scope",
     "acceptedByRefs",
+    "acceptanceEvidenceRefs",
     "formedAt",
     "acceptedAt",
     "currentness",
     "semanticFingerprint"
   ],
   "recurrencePolicy": {
-    "contractRef": "contract.vexlife.continuity-recurrence/v0",
+    "contractRef": "contract.vexlife.continuity-recurrence/v1",
     "states": [
       "MONITORING",
       "REOPEN_REVIEW",
@@ -324,6 +444,7 @@
     "WORKSPACE_SHARED",
     "DEVICE_PRIVATE",
     "RELATIONSHIP_PRIVATE",
+    "FAMILY_CANDIDATE",
     "NO_SYNC"
   ],
   "siblingReceiveDispositions": [
@@ -374,6 +495,15 @@
     "projection.continuity-evolution.health",
     "projection.continuity-evolution.guide"
   ],
+  "projectionIdentities": [
+    { "projectionRef": "projection.continuity-evolution.current", "projectionKind": "CURRENT" },
+    { "projectionRef": "projection.continuity-evolution.queue", "projectionKind": "QUEUE" },
+    { "projectionRef": "projection.continuity-evolution.terrain", "projectionKind": "TERRAIN" },
+    { "projectionRef": "projection.continuity-evolution.health", "projectionKind": "HEALTH" },
+    { "projectionRef": "projection.continuity-evolution.guide", "projectionKind": "GUIDE" },
+    { "projectionRef": "projection.continuity-evolution.human-record", "projectionKind": "HUMAN_RECORD" },
+    { "projectionRef": "projection.continuity-evolution.sibling-observe-only", "projectionKind": "SIBLING_OBSERVE_ONLY" }
+  ],
   "processRefs": [
     "process.vexlife.dream.form-candidate",
     "process.vexlife.dream.review-and-sync",
@@ -392,8 +522,19 @@
     "module.vexlife.script.evolution-status"
   ],
   "simulationContract": {
-    "contractRef": "contract.continuity-evolution.integrated-simulation/v0",
+    "contractRef": "contract.continuity-evolution.integrated-simulation/v1",
     "receiptPath": "generated/health/continuity-evolution-simulation.json",
+    "checkRef": "check.continuity-evolution",
+    "workNodeRef": "work.vexlife.continuity-evolution-router",
+    "requiredBindingKinds": [
+      "observation",
+      "candidate",
+      "route",
+      "review",
+      "authorityEvidence",
+      "acceptedRecord",
+      "applicableProjection"
+    ],
     "requiredJourneyStates": [
       "SOURCE_OBSERVATION_SEALED",
       "CONTINUITY_CANDIDATE_FORMED",

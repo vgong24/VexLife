@@ -1,5 +1,16 @@
 import { StateCell, selectState } from './state-relay.mjs';
 import { semanticHash } from './utils.mjs';
+import {
+  validateAcceptedContinuityRecord,
+  validateContinuityCandidate,
+  validateContinuityContextReview,
+  validateContinuityObservation,
+  validateContinuityRecurrenceEvidence,
+  validateContinuityRecordSet,
+  validateContinuitySupersession,
+  validateTransientContinuityContext,
+  routeContinuityCandidate
+} from './continuity-evolution-router.mjs';
 
 export { StateCell, selectState };
 
@@ -357,12 +368,14 @@ export function createIntentSchedulerState({ aggregate = createInitialSchedulerA
 
 export function createInitialContinuityEvolutionAggregate() {
   const aggregate = {
-    schemaVersion: 'vexlife.continuity-evolution-aggregate/v0',
+    schemaVersion: 'vexlife.continuity-evolution-aggregate/v1',
     currentness: 'CURRENT',
     observations: [],
     candidates: [],
     reviews: [],
     acceptedRecords: [],
+    transientContexts: [],
+    supersessions: [],
     recurrenceEvidence: [],
     rejectedCandidateRefs: [],
     lastTransitionRef: 'transition.continuity-evolution.initial'
@@ -371,48 +384,113 @@ export function createInitialContinuityEvolutionAggregate() {
   return aggregate;
 }
 
-function appendUnique(items, value, refField) {
-  if (items.some((item) => item[refField] === value[refField] || item.semanticFingerprint === value.semanticFingerprint)) {
-    return items;
+function freeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) freeze(child);
+  return Object.freeze(value);
+}
+
+export function createContinuityEvolutionEvent(input) {
+  if (!input?.type || !input.transitionRef) throw new Error('continuity evolution event type and transitionRef are required');
+  const core = clone(input);
+  delete core.semanticFingerprint;
+  return freeze({ ...core, semanticFingerprint: semanticHash(core) });
+}
+
+function validateEvent(event) {
+  if (!event?.type || !event.transitionRef || !event.semanticFingerprint) throw new Error('continuity evolution event must be typed and canonical');
+  const core = clone(event);
+  const fingerprint = core.semanticFingerprint;
+  delete core.semanticFingerprint;
+  if (semanticHash(core) !== fingerprint) throw new Error('continuity evolution event semantic fingerprint mismatch');
+}
+
+function appendCanonical(items, value, refField, label) {
+  const sameRef = items.find((item) => item[refField] === value[refField]);
+  if (sameRef) {
+    if (sameRef.semanticFingerprint !== value.semanticFingerprint) throw new Error(`${label} same-ref/different-content conflict`);
+    return { items, changed: false };
   }
-  return [...items, clone(value)];
+  if (items.some((item) => item.semanticFingerprint === value.semanticFingerprint)) return { items, changed: false };
+  return { items: [...items, clone(value)], changed: true };
 }
 
 export function reduceContinuityEvolutionAggregate(current, event) {
-  if (!event?.type || !event.transitionRef) throw new Error('continuity evolution event type and transitionRef are required');
+  validateEvent(event);
   const next = clone(current);
   switch (event.type) {
-    case 'OBSERVATION_SEALED':
-      if (next.observations.some((item) => item.observationRef === event.observation.observationRef || item.semanticFingerprint === event.observation.semanticFingerprint)) return current;
-      next.observations = appendUnique(next.observations, event.observation, 'observationRef');
+    case 'OBSERVATION_SEALED': {
+      validateContinuityObservation(event.observation);
+      const result = appendCanonical(next.observations, event.observation, 'observationRef', 'observation');
+      if (!result.changed) return current;
+      next.observations = result.items;
       break;
-    case 'CANDIDATE_FORMED':
-      if (next.candidates.some((item) => item.candidateRef === event.candidate.candidateRef || item.semanticFingerprint === event.candidate.semanticFingerprint)) return current;
-      next.candidates = appendUnique(next.candidates, event.candidate, 'candidateRef');
+    }
+    case 'CANDIDATE_FORMED': {
+      validateContinuityCandidate(event.candidate);
+      for (const ref of event.candidate.sourceObservationRefs) if (!next.observations.some((item) => item.observationRef === ref)) throw new Error(`candidate references unsealed observation ${ref}`);
+      const result = appendCanonical(next.candidates, event.candidate, 'candidateRef', 'candidate');
+      if (!result.changed) return current;
+      next.candidates = result.items;
       break;
-    case 'REVIEW_RECORDED':
-      if (next.reviews.some((item) => item.reviewRef === event.review.reviewRef || item.semanticFingerprint === event.review.semanticFingerprint)) return current;
-      next.reviews = appendUnique(next.reviews, event.review, 'reviewRef');
+    }
+    case 'REVIEW_RECORDED': {
+      const candidate = next.candidates.find((item) => item.candidateRef === event.review.candidateRef);
+      if (!candidate) throw new Error('review references unknown candidate');
+      validateContinuityContextReview(candidate, routeContinuityCandidate(candidate), event.review);
+      const result = appendCanonical(next.reviews, event.review, 'reviewRef', 'review');
+      if (!result.changed) return current;
+      next.reviews = result.items;
       if (event.review.reviewDisposition === 'REJECTED' && !next.rejectedCandidateRefs.includes(event.review.candidateRef)) {
         next.rejectedCandidateRefs.push(event.review.candidateRef);
       }
       break;
-    case 'RECORD_ACCEPTED':
-      if (next.acceptedRecords.some((item) => item.acceptedRecordRef === event.record.acceptedRecordRef || item.semanticFingerprint === event.record.semanticFingerprint)) return current;
-      next.acceptedRecords = appendUnique(next.acceptedRecords, event.record, 'acceptedRecordRef');
+    }
+    case 'RECORD_ACCEPTED': {
+      validateAcceptedContinuityRecord(event.record);
+      if (!next.reviews.some((item) => item.reviewRef === event.record.reviewRef && item.semanticFingerprint === event.record.reviewFingerprint)) throw new Error('accepted record references unknown or conflicting review');
+      const result = appendCanonical(next.acceptedRecords, event.record, 'acceptedRecordRef', 'accepted record');
+      if (!result.changed) return current;
+      next.acceptedRecords = result.items;
       break;
-    case 'RECURRENCE_RECORDED':
-      if (event.evidence.changed === false || next.recurrenceEvidence.some((item) => item.semanticFingerprint === event.evidence.semanticFingerprint)) return current;
-      if (event.evidence.changed !== false) {
-        const withoutPrior = next.recurrenceEvidence.filter((item) => item.acceptedRecordRef !== event.evidence.acceptedRecordRef);
-        next.recurrenceEvidence = [...withoutPrior, clone(event.evidence)];
+    }
+    case 'CONTEXT_APPLIED': {
+      validateTransientContinuityContext(event.context);
+      const result = appendCanonical(next.transientContexts, event.context, 'contextRecordRef', 'transient context');
+      if (!result.changed) return current;
+      next.transientContexts = result.items;
+      break;
+    }
+    case 'RECURRENCE_RECORDED': {
+      if (event.evidence.changed === false) {
+        const prior = next.recurrenceEvidence.find((item) => item.acceptedRecordRef === event.evidence.acceptedRecordRef);
+        if (!prior || prior.recurrenceRef !== event.evidence.recurrenceRef || prior.semanticFingerprint !== event.evidence.semanticFingerprint ||
+            event.evidence.duplicateSuppressed !== true || event.evidence.semanticModelTurnRequired !== false) {
+          throw new Error('duplicate recurrence no-op does not bind exact current evidence');
+        }
+        return current;
       }
+      if (next.recurrenceEvidence.some((item) => item.semanticFingerprint === event.evidence.semanticFingerprint)) return current;
+      validateContinuityRecurrenceEvidence(event.evidence);
+      const sameRef = next.recurrenceEvidence.find((item) => item.recurrenceRef === event.evidence.recurrenceRef);
+      if (sameRef && sameRef.semanticFingerprint !== event.evidence.semanticFingerprint) throw new Error('recurrence same-ref/different-content conflict');
+      const prior = next.recurrenceEvidence.find((item) => item.acceptedRecordRef === event.evidence.acceptedRecordRef);
+      if (prior && (event.evidence.priorRecurrenceRef !== prior.recurrenceRef || event.evidence.priorRecurrenceFingerprint !== prior.semanticFingerprint)) throw new Error('recurrence event does not advance exact prior chain');
+      next.recurrenceEvidence = [...next.recurrenceEvidence.filter((item) => item.acceptedRecordRef !== event.evidence.acceptedRecordRef), clone(event.evidence)];
       break;
-    case 'RECORD_SUPERSEDED':
-      next.acceptedRecords = next.acceptedRecords
-        .filter((item) => ![event.prior.acceptedRecordRef, event.successor.acceptedRecordRef].includes(item.acceptedRecordRef));
-      next.acceptedRecords.push(clone(event.prior), clone(event.successor));
+    }
+    case 'RECORD_SUPERSEDED': {
+      const prior = next.acceptedRecords.find((item) => item.acceptedRecordRef === event.transaction?.priorRecordRef);
+      if (!prior || prior.semanticFingerprint !== event.transaction.priorRecordFingerprint) throw new Error('supersession prior is not the exact current aggregate record');
+      if (next.supersessions.some((item) => item.priorRecordRef === prior.acceptedRecordRef)) throw new Error('supersession prior is already superseded');
+      validateAcceptedContinuityRecord(event.successor);
+      validateContinuitySupersession(event.transaction, [prior, event.successor]);
+      const result = appendCanonical(next.acceptedRecords, event.successor, 'acceptedRecordRef', 'supersession successor');
+      if (!result.changed) throw new Error('supersession successor must be a new exact record');
+      next.acceptedRecords = result.items;
+      next.supersessions.push(clone(event.transaction));
       break;
+    }
     default:
       throw new Error(`unknown continuity evolution event ${event.type}`);
   }
@@ -420,6 +498,8 @@ export function reduceContinuityEvolutionAggregate(current, event) {
   next.candidates.sort((left, right) => left.candidateRef.localeCompare(right.candidateRef));
   next.reviews.sort((left, right) => left.reviewRef.localeCompare(right.reviewRef));
   next.acceptedRecords.sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef));
+  next.transientContexts.sort((left, right) => left.contextRecordRef.localeCompare(right.contextRecordRef));
+  next.supersessions.sort((left, right) => left.supersessionRef.localeCompare(right.supersessionRef));
   next.recurrenceEvidence.sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef));
   next.rejectedCandidateRefs.sort();
   next.lastTransitionRef = event.transitionRef;
@@ -430,27 +510,31 @@ export function reduceContinuityEvolutionAggregate(current, event) {
 
 export function createContinuityEvolutionState({ aggregate = createInitialContinuityEvolutionAggregate() } = {}) {
   const aggregateState = new StateCell(aggregate, { name: 'continuity-evolution.aggregate' });
-  const evolution = selectState(aggregateState, (current) => ({
-    schemaVersion: 'vexlife.continuity-evolution-projection/v0',
-    currentness: current.currentness,
-    observationCount: current.observations.length,
-    candidateCount: current.candidates.length,
-    reviewCount: current.reviews.length,
-    acceptedRecordCount: current.acceptedRecords.filter((item) => item.currentness === 'CURRENT').length,
-    heldCandidateRefs: current.candidates
-      .filter((candidate) => !current.reviews.some((review) => review.candidateRef === candidate.candidateRef && ['ACCEPTED', 'REJECTED'].includes(review.reviewDisposition)))
-      .map((item) => item.candidateRef),
-    acceptedRecordRefs: current.acceptedRecords
-      .filter((item) => item.currentness === 'CURRENT')
-      .map((item) => item.acceptedRecordRef),
-    recurrence: current.recurrenceEvidence.map((item) => ({
-      acceptedRecordRef: item.acceptedRecordRef,
-      recurrenceState: item.recurrenceState,
-      recurrenceCount: item.recurrenceCount
-    })),
-    aggregateFingerprint: current.semanticFingerprint,
-    rawSourceContentIncluded: false
-  }), { name: 'continuity-evolution.current' });
+  const evolution = selectState(aggregateState, (current) => {
+    const recordSet = validateContinuityRecordSet(current.acceptedRecords, current.supersessions);
+    return {
+      schemaVersion: 'vexlife.continuity-evolution-projection/v1',
+      currentness: current.currentness,
+      observationCount: current.observations.length,
+      candidateCount: current.candidates.length,
+      reviewCount: current.reviews.length,
+      acceptedRecordCount: recordSet.currentRecordRefs.length,
+      transientContextCount: current.transientContexts.length,
+      heldCandidateRefs: current.candidates
+        .filter((candidate) => !current.reviews.some((review) => review.candidateRef === candidate.candidateRef && ['ACCEPTED', 'REJECTED'].includes(review.reviewDisposition)))
+        .map((item) => item.candidateRef),
+      acceptedRecordRefs: recordSet.currentRecordRefs,
+      supersededRecordRefs: recordSet.supersededRecordRefs,
+      recordConflicts: recordSet.conflicts,
+      recurrence: current.recurrenceEvidence.map((item) => ({
+        acceptedRecordRef: item.acceptedRecordRef,
+        recurrenceState: item.recurrenceState,
+        recurrenceCount: item.recurrenceCount
+      })),
+      aggregateFingerprint: current.semanticFingerprint,
+      rawSourceContentIncluded: false
+    };
+  }, { name: 'continuity-evolution.current' });
 
   const queue = selectState(evolution, (current) => ({
     schemaVersion: 'vexlife.continuity-evolution-queue-projection/v0',
@@ -469,17 +553,20 @@ export function createContinuityEvolutionState({ aggregate = createInitialContin
   }), { name: 'continuity-evolution.terrain' });
 
   const health = selectState(aggregateState, (current) => {
+    const recordSet = validateContinuityRecordSet(current.acceptedRecords, current.supersessions);
     const blocking = current.acceptedRecords.filter((record) =>
-      record.currentness === 'CURRENT' &&
-      (record.requiredAcceptanceRefs?.length !== record.acceptedByRefs?.length || record.weightActivationState !== 'INACTIVE')
+      JSON.stringify(record.requiredAcceptanceRefs) !== JSON.stringify(record.acceptedByRefs) ||
+      JSON.stringify(record.acceptanceEvidenceRefs) !== JSON.stringify((record.acceptanceEvidence ?? []).map((item) => item.acceptanceEvidenceRef).sort()) ||
+      record.weightActivationState !== 'INACTIVE'
     );
     const attention = current.candidates.filter((candidate) =>
       !current.reviews.some((review) => review.candidateRef === candidate.candidateRef && ['ACCEPTED', 'REJECTED'].includes(review.reviewDisposition))
     );
     return {
-      schemaVersion: 'vexlife.continuity-evolution-health-projection/v0',
-      state: blocking.length ? 'BLOCKED' : attention.length ? 'ATTENTION' : 'CLEAR',
+      schemaVersion: 'vexlife.continuity-evolution-health-projection/v1',
+      state: blocking.length || recordSet.conflicts.length ? 'BLOCKED' : attention.length ? 'ATTENTION' : 'CLEAR',
       blockingRecordRefs: blocking.map((item) => item.acceptedRecordRef),
+      recordConflicts: recordSet.conflicts,
       reviewRequiredCandidateRefs: attention.map((item) => item.candidateRef),
       acceptedWeightActivations: current.acceptedRecords.filter((item) => item.weightActivationState !== 'INACTIVE').length,
       rawMachineDumpIncluded: false

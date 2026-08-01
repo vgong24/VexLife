@@ -448,7 +448,111 @@ export function compileRegistryPack({
   }
 
   if (evolution?.registryRef) {
-    registry.register({ ref: evolution.registryRef, kind: 'EVOLUTION_REGISTRY', brief: evolution.purpose, version: evolution.registryVersion });
+    registry.register({
+      ref: evolution.registryRef,
+      kind: 'EVOLUTION_REGISTRY',
+      brief: evolution.purpose,
+      version: evolution.registryVersion,
+      sourceRef: evolution.canonicalSourceRef,
+      edges: [
+        { type: 'CANONICAL_SOURCE', to: evolution.canonicalSourceRef },
+        { type: 'SYSTEM', to: evolution.systemRef }
+      ]
+    });
+    registry.register({
+      ...evolution.canonicalSource,
+      ref: evolution.canonicalSourceRef,
+      kind: 'EVOLUTION_SOURCE',
+      brief: evolution.canonicalSource.path,
+      parentRef: evolution.registryRef,
+      edges: [
+        { type: 'PARENT', to: evolution.registryRef },
+        { type: 'COMPOSED_BY', to: evolution.canonicalSource.compositionRef },
+        { type: 'DEFINES_SYSTEM', to: evolution.systemRef }
+      ]
+    });
+    registry.register({
+      ...evolution.system,
+      ref: evolution.systemRef,
+      kind: 'EVOLUTION_SYSTEM',
+      brief: evolution.institutionalName,
+      parentRef: evolution.registryRef,
+      edges: [
+        { type: 'PARENT', to: evolution.registryRef },
+        { type: 'CANONICAL_SOURCE', to: evolution.canonicalSourceRef },
+        ...(evolution.system.contractRefs ?? []).map((to) => ({ type: 'CONTRACT', to })),
+        ...(evolution.processRefs ?? []).map((to) => ({ type: 'PROCESS', to })),
+        ...(evolution.moduleRefs ?? []).map((to) => ({ type: 'MODULE', to })),
+        ...(evolution.testRefs ?? []).map((to) => ({ type: 'PROVED_BY', to })),
+        ...(evolution.projectionRefs ?? []).map((to) => ({ type: 'PROJECTS', to }))
+      ]
+    });
+    for (const contract of evolution.contractIdentities ?? []) registry.register({
+      ...contract,
+      ref: contract.contractRef,
+      kind: 'EVOLUTION_CONTRACT',
+      brief: contract.contractKind,
+      parentRef: evolution.systemRef,
+      edges: [
+        { type: 'PARENT', to: evolution.systemRef },
+        { type: 'CANONICAL_SOURCE', to: evolution.canonicalSourceRef },
+        ...(evolution.testRefs ?? []).map((to) => ({ type: 'PROVED_BY', to }))
+      ]
+    });
+    for (const origin of evolution.behaviorOriginIdentities ?? []) registry.register({
+      ...origin,
+      ref: origin.originRef,
+      kind: 'EVOLUTION_BEHAVIOR_ORIGIN',
+      brief: origin.value,
+      parentRef: evolution.systemRef,
+      sourceRef: evolution.canonicalSourceRef,
+      edges: [{ type: 'PARENT', to: evolution.systemRef }]
+    });
+    for (const scope of evolution.scopeIdentities ?? []) registry.register({
+      ...scope,
+      ref: scope.scopeRef,
+      kind: 'EVOLUTION_SCOPE',
+      brief: scope.value,
+      parentRef: evolution.systemRef,
+      sourceRef: evolution.canonicalSourceRef,
+      edges: [{ type: 'PARENT', to: evolution.systemRef }]
+    });
+    for (const destination of evolution.primaryDestinationIdentities ?? []) registry.register({
+      ...destination,
+      ref: destination.destinationRef,
+      kind: 'EVOLUTION_PRIMARY_DESTINATION',
+      brief: destination.value,
+      parentRef: evolution.systemRef,
+      sourceRef: evolution.canonicalSourceRef,
+      edges: [{ type: 'PARENT', to: evolution.systemRef }]
+    });
+    for (const destination of evolution.linkedDestinationIdentities ?? []) registry.register({
+      ...destination,
+      ref: destination.destinationRef,
+      kind: 'EVOLUTION_LINKED_DESTINATION',
+      brief: destination.value,
+      parentRef: evolution.systemRef,
+      sourceRef: evolution.canonicalSourceRef,
+      edges: [{ type: 'PARENT', to: evolution.systemRef }]
+    });
+    for (const policy of evolution.acceptancePolicies ?? []) registry.register({
+      ...policy,
+      ref: policy.policyRef,
+      kind: 'EVOLUTION_ACCEPTANCE_POLICY',
+      brief: policy.authorityRule,
+      parentRef: evolution.systemRef,
+      sourceRef: evolution.canonicalSourceRef,
+      edges: [{ type: 'PARENT', to: evolution.systemRef }]
+    });
+    for (const projection of evolution.projectionIdentities ?? []) registry.register({
+      ...projection,
+      ref: projection.projectionRef,
+      kind: 'EVOLUTION_PROJECTION',
+      brief: projection.projectionKind,
+      parentRef: evolution.systemRef,
+      sourceRef: evolution.canonicalSourceRef,
+      edges: [{ type: 'PARENT', to: evolution.systemRef }]
+    });
     for (const candidateType of evolution.candidateTypes ?? []) registry.register({ ...candidateType, ref: candidateType.candidateTypeRef, kind: 'DREAM_CANDIDATE_TYPE', brief: candidateType.riskClass, parentRef: evolution.registryRef, edges: [{ type: 'PARENT', to: evolution.registryRef }] });
   }
 

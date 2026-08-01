@@ -29,8 +29,10 @@ A dream is not truth. It is not memory. It is not a permission grant. It is not 
 
 The implemented [Burden Release and Continuity Evolution Router](BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md)
 extends this foundation with immutable continuity observations, separate human/Vex/relationship
-preference records, exact-scope influence deauthorization, least-invasive routing, exact acceptance
-authority, reversible accepted records, bounded recurrence and scheduler/Workgraph no-effect proof.
+preference records, exact source tuples, source-managed expiring acceptance evidence, replayed
+exact-scope influence deauthorization, least-invasive routing, atomic supersession, bounded
+recurrence and one causally bound scheduler/Workgraph no-effect receipt. Legacy Dream v0 APIs are
+compatibility-candidate-only; they cannot create durable acceptance or family synchronization.
 The router keeps training research sealed as `NOT_ADMITTED`; it does not activate the later adapter
 lifecycle described below.
 

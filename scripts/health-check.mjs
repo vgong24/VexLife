@@ -8,6 +8,7 @@ import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { validateIntegratedSchedulerSimulationReceipt } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 import { resolveSafeGeneratedReceiptPath } from '../src/core/utils.mjs';
+import { validateContinuityEvolutionSimulationReceipt } from './evolution-simulate.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const receiptIndex = process.argv.indexOf('--receipt');
@@ -29,6 +30,7 @@ let receipt = null;
 let receiptState = 'NOT_RUN';
 const receiptErrors = [];
 let schedulerSimulationState = 'NOT_RUN';
+let continuitySimulationState = 'NOT_RUN';
 if (fs.existsSync(receiptPath)) {
   try {
     receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
@@ -85,7 +87,48 @@ if (fs.existsSync(receiptPath)) {
         schedulerSimulationState = simulationValidation.ok && receiptErrors.length === 0
           ? 'EXECUTED_CURRENT'
           : 'INVALID';
-        receiptState = schedulerSimulationState === 'EXECUTED_CURRENT' ? 'EXECUTED_CURRENT' : 'INVALID';
+        const continuityPath = path.resolve(ROOT, bundle.evolution.simulationContract.receiptPath);
+        let continuityReceipt = null;
+        try {
+          continuityReceipt = JSON.parse(fs.readFileSync(continuityPath, 'utf8'));
+        } catch (error) {
+          receiptErrors.push(`continuity evolution simulation receipt unavailable: ${error.message}`);
+        }
+        const continuityValidation = validateContinuityEvolutionSimulationReceipt(continuityReceipt, {
+          evolutionRegistry: bundle.evolution,
+          blueprintHash: blueprint.semanticHash,
+          sourceTreeSha256: sourceManifest.treeSha256,
+          repositoryGit: repository.git
+        });
+        receiptErrors.push(...continuityValidation.errors);
+        const embeddedContinuity = receipt.continuitySimulation;
+        if (embeddedContinuity?.state !== 'EXECUTED_CURRENT' ||
+            embeddedContinuity?.receiptPath !== bundle.evolution.simulationContract.receiptPath ||
+            embeddedContinuity?.semanticFingerprint !== continuityReceipt?.semanticFingerprint ||
+            embeddedContinuity?.candidateHeadSha !== repository.git.candidateHeadSha ||
+            embeddedContinuity?.testedCheckoutSha !== repository.git.checkoutSha ||
+            embeddedContinuity?.testedMergeSha !== repository.git.testedMergeSha ||
+            embeddedContinuity?.baseSha !== repository.git.baseSha ||
+            embeddedContinuity?.sourceTreeSha256 !== sourceManifest.treeSha256 ||
+            embeddedContinuity?.blueprintHash !== blueprint.semanticHash ||
+            embeddedContinuity?.evolutionRegistryHash !== continuityReceipt?.evolutionRegistryHash ||
+            JSON.stringify(embeddedContinuity?.journeyStates ?? []) !== JSON.stringify(continuityReceipt?.journeyStates ?? []) ||
+            JSON.stringify(embeddedContinuity?.continuityGateBindings ?? {}) !== JSON.stringify(continuityReceipt?.continuityGateBindings ?? {}) ||
+            embeddedContinuity?.canonicalWorkNodeRef !== bundle.evolution.simulationContract.workNodeRef ||
+            embeddedContinuity?.canonicalWorkNodeFinalState !== 'COMPLETED' ||
+            embeddedContinuity?.schedulerContextLeaseFingerprint !== continuityReceipt?.schedulerContextLeaseFingerprint ||
+            embeddedContinuity?.schedulerCompletionVerificationFingerprint !== continuityReceipt?.schedulerCompletionVerificationFingerprint ||
+            embeddedContinuity?.schedulerCompletionEvidenceLineageFingerprint !== continuityReceipt?.schedulerCompletionEvidenceLineageFingerprint ||
+            embeddedContinuity?.schedulerWorkgraphTransitionFingerprint !== continuityReceipt?.schedulerWorkgraphTransitionFingerprint ||
+            embeddedContinuity?.schedulerCompletionFingerprint !== continuityReceipt?.schedulerCompletionFingerprint ||
+            embeddedContinuity?.externalEffectsExecuted !== false || embeddedContinuity?.modelWeightsChanged !== false ||
+            (embeddedContinuity?.errors ?? []).length !== 0) {
+          receiptErrors.push('PR-ready receipt does not exactly bind the current continuity evolution simulation receipt');
+        }
+        continuitySimulationState = continuityValidation.ok && receiptErrors.length === 0 ? 'EXECUTED_CURRENT' : 'INVALID';
+        receiptState = schedulerSimulationState === 'EXECUTED_CURRENT' && continuitySimulationState === 'EXECUTED_CURRENT'
+          ? 'EXECUTED_CURRENT'
+          : 'INVALID';
       }
     }
   } catch {
@@ -109,6 +152,7 @@ console.log(JSON.stringify({
   state: errors.length ? 'REPOSITORY_HEALTH_INVALID' : projection.state,
   receiptState,
   schedulerSimulationState,
+  continuitySimulationState,
   receiptPath: path.relative(ROOT, receiptPath).split(path.sep).join('/'),
   registryChecks: registry.stats.checks,
   candidateHeadSha: repository.git.candidateHeadSha,

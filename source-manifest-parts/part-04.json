@@ -28,8 +28,8 @@
     {
       "path": "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md",
       "mode": "100644",
-      "bytes": 9638,
-      "sha256": "327bff7c09bb8031914c7aa1a4ae013a0c621a28a94c5abddf2d3f3c9046f663"
+      "bytes": 11892,
+      "sha256": "39ad0f22d310cfceaba6b41eaca16c72c1e79998abf597a656da410b4f1aee7b"
     },
     {
       "path": "docs/CAPABILITY-AND-TOOL-ATLAS.md",
@@ -58,8 +58,8 @@
     {
       "path": "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
       "mode": "100644",
-      "bytes": 6535,
-      "sha256": "0469f86292f679afaa83f0ec4554982026dbfd1ade69aa5563aa290f4030b322"
+      "bytes": 6715,
+      "sha256": "a756663612c58c703026282dd5a8eccc839d812d9b483073af13a3b00a3422bf"
     },
     {
       "path": "docs/EXPERIENCE-GESTURES-AND-VESSELS.md",

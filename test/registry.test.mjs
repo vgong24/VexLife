@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildIdentityIndex, loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
+import { buildIdentityIndex, loadBlueprint, validateBlueprint, validateEvolutionRegistry } from '../src/core/blueprint.mjs';
 import { Atlas } from '../src/core/atlas.mjs';
 import { compileRegistryPack, buildRegistryProjection } from '../src/core/registry.mjs';
 import { validateIntentSchedulerRegistry } from '../src/core/scheduler-runtime-trust.mjs';
@@ -54,6 +54,50 @@ test('scheduler registry composes universally, resolves through Atlas, and omiss
   const malformed = structuredClone(bundle.schedulerRegistry);
   malformed.runtimeTrustContract.clockRef = 'clock.intent-scheduler.invented';
   assert.equal(validateIntentSchedulerRegistry(malformed).ok, false);
+});
+
+test('Evolution composes universally, resolves through Atlas, and malformed or duplicate identity fails closed', () => {
+  const evolutionValidation = validateEvolutionRegistry(bundle.evolution, bundle);
+  assert.equal(evolutionValidation.ok, true, evolutionValidation.errors.join('\n'));
+  assert.deepEqual(bundle.blueprint.evolution, bundle.evolution);
+  const registry = compileRegistryPack(bundle);
+  for (const ref of [
+    bundle.evolution.registryRef,
+    bundle.evolution.canonicalSourceRef,
+    bundle.evolution.systemRef,
+    bundle.evolution.burdenRelease.contractRef,
+    bundle.evolution.contextReview.contractRef,
+    bundle.evolution.recurrencePolicy.contractRef,
+    bundle.evolution.simulationContract.contractRef,
+    bundle.evolution.acceptancePolicies[0].policyRef,
+    bundle.evolution.projectionIdentities[0].projectionRef
+  ]) assert.equal(registry.require(ref).ref, ref);
+  const atlas = new Atlas(buildIdentityIndex(bundle));
+  const traversal = atlas.query({ startRefs: [bundle.evolution.registryRef], depthLimit: 2, resultLimit: 128, tokenBudget: 20000 });
+  for (const ref of [bundle.evolution.systemRef, bundle.evolution.contextReview.contractRef, bundle.evolution.projectionIdentities[0].projectionRef]) {
+    assert.ok(traversal.results.some((item) => item.ref === ref), ref);
+  }
+
+  const omitted = structuredClone(bundle);
+  delete omitted.blueprint.evolution;
+  assert.equal(validateBlueprint(omitted).ok, false);
+  const malformed = structuredClone(bundle);
+  malformed.evolution.canonicalSource.field = 'invented';
+  malformed.blueprint.evolution = structuredClone(malformed.evolution);
+  assert.equal(validateBlueprint(malformed).ok, false);
+  const duplicate = structuredClone(bundle);
+  duplicate.evolution.scopeIdentities[1].scopeRef = duplicate.evolution.scopeIdentities[0].scopeRef;
+  duplicate.blueprint.evolution = structuredClone(duplicate.evolution);
+  assert.equal(validateBlueprint(duplicate).ok, false);
+  assert.throws(() => compileRegistryPack(duplicate), /duplicate registry ref/);
+
+  const changed = structuredClone(bundle);
+  changed.evolution.purpose = `${changed.evolution.purpose} Semantic registry change.`;
+  changed.blueprint.evolution = structuredClone(changed.evolution);
+  const baselineHash = validateBlueprint(bundle).semanticHash;
+  const changedValidation = validateBlueprint(changed);
+  assert.equal(changedValidation.ok, true, changedValidation.errors.join('\n'));
+  assert.notEqual(changedValidation.semanticHash, baselineHash);
 });
 
 test('interface builder super-functions preserve component and element relationships', () => {

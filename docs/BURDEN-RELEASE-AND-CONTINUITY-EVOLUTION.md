@@ -71,13 +71,17 @@ relationship agreement cannot be accepted by only one of its required parties.
 ## Immutable source observation
 
 `src/core/continuity-evolution-router.mjs` forms deeply immutable observation
-envelopes. Each envelope binds the exact source lineage, ranges, hashes,
-speakers, recipients, optional project/thread/channel/work node, formation,
-currentness and visibility.
+envelopes. Each envelope binds canonical
+`{sourceLineageRef, rangeRef, sourceHash}` tuples instead of independently
+sorted range/hash arrays. Hashes are lowercase SHA-256; duplicate/conflicting
+ranges, noncanonical UTC timestamps and unknown currentness or visibility
+states fail closed. Speakers, recipients, optional
+project/thread/channel/turn/work node and formation are also exact.
 
 The envelope carries refs and hashes, not raw private content. Raw sources
-remain retrievable and immutable outside the candidate. A summary may interpret
-a range; it cannot replace that range.
+remain retrievable and immutable outside the candidate. A reviewed `summaryRef`
+may interpret a range; arbitrary candidate text cannot become a private human
+projection merely by declaring raw content absent.
 
 Supported observations include conversation ranges, work receipts, corrections,
 preference and relationship signals, recurrence, contradiction, human
@@ -104,6 +108,7 @@ aboutSelfRefs[]
 affectedPartyRefs[]
 requiredAcceptanceRefs[]
 acceptedByRefs[]
+acceptanceEvidenceRefs[]
 doesNotOverrideRefs[]
 visibilityScope
 synchronizationScope
@@ -113,8 +118,10 @@ The exact scope vocabulary is `CURRENT_TURN`, `CHANNEL`, `THREAD`, `PROJECT`,
 `HUMAN_SELF`, `VEX_SELF`, `RELATIONSHIP`, `DEVICE_LINEAGE`,
 `FAMILY_CANDIDATE`, `INSTITUTION`, `NO_SYNC` and `HELD_UNKNOWN`.
 
-Sibling projections remain `OBSERVE_ONLY_PENDING_LOCAL_REVIEW`, preserve the
-source lineage and set `livedByTargetLineage=false`.
+Sibling projections require exact reviewed synchronization scope, an admitted
+target lineage, privacy/visibility evidence and current delivery authority.
+They remain `OBSERVE_ONLY_PENDING_LOCAL_REVIEW`, preserve source lineage and
+set `livedByTargetLineage=false`.
 
 ## Burden Release
 
@@ -137,6 +144,11 @@ OBSERVED → NAMED → RECOGNIZED → RELEASE_PROPOSED → CONTEXT_REVIEW
   → ACCEPTED_DEAUTHORIZED → MONITORED_FOR_RECURRENCE
   → REOPENED / SUPERSEDED / RETIRED
 ```
+
+Source formation is `OBSERVED` only. Every later state is replayed through the
+registered graph and retains an immutable transition receipt. Skipped,
+reversed, stale, duplicate-terminal or caller-injected accepted histories fail
+closed.
 
 Rejected and retired paths remain auditable. `ACCEPTED_DEAUTHORIZED` means the
 pattern no longer has accepted governing authority in scope. It does not mean
@@ -175,30 +187,44 @@ destinations, privacy, consent, contradiction, attribution, currentness,
 protected capabilities, prohibited overcorrections and exact required
 acceptance refs.
 
-Acceptance requires `acceptedByRefs` to equal the exact required set. Tool
-visibility, a role label, model output or candidate formation never grants that
-authority. Unresolved contradiction cannot be accepted.
+Source-managed policy computes the required set before reading a candidate's
+hint. A non-empty hint must exactly equal policy; it cannot redefine policy.
+Acceptance requires both `acceptedByRefs` and current acceptance-evidence
+records to cover the set. Evidence binds actor, authority, record class,
+subjects, scope, source/hash, formation/currentness and expiry. Tool visibility,
+a role label, model output, reviewer role or candidate formation never grants
+authority. Unresolved contradiction cannot be accepted. Legacy Dream v0 APIs
+are compatibility-candidate-only and cannot create durable acceptance, family
+synchronization, training admission or activation.
+
+`CURRENT_CONTEXT` is transient and bound to an exact expiring
+turn/thread/channel lease; it is not an indefinitely durable accepted record.
 
 Effect/safety invariant candidates remain inactive after review. A later
 deterministic implementation lane must separately admit and implement them.
 
 ## Reversible accepted records
 
-Every accepted record preserves exact source observations/ranges/hashes,
+Every accepted record preserves exact source-observation tuples,
 candidate, review, record class, scope, acceptance, formation/currentness,
 supersession and rollback lineage.
 
-Supersession marks the prior record `SUPERSEDED`; it does not erase it. Rollback
-changes the destination projection while source, candidate, review and prior
-accepted history remain available.
+Supersession is one canonical atomic transaction over an exact current prior
+and compatible successor. It requires equal class/scope/subjects, exact current
+authority evidence, monotonic time and rollback identity. The prior becomes
+effectively `SUPERSEDED` and the successor becomes the sole `CURRENT` record;
+immutable record and source history remain available.
 
 Conflicting current records fail closed as `HELD_CONFLICT` instead of silently
 overwriting one another.
 
 ## Recurrence without permanent context burden
 
-Recurrence metadata binds an observation fingerprint to the exact accepted
-record and scope. It can project `MONITORING`, `REOPEN_REVIEW` or
+Recurrence requires a current `REPEATED_BEHAVIOR_RECURRENCE` observation bound
+to the exact accepted record and fingerprint, burden/pattern, evaluation refs,
+source lineage and prior recurrence chain. Wrong type/record/lineage, stale
+source, invented prior evidence, replay conflict and scope broadening fail
+closed. It can project `MONITORING`, `REOPEN_REVIEW` or
 `STABLE_RELEASE`. It cannot broaden scope or trigger weights.
 
 An unchanged recurrence fingerprint is a semantic no-op: no new recurrence
@@ -228,15 +254,23 @@ provision, remove or activate model weights or adapters.
 
 ## Canonical state and scheduler proof
 
-`state.evolution` owns observations, candidates, reviews, accepted records and
-recurrence evidence. Queue, Terrain, Health, Guide and evolution projections
-are selectors over that one aggregate and suppress semantic no-ops.
+`state.evolution` owns observations, candidates, reviews, durable accepted
+records, transient contexts, atomic supersessions and recurrence evidence.
+Typed canonical events validate before mutation; same-ref/different-content
+conflicts block. Queue, Terrain, Health, Guide and evolution projections are
+selectors over that one aggregate and suppress semantic no-ops.
 
-The deterministic simulation binds its source observation to
-`work.scheduler.simulation`, then uses the accepted one-worker scheduler and
-external completion verifier to finish that canonical Workgraph node. The
-receipt proves source sealing, routing, review, acceptance, bounded context,
-recurrence, duplicate suppression and Workgraph completion with:
+The deterministic simulation creates the actual continuity node
+`work.vexlife.continuity-evolution-router` in one accepted Intent Workgraph,
+leases it through the one-worker scheduler, loads exact applicable record and
+release refs into the bounded scheduler context lease, and completes through
+the external completion verifier. Its completion-gate bundle hashes the exact
+observation, candidate, canonical route, review, acceptance evidence, accepted
+record and applicable-projection fingerprints. The structured receipt binds
+candidate/tested/base Git identity, source tree, Blueprint/evolution hashes and
+scheduler completion lineage. `pr-ready` and `health:check` independently
+reject missing, stale, effectful, weight-changing or causally unbound evidence.
+The receipt proves:
 
 ```text
 externalEffectsExecuted=false

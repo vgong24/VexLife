@@ -76,8 +76,8 @@
     {
       "path": "src/core/registry.mjs",
       "mode": "100644",
-      "bytes": 29148,
-      "sha256": "ab038f7b6dcf94bfd1a1df8b1bff1c8bc5513b322e100217da7ab27548028613"
+      "bytes": 33243,
+      "sha256": "9bda89180fbe18a5a2993491d7087a1a62434a479dbe31c7aedeabfe282e9229"
     },
     {
       "path": "src/core/repository-evidence.mjs",
@@ -112,8 +112,8 @@
     {
       "path": "src/core/state.mjs",
       "mode": "100644",
-      "bytes": 24025,
-      "sha256": "d1ea2193d5344d20799809a8415d31434342fa57a84b62ebb8a3f68f74fedb3f"
+      "bytes": 28893,
+      "sha256": "a6e240ada53e8f1c7b48d191c32479de8d592b113cdd2dcfa6fa33802bac982d"
     },
     {
       "path": "src/core/terrain.mjs",

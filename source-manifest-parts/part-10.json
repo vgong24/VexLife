@@ -10,8 +10,8 @@
     {
       "path": "test/registry.test.mjs",
       "mode": "100644",
-      "bytes": 6659,
-      "sha256": "3a970e2aca2145b6fe6e2120c4930b34ef0547545cab1e421bd5a69c6286b6da"
+      "bytes": 9190,
+      "sha256": "f4af394551155d470294482a7c7e93419eccd4ecfe2824ac6bd2c8faecc5afa3"
     },
     {
       "path": "test/source-manifest.test.mjs",

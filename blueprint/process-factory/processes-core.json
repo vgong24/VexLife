@@ -1289,13 +1289,12 @@
     "processVersion": 1,
     "purpose": "Seal exact continuity source observations, form a no-authority candidate, classify origin and scope, choose the least-invasive deterministic route and return a Context Review.",
     "applicabilityRules": [
-      "one or more immutable source ranges and hashes exist",
+      "one or more immutable exact source tuples exist",
       "candidate is within the exact admitted issue and privacy scope"
     ],
     "requiredInputs": [
       "sourceObservationRefs",
-      "sourceRangeRefs",
-      "sourceHashes",
+      "sourceBindings",
       "sourceLineageRef",
       "candidateScope",
       "authoredByRef"
@@ -1304,11 +1303,13 @@
       "projectRef",
       "threadRef",
       "channelRef",
+      "turnRef",
       "workNodeRef",
       "suspectedOrigin"
     ],
     "sourceResolutionRules": [
-      "resolve raw source only through exact immutable range refs and hashes",
+      "resolve raw source only through exact immutable range/hash tuples with lowercase SHA-256",
+      "reject noncanonical chronology, unknown currentness/visibility/synchronization and same-ref/different-content identity",
       "preserve UNKNOWN origin when source cannot support a narrower hypothesis",
       "retain human, Vex and relationship authorship separately"
     ],
@@ -1369,7 +1370,7 @@
   {
     "processRef": "process.vexlife.continuity.accept-and-project",
     "processVersion": 1,
-    "purpose": "Accept one exact reviewed continuity destination with named authority, preserve reversible lineage and project only bounded applicable refs for future context.",
+    "purpose": "Accept one exact reviewed continuity destination only from current source-managed authority evidence, replay Burden Release, preserve atomic reversible lineage and project bounded refs for future context.",
     "applicabilityRules": [
       "Context Review disposition is ACCEPTED",
       "primary destination is neither HELD_UNKNOWN nor REJECTED"
@@ -1379,28 +1380,34 @@
       "reviewRef",
       "requiredAcceptanceRefs",
       "acceptedByRefs",
+      "acceptanceEvidenceRefs",
       "acceptedAt"
     ],
     "optionalInputs": [
       "supersedesRef",
       "rollbackRef",
+      "currentContextLeaseRef",
       "applicableContextBudget"
     ],
     "sourceResolutionRules": [
-      "bind the exact candidate, review, source ranges and source hashes",
-      "require acceptedByRefs to equal requiredAcceptanceRefs",
+      "recompute exact candidate, canonical route and review identities before acceptance",
+      "bind exact source tuples and reviewed privacy/redaction refs",
+      "compute required acceptance from source policy before validating any candidate hint",
+      "require acceptedByRefs and current unexpired evidence to exactly cover requiredAcceptanceRefs",
       "project accepted records by ref within exact scope and budget"
     ],
     "preconditions": [
       "privacy, consent, contradiction, attribution and currentness review pass",
       "protected capabilities and prohibited overcorrections remain bound",
+      "CURRENT_CONTEXT is transient and turn/thread lease-bound",
       "deterministic invariant and training research routes remain inactive"
     ],
     "steps": [
-      "verify-exact-acceptance-authority",
+      "verify-exact-current-acceptance-evidence",
+      "replay-burden-release-from-observed-through-context-review",
       "form-reversible-accepted-record",
       "deauthorize-burden-influence-when-applicable",
-      "preserve-supersession-and-rollback-lineage",
+      "apply-compatible-supersession-and-rollback-atomically",
       "project-applicable-record-refs"
     ],
     "effectOwnerRule": "the exact named accepting authorities own durable meaning; this process grants no external effect or model-weight authority",
@@ -1454,10 +1461,12 @@
     "processVersion": 1,
     "purpose": "Bind exact recurrence evidence to an accepted release, lesson or evaluation while suppressing duplicates and holding broader scope and weight escalation.",
     "applicabilityRules": [
-      "an accepted current record and source-backed recurrence observation exist"
+      "an accepted current record and exact current repeated-behavior recurrence observation exist"
     ],
     "requiredInputs": [
       "acceptedRecordRef",
+      "acceptedRecordFingerprint",
+      "burdenReleaseRef",
       "observationRef",
       "observationFingerprint",
       "scope"
@@ -1467,12 +1476,14 @@
       "reopenThreshold"
     ],
     "sourceResolutionRules": [
-      "bind recurrence to the exact accepted record and scope",
+      "bind recurrence to the exact accepted record, burden/pattern, evaluation refs, source lineage and scope",
+      "advance only the exact prior recurrence ref/fingerprint chain",
       "deduplicate by immutable observation fingerprint",
       "keep dormant metadata outside active context until implicated"
     ],
     "preconditions": [
       "scope equals the accepted record scope",
+      "observation type is REPEATED_BEHAVIOR_RECURRENCE and currentness is CURRENT",
       "automatic weight escalation is disabled"
     ],
     "steps": [

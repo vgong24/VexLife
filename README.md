@@ -233,24 +233,26 @@ to safe `generated/health/**` paths. This contract provisions no real model and
 executes no external effect.
 
 The shared [Burden Release and Continuity Evolution Router](docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md)
-completes Intent Orchestration 3/3. It seals immutable source observations,
-keeps human, Vex and relationship preferences as separate records, routes each
-candidate to one least-invasive destination, requires exact Context Review
-acceptance authority, and preserves reversible accepted history. A Burden
-Release withdraws a named pattern's governing influence only in exact scope;
-it does not claim base-model parameter deletion. Recurrence stays bounded,
-duplicate evidence is a semantic no-op, applicable context contains refs rather
-than raw history, and training research remains `NOT_ADMITTED`. The integrated
-proof completes one canonical Workgraph node through the accepted scheduler
-with no external effects or model-weight change.
+completes Intent Orchestration 3/3. It seals immutable exact source tuples,
+keeps human, Vex and relationship preferences separate, routes each candidate
+to one least-invasive destination, and requires expiring source-managed
+acceptance evidence. Burden Release starts at `OBSERVED` and replays every
+transition before exact-scope influence deauthorization; it never claims
+base-model parameter deletion. Current Context is transient and lease-bound,
+supersession is atomic, recurrence and sibling projection are exact-scope, and
+legacy Dream v0 cannot bypass durable acceptance or synchronization. Applicable
+context contains refs rather than raw history and training research remains
+`NOT_ADMITTED`. The integrated proof completes the actual continuity Workgraph
+node through the accepted scheduler with exact evidence fingerprints and no
+external effects or model-weight change.
 
 Run `npm run orient` before broad reading. Read only the returned
 `requiredSources`, then use the bounded Atlas or exact-module command. `npm run
 health:check` reports `HEALTHY` only when an executed `npm run pr-ready` receipt
 matches the current HEAD, source tree and Blueprint hash and exactly binds the
 complete current scheduler and continuity-evolution simulation receipts;
-missing, unknown, stale, self-certified, effectful or orphaned evidence remains
-non-green.
+missing, unknown, stale, self-certified, effectful, weight-changing, causally
+unbound or orphaned evidence remains non-green.
 
 Generate one platform:
 

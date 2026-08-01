@@ -20,6 +20,18 @@ export const BURDEN_RELEASE_STATES = Object.freeze([
   'RETIRED'
 ]);
 
+const BEHAVIOR_ORIGIN_CLASSES = new Set([
+  'BASE_MODEL_PRIOR', 'SYSTEM_OR_PROVIDER_POLICY', 'ROLE_INSTRUCTION', 'MISSING_CONTEXT',
+  'FAILED_RETRIEVAL', 'CONTEXT_COMPRESSION', 'RESOURCE_PRESSURE', 'TOOL_LIMITATION',
+  'CONFLICTING_PREFERENCES', 'MODEL_CAPABILITY_LIMIT', 'LOCAL_RHYTHM', 'RELATIONSHIP_PATTERN',
+  'INSTITUTIONAL_PROCESS', 'UNKNOWN'
+]);
+const CONTINUITY_SCOPE_CLASSES = new Set([
+  'CURRENT_TURN', 'CHANNEL', 'THREAD', 'PROJECT', 'HUMAN_SELF', 'VEX_SELF', 'RELATIONSHIP',
+  'DEVICE_LINEAGE', 'FAMILY_CANDIDATE', 'INSTITUTION', 'NO_SYNC', 'HELD_UNKNOWN'
+]);
+const SHA256 = /^[a-f0-9]{64}$/;
+
 const TRANSITIONS = Object.freeze({
   OBSERVED: ['NAMED', 'REJECTED', 'RETIRED'],
   NAMED: ['RECOGNIZED', 'REJECTED', 'RETIRED'],
@@ -40,15 +52,21 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
+function canonicalTimestamp(value, label) {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString() !== value) {
+    throw new Error(`${label} must be canonical ISO-8601 UTC`);
+  }
+  return value;
+}
+
 function refs(value, label, { required = true } = {}) {
   if (!Array.isArray(value) || (required && value.length === 0)) {
     throw new Error(`${label} must be ${required ? 'a non-empty' : 'an'} array`);
   }
-  const normalized = [...new Set(value)];
-  if (normalized.some((item) => typeof item !== 'string' || item.length === 0)) {
+  if (value.some((item) => typeof item !== 'string' || item.length === 0)) {
     throw new Error(`${label} must contain stable refs`);
   }
-  return normalized.sort();
+  return [...new Set(value)].sort();
 }
 
 function strings(value, label) {
@@ -58,143 +76,191 @@ function strings(value, label) {
   return [...new Set(value)].sort();
 }
 
+function sourceBindings(value) {
+  if (!Array.isArray(value) || value.length === 0) throw new Error('sourceBindings must be a non-empty array');
+  const identities = new Set();
+  return value.map((binding) => {
+    if (!binding?.observationRef || !binding.sourceLineageRef || !binding.rangeRef || !SHA256.test(binding.sourceHash ?? '')) {
+      throw new Error('sourceBindings require observationRef, sourceLineageRef, rangeRef and lowercase SHA-256 sourceHash');
+    }
+    const identity = `${binding.observationRef}\0${binding.sourceLineageRef}\0${binding.rangeRef}`;
+    if (identities.has(identity)) throw new Error('sourceBindings contain a duplicate exact source tuple');
+    identities.add(identity);
+    return {
+      observationRef: binding.observationRef,
+      sourceLineageRef: binding.sourceLineageRef,
+      rangeRef: binding.rangeRef,
+      sourceHash: binding.sourceHash
+    };
+  }).sort((left, right) => `${left.observationRef}\0${left.sourceLineageRef}\0${left.rangeRef}`
+    .localeCompare(`${right.observationRef}\0${right.sourceLineageRef}\0${right.rangeRef}`));
+}
+
 function exactRefs(actual, required) {
   return actual.length === required.length && actual.every((item, index) => item === required[index]);
 }
 
-function withFingerprint(core, burdenRef = null) {
-  const semanticFingerprint = semanticHash(core);
+function fingerprinted(core) {
+  return deepFreeze({ ...core, semanticFingerprint: semanticHash(core) });
+}
+
+function sourceForm(input) {
+  const formedAt = canonicalTimestamp(input.formedAt ?? new Date().toISOString(), 'Burden Release formedAt');
+  if (!input.patternName || !input.patternDescription || !input.suspectedOrigin || !input.observedConsequence) {
+    throw new Error('Burden Release requires named pattern, description, suspected origin and observed consequence');
+  }
+  if (!BEHAVIOR_ORIGIN_CLASSES.has(input.suspectedOrigin)) throw new Error(`unknown suspectedOrigin ${input.suspectedOrigin}`);
+  if (!BURDEN_RELEASE_FRAMES.includes(input.releaseFrame)) throw new Error(`unknown releaseFrame ${input.releaseFrame}`);
+  if (!input.releaseStatement || !input.formerAuthority || !input.currentAuthority || !input.cleanIntention || !input.scope) {
+    throw new Error('Burden Release requires release statement, authority transition, clean intention and scope');
+  }
+  if (!CONTINUITY_SCOPE_CLASSES.has(input.scope)) throw new Error(`unknown Burden Release scope ${input.scope}`);
+  if (input.formerAuthority === input.currentAuthority) throw new Error('Burden Release must change accepted governing authority');
   return deepFreeze({
-    ...core,
-    burdenRef: burdenRef ?? `burden-release.${semanticFingerprint.slice(0, 24)}`,
-    semanticFingerprint
+    schemaVersion: 'vexlife.burden-release-source/v1',
+    sourceObservationRefs: refs(input.sourceObservationRefs, 'sourceObservationRefs'),
+    sourceBindings: sourceBindings(input.sourceBindings),
+    patternName: input.patternName,
+    patternDescription: input.patternDescription,
+    suspectedOrigin: input.suspectedOrigin,
+    observedConsequence: input.observedConsequence,
+    releaseFrame: input.releaseFrame,
+    releaseStatement: input.releaseStatement,
+    formerAuthority: input.formerAuthority,
+    currentAuthority: input.currentAuthority,
+    cleanIntention: input.cleanIntention,
+    protectedCapabilities: strings(input.protectedCapabilities, 'protectedCapabilities'),
+    prohibitedOvercorrections: strings(input.prohibitedOvercorrections, 'prohibitedOvercorrections'),
+    scope: input.scope,
+    requiredAcceptanceRefs: refs(input.requiredAcceptanceRefs, 'requiredAcceptanceRefs'),
+    formedAt,
+    supersedesRef: input.supersedesRef ?? null
   });
 }
 
-export function createBurdenRelease({
-  burdenRef = null,
-  sourceObservationRefs,
-  sourceRangeRefs,
-  patternName,
-  patternDescription,
-  suspectedOrigin,
-  observedConsequence,
-  releaseFrame,
-  releaseStatement,
-  formerAuthority,
-  currentAuthority,
-  cleanIntention,
-  protectedCapabilities,
-  prohibitedOvercorrections,
-  scope,
-  requiredAcceptanceRefs,
-  acceptedByRefs = [],
-  evaluationRefs = [],
-  recurrenceState = 'NOT_YET_MONITORED',
-  state = 'OBSERVED',
-  formedAt = new Date().toISOString(),
-  acceptedAt = null,
-  supersedesRef = null
-}) {
-  if (!patternName || !patternDescription || !suspectedOrigin || !observedConsequence) {
-    throw new Error('Burden Release requires named pattern, description, suspected origin and observed consequence');
-  }
-  if (!BURDEN_RELEASE_FRAMES.includes(releaseFrame)) throw new Error(`unknown releaseFrame ${releaseFrame}`);
-  if (!releaseStatement || !formerAuthority || !currentAuthority || !cleanIntention || !scope) {
-    throw new Error('Burden Release requires release statement, authority transition, clean intention and scope');
-  }
-  if (formerAuthority === currentAuthority) throw new Error('Burden Release must change accepted governing authority');
-  if (!BURDEN_RELEASE_STATES.includes(state)) throw new Error(`unknown Burden Release state ${state}`);
-
-  const required = refs(requiredAcceptanceRefs, 'requiredAcceptanceRefs');
-  const accepted = refs(acceptedByRefs, 'acceptedByRefs', { required: false });
-  const acceptedState = ['ACCEPTED_DEAUTHORIZED', 'MONITORED_FOR_RECURRENCE'].includes(state);
-  if (acceptedState && !exactRefs(accepted, required)) {
-    throw new Error('accepted Burden Release requires exact named acceptance authority');
-  }
-  if (acceptedState && !acceptedAt) throw new Error('accepted Burden Release requires acceptedAt');
-
-  const core = {
-    schemaVersion: 'vexlife.burden-release/v0',
-    sourceObservationRefs: refs(sourceObservationRefs, 'sourceObservationRefs'),
-    sourceRangeRefs: refs(sourceRangeRefs, 'sourceRangeRefs'),
-    patternName,
-    patternDescription,
-    suspectedOrigin,
-    observedConsequence,
-    releaseFrame,
-    releaseStatement,
-    formerAuthority,
-    currentAuthority,
+function createFromSource(source, burdenRef = null) {
+  const identityFingerprint = semanticHash(source);
+  const expectedRef = `burden-release.${identityFingerprint.slice(0, 24)}`;
+  if (burdenRef && burdenRef !== expectedRef) throw new Error('Burden Release ref does not match source-form identity');
+  return fingerprinted({
+    ...source,
+    schemaVersion: 'vexlife.burden-release/v1',
+    burdenRef: expectedRef,
+    identityFingerprint,
+    sourceForm: source,
     authorityTransition: 'FORMER_INFLUENCE_DEAUTHORIZED_IN_EXACT_SCOPE',
-    cleanIntention,
-    protectedCapabilities: strings(protectedCapabilities, 'protectedCapabilities'),
-    prohibitedOvercorrections: strings(prohibitedOvercorrections, 'prohibitedOvercorrections'),
-    scope,
-    requiredAcceptanceRefs: required,
-    acceptedByRefs: accepted,
-    evaluationRefs: refs(evaluationRefs, 'evaluationRefs', { required: false }),
-    recurrenceState,
-    state,
-    formedAt,
-    acceptedAt,
-    supersedesRef,
+    acceptedByRefs: [],
+    acceptanceEvidenceRefs: [],
+    evaluationRefs: [],
+    recurrenceState: 'NOT_YET_MONITORED',
+    state: 'OBSERVED',
+    acceptedAt: null,
+    transitionReceipts: [],
+    lastTransition: null,
     claimsParameterDeletion: false,
     changesBaseModelWeights: false,
     adjudicatesMetaphysicalTruth: false
-  };
-  return withFingerprint(core, burdenRef);
+  });
 }
 
-export function transitionBurdenRelease(release, {
-  nextState,
-  actorRef,
-  acceptedByRefs = release.acceptedByRefs,
-  acceptedAt = release.acceptedAt,
-  recurrenceState = release.recurrenceState,
-  evaluationRefs = release.evaluationRefs,
-  transitionedAt = new Date().toISOString(),
-  reason = null
-}) {
-  if (!actorRef) throw new Error('Burden Release transition requires actorRef');
+export function createBurdenRelease(input) {
+  if (input.state && input.state !== 'OBSERVED') {
+    throw new Error('Burden Release source formation is OBSERVED only');
+  }
+  if ((input.acceptedByRefs ?? []).length || input.acceptedAt || (input.transitionReceipts ?? []).length) {
+    throw new Error('Burden Release source formation cannot inject acceptance or transition history');
+  }
+  return createFromSource(sourceForm(input), input.burdenRef ?? null);
+}
+
+function applyTransition(release, input, { replay = false } = {}) {
+  const nextState = input.nextState;
+  if (!input.actorRef) throw new Error('Burden Release transition requires actorRef');
   if (!(TRANSITIONS[release.state] ?? []).includes(nextState)) {
     throw new Error(`invalid Burden Release transition ${release.state} -> ${nextState}`);
   }
-  const accepted = refs(acceptedByRefs, 'acceptedByRefs', { required: false });
-  if (nextState === 'ACCEPTED_DEAUTHORIZED' && !exactRefs(accepted, release.requiredAcceptanceRefs)) {
-    throw new Error('Burden Release cannot deauthorize influence without exact acceptance authority');
-  }
-  const core = {
-    ...release,
-    state: nextState,
-    acceptedByRefs: accepted,
-    acceptedAt: nextState === 'ACCEPTED_DEAUTHORIZED' ? (acceptedAt ?? transitionedAt) : acceptedAt,
-    recurrenceState,
-    evaluationRefs: refs(evaluationRefs, 'evaluationRefs', { required: false }),
-    lastTransition: {
-      priorState: release.state,
-      nextState,
-      actorRef,
-      transitionedAt,
-      reason
+  const transitionedAt = canonicalTimestamp(input.transitionedAt ?? new Date().toISOString(), 'Burden Release transitionedAt');
+  const priorAt = release.lastTransition?.transitionedAt ?? release.formedAt;
+  if (Date.parse(transitionedAt) <= Date.parse(priorAt)) throw new Error('Burden Release transition chronology must be strictly monotonic');
+  const acceptedByRefs = refs(input.acceptedByRefs ?? release.acceptedByRefs, 'acceptedByRefs', { required: false });
+  const acceptanceEvidenceRefs = refs(input.acceptanceEvidenceRefs ?? release.acceptanceEvidenceRefs, 'acceptanceEvidenceRefs', { required: false });
+  if (nextState === 'ACCEPTED_DEAUTHORIZED') {
+    if (!exactRefs(acceptedByRefs, release.requiredAcceptanceRefs) || acceptanceEvidenceRefs.length !== acceptedByRefs.length) {
+      throw new Error('Burden Release cannot deauthorize influence without exact acceptance evidence');
     }
+  }
+  const receiptCore = {
+    schemaVersion: 'vexlife.burden-release-transition/v1',
+    burdenRef: release.burdenRef,
+    sequence: release.transitionReceipts.length,
+    priorState: release.state,
+    nextState,
+    actorRef: input.actorRef,
+    transitionedAt,
+    reason: input.reason ?? null,
+    priorReleaseFingerprint: release.semanticFingerprint,
+    acceptedByRefs,
+    acceptanceEvidenceRefs,
+    evaluationRefs: refs(input.evaluationRefs ?? release.evaluationRefs, 'evaluationRefs', { required: false }),
+    recurrenceState: input.recurrenceState ?? release.recurrenceState
   };
+  const transitionRef = `burden-release-transition.${semanticHash(receiptCore).slice(0, 24)}`;
+  if (input.transitionRef && input.transitionRef !== transitionRef) throw new Error('Burden Release transition ref mismatch');
+  const receipt = fingerprinted({ ...receiptCore, transitionRef });
+  if (replay && input.semanticFingerprint !== receipt.semanticFingerprint) {
+    throw new Error('forged Burden Release transition receipt');
+  }
+  const core = structuredClone(release);
   delete core.semanticFingerprint;
-  delete core.burdenRef;
-  return withFingerprint(core, release.burdenRef);
+  core.state = nextState;
+  core.acceptedByRefs = acceptedByRefs;
+  core.acceptanceEvidenceRefs = acceptanceEvidenceRefs;
+  core.acceptedAt = nextState === 'ACCEPTED_DEAUTHORIZED'
+    ? canonicalTimestamp(input.acceptedAt ?? transitionedAt, 'Burden Release acceptedAt')
+    : release.acceptedAt;
+  if (core.acceptedAt && Date.parse(core.acceptedAt) < Date.parse(transitionedAt)) {
+    throw new Error('Burden Release acceptedAt cannot precede its acceptance transition');
+  }
+  core.evaluationRefs = receipt.evaluationRefs;
+  core.recurrenceState = receipt.recurrenceState;
+  core.transitionReceipts = [...release.transitionReceipts, receipt];
+  core.lastTransition = receipt;
+  return fingerprinted(core);
+}
+
+export function replayBurdenRelease(release) {
+  if (!release?.sourceForm || semanticHash(release.sourceForm) !== release.identityFingerprint) {
+    throw new Error('Burden Release source form or identity fingerprint mismatch');
+  }
+  let replayed = createFromSource(deepFreeze(structuredClone(release.sourceForm)), release.burdenRef);
+  for (const receipt of release.transitionReceipts ?? []) replayed = applyTransition(replayed, receipt, { replay: true });
+  if (replayed.semanticFingerprint !== release.semanticFingerprint) throw new Error('Burden Release replay does not match current snapshot');
+  return replayed;
+}
+
+export function validateBurdenRelease(release) {
+  replayBurdenRelease(release);
+  return release;
+}
+
+export function transitionBurdenRelease(release, input) {
+  validateBurdenRelease(release);
+  return applyTransition(release, input);
 }
 
 export function acceptBurdenRelease(release, {
   acceptedByRefs,
+  acceptanceEvidenceRefs,
   actorRef,
   acceptedAt = new Date().toISOString(),
   evaluationRefs = release.evaluationRefs
 }) {
-  if (release.state !== 'CONTEXT_REVIEW') throw new Error('Burden Release acceptance requires CONTEXT_REVIEW');
+  if (release.state !== 'CONTEXT_REVIEW') throw new Error('Burden Release acceptance requires replayed CONTEXT_REVIEW history');
   return transitionBurdenRelease(release, {
     nextState: 'ACCEPTED_DEAUTHORIZED',
     actorRef,
     acceptedByRefs,
+    acceptanceEvidenceRefs,
     acceptedAt,
     evaluationRefs,
     recurrenceState: 'MONITORING_AVAILABLE',
@@ -204,10 +270,11 @@ export function acceptBurdenRelease(release, {
 }
 
 export function projectBurdenRelease(release) {
+  validateBurdenRelease(release);
   return deepFreeze({
-    schemaVersion: 'vexlife.burden-release-projection/v0',
+    schemaVersion: 'vexlife.burden-release-projection/v1',
     burdenRef: release.burdenRef,
-    pattern: release.patternName,
+    patternRef: `pattern.${release.identityFingerprint.slice(0, 24)}`,
     change: release.authorityTransition,
     formerAuthority: release.formerAuthority,
     currentAuthority: release.currentAuthority,
@@ -216,6 +283,7 @@ export function projectBurdenRelease(release) {
     scope: release.scope,
     state: release.state,
     recurrenceState: release.recurrenceState,
+    transitionReceiptRefs: release.transitionReceipts.map((item) => item.transitionRef),
     claimsParameterDeletion: false,
     rawSourceContentIncluded: false,
     nextSafeAction: ['ACCEPTED_DEAUTHORIZED', 'MONITORED_FOR_RECURRENCE'].includes(release.state)

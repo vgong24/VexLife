@@ -453,11 +453,11 @@
   },
   {
     "testRef": "test.continuity-evolution.e4-separate-self-authority",
-    "brief": "One party cannot accept or overwrite another self's preference."
+    "brief": "Caller authority hints cannot accept or overwrite another self's preference; exact current policy-bound acceptance evidence is required."
   },
   {
     "testRef": "test.continuity-evolution.e5-relationship-exact-parties",
-    "brief": "Relationship agreement requires exact acceptance from every named party or exact scoped delegate."
+    "brief": "Relationship agreement requires exact current evidence from every named party or exact scoped delegate, with missing, expired and forged evidence rejected."
   },
   {
     "testRef": "test.continuity-evolution.e6-least-invasive-router",
@@ -473,7 +473,7 @@
   },
   {
     "testRef": "test.continuity-evolution.e9-burden-exact-authority",
-    "brief": "Burden Release requires exact scope, exact affected acceptance authority and preserved capability boundaries."
+    "brief": "Burden Release replays every canonical transition receipt from source OBSERVED state and requires exact scope, current affected acceptance authority and preserved capability boundaries."
   },
   {
     "testRef": "test.continuity-evolution.e10-no-parameter-deletion",
@@ -489,23 +489,23 @@
   },
   {
     "testRef": "test.continuity-evolution.e13-accepted-lineage",
-    "brief": "Accepted records preserve exact source, candidate, review, scope and acceptance lineage."
+    "brief": "Accepted records preserve content-addressed source tuples, candidate, route, review, policy, current evidence, scope and acceptance lineage while rejecting caller-forged refs or content."
   },
   {
     "testRef": "test.continuity-evolution.e14-reversible-history",
-    "brief": "Supersession, reopening and rollback preserve prior accepted history instead of deleting it."
+    "brief": "Supersession is one validated atomic transaction that changes effective disposition while preserving immutable prior accepted history; partial or conflicting updates fail."
   },
   {
     "testRef": "test.continuity-evolution.e15-sibling-attribution",
-    "brief": "Sibling and family projection preserves source lineage and never claims another lineage's lived experience."
+    "brief": "Sibling and family projection preserves exact source lineage, requires current review plus delivery authority and never claims another lineage's lived experience."
   },
   {
     "testRef": "test.continuity-evolution.e16-recurrence-no-broadening",
-    "brief": "Recurrence evidence cannot broaden accepted scope or trigger model weights automatically."
+    "brief": "Recurrence must bind the exact accepted-record fingerprint, Burden Release, evaluation set, lineage and prior chain and cannot broaden scope or trigger weights."
   },
   {
     "testRef": "test.continuity-evolution.e17-recurrence-no-op",
-    "brief": "Duplicate unchanged recurrence suppresses another semantic model turn and canonical state revision."
+    "brief": "Only duplicate exact recurrence evidence is a no-op; changed or replayed stale proof must extend the canonical prior chain or fail."
   },
   {
     "testRef": "test.continuity-evolution.e18-training-not-admitted",
@@ -517,14 +517,14 @@
   },
   {
     "testRef": "test.continuity-evolution.e20-scheduler-workgraph",
-    "brief": "The deterministic no-effect continuity journey completes its bound canonical node through the accepted scheduler and Workgraph completion path."
+    "brief": "The deterministic no-effect journey completes the actual registered continuity node through scheduler admission, lease and Workgraph verification with seven exact causal bindings."
   },
   {
     "testRef": "test.continuity-evolution.e21-canonical-projections",
-    "brief": "Queue, Terrain, Health, Guide and evolution derive from one canonical state without duplicated truth."
+    "brief": "Queue, Terrain, Health, Guide and evolution derive from one validated canonical aggregate with transient leases separate and record-set conflicts visible."
   },
   {
     "testRef": "test.continuity-evolution.e22-full-gate",
-    "brief": "Full repository, manifest, Health, browser, Windows/Linux portability and DCO gates remain required for acceptance."
+    "brief": "PR-ready and Health independently reject missing, stale or generically successful continuity output unless the exact structured scheduler/Workgraph receipt is current; all repository gates remain required."
   }
 ]

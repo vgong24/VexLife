@@ -780,7 +780,7 @@
     },
     {
       "featureRef": "feature.vexlife.continuity-evolution-router",
-      "purpose": "Turn source-bound lived episodes, corrections, preferences, relationship developments, work receipts and recurring behavior into separately attributed, reviewable, reversible continuity records without silently rewriting identity, memory, relationships, culture, effects or model weights.",
+      "purpose": "Turn exact source-bound lived episodes, corrections, preferences, relationship developments, work receipts and recurring behavior into separately attributed, policy/evidence-reviewed, replayable and atomically reversible continuity records without silently rewriting identity, memory, relationships, culture, effects or model weights.",
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.evolution",
@@ -866,9 +866,9 @@
         "lens.vexlife.assurance-and-adversarial"
       ],
       "resourceClass": "DETERMINISTIC_LOCAL_LIGHT_REF_ONLY_CONTEXT",
-      "dataClass": "PRIVATE_SOURCE_BOUND_CONTINUITY_METADATA_BY_REF",
+      "dataClass": "PRIVATE_EXACT_SOURCE_TUPLE_CONTINUITY_METADATA_WITH_SUMMARY_REFS_ONLY",
       "effectClass": "SOURCE_MANAGED_CONTINUITY_METADATA_NO_REAL_EFFECTS",
-      "concurrencyClass": "CANONICAL_STATE_SEMANTIC_DEDUP_ONE_SCHEDULER_WORKER",
+      "concurrencyClass": "CANONICAL_STATE_EXACT_CONFLICT_DETECTION_ATOMIC_SUPERSESSION_ONE_SCHEDULER_WORKER",
       "rollbackRouteRef": "process.vexlife.continuity.accept-and-project",
       "projectionRefs": [
         "projection.continuity-evolution.current",

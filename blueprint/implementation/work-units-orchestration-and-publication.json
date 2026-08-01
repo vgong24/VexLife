@@ -255,7 +255,7 @@
   },
   {
     "workRef": "work.vexlife.continuity-evolution-router",
-    "purpose": "Implement Intent Orchestration 3/3 as source-bound continuity observations, separate-self preferences, Burden Release influence deauthorization, deterministic least-invasive routing, Context Review acceptance authority, reversible records, bounded recurrence and human-readable projections integrated with the accepted scheduler/Workgraph no-effect completion path.",
+    "purpose": "Implement Intent Orchestration 3/3 as exact-tuple source-bound continuity observations, separate-self preferences, policy-first Context Review acceptance evidence, replayed Burden Release influence deauthorization, atomic reversible records, exact recurrence and privacy-bounded projections causally completed through the accepted scheduler/Workgraph no-effect path.",
     "distance": "NOW",
     "milestoneRef": "milestone.vexlife.work-orchestration",
     "dependsOn": [
@@ -326,14 +326,20 @@
     ],
     "outputRefs": [
       "registry.vexlife.evolution.001",
-      "contract.vexlife.burden-release/v0",
-      "contract.continuity-evolution.integrated-simulation/v0",
+      "source.blueprint.evolution-registry",
+      "system.vexlife.continuity-and-evolution",
+      "contract.vexlife.continuity-observation/v1",
+      "contract.vexlife.continuity-context-review/v1",
+      "contract.vexlife.continuity-acceptance-evidence/v1",
+      "contract.vexlife.burden-release/v1",
+      "contract.vexlife.continuity-recurrence/v1",
+      "contract.continuity-evolution.integrated-simulation/v1",
       "module.vexlife.core.continuity-evolution-router",
       "module.vexlife.core.burden-release",
       "projection.continuity-evolution.current"
     ],
     "effectBoundary": "SOURCE_MANAGED_CONTINUITY_METADATA_AND_DETERMINISTIC_NO_EFFECT_SIMULATION_ONLY",
-    "completionGate": "E0-E22 and adversarial tests, PR-ready, exact source manifest, Health, browser, Windows/Linux portability, DCO and independent exact-head review pass",
+    "completionGate": "E0-E22 and adversarial trust-boundary tests, an exact structured continuity scheduler/Workgraph receipt admitted independently by PR-ready and Health, exact source manifest, browser, Windows/Linux portability, DCO and independent exact-head review pass",
     "platformRefs": [
       "platform.any"
     ],

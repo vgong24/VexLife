@@ -22,8 +22,8 @@
     {
       "path": ".github/workflows/check.yml",
       "mode": "100644",
-      "bytes": 6682,
-      "sha256": "d7892abae200b3451f522d795ceb8a6eb158814354c539a67da3565dd936221e"
+      "bytes": 6748,
+      "sha256": "9f09ea0986d8d190d2ef4dd74d7ae14c35c77a75f65309bba8c8946a061a75e0"
     },
     {
       "path": ".github/workflows/dco.yml",
@@ -88,8 +88,8 @@
     {
       "path": "README.md",
       "mode": "100644",
-      "bytes": 18420,
-      "sha256": "819353825c01f786c479505fe2a888de9198cd5071745c222db66fae03015800"
+      "bytes": 18597,
+      "sha256": "ed31febd18467b15a4d727d8106f5d539093e86bcb8fa1a35af41ca61c86a4e3"
     },
     {
       "path": "SECURITY.md",
@@ -118,8 +118,8 @@
     {
       "path": "blueprint/build-health-registry.json",
       "mode": "100644",
-      "bytes": 10829,
-      "sha256": "35d107eb9efa3197da1d6fb07bff7e5d13c2ee4fa3e06febeb525a3a29ba8b33"
+      "bytes": 10901,
+      "sha256": "1230ed0291cda789007acab8018eee20ed10323d7d4a8a1384674bd134ab2950"
     },
     {
       "path": "blueprint/capability-registry.json",
@@ -136,8 +136,8 @@
     {
       "path": "blueprint/evolution-registry.json",
       "mode": "100644",
-      "bytes": 15277,
-      "sha256": "4c1ced30cbcdb298f527a04be5f64fff503d2295e665840eb69eccab6d9fe9ad"
+      "bytes": 22734,
+      "sha256": "00fd985d9223caa593b7befce28d9f8b97e177e482438d36b5af0a810f5cb2e6"
     },
     {
       "path": "blueprint/experience-registry.json",

@@ -4,6 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
+import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
+import { buildSourceManifest } from '../src/core/source-manifest.mjs';
+import { runContinuityEvolutionSimulation, validateContinuityEvolutionSimulationReceipt } from '../scripts/evolution-simulate.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -51,6 +55,29 @@ test('orientation ATTENTION remains unresolved through pr-ready and repository H
   } finally {
     fs.rmSync(receiptPath, { force: true });
   }
+});
+
+test('generic successful evolution command output cannot substitute for exact structured continuity receipt', () => {
+  const bundle = loadBlueprint(ROOT);
+  const blueprint = validateBlueprint(bundle);
+  const source = buildSourceManifest(ROOT);
+  const repository = collectRepositoryEvidence(ROOT);
+  const context = {
+    evolutionRegistry: bundle.evolution,
+    blueprintHash: blueprint.semanticHash,
+    sourceTreeSha256: source.treeSha256,
+    repositoryGit: repository.git
+  };
+  const genericSuccess = { schemaVersion: 'vexlife.continuity-evolution-check-result/v0', state: 'VALID', currentness: 'CURRENT' };
+  const missingStructured = validateContinuityEvolutionSimulationReceipt(genericSuccess, context);
+  assert.equal(missingStructured.ok, false);
+  assert.match(missingStructured.errors.join('\n'), /schema|identity|stale|journey|binding/i);
+
+  const exact = runContinuityEvolutionSimulation({ root: ROOT, writeReceipt: false }).receipt;
+  const stale = { ...exact, candidateHeadSha: '0'.repeat(40) };
+  const staleValidation = validateContinuityEvolutionSimulationReceipt(stale, context);
+  assert.equal(staleValidation.ok, false);
+  assert.match(staleValidation.errors.join('\n'), /identity|candidateHeadSha/);
 });
 
 // [VXG RealForever]

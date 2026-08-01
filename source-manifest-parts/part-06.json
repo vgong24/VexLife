@@ -16,14 +16,14 @@
     {
       "path": "scripts/evolution-check.mjs",
       "mode": "100644",
-      "bytes": 7806,
-      "sha256": "53e12afa211a01e2935637ce2cfea52f4a9ddaf3521d53789936c205db841dbc"
+      "bytes": 9988,
+      "sha256": "9523f0c6f4f437ea5d0df91ac6bd06825c1915b5ea23207908043d7c46b8f9f9"
     },
     {
       "path": "scripts/evolution-simulate.mjs",
       "mode": "100644",
-      "bytes": 12451,
-      "sha256": "c4c305f5eb6609b5d09a7b61368fe41dd8b83c60eb75799837347da0c66b8882"
+      "bytes": 31505,
+      "sha256": "f2b51ecc4627742d49e1c0e8275f9fa02ff00daac256a32a814bbe9cfb8df323"
     },
     {
       "path": "scripts/evolution-status.mjs",
@@ -52,8 +52,8 @@
     {
       "path": "scripts/health-check.mjs",
       "mode": "100644",
-      "bytes": 6712,
-      "sha256": "fc5b3631a44ff71d206f610815a9087ee90d8fb20abfc479c69aa04ce2d13f24"
+      "bytes": 10181,
+      "sha256": "644994468c10d883dba398dff30ea9b22192c97e0a284ee64a372ab8d3c7e7be"
     },
     {
       "path": "scripts/impact-report.mjs",
@@ -106,8 +106,8 @@
     {
       "path": "scripts/pr-ready.mjs",
       "mode": "100644",
-      "bytes": 8154,
-      "sha256": "ac2478a5090e2a10fa7d17a50572b8503dbcf40c5c60963e067de8b98075c995"
+      "bytes": 11465,
+      "sha256": "7129429142e11908fd764327ab688b86fc7dd35db5476f57d59dd0855d2c6864"
     },
     {
       "path": "scripts/provision-model.mjs",
