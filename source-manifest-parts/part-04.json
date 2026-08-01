@@ -128,6 +128,12 @@
       "sha256": "85d89ff187d1d06198f8a816aab4938d39ad37f2deca4d53fb1aec86facad969"
     },
     {
+      "path": "docs/PUBLIC-HOME-PAGE.md",
+      "mode": "100644",
+      "bytes": 4456,
+      "sha256": "4bd838bb1f69903541aa3e2df96f1b3a9f458e9eba14f637a49c2da60c443ab0"
+    },
+    {
       "path": "docs/REGISTRIES-AND-PROCESS-FACTORY.md",
       "mode": "100644",
       "bytes": 3816,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 6513,
       "sha256": "1dc8db34e5d3e98de2d3befbdbca655617c9b19fb35c9dc276994fa98e60d74f"
-    },
-    {
-      "path": "docs/SECURITY-PERMISSION-EFFECTS.md",
-      "mode": "100644",
-      "bytes": 2170,
-      "sha256": "251360fab4c5908cb00574ad4704a97a5b2e79bc00e9119fc32b310c75e43ed4"
     }
   ]
 }

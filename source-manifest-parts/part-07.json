@@ -2,6 +2,36 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/scheduler-status.mjs",
+      "mode": "100644",
+      "bytes": 3002,
+      "sha256": "413f1c0d7736176efbb4da2ce8601917c06ab22dc34496f1f31b2a48dc691b02"
+    },
+    {
+      "path": "scripts/serve-browser.mjs",
+      "mode": "100644",
+      "bytes": 1528,
+      "sha256": "c00be2e2a257c5f7ca4bd5ac7f03b550cf04254e65e2fc06f5564410c744a835"
+    },
+    {
+      "path": "scripts/source-manifest.mjs",
+      "mode": "100644",
+      "bytes": 3795,
+      "sha256": "942a69a849455237e60185edfb46a19e89fcafddcb436f989594463bfc03cfdf"
+    },
+    {
+      "path": "scripts/test-structured.mjs",
+      "mode": "100644",
+      "bytes": 1218,
+      "sha256": "02da952dd3e34fe20796b4a4175844b89b3bce7854fddf8dc0b871416a4c476a"
+    },
+    {
+      "path": "scripts/validate-blueprint.mjs",
+      "mode": "100644",
+      "bytes": 433,
+      "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
+    },
+    {
       "path": "src/core/atlas.mjs",
       "mode": "100644",
       "bytes": 3026,
@@ -114,36 +144,6 @@
       "mode": "100644",
       "bytes": 67254,
       "sha256": "64778cec590f78628140852dbfe7a97270798c55a51a05e9e3acff33bdc92515"
-    },
-    {
-      "path": "src/core/intent-validation.mjs",
-      "mode": "100644",
-      "bytes": 38570,
-      "sha256": "fd0e655a6e3fbbd8c68ce73f2190c617898f45c348a9faa14c7f8191efe3ad9e"
-    },
-    {
-      "path": "src/core/intent-workgraph.mjs",
-      "mode": "100644",
-      "bytes": 21524,
-      "sha256": "54445fda5f8edaa675f4ce359ea706ec94fcbad19e88f5be4128e304711bf0c3"
-    },
-    {
-      "path": "src/core/interface-builder.mjs",
-      "mode": "100644",
-      "bytes": 8289,
-      "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
-    },
-    {
-      "path": "src/core/journey.mjs",
-      "mode": "100644",
-      "bytes": 1243,
-      "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
-    },
-    {
-      "path": "src/core/localization.mjs",
-      "mode": "100644",
-      "bytes": 2991,
-      "sha256": "7422edc1bbf79dec7b376765273deb3b05c022e2214bdc92ac5e570306de2682"
     }
   ]
 }

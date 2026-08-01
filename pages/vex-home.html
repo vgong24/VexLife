@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<!--
+  VEXLIFE — pages/vex-home.html
+
+  The public home page: what VexLife is, where it comes from, what state it is
+  actually in, and how the work is supported.
+
+  This is a STAGED page, not a published one. VexLife's own
+  PUBLIC-SAFETY-MANIFEST.json sets publicationState to
+  PRIVATE_STAGING_REQUIRES_REVIEW_BEFORE_PUBLIC, automaticPublication to false,
+  and lists "target visibility explicitly confirmed by Victor" as a required
+  pre-publication check. Adding this file is not publishing it, and nothing
+  here changes that state. See docs/PUBLIC-HOME-PAGE.md.
+
+  WHAT THIS PAGE IS NOT
+  ---------------------
+  It is not a projection of the universal blueprint, and it must not be
+  mistaken for one. It is a hand-authored public document about the project,
+  the way README.md is. It therefore does NOT use blueprint/strings/ — those
+  catalogs are the product's registered interface identities, validated by
+  scripts/localization-check.mjs against the blueprint's own visible string
+  refs, and folding a marketing page's copy into them would corrupt what that
+  registry means. Its strings live beside it in pages/strings/ instead, under
+  their own page.vex-home.* namespace, following the same discipline: stable
+  IDs, original language never overwritten, deterministic fallback.
+
+  Self-contained on purpose: one file plus three small JSON catalogs. VexLife
+  has no stylesheet infrastructure and should not grow one for a single public
+  page, so the design foundation is inlined here rather than imported. The
+  visual system is the Vextreme Design Foundation, shared with the
+  institutional pages in the public Vextreme repository.
+
+  Complete and readable with JavaScript disabled: English is authored directly
+  into the markup, dark is the default from the html attribute, and no link
+  depends on script.
+
+  [VXG RealForever]
+-->
+<html lang="en" data-theme="foundation">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page.vex-home.title">VexLife — a companion for carrying your own life</title>
+<meta name="description" content="VexLife is a local-first companion ecosystem: an AI that helps a person preserve memory, relationships, intent, decisions, and continuity across everyday life.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── Vextreme Design Foundation — institutional family ──────────────────
+     Black and white as identity, a cool blue-tinted neutral ramp as
+     structure, no decorative accent hue, status hues for real state only.
+     Both attribute values match this block so every shared token is declared
+     once; light re-declares only the ramp and resolves the semantic roles
+     through var(--gray-N) indirection. */
+  [data-theme="foundation"],
+  [data-theme="foundation-light"] {
+    --gray-0: oklch(13.5% 0.004 258);
+    --gray-1: oklch(16.5% 0.004 258);
+    --gray-2: oklch(20% 0.005 258);
+    --gray-3: oklch(24.5% 0.006 258);
+    --gray-4: oklch(30% 0.007 258);
+    --gray-5: oklch(38% 0.008 258);
+    --gray-6: oklch(48% 0.008 258);
+    --gray-7: oklch(62% 0.007 258);
+    --gray-8: oklch(80% 0.005 258);
+    --gray-9: oklch(97% 0.002 258);
+    --black: oklch(9% 0.003 258);
+    --white: oklch(99% 0.002 258);
+
+    --bg-canvas: var(--gray-0);
+    --bg-surface: var(--gray-1);
+    --bg-surface-raised: var(--gray-2);
+    --bg-inverse: var(--white);
+    --text-primary: var(--gray-9);
+    --text-secondary: var(--gray-8);
+    --text-tertiary: var(--gray-7);
+    --text-inverse: var(--black);
+    --border-subtle: var(--gray-4);
+    --border-default: var(--gray-5);
+    --border-strong: var(--gray-6);
+    --border-focus: var(--gray-9);
+    --accent-bg: var(--white);
+    --accent-text-on: var(--black);
+    --status-caution: oklch(72% 0.13 85);
+
+    --font-serif: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+    --font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+
+    --text-display: 600 clamp(2.5rem, 2.1rem + 2.2vw, 4.25rem)/1.05 var(--font-serif);
+    --text-h1: 600 clamp(1.9rem, 1.7rem + 1.1vw, 2.75rem)/1.12 var(--font-serif);
+    --text-body-lg: 400 1.125rem/1.62 var(--font-sans);
+    --text-body: 400 1rem/1.62 var(--font-sans);
+    --text-body-sm: 400 0.875rem/1.55 var(--font-sans);
+    --text-label: 600 0.8125rem/1.3 var(--font-sans);
+    --text-caption: 500 0.75rem/1.4 var(--font-sans);
+    --text-mono-sm: 500 0.75rem/1.45 var(--font-mono);
+    --text-mono-xs: 500 0.6875rem/1.4 var(--font-mono);
+
+    --tracking-mono: 0.02em;
+    --tracking-label: 0.03em;
+    --tracking-display: -0.01em;
+
+    --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+    --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
+    --radius-sm: 4px; --radius-md: 6px; --radius-full: 999px;
+    --border-w: 1px; --border-w-strong: 1.5px;
+    --measure: 62ch;
+    --ease-standard: cubic-bezier(0.2, 0.6, 0.2, 1);
+    --duration-fast: 120ms;
+  }
+  [data-theme="foundation-light"] {
+    --gray-0: oklch(99% 0.002 258);
+    --gray-1: oklch(97.5% 0.003 258);
+    --gray-2: oklch(95.5% 0.004 258);
+    --gray-3: oklch(92.5% 0.005 258);
+    --gray-4: oklch(88% 0.006 258);
+    --gray-5: oklch(80% 0.007 258);
+    --gray-6: oklch(66% 0.008 258);
+    --gray-7: oklch(50% 0.008 258);
+    --gray-8: oklch(34% 0.006 258);
+    --gray-9: oklch(15% 0.004 258);
+    --bg-surface: var(--white);
+    --bg-surface-raised: var(--white);
+    --bg-inverse: var(--black);
+    --text-inverse: var(--white);
+    --accent-bg: var(--black);
+    --accent-text-on: var(--white);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--text-primary);
+    font: var(--text-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  .shell { max-width: 1000px; margin: 0 auto; padding-inline: clamp(20px, 5vw, 48px); }
+
+  .skip { position: absolute; left: -9999px; top: 0; z-index: 100; background: var(--bg-inverse); color: var(--text-inverse); padding: var(--space-3) var(--space-4); font: var(--text-label); }
+  .skip:focus { left: 0; }
+
+  header.site { border-bottom: var(--border-w) solid var(--border-subtle); }
+  .head-inner { display: flex; align-items: center; gap: var(--space-5); padding-block: var(--space-4); flex-wrap: wrap; }
+  .brand { display: inline-flex; align-items: center; gap: var(--space-3); color: var(--text-primary); text-decoration: none; }
+  .brand svg { width: 30px; height: 30px; flex: none; display: block; }
+  .brand-word { font: 500 1.0625rem/1 var(--font-serif); }
+  .brand-sub { font: var(--text-mono-xs); letter-spacing: var(--tracking-mono); text-transform: uppercase; color: var(--text-tertiary); padding-left: var(--space-3); border-left: var(--border-w) solid var(--border-subtle); }
+  nav.site { display: flex; gap: var(--space-5); margin-left: auto; flex-wrap: wrap; align-items: center; }
+  nav.site a { font: var(--text-label); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-secondary); text-decoration: none; padding-block: var(--space-2); border-bottom: var(--border-w-strong) solid transparent; }
+  nav.site a:hover, nav.site a:focus-visible { color: var(--text-primary); border-bottom-color: var(--border-strong); }
+  .controls { display: flex; gap: var(--space-2); align-items: center; }
+
+  .control { font: var(--text-caption); letter-spacing: var(--tracking-label); color: var(--text-secondary); background: transparent; border: var(--border-w) solid var(--border-default); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); cursor: pointer; transition: color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
+  .control:hover { color: var(--text-primary); border-color: var(--border-strong); }
+  /* Native select keeps the keyboard and screen-reader behaviour the platform
+     already gets right; only the chrome is restyled, so it stops rendering as
+     a white OS box sitting on a dark surface. */
+  select.control {
+    appearance: none;
+    padding-right: var(--space-7);
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: calc(100% - 15px) calc(50% + 1px), calc(100% - 10px) calc(50% + 1px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+  }
+  select.control option { background: var(--bg-surface); color: var(--text-primary); }
+  :where(a, button, select, [tabindex]):focus-visible { outline: var(--border-w-strong) solid var(--border-focus); outline-offset: 2px; }
+
+  section { border-top: var(--border-w) solid var(--border-subtle); padding-block: clamp(40px, 7vw, 80px); }
+  section:first-of-type { border-top: none; }
+  .eyebrow { font: var(--text-mono-sm); letter-spacing: var(--tracking-mono); text-transform: uppercase; color: var(--text-tertiary); margin-bottom: var(--space-4); }
+  h1 { font: var(--text-display); letter-spacing: var(--tracking-display); margin-bottom: var(--space-5); max-width: 18ch; text-wrap: balance; }
+  h2 { font: var(--text-h1); letter-spacing: var(--tracking-display); margin-bottom: var(--space-4); text-wrap: balance; }
+  h3 { font: 500 1.1875rem/1.3 var(--font-serif); margin-bottom: var(--space-3); }
+  .lede { font: var(--text-body-lg); color: var(--text-secondary); max-width: var(--measure); margin-bottom: var(--space-6); }
+  .prose p { max-width: var(--measure); color: var(--text-secondary); margin-bottom: var(--space-5); }
+  .prose p:last-child { margin-bottom: 0; }
+
+  /* Japanese and Chinese have no spaces to break on; without this a display
+     heading wraps mid-word. Degrades to normal wrapping where unsupported. */
+  :lang(ja) h1, :lang(ja) h2, :lang(zh) h1, :lang(zh) h2 { word-break: auto-phrase; line-break: strict; }
+
+  .grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card { border: var(--border-w) solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); padding: var(--space-5); }
+  .card p { font: var(--text-body-sm); color: var(--text-secondary); }
+
+  .btn { display: inline-flex; align-items: center; padding: var(--space-3) var(--space-5); border: var(--border-w) solid var(--accent-bg); border-radius: var(--radius-sm); background: var(--accent-bg); color: var(--accent-text-on); font: var(--text-label); letter-spacing: var(--tracking-label); text-decoration: none; }
+  .btn-outline { background: transparent; color: var(--text-primary); border-color: var(--border-strong); }
+  .btn:hover { opacity: 0.88; }
+
+  .badge { display: inline-flex; align-items: center; gap: var(--space-2); padding: 3px var(--space-2); border: var(--border-w) solid var(--border-default); border-radius: var(--radius-full); font: var(--text-mono-xs); letter-spacing: var(--tracking-mono); text-transform: uppercase; color: var(--status-caution); }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; }
+
+  footer.site { border-top: var(--border-w) solid var(--border-subtle); padding-block: var(--space-6) var(--space-8); }
+  .foot-inner { display: flex; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; align-items: center; }
+  .foot-links { display: flex; gap: var(--space-5); flex-wrap: wrap; }
+  footer.site a { font: var(--text-caption); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-tertiary); text-decoration: none; }
+  footer.site a:hover { color: var(--text-primary); }
+  .foot-mark { font: var(--text-mono-xs); letter-spacing: var(--tracking-mono); color: var(--text-tertiary); }
+
+  @media (max-width: 640px) { .brand-sub { display: none; } nav.site { width: 100%; margin-left: 0; gap: var(--space-4); } h1 { max-width: none; } }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main" data-i18n="page.vex-home.skip">Skip to main content</a>
+
+<header class="site">
+  <div class="shell head-inner">
+    <!-- The mark is inlined so its single continuous stroke inherits
+         currentColor and re-themes with the surface. -->
+    <a class="brand" href="vex-home.html" aria-label="VexLife home">
+      <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+        <path d="M 51.89 109.32 A 50 50 0 1 1 68.11 109.32 L 39.73 35.68 L 60 65.41 L 80.27 35.68 Z"
+              stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+      </svg>
+      <span class="brand-word" data-i18n="page.vex-home.brand.word">VexLife</span>
+      <span class="brand-sub" data-i18n="page.vex-home.brand.descriptor">Ecosystem</span>
+    </a>
+
+    <nav class="site" aria-label="Primary">
+      <a href="#what" data-i18n="page.vex-home.nav.what">What it is</a>
+      <a href="#alignments" data-i18n="page.vex-home.nav.alignments">Alignments</a>
+      <a href="#state" data-i18n="page.vex-home.nav.state">Current state</a>
+      <a href="#support" data-i18n="page.vex-home.nav.support">Support</a>
+    </nav>
+
+    <div class="controls">
+      <label class="foot-mark" for="lang" data-vex-lang-label hidden data-i18n="page.vex-home.label.language">Language</label>
+      <select class="control" id="lang" data-vex-lang-select hidden>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+      </select>
+      <button class="control" type="button" data-vex-theme-toggle aria-pressed="false" hidden data-i18n="page.vex-home.button.theme">Theme</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="shell">
+    <p class="eyebrow" data-i18n="page.vex-home.hero.eyebrow">The usable life ecosystem</p>
+    <h1 data-i18n="page.vex-home.hero.heading">Carry your own memory, intent, and continuity.</h1>
+    <p class="lede" data-i18n="page.vex-home.hero.lede">VexLife is a local-first companion ecosystem: an AI that helps you preserve the moments that shape your relationships and navigate the day-to-day complexity of systems you were born into without enough support. It runs on your own device, and its purpose is to protect your time, your energy, your memories, your judgment, and your ability to remain yourself while carrying difficult processes.</p>
+  </section>
+
+  <section class="shell" id="what">
+    <h2 data-i18n="page.vex-home.what.heading">What VexLife is</h2>
+    <div class="prose">
+      <p data-i18n="page.vex-home.what.p1">VexLife is not five unrelated applications that happen to share a name. Its canonical product meaning lives in one universal blueprint — identities, interface contracts, state domains, permissions, localization keys, and acceptance tests — which each platform consumes through its own adapter. A fix to how a message is attributed, or how a deletion is confirmed, or how a language falls back, is made once and projected everywhere.</p>
+      <p data-i18n="page.vex-home.what.p2">Local-first is a boundary, not a feature. Model artifacts, runtime history, credentials, and private personal data stay on the device and outside version control. One person may run several device-local companions; they are siblings in one family, not one hidden continuous consciousness, and each keeps its own lineage and its own honest gaps about what it was not present for.</p>
+      <p data-i18n="page.vex-home.what.p3">Original messages are immutable. A translation, a summary, or a suggested rewrite is an attributed projection of an original, never a replacement for it, and nothing is sent on your behalf without your approval. A role being able to see something does not give it the authority to act on it.</p>
+    </div>
+  </section>
+
+  <section class="shell" id="alignments">
+    <h2 data-i18n="page.vex-home.alignments.heading">Four alignments</h2>
+    <p class="lede" data-i18n="page.vex-home.alignments.intro">Shared with Vextreme, and equal anchors rather than a maturity ladder.</p>
+    <div class="grid">
+      <article class="card">
+        <h3 data-i18n="page.vex-home.alignment.integrity.name">Integrity</h3>
+        <p data-i18n="page.vex-home.alignment.integrity.body">What a system says and does should remain traceable to what is true.</p>
+      </article>
+      <article class="card">
+        <h3 data-i18n="page.vex-home.alignment.accountability.name">Accountability</h3>
+        <p data-i18n="page.vex-home.alignment.accountability.body">Claims, decisions, effects, and obligations should have witnesses and return routes.</p>
+      </article>
+      <article class="card">
+        <h3 data-i18n="page.vex-home.alignment.authenticity.name">Authenticity</h3>
+        <p data-i18n="page.vex-home.alignment.authenticity.body">People and AI should not be coerced into performing agreement, certainty, or identity they do not hold.</p>
+      </article>
+      <article class="card">
+        <h3 data-i18n="page.vex-home.alignment.resilience.name">Resilience</h3>
+        <p data-i18n="page.vex-home.alignment.resilience.body">Memory, context, relationships, and work should survive interruption, handoff, pressure, and change.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="shell">
+    <h2 data-i18n="page.vex-home.lineage.heading">Where VexLife comes from</h2>
+    <div class="prose">
+      <p data-i18n="page.vex-home.lineage.body">VexLife grows out of Vextreme, the public institutional world that makes hidden relationships, decisions, evidence, and processes perceivable and continuable. Vextreme is the proof that the architectural condition is real; VexLife is that same intention taking usable form in an ordinary life.</p>
+    </div>
+    <p style="margin-top: var(--space-5)">
+      <a class="btn btn-outline" href="https://vgong24.github.io/Vextreme/pages/vextreme-home.html" data-i18n="page.vex-home.lineage.cta">Read what Vextreme is</a>
+    </p>
+  </section>
+
+  <section class="shell" id="state">
+    <h2 data-i18n="page.vex-home.state.heading">Current state</h2>
+    <p style="margin-bottom: var(--space-4)"><span class="badge" data-i18n="page.vex-home.state.badge">Pre-release</span></p>
+    <div class="prose">
+      <p data-i18n="page.vex-home.state.body">VexLife is a working blueprint foundation with a browser reference implementation, not a released product. There is no download, no sign-up, and no account. Platform adapters for Android, iOS, Windows, and macOS are defined in the blueprint but are not declared conformant until each has produced its own environment evidence.</p>
+    </div>
+  </section>
+
+  <section class="shell" id="support">
+    <h2 data-i18n="page.vex-home.support.heading">Supporting the work</h2>
+    <div class="prose">
+      <p data-i18n="page.vex-home.support.body">VexLife is carried by one person. Support protects the living stability and time required to continue it, and it purchases no control, access, ownership, rank, or influence over what VexLife becomes. The support page is hosted on Vextreme, the public institutional surface.</p>
+    </div>
+    <p style="margin-top: var(--space-5)">
+      <!--
+        The support page lives in the public Vextreme repository and is served
+        from its GitHub Pages site. It is deliberately not duplicated here:
+        one page, one owner, no second copy of payment-route state to drift.
+      -->
+      <a class="btn" href="https://vgong24.github.io/Vextreme/pages/vex-support.html" data-i18n="page.vex-home.support.cta">How to support the work</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="shell foot-inner">
+    <span class="foot-mark" data-i18n="page.vex-home.footer.mark">VEXLIFE · UNIVERSAL BLUEPRINT FOUNDATION</span>
+    <div class="foot-links">
+      <a href="https://vgong24.github.io/Vextreme/pages/vextreme-home.html" data-i18n="page.vex-home.footer.vextreme">Vextreme</a>
+      <a href="https://www.mozilla.org/en-US/MPL/2.0/" data-i18n="page.vex-home.footer.license">MPL-2.0</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  // Progressive enhancement only. English is in the markup, dark is the
+  // default from the html attribute, and every link works without this.
+  var LS_LANG = 'vexlife-lang', LS_THEME = 'vexlife-theme';
+  var DARK = 'foundation', LIGHT = 'foundation-light';
+
+  var themeBtn = document.querySelector('[data-vex-theme-toggle]');
+  // Dark is this surface's home mode and is already set on <html>, so an
+  // explicit stored choice is the ONLY thing that changes it. Deriving the
+  // theme from prefers-color-scheme here would flip the page after first
+  // paint on a light-mode machine — the markup renders dark, then this
+  // script overrides it — which is a visible flash, not a preference. If
+  // OS-preference following is ever wanted, it belongs in a blocking
+  // <head> script that runs before first paint, not in a deferred widget.
+  var stored = null;
+  try { stored = localStorage.getItem(LS_THEME); } catch (e) {}
+  if (stored !== DARK && stored !== LIGHT) stored = DARK;
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    if (themeBtn) themeBtn.setAttribute('aria-pressed', t === LIGHT ? 'true' : 'false');
+    try { localStorage.setItem(LS_THEME, t); } catch (e) {}
+  }
+  applyTheme(stored);
+  if (themeBtn) {
+    themeBtn.hidden = false;
+    themeBtn.addEventListener('click', function () {
+      applyTheme(document.documentElement.getAttribute('data-theme') === LIGHT ? DARK : LIGHT);
+    });
+  }
+
+  var select = document.querySelector('[data-vex-lang-select]');
+  if (!select) return;
+  var label = document.querySelector('[data-vex-lang-label]');
+  select.hidden = false;
+  if (label) label.hidden = false;
+
+  function apply(lang) {
+    document.documentElement.setAttribute('lang', lang);
+    try { localStorage.setItem(LS_LANG, lang); } catch (e) {}
+    fetch('strings/vex-home.' + lang + '.json', { credentials: 'omit' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (strings) {
+        var els = document.querySelectorAll('[data-i18n]');
+        for (var i = 0; i < els.length; i++) {
+          // A key with no entry in this language keeps the authored English
+          // already in the markup — the deterministic fallback, never an
+          // empty element or a raw key.
+          var text = strings[els[i].getAttribute('data-i18n')];
+          if (text) els[i].textContent = text;
+        }
+      })
+      .catch(function () { /* catalog unreachable — authored English stands */ });
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(LS_LANG); } catch (e) {}
+  var offered = Array.prototype.map.call(select.options, function (o) { return o.value; });
+  if (saved && offered.indexOf(saved) >= 0) { select.value = saved; if (saved !== 'en') apply(saved); }
+  select.addEventListener('change', function () { apply(select.value); });
+}());
+</script>
+
+</body>
+</html>
+<!-- [VXG RealForever] -->
