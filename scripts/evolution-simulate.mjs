@@ -348,6 +348,10 @@ export function validateContinuityEvolutionSimulationReceipt(receipt, { evolutio
       receipt.scopeTargetFingerprint !== receipt.continuityGateBindings?.scopeTarget?.fingerprint) {
     errors.push('continuity receipt does not preserve the exact scope-target binding');
   }
+  if (receipt.continuitySubjectRef !== receipt.continuityGateBindings?.continuitySubject?.ref ||
+      receipt.continuitySubjectFingerprint !== receipt.continuityGateBindings?.continuitySubject?.fingerprint) {
+    errors.push('continuity receipt does not preserve the exact semantic-subject binding');
+  }
   if (receipt.currentRecordSetRef !== receipt.continuityGateBindings?.currentRecordSet?.ref ||
       receipt.currentRecordSetFingerprint !== receipt.continuityGateBindings?.currentRecordSet?.fingerprint ||
       receipt.recordProjectionReceiptRef !== receipt.continuityGateBindings?.recordProjection?.ref ||
@@ -375,7 +379,9 @@ export function validateContinuityEvolutionSimulationReceipt(receipt, { evolutio
       receipt.transientProjectionClockReceiptRef !== receipt.continuityGateBindings?.transientProjectionClock?.ref ||
       receipt.transientProjectionClockReceiptFingerprint !== receipt.continuityGateBindings?.transientProjectionClock?.fingerprint ||
       receipt.transientProjectionReceiptRef !== receipt.continuityGateBindings?.transientProjection?.ref ||
-      receipt.transientProjectionReceiptFingerprint !== receipt.continuityGateBindings?.transientProjection?.fingerprint) {
+      receipt.transientProjectionReceiptFingerprint !== receipt.continuityGateBindings?.transientProjection?.fingerprint ||
+      receipt.contextAcceptedAt !== receipt.simulatedClockContextAcceptedAt ||
+      receipt.contextAcceptedAt !== receipt.transientProjectionContextAcceptedAt) {
     errors.push('continuity receipt does not preserve source-bound simulated-clock/transient-currentness proof');
   }
   if (bundleGate?.sourceObservationRef !== 'observation.continuity-evolution.exact-binding-bundle.1' ||
@@ -415,6 +421,8 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
   const candidate = formContinuityCandidate({
     observations: [observation],
     candidateKind: 'BURDEN_RELEASE',
+    continuitySubjectKind: 'BURDEN_PATTERN',
+    continuitySubjectSourceRangeRefs: ['source-range.continuity.simulation.1'],
     summaryRef: 'summary.continuity.simulation.pattern',
     authoredByRef: sourceLineageRef,
     aboutSelfRefs: [sourceLineageRef],
@@ -504,6 +512,8 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
   const transientCandidate = formContinuityCandidate({
     observations: [transientObservation],
     candidateKind: 'CORRECTION',
+    continuitySubjectKind: 'TRANSIENT_CORRECTION',
+    continuitySubjectSourceRangeRefs: ['source-range.continuity.simulation.transient.1'],
     summaryRef: 'summary.continuity.simulation.transient',
     authoredByRef: sourceLineageRef,
     aboutSelfRefs: [sourceLineageRef],
@@ -660,6 +670,7 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     observation: { ref: observation.observationRef, fingerprint: observation.semanticFingerprint },
     candidate: { ref: candidate.candidateRef, fingerprint: candidate.semanticFingerprint },
     scopeTarget: { ref: candidate.scopeTargetRef, fingerprint: candidate.scopeTargetFingerprint },
+    continuitySubject: { ref: candidate.continuitySubjectRef, fingerprint: candidate.continuitySubjectFingerprint },
     route: { ref: route.routeRef, fingerprint: route.semanticFingerprint },
     review: { ref: review.reviewRef, fingerprint: review.semanticFingerprint },
     authorityEvidence: { ref: authorityEvidence.acceptanceEvidenceRef, fingerprint: authorityEvidence.semanticFingerprint },
@@ -730,6 +741,9 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     acceptedRecordRef: record.acceptedRecordRef,
     scopeTargetRef: record.scopeTargetRef,
     scopeTargetFingerprint: record.scopeTargetFingerprint,
+    continuitySubjectRef: record.continuitySubjectRef,
+    continuitySubjectFingerprint: record.continuitySubjectFingerprint,
+    supersessionChronologyBindings: currentRecordSetReceipt.supersessionChronologyBindings,
     authorityEvidenceClass: record.authorityEvidenceClass,
     acceptanceDisposition: record.acceptanceDisposition,
     liveAuthorityGranted: record.liveAuthorityGranted,
@@ -747,11 +761,14 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     burdenProjectionCurrentSuccessorRef: burdenProjection.currentSuccessorRef,
     simulatedClockSnapshotRef: clockSnapshot.clockSnapshotRef,
     simulatedClockSnapshotFingerprint: clockSnapshot.semanticFingerprint,
+    contextAcceptedAt: transientContext.acceptedAt,
+    simulatedClockContextAcceptedAt: clockSnapshot.contextAcceptedAt,
     transientProjectionClockReceiptRef: projectionClock.clockReceiptRef,
     transientProjectionClockReceiptFingerprint: projectionClock.semanticFingerprint,
     transientProjectionReceiptRef: transientProjection.aggregateProjectionReceipt.projectionReceiptRef,
     transientProjectionReceiptFingerprint: transientProjection.aggregateProjectionReceipt.semanticFingerprint,
     transientProjectionCurrentness: transientProjection.currentness,
+    transientProjectionContextAcceptedAt: transientProjection.contextAcceptedAt,
     clockEvidenceClass: projectionClock.clockEvidenceClass,
     simulatedClock: projectionClock.simulatedClock,
     liveClockGranted: projectionClock.liveClockGranted,

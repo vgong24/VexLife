@@ -128,6 +128,16 @@ coordinates fail closed. Route, Context Review, authority evidence, accepted or
 transient record, recurrence, conflict grouping, supersession and compact
 projection preserve that identity. Applicability matches both class and target.
 
+Scope answers where and whose; it does not define what exact meaning is being
+carried. Candidate formation also derives one canonical `continuitySubjectRef`
+and fingerprint from a registered subject kind plus exact source anchor tuples.
+That content-addressed identity survives route, Context Review, authority
+evidence, accepted or transient record, Burden Release, current-set receipt,
+supersession and every aggregate-owned projection. Summary prose is descriptive
+only and cannot redefine the subject. Different same-human preferences and
+different same-Vex Burden patterns can therefore coexist as `CURRENT`. Only two
+records with the exact same semantic subject can conflict or supersede.
+
 Sibling projections require exact reviewed synchronization scope, an admitted
 target lineage, privacy/visibility evidence and current delivery authority.
 They remain `OBSERVE_ONLY_PENDING_LOCAL_REVIEW`, preserve source lineage and
@@ -245,8 +255,10 @@ turn/thread/channel lease whose coordinates equal the source-derived target; it
   the latest aggregate current-pointer snapshot from the registered deterministic
   no-effect simulated clock source. The snapshot binds source ref/fingerprint,
   snapshot ref/fingerprint, exact aggregate prior, context, lease,
-  turn/thread/channel coordinates and the current interval. Projection is admitted
-  only while `lease.observedAt <= snapshot.observedAt < lease.expiresAt`; a raw
+  turn/thread/channel coordinates, `context.acceptedAt` and the current interval.
+  Projection is admitted only while both
+  `lease.observedAt <= snapshot.observedAt` and
+  `context.acceptedAt <= snapshot.observedAt < lease.expiresAt`; a raw
   caller-dated time, pre-observation, expired, stale/superseded, self-issued,
   substituted, cross-lease or replayed snapshot fails closed. The projection and
   ownership receipts expose `TRANSIENT_SIMULATED_CURRENT`,
@@ -263,11 +275,11 @@ deterministic implementation lane must separately admit and implement them.
 Every accepted record preserves exact source-observation tuples,
 candidate, review, record class, scope class and target, acceptance and its
 simulation-only disposition, formation/currentness,
-supersession and rollback lineage.
+semantic subject, supersession and rollback lineage.
 
 Supersession is one canonical atomic transaction recomputed from the exact
 aggregate-owned current prior and compatible successor. It requires the exact
-registered schema and terminal dispositions, equal class/scope/target/subjects,
+registered schema and terminal dispositions, equal class/scope/target/semantic subject,
   exact current authority evidence, monotonic time, nonempty rollback identity,
   immutable source history and one prior-to-successor identity. Duplicate
   transaction/prior identities, already-superseded substitution and any canonical
@@ -277,11 +289,17 @@ registered schema and terminal dispositions, equal class/scope/target/subjects,
   mixed-window and conflicting chronology fail closed. The prior becomes
   effectively `SUPERSEDED` and the successor becomes the sole `CURRENT` record;
   the aggregate emits a content-addressed current-record-set receipt binding every
-  record, supersession fingerprint and supersession-authority proof. A record with
+  record, semantic-subject binding, supersession fingerprint,
+  supersession-authority proof and strict same-subject chain chronology. For
+  consecutive transactions over one exact subject, each `supersededAt` must be
+  strictly later than the preceding transaction; reversed, equal-time or
+  reordered multi-hop history fails closed without coupling independent subjects.
+  A record with
   non-null `supersedesRef` cannot enter through ordinary `RECORD_ACCEPTED`; missing,
   dangling, incompatible, duplicate or untransacted successor lineage is rejected
-  before effective current truth. Independent same-target current records without
-  supersession claims remain `HELD_CONFLICT`; stale or substituted receipts are rejected. Applicable
+  before effective current truth. Multiple same-target records with different
+  semantic subjects remain independently `CURRENT`; multiple current records for
+  one exact subject remain `HELD_CONFLICT`. Stale or substituted receipts are rejected. Applicable
 projection accepts only the exact conflict-free receipt, excludes the prior and
 can select only its same-target successor.
 The immutable record and source history remain available.
@@ -362,7 +380,7 @@ The deterministic simulation creates the actual continuity node
 leases it through the one-worker scheduler, loads exact applicable record and
 release refs into the bounded scheduler context lease, and completes through
 the external completion verifier. Its completion-gate bundle hashes the exact
-observation, candidate, exact scope target, canonical route, review, acceptance
+observation, candidate, exact scope target, exact semantic subject, canonical route, review, acceptance
 evidence, accepted record, current-record-set, aggregate-owned record and Burden
   projection, authority disposition, simulated-clock snapshot, projection-clock
   receipt, transient projection and applicable-projection fingerprints. The

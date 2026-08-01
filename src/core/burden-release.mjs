@@ -33,7 +33,7 @@ export const BURDEN_RELEASE_REQUIRED_FIELDS = Object.freeze([
   'reviewRef', 'reviewFingerprint', 'sourceObservationRefs', 'sourceBindings', 'patternName', 'patternDescription',
   'suspectedOrigin', 'observedConsequence', 'releaseFrame', 'releaseStatement', 'formerAuthority',
   'currentAuthority', 'cleanIntention', 'protectedCapabilities', 'prohibitedOvercorrections', 'scope',
-  'scopeTargetRef', 'scopeTargetFingerprint',
+  'scopeTargetRef', 'scopeTargetFingerprint', 'continuitySubjectRef', 'continuitySubjectFingerprint',
   'requiredAcceptanceRefs', 'formedAt', 'supersedesRef', 'burdenRef', 'identityFingerprint', 'sourceForm',
   'authorityTransition', 'acceptedByRefs', 'acceptanceEvidence', 'acceptanceEvidenceRefs',
   'authoritySnapshotRefs', 'evaluationRefs', 'recurrenceState', 'state', 'acceptedAt',
@@ -141,6 +141,13 @@ function validateScopeTargetIdentity(scopeTargetRef, scopeTargetFingerprint) {
   if (!SHA256.test(scopeTargetFingerprint ?? '') ||
       scopeTargetRef !== `continuity-scope-target.${scopeTargetFingerprint.slice(0, 24)}`) {
     throw new Error('scope target ref/fingerprint is not canonical');
+  }
+}
+
+function validateContinuitySubjectIdentity(continuitySubjectRef, continuitySubjectFingerprint) {
+  if (!SHA256.test(continuitySubjectFingerprint ?? '') ||
+      continuitySubjectRef !== `continuity-subject.${continuitySubjectFingerprint.slice(0, 24)}`) {
+    throw new Error('continuity subject ref/fingerprint is not canonical');
   }
 }
 
@@ -253,6 +260,8 @@ function validateAcceptanceEvidence(evidence, release, acceptedAt) {
       evidence.scope !== release.scope || snapshot.scope !== release.scope ||
       evidence.scopeTargetRef !== release.scopeTargetRef || evidence.scopeTargetFingerprint !== release.scopeTargetFingerprint ||
       snapshot.scopeTargetRef !== release.scopeTargetRef || snapshot.scopeTargetFingerprint !== release.scopeTargetFingerprint ||
+      evidence.continuitySubjectRef !== release.continuitySubjectRef ||
+      evidence.continuitySubjectFingerprint !== release.continuitySubjectFingerprint ||
       evidence.burdenRef !== release.burdenRef || evidence.burdenIdentityFingerprint !== release.identityFingerprint ||
       evidence.burdenSourceFingerprint !== semanticHash(release.sourceForm) ||
       !exactRefs(refs(evidence.subjectRefs, 'acceptance evidence subjectRefs'), release.requiredAcceptanceRefs) ||
@@ -282,6 +291,7 @@ function sourceForm(input) {
   }
   if (!CONTINUITY_SCOPE_CLASSES.has(input.scope)) throw new Error(`unknown Burden Release scope ${input.scope}`);
   validateScopeTargetIdentity(input.scopeTargetRef, input.scopeTargetFingerprint);
+  validateContinuitySubjectIdentity(input.continuitySubjectRef, input.continuitySubjectFingerprint);
   if (input.formerAuthority === input.currentAuthority) throw new Error('Burden Release must change accepted governing authority');
   return deepFreeze({
     schemaVersion: 'vexlife.burden-release-source/v1',
@@ -307,6 +317,8 @@ function sourceForm(input) {
     scope: input.scope,
     scopeTargetRef: input.scopeTargetRef,
     scopeTargetFingerprint: input.scopeTargetFingerprint,
+    continuitySubjectRef: input.continuitySubjectRef,
+    continuitySubjectFingerprint: input.continuitySubjectFingerprint,
     requiredAcceptanceRefs: refs(input.requiredAcceptanceRefs, 'requiredAcceptanceRefs'),
     formedAt,
     supersedesRef: input.supersedesRef ?? null
@@ -447,7 +459,9 @@ function validateReviewedBurdenMeaning(release, candidate, route, review) {
       route.candidateRef !== candidate.candidateRef || route.candidateFingerprint !== candidate.semanticFingerprint ||
       review.candidateRef !== candidate.candidateRef || review.candidateFingerprint !== candidate.semanticFingerprint ||
       review.routeRef !== route.routeRef || review.routeFingerprint !== route.semanticFingerprint ||
-      review.scopeTargetRef !== candidate.scopeTargetRef || review.scopeTargetFingerprint !== candidate.scopeTargetFingerprint) {
+      review.scopeTargetRef !== candidate.scopeTargetRef || review.scopeTargetFingerprint !== candidate.scopeTargetFingerprint ||
+      review.continuitySubjectRef !== candidate.continuitySubjectRef ||
+      review.continuitySubjectFingerprint !== candidate.continuitySubjectFingerprint) {
     throw new Error('Burden Release acceptance requires the exact canonical candidate, route and Context Review');
   }
   const spec = candidate.burdenRelease;
@@ -469,6 +483,8 @@ function validateReviewedBurdenMeaning(release, candidate, route, review) {
     scope: candidate.candidateScope,
     scopeTargetRef: candidate.scopeTargetRef,
     scopeTargetFingerprint: candidate.scopeTargetFingerprint,
+    continuitySubjectRef: candidate.continuitySubjectRef,
+    continuitySubjectFingerprint: candidate.continuitySubjectFingerprint,
     requiredAcceptanceRefs: review.requiredAcceptanceRefs,
     formedAt: candidate.formedAt,
     supersedesRef: review.supersedesRef

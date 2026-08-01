@@ -23,7 +23,7 @@ export { StateCell, selectState };
 
 export const CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS = Object.freeze([
   'schemaVersion', 'aggregateFingerprint', 'recordBindings', 'supersessionBindings',
-  'supersessionAuthorityBindings', 'state',
+  'supersessionAuthorityBindings', 'semanticSubjectBindings', 'supersessionChronologyBindings', 'state',
   'currentRecordRefs', 'supersededRecordRefs', 'conflicts', 'silentOverwriteAllowed',
   'currentRecordSetRef', 'semanticFingerprint'
 ]);
@@ -32,12 +32,13 @@ export const CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS = Object.fr
   'schemaVersion', 'projectionKind', 'aggregateFingerprint', 'sourceRef', 'sourceFingerprint',
   'candidateRef', 'candidateFingerprint', 'routeRef', 'routeFingerprint', 'reviewRef',
   'reviewFingerprint', 'recordClass', 'scope', 'scopeTargetRef', 'scopeTargetFingerprint',
+  'continuitySubjectRef', 'continuitySubjectFingerprint', 'subjectSupersessionChronology',
   'requiredAcceptanceRefs', 'acceptedByRefs', 'authorityEvidenceRefs', 'authorityEvidenceClass',
   'acceptanceDisposition', 'burdenRef', 'burdenIdentityFingerprint', 'burdenSourceFingerprint',
   'currentRecordSetRef', 'currentRecordSetFingerprint', 'currentSetDisposition',
   'currentSuccessorRef', 'projectionClockReceiptRef', 'projectionClockReceiptFingerprint',
   'clockSourceRef', 'clockSourceFingerprint', 'clockSnapshotRef', 'clockSnapshotFingerprint',
-  'clockEvidenceClass', 'clockCurrentFrom', 'clockCurrentUntil', 'simulatedClock',
+  'clockEvidenceClass', 'clockCurrentFrom', 'clockCurrentUntil', 'contextAcceptedAt', 'simulatedClock',
   'liveClockGranted', 'externalTimeServiceUsed', 'projectionObservedAt',
   'projectionCurrentness', 'projectionReceiptRef', 'semanticFingerprint'
 ]);
@@ -46,14 +47,14 @@ export const CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS = Object.freeze
   'schemaVersion', 'aggregatePriorFingerprint', 'contextRecordRef', 'contextRecordFingerprint',
   'contextBindingRef', 'contextLeaseFingerprint', 'turnRef', 'threadRef', 'channelRef',
   'clockSourceRef', 'clockSourceFingerprint', 'sourceRef', 'sourceField', 'clockEvidenceClass',
-  'observedAt', 'currentFrom', 'currentUntil', 'currentness', 'simulatedClock',
+  'observedAt', 'currentFrom', 'currentUntil', 'contextAcceptedAt', 'currentness', 'simulatedClock',
   'liveClockGranted', 'externalTimeServiceUsed', 'clockSnapshotRef', 'semanticFingerprint'
 ]);
 
 export const CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS = Object.freeze([
   'schemaVersion', 'aggregateFingerprint', 'contextRecordRef', 'contextRecordFingerprint',
   'contextBindingRef', 'contextLeaseFingerprint', 'turnRef', 'threadRef', 'channelRef',
-  'leaseObservedAt', 'leaseExpiresAt', 'clockSourceRef', 'clockSourceFingerprint',
+  'leaseObservedAt', 'leaseExpiresAt', 'contextAcceptedAt', 'clockSourceRef', 'clockSourceFingerprint',
   'clockSnapshotRef', 'clockSnapshotFingerprint', 'clockEvidenceClass', 'clockCurrentFrom',
   'clockCurrentUntil', 'projectionObservedAt', 'sourceCurrentness', 'projectionCurrentness',
   'applicable', 'sourceManaged', 'simulatedClock', 'liveClockGranted',
@@ -625,6 +626,8 @@ export function createContinuityCurrentRecordSetReceipt(aggregate) {
     recordBindings: validation.recordBindings,
     supersessionBindings: validation.supersessionBindings,
     supersessionAuthorityBindings: validation.supersessionAuthorityBindings,
+    semanticSubjectBindings: validation.semanticSubjectBindings,
+    supersessionChronologyBindings: validation.supersessionChronologyBindings,
     state: validation.state,
     currentRecordRefs: validation.currentRecordRefs,
     supersededRecordRefs: validation.supersededRecordRefs,
@@ -699,6 +702,11 @@ function projectionOwnershipReceipt(aggregate, source, lineage, projectionKind, 
     scope: source.scope,
     scopeTargetRef: source.scopeTargetRef,
     scopeTargetFingerprint: source.scopeTargetFingerprint,
+    continuitySubjectRef: source.continuitySubjectRef,
+    continuitySubjectFingerprint: source.continuitySubjectFingerprint,
+    subjectSupersessionChronology: currentSet?.supersessionChronologyBindings
+      ?.filter((binding) => binding.continuitySubjectRef === source.continuitySubjectRef &&
+        binding.continuitySubjectFingerprint === source.continuitySubjectFingerprint) ?? [],
     requiredAcceptanceRefs: [...lineage.review.requiredAcceptanceRefs],
     acceptedByRefs: [...source.acceptedByRefs],
     authorityEvidenceRefs: [...source.acceptanceEvidenceRefs].sort(),
@@ -720,6 +728,7 @@ function projectionOwnershipReceipt(aggregate, source, lineage, projectionKind, 
     clockEvidenceClass: projectionClockReceipt?.clockEvidenceClass ?? null,
     clockCurrentFrom: projectionClockReceipt?.clockCurrentFrom ?? null,
     clockCurrentUntil: projectionClockReceipt?.clockCurrentUntil ?? null,
+    contextAcceptedAt: projectionClockReceipt?.contextAcceptedAt ?? null,
     simulatedClock: projectionClockReceipt?.simulatedClock ?? null,
     liveClockGranted: projectionClockReceipt?.liveClockGranted ?? null,
     externalTimeServiceUsed: projectionClockReceipt?.externalTimeServiceUsed ?? null,
@@ -750,6 +759,9 @@ export function projectAggregateOwnedContinuityRecord({ aggregate, acceptedRecor
     scope: record.scope,
     scopeTargetRef: record.scopeTargetRef,
     scopeTargetFingerprint: record.scopeTargetFingerprint,
+    continuitySubjectRef: record.continuitySubjectRef,
+    continuitySubjectFingerprint: record.continuitySubjectFingerprint,
+    subjectSupersessionChronology: ownershipReceipt.subjectSupersessionChronology,
     authorityEvidenceClass: record.authorityEvidenceClass,
     simulatedAuthority: record.simulatedAuthority,
     liveAuthorityGranted: record.liveAuthorityGranted,
@@ -789,6 +801,9 @@ export function createContinuitySimulatedClockSnapshot({ aggregate, contextRecor
   if (Date.parse(observed) < Date.parse(context.contextLease.observedAt)) {
     throw new Error('continuity simulated clock cannot precede lease observation');
   }
+  if (Date.parse(observed) < Date.parse(context.acceptedAt)) {
+    throw new Error('continuity simulated clock cannot precede context acceptance');
+  }
   if (Date.parse(observed) >= Date.parse(context.contextLease.expiresAt)) {
     throw new Error('continuity simulated clock is at or after lease expiry');
   }
@@ -810,6 +825,7 @@ export function createContinuitySimulatedClockSnapshot({ aggregate, contextRecor
     observedAt: observed,
     currentFrom: observed,
     currentUntil: context.contextLease.expiresAt,
+    contextAcceptedAt: context.acceptedAt,
     currentness: 'SIMULATED_CURRENT',
     simulatedClock: true,
     liveClockGranted: false,
@@ -841,8 +857,12 @@ function validateContinuitySimulatedClockSnapshot(snapshot, { aggregate, context
   canonicalProjectionTimestamp(snapshot.observedAt);
   canonicalProjectionTimestamp(snapshot.currentFrom);
   canonicalProjectionTimestamp(snapshot.currentUntil);
+  canonicalProjectionTimestamp(snapshot.contextAcceptedAt);
   if (snapshot.currentFrom !== snapshot.observedAt || Date.parse(snapshot.currentUntil) <= Date.parse(snapshot.currentFrom)) {
     throw new Error('continuity simulated clock currentness interval is invalid');
+  }
+  if (Date.parse(snapshot.observedAt) < Date.parse(snapshot.contextAcceptedAt)) {
+    throw new Error('continuity simulated clock precedes bound context acceptance');
   }
   if (context && (snapshot.contextRecordRef !== context.contextRecordRef ||
       snapshot.contextRecordFingerprint !== context.semanticFingerprint ||
@@ -851,7 +871,9 @@ function validateContinuitySimulatedClockSnapshot(snapshot, { aggregate, context
       snapshot.turnRef !== context.contextLease.turnRef || snapshot.threadRef !== context.contextLease.threadRef ||
       snapshot.channelRef !== context.contextLease.channelRef ||
       snapshot.currentUntil !== context.contextLease.expiresAt ||
+      snapshot.contextAcceptedAt !== context.acceptedAt ||
       Date.parse(snapshot.observedAt) < Date.parse(context.contextLease.observedAt) ||
+      Date.parse(snapshot.observedAt) < Date.parse(context.acceptedAt) ||
       Date.parse(snapshot.observedAt) >= Date.parse(context.contextLease.expiresAt))) {
     throw new Error('continuity simulated clock snapshot is detached from its exact context and lease');
   }
@@ -894,6 +916,7 @@ export function createContinuityProjectionClockReceipt({ aggregate, contextRecor
     channelRef: context.contextLease.channelRef,
     leaseObservedAt: context.contextLease.observedAt,
     leaseExpiresAt: context.contextLease.expiresAt,
+    contextAcceptedAt: context.acceptedAt,
     clockSourceRef: snapshot.clockSourceRef,
     clockSourceFingerprint: snapshot.clockSourceFingerprint,
     clockSnapshotRef: snapshot.clockSnapshotRef,
@@ -950,9 +973,12 @@ export function projectAggregateOwnedTransientContinuityContext({ aggregate, con
     scope: context.scope,
     scopeTargetRef: context.scopeTargetRef,
     scopeTargetFingerprint: context.scopeTargetFingerprint,
+    continuitySubjectRef: context.continuitySubjectRef,
+    continuitySubjectFingerprint: context.continuitySubjectFingerprint,
     contextBindingRef: context.contextLease.contextBindingRef,
     projectionClockReceipt: clockReceipt,
     projectionObservedAt: clockReceipt.projectionObservedAt,
+    contextAcceptedAt: clockReceipt.contextAcceptedAt,
     expiresAt: context.expiresAt,
     currentness: clockReceipt.projectionCurrentness,
     applicableWithinLease: true,
@@ -993,6 +1019,9 @@ export function projectAggregateOwnedBurdenRelease({ aggregate, acceptedRecordRe
     scope: release.scope,
     scopeTargetRef: release.scopeTargetRef,
     scopeTargetFingerprint: release.scopeTargetFingerprint,
+    continuitySubjectRef: release.continuitySubjectRef,
+    continuitySubjectFingerprint: release.continuitySubjectFingerprint,
+    subjectSupersessionChronology: ownershipReceipt.subjectSupersessionChronology,
     state: release.state,
     recurrenceState: release.recurrenceState,
     transitionReceiptRefs: release.transitionReceipts.map((item) => item.transitionRef),
@@ -1064,6 +1093,8 @@ export function projectAggregateApplicableContinuity({
       scope: item.scope,
       scopeTargetRef: item.scopeTargetRef,
       scopeTargetFingerprint: item.scopeTargetFingerprint,
+      continuitySubjectRef: item.continuitySubjectRef,
+      continuitySubjectFingerprint: item.continuitySubjectFingerprint,
       authorityEvidenceClass: item.authorityEvidenceClass,
       simulatedAuthority: item.simulatedAuthority,
       liveAuthorityGranted: item.liveAuthorityGranted,

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.evolution-registry/v1",
   "registryRef": "registry.vexlife.evolution.001",
-  "registryVersion": 6,
+  "registryVersion": 7,
   "systemRef": "system.vexlife.continuity-and-evolution",
   "canonicalSourceRef": "source.blueprint.evolution-registry",
   "canonicalSource": {
@@ -16,6 +16,7 @@
     "contractRefs": [
       "contract.vexlife.continuity-observation/v1",
       "contract.vexlife.continuity-scope-target/v1",
+      "contract.vexlife.continuity-subject/v1",
       "contract.vexlife.continuity-acceptance-evidence/v1",
       "contract.vexlife.continuity-authority-snapshot/v1",
       "contract.vexlife.continuity-context-review/v1",
@@ -50,13 +51,15 @@
     "accepted deterministic invariant candidates remain inactive until a separate effect implementation lane",
     "Queue, Terrain, Health, Guide and evolution projections derive from one canonical state aggregate",
     "scope class never substitutes for one exact source-derived target identity",
+    "semantic meaning is one exact source-tuple-derived continuity subject and summary prose has no authority to redefine it",
     "simulation-only authority remains inactive and visibly non-live through every compact projection",
     "human, transient and Burden projections recompute exact candidate, route, review, authority, target and source meaning from aggregate-owned lineage",
     "applicable continuity consumes an exact content-addressed conflict-free current-record-set receipt and excludes every superseded record",
     "accepted Burden deauthorization is private to canonical aggregate-owned route, review policy and recorded simulated-current authority evidence",
     "a superseding successor enters accepted current truth only with its exact atomic transaction",
     "every supersession transaction proves all successor authority evidence current at the exact transaction time",
-    "transient projection currentness consumes only the latest aggregate-owned deterministic simulated-clock snapshot and never claims live time"
+    "same-subject supersession chains advance in strict transaction chronology while independent semantic subjects remain independent",
+    "transient projection currentness consumes only the latest aggregate-owned post-acceptance deterministic simulated-clock snapshot and never claims live time"
   ],
   "observationTypes": [
     "CONVERSATION_EPISODE_RANGE",
@@ -111,6 +114,12 @@
       "contractKind": "EXACT_SOURCE_DERIVED_SCOPE_TARGET",
       "sourceRef": "source.blueprint.evolution-registry",
       "sourceField": "scopeTarget"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-subject/v1",
+      "contractKind": "SOURCE_TUPLE_ANCHORED_SEMANTIC_SUBJECT",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "continuitySubject"
     },
     {
       "contractRef": "contract.vexlife.continuity-acceptance-evidence/v1",
@@ -262,6 +271,8 @@
       "scope",
       "scopeTargetRef",
       "scopeTargetFingerprint",
+      "continuitySubjectRef",
+      "continuitySubjectFingerprint",
       "burdenRef",
       "burdenIdentityFingerprint",
       "burdenSourceFingerprint",
@@ -360,6 +371,21 @@
       "semanticFingerprint"
     ]
   },
+  "continuitySubject": {
+    "contractRef": "contract.vexlife.continuity-subject/v1",
+    "sourceRef": "source.blueprint.evolution-registry",
+    "sourceField": "continuitySubject",
+    "requiredFields": [
+      "schemaVersion",
+      "subjectKind",
+      "sourceAnchorBindings",
+      "sourceAnchorFingerprint",
+      "sourceManaged",
+      "arbitrarySummaryAuthority",
+      "continuitySubjectRef",
+      "semanticFingerprint"
+    ]
+  },
   "supersessionTransaction": {
     "contractRef": "contract.vexlife.continuity-supersession-transaction/v1",
     "sourceRef": "source.blueprint.evolution-registry",
@@ -370,6 +396,8 @@
       "priorRecordFingerprint",
       "successorRecordRef",
       "successorRecordFingerprint",
+      "continuitySubjectRef",
+      "continuitySubjectFingerprint",
       "priorDisposition",
       "successorDisposition",
       "acceptanceEvidenceRefs",
@@ -392,6 +420,8 @@
       "recordBindings",
       "supersessionBindings",
       "supersessionAuthorityBindings",
+      "semanticSubjectBindings",
+      "supersessionChronologyBindings",
       "state",
       "currentRecordRefs",
       "supersededRecordRefs",
@@ -430,6 +460,7 @@
       "observedAt",
       "currentFrom",
       "currentUntil",
+      "contextAcceptedAt",
       "currentness",
       "simulatedClock",
       "liveClockGranted",
@@ -454,6 +485,7 @@
       "channelRef",
       "leaseObservedAt",
       "leaseExpiresAt",
+      "contextAcceptedAt",
       "clockSourceRef",
       "clockSourceFingerprint",
       "clockSnapshotRef",
@@ -493,6 +525,9 @@
       "scope",
       "scopeTargetRef",
       "scopeTargetFingerprint",
+      "continuitySubjectRef",
+      "continuitySubjectFingerprint",
+      "subjectSupersessionChronology",
       "requiredAcceptanceRefs",
       "acceptedByRefs",
       "authorityEvidenceRefs",
@@ -514,6 +549,7 @@
       "clockEvidenceClass",
       "clockCurrentFrom",
       "clockCurrentUntil",
+      "contextAcceptedAt",
       "simulatedClock",
       "liveClockGranted",
       "externalTimeServiceUsed",
@@ -629,6 +665,8 @@
       "scope",
       "scopeTargetRef",
       "scopeTargetFingerprint",
+      "continuitySubjectRef",
+      "continuitySubjectFingerprint",
       "requiredAcceptanceRefs",
       "formedAt",
       "supersedesRef",
@@ -670,6 +708,8 @@
       "candidateScope",
       "scopeTargetRef",
       "scopeTargetFingerprint",
+      "continuitySubjectRef",
+      "continuitySubjectFingerprint",
       "proposedPrimaryDestination",
       "proposedLinkedDestinations",
       "privacyState",
@@ -743,6 +783,8 @@
     "scope",
     "scopeTargetRef",
     "scopeTargetFingerprint",
+    "continuitySubjectRef",
+    "continuitySubjectFingerprint",
     "acceptedByRefs",
     "acceptanceEvidenceRefs",
     "authorityEvidenceClass",
@@ -931,6 +973,7 @@
       "observation",
       "candidate",
       "scopeTarget",
+      "continuitySubject",
       "route",
       "review",
       "authorityEvidence",
@@ -1001,7 +1044,10 @@
     "test.continuity-evolution.c19-transient-projection-currentness",
     "test.continuity-evolution.c20-orphan-supersession-exclusion",
     "test.continuity-evolution.c21-supersession-authority-currentness",
-    "test.continuity-evolution.c22-source-bound-simulated-clock"
+    "test.continuity-evolution.c22-source-bound-simulated-clock",
+    "test.continuity-evolution.c23-exact-semantic-subject",
+    "test.continuity-evolution.c24-monotonic-supersession-chain",
+    "test.continuity-evolution.c25-context-before-simulated-projection"
   ],
   "successorBoundaries": [
     "Runtime Failure & Recovery Spine",

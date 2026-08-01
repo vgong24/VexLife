@@ -48,10 +48,16 @@ export const CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS = Object.freeze([
   'channelRef', 'turnRef', 'subjectRefs', 'applicable', 'scopeTargetRef', 'semanticFingerprint'
 ]);
 
+export const CONTINUITY_SUBJECT_REQUIRED_FIELDS = Object.freeze([
+  'schemaVersion', 'subjectKind', 'sourceAnchorBindings', 'sourceAnchorFingerprint',
+  'sourceManaged', 'arbitrarySummaryAuthority', 'continuitySubjectRef', 'semanticFingerprint'
+]);
+
 export const CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS = Object.freeze([
   'schemaVersion', 'candidateRef', 'candidateFingerprint', 'routeRef', 'routeFingerprint',
   'sourceObservationRefs', 'sourceBindings', 'originClassification', 'originConfidence',
   'observedConsequence', 'candidateScope', 'scopeTargetRef', 'scopeTargetFingerprint',
+  'continuitySubjectRef', 'continuitySubjectFingerprint',
   'proposedPrimaryDestination', 'proposedLinkedDestinations',
   'privacyState', 'privacyEvidenceRef', 'redactionEvidenceRef', 'consentState', 'contradictionState',
   'attributionState', 'currentnessState', 'summaryRef', 'protectedCapabilities',
@@ -64,7 +70,8 @@ export const CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS = Object.freeze([
   'schemaVersion', 'candidateRef', 'candidateFingerprint', 'routeRef', 'routeFingerprint',
   'reviewRef', 'reviewFingerprint', 'authoritySnapshotRef', 'authoritySnapshotFingerprint',
   'authoritySnapshot', 'actorRef', 'authorityRef', 'recordClass', 'subjectRefs', 'scope',
-  'scopeTargetRef', 'scopeTargetFingerprint', 'burdenRef', 'burdenIdentityFingerprint',
+  'scopeTargetRef', 'scopeTargetFingerprint', 'continuitySubjectRef', 'continuitySubjectFingerprint',
+  'burdenRef', 'burdenIdentityFingerprint',
   'burdenSourceFingerprint',
   'sourceRef', 'sourceHash', 'formationRef', 'formedAt', 'observedAt', 'expiresAt',
   'currentness', 'evidenceClass', 'simulatedAuthority', 'liveAuthorityGranted',
@@ -73,7 +80,8 @@ export const CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS = Object.freeze([
 
 export const CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS = Object.freeze([
   'schemaVersion', 'priorRecordRef', 'priorRecordFingerprint', 'successorRecordRef',
-  'successorRecordFingerprint', 'priorDisposition', 'successorDisposition',
+  'successorRecordFingerprint', 'continuitySubjectRef', 'continuitySubjectFingerprint',
+  'priorDisposition', 'successorDisposition',
   'acceptanceEvidenceRefs', 'authorityCurrentnessProof', 'rollbackRef', 'supersededAt',
   'atomic', 'sourceHistoryDeleted', 'supersessionRef', 'semanticFingerprint'
 ]);
@@ -146,9 +154,15 @@ function canonicalSourceBindings(value, label, { observationRef = null, sourceLi
     if (observationRef && input.observationRef !== observationRef) throw new Error(`${label} observation ref mismatch`);
     const effectiveObservationRef = observationRef ?? input.observationRef ?? null;
     const prior = byRange.get(input.rangeRef);
-    if (prior && prior !== input.sourceHash) throw new Error(`${label} contains duplicate range with conflicting hash`);
-    if (prior) throw new Error(`${label} contains duplicate source range`);
-    byRange.set(input.rangeRef, input.sourceHash);
+    if (prior && (prior.sourceHash !== input.sourceHash || prior.sourceLineageRef !== input.sourceLineageRef)) {
+      throw new Error(`${label} contains duplicate range with conflicting source tuple`);
+    }
+    if (prior && prior.observationRef === effectiveObservationRef) throw new Error(`${label} contains duplicate source range`);
+    byRange.set(input.rangeRef, {
+      sourceHash: input.sourceHash,
+      sourceLineageRef: input.sourceLineageRef,
+      observationRef: effectiveObservationRef
+    });
     return {
       ...(effectiveObservationRef ? { observationRef: effectiveObservationRef } : {}),
       sourceLineageRef: input.sourceLineageRef,
@@ -356,6 +370,71 @@ export function validateContinuityScopeTarget(scopeTarget) {
   return scopeTarget;
 }
 
+function continuitySubjectFromBindings(sourceBindings, subjectKind, sourceAnchorRangeRefs) {
+  if (typeof subjectKind !== 'string' || subjectKind.trim() !== subjectKind || subjectKind.length === 0) {
+    throw new Error('continuity subject requires one stable subjectKind');
+  }
+  const bindings = canonicalSourceBindings(sourceBindings, 'continuity subject candidate sourceBindings');
+  const anchorRangeRefs = stableRefs(sourceAnchorRangeRefs, 'continuity subject sourceAnchorRangeRefs', { required: true });
+  const sourceAnchorBindings = anchorRangeRefs.map((rangeRef) => {
+    const matches = bindings.filter((binding) => binding.rangeRef === rangeRef);
+    const unique = new Map(matches.map((binding) => [
+      `${binding.sourceLineageRef}\0${binding.rangeRef}\0${binding.sourceHash}`,
+      binding
+    ]));
+    if (unique.size !== 1) throw new Error('continuity subject anchor must resolve one exact candidate source tuple');
+    const [binding] = unique.values();
+    return {
+      sourceLineageRef: binding.sourceLineageRef,
+      rangeRef: binding.rangeRef,
+      sourceHash: binding.sourceHash
+    };
+  }).sort((left, right) => `${left.sourceLineageRef}\0${left.rangeRef}`.localeCompare(`${right.sourceLineageRef}\0${right.rangeRef}`));
+  return fingerprinted({
+    schemaVersion: 'vexlife.continuity-subject/v1',
+    subjectKind,
+    sourceAnchorBindings,
+    sourceAnchorFingerprint: semanticHash(sourceAnchorBindings),
+    sourceManaged: true,
+    arbitrarySummaryAuthority: false
+  }, 'continuitySubjectRef', 'continuity-subject');
+}
+
+export function deriveContinuitySubject({ observations, subjectKind, sourceAnchorRangeRefs }) {
+  const sources = observations.map(validateContinuityObservation);
+  return continuitySubjectFromBindings(aggregateObservationSources(sources), subjectKind, sourceAnchorRangeRefs);
+}
+
+export function validateContinuitySubject(subject, { sourceBindings = null } = {}) {
+  assertCanonical(subject, 'continuitySubjectRef', 'continuity-subject', 'continuity subject');
+  if (subject.schemaVersion !== 'vexlife.continuity-subject/v1' || subject.sourceManaged !== true ||
+      subject.arbitrarySummaryAuthority !== false || !Array.isArray(subject.sourceAnchorBindings) ||
+      subject.sourceAnchorBindings.length === 0 ||
+      subject.sourceAnchorFingerprint !== semanticHash(subject.sourceAnchorBindings)) {
+    throw new Error('continuity subject contract is malformed or not source-managed');
+  }
+  if (sourceBindings) {
+    const expected = continuitySubjectFromBindings(
+      sourceBindings,
+      subject.subjectKind,
+      subject.sourceAnchorBindings.map((binding) => binding.rangeRef)
+    );
+    if (expected.continuitySubjectRef !== subject.continuitySubjectRef ||
+        expected.semanticFingerprint !== subject.semanticFingerprint ||
+        semanticHash(expected) !== semanticHash(subject)) {
+      throw new Error('continuity subject is not the exact source-tuple-derived candidate meaning');
+    }
+  }
+  return subject;
+}
+
+function validateContinuitySubjectIdentity(continuitySubjectRef, continuitySubjectFingerprint) {
+  if (!SHA256.test(continuitySubjectFingerprint ?? '') ||
+      continuitySubjectRef !== `continuity-subject.${continuitySubjectFingerprint.slice(0, 24)}`) {
+    throw new Error('continuity subject ref/fingerprint is not canonical');
+  }
+}
+
 export function formContinuityCandidate(input) {
   if (!Array.isArray(input.observations) || input.observations.length === 0) throw new Error('candidate requires observations');
   if (!input.candidateKind || !input.summaryRef || !input.authoredByRef || !input.observedConsequence) {
@@ -388,6 +467,14 @@ export function formContinuityCandidate(input) {
   if (input.scopeTarget && input.scopeTarget.semanticFingerprint !== scopeTarget.semanticFingerprint) {
     throw new Error('candidate-provided scope target does not match the source-derived target');
   }
+  const continuitySubject = deriveContinuitySubject({
+    observations,
+    subjectKind: input.continuitySubjectKind,
+    sourceAnchorRangeRefs: input.continuitySubjectSourceRangeRefs
+  });
+  if (input.continuitySubject && input.continuitySubject.semanticFingerprint !== continuitySubject.semanticFingerprint) {
+    throw new Error('candidate-provided continuity subject does not match the source-derived meaning');
+  }
   const core = {
     schemaVersion: 'vexlife.continuity-candidate/v1',
     candidateKind: input.candidateKind,
@@ -408,6 +495,9 @@ export function formContinuityCandidate(input) {
     scopeTarget,
     scopeTargetRef: scopeTarget.scopeTargetRef,
     scopeTargetFingerprint: scopeTarget.semanticFingerprint,
+    continuitySubject,
+    continuitySubjectRef: continuitySubject.continuitySubjectRef,
+    continuitySubjectFingerprint: continuitySubject.semanticFingerprint,
     visibilityScope,
     synchronizationScope,
     originClassification,
@@ -433,8 +523,13 @@ export function validateContinuityCandidate(candidate) {
   if (candidate.schemaVersion !== 'vexlife.continuity-candidate/v1') throw new Error('continuity candidate schema mismatch');
   validateBehaviorOrigin(candidate.originClassification);
   validateContinuityScopeTarget(candidate.scopeTarget);
+  validateContinuitySubject(candidate.continuitySubject, { sourceBindings: candidate.sourceBindings });
   if (candidate.scopeTarget.scopeClass !== candidate.candidateScope || candidate.scopeTargetRef !== candidate.scopeTarget.scopeTargetRef ||
-      candidate.scopeTargetFingerprint !== candidate.scopeTarget.semanticFingerprint) throw new Error('continuity candidate scope target binding mismatch');
+      candidate.scopeTargetFingerprint !== candidate.scopeTarget.semanticFingerprint ||
+      candidate.continuitySubjectRef !== candidate.continuitySubject.continuitySubjectRef ||
+      candidate.continuitySubjectFingerprint !== candidate.continuitySubject.semanticFingerprint) {
+    throw new Error('continuity candidate scope target or semantic-subject binding mismatch');
+  }
   canonicalTimestamp(candidate.formedAt, 'candidate formedAt');
   const bindings = canonicalSourceBindings(candidate.sourceBindings, 'candidate sourceBindings');
   if (!Array.isArray(candidate.observationBindings) || candidate.observationBindings.length === 0 ||
@@ -506,6 +601,8 @@ export function routeContinuityCandidate(candidate) {
     candidateScope: candidate.candidateScope,
     scopeTargetRef: candidate.scopeTargetRef,
     scopeTargetFingerprint: candidate.scopeTargetFingerprint,
+    continuitySubjectRef: candidate.continuitySubjectRef,
+    continuitySubjectFingerprint: candidate.continuitySubjectFingerprint,
     proposedPrimaryDestination: primaryDestination,
     proposedLinkedDestinations: [...linked].sort(),
     reason,
@@ -578,6 +675,8 @@ export function createContinuityContextReview(candidate, route, input) {
     candidateScope: candidate.candidateScope,
     scopeTargetRef: candidate.scopeTargetRef,
     scopeTargetFingerprint: candidate.scopeTargetFingerprint,
+    continuitySubjectRef: candidate.continuitySubjectRef,
+    continuitySubjectFingerprint: candidate.continuitySubjectFingerprint,
     proposedPrimaryDestination: route.proposedPrimaryDestination,
     proposedLinkedDestinations: [...route.proposedLinkedDestinations],
     privacyState: input.privacyState,
@@ -608,7 +707,11 @@ export function validateContinuityContextReview(candidate, route, review) {
   if (review.schemaVersion !== 'vexlife.continuity-context-review/v1' ||
       review.candidateFingerprint !== candidate.semanticFingerprint || review.routeFingerprint !== route.semanticFingerprint ||
       review.scopeTargetRef !== candidate.scopeTargetRef || review.scopeTargetFingerprint !== candidate.scopeTargetFingerprint ||
-      route.scopeTargetRef !== candidate.scopeTargetRef || route.scopeTargetFingerprint !== candidate.scopeTargetFingerprint) {
+      route.scopeTargetRef !== candidate.scopeTargetRef || route.scopeTargetFingerprint !== candidate.scopeTargetFingerprint ||
+      review.continuitySubjectRef !== candidate.continuitySubjectRef ||
+      review.continuitySubjectFingerprint !== candidate.continuitySubjectFingerprint ||
+      route.continuitySubjectRef !== candidate.continuitySubjectRef ||
+      route.continuitySubjectFingerprint !== candidate.continuitySubjectFingerprint) {
     throw new Error('Context Review candidate/route binding mismatch');
   }
   const expected = resolveContinuityAcceptanceAuthority(candidate, route);
@@ -660,6 +763,8 @@ export function createContinuityAcceptanceEvidence({ candidate, route, review, a
     scope: candidate.candidateScope,
     scopeTargetRef: candidate.scopeTargetRef,
     scopeTargetFingerprint: candidate.scopeTargetFingerprint,
+    continuitySubjectRef: candidate.continuitySubjectRef,
+    continuitySubjectFingerprint: candidate.continuitySubjectFingerprint,
     burdenRef: burden?.burdenRef ?? null,
     burdenIdentityFingerprint: burden?.identityFingerprint ?? null,
     burdenSourceFingerprint: burden ? semanticHash(burden.sourceForm) : null,
@@ -705,6 +810,8 @@ export function validateContinuityAcceptanceEvidence(evidence, { candidate, rout
         evidence.reviewRef !== review.reviewRef || evidence.reviewFingerprint !== review.semanticFingerprint ||
         evidence.recordClass !== route.proposedPrimaryDestination || evidence.scope !== candidate.candidateScope ||
         evidence.scopeTargetRef !== candidate.scopeTargetRef || evidence.scopeTargetFingerprint !== candidate.scopeTargetFingerprint ||
+        evidence.continuitySubjectRef !== candidate.continuitySubjectRef ||
+        evidence.continuitySubjectFingerprint !== candidate.continuitySubjectFingerprint ||
         !exactRefs(evidence.subjectRefs, acceptanceSubjects(candidate, route)) || evidence.actorRef !== evidence.authorityRef ||
         !review.requiredAcceptanceRefs.includes(evidence.authorityRef) || [candidate.candidateRef, review.reviewRef].includes(evidence.sourceRef) ||
         [candidate.candidateRef, review.reviewRef].includes(evidence.formationRef)) throw new Error('acceptance evidence does not exactly bind aggregate lineage, actor, subject, scope, source and policy');
@@ -813,6 +920,8 @@ function formReviewedBurdenRelease(candidate, route, review) {
     scope: candidate.candidateScope,
     scopeTargetRef: candidate.scopeTargetRef,
     scopeTargetFingerprint: candidate.scopeTargetFingerprint,
+    continuitySubjectRef: candidate.continuitySubjectRef,
+    continuitySubjectFingerprint: candidate.continuitySubjectFingerprint,
     requiredAcceptanceRefs: review.requiredAcceptanceRefs,
     formedAt: candidate.formedAt,
     supersedesRef: review.supersedesRef
@@ -998,6 +1107,8 @@ export function acceptContinuityCandidate(candidate, review, input) {
       scope: candidate.candidateScope,
       scopeTargetRef: candidate.scopeTargetRef,
       scopeTargetFingerprint: candidate.scopeTargetFingerprint,
+      continuitySubjectRef: candidate.continuitySubjectRef,
+      continuitySubjectFingerprint: candidate.continuitySubjectFingerprint,
       acceptedByRefs: accepted,
       acceptanceEvidence: evidence,
       acceptanceEvidenceRefs: evidence.map((item) => item.acceptanceEvidenceRef),
@@ -1031,6 +1142,8 @@ export function acceptContinuityCandidate(candidate, review, input) {
     scope: candidate.candidateScope,
     scopeTargetRef: candidate.scopeTargetRef,
     scopeTargetFingerprint: candidate.scopeTargetFingerprint,
+    continuitySubjectRef: candidate.continuitySubjectRef,
+    continuitySubjectFingerprint: candidate.continuitySubjectFingerprint,
     authoredByRef: candidate.authoredByRef,
     aboutSelfRefs: [...candidate.aboutSelfRefs],
     affectedPartyRefs: [...candidate.affectedPartyRefs],
@@ -1074,6 +1187,7 @@ export function validateAcceptedContinuityRecord(record) {
   canonicalTimestamp(record.acceptedAt, 'record acceptedAt');
   afterOrEqual(record.acceptedAt, record.formedAt, 'accepted continuity record', { strict: true });
   canonicalSourceBindings(record.sourceBindings, 'accepted record sourceBindings');
+  validateContinuitySubjectIdentity(record.continuitySubjectRef, record.continuitySubjectFingerprint);
   if (record.scopeTargetRef !== `continuity-scope-target.${record.scopeTargetFingerprint?.slice(0, 24)}` || !SHA256.test(record.scopeTargetFingerprint ?? '') ||
       record.authorityEvidenceClass !== 'SIMULATED_CURRENT' || record.simulatedAuthority !== true ||
       record.liveAuthorityGranted !== false || record.externalEffectsAuthorized !== false ||
@@ -1092,6 +1206,8 @@ export function validateAcceptedContinuityRecord(record) {
         evidence.reviewRef !== record.reviewRef || evidence.reviewFingerprint !== record.reviewFingerprint ||
         evidence.recordClass !== record.recordClass || evidence.scope !== record.scope ||
         evidence.scopeTargetRef !== record.scopeTargetRef || evidence.scopeTargetFingerprint !== record.scopeTargetFingerprint ||
+        evidence.continuitySubjectRef !== record.continuitySubjectRef ||
+        evidence.continuitySubjectFingerprint !== record.continuitySubjectFingerprint ||
         evidence.evidenceClass !== record.authorityEvidenceClass || evidence.simulatedAuthority !== record.simulatedAuthority ||
         evidence.liveAuthorityGranted !== record.liveAuthorityGranted ||
         evidence.externalEffectsAuthorized !== record.externalEffectsAuthorized ||
@@ -1110,6 +1226,8 @@ export function validateAcceptedContinuityRecord(record) {
         record.burdenRelease.reviewRef !== record.reviewRef || record.burdenRelease.reviewFingerprint !== record.reviewFingerprint ||
         record.burdenRelease.scope !== record.scope || record.burdenRelease.scopeTargetRef !== record.scopeTargetRef ||
         record.burdenRelease.scopeTargetFingerprint !== record.scopeTargetFingerprint ||
+        record.burdenRelease.continuitySubjectRef !== record.continuitySubjectRef ||
+        record.burdenRelease.continuitySubjectFingerprint !== record.continuitySubjectFingerprint ||
         !exactRefs(record.burdenRelease.acceptanceEvidenceRefs, record.acceptanceEvidenceRefs)) {
       throw new Error('accepted record Burden meaning is detached from its exact outer lineage');
     }
@@ -1128,7 +1246,7 @@ export function supersedeContinuityRecord(priorRecord, successorRecord, { rollba
     throw new Error('supersession requires an exact nonempty rollbackRef');
   }
   if (successorRecord.supersedesRef !== priorRecord.acceptedRecordRef) throw new Error('successor must preserve exact current prior ref');
-  for (const field of ['recordClass', 'scope', 'scopeTargetRef', 'scopeTargetFingerprint', 'authorityEvidenceClass', 'acceptanceDisposition']) {
+  for (const field of ['recordClass', 'scope', 'scopeTargetRef', 'scopeTargetFingerprint', 'continuitySubjectRef', 'continuitySubjectFingerprint', 'authorityEvidenceClass', 'acceptanceDisposition']) {
     if (successorRecord[field] !== priorRecord[field]) throw new Error(`supersession ${field} is incompatible`);
   }
   for (const field of ['aboutSelfRefs', 'affectedPartyRefs', 'requiredAcceptanceRefs']) if (!exactRefs(successorRecord[field], priorRecord[field])) throw new Error(`supersession ${field} is incompatible`);
@@ -1159,6 +1277,8 @@ export function supersedeContinuityRecord(priorRecord, successorRecord, { rollba
     priorRecordFingerprint: priorRecord.semanticFingerprint,
     successorRecordRef: successorRecord.acceptedRecordRef,
     successorRecordFingerprint: successorRecord.semanticFingerprint,
+    continuitySubjectRef: successorRecord.continuitySubjectRef,
+    continuitySubjectFingerprint: successorRecord.continuitySubjectFingerprint,
     priorDisposition: 'SUPERSEDED',
     successorDisposition: 'CURRENT',
     acceptanceEvidenceRefs: [...successorRecord.acceptanceEvidenceRefs],
@@ -1204,6 +1324,7 @@ export function validateContinuityRecordSet(records, supersessions = []) {
   const transactionRefs = new Set();
   const supersededPriorRefs = new Set();
   const supersedingSuccessorRefs = new Set();
+  const incomingBySuccessorRef = new Map();
   for (const transaction of supersessions) {
     validateContinuitySupersession(transaction, records);
     if (transactionRefs.has(transaction.supersessionRef)) {
@@ -1218,6 +1339,7 @@ export function validateContinuityRecordSet(records, supersessions = []) {
     transactionRefs.add(transaction.supersessionRef);
     supersededPriorRefs.add(transaction.priorRecordRef);
     supersedingSuccessorRefs.add(transaction.successorRecordRef);
+    incomingBySuccessorRef.set(transaction.successorRecordRef, transaction);
   }
   for (const record of records) {
     const matching = supersessions.filter((transaction) =>
@@ -1240,6 +1362,29 @@ export function validateContinuityRecordSet(records, supersessions = []) {
       successorRef = supersessions.find((item) => item.priorRecordRef === successorRef).successorRecordRef;
     }
   }
+  const supersessionChronologyBindings = supersessions.map((transaction) => {
+    const successor = records.find((record) => record.acceptedRecordRef === transaction.successorRecordRef);
+    const incoming = incomingBySuccessorRef.get(transaction.priorRecordRef) ?? null;
+    if (incoming) {
+      if (incoming.continuitySubjectRef !== transaction.continuitySubjectRef ||
+          incoming.continuitySubjectFingerprint !== transaction.continuitySubjectFingerprint) {
+        throw new Error('continuity supersession chain crosses semantic-subject lineage');
+      }
+      afterOrEqual(transaction.supersededAt, incoming.supersededAt, 'supersession chain chronology', { strict: true });
+    }
+    return {
+      supersessionRef: transaction.supersessionRef,
+      continuitySubjectRef: successor.continuitySubjectRef,
+      continuitySubjectFingerprint: successor.continuitySubjectFingerprint,
+      priorRecordRef: transaction.priorRecordRef,
+      successorRecordRef: transaction.successorRecordRef,
+      incomingSupersessionRef: incoming?.supersessionRef ?? null,
+      incomingSupersededAt: incoming?.supersededAt ?? null,
+      supersededAt: transaction.supersededAt,
+      strictAdvanceRequired: true,
+      monotonic: true
+    };
+  }).sort((left, right) => left.supersessionRef.localeCompare(right.supersessionRef));
   const superseded = new Set(supersessions.map((item) => item.priorRecordRef));
   const current = records.filter((record) => !superseded.has(record.acceptedRecordRef));
   const groups = new Map();
@@ -1249,6 +1394,8 @@ export function validateContinuityRecordSet(records, supersessions = []) {
       scope: record.scope,
       scopeTargetRef: record.scopeTargetRef,
       scopeTargetFingerprint: record.scopeTargetFingerprint,
+      continuitySubjectRef: record.continuitySubjectRef,
+      continuitySubjectFingerprint: record.continuitySubjectFingerprint,
       aboutSelfRefs: record.aboutSelfRefs,
       affectedPartyRefs: record.affectedPartyRefs
     });
@@ -1271,6 +1418,12 @@ export function validateContinuityRecordSet(records, supersessions = []) {
       authorityEvidenceRefs: [...transaction.acceptanceEvidenceRefs],
       authorityCurrentnessFingerprint: semanticHash(transaction.authorityCurrentnessProof)
     })).sort((left, right) => left.supersessionRef.localeCompare(right.supersessionRef)),
+    semanticSubjectBindings: records.map((record) => ({
+      acceptedRecordRef: record.acceptedRecordRef,
+      continuitySubjectRef: record.continuitySubjectRef,
+      continuitySubjectFingerprint: record.continuitySubjectFingerprint
+    })).sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef)),
+    supersessionChronologyBindings,
     state: conflicts.length ? 'HELD_CONFLICT' : 'CURRENT',
     currentRecordRefs: current.map((record) => record.acceptedRecordRef).sort(),
     supersededRecordRefs: [...superseded].sort(),
@@ -1356,6 +1509,8 @@ export function createSiblingContinuityProjection(record, { targetLineageRef, sy
     scope: record.scope,
     scopeTargetRef: record.scopeTargetRef,
     scopeTargetFingerprint: record.scopeTargetFingerprint,
+    continuitySubjectRef: record.continuitySubjectRef,
+    continuitySubjectFingerprint: record.continuitySubjectFingerprint,
     state: 'OBSERVE_ONLY_PENDING_LOCAL_REVIEW',
     livedByTargetLineage: false,
     claimsSourceExperienceAsOwn: false,
@@ -1456,6 +1611,7 @@ export function validateTransientContinuityContext(context) {
   canonicalTimestamp(context.acceptedAt, 'transient context acceptedAt');
   canonicalTimestamp(context.expiresAt, 'transient context expiresAt');
   afterOrEqual(context.expiresAt, context.acceptedAt, 'transient context expiry', { strict: true });
+  validateContinuitySubjectIdentity(context.continuitySubjectRef, context.continuitySubjectFingerprint);
   assertCanonical(context.contextLease, 'contextBindingRef', 'continuity-current-context', 'transient context lease');
   if (context.contextLease.candidateRef !== context.candidateRef || context.contextLease.reviewRef !== context.reviewRef ||
       context.contextLease.expiresAt !== context.expiresAt || !context.candidateFingerprint || !context.routeRef ||
@@ -1477,6 +1633,8 @@ export function validateTransientContinuityContext(context) {
         evidence.reviewRef !== context.reviewRef || evidence.reviewFingerprint !== context.reviewFingerprint ||
         evidence.recordClass !== 'CURRENT_CONTEXT' || evidence.scope !== context.scope ||
         evidence.scopeTargetRef !== context.scopeTargetRef || evidence.scopeTargetFingerprint !== context.scopeTargetFingerprint ||
+        evidence.continuitySubjectRef !== context.continuitySubjectRef ||
+        evidence.continuitySubjectFingerprint !== context.continuitySubjectFingerprint ||
         evidence.evidenceClass !== context.authorityEvidenceClass || evidence.simulatedAuthority !== context.simulatedAuthority ||
         evidence.liveAuthorityGranted !== context.liveAuthorityGranted ||
         evidence.externalEffectsAuthorized !== context.externalEffectsAuthorized ||
@@ -1568,6 +1726,8 @@ export function projectContinuityRecord(record) {
     scope: record.scope,
     scopeTargetRef: record.scopeTargetRef,
     scopeTargetFingerprint: record.scopeTargetFingerprint,
+    continuitySubjectRef: record.continuitySubjectRef,
+    continuitySubjectFingerprint: record.continuitySubjectFingerprint,
     authorityEvidenceClass: record.authorityEvidenceClass,
     simulatedAuthority: record.simulatedAuthority,
     liveAuthorityGranted: record.liveAuthorityGranted,

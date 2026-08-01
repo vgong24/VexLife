@@ -243,14 +243,20 @@ transition before exact-scope influence deauthorization; it never claims
 base-model parameter deletion. Its lower-level lifecycle cannot accept raw
 authority refs or substitute inner reviewed meaning. Scope class and one
 source-derived exact target travel together through review, authority,
-acceptance, recurrence, conflicts and projection. Current Context is transient and lease-bound, aggregate events
+acceptance, recurrence, conflicts and projection. A separate content-addressed
+semantic-subject identity is derived from exact source anchor tuples, never from
+summary prose. Different same-human preferences and different same-Vex Burden
+patterns therefore remain independently current; only the exact same meaning may
+conflict or supersede. Current Context is transient and lease-bound, aggregate events
 recompute exact aggregate-owned lineage before mutation, and record, transient-context and Burden projections
-recompute that same lineage and carry aggregate-ownership receipts. Transient projection additionally requires an
-  latest aggregate-owned snapshot from a registered deterministic simulated clock source; its receipts say
+recompute that same lineage and carry aggregate-ownership receipts. Transient projection additionally requires the
+  latest aggregate-owned snapshot from a registered deterministic simulated clock source, observed no earlier than
+  context acceptance; its receipts say
   `TRANSIENT_SIMULATED_CURRENT`, `simulatedClock=true`, `liveClockGranted=false`, and
   `externalTimeServiceUsed=false`. Supersession is a recomputed canonical atomic transaction, rejects every
   ordinary/dangling superseding successor, proves all successor authority evidence current at the exact transaction time,
-  and emits an exact content-addressed current-record-set receipt; applicability blocks conflicts and stale receipts, excludes prior records,
+  advances each exact-subject chain in strict transaction chronology, and emits an exact content-addressed
+  current-record-set receipt carrying subject and chronology bindings; applicability blocks conflicts and stale receipts, excludes prior records,
 recurrence and sibling projection are exact-scope, and
 legacy Dream v0 cannot bypass durable acceptance or synchronization. Applicable
 context requires the exact current record set, exact class+target and explicitly admitted authority class;

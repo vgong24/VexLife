@@ -13,9 +13,16 @@ console.log(JSON.stringify({
   currentness: result.receipt.currentness,
   record: result.recordProjection,
   burdenRelease: result.burdenProjection,
+  semanticSubject: {
+    continuitySubjectRef: result.recordProjection.continuitySubjectRef,
+    continuitySubjectFingerprint: result.recordProjection.continuitySubjectFingerprint,
+    supersessionChronology: result.recordProjection.subjectSupersessionChronology
+  },
   transientContext: {
     contextRecordRef: result.transientProjection.contextRecordRef,
+    continuitySubjectRef: result.transientProjection.continuitySubjectRef,
     currentness: result.transientProjection.currentness,
+    contextAcceptedAt: result.transientProjection.contextAcceptedAt,
     clockSnapshotRef: result.clockSnapshot.clockSnapshotRef,
     clockEvidenceClass: result.transientProjection.clockEvidenceClass,
     simulatedClock: result.transientProjection.simulatedClock,

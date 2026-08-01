@@ -15,6 +15,7 @@ import {
   CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
   CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
   CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS,
+  CONTINUITY_SUBJECT_REQUIRED_FIELDS,
   CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS
 } from '../src/core/continuity-evolution-router.mjs';
 import {
@@ -62,6 +63,7 @@ exactArray('Context Review required fields', evolution.contextReview?.requiredFi
 exactArray('acceptance evidence required fields', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
 exactArray('authority snapshot required fields', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
 exactArray('scope target required fields', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
+exactArray('continuity subject required fields', evolution.continuitySubject?.requiredFields, CONTINUITY_SUBJECT_REQUIRED_FIELDS);
 exactArray('supersession transaction required fields', evolution.supersessionTransaction?.requiredFields, CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS);
 exactArray('current record set required fields', evolution.currentRecordSet?.requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
 exactArray('simulated clock snapshot required fields', evolution.simulatedClock?.requiredFields, CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS);

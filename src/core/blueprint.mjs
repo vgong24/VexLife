@@ -20,6 +20,7 @@ import {
   CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
   CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
   CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS,
+  CONTINUITY_SUBJECT_REQUIRED_FIELDS,
   CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS
 } from './continuity-evolution-router.mjs';
 import {
@@ -314,6 +315,7 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
   exactRequiredFields('acceptance evidence', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
   exactRequiredFields('authority snapshot', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
   exactRequiredFields('scope target', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
+  exactRequiredFields('continuity subject', evolution.continuitySubject?.requiredFields, CONTINUITY_SUBJECT_REQUIRED_FIELDS);
   exactRequiredFields('supersession transaction', evolution.supersessionTransaction?.requiredFields, CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS);
   exactRequiredFields('current record set', evolution.currentRecordSet?.requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
   exactRequiredFields('simulated clock snapshot', evolution.simulatedClock?.requiredFields, CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS);
@@ -321,6 +323,7 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
   exactRequiredFields('aggregate projection', evolution.aggregateProjection?.requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
   const expectedContractSources = new Map([
     ['contract.vexlife.continuity-scope-target/v1', 'scopeTarget'],
+    ['contract.vexlife.continuity-subject/v1', 'continuitySubject'],
     ['contract.vexlife.continuity-acceptance-evidence/v1', 'acceptanceEvidence'],
     ['contract.vexlife.continuity-authority-snapshot/v1', 'authorityTrust'],
     ['contract.vexlife.continuity-context-review/v1', 'contextReview'],
@@ -369,6 +372,7 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
     evolution.authorityTrust?.contractRef,
     evolution.acceptanceEvidence?.contractRef,
     evolution.scopeTarget?.contractRef,
+    evolution.continuitySubject?.contractRef,
     evolution.supersessionTransaction?.contractRef,
     evolution.currentRecordSet?.contractRef,
     evolution.simulatedClock?.contractRef,

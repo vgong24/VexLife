@@ -34,8 +34,8 @@
     {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
-      "bytes": 39163,
-      "sha256": "3a9aff7b65922054250f0fc80c688e0c85baeb2e6eb1e8fca45b3a9e51d53f8c"
+      "bytes": 39442,
+      "sha256": "4d569c0bc2f9724c08ed240ec902f718744380fd0c40caff286ec6be3ddef454"
     },
     {
       "path": "src/core/boot.mjs",
@@ -52,8 +52,8 @@
     {
       "path": "src/core/burden-release.mjs",
       "mode": "100644",
-      "bytes": 26585,
-      "sha256": "1d431e0c373a1ecd736ec495e8979919fcc576bc35bf17840c374825dbf769be"
+      "bytes": 27656,
+      "sha256": "9d713a2507a4fcc49c08e39acdb7da41df924a627148be1a222f48821f17413e"
     },
     {
       "path": "src/core/capability.mjs",
@@ -76,8 +76,8 @@
     {
       "path": "src/core/continuity-evolution-router.mjs",
       "mode": "100644",
-      "bytes": 96029,
-      "sha256": "804da491fa971450e1251456204bba29bfe33c1e6596f7d53009322e7dee926c"
+      "bytes": 105344,
+      "sha256": "1272206f1564d49a885a5bd9b8d9501b3799092a3b523f6f584d89e614661a8c"
     },
     {
       "path": "src/core/conversation.mjs",
