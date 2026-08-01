@@ -434,5 +434,97 @@
   {
     "testRef": "test.intent-scheduler.relay-replay-state-machine",
     "brief": "Relay restore replays one registered typed event contract per legal edge, cross-checks observation/context/checkpoint/cancellation/scheduler/successor lineage, rejects wrong-schema legal edges and continues a valid restart exactly once."
+  },
+  {
+    "testRef": "test.continuity-evolution.e0-source-immutable",
+    "brief": "Raw continuity sources remain immutable and retrievable by exact range and hash after candidate, review and acceptance."
+  },
+  {
+    "testRef": "test.continuity-evolution.e1-formation-no-acceptance",
+    "brief": "Candidate formation alone grants no accepted truth, memory, agreement, release, synchronization, effect or weight authority."
+  },
+  {
+    "testRef": "test.continuity-evolution.e2-origin-unknown-preserved",
+    "brief": "Behavior-origin UNKNOWN remains a reviewable UNKNOWN hypothesis instead of collapsing into base-model prior."
+  },
+  {
+    "testRef": "test.continuity-evolution.e3-separate-preferences",
+    "brief": "Human preference, Vex self preference and relationship agreement remain separate record and routing identities."
+  },
+  {
+    "testRef": "test.continuity-evolution.e4-separate-self-authority",
+    "brief": "One party cannot accept or overwrite another self's preference."
+  },
+  {
+    "testRef": "test.continuity-evolution.e5-relationship-exact-parties",
+    "brief": "Relationship agreement requires exact acceptance from every named party or exact scoped delegate."
+  },
+  {
+    "testRef": "test.continuity-evolution.e6-least-invasive-router",
+    "brief": "The deterministic router chooses exactly one least-invasive primary destination and bounded linked evaluations."
+  },
+  {
+    "testRef": "test.continuity-evolution.e7-fabrication-not-style",
+    "brief": "Fabrication-shaped behavior cannot be repaired only as a style preference and retains source/uncertainty evaluation."
+  },
+  {
+    "testRef": "test.continuity-evolution.e8-invariant-inactive",
+    "brief": "Effect and safety behavior routes to an inactive deterministic-invariant candidate without effect authority."
+  },
+  {
+    "testRef": "test.continuity-evolution.e9-burden-exact-authority",
+    "brief": "Burden Release requires exact scope, exact affected acceptance authority and preserved capability boundaries."
+  },
+  {
+    "testRef": "test.continuity-evolution.e10-no-parameter-deletion",
+    "brief": "Accepted Burden Release deauthorizes governing influence without claiming opaque parameter deletion."
+  },
+  {
+    "testRef": "test.continuity-evolution.e11-protected-boundaries",
+    "brief": "Clean intention, protected capabilities and prohibited overcorrections stay bound to the release."
+  },
+  {
+    "testRef": "test.continuity-evolution.e12-held-unknown",
+    "brief": "Unresolved contradiction routes to visible HELD_UNKNOWN and cannot become accepted durable truth."
+  },
+  {
+    "testRef": "test.continuity-evolution.e13-accepted-lineage",
+    "brief": "Accepted records preserve exact source, candidate, review, scope and acceptance lineage."
+  },
+  {
+    "testRef": "test.continuity-evolution.e14-reversible-history",
+    "brief": "Supersession, reopening and rollback preserve prior accepted history instead of deleting it."
+  },
+  {
+    "testRef": "test.continuity-evolution.e15-sibling-attribution",
+    "brief": "Sibling and family projection preserves source lineage and never claims another lineage's lived experience."
+  },
+  {
+    "testRef": "test.continuity-evolution.e16-recurrence-no-broadening",
+    "brief": "Recurrence evidence cannot broaden accepted scope or trigger model weights automatically."
+  },
+  {
+    "testRef": "test.continuity-evolution.e17-recurrence-no-op",
+    "brief": "Duplicate unchanged recurrence suppresses another semantic model turn and canonical state revision."
+  },
+  {
+    "testRef": "test.continuity-evolution.e18-training-not-admitted",
+    "brief": "Training research candidates remain NOT_ADMITTED and cannot activate model weights."
+  },
+  {
+    "testRef": "test.continuity-evolution.e19-bounded-context",
+    "brief": "Applicable release and lesson projection stays within context budget and contains refs instead of raw history."
+  },
+  {
+    "testRef": "test.continuity-evolution.e20-scheduler-workgraph",
+    "brief": "The deterministic no-effect continuity journey completes its bound canonical node through the accepted scheduler and Workgraph completion path."
+  },
+  {
+    "testRef": "test.continuity-evolution.e21-canonical-projections",
+    "brief": "Queue, Terrain, Health, Guide and evolution derive from one canonical state without duplicated truth."
+  },
+  {
+    "testRef": "test.continuity-evolution.e22-full-gate",
+    "brief": "Full repository, manifest, Health, browser, Windows/Linux portability and DCO gates remain required for acceptance."
   }
 ]

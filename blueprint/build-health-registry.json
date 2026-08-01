@@ -283,6 +283,25 @@
         "lens.vexlife.assurance-and-adversarial"
       ],
       "blocking": true
+    },
+    {
+      "checkRef": "check.continuity-evolution",
+      "command": "npm run evolution:check",
+      "category": "CONTINUITY",
+      "purpose": "Immutable continuity observations, separate-self preferences, Burden Release deauthorization, least-invasive routing, exact Context Review acceptance, reversible records, bounded recurrence no-op behavior, ref-only projections and canonical scheduler/Workgraph no-effect integration validate.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true,
+      "timeoutMs": 120000
     }
   ]
 }

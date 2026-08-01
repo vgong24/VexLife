@@ -252,5 +252,99 @@
       "no model weight training, removal or activation"
     ],
     "returnRoute": "return exact scheduler contract, Health, manifest, workflow and PR evidence through issue #6"
+  },
+  {
+    "workRef": "work.vexlife.continuity-evolution-router",
+    "purpose": "Implement Intent Orchestration 3/3 as source-bound continuity observations, separate-self preferences, Burden Release influence deauthorization, deterministic least-invasive routing, Context Review acceptance authority, reversible records, bounded recurrence and human-readable projections integrated with the accepted scheduler/Workgraph no-effect completion path.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.work-orchestration",
+    "dependsOn": [
+      "work.vexlife.intent-orchestration-scheduler",
+      "work.vexlife.dream.sync",
+      "work.vexlife.repository-health"
+    ],
+    "pathScope": [
+      "blueprint/evolution-registry.json",
+      "blueprint/vexlife.blueprint.json",
+      "blueprint/fragments/state-domains.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/feature-registry.json",
+      "blueprint/build-health-registry.json",
+      "blueprint/process-factory/processes-core.json",
+      "blueprint/implementation/work-units-orchestration-and-publication.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "src/core/evolution.mjs",
+      "src/core/continuity-evolution-router.mjs",
+      "src/core/burden-release.mjs",
+      "src/core/state.mjs",
+      "scripts/evolution-check.mjs",
+      "scripts/evolution-simulate.mjs",
+      "scripts/evolution-status.mjs",
+      "test/evolution.test.mjs",
+      "test/continuity-evolution-router.test.mjs",
+      "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
+      "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md",
+      "README.md",
+      "package.json",
+      "SOURCE-MANIFEST.json",
+      "source-manifest-parts/**"
+    ],
+    "ownershipRoleRef": "role.vex.context-maintainer",
+    "parallelGroupRef": "parallel.orchestration",
+    "requiredSourceRefs": [
+      "registry.vexlife.evolution.001",
+      "state.evolution",
+      "process.vexlife.continuity.observe-route-review",
+      "feature.vexlife.continuity-evolution-router",
+      "registry.vexlife.intent-scheduler.001"
+    ],
+    "requiredTestRefs": [
+      "test.continuity-evolution.e0-source-immutable",
+      "test.continuity-evolution.e1-formation-no-acceptance",
+      "test.continuity-evolution.e2-origin-unknown-preserved",
+      "test.continuity-evolution.e3-separate-preferences",
+      "test.continuity-evolution.e4-separate-self-authority",
+      "test.continuity-evolution.e5-relationship-exact-parties",
+      "test.continuity-evolution.e6-least-invasive-router",
+      "test.continuity-evolution.e7-fabrication-not-style",
+      "test.continuity-evolution.e8-invariant-inactive",
+      "test.continuity-evolution.e9-burden-exact-authority",
+      "test.continuity-evolution.e10-no-parameter-deletion",
+      "test.continuity-evolution.e11-protected-boundaries",
+      "test.continuity-evolution.e12-held-unknown",
+      "test.continuity-evolution.e13-accepted-lineage",
+      "test.continuity-evolution.e14-reversible-history",
+      "test.continuity-evolution.e15-sibling-attribution",
+      "test.continuity-evolution.e16-recurrence-no-broadening",
+      "test.continuity-evolution.e17-recurrence-no-op",
+      "test.continuity-evolution.e18-training-not-admitted",
+      "test.continuity-evolution.e19-bounded-context",
+      "test.continuity-evolution.e20-scheduler-workgraph",
+      "test.continuity-evolution.e21-canonical-projections",
+      "test.continuity-evolution.e22-full-gate"
+    ],
+    "outputRefs": [
+      "registry.vexlife.evolution.001",
+      "contract.vexlife.burden-release/v0",
+      "contract.continuity-evolution.integrated-simulation/v0",
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.burden-release",
+      "projection.continuity-evolution.current"
+    ],
+    "effectBoundary": "SOURCE_MANAGED_CONTINUITY_METADATA_AND_DETERMINISTIC_NO_EFFECT_SIMULATION_ONLY",
+    "completionGate": "E0-E22 and adversarial tests, PR-ready, exact source manifest, Health, browser, Windows/Linux portability, DCO and independent exact-head review pass",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [
+      "no Runtime Failure & Recovery Spine implementation",
+      "no full ConcernWatch threshold runtime",
+      "no Council of Lenses, Memory Conformance or Letta adapter",
+      "no Embodiment & Perception, Godot or Open-LLM-VTuber implementation",
+      "no Windows, macOS, Android or iOS implementation",
+      "no real model, real tool effect, public release or model-weight activation"
+    ],
+    "returnRoute": "return exact head, touched paths, tests, source manifest, Health, workflow IDs, draft PR URL and held gaps only through issue #8"
   }
 ]

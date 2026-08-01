@@ -355,4 +355,164 @@ export function createIntentSchedulerState({ aggregate = createInitialSchedulerA
   };
 }
 
+export function createInitialContinuityEvolutionAggregate() {
+  const aggregate = {
+    schemaVersion: 'vexlife.continuity-evolution-aggregate/v0',
+    currentness: 'CURRENT',
+    observations: [],
+    candidates: [],
+    reviews: [],
+    acceptedRecords: [],
+    recurrenceEvidence: [],
+    rejectedCandidateRefs: [],
+    lastTransitionRef: 'transition.continuity-evolution.initial'
+  };
+  aggregate.semanticFingerprint = semanticHash(aggregate);
+  return aggregate;
+}
+
+function appendUnique(items, value, refField) {
+  if (items.some((item) => item[refField] === value[refField] || item.semanticFingerprint === value.semanticFingerprint)) {
+    return items;
+  }
+  return [...items, clone(value)];
+}
+
+export function reduceContinuityEvolutionAggregate(current, event) {
+  if (!event?.type || !event.transitionRef) throw new Error('continuity evolution event type and transitionRef are required');
+  const next = clone(current);
+  switch (event.type) {
+    case 'OBSERVATION_SEALED':
+      if (next.observations.some((item) => item.observationRef === event.observation.observationRef || item.semanticFingerprint === event.observation.semanticFingerprint)) return current;
+      next.observations = appendUnique(next.observations, event.observation, 'observationRef');
+      break;
+    case 'CANDIDATE_FORMED':
+      if (next.candidates.some((item) => item.candidateRef === event.candidate.candidateRef || item.semanticFingerprint === event.candidate.semanticFingerprint)) return current;
+      next.candidates = appendUnique(next.candidates, event.candidate, 'candidateRef');
+      break;
+    case 'REVIEW_RECORDED':
+      if (next.reviews.some((item) => item.reviewRef === event.review.reviewRef || item.semanticFingerprint === event.review.semanticFingerprint)) return current;
+      next.reviews = appendUnique(next.reviews, event.review, 'reviewRef');
+      if (event.review.reviewDisposition === 'REJECTED' && !next.rejectedCandidateRefs.includes(event.review.candidateRef)) {
+        next.rejectedCandidateRefs.push(event.review.candidateRef);
+      }
+      break;
+    case 'RECORD_ACCEPTED':
+      if (next.acceptedRecords.some((item) => item.acceptedRecordRef === event.record.acceptedRecordRef || item.semanticFingerprint === event.record.semanticFingerprint)) return current;
+      next.acceptedRecords = appendUnique(next.acceptedRecords, event.record, 'acceptedRecordRef');
+      break;
+    case 'RECURRENCE_RECORDED':
+      if (event.evidence.changed === false || next.recurrenceEvidence.some((item) => item.semanticFingerprint === event.evidence.semanticFingerprint)) return current;
+      if (event.evidence.changed !== false) {
+        const withoutPrior = next.recurrenceEvidence.filter((item) => item.acceptedRecordRef !== event.evidence.acceptedRecordRef);
+        next.recurrenceEvidence = [...withoutPrior, clone(event.evidence)];
+      }
+      break;
+    case 'RECORD_SUPERSEDED':
+      next.acceptedRecords = next.acceptedRecords
+        .filter((item) => ![event.prior.acceptedRecordRef, event.successor.acceptedRecordRef].includes(item.acceptedRecordRef));
+      next.acceptedRecords.push(clone(event.prior), clone(event.successor));
+      break;
+    default:
+      throw new Error(`unknown continuity evolution event ${event.type}`);
+  }
+  next.observations.sort((left, right) => left.observationRef.localeCompare(right.observationRef));
+  next.candidates.sort((left, right) => left.candidateRef.localeCompare(right.candidateRef));
+  next.reviews.sort((left, right) => left.reviewRef.localeCompare(right.reviewRef));
+  next.acceptedRecords.sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef));
+  next.recurrenceEvidence.sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef));
+  next.rejectedCandidateRefs.sort();
+  next.lastTransitionRef = event.transitionRef;
+  delete next.semanticFingerprint;
+  next.semanticFingerprint = semanticHash(next);
+  return next.semanticFingerprint === current.semanticFingerprint ? current : next;
+}
+
+export function createContinuityEvolutionState({ aggregate = createInitialContinuityEvolutionAggregate() } = {}) {
+  const aggregateState = new StateCell(aggregate, { name: 'continuity-evolution.aggregate' });
+  const evolution = selectState(aggregateState, (current) => ({
+    schemaVersion: 'vexlife.continuity-evolution-projection/v0',
+    currentness: current.currentness,
+    observationCount: current.observations.length,
+    candidateCount: current.candidates.length,
+    reviewCount: current.reviews.length,
+    acceptedRecordCount: current.acceptedRecords.filter((item) => item.currentness === 'CURRENT').length,
+    heldCandidateRefs: current.candidates
+      .filter((candidate) => !current.reviews.some((review) => review.candidateRef === candidate.candidateRef && ['ACCEPTED', 'REJECTED'].includes(review.reviewDisposition)))
+      .map((item) => item.candidateRef),
+    acceptedRecordRefs: current.acceptedRecords
+      .filter((item) => item.currentness === 'CURRENT')
+      .map((item) => item.acceptedRecordRef),
+    recurrence: current.recurrenceEvidence.map((item) => ({
+      acceptedRecordRef: item.acceptedRecordRef,
+      recurrenceState: item.recurrenceState,
+      recurrenceCount: item.recurrenceCount
+    })),
+    aggregateFingerprint: current.semanticFingerprint,
+    rawSourceContentIncluded: false
+  }), { name: 'continuity-evolution.current' });
+
+  const queue = selectState(evolution, (current) => ({
+    schemaVersion: 'vexlife.continuity-evolution-queue-projection/v0',
+    state: current.heldCandidateRefs.length ? 'CONTEXT_REVIEW_REQUIRED' : 'NO_PENDING_REVIEW',
+    candidateRefs: current.heldCandidateRefs,
+    sourceProjectionRef: 'projection.continuity-evolution.current'
+  }), { name: 'continuity-evolution.queue' });
+
+  const terrain = selectState(evolution, (current) => ({
+    schemaVersion: 'vexlife.continuity-evolution-terrain-projection/v0',
+    state: current.heldCandidateRefs.length ? 'ATTENTION' : 'CURRENT',
+    activeRecordRefs: current.acceptedRecordRefs,
+    heldCandidateRefs: current.heldCandidateRefs,
+    recurrence: current.recurrence,
+    sourceProjectionRef: 'projection.continuity-evolution.current'
+  }), { name: 'continuity-evolution.terrain' });
+
+  const health = selectState(aggregateState, (current) => {
+    const blocking = current.acceptedRecords.filter((record) =>
+      record.currentness === 'CURRENT' &&
+      (record.requiredAcceptanceRefs?.length !== record.acceptedByRefs?.length || record.weightActivationState !== 'INACTIVE')
+    );
+    const attention = current.candidates.filter((candidate) =>
+      !current.reviews.some((review) => review.candidateRef === candidate.candidateRef && ['ACCEPTED', 'REJECTED'].includes(review.reviewDisposition))
+    );
+    return {
+      schemaVersion: 'vexlife.continuity-evolution-health-projection/v0',
+      state: blocking.length ? 'BLOCKED' : attention.length ? 'ATTENTION' : 'CLEAR',
+      blockingRecordRefs: blocking.map((item) => item.acceptedRecordRef),
+      reviewRequiredCandidateRefs: attention.map((item) => item.candidateRef),
+      acceptedWeightActivations: current.acceptedRecords.filter((item) => item.weightActivationState !== 'INACTIVE').length,
+      rawMachineDumpIncluded: false
+    };
+  }, { name: 'continuity-evolution.health' });
+
+  const guide = selectState(evolution, (current) => ({
+    schemaVersion: 'vexlife.continuity-evolution-guide-projection/v0',
+    whatIsHappeningNow: current.heldCandidateRefs.length
+      ? `CONTEXT_REVIEW:${current.heldCandidateRefs[0]}`
+      : current.recurrence.some((item) => item.recurrenceState === 'REOPEN_REVIEW')
+        ? 'RECURRENCE_REVIEW_REQUIRED'
+        : 'CONTINUITY_CURRENT',
+    nextSafeAction: current.heldCandidateRefs.length
+      ? 'REVIEW_EXACT_SOURCE_SCOPE_AND_ACCEPTANCE_AUTHORITY'
+      : current.recurrence.some((item) => item.recurrenceState === 'REOPEN_REVIEW')
+        ? 'REOPEN_EXACT_ACCEPTED_RECORD'
+        : 'LOAD_APPLICABLE_RECORD_REFS_ONLY',
+    sourceDescentRef: 'projection.continuity-evolution.current'
+  }), { name: 'continuity-evolution.guide' });
+
+  const record = (event) => aggregateState.update((current) => reduceContinuityEvolutionAggregate(current, event), {
+    transitionRef: event.transitionRef
+  });
+  const dispose = () => {
+    guide.dispose();
+    health.dispose();
+    terrain.dispose();
+    queue.dispose();
+    evolution.dispose();
+  };
+
+  return { aggregate: aggregateState, evolution, queue, terrain, health, guide, record, dispose };
+}
+
 // [VXG RealForever]

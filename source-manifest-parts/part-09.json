@@ -2,6 +2,48 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "start-vexlife.sh",
+      "mode": "100644",
+      "bytes": 281,
+      "sha256": "6e2344723c0871ce76111d5fc298ebbbf3257a898bb7069a590a96f616184376"
+    },
+    {
+      "path": "test/boot.test.mjs",
+      "mode": "100644",
+      "bytes": 2359,
+      "sha256": "b0b3e2a104221ead20bacb62141395583dd12802221480c09aaa0722a11a936f"
+    },
+    {
+      "path": "test/browser.test.mjs",
+      "mode": "100644",
+      "bytes": 7987,
+      "sha256": "fccdd090b99f3e7c28809db36bafc0461b5bbdcacca771adf1f961fd88476813"
+    },
+    {
+      "path": "test/capability.test.mjs",
+      "mode": "100644",
+      "bytes": 1797,
+      "sha256": "92df93aefc984c19f8f9484c7c3a8df4dda0d7e01e4dfdac752615e6ab94db17"
+    },
+    {
+      "path": "test/check-result.test.mjs",
+      "mode": "100644",
+      "bytes": 2127,
+      "sha256": "574c01e5a9f5e5eefacc2ef35d4dd3944a6cbed87f1e6c965d71e7983433210a"
+    },
+    {
+      "path": "test/continuity-evolution-router.test.mjs",
+      "mode": "100644",
+      "bytes": 21569,
+      "sha256": "66f6579a82eb3ddc4beadf9675e3a7b2c69b8bfbe940371c8d407e1a7100676a"
+    },
+    {
+      "path": "test/core.test.mjs",
+      "mode": "100644",
+      "bytes": 7231,
+      "sha256": "f33948c44c7fa69cc818447c5b52e9c77c2c20a928889986c7c3dffaf79f9bd7"
+    },
+    {
       "path": "test/evolution.test.mjs",
       "mode": "100644",
       "bytes": 4073,
@@ -102,24 +144,6 @@
       "mode": "100644",
       "bytes": 2271,
       "sha256": "2bf094ad74c84f8a9129149d0af261b6802bd1f2c987d2d9cfaea43d8eda5a48"
-    },
-    {
-      "path": "test/public-safety.test.mjs",
-      "mode": "100644",
-      "bytes": 3919,
-      "sha256": "194b7be177367dd255be65380765e97ac74bdd88e4c15d3e40caa7a901e13177"
-    },
-    {
-      "path": "test/registry.test.mjs",
-      "mode": "100644",
-      "bytes": 6659,
-      "sha256": "3a970e2aca2145b6fe6e2120c4930b34ef0547545cab1e421bd5a69c6286b6da"
-    },
-    {
-      "path": "test/source-manifest.test.mjs",
-      "mode": "100644",
-      "bytes": 12506,
-      "sha256": "af2f7d18c69794fdd735a1b6bf3466d566304bf142efacd10738929032c11caa"
     }
   ]
 }

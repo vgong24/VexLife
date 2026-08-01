@@ -1283,5 +1283,242 @@
       "test.intent-scheduler.bounded-projections",
       "test.intent-scheduler.live-clock"
     ]
+  },
+  {
+    "processRef": "process.vexlife.continuity.observe-route-review",
+    "processVersion": 1,
+    "purpose": "Seal exact continuity source observations, form a no-authority candidate, classify origin and scope, choose the least-invasive deterministic route and return a Context Review.",
+    "applicabilityRules": [
+      "one or more immutable source ranges and hashes exist",
+      "candidate is within the exact admitted issue and privacy scope"
+    ],
+    "requiredInputs": [
+      "sourceObservationRefs",
+      "sourceRangeRefs",
+      "sourceHashes",
+      "sourceLineageRef",
+      "candidateScope",
+      "authoredByRef"
+    ],
+    "optionalInputs": [
+      "projectRef",
+      "threadRef",
+      "channelRef",
+      "workNodeRef",
+      "suspectedOrigin"
+    ],
+    "sourceResolutionRules": [
+      "resolve raw source only through exact immutable range refs and hashes",
+      "preserve UNKNOWN origin when source cannot support a narrower hypothesis",
+      "retain human, Vex and relationship authorship separately"
+    ],
+    "preconditions": [
+      "source currentness is explicit",
+      "candidate formation grants no acceptance authority",
+      "unresolved contradiction remains HELD_UNKNOWN"
+    ],
+    "steps": [
+      "seal-observation-envelope",
+      "form-no-authority-candidate",
+      "classify-origin-and-scope",
+      "select-least-invasive-destination",
+      "resolve-required-acceptance-authorities",
+      "return-context-review"
+    ],
+    "effectOwnerRule": "continuity router owns deterministic candidate routing only; named people and institutional authorities own acceptance",
+    "authorityEnvelope": {
+      "effects": [
+        "FORM_SOURCE_MANAGED_CANDIDATE",
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "CURRENT_CONTEXT",
+      "CONTEXT_REVIEW",
+      "HELD_UNKNOWN",
+      "REJECTED"
+    ],
+    "returnRouteRule": "return exact observation, candidate, route and review refs without raw private source content",
+    "closureRule": "formation closes only at review required, held or rejected; it never self-accepts",
+    "recoveryRule": "rebuild from immutable source refs and retain every rejected or superseded candidate for audit",
+    "foundationDependencies": [
+      "foundation.vexlife.evolution-and-dream.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.continuity.accept-and-project"
+    ],
+    "invalidationTriggers": [
+      "source-hash-change",
+      "source-currentness-change",
+      "scope-change",
+      "acceptance-policy-change"
+    ],
+    "testRefs": [
+      "test.continuity-evolution.e0-source-immutable",
+      "test.continuity-evolution.e1-formation-no-acceptance",
+      "test.continuity-evolution.e2-origin-unknown-preserved",
+      "test.continuity-evolution.e6-least-invasive-router",
+      "test.continuity-evolution.e12-held-unknown"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.continuity.accept-and-project",
+    "processVersion": 1,
+    "purpose": "Accept one exact reviewed continuity destination with named authority, preserve reversible lineage and project only bounded applicable refs for future context.",
+    "applicabilityRules": [
+      "Context Review disposition is ACCEPTED",
+      "primary destination is neither HELD_UNKNOWN nor REJECTED"
+    ],
+    "requiredInputs": [
+      "candidateRef",
+      "reviewRef",
+      "requiredAcceptanceRefs",
+      "acceptedByRefs",
+      "acceptedAt"
+    ],
+    "optionalInputs": [
+      "supersedesRef",
+      "rollbackRef",
+      "applicableContextBudget"
+    ],
+    "sourceResolutionRules": [
+      "bind the exact candidate, review, source ranges and source hashes",
+      "require acceptedByRefs to equal requiredAcceptanceRefs",
+      "project accepted records by ref within exact scope and budget"
+    ],
+    "preconditions": [
+      "privacy, consent, contradiction, attribution and currentness review pass",
+      "protected capabilities and prohibited overcorrections remain bound",
+      "deterministic invariant and training research routes remain inactive"
+    ],
+    "steps": [
+      "verify-exact-acceptance-authority",
+      "form-reversible-accepted-record",
+      "deauthorize-burden-influence-when-applicable",
+      "preserve-supersession-and-rollback-lineage",
+      "project-applicable-record-refs"
+    ],
+    "effectOwnerRule": "the exact named accepting authorities own durable meaning; this process grants no external effect or model-weight authority",
+    "authorityEnvelope": {
+      "effects": [
+        "WRITE_REVIEWED_CONTINUITY_METADATA",
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "CURRENT",
+      "ACCEPTED_DEAUTHORIZED",
+      "INACTIVE_PENDING_DETERMINISTIC_IMPLEMENTATION_REVIEW",
+      "NOT_ADMITTED",
+      "SUPERSEDED"
+    ],
+    "returnRouteRule": "return accepted record, Burden Release, rollback and bounded projection refs",
+    "closureRule": "accepted record closes current only with exact authority and remains reversible",
+    "recoveryRule": "roll back destination projection without deleting source, candidate, review or prior accepted history",
+    "foundationDependencies": [
+      "foundation.vexlife.evolution-and-dream.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.continuity.monitor-recurrence",
+      "process.vexlife.intent.scheduler-project-runtime"
+    ],
+    "invalidationTriggers": [
+      "acceptance-revision",
+      "source-currentness-change",
+      "supersession",
+      "rollback"
+    ],
+    "testRefs": [
+      "test.continuity-evolution.e3-separate-preferences",
+      "test.continuity-evolution.e4-separate-self-authority",
+      "test.continuity-evolution.e5-relationship-exact-parties",
+      "test.continuity-evolution.e9-burden-exact-authority",
+      "test.continuity-evolution.e10-no-parameter-deletion",
+      "test.continuity-evolution.e13-accepted-lineage",
+      "test.continuity-evolution.e14-reversible-history",
+      "test.continuity-evolution.e19-bounded-context"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.continuity.monitor-recurrence",
+    "processVersion": 1,
+    "purpose": "Bind exact recurrence evidence to an accepted release, lesson or evaluation while suppressing duplicates and holding broader scope and weight escalation.",
+    "applicabilityRules": [
+      "an accepted current record and source-backed recurrence observation exist"
+    ],
+    "requiredInputs": [
+      "acceptedRecordRef",
+      "observationRef",
+      "observationFingerprint",
+      "scope"
+    ],
+    "optionalInputs": [
+      "priorRecurrenceRef",
+      "reopenThreshold"
+    ],
+    "sourceResolutionRules": [
+      "bind recurrence to the exact accepted record and scope",
+      "deduplicate by immutable observation fingerprint",
+      "keep dormant metadata outside active context until implicated"
+    ],
+    "preconditions": [
+      "scope equals the accepted record scope",
+      "automatic weight escalation is disabled"
+    ],
+    "steps": [
+      "verify-exact-record-and-scope",
+      "deduplicate-source-evidence",
+      "increment-bounded-recurrence",
+      "project-monitoring-or-reopen-review",
+      "suppress-no-op-model-turn"
+    ],
+    "effectOwnerRule": "recurrence monitor owns metadata only and cannot broaden scope, accept meaning or activate weights",
+    "authorityEnvelope": {
+      "effects": [
+        "WRITE_RECURRENCE_METADATA",
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "MONITORING",
+      "REOPEN_REVIEW",
+      "STABLE_RELEASE",
+      "DUPLICATE_SUPPRESSED"
+    ],
+    "returnRouteRule": "return recurrence ref, exact accepted record ref and next safe action",
+    "closureRule": "duplicate closes as no-op; new evidence closes at monitoring or reopened Context Review",
+    "recoveryRule": "rederive bounded recurrence from immutable observation refs without loading unrelated history",
+    "foundationDependencies": [
+      "foundation.vexlife.evolution-and-dream.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "projection.continuity-evolution.health",
+      "projection.continuity-evolution.guide"
+    ],
+    "invalidationTriggers": [
+      "accepted-record-superseded",
+      "scope-change",
+      "source-observation-retracted"
+    ],
+    "testRefs": [
+      "test.continuity-evolution.e16-recurrence-no-broadening",
+      "test.continuity-evolution.e17-recurrence-no-op",
+      "test.continuity-evolution.e21-canonical-projections"
+    ]
   }
 ]

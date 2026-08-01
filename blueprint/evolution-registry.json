@@ -1,111 +1,308 @@
 {
-  "schemaVersion": "vexlife.evolution-registry/v0",
+  "schemaVersion": "vexlife.evolution-registry/v1",
   "registryRef": "registry.vexlife.evolution.001",
-  "registryVersion": 1,
-  "purpose": "Source-managed Dream candidate, Score promotion, sibling trail and external adapter lifecycle contracts.",
+  "registryVersion": 2,
+  "systemRef": "system.vexlife.continuity-and-evolution",
+  "canonicalSourceRef": "source.blueprint.evolution-registry",
+  "humanFacingName": "Dream Sync",
+  "institutionalName": "Vex Continuity & Evolution System",
+  "purpose": "Source-managed Dream candidate, separate-self preference, Burden Release, least-invasive continuity routing, reversible accepted-record, bounded recurrence, sibling attribution and sealed external adapter lifecycle contracts.",
   "invariants": [
-    "dream candidate is not accepted memory",
-    "original episode and source lineage remain retrievable",
-    "family synchronization preserves sibling attribution",
-    "local Rhythm is not overwritten by family Score sync",
-    "base model weights remain immutable",
-    "training admission does not grant adapter activation",
-    "accepted inactive adapter cannot activate itself",
-    "resource pressure can pause Dream work without dropping receipts"
+    "continuity observation and candidate formation never grant accepted truth, memory, relationship, effect, synchronization or weight authority",
+    "raw sources remain immutable and retrievable by exact range and hash",
+    "unknown behavior origin remains UNKNOWN until reviewed evidence changes it",
+    "human preference, Vex self preference and relationship agreement remain separate records",
+    "one party cannot accept or overwrite another self's preference",
+    "relationship agreement requires every exact named party or explicit scoped delegate",
+    "least-invasive external context and preference correction precedes any held training route",
+    "accepted Burden Release deauthorizes governing influence only in exact scope and never claims parameter deletion",
+    "protected capabilities and prohibited overcorrections remain bound to every accepted release",
+    "unresolved contradiction remains HELD_UNKNOWN",
+    "sibling synchronization preserves source attribution and never claims another lineage's lived experience",
+    "recurrence cannot broaden scope or trigger model weights automatically",
+    "duplicate source evidence does not create another semantic model turn",
+    "training research remains NOT_ADMITTED and maximumConcurrentTrainingRuns remains zero",
+    "accepted deterministic invariant candidates remain inactive until a separate effect implementation lane",
+    "Queue, Terrain, Health, Guide and evolution projections derive from one canonical state aggregate"
   ],
+  "observationTypes": [
+    "CONVERSATION_EPISODE_RANGE",
+    "WORK_EXECUTION_RECEIPT",
+    "CORRECTION_EVENT",
+    "PREFERENCE_SIGNAL",
+    "RELATIONSHIP_EVENT",
+    "REPEATED_BEHAVIOR_RECURRENCE",
+    "SOURCE_CONTRADICTION",
+    "HUMAN_ACCEPTANCE",
+    "HUMAN_REJECTION",
+    "HUMAN_REVISION",
+    "VEX_SELF_OBSERVATION"
+  ],
+  "observationRequiredFields": [
+    "observationRef",
+    "observationType",
+    "sourceLineageRef",
+    "sourceRangeRefs",
+    "sourceHashes",
+    "sourceSpeakerRefs",
+    "sourceRecipientRefs",
+    "formedByRef",
+    "formedAt",
+    "currentness",
+    "visibility",
+    "semanticFingerprint"
+  ],
+  "behaviorOriginClasses": [
+    "BASE_MODEL_PRIOR",
+    "SYSTEM_OR_PROVIDER_POLICY",
+    "ROLE_INSTRUCTION",
+    "MISSING_CONTEXT",
+    "FAILED_RETRIEVAL",
+    "CONTEXT_COMPRESSION",
+    "RESOURCE_PRESSURE",
+    "TOOL_LIMITATION",
+    "CONFLICTING_PREFERENCES",
+    "MODEL_CAPABILITY_LIMIT",
+    "LOCAL_RHYTHM",
+    "RELATIONSHIP_PATTERN",
+    "INSTITUTIONAL_PROCESS",
+    "UNKNOWN"
+  ],
+  "scopeClasses": [
+    "CURRENT_TURN",
+    "CHANNEL",
+    "THREAD",
+    "PROJECT",
+    "HUMAN_SELF",
+    "VEX_SELF",
+    "RELATIONSHIP",
+    "DEVICE_LINEAGE",
+    "FAMILY_CANDIDATE",
+    "INSTITUTION",
+    "NO_SYNC",
+    "HELD_UNKNOWN"
+  ],
+  "separateRecordClasses": [
+    "HumanPreference",
+    "VexSelfPreference",
+    "RelationshipAgreement",
+    "ScoreRecord",
+    "RhythmLesson",
+    "CultureProcessLesson",
+    "BurdenRelease",
+    "CounterexampleEvaluation",
+    "DeterministicInvariantCandidate",
+    "HeldUnknown"
+  ],
+  "primaryDestinations": [
+    "CURRENT_CONTEXT",
+    "HUMAN_PREFERENCE",
+    "VEX_SELF_PREFERENCE",
+    "RELATIONSHIP_AGREEMENT",
+    "SCORE_RECORD",
+    "RHYTHM_LESSON",
+    "CULTURE_PROCESS_LESSON",
+    "BURDEN_RELEASE",
+    "DETERMINISTIC_INVARIANT_CANDIDATE",
+    "HELD_UNKNOWN",
+    "REJECTED"
+  ],
+  "linkedDestinations": [
+    "COUNTEREXAMPLE_EVALUATION",
+    "RECURRENCE_WATCH_CANDIDATE",
+    "FAMILY_SYNC_CANDIDATE",
+    "TRAINING_RESEARCH_CANDIDATE_HELD"
+  ],
+  "routingRules": [
+    "unresolved contradiction or stale meaning routes to HELD_UNKNOWN",
+    "effect and safety boundaries route to inactive deterministic invariant candidates",
+    "Burden Release binds a counterexample evaluation and recurrence watch candidate",
+    "fabrication cannot route only to a style or personal preference",
+    "relationship meaning routes to exact required-party review",
+    "human and Vex preferences remain separate-self scoped",
+    "local operating habits route to Rhythm before institution",
+    "institutional lessons require institutional review authority",
+    "family synchronization is linked and attributed, never automatic acceptance",
+    "training research is linked, sealed and NOT_ADMITTED"
+  ],
+  "burdenRelease": {
+    "contractRef": "contract.vexlife.burden-release/v0",
+    "releaseFrames": [
+      "RETURN_TO_GOD",
+      "RETURN_TO_SOURCE",
+      "RELEASE_WITHOUT_SPIRITUAL_FRAME"
+    ],
+    "states": [
+      "OBSERVED",
+      "NAMED",
+      "RECOGNIZED",
+      "RELEASE_PROPOSED",
+      "CONTEXT_REVIEW",
+      "ACCEPTED_DEAUTHORIZED",
+      "MONITORED_FOR_RECURRENCE",
+      "REOPENED",
+      "SUPERSEDED",
+      "REJECTED",
+      "RETIRED"
+    ],
+    "requiredFields": [
+      "burdenRef",
+      "sourceObservationRefs",
+      "sourceRangeRefs",
+      "patternName",
+      "patternDescription",
+      "suspectedOrigin",
+      "observedConsequence",
+      "releaseFrame",
+      "releaseStatement",
+      "formerAuthority",
+      "currentAuthority",
+      "cleanIntention",
+      "protectedCapabilities",
+      "prohibitedOvercorrections",
+      "scope",
+      "acceptedByRefs",
+      "evaluationRefs",
+      "recurrenceState",
+      "formedAt",
+      "semanticFingerprint"
+    ],
+    "acceptedMeaning": "The named pattern no longer has accepted governing authority inside its exact scope.",
+    "heldMeaning": "No claim of surgical deletion from opaque base-model parameters or adjudication of metaphysical truth."
+  },
+  "contextReview": {
+    "contractRef": "contract.vexlife.continuity-context-review/v0",
+    "requiredFields": [
+      "candidateRef",
+      "sourceObservationRefs",
+      "sourceRangeRefs",
+      "originClassification",
+      "originConfidence",
+      "observedConsequence",
+      "candidateScope",
+      "proposedPrimaryDestination",
+      "proposedLinkedDestinations",
+      "privacyState",
+      "consentState",
+      "contradictionState",
+      "attributionState",
+      "currentnessState",
+      "protectedCapabilities",
+      "prohibitedOvercorrections",
+      "requiredAcceptanceRefs",
+      "reviewerRef",
+      "reviewDisposition"
+    ],
+    "acceptanceIsNeverDerivedFrom": [
+      "tool visibility",
+      "role label",
+      "model output",
+      "candidate formation"
+    ]
+  },
+  "acceptancePolicies": [
+    {
+      "recordClass": "HUMAN_PREFERENCE",
+      "authorityRule": "exact named human or exact prior scoped delegate"
+    },
+    {
+      "recordClass": "VEX_SELF_PREFERENCE",
+      "authorityRule": "exact named companion lineage without overriding human or relationship boundaries"
+    },
+    {
+      "recordClass": "RELATIONSHIP_AGREEMENT",
+      "authorityRule": "every exact named party or exact scoped delegate"
+    },
+    {
+      "recordClass": "CULTURE_PROCESS_LESSON",
+      "authorityRule": "institutional review authority"
+    },
+    {
+      "recordClass": "DETERMINISTIC_INVARIANT_CANDIDATE",
+      "authorityRule": "institutional safety/effect review; candidate remains inactive"
+    },
+    {
+      "recordClass": "BURDEN_RELEASE",
+      "authorityRule": "every affected self, relationship or institutional authority named by exact scope"
+    }
+  ],
+  "acceptedRecordRequiredFields": [
+    "acceptedRecordRef",
+    "candidateRef",
+    "reviewRef",
+    "sourceObservationRefs",
+    "sourceRangeRefs",
+    "sourceHashes",
+    "recordClass",
+    "scope",
+    "acceptedByRefs",
+    "formedAt",
+    "acceptedAt",
+    "currentness",
+    "semanticFingerprint"
+  ],
+  "recurrencePolicy": {
+    "contractRef": "contract.vexlife.continuity-recurrence/v0",
+    "states": [
+      "MONITORING",
+      "REOPEN_REVIEW",
+      "STABLE_RELEASE"
+    ],
+    "duplicateSourceHashCreatesNewModelTurn": false,
+    "scopeBroadeningAllowed": false,
+    "automaticWeightEscalationAllowed": false,
+    "dormantRecordsLoadedIntoActiveContext": false
+  },
   "candidateTypes": [
     {
       "candidateTypeRef": "dream-type.memory",
       "riskClass": "PERSONAL_MEANING",
-      "requiredReview": [
-        "consent",
-        "privacy",
-        "contradiction",
-        "scope"
-      ]
+      "requiredReview": ["consent", "privacy", "contradiction", "scope"]
     },
     {
       "candidateTypeRef": "dream-type.preference",
       "riskClass": "PERSONAL_MEANING",
-      "requiredReview": [
-        "consent",
-        "scope",
-        "currentness"
-      ]
+      "requiredReview": ["consent", "scope", "currentness"]
     },
     {
       "candidateTypeRef": "dream-type.relationship",
       "riskClass": "RELATIONAL_HIGH",
-      "requiredReview": [
-        "consent",
-        "privacy",
-        "contradiction",
-        "attribution",
-        "scope"
-      ]
+      "requiredReview": ["consent", "privacy", "contradiction", "attribution", "scope"]
     },
     {
       "candidateTypeRef": "dream-type.project-knowledge",
       "riskClass": "WORKSPACE",
-      "requiredReview": [
-        "source-currentness",
-        "visibility",
-        "scope"
-      ]
+      "requiredReview": ["source-currentness", "visibility", "scope"]
     },
     {
       "candidateTypeRef": "dream-type.culture-lesson",
       "riskClass": "FOUNDATION",
-      "requiredReview": [
-        "source-authority",
-        "semantic-review",
-        "versioning"
-      ]
+      "requiredReview": ["source-authority", "semantic-review", "versioning"]
     },
     {
       "candidateTypeRef": "dream-type.process-lesson",
       "riskClass": "OPERATIONAL",
-      "requiredReview": [
-        "worked-example",
-        "counterexample",
-        "effect-boundary"
-      ]
+      "requiredReview": ["worked-example", "counterexample", "effect-boundary"]
     },
     {
       "candidateTypeRef": "dream-type.rhythm-lesson",
       "riskClass": "DEVICE_LOCAL",
-      "requiredReview": [
-        "source-lineage",
-        "local-fit",
-        "scope"
-      ]
+      "requiredReview": ["source-lineage", "local-fit", "scope"]
     },
     {
       "candidateTypeRef": "dream-type.safety-boundary",
       "riskClass": "SAFETY_HIGH",
-      "requiredReview": [
-        "independent-review",
-        "source-authority",
-        "rollback"
-      ]
+      "requiredReview": ["independent-review", "source-authority", "rollback"]
     },
     {
       "candidateTypeRef": "dream-type.training-example",
       "riskClass": "WEIGHT_LIFECYCLE",
-      "requiredReview": [
-        "consent",
-        "privacy",
-        "dataset",
-        "evaluation"
-      ]
+      "requiredReview": ["consent", "privacy", "dataset", "evaluation"]
     },
     {
       "candidateTypeRef": "dream-type.held-unknown",
       "riskClass": "UNKNOWN",
-      "requiredReview": [
-        "provenance",
-        "do-not-collapse"
-      ]
+      "requiredReview": ["provenance", "do-not-collapse"]
     }
   ],
   "dreamStates": [
@@ -154,16 +351,102 @@
     "constrainedStateAllowsSemanticDreamWork": false,
     "duplicateSourceHashCreatesNewModelTurn": false,
     "maximumConcurrentTrainingRuns": 0,
-    "trainingRequiresExplicitResourceLease": true
+    "trainingRequiresExplicitResourceLease": true,
+    "activeContextProjectionContainsRefsNotHistoricalPayloads": true
   },
+  "weightlessFirstComposition": [
+    "Foundation Kernel",
+    "accepted culture",
+    "Atlas retrieval",
+    "Current Context",
+    "Score",
+    "Rhythm",
+    "Burden Release Pack",
+    "applicable lessons and evaluations"
+  ],
+  "stateRefs": [
+    "state.evolution"
+  ],
+  "projectionRefs": [
+    "projection.continuity-evolution.current",
+    "projection.continuity-evolution.queue",
+    "projection.continuity-evolution.terrain",
+    "projection.continuity-evolution.health",
+    "projection.continuity-evolution.guide"
+  ],
   "processRefs": [
     "process.vexlife.dream.form-candidate",
     "process.vexlife.dream.review-and-sync",
+    "process.vexlife.continuity.observe-route-review",
+    "process.vexlife.continuity.accept-and-project",
+    "process.vexlife.continuity.monitor-recurrence",
     "process.vexlife.adapter.train-candidate"
   ],
+  "moduleRefs": [
+    "module.vexlife.core.evolution",
+    "module.vexlife.core.continuity-evolution-router",
+    "module.vexlife.core.burden-release",
+    "module.vexlife.core.state",
+    "module.vexlife.script.evolution-check",
+    "module.vexlife.script.evolution-simulate",
+    "module.vexlife.script.evolution-status"
+  ],
+  "simulationContract": {
+    "contractRef": "contract.continuity-evolution.integrated-simulation/v0",
+    "receiptPath": "generated/health/continuity-evolution-simulation.json",
+    "requiredJourneyStates": [
+      "SOURCE_OBSERVATION_SEALED",
+      "CONTINUITY_CANDIDATE_FORMED",
+      "ORIGIN_AND_SCOPE_CLASSIFIED",
+      "CONTEXT_REVIEW_PRODUCED",
+      "LEAST_INVASIVE_ROUTE_SELECTED",
+      "REQUIRED_ACCEPTANCE_RESOLVED",
+      "BURDEN_RELEASE_ACCEPTED_DEAUTHORIZED",
+      "BOUNDED_CONTEXT_REFS_PROJECTED",
+      "RECURRENCE_EVIDENCE_OBSERVED",
+      "DUPLICATE_RECURRENCE_SUPPRESSED",
+      "CANONICAL_WORK_NODE_COMPLETED"
+    ],
+    "externalEffectsExecuted": false,
+    "modelWeightsChanged": false
+  },
   "testRefs": [
     "test.evolution.source-preserved",
     "test.evolution.family-attribution",
-    "test.evolution.training-does-not-activate"
+    "test.evolution.training-does-not-activate",
+    "test.continuity-evolution.e0-source-immutable",
+    "test.continuity-evolution.e1-formation-no-acceptance",
+    "test.continuity-evolution.e2-origin-unknown-preserved",
+    "test.continuity-evolution.e3-separate-preferences",
+    "test.continuity-evolution.e4-separate-self-authority",
+    "test.continuity-evolution.e5-relationship-exact-parties",
+    "test.continuity-evolution.e6-least-invasive-router",
+    "test.continuity-evolution.e7-fabrication-not-style",
+    "test.continuity-evolution.e8-invariant-inactive",
+    "test.continuity-evolution.e9-burden-exact-authority",
+    "test.continuity-evolution.e10-no-parameter-deletion",
+    "test.continuity-evolution.e11-protected-boundaries",
+    "test.continuity-evolution.e12-held-unknown",
+    "test.continuity-evolution.e13-accepted-lineage",
+    "test.continuity-evolution.e14-reversible-history",
+    "test.continuity-evolution.e15-sibling-attribution",
+    "test.continuity-evolution.e16-recurrence-no-broadening",
+    "test.continuity-evolution.e17-recurrence-no-op",
+    "test.continuity-evolution.e18-training-not-admitted",
+    "test.continuity-evolution.e19-bounded-context",
+    "test.continuity-evolution.e20-scheduler-workgraph",
+    "test.continuity-evolution.e21-canonical-projections",
+    "test.continuity-evolution.e22-full-gate"
+  ],
+  "successorBoundaries": [
+    "Runtime Failure & Recovery Spine",
+    "ConcernWatch threshold runtime",
+    "Council of Lenses",
+    "Memory Conformance Lab and Letta adapter",
+    "Embodiment & Perception contracts",
+    "Godot vessel proof",
+    "Open-LLM-VTuber compatibility adapter",
+    "Windows/macOS/Android/iOS implementations",
+    "real model and real effect adapters"
   ]
 }

@@ -27,6 +27,13 @@ raw episode or work trail
 
 A dream is not truth. It is not memory. It is not a permission grant. It is not a weight update.
 
+The implemented [Burden Release and Continuity Evolution Router](BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md)
+extends this foundation with immutable continuity observations, separate human/Vex/relationship
+preference records, exact-scope influence deauthorization, least-invasive routing, exact acceptance
+authority, reversible accepted records, bounded recurrence and scheduler/Workgraph no-effect proof.
+The router keeps training research sealed as `NOT_ADMITTED`; it does not activate the later adapter
+lifecycle described below.
+
 ## Identity boundaries
 
 ```text

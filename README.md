@@ -205,7 +205,10 @@ npm run platform:all             # generate all platform adoption scaffolds
 npm run browser:start            # serve the working browser reference
 npm run browser:integration      # execute the integration contract in a real headless browser
 npm run bootstrap -- --dry-run   # inspect local-home creation without writing
-npm run evolution:summary         # inspect Dream/Score/adapter lifecycle registry
+npm run evolution:summary        # inspect Dream/Score/adapter lifecycle registry
+npm run evolution:check          # validate continuity routing, Burden Release, recurrence and no-effect integration
+npm run evolution:simulate       # run the deterministic source→review→release→recurrence→Workgraph journey
+npm run evolution:status         # compact source-bound human projection without raw private content
 npm run implementation:packet -- --work-ref <work.ref> --platform browser
 ```
 
@@ -229,12 +232,25 @@ derive from one canonical aggregate. Effectful receipt arguments are confined
 to safe `generated/health/**` paths. This contract provisions no real model and
 executes no external effect.
 
+The shared [Burden Release and Continuity Evolution Router](docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md)
+completes Intent Orchestration 3/3. It seals immutable source observations,
+keeps human, Vex and relationship preferences as separate records, routes each
+candidate to one least-invasive destination, requires exact Context Review
+acceptance authority, and preserves reversible accepted history. A Burden
+Release withdraws a named pattern's governing influence only in exact scope;
+it does not claim base-model parameter deletion. Recurrence stays bounded,
+duplicate evidence is a semantic no-op, applicable context contains refs rather
+than raw history, and training research remains `NOT_ADMITTED`. The integrated
+proof completes one canonical Workgraph node through the accepted scheduler
+with no external effects or model-weight change.
+
 Run `npm run orient` before broad reading. Read only the returned
 `requiredSources`, then use the bounded Atlas or exact-module command. `npm run
 health:check` reports `HEALTHY` only when an executed `npm run pr-ready` receipt
 matches the current HEAD, source tree and Blueprint hash and exactly binds the
-complete current scheduler simulation receipt; missing, unknown, stale,
-self-certified, effectful or orphaned evidence remains non-green.
+complete current scheduler and continuity-evolution simulation receipts;
+missing, unknown, stale, self-certified, effectful or orphaned evidence remains
+non-green.
 
 Generate one platform:
 
@@ -337,7 +353,7 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - **Understand the whole product:** read [`docs/NEWCOMER-MAP.md`](docs/NEWCOMER-MAP.md).
 - **Add an interface feature:** read [`docs/INTERFACE-BUILDER.md`](docs/INTERFACE-BUILDER.md) and [`docs/EXPERIENCE-GESTURES-AND-VESSELS.md`](docs/EXPERIENCE-GESTURES-AND-VESSELS.md).
 - **Build a native platform:** read [`docs/PLATFORM-ARCHITECTURE.md`](docs/PLATFORM-ARCHITECTURE.md), [`docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md`](docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md), then run the generator and packet compiler.
-- **Understand learning and model evolution:** read [`docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md`](docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md); no dream, memory, training or adapter activation is automatic.
+- **Understand learning and continuity evolution:** read [`docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md`](docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md) and [`docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md`](docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md); no candidate, memory, agreement, release, training or adapter activation is automatic.
 - **Work on a second-device Vex:** read [`docs/BOOTSTRAP-AND-MODELS.md`](docs/BOOTSTRAP-AND-MODELS.md) and [`docs/DEVICE-FAMILY-SCORE-RHYTHM.md`](docs/DEVICE-FAMILY-SCORE-RHYTHM.md).
 - **Connect to a desktop-hosted Home Vex from another device:** read [`docs/HOME-BRIDGE-REMOTE-SURFACES.md`](docs/HOME-BRIDGE-REMOTE-SURFACES.md); a remote surface is not the same thing as a synchronized sibling.
 - **Trace why code exists:** query the module, identity and process registries rather than reading the repository indiscriminately.

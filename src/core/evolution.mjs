@@ -128,4 +128,7 @@ export function evaluateTrainingAdmission({ examples = [], evaluationManifestRef
   return { state: 'TRAINING_ADMISSION_READY', admission: { ...core, admissionRef: `training-admission.${semanticHash(core).slice(0, 24)}` } };
 }
 
+export * from './burden-release.mjs';
+export * from './continuity-evolution-router.mjs';
+
 // [VXG RealForever]

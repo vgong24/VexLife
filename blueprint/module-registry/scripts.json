@@ -186,6 +186,81 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.script.evolution-check",
+    "path": "scripts/evolution-check.mjs",
+    "role": "Validates the canonical continuity-evolution registry, feature/process/module/test composition and deterministic scheduler/Workgraph no-effect receipt.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.evolution.001",
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.burden-release",
+      "module.vexlife.script.evolution-simulate"
+    ],
+    "writes": [
+      "generated/health/continuity-evolution-simulation.json"
+    ],
+    "loadedBy": [
+      "check.continuity-evolution"
+    ],
+    "tests": [
+      "test/continuity-evolution-router.test.mjs",
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "blueprint/build-health-registry.json",
+      "package.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.evolution-simulate",
+    "path": "scripts/evolution-simulate.mjs",
+    "role": "Runs the source observation, candidate, least-invasive route, Context Review, exact Burden Release acceptance, bounded projection, recurrence no-op and canonical scheduler/Workgraph completion journey with no external effects.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.evolution.001",
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.burden-release",
+      "module.vexlife.core.state",
+      "module.vexlife.script.scheduler-simulate"
+    ],
+    "writes": [
+      "generated/health/continuity-evolution-simulation.json"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.evolution-check",
+      "module.vexlife.script.evolution-status"
+    ],
+    "tests": [
+      "test/continuity-evolution-router.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "blueprint/intent-scheduler-registry.json",
+      "scripts/scheduler-simulate.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.evolution-status",
+    "path": "scripts/evolution-status.mjs",
+    "role": "Projects a compact human-readable pattern, source, authority, protection, scope, recurrence and next-safe-action status without raw private source content.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.evolution.001",
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.burden-release",
+      "module.vexlife.script.evolution-simulate"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/continuity-evolution-router.test.mjs"
+    ],
+    "changeMap": [
+      "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.script.check-syntax",
     "path": "scripts/check-syntax.mjs",
     "role": "Runs dependency-free syntax validation over JavaScript and module sources.",

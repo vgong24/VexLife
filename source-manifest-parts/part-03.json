@@ -40,8 +40,8 @@
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 24799,
-      "sha256": "72a5981e289141fac28886d899cab3af35df9f036b84fd1f3c1ca4c566084cb3"
+      "bytes": 27312,
+      "sha256": "15bd41734fe33193cbde894d135335c1bd109ccc19b0cca344f558c819b1e256"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -52,8 +52,8 @@
     {
       "path": "blueprint/module-registry/scripts.json",
       "mode": "100644",
-      "bytes": 15589,
-      "sha256": "6536edefc780c37ee3dbe977e5d8967261abdfaf6b3fcb6b53a97778729ddad8"
+      "bytes": 18300,
+      "sha256": "6020328899325fe0781729c669ba37968af42f604d85776a3d2c13d77f39ea1c"
     },
     {
       "path": "blueprint/orientation.json",
@@ -88,8 +88,8 @@
     {
       "path": "blueprint/process-factory/processes-core.json",
       "mode": "100644",
-      "bytes": 42364,
-      "sha256": "0353a455f9054f3e5c85b82da02ad25fe862a941770def9f8ad77989e65414c3"
+      "bytes": 51249,
+      "sha256": "e016354b3ac66429605de5f05713e86a4dce705f92fbe4a511047becf711cda3"
     },
     {
       "path": "blueprint/process-factory/processes-evolution.json",
