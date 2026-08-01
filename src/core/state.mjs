@@ -33,7 +33,16 @@ export const CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS = Object.fr
   'reviewFingerprint', 'recordClass', 'scope', 'scopeTargetRef', 'scopeTargetFingerprint',
   'requiredAcceptanceRefs', 'acceptedByRefs', 'authorityEvidenceRefs', 'authorityEvidenceClass',
   'acceptanceDisposition', 'burdenRef', 'burdenIdentityFingerprint', 'burdenSourceFingerprint',
-  'currentRecordSetRef', 'currentRecordSetFingerprint', 'projectionReceiptRef', 'semanticFingerprint'
+  'currentRecordSetRef', 'currentRecordSetFingerprint', 'currentSetDisposition',
+  'currentSuccessorRef', 'projectionClockReceiptRef', 'projectionClockReceiptFingerprint',
+  'projectionObservedAt', 'projectionCurrentness', 'projectionReceiptRef', 'semanticFingerprint'
+]);
+
+export const CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS = Object.freeze([
+  'schemaVersion', 'aggregateFingerprint', 'contextRecordRef', 'contextRecordFingerprint',
+  'contextBindingRef', 'contextLeaseFingerprint', 'turnRef', 'threadRef', 'channelRef',
+  'leaseObservedAt', 'leaseExpiresAt', 'projectionObservedAt', 'sourceCurrentness',
+  'projectionCurrentness', 'applicable', 'sourceManaged', 'clockReceiptRef', 'semanticFingerprint'
 ]);
 
 function clone(value) {
@@ -592,6 +601,30 @@ function exactCurrentRecordSetReceipt(aggregate, supplied) {
   return expected;
 }
 
+function currentSetProjectionMeaning(aggregate, currentSet, record) {
+  if (currentSet.supersededRecordRefs.includes(record.acceptedRecordRef)) {
+    const successorByPrior = new Map(aggregate.supersessions.map((item) => [item.priorRecordRef, item.successorRecordRef]));
+    const visited = new Set([record.acceptedRecordRef]);
+    let currentSuccessorRef = successorByPrior.get(record.acceptedRecordRef);
+    while (successorByPrior.has(currentSuccessorRef)) {
+      if (visited.has(currentSuccessorRef)) throw new Error('continuity projection encountered a cyclic successor chain');
+      visited.add(currentSuccessorRef);
+      currentSuccessorRef = successorByPrior.get(currentSuccessorRef);
+    }
+    if (!currentSuccessorRef || !currentSet.currentRecordRefs.includes(currentSuccessorRef)) {
+      throw new Error('continuity projection cannot resolve the exact sole current successor');
+    }
+    return freeze({ currentSetDisposition: 'SUPERSEDED', currentSuccessorRef });
+  }
+  if (currentSet.conflicts.some((conflict) => conflict.includes(record.acceptedRecordRef))) {
+    return freeze({ currentSetDisposition: 'HELD_CONFLICT', currentSuccessorRef: null });
+  }
+  if (!currentSet.currentRecordRefs.includes(record.acceptedRecordRef)) {
+    throw new Error('continuity projection source is absent from exact current-set disposition');
+  }
+  return freeze({ currentSetDisposition: 'CURRENT', currentSuccessorRef: null });
+}
+
 function resolveAggregateRecord(aggregate, acceptedRecordRef, acceptedRecordFingerprint) {
   validateAggregateSnapshot(aggregate);
   const record = aggregate.acceptedRecords.find((item) => item.acceptedRecordRef === acceptedRecordRef);
@@ -602,7 +635,12 @@ function resolveAggregateRecord(aggregate, acceptedRecordRef, acceptedRecordFing
   return { record, lineage };
 }
 
-function projectionOwnershipReceipt(aggregate, source, lineage, projectionKind, currentSet) {
+function projectionOwnershipReceipt(aggregate, source, lineage, projectionKind, currentSet, {
+  currentSetDisposition = null,
+  currentSuccessorRef = null,
+  projectionClockReceipt = null,
+  projectionCurrentness = null
+} = {}) {
   const burden = source.burdenRelease ?? null;
   return stateFingerprinted({
     schemaVersion: 'vexlife.continuity-aggregate-projection-receipt/v1',
@@ -629,14 +667,21 @@ function projectionOwnershipReceipt(aggregate, source, lineage, projectionKind, 
     burdenIdentityFingerprint: burden?.identityFingerprint ?? null,
     burdenSourceFingerprint: burden ? semanticHash(burden.sourceForm) : null,
     currentRecordSetRef: currentSet?.currentRecordSetRef ?? null,
-    currentRecordSetFingerprint: currentSet?.semanticFingerprint ?? null
+    currentRecordSetFingerprint: currentSet?.semanticFingerprint ?? null,
+    currentSetDisposition,
+    currentSuccessorRef,
+    projectionClockReceiptRef: projectionClockReceipt?.clockReceiptRef ?? null,
+    projectionClockReceiptFingerprint: projectionClockReceipt?.semanticFingerprint ?? null,
+    projectionObservedAt: projectionClockReceipt?.projectionObservedAt ?? null,
+    projectionCurrentness
   }, 'projectionReceiptRef', 'continuity-aggregate-projection-receipt');
 }
 
 export function projectAggregateOwnedContinuityRecord({ aggregate, acceptedRecordRef, acceptedRecordFingerprint }) {
   const { record, lineage } = resolveAggregateRecord(aggregate, acceptedRecordRef, acceptedRecordFingerprint);
   const currentSet = createContinuityCurrentRecordSetReceipt(aggregate);
-  const ownershipReceipt = projectionOwnershipReceipt(aggregate, record, lineage, 'HUMAN_RECORD', currentSet);
+  const currentMeaning = currentSetProjectionMeaning(aggregate, currentSet, record);
+  const ownershipReceipt = projectionOwnershipReceipt(aggregate, record, lineage, 'HUMAN_RECORD', currentSet, currentMeaning);
   return freeze({
     schemaVersion: 'vexlife.continuity-human-projection/v2',
     acceptedRecordRef: record.acceptedRecordRef,
@@ -660,11 +705,14 @@ export function projectAggregateOwnedContinuityRecord({ aggregate, acceptedRecor
     externalEffectsAuthorized: record.externalEffectsAuthorized,
     acceptanceDisposition: record.acceptanceDisposition,
     liveApplicabilityGranted: record.liveApplicabilityGranted,
-    currentSetDisposition: currentSet.state === 'HELD_CONFLICT'
-      ? 'HELD_CONFLICT'
-      : currentSet.currentRecordRefs.includes(record.acceptedRecordRef) ? 'CURRENT' : 'SUPERSEDED',
+    currentSetDisposition: currentMeaning.currentSetDisposition,
+    currentSuccessorRef: currentMeaning.currentSuccessorRef,
     state: record.lifecycle,
-    nextSafeAction: record.acceptanceDisposition === 'SIMULATION_ONLY_INACTIVE'
+    nextSafeAction: currentMeaning.currentSetDisposition === 'HELD_CONFLICT'
+      ? 'RETURN_TO_CURRENT_RECORD_CONFLICT_REVIEW'
+      : currentMeaning.currentSetDisposition === 'SUPERSEDED'
+        ? 'FOLLOW_CURRENT_SUCCESSOR_BY_REF_ONLY'
+        : record.acceptanceDisposition === 'SIMULATION_ONLY_INACTIVE'
       ? 'USE_ONLY_IN_EXPLICIT_SIMULATED_CURRENT_CONTEXT'
       : record.lifecycle === 'INACTIVE_PENDING_DETERMINISTIC_IMPLEMENTATION_REVIEW'
         ? 'OPEN_SEPARATE_DETERMINISTIC_IMPLEMENTATION_REVIEW'
@@ -672,16 +720,77 @@ export function projectAggregateOwnedContinuityRecord({ aggregate, acceptedRecor
   });
 }
 
-export function projectAggregateOwnedTransientContinuityContext({ aggregate, contextRecordRef, contextRecordFingerprint }) {
+function canonicalProjectionTimestamp(value) {
+  if (typeof value !== 'string' || Number.isNaN(Date.parse(value)) || new Date(Date.parse(value)).toISOString() !== value) {
+    throw new Error('continuity projection observed time must be canonical UTC');
+  }
+  return value;
+}
+
+export function createContinuityProjectionClockReceipt({ aggregate, contextRecordRef, contextRecordFingerprint, projectionObservedAt }) {
+  validateAggregateSnapshot(aggregate);
+  const context = aggregate.transientContexts.find((item) => item.contextRecordRef === contextRecordRef);
+  if (!context || context.semanticFingerprint !== contextRecordFingerprint) {
+    throw new Error('continuity projection clock source is not the exact aggregate-owned transient context');
+  }
+  validateAggregateOwnedContext(aggregate, context);
+  const observedAt = canonicalProjectionTimestamp(projectionObservedAt);
+  if (Date.parse(observedAt) < Date.parse(context.contextLease.observedAt)) {
+    throw new Error('continuity projection cannot precede lease observation');
+  }
+  if (Date.parse(observedAt) >= Date.parse(context.contextLease.expiresAt)) {
+    throw new Error('continuity projection clock is at or after lease expiry');
+  }
+  return stateFingerprinted({
+    schemaVersion: 'vexlife.continuity-projection-clock-receipt/v1',
+    aggregateFingerprint: aggregate.semanticFingerprint,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    contextBindingRef: context.contextLease.contextBindingRef,
+    contextLeaseFingerprint: context.contextLease.semanticFingerprint,
+    turnRef: context.contextLease.turnRef,
+    threadRef: context.contextLease.threadRef,
+    channelRef: context.contextLease.channelRef,
+    leaseObservedAt: context.contextLease.observedAt,
+    leaseExpiresAt: context.contextLease.expiresAt,
+    projectionObservedAt: observedAt,
+    sourceCurrentness: context.currentness,
+    projectionCurrentness: 'TRANSIENT_CURRENT',
+    applicable: true,
+    sourceManaged: true
+  }, 'clockReceiptRef', 'continuity-projection-clock-receipt');
+}
+
+function exactProjectionClockReceipt(aggregate, context, supplied) {
+  if (!supplied) throw new Error('current transient projection requires an exact source-managed clock receipt');
+  const expected = createContinuityProjectionClockReceipt({
+    aggregate,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    projectionObservedAt: supplied.projectionObservedAt
+  });
+  if (supplied.clockReceiptRef !== expected.clockReceiptRef ||
+      supplied.semanticFingerprint !== expected.semanticFingerprint ||
+      semanticHash(supplied) !== semanticHash(expected)) {
+    throw new Error('continuity projection clock receipt is stale, cross-lease or substituted');
+  }
+  return expected;
+}
+
+export function projectAggregateOwnedTransientContinuityContext({ aggregate, contextRecordRef, contextRecordFingerprint, projectionClockReceipt }) {
   validateAggregateSnapshot(aggregate);
   const context = aggregate.transientContexts.find((item) => item.contextRecordRef === contextRecordRef);
   if (!context || context.semanticFingerprint !== contextRecordFingerprint) {
     throw new Error('continuity projection source is not the exact aggregate-owned transient context');
   }
   const lineage = validateAggregateOwnedContext(aggregate, context);
-  const ownershipReceipt = projectionOwnershipReceipt(aggregate, context, lineage, 'TRANSIENT_CONTEXT', null);
+  const clockReceipt = exactProjectionClockReceipt(aggregate, context, projectionClockReceipt);
+  const ownershipReceipt = projectionOwnershipReceipt(aggregate, context, lineage, 'TRANSIENT_CONTEXT', null, {
+    projectionClockReceipt: clockReceipt,
+    projectionCurrentness: clockReceipt.projectionCurrentness
+  });
   return freeze({
-    schemaVersion: 'vexlife.transient-continuity-projection/v1',
+    schemaVersion: 'vexlife.transient-continuity-projection/v2',
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
     aggregateProjectionReceipt: ownershipReceipt,
@@ -690,7 +799,11 @@ export function projectAggregateOwnedTransientContinuityContext({ aggregate, con
     scopeTargetRef: context.scopeTargetRef,
     scopeTargetFingerprint: context.scopeTargetFingerprint,
     contextBindingRef: context.contextLease.contextBindingRef,
+    projectionClockReceipt: clockReceipt,
+    projectionObservedAt: clockReceipt.projectionObservedAt,
     expiresAt: context.expiresAt,
+    currentness: clockReceipt.projectionCurrentness,
+    applicableWithinLease: true,
     authorityEvidenceClass: context.authorityEvidenceClass,
     simulatedAuthority: context.simulatedAuthority,
     liveAuthorityGranted: context.liveAuthorityGranted,
@@ -708,7 +821,8 @@ export function projectAggregateOwnedBurdenRelease({ aggregate, acceptedRecordRe
   }
   validateBurdenRelease(record.burdenRelease);
   const currentSet = createContinuityCurrentRecordSetReceipt(aggregate);
-  const ownershipReceipt = projectionOwnershipReceipt(aggregate, record, lineage, 'BURDEN_RELEASE', currentSet);
+  const currentMeaning = currentSetProjectionMeaning(aggregate, currentSet, record);
+  const ownershipReceipt = projectionOwnershipReceipt(aggregate, record, lineage, 'BURDEN_RELEASE', currentSet, currentMeaning);
   const release = record.burdenRelease;
   return freeze({
     schemaVersion: 'vexlife.burden-release-projection/v2',
@@ -732,9 +846,15 @@ export function projectAggregateOwnedBurdenRelease({ aggregate, acceptedRecordRe
     liveAuthorityGranted: record.liveAuthorityGranted,
     externalEffectsAuthorized: record.externalEffectsAuthorized,
     acceptanceDisposition: record.acceptanceDisposition,
+    currentSetDisposition: currentMeaning.currentSetDisposition,
+    currentSuccessorRef: currentMeaning.currentSuccessorRef,
     claimsParameterDeletion: false,
     rawSourceContentIncluded: false,
-    nextSafeAction: record.acceptanceDisposition === 'SIMULATION_ONLY_INACTIVE'
+    nextSafeAction: currentMeaning.currentSetDisposition === 'HELD_CONFLICT'
+      ? 'RETURN_TO_CURRENT_RECORD_CONFLICT_REVIEW'
+      : currentMeaning.currentSetDisposition === 'SUPERSEDED'
+        ? 'FOLLOW_CURRENT_SUCCESSOR_BY_REF_ONLY'
+        : record.acceptanceDisposition === 'SIMULATION_ONLY_INACTIVE'
       ? 'USE_ONLY_IN_EXPLICIT_SIMULATED_CURRENT_CONTEXT'
       : ['ACCEPTED_DEAUTHORIZED', 'MONITORED_FOR_RECURRENCE'].includes(release.state)
         ? 'MONITOR_EXACT_PATTERN_WITHOUT_SCOPE_BROADENING'
@@ -799,7 +919,8 @@ export function projectAggregateApplicableContinuity({
     };
     const cost = estimateTokens(candidate);
     if (usedTokens + cost > tokenBudget) continue;
-    const receipt = projectionOwnershipReceipt(aggregate, item, resolved.lineage, 'APPLICABLE_RECORD', currentSet);
+    const currentMeaning = currentSetProjectionMeaning(aggregate, currentSet, item);
+    const receipt = projectionOwnershipReceipt(aggregate, item, resolved.lineage, 'APPLICABLE_RECORD', currentSet, currentMeaning);
     selected.push(candidate);
     ownershipReceiptRefs.push(receipt.projectionReceiptRef);
     usedTokens += cost;
@@ -962,13 +1083,22 @@ export function reduceContinuityEvolutionAggregate(current, event) {
     case 'RECORD_SUPERSEDED': {
       const prior = next.acceptedRecords.find((item) => item.acceptedRecordRef === event.transaction?.priorRecordRef);
       if (!prior || prior.semanticFingerprint !== event.transaction.priorRecordFingerprint) throw new Error('supersession prior is not the exact current aggregate record');
-      if (next.supersessions.some((item) => item.priorRecordRef === prior.acceptedRecordRef)) throw new Error('supersession prior is already superseded');
+      const currentSetBefore = validateContinuityRecordSet(next.acceptedRecords, next.supersessions);
+      if (!currentSetBefore.currentRecordRefs.includes(prior.acceptedRecordRef) ||
+          next.supersessions.some((item) => item.priorRecordRef === prior.acceptedRecordRef)) {
+        throw new Error('supersession prior is already superseded or absent from exact current truth');
+      }
+      if (next.supersessions.some((item) => item.supersessionRef === event.transaction.supersessionRef ||
+          item.semanticFingerprint === event.transaction.semanticFingerprint)) {
+        throw new Error('supersession transaction identity is duplicated');
+      }
       validateAggregateOwnedRecord(next, event.successor);
       validateContinuitySupersession(event.transaction, [prior, event.successor]);
       const result = appendCanonical(next.acceptedRecords, event.successor, 'acceptedRecordRef', 'supersession successor');
       if (!result.changed) throw new Error('supersession successor must be a new exact record');
       next.acceptedRecords = result.items;
       next.supersessions.push(clone(event.transaction));
+      validateContinuityRecordSet(next.acceptedRecords, next.supersessions);
       break;
     }
     default:

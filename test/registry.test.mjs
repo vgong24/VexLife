@@ -16,7 +16,8 @@ import {
 } from '../src/core/continuity-evolution-router.mjs';
 import {
   CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS,
-  CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS
+  CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS
 } from '../src/core/state.mjs';
 
 const bundle = loadBlueprint();
@@ -81,6 +82,7 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
     bundle.evolution.acceptanceEvidence.contractRef,
     bundle.evolution.scopeTarget.contractRef,
     bundle.evolution.currentRecordSet.contractRef,
+    bundle.evolution.projectionClock.contractRef,
     bundle.evolution.aggregateProjection.contractRef,
     bundle.evolution.contextReview.contractRef,
     bundle.evolution.recurrencePolicy.contractRef,
@@ -94,6 +96,7 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
   assert.deepEqual(registry.require(bundle.evolution.authorityTrust.contractRef).requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.scopeTarget.contractRef).requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.currentRecordSet.contractRef).requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.projectionClock.contractRef).requiredFields, CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.aggregateProjection.contractRef).requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
   const atlas = new Atlas(buildIdentityIndex(bundle));
   const traversal = atlas.query({ startRefs: [bundle.evolution.registryRef], depthLimit: 2, resultLimit: 128, tokenBudget: 20000 });
@@ -104,6 +107,7 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
     bundle.evolution.authorityTrust.authoritySourceRef,
     bundle.evolution.scopeTarget.contractRef,
     bundle.evolution.currentRecordSet.contractRef,
+    bundle.evolution.projectionClock.contractRef,
     bundle.evolution.aggregateProjection.contractRef,
     bundle.evolution.projectionIdentities[0].projectionRef
   ]) {
@@ -147,6 +151,12 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
   const omittedCurrentSet = structuredClone(bundle.evolution);
   omittedCurrentSet.currentRecordSet.requiredFields.splice(2, 1);
   assert.equal(validateEvolutionRegistry(omittedCurrentSet, bundle).ok, false);
+  const staleProjectionClock = structuredClone(bundle.evolution);
+  staleProjectionClock.projectionClock.requiredFields.splice(5, 1);
+  assert.equal(validateEvolutionRegistry(staleProjectionClock, bundle).ok, false);
+  const wrongProjectionClockSource = structuredClone(bundle.evolution);
+  wrongProjectionClockSource.contractIdentities.find((item) => item.contractRef === wrongProjectionClockSource.projectionClock.contractRef).sourceField = 'currentRecordSet';
+  assert.equal(validateEvolutionRegistry(wrongProjectionClockSource, bundle).ok, false);
   const inventedProjectionReceipt = structuredClone(bundle.evolution);
   inventedProjectionReceipt.aggregateProjection.requiredFields.push('callerSuppliedMeaning');
   assert.equal(validateEvolutionRegistry(inventedProjectionReceipt, bundle).ok, false);

@@ -34,8 +34,8 @@
     {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
-      "bytes": 37022,
-      "sha256": "8b1907ed07ed99d374370844bb1a53b5b923b202a0faf4da0b23fd18cbec07c5"
+      "bytes": 37300,
+      "sha256": "ecda5e7963a0fbb6bd4fd2e0b9ccf8d1c94335fbb1f0e670c04a023bced9171e"
     },
     {
       "path": "src/core/boot.mjs",
@@ -76,8 +76,8 @@
     {
       "path": "src/core/continuity-evolution-router.mjs",
       "mode": "100644",
-      "bytes": 91567,
-      "sha256": "f7c7720ac075e16fefaec8360357dedac3e32452fad0a68f7e4ef31bf9e115f4"
+      "bytes": 93509,
+      "sha256": "c697d4f7dff04246e9680c36297afc6500954b753783e2406d9790c249602135"
     },
     {
       "path": "src/core/conversation.mjs",

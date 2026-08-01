@@ -550,5 +550,17 @@
   {
     "testRef": "test.continuity-evolution.c16-canonical-burden-policy",
     "brief": "Burden deauthorization is accepted only through canonical aggregate-owned routing, exact Context Review policy and exact recorded simulated-current authority evidence; lower-level pointer-only acceptance stays sealed."
+  },
+  {
+    "testRef": "test.continuity-evolution.c17-canonical-supersession-transaction",
+    "brief": "Supersession recomputes the exact source-managed transaction from aggregate-owned compatible records and rejects forged disposition, chronology, rollback, history, identity or successor chains before mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c18-projection-current-set-disposition",
+    "brief": "Human and Burden projections and their ownership receipts bind CURRENT, SUPERSEDED or HELD_CONFLICT disposition, name only the exact current successor and suppress non-current actions."
+  },
+  {
+    "testRef": "test.continuity-evolution.c19-transient-projection-currentness",
+    "brief": "Current transient projection consumes an exact aggregate/lease-bound source-managed clock receipt and rejects pre-observation, expiry, stale, cross-lease or replayed clocks without mutation."
   }
 ]

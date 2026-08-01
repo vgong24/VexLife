@@ -245,13 +245,15 @@ authority refs or substitute inner reviewed meaning. Scope class and one
 source-derived exact target travel together through review, authority,
 acceptance, recurrence, conflicts and projection. Current Context is transient and lease-bound, aggregate events
 recompute exact aggregate-owned lineage before mutation, and record, transient-context and Burden projections
-recompute that same lineage and carry aggregate-ownership receipts. Supersession is atomic and emits an exact
+recompute that same lineage and carry aggregate-ownership receipts. Transient projection additionally requires an
+aggregate/lease-bound current clock receipt. Supersession is a recomputed canonical atomic transaction and emits an exact
 content-addressed current-record-set receipt; applicability blocks conflicts and stale receipts, excludes prior records,
 recurrence and sibling projection are exact-scope, and
 legacy Dream v0 cannot bypass durable acceptance or synchronization. Applicable
 context requires the exact current record set, exact class+target and explicitly admitted authority class;
 simulation-only acceptance stays visibly inactive/non-live in compact
-projections and Health. Context contains refs rather than raw history and training research remains
+projections and Health, while durable projection receipts bind `CURRENT`, `SUPERSEDED`, or `HELD_CONFLICT` and suppress
+non-current action. Context contains refs rather than raw history and training research remains
 `NOT_ADMITTED`. The integrated proof completes the actual continuity Workgraph
 node through the accepted scheduler with exact evidence, target and authority-disposition fingerprints and no
 external effects or model-weight change.

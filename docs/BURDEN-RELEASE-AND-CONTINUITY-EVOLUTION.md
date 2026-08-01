@@ -241,7 +241,13 @@ synchronization, training admission or activation.
 
 `CURRENT_CONTEXT` is transient and bound to an exact expiring
 turn/thread/channel lease whose coordinates equal the source-derived target; it
-is not an indefinitely durable accepted record.
+is not an indefinitely durable accepted record. Its current projection consumes
+an exact source-managed clock receipt bound to the aggregate, context, lease,
+turn/thread/channel coordinates and observation time. Projection is admitted
+only while `lease.observedAt <= projectionObservedAt < lease.expiresAt`; a
+pre-observation, expired, stale, substituted, cross-lease or replayed receipt
+fails closed. Historical retrieval is not represented by the current projection
+shape and grants no applicability.
 
 Effect/safety invariant candidates remain inactive after review. A later
 deterministic implementation lane must separately admit and implement them.
@@ -253,9 +259,13 @@ candidate, review, record class, scope class and target, acceptance and its
 simulation-only disposition, formation/currentness,
 supersession and rollback lineage.
 
-Supersession is one canonical atomic transaction over an exact current prior
-and compatible successor. It requires equal class/scope/target/subjects, exact current
-authority evidence, monotonic time and rollback identity. The prior becomes
+Supersession is one canonical atomic transaction recomputed from the exact
+aggregate-owned current prior and compatible successor. It requires the exact
+registered schema and terminal dispositions, equal class/scope/target/subjects,
+exact current authority evidence, monotonic time, nonempty rollback identity,
+immutable source history and one prior-to-successor identity. Duplicate
+transaction/prior identities, already-superseded substitution and any canonical
+but non-source-derived transaction fail before mutation. The prior becomes
 effectively `SUPERSEDED` and the successor becomes the sole `CURRENT` record;
 the aggregate emits a content-addressed current-record-set receipt binding every
 record and supersession fingerprint. Missing or malformed transactions produce
@@ -266,6 +276,14 @@ The immutable record and source history remain available.
 
 Conflicting current records fail closed as `HELD_CONFLICT` instead of silently
 overwriting one another.
+
+Every durable human and Burden projection and aggregate-projection receipt
+binds `currentSetDisposition=CURRENT|SUPERSEDED|HELD_CONFLICT`. A superseded
+projection names only the exact terminal current successor. Superseded and
+conflict-held projections suppress apply/monitor actions before lifecycle or
+authority disposition is considered; only a current record can expose its
+existing next action, and simulated-current authority remains explicitly
+inactive.
 
 ## Recurrence without permanent context burden
 
@@ -318,6 +336,9 @@ same-ref/different-content payloads fail without changing aggregate content or
 revision. Human-record, transient-context and Burden projections also resolve
 their source from that aggregate, recompute candidate/route/review/target and
 authority meaning, and attach a content-addressed aggregate-projection receipt.
+Durable receipts also bind exact current-set disposition/successor meaning;
+transient receipts bind the exact source-managed projection clock and
+`TRANSIENT_CURRENT` result.
 Canonical but unowned records, class/target/summary/source substitutions and
 detached contexts cannot be projected. Queue, Terrain, Health, Guide and
 evolution projections are selectors over that one aggregate and suppress

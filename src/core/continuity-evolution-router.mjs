@@ -1117,7 +1117,9 @@ export function validateAcceptedContinuityRecord(record) {
 export function supersedeContinuityRecord(priorRecord, successorRecord, { rollbackRef, supersededAt = new Date().toISOString() }) {
   validateAcceptedContinuityRecord(priorRecord);
   validateAcceptedContinuityRecord(successorRecord);
-  if (!rollbackRef) throw new Error('supersession requires rollbackRef');
+  if (typeof rollbackRef !== 'string' || rollbackRef.trim() !== rollbackRef || rollbackRef.length === 0) {
+    throw new Error('supersession requires an exact nonempty rollbackRef');
+  }
   if (successorRecord.supersedesRef !== priorRecord.acceptedRecordRef) throw new Error('successor must preserve exact current prior ref');
   for (const field of ['recordClass', 'scope', 'scopeTargetRef', 'scopeTargetFingerprint', 'authorityEvidenceClass', 'acceptanceDisposition']) {
     if (successorRecord[field] !== priorRecord[field]) throw new Error(`supersession ${field} is incompatible`);
@@ -1144,16 +1146,57 @@ export function supersedeContinuityRecord(priorRecord, successorRecord, { rollba
 
 export function validateContinuitySupersession(transaction, records) {
   assertCanonical(transaction, 'supersessionRef', 'continuity-supersession', 'continuity supersession');
-  const prior = records.find((item) => item.acceptedRecordRef === transaction.priorRecordRef);
-  const successor = records.find((item) => item.acceptedRecordRef === transaction.successorRecordRef);
-  if (!prior || !successor || prior.semanticFingerprint !== transaction.priorRecordFingerprint || successor.semanticFingerprint !== transaction.successorRecordFingerprint ||
-      successor.supersedesRef !== prior.acceptedRecordRef || !exactRefs(transaction.acceptanceEvidenceRefs, successor.acceptanceEvidenceRefs) || transaction.atomic !== true) throw new Error('supersession transaction does not bind exact records and authority');
+  const priorMatches = records.filter((item) => item.acceptedRecordRef === transaction.priorRecordRef);
+  const successorMatches = records.filter((item) => item.acceptedRecordRef === transaction.successorRecordRef);
+  if (priorMatches.length !== 1 || successorMatches.length !== 1) {
+    throw new Error('supersession transaction requires one exact prior and one exact successor');
+  }
+  const [prior] = priorMatches;
+  const [successor] = successorMatches;
+  if (prior.semanticFingerprint !== transaction.priorRecordFingerprint ||
+      successor.semanticFingerprint !== transaction.successorRecordFingerprint) {
+    throw new Error('supersession transaction does not bind exact aggregate-owned record fingerprints');
+  }
+  const expected = supersedeContinuityRecord(prior, successor, {
+    rollbackRef: transaction.rollbackRef,
+    supersededAt: transaction.supersededAt
+  });
+  if (transaction.schemaVersion !== 'vexlife.continuity-supersession-transaction/v1' ||
+      transaction.supersessionRef !== expected.supersessionRef ||
+      transaction.semanticFingerprint !== expected.semanticFingerprint ||
+      semanticHash(transaction) !== semanticHash(expected)) {
+    throw new Error('supersession transaction is not the exact recomputed source-managed transaction');
+  }
   return transaction;
 }
 
 export function validateContinuityRecordSet(records, supersessions = []) {
   for (const record of records) validateAcceptedContinuityRecord(record);
-  for (const transaction of supersessions) validateContinuitySupersession(transaction, records);
+  if (new Set(records.map((record) => record.acceptedRecordRef)).size !== records.length) {
+    throw new Error('continuity record set contains duplicate record identity');
+  }
+  const transactionRefs = new Set();
+  const supersededPriorRefs = new Set();
+  for (const transaction of supersessions) {
+    validateContinuitySupersession(transaction, records);
+    if (transactionRefs.has(transaction.supersessionRef)) {
+      throw new Error('continuity record set contains duplicate supersession transaction identity');
+    }
+    if (supersededPriorRefs.has(transaction.priorRecordRef)) {
+      throw new Error('continuity record set contains more than one successor transaction for one prior');
+    }
+    transactionRefs.add(transaction.supersessionRef);
+    supersededPriorRefs.add(transaction.priorRecordRef);
+  }
+  for (const transaction of supersessions) {
+    const visited = new Set([transaction.priorRecordRef]);
+    let successorRef = transaction.successorRecordRef;
+    while (supersededPriorRefs.has(successorRef)) {
+      if (visited.has(successorRef)) throw new Error('continuity supersession chain contains a cycle');
+      visited.add(successorRef);
+      successorRef = supersessions.find((item) => item.priorRecordRef === successorRef).successorRecordRef;
+    }
+  }
   const superseded = new Set(supersessions.map((item) => item.priorRecordRef));
   const current = records.filter((record) => !superseded.has(record.acceptedRecordRef));
   const groups = new Map();

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.evolution-registry/v1",
   "registryRef": "registry.vexlife.evolution.001",
-  "registryVersion": 4,
+  "registryVersion": 5,
   "systemRef": "system.vexlife.continuity-and-evolution",
   "canonicalSourceRef": "source.blueprint.evolution-registry",
   "canonicalSource": {
@@ -22,6 +22,7 @@
       "contract.vexlife.burden-release/v1",
       "contract.vexlife.continuity-recurrence/v1",
       "contract.vexlife.continuity-current-record-set-receipt/v1",
+      "contract.vexlife.continuity-projection-clock-receipt/v1",
       "contract.vexlife.continuity-aggregate-projection-receipt/v1",
       "contract.continuity-evolution.integrated-simulation/v1"
     ]
@@ -140,6 +141,12 @@
       "contractKind": "CONTENT_ADDRESSED_CURRENT_RECORD_SET",
       "sourceRef": "source.blueprint.evolution-registry",
       "sourceField": "currentRecordSet"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-projection-clock-receipt/v1",
+      "contractKind": "AGGREGATE_BOUND_TRANSIENT_PROJECTION_CLOCK",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "projectionClock"
     },
     {
       "contractRef": "contract.vexlife.continuity-aggregate-projection-receipt/v1",
@@ -339,6 +346,31 @@
       "semanticFingerprint"
     ]
   },
+  "projectionClock": {
+    "contractRef": "contract.vexlife.continuity-projection-clock-receipt/v1",
+    "sourceRef": "source.blueprint.evolution-registry",
+    "sourceField": "projectionClock",
+    "requiredFields": [
+      "schemaVersion",
+      "aggregateFingerprint",
+      "contextRecordRef",
+      "contextRecordFingerprint",
+      "contextBindingRef",
+      "contextLeaseFingerprint",
+      "turnRef",
+      "threadRef",
+      "channelRef",
+      "leaseObservedAt",
+      "leaseExpiresAt",
+      "projectionObservedAt",
+      "sourceCurrentness",
+      "projectionCurrentness",
+      "applicable",
+      "sourceManaged",
+      "clockReceiptRef",
+      "semanticFingerprint"
+    ]
+  },
   "aggregateProjection": {
     "contractRef": "contract.vexlife.continuity-aggregate-projection-receipt/v1",
     "sourceRef": "source.blueprint.evolution-registry",
@@ -369,6 +401,12 @@
       "burdenSourceFingerprint",
       "currentRecordSetRef",
       "currentRecordSetFingerprint",
+      "currentSetDisposition",
+      "currentSuccessorRef",
+      "projectionClockReceiptRef",
+      "projectionClockReceiptFingerprint",
+      "projectionObservedAt",
+      "projectionCurrentness",
       "projectionReceiptRef",
       "semanticFingerprint"
     ]
@@ -839,7 +877,10 @@
     "test.continuity-evolution.c13-simulation-authority-projection",
     "test.continuity-evolution.c14-aggregate-owned-projection",
     "test.continuity-evolution.c15-current-set-applicability",
-    "test.continuity-evolution.c16-canonical-burden-policy"
+    "test.continuity-evolution.c16-canonical-burden-policy",
+    "test.continuity-evolution.c17-canonical-supersession-transaction",
+    "test.continuity-evolution.c18-projection-current-set-disposition",
+    "test.continuity-evolution.c19-transient-projection-currentness"
   ],
   "successorBoundaries": [
     "Runtime Failure & Recovery Spine",

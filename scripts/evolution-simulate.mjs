@@ -350,6 +350,12 @@ export function validateContinuityEvolutionSimulationReceipt(receipt, { evolutio
       receipt.burdenProjectionReceiptFingerprint !== receipt.continuityGateBindings?.burdenProjection?.fingerprint) {
     errors.push('continuity receipt does not preserve aggregate-owned projection/current-set bindings');
   }
+  if (receipt.recordProjectionCurrentSetDisposition !== 'CURRENT' ||
+      receipt.burdenProjectionCurrentSetDisposition !== 'CURRENT' ||
+      receipt.recordProjectionCurrentSuccessorRef !== null ||
+      receipt.burdenProjectionCurrentSuccessorRef !== null) {
+    errors.push('continuity receipt does not preserve exact current projection disposition');
+  }
   if (receipt.authorityEvidenceClass !== 'SIMULATED_CURRENT' ||
       receipt.acceptanceDisposition !== 'SIMULATION_ONLY_INACTIVE' ||
       receipt.liveAuthorityGranted !== false || receipt.externalEffectsAuthorized !== false) {
@@ -588,8 +594,12 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     currentRecordSetFingerprint: currentRecordSetReceipt.semanticFingerprint,
     recordProjectionReceiptRef: recordProjection.aggregateProjectionReceipt.projectionReceiptRef,
     recordProjectionReceiptFingerprint: recordProjection.aggregateProjectionReceipt.semanticFingerprint,
+    recordProjectionCurrentSetDisposition: recordProjection.currentSetDisposition,
+    recordProjectionCurrentSuccessorRef: recordProjection.currentSuccessorRef,
     burdenProjectionReceiptRef: burdenProjection.aggregateProjectionReceipt.projectionReceiptRef,
     burdenProjectionReceiptFingerprint: burdenProjection.aggregateProjectionReceipt.semanticFingerprint,
+    burdenProjectionCurrentSetDisposition: burdenProjection.currentSetDisposition,
+    burdenProjectionCurrentSuccessorRef: burdenProjection.currentSuccessorRef,
     applicableRecordRefs: applicable.selectedRecordRefs,
     applicableProjectionFingerprint: applicable.semanticFingerprint,
     recurrenceRef: recurrence.recurrenceRef,

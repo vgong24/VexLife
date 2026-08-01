@@ -23,7 +23,8 @@ import {
 } from './continuity-evolution-router.mjs';
 import {
   CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS,
-  CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS
+  CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS
 } from './state.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -310,6 +311,7 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
   exactRequiredFields('authority snapshot', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
   exactRequiredFields('scope target', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
   exactRequiredFields('current record set', evolution.currentRecordSet?.requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
+  exactRequiredFields('projection clock', evolution.projectionClock?.requiredFields, CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS);
   exactRequiredFields('aggregate projection', evolution.aggregateProjection?.requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
   const expectedContractSources = new Map([
     ['contract.vexlife.continuity-scope-target/v1', 'scopeTarget'],
@@ -318,6 +320,7 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
     ['contract.vexlife.continuity-context-review/v1', 'contextReview'],
     ['contract.vexlife.burden-release/v1', 'burdenRelease'],
     ['contract.vexlife.continuity-current-record-set-receipt/v1', 'currentRecordSet'],
+    ['contract.vexlife.continuity-projection-clock-receipt/v1', 'projectionClock'],
     ['contract.vexlife.continuity-aggregate-projection-receipt/v1', 'aggregateProjection']
   ]);
   for (const [contractRef, sourceField] of expectedContractSources) {
