@@ -13,6 +13,15 @@ console.log(JSON.stringify({
   currentness: result.receipt.currentness,
   record: result.recordProjection,
   burdenRelease: result.burdenProjection,
+  transientContext: {
+    contextRecordRef: result.transientProjection.contextRecordRef,
+    currentness: result.transientProjection.currentness,
+    clockSnapshotRef: result.clockSnapshot.clockSnapshotRef,
+    clockEvidenceClass: result.transientProjection.clockEvidenceClass,
+    simulatedClock: result.transientProjection.simulatedClock,
+    liveClockGranted: result.transientProjection.liveClockGranted,
+    externalTimeServiceUsed: result.transientProjection.externalTimeServiceUsed
+  },
   recurrence: {
     recurrenceRef: result.recurrence.recurrenceRef,
     state: result.recurrence.recurrenceState,

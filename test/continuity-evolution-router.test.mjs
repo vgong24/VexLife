@@ -4,6 +4,7 @@ import {
   CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
   CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
   CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS,
+  CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS,
   acceptContinuityCandidate,
   classifyBehaviorOrigin,
   createContinuityAcceptanceEvidence,
@@ -37,6 +38,10 @@ import {
   createContinuityEvolutionEvent,
   createContinuityEvolutionState,
   createContinuityProjectionClockReceipt,
+  createContinuitySimulatedClockSnapshot,
+  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SOURCE,
   createInitialContinuityEvolutionAggregate,
   projectAggregateApplicableContinuity,
   projectAggregateOwnedBurdenRelease,
@@ -258,12 +263,24 @@ function aggregateProjectionFixture(inputCandidate, record, suffix = 'projection
   return { state, route, review, evidence, currentRecordSetReceipt };
 }
 
-function projectionClockReceipt(aggregate, context, projectionObservedAt = ACCEPTED) {
-  return createContinuityProjectionClockReceipt({
-    aggregate,
+function projectionClockReceipt(state, context, projectionObservedAt = ACCEPTED, suffix = 'projection') {
+  const snapshot = createContinuitySimulatedClockSnapshot({
+    aggregate: state.aggregate.value,
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
-    projectionObservedAt
+    observedAt: projectionObservedAt
+  });
+  state.record(createContinuityEvolutionEvent({
+    type: 'CLOCK_SNAPSHOT_RECORDED',
+    transitionRef: `transition.${suffix}.clock`,
+    snapshot
+  }));
+  return createContinuityProjectionClockReceipt({
+    aggregate: state.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    clockSnapshotRef: snapshot.clockSnapshotRef,
+    clockSnapshotFingerprint: snapshot.semanticFingerprint
   });
 }
 
@@ -379,11 +396,11 @@ test('E13 accepted record preserves source, candidate, review, scope and evidenc
   assert.equal(record.acceptanceEvidenceRefs.length, 1);
 });
 
-test('E14 supersession is atomic and conflict remains blocking without its transaction', () => {
+test('E14 supersession is atomic and its successor is invalid without the transaction', () => {
   const prior = accept(candidate('e14-prior'));
   const successorCandidate = candidate('e14-successor');
   const successor = accept(successorCandidate, { acceptedAt: '2026-07-31T20:03:00.000Z' }, { supersedesRef: prior.acceptedRecordRef });
-  assert.equal(validateContinuityRecordSet([prior, successor]).state, 'HELD_CONFLICT');
+  assert.throws(() => validateContinuityRecordSet([prior, successor]), /dangling or untransacted/);
   const transaction = supersedeContinuityRecord(prior, successor, { rollbackRef: 'rollback.e14', supersededAt: '2026-07-31T20:03:00.000Z' });
   const set = validateContinuityRecordSet([prior, successor], [transaction]);
   assert.equal(set.state, 'CURRENT');
@@ -1060,11 +1077,12 @@ test('C13 simulation-only authority remains negative in records, projections, ap
     ...contextEvidence.map((item, index) => ({ type: 'AUTHORITY_EVIDENCE_RECORDED', transitionRef: `transition.c13.context.authority.${index}`, evidence: item })),
     { type: 'CONTEXT_APPLIED', transitionRef: 'transition.c13.context.applied', context }
   ]) contextState.record(createContinuityEvolutionEvent(event));
+  const contextClock = projectionClockReceipt(contextState, context, ACCEPTED, 'c13.context');
   const contextProjection = projectAggregateOwnedTransientContinuityContext({
     aggregate: contextState.aggregate.value,
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
-    projectionClockReceipt: projectionClockReceipt(contextState.aggregate.value, context)
+    projectionClockReceipt: contextClock
   });
   assert.equal(contextProjection.acceptanceDisposition, 'SIMULATION_ONLY_INACTIVE');
   contextState.dispose();
@@ -1141,11 +1159,12 @@ test('C14 projections require exact aggregate-owned record or context meaning wi
     ...contextEvidence.map((item, index) => ({ type: 'AUTHORITY_EVIDENCE_RECORDED', transitionRef: `transition.c14.context.authority.${index}`, evidence: item })),
     { type: 'CONTEXT_APPLIED', transitionRef: 'transition.c14.context.applied', context }
   ]) contextState.record(createContinuityEvolutionEvent(event));
+  const contextClock = projectionClockReceipt(contextState, context, ACCEPTED, 'c14.context');
   assert.equal(projectAggregateOwnedTransientContinuityContext({
     aggregate: contextState.aggregate.value,
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
-    projectionClockReceipt: projectionClockReceipt(contextState.aggregate.value, context)
+    projectionClockReceipt: contextClock
   }).aggregateProjectionReceipt.sourceRef, context.contextRecordRef);
   const detachedContext = refingerprint(context, 'contextRecordRef', 'transient-continuity-context', { summaryRef: 'summary.detached' });
   const detachedAggregate = refingerprintAggregate(contextState.aggregate.value, { transientContexts: [detachedContext] });
@@ -1173,7 +1192,11 @@ test('C15 applicable projection consumes only an exact conflict-free current rec
 
   const conflictState = createContinuityEvolutionState();
   recordLineageIntoState(conflictState, priorCandidate, priorLineage.review, priorEvidence, prior, 'c15-conflict-prior');
-  recordLineageIntoState(conflictState, successorCandidate, successorLineage.review, successorEvidence, successor, 'c15-conflict-successor');
+  const conflictCandidate = candidate('c15-conflict-successor');
+  const conflictLineage = acceptedReview(conflictCandidate);
+  const conflictEvidence = authorityEvidence(conflictCandidate, conflictLineage.route, conflictLineage.review);
+  const conflictingRecord = accept(conflictCandidate, { acceptedAt: '2026-07-31T20:03:00.000Z' });
+  recordLineageIntoState(conflictState, conflictCandidate, conflictLineage.review, conflictEvidence, conflictingRecord, 'c15-conflict-successor');
   const conflictReceipt = createContinuityCurrentRecordSetReceipt(conflictState.aggregate.value);
   assert.equal(conflictReceipt.state, 'HELD_CONFLICT');
   assert.throws(() => projectAggregateApplicableContinuity({
@@ -1420,7 +1443,11 @@ test('C18 durable projections bind exact current-set disposition and suppress no
 
   const conflictState = createContinuityEvolutionState();
   recordLineageIntoState(conflictState, priorCandidate, priorLineage.review, priorEvidence, prior, 'c18-conflict-prior');
-  recordLineageIntoState(conflictState, successorCandidate, successorLineage.review, successorEvidence, successor, 'c18-conflict-successor');
+  const conflictCandidate = burdenCandidate('c18-conflict-successor');
+  const conflictLineage = acceptedReview(conflictCandidate);
+  const conflictEvidence = authorityEvidence(conflictCandidate, conflictLineage.route, conflictLineage.review);
+  const conflictingRecord = accept(conflictCandidate, { acceptedAt: '2026-07-31T20:03:00.000Z' });
+  recordLineageIntoState(conflictState, conflictCandidate, conflictLineage.review, conflictEvidence, conflictingRecord, 'c18-conflict-successor');
   const conflictProjection = projectAggregateOwnedBurdenRelease({
     aggregate: conflictState.aggregate.value,
     acceptedRecordRef: prior.acceptedRecordRef,
@@ -1485,24 +1512,45 @@ test('C19 transient projection consumes exact source-managed lease-current clock
   state.record(createContinuityEvolutionEvent({
     type: 'CONTEXT_APPLIED', transitionRef: 'transition.c19.context', context
   }));
+  const aggregateBeforeClock = state.aggregate.value;
+  assert.throws(() => createContinuityProjectionClockReceipt({
+    aggregate: aggregateBeforeClock,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    projectionObservedAt: '2026-07-31T20:05:00.000Z'
+  }), /aggregate-owned simulated clock snapshot/);
+  assert.throws(() => createContinuitySimulatedClockSnapshot({
+    aggregate: aggregateBeforeClock,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    observedAt: '2026-07-31T20:00:59.999Z'
+  }), /precede lease observation/);
+  assert.throws(() => createContinuitySimulatedClockSnapshot({
+    aggregate: aggregateBeforeClock,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    observedAt: EXPIRES
+  }), /at or after lease expiry/);
+  const clock = projectionClockReceipt(state, context, '2026-07-31T20:05:00.000Z', 'c19');
   const aggregate = state.aggregate.value;
-  const clock = projectionClockReceipt(aggregate, context, '2026-07-31T20:05:00.000Z');
   const projection = projectAggregateOwnedTransientContinuityContext({
     aggregate,
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
     projectionClockReceipt: clock
   });
-  assert.equal(projection.currentness, 'TRANSIENT_CURRENT');
+  assert.equal(projection.currentness, 'TRANSIENT_SIMULATED_CURRENT');
   assert.equal(projection.applicableWithinLease, true);
+  assert.equal(projection.clockEvidenceClass, 'SIMULATED_CURRENT');
+  assert.equal(projection.simulatedClock, true);
+  assert.equal(projection.liveClockGranted, false);
+  assert.equal(projection.externalTimeServiceUsed, false);
   assert.equal(projection.projectionObservedAt, '2026-07-31T20:05:00.000Z');
   assert.equal(projection.aggregateProjectionReceipt.projectionClockReceiptRef, clock.clockReceiptRef);
-  assert.equal(projection.aggregateProjectionReceipt.projectionCurrentness, 'TRANSIENT_CURRENT');
+  assert.equal(projection.aggregateProjectionReceipt.clockSnapshotRef, clock.clockSnapshotRef);
+  assert.equal(projection.aggregateProjectionReceipt.projectionCurrentness, 'TRANSIENT_SIMULATED_CURRENT');
   assert.equal(projection.aggregateProjectionReceipt.projectionObservedAt, clock.projectionObservedAt);
 
-  assert.throws(() => projectionClockReceipt(aggregate, context, '2026-07-31T20:00:59.999Z'), /precede lease observation/);
-  assert.throws(() => projectionClockReceipt(aggregate, context, EXPIRES), /at or after lease expiry/);
-  assert.throws(() => projectionClockReceipt(aggregate, context, '2026-07-31T20:10:00.001Z'), /at or after lease expiry/);
   assert.throws(() => projectAggregateOwnedTransientContinuityContext({
     aggregate,
     contextRecordRef: context.contextRecordRef,
@@ -1516,7 +1564,7 @@ test('C19 transient projection consumes exact source-managed lease-current clock
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
     projectionClockReceipt: substitutedClock
-  }), /stale, cross-lease or substituted/);
+  }), /stale, cross-lease or substituted|detached from its exact context/);
   assert.throws(() => createCurrentContextLease({
     candidate: formed,
     route: lineage.route,
@@ -1554,8 +1602,8 @@ test('C19 transient projection consumes exact source-managed lease-current clock
   state.record(createContinuityEvolutionEvent({
     type: 'CONTEXT_APPLIED', transitionRef: 'transition.c19.other-context', context: otherContext
   }));
+  const otherClock = projectionClockReceipt(state, otherContext, '2026-07-31T20:06:00.000Z', 'c19.other');
   const currentAggregate = state.aggregate.value;
-  const otherClock = projectionClockReceipt(currentAggregate, otherContext, '2026-07-31T20:05:00.000Z');
   const before = semanticHash(currentAggregate);
   const revision = state.aggregate.revision;
   assert.throws(() => projectAggregateOwnedTransientContinuityContext({
@@ -1563,13 +1611,260 @@ test('C19 transient projection consumes exact source-managed lease-current clock
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
     projectionClockReceipt: otherClock
-  }), /stale, cross-lease or substituted/);
+  }), /stale, cross-lease or substituted|detached from its exact context/);
   assert.throws(() => projectAggregateOwnedTransientContinuityContext({
     aggregate: currentAggregate,
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
     projectionClockReceipt: clock
-  }), /stale, cross-lease or substituted/);
+  }), /stale, cross-lease or substituted|stale, superseded or not aggregate current/);
+  assert.equal(semanticHash(state.aggregate.value), before);
+  assert.equal(state.aggregate.revision, revision);
+  state.dispose();
+});
+
+test('C20 superseding successors enter current truth only through one exact atomic transaction', () => {
+  const priorCandidate = candidate('c20-prior');
+  const priorLineage = acceptedReview(priorCandidate);
+  const priorEvidence = authorityEvidence(priorCandidate, priorLineage.route, priorLineage.review);
+  const prior = accept(priorCandidate);
+  const state = createContinuityEvolutionState();
+  recordLineageIntoState(state, priorCandidate, priorLineage.review, priorEvidence, prior, 'c20-prior');
+
+  const orphanCandidates = [
+    burdenCandidate('c20-cross-class'),
+    candidate('c20-cross-scope', { candidateScope: 'PROJECT' }),
+    candidate('c20-cross-target', {
+      observations: [observation('c20-cross-target', {
+        sourceLineageRef: 'lineage.vex.other',
+        sourceRecipientRefs: ['person.human.other']
+      })],
+      aboutSelfRefs: ['person.human.other'],
+      affectedPartyRefs: ['person.human.other']
+    })
+  ];
+  for (const [index, orphanCandidate] of orphanCandidates.entries()) {
+    const orphanLineage = acceptedReview(orphanCandidate, { supersedesRef: prior.acceptedRecordRef });
+    const orphanEvidence = authorityEvidence(orphanCandidate, orphanLineage.route, orphanLineage.review);
+    const orphan = accept(orphanCandidate, { acceptedAt: '2026-07-31T20:03:00.000Z' }, {
+      supersedesRef: prior.acceptedRecordRef
+    });
+    assert.throws(() => validateContinuityRecordSet([prior, orphan]), /dangling or untransacted/);
+    recordLineagePrerequisitesIntoState(state, orphanCandidate, orphanLineage.review, orphanEvidence, `c20-orphan-${index}`);
+    expectAggregateRejectsUnchanged(state, {
+      type: 'RECORD_ACCEPTED',
+      transitionRef: `transition.c20.orphan.${index}`,
+      record: orphan
+    }, /ordinary RECORD_ACCEPTED/);
+    assert.equal(createContinuityCurrentRecordSetReceipt(state.aggregate.value).currentRecordRefs.includes(orphan.acceptedRecordRef), false);
+  }
+
+  const successorCandidate = candidate('c20-successor');
+  const successorLineage = acceptedReview(successorCandidate, { supersedesRef: prior.acceptedRecordRef });
+  const successorEvidence = authorityEvidence(successorCandidate, successorLineage.route, successorLineage.review);
+  const successor = accept(successorCandidate, { acceptedAt: '2026-07-31T20:03:00.000Z' }, {
+    supersedesRef: prior.acceptedRecordRef
+  });
+  recordLineagePrerequisitesIntoState(state, successorCandidate, successorLineage.review, successorEvidence, 'c20-successor');
+  expectAggregateRejectsUnchanged(state, {
+    type: 'RECORD_ACCEPTED', transitionRef: 'transition.c20.successor.non-atomic', record: successor
+  }, /ordinary RECORD_ACCEPTED/);
+  const transaction = supersedeContinuityRecord(prior, successor, {
+    rollbackRef: 'rollback.c20', supersededAt: '2026-07-31T20:04:00.000Z'
+  });
+  const incompatible = refingerprint(transaction, 'supersessionRef', 'continuity-supersession', {
+    priorRecordRef: 'accepted-continuity-record.missing'
+  });
+  assert.throws(() => validateContinuityRecordSet([prior, successor], [incompatible]), /one exact prior/);
+  const duplicateForSuccessor = supersedeContinuityRecord(prior, successor, {
+    rollbackRef: 'rollback.c20.duplicate', supersededAt: '2026-07-31T20:04:00.001Z'
+  });
+  assert.throws(() => validateContinuityRecordSet([prior, successor], [transaction, duplicateForSuccessor]), /more than one/);
+  state.record(createContinuityEvolutionEvent({
+    type: 'RECORD_SUPERSEDED', transitionRef: 'transition.c20.successor.atomic', transaction, successor
+  }));
+  assert.deepEqual(createContinuityCurrentRecordSetReceipt(state.aggregate.value).currentRecordRefs, [successor.acceptedRecordRef]);
+  expectAggregateRejectsUnchanged(state, {
+    type: 'RECORD_SUPERSEDED', transitionRef: 'transition.c20.successor.duplicate', transaction, successor
+  }, /already superseded|duplicated/);
+  state.dispose();
+});
+
+test('C21 supersession proves every successor authority item current at the exact transaction time', () => {
+  const prior = accept(candidate('c21-prior'));
+  const successorCandidate = candidate('c21-successor');
+  const successor = accept(successorCandidate, { acceptedAt: '2026-07-31T20:03:00.000Z' }, {
+    supersedesRef: prior.acceptedRecordRef
+  });
+  const valid = supersedeContinuityRecord(prior, successor, {
+    rollbackRef: 'rollback.c21.valid', supersededAt: '2026-07-31T20:09:59.999Z'
+  });
+  assert.equal(valid.authorityCurrentnessProof.state, 'SIMULATED_CURRENT');
+  assert.equal(valid.authorityCurrentnessProof.verifiedAt, '2026-07-31T20:09:59.999Z');
+  assert.equal(valid.authorityCurrentnessProof.evidenceBindings.every((item) => item.currentAtVerifiedTime), true);
+  assert.deepEqual(Object.keys(valid), CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS);
+  const set = validateContinuityRecordSet([prior, successor], [valid]);
+  assert.equal(set.supersessionAuthorityBindings[0].authorityCurrentnessFingerprint, semanticHash(valid.authorityCurrentnessProof));
+
+  for (const [supersededAt, pattern] of [
+    ['2026-07-31T20:00:59.999Z', /supersession|acceptance/],
+    [EXPIRES, /not current/],
+    ['2026-07-31T20:10:00.001Z', /not current/]
+  ]) assert.throws(() => supersedeContinuityRecord(prior, successor, {
+    rollbackRef: `rollback.c21.${supersededAt}`,
+    supersededAt
+  }), pattern);
+
+  const relationshipPriorCandidate = candidate('c21-relationship-prior', {
+    candidateScope: 'RELATIONSHIP',
+    affectedPartyRefs: ['person.human.test', 'lineage.vex.test'],
+    signals: {}
+  });
+  const relationshipPrior = accept(relationshipPriorCandidate);
+  const relationshipSuccessorCandidate = candidate('c21-relationship-successor', {
+    candidateScope: 'RELATIONSHIP',
+    affectedPartyRefs: ['person.human.test', 'lineage.vex.test'],
+    signals: {}
+  });
+  const relationshipLineage = acceptedReview(relationshipSuccessorCandidate, {
+    supersedesRef: relationshipPrior.acceptedRecordRef
+  });
+  const mixedEvidence = relationshipLineage.review.requiredAcceptanceRefs.map((authorityRef, index) =>
+    createContinuityAcceptanceEvidence({
+      candidate: relationshipSuccessorCandidate,
+      route: relationshipLineage.route,
+      review: relationshipLineage.review,
+      authoritySnapshot: createContinuityAuthoritySnapshot({
+        actorRef: authorityRef,
+        authorityRef,
+        subjectRefs: relationshipSuccessorCandidate.affectedPartyRefs,
+        scope: relationshipSuccessorCandidate.candidateScope,
+        scopeTarget: relationshipSuccessorCandidate.scopeTarget,
+        recordClass: relationshipLineage.route.proposedPrimaryDestination,
+        formedAt: REVIEWED,
+        observedAt: REVIEWED,
+        expiresAt: index === 0 ? '2026-07-31T20:05:00.000Z' : EXPIRES
+      })
+    }));
+  const aggregate = createInitialContinuityEvolutionAggregate();
+  aggregate.observations = structuredClone(CANDIDATE_OBSERVATIONS.get(relationshipSuccessorCandidate.candidateRef));
+  aggregate.candidates = [structuredClone(relationshipSuccessorCandidate)];
+  aggregate.reviews = [structuredClone(relationshipLineage.review)];
+  aggregate.authorityEvidence = structuredClone(mixedEvidence);
+  delete aggregate.semanticFingerprint;
+  aggregate.semanticFingerprint = semanticHash(aggregate);
+  const mixedSuccessor = acceptContinuityCandidate(relationshipSuccessorCandidate, relationshipLineage.review, {
+    acceptedAt: '2026-07-31T20:03:00.000Z',
+    authorityEvidence: mixedEvidence,
+    aggregate
+  });
+  assert.throws(() => supersedeContinuityRecord(relationshipPrior, mixedSuccessor, {
+    rollbackRef: 'rollback.c21.mixed', supersededAt: '2026-07-31T20:06:00.000Z'
+  }), /not current/);
+});
+
+test('C22 transient currentness consumes only the latest source-bound simulated clock snapshot', () => {
+  const formed = candidate('c22-context', { candidateScope: 'CURRENT_TURN', signals: {} });
+  const lineage = acceptedReview(formed);
+  const evidence = authorityEvidence(formed, lineage.route, lineage.review);
+  const lease = createCurrentContextLease({
+    candidate: formed,
+    route: lineage.route,
+    review: lineage.review,
+    leaseRef: 'lease.c22.context',
+    turnRef: 'turn.test.c22-context',
+    threadRef: 'thread.test',
+    channelRef: 'channel.test',
+    formedAt: REVIEWED,
+    observedAt: REVIEWED,
+    expiresAt: EXPIRES
+  });
+  const context = acceptContinuityCandidate(formed, lineage.review, {
+    acceptedAt: ACCEPTED,
+    authorityEvidence: evidence,
+    currentContextLease: lease
+  });
+  const state = createContinuityEvolutionState();
+  recordLineagePrerequisitesIntoState(state, formed, lineage.review, evidence, 'c22-context');
+  state.record(createContinuityEvolutionEvent({
+    type: 'CONTEXT_APPLIED', transitionRef: 'transition.c22.context', context
+  }));
+  const first = createContinuitySimulatedClockSnapshot({
+    aggregate: state.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    observedAt: '2026-07-31T20:05:00.000Z'
+  });
+  assert.equal(semanticHash(CONTINUITY_SIMULATED_CLOCK_SOURCE).length, 64);
+  assert.deepEqual(Object.keys(first), CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS);
+  for (const [index, changes] of [
+    { sourceRef: context.contextRecordRef, clockSourceRef: 'clock-source.self-issued' },
+    { sourceRef: 'source.unknown', clockSourceFingerprint: semanticHash({ source: 'unknown' }) },
+    { turnRef: 'turn.test.other' },
+    { threadRef: 'thread.other' },
+    { channelRef: 'channel.other' },
+    { contextBindingRef: 'continuity-current-context.other' }
+  ].entries()) {
+    const forged = refingerprint(first, 'clockSnapshotRef', 'continuity-simulated-clock-snapshot', changes);
+    expectAggregateRejectsUnchanged(state, {
+      type: 'CLOCK_SNAPSHOT_RECORDED', transitionRef: `transition.c22.forged.${index}`, snapshot: forged
+    }, /registered deterministic simulated source|detached from its exact context/);
+  }
+  state.record(createContinuityEvolutionEvent({
+    type: 'CLOCK_SNAPSHOT_RECORDED', transitionRef: 'transition.c22.clock.first', snapshot: first
+  }));
+  const firstReceipt = createContinuityProjectionClockReceipt({
+    aggregate: state.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    clockSnapshotRef: first.clockSnapshotRef,
+    clockSnapshotFingerprint: first.semanticFingerprint
+  });
+  assert.deepEqual(Object.keys(firstReceipt), CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS);
+  assert.equal(firstReceipt.clockEvidenceClass, 'SIMULATED_CURRENT');
+  assert.equal(firstReceipt.simulatedClock, true);
+  assert.equal(firstReceipt.liveClockGranted, false);
+  assert.equal(firstReceipt.externalTimeServiceUsed, false);
+  const firstProjection = projectAggregateOwnedTransientContinuityContext({
+    aggregate: state.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    projectionClockReceipt: firstReceipt
+  });
+  assert.equal(firstProjection.currentness, 'TRANSIENT_SIMULATED_CURRENT');
+  assert.equal(firstProjection.aggregateProjectionReceipt.clockSourceRef, CONTINUITY_SIMULATED_CLOCK_SOURCE.clockSourceRef);
+  assert.equal(firstProjection.aggregateProjectionReceipt.clockSnapshotRef, first.clockSnapshotRef);
+
+  const second = createContinuitySimulatedClockSnapshot({
+    aggregate: state.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    observedAt: '2026-07-31T20:06:00.000Z'
+  });
+  state.record(createContinuityEvolutionEvent({
+    type: 'CLOCK_SNAPSHOT_RECORDED', transitionRef: 'transition.c22.clock.second', snapshot: second
+  }));
+  const before = semanticHash(state.aggregate.value);
+  const revision = state.aggregate.revision;
+  assert.throws(() => createContinuityProjectionClockReceipt({
+    aggregate: state.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    clockSnapshotRef: first.clockSnapshotRef,
+    clockSnapshotFingerprint: first.semanticFingerprint
+  }), /stale, superseded or not aggregate current/);
+  assert.throws(() => projectAggregateOwnedTransientContinuityContext({
+    aggregate: state.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    projectionClockReceipt: firstReceipt
+  }), /stale, superseded or not aggregate current|stale, cross-lease or substituted/);
+  assert.throws(() => createContinuitySimulatedClockSnapshot({
+    aggregate: state.aggregate.value,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    observedAt: EXPIRES
+  }), /at or after lease expiry/);
   assert.equal(semanticHash(state.aggregate.value), before);
   assert.equal(state.aggregate.revision, revision);
   state.dispose();

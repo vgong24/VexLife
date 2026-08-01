@@ -14,7 +14,8 @@ import {
   CONTINUITY_SYNCHRONIZATION_SCOPES,
   CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
   CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
-  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS
+  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS,
+  CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS
 } from '../src/core/continuity-evolution-router.mjs';
 import {
   BURDEN_RELEASE_FRAMES,
@@ -27,7 +28,9 @@ import { compileRegistryPack } from '../src/core/registry.mjs';
 import {
   CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS,
   CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS,
-  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS
+  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SOURCE
 } from '../src/core/state.mjs';
 import { readJson, semanticHash } from '../src/core/utils.mjs';
 import { runContinuityEvolutionSimulation } from './evolution-simulate.mjs';
@@ -59,11 +62,16 @@ exactArray('Context Review required fields', evolution.contextReview?.requiredFi
 exactArray('acceptance evidence required fields', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
 exactArray('authority snapshot required fields', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
 exactArray('scope target required fields', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
+exactArray('supersession transaction required fields', evolution.supersessionTransaction?.requiredFields, CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS);
 exactArray('current record set required fields', evolution.currentRecordSet?.requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
+exactArray('simulated clock snapshot required fields', evolution.simulatedClock?.requiredFields, CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS);
 exactArray('projection clock required fields', evolution.projectionClock?.requiredFields, CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS);
 exactArray('aggregate projection required fields', evolution.aggregateProjection?.requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
 if (semanticHash(evolution.authorityTrustSources?.[0]) !== semanticHash(CONTINUITY_SIMULATION_AUTHORITY_SOURCE)) {
   errors.push('registered continuity authority source does not match the implementation source');
+}
+if (semanticHash(evolution.clockTrustSources?.[0]) !== semanticHash(CONTINUITY_SIMULATED_CLOCK_SOURCE)) {
+  errors.push('registered continuity clock source does not match the implementation source');
 }
 
 if (semanticHash(bundle.blueprint.evolution) !== semanticHash(evolution)) {
@@ -111,6 +119,9 @@ try {
     evolution.authorityTrust.authoritySourceRef,
     evolution.acceptanceEvidence.contractRef,
     evolution.scopeTarget.contractRef,
+    evolution.supersessionTransaction.contractRef,
+    evolution.simulatedClock.contractRef,
+    evolution.simulatedClock.clockSourceRef,
     evolution.projectionClock.contractRef,
     evolution.burdenRelease.contractRef,
     evolution.contextReview.contractRef,
@@ -134,6 +145,9 @@ try {
     evolution.authorityTrust.authoritySourceRef,
     evolution.acceptanceEvidence.contractRef,
     evolution.scopeTarget.contractRef,
+    evolution.supersessionTransaction.contractRef,
+    evolution.simulatedClock.contractRef,
+    evolution.simulatedClock.clockSourceRef,
     evolution.projectionClock.contractRef,
     evolution.contextReview.contractRef,
     evolution.recurrencePolicy.contractRef,

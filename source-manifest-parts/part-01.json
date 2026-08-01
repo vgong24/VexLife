@@ -88,8 +88,8 @@
     {
       "path": "README.md",
       "mode": "100644",
-      "bytes": 19766,
-      "sha256": "41f4a63c06afd00cb80b474c0cd864a3b4c48f52c90f028e2288871a8a744a79"
+      "bytes": 20088,
+      "sha256": "c29421d3c0e1316116d28e3bead0a7a575341bf252d72dc823684300225a8e6b"
     },
     {
       "path": "SECURITY.md",
@@ -136,8 +136,8 @@
     {
       "path": "blueprint/evolution-registry.json",
       "mode": "100644",
-      "bytes": 33114,
-      "sha256": "18c061e60dd4b6e4b449f05ea09afd3a6577c205a0a79ef72a524679a13b10c7"
+      "bytes": 37522,
+      "sha256": "d7230b60077b848dbf9789889e4d6bc8f81c8e490f91ec72eb7970cf5ac061e1"
     },
     {
       "path": "blueprint/experience-registry.json",

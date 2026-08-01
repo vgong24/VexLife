@@ -22,7 +22,8 @@ import {
 export { StateCell, selectState };
 
 export const CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS = Object.freeze([
-  'schemaVersion', 'aggregateFingerprint', 'recordBindings', 'supersessionBindings', 'state',
+  'schemaVersion', 'aggregateFingerprint', 'recordBindings', 'supersessionBindings',
+  'supersessionAuthorityBindings', 'state',
   'currentRecordRefs', 'supersededRecordRefs', 'conflicts', 'silentOverwriteAllowed',
   'currentRecordSetRef', 'semanticFingerprint'
 ]);
@@ -35,15 +36,47 @@ export const CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS = Object.fr
   'acceptanceDisposition', 'burdenRef', 'burdenIdentityFingerprint', 'burdenSourceFingerprint',
   'currentRecordSetRef', 'currentRecordSetFingerprint', 'currentSetDisposition',
   'currentSuccessorRef', 'projectionClockReceiptRef', 'projectionClockReceiptFingerprint',
-  'projectionObservedAt', 'projectionCurrentness', 'projectionReceiptRef', 'semanticFingerprint'
+  'clockSourceRef', 'clockSourceFingerprint', 'clockSnapshotRef', 'clockSnapshotFingerprint',
+  'clockEvidenceClass', 'clockCurrentFrom', 'clockCurrentUntil', 'simulatedClock',
+  'liveClockGranted', 'externalTimeServiceUsed', 'projectionObservedAt',
+  'projectionCurrentness', 'projectionReceiptRef', 'semanticFingerprint'
+]);
+
+export const CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS = Object.freeze([
+  'schemaVersion', 'aggregatePriorFingerprint', 'contextRecordRef', 'contextRecordFingerprint',
+  'contextBindingRef', 'contextLeaseFingerprint', 'turnRef', 'threadRef', 'channelRef',
+  'clockSourceRef', 'clockSourceFingerprint', 'sourceRef', 'sourceField', 'clockEvidenceClass',
+  'observedAt', 'currentFrom', 'currentUntil', 'currentness', 'simulatedClock',
+  'liveClockGranted', 'externalTimeServiceUsed', 'clockSnapshotRef', 'semanticFingerprint'
 ]);
 
 export const CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS = Object.freeze([
   'schemaVersion', 'aggregateFingerprint', 'contextRecordRef', 'contextRecordFingerprint',
   'contextBindingRef', 'contextLeaseFingerprint', 'turnRef', 'threadRef', 'channelRef',
-  'leaseObservedAt', 'leaseExpiresAt', 'projectionObservedAt', 'sourceCurrentness',
-  'projectionCurrentness', 'applicable', 'sourceManaged', 'clockReceiptRef', 'semanticFingerprint'
+  'leaseObservedAt', 'leaseExpiresAt', 'clockSourceRef', 'clockSourceFingerprint',
+  'clockSnapshotRef', 'clockSnapshotFingerprint', 'clockEvidenceClass', 'clockCurrentFrom',
+  'clockCurrentUntil', 'projectionObservedAt', 'sourceCurrentness', 'projectionCurrentness',
+  'applicable', 'sourceManaged', 'simulatedClock', 'liveClockGranted',
+  'externalTimeServiceUsed', 'clockReceiptRef', 'semanticFingerprint'
 ]);
+
+const CONTINUITY_SIMULATED_CLOCK_SOURCE_CORE = Object.freeze({
+  schemaVersion: 'vexlife.continuity-clock-source/v1',
+  clockSourceRef: 'clock-source.vexlife.continuity-simulation',
+  sourceRef: 'source.blueprint.evolution-registry',
+  sourceField: 'clockTrustSources',
+  evidenceClass: 'SIMULATED_CURRENT',
+  currentness: 'CURRENT',
+  clockMode: 'DETERMINISTIC_NO_EFFECT_SIMULATION',
+  simulatedClock: true,
+  liveClockGranted: false,
+  externalTimeServiceUsed: false
+});
+
+export const CONTINUITY_SIMULATED_CLOCK_SOURCE = Object.freeze({
+  ...CONTINUITY_SIMULATED_CLOCK_SOURCE_CORE,
+  semanticFingerprint: semanticHash(CONTINUITY_SIMULATED_CLOCK_SOURCE_CORE)
+});
 
 function clone(value) {
   return structuredClone(value);
@@ -407,6 +440,8 @@ export function createInitialContinuityEvolutionAggregate() {
     authorityEvidence: [],
     acceptedRecords: [],
     transientContexts: [],
+    clockSnapshots: [],
+    currentClockSnapshotRef: null,
     supersessions: [],
     recurrenceEvidence: [],
     rejectedCandidateRefs: [],
@@ -542,6 +577,11 @@ function validateAggregateSnapshot(aggregate) {
   const fingerprint = core.semanticFingerprint;
   delete core.semanticFingerprint;
   if (semanticHash(core) !== fingerprint) throw new Error('continuity projection aggregate fingerprint mismatch');
+  if (!Array.isArray(aggregate.clockSnapshots) ||
+      (aggregate.currentClockSnapshotRef !== null &&
+        !aggregate.clockSnapshots.some((item) => item.clockSnapshotRef === aggregate.currentClockSnapshotRef))) {
+    throw new Error('continuity aggregate clock snapshot/current pointer is malformed');
+  }
   return aggregate;
 }
 
@@ -584,6 +624,7 @@ export function createContinuityCurrentRecordSetReceipt(aggregate) {
     aggregateFingerprint: aggregate.semanticFingerprint,
     recordBindings: validation.recordBindings,
     supersessionBindings: validation.supersessionBindings,
+    supersessionAuthorityBindings: validation.supersessionAuthorityBindings,
     state: validation.state,
     currentRecordRefs: validation.currentRecordRefs,
     supersededRecordRefs: validation.supersededRecordRefs,
@@ -672,6 +713,16 @@ function projectionOwnershipReceipt(aggregate, source, lineage, projectionKind, 
     currentSuccessorRef,
     projectionClockReceiptRef: projectionClockReceipt?.clockReceiptRef ?? null,
     projectionClockReceiptFingerprint: projectionClockReceipt?.semanticFingerprint ?? null,
+    clockSourceRef: projectionClockReceipt?.clockSourceRef ?? null,
+    clockSourceFingerprint: projectionClockReceipt?.clockSourceFingerprint ?? null,
+    clockSnapshotRef: projectionClockReceipt?.clockSnapshotRef ?? null,
+    clockSnapshotFingerprint: projectionClockReceipt?.clockSnapshotFingerprint ?? null,
+    clockEvidenceClass: projectionClockReceipt?.clockEvidenceClass ?? null,
+    clockCurrentFrom: projectionClockReceipt?.clockCurrentFrom ?? null,
+    clockCurrentUntil: projectionClockReceipt?.clockCurrentUntil ?? null,
+    simulatedClock: projectionClockReceipt?.simulatedClock ?? null,
+    liveClockGranted: projectionClockReceipt?.liveClockGranted ?? null,
+    externalTimeServiceUsed: projectionClockReceipt?.externalTimeServiceUsed ?? null,
     projectionObservedAt: projectionClockReceipt?.projectionObservedAt ?? null,
     projectionCurrentness
   }, 'projectionReceiptRef', 'continuity-aggregate-projection-receipt');
@@ -727,22 +778,112 @@ function canonicalProjectionTimestamp(value) {
   return value;
 }
 
-export function createContinuityProjectionClockReceipt({ aggregate, contextRecordRef, contextRecordFingerprint, projectionObservedAt }) {
+export function createContinuitySimulatedClockSnapshot({ aggregate, contextRecordRef, contextRecordFingerprint, observedAt }) {
+  validateAggregateSnapshot(aggregate);
+  const context = aggregate.transientContexts.find((item) => item.contextRecordRef === contextRecordRef);
+  if (!context || context.semanticFingerprint !== contextRecordFingerprint) {
+    throw new Error('continuity simulated clock source is not the exact aggregate-owned transient context');
+  }
+  validateAggregateOwnedContext(aggregate, context);
+  const observed = canonicalProjectionTimestamp(observedAt);
+  if (Date.parse(observed) < Date.parse(context.contextLease.observedAt)) {
+    throw new Error('continuity simulated clock cannot precede lease observation');
+  }
+  if (Date.parse(observed) >= Date.parse(context.contextLease.expiresAt)) {
+    throw new Error('continuity simulated clock is at or after lease expiry');
+  }
+  return stateFingerprinted({
+    schemaVersion: 'vexlife.continuity-simulated-clock-snapshot/v1',
+    aggregatePriorFingerprint: aggregate.semanticFingerprint,
+    contextRecordRef: context.contextRecordRef,
+    contextRecordFingerprint: context.semanticFingerprint,
+    contextBindingRef: context.contextLease.contextBindingRef,
+    contextLeaseFingerprint: context.contextLease.semanticFingerprint,
+    turnRef: context.contextLease.turnRef,
+    threadRef: context.contextLease.threadRef,
+    channelRef: context.contextLease.channelRef,
+    clockSourceRef: CONTINUITY_SIMULATED_CLOCK_SOURCE.clockSourceRef,
+    clockSourceFingerprint: CONTINUITY_SIMULATED_CLOCK_SOURCE.semanticFingerprint,
+    sourceRef: CONTINUITY_SIMULATED_CLOCK_SOURCE.sourceRef,
+    sourceField: CONTINUITY_SIMULATED_CLOCK_SOURCE.sourceField,
+    clockEvidenceClass: 'SIMULATED_CURRENT',
+    observedAt: observed,
+    currentFrom: observed,
+    currentUntil: context.contextLease.expiresAt,
+    currentness: 'SIMULATED_CURRENT',
+    simulatedClock: true,
+    liveClockGranted: false,
+    externalTimeServiceUsed: false
+  }, 'clockSnapshotRef', 'continuity-simulated-clock-snapshot');
+}
+
+function validateContinuitySimulatedClockSnapshot(snapshot, { aggregate, context, requireCurrent = false } = {}) {
+  if (!snapshot?.clockSnapshotRef || !snapshot.semanticFingerprint) throw new Error('continuity simulated clock snapshot is missing canonical identity');
+  const core = clone(snapshot);
+  const ref = core.clockSnapshotRef;
+  const fingerprint = core.semanticFingerprint;
+  delete core.clockSnapshotRef;
+  delete core.semanticFingerprint;
+  const expected = semanticHash(core);
+  if (fingerprint !== expected || ref !== `continuity-simulated-clock-snapshot.${expected.slice(0, 24)}`) {
+    throw new Error('continuity simulated clock snapshot fingerprint or ref mismatch');
+  }
+  if (snapshot.schemaVersion !== 'vexlife.continuity-simulated-clock-snapshot/v1' ||
+      snapshot.clockSourceRef !== CONTINUITY_SIMULATED_CLOCK_SOURCE.clockSourceRef ||
+      snapshot.clockSourceFingerprint !== CONTINUITY_SIMULATED_CLOCK_SOURCE.semanticFingerprint ||
+      snapshot.sourceRef !== CONTINUITY_SIMULATED_CLOCK_SOURCE.sourceRef ||
+      snapshot.sourceField !== CONTINUITY_SIMULATED_CLOCK_SOURCE.sourceField ||
+      snapshot.clockEvidenceClass !== 'SIMULATED_CURRENT' || snapshot.currentness !== 'SIMULATED_CURRENT' ||
+      snapshot.simulatedClock !== true || snapshot.liveClockGranted !== false ||
+      snapshot.externalTimeServiceUsed !== false) {
+    throw new Error('continuity clock snapshot is not the exact registered deterministic simulated source');
+  }
+  canonicalProjectionTimestamp(snapshot.observedAt);
+  canonicalProjectionTimestamp(snapshot.currentFrom);
+  canonicalProjectionTimestamp(snapshot.currentUntil);
+  if (snapshot.currentFrom !== snapshot.observedAt || Date.parse(snapshot.currentUntil) <= Date.parse(snapshot.currentFrom)) {
+    throw new Error('continuity simulated clock currentness interval is invalid');
+  }
+  if (context && (snapshot.contextRecordRef !== context.contextRecordRef ||
+      snapshot.contextRecordFingerprint !== context.semanticFingerprint ||
+      snapshot.contextBindingRef !== context.contextLease.contextBindingRef ||
+      snapshot.contextLeaseFingerprint !== context.contextLease.semanticFingerprint ||
+      snapshot.turnRef !== context.contextLease.turnRef || snapshot.threadRef !== context.contextLease.threadRef ||
+      snapshot.channelRef !== context.contextLease.channelRef ||
+      snapshot.currentUntil !== context.contextLease.expiresAt ||
+      Date.parse(snapshot.observedAt) < Date.parse(context.contextLease.observedAt) ||
+      Date.parse(snapshot.observedAt) >= Date.parse(context.contextLease.expiresAt))) {
+    throw new Error('continuity simulated clock snapshot is detached from its exact context and lease');
+  }
+  if (aggregate) {
+    if (!requireCurrent && snapshot.aggregatePriorFingerprint !== aggregate.semanticFingerprint) {
+      throw new Error('continuity simulated clock snapshot does not advance the exact aggregate prior');
+    }
+    if (requireCurrent) {
+      const stored = aggregate.clockSnapshots.find((item) => item.clockSnapshotRef === snapshot.clockSnapshotRef);
+      if (!stored || stored.semanticFingerprint !== snapshot.semanticFingerprint ||
+          aggregate.currentClockSnapshotRef !== snapshot.clockSnapshotRef) {
+        throw new Error('continuity simulated clock snapshot is stale, superseded or not aggregate current');
+      }
+    }
+  }
+  return snapshot;
+}
+
+export function createContinuityProjectionClockReceipt({ aggregate, contextRecordRef, contextRecordFingerprint, clockSnapshotRef, clockSnapshotFingerprint }) {
   validateAggregateSnapshot(aggregate);
   const context = aggregate.transientContexts.find((item) => item.contextRecordRef === contextRecordRef);
   if (!context || context.semanticFingerprint !== contextRecordFingerprint) {
     throw new Error('continuity projection clock source is not the exact aggregate-owned transient context');
   }
   validateAggregateOwnedContext(aggregate, context);
-  const observedAt = canonicalProjectionTimestamp(projectionObservedAt);
-  if (Date.parse(observedAt) < Date.parse(context.contextLease.observedAt)) {
-    throw new Error('continuity projection cannot precede lease observation');
+  const snapshot = aggregate.clockSnapshots.find((item) => item.clockSnapshotRef === clockSnapshotRef);
+  if (!snapshot || snapshot.semanticFingerprint !== clockSnapshotFingerprint) {
+    throw new Error('continuity projection requires an exact aggregate-owned simulated clock snapshot');
   }
-  if (Date.parse(observedAt) >= Date.parse(context.contextLease.expiresAt)) {
-    throw new Error('continuity projection clock is at or after lease expiry');
-  }
+  validateContinuitySimulatedClockSnapshot(snapshot, { aggregate, context, requireCurrent: true });
   return stateFingerprinted({
-    schemaVersion: 'vexlife.continuity-projection-clock-receipt/v1',
+    schemaVersion: 'vexlife.continuity-projection-clock-receipt/v2',
     aggregateFingerprint: aggregate.semanticFingerprint,
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
@@ -753,11 +894,21 @@ export function createContinuityProjectionClockReceipt({ aggregate, contextRecor
     channelRef: context.contextLease.channelRef,
     leaseObservedAt: context.contextLease.observedAt,
     leaseExpiresAt: context.contextLease.expiresAt,
-    projectionObservedAt: observedAt,
+    clockSourceRef: snapshot.clockSourceRef,
+    clockSourceFingerprint: snapshot.clockSourceFingerprint,
+    clockSnapshotRef: snapshot.clockSnapshotRef,
+    clockSnapshotFingerprint: snapshot.semanticFingerprint,
+    clockEvidenceClass: snapshot.clockEvidenceClass,
+    clockCurrentFrom: snapshot.currentFrom,
+    clockCurrentUntil: snapshot.currentUntil,
+    projectionObservedAt: snapshot.observedAt,
     sourceCurrentness: context.currentness,
-    projectionCurrentness: 'TRANSIENT_CURRENT',
+    projectionCurrentness: 'TRANSIENT_SIMULATED_CURRENT',
     applicable: true,
-    sourceManaged: true
+    sourceManaged: true,
+    simulatedClock: true,
+    liveClockGranted: false,
+    externalTimeServiceUsed: false
   }, 'clockReceiptRef', 'continuity-projection-clock-receipt');
 }
 
@@ -767,7 +918,8 @@ function exactProjectionClockReceipt(aggregate, context, supplied) {
     aggregate,
     contextRecordRef: context.contextRecordRef,
     contextRecordFingerprint: context.semanticFingerprint,
-    projectionObservedAt: supplied.projectionObservedAt
+    clockSnapshotRef: supplied.clockSnapshotRef,
+    clockSnapshotFingerprint: supplied.clockSnapshotFingerprint
   });
   if (supplied.clockReceiptRef !== expected.clockReceiptRef ||
       supplied.semanticFingerprint !== expected.semanticFingerprint ||
@@ -804,6 +956,10 @@ export function projectAggregateOwnedTransientContinuityContext({ aggregate, con
     expiresAt: context.expiresAt,
     currentness: clockReceipt.projectionCurrentness,
     applicableWithinLease: true,
+    clockEvidenceClass: clockReceipt.clockEvidenceClass,
+    simulatedClock: clockReceipt.simulatedClock,
+    liveClockGranted: clockReceipt.liveClockGranted,
+    externalTimeServiceUsed: clockReceipt.externalTimeServiceUsed,
     authorityEvidenceClass: context.authorityEvidenceClass,
     simulatedAuthority: context.simulatedAuthority,
     liveAuthorityGranted: context.liveAuthorityGranted,
@@ -1016,10 +1172,30 @@ export function reduceContinuityEvolutionAggregate(current, event) {
       break;
     }
     case 'RECORD_ACCEPTED': {
+      if (event.record?.supersedesRef !== null) {
+        throw new Error('ordinary RECORD_ACCEPTED cannot admit a superseding successor without its atomic transaction');
+      }
       validateAggregateOwnedRecord(next, event.record);
       const result = appendCanonical(next.acceptedRecords, event.record, 'acceptedRecordRef', 'accepted record');
       if (!result.changed) return current;
       next.acceptedRecords = result.items;
+      break;
+    }
+    case 'CLOCK_SNAPSHOT_RECORDED': {
+      const context = next.transientContexts.find((item) => item.contextRecordRef === event.snapshot?.contextRecordRef);
+      if (!context || context.semanticFingerprint !== event.snapshot.contextRecordFingerprint) {
+        throw new Error('clock snapshot context is not the exact aggregate-owned transient context');
+      }
+      validateAggregateOwnedContext(next, context);
+      validateContinuitySimulatedClockSnapshot(event.snapshot, { aggregate: current, context });
+      const prior = next.clockSnapshots.find((item) => item.clockSnapshotRef === next.currentClockSnapshotRef);
+      if (prior && Date.parse(event.snapshot.observedAt) <= Date.parse(prior.observedAt)) {
+        throw new Error('continuity simulated clock must advance strictly beyond the current snapshot');
+      }
+      const result = appendCanonical(next.clockSnapshots, event.snapshot, 'clockSnapshotRef', 'simulated clock snapshot');
+      if (!result.changed) throw new Error('continuity simulated clock snapshot replay is stale');
+      next.clockSnapshots = result.items;
+      next.currentClockSnapshotRef = event.snapshot.clockSnapshotRef;
       break;
     }
     case 'CONTEXT_APPLIED': {
@@ -1110,6 +1286,7 @@ export function reduceContinuityEvolutionAggregate(current, event) {
   next.authorityEvidence.sort((left, right) => left.acceptanceEvidenceRef.localeCompare(right.acceptanceEvidenceRef));
   next.acceptedRecords.sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef));
   next.transientContexts.sort((left, right) => left.contextRecordRef.localeCompare(right.contextRecordRef));
+  next.clockSnapshots.sort((left, right) => left.clockSnapshotRef.localeCompare(right.clockSnapshotRef));
   next.supersessions.sort((left, right) => left.supersessionRef.localeCompare(right.supersessionRef));
   next.recurrenceEvidence.sort((left, right) => left.acceptedRecordRef.localeCompare(right.acceptedRecordRef));
   next.rejectedCandidateRefs.sort();
@@ -1131,6 +1308,7 @@ export function createContinuityEvolutionState({ aggregate = createInitialContin
       reviewCount: current.reviews.length,
       acceptedRecordCount: recordSet.currentRecordRefs.length,
       transientContextCount: current.transientContexts.length,
+      currentClockSnapshotRef: current.currentClockSnapshotRef,
       heldCandidateRefs: current.candidates
         .filter((candidate) => !current.reviews.some((review) => review.candidateRef === candidate.candidateRef && ['ACCEPTED', 'REJECTED'].includes(review.reviewDisposition)))
         .map((item) => item.candidateRef),

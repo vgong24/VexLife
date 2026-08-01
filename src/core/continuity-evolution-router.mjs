@@ -71,6 +71,13 @@ export const CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS = Object.freeze([
   'externalEffectsAuthorized', 'acceptanceDisposition', 'acceptanceEvidenceRef', 'semanticFingerprint'
 ]);
 
+export const CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS = Object.freeze([
+  'schemaVersion', 'priorRecordRef', 'priorRecordFingerprint', 'successorRecordRef',
+  'successorRecordFingerprint', 'priorDisposition', 'successorDisposition',
+  'acceptanceEvidenceRefs', 'authorityCurrentnessProof', 'rollbackRef', 'supersededAt',
+  'atomic', 'sourceHistoryDeleted', 'supersessionRef', 'semanticFingerprint'
+]);
+
 const TERMINAL_REVIEW_DISPOSITIONS = new Set(['ACCEPTED', 'REJECTED', 'HELD', 'REVISE']);
 const NON_ACCEPTABLE_DESTINATIONS = new Set(['HELD_UNKNOWN', 'REJECTED']);
 const PERSONAL_DESTINATIONS = new Set(['HUMAN_PREFERENCE', 'VEX_SELF_PREFERENCE', 'SCORE_RECORD', 'RHYTHM_LESSON']);
@@ -1128,6 +1135,24 @@ export function supersedeContinuityRecord(priorRecord, successorRecord, { rollba
   const time = canonicalTimestamp(supersededAt, 'supersededAt');
   afterOrEqual(successorRecord.acceptedAt, priorRecord.acceptedAt, 'successor acceptance', { strict: true });
   afterOrEqual(time, successorRecord.acceptedAt, 'supersession');
+  const authorityCurrentnessProof = deepFreeze({
+    state: 'SIMULATED_CURRENT',
+    verifiedAt: time,
+    evidenceBindings: [...successorRecord.acceptanceEvidence]
+      .map((evidence) => {
+        validateContinuityAcceptanceEvidence(evidence, { acceptedAt: time });
+        return {
+          acceptanceEvidenceRef: evidence.acceptanceEvidenceRef,
+          acceptanceEvidenceFingerprint: evidence.semanticFingerprint,
+          observedAt: evidence.observedAt,
+          expiresAt: evidence.expiresAt,
+          currentAtVerifiedTime: true
+        };
+      })
+      .sort((left, right) => left.acceptanceEvidenceRef.localeCompare(right.acceptanceEvidenceRef)),
+    simulatedAuthority: true,
+    liveIdentityGranted: false
+  });
   return fingerprinted({
     schemaVersion: 'vexlife.continuity-supersession-transaction/v1',
     priorRecordRef: priorRecord.acceptedRecordRef,
@@ -1137,6 +1162,7 @@ export function supersedeContinuityRecord(priorRecord, successorRecord, { rollba
     priorDisposition: 'SUPERSEDED',
     successorDisposition: 'CURRENT',
     acceptanceEvidenceRefs: [...successorRecord.acceptanceEvidenceRefs],
+    authorityCurrentnessProof,
     rollbackRef,
     supersededAt: time,
     atomic: true,
@@ -1177,6 +1203,7 @@ export function validateContinuityRecordSet(records, supersessions = []) {
   }
   const transactionRefs = new Set();
   const supersededPriorRefs = new Set();
+  const supersedingSuccessorRefs = new Set();
   for (const transaction of supersessions) {
     validateContinuitySupersession(transaction, records);
     if (transactionRefs.has(transaction.supersessionRef)) {
@@ -1185,8 +1212,24 @@ export function validateContinuityRecordSet(records, supersessions = []) {
     if (supersededPriorRefs.has(transaction.priorRecordRef)) {
       throw new Error('continuity record set contains more than one successor transaction for one prior');
     }
+    if (supersedingSuccessorRefs.has(transaction.successorRecordRef)) {
+      throw new Error('continuity record set contains more than one transaction for one superseding successor');
+    }
     transactionRefs.add(transaction.supersessionRef);
     supersededPriorRefs.add(transaction.priorRecordRef);
+    supersedingSuccessorRefs.add(transaction.successorRecordRef);
+  }
+  for (const record of records) {
+    const matching = supersessions.filter((transaction) =>
+      transaction.successorRecordRef === record.acceptedRecordRef &&
+      transaction.priorRecordRef === record.supersedesRef
+    );
+    if (record.supersedesRef !== null && matching.length !== 1) {
+      throw new Error('continuity record set contains a dangling or untransacted supersedesRef lineage');
+    }
+    if (record.supersedesRef === null && supersedingSuccessorRefs.has(record.acceptedRecordRef)) {
+      throw new Error('continuity supersession transaction successor does not claim its exact prior');
+    }
   }
   for (const transaction of supersessions) {
     const visited = new Set([transaction.priorRecordRef]);
@@ -1221,6 +1264,12 @@ export function validateContinuityRecordSet(records, supersessions = []) {
     supersessionBindings: supersessions.map((transaction) => ({
       supersessionRef: transaction.supersessionRef,
       supersessionFingerprint: transaction.semanticFingerprint
+    })).sort((left, right) => left.supersessionRef.localeCompare(right.supersessionRef)),
+    supersessionAuthorityBindings: supersessions.map((transaction) => ({
+      supersessionRef: transaction.supersessionRef,
+      supersededAt: transaction.supersededAt,
+      authorityEvidenceRefs: [...transaction.acceptanceEvidenceRefs],
+      authorityCurrentnessFingerprint: semanticHash(transaction.authorityCurrentnessProof)
     })).sort((left, right) => left.supersessionRef.localeCompare(right.supersessionRef)),
     state: conflicts.length ? 'HELD_CONFLICT' : 'CURRENT',
     currentRecordRefs: current.map((record) => record.acceptedRecordRef).sort(),

@@ -481,6 +481,7 @@ export function compileRegistryPack({
         { type: 'PARENT', to: evolution.registryRef },
         { type: 'CANONICAL_SOURCE', to: evolution.canonicalSourceRef },
         ...(evolution.authorityTrustSources ?? []).map((item) => ({ type: 'AUTHORITY_SOURCE', to: item.authoritySourceRef })),
+        ...(evolution.clockTrustSources ?? []).map((item) => ({ type: 'CLOCK_SOURCE', to: item.clockSourceRef })),
         ...(evolution.system.contractRefs ?? []).map((to) => ({ type: 'CONTRACT', to })),
         ...(evolution.processRefs ?? []).map((to) => ({ type: 'PROCESS', to })),
         ...(evolution.moduleRefs ?? []).map((to) => ({ type: 'MODULE', to })),
@@ -511,6 +512,18 @@ export function compileRegistryPack({
         { type: 'PARENT', to: evolution.systemRef },
         { type: 'CANONICAL_SOURCE', to: authoritySource.sourceRef },
         { type: 'CONTRACT', to: evolution.authorityTrust.contractRef }
+      ]
+    });
+    for (const clockSource of evolution.clockTrustSources ?? []) registry.register({
+      ...clockSource,
+      ref: clockSource.clockSourceRef,
+      kind: 'EVOLUTION_CLOCK_SOURCE',
+      brief: clockSource.clockMode,
+      parentRef: evolution.systemRef,
+      edges: [
+        { type: 'PARENT', to: evolution.systemRef },
+        { type: 'CANONICAL_SOURCE', to: clockSource.sourceRef },
+        { type: 'CONTRACT', to: evolution.simulatedClock.contractRef }
       ]
     });
     for (const origin of evolution.behaviorOriginIdentities ?? []) registry.register({

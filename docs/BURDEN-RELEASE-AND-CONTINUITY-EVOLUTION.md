@@ -241,13 +241,19 @@ synchronization, training admission or activation.
 
 `CURRENT_CONTEXT` is transient and bound to an exact expiring
 turn/thread/channel lease whose coordinates equal the source-derived target; it
-is not an indefinitely durable accepted record. Its current projection consumes
-an exact source-managed clock receipt bound to the aggregate, context, lease,
-turn/thread/channel coordinates and observation time. Projection is admitted
-only while `lease.observedAt <= projectionObservedAt < lease.expiresAt`; a
-pre-observation, expired, stale, substituted, cross-lease or replayed receipt
-fails closed. Historical retrieval is not represented by the current projection
-shape and grants no applicability.
+  is not an indefinitely durable accepted record. Its current projection consumes
+  the latest aggregate current-pointer snapshot from the registered deterministic
+  no-effect simulated clock source. The snapshot binds source ref/fingerprint,
+  snapshot ref/fingerprint, exact aggregate prior, context, lease,
+  turn/thread/channel coordinates and the current interval. Projection is admitted
+  only while `lease.observedAt <= snapshot.observedAt < lease.expiresAt`; a raw
+  caller-dated time, pre-observation, expired, stale/superseded, self-issued,
+  substituted, cross-lease or replayed snapshot fails closed. The projection and
+  ownership receipts expose `TRANSIENT_SIMULATED_CURRENT`,
+  `clockEvidenceClass=SIMULATED_CURRENT`, `simulatedClock=true`,
+  `liveClockGranted=false`, and `externalTimeServiceUsed=false`. Historical
+  retrieval is not represented by the current projection shape and grants no
+  applicability.
 
 Effect/safety invariant candidates remain inactive after review. A later
 deterministic implementation lane must separately admit and implement them.
@@ -262,14 +268,20 @@ supersession and rollback lineage.
 Supersession is one canonical atomic transaction recomputed from the exact
 aggregate-owned current prior and compatible successor. It requires the exact
 registered schema and terminal dispositions, equal class/scope/target/subjects,
-exact current authority evidence, monotonic time, nonempty rollback identity,
-immutable source history and one prior-to-successor identity. Duplicate
-transaction/prior identities, already-superseded substitution and any canonical
-but non-source-derived transaction fail before mutation. The prior becomes
-effectively `SUPERSEDED` and the successor becomes the sole `CURRENT` record;
-the aggregate emits a content-addressed current-record-set receipt binding every
-record and supersession fingerprint. Missing or malformed transactions produce
-`HELD_CONFLICT`; stale or substituted receipts are rejected. Applicable
+  exact current authority evidence, monotonic time, nonempty rollback identity,
+  immutable source history and one prior-to-successor identity. Duplicate
+  transaction/prior identities, already-superseded substitution and any canonical
+  but non-source-derived transaction fail before mutation. Each transaction also
+  carries content-addressed evidence bindings proving every successor authority
+  interval contains the exact `supersededAt`; before-observation, at/after-expiry,
+  mixed-window and conflicting chronology fail closed. The prior becomes
+  effectively `SUPERSEDED` and the successor becomes the sole `CURRENT` record;
+  the aggregate emits a content-addressed current-record-set receipt binding every
+  record, supersession fingerprint and supersession-authority proof. A record with
+  non-null `supersedesRef` cannot enter through ordinary `RECORD_ACCEPTED`; missing,
+  dangling, incompatible, duplicate or untransacted successor lineage is rejected
+  before effective current truth. Independent same-target current records without
+  supersession claims remain `HELD_CONFLICT`; stale or substituted receipts are rejected. Applicable
 projection accepts only the exact conflict-free receipt, excludes the prior and
 can select only its same-target successor.
 The immutable record and source history remain available.
@@ -327,7 +339,8 @@ provision, remove or activate model weights or adapters.
 ## Canonical state and scheduler proof
 
 `state.evolution` owns observations, candidates, reviews, authority evidence,
-durable accepted records, transient contexts, atomic supersessions and
+  durable accepted records, transient contexts, aggregate-owned simulated clock
+  snapshots with one exact current pointer, atomic supersessions and
 recurrence evidence. Every causal event is recomputed from exact aggregate-owned
 predecessors before mutation: candidate source observations, review route,
 accepted record authority, transient lease and recurrence record/observation/
@@ -337,8 +350,8 @@ revision. Human-record, transient-context and Burden projections also resolve
 their source from that aggregate, recompute candidate/route/review/target and
 authority meaning, and attach a content-addressed aggregate-projection receipt.
 Durable receipts also bind exact current-set disposition/successor meaning;
-transient receipts bind the exact source-managed projection clock and
-`TRANSIENT_CURRENT` result.
+  transient receipts bind the exact registered clock source, latest aggregate-owned
+  snapshot and explicit `TRANSIENT_SIMULATED_CURRENT` result without live-clock authority.
 Canonical but unowned records, class/target/summary/source substitutions and
 detached contexts cannot be projected. Queue, Terrain, Health, Guide and
 evolution projections are selectors over that one aggregate and suppress
@@ -351,7 +364,8 @@ release refs into the bounded scheduler context lease, and completes through
 the external completion verifier. Its completion-gate bundle hashes the exact
 observation, candidate, exact scope target, canonical route, review, acceptance
 evidence, accepted record, current-record-set, aggregate-owned record and Burden
-projection, authority disposition and applicable-projection fingerprints. The
+  projection, authority disposition, simulated-clock snapshot, projection-clock
+  receipt, transient projection and applicable-projection fingerprints. The
 structured receipt binds
 candidate/tested/base Git identity, source tree, Blueprint/evolution hashes and
 scheduler completion lineage. `pr-ready` and `health:check` independently

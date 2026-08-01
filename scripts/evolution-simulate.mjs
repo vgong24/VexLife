@@ -9,6 +9,7 @@ import {
   createContinuityAuthoritySnapshot,
   createContinuityContextReview,
   createContinuityObservation,
+  createCurrentContextLease,
   formContinuityCandidate,
   recordContinuityRecurrence,
   routeContinuityCandidate
@@ -23,9 +24,12 @@ import {
   createContinuityCurrentRecordSetReceipt,
   createContinuityEvolutionEvent,
   createContinuityEvolutionState,
+  createContinuityProjectionClockReceipt,
+  createContinuitySimulatedClockSnapshot,
   projectAggregateApplicableContinuity,
   projectAggregateOwnedBurdenRelease,
-  projectAggregateOwnedContinuityRecord
+  projectAggregateOwnedContinuityRecord,
+  projectAggregateOwnedTransientContinuityContext
 } from '../src/core/state.mjs';
 import { readJson, resolveSafeGeneratedReceiptPath, semanticHash, writeJson } from '../src/core/utils.mjs';
 
@@ -41,7 +45,9 @@ const EXPIRES = '2026-07-31T19:00:00.000Z';
 const REQUIRED_JOURNEY = Object.freeze([
   'SOURCE_OBSERVATION_SEALED', 'CONTINUITY_CANDIDATE_FORMED', 'ORIGIN_AND_SCOPE_CLASSIFIED',
   'CONTEXT_REVIEW_PRODUCED', 'LEAST_INVASIVE_ROUTE_SELECTED', 'REQUIRED_ACCEPTANCE_RESOLVED',
-  'BURDEN_RELEASE_ACCEPTED_DEAUTHORIZED', 'BOUNDED_CONTEXT_REFS_PROJECTED',
+  'BURDEN_RELEASE_ACCEPTED_DEAUTHORIZED', 'TRANSIENT_CONTEXT_APPLIED',
+  'SIMULATED_CLOCK_SNAPSHOT_RECORDED', 'TRANSIENT_SIMULATED_CURRENT_PROJECTED',
+  'BOUNDED_CONTEXT_REFS_PROJECTED',
   'RECURRENCE_EVIDENCE_OBSERVED', 'DUPLICATE_RECURRENCE_SUPPRESSED', 'CANONICAL_WORK_NODE_COMPLETED'
 ]);
 const CONTINUITY_COMPLETION_GATE_REF = 'completion-gate.intent.contract-valid';
@@ -361,6 +367,17 @@ export function validateContinuityEvolutionSimulationReceipt(receipt, { evolutio
       receipt.liveAuthorityGranted !== false || receipt.externalEffectsAuthorized !== false) {
     errors.push('continuity receipt loses or promotes simulation-only authority disposition');
   }
+  if (receipt.transientProjectionCurrentness !== 'TRANSIENT_SIMULATED_CURRENT' ||
+      receipt.clockEvidenceClass !== 'SIMULATED_CURRENT' || receipt.simulatedClock !== true ||
+      receipt.liveClockGranted !== false || receipt.externalTimeServiceUsed !== false ||
+      receipt.simulatedClockSnapshotRef !== receipt.continuityGateBindings?.simulatedClockSnapshot?.ref ||
+      receipt.simulatedClockSnapshotFingerprint !== receipt.continuityGateBindings?.simulatedClockSnapshot?.fingerprint ||
+      receipt.transientProjectionClockReceiptRef !== receipt.continuityGateBindings?.transientProjectionClock?.ref ||
+      receipt.transientProjectionClockReceiptFingerprint !== receipt.continuityGateBindings?.transientProjectionClock?.fingerprint ||
+      receipt.transientProjectionReceiptRef !== receipt.continuityGateBindings?.transientProjection?.ref ||
+      receipt.transientProjectionReceiptFingerprint !== receipt.continuityGateBindings?.transientProjection?.fingerprint) {
+    errors.push('continuity receipt does not preserve source-bound simulated-clock/transient-currentness proof');
+  }
   if (bundleGate?.sourceObservationRef !== 'observation.continuity-evolution.exact-binding-bundle.1' ||
       bundleGate?.sourceObservationHash !== semanticHash(receipt.continuityGateBindings)) errors.push('continuity receipt scheduler gate does not bind the exact continuity evidence bundle');
   if (JSON.stringify(receipt.schedulerContextApplicableRecordRefs ?? []) !== JSON.stringify(receipt.applicableRecordRefs ?? []) ||
@@ -464,6 +481,128 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
   });
   state.record(createContinuityEvolutionEvent({ type: 'RECORD_ACCEPTED', transitionRef: 'transition.continuity.simulation.accepted', record }));
   journeyStates.push('BURDEN_RELEASE_ACCEPTED_DEAUTHORIZED');
+  const transientObservation = createContinuityObservation({
+    observationType: 'CORRECTION_EVENT',
+    sourceLineageRef,
+    sourceBindings: [{ sourceLineageRef, rangeRef: 'source-range.continuity.simulation.transient.1', sourceHash: semanticHash({ source: 'continuity-simulation', range: 'transient-1' }) }],
+    sourceSpeakerRefs: ['person.vexlife.owner'],
+    sourceRecipientRefs: [sourceLineageRef],
+    projectRef: 'project.vexlife',
+    threadRef: 'thread.continuity-evolution.simulation',
+    channelRef: 'channel.continuity-evolution.simulation',
+    turnRef: 'turn.continuity-evolution.simulation.transient.1',
+    workNodeRef: bundle.evolution.simulationContract.workNodeRef,
+    formedByRef: 'role.vex.context-maintainer',
+    formedAt: FORMED,
+    currentness: 'CURRENT',
+    visibility: 'PRIVATE',
+    summaryRef: 'summary.continuity.simulation.transient'
+  });
+  state.record(createContinuityEvolutionEvent({
+    type: 'OBSERVATION_SEALED', transitionRef: 'transition.continuity.simulation.transient.observation', observation: transientObservation
+  }));
+  const transientCandidate = formContinuityCandidate({
+    observations: [transientObservation],
+    candidateKind: 'CORRECTION',
+    summaryRef: 'summary.continuity.simulation.transient',
+    authoredByRef: sourceLineageRef,
+    aboutSelfRefs: [sourceLineageRef],
+    affectedPartyRefs: [sourceLineageRef],
+    doesNotOverrideRefs: ['person.vexlife.owner'],
+    candidateScope: 'CURRENT_TURN',
+    visibilityScope: 'PRIVATE',
+    synchronizationScope: 'NO_SYNC',
+    originClassification: classifyBehaviorOrigin({ classification: 'MISSING_CONTEXT', confidence: 'SOURCE_BACKED_HYPOTHESIS' }),
+    observedConsequence: 'A bounded transient correction is applicable only inside the exact simulated lease.',
+    protectedCapabilities: ['uncertainty'],
+    prohibitedOvercorrections: ['durable promotion'],
+    signals: {},
+    formedAt: FORMED
+  });
+  state.record(createContinuityEvolutionEvent({
+    type: 'CANDIDATE_FORMED', transitionRef: 'transition.continuity.simulation.transient.candidate', candidate: transientCandidate
+  }));
+  const transientRoute = routeContinuityCandidate(transientCandidate);
+  const transientReview = createContinuityContextReview(transientCandidate, transientRoute, {
+    reviewerRef: 'person.vexlife.owner',
+    privacyState: 'PASS',
+    privacyEvidenceRef: 'privacy-evidence.continuity.simulation.transient.current',
+    redactionEvidenceRef: 'redaction-evidence.continuity.simulation.transient.summary-ref-only',
+    consentState: 'ACCEPTED',
+    contradictionState: 'NONE',
+    attributionState: 'VERIFIED',
+    currentnessState: 'CURRENT',
+    reviewDisposition: 'ACCEPTED',
+    reviewedAt: REVIEWED
+  });
+  state.record(createContinuityEvolutionEvent({
+    type: 'REVIEW_RECORDED', transitionRef: 'transition.continuity.simulation.transient.review', review: transientReview
+  }));
+  const transientAuthorityEvidence = createContinuityAcceptanceEvidence({
+    candidate: transientCandidate,
+    route: transientRoute,
+    review: transientReview,
+    authoritySnapshot: createContinuityAuthoritySnapshot({
+      actorRef: sourceLineageRef,
+      authorityRef: sourceLineageRef,
+      subjectRefs: transientCandidate.aboutSelfRefs,
+      scope: transientCandidate.candidateScope,
+      scopeTarget: transientCandidate.scopeTarget,
+      recordClass: transientRoute.proposedPrimaryDestination,
+      formedAt: REVIEWED,
+      observedAt: REVIEWED,
+      expiresAt: EXPIRES
+    })
+  });
+  state.record(createContinuityEvolutionEvent({
+    type: 'AUTHORITY_EVIDENCE_RECORDED', transitionRef: 'transition.continuity.simulation.transient.authority', evidence: transientAuthorityEvidence
+  }));
+  const transientLease = createCurrentContextLease({
+    candidate: transientCandidate,
+    route: transientRoute,
+    review: transientReview,
+    leaseRef: 'lease.continuity.simulation.transient.1',
+    turnRef: transientObservation.turnRef,
+    threadRef: transientObservation.threadRef,
+    channelRef: transientObservation.channelRef,
+    formedAt: REVIEWED,
+    observedAt: REVIEWED,
+    expiresAt: EXPIRES
+  });
+  const transientContext = acceptContinuityCandidate(transientCandidate, transientReview, {
+    authorityEvidence: [transientAuthorityEvidence],
+    acceptedAt: ACCEPTED,
+    currentContextLease: transientLease,
+    aggregate: state.aggregate.value
+  });
+  state.record(createContinuityEvolutionEvent({
+    type: 'CONTEXT_APPLIED', transitionRef: 'transition.continuity.simulation.transient.context', context: transientContext
+  }));
+  journeyStates.push('TRANSIENT_CONTEXT_APPLIED');
+  const clockSnapshot = createContinuitySimulatedClockSnapshot({
+    aggregate: state.aggregate.value,
+    contextRecordRef: transientContext.contextRecordRef,
+    contextRecordFingerprint: transientContext.semanticFingerprint,
+    observedAt: '2026-07-31T18:02:30.000Z'
+  });
+  state.record(createContinuityEvolutionEvent({
+    type: 'CLOCK_SNAPSHOT_RECORDED', transitionRef: 'transition.continuity.simulation.transient.clock', snapshot: clockSnapshot
+  }));
+  journeyStates.push('SIMULATED_CLOCK_SNAPSHOT_RECORDED');
+  const projectionClock = createContinuityProjectionClockReceipt({
+    aggregate: state.aggregate.value,
+    contextRecordRef: transientContext.contextRecordRef,
+    contextRecordFingerprint: transientContext.semanticFingerprint,
+    clockSnapshotRef: clockSnapshot.clockSnapshotRef,
+    clockSnapshotFingerprint: clockSnapshot.semanticFingerprint
+  });
+  const transientProjection = projectAggregateOwnedTransientContinuityContext({
+    aggregate: state.aggregate.value,
+    contextRecordRef: transientContext.contextRecordRef,
+    contextRecordFingerprint: transientContext.semanticFingerprint,
+    projectionClockReceipt: projectionClock
+  });
+  journeyStates.push('TRANSIENT_SIMULATED_CURRENT_PROJECTED');
   const currentRecordSetReceipt = createContinuityCurrentRecordSetReceipt(state.aggregate.value);
   const recordProjection = projectAggregateOwnedContinuityRecord({
     aggregate: state.aggregate.value,
@@ -548,6 +687,12 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
         externalEffectsAuthorized: record.externalEffectsAuthorized
       })
     },
+    simulatedClockSnapshot: { ref: clockSnapshot.clockSnapshotRef, fingerprint: clockSnapshot.semanticFingerprint },
+    transientProjectionClock: { ref: projectionClock.clockReceiptRef, fingerprint: projectionClock.semanticFingerprint },
+    transientProjection: {
+      ref: transientProjection.aggregateProjectionReceipt.projectionReceiptRef,
+      fingerprint: transientProjection.aggregateProjectionReceipt.semanticFingerprint
+    },
     applicableProjection: { ref: 'projection.continuity-evolution.applicable.simulation', fingerprint: applicable.semanticFingerprint }
   };
   const schedulerJourney = executeContinuityWorkNode({ root, bundle, record, applicable, gateBindings });
@@ -600,6 +745,17 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     burdenProjectionReceiptFingerprint: burdenProjection.aggregateProjectionReceipt.semanticFingerprint,
     burdenProjectionCurrentSetDisposition: burdenProjection.currentSetDisposition,
     burdenProjectionCurrentSuccessorRef: burdenProjection.currentSuccessorRef,
+    simulatedClockSnapshotRef: clockSnapshot.clockSnapshotRef,
+    simulatedClockSnapshotFingerprint: clockSnapshot.semanticFingerprint,
+    transientProjectionClockReceiptRef: projectionClock.clockReceiptRef,
+    transientProjectionClockReceiptFingerprint: projectionClock.semanticFingerprint,
+    transientProjectionReceiptRef: transientProjection.aggregateProjectionReceipt.projectionReceiptRef,
+    transientProjectionReceiptFingerprint: transientProjection.aggregateProjectionReceipt.semanticFingerprint,
+    transientProjectionCurrentness: transientProjection.currentness,
+    clockEvidenceClass: projectionClock.clockEvidenceClass,
+    simulatedClock: projectionClock.simulatedClock,
+    liveClockGranted: projectionClock.liveClockGranted,
+    externalTimeServiceUsed: projectionClock.externalTimeServiceUsed,
     applicableRecordRefs: applicable.selectedRecordRefs,
     applicableProjectionFingerprint: applicable.semanticFingerprint,
     recurrenceRef: recurrence.recurrenceRef,
@@ -646,6 +802,10 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     record,
     recordProjection,
     burdenProjection,
+    transientContext,
+    clockSnapshot,
+    projectionClock,
+    transientProjection,
     currentRecordSetReceipt,
     recurrence,
     duplicate,

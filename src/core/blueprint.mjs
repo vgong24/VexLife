@@ -19,12 +19,15 @@ import {
 import {
   CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
   CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
-  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS
+  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS,
+  CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS
 } from './continuity-evolution-router.mjs';
 import {
   CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS,
   CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS,
-  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS
+  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SOURCE
 } from './state.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -286,6 +289,7 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
   };
   collect('contracts', evolution.contractIdentities, 'contractRef');
   collect('authority trust sources', evolution.authorityTrustSources, 'authoritySourceRef');
+  collect('clock trust sources', evolution.clockTrustSources, 'clockSourceRef');
   collect('behavior origins', evolution.behaviorOriginIdentities, 'originRef', 'value', evolution.behaviorOriginClasses);
   collect('scopes', evolution.scopeIdentities, 'scopeRef', 'value', evolution.scopeClasses);
   collect('primary destinations', evolution.primaryDestinationIdentities, 'destinationRef', 'value', evolution.primaryDestinations);
@@ -310,7 +314,9 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
   exactRequiredFields('acceptance evidence', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
   exactRequiredFields('authority snapshot', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
   exactRequiredFields('scope target', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
+  exactRequiredFields('supersession transaction', evolution.supersessionTransaction?.requiredFields, CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS);
   exactRequiredFields('current record set', evolution.currentRecordSet?.requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
+  exactRequiredFields('simulated clock snapshot', evolution.simulatedClock?.requiredFields, CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS);
   exactRequiredFields('projection clock', evolution.projectionClock?.requiredFields, CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS);
   exactRequiredFields('aggregate projection', evolution.aggregateProjection?.requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
   const expectedContractSources = new Map([
@@ -319,8 +325,10 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
     ['contract.vexlife.continuity-authority-snapshot/v1', 'authorityTrust'],
     ['contract.vexlife.continuity-context-review/v1', 'contextReview'],
     ['contract.vexlife.burden-release/v1', 'burdenRelease'],
+    ['contract.vexlife.continuity-supersession-transaction/v1', 'supersessionTransaction'],
     ['contract.vexlife.continuity-current-record-set-receipt/v1', 'currentRecordSet'],
-    ['contract.vexlife.continuity-projection-clock-receipt/v1', 'projectionClock'],
+    ['contract.vexlife.continuity-simulated-clock-snapshot/v1', 'simulatedClock'],
+    ['contract.vexlife.continuity-projection-clock-receipt/v2', 'projectionClock'],
     ['contract.vexlife.continuity-aggregate-projection-receipt/v1', 'aggregateProjection']
   ]);
   for (const [contractRef, sourceField] of expectedContractSources) {
@@ -343,11 +351,28 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
       evolution.authorityTrust?.externalEffectsAuthorized !== false) {
     errors.push('evolution authority trust does not exactly bind the registered simulated-current no-effect source');
   }
+  const clockSource = (evolution.clockTrustSources ?? [])[0];
+  if ((evolution.clockTrustSources ?? []).length !== 1 ||
+      semanticHash(clockSource) !== semanticHash(CONTINUITY_SIMULATED_CLOCK_SOURCE) ||
+      evolution.simulatedClock?.contractRef !== 'contract.vexlife.continuity-simulated-clock-snapshot/v1' ||
+      evolution.simulatedClock?.clockSourceRef !== clockSource?.clockSourceRef ||
+      evolution.simulatedClock?.sourceRef !== clockSource?.sourceRef ||
+      evolution.simulatedClock?.evidenceClass !== clockSource?.evidenceClass ||
+      evolution.simulatedClock?.currentness !== clockSource?.currentness ||
+      evolution.simulatedClock?.clockMode !== clockSource?.clockMode ||
+      evolution.simulatedClock?.simulatedClock !== true ||
+      evolution.simulatedClock?.liveClockGranted !== false ||
+      evolution.simulatedClock?.externalTimeServiceUsed !== false) {
+    errors.push('evolution clock trust does not exactly bind the registered deterministic simulated-current no-effect source');
+  }
   for (const ref of [
     evolution.authorityTrust?.contractRef,
     evolution.acceptanceEvidence?.contractRef,
     evolution.scopeTarget?.contractRef,
+    evolution.supersessionTransaction?.contractRef,
     evolution.currentRecordSet?.contractRef,
+    evolution.simulatedClock?.contractRef,
+    evolution.projectionClock?.contractRef,
     evolution.aggregateProjection?.contractRef,
     evolution.burdenRelease?.contractRef,
     evolution.contextReview?.contractRef,

@@ -12,12 +12,14 @@ import { BURDEN_RELEASE_REQUIRED_FIELDS, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_
 import {
   CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
   CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
-  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS
+  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS,
+  CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS
 } from '../src/core/continuity-evolution-router.mjs';
 import {
   CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS,
   CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS,
-  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS
+  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS
 } from '../src/core/state.mjs';
 
 const bundle = loadBlueprint();
@@ -81,7 +83,10 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
     bundle.evolution.authorityTrust.authoritySourceRef,
     bundle.evolution.acceptanceEvidence.contractRef,
     bundle.evolution.scopeTarget.contractRef,
+    bundle.evolution.supersessionTransaction.contractRef,
     bundle.evolution.currentRecordSet.contractRef,
+    bundle.evolution.simulatedClock.contractRef,
+    bundle.evolution.simulatedClock.clockSourceRef,
     bundle.evolution.projectionClock.contractRef,
     bundle.evolution.aggregateProjection.contractRef,
     bundle.evolution.contextReview.contractRef,
@@ -95,7 +100,9 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
   assert.deepEqual(registry.require(bundle.evolution.acceptanceEvidence.contractRef).requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.authorityTrust.contractRef).requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.scopeTarget.contractRef).requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.supersessionTransaction.contractRef).requiredFields, CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.currentRecordSet.contractRef).requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.simulatedClock.contractRef).requiredFields, CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.projectionClock.contractRef).requiredFields, CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.aggregateProjection.contractRef).requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
   const atlas = new Atlas(buildIdentityIndex(bundle));
@@ -106,7 +113,10 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
     bundle.evolution.authorityTrust.contractRef,
     bundle.evolution.authorityTrust.authoritySourceRef,
     bundle.evolution.scopeTarget.contractRef,
+    bundle.evolution.supersessionTransaction.contractRef,
     bundle.evolution.currentRecordSet.contractRef,
+    bundle.evolution.simulatedClock.contractRef,
+    bundle.evolution.simulatedClock.clockSourceRef,
     bundle.evolution.projectionClock.contractRef,
     bundle.evolution.aggregateProjection.contractRef,
     bundle.evolution.projectionIdentities[0].projectionRef
@@ -151,6 +161,15 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
   const omittedCurrentSet = structuredClone(bundle.evolution);
   omittedCurrentSet.currentRecordSet.requiredFields.splice(2, 1);
   assert.equal(validateEvolutionRegistry(omittedCurrentSet, bundle).ok, false);
+  const staleSupersession = structuredClone(bundle.evolution);
+  staleSupersession.supersessionTransaction.requiredFields.splice(8, 1);
+  assert.equal(validateEvolutionRegistry(staleSupersession, bundle).ok, false);
+  const staleSimulatedClock = structuredClone(bundle.evolution);
+  staleSimulatedClock.simulatedClock.requiredFields.splice(9, 1);
+  assert.equal(validateEvolutionRegistry(staleSimulatedClock, bundle).ok, false);
+  const inventedClockSource = structuredClone(bundle.evolution);
+  inventedClockSource.clockTrustSources[0].liveClockGranted = true;
+  assert.equal(validateEvolutionRegistry(inventedClockSource, bundle).ok, false);
   const staleProjectionClock = structuredClone(bundle.evolution);
   staleProjectionClock.projectionClock.requiredFields.splice(5, 1);
   assert.equal(validateEvolutionRegistry(staleProjectionClock, bundle).ok, false);

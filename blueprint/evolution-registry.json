@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.evolution-registry/v1",
   "registryRef": "registry.vexlife.evolution.001",
-  "registryVersion": 5,
+  "registryVersion": 6,
   "systemRef": "system.vexlife.continuity-and-evolution",
   "canonicalSourceRef": "source.blueprint.evolution-registry",
   "canonicalSource": {
@@ -21,8 +21,10 @@
       "contract.vexlife.continuity-context-review/v1",
       "contract.vexlife.burden-release/v1",
       "contract.vexlife.continuity-recurrence/v1",
+      "contract.vexlife.continuity-supersession-transaction/v1",
       "contract.vexlife.continuity-current-record-set-receipt/v1",
-      "contract.vexlife.continuity-projection-clock-receipt/v1",
+      "contract.vexlife.continuity-simulated-clock-snapshot/v1",
+      "contract.vexlife.continuity-projection-clock-receipt/v2",
       "contract.vexlife.continuity-aggregate-projection-receipt/v1",
       "contract.continuity-evolution.integrated-simulation/v1"
     ]
@@ -51,7 +53,10 @@
     "simulation-only authority remains inactive and visibly non-live through every compact projection",
     "human, transient and Burden projections recompute exact candidate, route, review, authority, target and source meaning from aggregate-owned lineage",
     "applicable continuity consumes an exact content-addressed conflict-free current-record-set receipt and excludes every superseded record",
-    "accepted Burden deauthorization is private to canonical aggregate-owned route, review policy and recorded simulated-current authority evidence"
+    "accepted Burden deauthorization is private to canonical aggregate-owned route, review policy and recorded simulated-current authority evidence",
+    "a superseding successor enters accepted current truth only with its exact atomic transaction",
+    "every supersession transaction proves all successor authority evidence current at the exact transaction time",
+    "transient projection currentness consumes only the latest aggregate-owned deterministic simulated-clock snapshot and never claims live time"
   ],
   "observationTypes": [
     "CONVERSATION_EPISODE_RANGE",
@@ -137,14 +142,26 @@
       "sourceRef": "source.blueprint.evolution-registry"
     },
     {
+      "contractRef": "contract.vexlife.continuity-supersession-transaction/v1",
+      "contractKind": "ATOMIC_AUTHORITY_CURRENT_SUPERSESSION",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "supersessionTransaction"
+    },
+    {
       "contractRef": "contract.vexlife.continuity-current-record-set-receipt/v1",
       "contractKind": "CONTENT_ADDRESSED_CURRENT_RECORD_SET",
       "sourceRef": "source.blueprint.evolution-registry",
       "sourceField": "currentRecordSet"
     },
     {
-      "contractRef": "contract.vexlife.continuity-projection-clock-receipt/v1",
-      "contractKind": "AGGREGATE_BOUND_TRANSIENT_PROJECTION_CLOCK",
+      "contractRef": "contract.vexlife.continuity-simulated-clock-snapshot/v1",
+      "contractKind": "AGGREGATE_CURRENT_POINTER_SIMULATED_CLOCK_SNAPSHOT",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "simulatedClock"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-projection-clock-receipt/v2",
+      "contractKind": "SOURCE_BOUND_SIMULATED_TRANSIENT_PROJECTION_CLOCK",
       "sourceRef": "source.blueprint.evolution-registry",
       "sourceField": "projectionClock"
     },
@@ -172,6 +189,21 @@
       "liveAuthorityGranted": false,
       "externalEffectsAuthorized": false,
       "semanticFingerprint": "0046ce51212a6459240254cff656dfe4069db90a30afc2f173789270a9510ea9"
+    }
+  ],
+  "clockTrustSources": [
+    {
+      "schemaVersion": "vexlife.continuity-clock-source/v1",
+      "clockSourceRef": "clock-source.vexlife.continuity-simulation",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "clockTrustSources",
+      "evidenceClass": "SIMULATED_CURRENT",
+      "currentness": "CURRENT",
+      "clockMode": "DETERMINISTIC_NO_EFFECT_SIMULATION",
+      "simulatedClock": true,
+      "liveClockGranted": false,
+      "externalTimeServiceUsed": false,
+      "semanticFingerprint": "bee072ee149d15ca7ea6e7eb131628452791a7f3b2ea1cce7e34b64c6aaacb2d"
     }
   ],
   "authorityTrust": {
@@ -328,6 +360,28 @@
       "semanticFingerprint"
     ]
   },
+  "supersessionTransaction": {
+    "contractRef": "contract.vexlife.continuity-supersession-transaction/v1",
+    "sourceRef": "source.blueprint.evolution-registry",
+    "sourceField": "supersessionTransaction",
+    "requiredFields": [
+      "schemaVersion",
+      "priorRecordRef",
+      "priorRecordFingerprint",
+      "successorRecordRef",
+      "successorRecordFingerprint",
+      "priorDisposition",
+      "successorDisposition",
+      "acceptanceEvidenceRefs",
+      "authorityCurrentnessProof",
+      "rollbackRef",
+      "supersededAt",
+      "atomic",
+      "sourceHistoryDeleted",
+      "supersessionRef",
+      "semanticFingerprint"
+    ]
+  },
   "currentRecordSet": {
     "contractRef": "contract.vexlife.continuity-current-record-set-receipt/v1",
     "sourceRef": "source.blueprint.evolution-registry",
@@ -337,6 +391,7 @@
       "aggregateFingerprint",
       "recordBindings",
       "supersessionBindings",
+      "supersessionAuthorityBindings",
       "state",
       "currentRecordRefs",
       "supersededRecordRefs",
@@ -346,8 +401,45 @@
       "semanticFingerprint"
     ]
   },
+  "simulatedClock": {
+    "contractRef": "contract.vexlife.continuity-simulated-clock-snapshot/v1",
+    "clockSourceRef": "clock-source.vexlife.continuity-simulation",
+    "sourceRef": "source.blueprint.evolution-registry",
+    "sourceField": "simulatedClock",
+    "evidenceClass": "SIMULATED_CURRENT",
+    "currentness": "CURRENT",
+    "clockMode": "DETERMINISTIC_NO_EFFECT_SIMULATION",
+    "simulatedClock": true,
+    "liveClockGranted": false,
+    "externalTimeServiceUsed": false,
+    "requiredFields": [
+      "schemaVersion",
+      "aggregatePriorFingerprint",
+      "contextRecordRef",
+      "contextRecordFingerprint",
+      "contextBindingRef",
+      "contextLeaseFingerprint",
+      "turnRef",
+      "threadRef",
+      "channelRef",
+      "clockSourceRef",
+      "clockSourceFingerprint",
+      "sourceRef",
+      "sourceField",
+      "clockEvidenceClass",
+      "observedAt",
+      "currentFrom",
+      "currentUntil",
+      "currentness",
+      "simulatedClock",
+      "liveClockGranted",
+      "externalTimeServiceUsed",
+      "clockSnapshotRef",
+      "semanticFingerprint"
+    ]
+  },
   "projectionClock": {
-    "contractRef": "contract.vexlife.continuity-projection-clock-receipt/v1",
+    "contractRef": "contract.vexlife.continuity-projection-clock-receipt/v2",
     "sourceRef": "source.blueprint.evolution-registry",
     "sourceField": "projectionClock",
     "requiredFields": [
@@ -362,11 +454,21 @@
       "channelRef",
       "leaseObservedAt",
       "leaseExpiresAt",
+      "clockSourceRef",
+      "clockSourceFingerprint",
+      "clockSnapshotRef",
+      "clockSnapshotFingerprint",
+      "clockEvidenceClass",
+      "clockCurrentFrom",
+      "clockCurrentUntil",
       "projectionObservedAt",
       "sourceCurrentness",
       "projectionCurrentness",
       "applicable",
       "sourceManaged",
+      "simulatedClock",
+      "liveClockGranted",
+      "externalTimeServiceUsed",
       "clockReceiptRef",
       "semanticFingerprint"
     ]
@@ -405,6 +507,16 @@
       "currentSuccessorRef",
       "projectionClockReceiptRef",
       "projectionClockReceiptFingerprint",
+      "clockSourceRef",
+      "clockSourceFingerprint",
+      "clockSnapshotRef",
+      "clockSnapshotFingerprint",
+      "clockEvidenceClass",
+      "clockCurrentFrom",
+      "clockCurrentUntil",
+      "simulatedClock",
+      "liveClockGranted",
+      "externalTimeServiceUsed",
       "projectionObservedAt",
       "projectionCurrentness",
       "projectionReceiptRef",
@@ -827,6 +939,9 @@
       "recordProjection",
       "burdenProjection",
       "authorityDisposition",
+      "simulatedClockSnapshot",
+      "transientProjectionClock",
+      "transientProjection",
       "applicableProjection"
     ],
     "requiredJourneyStates": [
@@ -837,6 +952,9 @@
       "LEAST_INVASIVE_ROUTE_SELECTED",
       "REQUIRED_ACCEPTANCE_RESOLVED",
       "BURDEN_RELEASE_ACCEPTED_DEAUTHORIZED",
+      "TRANSIENT_CONTEXT_APPLIED",
+      "SIMULATED_CLOCK_SNAPSHOT_RECORDED",
+      "TRANSIENT_SIMULATED_CURRENT_PROJECTED",
       "BOUNDED_CONTEXT_REFS_PROJECTED",
       "RECURRENCE_EVIDENCE_OBSERVED",
       "DUPLICATE_RECURRENCE_SUPPRESSED",
@@ -880,7 +998,10 @@
     "test.continuity-evolution.c16-canonical-burden-policy",
     "test.continuity-evolution.c17-canonical-supersession-transaction",
     "test.continuity-evolution.c18-projection-current-set-disposition",
-    "test.continuity-evolution.c19-transient-projection-currentness"
+    "test.continuity-evolution.c19-transient-projection-currentness",
+    "test.continuity-evolution.c20-orphan-supersession-exclusion",
+    "test.continuity-evolution.c21-supersession-authority-currentness",
+    "test.continuity-evolution.c22-source-bound-simulated-clock"
   ],
   "successorBoundaries": [
     "Runtime Failure & Recovery Spine",

@@ -246,8 +246,11 @@ source-derived exact target travel together through review, authority,
 acceptance, recurrence, conflicts and projection. Current Context is transient and lease-bound, aggregate events
 recompute exact aggregate-owned lineage before mutation, and record, transient-context and Burden projections
 recompute that same lineage and carry aggregate-ownership receipts. Transient projection additionally requires an
-aggregate/lease-bound current clock receipt. Supersession is a recomputed canonical atomic transaction and emits an exact
-content-addressed current-record-set receipt; applicability blocks conflicts and stale receipts, excludes prior records,
+  latest aggregate-owned snapshot from a registered deterministic simulated clock source; its receipts say
+  `TRANSIENT_SIMULATED_CURRENT`, `simulatedClock=true`, `liveClockGranted=false`, and
+  `externalTimeServiceUsed=false`. Supersession is a recomputed canonical atomic transaction, rejects every
+  ordinary/dangling superseding successor, proves all successor authority evidence current at the exact transaction time,
+  and emits an exact content-addressed current-record-set receipt; applicability blocks conflicts and stale receipts, excludes prior records,
 recurrence and sibling projection are exact-scope, and
 legacy Dream v0 cannot bypass durable acceptance or synchronization. Applicable
 context requires the exact current record set, exact class+target and explicitly admitted authority class;

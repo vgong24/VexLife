@@ -100,8 +100,8 @@
     {
       "path": "blueprint/fragments/tests.json",
       "mode": "100644",
-      "bytes": 26936,
-      "sha256": "55da0b642e26e97806b409ff9ad958d47dd0bc83113fc6b9434ee306c53a4e73"
+      "bytes": 27817,
+      "sha256": "6787b09f6e973abc13289fa174099972ed0cfd3befacd7ee8cb77ed6187309f5"
     },
     {
       "path": "blueprint/home-bridge-registry.json",

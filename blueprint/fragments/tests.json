@@ -562,5 +562,17 @@
   {
     "testRef": "test.continuity-evolution.c19-transient-projection-currentness",
     "brief": "Current transient projection consumes an exact aggregate/lease-bound source-managed clock receipt and rejects pre-observation, expiry, stale, cross-lease or replayed clocks without mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c20-orphan-supersession-exclusion",
+    "brief": "A superseding successor is absent from accepted current truth unless one exact atomic transaction admits it; orphan, dangling, incompatible, duplicate and transactionless claims reject without aggregate mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c21-supersession-authority-currentness",
+    "brief": "Every successor authority evidence interval contains the exact atomic supersession time, with boundary and mixed-window failures bound into transaction and current-record-set proof."
+  },
+  {
+    "testRef": "test.continuity-evolution.c22-source-bound-simulated-clock",
+    "brief": "Transient currentness consumes only the latest aggregate-owned snapshot from the registered deterministic simulated clock source and remains explicitly non-live and no-effect."
   }
 ]
