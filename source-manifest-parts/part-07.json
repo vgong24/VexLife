@@ -2,6 +2,36 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/recovery-status.mjs",
+      "mode": "100644",
+      "bytes": 816,
+      "sha256": "b898c30ae63b55c1234cd760134aa9b986fd77bdb6f33a33ed9a03163edb07ec"
+    },
+    {
+      "path": "scripts/registry-summary.mjs",
+      "mode": "100644",
+      "bytes": 317,
+      "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
+    },
+    {
+      "path": "scripts/scheduler-check.mjs",
+      "mode": "100644",
+      "bytes": 5149,
+      "sha256": "bd738bf39c00d23a08aa8e5a1e5886c4d7cfc87b280f2b2da634526538964939"
+    },
+    {
+      "path": "scripts/scheduler-simulate.mjs",
+      "mode": "100644",
+      "bytes": 32557,
+      "sha256": "355c3e03d6bc8f7530dfda8cc09fe67f281438a7aedd75ff5a0767586d566b50"
+    },
+    {
+      "path": "scripts/scheduler-status.mjs",
+      "mode": "100644",
+      "bytes": 3002,
+      "sha256": "413f1c0d7736176efbb4da2ce8601917c06ab22dc34496f1f31b2a48dc691b02"
+    },
+    {
       "path": "scripts/serve-browser.mjs",
       "mode": "100644",
       "bytes": 1528,
@@ -114,36 +144,6 @@
       "mode": "100644",
       "bytes": 7921,
       "sha256": "3ceef5d425232ec90b4d59a6e9a8b66510124d0f748ebd695a437e56a48cda81"
-    },
-    {
-      "path": "src/core/impact.mjs",
-      "mode": "100644",
-      "bytes": 2182,
-      "sha256": "ff17dd8fc7281c6399d6bc172fc5d28df2b9a5262bfd26a2340e67f9430798f7"
-    },
-    {
-      "path": "src/core/implementation-plan.mjs",
-      "mode": "100644",
-      "bytes": 5655,
-      "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
-    },
-    {
-      "path": "src/core/intent-checkpoint.mjs",
-      "mode": "100644",
-      "bytes": 10659,
-      "sha256": "362321f878e75f75359f09f13ae2edbae525e72740ac38bd4504695774f21520"
-    },
-    {
-      "path": "src/core/intent-completion-verifier.mjs",
-      "mode": "100644",
-      "bytes": 21202,
-      "sha256": "96f0a9b20a735753f6974481e468f1f04f87b31785136ca131eb23c945028c36"
-    },
-    {
-      "path": "src/core/intent-projection.mjs",
-      "mode": "100644",
-      "bytes": 5452,
-      "sha256": "cffe6f351d90941366f748c7e03fae7a2bcae86abc6464f19776ebaf341b4a7f"
     }
   ]
 }

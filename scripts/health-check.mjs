@@ -9,6 +9,7 @@ import { validateIntegratedSchedulerSimulationReceipt } from '../src/core/schedu
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 import { resolveSafeGeneratedReceiptPath } from '../src/core/utils.mjs';
 import { validateContinuityEvolutionSimulationReceipt } from './evolution-simulate.mjs';
+import { validateIntegratedRecoverySimulationReceipt } from './recovery-simulate.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const receiptIndex = process.argv.indexOf('--receipt');
@@ -31,6 +32,7 @@ let receiptState = 'NOT_RUN';
 const receiptErrors = [];
 let schedulerSimulationState = 'NOT_RUN';
 let continuitySimulationState = 'NOT_RUN';
+let recoverySimulationState = 'NOT_RUN';
 if (fs.existsSync(receiptPath)) {
   try {
     receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
@@ -126,7 +128,47 @@ if (fs.existsSync(receiptPath)) {
           receiptErrors.push('PR-ready receipt does not exactly bind the current continuity evolution simulation receipt');
         }
         continuitySimulationState = continuityValidation.ok && receiptErrors.length === 0 ? 'EXECUTED_CURRENT' : 'INVALID';
-        receiptState = schedulerSimulationState === 'EXECUTED_CURRENT' && continuitySimulationState === 'EXECUTED_CURRENT'
+        const recoveryPath = path.resolve(ROOT, bundle.blueprint.runtimeRecovery.simulationContract.receiptPath);
+        let recoveryReceipt = null;
+        try {
+          recoveryReceipt = JSON.parse(fs.readFileSync(recoveryPath, 'utf8'));
+        } catch (error) {
+          receiptErrors.push(`runtime recovery simulation receipt unavailable: ${error.message}`);
+        }
+        const recoveryValidation = validateIntegratedRecoverySimulationReceipt(recoveryReceipt, {
+          runtimeRecoveryRegistry: bundle.blueprint.runtimeRecovery,
+          blueprintHash: blueprint.semanticHash,
+          sourceTreeSha256: sourceManifest.treeSha256,
+          repositoryGit: repository.git
+        });
+        receiptErrors.push(...recoveryValidation.errors);
+        const embeddedRecovery = receipt.recoverySimulation;
+        if (embeddedRecovery?.state !== 'EXECUTED_CURRENT' ||
+            embeddedRecovery?.receiptPath !== bundle.blueprint.runtimeRecovery.simulationContract.receiptPath ||
+            embeddedRecovery?.semanticFingerprint !== recoveryReceipt?.semanticFingerprint ||
+            embeddedRecovery?.candidateHeadSha !== repository.git.candidateHeadSha ||
+            embeddedRecovery?.testedCheckoutSha !== repository.git.checkoutSha ||
+            embeddedRecovery?.testedMergeSha !== repository.git.testedMergeSha ||
+            embeddedRecovery?.baseSha !== repository.git.baseSha ||
+            embeddedRecovery?.sourceTreeSha256 !== sourceManifest.treeSha256 ||
+            embeddedRecovery?.blueprintHash !== blueprint.semanticHash ||
+            embeddedRecovery?.runtimeRecoveryRegistryHash !== recoveryReceipt?.runtimeRecoveryRegistryHash ||
+            JSON.stringify(embeddedRecovery?.journeyStates ?? []) !== JSON.stringify(recoveryReceipt?.journeyStates ?? []) ||
+            embeddedRecovery?.canonicalFailureFingerprint !== recoveryReceipt?.canonicalFailure?.semanticFingerprint ||
+            embeddedRecovery?.firstExecutorOutcome !== 'FAILED_RECOVERABLE' ||
+            embeddedRecovery?.finalExecutorOutcome !== 'SUCCEEDED' ||
+            JSON.stringify(embeddedRecovery?.schedulerBindings ?? {}) !== JSON.stringify(recoveryReceipt?.schedulerBindings ?? {}) ||
+            embeddedRecovery?.terminalReceiptFingerprint !== recoveryReceipt?.terminalReceipt?.semanticFingerprint ||
+            embeddedRecovery?.canonicalWorkNodeRef !== bundle.blueprint.runtimeRecovery.simulationContract.workNodeRef ||
+            embeddedRecovery?.canonicalWorkNodeFinalState !== 'COMPLETED' ||
+            embeddedRecovery?.finalAggregateFingerprint !== recoveryReceipt?.finalAggregateFingerprint ||
+            embeddedRecovery?.externalEffectsExecuted !== false || embeddedRecovery?.realModelInvoked !== false ||
+            embeddedRecovery?.modelWeightsChanged !== false || (embeddedRecovery?.errors ?? []).length !== 0) {
+          receiptErrors.push('PR-ready receipt does not exactly bind the current runtime recovery simulation receipt');
+        }
+        recoverySimulationState = recoveryValidation.ok && receiptErrors.length === 0 ? 'EXECUTED_CURRENT' : 'INVALID';
+        receiptState = schedulerSimulationState === 'EXECUTED_CURRENT' &&
+          continuitySimulationState === 'EXECUTED_CURRENT' && recoverySimulationState === 'EXECUTED_CURRENT'
           ? 'EXECUTED_CURRENT'
           : 'INVALID';
       }
@@ -153,6 +195,7 @@ console.log(JSON.stringify({
   receiptState,
   schedulerSimulationState,
   continuitySimulationState,
+  recoverySimulationState,
   receiptPath: path.relative(ROOT, receiptPath).split(path.sep).join('/'),
   registryChecks: registry.stats.checks,
   candidateHeadSha: repository.git.candidateHeadSha,

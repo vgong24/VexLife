@@ -1,0 +1,254 @@
+{
+  "schemaVersion": "vexlife.runtime-recovery-registry/v0",
+  "registryRef": "registry.vexlife.runtime-recovery.001",
+  "registryVersion": 1,
+  "purpose": "Own one deterministic no-effect failure, recovery, retry, checkpoint, context, rollback, replay and projection contract before any later real runtime effect may be admitted.",
+  "canonicalSourceRef": "source.blueprint.runtime-recovery-registry",
+  "canonicalSource": {
+    "path": "blueprint/runtime-recovery-registry.json",
+    "sourceClass": "SOURCE_MANAGED_CONTENT_ADDRESSED_RUNTIME_CONTRACT"
+  },
+  "systemRef": "system.vexlife.runtime-failure-recovery",
+  "failureEnvelope": {
+    "contractRef": "contract.vexlife.runtime-failure-envelope/v0",
+    "identityRule": "failureRef and semanticFingerprint derive from the complete canonical source-bound envelope; a thrown string or stack is evidence input only",
+    "requiredFields": [
+      "failureRef",
+      "failureClass",
+      "originRef",
+      "workNodeRef",
+      "schedulerGeneration",
+      "operationRef",
+      "attemptRef",
+      "sourceStateFingerprint",
+      "expectedTransitionRef",
+      "observedAt",
+      "currentness",
+      "retriableClass",
+      "partialEffectState",
+      "humanAttentionClass",
+      "evidenceRefs",
+      "semanticFingerprint"
+    ]
+  },
+  "failureClasses": [
+    "UNEXPECTED_EXCEPTION",
+    "INVALID_INDEX_OR_BOUNDS",
+    "INVALID_STATE_TRANSITION",
+    "MALFORMED_INPUT_OR_RESULT",
+    "CONTEXT_BUDGET_EXCEEDED",
+    "MODEL_TIMEOUT_SIMULATED",
+    "RESOURCE_EXHAUSTION_SIMULATED",
+    "PROCESS_TERMINATED_SIMULATED",
+    "DISK_FULL_SIMULATED",
+    "PARTIAL_WRITE_SIMULATED",
+    "NETWORK_INTERRUPTION_SIMULATED",
+    "DUPLICATE_OR_REPLAYED_EVENT",
+    "STALE_OR_CORRUPTED_CHECKPOINT",
+    "ROLLBACK_FAILED_SIMULATED",
+    "UNKNOWN_FAILURE"
+  ],
+  "executorOutcomes": [
+    "SUCCEEDED",
+    "FAILED_RECOVERABLE",
+    "FAILED_NEEDS_HUMAN",
+    "FAILED_QUARANTINED",
+    "FAILED_BLOCKED"
+  ],
+  "recoveryActions": [
+    "RETRY_SAME_BUDGET",
+    "RETRY_REDUCED_BUDGET",
+    "CHECKPOINT_AND_WAIT",
+    "CONDENSE_CONTEXT_AND_REACQUIRE",
+    "SPLIT_WORK_NODE",
+    "ROLLBACK_TO_BEFORE_IMAGE",
+    "RESTORE_LAST_KNOWN_GOOD",
+    "QUARANTINE_ADAPTER_OR_ARTIFACT",
+    "REQUEST_HUMAN_DECISION",
+    "TERMINAL_BLOCK"
+  ],
+  "retryPolicy": {
+    "contractRef": "contract.vexlife.runtime-retry-policy/v0",
+    "budgetRef": "budget.vexlife.runtime-recovery.default",
+    "maximumAttemptCount": 3,
+    "maximumRepeatedIdenticalFailureCount": 2,
+    "maximumWallTimeClass": "SHORT_DETERMINISTIC",
+    "freshCurrentnessRequired": true,
+    "freshResourceAdmissionRequired": true,
+    "freshContextAdmissionRequired": true,
+    "checkpointBeforeConsequentialRetry": true,
+    "callerMayBroadenAuthority": false,
+    "callerMayResetBudget": false,
+    "recursiveRetryAllowed": false
+  },
+  "checkpointContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-checkpoint/v0",
+    "requiresAcceptedSchedulerCheckpointFingerprint": true,
+    "requiresExactSixLeaseReleaseFingerprints": true,
+    "freshGenerationRequired": true,
+    "rejects": [
+      "STALE",
+      "CORRUPTED",
+      "CROSS_WORK",
+      "CROSS_GENERATION",
+      "WRONG_SOURCE",
+      "SAME_REF_DIFFERENT_CONTENT"
+    ]
+  },
+  "contextRecoveryContract": {
+    "contractRef": "contract.vexlife.runtime-context-recovery/v0",
+    "modelInvocationBeforeFitAllowed": false,
+    "invisibleTruncationAllowed": false,
+    "sourceHistoryDeletionClaimAllowed": false,
+    "preservedFields": [
+      "immutableSourceCoverage",
+      "preservedIntentRef",
+      "preservedInterpretationRef",
+      "preservedUnknownRefs",
+      "preservedAuthorityRef",
+      "returnRouteRef"
+    ],
+    "oversizeRoutes": [
+      "SPLIT_WORK_NODE",
+      "REQUEST_HUMAN_DECISION",
+      "TERMINAL_BLOCK"
+    ]
+  },
+  "transactionalRecoveryContract": {
+    "contractRef": "contract.vexlife.runtime-transactional-recovery/v0",
+    "requiredEvidence": [
+      "expectedBeforeFingerprint",
+      "observedBeforeFingerprint",
+      "partialResultFingerprint",
+      "rollbackReadBackFingerprint",
+      "lastKnownGoodRef"
+    ],
+    "rollbackFailureGreenAllowed": false,
+    "admittedAdapterClass": "DETERMINISTIC_NO_EFFECT"
+  },
+  "recoveryAggregate": {
+    "contractRef": "contract.vexlife.runtime-recovery-aggregate/v0",
+    "stateOwnerRef": "state.runtime-recovery",
+    "requiredFields": [
+      "aggregateRef",
+      "workNodeRef",
+      "sourceStateFingerprint",
+      "schedulerGeneration",
+      "phase",
+      "activeFailure",
+      "attemptLedger",
+      "retryBudget",
+      "checkpointLineage",
+      "rollbackLineage",
+      "quarantinedRefs",
+      "lastKnownGoodRefs",
+      "humanDecisionGates",
+      "terminalRecoveryReceipts",
+      "acceptedExternalEvents",
+      "semanticFingerprint"
+    ],
+    "replayRule": "exact event refs are accepted once; same-ref/different-content and stale generation evidence fail closed",
+    "semanticNoOpRule": "equal aggregate projection fingerprints do not emit another Queue, Terrain, Health or Guide revision"
+  },
+  "projectionIdentities": [
+    {
+      "projectionRef": "projection.runtime-recovery.queue",
+      "projectionKind": "QUEUE"
+    },
+    {
+      "projectionRef": "projection.runtime-recovery.terrain",
+      "projectionKind": "TERRAIN"
+    },
+    {
+      "projectionRef": "projection.runtime-recovery.health",
+      "projectionKind": "HEALTH"
+    },
+    {
+      "projectionRef": "projection.runtime-recovery.guide",
+      "projectionKind": "GUIDE"
+    }
+  ],
+  "processRefs": [
+    "process.vexlife.runtime.capture-classify",
+    "process.vexlife.runtime.recover-execute",
+    "process.vexlife.runtime.project-recovery"
+  ],
+  "moduleRefs": [
+    "module.vexlife.core.runtime-failure",
+    "module.vexlife.core.recovery-policy",
+    "module.vexlife.core.runtime-recovery",
+    "module.vexlife.core.recovery-fault-injector",
+    "module.vexlife.script.recovery-check",
+    "module.vexlife.script.recovery-simulate",
+    "module.vexlife.script.recovery-status"
+  ],
+  "testRefs": [
+    "test.runtime-recovery.r0-totality",
+    "test.runtime-recovery.r1-canonical-identity",
+    "test.runtime-recovery.r2-malformed-visible",
+    "test.runtime-recovery.r3-bounded-budget",
+    "test.runtime-recovery.r4-recurrence-stop",
+    "test.runtime-recovery.r5-checkpoint-required",
+    "test.runtime-recovery.r6-fresh-generation",
+    "test.runtime-recovery.r7-resource-reduction",
+    "test.runtime-recovery.r8-context-no-invoke",
+    "test.runtime-recovery.r9-context-preservation",
+    "test.runtime-recovery.r10-context-oversize-route",
+    "test.runtime-recovery.r11-model-timeout",
+    "test.runtime-recovery.r12-process-restart",
+    "test.runtime-recovery.r13-disk-full",
+    "test.runtime-recovery.r14-partial-write",
+    "test.runtime-recovery.r15-network-checkpoint",
+    "test.runtime-recovery.r16-replay-once",
+    "test.runtime-recovery.r17-checkpoint-rejection",
+    "test.runtime-recovery.r18-rollback-failure",
+    "test.runtime-recovery.r19-last-known-good",
+    "test.runtime-recovery.r20-human-decision",
+    "test.runtime-recovery.r21-canonical-projections",
+    "test.runtime-recovery.r22-semantic-no-op",
+    "test.runtime-recovery.r23-integrated-scheduler-workgraph",
+    "test.runtime-recovery.r24-full-gate"
+  ],
+  "simulationContract": {
+    "contractRef": "contract.runtime-recovery.integrated-simulation/v0",
+    "checkRef": "check.runtime-recovery",
+    "receiptPath": "generated/health/runtime-recovery-simulation.json",
+    "workNodeRef": "work.scheduler.simulation",
+    "requiredJourneyStates": [
+      "WORK_ADMITTED",
+      "DETERMINISTIC_EXECUTOR_THROWN",
+      "CANONICAL_FAILURE_FORMED",
+      "CHECKPOINT_AND_SIX_LEASE_TRANSITION_BOUND",
+      "SOURCE_MANAGED_RETRY_ADMITTED",
+      "CONTEXT_AND_RESOURCE_REDUCTION_PROVEN",
+      "FRESH_GENERATION_RETRY_SUCCEEDED",
+      "ROLLBACK_AND_LAST_KNOWN_GOOD_PROVEN",
+      "RESTART_AND_REPLAY_REJECTED",
+      "WORKGRAPH_COMPLETION_FINGERPRINT_BOUND",
+      "RECOVERY_TERMINAL_RECEIPT_FORMED",
+      "QUEUE_TERRAIN_HEALTH_GUIDE_PROJECTED"
+    ],
+    "requiredSchedulerBindings": [
+      "checkpointFingerprint",
+      "completionVerificationFingerprint",
+      "completionEvidenceLineageFingerprint",
+      "workgraphTransitionFingerprint",
+      "completionFingerprint"
+    ],
+    "externalEffectsExecuted": false,
+    "realModelInvoked": false,
+    "modelWeightsChanged": false,
+    "selfCertifiedRuntimeEvidence": false
+  },
+  "heldBoundaries": [
+    "no full ConcernWatch threshold runtime",
+    "no Build Admission Coverage or real mutation enforcement",
+    "no Judgment Route Compiler, Qwen training or evaluation",
+    "no Council of Lenses or Memory Conformance adapter",
+    "no embodiment, Godot or Open-LLM-VTuber runtime",
+    "no native platform implementation",
+    "no real model, shell, Git, filesystem, network or publication effect",
+    "no live OS clock, live identity or synchronization activation",
+    "no model-weight training, removal or activation"
+  ]
+}

@@ -1531,5 +1531,239 @@
       "test.continuity-evolution.e17-recurrence-no-op",
       "test.continuity-evolution.e21-canonical-projections"
     ]
+  },
+  {
+    "processRef": "process.vexlife.runtime.capture-classify",
+    "processVersion": 1,
+    "purpose": "Capture every thrown, malformed, timed-out, exhausted, interrupted, stale or unknown deterministic boundary result as one source-bound canonical failure envelope without exposing raw stacks as current state.",
+    "applicabilityRules": [
+      "an admitted deterministic executor boundary did not succeed"
+    ],
+    "requiredInputs": [
+      "originRef",
+      "workNodeRef",
+      "schedulerGeneration",
+      "operationRef",
+      "attemptRef",
+      "sourceStateFingerprint",
+      "expectedTransitionRef",
+      "observedAt"
+    ],
+    "optionalInputs": [
+      "typedFailureClass",
+      "partialEffectState",
+      "evidenceRefs"
+    ],
+    "sourceResolutionRules": [
+      "resolve class and defaults from registry.vexlife.runtime-recovery.001",
+      "treat thrown text and stack identity as evidence input only",
+      "derive failureRef and semanticFingerprint from canonical content"
+    ],
+    "preconditions": [
+      "work, generation and source identity are exact",
+      "unknown values fail closed as UNKNOWN_FAILURE"
+    ],
+    "steps": [
+      "capture-boundary-failure",
+      "classify-source-managed",
+      "form-content-addressed-envelope",
+      "append-attempt-ledger"
+    ],
+    "effectOwnerRule": "runtime recovery state owner writes deterministic metadata only and grants no retry or effect authority",
+    "authorityEnvelope": {
+      "effects": [
+        "WRITE_RECOVERY_METADATA"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "FAILED_RECOVERABLE",
+      "FAILED_NEEDS_HUMAN",
+      "FAILED_QUARANTINED",
+      "FAILED_BLOCKED"
+    ],
+    "returnRouteRule": "return compact failure class, preservation, partial-effect and evidence refs with source descent",
+    "closureRule": "failure remains active until one exact terminal recovery receipt closes or blocks it",
+    "recoveryRule": "malformed failure input becomes visible UNKNOWN_FAILURE and never success",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.runtime.recover-execute"
+    ],
+    "invalidationTriggers": [
+      "source-state-change",
+      "scheduler-generation-change",
+      "same-ref-different-content"
+    ],
+    "testRefs": [
+      "test.runtime-recovery.r0-totality",
+      "test.runtime-recovery.r1-canonical-identity",
+      "test.runtime-recovery.r2-malformed-visible"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.runtime.recover-execute",
+    "processVersion": 1,
+    "purpose": "Resolve bounded recovery from current policy, checkpoint, lease, resource, context, before-image and replay evidence, then retry, wait, split, roll back, restore, quarantine, ask or block without caller-authored authority.",
+    "applicabilityRules": [
+      "one canonical active failure exists"
+    ],
+    "requiredInputs": [
+      "failureEnvelope",
+      "recoveryAggregate",
+      "retryPolicy",
+      "currentAdmissionEvidence"
+    ],
+    "optionalInputs": [
+      "recoveryCheckpoint",
+      "beforeImage",
+      "lastKnownGoodRef",
+      "smallestHumanQuestionRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve action only from current runtime recovery registry policy",
+      "consume exact accepted scheduler checkpoint and six-lease transition fingerprints",
+      "reject budget reset, stale generation, wrong source and broadened authority"
+    ],
+    "preconditions": [
+      "retry count, wall time and recurrence are within source-managed bounds",
+      "consequential retry has an exact current checkpoint",
+      "no real effect adapter is admitted in this implementation wave"
+    ],
+    "steps": [
+      "resolve-policy",
+      "checkpoint-and-transition-leases",
+      "revalidate-context-and-resource",
+      "retry-or-rollback-or-quarantine",
+      "verify-workgraph-completion",
+      "form-terminal-recovery-receipt"
+    ],
+    "effectOwnerRule": "source policy and accepted scheduler evidence own recovery admission; callers cannot grant retries, scope or authority",
+    "authorityEnvelope": {
+      "effects": [
+        "WRITE_RECOVERY_METADATA",
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "RETRY_SAME_BUDGET",
+      "RETRY_REDUCED_BUDGET",
+      "CHECKPOINT_AND_WAIT",
+      "CONDENSE_CONTEXT_AND_REACQUIRE",
+      "SPLIT_WORK_NODE",
+      "ROLLBACK_TO_BEFORE_IMAGE",
+      "RESTORE_LAST_KNOWN_GOOD",
+      "QUARANTINE_ADAPTER_OR_ARTIFACT",
+      "REQUEST_HUMAN_DECISION",
+      "TERMINAL_BLOCK"
+    ],
+    "returnRouteRule": "return exact recovery receipt, preserved refs, next safe action and smallest human decision if any",
+    "closureRule": "close only through exact success, quarantine, human gate or terminal block receipt",
+    "recoveryRule": "rollback failure remains quarantined or blocked and never projects green Health",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "process.vexlife.runtime.project-recovery",
+      "process.vexlife.intent.scheduler-project-runtime"
+    ],
+    "invalidationTriggers": [
+      "checkpoint-currentness-change",
+      "resource-admission-change",
+      "context-budget-change",
+      "retry-budget-exhausted",
+      "replayed-external-event"
+    ],
+    "testRefs": [
+      "test.runtime-recovery.r3-bounded-budget",
+      "test.runtime-recovery.r4-recurrence-stop",
+      "test.runtime-recovery.r5-checkpoint-required",
+      "test.runtime-recovery.r6-fresh-generation",
+      "test.runtime-recovery.r7-resource-reduction",
+      "test.runtime-recovery.r8-context-no-invoke",
+      "test.runtime-recovery.r9-context-preservation",
+      "test.runtime-recovery.r10-context-oversize-route",
+      "test.runtime-recovery.r14-partial-write",
+      "test.runtime-recovery.r16-replay-once",
+      "test.runtime-recovery.r17-checkpoint-rejection",
+      "test.runtime-recovery.r18-rollback-failure",
+      "test.runtime-recovery.r23-integrated-scheduler-workgraph"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.runtime.project-recovery",
+    "processVersion": 1,
+    "purpose": "Derive small changed-only Queue, Terrain, Health and Guide answers from the one canonical recovery aggregate without copying raw exceptions or machine dumps.",
+    "applicabilityRules": [
+      "state.runtime-recovery exists"
+    ],
+    "requiredInputs": [
+      "recoveryAggregate"
+    ],
+    "optionalInputs": [
+      "priorProjectionFingerprint"
+    ],
+    "sourceResolutionRules": [
+      "read only bounded aggregate fields",
+      "suppress equal semantic projections"
+    ],
+    "preconditions": [
+      "aggregate fingerprint is canonical",
+      "raw stacks and payloads remain source-descendable"
+    ],
+    "steps": [
+      "read-canonical-aggregate",
+      "derive-queue-terrain-health-guide",
+      "compare-semantic-fingerprint",
+      "emit-changed-only"
+    ],
+    "effectOwnerRule": "projection is read-only and grants no retry, effect or human authority",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "CLEAR",
+      "ATTENTION",
+      "BLOCKED"
+    ],
+    "returnRouteRule": "answer what failed, what was preserved, partial change, retry safety, active route, wait, human need, proof and block",
+    "closureRule": "unchanged projection is a semantic no-op",
+    "recoveryRule": "rebuild from canonical aggregate and immutable receipt refs",
+    "foundationDependencies": [
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "projection.runtime-recovery.queue",
+      "projection.runtime-recovery.terrain",
+      "projection.runtime-recovery.health",
+      "projection.runtime-recovery.guide"
+    ],
+    "invalidationTriggers": [
+      "active-failure-change",
+      "attempt-ledger-change",
+      "checkpoint-change",
+      "rollback-change",
+      "human-gate-change",
+      "terminal-receipt-change"
+    ],
+    "testRefs": [
+      "test.runtime-recovery.r20-human-decision",
+      "test.runtime-recovery.r21-canonical-projections",
+      "test.runtime-recovery.r22-semantic-no-op"
+    ]
   }
 ]

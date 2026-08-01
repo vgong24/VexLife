@@ -849,5 +849,100 @@
       "blueprint/intent-scheduler-registry.json",
       "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.runtime-failure",
+    "path": "src/core/runtime-failure.mjs",
+    "role": "Forms and validates content-addressed source/work/generation/operation/attempt-bound failure envelopes while keeping thrown strings and stacks as evidence input rather than canonical state.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.runtime-recovery",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.recovery-policy",
+      "module.vexlife.core.runtime-recovery",
+      "module.vexlife.script.recovery-check"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.recovery-policy",
+    "path": "src/core/recovery-policy.mjs",
+    "role": "Resolves one bounded recovery action from canonical failure, aggregate, checkpoint, resource, context and unchanged-authority evidence; callers cannot author retries or reset budgets.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.runtime-recovery",
+      "module.vexlife.core.runtime-failure",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.runtime-recovery"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.runtime-recovery",
+    "path": "src/core/runtime-recovery.mjs",
+    "role": "Owns the serializable recovery aggregate, total executor boundary, exact checkpoint admission, context-limit routes, fresh-generation closure, replay protection and changed-only Queue/Terrain/Health/Guide projections.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.runtime-recovery",
+      "state.intent-checkpoint",
+      "state.context-lease",
+      "state.intent-scheduler",
+      "module.vexlife.core.runtime-failure",
+      "module.vexlife.core.recovery-policy",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.recovery-simulate",
+      "module.vexlife.script.recovery-status"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.recovery-fault-injector",
+    "path": "src/core/recovery-fault-injector.mjs",
+    "role": "Provides deterministic no-effect timeout, exhaustion, termination, disk, partial-write, network and rollback fixtures plus before-image, read-back, last-known-good and quarantine receipts.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.runtime-recovery",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.recovery-simulate"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
   }
 ]

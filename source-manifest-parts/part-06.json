@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/check-syntax.mjs",
+      "mode": "100644",
+      "bytes": 1187,
+      "sha256": "c09a16c78e67eae90abf371867053419f85674ebd02e976fd2183f91152b1a22"
+    },
+    {
+      "path": "scripts/create-platform.mjs",
+      "mode": "100644",
+      "bytes": 1086,
+      "sha256": "1c6a9833e691bf0a05ce478c044c9f32abdd8036bbd3a1da769b56003223b7e2"
+    },
+    {
       "path": "scripts/current.mjs",
       "mode": "100644",
       "bytes": 480,
@@ -52,8 +64,8 @@
     {
       "path": "scripts/health-check.mjs",
       "mode": "100644",
-      "bytes": 10181,
-      "sha256": "644994468c10d883dba398dff30ea9b22192c97e0a284ee64a372ab8d3c7e7be"
+      "bytes": 13496,
+      "sha256": "7b11e5fb19b30edc49a25fc807c5c64cfcad2dff1d905e2a16735bc9a01d6971"
     },
     {
       "path": "scripts/impact-report.mjs",
@@ -106,8 +118,8 @@
     {
       "path": "scripts/pr-ready.mjs",
       "mode": "100644",
-      "bytes": 11465,
-      "sha256": "7129429142e11908fd764327ab688b86fc7dd35db5476f57d59dd0855d2c6864"
+      "bytes": 14662,
+      "sha256": "682975e91d941bb7aced6302e828312269b7a9405a8260298465dd21682ff094"
     },
     {
       "path": "scripts/provision-model.mjs",
@@ -122,28 +134,16 @@
       "sha256": "ce93d4ead2d7cdf1b221a63be589f693c77e676c3dfebe67e8af1492d2e1c3fd"
     },
     {
-      "path": "scripts/registry-summary.mjs",
+      "path": "scripts/recovery-check.mjs",
       "mode": "100644",
-      "bytes": 317,
-      "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
+      "bytes": 7085,
+      "sha256": "7b09144798c75ee2c037106607cfbdcc48b08d5730471d840d7ce8c11e190430"
     },
     {
-      "path": "scripts/scheduler-check.mjs",
+      "path": "scripts/recovery-simulate.mjs",
       "mode": "100644",
-      "bytes": 5149,
-      "sha256": "bd738bf39c00d23a08aa8e5a1e5886c4d7cfc87b280f2b2da634526538964939"
-    },
-    {
-      "path": "scripts/scheduler-simulate.mjs",
-      "mode": "100644",
-      "bytes": 32557,
-      "sha256": "355c3e03d6bc8f7530dfda8cc09fe67f281438a7aedd75ff5a0767586d566b50"
-    },
-    {
-      "path": "scripts/scheduler-status.mjs",
-      "mode": "100644",
-      "bytes": 3002,
-      "sha256": "413f1c0d7736176efbb4da2ce8601917c06ab22dc34496f1f31b2a48dc691b02"
+      "bytes": 19895,
+      "sha256": "fa7f818309e126ad6d93e5ddd023240100ffe67e5c24e9e2fc1eed71b0a080c5"
     }
   ]
 }

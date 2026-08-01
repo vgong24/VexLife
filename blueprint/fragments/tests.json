@@ -586,5 +586,105 @@
   {
     "testRef": "test.continuity-evolution.c25-context-before-simulated-projection",
     "brief": "A simulated clock observation cannot precede either lease observation or context acceptance, and the exact context-acceptance time survives snapshot, clock receipt, transient/aggregate projection and integrated receipt lineage."
+  },
+  {
+    "testRef": "test.runtime-recovery.r0-totality",
+    "brief": "Every admitted deterministic executor boundary returns one canonical outcome; thrown values cannot escape, disappear or become success."
+  },
+  {
+    "testRef": "test.runtime-recovery.r1-canonical-identity",
+    "brief": "Failure identity is source, work, generation, operation, attempt and transition bound, content-addressed and replayable."
+  },
+  {
+    "testRef": "test.runtime-recovery.r2-malformed-visible",
+    "brief": "Malformed and unknown failures remain visible as canonical fail-closed state rather than raw or green output."
+  },
+  {
+    "testRef": "test.runtime-recovery.r3-bounded-budget",
+    "brief": "Attempt, wall-time and identical-recurrence budgets are finite and source-managed."
+  },
+  {
+    "testRef": "test.runtime-recovery.r4-recurrence-stop",
+    "brief": "An unchanged failure fingerprint at the registered threshold stops retry and routes to decision, quarantine or block."
+  },
+  {
+    "testRef": "test.runtime-recovery.r5-checkpoint-required",
+    "brief": "Consequential retry is never authorized without one exact current checkpoint."
+  },
+  {
+    "testRef": "test.runtime-recovery.r6-fresh-generation",
+    "brief": "Failure checkpointing binds six released leases and old scheduler generations cannot resume."
+  },
+  {
+    "testRef": "test.runtime-recovery.r7-resource-reduction",
+    "brief": "Resource exhaustion consumes current resource evidence and routes only to an admitted reduced budget or hold."
+  },
+  {
+    "testRef": "test.runtime-recovery.r8-context-no-invoke",
+    "brief": "Context overflow prevents model invocation before fit is proved."
+  },
+  {
+    "testRef": "test.runtime-recovery.r9-context-preservation",
+    "brief": "Context recovery preserves exact immutable ranges, intent, interpretation, unknowns, authority and return route."
+  },
+  {
+    "testRef": "test.runtime-recovery.r10-context-oversize-route",
+    "brief": "A still-oversized candidate splits, asks the smallest clarification or blocks without invisible truncation."
+  },
+  {
+    "testRef": "test.runtime-recovery.r11-model-timeout",
+    "brief": "A deterministic model timeout forms typed failure and bounded retry evidence."
+  },
+  {
+    "testRef": "test.runtime-recovery.r12-process-restart",
+    "brief": "A simulated process termination restores only an exact serialized aggregate and current checkpoint."
+  },
+  {
+    "testRef": "test.runtime-recovery.r13-disk-full",
+    "brief": "A simulated disk-full failure cannot report unsafe write completion."
+  },
+  {
+    "testRef": "test.runtime-recovery.r14-partial-write",
+    "brief": "A simulated partial write is read back and rolled back or quarantined."
+  },
+  {
+    "testRef": "test.runtime-recovery.r15-network-checkpoint",
+    "brief": "A simulated network interruption checkpoints rather than repeating blindly."
+  },
+  {
+    "testRef": "test.runtime-recovery.r16-replay-once",
+    "brief": "Duplicate, replayed, stale and same-ref/different-content events reject once-only."
+  },
+  {
+    "testRef": "test.runtime-recovery.r17-checkpoint-rejection",
+    "brief": "Corrupted, stale, cross-work, cross-generation and wrong-source checkpoints fail closed."
+  },
+  {
+    "testRef": "test.runtime-recovery.r18-rollback-failure",
+    "brief": "Rollback failure becomes quarantine or block and never restores green Health."
+  },
+  {
+    "testRef": "test.runtime-recovery.r19-last-known-good",
+    "brief": "Last-known-good restoration is exact and read-back fingerprint verified."
+  },
+  {
+    "testRef": "test.runtime-recovery.r20-human-decision",
+    "brief": "Human decision is explicit, source-routed and limited to the smallest necessary question."
+  },
+  {
+    "testRef": "test.runtime-recovery.r21-canonical-projections",
+    "brief": "Queue, Terrain, Health and Guide derive from one recovery aggregate without copying raw failures."
+  },
+  {
+    "testRef": "test.runtime-recovery.r22-semantic-no-op",
+    "brief": "Unchanged recovery evidence is a semantic no-op with no new projection revision."
+  },
+  {
+    "testRef": "test.runtime-recovery.r23-integrated-scheduler-workgraph",
+    "brief": "The integrated no-effect journey binds exact scheduler checkpoint, completion verification, evidence lineage and Workgraph transition fingerprints into the terminal recovery receipt."
+  },
+  {
+    "testRef": "test.runtime-recovery.r24-full-gate",
+    "brief": "PR-ready and Health independently consume the exact current runtime recovery receipt while tests, browser, manifest, Windows/Linux portability and DCO remain required."
   }
 ]

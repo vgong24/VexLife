@@ -302,6 +302,25 @@
       ],
       "blocking": true,
       "timeoutMs": 120000
+    },
+    {
+      "checkRef": "check.runtime-recovery",
+      "command": "npm run recovery:check",
+      "category": "RELIABILITY",
+      "purpose": "Canonical failure identity, total executor outcomes, source-managed bounded retry, exact checkpoint/generation/resource/context admission, rollback/last-known-good/quarantine, restart/replay protection, changed-only projections and one scheduler/Workgraph-bound no-effect receipt validate; PR-ready and Health independently reject missing or stale recovery evidence.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true,
+      "timeoutMs": 120000
     }
   ]
 }

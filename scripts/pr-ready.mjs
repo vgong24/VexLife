@@ -10,6 +10,7 @@ import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { validateIntegratedSchedulerSimulationReceipt } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 import { validateContinuityEvolutionSimulationReceipt } from './evolution-simulate.mjs';
+import { validateIntegratedRecoverySimulationReceipt } from './recovery-simulate.mjs';
 import { resolveSafeGeneratedReceiptPath, writeJson } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -151,6 +152,31 @@ if (!continuityValidation.ok) {
     continuityResult.detailRef = continuityValidation.errors.join('; ');
   }
 }
+const recoveryReceiptPath = path.resolve(ROOT, bundle.blueprint.runtimeRecovery.simulationContract.receiptPath);
+let recoveryReceipt = null;
+let recoveryReceiptError = null;
+try {
+  recoveryReceipt = JSON.parse(fs.readFileSync(recoveryReceiptPath, 'utf8'));
+} catch (error) {
+  recoveryReceiptError = `runtime recovery simulation receipt unavailable: ${error.message}`;
+}
+const recoveryValidation = validateIntegratedRecoverySimulationReceipt(recoveryReceipt, {
+  runtimeRecoveryRegistry: bundle.blueprint.runtimeRecovery,
+  blueprintHash: blueprint.semanticHash,
+  sourceTreeSha256: finalSource.treeSha256,
+  repositoryGit: repository.git
+});
+if (recoveryReceiptError) recoveryValidation.errors.unshift(recoveryReceiptError);
+recoveryValidation.ok = recoveryValidation.errors.length === 0;
+recoveryValidation.state = recoveryValidation.ok ? 'EXECUTED_CURRENT' : 'INVALID';
+if (!recoveryValidation.ok) {
+  const recoveryResult = checkResults.find((item) => item.checkRef === bundle.blueprint.runtimeRecovery.simulationContract.checkRef);
+  if (recoveryResult) {
+    recoveryResult.semanticState = 'BLOCKED';
+    recoveryResult.currentness = 'UNKNOWN';
+    recoveryResult.detailRef = recoveryValidation.errors.join('; ');
+  }
+}
 const { projection } = deriveRepositoryHealth({
   sourceTreeRef: finalSource.treeSha256,
   blueprintHash: blueprint.semanticHash,
@@ -159,7 +185,8 @@ const { projection } = deriveRepositoryHealth({
 const allCurrentPassed = projection.state === 'HEALTHY' &&
   sourceStability.state === 'PASS' &&
   simulationValidation.ok &&
-  continuityValidation.ok;
+  continuityValidation.ok &&
+  recoveryValidation.ok;
 const schedulerSimulation = {
   receiptPath: path.relative(ROOT, simulationReceiptPath).split(path.sep).join('/'),
   state: simulationValidation.state,
@@ -202,6 +229,33 @@ const continuitySimulation = {
   modelWeightsChanged: continuityReceipt?.modelWeightsChanged ?? null,
   errors: continuityValidation.errors
 };
+const recoverySimulation = {
+  receiptPath: path.relative(ROOT, recoveryReceiptPath).split(path.sep).join('/'),
+  state: recoveryValidation.state,
+  receiptRef: recoveryReceipt?.receiptRef ?? null,
+  contractRef: recoveryReceipt?.contractRef ?? null,
+  semanticFingerprint: recoveryReceipt?.semanticFingerprint ?? null,
+  candidateHeadSha: recoveryReceipt?.candidateHeadSha ?? null,
+  testedCheckoutSha: recoveryReceipt?.testedCheckoutSha ?? null,
+  testedMergeSha: recoveryReceipt?.testedMergeSha ?? null,
+  baseSha: recoveryReceipt?.baseSha ?? null,
+  sourceTreeSha256: recoveryReceipt?.sourceTreeSha256 ?? null,
+  blueprintHash: recoveryReceipt?.blueprintHash ?? null,
+  runtimeRecoveryRegistryHash: recoveryReceipt?.runtimeRecoveryRegistryHash ?? null,
+  journeyStates: recoveryReceipt?.journeyStates ?? [],
+  canonicalFailureFingerprint: recoveryReceipt?.canonicalFailure?.semanticFingerprint ?? null,
+  firstExecutorOutcome: recoveryReceipt?.firstExecutorOutcome ?? null,
+  finalExecutorOutcome: recoveryReceipt?.finalExecutorOutcome ?? null,
+  schedulerBindings: recoveryReceipt?.schedulerBindings ?? {},
+  terminalReceiptFingerprint: recoveryReceipt?.terminalReceipt?.semanticFingerprint ?? null,
+  canonicalWorkNodeRef: recoveryReceipt?.canonicalWorkNodeRef ?? null,
+  canonicalWorkNodeFinalState: recoveryReceipt?.canonicalWorkNodeFinalState ?? null,
+  finalAggregateFingerprint: recoveryReceipt?.finalAggregateFingerprint ?? null,
+  externalEffectsExecuted: recoveryReceipt?.externalEffectsExecuted ?? null,
+  realModelInvoked: recoveryReceipt?.realModelInvoked ?? null,
+  modelWeightsChanged: recoveryReceipt?.modelWeightsChanged ?? null,
+  errors: recoveryValidation.errors
+};
 const receipt = {
   schemaVersion: 'vexlife.pr-ready-receipt/v1',
   receiptRef: `receipt.vexlife.pr-ready.${finalSource.treeSha256.slice(0, 24)}`,
@@ -218,6 +272,7 @@ const receipt = {
   sourceStability,
   schedulerSimulation,
   continuitySimulation,
+  recoverySimulation,
   checkResults,
   health: projection
 };
@@ -239,6 +294,8 @@ console.log(JSON.stringify({
   schedulerSimulationReceiptFingerprint: receipt.schedulerSimulation.semanticFingerprint,
   continuitySimulation: receipt.continuitySimulation.state,
   continuitySimulationReceiptFingerprint: receipt.continuitySimulation.semanticFingerprint,
+  recoverySimulation: receipt.recoverySimulation.state,
+  recoverySimulationReceiptFingerprint: receipt.recoverySimulation.semanticFingerprint,
   receiptSummary: projection.receiptSummary,
   blockingCheckRefs: projection.blockingCheckRefs,
   unresolvedCheckRefs: projection.unresolvedCheckRefs

@@ -883,6 +883,115 @@
         "native platform, embodiment and compatibility adapters remain held",
         "real model, real tool effect, synchronization and model-weight activation remain held"
       ]
+    },
+    {
+      "featureRef": "feature.vexlife.runtime-failure-recovery",
+      "purpose": "Turn every unexpected deterministic executor failure into one inspectable, source-bound failure and recovery route that preserves work, limits retries, verifies rollback, rejects replay and tells Victor only when a real decision is necessary.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "state.runtime-recovery",
+        "process.vexlife.runtime.recover-execute",
+        "module.vexlife.core.runtime-recovery"
+      ],
+      "stateRefs": [
+        "state.runtime-recovery",
+        "state.intent-workgraph",
+        "state.intent-scheduler",
+        "state.intent-checkpoint",
+        "state.context-lease",
+        "state.resource",
+        "state.health"
+      ],
+      "actionRefs": [
+        "action.architecture.open"
+      ],
+      "permissionRefs": [
+        "permission.roadmap.read"
+      ],
+      "processRefs": [
+        "process.vexlife.runtime.capture-classify",
+        "process.vexlife.runtime.recover-execute",
+        "process.vexlife.runtime.project-recovery"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.runtime-failure",
+        "module.vexlife.core.recovery-policy",
+        "module.vexlife.core.runtime-recovery",
+        "module.vexlife.core.recovery-fault-injector",
+        "module.vexlife.script.recovery-check",
+        "module.vexlife.script.recovery-simulate",
+        "module.vexlife.script.recovery-status"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.runtime-recovery.r0-totality",
+        "test.runtime-recovery.r1-canonical-identity",
+        "test.runtime-recovery.r2-malformed-visible",
+        "test.runtime-recovery.r3-bounded-budget",
+        "test.runtime-recovery.r4-recurrence-stop",
+        "test.runtime-recovery.r5-checkpoint-required",
+        "test.runtime-recovery.r6-fresh-generation",
+        "test.runtime-recovery.r7-resource-reduction",
+        "test.runtime-recovery.r8-context-no-invoke",
+        "test.runtime-recovery.r9-context-preservation",
+        "test.runtime-recovery.r10-context-oversize-route",
+        "test.runtime-recovery.r11-model-timeout",
+        "test.runtime-recovery.r12-process-restart",
+        "test.runtime-recovery.r13-disk-full",
+        "test.runtime-recovery.r14-partial-write",
+        "test.runtime-recovery.r15-network-checkpoint",
+        "test.runtime-recovery.r16-replay-once",
+        "test.runtime-recovery.r17-checkpoint-rejection",
+        "test.runtime-recovery.r18-rollback-failure",
+        "test.runtime-recovery.r19-last-known-good",
+        "test.runtime-recovery.r20-human-decision",
+        "test.runtime-recovery.r21-canonical-projections",
+        "test.runtime-recovery.r22-semantic-no-op",
+        "test.runtime-recovery.r23-integrated-scheduler-workgraph",
+        "test.runtime-recovery.r24-full-gate"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "DETERMINISTIC_LOCAL_LIGHT_BOUNDED_RETRY_AND_CONTEXT_FIXTURES",
+      "dataClass": "CONTENT_ADDRESSED_FAILURE_RECOVERY_METADATA_WITH_REF_ONLY_SOURCE_DESCENT",
+      "effectClass": "DETERMINISTIC_NO_EFFECT_FAILURE_RECOVERY_SIMULATION_ONLY",
+      "concurrencyClass": "ONE_CANONICAL_AGGREGATE_ONE_SCHEDULER_GENERATION_ONCE_ONLY_EVENTS",
+      "rollbackRouteRef": "process.vexlife.runtime.recover-execute",
+      "projectionRefs": [
+        "projection.runtime-recovery.queue",
+        "projection.runtime-recovery.terrain",
+        "projection.runtime-recovery.health",
+        "projection.runtime-recovery.guide"
+      ],
+      "knownGaps": [
+        "real model, tool, filesystem, process, network and native-platform adapters remain held",
+        "full ConcernWatch threshold runtime and Build Admission Coverage remain held",
+        "Council of Lenses, Memory Conformance and Embodiment remain held",
+        "live identity, live OS clock, synchronization and model-weight activation remain held"
+      ]
     }
   ]
 }

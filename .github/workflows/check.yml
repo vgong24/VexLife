@@ -64,6 +64,7 @@ jobs:
             generated/health/browser-integration.json
             generated/health/continuity-evolution-simulation.json
             generated/health/intent-scheduler-simulation.json
+            generated/health/runtime-recovery-simulation.json
             generated/health/pr-ready.json
           if-no-files-found: error
 
