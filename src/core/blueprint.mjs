@@ -18,7 +18,8 @@ import {
 } from './burden-release.mjs';
 import {
   CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
-  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS
+  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
+  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS
 } from './continuity-evolution-router.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -303,7 +304,9 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
   exactRequiredFields('context review', evolution.contextReview?.requiredFields, CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS);
   exactRequiredFields('acceptance evidence', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
   exactRequiredFields('authority snapshot', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
+  exactRequiredFields('scope target', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
   const expectedContractSources = new Map([
+    ['contract.vexlife.continuity-scope-target/v1', 'scopeTarget'],
     ['contract.vexlife.continuity-acceptance-evidence/v1', 'acceptanceEvidence'],
     ['contract.vexlife.continuity-authority-snapshot/v1', 'authorityTrust'],
     ['contract.vexlife.continuity-context-review/v1', 'contextReview'],
@@ -332,6 +335,7 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
   for (const ref of [
     evolution.authorityTrust?.contractRef,
     evolution.acceptanceEvidence?.contractRef,
+    evolution.scopeTarget?.contractRef,
     evolution.burdenRelease?.contractRef,
     evolution.contextReview?.contractRef,
     evolution.recurrencePolicy?.contractRef,
@@ -352,8 +356,10 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
     errors.push('evolution observation contract must require exact sourceBindings instead of parallel arrays');
   }
   if (!(evolution.acceptedRecordRequiredFields ?? []).includes('sourceBindings') ||
-      !(evolution.acceptedRecordRequiredFields ?? []).includes('acceptanceEvidenceRefs')) {
-    errors.push('evolution accepted-record contract is missing sourceBindings or acceptanceEvidenceRefs');
+      !(evolution.acceptedRecordRequiredFields ?? []).includes('acceptanceEvidenceRefs') ||
+      !(evolution.acceptedRecordRequiredFields ?? []).includes('scopeTargetRef') ||
+      !(evolution.acceptedRecordRequiredFields ?? []).includes('acceptanceDisposition')) {
+    errors.push('evolution accepted-record contract is missing source, exact-target or authority-disposition fields');
   }
   if (evolution.resourceRules?.maximumConcurrentTrainingRuns !== 0 ||
       evolution.recurrencePolicy?.automaticWeightEscalationAllowed !== false ||

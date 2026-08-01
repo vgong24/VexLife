@@ -9,7 +9,11 @@ import { ProcessFactory, validateProcessFactory } from '../src/core/process-fact
 import { JourneyLedger } from '../src/core/journey.mjs';
 import { buildBlueprintImpact } from '../src/core/impact.mjs';
 import { BURDEN_RELEASE_REQUIRED_FIELDS, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS } from '../src/core/burden-release.mjs';
-import { CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS, CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS } from '../src/core/continuity-evolution-router.mjs';
+import {
+  CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
+  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
+  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS
+} from '../src/core/continuity-evolution-router.mjs';
 
 const bundle = loadBlueprint();
 
@@ -71,6 +75,7 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
     bundle.evolution.authorityTrust.contractRef,
     bundle.evolution.authorityTrust.authoritySourceRef,
     bundle.evolution.acceptanceEvidence.contractRef,
+    bundle.evolution.scopeTarget.contractRef,
     bundle.evolution.contextReview.contractRef,
     bundle.evolution.recurrencePolicy.contractRef,
     bundle.evolution.simulationContract.contractRef,
@@ -81,6 +86,7 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
   assert.deepEqual(registry.require(bundle.evolution.contextReview.contractRef).requiredFields, CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.acceptanceEvidence.contractRef).requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
   assert.deepEqual(registry.require(bundle.evolution.authorityTrust.contractRef).requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
+  assert.deepEqual(registry.require(bundle.evolution.scopeTarget.contractRef).requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
   const atlas = new Atlas(buildIdentityIndex(bundle));
   const traversal = atlas.query({ startRefs: [bundle.evolution.registryRef], depthLimit: 2, resultLimit: 128, tokenBudget: 20000 });
   for (const ref of [
@@ -88,6 +94,7 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
     bundle.evolution.contextReview.contractRef,
     bundle.evolution.authorityTrust.contractRef,
     bundle.evolution.authorityTrust.authoritySourceRef,
+    bundle.evolution.scopeTarget.contractRef,
     bundle.evolution.projectionIdentities[0].projectionRef
   ]) {
     assert.ok(traversal.results.some((item) => item.ref === ref), ref);
@@ -118,6 +125,15 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
   const wrongNestedSource = structuredClone(bundle.evolution);
   wrongNestedSource.contractIdentities.find((item) => item.contractRef === wrongNestedSource.acceptanceEvidence.contractRef).sourceField = 'contextReview';
   assert.equal(validateEvolutionRegistry(wrongNestedSource, bundle).ok, false);
+  const omittedScopeTarget = structuredClone(bundle.evolution);
+  omittedScopeTarget.scopeTarget.requiredFields.splice(3, 1);
+  assert.equal(validateEvolutionRegistry(omittedScopeTarget, bundle).ok, false);
+  const inventedScopeTarget = structuredClone(bundle.evolution);
+  inventedScopeTarget.scopeTarget.requiredFields.push('callerSelectedTarget');
+  assert.equal(validateEvolutionRegistry(inventedScopeTarget, bundle).ok, false);
+  const wrongScopeTargetSource = structuredClone(bundle.evolution);
+  wrongScopeTargetSource.contractIdentities.find((item) => item.contractRef === wrongScopeTargetSource.scopeTarget.contractRef).sourceField = 'contextReview';
+  assert.equal(validateEvolutionRegistry(wrongScopeTargetSource, bundle).ok, false);
 
   const changed = structuredClone(bundle);
   changed.evolution.purpose = `${changed.evolution.purpose} Semantic registry change.`;

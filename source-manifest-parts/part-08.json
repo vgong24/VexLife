@@ -112,8 +112,8 @@
     {
       "path": "src/core/state.mjs",
       "mode": "100644",
-      "bytes": 36690,
-      "sha256": "c04a2bd8b6ecdbe5555f9c6630c1dadf7341ea42e881c4f58cac938517209a8b"
+      "bytes": 39685,
+      "sha256": "5158e0d6582fa7ab5d9ef0f11f366eeb6a9dacb70d6f9d27e60434a3126ad3b1"
     },
     {
       "path": "src/core/terrain.mjs",

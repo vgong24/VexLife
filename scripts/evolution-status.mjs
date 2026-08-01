@@ -14,7 +14,11 @@ console.log(JSON.stringify({
   state: result.receipt.state,
   currentness: result.receipt.currentness,
   record: projectContinuityRecord(result.record),
-  burdenRelease: projectBurdenRelease(result.record.burdenRelease),
+  burdenRelease: projectBurdenRelease(result.record.burdenRelease, {
+    candidate: result.candidate,
+    route: result.route,
+    review: result.review
+  }),
   recurrence: {
     recurrenceRef: result.recurrence.recurrenceRef,
     state: result.recurrence.recurrenceState,

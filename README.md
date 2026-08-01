@@ -241,13 +241,17 @@ authority snapshot that grants no live authority or effect. Burden Release
 starts at `OBSERVED` and replays every
 transition before exact-scope influence deauthorization; it never claims
 base-model parameter deletion. Its lower-level lifecycle cannot accept raw
-authority refs. Current Context is transient and lease-bound, aggregate events
+authority refs or substitute inner reviewed meaning. Scope class and one
+source-derived exact target travel together through review, authority,
+acceptance, recurrence, conflicts and projection. Current Context is transient and lease-bound, aggregate events
 recompute exact aggregate-owned lineage before mutation, supersession is atomic,
 recurrence and sibling projection are exact-scope, and
 legacy Dream v0 cannot bypass durable acceptance or synchronization. Applicable
-context contains refs rather than raw history and training research remains
+context requires exact class+target and explicitly admitted authority class;
+simulation-only acceptance stays visibly inactive/non-live in compact
+projections and Health. Context contains refs rather than raw history and training research remains
 `NOT_ADMITTED`. The integrated proof completes the actual continuity Workgraph
-node through the accepted scheduler with exact evidence fingerprints and no
+node through the accepted scheduler with exact evidence, target and authority-disposition fingerprints and no
 external effects or model-weight change.
 
 Run `npm run orient` before broad reading. Read only the returned

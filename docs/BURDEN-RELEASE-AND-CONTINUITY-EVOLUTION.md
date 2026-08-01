@@ -118,6 +118,16 @@ The exact scope vocabulary is `CURRENT_TURN`, `CHANNEL`, `THREAD`, `PROJECT`,
 `HUMAN_SELF`, `VEX_SELF`, `RELATIONSHIP`, `DEVICE_LINEAGE`,
 `FAMILY_CANDIDATE`, `INSTITUTION`, `NO_SYNC` and `HELD_UNKNOWN`.
 
+Scope class is never enough to make meaning applicable. Candidate formation
+derives one canonical `scopeTargetRef` and fingerprint from the sealed source
+coordinates and named subjects: exact turn/thread/channel for `CURRENT_TURN`,
+the exact channel/thread/project coordinate for those scopes, exact self or
+affected-party sets for personal/relationship scope, exact device lineage, or
+exact institutional authority set. Ambiguous multi-target sources and missing
+coordinates fail closed. Route, Context Review, authority evidence, accepted or
+transient record, recurrence, conflict grouping, supersession and compact
+projection preserve that identity. Applicability matches both class and target.
+
 Sibling projections require exact reviewed synchronization scope, an admitted
 target lineage, privacy/visibility evidence and current delivery authority.
 They remain `OBSERVE_ONLY_PENDING_LOCAL_REVIEW`, preserve source lineage and
@@ -135,8 +145,13 @@ The candidate and Context Review cannot issue this evidence themselves.
 Acceptance rejects unknown sources, wrong subjects/scope/class, stale or
 expired snapshots, and raw evidence refs. Burden Release consumes the same
 validated evidence objects during lifecycle replay, so its lower-level API
-cannot bypass the router's authority boundary. Projections expose only the
-validated authority-snapshot refs.
+cannot bypass the router's authority boundary. Every accepted/transient record
+and compact projection preserves `SIMULATED_CURRENT`, `simulatedAuthority=true`,
+`liveAuthorityGranted=false`, `externalEffectsAuthorized=false` and
+`SIMULATION_ONLY_INACTIVE`. Applicable projection excludes simulation evidence
+unless its caller explicitly allows that evidence class. Simulation evidence
+cannot authorize family delivery, live synchronization, publication, effects or
+weights, and Health blocks any promoted flag.
 
 ## Burden Release
 
@@ -176,6 +191,14 @@ unsupported certainty or reckless accusation. Releasing harmless creative
 suppression can preserve fact/inference/imagination/metaphor labels while still
 prohibiting fabrication.
 
+The accepted transition and its projection also require the exact canonical
+candidate, route and Context Review and recompute the reviewed Burden source
+form. Acceptance evidence binds the burden ref, identity fingerprint and source
+form fingerprint. Reusing valid outer evidence while changing pattern,
+description, statement, authority transition, capability, guard, source binding
+or scope target fails. The public generic transition cannot enter
+`ACCEPTED_DEAUTHORIZED`.
+
 ## Least-invasive routing
 
 The router returns exactly one primary destination and optional linked
@@ -213,7 +236,8 @@ are compatibility-candidate-only and cannot create durable acceptance, family
 synchronization, training admission or activation.
 
 `CURRENT_CONTEXT` is transient and bound to an exact expiring
-turn/thread/channel lease; it is not an indefinitely durable accepted record.
+turn/thread/channel lease whose coordinates equal the source-derived target; it
+is not an indefinitely durable accepted record.
 
 Effect/safety invariant candidates remain inactive after review. A later
 deterministic implementation lane must separately admit and implement them.
@@ -221,11 +245,12 @@ deterministic implementation lane must separately admit and implement them.
 ## Reversible accepted records
 
 Every accepted record preserves exact source-observation tuples,
-candidate, review, record class, scope, acceptance, formation/currentness,
+candidate, review, record class, scope class and target, acceptance and its
+simulation-only disposition, formation/currentness,
 supersession and rollback lineage.
 
 Supersession is one canonical atomic transaction over an exact current prior
-and compatible successor. It requires equal class/scope/subjects, exact current
+and compatible successor. It requires equal class/scope/target/subjects, exact current
 authority evidence, monotonic time and rollback identity. The prior becomes
 effectively `SUPERSEDED` and the successor becomes the sole `CURRENT` record;
 immutable record and source history remain available.
@@ -261,8 +286,10 @@ Foundation Kernel
 + applicable lessons/evaluations
 ```
 
-Applicable context projection carries accepted record and release refs within a
-token budget. It does not inject raw episodes or all historical records.
+Applicable context projection carries accepted record, release, exact target and
+authority-disposition refs within a token budget. A scope-class-only query is
+invalid, and simulation-only records are absent unless `SIMULATED_CURRENT` is
+explicitly admitted. It does not inject raw episodes or all historical records.
 
 `maximumConcurrentTrainingRuns` remains `0`. This lane does not train, download,
 provision, remove or activate model weights or adapters.
@@ -284,8 +311,9 @@ The deterministic simulation creates the actual continuity node
 leases it through the one-worker scheduler, loads exact applicable record and
 release refs into the bounded scheduler context lease, and completes through
 the external completion verifier. Its completion-gate bundle hashes the exact
-observation, candidate, canonical route, review, acceptance evidence, accepted
-record and applicable-projection fingerprints. The structured receipt binds
+observation, candidate, exact scope target, canonical route, review, acceptance
+evidence, accepted record, authority disposition and applicable-projection
+fingerprints. The structured receipt binds
 candidate/tested/base Git identity, source tree, Blueprint/evolution hashes and
 scheduler completion lineage. `pr-ready` and `health:check` independently
 reject missing, stale, effectful, weight-changing or causally unbound evidence.
@@ -312,7 +340,9 @@ It does not reveal raw private source content.
 ## Held successors
 
 This implementation does not admit the Runtime Failure & Recovery Spine, full
-ConcernWatch threshold runtime, Council of Lenses, Memory Conformance/Letta,
+ConcernWatch threshold runtime, Build Admission Coverage / causal-composition
+successor audit, Judgment Route Compiler or cold-model formation/evaluation,
+Council of Lenses, Memory Conformance/Letta,
 Embodiment & Perception, Godot vessel proof, Open-LLM-VTuber, native OS
 implementations, real models, real effects or model-weight changes.
 

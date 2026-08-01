@@ -23,6 +23,7 @@ export const BURDEN_RELEASE_STATES = Object.freeze([
 export const CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS = Object.freeze([
   'schemaVersion', 'authoritySourceRef', 'authoritySourceFingerprint', 'sourceRef', 'sourceHash',
   'formationRef', 'evidenceClass', 'actorRef', 'authorityRef', 'subjectRefs', 'scope', 'recordClass',
+  'scopeTargetRef', 'scopeTargetFingerprint',
   'formedAt', 'observedAt', 'expiresAt', 'currentness', 'simulatedAuthority', 'liveAuthorityGranted',
   'externalEffectsAuthorized', 'authoritySnapshotRef', 'semanticFingerprint'
 ]);
@@ -32,6 +33,7 @@ export const BURDEN_RELEASE_REQUIRED_FIELDS = Object.freeze([
   'reviewRef', 'reviewFingerprint', 'sourceObservationRefs', 'sourceBindings', 'patternName', 'patternDescription',
   'suspectedOrigin', 'observedConsequence', 'releaseFrame', 'releaseStatement', 'formerAuthority',
   'currentAuthority', 'cleanIntention', 'protectedCapabilities', 'prohibitedOvercorrections', 'scope',
+  'scopeTargetRef', 'scopeTargetFingerprint',
   'requiredAcceptanceRefs', 'formedAt', 'supersedesRef', 'burdenRef', 'identityFingerprint', 'sourceForm',
   'authorityTransition', 'acceptedByRefs', 'acceptanceEvidence', 'acceptanceEvidenceRefs',
   'authoritySnapshotRefs', 'evaluationRefs', 'recurrenceState', 'state', 'acceptedAt',
@@ -135,6 +137,13 @@ function exactRefs(actual, required) {
   return actual.length === required.length && actual.every((item, index) => item === required[index]);
 }
 
+function validateScopeTargetIdentity(scopeTargetRef, scopeTargetFingerprint) {
+  if (!SHA256.test(scopeTargetFingerprint ?? '') ||
+      scopeTargetRef !== `continuity-scope-target.${scopeTargetFingerprint.slice(0, 24)}`) {
+    throw new Error('scope target ref/fingerprint is not canonical');
+  }
+}
+
 function fingerprinted(core) {
   return deepFreeze({ ...core, semanticFingerprint: semanticHash(core) });
 }
@@ -161,6 +170,7 @@ export function createContinuityAuthoritySnapshot({
   authorityRef = actorRef,
   subjectRefs,
   scope,
+  scopeTarget,
   recordClass,
   formedAt,
   observedAt,
@@ -169,6 +179,8 @@ export function createContinuityAuthoritySnapshot({
 }) {
   if (!actorRef || !authorityRef) throw new Error('authority snapshot requires exact actor and authority refs');
   if (!CONTINUITY_SCOPE_CLASSES.has(scope) || !CONTINUITY_RECORD_CLASSES.has(recordClass)) throw new Error('authority snapshot has unknown scope or record class');
+  assertCanonical(scopeTarget, 'scopeTargetRef', 'continuity-scope-target', 'continuity scope target');
+  if (scopeTarget.scopeClass !== scope) throw new Error('authority snapshot scope target does not match scope class');
   if (currentness !== 'CURRENT') throw new Error('authority snapshot must be CURRENT when formed');
   const formed = canonicalTimestamp(formedAt, 'authority snapshot formedAt');
   const observed = canonicalTimestamp(observedAt ?? formed, 'authority snapshot observedAt');
@@ -187,6 +199,8 @@ export function createContinuityAuthoritySnapshot({
     subjectRefs: refs(subjectRefs, 'authority snapshot subjectRefs'),
     scope,
     recordClass,
+    scopeTargetRef: scopeTarget.scopeTargetRef,
+    scopeTargetFingerprint: scopeTarget.semanticFingerprint,
     formedAt: formed,
     observedAt: observed,
     expiresAt: expires,
@@ -213,6 +227,7 @@ export function validateContinuityAuthoritySnapshot(snapshot, { observedAt = nul
   if (!snapshot.actorRef || !snapshot.authorityRef || !CONTINUITY_SCOPE_CLASSES.has(snapshot.scope) || !CONTINUITY_RECORD_CLASSES.has(snapshot.recordClass)) {
     throw new Error('authority snapshot actor/scope/record class is invalid');
   }
+  validateScopeTargetIdentity(snapshot.scopeTargetRef, snapshot.scopeTargetFingerprint);
   refs(snapshot.subjectRefs, 'authority snapshot subjectRefs');
   canonicalTimestamp(snapshot.formedAt, 'authority snapshot formedAt');
   canonicalTimestamp(snapshot.observedAt, 'authority snapshot observedAt');
@@ -236,11 +251,17 @@ function validateAcceptanceEvidence(evidence, release, acceptedAt) {
       evidence.actorRef !== snapshot.actorRef || evidence.authorityRef !== snapshot.authorityRef ||
       evidence.recordClass !== 'BURDEN_RELEASE' || snapshot.recordClass !== 'BURDEN_RELEASE' ||
       evidence.scope !== release.scope || snapshot.scope !== release.scope ||
+      evidence.scopeTargetRef !== release.scopeTargetRef || evidence.scopeTargetFingerprint !== release.scopeTargetFingerprint ||
+      snapshot.scopeTargetRef !== release.scopeTargetRef || snapshot.scopeTargetFingerprint !== release.scopeTargetFingerprint ||
+      evidence.burdenRef !== release.burdenRef || evidence.burdenIdentityFingerprint !== release.identityFingerprint ||
+      evidence.burdenSourceFingerprint !== semanticHash(release.sourceForm) ||
       !exactRefs(refs(evidence.subjectRefs, 'acceptance evidence subjectRefs'), release.requiredAcceptanceRefs) ||
       !exactRefs(snapshot.subjectRefs, release.requiredAcceptanceRefs) ||
       evidence.sourceRef !== snapshot.sourceRef || evidence.sourceHash !== snapshot.sourceHash ||
       evidence.formationRef !== snapshot.formationRef || evidence.evidenceClass !== 'SIMULATED_CURRENT' ||
-      evidence.liveAuthorityGranted !== false || !release.requiredAcceptanceRefs.includes(evidence.authorityRef)) {
+      evidence.simulatedAuthority !== true || evidence.liveAuthorityGranted !== false ||
+      evidence.externalEffectsAuthorized !== false || evidence.acceptanceDisposition !== 'SIMULATION_ONLY_INACTIVE' ||
+      !release.requiredAcceptanceRefs.includes(evidence.authorityRef)) {
     throw new Error('Burden Release authority evidence does not bind the exact registered source/scope/subjects');
   }
   return evidence;
@@ -260,6 +281,7 @@ function sourceForm(input) {
     throw new Error('Burden Release requires release statement, authority transition, clean intention and scope');
   }
   if (!CONTINUITY_SCOPE_CLASSES.has(input.scope)) throw new Error(`unknown Burden Release scope ${input.scope}`);
+  validateScopeTargetIdentity(input.scopeTargetRef, input.scopeTargetFingerprint);
   if (input.formerAuthority === input.currentAuthority) throw new Error('Burden Release must change accepted governing authority');
   return deepFreeze({
     schemaVersion: 'vexlife.burden-release-source/v1',
@@ -283,6 +305,8 @@ function sourceForm(input) {
     protectedCapabilities: strings(input.protectedCapabilities, 'protectedCapabilities'),
     prohibitedOvercorrections: strings(input.prohibitedOvercorrections, 'prohibitedOvercorrections'),
     scope: input.scope,
+    scopeTargetRef: input.scopeTargetRef,
+    scopeTargetFingerprint: input.scopeTargetFingerprint,
     requiredAcceptanceRefs: refs(input.requiredAcceptanceRefs, 'requiredAcceptanceRefs'),
     formedAt,
     supersedesRef: input.supersedesRef ?? null
@@ -409,19 +433,66 @@ export function validateBurdenRelease(release) {
 
 export function transitionBurdenRelease(release, input) {
   validateBurdenRelease(release);
+  if (input.nextState === 'ACCEPTED_DEAUTHORIZED') {
+    throw new Error('public Burden Release transition cannot enter ACCEPTED_DEAUTHORIZED');
+  }
   return applyTransition(release, input);
 }
 
+function validateReviewedBurdenMeaning(release, candidate, route, review) {
+  assertCanonical(candidate, 'candidateRef', 'continuity-candidate', 'canonical continuity candidate');
+  assertCanonical(route, 'routeRef', 'continuity-route', 'canonical continuity route');
+  assertCanonical(review, 'reviewRef', 'continuity-review', 'canonical continuity Context Review');
+  if (route.proposedPrimaryDestination !== 'BURDEN_RELEASE' ||
+      route.candidateRef !== candidate.candidateRef || route.candidateFingerprint !== candidate.semanticFingerprint ||
+      review.candidateRef !== candidate.candidateRef || review.candidateFingerprint !== candidate.semanticFingerprint ||
+      review.routeRef !== route.routeRef || review.routeFingerprint !== route.semanticFingerprint ||
+      review.scopeTargetRef !== candidate.scopeTargetRef || review.scopeTargetFingerprint !== candidate.scopeTargetFingerprint) {
+    throw new Error('Burden Release acceptance requires the exact canonical candidate, route and Context Review');
+  }
+  const spec = candidate.burdenRelease;
+  if (!spec) throw new Error('canonical candidate has no reviewed Burden meaning');
+  const expected = sourceForm({
+    ...spec,
+    candidateRef: candidate.candidateRef,
+    candidateFingerprint: candidate.semanticFingerprint,
+    routeRef: route.routeRef,
+    routeFingerprint: route.semanticFingerprint,
+    reviewRef: review.reviewRef,
+    reviewFingerprint: review.semanticFingerprint,
+    sourceObservationRefs: candidate.sourceObservationRefs,
+    sourceBindings: candidate.sourceBindings,
+    suspectedOrigin: spec.suspectedOrigin ?? candidate.originClassification.classification,
+    observedConsequence: spec.observedConsequence ?? candidate.observedConsequence,
+    protectedCapabilities: candidate.protectedCapabilities,
+    prohibitedOvercorrections: candidate.prohibitedOvercorrections,
+    scope: candidate.candidateScope,
+    scopeTargetRef: candidate.scopeTargetRef,
+    scopeTargetFingerprint: candidate.scopeTargetFingerprint,
+    requiredAcceptanceRefs: review.requiredAcceptanceRefs,
+    formedAt: candidate.formedAt,
+    supersedesRef: review.supersedesRef
+  });
+  if (semanticHash(expected) !== release.identityFingerprint || semanticHash(expected) !== semanticHash(release.sourceForm)) {
+    throw new Error('Burden Release meaning differs from the exact reviewed candidate source form');
+  }
+}
+
 export function acceptBurdenRelease(release, {
+  candidate,
+  route,
+  review,
   authorityEvidence,
   actorRef,
   acceptedAt = new Date().toISOString(),
   evaluationRefs = release.evaluationRefs
 }) {
+  validateBurdenRelease(release);
+  validateReviewedBurdenMeaning(release, candidate, route, review);
   if (release.state !== 'CONTEXT_REVIEW') throw new Error('Burden Release acceptance requires replayed CONTEXT_REVIEW history');
   const evidence = [...(authorityEvidence ?? [])];
   const acceptedByRefs = refs(evidence.map((item) => item.actorRef), 'acceptedByRefs');
-  return transitionBurdenRelease(release, {
+  return applyTransition(release, {
     nextState: 'ACCEPTED_DEAUTHORIZED',
     actorRef,
     acceptedByRefs,
@@ -434,8 +505,9 @@ export function acceptBurdenRelease(release, {
   });
 }
 
-export function projectBurdenRelease(release) {
+export function projectBurdenRelease(release, { candidate, route, review } = {}) {
   validateBurdenRelease(release);
+  validateReviewedBurdenMeaning(release, candidate, route, review);
   if (['ACCEPTED_DEAUTHORIZED', 'MONITORED_FOR_RECURRENCE', 'REOPENED', 'SUPERSEDED'].includes(release.state)) {
     for (const evidence of release.acceptanceEvidence) validateAcceptanceEvidence(evidence, release, release.acceptedAt);
   }
@@ -449,13 +521,22 @@ export function projectBurdenRelease(release) {
     protectedCapabilities: [...release.protectedCapabilities],
     prohibitedOvercorrections: [...release.prohibitedOvercorrections],
     scope: release.scope,
+    scopeTargetRef: release.scopeTargetRef,
+    scopeTargetFingerprint: release.scopeTargetFingerprint,
     state: release.state,
     recurrenceState: release.recurrenceState,
     transitionReceiptRefs: release.transitionReceipts.map((item) => item.transitionRef),
     authoritySnapshotRefs: [...release.authoritySnapshotRefs],
+    authorityEvidenceClass: release.acceptanceEvidence[0]?.evidenceClass ?? null,
+    simulatedAuthority: release.acceptanceEvidence[0]?.simulatedAuthority ?? false,
+    liveAuthorityGranted: release.acceptanceEvidence[0]?.liveAuthorityGranted ?? false,
+    externalEffectsAuthorized: release.acceptanceEvidence[0]?.externalEffectsAuthorized ?? false,
+    acceptanceDisposition: release.acceptanceEvidence[0]?.acceptanceDisposition ?? 'NOT_ACCEPTED',
     claimsParameterDeletion: false,
     rawSourceContentIncluded: false,
-    nextSafeAction: ['ACCEPTED_DEAUTHORIZED', 'MONITORED_FOR_RECURRENCE'].includes(release.state)
+    nextSafeAction: release.acceptanceEvidence[0]?.acceptanceDisposition === 'SIMULATION_ONLY_INACTIVE'
+      ? 'USE_ONLY_IN_EXPLICIT_SIMULATED_CURRENT_CONTEXT'
+      : ['ACCEPTED_DEAUTHORIZED', 'MONITORED_FOR_RECURRENCE'].includes(release.state)
       ? 'MONITOR_EXACT_PATTERN_WITHOUT_SCOPE_BROADENING'
       : release.state === 'REOPENED'
         ? 'RETURN_TO_CONTEXT_REVIEW'

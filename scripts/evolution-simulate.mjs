@@ -332,6 +332,15 @@ export function validateContinuityEvolutionSimulationReceipt(receipt, { evolutio
     const binding = receipt.continuityGateBindings?.[kind];
     if (!binding?.ref || !/^[a-f0-9]{64}$/.test(binding?.fingerprint ?? '')) errors.push(`continuity receipt binding is malformed for ${kind}`);
   }
+  if (receipt.scopeTargetRef !== receipt.continuityGateBindings?.scopeTarget?.ref ||
+      receipt.scopeTargetFingerprint !== receipt.continuityGateBindings?.scopeTarget?.fingerprint) {
+    errors.push('continuity receipt does not preserve the exact scope-target binding');
+  }
+  if (receipt.authorityEvidenceClass !== 'SIMULATED_CURRENT' ||
+      receipt.acceptanceDisposition !== 'SIMULATION_ONLY_INACTIVE' ||
+      receipt.liveAuthorityGranted !== false || receipt.externalEffectsAuthorized !== false) {
+    errors.push('continuity receipt loses or promotes simulation-only authority disposition');
+  }
   if (bundleGate?.sourceObservationRef !== 'observation.continuity-evolution.exact-binding-bundle.1' ||
       bundleGate?.sourceObservationHash !== semanticHash(receipt.continuityGateBindings)) errors.push('continuity receipt scheduler gate does not bind the exact continuity evidence bundle');
   if (JSON.stringify(receipt.schedulerContextApplicableRecordRefs ?? []) !== JSON.stringify(receipt.applicableRecordRefs ?? []) ||
@@ -419,6 +428,7 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
       authorityRef: sourceLineageRef,
       subjectRefs: review.requiredAcceptanceRefs,
       scope: candidate.candidateScope,
+      scopeTarget: candidate.scopeTarget,
       recordClass: route.proposedPrimaryDestination,
       formedAt: REVIEWED,
       observedAt: REVIEWED,
@@ -429,7 +439,12 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
   const record = acceptContinuityCandidate(candidate, review, { authorityEvidence: [authorityEvidence], acceptedAt: ACCEPTED, rollbackRef: 'rollback.continuity.simulation.pattern' });
   state.record(createContinuityEvolutionEvent({ type: 'RECORD_ACCEPTED', transitionRef: 'transition.continuity.simulation.accepted', record }));
   journeyStates.push('BURDEN_RELEASE_ACCEPTED_DEAUTHORIZED');
-  const applicable = projectApplicableContinuity({ records: [record], applicableScopes: ['VEX_SELF'], tokenBudget: 96 });
+  const applicable = projectApplicableContinuity({
+    records: [record],
+    applicableScopeTargets: [candidate.scopeTarget],
+    allowedAuthorityEvidenceClasses: ['SIMULATED_CURRENT'],
+    tokenBudget: 160
+  });
   journeyStates.push('BOUNDED_CONTEXT_REFS_PROJECTED');
   const recurrenceObservation = createContinuityObservation({
     observationType: 'REPEATED_BEHAVIOR_RECURRENCE',
@@ -468,10 +483,25 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
   const gateBindings = {
     observation: { ref: observation.observationRef, fingerprint: observation.semanticFingerprint },
     candidate: { ref: candidate.candidateRef, fingerprint: candidate.semanticFingerprint },
+    scopeTarget: { ref: candidate.scopeTargetRef, fingerprint: candidate.scopeTargetFingerprint },
     route: { ref: route.routeRef, fingerprint: route.semanticFingerprint },
     review: { ref: review.reviewRef, fingerprint: review.semanticFingerprint },
     authorityEvidence: { ref: authorityEvidence.acceptanceEvidenceRef, fingerprint: authorityEvidence.semanticFingerprint },
     acceptedRecord: { ref: record.acceptedRecordRef, fingerprint: record.semanticFingerprint },
+    authorityDisposition: {
+      ref: `authority-disposition.${semanticHash({
+        authorityEvidenceClass: record.authorityEvidenceClass,
+        acceptanceDisposition: record.acceptanceDisposition,
+        liveAuthorityGranted: record.liveAuthorityGranted,
+        externalEffectsAuthorized: record.externalEffectsAuthorized
+      }).slice(0, 24)}`,
+      fingerprint: semanticHash({
+        authorityEvidenceClass: record.authorityEvidenceClass,
+        acceptanceDisposition: record.acceptanceDisposition,
+        liveAuthorityGranted: record.liveAuthorityGranted,
+        externalEffectsAuthorized: record.externalEffectsAuthorized
+      })
+    },
     applicableProjection: { ref: 'projection.continuity-evolution.applicable.simulation', fingerprint: applicable.semanticFingerprint }
   };
   const schedulerJourney = executeContinuityWorkNode({ root, bundle, record, applicable, gateBindings });
@@ -507,6 +537,12 @@ export function runContinuityEvolutionSimulation({ root = ROOT, writeReceipt = t
     reviewRef: review.reviewRef,
     authorityEvidenceRef: authorityEvidence.acceptanceEvidenceRef,
     acceptedRecordRef: record.acceptedRecordRef,
+    scopeTargetRef: record.scopeTargetRef,
+    scopeTargetFingerprint: record.scopeTargetFingerprint,
+    authorityEvidenceClass: record.authorityEvidenceClass,
+    acceptanceDisposition: record.acceptanceDisposition,
+    liveAuthorityGranted: record.liveAuthorityGranted,
+    externalEffectsAuthorized: record.externalEffectsAuthorized,
     burdenReleaseRef: record.burdenReleaseRef,
     applicableRecordRefs: applicable.selectedRecordRefs,
     applicableProjectionFingerprint: applicable.semanticFingerprint,

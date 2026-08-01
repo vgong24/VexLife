@@ -2,6 +2,7 @@ import { StateCell, selectState } from './state-relay.mjs';
 import { semanticHash } from './utils.mjs';
 import {
   acceptContinuityCandidate,
+  deriveContinuityScopeTarget,
   recordContinuityRecurrence,
   validateAcceptedContinuityRecord,
   validateContinuityAcceptanceEvidence,
@@ -443,11 +444,22 @@ function exactStoredCandidateSources(aggregate, candidate) {
     sourceHash: binding.sourceHash
   }))).sort((left, right) => `${left.observationRef}\0${left.sourceLineageRef}\0${left.rangeRef}`
     .localeCompare(`${right.observationRef}\0${right.sourceLineageRef}\0${right.rangeRef}`));
+  const expectedScopeTarget = deriveContinuityScopeTarget({
+    observations,
+    scopeClass: candidate.candidateScope,
+    aboutSelfRefs: candidate.aboutSelfRefs,
+    affectedPartyRefs: candidate.affectedPartyRefs,
+    institutionalAuthorityRefs: candidate.institutionalAuthorityRefs,
+    admittedTargetLineageRefs: candidate.admittedTargetLineageRefs
+  });
   if (!exactSemanticValue(candidate.observationBindings, expectedObservationBindings) ||
       !exactSemanticValue(candidate.sourceObservationRefs, expectedRefs) ||
       !exactSemanticValue(candidate.sourceObservationFingerprints, expectedFingerprints) ||
       !exactSemanticValue(candidate.sourceLineageRefs, expectedLineages) ||
-      !exactSemanticValue(candidate.sourceBindings, expectedBindings)) {
+      !exactSemanticValue(candidate.sourceBindings, expectedBindings) ||
+      candidate.scopeTargetRef !== expectedScopeTarget.scopeTargetRef ||
+      candidate.scopeTargetFingerprint !== expectedScopeTarget.semanticFingerprint ||
+      !exactSemanticValue(candidate.scopeTarget, expectedScopeTarget)) {
     throw new Error('candidate does not bind the exact stored observation fingerprints and source tuples');
   }
   return observations;
@@ -491,6 +503,29 @@ function validateAggregateOwnedRecord(aggregate, record) {
     throw new Error('accepted record is internally canonical but not derived from aggregate-owned lineage');
   }
   return { ...lineage, evidence };
+}
+
+function simulatedAuthorityPromotion(record) {
+  return record.authorityEvidenceClass === 'SIMULATED_CURRENT' &&
+    (record.simulatedAuthority !== true || record.liveAuthorityGranted !== false ||
+      record.externalEffectsAuthorized !== false || record.acceptanceDisposition !== 'SIMULATION_ONLY_INACTIVE' ||
+      record.liveApplicabilityGranted !== false || record.synchronizationAuthorityActive !== false ||
+      record.familyDeliveryAuthorized !== false || record.publicationAuthorityActive !== false ||
+      record.effectAuthorityActive !== false || record.weightActivationState !== 'INACTIVE');
+}
+
+function projectedRecordSet(current) {
+  const promoted = current.acceptedRecords.filter(simulatedAuthorityPromotion);
+  if (!promoted.length) return validateContinuityRecordSet(current.acceptedRecords, current.supersessions);
+  return {
+    schemaVersion: 'vexlife.continuity-record-set-validation/v1',
+    state: 'HELD_CONFLICT',
+    currentRecordRefs: current.acceptedRecords.map((item) => item.acceptedRecordRef).sort(),
+    supersededRecordRefs: current.supersessions.map((item) => item.priorRecordRef).sort(),
+    conflicts: promoted.map((item) => [item.acceptedRecordRef]),
+    invalidAuthorityRecordRefs: promoted.map((item) => item.acceptedRecordRef).sort(),
+    silentOverwriteAllowed: false
+  };
 }
 
 export function reduceContinuityEvolutionAggregate(current, event) {
@@ -641,7 +676,7 @@ export function reduceContinuityEvolutionAggregate(current, event) {
 export function createContinuityEvolutionState({ aggregate = createInitialContinuityEvolutionAggregate() } = {}) {
   const aggregateState = new StateCell(aggregate, { name: 'continuity-evolution.aggregate' });
   const evolution = selectState(aggregateState, (current) => {
-    const recordSet = validateContinuityRecordSet(current.acceptedRecords, current.supersessions);
+    const recordSet = projectedRecordSet(current);
     return {
       schemaVersion: 'vexlife.continuity-evolution-projection/v1',
       currentness: current.currentness,
@@ -658,6 +693,7 @@ export function createContinuityEvolutionState({ aggregate = createInitialContin
       recordConflicts: recordSet.conflicts,
       recurrence: current.recurrenceEvidence.map((item) => ({
         acceptedRecordRef: item.acceptedRecordRef,
+        scopeTargetRef: item.scopeTargetRef,
         recurrenceState: item.recurrenceState,
         recurrenceCount: item.recurrenceCount
       })),
@@ -683,11 +719,16 @@ export function createContinuityEvolutionState({ aggregate = createInitialContin
   }), { name: 'continuity-evolution.terrain' });
 
   const health = selectState(aggregateState, (current) => {
-    const recordSet = validateContinuityRecordSet(current.acceptedRecords, current.supersessions);
+    const recordSet = projectedRecordSet(current);
     const blocking = current.acceptedRecords.filter((record) =>
       JSON.stringify(record.requiredAcceptanceRefs) !== JSON.stringify(record.acceptedByRefs) ||
       JSON.stringify(record.acceptanceEvidenceRefs) !== JSON.stringify((record.acceptanceEvidence ?? []).map((item) => item.acceptanceEvidenceRef).sort()) ||
-      record.weightActivationState !== 'INACTIVE'
+      record.weightActivationState !== 'INACTIVE' || record.effectAuthorityActive !== false ||
+      record.authorityEvidenceClass !== 'SIMULATED_CURRENT' || record.simulatedAuthority !== true ||
+      record.liveAuthorityGranted !== false || record.externalEffectsAuthorized !== false ||
+      record.acceptanceDisposition !== 'SIMULATION_ONLY_INACTIVE' || record.liveApplicabilityGranted !== false ||
+      record.synchronizationAuthorityActive !== false || record.familyDeliveryAuthorized !== false ||
+      record.publicationAuthorityActive !== false || simulatedAuthorityPromotion(record)
     );
     const attention = current.candidates.filter((candidate) =>
       !current.reviews.some((review) => review.candidateRef === candidate.candidateRef && ['ACCEPTED', 'REJECTED'].includes(review.reviewDisposition))
@@ -699,6 +740,13 @@ export function createContinuityEvolutionState({ aggregate = createInitialContin
       recordConflicts: recordSet.conflicts,
       reviewRequiredCandidateRefs: attention.map((item) => item.candidateRef),
       acceptedWeightActivations: current.acceptedRecords.filter((item) => item.weightActivationState !== 'INACTIVE').length,
+      simulatedAuthorityPromotions: current.acceptedRecords.filter((record) =>
+        record.authorityEvidenceClass === 'SIMULATED_CURRENT' &&
+        (record.liveAuthorityGranted !== false || record.externalEffectsAuthorized !== false ||
+          record.liveApplicabilityGranted !== false || record.synchronizationAuthorityActive !== false ||
+          record.familyDeliveryAuthorized !== false || record.publicationAuthorityActive !== false ||
+          record.effectAuthorityActive !== false || record.weightActivationState !== 'INACTIVE')
+      ).length,
       rawMachineDumpIncluded: false
     };
   }, { name: 'continuity-evolution.health' });

@@ -13,7 +13,8 @@ import {
   CONTINUITY_VISIBILITY_STATES,
   CONTINUITY_SYNCHRONIZATION_SCOPES,
   CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
-  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS
+  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
+  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS
 } from '../src/core/continuity-evolution-router.mjs';
 import {
   BURDEN_RELEASE_FRAMES,
@@ -52,6 +53,7 @@ exactArray('Burden Release required fields', evolution.burdenRelease?.requiredFi
 exactArray('Context Review required fields', evolution.contextReview?.requiredFields, CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS);
 exactArray('acceptance evidence required fields', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
 exactArray('authority snapshot required fields', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
+exactArray('scope target required fields', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
 if (semanticHash(evolution.authorityTrustSources?.[0]) !== semanticHash(CONTINUITY_SIMULATION_AUTHORITY_SOURCE)) {
   errors.push('registered continuity authority source does not match the implementation source');
 }
@@ -100,6 +102,7 @@ try {
     evolution.authorityTrust.contractRef,
     evolution.authorityTrust.authoritySourceRef,
     evolution.acceptanceEvidence.contractRef,
+    evolution.scopeTarget.contractRef,
     evolution.burdenRelease.contractRef,
     evolution.contextReview.contractRef,
     evolution.recurrencePolicy.contractRef,
@@ -121,6 +124,7 @@ try {
     evolution.authorityTrust.contractRef,
     evolution.authorityTrust.authoritySourceRef,
     evolution.acceptanceEvidence.contractRef,
+    evolution.scopeTarget.contractRef,
     evolution.contextReview.contractRef,
     evolution.recurrencePolicy.contractRef,
     evolution.simulationContract.contractRef

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.evolution-registry/v1",
   "registryRef": "registry.vexlife.evolution.001",
-  "registryVersion": 2,
+  "registryVersion": 3,
   "systemRef": "system.vexlife.continuity-and-evolution",
   "canonicalSourceRef": "source.blueprint.evolution-registry",
   "canonicalSource": {
@@ -15,6 +15,7 @@
     "sourceRef": "source.blueprint.evolution-registry",
     "contractRefs": [
       "contract.vexlife.continuity-observation/v1",
+      "contract.vexlife.continuity-scope-target/v1",
       "contract.vexlife.continuity-acceptance-evidence/v1",
       "contract.vexlife.continuity-authority-snapshot/v1",
       "contract.vexlife.continuity-context-review/v1",
@@ -43,6 +44,8 @@
     "training research remains NOT_ADMITTED and maximumConcurrentTrainingRuns remains zero",
     "accepted deterministic invariant candidates remain inactive until a separate effect implementation lane",
     "Queue, Terrain, Health, Guide and evolution projections derive from one canonical state aggregate"
+    ,"scope class never substitutes for one exact source-derived target identity"
+    ,"simulation-only authority remains inactive and visibly non-live through every compact projection"
   ],
   "observationTypes": [
     "CONVERSATION_EPISODE_RANGE",
@@ -91,6 +94,12 @@
       "contractRef": "contract.vexlife.continuity-observation/v1",
       "contractKind": "SOURCE_OBSERVATION",
       "sourceRef": "source.blueprint.evolution-registry"
+    },
+    {
+      "contractRef": "contract.vexlife.continuity-scope-target/v1",
+      "contractKind": "EXACT_SOURCE_DERIVED_SCOPE_TARGET",
+      "sourceRef": "source.blueprint.evolution-registry",
+      "sourceField": "scopeTarget"
     },
     {
       "contractRef": "contract.vexlife.continuity-acceptance-evidence/v1",
@@ -164,6 +173,8 @@
       "subjectRefs",
       "scope",
       "recordClass",
+      "scopeTargetRef",
+      "scopeTargetFingerprint",
       "formedAt",
       "observedAt",
       "expiresAt",
@@ -193,6 +204,11 @@
       "recordClass",
       "subjectRefs",
       "scope",
+      "scopeTargetRef",
+      "scopeTargetFingerprint",
+      "burdenRef",
+      "burdenIdentityFingerprint",
+      "burdenSourceFingerprint",
       "sourceRef",
       "sourceHash",
       "formationRef",
@@ -201,7 +217,10 @@
       "expiresAt",
       "currentness",
       "evidenceClass",
+      "simulatedAuthority",
       "liveAuthorityGranted",
+      "externalEffectsAuthorized",
+      "acceptanceDisposition",
       "acceptanceEvidenceRef",
       "semanticFingerprint"
     ]
@@ -266,6 +285,25 @@
     { "scopeRef": "scope.continuity.no-sync", "value": "NO_SYNC" },
     { "scopeRef": "scope.continuity.held-unknown", "value": "HELD_UNKNOWN" }
   ],
+  "scopeTarget": {
+    "contractRef": "contract.vexlife.continuity-scope-target/v1",
+    "sourceRef": "source.blueprint.evolution-registry",
+    "sourceField": "scopeTarget",
+    "requiredFields": [
+      "schemaVersion",
+      "scopeClass",
+      "targetKind",
+      "targetRefs",
+      "projectRef",
+      "threadRef",
+      "channelRef",
+      "turnRef",
+      "subjectRefs",
+      "applicable",
+      "scopeTargetRef",
+      "semanticFingerprint"
+    ]
+  },
   "separateRecordClasses": [
     "HumanPreference",
     "VexSelfPreference",
@@ -370,6 +408,8 @@
       "protectedCapabilities",
       "prohibitedOvercorrections",
       "scope",
+      "scopeTargetRef",
+      "scopeTargetFingerprint",
       "requiredAcceptanceRefs",
       "formedAt",
       "supersedesRef",
@@ -409,6 +449,8 @@
       "originConfidence",
       "observedConsequence",
       "candidateScope",
+      "scopeTargetRef",
+      "scopeTargetFingerprint",
       "proposedPrimaryDestination",
       "proposedLinkedDestinations",
       "privacyState",
@@ -480,8 +522,15 @@
     "sourceBindings",
     "recordClass",
     "scope",
+    "scopeTargetRef",
+    "scopeTargetFingerprint",
     "acceptedByRefs",
     "acceptanceEvidenceRefs",
+    "authorityEvidenceClass",
+    "simulatedAuthority",
+    "liveAuthorityGranted",
+    "externalEffectsAuthorized",
+    "acceptanceDisposition",
     "formedAt",
     "acceptedAt",
     "currentness",
@@ -655,10 +704,12 @@
     "requiredBindingKinds": [
       "observation",
       "candidate",
+      "scopeTarget",
       "route",
       "review",
       "authorityEvidence",
       "acceptedRecord",
+      "authorityDisposition",
       "applicableProjection"
     ],
     "requiredJourneyStates": [
@@ -703,7 +754,10 @@
     "test.continuity-evolution.e19-bounded-context",
     "test.continuity-evolution.e20-scheduler-workgraph",
     "test.continuity-evolution.e21-canonical-projections",
-    "test.continuity-evolution.e22-full-gate"
+    "test.continuity-evolution.e22-full-gate",
+    "test.continuity-evolution.c11-exact-scope-target",
+    "test.continuity-evolution.c12-reviewed-burden-meaning",
+    "test.continuity-evolution.c13-simulation-authority-projection"
   ],
   "successorBoundaries": [
     "Runtime Failure & Recovery Spine",

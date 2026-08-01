@@ -517,7 +517,7 @@
   },
   {
     "testRef": "test.continuity-evolution.e20-scheduler-workgraph",
-    "brief": "The deterministic no-effect journey completes the actual registered continuity node through scheduler admission, lease and Workgraph verification with seven exact causal bindings."
+    "brief": "The deterministic no-effect journey completes the actual registered continuity node through scheduler admission, lease and Workgraph verification with exact causal, scope-target and authority-disposition bindings."
   },
   {
     "testRef": "test.continuity-evolution.e21-canonical-projections",
@@ -526,5 +526,17 @@
   {
     "testRef": "test.continuity-evolution.e22-full-gate",
     "brief": "PR-ready and Health independently reject missing, stale or generically successful continuity output unless the exact structured scheduler/Workgraph receipt is current; all repository gates remain required."
+  },
+  {
+    "testRef": "test.continuity-evolution.c11-exact-scope-target",
+    "brief": "Source-derived exact scope targets isolate turn/thread/channel leases, project applicability, conflict grouping, supersession and recurrence; ambiguous targets fail before aggregate mutation."
+  },
+  {
+    "testRef": "test.continuity-evolution.c12-reviewed-burden-meaning",
+    "brief": "Burden acceptance evidence, lifecycle transition and projection bind the exact reviewed inner source form and reject every same-evidence meaning substitution or public accepted-state transition."
+  },
+  {
+    "testRef": "test.continuity-evolution.c13-simulation-authority-projection",
+    "brief": "Simulation-only authority remains explicitly non-live and inactive in accepted/transient records, compact projections, applicability and Health; promotion, mixing and family delivery fail closed."
   }
 ]

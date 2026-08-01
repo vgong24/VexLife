@@ -34,8 +34,8 @@
     {
       "path": "test/continuity-evolution-router.test.mjs",
       "mode": "100644",
-      "bytes": 37258,
-      "sha256": "2aa13cd25521b890a4c2359b30cfe4a8aa1238327c51aab22abfa49824050035"
+      "bytes": 51877,
+      "sha256": "0ddc604e42e11e35e1b2d4373462c362e210b1685f90a2a5cdc4c4b622c1ec5f"
     },
     {
       "path": "test/core.test.mjs",
