@@ -234,8 +234,10 @@ executes no external effect.
 
 The shared [Runtime Failure & Recovery Spine](docs/RUNTIME-FAILURE-AND-RECOVERY.md)
 consumes exact source-issued classifier-plan receipts, persists scheduler recovery
-claim lifecycle through immutable checkpoint authority, bounded non-recursive before/after
-state slices and source-managed claim-currentness receipts, supports an explicit
+claim lifecycle through immutable checkpoint authority, registry-enforced canonical JSON
+UTF-8 prior-state budgets, exact prior-transition evidence and source-managed
+claim-currentness receipts. Every recovery operation revalidates the current scheduler
+aggregate and claim receipt; stale current projections hold `HELD_UNKNOWN`. The spine supports an explicit
 pre-resume terminal hold without reusing its activation/releases, and isolates every downstream
 action, continuation, success, convergence, terminal and human projection by a
 content-addressed recovery cycle. Transaction evidence is explicitly adopted by
@@ -243,7 +245,9 @@ the exact cycle/claim/admission, while pre-checkpoint projections remain awaitin
 rather than inheriting prior preservation. Forged restores, duplicate claims and
 prior-cycle or disposed-claim evidence fail closed. Invalidation routes the exact disposition
 reason into replay-owned recovery Health and Guide without mutating rejected scheduler or
-recovery aggregates. Every external recovery event is lifecycle-bound, and human projections
+recovery aggregates. Every external recovery event remains an immutable source object and is
+accepted only with exact current cycle/lifecycle scope or a content-addressed adoption receipt;
+managed wait/resume/split events stay content-addressed without adoption. Human projections
 replay the full aggregate before showing cycle, hold, action, success or terminal evidence.
 Its deterministic fixtures execute no external effect.
 

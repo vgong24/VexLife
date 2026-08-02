@@ -24,6 +24,7 @@ import {
   WorkerLeaseAuthority
 } from './scheduler-runtime-trust.mjs';
 import {
+  canonicalUtf8ByteLength,
   createSchedulerCheckpointPointerTransition,
   createSchedulerPriorStateSlice,
   createIntentSchedulerState,
@@ -157,7 +158,7 @@ function observedClockReceipt(observedAt, eventRef) {
   });
 }
 
-function schedulerPriorStateReceipt(aggregate, observedAt, purpose, checkpointRef) {
+function schedulerPriorStateReceipt(aggregate, observedAt, purpose, checkpointRef, schedulerRegistry) {
   const observed = parseCanonicalTimestamp(observedAt, 'scheduler prior-state observedAt');
   const priorObserved = aggregate.observedClock?.observedAt
     ? parseCanonicalTimestamp(aggregate.observedClock.observedAt, 'scheduler prior-state canonical clock')
@@ -165,18 +166,27 @@ function schedulerPriorStateReceipt(aggregate, observedAt, purpose, checkpointRe
   if (priorObserved !== null && observed < priorObserved) {
     throw new Error('scheduler recovery edge cannot precede the canonical scheduler clock');
   }
-  const stateSlice = createSchedulerPriorStateSlice(aggregate, { checkpointRef });
-  return contentAddressedSchedulerEvidence({
+  const contract = schedulerRegistry?.runtimeRecoveryClaimContract?.boundedPriorStateProof;
+  const stateSlice = createSchedulerPriorStateSlice(aggregate, { checkpointRef, schedulerRegistry });
+  const transitionEvidence = stateSlice.recoveryClaimPriorTransitionEvidence;
+  const receipt = contentAddressedSchedulerEvidence({
     contractRef: 'contract.intent-scheduler.recovery-prior-state/v2',
     formationRef: 'formation.intent-scheduler.recovery-prior-state.v2',
+    budgetContractRef: contract?.contractRef,
+    budgetContractFingerprint: semanticHash(contract),
+    canonicalSerialization: contract?.canonicalSerialization,
     purpose,
     checkpointRef,
     schedulerAggregateFingerprint: aggregate.semanticFingerprint,
     schedulerPhase: aggregate.phase,
     schedulerGeneration: aggregate.generation,
     schedulerObservedClockFingerprint: aggregate.observedClock?.semanticFingerprint ?? null,
+    schedulerAggregateCanonicalBytes: canonicalUtf8ByteLength(aggregate),
     priorClaimLedgerLength: aggregate.recoveryClaimLedger?.length ?? 0,
+    priorClaimTransitionRef: aggregate.recoveryClaimLedger?.at(-1)?.transitionRef ?? null,
     priorClaimTransitionFingerprint: aggregate.recoveryClaimLedger?.at(-1)?.semanticFingerprint ?? null,
+    priorClaimTransitionEvidenceRef: transitionEvidence?.transitionEvidenceRef ?? null,
+    priorClaimTransitionEvidenceFingerprint: transitionEvidence?.semanticFingerprint ?? null,
     schedulerStateSliceRef: stateSlice.stateSliceRef,
     schedulerStateSliceFingerprint: stateSlice.semanticFingerprint,
     schedulerStateSlice: stateSlice,
@@ -187,6 +197,10 @@ function schedulerPriorStateReceipt(aggregate, observedAt, purpose, checkpointRe
     refField: 'priorStateReceiptRef',
     prefix: 'receipt.intent-scheduler.recovery-prior-state.'
   });
+  if (canonicalUtf8ByteLength(receipt) > contract.maximumPriorStateReceiptBytes) {
+    throw new Error('scheduler prior-state receipt exceeds the source-managed canonical UTF-8 byte budget');
+  }
+  return receipt;
 }
 
 function exactRuntimeLease(input, {
@@ -808,8 +822,12 @@ export class SingleWorkerIntentScheduler {
       ? (value) => validateSchedulerRecoveryClaimReceipt(value, { registry: runtimeRecoveryRegistry })
       : null;
     this.#state = schedulerAggregate
-      ? createIntentSchedulerState({ aggregate: schedulerAggregate, recoveryClaimReceiptValidator })
-      : createIntentSchedulerState({ recoveryClaimReceiptValidator });
+      ? createIntentSchedulerState({
+        aggregate: schedulerAggregate,
+        recoveryClaimReceiptValidator,
+        schedulerRegistry
+      })
+      : createIntentSchedulerState({ recoveryClaimReceiptValidator, schedulerRegistry });
   }
 
   get workerRef() { return this.#workerRef; }
@@ -874,7 +892,8 @@ export class SingleWorkerIntentScheduler {
     const next = reduceSchedulerAggregate(this.#state.aggregate.value, event, {
       recoveryClaimReceiptValidator: this.#runtimeRecoveryRegistry
         ? (value) => validateSchedulerRecoveryClaimReceipt(value, { registry: this.#runtimeRecoveryRegistry })
-        : null
+        : null,
+      schedulerRegistry: this.#schedulerRegistry
     });
     this.#state.aggregate.set(next, { source: event.type });
     return next;
@@ -1322,7 +1341,13 @@ export class SingleWorkerIntentScheduler {
           item.leaseReleaseFingerprints.includes(fingerprint)))) {
       throw new Error('scheduler checkpoint release set is incomplete or already consumed');
     }
-    const priorStateReceipt = schedulerPriorStateReceipt(aggregate, observedAt, 'CLAIMED_CURRENT', checkpointRef);
+    const priorStateReceipt = schedulerPriorStateReceipt(
+      aggregate,
+      observedAt,
+      'CLAIMED_CURRENT',
+      checkpointRef,
+      this.#schedulerRegistry
+    );
     const receipt = finalized({
       schemaVersion: 'vexlife.intent-scheduler-recovery-checkpoint-consumption/v1',
       consumptionRef: `consumption.intent-scheduler.recovery.${claim.onceOnlyActivationRef.split('.').at(-1)}`,
@@ -1767,7 +1792,8 @@ export class SingleWorkerIntentScheduler {
         aggregate,
         options.observedAt,
         'RESUMED_CONSUMED',
-        checkpointRef
+        checkpointRef,
+        this.#schedulerRegistry
       );
       const resumeTransitionBindings = {
         checkpointRef,
@@ -2135,7 +2161,8 @@ export class SingleWorkerIntentScheduler {
         aggregate,
         completedAt,
         'TERMINAL_CONSUMED',
-        currentRecoveryClaim.checkpointRef
+        currentRecoveryClaim.checkpointRef,
+        this.#schedulerRegistry
       );
       const terminalTransitionBindings = {
         checkpointRef: currentRecoveryClaim.checkpointRef,
@@ -2274,7 +2301,8 @@ export class SingleWorkerIntentScheduler {
       aggregate,
       observedAt,
       'INVALIDATED_OR_ABANDONED',
-      checkpointRef
+      checkpointRef,
+      this.#schedulerRegistry
     );
     const schedulerDispositionReceipt = contentAddressedSchedulerEvidence({
       contractRef: 'contract.intent-scheduler.recovery-claim-disposition/v1',
@@ -2444,7 +2472,8 @@ export class SingleWorkerIntentScheduler {
         aggregate,
         releasedAt,
         'INVALIDATED_OR_ABANDONED',
-        currentRecoveryClaim.checkpointRef
+        currentRecoveryClaim.checkpointRef,
+        this.#schedulerRegistry
       );
       const schedulerDispositionReceipt = contentAddressedSchedulerEvidence({
         contractRef: 'contract.intent-scheduler.recovery-claim-disposition/v1',

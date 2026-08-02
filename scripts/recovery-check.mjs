@@ -129,11 +129,46 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
       !Number.isInteger(boundedPrior?.maximumPriorStateReceiptBytes) ||
       !Number.isInteger(boundedPrior?.maximumInitialClaimedSchedulerStateBytes) ||
       !Number.isInteger(boundedPrior?.maximumAdditionalAggregateBytesPerClaimTransition) ||
+      boundedPrior?.canonicalSerialization !== 'JSON_STRINGIFY_UTF8_V1' ||
       boundedPrior?.maximumNestedStateSlices !== 0 ||
       boundedPrior?.maximumPriorEdgeReceiptsInsideStateSlice !== 0 ||
       !Number.isInteger(boundedPrior?.maximumRecentLeaseBindings) ||
+      boundedPrior?.exactPriorTransitionEvidenceRequired !== true ||
       boundedPrior?.exactRestoreRequired !== true) {
     errors.push('bounded non-recursive scheduler prior-state contract is incomplete');
+  }
+  const operationCurrentness = registry.operationTimeSchedulerCurrentnessContract;
+  if (operationCurrentness?.contractRef !==
+        'contract.runtime-recovery.operation-time-scheduler-currentness/v1' ||
+      operationCurrentness?.receiptSchemaVersion !==
+        'vexlife.runtime-recovery-operation-currentness-receipt/v1' ||
+      operationCurrentness?.operationClasses?.length !== 17 ||
+      new Set(operationCurrentness?.operationClasses ?? []).size !== 17 ||
+      operationCurrentness?.requiredBindings?.length !== 20 ||
+      operationCurrentness?.invalidatedUseReason !==
+        'SCHEDULER_CLAIM_INVALIDATED_OPERATION_REJECTED' ||
+      operationCurrentness?.terminalUseReason !== 'SCHEDULER_CLAIM_TERMINAL_OPERATION_REJECTED' ||
+      operationCurrentness?.staleUseReason !== 'SCHEDULER_CLAIM_STALE_OPERATION_REJECTED' ||
+      operationCurrentness?.staleCurrentProjectionState !== 'HELD_UNKNOWN' ||
+      operationCurrentness?.historicalProjectionMustBeExplicit !== true ||
+      operationCurrentness?.rejectedSchedulerOrRecoveryMutationAllowed !== false ||
+      operationCurrentness?.liveClockOrSynchronizationGranted !== false) {
+    errors.push('operation-time scheduler currentness contract is incomplete');
+  }
+  const adoption = registry.externalEventFormationAdoptionContract;
+  if (adoption?.contractRef !== 'contract.runtime-recovery.external-event-formation-adoption/v1' ||
+      adoption?.receiptSchemaVersion !==
+        'vexlife.runtime-recovery-external-event-adoption-receipt/v1' ||
+      adoption?.managedEventSchemas?.length !== 3 ||
+      adoption?.genericSourceEventClass !== 'GENERIC_IMMUTABLE_EXTERNAL_EVENT' ||
+      adoption?.exactSourceCycleAndLifecycleBindingsMayBypassAdoption !== true ||
+      adoption?.unscopedGenericEventRequiresAdoption !== true ||
+      adoption?.sourceObservedAtMustNotPrecedeClaimCurrentness !== true ||
+      adoption?.adoptionMustNotPrecedeSourceObservation !== true ||
+      adoption?.sourceMutationOrRefingerprintAllowed !== false ||
+      adoption?.sourceRefReuseAcrossCycleOrLifecycleAllowed !== false ||
+      adoption?.requiredReceiptBindings?.length !== 17) {
+    errors.push('immutable external event formation/adoption contract is incomplete');
   }
   if (!registry.recoveryCycleContract?.contentAddressedAtFailureActivation ||
       !registry.recoveryCycleContract?.requiredOnEveryDownstreamRecoveryReceipt ||

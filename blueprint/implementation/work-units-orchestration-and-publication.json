@@ -358,7 +358,7 @@
   },
   {
     "workRef": "work.vexlife.runtime-failure-recovery",
-    "purpose": "Implement one deterministic no-effect Runtime Failure & Recovery Spine whose typed total boundary, exact registry budget, scheduler checkpoint/six-lease handoff, replay-derived aggregate, aggregate-owned actions and causally completed Workgraph journey fail closed under substitution.",
+    "purpose": "Implement one deterministic no-effect Runtime Failure & Recovery Spine whose typed total boundary, canonical UTF-8 scheduler prior-state budgets and exact transition proof, operation-time scheduler currentness, immutable external-event adoption, scheduler checkpoint/six-lease handoff, replay-derived aggregate, aggregate-owned actions and causally completed Workgraph journey fail closed under substitution.",
     "distance": "NOW",
     "milestoneRef": "milestone.vexlife.work-orchestration",
     "dependsOn": [
@@ -444,7 +444,10 @@
       "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery",
       "test.runtime-recovery.r34-bounded-non-recursive-scheduler-state",
       "test.runtime-recovery.r35-external-event-claim-lifecycle",
-      "test.runtime-recovery.r36-replay-owned-human-projection"
+      "test.runtime-recovery.r36-replay-owned-human-projection",
+      "test.runtime-recovery.r37-source-managed-prior-state-budget-transition",
+      "test.runtime-recovery.r38-operation-time-scheduler-currentness",
+      "test.runtime-recovery.r39-external-event-formation-adoption"
     ],
     "outputRefs": [
       "registry.vexlife.runtime-recovery.001",
@@ -460,13 +463,15 @@
       "contract.intent-scheduler.recovery-claim-currentness/v1",
       "contract.intent-scheduler.recovery-prior-state/v2",
       "contract.runtime-recovery.external-event-claim-lifecycle/v1",
+      "contract.runtime-recovery.operation-time-scheduler-currentness/v1",
+      "contract.runtime-recovery.external-event-formation-adoption/v1",
       "contract.runtime-recovery.replay-owned-human-projection/v1",
       "contract.runtime-recovery.integrated-simulation/v1",
       "module.vexlife.core.runtime-recovery",
       "projection.runtime-recovery.health"
     ],
     "effectBoundary": "DETERMINISTIC_NO_EFFECT_FAILURE_AND_RECOVERY_FIXTURES_ONLY",
-    "completionGate": "C1-C10 and R0-R36 adversarial fixtures, including bounded non-recursive scheduler prior state, exact external-event claim lifecycle, replay-owned human projections, rejected-thenable consumption, classifier provenance, typed semantic replay, checkpoint/release single-use, all action matrices and scheduler continuation consumption; one exact Workgraph-bound receipt remains independently admitted by PR-ready and Health with manifest, browser, Windows/Linux portability, DCO and exact-head review",
+    "completionGate": "C1-C10 and R0-R39 adversarial fixtures, including canonical UTF-8 scheduler prior-state budgets with exact prior-transition proof, operation-time scheduler currentness, immutable external-event formation/adoption, replay-owned human projections, rejected-thenable consumption, classifier provenance, typed semantic replay, checkpoint/release single-use, all action matrices and scheduler continuation consumption; one exact Workgraph-bound receipt remains independently admitted by PR-ready and Health with manifest, browser, Windows/Linux portability, DCO and exact-head review",
     "platformRefs": [
       "platform.any"
     ],

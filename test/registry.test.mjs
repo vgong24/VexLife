@@ -81,13 +81,24 @@ test('runtime recovery registry composes through the universal Blueprint and bou
   assert.deepEqual(recovery.recoveryActions, RECOVERY_ACTIONS);
   assert.deepEqual(recovery.failureEnvelope.requiredFields, FAILURE_ENVELOPE_REQUIRED_FIELDS);
   assert.deepEqual(recovery.recoveryAggregate.requiredFields, RECOVERY_AGGREGATE_REQUIRED_FIELDS);
+  assert.equal(bundle.schedulerRegistry.runtimeRecoveryClaimContract.boundedPriorStateProof.canonicalSerialization,
+    'JSON_STRINGIFY_UTF8_V1');
+  assert.equal(bundle.schedulerRegistry.runtimeRecoveryClaimContract.boundedPriorStateProof
+    .exactPriorTransitionEvidenceRequired, true);
+  assert.equal(recovery.operationTimeSchedulerCurrentnessContract.operationClasses.length, 17);
+  assert.equal(recovery.operationTimeSchedulerCurrentnessContract.staleCurrentProjectionState, 'HELD_UNKNOWN');
+  assert.equal(recovery.externalEventFormationAdoptionContract.unscopedGenericEventRequiresAdoption, true);
+  assert.equal(recovery.externalEventFormationAdoptionContract.sourceMutationOrRefingerprintAllowed, false);
   const registry = compileRegistryPack(bundle);
   for (const ref of [
     'feature.vexlife.runtime-failure-recovery',
     'state.runtime-recovery',
     'process.vexlife.runtime.recover-execute',
     'module.vexlife.core.runtime-recovery',
-    'test.runtime-recovery.r24-full-gate'
+    'test.runtime-recovery.r24-full-gate',
+    'test.runtime-recovery.r37-source-managed-prior-state-budget-transition',
+    'test.runtime-recovery.r38-operation-time-scheduler-currentness',
+    'test.runtime-recovery.r39-external-event-formation-adoption'
   ]) assert.equal(registry.require(ref).ref, ref);
   const atlas = new Atlas(buildIdentityIndex(bundle));
   const traversal = atlas.query({
@@ -97,6 +108,8 @@ test('runtime recovery registry composes through the universal Blueprint and bou
     tokenBudget: 16000
   });
   assert.ok(traversal.results.some((item) => item.ref === 'test.runtime-recovery.r24-full-gate'));
+  assert.ok(traversal.results.some((item) =>
+    item.ref === 'test.runtime-recovery.r39-external-event-formation-adoption'));
   const malformed = structuredClone(recovery);
   malformed.retryPolicy.maximumAttemptCount = 0;
   assert.throws(() => createRecoveryAggregate({

@@ -64,14 +64,14 @@
     {
       "path": "test/registry.test.mjs",
       "mode": "100644",
-      "bytes": 18075,
-      "sha256": "098edddc9d7a18094bb584730eafbba85805b513c081516148dd98ec650d5b60"
+      "bytes": 19131,
+      "sha256": "48d965f99de958f05cea3b9e909746cdd5c42667d0fe45b7fdeb8144da22bd0f"
     },
     {
       "path": "test/runtime-failure-recovery.test.mjs",
       "mode": "100644",
-      "bytes": 47488,
-      "sha256": "003ad0d72fcfdba6f8908cf6c5c6ef7ec5abe22b096767275adcca2df23f9de5"
+      "bytes": 53169,
+      "sha256": "617c5c19da4035c719dcf91f6bc46f32620c7825273ff6b0e7768c9a25bc2e20"
     },
     {
       "path": "test/source-manifest.test.mjs",

@@ -6,6 +6,7 @@ import {
   admitRecoveryCheckpoint,
   applyRecoveryAction,
   closeRecoveredExecution,
+  createExternalRecoveryEventAdoptionReceipt,
   createRecoveryAggregate,
   createRecoveryContinuation,
   createRecoveryConvergenceReceipt,
@@ -310,7 +311,14 @@ test('C2 checkpoint admission consumes the exact scheduler checkpoint and six re
 });
 
 test('C2 continuation requires scheduler-issued fresh generation and six fresh, unreused leases', () => {
-  const { actionAggregate, checkpointAdmission, resumed, continuation, schedulerAggregateAfterResume } = integrated.artifacts;
+  const {
+    actionAggregate,
+    checkpointAdmission,
+    resumed,
+    continuation,
+    schedulerAggregateAfterResume,
+    resumedSchedulerCurrentness
+  } = integrated.artifacts;
   assert.equal(continuation.priorSchedulerGeneration, 1);
   assert.equal(continuation.nextSchedulerGeneration, 2);
   assert.equal(Object.keys(continuation.freshLeaseFingerprints).length, 6);
@@ -325,8 +333,9 @@ test('C2 continuation requires scheduler-issued fresh generation and six fresh, 
     schedulerAggregate: schedulerAggregateAfterResume,
     schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery',
     observedAt: '2026-08-01T00:00:04.000Z',
+    schedulerCurrentness: resumedSchedulerCurrentness,
     registry
-  }), /exact scheduler resume|reused prior generation identity|RESUMED_CONSUMED claim currentness/);
+  }), /exact scheduler resume|reused prior generation identity|RESUMED_CONSUMED claim currentness|SCHEDULER_CLAIM_STALE_OPERATION_REJECTED/);
 
   const oldGenerationRetry = executeWithRecoveryBoundary({
     aggregate: integrated.artifacts.failedAggregate,
@@ -528,6 +537,65 @@ test('C22 human recovery projections are owned by full aggregate replay', () => 
   assert.equal(proof.failedProjectionReturnedPlausibleView, false);
 });
 
+test('C23 source-managed canonical UTF-8 prior-state budgets bind the exact prior transition', () => {
+  const proof = integrated.receipt.sourceManagedPriorStateBudgetAndTransitionProof;
+  const contract = bundle.schedulerRegistry.runtimeRecoveryClaimContract.boundedPriorStateProof;
+  assert.equal(proof.registeredContractFingerprint, semanticHash(contract));
+  assert.equal(proof.canonicalSerializationExact, true);
+  assert.equal(proof.maximumNestedStateSliceCount, 0);
+  assert.equal(proof.maximumPriorEdgeReceiptCount, 0);
+  assert.equal(proof.exactPriorTransitionEvidenceBound, true);
+  assert.equal(proof.registryBudgetSubstitutionRejected, true);
+  assert.equal(proof.oversizedCanonicalSliceRejected, true);
+  assert.equal(proof.omittedPriorTransitionEvidenceRejected, true);
+  assert.equal(proof.changedPriorTransitionEvidenceRejected, true);
+  assert.equal(proof.sameStateSliceRefDifferentContentRejected, true);
+  assert.equal(proof.samePriorStateReceiptRefDifferentContentRejected, true);
+  assert.ok(proof.maximumObservedInitialClaimedSchedulerStateBytes <=
+    contract.maximumInitialClaimedSchedulerStateBytes);
+  assert.ok(proof.maximumObservedPriorStateSliceBytes <= contract.maximumPriorStateReceiptBytes);
+});
+
+test('C24 every recovery operation revalidates scheduler currentness and stale projections hold unknown', () => {
+  const proof = integrated.receipt.operationTimeSchedulerCurrentnessProof;
+  const contract = registry.operationTimeSchedulerCurrentnessContract;
+  assert.equal(proof.contractFingerprint, semanticHash(contract));
+  assert.deepEqual(Object.keys(proof.operationRouteReceipts).sort(), [...contract.operationClasses].sort());
+  assert.equal(proof.everyRegisteredOperationRoutedExactly, true);
+  assert.equal(proof.allInvalidatedOperationsRejectedExact, true);
+  assert.equal(proof.allStaleOperationsRejectedExact, true);
+  assert.equal(proof.allNonterminalOperationsRejectedAfterTerminal, true);
+  assert.equal(proof.invalidatedCurrentProjectionState, 'HELD_UNKNOWN');
+  assert.equal(proof.invalidatedCurrentProjectionQueueState, 'HELD_UNKNOWN');
+  assert.equal(proof.invalidatedCurrentProjectionHealthState, 'ATTENTION');
+  assert.equal(proof.staleCurrentProjectionState, 'HELD_UNKNOWN');
+  assert.equal(proof.staleCurrentProjectionRoute, 'SCHEDULER_CURRENTNESS_STALE_OR_UNKNOWN');
+  assert.equal(proof.historicalProjectionNeverCurrentOrClear, true);
+  assert.equal(proof.schedulerAggregatesUnchanged, true);
+  assert.equal(proof.recoveryAggregatesUnchanged, true);
+  assert.equal(proof.synchronizedNormalPathIntact, true);
+});
+
+test('C25 immutable external source events require exact current scope or one adoption receipt', () => {
+  const proof = integrated.receipt.externalEventFormationAdoptionProof;
+  const contract = registry.externalEventFormationAdoptionContract;
+  assert.equal(proof.contractFingerprint, semanticHash(contract));
+  assert.equal(proof.exactImmutableSourceBinding, true);
+  assert.equal(proof.exactCurrentSchedulerCycleFailureWorkGenerationBinding, true);
+  assert.equal(proof.exactChronology, true);
+  assert.equal(proof.sourceImmutableBeforeAndAfterAdoption, true);
+  assert.equal(proof.unscopedWithoutAdoptionRejected, true);
+  assert.equal(proof.preClaimSourceAdoptionRejected, true);
+  assert.equal(proof.exactCurrentScopedSourceAcceptedWithoutAdoption, true);
+  assert.equal(proof.allReaddressedExternalEventsRejected, true);
+  assert.equal(proof.sameSourceRefDifferentContentRejected, true);
+  assert.equal(proof.sameAdoptionRefDifferentContentRejected, true);
+  assert.equal(proof.rehashedAdoptionBindingSubstitutionRejected, true);
+  assert.equal(proof.managedEventsRemainContentAddressedWithoutAdoption, true);
+  assert.equal(proof.replayExactAdoptionAndSourceTamperRejected, true);
+  assert.equal(proof.invalidatedAndTerminalAdmissionsRejectedWithoutMutation, true);
+});
+
 test('C3 restore replays the typed ledger and rejects budget reset, impossible order, forged final state, and duplicate terminal closure', () => {
   const finalAggregate = integrated.aggregate;
   const restored = restoreRecoveryAggregate(serializeRecoveryAggregate(finalAggregate, { registry }), { registry });
@@ -616,24 +684,55 @@ test('C16 transaction formation and human preservation projection remain exact t
 
 test('C3 replay rejects same-ref/different-content and stale external events without mutation', () => {
   const owner = integrated.artifacts.succeeded.aggregate;
+  const schedulerCurrentness = integrated.artifacts.resumedSchedulerCurrentness;
   const event = {
     eventRef: 'event.external.test.1',
     workNodeRef: owner.workNodeRef,
     schedulerGeneration: owner.schedulerGeneration,
     resultRef: 'result.external.test.1',
-    observedAt: T2
+    observedAt: '2026-08-01T00:00:05.000Z'
   };
-  const accepted = recordExternalRecoveryEvent(owner, event, { registry });
+  event.semanticFingerprint = semanticHash(event);
+  const adoptionReceipt = createExternalRecoveryEventAdoptionReceipt({
+    aggregate: owner,
+    event,
+    adoptedAt: event.observedAt,
+    schedulerCurrentness,
+    registry
+  });
+  const accepted = recordExternalRecoveryEvent(owner, event, {
+    adoptionReceipt,
+    schedulerCurrentness,
+    registry
+  });
   assert.equal(accepted.changed, true);
-  assert.equal(recordExternalRecoveryEvent(accepted.aggregate, event, { registry }).changed, false);
-  const different = recordExternalRecoveryEvent(accepted.aggregate, { ...event, resultRef: 'result.forged' }, { registry });
+  assert.equal(recordExternalRecoveryEvent(accepted.aggregate, event, {
+    adoptionReceipt,
+    schedulerCurrentness,
+    registry
+  }).changed, false);
+  const differentEvent = { ...event, resultRef: 'result.forged' };
+  delete differentEvent.semanticFingerprint;
+  differentEvent.semanticFingerprint = semanticHash(differentEvent);
+  const different = recordExternalRecoveryEvent(accepted.aggregate, differentEvent, {
+    adoptionReceipt,
+    schedulerCurrentness,
+    registry
+  });
   assert.equal(different.changed, false);
   assert.equal(different.reason, 'SAME_REF_DIFFERENT_CONTENT_REJECTED');
-  const stale = recordExternalRecoveryEvent(accepted.aggregate, {
+  const staleEvent = {
     ...event,
     eventRef: 'event.external.test.stale',
     schedulerGeneration: 1
-  }, { registry });
+  };
+  delete staleEvent.semanticFingerprint;
+  staleEvent.semanticFingerprint = semanticHash(staleEvent);
+  const stale = recordExternalRecoveryEvent(accepted.aggregate, staleEvent, {
+    adoptionReceipt,
+    schedulerCurrentness,
+    registry
+  });
   assert.equal(stale.changed, false);
   assert.equal(stale.aggregate.semanticFingerprint, accepted.aggregate.semanticFingerprint);
 });
@@ -692,7 +791,11 @@ test('C4 selected recovery actions, rollback/LKG/quarantine, and human gates are
   const humanOwner = humanBranch.aggregate;
   assert.equal(humanOwner.phase, 'WAITING_HUMAN');
   assert.equal(humanOwner.humanDecisionGates.length, 1);
-  assert.equal(projectRecoveryAggregate(humanOwner, { registry }).projection.guide.victorNeeded, true);
+  assert.equal(projectRecoveryAggregate(humanOwner, {
+    projectionObservedAt: '2026-08-01T00:00:04.000Z',
+    schedulerCurrentness: humanBranch.claimedSchedulerCurrentness,
+    registry
+  }).projection.guide.victorNeeded, true);
 });
 
 test('C4 transactional receipts bind before/partial/read-back/LKG/quarantine evidence', () => {
@@ -719,7 +822,11 @@ test('C9 all ten actions use exact evidence matrices and only completable action
   const byAction = new Map(representatives.map((item) => [item.action, item]));
   byAction.set(
     integrated.quarantineAggregate.currentRecoveryActionReceipt.action,
-    { actionReceipt: integrated.quarantineAggregate.currentRecoveryActionReceipt, aggregate: integrated.quarantineAggregate }
+    {
+      actionReceipt: integrated.quarantineAggregate.currentRecoveryActionReceipt,
+      aggregate: integrated.quarantineAggregate,
+      claimedSchedulerCurrentness: integrated.artifacts.quarantineSchedulerCurrentness
+    }
   );
   assert.deepEqual([...byAction.keys()].sort(), [...registry.recoveryActions].sort());
   for (const matrix of registry.recoveryActionEvidenceMatrix) {
@@ -733,8 +840,12 @@ test('C9 all ten actions use exact evidence matrices and only completable action
     if (matrix.continuationRequired) {
       assert.ok(branch.convergenceFingerprint, matrix.action);
     } else {
-      assert.throws(() => createRecoveryConvergenceReceipt(branch.aggregate, { formedAt: T2, registry }),
-        /missing one or more required causal inputs|completionEligible|convergence/);
+      assert.throws(() => createRecoveryConvergenceReceipt(branch.aggregate, {
+        formedAt: '2026-08-01T00:00:04.000Z',
+        schedulerCurrentness: branch.claimedSchedulerCurrentness,
+        registry
+      }),
+        /missing one or more required causal inputs|completionEligible|convergence|SCHEDULER_CLAIM_STALE_OPERATION_REJECTED/);
     }
   }
   const wait = byAction.get('CHECKPOINT_AND_WAIT');
@@ -770,6 +881,7 @@ test('C10 scheduler resume receipt consumes exact action-specific context and re
     schedulerAggregate: contextBranch.schedulerAggregateAfterResume,
     schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.context-condensation',
     observedAt: '2026-08-01T00:00:04.000Z',
+    schedulerCurrentness: contextBranch.resumedSchedulerCurrentness,
     registry
   }), /fingerprint mismatch|exact scheduler resume/);
 
@@ -794,6 +906,7 @@ test('C10 scheduler resume receipt consumes exact action-specific context and re
     schedulerAggregate: resourceBranch.schedulerAggregateAfterResume,
     schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.resource-reduced-retry',
     observedAt: '2026-08-01T00:00:04.000Z',
+    schedulerCurrentness: resourceBranch.resumedSchedulerCurrentness,
     registry
   }), /fingerprint mismatch|exact scheduler resume/);
 });
@@ -837,6 +950,7 @@ test('C5 one actual recovery Workgraph node consumes convergence evidence and te
       returnRouteReceipt: completed.returnRouteReceipt
     },
     completedAt: '2026-08-01T00:00:06.000Z',
+    schedulerCurrentness: integrated.artifacts.terminalSchedulerCurrentness,
     registry
   }), /aggregate-owned successful executor receipt/);
 
@@ -852,8 +966,9 @@ test('C5 one actual recovery Workgraph node consumes convergence evidence and te
       returnRouteReceipt: completed.returnRouteReceipt
     },
     completedAt: '2026-08-01T00:00:06.000Z',
+    schedulerCurrentness: integrated.artifacts.resumedSchedulerCurrentness,
     registry
-  }), /aggregate-owned action convergence/);
+  }), /aggregate-owned action convergence|SCHEDULER_CLAIM_STALE_OPERATION_REJECTED/);
 
   const staleVerification = structuredClone(completed.completionVerification);
   staleVerification.currentness = 'STALE';
@@ -871,6 +986,7 @@ test('C5 one actual recovery Workgraph node consumes convergence evidence and te
       returnRouteReceipt: completed.returnRouteReceipt
     },
     completedAt: '2026-08-01T00:00:06.000Z',
+    schedulerCurrentness: integrated.artifacts.terminalSchedulerCurrentness,
     registry
   }), /stale, substituted, or detached/);
 

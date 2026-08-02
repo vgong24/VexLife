@@ -20,6 +20,58 @@
     "humanProjectionMustExposeExactDispositionReason": true,
     "everyExternalEventRequiresExactCurrentClaimLifecycle": true
   },
+  "operationTimeSchedulerCurrentnessContract": {
+    "contractRef": "contract.runtime-recovery.operation-time-scheduler-currentness/v1",
+    "receiptSchemaVersion": "vexlife.runtime-recovery-operation-currentness-receipt/v1",
+    "operationClasses": [
+      "POLICY_FORMATION",
+      "CONTEXT_FORMATION",
+      "RESOURCE_FORMATION",
+      "TRANSACTION_ADOPTION",
+      "HUMAN_GATE_FORMATION",
+      "WAIT_RESUME_FORMATION",
+      "SPLIT_ROUTE_FORMATION",
+      "ACTION_FORMATION",
+      "EXTERNAL_EVENT_ADOPTION",
+      "EXTERNAL_EVENT_ADMISSION",
+      "CONTINUATION_FORMATION",
+      "CONTINUATION_APPLICATION",
+      "RETRY_ATTEMPT",
+      "CONVERGENCE_FORMATION",
+      "CONVERGENCE_APPLICATION",
+      "TERMINAL_CLOSURE",
+      "CURRENT_PROJECTION"
+    ],
+    "requiredBindings": [
+      "schedulerAggregateFingerprint",
+      "schedulerClaimCurrentnessReceiptRef",
+      "schedulerClaimCurrentnessReceiptFingerprint",
+      "schedulerClaimTransitionRef",
+      "schedulerClaimTransitionFingerprint",
+      "checkpointRef",
+      "checkpointFingerprint",
+      "checkpointPointerRef",
+      "checkpointPointerFingerprint",
+      "recoveryAggregateRef",
+      "recoveryAggregateFingerprint",
+      "recoveryCycleRef",
+      "recoveryCycleFingerprint",
+      "failureRef",
+      "failureFingerprint",
+      "onceOnlyActivationRef",
+      "workNodeRef",
+      "schedulerGeneration",
+      "claimLifecycle",
+      "observedAt"
+    ],
+    "invalidatedUseReason": "SCHEDULER_CLAIM_INVALIDATED_OPERATION_REJECTED",
+    "terminalUseReason": "SCHEDULER_CLAIM_TERMINAL_OPERATION_REJECTED",
+    "staleUseReason": "SCHEDULER_CLAIM_STALE_OPERATION_REJECTED",
+    "staleCurrentProjectionState": "HELD_UNKNOWN",
+    "historicalProjectionMustBeExplicit": true,
+    "rejectedSchedulerOrRecoveryMutationAllowed": false,
+    "liveClockOrSynchronizationGranted": false
+  },
   "externalRecoveryEventClaimLifecycleContract": {
     "contractRef": "contract.runtime-recovery.external-event-claim-lifecycle/v1",
     "managedWaitResumeAndSplitAllowedLifecycle": [
@@ -38,6 +90,41 @@
     "terminalReason": "SCHEDULER_CLAIM_TERMINAL_EXTERNAL_EVENT_REJECTED",
     "rejectedAggregateMutationAllowed": false,
     "replayMustRevalidateExactCurrentness": true
+  },
+  "externalEventFormationAdoptionContract": {
+    "contractRef": "contract.runtime-recovery.external-event-formation-adoption/v1",
+    "receiptSchemaVersion": "vexlife.runtime-recovery-external-event-adoption-receipt/v1",
+    "managedEventSchemas": [
+      "vexlife.runtime-recovery-external-wait-event/v1",
+      "vexlife.runtime-recovery-external-resume-event/v1",
+      "vexlife.runtime-recovery-split-route-event/v1"
+    ],
+    "genericSourceEventClass": "GENERIC_IMMUTABLE_EXTERNAL_EVENT",
+    "exactSourceCycleAndLifecycleBindingsMayBypassAdoption": true,
+    "unscopedGenericEventRequiresAdoption": true,
+    "sourceObservedAtMustNotPrecedeClaimCurrentness": true,
+    "adoptionMustNotPrecedeSourceObservation": true,
+    "sourceMutationOrRefingerprintAllowed": false,
+    "sourceRefReuseAcrossCycleOrLifecycleAllowed": false,
+    "requiredReceiptBindings": [
+      "sourceEventRef",
+      "sourceEventFingerprint",
+      "sourceEventClass",
+      "sourceObservedAt",
+      "schedulerAggregateFingerprint",
+      "schedulerClaimCurrentnessReceiptRef",
+      "schedulerClaimCurrentnessReceiptFingerprint",
+      "checkpointPointerRef",
+      "checkpointPointerFingerprint",
+      "recoveryAggregateRef",
+      "recoveryCycleRef",
+      "recoveryCycleFingerprint",
+      "failureRef",
+      "failureFingerprint",
+      "workNodeRef",
+      "schedulerGeneration",
+      "adoptionObservedAt"
+    ]
   },
   "failureEnvelope": {
     "contractRef": "contract.vexlife.runtime-failure-envelope/v1",
@@ -438,7 +525,7 @@
       { "type": "HUMAN_DECISION_REQUESTED", "fields": ["gate"] },
       { "type": "RECOVERY_ACTION_APPLIED", "fields": ["receipt"] },
       { "type": "GENERATION_CONTINUED", "fields": ["continuation"] },
-      { "type": "EXTERNAL_EVENT_ACCEPTED", "fields": ["event"] },
+      { "type": "EXTERNAL_EVENT_ACCEPTED", "fields": ["adoptionReceipt", "event"] },
       { "type": "RECOVERY_CONVERGED", "fields": ["receipt"] },
       { "type": "TERMINAL_CLOSED", "fields": ["receipt"] }
     ],
@@ -514,7 +601,10 @@
     "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery",
     "test.runtime-recovery.r34-bounded-non-recursive-scheduler-state",
     "test.runtime-recovery.r35-external-event-claim-lifecycle",
-    "test.runtime-recovery.r36-replay-owned-human-projection"
+    "test.runtime-recovery.r36-replay-owned-human-projection",
+    "test.runtime-recovery.r37-source-managed-prior-state-budget-transition",
+    "test.runtime-recovery.r38-operation-time-scheduler-currentness",
+    "test.runtime-recovery.r39-external-event-formation-adoption"
   ],
   "simulationContract": {
     "contractRef": "contract.runtime-recovery.integrated-simulation/v1",
@@ -540,7 +630,10 @@
       "HUMAN_PROJECTIONS_RETAIN_RECOVERY_EVIDENCE",
       "EXACT_CYCLE_LOCAL_EVIDENCE_REJECTED",
       "BOUNDED_NON_RECURSIVE_SCHEDULER_STATE_PROVEN",
+      "SOURCE_MANAGED_PRIOR_STATE_BUDGET_AND_TRANSITION_PROVEN",
       "EXTERNAL_EVENT_CLAIM_CURRENTNESS_PROVEN",
+      "OPERATION_TIME_SCHEDULER_CURRENTNESS_PROVEN",
+      "EXTERNAL_EVENT_FORMATION_ADOPTION_PROVEN",
       "REPLAY_OWNED_HUMAN_PROJECTION_PROVEN"
     ],
     "requiredSchedulerBindings": [

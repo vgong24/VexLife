@@ -734,5 +734,17 @@
   {
     "testRef": "test.runtime-recovery.r36-replay-owned-human-projection",
     "brief": "Queue, Terrain, Health and Guide projections first replay the complete aggregate and bind its exact cycle, failure, lifecycle, hold, disposition, action, success, convergence and terminal evidence; rehashed display state and illegal histories fail before a plausible view is returned."
+  },
+  {
+    "testRef": "test.runtime-recovery.r37-source-managed-prior-state-budget-transition",
+    "brief": "Canonical JSON UTF-8 byte budgets cover initial claimed scheduler state, each compact prior-state slice and receipt, every per-transition aggregate increment and bounded lease bindings; exact prior transition evidence rejects omission, substitution, same-ref/different-content and coordinated rehash."
+  },
+  {
+    "testRef": "test.runtime-recovery.r38-operation-time-scheduler-currentness",
+    "brief": "Every policy, context, resource, transaction, human, wait, split, action, external-event, continuation, retry, convergence, terminal and current-projection operation consumes exact operation-time scheduler aggregate and claim-currentness evidence; stale, invalidated and terminal misuse is mutation-free and stale current projections remain HELD_UNKNOWN."
+  },
+  {
+    "testRef": "test.runtime-recovery.r39-external-event-formation-adoption",
+    "brief": "An immutable generic external source is accepted only with exact current cycle/lifecycle scope or one content-addressed adoption receipt binding source chronology, scheduler currentness, checkpoint pointer, cycle, failure, work and generation; readdressing and source/adoption substitution fail closed."
   }
 ]

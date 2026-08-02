@@ -52,12 +52,14 @@
       "receiptSchemaVersion": "vexlife.intent-scheduler-recovery-prior-state-receipt/v2",
       "stateSliceSchemaVersion": "vexlife.intent-scheduler-recovery-prior-state-slice/v1",
       "growthClass": "LINEAR_PER_RECOVERY_CLAIM_TRANSITION",
+      "canonicalSerialization": "JSON_STRINGIFY_UTF8_V1",
       "maximumPriorStateReceiptBytes": 100000,
-      "maximumInitialClaimedSchedulerStateBytes": 200000,
+      "maximumInitialClaimedSchedulerStateBytes": 600000,
       "maximumAdditionalAggregateBytesPerClaimTransition": 150000,
       "maximumNestedStateSlices": 0,
       "maximumPriorEdgeReceiptsInsideStateSlice": 0,
       "maximumRecentLeaseBindings": 18,
+      "exactPriorTransitionEvidenceRequired": true,
       "exactRestoreRequired": true
     },
     "edgeEvidenceContracts": {
