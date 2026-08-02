@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/runtime-failure.mjs",
+      "mode": "100644",
+      "bytes": 17151,
+      "sha256": "d0b0e6775161695555c6139c479431a42d1e23a857c98f3772ea31533bc86e78"
+    },
+    {
+      "path": "src/core/runtime-recovery.mjs",
+      "mode": "100644",
+      "bytes": 179477,
+      "sha256": "b8cf15cd2730105ca295488e6008533be15e8807d7fe4446e0714aa234a20646"
+    },
+    {
       "path": "src/core/scheduler-runtime-trust.mjs",
       "mode": "100644",
       "bytes": 33626,
@@ -86,6 +98,12 @@
       "sha256": "574c01e5a9f5e5eefacc2ef35d4dd3944a6cbed87f1e6c965d71e7983433210a"
     },
     {
+      "path": "test/concern-watch.test.mjs",
+      "mode": "100644",
+      "bytes": 31030,
+      "sha256": "1f1d7a67582db8c87859bfa112003f4feef03af0bf817199ac155bddbda8a4b4"
+    },
+    {
       "path": "test/continuity-evolution-router.test.mjs",
       "mode": "100644",
       "bytes": 116934,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 1173,
       "sha256": "ae4f14d6feb5be019abe24c38807cfb5f5f99231ee74164334cd7a6cd4f8ea5c"
-    },
-    {
-      "path": "test/fixtures/orientation/public-active.json",
-      "mode": "100644",
-      "bytes": 1051,
-      "sha256": "5cdfa67a043b52b643c37bc8874488140de0e9ef09fa8eaa965e6bd5643d9d54"
-    },
-    {
-      "path": "test/fixtures/public-safety/cases.json",
-      "mode": "100644",
-      "bytes": 795,
-      "sha256": "fc8f7a2303ce6c2d12ca4ceeb8d67e766f9f81aba03a4ffb9cf26545b3eed6f6"
-    },
-    {
-      "path": "test/foundation-health.test.mjs",
-      "mode": "100644",
-      "bytes": 15521,
-      "sha256": "426aebee4f8b0a8c8e3f219719e2eb47802f6fd93e5af0cd6aa268c895a768a7"
     }
   ]
 }
