@@ -710,5 +710,17 @@
   {
     "testRef": "test.runtime-recovery.r30-exact-cycle-local-evidence",
     "brief": "Cycle-bound transaction adoption and human projections reject prior, unscoped, re-addressed, stale and same-ref/different-content evidence while immutable historical context/resource/wait/transaction proof remains inspectable."
+  },
+  {
+    "testRef": "test.runtime-recovery.r31-canonical-checkpoint-preclaim-replay",
+    "brief": "Immutable canonical checkpoints, exact six-object release evidence and exact pre-claim scheduler state replay reject coordinated checkpoint, pointer, release, claim and aggregate rehash while preserving legitimate admission."
+  },
+  {
+    "testRef": "test.runtime-recovery.r32-complete-claim-edge-replay",
+    "brief": "Resume, terminal and invalidation edges embed and replay their complete scheduler queue, active, lease, runtime, resource, Workgraph, disposition, pointer and clock evidence and reject coordinated rehash."
+  },
+  {
+    "testRef": "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery",
+    "brief": "Source-managed scheduler claim currentness gates recovery formation and continuation; invalidation produces an exact blocked recovery hold and prevents stale claim, admission or evidence reuse without aggregate mutation."
   }
 ]

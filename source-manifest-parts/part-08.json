@@ -16,8 +16,8 @@
     {
       "path": "src/core/intent-checkpoint.mjs",
       "mode": "100644",
-      "bytes": 10659,
-      "sha256": "362321f878e75f75359f09f13ae2edbae525e72740ac38bd4504695774f21520"
+      "bytes": 14269,
+      "sha256": "0378b4c09044be1b871d8517f869abdf50431ff65c12f2314b63fae0ff7fd863"
     },
     {
       "path": "src/core/intent-completion-verifier.mjs",
@@ -34,8 +34,8 @@
     {
       "path": "src/core/intent-scheduler.mjs",
       "mode": "100644",
-      "bytes": 106301,
-      "sha256": "4df966892dff1774a4162c3ddb2f6cf68ef338f0cbdd9c2418bc2f0a27b09d21"
+      "bytes": 117746,
+      "sha256": "ec372ce6f85defd572486edf7960dca46c176dec6a8be5b772a077d4e1f15a35"
     },
     {
       "path": "src/core/intent-validation.mjs",
@@ -142,8 +142,8 @@
     {
       "path": "src/core/runtime-recovery.mjs",
       "mode": "100644",
-      "bytes": 139274,
-      "sha256": "f065ece1533bbc535afac4578d8d532c253a0c683eea93eb29a8427d3773b6f0"
+      "bytes": 152190,
+      "sha256": "13111a30158459e2a1cc6982e9520295d493f1caa3257186f313360867b921ae"
     }
   ]
 }

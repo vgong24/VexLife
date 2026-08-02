@@ -954,7 +954,10 @@
         "test.runtime-recovery.r27-cycle-isolation",
         "test.runtime-recovery.r28-canonical-claim-semantic-replay",
         "test.runtime-recovery.r29-pre-resume-disposition",
-        "test.runtime-recovery.r30-exact-cycle-local-evidence"
+        "test.runtime-recovery.r30-exact-cycle-local-evidence",
+        "test.runtime-recovery.r31-canonical-checkpoint-preclaim-replay",
+        "test.runtime-recovery.r32-complete-claim-edge-replay",
+        "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery"
       ],
       "platformRefs": [
         "platform.browser",

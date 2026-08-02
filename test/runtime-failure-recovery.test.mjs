@@ -326,7 +326,7 @@ test('C2 continuation requires scheduler-issued fresh generation and six fresh, 
     schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery',
     observedAt: '2026-08-01T00:00:04.000Z',
     registry
-  }), /exact scheduler resume|reused prior generation identity/);
+  }), /exact scheduler resume|reused prior generation identity|RESUMED_CONSUMED claim currentness/);
 
   const oldGenerationRetry = executeWithRecoveryBoundary({
     aggregate: integrated.artifacts.failedAggregate,
@@ -427,6 +427,43 @@ test('C15 claimed recovery can be explicitly terminally held before resume witho
   assert.equal(proof.oldActivationResumeRejected, true);
   assert.equal(proof.oldActivationReclaimRejected, true);
   assert.equal(proof.normalLifecycleUnchanged, true);
+});
+
+test('C17 canonical checkpoint and exact pre-claim scheduler state replay reject coordinated rehash', () => {
+  const proof = integrated.receipt.canonicalCheckpointAndPreClaimReplayProof;
+  assert.equal(proof.immutableCanonicalCheckpointPreserved, true);
+  assert.equal(proof.independentPointerState, 'RESUMED');
+  assert.equal(proof.pointerTransitionCount, 2);
+  assert.equal(proof.exactReleaseCount, 6);
+  assert.equal(proof.releaseObjectsEmbedExactPriorAndTransitionedLeases, true);
+  assert.equal(proof.preClaimPhase, 'PAUSED');
+  assert.equal(proof.coordinatedCheckpointReleaseClaimReplayRejected, true);
+  assert.equal(proof.legitimateClaimAdmissibleAfterRejectedReplay, true);
+});
+
+test('C18 resumed, terminal and invalidated claim edges replay complete scheduler evidence', () => {
+  const proof = integrated.receipt.completeClaimEdgeReplayProof;
+  assert.deepEqual(proof.lifecycle, ['CLAIMED_CURRENT', 'RESUMED_CONSUMED', 'TERMINAL_CONSUMED']);
+  assert.equal(proof.resumeEmbedsQueueActiveSixLeasesRuntimeResourcePointerClock, true);
+  assert.equal(proof.terminalEmbedsCompleteCausalClosure, true);
+  assert.equal(proof.dispositionEmbedsExactHoldPointerQueueAndClock, true);
+  assert.equal(proof.coordinatedResumeEdgeForgeryRejected, true);
+  assert.equal(proof.coordinatedTerminalEdgeForgeryRejected, true);
+  assert.equal(proof.coordinatedDispositionEdgeForgeryRejected, true);
+});
+
+test('C19 scheduler claim lifecycle governs recovery use and exact invalidation hold projections', () => {
+  const proof = integrated.receipt.schedulerClaimLifecycleRecoveryProof;
+  assert.deepEqual(proof.normalLifecycle, ['CLAIMED_CURRENT', 'RESUMED_CONSUMED', 'TERMINAL_CONSUMED']);
+  assert.deepEqual(proof.invalidatedLifecycle, ['CLAIMED_CURRENT', 'INVALIDATED_OR_ABANDONED']);
+  assert.equal(proof.invalidatedRecoveryPhase, 'BLOCKED');
+  assert.equal(proof.healthState, 'BLOCKED');
+  assert.equal(proof.guideRoute, 'SCHEDULER_CLAIM_INVALIDATED');
+  assert.equal(proof.guideWaitingOn, proof.exactDispositionReasonRef);
+  assert.equal(proof.allStaleClaimUsesRejected, true);
+  assert.equal(proof.schedulerAggregateUnchangedAfterStaleUse, true);
+  assert.equal(proof.recoveryAggregateUnchangedAfterStaleUse, true);
+  assert.equal(proof.normalPathUnchanged, true);
 });
 
 test('C3 restore replays the typed ledger and rejects budget reset, impossible order, forged final state, and duplicate terminal closure', () => {

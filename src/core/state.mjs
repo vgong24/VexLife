@@ -1,5 +1,9 @@
 import { StateCell, selectState } from './state-relay.mjs';
 import { estimateTokens, semanticHash } from './utils.mjs';
+import { createIntentCheckpoint } from './intent-checkpoint.mjs';
+import { buildContextLeaseFingerprint } from './context-lease.mjs';
+import { buildReceiptFingerprint, buildTransitionFingerprint } from './intent-workgraph.mjs';
+import { parseCanonicalTimestamp } from './scheduler-runtime-trust.mjs';
 import { validateBurdenRelease } from './burden-release.mjs';
 import {
   CONTINUITY_AUTHORITY_EVIDENCE_CLASSES,
@@ -83,6 +87,133 @@ function clone(value) {
   return structuredClone(value);
 }
 
+export function createSchedulerCheckpointPointerTransition(aggregate, input) {
+  const priorTransitions = (aggregate.checkpointPointerLedger ?? []).filter((item) =>
+    item.checkpointRef === input?.checkpointRef
+  );
+  const prior = priorTransitions.at(-1) ?? null;
+  const transition = {
+    schemaVersion: 'vexlife.intent-scheduler-checkpoint-pointer-transition/v1',
+    checkpointRef: input?.checkpointRef,
+    checkpointFingerprint: input?.checkpointFingerprint,
+    workNodeRef: input?.workNodeRef,
+    sequence: priorTransitions.length,
+    priorPointerFingerprint: prior?.semanticFingerprint ?? null,
+    priorState: prior?.state ?? null,
+    state: input?.state,
+    schedulerGeneration: input?.schedulerGeneration,
+    schedulerPriorAggregateFingerprint: aggregate?.semanticFingerprint,
+    schedulerTransitionRef: input?.schedulerTransitionRef,
+    resumedByWorkerLeaseRef: input?.resumedByWorkerLeaseRef ?? null,
+    dispositionReceiptRef: input?.dispositionReceiptRef ?? null,
+    dispositionReceiptFingerprint: input?.dispositionReceiptFingerprint ?? null,
+    reasonRef: input?.reasonRef ?? null,
+    observedAt: input?.observedAt
+  };
+  transition.semanticFingerprint = semanticHash(transition);
+  transition.pointerTransitionRef = `transition.intent-scheduler.checkpoint-pointer.${
+    String(transition.state ?? 'unknown').toLowerCase().replaceAll('_', '-')
+  }.${transition.semanticFingerprint.slice(0, 32)}`;
+  return Object.freeze(transition);
+}
+
+function validateSchedulerCheckpointPointerTransition(value, checkpoint, sequence, prior) {
+  if (!value || value.schemaVersion !== 'vexlife.intent-scheduler-checkpoint-pointer-transition/v1' ||
+      value.checkpointRef !== checkpoint?.checkpointRef ||
+      value.checkpointFingerprint !== checkpoint?.semanticFingerprint ||
+      value.workNodeRef !== checkpoint?.workNodeRef || value.sequence !== sequence ||
+      value.priorPointerFingerprint !== (prior?.semanticFingerprint ?? null) ||
+      value.priorState !== (prior?.state ?? null) || !value.schedulerTransitionRef ||
+      !Number.isInteger(value.schedulerGeneration) || value.schedulerGeneration < checkpoint.priorSchedulerGeneration ||
+      !value.pointerTransitionRef || !value.semanticFingerprint) {
+    throw new Error('scheduler checkpoint pointer transition is malformed or detached');
+  }
+  const allowed = prior
+    ? prior.state === 'PAUSED_AT_CHECKPOINT'
+      ? ['RESUMED', 'RECOVERY_TERMINALLY_HELD']
+      : prior.state === 'RESUMED'
+        ? ['CANCELLED_AFTER_RESUME']
+        : []
+    : ['PAUSED_AT_CHECKPOINT'];
+  if (!allowed.includes(value.state) ||
+      (value.state === 'RESUMED' && !value.resumedByWorkerLeaseRef) ||
+      (value.state === 'RECOVERY_TERMINALLY_HELD' &&
+        (!value.dispositionReceiptRef || !value.dispositionReceiptFingerprint || !value.reasonRef))) {
+    throw new Error('scheduler checkpoint pointer lifecycle transition is invalid');
+  }
+  const observed = parseCanonicalTimestamp(value.observedAt, 'scheduler checkpoint pointer observedAt');
+  if (prior && observed <= parseCanonicalTimestamp(prior.observedAt, 'prior scheduler checkpoint pointer observedAt')) {
+    throw new Error('scheduler checkpoint pointer time must advance monotonically');
+  }
+  const candidate = clone(value);
+  delete candidate.pointerTransitionRef;
+  delete candidate.semanticFingerprint;
+  const fingerprint = semanticHash(candidate);
+  if (fingerprint !== value.semanticFingerprint || !value.pointerTransitionRef.endsWith(fingerprint.slice(0, 32))) {
+    throw new Error('scheduler checkpoint pointer content-addressed identity mismatch');
+  }
+  return clone(value);
+}
+
+function replaySchedulerCheckpointPointerLedger(canonicalCheckpoints = [], ledger = []) {
+  if (!Array.isArray(canonicalCheckpoints) || !Array.isArray(ledger)) {
+    throw new Error('scheduler checkpoint authority and pointer ledgers must be arrays');
+  }
+  const checkpoints = new Map();
+  for (const supplied of canonicalCheckpoints) {
+    const checkpoint = createIntentCheckpoint(supplied);
+    if (checkpoints.has(checkpoint.checkpointRef)) throw new Error('duplicate canonical scheduler checkpoint');
+    checkpoints.set(checkpoint.checkpointRef, checkpoint);
+  }
+  const pointers = new Map();
+  for (const supplied of ledger) {
+    const checkpoint = checkpoints.get(supplied?.checkpointRef);
+    const prior = pointers.get(supplied?.checkpointRef) ?? null;
+    const transition = validateSchedulerCheckpointPointerTransition(
+      supplied,
+      checkpoint,
+      prior ? prior.transitionSequence + 1 : 0,
+      prior?.lastTransition ?? null
+    );
+    pointers.set(transition.checkpointRef, {
+      checkpointRef: transition.checkpointRef,
+      checkpointFingerprint: transition.checkpointFingerprint,
+      workNodeRef: transition.workNodeRef,
+      currentState: transition.state,
+      schedulerGeneration: transition.schedulerGeneration,
+      resumedByWorkerLeaseRef: transition.resumedByWorkerLeaseRef,
+      recoveryDispositionReceiptRef: transition.dispositionReceiptRef,
+      recoveryDispositionReceiptFingerprint: transition.dispositionReceiptFingerprint,
+      reasonRef: transition.reasonRef,
+      currentness: ['PAUSED_AT_CHECKPOINT', 'RESUMED'].includes(transition.state) ? 'CURRENT' : 'TERMINAL',
+      observedAt: transition.observedAt,
+      pointerTransitionRef: transition.pointerTransitionRef,
+      pointerTransitionFingerprint: transition.semanticFingerprint,
+      transitionSequence: transition.sequence,
+      lastTransition: transition
+    });
+  }
+  return [...pointers.values()].map(({ lastTransition, ...pointer }) => pointer)
+    .sort((left, right) => left.checkpointRef.localeCompare(right.checkpointRef));
+}
+
+function projectCanonicalCheckpoints(canonicalCheckpoints, pointers) {
+  return canonicalCheckpoints.map((checkpoint) => {
+    const pointer = pointers.find((item) => item.checkpointRef === checkpoint.checkpointRef);
+    if (!pointer) throw new Error('canonical scheduler checkpoint is missing its current pointer');
+    return {
+      ...clone(checkpoint),
+      currentState: pointer.currentState,
+      resumedByWorkerLeaseRef: pointer.resumedByWorkerLeaseRef,
+      recoveryDispositionReceiptRef: pointer.recoveryDispositionReceiptRef,
+      recoveryDispositionReceiptFingerprint: pointer.recoveryDispositionReceiptFingerprint,
+      checkpointPointerRef: pointer.pointerTransitionRef,
+      checkpointPointerFingerprint: pointer.pointerTransitionFingerprint,
+      checkpointPointerObservedAt: pointer.observedAt
+    };
+  });
+}
+
 const RECOVERY_CLAIM_EDGE_CONTRACTS = Object.freeze({
   CLAIMED_CURRENT: Object.freeze({
     schemaVersion: 'vexlife.intent-scheduler-recovery-claim-edge-evidence/v1',
@@ -130,6 +261,74 @@ function validateEmbeddedFinalized(value, schemaVersion, label, refField = null)
   return clone(value);
 }
 
+function validateSchedulerPriorStateReceipt(value, label = 'scheduler recovery prior-state receipt') {
+  const receipt = validateEmbeddedFinalized(
+    value,
+    'vexlife.intent-scheduler-recovery-prior-state-receipt/v1',
+    label,
+    'priorStateReceiptRef'
+  );
+  const snapshot = clone(receipt.schedulerStateSnapshot);
+  const snapshotFingerprint = snapshot?.semanticFingerprint;
+  if (!snapshot || snapshot.schemaVersion !== 'vexlife.intent-scheduler-aggregate/v1' || !snapshotFingerprint) {
+    throw new Error(`${label} is missing the exact scheduler snapshot`);
+  }
+  delete snapshot.semanticFingerprint;
+  if (semanticHash(snapshot) !== snapshotFingerprint ||
+      receipt.schedulerAggregateFingerprint !== snapshotFingerprint ||
+      receipt.schedulerPhase !== receipt.schedulerStateSnapshot.phase ||
+      receipt.schedulerGeneration !== receipt.schedulerStateSnapshot.generation ||
+      receipt.schedulerObservedClockFingerprint !==
+        (receipt.schedulerStateSnapshot.observedClock?.semanticFingerprint ?? null) ||
+      receipt.contractRef !== 'contract.intent-scheduler.recovery-prior-state/v1' ||
+      receipt.formationRef !== 'formation.intent-scheduler.recovery-prior-state.v1' ||
+      receipt.currentness !== 'CURRENT') {
+    throw new Error(`${label} does not rederive the exact scheduler aggregate`);
+  }
+  const observed = parseCanonicalTimestamp(receipt.observedAt, `${label} observedAt`);
+  const schedulerObserved = receipt.schedulerStateSnapshot.observedClock?.observedAt
+    ? parseCanonicalTimestamp(receipt.schedulerStateSnapshot.observedClock.observedAt, `${label} scheduler clock`)
+    : null;
+  if (schedulerObserved !== null && observed < schedulerObserved) {
+    throw new Error(`${label} predates the canonical scheduler clock`);
+  }
+  const pointers = replaySchedulerCheckpointPointerLedger(
+    receipt.schedulerStateSnapshot.canonicalCheckpoints ?? [],
+    receipt.schedulerStateSnapshot.checkpointPointerLedger ?? []
+  );
+  if (JSON.stringify(pointers) !== JSON.stringify(receipt.schedulerStateSnapshot.checkpointPointers ?? []) ||
+      JSON.stringify(projectCanonicalCheckpoints(
+        receipt.schedulerStateSnapshot.canonicalCheckpoints ?? [],
+        pointers
+      )) !== JSON.stringify(receipt.schedulerStateSnapshot.checkpoints ?? [])) {
+    throw new Error(`${label} checkpoint authority differs from immutable pointer replay`);
+  }
+  return receipt;
+}
+
+function validateFinalizedSemanticObject(value, label, {
+  contextLease = false,
+  fingerprintBuilder = null
+} = {}) {
+  if (!value || typeof value !== 'object' || !value.semanticFingerprint) {
+    throw new Error(`${label} is missing`);
+  }
+  const candidate = clone(value);
+  delete candidate.semanticFingerprint;
+  const fingerprint = fingerprintBuilder
+    ? fingerprintBuilder(value)
+    : contextLease
+      ? buildContextLeaseFingerprint(value)
+      : semanticHash(candidate);
+  if (fingerprint !== value.semanticFingerprint) throw new Error(`${label} fingerprint mismatch`);
+  return clone(value);
+}
+
+function semanticEqual(left, right) {
+  if (left === undefined || right === undefined) return false;
+  return semanticHash(left) === semanticHash(right);
+}
+
 function exactStringArray(values) {
   return Array.isArray(values) ? [...values].sort() : null;
 }
@@ -163,7 +362,8 @@ function validateRecoveryClaimTransition(value, sequence, priorFingerprint) {
 }
 
 function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
-  recoveryClaimReceiptValidator = null
+  recoveryClaimReceiptValidator = null,
+  validateFinalSchedulerState = false
 } = {}) {
   if (!Array.isArray(ledger)) throw new Error('scheduler recovery claim ledger must be an array');
   const records = new Map();
@@ -172,6 +372,31 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
   ledger.forEach((input, sequence) => {
     const transition = validateRecoveryClaimTransition(input, sequence, prior);
     const edge = validateRecoveryClaimEdgeEvidence(transition.edgeEvidence, transition.type);
+    const priorStateReceipt = validateSchedulerPriorStateReceipt(edge.schedulerPriorStateReceipt);
+    const priorSnapshot = priorStateReceipt.schedulerStateSnapshot;
+    if (transition.schedulerPriorStateReceiptRef !== priorStateReceipt.priorStateReceiptRef ||
+        transition.schedulerPriorStateReceiptFingerprint !== priorStateReceipt.semanticFingerprint ||
+        edge.schedulerPriorStateReceiptRef !== priorStateReceipt.priorStateReceiptRef ||
+        edge.schedulerPriorStateReceiptFingerprint !== priorStateReceipt.semanticFingerprint ||
+        edge.schedulerPriorAggregateFingerprint !== priorSnapshot.semanticFingerprint ||
+        priorStateReceipt.purpose !== transition.type ||
+        priorSnapshot.recoveryClaimLedger?.length !== sequence ||
+        (priorSnapshot.recoveryClaimLedger?.at(-1)?.semanticFingerprint ?? null) !== prior) {
+      throw new Error('scheduler recovery edge is detached from its exact prior scheduler state');
+    }
+    let afterSnapshot = null;
+    const nextInput = ledger[sequence + 1];
+    if (nextInput) {
+      const nextTransition = validateRecoveryClaimTransition(nextInput, sequence + 1, transition.semanticFingerprint);
+      const nextEdge = validateRecoveryClaimEdgeEvidence(nextTransition.edgeEvidence, nextTransition.type);
+      afterSnapshot = validateSchedulerPriorStateReceipt(nextEdge.schedulerPriorStateReceipt).schedulerStateSnapshot;
+    } else if (validateFinalSchedulerState) {
+      afterSnapshot = aggregate;
+    }
+    if (afterSnapshot && (!semanticEqual(afterSnapshot.recoveryClaimLedger?.[sequence], transition) ||
+        afterSnapshot.recoveryClaimLedger?.length !== sequence + 1)) {
+      throw new Error('scheduler recovery edge does not rederive the exact next scheduler ledger state');
+    }
     const existing = records.get(transition.checkpointRef);
     if (transition.type === 'CLAIMED_CURRENT') {
       if (typeof recoveryClaimReceiptValidator !== 'function') {
@@ -183,7 +408,12 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
         'vexlife.intent-scheduler-recovery-checkpoint-consumption/v1',
         'scheduler recovery checkpoint consumption'
       );
-      const checkpoint = aggregate?.checkpoints?.find((item) => item.checkpointRef === transition.checkpointRef);
+      const checkpoint = createIntentCheckpoint(
+        priorSnapshot.canonicalCheckpoints?.find((item) => item.checkpointRef === transition.checkpointRef)
+      );
+      const checkpointPointer = priorSnapshot.checkpointPointers?.find((item) =>
+        item.checkpointRef === transition.checkpointRef
+      );
       const checkpointReleaseRefs = exactStringArray(checkpoint?.leaseReleaseReceipts?.map((item) => item.receiptRef));
       const checkpointReleaseFingerprints = exactStringArray(
         checkpoint?.leaseReleaseReceipts?.map((item) => item.semanticFingerprint)
@@ -194,19 +424,32 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
         'recoveryCycleFingerprint', 'failureRef', 'failureFingerprint', 'claimReceiptRef',
         'claimReceiptFingerprint', 'consumptionRef', 'consumptionFingerprint',
         'onceOnlyActivationRef', 'leaseReleaseReceiptRefs', 'leaseReleaseFingerprints',
-        'schedulerGeneration', 'observedAt'
+        'schedulerGeneration', 'schedulerPriorStateReceiptRef',
+        'schedulerPriorStateReceiptFingerprint', 'observedAt'
       ]);
+      const releaseLedgerExact = checkpoint.leaseReleaseReceipts.every((receipt) => {
+        const transitionedRef = receipt.leaseKind === 'occupancy'
+          ? receipt.transitionedLease.occupancyRef
+          : receipt.transitionedLease.leaseRef;
+        return receipt.priorLease.semanticFingerprint === receipt.priorLeaseFingerprint &&
+          receipt.transitionedLease.semanticFingerprint === receipt.transitionedLeaseFingerprint &&
+          priorSnapshot.leaseLedger?.[transitionedRef]?.semanticFingerprint === receipt.transitionedLeaseFingerprint &&
+          semanticEqual(priorSnapshot.leaseLedger?.[transitionedRef], receipt.transitionedLease);
+      });
       if (existing || !transition.claimReceiptRef || !transition.claimReceiptFingerprint ||
           !transition.consumptionRef || !transition.consumptionFingerprint ||
           transition.leaseReleaseFingerprints?.length !== 6 ||
           new Set(transition.leaseReleaseFingerprints).size !== 6 ||
           transition.leaseReleaseFingerprints.some((item) => consumedReleaseFingerprints.has(item)) ||
           !checkpoint || checkpoint.semanticFingerprint !== transition.checkpointFingerprint ||
-          !['PAUSED_AT_CHECKPOINT', 'RESUMED', 'RECOVERY_TERMINALLY_HELD'].includes(checkpoint.currentState) ||
+          !checkpointPointer || checkpointPointer.currentState !== 'PAUSED_AT_CHECKPOINT' || !releaseLedgerExact ||
+          priorSnapshot.phase !== 'PAUSED' || priorSnapshot.active !== null ||
+          priorSnapshot.recoveryClaims?.some((item) => item.checkpointRef === transition.checkpointRef) ||
           JSON.stringify(checkpointReleaseRefs) !== JSON.stringify(exactStringArray(transition.leaseReleaseReceiptRefs)) ||
           JSON.stringify(checkpointReleaseFingerprints) !== JSON.stringify(exactStringArray(transition.leaseReleaseFingerprints)) ||
           claim.claimReceiptRef !== transition.claimReceiptRef ||
           claim.semanticFingerprint !== transition.claimReceiptFingerprint ||
+          claim.schedulerAggregateFingerprint !== priorSnapshot.semanticFingerprint ||
           claim.schedulerAggregateFingerprint !== consumption.schedulerAggregateFingerprint ||
           claim.schedulerCheckpointRef !== transition.checkpointRef ||
           claim.schedulerCheckpointFingerprint !== transition.checkpointFingerprint ||
@@ -222,9 +465,14 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
           claim.onceOnlyActivationRef !== transition.onceOnlyActivationRef ||
           consumption.consumptionRef !== transition.consumptionRef ||
           consumption.semanticFingerprint !== transition.consumptionFingerprint ||
+          consumption.schedulerPriorStateReceiptRef !== priorStateReceipt.priorStateReceiptRef ||
+          consumption.schedulerPriorStateReceiptFingerprint !== priorStateReceipt.semanticFingerprint ||
           consumption.schedulerPhase !== 'PAUSED' || consumption.checkpointCurrentState !== 'PAUSED_AT_CHECKPOINT' ||
           consumption.schedulerAggregateFingerprint !== edge.schedulerPriorAggregateFingerprint ||
-          Date.parse(transition.observedAt) !== Date.parse(consumption.observedAt)) {
+          parseCanonicalTimestamp(transition.observedAt, 'scheduler recovery claim observedAt') !==
+            parseCanonicalTimestamp(consumption.observedAt, 'scheduler recovery consumption observedAt') ||
+          parseCanonicalTimestamp(transition.observedAt, 'scheduler recovery claim observedAt') <
+            parseCanonicalTimestamp(checkpointPointer.observedAt, 'scheduler checkpoint pointer observedAt')) {
         throw new Error('scheduler recovery checkpoint/release claim is duplicate or incomplete');
       }
       transition.leaseReleaseFingerprints.forEach((item) => consumedReleaseFingerprints.add(item));
@@ -257,6 +505,23 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
         lastTransitionRef: transition.transitionRef,
         lastTransitionFingerprint: transition.semanticFingerprint
       });
+      if (afterSnapshot) {
+        const afterCheckpoint = afterSnapshot.canonicalCheckpoints?.find((item) =>
+          item.checkpointRef === transition.checkpointRef
+        );
+        const afterPointer = afterSnapshot.checkpointPointers?.find((item) =>
+          item.checkpointRef === transition.checkpointRef
+        );
+        const afterClaim = afterSnapshot.recoveryClaims?.find((item) =>
+          item.checkpointRef === transition.checkpointRef
+        );
+        if (!semanticEqual(afterCheckpoint, checkpoint) ||
+            afterPointer?.pointerTransitionFingerprint !== checkpointPointer.pointerTransitionFingerprint ||
+            afterClaim?.lastTransitionFingerprint !== transition.semanticFingerprint ||
+            afterClaim?.state !== 'CLAIMED_CURRENT') {
+          throw new Error('claimed recovery edge did not preserve canonical checkpoint/pointer ownership');
+        }
+      }
     } else {
       const expectedPriorStates = transition.type === 'RESUMED_CONSUMED'
         ? ['CLAIMED_CURRENT']
@@ -265,16 +530,23 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
           : ['RESUMED_CONSUMED'];
       assertRecoveryClaimTransitionBindings(transition, edge, [
         'checkpointRef', 'claimReceiptRef', 'claimReceiptFingerprint', 'consumptionRef',
-        'consumptionFingerprint', 'recoveryCycleRef', 'recoveryCycleFingerprint', 'observedAt'
+        'consumptionFingerprint', 'recoveryCycleRef', 'recoveryCycleFingerprint',
+        'schedulerPriorStateReceiptRef', 'schedulerPriorStateReceiptFingerprint', 'observedAt'
       ]);
       if (!existing || !expectedPriorStates.includes(existing.state) ||
           transition.consumptionFingerprint !== existing.consumptionFingerprint ||
           transition.claimReceiptFingerprint !== existing.claimReceiptFingerprint ||
           transition.recoveryCycleFingerprint !== existing.recoveryCycleFingerprint ||
-          Date.parse(transition.observedAt) <= Date.parse(existing.lastObservedAt)) {
+          parseCanonicalTimestamp(transition.observedAt, 'scheduler recovery lifecycle observedAt') <=
+            parseCanonicalTimestamp(existing.lastObservedAt, 'scheduler recovery prior lifecycle observedAt')) {
         throw new Error('scheduler recovery claim lifecycle transition is stale or detached');
       }
-      const checkpoint = aggregate?.checkpoints?.find((item) => item.checkpointRef === transition.checkpointRef);
+      const checkpoint = createIntentCheckpoint(
+        priorSnapshot.canonicalCheckpoints?.find((item) => item.checkpointRef === transition.checkpointRef)
+      );
+      const checkpointPointer = priorSnapshot.checkpointPointers?.find((item) =>
+        item.checkpointRef === transition.checkpointRef
+      );
       if (transition.type === 'RESUMED_CONSUMED') {
         const resume = validateEmbeddedFinalized(
           edge.schedulerResumeEvidence,
@@ -282,7 +554,44 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
           'scheduler recovery resume evidence',
           'resumeEvidenceRef'
         );
-        if (!checkpoint || checkpoint.currentState !== 'RESUMED' ||
+        const queue = validateFinalizedSemanticObject(resume.queue, 'scheduler recovery resumed queue');
+        const active = validateFinalizedSemanticObject(
+          resume.activeWorkerPointer,
+          'scheduler recovery resumed active-worker pointer'
+        );
+        const runtime = validateFinalizedSemanticObject(
+          resume.runtimeTrustSnapshot,
+          'scheduler recovery resumed runtime snapshot'
+        );
+        const resource = validateFinalizedSemanticObject(
+          resume.resourceSnapshot,
+          'scheduler recovery resumed resource snapshot'
+        );
+        const clock = validateFinalizedSemanticObject(
+          resume.observedClockReceipt,
+          'scheduler recovery resumed clock receipt'
+        );
+        const freshLeases = Object.entries(resume.freshLeases ?? {});
+        if (freshLeases.length !== 6) {
+          throw new Error('scheduler recovery resume transition requires all six fresh leases');
+        }
+        for (const [kind, lease] of freshLeases) {
+          validateFinalizedSemanticObject(lease, `scheduler recovery resumed ${kind} lease`, {
+            contextLease: kind === 'context'
+          });
+        }
+        const pointerTransition = resume.checkpointPointerTransition;
+        const afterPointer = afterSnapshot?.checkpointPointers?.find((item) =>
+          item.checkpointRef === transition.checkpointRef
+        );
+        const afterTransition = afterSnapshot?.checkpointPointerLedger?.find((item) =>
+          item.semanticFingerprint === resume.checkpointPointerTransitionFingerprint
+        );
+        const exactLeaseLedger = freshLeases.every(([, lease]) =>
+          semanticEqual(afterSnapshot?.leaseLedger?.[lease.leaseRef], lease)
+        );
+        if (!checkpoint || checkpointPointer?.currentState !== 'PAUSED_AT_CHECKPOINT' ||
+            priorSnapshot.phase !== 'PAUSED' || priorSnapshot.active !== null ||
             resume.claimTransitionFingerprint !== existing.lastTransitionFingerprint ||
             resume.schedulerPriorAggregateFingerprint !== edge.schedulerPriorAggregateFingerprint ||
             resume.checkpointRef !== existing.checkpointRef ||
@@ -290,7 +599,40 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
             resume.actionReceiptFingerprint !== transition.actionReceiptFingerprint ||
             resume.checkpointAdmissionFingerprint !== transition.checkpointAdmissionFingerprint ||
             resume.schedulerGeneration !== transition.schedulerGeneration ||
-            resume.recoveryCycleFingerprint !== existing.recoveryCycleFingerprint) {
+            resume.recoveryCycleFingerprint !== existing.recoveryCycleFingerprint ||
+            resume.queueAdmissionRef !== queue.admissionReceipt?.admissionReceiptRef ||
+            resume.queueAdmissionFingerprint !== queue.admissionReceipt?.semanticFingerprint ||
+            queue.state !== 'ADMITTED' || queue.lifecycle !== 'ADMITTED' ||
+            queue.generation !== transition.schedulerGeneration ||
+            queue.selected?.workNodeRef !== existing.workNodeRef ||
+            active.workNodeRef !== existing.workNodeRef ||
+            active.schedulerGeneration !== transition.schedulerGeneration ||
+            JSON.stringify(active.leaseRefs) !== JSON.stringify(
+              freshLeases.map(([, lease]) => lease.leaseRef).sort()
+            ) ||
+            JSON.stringify(resume.freshLeaseRefs) !== JSON.stringify(Object.fromEntries(
+              freshLeases.map(([kind, lease]) => [kind, kind === 'occupancy' ? lease.occupancyRef : lease.leaseRef])
+            )) ||
+            JSON.stringify(resume.freshLeaseFingerprints) !== JSON.stringify(Object.fromEntries(
+              freshLeases.map(([kind, lease]) => [kind, lease.semanticFingerprint])
+            )) ||
+            active.runtimeSnapshotFingerprint !== runtime.semanticFingerprint ||
+            queue.runtimeSnapshotFingerprint !== runtime.semanticFingerprint ||
+            queue.admissionReceipt?.resourceSnapshotFingerprint !== resource.semanticFingerprint ||
+            pointerTransition?.semanticFingerprint !== resume.checkpointPointerTransitionFingerprint ||
+            pointerTransition?.pointerTransitionRef !== resume.checkpointPointerTransitionRef ||
+            pointerTransition?.priorPointerFingerprint !== checkpointPointer.pointerTransitionFingerprint ||
+            pointerTransition?.state !== 'RESUMED' ||
+            pointerTransition?.resumedByWorkerLeaseRef !== active.workerLeaseRef ||
+            parseCanonicalTimestamp(clock.observedAt, 'scheduler recovery resumed clock') !==
+              parseCanonicalTimestamp(transition.observedAt, 'scheduler recovery resumed transition') ||
+            (afterSnapshot && (afterSnapshot.phase !== 'RUNNING' ||
+              !semanticEqual(afterSnapshot.queue, queue) || !semanticEqual(afterSnapshot.active, active) ||
+              !semanticEqual(afterSnapshot.runtimeTrust, runtime) || !semanticEqual(afterSnapshot.resource, resource) ||
+              !semanticEqual(afterSnapshot.observedClock, clock) || !semanticEqual(afterTransition, pointerTransition) ||
+              afterPointer?.currentState !== 'RESUMED' ||
+              afterPointer?.pointerTransitionFingerprint !== pointerTransition.semanticFingerprint ||
+              !exactLeaseLedger))) {
           throw new Error('scheduler recovery resume transition lacks exact scheduler evidence');
         }
       } else if (transition.type === 'TERMINAL_CONSUMED') {
@@ -300,14 +642,72 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
           'scheduler recovery terminal evidence',
           'terminalEvidenceRef'
         );
-        const terminalFingerprints = new Set((aggregate?.terminalReceipts ?? []).map((item) => item.semanticFingerprint));
+        const completionVerification = validateFinalizedSemanticObject(
+          terminal.completionVerification,
+          'scheduler recovery completion verification'
+        );
+        const workgraphTransition = validateFinalizedSemanticObject(
+          terminal.workgraphTransition,
+          'scheduler recovery workgraph transition',
+          { fingerprintBuilder: buildTransitionFingerprint }
+        );
+        const completionReceipt = validateFinalizedSemanticObject(
+          terminal.completionReceipt,
+          'scheduler recovery completion receipt',
+          { fingerprintBuilder: buildReceiptFingerprint }
+        );
+        const returnRouteReceipt = validateFinalizedSemanticObject(
+          terminal.returnRouteReceipt,
+          'scheduler recovery return-route receipt'
+        );
+        const terminalQueue = validateFinalizedSemanticObject(
+          terminal.terminalQueue,
+          'scheduler recovery terminal queue'
+        );
+        const terminalClock = validateFinalizedSemanticObject(
+          terminal.observedClockReceipt,
+          'scheduler recovery terminal clock'
+        );
+        const terminalLeases = Object.entries(terminal.transitionedLeases ?? {});
+        const terminalLeaseReceipts = Array.isArray(terminal.leaseTransitionReceipts)
+          ? terminal.leaseTransitionReceipts
+          : [];
+        for (const [kind, lease] of terminalLeases) {
+          validateFinalizedSemanticObject(lease, `scheduler recovery terminal ${kind} lease`);
+        }
+        for (const receipt of terminalLeaseReceipts) {
+          validateFinalizedSemanticObject(receipt, 'scheduler recovery terminal lease transition');
+        }
+        const exactTerminalReceipts = [completionVerification, workgraphTransition, completionReceipt, returnRouteReceipt]
+          .every((receipt) => afterSnapshot?.terminalReceipts?.some((item) => semanticEqual(item, receipt)));
+        const exactTerminalLeases = terminalLeases.length === 6 && terminalLeases.every(([, lease]) =>
+          semanticEqual(afterSnapshot?.leaseLedger?.[lease.leaseRef], lease)
+        );
         if (terminal.recoveryClaimTransitionFingerprint !== existing.lastTransitionFingerprint ||
+            priorSnapshot.phase !== 'RUNNING' || !priorSnapshot.active ||
+            priorSnapshot.active.workNodeRef !== existing.workNodeRef ||
             terminal.schedulerGeneration !== existing.schedulerGeneration ||
-            !terminalFingerprints.has(terminal.completionVerificationFingerprint) ||
-            !terminalFingerprints.has(terminal.workgraphTransitionFingerprint) ||
-            !terminalFingerprints.has(terminal.completionReceiptFingerprint) ||
-            !terminalFingerprints.has(terminal.returnRouteReceiptFingerprint) ||
-            terminal.completionReceiptFingerprint !== transition.terminalReceiptFingerprint) {
+            terminal.completionVerificationFingerprint !== completionVerification.semanticFingerprint ||
+            terminal.workgraphTransitionFingerprint !== workgraphTransition.semanticFingerprint ||
+            terminal.completionReceiptFingerprint !== completionReceipt.semanticFingerprint ||
+            terminal.returnRouteReceiptFingerprint !== returnRouteReceipt.semanticFingerprint ||
+            terminal.completionReceiptFingerprint !== transition.terminalReceiptFingerprint ||
+            terminalQueue.state !== 'COMPLETED' || terminalQueue.lifecycle !== 'CLOSED' ||
+            terminalLeases.length !== 6 || terminalLeaseReceipts.length !== 6 ||
+            terminalLeaseReceipts.some((receipt) => {
+              const lease = terminalLeases.find(([, item]) => item.leaseRef === receipt.leaseRef)?.[1];
+              return !lease || receipt.transitionedLeaseFingerprint !== lease.semanticFingerprint;
+            }) ||
+            parseCanonicalTimestamp(terminalClock.observedAt, 'scheduler recovery terminal clock') !==
+              parseCanonicalTimestamp(transition.observedAt, 'scheduler recovery terminal transition') ||
+            (afterSnapshot && (afterSnapshot.active !== null ||
+              !['COMPLETED', 'CONTINUATION_READY'].includes(afterSnapshot.phase) ||
+              !semanticEqual(afterSnapshot.queue, terminalQueue) ||
+              !semanticEqual(afterSnapshot.observedClock, terminalClock) ||
+              !exactTerminalReceipts || !exactTerminalLeases ||
+              afterSnapshot.checkpointPointers?.find((item) =>
+                item.checkpointRef === transition.checkpointRef
+              )?.currentState !== 'RESUMED'))) {
           throw new Error('scheduler recovery terminal transition lacks exact completion evidence');
         }
       } else {
@@ -317,15 +717,51 @@ function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
           'scheduler recovery claim disposition',
           'dispositionReceiptRef'
         );
+        const pointerTransition = edge.checkpointPointerTransition;
+        const dispositionQueue = edge.blockedQueue ?? edge.cancelledQueue;
+        const dispositionClock = validateFinalizedSemanticObject(
+          edge.observedClockReceipt,
+          'scheduler recovery disposition clock'
+        );
+        if (dispositionQueue) validateFinalizedSemanticObject(
+          dispositionQueue,
+          'scheduler recovery disposition queue'
+        );
+        const afterPointer = afterSnapshot?.checkpointPointers?.find((item) =>
+          item.checkpointRef === transition.checkpointRef
+        );
         if (disposition.claimTransitionFingerprint !== existing.lastTransitionFingerprint ||
             disposition.checkpointRef !== existing.checkpointRef ||
             disposition.checkpointFingerprint !== existing.checkpointFingerprint ||
             disposition.recoveryCycleFingerprint !== existing.recoveryCycleFingerprint ||
             disposition.reasonRef !== transition.reasonRef ||
             disposition.postDispositionCheckpointPolicy !== transition.postDispositionCheckpointPolicy ||
-            (existing.state === 'CLAIMED_CURRENT' &&
-              (!checkpoint || checkpoint.currentState !== 'RECOVERY_TERMINALLY_HELD' ||
-               disposition.postDispositionCheckpointPolicy !== 'TERMINALLY_HELD_WITH_EXACT_REASON'))) {
+            disposition.dispositionReceiptRef !== transition.dispositionReceiptRef ||
+            disposition.semanticFingerprint !== transition.dispositionReceiptFingerprint ||
+            pointerTransition?.checkpointRef !== transition.checkpointRef ||
+            pointerTransition?.checkpointFingerprint !== existing.checkpointFingerprint ||
+            pointerTransition?.priorPointerFingerprint !== checkpointPointer?.pointerTransitionFingerprint ||
+            pointerTransition?.dispositionReceiptRef !== disposition.dispositionReceiptRef ||
+            pointerTransition?.dispositionReceiptFingerprint !== disposition.semanticFingerprint ||
+            pointerTransition?.reasonRef !== transition.reasonRef ||
+            parseCanonicalTimestamp(dispositionClock.observedAt, 'scheduler recovery disposition clock') !==
+              parseCanonicalTimestamp(transition.observedAt, 'scheduler recovery disposition transition') ||
+            (afterSnapshot && (!semanticEqual(afterSnapshot.queue, dispositionQueue) ||
+              !semanticEqual(afterSnapshot.observedClock, dispositionClock) ||
+              !afterSnapshot.checkpointPointerLedger?.some((item) => semanticEqual(item, pointerTransition)) ||
+              afterPointer?.pointerTransitionFingerprint !== pointerTransition?.semanticFingerprint)) ||
+            (existing.state === 'CLAIMED_CURRENT'
+              ? (!checkpoint || checkpointPointer?.currentState !== 'PAUSED_AT_CHECKPOINT' ||
+                 pointerTransition?.state !== 'RECOVERY_TERMINALLY_HELD' ||
+                 (afterSnapshot && (afterPointer?.currentState !== 'RECOVERY_TERMINALLY_HELD' ||
+                   afterSnapshot.phase !== 'BLOCKED')) || dispositionQueue?.state !== 'BLOCKED' ||
+                 dispositionQueue?.lifecycle !== 'HELD' ||
+                 disposition.postDispositionCheckpointPolicy !== 'TERMINALLY_HELD_WITH_EXACT_REASON')
+              : (checkpointPointer?.currentState !== 'RESUMED' ||
+                 pointerTransition?.state !== 'CANCELLED_AFTER_RESUME' ||
+                 (afterSnapshot && (afterPointer?.currentState !== 'CANCELLED_AFTER_RESUME' ||
+                   !['CANCELLED', 'CONTINUATION_READY'].includes(afterSnapshot.phase))) ||
+                 dispositionQueue?.state !== 'CANCELLED' || dispositionQueue?.lifecycle !== 'CLOSED'))) {
           throw new Error('scheduler recovery disposition transition lacks exact scheduler evidence');
         }
       }
@@ -399,6 +835,9 @@ export function createInitialSchedulerAggregate() {
     resource: null,
     runtimeTrust: null,
     observedClock: null,
+    canonicalCheckpoints: [],
+    checkpointPointerLedger: [],
+    checkpointPointers: [],
     checkpoints: [],
     recoveryClaimLedger: [],
     recoveryClaims: [],
@@ -453,7 +892,16 @@ export function reduceSchedulerAggregate(current, event, {
       next.phase = 'PAUSED';
       next.active = null;
       next.queue = clone(event.queue);
-      next.checkpoints = [...next.checkpoints, clone(event.checkpoint)];
+      next.canonicalCheckpoints = [...next.canonicalCheckpoints, clone(event.checkpoint)];
+      next.checkpointPointerLedger = [
+        ...next.checkpointPointerLedger,
+        clone(event.checkpointPointerTransition)
+      ];
+      next.checkpointPointers = replaySchedulerCheckpointPointerLedger(
+        next.canonicalCheckpoints,
+        next.checkpointPointerLedger
+      );
+      next.checkpoints = projectCanonicalCheckpoints(next.canonicalCheckpoints, next.checkpointPointers);
       for (const lease of Object.values(event.transitionedLeases)) next.leaseLedger[lease.leaseRef] = clone(lease);
       next.pendingPreemption = event.pendingPreemption ? clone(event.pendingPreemption) : null;
       if (event.pendingPreemption && !next.continuations.some((item) => item.checkpointRef === event.checkpoint.checkpointRef)) {
@@ -475,23 +923,17 @@ export function reduceSchedulerAggregate(current, event, {
       break;
     case 'RECOVERY_CLAIM_DISPOSED':
       next.phase = 'BLOCKED';
-      next.queue = {
-        ...next.queue,
-        state: 'BLOCKED',
-        lifecycle: 'HELD',
-        blocked: [
-          ...(next.queue.blocked ?? []),
-          { workNodeRef: event.workNodeRef, reasonRefs: [event.reasonRef] }
-        ]
-      };
-      next.checkpoints = next.checkpoints.map((item) => item.checkpointRef === event.checkpointRef
-        ? {
-          ...item,
-          currentState: 'RECOVERY_TERMINALLY_HELD',
-          recoveryDispositionReceiptRef: event.recoveryDispositionReceipt.dispositionReceiptRef,
-          recoveryDispositionReceiptFingerprint: event.recoveryDispositionReceipt.semanticFingerprint
-        }
-        : item);
+      next.queue = clone(event.queue);
+      next.checkpointPointerLedger = [
+        ...next.checkpointPointerLedger,
+        clone(event.checkpointPointerTransition)
+      ];
+      next.checkpointPointers = replaySchedulerCheckpointPointerLedger(
+        next.canonicalCheckpoints,
+        next.checkpointPointerLedger
+      );
+      next.checkpoints = projectCanonicalCheckpoints(next.canonicalCheckpoints, next.checkpointPointers);
+      if (event.observedClock) next.observedClock = clone(event.observedClock);
       next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
       next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger, next, { recoveryClaimReceiptValidator });
       break;
@@ -503,11 +945,17 @@ export function reduceSchedulerAggregate(current, event, {
       next.resource = clone(event.resourceSnapshot);
       next.runtimeTrust = clone(event.runtimeTrustSnapshot);
       next.fairnessLedger = clone(event.fairnessLedger);
-      next.checkpoints = next.checkpoints.map((item) =>
-        item.checkpointRef === event.checkpointRef
-          ? { ...item, currentState: 'RESUMED', resumedByWorkerLeaseRef: event.active.workerLeaseRef }
-          : item
-      );
+      if (event.checkpointPointerTransition) {
+        next.checkpointPointerLedger = [
+          ...next.checkpointPointerLedger,
+          clone(event.checkpointPointerTransition)
+        ];
+        next.checkpointPointers = replaySchedulerCheckpointPointerLedger(
+          next.canonicalCheckpoints,
+          next.checkpointPointerLedger
+        );
+        next.checkpoints = projectCanonicalCheckpoints(next.canonicalCheckpoints, next.checkpointPointers);
+      }
       for (const lease of Object.values(event.leases)) next.leaseLedger[lease.leaseRef] = clone(lease);
       next.pendingPreemption = null;
       if (event.checkpointRef) {
@@ -546,6 +994,17 @@ export function reduceSchedulerAggregate(current, event, {
       for (const lease of Object.values(event.transitionedLeases)) next.leaseLedger[lease.leaseRef] = clone(lease);
       if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
       if (event.observedClock) next.observedClock = clone(event.observedClock);
+      if (event.checkpointPointerTransition) {
+        next.checkpointPointerLedger = [
+          ...next.checkpointPointerLedger,
+          clone(event.checkpointPointerTransition)
+        ];
+        next.checkpointPointers = replaySchedulerCheckpointPointerLedger(
+          next.canonicalCheckpoints,
+          next.checkpointPointerLedger
+        );
+        next.checkpoints = projectCanonicalCheckpoints(next.canonicalCheckpoints, next.checkpointPointers);
+      }
       if (event.recoveryClaimTransition) {
         next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
         next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger, next, { recoveryClaimReceiptValidator });
@@ -628,8 +1087,23 @@ export function createIntentSchedulerState({
   const suppliedFingerprint = supplied.semanticFingerprint;
   delete supplied.semanticFingerprint;
   if (semanticHash(supplied) !== suppliedFingerprint) throw new Error('scheduler aggregate fingerprint mismatch');
+  const replayedCheckpointPointers = replaySchedulerCheckpointPointerLedger(
+    aggregate.canonicalCheckpoints ?? [],
+    aggregate.checkpointPointerLedger ?? []
+  );
+  if (JSON.stringify(replayedCheckpointPointers) !== JSON.stringify(aggregate.checkpointPointers ?? [])) {
+    throw new Error('scheduler checkpoint current pointers differ from immutable pointer replay');
+  }
+  const projectedCheckpoints = projectCanonicalCheckpoints(
+    aggregate.canonicalCheckpoints ?? [],
+    replayedCheckpointPointers
+  );
+  if (JSON.stringify(projectedCheckpoints) !== JSON.stringify(aggregate.checkpoints ?? [])) {
+    throw new Error('scheduler checkpoint projections differ from immutable checkpoint/pointer truth');
+  }
   const replayedClaims = replayRecoveryClaimLedger(aggregate.recoveryClaimLedger ?? [], aggregate, {
-    recoveryClaimReceiptValidator
+    recoveryClaimReceiptValidator,
+    validateFinalSchedulerState: true
   });
   if (JSON.stringify(replayedClaims) !== JSON.stringify(aggregate.recoveryClaims ?? [])) {
     throw new Error('scheduler recovery claim current pointers differ from replayed truth');

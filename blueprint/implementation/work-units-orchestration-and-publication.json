@@ -172,6 +172,9 @@
       "src/core/blueprint.mjs",
       "src/core/registry.mjs",
       "src/core/intent-scheduler.mjs",
+      "src/core/intent-checkpoint.mjs",
+      "src/core/state.mjs",
+      "blueprint/intent-scheduler-registry.json",
       "src/core/intent-completion-verifier.mjs",
       "src/core/scheduler-runtime-trust.mjs",
       "src/core/context-lease.mjs",
@@ -435,7 +438,10 @@
       "test.runtime-recovery.r27-cycle-isolation",
       "test.runtime-recovery.r28-canonical-claim-semantic-replay",
       "test.runtime-recovery.r29-pre-resume-disposition",
-      "test.runtime-recovery.r30-exact-cycle-local-evidence"
+      "test.runtime-recovery.r30-exact-cycle-local-evidence",
+      "test.runtime-recovery.r31-canonical-checkpoint-preclaim-replay",
+      "test.runtime-recovery.r32-complete-claim-edge-replay",
+      "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery"
     ],
     "outputRefs": [
       "registry.vexlife.runtime-recovery.001",
@@ -447,6 +453,8 @@
       "contract.vexlife.runtime-context-recovery/v1",
       "contract.vexlife.runtime-transactional-recovery/v1",
       "contract.vexlife.runtime-recovery-aggregate/v1",
+      "contract.runtime-recovery.scheduler-claim-lifecycle/v1",
+      "contract.intent-scheduler.recovery-claim-currentness/v1",
       "contract.runtime-recovery.integrated-simulation/v1",
       "module.vexlife.core.runtime-recovery",
       "projection.runtime-recovery.health"

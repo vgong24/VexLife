@@ -70,8 +70,8 @@
     {
       "path": "test/runtime-failure-recovery.test.mjs",
       "mode": "100644",
-      "bytes": 41577,
-      "sha256": "3fab6a24133f2b2273eab59ed8cf2b1f7985ef4db91db8e2ba4eddea60a0f062"
+      "bytes": 43877,
+      "sha256": "d10137826cce08352d66e8db511ad87367c022e95ceb422270a41f077ecf5e65"
     },
     {
       "path": "test/source-manifest.test.mjs",

@@ -10,8 +10,8 @@
     {
       "path": "docs/RUNTIME-FAILURE-AND-RECOVERY.md",
       "mode": "100644",
-      "bytes": 11274,
-      "sha256": "1bef683012d7ed240e2756a91b3187152a30d4f5d410ecd00d748e4995b9fb0c"
+      "bytes": 12599,
+      "sha256": "f56170c8d1f4c7188a01f896c8df1317677e93277746babfef3e413f6b35e3e3"
     },
     {
       "path": "docs/SECURITY-PERMISSION-EFFECTS.md",

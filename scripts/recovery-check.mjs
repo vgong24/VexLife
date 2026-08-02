@@ -87,6 +87,27 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
       registry.schedulerRecoveryClaimContract?.forgedClaimantMayConsumeCheckpoint !== false) {
     errors.push('replay-durable scheduler recovery claim contract is incomplete');
   }
+  if (!registry.schedulerClaimLifecycleRecoveryContract?.claimedCurrentRequiredBeforeResume ||
+      !registry.schedulerClaimLifecycleRecoveryContract?.resumedConsumedRequiredForContinuationSuccessAndConvergence ||
+      !registry.schedulerClaimLifecycleRecoveryContract?.terminalConsumedRequiredForHistoricalTerminalClosure ||
+      !registry.schedulerClaimLifecycleRecoveryContract?.invalidatedClaimForcesExactBlockedHold ||
+      registry.schedulerClaimLifecycleRecoveryContract?.staleClaimAdmissionOrEvidenceReuseAllowed !== false ||
+      registry.schedulerClaimLifecycleRecoveryContract?.schedulerAndRecoveryAggregateMutationOnRejectedUseAllowed !== false ||
+      !registry.schedulerClaimLifecycleRecoveryContract?.humanProjectionMustExposeExactDispositionReason) {
+    errors.push('scheduler claim lifecycle recovery/currentness contract is incomplete');
+  }
+  const schedulerClaim = bundle.schedulerRegistry?.runtimeRecoveryClaimContract;
+  if (!schedulerClaim?.canonicalCheckpointAuthority?.immutableCheckpointObjectsRequired ||
+      !schedulerClaim?.canonicalCheckpointAuthority?.mutableStateStoredOnlyInReplayablePointerLedger ||
+      !schedulerClaim?.canonicalCheckpointAuthority?.releaseEvidenceMustEmbedExactPriorAndTransitionedLeases ||
+      !schedulerClaim?.canonicalCheckpointAuthority?.preClaimPriorSchedulerStateReceiptRequired ||
+      !schedulerClaim?.completeLaterEdgeReplay?.resumeRequiresQueueActivePointerSixFreshLeasesRuntimeResourceAndClock ||
+      !schedulerClaim?.completeLaterEdgeReplay?.terminalRequiresCompletionWorkgraphReturnQueueSixLeaseTransitionsAndClock ||
+      !schedulerClaim?.completeLaterEdgeReplay?.dispositionRequiresReceiptPointerBlockedOrCancelledQueueAndClock ||
+      schedulerClaim?.claimCurrentnessContract?.sourceManaged !== true ||
+      schedulerClaim?.claimCurrentnessContract?.disposedClaimsReusable !== false) {
+    errors.push('canonical checkpoint, complete edge replay, or scheduler claim currentness contract is incomplete');
+  }
   if (!registry.recoveryCycleContract?.contentAddressedAtFailureActivation ||
       !registry.recoveryCycleContract?.requiredOnEveryDownstreamRecoveryReceipt ||
       !registry.recoveryCycleContract?.historicalCyclesImmutable ||

@@ -4,6 +4,7 @@ import {
 } from './context-lease.mjs';
 import {
   canonicalSourceBindings,
+  createCheckpointLeaseReleaseEvidence,
   createIntentCheckpoint,
   validateCheckpointResume
 } from './intent-checkpoint.mjs';
@@ -23,6 +24,7 @@ import {
   WorkerLeaseAuthority
 } from './scheduler-runtime-trust.mjs';
 import {
+  createSchedulerCheckpointPointerTransition,
   createIntentSchedulerState,
   reduceSchedulerAggregate
 } from './state.mjs';
@@ -151,6 +153,32 @@ function observedClockReceipt(observedAt, eventRef) {
     eventRef,
     observedAt,
     currentness: 'CURRENT'
+  });
+}
+
+function schedulerPriorStateReceipt(aggregate, observedAt, purpose) {
+  const observed = parseCanonicalTimestamp(observedAt, 'scheduler prior-state observedAt');
+  const priorObserved = aggregate.observedClock?.observedAt
+    ? parseCanonicalTimestamp(aggregate.observedClock.observedAt, 'scheduler prior-state canonical clock')
+    : null;
+  if (priorObserved !== null && observed < priorObserved) {
+    throw new Error('scheduler recovery edge cannot precede the canonical scheduler clock');
+  }
+  return contentAddressedSchedulerEvidence({
+    contractRef: 'contract.intent-scheduler.recovery-prior-state/v1',
+    formationRef: 'formation.intent-scheduler.recovery-prior-state.v1',
+    purpose,
+    schedulerAggregateFingerprint: aggregate.semanticFingerprint,
+    schedulerPhase: aggregate.phase,
+    schedulerGeneration: aggregate.generation,
+    schedulerObservedClockFingerprint: aggregate.observedClock?.semanticFingerprint ?? null,
+    schedulerStateSnapshot: aggregate,
+    currentness: 'CURRENT',
+    observedAt
+  }, {
+    schemaVersion: 'vexlife.intent-scheduler-recovery-prior-state-receipt/v1',
+    refField: 'priorStateReceiptRef',
+    prefix: 'receipt.intent-scheduler.recovery-prior-state.'
   });
 }
 
@@ -786,6 +814,55 @@ export class SingleWorkerIntentScheduler {
   get continuations() { return clone(this.#state.aggregate.value.continuations); }
   get projections() { return this.#state; }
 
+  recoveryClaimCurrentness(checkpointRef, { observedAt } = {}) {
+    const aggregate = this.#state.aggregate.value;
+    const claim = aggregate.recoveryClaims.find((item) => item.checkpointRef === checkpointRef);
+    const checkpoint = aggregate.canonicalCheckpoints.find((item) => item.checkpointRef === checkpointRef);
+    const pointer = aggregate.checkpointPointers.find((item) => item.checkpointRef === checkpointRef);
+    if (!claim || !checkpoint || !pointer) {
+      throw new Error('scheduler recovery claim currentness requires exact owned claim/checkpoint/pointer truth');
+    }
+    const receiptEpoch = parseCanonicalTimestamp(observedAt, 'scheduler recovery claim currentness observedAt');
+    if (receiptEpoch < parseCanonicalTimestamp(claim.lastObservedAt, 'scheduler recovery claim last observedAt') ||
+        receiptEpoch < parseCanonicalTimestamp(pointer.observedAt, 'scheduler checkpoint pointer observedAt')) {
+      throw new Error('scheduler recovery claim currentness cannot predate scheduler-owned lifecycle truth');
+    }
+    return contentAddressedSchedulerEvidence({
+      contractRef: 'contract.intent-scheduler.recovery-claim-currentness/v1',
+      formationRef: 'formation.intent-scheduler.recovery-claim-currentness.v1',
+      schedulerInstanceRef: this.#instanceRef,
+      schedulerAggregateFingerprint: aggregate.semanticFingerprint,
+      claimTransitionRef: claim.lastTransitionRef,
+      claimTransitionFingerprint: claim.lastTransitionFingerprint,
+      claimReceiptRef: claim.claimReceiptRef,
+      claimReceiptFingerprint: claim.claimReceiptFingerprint,
+      checkpointRef,
+      checkpointFingerprint: checkpoint.semanticFingerprint,
+      checkpointPointerRef: pointer.pointerTransitionRef,
+      checkpointPointerFingerprint: pointer.pointerTransitionFingerprint,
+      checkpointPointerState: pointer.currentState,
+      recoveryAggregateRef: claim.recoveryAggregateRef,
+      recoveryAggregateFingerprint: claim.recoveryAggregateFingerprint,
+      recoveryCycleRef: claim.recoveryCycleRef,
+      recoveryCycleFingerprint: claim.recoveryCycleFingerprint,
+      failureRef: claim.failureRef,
+      failureFingerprint: claim.failureFingerprint,
+      onceOnlyActivationRef: claim.onceOnlyActivationRef,
+      schedulerGeneration: claim.schedulerGeneration,
+      claimLifecycle: claim.state,
+      dispositionReceiptRef: claim.dispositionReceiptRef ?? null,
+      dispositionReceiptFingerprint: claim.dispositionReceiptFingerprint ?? null,
+      reasonRef: claim.reasonRef ?? null,
+      postDispositionCheckpointPolicy: claim.postDispositionCheckpointPolicy ?? null,
+      currentness: ['CLAIMED_CURRENT', 'RESUMED_CONSUMED'].includes(claim.state) ? 'CURRENT' : 'TERMINAL',
+      observedAt
+    }, {
+      schemaVersion: 'vexlife.intent-scheduler-recovery-claim-currentness/v1',
+      refField: 'currentnessReceiptRef',
+      prefix: 'receipt.intent-scheduler.recovery-claim-currentness.'
+    });
+  }
+
   #commit(event) {
     const next = reduceSchedulerAggregate(this.#state.aggregate.value, event, {
       recoveryClaimReceiptValidator: this.#runtimeRecoveryRegistry
@@ -1128,6 +1205,19 @@ export class SingleWorkerIntentScheduler {
       reason: 'CHECKPOINT',
       lifecycle: 'RELEASED'
     });
+    const leaseReleaseEvidence = Object.keys(transitions.priorLeases).map((kind) =>
+      createCheckpointLeaseReleaseEvidence({
+        checkpointRef: checkpointInput.checkpointRef,
+        kind,
+        transitionReceipt: transitions.receipts.find((item) =>
+          item.leaseRef === (kind === 'occupancy'
+            ? transitions.priorLeases[kind].occupancyRef
+            : transitions.priorLeases[kind].leaseRef)
+        ),
+        priorLease: transitions.priorLeases[kind],
+        transitionedLease: transitions.transitionedLeases[kind]
+      })
+    );
     const checkpoint = createIntentCheckpoint({
       ...checkpointInput,
       selectedSourceRefs: canonicalRefs(active.sourceRefs),
@@ -1147,7 +1237,7 @@ export class SingleWorkerIntentScheduler {
       priorWorkerLeaseRef: active.workerLeaseRef,
       resourceSnapshotFingerprint: aggregate.resource.semanticFingerprint,
       sourceBindings: canonicalSourceBindings(checkpointInput.sourceBindings),
-      leaseReleaseReceipts: transitions.receipts,
+      leaseReleaseReceipts: leaseReleaseEvidence,
       leaseReleaseLifecycle: 'RELEASED',
       priorLeaseFingerprints: Object.fromEntries(Object.entries(transitions.priorLeases)
         .map(([kind, lease]) => [kind, lease.semanticFingerprint])),
@@ -1162,10 +1252,20 @@ export class SingleWorkerIntentScheduler {
       reason: 'CHECKPOINT',
       transitionedLeases: transitions.transitionedLeases
     });
+    const checkpointPointerTransition = createSchedulerCheckpointPointerTransition(aggregate, {
+      checkpointRef: checkpoint.checkpointRef,
+      checkpointFingerprint: checkpoint.semanticFingerprint,
+      workNodeRef: checkpoint.workNodeRef,
+      state: 'PAUSED_AT_CHECKPOINT',
+      schedulerGeneration: checkpoint.priorSchedulerGeneration,
+      schedulerTransitionRef: `transition.intent-scheduler.checkpoint.${aggregate.generation}`,
+      observedAt: releasedAt
+    });
     this.#commit({
       type: 'CHECKPOINTED',
       transitionRef: `transition.intent-scheduler.checkpoint.${aggregate.generation}`,
       checkpoint,
+      checkpointPointerTransition,
       queue,
       transitionedLeases: transitions.transitionedLeases,
       pendingPreemption: aggregate.pendingPreemption,
@@ -1174,7 +1274,7 @@ export class SingleWorkerIntentScheduler {
     });
     return {
       checkpoint,
-      leaseReleaseReceipts: transitions.receipts,
+      leaseReleaseReceipts: leaseReleaseEvidence,
       transitionedLeases: transitions.transitionedLeases,
       relayLedger: this.#relay?.snapshot ?? null
     };
@@ -1215,12 +1315,15 @@ export class SingleWorkerIntentScheduler {
           item.leaseReleaseFingerprints.includes(fingerprint)))) {
       throw new Error('scheduler checkpoint release set is incomplete or already consumed');
     }
+    const priorStateReceipt = schedulerPriorStateReceipt(aggregate, observedAt, 'CLAIMED_CURRENT');
     const receipt = finalized({
       schemaVersion: 'vexlife.intent-scheduler-recovery-checkpoint-consumption/v1',
       consumptionRef: `consumption.intent-scheduler.recovery.${claim.onceOnlyActivationRef.split('.').at(-1)}`,
       onceOnlyActivationRef: claim.onceOnlyActivationRef,
       schedulerInstanceRef: this.#instanceRef,
       schedulerAggregateFingerprint: aggregate.semanticFingerprint,
+      schedulerPriorStateReceiptRef: priorStateReceipt.priorStateReceiptRef,
+      schedulerPriorStateReceiptFingerprint: priorStateReceipt.semanticFingerprint,
       schedulerPhase: aggregate.phase,
       checkpointCurrentState: checkpoint.currentState,
       checkpointRef,
@@ -1261,11 +1364,14 @@ export class SingleWorkerIntentScheduler {
       leaseReleaseReceiptRefs: receipt.leaseReleaseReceiptRefs,
       leaseReleaseFingerprints: receipt.leaseReleaseFingerprints,
       schedulerGeneration: checkpoint.priorSchedulerGeneration,
+      schedulerPriorStateReceiptRef: priorStateReceipt.priorStateReceiptRef,
+      schedulerPriorStateReceiptFingerprint: priorStateReceipt.semanticFingerprint,
       observedAt
     };
     const edgeEvidence = recoveryClaimEdgeEvidence('CLAIMED_CURRENT', {
       ...claimTransitionBindings,
       schedulerPriorAggregateFingerprint: aggregate.semanticFingerprint,
+      schedulerPriorStateReceipt: priorStateReceipt,
       recoveryClaimReceipt: claim,
       checkpointConsumptionReceipt: receipt
     });
@@ -1634,7 +1740,23 @@ export class SingleWorkerIntentScheduler {
       Object.entries(formed.leases).map(([kind, lease]) => [kind, lease.semanticFingerprint])
     );
     let resumeClaimTransition = null;
+    const checkpointPointerTransition = completePreemption ? null
+      : createSchedulerCheckpointPointerTransition(aggregate, {
+        checkpointRef,
+        checkpointFingerprint: checkpoint.semanticFingerprint,
+        workNodeRef: checkpoint.workNodeRef,
+        state: 'RESUMED',
+        schedulerGeneration: generation,
+        schedulerTransitionRef: `transition.intent-scheduler.resume.${generation}`,
+        resumedByWorkerLeaseRef: formed.active.workerLeaseRef,
+        observedAt: options.observedAt
+      });
+    const resumeObservedClock = observedClockReceipt(
+      options.observedAt,
+      `clock.intent-scheduler.resume.${generation}`
+    );
     if (recoveryResume) {
+      const priorStateReceipt = schedulerPriorStateReceipt(aggregate, options.observedAt, 'RESUMED_CONSUMED');
       const resumeTransitionBindings = {
         checkpointRef,
         claimReceiptRef: recoveryResume.claim.claimReceiptRef,
@@ -1646,6 +1768,8 @@ export class SingleWorkerIntentScheduler {
         actionReceiptFingerprint: recoveryResume.action.semanticFingerprint,
         checkpointAdmissionFingerprint: recoveryResume.admission.semanticFingerprint,
         schedulerGeneration: generation,
+        schedulerPriorStateReceiptRef: priorStateReceipt.priorStateReceiptRef,
+        schedulerPriorStateReceiptFingerprint: priorStateReceipt.semanticFingerprint,
         observedAt: options.observedAt
       };
       const schedulerResumeEvidence = contentAddressedSchedulerEvidence({
@@ -1659,6 +1783,15 @@ export class SingleWorkerIntentScheduler {
         checkpointFingerprint: checkpoint.semanticFingerprint,
         checkpointCurrentStateBefore: checkpoint.currentState,
         checkpointCurrentStateAfter: 'RESUMED',
+        checkpointPointerTransition,
+        checkpointPointerTransitionRef: checkpointPointerTransition.pointerTransitionRef,
+        checkpointPointerTransitionFingerprint: checkpointPointerTransition.semanticFingerprint,
+        queue,
+        activeWorkerPointer: formed.active,
+        freshLeases: formed.leases,
+        runtimeTrustSnapshot: options.runtimeTrustSnapshot,
+        resourceSnapshot: options.resourceSnapshot,
+        observedClockReceipt: resumeObservedClock,
         claimReceiptRef: recoveryResume.claim.claimReceiptRef,
         claimReceiptFingerprint: recoveryResume.claim.claimReceiptFingerprint,
         consumptionRef: recoveryResume.consumption.consumptionRef,
@@ -1692,6 +1825,7 @@ export class SingleWorkerIntentScheduler {
       const edgeEvidence = recoveryClaimEdgeEvidence('RESUMED_CONSUMED', {
         ...resumeTransitionBindings,
         schedulerPriorAggregateFingerprint: aggregate.semanticFingerprint,
+        schedulerPriorStateReceipt: priorStateReceipt,
         schedulerResumeEvidence
       });
       resumeClaimTransition = recoveryClaimTransition(aggregate, 'RESUMED_CONSUMED', {
@@ -1703,6 +1837,7 @@ export class SingleWorkerIntentScheduler {
       type: 'RESUMED',
       transitionRef: `transition.intent-scheduler.resume.${generation}`,
       checkpointRef: completePreemption ? null : checkpointRef,
+      checkpointPointerTransition,
       queue,
       active: formed.active,
       resourceSnapshot: options.resourceSnapshot,
@@ -1712,9 +1847,9 @@ export class SingleWorkerIntentScheduler {
       recoveryClaimTransition: resumeClaimTransition,
       heldToolDisposition: dispositionResult,
       relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,
-      observedClock: observedClockReceipt(options.observedAt, `clock.intent-scheduler.resume.${generation}`)
+      observedClock: resumeObservedClock
     });
-    const currentCheckpoint = committed.checkpoints.find((item) => item.checkpointRef === checkpointRef);
+    const currentCheckpoint = committed.checkpointPointers.find((item) => item.checkpointRef === checkpointRef);
     const recoveryResumeReceipt = recoveryResume ? finalized({
       schemaVersion: 'vexlife.intent-scheduler-recovery-resume-receipt/v1',
       resumeReceiptRef: `receipt.intent-scheduler.recovery-resume.${recoveryResume.consumption.onceOnlyActivationRef.split('.').at(-1)}.${generation}`,
@@ -1731,11 +1866,8 @@ export class SingleWorkerIntentScheduler {
       checkpointRef,
       checkpointFingerprint: checkpoint.semanticFingerprint,
       checkpointCurrentState: currentCheckpoint?.currentState,
-      checkpointCurrentPointerFingerprint: semanticHash({
-        checkpointRef,
-        currentState: currentCheckpoint?.currentState,
-        resumedByWorkerLeaseRef: currentCheckpoint?.resumedByWorkerLeaseRef
-      }),
+      checkpointCurrentPointerRef: currentCheckpoint?.pointerTransitionRef,
+      checkpointCurrentPointerFingerprint: currentCheckpoint?.pointerTransitionFingerprint,
       aggregateRef: recoveryResume.action.aggregateRef,
       recoveryCycleRef: recoveryResume.claim.recoveryCycleRef,
       recoveryCycleFingerprint: recoveryResume.claim.recoveryCycleFingerprint,
@@ -1977,12 +2109,17 @@ export class SingleWorkerIntentScheduler {
       reason: 'WORK_COMPLETED',
       transitionedLeases: transitions.transitionedLeases
     });
+    const completionObservedClock = observedClockReceipt(
+      completedAt,
+      `clock.intent-scheduler.complete.${aggregate.generation}`
+    );
     const currentRecoveryClaim = aggregate.recoveryClaims.find((item) =>
       item.state === 'RESUMED_CONSUMED' && item.workNodeRef === aggregate.active.workNodeRef &&
       item.schedulerGeneration === aggregate.active.schedulerGeneration
     ) ?? null;
     let terminalClaimTransition = null;
     if (currentRecoveryClaim) {
+      const priorStateReceipt = schedulerPriorStateReceipt(aggregate, completedAt, 'TERMINAL_CONSUMED');
       const terminalTransitionBindings = {
         checkpointRef: currentRecoveryClaim.checkpointRef,
         claimReceiptRef: currentRecoveryClaim.claimReceiptRef,
@@ -1994,6 +2131,8 @@ export class SingleWorkerIntentScheduler {
         actionReceiptFingerprint: currentRecoveryClaim.actionReceiptFingerprint,
         schedulerGeneration: aggregate.active.schedulerGeneration,
         terminalReceiptFingerprint: exact.semanticFingerprint,
+        schedulerPriorStateReceiptRef: priorStateReceipt.priorStateReceiptRef,
+        schedulerPriorStateReceiptFingerprint: priorStateReceipt.semanticFingerprint,
         observedAt: completedAt
       };
       const schedulerTerminalEvidence = contentAddressedSchedulerEvidence({
@@ -2018,6 +2157,14 @@ export class SingleWorkerIntentScheduler {
         completionReceiptFingerprint: exact.semanticFingerprint,
         returnRouteReceiptRef: returnRouteReceipt.returnRouteReceiptRef,
         returnRouteReceiptFingerprint: returnRouteReceipt.semanticFingerprint,
+        completionVerification,
+        workgraphTransition: workgraphResult.canonicalTransition,
+        completionReceipt: exact,
+        returnRouteReceipt,
+        terminalQueue: queue,
+        transitionedLeases: transitions.transitionedLeases,
+        leaseTransitionReceipts: transitions.receipts,
+        observedClockReceipt: completionObservedClock,
         currentness: 'CURRENT',
         observedAt: completedAt
       }, {
@@ -2028,6 +2175,7 @@ export class SingleWorkerIntentScheduler {
       const edgeEvidence = recoveryClaimEdgeEvidence('TERMINAL_CONSUMED', {
         ...terminalTransitionBindings,
         schedulerPriorAggregateFingerprint: aggregate.semanticFingerprint,
+        schedulerPriorStateReceipt: priorStateReceipt,
         schedulerTerminalEvidence
       });
       terminalClaimTransition = recoveryClaimTransition(aggregate, 'TERMINAL_CONSUMED', {
@@ -2046,7 +2194,7 @@ export class SingleWorkerIntentScheduler {
       returnRouteReceipt,
       recoveryClaimTransition: terminalClaimTransition,
       relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,
-      observedClock: observedClockReceipt(completedAt, `clock.intent-scheduler.complete.${aggregate.generation}`)
+      observedClock: completionObservedClock
     });
     return {
       changed: true,
@@ -2105,12 +2253,15 @@ export class SingleWorkerIntentScheduler {
         Date.parse(observedAt) <= Date.parse(currentRecoveryClaim.lastObservedAt)) {
       throw new Error('pre-resume recovery disposition is stale, substituted, or detached');
     }
+    const priorStateReceipt = schedulerPriorStateReceipt(aggregate, observedAt, 'INVALIDATED_OR_ABANDONED');
     const schedulerDispositionReceipt = contentAddressedSchedulerEvidence({
       contractRef: 'contract.intent-scheduler.recovery-claim-disposition/v1',
       formationRef: 'formation.intent-scheduler.recovery-pre-resume-disposition.v1',
       disposition: 'ABANDONED_BEFORE_RESUME',
       schedulerInstanceRef: this.#instanceRef,
       schedulerAggregateFingerprint: aggregate.semanticFingerprint,
+      schedulerPriorStateReceiptRef: priorStateReceipt.priorStateReceiptRef,
+      schedulerPriorStateReceiptFingerprint: priorStateReceipt.semanticFingerprint,
       schedulerPhase: aggregate.phase,
       claimTransitionRef: currentRecoveryClaim.lastTransitionRef,
       claimTransitionFingerprint: currentRecoveryClaim.lastTransitionFingerprint,
@@ -2141,6 +2292,31 @@ export class SingleWorkerIntentScheduler {
       refField: 'dispositionReceiptRef',
       prefix: 'receipt.intent-scheduler.recovery-claim-disposition.'
     });
+    const dispositionQueue = finalized({
+      ...clone(aggregate.queue),
+      state: 'BLOCKED',
+      lifecycle: 'HELD',
+      blocked: [
+        ...(aggregate.queue.blocked ?? []),
+        { workNodeRef: currentRecoveryClaim.workNodeRef, reasonRefs: [reasonRef] }
+      ]
+    });
+    const dispositionObservedClock = observedClockReceipt(
+      observedAt,
+      `clock.intent-scheduler.recovery-disposition.${currentRecoveryClaim.schedulerGeneration}`
+    );
+    const checkpointPointerTransition = createSchedulerCheckpointPointerTransition(aggregate, {
+      checkpointRef,
+      checkpointFingerprint: checkpoint.semanticFingerprint,
+      workNodeRef: checkpoint.workNodeRef,
+      state: 'RECOVERY_TERMINALLY_HELD',
+      schedulerGeneration: currentRecoveryClaim.schedulerGeneration,
+      schedulerTransitionRef: `transition.intent-scheduler.recovery-disposition.${currentRecoveryClaim.schedulerGeneration}`,
+      dispositionReceiptRef: schedulerDispositionReceipt.dispositionReceiptRef,
+      dispositionReceiptFingerprint: schedulerDispositionReceipt.semanticFingerprint,
+      reasonRef,
+      observedAt
+    });
     const dispositionTransitionBindings = {
       checkpointRef,
       claimReceiptRef: currentRecoveryClaim.claimReceiptRef,
@@ -2154,11 +2330,17 @@ export class SingleWorkerIntentScheduler {
       postDispositionCheckpointPolicy,
       dispositionReceiptRef: schedulerDispositionReceipt.dispositionReceiptRef,
       dispositionReceiptFingerprint: schedulerDispositionReceipt.semanticFingerprint,
+      schedulerPriorStateReceiptRef: priorStateReceipt.priorStateReceiptRef,
+      schedulerPriorStateReceiptFingerprint: priorStateReceipt.semanticFingerprint,
       observedAt
     };
     const edgeEvidence = recoveryClaimEdgeEvidence('INVALIDATED_OR_ABANDONED', {
       ...dispositionTransitionBindings,
       schedulerPriorAggregateFingerprint: aggregate.semanticFingerprint,
+      schedulerPriorStateReceipt: priorStateReceipt,
+      checkpointPointerTransition,
+      blockedQueue: dispositionQueue,
+      observedClockReceipt: dispositionObservedClock,
       schedulerDispositionReceipt
     });
     const transition = recoveryClaimTransition(aggregate, 'INVALIDATED_OR_ABANDONED', {
@@ -2171,7 +2353,10 @@ export class SingleWorkerIntentScheduler {
       checkpointRef,
       workNodeRef: currentRecoveryClaim.workNodeRef,
       reasonRef,
+      queue: dispositionQueue,
       recoveryDispositionReceipt: schedulerDispositionReceipt,
+      checkpointPointerTransition,
+      observedClock: dispositionObservedClock,
       recoveryClaimTransition: transition
     });
     return {
@@ -2220,20 +2405,28 @@ export class SingleWorkerIntentScheduler {
       reason,
       transitionedLeases: transitions.transitionedLeases
     });
+    const cancellationObservedClock = observedClockReceipt(
+      releasedAt,
+      `clock.intent-scheduler.cancel.${aggregate.generation}`
+    );
     const currentRecoveryClaim = aggregate.recoveryClaims.find((item) =>
       item.state === 'RESUMED_CONSUMED' && item.workNodeRef === active.workNodeRef &&
       item.schedulerGeneration === active.schedulerGeneration
     ) ?? null;
     let abandonedClaimTransition = null;
+    let checkpointPointerTransition = null;
     if (currentRecoveryClaim) {
       const checkpoint = aggregate.checkpoints.find((item) => item.checkpointRef === currentRecoveryClaim.checkpointRef);
       const reasonRef = 'reason.intent-scheduler.recovery.active-cancelled';
+      const priorStateReceipt = schedulerPriorStateReceipt(aggregate, releasedAt, 'INVALIDATED_OR_ABANDONED');
       const schedulerDispositionReceipt = contentAddressedSchedulerEvidence({
         contractRef: 'contract.intent-scheduler.recovery-claim-disposition/v1',
         formationRef: 'formation.intent-scheduler.recovery-active-cancellation.v1',
         disposition: 'ABANDONED_AFTER_RESUME',
         schedulerInstanceRef: this.#instanceRef,
         schedulerAggregateFingerprint: aggregate.semanticFingerprint,
+        schedulerPriorStateReceiptRef: priorStateReceipt.priorStateReceiptRef,
+        schedulerPriorStateReceiptFingerprint: priorStateReceipt.semanticFingerprint,
         claimTransitionRef: currentRecoveryClaim.lastTransitionRef,
         claimTransitionFingerprint: currentRecoveryClaim.lastTransitionFingerprint,
         claimReceiptRef: currentRecoveryClaim.claimReceiptRef,
@@ -2274,11 +2467,32 @@ export class SingleWorkerIntentScheduler {
         postDispositionCheckpointPolicy: schedulerDispositionReceipt.postDispositionCheckpointPolicy,
         dispositionReceiptRef: schedulerDispositionReceipt.dispositionReceiptRef,
         dispositionReceiptFingerprint: schedulerDispositionReceipt.semanticFingerprint,
+        schedulerPriorStateReceiptRef: priorStateReceipt.priorStateReceiptRef,
+        schedulerPriorStateReceiptFingerprint: priorStateReceipt.semanticFingerprint,
         observedAt: releasedAt
       };
+      checkpointPointerTransition = createSchedulerCheckpointPointerTransition(aggregate, {
+        checkpointRef: currentRecoveryClaim.checkpointRef,
+        checkpointFingerprint: currentRecoveryClaim.checkpointFingerprint,
+        workNodeRef: currentRecoveryClaim.workNodeRef,
+        state: 'CANCELLED_AFTER_RESUME',
+        schedulerGeneration: active.schedulerGeneration,
+        schedulerTransitionRef: `transition.intent-scheduler.cancel.${aggregate.generation}`,
+        dispositionReceiptRef: schedulerDispositionReceipt.dispositionReceiptRef,
+        dispositionReceiptFingerprint: schedulerDispositionReceipt.semanticFingerprint,
+        reasonRef,
+        observedAt: releasedAt
+      });
       const edgeEvidence = recoveryClaimEdgeEvidence('INVALIDATED_OR_ABANDONED', {
         ...abandonedTransitionBindings,
         schedulerPriorAggregateFingerprint: aggregate.semanticFingerprint,
+        schedulerPriorStateReceipt: priorStateReceipt,
+        checkpointPointerTransition,
+        cancelledQueue: queue,
+        cancellationReceipt,
+        transitionedLeases: transitions.transitionedLeases,
+        leaseTransitionReceipts: transitions.receipts,
+        observedClockReceipt: cancellationObservedClock,
         schedulerDispositionReceipt
       });
       abandonedClaimTransition = recoveryClaimTransition(aggregate, 'INVALIDATED_OR_ABANDONED', {
@@ -2291,9 +2505,10 @@ export class SingleWorkerIntentScheduler {
       transitionRef: `transition.intent-scheduler.cancel.${aggregate.generation}`,
       queue,
       transitionedLeases: transitions.transitionedLeases,
+      checkpointPointerTransition,
       recoveryClaimTransition: abandonedClaimTransition,
       relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,
-      observedClock: observedClockReceipt(releasedAt, `clock.intent-scheduler.cancel.${aggregate.generation}`)
+      observedClock: cancellationObservedClock
     });
     return {
       changed: true,

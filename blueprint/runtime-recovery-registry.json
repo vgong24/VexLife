@@ -9,6 +9,16 @@
     "sourceClass": "SOURCE_MANAGED_CONTENT_ADDRESSED_RUNTIME_CONTRACT"
   },
   "systemRef": "system.vexlife.runtime-failure-recovery",
+  "schedulerClaimLifecycleRecoveryContract": {
+    "contractRef": "contract.runtime-recovery.scheduler-claim-lifecycle/v1",
+    "claimedCurrentRequiredBeforeResume": true,
+    "resumedConsumedRequiredForContinuationSuccessAndConvergence": true,
+    "terminalConsumedRequiredForHistoricalTerminalClosure": true,
+    "invalidatedClaimForcesExactBlockedHold": true,
+    "staleClaimAdmissionOrEvidenceReuseAllowed": false,
+    "schedulerAndRecoveryAggregateMutationOnRejectedUseAllowed": false,
+    "humanProjectionMustExposeExactDispositionReason": true
+  },
   "failureEnvelope": {
     "contractRef": "contract.vexlife.runtime-failure-envelope/v1",
     "identityRule": "failureRef and semanticFingerprint derive from the complete canonical source-bound envelope; a thrown string or stack is evidence input only",
@@ -319,6 +329,9 @@
       "currentRecoveryReceipt",
       "currentCheckpointAdmission",
       "currentRecoveryActionReceipt",
+      "currentSchedulerClaimLifecycle",
+      "schedulerClaimLifecycleHistory",
+      "schedulerRecoveryHold",
       "attemptLedger",
       "failureHistory",
       "retryBudget",
@@ -344,6 +357,7 @@
       "ATTEMPT_FAILED",
       "FAILURE_ACTIVATED",
       "CHECKPOINT_ADMITTED",
+      "SCHEDULER_CLAIM_LIFECYCLE_RECORDED",
       "POLICY_DECIDED",
       "CONTEXT_RECOVERED",
       "RESOURCE_RECOVERED",
@@ -364,6 +378,7 @@
       { "type": "ATTEMPT_FAILED", "fields": ["failure", "recoveryCycle"] },
       { "type": "FAILURE_ACTIVATED", "fields": ["failure", "recoveryCycle"] },
       { "type": "CHECKPOINT_ADMITTED", "fields": ["admission", "checkpoint", "schedulerConsumptionReceipt"] },
+      { "type": "SCHEDULER_CLAIM_LIFECYCLE_RECORDED", "fields": ["receipt"] },
       { "type": "POLICY_DECIDED", "fields": ["authorityBoundary", "checkpointAdmission", "contextAdmissionReceipt", "decision", "recoveryReceipt", "resourceAdmissionReceipt"] },
       { "type": "CONTEXT_RECOVERED", "fields": ["receipt"] },
       { "type": "RESOURCE_RECOVERED", "fields": ["receipt"] },
@@ -444,7 +459,10 @@
     "test.runtime-recovery.r27-cycle-isolation",
     "test.runtime-recovery.r28-canonical-claim-semantic-replay",
     "test.runtime-recovery.r29-pre-resume-disposition",
-    "test.runtime-recovery.r30-exact-cycle-local-evidence"
+    "test.runtime-recovery.r30-exact-cycle-local-evidence",
+    "test.runtime-recovery.r31-canonical-checkpoint-preclaim-replay",
+    "test.runtime-recovery.r32-complete-claim-edge-replay",
+    "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery"
   ],
   "simulationContract": {
     "contractRef": "contract.runtime-recovery.integrated-simulation/v1",
@@ -460,6 +478,7 @@
       "CHECKPOINT_ADMISSION_RECORDED",
       "EXACT_SOURCE_POLICY_DECIDED",
       "AGGREGATE_OWNED_RECOVERY_ACTION_APPLIED",
+      "SCHEDULER_CLAIM_LIFECYCLE_RECOVERY_HELD",
       "QUARANTINE_ATTENTION_OWNED",
       "FRESH_GENERATION_AND_SIX_LEASES_CONTINUED",
       "FRESH_GENERATION_RETRY_SUCCEEDED",

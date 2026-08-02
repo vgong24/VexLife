@@ -26,6 +26,27 @@
     "releasedLeaseReuseAllowed": false,
     "claimMustBindCanonicalRuntimeRecoveryReceipt": true,
     "fullSemanticReplayRequired": true,
+    "canonicalCheckpointAuthority": {
+      "immutableCheckpointObjectsRequired": true,
+      "mutableStateStoredOnlyInReplayablePointerLedger": true,
+      "releaseEvidenceMustEmbedExactPriorAndTransitionedLeases": true,
+      "preClaimPriorSchedulerStateReceiptRequired": true
+    },
+    "completeLaterEdgeReplay": {
+      "resumeRequiresQueueActivePointerSixFreshLeasesRuntimeResourceAndClock": true,
+      "terminalRequiresCompletionWorkgraphReturnQueueSixLeaseTransitionsAndClock": true,
+      "dispositionRequiresReceiptPointerBlockedOrCancelledQueueAndClock": true,
+      "canonicalMonotonicTimeRequired": true
+    },
+    "claimCurrentnessContract": {
+      "contractRef": "contract.intent-scheduler.recovery-claim-currentness/v1",
+      "formationRef": "formation.intent-scheduler.recovery-claim-currentness.v1",
+      "sourceManaged": true,
+      "schedulerAggregateBound": true,
+      "recoveryAggregateCycleFailureAndActivationBound": true,
+      "disposedClaimsReusable": false,
+      "terminalClaimsHistoricalOnly": true
+    },
     "edgeEvidenceContracts": {
       "CLAIMED_CURRENT": "contract.intent-scheduler.recovery-claim-edge.claimed-current/v1",
       "RESUMED_CONSUMED": "contract.intent-scheduler.recovery-claim-edge.resumed-consumed/v1",
