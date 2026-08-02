@@ -234,10 +234,13 @@ executes no external effect.
 
 The shared [Runtime Failure & Recovery Spine](docs/RUNTIME-FAILURE-AND-RECOVERY.md)
 consumes exact source-issued classifier-plan receipts, persists scheduler recovery
-claim lifecycle in replayable aggregate state, and isolates every downstream
+claim lifecycle through exact edge-evidence replay, supports an explicit
+pre-resume terminal hold without reusing its activation/releases, and isolates every downstream
 action, continuation, success, convergence, terminal and human projection by a
-content-addressed recovery cycle. Duplicate live or restart claims and prior-cycle
-evidence fail closed. Its deterministic fixtures execute no external effect.
+content-addressed recovery cycle. Transaction evidence is explicitly adopted by
+the exact cycle/claim/admission, while pre-checkpoint projections remain awaiting
+rather than inheriting prior preservation. Forged restores, duplicate claims and
+prior-cycle evidence fail closed. Its deterministic fixtures execute no external effect.
 
 The shared [Burden Release and Continuity Evolution Router](docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md)
 completes Intent Orchestration 3/3. It seals immutable exact source tuples,

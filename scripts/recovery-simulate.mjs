@@ -14,6 +14,7 @@ import {
   applyRecoveryAction,
   closeRecoveredExecution,
   continueRecoveryGeneration,
+  createCycleBoundTransactionalRecoveryReceipt,
   createRecoveryAggregate,
   createRecoveryCheckpoint,
   createSchedulerRecoveryClaimReceipt,
@@ -574,7 +575,7 @@ function runRepresentativeActionBranch({
   owner = decided.aggregate;
   let transaction = null;
   if (['transaction', 'restore'].includes(mode)) {
-    transaction = simulateTransactionalRecovery({
+    const sourceTransaction = simulateTransactionalRecovery({
       adapter: createNoEffectTransactionalAdapter({
         initialState: { branch: name, state: 'before' },
         attemptedState: { branch: name, state: 'partial' },
@@ -585,6 +586,14 @@ function runRepresentativeActionBranch({
       rollbackReceiptRef: `receipt.runtime-recovery.rollback.${name}`,
       lastKnownGoodRef: `state.runtime-recovery.last-known-good.${name}`,
       observedAt: RECOVERED_AT
+    });
+    transaction = createCycleBoundTransactionalRecoveryReceipt({
+      aggregate: owner,
+      transactionalRecoveryReceipt: sourceTransaction,
+      recoveryClaimReceipt,
+      checkpointAdmission: admission,
+      observedAt: RECOVERED_AT,
+      registry
     });
   }
   const gate = mode === 'human'
@@ -783,6 +792,34 @@ export function validateIntegratedRecoverySimulationReceipt(receipt, {
       !/^[a-f0-9]{64}$/.test(String(schedulerOwnership.recoveryCycleFingerprint ?? ''))) {
     errors.push('replay-durable scheduler recovery ownership proof is incomplete');
   }
+  const canonicalClaimReplay = receipt.canonicalSchedulerClaimReplayProof;
+  if (!canonicalClaimReplay || canonicalClaimReplay.exactReleaseCount !== 6 ||
+      JSON.stringify(canonicalClaimReplay.lifecycle) !==
+        JSON.stringify(['CLAIMED_CURRENT', 'RESUMED_CONSUMED', 'TERMINAL_CONSUMED']) ||
+      canonicalClaimReplay.edgeContractRefs?.length !== 3 ||
+      canonicalClaimReplay.edgeEvidenceFingerprints?.length !== 3 ||
+      canonicalClaimReplay.forgedRehashedRestoreRejected !== true ||
+      canonicalClaimReplay.fakeReleaseRestoredClaimRejected !== true ||
+      canonicalClaimReplay.missingClaimReceiptRestoredClaimRejected !== true ||
+      canonicalClaimReplay.legitimateClaimAdmissibleAfterRejectedRestore !== true ||
+      canonicalClaimReplay.suppliedPointersEqualSemanticReplay !== true ||
+      canonicalClaimReplay.terminalReplayState !== 'TERMINAL_CONSUMED') {
+    errors.push('canonical scheduler recovery claim replay proof is incomplete');
+  }
+  const preResumeDisposition = receipt.preResumeClaimDispositionProof;
+  if (!preResumeDisposition || preResumeDisposition.failedResumeRejected !== true ||
+      preResumeDisposition.claimVisibleAfterFailedResume !== true ||
+      preResumeDisposition.disposition !== 'ABANDONED_BEFORE_RESUME' ||
+      preResumeDisposition.postDispositionCheckpointPolicy !== 'TERMINALLY_HELD_WITH_EXACT_REASON' ||
+      preResumeDisposition.oldActivationReusable !== false || preResumeDisposition.oldReleaseSetReusable !== false ||
+      preResumeDisposition.dispositionState !== 'INVALIDATED_OR_ABANDONED' ||
+      preResumeDisposition.checkpointState !== 'RECOVERY_TERMINALLY_HELD' ||
+      preResumeDisposition.restartPreservedDisposition !== true ||
+      preResumeDisposition.oldActivationResumeRejected !== true ||
+      preResumeDisposition.oldActivationReclaimRejected !== true ||
+      preResumeDisposition.normalLifecycleUnchanged !== true) {
+    errors.push('pre-resume recovery claim disposition proof is incomplete');
+  }
   const cycleProof = receipt.recoveryCycleIsolationProof;
   if (!cycleProof || cycleProof.recoveryCycleCount !== 2 ||
       cycleProof.firstRecoveryCycleFingerprint !== cycleProof.priorCycleFingerprint ||
@@ -795,6 +832,25 @@ export function validateIntegratedRecoverySimulationReceipt(receipt, {
       cycleProof.currentProjectionTerminalProofRef !== null ||
       cycleProof.currentProjectionState !== 'BLOCKED') {
     errors.push('recovery cycle isolation proof is incomplete or stale');
+  }
+  const cycleLocal = receipt.exactCycleLocalEvidenceProof;
+  if (!cycleLocal || cycleLocal.sameFailureClassRecurrence !== true ||
+      cycleLocal.sameOperationRecurrence !== true ||
+      cycleLocal.preCheckpointHistoricalPreservationRejected !== true ||
+      cycleLocal.preCheckpointPreservationState !== 'AWAITING_CURRENT_CYCLE_EVIDENCE' ||
+      cycleLocal.preCheckpointWhatWasPreserved !== null ||
+      cycleLocal.priorTransactionEvidenceRejected !== true ||
+      cycleLocal.unscopedTransactionRejected !== true ||
+      cycleLocal.readdressedTransactionRejected !== true ||
+      cycleLocal.staleTransactionFormationRejected !== true ||
+      cycleLocal.sameRefDifferentContentTransactionRejected !== true ||
+      cycleLocal.priorContextEvidenceRejected !== true ||
+      cycleLocal.priorResourceEvidenceRejected !== true ||
+      cycleLocal.priorWaitEvidenceRejected !== true ||
+      cycleLocal.historicalEvidenceIntact !== true ||
+      cycleLocal.currentCycleControlledDisposition !== 'BLOCKED' ||
+      cycleLocal.currentProjectionCycleRef !== cycleLocal.secondRecoveryCycleRef) {
+    errors.push('exact cycle-local evidence/projection proof is incomplete');
   }
   if (receipt.checkpointFreshGenerationSixLeaseProof?.releasedLeaseCount !== 6 ||
       receipt.checkpointFreshGenerationSixLeaseProof?.freshLeaseCount !== 6 ||
@@ -1014,6 +1070,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     formedAt: FAILED_AT,
     registry
   });
+  const schedulerPausedSnapshot = structuredClone(scheduler.aggregate);
   const schedulerFingerprintBeforeForgedClaim = scheduler.aggregate.semanticFingerprint;
   const forgedClaimReceipt = structuredClone(recoveryClaimReceipt);
   forgedClaimReceipt.aggregateRef = 'aggregate.runtime-recovery.forged-claimant';
@@ -1037,6 +1094,100 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     observedAt: FAILED_AT
   });
   const schedulerClaimedSnapshot = structuredClone(scheduler.aggregate);
+  const forgedRestoredAggregate = structuredClone(schedulerClaimedSnapshot);
+  const forgedTransition = forgedRestoredAggregate.recoveryClaimLedger[0];
+  forgedTransition.recoveryAggregateFingerprint = 'f'.repeat(64);
+  delete forgedTransition.transitionRef;
+  delete forgedTransition.semanticFingerprint;
+  forgedTransition.semanticFingerprint = semanticHash(forgedTransition);
+  forgedTransition.transitionRef =
+    `transition.intent-scheduler.recovery-claim.claimed-current.${forgedTransition.semanticFingerprint.slice(0, 32)}`;
+  forgedRestoredAggregate.recoveryClaims[0].recoveryAggregateFingerprint = forgedTransition.recoveryAggregateFingerprint;
+  forgedRestoredAggregate.recoveryClaims[0].lastTransitionRef = forgedTransition.transitionRef;
+  forgedRestoredAggregate.recoveryClaims[0].lastTransitionFingerprint = forgedTransition.semanticFingerprint;
+  delete forgedRestoredAggregate.semanticFingerprint;
+  forgedRestoredAggregate.semanticFingerprint = semanticHash(forgedRestoredAggregate);
+  let forgedRehashedRestoreRejected = false;
+  try {
+    new SingleWorkerIntentScheduler({
+      workerRef: runtimeOne.workerRef,
+      schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.forged-restore',
+      schedulerRegistry: bundle.schedulerRegistry,
+      runtimeRecoveryRegistry: registry,
+      runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef }),
+      schedulerAggregate: forgedRestoredAggregate
+    });
+  } catch {
+    forgedRehashedRestoreRejected = true;
+  }
+  const rehashClaimedRestore = (candidate) => {
+    const transition = candidate.recoveryClaimLedger[0];
+    const edge = transition.edgeEvidence;
+    delete edge.evidenceRef;
+    delete edge.semanticFingerprint;
+    edge.semanticFingerprint = semanticHash(edge);
+    edge.evidenceRef = `evidence.intent-scheduler.recovery-claim.claimed-current.${edge.semanticFingerprint.slice(0, 32)}`;
+    transition.edgeEvidenceRef = edge.evidenceRef;
+    transition.edgeEvidenceFingerprint = edge.semanticFingerprint;
+    delete transition.transitionRef;
+    delete transition.semanticFingerprint;
+    transition.semanticFingerprint = semanticHash(transition);
+    transition.transitionRef =
+      `transition.intent-scheduler.recovery-claim.claimed-current.${transition.semanticFingerprint.slice(0, 32)}`;
+    candidate.recoveryClaims[0].lastTransitionRef = transition.transitionRef;
+    candidate.recoveryClaims[0].lastTransitionFingerprint = transition.semanticFingerprint;
+    candidate.recoveryClaims[0].edgeEvidenceRef = edge.evidenceRef;
+    candidate.recoveryClaims[0].edgeEvidenceFingerprint = edge.semanticFingerprint;
+    delete candidate.semanticFingerprint;
+    candidate.semanticFingerprint = semanticHash(candidate);
+    return candidate;
+  };
+  const fakeReleaseRestoredAggregate = structuredClone(schedulerClaimedSnapshot);
+  fakeReleaseRestoredAggregate.recoveryClaimLedger[0].leaseReleaseFingerprints[0] = 'e'.repeat(64);
+  fakeReleaseRestoredAggregate.recoveryClaimLedger[0].edgeEvidence.leaseReleaseFingerprints[0] = 'e'.repeat(64);
+  fakeReleaseRestoredAggregate.recoveryClaims[0].leaseReleaseFingerprints[0] = 'e'.repeat(64);
+  rehashClaimedRestore(fakeReleaseRestoredAggregate);
+  let fakeReleaseRestoredClaimRejected = false;
+  try {
+    new SingleWorkerIntentScheduler({
+      workerRef: runtimeOne.workerRef,
+      schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.fake-release-restore',
+      schedulerRegistry: bundle.schedulerRegistry,
+      runtimeRecoveryRegistry: registry,
+      runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef }),
+      schedulerAggregate: fakeReleaseRestoredAggregate
+    });
+  } catch {
+    fakeReleaseRestoredClaimRejected = true;
+  }
+  const missingClaimReceiptRestoredAggregate = structuredClone(schedulerClaimedSnapshot);
+  delete missingClaimReceiptRestoredAggregate.recoveryClaimLedger[0].edgeEvidence.recoveryClaimReceipt;
+  rehashClaimedRestore(missingClaimReceiptRestoredAggregate);
+  let missingClaimReceiptRestoredClaimRejected = false;
+  try {
+    new SingleWorkerIntentScheduler({
+      workerRef: runtimeOne.workerRef,
+      schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.missing-claim-receipt-restore',
+      schedulerRegistry: bundle.schedulerRegistry,
+      runtimeRecoveryRegistry: registry,
+      runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef }),
+      schedulerAggregate: missingClaimReceiptRestoredAggregate
+    });
+  } catch {
+    missingClaimReceiptRestoredClaimRejected = true;
+  }
+  const legitimateAfterRejectedRestore = new SingleWorkerIntentScheduler({
+    workerRef: runtimeOne.workerRef,
+    schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.legitimate-after-forged-restore',
+    schedulerRegistry: bundle.schedulerRegistry,
+    runtimeRecoveryRegistry: registry,
+    runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef }),
+    schedulerAggregate: schedulerPausedSnapshot
+  });
+  const legitimateClaimAfterRejectedRestore = legitimateAfterRejectedRestore.claimRecoveryCheckpoint(
+    checkpointed.checkpoint.checkpointRef,
+    { recoveryClaimReceipt, observedAt: FAILED_AT }
+  );
   let duplicateLiveClaimRejected = false;
   try {
     scheduler.claimRecoveryCheckpoint(checkpointed.checkpoint.checkpointRef, {
@@ -1066,6 +1217,73 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
   const restartPreservedClaimOwnership =
     restartedClaimScheduler.aggregate.semanticFingerprint === schedulerClaimedSnapshot.semanticFingerprint &&
     restartedClaimScheduler.aggregate.recoveryClaims.at(-1)?.state === 'CLAIMED_CURRENT';
+  const preResumeDispositionScheduler = new SingleWorkerIntentScheduler({
+    workerRef: runtimeOne.workerRef,
+    schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.pre-resume-disposition',
+    schedulerRegistry: bundle.schedulerRegistry,
+    runtimeRecoveryRegistry: registry,
+    runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef }),
+    schedulerAggregate: schedulerClaimedSnapshot
+  });
+  let failedResumeRejected = false;
+  try {
+    preResumeDispositionScheduler.resume(checkpointed.checkpoint.checkpointRef, {
+      graph,
+      options: { ...optionsOne, schedulerGeneration: 2, observedAt: RECOVERED_AT },
+      sourceBindings,
+      contextInput: contextInput(2, { formedAt: FAILED_AT, observedAt: RECOVERED_AT }),
+      recovery: {
+        checkpointConsumptionReceipt: schedulerConsumption,
+        checkpointAdmission: { schemaVersion: 'vexlife.runtime-recovery-checkpoint-admission/v1' },
+        actionReceipt: null
+      }
+    });
+  } catch {
+    failedResumeRejected = true;
+  }
+  const claimVisibleAfterFailedResume =
+    preResumeDispositionScheduler.aggregate.recoveryClaims.at(-1)?.state === 'CLAIMED_CURRENT';
+  const preResumeDisposition = preResumeDispositionScheduler.abandonRecoveryClaim(
+    checkpointed.checkpoint.checkpointRef,
+    {
+      checkpointConsumptionReceipt: schedulerConsumption,
+      reasonRef: 'reason.intent-scheduler.recovery.resume-validation-failed',
+      postDispositionCheckpointPolicy: 'TERMINALLY_HELD_WITH_EXACT_REASON',
+      observedAt: RECOVERED_AT
+    }
+  );
+  const preResumeDispositionSnapshot = structuredClone(preResumeDispositionScheduler.aggregate);
+  const restartedDispositionScheduler = new SingleWorkerIntentScheduler({
+    workerRef: runtimeOne.workerRef,
+    schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.pre-resume-disposition.restart',
+    schedulerRegistry: bundle.schedulerRegistry,
+    runtimeRecoveryRegistry: registry,
+    runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef }),
+    schedulerAggregate: preResumeDispositionSnapshot
+  });
+  let oldActivationResumeRejected = false;
+  try {
+    restartedDispositionScheduler.resume(checkpointed.checkpoint.checkpointRef, {
+      graph,
+      options: { ...optionsOne, schedulerGeneration: 2, observedAt: SUCCEEDED_AT },
+      sourceBindings,
+      contextInput: contextInput(2, { formedAt: FAILED_AT, observedAt: SUCCEEDED_AT }),
+      recovery: null
+    });
+  } catch {
+    oldActivationResumeRejected = true;
+  }
+  let oldActivationReclaimRejected = false;
+  try {
+    restartedDispositionScheduler.claimRecoveryCheckpoint(checkpointed.checkpoint.checkpointRef, {
+      recoveryClaimReceipt,
+      observedAt: SUCCEEDED_AT
+    });
+  } catch {
+    oldActivationReclaimRejected = true;
+  }
+  journeyStates.push('CANONICAL_SCHEDULER_CLAIM_REPLAY_VERIFIED');
+  journeyStates.push('PRE_RESUME_CLAIM_TERMINALLY_HELD');
   const checkpoint = createRecoveryCheckpoint({
     schedulerCheckpoint: checkpointed.checkpoint,
     schedulerConsumptionReceipt: schedulerConsumption,
@@ -1122,7 +1340,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     throw new Error('source-managed rollback policy was not exact');
   }
   journeyStates.push('EXACT_SOURCE_POLICY_DECIDED');
-  const transaction = simulateTransactionalRecovery({
+  const sourceTransaction = simulateTransactionalRecovery({
     adapter: createNoEffectTransactionalAdapter({
       initialState: { value: 'before' },
       attemptedState: { value: 'partial' },
@@ -1133,6 +1351,14 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     rollbackReceiptRef: 'receipt.runtime-recovery.rollback.main',
     lastKnownGoodRef: 'state.runtime-recovery.last-known-good.main',
     observedAt: RECOVERED_AT
+  });
+  const transaction = createCycleBoundTransactionalRecoveryReceipt({
+    aggregate,
+    transactionalRecoveryReceipt: sourceTransaction,
+    recoveryClaimReceipt,
+    checkpointAdmission,
+    observedAt: RECOVERED_AT,
+    registry
   });
   const action = applyRecoveryAction({
     aggregate,
@@ -1243,7 +1469,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     registry
   });
   quarantineAggregate = quarantineDecision.aggregate;
-  const quarantinedTransaction = simulateTransactionalRecovery({
+  const quarantinedSourceTransaction = simulateTransactionalRecovery({
     adapter: createNoEffectTransactionalAdapter({
       adapterRef: 'adapter.runtime-recovery.no-effect.quarantine',
       initialState: { value: 'before' },
@@ -1256,6 +1482,14 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     rollbackReceiptRef: 'receipt.runtime-recovery.rollback.quarantine',
     lastKnownGoodRef: 'state.runtime-recovery.last-known-good.quarantine',
     observedAt: RECOVERED_AT
+  });
+  const quarantinedTransaction = createCycleBoundTransactionalRecoveryReceipt({
+    aggregate: quarantineAggregate,
+    transactionalRecoveryReceipt: quarantinedSourceTransaction,
+    recoveryClaimReceipt: quarantineClaimReceipt,
+    checkpointAdmission: quarantineAdmission,
+    observedAt: RECOVERED_AT,
+    registry
   });
   quarantineAggregate = applyRecoveryAction({
     aggregate: quarantineAggregate,
@@ -1447,6 +1681,12 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
   });
   if (cycleTwoFailure.status !== 'FAILED_RECOVERABLE') throw new Error('second recovery cycle was not activated');
   let cycleIsolationAggregate = cycleTwoFailure.aggregate;
+  const cycleTwoPreCheckpointProjection = projectRecoveryAggregate(cycleIsolationAggregate).projection;
+  const priorPreservationFingerprint = projection.guide.whatWasPreserved;
+  const preCheckpointHistoricalPreservationRejected =
+    cycleTwoPreCheckpointProjection.guide.whatWasPreserved === null &&
+    cycleTwoPreCheckpointProjection.guide.preservationState === 'AWAITING_CURRENT_CYCLE_EVIDENCE' &&
+    cycleTwoPreCheckpointProjection.guide.whatWasPreserved !== priorPreservationFingerprint;
   const cycleTwoCheckpointed = cycleTwoScheduler.checkpoint({
     checkpointRef: 'checkpoint.runtime-recovery.scheduler.cycle-two.2',
     workNodeRef: cycleTwoGraphFormation.node.workNodeRef,
@@ -1507,6 +1747,144 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     observedAt: CYCLE_TWO_ACTION_AT,
     registry
   });
+  const priorContextEvidence = representativeActions.find((item) => item.name === 'context-condensation').contextProof;
+  const priorResourceEvidence = representativeActions.find((item) => item.name === 'resource-reduced-retry').resourceProof;
+  const priorWaitEvidence = representativeActions.find((item) => item.name === 'external-wait-resume').waitResumeReceipt;
+  const priorTransactionEvidence = transaction;
+  const historicalEvidenceFingerprints = {
+    context: priorContextEvidence.semanticFingerprint,
+    resource: priorResourceEvidence.semanticFingerprint,
+    wait: priorWaitEvidence.semanticFingerprint,
+    transaction: priorTransactionEvidence.semanticFingerprint
+  };
+  let priorContextEvidenceRejected = false;
+  try {
+    recordRecoveryPolicyDecision(cycleIsolationAggregate, {
+      checkpointAdmission: cycleTwoAdmission,
+      contextAdmissionReceipt: priorContextEvidence,
+      authorityBoundary: 'CHANGED',
+      observedAt: CYCLE_TWO_ACTION_AT,
+      registry
+    });
+  } catch {
+    priorContextEvidenceRejected = true;
+  }
+  let priorResourceEvidenceRejected = false;
+  try {
+    recordRecoveryPolicyDecision(cycleIsolationAggregate, {
+      checkpointAdmission: cycleTwoAdmission,
+      resourceAdmissionReceipt: priorResourceEvidence,
+      authorityBoundary: 'CHANGED',
+      observedAt: CYCLE_TWO_ACTION_AT,
+      registry
+    });
+  } catch {
+    priorResourceEvidenceRejected = true;
+  }
+  let priorWaitEvidenceRejected = false;
+  try {
+    applyRecoveryAction({
+      aggregate: cycleTwoDecision.aggregate,
+      policyDecision: cycleTwoDecision.policyDecision,
+      checkpointAdmission: cycleTwoAdmission,
+      waitResumeReceipt: priorWaitEvidence,
+      observedAt: CYCLE_TWO_ACTION_AT,
+      registry
+    });
+  } catch {
+    priorWaitEvidenceRejected = true;
+  }
+  let priorTransactionEvidenceRejected = false;
+  try {
+    applyRecoveryAction({
+      aggregate: cycleTwoDecision.aggregate,
+      policyDecision: cycleTwoDecision.policyDecision,
+      checkpointAdmission: cycleTwoAdmission,
+      transactionalRecoveryReceipt: priorTransactionEvidence,
+      observedAt: CYCLE_TWO_ACTION_AT,
+      registry
+    });
+  } catch {
+    priorTransactionEvidenceRejected = true;
+  }
+  let unscopedTransactionRejected = false;
+  try {
+    applyRecoveryAction({
+      aggregate: cycleTwoDecision.aggregate,
+      policyDecision: cycleTwoDecision.policyDecision,
+      checkpointAdmission: cycleTwoAdmission,
+      transactionalRecoveryReceipt: sourceTransaction,
+      observedAt: CYCLE_TWO_ACTION_AT,
+      registry
+    });
+  } catch {
+    unscopedTransactionRejected = true;
+  }
+  const readdressedTransaction = structuredClone(priorTransactionEvidence);
+  readdressedTransaction.recoveryCycleRef = cycleTwoDecision.aggregate.activeRecoveryCycle.recoveryCycleRef;
+  readdressedTransaction.recoveryCycleFingerprint = cycleTwoDecision.aggregate.activeRecoveryCycle.semanticFingerprint;
+  delete readdressedTransaction.cycleTransactionReceiptRef;
+  delete readdressedTransaction.semanticFingerprint;
+  readdressedTransaction.semanticFingerprint = semanticHash(readdressedTransaction);
+  readdressedTransaction.cycleTransactionReceiptRef =
+    `receipt.runtime-recovery.cycle-transaction.${readdressedTransaction.semanticFingerprint.slice(0, 32)}`;
+  let readdressedTransactionRejected = false;
+  try {
+    applyRecoveryAction({
+      aggregate: cycleTwoDecision.aggregate,
+      policyDecision: cycleTwoDecision.policyDecision,
+      checkpointAdmission: cycleTwoAdmission,
+      transactionalRecoveryReceipt: readdressedTransaction,
+      observedAt: CYCLE_TWO_ACTION_AT,
+      registry
+    });
+  } catch {
+    readdressedTransactionRejected = true;
+  }
+  const staleSourceTransaction = simulateTransactionalRecovery({
+    adapter: createNoEffectTransactionalAdapter({
+      initialState: { value: 'before-cycle-two' },
+      attemptedState: { value: 'partial-cycle-two' }
+    }),
+    operationRef: cycleTwoFailure.failure.operationRef,
+    expectedBeforeFingerprint: semanticHash({ value: 'before-cycle-two' }),
+    rollbackReceiptRef: 'receipt.runtime-recovery.rollback.cycle-two.stale',
+    lastKnownGoodRef: 'state.runtime-recovery.last-known-good.cycle-two.stale',
+    observedAt: CYCLE_TWO_STARTED_AT
+  });
+  let staleTransactionFormationRejected = false;
+  try {
+    createCycleBoundTransactionalRecoveryReceipt({
+      aggregate: cycleTwoDecision.aggregate,
+      transactionalRecoveryReceipt: staleSourceTransaction,
+      recoveryClaimReceipt: cycleTwoClaim,
+      checkpointAdmission: cycleTwoAdmission,
+      observedAt: CYCLE_TWO_ACTION_AT,
+      registry
+    });
+  } catch {
+    staleTransactionFormationRejected = true;
+  }
+  const sameRefDifferentContentTransaction = structuredClone(priorTransactionEvidence);
+  sameRefDifferentContentTransaction.recoveryCycleRef = cycleTwoDecision.aggregate.activeRecoveryCycle.recoveryCycleRef;
+  sameRefDifferentContentTransaction.recoveryCycleFingerprint = cycleTwoDecision.aggregate.activeRecoveryCycle.semanticFingerprint;
+  const sameRefCandidate = structuredClone(sameRefDifferentContentTransaction);
+  delete sameRefCandidate.cycleTransactionReceiptRef;
+  delete sameRefCandidate.semanticFingerprint;
+  sameRefDifferentContentTransaction.semanticFingerprint = semanticHash(sameRefCandidate);
+  let sameRefDifferentContentTransactionRejected = false;
+  try {
+    applyRecoveryAction({
+      aggregate: cycleTwoDecision.aggregate,
+      policyDecision: cycleTwoDecision.policyDecision,
+      checkpointAdmission: cycleTwoAdmission,
+      transactionalRecoveryReceipt: sameRefDifferentContentTransaction,
+      observedAt: CYCLE_TWO_ACTION_AT,
+      registry
+    });
+  } catch {
+    sameRefDifferentContentTransactionRejected = true;
+  }
   const cycleTwoAction = applyRecoveryAction({
     aggregate: cycleTwoDecision.aggregate,
     policyDecision: cycleTwoDecision.policyDecision,
@@ -1573,6 +1951,32 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     currentProjectionTerminalProofRef: cycleIsolationProjection.guide.terminalProofRef,
     currentProjectionState: cycleIsolationProjection.health.state
   };
+  const exactCycleLocalEvidenceProof = {
+    firstRecoveryCycleRef: firstCycle.recoveryCycleRef,
+    secondRecoveryCycleRef: secondCycle.recoveryCycleRef,
+    sameFailureClassRecurrence: recoveryCycleIsolationProof.sameFailureClassRecurrence,
+    sameOperationRecurrence: recoveryCycleIsolationProof.sameOperationRecurrence,
+    preCheckpointHistoricalPreservationRejected,
+    preCheckpointPreservationState: cycleTwoPreCheckpointProjection.guide.preservationState,
+    preCheckpointWhatWasPreserved: cycleTwoPreCheckpointProjection.guide.whatWasPreserved,
+    priorTransactionEvidenceRejected,
+    unscopedTransactionRejected,
+    readdressedTransactionRejected,
+    staleTransactionFormationRejected,
+    sameRefDifferentContentTransactionRejected,
+    priorContextEvidenceRejected,
+    priorResourceEvidenceRejected,
+    priorWaitEvidenceRejected,
+    historicalEvidenceFingerprints,
+    historicalEvidenceIntact:
+      priorContextEvidence.semanticFingerprint === historicalEvidenceFingerprints.context &&
+      priorResourceEvidence.semanticFingerprint === historicalEvidenceFingerprints.resource &&
+      priorWaitEvidence.semanticFingerprint === historicalEvidenceFingerprints.wait &&
+      priorTransactionEvidence.semanticFingerprint === historicalEvidenceFingerprints.transaction,
+    currentCycleControlledDisposition: cycleIsolationAggregate.phase,
+    currentProjectionCycleRef: cycleIsolationProjection.queue.activeRecoveryCycleRef
+  };
+  journeyStates.push('EXACT_CYCLE_LOCAL_EVIDENCE_REJECTED');
 
   let illegalHistoryRejected = false;
   try {
@@ -1715,6 +2119,48 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       ...classifierRejections,
       failClosed: Object.values(classifierRejections).every(Boolean)
     },
+    canonicalSchedulerClaimReplayProof: {
+      transitionSchemaVersion: 'vexlife.intent-scheduler-recovery-claim-transition/v1',
+      lifecycle: scheduler.aggregate.recoveryClaimLedger.map((item) => item.type),
+      edgeContractRefs: scheduler.aggregate.recoveryClaimLedger.map((item) => item.edgeEvidence.contractRef),
+      edgeEvidenceFingerprints: scheduler.aggregate.recoveryClaimLedger.map((item) => item.edgeEvidenceFingerprint),
+      embeddedClaimReceiptRef:
+        schedulerClaimedSnapshot.recoveryClaimLedger[0].edgeEvidence.recoveryClaimReceipt.claimReceiptRef,
+      embeddedClaimReceiptFingerprint:
+        schedulerClaimedSnapshot.recoveryClaimLedger[0].edgeEvidence.recoveryClaimReceipt.semanticFingerprint,
+      checkpointFingerprint: checkpointed.checkpoint.semanticFingerprint,
+      exactReleaseCount: checkpointed.checkpoint.leaseReleaseReceipts.length,
+      forgedRehashedRestoreRejected,
+      fakeReleaseRestoredClaimRejected,
+      missingClaimReceiptRestoredClaimRejected,
+      legitimateClaimAdmissibleAfterRejectedRestore:
+        legitimateClaimAfterRejectedRestore.state === 'CLAIMED_CURRENT' &&
+        legitimateAfterRejectedRestore.aggregate.recoveryClaims.at(-1)?.state === 'CLAIMED_CURRENT',
+      suppliedPointersEqualSemanticReplay:
+        restartedClaimScheduler.aggregate.recoveryClaims.at(-1)?.lastTransitionFingerprint ===
+          schedulerClaimedSnapshot.recoveryClaimLedger.at(-1)?.semanticFingerprint,
+      terminalReplayState: scheduler.aggregate.recoveryClaims.at(-1)?.state ?? null
+    },
+    preResumeClaimDispositionProof: {
+      failedResumeRejected,
+      claimVisibleAfterFailedResume,
+      dispositionReceiptRef: preResumeDisposition.dispositionReceipt.dispositionReceiptRef,
+      dispositionReceiptFingerprint: preResumeDisposition.dispositionReceipt.semanticFingerprint,
+      disposition: preResumeDisposition.dispositionReceipt.disposition,
+      reasonRef: preResumeDisposition.dispositionReceipt.reasonRef,
+      postDispositionCheckpointPolicy: preResumeDisposition.dispositionReceipt.postDispositionCheckpointPolicy,
+      oldActivationReusable: preResumeDisposition.dispositionReceipt.oldActivationReusable,
+      oldReleaseSetReusable: preResumeDisposition.dispositionReceipt.oldReleaseSetReusable,
+      dispositionState: preResumeDisposition.state,
+      checkpointState: preResumeDisposition.checkpointState,
+      restartPreservedDisposition:
+        restartedDispositionScheduler.aggregate.recoveryClaims.at(-1)?.state === 'INVALIDATED_OR_ABANDONED' &&
+        restartedDispositionScheduler.aggregate.checkpoints.at(-1)?.currentState === 'RECOVERY_TERMINALLY_HELD',
+      oldActivationResumeRejected,
+      oldActivationReclaimRejected,
+      normalLifecycleUnchanged: JSON.stringify(scheduler.aggregate.recoveryClaimLedger.map((item) => item.type)) ===
+        JSON.stringify(['CLAIMED_CURRENT', 'RESUMED_CONSUMED', 'TERMINAL_CONSUMED'])
+    },
     replayDurableSchedulerRecoveryOwnershipProof: {
       claimReceiptRef: recoveryClaimReceipt.claimReceiptRef,
       claimReceiptFingerprint: recoveryClaimReceipt.semanticFingerprint,
@@ -1744,6 +2190,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       ) === JSON.stringify(recoveryClaimReceipt.leaseReleaseFingerprints)
     },
     recoveryCycleIsolationProof,
+    exactCycleLocalEvidenceProof,
     checkpointFreshGenerationSixLeaseProof: {
       schedulerCheckpointRef: checkpointed.checkpoint.checkpointRef,
       schedulerCheckpointFingerprint: checkpointed.checkpoint.semanticFingerprint,

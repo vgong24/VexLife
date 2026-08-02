@@ -182,6 +182,13 @@
     "priorCycleEvidenceMaySatisfyCurrentCycle": false,
     "currentSuccessRequiresCurrentActionContinuationAndFreshGeneration": true
   },
+  "humanProjectionApplicabilityContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-human-projection-applicability/v1",
+    "currentCycleEvidenceOnly": true,
+    "aggregateHistoryFallbackAllowed": false,
+    "preCheckpointPreservationState": "AWAITING_CURRENT_CYCLE_EVIDENCE",
+    "preCheckpointPreservationFingerprint": null
+  },
   "schedulerRecoveryClaimContract": {
     "contractRef": "contract.vexlife.runtime-recovery-scheduler-claim/v1",
     "requiresReplayDerivedRecoveryAggregate": true,
@@ -189,6 +196,8 @@
     "bindsExactRecoveryAggregateFingerprint": true,
     "bindsExactCycleFailureWorkSourceCheckpointAndSixReleases": true,
     "bindsOnceOnlyActivationLifecycleAndCurrentness": true,
+    "requiresEdgeSpecificSourceManagedReplayEvidence": true,
+    "restoredClaimLedgerMaySelfAuthorize": false,
     "durableLifecycle": [
       "CLAIMED_CURRENT",
       "RESUMED_CONSUMED",
@@ -197,7 +206,11 @@
     ],
     "privateInMemoryOwnershipAllowed": false,
     "duplicateLiveOrRestartClaimAllowed": false,
-    "forgedClaimantMayConsumeCheckpoint": false
+    "forgedClaimantMayConsumeCheckpoint": false,
+    "preResumeDispositionRequired": true,
+    "postDispositionCheckpointPolicies": [
+      "TERMINALLY_HELD_WITH_EXACT_REASON"
+    ]
   },
   "checkpointContract": {
     "contractRef": "contract.vexlife.runtime-recovery-checkpoint/v1",
@@ -256,9 +269,17 @@
       "lastKnownGoodExpectedFingerprint",
       "lastKnownGoodReadBackFingerprint",
       "quarantineRef",
-      "quarantineReason"
+      "quarantineReason",
+      "recoveryCycleRef",
+      "recoveryCycleFingerprint",
+      "recoveryClaimReceiptFingerprint",
+      "checkpointAdmissionFingerprint",
+      "cycleAdoptedAt"
     ],
     "rollbackFailureGreenAllowed": false,
+    "exactCycleClaimAndAdmissionAtFormationRequired": true,
+    "silentCycleBackfillAllowed": false,
+    "cycleAdoptionReceiptSchemaVersion": "vexlife.runtime-recovery-cycle-transaction-receipt/v1",
     "admittedAdapterClass": "DETERMINISTIC_NO_EFFECT",
     "admittedAdapters": [
       {
@@ -420,7 +441,10 @@
     "test.runtime-recovery.r24-full-gate",
     "test.runtime-recovery.r25-exact-classifier-plan",
     "test.runtime-recovery.r26-replay-durable-scheduler-claim",
-    "test.runtime-recovery.r27-cycle-isolation"
+    "test.runtime-recovery.r27-cycle-isolation",
+    "test.runtime-recovery.r28-canonical-claim-semantic-replay",
+    "test.runtime-recovery.r29-pre-resume-disposition",
+    "test.runtime-recovery.r30-exact-cycle-local-evidence"
   ],
   "simulationContract": {
     "contractRef": "contract.runtime-recovery.integrated-simulation/v1",
@@ -431,6 +455,8 @@
       "RECOVERY_WORK_NODE_ADMITTED",
       "TOTAL_BOUNDARY_FAILURE_TYPED",
       "EXACT_SCHEDULER_CHECKPOINT_AND_SIX_RELEASES",
+      "CANONICAL_SCHEDULER_CLAIM_REPLAY_VERIFIED",
+      "PRE_RESUME_CLAIM_TERMINALLY_HELD",
       "CHECKPOINT_ADMISSION_RECORDED",
       "EXACT_SOURCE_POLICY_DECIDED",
       "AGGREGATE_OWNED_RECOVERY_ACTION_APPLIED",
@@ -440,7 +466,8 @@
       "REPLAY_DERIVED_AGGREGATE_RESTORED",
       "WORKGRAPH_CAUSAL_RECOVERY_VERIFIED",
       "TERMINAL_RECOVERY_CLOSED",
-      "HUMAN_PROJECTIONS_RETAIN_RECOVERY_EVIDENCE"
+      "HUMAN_PROJECTIONS_RETAIN_RECOVERY_EVIDENCE",
+      "EXACT_CYCLE_LOCAL_EVIDENCE_REJECTED"
     ],
     "requiredSchedulerBindings": [
       "checkpointFingerprint",

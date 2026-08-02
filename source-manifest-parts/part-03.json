@@ -10,8 +10,8 @@
     {
       "path": "blueprint/intent-scheduler-registry.json",
       "mode": "100644",
-      "bytes": 22167,
-      "sha256": "d72fa6fa0963ef90c29b282150d0ca5d0756744eeb6211b51824eb3460c52ef8"
+      "bytes": 23081,
+      "sha256": "32db6a853495d6fd5e2cb27c0b0ade9372006c553d0ace374ab21e16d55d17b5"
     },
     {
       "path": "blueprint/intent-trust-snapshot.json",
@@ -130,8 +130,8 @@
     {
       "path": "blueprint/runtime-recovery-registry.json",
       "mode": "100644",
-      "bytes": 27773,
-      "sha256": "308e014a388efd2225bc96f2cb8f1de8e7e033557c8268fbca6dd46434df935b"
+      "bytes": 29046,
+      "sha256": "d1b79c0dd865fa07997caa81bb00edbb52d09b8929186185c1c753ffaedcdae9"
     },
     {
       "path": "blueprint/strings/en.json",

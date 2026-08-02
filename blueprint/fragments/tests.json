@@ -698,5 +698,17 @@
   {
     "testRef": "test.runtime-recovery.r27-cycle-isolation",
     "brief": "Consecutive content-addressed recovery cycles preserve immutable history while only current-cycle action, continuation, success, convergence, terminal and human projection evidence can satisfy the active cycle."
+  },
+  {
+    "testRef": "test.runtime-recovery.r28-canonical-claim-semantic-replay",
+    "brief": "Scheduler restoration replays each claim lifecycle edge from exact source-managed claim, checkpoint, release, resume, completion or disposition evidence and rejects forged rehashed aggregates before occupancy."
+  },
+  {
+    "testRef": "test.runtime-recovery.r29-pre-resume-disposition",
+    "brief": "A current paused recovery claim can move explicitly to a source-managed terminal hold before resume; restart preserves the disposition and the old activation and release set cannot resume or reclaim."
+  },
+  {
+    "testRef": "test.runtime-recovery.r30-exact-cycle-local-evidence",
+    "brief": "Cycle-bound transaction adoption and human projections reject prior, unscoped, re-addressed, stale and same-ref/different-content evidence while immutable historical context/resource/wait/transaction proof remains inspectable."
   }
 ]

@@ -83,11 +83,72 @@ function clone(value) {
   return structuredClone(value);
 }
 
+const RECOVERY_CLAIM_EDGE_CONTRACTS = Object.freeze({
+  CLAIMED_CURRENT: Object.freeze({
+    schemaVersion: 'vexlife.intent-scheduler-recovery-claim-edge-evidence/v1',
+    contractRef: 'contract.intent-scheduler.recovery-claim-edge.claimed-current/v1'
+  }),
+  RESUMED_CONSUMED: Object.freeze({
+    schemaVersion: 'vexlife.intent-scheduler-recovery-resume-edge-evidence/v1',
+    contractRef: 'contract.intent-scheduler.recovery-claim-edge.resumed-consumed/v1'
+  }),
+  TERMINAL_CONSUMED: Object.freeze({
+    schemaVersion: 'vexlife.intent-scheduler-recovery-terminal-edge-evidence/v1',
+    contractRef: 'contract.intent-scheduler.recovery-claim-edge.terminal-consumed/v1'
+  }),
+  INVALIDATED_OR_ABANDONED: Object.freeze({
+    schemaVersion: 'vexlife.intent-scheduler-recovery-disposition-edge-evidence/v1',
+    contractRef: 'contract.intent-scheduler.recovery-claim-edge.invalidated-or-abandoned/v1'
+  })
+});
+
+function validateRecoveryClaimEdgeEvidence(value, type) {
+  const contract = RECOVERY_CLAIM_EDGE_CONTRACTS[type];
+  if (!contract || !value || value.schemaVersion !== contract.schemaVersion ||
+      value.contractRef !== contract.contractRef || value.transitionType !== type ||
+      !value.evidenceRef || !value.semanticFingerprint) {
+    throw new Error('scheduler recovery claim edge evidence is missing or has the wrong contract');
+  }
+  const candidate = clone(value);
+  delete candidate.evidenceRef;
+  delete candidate.semanticFingerprint;
+  const fingerprint = semanticHash(candidate);
+  if (fingerprint !== value.semanticFingerprint || !value.evidenceRef.endsWith(fingerprint.slice(0, 32))) {
+    throw new Error('scheduler recovery claim edge evidence content-addressed identity mismatch');
+  }
+  return clone(value);
+}
+
+function validateEmbeddedFinalized(value, schemaVersion, label, refField = null) {
+  if (!value || value.schemaVersion !== schemaVersion || !value.semanticFingerprint) {
+    throw new Error(`${label} is missing or has the wrong schema`);
+  }
+  const candidate = clone(value);
+  delete candidate.semanticFingerprint;
+  if (refField) delete candidate[refField];
+  if (semanticHash(candidate) !== value.semanticFingerprint) throw new Error(`${label} fingerprint mismatch`);
+  return clone(value);
+}
+
+function exactStringArray(values) {
+  return Array.isArray(values) ? [...values].sort() : null;
+}
+
+function assertRecoveryClaimTransitionBindings(transition, edge, fields) {
+  for (const field of fields) {
+    if (JSON.stringify(transition[field]) !== JSON.stringify(edge[field])) {
+      throw new Error(`scheduler recovery claim transition ${field} differs from exact edge evidence`);
+    }
+  }
+}
+
 function validateRecoveryClaimTransition(value, sequence, priorFingerprint) {
   if (!value || value.schemaVersion !== 'vexlife.intent-scheduler-recovery-claim-transition/v1' ||
       !['CLAIMED_CURRENT', 'RESUMED_CONSUMED', 'TERMINAL_CONSUMED', 'INVALIDATED_OR_ABANDONED'].includes(value.type) ||
       value.sequence !== sequence || value.priorTransitionFingerprint !== priorFingerprint ||
-      !value.transitionRef || !value.semanticFingerprint) {
+      !value.transitionRef || !value.semanticFingerprint || !value.edgeEvidence ||
+      value.edgeEvidenceRef !== value.edgeEvidence.evidenceRef ||
+      value.edgeEvidenceFingerprint !== value.edgeEvidence.semanticFingerprint) {
     throw new Error('scheduler recovery claim transition is malformed or out of order');
   }
   const candidate = clone(value);
@@ -97,23 +158,73 @@ function validateRecoveryClaimTransition(value, sequence, priorFingerprint) {
   if (fingerprint !== value.semanticFingerprint || !value.transitionRef.endsWith(fingerprint.slice(0, 32))) {
     throw new Error('scheduler recovery claim transition content-addressed identity mismatch');
   }
+  validateRecoveryClaimEdgeEvidence(value.edgeEvidence, value.type);
   return clone(value);
 }
 
-function replayRecoveryClaimLedger(ledger = []) {
+function replayRecoveryClaimLedger(ledger = [], aggregate = null, {
+  recoveryClaimReceiptValidator = null
+} = {}) {
   if (!Array.isArray(ledger)) throw new Error('scheduler recovery claim ledger must be an array');
   const records = new Map();
   const consumedReleaseFingerprints = new Set();
   let prior = null;
   ledger.forEach((input, sequence) => {
     const transition = validateRecoveryClaimTransition(input, sequence, prior);
+    const edge = validateRecoveryClaimEdgeEvidence(transition.edgeEvidence, transition.type);
     const existing = records.get(transition.checkpointRef);
     if (transition.type === 'CLAIMED_CURRENT') {
+      if (typeof recoveryClaimReceiptValidator !== 'function') {
+        throw new Error('scheduler recovery claim replay requires the source-managed claim validator');
+      }
+      const claim = recoveryClaimReceiptValidator(edge.recoveryClaimReceipt);
+      const consumption = validateEmbeddedFinalized(
+        edge.checkpointConsumptionReceipt,
+        'vexlife.intent-scheduler-recovery-checkpoint-consumption/v1',
+        'scheduler recovery checkpoint consumption'
+      );
+      const checkpoint = aggregate?.checkpoints?.find((item) => item.checkpointRef === transition.checkpointRef);
+      const checkpointReleaseRefs = exactStringArray(checkpoint?.leaseReleaseReceipts?.map((item) => item.receiptRef));
+      const checkpointReleaseFingerprints = exactStringArray(
+        checkpoint?.leaseReleaseReceipts?.map((item) => item.semanticFingerprint)
+      );
+      assertRecoveryClaimTransitionBindings(transition, edge, [
+        'checkpointRef', 'checkpointFingerprint', 'workNodeRef', 'sourceStateFingerprint',
+        'recoveryAggregateRef', 'recoveryAggregateFingerprint', 'recoveryCycleRef',
+        'recoveryCycleFingerprint', 'failureRef', 'failureFingerprint', 'claimReceiptRef',
+        'claimReceiptFingerprint', 'consumptionRef', 'consumptionFingerprint',
+        'onceOnlyActivationRef', 'leaseReleaseReceiptRefs', 'leaseReleaseFingerprints',
+        'schedulerGeneration', 'observedAt'
+      ]);
       if (existing || !transition.claimReceiptRef || !transition.claimReceiptFingerprint ||
           !transition.consumptionRef || !transition.consumptionFingerprint ||
           transition.leaseReleaseFingerprints?.length !== 6 ||
           new Set(transition.leaseReleaseFingerprints).size !== 6 ||
-          transition.leaseReleaseFingerprints.some((item) => consumedReleaseFingerprints.has(item))) {
+          transition.leaseReleaseFingerprints.some((item) => consumedReleaseFingerprints.has(item)) ||
+          !checkpoint || checkpoint.semanticFingerprint !== transition.checkpointFingerprint ||
+          !['PAUSED_AT_CHECKPOINT', 'RESUMED', 'RECOVERY_TERMINALLY_HELD'].includes(checkpoint.currentState) ||
+          JSON.stringify(checkpointReleaseRefs) !== JSON.stringify(exactStringArray(transition.leaseReleaseReceiptRefs)) ||
+          JSON.stringify(checkpointReleaseFingerprints) !== JSON.stringify(exactStringArray(transition.leaseReleaseFingerprints)) ||
+          claim.claimReceiptRef !== transition.claimReceiptRef ||
+          claim.semanticFingerprint !== transition.claimReceiptFingerprint ||
+          claim.schedulerAggregateFingerprint !== consumption.schedulerAggregateFingerprint ||
+          claim.schedulerCheckpointRef !== transition.checkpointRef ||
+          claim.schedulerCheckpointFingerprint !== transition.checkpointFingerprint ||
+          claim.workNodeRef !== transition.workNodeRef ||
+          claim.sourceStateFingerprint !== transition.sourceStateFingerprint ||
+          claim.schedulerGeneration !== transition.schedulerGeneration ||
+          claim.aggregateRef !== transition.recoveryAggregateRef ||
+          claim.recoveryAggregateFingerprint !== transition.recoveryAggregateFingerprint ||
+          claim.recoveryCycleRef !== transition.recoveryCycleRef ||
+          claim.recoveryCycleFingerprint !== transition.recoveryCycleFingerprint ||
+          claim.activeFailureRef !== transition.failureRef ||
+          claim.activeFailureFingerprint !== transition.failureFingerprint ||
+          claim.onceOnlyActivationRef !== transition.onceOnlyActivationRef ||
+          consumption.consumptionRef !== transition.consumptionRef ||
+          consumption.semanticFingerprint !== transition.consumptionFingerprint ||
+          consumption.schedulerPhase !== 'PAUSED' || consumption.checkpointCurrentState !== 'PAUSED_AT_CHECKPOINT' ||
+          consumption.schedulerAggregateFingerprint !== edge.schedulerPriorAggregateFingerprint ||
+          Date.parse(transition.observedAt) !== Date.parse(consumption.observedAt)) {
         throw new Error('scheduler recovery checkpoint/release claim is duplicate or incomplete');
       }
       transition.leaseReleaseFingerprints.forEach((item) => consumedReleaseFingerprints.add(item));
@@ -135,24 +246,107 @@ function replayRecoveryClaimLedger(ledger = []) {
         onceOnlyActivationRef: transition.onceOnlyActivationRef,
         leaseReleaseReceiptRefs: clone(transition.leaseReleaseReceiptRefs),
         leaseReleaseFingerprints: clone(transition.leaseReleaseFingerprints),
+        schedulerPriorAggregateFingerprint: edge.schedulerPriorAggregateFingerprint,
+        schedulerGeneration: transition.schedulerGeneration,
         state: 'CLAIMED_CURRENT',
         currentness: 'CURRENT',
+        claimObservedAt: transition.observedAt,
+        lastObservedAt: transition.observedAt,
+        edgeEvidenceRef: edge.evidenceRef,
+        edgeEvidenceFingerprint: edge.semanticFingerprint,
         lastTransitionRef: transition.transitionRef,
         lastTransitionFingerprint: transition.semanticFingerprint
       });
     } else {
-      if (!existing || existing.state !== (transition.type === 'RESUMED_CONSUMED' ? 'CLAIMED_CURRENT' : 'RESUMED_CONSUMED') ||
+      const expectedPriorStates = transition.type === 'RESUMED_CONSUMED'
+        ? ['CLAIMED_CURRENT']
+        : transition.type === 'INVALIDATED_OR_ABANDONED'
+          ? ['CLAIMED_CURRENT', 'RESUMED_CONSUMED']
+          : ['RESUMED_CONSUMED'];
+      assertRecoveryClaimTransitionBindings(transition, edge, [
+        'checkpointRef', 'claimReceiptRef', 'claimReceiptFingerprint', 'consumptionRef',
+        'consumptionFingerprint', 'recoveryCycleRef', 'recoveryCycleFingerprint', 'observedAt'
+      ]);
+      if (!existing || !expectedPriorStates.includes(existing.state) ||
           transition.consumptionFingerprint !== existing.consumptionFingerprint ||
-          transition.claimReceiptFingerprint !== existing.claimReceiptFingerprint) {
+          transition.claimReceiptFingerprint !== existing.claimReceiptFingerprint ||
+          transition.recoveryCycleFingerprint !== existing.recoveryCycleFingerprint ||
+          Date.parse(transition.observedAt) <= Date.parse(existing.lastObservedAt)) {
         throw new Error('scheduler recovery claim lifecycle transition is stale or detached');
+      }
+      const checkpoint = aggregate?.checkpoints?.find((item) => item.checkpointRef === transition.checkpointRef);
+      if (transition.type === 'RESUMED_CONSUMED') {
+        const resume = validateEmbeddedFinalized(
+          edge.schedulerResumeEvidence,
+          'vexlife.intent-scheduler-recovery-resume-evidence/v1',
+          'scheduler recovery resume evidence',
+          'resumeEvidenceRef'
+        );
+        if (!checkpoint || checkpoint.currentState !== 'RESUMED' ||
+            resume.claimTransitionFingerprint !== existing.lastTransitionFingerprint ||
+            resume.schedulerPriorAggregateFingerprint !== edge.schedulerPriorAggregateFingerprint ||
+            resume.checkpointRef !== existing.checkpointRef ||
+            resume.checkpointFingerprint !== existing.checkpointFingerprint ||
+            resume.actionReceiptFingerprint !== transition.actionReceiptFingerprint ||
+            resume.checkpointAdmissionFingerprint !== transition.checkpointAdmissionFingerprint ||
+            resume.schedulerGeneration !== transition.schedulerGeneration ||
+            resume.recoveryCycleFingerprint !== existing.recoveryCycleFingerprint) {
+          throw new Error('scheduler recovery resume transition lacks exact scheduler evidence');
+        }
+      } else if (transition.type === 'TERMINAL_CONSUMED') {
+        const terminal = validateEmbeddedFinalized(
+          edge.schedulerTerminalEvidence,
+          'vexlife.intent-scheduler-recovery-terminal-evidence/v1',
+          'scheduler recovery terminal evidence',
+          'terminalEvidenceRef'
+        );
+        const terminalFingerprints = new Set((aggregate?.terminalReceipts ?? []).map((item) => item.semanticFingerprint));
+        if (terminal.recoveryClaimTransitionFingerprint !== existing.lastTransitionFingerprint ||
+            terminal.schedulerGeneration !== existing.schedulerGeneration ||
+            !terminalFingerprints.has(terminal.completionVerificationFingerprint) ||
+            !terminalFingerprints.has(terminal.workgraphTransitionFingerprint) ||
+            !terminalFingerprints.has(terminal.completionReceiptFingerprint) ||
+            !terminalFingerprints.has(terminal.returnRouteReceiptFingerprint) ||
+            terminal.completionReceiptFingerprint !== transition.terminalReceiptFingerprint) {
+          throw new Error('scheduler recovery terminal transition lacks exact completion evidence');
+        }
+      } else {
+        const disposition = validateEmbeddedFinalized(
+          edge.schedulerDispositionReceipt,
+          'vexlife.intent-scheduler-recovery-claim-disposition/v1',
+          'scheduler recovery claim disposition',
+          'dispositionReceiptRef'
+        );
+        if (disposition.claimTransitionFingerprint !== existing.lastTransitionFingerprint ||
+            disposition.checkpointRef !== existing.checkpointRef ||
+            disposition.checkpointFingerprint !== existing.checkpointFingerprint ||
+            disposition.recoveryCycleFingerprint !== existing.recoveryCycleFingerprint ||
+            disposition.reasonRef !== transition.reasonRef ||
+            disposition.postDispositionCheckpointPolicy !== transition.postDispositionCheckpointPolicy ||
+            (existing.state === 'CLAIMED_CURRENT' &&
+              (!checkpoint || checkpoint.currentState !== 'RECOVERY_TERMINALLY_HELD' ||
+               disposition.postDispositionCheckpointPolicy !== 'TERMINALLY_HELD_WITH_EXACT_REASON'))) {
+          throw new Error('scheduler recovery disposition transition lacks exact scheduler evidence');
+        }
       }
       existing.state = transition.type;
       existing.currentness = transition.type === 'RESUMED_CONSUMED' ? 'CURRENT' : 'TERMINAL';
+      existing.lastObservedAt = transition.observedAt;
+      existing.edgeEvidenceRef = edge.evidenceRef;
+      existing.edgeEvidenceFingerprint = edge.semanticFingerprint;
       existing.lastTransitionRef = transition.transitionRef;
       existing.lastTransitionFingerprint = transition.semanticFingerprint;
       if (transition.schedulerGeneration !== undefined) existing.schedulerGeneration = transition.schedulerGeneration;
       if (transition.actionReceiptFingerprint !== undefined) {
         existing.actionReceiptFingerprint = transition.actionReceiptFingerprint;
+      }
+      if (transition.reasonRef !== undefined) existing.reasonRef = transition.reasonRef;
+      if (transition.postDispositionCheckpointPolicy !== undefined) {
+        existing.postDispositionCheckpointPolicy = transition.postDispositionCheckpointPolicy;
+      }
+      if (transition.dispositionReceiptRef !== undefined) {
+        existing.dispositionReceiptRef = transition.dispositionReceiptRef;
+        existing.dispositionReceiptFingerprint = transition.dispositionReceiptFingerprint;
       }
       records.set(transition.checkpointRef, existing);
     }
@@ -230,7 +424,9 @@ export function createInitialSchedulerAggregate() {
   return aggregate;
 }
 
-export function reduceSchedulerAggregate(current, event) {
+export function reduceSchedulerAggregate(current, event, {
+  recoveryClaimReceiptValidator = null
+} = {}) {
   if (!event?.type) throw new Error('scheduler aggregate event type is required');
   const next = clone(current);
   switch (event.type) {
@@ -275,7 +471,29 @@ export function reduceSchedulerAggregate(current, event) {
       break;
     case 'RECOVERY_CLAIMED':
       next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
-      next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger);
+      next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger, next, { recoveryClaimReceiptValidator });
+      break;
+    case 'RECOVERY_CLAIM_DISPOSED':
+      next.phase = 'BLOCKED';
+      next.queue = {
+        ...next.queue,
+        state: 'BLOCKED',
+        lifecycle: 'HELD',
+        blocked: [
+          ...(next.queue.blocked ?? []),
+          { workNodeRef: event.workNodeRef, reasonRefs: [event.reasonRef] }
+        ]
+      };
+      next.checkpoints = next.checkpoints.map((item) => item.checkpointRef === event.checkpointRef
+        ? {
+          ...item,
+          currentState: 'RECOVERY_TERMINALLY_HELD',
+          recoveryDispositionReceiptRef: event.recoveryDispositionReceipt.dispositionReceiptRef,
+          recoveryDispositionReceiptFingerprint: event.recoveryDispositionReceipt.semanticFingerprint
+        }
+        : item);
+      next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
+      next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger, next, { recoveryClaimReceiptValidator });
       break;
     case 'RESUMED':
       next.phase = 'RUNNING';
@@ -300,7 +518,7 @@ export function reduceSchedulerAggregate(current, event) {
       if (event.observedClock) next.observedClock = clone(event.observedClock);
       if (event.recoveryClaimTransition) {
         next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
-        next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger);
+        next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger, next, { recoveryClaimReceiptValidator });
       }
       break;
     case 'COMPLETED':
@@ -318,7 +536,7 @@ export function reduceSchedulerAggregate(current, event) {
       if (event.observedClock) next.observedClock = clone(event.observedClock);
       if (event.recoveryClaimTransition) {
         next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
-        next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger);
+        next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger, next, { recoveryClaimReceiptValidator });
       }
       break;
     case 'CANCELLED':
@@ -330,7 +548,7 @@ export function reduceSchedulerAggregate(current, event) {
       if (event.observedClock) next.observedClock = clone(event.observedClock);
       if (event.recoveryClaimTransition) {
         next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
-        next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger);
+        next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger, next, { recoveryClaimReceiptValidator });
       }
       break;
     case 'CLOCK_ADVANCED':
@@ -402,12 +620,17 @@ function runtimeHealth(aggregate) {
   };
 }
 
-export function createIntentSchedulerState({ aggregate = createInitialSchedulerAggregate() } = {}) {
+export function createIntentSchedulerState({
+  aggregate = createInitialSchedulerAggregate(),
+  recoveryClaimReceiptValidator = null
+} = {}) {
   const supplied = clone(aggregate);
   const suppliedFingerprint = supplied.semanticFingerprint;
   delete supplied.semanticFingerprint;
   if (semanticHash(supplied) !== suppliedFingerprint) throw new Error('scheduler aggregate fingerprint mismatch');
-  const replayedClaims = replayRecoveryClaimLedger(aggregate.recoveryClaimLedger ?? []);
+  const replayedClaims = replayRecoveryClaimLedger(aggregate.recoveryClaimLedger ?? [], aggregate, {
+    recoveryClaimReceiptValidator
+  });
   if (JSON.stringify(replayedClaims) !== JSON.stringify(aggregate.recoveryClaims ?? [])) {
     throw new Error('scheduler recovery claim current pointers differ from replayed truth');
   }

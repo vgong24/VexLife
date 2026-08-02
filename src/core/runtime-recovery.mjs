@@ -545,16 +545,86 @@ function validateTransactionReceipt(value, registry = null) {
   return freeze(clone(value));
 }
 
-function bindTransactionToCurrentCycle(value, state, registry) {
-  const exact = validateTransactionReceipt(value, registry);
-  if (exact.recoveryCycleRef || exact.recoveryCycleFingerprint) {
-    return assertCurrentCycle(exact, state, 'transactional recovery receipt');
+function validateCycleBoundTransactionReceipt(value, state, registry) {
+  const adopted = assertContentAddressed(value, {
+    schemaVersion: 'vexlife.runtime-recovery-cycle-transaction-receipt/v1',
+    refField: 'cycleTransactionReceiptRef',
+    prefix: 'receipt.runtime-recovery.cycle-transaction.',
+    label: 'cycle-bound transactional recovery receipt'
+  });
+  const source = validateTransactionReceipt(adopted.sourceTransactionReceipt, registry);
+  const claim = validateSchedulerRecoveryClaimReceipt(adopted.recoveryClaimReceipt, { registry });
+  const admission = validateCheckpointAdmission(adopted.checkpointAdmission);
+  assertCurrentCycle(adopted, state, 'cycle-bound transactional recovery receipt');
+  const sourceFields = Object.keys(source).filter((field) =>
+    !['schemaVersion', 'semanticFingerprint'].includes(field)
+  );
+  if (source.recoveryCycleRef || source.recoveryCycleFingerprint ||
+      adopted.formationRef !== 'formation.runtime-recovery.cycle-transaction-adoption.v1' ||
+      adopted.currentness !== 'CURRENT' ||
+      adopted.sourceTransactionFingerprint !== source.semanticFingerprint ||
+      sourceFields.some((field) => !same(adopted[field], source[field])) ||
+      claim.claimReceiptRef !== adopted.recoveryClaimReceiptRef ||
+      claim.semanticFingerprint !== adopted.recoveryClaimReceiptFingerprint ||
+      admission.admissionRef !== adopted.checkpointAdmissionRef ||
+      admission.semanticFingerprint !== adopted.checkpointAdmissionFingerprint ||
+      admission.admitted !== true || admission.currentness !== 'CURRENT' ||
+      state.currentCheckpointAdmission?.semanticFingerprint !== admission.semanticFingerprint ||
+      state.aggregateRef !== claim.aggregateRef || state.aggregateRef !== admission.aggregateRef ||
+      state.activeRecoveryCycle?.recoveryCycleRef !== claim.recoveryCycleRef ||
+      state.activeRecoveryCycle?.semanticFingerprint !== claim.recoveryCycleFingerprint ||
+      state.activeRecoveryCycle?.recoveryCycleRef !== admission.recoveryCycleRef ||
+      state.activeRecoveryCycle?.semanticFingerprint !== admission.recoveryCycleFingerprint ||
+      state.activeFailure?.failureRef !== claim.activeFailureRef ||
+      state.activeFailure?.semanticFingerprint !== claim.activeFailureFingerprint ||
+      state.activeFailure?.semanticFingerprint !== admission.failureFingerprint ||
+      state.workNodeRef !== claim.workNodeRef || state.workNodeRef !== admission.workNodeRef ||
+      state.sourceStateFingerprint !== claim.sourceStateFingerprint ||
+      state.sourceStateFingerprint !== admission.sourceStateFingerprint ||
+      source.operationRef !== state.activeFailure?.operationRef ||
+      Date.parse(source.observedAt) < Date.parse(admission.observedAt) ||
+      Date.parse(adopted.cycleAdoptedAt) < Date.parse(source.observedAt) ||
+      Date.parse(admission.observedAt) < Date.parse(claim.formedAt)) {
+    throw new Error('transactional recovery evidence was not formed for the exact current claim/admission/cycle');
   }
-  const bound = clone(exact);
-  delete bound.semanticFingerprint;
-  Object.assign(bound, cycleBindings(state));
-  bound.semanticFingerprint = semanticHash(bound);
-  return validateTransactionReceipt(bound, registry);
+  parseCanonicalTimestamp(adopted.cycleAdoptedAt, 'cycle transaction adoption observedAt');
+  return adopted;
+}
+
+export function createCycleBoundTransactionalRecoveryReceipt({
+  aggregate,
+  transactionalRecoveryReceipt,
+  recoveryClaimReceipt,
+  checkpointAdmission,
+  observedAt,
+  registry
+}) {
+  const owner = createRecoveryAggregate(aggregate, { registry });
+  const source = validateTransactionReceipt(transactionalRecoveryReceipt, registry);
+  if (source.recoveryCycleRef || source.recoveryCycleFingerprint) {
+    throw new Error('transactional recovery source evidence must remain immutable and unscoped before exact adoption');
+  }
+  const claim = validateSchedulerRecoveryClaimReceipt(recoveryClaimReceipt, { registry });
+  const admission = validateCheckpointAdmission(checkpointAdmission);
+  const receipt = contentAddressed({
+    schemaVersion: 'vexlife.runtime-recovery-cycle-transaction-receipt/v1',
+    formationRef: 'formation.runtime-recovery.cycle-transaction-adoption.v1',
+    ...Object.fromEntries(Object.entries(source).filter(([field]) =>
+      !['schemaVersion', 'semanticFingerprint'].includes(field)
+    )),
+    sourceTransactionReceipt: source,
+    sourceTransactionFingerprint: source.semanticFingerprint,
+    recoveryClaimReceipt: claim,
+    recoveryClaimReceiptRef: claim.claimReceiptRef,
+    recoveryClaimReceiptFingerprint: claim.semanticFingerprint,
+    checkpointAdmission: admission,
+    checkpointAdmissionRef: admission.admissionRef,
+    checkpointAdmissionFingerprint: admission.semanticFingerprint,
+    ...cycleBindings(owner),
+    currentness: 'CURRENT',
+    cycleAdoptedAt: observedAt
+  }, 'cycleTransactionReceiptRef', 'receipt.runtime-recovery.cycle-transaction.');
+  return validateCycleBoundTransactionReceipt(receipt, owner, registry);
 }
 
 function policyInputsFromPayload(payload) {
@@ -848,8 +918,7 @@ function applyEvent(stateInput, eventInput, registry) {
       break;
     }
     case 'ROLLBACK_ATTEMPTED': {
-      const receipt = validateTransactionReceipt(payload.receipt, registry);
-      assertCurrentCycle(receipt, state, 'transactional recovery receipt');
+      const receipt = validateCycleBoundTransactionReceipt(payload.receipt, state, registry);
       if (!state.activePolicyDecision || receipt.operationRef !== state.activeFailure?.operationRef) {
         throw new Error('rollback receipt is detached from the active recovery action');
       }
@@ -860,8 +929,7 @@ function applyEvent(stateInput, eventInput, registry) {
       break;
     }
     case 'ROLLBACK_VERIFIED': {
-      const receipt = validateTransactionReceipt(payload.receipt, registry);
-      assertCurrentCycle(receipt, state, 'rollback verification receipt');
+      const receipt = validateCycleBoundTransactionReceipt(payload.receipt, state, registry);
       if (state.rollbackLineage.at(-1)?.semanticFingerprint !== receipt.semanticFingerprint ||
           receipt.state !== 'ROLLED_BACK' || receipt.rollbackVerified !== true ||
           receipt.rollbackReadBackFingerprint !== receipt.observedBeforeFingerprint) {
@@ -870,8 +938,7 @@ function applyEvent(stateInput, eventInput, registry) {
       break;
     }
     case 'LAST_KNOWN_GOOD_RESTORED': {
-      const receipt = validateTransactionReceipt(payload.receipt, registry);
-      assertCurrentCycle(receipt, state, 'last-known-good receipt');
+      const receipt = validateCycleBoundTransactionReceipt(payload.receipt, state, registry);
       if (state.rollbackLineage.at(-1)?.semanticFingerprint !== receipt.semanticFingerprint ||
           receipt.state !== 'LAST_KNOWN_GOOD_RESTORED' || receipt.lastKnownGoodRestored !== true ||
           receipt.lastKnownGoodReadBackFingerprint !== receipt.lastKnownGoodExpectedFingerprint) {
@@ -881,8 +948,7 @@ function applyEvent(stateInput, eventInput, registry) {
       break;
     }
     case 'QUARANTINED': {
-      const receipt = validateTransactionReceipt(payload.receipt, registry);
-      assertCurrentCycle(receipt, state, 'quarantine receipt');
+      const receipt = validateCycleBoundTransactionReceipt(payload.receipt, state, registry);
       if (state.rollbackLineage.at(-1)?.semanticFingerprint !== receipt.semanticFingerprint ||
           receipt.state !== 'QUARANTINED' || !receipt.quarantined || !receipt.quarantineRef) {
         throw new Error('quarantine event requires exact failed rollback/LKG evidence');
@@ -2044,7 +2110,7 @@ export function applyRecoveryAction({
   }
   let transaction = null;
   if (transactionalRecoveryReceipt) {
-    transaction = bindTransactionToCurrentCycle(transactionalRecoveryReceipt, current, registry);
+    transaction = validateCycleBoundTransactionReceipt(transactionalRecoveryReceipt, current, registry);
     current = appendEvent(current, 'ROLLBACK_ATTEMPTED', { receipt: transaction }, observedAt, registry);
     if (transaction.state === 'ROLLED_BACK') {
       current = appendEvent(current, 'ROLLBACK_VERIFIED', { receipt: transaction }, observedAt, registry);
@@ -2519,6 +2585,8 @@ export function projectRecoveryAggregate(aggregate, { priorProjection = null } =
     : null;
   const action = aggregate.currentRecoveryActionReceipt;
   const success = aggregate.lastSuccessfulExecutionReceipt;
+  const currentCheckpoint = currentCycleEntries(aggregate.checkpointLineage, aggregate).at(-1) ?? null;
+  const currentPreservationFingerprint = action?.preservationFingerprint ?? currentCheckpoint?.semanticFingerprint ?? null;
   const currentQuarantines = currentCycleEntries(aggregate.rollbackLineage, aggregate)
     .filter((item) => item.state === 'QUARANTINED').map((item) => item.quarantineRef);
   const currentHumanGates = currentCycleEntries(aggregate.humanDecisionGates, aggregate);
@@ -2560,7 +2628,10 @@ export function projectRecoveryAggregate(aggregate, { priorProjection = null } =
     },
     guide: {
       whatFailed: (active ?? recovered)?.failureClass ?? null,
-      whatWasPreserved: action?.preservationFingerprint ?? aggregate.checkpointLineage.at(-1)?.semanticFingerprint ?? null,
+      whatWasPreserved: currentPreservationFingerprint,
+      preservationState: currentPreservationFingerprint
+        ? 'CURRENT_CYCLE_EVIDENCE'
+        : aggregate.activeRecoveryCycle ? 'AWAITING_CURRENT_CYCLE_EVIDENCE' : 'NOT_APPLICABLE',
       recoveryRoute: aggregate.activePolicyDecision?.action ?? action?.action ?? null,
       recoveredAttemptRef: success?.attemptRef ?? null,
       recoveredGeneration: success?.schedulerGeneration ?? null,

@@ -136,14 +136,14 @@
     {
       "path": "scripts/recovery-check.mjs",
       "mode": "100644",
-      "bytes": 11886,
-      "sha256": "510087bbe466faac92b8247091580c6aece638b2c5e91fda014c6773e5e8d983"
+      "bytes": 13238,
+      "sha256": "e83262e9a7beac17528b3f0d6da7ea7868a23b8d3c407c8a6327f96b8a39f33e"
     },
     {
       "path": "scripts/recovery-simulate.mjs",
       "mode": "100644",
-      "bytes": 93566,
-      "sha256": "f7b424c6d30ee08f6a23653a0b3eafde2847cb5bcdd2eedc9f2c15b248274c23"
+      "bytes": 116533,
+      "sha256": "fb76dc0a337174362b9379690df243122474d51b43c13e6ea24c382d26ff6f4e"
     }
   ]
 }

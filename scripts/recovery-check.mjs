@@ -76,6 +76,12 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
       !registry.schedulerRecoveryClaimContract?.bindsExactSchedulerAggregateFingerprint ||
       !registry.schedulerRecoveryClaimContract?.bindsExactRecoveryAggregateFingerprint ||
       !registry.schedulerRecoveryClaimContract?.bindsOnceOnlyActivationLifecycleAndCurrentness ||
+      !registry.schedulerRecoveryClaimContract?.requiresEdgeSpecificSourceManagedReplayEvidence ||
+      registry.schedulerRecoveryClaimContract?.restoredClaimLedgerMaySelfAuthorize !== false ||
+      !registry.schedulerRecoveryClaimContract?.preResumeDispositionRequired ||
+      !registry.schedulerRecoveryClaimContract?.postDispositionCheckpointPolicies?.includes(
+        'TERMINALLY_HELD_WITH_EXACT_REASON'
+      ) ||
       registry.schedulerRecoveryClaimContract?.privateInMemoryOwnershipAllowed !== false ||
       registry.schedulerRecoveryClaimContract?.duplicateLiveOrRestartClaimAllowed !== false ||
       registry.schedulerRecoveryClaimContract?.forgedClaimantMayConsumeCheckpoint !== false) {
@@ -87,6 +93,19 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
       registry.recoveryCycleContract?.priorCycleEvidenceMaySatisfyCurrentCycle !== false ||
       !registry.recoveryCycleContract?.currentSuccessRequiresCurrentActionContinuationAndFreshGeneration) {
     errors.push('recovery cycle isolation contract is incomplete');
+  }
+  if (!registry.transactionalRecoveryContract?.exactCycleClaimAndAdmissionAtFormationRequired ||
+      registry.transactionalRecoveryContract?.silentCycleBackfillAllowed !== false ||
+      registry.transactionalRecoveryContract?.cycleAdoptionReceiptSchemaVersion !==
+        'vexlife.runtime-recovery-cycle-transaction-receipt/v1') {
+    errors.push('exact cycle-bound transactional recovery contract is incomplete');
+  }
+  if (!registry.humanProjectionApplicabilityContract?.currentCycleEvidenceOnly ||
+      registry.humanProjectionApplicabilityContract?.aggregateHistoryFallbackAllowed !== false ||
+      registry.humanProjectionApplicabilityContract?.preCheckpointPreservationState !==
+        'AWAITING_CURRENT_CYCLE_EVIDENCE' ||
+      registry.humanProjectionApplicabilityContract?.preCheckpointPreservationFingerprint !== null) {
+    errors.push('current-cycle human projection applicability contract is incomplete');
   }
   if (!registry.schedulerContinuationContract?.requiresSchedulerOwnedResumeReceipt ||
       !registry.schedulerContinuationContract?.requiresExactActionAndCheckpointAdmission ||

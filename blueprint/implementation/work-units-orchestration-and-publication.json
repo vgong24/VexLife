@@ -432,7 +432,10 @@
       "test.runtime-recovery.r24-full-gate",
       "test.runtime-recovery.r25-exact-classifier-plan",
       "test.runtime-recovery.r26-replay-durable-scheduler-claim",
-      "test.runtime-recovery.r27-cycle-isolation"
+      "test.runtime-recovery.r27-cycle-isolation",
+      "test.runtime-recovery.r28-canonical-claim-semantic-replay",
+      "test.runtime-recovery.r29-pre-resume-disposition",
+      "test.runtime-recovery.r30-exact-cycle-local-evidence"
     ],
     "outputRefs": [
       "registry.vexlife.runtime-recovery.001",

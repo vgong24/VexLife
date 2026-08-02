@@ -8,6 +8,7 @@ The Runtime Failure & Recovery Spine turns an unexpected deterministic executor 
 typed total boundary
 -> exact source-issued classifier-plan receipt and content-addressed failure cycle
 -> exact scheduler checkpoint and six lease releases
+-> edge-specific semantic claim replay or explicit pre-resume terminal hold
 -> replay-recorded policy and aggregate-owned recovery action
 -> scheduler-issued fresh generation and six fresh leases
 -> successful retry and replay-derived convergence
@@ -26,7 +27,7 @@ The write side is [`blueprint/runtime-recovery-registry.json`](../blueprint/runt
 - the failure envelope and replay-derived recovery aggregate contracts;
 - exact attempt, recurrence, per-attempt wall-time and total wall-time bounds;
 - registered exact classifier plans/sources/adapters, typed event payload schemas and action-specific evidence matrices;
-- replay-durable scheduler checkpoint claim ownership, content-addressed recovery cycles, context, resource and transactional recovery requirements;
+- replay-durable scheduler checkpoint claim ownership, edge-specific restore validation, explicit pre-resume disposition, content-addressed recovery cycles, and context/resource/transactional recovery requirements;
 - compact projection identities;
 - the integrated scheduler/Workgraph receipt contract and held boundaries.
 
@@ -66,11 +67,17 @@ Malformed, stale, replayed, wrong-generation, over-budget and async-function inp
 
 Consequential recovery consumes one exact accepted scheduler checkpoint and the scheduler's six worker, context, resource, capability, effect and occupancy release receipts. Before admission, runtime recovery issues one canonical claim from replay-derived recovery truth. It binds the scheduler aggregate fingerprint, recovery aggregate fingerprint, cycle, failure, work, source, checkpoint, six releases, once-only activation, lifecycle and currentness. The scheduler persists claim transitions in its aggregate ledger as `CLAIMED_CURRENT`, `RESUMED_CONSUMED`, `TERMINAL_CONSUMED` or `INVALIDATED_OR_ABANDONED`; no private `Map` or `Set` owns recovery truth. Duplicate live and post-restart claims, wrong owners, forged claimants and release reuse fail without consuming the valid checkpoint.
 
+Every persisted claim transition embeds an edge-specific source-managed evidence contract. Restore revalidates the exact runtime-recovery claim receipt against the canonical paused checkpoint and six releases, then validates resume, completion, cancellation or disposition evidence for later edges before accepting derived claim pointers. A caller-rehashed aggregate, fake release set or ledger without the exact embedded claim receipt rejects before scheduler occupancy; the legitimate paused aggregate remains admissible.
+
+If resume validation fails after claim, the claim remains visible until the scheduler explicitly applies `INVALIDATED_OR_ABANDONED`. The bounded pre-resume route requires the exact current claim/transition, paused checkpoint, scheduler aggregate, source-managed reason, monotonic observation and `TERMINALLY_HELD_WITH_EXACT_REASON`. Restart preserves that hold; the old activation and release set cannot resume or reclaim. The ordinary claimed-to-resumed-to-terminal lifecycle is unchanged.
+
 Retry then consumes one scheduler-owned recovery resume receipt and six fresh leases for the new generation. That receipt binds the exact action and checkpoint admission. For context actions it also binds immutable source coverage, summaries, intent, interpretation, unknowns, authority, return route and token budget into the new context lease. For resource actions it binds the exact reduced request and admission into the new resource lease. Raw checkpoints, generic context substitutions, detached resource leases, stale generations, reused lease fingerprints, caller-invented generations and same-ref/different-content substitutions fail closed.
 
 ## Replay-derived aggregate
 
 Typed, content-addressed events are the only mutation path. Each activated failure forms a content-addressed recovery cycle binding aggregate, work, source, generation, failure, operation and attempt. Every downstream policy, checkpoint, action, continuation, success, convergence, terminal and projection receipt consumes that exact cycle. Replay reconstructs context receipts from their source segments, resource receipts from the exact snapshot and requests, transactional outcomes from a registered no-effect adapter/fault plan, human gates from aggregate-owned policy, action receipts from the registered evidence matrix, scheduler continuation from its consumption receipt, and terminal closure from its canonical scheduler evidence.
+
+Raw transactional fixture evidence remains immutable and unscoped. It becomes applicable only through one content-addressed cycle-adoption receipt that consumes the exact source transaction, runtime-recovery claim and current checkpoint admission, and proves monotonic formation for the active cycle. Prior-cycle, unscoped, re-addressed, stale-time and same-ref/different-content transactions reject. Context, resource and wait receipts are likewise current-cycle-only. Guide preservation never falls back to aggregate-wide checkpoint history: before the active cycle has its own checkpoint/action evidence it reports `AWAITING_CURRENT_CYCLE_EVIDENCE` with no preservation fingerprint.
 
 Serialization persists the event ledger and derived snapshot. Restore replays the ledger and compares every persisted derived field with the replay result. Historical cycles remain immutable while active pointers move to the newest cycle. Old action, success, convergence or terminal evidence cannot satisfy a later cycle, including same-class/same-operation recurrence; a current success must follow the current action, scheduler continuation and fresh generation. Impossible order, budget reset, forged final state, duplicate terminal closure within one cycle, stale external events and same-ref/different-content events are rejected. Exact duplicates are semantic no-ops.
 

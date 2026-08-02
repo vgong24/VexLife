@@ -400,6 +400,35 @@ test('C12 scheduler recovery ownership survives replay and consumes its durable 
   assert.equal(new Set(schedulerClaimedSnapshot.recoveryClaims[0].leaseReleaseFingerprints).size, 6);
 });
 
+test('C14 scheduler restoration semantically replays every recovery-claim edge and rejects rehashed forgeries', () => {
+  const proof = integrated.receipt.canonicalSchedulerClaimReplayProof;
+  assert.deepEqual(proof.lifecycle, ['CLAIMED_CURRENT', 'RESUMED_CONSUMED', 'TERMINAL_CONSUMED']);
+  assert.equal(proof.edgeContractRefs.length, 3);
+  assert.equal(proof.edgeEvidenceFingerprints.every((item) => /^[a-f0-9]{64}$/.test(item)), true);
+  assert.equal(proof.forgedRehashedRestoreRejected, true);
+  assert.equal(proof.fakeReleaseRestoredClaimRejected, true);
+  assert.equal(proof.missingClaimReceiptRestoredClaimRejected, true);
+  assert.equal(proof.legitimateClaimAdmissibleAfterRejectedRestore, true);
+  assert.equal(proof.suppliedPointersEqualSemanticReplay, true);
+  assert.equal(proof.terminalReplayState, 'TERMINAL_CONSUMED');
+});
+
+test('C15 claimed recovery can be explicitly terminally held before resume without reusing its activation', () => {
+  const proof = integrated.receipt.preResumeClaimDispositionProof;
+  assert.equal(proof.failedResumeRejected, true);
+  assert.equal(proof.claimVisibleAfterFailedResume, true);
+  assert.equal(proof.disposition, 'ABANDONED_BEFORE_RESUME');
+  assert.equal(proof.postDispositionCheckpointPolicy, 'TERMINALLY_HELD_WITH_EXACT_REASON');
+  assert.equal(proof.oldActivationReusable, false);
+  assert.equal(proof.oldReleaseSetReusable, false);
+  assert.equal(proof.dispositionState, 'INVALIDATED_OR_ABANDONED');
+  assert.equal(proof.checkpointState, 'RECOVERY_TERMINALLY_HELD');
+  assert.equal(proof.restartPreservedDisposition, true);
+  assert.equal(proof.oldActivationResumeRejected, true);
+  assert.equal(proof.oldActivationReclaimRejected, true);
+  assert.equal(proof.normalLifecycleUnchanged, true);
+});
+
 test('C3 restore replays the typed ledger and rejects budget reset, impossible order, forged final state, and duplicate terminal closure', () => {
   const finalAggregate = integrated.aggregate;
   const restored = restoreRecoveryAggregate(serializeRecoveryAggregate(finalAggregate, { registry }), { registry });
@@ -464,6 +493,26 @@ test('C13 consecutive same-class/same-operation cycles isolate current action, s
   assert.equal(owner.lastSuccessfulExecutionReceipt, null);
   assert.equal(owner.recoveryConvergenceReceipt, null);
   assert.equal(owner.terminalRecoveryReceipts[0].recoveryCycleRef, owner.recoveryCycleHistory[0].recoveryCycleRef);
+});
+
+test('C16 transaction formation and human preservation projection remain exact to the active cycle', () => {
+  const proof = integrated.receipt.exactCycleLocalEvidenceProof;
+  assert.equal(proof.sameFailureClassRecurrence, true);
+  assert.equal(proof.sameOperationRecurrence, true);
+  assert.equal(proof.preCheckpointHistoricalPreservationRejected, true);
+  assert.equal(proof.preCheckpointPreservationState, 'AWAITING_CURRENT_CYCLE_EVIDENCE');
+  assert.equal(proof.preCheckpointWhatWasPreserved, null);
+  assert.equal(proof.priorTransactionEvidenceRejected, true);
+  assert.equal(proof.unscopedTransactionRejected, true);
+  assert.equal(proof.readdressedTransactionRejected, true);
+  assert.equal(proof.staleTransactionFormationRejected, true);
+  assert.equal(proof.sameRefDifferentContentTransactionRejected, true);
+  assert.equal(proof.priorContextEvidenceRejected, true);
+  assert.equal(proof.priorResourceEvidenceRejected, true);
+  assert.equal(proof.priorWaitEvidenceRejected, true);
+  assert.equal(proof.historicalEvidenceIntact, true);
+  assert.equal(proof.currentCycleControlledDisposition, 'BLOCKED');
+  assert.equal(proof.currentProjectionCycleRef, proof.secondRecoveryCycleRef);
 });
 
 test('C3 replay rejects same-ref/different-content and stale external events without mutation', () => {
