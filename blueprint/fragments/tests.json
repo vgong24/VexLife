@@ -722,5 +722,17 @@
   {
     "testRef": "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery",
     "brief": "Source-managed scheduler claim currentness gates recovery formation and continuation; invalidation produces an exact blocked recovery hold and prevents stale claim, admission or evidence reuse without aggregate mutation."
+  },
+  {
+    "testRef": "test.runtime-recovery.r34-bounded-non-recursive-scheduler-state",
+    "brief": "Every claim lifecycle edge carries a compact checkpoint-scoped prior-state slice with exact aggregate and transition bindings; registered serialized-size budgets prove linear growth, exact restart restoration and no nested snapshots or duplicated prior edges."
+  },
+  {
+    "testRef": "test.runtime-recovery.r35-external-event-claim-lifecycle",
+    "brief": "Generic, wait, resume and split external events bind the exact current scheduler claim lifecycle receipt; invalidated and terminal claims reject every event kind with exact reasons and no aggregate mutation, including during replay."
+  },
+  {
+    "testRef": "test.runtime-recovery.r36-replay-owned-human-projection",
+    "brief": "Queue, Terrain, Health and Guide projections first replay the complete aggregate and bind its exact cycle, failure, lifecycle, hold, disposition, action, success, convergence and terminal evidence; rehashed display state and illegal histories fail before a plausible view is returned."
   }
 ]

@@ -466,6 +466,68 @@ test('C19 scheduler claim lifecycle governs recovery use and exact invalidation 
   assert.equal(proof.normalPathUnchanged, true);
 });
 
+test('C20 scheduler prior-state proof stays non-recursive and within linear serialized growth budgets', () => {
+  const proof = integrated.receipt.boundedNonRecursiveSchedulerStateProof;
+  const contract = bundle.schedulerRegistry.runtimeRecoveryClaimContract.boundedPriorStateProof;
+  assert.equal(proof.registeredContractFingerprint, semanticHash(contract));
+  assert.equal(proof.growthClass, 'LINEAR_PER_RECOVERY_CLAIM_TRANSITION');
+  assert.equal(proof.lifecycleCount, 2);
+  assert.equal(proof.claimTransitionCount, 5);
+  assert.equal(proof.noNestedStateSlices, true);
+  assert.equal(proof.noPriorEdgeReceiptsInsideStateSlice, true);
+  assert.equal(proof.exactPriorAggregateAndTransitionBound, true);
+  assert.equal(proof.claimedRestartRestoresExactState, true);
+  assert.equal(proof.invalidatedRestartRestoresExactState, true);
+  assert.equal(proof.withinRegisteredBudgets, true);
+  assert.equal(proof.linearGrowthProven, true);
+  assert.ok(proof.maximumObservedPriorStateReceiptBytes <= contract.maximumPriorStateReceiptBytes);
+  assert.ok(proof.maximumObservedAdditionalAggregateBytes <=
+    contract.maximumAdditionalAggregateBytesPerClaimTransition);
+});
+
+test('C21 every external event is gated by exact current scheduler claim lifecycle', () => {
+  const proof = integrated.receipt.externalEventClaimLifecycleProof;
+  assert.equal(proof.normalAccepted, true);
+  assert.equal(proof.normalAcceptedReason, 'EVENT_ACCEPTED_ONCE');
+  assert.equal(proof.normalEventLifecycle, 'RESUMED_CONSUMED');
+  assert.equal(proof.normalEventBoundToExactCurrentClaim, true);
+  assert.deepEqual(Object.keys(proof.invalidatedReasons).sort(),
+    ['generic', 'resume', 'sameRefDifferentContent', 'split', 'wait']);
+  assert.equal(Object.values(proof.invalidatedReasons).every((reason) =>
+    reason === 'SCHEDULER_CLAIM_INVALIDATED_EXTERNAL_EVENT_REJECTED'), true);
+  assert.equal(Object.values(proof.terminalReasons).every((reason) =>
+    reason === 'SCHEDULER_CLAIM_TERMINAL_EXTERNAL_EVENT_REJECTED'), true);
+  assert.equal(proof.allInvalidatedKindsRejectedExact, true);
+  assert.equal(proof.allTerminalKindsRejectedExact, true);
+  assert.equal(proof.invalidatedAggregateUnchanged, true);
+  assert.equal(proof.terminalAggregateUnchanged, true);
+  assert.equal(Object.values(proof.managedFormationRejections).every(Boolean), true);
+  assert.equal(proof.allManagedFormationUsesRejected, true);
+  assert.equal(proof.replayExactCurrentnessTamperRejected, true);
+});
+
+test('C22 human recovery projections are owned by full aggregate replay', () => {
+  const proof = integrated.receipt.replayOwnedRecoveryProjectionProof;
+  assert.equal(proof.projectionKind, 'QUEUE_TERRAIN_HEALTH_GUIDE');
+  assert.equal(proof.aggregateFingerprint, integrated.aggregate.semanticFingerprint);
+  assert.equal(proof.recoveredFailureFingerprint, integrated.aggregate.recoveredFailure.semanticFingerprint);
+  assert.equal(proof.projectionSemanticFingerprint, integrated.projection.semanticFingerprint);
+  assert.equal(proof.projectionSemanticFingerprintExact, true);
+  assert.equal(proof.terminalBindingsExact, true);
+  assert.equal(proof.heldBindingsExact, true);
+  assert.deepEqual(Object.keys(proof.tamperRejections).sort(), [
+    'blockedShownCompleted',
+    'historicalEvidenceSubstitution',
+    'illegalLedgerHistory',
+    'lifecycleCurrentnessSubstitution',
+    'rehashedDisplayAggregate',
+    'removedSchedulerHold'
+  ]);
+  assert.equal(Object.values(proof.tamperRejections).every(Boolean), true);
+  assert.equal(proof.allTamperClassesRejected, true);
+  assert.equal(proof.failedProjectionReturnedPlausibleView, false);
+});
+
 test('C3 restore replays the typed ledger and rejects budget reset, impossible order, forged final state, and duplicate terminal closure', () => {
   const finalAggregate = integrated.aggregate;
   const restored = restoreRecoveryAggregate(serializeRecoveryAggregate(finalAggregate, { registry }), { registry });
@@ -630,7 +692,7 @@ test('C4 selected recovery actions, rollback/LKG/quarantine, and human gates are
   const humanOwner = humanBranch.aggregate;
   assert.equal(humanOwner.phase, 'WAITING_HUMAN');
   assert.equal(humanOwner.humanDecisionGates.length, 1);
-  assert.equal(projectRecoveryAggregate(humanOwner).projection.guide.victorNeeded, true);
+  assert.equal(projectRecoveryAggregate(humanOwner, { registry }).projection.guide.victorNeeded, true);
 });
 
 test('C4 transactional receipts bind before/partial/read-back/LKG/quarantine evidence', () => {

@@ -47,6 +47,19 @@
       "disposedClaimsReusable": false,
       "terminalClaimsHistoricalOnly": true
     },
+    "boundedPriorStateProof": {
+      "contractRef": "contract.intent-scheduler.recovery-prior-state/v2",
+      "receiptSchemaVersion": "vexlife.intent-scheduler-recovery-prior-state-receipt/v2",
+      "stateSliceSchemaVersion": "vexlife.intent-scheduler-recovery-prior-state-slice/v1",
+      "growthClass": "LINEAR_PER_RECOVERY_CLAIM_TRANSITION",
+      "maximumPriorStateReceiptBytes": 100000,
+      "maximumInitialClaimedSchedulerStateBytes": 200000,
+      "maximumAdditionalAggregateBytesPerClaimTransition": 150000,
+      "maximumNestedStateSlices": 0,
+      "maximumPriorEdgeReceiptsInsideStateSlice": 0,
+      "maximumRecentLeaseBindings": 18,
+      "exactRestoreRequired": true
+    },
     "edgeEvidenceContracts": {
       "CLAIMED_CURRENT": "contract.intent-scheduler.recovery-claim-edge.claimed-current/v1",
       "RESUMED_CONSUMED": "contract.intent-scheduler.recovery-claim-edge.resumed-consumed/v1",

@@ -93,8 +93,21 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
       !registry.schedulerClaimLifecycleRecoveryContract?.invalidatedClaimForcesExactBlockedHold ||
       registry.schedulerClaimLifecycleRecoveryContract?.staleClaimAdmissionOrEvidenceReuseAllowed !== false ||
       registry.schedulerClaimLifecycleRecoveryContract?.schedulerAndRecoveryAggregateMutationOnRejectedUseAllowed !== false ||
-      !registry.schedulerClaimLifecycleRecoveryContract?.humanProjectionMustExposeExactDispositionReason) {
+      !registry.schedulerClaimLifecycleRecoveryContract?.humanProjectionMustExposeExactDispositionReason ||
+      !registry.schedulerClaimLifecycleRecoveryContract?.everyExternalEventRequiresExactCurrentClaimLifecycle) {
     errors.push('scheduler claim lifecycle recovery/currentness contract is incomplete');
+  }
+  const externalLifecycle = registry.externalRecoveryEventClaimLifecycleContract;
+  if (JSON.stringify(externalLifecycle?.managedWaitResumeAndSplitAllowedLifecycle) !==
+        JSON.stringify(['CLAIMED_CURRENT']) ||
+      JSON.stringify(externalLifecycle?.genericExternalEventAllowedLifecycle) !==
+        JSON.stringify(['CLAIMED_CURRENT', 'RESUMED_CONSUMED']) ||
+      externalLifecycle?.requiredBindings?.length !== 3 ||
+      externalLifecycle?.invalidatedReason !== 'SCHEDULER_CLAIM_INVALIDATED_EXTERNAL_EVENT_REJECTED' ||
+      externalLifecycle?.terminalReason !== 'SCHEDULER_CLAIM_TERMINAL_EXTERNAL_EVENT_REJECTED' ||
+      externalLifecycle?.rejectedAggregateMutationAllowed !== false ||
+      externalLifecycle?.replayMustRevalidateExactCurrentness !== true) {
+    errors.push('external recovery event claim lifecycle contract is incomplete');
   }
   const schedulerClaim = bundle.schedulerRegistry?.runtimeRecoveryClaimContract;
   if (!schedulerClaim?.canonicalCheckpointAuthority?.immutableCheckpointObjectsRequired ||
@@ -107,6 +120,20 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
       schedulerClaim?.claimCurrentnessContract?.sourceManaged !== true ||
       schedulerClaim?.claimCurrentnessContract?.disposedClaimsReusable !== false) {
     errors.push('canonical checkpoint, complete edge replay, or scheduler claim currentness contract is incomplete');
+  }
+  const boundedPrior = schedulerClaim?.boundedPriorStateProof;
+  if (boundedPrior?.contractRef !== 'contract.intent-scheduler.recovery-prior-state/v2' ||
+      boundedPrior?.receiptSchemaVersion !== 'vexlife.intent-scheduler-recovery-prior-state-receipt/v2' ||
+      boundedPrior?.stateSliceSchemaVersion !== 'vexlife.intent-scheduler-recovery-prior-state-slice/v1' ||
+      boundedPrior?.growthClass !== 'LINEAR_PER_RECOVERY_CLAIM_TRANSITION' ||
+      !Number.isInteger(boundedPrior?.maximumPriorStateReceiptBytes) ||
+      !Number.isInteger(boundedPrior?.maximumInitialClaimedSchedulerStateBytes) ||
+      !Number.isInteger(boundedPrior?.maximumAdditionalAggregateBytesPerClaimTransition) ||
+      boundedPrior?.maximumNestedStateSlices !== 0 ||
+      boundedPrior?.maximumPriorEdgeReceiptsInsideStateSlice !== 0 ||
+      !Number.isInteger(boundedPrior?.maximumRecentLeaseBindings) ||
+      boundedPrior?.exactRestoreRequired !== true) {
+    errors.push('bounded non-recursive scheduler prior-state contract is incomplete');
   }
   if (!registry.recoveryCycleContract?.contentAddressedAtFailureActivation ||
       !registry.recoveryCycleContract?.requiredOnEveryDownstreamRecoveryReceipt ||
@@ -125,8 +152,17 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
       registry.humanProjectionApplicabilityContract?.aggregateHistoryFallbackAllowed !== false ||
       registry.humanProjectionApplicabilityContract?.preCheckpointPreservationState !==
         'AWAITING_CURRENT_CYCLE_EVIDENCE' ||
-      registry.humanProjectionApplicabilityContract?.preCheckpointPreservationFingerprint !== null) {
+      registry.humanProjectionApplicabilityContract?.preCheckpointPreservationFingerprint !== null ||
+      registry.humanProjectionApplicabilityContract?.requiresReplayDerivedAggregate !== true) {
     errors.push('current-cycle human projection applicability contract is incomplete');
+  }
+  const replayProjection = registry.replayOwnedHumanProjectionContract;
+  if (replayProjection?.projectionKind !== 'QUEUE_TERRAIN_HEALTH_GUIDE' ||
+      replayProjection?.requiresFullAggregateReplayBeforeProjection !== true ||
+      replayProjection?.requiredBindings?.length !== 12 ||
+      replayProjection?.rejectedTamperClasses?.length !== 6 ||
+      replayProjection?.failedProjectionMayReturnPlausibleView !== false) {
+    errors.push('replay-owned human projection contract is incomplete');
   }
   if (!registry.schedulerContinuationContract?.requiresSchedulerOwnedResumeReceipt ||
       !registry.schedulerContinuationContract?.requiresExactActionAndCheckpointAdmission ||

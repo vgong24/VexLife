@@ -12,6 +12,7 @@ import {
   RECOVERY_EVENT_TYPES,
   admitRecoveryCheckpoint,
   applyRecoveryAction,
+  buildRecoveryAggregateFingerprint,
   closeRecoveredExecution,
   continueRecoveryGeneration,
   createCycleBoundTransactionalRecoveryReceipt,
@@ -60,6 +61,21 @@ const CYCLE_TWO_STARTED_AT = '2026-08-01T00:00:07.000Z';
 const CYCLE_TWO_FAILED_AT = '2026-08-01T00:00:08.000Z';
 const CYCLE_TWO_ACTION_AT = '2026-08-01T00:00:09.000Z';
 const EXPIRES_AT = '2026-08-01T00:01:00.000Z';
+
+function containsNamedProperty(value, propertyName) {
+  if (!value || typeof value !== 'object') return false;
+  return Object.entries(value).some(([key, child]) =>
+    key === propertyName || containsNamedProperty(child, propertyName)
+  );
+}
+
+function rehashRecoveryAggregate(value) {
+  const candidate = structuredClone(value);
+  delete candidate.semanticFingerprint;
+  candidate.semanticFingerprint = buildRecoveryAggregateFingerprint(candidate);
+  return candidate;
+}
+
 function expectedActionSpecificCausalGateRefs(actionReceipt) {
   const roleNames = {
     context: 'context',
@@ -818,6 +834,62 @@ export function validateIntegratedRecoverySimulationReceipt(receipt, {
       completeEdges.coordinatedDispositionEdgeForgeryRejected !== true) {
     errors.push('complete scheduler claim-edge replay proof is incomplete');
   }
+  const boundedPriorState = receipt.boundedNonRecursiveSchedulerStateProof;
+  const boundedPriorContract = boundedPriorState?.registeredContract;
+  if (!boundedPriorState || boundedPriorState.contractRef !== boundedPriorContract?.contractRef ||
+      boundedPriorState.registeredContractFingerprint !== semanticHash(boundedPriorContract) ||
+      boundedPriorState.receiptSchemaVersion !== boundedPriorContract?.receiptSchemaVersion ||
+      boundedPriorState.stateSliceSchemaVersion !== boundedPriorContract?.stateSliceSchemaVersion ||
+      boundedPriorState.growthClass !== 'LINEAR_PER_RECOVERY_CLAIM_TRANSITION' ||
+      boundedPriorState.lifecycleCount !== 2 || boundedPriorState.claimTransitionCount < 5 ||
+      boundedPriorState.noNestedStateSlices !== true ||
+      boundedPriorState.noPriorEdgeReceiptsInsideStateSlice !== true ||
+      boundedPriorState.exactPriorAggregateAndTransitionBound !== true ||
+      boundedPriorState.claimedRestartRestoresExactState !== true ||
+      boundedPriorState.invalidatedRestartRestoresExactState !== true ||
+      boundedPriorState.coordinatedResumeEdgeForgeryRejected !== true ||
+      boundedPriorState.coordinatedTerminalEdgeForgeryRejected !== true ||
+      boundedPriorState.coordinatedDispositionEdgeForgeryRejected !== true ||
+      boundedPriorState.withinRegisteredBudgets !== true || boundedPriorState.linearGrowthProven !== true ||
+      boundedPriorState.maximumObservedPriorStateReceiptBytes > boundedPriorContract?.maximumPriorStateReceiptBytes ||
+      boundedPriorState.maximumObservedAdditionalAggregateBytes >
+        boundedPriorContract?.maximumAdditionalAggregateBytesPerClaimTransition ||
+      boundedPriorState.maximumLeaseBindingCount > boundedPriorContract?.maximumRecentLeaseBindings) {
+    errors.push('bounded non-recursive scheduler prior-state proof is incomplete');
+  }
+  const externalLifecycle = receipt.externalEventClaimLifecycleProof;
+  const invalidatedReasons = Object.values(externalLifecycle?.invalidatedReasons ?? {});
+  const terminalReasons = Object.values(externalLifecycle?.terminalReasons ?? {});
+  if (!externalLifecycle || externalLifecycle.normalAccepted !== true ||
+      externalLifecycle.normalAcceptedReason !== 'EVENT_ACCEPTED_ONCE' ||
+      externalLifecycle.normalEventLifecycle !== 'RESUMED_CONSUMED' ||
+      externalLifecycle.normalEventBoundToExactCurrentClaim !== true ||
+      invalidatedReasons.length !== 5 || invalidatedReasons.some((reason) =>
+        reason !== 'SCHEDULER_CLAIM_INVALIDATED_EXTERNAL_EVENT_REJECTED') ||
+      terminalReasons.length !== 5 || terminalReasons.some((reason) =>
+        reason !== 'SCHEDULER_CLAIM_TERMINAL_EXTERNAL_EVENT_REJECTED') ||
+      externalLifecycle.allInvalidatedKindsRejectedExact !== true ||
+      externalLifecycle.allTerminalKindsRejectedExact !== true ||
+      externalLifecycle.invalidatedAggregateUnchanged !== true ||
+      externalLifecycle.terminalAggregateUnchanged !== true ||
+      Object.keys(externalLifecycle.managedFormationRejections ?? {}).length !== 4 ||
+      Object.values(externalLifecycle.managedFormationRejections ?? {}).some((rejected) => rejected !== true) ||
+      externalLifecycle.allManagedFormationUsesRejected !== true ||
+      externalLifecycle.replayExactCurrentnessTamperRejected !== true) {
+    errors.push('external recovery event claim lifecycle proof is incomplete');
+  }
+  const replayProjection = receipt.replayOwnedRecoveryProjectionProof;
+  if (!replayProjection || replayProjection.projectionKind !== 'QUEUE_TERRAIN_HEALTH_GUIDE' ||
+      replayProjection.aggregateFingerprint !== receipt.finalAggregateFingerprint ||
+      replayProjection.projectionSemanticFingerprint !== receipt.finalProjection?.semanticFingerprint ||
+      replayProjection.projectionSemanticFingerprintExact !== true ||
+      replayProjection.terminalBindingsExact !== true || replayProjection.heldBindingsExact !== true ||
+      Object.keys(replayProjection.tamperRejections ?? {}).length !== 6 ||
+      Object.values(replayProjection.tamperRejections ?? {}).some((rejected) => rejected !== true) ||
+      replayProjection.allTamperClassesRejected !== true ||
+      replayProjection.failedProjectionReturnedPlausibleView !== false) {
+    errors.push('replay-owned recovery projection proof is incomplete');
+  }
   const claimLifecycleRecovery = receipt.schedulerClaimLifecycleRecoveryProof;
   if (!claimLifecycleRecovery ||
       JSON.stringify(claimLifecycleRecovery.normalLifecycle) !==
@@ -1443,7 +1515,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     schedulerClaimCurrentnessReceipt: preResumeDispositionCurrentness,
     registry
   });
-  const disposedProjection = projectRecoveryAggregate(disposedRecoveryAggregate).projection;
+  const disposedProjection = projectRecoveryAggregate(disposedRecoveryAggregate, { registry }).projection;
   const schedulerBeforeStaleClaimUse = preResumeDispositionScheduler.aggregate.semanticFingerprint;
   const recoveryBeforeStaleClaimUse = disposedRecoveryAggregate.semanticFingerprint;
   const staleClaimUseRejected = {
@@ -1454,7 +1526,8 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     action: false,
     success: false,
     convergence: false,
-    continuation: false
+    continuation: false,
+    externalEvent: false
   };
   try {
     recordRecoveryPolicyDecision(disposedRecoveryAggregate, {
@@ -1655,7 +1728,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     observedAt: RECOVERED_AT,
     registry
   }).aggregate;
-  const quarantineProjection = projectRecoveryAggregate(quarantineAggregate).projection;
+  const quarantineProjection = projectRecoveryAggregate(quarantineAggregate, { registry }).projection;
   if (quarantineProjection.health.state !== 'ATTENTION' || !quarantineProjection.guide.remainsBlocked) {
     throw new Error('aggregate-owned quarantine did not remain human-visible');
   }
@@ -1804,8 +1877,8 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
   aggregate = closed.aggregate;
   journeyStates.push('WORKGRAPH_CAUSAL_RECOVERY_VERIFIED');
   journeyStates.push('TERMINAL_RECOVERY_CLOSED');
-  const projection = projectRecoveryAggregate(aggregate).projection;
-  const noOp = projectRecoveryAggregate(aggregate, { priorProjection: projection });
+  const projection = projectRecoveryAggregate(aggregate, { registry }).projection;
+  const noOp = projectRecoveryAggregate(aggregate, { priorProjection: projection, registry });
   if (noOp.changed || !projection.guide.whatFailed || !projection.guide.recoveryRoute || !projection.guide.terminalProofRef) {
     throw new Error('completed projection lost recovery evidence or semantic no-op behavior');
   }
@@ -1866,7 +1939,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
   });
   if (cycleTwoFailure.status !== 'FAILED_RECOVERABLE') throw new Error('second recovery cycle was not activated');
   let cycleIsolationAggregate = cycleTwoFailure.aggregate;
-  const cycleTwoPreCheckpointProjection = projectRecoveryAggregate(cycleIsolationAggregate).projection;
+  const cycleTwoPreCheckpointProjection = projectRecoveryAggregate(cycleIsolationAggregate, { registry }).projection;
   const priorPreservationFingerprint = projection.guide.whatWasPreserved;
   const preCheckpointHistoricalPreservationRejected =
     cycleTwoPreCheckpointProjection.guide.whatWasPreserved === null &&
@@ -2119,7 +2192,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     context: boundaryContext(cycleIsolationAggregate, 'attempt.runtime-recovery.simulation.cycle-two.2', 2,
       CYCLE_TWO_ACTION_AT, '2026-08-01T00:00:10.000Z')
   });
-  const cycleIsolationProjection = projectRecoveryAggregate(cycleIsolationAggregate).projection;
+  const cycleIsolationProjection = projectRecoveryAggregate(cycleIsolationAggregate, { registry }).projection;
   const secondCycle = cycleIsolationAggregate.activeRecoveryCycle;
   const recoveryCycleIsolationProof = {
     aggregateRef: cycleIsolationAggregate.aggregateRef,
@@ -2251,6 +2324,283 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     'receipt.intent-scheduler.recovery-claim-disposition.',
     (evidence) => { evidence.reasonRef = 'reason.intent-scheduler.recovery.forged-disposition'; }
   );
+
+  const boundedPriorStateContract = bundle.schedulerRegistry.runtimeRecoveryClaimContract.boundedPriorStateProof;
+  const normalClaimTransitions = scheduler.aggregate.recoveryClaimLedger;
+  const invalidatedClaimTransitions = preResumeDispositionSnapshot.recoveryClaimLedger;
+  const priorStateReceipts = [...normalClaimTransitions, ...invalidatedClaimTransitions]
+    .map((item) => item.edgeEvidence.schedulerPriorStateReceipt);
+  const serializedSchedulerStateBytes = [
+    schedulerClaimedSnapshot,
+    schedulerAggregateAfterResume,
+    scheduler.aggregate
+  ].map((item) => Buffer.byteLength(JSON.stringify(item), 'utf8'));
+  const additionalAggregateBytesPerTransition = serializedSchedulerStateBytes.slice(1)
+    .map((bytes, index) => bytes - serializedSchedulerStateBytes[index]);
+  const priorStateReceiptBytes = priorStateReceipts
+    .map((item) => Buffer.byteLength(JSON.stringify(item), 'utf8'));
+  const maximumLeaseBindingCount = Math.max(
+    ...priorStateReceipts.map((item) => item.schedulerStateSlice.leaseLedgerBindings.length)
+  );
+  const noNestedStateSlices = priorStateReceipts.every((item) =>
+    !containsNamedProperty(item.schedulerStateSlice, 'schedulerStateSlice') &&
+    !containsNamedProperty(item.schedulerStateSlice, 'schedulerStateSnapshot')
+  );
+  const noPriorEdgeReceiptsInsideStateSlice = priorStateReceipts.every((item) =>
+    !containsNamedProperty(item.schedulerStateSlice, 'schedulerPriorStateReceipt')
+  );
+  const exactPriorAggregateAndTransitionBound = [...normalClaimTransitions, ...invalidatedClaimTransitions]
+    .every((transition) => {
+      const receipt = transition.edgeEvidence.schedulerPriorStateReceipt;
+      const slice = receipt.schedulerStateSlice;
+      return receipt.schedulerAggregateFingerprint === slice.schedulerAggregateFingerprint &&
+        receipt.priorClaimLedgerLength === slice.recoveryClaimLedgerLength &&
+        receipt.priorClaimTransitionFingerprint === slice.recoveryClaimPriorTransitionFingerprint;
+    });
+  const boundedNonRecursiveSchedulerStateProof = {
+    contractRef: boundedPriorStateContract.contractRef,
+    registeredContractFingerprint: semanticHash(boundedPriorStateContract),
+    registeredContract: structuredClone(boundedPriorStateContract),
+    receiptSchemaVersion: boundedPriorStateContract.receiptSchemaVersion,
+    stateSliceSchemaVersion: boundedPriorStateContract.stateSliceSchemaVersion,
+    growthClass: boundedPriorStateContract.growthClass,
+    lifecycleCount: 2,
+    claimTransitionCount: normalClaimTransitions.length + invalidatedClaimTransitions.length,
+    normalLifecycle: normalClaimTransitions.map((item) => item.type),
+    invalidatedLifecycle: invalidatedClaimTransitions.map((item) => item.type),
+    serializedSchedulerStateBytes,
+    additionalAggregateBytesPerTransition,
+    priorStateReceiptBytes,
+    maximumObservedPriorStateReceiptBytes: Math.max(...priorStateReceiptBytes),
+    maximumObservedAdditionalAggregateBytes: Math.max(...additionalAggregateBytesPerTransition),
+    maximumLeaseBindingCount,
+    noNestedStateSlices,
+    noPriorEdgeReceiptsInsideStateSlice,
+    exactPriorAggregateAndTransitionBound,
+    claimedRestartRestoresExactState:
+      restartedClaimScheduler.aggregate.semanticFingerprint === schedulerClaimedSnapshot.semanticFingerprint,
+    invalidatedRestartRestoresExactState:
+      restartedDispositionScheduler.aggregate.semanticFingerprint === preResumeDispositionSnapshot.semanticFingerprint,
+    coordinatedResumeEdgeForgeryRejected,
+    coordinatedTerminalEdgeForgeryRejected,
+    coordinatedDispositionEdgeForgeryRejected,
+    withinRegisteredBudgets:
+      serializedSchedulerStateBytes[0] <= boundedPriorStateContract.maximumInitialClaimedSchedulerStateBytes &&
+      additionalAggregateBytesPerTransition.every((bytes) =>
+        bytes <= boundedPriorStateContract.maximumAdditionalAggregateBytesPerClaimTransition) &&
+      priorStateReceiptBytes.every((bytes) => bytes <= boundedPriorStateContract.maximumPriorStateReceiptBytes) &&
+      maximumLeaseBindingCount <= boundedPriorStateContract.maximumRecentLeaseBindings,
+    linearGrowthProven:
+      noNestedStateSlices && noPriorEdgeReceiptsInsideStateSlice &&
+      exactPriorAggregateAndTransitionBound &&
+      additionalAggregateBytesPerTransition.every((bytes) =>
+        bytes <= boundedPriorStateContract.maximumAdditionalAggregateBytesPerClaimTransition)
+  };
+
+  const waitBranch = representativeActions.find((item) => item.name === 'external-wait-resume');
+  const splitBranch = representativeActions.find((item) => item.name === 'split-work-return');
+  const genericLifecycleEvent = {
+    eventRef: 'external-event.runtime-recovery.lifecycle-proof.generic',
+    workNodeRef: disposedRecoveryAggregate.workNodeRef,
+    schedulerGeneration: disposedRecoveryAggregate.schedulerGeneration,
+    resultRef: 'result.runtime-recovery.lifecycle-proof.generic',
+    observedAt: SUCCEEDED_AT
+  };
+  const invalidatedEventInputs = {
+    generic: genericLifecycleEvent,
+    wait: waitBranch.waitResumeReceipt.waitEvent,
+    resume: waitBranch.waitResumeReceipt.resumeEvent,
+    split: splitBranch.splitWorkRouteReceipt,
+    sameRefDifferentContent: {
+      ...waitBranch.waitResumeReceipt.waitEvent,
+      resumeSourceRef: 'source.runtime-recovery.wait.substituted'
+    }
+  };
+  const invalidatedExternalEventResults = Object.fromEntries(Object.entries(invalidatedEventInputs)
+    .map(([kind, event]) => [kind, recordExternalRecoveryEvent(disposedRecoveryAggregate, event, { registry })]));
+  const terminalEventInputs = Object.fromEntries(Object.entries(invalidatedEventInputs).map(([kind, event]) => [kind, {
+    ...event,
+    workNodeRef: aggregate.workNodeRef,
+    schedulerGeneration: aggregate.schedulerGeneration,
+    observedAt: COMPLETED_AT
+  }]));
+  const terminalExternalEventResults = Object.fromEntries(Object.entries(terminalEventInputs)
+    .map(([kind, event]) => [kind, recordExternalRecoveryEvent(aggregate, event, { registry })]));
+  const managedFormationRejections = {
+    invalidatedWait: false,
+    invalidatedSplit: false,
+    terminalWait: false,
+    terminalSplit: false
+  };
+  for (const [owner, prefix] of [[disposedRecoveryAggregate, 'invalidated'], [aggregate, 'terminal']]) {
+    try {
+      createRecoveryWaitResumeReceipt({
+        aggregate: owner,
+        policyDecision: waitBranch.aggregate.activePolicyDecision,
+        waitedAt: FAILED_AT,
+        resumedAt: RECOVERED_AT,
+        resumeSourceRef: 'source.runtime-recovery.wait.lifecycle-forgery',
+        registry
+      });
+    } catch (error) {
+      managedFormationRejections[`${prefix}Wait`] =
+        /requires exact scheduler-managed CLAIMED_CURRENT claim currentness/.test(error.message);
+    }
+    try {
+      createSplitWorkRouteReceipt({
+        aggregate: owner,
+        policyDecision: splitBranch.aggregate.activePolicyDecision,
+        contextRecoveryReceipt: splitBranch.contextProof,
+        childWorkNodeRef: splitBranch.contextProof.splitWorkNodeRef,
+        observedAt: RECOVERED_AT,
+        registry
+      });
+    } catch (error) {
+      managedFormationRejections[`${prefix}Split`] =
+        /requires exact scheduler-managed CLAIMED_CURRENT claim currentness/.test(error.message);
+    }
+  }
+  staleClaimUseRejected.externalEvent = Object.values(invalidatedExternalEventResults).every((result) =>
+    result.changed === false &&
+    result.reason === 'SCHEDULER_CLAIM_INVALIDATED_EXTERNAL_EVENT_REJECTED' &&
+    result.aggregate.semanticFingerprint === disposedRecoveryAggregate.semanticFingerprint
+  );
+  const acceptedGenericEvent = acceptedExternal.aggregate.acceptedExternalEvents.find((item) =>
+    item.eventRef === external.eventRef
+  );
+  const replayLifecycleTamper = structuredClone(acceptedExternal.aggregate);
+  const replayExternalEvent = replayLifecycleTamper.eventLedger.findLast((item) =>
+    item.type === 'EXTERNAL_EVENT_ACCEPTED'
+  );
+  replayExternalEvent.payload.event.schedulerClaimLifecycle = 'CLAIMED_CURRENT';
+  delete replayExternalEvent.payload.event.semanticFingerprint;
+  replayExternalEvent.payload.event.semanticFingerprint = semanticHash(replayExternalEvent.payload.event);
+  delete replayExternalEvent.eventRef;
+  delete replayExternalEvent.semanticFingerprint;
+  replayExternalEvent.semanticFingerprint = semanticHash(replayExternalEvent);
+  replayExternalEvent.eventRef = `event.runtime-recovery.external-event-accepted.${
+    replayExternalEvent.semanticFingerprint.slice(0, 32)
+  }`;
+  const replayLifecycleTamperedAggregate = rehashRecoveryAggregate(replayLifecycleTamper);
+  let replayExactCurrentnessTamperRejected = false;
+  try {
+    createRecoveryAggregate(replayLifecycleTamperedAggregate, { registry });
+  } catch {
+    replayExactCurrentnessTamperRejected = true;
+  }
+  const externalEventClaimLifecycleProof = {
+    normalAccepted: acceptedExternal.changed,
+    normalAcceptedReason: acceptedExternal.reason,
+    normalEventLifecycle: acceptedGenericEvent?.schedulerClaimLifecycle ?? null,
+    normalEventCurrentnessReceiptRef: acceptedGenericEvent?.schedulerClaimCurrentnessReceiptRef ?? null,
+    normalEventCurrentnessReceiptFingerprint:
+      acceptedGenericEvent?.schedulerClaimCurrentnessReceiptFingerprint ?? null,
+    normalEventBoundToExactCurrentClaim:
+      acceptedGenericEvent?.schedulerClaimLifecycle === restored.currentSchedulerClaimLifecycle.claimLifecycle &&
+      acceptedGenericEvent?.schedulerClaimCurrentnessReceiptRef ===
+        restored.currentSchedulerClaimLifecycle.currentnessReceiptRef &&
+      acceptedGenericEvent?.schedulerClaimCurrentnessReceiptFingerprint ===
+        restored.currentSchedulerClaimLifecycle.semanticFingerprint,
+    invalidatedReasons: Object.fromEntries(Object.entries(invalidatedExternalEventResults)
+      .map(([kind, result]) => [kind, result.reason])),
+    terminalReasons: Object.fromEntries(Object.entries(terminalExternalEventResults)
+      .map(([kind, result]) => [kind, result.reason])),
+    allInvalidatedKindsRejectedExact: Object.values(invalidatedExternalEventResults).every((result) =>
+      result.changed === false && result.reason === 'SCHEDULER_CLAIM_INVALIDATED_EXTERNAL_EVENT_REJECTED'),
+    allTerminalKindsRejectedExact: Object.values(terminalExternalEventResults).every((result) =>
+      result.changed === false && result.reason === 'SCHEDULER_CLAIM_TERMINAL_EXTERNAL_EVENT_REJECTED'),
+    invalidatedAggregateUnchanged: Object.values(invalidatedExternalEventResults).every((result) =>
+      result.aggregate.semanticFingerprint === disposedRecoveryAggregate.semanticFingerprint),
+    terminalAggregateUnchanged: Object.values(terminalExternalEventResults).every((result) =>
+      result.aggregate.semanticFingerprint === aggregate.semanticFingerprint),
+    managedFormationRejections,
+    allManagedFormationUsesRejected: Object.values(managedFormationRejections).every(Boolean),
+    replayExactCurrentnessTamperRejected
+  };
+
+  const projectionRejected = (candidate) => {
+    try {
+      projectRecoveryAggregate(candidate, { registry });
+      return false;
+    } catch {
+      return true;
+    }
+  };
+  const withoutSchedulerHold = structuredClone(disposedRecoveryAggregate);
+  withoutSchedulerHold.schedulerRecoveryHold = null;
+  const blockedShownCompleted = structuredClone(disposedRecoveryAggregate);
+  blockedShownCompleted.phase = 'COMPLETED';
+  const historicalEvidenceSubstitution = structuredClone(cycleIsolationAggregate);
+  historicalEvidenceSubstitution.currentRecoveryActionReceipt = aggregate.currentRecoveryActionReceipt;
+  historicalEvidenceSubstitution.lastSuccessfulExecutionReceipt = aggregate.lastSuccessfulExecutionReceipt;
+  historicalEvidenceSubstitution.recoveryConvergenceReceipt = aggregate.recoveryConvergenceReceipt;
+  const lifecycleCurrentnessSubstitution = structuredClone(disposedRecoveryAggregate);
+  lifecycleCurrentnessSubstitution.currentSchedulerClaimLifecycle = aggregate.currentSchedulerClaimLifecycle;
+  const rehashedDisplayAggregate = structuredClone(disposedRecoveryAggregate);
+  rehashedDisplayAggregate.phase = 'COMPLETED';
+  rehashedDisplayAggregate.schedulerRecoveryHold = null;
+  rehashedDisplayAggregate.activeFailure = null;
+  const illegalLedgerAggregate = structuredClone(aggregate);
+  const illegalTerminalEvent = structuredClone(illegalLedgerAggregate.eventLedger.at(-1));
+  illegalTerminalEvent.sequence = illegalLedgerAggregate.eventLedger.length;
+  illegalTerminalEvent.priorEventFingerprint = illegalLedgerAggregate.eventLedger.at(-1).semanticFingerprint;
+  delete illegalTerminalEvent.eventRef;
+  delete illegalTerminalEvent.semanticFingerprint;
+  illegalTerminalEvent.semanticFingerprint = semanticHash(illegalTerminalEvent);
+  illegalTerminalEvent.eventRef = `event.runtime-recovery.${
+    illegalTerminalEvent.type.toLowerCase().replaceAll('_', '-')
+  }.${illegalTerminalEvent.semanticFingerprint.slice(0, 32)}`;
+  illegalLedgerAggregate.eventLedger.push(illegalTerminalEvent);
+  const projectionTamperRejections = {
+    removedSchedulerHold: projectionRejected(rehashRecoveryAggregate(withoutSchedulerHold)),
+    blockedShownCompleted: projectionRejected(rehashRecoveryAggregate(blockedShownCompleted)),
+    historicalEvidenceSubstitution: projectionRejected(rehashRecoveryAggregate(historicalEvidenceSubstitution)),
+    lifecycleCurrentnessSubstitution: projectionRejected(rehashRecoveryAggregate(lifecycleCurrentnessSubstitution)),
+    rehashedDisplayAggregate: projectionRejected(rehashRecoveryAggregate(rehashedDisplayAggregate)),
+    illegalLedgerHistory: projectionRejected(rehashRecoveryAggregate(illegalLedgerAggregate))
+  };
+  const projectionCanonical = structuredClone(projection);
+  delete projectionCanonical.semanticFingerprint;
+  const replayOwnedRecoveryProjectionProof = {
+    projectionKind: projection.projectionKind,
+    aggregateFingerprint: projection.aggregateFingerprint,
+    activeRecoveryCycleFingerprint: projection.activeRecoveryCycleFingerprint,
+    activeFailureFingerprint: projection.activeFailureFingerprint,
+    recoveredFailureFingerprint: projection.recoveredFailureFingerprint,
+    schedulerClaimLifecycle: projection.schedulerClaimLifecycle,
+    schedulerClaimCurrentnessReceiptFingerprint: projection.schedulerClaimCurrentnessReceiptFingerprint,
+    schedulerRecoveryHoldFingerprint: disposedProjection.schedulerRecoveryHoldFingerprint,
+    schedulerDispositionReceiptFingerprint: disposedProjection.schedulerDispositionReceiptFingerprint,
+    currentActionReceiptFingerprint: projection.currentActionReceiptFingerprint,
+    currentSuccessReceiptFingerprint: projection.currentSuccessReceiptFingerprint,
+    currentConvergenceReceiptFingerprint: projection.currentConvergenceReceiptFingerprint,
+    currentTerminalReceiptFingerprint: projection.currentTerminalReceiptFingerprint,
+    projectionSemanticFingerprint: projection.semanticFingerprint,
+    projectionSemanticFingerprintExact: semanticHash(projectionCanonical) === projection.semanticFingerprint,
+    terminalBindingsExact:
+      projection.aggregateFingerprint === aggregate.semanticFingerprint &&
+      projection.activeRecoveryCycleFingerprint === aggregate.activeRecoveryCycle.semanticFingerprint &&
+      projection.recoveredFailureFingerprint === aggregate.recoveredFailure.semanticFingerprint &&
+      projection.schedulerClaimCurrentnessReceiptFingerprint ===
+        aggregate.currentSchedulerClaimLifecycle.semanticFingerprint &&
+      projection.currentActionReceiptFingerprint === aggregate.currentRecoveryActionReceipt.semanticFingerprint &&
+      projection.currentSuccessReceiptFingerprint === aggregate.lastSuccessfulExecutionReceipt.semanticFingerprint &&
+      projection.currentConvergenceReceiptFingerprint === aggregate.recoveryConvergenceReceipt.semanticFingerprint &&
+      projection.currentTerminalReceiptFingerprint === aggregate.terminalRecoveryReceipts.at(-1).semanticFingerprint,
+    heldBindingsExact:
+      disposedProjection.aggregateFingerprint === disposedRecoveryAggregate.semanticFingerprint &&
+      disposedProjection.schedulerRecoveryHoldFingerprint ===
+        disposedRecoveryAggregate.schedulerRecoveryHold.semanticFingerprint &&
+      disposedProjection.schedulerDispositionReceiptFingerprint ===
+        disposedRecoveryAggregate.schedulerRecoveryHold.dispositionReceiptFingerprint &&
+      disposedProjection.queue.state === 'BLOCKED' && disposedProjection.health.state === 'BLOCKED',
+    tamperRejections: projectionTamperRejections,
+    allTamperClassesRejected: Object.values(projectionTamperRejections).every(Boolean),
+    failedProjectionReturnedPlausibleView: false
+  };
+  journeyStates.push('BOUNDED_NON_RECURSIVE_SCHEDULER_STATE_PROVEN');
+  journeyStates.push('EXTERNAL_EVENT_CLAIM_CURRENTNESS_PROVEN');
+  journeyStates.push('REPLAY_OWNED_HUMAN_PROJECTION_PROVEN');
 
   let illegalHistoryRejected = false;
   try {
@@ -2410,10 +2760,10 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
         schedulerClaimedSnapshot.recoveryClaimLedger[0].edgeEvidence.schedulerPriorStateReceiptFingerprint,
       preClaimStateFingerprint:
         schedulerClaimedSnapshot.recoveryClaimLedger[0].edgeEvidence.schedulerPriorStateReceipt
-          .schedulerStateSnapshot.semanticFingerprint,
+          .schedulerStateSlice.semanticFingerprint,
       preClaimPhase:
         schedulerClaimedSnapshot.recoveryClaimLedger[0].edgeEvidence.schedulerPriorStateReceipt
-          .schedulerStateSnapshot.phase,
+          .schedulerStateSlice.phase,
       fakeReleaseRestoredClaimRejected,
       siblingPausedSnapshotRejected: forgedRehashedRestoreRejected,
       coordinatedCheckpointReleaseClaimReplayRejected:
@@ -2454,6 +2804,9 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       coordinatedTerminalEdgeForgeryRejected,
       coordinatedDispositionEdgeForgeryRejected
     },
+    boundedNonRecursiveSchedulerStateProof,
+    externalEventClaimLifecycleProof,
+    replayOwnedRecoveryProjectionProof,
     schedulerClaimLifecycleRecoveryProof: {
       claimedCurrentnessReceiptRef: schedulerClaimedCurrentness.currentnessReceiptRef,
       resumedCurrentnessReceiptRef: schedulerResumedCurrentness.currentnessReceiptRef,

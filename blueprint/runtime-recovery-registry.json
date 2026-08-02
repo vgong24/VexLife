@@ -17,7 +17,27 @@
     "invalidatedClaimForcesExactBlockedHold": true,
     "staleClaimAdmissionOrEvidenceReuseAllowed": false,
     "schedulerAndRecoveryAggregateMutationOnRejectedUseAllowed": false,
-    "humanProjectionMustExposeExactDispositionReason": true
+    "humanProjectionMustExposeExactDispositionReason": true,
+    "everyExternalEventRequiresExactCurrentClaimLifecycle": true
+  },
+  "externalRecoveryEventClaimLifecycleContract": {
+    "contractRef": "contract.runtime-recovery.external-event-claim-lifecycle/v1",
+    "managedWaitResumeAndSplitAllowedLifecycle": [
+      "CLAIMED_CURRENT"
+    ],
+    "genericExternalEventAllowedLifecycle": [
+      "CLAIMED_CURRENT",
+      "RESUMED_CONSUMED"
+    ],
+    "requiredBindings": [
+      "schedulerClaimLifecycle",
+      "schedulerClaimCurrentnessReceiptRef",
+      "schedulerClaimCurrentnessReceiptFingerprint"
+    ],
+    "invalidatedReason": "SCHEDULER_CLAIM_INVALIDATED_EXTERNAL_EVENT_REJECTED",
+    "terminalReason": "SCHEDULER_CLAIM_TERMINAL_EXTERNAL_EVENT_REJECTED",
+    "rejectedAggregateMutationAllowed": false,
+    "replayMustRevalidateExactCurrentness": true
   },
   "failureEnvelope": {
     "contractRef": "contract.vexlife.runtime-failure-envelope/v1",
@@ -197,7 +217,36 @@
     "currentCycleEvidenceOnly": true,
     "aggregateHistoryFallbackAllowed": false,
     "preCheckpointPreservationState": "AWAITING_CURRENT_CYCLE_EVIDENCE",
-    "preCheckpointPreservationFingerprint": null
+    "preCheckpointPreservationFingerprint": null,
+    "requiresReplayDerivedAggregate": true
+  },
+  "replayOwnedHumanProjectionContract": {
+    "contractRef": "contract.runtime-recovery.replay-owned-human-projection/v1",
+    "projectionKind": "QUEUE_TERRAIN_HEALTH_GUIDE",
+    "requiresFullAggregateReplayBeforeProjection": true,
+    "requiredBindings": [
+      "aggregateFingerprint",
+      "activeRecoveryCycleFingerprint",
+      "activeFailureFingerprint",
+      "recoveredFailureFingerprint",
+      "schedulerClaimCurrentnessReceiptFingerprint",
+      "schedulerRecoveryHoldFingerprint",
+      "schedulerDispositionReceiptFingerprint",
+      "currentActionReceiptFingerprint",
+      "currentSuccessReceiptFingerprint",
+      "currentConvergenceReceiptFingerprint",
+      "currentTerminalReceiptFingerprint",
+      "semanticFingerprint"
+    ],
+    "rejectedTamperClasses": [
+      "REMOVED_SCHEDULER_HOLD",
+      "BLOCKED_TO_COMPLETED_OR_CLEAR",
+      "HISTORICAL_EVIDENCE_SUBSTITUTION",
+      "CLAIM_LIFECYCLE_OR_CURRENTNESS_SUBSTITUTION",
+      "REHASHED_DISPLAY_AGGREGATE",
+      "ILLEGAL_LEDGER_HISTORY"
+    ],
+    "failedProjectionMayReturnPlausibleView": false
   },
   "schedulerRecoveryClaimContract": {
     "contractRef": "contract.vexlife.runtime-recovery-scheduler-claim/v1",
@@ -462,7 +511,10 @@
     "test.runtime-recovery.r30-exact-cycle-local-evidence",
     "test.runtime-recovery.r31-canonical-checkpoint-preclaim-replay",
     "test.runtime-recovery.r32-complete-claim-edge-replay",
-    "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery"
+    "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery",
+    "test.runtime-recovery.r34-bounded-non-recursive-scheduler-state",
+    "test.runtime-recovery.r35-external-event-claim-lifecycle",
+    "test.runtime-recovery.r36-replay-owned-human-projection"
   ],
   "simulationContract": {
     "contractRef": "contract.runtime-recovery.integrated-simulation/v1",
@@ -486,7 +538,10 @@
       "WORKGRAPH_CAUSAL_RECOVERY_VERIFIED",
       "TERMINAL_RECOVERY_CLOSED",
       "HUMAN_PROJECTIONS_RETAIN_RECOVERY_EVIDENCE",
-      "EXACT_CYCLE_LOCAL_EVIDENCE_REJECTED"
+      "EXACT_CYCLE_LOCAL_EVIDENCE_REJECTED",
+      "BOUNDED_NON_RECURSIVE_SCHEDULER_STATE_PROVEN",
+      "EXTERNAL_EVENT_CLAIM_CURRENTNESS_PROVEN",
+      "REPLAY_OWNED_HUMAN_PROJECTION_PROVEN"
     ],
     "requiredSchedulerBindings": [
       "checkpointFingerprint",

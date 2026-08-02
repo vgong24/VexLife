@@ -886,7 +886,7 @@
     },
     {
       "featureRef": "feature.vexlife.runtime-failure-recovery",
-      "purpose": "Turn every unexpected deterministic executor failure into one typed exact-plan-classified recovery cycle whose edge-specific semantic claim replay, explicit pre-resume terminal hold, cycle-bound evidence formation, action matrix and recovery-output-consuming continuation preserve work and fail closed across substitution, forged restore, restart and consecutive cycles.",
+      "purpose": "Turn every unexpected deterministic executor failure into one typed exact-plan-classified recovery cycle whose bounded non-recursive claim replay, exact external-event claim currentness, replay-owned human projections, explicit pre-resume terminal hold, cycle-bound evidence formation, action matrix and recovery-output-consuming continuation preserve work and fail closed across substitution, forged restore, restart and consecutive cycles.",
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.runtime-recovery",
@@ -957,7 +957,10 @@
         "test.runtime-recovery.r30-exact-cycle-local-evidence",
         "test.runtime-recovery.r31-canonical-checkpoint-preclaim-replay",
         "test.runtime-recovery.r32-complete-claim-edge-replay",
-        "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery"
+        "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery",
+        "test.runtime-recovery.r34-bounded-non-recursive-scheduler-state",
+        "test.runtime-recovery.r35-external-event-claim-lifecycle",
+        "test.runtime-recovery.r36-replay-owned-human-projection"
       ],
       "platformRefs": [
         "platform.browser",

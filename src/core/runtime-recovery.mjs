@@ -552,6 +552,59 @@ function assertRecoveryClaimLifecycle(state, expected, label) {
   return receipt;
 }
 
+function externalEventAllowedClaimLifecycles(event) {
+  return [
+    'vexlife.runtime-recovery-external-wait-event/v1',
+    'vexlife.runtime-recovery-external-resume-event/v1',
+    'vexlife.runtime-recovery-split-route-event/v1'
+  ].includes(event?.schemaVersion)
+    ? ['CLAIMED_CURRENT']
+    : ['CLAIMED_CURRENT', 'RESUMED_CONSUMED'];
+}
+
+function externalEventClaimLifecycleBindings(receipt) {
+  return {
+    schedulerClaimLifecycle: receipt.claimLifecycle,
+    schedulerClaimCurrentnessReceiptRef: receipt.currentnessReceiptRef,
+    schedulerClaimCurrentnessReceiptFingerprint: receipt.semanticFingerprint
+  };
+}
+
+function assertExternalEventClaimLifecycle(event, state) {
+  const receipt = assertRecoveryClaimLifecycle(
+    state,
+    externalEventAllowedClaimLifecycles(event),
+    'external recovery event'
+  );
+  const expected = externalEventClaimLifecycleBindings(receipt);
+  if (event.schedulerClaimLifecycle !== expected.schedulerClaimLifecycle ||
+      event.schedulerClaimCurrentnessReceiptRef !== expected.schedulerClaimCurrentnessReceiptRef ||
+      event.schedulerClaimCurrentnessReceiptFingerprint !==
+        expected.schedulerClaimCurrentnessReceiptFingerprint) {
+    throw new Error(`external recovery event is detached from exact scheduler claim lifecycle currentness: ${
+      event.schedulerClaimLifecycle ?? 'MISSING'
+    }/${event.schedulerClaimCurrentnessReceiptRef ?? 'MISSING'} expected ${
+      expected.schedulerClaimLifecycle
+    }/${expected.schedulerClaimCurrentnessReceiptRef}`);
+  }
+  return receipt;
+}
+
+function externalEventLifecycleRejectionReason(state, event) {
+  const receipt = state.currentSchedulerClaimLifecycle;
+  const allowed = externalEventAllowedClaimLifecycles(event);
+  if (receipt?.claimLifecycle === 'INVALIDATED_OR_ABANDONED') {
+    return 'SCHEDULER_CLAIM_INVALIDATED_EXTERNAL_EVENT_REJECTED';
+  }
+  if (receipt?.claimLifecycle === 'TERMINAL_CONSUMED') {
+    return 'SCHEDULER_CLAIM_TERMINAL_EXTERNAL_EVENT_REJECTED';
+  }
+  if (!receipt || receipt.currentness !== 'CURRENT' || !allowed.includes(receipt.claimLifecycle)) {
+    return 'SCHEDULER_CLAIM_LIFECYCLE_EXTERNAL_EVENT_REJECTED';
+  }
+  return null;
+}
+
 function validateContextReceipt(value) {
   return assertContentAddressed(value, {
     schemaVersion: 'vexlife.runtime-context-recovery-receipt/v1',
@@ -1212,6 +1265,7 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'EXTERNAL_EVENT_ACCEPTED': {
       const external = clone(payload.event);
+      assertExternalEventClaimLifecycle(external, state);
       const supplied = external.semanticFingerprint;
       const managedExternal = [
         'vexlife.runtime-recovery-external-wait-event/v1',
@@ -2138,6 +2192,7 @@ export function createRecoveryWaitResumeReceipt({
     failureFingerprint: owner.activeFailure.semanticFingerprint,
     ...cycleBindings(owner),
     decisionFingerprint: decision.semanticFingerprint,
+    ...externalEventClaimLifecycleBindings(owner.currentSchedulerClaimLifecycle),
     observedAt: waitedAt
   }, 'eventRef', 'external-event.runtime-recovery.wait.');
   const resumeEvent = contentAddressed({
@@ -2149,6 +2204,7 @@ export function createRecoveryWaitResumeReceipt({
     failureFingerprint: owner.activeFailure.semanticFingerprint,
     ...cycleBindings(owner),
     decisionFingerprint: decision.semanticFingerprint,
+    ...externalEventClaimLifecycleBindings(owner.currentSchedulerClaimLifecycle),
     waitEventRef: waitEvent.eventRef,
     waitEventFingerprint: waitEvent.semanticFingerprint,
     resumeSourceRef,
@@ -2161,6 +2217,7 @@ export function createRecoveryWaitResumeReceipt({
     failureFingerprint: owner.activeFailure.semanticFingerprint,
     ...cycleBindings(owner),
     decisionFingerprint: decision.semanticFingerprint,
+    ...externalEventClaimLifecycleBindings(owner.currentSchedulerClaimLifecycle),
     waitEvent,
     resumeEvent,
     state: 'RESUMED_CURRENT'
@@ -2176,6 +2233,7 @@ export function createSplitWorkRouteReceipt({
   registry
 }) {
   const owner = createRecoveryAggregate(aggregate, { registry });
+  assertRecoveryClaimLifecycle(owner, ['CLAIMED_CURRENT'], 'split-work recovery route formation');
   const decision = validateRecoveryPolicyDecision(policyDecision);
   const context = validateContextReceipt(contextRecoveryReceipt);
   if (decision.action !== 'SPLIT_WORK_NODE' || context.action !== 'SPLIT_WORK_NODE' ||
@@ -2193,6 +2251,7 @@ export function createSplitWorkRouteReceipt({
     failureFingerprint: owner.activeFailure.semanticFingerprint,
     ...cycleBindings(owner),
     decisionFingerprint: decision.semanticFingerprint,
+    ...externalEventClaimLifecycleBindings(owner.currentSchedulerClaimLifecycle),
     contextRecoveryReceiptRef: context.contextRecoveryReceiptRef,
     contextRecoveryReceiptFingerprint: context.semanticFingerprint,
     childWorkNodeRef,
@@ -2756,7 +2815,22 @@ export function recordExternalRecoveryEvent(aggregate, event, { registry = null 
   if (!event?.eventRef || !event?.workNodeRef || !Number.isInteger(event?.schedulerGeneration)) {
     return freeze({ changed: false, aggregate: owner, reason: 'MALFORMED_EVENT_REJECTED' });
   }
+  const lifecycleRejection = externalEventLifecycleRejectionReason(owner, event);
+  if (lifecycleRejection) {
+    return freeze({ changed: false, aggregate: owner, reason: lifecycleRejection });
+  }
   const canonical = clone(event);
+  const lifecycleBindings = externalEventClaimLifecycleBindings(owner.currentSchedulerClaimLifecycle);
+  for (const [field, expected] of Object.entries(lifecycleBindings)) {
+    if (canonical[field] !== undefined && canonical[field] !== expected) {
+      return freeze({
+        changed: false,
+        aggregate: owner,
+        reason: 'EVENT_CLAIM_LIFECYCLE_BINDING_MISMATCH_REJECTED'
+      });
+    }
+    canonical[field] = expected;
+  }
   if (canonical.recoveryCycleRef === undefined && canonical.recoveryCycleFingerprint === undefined) {
     Object.assign(canonical, cycleBindings(owner));
   } else {
@@ -2785,7 +2859,8 @@ export function recordExternalRecoveryEvent(aggregate, event, { registry = null 
   return freeze({ changed: true, aggregate: next, reason: 'EVENT_ACCEPTED_ONCE' });
 }
 
-export function projectRecoveryAggregate(aggregate, { priorProjection = null } = {}) {
+export function projectRecoveryAggregate(aggregate, { priorProjection = null, registry = null } = {}) {
+  aggregate = createRecoveryAggregate(aggregate, { registry });
   const active = aggregate.activeFailure;
   const recovered = aggregate.recoveredFailure ?? aggregate.failureHistory.at(-1) ?? null;
   const terminal = aggregate.activeRecoveryCycle
@@ -2802,8 +2877,31 @@ export function projectRecoveryAggregate(aggregate, { priorProjection = null } =
   const hasHeldEvidence = currentQuarantines.length > 0 || currentHumanGates.length > 0;
   const projection = {
     schemaVersion: 'vexlife.runtime-recovery-projection/v1',
+    projectionKind: 'QUEUE_TERRAIN_HEALTH_GUIDE',
     aggregateRef: aggregate.aggregateRef,
     aggregateFingerprint: aggregate.semanticFingerprint,
+    activeRecoveryCycleRef: aggregate.activeRecoveryCycle?.recoveryCycleRef ?? null,
+    activeRecoveryCycleFingerprint: aggregate.activeRecoveryCycle?.semanticFingerprint ?? null,
+    activeFailureRef: active?.failureRef ?? null,
+    activeFailureFingerprint: active?.semanticFingerprint ?? null,
+    recoveredFailureRef: recovered?.failureRef ?? null,
+    recoveredFailureFingerprint: recovered?.semanticFingerprint ?? null,
+    schedulerClaimLifecycle: aggregate.currentSchedulerClaimLifecycle?.claimLifecycle ?? null,
+    schedulerClaimCurrentnessReceiptRef:
+      aggregate.currentSchedulerClaimLifecycle?.currentnessReceiptRef ?? null,
+    schedulerClaimCurrentnessReceiptFingerprint:
+      aggregate.currentSchedulerClaimLifecycle?.semanticFingerprint ?? null,
+    schedulerRecoveryHoldFingerprint: schedulerHold?.semanticFingerprint ?? null,
+    schedulerDispositionReceiptRef: schedulerHold?.dispositionReceiptRef ?? null,
+    schedulerDispositionReceiptFingerprint: schedulerHold?.dispositionReceiptFingerprint ?? null,
+    currentActionReceiptRef: action?.actionReceiptRef ?? null,
+    currentActionReceiptFingerprint: action?.semanticFingerprint ?? null,
+    currentSuccessReceiptRef: success?.executionReceiptRef ?? null,
+    currentSuccessReceiptFingerprint: success?.semanticFingerprint ?? null,
+    currentConvergenceReceiptRef: aggregate.recoveryConvergenceReceipt?.convergenceReceiptRef ?? null,
+    currentConvergenceReceiptFingerprint: aggregate.recoveryConvergenceReceipt?.semanticFingerprint ?? null,
+    currentTerminalReceiptRef: terminal?.recoveryReceiptRef ?? null,
+    currentTerminalReceiptFingerprint: terminal?.semanticFingerprint ?? null,
     queue: {
       state: aggregate.phase,
       workNodeRef: aggregate.workNodeRef,
@@ -2859,6 +2957,14 @@ export function projectRecoveryAggregate(aggregate, { priorProjection = null } =
     }
   };
   projection.semanticFingerprint = semanticHash(projection);
+  if (priorProjection) {
+    const supplied = clone(priorProjection);
+    const suppliedFingerprint = supplied.semanticFingerprint;
+    delete supplied.semanticFingerprint;
+    if (semanticHash(supplied) !== suppliedFingerprint) {
+      throw new Error('prior recovery projection fingerprint is invalid');
+    }
+  }
   if (priorProjection?.semanticFingerprint === projection.semanticFingerprint) {
     return freeze({ changed: false, projection: priorProjection, reason: 'SEMANTIC_NO_OP' });
   }
