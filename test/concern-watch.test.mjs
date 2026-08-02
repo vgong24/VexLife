@@ -52,19 +52,26 @@ function readdress(value, refField, prefix) {
   return { ...core, [refField]: `${prefix}.${semanticFingerprint.slice(0, 24)}`, semanticFingerprint };
 }
 
-function subjectBinding(subject) {
-  return {
+function subjectBinding(subject, sourceBinding) {
+  const binding = {
     concernSubjectRef: subject.concernSubjectRef,
     concernSubjectFingerprint: subject.semanticFingerprint,
     subjectAnchorFingerprint: subject.subjectAnchorFingerprint
   };
+  return {
+    ...binding,
+    sourceAdmissionFingerprint: semanticHash({ ...binding, sourceBinding })
+  };
 }
 
 function observation(suffix, overrides = {}) {
-  return createConcernObservation({
+  const sourceBindingValue = {
     sourceRef: overrides.sourceRef ?? `source.concern-watch.test.${suffix}`,
     sourceFingerprint: overrides.sourceFingerprint ?? semanticHash({ source: suffix, meaning: overrides.meaning ?? 'exact writer collision risk' }),
-    sourceRangeOrEventRef: overrides.sourceRangeOrEventRef ?? `source-event.concern-watch.test.${suffix}`,
+    sourceRangeOrEventRef: overrides.sourceRangeOrEventRef ?? `source-event.concern-watch.test.${suffix}`
+  };
+  return createConcernObservation({
+    ...sourceBindingValue,
     observedAt: overrides.observedAt ?? at(1),
     observerRef: overrides.observerRef ?? 'observer.concern-watch.test',
     aboutScopeRef: overrides.aboutScopeRef ?? 'project.vexlife',
@@ -78,7 +85,7 @@ function observation(suffix, overrides = {}) {
     evidenceRefs: overrides.evidenceRefs ?? [`evidence.concern-watch.test.${suffix}`],
     unknownRefs: overrides.unknownRefs ?? [],
     policySignals: overrides.policySignals ?? { costOfWaiting: 'MEDIUM' },
-    subjectBinding: overrides.subject ? subjectBinding(overrides.subject) : overrides.subjectBinding,
+    subjectBinding: overrides.subject ? subjectBinding(overrides.subject, sourceBindingValue) : overrides.subjectBinding,
     recurrenceBinding: overrides.recurrenceBinding,
     ...(overrides.extra ?? {})
   }, { registry });
@@ -227,6 +234,39 @@ test('CW1 source-derived semantic subjects distinguish nearby meaning and exclud
   assert.throws(() => createConcernObservation({ ...source, concernSubjectRef: subject.concernSubjectRef }, { registry }), /cannot author concernSubjectRef/);
 });
 
+test('review finding 1 rejects unrelated first sources and unbound subsequent sources at record and replay', () => {
+  const sourceA = observation('finding1.source-a');
+  const subjectA = deriveConcernSubject({ observations: [sourceA], subjectKind: 'SCOPE_RISK' }, { registry });
+  const empty = createConcernAggregate({ subject: subjectA, formedAt: at(0) }, { registry });
+  const unrelatedB = observation('finding1.source-b', { subject: subjectA });
+  const before = empty.semanticFingerprint;
+  assert.throws(() => recordConcernObservation(empty, unrelatedB, { registry }), /first observation source binding/);
+  assert.equal(empty.semanticFingerprint, before);
+  assert.equal(empty.observations.length, 0);
+
+  const initial = recordConcernObservation(empty, sourceA, { registry }).aggregate;
+  const validSecond = observation('finding1.second', { observedAt: at(2), subject: subjectA });
+  const unboundSecond = observation('finding1.second-unbound', {
+    sourceRef: validSecond.sourceRef,
+    sourceFingerprint: validSecond.sourceFingerprint,
+    sourceRangeOrEventRef: validSecond.sourceRangeOrEventRef,
+    observedAt: at(2),
+    evidenceRefs: ['evidence.concern-watch.test.finding1.second-unbound']
+  });
+  assert.throws(() => recordConcernObservation(initial, unboundSecond, { registry }), /subject lineage/);
+
+  const forgedFirstReplay = JSON.parse(serializeConcernAggregate(initial, { registry }));
+  forgedFirstReplay.events[0].payload.observation = unrelatedB;
+  forgedFirstReplay.events[0] = readdress(forgedFirstReplay.events[0], 'eventRef', 'concern-event.observation-recorded');
+  assert.throws(() => restoreConcernAggregate(JSON.stringify(forgedFirstReplay), { registry }), /first observation source binding/);
+
+  const withSecond = recordConcernObservation(initial, validSecond, { registry }).aggregate;
+  const forgedSubsequentReplay = JSON.parse(serializeConcernAggregate(withSecond, { registry }));
+  forgedSubsequentReplay.events[1].payload.observation = unboundSecond;
+  forgedSubsequentReplay.events[1] = readdress(forgedSubsequentReplay.events[1], 'eventRef', 'concern-event.observation-recorded');
+  assert.throws(() => restoreConcernAggregate(JSON.stringify(forgedSubsequentReplay), { registry }), /subject lineage/);
+});
+
 test('CW2 duplicate evidence, observation, and restart recurrence are once-only semantic no-ops', () => {
   const fixture = initialFixture('cw2');
   const duplicate = recordConcernObservation(fixture.aggregate, fixture.first, { registry });
@@ -266,11 +306,13 @@ test('CW4 threshold policy is source-managed and caller threshold, priority, or 
 
 test('CW5 repeated model inference cannot raise urgency and requests independent evidence', () => {
   const fixture = initialFixture('cw5', { first: {
-    signalClass: 'MODEL_INFERENCE', certaintyClass: 'LOW_CONFIDENCE', impactClass: 'HIGH', evidenceOriginClass: 'MODEL_INFERENCE'
+    signalClass: 'MODEL_INFERENCE', certaintyClass: 'LOW_CONFIDENCE', impactClass: 'HIGH', evidenceOriginClass: 'MODEL_INFERENCE',
+    policySignals: { activeRecoveryOrIncident: true, resourcePressure: 'CRITICAL', costOfWaiting: 'CRITICAL' }
   } });
   const second = observation('cw5.2', {
     observedAt: at(2), subject: fixture.subject, signalClass: 'MODEL_INFERENCE', certaintyClass: 'LOW_CONFIDENCE',
-    impactClass: 'CRITICAL', evidenceOriginClass: 'MODEL_INFERENCE'
+    impactClass: 'CRITICAL', evidenceOriginClass: 'MODEL_INFERENCE',
+    policySignals: { activeRecoveryOrIncident: true, resourcePressure: 'CRITICAL', costOfWaiting: 'CRITICAL' }
   });
   const aggregate = recordConcernObservation(fixture.aggregate, second, { registry }).aggregate;
   const threshold = evaluateConcernThreshold(aggregate, { observedAt: at(3) }, { registry });
@@ -278,6 +320,35 @@ test('CW5 repeated model inference cannot raise urgency and requests independent
   assert.equal(threshold.thresholdCrossed, false);
   assert.equal(threshold.modelRepetitionRaisedUrgency, false);
   assert.equal(threshold.recommendedPriorityClass, 'BACKGROUND');
+  assert.equal(threshold.statistics.context.activeRecoveryOrIncident, false);
+  assert.equal(threshold.statistics.modelContext.activeRecoveryOrIncident, true);
+  assert.equal(threshold.statistics.modelContextUsedForPriority, false);
+});
+
+test('review finding 2 source-managed identities prevent fresh evidence refs from manufacturing a 3/3 threshold', () => {
+  const fixture = initialFixture('finding2');
+  let aggregate = fixture.aggregate;
+  for (const [suffix, observedAt] of [['2', at(2)], ['3', at(3)]]) {
+    const repeated = observation(`finding2.${suffix}`, {
+      sourceRef: fixture.first.sourceRef,
+      sourceFingerprint: fixture.first.sourceFingerprint,
+      sourceRangeOrEventRef: fixture.first.sourceRangeOrEventRef,
+      observerRef: fixture.first.observerRef,
+      evidenceOriginClass: fixture.first.evidenceOriginClass,
+      observedAt,
+      subject: fixture.subject,
+      evidenceRefs: [`evidence.concern-watch.test.finding2.fresh-${suffix}`]
+    });
+    aggregate = recordConcernObservation(aggregate, repeated, { registry }).aggregate;
+  }
+  const threshold = evaluateConcernThreshold(aggregate, { observedAt: at(4) }, { registry });
+  assert.equal(threshold.statistics.observationCount, 3);
+  assert.equal(threshold.statistics.independentEvidenceCount, 1);
+  assert.equal(threshold.statistics.recurrenceCount, 1);
+  assert.equal(threshold.statistics.independenceIdentities.length, 1);
+  assert.equal(threshold.statistics.recurrenceIdentities.length, 1);
+  assert.equal(threshold.thresholdCrossed, false);
+  assert.equal(threshold.outcome, 'EVIDENCE_REQUIRED');
 });
 
 test('CW6 one exact registered high-consequence observation may activate immediately', () => {
@@ -395,6 +466,50 @@ test('CW13 resolution removes active Queue, Terrain, Guide, and priority while p
   assert.equal(archived.aggregate.observations.length, fixture.aggregate.observations.length);
 });
 
+test('review finding 3 rejects re-addressed closure vocabulary, schema, and projection contradictions at record and replay', () => {
+  const fixture = initialFixture('finding3', { first: {
+    impactClass: 'CRITICAL', certaintyClass: 'SUPPORTED', unknownRefs: ['unknown.concern-watch.finding3']
+  } });
+  const threshold = evaluateConcernThreshold(fixture.aggregate, { observedAt: at(2) }, { registry });
+  const held = recordThresholdEvaluation(fixture.aggregate, threshold, { registry }).aggregate;
+  assert.equal(held.state, 'HELD_UNKNOWN');
+  const validClosure = createConcernClosureReceipt(held, {
+    disposition: 'RESOLVED_NO_RECURRENCE_EXPECTED',
+    evidenceRefs: [fixture.first.evidenceRefs[0]],
+    closedByRef: 'role.vex.operations',
+    closedAt: at(3)
+  }, { registry });
+  const closed = closeConcern(held, validClosure, { registry }).aggregate;
+  const closedSerialized = serializeConcernAggregate(closed, { registry });
+  const mutations = [
+    ['schema', (value) => { value.schemaVersion = 'vexlife.concern-closure-receipt/forged'; }],
+    ['contract', (value) => { value.contractRef = 'contract.vexlife.concern-closure/forged'; }],
+    ['disposition', (value) => { value.disposition = 'FORGED_RESOLUTION'; }],
+    ['recurrence', (value) => { value.recurrenceWatch = true; }],
+    ['history', (value) => { value.historyRetained = false; }],
+    ['projection', (value) => { value.activeProjectionRemoved = false; }],
+    ['queue', (value) => { value.queuePriorityRemoved = false; }]
+  ];
+  for (const [label, mutate] of mutations) {
+    const changed = structuredClone(validClosure);
+    mutate(changed);
+    const forgedClosure = readdress(changed, 'closureRef', 'concern-closure');
+    assert.throws(() => closeConcern(held, forgedClosure, { registry }), /closure|disposition|unknown/, `${label} record boundary`);
+
+    const forgedReplay = JSON.parse(closedSerialized);
+    const closureEventIndex = forgedReplay.events.length - 1;
+    forgedReplay.events[closureEventIndex].payload.closure = forgedClosure;
+    forgedReplay.events[closureEventIndex] = readdress(
+      forgedReplay.events[closureEventIndex],
+      'eventRef',
+      'concern-event.concern-closed'
+    );
+    assert.throws(() => restoreConcernAggregate(JSON.stringify(forgedReplay), { registry }), /closure|disposition|unknown/, `${label} replay boundary`);
+  }
+  assert.equal(held.state, 'HELD_UNKNOWN');
+  assert.equal(held.closures.length, 0);
+});
+
 test('CW14 recurrence after closure reopens only through the exact prior concern and closure lineage', () => {
   const fixture = resolvedFixture('cw14');
   const priorLineage = {
@@ -500,10 +615,10 @@ test('adversarial scope, hidden hold, forged subject, caller urgency, stale sche
   const fixture = initialFixture('adversarial');
   const wrongScope = observation('adversarial.scope', { observedAt: at(2), subject: fixture.subject, aboutScopeRef: 'project.other' });
   assert.throws(() => recordConcernObservation(fixture.aggregate, wrongScope, { registry }), /wrong project/);
-  const forgedSubject = observation('adversarial.subject', {
-    observedAt: at(2),
-    subjectBinding: { ...subjectBinding(fixture.subject), concernSubjectFingerprint: '0'.repeat(64) }
-  });
+  const validSubject = observation('adversarial.subject', { observedAt: at(2), subject: fixture.subject });
+  const forgedSubjectValue = structuredClone(validSubject);
+  forgedSubjectValue.subjectBinding.concernSubjectFingerprint = '0'.repeat(64);
+  const forgedSubject = readdress(forgedSubjectValue, 'concernObservationRef', 'concern-observation');
   assert.throws(() => recordConcernObservation(fixture.aggregate, forgedSubject, { registry }), /subject/);
   assert.throws(() => observation('adversarial.urgency', { extra: { urgency: 'CRITICAL' } }), /cannot author urgency/);
   const held = initialFixture('adversarial.held', { first: {

@@ -198,11 +198,23 @@ function normalizeSubjectBinding(binding, label) {
   };
 }
 
-function exactSubjectBinding(actual, subject) {
+function sourceAdmissionFingerprint(subjectBinding, source) {
+  return semanticHash({
+    concernSubjectRef: subjectBinding.concernSubjectRef,
+    concernSubjectFingerprint: subjectBinding.concernSubjectFingerprint,
+    subjectAnchorFingerprint: subjectBinding.subjectAnchorFingerprint,
+    sourceBinding: normalizeSubjectBinding(source, 'subject source admission')
+  });
+}
+
+function exactSubjectBinding(actual, subject, observation) {
   if (!actual || actual.concernSubjectRef !== subject.concernSubjectRef ||
       actual.concernSubjectFingerprint !== subject.semanticFingerprint ||
       actual.subjectAnchorFingerprint !== subject.subjectAnchorFingerprint) {
     throw new Error('observation has forged or substituted concern subject lineage');
+  }
+  if (actual.sourceAdmissionFingerprint !== sourceAdmissionFingerprint(actual, observation)) {
+    throw new Error('observation has forged or substituted source-to-subject admission');
   }
 }
 
@@ -237,7 +249,8 @@ function observationCore(input, registry) {
     core.subjectBinding = {
       concernSubjectRef: requireString(input.subjectBinding.concernSubjectRef, 'subjectBinding.concernSubjectRef'),
       concernSubjectFingerprint: requireFingerprint(input.subjectBinding.concernSubjectFingerprint, 'subjectBinding.concernSubjectFingerprint'),
-      subjectAnchorFingerprint: requireFingerprint(input.subjectBinding.subjectAnchorFingerprint, 'subjectBinding.subjectAnchorFingerprint')
+      subjectAnchorFingerprint: requireFingerprint(input.subjectBinding.subjectAnchorFingerprint, 'subjectBinding.subjectAnchorFingerprint'),
+      sourceAdmissionFingerprint: requireFingerprint(input.subjectBinding.sourceAdmissionFingerprint, 'subjectBinding.sourceAdmissionFingerprint')
     };
   } else core.subjectBinding = null;
   if (input.recurrenceBinding != null) {
@@ -419,8 +432,18 @@ function assertLegalTransition(prior, next, registry) {
 }
 
 function observationMatchesSubject(snapshot, observation) {
-  if (snapshot.observations.length === 0 && snapshot.root.priorLineage == null) return;
-  exactSubjectBinding(observation.subjectBinding, snapshot.root.concernSubject);
+  const subject = snapshot.root.concernSubject;
+  const sourceBinding = normalizeSubjectBinding(observation, 'observation source binding');
+  const sourceIsBoundToSubject = subject.sourceBindings.some((binding) => semanticHash(binding) === semanticHash(sourceBinding));
+  const isFirstObservation = snapshot.observations.length === 0;
+  if (isFirstObservation && snapshot.root.priorLineage == null && !sourceIsBoundToSubject) {
+    throw new Error('first observation source binding is not admitted by the exact concern subject');
+  }
+  if (!isFirstObservation || snapshot.root.priorLineage != null) {
+    exactSubjectBinding(observation.subjectBinding, subject, observation);
+  } else if (observation.subjectBinding != null) {
+    exactSubjectBinding(observation.subjectBinding, subject, observation);
+  }
   if (snapshot.root.priorLineage) {
     if (!observation.recurrenceBinding || semanticHash(observation.recurrenceBinding) !== semanticHash(snapshot.root.priorLineage)) {
       throw new Error('recurrence observation does not cite exact prior concern and closure lineage');
@@ -479,17 +502,38 @@ function policySignalScore(observations) {
   };
 }
 
+function evidenceIdentity(observation, fields, identityKind) {
+  return semanticHash({
+    identityKind,
+    ...Object.fromEntries(fields.map((field) => [field, observation[field]]))
+  });
+}
+
+function distinctEvidence(observations, fields, identityKind) {
+  const distinct = new Map();
+  for (const observation of observations) {
+    const identity = evidenceIdentity(observation, fields, identityKind);
+    if (!distinct.has(identity)) distinct.set(identity, observation);
+  }
+  return distinct;
+}
+
 function thresholdStatistics(aggregate, registry) {
   const observations = aggregate.observations;
-  const independent = observations.filter((item) => item.evidenceOriginClass !== 'MODEL_INFERENCE');
+  const eligible = observations.filter((item) => item.evidenceOriginClass !== 'MODEL_INFERENCE');
   const model = observations.filter((item) => item.evidenceOriginClass === 'MODEL_INFERENCE');
-  const times = independent.map((item) => Date.parse(item.observedAt)).sort((a, b) => a - b);
+  const identityPolicy = registry.thresholdPolicy.evidenceIdentityPolicy;
+  const independent = distinctEvidence(eligible, identityPolicy.independenceIdentityIncludes, 'INDEPENDENCE');
+  const recurrent = distinctEvidence(eligible, identityPolicy.recurrenceIdentityIncludes, 'RECURRENCE');
+  const recurrenceObservations = [...recurrent.values()];
+  const times = recurrenceObservations.map((item) => Date.parse(item.observedAt)).sort((a, b) => a - b);
   const minimumSpacing = registry.thresholdPolicy.standardActivation.minimumSpacingMs;
   const spacingSatisfied = times.length < 2 || times.slice(1).every((time, index) => time - times[index] >= minimumSpacing);
-  const certaintyClass = maxClass(independent, 'certaintyClass', registry.thresholdPolicy.certaintyScores, 'UNKNOWN');
-  const impactClass = maxClass(independent, 'impactClass', registry.thresholdPolicy.impactScores, 'LOW');
-  const reversibilityClass = maxClass(independent, 'reversibilityClass', registry.thresholdPolicy.reversibilityScores, 'FULLY_REVERSIBLE');
-  const context = policySignalScore(observations);
+  const certaintyClass = maxClass(eligible, 'certaintyClass', registry.thresholdPolicy.certaintyScores, 'UNKNOWN');
+  const impactClass = maxClass(eligible, 'impactClass', registry.thresholdPolicy.impactScores, 'LOW');
+  const reversibilityClass = maxClass(eligible, 'reversibilityClass', registry.thresholdPolicy.reversibilityScores, 'FULLY_REVERSIBLE');
+  const context = policySignalScore(eligible);
+  const modelContext = policySignalScore(model);
   const contextScore =
     (context.deadlineOrTimeSensitivity === 'IMMINENT' ? 2 : context.deadlineOrTimeSensitivity === 'BOUNDED' ? 1 : 0) +
     (context.rateOfChange === 'RAPID' ? 2 : context.rateOfChange === 'INCREASING' ? 1 : 0) +
@@ -497,21 +541,25 @@ function thresholdStatistics(aggregate, registry) {
     (context.activeRecoveryOrIncident ? 2 : 0) +
     (context.costOfWaiting === 'CRITICAL' ? 3 : context.costOfWaiting === 'HIGH' ? 2 : context.costOfWaiting === 'MEDIUM' ? 1 : 0) -
     (context.costOfFalseAlarm === 'HIGH' ? 2 : context.costOfFalseAlarm === 'MEDIUM' ? 1 : 0);
-  const policyScore = independent.length +
+  const policyScore = independent.size +
     severityRank(registry.thresholdPolicy.certaintyScores, certaintyClass) +
     severityRank(registry.thresholdPolicy.impactScores, impactClass) +
     severityRank(registry.thresholdPolicy.reversibilityScores, reversibilityClass) + contextScore;
   return {
     observationCount: observations.length,
-    independentEvidenceCount: independent.length,
+    independentEvidenceCount: independent.size,
+    independenceIdentities: [...independent.keys()].sort(),
     modelEvidenceCount: model.length,
-    recurrenceCount: independent.length,
+    recurrenceCount: recurrent.size,
+    recurrenceIdentities: [...recurrent.keys()].sort(),
     spacingSatisfied,
     certaintyClass,
     impactClass,
     reversibilityClass,
     unknownCount: aggregate.unknownRefs.length,
     context,
+    modelContext,
+    modelContextUsedForPriority: false,
     policyScore
   };
 }
@@ -723,10 +771,66 @@ function applyRecoveryEvidence(snapshot, value, registry) {
   snapshot.recoveryEvidence.push(clone(value));
 }
 
-function validateClosure(closure, snapshot) {
+function schedulerCompletionCore(value) {
+  requireObject(value, 'scheduler completion');
+  return {
+    completionReceiptRef: requireString(value.completionReceiptRef, 'scheduler completion receiptRef'),
+    completionReceiptFingerprint: requireFingerprint(value.completionReceiptFingerprint, 'scheduler completion fingerprint'),
+    schedulerAggregateFingerprint: requireFingerprint(value.schedulerAggregateFingerprint, 'scheduler completion aggregate fingerprint'),
+    workNodeRef: requireString(value.workNodeRef, 'scheduler completion workNodeRef'),
+    workNodeFingerprint: requireFingerprint(value.workNodeFingerprint, 'scheduler completion workNodeFingerprint'),
+    state: requireString(value.state, 'scheduler completion state'),
+    currentness: requireString(value.currentness, 'scheduler completion currentness'),
+    observedAt: canonicalTimestamp(value.observedAt, 'scheduler completion observedAt')
+  };
+}
+
+function closureCore(snapshot, input, registry) {
+  requireObject(input, 'concern closure');
+  const disposition = assertKnown(input.disposition, registry.vocabularies.closureDispositions, 'closure disposition');
+  const schedulerCompletion = input.schedulerCompletion == null ? null : schedulerCompletionCore(input.schedulerCompletion);
+  if (snapshot.schedulerAdmissions.length === 0 && schedulerCompletion != null) {
+    throw new Error('closure cannot cite scheduler completion without exact scheduler admission');
+  }
+  const successorConcernAggregateRef = input.successorConcernAggregateRef == null ? null :
+    requireString(input.successorConcernAggregateRef, 'successor concern aggregateRef');
+  const successorConcernAggregateFingerprint = input.successorConcernAggregateFingerprint == null ? null :
+    requireFingerprint(input.successorConcernAggregateFingerprint, 'successor concern fingerprint');
+  if (disposition === 'SUPERSEDED_BY_EXACT_SUCCESSOR') {
+    if (!successorConcernAggregateRef || !successorConcernAggregateFingerprint) throw new Error('supersession requires exact successor');
+  } else if (successorConcernAggregateRef != null || successorConcernAggregateFingerprint != null) {
+    throw new Error('non-supersession closure cannot cite a successor');
+  }
+  const evidenceRefs = exactRefs(input.evidenceRefs ?? [], 'closure evidenceRefs');
+  if (disposition === 'FALSE_POSITIVE_WITH_EVIDENCE' && evidenceRefs.length === 0) {
+    throw new Error('false-positive closure requires evidence');
+  }
+  return {
+    schemaVersion: registry.closureContract.schemaVersion,
+    contractRef: registry.closureContract.contractRef,
+    aggregateRef: snapshot.aggregateRef,
+    aggregateFingerprint: currentSnapshotFingerprint(snapshot),
+    concernSubjectRef: snapshot.concernSubjectRef,
+    disposition,
+    evidenceRefs,
+    schedulerCompletion,
+    successorConcernAggregateRef,
+    successorConcernAggregateFingerprint,
+    recurrenceWatch: disposition === 'RESOLVED_WATCH_FOR_RECURRENCE',
+    closedByRef: requireString(input.closedByRef, 'closedByRef'),
+    closedAt: canonicalTimestamp(input.closedAt, 'closedAt'),
+    historyRetained: true,
+    activeProjectionRemoved: disposition !== 'HELD_UNKNOWN',
+    queuePriorityRemoved: true
+  };
+}
+
+function validateClosure(closure, snapshot, registry) {
   assertContentAddressed(closure, 'closureRef', 'concern-closure', 'concern closure');
-  if (closure.aggregateRef !== snapshot.aggregateRef || closure.aggregateFingerprint !== currentSnapshotFingerprint(snapshot) ||
-      closure.concernSubjectRef !== snapshot.concernSubjectRef) throw new Error('closure has stale concern lineage');
+  const expected = contentAddressed(closureCore(snapshot, closure, registry), 'closureRef', 'concern-closure');
+  if (semanticHash(expected) !== semanticHash(closure)) {
+    throw new Error('closure does not match the exact source-managed closure contract');
+  }
   if (snapshot.schedulerAdmissions.length) {
     const admission = snapshot.schedulerAdmissions.at(-1);
     const completion = closure.schedulerCompletion;
@@ -735,21 +839,22 @@ function validateClosure(closure, snapshot) {
         Date.parse(completion.observedAt) > Date.parse(closure.closedAt)) {
       throw new Error('admitted concern closure requires exact current scheduler completion');
     }
-    requireFingerprint(completion.completionReceiptFingerprint, 'scheduler completion fingerprint');
-  }
-  if (closure.disposition === 'SUPERSEDED_BY_EXACT_SUCCESSOR') {
-    if (!closure.successorConcernAggregateRef || !closure.successorConcernAggregateFingerprint) throw new Error('supersession requires exact successor');
-  }
-  if (closure.disposition === 'FALSE_POSITIVE_WITH_EVIDENCE' && closure.evidenceRefs.length === 0) {
-    throw new Error('false-positive closure requires evidence');
   }
 }
 
 function applyClosure(snapshot, closure, registry) {
   if (TERMINAL_STATES.has(snapshot.state)) throw new Error('concern is already terminal');
-  validateClosure(closure, snapshot);
-  const next = closure.disposition === 'SUPERSEDED_BY_EXACT_SUCCESSOR' ? 'SUPERSEDED' :
-    closure.disposition === 'HELD_UNKNOWN' ? 'HELD_UNKNOWN' : 'RESOLVED';
+  validateClosure(closure, snapshot, registry);
+  const stateByDisposition = {
+    RESOLVED_NO_RECURRENCE_EXPECTED: 'RESOLVED',
+    RESOLVED_WATCH_FOR_RECURRENCE: 'RESOLVED',
+    SUPERSEDED_BY_EXACT_SUCCESSOR: 'SUPERSEDED',
+    FALSE_POSITIVE_WITH_EVIDENCE: 'RESOLVED',
+    ACCEPTED_RISK: 'RESOLVED',
+    HELD_UNKNOWN: 'HELD_UNKNOWN'
+  };
+  const next = stateByDisposition[closure.disposition];
+  if (!next) throw new Error(`closure disposition is unknown: ${closure.disposition}`);
   assertLegalTransition(snapshot.state, next, registry);
   snapshot.closures.push(clone(closure));
   snapshot.state = next;
@@ -1010,28 +1115,8 @@ export function recordRecoveryConcernEvidence(aggregate, evidence, { registry } 
 export function createConcernClosureReceipt(aggregate, input, { registry } = {}) {
   const source = registryOrThrow(registry);
   validateConcernAggregate(aggregate, { registry: source });
-  assertKnown(input.disposition, source.vocabularies.closureDispositions, 'closure disposition');
-  const core = {
-    schemaVersion: source.closureContract.schemaVersion,
-    contractRef: source.closureContract.contractRef,
-    aggregateRef: aggregate.aggregateRef,
-    aggregateFingerprint: aggregate.semanticFingerprint,
-    concernSubjectRef: aggregate.concernSubjectRef,
-    disposition: input.disposition,
-    evidenceRefs: exactRefs(input.evidenceRefs ?? [], 'closure evidenceRefs'),
-    schedulerCompletion: input.schedulerCompletion == null ? null : clone(input.schedulerCompletion),
-    successorConcernAggregateRef: input.successorConcernAggregateRef ?? null,
-    successorConcernAggregateFingerprint: input.successorConcernAggregateFingerprint ?? null,
-    recurrenceWatch: input.disposition === 'RESOLVED_WATCH_FOR_RECURRENCE',
-    closedByRef: requireString(input.closedByRef, 'closedByRef'),
-    closedAt: canonicalTimestamp(input.closedAt, 'closedAt'),
-    historyRetained: true,
-    activeProjectionRemoved: input.disposition !== 'HELD_UNKNOWN',
-    queuePriorityRemoved: true
-  };
-  if (core.successorConcernAggregateFingerprint != null) requireFingerprint(core.successorConcernAggregateFingerprint, 'successor concern fingerprint');
-  const closure = contentAddressed(core, 'closureRef', 'concern-closure');
-  validateClosure(closure, aggregate);
+  const closure = contentAddressed(closureCore(aggregate, input, source), 'closureRef', 'concern-closure');
+  validateClosure(closure, aggregate, source);
   return closure;
 }
 
@@ -1063,7 +1148,7 @@ export function reopenConcernFromRecurrence(priorAggregate, observation, { forme
   if (priorAggregate.state !== 'RESOLVED' || closure?.disposition !== 'RESOLVED_WATCH_FOR_RECURRENCE') {
     throw new Error('prior concern is not resolved with recurrence watch');
   }
-  exactSubjectBinding(observation.subjectBinding, priorAggregate.root.concernSubject);
+  exactSubjectBinding(observation.subjectBinding, priorAggregate.root.concernSubject, observation);
   const priorLineage = {
     priorConcernAggregateRef: priorAggregate.aggregateRef,
     priorConcernAggregateFingerprint: priorAggregate.semanticFingerprint,
@@ -1346,10 +1431,19 @@ export function createConcernWatchEvidenceConsumptionReceipt(integratedReceipt, 
 }
 
 function simulationObservation(registry, index, input, subject = null, recurrenceBinding = null) {
-  return createConcernObservation({
+  const sourceBinding = {
     sourceRef: `source.concern-watch.simulation.${index}`,
     sourceFingerprint: semanticHash({ source: 'concern-watch-simulation', index, meaning: input.meaning ?? 'writer claim integrity' }),
-    sourceRangeOrEventRef: `source-event.concern-watch.simulation.${index}`,
+    sourceRangeOrEventRef: `source-event.concern-watch.simulation.${index}`
+  };
+  const binding = subject ? {
+    concernSubjectRef: subject.concernSubjectRef,
+    concernSubjectFingerprint: subject.semanticFingerprint,
+    subjectAnchorFingerprint: subject.subjectAnchorFingerprint
+  } : null;
+  if (binding) binding.sourceAdmissionFingerprint = sourceAdmissionFingerprint(binding, sourceBinding);
+  return createConcernObservation({
+    ...sourceBinding,
     observedAt: input.observedAt,
     observerRef: input.observerRef,
     aboutScopeRef: 'project.vexlife',
@@ -1363,11 +1457,7 @@ function simulationObservation(registry, index, input, subject = null, recurrenc
     evidenceRefs: [input.evidenceRef],
     unknownRefs: input.unknownRefs ?? [],
     policySignals: input.policySignals ?? { costOfWaiting: 'MEDIUM' },
-    subjectBinding: subject ? {
-      concernSubjectRef: subject.concernSubjectRef,
-      concernSubjectFingerprint: subject.semanticFingerprint,
-      subjectAnchorFingerprint: subject.subjectAnchorFingerprint
-    } : null,
+    subjectBinding: binding,
     recurrenceBinding
   }, { registry });
 }
@@ -1529,8 +1619,31 @@ export function validateConcernWatchRegistry(registry) {
   ]) if (!contractRefs.includes(contractRef)) errors.push(`nested contract is not registered: ${contractRef}`);
   if (registry.thresholdPolicy?.callerOverrideAllowed !== false ||
       registry.thresholdPolicy?.thresholdCrossingGrantsExecutionAuthority !== false ||
-      registry.thresholdPolicy?.modelRepetitionRule?.modelOnlyRecurrenceRaisesUrgency !== false) {
+      registry.thresholdPolicy?.modelRepetitionRule?.modelOnlyRecurrenceRaisesUrgency !== false ||
+      registry.thresholdPolicy?.modelRepetitionRule?.modelPolicyContextRaisesPriority !== false) {
     errors.push('threshold policy permits caller authority or model anxiety amplification');
+  }
+  const identityPolicy = registry.thresholdPolicy?.evidenceIdentityPolicy;
+  if (identityPolicy?.sourceManaged !== true || identityPolicy?.callerOverrideAllowed !== false ||
+      identityPolicy?.evidenceRefsAffectIndependenceIdentity !== false || identityPolicy?.evidenceRefsAffectRecurrenceIdentity !== false ||
+      semanticHash(identityPolicy?.independenceIdentityIncludes) !== semanticHash(['sourceRef', 'observerRef', 'evidenceOriginClass']) ||
+      semanticHash(identityPolicy?.recurrenceIdentityIncludes) !== semanticHash(['sourceRef', 'sourceRangeOrEventRef', 'sourceFingerprint', 'observerRef', 'evidenceOriginClass'])) {
+    errors.push('threshold evidence identity policy is not exact source-managed current truth');
+  }
+  const observationAdmission = registry.subjectContract?.observationAdmission;
+  if (observationAdmission?.initialFirstObservationRequiresExactSubjectSourceBinding !== true ||
+      observationAdmission?.subsequentObservationRequiresExactSubjectBinding !== true ||
+      observationAdmission?.subjectBindingIncludesExactSourceAdmissionFingerprint !== true ||
+      observationAdmission?.recurrenceFirstObservationRequiresExactSubjectAndPriorClosureLineage !== true ||
+      observationAdmission?.replayRevalidatesAdmission !== true) {
+    errors.push('subject observation admission is incomplete');
+  }
+  if (registry.closureContract?.recordAndReplayRequireExactSchemaAndContract !== true ||
+      registry.closureContract?.recordAndReplayRequireKnownDisposition !== true ||
+      registry.closureContract?.historyRetainedMustBeTrue !== true ||
+      registry.closureContract?.projectionRemovalDerivedFromDisposition !== true ||
+      registry.closureContract?.queuePriorityRemovedMustBeTrue !== true) {
+    errors.push('closure record and replay invariants are incomplete');
   }
   if (registry.schedulerIntegration?.dormantWatchConsumesPhysicalWorker !== false ||
       registry.schedulerIntegration?.dormantWatchConsumesEffectAuthority !== false ||

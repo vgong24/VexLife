@@ -68,7 +68,14 @@
     ],
     "identityIncludes": ["subjectKind", "sourceBindings"],
     "identityExcludes": ["aboutScopeRef", "impactClass", "priorityClass", "urgency", "summary"],
-    "callerAuthoredIdentityAllowed": false
+    "callerAuthoredIdentityAllowed": false,
+    "observationAdmission": {
+      "initialFirstObservationRequiresExactSubjectSourceBinding": true,
+      "subsequentObservationRequiresExactSubjectBinding": true,
+      "subjectBindingIncludesExactSourceAdmissionFingerprint": true,
+      "recurrenceFirstObservationRequiresExactSubjectAndPriorClosureLineage": true,
+      "replayRevalidatesAdmission": true
+    }
   },
   "vocabularies": {
     "concernClasses": [
@@ -160,12 +167,20 @@
   "thresholdPolicy": {
     "contractRef": "contract.vexlife.concern-threshold-policy/v1",
     "policyRef": "policy.concern-watch.threshold.001",
-    "policyVersion": 1,
+    "policyVersion": 2,
     "currentness": "CURRENT",
     "callerOverrideAllowed": false,
     "certaintyScores": { "UNKNOWN": 0, "LOW_CONFIDENCE": 1, "SUPPORTED": 2, "VERIFIED": 3 },
     "impactScores": { "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4 },
     "reversibilityScores": { "FULLY_REVERSIBLE": 0, "PARTIALLY_REVERSIBLE": 1, "UNKNOWN": 2, "IRREVERSIBLE": 3 },
+    "evidenceIdentityPolicy": {
+      "sourceManaged": true,
+      "callerOverrideAllowed": false,
+      "independenceIdentityIncludes": ["sourceRef", "observerRef", "evidenceOriginClass"],
+      "recurrenceIdentityIncludes": ["sourceRef", "sourceRangeOrEventRef", "sourceFingerprint", "observerRef", "evidenceOriginClass"],
+      "evidenceRefsAffectIndependenceIdentity": false,
+      "evidenceRefsAffectRecurrenceIdentity": false
+    },
     "standardActivation": {
       "minimumIndependentEvidence": 3,
       "minimumRecurrenceCount": 3,
@@ -186,6 +201,7 @@
       "ruleRef": "rule.concern-watch.model-repetition-does-not-escalate.001",
       "modelEvidenceCountsAsIndependent": false,
       "modelOnlyRecurrenceRaisesUrgency": false,
+      "modelPolicyContextRaisesPriority": false,
       "repeatedModelOnlyOutcome": "EVIDENCE_REQUIRED"
     },
     "contextFactors": [
@@ -274,7 +290,12 @@
     "queuePriorityRemovalRequired": true,
     "recurrenceRequiresPriorLineage": true,
     "supersessionRequiresExactSuccessor": true,
-    "falsePositiveRequiresEvidence": true
+    "falsePositiveRequiresEvidence": true,
+    "recordAndReplayRequireExactSchemaAndContract": true,
+    "recordAndReplayRequireKnownDisposition": true,
+    "historyRetainedMustBeTrue": true,
+    "projectionRemovalDerivedFromDisposition": true,
+    "queuePriorityRemovedMustBeTrue": true
   },
   "projectionContract": {
     "contractRef": "contract.vexlife.concern-projection/v1",
