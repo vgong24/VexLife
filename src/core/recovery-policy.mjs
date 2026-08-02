@@ -52,8 +52,22 @@ function outcomeFor(action) {
 
 function matchingAttempts(aggregate, failure) {
   return (aggregate?.attemptLedger ?? []).filter((item) =>
+    item.recoveryCycleRef === aggregate?.activeRecoveryCycle?.recoveryCycleRef &&
     item.failureRecurrenceFingerprint === failure.recurrenceFingerprint
   );
+}
+
+function currentCycleAttempts(aggregate) {
+  return (aggregate?.attemptLedger ?? []).filter((item) =>
+    item.recoveryCycleRef === aggregate?.activeRecoveryCycle?.recoveryCycleRef
+  );
+}
+
+function assertCurrentCycle(value, aggregate, label) {
+  if (!aggregate?.activeRecoveryCycle || value?.recoveryCycleRef !== aggregate.activeRecoveryCycle.recoveryCycleRef ||
+      value?.recoveryCycleFingerprint !== aggregate.activeRecoveryCycle.semanticFingerprint) {
+    throw new Error(`${label} is not bound to the exact current recovery cycle`);
+  }
 }
 
 function policyAction(failure) {
@@ -112,6 +126,8 @@ function validateCheckpointAdmission(value, aggregate, failure) {
       canonical.workNodeRef !== aggregate.workNodeRef ||
       canonical.sourceStateFingerprint !== aggregate.sourceStateFingerprint ||
       canonical.failureFingerprint !== failure.semanticFingerprint ||
+      canonical.recoveryCycleRef !== aggregate.activeRecoveryCycle?.recoveryCycleRef ||
+      canonical.recoveryCycleFingerprint !== aggregate.activeRecoveryCycle?.semanticFingerprint ||
       !canonical.schedulerConsumptionRef || !canonical.schedulerConsumptionFingerprint ||
       !canonical.onceOnlyActivationRef || canonical.leaseReleaseFingerprints?.length !== 6 ||
       canonical.priorSchedulerGeneration !== aggregate.schedulerGeneration ||
@@ -137,6 +153,7 @@ function validateSourceAdmission(value, aggregate, failure, kind) {
       canonical.failureFingerprint !== failure.semanticFingerprint) {
     throw new Error(`${kind} recovery admission is stale or detached`);
   }
+  assertCurrentCycle(canonical, aggregate, `${kind} recovery admission`);
   return canonical;
 }
 
@@ -167,6 +184,9 @@ export function resolveRecoveryPolicy({
   if (aggregate?.activeFailure?.semanticFingerprint !== failure.semanticFingerprint) {
     throw new Error('recovery policy failure is not active in the canonical aggregate');
   }
+  if (!aggregate.activeRecoveryCycle || aggregate.activeRecoveryCycle.failureFingerprint !== failure.semanticFingerprint) {
+    throw new Error('recovery policy requires the exact current recovery cycle');
+  }
   const budget = registry?.retryPolicy;
   if (!budget) throw new Error('recovery policy requires the registry retry budget');
   const budgetFingerprint = semanticHash(budget);
@@ -175,9 +195,10 @@ export function resolveRecoveryPolicy({
     throw new Error('recovery policy rejected substituted or reset retry budget');
   }
   const observedEpoch = parseCanonicalTimestamp(observedAt, 'recovery policy observedAt');
-  const attempts = aggregate.attemptLedger.length;
+  const cycleAttempts = currentCycleAttempts(aggregate);
+  const attempts = cycleAttempts.length;
   const repeated = matchingAttempts(aggregate, failure).length;
-  const firstStart = aggregate.attemptLedger[0]?.startedAt;
+  const firstStart = cycleAttempts[0]?.startedAt;
   const totalElapsedMs = firstStart ? observedEpoch - parseCanonicalTimestamp(firstStart, 'first attempt startedAt') : 0;
   let action = policyAction(failure);
   const reasons = [`FAILURE_CLASS:${failure.failureClass}`, 'REGISTRY_BUDGET_EXACT'];
@@ -237,6 +258,8 @@ export function resolveRecoveryPolicy({
     schemaVersion: 'vexlife.runtime-recovery-policy-decision/v1',
     failureRef: failure.failureRef,
     failureFingerprint: failure.semanticFingerprint,
+    recoveryCycleRef: aggregate.activeRecoveryCycle.recoveryCycleRef,
+    recoveryCycleFingerprint: aggregate.activeRecoveryCycle.semanticFingerprint,
     action,
     executorOutcome: outcomeFor(action),
     actionAuthorized,

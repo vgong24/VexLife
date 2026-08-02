@@ -686,5 +686,17 @@
   {
     "testRef": "test.runtime-recovery.r24-full-gate",
     "brief": "PR-ready and Health independently consume the exact current runtime recovery receipt while tests, browser, manifest, Windows/Linux portability and DCO remain required."
+  },
+  {
+    "testRef": "test.runtime-recovery.r25-exact-classifier-plan",
+    "brief": "Classification consumes one exact current source-issued plan receipt and rejects unknown, allowed-but-not-issued, caller-inline, stale and same-ref/different-content formations."
+  },
+  {
+    "testRef": "test.runtime-recovery.r26-replay-durable-scheduler-claim",
+    "brief": "Scheduler recovery claim ownership replays from aggregate state across restart and advances once through claimed, resumed and terminal or abandoned lifecycle without release reuse."
+  },
+  {
+    "testRef": "test.runtime-recovery.r27-cycle-isolation",
+    "brief": "Consecutive content-addressed recovery cycles preserve immutable history while only current-cycle action, continuation, success, convergence, terminal and human projection evidence can satisfy the active cycle."
   }
 ]

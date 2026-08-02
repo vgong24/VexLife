@@ -83,6 +83,84 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function validateRecoveryClaimTransition(value, sequence, priorFingerprint) {
+  if (!value || value.schemaVersion !== 'vexlife.intent-scheduler-recovery-claim-transition/v1' ||
+      !['CLAIMED_CURRENT', 'RESUMED_CONSUMED', 'TERMINAL_CONSUMED', 'INVALIDATED_OR_ABANDONED'].includes(value.type) ||
+      value.sequence !== sequence || value.priorTransitionFingerprint !== priorFingerprint ||
+      !value.transitionRef || !value.semanticFingerprint) {
+    throw new Error('scheduler recovery claim transition is malformed or out of order');
+  }
+  const candidate = clone(value);
+  delete candidate.transitionRef;
+  delete candidate.semanticFingerprint;
+  const fingerprint = semanticHash(candidate);
+  if (fingerprint !== value.semanticFingerprint || !value.transitionRef.endsWith(fingerprint.slice(0, 32))) {
+    throw new Error('scheduler recovery claim transition content-addressed identity mismatch');
+  }
+  return clone(value);
+}
+
+function replayRecoveryClaimLedger(ledger = []) {
+  if (!Array.isArray(ledger)) throw new Error('scheduler recovery claim ledger must be an array');
+  const records = new Map();
+  const consumedReleaseFingerprints = new Set();
+  let prior = null;
+  ledger.forEach((input, sequence) => {
+    const transition = validateRecoveryClaimTransition(input, sequence, prior);
+    const existing = records.get(transition.checkpointRef);
+    if (transition.type === 'CLAIMED_CURRENT') {
+      if (existing || !transition.claimReceiptRef || !transition.claimReceiptFingerprint ||
+          !transition.consumptionRef || !transition.consumptionFingerprint ||
+          transition.leaseReleaseFingerprints?.length !== 6 ||
+          new Set(transition.leaseReleaseFingerprints).size !== 6 ||
+          transition.leaseReleaseFingerprints.some((item) => consumedReleaseFingerprints.has(item))) {
+        throw new Error('scheduler recovery checkpoint/release claim is duplicate or incomplete');
+      }
+      transition.leaseReleaseFingerprints.forEach((item) => consumedReleaseFingerprints.add(item));
+      records.set(transition.checkpointRef, {
+        checkpointRef: transition.checkpointRef,
+        checkpointFingerprint: transition.checkpointFingerprint,
+        workNodeRef: transition.workNodeRef,
+        sourceStateFingerprint: transition.sourceStateFingerprint,
+        recoveryAggregateRef: transition.recoveryAggregateRef,
+        recoveryAggregateFingerprint: transition.recoveryAggregateFingerprint,
+        recoveryCycleRef: transition.recoveryCycleRef,
+        recoveryCycleFingerprint: transition.recoveryCycleFingerprint,
+        failureRef: transition.failureRef,
+        failureFingerprint: transition.failureFingerprint,
+        claimReceiptRef: transition.claimReceiptRef,
+        claimReceiptFingerprint: transition.claimReceiptFingerprint,
+        consumptionRef: transition.consumptionRef,
+        consumptionFingerprint: transition.consumptionFingerprint,
+        onceOnlyActivationRef: transition.onceOnlyActivationRef,
+        leaseReleaseReceiptRefs: clone(transition.leaseReleaseReceiptRefs),
+        leaseReleaseFingerprints: clone(transition.leaseReleaseFingerprints),
+        state: 'CLAIMED_CURRENT',
+        currentness: 'CURRENT',
+        lastTransitionRef: transition.transitionRef,
+        lastTransitionFingerprint: transition.semanticFingerprint
+      });
+    } else {
+      if (!existing || existing.state !== (transition.type === 'RESUMED_CONSUMED' ? 'CLAIMED_CURRENT' : 'RESUMED_CONSUMED') ||
+          transition.consumptionFingerprint !== existing.consumptionFingerprint ||
+          transition.claimReceiptFingerprint !== existing.claimReceiptFingerprint) {
+        throw new Error('scheduler recovery claim lifecycle transition is stale or detached');
+      }
+      existing.state = transition.type;
+      existing.currentness = transition.type === 'RESUMED_CONSUMED' ? 'CURRENT' : 'TERMINAL';
+      existing.lastTransitionRef = transition.transitionRef;
+      existing.lastTransitionFingerprint = transition.semanticFingerprint;
+      if (transition.schedulerGeneration !== undefined) existing.schedulerGeneration = transition.schedulerGeneration;
+      if (transition.actionReceiptFingerprint !== undefined) {
+        existing.actionReceiptFingerprint = transition.actionReceiptFingerprint;
+      }
+      records.set(transition.checkpointRef, existing);
+    }
+    prior = transition.semanticFingerprint;
+  });
+  return [...records.values()].sort((left, right) => left.checkpointRef.localeCompare(right.checkpointRef));
+}
+
 function compactQueue(queue) {
   return {
     state: queue?.state ?? 'IDLE',
@@ -128,6 +206,8 @@ export function createInitialSchedulerAggregate() {
     runtimeTrust: null,
     observedClock: null,
     checkpoints: [],
+    recoveryClaimLedger: [],
+    recoveryClaims: [],
     continuations: [],
     heldToolDispositions: [],
     terminalReceipts: [],
@@ -193,6 +273,10 @@ export function reduceSchedulerAggregate(current, event) {
       if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
       if (event.observedClock) next.observedClock = clone(event.observedClock);
       break;
+    case 'RECOVERY_CLAIMED':
+      next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
+      next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger);
+      break;
     case 'RESUMED':
       next.phase = 'RUNNING';
       next.generation = event.queue.generation;
@@ -214,6 +298,10 @@ export function reduceSchedulerAggregate(current, event) {
       if (event.heldToolDisposition) next.heldToolDispositions.push(clone(event.heldToolDisposition));
       if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
       if (event.observedClock) next.observedClock = clone(event.observedClock);
+      if (event.recoveryClaimTransition) {
+        next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
+        next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger);
+      }
       break;
     case 'COMPLETED':
       next.phase = next.continuations.length ? 'CONTINUATION_READY' : 'COMPLETED';
@@ -228,6 +316,10 @@ export function reduceSchedulerAggregate(current, event) {
       );
       if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
       if (event.observedClock) next.observedClock = clone(event.observedClock);
+      if (event.recoveryClaimTransition) {
+        next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
+        next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger);
+      }
       break;
     case 'CANCELLED':
       next.phase = next.continuations.length ? 'CONTINUATION_READY' : 'CANCELLED';
@@ -236,6 +328,10 @@ export function reduceSchedulerAggregate(current, event) {
       for (const lease of Object.values(event.transitionedLeases)) next.leaseLedger[lease.leaseRef] = clone(lease);
       if (event.relayLedger) next.relayLedger = clone(event.relayLedger);
       if (event.observedClock) next.observedClock = clone(event.observedClock);
+      if (event.recoveryClaimTransition) {
+        next.recoveryClaimLedger = [...next.recoveryClaimLedger, clone(event.recoveryClaimTransition)];
+        next.recoveryClaims = replayRecoveryClaimLedger(next.recoveryClaimLedger);
+      }
       break;
     case 'CLOCK_ADVANCED':
       next.observedClock = clone(event.observedClock);
@@ -307,7 +403,15 @@ function runtimeHealth(aggregate) {
 }
 
 export function createIntentSchedulerState({ aggregate = createInitialSchedulerAggregate() } = {}) {
-  const aggregateState = new StateCell(aggregate, { name: 'intent-scheduler.aggregate' });
+  const supplied = clone(aggregate);
+  const suppliedFingerprint = supplied.semanticFingerprint;
+  delete supplied.semanticFingerprint;
+  if (semanticHash(supplied) !== suppliedFingerprint) throw new Error('scheduler aggregate fingerprint mismatch');
+  const replayedClaims = replayRecoveryClaimLedger(aggregate.recoveryClaimLedger ?? []);
+  if (JSON.stringify(replayedClaims) !== JSON.stringify(aggregate.recoveryClaims ?? [])) {
+    throw new Error('scheduler recovery claim current pointers differ from replayed truth');
+  }
+  const aggregateState = new StateCell(clone(aggregate), { name: 'intent-scheduler.aggregate' });
 
   const runtime = selectState(aggregateState, (current) => ({
     schemaVersion: 'vexlife.intent-scheduler-runtime-projection/v1',

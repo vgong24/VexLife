@@ -16,6 +16,7 @@ import {
   continueRecoveryGeneration,
   createRecoveryAggregate,
   createRecoveryCheckpoint,
+  createSchedulerRecoveryClaimReceipt,
   createRecoveryContinuation,
   createRecoveryConvergenceReceipt,
   createHumanDecisionGate,
@@ -32,7 +33,11 @@ import {
   restoreRecoveryAggregate,
   serializeRecoveryAggregate
 } from '../src/core/runtime-recovery.mjs';
-import { validateFailureEnvelope } from '../src/core/runtime-failure.mjs';
+import {
+  createDeterministicClassifiedExecutor,
+  issueClassifierPlan,
+  validateFailureEnvelope
+} from '../src/core/runtime-failure.mjs';
 import {
   createDeterministicFaultInjector,
   createNoEffectTransactionalAdapter,
@@ -49,6 +54,9 @@ const FAILED_AT = '2026-08-01T00:00:02.000Z';
 const RECOVERED_AT = '2026-08-01T00:00:04.000Z';
 const SUCCEEDED_AT = '2026-08-01T00:00:05.000Z';
 const COMPLETED_AT = '2026-08-01T00:00:06.000Z';
+const CYCLE_TWO_STARTED_AT = '2026-08-01T00:00:07.000Z';
+const CYCLE_TWO_FAILED_AT = '2026-08-01T00:00:08.000Z';
+const CYCLE_TWO_ACTION_AT = '2026-08-01T00:00:09.000Z';
 const EXPIRES_AT = '2026-08-01T00:01:00.000Z';
 function expectedActionSpecificCausalGateRefs(actionReceipt) {
   const roleNames = {
@@ -428,6 +436,7 @@ function runRepresentativeActionBranch({
     workerRef: runtimeOne.workerRef,
     schedulerInstanceRef: `instance.intent-scheduler.runtime-recovery.${name}`,
     schedulerRegistry: bundle.schedulerRegistry,
+    runtimeRecoveryRegistry: registry,
     runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef })
   });
   const queue = scheduler.admit(graph, optionsOne);
@@ -445,6 +454,7 @@ function runRepresentativeActionBranch({
     retryBudget: registry.retryPolicy
   }, { registry });
   const executor = createDeterministicFaultInjector({
+    registry,
     planRef: `classifier-plan.runtime-recovery.representative.${name}`,
     failures: [{ attempt: 1, failureClass, message: `${name} deterministic failure` }],
     successValue: { state: 'PASS', partialEffectState: 'NONE', branchRef: name }
@@ -471,11 +481,15 @@ function runRepresentativeActionBranch({
     sourceBindings,
     formedAt: FAILED_AT
   }, { releaseReceiptRef: `release.runtime-recovery.checkpoint.${name}.1`, releasedAt: FAILED_AT });
+  const recoveryClaimReceipt = createSchedulerRecoveryClaimReceipt({
+    aggregate: owner,
+    schedulerAggregate: scheduler.aggregate,
+    schedulerCheckpoint: checkpointed.checkpoint,
+    formedAt: FAILED_AT,
+    registry
+  });
   const consumption = scheduler.claimRecoveryCheckpoint(checkpointed.checkpoint.checkpointRef, {
-    aggregateRef: owner.aggregateRef,
-    failureRef: failed.failure.failureRef,
-    failureFingerprint: failed.failure.semanticFingerprint,
-    sourceStateFingerprint,
+    recoveryClaimReceipt,
     observedAt: FAILED_AT
   });
   const checkpoint = createRecoveryCheckpoint({
@@ -741,6 +755,47 @@ export function validateIntegratedRecoverySimulationReceipt(receipt, {
       receipt.boundaryTotalityAndSourcePolicyProof?.callerHintsCannotWeaken !== true) {
     errors.push('boundary/source-policy proof is incomplete');
   }
+  const classifierProof = receipt.exactClassifierPlanProvenanceProof;
+  if (!classifierProof || classifierProof.currentness !== 'CURRENT' ||
+      classifierProof.planReceiptFingerprint !== receipt.canonicalFailure?.classifierPlanReceiptFingerprint ||
+      classifierProof.evidenceFingerprint !== receipt.canonicalFailure?.classificationEvidenceFingerprint ||
+      classifierProof.evidenceConsumesExactPlanReceipt !== true || classifierProof.failClosed !== true ||
+      classifierProof.unknownPlanRejected !== true || classifierProof.allowedButNotIssuedPlanRejected !== true ||
+      classifierProof.stalePlanReceiptRejected !== true || classifierProof.sameRefDifferentContentRejected !== true ||
+      classifierProof.callerAuthoredInlinePlanRejected !== true ||
+      !runtimeRecoveryRegistry.classifierContract.plans.some((item) =>
+        item.planRef === classifierProof.classifierPlanRef && item.sourceRef === classifierProof.sourceRef &&
+        item.adapterRef === classifierProof.adapterRef && item.formationRef === classifierProof.formationRef)) {
+    errors.push('exact classifier plan provenance proof is incomplete or substituted');
+  }
+  const schedulerOwnership = receipt.replayDurableSchedulerRecoveryOwnershipProof;
+  if (!schedulerOwnership || schedulerOwnership.leaseReleaseCount !== 6 ||
+      schedulerOwnership.claimLifecycle !== 'CLAIMED_CURRENT' || schedulerOwnership.currentness !== 'CURRENT' ||
+      schedulerOwnership.forgedClaimRejected !== true || schedulerOwnership.forgedClaimMutationFree !== true ||
+      schedulerOwnership.duplicateLiveClaimRejected !== true || schedulerOwnership.duplicateRestartClaimRejected !== true ||
+      schedulerOwnership.restartPreservedClaimOwnership !== true ||
+      schedulerOwnership.releaseSetPreservedAcrossRestart !== true ||
+      schedulerOwnership.claimedState !== 'CLAIMED_CURRENT' ||
+      schedulerOwnership.resumedState !== 'RESUMED_CONSUMED' ||
+      schedulerOwnership.terminalState !== 'TERMINAL_CONSUMED' ||
+      schedulerOwnership.schedulerClaimLedgerLength !== 3 || !schedulerOwnership.onceOnlyActivationRef ||
+      !schedulerOwnership.recoveryCycleRef ||
+      !/^[a-f0-9]{64}$/.test(String(schedulerOwnership.recoveryCycleFingerprint ?? ''))) {
+    errors.push('replay-durable scheduler recovery ownership proof is incomplete');
+  }
+  const cycleProof = receipt.recoveryCycleIsolationProof;
+  if (!cycleProof || cycleProof.recoveryCycleCount !== 2 ||
+      cycleProof.firstRecoveryCycleFingerprint !== cycleProof.priorCycleFingerprint ||
+      cycleProof.firstRecoveryCycleRef !== cycleProof.firstTerminalCycleRef ||
+      cycleProof.sameFailureClassRecurrence !== true || cycleProof.sameOperationRecurrence !== true ||
+      cycleProof.differentActionRecovery !== true || cycleProof.priorCycleConvergenceRejected !== true ||
+      cycleProof.priorCycleTerminalRejected !== true || cycleProof.prematureCurrentSuccessRejected !== true ||
+      cycleProof.historicalTerminalIntact !== true ||
+      cycleProof.currentProjectionCycleRef !== cycleProof.secondRecoveryCycleRef ||
+      cycleProof.currentProjectionTerminalProofRef !== null ||
+      cycleProof.currentProjectionState !== 'BLOCKED') {
+    errors.push('recovery cycle isolation proof is incomplete or stale');
+  }
   if (receipt.checkpointFreshGenerationSixLeaseProof?.releasedLeaseCount !== 6 ||
       receipt.checkpointFreshGenerationSixLeaseProof?.freshLeaseCount !== 6 ||
       receipt.checkpointFreshGenerationSixLeaseProof?.generationAdvanced !== true ||
@@ -891,6 +946,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     workerRef: runtimeOne.workerRef,
     schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery',
     schedulerRegistry: bundle.schedulerRegistry,
+    runtimeRecoveryRegistry: registry,
     runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef })
   });
   const queue = scheduler.admit(graph, optionsOne);
@@ -913,6 +969,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     retryBudget: registry.retryPolicy
   }, { registry });
   const executor = createDeterministicFaultInjector({
+    registry,
     planRef: 'classifier-plan.runtime-recovery.simulation.main',
     failures: [{ attempt: 1, failureClass: 'PARTIAL_WRITE_SIMULATED', message: 'deterministic partial write' }],
     successValue: { state: 'PASS', partialEffectState: 'NONE', outputRef: 'output.runtime-recovery.simulation' }
@@ -923,7 +980,14 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     registry,
     context: boundaryContext(aggregate, 'attempt.runtime-recovery.simulation.1', 1, OBSERVED, FAILED_AT)
   });
-  if (!failed.admitted || failed.status !== 'FAILED_RECOVERABLE') throw new Error('typed runtime failure was not admitted');
+  if (!failed.admitted || failed.status !== 'FAILED_RECOVERABLE') {
+    throw new Error(`typed runtime failure was not admitted: ${JSON.stringify({
+      admitted: failed.admitted,
+      status: failed.status,
+      reason: failed.reason,
+      boundaryRejection: failed.boundaryRejection
+    })}`);
+  }
   aggregate = failed.aggregate;
   journeyStates.push('TOTAL_BOUNDARY_FAILURE_TYPED');
 
@@ -943,13 +1007,65 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     formedAt: FAILED_AT
   }, { releaseReceiptRef: 'release.runtime-recovery.checkpoint.1', releasedAt: FAILED_AT });
   journeyStates.push('EXACT_SCHEDULER_CHECKPOINT_AND_SIX_RELEASES');
+  const recoveryClaimReceipt = createSchedulerRecoveryClaimReceipt({
+    aggregate,
+    schedulerAggregate: scheduler.aggregate,
+    schedulerCheckpoint: checkpointed.checkpoint,
+    formedAt: FAILED_AT,
+    registry
+  });
+  const schedulerFingerprintBeforeForgedClaim = scheduler.aggregate.semanticFingerprint;
+  const forgedClaimReceipt = structuredClone(recoveryClaimReceipt);
+  forgedClaimReceipt.aggregateRef = 'aggregate.runtime-recovery.forged-claimant';
+  delete forgedClaimReceipt.claimReceiptRef;
+  delete forgedClaimReceipt.semanticFingerprint;
+  forgedClaimReceipt.semanticFingerprint = semanticHash(forgedClaimReceipt);
+  forgedClaimReceipt.claimReceiptRef =
+    `claim.runtime-recovery.scheduler.${forgedClaimReceipt.semanticFingerprint.slice(0, 32)}`;
+  let forgedClaimRejected = false;
+  try {
+    scheduler.claimRecoveryCheckpoint(checkpointed.checkpoint.checkpointRef, {
+      recoveryClaimReceipt: forgedClaimReceipt,
+      observedAt: FAILED_AT
+    });
+  } catch {
+    forgedClaimRejected = true;
+  }
+  const forgedClaimMutationFree = scheduler.aggregate.semanticFingerprint === schedulerFingerprintBeforeForgedClaim;
   const schedulerConsumption = scheduler.claimRecoveryCheckpoint(checkpointed.checkpoint.checkpointRef, {
-    aggregateRef: aggregate.aggregateRef,
-    failureRef: failed.failure.failureRef,
-    failureFingerprint: failed.failure.semanticFingerprint,
-    sourceStateFingerprint,
+    recoveryClaimReceipt,
     observedAt: FAILED_AT
   });
+  const schedulerClaimedSnapshot = structuredClone(scheduler.aggregate);
+  let duplicateLiveClaimRejected = false;
+  try {
+    scheduler.claimRecoveryCheckpoint(checkpointed.checkpoint.checkpointRef, {
+      recoveryClaimReceipt,
+      observedAt: FAILED_AT
+    });
+  } catch {
+    duplicateLiveClaimRejected = true;
+  }
+  const restartedClaimScheduler = new SingleWorkerIntentScheduler({
+    workerRef: runtimeOne.workerRef,
+    schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery',
+    schedulerRegistry: bundle.schedulerRegistry,
+    runtimeRecoveryRegistry: registry,
+    runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef }),
+    schedulerAggregate: schedulerClaimedSnapshot
+  });
+  let duplicateRestartClaimRejected = false;
+  try {
+    restartedClaimScheduler.claimRecoveryCheckpoint(checkpointed.checkpoint.checkpointRef, {
+      recoveryClaimReceipt,
+      observedAt: FAILED_AT
+    });
+  } catch {
+    duplicateRestartClaimRejected = true;
+  }
+  const restartPreservedClaimOwnership =
+    restartedClaimScheduler.aggregate.semanticFingerprint === schedulerClaimedSnapshot.semanticFingerprint &&
+    restartedClaimScheduler.aggregate.recoveryClaims.at(-1)?.state === 'CLAIMED_CURRENT';
   const checkpoint = createRecoveryCheckpoint({
     schedulerCheckpoint: checkpointed.checkpoint,
     schedulerConsumptionReceipt: schedulerConsumption,
@@ -1040,6 +1156,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     workerRef: runtimeOne.workerRef,
     schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.quarantine',
     schedulerRegistry: bundle.schedulerRegistry,
+    runtimeRecoveryRegistry: registry,
     runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: runtimeOne.sourceRef })
   });
   const quarantineQueue = quarantineScheduler.admit(graph, optionsOne);
@@ -1052,6 +1169,7 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     throw new Error('quarantine proof did not receive its own scheduler-owned running lineage');
   }
   const quarantineExecutor = createDeterministicFaultInjector({
+    registry,
     planRef: 'classifier-plan.runtime-recovery.simulation.quarantine',
     failures: [{ attempt: 1, failureClass: 'ROLLBACK_FAILED_SIMULATED', message: 'deterministic rollback and restore failure' }]
   });
@@ -1076,13 +1194,17 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     sourceBindings,
     formedAt: FAILED_AT
   }, { releaseReceiptRef: 'release.runtime-recovery.checkpoint.quarantine.1', releasedAt: FAILED_AT });
+  const quarantineClaimReceipt = createSchedulerRecoveryClaimReceipt({
+    aggregate: quarantineAggregate,
+    schedulerAggregate: quarantineScheduler.aggregate,
+    schedulerCheckpoint: quarantineCheckpointed.checkpoint,
+    formedAt: FAILED_AT,
+    registry
+  });
   const quarantineConsumption = quarantineScheduler.claimRecoveryCheckpoint(
     quarantineCheckpointed.checkpoint.checkpointRef,
     {
-      aggregateRef: quarantineAggregate.aggregateRef,
-      failureRef: quarantineFailure.failure.failureRef,
-      failureFingerprint: quarantineFailure.failure.semanticFingerprint,
-      sourceStateFingerprint,
+      recoveryClaimReceipt: quarantineClaimReceipt,
       observedAt: FAILED_AT
     }
   );
@@ -1270,6 +1392,188 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
   }
   journeyStates.push('HUMAN_PROJECTIONS_RETAIN_RECOVERY_EVIDENCE');
 
+  const firstCycle = aggregate.recoveryCycleHistory[0];
+  const firstTerminal = aggregate.terminalRecoveryReceipts.find((item) =>
+    item.recoveryCycleRef === firstCycle.recoveryCycleRef);
+  const cycleTwoGraphFormation = createRecoveryGraph(bundle, registry, trustSnapshot);
+  const cycleTwoResource = runtimeResource(2, sourceStateFingerprint, {
+    formedAt: COMPLETED_AT,
+    observedAt: CYCLE_TWO_STARTED_AT,
+    cpuLoadPct: 10,
+    ramAvailableMb: 8192
+  });
+  const cycleTwoRuntime = runtimeTrust(bundle.schedulerRegistry, cycleTwoResource, 2, {
+    formedAt: COMPLETED_AT,
+    observedAt: CYCLE_TWO_STARTED_AT
+  });
+  const cycleTwoScheduler = new SingleWorkerIntentScheduler({
+    workerRef: cycleTwoRuntime.workerRef,
+    schedulerInstanceRef: 'instance.intent-scheduler.runtime-recovery.cycle-two',
+    schedulerRegistry: bundle.schedulerRegistry,
+    runtimeRecoveryRegistry: registry,
+    runtimeAuthority: new WorkerLeaseAuthority({ sourceRef: cycleTwoRuntime.sourceRef })
+  });
+  const cycleTwoQueue = cycleTwoScheduler.admit(cycleTwoGraphFormation.graph, schedulerOptions({
+    bundle,
+    graph: cycleTwoGraphFormation.graph,
+    node: cycleTwoGraphFormation.node,
+    trustSnapshot,
+    resourceSnapshot: cycleTwoResource,
+    runtimeTrustSnapshot: cycleTwoRuntime,
+    generation: 2,
+    formedAt: COMPLETED_AT,
+    observedAt: CYCLE_TWO_STARTED_AT
+  }));
+  const cycleTwoRunning = cycleTwoScheduler.leaseSelected({
+    ...contextInput(2, { formedAt: COMPLETED_AT, observedAt: CYCLE_TWO_STARTED_AT }),
+    leaseRef: 'context-lease.runtime-recovery.cycle-two.2',
+    cancellationTokenRef: 'cancellation-token.runtime-recovery.cycle-two.2'
+  });
+  if (cycleTwoQueue.state !== 'ADMITTED' || !cycleTwoRunning.admitted) {
+    throw new Error('second recovery cycle scheduler lineage was not admitted');
+  }
+  const cycleTwoExecutor = createDeterministicFaultInjector({
+    registry,
+    planRef: 'classifier-plan.runtime-recovery.simulation.main',
+    failures: [{ attempt: 1, failureClass: 'PARTIAL_WRITE_SIMULATED', message: 'same-operation cycle recurrence' }],
+    successValue: { state: 'PASS', partialEffectState: 'NONE', outputRef: 'output.runtime-recovery.cycle-two' }
+  });
+  const cycleTwoFailure = executeWithRecoveryBoundary({
+    aggregate,
+    executor: cycleTwoExecutor,
+    registry,
+    context: boundaryContext(aggregate, 'attempt.runtime-recovery.simulation.cycle-two.1', 2,
+      CYCLE_TWO_STARTED_AT, CYCLE_TWO_FAILED_AT)
+  });
+  if (cycleTwoFailure.status !== 'FAILED_RECOVERABLE') throw new Error('second recovery cycle was not activated');
+  let cycleIsolationAggregate = cycleTwoFailure.aggregate;
+  const cycleTwoCheckpointed = cycleTwoScheduler.checkpoint({
+    checkpointRef: 'checkpoint.runtime-recovery.scheduler.cycle-two.2',
+    workNodeRef: cycleTwoGraphFormation.node.workNodeRef,
+    lastCompletedStep: 'same-operation-second-cycle-failure-formed',
+    selectedSourceRefs: ['blueprint/runtime-recovery-registry.json'],
+    selectedContextRefs: [cycleTwoRunning.contextLease.leaseRef],
+    producedArtifactRefs: [],
+    producedReceiptRefs: [cycleTwoQueue.admissionReceipt.admissionReceiptRef],
+    openQuestions: [],
+    nextSafeAction: 'PROVE_CURRENT_CYCLE_ONLY',
+    pendingToolCallRef: 'NONE',
+    sourceBindings,
+    formedAt: CYCLE_TWO_FAILED_AT
+  }, { releaseReceiptRef: 'release.runtime-recovery.checkpoint.cycle-two.2', releasedAt: CYCLE_TWO_FAILED_AT });
+  const cycleTwoClaim = createSchedulerRecoveryClaimReceipt({
+    aggregate: cycleIsolationAggregate,
+    schedulerAggregate: cycleTwoScheduler.aggregate,
+    schedulerCheckpoint: cycleTwoCheckpointed.checkpoint,
+    formedAt: CYCLE_TWO_FAILED_AT,
+    registry
+  });
+  const cycleTwoConsumption = cycleTwoScheduler.claimRecoveryCheckpoint(cycleTwoCheckpointed.checkpoint.checkpointRef, {
+    recoveryClaimReceipt: cycleTwoClaim,
+    observedAt: CYCLE_TWO_FAILED_AT
+  });
+  const cycleTwoCheckpoint = createRecoveryCheckpoint({
+    schedulerCheckpoint: cycleTwoCheckpointed.checkpoint,
+    schedulerConsumptionReceipt: cycleTwoConsumption,
+    aggregateRef: cycleIsolationAggregate.aggregateRef,
+    failureRef: cycleTwoFailure.failure.failureRef,
+    failureFingerprint: cycleTwoFailure.failure.semanticFingerprint,
+    sourceStateFingerprint,
+    selectedSourceRanges: [{ sourceRef: 'blueprint/runtime-recovery-registry.json', start: 0, end: 1 }],
+    preservedIntentRef: 'intent.runtime-recovery.simulation',
+    preservedInterpretationRef: 'interpretation.runtime-recovery.simulation.cycle-two',
+    preservedUnknownRefs: ['unknown.runtime-recovery.none'],
+    preservedAuthorityRef: 'authority.runtime-recovery.no-effect-only',
+    returnRouteRef: cycleTwoGraphFormation.node.returnRouteRef,
+    formedAt: CYCLE_TWO_FAILED_AT
+  });
+  const cycleTwoAdmission = admitRecoveryCheckpoint(cycleTwoCheckpoint, cycleIsolationAggregate, {
+    schedulerCheckpoint: cycleTwoCheckpointed.checkpoint,
+    schedulerConsumptionReceipt: cycleTwoConsumption,
+    nextSchedulerGeneration: 3,
+    currentSourceStateFingerprint: sourceStateFingerprint,
+    observedAt: CYCLE_TWO_FAILED_AT,
+    registry
+  });
+  cycleIsolationAggregate = recordRecoveryCheckpointAdmission(
+    cycleIsolationAggregate,
+    cycleTwoCheckpoint,
+    cycleTwoAdmission,
+    { schedulerConsumptionReceipt: cycleTwoConsumption, registry }
+  );
+  const cycleTwoDecision = recordRecoveryPolicyDecision(cycleIsolationAggregate, {
+    checkpointAdmission: cycleTwoAdmission,
+    authorityBoundary: 'CHANGED',
+    observedAt: CYCLE_TWO_ACTION_AT,
+    registry
+  });
+  const cycleTwoAction = applyRecoveryAction({
+    aggregate: cycleTwoDecision.aggregate,
+    policyDecision: cycleTwoDecision.policyDecision,
+    checkpointAdmission: cycleTwoAdmission,
+    observedAt: CYCLE_TWO_ACTION_AT,
+    registry
+  });
+  cycleIsolationAggregate = cycleTwoAction.aggregate;
+  let priorCycleConvergenceRejected = false;
+  try {
+    recordRecoveryConvergence(cycleIsolationAggregate, convergence, { registry });
+  } catch {
+    priorCycleConvergenceRejected = true;
+  }
+  let priorCycleTerminalRejected = false;
+  try {
+    closeRecoveredExecution({
+      aggregate: cycleIsolationAggregate,
+      successExecution: succeeded,
+      schedulerEvidence: {
+        schedulerCheckpoint: checkpointed.checkpoint,
+        completionVerification: completed.completionVerification,
+        completionEvidenceLineage: completed.completionEvidenceLineage,
+        workgraphTransition: completed.canonicalWorkgraphTransition,
+        completionReceipt: completed.completionReceipt,
+        returnRouteReceipt: completed.returnRouteReceipt
+      },
+      completedAt: CYCLE_TWO_ACTION_AT,
+      registry
+    });
+  } catch {
+    priorCycleTerminalRejected = true;
+  }
+  const prematureCycleTwoSuccess = executeWithRecoveryBoundary({
+    aggregate: cycleIsolationAggregate,
+    executor: cycleTwoExecutor,
+    registry,
+    context: boundaryContext(cycleIsolationAggregate, 'attempt.runtime-recovery.simulation.cycle-two.2', 2,
+      CYCLE_TWO_ACTION_AT, '2026-08-01T00:00:10.000Z')
+  });
+  const cycleIsolationProjection = projectRecoveryAggregate(cycleIsolationAggregate).projection;
+  const secondCycle = cycleIsolationAggregate.activeRecoveryCycle;
+  const recoveryCycleIsolationProof = {
+    aggregateRef: cycleIsolationAggregate.aggregateRef,
+    recoveryCycleCount: cycleIsolationAggregate.recoveryCycleHistory.length,
+    firstRecoveryCycleRef: firstCycle.recoveryCycleRef,
+    firstRecoveryCycleFingerprint: firstCycle.semanticFingerprint,
+    firstTerminalCycleRef: firstTerminal?.recoveryCycleRef ?? null,
+    firstTerminalFingerprint: firstTerminal?.semanticFingerprint ?? null,
+    secondRecoveryCycleRef: secondCycle.recoveryCycleRef,
+    secondRecoveryCycleFingerprint: secondCycle.semanticFingerprint,
+    priorCycleFingerprint: secondCycle.priorRecoveryCycleFingerprint,
+    sameFailureClassRecurrence: failed.failure.failureClass === cycleTwoFailure.failure.failureClass,
+    sameOperationRecurrence: failed.failure.operationRef === cycleTwoFailure.failure.operationRef,
+    firstAction: action.actionReceipt.action,
+    secondAction: cycleTwoAction.actionReceipt.action,
+    differentActionRecovery: action.actionReceipt.action !== cycleTwoAction.actionReceipt.action,
+    priorCycleConvergenceRejected,
+    priorCycleTerminalRejected,
+    prematureCurrentSuccessRejected: prematureCycleTwoSuccess.admitted === false,
+    historicalTerminalIntact: cycleIsolationAggregate.terminalRecoveryReceipts.some((item) =>
+      item.semanticFingerprint === firstTerminal?.semanticFingerprint),
+    currentProjectionCycleRef: cycleIsolationProjection.queue.activeRecoveryCycleRef,
+    currentProjectionTerminalProofRef: cycleIsolationProjection.guide.terminalProofRef,
+    currentProjectionState: cycleIsolationProjection.health.state
+  };
+
   let illegalHistoryRejected = false;
   try {
     const tampered = JSON.parse(serializeRecoveryAggregate(aggregate, { registry }));
@@ -1312,6 +1616,58 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
     registry,
     context: boundaryContext(thenableAggregate(), 'attempt.runtime-recovery.thenable.reject.1', 1, OBSERVED, FAILED_AT)
   });
+  const exactClassifierPlanReceipt = failed.failure.classificationEvidence.classifierPlanReceipt;
+  const classifierRejections = {
+    unknownPlanRejected: false,
+    allowedButNotIssuedPlanRejected: false,
+    stalePlanReceiptRejected: false,
+    sameRefDifferentContentRejected: false,
+    callerAuthoredInlinePlanRejected: false
+  };
+  for (const [field, planRef] of [
+    ['unknownPlanRejected', 'classifier-plan.runtime-recovery.unknown'],
+    ['allowedButNotIssuedPlanRejected', 'classifier-plan.runtime-recovery.allowed-but-not-issued']
+  ]) {
+    try {
+      issueClassifierPlan(planRef, { registry });
+    } catch {
+      classifierRejections[field] = true;
+    }
+  }
+  const staleClassifierPlanReceipt = structuredClone(exactClassifierPlanReceipt);
+  staleClassifierPlanReceipt.currentness = 'STALE';
+  try {
+    createDeterministicClassifiedExecutor({
+      classifierPlanReceipt: staleClassifierPlanReceipt,
+      registry,
+      invoke: () => null
+    });
+  } catch {
+    classifierRejections.stalePlanReceiptRejected = true;
+  }
+  const sameRefDifferentClassifierPlanReceipt = structuredClone(exactClassifierPlanReceipt);
+  sameRefDifferentClassifierPlanReceipt.classifierPlan[0].failureClass = 'MODEL_TIMEOUT_SIMULATED';
+  try {
+    createDeterministicClassifiedExecutor({
+      classifierPlanReceipt: sameRefDifferentClassifierPlanReceipt,
+      registry,
+      invoke: () => null
+    });
+  } catch {
+    classifierRejections.sameRefDifferentContentRejected = true;
+  }
+  try {
+    createDeterministicClassifiedExecutor({
+      sourceRef: exactClassifierPlanReceipt.sourceRef,
+      adapterRef: exactClassifierPlanReceipt.adapterRef,
+      planRef: exactClassifierPlanReceipt.classifierPlanRef,
+      plan: exactClassifierPlanReceipt.classifierPlan,
+      registry,
+      invoke: () => null
+    });
+  } catch {
+    classifierRejections.callerAuthoredInlinePlanRejected = true;
+  }
   const receipt = {
     schemaVersion: 'vexlife.runtime-recovery-simulation-receipt/v1',
     receiptRef: `receipt.runtime-recovery.simulation.${sourceManifest.treeSha256.slice(0, 24)}`,
@@ -1342,6 +1698,52 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       classifierEvidenceFingerprint: failed.failure.classificationEvidenceFingerprint,
       policyDecisionFingerprint: decided.policyDecision.semanticFingerprint
     },
+    exactClassifierPlanProvenanceProof: {
+      planReceiptRef: exactClassifierPlanReceipt.planReceiptRef,
+      planReceiptFingerprint: exactClassifierPlanReceipt.semanticFingerprint,
+      classifierPlanRef: exactClassifierPlanReceipt.classifierPlanRef,
+      sourceRef: exactClassifierPlanReceipt.sourceRef,
+      adapterRef: exactClassifierPlanReceipt.adapterRef,
+      formationRef: exactClassifierPlanReceipt.formationRef,
+      currentness: exactClassifierPlanReceipt.currentness,
+      classifierPlanFingerprint: exactClassifierPlanReceipt.classifierPlanFingerprint,
+      classifiedAttempt: failed.failure.classificationEvidence.classifiedAttempt,
+      failureClass: failed.failure.failureClass,
+      evidenceFingerprint: failed.failure.classificationEvidenceFingerprint,
+      evidenceConsumesExactPlanReceipt:
+        failed.failure.classificationEvidence.classifierPlanReceiptFingerprint === exactClassifierPlanReceipt.semanticFingerprint,
+      ...classifierRejections,
+      failClosed: Object.values(classifierRejections).every(Boolean)
+    },
+    replayDurableSchedulerRecoveryOwnershipProof: {
+      claimReceiptRef: recoveryClaimReceipt.claimReceiptRef,
+      claimReceiptFingerprint: recoveryClaimReceipt.semanticFingerprint,
+      schedulerAggregateFingerprint: recoveryClaimReceipt.schedulerAggregateFingerprint,
+      recoveryAggregateFingerprint: recoveryClaimReceipt.recoveryAggregateFingerprint,
+      recoveryCycleRef: recoveryClaimReceipt.recoveryCycleRef,
+      recoveryCycleFingerprint: recoveryClaimReceipt.recoveryCycleFingerprint,
+      failureFingerprint: recoveryClaimReceipt.activeFailureFingerprint,
+      workNodeRef: recoveryClaimReceipt.workNodeRef,
+      sourceStateFingerprint: recoveryClaimReceipt.sourceStateFingerprint,
+      schedulerCheckpointFingerprint: recoveryClaimReceipt.schedulerCheckpointFingerprint,
+      leaseReleaseCount: recoveryClaimReceipt.leaseReleaseFingerprints.length,
+      onceOnlyActivationRef: recoveryClaimReceipt.onceOnlyActivationRef,
+      claimLifecycle: recoveryClaimReceipt.claimLifecycle,
+      currentness: recoveryClaimReceipt.currentness,
+      forgedClaimRejected,
+      forgedClaimMutationFree,
+      duplicateLiveClaimRejected,
+      duplicateRestartClaimRejected,
+      restartPreservedClaimOwnership,
+      claimedState: schedulerClaimedSnapshot.recoveryClaims.at(-1)?.state ?? null,
+      resumedState: schedulerAggregateAfterResume.recoveryClaims.at(-1)?.state ?? null,
+      terminalState: scheduler.aggregate.recoveryClaims.at(-1)?.state ?? null,
+      schedulerClaimLedgerLength: scheduler.aggregate.recoveryClaimLedger.length,
+      releaseSetPreservedAcrossRestart: JSON.stringify(
+        restartedClaimScheduler.aggregate.recoveryClaims.at(-1)?.leaseReleaseFingerprints ?? []
+      ) === JSON.stringify(recoveryClaimReceipt.leaseReleaseFingerprints)
+    },
+    recoveryCycleIsolationProof,
     checkpointFreshGenerationSixLeaseProof: {
       schedulerCheckpointRef: checkpointed.checkpoint.checkpointRef,
       schedulerCheckpointFingerprint: checkpointed.checkpoint.semanticFingerprint,
@@ -1377,8 +1779,8 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       actionReceipt: action.actionReceipt,
       contextRecoveryFingerprint: null,
       resourceRecoveryFingerprint: null,
-      transactionalRecoveryFingerprint: transaction.semanticFingerprint,
-      lastKnownGoodReadBackFingerprint: transaction.lastKnownGoodReadBackFingerprint,
+      transactionalRecoveryFingerprint: action.aggregate.rollbackLineage.at(-1).semanticFingerprint,
+      lastKnownGoodReadBackFingerprint: action.aggregate.rollbackLineage.at(-1).lastKnownGoodReadBackFingerprint,
       rollbackLineageCount: closed.aggregate.rollbackLineage.length,
       lastKnownGoodCount: closed.aggregate.lastKnownGoodRefs.length,
       quarantineLineageCount: quarantineAggregate.rollbackLineage.length,
@@ -1466,7 +1868,10 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       failedAggregate: failed.aggregate,
       checkpoint,
       schedulerCheckpoint: checkpointed.checkpoint,
+      recoveryClaimReceipt,
       schedulerConsumption,
+      schedulerClaimedSnapshot,
+      schedulerAggregateAfterCompletion: structuredClone(scheduler.aggregate),
       checkpointAdmission,
       checkpointedAggregate: decided.aggregate,
       contextProof,
@@ -1482,6 +1887,9 @@ export function runRecoverySimulation({ root = DEFAULT_ROOT, writeReceipt = true
       convergence,
       convergedAggregate,
       completed,
+      cycleIsolationAggregate,
+      cycleTwoFailure,
+      cycleTwoActionReceipt: cycleTwoAction.actionReceipt,
       representativeActions
     })
   });

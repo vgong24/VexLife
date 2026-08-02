@@ -6,13 +6,13 @@ The Runtime Failure & Recovery Spine turns an unexpected deterministic executor 
 
 ```text
 typed total boundary
--> source-classified, content-addressed failure
+-> exact source-issued classifier-plan receipt and content-addressed failure cycle
 -> exact scheduler checkpoint and six lease releases
 -> replay-recorded policy and aggregate-owned recovery action
 -> scheduler-issued fresh generation and six fresh leases
 -> successful retry and replay-derived convergence
 -> causal Workgraph completion
--> unique terminal recovery receipt
+-> one terminal recovery receipt for that exact cycle
 -> evidence-retaining Queue / Terrain / Health / Guide projections
 ```
 
@@ -25,8 +25,8 @@ The write side is [`blueprint/runtime-recovery-registry.json`](../blueprint/runt
 - the complete failure, executor-outcome, recovery-action and typed-event vocabularies;
 - the failure envelope and replay-derived recovery aggregate contracts;
 - exact attempt, recurrence, per-attempt wall-time and total wall-time bounds;
-- registered classifier sources/adapters, typed event payload schemas and action-specific evidence matrices;
-- checkpoint single-use ownership, context, resource and transactional recovery requirements;
+- registered exact classifier plans/sources/adapters, typed event payload schemas and action-specific evidence matrices;
+- replay-durable scheduler checkpoint claim ownership, content-addressed recovery cycles, context, resource and transactional recovery requirements;
 - compact projection identities;
 - the integrated scheduler/Workgraph receipt contract and held boundaries.
 
@@ -48,7 +48,7 @@ src/core/recovery-fault-injector.mjs
 
 ## Typed total boundary and exact budgets
 
-Every canonical failure binds its registered classifier source, exact adapter, content-addressed classifier plan, work node, scheduler generation, operation, attempt, expected transition, source-state fingerprint, exact time, classification evidence and bounded evidence refs. `failureRef` is derived from its semantic fingerprint. Executor error fields remain evidence only: the canonical classifier issues the failure class and exact retry, partial-effect and human-attention defaults.
+Every canonical failure consumes its exact current source-issued classifier-plan receipt, including plan ref, source, adapter, formation, full plan fingerprint and classified attempt. Unknown, merely allowed but non-issued, caller-inline, stale, substituted and same-ref/different-content plans fail closed. The resulting failure binds that receipt with its work node, scheduler generation, operation, attempt, expected transition, source-state fingerprint, exact time, classification evidence and bounded evidence refs. `failureRef` is derived from its semantic fingerprint. Executor error fields remain evidence only: the canonical classifier issues the failure class and exact retry, partial-effect and human-attention defaults.
 
 Every admitted synchronous boundary returns exactly one of:
 
@@ -64,15 +64,15 @@ Malformed, stale, replayed, wrong-generation, over-budget and async-function inp
 
 ## Scheduler checkpoint and continuation
 
-Consequential recovery consumes one exact accepted scheduler checkpoint and the scheduler's six worker, context, resource, capability, effect and occupancy release receipts. Before admission, the scheduler issues one current-pointer consumption receipt binding the checkpoint and release set to the exact aggregate, active failure and once-only activation ref. The checkpoint must bind the same work node and source state, seal the old generation and admit the next generation exactly once. Cross-aggregate, cross-failure, duplicate, post-continuation and release-reuse attempts fail closed.
+Consequential recovery consumes one exact accepted scheduler checkpoint and the scheduler's six worker, context, resource, capability, effect and occupancy release receipts. Before admission, runtime recovery issues one canonical claim from replay-derived recovery truth. It binds the scheduler aggregate fingerprint, recovery aggregate fingerprint, cycle, failure, work, source, checkpoint, six releases, once-only activation, lifecycle and currentness. The scheduler persists claim transitions in its aggregate ledger as `CLAIMED_CURRENT`, `RESUMED_CONSUMED`, `TERMINAL_CONSUMED` or `INVALIDATED_OR_ABANDONED`; no private `Map` or `Set` owns recovery truth. Duplicate live and post-restart claims, wrong owners, forged claimants and release reuse fail without consuming the valid checkpoint.
 
 Retry then consumes one scheduler-owned recovery resume receipt and six fresh leases for the new generation. That receipt binds the exact action and checkpoint admission. For context actions it also binds immutable source coverage, summaries, intent, interpretation, unknowns, authority, return route and token budget into the new context lease. For resource actions it binds the exact reduced request and admission into the new resource lease. Raw checkpoints, generic context substitutions, detached resource leases, stale generations, reused lease fingerprints, caller-invented generations and same-ref/different-content substitutions fail closed.
 
 ## Replay-derived aggregate
 
-Typed, content-addressed events are the only mutation path. Every registered event has one exact payload schema and semantic replayer. Replay reconstructs context receipts from their source segments, resource receipts from the exact snapshot and requests, transactional outcomes from a registered no-effect adapter/fault plan, human gates from aggregate-owned policy, action receipts from the registered evidence matrix, scheduler continuation from its consumption receipt, and terminal closure from its canonical scheduler evidence.
+Typed, content-addressed events are the only mutation path. Each activated failure forms a content-addressed recovery cycle binding aggregate, work, source, generation, failure, operation and attempt. Every downstream policy, checkpoint, action, continuation, success, convergence, terminal and projection receipt consumes that exact cycle. Replay reconstructs context receipts from their source segments, resource receipts from the exact snapshot and requests, transactional outcomes from a registered no-effect adapter/fault plan, human gates from aggregate-owned policy, action receipts from the registered evidence matrix, scheduler continuation from its consumption receipt, and terminal closure from its canonical scheduler evidence.
 
-Serialization persists the event ledger and derived snapshot. Restore replays the ledger and compares every persisted derived field with the replay result. Impossible order, budget reset, forged final state, duplicate terminal closure, stale external events and same-ref/different-content events are rejected. Exact duplicates are semantic no-ops.
+Serialization persists the event ledger and derived snapshot. Restore replays the ledger and compares every persisted derived field with the replay result. Historical cycles remain immutable while active pointers move to the newest cycle. Old action, success, convergence or terminal evidence cannot satisfy a later cycle, including same-class/same-operation recurrence; a current success must follow the current action, scheduler continuation and fresh generation. Impossible order, budget reset, forged final state, duplicate terminal closure within one cycle, stale external events and same-ref/different-content events are rejected. Exact duplicates are semantic no-ops.
 
 ## Aggregate-owned recovery actions
 

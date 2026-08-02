@@ -1,5 +1,5 @@
 import { semanticHash } from './utils.mjs';
-import { createDeterministicClassifiedExecutor } from './runtime-failure.mjs';
+import { createDeterministicClassifiedExecutor, issueClassifierPlan } from './runtime-failure.mjs';
 
 function clone(value) {
   return structuredClone(value);
@@ -31,8 +31,7 @@ export function createDeterministicFaultInjector({
   failures = [],
   successValue = { state: 'PASS' },
   planRef = 'classifier-plan.runtime-recovery.deterministic-fixture',
-  sourceRef = 'source.runtime-recovery.deterministic-fault-plan',
-  adapterRef = 'adapter.runtime-recovery.classifier.deterministic-fault-plan'
+  registry
 } = {}) {
   const plan = failures.map((item, index) => ({
     attempt: item.attempt ?? index + 1,
@@ -42,11 +41,15 @@ export function createDeterministicFaultInjector({
     humanAttentionClass: item.humanAttentionClass ?? null,
     evidenceRefs: item.evidenceRefs ?? []
   }));
+  const classifierPlanReceipt = issueClassifierPlan(planRef, { registry });
+  const issuedPlan = classifierPlanReceipt.classifierPlan;
+  if (issuedPlan.length !== plan.length || issuedPlan.some((item, index) =>
+    item.attempt !== plan[index].attempt || item.failureClass !== plan[index].failureClass)) {
+    throw new Error('deterministic fixture differs from the exact source-issued classifier plan');
+  }
   return createDeterministicClassifiedExecutor({
-    sourceRef,
-    adapterRef,
-    planRef,
-    plan,
+    classifierPlanReceipt,
+    registry,
     invoke(attempt) {
       const fault = plan.find((item) => item.attempt === attempt);
       if (fault) throw new SimulatedRuntimeFailure(fault.failureClass, fault.message, fault);

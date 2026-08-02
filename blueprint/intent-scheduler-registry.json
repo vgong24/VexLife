@@ -11,6 +11,21 @@
   },
   "humanProjectionName": "Intent Queue runtime",
   "purpose": "Admit one exact validated workgraph node at a time to one physical model worker with bounded context, resource, capability and effect leases, recoverable checkpoints, and exact mock tool-result reinjection.",
+  "runtimeRecoveryClaimContract": {
+    "contractRef": "contract.intent-scheduler.runtime-recovery-claim-ledger/v1",
+    "aggregateOwnedReplayStateRequired": true,
+    "privateMapOrSetOwnershipAllowed": false,
+    "transitionSchemaVersion": "vexlife.intent-scheduler-recovery-claim-transition/v1",
+    "lifecycle": [
+      "CLAIMED_CURRENT",
+      "RESUMED_CONSUMED",
+      "TERMINAL_CONSUMED",
+      "INVALIDATED_OR_ABANDONED"
+    ],
+    "duplicateLiveOrRestartClaimAllowed": false,
+    "releasedLeaseReuseAllowed": false,
+    "claimMustBindCanonicalRuntimeRecoveryReceipt": true
+  },
   "physicalWorkerPolicy": {
     "policyRef": "policy.intent-scheduler.physical-worker",
     "modelInferenceConcurrency": 1,

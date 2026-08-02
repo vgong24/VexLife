@@ -30,6 +30,7 @@
       "classificationSourceRef",
       "classificationAdapterRef",
       "classifierPlanRef",
+      "classifierPlanReceiptFingerprint",
       "classificationEvidenceFingerprint",
       "classificationEvidence",
       "evidenceRefs",
@@ -41,6 +42,8 @@
     "executorFieldsAreEvidenceOnly": true,
     "canonicalDefaultsArePolicyAuthority": true,
     "currentnessRequired": "CURRENT",
+    "exactPlanReceiptRequired": true,
+    "callerAuthoredInlinePlanAllowed": false,
     "sources": [
       {
         "sourceRef": "source.runtime-recovery.default-unexpected",
@@ -83,6 +86,26 @@
           "UNKNOWN_FAILURE"
         ]
       }
+    ],
+    "plans": [
+      { "planRef": "classifier-plan.runtime-recovery.default-unexpected", "sourceRef": "source.runtime-recovery.default-unexpected", "adapterRef": "adapter.runtime-recovery.classifier.default-unexpected", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "UNEXPECTED_EXCEPTION" }, { "attempt": 2, "failureClass": "UNEXPECTED_EXCEPTION" }, { "attempt": 3, "failureClass": "UNEXPECTED_EXCEPTION" }] },
+      { "planRef": "classifier-plan.runtime-recovery.default-unknown", "sourceRef": "source.runtime-recovery.default-unexpected", "adapterRef": "adapter.runtime-recovery.classifier.default-unexpected", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "UNKNOWN_FAILURE" }, { "attempt": 2, "failureClass": "UNKNOWN_FAILURE" }, { "attempt": 3, "failureClass": "UNKNOWN_FAILURE" }] },
+      { "planRef": "classifier-plan.runtime-recovery.internal-malformed-input", "sourceRef": "source.runtime-recovery.internal.malformed-input", "adapterRef": "adapter.runtime-recovery.classifier.internal-boundary", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "UNKNOWN_FAILURE" }] },
+      { "planRef": "classifier-plan.runtime-recovery.internal-partial-success", "sourceRef": "source.runtime-recovery.internal.partial-success", "adapterRef": "adapter.runtime-recovery.classifier.internal-boundary", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "MALFORMED_INPUT_OR_RESULT" }] },
+      { "planRef": "classifier-plan.runtime-recovery.test.classification", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "PARTIAL_WRITE_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.test.chronology", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "MODEL_TIMEOUT_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.test.other-owner", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "MODEL_TIMEOUT_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.simulation.main", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "PARTIAL_WRITE_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.simulation.quarantine", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "ROLLBACK_FAILED_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.direct-timeout-retry", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "MODEL_TIMEOUT_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.context-condensation", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "CONTEXT_BUDGET_EXCEEDED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.resource-reduced-retry", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "RESOURCE_EXHAUSTION_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.transactional-rollback", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "PARTIAL_WRITE_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.last-known-good-restore", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "PROCESS_TERMINATED_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.external-wait-resume", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "NETWORK_INTERRUPTION_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.split-work-return", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "CONTEXT_BUDGET_EXCEEDED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.human-decision-hold", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "INVALID_STATE_TRANSITION" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.terminal-block", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "STALE_OR_CORRUPTED_CHECKPOINT" }] }
     ]
   },
   "failureClasses": [
@@ -148,6 +171,33 @@
     "callerMayBroadenAuthority": false,
     "callerMayResetBudget": false,
     "recursiveRetryAllowed": false
+  },
+  "recoveryCycleContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-cycle/v1",
+    "contentAddressedAtFailureActivation": true,
+    "bindsExactAggregateWorkSourceGenerationFailureOperationAndAttempt": true,
+    "requiredOnEveryDownstreamRecoveryReceipt": true,
+    "historicalCyclesImmutable": true,
+    "currentPointersResetOnNewCycle": true,
+    "priorCycleEvidenceMaySatisfyCurrentCycle": false,
+    "currentSuccessRequiresCurrentActionContinuationAndFreshGeneration": true
+  },
+  "schedulerRecoveryClaimContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-scheduler-claim/v1",
+    "requiresReplayDerivedRecoveryAggregate": true,
+    "bindsExactSchedulerAggregateFingerprint": true,
+    "bindsExactRecoveryAggregateFingerprint": true,
+    "bindsExactCycleFailureWorkSourceCheckpointAndSixReleases": true,
+    "bindsOnceOnlyActivationLifecycleAndCurrentness": true,
+    "durableLifecycle": [
+      "CLAIMED_CURRENT",
+      "RESUMED_CONSUMED",
+      "TERMINAL_CONSUMED",
+      "INVALIDATED_OR_ABANDONED"
+    ],
+    "privateInMemoryOwnershipAllowed": false,
+    "duplicateLiveOrRestartClaimAllowed": false,
+    "forgedClaimantMayConsumeCheckpoint": false
   },
   "checkpointContract": {
     "contractRef": "contract.vexlife.runtime-recovery-checkpoint/v1",
@@ -242,6 +292,8 @@
       "eventLedger",
       "activeAttempt",
       "activeFailure",
+      "activeRecoveryCycle",
+      "recoveryCycleHistory",
       "activePolicyDecision",
       "currentRecoveryReceipt",
       "currentCheckpointAdmission",
@@ -288,8 +340,8 @@
     "eventPayloadContracts": [
       { "type": "ATTEMPT_STARTED", "fields": ["attempt"] },
       { "type": "ATTEMPT_SUCCEEDED", "fields": ["attemptRef", "completedAt", "executionReceipt"] },
-      { "type": "ATTEMPT_FAILED", "fields": ["failure"] },
-      { "type": "FAILURE_ACTIVATED", "fields": ["failure"] },
+      { "type": "ATTEMPT_FAILED", "fields": ["failure", "recoveryCycle"] },
+      { "type": "FAILURE_ACTIVATED", "fields": ["failure", "recoveryCycle"] },
       { "type": "CHECKPOINT_ADMITTED", "fields": ["admission", "checkpoint", "schedulerConsumptionReceipt"] },
       { "type": "POLICY_DECIDED", "fields": ["authorityBoundary", "checkpointAdmission", "contextAdmissionReceipt", "decision", "recoveryReceipt", "resourceAdmissionReceipt"] },
       { "type": "CONTEXT_RECOVERED", "fields": ["receipt"] },
@@ -305,7 +357,7 @@
       { "type": "RECOVERY_CONVERGED", "fields": ["receipt"] },
       { "type": "TERMINAL_CLOSED", "fields": ["receipt"] }
     ],
-    "replayRule": "typed content-addressed events are the only mutation route; restore replays legal edges and recomputes phase, budget use, generation, current pointers, recovery lineages and unique terminal state",
+    "replayRule": "typed content-addressed events are the only mutation route; restore replays legal edges and recomputes phase, cycle-scoped budget use, generation, current pointers, immutable historical recovery lineages and at most one terminal state per recovery cycle",
     "semanticNoOpRule": "equal aggregate projection fingerprints do not emit another Queue, Terrain, Health or Guide revision"
   },
   "projectionIdentities": [
@@ -365,7 +417,10 @@
     "test.runtime-recovery.r21-canonical-projections",
     "test.runtime-recovery.r22-semantic-no-op",
     "test.runtime-recovery.r23-integrated-scheduler-workgraph",
-    "test.runtime-recovery.r24-full-gate"
+    "test.runtime-recovery.r24-full-gate",
+    "test.runtime-recovery.r25-exact-classifier-plan",
+    "test.runtime-recovery.r26-replay-durable-scheduler-claim",
+    "test.runtime-recovery.r27-cycle-isolation"
   ],
   "simulationContract": {
     "contractRef": "contract.runtime-recovery.integrated-simulation/v1",

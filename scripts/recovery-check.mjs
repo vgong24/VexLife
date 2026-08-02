@@ -38,11 +38,18 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
   exactArray('recovery aggregate required fields', registry.recoveryAggregate.requiredFields, RECOVERY_AGGREGATE_REQUIRED_FIELDS);
   exactArray('recovery event types', registry.recoveryAggregate.eventTypes, RECOVERY_EVENT_TYPES);
   const classifierSources = registry.classifierContract?.sources ?? [];
+  const classifierPlans = registry.classifierContract?.plans ?? [];
   if (!registry.classifierContract?.executorFieldsAreEvidenceOnly ||
       !registry.classifierContract?.canonicalDefaultsArePolicyAuthority ||
+      !registry.classifierContract?.exactPlanReceiptRequired ||
+      registry.classifierContract?.callerAuthoredInlinePlanAllowed !== false ||
       classifierSources.length < 4 || new Set(classifierSources.map((item) => item.sourceRef)).size !== classifierSources.length ||
-      classifierSources.some((item) => !item.adapterRef || !item.allowedFailureClasses?.length)) {
-    errors.push('classifier source/adapter provenance contract is incomplete');
+      classifierSources.some((item) => !item.adapterRef || !item.allowedFailureClasses?.length) ||
+      classifierPlans.length < 1 || new Set(classifierPlans.map((item) => item.planRef)).size !== classifierPlans.length ||
+      classifierPlans.some((plan) => plan.currentness !== 'CURRENT' || !plan.formationRef || !plan.plan?.length ||
+        !classifierSources.some((source) => source.sourceRef === plan.sourceRef && source.adapterRef === plan.adapterRef &&
+          plan.plan.every((entry) => source.allowedFailureClasses.includes(entry.failureClass))))) {
+    errors.push('exact classifier plan/source/adapter provenance contract is incomplete');
   }
   const eventContracts = registry.recoveryAggregate.eventPayloadContracts ?? [];
   if (eventContracts.length !== RECOVERY_EVENT_TYPES.length ||
@@ -64,6 +71,22 @@ if (!registry || registry.schemaVersion !== 'vexlife.runtime-recovery-registry/v
       !registry.checkpointContract.onceOnlyActivationRequired ||
       registry.checkpointContract.releasedLeaseReuseAllowed !== false) {
     errors.push('checkpoint/release single-use ownership contract is incomplete');
+  }
+  if (!registry.schedulerRecoveryClaimContract?.requiresReplayDerivedRecoveryAggregate ||
+      !registry.schedulerRecoveryClaimContract?.bindsExactSchedulerAggregateFingerprint ||
+      !registry.schedulerRecoveryClaimContract?.bindsExactRecoveryAggregateFingerprint ||
+      !registry.schedulerRecoveryClaimContract?.bindsOnceOnlyActivationLifecycleAndCurrentness ||
+      registry.schedulerRecoveryClaimContract?.privateInMemoryOwnershipAllowed !== false ||
+      registry.schedulerRecoveryClaimContract?.duplicateLiveOrRestartClaimAllowed !== false ||
+      registry.schedulerRecoveryClaimContract?.forgedClaimantMayConsumeCheckpoint !== false) {
+    errors.push('replay-durable scheduler recovery claim contract is incomplete');
+  }
+  if (!registry.recoveryCycleContract?.contentAddressedAtFailureActivation ||
+      !registry.recoveryCycleContract?.requiredOnEveryDownstreamRecoveryReceipt ||
+      !registry.recoveryCycleContract?.historicalCyclesImmutable ||
+      registry.recoveryCycleContract?.priorCycleEvidenceMaySatisfyCurrentCycle !== false ||
+      !registry.recoveryCycleContract?.currentSuccessRequiresCurrentActionContinuationAndFreshGeneration) {
+    errors.push('recovery cycle isolation contract is incomplete');
   }
   if (!registry.schedulerContinuationContract?.requiresSchedulerOwnedResumeReceipt ||
       !registry.schedulerContinuationContract?.requiresExactActionAndCheckpointAdmission ||

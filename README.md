@@ -232,6 +232,13 @@ derive from one canonical aggregate. Effectful receipt arguments are confined
 to safe `generated/health/**` paths. This contract provisions no real model and
 executes no external effect.
 
+The shared [Runtime Failure & Recovery Spine](docs/RUNTIME-FAILURE-AND-RECOVERY.md)
+consumes exact source-issued classifier-plan receipts, persists scheduler recovery
+claim lifecycle in replayable aggregate state, and isolates every downstream
+action, continuation, success, convergence, terminal and human projection by a
+content-addressed recovery cycle. Duplicate live or restart claims and prior-cycle
+evidence fail closed. Its deterministic fixtures execute no external effect.
+
 The shared [Burden Release and Continuity Evolution Router](docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md)
 completes Intent Orchestration 3/3. It seals immutable exact source tuples,
 keeps human, Vex and relationship preferences separate, routes each candidate

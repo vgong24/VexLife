@@ -60,6 +60,7 @@ export const FAILURE_ENVELOPE_REQUIRED_FIELDS = Object.freeze([
   'classificationSourceRef',
   'classificationAdapterRef',
   'classifierPlanRef',
+  'classifierPlanReceiptFingerprint',
   'classificationEvidenceFingerprint',
   'classificationEvidence',
   'evidenceRefs',
@@ -85,31 +86,11 @@ const CLASS_DEFAULTS = Object.freeze({
 });
 
 const EXECUTOR_CLASSIFIERS = new WeakMap();
-const DEFAULT_CLASSIFIER_PLANS = Object.freeze({
-  unexpected: Object.freeze({
-    planRef: 'classifier-plan.runtime-recovery.default-unexpected',
-    sourceRef: 'source.runtime-recovery.default-unexpected',
-    adapterRef: 'adapter.runtime-recovery.classifier.default-unexpected',
-    failureClass: 'UNEXPECTED_EXCEPTION'
-  }),
-  unknown: Object.freeze({
-    planRef: 'classifier-plan.runtime-recovery.default-unknown',
-    sourceRef: 'source.runtime-recovery.default-unexpected',
-    adapterRef: 'adapter.runtime-recovery.classifier.default-unexpected',
-    failureClass: 'UNKNOWN_FAILURE'
-  }),
-  malformedInput: Object.freeze({
-    planRef: 'classifier-plan.runtime-recovery.internal-malformed-input',
-    sourceRef: 'source.runtime-recovery.internal.malformed-input',
-    adapterRef: 'adapter.runtime-recovery.classifier.internal-boundary',
-    failureClass: 'UNKNOWN_FAILURE'
-  }),
-  partialSuccess: Object.freeze({
-    planRef: 'classifier-plan.runtime-recovery.internal-partial-success',
-    sourceRef: 'source.runtime-recovery.internal.partial-success',
-    adapterRef: 'adapter.runtime-recovery.classifier.internal-boundary',
-    failureClass: 'MALFORMED_INPUT_OR_RESULT'
-  })
+const DEFAULT_CLASSIFIER_PLAN_REFS = Object.freeze({
+  unexpected: 'classifier-plan.runtime-recovery.default-unexpected',
+  unknown: 'classifier-plan.runtime-recovery.default-unknown',
+  malformedInput: 'classifier-plan.runtime-recovery.internal-malformed-input',
+  partialSuccess: 'classifier-plan.runtime-recovery.internal-partial-success'
 });
 
 function clone(value) {
@@ -148,7 +129,9 @@ function classifierPlanFingerprint(plan) {
     planRef: plan.planRef,
     sourceRef: plan.sourceRef,
     adapterRef: plan.adapterRef,
-    plan: plan.planEntries ?? [{ attempt: 1, failureClass: plan.failureClass }]
+    formationRef: plan.formationRef,
+    currentness: plan.currentness,
+    plan: plan.planEntries
   });
 }
 
@@ -156,32 +139,68 @@ function registeredClassifierSource(registry, sourceRef) {
   return registry?.classifierContract?.sources?.find((source) => source.sourceRef === sourceRef) ?? null;
 }
 
-function formClassificationEvidence(plan, errorEvidence, registry) {
-  if (!plan?.planRef || !plan?.sourceRef || !plan?.adapterRef || !FAILURE_CLASSES.includes(plan.failureClass)) {
-    throw new Error('classifier plan is malformed');
+function registeredClassifierPlan(registry, planRef) {
+  return registry?.classifierContract?.plans?.find((plan) => plan.planRef === planRef) ?? null;
+}
+
+export function issueClassifierPlan(planRef, { registry } = {}) {
+  const plan = registeredClassifierPlan(registry, planRef);
+  if (!plan || !plan.sourceRef || !plan.adapterRef || !plan.formationRef || plan.currentness !== 'CURRENT' ||
+      !Array.isArray(plan.plan) || !plan.plan.length) {
+    throw new Error('classifier plan is unknown, stale, or not source-managed');
   }
-  const registered = registeredClassifierSource(registry, plan.sourceRef);
-  if (!registered || registered.adapterRef !== plan.adapterRef ||
-      !registered.allowedFailureClasses?.includes(plan.failureClass)) {
-    throw new Error('classifier source/adapter/class is not registered');
+  const source = registeredClassifierSource(registry, plan.sourceRef);
+  const entries = clone(plan.plan);
+  if (!source || source.adapterRef !== plan.adapterRef || entries.some((item) =>
+    !Number.isInteger(item.attempt) || item.attempt < 1 ||
+    !source.allowedFailureClasses?.includes(item.failureClass))) {
+    throw new Error('classifier plan source/adapter/content is not registered exactly');
   }
-  const classifierPlan = clone(plan.planEntries ?? [{ attempt: 1, failureClass: plan.failureClass }]);
-  const classifiedAttempt = plan.classifiedAttempt ?? 1;
-  const planned = classifierPlan.find((item) => item.attempt === classifiedAttempt);
-  if (!planned || planned.failureClass !== plan.failureClass ||
-      classifierPlan.some((item) => !Number.isInteger(item.attempt) || item.attempt < 1 ||
-        !registered.allowedFailureClasses.includes(item.failureClass))) {
-    throw new Error('classifier plan does not issue the selected failure class for this attempt');
-  }
-  const evidence = {
-    schemaVersion: 'vexlife.runtime-failure-classification-evidence/v1',
+  const planFingerprint = classifierPlanFingerprint({ ...plan, planEntries: entries });
+  const receipt = {
+    schemaVersion: 'vexlife.runtime-failure-classifier-plan-receipt/v1',
+    classifierPlanRef: plan.planRef,
     sourceRef: plan.sourceRef,
     adapterRef: plan.adapterRef,
-    classifierPlanRef: plan.planRef,
-    classifierPlan,
-    classifierPlanFingerprint: plan.planFingerprint ?? classifierPlanFingerprint({ ...plan, planEntries: classifierPlan }),
+    formationRef: plan.formationRef,
+    currentness: plan.currentness,
+    classifierPlan: entries,
+    classifierPlanFingerprint: planFingerprint
+  };
+  receipt.semanticFingerprint = semanticHash(receipt);
+  receipt.planReceiptRef = `receipt.runtime-failure.classifier-plan.${receipt.semanticFingerprint.slice(0, 32)}`;
+  return freeze(receipt);
+}
+
+function validateClassifierPlanReceipt(value, registry) {
+  if (!value || value.schemaVersion !== 'vexlife.runtime-failure-classifier-plan-receipt/v1' ||
+      value.currentness !== 'CURRENT') {
+    throw new Error('classifier plan receipt is missing, stale, or has the wrong schema');
+  }
+  const issued = issueClassifierPlan(value.classifierPlanRef, { registry });
+  if (JSON.stringify(issued) !== JSON.stringify(value)) {
+    throw new Error('classifier plan receipt is forged, superseded, or same-ref/different-content');
+  }
+  return issued;
+}
+
+function formClassificationEvidence(planReceiptInput, errorEvidence, classifiedAttempt, registry) {
+  const planReceipt = validateClassifierPlanReceipt(planReceiptInput, registry);
+  const planned = planReceipt.classifierPlan.find((item) => item.attempt === classifiedAttempt);
+  if (!planned) throw new Error('classifier plan does not issue a class for the exact attempt');
+  const evidence = {
+    schemaVersion: 'vexlife.runtime-failure-classification-evidence/v1',
+    sourceRef: planReceipt.sourceRef,
+    adapterRef: planReceipt.adapterRef,
+    classifierPlanRef: planReceipt.classifierPlanRef,
+    classifierPlan: planReceipt.classifierPlan,
+    classifierPlanFingerprint: planReceipt.classifierPlanFingerprint,
+    classifierPlanReceiptRef: planReceipt.planReceiptRef,
+    classifierPlanReceiptFingerprint: planReceipt.semanticFingerprint,
+    classifierPlanFormationRef: planReceipt.formationRef,
+    classifierPlanReceipt: planReceipt,
     classifiedAttempt,
-    failureClass: plan.failureClass,
+    failureClass: planned.failureClass,
     errorEvidenceFingerprint: errorEvidence.evidenceFingerprint,
     currentness: 'CURRENT'
   };
@@ -195,62 +214,39 @@ function validateClassificationEvidence(value, errorEvidence, registry) {
       value.currentness !== 'CURRENT') {
     throw new Error('classifier evidence is missing, stale, or has the wrong schema');
   }
-  const canonical = formClassificationEvidence({
-    planRef: value.classifierPlanRef,
-    sourceRef: value.sourceRef,
-    adapterRef: value.adapterRef,
-    failureClass: value.failureClass,
-    planEntries: value.classifierPlan,
-    classifiedAttempt: value.classifiedAttempt,
-    planFingerprint: value.classifierPlanFingerprint
-  }, errorEvidence, registry);
-  if (canonical.errorEvidenceFingerprint !== value.errorEvidenceFingerprint ||
+  const canonical = formClassificationEvidence(
+    value.classifierPlanReceipt,
+    errorEvidence,
+    value.classifiedAttempt,
+    registry
+  );
+  if (JSON.stringify(canonical) !== JSON.stringify(value) ||
+      canonical.errorEvidenceFingerprint !== value.errorEvidenceFingerprint ||
       canonical.semanticFingerprint !== value.semanticFingerprint ||
       canonical.evidenceRef !== value.evidenceRef ||
-      classifierPlanFingerprint({
-        planRef: value.classifierPlanRef,
-        sourceRef: value.sourceRef,
-        adapterRef: value.adapterRef,
-        failureClass: value.failureClass,
-        planEntries: value.classifierPlan
-      }) !== value.classifierPlanFingerprint) {
+      canonical.failureClass !== value.failureClass ||
+      canonical.classifierPlanReceiptFingerprint !== value.classifierPlanReceiptFingerprint) {
     throw new Error('classifier evidence is forged or same-ref/different-content');
   }
   return canonical;
 }
 
 export function createDeterministicClassifiedExecutor({
-  sourceRef,
-  adapterRef,
-  planRef,
-  plan,
+  classifierPlanReceipt,
+  registry,
   invoke
 }) {
-  if (typeof invoke !== 'function' || !Array.isArray(plan) || !sourceRef || !adapterRef || !planRef) {
+  if (typeof invoke !== 'function') {
     throw new Error('deterministic classified executor formation is malformed');
   }
-  const normalizedPlan = plan.map((item) => ({
-    attempt: item.attempt,
-    failureClass: item.failureClass
-  }));
-  if (normalizedPlan.some((item) => !Number.isInteger(item.attempt) || item.attempt < 1 ||
-      !FAILURE_CLASSES.includes(item.failureClass))) {
-    throw new Error('deterministic classifier plan contains an invalid attempt or failure class');
-  }
-  const descriptor = freeze({
-    sourceRef,
-    adapterRef,
-    planRef,
-    planFingerprint: semanticHash({ sourceRef, adapterRef, planRef, plan: normalizedPlan }),
-    plan: normalizedPlan
-  });
+  const descriptor = validateClassifierPlanReceipt(classifierPlanReceipt, registry);
   let callCount = 0;
   const executor = (...args) => {
     callCount += 1;
     return invoke(callCount, ...args);
   };
   Object.defineProperty(executor, 'callCount', { get: () => callCount });
-  Object.defineProperty(executor, 'classifierPlanRef', { value: planRef, enumerable: false });
+  Object.defineProperty(executor, 'classifierPlanRef', { value: descriptor.classifierPlanRef, enumerable: false });
   EXECUTOR_CLASSIFIERS.set(executor, { descriptor, currentAttempt: () => callCount });
   return executor;
 }
@@ -260,35 +256,28 @@ export function classifyThrownFailure(executor, error, { registry } = {}) {
   const binding = typeof executor === 'function' ? EXECUTOR_CLASSIFIERS.get(executor) : null;
   if (binding) {
     const attempt = binding.currentAttempt();
-    const planned = binding.descriptor.plan.find((item) => item.attempt === attempt);
+    const planned = binding.descriptor.classifierPlan.find((item) => item.attempt === attempt);
     if (planned) {
-      return formClassificationEvidence({
-        planRef: binding.descriptor.planRef,
-        sourceRef: binding.descriptor.sourceRef,
-        adapterRef: binding.descriptor.adapterRef,
-        failureClass: planned.failureClass,
-        planEntries: binding.descriptor.plan,
-        classifiedAttempt: attempt,
-        planFingerprint: binding.descriptor.planFingerprint
-      }, errorEvidence, registry);
+      return formClassificationEvidence(binding.descriptor, errorEvidence, attempt, registry);
     }
+    throw new Error('source-issued classifier plan does not authorize the exact executor attempt');
   }
-  const fallback = error instanceof Error ? DEFAULT_CLASSIFIER_PLANS.unexpected : DEFAULT_CLASSIFIER_PLANS.unknown;
-  return formClassificationEvidence(fallback, errorEvidence, registry);
+  const fallbackRef = error instanceof Error ? DEFAULT_CLASSIFIER_PLAN_REFS.unexpected : DEFAULT_CLASSIFIER_PLAN_REFS.unknown;
+  return formClassificationEvidence(issueClassifierPlan(fallbackRef, { registry }), errorEvidence, 1, registry);
 }
 
 export function classifyInternalRuntimeFailure(kind, error, { registry } = {}) {
-  const plan = kind === 'PARTIAL_SUCCESS'
-    ? DEFAULT_CLASSIFIER_PLANS.partialSuccess
-    : DEFAULT_CLASSIFIER_PLANS.malformedInput;
-  return formClassificationEvidence(plan, canonicalErrorEvidence(error), registry);
+  const planRef = kind === 'PARTIAL_SUCCESS'
+    ? DEFAULT_CLASSIFIER_PLAN_REFS.partialSuccess
+    : DEFAULT_CLASSIFIER_PLAN_REFS.malformedInput;
+  return formClassificationEvidence(issueClassifierPlan(planRef, { registry }), canonicalErrorEvidence(error), 1, registry);
 }
 
 function canonicalClassification(input, errorEvidence, error, registry, suppliedEvidence = null) {
   const supplied = suppliedEvidence ?? input?.classificationEvidence ?? null;
   if (supplied) return validateClassificationEvidence(supplied, errorEvidence, registry);
-  const fallback = error instanceof Error ? DEFAULT_CLASSIFIER_PLANS.unexpected : DEFAULT_CLASSIFIER_PLANS.unknown;
-  return formClassificationEvidence(fallback, errorEvidence, registry);
+  const fallbackRef = error instanceof Error ? DEFAULT_CLASSIFIER_PLAN_REFS.unexpected : DEFAULT_CLASSIFIER_PLAN_REFS.unknown;
+  return formClassificationEvidence(issueClassifierPlan(fallbackRef, { registry }), errorEvidence, 1, registry);
 }
 
 export function buildFailureFingerprint(input) {
@@ -332,6 +321,7 @@ export function createFailureEnvelope(input, { registry = null } = {}) {
     classificationSourceRef: classification.sourceRef,
     classificationAdapterRef: classification.adapterRef,
     classifierPlanRef: classification.classifierPlanRef,
+    classifierPlanReceiptFingerprint: classification.classifierPlanReceiptFingerprint,
     classificationEvidenceFingerprint: classification.semanticFingerprint,
     classificationEvidence: classification,
     evidenceRefs: canonicalRefs([

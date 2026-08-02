@@ -886,7 +886,7 @@
     },
     {
       "featureRef": "feature.vexlife.runtime-failure-recovery",
-      "purpose": "Turn every unexpected deterministic executor failure into one typed registered-classifier route whose edge-specific replay, once-only scheduler checkpoint/release ownership, action evidence matrix and recovery-output-consuming continuation preserve work and fail closed under substitution.",
+      "purpose": "Turn every unexpected deterministic executor failure into one typed exact-plan-classified recovery cycle whose edge-specific replay, durable once-only scheduler checkpoint/release claim, action evidence matrix and recovery-output-consuming continuation preserve work and fail closed across substitution, restart and consecutive cycles.",
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.runtime-recovery",
@@ -948,7 +948,10 @@
         "test.runtime-recovery.r21-canonical-projections",
         "test.runtime-recovery.r22-semantic-no-op",
         "test.runtime-recovery.r23-integrated-scheduler-workgraph",
-        "test.runtime-recovery.r24-full-gate"
+        "test.runtime-recovery.r24-full-gate",
+        "test.runtime-recovery.r25-exact-classifier-plan",
+        "test.runtime-recovery.r26-replay-durable-scheduler-claim",
+        "test.runtime-recovery.r27-cycle-isolation"
       ],
       "platformRefs": [
         "platform.browser",

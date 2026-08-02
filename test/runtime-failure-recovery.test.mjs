@@ -17,7 +17,13 @@ import {
   restoreRecoveryAggregate,
   serializeRecoveryAggregate
 } from '../src/core/runtime-recovery.mjs';
-import { createFailureEnvelope, validateFailureEnvelope } from '../src/core/runtime-failure.mjs';
+import {
+  createDeterministicClassifiedExecutor,
+  createFailureEnvelope,
+  classifyThrownFailure,
+  issueClassifierPlan,
+  validateFailureEnvelope
+} from '../src/core/runtime-failure.mjs';
 import { resolveRecoveryPolicy } from '../src/core/recovery-policy.mjs';
 import {
   createDeterministicFaultInjector,
@@ -86,6 +92,7 @@ function rechain(events) {
 test('C1 source-managed classification ignores weakening error hints and keeps content-addressed identity', () => {
   const owner = aggregate();
   const executor = createDeterministicFaultInjector({
+    registry,
     planRef: 'classifier-plan.runtime-recovery.test.classification',
     failures: [{
       attempt: 1,
@@ -128,6 +135,58 @@ test('C1 source-managed classification ignores weakening error hints and keeps c
     ...sameRefDifferentContent,
     error: sameRefDifferentContent.errorEvidence
   }, { registry }), /forged|same-ref/);
+});
+
+test('C11 exact source-managed classifier plan provenance fails closed for every non-issued or stale formation', () => {
+  const exact = issueClassifierPlan('classifier-plan.runtime-recovery.test.classification', { registry });
+  const executor = createDeterministicClassifiedExecutor({
+    classifierPlanReceipt: exact,
+    registry,
+    invoke: () => ({ state: 'PASS' })
+  });
+  assert.deepEqual(executor(), { state: 'PASS' });
+  assert.equal(exact.formationRef, 'formation.runtime-recovery.classifier-plan-registry.v1');
+  assert.equal(exact.currentness, 'CURRENT');
+  assert.throws(() => issueClassifierPlan('classifier-plan.runtime-recovery.unknown', { registry }),
+    /unknown|stale|source-managed/);
+  assert.throws(() => issueClassifierPlan('classifier-plan.runtime-recovery.allowed-but-not-issued', { registry }),
+    /unknown|stale|source-managed/);
+  assert.throws(() => createDeterministicClassifiedExecutor({
+    sourceRef: exact.sourceRef,
+    adapterRef: exact.adapterRef,
+    planRef: exact.classifierPlanRef,
+    plan: exact.classifierPlan,
+    registry,
+    invoke: () => null
+  }), /receipt|schema|stale/);
+  assert.throws(() => createDeterministicClassifiedExecutor({
+    classifierPlanReceipt: { ...structuredClone(exact), currentness: 'STALE' },
+    registry,
+    invoke: () => null
+  }), /stale/);
+  const sameRefDifferent = structuredClone(exact);
+  sameRefDifferent.classifierPlan[0].failureClass = 'MODEL_TIMEOUT_SIMULATED';
+  assert.throws(() => createDeterministicClassifiedExecutor({
+    classifierPlanReceipt: sameRefDifferent,
+    registry,
+    invoke: () => null
+  }), /forged|superseded|same-ref/);
+  const unissuedAttemptExecutor = createDeterministicClassifiedExecutor({
+    classifierPlanReceipt: exact,
+    registry,
+    invoke: () => { throw new Error('planned throw'); }
+  });
+  try {
+    unissuedAttemptExecutor();
+  } catch (error) {
+    assert.ok(classifyThrownFailure(unissuedAttemptExecutor, error, { registry }));
+  }
+  try {
+    unissuedAttemptExecutor();
+  } catch (error) {
+    assert.throws(() => classifyThrownFailure(unissuedAttemptExecutor, error, { registry }), /exact executor attempt/);
+  }
+  assert.equal(integrated.receipt.exactClassifierPlanProvenanceProof.failClosed, true);
 });
 
 test('C1 every malformed, stale, replayed, over-budget, async, or thenable boundary input is typed and mutation-free', async () => {
@@ -198,6 +257,7 @@ test('C1 admitted attempts record canonical start/failure/success chronology and
     aggregate: aggregate(),
     registry,
     executor: createDeterministicFaultInjector({
+      registry,
       planRef: 'classifier-plan.runtime-recovery.test.chronology',
       failures: [{ failureClass: 'MODEL_TIMEOUT_SIMULATED', message: 'timeout' }]
     }),
@@ -284,6 +344,7 @@ test('C8 scheduler checkpoint activation and six releases are aggregate/failure 
     aggregate: aggregate({ aggregateRef: 'aggregate.runtime-recovery.other-owner' }),
     registry,
     executor: createDeterministicFaultInjector({
+      registry,
       planRef: 'classifier-plan.runtime-recovery.test.other-owner',
       failures: [{ failureClass: 'MODEL_TIMEOUT_SIMULATED' }]
     }),
@@ -305,7 +366,7 @@ test('C8 scheduler checkpoint activation and six releases are aggregate/failure 
     checkpoint,
     checkpointAdmission,
     { schedulerConsumptionReceipt: schedulerConsumption, registry }
-  ), /activation|released lease|order|current/i);
+  ), /activation|released lease|order|current|stale|detached/i);
 
   const forgedConsumption = structuredClone(schedulerConsumption);
   forgedConsumption.failureRef = 'failure.runtime-recovery.forged';
@@ -317,6 +378,26 @@ test('C8 scheduler checkpoint activation and six releases are aggregate/failure 
     observedAt: T2,
     registry
   }).admitted, false);
+});
+
+test('C12 scheduler recovery ownership survives replay and consumes its durable claim through terminal lifecycle', () => {
+  const proof = integrated.receipt.replayDurableSchedulerRecoveryOwnershipProof;
+  const { schedulerClaimedSnapshot, schedulerAggregateAfterResume, schedulerAggregateAfterCompletion } = integrated.artifacts;
+  assert.equal(proof.forgedClaimRejected, true);
+  assert.equal(proof.forgedClaimMutationFree, true);
+  assert.equal(proof.duplicateLiveClaimRejected, true);
+  assert.equal(proof.duplicateRestartClaimRejected, true);
+  assert.equal(proof.restartPreservedClaimOwnership, true);
+  assert.equal(proof.releaseSetPreservedAcrossRestart, true);
+  assert.equal(schedulerClaimedSnapshot.recoveryClaims.at(-1).state, 'CLAIMED_CURRENT');
+  assert.equal(schedulerAggregateAfterResume.recoveryClaims.at(-1).state, 'RESUMED_CONSUMED');
+  assert.equal(schedulerAggregateAfterCompletion.recoveryClaims.at(-1).state, 'TERMINAL_CONSUMED');
+  assert.deepEqual(schedulerAggregateAfterCompletion.recoveryClaimLedger.map((item) => item.type), [
+    'CLAIMED_CURRENT',
+    'RESUMED_CONSUMED',
+    'TERMINAL_CONSUMED'
+  ]);
+  assert.equal(new Set(schedulerClaimedSnapshot.recoveryClaims[0].leaseReleaseFingerprints).size, 6);
 });
 
 test('C3 restore replays the typed ledger and rejects budget reset, impossible order, forged final state, and duplicate terminal closure', () => {
@@ -360,7 +441,29 @@ test('C3 restore replays the typed ledger and rejects budget reset, impossible o
     schedulerGeneration: 1,
     retryBudget: registry.retryPolicy,
     eventLedger: duplicateTerminal
-  }, { registry }), /terminal recovery state cannot accept later events/);
+  }, { registry }), /terminal recovery state can only begin a new exact attempt\/cycle/);
+});
+
+test('C13 consecutive same-class/same-operation cycles isolate current action, success, convergence, terminal, and projection evidence', () => {
+  const proof = integrated.receipt.recoveryCycleIsolationProof;
+  const owner = integrated.artifacts.cycleIsolationAggregate;
+  assert.equal(owner.recoveryCycleHistory.length, 2);
+  assert.notEqual(owner.recoveryCycleHistory[0].semanticFingerprint, owner.recoveryCycleHistory[1].semanticFingerprint);
+  assert.equal(owner.recoveryCycleHistory[1].priorRecoveryCycleFingerprint,
+    owner.recoveryCycleHistory[0].semanticFingerprint);
+  assert.equal(proof.sameFailureClassRecurrence, true);
+  assert.equal(proof.sameOperationRecurrence, true);
+  assert.equal(proof.differentActionRecovery, true);
+  assert.equal(proof.priorCycleConvergenceRejected, true);
+  assert.equal(proof.priorCycleTerminalRejected, true);
+  assert.equal(proof.prematureCurrentSuccessRejected, true);
+  assert.equal(proof.historicalTerminalIntact, true);
+  assert.equal(proof.currentProjectionCycleRef, owner.activeRecoveryCycle.recoveryCycleRef);
+  assert.equal(proof.currentProjectionTerminalProofRef, null);
+  assert.equal(owner.currentRecoveryActionReceipt.recoveryCycleRef, owner.activeRecoveryCycle.recoveryCycleRef);
+  assert.equal(owner.lastSuccessfulExecutionReceipt, null);
+  assert.equal(owner.recoveryConvergenceReceipt, null);
+  assert.equal(owner.terminalRecoveryReceipts[0].recoveryCycleRef, owner.recoveryCycleHistory[0].recoveryCycleRef);
 });
 
 test('C3 replay rejects same-ref/different-content and stale external events without mutation', () => {

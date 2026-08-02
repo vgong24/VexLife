@@ -51,6 +51,8 @@ export const RECOVERY_AGGREGATE_REQUIRED_FIELDS = Object.freeze([
   'eventLedger',
   'activeAttempt',
   'activeFailure',
+  'activeRecoveryCycle',
+  'recoveryCycleHistory',
   'activePolicyDecision',
   'currentRecoveryReceipt',
   'currentCheckpointAdmission',
@@ -89,8 +91,8 @@ export const RECOVERY_PHASES = Object.freeze([
 const RECOVERY_EVENT_PAYLOAD_FIELDS = Object.freeze({
   ATTEMPT_STARTED: Object.freeze(['attempt']),
   ATTEMPT_SUCCEEDED: Object.freeze(['attemptRef', 'completedAt', 'executionReceipt']),
-  ATTEMPT_FAILED: Object.freeze(['failure']),
-  FAILURE_ACTIVATED: Object.freeze(['failure']),
+  ATTEMPT_FAILED: Object.freeze(['failure', 'recoveryCycle']),
+  FAILURE_ACTIVATED: Object.freeze(['failure', 'recoveryCycle']),
   CHECKPOINT_ADMITTED: Object.freeze(['admission', 'checkpoint', 'schedulerConsumptionReceipt']),
   POLICY_DECIDED: Object.freeze([
     'authorityBoundary', 'checkpointAdmission', 'contextAdmissionReceipt', 'decision',
@@ -213,6 +215,8 @@ function baseAggregate(input, registry) {
     eventLedger: [],
     activeAttempt: null,
     activeFailure: null,
+    activeRecoveryCycle: null,
+    recoveryCycleHistory: [],
     activePolicyDecision: null,
     currentRecoveryReceipt: null,
     currentCheckpointAdmission: null,
@@ -296,13 +300,19 @@ function validateAttemptStart(attempt, state) {
       attempt.wallTimeBudgetFingerprint !== state.retryBudgetFingerprint) {
     throw new Error('attempt wall-time evidence does not bind the registry budget');
   }
-  if (state.activeFailure) {
-    const continuation = state.continuationLineage.at(-1);
+  if (state.activeFailure && state.phase !== 'COMPLETED') {
+    const continuation = currentCycleEntries(state.continuationLineage, state).at(-1);
     if (!state.currentRecoveryActionReceipt || !continuation ||
         continuation.nextSchedulerGeneration !== state.schedulerGeneration ||
-        state.schedulerGeneration <= state.activeFailure.schedulerGeneration) {
+        state.schedulerGeneration <= state.activeFailure.schedulerGeneration ||
+        attempt.recoveryCycleRef !== state.activeRecoveryCycle?.recoveryCycleRef ||
+        attempt.recoveryCycleFingerprint !== state.activeRecoveryCycle?.semanticFingerprint ||
+        parseCanonicalTimestamp(attempt.startedAt, 'recovery attempt startedAt') <
+          parseCanonicalTimestamp(continuation.observedAt, 'recovery continuation observedAt')) {
       throw new Error('retry requires aggregate-owned recovery action and scheduler-issued fresh generation');
     }
+  } else if (attempt.recoveryCycleRef !== null || attempt.recoveryCycleFingerprint !== null) {
+    throw new Error('new non-recovery attempt cannot reuse a historical recovery cycle');
   }
 }
 
@@ -312,6 +322,61 @@ function validateObservationWithinAttempt(attempt, observedAt, label) {
   const deadline = parseCanonicalTimestamp(attempt.deadlineAt, `${label} deadlineAt`);
   if (observed < started || observed > deadline) throw new Error(`${label} violates canonical attempt chronology or deadline`);
   return observed - started;
+}
+
+function formRecoveryCycle(state, failure, activatedAt) {
+  parseCanonicalTimestamp(activatedAt, 'recovery cycle activatedAt');
+  const priorCycle = state.recoveryCycleHistory.at(-1) ?? null;
+  return contentAddressed({
+    schemaVersion: 'vexlife.runtime-recovery-cycle/v1',
+    aggregateRef: state.aggregateRef,
+    workNodeRef: state.workNodeRef,
+    sourceStateFingerprint: state.sourceStateFingerprint,
+    schedulerGeneration: failure.schedulerGeneration,
+    failureRef: failure.failureRef,
+    failureFingerprint: failure.semanticFingerprint,
+    operationRef: failure.operationRef,
+    attemptRef: failure.attemptRef,
+    cycleSequence: state.recoveryCycleHistory.length + 1,
+    priorRecoveryCycleRef: priorCycle?.recoveryCycleRef ?? null,
+    priorRecoveryCycleFingerprint: priorCycle?.semanticFingerprint ?? null,
+    formationRef: 'formation.runtime-recovery.failure-activation-cycle.v1',
+    currentness: 'CURRENT',
+    activatedAt
+  }, 'recoveryCycleRef', 'cycle.runtime-recovery.');
+}
+
+function validateRecoveryCycle(value, state, failure, activatedAt) {
+  const cycle = assertContentAddressed(value, {
+    schemaVersion: 'vexlife.runtime-recovery-cycle/v1',
+    refField: 'recoveryCycleRef',
+    prefix: 'cycle.runtime-recovery.',
+    label: 'recovery cycle'
+  });
+  const expected = formRecoveryCycle(state, failure, activatedAt);
+  if (!same(cycle, expected)) throw new Error('recovery cycle is forged, stale, or detached');
+  return cycle;
+}
+
+function cycleBindings(state) {
+  if (!state.activeRecoveryCycle) throw new Error('current recovery cycle is required');
+  return {
+    recoveryCycleRef: state.activeRecoveryCycle.recoveryCycleRef,
+    recoveryCycleFingerprint: state.activeRecoveryCycle.semanticFingerprint
+  };
+}
+
+function assertCurrentCycle(value, state, label) {
+  if (!state.activeRecoveryCycle || value?.recoveryCycleRef !== state.activeRecoveryCycle.recoveryCycleRef ||
+      value?.recoveryCycleFingerprint !== state.activeRecoveryCycle.semanticFingerprint) {
+    throw new Error(`${label} is not bound to the exact current recovery cycle`);
+  }
+  return value;
+}
+
+function currentCycleEntries(values, state) {
+  const cycleRef = state.activeRecoveryCycle?.recoveryCycleRef;
+  return (values ?? []).filter((item) => item.recoveryCycleRef === cycleRef);
 }
 
 function validateCheckpoint(value) {
@@ -480,6 +545,18 @@ function validateTransactionReceipt(value, registry = null) {
   return freeze(clone(value));
 }
 
+function bindTransactionToCurrentCycle(value, state, registry) {
+  const exact = validateTransactionReceipt(value, registry);
+  if (exact.recoveryCycleRef || exact.recoveryCycleFingerprint) {
+    return assertCurrentCycle(exact, state, 'transactional recovery receipt');
+  }
+  const bound = clone(exact);
+  delete bound.semanticFingerprint;
+  Object.assign(bound, cycleBindings(state));
+  bound.semanticFingerprint = semanticHash(bound);
+  return validateTransactionReceipt(bound, registry);
+}
+
 function policyInputsFromPayload(payload) {
   return {
     checkpointAdmission: payload.checkpointAdmission ?? null,
@@ -498,7 +575,9 @@ function applyEvent(stateInput, eventInput, registry) {
       event.workNodeRef !== state.workNodeRef || event.schedulerGeneration !== state.schedulerGeneration) {
     throw new Error('recovery event order, chain, work, or scheduler generation is invalid');
   }
-  if (state.phase === 'COMPLETED') throw new Error('terminal recovery state cannot accept later events');
+  if (state.phase === 'COMPLETED' && event.type !== 'ATTEMPT_STARTED') {
+    throw new Error('terminal recovery state can only begin a new exact attempt/cycle');
+  }
   const payload = event.payload;
   assertExactEventPayload(event.type, payload, registry);
 
@@ -506,8 +585,20 @@ function applyEvent(stateInput, eventInput, registry) {
     case 'ATTEMPT_STARTED': {
       if (state.activeAttempt) throw new Error('attempt start is impossible while another attempt is active');
       validateAttemptStart(payload.attempt, state);
+      if (state.phase === 'COMPLETED') {
+        state.activeFailure = null;
+        state.activeRecoveryCycle = null;
+        state.activePolicyDecision = null;
+        state.currentRecoveryReceipt = null;
+        state.currentCheckpointAdmission = null;
+        state.currentRecoveryActionReceipt = null;
+        state.lastSuccessfulExecutionReceipt = null;
+        state.recoveryConvergenceReceipt = null;
+        state.recoveredFailure = null;
+      }
       state.activeAttempt = freeze({ ...clone(payload.attempt), state: 'STARTED' });
       state.attemptLedger.push(clone(state.activeAttempt));
+      if (state.phase === 'COMPLETED') state.phase = 'READY';
       break;
     }
     case 'ATTEMPT_SUCCEEDED': {
@@ -527,6 +618,19 @@ function applyEvent(stateInput, eventInput, registry) {
           executionReceipt.completedAt !== payload.completedAt ||
           executionReceipt.resultFingerprint !== semanticHash(executionReceipt.resultEvidence ?? null)) {
         throw new Error('attempt success execution receipt is detached');
+      }
+      if (state.activeFailure) {
+        const continuation = currentCycleEntries(state.continuationLineage, state).at(-1);
+        assertCurrentCycle(executionReceipt, state, 'successful execution');
+        if (!state.currentRecoveryActionReceipt || !continuation ||
+            executionReceipt.actionReceiptFingerprint !== state.currentRecoveryActionReceipt.semanticFingerprint ||
+            executionReceipt.schedulerContinuationFingerprint !== continuation.semanticFingerprint ||
+            parseCanonicalTimestamp(state.activeAttempt.startedAt, 'recovery success startedAt') <
+              parseCanonicalTimestamp(continuation.observedAt, 'current continuation observedAt')) {
+          throw new Error('successful execution did not occur after the current action and continuation');
+        }
+      } else if (executionReceipt.recoveryCycleRef !== null || executionReceipt.recoveryCycleFingerprint !== null) {
+        throw new Error('non-recovery success cannot claim a prior recovery cycle');
       }
       const index = attemptIndex(state, payload.attemptRef);
       state.attemptLedger[index] = {
@@ -556,6 +660,7 @@ function applyEvent(stateInput, eventInput, registry) {
           payload.failure.operationRef !== state.activeAttempt.operationRef) {
         throw new Error('attempt failure is detached from the active aggregate attempt');
       }
+      validateRecoveryCycle(payload.recoveryCycle, state, payload.failure, event.occurredAt);
       const elapsedMs = validateObservationWithinAttempt(state.activeAttempt, payload.failure.observedAt, 'attempt failure');
       const index = attemptIndex(state, state.activeAttempt.attemptRef);
       state.attemptLedger[index] = {
@@ -566,7 +671,8 @@ function applyEvent(stateInput, eventInput, registry) {
         elapsedMs,
         failureRef: payload.failure.failureRef,
         failureFingerprint: payload.failure.semanticFingerprint,
-        failureRecurrenceFingerprint: payload.failure.recurrenceFingerprint
+        failureRecurrenceFingerprint: payload.failure.recurrenceFingerprint,
+        ...cycleBindings({ activeRecoveryCycle: payload.recoveryCycle })
       };
       state.activeAttempt = null;
       state.phase = 'FAILURE_ACTIVE';
@@ -575,17 +681,22 @@ function applyEvent(stateInput, eventInput, registry) {
     case 'FAILURE_ACTIVATED': {
       const previous = state.eventLedger.at(-1);
       if (previous?.type !== 'ATTEMPT_FAILED' ||
-          previous.payload.failure.semanticFingerprint !== payload.failure?.semanticFingerprint) {
+          previous.payload.failure.semanticFingerprint !== payload.failure?.semanticFingerprint ||
+          !same(previous.payload.recoveryCycle, payload.recoveryCycle)) {
         throw new Error('failure activation must immediately consume the failed attempt');
       }
       const validation = validateFailureEnvelope(payload.failure, { registry });
       if (!validation.ok) throw new Error(`active failure invalid: ${validation.errors.join(', ')}`);
+      const cycle = validateRecoveryCycle(payload.recoveryCycle, state, payload.failure, event.occurredAt);
       state.activeFailure = clone(payload.failure);
+      state.activeRecoveryCycle = clone(cycle);
+      state.recoveryCycleHistory.push(clone(cycle));
       state.failureHistory.push(clone(payload.failure));
       state.activePolicyDecision = null;
       state.currentRecoveryReceipt = null;
       state.currentCheckpointAdmission = null;
       state.currentRecoveryActionReceipt = null;
+      state.lastSuccessfulExecutionReceipt = null;
       state.recoveryConvergenceReceipt = null;
       state.phase = 'FAILURE_ACTIVE';
       break;
@@ -595,6 +706,9 @@ function applyEvent(stateInput, eventInput, registry) {
       const checkpoint = validateCheckpoint(payload.checkpoint);
       const admission = validateCheckpointAdmission(payload.admission);
       const consumption = validateSchedulerCheckpointConsumption(payload.schedulerConsumptionReceipt);
+      assertCurrentCycle(checkpoint, state, 'recovery checkpoint');
+      assertCurrentCycle(admission, state, 'checkpoint admission');
+      assertCurrentCycle(consumption, state, 'scheduler checkpoint consumption');
       const expectedCheckpoint = createRecoveryCheckpoint({
         schedulerCheckpoint: checkpoint.schedulerCheckpoint,
         schedulerConsumptionReceipt: consumption,
@@ -651,6 +765,7 @@ function applyEvent(stateInput, eventInput, registry) {
     case 'POLICY_DECIDED': {
       if (!state.activeFailure || state.activePolicyDecision) throw new Error('policy decision requires one undecided active failure');
       const decision = validateRecoveryPolicyDecision(payload.decision);
+      assertCurrentCycle(decision, state, 'recovery policy decision');
       const expected = resolveRecoveryPolicy({
         failure: state.activeFailure,
         aggregate: state,
@@ -661,9 +776,11 @@ function applyEvent(stateInput, eventInput, registry) {
         throw new Error('policy decision differs from exact source-managed replay');
       }
       const receipt = validateRecoveryReceipt(payload.recoveryReceipt);
+      assertCurrentCycle(receipt, state, 'nonterminal recovery receipt');
       if (receipt.failureFingerprint !== state.activeFailure.semanticFingerprint ||
           receipt.decisionFingerprint !== decision.semanticFingerprint ||
           !same(receipt, nonterminalRecoveryReceipt(
+            state,
             state.activeFailure,
             decision,
             payload.checkpointAdmission,
@@ -680,6 +797,7 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'CONTEXT_RECOVERED': {
       const receipt = validateContextReceipt(payload.receipt);
+      assertCurrentCycle(receipt, state, 'context recovery receipt');
       if (!state.activeFailure || receipt.failureFingerprint !== state.activeFailure.semanticFingerprint ||
           receipt.checkpointAdmissionFingerprint !== state.currentCheckpointAdmission?.semanticFingerprint) {
         throw new Error('context recovery receipt is detached');
@@ -710,6 +828,7 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'RESOURCE_RECOVERED': {
       const receipt = validateResourceReceipt(payload.receipt);
+      assertCurrentCycle(receipt, state, 'resource recovery receipt');
       if (!state.activeFailure || receipt.failureFingerprint !== state.activeFailure.semanticFingerprint ||
           receipt.checkpointAdmissionFingerprint !== state.currentCheckpointAdmission?.semanticFingerprint) {
         throw new Error('resource recovery receipt is detached');
@@ -730,6 +849,7 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'ROLLBACK_ATTEMPTED': {
       const receipt = validateTransactionReceipt(payload.receipt, registry);
+      assertCurrentCycle(receipt, state, 'transactional recovery receipt');
       if (!state.activePolicyDecision || receipt.operationRef !== state.activeFailure?.operationRef) {
         throw new Error('rollback receipt is detached from the active recovery action');
       }
@@ -741,6 +861,7 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'ROLLBACK_VERIFIED': {
       const receipt = validateTransactionReceipt(payload.receipt, registry);
+      assertCurrentCycle(receipt, state, 'rollback verification receipt');
       if (state.rollbackLineage.at(-1)?.semanticFingerprint !== receipt.semanticFingerprint ||
           receipt.state !== 'ROLLED_BACK' || receipt.rollbackVerified !== true ||
           receipt.rollbackReadBackFingerprint !== receipt.observedBeforeFingerprint) {
@@ -750,6 +871,7 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'LAST_KNOWN_GOOD_RESTORED': {
       const receipt = validateTransactionReceipt(payload.receipt, registry);
+      assertCurrentCycle(receipt, state, 'last-known-good receipt');
       if (state.rollbackLineage.at(-1)?.semanticFingerprint !== receipt.semanticFingerprint ||
           receipt.state !== 'LAST_KNOWN_GOOD_RESTORED' || receipt.lastKnownGoodRestored !== true ||
           receipt.lastKnownGoodReadBackFingerprint !== receipt.lastKnownGoodExpectedFingerprint) {
@@ -760,6 +882,7 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'QUARANTINED': {
       const receipt = validateTransactionReceipt(payload.receipt, registry);
+      assertCurrentCycle(receipt, state, 'quarantine receipt');
       if (state.rollbackLineage.at(-1)?.semanticFingerprint !== receipt.semanticFingerprint ||
           receipt.state !== 'QUARANTINED' || !receipt.quarantined || !receipt.quarantineRef) {
         throw new Error('quarantine event requires exact failed rollback/LKG evidence');
@@ -775,6 +898,7 @@ function applyEvent(stateInput, eventInput, registry) {
         prefix: 'gate.runtime-recovery.human.',
         label: 'human decision gate'
       });
+      assertCurrentCycle(gate, state, 'human decision gate');
       const expected = createHumanDecisionGate({
         aggregate: state,
         policyDecision: state.activePolicyDecision,
@@ -791,6 +915,7 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'RECOVERY_ACTION_APPLIED': {
       const receipt = validateActionReceipt(payload.receipt);
+      assertCurrentCycle(receipt, state, 'recovery action receipt');
       if (!state.activePolicyDecision || receipt.decisionFingerprint !== state.activePolicyDecision.semanticFingerprint ||
           receipt.failureFingerprint !== state.activeFailure?.semanticFingerprint ||
           receipt.action !== state.activePolicyDecision.action || state.currentRecoveryActionReceipt) {
@@ -812,7 +937,9 @@ function applyEvent(stateInput, eventInput, registry) {
         throw new Error('generation continuation requires converged recoverable action and checkpoint admission');
       }
       const continuation = validateContinuation(payload.continuation);
+      assertCurrentCycle(continuation, state, 'recovery continuation');
       const schedulerResume = validateSchedulerRecoveryResume(continuation.schedulerResumeReceipt);
+      assertCurrentCycle(schedulerResume, state, 'scheduler recovery resume');
       const continuationBindings = {
         checkpointAdmission: continuation.checkpointAdmissionFingerprint === state.currentCheckpointAdmission.semanticFingerprint,
         action: continuation.actionReceiptFingerprint === state.currentRecoveryActionReceipt.semanticFingerprint,
@@ -857,6 +984,7 @@ function applyEvent(stateInput, eventInput, registry) {
       if (external.workNodeRef !== state.workNodeRef || external.schedulerGeneration !== state.schedulerGeneration) {
         throw new Error('stale or cross-work external event rejected');
       }
+      assertCurrentCycle(external, state, 'external recovery event');
       if (external.schemaVersion === 'vexlife.runtime-recovery-external-wait-event/v1' &&
           (external.eventKind !== 'RECOVERY_WAIT_BEGUN' ||
             external.aggregateRef !== state.aggregateRef ||
@@ -897,10 +1025,13 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'RECOVERY_CONVERGED': {
       const receipt = validateConvergenceReceipt(payload.receipt);
+      assertCurrentCycle(receipt, state, 'recovery convergence receipt');
       if (!state.lastSuccessfulExecutionReceipt || !state.currentRecoveryActionReceipt ||
           receipt.successExecutionFingerprint !== state.lastSuccessfulExecutionReceipt.semanticFingerprint ||
           receipt.actionReceiptFingerprint !== state.currentRecoveryActionReceipt.semanticFingerprint ||
-          state.quarantinedRefs.length || state.humanDecisionGates.length || ['BLOCKED', 'QUARANTINED', 'WAITING_HUMAN'].includes(state.phase)) {
+          currentCycleEntries(state.rollbackLineage, state).some((item) => item.state === 'QUARANTINED') ||
+          currentCycleEntries(state.humanDecisionGates, state).length ||
+          ['BLOCKED', 'QUARANTINED', 'WAITING_HUMAN'].includes(state.phase)) {
         throw new Error('recovery convergence requires exact success/action ownership and no unresolved hold');
       }
       const expected = createRecoveryConvergenceReceipt(state, { formedAt: event.occurredAt, registry });
@@ -911,6 +1042,7 @@ function applyEvent(stateInput, eventInput, registry) {
     }
     case 'TERMINAL_CLOSED': {
       const receipt = validateTerminalReceipt(payload.receipt);
+      assertCurrentCycle(receipt, state, 'terminal recovery receipt');
       const schedulerEvidence = receipt.schedulerEvidence;
       const schedulerCheckpoint = createIntentCheckpoint(schedulerEvidence?.schedulerCheckpoint);
       const completionVerification = assertCanonicalSchedulerReceipt(
@@ -935,7 +1067,7 @@ function applyEvent(stateInput, eventInput, registry) {
         schedulerEvidence?.returnRouteReceipt,
         'terminal replay return route'
       );
-      if (state.terminalRecoveryReceipts.length || !state.recoveryConvergenceReceipt ||
+      if (currentCycleEntries(state.terminalRecoveryReceipts, state).length || !state.recoveryConvergenceReceipt ||
           receipt.aggregateRef !== state.aggregateRef ||
           receipt.aggregateFingerprint !== buildRecoveryAggregateFingerprint(state) ||
           receipt.failureFingerprint !== state.activeFailure?.semanticFingerprint ||
@@ -1086,7 +1218,9 @@ function attemptFrom(context, aggregate) {
     deadlineAt: context.deadlineAt,
     maximumWallTimeClass: aggregate.retryBudget.maximumWallTimeClass,
     maximumWallTimeMs: aggregate.retryBudget.maximumWallTimeMs,
-    wallTimeBudgetFingerprint: aggregate.retryBudgetFingerprint
+    wallTimeBudgetFingerprint: aggregate.retryBudgetFingerprint,
+    recoveryCycleRef: aggregate.activeFailure ? aggregate.activeRecoveryCycle?.recoveryCycleRef ?? null : null,
+    recoveryCycleFingerprint: aggregate.activeFailure ? aggregate.activeRecoveryCycle?.semanticFingerprint ?? null : null
   };
 }
 
@@ -1150,7 +1284,13 @@ export function executeWithRecoveryBoundary({
       completedAt: context.completedAt,
       deadlineAt: context.deadlineAt,
       elapsedMs: parseCanonicalTimestamp(context.completedAt, 'attempt completedAt') -
-        parseCanonicalTimestamp(context.startedAt, 'attempt startedAt')
+        parseCanonicalTimestamp(context.startedAt, 'attempt startedAt'),
+      recoveryCycleRef: canonicalAggregate.activeFailure ? canonicalAggregate.activeRecoveryCycle?.recoveryCycleRef ?? null : null,
+      recoveryCycleFingerprint: canonicalAggregate.activeFailure ? canonicalAggregate.activeRecoveryCycle?.semanticFingerprint ?? null : null,
+      actionReceiptFingerprint: canonicalAggregate.activeFailure
+        ? canonicalAggregate.currentRecoveryActionReceipt?.semanticFingerprint ?? null : null,
+      schedulerContinuationFingerprint: canonicalAggregate.activeFailure
+        ? currentCycleEntries(canonicalAggregate.continuationLineage, canonicalAggregate).at(-1)?.semanticFingerprint ?? null : null
     }, 'executionReceiptRef', 'receipt.runtime-executor.');
     const next = appendEvent(startedAggregate, 'ATTEMPT_SUCCEEDED', {
       attemptRef: context.attemptRef,
@@ -1172,8 +1312,9 @@ export function executeWithRecoveryBoundary({
         currentness: 'CURRENT',
         evidenceRefs: [...(context.evidenceRefs ?? []), ...(error?.evidenceRefs ?? [])]
       }, { registry, executor, classificationEvidence: internalClassificationEvidence });
-      let next = appendEvent(startedAggregate, 'ATTEMPT_FAILED', { failure }, context.observedAt, registry);
-      next = appendEvent(next, 'FAILURE_ACTIVATED', { failure }, context.observedAt, registry);
+      const recoveryCycle = formRecoveryCycle(startedAggregate, failure, context.observedAt);
+      let next = appendEvent(startedAggregate, 'ATTEMPT_FAILED', { failure, recoveryCycle }, context.observedAt, registry);
+      next = appendEvent(next, 'FAILURE_ACTIVATED', { failure, recoveryCycle }, context.observedAt, registry);
       return freeze({
         admitted: true,
         status: 'FAILED_RECOVERABLE',
@@ -1186,6 +1327,105 @@ export function executeWithRecoveryBoundary({
       return boundaryRejection('FAILURE_NORMALIZATION_REJECTED', boundaryError, canonicalAggregate, context, registry);
     }
   }
+}
+
+export function createSchedulerRecoveryClaimReceipt({
+  aggregate,
+  schedulerAggregate,
+  schedulerCheckpoint,
+  formedAt,
+  registry
+}) {
+  const owner = createRecoveryAggregate(aggregate, { registry });
+  const checkpoint = createIntentCheckpoint(schedulerCheckpoint);
+  parseCanonicalTimestamp(formedAt, 'scheduler recovery claim formedAt');
+  if (!owner.activeFailure || !owner.activeRecoveryCycle || owner.phase !== 'FAILURE_ACTIVE') {
+    throw new Error('scheduler recovery claim requires one exact active failure cycle');
+  }
+  const schedulerState = clone(schedulerAggregate);
+  const suppliedSchedulerFingerprint = schedulerState?.semanticFingerprint;
+  if (!schedulerState || !suppliedSchedulerFingerprint) throw new Error('scheduler recovery claim requires exact scheduler aggregate');
+  delete schedulerState.semanticFingerprint;
+  if (semanticHash(schedulerState) !== suppliedSchedulerFingerprint || schedulerAggregate.phase !== 'PAUSED' ||
+      schedulerAggregate.active !== null ||
+      !schedulerAggregate.checkpoints?.some((item) => item.checkpointRef === checkpoint.checkpointRef &&
+        item.semanticFingerprint === checkpoint.semanticFingerprint && item.currentState === 'PAUSED_AT_CHECKPOINT') ||
+      checkpoint.workNodeRef !== owner.workNodeRef ||
+      checkpoint.priorSchedulerGeneration !== owner.schedulerGeneration ||
+      checkpoint.sourceBindings?.some((item) => item.sourceHash !== owner.sourceStateFingerprint) ||
+      checkpoint.leaseReleaseReceipts?.length !== LEASE_KINDS.length ||
+      new Set(checkpoint.leaseReleaseReceipts.map((item) => item.semanticFingerprint)).size !== LEASE_KINDS.length) {
+    throw new Error('scheduler recovery claim is detached from canonical paused scheduler truth');
+  }
+  const leaseReleaseReceiptRefs = checkpoint.leaseReleaseReceipts.map((item) => item.receiptRef).sort();
+  const leaseReleaseFingerprints = checkpoint.leaseReleaseReceipts.map((item) => item.semanticFingerprint).sort();
+  const activationFingerprint = semanticHash({
+    formationRef: 'formation.runtime-recovery.scheduler-claim-activation.v1',
+    recoveryAggregateFingerprint: owner.semanticFingerprint,
+    recoveryCycleFingerprint: owner.activeRecoveryCycle.semanticFingerprint,
+    activeFailureFingerprint: owner.activeFailure.semanticFingerprint,
+    schedulerAggregateFingerprint: suppliedSchedulerFingerprint,
+    schedulerCheckpointFingerprint: checkpoint.semanticFingerprint,
+    leaseReleaseReceiptRefs,
+    leaseReleaseFingerprints
+  });
+  return contentAddressed({
+    schemaVersion: 'vexlife.runtime-recovery-scheduler-claim/v1',
+    formationRef: 'formation.runtime-recovery.scheduler-claim.v1',
+    aggregateRef: owner.aggregateRef,
+    recoveryAggregateFingerprint: owner.semanticFingerprint,
+    recoveryAggregate: owner,
+    recoveryCycleRef: owner.activeRecoveryCycle.recoveryCycleRef,
+    recoveryCycleFingerprint: owner.activeRecoveryCycle.semanticFingerprint,
+    activeFailureRef: owner.activeFailure.failureRef,
+    activeFailureFingerprint: owner.activeFailure.semanticFingerprint,
+    workNodeRef: owner.workNodeRef,
+    sourceStateFingerprint: owner.sourceStateFingerprint,
+    schedulerGeneration: owner.schedulerGeneration,
+    schedulerAggregateFingerprint: suppliedSchedulerFingerprint,
+    schedulerCheckpointRef: checkpoint.checkpointRef,
+    schedulerCheckpointFingerprint: checkpoint.semanticFingerprint,
+    leaseReleaseReceiptRefs,
+    leaseReleaseFingerprints,
+    onceOnlyActivationRef: `activation.intent-scheduler.recovery.${activationFingerprint.slice(0, 32)}`,
+    claimLifecycle: 'CLAIMED_CURRENT',
+    currentness: 'CURRENT',
+    formedAt
+  }, 'claimReceiptRef', 'claim.runtime-recovery.scheduler.');
+}
+
+export function validateSchedulerRecoveryClaimReceipt(value, { registry } = {}) {
+  const claim = assertContentAddressed(value, {
+    schemaVersion: 'vexlife.runtime-recovery-scheduler-claim/v1',
+    refField: 'claimReceiptRef',
+    prefix: 'claim.runtime-recovery.scheduler.',
+    label: 'scheduler recovery claim'
+  });
+  const owner = createRecoveryAggregate(claim.recoveryAggregate, { registry });
+  const activationFingerprint = semanticHash({
+    formationRef: 'formation.runtime-recovery.scheduler-claim-activation.v1',
+    recoveryAggregateFingerprint: claim.recoveryAggregateFingerprint,
+    recoveryCycleFingerprint: claim.recoveryCycleFingerprint,
+    activeFailureFingerprint: claim.activeFailureFingerprint,
+    schedulerAggregateFingerprint: claim.schedulerAggregateFingerprint,
+    schedulerCheckpointFingerprint: claim.schedulerCheckpointFingerprint,
+    leaseReleaseReceiptRefs: claim.leaseReleaseReceiptRefs,
+    leaseReleaseFingerprints: claim.leaseReleaseFingerprints
+  });
+  if (claim.currentness !== 'CURRENT' || claim.formationRef !== 'formation.runtime-recovery.scheduler-claim.v1' ||
+      claim.claimLifecycle !== 'CLAIMED_CURRENT' ||
+      claim.onceOnlyActivationRef !== `activation.intent-scheduler.recovery.${activationFingerprint.slice(0, 32)}` ||
+      owner.semanticFingerprint !== claim.recoveryAggregateFingerprint ||
+      owner.aggregateRef !== claim.aggregateRef || owner.phase !== 'FAILURE_ACTIVE' ||
+      owner.activeFailure?.failureRef !== claim.activeFailureRef ||
+      owner.activeFailure?.semanticFingerprint !== claim.activeFailureFingerprint ||
+      owner.activeRecoveryCycle?.recoveryCycleRef !== claim.recoveryCycleRef ||
+      owner.activeRecoveryCycle?.semanticFingerprint !== claim.recoveryCycleFingerprint ||
+      owner.workNodeRef !== claim.workNodeRef || owner.sourceStateFingerprint !== claim.sourceStateFingerprint ||
+      owner.schedulerGeneration !== claim.schedulerGeneration) {
+    throw new Error('scheduler recovery claim does not consume exact replay-derived recovery truth');
+  }
+  return claim;
 }
 
 export function createRecoveryCheckpoint({
@@ -1230,6 +1470,9 @@ export function createRecoveryCheckpoint({
   return contentAddressed({
     schemaVersion: 'vexlife.runtime-recovery-checkpoint/v1',
     aggregateRef,
+    recoveryAggregateFingerprint: consumption.recoveryAggregateFingerprint,
+    recoveryCycleRef: consumption.recoveryCycleRef,
+    recoveryCycleFingerprint: consumption.recoveryCycleFingerprint,
     failureRef,
     failureFingerprint,
     workNodeRef: exactSchedulerCheckpoint.workNodeRef,
@@ -1285,7 +1528,10 @@ export function admitRecoveryCheckpoint(checkpoint, aggregate, {
     if (!same(exactScheduler, canonical.schedulerCheckpoint)) reasons.push('SCHEDULER_CHECKPOINT_SUBSTITUTED');
     if (consumption.semanticFingerprint !== canonical.schedulerConsumptionFingerprint ||
         consumption.aggregateRef !== canonicalAggregate.aggregateRef ||
-        consumption.failureFingerprint !== canonicalAggregate.activeFailure?.semanticFingerprint) {
+        consumption.failureFingerprint !== canonicalAggregate.activeFailure?.semanticFingerprint ||
+        consumption.recoveryAggregateFingerprint !== canonical.recoveryAggregateFingerprint ||
+        consumption.recoveryCycleRef !== canonicalAggregate.activeRecoveryCycle?.recoveryCycleRef ||
+        consumption.recoveryCycleFingerprint !== canonicalAggregate.activeRecoveryCycle?.semanticFingerprint) {
       reasons.push('SCHEDULER_CHECKPOINT_CONSUMPTION_SUBSTITUTED');
     }
   } catch (error) {
@@ -1316,6 +1562,9 @@ export function admitRecoveryCheckpoint(checkpoint, aggregate, {
     failureRef: canonicalAggregate?.activeFailure?.failureRef ?? null,
     failureFingerprint: canonicalAggregate?.activeFailure?.semanticFingerprint ?? null,
     aggregateRef: canonicalAggregate?.aggregateRef ?? aggregate?.aggregateRef ?? null,
+    recoveryAggregateFingerprint: canonicalAggregate?.semanticFingerprint ?? null,
+    recoveryCycleRef: canonicalAggregate?.activeRecoveryCycle?.recoveryCycleRef ?? null,
+    recoveryCycleFingerprint: canonicalAggregate?.activeRecoveryCycle?.semanticFingerprint ?? null,
     recoveryCheckpointRef: canonical?.recoveryCheckpointRef ?? checkpoint?.recoveryCheckpointRef ?? null,
     checkpointFingerprint: canonical?.semanticFingerprint ?? null,
     schedulerCheckpointRef: canonical?.schedulerCheckpointRef ?? null,
@@ -1346,11 +1595,12 @@ export function recordRecoveryCheckpointAdmission(aggregate, checkpoint, admissi
   }, exactAdmission.observedAt, registry);
 }
 
-function nonterminalRecoveryReceipt(failure, decision, checkpointAdmission, observedAt) {
+function nonterminalRecoveryReceipt(state, failure, decision, checkpointAdmission, observedAt) {
   return contentAddressed({
     schemaVersion: 'vexlife.runtime-recovery-receipt/v1',
     failureRef: failure.failureRef,
     failureFingerprint: failure.semanticFingerprint,
+    ...cycleBindings(state),
     decisionRef: decision.decisionRef,
     decisionFingerprint: decision.semanticFingerprint,
     action: decision.action,
@@ -1391,7 +1641,7 @@ export function recordRecoveryPolicyDecision(aggregate, {
     observedAt,
     registry
   });
-  const receipt = nonterminalRecoveryReceipt(canonical.activeFailure, decision, checkpointAdmission, observedAt);
+  const receipt = nonterminalRecoveryReceipt(canonical, canonical.activeFailure, decision, checkpointAdmission, observedAt);
   const next = appendEvent(canonical, 'POLICY_DECIDED', {
     decision,
     recoveryReceipt: receipt,
@@ -1472,6 +1722,8 @@ export function recoverContextBudget({
     workNodeRef,
     sourceStateFingerprint,
     failureFingerprint,
+    recoveryCycleRef: admission.recoveryCycleRef,
+    recoveryCycleFingerprint: admission.recoveryCycleFingerprint,
     schedulerGeneration: admission.nextSchedulerGeneration,
     checkpointAdmissionRef: admission.admissionRef,
     checkpointAdmissionFingerprint: admission.semanticFingerprint,
@@ -1531,6 +1783,8 @@ export function createRecoveryResourceReceipt({
     workNodeRef,
     sourceStateFingerprint,
     failureFingerprint,
+    recoveryCycleRef: admission.recoveryCycleRef,
+    recoveryCycleFingerprint: admission.recoveryCycleFingerprint,
     schedulerGeneration: admission.nextSchedulerGeneration,
     checkpointAdmissionRef: admission.admissionRef,
     checkpointAdmissionFingerprint: admission.semanticFingerprint,
@@ -1571,6 +1825,7 @@ export function createHumanDecisionGate({ aggregate, policyDecision, observedAt,
     workNodeRef: owner.workNodeRef,
     failureRef: owner.activeFailure.failureRef,
     failureFingerprint: owner.activeFailure.semanticFingerprint,
+    ...cycleBindings(owner),
     decisionRef: decision.decisionRef,
     decisionFingerprint: decision.semanticFingerprint,
     smallestQuestionRef: `question.runtime-recovery.${owner.activeFailure.failureClass}`,
@@ -1606,6 +1861,7 @@ export function createRecoveryWaitResumeReceipt({
     workNodeRef: owner.workNodeRef,
     schedulerGeneration: owner.schedulerGeneration,
     failureFingerprint: owner.activeFailure.semanticFingerprint,
+    ...cycleBindings(owner),
     decisionFingerprint: decision.semanticFingerprint,
     observedAt: waitedAt
   }, 'eventRef', 'external-event.runtime-recovery.wait.');
@@ -1616,6 +1872,7 @@ export function createRecoveryWaitResumeReceipt({
     workNodeRef: owner.workNodeRef,
     schedulerGeneration: owner.schedulerGeneration,
     failureFingerprint: owner.activeFailure.semanticFingerprint,
+    ...cycleBindings(owner),
     decisionFingerprint: decision.semanticFingerprint,
     waitEventRef: waitEvent.eventRef,
     waitEventFingerprint: waitEvent.semanticFingerprint,
@@ -1627,6 +1884,7 @@ export function createRecoveryWaitResumeReceipt({
     schemaVersion: 'vexlife.runtime-recovery-wait-resume-receipt/v1',
     aggregateRef: owner.aggregateRef,
     failureFingerprint: owner.activeFailure.semanticFingerprint,
+    ...cycleBindings(owner),
     decisionFingerprint: decision.semanticFingerprint,
     waitEvent,
     resumeEvent,
@@ -1658,6 +1916,7 @@ export function createSplitWorkRouteReceipt({
     workNodeRef: owner.workNodeRef,
     schedulerGeneration: owner.schedulerGeneration,
     failureFingerprint: owner.activeFailure.semanticFingerprint,
+    ...cycleBindings(owner),
     decisionFingerprint: decision.semanticFingerprint,
     contextRecoveryReceiptRef: context.contextRecoveryReceiptRef,
     contextRecoveryReceiptFingerprint: context.semanticFingerprint,
@@ -1671,13 +1930,14 @@ export function createSplitWorkRouteReceipt({
 
 function actionEvidenceFromState(state) {
   const evidence = [];
-  const context = state.contextRecoveryReceipts.at(-1);
-  const resource = state.resourceRecoveryReceipts.at(-1);
-  const transaction = state.rollbackLineage.at(-1);
-  const humanGate = state.humanDecisionGates.at(-1);
-  const wait = state.acceptedExternalEvents.findLast((item) => item.eventKind === 'RECOVERY_WAIT_BEGUN');
-  const resume = state.acceptedExternalEvents.findLast((item) => item.eventKind === 'RECOVERY_RESUMED_CURRENT');
-  const split = state.acceptedExternalEvents.findLast((item) => item.eventKind === 'SPLIT_CHILD_RETURN_ROUTE_FORMED');
+  const context = currentCycleEntries(state.contextRecoveryReceipts, state).at(-1);
+  const resource = currentCycleEntries(state.resourceRecoveryReceipts, state).at(-1);
+  const transaction = currentCycleEntries(state.rollbackLineage, state).at(-1);
+  const humanGate = currentCycleEntries(state.humanDecisionGates, state).at(-1);
+  const currentEvents = currentCycleEntries(state.acceptedExternalEvents, state);
+  const wait = currentEvents.findLast((item) => item.eventKind === 'RECOVERY_WAIT_BEGUN');
+  const resume = currentEvents.findLast((item) => item.eventKind === 'RECOVERY_RESUMED_CURRENT');
+  const split = currentEvents.findLast((item) => item.eventKind === 'SPLIT_CHILD_RETURN_ROUTE_FORMED');
   if (context) evidence.push({ role: 'context', ref: context.contextRecoveryReceiptRef, fingerprint: context.semanticFingerprint });
   if (resource) evidence.push({ role: 'resource', ref: resource.resourceRecoveryReceiptRef, fingerprint: resource.semanticFingerprint });
   if (transaction) {
@@ -1707,7 +1967,7 @@ function buildRecoveryActionReceipt(state, observedAt, registry) {
   if (missing.length || unrelated.length || new Set(roles).size !== roles.length) {
     throw new Error(`recovery action evidence matrix mismatch: missing=${missing.join(',')} unrelated=${unrelated.join(',')}`);
   }
-  const transaction = state.rollbackLineage.at(-1);
+  const transaction = currentCycleEntries(state.rollbackLineage, state).at(-1);
   if (decision.action === 'ROLLBACK_TO_BEFORE_IMAGE' && !['ROLLED_BACK', 'LAST_KNOWN_GOOD_RESTORED'].includes(transaction?.state)) {
     throw new Error('rollback action requires exact rollback or last-known-good read-back');
   }
@@ -1717,7 +1977,7 @@ function buildRecoveryActionReceipt(state, observedAt, registry) {
   if (decision.action === 'QUARANTINE_ADAPTER_OR_ARTIFACT' && transaction?.state !== 'QUARANTINED') {
     throw new Error('quarantine action requires exact failed rollback/LKG evidence');
   }
-  const checkpoint = state.checkpointLineage.at(-1);
+  const checkpoint = currentCycleEntries(state.checkpointLineage, state).at(-1);
   return contentAddressed({
     schemaVersion: 'vexlife.runtime-recovery-action-receipt/v1',
     aggregateRef: state.aggregateRef,
@@ -1726,6 +1986,7 @@ function buildRecoveryActionReceipt(state, observedAt, registry) {
     schedulerGeneration: state.schedulerGeneration,
     failureRef: state.activeFailure.failureRef,
     failureFingerprint: state.activeFailure.semanticFingerprint,
+    ...cycleBindings(state),
     decisionRef: decision.decisionRef,
     decisionFingerprint: decision.semanticFingerprint,
     action: decision.action,
@@ -1769,19 +2030,21 @@ export function applyRecoveryAction({
   }
   if (contextRecoveryReceipt) {
     const receipt = validateContextReceipt(contextRecoveryReceipt);
-    if (current.contextRecoveryReceipts.at(-1)?.semanticFingerprint !== receipt.semanticFingerprint) {
+    assertCurrentCycle(receipt, current, 'context recovery action evidence');
+    if (currentCycleEntries(current.contextRecoveryReceipts, current).at(-1)?.semanticFingerprint !== receipt.semanticFingerprint) {
       throw new Error('context recovery action evidence was not admitted before policy selection');
     }
   }
   if (resourceRecoveryReceipt) {
     const receipt = validateResourceReceipt(resourceRecoveryReceipt);
-    if (current.resourceRecoveryReceipts.at(-1)?.semanticFingerprint !== receipt.semanticFingerprint) {
+    assertCurrentCycle(receipt, current, 'resource recovery action evidence');
+    if (currentCycleEntries(current.resourceRecoveryReceipts, current).at(-1)?.semanticFingerprint !== receipt.semanticFingerprint) {
       throw new Error('resource recovery action evidence was not admitted before policy selection');
     }
   }
   let transaction = null;
   if (transactionalRecoveryReceipt) {
-    transaction = validateTransactionReceipt(transactionalRecoveryReceipt, registry);
+    transaction = bindTransactionToCurrentCycle(transactionalRecoveryReceipt, current, registry);
     current = appendEvent(current, 'ROLLBACK_ATTEMPTED', { receipt: transaction }, observedAt, registry);
     if (transaction.state === 'ROLLED_BACK') {
       current = appendEvent(current, 'ROLLBACK_VERIFIED', { receipt: transaction }, observedAt, registry);
@@ -1861,11 +2124,13 @@ export function createRecoveryContinuation({
       }) ||
       schedulerResume.aggregateRef !== owner.aggregateRef ||
       schedulerResume.failureFingerprint !== owner.activeFailure?.semanticFingerprint ||
+      schedulerResume.recoveryCycleRef !== owner.activeRecoveryCycle?.recoveryCycleRef ||
+      schedulerResume.recoveryCycleFingerprint !== owner.activeRecoveryCycle?.semanticFingerprint ||
       schedulerResume.actionReceiptFingerprint !== owner.currentRecoveryActionReceipt?.semanticFingerprint ||
       schedulerResume.checkpointAdmissionFingerprint !== admission.semanticFingerprint) {
     throw new Error('recovery continuation was not issued by the exact scheduler resume');
   }
-  const checkpoint = owner.checkpointLineage.at(-1);
+  const checkpoint = currentCycleEntries(owner.checkpointLineage, owner).at(-1);
   const freshLeases = {
     worker: resumed.workerLease,
     context: resumed.contextLease,
@@ -1903,8 +2168,8 @@ export function createRecoveryContinuation({
     }
   }
   const matrix = recoveryActionMatrix(registry, owner.currentRecoveryActionReceipt.action);
-  const context = owner.contextRecoveryReceipts.at(-1) ?? null;
-  const resource = owner.resourceRecoveryReceipts.at(-1) ?? null;
+  const context = currentCycleEntries(owner.contextRecoveryReceipts, owner).at(-1) ?? null;
+  const resource = currentCycleEntries(owner.resourceRecoveryReceipts, owner).at(-1) ?? null;
   const contextRequired = matrix.required.includes('context');
   const resourceRequired = matrix.required.includes('resource');
   if (Boolean(context) !== contextRequired || Boolean(resource) !== resourceRequired ||
@@ -1926,6 +2191,7 @@ export function createRecoveryContinuation({
     sourceStateFingerprint: owner.sourceStateFingerprint,
     failureRef: owner.activeFailure.failureRef,
     failureFingerprint: owner.activeFailure.semanticFingerprint,
+    ...cycleBindings(owner),
     checkpointAdmissionRef: admission.admissionRef,
     checkpointAdmissionFingerprint: admission.semanticFingerprint,
     actionReceiptRef: owner.currentRecoveryActionReceipt.actionReceiptRef,
@@ -1968,8 +2234,8 @@ function evidenceBinding(completionGateRef, sourceObservationRef, sourceObservat
 }
 
 function actionSpecificCausalEvidence(aggregate, registry) {
-  const checkpoint = aggregate.checkpointLineage.at(-1);
-  const continuation = aggregate.continuationLineage.at(-1);
+  const checkpoint = currentCycleEntries(aggregate.checkpointLineage, aggregate).at(-1);
+  const continuation = currentCycleEntries(aggregate.continuationLineage, aggregate).at(-1);
   const matrix = recoveryActionMatrix(registry, aggregate.currentRecoveryActionReceipt?.action);
   if (!aggregate.activeFailure || !aggregate.activePolicyDecision || !checkpoint || !aggregate.currentCheckpointAdmission ||
       !aggregate.currentRecoveryActionReceipt || !matrix.completionEligible ||
@@ -2030,6 +2296,7 @@ export function createRecoveryConvergenceReceipt(aggregate, { formedAt, registry
     schedulerGeneration: owner.schedulerGeneration,
     failureRef: owner.activeFailure.failureRef,
     failureFingerprint: owner.activeFailure.semanticFingerprint,
+    ...cycleBindings(owner),
     decisionRef: owner.activePolicyDecision.decisionRef,
     decisionFingerprint: owner.activePolicyDecision.semanticFingerprint,
     actionReceiptRef: owner.currentRecoveryActionReceipt.actionReceiptRef,
@@ -2038,8 +2305,9 @@ export function createRecoveryConvergenceReceipt(aggregate, { formedAt, registry
     successExecutionRef: owner.lastSuccessfulExecutionReceipt.executionReceiptRef,
     successExecutionFingerprint: owner.lastSuccessfulExecutionReceipt.semanticFingerprint,
     causalEvidence,
-    unresolvedQuarantineRefs: owner.quarantinedRefs,
-    unresolvedHumanGateRefs: owner.humanDecisionGates.map((item) => item.decisionGateRef),
+    unresolvedQuarantineRefs: currentCycleEntries(owner.rollbackLineage, owner)
+      .filter((item) => item.state === 'QUARANTINED').map((item) => item.quarantineRef),
+    unresolvedHumanGateRefs: currentCycleEntries(owner.humanDecisionGates, owner).map((item) => item.decisionGateRef),
     state: 'RECOVERY_ACTIONS_CONVERGED',
     formedAt
   }, 'convergenceReceiptRef', 'receipt.runtime-recovery.convergence.');
@@ -2067,7 +2335,8 @@ export function closeRecoveredExecution({ aggregate, successExecution, scheduler
     throw new Error('recovery closure requires the aggregate-owned successful executor receipt');
   }
   if (!owner.recoveryConvergenceReceipt || !owner.currentRecoveryActionReceipt ||
-      owner.quarantinedRefs.length || owner.humanDecisionGates.length) {
+      currentCycleEntries(owner.rollbackLineage, owner).some((item) => item.state === 'QUARANTINED') ||
+      currentCycleEntries(owner.humanDecisionGates, owner).length) {
     throw new Error('recovery closure requires aggregate-owned action convergence with no unresolved hold');
   }
   const completedEpoch = parseCanonicalTimestamp(completedAt, 'recovery completedAt');
@@ -2085,7 +2354,7 @@ export function closeRecoveredExecution({ aggregate, successExecution, scheduler
     buildReceiptFingerprint
   );
   const returnRouteReceipt = assertCanonicalSchedulerReceipt(schedulerEvidence?.returnRouteReceipt, 'return route receipt');
-  const checkpoint = owner.checkpointLineage.at(-1);
+  const checkpoint = currentCycleEntries(owner.checkpointLineage, owner).at(-1);
   const verificationObservedEpoch = parseCanonicalTimestamp(completionVerification.observedAt, 'completion verification observedAt');
   const verificationExpiresEpoch = parseCanonicalTimestamp(completionVerification.expiresAt, 'completion verification expiresAt');
   const gateReceipts = completionVerification.gateResultReceipts ?? [];
@@ -2155,6 +2424,7 @@ export function closeRecoveredExecution({ aggregate, successExecution, scheduler
     schedulerGeneration: owner.schedulerGeneration,
     failureRef: owner.activeFailure.failureRef,
     failureFingerprint: owner.activeFailure.semanticFingerprint,
+    ...cycleBindings(owner),
     decisionRef: owner.activePolicyDecision.decisionRef,
     decisionFingerprint: owner.activePolicyDecision.semanticFingerprint,
     actionReceiptRef: owner.currentRecoveryActionReceipt.actionReceiptRef,
@@ -2213,6 +2483,11 @@ export function recordExternalRecoveryEvent(aggregate, event, { registry = null 
     return freeze({ changed: false, aggregate: owner, reason: 'MALFORMED_EVENT_REJECTED' });
   }
   const canonical = clone(event);
+  if (canonical.recoveryCycleRef === undefined && canonical.recoveryCycleFingerprint === undefined) {
+    Object.assign(canonical, cycleBindings(owner));
+  } else {
+    assertCurrentCycle(canonical, owner, 'external recovery event');
+  }
   delete canonical.semanticFingerprint;
   canonical.semanticFingerprint = semanticHash(canonical);
   const existing = owner.acceptedExternalEvents.find((item) => item.eventRef === event.eventRef);
@@ -2239,10 +2514,15 @@ export function recordExternalRecoveryEvent(aggregate, event, { registry = null 
 export function projectRecoveryAggregate(aggregate, { priorProjection = null } = {}) {
   const active = aggregate.activeFailure;
   const recovered = aggregate.recoveredFailure ?? aggregate.failureHistory.at(-1) ?? null;
-  const terminal = aggregate.terminalRecoveryReceipts.at(-1) ?? null;
+  const terminal = aggregate.activeRecoveryCycle
+    ? currentCycleEntries(aggregate.terminalRecoveryReceipts, aggregate).at(-1) ?? null
+    : null;
   const action = aggregate.currentRecoveryActionReceipt;
   const success = aggregate.lastSuccessfulExecutionReceipt;
-  const hasHeldEvidence = aggregate.quarantinedRefs.length > 0 || aggregate.humanDecisionGates.length > 0;
+  const currentQuarantines = currentCycleEntries(aggregate.rollbackLineage, aggregate)
+    .filter((item) => item.state === 'QUARANTINED').map((item) => item.quarantineRef);
+  const currentHumanGates = currentCycleEntries(aggregate.humanDecisionGates, aggregate);
+  const hasHeldEvidence = currentQuarantines.length > 0 || currentHumanGates.length > 0;
   const projection = {
     schemaVersion: 'vexlife.runtime-recovery-projection/v1',
     aggregateRef: aggregate.aggregateRef,
@@ -2250,6 +2530,8 @@ export function projectRecoveryAggregate(aggregate, { priorProjection = null } =
     queue: {
       state: aggregate.phase,
       workNodeRef: aggregate.workNodeRef,
+      activeRecoveryCycleRef: aggregate.activeRecoveryCycle?.recoveryCycleRef ?? null,
+      recoveryCycleCount: aggregate.recoveryCycleHistory.length,
       retryAttempts: aggregate.attemptLedger.length,
       successfulAttemptRef: success?.attemptRef ?? null,
       successfulGeneration: success?.schedulerGeneration ?? null,
@@ -2273,7 +2555,7 @@ export function projectRecoveryAggregate(aggregate, { priorProjection = null } =
       evidenceRefs: canonicalRefs([
         ...((active ?? recovered)?.evidenceRefs ?? []),
         ...(terminal ? [terminal.recoveryReceiptRef] : []),
-        ...aggregate.quarantinedRefs
+        ...currentQuarantines
       ], 'projection evidenceRefs')
     },
     guide: {
@@ -2283,10 +2565,10 @@ export function projectRecoveryAggregate(aggregate, { priorProjection = null } =
       recoveredAttemptRef: success?.attemptRef ?? null,
       recoveredGeneration: success?.schedulerGeneration ?? null,
       terminalProofRef: terminal?.recoveryReceiptRef ?? null,
-      remainsQuarantined: [...aggregate.quarantinedRefs],
-      waitingOn: aggregate.phase === 'WAITING_HUMAN' ? aggregate.humanDecisionGates.at(-1)?.decisionGateRef ?? null : null,
+      remainsQuarantined: currentQuarantines,
+      waitingOn: aggregate.phase === 'WAITING_HUMAN' ? currentHumanGates.at(-1)?.decisionGateRef ?? null : null,
       victorNeeded: aggregate.phase === 'WAITING_HUMAN',
-      remainsBlocked: aggregate.phase === 'BLOCKED' || aggregate.quarantinedRefs.length > 0
+      remainsBlocked: aggregate.phase === 'BLOCKED' || currentQuarantines.length > 0
     }
   };
   projection.semanticFingerprint = semanticHash(projection);

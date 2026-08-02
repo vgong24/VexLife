@@ -429,7 +429,10 @@
       "test.runtime-recovery.r21-canonical-projections",
       "test.runtime-recovery.r22-semantic-no-op",
       "test.runtime-recovery.r23-integrated-scheduler-workgraph",
-      "test.runtime-recovery.r24-full-gate"
+      "test.runtime-recovery.r24-full-gate",
+      "test.runtime-recovery.r25-exact-classifier-plan",
+      "test.runtime-recovery.r26-replay-durable-scheduler-claim",
+      "test.runtime-recovery.r27-cycle-isolation"
     ],
     "outputRefs": [
       "registry.vexlife.runtime-recovery.001",
