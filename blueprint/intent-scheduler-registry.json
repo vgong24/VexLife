@@ -11,6 +11,75 @@
   },
   "humanProjectionName": "Intent Queue runtime",
   "purpose": "Admit one exact validated workgraph node at a time to one physical model worker with bounded context, resource, capability and effect leases, recoverable checkpoints, and exact mock tool-result reinjection.",
+  "runtimeRecoveryClaimContract": {
+    "contractRef": "contract.intent-scheduler.runtime-recovery-claim-ledger/v1",
+    "aggregateOwnedReplayStateRequired": true,
+    "privateMapOrSetOwnershipAllowed": false,
+    "transitionSchemaVersion": "vexlife.intent-scheduler-recovery-claim-transition/v1",
+    "lifecycle": [
+      "CLAIMED_CURRENT",
+      "RESUMED_CONSUMED",
+      "TERMINAL_CONSUMED",
+      "INVALIDATED_OR_ABANDONED"
+    ],
+    "duplicateLiveOrRestartClaimAllowed": false,
+    "releasedLeaseReuseAllowed": false,
+    "claimMustBindCanonicalRuntimeRecoveryReceipt": true,
+    "fullSemanticReplayRequired": true,
+    "canonicalCheckpointAuthority": {
+      "immutableCheckpointObjectsRequired": true,
+      "mutableStateStoredOnlyInReplayablePointerLedger": true,
+      "releaseEvidenceMustEmbedExactPriorAndTransitionedLeases": true,
+      "preClaimPriorSchedulerStateReceiptRequired": true
+    },
+    "completeLaterEdgeReplay": {
+      "resumeRequiresQueueActivePointerSixFreshLeasesRuntimeResourceAndClock": true,
+      "terminalRequiresCompletionWorkgraphReturnQueueSixLeaseTransitionsAndClock": true,
+      "dispositionRequiresReceiptPointerBlockedOrCancelledQueueAndClock": true,
+      "canonicalMonotonicTimeRequired": true
+    },
+    "claimCurrentnessContract": {
+      "contractRef": "contract.intent-scheduler.recovery-claim-currentness/v1",
+      "formationRef": "formation.intent-scheduler.recovery-claim-currentness.v1",
+      "sourceManaged": true,
+      "schedulerAggregateBound": true,
+      "recoveryAggregateCycleFailureAndActivationBound": true,
+      "disposedClaimsReusable": false,
+      "terminalClaimsHistoricalOnly": true
+    },
+    "boundedPriorStateProof": {
+      "contractRef": "contract.intent-scheduler.recovery-prior-state/v2",
+      "receiptSchemaVersion": "vexlife.intent-scheduler-recovery-prior-state-receipt/v2",
+      "stateSliceSchemaVersion": "vexlife.intent-scheduler-recovery-prior-state-slice/v1",
+      "growthClass": "LINEAR_PER_RECOVERY_CLAIM_TRANSITION",
+      "canonicalSerialization": "JSON_STRINGIFY_UTF8_V1",
+      "maximumPriorStateReceiptBytes": 100000,
+      "maximumInitialClaimedSchedulerStateBytes": 600000,
+      "maximumAdditionalAggregateBytesPerClaimTransition": 150000,
+      "maximumNestedStateSlices": 0,
+      "maximumPriorEdgeReceiptsInsideStateSlice": 0,
+      "maximumRecentLeaseBindings": 18,
+      "exactPriorTransitionEvidenceRequired": true,
+      "exactRestoreRequired": true
+    },
+    "edgeEvidenceContracts": {
+      "CLAIMED_CURRENT": "contract.intent-scheduler.recovery-claim-edge.claimed-current/v1",
+      "RESUMED_CONSUMED": "contract.intent-scheduler.recovery-claim-edge.resumed-consumed/v1",
+      "TERMINAL_CONSUMED": "contract.intent-scheduler.recovery-claim-edge.terminal-consumed/v1",
+      "INVALIDATED_OR_ABANDONED": "contract.intent-scheduler.recovery-claim-edge.invalidated-or-abandoned/v1"
+    },
+    "preResumeDisposition": {
+      "contractRef": "contract.intent-scheduler.recovery-pre-resume-disposition/v1",
+      "allowedReasonRefs": [
+        "reason.intent-scheduler.recovery.resume-validation-failed",
+        "reason.intent-scheduler.recovery.intentional-abandonment"
+      ],
+      "allowedPostDispositionPolicies": [
+        "TERMINALLY_HELD_WITH_EXACT_REASON"
+      ],
+      "oldActivationOrReleaseReuseAllowed": false
+    }
+  },
   "physicalWorkerPolicy": {
     "policyRef": "policy.intent-scheduler.physical-worker",
     "modelInferenceConcurrency": 1,

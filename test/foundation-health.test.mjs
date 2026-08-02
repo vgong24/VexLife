@@ -11,6 +11,7 @@ import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 import { runSchedulerSimulation } from '../scripts/scheduler-simulate.mjs';
 import { runContinuityEvolutionSimulation } from '../scripts/evolution-simulate.mjs';
+import { runRecoverySimulation } from '../scripts/recovery-simulate.mjs';
 
 const bundle = loadBlueprint();
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -133,6 +134,7 @@ test('health command accepts only an exact-head executed-current receipt', () =>
   const validation = validateBlueprint(bundle);
   const simulation = runSchedulerSimulation({ root: ROOT, writeReceipt: true }).receipt;
   const continuity = runContinuityEvolutionSimulation({ root: ROOT, writeReceipt: true }).receipt;
+  const recovery = runRecoverySimulation({ root: ROOT, writeReceipt: true }).receipt;
   const source = buildSourceManifest(ROOT);
   const repository = collectRepositoryEvidence(ROOT);
   const receiptArg = `generated/health/vexlife-health-${process.pid}-${Date.now()}.json`;
@@ -199,6 +201,33 @@ test('health command accepts only an exact-head executed-current receipt', () =>
       modelWeightsChanged: continuity.modelWeightsChanged,
       errors: []
     },
+    recoverySimulation: {
+      receiptPath: bundle.blueprint.runtimeRecovery.simulationContract.receiptPath,
+      state: 'EXECUTED_CURRENT',
+      receiptRef: recovery.receiptRef,
+      contractRef: recovery.contractRef,
+      semanticFingerprint: recovery.semanticFingerprint,
+      candidateHeadSha: recovery.candidateHeadSha,
+      testedCheckoutSha: recovery.testedCheckoutSha,
+      testedMergeSha: recovery.testedMergeSha,
+      baseSha: recovery.baseSha,
+      sourceTreeSha256: recovery.sourceTreeSha256,
+      blueprintHash: recovery.blueprintHash,
+      runtimeRecoveryRegistryHash: recovery.runtimeRecoveryRegistryHash,
+      journeyStates: recovery.journeyStates,
+      canonicalFailureFingerprint: recovery.canonicalFailure.semanticFingerprint,
+      firstExecutorOutcome: recovery.firstExecutorOutcome,
+      finalExecutorOutcome: recovery.finalExecutorOutcome,
+      schedulerBindings: recovery.schedulerBindings,
+      terminalReceiptFingerprint: recovery.terminalReceipt.semanticFingerprint,
+      canonicalWorkNodeRef: recovery.canonicalWorkNodeRef,
+      canonicalWorkNodeFinalState: recovery.canonicalWorkNodeFinalState,
+      finalAggregateFingerprint: recovery.finalAggregateFingerprint,
+      externalEffectsExecuted: recovery.externalEffectsExecuted,
+      realModelInvoked: recovery.realModelInvoked,
+      modelWeightsChanged: recovery.modelWeightsChanged,
+      errors: []
+    },
     checkResults
   };
   try {
@@ -233,6 +262,15 @@ test('health command accepts only an exact-head executed-current receipt', () =>
     assert.equal(JSON.parse(continuityUnbound.stdout).receiptState, 'INVALID');
     assert.match(JSON.parse(continuityUnbound.stdout).errors.join('\n'), /continuity evolution simulation receipt/);
 
+    fs.writeFileSync(receiptPath, JSON.stringify({
+      ...receipt,
+      recoverySimulation: { ...receipt.recoverySimulation, terminalReceiptFingerprint: '0'.repeat(64) }
+    }));
+    const recoveryUnbound = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(recoveryUnbound.status, 1);
+    assert.equal(JSON.parse(recoveryUnbound.stdout).receiptState, 'INVALID');
+    assert.match(JSON.parse(recoveryUnbound.stdout).errors.join('\n'), /runtime recovery simulation receipt/);
+
     fs.writeFileSync(receiptPath, JSON.stringify({ ...receipt, checkResults: checkResults.slice(1) }));
     const incomplete = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], { cwd: ROOT, encoding: 'utf8' });
     assert.equal(incomplete.status, 1);
@@ -246,6 +284,7 @@ test('health command accepts only an exact-head executed-current receipt', () =>
 test('effectful receipt CLI arguments fail closed outside generated/health', () => {
   for (const [script, unsafe] of [
     ['scripts/scheduler-simulate.mjs', '../scheduler-proof.json'],
+    ['scripts/recovery-simulate.mjs', '../recovery-proof.json'],
     ['scripts/pr-ready.mjs', 'artifacts/pr-ready.json'],
     ['scripts/health-check.mjs', path.resolve(ROOT, 'generated/health/absolute.json')]
   ]) {

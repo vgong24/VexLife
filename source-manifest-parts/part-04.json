@@ -2,10 +2,16 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "blueprint/strings/zh.json",
+      "mode": "100644",
+      "bytes": 8837,
+      "sha256": "b7eac38573565038ad1d244e23f0412b5310e20f62d6359a8686b7e2487a52f7"
+    },
+    {
       "path": "blueprint/vexlife.blueprint.json",
       "mode": "100644",
-      "bytes": 1317,
-      "sha256": "cc7674c76a73792aaa30db83e7f3769d7dc0e073d39bfa1b7cc4160f8662624b"
+      "bytes": 1384,
+      "sha256": "7a8a4be612cd6d9cc18af753297f7f2ff6b6524405ef3bb38f9938feed0a92e7"
     },
     {
       "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 3816,
       "sha256": "e131684893e95b9d07ed412ed4aff1daee7e3f85b2eb487729612d21cf311648"
-    },
-    {
-      "path": "docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md",
-      "mode": "100644",
-      "bytes": 6513,
-      "sha256": "1dc8db34e5d3e98de2d3befbdbca655617c9b19fb35c9dc276994fa98e60d74f"
     }
   ]
 }

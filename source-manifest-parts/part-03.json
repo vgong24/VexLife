@@ -10,8 +10,8 @@
     {
       "path": "blueprint/intent-scheduler-registry.json",
       "mode": "100644",
-      "bytes": 21581,
-      "sha256": "f58dbfb14c45ac60a32176474d462aa8354428f0bff5be8f685aff516c1c02b9"
+      "bytes": 24924,
+      "sha256": "57756e633de887a79b6dc65020d68f042bd719f446863556d4db3b3b2179f630"
     },
     {
       "path": "blueprint/intent-trust-snapshot.json",
@@ -40,8 +40,8 @@
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 27727,
-      "sha256": "4e2fb58d373b2ebceb91c8430d5ed3c7367e5ab3c8475d3985115f4b306d56d0"
+      "bytes": 31520,
+      "sha256": "a7464a858daba3874e0d2fbad869723d140f125223ae6539a900700635984621"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -52,8 +52,8 @@
     {
       "path": "blueprint/module-registry/scripts.json",
       "mode": "100644",
-      "bytes": 18755,
-      "sha256": "5904a185b0791045bb099e1666a243897af19ba32ce6be44378a3c5d844f72fb"
+      "bytes": 21627,
+      "sha256": "53c1900ef57b74ac99d77c24ad8db094a6ee2ac85b0c44e994d81de1439aff96"
     },
     {
       "path": "blueprint/orientation.json",
@@ -88,8 +88,8 @@
     {
       "path": "blueprint/process-factory/processes-core.json",
       "mode": "100644",
-      "bytes": 52149,
-      "sha256": "035fec7be64c74d507ec7050c37abfbbd182db752f379ec7be1b139a13292699"
+      "bytes": 61584,
+      "sha256": "4476b46f1f57c163ff165fac0ca52aebc0cb8d38895c7494a178e00c62dd3d2d"
     },
     {
       "path": "blueprint/process-factory/processes-evolution.json",
@@ -128,6 +128,12 @@
       "sha256": "dcceb87a089d56ff2cfc969e5e4e3a0ed6b67864561a9b339cadd74b9220b0f0"
     },
     {
+      "path": "blueprint/runtime-recovery-registry.json",
+      "mode": "100644",
+      "bytes": 36020,
+      "sha256": "43a7e906a487e53e0413b846e98d7ee6c44fc410e3c0901d1b80c014d864b343"
+    },
+    {
       "path": "blueprint/strings/en.json",
       "mode": "100644",
       "bytes": 9327,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 11186,
       "sha256": "51731af4bfacda49c7af4423f5da81e95d91eae665a64e72eb4c954593789859"
-    },
-    {
-      "path": "blueprint/strings/zh.json",
-      "mode": "100644",
-      "bytes": 8837,
-      "sha256": "b7eac38573565038ad1d244e23f0412b5310e20f62d6359a8686b7e2487a52f7"
     }
   ]
 }

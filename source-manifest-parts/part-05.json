@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md",
+      "mode": "100644",
+      "bytes": 6513,
+      "sha256": "1dc8db34e5d3e98de2d3befbdbca655617c9b19fb35c9dc276994fa98e60d74f"
+    },
+    {
+      "path": "docs/RUNTIME-FAILURE-AND-RECOVERY.md",
+      "mode": "100644",
+      "bytes": 15344,
+      "sha256": "11e7af3fa6e8feeecdd678a25f36d5f5b9a3ee8ca523e20f4f0b300f87c6f1ea"
+    },
+    {
       "path": "docs/SECURITY-PERMISSION-EFFECTS.md",
       "mode": "100644",
       "bytes": 2170,
@@ -22,8 +34,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 2921,
-      "sha256": "810862497a8638cbe955d0b2cad77624dcc799210ae6e7f85ef2d4328d667e29"
+      "bytes": 3100,
+      "sha256": "0740abfd486e97aaeb24e12b0dabe0e6a045882eafa38667e273113eec65ac09"
     },
     {
       "path": "reference/browser/README.md",
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 1875,
       "sha256": "df09880041da5c58ba3c220a90912eabfa39aa7f08eab48b2d59dc31221255d0"
-    },
-    {
-      "path": "scripts/check-syntax.mjs",
-      "mode": "100644",
-      "bytes": 1187,
-      "sha256": "c09a16c78e67eae90abf371867053419f85674ebd02e976fd2183f91152b1a22"
-    },
-    {
-      "path": "scripts/create-platform.mjs",
-      "mode": "100644",
-      "bytes": 1086,
-      "sha256": "1c6a9833e691bf0a05ce478c044c9f32abdd8036bbd3a1da769b56003223b7e2"
     }
   ]
 }

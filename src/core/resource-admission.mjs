@@ -178,6 +178,7 @@ export function createResourceLease({
   runtimeTrustSnapshot,
   resourceSnapshot,
   request,
+  recoveryBinding = null,
   formedAt,
   expiresAt,
   observedAt
@@ -215,6 +216,7 @@ export function createResourceLease({
     currentness: 'CURRENT',
     lifecycle: 'ACTIVE'
   };
+  if (recoveryBinding) lease.recoveryBinding = clone(recoveryBinding);
   lease.semanticFingerprint = semanticHash(lease);
   return freeze(lease);
 }

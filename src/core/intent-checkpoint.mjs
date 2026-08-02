@@ -4,6 +4,7 @@ import {
   parseCanonicalTimestamp
 } from './scheduler-runtime-trust.mjs';
 import { semanticHash } from './utils.mjs';
+import { buildContextLeaseFingerprint } from './context-lease.mjs';
 
 const REQUIRED_FIELDS = [
   'checkpointRef',
@@ -43,6 +44,8 @@ const REF_ARRAY_FIELDS = [
   'producedReceiptRefs',
   'openQuestions'
 ];
+
+const LEASE_KINDS = Object.freeze(['worker', 'context', 'resource', 'capability', 'effect', 'occupancy']);
 
 function clone(value) {
   return structuredClone(value);
@@ -87,8 +90,72 @@ export function buildCheckpointFingerprint(checkpoint) {
   return semanticHash(candidate);
 }
 
+function validateFinalizedObject(value, label, { kind = null } = {}) {
+  if (!value || typeof value !== 'object' || !value.semanticFingerprint) {
+    throw new Error(`${label} is missing its semantic fingerprint`);
+  }
+  const candidate = clone(value);
+  delete candidate.semanticFingerprint;
+  const fingerprint = kind === 'context' && value.lifecycle === 'ACTIVE'
+    ? buildContextLeaseFingerprint(value)
+    : semanticHash(candidate);
+  if (fingerprint !== value.semanticFingerprint) {
+    throw new Error(`${label} semantic fingerprint mismatch`);
+  }
+  return clone(value);
+}
+
+export function createCheckpointLeaseReleaseEvidence({
+  checkpointRef,
+  kind,
+  transitionReceipt,
+  priorLease,
+  transitionedLease
+}) {
+  if (!checkpointRef || !LEASE_KINDS.includes(kind)) {
+    throw new Error('checkpoint lease release evidence requires an exact checkpoint and lease kind');
+  }
+  const receipt = validateFinalizedObject(transitionReceipt, `checkpoint ${kind} transition receipt`);
+  const prior = validateFinalizedObject(priorLease, `checkpoint ${kind} prior lease`, { kind });
+  const transitioned = validateFinalizedObject(
+    transitionedLease,
+    `checkpoint ${kind} transitioned lease`,
+    { kind }
+  );
+  const priorRef = kind === 'occupancy' ? prior.occupancyRef : prior.leaseRef;
+  const transitionedRef = kind === 'occupancy' ? transitioned.occupancyRef : transitioned.leaseRef;
+  if (!priorRef || priorRef !== transitionedRef || receipt.leaseRef !== priorRef ||
+      receipt.priorLeaseFingerprint !== prior.semanticFingerprint ||
+      receipt.transitionedLeaseFingerprint !== transitioned.semanticFingerprint ||
+      prior.lifecycle !== 'ACTIVE' || transitioned.lifecycle !== receipt.lifecycle ||
+      prior.schedulerGeneration !== receipt.schedulerGeneration ||
+      transitioned.schedulerGeneration !== receipt.schedulerGeneration ||
+      prior.workNodeRef !== receipt.workNodeRef || transitioned.workNodeRef !== receipt.workNodeRef) {
+    throw new Error(`checkpoint ${kind} release evidence is detached from its exact lease transition`);
+  }
+  const evidence = {
+    schemaVersion: 'vexlife.intent-checkpoint-lease-release-evidence/v1',
+    receiptRef: receipt.receiptRef,
+    leaseKind: kind,
+    leaseRef: receipt.leaseRef,
+    priorLeaseFingerprint: receipt.priorLeaseFingerprint,
+    transitionedLeaseFingerprint: receipt.transitionedLeaseFingerprint,
+    workNodeRef: receipt.workNodeRef,
+    schedulerGeneration: receipt.schedulerGeneration,
+    lifecycle: receipt.lifecycle,
+    reason: receipt.reason,
+    transitionedAt: receipt.transitionedAt,
+    checkpointRef,
+    transitionReceipt: receipt,
+    priorLease: prior,
+    transitionedLease: transitioned
+  };
+  evidence.semanticFingerprint = semanticHash(evidence);
+  return freeze(evidence);
+}
+
 export function validateExactCheckpointReleaseSet(input) {
-  const kinds = ['worker', 'context', 'resource', 'capability', 'effect', 'occupancy'];
+  const kinds = LEASE_KINDS;
   const priorRefs = {
     worker: input.priorWorkerLeaseRef,
     context: input.priorContextLeaseRef,
@@ -115,12 +182,26 @@ export function validateExactCheckpointReleaseSet(input) {
     const matches = input.leaseReleaseReceipts.filter((item) => item.leaseRef === priorRefs[kind]);
     if (matches.length !== 1) throw new Error(`checkpoint requires one exact ${kind} lease release receipt`);
     const receipt = matches[0];
+    if (receipt.schemaVersion !== 'vexlife.intent-checkpoint-lease-release-evidence/v1' ||
+        receipt.leaseKind !== kind || receipt.checkpointRef !== input.checkpointRef) {
+      throw new Error(`checkpoint ${kind} release evidence has the wrong canonical contract`);
+    }
     if (receipt.lifecycle !== input.leaseReleaseLifecycle) {
       throw new Error('checkpoint lease release receipts must share one explicit lifecycle');
     }
     if (receipt.priorLeaseFingerprint !== input.priorLeaseFingerprints?.[kind] ||
         receipt.transitionedLeaseFingerprint !== input.transitionedLeaseFingerprints?.[kind]) {
       throw new Error(`checkpoint ${kind} lease release fingerprint mismatch`);
+    }
+    const canonical = createCheckpointLeaseReleaseEvidence({
+      checkpointRef: input.checkpointRef,
+      kind,
+      transitionReceipt: receipt.transitionReceipt,
+      priorLease: receipt.priorLease,
+      transitionedLease: receipt.transitionedLease
+    });
+    if (semanticHash(canonical) !== semanticHash(receipt)) {
+      throw new Error(`checkpoint ${kind} release evidence differs from canonical lease replay`);
     }
     const semantic = clone(receipt);
     delete semantic.semanticFingerprint;

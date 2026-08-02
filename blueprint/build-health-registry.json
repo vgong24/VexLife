@@ -302,6 +302,25 @@
       ],
       "blocking": true,
       "timeoutMs": 120000
+    },
+    {
+      "checkRef": "check.runtime-recovery",
+      "command": "npm run recovery:check",
+      "category": "RELIABILITY",
+      "purpose": "Rejected-thenable totality, registered classifier provenance, edge-specific semantic replay, scheduler-owned once-only checkpoint/six-release consumption, action-specific convergence, recovery-output-consuming scheduler continuation, retained human evidence and one causally completed no-effect Workgraph receipt validate; PR-ready and Health independently reject missing, stale or substituted recovery evidence.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true,
+      "timeoutMs": 120000
     }
   ]
 }

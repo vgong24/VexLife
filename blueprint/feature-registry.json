@@ -883,6 +883,130 @@
         "native platform, embodiment and compatibility adapters remain held",
         "real model, real tool effect, synchronization and model-weight activation remain held"
       ]
+    },
+    {
+      "featureRef": "feature.vexlife.runtime-failure-recovery",
+      "purpose": "Turn every unexpected deterministic executor failure into one typed exact-plan-classified recovery cycle whose registry-enforced canonical UTF-8 prior-state budgets, exact prior-transition proof, operation-time scheduler currentness, immutable external-event formation/adoption, replay-owned human projections, explicit pre-resume terminal hold, cycle-bound evidence formation, action matrix and recovery-output-consuming continuation preserve work and fail closed across substitution, forged restore, restart and consecutive cycles.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "state.runtime-recovery",
+        "process.vexlife.runtime.recover-execute",
+        "module.vexlife.core.runtime-recovery"
+      ],
+      "stateRefs": [
+        "state.runtime-recovery",
+        "state.intent-workgraph",
+        "state.intent-scheduler",
+        "state.intent-checkpoint",
+        "state.context-lease",
+        "state.resource",
+        "state.health"
+      ],
+      "actionRefs": [
+        "action.architecture.open"
+      ],
+      "permissionRefs": [
+        "permission.roadmap.read"
+      ],
+      "processRefs": [
+        "process.vexlife.runtime.capture-classify",
+        "process.vexlife.runtime.recover-execute",
+        "process.vexlife.runtime.project-recovery"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.runtime-failure",
+        "module.vexlife.core.recovery-policy",
+        "module.vexlife.core.runtime-recovery",
+        "module.vexlife.core.recovery-fault-injector",
+        "module.vexlife.script.recovery-check",
+        "module.vexlife.script.recovery-simulate",
+        "module.vexlife.script.recovery-status"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.runtime-recovery.r0-totality",
+        "test.runtime-recovery.r1-canonical-identity",
+        "test.runtime-recovery.r2-malformed-visible",
+        "test.runtime-recovery.r3-bounded-budget",
+        "test.runtime-recovery.r4-recurrence-stop",
+        "test.runtime-recovery.r5-checkpoint-required",
+        "test.runtime-recovery.r6-fresh-generation",
+        "test.runtime-recovery.r7-resource-reduction",
+        "test.runtime-recovery.r8-context-no-invoke",
+        "test.runtime-recovery.r9-context-preservation",
+        "test.runtime-recovery.r10-context-oversize-route",
+        "test.runtime-recovery.r11-model-timeout",
+        "test.runtime-recovery.r12-process-restart",
+        "test.runtime-recovery.r13-disk-full",
+        "test.runtime-recovery.r14-partial-write",
+        "test.runtime-recovery.r15-network-checkpoint",
+        "test.runtime-recovery.r16-replay-once",
+        "test.runtime-recovery.r17-checkpoint-rejection",
+        "test.runtime-recovery.r18-rollback-failure",
+        "test.runtime-recovery.r19-last-known-good",
+        "test.runtime-recovery.r20-human-decision",
+        "test.runtime-recovery.r21-canonical-projections",
+        "test.runtime-recovery.r22-semantic-no-op",
+        "test.runtime-recovery.r23-integrated-scheduler-workgraph",
+        "test.runtime-recovery.r24-full-gate",
+        "test.runtime-recovery.r25-exact-classifier-plan",
+        "test.runtime-recovery.r26-replay-durable-scheduler-claim",
+        "test.runtime-recovery.r27-cycle-isolation",
+        "test.runtime-recovery.r28-canonical-claim-semantic-replay",
+        "test.runtime-recovery.r29-pre-resume-disposition",
+        "test.runtime-recovery.r30-exact-cycle-local-evidence",
+        "test.runtime-recovery.r31-canonical-checkpoint-preclaim-replay",
+        "test.runtime-recovery.r32-complete-claim-edge-replay",
+        "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery",
+        "test.runtime-recovery.r34-bounded-non-recursive-scheduler-state",
+        "test.runtime-recovery.r35-external-event-claim-lifecycle",
+        "test.runtime-recovery.r36-replay-owned-human-projection",
+        "test.runtime-recovery.r37-source-managed-prior-state-budget-transition",
+        "test.runtime-recovery.r38-operation-time-scheduler-currentness",
+        "test.runtime-recovery.r39-external-event-formation-adoption"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "DETERMINISTIC_LOCAL_LIGHT_BOUNDED_RETRY_AND_CONTEXT_FIXTURES",
+      "dataClass": "CONTENT_ADDRESSED_FAILURE_RECOVERY_METADATA_WITH_REF_ONLY_SOURCE_DESCENT",
+      "effectClass": "DETERMINISTIC_NO_EFFECT_FAILURE_RECOVERY_SIMULATION_ONLY",
+      "concurrencyClass": "ONE_TYPED_REPLAY_AGGREGATE_ONE_CHECKPOINT_ACTIVATION_ONE_SCHEDULER_RESUME_RECEIPT_PER_RECOVERY_BRANCH",
+      "rollbackRouteRef": "process.vexlife.runtime.recover-execute",
+      "projectionRefs": [
+        "projection.runtime-recovery.queue",
+        "projection.runtime-recovery.terrain",
+        "projection.runtime-recovery.health",
+        "projection.runtime-recovery.guide"
+      ],
+      "knownGaps": [
+        "real model, tool, filesystem, process, network and native-platform adapters remain held",
+        "full ConcernWatch threshold runtime and Build Admission Coverage remain held",
+        "Council of Lenses, Memory Conformance and Embodiment remain held",
+        "live identity, live OS clock, synchronization and model-weight activation remain held"
+      ]
     }
   ]
 }

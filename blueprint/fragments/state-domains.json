@@ -148,5 +148,10 @@
     "stateRef": "state.tool-result-relay",
     "ownerRef": "service.tool-result-relay",
     "brief": "Durably restorable typed mock calls whose current state is derived by replaying one registered transition graph, with scheduler-owned held-call dispositions, exact successor lineage, bounded observations and once-only reinjection."
+  },
+  {
+    "stateRef": "state.runtime-recovery",
+    "ownerRef": "service.runtime-recovery",
+    "brief": "One typed-semantic-replay aggregate owns active failure, exact attempt chronology and registry budget, scheduler checkpoint/once-only six-release consumption, action-specific policy evidence, scheduler-output-consuming continuation, quarantine, last-known-good, human decision and unique terminal recovery truth for compact Queue, Terrain, Health and Guide projections."
   }
 ]

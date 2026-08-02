@@ -586,5 +586,165 @@
   {
     "testRef": "test.continuity-evolution.c25-context-before-simulated-projection",
     "brief": "A simulated clock observation cannot precede either lease observation or context acceptance, and the exact context-acceptance time survives snapshot, clock receipt, transient/aggregate projection and integrated receipt lineage."
+  },
+  {
+    "testRef": "test.runtime-recovery.r0-totality",
+    "brief": "Every admitted synchronous deterministic executor boundary returns one canonical outcome; malformed and async inputs reject mutation-free, and resolved/rejected thenables reject typed with rejected promises consumed before return."
+  },
+  {
+    "testRef": "test.runtime-recovery.r1-canonical-identity",
+    "brief": "Failure identity binds one registered classifier source/adapter/content-addressed plan plus work, generation, operation, attempt and transition; executor hints cannot select class or policy defaults."
+  },
+  {
+    "testRef": "test.runtime-recovery.r2-malformed-visible",
+    "brief": "Malformed and unknown failures remain visible as canonical fail-closed state rather than raw or green output."
+  },
+  {
+    "testRef": "test.runtime-recovery.r3-bounded-budget",
+    "brief": "Attempt, per-attempt wall-time, total wall-time and identical-recurrence budgets match the registry exactly and are source-managed."
+  },
+  {
+    "testRef": "test.runtime-recovery.r4-recurrence-stop",
+    "brief": "An unchanged failure fingerprint at the registered threshold stops retry and routes to decision, quarantine or block."
+  },
+  {
+    "testRef": "test.runtime-recovery.r5-checkpoint-required",
+    "brief": "Consequential recovery is never authorized without one scheduler-owned current-pointer consumption receipt binding the exact aggregate/failure/checkpoint, all six unique releases and once-only activation to the admission."
+  },
+  {
+    "testRef": "test.runtime-recovery.r6-fresh-generation",
+    "brief": "Failure checkpointing seals six released leases and the old generation; continuation consumes the exact action/admission and any applicable context/resource recovery through one scheduler resume receipt plus six fresh leases."
+  },
+  {
+    "testRef": "test.runtime-recovery.r7-resource-reduction",
+    "brief": "Resource exhaustion consumes current resource evidence and routes only to an admitted reduced budget or hold."
+  },
+  {
+    "testRef": "test.runtime-recovery.r8-context-no-invoke",
+    "brief": "Context overflow prevents model invocation before fit is proved."
+  },
+  {
+    "testRef": "test.runtime-recovery.r9-context-preservation",
+    "brief": "Context recovery preserves exact immutable ranges, intent, interpretation, unknowns, authority and return route."
+  },
+  {
+    "testRef": "test.runtime-recovery.r10-context-oversize-route",
+    "brief": "A still-oversized candidate splits, asks the smallest clarification or blocks without invisible truncation."
+  },
+  {
+    "testRef": "test.runtime-recovery.r11-model-timeout",
+    "brief": "A deterministic model timeout forms typed failure and bounded retry evidence."
+  },
+  {
+    "testRef": "test.runtime-recovery.r12-process-restart",
+    "brief": "A simulated process termination restores only an exact serialized aggregate and current checkpoint."
+  },
+  {
+    "testRef": "test.runtime-recovery.r13-disk-full",
+    "brief": "A simulated disk-full failure cannot report unsafe write completion."
+  },
+  {
+    "testRef": "test.runtime-recovery.r14-partial-write",
+    "brief": "A simulated partial write is read back and rolled back or quarantined."
+  },
+  {
+    "testRef": "test.runtime-recovery.r15-network-checkpoint",
+    "brief": "A simulated network interruption checkpoints rather than repeating blindly."
+  },
+  {
+    "testRef": "test.runtime-recovery.r16-replay-once",
+    "brief": "Every registered event enforces one exact payload schema and semantic constructor/replayer; forged edge receipts, wrong action/evidence, duplicate terminal, impossible order, stale and same-ref/different-content history reject before mutation."
+  },
+  {
+    "testRef": "test.runtime-recovery.r17-checkpoint-rejection",
+    "brief": "Corrupted, stale, cross-work, cross-generation and wrong-source checkpoints fail closed."
+  },
+  {
+    "testRef": "test.runtime-recovery.r18-rollback-failure",
+    "brief": "Aggregate-owned rollback, last-known-good and quarantine actions require exact read-back evidence; unresolved quarantine never restores green Health."
+  },
+  {
+    "testRef": "test.runtime-recovery.r19-last-known-good",
+    "brief": "Last-known-good restoration is exact and read-back fingerprint verified."
+  },
+  {
+    "testRef": "test.runtime-recovery.r20-human-decision",
+    "brief": "Human decision uses an aggregate-derived content-addressed gate limited to the smallest necessary question; caller-shaped gates and terminal holds presented as completable success reject."
+  },
+  {
+    "testRef": "test.runtime-recovery.r21-canonical-projections",
+    "brief": "Queue, Terrain, Health and Guide derive from one recovery aggregate without copying raw failures."
+  },
+  {
+    "testRef": "test.runtime-recovery.r22-semantic-no-op",
+    "brief": "Unchanged recovery evidence is a semantic no-op with no new projection revision."
+  },
+  {
+    "testRef": "test.runtime-recovery.r23-integrated-scheduler-workgraph",
+    "brief": "One actual scheduler-owned recovery Workgraph journey binds only its action-specific evidence into completion, while representative direct/context/resource/transaction/wait/split/human/block/quarantine journeys prove every matrix and scheduler continuation consumption route."
+  },
+  {
+    "testRef": "test.runtime-recovery.r24-full-gate",
+    "brief": "PR-ready and Health independently consume the exact current runtime recovery receipt while tests, browser, manifest, Windows/Linux portability and DCO remain required."
+  },
+  {
+    "testRef": "test.runtime-recovery.r25-exact-classifier-plan",
+    "brief": "Classification consumes one exact current source-issued plan receipt and rejects unknown, allowed-but-not-issued, caller-inline, stale and same-ref/different-content formations."
+  },
+  {
+    "testRef": "test.runtime-recovery.r26-replay-durable-scheduler-claim",
+    "brief": "Scheduler recovery claim ownership replays from aggregate state across restart and advances once through claimed, resumed and terminal or abandoned lifecycle without release reuse."
+  },
+  {
+    "testRef": "test.runtime-recovery.r27-cycle-isolation",
+    "brief": "Consecutive content-addressed recovery cycles preserve immutable history while only current-cycle action, continuation, success, convergence, terminal and human projection evidence can satisfy the active cycle."
+  },
+  {
+    "testRef": "test.runtime-recovery.r28-canonical-claim-semantic-replay",
+    "brief": "Scheduler restoration replays each claim lifecycle edge from exact source-managed claim, checkpoint, release, resume, completion or disposition evidence and rejects forged rehashed aggregates before occupancy."
+  },
+  {
+    "testRef": "test.runtime-recovery.r29-pre-resume-disposition",
+    "brief": "A current paused recovery claim can move explicitly to a source-managed terminal hold before resume; restart preserves the disposition and the old activation and release set cannot resume or reclaim."
+  },
+  {
+    "testRef": "test.runtime-recovery.r30-exact-cycle-local-evidence",
+    "brief": "Cycle-bound transaction adoption and human projections reject prior, unscoped, re-addressed, stale and same-ref/different-content evidence while immutable historical context/resource/wait/transaction proof remains inspectable."
+  },
+  {
+    "testRef": "test.runtime-recovery.r31-canonical-checkpoint-preclaim-replay",
+    "brief": "Immutable canonical checkpoints, exact six-object release evidence and exact pre-claim scheduler state replay reject coordinated checkpoint, pointer, release, claim and aggregate rehash while preserving legitimate admission."
+  },
+  {
+    "testRef": "test.runtime-recovery.r32-complete-claim-edge-replay",
+    "brief": "Resume, terminal and invalidation edges embed and replay their complete scheduler queue, active, lease, runtime, resource, Workgraph, disposition, pointer and clock evidence and reject coordinated rehash."
+  },
+  {
+    "testRef": "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery",
+    "brief": "Source-managed scheduler claim currentness gates recovery formation and continuation; invalidation produces an exact blocked recovery hold and prevents stale claim, admission or evidence reuse without aggregate mutation."
+  },
+  {
+    "testRef": "test.runtime-recovery.r34-bounded-non-recursive-scheduler-state",
+    "brief": "Every claim lifecycle edge carries a compact checkpoint-scoped prior-state slice with exact aggregate and transition bindings; registered serialized-size budgets prove linear growth, exact restart restoration and no nested snapshots or duplicated prior edges."
+  },
+  {
+    "testRef": "test.runtime-recovery.r35-external-event-claim-lifecycle",
+    "brief": "Generic, wait, resume and split external events bind the exact current scheduler claim lifecycle receipt; invalidated and terminal claims reject every event kind with exact reasons and no aggregate mutation, including during replay."
+  },
+  {
+    "testRef": "test.runtime-recovery.r36-replay-owned-human-projection",
+    "brief": "Queue, Terrain, Health and Guide projections first replay the complete aggregate and bind its exact cycle, failure, lifecycle, hold, disposition, action, success, convergence and terminal evidence; rehashed display state and illegal histories fail before a plausible view is returned."
+  },
+  {
+    "testRef": "test.runtime-recovery.r37-source-managed-prior-state-budget-transition",
+    "brief": "Canonical JSON UTF-8 byte budgets cover initial claimed scheduler state, each compact prior-state slice and receipt, every per-transition aggregate increment and bounded lease bindings; exact prior transition evidence rejects omission, substitution, same-ref/different-content and coordinated rehash."
+  },
+  {
+    "testRef": "test.runtime-recovery.r38-operation-time-scheduler-currentness",
+    "brief": "Every policy, context, resource, transaction, human, wait, split, action, external-event, continuation, retry, convergence, terminal and current-projection operation consumes exact operation-time scheduler aggregate and claim-currentness evidence; stale, invalidated and terminal misuse is mutation-free and stale current projections remain HELD_UNKNOWN."
+  },
+  {
+    "testRef": "test.runtime-recovery.r39-external-event-formation-adoption",
+    "brief": "An immutable generic external source is accepted only with exact current cycle/lifecycle scope or one content-addressed adoption receipt binding source chronology, scheduler currentness, checkpoint pointer, cycle, failure, work and generation; readdressing and source/adoption substitution fail closed."
   }
 ]

@@ -611,5 +611,83 @@
     "changeMap": [
       "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.recovery-check",
+    "path": "scripts/recovery-check.mjs",
+    "role": "Validates canonical runtime recovery composition, replay/event vocabulary, exact registry budgets, bounded Atlas resolution, held boundaries and the current causally completed no-effect recovery receipt.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "state.runtime-recovery",
+      "process.vexlife.runtime.recover-execute",
+      "module.vexlife.core.runtime-recovery",
+      "module.vexlife.script.recovery-simulate"
+    ],
+    "writes": [
+      "generated/health/runtime-recovery-simulation.json"
+    ],
+    "loadedBy": [
+      "npm run recovery:check"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs",
+      "test/foundation-health.test.mjs",
+      "test/registry.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.recovery-simulate",
+    "path": "scripts/recovery-simulate.mjs",
+    "role": "Runs one real recovery Intent Workgraph through typed failure, scheduler-owned checkpoint/release consumption, action-specific recovery, recovery-output-consuming resume, replay restore and causal terminal closure, plus bounded representative journeys for every registered action and a distinct quarantine scheduler lineage.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "state.runtime-recovery",
+      "state.intent-scheduler",
+      "module.vexlife.core.runtime-recovery",
+      "module.vexlife.core.recovery-fault-injector",
+      "module.vexlife.core.intent-scheduler",
+      "module.vexlife.core.intent-workgraph",
+      "module.vexlife.core.scheduler-runtime-trust"
+    ],
+    "writes": [
+      "generated/health/runtime-recovery-simulation.json"
+    ],
+    "loadedBy": [
+      "npm run recovery:simulate",
+      "module.vexlife.script.recovery-check"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs",
+      "test/foundation-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.recovery-status",
+    "path": "scripts/recovery-status.mjs",
+    "role": "Projects bounded current Queue, Terrain, Health and Guide recovery answers from the canonical deterministic aggregate without raw exception or machine dumps.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "state.runtime-recovery",
+      "module.vexlife.core.runtime-recovery",
+      "module.vexlife.script.recovery-simulate"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "npm run recovery:status"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs"
+    ],
+    "changeMap": [
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
   }
 ]

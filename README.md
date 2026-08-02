@@ -232,6 +232,25 @@ derive from one canonical aggregate. Effectful receipt arguments are confined
 to safe `generated/health/**` paths. This contract provisions no real model and
 executes no external effect.
 
+The shared [Runtime Failure & Recovery Spine](docs/RUNTIME-FAILURE-AND-RECOVERY.md)
+consumes exact source-issued classifier-plan receipts, persists scheduler recovery
+claim lifecycle through immutable checkpoint authority, registry-enforced canonical JSON
+UTF-8 prior-state budgets, exact prior-transition evidence and source-managed
+claim-currentness receipts. Every recovery operation revalidates the current scheduler
+aggregate and claim receipt; stale current projections hold `HELD_UNKNOWN`. The spine supports an explicit
+pre-resume terminal hold without reusing its activation/releases, and isolates every downstream
+action, continuation, success, convergence, terminal and human projection by a
+content-addressed recovery cycle. Transaction evidence is explicitly adopted by
+the exact cycle/claim/admission, while pre-checkpoint projections remain awaiting
+rather than inheriting prior preservation. Forged restores, duplicate claims and
+prior-cycle or disposed-claim evidence fail closed. Invalidation routes the exact disposition
+reason into replay-owned recovery Health and Guide without mutating rejected scheduler or
+recovery aggregates. Every external recovery event remains an immutable source object and is
+accepted only with exact current cycle/lifecycle scope or a content-addressed adoption receipt;
+managed wait/resume/split events stay content-addressed without adoption. Human projections
+replay the full aggregate before showing cycle, hold, action, success or terminal evidence.
+Its deterministic fixtures execute no external effect.
+
 The shared [Burden Release and Continuity Evolution Router](docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md)
 completes Intent Orchestration 3/3. It seals immutable exact source tuples,
 keeps human, Vex and relationship preferences separate, routes each candidate
@@ -368,6 +387,7 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - [`docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md`](docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md)
 - [`docs/INTENT-ORCHESTRATION-SPINE.md`](docs/INTENT-ORCHESTRATION-SPINE.md)
 - [`docs/INTENT-ORCHESTRATION-SCHEDULER.md`](docs/INTENT-ORCHESTRATION-SCHEDULER.md)
+- [`docs/RUNTIME-FAILURE-AND-RECOVERY.md`](docs/RUNTIME-FAILURE-AND-RECOVERY.md)
 - [`docs/FOUNDATION-ORIGIN-RECEIPT.md`](docs/FOUNDATION-ORIGIN-RECEIPT.md)
 
 ## Choose your route
@@ -381,5 +401,6 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - **Connect to a desktop-hosted Home Vex from another device:** read [`docs/HOME-BRIDGE-REMOTE-SURFACES.md`](docs/HOME-BRIDGE-REMOTE-SURFACES.md); a remote surface is not the same thing as a synchronized sibling.
 - **Trace why code exists:** query the module, identity and process registries rather than reading the repository indiscriminately.
 - **Trace or simulate Intent Queue runtime admission:** read [`docs/INTENT-ORCHESTRATION-SCHEDULER.md`](docs/INTENT-ORCHESTRATION-SCHEDULER.md), then run `npm run scheduler:check` or the no-effect simulation.
+- **Trace or simulate failure and recovery:** read [`docs/RUNTIME-FAILURE-AND-RECOVERY.md`](docs/RUNTIME-FAILURE-AND-RECOVERY.md), then run `npm run recovery:check`, `npm run recovery:simulate` or `npm run recovery:status`; these execute deterministic no-effect fixtures through one actual scheduler-owned recovery Workgraph journey.
 
 <!-- [VXG RealForever] -->

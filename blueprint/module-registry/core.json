@@ -712,7 +712,7 @@
   {
     "moduleRef": "module.vexlife.core.resource-admission",
     "path": "src/core/resource-admission.mjs",
-    "role": "Forms deterministic hardware snapshots and fails closed unless CPU, RAM, GPU, VRAM, model, tool, wait and thermal evidence remains active at the exact scheduler observation.",
+    "role": "Forms deterministic hardware snapshots and current resource leases, optionally binding an exact recovery-reduced request/admission receipt, and fails closed unless CPU, RAM, GPU, VRAM, model, tool, wait and thermal evidence remains active at the scheduler observation.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-scheduler.001",
@@ -823,7 +823,7 @@
   {
     "moduleRef": "module.vexlife.core.intent-scheduler",
     "path": "src/core/intent-scheduler.mjs",
-    "role": "Admits exact workgraph nodes, leases one physical worker, owns every held-call disposition/terminal close, and consumes externally verified completion only while current into authoritative Workgraph truth with exact evidence lineage.",
+    "role": "Admits exact Workgraph nodes, leases one physical worker, owns held-call disposition/terminal close, issues once-only recovery checkpoint consumption and recovery-output-consuming resume receipts, and consumes externally verified completion only while current into authoritative Workgraph truth.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-orchestration.001",
@@ -848,6 +848,101 @@
     "changeMap": [
       "blueprint/intent-scheduler-registry.json",
       "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.runtime-failure",
+    "path": "src/core/runtime-failure.mjs",
+    "role": "Forms and validates content-addressed source/work/generation/operation/attempt-bound failure envelopes from registered exact classifier source/adapter/plan evidence while keeping executor fields evidentiary and canonical class/policy defaults authoritative.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.runtime-recovery",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.recovery-policy",
+      "module.vexlife.core.runtime-recovery",
+      "module.vexlife.script.recovery-check"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.recovery-policy",
+    "path": "src/core/recovery-policy.mjs",
+    "role": "Resolves one content-addressed bounded recovery action from the exact canonical failure, replay-derived aggregate, registry budget and current checkpoint admission; callers cannot author retries, reset budgets or substitute authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.runtime-recovery",
+      "module.vexlife.core.runtime-failure",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.runtime-recovery"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.runtime-recovery",
+    "path": "src/core/runtime-recovery.mjs",
+    "role": "Owns rejected-thenable-safe total boundaries and edge-specific semantic replay, consumes scheduler-owned once-only checkpoint/six-release claims, enforces action evidence matrices, validates recovery-derived context/resource leases through one scheduler resume receipt, and closes through exact Workgraph causal evidence.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.runtime-recovery",
+      "state.intent-checkpoint",
+      "state.context-lease",
+      "state.intent-scheduler",
+      "module.vexlife.core.runtime-failure",
+      "module.vexlife.core.recovery-policy",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.recovery-simulate",
+      "module.vexlife.script.recovery-status"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.recovery-fault-injector",
+    "path": "src/core/recovery-fault-injector.mjs",
+    "role": "Provides registered deterministic classifier-plan fixtures and admitted no-effect transactional adapter/fault-plan evidence for timeout, exhaustion, termination, wait, partial-write, rollback, last-known-good and quarantine routes.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "state.runtime-recovery",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.recovery-simulate"
+    ],
+    "tests": [
+      "test/runtime-failure-recovery.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/runtime-recovery-registry.json",
+      "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
     ]
   }
 ]
