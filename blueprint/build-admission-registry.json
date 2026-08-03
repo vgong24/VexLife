@@ -1,0 +1,372 @@
+{
+  "schemaVersion": "vexlife.build-admission-registry/v1",
+  "registryRef": "registry.vexlife.build-admission.001",
+  "registryVersion": 1,
+  "systemRef": "system.vexlife.build-admission",
+  "canonicalSourceRef": "source.blueprint.build-admission-registry",
+  "canonicalSource": {
+    "sourceRef": "source.blueprint.build-admission-registry",
+    "path": "blueprint/build-admission-registry.json",
+    "field": "buildAdmission",
+    "compositionRef": "blueprint.vexlife.universal.001",
+    "sourceClass": "SOURCE_MANAGED_EFFECT_ADMISSION_POLICY"
+  },
+  "purpose": "Revalidate one scheduler-admitted work item at the final effect membrane and permit exactly one observable, recoverable commit inside one disposable local Git repository.",
+  "consumedIdentityContract": {
+    "actions": [
+      "action.file.edit-with-recovery",
+      "action.cli.execute",
+      "action.github.commit"
+    ],
+    "permissions": [
+      "permission.file.edit",
+      "permission.cli.execute",
+      "permission.github.publish"
+    ],
+    "capabilities": [
+      "capability.vexlife.file.edit-with-recovery",
+      "capability.vexlife.cli.typed",
+      "capability.vexlife.github.publication"
+    ],
+    "processes": [
+      "process.vexlife.file.edit-with-recovery",
+      "process.vexlife.cli.execute-typed",
+      "process.vexlife.github.publish-public-branch"
+    ],
+    "sourceDefinitionsMayBeModified": false,
+    "schedulerRemainsSoleWorkAdmissionOwner": true,
+    "buildAdmissionCreatesSecondQueue": false
+  },
+  "contractIdentities": [
+    {
+      "contractRef": "contract.vexlife.build-request/v1",
+      "contractKind": "IMMUTABLE_CONTENT_ADDRESSED_BUILD_REQUEST"
+    },
+    {
+      "contractRef": "contract.vexlife.build-admission/v1",
+      "contractKind": "FINAL_EFFECT_ADMISSION_MEMBRANE"
+    },
+    {
+      "contractRef": "contract.vexlife.local-git-effect/v1",
+      "contractKind": "ADAPTER_OWNED_DIRECT_READBACK_RECEIPT"
+    },
+    {
+      "contractRef": "contract.vexlife.real-effect-completion-verification/v1",
+      "contractKind": "REAL_EFFECT_COMPLETION_EVIDENCE"
+    },
+    {
+      "contractRef": "contract.vexlife.build-recovery/v1",
+      "contractKind": "PHASE_SPECIFIC_RECOVERY_EVIDENCE"
+    },
+    {
+      "contractRef": "contract.vexlife.build-admission-integrated-journey/v1",
+      "contractKind": "CAUSAL_REAL_EFFECT_PROOF"
+    },
+    {
+      "contractRef": "contract.vexlife.build-admission-consumption/v1",
+      "contractKind": "INDEPENDENT_PR_READY_AND_HEALTH_CONSUMPTION"
+    }
+  ],
+  "requestContract": {
+    "contractRef": "contract.vexlife.build-request/v1",
+    "schemaVersion": "vexlife.build-request/v1",
+    "requiredFields": [
+      "buildRequestRef",
+      "workRef",
+      "claimRef",
+      "intentEnvelopeRef",
+      "intentEnvelopeFingerprint",
+      "workgraphRef",
+      "workgraphFingerprint",
+      "workNodeRef",
+      "workNodeFingerprint",
+      "schedulerAdmissionRef",
+      "schedulerAdmissionFingerprint",
+      "schedulerAuthorityEvidenceRef",
+      "schedulerAuthorityEvidenceFingerprint",
+      "schedulerGeneration",
+      "repositoryRef",
+      "repositoryEvidenceRef",
+      "repositoryEvidenceFingerprint",
+      "expectedHeadSha",
+      "expectedTreeSha",
+      "branchRef",
+      "pathClaimRefs",
+      "mutationPath",
+      "expectedBeforeBlobSha",
+      "replacementContentRef",
+      "replacementContentSha256",
+      "expectedAfterBlobSha",
+      "commitMessage",
+      "expectedTransitionRef",
+      "completionGateRefs",
+      "returnRouteRef",
+      "formedAt",
+      "observedAt",
+      "expiresAt",
+      "semanticFingerprint"
+    ],
+    "callerSuppliedFinalRefAllowed": false,
+    "formationGrantsEffectAuthority": false,
+    "sameRefDifferentMeaningAllowed": false
+  },
+  "admissionContract": {
+    "contractRef": "contract.vexlife.build-admission/v1",
+    "schemaVersion": "vexlife.build-admission-receipt/v1",
+    "requiredLeaseKinds": [
+      "OCCUPANCY",
+      "CAPABILITY",
+      "EFFECT",
+      "RESOURCE",
+      "WORKER",
+      "CONTEXT"
+    ],
+    "requiredFields": [
+      "buildAdmissionRef",
+      "buildRequestRef",
+      "buildRequestFingerprint",
+      "schedulerAdmissionRef",
+      "schedulerAdmissionFingerprint",
+      "schedulerGeneration",
+      "workgraphRef",
+      "workgraphFingerprint",
+      "workNodeRef",
+      "workNodeFingerprint",
+      "occupancyRef",
+      "occupancyFingerprint",
+      "capabilityLeaseRef",
+      "capabilityLeaseFingerprint",
+      "effectLeaseRef",
+      "effectLeaseFingerprint",
+      "resourceLeaseRef",
+      "resourceLeaseFingerprint",
+      "workerLeaseRef",
+      "workerLeaseFingerprint",
+      "contextLeaseRef",
+      "contextLeaseFingerprint",
+      "repositoryEvidenceRef",
+      "repositoryEvidenceFingerprint",
+      "concernWatchState",
+      "runtimeRecoveryRouteRef",
+      "humanConfirmationRef",
+      "formedAt",
+      "observedAt",
+      "expiresAt",
+      "currentness",
+      "externalEffectsAuthorized",
+      "semanticFingerprint"
+    ],
+    "requiredConcernWatchState": "CLEAR_OR_NON_BLOCKING",
+    "requiredHumanConfirmationState": "CONFIRMED_EXACT_DISPOSABLE_LOCAL_GIT",
+    "effectScope": "DISPOSABLE_LOCAL_GIT_REPOSITORY",
+    "externalEffectsAuthorizedAfterAdmissionOnly": true
+  },
+  "adapter": {
+    "adapterRef": "adapter.vexlife.local-git.disposable/v1",
+    "sourceRef": "src/core/local-git-effect-adapter.mjs",
+    "formationRef": "formation.vexlife.local-git-effect-adapter.v1",
+    "effectScope": "DISPOSABLE_LOCAL_GIT_REPOSITORY",
+    "repositoryRefPrefix": "repository.disposable-local-git.",
+    "ledgerDirectoryName": ".vexlife-build-admission-ledger",
+    "fixturePath": "fixtures/build-admission.txt",
+    "baselineBranch": "fixture-baseline",
+    "effectBranch": "fixture-build-admission",
+    "protectedBranches": [
+      "main",
+      "master",
+      "trunk",
+      "release",
+      "production"
+    ],
+    "typedCommandRefs": [
+      "git.init",
+      "git.config.local-user",
+      "git.add.exact-path",
+      "git.commit.ordinary",
+      "git.branch.create",
+      "git.branch.show-current",
+      "git.rev-parse.head",
+      "git.rev-parse.tree",
+      "git.rev-parse.blob",
+      "git.diff.parent",
+      "git.diff.name-only",
+      "git.status.porcelain",
+      "git.remote.list"
+    ],
+    "forbiddenGitOperations": [
+      "push",
+      "fetch",
+      "pull",
+      "clone",
+      "remote-add",
+      "force",
+      "rebase",
+      "amend",
+      "reset",
+      "branch-delete",
+      "history-rewrite"
+    ],
+    "networkUsed": false,
+    "remoteConfigured": false,
+    "arbitraryShellAllowed": false,
+    "implementationCheckoutAllowed": false,
+    "cleanupMayTraverseParent": false
+  },
+  "effectReceiptContract": {
+    "contractRef": "contract.vexlife.local-git-effect/v1",
+    "schemaVersion": "vexlife.build-effect-receipt/v1",
+    "requiredFields": [
+      "buildEffectReceiptRef",
+      "buildAdmissionRef",
+      "buildAdmissionFingerprint",
+      "adapterRef",
+      "adapterSourceRef",
+      "adapterSourceHash",
+      "formationRef",
+      "externalEffectsExecuted",
+      "effectScope",
+      "repositoryCanonicalPathHash",
+      "priorHeadSha",
+      "priorTreeSha",
+      "mutationPath",
+      "beforeBlobSha",
+      "afterBlobSha",
+      "commitSha",
+      "commitParentSha",
+      "commitTreeSha",
+      "changedPaths",
+      "diffFingerprint",
+      "workingTreeBefore",
+      "workingTreeAfter",
+      "branchBefore",
+      "branchAfter",
+      "networkUsed",
+      "remoteConfigured",
+      "rollbackAvailable",
+      "formedAt",
+      "observedAt",
+      "completedAt",
+      "semanticFingerprint"
+    ],
+    "formedByAdapterOnly": true,
+    "directReadbackRequired": true,
+    "callerReaddressingAllowed": false,
+    "changedPathCount": 1,
+    "workingTreeBefore": "CLEAN",
+    "workingTreeAfter": "CLEAN"
+  },
+  "completionContract": {
+    "contractRef": "contract.vexlife.real-effect-completion-verification/v1",
+    "schemaVersion": "vexlife.real-effect-completion-verification/v1",
+    "evidenceClass": "DIRECT_READBACK_REAL_LOCAL_GIT_EFFECT",
+    "deterministicFakeEvidenceAccepted": false,
+    "selfCertificationAllowed": false,
+    "schedulerClockRequired": true,
+    "effectReceiptReplayAllowed": false,
+    "completionConsumesEveryEffectIdentity": true
+  },
+  "recoveryContract": {
+    "contractRef": "contract.vexlife.build-recovery/v1",
+    "schemaVersion": "vexlife.build-recovery-receipt/v1",
+    "failurePhases": [
+      "PRE_WRITE",
+      "POST_WRITE_PRE_COMMIT",
+      "COMMIT",
+      "READBACK",
+      "CLEANUP",
+      "ROLLBACK"
+    ],
+    "dispositions": [
+      "REPOSITORY_UNCHANGED",
+      "BEFORE_IMAGE_RESTORED",
+      "DISPOSABLE_REPOSITORY_REMOVED",
+      "HELD_UNKNOWN",
+      "HUMAN_ATTENTION_REQUIRED"
+    ],
+    "retryAuthorityGranted": false,
+    "concernWatchObservationRequired": true,
+    "humanRequestRequiredOnRollbackFailure": true
+  },
+  "projectionContract": {
+    "schemaVersion": "vexlife.build-admission-projection/v1",
+    "projectionKinds": [
+      "QUEUE",
+      "TERRAIN",
+      "HEALTH",
+      "GUIDE"
+    ],
+    "derivedFromOneIntegratedReceipt": true,
+    "rawDiffIncluded": false,
+    "credentialsIncluded": false
+  },
+  "simulationContract": {
+    "contractRef": "contract.vexlife.build-admission-integrated-journey/v1",
+    "schemaVersion": "vexlife.build-admission-integrated-journey-receipt/v1",
+    "receiptPath": "generated/health/build-admission-simulation.json",
+    "checkRef": "check.build-admission",
+    "workNodeRef": "work-node.vexlife.build-admission.simulation.001",
+    "requiredJourneyStates": [
+      "REQUEST_FORMED_NO_EFFECT",
+      "SCHEDULER_AND_SIX_LEASES_REVALIDATED",
+      "BUILD_EFFECT_ADMITTED",
+      "ONE_REAL_DISPOSABLE_LOCAL_GIT_COMMIT",
+      "DIRECT_PARENT_TREE_BLOB_PATH_DIFF_READBACK",
+      "REAL_EFFECT_COMPLETION_VERIFIED",
+      "DUPLICATE_REPLAY_NO_SECOND_COMMIT",
+      "FAILURE_RECOVERY_ROUTES_PROVEN",
+      "CONCERN_WATCH_FAILURE_DEDUPLICATED",
+      "CLAIM_AND_SIX_LEASES_RELEASED_ONCE",
+      "QUEUE_TERRAIN_HEALTH_GUIDE_CONVERGED"
+    ],
+    "proofRefs": [
+      "BA0",
+      "BA1",
+      "BA2",
+      "BA3",
+      "BA4",
+      "BA5",
+      "BA6",
+      "BA7",
+      "BA8",
+      "BA9",
+      "BA10",
+      "BA11",
+      "BA12",
+      "BA13",
+      "BA14",
+      "BA15",
+      "BA16",
+      "BA17",
+      "BA18",
+      "BA19",
+      "BA20",
+      "BA21",
+      "BA22",
+      "BA23",
+      "BA24",
+      "BA25"
+    ],
+    "consumerRefs": [
+      "PR_READY",
+      "HEALTH"
+    ],
+    "externalEffectsExecuted": true,
+    "networkUsed": false,
+    "remoteConfigured": false,
+    "implementationCheckoutMutated": false
+  },
+  "heldBoundaries": [
+    "no remote Git or GitHub mutation by runtime adapter",
+    "no VexLife main or protected-branch mutation",
+    "no public or private publication automation",
+    "no arbitrary shell or general filesystem/network adapter",
+    "no model orchestrator tool handoff",
+    "no judgment route compiler or model evaluation/training",
+    "no Council of Lenses, memory adapter or embodiment implementation",
+    "no native application implementation",
+    "no live identity, live OS clock or synchronization activation",
+    "no model download, inference or weight change",
+    "no shared generated-receipt race repair",
+    "no public release"
+  ]
+}

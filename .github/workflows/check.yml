@@ -16,14 +16,14 @@ concurrency:
 
 jobs:
   foundation:
-    name: Source, blueprint, and actual browser contracts
+    name: Source, blueprint, real effect, and browser contracts
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       VEXLIFE_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
       VEXLIFE_PR_NUMBER: ${{ github.event.pull_request.number }}
       VEXLIFE_BRANCH: ${{ github.head_ref || github.ref_name }}
-      VEXLIFE_WORK_REF: ${{ github.event_name == 'pull_request' && 'work.vexlife.pull-request-review' || '' }}
+      VEXLIFE_WORK_REF: ${{ github.event_name == 'pull_request' && 'work.vexlife.build-admission-coverage.58a471b4-0360-4459-b2f4-acdd9780e5e5' || '' }}
       VEXLIFE_CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       VEXLIFE_TESTED_MERGE_SHA: ${{ github.event_name == 'pull_request' && github.sha || '' }}
       VEXLIFE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -46,8 +46,14 @@ jobs:
       - name: Install deterministic Chromium runtime
         run: npx playwright install --with-deps chromium
 
+      - name: Materialize exact candidate source manifest
+        run: npm run manifest:write
+
       - name: Ground bounded repository orientation
         run: npm run orient
+
+      - name: Run the real disposable Build Admission proof
+        run: npm run build-admission:check
 
       - name: Run the complete foundation gate
         run: npm run pr-ready
@@ -55,13 +61,18 @@ jobs:
       - name: Verify executed current health receipt
         run: npm run health:check
 
-      - name: Preserve exact browser and health receipts
+      - name: Preserve exact browser, effect, health, and manifest receipts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: vexlife-exact-check-receipts
           path: |
+            SOURCE-MANIFEST.json
+            source-manifest-parts/*.json
             generated/health/browser-integration.json
+            generated/health/build-admission-simulation.json
+            generated/health/build-admission-pr_ready-consumption.json
+            generated/health/build-admission-health-consumption.json
             generated/health/continuity-evolution-simulation.json
             generated/health/intent-scheduler-simulation.json
             generated/health/runtime-recovery-simulation.json
@@ -96,6 +107,10 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
+
+      - name: Materialize exact candidate source manifest
+        shell: pwsh
+        run: npm run manifest:write
 
       - name: Verify and preserve canonical manifest receipt
         shell: pwsh
