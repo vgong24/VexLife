@@ -2,6 +2,42 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/context-lease.mjs",
+      "mode": "100644",
+      "bytes": 11526,
+      "sha256": "3109d7e7075ba5508523704fe15e328d93f4d36cb04fe0e45e2abeec5225c456"
+    },
+    {
+      "path": "src/core/continuity-evolution-router.mjs",
+      "mode": "100644",
+      "bytes": 105344,
+      "sha256": "1272206f1564d49a885a5bd9b8d9501b3799092a3b523f6f584d89e614661a8c"
+    },
+    {
+      "path": "src/core/conversation.mjs",
+      "mode": "100644",
+      "bytes": 2171,
+      "sha256": "7087c6116acac848adff99a6a060bd67afd4e303df539782442ea1d2cc036331"
+    },
+    {
+      "path": "src/core/device-family.mjs",
+      "mode": "100644",
+      "bytes": 2254,
+      "sha256": "db0e21e48b2d7c2a9ad4ef1a518b0e64a4e057a3d7a2ed1b2de5aefb21203579"
+    },
+    {
+      "path": "src/core/evolution.mjs",
+      "mode": "100644",
+      "bytes": 4841,
+      "sha256": "3547f742d238e92d3e30ce1a0f97124e004a02636023b2827ea62f62ebabba13"
+    },
+    {
+      "path": "src/core/experience.mjs",
+      "mode": "100644",
+      "bytes": 4744,
+      "sha256": "e14e96c19e4feea4060fc56dfe9f3b77d8daea494cdb1e2a782ffe363e4c2e5a"
+    },
+    {
       "path": "src/core/feature-registry.mjs",
       "mode": "100644",
       "bytes": 8167,
@@ -74,6 +110,12 @@
       "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
     },
     {
+      "path": "src/core/local-git-effect-adapter.mjs",
+      "mode": "100644",
+      "bytes": 18706,
+      "sha256": "42cedd2fd23d0ecc79d4bdabd5a39301f3573fca76abb041bc8ce727206af7a5"
+    },
+    {
       "path": "src/core/localization.mjs",
       "mode": "100644",
       "bytes": 2991,
@@ -102,48 +144,6 @@
       "mode": "100644",
       "bytes": 6677,
       "sha256": "b37018abb34ef7e1aa27111cb5a125fd13782ef586c6c80127357d48084488bf"
-    },
-    {
-      "path": "src/core/process-factory.mjs",
-      "mode": "100644",
-      "bytes": 5817,
-      "sha256": "bc94fe52e382231594ce63dff3c36a7dff6480afef1f45c3a158c88bc4d27f22"
-    },
-    {
-      "path": "src/core/public-safety.mjs",
-      "mode": "100644",
-      "bytes": 5576,
-      "sha256": "88af603fcbfb2f1572633a1530a5eccc874ade81dff91b704b69f165f4952e8e"
-    },
-    {
-      "path": "src/core/recovery-fault-injector.mjs",
-      "mode": "100644",
-      "bytes": 8224,
-      "sha256": "acabc315d4c926d4eb97b4a3561c391c524e98a11fd04871e89d47266f1533ba"
-    },
-    {
-      "path": "src/core/recovery-policy.mjs",
-      "mode": "100644",
-      "bytes": 12560,
-      "sha256": "a144d98aec68fefc9508788b7f26271842935d99ed160d94eb0e05e64ec79e7c"
-    },
-    {
-      "path": "src/core/registry.mjs",
-      "mode": "100644",
-      "bytes": 34556,
-      "sha256": "0ae9e3719f7d773b7209f72885380ce4a554ab212c7da51c26ee65dccee89fec"
-    },
-    {
-      "path": "src/core/repository-evidence.mjs",
-      "mode": "100644",
-      "bytes": 2315,
-      "sha256": "0bb8f99f78b7bcbb84ab352b066fe6dbba6411be2cba26a1d8ff47d99a75b9c5"
-    },
-    {
-      "path": "src/core/resource-admission.mjs",
-      "mode": "100644",
-      "bytes": 8924,
-      "sha256": "36e4b449574fbd2195254b6d3b56178202154f2ca8a41485f212e405c5fd45e2"
     }
   ]
 }
