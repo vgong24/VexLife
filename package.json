@@ -17,7 +17,7 @@
     "orient": "node scripts/orient.mjs",
     "atlas:query": "node scripts/atlas-query.mjs",
     "module:describe": "node scripts/module-describe.mjs",
-    "check": "npm run syntax:check && npm run blueprint:check && npm run feature:check && npm run bridge:check && npm run localization:check && npm run public-safety:check && npm test && npm run manifest:check",
+    "check": "npm run syntax:check && npm run blueprint:check && npm run feature:check && npm run bridge:check && npm run localization:check && npm run public-safety:check && npm test && npm run build-admission:check && npm run manifest:check",
     "registry:summary": "node scripts/registry-summary.mjs",
     "doctor": "node scripts/doctor.mjs",
     "impact:report": "node scripts/impact-report.mjs",
@@ -41,11 +41,14 @@
     "recovery:check": "node scripts/recovery-check.mjs",
     "recovery:simulate": "node scripts/recovery-simulate.mjs",
     "recovery:status": "node scripts/recovery-status.mjs",
+    "build-admission:check": "node scripts/build-admission-check.mjs",
+    "build-admission:simulate": "node scripts/build-admission-simulate.mjs",
+    "build-admission:status": "node scripts/build-admission-status.mjs",
     "localization:check": "node scripts/localization-check.mjs",
-    "health:check": "node scripts/health-check.mjs",
+    "health:check": "node scripts/build-admission-check.mjs --consumer HEALTH && node scripts/health-check.mjs",
     "current": "node scripts/current.mjs",
     "projections:build": "node scripts/build-projections.mjs",
-    "pr-ready": "node scripts/pr-ready.mjs"
+    "pr-ready": "node scripts/build-admission-check.mjs --consumer PR_READY && node scripts/pr-ready.mjs"
   },
   "devDependencies": {
     "playwright": "1.61.1"

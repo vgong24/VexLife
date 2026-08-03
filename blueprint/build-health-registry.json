@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.build-health-registry/v0",
   "registryRef": "registry.vexlife.build-health.001",
-  "registryVersion": 1,
+  "registryVersion": 2,
   "purpose": "One source-managed list of mandatory health checks and the lenses each protects.",
   "semanticNoOpRule": "Equal check inputs and outputs do not create another durable health transition.",
   "checkResultContract": {
@@ -38,7 +38,9 @@
         "SOURCE_MANIFEST_CURRENT",
         "ARCHITECTURE_PROJECTIONS_WRITTEN",
         "DOCTOR_VALID",
-        "CURRENT"
+        "CURRENT",
+        "BUILD_ADMISSION_CURRENT",
+        "BUILD_ADMISSION_SIMULATION_CURRENT"
       ],
       "ATTENTION": [
         "ATTENTION"
@@ -270,7 +272,7 @@
       "checkRef": "check.intent-scheduler",
       "command": "npm run scheduler:check",
       "category": "ARCHITECTURE",
-      "purpose": "Canonical scheduler composition, live-clock completion consumption currentness with exact Workgraph evidence lineage, preserved preemption continuation, six-lease checkpoint release, typed relay-event replay, scheduler-exclusive held-tool disposition and closure, scheduler-authorized successor context, safe receipt paths and the deterministic no-effect lifecycle receipt validate.",
+      "purpose": "Canonical scheduler composition, completion currentness, replay, leases, held-tool disposition, and deterministic no-effect lifecycle receipt validate.",
       "lensRefs": [
         "lens.vexlife.intent-and-placement",
         "lens.vexlife.identity-lattice",
@@ -288,7 +290,7 @@
       "checkRef": "check.continuity-evolution",
       "command": "npm run evolution:check",
       "category": "CONTINUITY",
-      "purpose": "Immutable exact-pair continuity observations, source-managed current acceptance evidence, replayed Burden Release deauthorization, atomic supersession, exact recurrence/family scope, ref-only projections and one causally bound scheduler/Workgraph no-effect receipt validate; PR-ready and Health independently reject missing or stale structured continuity evidence.",
+      "purpose": "Continuity evolution causal no-effect receipt and independent PR-ready/Health evidence validate.",
       "lensRefs": [
         "lens.vexlife.intent-and-placement",
         "lens.vexlife.identity-lattice",
@@ -307,7 +309,26 @@
       "checkRef": "check.runtime-recovery",
       "command": "npm run recovery:check",
       "category": "RELIABILITY",
-      "purpose": "Rejected-thenable totality, registered classifier provenance, edge-specific semantic replay, scheduler-owned once-only checkpoint/six-release consumption, action-specific convergence, recovery-output-consuming scheduler continuation, retained human evidence and one causally completed no-effect Workgraph receipt validate; PR-ready and Health independently reject missing, stale or substituted recovery evidence.",
+      "purpose": "Runtime recovery causal no-effect receipt and independent PR-ready/Health evidence validate.",
+      "lensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true,
+      "timeoutMs": 120000
+    },
+    {
+      "checkRef": "check.build-admission",
+      "command": "npm run build-admission:check",
+      "category": "RELIABILITY",
+      "purpose": "One scheduler-admitted request crosses the final effect membrane into one real disposable local Git commit, exact readback, completion, recovery, concern, release, and projection convergence.",
       "lensRefs": [
         "lens.vexlife.intent-and-placement",
         "lens.vexlife.identity-lattice",
