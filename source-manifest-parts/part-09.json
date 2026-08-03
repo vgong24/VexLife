@@ -34,8 +34,8 @@
     {
       "path": "src/core/repository-evidence.mjs",
       "mode": "100644",
-      "bytes": 17043,
-      "sha256": "0c4854db0112c2172d7f899ce3c9b173e5b3b930ef25c245c621d60f4cdda685"
+      "bytes": 17158,
+      "sha256": "d2a7114202268431d0c4e661a9393d6696d1f0fa3a52f133495bd3d47fce71df"
     },
     {
       "path": "src/core/resource-admission.mjs",
@@ -130,8 +130,8 @@
     {
       "path": "test/build-admission.test.mjs",
       "mode": "100644",
-      "bytes": 17950,
-      "sha256": "b77c08fd387a683a88d264a0e69827b5350457693f5f8f4c36af02050da3d15c"
+      "bytes": 20569,
+      "sha256": "081704420289071366531ebde4c39028c25649144c59f35e7ed829bf81b00a07"
     },
     {
       "path": "test/capability.test.mjs",

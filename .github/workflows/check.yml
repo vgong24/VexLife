@@ -31,19 +31,6 @@ jobs:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Preserve exact correction source snapshot
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: vexlife-correction-source-${{ github.event.pull_request.head.sha || github.sha }}
-          path: |
-            .
-            !.git/**
-            !generated/**
-            !node_modules/**
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 1
-
       - name: Use Node.js 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:

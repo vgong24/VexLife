@@ -40,8 +40,8 @@
     {
       "path": "docs/BUILD-ADMISSION-COVERAGE.md",
       "mode": "100644",
-      "bytes": 1929,
-      "sha256": "23a50e436895b9dea80d80108e2d686bd439aacb83b348d6383e4741662bcf89"
+      "bytes": 5031,
+      "sha256": "5fe7b7a91c51202634b9baca6d82a0b69ec5f5dc7b1d26461b046d654e74eecb"
     },
     {
       "path": "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",

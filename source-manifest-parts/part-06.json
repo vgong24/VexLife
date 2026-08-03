@@ -16,20 +16,20 @@
     {
       "path": "scripts/build-admission-check.mjs",
       "mode": "100644",
-      "bytes": 13437,
-      "sha256": "40d1aec0716066061673f4c84359a08fe9b318701292e753eba4c8285eff66c2"
+      "bytes": 20951,
+      "sha256": "f592fa7becb98c8b01a6937e4341253bacd3b34883c70aa3a14e7c47d76ce29e"
     },
     {
       "path": "scripts/build-admission-simulate.mjs",
       "mode": "100644",
-      "bytes": 14146,
-      "sha256": "ecb555ce9b342d7330684d9f555bda1c088920e799c8340599f624150929afa0"
+      "bytes": 13010,
+      "sha256": "b31a421d7c2d4a227b1c2058bd7ded80eccfb6a6e99e34a7020267a1f1ea3053"
     },
     {
       "path": "scripts/build-admission-status.mjs",
       "mode": "100644",
-      "bytes": 18483,
-      "sha256": "c4c72ff948e7c3d709d53afe1f6dd4ac5d5e5b77b997223dea7d3782e7ebe211"
+      "bytes": 4384,
+      "sha256": "4bd7ba78d06ef2b8a5790810a6e90da92336f3087f24f39dd30c4cabecb142dc"
     },
     {
       "path": "scripts/build-projections.mjs",

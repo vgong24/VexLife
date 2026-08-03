@@ -112,8 +112,8 @@
     {
       "path": "src/core/local-git-effect-adapter.mjs",
       "mode": "100644",
-      "bytes": 18706,
-      "sha256": "42cedd2fd23d0ecc79d4bdabd5a39301f3573fca76abb041bc8ce727206af7a5"
+      "bytes": 22567,
+      "sha256": "bbf90a244ad3e3c63a2521f5561e3ecd29d90bd0841271fdd4c5b04e62688878"
     },
     {
       "path": "src/core/localization.mjs",

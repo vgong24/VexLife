@@ -52,8 +52,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 3476,
-      "sha256": "29451e7427f2a1481fed711fb749419532de783e789b5c67390ef196a0b2a737"
+      "bytes": 3565,
+      "sha256": "f83e1d042edf61686668dcf5134b1ca65629fdea3486124d0e6aecc54191ea74"
     },
     {
       "path": "reference/browser/README.md",
