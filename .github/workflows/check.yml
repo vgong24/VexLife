@@ -92,7 +92,7 @@ jobs:
           if-no-files-found: error
 
       - name: Reconfirm the canonical source manifest
-        run: npm run manifest:check
+        run: npm run --silent manifest:check
 
   manifest-portability:
     name: Source manifest portability (${{ matrix.name }})
@@ -130,7 +130,7 @@ jobs:
 
       - name: Run complete bounded real-effect and adversarial host proof
         shell: bash
-        run: npm run build-admission:host-proof -- --receipt generated/health/build-admission-host-proof-${{ matrix.id }}.json
+        run: npm run build-admission:host-proof -- --expected-platform ${{ matrix.id }} --receipt generated/health/build-admission-host-proof-${{ matrix.id }}.json
 
       - name: Verify and preserve canonical manifest receipt
         shell: bash
@@ -142,7 +142,7 @@ jobs:
           MATRIX_ID: ${{ matrix.id }}
         run: |
           set -euo pipefail
-          npm run manifest:check
+          npm run --silent manifest:check
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           import { execFileSync } from 'node:child_process';
@@ -152,7 +152,7 @@ jobs:
             schemaVersion: 'vexlife.source-manifest-portability-receipt/v1',
             state: checkedOutHead === process.env.EXPECTED_HEAD ? 'PASS' : 'FAILED',
             currentness: checkedOutHead === process.env.EXPECTED_HEAD ? 'CURRENT' : 'BLOCKED',
-            command: 'npm run manifest:check',
+            command: 'npm run --silent manifest:check',
             runnerOs: process.env.RUNNER_OS_VALUE,
             runnerArchitecture: process.env.RUNNER_ARCH_VALUE,
             candidateHeadSha: process.env.EXPECTED_HEAD,
@@ -183,4 +183,5 @@ jobs:
           path: |
             generated/health/source-manifest-portability-${{ matrix.id }}.json
             generated/health/build-admission-host-proof-${{ matrix.id }}.json
+            generated/health/build-admission-host-integrated-${{ matrix.id }}.json
           if-no-files-found: error

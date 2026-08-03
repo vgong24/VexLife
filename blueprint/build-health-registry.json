@@ -326,9 +326,9 @@
     },
     {
       "checkRef": "check.build-admission",
-      "command": "npm run build-admission:check",
+      "command": "npm run build-admission:status",
       "category": "RELIABILITY",
-      "purpose": "One scheduler-admitted request crosses the final effect membrane into one real disposable local Git commit, exact readback, completion, recovery, concern, release, and projection convergence.",
+      "purpose": "Validate the one immutable source-managed Build Admission receipt already formed by the bounded workflow; PR-ready and Health consume that exact ref/fingerprint without rerunning the real effect journey.",
       "lensRefs": [
         "lens.vexlife.intent-and-placement",
         "lens.vexlife.identity-lattice",

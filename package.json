@@ -48,7 +48,8 @@
     "health:check": "node scripts/build-admission-check.mjs --consumer HEALTH && node scripts/health-check.mjs",
     "current": "node scripts/current.mjs",
     "projections:build": "node scripts/build-projections.mjs",
-    "pr-ready": "node scripts/build-admission-check.mjs --consumer PR_READY && node scripts/pr-ready.mjs"
+    "pr-ready": "node scripts/build-admission-check.mjs --consumer PR_READY && node scripts/pr-ready.mjs",
+    "build-admission:host-proof": "node scripts/build-admission-check.mjs --host-proof"
   },
   "devDependencies": {
     "playwright": "1.61.1"

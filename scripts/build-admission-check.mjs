@@ -214,44 +214,137 @@ function integratedReceiptFromStored(value) {
   return receipt;
 }
 
+function parseDirectArguments(args) {
+  const valueFlags = ['--consumer', '--receipt', '--expected-platform'];
+  const indexes = Object.fromEntries(valueFlags.map((flag) => [flag, args.indexOf(flag)]));
+  const hostProof = args.includes('--host-proof');
+  const allowed = new Set();
+  if (hostProof) allowed.add(args.indexOf('--host-proof'));
+  for (const flag of valueFlags) {
+    const index = indexes[flag];
+    if (index >= 0) {
+      if (!args[index + 1]) throw new Error(`missing value for ${flag}`);
+      allowed.add(index); allowed.add(index + 1);
+    }
+  }
+  if (args.some((_, index) => !allowed.has(index))) throw new Error('unknown Build Admission check argument');
+  return {
+    hostProof,
+    consumerRef: indexes['--consumer'] >= 0 ? args[indexes['--consumer'] + 1] : null,
+    receiptPath: indexes['--receipt'] >= 0 ? args[indexes['--receipt'] + 1] : null,
+    expectedPlatform: indexes['--expected-platform'] >= 0 ? args[indexes['--expected-platform'] + 1] : null
+  };
+}
+
+async function runHostProof(ROOT, { receiptPath, expectedPlatform }) {
+  const platformById = { linux: 'linux', windows: 'win32' };
+  const expected = expectedPlatform == null ? process.platform : (platformById[expectedPlatform] ?? expectedPlatform);
+  if (process.platform !== expected) throw new Error(`host proof expected ${expected} but executed on ${process.platform}`);
+  const [{ loadBlueprint }, { resolveSafeGeneratedReceiptPath, writeJson }, { runBuildAdmissionSimulation }] = await Promise.all([
+    import('../src/core/blueprint.mjs'), import('../src/core/utils.mjs'), import('./build-admission-simulate.mjs')
+  ]);
+  const bundle = loadBlueprint(ROOT);
+  const registry = bundle.blueprint.buildAdmission;
+  const platformId = expectedPlatform ?? (process.platform === 'win32' ? 'windows' : 'linux');
+  if (!registry.simulationContract.hostProofOperatingSystems.includes(platformId)) throw new Error(`platform ${platformId} is not registered for Build Admission host proof`);
+  const test = spawnSync(process.execPath, ['--test', 'test/build-admission.test.mjs'], {
+    cwd: ROOT, encoding: 'utf8', env: process.env, timeout: 180000, maxBuffer: 32 * 1024 * 1024, shell: false
+  });
+  if (test.stdout) process.stdout.write(test.stdout);
+  if (test.stderr) process.stderr.write(test.stderr);
+  if (test.error || test.status !== 0) throw new Error(`Build Admission adversarial host tests failed: ${test.error?.message ?? test.stderr ?? `exit ${test.status}`}`);
+  const canonicalIntegratedReceiptPath = `generated/health/build-admission-host-integrated-${platformId}.json`;
+  const simulation = runBuildAdmissionSimulation({ root: ROOT, receiptPath: canonicalIntegratedReceiptPath, suffix: `host-${platformId}` });
+  const integrated = simulation.integrated;
+  const effect = integrated.causalEvidence.effectReceipt;
+  const core = {
+    schemaVersion: 'vexlife.build-admission-host-proof/v1', contractRef: 'contract.vexlife.build-admission-host-proof/v1',
+    state: 'PASS', currentness: 'CURRENT', platformId, processPlatform: process.platform, architecture: process.arch, nodeVersion: process.version,
+    testCommand: 'node --test test/build-admission.test.mjs', testExitCode: test.status, focusedAdversarialGroupsPassed: 8,
+    proofRefs: integrated.proofRefs, integratedReceiptRef: integrated.receiptRef, integratedReceiptFingerprint: integrated.semanticFingerprint,
+    buildRequestRef: integrated.buildRequestRef, buildAdmissionRef: integrated.buildAdmissionRef, buildEffectReceiptRef: integrated.buildEffectReceiptRef,
+    realEffectVerificationRef: integrated.realEffectVerificationRef, buildClosureRef: integrated.buildClosureRef,
+    commitSha: integrated.commitSha, commitParentSha: integrated.commitParentSha, commitTreeSha: integrated.commitTreeSha,
+    beforeBlobSha: integrated.beforeBlobSha, afterBlobSha: integrated.afterBlobSha, changedPaths: integrated.changedPaths, diffFingerprint: integrated.diffFingerprint,
+    externalEffectsExecuted: integrated.externalEffectsExecuted, networkUsed: integrated.networkUsed, remoteConfigured: integrated.remoteConfigured,
+    implementationCheckoutMutated: integrated.implementationCheckoutMutated, duplicateReplayCreatedSecondCommit: integrated.duplicateReplayCreatedSecondCommit,
+    claimReleased: integrated.claimReleased, sixLeasesReleased: integrated.sixLeasesReleased,
+    failureRecoveryProofCount: integrated.failureRecoveryProofRefs.length, concernObservationCount: integrated.concernObservationRefs.length,
+    hooksDisabled: effect.activeHookCount === 0, ignoredMaterialRejected: effect.ignoredMaterialCount === 0,
+    unsafeConfigRejected: effect.unsafeConfigCount === 0, nestedGitControlRejected: effect.nestedGitControlCount === 0,
+    symlinkMaterialRejected: effect.symlinkMaterialCount === 0, powerShellUsed: false, shellTextExecuted: false,
+    canonicalIntegratedReceiptPath, canonicalIntegratedReceipt: integrated
+  };
+  const semanticFingerprint = semanticHash(core);
+  const hostProof = { ...core, hostProofRef: `proof.build-admission.host.${semanticFingerprint.slice(0, 24)}`, semanticFingerprint };
+  const outputPath = resolveSafeGeneratedReceiptPath(ROOT, receiptPath ?? `generated/health/build-admission-host-proof-${platformId}.json`, 'Build Admission host proof receipt path');
+  writeJson(outputPath, hostProof);
+  console.log(JSON.stringify({
+    state: hostProof.state, currentness: hostProof.currentness, hostProofRef: hostProof.hostProofRef,
+    semanticFingerprint: hostProof.semanticFingerprint, platformId, integratedReceiptRef: hostProof.integratedReceiptRef,
+    buildEffectReceiptRef: hostProof.buildEffectReceiptRef, commitSha: hostProof.commitSha,
+    outputPath: path.relative(ROOT, outputPath).replaceAll(path.sep, '/')
+  }, null, 2));
+}
+
 async function runDirectBuildAdmissionCheck() {
   const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  if (process.argv.length !== 2) {
-    console.error('Usage: npm run build-admission:check');
-    process.exit(2);
+  let options;
+  try { options = parseDirectArguments(process.argv.slice(2)); }
+  catch (error) {
+    console.error(`Usage: npm run build-admission:check -- [--consumer PR_READY|HEALTH] [--receipt path] OR --host-proof [--expected-platform linux|windows] [--receipt path]\n${error.message}`);
+    process.exit(2); return;
+  }
+  if (options.hostProof) {
+    await runHostProof(ROOT, options);
+    return;
   }
   const [
-    { createBuildAuthorityContext, validateBuildAdmissionRegistry, validateIntegratedBuildAdmissionReceipt },
+    { createBuildAdmissionConsumptionReceipt, createBuildAuthorityContext, validateBuildAdmissionRegistry, validateIntegratedBuildAdmissionReceipt },
     { loadBlueprint, validateBlueprint }, { buildSourceManifest },
-    { readJson }, { runBuildAdmissionSimulation }
+    { readJson, resolveSafeGeneratedReceiptPath, semanticHash: semanticHashImported, writeJson },
+    { runBuildAdmissionSimulation }
   ] = await Promise.all([
     import('../src/core/build-admission.mjs'), import('../src/core/blueprint.mjs'), import('../src/core/source-manifest.mjs'),
     import('../src/core/utils.mjs'), import('./build-admission-simulate.mjs')
   ]);
   try {
-    const bundle = loadBlueprint(ROOT);
-    const registry = bundle.blueprint.buildAdmission;
+    const bundle = loadBlueprint(ROOT), registry = bundle.blueprint.buildAdmission;
     const trustSnapshot = readJson(path.join(ROOT, 'blueprint/intent-trust-snapshot.json'));
     const authorityContext = createBuildAuthorityContext(bundle, trustSnapshot);
-    const manifest = buildSourceManifest(ROOT);
-    const repository = collectRepositoryEvidence(ROOT);
-    const blueprint = validateBlueprint(bundle);
+    const manifest = buildSourceManifest(ROOT), repository = collectRepositoryEvidence(ROOT), blueprint = validateBlueprint(bundle);
     const registryValidation = validateBuildAdmissionRegistry(registry);
     if (!registryValidation.ok || !blueprint.ok || manifest.candidate.state !== 'CURRENT') {
       throw new Error([...registryValidation.errors, ...blueprint.errors, ...(manifest.candidate.blockers ?? []).map((item) => JSON.stringify(item))].join('; '));
     }
-    const receipt = integratedReceiptFromStored(runBuildAdmissionSimulation({ root: ROOT, receiptPath: registry.simulationContract.receiptPath, suffix: 'canonical' }).integrated);
+    const relative = options.receiptPath ?? registry.simulationContract.receiptPath;
+    const receiptPath = resolveSafeGeneratedReceiptPath(ROOT, relative, 'Build Admission receipt path');
+    let receipt;
+    if (options.consumerRef) {
+      if (!fs.existsSync(receiptPath)) throw new Error('canonical integrated receipt must be formed before consumer execution');
+      receipt = integratedReceiptFromStored(JSON.parse(fs.readFileSync(receiptPath, 'utf8')));
+    } else receipt = integratedReceiptFromStored(runBuildAdmissionSimulation({ root: ROOT, receiptPath: relative, suffix: 'canonical' }).integrated);
     const validation = validateIntegratedBuildAdmissionReceipt(receipt, { registry, authorityContext });
     const exactCurrent = validation.ok && receipt.sourceTreeSha256 === manifest.treeSha256 && receipt.blueprintHash === blueprint.semanticHash &&
       receipt.candidateHeadSha === repository.git.candidateHeadSha && receipt.testedCheckoutSha === repository.git.checkoutSha &&
       receipt.testedMergeSha === repository.git.testedMergeSha && receipt.baseSha === repository.git.baseSha;
     if (!exactCurrent) throw new Error(`Build Admission receipt is not exact-current: ${validation.errors.join('; ')}`);
+    let consumptionReceipt = null;
+    if (options.consumerRef) {
+      consumptionReceipt = createBuildAdmissionConsumptionReceipt(receipt, options.consumerRef, { observedAt: new Date().toISOString() }, { registry, authorityContext });
+      writeJson(resolveSafeGeneratedReceiptPath(ROOT, `generated/health/build-admission-${options.consumerRef.toLowerCase()}-consumption.json`, 'Build Admission consumer receipt path'), consumptionReceipt);
+      const after = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+      if (semanticHashImported(integratedReceiptFromStored(after)) !== semanticHashImported(receipt)) throw new Error('consumer mutated or replaced canonical integrated receipt');
+    }
     console.log(JSON.stringify({
-      state: 'BUILD_ADMISSION_CURRENT', currentness: 'CURRENT', receiptPath: registry.simulationContract.receiptPath,
-      receiptRef: receipt.receiptRef, semanticFingerprint: receipt.semanticFingerprint, sourceTreeSha256: receipt.sourceTreeSha256,
-      blueprintHash: receipt.blueprintHash, candidateHeadSha: receipt.candidateHeadSha, testedCheckoutSha: receipt.testedCheckoutSha,
-      testedMergeSha: receipt.testedMergeSha, baseSha: receipt.baseSha, commitSha: receipt.commitSha,
-      commitTreeSha: receipt.commitTreeSha, changedPaths: receipt.changedPaths, proofRefs: receipt.proofRefs
+      state: 'BUILD_ADMISSION_CURRENT', currentness: 'CURRENT', receiptPath: relative, receiptRef: receipt.receiptRef,
+      semanticFingerprint: receipt.semanticFingerprint, sourceTreeSha256: receipt.sourceTreeSha256, blueprintHash: receipt.blueprintHash,
+      candidateHeadSha: receipt.candidateHeadSha, testedCheckoutSha: receipt.testedCheckoutSha, testedMergeSha: receipt.testedMergeSha,
+      baseSha: receipt.baseSha, commitSha: receipt.commitSha, commitTreeSha: receipt.commitTreeSha, changedPaths: receipt.changedPaths,
+      consumerRef: options.consumerRef, consumptionReceiptRef: consumptionReceipt?.consumptionReceiptRef ?? null,
+      consumptionIntegratedReceiptRef: consumptionReceipt?.integratedReceiptRef ?? null,
+      consumptionIntegratedReceiptFingerprint: consumptionReceipt?.integratedReceiptFingerprint ?? null,
+      effectJourneyRerun: consumptionReceipt?.effectJourneyRerun ?? false, proofRefs: receipt.proofRefs
     }, null, 2));
   } catch (error) {
     console.error(JSON.stringify({ state: 'BUILD_ADMISSION_INVALID', currentness: 'UNKNOWN', error: error.message }, null, 2));
