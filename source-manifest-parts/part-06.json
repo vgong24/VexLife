@@ -2,6 +2,36 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/browser-integration.mjs",
+      "mode": "100644",
+      "bytes": 4555,
+      "sha256": "a09c606e6125d34f4e3fed98c3862a80e9b1f10a47ef35892090e165e77c477e"
+    },
+    {
+      "path": "scripts/browser-structure-check.mjs",
+      "mode": "100644",
+      "bytes": 841,
+      "sha256": "5e2ab0892f914684b0bb67a78ec3f4bdf596275a963a75131624f3b469f7953b"
+    },
+    {
+      "path": "scripts/build-admission-check.mjs",
+      "mode": "100644",
+      "bytes": 13064,
+      "sha256": "0cca90be7b526fc1dfd6434dacbfaf85edfe3514a2a38bf0e486f6b79e8ba8ba"
+    },
+    {
+      "path": "scripts/build-admission-simulate.mjs",
+      "mode": "100644",
+      "bytes": 14146,
+      "sha256": "ecb555ce9b342d7330684d9f555bda1c088920e799c8340599f624150929afa0"
+    },
+    {
+      "path": "scripts/build-admission-status.mjs",
+      "mode": "100644",
+      "bytes": 18483,
+      "sha256": "c4c72ff948e7c3d709d53afe1f6dd4ac5d5e5b77b997223dea7d3782e7ebe211"
+    },
+    {
       "path": "scripts/build-projections.mjs",
       "mode": "100644",
       "bytes": 1875,
@@ -114,36 +144,6 @@
       "mode": "100644",
       "bytes": 1018,
       "sha256": "0b3c6ba42dabf658063d7185d365abcb58ce5991e1fbd44fa9d7dae6f8f27968"
-    },
-    {
-      "path": "scripts/orient.mjs",
-      "mode": "100644",
-      "bytes": 5945,
-      "sha256": "fc0d8a9b421107d5364ffed2c18060f80c8ab7334c2063868707fcfedb1e1f06"
-    },
-    {
-      "path": "scripts/pr-ready.mjs",
-      "mode": "100644",
-      "bytes": 14662,
-      "sha256": "682975e91d941bb7aced6302e828312269b7a9405a8260298465dd21682ff094"
-    },
-    {
-      "path": "scripts/provision-model.mjs",
-      "mode": "100644",
-      "bytes": 3545,
-      "sha256": "1702751be8439f43a6d61c4e9dbde8784a934c3d3a09c3e5b80ada83cc864edf"
-    },
-    {
-      "path": "scripts/public-safety-check.mjs",
-      "mode": "100644",
-      "bytes": 948,
-      "sha256": "ce93d4ead2d7cdf1b221a63be589f693c77e676c3dfebe67e8af1492d2e1c3fd"
-    },
-    {
-      "path": "scripts/recovery-check.mjs",
-      "mode": "100644",
-      "bytes": 20205,
-      "sha256": "a33ec7cabd6b311f7660f89ab92b9de3d2dc0bd1f4c1cbee98267690f5034423"
     }
   ]
 }
