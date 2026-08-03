@@ -91,6 +91,15 @@ const SCHEDULER_OPTION_FIELDS = Object.freeze([
   'workerRef', 'schedulerGeneration', 'fairnessMaxDeferrals', 'fairnessLedger',
   'formedAt', 'expiresAt', 'observedAt'
 ]);
+const NODE_INDEXED_SCHEDULER_OPTION_FIELDS = Object.freeze([
+  'resourceRequestByNodeRef',
+  'occupancyByNodeRef',
+  'capabilityLeaseByNodeRef',
+  'effectLeaseByNodeRef',
+  'resourceLeaseRefByNodeRef',
+  'recoveryResourceBindingByNodeRef',
+  'fairnessLedger'
+]);
 
 function clone(value) {
   return structuredClone(value);
@@ -709,6 +718,31 @@ function applyAdmissionReview(snapshot, review, registry) {
   snapshot.state = 'ADMISSION_REVIEW';
 }
 
+function assertSchedulerOptionNodeDomains(schedulerOptions, workgraph, authority) {
+  const nodeIndexedFields = exactRefs(
+    authority.nodeIndexedSchedulerOptionFields,
+    'external scheduler authority node-indexed option fields',
+    { required: true }
+  );
+  if (semanticHash(nodeIndexedFields) !== semanticHash([...NODE_INDEXED_SCHEDULER_OPTION_FIELDS].sort()) ||
+      authority.nodeIndexedSchedulerOptionDomain !== 'EXACT_WORKGRAPH_NODE_REFS' ||
+      authority.writerConflictScope !== 'COMPLETE_SCHEDULER_OCCUPANCY_CLAIM_SCOPE' ||
+      authority.unexpectedWorkNodeKeyDisposition !== 'REJECT_UNCHANGED') {
+    throw new Error('external scheduler authority node scope contract is incomplete or substituted');
+  }
+  if (!Array.isArray(workgraph.nodes)) throw new Error('scheduler authority Workgraph nodes must be an array');
+  const workNodeRefs = new Set(workgraph.nodes.map((node, index) =>
+    requireString(node?.workNodeRef, `scheduler authority Workgraph nodes[${index}].workNodeRef`)
+  ));
+  for (const field of nodeIndexedFields) {
+    const nodeMap = requireObject(schedulerOptions[field], `scheduler authority options.${field}`);
+    const unexpectedRefs = Object.keys(nodeMap).filter((workNodeRef) => !workNodeRefs.has(workNodeRef)).sort();
+    if (unexpectedRefs.length) {
+      throw new Error(`scheduler authority options.${field} contains work-node keys outside the exact Workgraph scope: ${unexpectedRefs.join(', ')}`);
+    }
+  }
+}
+
 function schedulerAuthorityEvidenceCore(input, registry) {
   requireObject(input, 'scheduler authority evidence');
   const authority = requireObject(registry.schedulerIntegration.externalSchedulerAuthority, 'external scheduler authority contract');
@@ -717,6 +751,8 @@ function schedulerAuthorityEvidenceCore(input, registry) {
   if (unknownOptions.length) throw new Error(`scheduler authority options contain unknown fields: ${unknownOptions.join(', ')}`);
   const missingOptions = SCHEDULER_OPTION_FIELDS.filter((field) => !Object.hasOwn(schedulerOptions, field));
   if (missingOptions.length) throw new Error(`scheduler authority options omit required fields: ${missingOptions.join(', ')}`);
+  const workgraph = clone(requireObject(input.workgraph, 'scheduler authority Workgraph'));
+  assertSchedulerOptionNodeDomains(schedulerOptions, workgraph, authority);
   const intentRegistry = clone(requireObject(input.intentRegistry, 'scheduler authority Intent registry'));
   const schedulerRegistry = clone(requireObject(input.schedulerRegistry, 'scheduler authority Scheduler registry'));
   const registeredProcessRefs = exactRefs(input.registeredProcessRefs, 'scheduler authority registeredProcessRefs', { required: true });
@@ -739,7 +775,7 @@ function schedulerAuthorityEvidenceCore(input, registry) {
     schedulerRegistry,
     registeredProcessRefs,
     registeredRoleRefs,
-    workgraph: clone(requireObject(input.workgraph, 'scheduler authority Workgraph')),
+    workgraph,
     schedulerOptions: Object.fromEntries(SCHEDULER_OPTION_FIELDS.map((field) => [field, clone(schedulerOptions[field])])),
     schedulerQueue: clone(requireObject(input.schedulerQueue, 'scheduler authority queue'))
   };
@@ -818,12 +854,18 @@ function validateSchedulerAuthorityEvidence(evidence, review, registry) {
   const occupancy = queue.selectedBindings?.occupancy;
   const resourceRequest = options.resourceRequestByNodeRef?.[review.workNodeRef];
   const effectLease = queue.selectedBindings?.effectLease;
-  const conflictRefs = queue.admittedReady
-    .map((item) => options.occupancyByNodeRef?.[item.workNodeRef])
-    .filter((item) => item?.claimRef === occupancy?.claimRef && item.workNodeRef !== review.workNodeRef)
+  const schedulerOccupancies = Object.entries(options.occupancyByNodeRef).map(([workNodeRef, value]) => {
+    const item = requireObject(value, `scheduler authority occupancy ${workNodeRef}`);
+    if (item.workNodeRef !== workNodeRef) throw new Error('scheduler authority occupancy is detached from its work-node key');
+    return item;
+  });
+  const conflictRefs = schedulerOccupancies
+    .filter((item) => item.claimRef === occupancy?.claimRef && item.workNodeRef !== review.workNodeRef)
     .map((item) => item.workNodeRef)
     .sort();
-  if (review.pathClaimRefs.length !== 1 || occupancy?.claimRef !== review.pathClaimRefs[0] || conflictRefs.length ||
+  const writerClaimState = conflictRefs.length === 0 ? 'EXACT_SINGLE_WRITER' : 'CONFLICTING_WRITERS';
+  if (review.pathClaimRefs.length !== 1 || occupancy?.claimRef !== review.pathClaimRefs[0] ||
+      writerClaimState !== registry.schedulerIntegration.writerClaimStateRequired ||
       queue.selected.schedulingClass === 'INTERACTIVE' || queue.selected.schedulingClass !== review.recommendedPriorityClass ||
       options.resourceSnapshot.activeModelTurn !== false || options.resourceSnapshot.interactiveWaitState !== 'IDLE' ||
       resourceRequest?.modelTurn !== false || effectLease?.effectDisposition !== 'NO_EFFECTS' ||
@@ -842,6 +884,7 @@ function validateSchedulerAuthorityEvidence(evidence, review, registry) {
     queue,
     externalAdmission,
     writerClaimRef: occupancy.claimRef,
+    writerClaimState,
     pathClaimFingerprint: semanticHash(review.pathClaimRefs),
     acceptedPriorityClass: queue.selected.schedulingClass,
     conflictingWriterRefs: conflictRefs
@@ -877,6 +920,7 @@ function validateSchedulerAdmissionReceipt(receipt, snapshot, registry) {
     externalSchedulerAdmissionSchemaVersion: authority.externalAdmission.schemaVersion,
     externalSchedulerAdmissionContractRef: registry.schedulerIntegration.externalSchedulerAuthority.admissionContractRef,
     writerClaimRef: authority.writerClaimRef,
+    writerClaimState: authority.writerClaimState,
     pathClaimFingerprint: authority.pathClaimFingerprint,
     schedulerGeneration: authority.queue.generation,
     acceptedPriorityClass: authority.acceptedPriorityClass,
@@ -1216,7 +1260,7 @@ export function createConcernSchedulerAdmissionReceipt(aggregate, review, input,
     acceptedPriorityClass,
     dependencyState: 'SATISFIED',
     activeInteractiveWorkState: 'RETAINED',
-    writerClaimState: 'EXACT_SINGLE_WRITER',
+    writerClaimState: authority.writerClaimState,
     state: 'ADMITTED',
     currentness: 'CURRENT',
     formedAt: canonicalTimestamp(authority.externalAdmission.formedAt, 'scheduler admission formedAt'),
@@ -2122,6 +2166,12 @@ export function validateConcernWatchRegistry(registry) {
       externalSchedulerAuthority?.recordRevalidatesExternalSchedulerRoute !== true ||
       externalSchedulerAuthority?.replayRevalidatesExternalSchedulerRoute !== true ||
       externalSchedulerAuthority?.integratedConsumerRevalidatesExternalSchedulerRoute !== true ||
+      !Array.isArray(externalSchedulerAuthority?.nodeIndexedSchedulerOptionFields) ||
+      new Set(externalSchedulerAuthority.nodeIndexedSchedulerOptionFields).size !== externalSchedulerAuthority.nodeIndexedSchedulerOptionFields.length ||
+      semanticHash([...externalSchedulerAuthority.nodeIndexedSchedulerOptionFields].sort()) !== semanticHash([...NODE_INDEXED_SCHEDULER_OPTION_FIELDS].sort()) ||
+      externalSchedulerAuthority?.nodeIndexedSchedulerOptionDomain !== 'EXACT_WORKGRAPH_NODE_REFS' ||
+      externalSchedulerAuthority?.writerConflictScope !== 'COMPLETE_SCHEDULER_OCCUPANCY_CLAIM_SCOPE' ||
+      externalSchedulerAuthority?.unexpectedWorkNodeKeyDisposition !== 'REJECT_UNCHANGED' ||
       externalSchedulerAuthority?.callerAuthoredCurrentnessAllowed !== false ||
       externalSchedulerAuthority?.liveClockRequired !== false) {
     errors.push('external scheduler authority contract is incomplete or permits self-attestation');

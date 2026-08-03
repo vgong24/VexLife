@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.concern-watch-registry/v1",
   "registryRef": "registry.vexlife.concern-watch.001",
-  "registryVersion": 2,
+  "registryVersion": 3,
   "systemRef": "system.vexlife.concern-watch",
   "canonicalSourceRef": "source.blueprint.concern-watch-registry",
   "canonicalSource": {
@@ -264,6 +264,18 @@
       "schedulerRegistryFingerprint": "9e3dac1210d4a9959a522ac6f10f3c9466652d1f4c0625c23cf17d902ac1f42d",
       "registeredProcessRefsFingerprint": "b2ffcd01d6c3f9409a9c250fe3fbb7d555c000a4988f09af08a22fc135d7f12a",
       "registeredRoleRefsFingerprint": "252763ab5b7a29a03b6aafc7e15c0020f67c08c615fe37c7d3121a0fa07ade90",
+      "nodeIndexedSchedulerOptionFields": [
+        "resourceRequestByNodeRef",
+        "occupancyByNodeRef",
+        "capabilityLeaseByNodeRef",
+        "effectLeaseByNodeRef",
+        "resourceLeaseRefByNodeRef",
+        "recoveryResourceBindingByNodeRef",
+        "fairnessLedger"
+      ],
+      "nodeIndexedSchedulerOptionDomain": "EXACT_WORKGRAPH_NODE_REFS",
+      "writerConflictScope": "COMPLETE_SCHEDULER_OCCUPANCY_CLAIM_SCOPE",
+      "unexpectedWorkNodeKeyDisposition": "REJECT_UNCHANGED",
       "recordRevalidatesExternalSchedulerRoute": true,
       "replayRevalidatesExternalSchedulerRoute": true,
       "integratedConsumerRevalidatesExternalSchedulerRoute": true,

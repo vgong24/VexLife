@@ -631,7 +631,7 @@ test('CW10 overlapping concern routes cannot hold two writers or admit the same 
   assert.throws(() => createConcernSchedulerAdmissionReceipt(admitted, fixture.review, schedulerInput(fixture), { registry }), /not current|ADMISSION_REVIEW/);
 });
 
-test('second correction revalidates every external scheduler binding at record, replay, and integrated-consumer boundaries', () => {
+test('scheduler authority revalidates every external binding and closed node-key domain at record, replay, and integrated-consumer boundaries', () => {
   const fixture = reviewFixture('second-correction');
   const validAdmission = createConcernSchedulerAdmissionReceipt(
     fixture.aggregate,
@@ -679,6 +679,61 @@ test('second correction revalidates every external scheduler binding at record, 
     ['external writer/path authority', 'evidence', (value) => {
       const workNodeRef = Object.keys(value.schedulerOptions.occupancyByNodeRef)[0];
       value.schedulerOptions.occupancyByNodeRef[workNodeRef].claimRef = 'claim.unrelated';
+    }],
+    ['unexpected resource-request work-node key', 'evidence', (value) => {
+      const selectedRef = Object.keys(value.schedulerOptions.resourceRequestByNodeRef)[0];
+      value.schedulerOptions.resourceRequestByNodeRef['work-node.unrelated.resource-request'] =
+        structuredClone(value.schedulerOptions.resourceRequestByNodeRef[selectedRef]);
+    }],
+    ['additional same-claim scheduler occupancy', 'evidence', (value) => {
+      const selectedRef = Object.keys(value.schedulerOptions.occupancyByNodeRef)[0];
+      const workNodeRef = 'work-node.unrelated.conflicting-writer';
+      value.schedulerOptions.occupancyByNodeRef[workNodeRef] = {
+        ...structuredClone(value.schedulerOptions.occupancyByNodeRef[selectedRef]),
+        occupancyRef: 'occupancy.concern-watch.test.unrelated.conflicting-writer',
+        workNodeRef,
+        formationRef: 'formation.concern-watch.test.occupancy.unrelated.conflicting-writer'
+      };
+    }],
+    ['unexpected capability-lease work-node key', 'evidence', (value) => {
+      const selectedRef = Object.keys(value.schedulerOptions.capabilityLeaseByNodeRef)[0];
+      const workNodeRef = 'work-node.unrelated.capability-lease';
+      value.schedulerOptions.capabilityLeaseByNodeRef[workNodeRef] = {
+        ...structuredClone(value.schedulerOptions.capabilityLeaseByNodeRef[selectedRef]),
+        leaseRef: 'capability-lease.concern-watch.test.unrelated',
+        workNodeRef
+      };
+    }],
+    ['unexpected effect-lease work-node key', 'evidence', (value) => {
+      const selectedRef = Object.keys(value.schedulerOptions.effectLeaseByNodeRef)[0];
+      const workNodeRef = 'work-node.unrelated.effect-lease';
+      value.schedulerOptions.effectLeaseByNodeRef[workNodeRef] = {
+        ...structuredClone(value.schedulerOptions.effectLeaseByNodeRef[selectedRef]),
+        leaseRef: 'effect-lease.concern-watch.test.unrelated',
+        workNodeRef
+      };
+    }],
+    ['unexpected resource-lease work-node key', 'evidence', (value) => {
+      value.schedulerOptions.resourceLeaseRefByNodeRef['work-node.unrelated.resource-lease'] =
+        'resource-lease.concern-watch.test.unrelated';
+    }],
+    ['unexpected recovery-resource work-node key', 'evidence', (value) => {
+      value.schedulerOptions.recoveryResourceBindingByNodeRef['work-node.unrelated.recovery-resource'] = {
+        recoveryCycleRef: 'recovery-cycle.concern-watch.test.unrelated',
+        recoveryCycleFingerprint: '0'.repeat(64)
+      };
+    }],
+    ['unexpected fairness-ledger work-node key', 'evidence', (value) => {
+      const workNodeRef = 'work-node.unrelated.fairness';
+      value.schedulerOptions.fairnessLedger[workNodeRef] = {
+        workNodeRef,
+        readySinceGeneration: 1,
+        deferralCount: 0,
+        sourceBinding: {
+          graphFingerprint: value.workgraph.semanticFingerprint,
+          nodeFingerprint: '0'.repeat(64)
+        }
+      };
     }],
     ['unrelated well-formed scheduler material', 'evidence', (value) => {
       Object.assign(value, structuredClone(unrelatedAdmission.schedulerAuthorityEvidence));

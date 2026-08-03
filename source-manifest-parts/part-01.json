@@ -130,8 +130,8 @@
     {
       "path": "blueprint/concern-watch-registry.json",
       "mode": "100644",
-      "bytes": 16390,
-      "sha256": "c79481e0b38368a5cc36f57e6e4af979cd2d156183e9f036ee72f03f872df12b"
+      "bytes": 16889,
+      "sha256": "aa534affd7122f1ea8bc07572041e600bf0d1daecd0c6308d6905478849009b9"
     },
     {
       "path": "blueprint/design-tokens.json",
