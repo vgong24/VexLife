@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/recovery-simulate.mjs",
+      "mode": "100644",
+      "bytes": 196410,
+      "sha256": "7cd65f5f6727415668c75476d27df2ad64701cf364cfa76cf37933111577e96f"
+    },
+    {
       "path": "scripts/recovery-status.mjs",
       "mode": "100644",
       "bytes": 816,
@@ -98,6 +104,12 @@
       "sha256": "448fdea1519cad9db9116dd3f370bf42bd7d354ecf417865f8f1eb91e67c3b8f"
     },
     {
+      "path": "src/core/concern-watch.mjs",
+      "mode": "100644",
+      "bytes": 120155,
+      "sha256": "a65d858e4dffe8915ad1b62df4550ee3d963e7d8de3c360c1b08412e5f87dc51"
+    },
+    {
       "path": "src/core/context-lease.mjs",
       "mode": "100644",
       "bytes": 11526,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 4744,
       "sha256": "e14e96c19e4feea4060fc56dfe9f3b77d8daea494cdb1e2a782ffe363e4c2e5a"
-    },
-    {
-      "path": "src/core/feature-registry.mjs",
-      "mode": "100644",
-      "bytes": 8167,
-      "sha256": "14937478c5512706fe208a6959aa9dbb47061fed3e5adb4692339e18f4db3884"
-    },
-    {
-      "path": "src/core/home-bridge.mjs",
-      "mode": "100644",
-      "bytes": 7921,
-      "sha256": "3ceef5d425232ec90b4d59a6e9a8b66510124d0f748ebd695a437e56a48cda81"
     }
   ]
 }

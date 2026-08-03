@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "blueprint/experience-registry.json",
+      "mode": "100644",
+      "bytes": 10626,
+      "sha256": "a6078a44aeb4c9f775ecdeae6def53e8f0a7c293c8a4a06c666250296e22f595"
+    },
+    {
       "path": "blueprint/feature-registry.json",
       "mode": "100644",
       "bytes": 39193,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 6401,
       "sha256": "404bee80b33ce86950d94bdbc90da4b91fe9fe67cdb08796ebcdc0996271a719"
-    },
-    {
-      "path": "blueprint/implementation/work-units-orchestration-and-publication.json",
-      "mode": "100644",
-      "bytes": 22928,
-      "sha256": "56149c78f35fc46093c5afbaff0214bc61b313ccb6eeb7d08a9e4f0dd0ac6e3d"
     }
   ]
 }

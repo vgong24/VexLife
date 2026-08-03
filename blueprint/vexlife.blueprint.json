@@ -19,6 +19,7 @@
     "intentOrchestration": "blueprint/intent-orchestration-registry.json",
     "intentScheduler": "blueprint/intent-scheduler-registry.json",
     "runtimeRecovery": "blueprint/runtime-recovery-registry.json",
+    "concernWatch": "blueprint/concern-watch-registry.json",
     "components": "blueprint/fragments/components.json",
     "screens": [
       "blueprint/fragments/screens/shell.json",

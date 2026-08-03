@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/REGISTRIES-AND-PROCESS-FACTORY.md",
+      "mode": "100644",
+      "bytes": 3816,
+      "sha256": "e131684893e95b9d07ed412ed4aff1daee7e3f85b2eb487729612d21cf311648"
+    },
+    {
       "path": "docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md",
       "mode": "100644",
       "bytes": 6513,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 841,
       "sha256": "5e2ab0892f914684b0bb67a78ec3f4bdf596275a963a75131624f3b469f7953b"
-    },
-    {
-      "path": "scripts/build-projections.mjs",
-      "mode": "100644",
-      "bytes": 1875,
-      "sha256": "df09880041da5c58ba3c220a90912eabfa39aa7f08eab48b2d59dc31221255d0"
     }
   ]
 }
