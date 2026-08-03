@@ -15,27 +15,41 @@
   "consumedIdentityContract": {
     "actions": [
       "action.file.edit-with-recovery",
-      "action.cli.execute",
-      "action.github.commit"
+      "action.cli.execute"
     ],
     "permissions": [
       "permission.file.edit",
-      "permission.cli.execute",
-      "permission.github.publish"
+      "permission.cli.execute"
     ],
     "capabilities": [
       "capability.vexlife.file.edit-with-recovery",
-      "capability.vexlife.cli.typed",
-      "capability.vexlife.github.publication"
+      "capability.vexlife.cli.typed"
     ],
     "processes": [
       "process.vexlife.file.edit-with-recovery",
-      "process.vexlife.cli.execute-typed",
-      "process.vexlife.github.publish-public-branch"
+      "process.vexlife.cli.execute-typed"
     ],
     "sourceDefinitionsMayBeModified": false,
     "schedulerRemainsSoleWorkAdmissionOwner": true,
-    "buildAdmissionCreatesSecondQueue": false
+    "buildAdmissionCreatesSecondQueue": false,
+    "actionRefs": [
+      "action.file.edit-with-recovery",
+      "action.cli.execute"
+    ],
+    "permissionRefs": [
+      "permission.file.edit",
+      "permission.cli.execute"
+    ],
+    "capabilityRefs": [
+      "capability.vexlife.file.edit-with-recovery",
+      "capability.vexlife.cli.typed"
+    ],
+    "processRefs": [
+      "process.vexlife.file.edit-with-recovery",
+      "process.vexlife.cli.execute-typed"
+    ],
+    "publicationIdentityRefsConsumed": false,
+    "finalEffectAuthoritySource": "SOURCE_MANAGED_BUILD_AUTHORITY_EVIDENCE"
   },
   "contractIdentities": [
     {
@@ -191,7 +205,11 @@
       "git.diff.parent",
       "git.diff.name-only",
       "git.status.porcelain",
-      "git.remote.list"
+      "git.remote.list",
+      "git.config.sanitized",
+      "git.hooks.empty-domain",
+      "git.status.ignored-inventory",
+      "git.control-material.inventory"
     ],
     "forbiddenGitOperations": [
       "push",
@@ -210,7 +228,14 @@
     "remoteConfigured": false,
     "arbitraryShellAllowed": false,
     "implementationCheckoutAllowed": false,
-    "cleanupMayTraverseParent": false
+    "cleanupMayTraverseParent": false,
+    "hooksDisabled": true,
+    "globalConfigIgnored": true,
+    "repositoryConfigPolicy": "EXACT_LOCAL_CONFIG_ALLOWLIST",
+    "ignoredMaterialAllowed": false,
+    "nestedGitControlMaterialAllowed": false,
+    "hookSideEffectsAllowed": false,
+    "networkStyleHookSideEffectsAllowed": false
   },
   "effectReceiptContract": {
     "contractRef": "contract.vexlife.local-git-effect/v1",
@@ -253,7 +278,11 @@
     "callerReaddressingAllowed": false,
     "changedPathCount": 1,
     "workingTreeBefore": "CLEAN",
-    "workingTreeAfter": "CLEAN"
+    "workingTreeAfter": "CLEAN",
+    "completeRecordValidatorRequired": true,
+    "sanitizedGitEnvironmentRequired": true,
+    "hookDomainFingerprintRequired": true,
+    "controlMaterialFingerprintRequired": true
   },
   "completionContract": {
     "contractRef": "contract.vexlife.real-effect-completion-verification/v1",
@@ -263,7 +292,9 @@
     "selfCertificationAllowed": false,
     "schedulerClockRequired": true,
     "effectReceiptReplayAllowed": false,
-    "completionConsumesEveryEffectIdentity": true
+    "completionConsumesEveryEffectIdentity": true,
+    "completeEffectValidatorRequired": true,
+    "authoritativeNestedReconstructionRequired": true
   },
   "recoveryContract": {
     "contractRef": "contract.vexlife.build-recovery/v1",
@@ -353,7 +384,12 @@
     "externalEffectsExecuted": true,
     "networkUsed": false,
     "remoteConfigured": false,
-    "implementationCheckoutMutated": false
+    "implementationCheckoutMutated": false,
+    "sameIntegratedReceiptConsumerRequirement": true,
+    "hostProofOperatingSystems": [
+      "linux",
+      "windows"
+    ]
   },
   "heldBoundaries": [
     "no remote Git or GitHub mutation by runtime adapter",
@@ -368,5 +404,59 @@
     "no model download, inference or weight change",
     "no shared generated-receipt race repair",
     "no public release"
-  ]
+  ],
+  "authorityContract": {
+    "contractRef": "contract.vexlife.build-authority-evidence/v1",
+    "schemaVersion": "vexlife.build-authority-evidence/v1",
+    "formationRef": "formation.vexlife.build-authority-evidence.accepted-validators.v1",
+    "validatorRefs": [
+      "validator.intent-workgraph.accepted",
+      "validator.intent-scheduler-registry.accepted",
+      "validator.intent-scheduler-admission-reconstruction.accepted",
+      "validator.intent-scheduler-current-lease.accepted",
+      "validator.concern-watch-replay.accepted",
+      "validator.repository-direct-readback.accepted",
+      "validator.build-identity-chain.exact-source-snapshot"
+    ],
+    "workNodeRefPrefix": "work-node.vexlife.build-admission.authority",
+    "intentRefPrefix": "intent.vexlife.build-admission.authority",
+    "graphRefPrefix": "intent-workgraph.vexlife.build-admission.authority",
+    "workerRef": "worker.model.mock.primary",
+    "actorRef": "person.vexlife.owner",
+    "roleRef": "role.vex.operations",
+    "processRef": "process.vexlife.file.edit-with-recovery",
+    "capabilityEnvelopeRef": "capability-envelope.intent.contract-validation",
+    "effectEnvelopeRef": "effect-envelope.intent.source-managed.bounded",
+    "resourceEnvelopeRef": "resource-envelope.intent.deterministic-local-light",
+    "expectedTransitionRef": "expected-transition.intent.contract-current",
+    "completionGateRefs": [
+      "completion-gate.intent.contract-valid"
+    ],
+    "returnRouteRef": "return-route.intent.verify-transition",
+    "outerSchedulerToolRef": "tool.mock.inspect",
+    "outerSchedulerEffectRef": "effect.mock.read",
+    "outerSchedulerEffectGrantsGitAuthority": false,
+    "coordinatedCallerReaddressingAllowed": false,
+    "sourceManagedReconstructionRequired": true,
+    "repositoryCurrentnessReobservedAtAdmission": true,
+    "concernReplayRequired": true,
+    "humanConfirmationContractRef": "contract.vexlife.build-human-confirmation/v1"
+  },
+  "releaseContract": {
+    "contractRef": "contract.vexlife.build-scheduler-release/v1",
+    "schemaVersion": "vexlife.build-scheduler-release/v1",
+    "releaseKinds": [
+      "CLAIM",
+      "OCCUPANCY",
+      "CAPABILITY",
+      "EFFECT",
+      "RESOURCE",
+      "WORKER",
+      "CONTEXT"
+    ],
+    "schedulerGenerationBound": true,
+    "exactPriorFingerprintBound": true,
+    "onceOnlyReplayRequired": true,
+    "sourceManagedTransitionRequired": true
+  }
 }

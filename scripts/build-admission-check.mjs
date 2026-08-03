@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { collectDisposableRepositoryEvidence, collectRepositoryEvidence, resolveDisposableRepositoryPath } from '../src/core/repository-evidence.mjs';
+import { assertDisposableRepositoryControlClean, collectDisposableRepositoryEvidence, collectRepositoryEvidence, resolveDisposableRepositoryPath, runBoundedGit } from '../src/core/repository-evidence.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 
 const DISPOSABLE_REPOSITORY_MARKER = '.vexlife-disposable-repository.json';
@@ -17,25 +17,24 @@ function freezeBuildAdmissionEvidence(value) {
   return Object.freeze(value);
 }
 
-function runDisposableGit(root, args, label, env = {}) {
-  const result = spawnSync('git', args, {
-    cwd: root,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      GIT_CONFIG_NOSYSTEM: '1',
-      GIT_TERMINAL_PROMPT: '0',
-      GIT_ASKPASS: '',
-      ...env
-    },
-    timeout: 30000,
-    maxBuffer: 8 * 1024 * 1024,
-    shell: false
-  });
-  if (result.error || result.status !== 0) {
-    throw new Error(`${label} failed: ${result.error?.message ?? result.stderr?.trim() ?? `exit ${result.status}`}`);
-  }
-  return result.stdout.trim();
+function emptyHookDomain(workspaceRoot) {
+  const directory = path.join(fs.realpathSync.native(workspaceRoot), '.vexlife-build-admission-empty-hooks');
+  if (fs.existsSync(directory)) {
+    const stat = fs.lstatSync(directory);
+    if (!stat.isDirectory() || stat.isSymbolicLink() || fs.readdirSync(directory).length !== 0) {
+      throw new Error('source-managed empty hook domain is not exact and empty');
+    }
+  } else fs.mkdirSync(directory);
+  return directory;
+}
+
+function runDisposableGit(root, args, label, env = {}, hooksPath = null) {
+  const workspaceRoot = path.dirname(root);
+  return runBoundedGit(root, args, {
+    label,
+    env,
+    hooksPath: hooksPath ?? emptyHookDomain(workspaceRoot)
+  }).stdout.trim();
 }
 
 export function safeRemoveDisposableRepository(workspaceRoot, repositoryPath) {
@@ -81,7 +80,16 @@ export function buildAdmissionAdapterSourceHash(registry) {
     remoteConfigured: adapter.remoteConfigured,
     arbitraryShellAllowed: adapter.arbitraryShellAllowed,
     implementationCheckoutAllowed: adapter.implementationCheckoutAllowed,
-    cleanupMayTraverseParent: adapter.cleanupMayTraverseParent
+    cleanupMayTraverseParent: adapter.cleanupMayTraverseParent,
+    hooksDisabled: adapter.hooksDisabled,
+    globalConfigIgnored: adapter.globalConfigIgnored,
+    ignoredMaterialAllowed: adapter.ignoredMaterialAllowed,
+    nestedGitControlAllowed: adapter.nestedGitControlAllowed,
+    symlinkMaterialAllowed: adapter.symlinkMaterialAllowed,
+    identityActionRefs: adapter.identityActionRefs,
+    identityPermissionRefs: adapter.identityPermissionRefs,
+    identityCapabilityRefs: adapter.identityCapabilityRefs,
+    identityProcessRefs: adapter.identityProcessRefs
   });
 }
 
@@ -169,6 +177,7 @@ export function prepareDisposableGitRepository({
   runDisposableGit(repositoryPath, ['branch', '-M', baselineBranch], 'Git baseline branch');
   runDisposableGit(repositoryPath, ['config', 'user.name', BUILD_ADMISSION_AUTHOR], 'Git local user name');
   runDisposableGit(repositoryPath, ['config', 'user.email', BUILD_ADMISSION_EMAIL], 'Git local user email');
+  assertDisposableRepositoryControlClean(workspace, repositoryPath);
   runDisposableGit(repositoryPath, ['add', '--', DISPOSABLE_REPOSITORY_MARKER, safePath], 'Git baseline exact add');
   runDisposableGit(
     repositoryPath,
@@ -176,6 +185,7 @@ export function prepareDisposableGitRepository({
     'Git baseline commit',
     { GIT_AUTHOR_DATE: formedAt, GIT_COMMITTER_DATE: formedAt }
   );
+  assertDisposableRepositoryControlClean(workspace, repositoryPath);
   const evidence = collectDisposableRepositoryEvidence(workspace, repositoryPath, { mutationPath: safePath });
   if (evidence.workingTree !== 'CLEAN' || evidence.remoteConfigured) {
     throw new Error('disposable baseline is not clean and remote-free');
@@ -205,26 +215,48 @@ function integratedReceiptFromStored(value) {
 }
 
 async function runDirectBuildAdmissionCheck() {
-    const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-    const args = process.argv.slice(2); const consumerIndex = args.indexOf('--consumer'); const receiptIndex = args.indexOf('--receipt');
-    const allowed = new Set([consumerIndex,consumerIndex+1,receiptIndex,receiptIndex+1].filter((x)=>x>=0));
-    if (args.some((_,i)=>!allowed.has(i)) || (consumerIndex>=0&&!args[consumerIndex+1]) || (receiptIndex>=0&&!args[receiptIndex+1])) { console.error('Usage: npm run build-admission:check -- [--consumer PR_READY|HEALTH] [--receipt path]'); process.exit(2); }
-    const [{ createBuildAdmissionConsumptionReceipt, validateBuildAdmissionRegistry, validateIntegratedBuildAdmissionReceipt }, { loadBlueprint, validateBlueprint }, { buildSourceManifest }, { resolveSafeGeneratedReceiptPath, writeJson }, { runBuildAdmissionSimulation }] = await Promise.all([
-      import('../src/core/build-admission.mjs'), import('../src/core/blueprint.mjs'), import('../src/core/source-manifest.mjs'), import('../src/core/utils.mjs'), import('./build-admission-simulate.mjs')
-    ]);
-    try {
-      const bundle=loadBlueprint(ROOT), registry=bundle.blueprint.buildAdmission, manifest=buildSourceManifest(ROOT), repository=collectRepositoryEvidence(ROOT), blueprint=validateBlueprint(bundle);
-      const rv=validateBuildAdmissionRegistry(registry); if(!rv.ok||!blueprint.ok) throw new Error([...rv.errors,...blueprint.errors].join('; '));
-      const relative=receiptIndex>=0?args[receiptIndex+1]:registry.simulationContract.receiptPath, receiptPath=resolveSafeGeneratedReceiptPath(ROOT,relative,'Build Admission receipt path');
-      let receipt=null; try{receipt=integratedReceiptFromStored(JSON.parse(fs.readFileSync(receiptPath,'utf8')));}catch{}
-      let validation=receipt?validateIntegratedBuildAdmissionReceipt(receipt,{registry}):{ok:false,errors:['receipt unavailable']};
-      const current=validation.ok&&receipt.sourceTreeSha256===manifest.treeSha256&&receipt.blueprintHash===blueprint.semanticHash&&receipt.candidateHeadSha===repository.git.candidateHeadSha&&receipt.testedCheckoutSha===repository.git.checkoutSha&&receipt.testedMergeSha===repository.git.testedMergeSha&&receipt.baseSha===repository.git.baseSha;
-      if(!current){const simulation=runBuildAdmissionSimulation({root:ROOT,receiptPath:relative});receipt=integratedReceiptFromStored(simulation.receipt);validation=validateIntegratedBuildAdmissionReceipt(receipt,{registry});}
-      if(!validation.ok||receipt.sourceTreeSha256!==manifest.treeSha256||receipt.blueprintHash!==blueprint.semanticHash||receipt.candidateHeadSha!==repository.git.candidateHeadSha||receipt.testedCheckoutSha!==repository.git.checkoutSha||receipt.testedMergeSha!==repository.git.testedMergeSha||receipt.baseSha!==repository.git.baseSha) throw new Error(`Build Admission receipt is not exact-current: ${validation.errors.join('; ')}`);
-      const consumerRef=consumerIndex>=0?args[consumerIndex+1]:null; let consumptionReceipt=null;
-      if(consumerRef){consumptionReceipt=createBuildAdmissionConsumptionReceipt(receipt,consumerRef,{observedAt:new Date().toISOString()},{registry});writeJson(resolveSafeGeneratedReceiptPath(ROOT,`generated/health/build-admission-${consumerRef.toLowerCase()}-consumption.json`,'Build Admission consumer receipt path'),consumptionReceipt);}
-      console.log(JSON.stringify({state:'BUILD_ADMISSION_CURRENT',currentness:'CURRENT',receiptPath:relative,receiptRef:receipt.receiptRef,semanticFingerprint:receipt.semanticFingerprint,sourceTreeSha256:receipt.sourceTreeSha256,blueprintHash:receipt.blueprintHash,candidateHeadSha:receipt.candidateHeadSha,commitSha:receipt.commitSha,commitTreeSha:receipt.commitTreeSha,changedPaths:receipt.changedPaths,consumerRef,consumptionReceiptRef:consumptionReceipt?.consumptionReceiptRef??null,proofRefs:receipt.proofRefs},null,2));
-    } catch(error){console.error(JSON.stringify({state:'BUILD_ADMISSION_INVALID',currentness:'UNKNOWN',error:error.message},null,2));process.exit(1);}
+  const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  if (process.argv.length !== 2) {
+    console.error('Usage: npm run build-admission:check');
+    process.exit(2);
+  }
+  const [
+    { createBuildAuthorityContext, validateBuildAdmissionRegistry, validateIntegratedBuildAdmissionReceipt },
+    { loadBlueprint, validateBlueprint }, { buildSourceManifest },
+    { readJson }, { runBuildAdmissionSimulation }
+  ] = await Promise.all([
+    import('../src/core/build-admission.mjs'), import('../src/core/blueprint.mjs'), import('../src/core/source-manifest.mjs'),
+    import('../src/core/utils.mjs'), import('./build-admission-simulate.mjs')
+  ]);
+  try {
+    const bundle = loadBlueprint(ROOT);
+    const registry = bundle.blueprint.buildAdmission;
+    const trustSnapshot = readJson(path.join(ROOT, 'blueprint/intent-trust-snapshot.json'));
+    const authorityContext = createBuildAuthorityContext(bundle, trustSnapshot);
+    const manifest = buildSourceManifest(ROOT);
+    const repository = collectRepositoryEvidence(ROOT);
+    const blueprint = validateBlueprint(bundle);
+    const registryValidation = validateBuildAdmissionRegistry(registry);
+    if (!registryValidation.ok || !blueprint.ok || manifest.candidate.state !== 'CURRENT') {
+      throw new Error([...registryValidation.errors, ...blueprint.errors, ...(manifest.candidate.blockers ?? []).map((item) => JSON.stringify(item))].join('; '));
+    }
+    const receipt = integratedReceiptFromStored(runBuildAdmissionSimulation({ root: ROOT, receiptPath: registry.simulationContract.receiptPath, suffix: 'canonical' }).integrated);
+    const validation = validateIntegratedBuildAdmissionReceipt(receipt, { registry, authorityContext });
+    const exactCurrent = validation.ok && receipt.sourceTreeSha256 === manifest.treeSha256 && receipt.blueprintHash === blueprint.semanticHash &&
+      receipt.candidateHeadSha === repository.git.candidateHeadSha && receipt.testedCheckoutSha === repository.git.checkoutSha &&
+      receipt.testedMergeSha === repository.git.testedMergeSha && receipt.baseSha === repository.git.baseSha;
+    if (!exactCurrent) throw new Error(`Build Admission receipt is not exact-current: ${validation.errors.join('; ')}`);
+    console.log(JSON.stringify({
+      state: 'BUILD_ADMISSION_CURRENT', currentness: 'CURRENT', receiptPath: registry.simulationContract.receiptPath,
+      receiptRef: receipt.receiptRef, semanticFingerprint: receipt.semanticFingerprint, sourceTreeSha256: receipt.sourceTreeSha256,
+      blueprintHash: receipt.blueprintHash, candidateHeadSha: receipt.candidateHeadSha, testedCheckoutSha: receipt.testedCheckoutSha,
+      testedMergeSha: receipt.testedMergeSha, baseSha: receipt.baseSha, commitSha: receipt.commitSha,
+      commitTreeSha: receipt.commitTreeSha, changedPaths: receipt.changedPaths, proofRefs: receipt.proofRefs
+    }, null, 2));
+  } catch (error) {
+    console.error(JSON.stringify({ state: 'BUILD_ADMISSION_INVALID', currentness: 'UNKNOWN', error: error.message }, null, 2));
+    process.exit(1);
+  }
 }
 
 const direct = process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;

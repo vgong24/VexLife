@@ -1,50 +1,100 @@
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { semanticHash } from './utils.mjs';
 
-function git(root, ...args) {
-  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+const SAFE_GIT_ENV_KEYS = new Set([
+  'PATH', 'Path', 'PATHEXT', 'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'COMSPEC',
+  'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL', 'TERM'
+]);
+const DANGEROUS_LOCAL_CONFIG = /^(?:alias\.|credential\.|include\.|includeif\.|remote\.|url\.|protocol\.|http\.|https\.|core\.(?:hookspath|sshcommand|gitproxy)|gpg\.|commit\.gpgsign)/i;
+const ALLOWED_LOCAL_CONFIG = /^(?:core\.(?:repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks)|user\.(?:name|email))$/i;
+
+function clone(value) { return structuredClone(value); }
+function freeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) freeze(child);
+  return Object.freeze(value);
+}
+function sha256(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
+
+export function createSanitizedGitEnvironment(overrides = {}) {
+  const env = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (SAFE_GIT_ENV_KEYS.has(key) && typeof value === 'string') env[key] = value;
+  }
+  return {
+    ...env,
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_CONFIG_GLOBAL: os.devNull,
+    GIT_CONFIG_SYSTEM: os.devNull,
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_ASKPASS: '',
+    GCM_INTERACTIVE: 'Never',
+    GIT_PROTOCOL_FROM_USER: '0',
+    ...overrides
+  };
+}
+
+export function runBoundedGit(root, args, {
+  label = args.join(' '),
+  env = {},
+  allowFailure = false,
+  hooksPath = os.devNull,
+  timeout = 30000
+} = {}) {
+  if (!Array.isArray(args) || args.length === 0 || args.some((arg) => typeof arg !== 'string' || /[\0\r\n]/.test(arg))) {
+    throw new Error(`${label} requires bounded Git arguments`);
+  }
+  const commandArgs = [
+    '-c', `core.hooksPath=${hooksPath}`,
+    '-c', 'credential.helper=',
+    '-c', 'protocol.allow=never',
+    '-c', 'commit.gpgSign=false',
+    ...args
+  ];
+  const result = spawnSync('git', commandArgs, {
+    cwd: root,
+    encoding: 'utf8',
+    env: createSanitizedGitEnvironment(env),
+    timeout,
+    maxBuffer: 16 * 1024 * 1024,
+    shell: false
+  });
+  const output = {
+    status: Number.isInteger(result.status) ? result.status : null,
+    stdout: result.stdout ?? '',
+    stderr: result.error?.message ?? result.stderr ?? ''
+  };
+  if (!allowFailure && (result.error || result.status !== 0)) {
+    throw new Error(`${label} failed: ${output.stderr.trim() || `exit ${output.status}`}`);
+  }
+  return output;
+}
+
+function gitOrNull(root, args) {
+  const result = runBoundedGit(root, args, { label: `Git ${args.join(' ')}`, allowFailure: true });
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
-function runGit(root, args, label = args.join(' ')) {
-  const result = spawnSync('git', args, {
-    cwd: root,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      GIT_CONFIG_NOSYSTEM: '1',
-      GIT_TERMINAL_PROMPT: '0',
-      GIT_ASKPASS: ''
-    },
-    timeout: 30000,
-    maxBuffer: 8 * 1024 * 1024
-  });
-  if (result.error || result.status !== 0) {
-    throw new Error(`${label} failed: ${result.error?.message ?? result.stderr?.trim() ?? `exit ${result.status}`}`);
-  }
-  return result.stdout.trim();
-}
-
 export function collectRepositoryEvidence(root, environment = process.env) {
-  const checkoutSha = git(root, 'rev-parse', 'HEAD');
-  const localBranch = git(root, 'branch', '--show-current');
-  const parents = (git(root, 'rev-list', '--parents', '-n', '1', 'HEAD') ?? '').split(/\s+/).filter(Boolean).slice(1);
+  const checkoutSha = gitOrNull(root, ['rev-parse', 'HEAD']);
+  const localBranch = gitOrNull(root, ['branch', '--show-current']);
+  const parents = (gitOrNull(root, ['rev-list', '--parents', '-n', '1', 'HEAD']) ?? '').split(/\s+/).filter(Boolean).slice(1);
   const detached = !localBranch;
   const syntheticMerge = detached && parents.length === 2;
   const branch = localBranch || environment.VEXLIFE_BRANCH || null;
-  const upstreamRef = git(root, 'rev-parse', '--abbrev-ref', '@{upstream}');
-  const upstreamSha = upstreamRef ? git(root, 'rev-parse', '@{upstream}') : null;
-  const relation = upstreamRef ? git(root, 'rev-list', '--left-right', '--count', `HEAD...${upstreamRef}`) : null;
+  const upstreamRef = gitOrNull(root, ['rev-parse', '--abbrev-ref', '@{upstream}']);
+  const upstreamSha = upstreamRef ? gitOrNull(root, ['rev-parse', '@{upstream}']) : null;
+  const relation = upstreamRef ? gitOrNull(root, ['rev-list', '--left-right', '--count', `HEAD...${upstreamRef}`]) : null;
   const [ahead, behind] = relation ? relation.split(/\s+/).map(Number) : [null, null];
-  const statusLines = (git(root, 'status', '--porcelain=v1') || '').split(/\r?\n/).filter(Boolean);
-  const remoteUrl = git(root, 'remote', 'get-url', 'origin');
+  const statusLines = (gitOrNull(root, ['status', '--porcelain=v1']) || '').split(/\r?\n/).filter(Boolean);
+  const remoteUrl = gitOrNull(root, ['remote', 'get-url', 'origin']);
   const remoteSlug = remoteUrl?.replace(/^.*github\.com[/:]/, '').replace(/\.git$/, '') ?? null;
   const primaryRemoteRef = environment.VEXLIFE_PRIMARY_REMOTE_REF || 'origin/main';
-  const mergeBase = checkoutSha ? git(root, 'merge-base', checkoutSha, primaryRemoteRef) : null;
-
+  const mergeBase = checkoutSha ? gitOrNull(root, ['merge-base', checkoutSha, primaryRemoteRef]) : null;
   return {
     repository: { remoteUrl, slug: remoteSlug },
     git: {
@@ -89,28 +139,103 @@ export function resolveDisposableRepositoryPath(workspaceRoot, repositoryPath) {
   return { canonicalWorkspace, canonicalRepository, relative: relative.split(path.sep).join('/') };
 }
 
+function walkWorktreeControlMaterial(repositoryPath) {
+  const nestedGitPaths = [];
+  const symlinkPaths = [];
+  const visit = (directory, relative = '') => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const childRelative = relative ? `${relative}/${entry.name}` : entry.name;
+      if (!relative && entry.name === '.git') continue;
+      const child = path.join(directory, entry.name);
+      const stat = fs.lstatSync(child);
+      if (stat.isSymbolicLink()) {
+        symlinkPaths.push(childRelative);
+        continue;
+      }
+      if (entry.name === '.git') nestedGitPaths.push(childRelative);
+      if (entry.isDirectory()) visit(child, childRelative);
+    }
+  };
+  visit(repositoryPath);
+  return { nestedGitPaths: nestedGitPaths.sort(), symlinkPaths: symlinkPaths.sort() };
+}
+
+function localConfigEntries(repositoryPath) {
+  const raw = runBoundedGit(repositoryPath, ['config', '--local', '--null', '--list'], { label: 'Git local config inventory' }).stdout;
+  return raw.split('\0').filter(Boolean).map((entry) => {
+    const newline = entry.indexOf('\n');
+    if (newline >= 0) return { key: entry.slice(0, newline), value: entry.slice(newline + 1) };
+    const equals = entry.indexOf('=');
+    return equals >= 0 ? { key: entry.slice(0, equals), value: entry.slice(equals + 1) } : { key: entry, value: '' };
+  }).sort((a, b) => a.key.localeCompare(b.key) || a.value.localeCompare(b.value));
+}
+
+function hookInventory(repositoryPath) {
+  const hooksRoot = path.join(repositoryPath, '.git', 'hooks');
+  if (!fs.existsSync(hooksRoot)) return [];
+  const entries = [];
+  const visit = (directory, relative = '') => {
+    for (const item of fs.readdirSync(directory, { withFileTypes: true })) {
+      const rel = relative ? `${relative}/${item.name}` : item.name;
+      const full = path.join(directory, item.name);
+      const stat = fs.lstatSync(full);
+      entries.push({ path: rel, kind: stat.isSymbolicLink() ? 'SYMLINK' : item.isDirectory() ? 'DIRECTORY' : 'FILE', executable: Boolean(stat.mode & 0o111) });
+      if (item.isDirectory() && !stat.isSymbolicLink()) visit(full, rel);
+    }
+  };
+  visit(hooksRoot);
+  return entries.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+export function inventoryDisposableRepositoryControl(workspaceRoot, repositoryPath) {
+  const resolved = resolveDisposableRepositoryPath(workspaceRoot, repositoryPath);
+  const ignoredOutput = runBoundedGit(resolved.canonicalRepository, ['status', '--porcelain=v1', '--untracked-files=all', '--ignored=matching'], { label: 'Git ignored and untracked inventory' }).stdout;
+  const ignoredLines = ignoredOutput.split(/\r?\n/).filter((line) => line.startsWith('!! ')).sort();
+  const configEntries = localConfigEntries(resolved.canonicalRepository);
+  const unsafeConfigEntries = configEntries.filter(({ key }) => DANGEROUS_LOCAL_CONFIG.test(key) || !ALLOWED_LOCAL_CONFIG.test(key));
+  const hooks = hookInventory(resolved.canonicalRepository);
+  const activeHooks = hooks.filter((entry) => entry.kind !== 'FILE' || !entry.path.endsWith('.sample'));
+  const control = walkWorktreeControlMaterial(resolved.canonicalRepository);
+  const core = {
+    schemaVersion: 'vexlife.disposable-repository-control-inventory/v1',
+    ignoredLines,
+    configEntries,
+    unsafeConfigEntries,
+    hookEntries: hooks,
+    activeHookEntries: activeHooks,
+    nestedGitPaths: control.nestedGitPaths,
+    symlinkPaths: control.symlinkPaths
+  };
+  return freeze({ ...core, semanticFingerprint: semanticHash(core) });
+}
+
+export function assertDisposableRepositoryControlClean(workspaceRoot, repositoryPath) {
+  const inventory = inventoryDisposableRepositoryControl(workspaceRoot, repositoryPath);
+  if (inventory.ignoredLines.length) throw new Error(`ignored effect material is forbidden: ${inventory.ignoredLines.join(', ')}`);
+  if (inventory.unsafeConfigEntries.length) throw new Error(`unsafe local Git configuration is forbidden: ${inventory.unsafeConfigEntries.map((x) => x.key).join(', ')}`);
+  if (inventory.activeHookEntries.length) throw new Error(`repository hook/control material is forbidden: ${inventory.activeHookEntries.map((x) => x.path).join(', ')}`);
+  if (inventory.nestedGitPaths.length) throw new Error(`nested Git control material is forbidden: ${inventory.nestedGitPaths.join(', ')}`);
+  if (inventory.symlinkPaths.length) throw new Error(`symlink/reparse effect material is forbidden: ${inventory.symlinkPaths.join(', ')}`);
+  return inventory;
+}
+
 export function collectDisposableRepositoryEvidence(workspaceRoot, repositoryPath, { mutationPath = null } = {}) {
   const resolved = resolveDisposableRepositoryPath(workspaceRoot, repositoryPath);
-  const isRepository = runGit(resolved.canonicalRepository, ['rev-parse', '--is-inside-work-tree'], 'Git repository probe');
+  const isRepository = runBoundedGit(resolved.canonicalRepository, ['rev-parse', '--is-inside-work-tree'], { label: 'Git repository probe' }).stdout.trim();
   if (isRepository !== 'true') throw new Error('disposable repository is not a Git worktree');
-  const status = runGit(resolved.canonicalRepository, ['status', '--porcelain=v1', '--untracked-files=all'], 'Git status');
-  const headSha = runGit(resolved.canonicalRepository, ['rev-parse', 'HEAD'], 'Git HEAD readback');
-  const treeSha = runGit(resolved.canonicalRepository, ['rev-parse', 'HEAD^{tree}'], 'Git tree readback');
-  const branch = runGit(resolved.canonicalRepository, ['branch', '--show-current'], 'Git branch readback');
-  const remotes = runGit(resolved.canonicalRepository, ['remote'], 'Git remote readback').split(/\r?\n/).filter(Boolean);
+  const status = runBoundedGit(resolved.canonicalRepository, ['status', '--porcelain=v1', '--untracked-files=all'], { label: 'Git status' }).stdout.trim();
+  const headSha = runBoundedGit(resolved.canonicalRepository, ['rev-parse', 'HEAD'], { label: 'Git HEAD readback' }).stdout.trim();
+  const treeSha = runBoundedGit(resolved.canonicalRepository, ['rev-parse', 'HEAD^{tree}'], { label: 'Git tree readback' }).stdout.trim();
+  const branch = runBoundedGit(resolved.canonicalRepository, ['branch', '--show-current'], { label: 'Git branch readback' }).stdout.trim();
+  const remotes = runBoundedGit(resolved.canonicalRepository, ['remote'], { label: 'Git remote readback' }).stdout.split(/\r?\n/).filter(Boolean);
+  const controlInventory = inventoryDisposableRepositoryControl(workspaceRoot, repositoryPath);
   let mutationBlobSha = null;
-  if (mutationPath) {
-    mutationBlobSha = runGit(
-      resolved.canonicalRepository,
-      ['rev-parse', `HEAD:${mutationPath.replaceAll('\\', '/')}`],
-      'Git mutation blob readback'
-    );
-  }
+  if (mutationPath) mutationBlobSha = runBoundedGit(resolved.canonicalRepository, ['rev-parse', `HEAD:${mutationPath.replaceAll('\\', '/')}`], { label: 'Git mutation blob readback' }).stdout.trim();
   const core = {
-    schemaVersion: 'vexlife.disposable-repository-evidence/v1',
-    repositoryRef: `repository.disposable-local-git.${crypto.createHash('sha256').update(resolved.canonicalRepository).digest('hex').slice(0, 24)}`,
-    repositoryCanonicalPathHash: crypto.createHash('sha256').update(resolved.canonicalRepository).digest('hex'),
-    workspaceCanonicalPathHash: crypto.createHash('sha256').update(resolved.canonicalWorkspace).digest('hex'),
+    schemaVersion: 'vexlife.disposable-repository-evidence/v2',
+    repositoryRef: `repository.disposable-local-git.${sha256(resolved.canonicalRepository).slice(0, 24)}`,
+    repositoryCanonicalPathHash: sha256(resolved.canonicalRepository),
+    workspaceCanonicalPathHash: sha256(resolved.canonicalWorkspace),
     workspaceRelativePath: resolved.relative,
     headSha,
     treeSha,
@@ -120,34 +245,62 @@ export function collectDisposableRepositoryEvidence(workspaceRoot, repositoryPat
     remoteConfigured: remotes.length > 0,
     remoteRefs: remotes,
     mutationPath,
-    mutationBlobSha
+    mutationBlobSha,
+    controlInventoryFingerprint: controlInventory.semanticFingerprint,
+    ignoredMaterialCount: controlInventory.ignoredLines.length,
+    activeHookCount: controlInventory.activeHookEntries.length,
+    unsafeConfigCount: controlInventory.unsafeConfigEntries.length,
+    nestedGitControlCount: controlInventory.nestedGitPaths.length,
+    symlinkMaterialCount: controlInventory.symlinkPaths.length
   };
-  core.repositoryEvidenceRef = `evidence.repository.disposable.${crypto.createHash('sha256').update(JSON.stringify(core)).digest('hex').slice(0, 24)}`;
-  core.semanticFingerprint = crypto.createHash('sha256').update(JSON.stringify(core)).digest('hex');
-  return Object.freeze(core);
+  const semanticFingerprint = semanticHash(core);
+  return freeze({ ...core, repositoryEvidenceRef: `evidence.repository.disposable.${semanticFingerprint.slice(0, 24)}`, semanticFingerprint });
+}
+
+export function validateDisposableRepositoryEvidenceRecord(evidence, { mutationPath = null } = {}) {
+  if (!evidence || typeof evidence !== 'object') throw new Error('disposable repository evidence must be an object');
+  const core = clone(evidence);
+  delete core.repositoryEvidenceRef;
+  delete core.semanticFingerprint;
+  const semanticFingerprint = semanticHash(core);
+  if (evidence.semanticFingerprint !== semanticFingerprint || evidence.repositoryEvidenceRef !== `evidence.repository.disposable.${semanticFingerprint.slice(0, 24)}`) {
+    throw new Error('disposable repository evidence is forged or re-addressed');
+  }
+  if (mutationPath != null && evidence.mutationPath !== mutationPath) throw new Error('disposable repository evidence mutation path mismatch');
+  if (evidence.workingTree !== 'CLEAN' || evidence.remoteConfigured !== false || evidence.ignoredMaterialCount !== 0 || evidence.activeHookCount !== 0 || evidence.unsafeConfigCount !== 0 || evidence.nestedGitControlCount !== 0 || evidence.symlinkMaterialCount !== 0) {
+    throw new Error('disposable repository evidence is not clean, remote-free, and control-bounded');
+  }
+  return freeze(clone(evidence));
+}
+
+export function reobserveDisposableRepositoryEvidence(workspaceRoot, repositoryPath, expected, { mutationPath = null } = {}) {
+  validateDisposableRepositoryEvidenceRecord(expected, { mutationPath });
+  assertDisposableRepositoryControlClean(workspaceRoot, repositoryPath);
+  const current = collectDisposableRepositoryEvidence(workspaceRoot, repositoryPath, { mutationPath });
+  if (semanticHash(current) !== semanticHash(expected)) throw new Error('disposable repository evidence is stale or not source-reobserved');
+  return current;
 }
 
 export function readCommitEvidence(repositoryPath, mutationPath) {
   const normalizedPath = mutationPath.replaceAll('\\', '/');
-  const commitSha = runGit(repositoryPath, ['rev-parse', 'HEAD'], 'Git commit SHA readback');
-  const commitParentSha = runGit(repositoryPath, ['rev-parse', 'HEAD^'], 'Git commit parent readback');
-  const commitTreeSha = runGit(repositoryPath, ['rev-parse', 'HEAD^{tree}'], 'Git commit tree readback');
-  const afterBlobSha = runGit(repositoryPath, ['rev-parse', `HEAD:${normalizedPath}`], 'Git after blob readback');
-  const beforeBlobSha = runGit(repositoryPath, ['rev-parse', `HEAD^:${normalizedPath}`], 'Git before blob readback');
-  const changedPaths = runGit(repositoryPath, ['diff', '--name-only', 'HEAD^', 'HEAD', '--'], 'Git changed-path readback')
-    .split(/\r?\n/).filter(Boolean).sort();
-  const diff = runGit(repositoryPath, ['diff', '--binary', '--no-ext-diff', 'HEAD^', 'HEAD', '--', normalizedPath], 'Git diff readback');
-  const status = runGit(repositoryPath, ['status', '--porcelain=v1', '--untracked-files=all'], 'Git post-effect status');
-  const branch = runGit(repositoryPath, ['branch', '--show-current'], 'Git post-effect branch');
-  const remotes = runGit(repositoryPath, ['remote'], 'Git post-effect remotes').split(/\r?\n/).filter(Boolean);
-  return Object.freeze({
+  const commitSha = runBoundedGit(repositoryPath, ['rev-parse', 'HEAD'], { label: 'Git commit SHA readback' }).stdout.trim();
+  const commitParentSha = runBoundedGit(repositoryPath, ['rev-parse', 'HEAD^'], { label: 'Git commit parent readback' }).stdout.trim();
+  const commitTreeSha = runBoundedGit(repositoryPath, ['rev-parse', 'HEAD^{tree}'], { label: 'Git commit tree readback' }).stdout.trim();
+  const afterBlobSha = runBoundedGit(repositoryPath, ['rev-parse', `HEAD:${normalizedPath}`], { label: 'Git after blob readback' }).stdout.trim();
+  const beforeBlobSha = runBoundedGit(repositoryPath, ['rev-parse', `HEAD^:${normalizedPath}`], { label: 'Git before blob readback' }).stdout.trim();
+  const changedPaths = runBoundedGit(repositoryPath, ['diff', '--name-only', 'HEAD^', 'HEAD', '--'], { label: 'Git changed-path readback' }).stdout.split(/\r?\n/).filter(Boolean).sort();
+  const diff = runBoundedGit(repositoryPath, ['diff', '--binary', '--no-ext-diff', 'HEAD^', 'HEAD', '--', normalizedPath], { label: 'Git diff readback' }).stdout;
+  const status = runBoundedGit(repositoryPath, ['status', '--porcelain=v1', '--untracked-files=all'], { label: 'Git post-effect status' }).stdout.trim();
+  const branch = runBoundedGit(repositoryPath, ['branch', '--show-current'], { label: 'Git post-effect branch' }).stdout.trim();
+  const remotes = runBoundedGit(repositoryPath, ['remote'], { label: 'Git post-effect remotes' }).stdout.split(/\r?\n/).filter(Boolean);
+  return freeze({
     commitSha,
     commitParentSha,
     commitTreeSha,
     beforeBlobSha,
     afterBlobSha,
     changedPaths,
-    diffFingerprint: crypto.createHash('sha256').update(diff).digest('hex'),
+    diffFingerprint: sha256(diff),
     workingTreeAfter: status ? 'DIRTY' : 'CLEAN',
     statusLines: status ? status.split(/\r?\n/).filter(Boolean) : [],
     branchAfter: branch,
@@ -155,164 +308,5 @@ export function readCommitEvidence(repositoryPath, mutationPath) {
     remoteRefs: remotes
   });
 }
-
-// [VXG RealForever]
-
-
-
-function baClone(value) { return structuredClone(value); }
-function baFreeze(value) {
-  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  for (const child of Object.values(value)) baFreeze(child);
-  return Object.freeze(value);
-}
-function baObject(value, label) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be an object`);
-  return value;
-}
-function baTimestamp(value, label) {
-  if (typeof value !== 'string' || !value.trim()) throw new Error(`${label} is required`);
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime()) || date.toISOString() !== value) throw new Error(`${label} must be canonical ISO`);
-  return value;
-}
-function baChronology(earlier, later, label, strict = false) {
-  const a = Date.parse(baTimestamp(earlier, `${label} earlier`));
-  const b = Date.parse(baTimestamp(later, `${label} later`));
-  if (strict ? b <= a : b < a) throw new Error(`${label} chronology is invalid`);
-}
-function baAddress(coreInput, refField, prefix) {
-  const core = baClone(coreInput); delete core[refField]; delete core.semanticFingerprint;
-  const semanticFingerprint = semanticHash(core);
-  return baFreeze({ ...core, [refField]: `${prefix}.${semanticFingerprint.slice(0, 24)}`, semanticFingerprint });
-}
-function baCanonical(value, refField, prefix, label) {
-  baObject(value, label);
-  const core = baClone(value); delete core[refField]; delete core.semanticFingerprint;
-  const expected = baAddress(core, refField, prefix);
-  if (value[refField] !== expected[refField] || value.semanticFingerprint !== expected.semanticFingerprint) throw new Error(`${label} is forged or re-addressed`);
-  return value;
-}
-function baRegistry(registry) {
-  if (!registry || registry.schemaVersion !== 'vexlife.build-admission-registry/v1' || registry.adapter?.effectScope !== 'DISPOSABLE_LOCAL_GIT_REPOSITORY') {
-    throw new Error('Build Admission registry is invalid');
-  }
-  return registry;
-}
-function baValidateAdmission(admission, request, registry) {
-  baRegistry(registry);
-  baCanonical(request, 'buildRequestRef', 'request.build-admission', 'build request');
-  baCanonical(admission, 'buildAdmissionRef', 'admission.build-admission', 'build admission');
-  for (const [field, expected] of Object.entries({
-    buildRequestRef: request.buildRequestRef, buildRequestFingerprint: request.semanticFingerprint,
-    schedulerAdmissionRef: request.schedulerAdmissionRef, schedulerAdmissionFingerprint: request.schedulerAdmissionFingerprint,
-    schedulerGeneration: request.schedulerGeneration, workgraphRef: request.workgraphRef,
-    workgraphFingerprint: request.workgraphFingerprint, workNodeRef: request.workNodeRef,
-    workNodeFingerprint: request.workNodeFingerprint, repositoryEvidenceRef: request.repositoryEvidenceRef,
-    repositoryEvidenceFingerprint: request.repositoryEvidenceFingerprint, currentness: 'CURRENT',
-    externalEffectsAuthorized: true, networkAuthorized: false, remoteGitAuthorized: false
-  })) if (admission[field] !== expected) throw new Error(`build admission ${field} mismatch`);
-}
-function baValidateEffect(effectReceipt, { request, admission, workspaceRoot, repositoryPath, registry }) {
-  baValidateAdmission(admission, request, registry);
-  baCanonical(effectReceipt, 'buildEffectReceiptRef', 'effect.build-admission.local-git', 'build effect receipt');
-  const readback = readCommitEvidence(repositoryPath, request.mutationPath);
-  const resolved = resolveDisposableRepositoryPath(workspaceRoot, repositoryPath);
-  const expected = {
-    buildAdmissionRef: admission.buildAdmissionRef, buildAdmissionFingerprint: admission.semanticFingerprint,
-    effectScope: registry.adapter.effectScope,
-    repositoryCanonicalPathHash: crypto.createHash('sha256').update(resolved.canonicalRepository).digest('hex'),
-    priorHeadSha: request.expectedHeadSha, priorTreeSha: request.expectedTreeSha, mutationPath: request.mutationPath,
-    beforeBlobSha: request.expectedBeforeBlobSha, afterBlobSha: request.expectedAfterBlobSha,
-    commitSha: readback.commitSha, commitParentSha: readback.commitParentSha, commitTreeSha: readback.commitTreeSha,
-    diffFingerprint: readback.diffFingerprint, workingTreeAfter: 'CLEAN', branchAfter: request.branchRef,
-    networkUsed: false, remoteConfigured: false, externalEffectsExecuted: true
-  };
-  for (const [field, value] of Object.entries(expected)) if (effectReceipt[field] !== value) throw new Error(`build effect receipt ${field} mismatch`);
-  if (semanticHash(effectReceipt.changedPaths) !== semanticHash([request.mutationPath]) || readback.changedPaths[0] !== request.mutationPath || readback.changedPaths.length !== 1) {
-    throw new Error('build effect changed-path readback mismatch');
-  }
-  return baFreeze(baClone(effectReceipt));
-}
-
-export function verifyRealBuildEffect({ effectReceipt, request, admission, workspaceRoot, repositoryPath, consumedAt, schedulerObservedAt }, { registry }) {
-  const source = baRegistry(registry);
-  baValidateAdmission(admission, request, source);
-  const effect = baValidateEffect(effectReceipt, { request, admission, workspaceRoot, repositoryPath, registry: source });
-  baTimestamp(consumedAt, 'completion consumedAt');
-  baTimestamp(schedulerObservedAt, 'schedulerObservedAt');
-  baChronology(effect.observedAt, consumedAt, 'completion consumption');
-  baChronology(schedulerObservedAt, consumedAt, 'scheduler clock consumption');
-  if (Date.parse(consumedAt) >= Date.parse(request.expiresAt) || Date.parse(consumedAt) >= Date.parse(admission.expiresAt)) {
-    throw new Error('real effect completion evidence expired before consumption');
-  }
-  const gateResults = request.completionGateRefs.map((completionGateRef) => {
-    const core = {
-      schemaVersion: 'vexlife.real-effect-completion-gate/v1',
-      completionGateRef,
-      result: 'PASSED',
-      sourceObservationRef: effect.buildEffectReceiptRef,
-      sourceObservationHash: effect.semanticFingerprint,
-      commitSha: effect.commitSha,
-      commitTreeSha: effect.commitTreeSha,
-      afterBlobSha: effect.afterBlobSha,
-      diffFingerprint: effect.diffFingerprint,
-      observedAt: effect.observedAt
-    };
-    return baAddress(core, 'gateResultRef', 'gate-result.build-admission');
-  });
-  const core = {
-    schemaVersion: source.completionContract.schemaVersion,
-    contractRef: source.completionContract.contractRef,
-    evidenceClass: source.completionContract.evidenceClass,
-    verificationReceiptRef: `verification.build-admission.${effect.commitSha.slice(0, 24)}`,
-    buildRequestRef: request.buildRequestRef,
-    buildRequestFingerprint: request.semanticFingerprint,
-    buildAdmissionRef: admission.buildAdmissionRef,
-    buildAdmissionFingerprint: admission.semanticFingerprint,
-    buildEffectReceiptRef: effect.buildEffectReceiptRef,
-    buildEffectReceiptFingerprint: effect.semanticFingerprint,
-    workNodeRef: request.workNodeRef,
-    workNodeFingerprint: request.workNodeFingerprint,
-    workgraphRef: request.workgraphRef,
-    workgraphFingerprint: request.workgraphFingerprint,
-    schedulerAdmissionRef: request.schedulerAdmissionRef,
-    schedulerAdmissionFingerprint: request.schedulerAdmissionFingerprint,
-    schedulerGeneration: request.schedulerGeneration,
-    expectedTransitionRef: request.expectedTransitionRef,
-    completionGateRefs: baClone(request.completionGateRefs),
-    gateResultReceipts: gateResults,
-    observedBeforeState: 'VERIFYING',
-    observedAfterState: 'COMPLETED',
-    commitSha: effect.commitSha,
-    commitParentSha: effect.commitParentSha,
-    commitTreeSha: effect.commitTreeSha,
-    beforeBlobSha: effect.beforeBlobSha,
-    afterBlobSha: effect.afterBlobSha,
-    changedPaths: baClone(effect.changedPaths),
-    diffFingerprint: effect.diffFingerprint,
-    externalEffectsExecuted: true,
-    deterministicFakeEvidence: false,
-    selfCertified: false,
-    currentness: 'CURRENT',
-    formedAt: effect.formedAt,
-    observedAt: effect.observedAt,
-    consumedAt,
-    schedulerObservedAt
-  };
-  return baAddress(core, 'realEffectVerificationRef', 'verification.real-effect');
-}
-
-export function validateRealBuildEffectVerification(verification, { effectReceipt, request, admission, workspaceRoot, repositoryPath, registry }) {
-  const source = baRegistry(registry);
-  baCanonical(verification, 'realEffectVerificationRef', 'verification.real-effect', 'real effect verification');
-  const expected = verifyRealBuildEffect({
-    effectReceipt, request, admission, workspaceRoot, repositoryPath,
-    consumedAt: verification.consumedAt, schedulerObservedAt: verification.schedulerObservedAt
-  }, { registry: source });
-  if (semanticHash(expected) !== semanticHash(verification)) throw new Error('real effect completion verification is stale or substituted');
-  return baFreeze(baClone(verification));
-}
-
 
 // [VXG RealForever]

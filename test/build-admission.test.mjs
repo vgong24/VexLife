@@ -1,321 +1,338 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  admitBuildRequest,
   BUILD_ADMISSION_PROOF_REFS,
+  admitBuildRequest,
   createBuildAdmissionConsumptionReceipt,
   createBuildClosure,
   createBuildConcernObservation,
-  createBuildRequest,
   createIntegratedBuildAdmissionReceipt,
+  createSourceManagedBuildAuthority,
   projectBuildAdmission,
   validateBuildAdmissionRegistry,
-  validateBuildRequest,
   validateIntegratedBuildAdmissionReceipt,
-  validateRealBuildEffectVerification,
+  validateSourceManagedBuildAuthority,
   verifyRealBuildEffect
 } from '../src/core/build-admission.mjs';
 import {
-  cleanupDisposableGitRepository,
   executeDisposableLocalGitEffect,
-  prepareDisposableGitRepository,
-  validateBuildEffectReceipt
+  validateBuildEffectReceipt,
+  validateBuildEffectReceiptRecord
 } from '../src/core/local-git-effect-adapter.mjs';
+import { runBoundedGit } from '../src/core/repository-evidence.mjs';
+import {
+  cleanupBuildAdmissionFixture,
+  createBuildAdmissionFixture,
+  runBuildAdmissionSimulation
+} from '../scripts/build-admission-simulate.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 
-const registry = JSON.parse(fs.readFileSync(new URL('../blueprint/build-admission-registry.json', import.meta.url), 'utf8'));
 const T0 = Date.parse('2026-08-03T00:00:00.000Z');
-const at = (s) => new Date(T0 + s * 1000).toISOString();
-const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
-const blob = (text) => {
-  const bytes = Buffer.from(text);
-  return crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
-};
-function canonical(value) {
-  const output = structuredClone(value);
-  output.semanticFingerprint = semanticHash(output);
-  return Object.freeze(output);
+const at = (seconds) => new Date(T0 + seconds * 1000).toISOString();
+
+function readdress(value, refField, prefix) {
+  const core = structuredClone(value);
+  delete core[refField];
+  delete core.semanticFingerprint;
+  const semanticFingerprint = semanticHash(core);
+  return { ...core, [refField]: `${prefix}.${semanticFingerprint.slice(0, 24)}`, semanticFingerprint };
 }
-function lease(kind, common, extra = {}) {
-  return canonical({
-    kind,
-    leaseRef: `lease.build-admission.${kind.toLowerCase()}`,
-    ...common,
-    currentness: 'CURRENT',
-    lifecycle: 'ACTIVE',
-    ...extra
-  });
+
+function effect(fixture, options = {}) {
+  return executeDisposableLocalGitEffect({
+    request: fixture.request,
+    admission: fixture.admission,
+    workspaceRoot: fixture.workspaceRoot,
+    repositoryPath: fixture.repositoryPath,
+    replacementContent: fixture.replacementContent,
+    formedAt: options.formedAt ?? at(20),
+    observedAt: options.observedAt ?? at(21),
+    completedAt: options.completedAt ?? at(22),
+    failurePhase: options.failurePhase ?? null
+  }, { registry: fixture.registry });
 }
-function fixture(suffix = 'success') {
-  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-build-admission-${suffix}-`));
-  const baselineContent = 'before\n';
-  const replacementContent = 'after\n';
-  const prepared = prepareDisposableGitRepository({
-    workspaceRoot,
-    repositoryName: `repo-${suffix}`,
-    mutationPath: registry.adapter.fixturePath,
-    baselineContent,
-    baselineBranch: registry.adapter.baselineBranch,
-    formedAt: at(1)
-  }, { registry });
-  const common = {
-    workNodeRef: `work-node.build-admission.${suffix}`,
-    graphFingerprint: sha256(`graph:${suffix}`),
-    schedulerGeneration: 1
-  };
-  const schedulerAdmission = canonical({
-    admissionReceiptRef: `admission.scheduler.${suffix}`,
-    schedulerGeneration: 1,
-    graphRef: `workgraph.build-admission.${suffix}`,
-    graphFingerprint: common.graphFingerprint,
-    workNodeRef: common.workNodeRef,
-    nodeFingerprint: sha256(`node:${suffix}`),
-    workerRef: `worker.build-admission.${suffix}`,
-    currentness: 'CURRENT',
-    lifecycle: 'ACTIVE'
-  });
-  const schedulerAuthorityEvidence = canonical({
-    schedulerAuthorityEvidenceRef: `evidence.scheduler-authority.${suffix}`,
-    currentness: 'CURRENT',
-    schedulerGeneration: 1
-  });
-  const request = createBuildRequest({
-    workRef: `work.build-admission.${suffix}`,
-    claimRef: `claim.build-admission.${suffix}`,
-    intentEnvelopeRef: `intent.build-admission.${suffix}`,
-    intentEnvelopeFingerprint: sha256(`intent:${suffix}`),
-    workgraphRef: schedulerAdmission.graphRef,
-    workgraphFingerprint: schedulerAdmission.graphFingerprint,
-    workNodeRef: schedulerAdmission.workNodeRef,
-    workNodeFingerprint: schedulerAdmission.nodeFingerprint,
-    schedulerAdmissionRef: schedulerAdmission.admissionReceiptRef,
-    schedulerAdmissionFingerprint: schedulerAdmission.semanticFingerprint,
-    schedulerAuthorityEvidenceRef: schedulerAuthorityEvidence.schedulerAuthorityEvidenceRef,
-    schedulerAuthorityEvidenceFingerprint: schedulerAuthorityEvidence.semanticFingerprint,
-    schedulerGeneration: 1,
-    repositoryRef: prepared.repositoryEvidence.repositoryRef,
-    repositoryEvidenceRef: prepared.repositoryEvidence.repositoryEvidenceRef,
-    repositoryEvidenceFingerprint: prepared.repositoryEvidence.semanticFingerprint,
-    expectedHeadSha: prepared.repositoryEvidence.headSha,
-    expectedTreeSha: prepared.repositoryEvidence.treeSha,
-    branchRef: registry.adapter.effectBranch,
-    pathClaimRefs: [`claim.build-admission.${suffix}`],
-    mutationPath: registry.adapter.fixturePath,
-    expectedBeforeBlobSha: blob(baselineContent),
-    replacementContentRef: `content.build-admission.${suffix}`,
-    replacementContentSha256: sha256(replacementContent),
-    expectedAfterBlobSha: blob(replacementContent),
-    expectedTransitionRef: `transition.build-admission.${suffix}.completed`,
-    commitMessage: `Apply disposable Build Admission fixture ${suffix}`,
-    completionGateRefs: [`gate.build-admission.${suffix}`],
-    returnRouteRef: `return.build-admission.${suffix}`,
-    formedAt: at(2), observedAt: at(3), expiresAt: at(100)
-  }, { registry });
-  const occupancy = lease('OCCUPANCY', common, {
-    occupancyRef: `occupancy.build-admission.${suffix}`,
-    claimRef: request.claimRef,
-    pathClaimFingerprint: semanticHash(request.pathClaimRefs)
-  });
-  const capabilityLease = lease('CAPABILITY', common, { capabilityRef: 'capability.vexlife.github.publication' });
-  const effectLease = lease('EFFECT', common, { effectScope: registry.adapter.effectScope, allowedEffectRefs: ['action.github.commit'] });
-  const resourceLease = lease('RESOURCE', common, { request: { network: false, modelTurn: false, cpuSlots: 1, ramMb: 64 } });
-  const workerLease = lease('WORKER', common, { workerRef: schedulerAdmission.workerRef });
-  const contextLease = lease('CONTEXT', common, { workerRef: schedulerAdmission.workerRef });
-  const admissionInput = {
-    schedulerAdmission,
-    schedulerAuthorityEvidence,
-    repositoryEvidence: prepared.repositoryEvidence,
-    occupancy, capabilityLease, effectLease, resourceLease, workerLease, contextLease,
-    concernWatchState: registry.admissionContract.requiredConcernWatchState,
-    runtimeRecoveryRouteRef: request.returnRouteRef,
-    humanConfirmationState: registry.admissionContract.requiredHumanConfirmationState,
-    humanConfirmationRef: `confirmation.build-admission.${suffix}`,
-    formedAt: at(4), observedAt: at(5), expiresAt: at(90)
-  };
-  const admission = admitBuildRequest(request, admissionInput, { registry });
-  return { workspaceRoot, repositoryPath: prepared.repositoryPath, baselineContent, replacementContent, prepared, request, admissionInput, admission };
+
+function complete(fixture) {
+  const execution = effect(fixture);
+  assert.ok(execution.effectReceipt);
+  const verification = verifyRealBuildEffect({
+    effectReceipt: execution.effectReceipt,
+    request: fixture.request,
+    admission: fixture.admission,
+    workspaceRoot: fixture.workspaceRoot,
+    repositoryPath: fixture.repositoryPath,
+    schedulerObservedAt: at(23),
+    consumedAt: at(24)
+  }, { registry: fixture.registry, authorityContext: fixture.authorityContext });
+  const closure = createBuildClosure({
+    request: fixture.request,
+    admission: fixture.admission,
+    effectReceipt: execution.effectReceipt,
+    verification,
+    closedAt: at(30)
+  }, { registry: fixture.registry, authorityContext: fixture.authorityContext });
+  const projection = projectBuildAdmission({
+    request: fixture.request,
+    admission: fixture.admission,
+    effectReceipt: execution.effectReceipt,
+    verification,
+    closure
+  }, { registry: fixture.registry });
+  return { execution, verification, closure, projection };
 }
-function releases() {
-  return ['CLAIM','OCCUPANCY','CAPABILITY','EFFECT','RESOURCE','WORKER','CONTEXT'].map((kind) => ({
-    kind, releaseRef: `release.${kind.toLowerCase()}`, released: true, currentness: 'CURRENT'
-  }));
-}
-function cleanup(f) {
+
+test('BA0-BA3 use exact local identities and reconstruct scheduler-issued Workgraph, occupancy, and six leases', () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-authority-'));
+  const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: 'authority' });
   try {
-    if (f?.repositoryPath && fs.existsSync(f.repositoryPath)) {
-      cleanupDisposableGitRepository({ workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath, requestFingerprint: f.request.semanticFingerprint }, { registry });
+    assert.equal(validateBuildAdmissionRegistry(fixture.registry).ok, true);
+    assert.deepEqual(BUILD_ADMISSION_PROOF_REFS, Array.from({ length: 26 }, (_, index) => `BA${index}`));
+    assert.deepEqual(fixture.registry.consumedIdentityContract.actionRefs, ['action.file.edit-with-recovery', 'action.cli.execute']);
+    assert.equal(fixture.request.effectAuthorityGranted, false);
+    assert.equal(fixture.admission.externalEffectsAuthorized, true);
+    assert.deepEqual(Object.keys(fixture.authority.leases).sort(), ['capability','context','effect','occupancy','resource','worker']);
+    assert.equal(validateSourceManagedBuildAuthority(fixture.authority, { registry: fixture.registry, authorityContext: fixture.authorityContext }).schedulerAuthorityEvidenceRef, fixture.authority.schedulerAuthorityEvidenceRef);
+
+    const coordinated = structuredClone(fixture.authority);
+    coordinated.identityCatalog.actions[0].description = 'caller substituted';
+    coordinated.identityCatalogFingerprint = semanticHash(coordinated.identityCatalog);
+    const readdressed = readdress(coordinated, 'schedulerAuthorityEvidenceRef', 'evidence.scheduler-authority.build-admission');
+    assert.throws(() => validateSourceManagedBuildAuthority(readdressed, { registry: fixture.registry, authorityContext: fixture.authorityContext }), /identity chain|source|registry|stale|substituted/);
+
+    const wrongContext = structuredClone(fixture.authorityContext);
+    wrongContext.registeredProcessRefs = [...wrongContext.registeredProcessRefs, 'process.caller.substitution'];
+    assert.throws(() => validateSourceManagedBuildAuthority(fixture.authority, { registry: fixture.registry, authorityContext: wrongContext }), /binding mismatch|registry|source/);
+  } finally { cleanupBuildAdmissionFixture(fixture); }
+});
+
+test('BA4-BA9 independently reobserve head/tree/blob/path and reject coordinated authority, repository, confirmation, and inventory substitutions before effect', () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-admission-'));
+  const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: 'admission' });
+  try {
+    const forgedAuthority = structuredClone(fixture.authority);
+    forgedAuthority.workRef = 'work.caller.substitution';
+    const readdressedAuthority = readdress(forgedAuthority, 'schedulerAuthorityEvidenceRef', 'evidence.scheduler-authority.build-admission');
+    assert.throws(() => admitBuildRequest(fixture.request, {
+      schedulerAuthorityEvidence: readdressedAuthority,
+      repositoryEvidence: fixture.admission.repositoryEvidence,
+      humanConfirmation: fixture.humanConfirmation,
+      runtimeRecoveryRouteRef: fixture.request.returnRouteRef,
+      formedAt: at(7), observedAt: at(8), expiresAt: at(140)
+    }, { registry: fixture.registry, authorityContext: fixture.authorityContext, workspaceRoot, repositoryPath: fixture.repositoryPath }));
+
+    const outsideRequest = structuredClone(fixture.request);
+    outsideRequest.mutationPath = '../outside.txt';
+    const outsideReaddressed = readdress(outsideRequest, 'buildRequestRef', 'request.build-admission');
+    assert.throws(() => executeDisposableLocalGitEffect({
+      request: outsideReaddressed, admission: fixture.admission, workspaceRoot, repositoryPath: fixture.repositoryPath,
+      replacementContent: fixture.replacementContent, formedAt: at(20), observedAt: at(21), completedAt: at(22)
+    }, { registry: fixture.registry }), /mutationPath|request|forged|claim|exact/);
+
+    fs.writeFileSync(path.join(fixture.repositoryPath, fixture.registry.adapter.fixturePath), 'drift\n', 'utf8');
+    assert.throws(() => admitBuildRequest(fixture.request, {
+      schedulerAuthorityEvidence: fixture.authority,
+      repositoryEvidence: fixture.admission.repositoryEvidence,
+      humanConfirmation: fixture.humanConfirmation,
+      runtimeRecoveryRouteRef: fixture.request.returnRouteRef,
+      formedAt: at(7), observedAt: at(8), expiresAt: at(140)
+    }, { registry: fixture.registry, authorityContext: fixture.authorityContext, workspaceRoot, repositoryPath: fixture.repositoryPath }), /stale|reobserved|workingTree|evidence/);
+  } finally { cleanupBuildAdmissionFixture(fixture); }
+});
+
+test('BA8-BA9 and BA23 disable repository/global hooks and reject ignored, unsafe-config, nested-control, symlink, remote, and outside-path effect material', () => {
+  const cases = [
+    ['repository-hook', (fixture, canary) => {
+      const hook = path.join(fixture.repositoryPath, '.git', 'hooks', 'pre-commit');
+      fs.writeFileSync(hook, `#!/bin/sh\necho executed > "${canary}"\n`, 'utf8');
+      fs.chmodSync(hook, 0o755);
+    }],
+    ['ignored-material', (fixture) => {
+      fs.writeFileSync(path.join(fixture.repositoryPath, '.gitignore'), 'ignored.txt\n', 'utf8');
+      fs.writeFileSync(path.join(fixture.repositoryPath, 'ignored.txt'), 'hidden effect material\n', 'utf8');
+    }],
+    ['unsafe-local-config', (fixture) => {
+      runBoundedGit(fixture.repositoryPath, ['config', 'core.hooksPath', '/tmp/caller-hooks'], { label: 'install unsafe local hook path' });
+    }],
+    ['nested-git', (fixture) => {
+      fs.mkdirSync(path.join(fixture.repositoryPath, 'nested', '.git'), { recursive: true });
+      fs.writeFileSync(path.join(fixture.repositoryPath, 'nested', '.git', 'config'), '[core]\n', 'utf8');
+    }],
+    ['symlink-material', (fixture) => {
+      const target = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-symlink-target-'));
+      fs.symlinkSync(target, path.join(fixture.repositoryPath, 'linked-material'), process.platform === 'win32' ? 'junction' : 'dir');
+    }],
+    ['remote-config', (fixture) => {
+      runBoundedGit(fixture.repositoryPath, ['remote', 'add', 'origin', 'https://example.invalid/vexlife.git'], { label: 'install forbidden remote' });
+    }]
+  ];
+  for (const [name, arrange] of cases) {
+    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-ba-control-${name}-`));
+    const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: name });
+    const canary = path.join(workspaceRoot, `${name}-canary.txt`);
+    try {
+      arrange(fixture, canary);
+      const result = effect(fixture);
+      assert.equal(result.effectReceipt, null, name);
+      assert.ok(result.recoveryReceipt, name);
+      assert.equal(fs.existsSync(canary), false, `${name} executed side effect`);
+    } finally { cleanupBuildAdmissionFixture(fixture); }
+  }
+
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-global-hook-'));
+  const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: 'global-hook' });
+  const hookRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-malicious-hooks-'));
+  const canary = path.join(workspaceRoot, 'global-hook-canary.txt');
+  const globalConfig = path.join(workspaceRoot, 'malicious-global.gitconfig');
+  try {
+    fs.writeFileSync(path.join(hookRoot, 'pre-commit'), `#!/bin/sh\necho executed > "${canary}"\n`, 'utf8');
+    fs.chmodSync(path.join(hookRoot, 'pre-commit'), 0o755);
+    fs.writeFileSync(globalConfig, `[core]\n\thooksPath = ${hookRoot}\n`, 'utf8');
+    const prior = process.env.GIT_CONFIG_GLOBAL;
+    process.env.GIT_CONFIG_GLOBAL = globalConfig;
+    try {
+      const result = effect(fixture);
+      assert.ok(result.effectReceipt);
+      assert.equal(fs.existsSync(canary), false);
+    } finally {
+      if (prior == null) delete process.env.GIT_CONFIG_GLOBAL; else process.env.GIT_CONFIG_GLOBAL = prior;
     }
   } finally {
-    if (f?.workspaceRoot) fs.rmSync(f.workspaceRoot, { recursive: true, force: true });
+    cleanupBuildAdmissionFixture(fixture);
+    fs.rmSync(hookRoot, { recursive: true, force: true });
   }
-}
-
-test('BA0-BA1 registry and canonical request are no-effect and same-ref/different-meaning rejects', () => {
-  assert.equal(validateBuildAdmissionRegistry(registry).ok, true);
-  assert.deepEqual(BUILD_ADMISSION_PROOF_REFS, Array.from({ length: 26 }, (_, i) => `BA${i}`));
-  const f = fixture('ba0');
-  try {
-    assert.equal(f.request.effectAuthorityGranted, false);
-    assert.equal(f.prepared.repositoryEvidence.headSha, f.request.expectedHeadSha);
-    assert.equal(validateBuildRequest(f.request, { registry }).buildRequestRef, f.request.buildRequestRef);
-    const forged = structuredClone(f.request);
-    forged.commitMessage = 'Different meaning';
-    assert.throws(() => validateBuildRequest(forged, { registry }), /forged|canonical|meaning/);
-  } finally { cleanup(f); }
 });
 
-test('BA2-BA9 stale admission, six-lease, drift, path, blob, hash, extra inventory and arbitrary command substitutions fail before effect', () => {
-  const f = fixture('ba2');
+test('BA10-BA14 create one exact adapter-owned commit, reconstruct complete effect/verification evidence, and replay without a second commit', () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-success-'));
+  const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: 'success' });
   try {
-    const mutations = [
-      ['scheduler', (x) => { x.schedulerAdmission.currentness = 'STALE'; }],
-      ['lease', (x) => { x.contextLease.currentness = 'STALE'; }],
-      ['head', (x) => { x.repositoryEvidence.headSha = '0'.repeat(40); }],
-      ['tree', (x) => { x.repositoryEvidence.treeSha = '0'.repeat(40); }],
-      ['claim', (x) => { x.occupancy.claimRef = 'claim.other'; }],
-      ['capability', (x) => { x.capabilityLease.capabilityRef = 'capability.other'; }],
-      ['effect', (x) => { x.effectLease.allowedEffectRefs = ['action.github.push-branch']; }]
-    ];
-    for (const [, mutate] of mutations) {
-      const input = structuredClone(f.admissionInput);
-      mutate(input);
-      const semanticFields = ['schedulerAdmission','occupancy','capabilityLease','effectLease','resourceLease','workerLease','contextLease'];
-      for (const field of semanticFields) {
-        if (input[field]?.semanticFingerprint) {
-          delete input[field].semanticFingerprint;
-          input[field].semanticFingerprint = semanticHash(input[field]);
-        }
-      }
-      assert.throws(() => admitBuildRequest(f.request, input, { registry }));
-    }
-    assert.throws(() => createBuildRequest({ ...structuredClone(f.request), mutationPath: '../escape.txt', buildRequestRef: undefined }, { registry }), /mutationPath|claim/);
-    assert.throws(() => executeDisposableLocalGitEffect({
-      request: { ...f.request, expectedBeforeBlobSha: '0'.repeat(40) }, admission: f.admission,
-      workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath, replacementContent: f.replacementContent,
-      formedAt: at(6), observedAt: at(7), completedAt: at(8)
-    }, { registry }), /before|request|canonical|mismatch/);
-    assert.throws(() => executeDisposableLocalGitEffect({
-      request: f.request, admission: f.admission, workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath,
-      replacementContent: 'wrong\n', formedAt: at(6), observedAt: at(7), completedAt: at(8)
-    }, { registry }), /replacement/);
-    fs.writeFileSync(path.join(f.repositoryPath, 'extra.txt'), 'extra', 'utf8');
-    const rejected = executeDisposableLocalGitEffect({
-      request: f.request, admission: f.admission, workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath,
-      replacementContent: f.replacementContent, formedAt: at(6), observedAt: at(7), completedAt: at(8)
-    }, { registry });
-    assert.equal(rejected.effectReceipt, null);
-    assert.equal(rejected.recoveryReceipt.rollbackSucceeded, true);
-    assert.equal(fs.existsSync(f.repositoryPath), false);
-    assert.equal(registry.adapter.arbitraryShellAllowed, false);
-  } finally { cleanup(f); }
-});
+    const first = effect(fixture);
+    assert.ok(first.effectReceipt);
+    assert.equal(first.effectReceipt.commitParentSha, fixture.request.expectedHeadSha);
+    assert.equal(first.effectReceipt.beforeBlobSha, fixture.request.expectedBeforeBlobSha);
+    assert.equal(first.effectReceipt.afterBlobSha, fixture.request.expectedAfterBlobSha);
+    assert.deepEqual(first.effectReceipt.changedPaths, [fixture.registry.adapter.fixturePath]);
+    assert.equal(first.effectReceipt.networkUsed, false);
+    assert.equal(first.effectReceipt.remoteConfigured, false);
+    validateBuildEffectReceiptRecord(first.effectReceipt, { request: fixture.request, admission: fixture.admission, registry: fixture.registry });
+    validateBuildEffectReceipt(first.effectReceipt, { request: fixture.request, admission: fixture.admission, workspaceRoot, repositoryPath: fixture.repositoryPath, registry: fixture.registry });
 
-test('BA10-BA14 one admitted request creates one exact commit, direct receipt/verifier binds it, and replay creates no second commit', () => {
-  const f = fixture('success');
-  try {
-    const first = executeDisposableLocalGitEffect({
-      request: f.request, admission: f.admission, workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath,
-      replacementContent: f.replacementContent, formedAt: at(6), observedAt: at(7), completedAt: at(8)
-    }, { registry });
-    assert.ok(first.effectReceipt?.commitSha);
-    assert.equal(first.effectReceipt.commitParentSha, f.request.expectedHeadSha);
-    assert.equal(first.effectReceipt.beforeBlobSha, f.request.expectedBeforeBlobSha);
-    assert.equal(first.effectReceipt.afterBlobSha, f.request.expectedAfterBlobSha);
-    assert.deepEqual(first.effectReceipt.changedPaths, [registry.adapter.fixturePath]);
-    validateBuildEffectReceipt(first.effectReceipt, { request: f.request, admission: f.admission, workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath, registry });
-    const forged = structuredClone(first.effectReceipt);
-    forged.diffFingerprint = '0'.repeat(64);
-    assert.throws(() => validateBuildEffectReceipt(forged, { request: f.request, admission: f.admission, workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath, registry }), /forged|readback/);
-    const verification = verifyRealBuildEffect({
-      effectReceipt: first.effectReceipt, request: f.request, admission: f.admission,
-      workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath,
-      consumedAt: at(10), schedulerObservedAt: at(9)
-    }, { registry });
-    assert.equal(verification.deterministicFakeEvidence, false);
-    assert.equal(verification.externalEffectsExecuted, true);
-    validateRealBuildEffectVerification(verification, { effectReceipt: first.effectReceipt, request: f.request, admission: f.admission, workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath, registry });
-    const replay = executeDisposableLocalGitEffect({
-      request: f.request, admission: f.admission, workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath,
-      replacementContent: f.replacementContent, formedAt: at(6), observedAt: at(7), completedAt: at(8)
-    }, { registry });
+    const coordinated = structuredClone(first.effectReceipt);
+    coordinated.commitTreeSha = '0'.repeat(40);
+    const readdressed = readdress(coordinated, 'buildEffectReceiptRef', 'effect.build-admission.local-git');
+    assert.throws(() => validateBuildEffectReceipt(readdressed, { request: fixture.request, admission: fixture.admission, workspaceRoot, repositoryPath: fixture.repositoryPath, registry: fixture.registry }), /readback|mismatch|stale/);
+
+    const replay = effect(fixture);
     assert.equal(replay.replayed, true);
     assert.equal(replay.effectReceipt.commitSha, first.effectReceipt.commitSha);
-  } finally { cleanup(f); }
+    const logCount = Number(runBoundedGit(fixture.repositoryPath, ['rev-list', '--count', 'HEAD'], { label: 'commit count' }).stdout.trim());
+    assert.equal(logCount, 2);
+  } finally { cleanupBuildAdmissionFixture(fixture); }
 });
 
-test('BA15-BA19 phase failures preserve, restore, remove, or hold the disposable repository exactly', () => {
-  for (const phase of registry.recoveryContract.failurePhases) {
-    const f = fixture(`failure-${phase.toLowerCase()}`);
+test('BA15-BA20 produce exact recovery and deduplicable ConcernWatch evidence for every phase without retry authority', () => {
+  const registryProbeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-recovery-probe-'));
+  const probe = createBuildAdmissionFixture({ workspaceRoot: registryProbeRoot, suffix: 'recovery-probe' });
+  const phases = probe.registry.recoveryContract.failurePhases;
+  cleanupBuildAdmissionFixture(probe);
+  const observationRefs = new Set();
+  for (const [index, phase] of phases.entries()) {
+    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-ba-recovery-${phase.toLowerCase()}-`));
+    const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: `recovery-${phase.toLowerCase()}`, clockOffset: index * 200 });
     try {
-      const result = executeDisposableLocalGitEffect({
-        request: f.request, admission: f.admission, workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath,
-        replacementContent: f.replacementContent, formedAt: at(6), observedAt: at(7), completedAt: at(8), failurePhase: phase
-      }, { registry });
-      assert.equal(result.effectReceipt, null, phase);
-      assert.equal(result.recoveryReceipt.failurePhase, phase);
+      const result = effect(fixture, {
+        failurePhase: phase,
+        formedAt: at(index * 200 + 20), observedAt: at(index * 200 + 21), completedAt: at(index * 200 + 22)
+      });
+      assert.equal(result.effectReceipt, null);
+      assert.ok(result.recoveryReceipt);
       assert.equal(result.recoveryReceipt.retryAuthorityGranted, false);
-      if (phase === 'PRE_WRITE' || phase === 'POST_WRITE_PRE_COMMIT') {
-        assert.equal(fs.existsSync(f.repositoryPath), true);
-      } else if (phase === 'ROLLBACK') {
-        assert.equal(result.recoveryReceipt.disposition, 'HELD_UNKNOWN');
-        assert.equal(result.recoveryReceipt.humanAttentionRequired, true);
-      } else {
-        assert.equal(fs.existsSync(f.repositoryPath), false);
-      }
-    } finally { cleanup(f); }
+      const observation = createBuildConcernObservation(result.recoveryReceipt, { observedAt: at(index * 200 + 23) }, { registry: fixture.registry, request: fixture.request, admission: fixture.admission });
+      const duplicate = createBuildConcernObservation(result.recoveryReceipt, { observedAt: at(index * 200 + 23) }, { registry: fixture.registry, request: fixture.request, admission: fixture.admission });
+      assert.equal(observation.concernObservationRef, duplicate.concernObservationRef);
+      observationRefs.add(observation.concernObservationRef);
+    } finally { cleanupBuildAdmissionFixture(fixture); }
   }
+  assert.equal(observationRefs.size, phases.length);
 });
 
-test('BA20-BA25 concern, once-only releases, projections, consumers, and no-network boundaries share one causal receipt', () => {
-  const f = fixture('integrated');
+test('BA21-BA22 scheduler-owned closure releases exact claim and six leases once and converges Queue/Terrain/Health/Guide', () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-closure-'));
+  const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: 'closure' });
   try {
-    const failed = fixture('concern');
-    let observation;
-    try {
-      const failure = executeDisposableLocalGitEffect({
-        request: failed.request, admission: failed.admission, workspaceRoot: failed.workspaceRoot, repositoryPath: failed.repositoryPath,
-        replacementContent: failed.replacementContent, formedAt: at(6), observedAt: at(7), completedAt: at(8), failurePhase: 'PRE_WRITE'
-      }, { registry });
-      observation = createBuildConcernObservation(failure.recoveryReceipt, { observedAt: at(9) }, { registry });
-      const duplicate = createBuildConcernObservation(failure.recoveryReceipt, { observedAt: at(9) }, { registry });
-      assert.equal(duplicate.concernObservationRef, observation.concernObservationRef);
-    } finally { cleanup(failed); }
-    const effect = executeDisposableLocalGitEffect({
-      request: f.request, admission: f.admission, workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath,
-      replacementContent: f.replacementContent, formedAt: at(6), observedAt: at(7), completedAt: at(8)
-    }, { registry }).effectReceipt;
-    const verification = verifyRealBuildEffect({ effectReceipt: effect, request: f.request, admission: f.admission,
-      workspaceRoot: f.workspaceRoot, repositoryPath: f.repositoryPath, consumedAt: at(10), schedulerObservedAt: at(9) }, { registry });
-    const closure = createBuildClosure({ request: f.request, admission: f.admission, verification, releaseReceipts: releases(), closedAt: at(11) }, { registry });
-    assert.equal(closure.canonicalWorkNodeFinalState, 'COMPLETED');
-    assert.equal(closure.workgraphTransition.priorState, 'VERIFYING');
-    assert.equal(closure.workgraphTransition.nextState, 'COMPLETED');
-    assert.equal(closure.intentCompletionReceipt.state, 'PROVEN');
-    const projection = projectBuildAdmission({ request: f.request, admission: f.admission, effectReceipt: effect, verification, closure }, { registry });
+    const { execution, verification, closure, projection } = complete(fixture);
+    assert.equal(closure.claimReleased, true);
+    assert.equal(closure.sixLeasesReleased, true);
+    assert.equal(closure.releaseReceipts.length, 7);
+    assert.deepEqual(closure.releaseReceipts.map((item) => item.kind).sort(), ['CAPABILITY','CLAIM','CONTEXT','EFFECT','OCCUPANCY','RESOURCE','WORKER']);
+    assert.equal(new Set(closure.releaseReceipts.map((item) => item.releaseRef)).size, 7);
     assert.equal(projection.views.QUEUE, null);
     assert.equal(projection.views.TERRAIN, null);
     assert.equal(projection.views.HEALTH.state, 'CLEAR');
     assert.equal(projection.views.GUIDE, null);
-    const integrated = createIntegratedBuildAdmissionReceipt({
-      journeyStates: registry.simulationContract.requiredJourneyStates,
-      sourceTreeSha256: sha256('source-tree'), blueprintHash: sha256('blueprint'),
-      candidateHeadSha: null, testedCheckoutSha: null, testedMergeSha: null, baseSha: null,
-      request: f.request, admission: f.admission, effectReceipt: effect, verification, closure, projection,
-      failureRecoveryProofRefs: registry.recoveryContract.failurePhases.map((x) => `recovery.${x}`),
-      concernObservationRefs: [observation.concernObservationRef]
-    }, { registry });
-    assert.equal(validateIntegratedBuildAdmissionReceipt(integrated, { registry }).ok, true);
-    const pr = createBuildAdmissionConsumptionReceipt(integrated, 'PR_READY', { observedAt: at(12) }, { registry });
-    const health = createBuildAdmissionConsumptionReceipt(integrated, 'HEALTH', { observedAt: at(13) }, { registry });
-    assert.notEqual(pr.consumptionReceiptRef, health.consumptionReceiptRef);
-    assert.equal(integrated.networkUsed, false);
-    assert.equal(integrated.remoteConfigured, false);
-    assert.equal(integrated.implementationCheckoutMutated, false);
-    assert.equal(integrated.claimReleased, true);
-    assert.equal(integrated.sixLeasesReleased, true);
-  } finally { cleanup(f); }
+    const repeated = createBuildClosure({ request: fixture.request, admission: fixture.admission, effectReceipt: execution.effectReceipt, verification, closedAt: at(30) }, { registry: fixture.registry, authorityContext: fixture.authorityContext });
+    assert.equal(repeated.buildClosureRef, closure.buildClosureRef);
+
+    const forged = structuredClone(closure);
+    forged.releaseReceipts[0].claimRef = 'claim.caller.substitution';
+    forged.releaseReceipts[0] = readdress(forged.releaseReceipts[0], 'releaseRef', `release.build-admission.${forged.releaseReceipts[0].kind.toLowerCase()}`);
+    const readdressed = readdress(forged, 'buildClosureRef', 'closure.build-admission');
+    const integratedInput = {
+      sourceTreeSha256: '1'.repeat(64), blueprintHash: '2'.repeat(64), journeyStates: fixture.registry.simulationContract.requiredJourneyStates,
+      request: fixture.request, admission: fixture.admission, effectReceipt: execution.effectReceipt, verification,
+      closure: readdressed, projection, failureRecoveryProofs: [], concernObservations: []
+    };
+    assert.throws(() => createIntegratedBuildAdmissionReceipt(integratedInput, { registry: fixture.registry, authorityContext: fixture.authorityContext }), /closure|release|stale|re-addressed/);
+  } finally { cleanupBuildAdmissionFixture(fixture); }
 });
+
+test('BA24 PR-ready and Health independently consume one immutable exact receipt without rerunning or replacing the effect journey', () => {
+  const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba24-output-'));
+  try {
+    const result = runBuildAdmissionSimulation({ receiptPath: `generated/health/ba24-${path.basename(outputRoot)}.json`, suffix: `ba24-${path.basename(outputRoot)}` });
+    const receipt = result.integrated;
+    const context = result.integrated.causalEvidence.admission.authorityEvidence;
+    assert.ok(context);
+    const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba24-context-'));
+    const fixture = createBuildAdmissionFixture({ workspaceRoot: fixtureRoot, suffix: 'ba24-consumer-context' });
+    try {
+      const prReady = createBuildAdmissionConsumptionReceipt(receipt, 'PR_READY', { observedAt: at(1500) }, { registry: fixture.registry, authorityContext: fixture.authorityContext });
+      const health = createBuildAdmissionConsumptionReceipt(receipt, 'HEALTH', { observedAt: at(1501) }, { registry: fixture.registry, authorityContext: fixture.authorityContext });
+      assert.equal(prReady.integratedReceiptRef, health.integratedReceiptRef);
+      assert.equal(prReady.integratedReceiptFingerprint, health.integratedReceiptFingerprint);
+      assert.equal(prReady.effectJourneyRerun, false);
+      assert.equal(health.effectJourneyRerun, false);
+    } finally { cleanupBuildAdmissionFixture(fixture); }
+  } finally {
+    fs.rmSync(outputRoot, { recursive: true, force: true });
+  }
+});
+
+test('BA25 integrated validator reconstructs every causal layer and rejects fully re-addressed nested substitutions', () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-integrated-'));
+  const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: 'integrated' });
+  try {
+    const { execution, verification, closure, projection } = complete(fixture);
+    const integrated = createIntegratedBuildAdmissionReceipt({
+      sourceTreeSha256: '3'.repeat(64), blueprintHash: '4'.repeat(64), journeyStates: fixture.registry.simulationContract.requiredJourneyStates,
+      request: fixture.request, admission: fixture.admission, effectReceipt: execution.effectReceipt, verification, closure, projection,
+      failureRecoveryProofs: [], concernObservations: []
+    }, { registry: fixture.registry, authorityContext: fixture.authorityContext });
+    assert.equal(validateIntegratedBuildAdmissionReceipt(integrated, { registry: fixture.registry, authorityContext: fixture.authorityContext }).ok, true);
+
+    const forged = structuredClone(integrated);
+    forged.causalEvidence.projection.views.HEALTH.state = 'ATTENTION';
+    forged.causalEvidence.projection = readdress(forged.causalEvidence.projection, 'projectionRef', 'projection.build-admission');
+    forged.projectionRef = forged.causalEvidence.projection.projectionRef;
+    forged.projectionFingerprint = forged.causalEvidence.projection.semanticFingerprint;
+    const readdressed = readdress(forged, 'receiptRef', 'receipt.build-admission.integrated');
+    const validation = validateIntegratedBuildAdmissionReceipt(readdressed, { registry: fixture.registry, authorityContext: fixture.authorityContext });
+    assert.equal(validation.ok, false);
+    assert.match(validation.errors.join('; '), /projection|reconstruction|mismatch/);
+  } finally { cleanupBuildAdmissionFixture(fixture); }
+});
+
+// [VXG RealForever]

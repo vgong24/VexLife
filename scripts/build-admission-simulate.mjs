@@ -6,11 +6,13 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   admitBuildRequest,
-  createBuildAdmissionConsumptionReceipt,
+  createBuildAuthorityContext,
   createBuildClosure,
   createBuildConcernObservation,
+  createBuildHumanConfirmation,
   createBuildRequest,
   createIntegratedBuildAdmissionReceipt,
+  createSourceManagedBuildAuthority,
   projectBuildAdmission,
   validateIntegratedBuildAdmissionReceipt,
   verifyRealBuildEffect
@@ -23,272 +25,267 @@ import {
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
-import { resolveSafeGeneratedReceiptPath, semanticHash, writeJson } from '../src/core/utils.mjs';
+import { readJson, resolveSafeGeneratedReceiptPath, semanticHash, writeJson } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const T0 = Date.parse('2026-08-03T00:00:00.000Z');
 const at = (seconds) => new Date(T0 + seconds * 1000).toISOString();
 const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex');
-const blob = (text) => {
-  const bytes = Buffer.from(text);
+const blobSha = (text) => {
+  const bytes = Buffer.from(text, 'utf8');
   return crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
 };
-function canonical(value) {
-  const output = structuredClone(value);
-  output.semanticFingerprint = semanticHash(output);
-  return Object.freeze(output);
+
+function exactSuffix(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'fixture';
 }
-function lease(kind, common, extra = {}) {
-  return canonical({ kind, leaseRef: `lease.build-admission.simulation.${kind.toLowerCase()}`, ...common, currentness: 'CURRENT', lifecycle: 'ACTIVE', ...extra });
-}
-function releases() {
-  return ['CLAIM','OCCUPANCY','CAPABILITY','EFFECT','RESOURCE','WORKER','CONTEXT'].map((kind) => ({
-    kind, releaseRef: `release.build-admission.simulation.${kind.toLowerCase()}`, released: true, currentness: 'CURRENT'
-  }));
-}
-function createFixture({ registry, workspaceRoot, suffix }) {
-  const baselineContent = 'Build Admission baseline\n';
-  const replacementContent = 'Build Admission completed\n';
+
+export function createBuildAdmissionFixture({
+  root = ROOT,
+  workspaceRoot,
+  suffix = 'success',
+  clockOffset = 0
+} = {}) {
+  const bundle = loadBlueprint(root);
+  const registry = bundle.blueprint.buildAdmission;
+  const trustSnapshot = readJson(path.join(root, 'blueprint/intent-trust-snapshot.json'));
+  const authorityContext = createBuildAuthorityContext(bundle, trustSnapshot);
+  const safeSuffix = exactSuffix(suffix);
+  const workRef = `work.vexlife.build-admission.fixture.${safeSuffix}`;
+  const claimRef = `claim.vexlife.build-admission.fixture.${safeSuffix}`;
+  const baselineContent = `Build Admission baseline ${safeSuffix}\n`;
+  const replacementContent = `Build Admission completed ${safeSuffix}\n`;
   const prepared = prepareDisposableGitRepository({
     workspaceRoot,
-    repositoryName: `repository-${suffix}`,
+    repositoryName: `repository-${safeSuffix}`,
     mutationPath: registry.adapter.fixturePath,
     baselineContent,
     baselineBranch: registry.adapter.baselineBranch,
-    formedAt: at(1)
+    formedAt: at(clockOffset + 1)
   }, { registry });
-  const common = {
-    workNodeRef: `${registry.simulationContract.workNodeRef}.${suffix}`,
-    graphFingerprint: sha256(`workgraph:${suffix}`),
-    schedulerGeneration: 1
-  };
-  const schedulerAdmission = canonical({
-    admissionReceiptRef: `admission.intent-scheduler.build-admission.${suffix}`,
-    schedulerGeneration: 1,
-    graphRef: `intent-workgraph.build-admission.${suffix}`,
-    graphFingerprint: common.graphFingerprint,
-    workNodeRef: common.workNodeRef,
-    nodeFingerprint: sha256(`work-node:${suffix}`),
-    workerRef: `worker.build-admission.${suffix}`,
-    currentness: 'CURRENT',
-    lifecycle: 'ACTIVE'
-  });
-  const schedulerAuthorityEvidence = canonical({
-    schedulerAuthorityEvidenceRef: `evidence.scheduler-authority.build-admission.${suffix}`,
-    schedulerGeneration: 1,
-    currentness: 'CURRENT'
-  });
+  const authority = createSourceManagedBuildAuthority({
+    suffix: safeSuffix,
+    workRef,
+    claimRef,
+    pathClaimRefs: [claimRef],
+    formedAt: at(clockOffset + 2),
+    observedAt: at(clockOffset + 3),
+    expiresAt: at(clockOffset + 180)
+  }, { registry, authorityContext });
   const request = createBuildRequest({
-    workRef: `work.vexlife.build-admission.simulation.${suffix}`,
-    claimRef: `claim.vexlife.build-admission.simulation.${suffix}`,
-    intentEnvelopeRef: `intent.build-admission.simulation.${suffix}`,
-    intentEnvelopeFingerprint: sha256(`intent:${suffix}`),
-    workgraphRef: schedulerAdmission.graphRef,
-    workgraphFingerprint: schedulerAdmission.graphFingerprint,
-    workNodeRef: schedulerAdmission.workNodeRef,
-    workNodeFingerprint: schedulerAdmission.nodeFingerprint,
-    schedulerAdmissionRef: schedulerAdmission.admissionReceiptRef,
-    schedulerAdmissionFingerprint: schedulerAdmission.semanticFingerprint,
-    schedulerAuthorityEvidenceRef: schedulerAuthorityEvidence.schedulerAuthorityEvidenceRef,
-    schedulerAuthorityEvidenceFingerprint: schedulerAuthorityEvidence.semanticFingerprint,
-    schedulerGeneration: 1,
+    workRef,
+    claimRef,
+    intentEnvelopeRef: authority.workgraph.intent.intentRef,
+    intentEnvelopeFingerprint: authority.workgraph.intent.semanticFingerprint,
+    workgraphRef: authority.workgraph.graphRef,
+    workgraphFingerprint: authority.workgraph.semanticFingerprint,
+    workNodeRef: authority.schedulerAdmission.workNodeRef,
+    workNodeFingerprint: authority.schedulerAdmission.nodeFingerprint,
+    schedulerAdmissionRef: authority.schedulerAdmission.admissionReceiptRef,
+    schedulerAdmissionFingerprint: authority.schedulerAdmission.semanticFingerprint,
+    schedulerAuthorityEvidenceRef: authority.schedulerAuthorityEvidenceRef,
+    schedulerAuthorityEvidenceFingerprint: authority.semanticFingerprint,
+    schedulerGeneration: authority.schedulerGeneration,
     repositoryRef: prepared.repositoryEvidence.repositoryRef,
     repositoryEvidenceRef: prepared.repositoryEvidence.repositoryEvidenceRef,
     repositoryEvidenceFingerprint: prepared.repositoryEvidence.semanticFingerprint,
     expectedHeadSha: prepared.repositoryEvidence.headSha,
     expectedTreeSha: prepared.repositoryEvidence.treeSha,
     branchRef: registry.adapter.effectBranch,
-    pathClaimRefs: [`claim.vexlife.build-admission.simulation.${suffix}`],
+    pathClaimRefs: [claimRef],
     mutationPath: registry.adapter.fixturePath,
-    expectedBeforeBlobSha: blob(baselineContent),
-    replacementContentRef: `content.build-admission.simulation.${suffix}`,
+    expectedBeforeBlobSha: blobSha(baselineContent),
+    replacementContentRef: `content.vexlife.build-admission.fixture.${safeSuffix}`,
     replacementContentSha256: sha256(replacementContent),
-    expectedAfterBlobSha: blob(replacementContent),
-    expectedTransitionRef: `transition.build-admission.simulation.${suffix}.completed`,
-    commitMessage: `Apply disposable Build Admission simulation ${suffix}`,
-    completionGateRefs: [`gate.build-admission.simulation.${suffix}`],
-    returnRouteRef: `return-route.build-admission.simulation.${suffix}`,
-    formedAt: at(2), observedAt: at(3), expiresAt: at(100)
+    expectedAfterBlobSha: blobSha(replacementContent),
+    commitMessage: `Apply disposable Build Admission fixture ${safeSuffix}`,
+    expectedTransitionRef: registry.authorityContract.expectedTransitionRef,
+    completionGateRefs: registry.authorityContract.completionGateRefs,
+    returnRouteRef: registry.authorityContract.returnRouteRef,
+    formedAt: at(clockOffset + 4),
+    observedAt: at(clockOffset + 5),
+    expiresAt: at(clockOffset + 160)
   }, { registry });
-  const occupancy = lease('OCCUPANCY', common, {
-    occupancyRef: `occupancy.build-admission.simulation.${suffix}`,
-    claimRef: request.claimRef,
-    pathClaimFingerprint: semanticHash(request.pathClaimRefs)
-  });
-  const capabilityLease = lease('CAPABILITY', common, { capabilityRef: 'capability.vexlife.github.publication' });
-  const effectLease = lease('EFFECT', common, { effectScope: registry.adapter.effectScope, allowedEffectRefs: ['action.github.commit'] });
-  const resourceLease = lease('RESOURCE', common, { request: { network: false, modelTurn: false, cpuSlots: 1, ramMb: 64 } });
-  const workerLease = lease('WORKER', common, { workerRef: schedulerAdmission.workerRef });
-  const contextLease = lease('CONTEXT', common, { workerRef: schedulerAdmission.workerRef });
+  const humanConfirmation = createBuildHumanConfirmation(request, {
+    actorRef: registry.authorityContract.actorRef,
+    sourceRef: `confirmation-source.vexlife.build-admission.fixture.${safeSuffix}`,
+    observedAt: at(clockOffset + 6),
+    expiresAt: at(clockOffset + 150)
+  }, { registry });
   const admission = admitBuildRequest(request, {
-    schedulerAdmission,
-    schedulerAuthorityEvidence,
+    schedulerAuthorityEvidence: authority,
     repositoryEvidence: prepared.repositoryEvidence,
-    occupancy, capabilityLease, effectLease, resourceLease, workerLease, contextLease,
-    concernWatchState: registry.admissionContract.requiredConcernWatchState,
+    humanConfirmation,
     runtimeRecoveryRouteRef: request.returnRouteRef,
-    humanConfirmationState: registry.admissionContract.requiredHumanConfirmationState,
-    humanConfirmationRef: `confirmation.build-admission.simulation.${suffix}`,
-    formedAt: at(4), observedAt: at(5), expiresAt: at(90)
-  }, { registry });
-  return { workspaceRoot, repositoryPath: prepared.repositoryPath, baselineContent, replacementContent, request, admission };
+    formedAt: at(clockOffset + 7),
+    observedAt: at(clockOffset + 8),
+    expiresAt: at(clockOffset + 140)
+  }, {
+    registry,
+    authorityContext,
+    workspaceRoot,
+    repositoryPath: prepared.repositoryPath
+  });
+  return {
+    root, bundle, registry, authorityContext, workspaceRoot,
+    repositoryPath: prepared.repositoryPath, baselineContent, replacementContent,
+    authority, request, humanConfirmation, admission
+  };
 }
-function cleanupFixture(fixture, registry) {
-  if (!fixture) return;
-  if (fs.existsSync(fixture.repositoryPath)) {
-    cleanupDisposableGitRepository({
-      workspaceRoot: fixture.workspaceRoot,
-      repositoryPath: fixture.repositoryPath,
-      requestFingerprint: fixture.request.semanticFingerprint
-    }, { registry });
+
+export function cleanupBuildAdmissionFixture(fixture) {
+  if (!fixture?.workspaceRoot) return;
+  try {
+    if (fixture.repositoryPath && fs.existsSync(fixture.repositoryPath)) {
+      cleanupDisposableGitRepository({
+        workspaceRoot: fixture.workspaceRoot,
+        repositoryPath: fixture.repositoryPath,
+        requestFingerprint: fixture.request.semanticFingerprint
+      }, { registry: fixture.registry });
+    }
+  } finally {
+    if (fs.existsSync(fixture.workspaceRoot)) fs.rmSync(fixture.workspaceRoot, { recursive: true, force: true });
   }
 }
 
-export function runBuildAdmissionSimulation({ root = ROOT, receiptPath = null } = {}) {
+export function runBuildAdmissionSimulation({ root = ROOT, receiptPath = null, suffix = 'canonical' } = {}) {
   const bundle = loadBlueprint(root);
   const registry = bundle.blueprint.buildAdmission;
-  if (!registry) throw new Error('Build Admission registry is not composed into the Blueprint');
+  const blueprintResult = validateBlueprint(bundle);
+  if (!blueprintResult.ok) throw new Error(`Blueprint invalid: ${blueprintResult.errors.join('; ')}`);
   const sourceManifest = buildSourceManifest(root);
-  const blueprint = validateBlueprint(bundle);
-  if (!blueprint.ok) throw new Error(`Blueprint invalid: ${blueprint.errors.join('; ')}`);
-  const repository = collectRepositoryEvidence(root);
   const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-build-admission-simulation-'));
-  let successful = null;
-  const failureRecoveryProofRefs = [];
-  const concernObservationRefs = [];
+  let successful;
+  const failureRecoveryProofs = [];
+  const concernObservations = [];
   try {
-    successful = createFixture({ registry, workspaceRoot, suffix: 'success' });
-    const effectResult = executeDisposableLocalGitEffect({
+    successful = createBuildAdmissionFixture({ root, workspaceRoot, suffix, clockOffset: 0 });
+    const executed = executeDisposableLocalGitEffect({
       request: successful.request,
       admission: successful.admission,
       workspaceRoot,
       repositoryPath: successful.repositoryPath,
       replacementContent: successful.replacementContent,
-      formedAt: at(6), observedAt: at(7), completedAt: at(8)
+      formedAt: at(20), observedAt: at(21), completedAt: at(22)
     }, { registry });
-    if (!effectResult.effectReceipt) throw new Error('successful Build Admission simulation did not execute the effect');
+    if (!executed.effectReceipt) throw new Error('canonical Build Admission effect did not execute');
     const replay = executeDisposableLocalGitEffect({
       request: successful.request,
       admission: successful.admission,
       workspaceRoot,
       repositoryPath: successful.repositoryPath,
       replacementContent: successful.replacementContent,
-      formedAt: at(6), observedAt: at(7), completedAt: at(8)
+      formedAt: at(20), observedAt: at(21), completedAt: at(22)
     }, { registry });
-    if (!replay.replayed || replay.effectReceipt.commitSha !== effectResult.effectReceipt.commitSha) {
-      throw new Error('Build Admission simulation replay was not exactly once-only');
-    }
+    if (!replay.replayed || replay.effectReceipt.commitSha !== executed.effectReceipt.commitSha) throw new Error('duplicate Build Admission effect created a second commit');
     const verification = verifyRealBuildEffect({
-      effectReceipt: effectResult.effectReceipt,
+      effectReceipt: executed.effectReceipt,
       request: successful.request,
       admission: successful.admission,
       workspaceRoot,
       repositoryPath: successful.repositoryPath,
-      consumedAt: at(10),
-      schedulerObservedAt: at(9)
-    }, { registry });
+      schedulerObservedAt: at(23),
+      consumedAt: at(24)
+    }, { registry, authorityContext: successful.authorityContext });
+
     for (const [index, phase] of registry.recoveryContract.failurePhases.entries()) {
-      const failed = createFixture({ registry, workspaceRoot, suffix: `failure-${phase.toLowerCase()}` });
+      const failureRoot = fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-build-admission-${phase.toLowerCase()}-`));
+      const failed = createBuildAdmissionFixture({ root, workspaceRoot: failureRoot, suffix: `failure-${phase.toLowerCase()}`, clockOffset: 40 + index * 200 });
       try {
         const result = executeDisposableLocalGitEffect({
           request: failed.request,
           admission: failed.admission,
-          workspaceRoot,
+          workspaceRoot: failureRoot,
           repositoryPath: failed.repositoryPath,
           replacementContent: failed.replacementContent,
-          formedAt: at(20 + index * 3), observedAt: at(21 + index * 3), completedAt: at(22 + index * 3),
+          formedAt: at(60 + index * 200),
+          observedAt: at(61 + index * 200),
+          completedAt: at(62 + index * 200),
           failurePhase: phase
         }, { registry });
-        if (!result.recoveryReceipt) throw new Error(`failure phase ${phase} produced no recovery receipt`);
-        failureRecoveryProofRefs.push(result.recoveryReceipt.buildRecoveryRef);
-        const observation = createBuildConcernObservation(result.recoveryReceipt, { observedAt: at(50 + index) }, { registry });
-        concernObservationRefs.push(observation.concernObservationRef);
+        if (!result.recoveryReceipt || result.effectReceipt) throw new Error(`failure phase ${phase} did not return exact recovery evidence`);
+        failureRecoveryProofs.push(result.recoveryReceipt);
+        concernObservations.push(createBuildConcernObservation(result.recoveryReceipt, {
+          observedAt: at(63 + index * 200)
+        }, { registry, request: failed.request, admission: failed.admission }));
       } finally {
-        cleanupFixture(failed, registry);
+        cleanupBuildAdmissionFixture(failed);
       }
     }
+
     const closure = createBuildClosure({
       request: successful.request,
       admission: successful.admission,
+      effectReceipt: executed.effectReceipt,
       verification,
-      releaseReceipts: releases(),
-      closedAt: at(60)
-    }, { registry });
+      closedAt: at(30)
+    }, { registry, authorityContext: successful.authorityContext });
     const projection = projectBuildAdmission({
       request: successful.request,
       admission: successful.admission,
-      effectReceipt: effectResult.effectReceipt,
+      effectReceipt: executed.effectReceipt,
       verification,
       closure
     }, { registry });
-    const receipt = createIntegratedBuildAdmissionReceipt({
+    const repositoryEvidence = collectRepositoryEvidence(root);
+    const integrated = createIntegratedBuildAdmissionReceipt({
+      candidateHeadSha: repositoryEvidence.git.candidateHeadSha,
+      testedCheckoutSha: repositoryEvidence.git.checkoutSha,
+      testedMergeSha: repositoryEvidence.git.testedMergeSha,
+      baseSha: repositoryEvidence.git.baseSha,
+      sourceTreeSha256: sourceManifest.treeSha256,
+      blueprintHash: validateBlueprint(bundle).semanticHash,
       journeyStates: registry.simulationContract.requiredJourneyStates,
       request: successful.request,
       admission: successful.admission,
-      effectReceipt: effectResult.effectReceipt,
+      effectReceipt: executed.effectReceipt,
       verification,
       closure,
       projection,
-      failureRecoveryProofRefs,
-      concernObservationRefs,
-      candidateHeadSha: repository.git.candidateHeadSha,
-      testedCheckoutSha: repository.git.checkoutSha,
-      testedMergeSha: repository.git.testedMergeSha,
-      baseSha: repository.git.baseSha,
-      sourceTreeSha256: sourceManifest.treeSha256,
-      blueprintHash: blueprint.semanticHash
-    }, { registry });
-    const validation = validateIntegratedBuildAdmissionReceipt(receipt, { registry });
-    if (!validation.ok) throw new Error(validation.errors.join('; '));
-    const prReadyReceipt = createBuildAdmissionConsumptionReceipt(receipt, 'PR_READY', { observedAt: at(61) }, { registry });
-    const healthReceipt = createBuildAdmissionConsumptionReceipt(receipt, 'HEALTH', { observedAt: at(62) }, { registry });
-    const output = {
-      ...receipt,
-      prReadyConsumptionReceipt: prReadyReceipt,
-      healthConsumptionReceipt: healthReceipt
-    };
-    const target = resolveSafeGeneratedReceiptPath(
-      root,
-      receiptPath ?? registry.simulationContract.receiptPath,
-      'Build Admission simulation receipt path'
-    );
-    writeJson(target, output);
-    return Object.freeze({ receipt: output, receiptPath: path.relative(root, target).split(path.sep).join('/'), validation });
+      failureRecoveryProofs,
+      concernObservations
+    }, { registry, authorityContext: successful.authorityContext });
+    const validation = validateIntegratedBuildAdmissionReceipt(integrated, { registry, authorityContext: successful.authorityContext });
+    if (!validation.ok) throw new Error(`integrated Build Admission receipt invalid: ${validation.errors.join('; ')}`);
+    const outputPath = receiptPath
+      ? resolveSafeGeneratedReceiptPath(root, receiptPath, 'Build Admission receipt path')
+      : path.join(root, registry.simulationContract.outputPath);
+    writeJson(outputPath, integrated);
+    return { integrated, outputPath, validation, sourceManifest, blueprintResult };
   } finally {
-    cleanupFixture(successful, registry);
-    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    cleanupBuildAdmissionFixture(successful);
   }
 }
 
-const direct = process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
-if (direct) {
-  const args = process.argv.slice(2);
-  const index = args.indexOf('--receipt');
-  if (args.some((value, i) => value !== '--receipt' && i !== index + 1) || (index >= 0 && !args[index + 1])) {
-    console.error('Usage: npm run build-admission:simulate -- [--receipt generated/health/build-admission-simulation.json]');
-    process.exit(2);
+function parseArguments(argv) {
+  let receiptPath = null;
+  let suffix = 'canonical';
+  for (let index = 0; index < argv.length; index += 1) {
+    if (argv[index] === '--receipt') receiptPath = argv[++index];
+    else if (argv[index] === '--suffix') suffix = argv[++index];
+    else throw new Error(`unknown argument ${argv[index]}`);
   }
+  return { receiptPath, suffix };
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const result = runBuildAdmissionSimulation({ receiptPath: index >= 0 ? args[index + 1] : null });
+    const result = runBuildAdmissionSimulation({ root: ROOT, ...parseArguments(process.argv.slice(2)) });
     console.log(JSON.stringify({
-      state: 'BUILD_ADMISSION_SIMULATION_CURRENT',
-      currentness: 'CURRENT',
-      receiptPath: result.receiptPath,
-      receiptRef: result.receipt.receiptRef,
-      semanticFingerprint: result.receipt.semanticFingerprint,
-      sourceTreeSha256: result.receipt.sourceTreeSha256,
-      blueprintHash: result.receipt.blueprintHash,
-      commitSha: result.receipt.commitSha,
-      commitTreeSha: result.receipt.commitTreeSha,
-      changedPaths: result.receipt.changedPaths,
-      proofRefs: result.receipt.proofRefs,
-      externalEffectsExecuted: result.receipt.externalEffectsExecuted,
-      effectScope: result.receipt.effectScope,
-      networkUsed: result.receipt.networkUsed,
-      remoteConfigured: result.receipt.remoteConfigured
+      state: result.integrated.state,
+      currentness: result.integrated.currentness,
+      receiptRef: result.integrated.receiptRef,
+      semanticFingerprint: result.integrated.semanticFingerprint,
+      buildEffectReceiptRef: result.integrated.buildEffectReceiptRef,
+      commitSha: result.integrated.commitSha,
+      claimReleased: result.integrated.claimReleased,
+      sixLeasesReleased: result.integrated.sixLeasesReleased,
+      outputPath: path.relative(ROOT, result.outputPath).replaceAll(path.sep, '/')
     }, null, 2));
   } catch (error) {
-    console.error(JSON.stringify({ state: 'BUILD_ADMISSION_SIMULATION_FAILED', currentness: 'UNKNOWN', error: error.message }, null, 2));
-    process.exit(1);
+    console.error(error.stack ?? error.message);
+    process.exitCode = 1;
   }
 }
+
+// [VXG RealForever]
