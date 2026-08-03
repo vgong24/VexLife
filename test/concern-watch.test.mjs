@@ -35,14 +35,29 @@ import {
   validateConcernWatchRegistry,
   validateIntegratedConcernWatchReceipt
 } from '../src/core/concern-watch.mjs';
+import { admitIntentSchedulerQueue } from '../src/core/intent-scheduler.mjs';
+import {
+  createIntentEnvelope,
+  createIntentTrustSnapshot,
+  createIntentWorkgraph,
+  createWorkNode
+} from '../src/core/intent-workgraph.mjs';
+import { createResourceSnapshot } from '../src/core/resource-admission.mjs';
+import { createSchedulerRuntimeTrustSnapshot } from '../src/core/scheduler-runtime-trust.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/(?:([A-Za-z]:))/, '$1').replaceAll('/', process.platform === 'win32' ? '\\' : '/');
 const bundle = loadBlueprint(ROOT);
 const registry = bundle.blueprint.concernWatch;
+const schedulerContext = {
+  intentRegistry: bundle.intentRegistry,
+  schedulerRegistry: bundle.schedulerRegistry,
+  registeredProcessRefs: bundle.factory.processes.map((item) => item.processRef),
+  registeredRoleRefs: bundle.blueprint.roles.map((item) => item.roleRef)
+};
 const T0 = '2026-08-02T10:00:00.000Z';
 const at = (seconds) => new Date(Date.parse(T0) + seconds * 1000).toISOString();
-const integrated = runDeterministicConcernWatchJourney({ registry });
+const integrated = runDeterministicConcernWatchJourney({ registry, schedulerContext });
 
 function readdress(value, refField, prefix) {
   const core = structuredClone(value);
@@ -110,55 +125,259 @@ function highConsequenceFixture(suffix = 'high', overrides = {}) {
   return { ...fixture, threshold, aggregate };
 }
 
-function reviewFixture(suffix = 'review') {
-  const fixture = highConsequenceFixture(suffix);
-  const intentEnvelopeFingerprint = semanticHash({ intent: suffix });
-  const workgraphFingerprint = semanticHash({ graph: suffix });
-  const workNodeFingerprint = semanticHash({ node: suffix, workgraphFingerprint });
-  const review = formConcernAdmissionReview(fixture.aggregate, {
-    proposedWorkRef: `work.concern-watch.test.${suffix}`,
-    intentEnvelopeRef: `intent.concern-watch.test.${suffix}`,
-    intentEnvelopeFingerprint,
-    workgraphRef: `intent-workgraph.concern-watch.test.${suffix}`,
-    workgraphFingerprint,
-    workNodeRef: `work-node.concern-watch.test.${suffix}`,
-    workNodeFingerprint,
-    dependencyRefs: ['work.runtime-recovery.accepted'],
-    pathClaimRefs: [`claim.concern-watch.test.${suffix}`],
-    capabilityRefs: [],
-    effectRefs: [],
+function testSchedulerBindingRefs(nodes) {
+  return Object.fromEntries(schedulerContext.intentRegistry.bindingFields.map((field) => [
+    field,
+    [...new Set(nodes.flatMap((item) => Array.isArray(item[field]) ? item[field] : [item[field]]).filter(Boolean))].sort()
+  ]));
+}
+
+function testSchedulerProposal(suffix, { claimRef = `claim.concern-watch.test.${suffix}` } = {}) {
+  const intentRef = `intent.concern-watch.test.${suffix}`;
+  const workNodeRef = `work-node.concern-watch.test.${suffix}`;
+  const intent = createIntentEnvelope({
+    intentRef,
+    originMessageRef: `message.${intentRef}`,
+    originSpeakerRef: 'person.test.human',
+    recipientRoleRef: 'role.vex.developer',
+    projectRef: 'project.vexlife',
+    threadRef: `thread.concern-watch.test.${suffix}`,
+    channelRef: `channel.concern-watch.test.${suffix}`,
+    originalContentHash: semanticHash({ source: 'ConcernWatch scheduler test', suffix }),
+    desiredOutcome: { intentKey: 'CONCERN_WATCH_NO_EFFECT_TEST', summary: 'Exercise external scheduler authority' },
+    constraints: ['NO_EXTERNAL_EFFECTS', 'NO_MODEL_TURN'],
+    createdAt: at(0),
+    sourceLineageRef: `lineage.concern-watch.test.${suffix}`
+  }, schedulerContext.intentRegistry);
+  const node = createWorkNode({
+    workNodeRef,
+    rootIntentRef: intentRef,
+    purpose: `Schedule exact ConcernWatch fixture ${suffix}`,
+    processRef: 'process.vexlife.intent.validate-workgraph',
+    state: 'READY',
+    dependencyRefs: [],
+    childRefs: [],
+    roleRef: 'role.vex.developer',
+    priorityClass: 'HIGH',
+    applicableCultureRefs: ['foundation.vexlife.state-relay.v1'],
+    applicableLessonRefs: [],
+    applicableBurdenReleaseRefs: [],
+    capabilityEnvelopeRef: `capability-envelope.${workNodeRef}`,
+    effectEnvelopeRef: `effect-envelope.${workNodeRef}`,
+    resourceEnvelopeRef: `resource-envelope.${workNodeRef}`,
+    expectedTransitionRef: `expected-transition.${workNodeRef}`,
+    completionGateRefs: [`completion-gate.${workNodeRef}`],
     returnRouteRef: `return-route.concern-watch.test.${suffix}`,
+    sourceRefs: [`source.concern-watch.scheduler.test.${suffix}`],
+    createdAt: at(0)
+  }, schedulerContext.intentRegistry);
+  let priorState = 'CAPTURED';
+  const transitions = ['DECOMPOSED', 'PLAN_VALIDATED', 'READY'].map((nextState, sequence) => {
+    const transition = {
+      transitionRef: `transition.concern-watch.test.${suffix}.${sequence}`,
+      workNodeRef,
+      sequence,
+      priorState,
+      nextState,
+      reason: 'ConcernWatch scheduler test formation',
+      actorRef: 'vex.test',
+      actorRoleRef: 'role.vex.developer',
+      processRef: 'process.vexlife.intent.verify-transition',
+      sourceRefs: [`source.transition.concern-watch.${suffix}`],
+      createdAt: at(sequence)
+    };
+    priorState = nextState;
+    return transition;
+  });
+  const workgraph = createIntentWorkgraph({
+    graphRef: `intent-workgraph.concern-watch.test.${suffix}`,
+    intent,
+    nodes: [node],
+    transitions,
+    receipts: [],
+    bindingRefs: testSchedulerBindingRefs([node]),
+    createdAt: at(0)
+  }, schedulerContext.intentRegistry);
+  return { intent, node, workgraph, claimRef };
+}
+
+function reviewFixture(suffix = 'review', proposalOverrides = {}) {
+  const fixture = highConsequenceFixture(suffix);
+  const proposal = testSchedulerProposal(suffix, proposalOverrides);
+  const review = formConcernAdmissionReview(fixture.aggregate, {
+    proposedWorkRef: proposal.node.workNodeRef,
+    intentEnvelopeRef: proposal.intent.intentRef,
+    intentEnvelopeFingerprint: proposal.intent.semanticFingerprint,
+    workgraphRef: proposal.workgraph.graphRef,
+    workgraphFingerprint: proposal.workgraph.semanticFingerprint,
+    workNodeRef: proposal.node.workNodeRef,
+    workNodeFingerprint: proposal.node.semanticFingerprint,
+    dependencyRefs: proposal.node.dependencyRefs,
+    pathClaimRefs: [`claim.concern-watch.test.${suffix}`],
+    capabilityRefs: [proposal.node.capabilityEnvelopeRef],
+    effectRefs: [proposal.node.effectEnvelopeRef],
+    returnRouteRef: proposal.node.returnRouteRef,
     formedAt: at(3)
   }, { registry });
   const aggregate = recordConcernAdmissionReview(fixture.aggregate, review, { registry }).aggregate;
-  return { ...fixture, review, aggregate };
+  return { ...fixture, proposal, review, aggregate };
 }
 
-function schedulerInput(suffix = 'scheduler', overrides = {}) {
-  return {
-    schedulerAggregateFingerprint: semanticHash({ scheduler: suffix, generation: 1 }),
-    schedulerCurrentnessReceiptRef: `receipt.scheduler-currentness.${suffix}`,
-    schedulerCurrentnessReceiptFingerprint: semanticHash({ scheduler: suffix, current: true }),
-    writerClaimRef: `claim.concern-watch.test.${suffix}`,
-    pathClaimFingerprint: semanticHash([`claim.concern-watch.test.${suffix}`]),
-    conflictingWriterRefs: [],
-    schedulerGeneration: 1,
-    acceptedPriorityClass: 'EXPEDITE',
-    dependencyState: 'SATISFIED',
-    activeInteractiveWorkState: 'RETAINED',
-    writerClaimState: 'EXACT_SINGLE_WRITER',
-    state: 'ADMITTED',
+function schedulerAuthorityEvidence(fixture) {
+  const suffix = fixture.review.workNodeRef.split('.').at(-1);
+  const { intentRegistry, schedulerRegistry } = schedulerContext;
+  const sourceRef = 'source.intent-scheduler.test-runtime';
+  const sourceHash = semanticHash({ source: 'ConcernWatch external scheduler test/v1' });
+  const schedulerGeneration = 1;
+  const workerRef = 'worker.model.test.primary';
+  const formedAt = at(4);
+  const observedAt = at(5);
+  const expiresAt = at(60);
+  const trustSnapshot = createIntentTrustSnapshot({
+    schemaVersion: 'vexlife.intent-trust-snapshot/v0',
+    snapshotRef: `trust-snapshot.concern-watch.test.${suffix}`,
+    sourceRef: 'test/concern-watch.test.mjs#scheduler-authority',
+    formationRef: 'formation.concern-watch.test.trust',
+    formedAt: at(0),
     currentness: 'CURRENT',
-    formedAt: at(4),
-    observedAt: at(5),
-    expiresAt: at(60),
-    ...overrides
+    bindingRefs: testSchedulerBindingRefs(fixture.proposal.workgraph.nodes),
+    actorRefs: ['person.test.human', 'vex.test'],
+    decisionRefs: [],
+    authorizationBindings: []
+  }, intentRegistry);
+  const resourceSnapshot = createResourceSnapshot({
+    snapshotRef: `resource-snapshot.concern-watch.test.${suffix}`,
+    generation: schedulerGeneration,
+    sourceRef,
+    sourceHash,
+    formationRef: `formation.concern-watch.test.resource.${suffix}`,
+    evidenceClass: 'SIMULATED_CURRENT',
+    cpuLoadPct: 20,
+    cpuConcurrencyLimit: 4,
+    cpuActiveCount: 0,
+    ramAvailableMb: 16384,
+    ramReservedMb: 1024,
+    gpuAvailable: false,
+    vramAvailableMb: 0,
+    vramReservedMb: 0,
+    modelResident: false,
+    activeModelTurn: false,
+    activeHeavyTool: false,
+    interactiveWaitState: 'IDLE',
+    backgroundWorkAdmission: 'ADMITTED',
+    thermalPowerState: 'NOT_EXPOSED',
+    currentness: 'CURRENT',
+    formedAt,
+    observedAt,
+    expiresAt
+  });
+  const runtimeTrustSnapshot = createSchedulerRuntimeTrustSnapshot({
+    snapshotRef: `runtime-snapshot.concern-watch.test.${suffix}`,
+    sourceRef,
+    sourceHash,
+    formationRef: `formation.concern-watch.test.runtime.${suffix}`,
+    evidenceClass: 'SIMULATED_CURRENT',
+    schedulerGeneration,
+    formedAt,
+    observedAt,
+    expiresAt,
+    workerRef,
+    actorRef: 'vex.test',
+    roleRef: fixture.proposal.node.roleRef,
+    claimRef: fixture.proposal.claimRef,
+    occupancyRef: `occupancy.concern-watch.test.${suffix}`,
+    leaseAuthorityRef: 'authority.intent-scheduler.test-runtime',
+    resourceSnapshotRef: resourceSnapshot.snapshotRef,
+    resourceSnapshotFingerprint: resourceSnapshot.semanticFingerprint,
+    currentness: 'CURRENT'
+  }, { schedulerRegistry, resourceSnapshot });
+  const workNodeRef = fixture.proposal.node.workNodeRef;
+  const common = {
+    runtimeSnapshotRef: runtimeTrustSnapshot.snapshotRef,
+    runtimeSnapshotFingerprint: runtimeTrustSnapshot.semanticFingerprint,
+    schedulerGeneration,
+    authorityRef: runtimeTrustSnapshot.leaseAuthorityRef,
+    sourceRef,
+    sourceHash,
+    formedAt,
+    observedAt,
+    expiresAt,
+    currentness: 'CURRENT',
+    lifecycle: 'ACTIVE'
   };
+  const schedulerOptions = {
+    trustSnapshot,
+    runtimeTrustSnapshot,
+    resourceSnapshot,
+    resourceRequestByNodeRef: {
+      [workNodeRef]: { cpuSlots: 1, ramMb: 64, vramMb: 0, modelTurn: false, heavyTool: false, background: false }
+    },
+    occupancyByNodeRef: {
+      [workNodeRef]: {
+        occupancyRef: runtimeTrustSnapshot.occupancyRef,
+        actorRef: runtimeTrustSnapshot.actorRef,
+        roleRef: fixture.proposal.node.roleRef,
+        workNodeRef,
+        graphFingerprint: fixture.proposal.workgraph.semanticFingerprint,
+        claimRef: fixture.proposal.claimRef,
+        formationRef: `formation.concern-watch.test.occupancy.${suffix}`,
+        ...common
+      }
+    },
+    capabilityLeaseByNodeRef: {
+      [workNodeRef]: {
+        leaseRef: `capability-lease.concern-watch.test.${suffix}`,
+        workNodeRef,
+        graphFingerprint: fixture.proposal.workgraph.semanticFingerprint,
+        trustSnapshotFingerprint: trustSnapshot.semanticFingerprint,
+        envelopeRef: fixture.proposal.node.capabilityEnvelopeRef,
+        formationRef: `formation.concern-watch.test.capability.${suffix}`,
+        toolRefs: [],
+        ...common
+      }
+    },
+    effectLeaseByNodeRef: {
+      [workNodeRef]: {
+        leaseRef: `effect-lease.concern-watch.test.${suffix}`,
+        workNodeRef,
+        graphFingerprint: fixture.proposal.workgraph.semanticFingerprint,
+        trustSnapshotFingerprint: trustSnapshot.semanticFingerprint,
+        envelopeRef: fixture.proposal.node.effectEnvelopeRef,
+        formationRef: `formation.concern-watch.test.effect.${suffix}`,
+        effectDisposition: 'NO_EFFECTS',
+        allowedEffectRefs: [],
+        ...common
+      }
+    },
+    resourceLeaseRefByNodeRef: { [workNodeRef]: `resource-lease.concern-watch.test.${suffix}` },
+    recoveryResourceBindingByNodeRef: {},
+    workerRef,
+    schedulerGeneration,
+    fairnessMaxDeferrals: schedulerRegistry.fairnessPolicy.maxDeferrals,
+    fairnessLedger: {},
+    formedAt,
+    expiresAt,
+    observedAt
+  };
+  const schedulerQueue = admitIntentSchedulerQueue(fixture.proposal.workgraph, {
+    ...schedulerOptions,
+    ...schedulerContext
+  });
+  return {
+    ...schedulerContext,
+    workgraph: fixture.proposal.workgraph,
+    schedulerOptions,
+    schedulerQueue
+  };
+}
+
+function schedulerInput(fixture, legacyOverrides = {}) {
+  return { schedulerAuthorityEvidence: schedulerAuthorityEvidence(fixture), ...legacyOverrides };
 }
 
 function admittedFixture(suffix = 'admitted') {
   const fixture = reviewFixture(suffix);
-  const admission = createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review, schedulerInput(suffix), { registry });
+  const admission = createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review, schedulerInput(fixture), { registry });
   const aggregate = recordConcernSchedulerAdmission(fixture.aggregate, admission, { registry }).aggregate;
   return { ...fixture, admission, aggregate };
 }
@@ -379,7 +598,7 @@ test('CW8 threshold crossing produces review only; exact Workgraph and scheduler
   assert.equal(fixture.aggregate.state, 'ADMISSION_REVIEW');
   assert.equal(fixture.aggregate.schedulerAdmissions.length, 0);
   assert.equal(fixture.review.executionAuthorityGranted, false);
-  const admission = createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review, schedulerInput('cw8'), { registry });
+  const admission = createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review, schedulerInput(fixture), { registry });
   const admitted = recordConcernSchedulerAdmission(fixture.aggregate, admission, { registry }).aggregate;
   assert.equal(admitted.state, 'ADMITTED_WORK');
   assert.equal(admitted.schedulerAdmissions.length, 1);
@@ -390,26 +609,147 @@ test('CW8 threshold crossing produces review only; exact Workgraph and scheduler
 test('CW9 concern priority cannot bypass dependencies or preempt active interactive work', () => {
   const fixture = reviewFixture('cw9');
   assert.throws(() => createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review,
-    schedulerInput('cw9', { dependencyState: 'BLOCKED' }), { registry }), /bypasses dependency/);
+    schedulerInput(fixture, { dependencyState: 'BLOCKED' }), { registry }), /caller-authored.*dependencyState/);
   assert.throws(() => createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review,
-    schedulerInput('cw9', { activeInteractiveWorkState: 'PREEMPTED' }), { registry }), /interactive-work/);
+    schedulerInput(fixture, { activeInteractiveWorkState: 'PREEMPTED' }), { registry }), /caller-authored.*activeInteractiveWorkState/);
   assert.throws(() => createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review,
-    schedulerInput('cw9', { acceptedPriorityClass: 'INTERACTIVE' }), { registry }), /INTERACTIVE/);
+    schedulerInput(fixture, { acceptedPriorityClass: 'INTERACTIVE' }), { registry }), /caller-authored.*acceptedPriorityClass/);
 });
 
 test('CW10 overlapping concern routes cannot hold two writers or admit the same concern twice', () => {
   const fixture = reviewFixture('cw10');
   const before = fixture.aggregate.semanticFingerprint;
   assert.throws(() => createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review,
-    schedulerInput('cw10', { conflictingWriterRefs: ['writer.overlap.concern-watch'] }), { registry }), /writer/);
+    schedulerInput(fixture, { conflictingWriterRefs: ['writer.overlap.concern-watch'] }), { registry }), /caller-authored.*conflictingWriterRefs/);
   assert.equal(fixture.aggregate.semanticFingerprint, before);
   assert.throws(() => createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review,
-    schedulerInput('cw10', { writerClaimRef: 'claim.concern-watch.test.detached' }), { registry }), /detached/);
+    schedulerInput(fixture, { writerClaimRef: 'claim.concern-watch.test.detached' }), { registry }), /caller-authored.*writerClaimRef/);
   assert.throws(() => createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review,
-    schedulerInput('cw10', { pathClaimFingerprint: '0'.repeat(64) }), { registry }), /detached/);
-  const admission = createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review, schedulerInput('cw10'), { registry });
+    schedulerInput(fixture, { pathClaimFingerprint: '0'.repeat(64) }), { registry }), /caller-authored.*pathClaimFingerprint/);
+  const admission = createConcernSchedulerAdmissionReceipt(fixture.aggregate, fixture.review, schedulerInput(fixture), { registry });
   const admitted = recordConcernSchedulerAdmission(fixture.aggregate, admission, { registry }).aggregate;
-  assert.throws(() => createConcernSchedulerAdmissionReceipt(admitted, fixture.review, schedulerInput('cw10.duplicate'), { registry }), /not current|ADMISSION_REVIEW/);
+  assert.throws(() => createConcernSchedulerAdmissionReceipt(admitted, fixture.review, schedulerInput(fixture), { registry }), /not current|ADMISSION_REVIEW/);
+});
+
+test('second correction revalidates every external scheduler binding at record, replay, and integrated-consumer boundaries', () => {
+  const fixture = reviewFixture('second-correction');
+  const validAdmission = createConcernSchedulerAdmissionReceipt(
+    fixture.aggregate,
+    fixture.review,
+    schedulerInput(fixture),
+    { registry }
+  );
+  const admitted = recordConcernSchedulerAdmission(fixture.aggregate, validAdmission, { registry }).aggregate;
+  const serialized = serializeConcernAggregate(admitted, { registry });
+  const other = reviewFixture('second-correction-unrelated');
+  const unrelatedAdmission = createConcernSchedulerAdmissionReceipt(
+    other.aggregate,
+    other.review,
+    schedulerInput(other),
+    { registry }
+  );
+  const mutations = [
+    ['authority evidence schema', 'evidence', (value) => { value.schemaVersion = 'vexlife.concern-scheduler-authority-evidence/forged'; }],
+    ['authority evidence contract', 'evidence', (value) => { value.contractRef = 'contract.vexlife.concern-scheduler-authority-evidence/forged'; }],
+    ['scheduler validation route', 'evidence', (value) => { value.validationRouteRef = 'caller.recomputed.scheduler'; }],
+    ['Intent envelope ref', 'evidence', (value) => { value.workgraph.intent.intentRef = 'intent.unrelated'; }],
+    ['Intent envelope fingerprint', 'evidence', (value) => { value.workgraph.intent.semanticFingerprint = '0'.repeat(64); }],
+    ['Workgraph ref', 'evidence', (value) => { value.workgraph.graphRef = 'intent-workgraph.unrelated'; }],
+    ['Workgraph fingerprint', 'evidence', (value) => { value.workgraph.semanticFingerprint = '0'.repeat(64); }],
+    ['work-node ref', 'evidence', (value) => { value.workgraph.nodes[0].workNodeRef = 'work-node.unrelated'; }],
+    ['work-node fingerprint', 'evidence', (value) => { value.workgraph.nodes[0].semanticFingerprint = '0'.repeat(64); }],
+    ['scheduler aggregate fingerprint', 'receipt', (value) => { value.schedulerAggregateFingerprint = '0'.repeat(64); }],
+    ['scheduler currentness receipt ref', 'receipt', (value) => { value.schedulerCurrentnessReceiptRef = 'admission.intent-scheduler.unrelated'; }],
+    ['scheduler currentness receipt fingerprint', 'receipt', (value) => { value.schedulerCurrentnessReceiptFingerprint = '0'.repeat(64); }],
+    ['external admission schema', 'receipt', (value) => { value.externalSchedulerAdmissionSchemaVersion = 'vexlife.intent-scheduler-admission-receipt/forged'; }],
+    ['external admission contract', 'receipt', (value) => { value.externalSchedulerAdmissionContractRef = 'contract.intent-scheduler.forged'; }],
+    ['scheduler generation', 'receipt', (value) => { value.schedulerGeneration += 1; }],
+    ['writer claim', 'receipt', (value) => { value.writerClaimRef = 'claim.unrelated'; }],
+    ['path claim fingerprint', 'receipt', (value) => { value.pathClaimFingerprint = '0'.repeat(64); }],
+    ['accepted priority', 'receipt', (value) => { value.acceptedPriorityClass = 'BACKGROUND'; }],
+    ['dependency state', 'receipt', (value) => { value.dependencyState = 'BLOCKED'; }],
+    ['interactive state', 'receipt', (value) => { value.activeInteractiveWorkState = 'PREEMPTED'; }],
+    ['formation chronology', 'receipt', (value) => { value.formedAt = at(2); }],
+    ['observation chronology', 'receipt', (value) => { value.observedAt = at(3); }],
+    ['expiry/currentness', 'receipt', (value) => { value.expiresAt = at(5); }],
+    ['scheduler queue aggregate', 'evidence', (value) => { value.schedulerQueue.semanticFingerprint = '0'.repeat(64); }],
+    ['scheduler queue currentness receipt', 'evidence', (value) => { value.schedulerQueue.admissionReceipt.semanticFingerprint = '0'.repeat(64); }],
+    ['scheduler queue generation', 'evidence', (value) => { value.schedulerQueue.generation += 1; }],
+    ['scheduler queue schema', 'evidence', (value) => { value.schedulerQueue.admissionReceipt.schemaVersion = 'vexlife.intent-scheduler-admission-receipt/forged'; }],
+    ['external writer/path authority', 'evidence', (value) => {
+      const workNodeRef = Object.keys(value.schedulerOptions.occupancyByNodeRef)[0];
+      value.schedulerOptions.occupancyByNodeRef[workNodeRef].claimRef = 'claim.unrelated';
+    }],
+    ['unrelated well-formed scheduler material', 'evidence', (value) => {
+      Object.assign(value, structuredClone(unrelatedAdmission.schedulerAuthorityEvidence));
+    }]
+  ];
+  const forgeAdmission = (sourceAdmission, layer, mutate) => {
+    const forged = structuredClone(sourceAdmission);
+    if (layer === 'evidence') {
+      const evidence = structuredClone(forged.schedulerAuthorityEvidence);
+      mutate(evidence);
+      forged.schedulerAuthorityEvidence = readdress(
+        evidence,
+        'schedulerAuthorityEvidenceRef',
+        'evidence.concern-watch.scheduler-authority'
+      );
+      forged.schedulerAuthorityEvidenceRef = forged.schedulerAuthorityEvidence.schedulerAuthorityEvidenceRef;
+      forged.schedulerAuthorityEvidenceFingerprint = forged.schedulerAuthorityEvidence.semanticFingerprint;
+    } else mutate(forged);
+    return readdress(forged, 'schedulerAdmissionRef', 'concern-scheduler-admission');
+  };
+  const recordBefore = fixture.aggregate.semanticFingerprint;
+  const replayBefore = admitted.semanticFingerprint;
+  const integratedBefore = integrated.receipt.causalEvidence.resolvedAggregate.semanticFingerprint;
+  for (const [label, layer, mutate] of mutations) {
+    const forgedRecordAdmission = forgeAdmission(validAdmission, layer, mutate);
+    assert.throws(
+      () => recordConcernSchedulerAdmission(fixture.aggregate, forgedRecordAdmission, { registry }),
+      /scheduler|external|authority|currentness|chronology|expiry|stale|detached|forged/,
+      `${label} record boundary`
+    );
+    assert.equal(fixture.aggregate.semanticFingerprint, recordBefore, `${label} record rejection mutated aggregate`);
+
+    const forgedReplay = JSON.parse(serialized);
+    const schedulerEventIndex = forgedReplay.events.findIndex((event) => event.type === 'SCHEDULER_ADMITTED');
+    forgedReplay.events[schedulerEventIndex].payload.schedulerAdmission = forgedRecordAdmission;
+    forgedReplay.events[schedulerEventIndex] = readdress(
+      forgedReplay.events[schedulerEventIndex],
+      'eventRef',
+      'concern-event.scheduler-admitted'
+    );
+    assert.throws(
+      () => restoreConcernAggregate(JSON.stringify(forgedReplay), { registry }),
+      /scheduler|external|authority|currentness|chronology|expiry|stale|detached|forged/,
+      `${label} replay boundary`
+    );
+    assert.equal(admitted.semanticFingerprint, replayBefore, `${label} replay rejection mutated aggregate`);
+
+    const forgedIntegrated = structuredClone(integrated.receipt);
+    forgedIntegrated.causalEvidence.schedulerAdmission = forgeAdmission(
+      forgedIntegrated.causalEvidence.schedulerAdmission,
+      layer,
+      mutate
+    );
+    const readdressedIntegrated = readdress(
+      forgedIntegrated,
+      'receiptRef',
+      'receipt.concern-watch.integrated'
+    );
+    const result = validateIntegratedConcernWatchReceipt(readdressedIntegrated, { registry });
+    assert.equal(result.ok, false, `${label} integrated-consumer boundary`);
+    assert.match(
+      result.errors.join('; '),
+      /scheduler|external|authority|currentness|chronology|expiry|stale|detached|forged/,
+      `${label} integrated-consumer reason`
+    );
+    assert.equal(
+      integrated.receipt.causalEvidence.resolvedAggregate.semanticFingerprint,
+      integratedBefore,
+      `${label} integrated rejection mutated aggregate`
+    );
+  }
 });
 
 test('CW11 recovery failure or hold becomes exact current concern evidence and stale prior-cycle evidence rejects', () => {
@@ -630,7 +970,7 @@ test('adversarial scope, hidden hold, forged subject, caller urgency, stale sche
   assert.equal(projectConcernAggregate(heldAggregate, { registry }).views.HEALTH.state, 'ATTENTION');
   const review = reviewFixture('adversarial.scheduler');
   assert.throws(() => createConcernSchedulerAdmissionReceipt(review.aggregate, review.review,
-    schedulerInput('adversarial.scheduler', { currentness: 'STALE' }), { registry }), /currentness/);
+    schedulerInput(review, { currentness: 'STALE' }), { registry }), /caller-authored.*currentness/);
   const detached = structuredClone(integrated.receipt);
   detached.recurrencePriorConcernAggregateRef = 'aggregate.detached.parallel-fixture';
   assert.equal(validateIntegratedConcernWatchReceipt(detached, { registry }).ok, false);

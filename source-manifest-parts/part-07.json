@@ -106,8 +106,8 @@
     {
       "path": "src/core/concern-watch.mjs",
       "mode": "100644",
-      "bytes": 93591,
-      "sha256": "6f915114e4c3370ecd85ea2be8f8dff27cf55b73610a3de4fc57d10ab23083b0"
+      "bytes": 117121,
+      "sha256": "f5a2039b6c099391aee4d8ec366bbc1a447ce54bb0c200581ec9089ea0cc95b1"
     },
     {
       "path": "src/core/context-lease.mjs",

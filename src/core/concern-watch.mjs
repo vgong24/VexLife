@@ -1,4 +1,13 @@
 import { canonicalize, semanticHash } from './utils.mjs';
+import { admitIntentSchedulerQueue } from './intent-scheduler.mjs';
+import {
+  createIntentEnvelope,
+  createIntentTrustSnapshot,
+  createIntentWorkgraph,
+  createWorkNode
+} from './intent-workgraph.mjs';
+import { createResourceSnapshot } from './resource-admission.mjs';
+import { createSchedulerRuntimeTrustSnapshot } from './scheduler-runtime-trust.mjs';
 
 export const CONCERN_OBSERVATION_REQUIRED_FIELDS = Object.freeze([
   'concernObservationRef',
@@ -68,6 +77,20 @@ const POLICY_SIGNAL_VOCABULARY = Object.freeze({
   costOfWaiting: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
   costOfFalseAlarm: ['LOW', 'MEDIUM', 'HIGH']
 });
+const CALLER_AUTHORED_SCHEDULER_FIELDS = Object.freeze([
+  'schedulerAggregateFingerprint', 'schedulerCurrentnessReceiptRef',
+  'schedulerCurrentnessReceiptFingerprint', 'writerClaimRef', 'pathClaimFingerprint',
+  'conflictingWriterRefs', 'schedulerGeneration', 'acceptedPriorityClass',
+  'dependencyState', 'activeInteractiveWorkState', 'writerClaimState', 'state',
+  'currentness', 'formedAt', 'observedAt', 'expiresAt'
+]);
+const SCHEDULER_OPTION_FIELDS = Object.freeze([
+  'trustSnapshot', 'runtimeTrustSnapshot', 'resourceSnapshot',
+  'resourceRequestByNodeRef', 'occupancyByNodeRef', 'capabilityLeaseByNodeRef',
+  'effectLeaseByNodeRef', 'resourceLeaseRefByNodeRef', 'recoveryResourceBindingByNodeRef',
+  'workerRef', 'schedulerGeneration', 'fairnessMaxDeferrals', 'fairnessLedger',
+  'formedAt', 'expiresAt', 'observedAt'
+]);
 
 function clone(value) {
   return structuredClone(value);
@@ -686,18 +709,180 @@ function applyAdmissionReview(snapshot, review, registry) {
   snapshot.state = 'ADMISSION_REVIEW';
 }
 
+function schedulerAuthorityEvidenceCore(input, registry) {
+  requireObject(input, 'scheduler authority evidence');
+  const authority = requireObject(registry.schedulerIntegration.externalSchedulerAuthority, 'external scheduler authority contract');
+  const schedulerOptions = requireObject(input.schedulerOptions, 'scheduler authority options');
+  const unknownOptions = Object.keys(schedulerOptions).filter((field) => !SCHEDULER_OPTION_FIELDS.includes(field));
+  if (unknownOptions.length) throw new Error(`scheduler authority options contain unknown fields: ${unknownOptions.join(', ')}`);
+  const missingOptions = SCHEDULER_OPTION_FIELDS.filter((field) => !Object.hasOwn(schedulerOptions, field));
+  if (missingOptions.length) throw new Error(`scheduler authority options omit required fields: ${missingOptions.join(', ')}`);
+  const intentRegistry = clone(requireObject(input.intentRegistry, 'scheduler authority Intent registry'));
+  const schedulerRegistry = clone(requireObject(input.schedulerRegistry, 'scheduler authority Scheduler registry'));
+  const registeredProcessRefs = exactRefs(input.registeredProcessRefs, 'scheduler authority registeredProcessRefs', { required: true });
+  const registeredRoleRefs = exactRefs(input.registeredRoleRefs, 'scheduler authority registeredRoleRefs', { required: true });
+  if (intentRegistry.registryRef !== authority.intentRegistryRef ||
+      semanticHash(intentRegistry) !== authority.intentRegistryFingerprint ||
+      schedulerRegistry.registryRef !== authority.schedulerRegistryRef ||
+      semanticHash(schedulerRegistry) !== authority.schedulerRegistryFingerprint ||
+      semanticHash(registeredProcessRefs) !== authority.registeredProcessRefsFingerprint ||
+      semanticHash(registeredRoleRefs) !== authority.registeredRoleRefsFingerprint) {
+    throw new Error('scheduler authority context is not the exact source-managed Intent/Scheduler context');
+  }
+  return {
+    schemaVersion: authority.evidenceSchemaVersion,
+    contractRef: authority.evidenceContractRef,
+    validationRouteRef: authority.validationRouteRef,
+    externalAdmissionSchemaVersion: authority.admissionSchemaVersion,
+    externalAdmissionContractRef: authority.admissionContractRef,
+    intentRegistry,
+    schedulerRegistry,
+    registeredProcessRefs,
+    registeredRoleRefs,
+    workgraph: clone(requireObject(input.workgraph, 'scheduler authority Workgraph')),
+    schedulerOptions: Object.fromEntries(SCHEDULER_OPTION_FIELDS.map((field) => [field, clone(schedulerOptions[field])])),
+    schedulerQueue: clone(requireObject(input.schedulerQueue, 'scheduler authority queue'))
+  };
+}
+
+function formSchedulerAuthorityEvidence(input, registry) {
+  const core = schedulerAuthorityEvidenceCore(input, registry);
+  return contentAddressed(
+    core,
+    'schedulerAuthorityEvidenceRef',
+    'evidence.concern-watch.scheduler-authority',
+    input.schedulerAuthorityEvidenceRef
+  );
+}
+
+function validateSchedulerAuthorityEvidence(evidence, review, registry) {
+  assertContentAddressed(
+    evidence,
+    'schedulerAuthorityEvidenceRef',
+    'evidence.concern-watch.scheduler-authority',
+    'scheduler authority evidence'
+  );
+  const normalized = schedulerAuthorityEvidenceCore(evidence, registry);
+  if (semanticHash(normalized) !== semanticHash(withoutIdentity(evidence, 'schedulerAuthorityEvidenceRef'))) {
+    throw new Error('scheduler authority evidence schema or contract is stale or substituted');
+  }
+  const authority = registry.schedulerIntegration.externalSchedulerAuthority;
+  const options = clone(evidence.schedulerOptions);
+  const reconstructedQueue = admitIntentSchedulerQueue(evidence.workgraph, {
+    ...options,
+    intentRegistry: evidence.intentRegistry,
+    schedulerRegistry: evidence.schedulerRegistry,
+    registeredProcessRefs: evidence.registeredProcessRefs,
+    registeredRoleRefs: evidence.registeredRoleRefs
+  });
+  if (semanticHash(reconstructedQueue) !== semanticHash(evidence.schedulerQueue)) {
+    throw new Error('external scheduler queue is not reproduced by admitIntentSchedulerQueue');
+  }
+  const queue = evidence.schedulerQueue;
+  const externalAdmission = queue.admissionReceipt;
+  if (queue.schemaVersion !== authority.queueSchemaVersion || queue.state !== 'ADMITTED' ||
+      queue.lifecycle !== 'ADMITTED' || queue.currentness !== 'CURRENT' ||
+      externalAdmission?.schemaVersion !== authority.admissionSchemaVersion ||
+      evidence.externalAdmissionContractRef !== authority.admissionContractRef ||
+      externalAdmission?.currentness !== 'CURRENT' || externalAdmission?.lifecycle !== 'ACTIVE') {
+    throw new Error('external scheduler schema, contract, lifecycle, or currentness is invalid');
+  }
+  const missingAdmissionFields = evidence.schedulerRegistry.admissionRequiredFields.filter((field) =>
+    externalAdmission[field] === undefined || externalAdmission[field] === null || externalAdmission[field] === ''
+  );
+  const admissionContract = evidence.schedulerRegistry.requiredFieldContracts.find((item) =>
+    item.contractKind === 'ADMISSION_RECEIPT' && item.sourceField === 'admissionRequiredFields'
+  );
+  if (missingAdmissionFields.length || admissionContract?.contractRef !== authority.admissionContractRef) {
+    throw new Error('external scheduler admission does not satisfy its exact registered field contract');
+  }
+  const intent = evidence.workgraph.intent;
+  const node = evidence.workgraph.nodes.find((item) => item.workNodeRef === review.workNodeRef);
+  if (!intent || !node || review.proposedWorkRef !== node.workNodeRef ||
+      review.intentEnvelopeRef !== intent.intentRef || review.intentEnvelopeFingerprint !== intent.semanticFingerprint ||
+      review.workgraphRef !== evidence.workgraph.graphRef || review.workgraphFingerprint !== evidence.workgraph.semanticFingerprint ||
+      review.workNodeFingerprint !== node.semanticFingerprint ||
+      semanticHash(review.dependencyRefs) !== semanticHash(node.dependencyRefs) ||
+      semanticHash(review.capabilityRefs) !== semanticHash([node.capabilityEnvelopeRef]) ||
+      semanticHash(review.effectRefs) !== semanticHash([node.effectEnvelopeRef]) ||
+      review.returnRouteRef !== node.returnRouteRef) {
+    throw new Error('external scheduler material is detached from the exact bounded admission-review proposal');
+  }
+  if (queue.graphRef !== review.workgraphRef || queue.graphFingerprint !== review.workgraphFingerprint ||
+      queue.selected?.workNodeRef !== review.workNodeRef || queue.selected?.nodeFingerprint !== review.workNodeFingerprint ||
+      externalAdmission.graphRef !== review.workgraphRef || externalAdmission.graphFingerprint !== review.workgraphFingerprint ||
+      externalAdmission.workNodeRef !== review.workNodeRef || externalAdmission.nodeFingerprint !== review.workNodeFingerprint ||
+      externalAdmission.schedulerGeneration !== queue.generation || options.schedulerGeneration !== queue.generation) {
+    throw new Error('external scheduler aggregate, work node, or generation binding is substituted');
+  }
+  const occupancy = queue.selectedBindings?.occupancy;
+  const resourceRequest = options.resourceRequestByNodeRef?.[review.workNodeRef];
+  const effectLease = queue.selectedBindings?.effectLease;
+  const conflictRefs = queue.admittedReady
+    .map((item) => options.occupancyByNodeRef?.[item.workNodeRef])
+    .filter((item) => item?.claimRef === occupancy?.claimRef && item.workNodeRef !== review.workNodeRef)
+    .map((item) => item.workNodeRef)
+    .sort();
+  if (review.pathClaimRefs.length !== 1 || occupancy?.claimRef !== review.pathClaimRefs[0] || conflictRefs.length ||
+      queue.selected.schedulingClass === 'INTERACTIVE' || queue.selected.schedulingClass !== review.recommendedPriorityClass ||
+      options.resourceSnapshot.activeModelTurn !== false || options.resourceSnapshot.interactiveWaitState !== 'IDLE' ||
+      resourceRequest?.modelTurn !== false || effectLease?.effectDisposition !== 'NO_EFFECTS' ||
+      (effectLease.allowedEffectRefs ?? []).length !== 0) {
+    throw new Error('external scheduler authority bypasses exact writer, priority, interactive-work, worker, or effect boundaries');
+  }
+  if (options.formedAt !== externalAdmission.formedAt || options.observedAt !== externalAdmission.observedAt ||
+      options.expiresAt !== externalAdmission.expiresAt || options.observedAt !== options.runtimeTrustSnapshot.observedAt ||
+      options.observedAt !== options.resourceSnapshot.observedAt) {
+    throw new Error('external scheduler chronology/currentness bindings are substituted');
+  }
+  assertChronology(externalAdmission.formedAt, review.formedAt, 'external scheduler formation');
+  assertChronology(externalAdmission.observedAt, externalAdmission.formedAt, 'external scheduler observation');
+  assertChronology(externalAdmission.expiresAt, externalAdmission.observedAt, 'external scheduler expiry', { strict: true });
+  return {
+    queue,
+    externalAdmission,
+    writerClaimRef: occupancy.claimRef,
+    pathClaimFingerprint: semanticHash(review.pathClaimRefs),
+    acceptedPriorityClass: queue.selected.schedulingClass,
+    conflictingWriterRefs: conflictRefs
+  };
+}
+
 function validateSchedulerAdmissionReceipt(receipt, snapshot, registry) {
   assertContentAddressed(receipt, 'schedulerAdmissionRef', 'concern-scheduler-admission', 'scheduler admission');
   const review = snapshot.admissionReviews.at(-1);
   const threshold = snapshot.thresholdReceipts.at(-1);
+  const authority = validateSchedulerAuthorityEvidence(receipt.schedulerAuthorityEvidence, review, registry);
   for (const [field, expected] of Object.entries({
+    schemaVersion: registry.schedulerIntegration.admissionSchemaVersion,
+    contractRef: registry.schedulerIntegration.admissionContractRef,
     concernAggregateRef: snapshot.aggregateRef,
     concernAggregateFingerprint: currentSnapshotFingerprint(snapshot),
     concernSubjectRef: snapshot.concernSubjectRef,
     thresholdReceiptRef: threshold?.thresholdReceiptRef,
     thresholdReceiptFingerprint: threshold?.semanticFingerprint,
     admissionReviewRef: review?.admissionReviewRef,
-    admissionReviewFingerprint: review?.semanticFingerprint
+    admissionReviewFingerprint: review?.semanticFingerprint,
+    intentEnvelopeRef: review?.intentEnvelopeRef,
+    intentEnvelopeFingerprint: review?.intentEnvelopeFingerprint,
+    workgraphRef: review?.workgraphRef,
+    workgraphFingerprint: review?.workgraphFingerprint,
+    workNodeRef: review?.workNodeRef,
+    workNodeFingerprint: review?.workNodeFingerprint,
+    schedulerAggregateFingerprint: authority.queue.semanticFingerprint,
+    schedulerCurrentnessReceiptRef: authority.externalAdmission.admissionReceiptRef,
+    schedulerCurrentnessReceiptFingerprint: authority.externalAdmission.semanticFingerprint,
+    schedulerAuthorityEvidenceRef: receipt.schedulerAuthorityEvidence?.schedulerAuthorityEvidenceRef,
+    schedulerAuthorityEvidenceFingerprint: receipt.schedulerAuthorityEvidence?.semanticFingerprint,
+    externalSchedulerAdmissionSchemaVersion: authority.externalAdmission.schemaVersion,
+    externalSchedulerAdmissionContractRef: registry.schedulerIntegration.externalSchedulerAuthority.admissionContractRef,
+    writerClaimRef: authority.writerClaimRef,
+    pathClaimFingerprint: authority.pathClaimFingerprint,
+    schedulerGeneration: authority.queue.generation,
+    acceptedPriorityClass: authority.acceptedPriorityClass,
+    formedAt: authority.externalAdmission.formedAt,
+    observedAt: authority.externalAdmission.observedAt,
+    expiresAt: authority.externalAdmission.expiresAt
   })) if (receipt[field] !== expected) throw new Error(`scheduler admission has stale ${field}`);
   if (receipt.state !== 'ADMITTED' || receipt.currentness !== registry.schedulerIntegration.schedulerCurrentnessRequired ||
       receipt.dependencyState !== registry.schedulerIntegration.dependencyStateRequired ||
@@ -985,8 +1170,21 @@ export function createConcernSchedulerAdmissionReceipt(aggregate, review, input,
   if (aggregate.state !== 'ADMISSION_REVIEW' || aggregate.admissionReviews.at(-1)?.admissionReviewRef !== review.admissionReviewRef) {
     throw new Error('scheduler admission review is not current');
   }
+  requireObject(input, 'scheduler admission input');
+  const callerAuthored = CALLER_AUTHORED_SCHEDULER_FIELDS.filter((field) => Object.hasOwn(input, field));
+  if (callerAuthored.length) {
+    throw new Error(`caller-authored scheduler authority fields are forbidden: ${callerAuthored.join(', ')}`);
+  }
+  const unknownInput = Object.keys(input).filter((field) => field !== 'schedulerAuthorityEvidence');
+  if (unknownInput.length) throw new Error(`scheduler admission input contains unknown fields: ${unknownInput.join(', ')}`);
   const threshold = aggregate.thresholdReceipts.at(-1);
-  const acceptedPriorityClass = assertKnown(input.acceptedPriorityClass, source.vocabularies.priorityClasses, 'acceptedPriorityClass');
+  const schedulerAuthorityEvidence = formSchedulerAuthorityEvidence(input.schedulerAuthorityEvidence, source);
+  const authority = validateSchedulerAuthorityEvidence(schedulerAuthorityEvidence, review, source);
+  const acceptedPriorityClass = assertKnown(
+    authority.acceptedPriorityClass,
+    source.vocabularies.priorityClasses,
+    'acceptedPriorityClass'
+  );
   const core = {
     schemaVersion: source.schedulerIntegration.admissionSchemaVersion,
     contractRef: source.schedulerIntegration.admissionContractRef,
@@ -1003,22 +1201,27 @@ export function createConcernSchedulerAdmissionReceipt(aggregate, review, input,
     workgraphFingerprint: review.workgraphFingerprint,
     workNodeRef: review.workNodeRef,
     workNodeFingerprint: review.workNodeFingerprint,
-    schedulerAggregateFingerprint: requireFingerprint(input.schedulerAggregateFingerprint, 'schedulerAggregateFingerprint'),
-    schedulerCurrentnessReceiptRef: requireString(input.schedulerCurrentnessReceiptRef, 'schedulerCurrentnessReceiptRef'),
-    schedulerCurrentnessReceiptFingerprint: requireFingerprint(input.schedulerCurrentnessReceiptFingerprint, 'schedulerCurrentnessReceiptFingerprint'),
-    writerClaimRef: requireString(input.writerClaimRef, 'writerClaimRef'),
-    pathClaimFingerprint: requireFingerprint(input.pathClaimFingerprint, 'pathClaimFingerprint'),
-    conflictingWriterRefs: exactRefs(input.conflictingWriterRefs ?? [], 'conflictingWriterRefs'),
-    schedulerGeneration: input.schedulerGeneration,
+    schedulerAggregateFingerprint: authority.queue.semanticFingerprint,
+    schedulerCurrentnessReceiptRef: authority.externalAdmission.admissionReceiptRef,
+    schedulerCurrentnessReceiptFingerprint: authority.externalAdmission.semanticFingerprint,
+    schedulerAuthorityEvidenceRef: schedulerAuthorityEvidence.schedulerAuthorityEvidenceRef,
+    schedulerAuthorityEvidenceFingerprint: schedulerAuthorityEvidence.semanticFingerprint,
+    externalSchedulerAdmissionSchemaVersion: authority.externalAdmission.schemaVersion,
+    externalSchedulerAdmissionContractRef: source.schedulerIntegration.externalSchedulerAuthority.admissionContractRef,
+    schedulerAuthorityEvidence,
+    writerClaimRef: authority.writerClaimRef,
+    pathClaimFingerprint: authority.pathClaimFingerprint,
+    conflictingWriterRefs: authority.conflictingWriterRefs,
+    schedulerGeneration: authority.queue.generation,
     acceptedPriorityClass,
-    dependencyState: input.dependencyState,
-    activeInteractiveWorkState: input.activeInteractiveWorkState,
-    writerClaimState: input.writerClaimState,
-    state: input.state,
-    currentness: input.currentness,
-    formedAt: canonicalTimestamp(input.formedAt, 'scheduler admission formedAt'),
-    observedAt: canonicalTimestamp(input.observedAt, 'scheduler admission observedAt'),
-    expiresAt: canonicalTimestamp(input.expiresAt, 'scheduler admission expiresAt'),
+    dependencyState: 'SATISFIED',
+    activeInteractiveWorkState: 'RETAINED',
+    writerClaimState: 'EXACT_SINGLE_WRITER',
+    state: 'ADMITTED',
+    currentness: 'CURRENT',
+    formedAt: canonicalTimestamp(authority.externalAdmission.formedAt, 'scheduler admission formedAt'),
+    observedAt: canonicalTimestamp(authority.externalAdmission.observedAt, 'scheduler admission observedAt'),
+    expiresAt: canonicalTimestamp(authority.externalAdmission.expiresAt, 'scheduler admission expiresAt'),
     modelWorkerLeased: false,
     externalEffectsAuthorized: false
   };
@@ -1378,6 +1581,17 @@ export function validateIntegratedConcernWatchReceipt(receipt, { registry } = {}
         priorLineage.priorClosureRef !== closure.closureRef || priorLineage.priorClosureFingerprint !== closure.semanticFingerprint) {
       errors.push('integrated receipt causal aggregates do not share exact subject, closure, and recurrence lineage');
     }
+    const schedulerEventIndex = evidence.resolvedAggregate.events.findIndex((event) => event.type === 'SCHEDULER_ADMITTED');
+    if (schedulerEventIndex < 0) {
+      errors.push('integrated receipt omits the external scheduler-admission event');
+    } else {
+      const preSchedulerAggregate = replay(
+        evidence.resolvedAggregate.root,
+        evidence.resolvedAggregate.events.slice(0, schedulerEventIndex),
+        source
+      );
+      validateSchedulerAdmissionReceipt(evidence.schedulerAdmission, preSchedulerAggregate, source);
+    }
     for (const [label, supplied, recorded] of [
       ['threshold receipt', evidence.thresholdReceipt, evidence.resolvedAggregate.thresholdReceipts.at(-1)],
       ['admission review', evidence.admissionReview, evidence.resolvedAggregate.admissionReviews.at(-1)],
@@ -1430,6 +1644,237 @@ export function createConcernWatchEvidenceConsumptionReceipt(integratedReceipt, 
   }, 'consumptionReceiptRef', `concern-watch-consumption.${consumerRef.toLowerCase().replaceAll('_', '-')}`);
 }
 
+function schedulerBindingRefs(nodes, intentRegistry) {
+  return Object.fromEntries(intentRegistry.bindingFields.map((field) => [
+    field,
+    [...new Set(nodes.flatMap((item) => Array.isArray(item[field]) ? item[field] : [item[field]]).filter(Boolean))].sort()
+  ]));
+}
+
+function deterministicSchedulerProposal({ schedulerContext, suffix, formedAt, transitionTimes, claimRef }) {
+  const context = requireObject(schedulerContext, 'ConcernWatch deterministic scheduler context');
+  const intentRegistry = requireObject(context.intentRegistry, 'ConcernWatch deterministic Intent registry');
+  const intentRef = `intent.concern-watch.${suffix}`;
+  const workNodeRef = `work-node.concern-watch.${suffix}`;
+  const intent = createIntentEnvelope({
+    intentRef,
+    originMessageRef: `message.${intentRef}`,
+    originSpeakerRef: 'person.victor',
+    recipientRoleRef: 'role.vex.developer',
+    projectRef: 'project.vexlife',
+    threadRef: `thread.concern-watch.${suffix}`,
+    channelRef: `channel.concern-watch.${suffix}`,
+    originalContentHash: semanticHash({ suffix, source: 'ConcernWatch deterministic scheduler proposal' }),
+    desiredOutcome: { intentKey: 'CONCERN_WATCH_NO_EFFECT_REPAIR', summary: 'Exercise exact scheduler authority without effects' },
+    constraints: ['NO_EXTERNAL_EFFECTS', 'NO_MODEL_TURN'],
+    createdAt: formedAt,
+    sourceLineageRef: `lineage.concern-watch.${suffix}`
+  }, intentRegistry);
+  const node = createWorkNode({
+    workNodeRef,
+    rootIntentRef: intentRef,
+    purpose: 'Validate the exact bounded ConcernWatch proposal through the accepted scheduler route',
+    processRef: 'process.vexlife.intent.validate-workgraph',
+    state: 'READY',
+    dependencyRefs: [],
+    childRefs: [],
+    roleRef: 'role.vex.developer',
+    priorityClass: 'HIGH',
+    applicableCultureRefs: ['foundation.vexlife.state-relay.v1'],
+    applicableLessonRefs: [],
+    applicableBurdenReleaseRefs: [],
+    capabilityEnvelopeRef: `capability-envelope.${workNodeRef}`,
+    effectEnvelopeRef: `effect-envelope.${workNodeRef}`,
+    resourceEnvelopeRef: `resource-envelope.${workNodeRef}`,
+    expectedTransitionRef: `expected-transition.${workNodeRef}`,
+    completionGateRefs: [`completion-gate.${workNodeRef}`],
+    returnRouteRef: 'return-route.concern-watch.operations',
+    sourceRefs: ['source.concern-watch.scheduler-authority'],
+    createdAt: formedAt
+  }, intentRegistry);
+  let priorState = 'CAPTURED';
+  const transitions = ['DECOMPOSED', 'PLAN_VALIDATED', 'READY'].map((nextState, sequence) => {
+    const transition = {
+      transitionRef: `transition.concern-watch.${suffix}.${sequence}`,
+      workNodeRef,
+      sequence,
+      priorState,
+      nextState,
+      reason: 'ConcernWatch deterministic scheduler-authority formation',
+      actorRef: 'vex.concern-watch.simulated',
+      actorRoleRef: 'role.vex.developer',
+      processRef: 'process.vexlife.intent.verify-transition',
+      sourceRefs: ['source.concern-watch.scheduler-authority'],
+      createdAt: transitionTimes[sequence]
+    };
+    priorState = nextState;
+    return transition;
+  });
+  const workgraph = createIntentWorkgraph({
+    graphRef: `intent-workgraph.concern-watch.${suffix}`,
+    intent,
+    nodes: [node],
+    transitions,
+    receipts: [],
+    bindingRefs: schedulerBindingRefs([node], intentRegistry),
+    createdAt: formedAt
+  }, intentRegistry);
+  return { intent, node, workgraph, claimRef };
+}
+
+function deterministicSchedulerAuthorityEvidence({ schedulerContext, proposal, formedAt, observedAt, expiresAt, suffix }) {
+  const context = requireObject(schedulerContext, 'ConcernWatch deterministic scheduler context');
+  const { intentRegistry, schedulerRegistry } = context;
+  const registeredProcessRefs = exactRefs(context.registeredProcessRefs, 'deterministic scheduler registeredProcessRefs', { required: true });
+  const registeredRoleRefs = exactRefs(context.registeredRoleRefs, 'deterministic scheduler registeredRoleRefs', { required: true });
+  const sourceRef = 'source.intent-scheduler.test-runtime';
+  const sourceHash = semanticHash({ source: 'ConcernWatch deterministic scheduler runtime/v1' });
+  const schedulerGeneration = 1;
+  const workerRef = 'worker.model.test.primary';
+  const trustSnapshot = createIntentTrustSnapshot({
+    schemaVersion: 'vexlife.intent-trust-snapshot/v0',
+    snapshotRef: `trust-snapshot.concern-watch.${suffix}`,
+    sourceRef: 'src/core/concern-watch.mjs#deterministic-scheduler-authority',
+    formationRef: 'formation.concern-watch.scheduler-trust.v1',
+    formedAt,
+    currentness: 'CURRENT',
+    bindingRefs: schedulerBindingRefs(proposal.workgraph.nodes, intentRegistry),
+    actorRefs: ['person.victor', 'vex.concern-watch.simulated'],
+    decisionRefs: [],
+    authorizationBindings: []
+  }, intentRegistry);
+  const resourceSnapshot = createResourceSnapshot({
+    snapshotRef: `resource-snapshot.concern-watch.${suffix}`,
+    generation: schedulerGeneration,
+    sourceRef,
+    sourceHash,
+    formationRef: 'formation.concern-watch.scheduler-resource.v1',
+    evidenceClass: 'SIMULATED_CURRENT',
+    cpuLoadPct: 20,
+    cpuConcurrencyLimit: 4,
+    cpuActiveCount: 0,
+    ramAvailableMb: 16384,
+    ramReservedMb: 1024,
+    gpuAvailable: false,
+    vramAvailableMb: 0,
+    vramReservedMb: 0,
+    modelResident: false,
+    activeModelTurn: false,
+    activeHeavyTool: false,
+    interactiveWaitState: 'IDLE',
+    backgroundWorkAdmission: 'ADMITTED',
+    thermalPowerState: 'NOT_EXPOSED',
+    currentness: 'CURRENT',
+    formedAt,
+    observedAt,
+    expiresAt
+  });
+  const runtimeTrustSnapshot = createSchedulerRuntimeTrustSnapshot({
+    snapshotRef: `runtime-snapshot.concern-watch.${suffix}`,
+    sourceRef,
+    sourceHash,
+    formationRef: 'formation.concern-watch.scheduler-runtime.v1',
+    evidenceClass: 'SIMULATED_CURRENT',
+    schedulerGeneration,
+    formedAt,
+    observedAt,
+    expiresAt,
+    workerRef,
+    actorRef: 'vex.concern-watch.simulated',
+    roleRef: proposal.node.roleRef,
+    claimRef: proposal.claimRef,
+    occupancyRef: `occupancy.concern-watch.scheduler.${suffix}`,
+    leaseAuthorityRef: 'authority.intent-scheduler.test-runtime',
+    resourceSnapshotRef: resourceSnapshot.snapshotRef,
+    resourceSnapshotFingerprint: resourceSnapshot.semanticFingerprint,
+    currentness: 'CURRENT'
+  }, { schedulerRegistry, resourceSnapshot });
+  const common = {
+    runtimeSnapshotRef: runtimeTrustSnapshot.snapshotRef,
+    runtimeSnapshotFingerprint: runtimeTrustSnapshot.semanticFingerprint,
+    schedulerGeneration,
+    authorityRef: runtimeTrustSnapshot.leaseAuthorityRef,
+    sourceRef,
+    sourceHash,
+    formedAt,
+    observedAt,
+    expiresAt,
+    currentness: 'CURRENT',
+    lifecycle: 'ACTIVE'
+  };
+  const workNodeRef = proposal.node.workNodeRef;
+  const schedulerOptions = {
+    trustSnapshot,
+    runtimeTrustSnapshot,
+    resourceSnapshot,
+    resourceRequestByNodeRef: {
+      [workNodeRef]: { cpuSlots: 1, ramMb: 64, vramMb: 0, modelTurn: false, heavyTool: false, background: false }
+    },
+    occupancyByNodeRef: {
+      [workNodeRef]: {
+        occupancyRef: runtimeTrustSnapshot.occupancyRef,
+        actorRef: runtimeTrustSnapshot.actorRef,
+        roleRef: proposal.node.roleRef,
+        workNodeRef,
+        graphFingerprint: proposal.workgraph.semanticFingerprint,
+        claimRef: proposal.claimRef,
+        formationRef: `formation.concern-watch.scheduler-occupancy.${suffix}`,
+        ...common
+      }
+    },
+    capabilityLeaseByNodeRef: {
+      [workNodeRef]: {
+        leaseRef: `capability-lease.concern-watch.${suffix}`,
+        workNodeRef,
+        graphFingerprint: proposal.workgraph.semanticFingerprint,
+        trustSnapshotFingerprint: trustSnapshot.semanticFingerprint,
+        envelopeRef: proposal.node.capabilityEnvelopeRef,
+        formationRef: `formation.concern-watch.scheduler-capability.${suffix}`,
+        toolRefs: [],
+        ...common
+      }
+    },
+    effectLeaseByNodeRef: {
+      [workNodeRef]: {
+        leaseRef: `effect-lease.concern-watch.${suffix}`,
+        workNodeRef,
+        graphFingerprint: proposal.workgraph.semanticFingerprint,
+        trustSnapshotFingerprint: trustSnapshot.semanticFingerprint,
+        envelopeRef: proposal.node.effectEnvelopeRef,
+        formationRef: `formation.concern-watch.scheduler-effect.${suffix}`,
+        effectDisposition: 'NO_EFFECTS',
+        allowedEffectRefs: [],
+        ...common
+      }
+    },
+    resourceLeaseRefByNodeRef: { [workNodeRef]: `resource-lease.concern-watch.${suffix}` },
+    recoveryResourceBindingByNodeRef: {},
+    workerRef,
+    schedulerGeneration,
+    fairnessMaxDeferrals: schedulerRegistry.fairnessPolicy.maxDeferrals,
+    fairnessLedger: {},
+    formedAt,
+    expiresAt,
+    observedAt
+  };
+  const schedulerQueue = admitIntentSchedulerQueue(proposal.workgraph, {
+    ...schedulerOptions,
+    intentRegistry,
+    schedulerRegistry,
+    registeredProcessRefs,
+    registeredRoleRefs
+  });
+  return {
+    intentRegistry,
+    schedulerRegistry,
+    registeredProcessRefs,
+    registeredRoleRefs,
+    workgraph: proposal.workgraph,
+    schedulerOptions,
+    schedulerQueue
+  };
+}
+
 function simulationObservation(registry, index, input, subject = null, recurrenceBinding = null) {
   const sourceBinding = {
     sourceRef: `source.concern-watch.simulation.${index}`,
@@ -1462,7 +1907,7 @@ function simulationObservation(registry, index, input, subject = null, recurrenc
   }, { registry });
 }
 
-export function runDeterministicConcernWatchJourney({ registry } = {}) {
+export function runDeterministicConcernWatchJourney({ registry, schedulerContext } = {}) {
   const source = registryOrThrow(registry);
   const t = (seconds) => new Date(Date.parse('2026-08-02T00:00:00.000Z') + seconds * 1000).toISOString();
   const journeyStates = [];
@@ -1504,38 +1949,49 @@ export function runDeterministicConcernWatchJourney({ registry } = {}) {
   aggregate = recordThresholdEvaluation(aggregate, threshold, { registry: source }).aggregate;
   if (!threshold.thresholdCrossed || aggregate.state !== 'THRESHOLD_MET') throw new Error('exact source-managed threshold did not cross');
   journeyStates.push('EXACT_POLICY_THRESHOLD_CROSSED');
-  const workgraphFingerprint = semanticHash({ graphRef: 'intent-workgraph.concern-watch.simulation.1', concernSubjectRef: subject.concernSubjectRef });
-  const workNodeFingerprint = semanticHash({ workNodeRef: 'work.concern-watch.simulation.1', graphFingerprint: workgraphFingerprint });
-  const intentEnvelopeFingerprint = semanticHash({ intentEnvelopeRef: 'intent.concern-watch.simulation.1', source: threshold.thresholdReceiptRef });
+  const claimRef = 'claim.vexlife.concernwatch.f36d83b2-d821-484c-8d40-ae74f8c9d745';
+  const proposal = deterministicSchedulerProposal({
+    schedulerContext,
+    suffix: 'simulation.1',
+    formedAt: t(8),
+    transitionTimes: [t(8), t(9), t(10)],
+    claimRef
+  });
   const review = formConcernAdmissionReview(aggregate, {
-    proposedWorkRef: 'work.vexlife.concernwatch.b8eef37a-171b-468b-833f-1aa0cfce173c',
-    intentEnvelopeRef: 'intent.concern-watch.simulation.1', intentEnvelopeFingerprint,
-    workgraphRef: 'intent-workgraph.concern-watch.simulation.1', workgraphFingerprint,
-    workNodeRef: 'work.concern-watch.simulation.1', workNodeFingerprint,
-    dependencyRefs: ['work.vexlife.runtime-failure-recovery'],
-    pathClaimRefs: ['claim.vexlife.concernwatch.f36d83b2-d821-484c-8d40-ae74f8c9d745'],
-    capabilityRefs: [], effectRefs: [], returnRouteRef: 'return-route.concern-watch.operations',
-    formedAt: t(9)
+    proposedWorkRef: proposal.node.workNodeRef,
+    intentEnvelopeRef: proposal.intent.intentRef,
+    intentEnvelopeFingerprint: proposal.intent.semanticFingerprint,
+    workgraphRef: proposal.workgraph.graphRef,
+    workgraphFingerprint: proposal.workgraph.semanticFingerprint,
+    workNodeRef: proposal.node.workNodeRef,
+    workNodeFingerprint: proposal.node.semanticFingerprint,
+    dependencyRefs: proposal.node.dependencyRefs,
+    pathClaimRefs: [claimRef],
+    capabilityRefs: [proposal.node.capabilityEnvelopeRef],
+    effectRefs: [proposal.node.effectEnvelopeRef],
+    returnRouteRef: proposal.node.returnRouteRef,
+    formedAt: t(11)
   }, { registry: source });
   aggregate = recordConcernAdmissionReview(aggregate, review, { registry: source }).aggregate;
   journeyStates.push('ADMISSION_REVIEW_FORMED');
-  const schedulerInput = {
-    schedulerAggregateFingerprint: semanticHash({ scheduler: 'concern-watch-simulation', generation: 1 }),
-    schedulerCurrentnessReceiptRef: 'receipt.scheduler-currentness.concern-watch.simulation.1',
-    schedulerCurrentnessReceiptFingerprint: semanticHash({ current: true, generation: 1 }),
-    writerClaimRef: 'claim.vexlife.concernwatch.f36d83b2-d821-484c-8d40-ae74f8c9d745',
-    pathClaimFingerprint: semanticHash(review.pathClaimRefs), conflictingWriterRefs: [], schedulerGeneration: 1,
-    acceptedPriorityClass: threshold.recommendedPriorityClass, dependencyState: 'SATISFIED',
-    activeInteractiveWorkState: 'RETAINED', writerClaimState: 'EXACT_SINGLE_WRITER',
-    state: 'ADMITTED', currentness: 'CURRENT', formedAt: t(10), observedAt: t(11), expiresAt: t(60)
-  };
+  const schedulerInput = { schedulerAuthorityEvidence: deterministicSchedulerAuthorityEvidence({
+    schedulerContext,
+    proposal,
+    formedAt: t(12),
+    observedAt: t(13),
+    expiresAt: t(60),
+    suffix: 'simulation.1'
+  }) };
   const admission = createConcernSchedulerAdmissionReceipt(aggregate, review, schedulerInput, { registry: source });
   aggregate = recordConcernSchedulerAdmission(aggregate, admission, { registry: source }).aggregate;
   journeyStates.push('ONE_WORKGRAPH_ROUTE_SCHEDULER_ADMITTED');
   const beforeOverlap = aggregate.semanticFingerprint;
   let overlapRejected = false;
   try {
-    createConcernSchedulerAdmissionReceipt(aggregate, review, { ...schedulerInput, conflictingWriterRefs: ['writer.conflict.simulated'] }, { registry: source });
+    createConcernSchedulerAdmissionReceipt(aggregate, review, {
+      ...schedulerInput,
+      conflictingWriterRefs: ['writer.conflict.simulated']
+    }, { registry: source });
   } catch {
     overlapRejected = true;
     if (aggregate.semanticFingerprint !== beforeOverlap) throw new Error('overlap rejection mutated aggregate');
@@ -1550,7 +2006,7 @@ export function runDeterministicConcernWatchJourney({ registry } = {}) {
     schedulerCurrentnessReceiptRef: admission.schedulerCurrentnessReceiptRef,
     schedulerCurrentnessReceiptFingerprint: admission.schedulerCurrentnessReceiptFingerprint,
     schedulerCurrentness: 'CURRENT', currentness: 'CURRENT',
-    evidenceRefs: ['evidence.concern-watch.recovery.simulation.1'], observedAt: t(12)
+    evidenceRefs: ['evidence.concern-watch.recovery.simulation.1'], observedAt: t(14)
   }, { registry: source });
   aggregate = recordRecoveryConcernEvidence(aggregate, recovery, { registry: source }).aggregate;
   journeyStates.push('RECOVERY_FAILURE_RECORDED_AS_CURRENT_EVIDENCE');
@@ -1559,11 +2015,11 @@ export function runDeterministicConcernWatchJourney({ registry } = {}) {
     completionReceiptFingerprint: semanticHash({ completion: 'concern-watch-simulation', state: 'COMPLETED' }),
     schedulerAggregateFingerprint: semanticHash({ scheduler: 'concern-watch-simulation', generation: 1, completed: true }),
     workNodeRef: admission.workNodeRef, workNodeFingerprint: admission.workNodeFingerprint,
-    state: 'COMPLETED', currentness: 'CURRENT', observedAt: t(13)
+    state: 'COMPLETED', currentness: 'CURRENT', observedAt: t(15)
   };
   const closure = createConcernClosureReceipt(aggregate, {
     disposition: 'RESOLVED_WATCH_FOR_RECURRENCE', evidenceRefs: [recovery.recoveryConcernEvidenceRef],
-    schedulerCompletion: completion, closedByRef: 'scheduler.concern-watch.simulated', closedAt: t(14)
+    schedulerCompletion: completion, closedByRef: 'scheduler.concern-watch.simulated', closedAt: t(16)
   }, { registry: source });
   const resolved = closeConcern(aggregate, closure, { registry: source }).aggregate;
   const projection = projectConcernAggregate(resolved, { registry: source });
@@ -1576,17 +2032,17 @@ export function runDeterministicConcernWatchJourney({ registry } = {}) {
     priorClosureFingerprint: closure.semanticFingerprint
   };
   const recurrenceObservation = simulationObservation(source, 5, {
-    observedAt: t(16), observerRef: 'check.concern-watch.simulated.recurrence', signalClass: 'FAILED_CHECK',
+    observedAt: t(18), observerRef: 'check.concern-watch.simulated.recurrence', signalClass: 'FAILED_CHECK',
     certaintyClass: 'SUPPORTED', impactClass: 'HIGH', evidenceOriginClass: 'INDEPENDENT_CHECK',
     evidenceRef: 'evidence.concern-watch.simulation.recurrence.1'
   }, subject, priorLineage);
-  const recurrence = reopenConcernFromRecurrence(resolved, recurrenceObservation, { formedAt: t(15) }, { registry: source });
+  const recurrence = reopenConcernFromRecurrence(resolved, recurrenceObservation, { formedAt: t(17) }, { registry: source });
   journeyStates.push('RECURRENCE_REOPENED_WITH_EXACT_PRIOR_LINEAGE');
   const receipt = contentAddressed(integratedReceiptCore({ journeyStates, subject, resolved, recurrence, threshold, review, admission, recovery, projection }, source), 'receiptRef', 'receipt.concern-watch.integrated');
   const validation = validateIntegratedConcernWatchReceipt(receipt, { registry: source });
   if (!validation.ok) throw new Error(validation.errors.join('; '));
-  const prReadyReceipt = createConcernWatchEvidenceConsumptionReceipt(receipt, 'PR_READY', { observedAt: t(17) }, { registry: source });
-  const healthReceipt = createConcernWatchEvidenceConsumptionReceipt(receipt, 'HEALTH', { observedAt: t(18) }, { registry: source });
+  const prReadyReceipt = createConcernWatchEvidenceConsumptionReceipt(receipt, 'PR_READY', { observedAt: t(19) }, { registry: source });
+  const healthReceipt = createConcernWatchEvidenceConsumptionReceipt(receipt, 'HEALTH', { observedAt: t(20) }, { registry: source });
   return deepFreeze({ receipt, prReadyReceipt, healthReceipt, resolvedAggregate: resolved, recurrenceAggregate: recurrence });
 }
 
@@ -1603,7 +2059,7 @@ export function validateConcernWatchRegistry(registry) {
   }
   const contracts = registry.contractIdentities ?? [];
   const contractRefs = contracts.map((item) => item.contractRef);
-  if (contracts.length !== 12 || new Set(contractRefs).size !== contracts.length || contracts.some((item) => !item.contractKind)) {
+  if (contracts.length !== 13 || new Set(contractRefs).size !== contracts.length || contracts.some((item) => !item.contractKind)) {
     errors.push('registry contract identities are incomplete or duplicated');
   }
   if (semanticHash(registry.observationContract?.requiredFields) !== semanticHash(CONCERN_OBSERVATION_REQUIRED_FIELDS)) errors.push('observation required fields drifted from implementation');
@@ -1614,6 +2070,7 @@ export function validateConcernWatchRegistry(registry) {
     registry.observationContract?.contractRef, registry.subjectContract?.contractRef,
     registry.lifecycleContract?.contractRef, registry.thresholdPolicy?.contractRef,
     registry.schedulerIntegration?.admissionContractRef, registry.humanAttentionContract?.contractRef,
+    registry.schedulerIntegration?.externalSchedulerAuthority?.evidenceContractRef,
     registry.closureContract?.contractRef, registry.projectionContract?.contractRef,
     registry.integratedJourney?.contractRef, registry.evidenceConsumption?.contractRef
   ]) if (!contractRefs.includes(contractRef)) errors.push(`nested contract is not registered: ${contractRef}`);
@@ -1650,6 +2107,24 @@ export function validateConcernWatchRegistry(registry) {
       registry.schedulerIntegration?.activeInteractiveWorkMayBePreempted !== false ||
       registry.schedulerIntegration?.externalEffectsAuthorized !== false) {
     errors.push('scheduler integration violates dormant, interactive, or no-effect boundaries');
+  }
+  const externalSchedulerAuthority = registry.schedulerIntegration?.externalSchedulerAuthority;
+  if (externalSchedulerAuthority?.evidenceSchemaVersion !== 'vexlife.concern-scheduler-authority-evidence/v1' ||
+      externalSchedulerAuthority?.evidenceContractRef !== 'contract.vexlife.concern-scheduler-authority-evidence/v1' ||
+      externalSchedulerAuthority?.validationRouteRef !== 'src/core/intent-scheduler.mjs#admitIntentSchedulerQueue' ||
+      externalSchedulerAuthority?.queueSchemaVersion !== 'vexlife.intent-scheduler-queue/v1' ||
+      externalSchedulerAuthority?.admissionSchemaVersion !== 'vexlife.intent-scheduler-admission-receipt/v1' ||
+      externalSchedulerAuthority?.admissionContractRef !== 'contract.intent-scheduler.admission-fields' ||
+      ![externalSchedulerAuthority?.intentRegistryFingerprint,
+        externalSchedulerAuthority?.schedulerRegistryFingerprint,
+        externalSchedulerAuthority?.registeredProcessRefsFingerprint,
+        externalSchedulerAuthority?.registeredRoleRefsFingerprint].every((value) => /^[a-f0-9]{64}$/.test(value ?? '')) ||
+      externalSchedulerAuthority?.recordRevalidatesExternalSchedulerRoute !== true ||
+      externalSchedulerAuthority?.replayRevalidatesExternalSchedulerRoute !== true ||
+      externalSchedulerAuthority?.integratedConsumerRevalidatesExternalSchedulerRoute !== true ||
+      externalSchedulerAuthority?.callerAuthoredCurrentnessAllowed !== false ||
+      externalSchedulerAuthority?.liveClockRequired !== false) {
+    errors.push('external scheduler authority contract is incomplete or permits self-attestation');
   }
   if (registry.projectionContract?.changedOnly !== true || registry.projectionContract?.derivedFromOneReplayedAggregate !== true ||
       registry.projectionContract?.normalProjectionContainsRawObservationHistory !== false ||
