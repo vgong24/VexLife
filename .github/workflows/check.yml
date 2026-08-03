@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   foundation:
-    name: Source, blueprint, real effect, and browser contracts
+    name: Source, blueprint, and actual browser contracts
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
