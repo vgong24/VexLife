@@ -196,6 +196,14 @@ export function cleanupDisposableGitRepository({ workspaceRoot, repositoryPath, 
   });
 }
 
+function integratedReceiptFromStored(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const receipt = structuredClone(value);
+  delete receipt.prReadyConsumptionReceipt;
+  delete receipt.healthConsumptionReceipt;
+  return receipt;
+}
+
 async function runDirectBuildAdmissionCheck() {
     const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
     const args = process.argv.slice(2); const consumerIndex = args.indexOf('--consumer'); const receiptIndex = args.indexOf('--receipt');
@@ -208,10 +216,10 @@ async function runDirectBuildAdmissionCheck() {
       const bundle=loadBlueprint(ROOT), registry=bundle.blueprint.buildAdmission, manifest=buildSourceManifest(ROOT), repository=collectRepositoryEvidence(ROOT), blueprint=validateBlueprint(bundle);
       const rv=validateBuildAdmissionRegistry(registry); if(!rv.ok||!blueprint.ok) throw new Error([...rv.errors,...blueprint.errors].join('; '));
       const relative=receiptIndex>=0?args[receiptIndex+1]:registry.simulationContract.receiptPath, receiptPath=resolveSafeGeneratedReceiptPath(ROOT,relative,'Build Admission receipt path');
-      let receipt=null; try{receipt=JSON.parse(fs.readFileSync(receiptPath,'utf8'));}catch{}
+      let receipt=null; try{receipt=integratedReceiptFromStored(JSON.parse(fs.readFileSync(receiptPath,'utf8')));}catch{}
       let validation=receipt?validateIntegratedBuildAdmissionReceipt(receipt,{registry}):{ok:false,errors:['receipt unavailable']};
       const current=validation.ok&&receipt.sourceTreeSha256===manifest.treeSha256&&receipt.blueprintHash===blueprint.semanticHash&&receipt.candidateHeadSha===repository.git.candidateHeadSha&&receipt.testedCheckoutSha===repository.git.checkoutSha&&receipt.testedMergeSha===repository.git.testedMergeSha&&receipt.baseSha===repository.git.baseSha;
-      if(!current){const simulation=runBuildAdmissionSimulation({root:ROOT,receiptPath:relative});receipt=simulation.receipt;validation=simulation.validation;}
+      if(!current){const simulation=runBuildAdmissionSimulation({root:ROOT,receiptPath:relative});receipt=integratedReceiptFromStored(simulation.receipt);validation=validateIntegratedBuildAdmissionReceipt(receipt,{registry});}
       if(!validation.ok||receipt.sourceTreeSha256!==manifest.treeSha256||receipt.blueprintHash!==blueprint.semanticHash||receipt.candidateHeadSha!==repository.git.candidateHeadSha||receipt.testedCheckoutSha!==repository.git.checkoutSha||receipt.testedMergeSha!==repository.git.testedMergeSha||receipt.baseSha!==repository.git.baseSha) throw new Error(`Build Admission receipt is not exact-current: ${validation.errors.join('; ')}`);
       const consumerRef=consumerIndex>=0?args[consumerIndex+1]:null; let consumptionReceipt=null;
       if(consumerRef){consumptionReceipt=createBuildAdmissionConsumptionReceipt(receipt,consumerRef,{observedAt:new Date().toISOString()},{registry});writeJson(resolveSafeGeneratedReceiptPath(ROOT,`generated/health/build-admission-${consumerRef.toLowerCase()}-consumption.json`,'Build Admission consumer receipt path'),consumptionReceipt);}
