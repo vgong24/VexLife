@@ -28,6 +28,13 @@ test('unknown or unverified PR workRef remains ATTENTION rather than becoming gr
     'VEXLIFE_TESTED_MERGE_SHA',
     'VEXLIFE_BASE_SHA'
   ]) delete environment[name];
+  environment.VEXLIFE_REPOSITORY_VISIBILITY = 'private';
+  environment.VEXLIFE_LIFECYCLE_STATE = 'PRIVATE_STAGING';
+  environment.VEXLIFE_PR_NUMBER = '42';
+  environment.VEXLIFE_CURRENT_WORK_EVENT_NAME = 'pull_request';
+  environment.VEXLIFE_CURRENT_WORK_EVENT_PATH = 'test/fixtures/orientation/github-pr-current-work-duplicate.json';
+  environment.VEXLIFE_CANDIDATE_HEAD_SHA = '1111111111111111111111111111111111111111';
+  environment.VEXLIFE_BASE_SHA = '2222222222222222222222222222222222222222';
   const orientation = spawnSync(process.execPath, ['scripts/orient.mjs'], {
     cwd: ROOT,
     env: environment,

@@ -130,8 +130,8 @@
     {
       "path": "test/pr-ready-attention.e2e.mjs",
       "mode": "100644",
-      "bytes": 3038,
-      "sha256": "88c095166feaa10e5f68d45638e68ed15f26728cd045d22c8f65e85950c1adee"
+      "bytes": 3537,
+      "sha256": "f395bdd9b6d7c04a2a4abaa3d31f1fc82226a52fa0326dcb347d93a6491d0920"
     },
     {
       "path": "test/public-safety.test.mjs",
