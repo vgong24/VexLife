@@ -22,8 +22,8 @@
     {
       "path": "scripts/build-admission-simulate.mjs",
       "mode": "100644",
-      "bytes": 13010,
-      "sha256": "b31a421d7c2d4a227b1c2058bd7ded80eccfb6a6e99e34a7020267a1f1ea3053"
+      "bytes": 13339,
+      "sha256": "017abf5d78313903446dd51f4fbaab56494c9f56a2d90f942f021f4e0061c3eb"
     },
     {
       "path": "scripts/build-admission-status.mjs",

@@ -12,6 +12,7 @@ import {
   createIntegratedBuildAdmissionReceipt,
   createSourceManagedBuildAuthority,
   projectBuildAdmission,
+  readIntegratedBuildAdmissionReceipt,
   validateBuildAdmissionRegistry,
   validateIntegratedBuildAdmissionReceipt,
   validateSourceManagedBuildAuthority,
@@ -278,9 +279,30 @@ test('BA15-BA20 produce exact recovery and deduplicable ConcernWatch evidence fo
       assert.equal(result.effectReceipt, null);
       assert.ok(result.recoveryReceipt);
       assert.equal(result.recoveryReceipt.retryAuthorityGranted, false);
-      const observation = createBuildConcernObservation(result.recoveryReceipt, { observedAt: at(index * 200 + 23) }, { registry: fixture.registry, request: fixture.request, admission: fixture.admission });
-      const duplicate = createBuildConcernObservation(result.recoveryReceipt, { observedAt: at(index * 200 + 23) }, { registry: fixture.registry, request: fixture.request, admission: fixture.admission });
+      assert.equal(result.recoveryReceipt.buildRequestRef, fixture.request.buildRequestRef);
+      assert.equal(result.recoveryReceipt.buildAdmissionRef, fixture.admission.buildAdmissionRef);
+      assert.equal(result.recoveryReceipt.repositoryEvidenceRef, fixture.request.repositoryEvidenceRef);
+      assert.equal(result.recoveryReceipt.concernWatchObservationRequired, true);
+      if (phase === 'ROLLBACK') {
+        assert.equal(result.recoveryReceipt.rollbackSucceeded, false);
+        assert.equal(result.recoveryReceipt.humanAttentionRequired, true);
+        assert.equal(result.recoveryReceipt.disposition, 'HELD_UNKNOWN');
+      } else {
+        assert.equal(result.recoveryReceipt.rollbackSucceeded, true);
+        assert.equal(result.recoveryReceipt.humanAttentionRequired, false);
+      }
+      const observation = createBuildConcernObservation(result.recoveryReceipt, { observedAt: at(index * 200 + 23) }, { registry: fixture.registry, request: fixture.request, admission: fixture.admission, authorityContext: fixture.authorityContext });
+      const duplicate = createBuildConcernObservation(result.recoveryReceipt, { observedAt: at(index * 200 + 23) }, { registry: fixture.registry, request: fixture.request, admission: fixture.admission, authorityContext: fixture.authorityContext });
       assert.equal(observation.concernObservationRef, duplicate.concernObservationRef);
+      assert.equal(observation.currentness, 'CURRENT');
+      assert.equal(observation.retryAuthorityGranted, false);
+      assert.equal(observation.failurePhase, phase);
+      assert.equal(observation.sourceRef, result.recoveryReceipt.buildRecoveryRef);
+      assert.equal(observation.sourceFingerprint, result.recoveryReceipt.semanticFingerprint);
+      const retryForgery = structuredClone(result.recoveryReceipt);
+      retryForgery.retryAuthorityGranted = true;
+      const readdressedRetry = readdress(retryForgery, 'buildRecoveryRef', 'recovery.build-admission');
+      assert.throws(() => createBuildConcernObservation(readdressedRetry, { observedAt: at(index * 200 + 23) }, { registry: fixture.registry, request: fixture.request, admission: fixture.admission, authorityContext: fixture.authorityContext }), /retry|recovery|binding/);
       observationRefs.add(observation.concernObservationRef);
     } finally { cleanupBuildAdmissionFixture(fixture); }
   }
@@ -339,28 +361,93 @@ test('BA24 PR-ready and Health independently consume one immutable exact receipt
   }
 });
 
-test('BA25 integrated validator reconstructs every causal layer and rejects fully re-addressed nested substitutions', () => {
-  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-integrated-'));
-  const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: 'integrated' });
+test('BA25 integrated recovery and ConcernWatch replay reject coordinated re-addressing at every consumer boundary', () => {
+  const receiptRelativePath = `generated/health/ba25-${process.pid}-${Date.now()}.json`;
+  const receiptPath = path.resolve(receiptRelativePath);
+  const result = runBuildAdmissionSimulation({ receiptPath: receiptRelativePath, suffix: `ba25-${process.pid}` });
+  const integrated = result.integrated;
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba25-context-'));
+  const fixture = createBuildAdmissionFixture({ workspaceRoot, suffix: 'ba25-context' });
   try {
-    const { execution, verification, closure, projection } = complete(fixture);
-    const integrated = createIntegratedBuildAdmissionReceipt({
-      sourceTreeSha256: '3'.repeat(64), blueprintHash: '4'.repeat(64), journeyStates: fixture.registry.simulationContract.requiredJourneyStates,
-      request: fixture.request, admission: fixture.admission, effectReceipt: execution.effectReceipt, verification, closure, projection,
-      failureRecoveryProofs: [], concernObservations: []
-    }, { registry: fixture.registry, authorityContext: fixture.authorityContext });
     assert.equal(validateIntegratedBuildAdmissionReceipt(integrated, { registry: fixture.registry, authorityContext: fixture.authorityContext }).ok, true);
+    assert.equal(integrated.causalEvidence.failureRecoveryCases.length, fixture.registry.recoveryContract.failurePhases.length);
+    assert.equal(new Set(integrated.causalEvidence.concernObservations.map((observation) => observation.sourceRef)).size, fixture.registry.recoveryContract.failurePhases.length);
+
+    const forgedProjection = structuredClone(integrated);
+    forgedProjection.causalEvidence.projection.views.HEALTH.state = 'ATTENTION';
+    forgedProjection.causalEvidence.projection = readdress(forgedProjection.causalEvidence.projection, 'projectionRef', 'projection.build-admission');
+    forgedProjection.projectionRef = forgedProjection.causalEvidence.projection.projectionRef;
+    forgedProjection.projectionFingerprint = forgedProjection.causalEvidence.projection.semanticFingerprint;
+    const readdressedProjection = readdress(forgedProjection, 'receiptRef', 'receipt.build-admission.integrated');
+    const projectionValidation = validateIntegratedBuildAdmissionReceipt(readdressedProjection, { registry: fixture.registry, authorityContext: fixture.authorityContext });
+    assert.equal(projectionValidation.ok, false);
+    assert.match(projectionValidation.errors.join('; '), /projection|reconstruction|mismatch/);
 
     const forged = structuredClone(integrated);
-    forged.causalEvidence.projection.views.HEALTH.state = 'ATTENTION';
-    forged.causalEvidence.projection = readdress(forged.causalEvidence.projection, 'projectionRef', 'projection.build-admission');
-    forged.projectionRef = forged.causalEvidence.projection.projectionRef;
-    forged.projectionFingerprint = forged.causalEvidence.projection.semanticFingerprint;
+    const recoveryCase = forged.causalEvidence.failureRecoveryCases[0];
+    recoveryCase.recoveryReceipt.retryAuthorityGranted = true;
+    recoveryCase.recoveryReceipt.buildRequestRef = 'request.build-admission.caller-substitution';
+    recoveryCase.recoveryReceipt.buildAdmissionRef = 'admission.build-admission.caller-substitution';
+    recoveryCase.recoveryReceipt = readdress(recoveryCase.recoveryReceipt, 'buildRecoveryRef', 'recovery.build-admission');
+    recoveryCase.buildRecoveryRef = recoveryCase.recoveryReceipt.buildRecoveryRef;
+    recoveryCase.buildRecoveryFingerprint = recoveryCase.recoveryReceipt.semanticFingerprint;
+    forged.causalEvidence.failureRecoveryCases[0] = readdress(recoveryCase, 'recoveryCaseRef', 'case.build-admission.recovery');
+    forged.causalEvidence.failureRecoveryProofs[0] = structuredClone(recoveryCase.recoveryReceipt);
+
+    const concernIndex = forged.causalEvidence.concernObservations.findIndex((observation) => observation.failurePhase === recoveryCase.failurePhase);
+    const concern = forged.causalEvidence.concernObservations[concernIndex];
+    concern.sourceRef = recoveryCase.recoveryReceipt.buildRecoveryRef;
+    concern.sourceFingerprint = recoveryCase.recoveryReceipt.semanticFingerprint;
+    concern.buildRequestRef = recoveryCase.recoveryReceipt.buildRequestRef;
+    concern.buildAdmissionRef = recoveryCase.recoveryReceipt.buildAdmissionRef;
+    concern.retryAuthorityGranted = true;
+    concern.humanAttentionRequired = true;
+    concern.concernClass = 'SAFETY_OR_INTEGRITY';
+    concern.impactClass = 'HIGH';
+    forged.causalEvidence.concernObservations[concernIndex] = readdress(concern, 'concernObservationRef', 'observation.build-admission');
+
+    forged.failureRecoveryCaseRefs = forged.causalEvidence.failureRecoveryCases.map((item) => item.recoveryCaseRef);
+    forged.failureRecoveryProofRefs = forged.causalEvidence.failureRecoveryProofs.map((item) => item.buildRecoveryRef);
+    forged.concernObservationRefs = forged.causalEvidence.concernObservations.map((item) => item.concernObservationRef);
     const readdressed = readdress(forged, 'receiptRef', 'receipt.build-admission.integrated');
+    const beforeValidation = semanticHash(readdressed);
+
     const validation = validateIntegratedBuildAdmissionReceipt(readdressed, { registry: fixture.registry, authorityContext: fixture.authorityContext });
     assert.equal(validation.ok, false);
-    assert.match(validation.errors.join('; '), /projection|reconstruction|mismatch/);
-  } finally { cleanupBuildAdmissionFixture(fixture); }
+    assert.match(validation.errors.join('; '), /recovery|retry|request|admission|ConcernWatch|lineage|re-addressed/i);
+    assert.equal(semanticHash(readdressed), beforeValidation);
+
+    assert.throws(() => createIntegratedBuildAdmissionReceipt({
+      candidateHeadSha: readdressed.candidateHeadSha,
+      testedCheckoutSha: readdressed.testedCheckoutSha,
+      testedMergeSha: readdressed.testedMergeSha,
+      baseSha: readdressed.baseSha,
+      sourceTreeSha256: readdressed.sourceTreeSha256,
+      blueprintHash: readdressed.blueprintHash,
+      journeyStates: readdressed.journeyStates,
+      request: readdressed.causalEvidence.request,
+      admission: readdressed.causalEvidence.admission,
+      effectReceipt: readdressed.causalEvidence.effectReceipt,
+      verification: readdressed.causalEvidence.verification,
+      closure: readdressed.causalEvidence.closure,
+      projection: readdressed.causalEvidence.projection,
+      failureRecoveryCases: readdressed.causalEvidence.failureRecoveryCases,
+      failureRecoveryProofs: readdressed.causalEvidence.failureRecoveryProofs,
+      concernObservations: readdressed.causalEvidence.concernObservations
+    }, { registry: fixture.registry, authorityContext: fixture.authorityContext }), /recovery|retry|request|admission|ConcernWatch|lineage|re-addressed/i);
+
+    const forgedPath = `${receiptPath}.forged`;
+    fs.writeFileSync(forgedPath, `${JSON.stringify(readdressed, null, 2)}\n`, 'utf8');
+    const stored = readIntegratedBuildAdmissionReceipt(forgedPath, { registry: fixture.registry, authorityContext: fixture.authorityContext });
+    assert.equal(stored.validation.ok, false);
+    assert.throws(() => createBuildAdmissionConsumptionReceipt(readdressed, 'PR_READY', { observedAt: at(1700) }, { registry: fixture.registry, authorityContext: fixture.authorityContext }), /invalid integrated Build Admission receipt/);
+    assert.throws(() => createBuildAdmissionConsumptionReceipt(readdressed, 'HEALTH', { observedAt: at(1701) }, { registry: fixture.registry, authorityContext: fixture.authorityContext }), /invalid integrated Build Admission receipt/);
+    fs.rmSync(forgedPath, { force: true });
+    assert.equal(semanticHash(readdressed), beforeValidation);
+  } finally {
+    cleanupBuildAdmissionFixture(fixture);
+    fs.rmSync(receiptPath, { force: true });
+  }
 });
 
 // [VXG RealForever]

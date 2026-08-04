@@ -156,6 +156,7 @@ export function runBuildAdmissionSimulation({ root = ROOT, receiptPath = null, s
   const sourceManifest = buildSourceManifest(root);
   const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-build-admission-simulation-'));
   let successful;
+  const failureRecoveryCases = [];
   const failureRecoveryProofs = [];
   const concernObservations = [];
   try {
@@ -204,10 +205,15 @@ export function runBuildAdmissionSimulation({ root = ROOT, receiptPath = null, s
           failurePhase: phase
         }, { registry });
         if (!result.recoveryReceipt || result.effectReceipt) throw new Error(`failure phase ${phase} did not return exact recovery evidence`);
+        failureRecoveryCases.push({
+          request: structuredClone(failed.request),
+          admission: structuredClone(failed.admission),
+          recoveryReceipt: structuredClone(result.recoveryReceipt)
+        });
         failureRecoveryProofs.push(result.recoveryReceipt);
         concernObservations.push(createBuildConcernObservation(result.recoveryReceipt, {
           observedAt: at(63 + index * 200)
-        }, { registry, request: failed.request, admission: failed.admission }));
+        }, { registry, request: failed.request, admission: failed.admission, authorityContext: failed.authorityContext }));
       } finally {
         cleanupBuildAdmissionFixture(failed);
       }
@@ -242,6 +248,7 @@ export function runBuildAdmissionSimulation({ root = ROOT, receiptPath = null, s
       verification,
       closure,
       projection,
+      failureRecoveryCases,
       failureRecoveryProofs,
       concernObservations
     }, { registry, authorityContext: successful.authorityContext });

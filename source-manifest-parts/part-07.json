@@ -112,8 +112,8 @@
     {
       "path": "src/core/build-admission.mjs",
       "mode": "100644",
-      "bytes": 74200,
-      "sha256": "c1542fde653f2b5f68aa7c3159cfc7c410ab09897f036b8b8fc9c195968b6e7f"
+      "bytes": 82949,
+      "sha256": "7c43335b59f93018ef33e2ccce58ad32dae4438e9cea4eef47906d5509a60a97"
     },
     {
       "path": "src/core/build-health.mjs",

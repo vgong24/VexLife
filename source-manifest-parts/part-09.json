@@ -130,8 +130,8 @@
     {
       "path": "test/build-admission.test.mjs",
       "mode": "100644",
-      "bytes": 22232,
-      "sha256": "ab6bebf1db058cc42c50ba2e72b9289d18bbcbc2fcc280356926ce2bc9b78fc8"
+      "bytes": 28926,
+      "sha256": "c34588bae9fc7f7c7a38035c8d1e798ecf7af73e10bab5fb65986b578d563c61"
     },
     {
       "path": "test/capability.test.mjs",

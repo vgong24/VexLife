@@ -772,17 +772,88 @@ export function validateBuildAdmission(admission, { request, registry, authority
   return freeze(clone(admission));
 }
 
-function validateBuildRecoveryReceipt(receipt, { request, admission }) {
+function expectedRecoveryDisposition(failurePhase) {
+  if (failurePhase === 'PRE_WRITE') return 'REPOSITORY_UNCHANGED';
+  if (failurePhase === 'POST_WRITE_PRE_COMMIT') return 'BEFORE_IMAGE_RESTORED';
+  if (failurePhase === 'ROLLBACK') return 'HELD_UNKNOWN';
+  return 'DISPOSABLE_REPOSITORY_REMOVED';
+}
+
+export function validateBuildRecoveryReceipt(receipt, { request, admission, registry, authorityContext }) {
+  const source = registryOrThrow(registry);
+  validateBuildRequest(request, { registry: source });
+  validateBuildAdmission(admission, { request, registry: source, authorityContext });
   assertCanonical(receipt, 'buildRecoveryRef', 'recovery.build-admission', 'build recovery receipt');
+  if (receipt.schemaVersion !== source.recoveryContract.schemaVersion || receipt.contractRef !== source.recoveryContract.contractRef) {
+    throw new Error('build recovery source contract mismatch');
+  }
+  if (!source.recoveryContract.failurePhases.includes(receipt.failurePhase)) throw new Error('build recovery failure phase is not registered');
+  if (!source.recoveryContract.dispositions.includes(receipt.disposition)) throw new Error('build recovery disposition is not registered');
   exactBinding(receipt, {
     buildRequestRef: request.buildRequestRef,
     buildRequestFingerprint: request.semanticFingerprint,
     buildAdmissionRef: admission.buildAdmissionRef,
     buildAdmissionFingerprint: admission.semanticFingerprint,
-    retryAuthorityGranted: false,
-    concernWatchObservationRequired: true
+    repositoryEvidenceRef: request.repositoryEvidenceRef,
+    repositoryEvidenceFingerprint: request.repositoryEvidenceFingerprint,
+    retryAuthorityGranted: source.recoveryContract.retryAuthorityGranted,
+    concernWatchObservationRequired: source.recoveryContract.concernWatchObservationRequired
   }, 'build recovery receipt');
-  return receipt;
+  if (admission.repositoryEvidenceRef !== receipt.repositoryEvidenceRef || admission.repositoryEvidenceFingerprint !== receipt.repositoryEvidenceFingerprint) {
+    throw new Error('build recovery repository evidence lineage mismatch');
+  }
+  requireString(receipt.errorClass, 'build recovery errorClass');
+  requireSha256(receipt.errorFingerprint, 'build recovery errorFingerprint');
+  if (receipt.rollbackAttempted !== true || typeof receipt.rollbackSucceeded !== 'boolean' || typeof receipt.humanAttentionRequired !== 'boolean') {
+    throw new Error('build recovery rollback semantics are incomplete');
+  }
+  const expectedDisposition = expectedRecoveryDisposition(receipt.failurePhase);
+  if (receipt.rollbackSucceeded) {
+    if (receipt.humanAttentionRequired || receipt.disposition !== expectedDisposition) throw new Error('build recovery successful rollback disposition mismatch');
+  } else {
+    if (!receipt.humanAttentionRequired || !['HELD_UNKNOWN', 'HUMAN_ATTENTION_REQUIRED'].includes(receipt.disposition)) {
+      throw new Error('build recovery failed rollback must require human attention');
+    }
+  }
+  if (receipt.failurePhase === 'ROLLBACK' && receipt.rollbackSucceeded) throw new Error('ROLLBACK failure cannot claim successful rollback');
+  if (source.recoveryContract.humanRequestRequiredOnRollbackFailure && !receipt.rollbackSucceeded && !receipt.humanAttentionRequired) {
+    throw new Error('build recovery rollback failure lacks required human attention');
+  }
+  chronology(receipt.formedAt, receipt.completedAt, 'build recovery');
+  return freeze(clone(receipt));
+}
+
+function formBuildRecoveryCase({ request, admission, recoveryReceipt }) {
+  return contentAddress({
+    schemaVersion: 'vexlife.build-admission-recovery-case/v1',
+    contractRef: 'contract.vexlife.build-admission-recovery-case/v1',
+    failurePhase: recoveryReceipt.failurePhase,
+    buildRequestRef: request.buildRequestRef,
+    buildRequestFingerprint: request.semanticFingerprint,
+    buildAdmissionRef: admission.buildAdmissionRef,
+    buildAdmissionFingerprint: admission.semanticFingerprint,
+    buildRecoveryRef: recoveryReceipt.buildRecoveryRef,
+    buildRecoveryFingerprint: recoveryReceipt.semanticFingerprint,
+    request: clone(request),
+    admission: clone(admission),
+    recoveryReceipt: clone(recoveryReceipt)
+  }, 'recoveryCaseRef', 'case.build-admission.recovery');
+}
+
+function createValidatedBuildRecoveryCase(input, { registry, authorityContext }) {
+  const request = validateBuildRequest(requireObject(input.request, 'recovery case request'), { registry });
+  const admission = validateBuildAdmission(requireObject(input.admission, 'recovery case admission'), { request, registry, authorityContext });
+  const recoveryReceipt = validateBuildRecoveryReceipt(requireObject(input.recoveryReceipt, 'recovery case receipt'), {
+    request, admission, registry, authorityContext
+  });
+  return formBuildRecoveryCase({ request, admission, recoveryReceipt });
+}
+
+function validateBuildRecoveryCase(recoveryCase, { registry, authorityContext }) {
+  assertCanonical(recoveryCase, 'recoveryCaseRef', 'case.build-admission.recovery', 'Build Admission recovery case');
+  const expected = createValidatedBuildRecoveryCase(recoveryCase, { registry, authorityContext });
+  if (semanticHash(expected) !== semanticHash(recoveryCase)) throw new Error('Build Admission recovery case is stale, detached, or re-addressed');
+  return freeze(clone(recoveryCase));
 }
 
 export function verifyRealBuildEffect({ effectReceipt, request, admission, workspaceRoot, repositoryPath, consumedAt, schedulerObservedAt }, { registry, authorityContext }) {
@@ -904,23 +975,80 @@ export function validateRealBuildEffectVerification(verification, { effectReceip
   return freeze(clone(verification));
 }
 
-export function createBuildConcernObservation(recoveryReceipt, { observedAt }, { registry, request, admission }) {
-  registryOrThrow(registry);
-  validateBuildRecoveryReceipt(recoveryReceipt, { request, admission });
+export function createBuildConcernObservation(recoveryReceipt, { observedAt }, { registry, request, admission, authorityContext }) {
+  const source = registryOrThrow(registry);
+  validateBuildRecoveryReceipt(recoveryReceipt, { request, admission, registry: source, authorityContext });
+  const observationTime = timestamp(observedAt, 'concern observedAt');
+  chronology(recoveryReceipt.completedAt, observationTime, 'recovery concern observation');
   return contentAddress({
     schemaVersion: 'vexlife.build-admission-concern-observation/v1',
     contractRef: 'contract.vexlife.build-admission-concern-observation/v1',
     sourceRef: recoveryReceipt.buildRecoveryRef,
     sourceFingerprint: recoveryReceipt.semanticFingerprint,
+    buildRequestRef: request.buildRequestRef,
+    buildRequestFingerprint: request.semanticFingerprint,
+    buildAdmissionRef: admission.buildAdmissionRef,
+    buildAdmissionFingerprint: admission.semanticFingerprint,
+    repositoryEvidenceRef: recoveryReceipt.repositoryEvidenceRef,
+    repositoryEvidenceFingerprint: recoveryReceipt.repositoryEvidenceFingerprint,
     sourceRangeOrEventRef: `failure-phase.${recoveryReceipt.failurePhase}`,
+    failurePhase: recoveryReceipt.failurePhase,
+    disposition: recoveryReceipt.disposition,
+    rollbackSucceeded: recoveryReceipt.rollbackSucceeded,
+    humanAttentionRequired: recoveryReceipt.humanAttentionRequired,
     concernClass: recoveryReceipt.humanAttentionRequired ? 'SAFETY_OR_INTEGRITY' : 'RECOVERY_HOLD',
     signalClass: 'RECOVERY_HOLD',
     certaintyClass: 'VERIFIED',
     impactClass: recoveryReceipt.humanAttentionRequired ? 'HIGH' : 'MEDIUM',
     evidenceOriginClass: 'RECOVERY_SYSTEM',
     retryAuthorityGranted: false,
-    observedAt: timestamp(observedAt, 'concern observedAt')
+    currentness: 'CURRENT',
+    observedAt: observationTime
   }, 'concernObservationRef', 'observation.build-admission');
+}
+
+function validateIntegratedRecoveryConcernEvidence(input, { registry, authorityContext, addressedCases = false }) {
+  const source = registryOrThrow(registry);
+  const phaseOrder = new Map(source.recoveryContract.failurePhases.map((phase, index) => [phase, index]));
+  const cases = (input.failureRecoveryCases ?? []).map((recoveryCase) => addressedCases
+    ? validateBuildRecoveryCase(recoveryCase, { registry: source, authorityContext })
+    : createValidatedBuildRecoveryCase(recoveryCase, { registry: source, authorityContext }));
+  if (cases.length !== source.recoveryContract.failurePhases.length) throw new Error('integrated recovery cases must cover every registered failure phase exactly once');
+  const phases = cases.map((recoveryCase) => recoveryCase.failurePhase);
+  if (new Set(phases).size !== phases.length || semanticHash([...phases].sort()) !== semanticHash([...source.recoveryContract.failurePhases].sort())) {
+    throw new Error('integrated recovery phase coverage contains duplicates or omissions');
+  }
+  const sortedCases = [...cases].sort((a, b) => phaseOrder.get(a.failurePhase) - phaseOrder.get(b.failurePhase));
+  const suppliedProofs = input.failureRecoveryProofs ?? sortedCases.map((recoveryCase) => recoveryCase.recoveryReceipt);
+  if (suppliedProofs.length !== sortedCases.length || suppliedProofs.some((proof, index) => semanticHash(proof) !== semanticHash(sortedCases[index].recoveryReceipt))) {
+    throw new Error('integrated recovery proof inventory is detached from exact source cases');
+  }
+  const observations = (input.concernObservations ?? []).map((observation) => {
+    assertCanonical(observation, 'concernObservationRef', 'observation.build-admission', 'integrated concern observation');
+    return clone(observation);
+  });
+  if (observations.length !== sortedCases.length || new Set(observations.map((observation) => observation.sourceRef)).size !== observations.length) {
+    throw new Error('integrated ConcernWatch observations must be one-to-one with recovery cases');
+  }
+  const reconstructedObservations = [];
+  for (const recoveryCase of sortedCases) {
+    const matches = observations.filter((observation) => observation.sourceRef === recoveryCase.recoveryReceipt.buildRecoveryRef);
+    if (matches.length !== 1) throw new Error(`integrated ConcernWatch lineage mismatch for ${recoveryCase.failurePhase}`);
+    const actual = matches[0];
+    const expected = createBuildConcernObservation(recoveryCase.recoveryReceipt, { observedAt: actual.observedAt }, {
+      registry: source,
+      request: recoveryCase.request,
+      admission: recoveryCase.admission,
+      authorityContext
+    });
+    if (semanticHash(expected) !== semanticHash(actual)) throw new Error(`integrated ConcernWatch observation does not reconstruct for ${recoveryCase.failurePhase}`);
+    reconstructedObservations.push(expected);
+  }
+  return {
+    failureRecoveryCases: sortedCases.map(clone),
+    failureRecoveryProofs: sortedCases.map((recoveryCase) => clone(recoveryCase.recoveryReceipt)),
+    concernObservations: reconstructedObservations.map(clone)
+  };
 }
 
 function releaseSet(request, admission, verification, closedAt, registry) {
@@ -1075,14 +1203,7 @@ export function createIntegratedBuildAdmissionReceipt(input, { registry, authori
   validateBuildClosure(input.closure, { request: input.request, admission: input.admission, verification: input.verification, registry: source, authorityContext });
   const expectedProjection = projectBuildAdmission({ request: input.request, admission: input.admission, effectReceipt: input.effectReceipt, verification: input.verification, closure: input.closure }, { registry: source });
   if (semanticHash(expectedProjection) !== semanticHash(input.projection)) throw new Error('integrated projection is not reconstructed from exact closure');
-  const failureRecoveryProofs = (input.failureRecoveryProofs ?? []).map((receipt) => {
-    assertCanonical(receipt, 'buildRecoveryRef', 'recovery.build-admission', 'integrated recovery receipt');
-    return clone(receipt);
-  });
-  const concernObservations = (input.concernObservations ?? []).map((observation) => {
-    assertCanonical(observation, 'concernObservationRef', 'observation.build-admission', 'Build Admission concern observation');
-    return clone(observation);
-  });
+  const recoveryConcern = validateIntegratedRecoveryConcernEvidence(input, { registry: source, authorityContext, addressedCases: false });
   return contentAddress({
     schemaVersion: source.simulationContract.schemaVersion,
     contractRef: source.simulationContract.contractRef,
@@ -1126,8 +1247,9 @@ export function createIntegratedBuildAdmissionReceipt(input, { registry, authori
     remoteConfigured: false,
     implementationCheckoutMutated: false,
     duplicateReplayCreatedSecondCommit: false,
-    failureRecoveryProofRefs: failureRecoveryProofs.map((x) => x.buildRecoveryRef).sort(),
-    concernObservationRefs: concernObservations.map((x) => x.concernObservationRef).sort(),
+    failureRecoveryCaseRefs: recoveryConcern.failureRecoveryCases.map((recoveryCase) => recoveryCase.recoveryCaseRef),
+    failureRecoveryProofRefs: recoveryConcern.failureRecoveryProofs.map((recovery) => recovery.buildRecoveryRef),
+    concernObservationRefs: recoveryConcern.concernObservations.map((observation) => observation.concernObservationRef),
     claimReleased: input.closure.claimReleased,
     sixLeasesReleased: input.closure.sixLeasesReleased,
     causalEvidence: {
@@ -1137,8 +1259,9 @@ export function createIntegratedBuildAdmissionReceipt(input, { registry, authori
       verification: clone(input.verification),
       closure: clone(input.closure),
       projection: clone(input.projection),
-      failureRecoveryProofs,
-      concernObservations
+      failureRecoveryCases: recoveryConcern.failureRecoveryCases,
+      failureRecoveryProofs: recoveryConcern.failureRecoveryProofs,
+      concernObservations: recoveryConcern.concernObservations
     }
   }, 'receiptRef', 'receipt.build-admission.integrated');
 }
@@ -1158,8 +1281,11 @@ export function validateIntegratedBuildAdmissionReceipt(receipt, { registry, aut
     validateBuildClosure(e.closure, { request: e.request, admission: e.admission, verification: e.verification, registry: source, authorityContext });
     const projection = projectBuildAdmission({ request: e.request, admission: e.admission, effectReceipt: e.effectReceipt, verification: e.verification, closure: e.closure }, { registry: source });
     if (semanticHash(projection) !== semanticHash(e.projection)) throw new Error('integrated projection reconstruction mismatch');
-    for (const recovery of e.failureRecoveryProofs ?? []) assertCanonical(recovery, 'buildRecoveryRef', 'recovery.build-admission', 'integrated recovery receipt');
-    for (const observation of e.concernObservations ?? []) assertCanonical(observation, 'concernObservationRef', 'observation.build-admission', 'integrated concern observation');
+    const recoveryConcern = validateIntegratedRecoveryConcernEvidence({
+      failureRecoveryCases: e.failureRecoveryCases,
+      failureRecoveryProofs: e.failureRecoveryProofs,
+      concernObservations: e.concernObservations
+    }, { registry: source, authorityContext, addressedCases: true });
     exactBinding(receipt, {
       buildRequestRef: e.request.buildRequestRef,
       buildRequestFingerprint: e.request.semanticFingerprint,
@@ -1180,7 +1306,12 @@ export function validateIntegratedBuildAdmissionReceipt(receipt, { registry, aut
       afterBlobSha: e.effectReceipt.afterBlobSha,
       diffFingerprint: e.effectReceipt.diffFingerprint
     }, 'integrated receipt');
-    if (semanticHash(receipt.changedPaths) !== semanticHash(e.effectReceipt.changedPaths) || semanticHash(receipt.failureRecoveryProofRefs) !== semanticHash((e.failureRecoveryProofs ?? []).map((x) => x.buildRecoveryRef).sort()) || semanticHash(receipt.concernObservationRefs) !== semanticHash((e.concernObservations ?? []).map((x) => x.concernObservationRef).sort())) throw new Error('integrated nested inventory mismatch');
+    if (
+      semanticHash(receipt.changedPaths) !== semanticHash(e.effectReceipt.changedPaths) ||
+      semanticHash(receipt.failureRecoveryCaseRefs) !== semanticHash(recoveryConcern.failureRecoveryCases.map((recoveryCase) => recoveryCase.recoveryCaseRef)) ||
+      semanticHash(receipt.failureRecoveryProofRefs) !== semanticHash(recoveryConcern.failureRecoveryProofs.map((recovery) => recovery.buildRecoveryRef)) ||
+      semanticHash(receipt.concernObservationRefs) !== semanticHash(recoveryConcern.concernObservations.map((observation) => observation.concernObservationRef))
+    ) throw new Error('integrated nested recovery/ConcernWatch inventory mismatch');
   } catch (error) { errors.push(error.message); }
   return { ok: errors.length === 0, state: errors.length ? 'INVALID' : 'EXECUTED_CURRENT', errors };
 }
