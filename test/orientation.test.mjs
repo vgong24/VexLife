@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deriveOrientationReceipt } from '../src/core/orientation.mjs';
+import { deriveOrientationReceipt, resolveGitHubPullRequestCurrentWork } from '../src/core/orientation.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const run = (script, args) => spawnSync(process.execPath, [`scripts/${script}`, ...args], { cwd: ROOT, encoding: 'utf8' });
@@ -41,6 +41,81 @@ test('orientation grounds live current PR inputs without stable correction defau
   assert.equal(receipt.stableRepositoryIdentity.activeBranch, undefined);
   assert.equal(receipt.stableRepositoryIdentity.activePr, undefined);
   assert.equal(receipt.stableRepositoryIdentity.priorReviewedHead, undefined);
+});
+
+
+test('source-managed GitHub PR evidence resolves one exact generic workRef and rejects duplication or binding mismatch', () => {
+  const event = fixture('github-pr-current-work');
+  const verified = resolveGitHubPullRequestCurrentWork({
+    contract,
+    eventName: 'pull_request',
+    event,
+    expectedPrNumber: 42,
+    expectedCandidateHeadSha: '1'.repeat(40)
+  });
+  assert.equal(verified.state, 'VERIFIED');
+  assert.equal(verified.source, 'GITHUB_PULL_REQUEST_EVENT');
+  assert.equal(verified.workRef, 'work.vexlife.example-orientation.abc123');
+  assert.equal(verified.repositoryVisibility, 'PRIVATE');
+
+  const lowerCaseMarkerEvent = structuredClone(event);
+  lowerCaseMarkerEvent.pull_request.body = lowerCaseMarkerEvent.pull_request.body.replace('Work:', 'work:');
+  const lowerCaseMarker = resolveGitHubPullRequestCurrentWork({
+    contract,
+    eventName: 'pull_request',
+    event: lowerCaseMarkerEvent
+  });
+  assert.equal(lowerCaseMarker.state, 'UNVERIFIED');
+  assert.equal(lowerCaseMarker.workRef, null);
+  assert.match(lowerCaseMarker.errors.join('\n'), /exactly one Work marker/);
+
+  const duplicate = resolveGitHubPullRequestCurrentWork({
+    contract,
+    eventName: 'pull_request',
+    event: fixture('github-pr-current-work-duplicate')
+  });
+  assert.equal(duplicate.state, 'UNVERIFIED');
+  assert.equal(duplicate.workRef, null);
+  assert.match(duplicate.errors.join('\n'), /exactly one Work marker/);
+
+  const mismatched = resolveGitHubPullRequestCurrentWork({
+    contract,
+    eventName: 'pull_request',
+    event,
+    expectedPrNumber: 43,
+    expectedCandidateHeadSha: '3'.repeat(40)
+  });
+  assert.equal(mismatched.state, 'UNVERIFIED');
+  assert.equal(mismatched.workRef, null);
+  assert.match(mismatched.errors.join('\n'), /number mismatch/);
+  assert.match(mismatched.errors.join('\n'), /candidate head mismatch/);
+});
+
+test('orientation CLI consumes generic GitHub PR current-work evidence without issue, branch, or workRef defaults', () => {
+  const environment = {
+    ...process.env,
+    VEXLIFE_CURRENT_WORK_EVENT_NAME: 'pull_request',
+    VEXLIFE_CANDIDATE_HEAD_SHA: '1111111111111111111111111111111111111111'
+  };
+  for (const name of [
+    'VEXLIFE_REPOSITORY_VISIBILITY',
+    'VEXLIFE_PR_NUMBER',
+    'VEXLIFE_WORK_REF',
+    'VEXLIFE_CURRENT_WORK_PROJECTION'
+  ]) delete environment[name];
+  const result = spawnSync(process.execPath, ['scripts/orient.mjs', '--current-work-event', 'test/fixtures/orientation/github-pr-current-work.json'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: environment
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.currentWork.prRef, 'github-pr.vgong24/VexLife.42');
+  assert.equal(receipt.currentWork.prSource, 'GITHUB_PULL_REQUEST_EVENT');
+  assert.equal(receipt.currentWork.workRef, 'work.vexlife.example-orientation.abc123');
+  assert.equal(receipt.currentWork.workSource, 'GITHUB_PULL_REQUEST_EVENT');
+  assert.equal(receipt.currentWork.evidenceState, 'VERIFIED');
+  assert.equal(receipt.attentions.includes('active PR workRef is UNKNOWN'), false);
 });
 
 test('orientation lifecycle fixtures cover current PR, detached merge, accepted main, and public active', () => {

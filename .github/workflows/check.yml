@@ -23,6 +23,8 @@ jobs:
       VEXLIFE_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
       VEXLIFE_PR_NUMBER: ${{ github.event.pull_request.number }}
       VEXLIFE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      VEXLIFE_CURRENT_WORK_EVENT_NAME: ${{ github.event_name }}
+      VEXLIFE_CURRENT_WORK_EVENT_PATH: ${{ github.event_path }}
       VEXLIFE_CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       VEXLIFE_TESTED_MERGE_SHA: ${{ github.event_name == 'pull_request' && github.sha || '' }}
       VEXLIFE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}

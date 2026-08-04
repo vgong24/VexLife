@@ -50,6 +50,18 @@
       "sha256": "ae4f14d6feb5be019abe24c38807cfb5f5f99231ee74164334cd7a6cd4f8ea5c"
     },
     {
+      "path": "test/fixtures/orientation/github-pr-current-work-duplicate.json",
+      "mode": "100644",
+      "bytes": 464,
+      "sha256": "2b638ced378662f0b3a02192c64450b5a794059987fde76af08f8ee0c07e8066"
+    },
+    {
+      "path": "test/fixtures/orientation/github-pr-current-work.json",
+      "mode": "100644",
+      "bytes": 505,
+      "sha256": "b7e370bdfc1292cb8f69d83d02035d005beebfc577c88c670fce76d7733e3917"
+    },
+    {
       "path": "test/fixtures/orientation/public-active.json",
       "mode": "100644",
       "bytes": 1051,
@@ -112,14 +124,14 @@
     {
       "path": "test/orientation.test.mjs",
       "mode": "100644",
-      "bytes": 5222,
-      "sha256": "a3664bc4b599262c63ab0df609cf3b04ca383008ee491cdf66653ab2236e6b20"
+      "bytes": 8368,
+      "sha256": "4c2de14070ec0a961e8463ce7fd226f69189e8f6ca82a31db506a6ea15d537e6"
     },
     {
       "path": "test/pr-ready-attention.e2e.mjs",
       "mode": "100644",
-      "bytes": 3865,
-      "sha256": "1a92b3ec91dcf54ca328a07666a75ffa2fc78da3049a75f083b0d38e3816d2a4"
+      "bytes": 3038,
+      "sha256": "88c095166feaa10e5f68d45638e68ed15f26728cd045d22c8f65e85950c1adee"
     },
     {
       "path": "test/public-safety.test.mjs",
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 19131,
       "sha256": "48d965f99de958f05cea3b9e909746cdd5c42667d0fe45b7fdeb8144da22bd0f"
-    },
-    {
-      "path": "test/runtime-failure-recovery.test.mjs",
-      "mode": "100644",
-      "bytes": 53169,
-      "sha256": "617c5c19da4035c719dcf91f6bc46f32620c7825273ff6b0e7768c9a25bc2e20"
-    },
-    {
-      "path": "test/source-manifest.test.mjs",
-      "mode": "100644",
-      "bytes": 12506,
-      "sha256": "af2f7d18c69794fdd735a1b6bf3466d566304bf142efacd10738929032c11caa"
     }
   ]
 }

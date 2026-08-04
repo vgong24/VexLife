@@ -70,8 +70,8 @@
     {
       "path": "blueprint/orientation.json",
       "mode": "100644",
-      "bytes": 1535,
-      "sha256": "d12d084cda737bff3978aa4dd1d037e29e660d734e57de86748c72a084ed63b8"
+      "bytes": 2058,
+      "sha256": "7c7a797fdad2ceb140c063a39d5c37910a3fb3239811fa839f389fcf30388907"
     },
     {
       "path": "blueprint/platforms.json",
