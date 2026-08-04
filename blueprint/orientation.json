@@ -29,6 +29,21 @@
       "publicationAuthority": "NO_AUTOMATIC_PUBLICATION"
     }
   ],
+  "currentWorkEvidence": {
+    "githubPullRequestEvent": {
+      "schemaVersion": "vexlife.github-pull-request-current-work/v1",
+      "eventPathEnvironment": "VEXLIFE_CURRENT_WORK_EVENT_PATH",
+      "supportedEventNames": [
+        "pull_request"
+      ],
+      "workRefMarker": "Work",
+      "workRefPattern": "^work\\.vexlife\\.[a-z0-9][a-z0-9.-]*$",
+      "requireSingleMarker": true,
+      "requireRepositoryMatch": true,
+      "requirePullRequestNumberMatch": true,
+      "requireCandidateHeadMatch": true
+    }
+  },
   "requiredSources": [
     "docs/CULTURE.md",
     "docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md",

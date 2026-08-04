@@ -1,3 +1,68 @@
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function exactMarkdownFieldValues(body, marker) {
+  if (typeof body !== 'string' || typeof marker !== 'string' || !marker) return [];
+  const pattern = new RegExp(`^${escapeRegExp(marker)}:\\s*` + '`([^`\\r\\n]+)`\\s*$', 'gm');
+  return [...body.matchAll(pattern)].map((match) => match[1]);
+}
+
+export function resolveGitHubPullRequestCurrentWork({
+  contract,
+  eventName,
+  event,
+  expectedPrNumber = null,
+  expectedCandidateHeadSha = null
+}) {
+  const rule = contract.currentWorkEvidence?.githubPullRequestEvent;
+  const errors = [];
+  if (!rule) return { state: 'UNAVAILABLE', source: 'UNKNOWN', workRef: null, errors: ['GitHub pull-request current-work rule is unavailable'] };
+  if (!rule.supportedEventNames?.includes(eventName)) {
+    return { state: 'NOT_APPLICABLE', source: 'UNKNOWN', workRef: null, errors: [] };
+  }
+  if (!event || typeof event !== 'object') errors.push('GitHub pull-request event is unavailable');
+  const repositorySlug = event?.repository?.full_name ?? null;
+  const repositoryVisibility = event?.repository?.visibility ?? null;
+  const pullRequest = event?.pull_request ?? null;
+  const prNumber = Number.isInteger(pullRequest?.number) && pullRequest.number > 0 ? pullRequest.number : null;
+  const candidateHeadSha = typeof pullRequest?.head?.sha === 'string' ? pullRequest.head.sha : null;
+  const baseSha = typeof pullRequest?.base?.sha === 'string' ? pullRequest.base.sha : null;
+  const markerValues = exactMarkdownFieldValues(pullRequest?.body, rule.workRefMarker);
+  const workRefPattern = new RegExp(rule.workRefPattern);
+
+  if (rule.requireRepositoryMatch && repositorySlug !== contract.stableRepositoryIdentity.slug) {
+    errors.push(`GitHub event repository mismatch: ${repositorySlug ?? 'UNKNOWN'}`);
+  }
+  if (!prNumber) errors.push('GitHub event pull-request number is unavailable');
+  if (!candidateHeadSha || !/^[0-9a-f]{40}$/i.test(candidateHeadSha)) errors.push('GitHub event candidate head is unavailable');
+  if (!baseSha || !/^[0-9a-f]{40}$/i.test(baseSha)) errors.push('GitHub event base SHA is unavailable');
+  if (rule.requirePullRequestNumberMatch && expectedPrNumber != null && prNumber !== expectedPrNumber) {
+    errors.push(`GitHub event pull-request number mismatch: ${prNumber ?? 'UNKNOWN'}`);
+  }
+  if (rule.requireCandidateHeadMatch && expectedCandidateHeadSha && candidateHeadSha !== expectedCandidateHeadSha) {
+    errors.push(`GitHub event candidate head mismatch: ${candidateHeadSha ?? 'UNKNOWN'}`);
+  }
+  if (rule.requireSingleMarker && markerValues.length !== 1) {
+    errors.push(`GitHub event must contain exactly one ${rule.workRefMarker} marker`);
+  }
+  const workRef = markerValues.length === 1 && workRefPattern.test(markerValues[0]) ? markerValues[0] : null;
+  if (markerValues.length === 1 && !workRef) errors.push('GitHub event workRef marker is invalid');
+
+  return {
+    schemaVersion: rule.schemaVersion,
+    state: errors.length ? 'UNVERIFIED' : 'VERIFIED',
+    source: errors.length ? 'UNKNOWN' : 'GITHUB_PULL_REQUEST_EVENT',
+    repositorySlug,
+    repositoryVisibility: typeof repositoryVisibility === 'string' ? repositoryVisibility.toUpperCase() : null,
+    prNumber,
+    candidateHeadSha,
+    baseSha,
+    workRef: errors.length ? null : workRef,
+    errors
+  };
+}
+
 function lifecycleContract(contract, state) {
   return (contract.lifecycleContracts ?? []).find((item) => item.state === state) ?? null;
 }
@@ -61,6 +126,9 @@ export function deriveOrientationReceipt({
   if (!blueprint.pathTopologyValid) blockers.push('implementation path topology is invalid');
   if (!blueprint.sourceManifestCurrent) blockers.push('source manifest is stale');
   if (evidence.git.workingTree !== 'CLEAN') attentions.push('working tree contains uncommitted changes');
+  for (const attention of currentWork.attentions ?? []) {
+    if (typeof attention === 'string' && attention) attentions.push(attention);
+  }
   if (currentWorkState === 'UNKNOWN') attentions.push('current work is UNKNOWN for a non-primary checkout');
   if (currentWorkState === 'ACTIVE_PR' && !currentWork.workRef) attentions.push('active PR workRef is UNKNOWN');
   if (evidence.git.checkoutKind === 'BRANCH' && !evidence.git.upstreamRef) attentions.push('upstream is not configured');
@@ -96,7 +164,9 @@ export function deriveOrientationReceipt({
       prRef: prNumber ? `github-pr.${identity.slug}.${prNumber}` : null,
       prSource: currentWork.prSource,
       workRef: currentWork.workRef,
-      workSource: currentWork.workSource
+      workSource: currentWork.workSource,
+      evidenceState: currentWork.evidenceState ?? null,
+      evidenceSchemaVersion: currentWork.evidenceSchemaVersion ?? null
     },
     lifecycle: {
       state: lifecycle.state,

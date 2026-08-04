@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "blueprint/strings/en.json",
+      "mode": "100644",
+      "bytes": 9327,
+      "sha256": "11389c7bc8f19bbbd289aff406bb0b54268bf79dfa4bd3a8d3e4ecf898e14b26"
+    },
+    {
       "path": "blueprint/strings/ja.json",
       "mode": "100644",
       "bytes": 11186,
@@ -16,8 +22,8 @@
     {
       "path": "blueprint/vexlife.blueprint.json",
       "mode": "100644",
-      "bytes": 1445,
-      "sha256": "ec1c3588da06fff4c27918b0a07ba951dd3198a239753de6de03ac269155f107"
+      "bytes": 1510,
+      "sha256": "4a88c75a9b79b0c08483f4ff9b8622a2f5d23d194b1e6eeb1a6d3a711f6737e0"
     },
     {
       "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
@@ -30,6 +36,12 @@
       "mode": "100644",
       "bytes": 3695,
       "sha256": "b524de20db45461f2c2dd7a8b0244bb0f2c2563c7f1b8fdf7db08a86a217a080"
+    },
+    {
+      "path": "docs/BUILD-ADMISSION-COVERAGE.md",
+      "mode": "100644",
+      "bytes": 5031,
+      "sha256": "5fe7b7a91c51202634b9baca6d82a0b69ec5f5dc7b1d26461b046d654e74eecb"
     },
     {
       "path": "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 5418,
       "sha256": "fa851e7174736adf4714fb532cb79528405dac4e3b3091de28a8d6bb1d4a993a"
-    },
-    {
-      "path": "docs/OPEN-SOURCE-LEGAL-STEWARDSHIP.md",
-      "mode": "100644",
-      "bytes": 14522,
-      "sha256": "60e4398cd0c35a86a1e7b6797ca085fc41cd2e32341cfb0ec5446df252f3854e"
-    },
-    {
-      "path": "docs/PLATFORM-ARCHITECTURE.md",
-      "mode": "100644",
-      "bytes": 3951,
-      "sha256": "85d89ff187d1d06198f8a816aab4938d39ad37f2deca4d53fb1aec86facad969"
     }
   ]
 }

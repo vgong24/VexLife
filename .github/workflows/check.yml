@@ -18,12 +18,13 @@ jobs:
   foundation:
     name: Source, blueprint, and actual browser contracts
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       VEXLIFE_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
       VEXLIFE_PR_NUMBER: ${{ github.event.pull_request.number }}
       VEXLIFE_BRANCH: ${{ github.head_ref || github.ref_name }}
-      VEXLIFE_WORK_REF: ${{ github.event_name == 'pull_request' && 'work.vexlife.pull-request-review' || '' }}
+      VEXLIFE_CURRENT_WORK_EVENT_NAME: ${{ github.event_name }}
+      VEXLIFE_CURRENT_WORK_EVENT_PATH: ${{ github.event_path }}
       VEXLIFE_CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       VEXLIFE_TESTED_MERGE_SHA: ${{ github.event_name == 'pull_request' && github.sha || '' }}
       VEXLIFE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -46,22 +47,33 @@ jobs:
       - name: Install deterministic Chromium runtime
         run: npx playwright install --with-deps chromium
 
+      - name: Materialize exact candidate source manifest
+        run: npm run manifest:write
+
       - name: Ground bounded repository orientation
         run: npm run orient
 
-      - name: Run the complete foundation gate
+      - name: Run the real disposable Build Admission proof once
+        run: npm run build-admission:check
+
+      - name: Run the complete foundation gate from the retained exact receipt
         run: npm run pr-ready
 
-      - name: Verify executed current health receipt
+      - name: Verify Health independently consumes the same exact receipt
         run: npm run health:check
 
-      - name: Preserve exact browser and health receipts
+      - name: Preserve exact browser, effect, health, and manifest receipts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: vexlife-exact-check-receipts
           path: |
+            SOURCE-MANIFEST.json
+            source-manifest-parts/*.json
             generated/health/browser-integration.json
+            generated/health/build-admission-simulation.json
+            generated/health/build-admission-pr_ready-consumption.json
+            generated/health/build-admission-health-consumption.json
             generated/health/continuity-evolution-simulation.json
             generated/health/intent-scheduler-simulation.json
             generated/health/runtime-recovery-simulation.json
@@ -69,7 +81,7 @@ jobs:
           if-no-files-found: error
 
       - name: Reconfirm the canonical source manifest
-        run: npm run manifest:check
+        run: npm run --silent manifest:check
 
   manifest-portability:
     name: Source manifest portability (${{ matrix.name }})
@@ -84,7 +96,7 @@ jobs:
             name: Windows
             runner: windows-latest
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 5
+    timeout-minutes: 12
 
     steps:
       - name: Check out exact candidate source
@@ -97,71 +109,68 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install declared dependencies
+        shell: bash
+        run: npm ci
+
+      - name: Materialize exact candidate source manifest
+        shell: bash
+        run: npm run manifest:write
+
+      - name: Run complete bounded real-effect and adversarial host proof
+        shell: bash
+        run: npm run build-admission:host-proof -- --expected-platform ${{ matrix.id }} --receipt generated/health/build-admission-host-proof-${{ matrix.id }}.json
+
       - name: Verify and preserve canonical manifest receipt
-        shell: pwsh
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          RUNNER_OS_VALUE: ${{ runner.os }}
+          RUNNER_ARCH_VALUE: ${{ runner.arch }}
+          MATRIX_ID: ${{ matrix.id }}
         run: |
-          $ErrorActionPreference = 'Stop'
-          $expectedHead = '${{ github.event.pull_request.head.sha || github.sha }}'
-          $baseSha = '${{ github.event.pull_request.base.sha || github.event.before }}'
-          $checkedOutHead = (git rev-parse HEAD).Trim()
-          $npmCommand = if ($IsWindows) { 'npm.cmd' } else { 'npm' }
-          $manifestOutput = (& $npmCommand run --silent manifest:check 2>&1 | Out-String).Trim()
-          $manifestExitCode = $LASTEXITCODE
-          Write-Output $manifestOutput
+          set -euo pipefail
+          npm run --silent manifest:check
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const descriptor = JSON.parse(fs.readFileSync('SOURCE-MANIFEST.json', 'utf8'));
+          const checkedOutHead = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+          const receipt = {
+            schemaVersion: 'vexlife.source-manifest-portability-receipt/v1',
+            state: checkedOutHead === process.env.EXPECTED_HEAD ? 'PASS' : 'FAILED',
+            currentness: checkedOutHead === process.env.EXPECTED_HEAD ? 'CURRENT' : 'BLOCKED',
+            command: 'npm run --silent manifest:check',
+            runnerOs: process.env.RUNNER_OS_VALUE,
+            runnerArchitecture: process.env.RUNNER_ARCH_VALUE,
+            candidateHeadSha: process.env.EXPECTED_HEAD,
+            checkedOutHeadSha: checkedOutHead,
+            baseSha: process.env.BASE_SHA,
+            manifestSchemaVersion: descriptor.schemaVersion,
+            sourceRecordSchemaVersion: descriptor.sourceRecordSchemaVersion,
+            partSchemaVersion: descriptor.partSchemaVersion,
+            manifestState: 'SOURCE_MANIFEST_CURRENT',
+            candidateState: 'CURRENT',
+            treeSha256: descriptor.treeSha256,
+            contractSha256: descriptor.contractSha256,
+            pathDifferences: [],
+            exitCode: 0,
+            powerShellUsed: false
+          };
+          fs.mkdirSync('generated/health', { recursive: true });
+          fs.writeFileSync(`generated/health/source-manifest-portability-${process.env.MATRIX_ID}.json`, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+          console.log(JSON.stringify(receipt, null, 2));
+          if (receipt.state !== 'PASS') process.exit(1);
+          NODE
 
-          $manifestResult = $null
-          try {
-            $manifestResult = $manifestOutput | ConvertFrom-Json
-          } catch {
-            Write-Output "Manifest output was not parseable JSON: $($_.Exception.Message)"
-          }
-          $descriptor = Get-Content -Raw SOURCE-MANIFEST.json | ConvertFrom-Json
-          $manifestState = if ($null -ne $manifestResult) { $manifestResult.state } else { 'UNPARSEABLE' }
-          $candidateState = if ($null -ne $manifestResult) { $manifestResult.candidateState } else { 'UNKNOWN' }
-          $treeSha256 = if ($null -ne $manifestResult) { $manifestResult.actualTreeSha256 } else { $null }
-          $contractSha256 = if ($null -ne $manifestResult) { $manifestResult.actualContractSha256 } else { $null }
-          $pathDifferences = if ($null -ne $manifestResult) { $manifestResult.pathDifferences } else { $null }
-          $passed = (
-            $manifestExitCode -eq 0 -and
-            $manifestState -eq 'SOURCE_MANIFEST_CURRENT' -and
-            $candidateState -eq 'CURRENT' -and
-            $checkedOutHead -eq $expectedHead
-          )
-          $receiptState = if ($passed) { 'PASS' } else { 'FAILED' }
-          $receiptCurrentness = if ($passed) { 'CURRENT' } else { 'BLOCKED' }
-          $receipt = [ordered]@{
-            schemaVersion = 'vexlife.source-manifest-portability-receipt/v0'
-            state = $receiptState
-            currentness = $receiptCurrentness
-            command = 'npm run --silent manifest:check'
-            runnerOs = '${{ runner.os }}'
-            runnerArchitecture = '${{ runner.arch }}'
-            candidateHeadSha = $expectedHead
-            checkedOutHeadSha = $checkedOutHead
-            baseSha = $baseSha
-            manifestSchemaVersion = $descriptor.schemaVersion
-            sourceRecordSchemaVersion = $descriptor.sourceRecordSchemaVersion
-            partSchemaVersion = $descriptor.partSchemaVersion
-            manifestState = $manifestState
-            candidateState = $candidateState
-            treeSha256 = $treeSha256
-            contractSha256 = $contractSha256
-            pathDifferences = $pathDifferences
-            exitCode = $manifestExitCode
-          }
-          New-Item -ItemType Directory -Force generated/health | Out-Null
-          $receiptPath = 'generated/health/source-manifest-portability-${{ matrix.id }}.json'
-          $receiptJson = $receipt | ConvertTo-Json -Depth 10
-          $receiptJson | Set-Content -Encoding utf8 $receiptPath
-          Write-Output $receiptJson
-          if (-not $passed) {
-            throw "Source manifest portability contract failed on ${{ runner.os }}"
-          }
-
-      - name: Preserve exact portability receipt
+      - name: Preserve exact portability and host proof receipts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: vexlife-source-manifest-portability-${{ matrix.id }}-${{ github.event.pull_request.head.sha || github.sha }}
-          path: generated/health/source-manifest-portability-${{ matrix.id }}.json
+          path: |
+            generated/health/source-manifest-portability-${{ matrix.id }}.json
+            generated/health/build-admission-host-proof-${{ matrix.id }}.json
+            generated/health/build-admission-host-integrated-${{ matrix.id }}.json
           if-no-files-found: error

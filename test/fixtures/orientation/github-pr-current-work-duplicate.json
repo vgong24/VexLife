@@ -1,0 +1,18 @@
+{
+  "repository": {
+    "full_name": "vgong24/VexLife",
+    "visibility": "private"
+  },
+  "pull_request": {
+    "number": 42,
+    "body": "Work: `work.vexlife.example-orientation.first`\nWork: `work.vexlife.example-orientation.second`\n",
+    "head": {
+      "ref": "feature/example-orientation",
+      "sha": "1111111111111111111111111111111111111111"
+    },
+    "base": {
+      "ref": "main",
+      "sha": "2222222222222222222222222222222222222222"
+    }
+  }
+}

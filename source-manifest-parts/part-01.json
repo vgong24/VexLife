@@ -22,8 +22,8 @@
     {
       "path": ".github/workflows/check.yml",
       "mode": "100644",
-      "bytes": 6810,
-      "sha256": "4ccf3ea67ef2d6284dbbc4a0f7c88fcbf541afabeb2d8b41bd0d0c4c107d1383"
+      "bytes": 7042,
+      "sha256": "f434c45cbe0b085475dd8ba3f9f711a6bfc3aa66d5210752c9a3520d9e2108b6"
     },
     {
       "path": ".github/workflows/dco.yml",
@@ -116,10 +116,16 @@
       "sha256": "65e46c0255029379fe7db3f053af949393fa242c7c01433873cf328d92b88546"
     },
     {
+      "path": "blueprint/build-admission-registry.json",
+      "mode": "100644",
+      "bytes": 14916,
+      "sha256": "a9f9096de4d68df87b3551e2ce9a5f3413be6664ec00d38485c84f18e2ecf91b"
+    },
+    {
       "path": "blueprint/build-health-registry.json",
       "mode": "100644",
-      "bytes": 11974,
-      "sha256": "dbe797a8554bef3b9fd9975faadc2b40d1b2dde9eb09f11c14d86f2dcadc8e5b"
+      "bytes": 12107,
+      "sha256": "e63274b19c6694ef9e0d73f7ad0fffe0d66bdbaf4ff957336fa90fa5f4227653"
     },
     {
       "path": "blueprint/capability-registry.json",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 1467,
       "sha256": "02d506c365ebb1bf0f8e6fed1d6a6c8652692b9c2c3d59b114fc7f489b023aad"
-    },
-    {
-      "path": "blueprint/evolution-registry.json",
-      "mode": "100644",
-      "bytes": 39351,
-      "sha256": "b7c963ade96e831ba7f1477f70d29c1285bec8326b486fba52127798a71e7682"
     }
   ]
 }

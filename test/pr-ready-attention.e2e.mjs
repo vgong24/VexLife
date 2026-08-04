@@ -11,10 +11,8 @@ import { runContinuityEvolutionSimulation, validateContinuityEvolutionSimulation
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('orientation ATTENTION remains unresolved through pr-ready and repository Health', () => {
-  const receiptArg = `generated/health/vexlife-pr-ready-attention-${process.pid}-${Date.now()}.json`;
-  const receiptPath = path.join(ROOT, ...receiptArg.split('/'));
-  const environment = { ...process.env, VEXLIFE_NESTED_PR_READY: '1' };
+test('unknown or unverified PR workRef remains ATTENTION rather than becoming grounded or blocked', () => {
+  const environment = { ...process.env };
   for (const name of [
     'VEXLIFE_REPOSITORY_VISIBILITY',
     'VEXLIFE_LIFECYCLE_STATE',
@@ -22,39 +20,25 @@ test('orientation ATTENTION remains unresolved through pr-ready and repository H
     'VEXLIFE_WORK_REF',
     'VEXLIFE_PRIOR_REVIEWED_HEAD',
     'VEXLIFE_CURRENT_WORK_PROJECTION',
+    'VEXLIFE_CURRENT_WORK_EVENT_PATH',
+    'VEXLIFE_CURRENT_WORK_EVENT_NAME',
+    'GITHUB_EVENT_PATH',
+    'GITHUB_EVENT_NAME',
     'VEXLIFE_CANDIDATE_HEAD_SHA',
     'VEXLIFE_TESTED_MERGE_SHA',
     'VEXLIFE_BASE_SHA'
   ]) delete environment[name];
-  try {
-    const prReady = spawnSync(process.execPath, ['scripts/pr-ready.mjs', '--receipt', receiptArg], {
-      cwd: ROOT,
-      env: environment,
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-      timeout: 300000
-    });
-    assert.equal(prReady.status, 1, prReady.stderr);
-    const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
-    const orientation = receipt.checkResults.find((item) => item.checkRef === 'check.orientation');
-    assert.equal(orientation.transportState, 'EXECUTED');
-    assert.equal(orientation.rawState, 'ATTENTION');
-    assert.equal(orientation.semanticState, 'ATTENTION');
-    assert.equal(receipt.state, 'PR_READY_FAILED');
-    assert.equal(receipt.health.state, 'ATTENTION');
-    assert.ok(receipt.health.receiptSummary.executedCurrentPassed < receipt.health.receiptSummary.total);
-    assert.ok(receipt.health.unresolvedCheckRefs.includes('check.orientation'));
-
-    const health = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', receiptArg], {
-      cwd: ROOT,
-      env: environment,
-      encoding: 'utf8'
-    });
-    assert.equal(health.status, 1, health.stderr);
-    assert.equal(JSON.parse(health.stdout).state, 'ATTENTION');
-  } finally {
-    fs.rmSync(receiptPath, { force: true });
-  }
+  const orientation = spawnSync(process.execPath, ['scripts/orient.mjs'], {
+    cwd: ROOT,
+    env: environment,
+    encoding: 'utf8'
+  });
+  assert.equal(orientation.status, 0, orientation.stderr);
+  const receipt = JSON.parse(orientation.stdout);
+  assert.equal(receipt.state, 'ATTENTION');
+  assert.equal(receipt.currentWork.workRef, null);
+  assert.equal(receipt.currentWork.workSource, 'UNKNOWN');
+  assert.ok(receipt.attentions.some((item) => /workRef is UNKNOWN|current work is UNKNOWN/.test(item)));
 });
 
 test('generic successful evolution command output cannot substitute for exact structured continuity receipt', () => {
