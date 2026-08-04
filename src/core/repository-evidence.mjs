@@ -9,6 +9,10 @@ const SAFE_GIT_ENV_KEYS = new Set([
   'PATH', 'Path', 'PATHEXT', 'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'COMSPEC',
   'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL', 'TERM'
 ]);
+const ALLOWED_GIT_ENV_OVERRIDES = new Set([
+  'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL',
+  'GIT_AUTHOR_DATE', 'GIT_COMMITTER_DATE'
+]);
 const DANGEROUS_LOCAL_CONFIG = /^(?:alias\.|credential\.|include\.|includeif\.|remote\.|url\.|protocol\.|http\.|https\.|core\.(?:hookspath|sshcommand|gitproxy)|gpg\.|commit\.gpgsign)/i;
 const ALLOWED_LOCAL_CONFIG = /^(?:core\.(?:repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks)|user\.(?:name|email))$/i;
 
@@ -20,21 +24,48 @@ function freeze(value) {
 }
 function sha256(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
 
-export function createSanitizedGitEnvironment(overrides = {}) {
+function createExactEmptyGitControlDomain() {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-git-control-'));
+  const configPath = path.join(directory, 'empty.gitconfig');
+  const hooksPath = path.join(directory, 'hooks');
+  fs.writeFileSync(configPath, '', { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+  fs.mkdirSync(hooksPath, { mode: 0o700 });
+  const configStat = fs.lstatSync(configPath);
+  const hooksStat = fs.lstatSync(hooksPath);
+  if (!configStat.isFile() || configStat.isSymbolicLink() || configStat.size !== 0) {
+    throw new Error('source-managed Git config domain must be one exact empty regular file');
+  }
+  if (!hooksStat.isDirectory() || hooksStat.isSymbolicLink() || fs.readdirSync(hooksPath).length !== 0) {
+    throw new Error('source-managed Git hook domain must be one exact empty directory');
+  }
+  return { directory, configPath, hooksPath };
+}
+
+export function createSanitizedGitEnvironment(overrides = {}, { configPath } = {}) {
+  if (typeof configPath !== 'string' || !configPath) throw new Error('source-managed empty Git config path is required');
+  const configStat = fs.lstatSync(configPath);
+  if (!configStat.isFile() || configStat.isSymbolicLink() || configStat.size !== 0) {
+    throw new Error('source-managed Git config path must remain an exact empty regular file');
+  }
+  for (const [key, value] of Object.entries(overrides)) {
+    if (!ALLOWED_GIT_ENV_OVERRIDES.has(key) || typeof value !== 'string' || /[\0\r\n]/.test(value)) {
+      throw new Error(`Git environment override is not source-managed: ${key}`);
+    }
+  }
   const env = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (SAFE_GIT_ENV_KEYS.has(key) && typeof value === 'string') env[key] = value;
   }
   return {
     ...env,
+    ...overrides,
     GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: os.devNull,
-    GIT_CONFIG_SYSTEM: os.devNull,
+    GIT_CONFIG_GLOBAL: configPath,
+    GIT_CONFIG_SYSTEM: configPath,
     GIT_TERMINAL_PROMPT: '0',
     GIT_ASKPASS: '',
     GCM_INTERACTIVE: 'Never',
-    GIT_PROTOCOL_FROM_USER: '0',
-    ...overrides
+    GIT_PROTOCOL_FROM_USER: '0'
   };
 }
 
@@ -42,36 +73,45 @@ export function runBoundedGit(root, args, {
   label = args.join(' '),
   env = {},
   allowFailure = false,
-  hooksPath = os.devNull,
+  hooksPath = null,
   timeout = 30000
 } = {}) {
   if (!Array.isArray(args) || args.length === 0 || args.some((arg) => typeof arg !== 'string' || /[\0\r\n]/.test(arg))) {
     throw new Error(`${label} requires bounded Git arguments`);
   }
-  const commandArgs = [
-    '-c', `core.hooksPath=${hooksPath}`,
-    '-c', 'credential.helper=',
-    '-c', 'protocol.allow=never',
-    '-c', 'commit.gpgSign=false',
-    ...args
-  ];
-  const result = spawnSync('git', commandArgs, {
-    cwd: root,
-    encoding: 'utf8',
-    env: createSanitizedGitEnvironment(env),
-    timeout,
-    maxBuffer: 16 * 1024 * 1024,
-    shell: false
-  });
-  const output = {
-    status: Number.isInteger(result.status) ? result.status : null,
-    stdout: result.stdout ?? '',
-    stderr: result.error?.message ?? result.stderr ?? ''
-  };
-  if (!allowFailure && (result.error || result.status !== 0)) {
-    throw new Error(`${label} failed: ${output.stderr.trim() || `exit ${output.status}`}`);
+  const controlDomain = createExactEmptyGitControlDomain();
+  try {
+    const effectiveHooksPath = hooksPath ?? controlDomain.hooksPath;
+    if (typeof effectiveHooksPath !== 'string' || !effectiveHooksPath || /[\0\r\n]/.test(effectiveHooksPath)) {
+      throw new Error(`${label} requires one bounded Git hook domain`);
+    }
+    const commandArgs = [
+      '-c', `core.hooksPath=${effectiveHooksPath}`,
+      '-c', 'credential.helper=',
+      '-c', 'protocol.allow=never',
+      '-c', 'commit.gpgSign=false',
+      ...args
+    ];
+    const result = spawnSync('git', commandArgs, {
+      cwd: root,
+      encoding: 'utf8',
+      env: createSanitizedGitEnvironment(env, { configPath: controlDomain.configPath }),
+      timeout,
+      maxBuffer: 16 * 1024 * 1024,
+      shell: false
+    });
+    const output = {
+      status: Number.isInteger(result.status) ? result.status : null,
+      stdout: result.stdout ?? '',
+      stderr: result.error?.message ?? result.stderr ?? ''
+    };
+    if (!allowFailure && (result.error || result.status !== 0)) {
+      throw new Error(`${label} failed: ${output.stderr.trim() || `exit ${output.status}`}`);
+    }
+    return output;
+  } finally {
+    fs.rmSync(controlDomain.directory, { recursive: true, force: true });
   }
-  return output;
 }
 
 function gitOrNull(root, args) {

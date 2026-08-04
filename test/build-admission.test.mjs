@@ -142,6 +142,34 @@ test('BA4-BA9 independently reobserve head/tree/blob/path and reject coordinated
   } finally { cleanupBuildAdmissionFixture(fixture); }
 });
 
+test('Windows and Linux use one exact empty regular Git config domain and reject caller config substitution', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ba-git-config-portability-'));
+  const malicious = path.join(root, 'malicious.gitconfig');
+  fs.writeFileSync(malicious, '[credential]\n\thelper = unsafe\n', 'utf8');
+  const priorGlobal = process.env.GIT_CONFIG_GLOBAL;
+  const priorSystem = process.env.GIT_CONFIG_SYSTEM;
+  process.env.GIT_CONFIG_GLOBAL = malicious;
+  process.env.GIT_CONFIG_SYSTEM = malicious;
+  try {
+    const globalResult = runBoundedGit(root, ['config', '--global', '--list'], { label: 'Git empty global config proof' });
+    const systemResult = runBoundedGit(root, ['config', '--system', '--list'], { label: 'Git empty system config proof' });
+    assert.equal(globalResult.stdout, '');
+    assert.equal(systemResult.stdout, '');
+    assert.throws(() => runBoundedGit(root, ['config', '--global', '--list'], {
+      label: 'Git caller global config substitution',
+      env: { GIT_CONFIG_GLOBAL: malicious }
+    }), /environment override is not source-managed/);
+    assert.throws(() => runBoundedGit(root, ['config', '--system', '--list'], {
+      label: 'Git caller system config substitution',
+      env: { GIT_CONFIG_SYSTEM: malicious }
+    }), /environment override is not source-managed/);
+  } finally {
+    if (priorGlobal == null) delete process.env.GIT_CONFIG_GLOBAL; else process.env.GIT_CONFIG_GLOBAL = priorGlobal;
+    if (priorSystem == null) delete process.env.GIT_CONFIG_SYSTEM; else process.env.GIT_CONFIG_SYSTEM = priorSystem;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('BA8-BA9 and BA23 disable repository/global hooks and reject ignored, unsafe-config, nested-control, symlink, remote, and outside-path effect material', () => {
   const cases = [
     ['repository-hook', (fixture, canary) => {
