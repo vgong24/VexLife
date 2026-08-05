@@ -4,7 +4,7 @@ npm ci
 mkdir -p .github/w0w5-chunks
 cat .github/w0w5-object/map.* > /tmp/w0w5-map
 while read -r name blob expected; do
-  gh api "repos/$GITHUB_REPOSITORY/git/blobs/$blob" --jq -r .content | base64 -d > ".github/w0w5-chunks/$name"
+  gh api "repos/$GITHUB_REPOSITORY/git/blobs/$blob" --jq '.content' | tr -d '\n' | base64 -d > ".github/w0w5-chunks/$name"
   echo "$expected  .github/w0w5-chunks/$name" | sha256sum -c -
 done < /tmp/w0w5-map
 test "$(find .github/w0w5-chunks -maxdepth 1 -type f -name '[0-9][0-9]' | wc -l | tr -d ' ')" -eq 30
