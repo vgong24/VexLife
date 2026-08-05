@@ -1,0 +1,24 @@
+node - <<'NODEVERIFY'
+const fs=require('node:fs');
+const crypto=require('node:crypto');
+const inventory=JSON.parse(fs.readFileSync('.tranche/payload-inventory.json','utf8'));
+if(!Array.isArray(inventory.files)||inventory.files.length!==30) throw new Error('unexpected payload inventory');
+for(const item of inventory.files){
+  const content=fs.readFileSync(item.path);
+  const hash=crypto.createHash('sha256').update(content).digest('hex');
+  if(content.length!==item.bytes||hash!==item.sha256) throw new Error(`payload mismatch ${item.path}`);
+}
+console.log(JSON.stringify({state:'W0_W5_PAYLOAD_VERIFIED',files:inventory.files.length},null,2));
+NODEVERIFY
+while IFS= read -r path; do
+  test -n "$path"
+  rm -rf -- "$path"
+done < .tranche/delete-paths.txt
+rm -rf .tranche .github/w0w5-chunks .github/w0w5-object
+rm -f .github/workflows/plugin-foundation-manifest.yml .github/workflows/w0w5-local-safe.yml
+git add -A
+git diff --cached --check
+test ! -e .github/foundation-correction.patch.gz.b64
+test ! -e .github/workflows/plugin-foundation-manifest.yml
+test ! -e .github/workflows/w0w5-local-safe.yml
+test ! -e .github/w0w5-object
