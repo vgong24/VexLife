@@ -1,43 +1,13 @@
-name: Plugin Foundation Manifest
+name: Plugin Foundation Correction Staging
 
 on:
-  push:
-    branches:
-      - VXG-080426-chatgpt-vexlife-plugin-process-runtime-foundation
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  generate-and-test:
+  staged:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run manifest:write
-      - run: npm run check
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: plugin-foundation-generated-manifest
-          path: |
-            SOURCE-MANIFEST.json
-            source-manifest-parts/
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: plugin-foundation-source-snapshot
-          path: |
-            blueprint/
-            src/
-            scripts/
-            test/
-            docs/
-            package.json
-            package-lock.json
-          if-no-files-found: error
+      - run: echo "Patch parts are being staged; no repository effect."
