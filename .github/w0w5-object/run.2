@@ -1,0 +1,7 @@
+node --test test/provider-process-adapter.test.mjs test/concern-watch.test.mjs
+npm run root:process -- --packet test/fixtures/root-process/fresh-root-packet.json
+npm run check
+git config user.name VexGPT
+git config user.email victor.gong@vextreme24.com
+git commit -s -m "Split VexLife provider process adapter from shared candidates"
+git push origin HEAD:VXG-080426-chatgpt-vexlife-plugin-process-runtime-foundation
