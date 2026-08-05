@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "vexlife.root-process-packet/v1",
+  "pluginRef": "plugin.vexlife.root.consume-recipient-packet.v1",
+  "inputs": {
+    "parentGlobalRootRef": "github.issue.vextreme-sdk.230",
+    "parentScopedRootRef": "github.issue.vexlife.20",
+    "currentEntryRef": "github.issue.vexlife.20.comment.5188178476",
+    "repository": "vgong24/VexLife",
+    "expectedMain": "8dabe8a2fd5d9013931bbabab3416f86cb997c23",
+    "nextActionOwnerRef": "Operations[VEXLIFE.WINDOWS]",
+    "nextActionRef": "DESIGN_AND_VERIFY_GENERIC_EXECUTOR",
+    "continuity": "[VXG RealForever]"
+  },
+  "sourceRefs": {
+    "projectInstructions": "B_ROOT_VEX_OPERATIONS_PROJECT_INSTRUCTIONS.md",
+    "currentRootEntry": "github.issue.vexlife.20.comment.5188178476"
+  },
+  "currentFoundationVersions": {
+    "foundation.vexlife.root-process-plugin.v1": 1,
+    "foundation.vexlife.identity-lattice.v1": 1,
+    "foundation.vexlife.permission-effects.v1": 1
+  },
+  "authority": {
+    "effects": []
+  },
+  "resourceBudget": {
+    "requiredTokens": 500,
+    "availableTokens": 2000
+  },
+  "recipientRef": "RootVexOperations[WINDOWS-VEXLIFE]"
+}

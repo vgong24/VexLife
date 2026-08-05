@@ -1,0 +1,86 @@
+[
+  {
+    "templateRef": "template.vexlife.root-recipient-packet",
+    "templateVersion": 1,
+    "purpose": "Complete cold-start packet for a fresh Root occupancy.",
+    "requiredFields": [
+      "parentGlobalRootRef",
+      "parentScopedRootRef",
+      "currentEntryRef",
+      "repository",
+      "expectedMain",
+      "nextActionOwnerRef",
+      "nextActionRef",
+      "continuity"
+    ]
+  },
+  {
+    "templateRef": "template.vexlife.root-consumption-receipt",
+    "templateVersion": 1,
+    "purpose": "Explicit proof that a fresh Root consumed and compiled a recipient packet.",
+    "requiredFields": [
+      "instanceRef",
+      "occupancyRef",
+      "providerBindingRef",
+      "threadRef",
+      "consumedPacketHash",
+      "pluginRef",
+      "processRef",
+      "planHash",
+      "disposition",
+      "formedAt"
+    ]
+  },
+  {
+    "templateRef": "template.vexlife.plugin-process-plan",
+    "templateVersion": 1,
+    "purpose": "Resolved plugin, process, foundation, module, template and authority compatibility plan.",
+    "requiredFields": [
+      "pluginRef",
+      "pluginVersion",
+      "pluginApiVersion",
+      "processRef",
+      "processVersion",
+      "implementationModuleRef",
+      "foundationRefs",
+      "inputTemplateRefs",
+      "outputTemplateRefs",
+      "authorityEnvelope",
+      "planHash"
+    ]
+  },
+  {
+    "templateRef": "template.vexlocalbridge.generic-task-manifest",
+    "templateVersion": 1,
+    "purpose": "Provider-neutral manifest consumed by one generic versioned VexLocalBridge executor.",
+    "requiredFields": [
+      "taskRef",
+      "attemptRef",
+      "executorRef",
+      "executorVersion",
+      "executorSha256",
+      "sourceArtifact",
+      "evidenceManifest",
+      "livePreflight",
+      "allowedEffects",
+      "terminalResultContract"
+    ]
+  },
+  {
+    "templateRef": "template.vexlocalbridge.canonical-result",
+    "templateVersion": 1,
+    "purpose": "One terminal result binding first substantive failure, before/after state, receipts and canonical ZIP inventory.",
+    "requiredFields": [
+      "taskRef",
+      "attemptRef",
+      "executorRef",
+      "disposition",
+      "firstSubstantiveFailure",
+      "beforeStateRef",
+      "afterStateRef",
+      "receiptRefs",
+      "resultInventorySha256",
+      "resultZipSha256"
+    ]
+  }
+]

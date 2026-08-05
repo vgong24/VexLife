@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "vexlife.plugin-registry/v1",
+  "registryRef": "registry.vexlife.plugins.001",
+  "registryVersion": 1,
+  "pluginApiVersion": 1,
+  "purpose": "Bind Process Factory contracts to reusable provider-neutral implementation plugins.",
+  "runtimeEvidencePolicy": {
+    "packageContainedEvidenceRequired": true,
+    "historicalGitHubCommentScraping": false,
+    "liveGitHubReadClasses": [
+      "MAIN",
+      "BRANCH_HEAD",
+      "CLAIM",
+      "PR_STATE",
+      "AUTHENTICATED_IDENTITY"
+    ]
+  },
+  "plugins": [
+    {
+      "pluginRef": "plugin.vexlife.root.consume-recipient-packet.v1",
+      "pluginVersion": 1,
+      "pluginClass": "ROOT_PROCESS",
+      "processRef": "process.vexlife.root.consume-recipient-packet",
+      "implementationModuleRef": "module.vexlife.core.plugin-runtime",
+      "stepRefs": [
+        "validate-recipient-packet",
+        "resolve-plugin-bundle",
+        "bind-current-foundations",
+        "compile-no-effect-plan",
+        "emit-explicit-consumption-receipt"
+      ],
+      "foundationVersionBindings": {
+        "foundation.vexlife.root-process-plugin.v1": 1,
+        "foundation.vexlife.identity-lattice.v1": 1,
+        "foundation.vexlife.permission-effects.v1": 1
+      },
+      "inputTemplateRefs": [
+        "template.vexlife.root-recipient-packet"
+      ],
+      "outputTemplateRefs": [
+        "template.vexlife.plugin-process-plan",
+        "template.vexlife.root-consumption-receipt"
+      ],
+      "allowedEffects": [],
+      "testPaths": [
+        "test/plugin-runtime.test.mjs"
+      ],
+      "recoveryRule": "correct packet bindings and recompile; never infer missing authority"
+    },
+    {
+      "pluginRef": "plugin.vexlocalbridge.compile-generic-task.v1",
+      "pluginVersion": 1,
+      "pluginClass": "OPERATIONS_TASK_FORMATION",
+      "processRef": "process.vexlocalbridge.compile-generic-task",
+      "implementationModuleRef": "module.vexlife.core.plugin-runtime",
+      "stepRefs": [
+        "validate-task-manifest",
+        "verify-executor-binding",
+        "verify-package-evidence",
+        "compile-live-preflight",
+        "compile-terminal-result-contract"
+      ],
+      "foundationVersionBindings": {
+        "foundation.vexlife.generic-executor-manifest.v1": 1,
+        "foundation.vexlife.permission-effects.v1": 1
+      },
+      "inputTemplateRefs": [
+        "template.vexlocalbridge.generic-task-manifest"
+      ],
+      "outputTemplateRefs": [
+        "template.vexlocalbridge.generic-task-manifest",
+        "template.vexlocalbridge.canonical-result"
+      ],
+      "allowedEffects": [
+        "FORM_TASK_PACKAGE"
+      ],
+      "testPaths": [
+        "test/plugin-runtime.test.mjs"
+      ],
+      "recoveryRule": "correct the manifest; the generic executor source is immutable for the task"
+    }
+  ]
+}

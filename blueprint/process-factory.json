@@ -4,15 +4,25 @@
   "factoryVersion": 1,
   "composition": "CANONICAL_FRAGMENT_COMPOSITION",
   "includes": {
-    "foundations": "blueprint/process-factory/foundations.json",
+    "foundations": [
+      "blueprint/process-factory/foundations.json",
+      "blueprint/process-factory/foundations-plugins.json"
+    ],
     "processes": [
       "blueprint/process-factory/processes-core.json",
       "blueprint/process-factory/processes-conversation-and-interface.json",
       "blueprint/process-factory/processes-evolution.json",
       "blueprint/process-factory/processes-operations-and-publication.json",
-      "blueprint/process-factory/processes-health-and-bridge.json"
+      "blueprint/process-factory/processes-health-and-bridge.json",
+      "blueprint/process-factory/processes-root-and-plugins.json"
     ],
-    "templates": "blueprint/process-factory/templates.json",
-    "workedExamples": "blueprint/process-factory/worked-examples.json"
+    "templates": [
+      "blueprint/process-factory/templates.json",
+      "blueprint/process-factory/templates-root-and-plugins.json"
+    ],
+    "workedExamples": [
+      "blueprint/process-factory/worked-examples.json",
+      "blueprint/process-factory/worked-examples-root-and-plugins.json"
+    ]
   }
 }

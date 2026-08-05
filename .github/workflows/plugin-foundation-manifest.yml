@@ -1,0 +1,30 @@
+name: Plugin Foundation Manifest
+
+on:
+  push:
+    branches:
+      - VXG-080426-chatgpt-vexlife-plugin-process-runtime-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  generate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run manifest:write
+      - run: npm run check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plugin-foundation-generated-manifest
+          path: |
+            SOURCE-MANIFEST.json
+            source-manifest-parts/
+          if-no-files-found: error
