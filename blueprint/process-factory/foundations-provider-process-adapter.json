@@ -1,0 +1,20 @@
+[
+  {
+    "foundationRef": "foundation.vexlife.root-process-adapter.v1",
+    "foundationVersion": 1,
+    "purpose": "VexLife-local Root process adapters compile complete recipient packets into deterministic no-effect plans without reconstructing historical conversations.",
+    "ownershipClass": "VEXLIFE_PRODUCT_PROCESS",
+    "sharedContractState": "PENDING_SHARED_CONVERGENCE",
+    "ownedContracts": [
+      "VexLifeRootRecipientPacket",
+      "VexLifeRootConsumptionReceipt",
+      "VexLifeProviderProcessAdapterPlan"
+    ],
+    "invalidationSelectors": [
+      "recipient-packet-contract-change",
+      "root-currentness-contract-change",
+      "shared-sdk-binding-change"
+    ],
+    "revalidationProcedureRef": "test.provider-process-adapter.fresh-root-cold-start"
+  }
+]

@@ -8,7 +8,7 @@
       "blueprint/module-registry/scripts.json",
       "blueprint/module-registry/browser.json",
       "blueprint/module-registry/governance-and-bridge.json",
-      "blueprint/module-registry/process-plugins.json"
+      "blueprint/module-registry/provider-process-adapter.json"
     ]
   }
 }

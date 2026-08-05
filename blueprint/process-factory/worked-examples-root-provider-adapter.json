@@ -1,0 +1,28 @@
+[
+  {
+    "exampleRef": "example.vexlife.root.fresh-cold-start.001",
+    "formedFromProcessRef": "process.vexlife.root.consume-recipient-packet",
+    "formedFromTemplateVersion": 1,
+    "sourceRefs": [
+      "B_ROOT_VEX_OPERATIONS_PROJECT_INSTRUCTIONS.md",
+      "github.issue.vexlife.20"
+    ],
+    "inputBindings": {
+      "parentGlobalRootRef": "github.issue.vextreme-sdk.230",
+      "parentScopedRootRef": "github.issue.vexlife.20",
+      "currentEntryRef": "github.issue.vexlife.20.comment.current",
+      "repository": "vgong24/VexLife",
+      "expectedMain": "EXACT_LIVE_SHA",
+      "nextActionOwnerRef": "Operations[VEXLIFE.WINDOWS]",
+      "nextActionRef": "CONSUME_AND_COMPILE",
+      "continuity": "[VXG RealForever]"
+    },
+    "renderedOutput": "A fresh Root resolves one VexLife-local provider/process/template/foundation bundle and emits an explicit no-effect plan with unresolved SDK bindings visible.",
+    "observedOutcome": "No prior chat reconstruction, no inferred authority and no repository-local universal-core claim.",
+    "correctionsLearned": [
+      "handoff posted is not recipient consumption",
+      "verified outputs are consumed rather than reconstructed",
+      "repository-local adapters do not own shared SDK grammar"
+    ]
+  }
+]

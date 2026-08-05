@@ -1,0 +1,81 @@
+[
+  {
+    "processRef": "process.vexlife.root.consume-recipient-packet",
+    "processVersion": 1,
+    "purpose": "Compile one VexLife recipient-complete packet into an explicit fresh-Root consumption plan.",
+    "ownershipClass": "VEXLIFE_PRODUCT_PROCESS",
+    "sharedContractState": "PENDING_SHARED_CONVERGENCE",
+    "applicabilityRules": [
+      "recipient packet is complete",
+      "fresh Root identity refs are supplied"
+    ],
+    "requiredInputs": [
+      "parentGlobalRootRef",
+      "parentScopedRootRef",
+      "currentEntryRef",
+      "repository",
+      "expectedMain",
+      "nextActionOwnerRef",
+      "nextActionRef",
+      "continuity"
+    ],
+    "optionalInputs": [
+      "siblingScopeRefs",
+      "releaseCommitmentRefs",
+      "unresolvedFrontierRefs"
+    ],
+    "sourceResolutionRules": [
+      "use packet-contained immutable refs",
+      "read live mutable currentness separately",
+      "never reconstruct authority from historical chat"
+    ],
+    "preconditions": [
+      "packet schema validates",
+      "current Root identity is fresh",
+      "no authority field is filled from memory"
+    ],
+    "steps": [
+      "validate-recipient-packet",
+      "resolve-provider-process-bundle",
+      "bind-current-foundations",
+      "compile-no-effect-plan",
+      "emit-explicit-consumption-receipt"
+    ],
+    "effectOwnerRule": "The VexLife adapter compiles plans; it performs no repository or host effect.",
+    "authorityEnvelope": {
+      "effects": [],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.provider-process-adapter-plan",
+      "template.vexlife.root-consumption-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "ROOT_PACKET_COMPILED",
+      "ROOT_PACKET_BLOCKED_MISSING_INPUT",
+      "ROOT_PACKET_BLOCKED_STALE_FOUNDATION",
+      "ROOT_PACKET_BLOCKED_AUTHORITY"
+    ],
+    "returnRouteRule": "return the explicit consumption receipt to the packet's parent scoped Root ledger",
+    "closureRule": "close only after packet hash, provider/process binding and plan hash are emitted",
+    "recoveryRule": "correct the packet or currentness binding; never invent missing authority",
+    "foundationDependencies": [
+      "foundation.vexlife.root-process-adapter.v1",
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "role.root-vex-operations",
+      "module.vexlife.script.root-process"
+    ],
+    "invalidationTriggers": [
+      "recipient-packet-contract-change",
+      "provider-process-binding-change",
+      "foundation-version-change",
+      "shared-sdk-binding-change"
+    ],
+    "workedExampleRefs": [
+      "example.vexlife.root.fresh-cold-start.001"
+    ]
+  }
+]

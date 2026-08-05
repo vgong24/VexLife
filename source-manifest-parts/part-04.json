@@ -2,6 +2,42 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "blueprint/process-factory/templates.json",
+      "mode": "100644",
+      "bytes": 5297,
+      "sha256": "ef4be3e077ecf3397fba37cb36e9b0f096e3154d61fcbda749389db4a3e2a34c"
+    },
+    {
+      "path": "blueprint/process-factory/worked-examples-root-provider-adapter.json",
+      "mode": "100644",
+      "bytes": 1266,
+      "sha256": "67c51ebb2757fbee3ee3849bb7648fb7e25ffe31b44c1a64cd46fd84341b83fc"
+    },
+    {
+      "path": "blueprint/process-factory/worked-examples.json",
+      "mode": "100644",
+      "bytes": 3485,
+      "sha256": "c1923db71d440bfd87852df1890a37e371d2d1f1cf50ccdd1456d6fd4c86a13e"
+    },
+    {
+      "path": "blueprint/provider-process-adapter-registry.json",
+      "mode": "100644",
+      "bytes": 2147,
+      "sha256": "a8f1d469c7ae318fae57c2978737788e8de9378c5fba99a67fdfda108bc12ca1"
+    },
+    {
+      "path": "blueprint/review-lens-registry.json",
+      "mode": "100644",
+      "bytes": 10353,
+      "sha256": "dcceb87a089d56ff2cfc969e5e4e3a0ed6b67864561a9b339cadd74b9220b0f0"
+    },
+    {
+      "path": "blueprint/runtime-recovery-registry.json",
+      "mode": "100644",
+      "bytes": 36020,
+      "sha256": "43a7e906a487e53e0413b846e98d7ee6c44fc410e3c0901d1b80c014d864b343"
+    },
+    {
       "path": "blueprint/strings/en.json",
       "mode": "100644",
       "bytes": 9327,
@@ -18,6 +54,12 @@
       "mode": "100644",
       "bytes": 8837,
       "sha256": "b7eac38573565038ad1d244e23f0412b5310e20f62d6359a8686b7e2487a52f7"
+    },
+    {
+      "path": "blueprint/upstream-candidates/provider-process-and-executor-contracts.json",
+      "mode": "100644",
+      "bytes": 4121,
+      "sha256": "2dd2d792910af7276c3a5ca4518af016f26e23abf3622acd24c0349c8acc7a53"
     },
     {
       "path": "blueprint/vexlife.blueprint.json",
@@ -102,48 +144,6 @@
       "mode": "100644",
       "bytes": 8248,
       "sha256": "d4d753973c19ed42eff3edebde7110716def1d3ba53f76d0e39985d6e7dff8f2"
-    },
-    {
-      "path": "docs/FOUNDATION-ORIGIN-RECEIPT.md",
-      "mode": "100644",
-      "bytes": 1624,
-      "sha256": "3e912fd27db597b16db0a063e82f010469278e6c2557977045df9c834a7fa9e9"
-    },
-    {
-      "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
-      "mode": "100644",
-      "bytes": 3310,
-      "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
-    },
-    {
-      "path": "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
-      "mode": "100644",
-      "bytes": 12826,
-      "sha256": "f6196dab0cbd79ca34d92f84d5f4698f58323ef09b7319abeb7abbca6c482ad8"
-    },
-    {
-      "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
-      "mode": "100644",
-      "bytes": 10152,
-      "sha256": "25489693bcff73c5954982ba9d722d951cd486cd6fb8037c3108a3ea16091ce2"
-    },
-    {
-      "path": "docs/INTERFACE-BUILDER.md",
-      "mode": "100644",
-      "bytes": 3664,
-      "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
-    },
-    {
-      "path": "docs/MULTILINGUAL-INTENT-RELAY.md",
-      "mode": "100644",
-      "bytes": 2152,
-      "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
-    },
-    {
-      "path": "docs/NEWCOMER-MAP.md",
-      "mode": "100644",
-      "bytes": 5418,
-      "sha256": "fa851e7174736adf4714fb532cb79528405dac4e3b3091de28a8d6bb1d4a993a"
     }
   ]
 }

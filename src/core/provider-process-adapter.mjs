@@ -5,6 +5,7 @@ import { semanticHash } from './utils.mjs';
 const REQUIRED_PLUGIN_FIELDS = Object.freeze([
   'pluginRef',
   'pluginVersion',
+  'ownershipClass',
   'pluginClass',
   'processRef',
   'implementationModuleRef',
@@ -25,14 +26,32 @@ function sameSet(left, right) {
   return left.length === right.length && left.every((value) => right.includes(value));
 }
 
-export function validatePluginRegistry(registry, bundle) {
+export function validateProviderProcessAdapterRegistry(registry, bundle) {
   const errors = [];
-  if (registry?.schemaVersion !== 'vexlife.plugin-registry/v1') errors.push('plugin registry schemaVersion must be vexlife.plugin-registry/v1');
-  if (!registry?.registryRef) errors.push('plugin registry missing registryRef');
-  if (!Number.isInteger(registry?.registryVersion) || registry.registryVersion < 1) errors.push('plugin registry version must be a positive integer');
-  if (!Number.isInteger(registry?.pluginApiVersion) || registry.pluginApiVersion < 1) errors.push('plugin API version must be a positive integer');
-  if (registry?.runtimeEvidencePolicy?.packageContainedEvidenceRequired !== true) errors.push('plugin registry must require package-contained evidence');
-  if (registry?.runtimeEvidencePolicy?.historicalGitHubCommentScraping !== false) errors.push('historical GitHub comment scraping must be disabled');
+  if (registry?.schemaVersion !== 'vexlife.provider-process-adapter-registry/v1') {
+    errors.push('provider/process adapter registry schemaVersion must be vexlife.provider-process-adapter-registry/v1');
+  }
+  if (!registry?.registryRef) errors.push('provider/process adapter registry missing registryRef');
+  if (!Number.isInteger(registry?.registryVersion) || registry.registryVersion < 1) {
+    errors.push('provider/process adapter registry version must be a positive integer');
+  }
+  if (registry?.ownershipClass !== 'VEXLIFE_REPOSITORY_LOCAL') {
+    errors.push('provider/process adapter registry must be VEXLIFE_REPOSITORY_LOCAL');
+  }
+  const sharedBinding = registry?.sharedContractBinding;
+  if (sharedBinding?.state !== 'PENDING_SHARED_CONVERGENCE' ||
+      sharedBinding?.canonicalProviderPluginSchemaRef !== null ||
+      sharedBinding?.canonicalProviderPluginApiRef !== null ||
+      sharedBinding?.mayClaimUniversalCore !== false ||
+      !sharedBinding?.candidateSetRef) {
+    errors.push('shared provider/plugin binding must remain explicitly unresolved and non-canonical');
+  }
+  if (registry?.runtimeEvidencePolicy?.packageContainedEvidenceRequired !== true) {
+    errors.push('provider/process adapter registry must require package-contained evidence');
+  }
+  if (registry?.runtimeEvidencePolicy?.historicalGitHubCommentScraping !== false) {
+    errors.push('historical GitHub comment scraping must be disabled');
+  }
 
   const processes = refMap(bundle?.factory?.processes, 'processRef');
   const foundations = refMap(bundle?.factory?.foundations, 'foundationRef');
@@ -44,11 +63,16 @@ export function validatePluginRegistry(registry, bundle) {
   for (const plugin of registry?.plugins ?? []) {
     for (const field of REQUIRED_PLUGIN_FIELDS) {
       const value = plugin?.[field];
-      if (value === undefined || value === null || value === '') errors.push(`${plugin?.pluginRef ?? 'plugin'} missing ${field}`);
+      if (value === undefined || value === null || value === '') {
+        errors.push(`${plugin?.pluginRef ?? 'plugin'} missing ${field}`);
+      }
+    }
+    if (plugin.ownershipClass !== 'VEXLIFE_PROVIDER_LOCAL') {
+      errors.push(`${plugin.pluginRef} is not a VexLife-local provider/process instance`);
     }
     if (pluginRefs.has(plugin.pluginRef)) errors.push(`duplicate plugin ${plugin.pluginRef}`);
     pluginRefs.add(plugin.pluginRef);
-    if (processBindings.has(plugin.processRef)) errors.push(`multiple plugins bind process ${plugin.processRef}`);
+    if (processBindings.has(plugin.processRef)) errors.push(`multiple local plugins bind process ${plugin.processRef}`);
     processBindings.add(plugin.processRef);
 
     const process = processes.get(plugin.processRef);
@@ -56,13 +80,20 @@ export function validatePluginRegistry(registry, bundle) {
       errors.push(`${plugin.pluginRef} references missing process ${plugin.processRef}`);
       continue;
     }
-    if (!modules.has(plugin.implementationModuleRef)) errors.push(`${plugin.pluginRef} references missing module ${plugin.implementationModuleRef}`);
+    if (process.ownershipClass !== 'VEXLIFE_PRODUCT_PROCESS') {
+      errors.push(`${plugin.pluginRef} references a process that is not VEXLIFE_PRODUCT_PROCESS`);
+    }
+    if (!modules.has(plugin.implementationModuleRef)) {
+      errors.push(`${plugin.pluginRef} references missing module ${plugin.implementationModuleRef}`);
+    }
     if (JSON.stringify(plugin.stepRefs) !== JSON.stringify(process.steps ?? [])) {
       errors.push(`${plugin.pluginRef} stepRefs do not exactly bind ${plugin.processRef}`);
     }
     const dependencyRefs = process.foundationDependencies ?? [];
     const boundRefs = Object.keys(plugin.foundationVersionBindings ?? {});
-    if (!sameSet(dependencyRefs, boundRefs)) errors.push(`${plugin.pluginRef} foundation bindings do not exactly cover ${plugin.processRef}`);
+    if (!sameSet(dependencyRefs, boundRefs)) {
+      errors.push(`${plugin.pluginRef} foundation bindings do not exactly cover ${plugin.processRef}`);
+    }
     for (const ref of boundRefs) {
       const foundation = foundations.get(ref);
       if (!foundation) errors.push(`${plugin.pluginRef} references missing foundation ${ref}`);
@@ -82,37 +113,42 @@ export function validatePluginRegistry(registry, bundle) {
     }
     const requestedEffects = process.authorityEnvelope?.effects ?? [];
     const allowedEffects = plugin.allowedEffects ?? [];
-    for (const effect of requestedEffects) if (!allowedEffects.includes(effect)) errors.push(`${plugin.pluginRef} does not allow process effect ${effect}`);
+    for (const effect of requestedEffects) {
+      if (!allowedEffects.includes(effect)) errors.push(`${plugin.pluginRef} does not allow process effect ${effect}`);
+    }
   }
 
-  if (!(registry?.plugins ?? []).length) errors.push('plugin registry is empty');
+  if (!(registry?.plugins ?? []).length) errors.push('provider/process adapter registry is empty');
   return {
     ok: errors.length === 0,
     errors,
     stats: {
-      plugins: pluginRefs.size,
-      processesBound: processBindings.size,
-      pluginApiVersion: registry?.pluginApiVersion ?? null
+      localPlugins: pluginRefs.size,
+      localProcessesBound: processBindings.size,
+      sharedBindingState: sharedBinding?.state ?? null
     },
     semanticHash: semanticHash(registry)
   };
 }
 
-export function buildPluginAtlasNodes(registry) {
+export function buildProviderProcessAtlasNodes(registry) {
   const nodes = [{
     ref: registry.registryRef,
-    kind: 'PLUGIN_REGISTRY',
+    kind: 'VEXLIFE_PROVIDER_PROCESS_ADAPTER_REGISTRY',
     brief: registry.purpose,
-    edges: (registry.plugins ?? []).map((plugin) => ({ type: 'PLUGIN', to: plugin.pluginRef }))
+    edges: [
+      ...(registry.plugins ?? []).map((plugin) => ({ type: 'LOCAL_PLUGIN', to: plugin.pluginRef })),
+      { type: 'UPSTREAM_CANDIDATE_SET', to: registry.sharedContractBinding.candidateSetRef }
+    ]
   }];
   for (const plugin of registry.plugins ?? []) {
     nodes.push({
       ref: plugin.pluginRef,
-      kind: 'PLUGIN',
+      kind: 'VEXLIFE_PROVIDER_PROCESS_ADAPTER',
       brief: `${plugin.pluginClass} -> ${plugin.processRef}`,
       edges: [
         { type: 'PARENT', to: registry.registryRef },
-        { type: 'IMPLEMENTS_PROCESS', to: plugin.processRef },
+        { type: 'IMPLEMENTS_LOCAL_PROCESS', to: plugin.processRef },
         { type: 'IMPLEMENTED_BY', to: plugin.implementationModuleRef },
         ...Object.keys(plugin.foundationVersionBindings ?? {}).map((to) => ({ type: 'FOUNDATION', to })),
         ...(plugin.inputTemplateRefs ?? []).map((to) => ({ type: 'INPUT_TEMPLATE', to })),
@@ -123,15 +159,15 @@ export function buildPluginAtlasNodes(registry) {
   return nodes;
 }
 
-export function buildPluginAtlas(baseNodes, registry) {
-  return new Atlas([...baseNodes, ...buildPluginAtlasNodes(registry)]);
+export function buildProviderProcessAtlas(baseNodes, registry) {
+  return new Atlas([...baseNodes, ...buildProviderProcessAtlasNodes(registry)]);
 }
 
-export function resolvePluginBundle({ pluginRef, registry, bundle }) {
-  const validation = validatePluginRegistry(registry, bundle);
-  if (!validation.ok) return { state: 'BLOCKED_PLUGIN_REGISTRY', errors: validation.errors };
+export function resolveProviderProcessBundle({ pluginRef, registry, bundle }) {
+  const validation = validateProviderProcessAdapterRegistry(registry, bundle);
+  if (!validation.ok) return { state: 'BLOCKED_PROVIDER_PROCESS_ADAPTER_REGISTRY', errors: validation.errors };
   const plugin = (registry.plugins ?? []).find((item) => item.pluginRef === pluginRef);
-  if (!plugin) return { state: 'BLOCKED_PLUGIN_NOT_FOUND', pluginRef };
+  if (!plugin) return { state: 'BLOCKED_LOCAL_PLUGIN_NOT_FOUND', pluginRef };
   const process = bundle.factory.processes.find((item) => item.processRef === plugin.processRef);
   const module = bundle.modules.modules.find((item) => item.moduleRef === plugin.implementationModuleRef);
   const templates = new Map(bundle.factory.templates.map((item) => [item.templateRef, item]));
@@ -142,12 +178,13 @@ export function resolvePluginBundle({ pluginRef, registry, bundle }) {
     module,
     inputTemplates: plugin.inputTemplateRefs.map((ref) => templates.get(ref)),
     outputTemplates: plugin.outputTemplateRefs.map((ref) => templates.get(ref)),
-    foundations: Object.keys(plugin.foundationVersionBindings).map((ref) => foundations.get(ref))
+    foundations: Object.keys(plugin.foundationVersionBindings).map((ref) => foundations.get(ref)),
+    sharedContractBinding: registry.sharedContractBinding
   };
-  return { state: 'PLUGIN_BUNDLE_RESOLVED', bundle: resolved, bundleHash: semanticHash(resolved) };
+  return { state: 'PROVIDER_PROCESS_BUNDLE_RESOLVED', bundle: resolved, bundleHash: semanticHash(resolved) };
 }
 
-export function compilePluginProcess({
+export function compileProviderProcess({
   pluginRef,
   registry,
   bundle,
@@ -159,8 +196,8 @@ export function compilePluginProcess({
   recipientRef = null,
   now = new Date().toISOString()
 }) {
-  const resolution = resolvePluginBundle({ pluginRef, registry, bundle });
-  if (resolution.state !== 'PLUGIN_BUNDLE_RESOLVED') return resolution;
+  const resolution = resolveProviderProcessBundle({ pluginRef, registry, bundle });
+  if (resolution.state !== 'PROVIDER_PROCESS_BUNDLE_RESOLVED') return resolution;
   const factory = new ProcessFactory(bundle.factory);
   const compiled = factory.compile({
     processRef: resolution.bundle.process.processRef,
@@ -179,7 +216,6 @@ export function compilePluginProcess({
   const compatibility = {
     pluginRef,
     pluginVersion: resolution.bundle.plugin.pluginVersion,
-    pluginApiVersion: registry.pluginApiVersion,
     processRef: resolution.bundle.process.processRef,
     processVersion: resolution.bundle.process.processVersion,
     implementationModuleRef: resolution.bundle.module.moduleRef,
@@ -187,16 +223,17 @@ export function compilePluginProcess({
     inputTemplateRefs: [...resolution.bundle.plugin.inputTemplateRefs],
     outputTemplateRefs: [...resolution.bundle.plugin.outputTemplateRefs],
     authorityEnvelope: compiled.plan.authorityEnvelope,
+    sharedContractBinding: structuredClone(resolution.bundle.sharedContractBinding),
     bundleHash: resolution.bundleHash
   };
   const planCore = { ...compiled.plan, ...compatibility };
   return {
-    state: 'PLUGIN_PLAN_READY_NO_EFFECT',
+    state: 'VEXLIFE_PROVIDER_PROCESS_PLAN_READY_NO_EFFECT',
     plan: { ...planCore, planHash: semanticHash(planCore) }
   };
 }
 
-export function renderPluginReceipt(plan, {
+export function renderProviderProcessReceipt(plan, {
   instanceRef,
   occupancyRef,
   providerBindingRef,
@@ -214,13 +251,14 @@ export function renderPluginReceipt(plan, {
     pluginRef: plan.pluginRef,
     processRef: plan.processRef,
     planHash: plan.planHash,
+    sharedContractBindingState: plan.sharedContractBinding?.state ?? null,
     disposition,
     formedAt: now
   };
   const missing = ['instanceRef', 'occupancyRef', 'providerBindingRef', 'threadRef', 'consumedPacketHash']
     .filter((field) => !receipt[field]);
   if (missing.length) return { state: 'BLOCKED_RECEIPT_MISSING_INPUT', missingFields: missing };
-  return { state: 'PLUGIN_RECEIPT_READY', receipt: { ...receipt, receiptHash: semanticHash(receipt) } };
+  return { state: 'VEXLIFE_PROVIDER_PROCESS_RECEIPT_READY', receipt: { ...receipt, receiptHash: semanticHash(receipt) } };
 }
 
 // [VXG RealForever]

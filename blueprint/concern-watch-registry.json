@@ -13,19 +13,58 @@
   },
   "purpose": "Keep source-bound concerns dormant until exact evidence and source-managed policy justify changed attention, scheduler admission, a minimal human request, or a fail-closed hold.",
   "contractIdentities": [
-    { "contractRef": "contract.vexlife.concern-observation/v1", "contractKind": "IMMUTABLE_SOURCE_OBSERVATION" },
-    { "contractRef": "contract.vexlife.concern-subject/v1", "contractKind": "SOURCE_DERIVED_SEMANTIC_SUBJECT" },
-    { "contractRef": "contract.vexlife.concern-event/v1", "contractKind": "TYPED_REPLAY_EVENT" },
-    { "contractRef": "contract.vexlife.concern-threshold-policy/v1", "contractKind": "SOURCE_MANAGED_THRESHOLD_POLICY" },
-    { "contractRef": "contract.vexlife.concern-threshold-receipt/v1", "contractKind": "CONTENT_ADDRESSED_THRESHOLD_RESULT" },
-    { "contractRef": "contract.vexlife.concern-admission-review/v1", "contractKind": "NON_EXECUTING_WORK_PROPOSAL" },
-    { "contractRef": "contract.vexlife.concern-scheduler-admission/v1", "contractKind": "SCHEDULER_OWNED_ADMISSION_EVIDENCE" },
-    { "contractRef": "contract.vexlife.concern-scheduler-authority-evidence/v1", "contractKind": "EXTERNAL_SCHEDULER_REVALIDATION_EVIDENCE" },
-    { "contractRef": "contract.vexlife.concern-human-attention/v1", "contractKind": "MINIMAL_HUMAN_DECISION_ROUTE" },
-    { "contractRef": "contract.vexlife.concern-closure/v1", "contractKind": "EXACT_TERMINAL_DISPOSITION" },
-    { "contractRef": "contract.vexlife.concern-projection/v1", "contractKind": "REPLAY_OWNED_COMPACT_PROJECTION" },
-    { "contractRef": "contract.vexlife.concern-watch-integrated-journey/v1", "contractKind": "CAUSAL_NO_EFFECT_PROOF" },
-    { "contractRef": "contract.vexlife.concern-watch-evidence-consumption/v1", "contractKind": "INDEPENDENT_PR_READY_AND_HEALTH_CONSUMPTION" }
+    {
+      "contractRef": "contract.vexlife.concern-observation/v1",
+      "contractKind": "IMMUTABLE_SOURCE_OBSERVATION"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-subject/v1",
+      "contractKind": "SOURCE_DERIVED_SEMANTIC_SUBJECT"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-event/v1",
+      "contractKind": "TYPED_REPLAY_EVENT"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-threshold-policy/v1",
+      "contractKind": "SOURCE_MANAGED_THRESHOLD_POLICY"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-threshold-receipt/v1",
+      "contractKind": "CONTENT_ADDRESSED_THRESHOLD_RESULT"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-admission-review/v1",
+      "contractKind": "NON_EXECUTING_WORK_PROPOSAL"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-scheduler-admission/v1",
+      "contractKind": "SCHEDULER_OWNED_ADMISSION_EVIDENCE"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-scheduler-authority-evidence/v1",
+      "contractKind": "EXTERNAL_SCHEDULER_REVALIDATION_EVIDENCE"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-human-attention/v1",
+      "contractKind": "MINIMAL_HUMAN_DECISION_ROUTE"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-closure/v1",
+      "contractKind": "EXACT_TERMINAL_DISPOSITION"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-projection/v1",
+      "contractKind": "REPLAY_OWNED_COMPACT_PROJECTION"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-watch-integrated-journey/v1",
+      "contractKind": "CAUSAL_NO_EFFECT_PROOF"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-watch-evidence-consumption/v1",
+      "contractKind": "INDEPENDENT_PR_READY_AND_HEALTH_CONSUMPTION"
+    }
   ],
   "observationContract": {
     "contractRef": "contract.vexlife.concern-observation/v1",
@@ -67,8 +106,17 @@
       "SCOPE_RISK",
       "USER_BURDEN"
     ],
-    "identityIncludes": ["subjectKind", "sourceBindings"],
-    "identityExcludes": ["aboutScopeRef", "impactClass", "priorityClass", "urgency", "summary"],
+    "identityIncludes": [
+      "subjectKind",
+      "sourceBindings"
+    ],
+    "identityExcludes": [
+      "aboutScopeRef",
+      "impactClass",
+      "priorityClass",
+      "urgency",
+      "summary"
+    ],
     "callerAuthoredIdentityAllowed": false,
     "observationAdmission": {
       "initialFirstObservationRequiresExactSubjectSourceBinding": true,
@@ -97,12 +145,44 @@
       "RECOVERY_HOLD",
       "RESOURCE_SIGNAL"
     ],
-    "certaintyClasses": ["UNKNOWN", "LOW_CONFIDENCE", "SUPPORTED", "VERIFIED"],
-    "impactClasses": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
-    "reversibilityClasses": ["FULLY_REVERSIBLE", "PARTIALLY_REVERSIBLE", "IRREVERSIBLE", "UNKNOWN"],
-    "humanAttentionClasses": ["NONE", "ONLY_IF_THRESHOLD_MET", "DECISION_REQUIRED", "IMMEDIATE_SAFETY"],
-    "evidenceOriginClasses": ["EXTERNAL_SOURCE", "HUMAN_SOURCE", "INDEPENDENT_CHECK", "MODEL_INFERENCE", "RECOVERY_SYSTEM"],
-    "priorityClasses": ["INTERACTIVE", "EXPEDITE", "RECOVERY", "NORMAL", "BACKGROUND"],
+    "certaintyClasses": [
+      "UNKNOWN",
+      "LOW_CONFIDENCE",
+      "SUPPORTED",
+      "VERIFIED"
+    ],
+    "impactClasses": [
+      "LOW",
+      "MEDIUM",
+      "HIGH",
+      "CRITICAL"
+    ],
+    "reversibilityClasses": [
+      "FULLY_REVERSIBLE",
+      "PARTIALLY_REVERSIBLE",
+      "IRREVERSIBLE",
+      "UNKNOWN"
+    ],
+    "humanAttentionClasses": [
+      "NONE",
+      "ONLY_IF_THRESHOLD_MET",
+      "DECISION_REQUIRED",
+      "IMMEDIATE_SAFETY"
+    ],
+    "evidenceOriginClasses": [
+      "EXTERNAL_SOURCE",
+      "HUMAN_SOURCE",
+      "INDEPENDENT_CHECK",
+      "MODEL_INFERENCE",
+      "RECOVERY_SYSTEM"
+    ],
+    "priorityClasses": [
+      "INTERACTIVE",
+      "EXPEDITE",
+      "RECOVERY",
+      "NORMAL",
+      "BACKGROUND"
+    ],
     "lifecycleStates": [
       "OBSERVED",
       "DORMANT_WATCH",
@@ -148,16 +228,61 @@
       "CONCERN_ARCHIVED"
     ],
     "legalTransitions": {
-      "OBSERVED": ["DORMANT_WATCH", "ACCUMULATING", "THRESHOLD_MET", "HELD_UNKNOWN"],
-      "DORMANT_WATCH": ["DORMANT_WATCH", "ACCUMULATING", "THRESHOLD_MET", "HELD_UNKNOWN"],
-      "ACCUMULATING": ["ACCUMULATING", "DORMANT_WATCH", "THRESHOLD_MET", "HELD_UNKNOWN"],
-      "THRESHOLD_MET": ["ADMISSION_REVIEW", "WAITING_HUMAN", "HELD_UNKNOWN"],
-      "ADMISSION_REVIEW": ["ADMITTED_WORK", "WAITING_HUMAN", "HELD_UNKNOWN"],
-      "ADMITTED_WORK": ["ADMITTED_WORK", "WAITING_HUMAN", "HELD_UNKNOWN", "RESOLVED", "SUPERSEDED"],
-      "WAITING_HUMAN": ["ADMISSION_REVIEW", "ADMITTED_WORK", "HELD_UNKNOWN", "RESOLVED", "SUPERSEDED"],
-      "HELD_UNKNOWN": ["ACCUMULATING", "ADMISSION_REVIEW", "WAITING_HUMAN", "RESOLVED", "SUPERSEDED"],
-      "RESOLVED": ["ARCHIVED"],
-      "SUPERSEDED": ["ARCHIVED"],
+      "OBSERVED": [
+        "DORMANT_WATCH",
+        "ACCUMULATING",
+        "THRESHOLD_MET",
+        "HELD_UNKNOWN"
+      ],
+      "DORMANT_WATCH": [
+        "DORMANT_WATCH",
+        "ACCUMULATING",
+        "THRESHOLD_MET",
+        "HELD_UNKNOWN"
+      ],
+      "ACCUMULATING": [
+        "ACCUMULATING",
+        "DORMANT_WATCH",
+        "THRESHOLD_MET",
+        "HELD_UNKNOWN"
+      ],
+      "THRESHOLD_MET": [
+        "ADMISSION_REVIEW",
+        "WAITING_HUMAN",
+        "HELD_UNKNOWN"
+      ],
+      "ADMISSION_REVIEW": [
+        "ADMITTED_WORK",
+        "WAITING_HUMAN",
+        "HELD_UNKNOWN"
+      ],
+      "ADMITTED_WORK": [
+        "ADMITTED_WORK",
+        "WAITING_HUMAN",
+        "HELD_UNKNOWN",
+        "RESOLVED",
+        "SUPERSEDED"
+      ],
+      "WAITING_HUMAN": [
+        "ADMISSION_REVIEW",
+        "ADMITTED_WORK",
+        "HELD_UNKNOWN",
+        "RESOLVED",
+        "SUPERSEDED"
+      ],
+      "HELD_UNKNOWN": [
+        "ACCUMULATING",
+        "ADMISSION_REVIEW",
+        "WAITING_HUMAN",
+        "RESOLVED",
+        "SUPERSEDED"
+      ],
+      "RESOLVED": [
+        "ARCHIVED"
+      ],
+      "SUPERSEDED": [
+        "ARCHIVED"
+      ],
       "ARCHIVED": []
     },
     "callerSuppliedFinalStateAllowed": false,
@@ -171,14 +296,39 @@
     "policyVersion": 2,
     "currentness": "CURRENT",
     "callerOverrideAllowed": false,
-    "certaintyScores": { "UNKNOWN": 0, "LOW_CONFIDENCE": 1, "SUPPORTED": 2, "VERIFIED": 3 },
-    "impactScores": { "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4 },
-    "reversibilityScores": { "FULLY_REVERSIBLE": 0, "PARTIALLY_REVERSIBLE": 1, "UNKNOWN": 2, "IRREVERSIBLE": 3 },
+    "certaintyScores": {
+      "UNKNOWN": 0,
+      "LOW_CONFIDENCE": 1,
+      "SUPPORTED": 2,
+      "VERIFIED": 3
+    },
+    "impactScores": {
+      "LOW": 1,
+      "MEDIUM": 2,
+      "HIGH": 3,
+      "CRITICAL": 4
+    },
+    "reversibilityScores": {
+      "FULLY_REVERSIBLE": 0,
+      "PARTIALLY_REVERSIBLE": 1,
+      "UNKNOWN": 2,
+      "IRREVERSIBLE": 3
+    },
     "evidenceIdentityPolicy": {
       "sourceManaged": true,
       "callerOverrideAllowed": false,
-      "independenceIdentityIncludes": ["sourceRef", "observerRef", "evidenceOriginClass"],
-      "recurrenceIdentityIncludes": ["sourceRef", "sourceRangeOrEventRef", "sourceFingerprint", "observerRef", "evidenceOriginClass"],
+      "independenceIdentityIncludes": [
+        "sourceRef",
+        "observerRef",
+        "evidenceOriginClass"
+      ],
+      "recurrenceIdentityIncludes": [
+        "sourceRef",
+        "sourceRangeOrEventRef",
+        "sourceFingerprint",
+        "observerRef",
+        "evidenceOriginClass"
+      ],
       "evidenceRefsAffectIndependenceIdentity": false,
       "evidenceRefsAffectRecurrenceIdentity": false
     },
@@ -192,10 +342,17 @@
     },
     "singleObservationHighConsequenceRule": {
       "ruleRef": "rule.concern-watch.single-high-consequence.001",
-      "allowedSignalClasses": ["FAILED_CHECK", "RECOVERY_HOLD", "EXTERNAL_NOTICE"],
+      "allowedSignalClasses": [
+        "FAILED_CHECK",
+        "RECOVERY_HOLD",
+        "EXTERNAL_NOTICE"
+      ],
       "minimumCertaintyClass": "VERIFIED",
       "minimumImpactClass": "CRITICAL",
-      "allowedReversibilityClasses": ["IRREVERSIBLE", "UNKNOWN"],
+      "allowedReversibilityClasses": [
+        "IRREVERSIBLE",
+        "UNKNOWN"
+      ],
       "exactRegisteredRuleRequired": true
     },
     "modelRepetitionRule": {
@@ -262,7 +419,6 @@
       "intentRegistryFingerprint": "aed18a92f797a4245637914dba9c5a23cd6910204a2c3922b2a61987bc85514a",
       "schedulerRegistryRef": "registry.vexlife.intent-scheduler.001",
       "schedulerRegistryFingerprint": "9e3dac1210d4a9959a522ac6f10f3c9466652d1f4c0625c23cf17d902ac1f42d",
-      "registeredProcessRefsFingerprint": "b2ffcd01d6c3f9409a9c250fe3fbb7d555c000a4988f09af08a22fc135d7f12a",
       "registeredRoleRefsFingerprint": "252763ab5b7a29a03b6aafc7e15c0020f67c08c615fe37c7d3121a0fa07ade90",
       "nodeIndexedSchedulerOptionFields": [
         "resourceRequestByNodeRef",
@@ -280,7 +436,14 @@
       "replayRevalidatesExternalSchedulerRoute": true,
       "integratedConsumerRevalidatesExternalSchedulerRoute": true,
       "callerAuthoredCurrentnessAllowed": false,
-      "liveClockRequired": false
+      "liveClockRequired": false,
+      "registeredProcessRefsDerivation": {
+        "derivationClass": "CANONICAL_LOADED_PROCESS_FACTORY",
+        "sourceRef": "factory.vexlife.processes.001",
+        "sourceField": "processes[].processRef",
+        "ordering": "LEXICOGRAPHIC_REF_ASCENDING",
+        "hashAlgorithm": "SHA256_SEMANTIC_HASH"
+      }
     },
     "dormantWatchConsumesPhysicalWorker": false,
     "dormantWatchConsumesEffectAuthority": false,
@@ -336,7 +499,13 @@
   "projectionContract": {
     "contractRef": "contract.vexlife.concern-projection/v1",
     "schemaVersion": "vexlife.concern-watch-projection/v1",
-    "projectionKinds": ["QUEUE", "TERRAIN", "HEALTH", "GUIDE", "HUMAN_ATTENTION_INBOX"],
+    "projectionKinds": [
+      "QUEUE",
+      "TERRAIN",
+      "HEALTH",
+      "GUIDE",
+      "HUMAN_ATTENTION_INBOX"
+    ],
     "changedOnly": true,
     "normalProjectionContainsRawObservationHistory": false,
     "normalProjectionContainsRawEvidencePayload": false,
@@ -359,7 +528,27 @@
       "WORK_COMPLETION_RESOLVED_ACTIVE_CONCERN",
       "RECURRENCE_REOPENED_WITH_EXACT_PRIOR_LINEAGE"
     ],
-    "proofRefs": ["CW0", "CW1", "CW2", "CW3", "CW4", "CW5", "CW6", "CW7", "CW8", "CW9", "CW10", "CW11", "CW12", "CW13", "CW14", "CW15", "CW16", "CW17", "CW18"],
+    "proofRefs": [
+      "CW0",
+      "CW1",
+      "CW2",
+      "CW3",
+      "CW4",
+      "CW5",
+      "CW6",
+      "CW7",
+      "CW8",
+      "CW9",
+      "CW10",
+      "CW11",
+      "CW12",
+      "CW13",
+      "CW14",
+      "CW15",
+      "CW16",
+      "CW17",
+      "CW18"
+    ],
     "externalEffectsExecuted": false,
     "modelTurnsExecuted": 0,
     "liveClockUsed": false,
@@ -368,7 +557,10 @@
   "evidenceConsumption": {
     "contractRef": "contract.vexlife.concern-watch-evidence-consumption/v1",
     "schemaVersion": "vexlife.concern-watch-evidence-consumption-receipt/v1",
-    "consumerRefs": ["PR_READY", "HEALTH"],
+    "consumerRefs": [
+      "PR_READY",
+      "HEALTH"
+    ],
     "exactIntegratedReceiptRequired": true,
     "exactReplayCausalEvidenceRequired": true,
     "consumerReceiptsIndependent": true,

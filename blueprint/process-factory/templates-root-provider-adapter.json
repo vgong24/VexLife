@@ -1,0 +1,55 @@
+[
+  {
+    "templateRef": "template.vexlife.root-recipient-packet",
+    "templateVersion": 1,
+    "purpose": "Complete VexLife cold-start packet for a fresh Root occupancy.",
+    "ownershipClass": "VEXLIFE_PRODUCT_PROCESS",
+    "requiredFields": [
+      "parentGlobalRootRef",
+      "parentScopedRootRef",
+      "currentEntryRef",
+      "repository",
+      "expectedMain",
+      "nextActionOwnerRef",
+      "nextActionRef",
+      "continuity"
+    ]
+  },
+  {
+    "templateRef": "template.vexlife.root-consumption-receipt",
+    "templateVersion": 1,
+    "purpose": "Explicit proof that a fresh Root consumed and compiled a VexLife recipient packet.",
+    "ownershipClass": "VEXLIFE_PRODUCT_PROCESS",
+    "requiredFields": [
+      "instanceRef",
+      "occupancyRef",
+      "providerBindingRef",
+      "threadRef",
+      "consumedPacketHash",
+      "pluginRef",
+      "processRef",
+      "planHash",
+      "disposition",
+      "formedAt"
+    ]
+  },
+  {
+    "templateRef": "template.vexlife.provider-process-adapter-plan",
+    "templateVersion": 1,
+    "purpose": "VexLife-local resolved provider/process/foundation/module/template compatibility plan with unresolved shared SDK bindings exposed.",
+    "ownershipClass": "VEXLIFE_PROVIDER_LOCAL",
+    "requiredFields": [
+      "pluginRef",
+      "pluginVersion",
+      "processRef",
+      "processVersion",
+      "implementationModuleRef",
+      "foundationRefs",
+      "inputTemplateRefs",
+      "outputTemplateRefs",
+      "authorityEnvelope",
+      "sharedContractBinding",
+      "planHash"
+    ]
+  }
+]

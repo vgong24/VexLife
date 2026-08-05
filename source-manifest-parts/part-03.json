@@ -40,8 +40,8 @@
     {
       "path": "blueprint/module-registry.json",
       "mode": "100644",
-      "bytes": 398,
-      "sha256": "10a5964604ac02d5588c00167872b8e3b9756596f944bc10f46e3f3aec80b7d2"
+      "bytes": 463,
+      "sha256": "4a767157bf8be9162289473fd7cc3844400df6d1377225b8e998c9a641f574c4"
     },
     {
       "path": "blueprint/module-registry/browser.json",
@@ -60,6 +60,12 @@
       "mode": "100644",
       "bytes": 6244,
       "sha256": "0181aaa580cb2246476a4964792932d669830602afe7d066815ea579d66f130e"
+    },
+    {
+      "path": "blueprint/module-registry/provider-process-adapter.json",
+      "mode": "100644",
+      "bytes": 1720,
+      "sha256": "691d51cf066c28027387faed4f0d91dd7da79eb322a28213cee0b5d8dc7961cf"
     },
     {
       "path": "blueprint/module-registry/scripts.json",
@@ -82,8 +88,14 @@
     {
       "path": "blueprint/process-factory.json",
       "mode": "100644",
-      "bytes": 755,
-      "sha256": "bdf15cd66e784928905966f8927abaddf23ab77543d5b4731d761941eaebfeaa"
+      "bytes": 1096,
+      "sha256": "1219af6b35b12bf4abca02cac17b333dcbefe93dafd3163b4731ddc9d82b088a"
+    },
+    {
+      "path": "blueprint/process-factory/foundations-provider-process-adapter.json",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "5e7e35bdfed162bc6632f1929a11bc911a0fe666f48813fc1c8542fcfd6e46e7"
     },
     {
       "path": "blueprint/process-factory/foundations.json",
@@ -122,28 +134,16 @@
       "sha256": "35c984bd6df8a1d78ea3489265ffcf679f6b75383f9ff9c545485146bba218b9"
     },
     {
-      "path": "blueprint/process-factory/templates.json",
+      "path": "blueprint/process-factory/processes-root-provider-adapter.json",
       "mode": "100644",
-      "bytes": 5297,
-      "sha256": "ef4be3e077ecf3397fba37cb36e9b0f096e3154d61fcbda749389db4a3e2a34c"
+      "bytes": 2742,
+      "sha256": "057ba93aed817e024f11d3255dec8bdc76604e9f1a867106e56d50a95ac102bb"
     },
     {
-      "path": "blueprint/process-factory/worked-examples.json",
+      "path": "blueprint/process-factory/templates-root-provider-adapter.json",
       "mode": "100644",
-      "bytes": 3485,
-      "sha256": "c1923db71d440bfd87852df1890a37e371d2d1f1cf50ccdd1456d6fd4c86a13e"
-    },
-    {
-      "path": "blueprint/review-lens-registry.json",
-      "mode": "100644",
-      "bytes": 10353,
-      "sha256": "dcceb87a089d56ff2cfc969e5e4e3a0ed6b67864561a9b339cadd74b9220b0f0"
-    },
-    {
-      "path": "blueprint/runtime-recovery-registry.json",
-      "mode": "100644",
-      "bytes": 36020,
-      "sha256": "43a7e906a487e53e0413b846e98d7ee6c44fc410e3c0901d1b80c014d864b343"
+      "bytes": 1550,
+      "sha256": "2140a54b57f142ee5ba77c68784e4a66afd5aea8340e994b6afa9a6a30295dbe"
     }
   ]
 }

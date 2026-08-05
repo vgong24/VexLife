@@ -17,6 +17,7 @@ import {
   createHumanAttentionRequest,
   createRecoveryConcernEvidence,
   deriveConcernSubject,
+  deriveConcernWatchProcessAuthority,
   evaluateConcernThreshold,
   formConcernAdmissionReview,
   projectConcernAggregate,
@@ -58,6 +59,25 @@ const schedulerContext = {
 const T0 = '2026-08-02T10:00:00.000Z';
 const at = (seconds) => new Date(Date.parse(T0) + seconds * 1000).toISOString();
 const integrated = runDeterministicConcernWatchJourney({ registry, schedulerContext });
+
+
+test('ConcernWatch derives process-set authority from the canonical loaded Process Factory', () => {
+  const rawRegistry = JSON.parse(JSON.stringify(registry));
+  delete rawRegistry.schedulerIntegration.externalSchedulerAuthority.registeredProcessRefsFingerprint;
+  const derived = deriveConcernWatchProcessAuthority(rawRegistry, bundle.factory);
+  const expectedRefs = bundle.factory.processes.map((item) => item.processRef).sort();
+  assert.equal(
+    derived.schedulerIntegration.externalSchedulerAuthority.registeredProcessRefsFingerprint,
+    semanticHash(expectedRefs)
+  );
+  const extendedFactory = structuredClone(bundle.factory);
+  extendedFactory.processes.push({ processRef: 'process.vexlife.test.additional-local-process' });
+  const extended = deriveConcernWatchProcessAuthority(rawRegistry, extendedFactory);
+  assert.notEqual(
+    extended.schedulerIntegration.externalSchedulerAuthority.registeredProcessRefsFingerprint,
+    derived.schedulerIntegration.externalSchedulerAuthority.registeredProcessRefsFingerprint
+  );
+});
 
 function readdress(value, refField, prefix) {
   const core = structuredClone(value);

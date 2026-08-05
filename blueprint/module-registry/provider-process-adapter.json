@@ -1,0 +1,47 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.provider-process-adapter",
+    "path": "src/core/provider-process-adapter.mjs",
+    "role": "Validate VexLife-local provider/process bindings, extend Atlas with local adapter edges and compile deterministic no-effect plans while shared SDK bindings remain explicit and unresolved.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint/provider-process-adapter-registry.json",
+      "blueprint/process-factory.json",
+      "blueprint/module-registry.json",
+      "blueprint/upstream-candidates/provider-process-and-executor-contracts.json",
+      "module.vexlife.core.process-factory",
+      "module.vexlife.core.atlas"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.root-process"
+    ],
+    "tests": [
+      "test/provider-process-adapter.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/provider-process-adapter-registry.json",
+      "blueprint/process-factory/processes-root-provider-adapter.json",
+      "blueprint/process-factory/templates-root-provider-adapter.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.root-process",
+    "path": "scripts/root-process.mjs",
+    "role": "Compile one complete VexLife Root packet through the repository-local provider/process adapter and Process Factory without performing effects.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.provider-process-adapter",
+      "module.vexlife.core.blueprint",
+      "blueprint/provider-process-adapter-registry.json"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/provider-process-adapter.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEXLIFE-PROVIDER-PROCESS-ADAPTER.md"
+    ]
+  }
+]

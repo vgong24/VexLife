@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "vexlife.provider-process-adapter-registry/v1",
+  "registryRef": "registry.vexlife.provider-process-adapters.001",
+  "registryVersion": 1,
+  "ownershipClass": "VEXLIFE_REPOSITORY_LOCAL",
+  "purpose": "Bind VexLife-owned provider/process instances to the local Process Factory while exact shared SDK contract bindings remain unresolved.",
+  "sharedContractBinding": {
+    "state": "PENDING_SHARED_CONVERGENCE",
+    "canonicalProviderPluginSchemaRef": null,
+    "canonicalProviderPluginApiRef": null,
+    "candidateSetRef": "candidate-set.vexlife.provider-process-and-executor.001",
+    "mayClaimUniversalCore": false
+  },
+  "runtimeEvidencePolicy": {
+    "packageContainedEvidenceRequired": true,
+    "historicalGitHubCommentScraping": false,
+    "liveGitHubReadClasses": [
+      "MAIN",
+      "BRANCH_HEAD",
+      "CLAIM",
+      "PR_STATE",
+      "AUTHENTICATED_IDENTITY"
+    ]
+  },
+  "plugins": [
+    {
+      "pluginRef": "plugin.vexlife.root.consume-recipient-packet.v1",
+      "pluginVersion": 1,
+      "ownershipClass": "VEXLIFE_PROVIDER_LOCAL",
+      "pluginClass": "ROOT_PROCESS_ADAPTER",
+      "processRef": "process.vexlife.root.consume-recipient-packet",
+      "implementationModuleRef": "module.vexlife.core.provider-process-adapter",
+      "stepRefs": [
+        "validate-recipient-packet",
+        "resolve-provider-process-bundle",
+        "bind-current-foundations",
+        "compile-no-effect-plan",
+        "emit-explicit-consumption-receipt"
+      ],
+      "foundationVersionBindings": {
+        "foundation.vexlife.root-process-adapter.v1": 1,
+        "foundation.vexlife.identity-lattice.v1": 1,
+        "foundation.vexlife.permission-effects.v1": 1
+      },
+      "inputTemplateRefs": [
+        "template.vexlife.root-recipient-packet"
+      ],
+      "outputTemplateRefs": [
+        "template.vexlife.provider-process-adapter-plan",
+        "template.vexlife.root-consumption-receipt"
+      ],
+      "allowedEffects": [],
+      "testPaths": [
+        "test/provider-process-adapter.test.mjs"
+      ],
+      "recoveryRule": "correct packet bindings and recompile; never infer missing authority"
+    }
+  ]
+}

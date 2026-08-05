@@ -2,7 +2,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildIdentityIndex, loadBlueprint } from '../src/core/blueprint.mjs';
-import { buildPluginAtlas, compilePluginProcess } from '../src/core/plugin-runtime.mjs';
+import { buildProviderProcessAtlas, compileProviderProcess } from '../src/core/provider-process-adapter.mjs';
 import { readJson, semanticHash } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -21,16 +21,16 @@ if (relative.startsWith('..') || path.isAbsolute(relative)) {
 
 try {
   const bundle = loadBlueprint(ROOT);
-  const registry = readJson(path.join(ROOT, 'blueprint/plugin-registry.json'));
+  const registry = readJson(path.join(ROOT, 'blueprint/provider-process-adapter-registry.json'));
   const packet = readJson(packetPath);
-  const atlas = buildPluginAtlas(buildIdentityIndex(bundle), registry);
-  const pluginProjection = atlas.query({
+  const atlas = buildProviderProcessAtlas(buildIdentityIndex(bundle), registry);
+  const providerProcessProjection = atlas.query({
     startRefs: [packet.pluginRef],
     depthLimit: 2,
     resultLimit: 32,
     tokenBudget: 6000
   });
-  const compiled = compilePluginProcess({
+  const compiled = compileProviderProcess({
     pluginRef: packet.pluginRef,
     registry,
     bundle,
@@ -43,11 +43,13 @@ try {
   });
   console.log(JSON.stringify({
     schemaVersion: 'vexlife.root-process-command-result/v1',
+    adapterClass: 'VEXLIFE_REPOSITORY_LOCAL',
+    sharedContractBindingState: registry.sharedContractBinding.state,
     packetHash: semanticHash(packet),
-    pluginProjection,
+    providerProcessProjection,
     ...compiled
   }, null, 2));
-  if (compiled.state !== 'PLUGIN_PLAN_READY_NO_EFFECT') process.exitCode = 1;
+  if (compiled.state !== 'VEXLIFE_PROVIDER_PROCESS_PLAN_READY_NO_EFFECT') process.exitCode = 1;
 } catch (error) {
   console.log(JSON.stringify({
     schemaVersion: 'vexlife.root-process-command-result/v1',

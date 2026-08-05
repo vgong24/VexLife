@@ -2,6 +2,48 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/FOUNDATION-ORIGIN-RECEIPT.md",
+      "mode": "100644",
+      "bytes": 1624,
+      "sha256": "3e912fd27db597b16db0a063e82f010469278e6c2557977045df9c834a7fa9e9"
+    },
+    {
+      "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
+      "mode": "100644",
+      "bytes": 3310,
+      "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
+    },
+    {
+      "path": "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
+      "mode": "100644",
+      "bytes": 12826,
+      "sha256": "f6196dab0cbd79ca34d92f84d5f4698f58323ef09b7319abeb7abbca6c482ad8"
+    },
+    {
+      "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
+      "mode": "100644",
+      "bytes": 10152,
+      "sha256": "25489693bcff73c5954982ba9d722d951cd486cd6fb8037c3108a3ea16091ce2"
+    },
+    {
+      "path": "docs/INTERFACE-BUILDER.md",
+      "mode": "100644",
+      "bytes": 3664,
+      "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
+    },
+    {
+      "path": "docs/MULTILINGUAL-INTENT-RELAY.md",
+      "mode": "100644",
+      "bytes": 2152,
+      "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
+    },
+    {
+      "path": "docs/NEWCOMER-MAP.md",
+      "mode": "100644",
+      "bytes": 5418,
+      "sha256": "fa851e7174736adf4714fb532cb79528405dac4e3b3091de28a8d6bb1d4a993a"
+    },
+    {
       "path": "docs/OPEN-SOURCE-LEGAL-STEWARDSHIP.md",
       "mode": "100644",
       "bytes": 14522,
@@ -44,6 +86,12 @@
       "sha256": "497eddccd7fb2f06eb9c6ae2f9d26238ea48f16a80f33d87eeb497fa71cfbfa0"
     },
     {
+      "path": "docs/VEXLIFE-PROVIDER-PROCESS-ADAPTER.md",
+      "mode": "100644",
+      "bytes": 2873,
+      "sha256": "8e667c4ae114068311e4c8a16a368be29c2f1ceac4857925df148a94a6f8f03f"
+    },
+    {
       "path": "package-lock.json",
       "mode": "100644",
       "bytes": 1844,
@@ -52,8 +100,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 3565,
-      "sha256": "f83e1d042edf61686668dcf5134b1ca65629fdea3486124d0e6aecc54191ea74"
+      "bytes": 3618,
+      "sha256": "0c184e1bbed39ab2085b43c43c102ede3504f1adf69d3e91d9b8352000368be6"
     },
     {
       "path": "reference/browser/README.md",
@@ -96,54 +144,6 @@
       "mode": "100644",
       "bytes": 14195,
       "sha256": "243729f83fc820311fbce9ed2af920ffd07efa8d053e88f7b5eca6d9f5a00d24"
-    },
-    {
-      "path": "reference/browser/modules/demo-data.js",
-      "mode": "100644",
-      "bytes": 9551,
-      "sha256": "c22665335377dfe25440dde530cb0af7e273cea6fcc5fa0f0984a3c97d7eeb48"
-    },
-    {
-      "path": "reference/browser/modules/dom.js",
-      "mode": "100644",
-      "bytes": 1472,
-      "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
-    },
-    {
-      "path": "reference/browser/modules/guide-controller.js",
-      "mode": "100644",
-      "bytes": 6258,
-      "sha256": "0d967057c53642a4d106ea00949d82073a9088aab5e57b6293e3ea9e78998326"
-    },
-    {
-      "path": "reference/browser/modules/navigation-controller.js",
-      "mode": "100644",
-      "bytes": 2133,
-      "sha256": "3095ff35b0a0b61ba9f5c9fbc6741ae98ef6b0805654babeccb3405bab74eef7"
-    },
-    {
-      "path": "reference/browser/modules/terrain-controller.js",
-      "mode": "100644",
-      "bytes": 6248,
-      "sha256": "fd5d7155956b92b4630034cfc649915ef52df0548c69e3993f120421965cd31e"
-    },
-    {
-      "path": "scripts/atlas-query.mjs",
-      "mode": "100644",
-      "bytes": 1748,
-      "sha256": "83538b7a319375c8208e281033e049dca1c3224fee0efdb73b0ebde05fc3a327"
-    },
-    {
-      "path": "scripts/bootstrap.mjs",
-      "mode": "100644",
-      "bytes": 804,
-      "sha256": "7bb74626c8bb61e58fa608ec950263908f1af9819307d6426142f655002a4ccc"
-    },
-    {
-      "path": "scripts/bridge-check.mjs",
-      "mode": "100644",
-      "bytes": 543,
-      "sha256": "6c753287c11e71cb5f397a1562d1a794256fe6dac3c52a7e6316504a86882734"
     }
   ]
 }

@@ -6,7 +6,7 @@
   "includes": {
     "foundations": [
       "blueprint/process-factory/foundations.json",
-      "blueprint/process-factory/foundations-plugins.json"
+      "blueprint/process-factory/foundations-provider-process-adapter.json"
     ],
     "processes": [
       "blueprint/process-factory/processes-core.json",
@@ -14,15 +14,15 @@
       "blueprint/process-factory/processes-evolution.json",
       "blueprint/process-factory/processes-operations-and-publication.json",
       "blueprint/process-factory/processes-health-and-bridge.json",
-      "blueprint/process-factory/processes-root-and-plugins.json"
+      "blueprint/process-factory/processes-root-provider-adapter.json"
     ],
     "templates": [
       "blueprint/process-factory/templates.json",
-      "blueprint/process-factory/templates-root-and-plugins.json"
+      "blueprint/process-factory/templates-root-provider-adapter.json"
     ],
     "workedExamples": [
       "blueprint/process-factory/worked-examples.json",
-      "blueprint/process-factory/worked-examples-root-and-plugins.json"
+      "blueprint/process-factory/worked-examples-root-provider-adapter.json"
     ]
   }
 }

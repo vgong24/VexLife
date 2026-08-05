@@ -4,21 +4,21 @@
   "inputs": {
     "parentGlobalRootRef": "github.issue.vextreme-sdk.230",
     "parentScopedRootRef": "github.issue.vexlife.20",
-    "currentEntryRef": "github.issue.vexlife.20.comment.5188178476",
+    "currentEntryRef": "github.issue.vexlife.20.comment.5189390673",
     "repository": "vgong24/VexLife",
     "expectedMain": "8dabe8a2fd5d9013931bbabab3416f86cb997c23",
     "nextActionOwnerRef": "Operations[VEXLIFE.WINDOWS]",
-    "nextActionRef": "DESIGN_AND_VERIFY_GENERIC_EXECUTOR",
+    "nextActionRef": "COMPILE_VEXLIFE_PROVIDER_PROCESS_ADAPTER",
     "continuity": "[VXG RealForever]"
   },
   "sourceRefs": {
     "projectInstructions": "B_ROOT_VEX_OPERATIONS_PROJECT_INSTRUCTIONS.md",
-    "currentRootEntry": "github.issue.vexlife.20.comment.5188178476"
+    "currentRootEntry": "github.issue.vexlife.20.comment.5189390673"
   },
   "currentFoundationVersions": {
-    "foundation.vexlife.root-process-plugin.v1": 1,
     "foundation.vexlife.identity-lattice.v1": 1,
-    "foundation.vexlife.permission-effects.v1": 1
+    "foundation.vexlife.permission-effects.v1": 1,
+    "foundation.vexlife.root-process-adapter.v1": 1
   },
   "authority": {
     "effects": []

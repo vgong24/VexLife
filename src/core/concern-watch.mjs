@@ -91,6 +91,8 @@ const SCHEDULER_OPTION_FIELDS = Object.freeze([
   'workerRef', 'schedulerGeneration', 'fairnessMaxDeferrals', 'fairnessLedger',
   'formedAt', 'expiresAt', 'observedAt'
 ]);
+export const CONCERN_PROCESS_SET_DERIVATION_CLASS = 'CANONICAL_LOADED_PROCESS_FACTORY';
+
 const NODE_INDEXED_SCHEDULER_OPTION_FIELDS = Object.freeze([
   'resourceRequestByNodeRef',
   'occupancyByNodeRef',
@@ -741,6 +743,32 @@ function assertSchedulerOptionNodeDomains(schedulerOptions, workgraph, authority
       throw new Error(`scheduler authority options.${field} contains work-node keys outside the exact Workgraph scope: ${unexpectedRefs.join(', ')}`);
     }
   }
+}
+
+export function deriveConcernWatchProcessAuthority(registry, factory) {
+  const source = clone(requireObject(registry, 'ConcernWatch registry'));
+  const authority = requireObject(
+    source.schedulerIntegration?.externalSchedulerAuthority,
+    'external scheduler authority contract'
+  );
+  const derivation = requireObject(
+    authority.registeredProcessRefsDerivation,
+    'registered process refs derivation'
+  );
+  if (derivation.derivationClass !== CONCERN_PROCESS_SET_DERIVATION_CLASS ||
+      derivation.sourceRef !== factory?.factoryRef ||
+      derivation.sourceField !== 'processes[].processRef' ||
+      derivation.ordering !== 'LEXICOGRAPHIC_REF_ASCENDING' ||
+      derivation.hashAlgorithm !== 'SHA256_SEMANTIC_HASH') {
+    throw new Error('ConcernWatch process-set derivation does not bind the canonical loaded Process Factory');
+  }
+  const registeredProcessRefs = exactRefs(
+    (factory?.processes ?? []).map((item) => item?.processRef),
+    'canonical loaded Process Factory process refs',
+    { required: true }
+  );
+  authority.registeredProcessRefsFingerprint = semanticHash(registeredProcessRefs);
+  return deepFreeze(source);
 }
 
 function schedulerAuthorityEvidenceCore(input, registry) {
@@ -2163,6 +2191,11 @@ export function validateConcernWatchRegistry(registry) {
         externalSchedulerAuthority?.schedulerRegistryFingerprint,
         externalSchedulerAuthority?.registeredProcessRefsFingerprint,
         externalSchedulerAuthority?.registeredRoleRefsFingerprint].every((value) => /^[a-f0-9]{64}$/.test(value ?? '')) ||
+      externalSchedulerAuthority?.registeredProcessRefsDerivation?.derivationClass !== CONCERN_PROCESS_SET_DERIVATION_CLASS ||
+      externalSchedulerAuthority?.registeredProcessRefsDerivation?.sourceRef !== 'factory.vexlife.processes.001' ||
+      externalSchedulerAuthority?.registeredProcessRefsDerivation?.sourceField !== 'processes[].processRef' ||
+      externalSchedulerAuthority?.registeredProcessRefsDerivation?.ordering !== 'LEXICOGRAPHIC_REF_ASCENDING' ||
+      externalSchedulerAuthority?.registeredProcessRefsDerivation?.hashAlgorithm !== 'SHA256_SEMANTIC_HASH' ||
       externalSchedulerAuthority?.recordRevalidatesExternalSchedulerRoute !== true ||
       externalSchedulerAuthority?.replayRevalidatesExternalSchedulerRoute !== true ||
       externalSchedulerAuthority?.integratedConsumerRevalidatesExternalSchedulerRoute !== true ||

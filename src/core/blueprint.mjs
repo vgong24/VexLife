@@ -9,6 +9,7 @@ import { validateImplementationPlan } from './implementation-plan.mjs';
 import { validateReviewLensRegistry, validateFeatureRegistry } from './feature-registry.mjs';
 import { validateHomeBridgeRegistry } from './home-bridge.mjs';
 import { validateBuildHealthRegistry } from './build-health.mjs';
+import { deriveConcernWatchProcessAuthority } from './concern-watch.mjs';
 import { validateIntentRegistry } from './intent-validation.mjs';
 import { validateIntentSchedulerRegistry } from './scheduler-runtime-trust.mjs';
 import {
@@ -64,6 +65,7 @@ export function loadBlueprint(root = VEXLIFE_ROOT) {
   const tokens = readJson(path.join(root, 'blueprint/design-tokens.json'));
   const platforms = readJson(path.join(root, 'blueprint/platforms.json'));
   const factory = loadComposedRecord(root, 'blueprint/process-factory.json', { foundations: [], processes: [], templates: [], workedExamples: [] });
+  blueprint.concernWatch = deriveConcernWatchProcessAuthority(blueprint.concernWatch, factory);
   const modules = loadComposedRecord(root, 'blueprint/module-registry.json', { modules: [] });
   const experience = optionalJson(path.join(root, 'blueprint/experience-registry.json'), { experienceProfiles: [], gestureContracts: [], vessels: [] });
   const evolution = optionalJson(path.join(root, 'blueprint/evolution-registry.json'), { candidateTypes: [], dreamStates: [], synchronizationScopes: [], weightLifecycleStates: [] });

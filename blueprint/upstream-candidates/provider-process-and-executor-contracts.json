@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "vexlife.upstream-contract-candidate-set/v1",
+  "candidateSetRef": "candidate-set.vexlife.provider-process-and-executor.001",
+  "state": "AWAITING_SHARED_CONVERGENCE",
+  "canonical": false,
+  "targetRepository": "vgong24/Vextreme-SDK",
+  "purpose": "Preserve generic provider/plugin and executor semantics for explicit upstreaming or thin-adapter binding without declaring final SDK contract identities.",
+  "unresolvedBindings": [
+    "canonicalSharedProviderPluginSchemaRef",
+    "canonicalSharedProviderPluginApiRef",
+    "canonicalGenericTaskManifestSchemaRef",
+    "canonicalCanonicalResultSchemaRef",
+    "canonicalTypedEffectTransactionRef",
+    "canonicalConnectorActionRegistryRef"
+  ],
+  "candidateSymbols": [
+    {
+      "symbolRef": "candidate.shared.provider-plugin-registry.v1",
+      "priorLocalSymbol": "vexlife.plugin-registry/v1",
+      "candidateClass": "UPSTREAM_OR_ADAPTER",
+      "semanticRequirements": [
+        "versioned plugin identity",
+        "exact process/module/foundation/template binding",
+        "typed templates",
+        "closed effect envelope",
+        "package-contained runtime evidence",
+        "historical comment scraping prohibited"
+      ]
+    },
+    {
+      "symbolRef": "candidate.shared.generic-executor-foundation.v1",
+      "priorLocalSymbol": "foundation.vexlife.generic-executor-manifest.v1",
+      "candidateClass": "UPSTREAM",
+      "candidatePayload": {
+        "purpose": "One immutable source artifact, one package-contained evidence manifest, one generic versioned executor and one canonical result ZIP.",
+        "ownedContracts": [
+          "TaskManifest",
+          "EvidenceManifest",
+          "ExecutorBinding",
+          "CanonicalResultZip"
+        ],
+        "invalidationSelectors": [
+          "executor-version-change",
+          "manifest-schema-change",
+          "authority-preflight-change",
+          "terminal-result-contract-change"
+        ]
+      }
+    },
+    {
+      "symbolRef": "candidate.shared.compile-generic-task-process.v1",
+      "priorLocalSymbol": "process.vexlocalbridge.compile-generic-task",
+      "candidateClass": "UPSTREAM",
+      "candidatePayload": {
+        "requiredInputs": [
+          "taskRef",
+          "attemptRef",
+          "executorRef",
+          "executorVersion",
+          "executorSha256",
+          "sourceArtifact",
+          "evidenceManifest",
+          "livePreflight",
+          "allowedEffects",
+          "terminalResultContract"
+        ],
+        "sourceResolutionRules": [
+          "verify package-contained source and evidence digests",
+          "read GitHub only for current mutable authority state",
+          "never scrape historical comments at runtime"
+        ],
+        "steps": [
+          "validate-task-manifest",
+          "verify-executor-binding",
+          "verify-package-evidence",
+          "compile-live-preflight",
+          "compile-terminal-result-contract"
+        ],
+        "authorityEnvelope": {
+          "effects": [
+            "FORM_TASK_PACKAGE"
+          ],
+          "pathScope": []
+        },
+        "recoveryRule": "correct manifest data without forking the executor"
+      }
+    },
+    {
+      "symbolRef": "candidate.shared.generic-task-manifest.v1",
+      "priorLocalSymbol": "template.vexlocalbridge.generic-task-manifest",
+      "candidateClass": "UPSTREAM",
+      "requiredFields": [
+        "taskRef",
+        "attemptRef",
+        "executorRef",
+        "executorVersion",
+        "executorSha256",
+        "sourceArtifact",
+        "evidenceManifest",
+        "livePreflight",
+        "allowedEffects",
+        "terminalResultContract"
+      ]
+    },
+    {
+      "symbolRef": "candidate.shared.canonical-result.v1",
+      "priorLocalSymbol": "template.vexlocalbridge.canonical-result",
+      "candidateClass": "UPSTREAM",
+      "requiredFields": [
+        "taskRef",
+        "attemptRef",
+        "executorRef",
+        "disposition",
+        "firstSubstantiveFailure",
+        "beforeStateRef",
+        "afterStateRef",
+        "receiptRefs",
+        "resultInventorySha256",
+        "resultZipSha256"
+      ]
+    }
+  ]
+}
