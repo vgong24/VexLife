@@ -1,0 +1,25 @@
+name: Windows Local-Safe W0-W5 Convergence
+on:
+  push:
+    branches:
+      - VXG-080426-chatgpt-vexlife-plugin-process-runtime-foundation
+permissions:
+  contents: write
+concurrency:
+  group: windows-local-safe-w0-w5-convergence
+  cancel-in-progress: false
+jobs:
+  apply-verify-clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify, apply, test, clean, commit and push
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: cat .github/w0w5-object/run.* > /tmp/w0w5-run.sh && bash /tmp/w0w5-run.sh
