@@ -28,3 +28,16 @@ jobs:
             SOURCE-MANIFEST.json
             source-manifest-parts/
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plugin-foundation-source-snapshot
+          path: |
+            blueprint/
+            src/
+            scripts/
+            test/
+            docs/
+            package.json
+            package-lock.json
+          if-no-files-found: error
