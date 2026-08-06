@@ -354,7 +354,7 @@
       "proof.vexlife.g01.lived-companion.windows"
     ],
     "effectBoundary": "DEVICE_PRIVATE_LOOPBACK_HTTP_AND_LOCAL_FILESYSTEM_ONLY",
-    "completionGate": "fresh canonical Home admission/preservation, portable canonical path identity, actual numeric-loopback HTTP turn, redirect and hostname-alias escape rejection, immutable records, semantically validated prior completed state before duplicate/HTTP/append, truthful duplicate and failed-turn recovery with immutable first-failure evidence, in-Home cross-thread context/event substitution rejection, one OS-atomic writer per thread, explicit abandoned-writer and unverifiable-lease recovery dispositions, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
+    "completionGate": "fresh canonical Home admission/preservation, portable canonical path identity, actual numeric-loopback HTTP turn, redirect and hostname-alias escape rejection, immutable records, semantically validated prior completed state before duplicate/HTTP/append, exact event address/contentHash/provenance, genesis-anchored complete REQUEST/RESPONSE history, canonical context location/source provenance, forged orphan duplicate-evidence rejection, truthful duplicate and failed-turn recovery with immutable first-failure evidence, absent-writer recovery with semantically validated last-head provenance, in-Home cross-thread context/event substitution rejection, one OS-atomic writer per thread, explicit abandoned-writer and unverifiable-lease recovery dispositions, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
     "platformRefs": [
       "platform.windows"
     ],

@@ -1163,6 +1163,321 @@ async function proof() {
     ));
     negativeControls.crossThreadEventSubstitutionRejected = true;
 
+    const genesisHome = makeHome(proofRoot, 'semantic-genesis-anchor-home');
+    const genesisThreadRef = ref('thread.vexlife.semantic-genesis-anchor');
+    const genesisFirstTurn = baseTurn(genesisHome, `http://127.0.0.1:${loopback.port}/ok/`, {
+      instanceRef: ref('instance.vexlife.semantic-genesis.first'),
+      threadRef: genesisThreadRef,
+      turnRef: ref('turn.vexlife.semantic-genesis.first')
+    });
+    const genesisSecondTurn = baseTurn(genesisHome, `http://127.0.0.1:${loopback.port}/ok/`, {
+      instanceRef: ref('instance.vexlife.semantic-genesis.second'),
+      threadRef: genesisThreadRef,
+      turnRef: ref('turn.vexlife.semantic-genesis.second')
+    });
+    await performLivedCompanionTurn(genesisFirstTurn);
+    const genesisCompleted = await performLivedCompanionTurn(genesisSecondTurn);
+    const genesisEventsDirectory = path.join(
+      genesisHome.home,
+      'conversations',
+      genesisHome.companionLineageRef,
+      genesisThreadRef,
+      'events'
+    );
+    const genesisEntries = fs.readdirSync(genesisEventsDirectory)
+      .filter((name) => name.endsWith('.json'))
+      .map((name) => ({
+        name,
+        file: path.join(genesisEventsDirectory, name),
+        event: readJson(path.join(genesisEventsDirectory, name))
+      }));
+    const genesisRequest = genesisEntries.find(
+      ({ event }) => event.turnRef === genesisSecondTurn.turnRef && event.eventKind === 'REQUEST'
+    );
+    const genesisResponse = genesisEntries.find(
+      ({ event }) => event.turnRef === genesisSecondTurn.turnRef && event.eventKind === 'RESPONSE'
+    );
+    genesisRequest.event.priorEventHash = null;
+    const { eventHash: ignoredGenesisRequestHash, ...genesisRequestCore } = genesisRequest.event;
+    genesisRequest.event.eventHash = semanticHash(genesisRequestCore);
+    genesisResponse.event.priorEventHash = genesisRequest.event.eventHash;
+    const { eventHash: ignoredGenesisResponseHash, ...genesisResponseCore } = genesisResponse.event;
+    genesisResponse.event.eventHash = semanticHash(genesisResponseCore);
+    fs.unlinkSync(genesisRequest.file);
+    fs.unlinkSync(genesisResponse.file);
+    writeJson(
+      path.join(
+        genesisEventsDirectory,
+        `${String(genesisRequest.event.sequence).padStart(8, '0')}-${genesisRequest.event.eventHash}.json`
+      ),
+      genesisRequest.event
+    );
+    writeJson(
+      path.join(
+        genesisEventsDirectory,
+        `${String(genesisResponse.event.sequence).padStart(8, '0')}-${genesisResponse.event.eventHash}.json`
+      ),
+      genesisResponse.event
+    );
+    const genesisContextPath = path.resolve(
+      genesisHome.home,
+      ...genesisCompleted.head.contextPath.split('/')
+    );
+    const genesisContext = readJson(genesisContextPath);
+    genesisContext.requestEventHash = genesisRequest.event.eventHash;
+    genesisContext.responseEventHash = genesisResponse.event.eventHash;
+    const { serializedContextSha256: ignoredGenesisContextHash, ...genesisContextCore } = genesisContext;
+    genesisContext.serializedContextSha256 = semanticHash(genesisContextCore);
+    writeJson(genesisContextPath, genesisContext);
+    const genesisHead = readJson(genesisCompleted.headPath);
+    genesisHead.eventHash = genesisResponse.event.eventHash;
+    genesisHead.contextSha256 = genesisContext.serializedContextSha256;
+    const { conversationHeadSha256: ignoredGenesisHeadHash, ...genesisHeadCore } = genesisHead;
+    genesisHead.conversationHeadSha256 = semanticHash(genesisHeadCore);
+    writeJson(genesisCompleted.headPath, genesisHead);
+    typedFailureProofs.push(await expectFailure(
+      'EVENT_CHAIN_CORRUPT',
+      async () => writeLivedCompanionShutdownReceipt({
+        ...genesisHome,
+        instanceRef: genesisSecondTurn.instanceRef,
+        threadRef: genesisThreadRef,
+        expectedConversationHeadSha256: genesisHead.conversationHeadSha256
+      }),
+      'completed chain truncation after adversarial rehash'
+    ));
+    negativeControls.completedChainGenesisAnchored = true;
+
+    const contentHashHome = makeHome(proofRoot, 'semantic-event-content-hash-home');
+    const contentHashTurn = baseTurn(
+      contentHashHome,
+      `http://127.0.0.1:${loopback.port}/ok/`
+    );
+    const contentHashCompleted = await performLivedCompanionTurn(contentHashTurn);
+    const contentHashEventsDirectory = path.join(
+      contentHashHome.home,
+      'conversations',
+      contentHashHome.companionLineageRef,
+      contentHashTurn.threadRef,
+      'events'
+    );
+    const contentHashResponseName = fs.readdirSync(contentHashEventsDirectory).find((name) => {
+      const event = readJson(path.join(contentHashEventsDirectory, name));
+      return event.eventKind === 'RESPONSE';
+    });
+    const contentHashResponsePath = path.join(contentHashEventsDirectory, contentHashResponseName);
+    const contentHashResponse = readJson(contentHashResponsePath);
+    contentHashResponse.content = 'tampered content with intentionally stale contentHash';
+    const { eventHash: ignoredContentHashEventHash, ...contentHashResponseCore } = contentHashResponse;
+    contentHashResponse.eventHash = semanticHash(contentHashResponseCore);
+    fs.unlinkSync(contentHashResponsePath);
+    writeJson(
+      path.join(
+        contentHashEventsDirectory,
+        `${String(contentHashResponse.sequence).padStart(8, '0')}-${contentHashResponse.eventHash}.json`
+      ),
+      contentHashResponse
+    );
+    const contentHashContextPath = path.resolve(
+      contentHashHome.home,
+      ...contentHashCompleted.head.contextPath.split('/')
+    );
+    const contentHashContext = readJson(contentHashContextPath);
+    contentHashContext.responseEventHash = contentHashResponse.eventHash;
+    const { serializedContextSha256: ignoredContentHashContextHash, ...contentHashContextCore } = contentHashContext;
+    contentHashContext.serializedContextSha256 = semanticHash(contentHashContextCore);
+    writeJson(contentHashContextPath, contentHashContext);
+    const contentHashHead = readJson(contentHashCompleted.headPath);
+    contentHashHead.eventHash = contentHashResponse.eventHash;
+    contentHashHead.contextSha256 = contentHashContext.serializedContextSha256;
+    const { conversationHeadSha256: ignoredContentHashHeadHash, ...contentHashHeadCore } = contentHashHead;
+    contentHashHead.conversationHeadSha256 = semanticHash(contentHashHeadCore);
+    writeJson(contentHashCompleted.headPath, contentHashHead);
+    typedFailureProofs.push(await expectFailure(
+      'EVENT_CHAIN_CORRUPT',
+      async () => writeLivedCompanionShutdownReceipt({
+        ...contentHashHome,
+        instanceRef: contentHashTurn.instanceRef,
+        threadRef: contentHashTurn.threadRef,
+        expectedConversationHeadSha256: contentHashHead.conversationHeadSha256
+      }),
+      'event contentHash mismatch after adversarial envelope rehash'
+    ));
+    negativeControls.eventContentHashVerified = true;
+
+    const eventAddressHome = makeHome(proofRoot, 'semantic-event-address-home');
+    const eventAddressTurn = baseTurn(eventAddressHome, `http://127.0.0.1:${loopback.port}/ok/`);
+    const eventAddressCompleted = await performLivedCompanionTurn(eventAddressTurn);
+    const eventAddressFile = findHeadEventFile(
+      eventAddressHome.home,
+      eventAddressHome.companionLineageRef,
+      eventAddressTurn.threadRef,
+      eventAddressCompleted.head.eventHash
+    );
+    fs.renameSync(eventAddressFile, path.join(path.dirname(eventAddressFile), 'misaddressed-event.json'));
+    typedFailureProofs.push(await expectFailure(
+      'EVENT_CHAIN_CORRUPT',
+      async () => writeLivedCompanionShutdownReceipt({
+        ...eventAddressHome,
+        instanceRef: eventAddressTurn.instanceRef,
+        threadRef: eventAddressTurn.threadRef,
+        expectedConversationHeadSha256: eventAddressCompleted.head.conversationHeadSha256
+      }),
+      'event filename address mismatch'
+    ));
+    negativeControls.eventFileAddressVerified = true;
+
+    const contextProvenanceHome = makeHome(proofRoot, 'semantic-context-provenance-home');
+    const contextProvenanceTurn = baseTurn(
+      contextProvenanceHome,
+      `http://127.0.0.1:${loopback.port}/ok/`,
+      { contextSourceRefs: ['source.proof.semantic-context'] }
+    );
+    const contextProvenanceCompleted = await performLivedCompanionTurn(contextProvenanceTurn);
+    const alternateContextHome = cloneHome(
+      contextProvenanceHome.home,
+      proofRoot,
+      'semantic-alternate-context-home'
+    );
+    const alternateContextHeadPath = path.join(
+      alternateContextHome,
+      'conversations',
+      contextProvenanceHome.companionLineageRef,
+      contextProvenanceTurn.threadRef,
+      'head.json'
+    );
+    const alternateContextHead = readJson(alternateContextHeadPath);
+    const canonicalContextPath = path.resolve(
+      alternateContextHome,
+      ...alternateContextHead.contextPath.split('/')
+    );
+    const alternateContextPath = path.join(alternateContextHome, 'recovery', 'alternate-context.json');
+    fs.mkdirSync(path.dirname(alternateContextPath), { recursive: true });
+    fs.copyFileSync(canonicalContextPath, alternateContextPath);
+    alternateContextHead.contextPath = 'recovery/alternate-context.json';
+    const { conversationHeadSha256: ignoredAlternateContextHeadHash, ...alternateContextHeadCore } =
+      alternateContextHead;
+    alternateContextHead.conversationHeadSha256 = semanticHash(alternateContextHeadCore);
+    writeJson(alternateContextHeadPath, alternateContextHead);
+    typedFailureProofs.push(await expectFailure(
+      'CONTEXT_HASH_MISMATCH',
+      async () => writeLivedCompanionShutdownReceipt({
+        ...contextProvenanceHome,
+        home: alternateContextHome,
+        instanceRef: contextProvenanceTurn.instanceRef,
+        threadRef: contextProvenanceTurn.threadRef,
+        expectedConversationHeadSha256: alternateContextHead.conversationHeadSha256
+      }),
+      'alternate in-Home context path'
+    ));
+
+    const forgedContextHome = cloneHome(
+      contextProvenanceHome.home,
+      proofRoot,
+      'semantic-forged-context-source-home'
+    );
+    const forgedContextHeadPath = path.join(
+      forgedContextHome,
+      'conversations',
+      contextProvenanceHome.companionLineageRef,
+      contextProvenanceTurn.threadRef,
+      'head.json'
+    );
+    const forgedContextHead = readJson(forgedContextHeadPath);
+    const forgedContextPath = path.resolve(
+      forgedContextHome,
+      ...forgedContextHead.contextPath.split('/')
+    );
+    const forgedContext = readJson(forgedContextPath);
+    forgedContext.contextSourceRefs = ['source.forged'];
+    const { serializedContextSha256: ignoredForgedContextHash, ...forgedContextCore } = forgedContext;
+    forgedContext.serializedContextSha256 = semanticHash(forgedContextCore);
+    writeJson(forgedContextPath, forgedContext);
+    forgedContextHead.contextSha256 = forgedContext.serializedContextSha256;
+    const { conversationHeadSha256: ignoredForgedContextHeadHash, ...forgedContextHeadCore } =
+      forgedContextHead;
+    forgedContextHead.conversationHeadSha256 = semanticHash(forgedContextHeadCore);
+    writeJson(forgedContextHeadPath, forgedContextHead);
+    typedFailureProofs.push(await expectFailure(
+      'CONTEXT_HASH_MISMATCH',
+      async () => writeLivedCompanionShutdownReceipt({
+        ...contextProvenanceHome,
+        home: forgedContextHome,
+        instanceRef: contextProvenanceTurn.instanceRef,
+        threadRef: contextProvenanceTurn.threadRef,
+        expectedConversationHeadSha256: forgedContextHead.conversationHeadSha256
+      }),
+      'forged context source refs'
+    ));
+    negativeControls.canonicalContextProvenance = true;
+
+    const forgedDuplicateHome = makeHome(proofRoot, 'semantic-forged-duplicate-home');
+    const forgedDuplicateTurn = baseTurn(
+      forgedDuplicateHome,
+      `http://127.0.0.1:${loopback.port}/ok/`
+    );
+    const forgedDuplicateEvents = path.join(
+      forgedDuplicateHome.home,
+      'conversations',
+      forgedDuplicateHome.companionLineageRef,
+      forgedDuplicateTurn.threadRef,
+      'events'
+    );
+    fs.mkdirSync(forgedDuplicateEvents, { recursive: true });
+    const forgedDuplicateHash = '0'.repeat(64);
+    writeJson(
+      path.join(forgedDuplicateEvents, `00000000-${forgedDuplicateHash}.json`),
+      {
+        turnRef: forgedDuplicateTurn.turnRef,
+        eventHash: forgedDuplicateHash,
+        eventKind: 'REQUEST',
+        sequence: 0
+      }
+    );
+    const forgedDuplicateCallsBefore = loopback.calls.length;
+    typedFailureProofs.push(await expectFailure(
+      'EVENT_CHAIN_CORRUPT',
+      () => performLivedCompanionTurn(forgedDuplicateTurn),
+      'forged orphan duplicate evidence'
+    ));
+    negativeControls.duplicateEvidenceValidated =
+      loopback.calls.length === forgedDuplicateCallsBefore;
+
+    const abandonedCorruptHome = makeHome(proofRoot, 'semantic-abandoned-corrupt-head-home');
+    const abandonedCorruptThreadRef = ref('thread.vexlife.semantic-abandoned-corrupt');
+    const abandonedCorruptTurn = baseTurn(
+      abandonedCorruptHome,
+      `http://127.0.0.1:${loopback.port}/ok/`,
+      { threadRef: abandonedCorruptThreadRef }
+    );
+    const abandonedCorruptCompleted = await performLivedCompanionTurn(abandonedCorruptTurn);
+    fs.unlinkSync(findHeadEventFile(
+      abandonedCorruptHome.home,
+      abandonedCorruptHome.companionLineageRef,
+      abandonedCorruptThreadRef,
+      abandonedCorruptCompleted.head.eventHash
+    ));
+    writeAbandonedWriterLease(abandonedCorruptHome, abandonedCorruptThreadRef);
+    const abandonedCorruptFailure = await expectFailure(
+      'THREAD_WRITER_RECOVERY_REQUIRED',
+      () => performLivedCompanionTurn(baseTurn(
+        abandonedCorruptHome,
+        `http://127.0.0.1:${loopback.port}/ok/`,
+        {
+          threadRef: abandonedCorruptThreadRef,
+          instanceRef: ref('instance.vexlife.semantic-abandoned-next'),
+          turnRef: ref('turn.vexlife.semantic-abandoned-next')
+        }
+      )),
+      'absent writer with semantically corrupt prior head'
+    );
+    typedFailureProofs.push(abandonedCorruptFailure);
+    const abandonedCorruptReceipt = readJson(abandonedCorruptFailure.failureReceiptPath);
+    negativeControls.abandonedWriterUsesSemanticLastHead =
+      abandonedCorruptReceipt.lastValidHead === null &&
+      abandonedCorruptReceipt.resumePossible === false &&
+      abandonedCorruptReceipt.exactNextSafeRoute ===
+        'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED';
+
     const privacyHome = cloneHome(main.home, proofRoot, 'privacy-detection-home');
     const injectedSecret = `forbidden-secret-${crypto.randomUUID()}`;
     fs.writeFileSync(path.join(privacyHome, 'recovery', 'injected-secret.txt'), injectedSecret, 'utf8');
@@ -1233,6 +1548,13 @@ async function proof() {
         negativeControls.duplicateFollowUpRetainsLastValidHead &&
         negativeControls.crossThreadContextSubstitutionRejected &&
         negativeControls.crossThreadEventSubstitutionRejected,
+      semanticEvidenceIntegrity:
+        negativeControls.completedChainGenesisAnchored &&
+        negativeControls.eventContentHashVerified &&
+        negativeControls.eventFileAddressVerified &&
+        negativeControls.canonicalContextProvenance &&
+        negativeControls.duplicateEvidenceValidated &&
+        negativeControls.abandonedWriterUsesSemanticLastHead,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,

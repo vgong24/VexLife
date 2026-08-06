@@ -809,7 +809,7 @@
   },
   {
     "testRef": "test.lived-companion.semantic-state-continuity-and-recovery",
-    "brief": "Any existing completed head is semantically validated before duplicate classification, HTTP or append; its event chain and context bind the exact Home/device/lineage/thread/turn, corrupt prior state has zero new effects, duplicate follow-ups retain the validated last head, and in-Home cross-thread context/event substitutions fail closed."
+    "brief": "Any existing completed head is semantically validated before duplicate classification, HTTP or append; every consulted event is content/address/provenance-validated, completed history is genesis-anchored into exact REQUEST/RESPONSE pairs, canonical context location/source refs are enforced, forged orphan duplicate evidence is rejected, absent-writer recovery exposes only a semantically valid last head, duplicate follow-ups retain that validated head, and in-Home cross-thread/turn substitutions fail closed."
   },
   {
     "testRef": "test.lived-companion.one-writer-per-thread",

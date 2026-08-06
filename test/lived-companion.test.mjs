@@ -805,6 +805,295 @@ test('resume rejects in-Home cross-thread event substitution even when objects r
   }
 });
 
+
+test('completed event history remains anchored at genesis after adversarial rehashing', async () => {
+  const service = await server();
+  const home = makeHome('semantic-genesis-anchor');
+  const threadRef = ref('thread.semantic-genesis-anchor');
+  const first = turn(home, service.endpoint(), {
+    threadRef,
+    instanceRef: ref('instance.semantic.first'),
+    turnRef: ref('turn.semantic.first')
+  });
+  const second = turn(home, service.endpoint(), {
+    threadRef,
+    instanceRef: ref('instance.semantic.second'),
+    turnRef: ref('turn.semantic.second')
+  });
+  try {
+    await performLivedCompanionTurn(first);
+    const completed = await performLivedCompanionTurn(second);
+    const eventsDirectory = path.join(home.home, 'conversations', home.companionLineageRef, threadRef, 'events');
+    const entries = fs.readdirSync(eventsDirectory)
+      .filter((name) => name.endsWith('.json'))
+      .map((name) => ({ name, file: path.join(eventsDirectory, name), event: JSON.parse(fs.readFileSync(path.join(eventsDirectory, name), 'utf8')) }));
+    const request = entries.find(({ event }) => event.turnRef === second.turnRef && event.eventKind === 'REQUEST');
+    const response = entries.find(({ event }) => event.turnRef === second.turnRef && event.eventKind === 'RESPONSE');
+
+    request.event.priorEventHash = null;
+    const { eventHash: ignoredRequestHash, ...requestCore } = request.event;
+    request.event.eventHash = semanticHash(requestCore);
+    response.event.priorEventHash = request.event.eventHash;
+    const { eventHash: ignoredResponseHash, ...responseCore } = response.event;
+    response.event.eventHash = semanticHash(responseCore);
+
+    fs.unlinkSync(request.file);
+    fs.unlinkSync(response.file);
+    fs.writeFileSync(
+      path.join(eventsDirectory, `${String(request.event.sequence).padStart(8, '0')}-${request.event.eventHash}.json`),
+      `${JSON.stringify(request.event, null, 2)}\n`,
+      'utf8'
+    );
+    fs.writeFileSync(
+      path.join(eventsDirectory, `${String(response.event.sequence).padStart(8, '0')}-${response.event.eventHash}.json`),
+      `${JSON.stringify(response.event, null, 2)}\n`,
+      'utf8'
+    );
+
+    const contextPath = path.resolve(home.home, ...completed.head.contextPath.split('/'));
+    const context = JSON.parse(fs.readFileSync(contextPath, 'utf8'));
+    context.requestEventHash = request.event.eventHash;
+    context.responseEventHash = response.event.eventHash;
+    const { serializedContextSha256: ignoredContextHash, ...contextCore } = context;
+    context.serializedContextSha256 = semanticHash(contextCore);
+    fs.writeFileSync(contextPath, `${JSON.stringify(context, null, 2)}\n`, 'utf8');
+
+    const head = JSON.parse(fs.readFileSync(completed.headPath, 'utf8'));
+    head.eventHash = response.event.eventHash;
+    head.contextSha256 = context.serializedContextSha256;
+    const { conversationHeadSha256: ignoredHeadHash, ...headCore } = head;
+    head.conversationHeadSha256 = semanticHash(headCore);
+    fs.writeFileSync(completed.headPath, `${JSON.stringify(head, null, 2)}\n`, 'utf8');
+
+    await rejectsCode(
+      async () => writeLivedCompanionShutdownReceipt({
+        ...home,
+        instanceRef: second.instanceRef,
+        threadRef,
+        expectedConversationHeadSha256: head.conversationHeadSha256
+      }),
+      'EVENT_CHAIN_CORRUPT'
+    );
+  } finally {
+    await service.close();
+  }
+});
+
+test('event contentHash is independently verified even when event/context/head envelopes are rehashed', async () => {
+  const service = await server();
+  const home = makeHome('semantic-content-hash');
+  const input = turn(home, service.endpoint());
+  try {
+    const completed = await performLivedCompanionTurn(input);
+    const eventsDirectory = path.join(home.home, 'conversations', home.companionLineageRef, input.threadRef, 'events');
+    const responseName = fs.readdirSync(eventsDirectory).find((name) => {
+      const event = JSON.parse(fs.readFileSync(path.join(eventsDirectory, name), 'utf8'));
+      return event.eventKind === 'RESPONSE';
+    });
+    const responseFile = path.join(eventsDirectory, responseName);
+    const response = JSON.parse(fs.readFileSync(responseFile, 'utf8'));
+    const staleContentHash = response.contentHash;
+    response.content = 'tampered content with intentionally stale contentHash';
+    const { eventHash: ignoredEventHash, ...responseCore } = response;
+    response.eventHash = semanticHash(responseCore);
+    fs.unlinkSync(responseFile);
+    fs.writeFileSync(
+      path.join(eventsDirectory, `${String(response.sequence).padStart(8, '0')}-${response.eventHash}.json`),
+      `${JSON.stringify(response, null, 2)}\n`,
+      'utf8'
+    );
+
+    const contextPath = path.resolve(home.home, ...completed.head.contextPath.split('/'));
+    const context = JSON.parse(fs.readFileSync(contextPath, 'utf8'));
+    context.responseEventHash = response.eventHash;
+    const { serializedContextSha256: ignoredContextHash, ...contextCore } = context;
+    context.serializedContextSha256 = semanticHash(contextCore);
+    fs.writeFileSync(contextPath, `${JSON.stringify(context, null, 2)}\n`, 'utf8');
+
+    const head = JSON.parse(fs.readFileSync(completed.headPath, 'utf8'));
+    head.eventHash = response.eventHash;
+    head.contextSha256 = context.serializedContextSha256;
+    const { conversationHeadSha256: ignoredHeadHash, ...headCore } = head;
+    head.conversationHeadSha256 = semanticHash(headCore);
+    fs.writeFileSync(completed.headPath, `${JSON.stringify(head, null, 2)}\n`, 'utf8');
+
+    assert.equal(response.contentHash, staleContentHash);
+    assert.notEqual(response.contentHash, semanticHash(response.content));
+    await rejectsCode(
+      async () => writeLivedCompanionShutdownReceipt({
+        ...home,
+        instanceRef: input.instanceRef,
+        threadRef: input.threadRef,
+        expectedConversationHeadSha256: head.conversationHeadSha256
+      }),
+      'EVENT_CHAIN_CORRUPT'
+    );
+  } finally {
+    await service.close();
+  }
+});
+
+test('event filename must match exact sequence and eventHash address', async () => {
+  const service = await server();
+  const home = makeHome('semantic-event-address');
+  const input = turn(home, service.endpoint());
+  try {
+    const completed = await performLivedCompanionTurn(input);
+    const eventsDirectory = path.join(home.home, 'conversations', home.companionLineageRef, input.threadRef, 'events');
+    const responseName = fs.readdirSync(eventsDirectory).find((name) => {
+      const event = JSON.parse(fs.readFileSync(path.join(eventsDirectory, name), 'utf8'));
+      return event.eventKind === 'RESPONSE';
+    });
+    fs.renameSync(path.join(eventsDirectory, responseName), path.join(eventsDirectory, 'misaddressed-event.json'));
+    await rejectsCode(
+      async () => writeLivedCompanionShutdownReceipt({
+        ...home,
+        instanceRef: input.instanceRef,
+        threadRef: input.threadRef,
+        expectedConversationHeadSha256: completed.head.conversationHeadSha256
+      }),
+      'EVENT_CHAIN_CORRUPT'
+    );
+  } finally {
+    await service.close();
+  }
+});
+
+test('context must remain at exact canonical path and retain request/response source refs', async () => {
+  const service = await server();
+  const home = makeHome('semantic-context-provenance');
+  const input = turn(home, service.endpoint(), { contextSourceRefs: ['source.original'] });
+  try {
+    const completed = await performLivedCompanionTurn(input);
+
+    const alternateRoot = temp('semantic-context-alternate');
+    const alternateHome = path.join(alternateRoot, 'home');
+    fs.cpSync(home.home, alternateHome, { recursive: true });
+    const alternateHeadPath = path.join(
+      alternateHome,
+      'conversations',
+      home.companionLineageRef,
+      input.threadRef,
+      'head.json'
+    );
+    const alternateHead = JSON.parse(fs.readFileSync(alternateHeadPath, 'utf8'));
+    const canonicalContextPath = path.resolve(alternateHome, ...alternateHead.contextPath.split('/'));
+    const alternateContextPath = path.join(alternateHome, 'recovery', 'alternate-context.json');
+    fs.mkdirSync(path.dirname(alternateContextPath), { recursive: true });
+    fs.copyFileSync(canonicalContextPath, alternateContextPath);
+    alternateHead.contextPath = 'recovery/alternate-context.json';
+    const { conversationHeadSha256: ignoredAlternateHeadHash, ...alternateHeadCore } = alternateHead;
+    alternateHead.conversationHeadSha256 = semanticHash(alternateHeadCore);
+    fs.writeFileSync(alternateHeadPath, `${JSON.stringify(alternateHead, null, 2)}\n`, 'utf8');
+    await rejectsCode(
+      async () => writeLivedCompanionShutdownReceipt({
+        ...home,
+        home: alternateHome,
+        instanceRef: input.instanceRef,
+        threadRef: input.threadRef,
+        expectedConversationHeadSha256: alternateHead.conversationHeadSha256
+      }),
+      'CONTEXT_HASH_MISMATCH'
+    );
+
+    const provenanceRoot = temp('semantic-context-source-refs');
+    const provenanceHome = path.join(provenanceRoot, 'home');
+    fs.cpSync(home.home, provenanceHome, { recursive: true });
+    const provenanceHeadPath = path.join(
+      provenanceHome,
+      'conversations',
+      home.companionLineageRef,
+      input.threadRef,
+      'head.json'
+    );
+    const provenanceHead = JSON.parse(fs.readFileSync(provenanceHeadPath, 'utf8'));
+    const provenanceContextPath = path.resolve(provenanceHome, ...provenanceHead.contextPath.split('/'));
+    const provenanceContext = JSON.parse(fs.readFileSync(provenanceContextPath, 'utf8'));
+    provenanceContext.contextSourceRefs = ['source.forged'];
+    const { serializedContextSha256: ignoredProvenanceHash, ...provenanceCore } = provenanceContext;
+    provenanceContext.serializedContextSha256 = semanticHash(provenanceCore);
+    fs.writeFileSync(provenanceContextPath, `${JSON.stringify(provenanceContext, null, 2)}\n`, 'utf8');
+    provenanceHead.contextSha256 = provenanceContext.serializedContextSha256;
+    const { conversationHeadSha256: ignoredProvenanceHeadHash, ...provenanceHeadCore } = provenanceHead;
+    provenanceHead.conversationHeadSha256 = semanticHash(provenanceHeadCore);
+    fs.writeFileSync(provenanceHeadPath, `${JSON.stringify(provenanceHead, null, 2)}\n`, 'utf8');
+    await rejectsCode(
+      async () => writeLivedCompanionShutdownReceipt({
+        ...home,
+        home: provenanceHome,
+        instanceRef: input.instanceRef,
+        threadRef: input.threadRef,
+        expectedConversationHeadSha256: provenanceHead.conversationHeadSha256
+      }),
+      'CONTEXT_HASH_MISMATCH'
+    );
+  } finally {
+    await service.close();
+  }
+});
+
+test('forged orphan event JSON cannot create false duplicate evidence', async () => {
+  const service = await server();
+  const home = makeHome('semantic-forged-duplicate');
+  const input = turn(home, service.endpoint());
+  const eventsDirectory = path.join(home.home, 'conversations', home.companionLineageRef, input.threadRef, 'events');
+  fs.mkdirSync(eventsDirectory, { recursive: true });
+  const fakeHash = '0'.repeat(64);
+  fs.writeFileSync(
+    path.join(eventsDirectory, `00000000-${fakeHash}.json`),
+    `${JSON.stringify({
+      turnRef: input.turnRef,
+      eventHash: fakeHash,
+      eventKind: 'REQUEST',
+      sequence: 0
+    }, null, 2)}\n`,
+    'utf8'
+  );
+  try {
+    const callsBefore = service.calls();
+    await rejectsCode(() => performLivedCompanionTurn(input), 'EVENT_CHAIN_CORRUPT');
+    assert.equal(service.calls(), callsBefore);
+  } finally {
+    await service.close();
+  }
+});
+
+test('absent-writer recovery never promotes a semantically corrupt head as resumable', async () => {
+  const service = await server();
+  const home = makeHome('semantic-abandoned-corrupt-head');
+  const threadRef = ref('thread.semantic-abandoned');
+  const completedInput = turn(home, service.endpoint(), { threadRef });
+  try {
+    const completed = await performLivedCompanionTurn(completedInput);
+    const eventsDirectory = path.join(home.home, 'conversations', home.companionLineageRef, threadRef, 'events');
+    const headEventFile = fs.readdirSync(eventsDirectory)
+      .map((name) => path.join(eventsDirectory, name))
+      .find((file) => JSON.parse(fs.readFileSync(file, 'utf8')).eventHash === completed.head.eventHash);
+    fs.unlinkSync(headEventFile);
+    writeAbandonedWriterLease(home, threadRef);
+
+    let observed = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(turn(home, service.endpoint(), {
+        threadRef,
+        instanceRef: ref('instance.semantic-abandoned-next'),
+        turnRef: ref('turn.semantic-abandoned-next')
+      })),
+      (error) => {
+        observed = error;
+        return error instanceof LivedCompanionError && error.code === 'THREAD_WRITER_RECOVERY_REQUIRED';
+      }
+    );
+    const receipt = JSON.parse(fs.readFileSync(observed.details.failureReceiptPath, 'utf8'));
+    assert.equal(observed.details.lastValidHeadSha256, null);
+    assert.equal(receipt.lastValidHead, null);
+    assert.equal(receipt.resumePossible, false);
+    assert.equal(receipt.exactNextSafeRoute, 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED');
+  } finally {
+    await service.close();
+  }
+});
+
 test('one atomic writer lease prevents concurrent thread forks and releases for retry', async () => {
   const service=await server();
   const home=makeHome('concurrent-writers');
@@ -993,7 +1282,9 @@ test('CLI proof performs loopback turn, shutdown, fresh-process resume, failures
   assert.equal(value.state,'PASS');
   assert.equal(value.actualHttpCall,true);
   assert.equal(value.freshProcessResume,true);
-  assert.equal(value.typedFailureProofs.length>=25,true);
+  assert.equal(value.typedFailureProofs.length>=31,true);
+  assert.equal(value.semanticStateContinuity,true);
+  assert.equal(value.semanticEvidenceIntegrity,true);
   assert.equal(value.abandonedWriterRecoveryDisposition,true);
   assert.equal(value.abandonedWriterRecoveryOperationHeld,true);
   assert.equal(value.LC18Performed,false);

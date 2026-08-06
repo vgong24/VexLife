@@ -289,9 +289,13 @@ function verifyThreadWriterLeaseRecord(value, companionLineageRef, threadRef) {
 
 function observedLastValidHead(home, companionLineageRef, threadRef) {
   try {
-    const headPath = resolveHomePath(home, 'conversations', companionLineageRef, threadRef, 'head.json');
-    if (!fs.existsSync(headPath)) return null;
-    return verifyHead(readJson(headPath, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
+    const identity = loadHome(home);
+    const admitted = assertHomeIdentity(identity, { companionLineageRef });
+    return validateCompletedConversationState({
+      home: identity.homeRoot,
+      admitted,
+      threadRef
+    }).head;
   } catch {
     return null;
   }
@@ -620,7 +624,7 @@ function atomicWriteJson(file, value, { failBeforeRename = false } = {}) {
   }
 }
 
-function existingEvents(eventsDirectory) {
+function existingEvents(eventsDirectory, expectedIdentity = null) {
   if (!fs.existsSync(eventsDirectory)) return [];
   const directoryStat = fs.lstatSync(eventsDirectory);
   if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) {
@@ -628,17 +632,21 @@ function existingEvents(eventsDirectory) {
   }
   return fs.readdirSync(eventsDirectory, { withFileTypes: true })
     .filter((entry) => entry.name.endsWith('.json'))
+    .sort((left, right) => left.name.localeCompare(right.name))
     .map((entry) => {
       const file = path.join(eventsDirectory, entry.name);
       if (entry.isSymbolicLink() || !entry.isFile() || fs.lstatSync(file).isSymbolicLink()) {
         fail('EVENT_CHAIN_CORRUPT', 'conversation event entry must be one regular non-symlink file', { file });
       }
-      return readJson(file, 'EVENT_CHAIN_CORRUPT', 'conversation event');
+      const event = readJson(file, 'EVENT_CHAIN_CORRUPT', 'conversation event');
+      assertEventRecord(event, expectedIdentity, entry.name);
+      return event;
     });
 }
 
-function assertNoDuplicateTurn(eventsDirectory, turnRef, lastValidHead = null) {
-  const duplicate = existingEvents(eventsDirectory).find((event) => event.turnRef === turnRef);
+function assertNoDuplicateTurn(eventsDirectory, turnRef, lastValidHead = null, expectedIdentity = null) {
+  const duplicate = existingEvents(eventsDirectory, expectedIdentity)
+    .find((event) => event.turnRef === turnRef);
   if (duplicate) {
     fail('DUPLICATE_TURN_SUPPRESSED', 'turnRef has already been recorded', {
       turnRef,
@@ -871,7 +879,12 @@ export async function performLivedCompanionTurn({
     lastValidHead = priorState.head;
     fs.mkdirSync(paths.events, { recursive: true });
     fs.mkdirSync(paths.context, { recursive: true });
-    assertNoDuplicateTurn(paths.events, turnRef, lastValidHead);
+    assertNoDuplicateTurn(paths.events, turnRef, lastValidHead, {
+      homeRef: admitted.homeRef,
+      deviceRef: admitted.deviceRef,
+      companionLineageRef: admitted.companionLineageRef,
+      threadRef
+    });
     const startingSequence = lastValidHead ? Number(lastValidHead.sequence) + 1 : 0;
     const requestCore = {
       schemaVersion: 'vexlife.lived-companion-event/v1',
@@ -1016,31 +1029,114 @@ function recomputeEventHash(event) {
   return contentHash(core);
 }
 
-function assertEventIdentity(event, expected) {
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function assertEventRecord(event, expected = null, fileName = null) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) {
     fail('EVENT_CHAIN_CORRUPT', 'conversation event is invalid');
   }
+  let safeInstanceRef;
+  let safeTurnRef;
+  try {
+    safeInstanceRef = ensureSafeRef(event.instanceRef, 'event.instanceRef', 'EVENT_CHAIN_CORRUPT');
+    safeTurnRef = ensureSafeRef(event.turnRef, 'event.turnRef', 'EVENT_CHAIN_CORRUPT');
+  } catch (error) {
+    if (error instanceof LivedCompanionError) throw error;
+    fail('EVENT_CHAIN_CORRUPT', 'conversation event identity is invalid');
+  }
+  const validPriorHash =
+    event.priorEventHash === null ||
+    /^[0-9a-f]{64}$/u.test(event.priorEventHash ?? '');
+  const validRecipients =
+    Array.isArray(event.recipientRefs) &&
+    event.recipientRefs.length > 0 &&
+    event.recipientRefs.every(isNonEmptyString);
+  const validContentHash =
+    /^[0-9a-f]{64}$/u.test(event.contentHash ?? '') &&
+    typeof event.content === 'string' &&
+    contentHash(event.content) === event.contentHash;
+  const expectedFileName =
+    /^[0-9a-f]{64}$/u.test(event.eventHash ?? '') && Number.isSafeInteger(event.sequence)
+      ? `${String(event.sequence).padStart(8, '0')}-${event.eventHash}.json`
+      : null;
+
   if (
     event.schemaVersion !== 'vexlife.lived-companion-event/v1' ||
+    safeInstanceRef !== event.instanceRef ||
+    safeTurnRef !== event.turnRef ||
+    !isNonEmptyString(event.eventRef) ||
+    !isNonEmptyString(event.channelRef) ||
+    !isNonEmptyString(event.messageRef) ||
+    !isNonEmptyString(event.speakerRef) ||
+    !validRecipients ||
+    !Number.isSafeInteger(event.sequence) ||
+    event.sequence < 0 ||
+    !['REQUEST', 'RESPONSE'].includes(event.eventKind) ||
+    !validPriorHash ||
+    !/^[0-9a-f]{64}$/u.test(event.eventHash ?? '') ||
+    recomputeEventHash(event) !== event.eventHash ||
+    !validContentHash ||
+    event.privacyClass !== 'DEVICE_PRIVATE' ||
+    (fileName !== null && fileName !== expectedFileName)
+  ) {
+    fail('EVENT_CHAIN_CORRUPT', 'conversation event record integrity is invalid', {
+      eventHash: event.eventHash ?? null,
+      fileName,
+      expectedFileName
+    });
+  }
+
+  if (expected && (
     event.homeRef !== expected.homeRef ||
     event.deviceRef !== expected.deviceRef ||
     event.companionLineageRef !== expected.companionLineageRef ||
-    event.threadRef !== expected.threadRef ||
-    !Number.isSafeInteger(event.sequence) ||
-    event.sequence < 0 ||
-    !['REQUEST', 'RESPONSE'].includes(event.eventKind)
-  ) {
+    event.threadRef !== expected.threadRef
+  )) {
     fail('EVENT_CHAIN_CORRUPT', 'conversation event identity does not match the admitted thread', {
-      eventHash: event.eventHash ?? null,
-      eventThreadRef: event.threadRef ?? null,
+      eventHash: event.eventHash,
+      eventThreadRef: event.threadRef,
       expectedThreadRef: expected.threadRef
     });
   }
+
+  if (event.eventKind === 'RESPONSE') {
+    let endpointOrigin = null;
+    try {
+      endpointOrigin = new URL(event.sanitizedEndpointOrigin);
+    } catch {}
+    if (
+      !isNonEmptyString(event.endpointProfileRef) ||
+      !isNonEmptyString(event.modelNameOrBoundedTestProfileRef) ||
+      !endpointOrigin ||
+      endpointOrigin.origin !== event.sanitizedEndpointOrigin ||
+      !isLoopbackHost(endpointOrigin.hostname)
+    ) {
+      fail('EVENT_CHAIN_CORRUPT', 'response event provenance is invalid', {
+        eventHash: event.eventHash
+      });
+    }
+  }
+
+  return event;
 }
 
 function validateEventChain(eventsDirectory, headEventHash, expectedIdentity = null) {
-  const events = existingEvents(eventsDirectory);
-  const byHash = new Map(events.map((event) => [event.eventHash, event]));
+  if (!/^[0-9a-f]{64}$/u.test(headEventHash ?? '')) {
+    fail('EVENT_CHAIN_CORRUPT', 'conversation head event hash is invalid');
+  }
+  const events = existingEvents(eventsDirectory, expectedIdentity);
+  const byHash = new Map();
+  for (const event of events) {
+    if (byHash.has(event.eventHash)) {
+      fail('EVENT_CHAIN_CORRUPT', 'conversation event hash appears more than once on disk', {
+        eventHash: event.eventHash
+      });
+    }
+    byHash.set(event.eventHash, event);
+  }
+
   const chain = [];
   let cursor = headEventHash;
   const visited = new Set();
@@ -1049,15 +1145,53 @@ function validateEventChain(eventsDirectory, headEventHash, expectedIdentity = n
     visited.add(cursor);
     const event = byHash.get(cursor);
     if (!event) fail('EVENT_CHAIN_CORRUPT', 'event chain references a missing event', { eventHash: cursor });
-    if (recomputeEventHash(event) !== event.eventHash) fail('EVENT_CHAIN_CORRUPT', 'event content hash does not match');
-    if (expectedIdentity) assertEventIdentity(event, expectedIdentity);
     chain.push(event);
     cursor = event.priorEventHash;
   }
+
   const chronological = chain.reverse();
-  for (let index = 1; index < chronological.length; index += 1) {
-    if (chronological[index].sequence !== chronological[index - 1].sequence + 1) {
-      fail('EVENT_CHAIN_CORRUPT', 'event sequence is not contiguous');
+  if (chronological.length < 2 || chronological.length % 2 !== 0) {
+    fail('EVENT_CHAIN_CORRUPT', 'completed event chain must contain complete request/response pairs');
+  }
+  if (chronological[0].sequence !== 0 || chronological[0].priorEventHash !== null) {
+    fail('EVENT_CHAIN_CORRUPT', 'completed event chain must be anchored at genesis sequence zero');
+  }
+
+  for (let index = 0; index < chronological.length; index += 1) {
+    const event = chronological[index];
+    if (event.sequence !== index) {
+      fail('EVENT_CHAIN_CORRUPT', 'completed event sequence must be contiguous from genesis', {
+        index,
+        observedSequence: event.sequence
+      });
+    }
+    const expectedPrior = index === 0 ? null : chronological[index - 1].eventHash;
+    if (event.priorEventHash !== expectedPrior) {
+      fail('EVENT_CHAIN_CORRUPT', 'completed event prior hash does not match the exact prior event', {
+        eventHash: event.eventHash,
+        expectedPrior,
+        observedPrior: event.priorEventHash
+      });
+    }
+  }
+
+  for (let index = 0; index < chronological.length; index += 2) {
+    const request = chronological[index];
+    const response = chronological[index + 1];
+    if (
+      request.eventKind !== 'REQUEST' ||
+      response.eventKind !== 'RESPONSE' ||
+      request.turnRef !== response.turnRef ||
+      request.instanceRef !== response.instanceRef ||
+      request.channelRef !== response.channelRef ||
+      response.speakerRef !== request.recipientRefs[0] ||
+      response.recipientRefs.length !== 1 ||
+      response.recipientRefs[0] !== request.speakerRef
+    ) {
+      fail('EVENT_CHAIN_CORRUPT', 'completed event chain request/response pair semantics are invalid', {
+        requestEventHash: request.eventHash,
+        responseEventHash: response.eventHash
+      });
     }
   }
   return chronological;
@@ -1094,7 +1228,12 @@ function validateCompletedConversationState({ home, admitted, threadRef, paths =
     typeof head.requestMessageRef !== 'string' ||
     head.requestMessageRef.length === 0 ||
     typeof head.responseMessageRef !== 'string' ||
-    head.responseMessageRef.length === 0
+    head.responseMessageRef.length === 0 ||
+    (
+      head.sequence === 1
+        ? head.priorConversationHeadSha256 !== null
+        : !/^[0-9a-f]{64}$/u.test(head.priorConversationHeadSha256 ?? '')
+    )
   ) {
     fail('CONVERSATION_HEAD_MISMATCH', 'conversation head identity does not match the admitted completed thread');
   }
@@ -1106,7 +1245,6 @@ function validateCompletedConversationState({ home, admitted, threadRef, paths =
     threadRef: safeThreadRef
   };
   const chain = validateEventChain(resolvedPaths.events, head.eventHash, expectedIdentity);
-  if (chain.length < 2) fail('EVENT_CHAIN_CORRUPT', 'completed conversation head requires one request/response pair');
   const responseEvent = chain.at(-1);
   const requestEvent = chain.at(-2);
   if (
@@ -1125,7 +1263,24 @@ function validateCompletedConversationState({ home, admitted, threadRef, paths =
     fail('EVENT_CHAIN_CORRUPT', 'completed conversation head does not bind its exact request/response events');
   }
 
+  const expectedContextPath = resolveHomePath(
+    home,
+    'context',
+    admitted.companionLineageRef,
+    safeThreadRef,
+    `${head.turnRef}.json`
+  );
+  const expectedContextRelative = path.relative(home, expectedContextPath).replaceAll('\\', '/');
+  if (head.contextPath !== expectedContextRelative) {
+    fail('CONTEXT_HASH_MISMATCH', 'conversation head does not reference the exact canonical context location', {
+      contextPath: head.contextPath,
+      expectedContextPath: expectedContextRelative
+    });
+  }
   const contextPath = resolveHomeRelativePath(home, head.contextPath);
+  if (!sameCanonicalPath(contextPath, expectedContextPath)) {
+    fail('CONTEXT_HASH_MISMATCH', 'resolved bounded context path is not the exact canonical context location');
+  }
   if (!fs.existsSync(contextPath)) fail('CONTEXT_HASH_MISMATCH', 'bounded context record is missing');
   const contextRecord = readJson(contextPath, 'CONTEXT_HASH_MISMATCH', 'bounded context record');
   const { serializedContextSha256, ...contextCore } = contextRecord;
@@ -1145,7 +1300,13 @@ function validateCompletedConversationState({ home, admitted, threadRef, paths =
     contextRecord.turnRef !== head.turnRef ||
     contextRecord.instanceRef !== head.instanceRef ||
     contextRecord.requestEventHash !== requestEvent.eventHash ||
-    contextRecord.responseEventHash !== responseEvent.eventHash
+    contextRecord.responseEventHash !== responseEvent.eventHash ||
+    contextRecord.privacyClass !== 'DEVICE_PRIVATE' ||
+    !Array.isArray(contextRecord.contextSourceRefs) ||
+    contextRecord.contextSourceRefs.length < 2 ||
+    contextRecord.contextSourceRefs.some((value) => !isNonEmptyString(value)) ||
+    contextRecord.contextSourceRefs.at(-2) !== requestEvent.eventRef ||
+    contextRecord.contextSourceRefs.at(-1) !== responseEvent.eventRef
   ) {
     fail('CONTEXT_HASH_MISMATCH', 'bounded context identity does not match the admitted head and event chain');
   }

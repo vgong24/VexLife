@@ -88,17 +88,33 @@ context record. Only after that verification succeeds may the head become
 effects.
 
 The same semantic verifier is consumed by ordinary turn continuation, shutdown,
-and resume. Every event in the selected chain must belong to the admitted
-Home/device/lineage/thread; the head's final request/response identity must match
-the exact events; and the context must bind the same Home/device/lineage/thread,
-turn, completing instance, and exact request/response event hashes. Content-addressed
-objects from another thread or turn inside the same Home are not interchangeable.
+and resume. Every event consulted as evidence—whether part of the completed chain
+or used for duplicate suppression—must be one exact content-addressed regular
+record at `<sequence>-<eventHash>.json`, independently bind
+`contentHash == hash(content)`, retain `privacyClass=DEVICE_PRIVATE`, and match the
+admitted Home/device/lineage/thread. A completed chain is anchored at genesis
+(sequence `0`, `priorEventHash=null`), remains contiguous from that anchor, and is
+composed only of complete REQUEST/RESPONSE pairs with the same turn, instance,
+channel, and reciprocal speaker/recipient relationship.
 
-Duplicate failure follow-ups consume this already validated prior head, so they
-preserve truthful `lastValidHead`, `resumePossible`, and next-route provenance
-instead of making an existing valid head appear absent. Failure evidence for one
-turn remains serialized while the exact thread writer lease is held, preventing
-parallel same-turn failures from racing the canonical first-failure receipt.
+The head's final request/response identity must match the exact final pair. Its
+`contextPath` must equal the canonical
+`context/<lineage>/<thread>/<turn>.json` location—not merely another contained
+path—and the content-addressed context must bind the same
+Home/device/lineage/thread/turn/completing instance, request/response event hashes,
+`privacyClass=DEVICE_PRIVATE`, and the exact request/response `eventRef` values in
+the tail of `contextSourceRefs`. Content-addressed objects from another thread,
+turn, path, or rewritten provenance are not interchangeable.
+
+Duplicate failure follow-ups consume this already validated evidence, so malformed
+or forged orphan JSON cannot fabricate `existingEvidence` and suppress a real
+turn. They preserve truthful `lastValidHead`, `resumePossible`, and next-route
+provenance instead of making an existing valid head appear absent. For an
+absent-owner writer lease, `lastValidHead` is exposed only if the same semantic
+completed-state verifier succeeds; a merely content-addressed but corrupt head is
+never advertised as resumable. Failure evidence for one turn remains serialized
+while the exact thread writer lease is held, preventing parallel same-turn
+failures from racing the canonical first-failure receipt.
 
 ## Identity and restart
 
@@ -166,8 +182,11 @@ absent-owner lease classification, malformed/hash-invalid lease evidence, hostna
 alias rejection, loopback-to-non-loopback redirect rejection, partial/non-empty Home
 preservation, non-directory Home rejection, linked-root rejection, linked-parent alias rejection, portable Windows path-segment
 grammar, canonical stored-context paths, prior completed-state corruption rejection before endpoint effects,
-semantic Home/device/lineage/thread/turn/event/context binding, in-Home cross-thread context and event substitution rejection,
-failed-turn new-ref routing, immutable first-failure evidence, same-turn duplicate suppression with zero additional HTTP calls
+semantic Home/device/lineage/thread/turn/event/context binding, genesis-anchored complete REQUEST/RESPONSE history,
+exact event filename/contentHash validation, canonical context-location and `contextSourceRefs` provenance,
+forged orphan duplicate-evidence rejection, absent-writer recovery with semantic last-head validation,
+in-Home cross-thread context and event substitution rejection, failed-turn new-ref routing,
+immutable first-failure evidence, same-turn duplicate suppression with zero additional HTTP calls
 and retained last-valid-head provenance, and empty-root admission. It does not start a personal model endpoint,
 synchronize siblings, train, mutate weights, publish, review, approve, merge, or enter
 LC18.
