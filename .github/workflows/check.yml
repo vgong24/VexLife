@@ -6,6 +6,19 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number when manually validating an active PR head
+        required: false
+        type: string
+      base_sha:
+        description: Exact base SHA for manual active-PR validation
+        required: false
+        type: string
+      work_ref:
+        description: Exact source-managed workRef for manual active-PR validation
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -21,13 +34,14 @@ jobs:
     timeout-minutes: 20
     env:
       VEXLIFE_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
-      VEXLIFE_PR_NUMBER: ${{ github.event.pull_request.number }}
+      VEXLIFE_PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+      VEXLIFE_WORK_REF: ${{ inputs.work_ref || '' }}
       VEXLIFE_BRANCH: ${{ github.head_ref || github.ref_name }}
       VEXLIFE_CURRENT_WORK_EVENT_NAME: ${{ github.event_name }}
       VEXLIFE_CURRENT_WORK_EVENT_PATH: ${{ github.event_path }}
       VEXLIFE_CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       VEXLIFE_TESTED_MERGE_SHA: ${{ github.event_name == 'pull_request' && github.sha || '' }}
-      VEXLIFE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      VEXLIFE_BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha || github.event.before }}
 
     steps:
       - name: Check out source
