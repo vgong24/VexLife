@@ -1049,6 +1049,7 @@
         "test.lived-companion.context-binding",
         "test.lived-companion.endpoint-profile-admission",
         "test.lived-companion.loopback-boundary",
+        "test.lived-companion.redirect-boundary",
         "test.lived-companion.endpoint-unreachable",
         "test.lived-companion.endpoint-timeout",
         "test.lived-companion.endpoint-http-error",

@@ -834,5 +834,9 @@
   {
     "testRef": "test.lived-companion.windows-proof",
     "brief": "The hosted Windows proof exercises actual HTTP, shutdown, fresh-process resume, and all negative controls."
+  },
+  {
+    "testRef": "test.lived-companion.redirect-boundary",
+    "brief": "G01 admits only numeric loopback literals and rejects every HTTP redirect before following it, so a loopback endpoint cannot escape to a non-loopback destination or misreport the actual network boundary."
   }
 ]

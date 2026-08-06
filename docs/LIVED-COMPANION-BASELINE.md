@@ -55,11 +55,13 @@ canonical Vex Home, and then replays the same `homeRef`, `deviceRef`,
 
 ## Endpoint and privacy boundary
 
-G01 accepts loopback endpoints only. A caller-provided profile or boolean cannot widen
-that boundary; non-loopback or personal endpoint use requires a separately admitted
-future adapter outside this baseline. Credentials may be consumed only from an in-memory
-binding. The persisted record contains a sanitized endpoint origin and model/profile
-identity, never raw tokens, authorization headers, URL queries, passwords, or model
+G01 accepts numeric loopback endpoint literals only (`127.0.0.1` or `::1`). A
+caller-provided profile, hostname alias, redirect, or boolean cannot widen that
+boundary. G01 rejects every HTTP redirect before following it; non-loopback or personal
+endpoint use requires a separately admitted future adapter outside this baseline.
+Credentials may be consumed only from an in-memory binding. The persisted record
+contains the admitted numeric loopback origin and model/profile identity, never raw
+tokens, authorization headers, URL queries, passwords, redirect targets, or model
 binaries.
 
 ## Typed safe failures
@@ -100,7 +102,9 @@ The proof uses a bounded loopback HTTP server, writes an immutable turn, creates
 instance-bound shutdown receipt, launches a fresh Node process for exact receipt-bound
 resume, and exercises all typed negative controls. Adversarial coverage includes path
 escape, caller-authored non-loopback admission, forged shutdown/prior-instance lineage,
-head tampering, context-path escape, concurrent cross-process writer contention, absent-owner lease classification, and malformed/hash-invalid lease evidence. It does not start a personal model endpoint,
+head tampering, context-path escape, concurrent cross-process writer contention,
+absent-owner lease classification, malformed/hash-invalid lease evidence, hostname
+alias rejection, and loopback-to-non-loopback redirect rejection. It does not start a personal model endpoint,
 synchronize siblings, train, mutate weights, publish, review, approve, merge, or enter
 LC18.
 

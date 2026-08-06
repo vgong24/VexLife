@@ -50,6 +50,53 @@ async function server() {
   await new Promise((resolve) => instance.listen(0, '127.0.0.1', resolve));
   return { endpoint: (route='ok') => `http://127.0.0.1:${instance.address().port}/${route}/`, calls: () => calls, close: () => new Promise((resolve) => instance.close(resolve)) };
 }
+
+function nonLoopbackIpv4() {
+  for (const entries of Object.values(os.networkInterfaces())) {
+    for (const entry of entries || []) {
+      if (entry.family === 'IPv4' && entry.internal === false) return entry.address;
+    }
+  }
+  throw new Error('one non-loopback IPv4 address is required for redirect-boundary proof');
+}
+
+async function redirectEscapeHarness() {
+  const nonLoopbackAddress = nonLoopbackIpv4();
+  let targetCalls = 0;
+  const target = http.createServer((request, response) => {
+    targetCalls += 1;
+    request.resume();
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ model: 'redirect-target', choices: [{ message: { content: 'escaped reply' } }] }));
+  });
+  await new Promise((resolve, reject) => {
+    target.once('error', reject);
+    target.listen(0, '0.0.0.0', resolve);
+  });
+
+  let redirectCalls = 0;
+  const redirector = http.createServer((request, response) => {
+    redirectCalls += 1;
+    request.resume();
+    response.statusCode = 307;
+    response.setHeader('location', `http://${nonLoopbackAddress}:${target.address().port}/outside`);
+    response.end();
+  });
+  await new Promise((resolve, reject) => {
+    redirector.once('error', reject);
+    redirector.listen(0, '127.0.0.1', resolve);
+  });
+  return {
+    endpoint: `http://127.0.0.1:${redirector.address().port}/redirect/`,
+    redirectCalls: () => redirectCalls,
+    targetCalls: () => targetCalls,
+    close: async () => {
+      await new Promise((resolve) => redirector.close(resolve));
+      await new Promise((resolve) => target.close(resolve));
+    }
+  };
+}
+
 function turn(homeIdentity, endpoint, overrides={}) {
   return {
     ...homeIdentity,
@@ -141,6 +188,34 @@ test('path-bearing identity refs cannot escape the admitted Vex Home', () => {
     companionLineageRef: 'lineage.safe'
   }), (error) => error instanceof LivedCompanionError && error.code === 'HOME_IDENTITY_MISMATCH');
   assert.equal(fs.existsSync(path.join(root, 'outside', 'device.json')), false);
+});
+
+
+test('loopback endpoint redirects cannot escape to a non-loopback destination', async () => {
+  const harness = await redirectEscapeHarness();
+  const home = makeHome('redirect-boundary');
+  const input = turn(home, harness.endpoint);
+  try {
+    await rejectsCode(() => performLivedCompanionTurn(input), 'ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED');
+    assert.equal(harness.redirectCalls(), 1);
+    assert.equal(harness.targetCalls(), 0);
+    const headPath = path.join(home.home, 'conversations', home.companionLineageRef, input.threadRef, 'head.json');
+    assert.equal(fs.existsSync(headPath), false);
+  } finally {
+    await harness.close();
+  }
+});
+
+test('hostname aliases are not accepted as numeric loopback proof', async () => {
+  const service = await server();
+  const home = makeHome('localhost-alias');
+  const endpoint = service.endpoint().replace('127.0.0.1', 'localhost');
+  try {
+    await rejectsCode(() => performLivedCompanionTurn(turn(home, endpoint)), 'ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED');
+    assert.equal(service.calls(), 0);
+  } finally {
+    await service.close();
+  }
 });
 
 test('event directory symlink or junction cannot escape Vex Home writes', async () => {

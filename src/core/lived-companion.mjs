@@ -335,7 +335,7 @@ function verifyContentAddressedReceipt(receipt, hashField, code, label) {
 
 function isLoopbackHost(hostname) {
   const normalized = String(hostname).toLowerCase().replace(/^\[|\]$/gu, '');
-  return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1';
+  return normalized === '127.0.0.1' || normalized === '::1';
 }
 
 export function sanitizeEndpointOrigin(endpoint) {
@@ -609,8 +609,12 @@ async function callEndpoint({ endpointProfile, requestContent, inMemoryAuthoriza
         model: endpointProfile.model || 'bounded-loopback-proof',
         messages: [{ role: 'user', content: requestContent }]
       }),
-      signal: controller.signal
+      signal: controller.signal,
+      redirect: 'manual'
     });
+    if (response.status >= 300 && response.status < 400) {
+      fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 rejects endpoint redirects because the redirected destination is not part of the admitted loopback effect', { status: response.status });
+    }
     if (!response.ok) fail('ENDPOINT_HTTP_ERROR', `endpoint returned HTTP ${response.status}`, { status: response.status });
     let body;
     try {

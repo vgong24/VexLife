@@ -93,7 +93,38 @@ function writeUnverifiableWriterLease(home, threadRef, variant) {
   };
 }
 
-async function startLoopbackServer() {
+
+function nonLoopbackIpv4() {
+  for (const entries of Object.values(os.networkInterfaces())) {
+    for (const entry of entries || []) {
+      if (entry.family === 'IPv4' && entry.internal === false) return entry.address;
+    }
+  }
+  throw new Error('one non-loopback IPv4 address is required for redirect-boundary proof');
+}
+
+async function startRedirectTargetServer() {
+  const address = nonLoopbackIpv4();
+  const calls = [];
+  const server = http.createServer((request, response) => {
+    calls.push({ method: request.method, url: request.url });
+    request.resume();
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ model: 'redirect-target', choices: [{ message: { content: 'redirect escaped boundary' } }] }));
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '0.0.0.0', resolve);
+  });
+  return {
+    server,
+    calls,
+    endpoint: `http://${address}:${server.address().port}/outside`,
+    close: () => new Promise((resolve) => server.close(resolve))
+  };
+}
+
+async function startLoopbackServer(redirectTargetUrl) {
   const calls = [];
   const server = http.createServer((request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
@@ -108,6 +139,12 @@ async function startLoopbackServer() {
       response.setHeader('content-type', contentType);
       response.end(body);
     };
+    if (url.pathname.startsWith('/redirect/')) {
+      response.statusCode = 307;
+      response.setHeader('location', redirectTargetUrl);
+      response.end();
+      return;
+    }
     if (url.pathname.startsWith('/timeout/')) {
       setTimeout(() => {
         if (!response.destroyed) send(200, JSON.stringify({ model: 'timeout', choices: [{ message: { content: 'late' } }] }));
@@ -270,7 +307,8 @@ async function proof() {
   fs.rmSync(proofRoot, { recursive: true, force: true });
   fs.mkdirSync(proofRoot, { recursive: true });
 
-  const loopback = await startLoopbackServer();
+  const redirectTarget = await startRedirectTargetServer();
+  const loopback = await startLoopbackServer(redirectTarget.endpoint);
   const typedFailureProofs = [];
   const negativeControls = {};
   try {
@@ -519,6 +557,36 @@ async function proof() {
     })), 'non-loopback endpoint'));
     negativeControls.nonLoopbackEndpoint = true;
 
+    const redirectHome = makeHome(proofRoot, 'redirect-boundary-home');
+    const redirectCallsBefore = redirectTarget.calls.length;
+    const loopbackCallsBeforeRedirect = loopback.calls.length;
+    const redirectFailure = await expectFailure(
+      'ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED',
+      () => performLivedCompanionTurn(baseTurn(redirectHome, `http://127.0.0.1:${loopback.port}/redirect/`)),
+      'loopback endpoint redirect'
+    );
+    typedFailureProofs.push(redirectFailure);
+    const redirectHead = path.join(
+      redirectHome.home,
+      'conversations',
+      redirectHome.companionLineageRef,
+      readJson(redirectFailure.failureReceiptPath).threadRef,
+      'head.json'
+    );
+    negativeControls.endpointRedirectBoundary =
+      loopback.calls.length === loopbackCallsBeforeRedirect + 1 &&
+      redirectTarget.calls.length === redirectCallsBefore &&
+      !fs.existsSync(redirectHead);
+
+    const localhostHome = makeHome(proofRoot, 'localhost-alias-home');
+    const localhostCallsBefore = loopback.calls.length;
+    typedFailureProofs.push(await expectFailure(
+      'ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED',
+      () => performLivedCompanionTurn(baseTurn(localhostHome, `http://localhost:${loopback.port}/ok/`)),
+      'hostname alias is not numeric loopback proof'
+    ));
+    negativeControls.numericLoopbackOnly = loopback.calls.length === localhostCallsBefore;
+
     const linkedEventsHome = makeHome(proofRoot, 'linked-events-home');
     const linkedEventsTurn = baseTurn(linkedEventsHome, endpoint);
     const linkedThreadRoot = path.join(
@@ -721,6 +789,8 @@ async function proof() {
       abandonedWriterRecoveryDisposition: negativeControls.abandonedWriterRecoveryRequired,
       abandonedWriterRecoveryOperationHeld: true,
       unverifiableWriterLeaseDisposition: negativeControls.unverifiableWriterLeaseEvidence,
+      endpointRedirectBoundary: negativeControls.endpointRedirectBoundary,
+      numericLoopbackOnly: negativeControls.numericLoopbackOnly,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,
@@ -732,6 +802,7 @@ async function proof() {
     console.log(JSON.stringify(receipt, null, 2));
   } finally {
     await loopback.close();
+    await redirectTarget.close();
   }
 }
 
