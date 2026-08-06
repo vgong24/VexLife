@@ -842,5 +842,9 @@
   {
     "testRef": "test.lived-companion.redirect-boundary",
     "brief": "G01 admits only numeric loopback literals and rejects every HTTP redirect before following it, so a loopback endpoint cannot escape to a non-loopback destination or misreport the actual network boundary."
+  },
+  {
+    "testRef": "test.lived-companion.canonical-path-identity",
+    "brief": "Path-bearing refs use one lowercase portable canonical segment grammar; Windows drive-relative, ADS, reserved-name, trailing-dot/space and case aliases fail before effects, linked-parent Home aliases are rejected, and stored context paths bind the canonical Home root."
   }
 ]

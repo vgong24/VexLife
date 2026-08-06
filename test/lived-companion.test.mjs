@@ -334,6 +334,99 @@ test('one exact empty existing directory is fresh-eligible', () => {
   assert.equal(fs.existsSync(path.join(home, 'config', 'home.json')), true);
 });
 
+
+test('fresh Home beneath a linked parent is rejected before target mutation', async () => {
+  const root = temp('linked-parent-fresh-home');
+  const actualParent = path.join(root, 'actual-parent');
+  const linkedParent = path.join(root, 'linked-parent');
+  const targetHome = path.join(actualParent, 'home');
+  fs.mkdirSync(actualParent, { recursive: true });
+  fs.symlinkSync(actualParent, linkedParent, process.platform === 'win32' ? 'junction' : 'dir');
+
+  await rejectsCode(async () => initializeLivedCompanionHome({
+    home: path.join(linkedParent, 'home'),
+    homeRef: ref('home.linked-parent'),
+    familyRef: ref('family.linked-parent'),
+    deviceRef: ref('device.linked-parent'),
+    companionLineageRef: ref('lineage.linked-parent')
+  }), 'EXISTING_HOME_REQUIRES_MIGRATION_PLAN');
+
+  assert.equal(fs.existsSync(targetHome), false);
+});
+
+test('an initialized Home reached through a linked parent fails before HTTP or event effects', async () => {
+  const root = temp('linked-parent-turn-home');
+  const actualParent = path.join(root, 'actual-parent');
+  const linkedParent = path.join(root, 'linked-parent');
+  const actualHome = path.join(actualParent, 'home');
+  fs.mkdirSync(actualParent, { recursive: true });
+  const identity = {
+    homeRef: ref('home.linked-parent-turn'),
+    familyRef: ref('family.linked-parent-turn'),
+    deviceRef: ref('device.linked-parent-turn'),
+    companionLineageRef: ref('lineage.linked-parent-turn')
+  };
+  initializeLivedCompanionHome({ home: actualHome, ...identity });
+  fs.symlinkSync(actualParent, linkedParent, process.platform === 'win32' ? 'junction' : 'dir');
+  const service = await server();
+  const input = turn({ home: path.join(linkedParent, 'home'), ...identity }, service.endpoint());
+  try {
+    await rejectsCode(() => performLivedCompanionTurn(input), 'HOME_IDENTITY_MISMATCH');
+    assert.equal(service.calls(), 0);
+    assert.equal(
+      fs.existsSync(path.join(actualHome, 'conversations', identity.companionLineageRef, input.threadRef, 'events')),
+      false
+    );
+  } finally {
+    await service.close();
+  }
+});
+
+test('portable canonical ref grammar rejects Windows aliases before Home mutation', async () => {
+  const invalidRefs = [
+    'C:device',
+    'device:stream',
+    'device.',
+    'device ',
+    'CON',
+    'nul',
+    'COM1',
+    'lpt9',
+    'Device.case'
+  ];
+  for (const invalidRef of invalidRefs) {
+    const home = path.join(temp('portable-ref'), 'home');
+    await rejectsCode(async () => initializeLivedCompanionHome({
+      home,
+      homeRef: ref('home.portable-ref'),
+      familyRef: ref('family.portable-ref'),
+      deviceRef: invalidRef,
+      companionLineageRef: ref('lineage.portable-ref')
+    }), 'HOME_IDENTITY_MISMATCH');
+    assert.equal(fs.existsSync(home), false);
+  }
+});
+
+test('stored context path is canonical-Home relative and supports clean shutdown', async () => {
+  const service = await server();
+  const home = makeHome('canonical-context-path');
+  const input = turn(home, service.endpoint());
+  try {
+    const completed = await performLivedCompanionTurn(input);
+    assert.equal(completed.head.contextPath.startsWith('..'), false);
+    assert.equal(path.isAbsolute(completed.head.contextPath), false);
+    const shutdown = writeLivedCompanionShutdownReceipt({
+      ...home,
+      instanceRef: input.instanceRef,
+      threadRef: input.threadRef,
+      expectedConversationHeadSha256: completed.head.conversationHeadSha256
+    });
+    assert.equal(shutdown.receipt.clean, true);
+  } finally {
+    await service.close();
+  }
+});
+
 test('uninitialized Home fails before endpoint use', async () => {
   const service = await server();
   try { await rejectsCode(() => performLivedCompanionTurn(turn({ home: temp('missing'), homeRef:'h', deviceRef:'d', companionLineageRef:'l' }, service.endpoint())), 'HOME_NOT_INITIALIZED'); }
@@ -574,7 +667,7 @@ test('tampered head hashes and context paths outside Home fail closed', async ()
     const shutdown=writeLivedCompanionShutdownReceipt({...home,instanceRef:input.instanceRef,threadRef:input.threadRef,expectedConversationHeadSha256:completed.head.conversationHeadSha256});
     const headPath=completed.headPath;
     const original=JSON.parse(fs.readFileSync(headPath,'utf8'));
-    const outside=path.join(path.dirname(home.home),'outside-context.json');
+    const outside=path.join(temp('outside-context-record'),'outside-context.json');
     fs.copyFileSync(path.resolve(home.home,...original.contextPath.split('/')),outside);
 
     const stale={...original,contextPath:'../outside-context.json'};

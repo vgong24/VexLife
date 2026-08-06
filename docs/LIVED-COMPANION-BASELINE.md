@@ -52,6 +52,15 @@ without creating any G01 Home files and returns
 `EXISTING_HOME_REQUIRES_MIGRATION_PLAN`. The absence of `config/home.json` alone
 never proves that a location is fresh.
 
+## Canonical filesystem identity
+
+Every path-bearing identity ref uses one lowercase portable ASCII grammar and
+is rejected before path use when it could name a Windows drive-relative path,
+NTFS alternate data stream, reserved device name, trailing-dot/space alias, or
+case-only collision. A requested Home may not traverse a symbolic-link or
+junction ancestor. Stored relative paths are always formed from the canonical
+Home root, never from a caller-provided alias.
+
 ## Identity and restart
 
 A fresh process receives a new `instanceRef`; it does not pretend to be the process
@@ -114,7 +123,8 @@ escape, caller-authored non-loopback admission, forged shutdown/prior-instance l
 head tampering, context-path escape, concurrent cross-process writer contention,
 absent-owner lease classification, malformed/hash-invalid lease evidence, hostname
 alias rejection, loopback-to-non-loopback redirect rejection, partial/non-empty Home
-preservation, non-directory Home rejection, linked-root rejection, and empty-root admission. It does not start a personal model endpoint,
+preservation, non-directory Home rejection, linked-root rejection, linked-parent alias rejection, portable Windows path-segment
+grammar, canonical stored-context paths, and empty-root admission. It does not start a personal model endpoint,
 synchronize siblings, train, mutate weights, publish, review, approve, merge, or enter
 LC18.
 

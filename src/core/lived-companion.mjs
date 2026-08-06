@@ -61,33 +61,113 @@ function contentHash(value) {
   return semanticHash(value);
 }
 
+const PORTABLE_REF_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
+const WINDOWS_RESERVED_REF_STEM = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/u;
+
 function ensureSafeRef(value, name, code = 'HOME_IDENTITY_MISMATCH') {
   const ref = ensureString(value, name, code);
+  const stem = ref.split('.')[0];
   if (
-    ref === '.' ||
-    ref === '..' ||
-    ref.includes('/') ||
-    ref.includes('\\') ||
+    !PORTABLE_REF_PATTERN.test(ref) ||
+    WINDOWS_RESERVED_REF_STEM.test(stem) ||
     ref.includes('\0') ||
     path.isAbsolute(ref) ||
     path.win32.isAbsolute(ref) ||
     path.posix.isAbsolute(ref)
   ) {
-    fail(code, `${name} must be one safe path segment`);
+    fail(code, `${name} must be one lowercase portable canonical path segment`);
   }
   return ref;
 }
 
-function canonicalHomeRoot(home, { create = false } = {}) {
+function sameCanonicalPath(left, right) {
+  const normalizedLeft = path.normalize(path.resolve(left));
+  const normalizedRight = path.normalize(path.resolve(right));
+  return process.platform === 'win32'
+    ? normalizedLeft.toLowerCase() === normalizedRight.toLowerCase()
+    : normalizedLeft === normalizedRight;
+}
+
+function assertCanonicalHomeAncestorChain(home, code, label) {
   const requested = path.resolve(ensureString(home, 'home'));
-  if (create) fs.mkdirSync(requested, { recursive: true });
-  if (!fs.existsSync(requested)) fail('HOME_NOT_INITIALIZED', 'Vex Home is not initialized', { home: requested });
-  if (fs.lstatSync(requested).isSymbolicLink()) fail('HOME_IDENTITY_MISMATCH', 'Vex Home root must not be a symbolic link');
-  return fs.realpathSync.native(requested);
+  const parsed = path.parse(requested);
+  const relative = path.relative(parsed.root, requested);
+  let cursor = parsed.root;
+
+  for (const segment of relative.split(path.sep).filter(Boolean)) {
+    cursor = path.join(cursor, segment);
+    let stat;
+    try {
+      stat = fs.lstatSync(cursor);
+    } catch (error) {
+      if (error?.code === 'ENOENT') return requested;
+      fail(code, `${label} could not be classified without mutation`, {
+        home: requested,
+        path: cursor,
+        cause: error.message
+      });
+    }
+    if (stat.isSymbolicLink()) {
+      fail(code, `${label} traverses a symbolic link or junction alias`, {
+        home: requested,
+        path: cursor
+      });
+    }
+    if (!stat.isDirectory() && !sameCanonicalPath(cursor, requested)) {
+      fail(code, `${label} traverses a non-directory ancestor`, {
+        home: requested,
+        path: cursor
+      });
+    }
+    let real;
+    try {
+      real = fs.realpathSync.native(cursor);
+    } catch (error) {
+      fail(code, `${label} ancestor could not be canonicalized`, {
+        home: requested,
+        path: cursor,
+        cause: error.message
+      });
+    }
+    if (!sameCanonicalPath(real, cursor)) {
+      fail(code, `${label} traverses a non-canonical linked ancestor`, {
+        home: requested,
+        path: cursor,
+        canonicalPath: real
+      });
+    }
+  }
+  return requested;
+}
+
+function canonicalHomeRoot(home) {
+  const requested = assertCanonicalHomeAncestorChain(home, 'HOME_IDENTITY_MISMATCH', 'Vex Home');
+  let stat;
+  try {
+    stat = fs.lstatSync(requested);
+  } catch (error) {
+    if (error?.code === 'ENOENT') fail('HOME_NOT_INITIALIZED', 'Vex Home is not initialized', { home: requested });
+    fail('HOME_IDENTITY_MISMATCH', 'Vex Home root could not be read', { home: requested, cause: error.message });
+  }
+  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+    fail('HOME_IDENTITY_MISMATCH', 'Vex Home root must be one canonical regular directory', { home: requested });
+  }
+  const real = fs.realpathSync.native(requested);
+  if (!sameCanonicalPath(real, requested)) {
+    fail('HOME_IDENTITY_MISMATCH', 'Vex Home root is not its canonical filesystem identity', {
+      home: requested,
+      canonicalPath: real
+    });
+  }
+  return real;
 }
 
 function admitFreshHomeRoot(home) {
-  const requested = path.resolve(ensureString(home, 'home'));
+  const requested = assertCanonicalHomeAncestorChain(
+    home,
+    'EXISTING_HOME_REQUIRES_MIGRATION_PLAN',
+    'fresh Vex Home root'
+  );
   let stat;
   try {
     stat = fs.lstatSync(requested);
@@ -98,7 +178,15 @@ function admitFreshHomeRoot(home) {
         cause: error.message
       });
     }
-    return canonicalHomeRoot(requested, { create: true });
+    try {
+      fs.mkdirSync(requested, { recursive: true });
+    } catch (creationError) {
+      fail('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', 'fresh Vex Home root could not be created safely', {
+        home: requested,
+        cause: creationError.message
+      });
+    }
+    return canonicalHomeRoot(requested);
   }
 
   if (stat.isSymbolicLink() || !stat.isDirectory()) {
@@ -108,7 +196,7 @@ function admitFreshHomeRoot(home) {
     });
   }
 
-  const root = fs.realpathSync.native(requested);
+  const root = canonicalHomeRoot(requested);
   const entries = fs.readdirSync(root);
   if (entries.length > 0) {
     fail('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', 'pre-existing non-empty Vex Home was preserved', {
@@ -689,8 +777,10 @@ export async function performLivedCompanionTurn({
   let responseDurablyRecorded = false;
   let lastValidHead = null;
   let writerLease = null;
+  let canonicalHome = null;
   try {
     const identity = loadHome(home);
+    canonicalHome = identity.homeRoot;
     const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
     ensureSafeRef(instanceRef, 'instanceRef');
     ensureSafeRef(threadRef, 'threadRef');
@@ -703,7 +793,7 @@ export async function performLivedCompanionTurn({
     if (!Array.isArray(contextSourceRefs) || contextSourceRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
       fail('HOME_IDENTITY_MISMATCH', 'contextSourceRefs must be an array of non-empty refs');
     }
-    const paths = homePaths(home, admitted.companionLineageRef, threadRef);
+    const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
     fs.mkdirSync(paths.events, { recursive: true });
     fs.mkdirSync(paths.context, { recursive: true });
     assertNoDuplicateTurn(paths.events, turnRef);
@@ -778,7 +868,7 @@ export async function performLivedCompanionTurn({
       formedAt: new Date().toISOString()
     };
     const contextRecord = formContext(contextCore);
-    const contextPath = resolveHomePath(home, 'context', admitted.companionLineageRef, threadRef, `${turnRef}.json`);
+    const contextPath = resolveHomePath(identity.homeRoot, 'context', admitted.companionLineageRef, threadRef, `${turnRef}.json`);
     atomicWriteJson(contextPath, contextRecord);
 
     const headCore = {
@@ -793,7 +883,7 @@ export async function performLivedCompanionTurn({
       responseMessageRef,
       eventHash: responseEvent.eventHash,
       contextSha256: contextRecord.serializedContextSha256,
-      contextPath: path.relative(home, contextPath).replaceAll('\\', '/'),
+      contextPath: path.relative(identity.homeRoot, contextPath).replaceAll('\\', '/'),
       sequence: responseEvent.sequence,
       priorConversationHeadSha256: lastValidHead?.conversationHeadSha256 ?? null,
       formedAt: new Date().toISOString()
@@ -827,7 +917,7 @@ export async function performLivedCompanionTurn({
       : new LivedCompanionError('PERSISTENCE_WRITE_FAILED', error.message || String(error));
     const failureHead = lastValidHead ?? typed.details?.lastValidHead ?? null;
     const failureReceiptPath = writeFailureReceipt({
-      home,
+      home: canonicalHome ?? home,
       threadRef,
       turnRef,
       error: typed,

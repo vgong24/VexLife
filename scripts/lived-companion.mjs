@@ -333,6 +333,9 @@ async function proof() {
       responseMessageRef,
       inMemoryAuthorization: secretAuthorization
     }));
+    negativeControls.canonicalStoredContextPath =
+      !path.isAbsolute(completed.head.contextPath) &&
+      !completed.head.contextPath.split('/').includes('..');
     const shutdown = writeLivedCompanionShutdownReceipt({
       ...main,
       instanceRef: initialInstanceRef,
@@ -592,6 +595,73 @@ async function proof() {
     negativeControls.linkedHomePreserved =
       fs.readFileSync(linkedHomeMarker, 'utf8') === 'preserve-me\n' &&
       !fs.existsSync(path.join(linkedHomeTarget, 'config'));
+
+    const linkedParentActual = path.join(proofRoot, 'linked-parent-actual');
+    const linkedParentAlias = path.join(proofRoot, 'linked-parent-alias');
+    const linkedParentTargetHome = path.join(linkedParentActual, 'home');
+    fs.mkdirSync(linkedParentActual, { recursive: true });
+    fs.symlinkSync(
+      linkedParentActual,
+      linkedParentAlias,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+    const linkedParentIdentity = identityFor('linked-parent');
+    typedFailureProofs.push(await expectFailure('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', async () => {
+      initializeLivedCompanionHome({
+        home: path.join(linkedParentAlias, 'home'),
+        ...linkedParentIdentity
+      });
+    }, 'fresh home beneath linked parent rejected'));
+    negativeControls.linkedParentFreshHomeRejected = !fs.existsSync(linkedParentTargetHome);
+
+    initializeLivedCompanionHome({ home: linkedParentTargetHome, ...linkedParentIdentity });
+    const linkedParentTurn = baseTurn({
+      home: path.join(linkedParentAlias, 'home'),
+      ...linkedParentIdentity
+    }, endpoint);
+    const linkedParentCallsBefore = loopback.calls.length;
+    typedFailureProofs.push(await expectFailure('HOME_IDENTITY_MISMATCH', () => {
+      return performLivedCompanionTurn(linkedParentTurn);
+    }, 'initialized home through linked parent rejected'));
+    negativeControls.linkedParentTurnRejected =
+      loopback.calls.length === linkedParentCallsBefore &&
+      !fs.existsSync(path.join(
+        linkedParentTargetHome,
+        'conversations',
+        linkedParentIdentity.companionLineageRef,
+        linkedParentTurn.threadRef,
+        'events'
+      ));
+
+    const invalidPortableRefs = [
+      'C:device',
+      'device:stream',
+      'device.',
+      'device ',
+      'CON',
+      'nul',
+      'COM1',
+      'lpt9',
+      'Device.case'
+    ];
+    let portableRefGrammar = true;
+    for (const invalidRef of invalidPortableRefs) {
+      const invalidRefHome = path.join(
+        proofRoot,
+        `invalid-portable-ref-${sha256Text(invalidRef).slice(0, 12)}`
+      );
+      typedFailureProofs.push(await expectFailure('HOME_IDENTITY_MISMATCH', async () => {
+        initializeLivedCompanionHome({
+          home: invalidRefHome,
+          homeRef: ref('home.invalid-portable-ref'),
+          familyRef: ref('family.invalid-portable-ref'),
+          deviceRef: invalidRef,
+          companionLineageRef: ref('lineage.invalid-portable-ref')
+        });
+      }, `portable path segment rejected: ${invalidRef}`));
+      portableRefGrammar = portableRefGrammar && !fs.existsSync(invalidRefHome);
+    }
+    negativeControls.portableCanonicalRefGrammar = portableRefGrammar;
 
     const emptyExistingHomePath = path.join(proofRoot, 'empty-existing-home');
     fs.mkdirSync(emptyExistingHomePath, { recursive: true });
@@ -869,6 +939,11 @@ async function proof() {
         negativeControls.nonDirectoryHomePreserved &&
         negativeControls.linkedHomePreserved &&
         negativeControls.emptyExistingHomeEligible,
+      canonicalPathIdentity:
+        negativeControls.linkedParentFreshHomeRejected &&
+        negativeControls.linkedParentTurnRejected &&
+        negativeControls.portableCanonicalRefGrammar &&
+        negativeControls.canonicalStoredContextPath,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,
