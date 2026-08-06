@@ -66,6 +66,33 @@ function writeAbandonedWriterLease(home, threadRef) {
   return { lockPath, lease };
 }
 
+function writeUnverifiableWriterLease(home, threadRef, variant) {
+  const lockDirectory = path.join(home.home, 'runtime', 'thread-writer-locks', home.companionLineageRef);
+  fs.mkdirSync(lockDirectory, { recursive: true });
+  const lockPath = path.join(lockDirectory, `${threadRef}.lock`);
+  if (variant === 'malformed') {
+    fs.writeFileSync(lockPath, '{', 'utf8');
+  } else {
+    const leaseCore = {
+      schemaVersion: 'vexlife.thread-writer-lease/v1',
+      companionLineageRef: home.companionLineageRef,
+      threadRef,
+      instanceRef: ref('instance.vexlife.unverifiable'),
+      lockToken: crypto.randomUUID(),
+      pid: absentProcessId(),
+      formedAt: new Date().toISOString()
+    };
+    writeJson(lockPath, {
+      ...leaseCore,
+      leaseSha256: '0'.repeat(64)
+    });
+  }
+  return {
+    lockPath,
+    observedLeaseFileSha256: crypto.createHash('sha256').update(fs.readFileSync(lockPath)).digest('hex')
+  };
+}
+
 async function startLoopbackServer() {
   const calls = [];
   const server = http.createServer((request, response) => {
@@ -419,6 +446,44 @@ async function proof() {
       !fs.existsSync(abandonedEvents) &&
       loopback.calls.length === abandonedCallsBefore;
 
+    const unverifiableVariants = [
+      ['malformed', 'malformed thread writer lease evidence'],
+      ['invalid-hash', 'hash-invalid thread writer lease evidence']
+    ];
+    let unverifiableWriterLeaseEvidence = true;
+    for (const [variant, label] of unverifiableVariants) {
+      const unverifiableHome = makeHome(proofRoot, `unverifiable-writer-${variant}`);
+      const unverifiableThreadRef = ref(`thread.vexlife.unverifiable.${variant}`);
+      const unverifiableTurn = baseTurn(unverifiableHome, endpoint, {
+        threadRef: unverifiableThreadRef,
+        instanceRef: ref('instance.vexlife.unverifiable-retry'),
+        turnRef: ref('turn.vexlife.unverifiable-retry')
+      });
+      const evidence = writeUnverifiableWriterLease(unverifiableHome, unverifiableThreadRef, variant);
+      const callsBefore = loopback.calls.length;
+      const failure = await expectFailure('THREAD_WRITER_CONFLICT', () => performLivedCompanionTurn(unverifiableTurn), label);
+      typedFailureProofs.push(failure);
+      const receipt = readJson(failure.failureReceiptPath);
+      const events = path.join(
+        unverifiableHome.home,
+        'conversations',
+        unverifiableHome.companionLineageRef,
+        unverifiableThreadRef,
+        'events'
+      );
+      const valid =
+        receipt.exactNextSafeRoute === 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER' &&
+        receipt.threadWriterLeaseDisposition?.ownerState === 'UNVERIFIABLE' &&
+        receipt.threadWriterLeaseDisposition?.observedLeaseFileSha256 === evidence.observedLeaseFileSha256 &&
+        receipt.threadWriterLeaseDisposition?.leaseSha256 === null &&
+        fs.existsSync(evidence.lockPath) &&
+        !fs.existsSync(events) &&
+        loopback.calls.length === callsBefore;
+      negativeControls[variant === 'malformed' ? 'malformedWriterLeaseEvidence' : 'invalidWriterLeaseHash'] = valid;
+      unverifiableWriterLeaseEvidence = unverifiableWriterLeaseEvidence && valid;
+    }
+    negativeControls.unverifiableWriterLeaseEvidence = unverifiableWriterLeaseEvidence;
+
     typedFailureProofs.push(await expectFailure('HOME_NOT_INITIALIZED', () => performLivedCompanionTurn(baseTurn({
       home: emptyHome,
       homeRef: 'vex-home.missing',
@@ -655,6 +720,7 @@ async function proof() {
         negativeControls.postCompletionDuplicateSuppressed,
       abandonedWriterRecoveryDisposition: negativeControls.abandonedWriterRecoveryRequired,
       abandonedWriterRecoveryOperationHeld: true,
+      unverifiableWriterLeaseDisposition: negativeControls.unverifiableWriterLeaseEvidence,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,

@@ -88,6 +88,35 @@ function writeAbandonedWriterLease(home, threadRef) {
   return { lockPath, lease };
 }
 
+function writerLeasePath(home, threadRef) {
+  const lockDirectory = path.join(home.home, 'runtime', 'thread-writer-locks', home.companionLineageRef);
+  fs.mkdirSync(lockDirectory, { recursive: true });
+  return path.join(lockDirectory, `${threadRef}.lock`);
+}
+
+function writeUnverifiableWriterLease(home, threadRef, variant) {
+  const lockPath = writerLeasePath(home, threadRef);
+  if (variant === 'malformed') {
+    fs.writeFileSync(lockPath, '{', 'utf8');
+  } else {
+    const leaseCore = {
+      schemaVersion: 'vexlife.thread-writer-lease/v1',
+      companionLineageRef: home.companionLineageRef,
+      threadRef,
+      instanceRef: variant === 'invalid-identity' ? '../invalid-instance' : ref('instance.unverifiable'),
+      lockToken: crypto.randomUUID(),
+      pid: variant === 'invalid-identity' ? 0 : absentProcessId(),
+      formedAt: new Date().toISOString()
+    };
+    const lease = {
+      ...leaseCore,
+      leaseSha256: variant === 'invalid-hash' ? '0'.repeat(64) : semanticHash(leaseCore)
+    };
+    fs.writeFileSync(lockPath, `${JSON.stringify(lease, null, 2)}\n`, 'utf8');
+  }
+  return { lockPath, observedLeaseFileSha256: crypto.createHash('sha256').update(fs.readFileSync(lockPath)).digest('hex') };
+}
+
 test('failure vocabulary contains every required typed failure', () => {
   assert.equal(LIVED_COMPANION_FAILURE_CODES.length, 17);
   assert.equal(new Set(LIVED_COMPANION_FAILURE_CODES).size, 17);
@@ -305,6 +334,45 @@ test('abandoned writer lease is classified for explicit recovery instead of impo
     assert.equal(receipt.threadWriterLeaseDisposition.leaseSha256, lease.leaseSha256);
     const events = path.join(home.home, 'conversations', home.companionLineageRef, threadRef, 'events');
     assert.equal(fs.existsSync(events), false);
+  } finally { await service.close(); }
+});
+
+test('unverifiable writer lease evidence routes to attention without endpoint or event effects', async () => {
+  const service = await server();
+  try {
+    for (const variant of ['malformed', 'invalid-hash', 'invalid-identity']) {
+      const home = makeHome(`unverifiable-writer-${variant}`);
+      const threadRef = ref(`thread.unverifiable.${variant}`);
+      const input = turn(home, service.endpoint(), {
+        threadRef,
+        instanceRef: ref('instance.retry'),
+        turnRef: ref('turn.retry')
+      });
+      const evidence = writeUnverifiableWriterLease(home, threadRef, variant);
+      const callsBefore = service.calls();
+      let observed = null;
+      await assert.rejects(
+        () => performLivedCompanionTurn(input),
+        (error) => {
+          observed = error;
+          return error instanceof LivedCompanionError && error.code === 'THREAD_WRITER_CONFLICT';
+        }
+      );
+      assert.equal(service.calls(), callsBefore);
+      assert.equal(fs.existsSync(evidence.lockPath), true);
+      assert.equal(observed.details.ownerState, 'UNVERIFIABLE');
+      assert.equal(observed.details.exactNextSafeRoute, 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER');
+      assert.equal(observed.details.observedLeaseFileSha256, evidence.observedLeaseFileSha256);
+      assert.equal(observed.details.leaseSha256, null);
+      const receipt = JSON.parse(fs.readFileSync(observed.details.failureReceiptPath, 'utf8'));
+      assert.equal(receipt.failureCode, 'THREAD_WRITER_CONFLICT');
+      assert.equal(receipt.exactNextSafeRoute, 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER');
+      assert.equal(receipt.threadWriterLeaseDisposition.ownerState, 'UNVERIFIABLE');
+      assert.equal(receipt.threadWriterLeaseDisposition.observedLeaseFileSha256, evidence.observedLeaseFileSha256);
+      assert.ok(receipt.threadWriterLeaseDisposition.leaseValidationState);
+      const events = path.join(home.home, 'conversations', home.companionLineageRef, threadRef, 'events');
+      assert.equal(fs.existsSync(events), false);
+    }
   } finally { await service.close(); }
 });
 

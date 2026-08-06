@@ -176,16 +176,57 @@ function observedLastValidHead(home, companionLineageRef, threadRef) {
   }
 }
 
-function classifyExistingThreadWriterLease(home, lockPath, companionLineageRef, threadRef) {
-  const stat = fs.lstatSync(lockPath);
-  if (stat.isSymbolicLink() || !stat.isFile()) {
-    fail('PERSISTENCE_WRITE_FAILED', 'thread writer lease path must be one regular non-symlink file');
-  }
-  const observed = verifyThreadWriterLeaseRecord(
-    readJson(lockPath, 'PERSISTENCE_WRITE_FAILED', 'thread writer lease'),
+function failUnverifiableThreadWriterLease(lockPath, companionLineageRef, threadRef, leaseValidationState, cause = null) {
+  let observedLeaseFileSha256 = null;
+  try {
+    const stat = fs.lstatSync(lockPath);
+    if (stat.isFile() && !stat.isSymbolicLink()) observedLeaseFileSha256 = fileSha256(lockPath);
+  } catch {}
+  fail('THREAD_WRITER_CONFLICT', 'existing thread writer lease evidence is unverifiable and requires attention', {
     companionLineageRef,
-    threadRef
-  );
+    threadRef,
+    ownerInstanceRef: null,
+    ownerPid: null,
+    ownerState: 'UNVERIFIABLE',
+    leaseSha256: null,
+    observedLeaseFileSha256,
+    leaseValidationState,
+    exactNextSafeRoute: 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER',
+    cause
+  });
+}
+
+function classifyExistingThreadWriterLease(home, lockPath, companionLineageRef, threadRef) {
+  let stat;
+  try {
+    stat = fs.lstatSync(lockPath);
+  } catch (error) {
+    failUnverifiableThreadWriterLease(lockPath, companionLineageRef, threadRef, 'LOCK_PATH_UNREADABLE', error.message);
+  }
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    failUnverifiableThreadWriterLease(lockPath, companionLineageRef, threadRef, 'LOCK_PATH_NOT_REGULAR_FILE');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  } catch (error) {
+    failUnverifiableThreadWriterLease(lockPath, companionLineageRef, threadRef, 'LEASE_JSON_MALFORMED_OR_UNREADABLE', error.message);
+  }
+
+  let observed;
+  try {
+    observed = verifyThreadWriterLeaseRecord(parsed, companionLineageRef, threadRef);
+  } catch (error) {
+    if (error instanceof LivedCompanionError) {
+      const leaseValidationState = error.message.includes('content hash')
+        ? 'LEASE_CONTENT_HASH_INVALID'
+        : 'LEASE_IDENTITY_INVALID';
+      failUnverifiableThreadWriterLease(lockPath, companionLineageRef, threadRef, leaseValidationState, error.message);
+    }
+    throw error;
+  }
+
   const ownerState = processLiveness(observed.pid);
   const details = {
     companionLineageRef,
@@ -193,7 +234,9 @@ function classifyExistingThreadWriterLease(home, lockPath, companionLineageRef, 
     ownerInstanceRef: observed.instanceRef,
     ownerPid: observed.pid,
     ownerState,
-    leaseSha256: observed.leaseSha256
+    leaseSha256: observed.leaseSha256,
+    observedLeaseFileSha256: fileSha256(lockPath),
+    leaseValidationState: 'VALID'
   };
   if (ownerState === 'ABSENT') {
     details.lastValidHead = observedLastValidHead(home, companionLineageRef, threadRef);
@@ -503,7 +546,9 @@ function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRe
         ownerInstanceRef: error.details?.ownerInstanceRef ?? null,
         ownerPid: error.details?.ownerPid ?? null,
         ownerState: error.details?.ownerState ?? 'UNKNOWN',
-        leaseSha256: error.details?.leaseSha256 ?? null
+        leaseSha256: error.details?.leaseSha256 ?? null,
+        observedLeaseFileSha256: error.details?.observedLeaseFileSha256 ?? null,
+        leaseValidationState: error.details?.leaseValidationState ?? null
       }
     : null;
   const nextRoute = error.code === 'THREAD_WRITER_RECOVERY_REQUIRED'

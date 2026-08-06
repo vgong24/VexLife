@@ -336,6 +336,7 @@
       "test.lived-companion.duplicate-suppression",
       "test.lived-companion.one-writer-per-thread",
       "test.lived-companion.abandoned-writer-recovery-disposition",
+      "test.lived-companion.unverifiable-writer-lease-disposition",
       "test.lived-companion.atomic-head",
       "test.lived-companion.clean-shutdown",
       "test.lived-companion.fresh-process-resume",
@@ -348,12 +349,12 @@
       "proof.vexlife.g01.lived-companion.windows"
     ],
     "effectBoundary": "DEVICE_PRIVATE_LOOPBACK_HTTP_AND_LOCAL_FILESYSTEM_ONLY",
-    "completionGate": "actual HTTP turn, immutable records, one OS-atomic writer per thread, explicit abandoned-writer recovery disposition, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
+    "completionGate": "actual HTTP turn, immutable records, one OS-atomic writer per thread, explicit abandoned-writer and unverifiable-lease recovery dispositions, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
     "platformRefs": [
       "platform.windows"
     ],
     "exclusions": [
-      "automatic abandoned writer lease recovery",
+      "automatic abandoned or unverifiable writer lease recovery",
       "LC18",
       "personal endpoint activation",
       "sibling synchronization",

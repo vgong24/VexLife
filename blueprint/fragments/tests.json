@@ -808,6 +808,10 @@
     "brief": "A content-addressed writer lease whose recorded owner process is proven absent is classified as THREAD_WRITER_RECOVERY_REQUIRED with zero endpoint/event effects, preserved lease evidence, and an explicit recovery/attention route; ordinary turn execution never steals or deletes it."
   },
   {
+    "testRef": "test.lived-companion.unverifiable-writer-lease-disposition",
+    "brief": "Malformed, hash-invalid, identity-invalid, symlink, or non-regular writer-lease evidence is preserved, produces zero endpoint/event effects, and routes as an UNVERIFIABLE writer conflict to attention rather than impossible ordinary retry."
+  },
+  {
     "testRef": "test.lived-companion.atomic-head",
     "brief": "Response, context, and atomic head must all be durable before completion."
   },
