@@ -746,5 +746,81 @@
   {
     "testRef": "test.runtime-recovery.r39-external-event-formation-adoption",
     "brief": "An immutable generic external source is accepted only with exact current cycle/lifecycle scope or one content-addressed adoption receipt binding source chronology, scheduler currentness, checkpoint pointer, cycle, failure, work and generation; readdressing and source/adoption substitution fail closed."
+  },
+  {
+    "testRef": "test.lived-companion.failure-vocabulary",
+    "brief": "G01 exposes the complete typed safe-failure vocabulary."
+  },
+  {
+    "testRef": "test.lived-companion.home-initialization",
+    "brief": "A fresh bounded Vex Home records one explicit device and companion lineage."
+  },
+  {
+    "testRef": "test.lived-companion.existing-home-preserved",
+    "brief": "An existing Vex Home is preserved and requires an explicit migration plan."
+  },
+  {
+    "testRef": "test.lived-companion.actual-http-turn",
+    "brief": "One admitted loopback endpoint performs an actual HTTP request and response."
+  },
+  {
+    "testRef": "test.lived-companion.immutable-events",
+    "brief": "Request and response events are immutable and content-addressed."
+  },
+  {
+    "testRef": "test.lived-companion.context-binding",
+    "brief": "Bounded context binds the exact request and response event hashes."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-profile-admission",
+    "brief": "Only an explicitly admitted endpoint profile may execute."
+  },
+  {
+    "testRef": "test.lived-companion.loopback-boundary",
+    "brief": "Non-loopback endpoints fail without separate explicit authority."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-unreachable",
+    "brief": "Unreachable endpoints preserve typed failure evidence without advancing head."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-timeout",
+    "brief": "Endpoint timeout preserves the prior completed head."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-http-error",
+    "brief": "Endpoint HTTP failures remain distinct from successful turns."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-response-invalid",
+    "brief": "Invalid endpoint responses cannot advance the conversation head."
+  },
+  {
+    "testRef": "test.lived-companion.duplicate-suppression",
+    "brief": "Duplicate turn identity is suppressed before a second call or append."
+  },
+  {
+    "testRef": "test.lived-companion.atomic-head",
+    "brief": "Response, context, and atomic head must all be durable before completion."
+  },
+  {
+    "testRef": "test.lived-companion.clean-shutdown",
+    "brief": "Clean shutdown binds the exact completed conversation head."
+  },
+  {
+    "testRef": "test.lived-companion.fresh-process-resume",
+    "brief": "A fresh operating-system process resumes the exact prior head."
+  },
+  {
+    "testRef": "test.lived-companion.identity-head-replay",
+    "brief": "Home, device, lineage, thread, event-chain, context, and head mismatches fail closed."
+  },
+  {
+    "testRef": "test.lived-companion.privacy",
+    "brief": "Credentials and URL secrets remain in memory and never enter persistent records."
+  },
+  {
+    "testRef": "test.lived-companion.windows-proof",
+    "brief": "The hosted Windows proof exercises actual HTTP, shutdown, fresh-process resume, and all negative controls."
   }
 ]

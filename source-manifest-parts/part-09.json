@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/navigation.mjs",
+      "mode": "100644",
+      "bytes": 3771,
+      "sha256": "4570ebc451dfffbf22085f881d1477b9ba6cce146294c907d9a7ba05fabac9c3"
+    },
+    {
+      "path": "src/core/orientation.mjs",
+      "mode": "100644",
+      "bytes": 8817,
+      "sha256": "477744f9113602befc6ecebf36948f8163dfedf2fbb46ffe416ce8e7b4fcf291"
+    },
+    {
+      "path": "src/core/platform-generator.mjs",
+      "mode": "100644",
+      "bytes": 6677,
+      "sha256": "b37018abb34ef7e1aa27111cb5a125fd13782ef586c6c80127357d48084488bf"
+    },
+    {
       "path": "src/core/process-factory.mjs",
       "mode": "100644",
       "bytes": 5817,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 7987,
       "sha256": "fccdd090b99f3e7c28809db36bafc0461b5bbdcacca771adf1f961fd88476813"
-    },
-    {
-      "path": "test/build-admission.test.mjs",
-      "mode": "100644",
-      "bytes": 28926,
-      "sha256": "c34588bae9fc7f7c7a38035c8d1e798ecf7af73e10bab5fb65986b578d563c61"
-    },
-    {
-      "path": "test/capability.test.mjs",
-      "mode": "100644",
-      "bytes": 1797,
-      "sha256": "92df93aefc984c19f8f9484c7c3a8df4dda0d7e01e4dfdac752615e6ab94db17"
-    },
-    {
-      "path": "test/check-result.test.mjs",
-      "mode": "100644",
-      "bytes": 2127,
-      "sha256": "574c01e5a9f5e5eefacc2ef35d4dd3944a6cbed87f1e6c965d71e7983433210a"
     }
   ]
 }

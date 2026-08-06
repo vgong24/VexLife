@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/check-result.mjs",
+      "mode": "100644",
+      "bytes": 3466,
+      "sha256": "448fdea1519cad9db9116dd3f370bf42bd7d354ecf417865f8f1eb91e67c3b8f"
+    },
+    {
+      "path": "src/core/concern-watch.mjs",
+      "mode": "100644",
+      "bytes": 120155,
+      "sha256": "a65d858e4dffe8915ad1b62df4550ee3d963e7d8de3c360c1b08412e5f87dc51"
+    },
+    {
       "path": "src/core/context-lease.mjs",
       "mode": "100644",
       "bytes": 11526,
@@ -110,6 +122,12 @@
       "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
     },
     {
+      "path": "src/core/lived-companion.mjs",
+      "mode": "100644",
+      "bytes": 23111,
+      "sha256": "73c012298869cfebc11ff64dfb29d94efbca7872a7631aba1d0b0d3dc87493b6"
+    },
+    {
       "path": "src/core/local-git-effect-adapter.mjs",
       "mode": "100644",
       "bytes": 22567,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 2525,
       "sha256": "374ea58d83bdd34a007ac5a1291738531117062d6963742d87c3db08f352b9ed"
-    },
-    {
-      "path": "src/core/navigation.mjs",
-      "mode": "100644",
-      "bytes": 3771,
-      "sha256": "4570ebc451dfffbf22085f881d1477b9ba6cce146294c907d9a7ba05fabac9c3"
-    },
-    {
-      "path": "src/core/orientation.mjs",
-      "mode": "100644",
-      "bytes": 8817,
-      "sha256": "477744f9113602befc6ecebf36948f8163dfedf2fbb46ffe416ce8e7b4fcf291"
-    },
-    {
-      "path": "src/core/platform-generator.mjs",
-      "mode": "100644",
-      "bytes": 6677,
-      "sha256": "b37018abb34ef7e1aa27111cb5a125fd13782ef586c6c80127357d48084488bf"
     }
   ]
 }

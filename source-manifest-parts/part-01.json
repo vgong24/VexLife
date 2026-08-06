@@ -22,8 +22,8 @@
     {
       "path": ".github/workflows/check.yml",
       "mode": "100644",
-      "bytes": 7042,
-      "sha256": "f434c45cbe0b085475dd8ba3f9f711a6bfc3aa66d5210752c9a3520d9e2108b6"
+      "bytes": 8478,
+      "sha256": "8c13081e78def39f931de5aedc4b594efc2bce6574b3e03f8b68a4215e4d967c"
     },
     {
       "path": ".github/workflows/dco.yml",

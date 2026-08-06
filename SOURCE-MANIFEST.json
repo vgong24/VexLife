@@ -36,8 +36,8 @@
     "any-depth node dependencies",
     "Git internals"
   ],
-  "fileCount": 242,
-  "treeSha256": "f790530d25a02a394d691b78f761d11e5813d04fc3180f0ed3919692955f8273",
+  "fileCount": 246,
+  "treeSha256": "cf82e67ea4ab77c4f76c09303e801c4dc54f5b91793fdc1e06e7b7e8f5d3d2ba",
   "composition": "GENERATED_FRAGMENT_COMPOSITION",
   "parts": [
     "source-manifest-parts/part-01.json",

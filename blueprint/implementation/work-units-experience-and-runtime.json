@@ -289,5 +289,78 @@
       "no raw model endpoint exposure"
     ],
     "returnRoute": "return bridge contract receipt to desktop platform wave"
+  },
+  {
+    "workRef": "work.vexlife.windows.g01-lived-companion-baseline",
+    "purpose": "Establish one real Windows lived-companion turn with immutable local records, atomic head, clean shutdown, and fresh-process exact resume.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "dependsOn": [
+      "work.vexlife.bootstrap.cross-platform",
+      "work.vexlife.browser.addressed-conversation"
+    ],
+    "pathScope": [
+      "blueprint/feature-registry.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "src/core/lived-companion.mjs",
+      "scripts/lived-companion.mjs",
+      "test/lived-companion.test.mjs",
+      "docs/LIVED-COMPANION-BASELINE.md",
+      "package.json",
+      ".github/workflows/check.yml"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.runtime",
+    "requiredSourceRefs": [
+      "state.device-family",
+      "state.messages",
+      "state.context",
+      "model-profile.existing-openai-compatible"
+    ],
+    "requiredTestRefs": [
+      "test.lived-companion.failure-vocabulary",
+      "test.lived-companion.home-initialization",
+      "test.lived-companion.existing-home-preserved",
+      "test.lived-companion.actual-http-turn",
+      "test.lived-companion.immutable-events",
+      "test.lived-companion.context-binding",
+      "test.lived-companion.endpoint-profile-admission",
+      "test.lived-companion.loopback-boundary",
+      "test.lived-companion.endpoint-unreachable",
+      "test.lived-companion.endpoint-timeout",
+      "test.lived-companion.endpoint-http-error",
+      "test.lived-companion.endpoint-response-invalid",
+      "test.lived-companion.duplicate-suppression",
+      "test.lived-companion.atomic-head",
+      "test.lived-companion.clean-shutdown",
+      "test.lived-companion.fresh-process-resume",
+      "test.lived-companion.identity-head-replay",
+      "test.lived-companion.privacy",
+      "test.lived-companion.windows-proof"
+    ],
+    "outputRefs": [
+      "source-set.vexlife.g01.lived-companion.superseding.002",
+      "proof.vexlife.g01.lived-companion.windows"
+    ],
+    "effectBoundary": "DEVICE_PRIVATE_LOOPBACK_HTTP_AND_LOCAL_FILESYSTEM_ONLY",
+    "completionGate": "actual HTTP turn, immutable records, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
+    "platformRefs": [
+      "platform.windows"
+    ],
+    "exclusions": [
+      "LC18",
+      "personal endpoint activation",
+      "sibling synchronization",
+      "training",
+      "model-weight mutation",
+      "publication",
+      "review",
+      "approval",
+      "merge"
+    ],
+    "returnRoute": "return exact head/tree, proof receipt, source-set manifest, hosted job, and draft PR to Windows Local Operations"
   }
 ]

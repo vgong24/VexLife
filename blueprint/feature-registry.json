@@ -695,9 +695,9 @@
       ],
       "moduleRefs": [
         "module.vexlife.core.state",
-      "module.vexlife.core.resource-admission",
-      "module.vexlife.core.scheduler-runtime-trust",
-      "module.vexlife.core.context-lease",
+        "module.vexlife.core.resource-admission",
+        "module.vexlife.core.scheduler-runtime-trust",
+        "module.vexlife.core.context-lease",
         "module.vexlife.core.intent-checkpoint",
         "module.vexlife.core.intent-completion-verifier",
         "module.vexlife.core.tool-result-relay",
@@ -1006,6 +1006,95 @@
         "full ConcernWatch threshold runtime and Build Admission Coverage remain held",
         "Council of Lenses, Memory Conformance and Embodiment remain held",
         "live identity, live OS clock, synchronization and model-weight activation remain held"
+      ]
+    },
+    {
+      "featureRef": "feature.vexlife.lived-companion-baseline",
+      "purpose": "Persist one real bounded companion HTTP turn as immutable device-private events, atomically checkpoint its context/head, shut down cleanly, and resume the exact head in a fresh process.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "canonicalNodeRefs": [
+        "state.device-family",
+        "state.messages",
+        "state.context",
+        "state.model"
+      ],
+      "stateRefs": [
+        "state.device-family",
+        "state.messages",
+        "state.context",
+        "state.model",
+        "state.runtime-recovery"
+      ],
+      "actionRefs": [
+        "action.message.send"
+      ],
+      "permissionRefs": [
+        "permission.conversation.send"
+      ],
+      "processRefs": [
+        "process.vexlife.conversation.send-addressed",
+        "process.vexlife.runtime.recover-execute"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.lived-companion",
+        "module.vexlife.script.lived-companion"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.lived-companion.failure-vocabulary",
+        "test.lived-companion.home-initialization",
+        "test.lived-companion.existing-home-preserved",
+        "test.lived-companion.actual-http-turn",
+        "test.lived-companion.immutable-events",
+        "test.lived-companion.context-binding",
+        "test.lived-companion.endpoint-profile-admission",
+        "test.lived-companion.loopback-boundary",
+        "test.lived-companion.endpoint-unreachable",
+        "test.lived-companion.endpoint-timeout",
+        "test.lived-companion.endpoint-http-error",
+        "test.lived-companion.endpoint-response-invalid",
+        "test.lived-companion.duplicate-suppression",
+        "test.lived-companion.atomic-head",
+        "test.lived-companion.clean-shutdown",
+        "test.lived-companion.fresh-process-resume",
+        "test.lived-companion.identity-head-replay",
+        "test.lived-companion.privacy",
+        "test.lived-companion.windows-proof"
+      ],
+      "platformRefs": [
+        "platform.windows"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "LOCAL_HTTP_AND_FILESYSTEM_BOUNDED",
+      "dataClass": "DEVICE_PRIVATE_CONVERSATION",
+      "effectClass": "LOCAL_APPEND_AND_ATOMIC_POINTER",
+      "concurrencyClass": "ONE_WRITER_PER_THREAD",
+      "rollbackRouteRef": "recovery.lived-companion.last-valid-head",
+      "projectionRefs": [
+        "projection.lived-companion.current-head",
+        "projection.lived-companion.failure"
+      ],
+      "knownGaps": [
+        "personal endpoint activation remains held",
+        "native desktop UI conformance remains held",
+        "sibling sync, training, weight mutation and LC18 remain held"
       ]
     }
   ]

@@ -52,8 +52,8 @@
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 31520,
-      "sha256": "a7464a858daba3874e0d2fbad869723d140f125223ae6539a900700635984621"
+      "bytes": 32291,
+      "sha256": "26ecd95703a4c64ccc79cb8cadd4f84bee8025b00eab5a3127e17ed349225551"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -64,8 +64,8 @@
     {
       "path": "blueprint/module-registry/scripts.json",
       "mode": "100644",
-      "bytes": 21627,
-      "sha256": "53c1900ef57b74ac99d77c24ad8db094a6ee2ac85b0c44e994d81de1439aff96"
+      "bytes": 22356,
+      "sha256": "b086d07d178b79b45401c607e2ad97943fbc30728f8e73a24da32a702833abe6"
     },
     {
       "path": "blueprint/orientation.json",

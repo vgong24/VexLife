@@ -134,16 +134,16 @@
       "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
     },
     {
+      "path": "docs/LIVED-COMPANION-BASELINE.md",
+      "mode": "100644",
+      "bytes": 3466,
+      "sha256": "0038b34eb096419984b8ae8f69b9fad451eb30733583f0fa0118be6a5be2fbda"
+    },
+    {
       "path": "docs/MULTILINGUAL-INTENT-RELAY.md",
       "mode": "100644",
       "bytes": 2152,
       "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
-    },
-    {
-      "path": "docs/NEWCOMER-MAP.md",
-      "mode": "100644",
-      "bytes": 5418,
-      "sha256": "fa851e7174736adf4714fb532cb79528405dac4e3b3091de28a8d6bb1d4a993a"
     }
   ]
 }
