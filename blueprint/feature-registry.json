@@ -1044,6 +1044,7 @@
         "test.lived-companion.failure-vocabulary",
         "test.lived-companion.home-initialization",
         "test.lived-companion.existing-home-preserved",
+        "test.lived-companion.home-preservation",
         "test.lived-companion.actual-http-turn",
         "test.lived-companion.immutable-events",
         "test.lived-companion.context-binding",

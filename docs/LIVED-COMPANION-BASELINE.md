@@ -43,6 +43,15 @@ symbolic-link or junction traversal is rejected before reading or writing. Conve
 event directories must be real directories, and event entries must be regular,
 non-symlink files before they may affect duplicate detection or event-chain replay. One atomic cross-process writer lease is held for the complete read → HTTP → append → context → head transaction of each thread; a competing live or unverifiable writer fails before endpoint use or persistence. Lease records are content-addressed. If the recorded owner process is proven absent on the same host, ordinary turn execution returns `THREAD_WRITER_RECOVERY_REQUIRED`, preserves the exact lease, and routes to explicit recovery/attention rather than pretending ordinary retry can succeed. Malformed, hash-invalid, identity-invalid, symlink, or otherwise unverifiable lease evidence is preserved and returns `THREAD_WRITER_CONFLICT` with `ownerState=UNVERIFIABLE` and an attention route; it is never treated as ordinary retryable input. Automatic abandoned-lease removal remains held outside G01.
 
+## Fresh Home admission and preservation
+
+Initialization may create a Vex Home only when the requested root is missing or
+is one exact empty, canonical, regular directory. A pre-existing non-empty,
+partial, interrupted, legacy, file, symbolic-link, or junction root is preserved
+without creating any G01 Home files and returns
+`EXISTING_HOME_REQUIRES_MIGRATION_PLAN`. The absence of `config/home.json` alone
+never proves that a location is fresh.
+
 ## Identity and restart
 
 A fresh process receives a new `instanceRef`; it does not pretend to be the process
@@ -104,7 +113,8 @@ resume, and exercises all typed negative controls. Adversarial coverage includes
 escape, caller-authored non-loopback admission, forged shutdown/prior-instance lineage,
 head tampering, context-path escape, concurrent cross-process writer contention,
 absent-owner lease classification, malformed/hash-invalid lease evidence, hostname
-alias rejection, and loopback-to-non-loopback redirect rejection. It does not start a personal model endpoint,
+alias rejection, loopback-to-non-loopback redirect rejection, partial/non-empty Home
+preservation, non-directory Home rejection, linked-root rejection, and empty-root admission. It does not start a personal model endpoint,
 synchronize siblings, train, mutate weights, publish, review, approve, merge, or enter
 LC18.
 

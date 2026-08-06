@@ -255,6 +255,85 @@ test('existing Home is preserved and requires migration', async () => {
   await rejectsCode(async () => initializeLivedCompanionHome(value), 'EXISTING_HOME_REQUIRES_MIGRATION_PLAN');
 });
 
+test('partial non-empty Home without manifest is preserved byte-identically', async () => {
+  const root = temp('partial-home');
+  const home = path.join(root, 'home');
+  const legacy = path.join(home, 'legacy', 'keep.bin');
+  const interrupted = path.join(home, 'config', 'interrupted.tmp');
+  const legacyBytes = Buffer.from([0, 1, 2, 3, 254, 255]);
+  const interruptedBytes = Buffer.from('interrupted-home-state\n', 'utf8');
+  fs.mkdirSync(path.dirname(legacy), { recursive: true });
+  fs.mkdirSync(path.dirname(interrupted), { recursive: true });
+  fs.writeFileSync(legacy, legacyBytes);
+  fs.writeFileSync(interrupted, interruptedBytes);
+
+  await rejectsCode(async () => initializeLivedCompanionHome({
+    home,
+    homeRef: ref('home.partial'),
+    familyRef: ref('family.partial'),
+    deviceRef: ref('device.partial'),
+    companionLineageRef: ref('lineage.partial')
+  }), 'EXISTING_HOME_REQUIRES_MIGRATION_PLAN');
+
+  assert.deepEqual(fs.readFileSync(legacy), legacyBytes);
+  assert.deepEqual(fs.readFileSync(interrupted), interruptedBytes);
+  assert.equal(fs.existsSync(path.join(home, 'config', 'home.json')), false);
+  assert.equal(fs.existsSync(path.join(home, 'config', 'model.json')), false);
+  assert.equal(fs.existsSync(path.join(home, 'devices')), false);
+});
+
+test('pre-existing file Home root is preserved and requires migration', async () => {
+  const home = path.join(temp('file-home-root'), 'home');
+  const bytes = Buffer.from('not-a-directory-home\n', 'utf8');
+  fs.writeFileSync(home, bytes);
+
+  await rejectsCode(async () => initializeLivedCompanionHome({
+    home,
+    homeRef: ref('home.file'),
+    familyRef: ref('family.file'),
+    deviceRef: ref('device.file'),
+    companionLineageRef: ref('lineage.file')
+  }), 'EXISTING_HOME_REQUIRES_MIGRATION_PLAN');
+
+  assert.equal(fs.lstatSync(home).isFile(), true);
+  assert.deepEqual(fs.readFileSync(home), bytes);
+});
+
+test('linked Home root is preserved and requires migration', async () => {
+  const root = temp('linked-home-root');
+  const target = path.join(root, 'target');
+  const linked = path.join(root, 'home');
+  const marker = path.join(target, 'keep.txt');
+  fs.mkdirSync(target, { recursive: true });
+  fs.writeFileSync(marker, 'preserve-me\n', 'utf8');
+  fs.symlinkSync(target, linked, process.platform === 'win32' ? 'junction' : 'dir');
+
+  await rejectsCode(async () => initializeLivedCompanionHome({
+    home: linked,
+    homeRef: ref('home.linked'),
+    familyRef: ref('family.linked'),
+    deviceRef: ref('device.linked'),
+    companionLineageRef: ref('lineage.linked')
+  }), 'EXISTING_HOME_REQUIRES_MIGRATION_PLAN');
+
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'preserve-me\n');
+  assert.equal(fs.existsSync(path.join(target, 'config')), false);
+});
+
+test('one exact empty existing directory is fresh-eligible', () => {
+  const home = path.join(temp('empty-existing-home'), 'home');
+  fs.mkdirSync(home, { recursive: true });
+  const result = initializeLivedCompanionHome({
+    home,
+    homeRef: ref('home.empty-existing'),
+    familyRef: ref('family.empty-existing'),
+    deviceRef: ref('device.empty-existing'),
+    companionLineageRef: ref('lineage.empty-existing')
+  });
+  assert.equal(result.home, fs.realpathSync.native(home));
+  assert.equal(fs.existsSync(path.join(home, 'config', 'home.json')), true);
+});
+
 test('uninitialized Home fails before endpoint use', async () => {
   const service = await server();
   try { await rejectsCode(() => performLivedCompanionTurn(turn({ home: temp('missing'), homeRef:'h', deviceRef:'d', companionLineageRef:'l' }, service.endpoint())), 'HOME_NOT_INITIALIZED'); }

@@ -86,6 +86,39 @@ function canonicalHomeRoot(home, { create = false } = {}) {
   return fs.realpathSync.native(requested);
 }
 
+function admitFreshHomeRoot(home) {
+  const requested = path.resolve(ensureString(home, 'home'));
+  let stat;
+  try {
+    stat = fs.lstatSync(requested);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      fail('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', 'Vex Home root could not be classified without mutation', {
+        home: requested,
+        cause: error.message
+      });
+    }
+    return canonicalHomeRoot(requested, { create: true });
+  }
+
+  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+    fail('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', 'pre-existing Vex Home root is not one empty canonical directory', {
+      home: requested,
+      rootKind: stat.isSymbolicLink() ? 'SYMBOLIC_LINK_OR_JUNCTION' : 'NON_DIRECTORY'
+    });
+  }
+
+  const root = fs.realpathSync.native(requested);
+  const entries = fs.readdirSync(root);
+  if (entries.length > 0) {
+    fail('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', 'pre-existing non-empty Vex Home was preserved', {
+      home: root,
+      existingEntryCount: entries.length
+    });
+  }
+  return root;
+}
+
 function resolveHomePath(home, ...segments) {
   const root = canonicalHomeRoot(home);
   const target = path.resolve(root, ...segments);
@@ -413,12 +446,7 @@ export function initializeLivedCompanionHome({
   ensureString(familyRef, 'familyRef');
   const safeDeviceRef = ensureSafeRef(deviceRef, 'deviceRef');
   const safeLineageRef = ensureSafeRef(companionLineageRef, 'companionLineageRef');
-  const requestedRoot = path.resolve(ensureString(home, 'home'));
-  const preexistingManifest = path.join(requestedRoot, 'config', 'home.json');
-  if (fs.existsSync(preexistingManifest)) {
-    fail('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', 'existing Vex Home was preserved', { manifestPath: preexistingManifest });
-  }
-  const root = canonicalHomeRoot(requestedRoot, { create: true });
+  const root = admitFreshHomeRoot(home);
   const manifestPath = resolveHomePath(root, 'config', 'home.json');
   for (const directory of ['config', 'devices', 'conversations', 'context', 'runtime', 'recovery']) {
     fs.mkdirSync(resolveHomePath(root, directory), { recursive: true });

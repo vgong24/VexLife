@@ -533,6 +533,79 @@ async function proof() {
       initializeLivedCompanionHome({ ...main });
     }, 'existing home preserved'));
 
+    const partialHomePath = path.join(proofRoot, 'partial-home-preservation');
+    const partialLegacyPath = path.join(partialHomePath, 'legacy', 'keep.bin');
+    const partialInterruptedPath = path.join(partialHomePath, 'config', 'interrupted.tmp');
+    const partialLegacyBytes = Buffer.from([0, 1, 2, 3, 254, 255]);
+    const partialInterruptedBytes = Buffer.from('interrupted-home-state\n', 'utf8');
+    fs.mkdirSync(path.dirname(partialLegacyPath), { recursive: true });
+    fs.mkdirSync(path.dirname(partialInterruptedPath), { recursive: true });
+    fs.writeFileSync(partialLegacyPath, partialLegacyBytes);
+    fs.writeFileSync(partialInterruptedPath, partialInterruptedBytes);
+    typedFailureProofs.push(await expectFailure('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', async () => {
+      initializeLivedCompanionHome({
+        home: partialHomePath,
+        homeRef: ref('home.partial'),
+        familyRef: ref('family.partial'),
+        deviceRef: ref('device.partial'),
+        companionLineageRef: ref('lineage.partial')
+      });
+    }, 'partial non-empty home preserved'));
+    negativeControls.partialHomePreserved =
+      Buffer.compare(fs.readFileSync(partialLegacyPath), partialLegacyBytes) === 0 &&
+      Buffer.compare(fs.readFileSync(partialInterruptedPath), partialInterruptedBytes) === 0 &&
+      !fs.existsSync(path.join(partialHomePath, 'config', 'home.json')) &&
+      !fs.existsSync(path.join(partialHomePath, 'config', 'model.json')) &&
+      !fs.existsSync(path.join(partialHomePath, 'devices'));
+
+    const fileHomePath = path.join(proofRoot, 'file-home-root');
+    const fileHomeBytes = Buffer.from('not-a-directory-home\n', 'utf8');
+    fs.writeFileSync(fileHomePath, fileHomeBytes);
+    typedFailureProofs.push(await expectFailure('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', async () => {
+      initializeLivedCompanionHome({
+        home: fileHomePath,
+        homeRef: ref('home.file'),
+        familyRef: ref('family.file'),
+        deviceRef: ref('device.file'),
+        companionLineageRef: ref('lineage.file')
+      });
+    }, 'non-directory home preserved'));
+    negativeControls.nonDirectoryHomePreserved =
+      fs.lstatSync(fileHomePath).isFile() &&
+      Buffer.compare(fs.readFileSync(fileHomePath), fileHomeBytes) === 0;
+
+    const linkedHomeTarget = path.join(proofRoot, 'linked-home-target');
+    const linkedHomePath = path.join(proofRoot, 'linked-home-root');
+    const linkedHomeMarker = path.join(linkedHomeTarget, 'keep.txt');
+    fs.mkdirSync(linkedHomeTarget, { recursive: true });
+    fs.writeFileSync(linkedHomeMarker, 'preserve-me\n', 'utf8');
+    fs.symlinkSync(linkedHomeTarget, linkedHomePath, process.platform === 'win32' ? 'junction' : 'dir');
+    typedFailureProofs.push(await expectFailure('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', async () => {
+      initializeLivedCompanionHome({
+        home: linkedHomePath,
+        homeRef: ref('home.linked'),
+        familyRef: ref('family.linked'),
+        deviceRef: ref('device.linked'),
+        companionLineageRef: ref('lineage.linked')
+      });
+    }, 'linked home root preserved'));
+    negativeControls.linkedHomePreserved =
+      fs.readFileSync(linkedHomeMarker, 'utf8') === 'preserve-me\n' &&
+      !fs.existsSync(path.join(linkedHomeTarget, 'config'));
+
+    const emptyExistingHomePath = path.join(proofRoot, 'empty-existing-home');
+    fs.mkdirSync(emptyExistingHomePath, { recursive: true });
+    const emptyExistingHome = initializeLivedCompanionHome({
+      home: emptyExistingHomePath,
+      homeRef: ref('home.empty-existing'),
+      familyRef: ref('family.empty-existing'),
+      deviceRef: ref('device.empty-existing'),
+      companionLineageRef: ref('lineage.empty-existing')
+    });
+    negativeControls.emptyExistingHomeEligible =
+      emptyExistingHome.home === fs.realpathSync.native(emptyExistingHomePath) &&
+      fs.existsSync(path.join(emptyExistingHomePath, 'config', 'home.json'));
+
     const identityHome = makeHome(proofRoot, 'identity-home');
     typedFailureProofs.push(await expectFailure('HOME_IDENTITY_MISMATCH', () => performLivedCompanionTurn(baseTurn(identityHome, endpoint, {
       deviceRef: 'device.vexlife.wrong'
@@ -791,6 +864,11 @@ async function proof() {
       unverifiableWriterLeaseDisposition: negativeControls.unverifiableWriterLeaseEvidence,
       endpointRedirectBoundary: negativeControls.endpointRedirectBoundary,
       numericLoopbackOnly: negativeControls.numericLoopbackOnly,
+      homePreservation:
+        negativeControls.partialHomePreserved &&
+        negativeControls.nonDirectoryHomePreserved &&
+        negativeControls.linkedHomePreserved &&
+        negativeControls.emptyExistingHomeEligible,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,

@@ -324,6 +324,7 @@
       "test.lived-companion.failure-vocabulary",
       "test.lived-companion.home-initialization",
       "test.lived-companion.existing-home-preserved",
+      "test.lived-companion.home-preservation",
       "test.lived-companion.actual-http-turn",
       "test.lived-companion.immutable-events",
       "test.lived-companion.context-binding",
@@ -350,7 +351,7 @@
       "proof.vexlife.g01.lived-companion.windows"
     ],
     "effectBoundary": "DEVICE_PRIVATE_LOOPBACK_HTTP_AND_LOCAL_FILESYSTEM_ONLY",
-    "completionGate": "actual numeric-loopback HTTP turn, redirect and hostname-alias escape rejection, immutable records, one OS-atomic writer per thread, explicit abandoned-writer and unverifiable-lease recovery dispositions, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
+    "completionGate": "fresh Home admission/preservation, actual numeric-loopback HTTP turn, redirect and hostname-alias escape rejection, immutable records, one OS-atomic writer per thread, explicit abandoned-writer and unverifiable-lease recovery dispositions, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
     "platformRefs": [
       "platform.windows"
     ],

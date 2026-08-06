@@ -760,6 +760,10 @@
     "brief": "An existing Vex Home is preserved and requires an explicit migration plan."
   },
   {
+    "testRef": "test.lived-companion.home-preservation",
+    "brief": "Fresh Home initialization admits only a missing root or one exact empty canonical regular directory; partial, non-empty, file, symlink or junction roots are preserved byte-identically and receive zero G01 Home writes."
+  },
+  {
     "testRef": "test.lived-companion.actual-http-turn",
     "brief": "One admitted loopback endpoint performs an actual HTTP request and response."
   },
