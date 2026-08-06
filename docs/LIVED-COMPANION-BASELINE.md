@@ -76,6 +76,30 @@ for that same turn use distinct content-addressed
 preserved first receipt. A follow-up failure never rewrites or relabels the first
 substantive failure.
 
+## Semantic completed-state validation
+
+An existing `head.json` is not treated as a valid prior head merely because its
+own content hash is valid. Before duplicate classification, another endpoint call,
+or any new conversation append, G01 validates the exact completed state as one
+semantic unit: Home/device/lineage/thread identity, the content-addressed head,
+the full contiguous event chain, the final request/response pair, and the bound
+context record. Only after that verification succeeds may the head become
+`lastValidHead`. Corrupt prior state therefore produces zero new endpoint or turn
+effects.
+
+The same semantic verifier is consumed by ordinary turn continuation, shutdown,
+and resume. Every event in the selected chain must belong to the admitted
+Home/device/lineage/thread; the head's final request/response identity must match
+the exact events; and the context must bind the same Home/device/lineage/thread,
+turn, completing instance, and exact request/response event hashes. Content-addressed
+objects from another thread or turn inside the same Home are not interchangeable.
+
+Duplicate failure follow-ups consume this already validated prior head, so they
+preserve truthful `lastValidHead`, `resumePossible`, and next-route provenance
+instead of making an existing valid head appear absent. Failure evidence for one
+turn remains serialized while the exact thread writer lease is held, preventing
+parallel same-turn failures from racing the canonical first-failure receipt.
+
 ## Identity and restart
 
 A fresh process receives a new `instanceRef`; it does not pretend to be the process
@@ -141,8 +165,10 @@ head tampering, context-path escape, concurrent cross-process writer contention,
 absent-owner lease classification, malformed/hash-invalid lease evidence, hostname
 alias rejection, loopback-to-non-loopback redirect rejection, partial/non-empty Home
 preservation, non-directory Home rejection, linked-root rejection, linked-parent alias rejection, portable Windows path-segment
-grammar, canonical stored-context paths, failed-turn new-ref routing, immutable first-failure evidence,
-same-turn duplicate suppression with zero additional HTTP calls, and empty-root admission. It does not start a personal model endpoint,
+grammar, canonical stored-context paths, prior completed-state corruption rejection before endpoint effects,
+semantic Home/device/lineage/thread/turn/event/context binding, in-Home cross-thread context and event substitution rejection,
+failed-turn new-ref routing, immutable first-failure evidence, same-turn duplicate suppression with zero additional HTTP calls
+and retained last-valid-head provenance, and empty-root admission. It does not start a personal model endpoint,
 synchronize siblings, train, mutate weights, publish, review, approve, merge, or enter
 LC18.
 

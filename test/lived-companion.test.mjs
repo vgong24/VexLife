@@ -600,6 +600,211 @@ test('failed turn routes to a new turn and preserves first failure evidence', as
   }
 });
 
+
+
+test('corrupt prior completed event chain blocks the next turn before endpoint effects', async () => {
+  const service = await server();
+  const home = makeHome('prior-chain-corruption');
+  const threadRef = ref('thread.prior-chain-corruption');
+  const first = turn(home, service.endpoint(), {
+    threadRef,
+    instanceRef: ref('instance.prior-chain.first'),
+    turnRef: ref('turn.prior-chain.first')
+  });
+  try {
+    const completed = await performLivedCompanionTurn(first);
+    const callsBefore = service.calls();
+    const events = path.join(home.home, 'conversations', home.companionLineageRef, threadRef, 'events');
+    const responseFile = fs.readdirSync(events)
+      .map((name) => path.join(events, name))
+      .find((file) => file.endsWith(`-${completed.head.eventHash}.json`));
+    assert.ok(responseFile, 'completed response event must be locatable');
+    fs.unlinkSync(responseFile);
+
+    const second = turn(home, service.endpoint(), {
+      threadRef,
+      instanceRef: ref('instance.prior-chain.second'),
+      turnRef: ref('turn.prior-chain.second')
+    });
+    await rejectsCode(() => performLivedCompanionTurn(second), 'EVENT_CHAIN_CORRUPT');
+    assert.equal(service.calls(), callsBefore);
+    const persistedHead = JSON.parse(fs.readFileSync(completed.headPath, 'utf8'));
+    assert.equal(persistedHead.conversationHeadSha256, completed.head.conversationHeadSha256);
+  } finally {
+    await service.close();
+  }
+});
+
+test('same-turn duplicate follow-up retains the validated prior head and resume route', async () => {
+  const service = await server();
+  const home = makeHome('duplicate-prior-head');
+  const threadRef = ref('thread.duplicate-prior-head');
+  try {
+    const completed = await performLivedCompanionTurn(turn(home, service.endpoint(), {
+      threadRef,
+      instanceRef: ref('instance.duplicate-prior-head.completed'),
+      turnRef: ref('turn.duplicate-prior-head.completed')
+    }));
+    const failedInput = turn(home, service.endpoint('http-error'), {
+      threadRef,
+      instanceRef: ref('instance.duplicate-prior-head.failed'),
+      turnRef: ref('turn.duplicate-prior-head.failed')
+    });
+    let firstError = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(failedInput),
+      (error) => {
+        firstError = error;
+        return error instanceof LivedCompanionError && error.code === 'ENDPOINT_HTTP_ERROR';
+      }
+    );
+    const firstPath = firstError.details.failureReceiptPath;
+    const firstBytes = fs.readFileSync(firstPath);
+    const firstReceipt = JSON.parse(firstBytes);
+    assert.equal(firstReceipt.lastValidHead.conversationHeadSha256, completed.head.conversationHeadSha256);
+    assert.equal(firstReceipt.resumePossible, true);
+    assert.equal(firstReceipt.exactNextSafeRoute, 'RESUME_LAST_VALID_HEAD_THEN_FORM_NEW_TURN_REF');
+
+    const callsBeforeDuplicate = service.calls();
+    let duplicateError = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn({
+        ...failedInput,
+        instanceRef: ref('instance.duplicate-prior-head.same-turn-retry'),
+        requestMessageRef: ref('message.duplicate-prior-head.same-turn.request'),
+        responseMessageRef: ref('message.duplicate-prior-head.same-turn.response'),
+        endpointProfile: {
+          ...failedInput.endpointProfile,
+          endpoint: service.endpoint()
+        }
+      }),
+      (error) => {
+        duplicateError = error;
+        return error instanceof LivedCompanionError && error.code === 'DUPLICATE_TURN_SUPPRESSED';
+      }
+    );
+    assert.equal(service.calls(), callsBeforeDuplicate);
+    assert.deepEqual(fs.readFileSync(firstPath), firstBytes);
+    const followUp = JSON.parse(fs.readFileSync(duplicateError.details.failureReceiptPath, 'utf8'));
+    assert.equal(followUp.lastValidHead.conversationHeadSha256, completed.head.conversationHeadSha256);
+    assert.equal(followUp.resumePossible, true);
+    assert.equal(followUp.followUpToFirstFailure, true);
+    assert.equal(followUp.firstFailureReceiptFileSha256, crypto.createHash('sha256').update(firstBytes).digest('hex'));
+    assert.equal(
+      followUp.exactNextSafeRoute,
+      'USE_EXISTING_TURN_EVIDENCE_OR_RESUME_LAST_VALID_HEAD_AND_FORM_NEW_TURN_REF'
+    );
+  } finally {
+    await service.close();
+  }
+});
+
+test('resume rejects in-Home cross-thread context substitution even when hashes are recomputed', async () => {
+  const service = await server();
+  const home = makeHome('cross-thread-context');
+  try {
+    const first = turn(home, service.endpoint(), {
+      threadRef: ref('thread.context.first'),
+      instanceRef: ref('instance.context.first'),
+      turnRef: ref('turn.context.first')
+    });
+    const second = turn(home, service.endpoint(), {
+      threadRef: ref('thread.context.second'),
+      instanceRef: ref('instance.context.second'),
+      turnRef: ref('turn.context.second')
+    });
+    const completedFirst = await performLivedCompanionTurn(first);
+    const shutdownFirst = writeLivedCompanionShutdownReceipt({
+      ...home,
+      instanceRef: first.instanceRef,
+      threadRef: first.threadRef,
+      expectedConversationHeadSha256: completedFirst.head.conversationHeadSha256
+    });
+    const completedSecond = await performLivedCompanionTurn(second);
+
+    const head = JSON.parse(fs.readFileSync(completedFirst.headPath, 'utf8'));
+    head.contextPath = completedSecond.head.contextPath;
+    head.contextSha256 = completedSecond.head.contextSha256;
+    const { conversationHeadSha256: ignoredHeadHash, ...headCore } = head;
+    head.conversationHeadSha256 = semanticHash(headCore);
+    fs.writeFileSync(completedFirst.headPath, `${JSON.stringify(head, null, 2)}\n`, 'utf8');
+
+    const shutdown = JSON.parse(fs.readFileSync(shutdownFirst.receiptPath, 'utf8'));
+    shutdown.conversationHeadSha256 = head.conversationHeadSha256;
+    shutdown.contextSha256 = head.contextSha256;
+    const { shutdownReceiptSha256: ignoredShutdownHash, ...shutdownCore } = shutdown;
+    shutdown.shutdownReceiptSha256 = semanticHash(shutdownCore);
+    fs.writeFileSync(shutdownFirst.receiptPath, `${JSON.stringify(shutdown, null, 2)}\n`, 'utf8');
+
+    await rejectsCode(async () => resumeLivedCompanionConversation({
+      ...home,
+      priorInstanceRef: first.instanceRef,
+      instanceRef: ref('instance.context.resume'),
+      threadRef: first.threadRef,
+      expectedConversationHeadSha256: head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.shutdownReceiptSha256
+    }), 'CONTEXT_HASH_MISMATCH');
+  } finally {
+    await service.close();
+  }
+});
+
+test('resume rejects in-Home cross-thread event substitution even when objects remain content-addressed', async () => {
+  const service = await server();
+  const home = makeHome('cross-thread-events');
+  try {
+    const first = turn(home, service.endpoint(), {
+      threadRef: ref('thread.events.first'),
+      instanceRef: ref('instance.events.first'),
+      turnRef: ref('turn.events.first')
+    });
+    const second = turn(home, service.endpoint(), {
+      threadRef: ref('thread.events.second'),
+      instanceRef: ref('instance.events.second'),
+      turnRef: ref('turn.events.second')
+    });
+    const completedFirst = await performLivedCompanionTurn(first);
+    const shutdownFirst = writeLivedCompanionShutdownReceipt({
+      ...home,
+      instanceRef: first.instanceRef,
+      threadRef: first.threadRef,
+      expectedConversationHeadSha256: completedFirst.head.conversationHeadSha256
+    });
+    const completedSecond = await performLivedCompanionTurn(second);
+
+    const firstEvents = path.join(home.home, 'conversations', home.companionLineageRef, first.threadRef, 'events');
+    const secondEvents = path.join(home.home, 'conversations', home.companionLineageRef, second.threadRef, 'events');
+    for (const name of fs.readdirSync(secondEvents)) {
+      fs.copyFileSync(path.join(secondEvents, name), path.join(firstEvents, `substituted-${name}`));
+    }
+
+    const head = JSON.parse(fs.readFileSync(completedFirst.headPath, 'utf8'));
+    head.eventHash = completedSecond.head.eventHash;
+    head.sequence = completedSecond.head.sequence;
+    const { conversationHeadSha256: ignoredHeadHash, ...headCore } = head;
+    head.conversationHeadSha256 = semanticHash(headCore);
+    fs.writeFileSync(completedFirst.headPath, `${JSON.stringify(head, null, 2)}\n`, 'utf8');
+
+    const shutdown = JSON.parse(fs.readFileSync(shutdownFirst.receiptPath, 'utf8'));
+    shutdown.conversationHeadSha256 = head.conversationHeadSha256;
+    shutdown.eventHash = head.eventHash;
+    const { shutdownReceiptSha256: ignoredShutdownHash, ...shutdownCore } = shutdown;
+    shutdown.shutdownReceiptSha256 = semanticHash(shutdownCore);
+    fs.writeFileSync(shutdownFirst.receiptPath, `${JSON.stringify(shutdown, null, 2)}\n`, 'utf8');
+
+    await rejectsCode(async () => resumeLivedCompanionConversation({
+      ...home,
+      priorInstanceRef: first.instanceRef,
+      instanceRef: ref('instance.events.resume'),
+      threadRef: first.threadRef,
+      expectedConversationHeadSha256: head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.shutdownReceiptSha256
+    }), 'EVENT_CHAIN_CORRUPT');
+  } finally {
+    await service.close();
+  }
+});
+
 test('one atomic writer lease prevents concurrent thread forks and releases for retry', async () => {
   const service=await server();
   const home=makeHome('concurrent-writers');

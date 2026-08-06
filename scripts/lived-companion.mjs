@@ -437,6 +437,105 @@ async function proof() {
         'USE_EXISTING_TURN_EVIDENCE_OR_FORM_NEW_TURN_REF' &&
       recoveredNewTurn.state === 'TURN_COMPLETED';
 
+
+
+    const priorStateHome = makeHome(proofRoot, 'prior-state-continuity-home');
+    const priorStateThreadRef = ref('thread.vexlife.prior-state-continuity');
+    const priorStateCompleted = await performLivedCompanionTurn(baseTurn(
+      priorStateHome,
+      `http://127.0.0.1:${loopback.port}/ok/`,
+      {
+        instanceRef: ref('instance.vexlife.prior-state.completed'),
+        threadRef: priorStateThreadRef,
+        turnRef: ref('turn.vexlife.prior-state.completed')
+      }
+    ));
+    const priorStateCallsBefore = loopback.calls.length;
+    const corruptPriorEvent = findHeadEventFile(
+      priorStateHome.home,
+      priorStateHome.companionLineageRef,
+      priorStateThreadRef,
+      priorStateCompleted.head.eventHash
+    );
+    fs.unlinkSync(corruptPriorEvent);
+    const corruptPriorFailure = await expectFailure(
+      'EVENT_CHAIN_CORRUPT',
+      () => performLivedCompanionTurn(baseTurn(
+        priorStateHome,
+        `http://127.0.0.1:${loopback.port}/ok/`,
+        {
+          instanceRef: ref('instance.vexlife.prior-state.next'),
+          threadRef: priorStateThreadRef,
+          turnRef: ref('turn.vexlife.prior-state.next')
+        }
+      )),
+      'corrupt prior completed state before next turn'
+    );
+    typedFailureProofs.push(corruptPriorFailure);
+    negativeControls.priorCompletedStateCorruptionBlocked =
+      loopback.calls.length === priorStateCallsBefore &&
+      readJson(priorStateCompleted.headPath).conversationHeadSha256 ===
+        priorStateCompleted.head.conversationHeadSha256;
+
+    const duplicatePriorHome = makeHome(proofRoot, 'duplicate-prior-head-home');
+    const duplicatePriorThreadRef = ref('thread.vexlife.duplicate-prior-head');
+    const duplicatePriorCompleted = await performLivedCompanionTurn(baseTurn(
+      duplicatePriorHome,
+      `http://127.0.0.1:${loopback.port}/ok/`,
+      {
+        instanceRef: ref('instance.vexlife.duplicate-prior.completed'),
+        threadRef: duplicatePriorThreadRef,
+        turnRef: ref('turn.vexlife.duplicate-prior.completed')
+      }
+    ));
+    const duplicatePriorFailedInput = baseTurn(
+      duplicatePriorHome,
+      `http://127.0.0.1:${loopback.port}/http-error/`,
+      {
+        instanceRef: ref('instance.vexlife.duplicate-prior.failed'),
+        threadRef: duplicatePriorThreadRef,
+        turnRef: ref('turn.vexlife.duplicate-prior.failed')
+      }
+    );
+    const duplicatePriorFirstFailure = await expectFailure(
+      'ENDPOINT_HTTP_ERROR',
+      () => performLivedCompanionTurn(duplicatePriorFailedInput),
+      'failed turn with an existing validated prior head'
+    );
+    typedFailureProofs.push(duplicatePriorFirstFailure);
+    const duplicatePriorFirstBytes = fs.readFileSync(duplicatePriorFirstFailure.failureReceiptPath);
+    const duplicatePriorFirstReceipt = JSON.parse(duplicatePriorFirstBytes);
+    const duplicatePriorCallsBefore = loopback.calls.length;
+    const duplicatePriorFollowUp = await expectFailure(
+      'DUPLICATE_TURN_SUPPRESSED',
+      () => performLivedCompanionTurn({
+        ...duplicatePriorFailedInput,
+        instanceRef: ref('instance.vexlife.duplicate-prior.same-turn'),
+        requestMessageRef: ref('message.vexlife.duplicate-prior.same.request'),
+        responseMessageRef: ref('message.vexlife.duplicate-prior.same.response'),
+        endpointProfile: {
+          ...duplicatePriorFailedInput.endpointProfile,
+          endpoint: `http://127.0.0.1:${loopback.port}/ok/`
+        }
+      }),
+      'same-turn duplicate with an existing validated prior head'
+    );
+    typedFailureProofs.push(duplicatePriorFollowUp);
+    const duplicatePriorFollowUpReceipt = JSON.parse(
+      fs.readFileSync(duplicatePriorFollowUp.failureReceiptPath, 'utf8')
+    );
+    negativeControls.duplicateFollowUpRetainsLastValidHead =
+      loopback.calls.length === duplicatePriorCallsBefore &&
+      fs.readFileSync(duplicatePriorFirstFailure.failureReceiptPath).equals(duplicatePriorFirstBytes) &&
+      duplicatePriorFirstReceipt.lastValidHead?.conversationHeadSha256 ===
+        duplicatePriorCompleted.head.conversationHeadSha256 &&
+      duplicatePriorFirstReceipt.resumePossible === true &&
+      duplicatePriorFollowUpReceipt.lastValidHead?.conversationHeadSha256 ===
+        duplicatePriorCompleted.head.conversationHeadSha256 &&
+      duplicatePriorFollowUpReceipt.resumePossible === true &&
+      duplicatePriorFollowUpReceipt.exactNextSafeRoute ===
+        'USE_EXISTING_TURN_EVIDENCE_OR_RESUME_LAST_VALID_HEAD_AND_FORM_NEW_TURN_REF';
+
     const concurrentHome = makeHome(proofRoot, 'concurrent-writer-home');
     const concurrentThreadRef = ref('thread.vexlife.concurrent');
     const concurrentFirst = baseTurn(concurrentHome, `http://127.0.0.1:${loopback.port}/delay/`, {
@@ -943,6 +1042,127 @@ async function proof() {
     }), 'context substitution'));
     negativeControls.contextHashSubstitution = true;
 
+
+
+    const semanticHome = makeHome(proofRoot, 'semantic-state-home');
+    const semanticFirstTurn = baseTurn(semanticHome, `http://127.0.0.1:${loopback.port}/ok/`, {
+      instanceRef: ref('instance.vexlife.semantic.first'),
+      threadRef: ref('thread.vexlife.semantic.first'),
+      turnRef: ref('turn.vexlife.semantic.first')
+    });
+    const semanticSecondTurn = baseTurn(semanticHome, `http://127.0.0.1:${loopback.port}/ok/`, {
+      instanceRef: ref('instance.vexlife.semantic.second'),
+      threadRef: ref('thread.vexlife.semantic.second'),
+      turnRef: ref('turn.vexlife.semantic.second')
+    });
+    const semanticFirst = await performLivedCompanionTurn(semanticFirstTurn);
+    const semanticFirstShutdown = writeLivedCompanionShutdownReceipt({
+      ...semanticHome,
+      instanceRef: semanticFirstTurn.instanceRef,
+      threadRef: semanticFirstTurn.threadRef,
+      expectedConversationHeadSha256: semanticFirst.head.conversationHeadSha256
+    });
+    const semanticSecond = await performLivedCompanionTurn(semanticSecondTurn);
+
+    const crossContextHome = cloneHome(semanticHome.home, proofRoot, 'cross-thread-context-home');
+    const crossContextHeadPath = path.join(
+      crossContextHome,
+      'conversations',
+      semanticHome.companionLineageRef,
+      semanticFirstTurn.threadRef,
+      'head.json'
+    );
+    const crossContextHead = readJson(crossContextHeadPath);
+    crossContextHead.contextPath = semanticSecond.head.contextPath;
+    crossContextHead.contextSha256 = semanticSecond.head.contextSha256;
+    const { conversationHeadSha256: ignoredCrossContextHeadHash, ...crossContextHeadCore } = crossContextHead;
+    crossContextHead.conversationHeadSha256 = semanticHash(crossContextHeadCore);
+    writeJson(crossContextHeadPath, crossContextHead);
+    const crossContextShutdownPath = path.join(
+      crossContextHome,
+      'runtime',
+      semanticFirstTurn.instanceRef,
+      'shutdown-receipt.json'
+    );
+    const crossContextShutdown = readJson(crossContextShutdownPath);
+    crossContextShutdown.conversationHeadSha256 = crossContextHead.conversationHeadSha256;
+    crossContextShutdown.contextSha256 = crossContextHead.contextSha256;
+    const { shutdownReceiptSha256: ignoredCrossContextShutdownHash, ...crossContextShutdownCore } = crossContextShutdown;
+    crossContextShutdown.shutdownReceiptSha256 = semanticHash(crossContextShutdownCore);
+    writeJson(crossContextShutdownPath, crossContextShutdown);
+    typedFailureProofs.push(await expectFailure(
+      'CONTEXT_HASH_MISMATCH',
+      async () => resumeLivedCompanionConversation({
+        ...semanticHome,
+        home: crossContextHome,
+        priorInstanceRef: semanticFirstTurn.instanceRef,
+        instanceRef: ref('instance.vexlife.semantic.cross-context-resume'),
+        threadRef: semanticFirstTurn.threadRef,
+        expectedConversationHeadSha256: crossContextHead.conversationHeadSha256,
+        expectedShutdownReceiptSha256: crossContextShutdown.shutdownReceiptSha256
+      }),
+      'in-Home cross-thread context substitution'
+    ));
+    negativeControls.crossThreadContextSubstitutionRejected = true;
+
+    const crossEventHome = cloneHome(semanticHome.home, proofRoot, 'cross-thread-event-home');
+    const firstEventsDir = path.join(
+      crossEventHome,
+      'conversations',
+      semanticHome.companionLineageRef,
+      semanticFirstTurn.threadRef,
+      'events'
+    );
+    const secondEventsDir = path.join(
+      crossEventHome,
+      'conversations',
+      semanticHome.companionLineageRef,
+      semanticSecondTurn.threadRef,
+      'events'
+    );
+    for (const name of fs.readdirSync(secondEventsDir)) {
+      fs.copyFileSync(path.join(secondEventsDir, name), path.join(firstEventsDir, `substituted-${name}`));
+    }
+    const crossEventHeadPath = path.join(
+      crossEventHome,
+      'conversations',
+      semanticHome.companionLineageRef,
+      semanticFirstTurn.threadRef,
+      'head.json'
+    );
+    const crossEventHead = readJson(crossEventHeadPath);
+    crossEventHead.eventHash = semanticSecond.head.eventHash;
+    crossEventHead.sequence = semanticSecond.head.sequence;
+    const { conversationHeadSha256: ignoredCrossEventHeadHash, ...crossEventHeadCore } = crossEventHead;
+    crossEventHead.conversationHeadSha256 = semanticHash(crossEventHeadCore);
+    writeJson(crossEventHeadPath, crossEventHead);
+    const crossEventShutdownPath = path.join(
+      crossEventHome,
+      'runtime',
+      semanticFirstTurn.instanceRef,
+      'shutdown-receipt.json'
+    );
+    const crossEventShutdown = readJson(crossEventShutdownPath);
+    crossEventShutdown.conversationHeadSha256 = crossEventHead.conversationHeadSha256;
+    crossEventShutdown.eventHash = crossEventHead.eventHash;
+    const { shutdownReceiptSha256: ignoredCrossEventShutdownHash, ...crossEventShutdownCore } = crossEventShutdown;
+    crossEventShutdown.shutdownReceiptSha256 = semanticHash(crossEventShutdownCore);
+    writeJson(crossEventShutdownPath, crossEventShutdown);
+    typedFailureProofs.push(await expectFailure(
+      'EVENT_CHAIN_CORRUPT',
+      async () => resumeLivedCompanionConversation({
+        ...semanticHome,
+        home: crossEventHome,
+        priorInstanceRef: semanticFirstTurn.instanceRef,
+        instanceRef: ref('instance.vexlife.semantic.cross-event-resume'),
+        threadRef: semanticFirstTurn.threadRef,
+        expectedConversationHeadSha256: crossEventHead.conversationHeadSha256,
+        expectedShutdownReceiptSha256: crossEventShutdown.shutdownReceiptSha256
+      }),
+      'in-Home cross-thread event substitution'
+    ));
+    negativeControls.crossThreadEventSubstitutionRejected = true;
+
     const privacyHome = cloneHome(main.home, proofRoot, 'privacy-detection-home');
     const injectedSecret = `forbidden-secret-${crypto.randomUUID()}`;
     fs.writeFileSync(path.join(privacyHome, 'recovery', 'injected-secret.txt'), injectedSecret, 'utf8');
@@ -1008,6 +1228,11 @@ async function proof() {
         negativeControls.portableCanonicalRefGrammar &&
         negativeControls.canonicalStoredContextPath,
       failedTurnRecoveryEvidence: negativeControls.failedTurnRecoveryEvidence,
+      semanticStateContinuity:
+        negativeControls.priorCompletedStateCorruptionBlocked &&
+        negativeControls.duplicateFollowUpRetainsLastValidHead &&
+        negativeControls.crossThreadContextSubstitutionRejected &&
+        negativeControls.crossThreadEventSubstitutionRejected,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,

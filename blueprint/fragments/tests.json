@@ -808,6 +808,10 @@
     "brief": "A failed turn with durable request or response evidence routes to a new turnRef from the last valid head; same-turn retry performs zero additional HTTP calls, preserves the first failure receipt byte-identically, emits distinct content-addressed follow-up evidence, and a new-turn retry may complete."
   },
   {
+    "testRef": "test.lived-companion.semantic-state-continuity-and-recovery",
+    "brief": "Any existing completed head is semantically validated before duplicate classification, HTTP or append; its event chain and context bind the exact Home/device/lineage/thread/turn, corrupt prior state has zero new effects, duplicate follow-ups retain the validated last head, and in-Home cross-thread context/event substitutions fail closed."
+  },
+  {
     "testRef": "test.lived-companion.one-writer-per-thread",
     "brief": "One OS-atomic cross-process lease admits exactly one writer per Home/lineage/thread before endpoint or persistence effects; competitors fail typed, lease release permits later turns, and completed-turn retries remain duplicate-suppressed."
   },

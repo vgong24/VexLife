@@ -637,7 +637,7 @@ function existingEvents(eventsDirectory) {
     });
 }
 
-function assertNoDuplicateTurn(eventsDirectory, turnRef) {
+function assertNoDuplicateTurn(eventsDirectory, turnRef, lastValidHead = null) {
   const duplicate = existingEvents(eventsDirectory).find((event) => event.turnRef === turnRef);
   if (duplicate) {
     fail('DUPLICATE_TURN_SUPPRESSED', 'turnRef has already been recorded', {
@@ -646,14 +646,11 @@ function assertNoDuplicateTurn(eventsDirectory, turnRef) {
       eventKind: duplicate.eventKind,
       sequence: duplicate.sequence,
       existingEvidence: true,
-      exactNextSafeRoute: 'USE_EXISTING_TURN_EVIDENCE_OR_FORM_NEW_TURN_REF'
+      exactNextSafeRoute: lastValidHead
+        ? 'USE_EXISTING_TURN_EVIDENCE_OR_RESUME_LAST_VALID_HEAD_AND_FORM_NEW_TURN_REF'
+        : 'USE_EXISTING_TURN_EVIDENCE_OR_FORM_NEW_TURN_REF'
     });
   }
-}
-
-function previousHead(headPath) {
-  if (!fs.existsSync(headPath)) return null;
-  return verifyHead(readJson(headPath, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
 }
 
 function exactFailureRoute({ error, requestDurablyRecorded, responseDurablyRecorded, lastValidHead }) {
@@ -865,10 +862,16 @@ export async function performLivedCompanionTurn({
       fail('HOME_IDENTITY_MISMATCH', 'contextSourceRefs must be an array of non-empty refs');
     }
     const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
+    const priorState = validateCompletedConversationState({
+      home: identity.homeRoot,
+      admitted,
+      threadRef,
+      paths
+    });
+    lastValidHead = priorState.head;
     fs.mkdirSync(paths.events, { recursive: true });
     fs.mkdirSync(paths.context, { recursive: true });
-    assertNoDuplicateTurn(paths.events, turnRef);
-    lastValidHead = previousHead(paths.head);
+    assertNoDuplicateTurn(paths.events, turnRef, lastValidHead);
     const startingSequence = lastValidHead ? Number(lastValidHead.sequence) + 1 : 0;
     const requestCore = {
       schemaVersion: 'vexlife.lived-companion-event/v1',
@@ -981,8 +984,6 @@ export async function performLivedCompanionTurn({
       headPath: paths.head
     };
   } catch (error) {
-    const writerLeaseReleased = writerLease ? releaseThreadWriterLease(writerLease) : true;
-    writerLease = null;
     const typed = error instanceof LivedCompanionError
       ? error
       : new LivedCompanionError('PERSISTENCE_WRITE_FAILED', error.message || String(error));
@@ -996,12 +997,14 @@ export async function performLivedCompanionTurn({
       responseDurablyRecorded,
       lastValidHead: failureHead
     });
+    const writerLeaseReleased = writerLease ? releaseThreadWriterLease(writerLease) : true;
+    writerLease = null;
     typed.details = {
       ...(typed.details || {}),
       failureReceiptPath,
       requestDurablyRecorded,
       responseDurablyRecorded,
-      lastValidHeadSha256: lastValidHead?.conversationHeadSha256 ?? null,
+      lastValidHeadSha256: failureHead?.conversationHeadSha256 ?? null,
       writerLeaseReleased
     };
     throw typed;
@@ -1013,7 +1016,29 @@ function recomputeEventHash(event) {
   return contentHash(core);
 }
 
-function validateEventChain(eventsDirectory, headEventHash) {
+function assertEventIdentity(event, expected) {
+  if (!event || typeof event !== 'object' || Array.isArray(event)) {
+    fail('EVENT_CHAIN_CORRUPT', 'conversation event is invalid');
+  }
+  if (
+    event.schemaVersion !== 'vexlife.lived-companion-event/v1' ||
+    event.homeRef !== expected.homeRef ||
+    event.deviceRef !== expected.deviceRef ||
+    event.companionLineageRef !== expected.companionLineageRef ||
+    event.threadRef !== expected.threadRef ||
+    !Number.isSafeInteger(event.sequence) ||
+    event.sequence < 0 ||
+    !['REQUEST', 'RESPONSE'].includes(event.eventKind)
+  ) {
+    fail('EVENT_CHAIN_CORRUPT', 'conversation event identity does not match the admitted thread', {
+      eventHash: event.eventHash ?? null,
+      eventThreadRef: event.threadRef ?? null,
+      expectedThreadRef: expected.threadRef
+    });
+  }
+}
+
+function validateEventChain(eventsDirectory, headEventHash, expectedIdentity = null) {
   const events = existingEvents(eventsDirectory);
   const byHash = new Map(events.map((event) => [event.eventHash, event]));
   const chain = [];
@@ -1025,14 +1050,115 @@ function validateEventChain(eventsDirectory, headEventHash) {
     const event = byHash.get(cursor);
     if (!event) fail('EVENT_CHAIN_CORRUPT', 'event chain references a missing event', { eventHash: cursor });
     if (recomputeEventHash(event) !== event.eventHash) fail('EVENT_CHAIN_CORRUPT', 'event content hash does not match');
+    if (expectedIdentity) assertEventIdentity(event, expectedIdentity);
     chain.push(event);
     cursor = event.priorEventHash;
   }
   const chronological = chain.reverse();
   for (let index = 1; index < chronological.length; index += 1) {
-    if (chronological[index].sequence <= chronological[index - 1].sequence) fail('EVENT_CHAIN_CORRUPT', 'event sequence is not strictly increasing');
+    if (chronological[index].sequence !== chronological[index - 1].sequence + 1) {
+      fail('EVENT_CHAIN_CORRUPT', 'event sequence is not contiguous');
+    }
   }
   return chronological;
+}
+
+function validateCompletedConversationState({ home, admitted, threadRef, paths = null }) {
+  const safeThreadRef = ensureSafeRef(threadRef, 'threadRef');
+  const resolvedPaths = paths ?? homePaths(home, admitted.companionLineageRef, safeThreadRef);
+  if (!fs.existsSync(resolvedPaths.head)) {
+    return {
+      paths: resolvedPaths,
+      head: null,
+      chain: [],
+      contextRecord: null,
+      requestEvent: null,
+      responseEvent: null
+    };
+  }
+
+  const head = verifyHead(readJson(resolvedPaths.head, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
+  if (
+    head.schemaVersion !== 'vexlife.lived-companion-head/v1' ||
+    head.homeRef !== admitted.homeRef ||
+    head.deviceRef !== admitted.deviceRef ||
+    head.companionLineageRef !== admitted.companionLineageRef ||
+    head.threadRef !== safeThreadRef ||
+    ensureSafeRef(head.instanceRef, 'head.instanceRef', 'CONVERSATION_HEAD_MISMATCH') !== head.instanceRef ||
+    ensureSafeRef(head.turnRef, 'head.turnRef', 'CONVERSATION_HEAD_MISMATCH') !== head.turnRef ||
+    !Number.isSafeInteger(head.sequence) ||
+    head.sequence < 1 ||
+    !/^[0-9a-f]{64}$/u.test(head.eventHash ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(head.contextSha256 ?? '') ||
+    typeof head.contextPath !== 'string' ||
+    typeof head.requestMessageRef !== 'string' ||
+    head.requestMessageRef.length === 0 ||
+    typeof head.responseMessageRef !== 'string' ||
+    head.responseMessageRef.length === 0
+  ) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'conversation head identity does not match the admitted completed thread');
+  }
+
+  const expectedIdentity = {
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThreadRef
+  };
+  const chain = validateEventChain(resolvedPaths.events, head.eventHash, expectedIdentity);
+  if (chain.length < 2) fail('EVENT_CHAIN_CORRUPT', 'completed conversation head requires one request/response pair');
+  const responseEvent = chain.at(-1);
+  const requestEvent = chain.at(-2);
+  if (
+    responseEvent.eventKind !== 'RESPONSE' ||
+    requestEvent.eventKind !== 'REQUEST' ||
+    responseEvent.eventHash !== head.eventHash ||
+    responseEvent.sequence !== head.sequence ||
+    responseEvent.turnRef !== head.turnRef ||
+    requestEvent.turnRef !== head.turnRef ||
+    responseEvent.instanceRef !== head.instanceRef ||
+    requestEvent.instanceRef !== head.instanceRef ||
+    responseEvent.messageRef !== head.responseMessageRef ||
+    requestEvent.messageRef !== head.requestMessageRef ||
+    responseEvent.priorEventHash !== requestEvent.eventHash
+  ) {
+    fail('EVENT_CHAIN_CORRUPT', 'completed conversation head does not bind its exact request/response events');
+  }
+
+  const contextPath = resolveHomeRelativePath(home, head.contextPath);
+  if (!fs.existsSync(contextPath)) fail('CONTEXT_HASH_MISMATCH', 'bounded context record is missing');
+  const contextRecord = readJson(contextPath, 'CONTEXT_HASH_MISMATCH', 'bounded context record');
+  const { serializedContextSha256, ...contextCore } = contextRecord;
+  if (
+    !/^[0-9a-f]{64}$/u.test(serializedContextSha256 ?? '') ||
+    contentHash(contextCore) !== serializedContextSha256 ||
+    serializedContextSha256 !== head.contextSha256
+  ) {
+    fail('CONTEXT_HASH_MISMATCH', 'bounded context hash does not match the conversation head');
+  }
+  if (
+    contextRecord.schemaVersion !== 'vexlife.lived-companion-context/v1' ||
+    contextRecord.homeRef !== admitted.homeRef ||
+    contextRecord.deviceRef !== admitted.deviceRef ||
+    contextRecord.companionLineageRef !== admitted.companionLineageRef ||
+    contextRecord.threadRef !== safeThreadRef ||
+    contextRecord.turnRef !== head.turnRef ||
+    contextRecord.instanceRef !== head.instanceRef ||
+    contextRecord.requestEventHash !== requestEvent.eventHash ||
+    contextRecord.responseEventHash !== responseEvent.eventHash
+  ) {
+    fail('CONTEXT_HASH_MISMATCH', 'bounded context identity does not match the admitted head and event chain');
+  }
+
+  return {
+    paths: resolvedPaths,
+    head,
+    chain,
+    contextRecord,
+    contextPath,
+    requestEvent,
+    responseEvent
+  };
 }
 
 export function writeLivedCompanionShutdownReceipt({
@@ -1048,26 +1174,18 @@ export function writeLivedCompanionShutdownReceipt({
   ensureSafeRef(threadRef, 'threadRef');
   const identity = loadHome(home);
   const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
-  const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
-  if (!fs.existsSync(paths.head)) fail('CONVERSATION_HEAD_MISMATCH', 'conversation head is missing');
-  const head = verifyHead(readJson(paths.head, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
+  const state = validateCompletedConversationState({
+    home: identity.homeRoot,
+    admitted,
+    threadRef
+  });
+  const head = state.head;
+  if (!head) fail('CONVERSATION_HEAD_MISMATCH', 'conversation head is missing');
   if (
-    head.homeRef !== admitted.homeRef ||
-    head.deviceRef !== admitted.deviceRef ||
-    head.companionLineageRef !== admitted.companionLineageRef ||
-    head.threadRef !== threadRef ||
     head.instanceRef !== instanceRef ||
     head.conversationHeadSha256 !== expectedConversationHeadSha256
   ) {
     fail('CONVERSATION_HEAD_MISMATCH', 'shutdown identity/head does not match the completing instance');
-  }
-  validateEventChain(paths.events, head.eventHash);
-  const contextPath = resolveHomeRelativePath(identity.homeRoot, head.contextPath);
-  if (!fs.existsSync(contextPath)) fail('CONTEXT_HASH_MISMATCH', 'bounded context record is missing');
-  const contextRecord = readJson(contextPath, 'CONTEXT_HASH_MISMATCH', 'bounded context record');
-  const { serializedContextSha256, ...contextCore } = contextRecord;
-  if (contentHash(contextCore) !== serializedContextSha256 || serializedContextSha256 !== head.contextSha256) {
-    fail('CONTEXT_HASH_MISMATCH', 'bounded context hash does not match the conversation head');
   }
   const receiptCore = {
     schemaVersion: 'vexlife.lived-companion-shutdown-receipt/v1',
@@ -1108,14 +1226,14 @@ export function resumeLivedCompanionConversation({
   }
   const identity = loadHome(home);
   const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
-  const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
-  if (!fs.existsSync(paths.head)) fail('CONVERSATION_HEAD_MISMATCH', 'conversation head is missing');
-  const head = verifyHead(readJson(paths.head, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
+  const state = validateCompletedConversationState({
+    home: identity.homeRoot,
+    admitted,
+    threadRef
+  });
+  const head = state.head;
   if (
-    head.homeRef !== admitted.homeRef ||
-    head.deviceRef !== admitted.deviceRef ||
-    head.companionLineageRef !== admitted.companionLineageRef ||
-    head.threadRef !== threadRef ||
+    !head ||
     head.instanceRef !== priorInstanceRef ||
     head.conversationHeadSha256 !== expectedConversationHeadSha256
   ) {
@@ -1143,14 +1261,8 @@ export function resumeLivedCompanionConversation({
   ) {
     fail('CONVERSATION_HEAD_MISMATCH', 'shutdown receipt does not bind the exact completed head and prior instance');
   }
-  const chain = validateEventChain(paths.events, head.eventHash);
-  const contextPath = resolveHomeRelativePath(identity.homeRoot, head.contextPath);
-  if (!fs.existsSync(contextPath)) fail('CONTEXT_HASH_MISMATCH', 'bounded context record is missing');
-  const contextRecord = readJson(contextPath, 'CONTEXT_HASH_MISMATCH', 'bounded context record');
-  const { serializedContextSha256, ...contextCore } = contextRecord;
-  if (contentHash(contextCore) !== serializedContextSha256 || serializedContextSha256 !== head.contextSha256) {
-    fail('CONTEXT_HASH_MISMATCH', 'bounded context hash does not match the conversation head');
-  }
+  const chain = state.chain;
+  const contextRecord = state.contextRecord;
   const receiptCore = {
     schemaVersion: 'vexlife.lived-companion-resume-receipt/v1',
     homeRef: admitted.homeRef,
