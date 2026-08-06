@@ -516,6 +516,90 @@ test('duplicate turn is suppressed before a second HTTP call or append', async (
   } finally { await service.close(); }
 });
 
+
+test('failed turn routes to a new turn and preserves first failure evidence', async () => {
+  let calls = 0;
+  const service = http.createServer((request, response) => {
+    calls += 1;
+    request.resume();
+    if (calls === 1) {
+      response.statusCode = 500;
+      response.end('{}');
+      return;
+    }
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({
+      model: 'test-model',
+      choices: [{ message: { content: 'recovered reply' } }]
+    }));
+  });
+  await new Promise((resolve) => service.listen(0, '127.0.0.1', resolve));
+  const endpoint = `http://127.0.0.1:${service.address().port}/`;
+  const home = makeHome('failed-turn-recovery');
+  const input = turn(home, endpoint);
+  try {
+    let firstError = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(input),
+      (error) => {
+        firstError = error;
+        return error instanceof LivedCompanionError && error.code === 'ENDPOINT_HTTP_ERROR';
+      }
+    );
+    assert.equal(calls, 1);
+    const firstPath = firstError.details.failureReceiptPath;
+    const firstBytes = fs.readFileSync(firstPath);
+    const firstReceipt = JSON.parse(firstBytes);
+    assert.equal(firstReceipt.schemaVersion, 'vexlife.lived-companion-failure-receipt/v2');
+    assert.equal(firstReceipt.requestDurablyRecorded, true);
+    assert.equal(firstReceipt.retrySameTurnAllowed, false);
+    assert.equal(firstReceipt.exactNextSafeRoute, 'FORM_NEW_TURN_REF_AND_RETRY');
+    assert.match(firstReceipt.failureReceiptSha256, /^[0-9a-f]{64}$/u);
+
+    let duplicateError = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn({
+        ...input,
+        instanceRef: ref('instance.same-turn-retry'),
+        requestMessageRef: ref('message.request.retry'),
+        responseMessageRef: ref('message.response.retry')
+      }),
+      (error) => {
+        duplicateError = error;
+        return error instanceof LivedCompanionError && error.code === 'DUPLICATE_TURN_SUPPRESSED';
+      }
+    );
+    assert.equal(calls, 1);
+    assert.deepEqual(fs.readFileSync(firstPath), firstBytes);
+    const followUpPath = duplicateError.details.failureReceiptPath;
+    assert.notEqual(followUpPath, firstPath);
+    const followUp = JSON.parse(fs.readFileSync(followUpPath, 'utf8'));
+    assert.equal(followUp.followUpToFirstFailure, true);
+    assert.equal(
+      followUp.firstFailureReceiptFileSha256,
+      crypto.createHash('sha256').update(firstBytes).digest('hex')
+    );
+    assert.equal(followUp.retrySameTurnAllowed, false);
+    assert.equal(
+      followUp.exactNextSafeRoute,
+      'USE_EXISTING_TURN_EVIDENCE_OR_FORM_NEW_TURN_REF'
+    );
+    assert.equal(followUp.existingTurnEvidence.eventKind, 'REQUEST');
+
+    const recovered = await performLivedCompanionTurn({
+      ...input,
+      instanceRef: ref('instance.new-turn-retry'),
+      turnRef: ref('turn.new-retry'),
+      requestMessageRef: ref('message.request.new-retry'),
+      responseMessageRef: ref('message.response.new-retry')
+    });
+    assert.equal(recovered.state, 'TURN_COMPLETED');
+    assert.equal(calls, 2);
+  } finally {
+    await new Promise((resolve) => service.close(resolve));
+  }
+});
+
 test('one atomic writer lease prevents concurrent thread forks and releases for retry', async () => {
   const service=await server();
   const home=makeHome('concurrent-writers');

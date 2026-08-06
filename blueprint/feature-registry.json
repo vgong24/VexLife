@@ -1057,6 +1057,7 @@
         "test.lived-companion.endpoint-http-error",
         "test.lived-companion.endpoint-response-invalid",
         "test.lived-companion.duplicate-suppression",
+        "test.lived-companion.failed-turn-recovery-evidence",
         "test.lived-companion.one-writer-per-thread",
         "test.lived-companion.abandoned-writer-recovery-disposition",
         "test.lived-companion.unverifiable-writer-lease-disposition",

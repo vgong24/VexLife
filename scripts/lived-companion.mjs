@@ -374,6 +374,69 @@ async function proof() {
     })), 'duplicate turn'));
     negativeControls.duplicateTurnOrIdempotency = loopback.calls.length === duplicateCallsBefore;
 
+
+    const failedTurnHome = makeHome(proofRoot, 'failed-turn-recovery-home');
+    const failedTurnThreadRef = ref('thread.vexlife.failed-turn-recovery');
+    const failedTurnRef = ref('turn.vexlife.failed-turn-recovery');
+    const failedTurnInput = baseTurn(
+      failedTurnHome,
+      `http://127.0.0.1:${loopback.port}/http-error/`,
+      {
+        instanceRef: ref('instance.vexlife.failed-turn.initial'),
+        threadRef: failedTurnThreadRef,
+        turnRef: failedTurnRef
+      }
+    );
+    const failedTurnCallsBefore = loopback.calls.length;
+    const failedTurn = await expectFailure(
+      'ENDPOINT_HTTP_ERROR',
+      () => performLivedCompanionTurn(failedTurnInput),
+      'failed turn with durable request evidence'
+    );
+    typedFailureProofs.push(failedTurn);
+    const firstFailureBytes = fs.readFileSync(failedTurn.failureReceiptPath);
+    const firstFailureReceipt = JSON.parse(firstFailureBytes);
+    const sameTurnRetry = await expectFailure(
+      'DUPLICATE_TURN_SUPPRESSED',
+      () => performLivedCompanionTurn({
+        ...failedTurnInput,
+        instanceRef: ref('instance.vexlife.failed-turn.same-retry'),
+        requestMessageRef: ref('message.vexlife.failed-turn.same-retry.request'),
+        responseMessageRef: ref('message.vexlife.failed-turn.same-retry.response'),
+        endpointProfile: {
+          ...failedTurnInput.endpointProfile,
+          endpoint: `http://127.0.0.1:${loopback.port}/ok/`
+        }
+      }),
+      'same failed turn retry'
+    );
+    typedFailureProofs.push(sameTurnRetry);
+    const followUpFailureReceipt = JSON.parse(fs.readFileSync(sameTurnRetry.failureReceiptPath, 'utf8'));
+    const recoveredNewTurn = await performLivedCompanionTurn({
+      ...failedTurnInput,
+      instanceRef: ref('instance.vexlife.failed-turn.new-retry'),
+      turnRef: ref('turn.vexlife.failed-turn.new-retry'),
+      requestMessageRef: ref('message.vexlife.failed-turn.new-retry.request'),
+      responseMessageRef: ref('message.vexlife.failed-turn.new-retry.response'),
+      endpointProfile: {
+        ...failedTurnInput.endpointProfile,
+        endpoint: `http://127.0.0.1:${loopback.port}/ok/`
+      }
+    });
+    negativeControls.failedTurnRecoveryEvidence =
+      firstFailureReceipt.schemaVersion === 'vexlife.lived-companion-failure-receipt/v2' &&
+      firstFailureReceipt.requestDurablyRecorded === true &&
+      firstFailureReceipt.retrySameTurnAllowed === false &&
+      firstFailureReceipt.exactNextSafeRoute === 'FORM_NEW_TURN_REF_AND_RETRY' &&
+      loopback.calls.length === failedTurnCallsBefore + 2 &&
+      sameTurnRetry.failureReceiptPath !== failedTurn.failureReceiptPath &&
+      fs.readFileSync(failedTurn.failureReceiptPath).equals(firstFailureBytes) &&
+      followUpFailureReceipt.followUpToFirstFailure === true &&
+      followUpFailureReceipt.firstFailureReceiptFileSha256 === sha256Text(firstFailureBytes) &&
+      followUpFailureReceipt.exactNextSafeRoute ===
+        'USE_EXISTING_TURN_EVIDENCE_OR_FORM_NEW_TURN_REF' &&
+      recoveredNewTurn.state === 'TURN_COMPLETED';
+
     const concurrentHome = makeHome(proofRoot, 'concurrent-writer-home');
     const concurrentThreadRef = ref('thread.vexlife.concurrent');
     const concurrentFirst = baseTurn(concurrentHome, `http://127.0.0.1:${loopback.port}/delay/`, {
@@ -944,6 +1007,7 @@ async function proof() {
         negativeControls.linkedParentTurnRejected &&
         negativeControls.portableCanonicalRefGrammar &&
         negativeControls.canonicalStoredContextPath,
+      failedTurnRecoveryEvidence: negativeControls.failedTurnRecoveryEvidence,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,

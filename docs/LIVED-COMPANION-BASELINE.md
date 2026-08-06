@@ -33,6 +33,7 @@ for source application, repository publication, local proof, or recovery.
 <vexHome>/runtime/<instanceRef>/shutdown-receipt.json
 <vexHome>/recovery/<threadRef>/resume-receipt.json
 <vexHome>/recovery/<threadRef>/<turnRef>/failure-receipt.json
+<vexHome>/recovery/<threadRef>/<turnRef>/failure-receipt-<failureReceiptSha256>.json
 ```
 
 Events are append-only. A completed turn is visible only after the response, context,
@@ -60,6 +61,20 @@ NTFS alternate data stream, reserved device name, trailing-dot/space alias, or
 case-only collision. A requested Home may not traverse a symbolic-link or
 junction ancestor. Stored relative paths are always formed from the canonical
 Home root, never from a caller-provided alias.
+
+## Failed-turn recovery and evidence preservation
+
+A request event that is already durable makes the original `turnRef` consumed even
+when the endpoint or later persistence step fails. The failure receipt therefore
+sets `retrySameTurnAllowed=false` and routes to a new `turnRef` from the last valid
+head. Same-turn retries are duplicate-suppressed before another HTTP call and route
+to existing evidence or a new turn.
+
+The first `failure-receipt.json` for one thread/turn is immutable. Later failures
+for that same turn use distinct content-addressed
+`failure-receipt-<failureReceiptSha256>.json` files that bind the SHA-256 of the
+preserved first receipt. A follow-up failure never rewrites or relabels the first
+substantive failure.
 
 ## Identity and restart
 
@@ -107,8 +122,10 @@ PRIVACY_POLICY_BLOCKED
 ```
 
 Every failure receipt states whether request/response records were durable, the last
-valid head, whether resume remains possible, and the next safe route. Failures are not
-relabelled as successful companion turns.
+valid head, whether same-turn retry is admissible, whether resume remains possible,
+and the next safe route. First failure evidence is immutable; later same-turn failure
+receipts are content-addressed follow-ups. Failures are not relabelled as successful
+companion turns.
 
 ## Proof command
 
@@ -124,7 +141,8 @@ head tampering, context-path escape, concurrent cross-process writer contention,
 absent-owner lease classification, malformed/hash-invalid lease evidence, hostname
 alias rejection, loopback-to-non-loopback redirect rejection, partial/non-empty Home
 preservation, non-directory Home rejection, linked-root rejection, linked-parent alias rejection, portable Windows path-segment
-grammar, canonical stored-context paths, and empty-root admission. It does not start a personal model endpoint,
+grammar, canonical stored-context paths, failed-turn new-ref routing, immutable first-failure evidence,
+same-turn duplicate suppression with zero additional HTTP calls, and empty-root admission. It does not start a personal model endpoint,
 synchronize siblings, train, mutate weights, publish, review, approve, merge, or enter
 LC18.
 

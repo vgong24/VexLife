@@ -639,7 +639,16 @@ function existingEvents(eventsDirectory) {
 
 function assertNoDuplicateTurn(eventsDirectory, turnRef) {
   const duplicate = existingEvents(eventsDirectory).find((event) => event.turnRef === turnRef);
-  if (duplicate) fail('DUPLICATE_TURN_SUPPRESSED', 'turnRef has already been recorded', { turnRef, eventHash: duplicate.eventHash });
+  if (duplicate) {
+    fail('DUPLICATE_TURN_SUPPRESSED', 'turnRef has already been recorded', {
+      turnRef,
+      eventHash: duplicate.eventHash,
+      eventKind: duplicate.eventKind,
+      sequence: duplicate.sequence,
+      existingEvidence: true,
+      exactNextSafeRoute: 'USE_EXISTING_TURN_EVIDENCE_OR_FORM_NEW_TURN_REF'
+    });
+  }
 }
 
 function previousHead(headPath) {
@@ -647,13 +656,33 @@ function previousHead(headPath) {
   return verifyHead(readJson(headPath, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
 }
 
+function exactFailureRoute({ error, requestDurablyRecorded, responseDurablyRecorded, lastValidHead }) {
+  if (error.code === 'THREAD_WRITER_RECOVERY_REQUIRED') {
+    return 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED';
+  }
+  if (error.code === 'THREAD_WRITER_CONFLICT') {
+    return error.details?.exactNextSafeRoute ?? 'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY';
+  }
+  if (error.code === 'DUPLICATE_TURN_SUPPRESSED') {
+    return error.details?.exactNextSafeRoute ?? 'USE_EXISTING_TURN_EVIDENCE_OR_FORM_NEW_TURN_REF';
+  }
+  if (requestDurablyRecorded || responseDurablyRecorded) {
+    return lastValidHead
+      ? 'RESUME_LAST_VALID_HEAD_THEN_FORM_NEW_TURN_REF'
+      : 'FORM_NEW_TURN_REF_AND_RETRY';
+  }
+  return lastValidHead
+    ? 'RESUME_FROM_LAST_VALID_HEAD'
+    : 'INITIALIZE_OR_RETRY_WITH_ADMITTED_INPUTS';
+}
+
 function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRecorded, responseDurablyRecorded, lastValidHead }) {
   if (!home || !fs.existsSync(home)) return null;
   const safeThread = safeFailureSegment(threadRef || 'thread.unknown', 'thread.failure');
   const safeTurn = safeFailureSegment(turnRef || `turn.failure.${crypto.randomUUID()}`, 'turn.failure');
-  let receiptPath;
+  let canonicalReceiptPath;
   try {
-    receiptPath = resolveHomePath(home, 'recovery', safeThread, safeTurn, 'failure-receipt.json');
+    canonicalReceiptPath = resolveHomePath(home, 'recovery', safeThread, safeTurn, 'failure-receipt.json');
   } catch {
     return null;
   }
@@ -667,15 +696,26 @@ function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRe
         leaseValidationState: error.details?.leaseValidationState ?? null
       }
     : null;
-  const nextRoute = error.code === 'THREAD_WRITER_RECOVERY_REQUIRED'
-    ? 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED'
-    : error.code === 'THREAD_WRITER_CONFLICT'
-      ? (error.details?.exactNextSafeRoute ?? 'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY')
-      : lastValidHead
-        ? 'RESUME_FROM_LAST_VALID_HEAD'
-        : 'INITIALIZE_OR_RETRY_WITH_ADMITTED_INPUTS';
-  const receipt = {
-    schemaVersion: 'vexlife.lived-companion-failure-receipt/v1',
+  let firstFailureReceiptFileSha256 = null;
+  let followUpToFirstFailure = false;
+  try {
+    if (fs.existsSync(canonicalReceiptPath)) {
+      const stat = fs.lstatSync(canonicalReceiptPath);
+      if (stat.isSymbolicLink() || !stat.isFile()) return null;
+      firstFailureReceiptFileSha256 = fileSha256(canonicalReceiptPath);
+      followUpToFirstFailure = true;
+    }
+  } catch {
+    return null;
+  }
+  const nextRoute = exactFailureRoute({
+    error,
+    requestDurablyRecorded,
+    responseDurablyRecorded,
+    lastValidHead
+  });
+  const receiptCore = {
+    schemaVersion: 'vexlife.lived-companion-failure-receipt/v2',
     failureCode: error.code || 'PERSISTENCE_WRITE_FAILED',
     failureMessage: String(error.message || error).replace(/[?&](?:token|key|secret|authorization)=[^&\s]*/giu, '?redacted=true'),
     threadRef: safeThread,
@@ -688,10 +728,41 @@ function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRe
       sequence: lastValidHead.sequence
     } : null,
     resumePossible: Boolean(lastValidHead),
+    retrySameTurnAllowed:
+      error.code !== 'DUPLICATE_TURN_SUPPRESSED' &&
+      !requestDurablyRecorded &&
+      !responseDurablyRecorded,
     threadWriterLeaseDisposition: leaseDisposition,
+    existingTurnEvidence: error.code === 'DUPLICATE_TURN_SUPPRESSED'
+      ? {
+          eventHash: error.details?.eventHash ?? null,
+          eventKind: error.details?.eventKind ?? null,
+          sequence: error.details?.sequence ?? null
+        }
+      : null,
     exactNextSafeRoute: nextRoute,
+    followUpToFirstFailure,
+    firstFailureReceiptFileSha256,
     formedAt: new Date().toISOString()
   };
+  const receipt = {
+    ...receiptCore,
+    failureReceiptSha256: contentHash(receiptCore)
+  };
+  let receiptPath = canonicalReceiptPath;
+  if (followUpToFirstFailure) {
+    try {
+      receiptPath = resolveHomePath(
+        home,
+        'recovery',
+        safeThread,
+        safeTurn,
+        `failure-receipt-${receipt.failureReceiptSha256}.json`
+      );
+    } catch {
+      return null;
+    }
+  }
   try {
     atomicWriteJson(receiptPath, receipt);
     return receiptPath;

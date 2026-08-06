@@ -804,6 +804,10 @@
     "brief": "Duplicate turn identity is suppressed before a second call or append."
   },
   {
+    "testRef": "test.lived-companion.failed-turn-recovery-evidence",
+    "brief": "A failed turn with durable request or response evidence routes to a new turnRef from the last valid head; same-turn retry performs zero additional HTTP calls, preserves the first failure receipt byte-identically, emits distinct content-addressed follow-up evidence, and a new-turn retry may complete."
+  },
+  {
     "testRef": "test.lived-companion.one-writer-per-thread",
     "brief": "One OS-atomic cross-process lease admits exactly one writer per Home/lineage/thread before endpoint or persistence effects; competitors fail typed, lease release permits later turns, and completed-turn retries remain duplicate-suppressed."
   },
