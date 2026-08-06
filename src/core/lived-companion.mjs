@@ -172,11 +172,10 @@ function endpointRequestUrl(endpoint) {
 function homePaths(home, companionLineageRef, threadRef) {
   const lineage = ensureSafeRef(companionLineageRef, 'companionLineageRef');
   const thread = ensureSafeRef(threadRef, 'threadRef');
-  const threadRoot = resolveHomePath(home, 'conversations', lineage, thread);
   return {
     homeManifest: resolveHomePath(home, 'config', 'home.json'),
-    events: path.join(threadRoot, 'events'),
-    head: path.join(threadRoot, 'head.json'),
+    events: resolveHomePath(home, 'conversations', lineage, thread, 'events'),
+    head: resolveHomePath(home, 'conversations', lineage, thread, 'head.json'),
     context: resolveHomePath(home, 'context', lineage, thread),
     runtime: resolveHomePath(home, 'runtime'),
     recovery: resolveHomePath(home, 'recovery')
@@ -273,7 +272,20 @@ export function initializeLivedCompanionHome({
 }
 
 function eventPath(eventsDirectory, sequence, eventHash) {
-  return path.join(eventsDirectory, `${String(sequence).padStart(8, '0')}-${eventHash}.json`);
+  if (fs.existsSync(eventsDirectory)) {
+    const directoryStat = fs.lstatSync(eventsDirectory);
+    if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) {
+      fail('HOME_IDENTITY_MISMATCH', 'conversation events path must be one real directory inside Vex Home');
+    }
+  }
+  const file = path.join(eventsDirectory, `${String(sequence).padStart(8, '0')}-${eventHash}.json`);
+  if (fs.existsSync(file)) {
+    const fileStat = fs.lstatSync(file);
+    if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
+      fail('EVENT_CHAIN_CORRUPT', 'conversation event path must be one regular file');
+    }
+  }
+  return file;
 }
 
 function formEvent(core) {
@@ -307,9 +319,19 @@ function atomicWriteJson(file, value, { failBeforeRename = false } = {}) {
 
 function existingEvents(eventsDirectory) {
   if (!fs.existsSync(eventsDirectory)) return [];
-  return fs.readdirSync(eventsDirectory)
-    .filter((name) => name.endsWith('.json'))
-    .map((name) => readJson(path.join(eventsDirectory, name), 'EVENT_CHAIN_CORRUPT', 'conversation event'));
+  const directoryStat = fs.lstatSync(eventsDirectory);
+  if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) {
+    fail('HOME_IDENTITY_MISMATCH', 'conversation events path must be one real directory inside Vex Home');
+  }
+  return fs.readdirSync(eventsDirectory, { withFileTypes: true })
+    .filter((entry) => entry.name.endsWith('.json'))
+    .map((entry) => {
+      const file = path.join(eventsDirectory, entry.name);
+      if (entry.isSymbolicLink() || !entry.isFile() || fs.lstatSync(file).isSymbolicLink()) {
+        fail('EVENT_CHAIN_CORRUPT', 'conversation event entry must be one regular non-symlink file', { file });
+      }
+      return readJson(file, 'EVENT_CHAIN_CORRUPT', 'conversation event');
+    });
 }
 
 function assertNoDuplicateTurn(eventsDirectory, turnRef) {

@@ -38,7 +38,9 @@ Events are append-only. A completed turn is visible only after the response, con
 and atomic head are durable. A failed endpoint or persistence attempt leaves the last
 completed head unchanged. Every identity used as a filesystem segment is validated as
 one safe segment, every derived path remains inside the canonical Vex Home, and existing
-symbolic-link traversal is rejected before reading or writing.
+symbolic-link or junction traversal is rejected before reading or writing. Conversation
+event directories must be real directories, and event entries must be regular,
+non-symlink files before they may affect duplicate detection or event-chain replay.
 
 ## Identity and restart
 

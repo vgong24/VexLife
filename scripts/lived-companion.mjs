@@ -289,6 +289,23 @@ async function proof() {
     })), 'non-loopback endpoint'));
     negativeControls.nonLoopbackEndpoint = true;
 
+    const linkedEventsHome = makeHome(proofRoot, 'linked-events-home');
+    const linkedEventsTurn = baseTurn(linkedEventsHome, endpoint);
+    const linkedThreadRoot = path.join(
+      linkedEventsHome.home,
+      'conversations',
+      linkedEventsHome.companionLineageRef,
+      linkedEventsTurn.threadRef
+    );
+    const outsideEvents = path.join(proofRoot, 'outside-events-directory');
+    fs.mkdirSync(linkedThreadRoot, { recursive: true });
+    fs.mkdirSync(outsideEvents, { recursive: true });
+    const linkedEventsPath = path.join(linkedThreadRoot, 'events');
+    fs.symlinkSync(outsideEvents, linkedEventsPath, process.platform === 'win32' ? 'junction' : 'dir');
+    const linkedCallsBefore = loopback.calls.length;
+    typedFailureProofs.push(await expectFailure('HOME_IDENTITY_MISMATCH', () => performLivedCompanionTurn(linkedEventsTurn), 'event directory symlink or junction'));
+    negativeControls.eventDirectorySymlink = fs.readdirSync(outsideEvents).length === 0 && loopback.calls.length === linkedCallsBefore;
+
     const closedPort = await closedLoopbackPort();
     typedFailureProofs.push(await expectFailure('ENDPOINT_UNREACHABLE', () => performLivedCompanionTurn(baseTurn(makeHome(proofRoot, 'unreachable-home'), `http://127.0.0.1:${closedPort}/`)), 'unreachable endpoint'));
     negativeControls.unreachableEndpoint = true;

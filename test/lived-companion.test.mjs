@@ -87,6 +87,38 @@ test('path-bearing identity refs cannot escape the admitted Vex Home', () => {
   assert.equal(fs.existsSync(path.join(root, 'outside', 'device.json')), false);
 });
 
+test('event directory symlink or junction cannot escape Vex Home writes', async () => {
+  const service = await server();
+  const home = makeHome('event-directory-link');
+  const input = turn(home, service.endpoint());
+  const threadRoot = path.join(home.home, 'conversations', home.companionLineageRef, input.threadRef);
+  const outside = temp('outside-events');
+  fs.mkdirSync(threadRoot, { recursive: true });
+  fs.symlinkSync(outside, path.join(threadRoot, 'events'), process.platform === 'win32' ? 'junction' : 'dir');
+  try {
+    await rejectsCode(() => performLivedCompanionTurn(input), 'HOME_IDENTITY_MISMATCH');
+    assert.deepEqual(fs.readdirSync(outside), []);
+    assert.equal(service.calls(), 0);
+  } finally { await service.close(); }
+});
+
+test('symlinked event entries cannot influence duplicate or event-chain reads', {
+  skip: process.platform === 'win32' ? 'file-symlink coverage runs in the hosted Linux foundation job' : false
+}, async () => {
+  const service = await server();
+  const home = makeHome('event-entry-link');
+  const input = turn(home, service.endpoint());
+  const events = path.join(home.home, 'conversations', home.companionLineageRef, input.threadRef, 'events');
+  const outside = path.join(temp('outside-event-entry'), 'external.json');
+  fs.mkdirSync(events, { recursive: true });
+  fs.writeFileSync(outside, JSON.stringify({ turnRef: input.turnRef, eventHash: 'external-controlled' }));
+  fs.symlinkSync(outside, path.join(events, 'external.json'), 'file');
+  try {
+    await rejectsCode(() => performLivedCompanionTurn(input), 'EVENT_CHAIN_CORRUPT');
+    assert.equal(service.calls(), 0);
+  } finally { await service.close(); }
+});
+
 test('existing Home is preserved and requires migration', async () => {
   const value = makeHome('existing');
   await rejectsCode(async () => initializeLivedCompanionHome(value), 'EXISTING_HOME_REQUIRES_MIGRATION_PLAN');
