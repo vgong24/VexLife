@@ -808,6 +808,10 @@
     "brief": "A failed turn with durable request or response evidence routes to a new turnRef from the last valid head; same-turn retry performs zero additional HTTP calls, preserves the first failure receipt byte-identically, emits distinct content-addressed follow-up evidence, and a new-turn retry may complete."
   },
   {
+    "testRef": "test.lived-companion.credential-and-failure-evidence-integrity",
+    "brief": "The exact in-memory authorization value is rejected before request or hostile echoed-response persistence; canonical first failure receipts are OS-atomically no-clobber claimed, validated before follow-up provenance, and corrupted first-failure evidence cannot be promoted as trusted."
+  },
+  {
     "testRef": "test.lived-companion.semantic-state-continuity-and-recovery",
     "brief": "Any existing completed head is semantically validated before duplicate classification, HTTP or append; every consulted event is content/address/provenance-validated, completed history is genesis-anchored into exact REQUEST/RESPONSE pairs, canonical context location/source refs are enforced, forged orphan duplicate evidence is rejected, absent-writer recovery exposes only a semantically valid last head, duplicate follow-ups retain that validated head, and in-Home cross-thread/turn substitutions fail closed."
   },

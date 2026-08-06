@@ -70,10 +70,16 @@ sets `retrySameTurnAllowed=false` and routes to a new `turnRef` from the last va
 head. Same-turn retries are duplicate-suppressed before another HTTP call and route
 to existing evidence or a new turn.
 
-The first `failure-receipt.json` for one thread/turn is immutable. Later failures
-for that same turn use distinct content-addressed
+The first `failure-receipt.json` for one thread/turn is immutable. Its canonical
+path is claimed with an OS-atomic no-clobber create, including conflict failures
+that cannot own the active thread writer lease. If the canonical first receipt
+already exists, its own content-addressed hash, schema, thread/turn identity and
+first-receipt semantics are validated before it may become follow-up provenance.
+A corrupted first receipt fails closed and is never legitimized by a later receipt.
+Later valid failures for that same turn use distinct content-addressed
 `failure-receipt-<failureReceiptSha256>.json` files that bind the SHA-256 of the
-preserved first receipt. A follow-up failure never rewrites or relabels the first
+validated preserved first receipt. Idempotent equal follow-ups may reuse the same
+content-addressed path. A follow-up failure never rewrites or relabels the first
 substantive failure.
 
 ## Semantic completed-state validation
@@ -112,9 +118,10 @@ turn. They preserve truthful `lastValidHead`, `resumePossible`, and next-route
 provenance instead of making an existing valid head appear absent. For an
 absent-owner writer lease, `lastValidHead` is exposed only if the same semantic
 completed-state verifier succeeds; a merely content-addressed but corrupt head is
-never advertised as resumable. Failure evidence for one turn remains serialized
-while the exact thread writer lease is held, preventing parallel same-turn
-failures from racing the canonical first-failure receipt.
+never advertised as resumable. Failure evidence formed while a turn owns the writer
+lease remains inside that lease. Conflict/recovery failures that cannot own the active
+lease instead use the same OS-atomic no-clobber canonical first-receipt claim, so
+parallel same-turn failures cannot race an overwrite of the canonical first failure.
 
 ## Identity and restart
 
@@ -132,10 +139,13 @@ G01 accepts numeric loopback endpoint literals only (`127.0.0.1` or `::1`). A
 caller-provided profile, hostname alias, redirect, or boolean cannot widen that
 boundary. G01 rejects every HTTP redirect before following it; non-loopback or personal
 endpoint use requires a separately admitted future adapter outside this baseline.
-Credentials may be consumed only from an in-memory binding. The persisted record
-contains the admitted numeric loopback origin and model/profile identity, never raw
-tokens, authorization headers, URL queries, passwords, redirect targets, or model
-binaries.
+Credentials may be consumed only from an in-memory binding. The exact in-memory
+authorization value is checked before request persistence and again against the
+validated endpoint response before response persistence, so neither accidental
+request inclusion nor a hostile loopback endpoint echo can serialize that credential.
+The persisted record contains the admitted numeric loopback origin and model/profile
+identity, never raw tokens, authorization headers, URL queries, passwords, redirect
+targets, or model binaries.
 
 ## Typed safe failures
 

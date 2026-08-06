@@ -136,8 +136,8 @@
     {
       "path": "test/lived-companion.test.mjs",
       "mode": "100644",
-      "bytes": 61200,
-      "sha256": "26dac1b1e4da8f3c4405c456f854cb999588bd65196f1c55da33e4edd1594d84"
+      "bytes": 68123,
+      "sha256": "7195b99a5c326b37249077b45984d3dedcbd56e7b3f0c6070f16859b24ef4833"
     },
     {
       "path": "test/model-provision.test.mjs",

@@ -681,38 +681,73 @@ function exactFailureRoute({ error, requestDurablyRecorded, responseDurablyRecor
     : 'INITIALIZE_OR_RETRY_WITH_ADMITTED_INPUTS';
 }
 
-function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRecorded, responseDurablyRecorded, lastValidHead }) {
-  if (!home || !fs.existsSync(home)) return null;
-  const safeThread = safeFailureSegment(threadRef || 'thread.unknown', 'thread.failure');
-  const safeTurn = safeFailureSegment(turnRef || `turn.failure.${crypto.randomUUID()}`, 'turn.failure');
-  let canonicalReceiptPath;
+function writeJsonExclusive(file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  let descriptor = null;
   try {
-    canonicalReceiptPath = resolveHomePath(home, 'recovery', safeThread, safeTurn, 'failure-receipt.json');
-  } catch {
-    return null;
-  }
-  const leaseDisposition = ['THREAD_WRITER_CONFLICT', 'THREAD_WRITER_RECOVERY_REQUIRED'].includes(error.code)
-    ? {
-        ownerInstanceRef: error.details?.ownerInstanceRef ?? null,
-        ownerPid: error.details?.ownerPid ?? null,
-        ownerState: error.details?.ownerState ?? 'UNKNOWN',
-        leaseSha256: error.details?.leaseSha256 ?? null,
-        observedLeaseFileSha256: error.details?.observedLeaseFileSha256 ?? null,
-        leaseValidationState: error.details?.leaseValidationState ?? null
-      }
-    : null;
-  let firstFailureReceiptFileSha256 = null;
-  let followUpToFirstFailure = false;
-  try {
-    if (fs.existsSync(canonicalReceiptPath)) {
-      const stat = fs.lstatSync(canonicalReceiptPath);
-      if (stat.isSymbolicLink() || !stat.isFile()) return null;
-      firstFailureReceiptFileSha256 = fileSha256(canonicalReceiptPath);
-      followUpToFirstFailure = true;
+    descriptor = fs.openSync(file, 'wx', 0o600);
+    fs.writeFileSync(descriptor, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+    fs.fsyncSync(descriptor);
+    fs.closeSync(descriptor);
+    return 'CREATED';
+  } catch (error) {
+    if (descriptor !== null) {
+      try { fs.closeSync(descriptor); } catch {}
     }
-  } catch {
-    return null;
+    if (error?.code === 'EEXIST') return 'EXISTS';
+    throw error;
   }
+}
+
+function verifyCanonicalFirstFailureReceipt(value, safeThread, safeTurn) {
+  const receipt = verifyContentAddressedReceipt(
+    value,
+    'failureReceiptSha256',
+    'PERSISTENCE_WRITE_FAILED',
+    'first failure receipt'
+  );
+  const validLastHead =
+    receipt.lastValidHead === null ||
+    (
+      receipt.lastValidHead &&
+      /^[0-9a-f]{64}$/u.test(receipt.lastValidHead.conversationHeadSha256 ?? '') &&
+      /^[0-9a-f]{64}$/u.test(receipt.lastValidHead.eventHash ?? '') &&
+      Number.isSafeInteger(receipt.lastValidHead.sequence) &&
+      receipt.lastValidHead.sequence >= 1
+    );
+  if (
+    receipt.schemaVersion !== 'vexlife.lived-companion-failure-receipt/v2' ||
+    !LIVED_COMPANION_FAILURE_CODES.includes(receipt.failureCode) ||
+    !isNonEmptyString(receipt.failureMessage) ||
+    receipt.threadRef !== safeThread ||
+    receipt.turnRef !== safeTurn ||
+    typeof receipt.requestDurablyRecorded !== 'boolean' ||
+    typeof receipt.responseDurablyRecorded !== 'boolean' ||
+    typeof receipt.resumePossible !== 'boolean' ||
+    typeof receipt.retrySameTurnAllowed !== 'boolean' ||
+    receipt.followUpToFirstFailure !== false ||
+    receipt.firstFailureReceiptFileSha256 !== null ||
+    !isNonEmptyString(receipt.exactNextSafeRoute) ||
+    !isNonEmptyString(receipt.formedAt) ||
+    !validLastHead ||
+    receipt.resumePossible !== Boolean(receipt.lastValidHead)
+  ) {
+    fail('PERSISTENCE_WRITE_FAILED', 'canonical first failure receipt semantics are invalid');
+  }
+  return receipt;
+}
+
+function formFailureReceipt({
+  safeThread,
+  safeTurn,
+  error,
+  requestDurablyRecorded,
+  responseDurablyRecorded,
+  lastValidHead,
+  leaseDisposition,
+  followUpToFirstFailure,
+  firstFailureReceiptFileSha256
+}) {
   const nextRoute = exactFailureRoute({
     error,
     requestDurablyRecorded,
@@ -750,29 +785,138 @@ function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRe
     firstFailureReceiptFileSha256,
     formedAt: new Date().toISOString()
   };
-  const receipt = {
+  return {
     ...receiptCore,
     failureReceiptSha256: contentHash(receiptCore)
   };
-  let receiptPath = canonicalReceiptPath;
-  if (followUpToFirstFailure) {
-    try {
-      receiptPath = resolveHomePath(
-        home,
-        'recovery',
-        safeThread,
-        safeTurn,
-        `failure-receipt-${receipt.failureReceiptSha256}.json`
-      );
-    } catch {
-      return null;
-    }
-  }
+}
+
+function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRecorded, responseDurablyRecorded, lastValidHead }) {
+  const unavailable = (state) => ({
+    failureReceiptPath: null,
+    failureEvidenceIntegrityState: state
+  });
+  if (!home || !fs.existsSync(home)) return unavailable('HOME_UNAVAILABLE');
+  const safeThread = safeFailureSegment(threadRef || 'thread.unknown', 'thread.failure');
+  const safeTurn = safeFailureSegment(turnRef || `turn.failure.${crypto.randomUUID()}`, 'turn.failure');
+  let canonicalReceiptPath;
   try {
-    atomicWriteJson(receiptPath, receipt);
-    return receiptPath;
+    canonicalReceiptPath = resolveHomePath(home, 'recovery', safeThread, safeTurn, 'failure-receipt.json');
   } catch {
-    return null;
+    return unavailable('FAILURE_PATH_UNAVAILABLE');
+  }
+  const leaseDisposition = ['THREAD_WRITER_CONFLICT', 'THREAD_WRITER_RECOVERY_REQUIRED'].includes(error.code)
+    ? {
+        ownerInstanceRef: error.details?.ownerInstanceRef ?? null,
+        ownerPid: error.details?.ownerPid ?? null,
+        ownerState: error.details?.ownerState ?? 'UNKNOWN',
+        leaseSha256: error.details?.leaseSha256 ?? null,
+        observedLeaseFileSha256: error.details?.observedLeaseFileSha256 ?? null,
+        leaseValidationState: error.details?.leaseValidationState ?? null
+      }
+    : null;
+
+  const firstReceipt = formFailureReceipt({
+    safeThread,
+    safeTurn,
+    error,
+    requestDurablyRecorded,
+    responseDurablyRecorded,
+    lastValidHead,
+    leaseDisposition,
+    followUpToFirstFailure: false,
+    firstFailureReceiptFileSha256: null
+  });
+
+  let firstWriteState;
+  try {
+    firstWriteState = writeJsonExclusive(canonicalReceiptPath, firstReceipt);
+  } catch {
+    return unavailable('FIRST_FAILURE_WRITE_FAILED');
+  }
+  if (firstWriteState === 'CREATED') {
+    return {
+      failureReceiptPath: canonicalReceiptPath,
+      failureEvidenceIntegrityState: 'FIRST_FAILURE_ATOMICALLY_FORMED'
+    };
+  }
+
+  let existingFirst;
+  let firstFailureReceiptFileSha256;
+  try {
+    const stat = fs.lstatSync(canonicalReceiptPath);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      return unavailable('CORRUPT_EXISTING_FIRST_FAILURE_RECEIPT');
+    }
+    existingFirst = verifyCanonicalFirstFailureReceipt(
+      readJson(canonicalReceiptPath, 'PERSISTENCE_WRITE_FAILED', 'first failure receipt'),
+      safeThread,
+      safeTurn
+    );
+    firstFailureReceiptFileSha256 = fileSha256(canonicalReceiptPath);
+  } catch {
+    return unavailable('CORRUPT_EXISTING_FIRST_FAILURE_RECEIPT');
+  }
+
+  const receipt = formFailureReceipt({
+    safeThread,
+    safeTurn,
+    error,
+    requestDurablyRecorded,
+    responseDurablyRecorded,
+    lastValidHead,
+    leaseDisposition,
+    followUpToFirstFailure: true,
+    firstFailureReceiptFileSha256
+  });
+  let receiptPath;
+  try {
+    receiptPath = resolveHomePath(
+      home,
+      'recovery',
+      safeThread,
+      safeTurn,
+      `failure-receipt-${receipt.failureReceiptSha256}.json`
+    );
+    const followWriteState = writeJsonExclusive(receiptPath, receipt);
+    if (followWriteState === 'EXISTS') {
+      const existing = verifyContentAddressedReceipt(
+        readJson(receiptPath, 'PERSISTENCE_WRITE_FAILED', 'failure follow-up receipt'),
+        'failureReceiptSha256',
+        'PERSISTENCE_WRITE_FAILED',
+        'failure follow-up receipt'
+      );
+      if (
+        existing.failureReceiptSha256 !== receipt.failureReceiptSha256 ||
+        existing.followUpToFirstFailure !== true ||
+        existing.firstFailureReceiptFileSha256 !== firstFailureReceiptFileSha256 ||
+        existing.threadRef !== safeThread ||
+        existing.turnRef !== safeTurn
+      ) {
+        return unavailable('FOLLOW_UP_RECEIPT_COLLISION');
+      }
+      return {
+        failureReceiptPath: receiptPath,
+        failureEvidenceIntegrityState: 'FOLLOW_UP_IDEMPOTENTLY_REUSED'
+      };
+    }
+    return {
+      failureReceiptPath: receiptPath,
+      failureEvidenceIntegrityState: 'FOLLOW_UP_CONTENT_ADDRESSED_FORMED'
+    };
+  } catch {
+    return unavailable('FOLLOW_UP_WRITE_FAILED');
+  }
+}
+
+
+function assertInMemoryAuthorizationNotPersisted(value, inMemoryAuthorization, label) {
+  if (inMemoryAuthorization === null || inMemoryAuthorization === undefined) return;
+  if (typeof inMemoryAuthorization !== 'string' || inMemoryAuthorization.length === 0) {
+    fail('PRIVACY_POLICY_BLOCKED', 'in-memory authorization must be one non-empty string when provided');
+  }
+  if (typeof value === 'string' && value.includes(inMemoryAuthorization)) {
+    fail('PRIVACY_POLICY_BLOCKED', `${label} contains the exact in-memory authorization value`);
   }
 }
 
@@ -869,6 +1013,7 @@ export async function performLivedCompanionTurn({
     if (!Array.isArray(contextSourceRefs) || contextSourceRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
       fail('HOME_IDENTITY_MISMATCH', 'contextSourceRefs must be an array of non-empty refs');
     }
+    assertInMemoryAuthorizationNotPersisted(content, inMemoryAuthorization, 'request content');
     const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
     const priorState = validateCompletedConversationState({
       home: identity.homeRoot,
@@ -912,6 +1057,7 @@ export async function performLivedCompanionTurn({
     requestDurablyRecorded = true;
 
     const response = await callEndpoint({ endpointProfile, requestContent: content, inMemoryAuthorization, timeoutMs });
+    assertInMemoryAuthorizationNotPersisted(response.content, inMemoryAuthorization, 'endpoint response');
     const responseCore = {
       schemaVersion: 'vexlife.lived-companion-event/v1',
       eventRef: `event.vexlife.response.${crypto.randomUUID()}`,
@@ -1001,7 +1147,7 @@ export async function performLivedCompanionTurn({
       ? error
       : new LivedCompanionError('PERSISTENCE_WRITE_FAILED', error.message || String(error));
     const failureHead = lastValidHead ?? typed.details?.lastValidHead ?? null;
-    const failureReceiptPath = writeFailureReceipt({
+    const failureEvidence = writeFailureReceipt({
       home: canonicalHome ?? home,
       threadRef,
       turnRef,
@@ -1014,7 +1160,8 @@ export async function performLivedCompanionTurn({
     writerLease = null;
     typed.details = {
       ...(typed.details || {}),
-      failureReceiptPath,
+      failureReceiptPath: failureEvidence.failureReceiptPath,
+      failureEvidenceIntegrityState: failureEvidence.failureEvidenceIntegrityState,
       requestDurablyRecorded,
       responseDurablyRecorded,
       lastValidHeadSha256: failureHead?.conversationHeadSha256 ?? null,

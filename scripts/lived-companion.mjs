@@ -157,6 +157,13 @@ async function startLoopbackServer(redirectTargetUrl) {
       }, 300);
       return;
     }
+    if (url.pathname.startsWith('/echo-authorization/')) {
+      send(200, JSON.stringify({
+        model: 'echo-authorization',
+        choices: [{ message: { content: request.headers.authorization || '' } }]
+      }));
+      return;
+    }
     if (url.pathname.startsWith('/http-error/')) {
       send(503, JSON.stringify({ error: 'bounded proof error' }));
       return;
@@ -246,7 +253,8 @@ async function expectFailure(code, operation, label) {
       label,
       requestDurablyRecorded: error.details?.requestDurablyRecorded ?? false,
       responseDurablyRecorded: error.details?.responseDurablyRecorded ?? false,
-      failureReceiptPath: error.details?.failureReceiptPath ?? null
+      failureReceiptPath: error.details?.failureReceiptPath ?? null,
+      failureEvidenceIntegrityState: error.details?.failureEvidenceIntegrityState ?? null
     };
   }
   throw new Error(`${label} did not fail with ${code}`);
@@ -363,6 +371,44 @@ async function proof() {
     const privacy = assertNoSensitivePersistence(main.home, [secretAuthorization, secretQuery]);
     negativeControls.secretHeaderQueryLeakage = privacy.secretLeakCount === 0;
 
+    const requestSecretHome = makeHome(proofRoot, 'request-secret-home');
+    const requestSecretCallsBefore = loopback.calls.length;
+    const requestSecretFailure = await expectFailure(
+      'PRIVACY_POLICY_BLOCKED',
+      () => performLivedCompanionTurn(baseTurn(
+        requestSecretHome,
+        `http://127.0.0.1:${loopback.port}/ok/`,
+        {
+          content: `do not persist ${secretAuthorization}`,
+          inMemoryAuthorization: secretAuthorization
+        }
+      )),
+      'exact in-memory authorization in request content'
+    );
+    typedFailureProofs.push(requestSecretFailure);
+    negativeControls.inMemoryAuthorizationRequestBlocked =
+      loopback.calls.length === requestSecretCallsBefore &&
+      requestSecretFailure.requestDurablyRecorded === false &&
+      assertNoSensitivePersistence(requestSecretHome.home, [secretAuthorization]).secretLeakCount === 0;
+
+    const echoSecretHome = makeHome(proofRoot, 'echo-secret-home');
+    const echoSecretCallsBefore = loopback.calls.length;
+    const echoSecretFailure = await expectFailure(
+      'PRIVACY_POLICY_BLOCKED',
+      () => performLivedCompanionTurn(baseTurn(
+        echoSecretHome,
+        `http://127.0.0.1:${loopback.port}/echo-authorization/`,
+        { inMemoryAuthorization: secretAuthorization }
+      )),
+      'loopback endpoint echoes exact in-memory authorization'
+    );
+    typedFailureProofs.push(echoSecretFailure);
+    negativeControls.inMemoryAuthorizationEchoBlocked =
+      loopback.calls.length === echoSecretCallsBefore + 1 &&
+      echoSecretFailure.requestDurablyRecorded === true &&
+      echoSecretFailure.responseDurablyRecorded === false &&
+      assertNoSensitivePersistence(echoSecretHome.home, [secretAuthorization]).secretLeakCount === 0;
+
     const duplicateCallsBefore = loopback.calls.length;
     typedFailureProofs.push(await expectFailure('DUPLICATE_TURN_SUPPRESSED', () => performLivedCompanionTurn(baseTurn(main, endpoint, {
       instanceRef: initialInstanceRef,
@@ -437,7 +483,96 @@ async function proof() {
         'USE_EXISTING_TURN_EVIDENCE_OR_FORM_NEW_TURN_REF' &&
       recoveredNewTurn.state === 'TURN_COMPLETED';
 
+    const tamperedFailureHome = makeHome(proofRoot, 'tampered-first-failure-home');
+    const tamperedFailureInput = baseTurn(
+      tamperedFailureHome,
+      `http://127.0.0.1:${loopback.port}/http-error/`
+    );
+    const tamperedFirstFailure = await expectFailure(
+      'ENDPOINT_HTTP_ERROR',
+      () => performLivedCompanionTurn(tamperedFailureInput),
+      'form first failure before tamper'
+    );
+    typedFailureProofs.push(tamperedFirstFailure);
+    const tamperedFirstReceipt = readJson(tamperedFirstFailure.failureReceiptPath);
+    tamperedFirstReceipt.failureCode = 'FORGED_FAILURE_CODE';
+    writeJson(tamperedFirstFailure.failureReceiptPath, tamperedFirstReceipt);
+    const tamperedRetryCallsBefore = loopback.calls.length;
+    const tamperedFollowFailure = await expectFailure(
+      'DUPLICATE_TURN_SUPPRESSED',
+      () => performLivedCompanionTurn({
+        ...tamperedFailureInput,
+        instanceRef: ref('instance.vexlife.tampered-first-failure.retry'),
+        requestMessageRef: ref('message.vexlife.tampered-first-failure.retry.request'),
+        responseMessageRef: ref('message.vexlife.tampered-first-failure.retry.response'),
+        endpointProfile: {
+          ...tamperedFailureInput.endpointProfile,
+          endpoint: `http://127.0.0.1:${loopback.port}/ok/`
+        }
+      }),
+      'tampered first failure cannot become follow-up provenance'
+    );
+    typedFailureProofs.push(tamperedFollowFailure);
+    negativeControls.tamperedFirstFailureReceiptRejected =
+      loopback.calls.length === tamperedRetryCallsBefore &&
+      tamperedFollowFailure.failureReceiptPath === null &&
+      tamperedFollowFailure.failureEvidenceIntegrityState ===
+        'CORRUPT_EXISTING_FIRST_FAILURE_RECEIPT' &&
+      fs.readdirSync(path.dirname(tamperedFirstFailure.failureReceiptPath))
+        .filter((name) => name.startsWith('failure-receipt')).length === 1;
 
+    const noClobberHome = makeHome(proofRoot, 'failure-receipt-no-clobber-home');
+    const noClobberThreadRef = ref('thread.vexlife.failure-receipt-no-clobber');
+    const noClobberOwner = baseTurn(
+      noClobberHome,
+      `http://127.0.0.1:${loopback.port}/delay/`,
+      {
+        threadRef: noClobberThreadRef,
+        instanceRef: ref('instance.vexlife.failure-receipt.owner'),
+        turnRef: ref('turn.vexlife.failure-receipt.owner')
+      }
+    );
+    const noClobberContenderRef = ref('turn.vexlife.failure-receipt.contender');
+    const ownerPromise = performLivedCompanionTurn(noClobberOwner);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const firstConflict = await expectFailure(
+      'THREAD_WRITER_CONFLICT',
+      () => performLivedCompanionTurn(baseTurn(
+        noClobberHome,
+        `http://127.0.0.1:${loopback.port}/ok/`,
+        {
+          threadRef: noClobberThreadRef,
+          instanceRef: ref('instance.vexlife.failure-receipt.contender.one'),
+          turnRef: noClobberContenderRef
+        }
+      )),
+      'first contender claims canonical conflict failure'
+    );
+    typedFailureProofs.push(firstConflict);
+    const conflictFirstBytes = fs.readFileSync(firstConflict.failureReceiptPath);
+    const secondConflict = await expectFailure(
+      'THREAD_WRITER_CONFLICT',
+      () => performLivedCompanionTurn(baseTurn(
+        noClobberHome,
+        `http://127.0.0.1:${loopback.port}/ok/`,
+        {
+          threadRef: noClobberThreadRef,
+          instanceRef: ref('instance.vexlife.failure-receipt.contender.two'),
+          turnRef: noClobberContenderRef
+        }
+      )),
+      'second contender forms content-addressed conflict follow-up'
+    );
+    typedFailureProofs.push(secondConflict);
+    const secondConflictReceipt = readJson(secondConflict.failureReceiptPath);
+    const noClobberOwnerCompleted = await ownerPromise;
+    negativeControls.atomicFirstFailureReceiptClaim =
+      firstConflict.failureEvidenceIntegrityState === 'FIRST_FAILURE_ATOMICALLY_FORMED' &&
+      /^FOLLOW_UP_(?:CONTENT_ADDRESSED_FORMED|IDEMPOTENTLY_REUSED)$/u
+        .test(secondConflict.failureEvidenceIntegrityState || '') &&
+      fs.readFileSync(firstConflict.failureReceiptPath).equals(conflictFirstBytes) &&
+      secondConflictReceipt.firstFailureReceiptFileSha256 === sha256Text(conflictFirstBytes) &&
+      noClobberOwnerCompleted.state === 'TURN_COMPLETED';
 
     const priorStateHome = makeHome(proofRoot, 'prior-state-continuity-home');
     const priorStateThreadRef = ref('thread.vexlife.prior-state-continuity');
@@ -1555,6 +1690,12 @@ async function proof() {
         negativeControls.canonicalContextProvenance &&
         negativeControls.duplicateEvidenceValidated &&
         negativeControls.abandonedWriterUsesSemanticLastHead,
+      credentialPersistenceBoundary:
+        negativeControls.inMemoryAuthorizationRequestBlocked &&
+        negativeControls.inMemoryAuthorizationEchoBlocked,
+      failureEvidencePublicationIntegrity:
+        negativeControls.tamperedFirstFailureReceiptRejected &&
+        negativeControls.atomicFirstFailureReceiptClaim,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,
