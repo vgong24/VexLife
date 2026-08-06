@@ -800,6 +800,10 @@
     "brief": "Duplicate turn identity is suppressed before a second call or append."
   },
   {
+    "testRef": "test.lived-companion.one-writer-per-thread",
+    "brief": "One OS-atomic cross-process lease admits exactly one writer per Home/lineage/thread before endpoint or persistence effects; competitors fail typed, lease release permits later turns, and completed-turn retries remain duplicate-suppressed."
+  },
+  {
     "testRef": "test.lived-companion.atomic-head",
     "brief": "Response, context, and atomic head must all be durable before completion."
   },

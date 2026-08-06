@@ -18,6 +18,7 @@ export const LIVED_COMPANION_FAILURE_CODES = Object.freeze([
   'EVENT_CHAIN_CORRUPT',
   'CONTEXT_HASH_MISMATCH',
   'DUPLICATE_TURN_SUPPRESSED',
+  'THREAD_WRITER_CONFLICT',
   'PRIVACY_POLICY_BLOCKED'
 ]);
 
@@ -125,6 +126,66 @@ function safeFailureSegment(value, prefix) {
     return ensureSafeRef(value, prefix);
   } catch {
     return `${prefix}.invalid.${contentHash(String(value)).slice(0, 16)}`;
+  }
+}
+
+function acquireThreadWriterLease(home, companionLineageRef, threadRef, instanceRef) {
+  const root = canonicalHomeRoot(home);
+  const lineage = ensureSafeRef(companionLineageRef, 'companionLineageRef');
+  const thread = ensureSafeRef(threadRef, 'threadRef');
+  const instance = ensureSafeRef(instanceRef, 'instanceRef');
+  const lockDirectory = resolveHomePath(root, 'runtime', 'thread-writer-locks', lineage);
+  fs.mkdirSync(lockDirectory, { recursive: true });
+  const lockPath = resolveHomePath(root, 'runtime', 'thread-writer-locks', lineage, `${thread}.lock`);
+  const lockToken = crypto.randomUUID();
+  const lease = {
+    schemaVersion: 'vexlife.thread-writer-lease/v1',
+    companionLineageRef: lineage,
+    threadRef: thread,
+    instanceRef: instance,
+    lockToken,
+    pid: process.pid,
+    formedAt: new Date().toISOString()
+  };
+  let descriptor = null;
+  try {
+    descriptor = fs.openSync(lockPath, 'wx', 0o600);
+    fs.writeFileSync(descriptor, `${JSON.stringify(lease, null, 2)}\n`, 'utf8');
+    fs.fsyncSync(descriptor);
+  } catch (error) {
+    if (descriptor !== null) {
+      try { fs.closeSync(descriptor); } catch {}
+    }
+    if (error?.code === 'EEXIST') {
+      fail('THREAD_WRITER_CONFLICT', 'another writer already holds the exact thread lease', {
+        companionLineageRef: lineage,
+        threadRef: thread
+      });
+    }
+    try {
+      if (fs.existsSync(lockPath) && !fs.lstatSync(lockPath).isSymbolicLink()) {
+        const observed = readJson(lockPath, 'PERSISTENCE_WRITE_FAILED', 'thread writer lease');
+        if (observed.lockToken === lockToken) fs.unlinkSync(lockPath);
+      }
+    } catch {}
+    fail('PERSISTENCE_WRITE_FAILED', 'thread writer lease could not be acquired', { cause: error.message });
+  }
+  return { descriptor, lockPath, lockToken, companionLineageRef: lineage, threadRef: thread };
+}
+
+function releaseThreadWriterLease(lease) {
+  if (!lease) return true;
+  try { fs.closeSync(lease.descriptor); } catch {}
+  try {
+    if (!fs.existsSync(lease.lockPath)) return false;
+    const stat = fs.lstatSync(lease.lockPath);
+    if (stat.isSymbolicLink() || !stat.isFile()) return false;
+    const observed = JSON.parse(fs.readFileSync(lease.lockPath, 'utf8'));
+    if (observed.lockToken !== lease.lockToken) return false;
+    fs.unlinkSync(lease.lockPath);
+    return !fs.existsSync(lease.lockPath);
+  } catch {
+    return false;
   }
 }
 
@@ -451,12 +512,14 @@ export async function performLivedCompanionTurn({
   let requestDurablyRecorded = false;
   let responseDurablyRecorded = false;
   let lastValidHead = null;
+  let writerLease = null;
   try {
     const identity = loadHome(home);
     const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
     ensureSafeRef(instanceRef, 'instanceRef');
     ensureSafeRef(threadRef, 'threadRef');
     ensureSafeRef(turnRef, 'turnRef');
+    writerLease = acquireThreadWriterLease(identity.homeRoot, admitted.companionLineageRef, threadRef, instanceRef);
     for (const [name, value] of Object.entries({ channelRef, requestMessageRef, responseMessageRef, speakerRef, content })) ensureString(value, name);
     if (!Array.isArray(recipientRefs) || recipientRefs.length === 0 || recipientRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
       fail('HOME_IDENTITY_MISMATCH', 'recipientRefs must contain at least one non-empty ref');
@@ -561,8 +624,15 @@ export async function performLivedCompanionTurn({
     };
     const head = formHead(headCore);
     atomicWriteJson(paths.head, head, { failBeforeRename: faults.persistenceFailureBeforeHead === true });
+    lastValidHead = head;
+    const writerLeaseReleased = releaseThreadWriterLease(writerLease);
+    writerLease = null;
+    if (!writerLeaseReleased) {
+      fail('PERSISTENCE_WRITE_FAILED', 'thread writer lease could not be released after completion');
+    }
     return {
       state: 'TURN_COMPLETED',
+      writerLeaseReleased,
       actualHttpCall: true,
       loopbackOnly: isLoopbackHost(new URL(endpointProfile.endpoint).hostname),
       requestDurablyRecorded,
@@ -574,11 +644,20 @@ export async function performLivedCompanionTurn({
       headPath: paths.head
     };
   } catch (error) {
+    const writerLeaseReleased = writerLease ? releaseThreadWriterLease(writerLease) : true;
+    writerLease = null;
     const typed = error instanceof LivedCompanionError
       ? error
       : new LivedCompanionError('PERSISTENCE_WRITE_FAILED', error.message || String(error));
     const failureReceiptPath = writeFailureReceipt({ home, threadRef, turnRef, error: typed, requestDurablyRecorded, responseDurablyRecorded, lastValidHead });
-    typed.details = { ...(typed.details || {}), failureReceiptPath, requestDurablyRecorded, responseDurablyRecorded, lastValidHeadSha256: lastValidHead?.conversationHeadSha256 ?? null };
+    typed.details = {
+      ...(typed.details || {}),
+      failureReceiptPath,
+      requestDurablyRecorded,
+      responseDurablyRecorded,
+      lastValidHeadSha256: lastValidHead?.conversationHeadSha256 ?? null,
+      writerLeaseReleased
+    };
     throw typed;
   }
 }

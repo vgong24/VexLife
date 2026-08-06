@@ -41,6 +41,7 @@ async function server() {
     request.resume();
     const pathname = new URL(request.url, 'http://127.0.0.1').pathname;
     if (pathname.startsWith('/timeout/')) return setTimeout(() => { if (!response.destroyed) response.end(JSON.stringify({ choices: [{ message: { content: 'late' } }] })); }, 500);
+    if (pathname.startsWith('/delay/')) return setTimeout(() => { if (!response.destroyed) { response.setHeader('content-type', 'application/json'); response.end(JSON.stringify({ model: 'test-model', choices: [{ message: { content: 'delayed reply' } }] })); } }, 120);
     if (pathname.startsWith('/http-error/')) { response.statusCode = 500; return response.end('{}'); }
     if (pathname.startsWith('/invalid/')) return response.end(JSON.stringify({ choices: [] }));
     response.setHeader('content-type', 'application/json');
@@ -62,8 +63,8 @@ async function rejectsCode(operation, code) {
 }
 
 test('failure vocabulary contains every required typed failure', () => {
-  assert.equal(LIVED_COMPANION_FAILURE_CODES.length, 15);
-  assert.equal(new Set(LIVED_COMPANION_FAILURE_CODES).size, 15);
+  assert.equal(LIVED_COMPANION_FAILURE_CODES.length, 16);
+  assert.equal(new Set(LIVED_COMPANION_FAILURE_CODES).size, 16);
 });
 
 test('fresh proof Home forms one explicit device and lineage identity', () => {
@@ -210,6 +211,40 @@ test('duplicate turn is suppressed before a second HTTP call or append', async (
     await performLivedCompanionTurn(input); const calls=service.calls();
     await rejectsCode(()=>performLivedCompanionTurn({...input,requestMessageRef:ref('request'),responseMessageRef:ref('response')}),'DUPLICATE_TURN_SUPPRESSED');
     assert.equal(service.calls(),calls);
+  } finally { await service.close(); }
+});
+
+test('one atomic writer lease prevents concurrent thread forks and releases for retry', async () => {
+  const service=await server();
+  const home=makeHome('concurrent-writers');
+  const threadRef=ref('thread.concurrent');
+  const first=turn(home,service.endpoint('delay'),{threadRef,instanceRef:ref('instance.first'),turnRef:ref('turn.first')});
+  const second=turn(home,service.endpoint('delay'),{threadRef,instanceRef:ref('instance.second'),turnRef:ref('turn.second')});
+  try {
+    const results=await Promise.allSettled([
+      performLivedCompanionTurn(first),
+      performLivedCompanionTurn(second)
+    ]);
+    const completed=results.filter((result)=>result.status==='fulfilled');
+    const rejected=results.filter((result)=>result.status==='rejected');
+    assert.equal(completed.length,1);
+    assert.equal(rejected.length,1);
+    assert.equal(rejected[0].reason.code,'THREAD_WRITER_CONFLICT');
+    assert.equal(service.calls(),1);
+
+    const events=path.join(home.home,'conversations',home.companionLineageRef,threadRef,'events');
+    assert.equal(fs.readdirSync(events).filter((name)=>name.endsWith('.json')).length,2);
+    const head=JSON.parse(fs.readFileSync(path.join(home.home,'conversations',home.companionLineageRef,threadRef,'head.json'),'utf8'));
+    assert.equal(head.conversationHeadSha256,completed[0].value.head.conversationHeadSha256);
+
+    const losingInput=results[0].status==='rejected'?first:second;
+    const retried=await performLivedCompanionTurn({...losingInput,endpointProfile:{...losingInput.endpointProfile,endpoint:service.endpoint()}});
+    assert.equal(retried.state,'TURN_COMPLETED');
+    assert.equal(service.calls(),2);
+
+    const winningInput=results[0].status==='fulfilled'?first:second;
+    await rejectsCode(()=>performLivedCompanionTurn({...winningInput,endpointProfile:{...winningInput.endpointProfile,endpoint:service.endpoint()},requestMessageRef:ref('request.retry'),responseMessageRef:ref('response.retry')}),'DUPLICATE_TURN_SUPPRESSED');
+    assert.equal(service.calls(),2);
   } finally { await service.close(); }
 });
 

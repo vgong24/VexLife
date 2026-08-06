@@ -142,8 +142,8 @@
     {
       "path": "scripts/lived-companion.mjs",
       "mode": "100644",
-      "bytes": 23871,
-      "sha256": "f5cfabc7b5e42100c29d86d54cd64fc3b6c1a8e01dfa0b15968d886df116227e"
+      "bytes": 30316,
+      "sha256": "909fcfc1fb4ae179cf4ba0ee3cd77efb64bc341e019d2c30b32da0d4bfa90081"
     }
   ]
 }

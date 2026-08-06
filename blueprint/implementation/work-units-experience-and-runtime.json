@@ -334,6 +334,7 @@
       "test.lived-companion.endpoint-http-error",
       "test.lived-companion.endpoint-response-invalid",
       "test.lived-companion.duplicate-suppression",
+      "test.lived-companion.one-writer-per-thread",
       "test.lived-companion.atomic-head",
       "test.lived-companion.clean-shutdown",
       "test.lived-companion.fresh-process-resume",
@@ -346,7 +347,7 @@
       "proof.vexlife.g01.lived-companion.windows"
     ],
     "effectBoundary": "DEVICE_PRIVATE_LOOPBACK_HTTP_AND_LOCAL_FILESYSTEM_ONLY",
-    "completionGate": "actual HTTP turn, immutable records, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
+    "completionGate": "actual HTTP turn, immutable records, one OS-atomic writer per thread, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
     "platformRefs": [
       "platform.windows"
     ],

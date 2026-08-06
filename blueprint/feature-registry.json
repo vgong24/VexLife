@@ -1054,6 +1054,7 @@
         "test.lived-companion.endpoint-http-error",
         "test.lived-companion.endpoint-response-invalid",
         "test.lived-companion.duplicate-suppression",
+        "test.lived-companion.one-writer-per-thread",
         "test.lived-companion.atomic-head",
         "test.lived-companion.clean-shutdown",
         "test.lived-companion.fresh-process-resume",

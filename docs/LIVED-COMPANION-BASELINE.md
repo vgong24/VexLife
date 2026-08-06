@@ -29,6 +29,7 @@ for source application, repository publication, local proof, or recovery.
 <vexHome>/conversations/<companionLineageRef>/<threadRef>/events/<sequence>-<eventHash>.json
 <vexHome>/conversations/<companionLineageRef>/<threadRef>/head.json
 <vexHome>/context/<companionLineageRef>/<threadRef>/<turnRef>.json
+<vexHome>/runtime/thread-writer-locks/<companionLineageRef>/<threadRef>.lock
 <vexHome>/runtime/<instanceRef>/shutdown-receipt.json
 <vexHome>/recovery/<threadRef>/resume-receipt.json
 <vexHome>/recovery/<threadRef>/<turnRef>/failure-receipt.json
@@ -40,7 +41,7 @@ completed head unchanged. Every identity used as a filesystem segment is validat
 one safe segment, every derived path remains inside the canonical Vex Home, and existing
 symbolic-link or junction traversal is rejected before reading or writing. Conversation
 event directories must be real directories, and event entries must be regular,
-non-symlink files before they may affect duplicate detection or event-chain replay.
+non-symlink files before they may affect duplicate detection or event-chain replay. One atomic cross-process writer lease is held for the complete read → HTTP → append → context → head transaction of each thread; a competing writer fails before endpoint use or persistence.
 
 ## Identity and restart
 
@@ -80,6 +81,7 @@ CONVERSATION_HEAD_MISMATCH
 EVENT_CHAIN_CORRUPT
 CONTEXT_HASH_MISMATCH
 DUPLICATE_TURN_SUPPRESSED
+THREAD_WRITER_CONFLICT
 PRIVACY_POLICY_BLOCKED
 ```
 
@@ -97,7 +99,7 @@ The proof uses a bounded loopback HTTP server, writes an immutable turn, creates
 instance-bound shutdown receipt, launches a fresh Node process for exact receipt-bound
 resume, and exercises all typed negative controls. Adversarial coverage includes path
 escape, caller-authored non-loopback admission, forged shutdown/prior-instance lineage,
-head tampering, and context-path escape. It does not start a personal model endpoint,
+head tampering, context-path escape, and concurrent cross-process writer contention. It does not start a personal model endpoint,
 synchronize siblings, train, mutate weights, publish, review, approve, merge, or enter
 LC18.
 

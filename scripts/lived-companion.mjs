@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import process from 'node:process';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   LIVED_COMPANION_FAILURE_CODES,
@@ -59,6 +59,12 @@ async function startLoopbackServer() {
       setTimeout(() => {
         if (!response.destroyed) send(200, JSON.stringify({ model: 'timeout', choices: [{ message: { content: 'late' } }] }));
       }, 1000);
+      return;
+    }
+    if (url.pathname.startsWith('/delay/')) {
+      setTimeout(() => {
+        if (!response.destroyed) send(200, JSON.stringify({ model: 'bounded-loopback-proof', choices: [{ message: { content: 'delayed bounded reply' } }] }));
+      }, 300);
       return;
     }
     if (url.pathname.startsWith('/http-error/')) {
@@ -183,6 +189,28 @@ async function runResumeChild(input, outputPath) {
   return readJson(outputPath);
 }
 
+async function runTurnChild(input, outputPath) {
+  const inputPath = `${outputPath}.input.json`;
+  writeJson(inputPath, input);
+  return await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [fileURLToPath(import.meta.url), 'turn-proof'], {
+      cwd: ROOT,
+      env: { ...process.env, VEXLIFE_G01_TURN_INPUT: inputPath, VEXLIFE_G01_TURN_OUTPUT: outputPath },
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.once('error', reject);
+    child.once('close', (code) => {
+      if (code !== 0) return reject(new Error(`turn child failed: ${stderr || stdout || `exit ${code}`}`));
+      try { resolve(readJson(outputPath)); }
+      catch (error) { reject(error); }
+    });
+  });
+}
+
 async function proof() {
   const proofRoot = path.resolve(process.env.VEXLIFE_G01_PROOF_HOME || path.join(os.tmpdir(), `vexlife-g01-proof-${process.pid}`));
   const receiptPath = path.resolve(process.env.VEXLIFE_G01_PROOF_RECEIPT || path.join(proofRoot, 'g01-lived-companion-windows-proof.json'));
@@ -251,6 +279,85 @@ async function proof() {
       responseMessageRef: ref('message.duplicate.response')
     })), 'duplicate turn'));
     negativeControls.duplicateTurnOrIdempotency = loopback.calls.length === duplicateCallsBefore;
+
+    const concurrentHome = makeHome(proofRoot, 'concurrent-writer-home');
+    const concurrentThreadRef = ref('thread.vexlife.concurrent');
+    const concurrentFirst = baseTurn(concurrentHome, `http://127.0.0.1:${loopback.port}/delay/`, {
+      instanceRef: ref('instance.vexlife.concurrent.first'),
+      threadRef: concurrentThreadRef,
+      turnRef: ref('turn.vexlife.concurrent.first')
+    });
+    const concurrentSecond = baseTurn(concurrentHome, `http://127.0.0.1:${loopback.port}/delay/`, {
+      instanceRef: ref('instance.vexlife.concurrent.second'),
+      threadRef: concurrentThreadRef,
+      turnRef: ref('turn.vexlife.concurrent.second')
+    });
+    const concurrentCallsBefore = loopback.calls.length;
+    const concurrentOutputs = await Promise.all([
+      runTurnChild(concurrentFirst, path.join(proofRoot, 'concurrent-first-output.json')),
+      runTurnChild(concurrentSecond, path.join(proofRoot, 'concurrent-second-output.json'))
+    ]);
+    const concurrentCompleted = concurrentOutputs.filter((value) => value.state === 'COMPLETED');
+    const concurrentRejected = concurrentOutputs.filter((value) => value.state === 'FAILED');
+    if (
+      concurrentCompleted.length !== 1 ||
+      concurrentRejected.length !== 1 ||
+      concurrentRejected[0].failureCode !== 'THREAD_WRITER_CONFLICT'
+    ) {
+      throw new Error(`cross-process writer proof was not one completion plus one conflict: ${JSON.stringify(concurrentOutputs)}`);
+    }
+    typedFailureProofs.push({
+      failureCode: 'THREAD_WRITER_CONFLICT',
+      label: 'cross-process competing thread writer',
+      requestDurablyRecorded: concurrentRejected[0].requestDurablyRecorded ?? false,
+      responseDurablyRecorded: concurrentRejected[0].responseDurablyRecorded ?? false,
+      failureReceiptPath: concurrentRejected[0].failureReceiptPath ?? null
+    });
+    const concurrentEvents = path.join(
+      concurrentHome.home,
+      'conversations',
+      concurrentHome.companionLineageRef,
+      concurrentThreadRef,
+      'events'
+    );
+    const concurrentEventFiles = fs.readdirSync(concurrentEvents).filter((name) => name.endsWith('.json'));
+    const concurrentHead = readJson(path.join(
+      concurrentHome.home,
+      'conversations',
+      concurrentHome.companionLineageRef,
+      concurrentThreadRef,
+      'head.json'
+    ));
+    negativeControls.concurrentWriterConflict =
+      concurrentRejected[0].failureCode === 'THREAD_WRITER_CONFLICT';
+    negativeControls.singleWriterEndpointCall =
+      loopback.calls.length === concurrentCallsBefore + 1;
+    negativeControls.singleWriterEventPair =
+      concurrentEventFiles.length === 2 &&
+      concurrentHead.conversationHeadSha256 === concurrentCompleted[0].conversationHeadSha256;
+
+    const losingInput = concurrentOutputs[0].state === 'FAILED' ? concurrentFirst : concurrentSecond;
+    const winningInput = concurrentOutputs[0].state === 'COMPLETED' ? concurrentFirst : concurrentSecond;
+    const retriedAfterRelease = await performLivedCompanionTurn({
+      ...losingInput,
+      endpointProfile: {
+        ...losingInput.endpointProfile,
+        endpoint: `http://127.0.0.1:${loopback.port}/ok/`
+      }
+    });
+    negativeControls.writerLeaseReleaseRetry = retriedAfterRelease.state === 'TURN_COMPLETED';
+    const duplicateAfterCompletionCalls = loopback.calls.length;
+    typedFailureProofs.push(await expectFailure('DUPLICATE_TURN_SUPPRESSED', () => performLivedCompanionTurn({
+      ...winningInput,
+      requestMessageRef: ref('message.vexlife.concurrent.duplicate.request'),
+      responseMessageRef: ref('message.vexlife.concurrent.duplicate.response'),
+      endpointProfile: {
+        ...winningInput.endpointProfile,
+        endpoint: `http://127.0.0.1:${loopback.port}/ok/`
+      }
+    }), 'post-completion concurrent winner duplicate'));
+    negativeControls.postCompletionDuplicateSuppressed =
+      loopback.calls.length === duplicateAfterCompletionCalls;
 
     const emptyHome = path.join(proofRoot, 'empty-home');
     fs.mkdirSync(emptyHome, { recursive: true });
@@ -482,6 +589,12 @@ async function proof() {
       shutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256,
       resumeReceiptSha256: resumed.receipt.resumeReceiptSha256,
       shutdownReceiptBoundToResume: resumed.receipt.shutdownReceiptSha256 === shutdown.receipt.shutdownReceiptSha256,
+      oneWriterPerThread:
+        negativeControls.concurrentWriterConflict &&
+        negativeControls.singleWriterEndpointCall &&
+        negativeControls.singleWriterEventPair &&
+        negativeControls.writerLeaseReleaseRetry &&
+        negativeControls.postCompletionDuplicateSuppressed,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,
@@ -509,10 +622,36 @@ function resumeProof() {
   });
 }
 
+async function turnProof() {
+  const inputPath = process.env.VEXLIFE_G01_TURN_INPUT;
+  const outputPath = process.env.VEXLIFE_G01_TURN_OUTPUT;
+  if (!inputPath || !outputPath) throw new Error('turn proof input/output paths are required');
+  try {
+    const result = await performLivedCompanionTurn(readJson(inputPath));
+    writeJson(outputPath, {
+      state: 'COMPLETED',
+      conversationHeadSha256: result.head.conversationHeadSha256,
+      turnRef: result.head.turnRef,
+      writerLeaseReleased: result.writerLeaseReleased
+    });
+  } catch (error) {
+    if (!(error instanceof LivedCompanionError)) throw error;
+    writeJson(outputPath, {
+      state: 'FAILED',
+      failureCode: error.code,
+      requestDurablyRecorded: error.details?.requestDurablyRecorded ?? false,
+      responseDurablyRecorded: error.details?.responseDurablyRecorded ?? false,
+      failureReceiptPath: error.details?.failureReceiptPath ?? null,
+      writerLeaseReleased: error.details?.writerLeaseReleased ?? true
+    });
+  }
+}
+
 const command = process.argv[2] || 'proof';
 try {
   if (command === 'proof') await proof();
   else if (command === 'resume-proof') resumeProof();
+  else if (command === 'turn-proof') await turnProof();
   else throw new Error(`unknown lived-companion command: ${command}`);
 } catch (error) {
   console.error(error.stack || error.message || String(error));
