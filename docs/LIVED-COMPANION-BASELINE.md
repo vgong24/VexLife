@@ -36,21 +36,28 @@ for source application, repository publication, local proof, or recovery.
 
 Events are append-only. A completed turn is visible only after the response, context,
 and atomic head are durable. A failed endpoint or persistence attempt leaves the last
-completed head unchanged.
+completed head unchanged. Every identity used as a filesystem segment is validated as
+one safe segment, every derived path remains inside the canonical Vex Home, and existing
+symbolic-link traversal is rejected before reading or writing.
 
 ## Identity and restart
 
 A fresh process receives a new `instanceRef`; it does not pretend to be the process
-that shut down. It resumes the same `homeRef`, `deviceRef`, `companionLineageRef`,
-`threadRef`, and exact `conversationHeadSha256` after replaying the event chain and
-verifying the bounded context hash.
+that shut down. Shutdown is accepted only from the instance recorded in the exact
+content-addressed head. Resume consumes that instance's exact content-addressed clean
+shutdown receipt, recomputes the stored head hash, confines the context path beneath the
+canonical Vex Home, and then replays the same `homeRef`, `deviceRef`,
+`companionLineageRef`, `threadRef`, event chain, context and
+`conversationHeadSha256`.
 
 ## Endpoint and privacy boundary
 
-The default proof accepts loopback endpoints only. Non-loopback use requires a separate
-explicit admission. Credentials may be consumed only from an in-memory binding. The
-persisted record contains a sanitized endpoint origin and model/profile identity, never
-raw tokens, authorization headers, URL queries, passwords, or model binaries.
+G01 accepts loopback endpoints only. A caller-provided profile or boolean cannot widen
+that boundary; non-loopback or personal endpoint use requires a separately admitted
+future adapter outside this baseline. Credentials may be consumed only from an in-memory
+binding. The persisted record contains a sanitized endpoint origin and model/profile
+identity, never raw tokens, authorization headers, URL queries, passwords, or model
+binaries.
 
 ## Typed safe failures
 
@@ -84,10 +91,13 @@ relabelled as successful companion turns.
 npm run lived-companion:proof
 ```
 
-The proof uses a bounded loopback HTTP server, writes an immutable turn, creates a
-shutdown receipt, launches a fresh Node process for resume, and exercises all typed
-negative controls. It does not start a personal model endpoint, synchronize siblings,
-train, mutate weights, publish, review, approve, merge, or enter LC18.
+The proof uses a bounded loopback HTTP server, writes an immutable turn, creates an
+instance-bound shutdown receipt, launches a fresh Node process for exact receipt-bound
+resume, and exercises all typed negative controls. Adversarial coverage includes path
+escape, caller-authored non-loopback admission, forged shutdown/prior-instance lineage,
+head tampering, and context-path escape. It does not start a personal model endpoint,
+synchronize siblings, train, mutate weights, publish, review, approve, merge, or enter
+LC18.
 
 ## Held boundaries
 

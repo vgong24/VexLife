@@ -59,6 +59,93 @@ function contentHash(value) {
   return semanticHash(value);
 }
 
+function ensureSafeRef(value, name, code = 'HOME_IDENTITY_MISMATCH') {
+  const ref = ensureString(value, name, code);
+  if (
+    ref === '.' ||
+    ref === '..' ||
+    ref.includes('/') ||
+    ref.includes('\\') ||
+    ref.includes('\0') ||
+    path.isAbsolute(ref) ||
+    path.win32.isAbsolute(ref) ||
+    path.posix.isAbsolute(ref)
+  ) {
+    fail(code, `${name} must be one safe path segment`);
+  }
+  return ref;
+}
+
+function canonicalHomeRoot(home, { create = false } = {}) {
+  const requested = path.resolve(ensureString(home, 'home'));
+  if (create) fs.mkdirSync(requested, { recursive: true });
+  if (!fs.existsSync(requested)) fail('HOME_NOT_INITIALIZED', 'Vex Home is not initialized', { home: requested });
+  if (fs.lstatSync(requested).isSymbolicLink()) fail('HOME_IDENTITY_MISMATCH', 'Vex Home root must not be a symbolic link');
+  return fs.realpathSync.native(requested);
+}
+
+function resolveHomePath(home, ...segments) {
+  const root = canonicalHomeRoot(home);
+  const target = path.resolve(root, ...segments);
+  const relative = path.relative(root, target);
+  if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    fail('HOME_IDENTITY_MISMATCH', 'resolved path escapes the admitted Vex Home', { target });
+  }
+  let cursor = root;
+  for (const segment of relative.split(path.sep)) {
+    cursor = path.join(cursor, segment);
+    if (fs.existsSync(cursor) && fs.lstatSync(cursor).isSymbolicLink()) {
+      fail('HOME_IDENTITY_MISMATCH', 'resolved path traverses a symbolic link', { path: cursor });
+    }
+  }
+  return target;
+}
+
+function resolveHomeRelativePath(home, relativePath, code = 'CONTEXT_HASH_MISMATCH') {
+  const value = ensureString(relativePath, 'relativePath', code);
+  const segments = value.split(/[\\/]/u);
+  if (
+    path.isAbsolute(value) ||
+    path.win32.isAbsolute(value) ||
+    path.posix.isAbsolute(value) ||
+    segments.some((segment) => segment === '' || segment === '.' || segment === '..')
+  ) {
+    fail(code, 'stored relative path escapes the admitted Vex Home', { relativePath: value });
+  }
+  try {
+    return resolveHomePath(home, ...segments);
+  } catch (error) {
+    if (error instanceof LivedCompanionError) fail(code, error.message, error.details);
+    throw error;
+  }
+}
+
+function safeFailureSegment(value, prefix) {
+  try {
+    return ensureSafeRef(value, prefix);
+  } catch {
+    return `${prefix}.invalid.${contentHash(String(value)).slice(0, 16)}`;
+  }
+}
+
+function verifyHead(head) {
+  if (!head || typeof head !== 'object' || Array.isArray(head)) fail('CONVERSATION_HEAD_MISMATCH', 'conversation head is invalid');
+  const { conversationHeadSha256, ...core } = head;
+  if (!/^[0-9a-f]{64}$/u.test(conversationHeadSha256 ?? '') || contentHash(core) !== conversationHeadSha256) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'conversation head content hash does not match');
+  }
+  return head;
+}
+
+function verifyContentAddressedReceipt(receipt, hashField, code, label) {
+  if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) fail(code, `${label} is invalid`);
+  const { [hashField]: observed, ...core } = receipt;
+  if (!/^[0-9a-f]{64}$/u.test(observed ?? '') || contentHash(core) !== observed) {
+    fail(code, `${label} content hash does not match`);
+  }
+  return receipt;
+}
+
 function isLoopbackHost(hostname) {
   const normalized = String(hostname).toLowerCase().replace(/^\[|\]$/gu, '');
   return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1';
@@ -83,30 +170,35 @@ function endpointRequestUrl(endpoint) {
 }
 
 function homePaths(home, companionLineageRef, threadRef) {
-  const threadRoot = path.join(home, 'conversations', companionLineageRef, threadRef);
+  const lineage = ensureSafeRef(companionLineageRef, 'companionLineageRef');
+  const thread = ensureSafeRef(threadRef, 'threadRef');
+  const threadRoot = resolveHomePath(home, 'conversations', lineage, thread);
   return {
-    homeManifest: path.join(home, 'config', 'home.json'),
+    homeManifest: resolveHomePath(home, 'config', 'home.json'),
     events: path.join(threadRoot, 'events'),
     head: path.join(threadRoot, 'head.json'),
-    context: path.join(home, 'context', companionLineageRef, threadRef),
-    runtime: path.join(home, 'runtime'),
-    recovery: path.join(home, 'recovery')
+    context: resolveHomePath(home, 'context', lineage, thread),
+    runtime: resolveHomePath(home, 'runtime'),
+    recovery: resolveHomePath(home, 'recovery')
   };
 }
 
 function loadHome(home) {
-  const manifestPath = path.join(home, 'config', 'home.json');
+  const root = canonicalHomeRoot(home);
+  const manifestPath = resolveHomePath(root, 'config', 'home.json');
   if (!fs.existsSync(manifestPath)) fail('HOME_NOT_INITIALIZED', 'Vex Home is not initialized', { home });
   const manifest = readJson(manifestPath, 'HOME_IDENTITY_MISMATCH', 'home manifest');
-  const deviceRef = ensureString(manifest.currentDeviceRef, 'currentDeviceRef');
-  const companionLineageRef = ensureString(manifest.currentCompanionLineageRef, 'currentCompanionLineageRef');
-  const devicePath = path.join(home, 'devices', `${deviceRef}.json`);
+  ensureString(manifest.homeRef, 'homeRef');
+  ensureString(manifest.familyRef, 'familyRef');
+  const deviceRef = ensureSafeRef(manifest.currentDeviceRef, 'currentDeviceRef');
+  const companionLineageRef = ensureSafeRef(manifest.currentCompanionLineageRef, 'currentCompanionLineageRef');
+  const devicePath = resolveHomePath(root, 'devices', `${deviceRef}.json`);
   if (!fs.existsSync(devicePath)) fail('HOME_IDENTITY_MISMATCH', 'current device record is missing', { deviceRef });
   const device = readJson(devicePath, 'HOME_IDENTITY_MISMATCH', 'device record');
   if (device.deviceRef !== deviceRef || device.companionLineageRef !== companionLineageRef) {
     fail('HOME_IDENTITY_MISMATCH', 'home and device lineage identities disagree');
   }
-  return { manifest, device, manifestPath };
+  return { manifest, device, manifestPath, homeRoot: root };
 }
 
 function assertHomeIdentity(identity, expected = {}) {
@@ -131,22 +223,29 @@ export function initializeLivedCompanionHome({
   companionLineageRef,
   createdAt = new Date().toISOString()
 }) {
-  const manifestPath = path.join(home, 'config', 'home.json');
-  if (fs.existsSync(manifestPath)) {
-    fail('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', 'existing Vex Home was preserved', { manifestPath });
+  ensureString(homeRef, 'homeRef');
+  ensureString(familyRef, 'familyRef');
+  const safeDeviceRef = ensureSafeRef(deviceRef, 'deviceRef');
+  const safeLineageRef = ensureSafeRef(companionLineageRef, 'companionLineageRef');
+  const requestedRoot = path.resolve(ensureString(home, 'home'));
+  const preexistingManifest = path.join(requestedRoot, 'config', 'home.json');
+  if (fs.existsSync(preexistingManifest)) {
+    fail('EXISTING_HOME_REQUIRES_MIGRATION_PLAN', 'existing Vex Home was preserved', { manifestPath: preexistingManifest });
   }
+  const root = canonicalHomeRoot(requestedRoot, { create: true });
+  const manifestPath = resolveHomePath(root, 'config', 'home.json');
   for (const directory of ['config', 'devices', 'conversations', 'context', 'runtime', 'recovery']) {
-    fs.mkdirSync(path.join(home, directory), { recursive: true });
+    fs.mkdirSync(resolveHomePath(root, directory), { recursive: true });
   }
   const device = {
     schemaVersion: 'vexlife.device-installation/v0',
     personRef: 'person.proof-user',
     familyRef,
-    deviceRef,
+    deviceRef: safeDeviceRef,
     deviceName: 'G01 bounded proof device',
     platform: process.platform,
     architecture: process.arch,
-    companionLineageRef,
+    companionLineageRef: safeLineageRef,
     currentInstanceRef: null,
     createdAt,
     identityStatement: 'Distinct device companion lineage; shared state does not collapse identity.'
@@ -156,13 +255,13 @@ export function initializeLivedCompanionHome({
     homeRef,
     familyRef,
     createdAt,
-    currentDeviceRef: deviceRef,
-    currentCompanionLineageRef: companionLineageRef,
+    currentDeviceRef: safeDeviceRef,
+    currentCompanionLineageRef: safeLineageRef,
     modelConfigurationRef: 'config/model.json'
   };
   writeJson(manifestPath, manifest);
-  writeJson(path.join(home, 'devices', `${deviceRef}.json`), device);
-  writeJson(path.join(home, 'config', 'model.json'), {
+  writeJson(resolveHomePath(root, 'devices', `${safeDeviceRef}.json`), device);
+  writeJson(resolveHomePath(root, 'config', 'model.json'), {
     schemaVersion: 'vexlife.model-configuration/v0',
     state: 'UNCONFIGURED',
     endpoint: null,
@@ -170,7 +269,7 @@ export function initializeLivedCompanionHome({
     automaticDownload: false,
     automaticActivation: false
   });
-  return { home, manifest, device };
+  return { home: root, manifest, device };
 }
 
 function eventPath(eventsDirectory, sequence, eventHash) {
@@ -220,14 +319,19 @@ function assertNoDuplicateTurn(eventsDirectory, turnRef) {
 
 function previousHead(headPath) {
   if (!fs.existsSync(headPath)) return null;
-  return readJson(headPath, 'CONVERSATION_HEAD_MISMATCH', 'conversation head');
+  return verifyHead(readJson(headPath, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
 }
 
 function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRecorded, responseDurablyRecorded, lastValidHead }) {
   if (!home || !fs.existsSync(home)) return null;
-  const safeThread = threadRef || 'thread.unknown';
-  const safeTurn = turnRef || `turn.failure.${crypto.randomUUID()}`;
-  const receiptPath = path.join(home, 'recovery', safeThread, safeTurn, 'failure-receipt.json');
+  const safeThread = safeFailureSegment(threadRef || 'thread.unknown', 'thread.failure');
+  const safeTurn = safeFailureSegment(turnRef || `turn.failure.${crypto.randomUUID()}`, 'turn.failure');
+  let receiptPath;
+  try {
+    receiptPath = resolveHomePath(home, 'recovery', safeThread, safeTurn, 'failure-receipt.json');
+  } catch {
+    return null;
+  }
   const receipt = {
     schemaVersion: 'vexlife.lived-companion-failure-receipt/v1',
     failureCode: error.code || 'PERSISTENCE_WRITE_FAILED',
@@ -263,8 +367,8 @@ async function callEndpoint({ endpointProfile, requestContent, inMemoryAuthoriza
   } catch {
     fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'endpoint profile URL is invalid');
   }
-  if (!isLoopbackHost(parsed.hostname) && endpointProfile.explicitNonLoopbackAdmission !== true) {
-    fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'endpoint is neither loopback nor explicitly admitted');
+  if (!isLoopbackHost(parsed.hostname)) {
+    fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 accepts loopback endpoints only; non-loopback use requires a separately admitted adapter');
   }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -328,10 +432,16 @@ export async function performLivedCompanionTurn({
   try {
     const identity = loadHome(home);
     const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
-    for (const [name, value] of Object.entries({ instanceRef, threadRef, channelRef, turnRef, requestMessageRef, responseMessageRef, speakerRef, content })) {
-      ensureString(value, name);
+    ensureSafeRef(instanceRef, 'instanceRef');
+    ensureSafeRef(threadRef, 'threadRef');
+    ensureSafeRef(turnRef, 'turnRef');
+    for (const [name, value] of Object.entries({ channelRef, requestMessageRef, responseMessageRef, speakerRef, content })) ensureString(value, name);
+    if (!Array.isArray(recipientRefs) || recipientRefs.length === 0 || recipientRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
+      fail('HOME_IDENTITY_MISMATCH', 'recipientRefs must contain at least one non-empty ref');
     }
-    if (!Array.isArray(recipientRefs) || recipientRefs.length === 0) fail('HOME_IDENTITY_MISMATCH', 'recipientRefs are required');
+    if (!Array.isArray(contextSourceRefs) || contextSourceRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
+      fail('HOME_IDENTITY_MISMATCH', 'contextSourceRefs must be an array of non-empty refs');
+    }
     const paths = homePaths(home, admitted.companionLineageRef, threadRef);
     fs.mkdirSync(paths.events, { recursive: true });
     fs.mkdirSync(paths.context, { recursive: true });
@@ -407,7 +517,7 @@ export async function performLivedCompanionTurn({
       formedAt: new Date().toISOString()
     };
     const contextRecord = formContext(contextCore);
-    const contextPath = path.join(paths.context, `${turnRef}.json`);
+    const contextPath = resolveHomePath(home, 'context', admitted.companionLineageRef, threadRef, `${turnRef}.json`);
     atomicWriteJson(contextPath, contextRecord);
 
     const headCore = {
@@ -487,13 +597,30 @@ export function writeLivedCompanionShutdownReceipt({
   threadRef,
   expectedConversationHeadSha256
 }) {
+  ensureSafeRef(instanceRef, 'instanceRef');
+  ensureSafeRef(threadRef, 'threadRef');
   const identity = loadHome(home);
   const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
-  const paths = homePaths(home, admitted.companionLineageRef, threadRef);
+  const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
   if (!fs.existsSync(paths.head)) fail('CONVERSATION_HEAD_MISMATCH', 'conversation head is missing');
-  const head = readJson(paths.head, 'CONVERSATION_HEAD_MISMATCH', 'conversation head');
-  if (head.conversationHeadSha256 !== expectedConversationHeadSha256) {
-    fail('CONVERSATION_HEAD_MISMATCH', 'shutdown head does not match the expected completed head');
+  const head = verifyHead(readJson(paths.head, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
+  if (
+    head.homeRef !== admitted.homeRef ||
+    head.deviceRef !== admitted.deviceRef ||
+    head.companionLineageRef !== admitted.companionLineageRef ||
+    head.threadRef !== threadRef ||
+    head.instanceRef !== instanceRef ||
+    head.conversationHeadSha256 !== expectedConversationHeadSha256
+  ) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'shutdown identity/head does not match the completing instance');
+  }
+  validateEventChain(paths.events, head.eventHash);
+  const contextPath = resolveHomeRelativePath(identity.homeRoot, head.contextPath);
+  if (!fs.existsSync(contextPath)) fail('CONTEXT_HASH_MISMATCH', 'bounded context record is missing');
+  const contextRecord = readJson(contextPath, 'CONTEXT_HASH_MISMATCH', 'bounded context record');
+  const { serializedContextSha256, ...contextCore } = contextRecord;
+  if (contentHash(contextCore) !== serializedContextSha256 || serializedContextSha256 !== head.contextSha256) {
+    fail('CONTEXT_HASH_MISMATCH', 'bounded context hash does not match the conversation head');
   }
   const receiptCore = {
     schemaVersion: 'vexlife.lived-companion-shutdown-receipt/v1',
@@ -504,11 +631,12 @@ export function writeLivedCompanionShutdownReceipt({
     threadRef,
     conversationHeadSha256: head.conversationHeadSha256,
     eventHash: head.eventHash,
+    contextSha256: head.contextSha256,
     clean: true,
     formedAt: new Date().toISOString()
   };
   const receipt = { ...receiptCore, shutdownReceiptSha256: contentHash(receiptCore) };
-  const receiptPath = path.join(home, 'runtime', instanceRef, 'shutdown-receipt.json');
+  const receiptPath = resolveHomePath(identity.homeRoot, 'runtime', instanceRef, 'shutdown-receipt.json');
   atomicWriteJson(receiptPath, receipt);
   return { receipt, receiptPath };
 }
@@ -521,19 +649,55 @@ export function resumeLivedCompanionConversation({
   priorInstanceRef,
   instanceRef,
   threadRef,
-  expectedConversationHeadSha256
+  expectedConversationHeadSha256,
+  expectedShutdownReceiptSha256
 }) {
+  ensureSafeRef(priorInstanceRef, 'priorInstanceRef');
+  ensureSafeRef(instanceRef, 'instanceRef');
+  ensureSafeRef(threadRef, 'threadRef');
   if (instanceRef === priorInstanceRef) fail('CONVERSATION_HEAD_MISMATCH', 'fresh resume must use a new instanceRef');
+  if (!/^[0-9a-f]{64}$/u.test(expectedShutdownReceiptSha256 ?? '')) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'exact shutdown receipt SHA-256 is required');
+  }
   const identity = loadHome(home);
   const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
-  const paths = homePaths(home, admitted.companionLineageRef, threadRef);
+  const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
   if (!fs.existsSync(paths.head)) fail('CONVERSATION_HEAD_MISMATCH', 'conversation head is missing');
-  const head = readJson(paths.head, 'CONVERSATION_HEAD_MISMATCH', 'conversation head');
-  if (head.threadRef !== threadRef || head.conversationHeadSha256 !== expectedConversationHeadSha256) {
-    fail('CONVERSATION_HEAD_MISMATCH', 'resume target does not match the admitted thread/head');
+  const head = verifyHead(readJson(paths.head, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
+  if (
+    head.homeRef !== admitted.homeRef ||
+    head.deviceRef !== admitted.deviceRef ||
+    head.companionLineageRef !== admitted.companionLineageRef ||
+    head.threadRef !== threadRef ||
+    head.instanceRef !== priorInstanceRef ||
+    head.conversationHeadSha256 !== expectedConversationHeadSha256
+  ) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'resume identity does not match the admitted completing instance/head');
+  }
+  const shutdownPath = resolveHomePath(identity.homeRoot, 'runtime', priorInstanceRef, 'shutdown-receipt.json');
+  if (!fs.existsSync(shutdownPath)) fail('CONVERSATION_HEAD_MISMATCH', 'matching clean shutdown receipt is missing');
+  const shutdown = verifyContentAddressedReceipt(
+    readJson(shutdownPath, 'CONVERSATION_HEAD_MISMATCH', 'shutdown receipt'),
+    'shutdownReceiptSha256',
+    'CONVERSATION_HEAD_MISMATCH',
+    'shutdown receipt'
+  );
+  if (
+    shutdown.shutdownReceiptSha256 !== expectedShutdownReceiptSha256 ||
+    shutdown.clean !== true ||
+    shutdown.homeRef !== admitted.homeRef ||
+    shutdown.deviceRef !== admitted.deviceRef ||
+    shutdown.companionLineageRef !== admitted.companionLineageRef ||
+    shutdown.instanceRef !== priorInstanceRef ||
+    shutdown.threadRef !== threadRef ||
+    shutdown.conversationHeadSha256 !== head.conversationHeadSha256 ||
+    shutdown.eventHash !== head.eventHash ||
+    shutdown.contextSha256 !== head.contextSha256
+  ) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'shutdown receipt does not bind the exact completed head and prior instance');
   }
   const chain = validateEventChain(paths.events, head.eventHash);
-  const contextPath = path.resolve(home, ...head.contextPath.split('/'));
+  const contextPath = resolveHomeRelativePath(identity.homeRoot, head.contextPath);
   if (!fs.existsSync(contextPath)) fail('CONTEXT_HASH_MISMATCH', 'bounded context record is missing');
   const contextRecord = readJson(contextPath, 'CONTEXT_HASH_MISMATCH', 'bounded context record');
   const { serializedContextSha256, ...contextCore } = contextRecord;
@@ -551,14 +715,15 @@ export function resumeLivedCompanionConversation({
     conversationHeadSha256: head.conversationHeadSha256,
     eventHash: head.eventHash,
     contextSha256: head.contextSha256,
+    shutdownReceiptSha256: shutdown.shutdownReceiptSha256,
     replayedEventCount: chain.length,
     exactPriorHeadSelected: true,
     formedAt: new Date().toISOString()
   };
   const receipt = { ...receiptCore, resumeReceiptSha256: contentHash(receiptCore) };
-  const receiptPath = path.join(home, 'recovery', threadRef, 'resume-receipt.json');
+  const receiptPath = resolveHomePath(identity.homeRoot, 'recovery', threadRef, 'resume-receipt.json');
   atomicWriteJson(receiptPath, receipt);
-  return { state: 'RESUMED', head, chain, contextRecord, receipt, receiptPath };
+  return { state: 'RESUMED', head, chain, contextRecord, shutdownReceipt: shutdown, receipt, receiptPath };
 }
 
 export function assertNoSensitivePersistence(root, secretValues = []) {

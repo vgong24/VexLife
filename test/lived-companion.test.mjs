@@ -17,6 +17,7 @@ import {
   sanitizeEndpointOrigin,
   writeLivedCompanionShutdownReceipt
 } from '../src/core/lived-companion.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -72,6 +73,20 @@ test('fresh proof Home forms one explicit device and lineage identity', () => {
   assert.equal(manifest.currentCompanionLineageRef, value.companionLineageRef);
 });
 
+
+test('path-bearing identity refs cannot escape the admitted Vex Home', () => {
+  const root = temp('path-escape');
+  const home = path.join(root, 'home');
+  assert.throws(() => initializeLivedCompanionHome({
+    home,
+    homeRef: 'home.safe',
+    familyRef: 'family.safe',
+    deviceRef: '../../outside/device',
+    companionLineageRef: 'lineage.safe'
+  }), (error) => error instanceof LivedCompanionError && error.code === 'HOME_IDENTITY_MISMATCH');
+  assert.equal(fs.existsSync(path.join(root, 'outside', 'device.json')), false);
+});
+
 test('existing Home is preserved and requires migration', async () => {
   const value = makeHome('existing');
   await rejectsCode(async () => initializeLivedCompanionHome(value), 'EXISTING_HOME_REQUIRES_MIGRATION_PLAN');
@@ -121,8 +136,15 @@ test('unadmitted endpoint profile fails closed', async () => {
   finally { await service.close(); }
 });
 
-test('non-loopback endpoint fails without network authority', async () => {
-  await rejectsCode(() => performLivedCompanionTurn(turn(makeHome('nonloopback'), 'https://example.com/')), 'ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED');
+test('non-loopback endpoint fails even when a caller self-asserts admission', async () => {
+  await rejectsCode(() => performLivedCompanionTurn(turn(makeHome('nonloopback'), 'https://example.com/', {
+    endpointProfile: {
+      profileRef: 'profile.caller-authored',
+      admitted: true,
+      explicitNonLoopbackAdmission: true,
+      endpoint: 'https://example.com/'
+    }
+  })), 'ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED');
 });
 
 test('unreachable endpoint preserves failure evidence without a completed head', async () => {
@@ -167,23 +189,59 @@ test('persistence failure before head leaves prior head absent and recovery evid
   } finally { await service.close(); }
 });
 
-test('clean shutdown receipt binds the exact completed head', async () => {
+test('clean shutdown receipt binds the exact completing instance and head', async () => {
   const service=await server(); const home=makeHome('shutdown'); const input=turn(home,service.endpoint());
   try {
     const completed=await performLivedCompanionTurn(input);
+    assert.throws(() => writeLivedCompanionShutdownReceipt({...home,instanceRef:'instance.not-the-writer',threadRef:input.threadRef,expectedConversationHeadSha256:completed.head.conversationHeadSha256}),
+      (error) => error instanceof LivedCompanionError && error.code === 'CONVERSATION_HEAD_MISMATCH');
     const shutdown=writeLivedCompanionShutdownReceipt({...home,instanceRef:input.instanceRef,threadRef:input.threadRef,expectedConversationHeadSha256:completed.head.conversationHeadSha256});
     assert.equal(shutdown.receipt.clean,true);
+    assert.equal(shutdown.receipt.instanceRef,input.instanceRef);
     assert.equal(shutdown.receipt.conversationHeadSha256,completed.head.conversationHeadSha256);
   } finally { await service.close(); }
 });
 
-test('fresh instance resumes exact prior head while old instance reuse is rejected', async () => {
+test('fresh instance resumes only from the exact completing instance and shutdown receipt', async () => {
   const service=await server(); const home=makeHome('resume'); const input=turn(home,service.endpoint());
   try {
     const completed=await performLivedCompanionTurn(input);
-    const resumed=resumeLivedCompanionConversation({...home,priorInstanceRef:input.instanceRef,instanceRef:ref('instance.fresh'),threadRef:input.threadRef,expectedConversationHeadSha256:completed.head.conversationHeadSha256});
+    const shutdown=writeLivedCompanionShutdownReceipt({...home,instanceRef:input.instanceRef,threadRef:input.threadRef,expectedConversationHeadSha256:completed.head.conversationHeadSha256});
+    const common={...home,threadRef:input.threadRef,expectedConversationHeadSha256:completed.head.conversationHeadSha256,expectedShutdownReceiptSha256:shutdown.receipt.shutdownReceiptSha256};
+    const resumed=resumeLivedCompanionConversation({...common,priorInstanceRef:input.instanceRef,instanceRef:ref('instance.fresh')});
     assert.equal(resumed.state,'RESUMED');
-    await rejectsCode(async()=>resumeLivedCompanionConversation({...home,priorInstanceRef:input.instanceRef,instanceRef:input.instanceRef,threadRef:input.threadRef,expectedConversationHeadSha256:completed.head.conversationHeadSha256}),'CONVERSATION_HEAD_MISMATCH');
+    assert.equal(resumed.receipt.shutdownReceiptSha256,shutdown.receipt.shutdownReceiptSha256);
+    await rejectsCode(async()=>resumeLivedCompanionConversation({...common,priorInstanceRef:input.instanceRef,instanceRef:input.instanceRef}),'CONVERSATION_HEAD_MISMATCH');
+    await rejectsCode(async()=>resumeLivedCompanionConversation({...common,priorInstanceRef:'instance.never-owned-head',instanceRef:ref('instance.fresh')}),'CONVERSATION_HEAD_MISMATCH');
+    await rejectsCode(async()=>resumeLivedCompanionConversation({...common,priorInstanceRef:input.instanceRef,instanceRef:ref('instance.fresh'),expectedShutdownReceiptSha256:'0'.repeat(64)}),'CONVERSATION_HEAD_MISMATCH');
+  } finally { await service.close(); }
+});
+
+
+test('tampered head hashes and context paths outside Home fail closed', async () => {
+  const service=await server(); const home=makeHome('head-integrity'); const input=turn(home,service.endpoint());
+  try {
+    const completed=await performLivedCompanionTurn(input);
+    const shutdown=writeLivedCompanionShutdownReceipt({...home,instanceRef:input.instanceRef,threadRef:input.threadRef,expectedConversationHeadSha256:completed.head.conversationHeadSha256});
+    const headPath=completed.headPath;
+    const original=JSON.parse(fs.readFileSync(headPath,'utf8'));
+    const outside=path.join(path.dirname(home.home),'outside-context.json');
+    fs.copyFileSync(path.resolve(home.home,...original.contextPath.split('/')),outside);
+
+    const stale={...original,contextPath:'../outside-context.json'};
+    fs.writeFileSync(headPath,`${JSON.stringify(stale,null,2)}
+`,'utf8');
+    await rejectsCode(async()=>resumeLivedCompanionConversation({...home,priorInstanceRef:input.instanceRef,instanceRef:ref('instance.fresh'),threadRef:input.threadRef,expectedConversationHeadSha256:original.conversationHeadSha256,expectedShutdownReceiptSha256:shutdown.receipt.shutdownReceiptSha256}),'CONVERSATION_HEAD_MISMATCH');
+
+    const { conversationHeadSha256: ignored, ...rehashedCore }=stale;
+    const rehashed={...rehashedCore,conversationHeadSha256:semanticHash(rehashedCore)};
+    fs.writeFileSync(headPath,`${JSON.stringify(rehashed,null,2)}\n`,'utf8');
+    const tamperedShutdown=JSON.parse(fs.readFileSync(shutdown.receiptPath,'utf8'));
+    tamperedShutdown.conversationHeadSha256=rehashed.conversationHeadSha256;
+    const { shutdownReceiptSha256: ignoredShutdownHash, ...tamperedShutdownCore }=tamperedShutdown;
+    tamperedShutdown.shutdownReceiptSha256=semanticHash(tamperedShutdownCore);
+    fs.writeFileSync(shutdown.receiptPath,`${JSON.stringify(tamperedShutdown,null,2)}\n`,'utf8');
+    await rejectsCode(async()=>resumeLivedCompanionConversation({...home,priorInstanceRef:input.instanceRef,instanceRef:ref('instance.fresh'),threadRef:input.threadRef,expectedConversationHeadSha256:rehashed.conversationHeadSha256,expectedShutdownReceiptSha256:tamperedShutdown.shutdownReceiptSha256}),'CONTEXT_HASH_MISMATCH');
   } finally { await service.close(); }
 });
 

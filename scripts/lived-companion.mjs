@@ -18,6 +18,7 @@ import {
   sanitizeEndpointOrigin,
   writeLivedCompanionShutdownReceipt
 } from '../src/core/lived-companion.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -219,13 +220,22 @@ async function proof() {
       threadRef,
       expectedConversationHeadSha256: completed.head.conversationHeadSha256
     });
+    typedFailureProofs.push(await expectFailure('CONVERSATION_HEAD_MISMATCH', async () => writeLivedCompanionShutdownReceipt({
+      ...main,
+      instanceRef: 'instance.vexlife.g01.not-the-writer',
+      threadRef,
+      expectedConversationHeadSha256: completed.head.conversationHeadSha256
+    }), 'forged shutdown instance'));
+    negativeControls.forgedShutdownInstance = true;
+
     const resumeOutputPath = path.join(proofRoot, 'fresh-resume-output.json');
     const resumed = await runResumeChild({
       ...main,
       priorInstanceRef: initialInstanceRef,
       instanceRef: resumedInstanceRef,
       threadRef,
-      expectedConversationHeadSha256: completed.head.conversationHeadSha256
+      expectedConversationHeadSha256: completed.head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
     }, resumeOutputPath);
 
     const privacy = assertNoSensitivePersistence(main.home, [secretAuthorization, secretQuery]);
@@ -269,7 +279,14 @@ async function proof() {
     })), 'unadmitted endpoint'));
     negativeControls.unadmittedEndpointProfile = true;
 
-    typedFailureProofs.push(await expectFailure('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', () => performLivedCompanionTurn(baseTurn(makeHome(proofRoot, 'nonloopback-home'), 'https://example.com/', {})), 'non-loopback endpoint'));
+    typedFailureProofs.push(await expectFailure('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', () => performLivedCompanionTurn(baseTurn(makeHome(proofRoot, 'nonloopback-home'), 'https://example.com/', {
+      endpointProfile: {
+        profileRef: 'profile.caller-authored',
+        admitted: true,
+        explicitNonLoopbackAdmission: true,
+        endpoint: 'https://example.com/'
+      }
+    })), 'non-loopback endpoint'));
     negativeControls.nonLoopbackEndpoint = true;
 
     const closedPort = await closedLoopbackPort();
@@ -295,7 +312,8 @@ async function proof() {
       priorInstanceRef: initialInstanceRef,
       instanceRef: ref('instance.vexlife.wrong-head'),
       threadRef,
-      expectedConversationHeadSha256: '0'.repeat(64)
+      expectedConversationHeadSha256: '0'.repeat(64),
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
     }), 'wrong conversation head'));
     negativeControls.wrongConversationHead = true;
 
@@ -304,7 +322,8 @@ async function proof() {
       priorInstanceRef: initialInstanceRef,
       instanceRef: ref('instance.vexlife.wrong-thread'),
       threadRef: 'thread.vexlife.wrong',
-      expectedConversationHeadSha256: completed.head.conversationHeadSha256
+      expectedConversationHeadSha256: completed.head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
     }), 'wrong thread'));
     negativeControls.wrongThread = true;
 
@@ -313,9 +332,63 @@ async function proof() {
       priorInstanceRef: initialInstanceRef,
       instanceRef: initialInstanceRef,
       threadRef,
-      expectedConversationHeadSha256: completed.head.conversationHeadSha256
+      expectedConversationHeadSha256: completed.head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
     }), 'old process instance reuse'));
     negativeControls.oldProcessInstanceReuse = true;
+
+    typedFailureProofs.push(await expectFailure('CONVERSATION_HEAD_MISMATCH', async () => resumeLivedCompanionConversation({
+      ...main,
+      priorInstanceRef: 'instance.vexlife.g01.never-owned-head',
+      instanceRef: ref('instance.vexlife.unrelated-prior'),
+      threadRef,
+      expectedConversationHeadSha256: completed.head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
+    }), 'unrelated prior instance'));
+    negativeControls.unrelatedPriorInstance = true;
+
+    const tamperedHeadHome = cloneHome(main.home, proofRoot, 'tampered-head-home');
+    const tamperedHeadPath = path.join(tamperedHeadHome, 'conversations', main.companionLineageRef, threadRef, 'head.json');
+    const tamperedHead = readJson(tamperedHeadPath);
+    tamperedHead.contextPath = '../outside-context.json';
+    writeJson(tamperedHeadPath, tamperedHead);
+    typedFailureProofs.push(await expectFailure('CONVERSATION_HEAD_MISMATCH', async () => resumeLivedCompanionConversation({
+      ...main,
+      home: tamperedHeadHome,
+      priorInstanceRef: initialInstanceRef,
+      instanceRef: ref('instance.vexlife.tampered-head'),
+      threadRef,
+      expectedConversationHeadSha256: completed.head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
+    }), 'tampered head content hash'));
+    negativeControls.tamperedHeadHash = true;
+
+    const escapedContextHome = cloneHome(main.home, proofRoot, 'escaped-context-home');
+    const escapedHeadPath = path.join(escapedContextHome, 'conversations', main.companionLineageRef, threadRef, 'head.json');
+    const escapedHead = readJson(escapedHeadPath);
+    const originalContextPath = path.join(escapedContextHome, ...escapedHead.contextPath.split('/'));
+    const outsideContextPath = path.join(proofRoot, 'outside-context.json');
+    fs.copyFileSync(originalContextPath, outsideContextPath);
+    escapedHead.contextPath = '../outside-context.json';
+    const { conversationHeadSha256: ignoredHeadHash, ...escapedHeadCore } = escapedHead;
+    escapedHead.conversationHeadSha256 = semanticHash(escapedHeadCore);
+    writeJson(escapedHeadPath, escapedHead);
+    const escapedShutdownPath = path.join(escapedContextHome, 'runtime', initialInstanceRef, 'shutdown-receipt.json');
+    const escapedShutdown = readJson(escapedShutdownPath);
+    escapedShutdown.conversationHeadSha256 = escapedHead.conversationHeadSha256;
+    const { shutdownReceiptSha256: ignoredShutdownHash, ...escapedShutdownCore } = escapedShutdown;
+    escapedShutdown.shutdownReceiptSha256 = semanticHash(escapedShutdownCore);
+    writeJson(escapedShutdownPath, escapedShutdown);
+    typedFailureProofs.push(await expectFailure('CONTEXT_HASH_MISMATCH', async () => resumeLivedCompanionConversation({
+      ...main,
+      home: escapedContextHome,
+      priorInstanceRef: initialInstanceRef,
+      instanceRef: ref('instance.vexlife.escaped-context'),
+      threadRef,
+      expectedConversationHeadSha256: escapedHead.conversationHeadSha256,
+      expectedShutdownReceiptSha256: escapedShutdown.shutdownReceiptSha256
+    }), 'escaped context path'));
+    negativeControls.escapedContextPath = true;
 
     const corruptHome = cloneHome(main.home, proofRoot, 'corrupt-event-home');
     const corruptEventFile = findHeadEventFile(corruptHome, main.companionLineageRef, threadRef, completed.head.eventHash);
@@ -328,7 +401,8 @@ async function proof() {
       priorInstanceRef: initialInstanceRef,
       instanceRef: ref('instance.vexlife.corrupt-event'),
       threadRef,
-      expectedConversationHeadSha256: completed.head.conversationHeadSha256
+      expectedConversationHeadSha256: completed.head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
     }), 'event chain corruption'));
     negativeControls.eventChainCorruption = true;
 
@@ -343,7 +417,8 @@ async function proof() {
       priorInstanceRef: initialInstanceRef,
       instanceRef: ref('instance.vexlife.corrupt-context'),
       threadRef,
-      expectedConversationHeadSha256: completed.head.conversationHeadSha256
+      expectedConversationHeadSha256: completed.head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
     }), 'context substitution'));
     negativeControls.contextHashSubstitution = true;
 
@@ -389,6 +464,7 @@ async function proof() {
       conversationHeadSha256: completed.head.conversationHeadSha256,
       shutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256,
       resumeReceiptSha256: resumed.receipt.resumeReceiptSha256,
+      shutdownReceiptBoundToResume: resumed.receipt.shutdownReceiptSha256 === shutdown.receipt.shutdownReceiptSha256,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,
