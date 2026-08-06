@@ -40,6 +40,32 @@ function sha256Text(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
+function absentProcessId() {
+  for (const pid of [2147483647, 1073741823, 99999999]) {
+    try { process.kill(pid, 0); }
+    catch (error) { if (error?.code === 'ESRCH') return pid; }
+  }
+  throw new Error('could not identify one absent process id for the host proof');
+}
+
+function writeAbandonedWriterLease(home, threadRef) {
+  const lockDirectory = path.join(home.home, 'runtime', 'thread-writer-locks', home.companionLineageRef);
+  fs.mkdirSync(lockDirectory, { recursive: true });
+  const leaseCore = {
+    schemaVersion: 'vexlife.thread-writer-lease/v1',
+    companionLineageRef: home.companionLineageRef,
+    threadRef,
+    instanceRef: ref('instance.vexlife.abandoned'),
+    lockToken: crypto.randomUUID(),
+    pid: absentProcessId(),
+    formedAt: new Date().toISOString()
+  };
+  const lease = { ...leaseCore, leaseSha256: semanticHash(leaseCore) };
+  const lockPath = path.join(lockDirectory, `${threadRef}.lock`);
+  writeJson(lockPath, lease);
+  return { lockPath, lease };
+}
+
 async function startLoopbackServer() {
   const calls = [];
   const server = http.createServer((request, response) => {
@@ -361,6 +387,38 @@ async function proof() {
 
     const emptyHome = path.join(proofRoot, 'empty-home');
     fs.mkdirSync(emptyHome, { recursive: true });
+    const abandonedHome = makeHome(proofRoot, 'abandoned-writer-home');
+    const abandonedThreadRef = ref('thread.vexlife.abandoned');
+    const abandonedTurn = baseTurn(abandonedHome, endpoint, {
+      threadRef: abandonedThreadRef,
+      instanceRef: ref('instance.vexlife.abandoned-retry'),
+      turnRef: ref('turn.vexlife.abandoned-retry')
+    });
+    const abandoned = writeAbandonedWriterLease(abandonedHome, abandonedThreadRef);
+    const abandonedCallsBefore = loopback.calls.length;
+    const abandonedFailure = await expectFailure(
+      'THREAD_WRITER_RECOVERY_REQUIRED',
+      () => performLivedCompanionTurn(abandonedTurn),
+      'abandoned thread writer requires explicit recovery'
+    );
+    typedFailureProofs.push(abandonedFailure);
+    const abandonedReceipt = readJson(abandonedFailure.failureReceiptPath);
+    const abandonedEvents = path.join(
+      abandonedHome.home,
+      'conversations',
+      abandonedHome.companionLineageRef,
+      abandonedThreadRef,
+      'events'
+    );
+    negativeControls.abandonedWriterRecoveryRequired =
+      abandonedFailure.failureCode === 'THREAD_WRITER_RECOVERY_REQUIRED' &&
+      abandonedReceipt.exactNextSafeRoute === 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED' &&
+      abandonedReceipt.threadWriterLeaseDisposition?.ownerState === 'ABSENT' &&
+      abandonedReceipt.threadWriterLeaseDisposition?.leaseSha256 === abandoned.lease.leaseSha256 &&
+      fs.existsSync(abandoned.lockPath) &&
+      !fs.existsSync(abandonedEvents) &&
+      loopback.calls.length === abandonedCallsBefore;
+
     typedFailureProofs.push(await expectFailure('HOME_NOT_INITIALIZED', () => performLivedCompanionTurn(baseTurn({
       home: emptyHome,
       homeRef: 'vex-home.missing',
@@ -595,6 +653,8 @@ async function proof() {
         negativeControls.singleWriterEventPair &&
         negativeControls.writerLeaseReleaseRetry &&
         negativeControls.postCompletionDuplicateSuppressed,
+      abandonedWriterRecoveryDisposition: negativeControls.abandonedWriterRecoveryRequired,
+      abandonedWriterRecoveryOperationHeld: true,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
       typedFailureProofs,

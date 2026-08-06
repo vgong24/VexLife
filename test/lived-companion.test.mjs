@@ -62,9 +62,35 @@ async function rejectsCode(operation, code) {
   await assert.rejects(operation, (error) => error instanceof LivedCompanionError && error.code === code);
 }
 
+function absentProcessId() {
+  for (const pid of [2147483647, 1073741823, 99999999]) {
+    try { process.kill(pid, 0); }
+    catch (error) { if (error?.code === 'ESRCH') return pid; }
+  }
+  throw new Error('could not identify one absent process id for the host proof');
+}
+
+function writeAbandonedWriterLease(home, threadRef) {
+  const lockDirectory = path.join(home.home, 'runtime', 'thread-writer-locks', home.companionLineageRef);
+  fs.mkdirSync(lockDirectory, { recursive: true });
+  const leaseCore = {
+    schemaVersion: 'vexlife.thread-writer-lease/v1',
+    companionLineageRef: home.companionLineageRef,
+    threadRef,
+    instanceRef: ref('instance.abandoned'),
+    lockToken: crypto.randomUUID(),
+    pid: absentProcessId(),
+    formedAt: new Date().toISOString()
+  };
+  const lease = { ...leaseCore, leaseSha256: semanticHash(leaseCore) };
+  const lockPath = path.join(lockDirectory, `${threadRef}.lock`);
+  fs.writeFileSync(lockPath, `${JSON.stringify(lease, null, 2)}\n`, 'utf8');
+  return { lockPath, lease };
+}
+
 test('failure vocabulary contains every required typed failure', () => {
-  assert.equal(LIVED_COMPANION_FAILURE_CODES.length, 16);
-  assert.equal(new Set(LIVED_COMPANION_FAILURE_CODES).size, 16);
+  assert.equal(LIVED_COMPANION_FAILURE_CODES.length, 17);
+  assert.equal(new Set(LIVED_COMPANION_FAILURE_CODES).size, 17);
 });
 
 test('fresh proof Home forms one explicit device and lineage identity', () => {
@@ -248,6 +274,40 @@ test('one atomic writer lease prevents concurrent thread forks and releases for 
   } finally { await service.close(); }
 });
 
+
+test('abandoned writer lease is classified for explicit recovery instead of impossible retry', async () => {
+  const service = await server();
+  const home = makeHome('abandoned-writer');
+  const threadRef = ref('thread.abandoned');
+  const input = turn(home, service.endpoint(), {
+    threadRef,
+    instanceRef: ref('instance.retry'),
+    turnRef: ref('turn.retry')
+  });
+  const { lockPath, lease } = writeAbandonedWriterLease(home, threadRef);
+  try {
+    let observed = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(input),
+      (error) => {
+        observed = error;
+        return error instanceof LivedCompanionError && error.code === 'THREAD_WRITER_RECOVERY_REQUIRED';
+      }
+    );
+    assert.equal(service.calls(), 0);
+    assert.equal(fs.existsSync(lockPath), true);
+    assert.equal(observed.details.ownerState, 'ABSENT');
+    assert.equal(observed.details.leaseSha256, lease.leaseSha256);
+    const receipt = JSON.parse(fs.readFileSync(observed.details.failureReceiptPath, 'utf8'));
+    assert.equal(receipt.failureCode, 'THREAD_WRITER_RECOVERY_REQUIRED');
+    assert.equal(receipt.exactNextSafeRoute, 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED');
+    assert.equal(receipt.threadWriterLeaseDisposition.ownerState, 'ABSENT');
+    assert.equal(receipt.threadWriterLeaseDisposition.leaseSha256, lease.leaseSha256);
+    const events = path.join(home.home, 'conversations', home.companionLineageRef, threadRef, 'events');
+    assert.equal(fs.existsSync(events), false);
+  } finally { await service.close(); }
+});
+
 test('persistence failure before head leaves prior head absent and recovery evidence visible', async () => {
   const service=await server(); const home=makeHome('persistence'); const input=turn(home,service.endpoint(),{faults:{persistenceFailureBeforeHead:true}});
   try {
@@ -329,7 +389,9 @@ test('CLI proof performs loopback turn, shutdown, fresh-process resume, failures
   assert.equal(value.state,'PASS');
   assert.equal(value.actualHttpCall,true);
   assert.equal(value.freshProcessResume,true);
-  assert.equal(value.typedFailureProofs.length>=15,true);
+  assert.equal(value.typedFailureProofs.length>=25,true);
+  assert.equal(value.abandonedWriterRecoveryDisposition,true);
+  assert.equal(value.abandonedWriterRecoveryOperationHeld,true);
   assert.equal(value.LC18Performed,false);
 });
 

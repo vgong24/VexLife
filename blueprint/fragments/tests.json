@@ -804,6 +804,10 @@
     "brief": "One OS-atomic cross-process lease admits exactly one writer per Home/lineage/thread before endpoint or persistence effects; competitors fail typed, lease release permits later turns, and completed-turn retries remain duplicate-suppressed."
   },
   {
+    "testRef": "test.lived-companion.abandoned-writer-recovery-disposition",
+    "brief": "A content-addressed writer lease whose recorded owner process is proven absent is classified as THREAD_WRITER_RECOVERY_REQUIRED with zero endpoint/event effects, preserved lease evidence, and an explicit recovery/attention route; ordinary turn execution never steals or deletes it."
+  },
+  {
     "testRef": "test.lived-companion.atomic-head",
     "brief": "Response, context, and atomic head must all be durable before completion."
   },

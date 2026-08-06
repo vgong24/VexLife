@@ -41,7 +41,7 @@ completed head unchanged. Every identity used as a filesystem segment is validat
 one safe segment, every derived path remains inside the canonical Vex Home, and existing
 symbolic-link or junction traversal is rejected before reading or writing. Conversation
 event directories must be real directories, and event entries must be regular,
-non-symlink files before they may affect duplicate detection or event-chain replay. One atomic cross-process writer lease is held for the complete read → HTTP → append → context → head transaction of each thread; a competing writer fails before endpoint use or persistence.
+non-symlink files before they may affect duplicate detection or event-chain replay. One atomic cross-process writer lease is held for the complete read → HTTP → append → context → head transaction of each thread; a competing live or unverifiable writer fails before endpoint use or persistence. Lease records are content-addressed. If the recorded owner process is proven absent on the same host, ordinary turn execution returns `THREAD_WRITER_RECOVERY_REQUIRED`, preserves the exact lease, and routes to explicit recovery/attention rather than pretending ordinary retry can succeed. Automatic abandoned-lease removal remains held outside G01.
 
 ## Identity and restart
 
@@ -82,6 +82,7 @@ EVENT_CHAIN_CORRUPT
 CONTEXT_HASH_MISMATCH
 DUPLICATE_TURN_SUPPRESSED
 THREAD_WRITER_CONFLICT
+THREAD_WRITER_RECOVERY_REQUIRED
 PRIVACY_POLICY_BLOCKED
 ```
 
@@ -99,7 +100,7 @@ The proof uses a bounded loopback HTTP server, writes an immutable turn, creates
 instance-bound shutdown receipt, launches a fresh Node process for exact receipt-bound
 resume, and exercises all typed negative controls. Adversarial coverage includes path
 escape, caller-authored non-loopback admission, forged shutdown/prior-instance lineage,
-head tampering, context-path escape, and concurrent cross-process writer contention. It does not start a personal model endpoint,
+head tampering, context-path escape, concurrent cross-process writer contention, and absent-owner lease classification. It does not start a personal model endpoint,
 synchronize siblings, train, mutate weights, publish, review, approve, merge, or enter
 LC18.
 

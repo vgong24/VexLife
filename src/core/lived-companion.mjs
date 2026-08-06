@@ -19,6 +19,7 @@ export const LIVED_COMPANION_FAILURE_CODES = Object.freeze([
   'CONTEXT_HASH_MISMATCH',
   'DUPLICATE_TURN_SUPPRESSED',
   'THREAD_WRITER_CONFLICT',
+  'THREAD_WRITER_RECOVERY_REQUIRED',
   'PRIVACY_POLICY_BLOCKED'
 ]);
 
@@ -129,6 +130,82 @@ function safeFailureSegment(value, prefix) {
   }
 }
 
+function processLiveness(pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return 'UNVERIFIABLE';
+  if (pid === process.pid) return 'ACTIVE';
+  try {
+    process.kill(pid, 0);
+    return 'ACTIVE';
+  } catch (error) {
+    if (error?.code === 'ESRCH') return 'ABSENT';
+    if (error?.code === 'EPERM') return 'ACTIVE';
+    return 'UNVERIFIABLE';
+  }
+}
+
+function verifyThreadWriterLeaseRecord(value, companionLineageRef, threadRef) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail('PERSISTENCE_WRITE_FAILED', 'thread writer lease record is invalid');
+  }
+  const { leaseSha256, ...core } = value;
+  if (!/^[0-9a-f]{64}$/u.test(leaseSha256 ?? '') || contentHash(core) !== leaseSha256) {
+    fail('PERSISTENCE_WRITE_FAILED', 'thread writer lease content hash does not match');
+  }
+  if (
+    value.schemaVersion !== 'vexlife.thread-writer-lease/v1' ||
+    value.companionLineageRef !== companionLineageRef ||
+    value.threadRef !== threadRef ||
+    ensureSafeRef(value.instanceRef, 'lease.instanceRef') !== value.instanceRef ||
+    typeof value.lockToken !== 'string' ||
+    value.lockToken.length === 0 ||
+    !Number.isSafeInteger(value.pid) ||
+    value.pid <= 0
+  ) {
+    fail('PERSISTENCE_WRITE_FAILED', 'thread writer lease identity is invalid');
+  }
+  return value;
+}
+
+function observedLastValidHead(home, companionLineageRef, threadRef) {
+  try {
+    const headPath = resolveHomePath(home, 'conversations', companionLineageRef, threadRef, 'head.json');
+    if (!fs.existsSync(headPath)) return null;
+    return verifyHead(readJson(headPath, 'CONVERSATION_HEAD_MISMATCH', 'conversation head'));
+  } catch {
+    return null;
+  }
+}
+
+function classifyExistingThreadWriterLease(home, lockPath, companionLineageRef, threadRef) {
+  const stat = fs.lstatSync(lockPath);
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    fail('PERSISTENCE_WRITE_FAILED', 'thread writer lease path must be one regular non-symlink file');
+  }
+  const observed = verifyThreadWriterLeaseRecord(
+    readJson(lockPath, 'PERSISTENCE_WRITE_FAILED', 'thread writer lease'),
+    companionLineageRef,
+    threadRef
+  );
+  const ownerState = processLiveness(observed.pid);
+  const details = {
+    companionLineageRef,
+    threadRef,
+    ownerInstanceRef: observed.instanceRef,
+    ownerPid: observed.pid,
+    ownerState,
+    leaseSha256: observed.leaseSha256
+  };
+  if (ownerState === 'ABSENT') {
+    details.lastValidHead = observedLastValidHead(home, companionLineageRef, threadRef);
+    details.exactNextSafeRoute = 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED';
+    fail('THREAD_WRITER_RECOVERY_REQUIRED', 'the recorded thread writer is absent and its lease requires explicit recovery', details);
+  }
+  details.exactNextSafeRoute = ownerState === 'ACTIVE'
+    ? 'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY'
+    : 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER';
+  fail('THREAD_WRITER_CONFLICT', 'another writer already holds the exact thread lease', details);
+}
+
 function acquireThreadWriterLease(home, companionLineageRef, threadRef, instanceRef) {
   const root = canonicalHomeRoot(home);
   const lineage = ensureSafeRef(companionLineageRef, 'companionLineageRef');
@@ -138,7 +215,7 @@ function acquireThreadWriterLease(home, companionLineageRef, threadRef, instance
   fs.mkdirSync(lockDirectory, { recursive: true });
   const lockPath = resolveHomePath(root, 'runtime', 'thread-writer-locks', lineage, `${thread}.lock`);
   const lockToken = crypto.randomUUID();
-  const lease = {
+  const leaseCore = {
     schemaVersion: 'vexlife.thread-writer-lease/v1',
     companionLineageRef: lineage,
     threadRef: thread,
@@ -147,6 +224,7 @@ function acquireThreadWriterLease(home, companionLineageRef, threadRef, instance
     pid: process.pid,
     formedAt: new Date().toISOString()
   };
+  const lease = { ...leaseCore, leaseSha256: contentHash(leaseCore) };
   let descriptor = null;
   try {
     descriptor = fs.openSync(lockPath, 'wx', 0o600);
@@ -157,11 +235,9 @@ function acquireThreadWriterLease(home, companionLineageRef, threadRef, instance
       try { fs.closeSync(descriptor); } catch {}
     }
     if (error?.code === 'EEXIST') {
-      fail('THREAD_WRITER_CONFLICT', 'another writer already holds the exact thread lease', {
-        companionLineageRef: lineage,
-        threadRef: thread
-      });
+      classifyExistingThreadWriterLease(root, lockPath, lineage, thread);
     }
+    if (error instanceof LivedCompanionError) throw error;
     try {
       if (fs.existsSync(lockPath) && !fs.lstatSync(lockPath).isSymbolicLink()) {
         const observed = readJson(lockPath, 'PERSISTENCE_WRITE_FAILED', 'thread writer lease');
@@ -170,7 +246,14 @@ function acquireThreadWriterLease(home, companionLineageRef, threadRef, instance
     } catch {}
     fail('PERSISTENCE_WRITE_FAILED', 'thread writer lease could not be acquired', { cause: error.message });
   }
-  return { descriptor, lockPath, lockToken, companionLineageRef: lineage, threadRef: thread };
+  return {
+    descriptor,
+    lockPath,
+    lockToken,
+    leaseSha256: lease.leaseSha256,
+    companionLineageRef: lineage,
+    threadRef: thread
+  };
 }
 
 function releaseThreadWriterLease(lease) {
@@ -181,7 +264,7 @@ function releaseThreadWriterLease(lease) {
     const stat = fs.lstatSync(lease.lockPath);
     if (stat.isSymbolicLink() || !stat.isFile()) return false;
     const observed = JSON.parse(fs.readFileSync(lease.lockPath, 'utf8'));
-    if (observed.lockToken !== lease.lockToken) return false;
+    if (observed.lockToken !== lease.lockToken || observed.leaseSha256 !== lease.leaseSha256) return false;
     fs.unlinkSync(lease.lockPath);
     return !fs.existsSync(lease.lockPath);
   } catch {
@@ -415,6 +498,21 @@ function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRe
   } catch {
     return null;
   }
+  const leaseDisposition = ['THREAD_WRITER_CONFLICT', 'THREAD_WRITER_RECOVERY_REQUIRED'].includes(error.code)
+    ? {
+        ownerInstanceRef: error.details?.ownerInstanceRef ?? null,
+        ownerPid: error.details?.ownerPid ?? null,
+        ownerState: error.details?.ownerState ?? 'UNKNOWN',
+        leaseSha256: error.details?.leaseSha256 ?? null
+      }
+    : null;
+  const nextRoute = error.code === 'THREAD_WRITER_RECOVERY_REQUIRED'
+    ? 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED'
+    : error.code === 'THREAD_WRITER_CONFLICT'
+      ? (error.details?.exactNextSafeRoute ?? 'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY')
+      : lastValidHead
+        ? 'RESUME_FROM_LAST_VALID_HEAD'
+        : 'INITIALIZE_OR_RETRY_WITH_ADMITTED_INPUTS';
   const receipt = {
     schemaVersion: 'vexlife.lived-companion-failure-receipt/v1',
     failureCode: error.code || 'PERSISTENCE_WRITE_FAILED',
@@ -429,7 +527,8 @@ function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRe
       sequence: lastValidHead.sequence
     } : null,
     resumePossible: Boolean(lastValidHead),
-    exactNextSafeRoute: lastValidHead ? 'RESUME_FROM_LAST_VALID_HEAD' : 'INITIALIZE_OR_RETRY_WITH_ADMITTED_INPUTS',
+    threadWriterLeaseDisposition: leaseDisposition,
+    exactNextSafeRoute: nextRoute,
     formedAt: new Date().toISOString()
   };
   try {
@@ -649,7 +748,16 @@ export async function performLivedCompanionTurn({
     const typed = error instanceof LivedCompanionError
       ? error
       : new LivedCompanionError('PERSISTENCE_WRITE_FAILED', error.message || String(error));
-    const failureReceiptPath = writeFailureReceipt({ home, threadRef, turnRef, error: typed, requestDurablyRecorded, responseDurablyRecorded, lastValidHead });
+    const failureHead = lastValidHead ?? typed.details?.lastValidHead ?? null;
+    const failureReceiptPath = writeFailureReceipt({
+      home,
+      threadRef,
+      turnRef,
+      error: typed,
+      requestDurablyRecorded,
+      responseDurablyRecorded,
+      lastValidHead: failureHead
+    });
     typed.details = {
       ...(typed.details || {}),
       failureReceiptPath,
