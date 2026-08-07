@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/NEWCOMER-MAP.md",
+      "mode": "100644",
+      "bytes": 5418,
+      "sha256": "fa851e7174736adf4714fb532cb79528405dac4e3b3091de28a8d6bb1d4a993a"
+    },
+    {
       "path": "docs/OPEN-SOURCE-LEGAL-STEWARDSHIP.md",
       "mode": "100644",
       "bytes": 14522,
@@ -52,8 +58,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 3565,
-      "sha256": "f83e1d042edf61686668dcf5134b1ca65629fdea3486124d0e6aecc54191ea74"
+      "bytes": 3636,
+      "sha256": "01d5384bc093089fb298becad2338f38ba78f4798351171b0f98de010c94c282"
     },
     {
       "path": "reference/browser/README.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 804,
       "sha256": "7bb74626c8bb61e58fa608ec950263908f1af9819307d6426142f655002a4ccc"
-    },
-    {
-      "path": "scripts/bridge-check.mjs",
-      "mode": "100644",
-      "bytes": 543,
-      "sha256": "6c753287c11e71cb5f397a1562d1a794256fe6dac3c52a7e6316504a86882734"
     }
   ]
 }

@@ -944,5 +944,31 @@
       "blueprint/runtime-recovery-registry.json",
       "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.lived-companion",
+    "path": "src/core/lived-companion.mjs",
+    "role": "Provider-neutral device-private companion turn persistence, typed failures, atomic heads, clean shutdown, and exact fresh-process resume.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils",
+      "state.device-family",
+      "state.messages",
+      "state.context",
+      "state.model"
+    ],
+    "writes": [
+      "selected Vex Home conversations/context/runtime/recovery"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.lived-companion"
+    ],
+    "tests": [
+      "test/lived-companion.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/lived-companion.mjs",
+      "docs/LIVED-COMPANION-BASELINE.md"
+    ]
   }
 ]

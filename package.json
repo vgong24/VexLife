@@ -49,7 +49,8 @@
     "current": "node scripts/current.mjs",
     "projections:build": "node scripts/build-projections.mjs",
     "pr-ready": "node scripts/build-admission-check.mjs --consumer PR_READY && node scripts/pr-ready.mjs",
-    "build-admission:host-proof": "node scripts/build-admission-check.mjs --host-proof"
+    "build-admission:host-proof": "node scripts/build-admission-check.mjs --host-proof",
+    "lived-companion:proof": "node scripts/lived-companion.mjs proof"
   },
   "devDependencies": {
     "playwright": "1.61.1"

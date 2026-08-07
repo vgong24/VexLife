@@ -689,5 +689,29 @@
     "changeMap": [
       "docs/RUNTIME-FAILURE-AND-RECOVERY.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.lived-companion",
+    "path": "scripts/lived-companion.mjs",
+    "role": "CLI proof for one loopback HTTP turn, shutdown, fresh-process resume, typed failures, and privacy boundaries.",
+    "platformScope": "WINDOWS",
+    "reads": [
+      "module.vexlife.core.lived-companion",
+      "model-profile.existing-openai-compatible"
+    ],
+    "writes": [
+      "caller-selected proof Home and generated health receipt"
+    ],
+    "loadedBy": [
+      "npm run lived-companion:proof",
+      ".github/workflows/check.yml"
+    ],
+    "tests": [
+      "test/lived-companion.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/lived-companion.mjs",
+      ".github/workflows/check.yml"
+    ]
   }
 ]

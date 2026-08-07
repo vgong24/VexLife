@@ -289,5 +289,88 @@
       "no raw model endpoint exposure"
     ],
     "returnRoute": "return bridge contract receipt to desktop platform wave"
+  },
+  {
+    "workRef": "work.vexlife.windows.g01-lived-companion-baseline",
+    "purpose": "Establish one real Windows lived-companion turn with immutable local records, atomic head, clean shutdown, and fresh-process exact resume.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "dependsOn": [
+      "work.vexlife.bootstrap.cross-platform",
+      "work.vexlife.browser.addressed-conversation"
+    ],
+    "pathScope": [
+      "blueprint/feature-registry.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "src/core/lived-companion.mjs",
+      "scripts/lived-companion.mjs",
+      "test/lived-companion.test.mjs",
+      "docs/LIVED-COMPANION-BASELINE.md",
+      "package.json",
+      ".github/workflows/check.yml"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.runtime",
+    "requiredSourceRefs": [
+      "state.device-family",
+      "state.messages",
+      "state.context",
+      "model-profile.existing-openai-compatible"
+    ],
+    "requiredTestRefs": [
+      "test.lived-companion.failure-vocabulary",
+      "test.lived-companion.home-initialization",
+      "test.lived-companion.existing-home-preserved",
+      "test.lived-companion.home-preservation",
+      "test.lived-companion.canonical-path-identity",
+      "test.lived-companion.actual-http-turn",
+      "test.lived-companion.immutable-events",
+      "test.lived-companion.context-binding",
+      "test.lived-companion.endpoint-profile-admission",
+      "test.lived-companion.loopback-boundary",
+      "test.lived-companion.redirect-boundary",
+      "test.lived-companion.endpoint-unreachable",
+      "test.lived-companion.endpoint-timeout",
+      "test.lived-companion.endpoint-http-error",
+      "test.lived-companion.endpoint-response-invalid",
+      "test.lived-companion.duplicate-suppression",
+      "test.lived-companion.failed-turn-recovery-evidence",
+      "test.lived-companion.credential-and-failure-evidence-integrity",
+      "test.lived-companion.semantic-state-continuity-and-recovery",
+      "test.lived-companion.one-writer-per-thread",
+      "test.lived-companion.abandoned-writer-recovery-disposition",
+      "test.lived-companion.unverifiable-writer-lease-disposition",
+      "test.lived-companion.atomic-head",
+      "test.lived-companion.clean-shutdown",
+      "test.lived-companion.fresh-process-resume",
+      "test.lived-companion.identity-head-replay",
+      "test.lived-companion.privacy",
+      "test.lived-companion.windows-proof"
+    ],
+    "outputRefs": [
+      "source-set.vexlife.g01.lived-companion.superseding.002",
+      "proof.vexlife.g01.lived-companion.windows"
+    ],
+    "effectBoundary": "DEVICE_PRIVATE_LOOPBACK_HTTP_AND_LOCAL_FILESYSTEM_ONLY",
+    "completionGate": "fresh canonical Home admission/preservation, portable canonical path identity, actual numeric-loopback HTTP turn, redirect and hostname-alias escape rejection, immutable records, semantically validated prior completed state before duplicate/HTTP/append, exact event address/contentHash/provenance, genesis-anchored complete REQUEST/RESPONSE history, canonical context location/source provenance, forged orphan duplicate-evidence rejection, recursive rejection of the complete in-memory authorization value plus known raw credential material derived from it (scheme payload and Basic decoded password) across all persistable turn/response metadata, plus endpoint model provenance validation before response persistence, OS-atomic no-clobber canonical first-failure formation with semantically reconciled durability/retry/route provenance, truthful duplicate and failed-turn recovery with immutable first-failure evidence, absent-writer recovery with semantically validated last-head provenance, in-Home cross-thread context/event substitution rejection, one OS-atomic writer per thread, explicit abandoned-writer and unverifiable-lease recovery dispositions, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
+    "platformRefs": [
+      "platform.windows"
+    ],
+    "exclusions": [
+      "automatic abandoned or unverifiable writer lease recovery",
+      "LC18",
+      "personal endpoint activation",
+      "sibling synchronization",
+      "training",
+      "model-weight mutation",
+      "publication",
+      "review",
+      "approval",
+      "merge"
+    ],
+    "returnRoute": "return exact head/tree, proof receipt, source-set manifest, hosted job, and draft PR to Windows Local Operations"
   }
 ]

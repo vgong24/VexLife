@@ -746,5 +746,117 @@
   {
     "testRef": "test.runtime-recovery.r39-external-event-formation-adoption",
     "brief": "An immutable generic external source is accepted only with exact current cycle/lifecycle scope or one content-addressed adoption receipt binding source chronology, scheduler currentness, checkpoint pointer, cycle, failure, work and generation; readdressing and source/adoption substitution fail closed."
+  },
+  {
+    "testRef": "test.lived-companion.failure-vocabulary",
+    "brief": "G01 exposes the complete typed safe-failure vocabulary."
+  },
+  {
+    "testRef": "test.lived-companion.home-initialization",
+    "brief": "A fresh bounded Vex Home records one explicit device and companion lineage."
+  },
+  {
+    "testRef": "test.lived-companion.existing-home-preserved",
+    "brief": "An existing Vex Home is preserved and requires an explicit migration plan."
+  },
+  {
+    "testRef": "test.lived-companion.home-preservation",
+    "brief": "Fresh Home initialization admits only a missing root or one exact empty canonical regular directory; partial, non-empty, file, symlink or junction roots are preserved byte-identically and receive zero G01 Home writes."
+  },
+  {
+    "testRef": "test.lived-companion.actual-http-turn",
+    "brief": "One admitted loopback endpoint performs an actual HTTP request and response."
+  },
+  {
+    "testRef": "test.lived-companion.immutable-events",
+    "brief": "Request and response events are immutable and content-addressed."
+  },
+  {
+    "testRef": "test.lived-companion.context-binding",
+    "brief": "Bounded context binds the exact request and response event hashes."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-profile-admission",
+    "brief": "Only an explicitly admitted endpoint profile may execute."
+  },
+  {
+    "testRef": "test.lived-companion.loopback-boundary",
+    "brief": "Non-loopback endpoints fail without separate explicit authority."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-unreachable",
+    "brief": "Unreachable endpoints preserve typed failure evidence without advancing head."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-timeout",
+    "brief": "Endpoint timeout preserves the prior completed head."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-http-error",
+    "brief": "Endpoint HTTP failures remain distinct from successful turns."
+  },
+  {
+    "testRef": "test.lived-companion.endpoint-response-invalid",
+    "brief": "Invalid endpoint responses cannot advance the conversation head."
+  },
+  {
+    "testRef": "test.lived-companion.duplicate-suppression",
+    "brief": "Duplicate turn identity is suppressed before a second call or append."
+  },
+  {
+    "testRef": "test.lived-companion.failed-turn-recovery-evidence",
+    "brief": "A failed turn with durable request or response evidence routes to a new turnRef from the last valid head; same-turn retry performs zero additional HTTP calls, preserves the first failure receipt byte-identically, emits distinct content-addressed follow-up evidence, and a new-turn retry may complete."
+  },
+  {
+    "testRef": "test.lived-companion.credential-and-failure-evidence-integrity",
+    "brief": "The complete in-memory authorization value plus known raw credential material derived from it (scheme credential payload and Basic decoded password) are recursively rejected across all persistable turn/endpoint-response metadata before durability, endpoint model provenance is validated before completion, canonical first failure receipts are OS-atomically no-clobber claimed, and existing first-failure durability/retry/route claims must remain semantically coherent before follow-up provenance."
+  },
+  {
+    "testRef": "test.lived-companion.semantic-state-continuity-and-recovery",
+    "brief": "Any existing completed head is semantically validated before duplicate classification, HTTP or append; every consulted event is content/address/provenance-validated, completed history is genesis-anchored into exact REQUEST/RESPONSE pairs, canonical context location/source refs are enforced, forged orphan duplicate evidence is rejected, absent-writer recovery exposes only a semantically valid last head, duplicate follow-ups retain that validated head, and in-Home cross-thread/turn substitutions fail closed."
+  },
+  {
+    "testRef": "test.lived-companion.one-writer-per-thread",
+    "brief": "One OS-atomic cross-process lease admits exactly one writer per Home/lineage/thread before endpoint or persistence effects; competitors fail typed, lease release permits later turns, and completed-turn retries remain duplicate-suppressed."
+  },
+  {
+    "testRef": "test.lived-companion.abandoned-writer-recovery-disposition",
+    "brief": "A content-addressed writer lease whose recorded owner process is proven absent is classified as THREAD_WRITER_RECOVERY_REQUIRED with zero endpoint/event effects, preserved lease evidence, and an explicit recovery/attention route; ordinary turn execution never steals or deletes it."
+  },
+  {
+    "testRef": "test.lived-companion.unverifiable-writer-lease-disposition",
+    "brief": "Malformed, hash-invalid, identity-invalid, symlink, or non-regular writer-lease evidence is preserved, produces zero endpoint/event effects, and routes as an UNVERIFIABLE writer conflict to attention rather than impossible ordinary retry."
+  },
+  {
+    "testRef": "test.lived-companion.atomic-head",
+    "brief": "Response, context, and atomic head must all be durable before completion."
+  },
+  {
+    "testRef": "test.lived-companion.clean-shutdown",
+    "brief": "Clean shutdown binds the exact completed conversation head."
+  },
+  {
+    "testRef": "test.lived-companion.fresh-process-resume",
+    "brief": "A fresh operating-system process resumes the exact prior head."
+  },
+  {
+    "testRef": "test.lived-companion.identity-head-replay",
+    "brief": "Home, device, lineage, thread, event-chain, context, and head mismatches fail closed."
+  },
+  {
+    "testRef": "test.lived-companion.privacy",
+    "brief": "Credentials and URL secrets remain in memory and never enter persistent records."
+  },
+  {
+    "testRef": "test.lived-companion.windows-proof",
+    "brief": "The hosted Windows proof exercises actual HTTP, shutdown, fresh-process resume, and all negative controls."
+  },
+  {
+    "testRef": "test.lived-companion.redirect-boundary",
+    "brief": "G01 admits only numeric loopback literals and rejects every HTTP redirect before following it, so a loopback endpoint cannot escape to a non-loopback destination or misreport the actual network boundary."
+  },
+  {
+    "testRef": "test.lived-companion.canonical-path-identity",
+    "brief": "Path-bearing refs use one lowercase portable canonical segment grammar; Windows drive-relative, ADS, reserved-name, trailing-dot/space and case aliases fail before effects, linked-parent Home aliases are rejected, and stored context paths bind the canonical Home root."
   }
 ]
