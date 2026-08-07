@@ -169,37 +169,6 @@ function reformScoreEvent(event, changes = {}) {
   return { ...finalCore, scoreEventHash: semanticHash(finalCore) };
 }
 
-function firstPersonEvidence(state, statementRef) {
-  const statement = state.statements.find((item) => item.statementRef === statementRef);
-  const requestBinding = statement.sourceBindings.find((item) => item.eventKind === 'REQUEST');
-  const responseBinding = statement.sourceBindings.find((item) => item.eventKind === 'RESPONSE');
-  return createFirstPersonEligibilityEvidence(state, statementRef, {
-    formedAt: '2026-08-07T10:00:00.000Z',
-    evidenceBindings: [
-      { gate: 'PROVENANCE_CURRENT', sourceEventHash: requestBinding.eventHash, issuerRef: 'system.vexlife.score-context-continuity', disposition: 'PERMITTED' },
-      { gate: 'BRANCH_RELATION_CURRENT', sourceEventHash: responseBinding.eventHash, issuerRef: 'system.vexlife.score-context-continuity', disposition: 'PERMITTED' },
-      { gate: 'IDENTITY_STANCE_PERMITTED', sourceEventHash: responseBinding.eventHash, issuerRef: state.identity.companionLineageRef, disposition: 'PERMITTED' },
-      { gate: 'CONSENT_PERMITTED', sourceEventHash: requestBinding.eventHash, issuerRef: 'person.test', disposition: 'PERMITTED' }
-    ]
-  });
-}
-
-function rehashEligibilityEvidence(evidence, mutate) {
-  const copy = structuredClone(evidence);
-  delete copy.semanticFingerprint;
-  mutate(copy);
-  copy.semanticFingerprint = semanticHash(copy);
-  return copy;
-}
-
-function rehashGate(gate, mutate) {
-  const copy = structuredClone(gate);
-  delete copy.semanticFingerprint;
-  mutate(copy);
-  copy.semanticFingerprint = semanticHash(copy);
-  return copy;
-}
-
 test('G02 binds the exact accepted shared semantic disposition and closed vocabularies', () => {
   assert.equal(SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION, 'github.issue.vextreme-sdk.350.comment.5215288414');
   assert.deepEqual(SCORE_CONTEXT_MEMORY_RELATIONS, [
@@ -378,35 +347,84 @@ test('source descent revalidates exact committed G01 evidence and never returns 
   assert.deepEqual(descent.observedCommittedSourceEventRefs, [g01.first.requestEvent.eventRef, g01.first.responseEvent.eventRef]);
 });
 
-test('first-person eligibility requires exact current source-bound gate evidence', () => {
+test('G02 cannot mint first-person authority locally and autobiography remains attributed pending shared authority', () => {
   const ids = tempHome();
   const g01 = committedG01(ids);
   append(ids, g01);
   const state = loadScoreContextState(ids);
-  assert.equal(evaluateFirstPersonEligibility(state, 'statement.g02.one').eligible, false);
-  const evidence = firstPersonEvidence(state, 'statement.g02.one');
-  const allowed = evaluateFirstPersonEligibility(state, 'statement.g02.one', evidence);
-  assert.equal(allowed.eligible, true);
-  assert.equal(allowed.evidenceState, 'EXACT_CURRENT_SOURCE_BOUND_EVIDENCE');
+  const result = evaluateFirstPersonEligibility(state, 'statement.g02.one');
+  assert.equal(result.eligible, false);
+  assert.equal(result.wordingMode, 'AUTOBIOGRAPHY_ATTRIBUTED_PENDING_AUTHORITY');
+  assert.equal(result.evidenceState, 'SOURCE_MANAGED_FIRST_PERSON_AUTHORITY_NOT_ADMITTED');
 
-  const stale = rehashEligibilityEvidence(evidence, (copy) => { copy.observedConversationHeadSha256 = 'e'.repeat(64); });
-  assert.equal(evaluateFirstPersonEligibility(state, 'statement.g02.one', stale).eligible, false);
+  const statement = state.statements.find((item) => item.statementRef === 'statement.g02.one');
+  const request = statement.sourceBindings.find((item) => item.eventKind === 'REQUEST');
+  assert.throws(() => createFirstPersonEligibilityEvidence(state, 'statement.g02.one', {
+    evidenceBindings: [
+      { gate: 'CONSENT_PERMITTED', sourceEventHash: request.eventHash, issuerRef: 'person.test', disposition: 'PERMITTED' }
+    ]
+  }), (error) => error.code === 'FIRST_PERSON_EVIDENCE_INVALID' &&
+    error.details?.exactNextSafeRoute === 'SOURCE_MANAGED_SHARED_FIRST_PERSON_EVIDENCE_CONTRACT_REQUIRED');
 
-  const substituted = rehashEligibilityEvidence(evidence, (copy) => {
-    copy.evidenceBindings[0] = rehashGate(copy.evidenceBindings[0], (gate) => { gate.sourceEventHash = 'f'.repeat(64); });
-  });
-  assert.equal(evaluateFirstPersonEligibility(state, 'statement.g02.one', substituted).eligible, false);
+  const forged = {
+    schemaVersion: 'vexlife.first-person-eligibility-evidence/v2',
+    statementRef: 'statement.g02.one',
+    currentness: 'CURRENT',
+    evidenceBindings: [{ gate: 'CONSENT_PERMITTED', sourceEventHash: request.eventHash, disposition: 'PERMITTED' }],
+    semanticFingerprint: semanticHash({ statementRef: 'statement.g02.one', claimed: 'PERMITTED' })
+  };
+  const forgedResult = evaluateFirstPersonEligibility(state, 'statement.g02.one', forged);
+  assert.equal(forgedResult.eligible, false);
+  assert.equal(forgedResult.suppliedEvidenceIgnored, true);
 });
 
-test('non-autobiographical relations remain attributed regardless of valid gate evidence', () => {
+test('non-autobiographical relations remain attributed while positive first-person authority is held', () => {
   const ids = tempHome();
   const g01 = committedG01(ids);
   append(ids, g01, { memoryRelation: 'PREDECESSOR_WITNESS_HISTORY' });
   const state = loadScoreContextState(ids);
-  const evidence = firstPersonEvidence(state, 'statement.g02.one');
-  const result = evaluateFirstPersonEligibility(state, 'statement.g02.one', evidence);
+  const result = evaluateFirstPersonEligibility(state, 'statement.g02.one');
   assert.equal(result.eligible, false);
   assert.equal(result.wordingMode, 'PREDECESSOR_ATTRIBUTED');
+});
+
+function symlinkFileOrSkip(t, target, linkPath) {
+  try {
+    fs.symlinkSync(target, linkPath, 'file');
+    return true;
+  } catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EINVAL'].includes(error?.code)) {
+      t.skip(`host cannot create file symlink: ${error.code}`);
+      return false;
+    }
+    throw error;
+  }
+}
+
+test('G01 final bounded-context file cannot be a symlink alias outside Vex Home', (t) => {
+  const ids = tempHome();
+  const g01 = committedG01(ids);
+  append(ids, g01);
+  const contextFile = path.join(ids.home, g01.head.contextPath);
+  const external = path.join(path.dirname(ids.home), 'external-g01-context.json');
+  fs.copyFileSync(contextFile, external);
+  fs.unlinkSync(contextFile);
+  if (!symlinkFileOrSkip(t, external, contextFile)) return;
+  assert.throws(() => loadScoreContextState(ids), (error) =>
+    ['HOME_IDENTITY_MISMATCH', 'SCORE_SOURCE_INVALID'].includes(error.code));
+});
+
+test('immutable Score-head receipt cannot be a symlink alias outside Vex Home', (t) => {
+  const ids = tempHome();
+  const g01 = committedG01(ids);
+  append(ids, g01);
+  const state = loadScoreContextState(ids);
+  const immutableHead = path.join(ids.home, 'score', ids.companionLineageRef, ids.threadRef, 'heads', `${state.head.scoreHeadSha256}.json`);
+  const external = path.join(path.dirname(ids.home), 'external-score-head.json');
+  fs.copyFileSync(immutableHead, external);
+  fs.unlinkSync(immutableHead);
+  if (!symlinkFileOrSkip(t, external, immutableHead)) return;
+  assert.throws(() => loadScoreContextState(ids), (error) => error.code === 'HOME_IDENTITY_MISMATCH');
 });
 
 test('projection keeps Dream, Rhythm learning, synchronization and weights held', () => {

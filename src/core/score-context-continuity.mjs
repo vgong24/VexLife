@@ -367,7 +367,7 @@ function validateCommittedG01Conversation(identity, threadRef) {
       responseEvent.messageRef !== head.responseMessageRef || requestEvent.messageRef !== head.requestMessageRef) {
     fail('SCORE_SOURCE_INVALID', 'G01 completed head does not bind its exact final request/response turn');
   }
-  const expectedContext = path.join(paths.context, `${head.turnRef}.json`);
+  const expectedContext = homePath(identity.homeRoot, 'context', identity.companionLineageRef, threadRef, `${head.turnRef}.json`);
   const expectedRelative = path.relative(identity.homeRoot, expectedContext).replaceAll('\\', '/');
   if (head.contextPath !== expectedRelative || !fs.existsSync(expectedContext)) {
     fail('SCORE_SOURCE_INVALID', 'G01 completed head does not bind the canonical context record');
@@ -648,7 +648,7 @@ export function loadScoreContextState({ home, homeRef, deviceRef, companionLinea
   let chain = [];
   if (fs.existsSync(paths.head)) {
     head = verifyHead(readJson(paths.head, 'SCORE_HEAD_MISMATCH', 'Score head'), identity, thread);
-    const immutableHeadFile = path.join(paths.heads, `${head.scoreHeadSha256}.json`);
+    const immutableHeadFile = homePath(identity.homeRoot, 'score', identity.companionLineageRef, thread, 'heads', `${head.scoreHeadSha256}.json`);
     if (!fs.existsSync(immutableHeadFile) || semanticHash(readJson(immutableHeadFile, 'SCORE_HEAD_MISMATCH', 'immutable Score head')) !== semanticHash(head)) {
       fail('SCORE_HEAD_MISMATCH', 'current Score head lacks exact immutable head receipt');
     }
@@ -751,7 +751,7 @@ function commitEvent({ state, paths, eventCore, sourceConversationHeadSha256, fa
   };
   const head = { ...headCore, scoreHeadSha256: semanticHash(headCore) };
   fs.mkdirSync(paths.heads, { recursive: true });
-  writeExclusive(path.join(paths.heads, `${head.scoreHeadSha256}.json`), head);
+  writeExclusive(homePath(state.identity.homeRoot, 'score', state.identity.companionLineageRef, state.threadRef, 'heads', `${head.scoreHeadSha256}.json`), head);
   atomicWrite(paths.head, head);
   return { event, head, projection };
 }
@@ -887,112 +887,19 @@ export function appendOpenLoop(input) {
 }
 
 export function createFirstPersonEligibilityEvidence(state, statementRef, input = {}) {
-  const ref = safeRef(statementRef, 'statementRef', 'FIRST_PERSON_EVIDENCE_INVALID');
-  const statement = state?.statements?.find((item) => item.statementRef === ref);
-  if (!statement) fail('FIRST_PERSON_EVIDENCE_INVALID', 'first-person evidence requires one replayed Score statement');
-  if (state.identity?.companionLineageRef !== statement.companionLineageRef || state.threadRef !== statement.threadRef) {
-    fail('FIRST_PERSON_EVIDENCE_INVALID', 'first-person evidence statement identity is not owned by this replayed Score state');
+  // G02 may evaluate the shared first-person rule, but no live source-managed
+  // provenance/branch/identity/consent authority contract is admitted here.
+  // Refuse to mint an authority receipt from caller-shaped dispositions.
+  if (state && statementRef && input) {
+    fail('FIRST_PERSON_EVIDENCE_INVALID', 'G02 cannot mint positive first-person eligibility authority locally', {
+      evidenceContractState: 'NOT_ADMITTED_IN_G02',
+      exactNextSafeRoute: 'SOURCE_MANAGED_SHARED_FIRST_PERSON_EVIDENCE_CONTRACT_REQUIRED'
+    });
   }
-  const committed = validateCommittedG01Conversation(state.identity, state.threadRef);
-  const observedSources = validateStoredSourceBindings(statement.sourceBindings, committed);
-  const sourceByHash = new Map(observedSources.map((event) => [event.eventHash, event]));
-  const requestSpeakers = new Map(observedSources
-    .filter((event) => event.eventKind === 'REQUEST')
-    .map((event) => [event.eventHash, event.speakerRef]));
-  const gateNames = ['PROVENANCE_CURRENT', 'BRANCH_RELATION_CURRENT', 'IDENTITY_STANCE_PERMITTED', 'CONSENT_PERMITTED'];
-  const supplied = Array.isArray(input.evidenceBindings) ? input.evidenceBindings : [];
-  const formedAt = input.formedAt ?? new Date().toISOString();
-  canonicalTimestamp(formedAt, 'first-person eligibility evidence formedAt');
-  const evidenceBindings = gateNames.map((gate) => {
-    const binding = supplied.find((item) => item?.gate === gate);
-    if (!binding || !SHA256.test(binding.sourceEventHash ?? '') || !sourceByHash.has(binding.sourceEventHash)) {
-      fail('FIRST_PERSON_EVIDENCE_INVALID', `first-person ${gate} evidence is missing or not bound to committed statement source`);
-    }
-    const source = sourceByHash.get(binding.sourceEventHash);
-    const expectedIssuer = gate === 'IDENTITY_STANCE_PERMITTED'
-      ? state.identity.companionLineageRef
-      : gate === 'CONSENT_PERMITTED'
-        ? requestSpeakers.get(binding.sourceEventHash) ?? null
-        : 'system.vexlife.score-context-continuity';
-    if (!expectedIssuer || binding.issuerRef !== expectedIssuer || binding.disposition !== 'PERMITTED') {
-      fail('FIRST_PERSON_EVIDENCE_INVALID', `first-person ${gate} evidence issuer or disposition is not source-authorized`);
-    }
-    const core = {
-      schemaVersion: 'vexlife.first-person-gate-evidence/v1',
-      gate,
-      issuerRef: binding.issuerRef,
-      disposition: 'PERMITTED',
-      sourceEventRef: source.eventRef,
-      sourceEventHash: source.eventHash,
-      sourceContentHash: source.contentHash,
-      statementRef: statement.statementRef,
-      statementEventHash: statement.eventHash,
-      companionLineageRef: state.identity.companionLineageRef,
-      threadRef: state.threadRef,
-      observedConversationHeadSha256: committed.head.conversationHeadSha256,
-      formedAt
-    };
-    const evidenceRef = `first-person-gate.${gate.toLowerCase().replaceAll('_', '-')}.${semanticHash(core).slice(0, 24)}`;
-    const withRef = { ...core, evidenceRef };
-    return Object.freeze({ ...withRef, semanticFingerprint: semanticHash(withRef) });
+  fail('FIRST_PERSON_EVIDENCE_INVALID', 'G02 cannot mint positive first-person eligibility authority locally', {
+    evidenceContractState: 'NOT_ADMITTED_IN_G02',
+    exactNextSafeRoute: 'SOURCE_MANAGED_SHARED_FIRST_PERSON_EVIDENCE_CONTRACT_REQUIRED'
   });
-  if (new Set(evidenceBindings.map((item) => item.gate)).size !== gateNames.length) {
-    fail('FIRST_PERSON_EVIDENCE_INVALID', 'first-person gate evidence must cover each exact gate once');
-  }
-  const core = {
-    schemaVersion: 'vexlife.first-person-eligibility-evidence/v2',
-    statementRef: statement.statementRef,
-    statementEventHash: statement.eventHash,
-    companionLineageRef: state.identity.companionLineageRef,
-    threadRef: state.threadRef,
-    observedConversationHeadSha256: committed.head.conversationHeadSha256,
-    evidenceBindings,
-    currentness: 'CURRENT',
-    formedAt
-  };
-  const evidenceRef = `first-person-eligibility.${semanticHash(core).slice(0, 24)}`;
-  const withRef = { ...core, evidenceRef };
-  return Object.freeze({ ...withRef, semanticFingerprint: semanticHash(withRef) });
-}
-
-function validateFirstPersonEligibilityEvidence(state, statement, evidence) {
-  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return false;
-  const { semanticFingerprint, ...core } = evidence;
-  if (evidence.schemaVersion !== 'vexlife.first-person-eligibility-evidence/v2' || !SHA256.test(semanticFingerprint ?? '') ||
-      semanticHash(core) !== semanticFingerprint || evidence.currentness !== 'CURRENT' ||
-      evidence.statementRef !== statement.statementRef || evidence.statementEventHash !== statement.eventHash ||
-      evidence.companionLineageRef !== state.identity?.companionLineageRef || evidence.threadRef !== state.threadRef ||
-      !Array.isArray(evidence.evidenceBindings) || evidence.evidenceBindings.length !== 4) return false;
-  let committed;
-  let observedSources;
-  try {
-    committed = validateCommittedG01Conversation(state.identity, state.threadRef);
-    observedSources = validateStoredSourceBindings(statement.sourceBindings, committed);
-  } catch { return false; }
-  if (evidence.observedConversationHeadSha256 !== committed.head.conversationHeadSha256) return false;
-  const sourceByHash = new Map(observedSources.map((event) => [event.eventHash, event]));
-  const requestSpeakers = new Map(observedSources.filter((event) => event.eventKind === 'REQUEST').map((event) => [event.eventHash, event.speakerRef]));
-  const expectedGates = ['PROVENANCE_CURRENT', 'BRANCH_RELATION_CURRENT', 'IDENTITY_STANCE_PERMITTED', 'CONSENT_PERMITTED'];
-  if (JSON.stringify(evidence.evidenceBindings.map((item) => item.gate)) !== JSON.stringify(expectedGates)) return false;
-  for (const item of evidence.evidenceBindings) {
-    if (!item || item.schemaVersion !== 'vexlife.first-person-gate-evidence/v1' || !SHA256.test(item.semanticFingerprint ?? '')) return false;
-    const itemCore = structuredClone(item);
-    const itemFingerprint = itemCore.semanticFingerprint;
-    delete itemCore.semanticFingerprint;
-    if (semanticHash(itemCore) !== itemFingerprint || item.disposition !== 'PERMITTED' ||
-        item.statementRef !== statement.statementRef || item.statementEventHash !== statement.eventHash ||
-        item.companionLineageRef !== state.identity.companionLineageRef || item.threadRef !== state.threadRef ||
-        item.observedConversationHeadSha256 !== committed.head.conversationHeadSha256) return false;
-    const source = sourceByHash.get(item.sourceEventHash);
-    if (!source || item.sourceEventRef !== source.eventRef || item.sourceContentHash !== source.contentHash) return false;
-    const expectedIssuer = item.gate === 'IDENTITY_STANCE_PERMITTED'
-      ? state.identity.companionLineageRef
-      : item.gate === 'CONSENT_PERMITTED'
-        ? requestSpeakers.get(item.sourceEventHash) ?? null
-        : 'system.vexlife.score-context-continuity';
-    if (!expectedIssuer || item.issuerRef !== expectedIssuer) return false;
-  }
-  return true;
 }
 
 export function evaluateFirstPersonEligibility(state, statementRef, evidence = null) {
@@ -1001,11 +908,13 @@ export function evaluateFirstPersonEligibility(state, statementRef, evidence = n
   if (!statement) fail('SCORE_LINK_INVALID', 'statement is absent from replayed Score state');
   const relation = statement.memoryRelation;
   if (!SCORE_CONTEXT_MEMORY_RELATIONS.includes(relation)) fail('MEMORY_RELATION_INVALID', 'statement memory relation is invalid');
-  const blockedState = ['CONFLICTED', 'UNKNOWN', 'SUPERSEDED', 'RELEASED_OR_TOMBSTONED'].includes(statement.effectiveState);
-  const evidenceCurrent = validateFirstPersonEligibilityEvidence(state, statement, evidence);
-  const eligible = relation === 'CURRENT_LINEAGE_AUTOBIOGRAPHY' && statement.current === true && !blockedState &&
-    statement.acceptedForContinuity === true && statement.consentState === 'PERMITTED' && evidenceCurrent;
-  const wordingMode = eligible ? 'FIRST_PERSON_MEMORY_ELIGIBLE'
+
+  // A caller-supplied or locally minted receipt cannot satisfy the shared gate.
+  // Until the separate source-managed live authority interface exists, even a
+  // current accepted autobiography remains attributed rather than first-person.
+  const eligible = false;
+  const wordingMode = relation === 'CURRENT_LINEAGE_AUTOBIOGRAPHY'
+    ? 'AUTOBIOGRAPHY_ATTRIBUTED_PENDING_AUTHORITY'
     : relation === 'SHARED_RELATIONSHIP_HISTORY' ? 'RELATIONSHIP_ATTRIBUTED'
       : relation === 'PREDECESSOR_WITNESS_HISTORY' ? 'PREDECESSOR_ATTRIBUTED'
         : ['INHERITED_CONTEXT', 'EXTERNAL_EVIDENCE'].includes(relation) ? 'SOURCE_ATTRIBUTED'
@@ -1014,7 +923,8 @@ export function evaluateFirstPersonEligibility(state, statementRef, evidence = n
   return Object.freeze({
     eligible,
     wordingMode,
-    evidenceState: evidenceCurrent ? 'EXACT_CURRENT_SOURCE_BOUND_EVIDENCE' : 'MISSING_STALE_OR_INVALID_EVIDENCE',
+    evidenceState: 'SOURCE_MANAGED_FIRST_PERSON_AUTHORITY_NOT_ADMITTED',
+    suppliedEvidenceIgnored: evidence !== null,
     historicalAuthorityFromRhythm: false
   });
 }

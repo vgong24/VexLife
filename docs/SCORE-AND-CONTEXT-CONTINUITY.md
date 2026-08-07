@@ -67,7 +67,7 @@ G02 writes only device-private Vex Home runtime state:
 <vexHome>/runtime/score-writer-locks/<lineage>/<thread>.lock
 ```
 
-Events and historical head receipts are append-only/content-addressed. `head.json` is the atomic current pointer. A writer lease prevents concurrent Score mutation. If a writer process disappears, its exact lease is preserved and mutation routes to explicit recovery rather than stealing ownership.
+Events and historical head receipts are append-only/content-addressed. `head.json` is the atomic current pointer. Final context files and immutable Score-head receipts must resolve as canonical regular files inside the admitted Vex Home; final-file symbolic-link or junction aliases are rejected even when the external bytes are otherwise exact. A writer lease prevents concurrent Score mutation. If a writer process disappears, its exact lease is preserved and mutation routes to explicit recovery rather than stealing ownership.
 
 ## G01 stays immutable
 
@@ -104,7 +104,9 @@ G02 therefore persists only `OPEN` loop state. A caller cannot mark a loop `RESO
 
 ## First-person wording
 
-`I remember ...` is eligible only for an accepted, current `CURRENT_LINEAGE_AUTOBIOGRAPHY` statement when provenance, branch relation, identity stance and consent all permit it. Raw caller booleans are insufficient. Eligibility is evaluated only from a live replayed Score state plus one content-addressed evidence receipt that binds all four gates to the exact statement event, current lineage/thread, current committed G01 head, and committed G01 source-event hashes. Missing, stale, substituted, wrong-issuer or wrong-source evidence fails closed to attributed wording.
+`I remember ...` may be eligible under the shared Score/Lineage contract only when provenance, branch relation, identity stance, consent, and accepted memory disposition are proven by their proper source-managed authorities. G02 does **not** currently have an admitted live shared/Vex-Safety/SDK authority-evidence interface for those gates, so it refuses to mint a positive eligibility receipt from caller-provided dispositions or from source hashes alone.
+
+Therefore positive first-person memory wording remains **held** in G02. Even an accepted current `CURRENT_LINEAGE_AUTOBIOGRAPHY` statement is projected as autobiography-attributed pending authority rather than `I remember ...`. This is a conservative product boundary, not a redefinition of the shared semantics: a later exact source-managed authority contract may enable positive eligibility without rewriting Score history. Binding a gate claim to a real source event is not proof that the source meaning authorizes that claim.
 
 Other relations remain attributed:
 
@@ -124,7 +126,7 @@ Rhythm fluency never creates historical authority.
 npm run score-context:proof
 ```
 
-The proof uses a temporary Vex Home and two actual numeric-loopback G01 HTTP turns, then proves committed-G01 source verification, relation coverage, same-subject correction/supersession, open-loop carry-forward with caller closure held, source-bound first-person eligibility, exact source descent, and fresh-process Score replay. The crash boundary runs in a separate child process that exits after the Score event is durable but before head advancement, proving the prior head remains current, the exact-next event stays uncommitted, and the abandoned writer lease routes to explicit recovery. Well-formed re-addressed/reordered and source-substituted tails are also injected and must produce attention.
+The proof uses a temporary Vex Home and two actual numeric-loopback G01 HTTP turns, then proves committed-G01 source verification, relation coverage, same-subject correction/supersession, open-loop carry-forward with caller closure held, local first-person authority minting blocked with positive eligibility held, exact source descent, and fresh-process Score replay. The crash boundary runs in a separate child process that exits after the Score event is durable but before head advancement, proving the prior head remains current, the exact-next event stays uncommitted, and the abandoned writer lease routes to explicit recovery. Well-formed re-addressed/reordered and source-substituted tails are also injected and must produce attention.
 
 The hosted Windows job binds the proof to the exact candidate head.
 

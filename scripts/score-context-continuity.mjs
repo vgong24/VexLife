@@ -69,36 +69,6 @@ function appendStatement(idsValue, currentG01Head, sourceTurn, input) {
     sourceEvents: [sourceTurn.requestEvent, sourceTurn.responseEvent], ...input });
 }
 
-function formFirstPersonEvidence(state, statementRef) {
-  const statement = state.statements.find((item) => item.statementRef === statementRef);
-  const request = statement.sourceBindings.find((item) => item.eventKind === 'REQUEST');
-  const response = statement.sourceBindings.find((item) => item.eventKind === 'RESPONSE');
-  return createFirstPersonEligibilityEvidence(state, statementRef, {
-    evidenceBindings: [
-      { gate: 'PROVENANCE_CURRENT', sourceEventHash: request.eventHash, issuerRef: 'system.vexlife.score-context-continuity', disposition: 'PERMITTED' },
-      { gate: 'BRANCH_RELATION_CURRENT', sourceEventHash: response.eventHash, issuerRef: 'system.vexlife.score-context-continuity', disposition: 'PERMITTED' },
-      { gate: 'IDENTITY_STANCE_PERMITTED', sourceEventHash: response.eventHash, issuerRef: state.identity.companionLineageRef, disposition: 'PERMITTED' },
-      { gate: 'CONSENT_PERMITTED', sourceEventHash: request.eventHash, issuerRef: 'person.proof-user', disposition: 'PERMITTED' }
-    ]
-  });
-}
-
-function rehashEvidence(evidence, mutate) {
-  const copy = structuredClone(evidence);
-  delete copy.semanticFingerprint;
-  mutate(copy);
-  copy.semanticFingerprint = semanticHash(copy);
-  return copy;
-}
-
-function rehashGate(gate, mutate) {
-  const copy = structuredClone(gate);
-  delete copy.semanticFingerprint;
-  mutate(copy);
-  copy.semanticFingerprint = semanticHash(copy);
-  return copy;
-}
-
 function reformScoreEvent(event, changes = {}) {
   const core = structuredClone(event);
   delete core.scoreEventHash;
@@ -194,16 +164,34 @@ async function runProof() {
     const replayReceipt = JSON.parse(replay.stdout.trim().split(/\r?\n/).at(-1));
 
     const currentRef = 'statement.g02.proof.superseding';
-    const eligibilityEvidence = formFirstPersonEvidence(state, currentRef);
-    const firstPerson = evaluateFirstPersonEligibility(state, currentRef, eligibilityEvidence);
-    const missingFirstPerson = evaluateFirstPersonEligibility(state, currentRef, null);
-    const substitutedEligibility = rehashEvidence(eligibilityEvidence, (copy) => {
-      copy.evidenceBindings[0] = rehashGate(copy.evidenceBindings[0], (gate) => { gate.sourceEventHash = 'f'.repeat(64); });
+    const firstPerson = evaluateFirstPersonEligibility(state, currentRef, null);
+    const currentStatement = state.statements.find((item) => item.statementRef === currentRef);
+    const requestBinding = currentStatement.sourceBindings.find((item) => item.eventKind === 'REQUEST');
+    const responseBinding = currentStatement.sourceBindings.find((item) => item.eventKind === 'RESPONSE');
+    let localFirstPersonEvidenceMintingBlocked = false;
+    try {
+      createFirstPersonEligibilityEvidence(state, currentRef, {
+        evidenceBindings: [
+          { gate: 'PROVENANCE_CURRENT', sourceEventHash: requestBinding.eventHash, issuerRef: 'system.vexlife.score-context-continuity', disposition: 'PERMITTED' },
+          { gate: 'BRANCH_RELATION_CURRENT', sourceEventHash: responseBinding.eventHash, issuerRef: 'system.vexlife.score-context-continuity', disposition: 'PERMITTED' },
+          { gate: 'IDENTITY_STANCE_PERMITTED', sourceEventHash: responseBinding.eventHash, issuerRef: state.identity.companionLineageRef, disposition: 'PERMITTED' },
+          { gate: 'CONSENT_PERMITTED', sourceEventHash: requestBinding.eventHash, issuerRef: 'person.proof-user', disposition: 'PERMITTED' }
+        ]
+      });
+    } catch (error) {
+      localFirstPersonEvidenceMintingBlocked = error.code === 'FIRST_PERSON_EVIDENCE_INVALID' &&
+        error.details?.exactNextSafeRoute === 'SOURCE_MANAGED_SHARED_FIRST_PERSON_EVIDENCE_CONTRACT_REQUIRED';
+    }
+    const forgedEvidence = Object.freeze({
+      schemaVersion: 'vexlife.first-person-eligibility-evidence/v2',
+      statementRef: currentRef,
+      currentness: 'CURRENT',
+      evidenceBindings: [{ gate: 'CONSENT_PERMITTED', disposition: 'PERMITTED', sourceEventHash: requestBinding.eventHash }],
+      semanticFingerprint: semanticHash({ statementRef: currentRef, claimed: 'PERMITTED' })
     });
-    const substitutedFirstPerson = evaluateFirstPersonEligibility(state, currentRef, substitutedEligibility);
+    const forgedFirstPerson = evaluateFirstPersonEligibility(state, currentRef, forgedEvidence);
     const predecessorRef = relationStatements.find((item) => item.relation === 'PREDECESSOR_WITNESS_HISTORY').statementRef;
-    const predecessorEvidence = formFirstPersonEvidence(state, predecessorRef);
-    const predecessorWording = evaluateFirstPersonEligibility(state, predecessorRef, predecessorEvidence);
+    const predecessorWording = evaluateFirstPersonEligibility(state, predecessorRef, null);
     const descent = sourceDescentForStatement(state, currentRef);
 
     const headBeforeFault = state.head.scoreHeadSha256;
@@ -228,7 +216,7 @@ async function runProof() {
 
     const projection = projectScoreContext(proofIds);
     return {
-      schemaVersion: 'vexlife.g02-score-context-continuity-proof/v2', state: 'PASS', currentness: 'CURRENT',
+      schemaVersion: 'vexlife.g02-score-context-continuity-proof/v3', state: 'PASS', currentness: 'CURRENT',
       candidateHeadSha: candidateHead, sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
       actualG01HttpTurns: 2, committedG01SourceVerified: descent.observedCurrentConversationHeadSha256 === g01.currentHead.conversationHeadSha256,
       relationClassesCovered: [...SCORE_CONTEXT_MEMORY_RELATIONS], statementStatesRegistered: [...SCORE_CONTEXT_STATEMENT_STATES],
@@ -237,9 +225,10 @@ async function runProof() {
       supersessionPreservedPrior: state.statements.some((item) => item.statementRef === 'statement.g02.proof.correction' && item.effectiveState === 'SUPERSEDED'),
       openLoopCarryForward: state.openLoopRefs.includes('open-loop.g02.proof.one'), coerciveOpenLoopResolutionHeld: coerciveResolutionHeld,
       freshProcessReplay: replayReceipt.state === 'RESUMED',
-      firstPersonAutobiographyEligible: firstPerson.eligible === true && firstPerson.evidenceState === 'EXACT_CURRENT_SOURCE_BOUND_EVIDENCE',
-      missingFirstPersonEvidenceBlocked: missingFirstPerson.eligible === false,
-      substitutedFirstPersonEvidenceBlocked: substitutedFirstPerson.eligible === false,
+      firstPersonEligibilityHeld: firstPerson.eligible === false && firstPerson.wordingMode === 'AUTOBIOGRAPHY_ATTRIBUTED_PENDING_AUTHORITY',
+      localFirstPersonEvidenceMintingBlocked,
+      forgedFirstPersonEvidenceBlocked: forgedFirstPerson.eligible === false && forgedFirstPerson.suppliedEvidenceIgnored === true,
+      positiveFirstPersonAuthorityContractPresent: false,
       predecessorImpersonationBlocked: predecessorWording.eligible === false && predecessorWording.wordingMode === 'PREDECESSOR_ATTRIBUTED',
       sourceDescentExact: descent.sourceBindings.length === 2 && descent.rawSourceContentIncluded === false,
       abruptProcessExitProven: crash.status === 91,
@@ -258,8 +247,8 @@ async function runProof() {
   const requiredTrue = [
     receipt.committedG01SourceVerified, receipt.correctionPreservedPrior, receipt.supersessionPreservedPrior,
     receipt.openLoopCarryForward, receipt.coerciveOpenLoopResolutionHeld, receipt.freshProcessReplay,
-    receipt.firstPersonAutobiographyEligible, receipt.missingFirstPersonEvidenceBlocked,
-    receipt.substitutedFirstPersonEvidenceBlocked, receipt.predecessorImpersonationBlocked,
+    receipt.firstPersonEligibilityHeld, receipt.localFirstPersonEvidenceMintingBlocked,
+    receipt.forgedFirstPersonEvidenceBlocked, receipt.predecessorImpersonationBlocked,
     receipt.sourceDescentExact, receipt.abruptProcessExitProven, receipt.crashLikeTailPreserved,
     receipt.priorHeadRemainedCurrentAfterTail, receipt.abandonedWriterRecoveryHeld,
     receipt.readdressedTailAttention, receipt.sourceSubstitutedTailAttention
