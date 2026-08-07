@@ -7,6 +7,20 @@ import { createContinuityObservation, validateContinuityObservation } from './co
 export const SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION =
   'github.issue.vextreme-sdk.350.comment.5215288414';
 
+export const SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION =
+  'github.issue.vextreme-sdk.350.comment.5216924433';
+
+export const SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM =
+  'github.issue.vextreme-sdk.350.comment.5217097749';
+
+export const SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT =
+  'contract.multivex.score.live-semantic-acceptance.v1';
+
+const SCORE_CONTEXT_MEMORY_EXECUTABLE_ADDENDUM =
+  'github.issue.vextreme-sdk.225.comment.5217085830';
+const SCORE_CONTEXT_SAFETY_EXECUTABLE_ADDENDUM =
+  'github.issue.vextreme-sdk.226.comment.5217090896';
+
 export const SCORE_CONTEXT_MEMORY_RELATIONS = Object.freeze([
   'CURRENT_LINEAGE_AUTOBIOGRAPHY',
   'SHARED_RELATIONSHIP_HISTORY',
@@ -40,7 +54,14 @@ export const SCORE_CONTEXT_FAILURE_CODES = Object.freeze([
   'STATEMENT_STATE_INVALID',
   'SCORE_LINK_INVALID',
   'OPEN_LOOP_INVALID',
-  'FIRST_PERSON_EVIDENCE_INVALID'
+  'FIRST_PERSON_EVIDENCE_INVALID',
+  'SCORE_SEMANTIC_CANDIDATE_INVALID',
+  'SCORE_CLASSIFICATION_EVIDENCE_INVALID',
+  'SCORE_SEMANTIC_ACCEPTANCE_INVALID',
+  'SCORE_SEMANTIC_AUTHORITY_INVALID',
+  'SCORE_SEMANTIC_AUTHORITY_STALE',
+  'SCORE_SEMANTIC_AUTHORITY_MISMATCH',
+  'SCORE_CONSENT_INVALID'
 ]);
 
 const REF = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
@@ -397,6 +418,438 @@ function sourceBindingFromEvent(event) {
   };
 }
 
+const SCORE_CONTEXT_CLASSIFICATION_EVIDENCE_CLASSES = Object.freeze([
+  'STRUCTURAL_OBSERVATION',
+  'HUMAN_CONFIRMATION',
+  'LINEAGE_INFERENCE',
+  'CONFLICT_PRESERVATION',
+  'UNKNOWN_HOLD',
+  'CORRECTION_ACCEPTANCE',
+  'SUPERSESSION_ACCEPTANCE',
+  'RELEASE_TOMBSTONE_AUTHORITY'
+]);
+
+const SCORE_CONTEXT_CONSENT_DISPOSITIONS = Object.freeze([
+  'PERMITTED',
+  'NARROWED',
+  'DEFERRED',
+  'DENIED',
+  'UNKNOWN',
+  'WITHDRAWN'
+]);
+
+function semanticAuthorityPaths(home, lineageRef, threadRef) {
+  const lineage = safeRef(lineageRef, 'semantic authority lineageRef');
+  const thread = safeRef(threadRef, 'semantic authority threadRef');
+  const root = homePath(home, 'semantic-authority', 'score', lineage, thread);
+  return {
+    root,
+    candidates: homePath(home, 'semantic-authority', 'score', lineage, thread, 'candidates'),
+    classificationEvidence: homePath(home, 'semantic-authority', 'score', lineage, thread, 'classification-evidence'),
+    consents: homePath(home, 'semantic-authority', 'score', lineage, thread, 'consents'),
+    acceptances: homePath(home, 'semantic-authority', 'score', lineage, thread, 'acceptances'),
+    heads: homePath(home, 'semantic-authority', 'score', lineage, thread, 'heads'),
+    head: homePath(home, 'semantic-authority', 'score', lineage, thread, 'head.json')
+  };
+}
+
+function stableSemanticSubjectFingerprint(value) {
+  return semanticHash({
+    schemaVersion: 'vextreme.score-semantic-subject/v1',
+    semanticSubjectRef: value.semanticSubjectRef,
+    sourceLineageRef: value.sourceLineageRef,
+    sourceThreadRef: value.sourceThreadRef,
+    subjectScopeRef: value.subjectScopeRef
+  });
+}
+
+function contentAddressedRef(prefix, core) {
+  return `${prefix}.${semanticHash(core).slice(0, 32)}`;
+}
+
+function assertShaBinding(value, label, code) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      typeof value.sourceRef !== 'string' || value.sourceRef.length === 0 ||
+      !SHA256.test(value.sourceSha256 ?? '')) {
+    fail(code, `${label} must contain exact sourceRef + sourceSha256`);
+  }
+  return value;
+}
+
+function assertAuthorityBinding(value, label = 'authority binding') {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      typeof value.authorityRef !== 'string' || value.authorityRef.length === 0 ||
+      !SHA256.test(value.authoritySha256 ?? '') ||
+      typeof value.subjectRef !== 'string' || value.subjectRef.length === 0 ||
+      typeof value.purposeRef !== 'string' || value.purposeRef.length === 0 ||
+      !SHA256.test(value.scopeFingerprint ?? '') ||
+      typeof value.disposition !== 'string' || value.disposition.length === 0) {
+    fail('SCORE_CONSENT_INVALID', `${label} is malformed`);
+  }
+  canonicalTimestamp(value.formedAt, `${label} formedAt`);
+  if (value.expiresAt !== null) canonicalTimestamp(value.expiresAt, `${label} expiresAt`);
+  return value;
+}
+
+function expectedRefAndHash(value, refField, hashField, prefix, code) {
+  const clone = structuredClone(value);
+  const observedHash = clone[hashField];
+  const observedRef = clone[refField];
+  delete clone[hashField];
+  delete clone[refField];
+  const expectedRef = contentAddressedRef(prefix, clone);
+  const core = { ...clone, [refField]: observedRef };
+  if (observedRef !== expectedRef || !SHA256.test(observedHash ?? '') || semanticHash(core) !== observedHash) {
+    fail(code, `${refField}/${hashField} do not match exact content-addressed bytes`);
+  }
+  return value;
+}
+
+function assertSemanticCandidate(value, identity, threadRef) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail('SCORE_SEMANTIC_CANDIDATE_INVALID', 'semantic candidate is missing or malformed');
+  }
+  expectedRefAndHash(value, 'candidateRef', 'candidateSha256', 'score-semantic-candidate', 'SCORE_SEMANTIC_CANDIDATE_INVALID');
+  if (value.schemaVersion !== 'vextreme.score-semantic-candidate/v1' ||
+      value.sourceLineageRef !== identity.companionLineageRef || value.sourceThreadRef !== threadRef ||
+      !SHA256.test(value.sourceConversationHeadSha256 ?? '') ||
+      safeRef(value.semanticSubjectRef, 'semanticSubjectRef', 'SCORE_SEMANTIC_CANDIDATE_INVALID') !== value.semanticSubjectRef ||
+      safeRef(value.subjectScopeRef, 'subjectScopeRef', 'SCORE_SEMANTIC_CANDIDATE_INVALID') !== value.subjectScopeRef ||
+      !SHA256.test(value.semanticSubjectFingerprint ?? '') || value.semanticSubjectFingerprint !== stableSemanticSubjectFingerprint(value) ||
+      typeof value.proposedSummary !== 'string' || value.proposedSummary.length === 0 ||
+      semanticHash(value.proposedSummary) !== value.proposedSummarySha256 ||
+      !SCORE_CONTEXT_MEMORY_RELATIONS.includes(value.proposedMemoryRelation) ||
+      !SCORE_CONTEXT_STATEMENT_STATES.includes(value.proposedStatementState) ||
+      typeof value.proposerRef !== 'string' || value.proposerRef.length === 0 ||
+      !['LINEAGE', 'HUMAN', 'SYSTEM_CLASSIFIER'].includes(value.proposerClass) ||
+      value.privacyClass !== 'DEVICE_PRIVATE' || value.accepted !== false) {
+    fail('SCORE_SEMANTIC_CANDIDATE_INVALID', 'semantic candidate failed exact shared-contract validation');
+  }
+  canonicalTimestamp(value.formedAt, 'semantic candidate formedAt');
+  if (!Array.isArray(value.sourceBindings) || value.sourceBindings.length === 0) {
+    fail('SCORE_SEMANTIC_CANDIDATE_INVALID', 'semantic candidate lacks exact G01 source bindings');
+  }
+  return value;
+}
+
+export function createScoreSemanticCandidate(input) {
+  const sourceLineageRef = safeRef(input.sourceLineageRef, 'sourceLineageRef', 'SCORE_SEMANTIC_CANDIDATE_INVALID');
+  const sourceThreadRef = safeRef(input.sourceThreadRef, 'sourceThreadRef', 'SCORE_SEMANTIC_CANDIDATE_INVALID');
+  const semanticSubjectRef = safeRef(input.semanticSubjectRef, 'semanticSubjectRef', 'SCORE_SEMANTIC_CANDIDATE_INVALID');
+  const subjectScopeRef = safeRef(input.subjectScopeRef ?? 'scope.score.thread', 'subjectScopeRef', 'SCORE_SEMANTIC_CANDIDATE_INVALID');
+  const sourceConversationHeadSha256 = string(input.sourceConversationHeadSha256, 'sourceConversationHeadSha256', 'SCORE_SEMANTIC_CANDIDATE_INVALID');
+  if (!SHA256.test(sourceConversationHeadSha256)) fail('SCORE_SEMANTIC_CANDIDATE_INVALID', 'candidate requires exact G01 conversation head SHA-256');
+  const sourceBindings = (input.sourceBindings ?? input.sourceEvents?.map(sourceBindingFromEvent) ?? []).map((binding) => structuredClone(binding));
+  if (sourceBindings.length === 0) fail('SCORE_SEMANTIC_CANDIDATE_INVALID', 'candidate requires exact G01 source bindings');
+  const proposedSummary = string(input.proposedSummary, 'proposedSummary', 'SCORE_SEMANTIC_CANDIDATE_INVALID');
+  const proposedMemoryRelation = input.proposedMemoryRelation ?? 'DISPUTED_OR_UNRESOLVED';
+  const proposedStatementState = input.proposedStatementState ?? 'INFERRED';
+  if (!SCORE_CONTEXT_MEMORY_RELATIONS.includes(proposedMemoryRelation)) fail('MEMORY_RELATION_INVALID', 'candidate memoryRelation is invalid');
+  if (!SCORE_CONTEXT_STATEMENT_STATES.includes(proposedStatementState)) fail('STATEMENT_STATE_INVALID', 'candidate statementState is invalid');
+  const proposerRef = string(input.proposerRef, 'proposerRef', 'SCORE_SEMANTIC_CANDIDATE_INVALID');
+  const proposerClass = input.proposerClass ?? 'LINEAGE';
+  if (!['LINEAGE', 'HUMAN', 'SYSTEM_CLASSIFIER'].includes(proposerClass)) fail('SCORE_SEMANTIC_CANDIDATE_INVALID', 'candidate proposerClass is invalid');
+  const formedAt = input.formedAt ?? new Date().toISOString();
+  canonicalTimestamp(formedAt, 'semantic candidate formedAt');
+  const fingerprintInput = { semanticSubjectRef, sourceLineageRef, sourceThreadRef, subjectScopeRef };
+  const preRefCore = {
+    schemaVersion: 'vextreme.score-semantic-candidate/v1',
+    sourceLineageRef,
+    sourceThreadRef,
+    sourceConversationHeadSha256,
+    sourceBindings,
+    semanticSubjectRef,
+    subjectScopeRef,
+    semanticSubjectFingerprint: stableSemanticSubjectFingerprint(fingerprintInput),
+    proposedSummary,
+    proposedSummarySha256: semanticHash(proposedSummary),
+    proposedMemoryRelation,
+    proposedStatementState,
+    proposerRef,
+    proposerClass,
+    formedAt,
+    privacyClass: 'DEVICE_PRIVATE',
+    accepted: false
+  };
+  const candidateRef = contentAddressedRef('score-semantic-candidate', preRefCore);
+  const core = { ...preRefCore, candidateRef };
+  return Object.freeze({ ...core, candidateSha256: semanticHash(core) });
+}
+
+function assertClassificationEvidence(value, candidate) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('SCORE_CLASSIFICATION_EVIDENCE_INVALID', 'classification evidence is missing');
+  expectedRefAndHash(value, 'classificationEvidenceRef', 'classificationEvidenceSha256', 'score-classification-evidence', 'SCORE_CLASSIFICATION_EVIDENCE_INVALID');
+  if (value.schemaVersion !== 'vextreme.score-classification-evidence/v1' ||
+      value.candidateRef !== candidate.candidateRef || value.candidateSha256 !== candidate.candidateSha256 ||
+      value.semanticSubjectRef !== candidate.semanticSubjectRef || value.semanticSubjectFingerprint !== candidate.semanticSubjectFingerprint ||
+      !SCORE_CONTEXT_CLASSIFICATION_EVIDENCE_CLASSES.includes(value.evidenceClass) ||
+      !SCORE_CONTEXT_MEMORY_RELATIONS.includes(value.assertedMemoryRelation) ||
+      !SCORE_CONTEXT_STATEMENT_STATES.includes(value.assertedStatementState) ||
+      !SHA256.test(value.assertedSummarySha256 ?? '') ||
+      !['NONE', 'CORRECTS', 'SUPERSEDES', 'RELEASES_OR_TOMBSTONES'].includes(value.transitionKind) ||
+      typeof value.issuerRef !== 'string' || value.issuerRef.length === 0 ||
+      typeof value.issuerClass !== 'string' || value.issuerClass.length === 0 ||
+      value.ownerProjectRef !== 'project.multivex.memory' ||
+      value.ownerDispositionRef !== SCORE_CONTEXT_MEMORY_EXECUTABLE_ADDENDUM ||
+      typeof value.purposeRef !== 'string' || value.purposeRef.length === 0 ||
+      value.privacyClass !== 'DEVICE_PRIVATE' || !Array.isArray(value.sourceEvidenceBindings) || value.sourceEvidenceBindings.length === 0) {
+    fail('SCORE_CLASSIFICATION_EVIDENCE_INVALID', 'classification evidence failed exact owner-contract validation');
+  }
+  canonicalTimestamp(value.formedAt, 'classification evidence formedAt');
+  value.sourceEvidenceBindings.forEach((binding, index) => assertShaBinding(binding, `sourceEvidenceBindings[${index}]`, 'SCORE_CLASSIFICATION_EVIDENCE_INVALID'));
+  if (value.transitionKind === 'NONE') {
+    if (value.transitionTargetRef !== null || value.transitionTargetAcceptanceSha256 !== null ||
+        ['CORRECTION_ACCEPTANCE', 'SUPERSESSION_ACCEPTANCE', 'RELEASE_TOMBSTONE_AUTHORITY'].includes(value.evidenceClass)) {
+      fail('SCORE_CLASSIFICATION_EVIDENCE_INVALID', 'non-transition classification evidence carries transition authority');
+    }
+  } else {
+    safeRef(value.transitionTargetRef, 'transitionTargetRef', 'SCORE_CLASSIFICATION_EVIDENCE_INVALID');
+    if (!SHA256.test(value.transitionTargetAcceptanceSha256 ?? '')) fail('SCORE_CLASSIFICATION_EVIDENCE_INVALID', 'transition evidence lacks exact predecessor acceptance SHA');
+    const expectedClass = value.transitionKind === 'CORRECTS' ? 'CORRECTION_ACCEPTANCE'
+      : value.transitionKind === 'SUPERSEDES' ? 'SUPERSESSION_ACCEPTANCE' : 'RELEASE_TOMBSTONE_AUTHORITY';
+    if (value.evidenceClass !== expectedClass) fail('SCORE_CLASSIFICATION_EVIDENCE_INVALID', 'transition evidence class does not match transition kind');
+  }
+  if (value.evidenceClass === 'HUMAN_CONFIRMATION') {
+    const confirmation = value.humanConfirmation;
+    if (!confirmation || typeof confirmation !== 'object' || Array.isArray(confirmation) ||
+        typeof confirmation.humanSubjectRef !== 'string' || confirmation.humanSubjectRef.length === 0 ||
+        typeof confirmation.confirmationDispositionRef !== 'string' || confirmation.confirmationDispositionRef.length === 0 ||
+        !SHA256.test(confirmation.confirmationDispositionSha256 ?? '') ||
+        confirmation.confirmedCandidateRef !== candidate.candidateRef || confirmation.confirmedCandidateSha256 !== candidate.candidateSha256 ||
+        confirmation.confirmedSemanticSubjectFingerprint !== candidate.semanticSubjectFingerprint ||
+        confirmation.confirmedSummarySha256 !== value.assertedSummarySha256) {
+      fail('SCORE_CLASSIFICATION_EVIDENCE_INVALID', 'HUMAN_CONFIRMATION is not exact to this candidate/subject/summary');
+    }
+    canonicalTimestamp(confirmation.confirmedAt, 'human confirmation confirmedAt');
+  }
+  return value;
+}
+
+function assertConsentDisposition(value, candidate) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('SCORE_CONSENT_INVALID', 'consent disposition is missing');
+  expectedRefAndHash(value, 'consentDispositionRef', 'consentDispositionSha256', 'score-consent-disposition', 'SCORE_CONSENT_INVALID');
+  if (value.schemaVersion !== 'vextreme.score-consent-disposition/v1' ||
+      value.candidateRef !== candidate.candidateRef || value.candidateSha256 !== candidate.candidateSha256 ||
+      value.semanticSubjectRef !== candidate.semanticSubjectRef || value.semanticSubjectFingerprint !== candidate.semanticSubjectFingerprint ||
+      typeof value.purposeRef !== 'string' || value.purposeRef.length === 0 || value.privacyClass !== 'DEVICE_PRIVATE' ||
+      !SCORE_CONTEXT_CONSENT_DISPOSITIONS.includes(value.disposition) ||
+      !Array.isArray(value.requiredAuthorityBindings) || !Array.isArray(value.observedAuthorityBindings) ||
+      !Array.isArray(value.permittedUseRefs) || !Array.isArray(value.prohibitedUseRefs) ||
+      typeof value.retentionBoundaryRef !== 'string' || value.retentionBoundaryRef.length === 0 ||
+      typeof value.redisclosureBoundaryRef !== 'string' || value.redisclosureBoundaryRef.length === 0 ||
+      typeof value.firstPersonBoundaryRef !== 'string' || value.firstPersonBoundaryRef.length === 0 ||
+      typeof value.issuerRef !== 'string' || value.issuerRef.length === 0 || typeof value.issuerClass !== 'string' || value.issuerClass.length === 0 ||
+      value.ownerProjectRef !== 'project.multivex.safety' || value.ownerDispositionRef !== SCORE_CONTEXT_SAFETY_EXECUTABLE_ADDENDUM ||
+      !Array.isArray(value.sourceEvidenceBindings)) {
+    fail('SCORE_CONSENT_INVALID', 'consent disposition failed exact Safety-owner contract validation');
+  }
+  canonicalTimestamp(value.formedAt, 'consent disposition formedAt');
+  if (value.expiresAt !== null) canonicalTimestamp(value.expiresAt, 'consent disposition expiresAt');
+  value.requiredAuthorityBindings.forEach((binding, index) => assertAuthorityBinding(binding, `requiredAuthorityBindings[${index}]`));
+  value.observedAuthorityBindings.forEach((binding, index) => assertAuthorityBinding(binding, `observedAuthorityBindings[${index}]`));
+  value.sourceEvidenceBindings.forEach((binding, index) => assertShaBinding(binding, `consent sourceEvidenceBindings[${index}]`, 'SCORE_CONSENT_INVALID'));
+  if (['PERMITTED', 'NARROWED'].includes(value.disposition)) {
+    if (value.requiredAuthorityBindings.length === 0) fail('SCORE_CONSENT_INVALID', 'positive consent lacks required authority set');
+    const observed = new Set(value.observedAuthorityBindings.map((binding) => `${binding.authorityRef}:${binding.authoritySha256}:${binding.subjectRef}:${binding.purposeRef}:${binding.scopeFingerprint}:${binding.disposition}`));
+    for (const required of value.requiredAuthorityBindings) {
+      const key = `${required.authorityRef}:${required.authoritySha256}:${required.subjectRef}:${required.purposeRef}:${required.scopeFingerprint}:${required.disposition}`;
+      if (!observed.has(key)) fail('SCORE_CONSENT_INVALID', 'positive consent does not contain every exact required authority binding');
+    }
+  }
+  return value;
+}
+
+function expectedEvidenceClassForState(statementState) {
+  return {
+    OBSERVED: 'STRUCTURAL_OBSERVATION',
+    HUMAN_CONFIRMED: 'HUMAN_CONFIRMATION',
+    INFERRED: 'LINEAGE_INFERENCE',
+    CONFLICTED: 'CONFLICT_PRESERVATION',
+    UNKNOWN: 'UNKNOWN_HOLD',
+    RELEASED_OR_TOMBSTONED: 'RELEASE_TOMBSTONE_AUTHORITY'
+  }[statementState] ?? null;
+}
+
+function assertSemanticAcceptance(value, candidate, evidence, consent) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'semantic acceptance is missing');
+  expectedRefAndHash(value, 'acceptanceRef', 'acceptanceSha256', 'score-semantic-acceptance', 'SCORE_SEMANTIC_ACCEPTANCE_INVALID');
+  if (value.schemaVersion !== 'vextreme.score-semantic-acceptance/v1' || value.contractRef !== SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT ||
+      value.semanticContractDispositionRef !== SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION ||
+      value.semanticExecutableAddendumRef !== SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM ||
+      value.candidateRef !== candidate.candidateRef || value.candidateSha256 !== candidate.candidateSha256 ||
+      value.sourceLineageRef !== candidate.sourceLineageRef || value.sourceThreadRef !== candidate.sourceThreadRef ||
+      value.sourceConversationHeadSha256 !== candidate.sourceConversationHeadSha256 ||
+      value.semanticSubjectRef !== candidate.semanticSubjectRef || value.semanticSubjectFingerprint !== candidate.semanticSubjectFingerprint ||
+      typeof value.acceptedSummary !== 'string' || value.acceptedSummary.length === 0 || semanticHash(value.acceptedSummary) !== value.acceptedSummarySha256 ||
+      !SCORE_CONTEXT_MEMORY_RELATIONS.includes(value.memoryRelation) || !SCORE_CONTEXT_STATEMENT_STATES.includes(value.statementState) ||
+      typeof value.acceptedForContinuity !== 'boolean' ||
+      !['NONE', 'CORRECTS', 'SUPERSEDES', 'RELEASES_OR_TOMBSTONES'].includes(value.transitionKind) ||
+      value.consentDispositionRef !== consent.consentDispositionRef || value.consentDispositionSha256 !== consent.consentDispositionSha256 ||
+      !Array.isArray(value.classificationEvidenceBindings) || value.classificationEvidenceBindings.length !== evidence.length ||
+      typeof value.issuerRef !== 'string' || value.issuerRef.length === 0 || typeof value.issuerClass !== 'string' || value.issuerClass.length === 0 ||
+      value.ownerDispositionRef !== SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM || value.privacyClass !== 'DEVICE_PRIVATE') {
+    fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'semantic acceptance failed exact shared-contract validation');
+  }
+  canonicalTimestamp(value.formedAt, 'semantic acceptance formedAt');
+  if (JSON.stringify(value.sourceBindingHashes) !== JSON.stringify(candidate.sourceBindings.map((binding) => binding.eventHash))) {
+    fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'acceptance source binding hashes differ from exact candidate source');
+  }
+  const expectedBindings = evidence.map((item) => ({
+    classificationEvidenceRef: item.classificationEvidenceRef,
+    classificationEvidenceSha256: item.classificationEvidenceSha256
+  }));
+  if (JSON.stringify(value.classificationEvidenceBindings) !== JSON.stringify(expectedBindings)) {
+    fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'acceptance classification evidence bindings are substituted');
+  }
+  const expectedClass = expectedEvidenceClassForState(value.statementState);
+  const semanticEvidence = evidence.filter((item) => item.evidenceClass === expectedClass && item.transitionKind === 'NONE');
+  if (!expectedClass || semanticEvidence.length === 0 || !evidence.every((item) =>
+      item.assertedMemoryRelation === value.memoryRelation && item.assertedStatementState === value.statementState &&
+      item.assertedSummarySha256 === value.acceptedSummarySha256)) {
+    fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'acceptance semantic fields are not exactly authorized by classification evidence');
+  }
+  if (value.transitionKind === 'NONE') {
+    if (value.transitionTargetRef !== null || value.transitionTargetAcceptanceSha256 !== null ||
+        evidence.some((item) => item.transitionKind !== 'NONE')) {
+      fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'non-transition acceptance carries predecessor authority');
+    }
+  } else {
+    const transitionClass = value.transitionKind === 'CORRECTS' ? 'CORRECTION_ACCEPTANCE'
+      : value.transitionKind === 'SUPERSEDES' ? 'SUPERSESSION_ACCEPTANCE' : 'RELEASE_TOMBSTONE_AUTHORITY';
+    const transitionEvidence = evidence.filter((item) => item.evidenceClass === transitionClass && item.transitionKind === value.transitionKind);
+    if (!value.transitionTargetRef || !SHA256.test(value.transitionTargetAcceptanceSha256 ?? '') || transitionEvidence.length === 0 ||
+        !transitionEvidence.every((item) => item.transitionTargetRef === value.transitionTargetRef &&
+          item.transitionTargetAcceptanceSha256 === value.transitionTargetAcceptanceSha256)) {
+      fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'transition acceptance does not bind exact predecessor authority');
+    }
+  }
+  if (value.acceptedForContinuity) {
+    if (!['PERMITTED', 'NARROWED'].includes(consent.disposition) ||
+        !consent.permittedUseRefs.includes('use.score.device-private-continuity') ||
+        consent.prohibitedUseRefs.includes('use.score.device-private-continuity')) {
+      fail('SCORE_CONSENT_INVALID', 'acceptedForContinuity lacks exact current positive continuity consent');
+    }
+  }
+  return value;
+}
+
+function assertSemanticAuthorityHead(value, identity, threadRef) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority head is missing');
+  expectedRefAndHash(value, 'semanticAuthorityHeadRef', 'semanticAuthorityHeadSha256', 'score-semantic-authority-head', 'SCORE_SEMANTIC_AUTHORITY_INVALID');
+  if (value.schemaVersion !== 'vextreme.score-semantic-authority-head/v1' || value.contractRef !== SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT ||
+      value.semanticExecutableAddendumRef !== SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM ||
+      value.sourceLineageRef !== identity.companionLineageRef || value.sourceThreadRef !== threadRef ||
+      !Number.isSafeInteger(value.sequence) || value.sequence < 0 ||
+      (value.sequence === 0 ? value.priorSemanticAuthorityHeadSha256 !== null : !SHA256.test(value.priorSemanticAuthorityHeadSha256 ?? '')) ||
+      !Array.isArray(value.currentAcceptanceBindings) ||
+      JSON.stringify(value.ownerRefs) !== JSON.stringify(['project.multivex.memory', 'project.multivex.safety'])) {
+    fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority head failed exact shared-contract validation');
+  }
+  canonicalTimestamp(value.formedAt, 'semantic authority head formedAt');
+  const seenSubjects = new Set();
+  for (const binding of value.currentAcceptanceBindings) {
+    if (!binding || typeof binding !== 'object' || Array.isArray(binding) || !SHA256.test(binding.semanticSubjectFingerprint ?? '') ||
+        typeof binding.acceptanceRef !== 'string' || binding.acceptanceRef.length === 0 || !SHA256.test(binding.acceptanceSha256 ?? '') ||
+        typeof binding.candidateRef !== 'string' || binding.candidateRef.length === 0 || !SHA256.test(binding.candidateSha256 ?? '') ||
+        !Array.isArray(binding.classificationEvidenceBindings) || binding.classificationEvidenceBindings.length === 0 ||
+        typeof binding.consentDispositionRef !== 'string' || binding.consentDispositionRef.length === 0 || !SHA256.test(binding.consentDispositionSha256 ?? '')) {
+      fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority head contains malformed acceptance binding');
+    }
+    if (seenSubjects.has(binding.semanticSubjectFingerprint)) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority head contains duplicate current semantic subject');
+    seenSubjects.add(binding.semanticSubjectFingerprint);
+    for (const evidenceBinding of binding.classificationEvidenceBindings) {
+      if (!evidenceBinding || typeof evidenceBinding.classificationEvidenceRef !== 'string' || evidenceBinding.classificationEvidenceRef.length === 0 ||
+          !SHA256.test(evidenceBinding.classificationEvidenceSha256 ?? '')) {
+        fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority head evidence binding is malformed');
+      }
+    }
+  }
+  return value;
+}
+
+function readAddressedJson(directory, sha256, code, label) {
+  if (!SHA256.test(sha256 ?? '')) fail(code, `${label} SHA-256 is invalid`);
+  const file = path.join(directory, `${sha256}.json`);
+  if (!fs.existsSync(file)) fail(code, `${label} is missing from canonical semantic-authority domain`, { sha256 });
+  if (fs.lstatSync(file).isSymbolicLink() || !fs.lstatSync(file).isFile()) fail(code, `${label} path is not one regular canonical file`, { file });
+  return readJson(file, code, label);
+}
+
+function loadSemanticAuthorityHead(identity, threadRef, headSha256 = null, requireCurrent = false) {
+  const paths = semanticAuthorityPaths(identity.homeRoot, identity.companionLineageRef, threadRef);
+  let head;
+  if (headSha256 === null) {
+    if (!fs.existsSync(paths.head)) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'current semantic authority head is missing');
+    head = assertSemanticAuthorityHead(readJson(paths.head, 'SCORE_SEMANTIC_AUTHORITY_INVALID', 'current semantic authority head'), identity, threadRef);
+    headSha256 = head.semanticAuthorityHeadSha256;
+  } else {
+    head = assertSemanticAuthorityHead(readAddressedJson(paths.heads, headSha256, 'SCORE_SEMANTIC_AUTHORITY_INVALID', 'historical semantic authority head'), identity, threadRef);
+  }
+  const immutable = assertSemanticAuthorityHead(readAddressedJson(paths.heads, head.semanticAuthorityHeadSha256, 'SCORE_SEMANTIC_AUTHORITY_INVALID', 'immutable semantic authority head'), identity, threadRef);
+  if (semanticHash(immutable) !== semanticHash(head)) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'current/historical semantic authority head lacks exact immutable receipt');
+  if (requireCurrent) {
+    const current = assertSemanticAuthorityHead(readJson(paths.head, 'SCORE_SEMANTIC_AUTHORITY_INVALID', 'current semantic authority head'), identity, threadRef);
+    if (current.semanticAuthorityHeadSha256 !== head.semanticAuthorityHeadSha256) {
+      fail('SCORE_SEMANTIC_AUTHORITY_STALE', 'semantic acceptance authority is not current for a new Score append', {
+        requestedHeadSha256: head.semanticAuthorityHeadSha256,
+        currentHeadSha256: current.semanticAuthorityHeadSha256
+      });
+    }
+  }
+  const visited = new Set();
+  let cursor = head;
+  while (cursor) {
+    if (visited.has(cursor.semanticAuthorityHeadSha256)) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority head lineage contains a cycle');
+    visited.add(cursor.semanticAuthorityHeadSha256);
+    if (cursor.sequence === 0) {
+      if (cursor.priorSemanticAuthorityHeadSha256 !== null) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority genesis head has a prior head');
+      break;
+    }
+    const prior = assertSemanticAuthorityHead(readAddressedJson(paths.heads, cursor.priorSemanticAuthorityHeadSha256, 'SCORE_SEMANTIC_AUTHORITY_INVALID', 'prior semantic authority head'), identity, threadRef);
+    if (prior.sequence !== cursor.sequence - 1) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority head sequence is not contiguous');
+    cursor = prior;
+  }
+  return { head, paths };
+}
+
+function resolveSemanticAcceptance(identity, threadRef, acceptanceRef, acceptanceSha256, options = {}) {
+  const authority = loadSemanticAuthorityHead(identity, threadRef, options.semanticAuthorityHeadSha256 ?? null, options.requireCurrent === true);
+  const binding = authority.head.currentAcceptanceBindings.find((item) =>
+    item.acceptanceRef === acceptanceRef && item.acceptanceSha256 === acceptanceSha256);
+  if (!binding) {
+    fail(options.requireCurrent ? 'SCORE_SEMANTIC_AUTHORITY_STALE' : 'SCORE_SEMANTIC_AUTHORITY_INVALID',
+      'semantic acceptance is not a member of the required semantic authority head', {
+        acceptanceRef, acceptanceSha256, semanticAuthorityHeadSha256: authority.head.semanticAuthorityHeadSha256
+      });
+  }
+  const candidate = assertSemanticCandidate(
+    readAddressedJson(authority.paths.candidates, binding.candidateSha256, 'SCORE_SEMANTIC_CANDIDATE_INVALID', 'semantic candidate'),
+    identity, threadRef
+  );
+  if (candidate.candidateRef !== binding.candidateRef) fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', 'authority head candidate ref/sha binding mismatch');
+  const evidence = binding.classificationEvidenceBindings.map((evidenceBinding) => {
+    const item = assertClassificationEvidence(
+      readAddressedJson(authority.paths.classificationEvidence, evidenceBinding.classificationEvidenceSha256,
+        'SCORE_CLASSIFICATION_EVIDENCE_INVALID', 'classification evidence'), candidate);
+    if (item.classificationEvidenceRef !== evidenceBinding.classificationEvidenceRef) {
+      fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', 'authority head classification evidence ref/sha binding mismatch');
+    }
+    return item;
+  });
+  const consent = assertConsentDisposition(
+    readAddressedJson(authority.paths.consents, binding.consentDispositionSha256, 'SCORE_CONSENT_INVALID', 'Score consent disposition'), candidate
+  );
+  if (consent.consentDispositionRef !== binding.consentDispositionRef) fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', 'authority head consent ref/sha binding mismatch');
+  const acceptance = assertSemanticAcceptance(
+    readAddressedJson(authority.paths.acceptances, binding.acceptanceSha256, 'SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'semantic acceptance'),
+    candidate, evidence, consent
+  );
+  if (acceptance.acceptanceRef !== binding.acceptanceRef || acceptance.semanticSubjectFingerprint !== binding.semanticSubjectFingerprint) {
+    fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', 'authority head acceptance binding does not match exact accepted bytes');
+  }
+  return { ...authority, binding, candidate, evidence, consent, acceptance };
+}
+
 function validateSourceBindingAgainstCommittedG01(binding, committed) {
   if (!binding || typeof binding !== 'object' || Array.isArray(binding) || !SHA256.test(binding.eventHash ?? '') ||
       !SHA256.test(binding.contentHash ?? '') || !Number.isSafeInteger(binding.sequence) || binding.sequence < 0 ||
@@ -520,8 +973,38 @@ function assertScoreEvent(value, identity, threadRef, fileName = null) {
     safeRef(value.subjectRef, 'subjectRef', 'SCORE_EVENT_CORRUPT');
     if (!SCORE_CONTEXT_MEMORY_RELATIONS.includes(value.memoryRelation)) fail('MEMORY_RELATION_INVALID', 'unknown memoryRelation');
     if (!SCORE_CONTEXT_STATEMENT_STATES.includes(value.statementState)) fail('STATEMENT_STATE_INVALID', 'unknown statementState');
-    if (typeof value.summary !== 'string' || value.summary.length === 0 || semanticHash(value.summary) !== value.summaryHash) {
-      fail('SCORE_EVENT_CORRUPT', 'statement summary hash mismatch');
+    if (typeof value.summary !== 'string' || value.summary.length === 0 || semanticHash(value.summary) !== value.summaryHash ||
+        typeof value.acceptedForContinuity !== 'boolean' || !SCORE_CONTEXT_CONSENT_DISPOSITIONS.includes(value.consentState) ||
+        !SHA256.test(value.semanticSubjectFingerprint ?? '') || !SHA256.test(value.semanticAuthorityHeadSha256 ?? '') ||
+        typeof value.semanticAcceptanceRef !== 'string' || value.semanticAcceptanceRef.length === 0 || !SHA256.test(value.semanticAcceptanceSha256 ?? '') ||
+        typeof value.semanticCandidateRef !== 'string' || value.semanticCandidateRef.length === 0 || !SHA256.test(value.semanticCandidateSha256 ?? '') ||
+        !Array.isArray(value.classificationEvidenceBindings) || value.classificationEvidenceBindings.length === 0 ||
+        typeof value.consentDispositionRef !== 'string' || value.consentDispositionRef.length === 0 || !SHA256.test(value.consentDispositionSha256 ?? '') ||
+        value.liveSemanticContractRef !== SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT ||
+        value.liveSemanticDispositionRef !== SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION ||
+        value.liveSemanticExecutableAddendumRef !== SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM ||
+        !['NONE', 'CORRECTS', 'SUPERSEDES', 'RELEASES_OR_TOMBSTONES'].includes(value.transitionKind)) {
+      fail('SCORE_EVENT_CORRUPT', 'statement semantic authority projection is malformed');
+    }
+    for (const binding of value.classificationEvidenceBindings) {
+      if (!binding || typeof binding.classificationEvidenceRef !== 'string' || binding.classificationEvidenceRef.length === 0 ||
+          !SHA256.test(binding.classificationEvidenceSha256 ?? '')) fail('SCORE_EVENT_CORRUPT', 'statement classification evidence binding is malformed');
+    }
+    if (value.transitionKind === 'NONE') {
+      if (value.correctsStatementRef !== null || value.supersedesStatementRef !== null || value.transitionTargetAcceptanceSha256 !== null) {
+        fail('SCORE_EVENT_CORRUPT', 'non-transition statement carries transition fields');
+      }
+    } else if (value.transitionKind === 'CORRECTS') {
+      safeRef(value.correctsStatementRef, 'correctsStatementRef', 'SCORE_EVENT_CORRUPT');
+      if (value.supersedesStatementRef !== null || !SHA256.test(value.transitionTargetAcceptanceSha256 ?? '')) fail('SCORE_EVENT_CORRUPT', 'correction event transition identity is malformed');
+    } else if (value.transitionKind === 'SUPERSEDES') {
+      safeRef(value.supersedesStatementRef, 'supersedesStatementRef', 'SCORE_EVENT_CORRUPT');
+      if (value.correctsStatementRef !== null || !SHA256.test(value.transitionTargetAcceptanceSha256 ?? '')) fail('SCORE_EVENT_CORRUPT', 'supersession event transition identity is malformed');
+    } else if (value.transitionKind === 'RELEASES_OR_TOMBSTONES') {
+      safeRef(value.releasesOrTombstonesStatementRef, 'releasesOrTombstonesStatementRef', 'SCORE_EVENT_CORRUPT');
+      if (value.correctsStatementRef !== null || value.supersedesStatementRef !== null || !SHA256.test(value.transitionTargetAcceptanceSha256 ?? '')) {
+        fail('SCORE_EVENT_CORRUPT', 'release/tombstone event transition identity is malformed');
+      }
     }
   } else if (value.eventKind === 'OPEN_LOOP') {
     safeRef(value.openLoopRef, 'openLoopRef', 'OPEN_LOOP_INVALID');
@@ -529,6 +1012,51 @@ function assertScoreEvent(value, identity, threadRef, fileName = null) {
     if (!Array.isArray(value.sourceStatementRefs) || value.sourceStatementRefs.length === 0) fail('OPEN_LOOP_INVALID', 'open loop requires source statement refs');
   } else fail('SCORE_EVENT_CORRUPT', 'unknown Score event kind');
   return value;
+}
+
+function validateScoreEventSemanticAuthority(event, identity, threadRef) {
+  if (event.eventKind !== 'STATEMENT') return null;
+  const resolved = resolveSemanticAcceptance(identity, threadRef, event.semanticAcceptanceRef, event.semanticAcceptanceSha256, {
+    semanticAuthorityHeadSha256: event.semanticAuthorityHeadSha256,
+    requireCurrent: false
+  });
+  const { candidate, acceptance, consent, evidence } = resolved;
+  const expectedEvidenceBindings = evidence.map((item) => ({
+    classificationEvidenceRef: item.classificationEvidenceRef,
+    classificationEvidenceSha256: item.classificationEvidenceSha256
+  }));
+  const checks = [
+    [event.semanticCandidateRef, candidate.candidateRef, 'candidateRef'],
+    [event.semanticCandidateSha256, candidate.candidateSha256, 'candidateSha256'],
+    [event.semanticSubjectFingerprint, candidate.semanticSubjectFingerprint, 'semanticSubjectFingerprint'],
+    [event.subjectRef, acceptance.semanticSubjectRef, 'semanticSubjectRef'],
+    [event.summary, acceptance.acceptedSummary, 'acceptedSummary'],
+    [event.summaryHash, acceptance.acceptedSummarySha256, 'acceptedSummarySha256'],
+    [event.memoryRelation, acceptance.memoryRelation, 'memoryRelation'],
+    [event.statementState, acceptance.statementState, 'statementState'],
+    [event.acceptedForContinuity, acceptance.acceptedForContinuity, 'acceptedForContinuity'],
+    [event.consentState, consent.disposition, 'consentDisposition'],
+    [event.consentDispositionRef, consent.consentDispositionRef, 'consentDispositionRef'],
+    [event.consentDispositionSha256, consent.consentDispositionSha256, 'consentDispositionSha256'],
+    [event.transitionKind, acceptance.transitionKind, 'transitionKind'],
+    [event.transitionTargetAcceptanceSha256, acceptance.transitionTargetAcceptanceSha256, 'transitionTargetAcceptanceSha256'],
+    [event.sourceConversationHeadSha256, candidate.sourceConversationHeadSha256, 'sourceConversationHeadSha256']
+  ];
+  for (const [observed, expected, field] of checks) {
+    if (observed !== expected) fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', `stored Score ${field} differs from historical owner acceptance`, { observed, expected });
+  }
+  if (JSON.stringify(event.sourceBindings) !== JSON.stringify(candidate.sourceBindings) ||
+      JSON.stringify(event.classificationEvidenceBindings) !== JSON.stringify(expectedEvidenceBindings)) {
+    fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', 'stored Score source/evidence bindings differ from historical owner authority');
+  }
+  const expectedCorrects = acceptance.transitionKind === 'CORRECTS' ? acceptance.transitionTargetRef : null;
+  const expectedSupersedes = acceptance.transitionKind === 'SUPERSEDES' ? acceptance.transitionTargetRef : null;
+  const expectedRelease = acceptance.transitionKind === 'RELEASES_OR_TOMBSTONES' ? acceptance.transitionTargetRef : null;
+  if (event.correctsStatementRef !== expectedCorrects || event.supersedesStatementRef !== expectedSupersedes ||
+      event.releasesOrTombstonesStatementRef !== expectedRelease) {
+    fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', 'stored Score transition target differs from historical owner acceptance');
+  }
+  return resolved;
 }
 
 function readAllEvents(paths, identity, threadRef) {
@@ -560,7 +1088,10 @@ function verifyHead(value, identity, threadRef) {
       !SHA256.test(value.eventHash ?? '') || !Number.isSafeInteger(value.sequence) || value.sequence < 0 ||
       (value.priorScoreHeadSha256 !== null && !SHA256.test(value.priorScoreHeadSha256 ?? '')) ||
       !SHA256.test(value.sourceConversationHeadSha256 ?? '') || !Array.isArray(value.currentStatementRefs) || !Array.isArray(value.openLoopRefs) ||
-      value.sharedSemanticDispositionRef !== SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION) {
+      value.sharedSemanticDispositionRef !== SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION ||
+      value.liveSemanticContractRef !== SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT ||
+      value.liveSemanticDispositionRef !== SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION ||
+      value.liveSemanticExecutableAddendumRef !== SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM) {
     fail('SCORE_HEAD_MISMATCH', 'Score head content/address/identity is invalid');
   }
   canonicalTimestamp(value.formedAt, 'Score head formedAt');
@@ -577,21 +1108,32 @@ function applyEvent(projection, event) {
     if (event.correctsStatementRef && event.supersedesStatementRef) fail('SCORE_LINK_INVALID', 'one statement cannot simultaneously correct and supersede distinct history');
     if (event.correctsStatementRef) {
       const prior = statements.get(event.correctsStatementRef);
-      if (prior.current !== true || prior.subjectRef !== event.subjectRef || prior.memoryRelation !== event.memoryRelation) {
-        fail('SCORE_LINK_INVALID', 'correction must preserve exact current semantic subject and memory relation');
+      if (prior.current !== true || prior.semanticSubjectFingerprint !== event.semanticSubjectFingerprint ||
+          prior.memoryRelation !== event.memoryRelation || prior.semanticAcceptanceSha256 !== event.transitionTargetAcceptanceSha256) {
+        fail('SCORE_LINK_INVALID', 'correction must bind exact current semantic subject, relation domain and predecessor acceptance');
       }
       statements.set(prior.statementRef, { ...prior, effectiveState: 'CORRECTED', current: false, correctedByRef: event.statementRef });
     }
     if (event.supersedesStatementRef) {
       const prior = statements.get(event.supersedesStatementRef);
-      if (prior.current !== true || prior.subjectRef !== event.subjectRef || prior.memoryRelation !== event.memoryRelation) {
-        fail('SCORE_LINK_INVALID', 'supersession must preserve exact current semantic subject and memory relation');
+      if (prior.current !== true || prior.semanticSubjectFingerprint !== event.semanticSubjectFingerprint ||
+          prior.memoryRelation !== event.memoryRelation || prior.semanticAcceptanceSha256 !== event.transitionTargetAcceptanceSha256) {
+        fail('SCORE_LINK_INVALID', 'supersession must bind exact current semantic subject, relation domain and predecessor acceptance');
       }
       statements.set(prior.statementRef, { ...prior, effectiveState: 'SUPERSEDED', current: false, supersededByRef: event.statementRef });
+    }
+    if (event.releasesOrTombstonesStatementRef) {
+      const prior = statements.get(event.releasesOrTombstonesStatementRef);
+      if (!prior || prior.current !== true || prior.semanticSubjectFingerprint !== event.semanticSubjectFingerprint ||
+          prior.memoryRelation !== event.memoryRelation || prior.semanticAcceptanceSha256 !== event.transitionTargetAcceptanceSha256) {
+        fail('SCORE_LINK_INVALID', 'release/tombstone must bind exact current semantic subject, relation domain and predecessor acceptance');
+      }
+      statements.set(prior.statementRef, { ...prior, effectiveState: 'RELEASED_OR_TOMBSTONED', current: false, releasedByRef: event.statementRef });
     }
     statements.set(event.statementRef, {
       statementRef: event.statementRef,
       subjectRef: event.subjectRef,
+      semanticSubjectFingerprint: event.semanticSubjectFingerprint,
       companionLineageRef: event.companionLineageRef,
       threadRef: event.threadRef,
       memoryRelation: event.memoryRelation,
@@ -602,6 +1144,14 @@ function applyEvent(projection, event) {
       sourceBindings: structuredClone(event.sourceBindings),
       acceptedForContinuity: event.acceptedForContinuity,
       consentState: event.consentState,
+      semanticAuthorityHeadSha256: event.semanticAuthorityHeadSha256,
+      semanticAcceptanceRef: event.semanticAcceptanceRef,
+      semanticAcceptanceSha256: event.semanticAcceptanceSha256,
+      semanticCandidateRef: event.semanticCandidateRef,
+      semanticCandidateSha256: event.semanticCandidateSha256,
+      classificationEvidenceBindings: structuredClone(event.classificationEvidenceBindings),
+      consentDispositionRef: event.consentDispositionRef,
+      consentDispositionSha256: event.consentDispositionSha256,
       eventRef: event.scoreEventRef,
       eventHash: event.scoreEventHash,
       current: !['SUPERSEDED', 'RELEASED_OR_TOMBSTONED'].includes(event.statementState)
@@ -669,7 +1219,10 @@ export function loadScoreContextState({ home, homeRef, deviceRef, companionLinea
     if (chain.at(-1)?.scoreEventHash !== head.eventHash) fail('SCORE_HEAD_MISMATCH', 'Score head does not bind exact final event');
   }
   const committedG01 = allEvents.length ? validateCommittedG01Conversation(identity, thread) : null;
-  for (const event of chain) validateScoreEventSourceAgainstCommittedG01(event, committedG01, identity, thread);
+  for (const event of chain) {
+    validateScoreEventSourceAgainstCommittedG01(event, committedG01, identity, thread);
+    validateScoreEventSemanticAuthority(event, identity, thread);
+  }
   const projection = replayChain(chain);
   const currentStatementRefs = projection.statements.filter((item) => item.current).map((item) => item.statementRef).sort();
   const openLoopRefs = projection.openLoops.filter((item) => item.state === 'OPEN').map((item) => item.openLoopRef).sort();
@@ -685,6 +1238,7 @@ export function loadScoreContextState({ home, homeRef, deviceRef, companionLinea
     .sort((a, b) => a.sequence - b.sequence || a.scoreEventHash.localeCompare(b.scoreEventHash))) {
     try {
       validateScoreEventSourceAgainstCommittedG01(event, committedG01, identity, thread);
+      validateScoreEventSemanticAuthority(event, identity, thread);
       if (event.sequence !== expectedTailSequence || event.priorScoreEventHash !== expectedTailPrior) {
         attention.push({ code: 'INVALID_TAIL', reason: 'REORDERED_OR_READRESSED_TAIL', eventRef: event.scoreEventRef, eventHash: event.scoreEventHash });
       } else {
@@ -693,6 +1247,11 @@ export function loadScoreContextState({ home, homeRef, deviceRef, companionLinea
     } catch (error) {
       attention.push({ code: 'INVALID_TAIL', reason: error.code ?? 'SCORE_SOURCE_INVALID', eventRef: event.scoreEventRef, eventHash: event.scoreEventHash, message: error.message });
     }
+  }
+  let currentSemanticAuthorityHead = null;
+  const semanticPaths = semanticAuthorityPaths(identity.homeRoot, identity.companionLineageRef, thread);
+  if (fs.existsSync(semanticPaths.head)) {
+    currentSemanticAuthorityHead = loadSemanticAuthorityHead(identity, thread).head;
   }
   const writer = writerObservation(paths);
   return {
@@ -710,8 +1269,12 @@ export function loadScoreContextState({ home, homeRef, deviceRef, companionLinea
     uncommittedTail,
     attention,
     writer,
+    currentSemanticAuthorityHead,
     rawDurableEventEqualsCommittedCurrentScore: false,
-    sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION
+    sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
+    liveSemanticContractRef: SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
+    liveSemanticDispositionRef: SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION,
+    liveSemanticExecutableAddendumRef: SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM
   };
 }
 
@@ -747,6 +1310,9 @@ function commitEvent({ state, paths, eventCore, sourceConversationHeadSha256, fa
     sourceConversationHeadSha256,
     priorScoreHeadSha256: state.head?.scoreHeadSha256 ?? null,
     sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
+    liveSemanticContractRef: SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
+    liveSemanticDispositionRef: SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION,
+    liveSemanticExecutableAddendumRef: SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
     formedAt: new Date().toISOString()
   };
   const head = { ...headCore, scoreHeadSha256: semanticHash(headCore) };
@@ -756,45 +1322,74 @@ function commitEvent({ state, paths, eventCore, sourceConversationHeadSha256, fa
   return { event, head, projection };
 }
 
+function rejectSemanticConvenienceOverride(input, field, acceptedValue) {
+  if (Object.hasOwn(input, field) && input[field] !== undefined && input[field] !== acceptedValue) {
+    fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', `${field} is non-authoritative and differs from the owner acceptance`, {
+      field, supplied: input[field], accepted: acceptedValue
+    });
+  }
+}
+
 export function appendScoreStatement(input) {
-  const relation = input.memoryRelation;
-  const statementState = input.statementState;
-  if (!SCORE_CONTEXT_MEMORY_RELATIONS.includes(relation)) fail('MEMORY_RELATION_INVALID', `unknown memoryRelation ${relation}`);
-  if (!SCORE_CONTEXT_STATEMENT_STATES.includes(statementState)) fail('STATEMENT_STATE_INVALID', `unknown statementState ${statementState}`);
-  if (!SHA256.test(input.sourceConversationHeadSha256 ?? '')) fail('SCORE_SOURCE_INVALID', 'exact G01 conversation head SHA-256 is required');
   const identity = loadIdentity(input.home, { homeRef: input.homeRef, deviceRef: input.deviceRef, companionLineageRef: input.companionLineageRef });
   const thread = safeRef(input.threadRef, 'threadRef');
   const instanceRef = safeRef(input.instanceRef, 'instanceRef');
+  const statementRef = safeRef(input.statementRef, 'statementRef');
+  const acceptanceRef = string(input.semanticAcceptanceRef, 'semanticAcceptanceRef', 'SCORE_SEMANTIC_ACCEPTANCE_INVALID');
+  const acceptanceSha256 = string(input.semanticAcceptanceSha256, 'semanticAcceptanceSha256', 'SCORE_SEMANTIC_ACCEPTANCE_INVALID');
+  if (!SHA256.test(acceptanceSha256)) fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'semanticAcceptanceSha256 is invalid');
+  if (Object.hasOwn(input, 'semanticAcceptance') || Object.hasOwn(input, 'semanticCandidate') || Object.hasOwn(input, 'consentDisposition') || Object.hasOwn(input, 'classificationEvidence')) {
+    fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', 'authoritative semantic objects must be resolved from the canonical owner ledger, not caller payloads');
+  }
+  if (Object.hasOwn(input, 'sourceEvents')) {
+    fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', 'statement G01 source range is derived from the accepted semantic candidate, not caller sourceEvents');
+  }
   const paths = scorePaths(identity.homeRoot, identity.companionLineageRef, thread);
   const lease = acquireWriter(paths, identity.companionLineageRef, thread, instanceRef);
   try {
     const state = loadScoreContextState({ home: identity.homeRoot, homeRef: identity.homeRef, deviceRef: identity.deviceRef, companionLineageRef: identity.companionLineageRef, threadRef: thread });
     assertExpectedState(state, input.expectedScoreHeadSha256 ?? null);
-    const statementRef = safeRef(input.statementRef, 'statementRef');
-    const subjectRef = safeRef(input.subjectRef, 'subjectRef');
     if (state.statements.some((item) => item.statementRef === statementRef) || state.uncommittedTail.some((event) => event.statementRef === statementRef)) {
       fail('SCORE_LINK_INVALID', 'statementRef already exists in committed or uncommitted evidence');
     }
-    const corrects = input.correctsStatementRef ? safeRef(input.correctsStatementRef, 'correctsStatementRef') : null;
-    const supersedes = input.supersedesStatementRef ? safeRef(input.supersedesStatementRef, 'supersedesStatementRef') : null;
-    if (corrects && supersedes) fail('SCORE_LINK_INVALID', 'one statement cannot both correct and supersede');
-    const currentRefs = new Set(state.currentStatementRefs);
-    if ((corrects && !currentRefs.has(corrects)) || (supersedes && !currentRefs.has(supersedes))) {
-      fail('SCORE_LINK_INVALID', 'correction or supersession must target one exact current statement');
+    const resolved = resolveSemanticAcceptance(identity, thread, acceptanceRef, acceptanceSha256, { requireCurrent: true });
+    const { candidate, acceptance, consent, evidence, head: semanticHead } = resolved;
+    const committed = validateCommittedG01Conversation(identity, thread);
+    if (committed.head.conversationHeadSha256 !== candidate.sourceConversationHeadSha256) {
+      fail('SCORE_SOURCE_INVALID', 'accepted semantic candidate is not bound to the exact current committed G01 conversation head', {
+        accepted: candidate.sourceConversationHeadSha256,
+        observed: committed.head.conversationHeadSha256
+      });
     }
-    const transitionTargetRef = corrects ?? supersedes;
+    const sourceEvents = candidate.sourceBindings.map((binding) => validateSourceBindingAgainstCommittedG01(binding, committed));
+    const canonicalBindings = sourceEvents.map(sourceBindingFromEvent);
+    if (JSON.stringify(canonicalBindings) !== JSON.stringify(candidate.sourceBindings)) {
+      fail('SCORE_SOURCE_INVALID', 'accepted semantic candidate source bindings differ from exact committed G01 bytes');
+    }
+    const convenience = {
+      subjectRef: acceptance.semanticSubjectRef,
+      summary: acceptance.acceptedSummary,
+      memoryRelation: acceptance.memoryRelation,
+      statementState: acceptance.statementState,
+      acceptedForContinuity: acceptance.acceptedForContinuity,
+      consentState: consent.disposition,
+      sourceConversationHeadSha256: candidate.sourceConversationHeadSha256,
+      correctsStatementRef: acceptance.transitionKind === 'CORRECTS' ? acceptance.transitionTargetRef : null,
+      supersedesStatementRef: acceptance.transitionKind === 'SUPERSEDES' ? acceptance.transitionTargetRef : null,
+      releasesOrTombstonesStatementRef: acceptance.transitionKind === 'RELEASES_OR_TOMBSTONES' ? acceptance.transitionTargetRef : null
+    };
+    for (const [field, value] of Object.entries(convenience)) rejectSemanticConvenienceOverride(input, field, value);
+    const transitionTargetRef = acceptance.transitionTargetRef;
     if (transitionTargetRef) {
       const prior = state.statements.find((item) => item.statementRef === transitionTargetRef);
-      if (!prior || prior.subjectRef !== subjectRef || prior.memoryRelation !== relation) {
-        fail('SCORE_LINK_INVALID', 'correction or supersession cannot cross semantic subject or memory relation');
+      if (!prior || prior.current !== true || prior.semanticSubjectFingerprint !== acceptance.semanticSubjectFingerprint ||
+          prior.memoryRelation !== acceptance.memoryRelation || prior.semanticAcceptanceSha256 !== acceptance.transitionTargetAcceptanceSha256) {
+        fail('SCORE_LINK_INVALID', 'owner transition does not bind the exact current predecessor Score subject/relation/acceptance');
       }
     }
-    const source = sourceBindings(input.sourceEvents, identity, thread, input.sourceConversationHeadSha256);
-    const bindings = source.bindings;
     const formedAt = input.formedAt ?? new Date().toISOString();
     canonicalTimestamp(formedAt, 'score event formedAt');
-    const continuityObservation = formSharedSourceObservation(source.sourceEvents, bindings, identity, thread, instanceRef, formedAt);
-    const summary = string(input.summary, 'summary', 'SCORE_EVENT_CORRUPT');
+    const continuityObservation = formSharedSourceObservation(sourceEvents, canonicalBindings, identity, thread, instanceRef, formedAt);
     const eventCore = {
       schemaVersion: 'vexlife.score-context-event/v1',
       eventKind: 'STATEMENT',
@@ -805,25 +1400,43 @@ export function appendScoreStatement(input) {
       threadRef: thread,
       sequence: state.head ? state.head.sequence + 1 : 0,
       priorScoreEventHash: state.head?.eventHash ?? null,
-      sourceConversationHeadSha256: input.sourceConversationHeadSha256,
-      sourceBindings: bindings,
+      sourceConversationHeadSha256: candidate.sourceConversationHeadSha256,
+      sourceBindings: canonicalBindings,
       continuityObservation,
       statementRef,
-      subjectRef,
-      memoryRelation: relation,
-      statementState,
-      summary,
-      summaryHash: semanticHash(summary),
-      acceptedForContinuity: input.acceptedForContinuity === true,
-      consentState: input.consentState ?? 'UNKNOWN',
-      correctsStatementRef: corrects,
-      supersedesStatementRef: supersedes,
+      subjectRef: acceptance.semanticSubjectRef,
+      semanticSubjectFingerprint: acceptance.semanticSubjectFingerprint,
+      memoryRelation: acceptance.memoryRelation,
+      statementState: acceptance.statementState,
+      summary: acceptance.acceptedSummary,
+      summaryHash: acceptance.acceptedSummarySha256,
+      acceptedForContinuity: acceptance.acceptedForContinuity,
+      consentState: consent.disposition,
+      transitionKind: acceptance.transitionKind,
+      correctsStatementRef: acceptance.transitionKind === 'CORRECTS' ? transitionTargetRef : null,
+      supersedesStatementRef: acceptance.transitionKind === 'SUPERSEDES' ? transitionTargetRef : null,
+      releasesOrTombstonesStatementRef: acceptance.transitionKind === 'RELEASES_OR_TOMBSTONES' ? transitionTargetRef : null,
+      transitionTargetAcceptanceSha256: acceptance.transitionTargetAcceptanceSha256,
+      semanticAuthorityHeadSha256: semanticHead.semanticAuthorityHeadSha256,
+      semanticAcceptanceRef: acceptance.acceptanceRef,
+      semanticAcceptanceSha256: acceptance.acceptanceSha256,
+      semanticCandidateRef: candidate.candidateRef,
+      semanticCandidateSha256: candidate.candidateSha256,
+      classificationEvidenceBindings: evidence.map((item) => ({
+        classificationEvidenceRef: item.classificationEvidenceRef,
+        classificationEvidenceSha256: item.classificationEvidenceSha256
+      })),
+      consentDispositionRef: consent.consentDispositionRef,
+      consentDispositionSha256: consent.consentDispositionSha256,
+      liveSemanticContractRef: SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
+      liveSemanticDispositionRef: SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION,
+      liveSemanticExecutableAddendumRef: SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
       privacyClass: 'DEVICE_PRIVATE',
       rawSourceContentIncluded: false,
       sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
       formedAt
     };
-    return commitEvent({ state, paths, eventCore, sourceConversationHeadSha256: input.sourceConversationHeadSha256, faults: input.faults });
+    return commitEvent({ state, paths, eventCore, sourceConversationHeadSha256: candidate.sourceConversationHeadSha256, faults: input.faults });
   } finally {
     if (!input.faults?.exitAfterEventWrite && !releaseWriter(lease)) fail('SCORE_WRITER_CONFLICT', 'score writer lease could not be released safely');
   }
@@ -944,7 +1557,18 @@ export function sourceDescentForStatement(state, statementRef) {
     observedCurrentConversationHeadSha256: committed.head.conversationHeadSha256,
     continuityObservationRef: state.chain.find((event) => event.scoreEventRef === statement.eventRef)?.continuityObservation?.observationRef ?? null,
     continuityObservationFingerprint: state.chain.find((event) => event.scoreEventRef === statement.eventRef)?.continuityObservation?.semanticFingerprint ?? null,
+    semanticSubjectFingerprint: statement.semanticSubjectFingerprint,
+    semanticAuthorityHeadSha256: statement.semanticAuthorityHeadSha256,
+    semanticAcceptanceRef: statement.semanticAcceptanceRef,
+    semanticAcceptanceSha256: statement.semanticAcceptanceSha256,
+    semanticCandidateRef: statement.semanticCandidateRef,
+    semanticCandidateSha256: statement.semanticCandidateSha256,
+    classificationEvidenceBindings: structuredClone(statement.classificationEvidenceBindings),
+    consentDispositionRef: statement.consentDispositionRef,
+    consentDispositionSha256: statement.consentDispositionSha256,
     sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
+    liveSemanticContractRef: SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
+    liveSemanticExecutableAddendumRef: SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
     rawSourceContentIncluded: false
   });
 }
@@ -964,6 +1588,13 @@ export function projectScoreContext(input) {
       memoryRelation: item.memoryRelation,
       effectiveState: item.effectiveState,
       summaryHash: item.summaryHash,
+      acceptedForContinuityAtAcceptance: item.acceptedForContinuity,
+      consentStateAtAcceptance: item.consentState,
+      semanticAcceptanceRef: item.semanticAcceptanceRef,
+      semanticAcceptanceSha256: item.semanticAcceptanceSha256,
+      semanticAuthorityHeadSha256: item.semanticAuthorityHeadSha256,
+      authorityCurrentForNewUse: Boolean(state.currentSemanticAuthorityHead?.currentAcceptanceBindings?.some((binding) =>
+        binding.acceptanceRef === item.semanticAcceptanceRef && binding.acceptanceSha256 === item.semanticAcceptanceSha256)),
       eventRef: item.eventRef,
       eventHash: item.eventHash,
       sourceBindings: structuredClone(item.sourceBindings)
@@ -977,7 +1608,11 @@ export function projectScoreContext(input) {
     rhythmLearned: false,
     synchronizationActivated: false,
     rawDurableEventEqualsCommittedCurrentScore: false,
-    sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION
+    sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
+    liveSemanticContractRef: SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
+    liveSemanticDispositionRef: SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION,
+    liveSemanticExecutableAddendumRef: SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
+    semanticAuthorityCurrentHeadSha256: state.currentSemanticAuthorityHead?.semanticAuthorityHeadSha256 ?? null
   });
 }
 

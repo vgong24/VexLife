@@ -4,8 +4,8 @@
     {
       "path": "blueprint/evolution-registry.json",
       "mode": "100644",
-      "bytes": 41171,
-      "sha256": "84f17cbcec62c5b9ab3abe44e2e3d91307a89d43fa06cd1ad601fd484b7ed5b7"
+      "bytes": 42096,
+      "sha256": "db4b1f86ef448e14c5d51d76dc9fe037def5231ba3e65e5eac2650d932d8021f"
     },
     {
       "path": "blueprint/experience-registry.json",
