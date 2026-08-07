@@ -50,6 +50,12 @@ github.issue.vextreme-sdk.226.comment.5217542332
 
 github.issue.vextreme-sdk.350.comment.5217546485
   Main Vex convergence for the executable consent-authority scope
+
+github.issue.vextreme-sdk.226.comment.5217968947
+  canonical content-addressed consent authority-binding identity
+
+github.issue.vextreme-sdk.350.comment.5217975299
+  Main Vex convergence for exact authority-binding identity
 ```
 
 Canonical live contract:
@@ -268,6 +274,23 @@ scopeFingerprint must equal the canonical consent scope
 ```
 
 For positive consent, every required authority must have an exact observed match whose own disposition is `PERMITTED` or `NARROWED`. `DEFERRED`, `DENIED`, `UNKNOWN`, and `WITHDRAWN` cannot satisfy positive authority. A `NARROWED` authority is usable only because the exact narrowed envelope is already bound by the canonical scope fingerprint.
+
+Each authority binding is itself content-addressed. Its canonical hash is:
+
+```text
+authoritySha256 = semanticHash({
+  schemaVersion: vextreme.score-consent-authority-binding/v1,
+  authorityRef,
+  subjectRef,
+  purposeRef,
+  scopeFingerprint,
+  disposition,
+  formedAt,
+  expiresAt
+})
+```
+
+The hash excludes itself and binds the temporal terms. Required and observed authority are exact only when every stored field matches after independent hash validation; copied hashes cannot hide a changed `formedAt` or `expiresAt`.
 
 G02 does not invent a live clock. The owner materializer controls live currentness and excludes expired/withdrawn authority from the current owner head. The G02 consumer still rejects intrinsically impossible chronology (`expiresAt <= formedAt`).
 

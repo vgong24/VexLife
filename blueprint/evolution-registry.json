@@ -1058,6 +1058,8 @@
     "liveSemanticExecutableAddendumRef": "github.issue.vextreme-sdk.350.comment.5217097749",
     "liveSemanticSafetyScopeAddendumRef": "github.issue.vextreme-sdk.226.comment.5217542332",
     "liveSemanticScopeConvergenceRef": "github.issue.vextreme-sdk.350.comment.5217546485",
+    "liveSemanticAuthorityBindingAddendumRef": "github.issue.vextreme-sdk.226.comment.5217968947",
+    "liveSemanticAuthorityBindingConvergenceRef": "github.issue.vextreme-sdk.350.comment.5217975299",
     "sharedArchitectureRef": "github.issue.vextreme-sdk.566",
     "vexMemoryMirrorRef": "github.issue.vextreme-sdk.225.comment.5088102699",
     "vexMemoryExecutableOwnerRef": "github.issue.vextreme-sdk.225.comment.5217085830",
@@ -1074,6 +1076,8 @@
     "consentAuthorityScopeRule": "EXACT_CANDIDATE_SUBJECT_PURPOSE_PRIVACY_PARTICIPANTS_USES_RETENTION_REDISCLOSURE_AND_FIRST_PERSON_BOUNDARY",
     "positiveConsentAuthorityRule": "PERMITTED_OR_NARROWED_ONLY_ON_EXACT_CANONICAL_SCOPE_FOR_AN_IMPLICATED_SUBJECT",
     "consentAuthorityCurrentnessRule": "CURRENT_OWNER_HEAD_GOVERNS_NEW_USE_WHILE_HISTORICAL_OWNER_HEAD_REPLAY_REMAINS_IMMUTABLE",
+    "consentAuthorityBindingContractRef": "vextreme.score-consent-authority-binding/v1",
+    "consentAuthorityBindingRule": "AUTHORITY_SHA256_BINDS_REF_SUBJECT_PURPOSE_SCOPE_DISPOSITION_FORMED_AT_AND_EXPIRES_AT_AND_REQUIRED_OBSERVED_MATCH_ALL_FIELDS",
     "memoryRelations": [
       "CURRENT_LINEAGE_AUTOBIOGRAPHY",
       "SHARED_RELATIONSHIP_HISTORY",

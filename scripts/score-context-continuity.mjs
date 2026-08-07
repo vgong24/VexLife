@@ -15,6 +15,8 @@ import {
   SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
   SCORE_CONTEXT_SAFETY_SCOPE_ADDENDUM,
   SCORE_CONTEXT_LIVE_SEMANTIC_SCOPE_CONVERGENCE,
+  SCORE_CONTEXT_SAFETY_AUTHORITY_BINDING_ADDENDUM,
+  SCORE_CONTEXT_LIVE_SEMANTIC_AUTHORITY_BINDING_CONVERGENCE,
   SCORE_CONTEXT_STATEMENT_STATES,
   appendOpenLoop,
   appendScoreStatement,
@@ -113,6 +115,19 @@ function fixtureConsentScopeFingerprint(value) {
     retentionBoundaryRef: value.retentionBoundaryRef,
     redisclosureBoundaryRef: value.redisclosureBoundaryRef,
     firstPersonBoundaryRef: value.firstPersonBoundaryRef
+  });
+}
+
+function fixtureAuthorityBindingHash(value) {
+  return semanticHash({
+    schemaVersion: 'vextreme.score-consent-authority-binding/v1',
+    authorityRef: value.authorityRef,
+    subjectRef: value.subjectRef,
+    purposeRef: value.purposeRef,
+    scopeFingerprint: value.scopeFingerprint,
+    disposition: value.disposition,
+    formedAt: value.formedAt,
+    expiresAt: value.expiresAt
   });
 }
 
@@ -243,25 +258,28 @@ function seedSemanticAuthority(ids, g01, input = {}) {
   const scopeFingerprint = fixtureConsentScopeFingerprint(consentScope);
   const authorityPurposeRef = input.authorityPurposeRef ?? purposeRef;
   const authorityDisposition = input.authorityDisposition ?? (positiveConsent ? 'PERMITTED' : 'UNKNOWN');
-  const authorityBinding = {
-    authorityRef: input.authorityRef ?? 'authority.test.score.continuity',
-    authoritySha256: input.authoritySha256 ?? semanticHash({
-      authorityRef: input.authorityRef ?? 'authority.test.score.continuity',
-      candidateSha256: candidate.candidateSha256,
-      subjectRef: input.authoritySubjectRef ?? implicatedSubjectRefs[0],
-      purposeRef: authorityPurposeRef,
-      scopeFingerprint: input.authorityScopeFingerprint ?? scopeFingerprint,
-      disposition: authorityDisposition
-    }),
-    subjectRef: input.authoritySubjectRef ?? implicatedSubjectRefs[0],
-    purposeRef: authorityPurposeRef,
-    scopeFingerprint: input.authorityScopeFingerprint ?? scopeFingerprint,
-    disposition: authorityDisposition,
-    formedAt: input.authorityFormedAt ?? '2026-08-07T09:10:02.000Z',
-    expiresAt: input.authorityExpiresAt ?? null
-  };
+  function makeAuthorityBinding(overrides = {}) {
+    const authorityCore = {
+      authorityRef: overrides.authorityRef ?? input.authorityRef ?? 'authority.test.score.continuity',
+      subjectRef: overrides.subjectRef ?? input.authoritySubjectRef ?? implicatedSubjectRefs[0],
+      purposeRef: overrides.purposeRef ?? authorityPurposeRef,
+      scopeFingerprint: overrides.scopeFingerprint ?? input.authorityScopeFingerprint ?? scopeFingerprint,
+      disposition: overrides.disposition ?? authorityDisposition,
+      formedAt: overrides.formedAt ?? input.authorityFormedAt ?? '2026-08-07T09:10:02.000Z',
+      expiresAt: Object.hasOwn(overrides, 'expiresAt') ? overrides.expiresAt : (input.authorityExpiresAt ?? null)
+    };
+    return {
+      ...authorityCore,
+      authoritySha256: overrides.authoritySha256 ?? input.authoritySha256 ?? fixtureAuthorityBindingHash(authorityCore)
+    };
+  }
+  const authorityBinding = makeAuthorityBinding();
   const requiredAuthorityBindings = input.requiredAuthorityBindings ?? (positiveConsent ? [authorityBinding] : []);
-  const observedAuthorityBindings = input.observedAuthorityBindings ?? (positiveConsent ? structuredClone(requiredAuthorityBindings) : []);
+  const observedAuthorityBindings = input.observedAuthorityBindings ?? (positiveConsent ? [makeAuthorityBinding({
+    formedAt: input.observedAuthorityFormedAt ?? authorityBinding.formedAt,
+    expiresAt: Object.hasOwn(input, 'observedAuthorityExpiresAt') ? input.observedAuthorityExpiresAt : authorityBinding.expiresAt,
+    authoritySha256: input.observedAuthoritySha256
+  })] : []);
   const consentCore = {
     schemaVersion: 'vextreme.score-consent-disposition/v1',
     candidateRef: candidate.candidateRef,
@@ -481,6 +499,55 @@ function hostileMissingConsentAuthority(sourceIds, g01) {
 }
 
 
+function hostileInvalidAuthorityBindingHash(sourceIds, g01) {
+  const idsValue = cloneProofHome(sourceIds, 'hostile-invalid-authority-binding-hash');
+  const authority = seedSemanticAuthority(idsValue, g01, { authoritySha256: 'a'.repeat(64) });
+  try {
+    appendScoreStatement({ ...idsValue, expectedScoreHeadSha256: null, statementRef: 'statement.proof.invalid-authority-binding-hash',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+    return false;
+  } catch (error) { return error.code === 'SCORE_CONSENT_INVALID'; }
+}
+
+function hostileRequiredObservedAuthorityFormedAtMismatch(sourceIds, g01) {
+  const idsValue = cloneProofHome(sourceIds, 'hostile-authority-formed-at-mismatch');
+  const authority = seedSemanticAuthority(idsValue, g01, { observedAuthorityFormedAt: '2026-08-07T09:10:03.000Z' });
+  try {
+    appendScoreStatement({ ...idsValue, expectedScoreHeadSha256: null, statementRef: 'statement.proof.authority-formed-at-mismatch',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+    return false;
+  } catch (error) { return error.code === 'SCORE_CONSENT_INVALID'; }
+}
+
+function hostileRequiredObservedAuthorityExpiresAtMismatch(sourceIds, g01) {
+  const idsValue = cloneProofHome(sourceIds, 'hostile-authority-expiry-mismatch');
+  const authority = seedSemanticAuthority(idsValue, g01, {
+    authorityExpiresAt: '2026-08-08T09:10:02.000Z',
+    observedAuthorityExpiresAt: '2026-08-09T09:10:02.000Z'
+  });
+  try {
+    appendScoreStatement({ ...idsValue, expectedScoreHeadSha256: null, statementRef: 'statement.proof.authority-expiry-mismatch',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+    return false;
+  } catch (error) { return error.code === 'SCORE_CONSENT_INVALID'; }
+}
+
+function positiveExactPermittedAuthorityAccepted(sourceIds, g01) {
+  const idsValue = cloneProofHome(sourceIds, 'positive-exact-permitted-authority');
+  const authority = seedSemanticAuthority(idsValue, g01, { consentDisposition: 'PERMITTED', authorityDisposition: 'PERMITTED' });
+  try {
+    appendScoreStatement({ ...idsValue, expectedScoreHeadSha256: null, statementRef: 'statement.proof.exact-permitted-authority',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+    const state = loadScoreContextState(idsValue);
+    const statement = state.statements.find((item) => item.statementRef === 'statement.proof.exact-permitted-authority');
+    return statement?.consentState === 'PERMITTED' && statement.acceptedForContinuity === true;
+  } catch { return false; }
+}
+
 function hostileWrongConsentAuthorityPurpose(sourceIds, g01) {
   const idsValue = cloneProofHome(sourceIds, 'hostile-wrong-consent-authority-purpose');
   const authority = seedSemanticAuthority(idsValue, g01, {
@@ -603,6 +670,10 @@ async function runProof() {
     const forgedAcceptanceOutsideOwnerHeadRejected = hostileForgedAcceptance(proofIds, g01);
     const wrongCandidateHumanConfirmationRejected = hostileWrongHumanConfirmation(proofIds, g01);
     const missingPositiveConsentAuthorityRejected = hostileMissingConsentAuthority(proofIds, g01);
+    const invalidAuthorityBindingHashRejected = hostileInvalidAuthorityBindingHash(proofIds, g01);
+    const requiredObservedAuthorityFormedAtMismatchRejected = hostileRequiredObservedAuthorityFormedAtMismatch(proofIds, g01);
+    const requiredObservedAuthorityExpiresAtMismatchRejected = hostileRequiredObservedAuthorityExpiresAtMismatch(proofIds, g01);
+    const exactPermittedAuthorityAccepted = positiveExactPermittedAuthorityAccepted(proofIds, g01);
     const wrongConsentAuthorityPurposeRejected = hostileWrongConsentAuthorityPurpose(proofIds, g01);
     const wrongConsentAuthorityScopeRejected = hostileWrongConsentAuthorityScope(proofIds, g01);
     const nonImplicatedConsentAuthorityRejected = hostileNonImplicatedConsentAuthority(proofIds, g01);
@@ -787,7 +858,7 @@ async function runProof() {
     const projection = projectScoreContext(proofIds);
     const finalState = loadScoreContextState(proofIds);
     return {
-      schemaVersion: 'vexlife.g02-score-context-continuity-proof/v5',
+      schemaVersion: 'vexlife.g02-score-context-continuity-proof/v6',
       state: 'PASS', currentness: 'CURRENT', candidateHeadSha: candidateHead,
       sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
       liveSemanticContractRef: SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
@@ -795,6 +866,8 @@ async function runProof() {
       liveSemanticExecutableAddendumRef: SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
       safetyConsentScopeAddendumRef: SCORE_CONTEXT_SAFETY_SCOPE_ADDENDUM,
       liveSemanticScopeConvergenceRef: SCORE_CONTEXT_LIVE_SEMANTIC_SCOPE_CONVERGENCE,
+      safetyAuthorityBindingAddendumRef: SCORE_CONTEXT_SAFETY_AUTHORITY_BINDING_ADDENDUM,
+      liveSemanticAuthorityBindingConvergenceRef: SCORE_CONTEXT_LIVE_SEMANTIC_AUTHORITY_BINDING_CONVERGENCE,
       semanticAuthorityConsumerMode: 'READ_ONLY_OWNER_LEDGER',
       semanticAuthorityWriterExposedByG02: false,
       actualG01HttpTurns: 2,
@@ -805,6 +878,10 @@ async function runProof() {
       forgedAcceptanceOutsideOwnerHeadRejected,
       wrongCandidateHumanConfirmationRejected,
       missingPositiveConsentAuthorityRejected,
+      invalidAuthorityBindingHashRejected,
+      requiredObservedAuthorityFormedAtMismatchRejected,
+      requiredObservedAuthorityExpiresAtMismatchRejected,
+      exactPermittedAuthorityAccepted,
       wrongConsentAuthorityPurposeRejected,
       wrongConsentAuthorityScopeRejected,
       nonImplicatedConsentAuthorityRejected,
@@ -846,7 +923,9 @@ async function runProof() {
   const requiredTrue = [
     receipt.rawSemanticOverrideRejected, receipt.callerSemanticObjectRejected,
     receipt.forgedAcceptanceOutsideOwnerHeadRejected, receipt.wrongCandidateHumanConfirmationRejected,
-    receipt.missingPositiveConsentAuthorityRejected, receipt.wrongConsentAuthorityPurposeRejected,
+    receipt.missingPositiveConsentAuthorityRejected, receipt.invalidAuthorityBindingHashRejected,
+    receipt.requiredObservedAuthorityFormedAtMismatchRejected, receipt.requiredObservedAuthorityExpiresAtMismatchRejected,
+    receipt.exactPermittedAuthorityAccepted, receipt.wrongConsentAuthorityPurposeRejected,
     receipt.wrongConsentAuthorityScopeRejected, receipt.nonImplicatedConsentAuthorityRejected,
     receipt.nonPositiveConsentAuthorityRejected, receipt.invalidConsentChronologyRejected,
     receipt.positiveNarrowedConsentAuthorityAccepted, receipt.inferredStatePreserved,

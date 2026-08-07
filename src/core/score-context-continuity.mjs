@@ -27,6 +27,12 @@ export const SCORE_CONTEXT_SAFETY_SCOPE_ADDENDUM =
 export const SCORE_CONTEXT_LIVE_SEMANTIC_SCOPE_CONVERGENCE =
   'github.issue.vextreme-sdk.350.comment.5217546485';
 
+export const SCORE_CONTEXT_SAFETY_AUTHORITY_BINDING_ADDENDUM =
+  'github.issue.vextreme-sdk.226.comment.5217968947';
+
+export const SCORE_CONTEXT_LIVE_SEMANTIC_AUTHORITY_BINDING_CONVERGENCE =
+  'github.issue.vextreme-sdk.350.comment.5217975299';
+
 export const SCORE_CONTEXT_MEMORY_RELATIONS = Object.freeze([
   'CURRENT_LINEAGE_AUTOBIOGRAPHY',
   'SHARED_RELATIONSHIP_HISTORY',
@@ -521,6 +527,32 @@ function consentAuthorityScopeFingerprint(value) {
   });
 }
 
+function authorityBindingHash(value) {
+  return semanticHash({
+    schemaVersion: 'vextreme.score-consent-authority-binding/v1',
+    authorityRef: value.authorityRef,
+    subjectRef: value.subjectRef,
+    purposeRef: value.purposeRef,
+    scopeFingerprint: value.scopeFingerprint,
+    disposition: value.disposition,
+    formedAt: value.formedAt,
+    expiresAt: value.expiresAt
+  });
+}
+
+function authorityBindingIdentity(value) {
+  return semanticHash({
+    authorityRef: value.authorityRef,
+    authoritySha256: value.authoritySha256,
+    subjectRef: value.subjectRef,
+    purposeRef: value.purposeRef,
+    scopeFingerprint: value.scopeFingerprint,
+    disposition: value.disposition,
+    formedAt: value.formedAt,
+    expiresAt: value.expiresAt
+  });
+}
+
 function assertAuthorityBinding(value, label = 'authority binding') {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
       typeof value.authorityRef !== 'string' || value.authorityRef.length === 0 ||
@@ -532,6 +564,9 @@ function assertAuthorityBinding(value, label = 'authority binding') {
     fail('SCORE_CONSENT_INVALID', `${label} is malformed`);
   }
   assertIntrinsicChronology(value.formedAt, value.expiresAt, label);
+  if (value.authoritySha256 !== authorityBindingHash(value)) {
+    fail('SCORE_CONSENT_INVALID', `${label} authoritySha256 does not bind its exact canonical authority fields`);
+  }
   return value;
 }
 
@@ -733,11 +768,11 @@ function assertConsentDisposition(value, candidate) {
         value.observedAuthorityBindings.some((binding) => !positive.has(binding.disposition))) {
       fail('SCORE_CONSENT_INVALID', 'positive consent contains non-positive authority disposition');
     }
-    const observed = new Set(value.observedAuthorityBindings.map((binding) =>
-      `${binding.authorityRef}:${binding.authoritySha256}:${binding.subjectRef}:${binding.purposeRef}:${binding.scopeFingerprint}:${binding.disposition}`));
+    const observed = new Set(value.observedAuthorityBindings.map(authorityBindingIdentity));
     for (const required of value.requiredAuthorityBindings) {
-      const key = `${required.authorityRef}:${required.authoritySha256}:${required.subjectRef}:${required.purposeRef}:${required.scopeFingerprint}:${required.disposition}`;
-      if (!observed.has(key)) fail('SCORE_CONSENT_INVALID', 'positive consent does not contain every exact required authority binding');
+      if (!observed.has(authorityBindingIdentity(required))) {
+        fail('SCORE_CONSENT_INVALID', 'positive consent does not contain every exact required authority binding');
+      }
     }
   }
   return value;
@@ -1358,7 +1393,9 @@ export function loadScoreContextState({ home, homeRef, deviceRef, companionLinea
     sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
     liveSemanticContractRef: SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
     liveSemanticDispositionRef: SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION,
-    liveSemanticExecutableAddendumRef: SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM
+    liveSemanticExecutableAddendumRef: SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
+    safetyAuthorityBindingAddendumRef: SCORE_CONTEXT_SAFETY_AUTHORITY_BINDING_ADDENDUM,
+    liveSemanticAuthorityBindingConvergenceRef: SCORE_CONTEXT_LIVE_SEMANTIC_AUTHORITY_BINDING_CONVERGENCE
   };
 }
 
