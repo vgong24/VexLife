@@ -38,6 +38,12 @@
       "sha256": "11e7af3fa6e8feeecdd678a25f36d5f5b9a3ee8ca523e20f4f0b300f87c6f1ea"
     },
     {
+      "path": "docs/SCORE-AND-CONTEXT-CONTINUITY.md",
+      "mode": "100644",
+      "bytes": 14107,
+      "sha256": "d307fe51b0ed0bee606de19fb809babcf2e087636ba82f25d73173f11fd07084"
+    },
+    {
       "path": "docs/SECURITY-PERMISSION-EFFECTS.md",
       "mode": "100644",
       "bytes": 2170,
@@ -58,8 +64,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 3636,
-      "sha256": "01d5384bc093089fb298becad2338f38ba78f4798351171b0f98de010c94c282"
+      "bytes": 3714,
+      "sha256": "e825c0c718d5e398696d356fadfcda222ae1b189ad5bb32f1828f613e330ee5f"
     },
     {
       "path": "reference/browser/README.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 1748,
       "sha256": "83538b7a319375c8208e281033e049dca1c3224fee0efdb73b0ebde05fc3a327"
-    },
-    {
-      "path": "scripts/bootstrap.mjs",
-      "mode": "100644",
-      "bytes": 804,
-      "sha256": "7bb74626c8bb61e58fa608ec950263908f1af9819307d6426142f655002a4ccc"
     }
   ]
 }

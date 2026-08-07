@@ -970,5 +970,16 @@
       "scripts/lived-companion.mjs",
       "docs/LIVED-COMPANION-BASELINE.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.score-context-continuity",
+    "path": "src/core/score-context-continuity.mjs",
+    "role": "Owns the device-private G02 Score event journal, immutable head receipts, atomic current pointer, memory-relation projection, correction/supersession lineage, open-loop replay, exact G01 source descent and first-person wording eligibility while later Dream/Rhythm/sync effects remain held.",
+    "platformScope": "UNIVERSAL",
+    "reads": ["module.vexlife.core.utils", "module.vexlife.core.lived-companion", "module.vexlife.core.continuity-evolution-router", "state.device-family", "state.messages", "state.context", "registry.vexlife.evolution.001"],
+    "writes": ["selected Vex Home score/runtime score-writer-locks"],
+    "loadedBy": ["module.vexlife.script.score-context-continuity"],
+    "tests": ["test/score-context-continuity.test.mjs"],
+    "changeMap": ["blueprint/evolution-registry.json", "docs/SCORE-AND-CONTEXT-CONTINUITY.md", ".github/workflows/check.yml"]
   }
 ]

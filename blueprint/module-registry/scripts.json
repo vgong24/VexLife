@@ -713,5 +713,16 @@
       "src/core/lived-companion.mjs",
       ".github/workflows/check.yml"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.score-context-continuity",
+    "path": "scripts/score-context-continuity.mjs",
+    "role": "Runs the bounded G02 temp-Home proof with actual G01 numeric-loopback turns, Score correction/supersession, open-loop carry-forward, tail failure classification and fresh-process replay.",
+    "platformScope": "WINDOWS",
+    "reads": ["module.vexlife.core.score-context-continuity", "module.vexlife.core.lived-companion"],
+    "writes": ["caller-selected proof Home and generated health receipt"],
+    "loadedBy": ["npm run score-context:proof", ".github/workflows/check.yml"],
+    "tests": ["test/score-context-continuity.test.mjs"],
+    "changeMap": ["src/core/score-context-continuity.mjs", ".github/workflows/check.yml"]
   }
 ]

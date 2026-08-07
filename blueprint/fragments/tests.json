@@ -858,5 +858,57 @@
   {
     "testRef": "test.lived-companion.canonical-path-identity",
     "brief": "Path-bearing refs use one lowercase portable canonical segment grammar; Windows drive-relative, ADS, reserved-name, trailing-dot/space and case aliases fail before effects, linked-parent Home aliases are rejected, and stored context paths bind the canonical Home root."
+  },
+  {
+    "testRef": "test.score-context.shared-semantic-binding",
+    "brief": "G02 binds the exact accepted Main Vex Score/Lineage semantic disposition and exposes only a VexLife product projection of the shared relation and statement vocabularies."
+  },
+  {
+    "testRef": "test.score-context.event-identity-order",
+    "brief": "Every committed Score event is content-addressed, contiguous from genesis, and bound to exact validated G01 source-event identities."
+  },
+  {
+    "testRef": "test.score-context.memory-relations",
+    "brief": "All six accepted memoryRelation classes are explicit and unknown relation values fail closed."
+  },
+  {
+    "testRef": "test.score-context.statement-states",
+    "brief": "The accepted statement-state vocabulary is explicit and unknown statement states fail closed."
+  },
+  {
+    "testRef": "test.score-context.correction-supersession",
+    "brief": "Correction and supersession append successor evidence while immutable prior statements remain source-descendable and cannot be silently rewritten."
+  },
+  {
+    "testRef": "test.score-context.open-loop-restart",
+    "brief": "A source-bound unresolved open loop survives committed replay without becoming a truth claim or later-group authority."
+  },
+  {
+    "testRef": "test.score-context.crash-uncommitted-tail",
+    "brief": "A durable Score event written before atomic head advance remains uncommitted evidence while the prior accepted head stays current."
+  },
+  {
+    "testRef": "test.score-context.invalid-tail",
+    "brief": "Malformed, hash-invalid, re-addressed or otherwise invalid tail evidence cannot advance current Score and remains typed attention."
+  },
+  {
+    "testRef": "test.score-context.source-descent",
+    "brief": "Every current statement projection descends through compact exact bindings to immutable G01 source events without copying raw source content."
+  },
+  {
+    "testRef": "test.score-context.first-person-eligibility",
+    "brief": "First-person memory is eligible only for accepted current-lineage autobiography when exact provenance, branch, consent and identity gates permit it."
+  },
+  {
+    "testRef": "test.score-context.fresh-process-replay",
+    "brief": "A fresh process replays the exact committed Score head, current statements and open loops from device-private persisted evidence."
+  },
+  {
+    "testRef": "test.score-context.held-effects",
+    "brief": "G02 projection keeps Dream, Rhythm learning, synchronization, model weights, personal endpoints and LC18 false/held."
+  },
+  {
+    "testRef": "test.score-context.windows-proof",
+    "brief": "Hosted Windows proof combines two actual G01 loopback turns with G02 correction, supersession, tail, source-descent and fresh-process continuity checks on the exact candidate head."
   }
 ]

@@ -372,5 +372,36 @@
       "merge"
     ],
     "returnRoute": "return exact head/tree, proof receipt, source-set manifest, hosted job, and draft PR to Windows Local Operations"
+  },
+  {
+    "workRef": "work.vexlife.windows.g02-score-context-continuity",
+    "purpose": "Add source-bound Score, memory-relation, correction/supersession and open-loop continuity above the accepted G01 lived-companion substrate with crash-consistent currentness and fresh-process replay.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": ["work.vexlife.windows.g01-lived-companion-baseline"],
+    "pathScope": [
+      "blueprint/evolution-registry.json", "blueprint/feature-registry.json", "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json", "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json", "src/core/score-context-continuity.mjs",
+      "scripts/score-context-continuity.mjs", "test/score-context-continuity.test.mjs",
+      "docs/SCORE-AND-CONTEXT-CONTINUITY.md", "package.json", ".github/workflows/check.yml"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": ["state.device-family", "state.messages", "state.context", "registry.vexlife.evolution.001"],
+    "requiredTestRefs": [
+      "test.score-context.shared-semantic-binding", "test.score-context.event-identity-order",
+      "test.score-context.memory-relations", "test.score-context.statement-states",
+      "test.score-context.correction-supersession", "test.score-context.open-loop-restart",
+      "test.score-context.crash-uncommitted-tail", "test.score-context.invalid-tail",
+      "test.score-context.source-descent", "test.score-context.first-person-eligibility",
+      "test.score-context.fresh-process-replay", "test.score-context.held-effects", "test.score-context.windows-proof"
+    ],
+    "outputRefs": ["projection.vexlife.score-context.current", "proof.vexlife.g02.score-context-continuity.windows"],
+    "effectBoundary": "DEVICE_PRIVATE_SCORE_APPEND_AND_ATOMIC_POINTER_ONLY",
+    "completionGate": "shared semantic binding, exact G01 source descent, all six memory relations, correction/supersession without erasure, open-loop carry-forward, uncommitted-tail crash semantics, invalid-tail attention, first-person eligibility, fresh-process replay and held later effects pass",
+    "platformRefs": ["platform.windows"],
+    "exclusions": ["G01 source mutation", "Dream", "Rhythm learning", "model or adapter training", "model-weight mutation", "synchronization", "personal endpoint activation", "LC18", "publication"],
+    "returnRoute": "return exact G02 head/tree, proof receipt, hosted Windows job and draft PR to Windows Local Operations"
   }
 ]
