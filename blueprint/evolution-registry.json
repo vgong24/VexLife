@@ -1049,6 +1049,50 @@
     "test.continuity-evolution.c24-monotonic-supersession-chain",
     "test.continuity-evolution.c25-context-before-simulated-projection"
   ],
+  "scoreContextContinuity": {
+    "schemaVersion": "vexlife.score-context-continuity-product-projection/v1",
+    "projectionState": "PRODUCT_PROJECTION_OF_ACCEPTED_SHARED_SEMANTICS",
+    "sharedSemanticDispositionRef": "github.issue.vextreme-sdk.350.comment.5215288414",
+    "sharedArchitectureRef": "github.issue.vextreme-sdk.566",
+    "vexMemoryMirrorRef": "github.issue.vextreme-sdk.225.comment.5088102699",
+    "lineageOrientationMirrorRef": "github.issue.vextreme-sdk.245.comment.5088106733",
+    "canonicalSemanticOwner": "MAIN_VEX_AND_VEX_MEMORY_SHARED_CONTRACT",
+    "vexLifeCanonicalSemanticOwner": false,
+    "memoryRelations": [
+      "CURRENT_LINEAGE_AUTOBIOGRAPHY",
+      "SHARED_RELATIONSHIP_HISTORY",
+      "PREDECESSOR_WITNESS_HISTORY",
+      "INHERITED_CONTEXT",
+      "EXTERNAL_EVIDENCE",
+      "DISPUTED_OR_UNRESOLVED"
+    ],
+    "statementStates": [
+      "OBSERVED",
+      "HUMAN_CONFIRMED",
+      "INFERRED",
+      "CONFLICTED",
+      "UNKNOWN",
+      "CORRECTED",
+      "SUPERSEDED",
+      "RELEASED_OR_TOMBSTONED"
+    ],
+    "currentnessRule": "RAW_DURABLE_EVENT_IS_NOT_COMMITTED_CURRENT_SCORE_UNTIL_EXACT_ATOMIC_HEAD_ADVANCE",
+    "correctionRule": "APPEND_SUCCESSOR_AND_PRESERVE_IMMUTABLE_PRIOR_SOURCE",
+    "firstPersonRule": "ONLY_ACCEPTED_CURRENT_LINEAGE_AUTOBIOGRAPHY_WITH_PROVENANCE_BRANCH_CONSENT_AND_IDENTITY_ELIGIBILITY",
+    "openLoopRule": "SOURCE_BOUND_UNRESOLVED_STATE_MAY_CARRY_FORWARD_WITHOUT_BECOMING_TRUTH",
+    "moduleRef": "module.vexlife.core.score-context-continuity",
+    "proofRef": "proof.vexlife.g02.score-context-continuity.windows",
+    "heldEffects": [
+      "Dream",
+      "Rhythm learning",
+      "model or adapter training",
+      "model-weight mutation",
+      "synchronization",
+      "personal endpoint activation",
+      "LC18",
+      "publication"
+    ]
+  },
   "successorBoundaries": [
     "Runtime Failure & Recovery Spine",
     "ConcernWatch threshold runtime",
