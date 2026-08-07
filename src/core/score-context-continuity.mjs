@@ -21,6 +21,12 @@ const SCORE_CONTEXT_MEMORY_EXECUTABLE_ADDENDUM =
 const SCORE_CONTEXT_SAFETY_EXECUTABLE_ADDENDUM =
   'github.issue.vextreme-sdk.226.comment.5217090896';
 
+export const SCORE_CONTEXT_SAFETY_SCOPE_ADDENDUM =
+  'github.issue.vextreme-sdk.226.comment.5217542332';
+
+export const SCORE_CONTEXT_LIVE_SEMANTIC_SCOPE_CONVERGENCE =
+  'github.issue.vextreme-sdk.350.comment.5217546485';
+
 export const SCORE_CONTEXT_MEMORY_RELATIONS = Object.freeze([
   'CURRENT_LINEAGE_AUTOBIOGRAPHY',
   'SHARED_RELATIONSHIP_HISTORY',
@@ -476,6 +482,45 @@ function assertShaBinding(value, label, code) {
   return value;
 }
 
+function assertIntrinsicChronology(formedAt, expiresAt, label) {
+  canonicalTimestamp(formedAt, `${label} formedAt`);
+  if (expiresAt === null) return true;
+  canonicalTimestamp(expiresAt, `${label} expiresAt`);
+  if (Date.parse(expiresAt) <= Date.parse(formedAt)) {
+    fail('SCORE_CONSENT_INVALID', `${label} expiresAt must be strictly later than formedAt`);
+  }
+  return true;
+}
+
+function uniqueCanonicalStrings(values, label, { nonempty = false } = {}) {
+  if (!Array.isArray(values) || (nonempty && values.length === 0) ||
+      values.some((value) => typeof value !== 'string' || value.length === 0)) {
+    fail('SCORE_CONSENT_INVALID', `${label} must be ${nonempty ? 'one nonempty' : 'an'} string array`);
+  }
+  if (new Set(values).size !== values.length) {
+    fail('SCORE_CONSENT_INVALID', `${label} must not contain duplicates`);
+  }
+  return [...values].sort((a, b) => a.localeCompare(b));
+}
+
+function consentAuthorityScopeFingerprint(value) {
+  return semanticHash({
+    schemaVersion: 'vextreme.score-consent-authority-scope/v1',
+    candidateRef: value.candidateRef,
+    candidateSha256: value.candidateSha256,
+    semanticSubjectRef: value.semanticSubjectRef,
+    semanticSubjectFingerprint: value.semanticSubjectFingerprint,
+    purposeRef: value.purposeRef,
+    privacyClass: value.privacyClass,
+    implicatedSubjectRefs: uniqueCanonicalStrings(value.implicatedSubjectRefs, 'implicatedSubjectRefs', { nonempty: true }),
+    permittedUseRefs: uniqueCanonicalStrings(value.permittedUseRefs, 'permittedUseRefs'),
+    prohibitedUseRefs: uniqueCanonicalStrings(value.prohibitedUseRefs, 'prohibitedUseRefs'),
+    retentionBoundaryRef: value.retentionBoundaryRef,
+    redisclosureBoundaryRef: value.redisclosureBoundaryRef,
+    firstPersonBoundaryRef: value.firstPersonBoundaryRef
+  });
+}
+
 function assertAuthorityBinding(value, label = 'authority binding') {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
       typeof value.authorityRef !== 'string' || value.authorityRef.length === 0 ||
@@ -483,11 +528,10 @@ function assertAuthorityBinding(value, label = 'authority binding') {
       typeof value.subjectRef !== 'string' || value.subjectRef.length === 0 ||
       typeof value.purposeRef !== 'string' || value.purposeRef.length === 0 ||
       !SHA256.test(value.scopeFingerprint ?? '') ||
-      typeof value.disposition !== 'string' || value.disposition.length === 0) {
+      !SCORE_CONTEXT_CONSENT_DISPOSITIONS.includes(value.disposition)) {
     fail('SCORE_CONSENT_INVALID', `${label} is malformed`);
   }
-  canonicalTimestamp(value.formedAt, `${label} formedAt`);
-  if (value.expiresAt !== null) canonicalTimestamp(value.expiresAt, `${label} expiresAt`);
+  assertIntrinsicChronology(value.formedAt, value.expiresAt, label);
   return value;
 }
 
@@ -634,6 +678,7 @@ function assertConsentDisposition(value, candidate) {
       typeof value.purposeRef !== 'string' || value.purposeRef.length === 0 || value.privacyClass !== 'DEVICE_PRIVATE' ||
       !SCORE_CONTEXT_CONSENT_DISPOSITIONS.includes(value.disposition) ||
       !Array.isArray(value.requiredAuthorityBindings) || !Array.isArray(value.observedAuthorityBindings) ||
+      !Array.isArray(value.implicatedSubjectRefs) ||
       !Array.isArray(value.permittedUseRefs) || !Array.isArray(value.prohibitedUseRefs) ||
       typeof value.retentionBoundaryRef !== 'string' || value.retentionBoundaryRef.length === 0 ||
       typeof value.redisclosureBoundaryRef !== 'string' || value.redisclosureBoundaryRef.length === 0 ||
@@ -643,14 +688,53 @@ function assertConsentDisposition(value, candidate) {
       !Array.isArray(value.sourceEvidenceBindings)) {
     fail('SCORE_CONSENT_INVALID', 'consent disposition failed exact Safety-owner contract validation');
   }
-  canonicalTimestamp(value.formedAt, 'consent disposition formedAt');
-  if (value.expiresAt !== null) canonicalTimestamp(value.expiresAt, 'consent disposition expiresAt');
-  value.requiredAuthorityBindings.forEach((binding, index) => assertAuthorityBinding(binding, `requiredAuthorityBindings[${index}]`));
-  value.observedAuthorityBindings.forEach((binding, index) => assertAuthorityBinding(binding, `observedAuthorityBindings[${index}]`));
+
+  assertIntrinsicChronology(value.formedAt, value.expiresAt, 'consent disposition');
+  const implicatedSubjects = uniqueCanonicalStrings(value.implicatedSubjectRefs, 'implicatedSubjectRefs', { nonempty: true });
+  const implicatedSubjectSet = new Set(implicatedSubjects);
+  const positiveConsent = ['PERMITTED', 'NARROWED'].includes(value.disposition);
+  const permittedUses = uniqueCanonicalStrings(value.permittedUseRefs, 'permittedUseRefs', { nonempty: positiveConsent });
+  const prohibitedUses = uniqueCanonicalStrings(value.prohibitedUseRefs, 'prohibitedUseRefs');
+  if (positiveConsent && permittedUses.some((useRef) => prohibitedUses.includes(useRef))) {
+    fail('SCORE_CONSENT_INVALID', 'positive consent has a use that is both permitted and prohibited');
+  }
+
+  const expectedScopeFingerprint = consentAuthorityScopeFingerprint(value);
+  value.requiredAuthorityBindings.forEach((binding, index) => {
+    assertAuthorityBinding(binding, `requiredAuthorityBindings[${index}]`);
+    if (!implicatedSubjectSet.has(binding.subjectRef)) {
+      fail('SCORE_CONSENT_INVALID', 'required authority subject is not an implicated subject', { subjectRef: binding.subjectRef });
+    }
+    if (binding.purposeRef !== value.purposeRef) {
+      fail('SCORE_CONSENT_INVALID', 'required authority purpose differs from consent purpose');
+    }
+    if (binding.scopeFingerprint !== expectedScopeFingerprint) {
+      fail('SCORE_CONSENT_INVALID', 'required authority scope differs from canonical consent scope');
+    }
+  });
+  value.observedAuthorityBindings.forEach((binding, index) => {
+    assertAuthorityBinding(binding, `observedAuthorityBindings[${index}]`);
+    if (!implicatedSubjectSet.has(binding.subjectRef)) {
+      fail('SCORE_CONSENT_INVALID', 'observed authority subject is not an implicated subject', { subjectRef: binding.subjectRef });
+    }
+    if (binding.purposeRef !== value.purposeRef) {
+      fail('SCORE_CONSENT_INVALID', 'observed authority purpose differs from consent purpose');
+    }
+    if (binding.scopeFingerprint !== expectedScopeFingerprint) {
+      fail('SCORE_CONSENT_INVALID', 'observed authority scope differs from canonical consent scope');
+    }
+  });
   value.sourceEvidenceBindings.forEach((binding, index) => assertShaBinding(binding, `consent sourceEvidenceBindings[${index}]`, 'SCORE_CONSENT_INVALID'));
-  if (['PERMITTED', 'NARROWED'].includes(value.disposition)) {
+
+  if (positiveConsent) {
     if (value.requiredAuthorityBindings.length === 0) fail('SCORE_CONSENT_INVALID', 'positive consent lacks required authority set');
-    const observed = new Set(value.observedAuthorityBindings.map((binding) => `${binding.authorityRef}:${binding.authoritySha256}:${binding.subjectRef}:${binding.purposeRef}:${binding.scopeFingerprint}:${binding.disposition}`));
+    const positive = new Set(['PERMITTED', 'NARROWED']);
+    if (value.requiredAuthorityBindings.some((binding) => !positive.has(binding.disposition)) ||
+        value.observedAuthorityBindings.some((binding) => !positive.has(binding.disposition))) {
+      fail('SCORE_CONSENT_INVALID', 'positive consent contains non-positive authority disposition');
+    }
+    const observed = new Set(value.observedAuthorityBindings.map((binding) =>
+      `${binding.authorityRef}:${binding.authoritySha256}:${binding.subjectRef}:${binding.purposeRef}:${binding.scopeFingerprint}:${binding.disposition}`));
     for (const required of value.requiredAuthorityBindings) {
       const key = `${required.authorityRef}:${required.authoritySha256}:${required.subjectRef}:${required.purposeRef}:${required.scopeFingerprint}:${required.disposition}`;
       if (!observed.has(key)) fail('SCORE_CONSENT_INVALID', 'positive consent does not contain every exact required authority binding');

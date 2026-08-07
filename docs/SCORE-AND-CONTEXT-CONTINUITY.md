@@ -44,6 +44,12 @@ github.issue.vextreme-sdk.225.comment.5217085830
 
 github.issue.vextreme-sdk.226.comment.5217090896
   Vex Safety executable consent addendum
+
+github.issue.vextreme-sdk.226.comment.5217542332
+  canonical consent-authority scope and positive-disposition clarification
+
+github.issue.vextreme-sdk.350.comment.5217546485
+  Main Vex convergence for the executable consent-authority scope
 ```
 
 Canonical live contract:
@@ -232,6 +238,38 @@ prior consent != changed candidate/purpose/scope consent
 ```
 
 Positive `PERMITTED` or `NARROWED` is usable only when the exact owner receipt proves its required authority set and is bound into the current semantic-authority head for the same candidate/purpose/scope.
+
+The canonical authority-scope fingerprint is:
+
+```text
+semanticHash({
+  schemaVersion: vextreme.score-consent-authority-scope/v1,
+  candidateRef,
+  candidateSha256,
+  semanticSubjectRef,
+  semanticSubjectFingerprint,
+  purposeRef,
+  privacyClass,
+  implicatedSubjectRefs[] sorted and duplicate-free,
+  permittedUseRefs[] sorted and duplicate-free,
+  prohibitedUseRefs[] sorted and duplicate-free,
+  retentionBoundaryRef,
+  redisclosureBoundaryRef,
+  firstPersonBoundaryRef
+})
+```
+
+For every required or observed authority binding:
+
+```text
+subjectRef must be an exact implicated subject
+purposeRef must equal the consent purpose
+scopeFingerprint must equal the canonical consent scope
+```
+
+For positive consent, every required authority must have an exact observed match whose own disposition is `PERMITTED` or `NARROWED`. `DEFERRED`, `DENIED`, `UNKNOWN`, and `WITHDRAWN` cannot satisfy positive authority. A `NARROWED` authority is usable only because the exact narrowed envelope is already bound by the canonical scope fingerprint.
+
+G02 does not invent a live clock. The owner materializer controls live currentness and excludes expired/withdrawn authority from the current owner head. The G02 consumer still rejects intrinsically impossible chronology (`expiresAt <= formedAt`).
 
 `UNKNOWN`, `DEFERRED`, `DENIED`, or `WITHDRAWN` remain explicit. Withdrawal may block future governed use without falsifying historical evidence.
 

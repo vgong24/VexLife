@@ -13,6 +13,8 @@ import {
   SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
   SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION,
   SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
+  SCORE_CONTEXT_SAFETY_SCOPE_ADDENDUM,
+  SCORE_CONTEXT_LIVE_SEMANTIC_SCOPE_CONVERGENCE,
   SCORE_CONTEXT_STATEMENT_STATES,
   appendOpenLoop,
   appendScoreStatement,
@@ -94,6 +96,24 @@ function sourceBinding(event) {
 
 function semanticAuthorityDir(ids, leaf) {
   return path.join(ids.home, 'semantic-authority', 'score', ids.companionLineageRef, ids.threadRef, leaf);
+}
+
+function fixtureConsentScopeFingerprint(value) {
+  return semanticHash({
+    schemaVersion: 'vextreme.score-consent-authority-scope/v1',
+    candidateRef: value.candidateRef,
+    candidateSha256: value.candidateSha256,
+    semanticSubjectRef: value.semanticSubjectRef,
+    semanticSubjectFingerprint: value.semanticSubjectFingerprint,
+    purposeRef: value.purposeRef,
+    privacyClass: value.privacyClass,
+    implicatedSubjectRefs: [...value.implicatedSubjectRefs].sort((a, b) => a.localeCompare(b)),
+    permittedUseRefs: [...value.permittedUseRefs].sort((a, b) => a.localeCompare(b)),
+    prohibitedUseRefs: [...value.prohibitedUseRefs].sort((a, b) => a.localeCompare(b)),
+    retentionBoundaryRef: value.retentionBoundaryRef,
+    redisclosureBoundaryRef: value.redisclosureBoundaryRef,
+    firstPersonBoundaryRef: value.firstPersonBoundaryRef
+  });
 }
 
 function readCurrentSemanticHead(ids) {
@@ -198,20 +218,50 @@ function seedSemanticAuthority(ids, g01, input = {}) {
   if (transitionClass) evidence.push(makeEvidence(transitionClass, transitionKind, 2));
 
   const consentDisposition = input.consentDisposition ?? 'PERMITTED';
+  const positiveConsent = ['PERMITTED', 'NARROWED'].includes(consentDisposition);
   const purposeRef = input.consentPurposeRef ?? 'purpose.score.device-private-continuity';
-  const scopeFingerprint = semanticHash({ candidate: candidate.candidateSha256, purposeRef, privacyClass: 'DEVICE_PRIVATE' });
-  const authorityBinding = {
-    authorityRef: 'authority.test.score.continuity',
-    authoritySha256: semanticHash({ authorityRef: 'authority.test.score.continuity', candidateSha256: candidate.candidateSha256, purposeRef }),
-    subjectRef: 'person.test',
+  const implicatedSubjectRefs = input.implicatedSubjectRefs ?? ['person.test'];
+  const permittedUseRefs = input.permittedUseRefs ?? (positiveConsent ? ['use.score.device-private-continuity'] : []);
+  const prohibitedUseRefs = input.prohibitedUseRefs ?? ['use.score.first-person'];
+  const retentionBoundaryRef = input.retentionBoundaryRef ?? 'retention.score.device-private';
+  const redisclosureBoundaryRef = input.redisclosureBoundaryRef ?? 'redisclosure.score.not-admitted';
+  const firstPersonBoundaryRef = input.firstPersonBoundaryRef ?? 'boundary.score.first-person.not-admitted';
+  const consentScope = {
+    candidateRef: candidate.candidateRef,
+    candidateSha256: candidate.candidateSha256,
+    semanticSubjectRef: candidate.semanticSubjectRef,
+    semanticSubjectFingerprint: candidate.semanticSubjectFingerprint,
     purposeRef,
-    scopeFingerprint,
-    disposition: 'PERMITTED',
-    formedAt: '2026-08-07T09:10:02.000Z',
-    expiresAt: null
+    privacyClass: 'DEVICE_PRIVATE',
+    implicatedSubjectRefs,
+    permittedUseRefs,
+    prohibitedUseRefs,
+    retentionBoundaryRef,
+    redisclosureBoundaryRef,
+    firstPersonBoundaryRef
   };
-  const requiredAuthorityBindings = input.requiredAuthorityBindings ?? (['PERMITTED', 'NARROWED'].includes(consentDisposition) ? [authorityBinding] : []);
-  const observedAuthorityBindings = input.observedAuthorityBindings ?? (['PERMITTED', 'NARROWED'].includes(consentDisposition) ? structuredClone(requiredAuthorityBindings) : []);
+  const scopeFingerprint = fixtureConsentScopeFingerprint(consentScope);
+  const authorityPurposeRef = input.authorityPurposeRef ?? purposeRef;
+  const authorityDisposition = input.authorityDisposition ?? (positiveConsent ? 'PERMITTED' : 'UNKNOWN');
+  const authorityBinding = {
+    authorityRef: input.authorityRef ?? 'authority.test.score.continuity',
+    authoritySha256: input.authoritySha256 ?? semanticHash({
+      authorityRef: input.authorityRef ?? 'authority.test.score.continuity',
+      candidateSha256: candidate.candidateSha256,
+      subjectRef: input.authoritySubjectRef ?? implicatedSubjectRefs[0],
+      purposeRef: authorityPurposeRef,
+      scopeFingerprint: input.authorityScopeFingerprint ?? scopeFingerprint,
+      disposition: authorityDisposition
+    }),
+    subjectRef: input.authoritySubjectRef ?? implicatedSubjectRefs[0],
+    purposeRef: authorityPurposeRef,
+    scopeFingerprint: input.authorityScopeFingerprint ?? scopeFingerprint,
+    disposition: authorityDisposition,
+    formedAt: input.authorityFormedAt ?? '2026-08-07T09:10:02.000Z',
+    expiresAt: input.authorityExpiresAt ?? null
+  };
+  const requiredAuthorityBindings = input.requiredAuthorityBindings ?? (positiveConsent ? [authorityBinding] : []);
+  const observedAuthorityBindings = input.observedAuthorityBindings ?? (positiveConsent ? structuredClone(requiredAuthorityBindings) : []);
   const consentCore = {
     schemaVersion: 'vextreme.score-consent-disposition/v1',
     candidateRef: candidate.candidateRef,
@@ -220,17 +270,17 @@ function seedSemanticAuthority(ids, g01, input = {}) {
     semanticSubjectFingerprint: candidate.semanticSubjectFingerprint,
     purposeRef,
     privacyClass: 'DEVICE_PRIVATE',
-    implicatedSubjectRefs: ['person.test'],
+    implicatedSubjectRefs,
     requiredAuthorityBindings,
     observedAuthorityBindings,
     disposition: consentDisposition,
-    permittedUseRefs: input.permittedUseRefs ?? (['PERMITTED', 'NARROWED'].includes(consentDisposition) ? ['use.score.device-private-continuity'] : []),
-    prohibitedUseRefs: input.prohibitedUseRefs ?? ['use.score.first-person'],
-    retentionBoundaryRef: 'retention.score.device-private',
-    redisclosureBoundaryRef: 'redisclosure.score.not-admitted',
-    firstPersonBoundaryRef: 'boundary.score.first-person.not-admitted',
+    permittedUseRefs,
+    prohibitedUseRefs,
+    retentionBoundaryRef,
+    redisclosureBoundaryRef,
+    firstPersonBoundaryRef,
     formedAt: input.consentFormedAt ?? '2026-08-07T09:10:02.000Z',
-    expiresAt: null,
+    expiresAt: input.consentExpiresAt ?? null,
     issuerRef: 'role.multivex.safety.fixture-owner',
     issuerClass: 'BOUNDED_TEST_OWNER_PROJECTION',
     ownerProjectRef: 'project.multivex.safety',
@@ -430,6 +480,116 @@ function hostileMissingConsentAuthority(sourceIds, g01) {
   } catch (error) { return error.code === 'SCORE_CONSENT_INVALID'; }
 }
 
+
+function hostileWrongConsentAuthorityPurpose(sourceIds, g01) {
+  const idsValue = cloneProofHome(sourceIds, 'hostile-wrong-consent-authority-purpose');
+  const authority = seedSemanticAuthority(idsValue, g01, {
+    consentDisposition: 'PERMITTED',
+    authorityPurposeRef: 'purpose.unrelated'
+  });
+  try {
+    appendScoreStatement({ ...idsValue, expectedScoreHeadSha256: null, statementRef: 'statement.proof.wrong-consent-authority-purpose',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+    return false;
+  } catch (error) { return error.code === 'SCORE_CONSENT_INVALID'; }
+}
+
+function hostileWrongConsentAuthorityScope(sourceIds, g01) {
+  const idsValue = cloneProofHome(sourceIds, 'hostile-wrong-consent-authority-scope');
+  const authority = seedSemanticAuthority(idsValue, g01, {
+    consentDisposition: 'PERMITTED',
+    authorityScopeFingerprint: 'b'.repeat(64)
+  });
+  try {
+    appendScoreStatement({ ...idsValue, expectedScoreHeadSha256: null, statementRef: 'statement.proof.wrong-consent-authority-scope',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+    return false;
+  } catch (error) { return error.code === 'SCORE_CONSENT_INVALID'; }
+}
+
+function hostileNonImplicatedConsentAuthority(sourceIds, g01) {
+  const idsValue = cloneProofHome(sourceIds, 'hostile-non-implicated-consent-authority');
+  const authority = seedSemanticAuthority(idsValue, g01, {
+    consentDisposition: 'PERMITTED',
+    implicatedSubjectRefs: ['person.proof-user'],
+    authoritySubjectRef: 'person.other'
+  });
+  try {
+    appendScoreStatement({ ...idsValue, expectedScoreHeadSha256: null, statementRef: 'statement.proof.non-implicated-consent-authority',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+    return false;
+  } catch (error) { return error.code === 'SCORE_CONSENT_INVALID'; }
+}
+
+function hostileNonPositiveConsentAuthority(sourceIds, g01) {
+  return ['DEFERRED', 'DENIED', 'UNKNOWN', 'WITHDRAWN'].every((disposition) => {
+    const idsValue = cloneProofHome(sourceIds, `hostile-nonpositive-consent-authority-${disposition.toLowerCase()}`);
+    const authority = seedSemanticAuthority(idsValue, g01, {
+      consentDisposition: 'PERMITTED',
+      authorityDisposition: disposition
+    });
+    try {
+      appendScoreStatement({ ...idsValue, expectedScoreHeadSha256: null,
+        statementRef: `statement.proof.nonpositive-consent-authority.${disposition.toLowerCase()}`,
+        semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+        semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+      return false;
+    } catch (error) { return error.code === 'SCORE_CONSENT_INVALID'; }
+  });
+}
+
+function hostileInvalidConsentChronology(sourceIds, g01) {
+  const authorityIds = cloneProofHome(sourceIds, 'hostile-authority-expiry-chronology');
+  const authority = seedSemanticAuthority(authorityIds, g01, {
+    authorityFormedAt: '2026-08-07T12:10:03.000Z',
+    authorityExpiresAt: '2026-08-07T12:10:02.000Z'
+  });
+  let authorityRejected = false;
+  try {
+    appendScoreStatement({ ...authorityIds, expectedScoreHeadSha256: null,
+      statementRef: 'statement.proof.bad-authority-expiry',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+  } catch (error) { authorityRejected = error.code === 'SCORE_CONSENT_INVALID'; }
+
+  const consentIds = cloneProofHome(sourceIds, 'hostile-consent-expiry-chronology');
+  const consent = seedSemanticAuthority(consentIds, g01, {
+    consentFormedAt: '2026-08-07T12:10:03.000Z',
+    consentExpiresAt: '2026-08-07T12:10:02.000Z'
+  });
+  let consentRejected = false;
+  try {
+    appendScoreStatement({ ...consentIds, expectedScoreHeadSha256: null,
+      statementRef: 'statement.proof.bad-consent-expiry',
+      semanticAcceptanceRef: consent.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: consent.acceptance.acceptanceSha256 });
+  } catch (error) { consentRejected = error.code === 'SCORE_CONSENT_INVALID'; }
+  return authorityRejected && consentRejected;
+}
+
+function positiveNarrowedConsentAuthorityAccepted(sourceIds, g01) {
+  const idsValue = cloneProofHome(sourceIds, 'positive-narrowed-consent-authority');
+  const authority = seedSemanticAuthority(idsValue, g01, {
+    consentDisposition: 'NARROWED',
+    authorityDisposition: 'NARROWED',
+    implicatedSubjectRefs: ['person.proof-user'],
+    permittedUseRefs: ['use.score.device-private-continuity'],
+    prohibitedUseRefs: ['use.score.first-person', 'use.score.redisclosure']
+  });
+  try {
+    appendScoreStatement({ ...idsValue, expectedScoreHeadSha256: null, statementRef: 'statement.proof.narrowed-consent-authority',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
+    const statement = loadScoreContextState(idsValue).statements.find((item) => item.statementRef === 'statement.proof.narrowed-consent-authority');
+    return statement?.consentState === 'NARROWED' && statement?.acceptedForContinuity === true;
+  } catch {
+    return false;
+  }
+}
+
 async function runProof() {
   const requestedHome = process.env.VEXLIFE_G02_PROOF_HOME || path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-g02-proof-')), 'home');
   const receiptFile = process.env.VEXLIFE_G02_PROOF_RECEIPT || path.join(ROOT, 'generated', 'health', 'score-context-continuity-proof.json');
@@ -443,6 +603,12 @@ async function runProof() {
     const forgedAcceptanceOutsideOwnerHeadRejected = hostileForgedAcceptance(proofIds, g01);
     const wrongCandidateHumanConfirmationRejected = hostileWrongHumanConfirmation(proofIds, g01);
     const missingPositiveConsentAuthorityRejected = hostileMissingConsentAuthority(proofIds, g01);
+    const wrongConsentAuthorityPurposeRejected = hostileWrongConsentAuthorityPurpose(proofIds, g01);
+    const wrongConsentAuthorityScopeRejected = hostileWrongConsentAuthorityScope(proofIds, g01);
+    const nonImplicatedConsentAuthorityRejected = hostileNonImplicatedConsentAuthority(proofIds, g01);
+    const nonPositiveConsentAuthorityRejected = hostileNonPositiveConsentAuthority(proofIds, g01);
+    const invalidConsentChronologyRejected = hostileInvalidConsentChronology(proofIds, g01);
+    const positiveNarrowedConsentAuthorityAcceptedFlag = positiveNarrowedConsentAuthorityAccepted(proofIds, g01);
 
     const relationStatements = [];
     let ordinal = 0;
@@ -621,12 +787,14 @@ async function runProof() {
     const projection = projectScoreContext(proofIds);
     const finalState = loadScoreContextState(proofIds);
     return {
-      schemaVersion: 'vexlife.g02-score-context-continuity-proof/v4',
+      schemaVersion: 'vexlife.g02-score-context-continuity-proof/v5',
       state: 'PASS', currentness: 'CURRENT', candidateHeadSha: candidateHead,
       sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
       liveSemanticContractRef: SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
       liveSemanticDispositionRef: SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION,
       liveSemanticExecutableAddendumRef: SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
+      safetyConsentScopeAddendumRef: SCORE_CONTEXT_SAFETY_SCOPE_ADDENDUM,
+      liveSemanticScopeConvergenceRef: SCORE_CONTEXT_LIVE_SEMANTIC_SCOPE_CONVERGENCE,
       semanticAuthorityConsumerMode: 'READ_ONLY_OWNER_LEDGER',
       semanticAuthorityWriterExposedByG02: false,
       actualG01HttpTurns: 2,
@@ -637,6 +805,12 @@ async function runProof() {
       forgedAcceptanceOutsideOwnerHeadRejected,
       wrongCandidateHumanConfirmationRejected,
       missingPositiveConsentAuthorityRejected,
+      wrongConsentAuthorityPurposeRejected,
+      wrongConsentAuthorityScopeRejected,
+      nonImplicatedConsentAuthorityRejected,
+      nonPositiveConsentAuthorityRejected,
+      invalidConsentChronologyRejected,
+      positiveNarrowedConsentAuthorityAccepted: positiveNarrowedConsentAuthorityAcceptedFlag,
       inferredStatePreserved: inferredPreserved,
       correctionUsesLaterSourceSameSubject,
       wrongPredecessorAcceptanceRejected,
@@ -672,7 +846,10 @@ async function runProof() {
   const requiredTrue = [
     receipt.rawSemanticOverrideRejected, receipt.callerSemanticObjectRejected,
     receipt.forgedAcceptanceOutsideOwnerHeadRejected, receipt.wrongCandidateHumanConfirmationRejected,
-    receipt.missingPositiveConsentAuthorityRejected, receipt.inferredStatePreserved,
+    receipt.missingPositiveConsentAuthorityRejected, receipt.wrongConsentAuthorityPurposeRejected,
+    receipt.wrongConsentAuthorityScopeRejected, receipt.nonImplicatedConsentAuthorityRejected,
+    receipt.nonPositiveConsentAuthorityRejected, receipt.invalidConsentChronologyRejected,
+    receipt.positiveNarrowedConsentAuthorityAccepted, receipt.inferredStatePreserved,
     receipt.correctionUsesLaterSourceSameSubject, receipt.wrongPredecessorAcceptanceRejected,
     receipt.correctionPreservedPrior, receipt.supersessionPreservedPrior,
     receipt.ownerHeadReplacementMakesPriorStaleForNewUse, receipt.historicalReplaySurvivesOwnerHeadReplacement,

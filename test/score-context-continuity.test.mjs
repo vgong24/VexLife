@@ -13,6 +13,8 @@ import {
   SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
   SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION,
   SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM,
+  SCORE_CONTEXT_SAFETY_SCOPE_ADDENDUM,
+  SCORE_CONTEXT_LIVE_SEMANTIC_SCOPE_CONVERGENCE,
   SCORE_CONTEXT_STATEMENT_STATES,
   appendOpenLoop,
   appendScoreStatement,
@@ -165,6 +167,24 @@ function semanticAuthorityDir(ids, leaf) {
   return path.join(ids.home, 'semantic-authority', 'score', ids.companionLineageRef, ids.threadRef, leaf);
 }
 
+function fixtureConsentScopeFingerprint(value) {
+  return semanticHash({
+    schemaVersion: 'vextreme.score-consent-authority-scope/v1',
+    candidateRef: value.candidateRef,
+    candidateSha256: value.candidateSha256,
+    semanticSubjectRef: value.semanticSubjectRef,
+    semanticSubjectFingerprint: value.semanticSubjectFingerprint,
+    purposeRef: value.purposeRef,
+    privacyClass: value.privacyClass,
+    implicatedSubjectRefs: [...value.implicatedSubjectRefs].sort((a, b) => a.localeCompare(b)),
+    permittedUseRefs: [...value.permittedUseRefs].sort((a, b) => a.localeCompare(b)),
+    prohibitedUseRefs: [...value.prohibitedUseRefs].sort((a, b) => a.localeCompare(b)),
+    retentionBoundaryRef: value.retentionBoundaryRef,
+    redisclosureBoundaryRef: value.redisclosureBoundaryRef,
+    firstPersonBoundaryRef: value.firstPersonBoundaryRef
+  });
+}
+
 function readCurrentSemanticHead(ids) {
   const file = semanticAuthorityDir(ids, 'head.json');
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
@@ -267,20 +287,50 @@ function seedSemanticAuthority(ids, g01, input = {}) {
   if (transitionClass) evidence.push(makeEvidence(transitionClass, transitionKind, 2));
 
   const consentDisposition = input.consentDisposition ?? 'PERMITTED';
+  const positiveConsent = ['PERMITTED', 'NARROWED'].includes(consentDisposition);
   const purposeRef = input.consentPurposeRef ?? 'purpose.score.device-private-continuity';
-  const scopeFingerprint = semanticHash({ candidate: candidate.candidateSha256, purposeRef, privacyClass: 'DEVICE_PRIVATE' });
-  const authorityBinding = {
-    authorityRef: 'authority.test.score.continuity',
-    authoritySha256: semanticHash({ authorityRef: 'authority.test.score.continuity', candidateSha256: candidate.candidateSha256, purposeRef }),
-    subjectRef: 'person.test',
+  const implicatedSubjectRefs = input.implicatedSubjectRefs ?? ['person.test'];
+  const permittedUseRefs = input.permittedUseRefs ?? (positiveConsent ? ['use.score.device-private-continuity'] : []);
+  const prohibitedUseRefs = input.prohibitedUseRefs ?? ['use.score.first-person'];
+  const retentionBoundaryRef = input.retentionBoundaryRef ?? 'retention.score.device-private';
+  const redisclosureBoundaryRef = input.redisclosureBoundaryRef ?? 'redisclosure.score.not-admitted';
+  const firstPersonBoundaryRef = input.firstPersonBoundaryRef ?? 'boundary.score.first-person.not-admitted';
+  const consentScope = {
+    candidateRef: candidate.candidateRef,
+    candidateSha256: candidate.candidateSha256,
+    semanticSubjectRef: candidate.semanticSubjectRef,
+    semanticSubjectFingerprint: candidate.semanticSubjectFingerprint,
     purposeRef,
-    scopeFingerprint,
-    disposition: 'PERMITTED',
-    formedAt: '2026-08-07T09:10:02.000Z',
-    expiresAt: null
+    privacyClass: 'DEVICE_PRIVATE',
+    implicatedSubjectRefs,
+    permittedUseRefs,
+    prohibitedUseRefs,
+    retentionBoundaryRef,
+    redisclosureBoundaryRef,
+    firstPersonBoundaryRef
   };
-  const requiredAuthorityBindings = input.requiredAuthorityBindings ?? (['PERMITTED', 'NARROWED'].includes(consentDisposition) ? [authorityBinding] : []);
-  const observedAuthorityBindings = input.observedAuthorityBindings ?? (['PERMITTED', 'NARROWED'].includes(consentDisposition) ? structuredClone(requiredAuthorityBindings) : []);
+  const scopeFingerprint = fixtureConsentScopeFingerprint(consentScope);
+  const authorityPurposeRef = input.authorityPurposeRef ?? purposeRef;
+  const authorityDisposition = input.authorityDisposition ?? (positiveConsent ? 'PERMITTED' : 'UNKNOWN');
+  const authorityBinding = {
+    authorityRef: input.authorityRef ?? 'authority.test.score.continuity',
+    authoritySha256: input.authoritySha256 ?? semanticHash({
+      authorityRef: input.authorityRef ?? 'authority.test.score.continuity',
+      candidateSha256: candidate.candidateSha256,
+      subjectRef: input.authoritySubjectRef ?? implicatedSubjectRefs[0],
+      purposeRef: authorityPurposeRef,
+      scopeFingerprint: input.authorityScopeFingerprint ?? scopeFingerprint,
+      disposition: authorityDisposition
+    }),
+    subjectRef: input.authoritySubjectRef ?? implicatedSubjectRefs[0],
+    purposeRef: authorityPurposeRef,
+    scopeFingerprint: input.authorityScopeFingerprint ?? scopeFingerprint,
+    disposition: authorityDisposition,
+    formedAt: input.authorityFormedAt ?? '2026-08-07T09:10:02.000Z',
+    expiresAt: input.authorityExpiresAt ?? null
+  };
+  const requiredAuthorityBindings = input.requiredAuthorityBindings ?? (positiveConsent ? [authorityBinding] : []);
+  const observedAuthorityBindings = input.observedAuthorityBindings ?? (positiveConsent ? structuredClone(requiredAuthorityBindings) : []);
   const consentCore = {
     schemaVersion: 'vextreme.score-consent-disposition/v1',
     candidateRef: candidate.candidateRef,
@@ -289,17 +339,17 @@ function seedSemanticAuthority(ids, g01, input = {}) {
     semanticSubjectFingerprint: candidate.semanticSubjectFingerprint,
     purposeRef,
     privacyClass: 'DEVICE_PRIVATE',
-    implicatedSubjectRefs: ['person.test'],
+    implicatedSubjectRefs,
     requiredAuthorityBindings,
     observedAuthorityBindings,
     disposition: consentDisposition,
-    permittedUseRefs: input.permittedUseRefs ?? (['PERMITTED', 'NARROWED'].includes(consentDisposition) ? ['use.score.device-private-continuity'] : []),
-    prohibitedUseRefs: input.prohibitedUseRefs ?? ['use.score.first-person'],
-    retentionBoundaryRef: 'retention.score.device-private',
-    redisclosureBoundaryRef: 'redisclosure.score.not-admitted',
-    firstPersonBoundaryRef: 'boundary.score.first-person.not-admitted',
+    permittedUseRefs,
+    prohibitedUseRefs,
+    retentionBoundaryRef,
+    redisclosureBoundaryRef,
+    firstPersonBoundaryRef,
     formedAt: input.consentFormedAt ?? '2026-08-07T09:10:02.000Z',
-    expiresAt: null,
+    expiresAt: input.consentExpiresAt ?? null,
     issuerRef: 'role.multivex.safety.fixture-owner',
     issuerClass: 'BOUNDED_TEST_OWNER_PROJECTION',
     ownerProjectRef: 'project.multivex.safety',
@@ -413,6 +463,8 @@ test('G02 binds the exact accepted shared semantic disposition and closed vocabu
   assert.equal(SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT, 'contract.multivex.score.live-semantic-acceptance.v1');
   assert.equal(SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION, 'github.issue.vextreme-sdk.350.comment.5216924433');
   assert.equal(SCORE_CONTEXT_LIVE_SEMANTIC_EXECUTABLE_ADDENDUM, 'github.issue.vextreme-sdk.350.comment.5217097749');
+  assert.equal(SCORE_CONTEXT_SAFETY_SCOPE_ADDENDUM, 'github.issue.vextreme-sdk.226.comment.5217542332');
+  assert.equal(SCORE_CONTEXT_LIVE_SEMANTIC_SCOPE_CONVERGENCE, 'github.issue.vextreme-sdk.350.comment.5217546485');
   assert.deepEqual(SCORE_CONTEXT_MEMORY_RELATIONS, [
     'CURRENT_LINEAGE_AUTOBIOGRAPHY','SHARED_RELATIONSHIP_HISTORY','PREDECESSOR_WITNESS_HISTORY',
     'INHERITED_CONTEXT','EXTERNAL_EVIDENCE','DISPUTED_OR_UNRESOLVED'
@@ -739,6 +791,142 @@ test('positive consent fails when the exact required authority set is not observ
     semanticAcceptanceRef: authority.acceptance.acceptanceRef,
     semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
   }), (error) => error.code === 'SCORE_CONSENT_INVALID');
+});
+
+
+test('positive consent rejects authority bound to a different purpose', () => {
+  const ids = tempHome();
+  const g01 = committedG01(ids);
+  const authority = seedSemanticAuthority(ids, g01, {
+    consentDisposition: 'PERMITTED',
+    authorityPurposeRef: 'purpose.unrelated'
+  });
+  assert.throws(() => appendScoreStatement({
+    ...ids, expectedScoreHeadSha256: null, statementRef: 'statement.g02.wrong-authority-purpose',
+    semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+    semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
+  }), (error) => error.code === 'SCORE_CONSENT_INVALID');
+});
+
+test('positive consent rejects authority bound to a noncanonical scope fingerprint', () => {
+  const ids = tempHome();
+  const g01 = committedG01(ids);
+  const authority = seedSemanticAuthority(ids, g01, {
+    consentDisposition: 'PERMITTED',
+    authorityScopeFingerprint: 'b'.repeat(64)
+  });
+  assert.throws(() => appendScoreStatement({
+    ...ids, expectedScoreHeadSha256: null, statementRef: 'statement.g02.wrong-authority-scope',
+    semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+    semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
+  }), (error) => error.code === 'SCORE_CONSENT_INVALID');
+});
+
+test('positive consent rejects authority for a non-implicated subject', () => {
+  const ids = tempHome();
+  const g01 = committedG01(ids);
+  const authority = seedSemanticAuthority(ids, g01, {
+    consentDisposition: 'PERMITTED',
+    implicatedSubjectRefs: ['person.test'],
+    authoritySubjectRef: 'person.other'
+  });
+  assert.throws(() => appendScoreStatement({
+    ...ids, expectedScoreHeadSha256: null, statementRef: 'statement.g02.non-implicated-authority',
+    semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+    semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
+  }), (error) => error.code === 'SCORE_CONSENT_INVALID');
+});
+
+test('positive consent rejects non-positive required authority dispositions', () => {
+  for (const disposition of ['DEFERRED', 'DENIED', 'UNKNOWN', 'WITHDRAWN']) {
+    const ids = tempHome();
+    const g01 = committedG01(ids);
+    const authority = seedSemanticAuthority(ids, g01, {
+      consentDisposition: 'PERMITTED',
+      authorityDisposition: disposition
+    });
+    assert.throws(() => appendScoreStatement({
+      ...ids, expectedScoreHeadSha256: null, statementRef: `statement.g02.nonpositive-${disposition.toLowerCase()}`,
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
+    }), (error) => error.code === 'SCORE_CONSENT_INVALID');
+  }
+});
+
+test('positive NARROWED authority succeeds only on its exact narrowed consent envelope', () => {
+  const ids = tempHome();
+  const g01 = committedG01(ids);
+  const authority = seedSemanticAuthority(ids, g01, {
+    consentDisposition: 'NARROWED',
+    authorityDisposition: 'NARROWED',
+    permittedUseRefs: ['use.score.device-private-continuity'],
+    prohibitedUseRefs: ['use.score.first-person', 'use.score.redisclosure']
+  });
+  append(ids, g01, {
+    authority,
+    statementRef: 'statement.g02.narrowed-authority'
+  });
+  const state = loadScoreContextState(ids);
+  const statement = state.statements.find((item) => item.statementRef === 'statement.g02.narrowed-authority');
+  assert.equal(statement.consentState, 'NARROWED');
+  assert.equal(statement.acceptedForContinuity, true);
+});
+
+test('consent and authority intrinsic expiry chronology fail closed without inventing live time', () => {
+  {
+    const ids = tempHome();
+    const g01 = committedG01(ids);
+    const authority = seedSemanticAuthority(ids, g01, {
+      authorityFormedAt: '2026-08-07T09:10:03.000Z',
+      authorityExpiresAt: '2026-08-07T09:10:02.000Z'
+    });
+    assert.throws(() => appendScoreStatement({
+      ...ids, expectedScoreHeadSha256: null, statementRef: 'statement.g02.bad-authority-expiry',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
+    }), (error) => error.code === 'SCORE_CONSENT_INVALID');
+  }
+  {
+    const ids = tempHome();
+    const g01 = committedG01(ids);
+    const authority = seedSemanticAuthority(ids, g01, {
+      consentFormedAt: '2026-08-07T09:10:03.000Z',
+      consentExpiresAt: '2026-08-07T09:10:02.000Z'
+    });
+    assert.throws(() => appendScoreStatement({
+      ...ids, expectedScoreHeadSha256: null, statementRef: 'statement.g02.bad-consent-expiry',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
+    }), (error) => error.code === 'SCORE_CONSENT_INVALID');
+  }
+});
+
+test('consent scope arrays are duplicate-free and positive consent has at least one permitted use', () => {
+  {
+    const ids = tempHome();
+    const g01 = committedG01(ids);
+    const authority = seedSemanticAuthority(ids, g01, {
+      implicatedSubjectRefs: ['person.test', 'person.test']
+    });
+    assert.throws(() => appendScoreStatement({
+      ...ids, expectedScoreHeadSha256: null, statementRef: 'statement.g02.duplicate-subject',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
+    }), (error) => error.code === 'SCORE_CONSENT_INVALID');
+  }
+  {
+    const ids = tempHome();
+    const g01 = committedG01(ids);
+    const authority = seedSemanticAuthority(ids, g01, {
+      consentDisposition: 'PERMITTED',
+      permittedUseRefs: []
+    });
+    assert.throws(() => appendScoreStatement({
+      ...ids, expectedScoreHeadSha256: null, statementRef: 'statement.g02.empty-positive-use',
+      semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+      semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
+    }), (error) => error.code === 'SCORE_CONSENT_INVALID');
+  }
 });
 
 test('INFERRED owner acceptance preserves inference and cannot silently become continuity or first-person fact', () => {
