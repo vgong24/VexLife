@@ -164,6 +164,26 @@ async function startLoopbackServer(redirectTargetUrl) {
       }));
       return;
     }
+    if (url.pathname.startsWith('/echo-authorization-credential/')) {
+      const authorization = String(request.headers.authorization || '');
+      const credential = authorization.replace(/^Bearer\s+/iu, '');
+      send(200, JSON.stringify({
+        model: 'echo-authorization-credential',
+        choices: [{ message: { content: `echo:${credential}` } }]
+      }));
+      return;
+    }
+    if (url.pathname.startsWith('/echo-basic-password/')) {
+      const authorization = String(request.headers.authorization || '');
+      const encoded = authorization.replace(/^Basic\s+/iu, '');
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      const password = decoded.includes(':') ? decoded.slice(decoded.indexOf(':') + 1) : '';
+      send(200, JSON.stringify({
+        model: 'echo-basic-password',
+        choices: [{ message: { content: `echo:${password}` } }]
+      }));
+      return;
+    }
     if (url.pathname.startsWith('/echo-authorization-model/')) {
       send(200, JSON.stringify({
         model: request.headers.authorization || '',
@@ -422,6 +442,46 @@ async function proof() {
       echoSecretFailure.requestDurablyRecorded === true &&
       echoSecretFailure.responseDurablyRecorded === false &&
       assertNoSensitivePersistence(echoSecretHome.home, [secretAuthorization]).secretLeakCount === 0;
+
+
+    const bearerCredential = secretAuthorization.replace(/^Bearer\s+/iu, '');
+    const echoCredentialHome = makeHome(proofRoot, 'echo-credential-material-home');
+    const echoCredentialCallsBefore = loopback.calls.length;
+    const echoCredentialFailure = await expectFailure(
+      'PRIVACY_POLICY_BLOCKED',
+      () => performLivedCompanionTurn(baseTurn(
+        echoCredentialHome,
+        `http://127.0.0.1:${loopback.port}/echo-authorization-credential/`,
+        { inMemoryAuthorization: secretAuthorization }
+      )),
+      'loopback endpoint echoes raw bearer credential material without scheme prefix'
+    );
+    typedFailureProofs.push(echoCredentialFailure);
+    negativeControls.inMemoryAuthorizationCredentialMaterialBlocked =
+      loopback.calls.length === echoCredentialCallsBefore + 1 &&
+      echoCredentialFailure.requestDurablyRecorded === true &&
+      echoCredentialFailure.responseDurablyRecorded === false &&
+      assertNoSensitivePersistence(echoCredentialHome.home, [secretAuthorization, bearerCredential]).secretLeakCount === 0;
+
+    const basicPassword = `pw-${crypto.randomUUID()}`;
+    const basicAuthorization = `Basic ${Buffer.from(`proof-user:${basicPassword}`, 'utf8').toString('base64')}`;
+    const echoBasicHome = makeHome(proofRoot, 'echo-basic-password-home');
+    const echoBasicCallsBefore = loopback.calls.length;
+    const echoBasicFailure = await expectFailure(
+      'PRIVACY_POLICY_BLOCKED',
+      () => performLivedCompanionTurn(baseTurn(
+        echoBasicHome,
+        `http://127.0.0.1:${loopback.port}/echo-basic-password/`,
+        { inMemoryAuthorization: basicAuthorization }
+      )),
+      'loopback endpoint echoes raw Basic password material'
+    );
+    typedFailureProofs.push(echoBasicFailure);
+    negativeControls.inMemoryBasicPasswordBlocked =
+      loopback.calls.length === echoBasicCallsBefore + 1 &&
+      echoBasicFailure.requestDurablyRecorded === true &&
+      echoBasicFailure.responseDurablyRecorded === false &&
+      assertNoSensitivePersistence(echoBasicHome.home, [basicAuthorization, basicPassword]).secretLeakCount === 0;
 
 
     const nestedSecretHome = makeHome(proofRoot, 'nested-secret-home');
@@ -1808,6 +1868,8 @@ async function proof() {
       credentialPersistenceBoundary:
         negativeControls.inMemoryAuthorizationRequestBlocked &&
         negativeControls.inMemoryAuthorizationEchoBlocked &&
+        negativeControls.inMemoryAuthorizationCredentialMaterialBlocked &&
+        negativeControls.inMemoryBasicPasswordBlocked &&
         negativeControls.inMemoryAuthorizationNestedMetadataBlocked &&
         negativeControls.inMemoryAuthorizationModelEchoBlocked &&
         negativeControls.endpointResponseModelValidatedBeforePersistence,

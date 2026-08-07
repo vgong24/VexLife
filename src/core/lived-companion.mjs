@@ -990,15 +990,43 @@ function writeFailureReceipt({ home, threadRef, turnRef, error, requestDurablyRe
 }
 
 
-function assertInMemoryAuthorizationNotPersisted(value, inMemoryAuthorization, label) {
-  if (inMemoryAuthorization === null || inMemoryAuthorization === undefined) return;
-  if (typeof inMemoryAuthorization !== 'string' || inMemoryAuthorization.length === 0) {
+function inMemoryAuthorizationPersistenceSecrets(inMemoryAuthorization) {
+  if (inMemoryAuthorization === null || inMemoryAuthorization === undefined) return [];
+  if (typeof inMemoryAuthorization !== 'string' || inMemoryAuthorization.trim().length === 0) {
     fail('PRIVACY_POLICY_BLOCKED', 'in-memory authorization must be one non-empty string when provided');
   }
+  const trimmed = inMemoryAuthorization.trim();
+  const secrets = new Set([inMemoryAuthorization, trimmed]);
+  const authorization = /^([A-Za-z][A-Za-z0-9!#$%&'*+.^_`|~-]*)[\t ]+(.+)$/u.exec(trimmed);
+  if (authorization) {
+    const scheme = authorization[1];
+    const credential = authorization[2].trim();
+    if (credential.length > 0) secrets.add(credential);
+    if (scheme.toLowerCase() === 'basic' && credential.length > 0) {
+      try {
+        const decoded = Buffer.from(credential, 'base64').toString('utf8');
+        const normalized = Buffer.from(decoded, 'utf8').toString('base64').replace(/=+$/u, '');
+        if (normalized === credential.replace(/=+$/u, '')) {
+          if (decoded.length > 0) secrets.add(decoded);
+          const separator = decoded.indexOf(':');
+          if (separator >= 0) {
+            const password = decoded.slice(separator + 1);
+            if (password.length > 0) secrets.add(password);
+          }
+        }
+      } catch {}
+    }
+  }
+  return [...secrets].filter((value) => value.length > 0);
+}
+
+function assertInMemoryAuthorizationNotPersisted(value, inMemoryAuthorization, label) {
+  const protectedSecrets = inMemoryAuthorizationPersistenceSecrets(inMemoryAuthorization);
+  if (protectedSecrets.length === 0) return;
   const visit = (candidate, pathLabel) => {
     if (typeof candidate === 'string') {
-      if (candidate.includes(inMemoryAuthorization)) {
-        fail('PRIVACY_POLICY_BLOCKED', `${pathLabel} contains the exact in-memory authorization value`);
+      if (protectedSecrets.some((secret) => candidate.includes(secret))) {
+        fail('PRIVACY_POLICY_BLOCKED', `${pathLabel} contains protected in-memory credential material`);
       }
       return;
     }

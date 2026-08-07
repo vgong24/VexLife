@@ -1331,6 +1331,82 @@ test('exact in-memory authorization is blocked before request persistence or hos
 
 });
 
+test('raw bearer credential material is blocked even when the authorization scheme prefix is absent', async () => {
+  let calls = 0;
+  const service = http.createServer((request, response) => {
+    calls += 1;
+    request.resume();
+    const authorization = String(request.headers.authorization || '');
+    const credential = authorization.replace(/^Bearer\s+/iu, '');
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({
+      model: 'credential-material-echo',
+      choices: [{ message: { content: `echo:${credential}` } }]
+    }));
+  });
+  await new Promise((resolve) => service.listen(0, '127.0.0.1', resolve));
+  const endpoint = `http://127.0.0.1:${service.address().port}/`;
+  const credential = `tok-${crypto.randomUUID()}`;
+  const authorization = `Bearer ${credential}`;
+  const home = makeHome('privacy-bearer-material');
+  const input = turn(home, endpoint, { inMemoryAuthorization: authorization });
+  try {
+    let observed = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(input),
+      (error) => {
+        observed = error;
+        return error instanceof LivedCompanionError && error.code === 'PRIVACY_POLICY_BLOCKED';
+      }
+    );
+    assert.equal(calls, 1);
+    assert.equal(observed.details.requestDurablyRecorded, true);
+    assert.equal(observed.details.responseDurablyRecorded, false);
+    assert.equal(assertNoSensitivePersistence(home.home, [authorization, credential]).secretLeakCount, 0);
+  } finally {
+    await new Promise((resolve) => service.close(resolve));
+  }
+});
+
+test('raw Basic password material is blocked even when the authorization header is decoded by the endpoint', async () => {
+  let calls = 0;
+  const service = http.createServer((request, response) => {
+    calls += 1;
+    request.resume();
+    const authorization = String(request.headers.authorization || '');
+    const encoded = authorization.replace(/^Basic\s+/iu, '');
+    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+    const password = decoded.includes(':') ? decoded.slice(decoded.indexOf(':') + 1) : '';
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({
+      model: 'basic-password-echo',
+      choices: [{ message: { content: `echo:${password}` } }]
+    }));
+  });
+  await new Promise((resolve) => service.listen(0, '127.0.0.1', resolve));
+  const endpoint = `http://127.0.0.1:${service.address().port}/`;
+  const password = `pw-${crypto.randomUUID()}`;
+  const authorization = `Basic ${Buffer.from(`proof-user:${password}`, 'utf8').toString('base64')}`;
+  const home = makeHome('privacy-basic-password-material');
+  const input = turn(home, endpoint, { inMemoryAuthorization: authorization });
+  try {
+    let observed = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(input),
+      (error) => {
+        observed = error;
+        return error instanceof LivedCompanionError && error.code === 'PRIVACY_POLICY_BLOCKED';
+      }
+    );
+    assert.equal(calls, 1);
+    assert.equal(observed.details.requestDurablyRecorded, true);
+    assert.equal(observed.details.responseDurablyRecorded, false);
+    assert.equal(assertNoSensitivePersistence(home.home, [authorization, password]).secretLeakCount, 0);
+  } finally {
+    await new Promise((resolve) => service.close(resolve));
+  }
+});
+
 test('authorization cannot escape through persisted metadata and response model provenance is validated', async () => {
   let responseMode = 'safe';
   let calls = 0;

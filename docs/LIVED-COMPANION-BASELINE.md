@@ -146,17 +146,21 @@ G01 accepts numeric loopback endpoint literals only (`127.0.0.1` or `::1`). A
 caller-provided profile, hostname alias, redirect, or boolean cannot widen that
 boundary. G01 rejects every HTTP redirect before following it; non-loopback or personal
 endpoint use requires a separately admitted future adapter outside this baseline.
-Credentials may be consumed only from an in-memory binding. The exact in-memory
-authorization value is recursively checked against every turn value that can become
-durable—not only message content—and again against all endpoint response metadata
-before response persistence. Endpoint profile identity/model metadata and any returned
-model provenance must be non-empty strings before they can enter a response event.
-Neither accidental inclusion in refs/context metadata nor a hostile loopback endpoint
-echo through message content or model provenance can serialize the credential, and an
-invalid model object cannot be presented as a completed turn only to fail later during
-replay. The persisted record contains the admitted numeric loopback origin and
-validated model/profile identity, never raw tokens, authorization headers, URL queries,
-passwords, redirect targets, or model binaries.
+Credentials may be consumed only from an in-memory binding. G01 derives the
+known raw credential material represented by that binding—not only the complete
+Authorization value. The complete value and its scheme credential payload are
+recursively checked against every turn value that can become durable and against all
+endpoint response metadata before persistence. For Basic authentication, the decoded
+credential pair and raw password are protected as well. Endpoint profile identity/model
+metadata and any returned model provenance must be non-empty strings before they can
+enter a response event. Neither accidental inclusion in refs/context metadata nor a
+hostile loopback endpoint echo through message content or model provenance can serialize
+the complete header, a raw bearer/token credential payload, or a raw Basic password.
+This boundary protects the known credential material derivable from the admitted
+in-memory binding; it does not claim arbitrary transformed-secret detection. The
+persisted record contains the admitted numeric loopback origin and validated
+model/profile identity, never raw tokens, authorization headers, URL queries, passwords,
+redirect targets, or model binaries.
 
 ## Typed safe failures
 

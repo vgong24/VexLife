@@ -809,7 +809,7 @@
   },
   {
     "testRef": "test.lived-companion.credential-and-failure-evidence-integrity",
-    "brief": "The exact in-memory authorization value is recursively rejected across all persistable turn/endpoint-response metadata before durability, endpoint model provenance is validated before completion, canonical first failure receipts are OS-atomically no-clobber claimed, and existing first-failure durability/retry/route claims must remain semantically coherent before follow-up provenance."
+    "brief": "The complete in-memory authorization value plus known raw credential material derived from it (scheme credential payload and Basic decoded password) are recursively rejected across all persistable turn/endpoint-response metadata before durability, endpoint model provenance is validated before completion, canonical first failure receipts are OS-atomically no-clobber claimed, and existing first-failure durability/retry/route claims must remain semantically coherent before follow-up provenance."
   },
   {
     "testRef": "test.lived-companion.semantic-state-continuity-and-recovery",
