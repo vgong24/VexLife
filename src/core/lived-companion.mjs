@@ -699,6 +699,30 @@ function writeJsonExclusive(file, value) {
   }
 }
 
+function expectedCanonicalFirstFailureRoute(receipt) {
+  if (receipt.failureCode === 'THREAD_WRITER_RECOVERY_REQUIRED') {
+    return 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED';
+  }
+  if (receipt.failureCode === 'THREAD_WRITER_CONFLICT') {
+    return receipt.threadWriterLeaseDisposition?.ownerState === 'ACTIVE'
+      ? 'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY'
+      : 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER';
+  }
+  if (receipt.failureCode === 'DUPLICATE_TURN_SUPPRESSED') {
+    return receipt.lastValidHead
+      ? 'USE_EXISTING_TURN_EVIDENCE_OR_RESUME_LAST_VALID_HEAD_AND_FORM_NEW_TURN_REF'
+      : 'USE_EXISTING_TURN_EVIDENCE_OR_FORM_NEW_TURN_REF';
+  }
+  if (receipt.requestDurablyRecorded || receipt.responseDurablyRecorded) {
+    return receipt.lastValidHead
+      ? 'RESUME_LAST_VALID_HEAD_THEN_FORM_NEW_TURN_REF'
+      : 'FORM_NEW_TURN_REF_AND_RETRY';
+  }
+  return receipt.lastValidHead
+    ? 'RESUME_FROM_LAST_VALID_HEAD'
+    : 'INITIALIZE_OR_RETRY_WITH_ADMITTED_INPUTS';
+}
+
 function verifyCanonicalFirstFailureReceipt(value, safeThread, safeTurn) {
   const receipt = verifyContentAddressedReceipt(
     value,
@@ -715,6 +739,58 @@ function verifyCanonicalFirstFailureReceipt(value, safeThread, safeTurn) {
       Number.isSafeInteger(receipt.lastValidHead.sequence) &&
       receipt.lastValidHead.sequence >= 1
     );
+  const preRequestFailureCodes = new Set([
+    'HOME_NOT_INITIALIZED',
+    'EXISTING_HOME_REQUIRES_MIGRATION_PLAN',
+    'HOME_IDENTITY_MISMATCH',
+    'CONVERSATION_HEAD_MISMATCH',
+    'EVENT_CHAIN_CORRUPT',
+    'CONTEXT_HASH_MISMATCH',
+    'DUPLICATE_TURN_SUPPRESSED',
+    'THREAD_WRITER_CONFLICT',
+    'THREAD_WRITER_RECOVERY_REQUIRED'
+  ]);
+  const endpointFailure = String(receipt.failureCode || '').startsWith('ENDPOINT_');
+  const validDurability =
+    !(receipt.responseDurablyRecorded === true && receipt.requestDurablyRecorded !== true) &&
+    (!endpointFailure || (
+      receipt.requestDurablyRecorded === true &&
+      receipt.responseDurablyRecorded === false
+    )) &&
+    (!preRequestFailureCodes.has(receipt.failureCode) || (
+      receipt.requestDurablyRecorded === false &&
+      receipt.responseDurablyRecorded === false
+    ));
+  const expectedRetrySameTurnAllowed =
+    receipt.failureCode !== 'DUPLICATE_TURN_SUPPRESSED' &&
+    receipt.requestDurablyRecorded === false &&
+    receipt.responseDurablyRecorded === false;
+  const validDuplicateEvidence =
+    receipt.failureCode === 'DUPLICATE_TURN_SUPPRESSED'
+      ? (
+          receipt.existingTurnEvidence &&
+          /^[0-9a-f]{64}$/u.test(receipt.existingTurnEvidence.eventHash ?? '') &&
+          ['REQUEST', 'RESPONSE'].includes(receipt.existingTurnEvidence.eventKind) &&
+          Number.isSafeInteger(receipt.existingTurnEvidence.sequence) &&
+          receipt.existingTurnEvidence.sequence >= 0
+        )
+      : receipt.existingTurnEvidence === null;
+  const validLeaseDisposition =
+    ['THREAD_WRITER_CONFLICT', 'THREAD_WRITER_RECOVERY_REQUIRED'].includes(receipt.failureCode)
+      ? (
+          receipt.threadWriterLeaseDisposition &&
+          ['ACTIVE', 'ABSENT', 'UNVERIFIABLE'].includes(receipt.threadWriterLeaseDisposition.ownerState) &&
+          (
+            receipt.failureCode !== 'THREAD_WRITER_RECOVERY_REQUIRED' ||
+            receipt.threadWriterLeaseDisposition.ownerState === 'ABSENT'
+          ) &&
+          (
+            receipt.failureCode !== 'THREAD_WRITER_CONFLICT' ||
+            receipt.threadWriterLeaseDisposition.ownerState !== 'ABSENT'
+          )
+        )
+      : receipt.threadWriterLeaseDisposition === null;
+  const expectedRoute = expectedCanonicalFirstFailureRoute(receipt);
   if (
     receipt.schemaVersion !== 'vexlife.lived-companion-failure-receipt/v2' ||
     !LIVED_COMPANION_FAILURE_CODES.includes(receipt.failureCode) ||
@@ -730,13 +806,17 @@ function verifyCanonicalFirstFailureReceipt(value, safeThread, safeTurn) {
     !isNonEmptyString(receipt.exactNextSafeRoute) ||
     !isNonEmptyString(receipt.formedAt) ||
     !validLastHead ||
-    receipt.resumePossible !== Boolean(receipt.lastValidHead)
+    receipt.resumePossible !== Boolean(receipt.lastValidHead) ||
+    !validDurability ||
+    receipt.retrySameTurnAllowed !== expectedRetrySameTurnAllowed ||
+    receipt.exactNextSafeRoute !== expectedRoute ||
+    !validDuplicateEvidence ||
+    !validLeaseDisposition
   ) {
     fail('PERSISTENCE_WRITE_FAILED', 'canonical first failure receipt semantics are invalid');
   }
   return receipt;
 }
-
 function formFailureReceipt({
   safeThread,
   safeTurn,
@@ -915,14 +995,38 @@ function assertInMemoryAuthorizationNotPersisted(value, inMemoryAuthorization, l
   if (typeof inMemoryAuthorization !== 'string' || inMemoryAuthorization.length === 0) {
     fail('PRIVACY_POLICY_BLOCKED', 'in-memory authorization must be one non-empty string when provided');
   }
-  if (typeof value === 'string' && value.includes(inMemoryAuthorization)) {
-    fail('PRIVACY_POLICY_BLOCKED', `${label} contains the exact in-memory authorization value`);
-  }
+  const visit = (candidate, pathLabel) => {
+    if (typeof candidate === 'string') {
+      if (candidate.includes(inMemoryAuthorization)) {
+        fail('PRIVACY_POLICY_BLOCKED', `${pathLabel} contains the exact in-memory authorization value`);
+      }
+      return;
+    }
+    if (Array.isArray(candidate)) {
+      candidate.forEach((entry, index) => visit(entry, `${pathLabel}[${index}]`));
+      return;
+    }
+    if (candidate && typeof candidate === 'object') {
+      for (const [key, entry] of Object.entries(candidate)) {
+        visit(entry, `${pathLabel}.${key}`);
+      }
+    }
+  };
+  visit(value, label);
 }
 
 async function callEndpoint({ endpointProfile, requestContent, inMemoryAuthorization = null, timeoutMs = 5000 }) {
-  if (!endpointProfile?.admitted || !endpointProfile.profileRef || !endpointProfile.endpoint) {
-    fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'an admitted endpoint profile is required');
+  if (
+    !endpointProfile?.admitted ||
+    !isNonEmptyString(endpointProfile.profileRef) ||
+    !isNonEmptyString(endpointProfile.endpoint) ||
+    (
+      endpointProfile.model !== undefined &&
+      endpointProfile.model !== null &&
+      !isNonEmptyString(endpointProfile.model)
+    )
+  ) {
+    fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'an admitted endpoint profile with string identity and endpoint metadata is required');
   }
   let parsed;
   try {
@@ -962,7 +1066,16 @@ async function callEndpoint({ endpointProfile, requestContent, inMemoryAuthoriza
     if (typeof content !== 'string' || content.length === 0) {
       fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response lacked choices[0].message.content');
     }
-    return { content, model: body.model || endpointProfile.model || 'bounded-loopback-proof' };
+    const model =
+      body?.model === undefined || body?.model === null
+        ? (endpointProfile.model || 'bounded-loopback-proof')
+        : body.model;
+    if (!isNonEmptyString(model)) {
+      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response model provenance must be one non-empty string');
+    }
+    const responseValue = { content, model };
+    assertInMemoryAuthorizationNotPersisted(responseValue, inMemoryAuthorization, 'endpoint response');
+    return responseValue;
   } catch (error) {
     if (error instanceof LivedCompanionError) throw error;
     if (error?.name === 'AbortError') fail('ENDPOINT_TIMEOUT', 'endpoint request timed out');
@@ -1013,7 +1126,22 @@ export async function performLivedCompanionTurn({
     if (!Array.isArray(contextSourceRefs) || contextSourceRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
       fail('HOME_IDENTITY_MISMATCH', 'contextSourceRefs must be an array of non-empty refs');
     }
-    assertInMemoryAuthorizationNotPersisted(content, inMemoryAuthorization, 'request content');
+    assertInMemoryAuthorizationNotPersisted({
+      homeRef,
+      deviceRef,
+      companionLineageRef,
+      instanceRef,
+      threadRef,
+      channelRef,
+      turnRef,
+      requestMessageRef,
+      responseMessageRef,
+      speakerRef,
+      recipientRefs,
+      content,
+      contextSourceRefs,
+      endpointProfile
+    }, inMemoryAuthorization, 'turn persistable input');
     const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
     const priorState = validateCompletedConversationState({
       home: identity.homeRoot,
@@ -1052,12 +1180,13 @@ export async function performLivedCompanionTurn({
       privacyClass: 'DEVICE_PRIVATE',
       formedAt: stableNow(formedAt)
     };
+    assertInMemoryAuthorizationNotPersisted(requestCore, inMemoryAuthorization, 'request event');
     const requestEvent = formEvent(requestCore);
     atomicWriteJson(eventPath(paths.events, requestEvent.sequence, requestEvent.eventHash), requestEvent);
     requestDurablyRecorded = true;
 
     const response = await callEndpoint({ endpointProfile, requestContent: content, inMemoryAuthorization, timeoutMs });
-    assertInMemoryAuthorizationNotPersisted(response.content, inMemoryAuthorization, 'endpoint response');
+    assertInMemoryAuthorizationNotPersisted(response, inMemoryAuthorization, 'endpoint response');
     const responseCore = {
       schemaVersion: 'vexlife.lived-companion-event/v1',
       eventRef: `event.vexlife.response.${crypto.randomUUID()}`,
@@ -1082,6 +1211,7 @@ export async function performLivedCompanionTurn({
       privacyClass: 'DEVICE_PRIVATE',
       formedAt: new Date().toISOString()
     };
+    assertInMemoryAuthorizationNotPersisted(responseCore, inMemoryAuthorization, 'response event');
     const responseEvent = formEvent(responseCore);
     atomicWriteJson(eventPath(paths.events, responseEvent.sequence, responseEvent.eventHash), responseEvent);
     responseDurablyRecorded = true;
@@ -1100,6 +1230,7 @@ export async function performLivedCompanionTurn({
       privacyClass: 'DEVICE_PRIVATE',
       formedAt: new Date().toISOString()
     };
+    assertInMemoryAuthorizationNotPersisted(contextCore, inMemoryAuthorization, 'context record');
     const contextRecord = formContext(contextCore);
     const contextPath = resolveHomePath(identity.homeRoot, 'context', admitted.companionLineageRef, threadRef, `${turnRef}.json`);
     atomicWriteJson(contextPath, contextRecord);
@@ -1121,6 +1252,7 @@ export async function performLivedCompanionTurn({
       priorConversationHeadSha256: lastValidHead?.conversationHeadSha256 ?? null,
       formedAt: new Date().toISOString()
     };
+    assertInMemoryAuthorizationNotPersisted(headCore, inMemoryAuthorization, 'conversation head');
     const head = formHead(headCore);
     atomicWriteJson(paths.head, head, { failBeforeRename: faults.persistenceFailureBeforeHead === true });
     lastValidHead = head;

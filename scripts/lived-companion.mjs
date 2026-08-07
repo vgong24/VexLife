@@ -164,6 +164,20 @@ async function startLoopbackServer(redirectTargetUrl) {
       }));
       return;
     }
+    if (url.pathname.startsWith('/echo-authorization-model/')) {
+      send(200, JSON.stringify({
+        model: request.headers.authorization || '',
+        choices: [{ message: { content: 'safe reply' } }]
+      }));
+      return;
+    }
+    if (url.pathname.startsWith('/invalid-model/')) {
+      send(200, JSON.stringify({
+        model: { invalid: true },
+        choices: [{ message: { content: 'safe reply' } }]
+      }));
+      return;
+    }
     if (url.pathname.startsWith('/http-error/')) {
       send(503, JSON.stringify({ error: 'bounded proof error' }));
       return;
@@ -409,6 +423,61 @@ async function proof() {
       echoSecretFailure.responseDurablyRecorded === false &&
       assertNoSensitivePersistence(echoSecretHome.home, [secretAuthorization]).secretLeakCount === 0;
 
+
+    const nestedSecretHome = makeHome(proofRoot, 'nested-secret-home');
+    const nestedSecretCallsBefore = loopback.calls.length;
+    const nestedSecretFailure = await expectFailure(
+      'PRIVACY_POLICY_BLOCKED',
+      () => performLivedCompanionTurn(baseTurn(
+        nestedSecretHome,
+        `http://127.0.0.1:${loopback.port}/ok/`,
+        {
+          contextSourceRefs: ['source.safe', secretAuthorization],
+          inMemoryAuthorization: secretAuthorization
+        }
+      )),
+      'exact in-memory authorization in persisted metadata'
+    );
+    typedFailureProofs.push(nestedSecretFailure);
+    negativeControls.inMemoryAuthorizationNestedMetadataBlocked =
+      loopback.calls.length === nestedSecretCallsBefore &&
+      nestedSecretFailure.requestDurablyRecorded === false &&
+      assertNoSensitivePersistence(nestedSecretHome.home, [secretAuthorization]).secretLeakCount === 0;
+
+    const echoModelHome = makeHome(proofRoot, 'echo-model-secret-home');
+    const echoModelCallsBefore = loopback.calls.length;
+    const echoModelFailure = await expectFailure(
+      'PRIVACY_POLICY_BLOCKED',
+      () => performLivedCompanionTurn(baseTurn(
+        echoModelHome,
+        `http://127.0.0.1:${loopback.port}/echo-authorization-model/`,
+        { inMemoryAuthorization: secretAuthorization }
+      )),
+      'loopback endpoint echoes exact in-memory authorization through model provenance'
+    );
+    typedFailureProofs.push(echoModelFailure);
+    negativeControls.inMemoryAuthorizationModelEchoBlocked =
+      loopback.calls.length === echoModelCallsBefore + 1 &&
+      echoModelFailure.requestDurablyRecorded === true &&
+      echoModelFailure.responseDurablyRecorded === false &&
+      assertNoSensitivePersistence(echoModelHome.home, [secretAuthorization]).secretLeakCount === 0;
+
+    const invalidModelHome = makeHome(proofRoot, 'invalid-model-home');
+    const invalidModelCallsBefore = loopback.calls.length;
+    const invalidModelFailure = await expectFailure(
+      'ENDPOINT_RESPONSE_INVALID',
+      () => performLivedCompanionTurn(baseTurn(
+        invalidModelHome,
+        `http://127.0.0.1:${loopback.port}/invalid-model/`
+      )),
+      'endpoint response model provenance must be one string'
+    );
+    typedFailureProofs.push(invalidModelFailure);
+    negativeControls.endpointResponseModelValidatedBeforePersistence =
+      loopback.calls.length === invalidModelCallsBefore + 1 &&
+      invalidModelFailure.requestDurablyRecorded === true &&
+      invalidModelFailure.responseDurablyRecorded === false;
+
     const duplicateCallsBefore = loopback.calls.length;
     typedFailureProofs.push(await expectFailure('DUPLICATE_TURN_SUPPRESSED', () => performLivedCompanionTurn(baseTurn(main, endpoint, {
       instanceRef: initialInstanceRef,
@@ -519,6 +588,52 @@ async function proof() {
       tamperedFollowFailure.failureEvidenceIntegrityState ===
         'CORRUPT_EXISTING_FIRST_FAILURE_RECEIPT' &&
       fs.readdirSync(path.dirname(tamperedFirstFailure.failureReceiptPath))
+        .filter((name) => name.startsWith('failure-receipt')).length === 1;
+
+
+    const rehashedFailureHome = makeHome(proofRoot, 'rehashed-first-failure-home');
+    const rehashedFailureInput = baseTurn(
+      rehashedFailureHome,
+      `http://127.0.0.1:${loopback.port}/http-error/`
+    );
+    const rehashedFirstFailure = await expectFailure(
+      'ENDPOINT_HTTP_ERROR',
+      () => performLivedCompanionTurn(rehashedFailureInput),
+      'form first failure before contradictory rehash'
+    );
+    typedFailureProofs.push(rehashedFirstFailure);
+    const rehashedFirstReceipt = readJson(rehashedFirstFailure.failureReceiptPath);
+    rehashedFirstReceipt.failureCode = 'ENDPOINT_TIMEOUT';
+    rehashedFirstReceipt.failureMessage = 'shape-valid but historically false recovery story';
+    rehashedFirstReceipt.requestDurablyRecorded = false;
+    rehashedFirstReceipt.responseDurablyRecorded = false;
+    rehashedFirstReceipt.retrySameTurnAllowed = true;
+    rehashedFirstReceipt.exactNextSafeRoute = 'INITIALIZE_OR_RETRY_WITH_ADMITTED_INPUTS';
+    const { failureReceiptSha256: ignoredRehashedFirstHash, ...rehashedFirstCore } = rehashedFirstReceipt;
+    rehashedFirstReceipt.failureReceiptSha256 = semanticHash(rehashedFirstCore);
+    writeJson(rehashedFirstFailure.failureReceiptPath, rehashedFirstReceipt);
+    const rehashedRetryCallsBefore = loopback.calls.length;
+    const rehashedFollowFailure = await expectFailure(
+      'DUPLICATE_TURN_SUPPRESSED',
+      () => performLivedCompanionTurn({
+        ...rehashedFailureInput,
+        instanceRef: ref('instance.vexlife.rehashed-first-failure.retry'),
+        requestMessageRef: ref('message.vexlife.rehashed-first-failure.retry.request'),
+        responseMessageRef: ref('message.vexlife.rehashed-first-failure.retry.response'),
+        endpointProfile: {
+          ...rehashedFailureInput.endpointProfile,
+          endpoint: `http://127.0.0.1:${loopback.port}/ok/`
+        }
+      }),
+      'rehashed contradictory first failure cannot become follow-up provenance'
+    );
+    typedFailureProofs.push(rehashedFollowFailure);
+    negativeControls.rehashedFirstFailureRecoveryClaimsRejected =
+      loopback.calls.length === rehashedRetryCallsBefore &&
+      rehashedFollowFailure.failureReceiptPath === null &&
+      rehashedFollowFailure.failureEvidenceIntegrityState ===
+        'CORRUPT_EXISTING_FIRST_FAILURE_RECEIPT' &&
+      fs.readdirSync(path.dirname(rehashedFirstFailure.failureReceiptPath))
         .filter((name) => name.startsWith('failure-receipt')).length === 1;
 
     const noClobberHome = makeHome(proofRoot, 'failure-receipt-no-clobber-home');
@@ -1692,9 +1807,13 @@ async function proof() {
         negativeControls.abandonedWriterUsesSemanticLastHead,
       credentialPersistenceBoundary:
         negativeControls.inMemoryAuthorizationRequestBlocked &&
-        negativeControls.inMemoryAuthorizationEchoBlocked,
+        negativeControls.inMemoryAuthorizationEchoBlocked &&
+        negativeControls.inMemoryAuthorizationNestedMetadataBlocked &&
+        negativeControls.inMemoryAuthorizationModelEchoBlocked &&
+        negativeControls.endpointResponseModelValidatedBeforePersistence,
       failureEvidencePublicationIntegrity:
         negativeControls.tamperedFirstFailureReceiptRejected &&
+        negativeControls.rehashedFirstFailureRecoveryClaimsRejected &&
         negativeControls.atomicFirstFailureReceiptClaim,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpoint),
       modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,

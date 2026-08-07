@@ -124,8 +124,8 @@
     {
       "path": "src/core/lived-companion.mjs",
       "mode": "100644",
-      "bytes": 60867,
-      "sha256": "aef0305d441dc0166ee9eaa6da5c6f8e4b2d7a6988e1829d527cce9680fba13e"
+      "bytes": 66108,
+      "sha256": "b0ea33e5991b13448559ff06f41bd650bd930c34aa08f4a02884a964918bf91c"
     },
     {
       "path": "src/core/local-git-effect-adapter.mjs",

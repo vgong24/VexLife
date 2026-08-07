@@ -75,8 +75,15 @@ path is claimed with an OS-atomic no-clobber create, including conflict failures
 that cannot own the active thread writer lease. If the canonical first receipt
 already exists, its own content-addressed hash, schema, thread/turn identity and
 first-receipt semantics are validated before it may become follow-up provenance.
-A corrupted first receipt fails closed and is never legitimized by a later receipt.
-Later valid failures for that same turn use distinct content-addressed
+Validation includes deterministic recovery truth: response durability may never
+exist without request durability, endpoint failures require the already-durable
+request and no durable response, pre-request failure classes cannot claim new-turn
+event effects, duplicate/writer evidence retains its typed disposition, and
+`retrySameTurnAllowed` plus `exactNextSafeRoute` must be exactly derivable from the
+stored failure class/durability/last-head state. Rehashing a contradictory recovery
+story therefore does not make it trustworthy. A corrupted first receipt fails
+closed and is never legitimized by a later receipt. Later valid failures for that
+same turn use distinct content-addressed
 `failure-receipt-<failureReceiptSha256>.json` files that bind the SHA-256 of the
 validated preserved first receipt. Idempotent equal follow-ups may reuse the same
 content-addressed path. A follow-up failure never rewrites or relabels the first
@@ -140,12 +147,16 @@ caller-provided profile, hostname alias, redirect, or boolean cannot widen that
 boundary. G01 rejects every HTTP redirect before following it; non-loopback or personal
 endpoint use requires a separately admitted future adapter outside this baseline.
 Credentials may be consumed only from an in-memory binding. The exact in-memory
-authorization value is checked before request persistence and again against the
-validated endpoint response before response persistence, so neither accidental
-request inclusion nor a hostile loopback endpoint echo can serialize that credential.
-The persisted record contains the admitted numeric loopback origin and model/profile
-identity, never raw tokens, authorization headers, URL queries, passwords, redirect
-targets, or model binaries.
+authorization value is recursively checked against every turn value that can become
+durable—not only message content—and again against all endpoint response metadata
+before response persistence. Endpoint profile identity/model metadata and any returned
+model provenance must be non-empty strings before they can enter a response event.
+Neither accidental inclusion in refs/context metadata nor a hostile loopback endpoint
+echo through message content or model provenance can serialize the credential, and an
+invalid model object cannot be presented as a completed turn only to fail later during
+replay. The persisted record contains the admitted numeric loopback origin and
+validated model/profile identity, never raw tokens, authorization headers, URL queries,
+passwords, redirect targets, or model binaries.
 
 ## Typed safe failures
 

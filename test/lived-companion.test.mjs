@@ -1328,6 +1328,159 @@ test('exact in-memory authorization is blocked before request persistence or hos
   } finally {
     await new Promise((resolve) => service.close(resolve));
   }
+
+});
+
+test('authorization cannot escape through persisted metadata and response model provenance is validated', async () => {
+  let responseMode = 'safe';
+  let calls = 0;
+  const service = http.createServer((request, response) => {
+    calls += 1;
+    request.resume();
+    response.setHeader('content-type', 'application/json');
+    const model =
+      responseMode === 'echo-model'
+        ? request.headers.authorization
+        : responseMode === 'invalid-model'
+          ? { bad: true }
+          : 'safe-model';
+    response.end(JSON.stringify({
+      model,
+      choices: [{ message: { content: 'safe reply' } }]
+    }));
+  });
+  await new Promise((resolve) => service.listen(0, '127.0.0.1', resolve));
+  const endpoint = `http://127.0.0.1:${service.address().port}/`;
+  const secret = `Bearer ${crypto.randomUUID()}`;
+  try {
+    const inputHome = makeHome('privacy-nested-input-secret');
+    const input = turn(inputHome, endpoint, {
+      contextSourceRefs: ['source.safe', secret],
+      inMemoryAuthorization: secret
+    });
+    let inputError = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(input),
+      (error) => {
+        inputError = error;
+        return error instanceof LivedCompanionError && error.code === 'PRIVACY_POLICY_BLOCKED';
+      }
+    );
+    assert.equal(calls, 0);
+    assert.equal(inputError.details.requestDurablyRecorded, false);
+    assert.equal(assertNoSensitivePersistence(inputHome.home, [secret]).secretLeakCount, 0);
+
+    responseMode = 'echo-model';
+    const echoHome = makeHome('privacy-response-model-secret');
+    const echoInput = turn(echoHome, endpoint, { inMemoryAuthorization: secret });
+    let echoError = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(echoInput),
+      (error) => {
+        echoError = error;
+        return error instanceof LivedCompanionError && error.code === 'PRIVACY_POLICY_BLOCKED';
+      }
+    );
+    assert.equal(echoError.details.requestDurablyRecorded, true);
+    assert.equal(echoError.details.responseDurablyRecorded, false);
+    assert.equal(assertNoSensitivePersistence(echoHome.home, [secret]).secretLeakCount, 0);
+    assert.equal(
+      fs.existsSync(path.join(
+        echoHome.home,
+        'conversations',
+        echoHome.companionLineageRef,
+        echoInput.threadRef,
+        'head.json'
+      )),
+      false
+    );
+
+    responseMode = 'invalid-model';
+    const invalidHome = makeHome('invalid-response-model-provenance');
+    const invalidInput = turn(invalidHome, endpoint);
+    let invalidError = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(invalidInput),
+      (error) => {
+        invalidError = error;
+        return error instanceof LivedCompanionError && error.code === 'ENDPOINT_RESPONSE_INVALID';
+      }
+    );
+    assert.equal(invalidError.details.requestDurablyRecorded, true);
+    assert.equal(invalidError.details.responseDurablyRecorded, false);
+    assert.equal(
+      fs.existsSync(path.join(
+        invalidHome.home,
+        'conversations',
+        invalidHome.companionLineageRef,
+        invalidInput.threadRef,
+        'head.json'
+      )),
+      false
+    );
+  } finally {
+    await new Promise((resolve) => service.close(resolve));
+  }
+});
+
+test('rehashing contradictory canonical first-failure recovery claims does not make them trustworthy', async () => {
+  const service = await server();
+  const home = makeHome('failure-receipt-rehashed-contradiction');
+  const input = turn(home, service.endpoint('http-error'));
+  try {
+    let firstError = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn(input),
+      (error) => {
+        firstError = error;
+        return error instanceof LivedCompanionError && error.code === 'ENDPOINT_HTTP_ERROR';
+      }
+    );
+    const firstPath = firstError.details.failureReceiptPath;
+    const receipt = JSON.parse(fs.readFileSync(firstPath, 'utf8'));
+    assert.equal(receipt.requestDurablyRecorded, true);
+
+    receipt.failureCode = 'ENDPOINT_TIMEOUT';
+    receipt.failureMessage = 'shape-valid but historically false recovery story';
+    receipt.requestDurablyRecorded = false;
+    receipt.responseDurablyRecorded = false;
+    receipt.retrySameTurnAllowed = true;
+    receipt.exactNextSafeRoute = 'INITIALIZE_OR_RETRY_WITH_ADMITTED_INPUTS';
+    const { failureReceiptSha256: ignoredHash, ...receiptCore } = receipt;
+    receipt.failureReceiptSha256 = semanticHash(receiptCore);
+    fs.writeFileSync(firstPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+
+    const callsBefore = service.calls();
+    let followError = null;
+    await assert.rejects(
+      () => performLivedCompanionTurn({
+        ...input,
+        instanceRef: ref('instance.failure-receipt.rehashed-retry'),
+        requestMessageRef: ref('message.failure-receipt.rehashed.request'),
+        responseMessageRef: ref('message.failure-receipt.rehashed.response'),
+        endpointProfile: {
+          ...input.endpointProfile,
+          endpoint: service.endpoint()
+        }
+      }),
+      (error) => {
+        followError = error;
+        return error instanceof LivedCompanionError && error.code === 'DUPLICATE_TURN_SUPPRESSED';
+      }
+    );
+    assert.equal(service.calls(), callsBefore);
+    assert.equal(followError.details.failureReceiptPath, null);
+    assert.equal(
+      followError.details.failureEvidenceIntegrityState,
+      'CORRUPT_EXISTING_FIRST_FAILURE_RECEIPT'
+    );
+    assert.deepEqual(
+      fs.readdirSync(path.dirname(firstPath)).filter((name) => name.startsWith('failure-receipt')).sort(),
+      ['failure-receipt.json']
+    );
+  } finally {
+    await service.close();
+  }
 });
 
 test('tampered canonical first failure receipt cannot become trusted follow-up provenance', async () => {
