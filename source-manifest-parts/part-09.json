@@ -94,8 +94,8 @@
     {
       "path": "src/core/score-context-continuity.mjs",
       "mode": "100644",
-      "bytes": 38176,
-      "sha256": "c9849ffff054fc83ecd37ce6905085490f412b21e4b7625d4f9d24950475f85f"
+      "bytes": 59854,
+      "sha256": "914a94cfd99b1a20e0859bd38bee750271b9b07303dd16eb525fdd398f8c53e9"
     },
     {
       "path": "src/core/source-manifest.mjs",

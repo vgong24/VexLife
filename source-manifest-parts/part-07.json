@@ -88,8 +88,8 @@
     {
       "path": "scripts/score-context-continuity.mjs",
       "mode": "100644",
-      "bytes": 12100,
-      "sha256": "60a25663aa3b3197c270a42309e96d9fde58fb27eb2273c0287ef26485d519a2"
+      "bytes": 17580,
+      "sha256": "070cb15d1d534a5368f0ee8d716fa9e155b9858fab69eb7ac125c86b3352e5b3"
     },
     {
       "path": "scripts/serve-browser.mjs",

@@ -6,12 +6,14 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { initializeLivedCompanionHome, performLivedCompanionTurn } from '../src/core/lived-companion.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
 import {
   SCORE_CONTEXT_MEMORY_RELATIONS,
   SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
   SCORE_CONTEXT_STATEMENT_STATES,
   appendOpenLoop,
   appendScoreStatement,
+  createFirstPersonEligibilityEvidence,
   evaluateFirstPersonEligibility,
   loadScoreContextState,
   projectScoreContext,
@@ -56,15 +58,77 @@ async function buildG01(idsValue, endpoint) {
   const second = await performLivedCompanionTurn({ ...idsValue, instanceRef: 'instance.g01.proof.two', channelRef: 'channel.g02.proof',
     turnRef: 'turn.g02.proof.two', requestMessageRef: 'message.g02.request.two', responseMessageRef: 'message.g02.response.two',
     speakerRef: 'person.proof-user', recipientRefs: ['vex.proof'], content: 'second synthetic G02 source turn', endpointProfile });
-  return { first, second };
+  return { first, second, currentHead: second.head };
 }
 
-function appendStatement(idsValue, source, input) {
+function appendStatement(idsValue, currentG01Head, sourceTurn, input) {
   const state = loadScoreContextState(idsValue);
   return appendScoreStatement({ ...idsValue, instanceRef: input.instanceRef,
     expectedScoreHeadSha256: state.head?.scoreHeadSha256 ?? null,
-    sourceConversationHeadSha256: source.head.conversationHeadSha256,
-    sourceEvents: [source.requestEvent, source.responseEvent], ...input });
+    sourceConversationHeadSha256: currentG01Head.conversationHeadSha256,
+    sourceEvents: [sourceTurn.requestEvent, sourceTurn.responseEvent], ...input });
+}
+
+function formFirstPersonEvidence(state, statementRef) {
+  const statement = state.statements.find((item) => item.statementRef === statementRef);
+  const request = statement.sourceBindings.find((item) => item.eventKind === 'REQUEST');
+  const response = statement.sourceBindings.find((item) => item.eventKind === 'RESPONSE');
+  return createFirstPersonEligibilityEvidence(state, statementRef, {
+    evidenceBindings: [
+      { gate: 'PROVENANCE_CURRENT', sourceEventHash: request.eventHash, issuerRef: 'system.vexlife.score-context-continuity', disposition: 'PERMITTED' },
+      { gate: 'BRANCH_RELATION_CURRENT', sourceEventHash: response.eventHash, issuerRef: 'system.vexlife.score-context-continuity', disposition: 'PERMITTED' },
+      { gate: 'IDENTITY_STANCE_PERMITTED', sourceEventHash: response.eventHash, issuerRef: state.identity.companionLineageRef, disposition: 'PERMITTED' },
+      { gate: 'CONSENT_PERMITTED', sourceEventHash: request.eventHash, issuerRef: 'person.proof-user', disposition: 'PERMITTED' }
+    ]
+  });
+}
+
+function rehashEvidence(evidence, mutate) {
+  const copy = structuredClone(evidence);
+  delete copy.semanticFingerprint;
+  mutate(copy);
+  copy.semanticFingerprint = semanticHash(copy);
+  return copy;
+}
+
+function rehashGate(gate, mutate) {
+  const copy = structuredClone(gate);
+  delete copy.semanticFingerprint;
+  mutate(copy);
+  copy.semanticFingerprint = semanticHash(copy);
+  return copy;
+}
+
+function reformScoreEvent(event, changes = {}) {
+  const core = structuredClone(event);
+  delete core.scoreEventHash;
+  delete core.scoreEventRef;
+  Object.assign(core, changes);
+  const scoreEventRef = `score-event.${semanticHash(core).slice(0, 32)}`;
+  const finalCore = { ...core, scoreEventRef };
+  return { ...finalCore, scoreEventHash: semanticHash(finalCore) };
+}
+
+function scoreEventFile(idsValue, event) {
+  return path.join(idsValue.home, 'score', idsValue.companionLineageRef, idsValue.threadRef, 'events',
+    `${String(event.sequence).padStart(8, '0')}-${event.scoreEventHash}.json`);
+}
+
+function abruptAppendPayload(idsValue, currentG01Head, sourceTurn, expectedScoreHeadSha256) {
+  return {
+    ...idsValue,
+    instanceRef: 'instance.g02.proof.abrupt-exit',
+    expectedScoreHeadSha256,
+    sourceConversationHeadSha256: currentG01Head.conversationHeadSha256,
+    sourceEvents: [sourceTurn.requestEvent, sourceTurn.responseEvent],
+    statementRef: 'statement.g02.proof.uncommitted-tail',
+    subjectRef: 'subject.g02.proof.tail',
+    memoryRelation: 'INHERITED_CONTEXT',
+    statementState: 'OBSERVED',
+    summary: 'Durable but intentionally uncommitted synthetic tail.',
+    acceptedForContinuity: false,
+    consentState: 'UNKNOWN'
+  };
 }
 
 async function runProof() {
@@ -79,7 +143,8 @@ async function runProof() {
     for (const relation of SCORE_CONTEXT_MEMORY_RELATIONS) {
       const statementRef = `statement.g02.proof.${String(ordinal).padStart(2, '0')}`;
       const statementState = relation === 'DISPUTED_OR_UNRESOLVED' ? 'CONFLICTED' : 'HUMAN_CONFIRMED';
-      const result = appendStatement(proofIds, ordinal === 0 ? g01.first : g01.second, {
+      const sourceTurn = ordinal === 0 ? g01.first : g01.second;
+      const result = appendStatement(proofIds, g01.currentHead, sourceTurn, {
         instanceRef: `instance.g02.proof.${String(ordinal).padStart(2, '0')}`,
         statementRef, subjectRef: `subject.g02.proof.${String(ordinal).padStart(2, '0')}`,
         memoryRelation: relation, statementState, summary: `Synthetic ${relation} statement.`,
@@ -90,13 +155,13 @@ async function runProof() {
     }
     const beforeCorrection = loadScoreContextState(proofIds);
     const autobiography = relationStatements[0].statementRef;
-    appendStatement(proofIds, g01.second, {
+    appendStatement(proofIds, g01.currentHead, g01.second, {
       instanceRef: 'instance.g02.proof.correction', statementRef: 'statement.g02.proof.correction',
       subjectRef: 'subject.g02.proof.00', memoryRelation: 'CURRENT_LINEAGE_AUTOBIOGRAPHY', statementState: 'CORRECTED',
       summary: 'Corrected autobiographical synthetic statement.', acceptedForContinuity: true, consentState: 'PERMITTED',
       correctsStatementRef: autobiography
     });
-    appendStatement(proofIds, g01.second, {
+    appendStatement(proofIds, g01.currentHead, g01.second, {
       instanceRef: 'instance.g02.proof.supersession', statementRef: 'statement.g02.proof.superseding',
       subjectRef: 'subject.g02.proof.00', memoryRelation: 'CURRENT_LINEAGE_AUTOBIOGRAPHY', statementState: 'HUMAN_CONFIRMED',
       summary: 'Superseding autobiographical synthetic statement.', acceptedForContinuity: true, consentState: 'PERMITTED',
@@ -104,10 +169,22 @@ async function runProof() {
     });
     let state = loadScoreContextState(proofIds);
     appendOpenLoop({ ...proofIds, instanceRef: 'instance.g02.proof.open-loop', expectedScoreHeadSha256: state.head.scoreHeadSha256,
-      sourceConversationHeadSha256: g01.second.head.conversationHeadSha256, sourceEvents: [g01.second.requestEvent, g01.second.responseEvent],
+      sourceConversationHeadSha256: g01.currentHead.conversationHeadSha256,
+      sourceEvents: [g01.second.requestEvent, g01.second.responseEvent],
       openLoopRef: 'open-loop.g02.proof.one', openLoopState: 'OPEN', summaryRef: 'summary.g02.proof.open-loop',
       sourceStatementRefs: ['statement.g02.proof.superseding'] });
     state = loadScoreContextState(proofIds);
+    let coerciveResolutionHeld = false;
+    try {
+      appendOpenLoop({ ...proofIds, instanceRef: 'instance.g02.proof.resolve-held', expectedScoreHeadSha256: state.head.scoreHeadSha256,
+        sourceConversationHeadSha256: g01.currentHead.conversationHeadSha256,
+        sourceEvents: [g01.second.requestEvent, g01.second.responseEvent], openLoopRef: 'open-loop.g02.proof.one',
+        openLoopState: 'RESOLVED', sourceStatementRefs: ['statement.g02.proof.superseding'] });
+    } catch (error) {
+      coerciveResolutionHeld = error.code === 'OPEN_LOOP_INVALID' &&
+        error.details?.exactNextSafeRoute === 'SOURCE_MANAGED_OPEN_LOOP_RESOLUTION_NOT_ADMITTED_IN_G02';
+    }
+
     const replay = spawnSync(process.execPath, [fileURLToPath(import.meta.url), 'resume', JSON.stringify({
       home: proofIds.home, homeRef: proofIds.homeRef, deviceRef: proofIds.deviceRef,
       companionLineageRef: proofIds.companionLineageRef, threadRef: proofIds.threadRef,
@@ -115,45 +192,62 @@ async function runProof() {
     })], { cwd: ROOT, encoding: 'utf8' });
     if (replay.status !== 0) throw new Error(`fresh-process replay failed: ${replay.stderr || replay.stdout}`);
     const replayReceipt = JSON.parse(replay.stdout.trim().split(/\r?\n/).at(-1));
-    const currentStatement = state.statements.find((item) => item.statementRef === 'statement.g02.proof.superseding');
-    const firstPerson = evaluateFirstPersonEligibility(currentStatement, {
-      provenanceCurrent: true, branchRelationCurrent: true, identityStancePermits: true, consentPermits: true
+
+    const currentRef = 'statement.g02.proof.superseding';
+    const eligibilityEvidence = formFirstPersonEvidence(state, currentRef);
+    const firstPerson = evaluateFirstPersonEligibility(state, currentRef, eligibilityEvidence);
+    const missingFirstPerson = evaluateFirstPersonEligibility(state, currentRef, null);
+    const substitutedEligibility = rehashEvidence(eligibilityEvidence, (copy) => {
+      copy.evidenceBindings[0] = rehashGate(copy.evidenceBindings[0], (gate) => { gate.sourceEventHash = 'f'.repeat(64); });
     });
-    const predecessor = state.statements.find((item) => item.memoryRelation === 'PREDECESSOR_WITNESS_HISTORY');
-    const predecessorWording = evaluateFirstPersonEligibility(predecessor, {
-      provenanceCurrent: true, branchRelationCurrent: true, identityStancePermits: true, consentPermits: true
-    });
-    const descent = sourceDescentForStatement(state, currentStatement.statementRef);
+    const substitutedFirstPerson = evaluateFirstPersonEligibility(state, currentRef, substitutedEligibility);
+    const predecessorRef = relationStatements.find((item) => item.relation === 'PREDECESSOR_WITNESS_HISTORY').statementRef;
+    const predecessorEvidence = formFirstPersonEvidence(state, predecessorRef);
+    const predecessorWording = evaluateFirstPersonEligibility(state, predecessorRef, predecessorEvidence);
+    const descent = sourceDescentForStatement(state, currentRef);
+
     const headBeforeFault = state.head.scoreHeadSha256;
-    let simulatedFailure = null;
-    try {
-      appendStatement(proofIds, g01.second, {
-        instanceRef: 'instance.g02.proof.tail-fault', statementRef: 'statement.g02.proof.uncommitted-tail',
-        subjectRef: 'subject.g02.proof.tail', memoryRelation: 'INHERITED_CONTEXT', statementState: 'OBSERVED',
-        summary: 'Durable but intentionally uncommitted synthetic tail.', acceptedForContinuity: false, consentState: 'UNKNOWN',
-        faults: { failAfterEventWrite: true }
-      });
-    } catch (error) { simulatedFailure = { code: error.code ?? error.name, message: error.message }; }
+    const crashPayload = abruptAppendPayload(proofIds, g01.currentHead, g01.second, headBeforeFault);
+    const crash = spawnSync(process.execPath, [fileURLToPath(import.meta.url), 'crash-append', JSON.stringify(crashPayload)], {
+      cwd: ROOT, encoding: 'utf8'
+    });
     const afterFault = loadScoreContextState(proofIds);
-    const invalidPath = path.join(proofIds.home, 'score', proofIds.companionLineageRef, proofIds.threadRef, 'events', `99999999-${'b'.repeat(64)}.json`);
-    fs.writeFileSync(invalidPath, '{"schemaVersion":"invalid-tail"}\n', 'utf8');
-    const invalidObserved = loadScoreContextState(proofIds);
-    fs.rmSync(invalidPath, { force: true });
+    const crashTail = afterFault.uncommittedTail.find((item) => item.statementRef === crashPayload.statementRef);
+
+    const readdressed = reformScoreEvent(crashTail, { sequence: crashTail.sequence + 17 });
+    write(scoreEventFile(proofIds, readdressed), readdressed);
+    const readdressedObserved = loadScoreContextState(proofIds);
+    fs.rmSync(scoreEventFile(proofIds, readdressed), { force: true });
+
+    const substitutedBindings = structuredClone(crashTail.sourceBindings);
+    substitutedBindings[0] = { ...substitutedBindings[0], eventRef: 'event.g01.hostile.substitute', eventHash: 'c'.repeat(64), contentHash: 'd'.repeat(64) };
+    const sourceSubstituted = reformScoreEvent(crashTail, { sourceBindings: substitutedBindings });
+    write(scoreEventFile(proofIds, sourceSubstituted), sourceSubstituted);
+    const sourceSubstitutedObserved = loadScoreContextState(proofIds);
+    fs.rmSync(scoreEventFile(proofIds, sourceSubstituted), { force: true });
+
     const projection = projectScoreContext(proofIds);
     return {
-      schemaVersion: 'vexlife.g02-score-context-continuity-proof/v1', state: 'PASS', currentness: 'CURRENT',
+      schemaVersion: 'vexlife.g02-score-context-continuity-proof/v2', state: 'PASS', currentness: 'CURRENT',
       candidateHeadSha: candidateHead, sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
-      actualG01HttpTurns: 2, relationClassesCovered: [...SCORE_CONTEXT_MEMORY_RELATIONS], statementStatesRegistered: [...SCORE_CONTEXT_STATEMENT_STATES],
+      actualG01HttpTurns: 2, committedG01SourceVerified: descent.observedCurrentConversationHeadSha256 === g01.currentHead.conversationHeadSha256,
+      relationClassesCovered: [...SCORE_CONTEXT_MEMORY_RELATIONS], statementStatesRegistered: [...SCORE_CONTEXT_STATEMENT_STATES],
       preCorrectionHeadSha256: beforeCorrection.head.scoreHeadSha256, finalCommittedScoreHeadSha256: state.head.scoreHeadSha256,
       correctionPreservedPrior: state.statements.some((item) => item.statementRef === autobiography && item.current === false),
       supersessionPreservedPrior: state.statements.some((item) => item.statementRef === 'statement.g02.proof.correction' && item.effectiveState === 'SUPERSEDED'),
-      openLoopCarryForward: state.openLoopRefs.includes('open-loop.g02.proof.one'), freshProcessReplay: replayReceipt.state === 'RESUMED',
-      firstPersonAutobiographyEligible: firstPerson.eligible === true,
+      openLoopCarryForward: state.openLoopRefs.includes('open-loop.g02.proof.one'), coerciveOpenLoopResolutionHeld: coerciveResolutionHeld,
+      freshProcessReplay: replayReceipt.state === 'RESUMED',
+      firstPersonAutobiographyEligible: firstPerson.eligible === true && firstPerson.evidenceState === 'EXACT_CURRENT_SOURCE_BOUND_EVIDENCE',
+      missingFirstPersonEvidenceBlocked: missingFirstPerson.eligible === false,
+      substitutedFirstPersonEvidenceBlocked: substitutedFirstPerson.eligible === false,
       predecessorImpersonationBlocked: predecessorWording.eligible === false && predecessorWording.wordingMode === 'PREDECESSOR_ATTRIBUTED',
       sourceDescentExact: descent.sourceBindings.length === 2 && descent.rawSourceContentIncluded === false,
-      simulatedFailure, crashLikeTailPreserved: afterFault.uncommittedTail.some((item) => item.statementRef === 'statement.g02.proof.uncommitted-tail'),
+      abruptProcessExitProven: crash.status === 91,
+      crashLikeTailPreserved: Boolean(crashTail),
       priorHeadRemainedCurrentAfterTail: afterFault.head.scoreHeadSha256 === headBeforeFault,
-      invalidTailAttention: invalidObserved.state === 'ATTENTION' && invalidObserved.head.scoreHeadSha256 === headBeforeFault,
+      abandonedWriterRecoveryHeld: afterFault.writer.state === 'ABSENT',
+      readdressedTailAttention: readdressedObserved.state === 'ATTENTION' && readdressedObserved.attention.some((item) => item.reason === 'REORDERED_OR_READRESSED_TAIL'),
+      sourceSubstitutedTailAttention: sourceSubstitutedObserved.state === 'ATTENTION' && sourceSubstitutedObserved.attention.some((item) => item.reason === 'SCORE_SOURCE_INVALID'),
       rawDurableEventEqualsCommittedCurrentScore: false,
       dreamCompleted: projection.dreamCompleted, modelWeightsChanged: projection.modelWeightsChanged,
       rhythmLearned: projection.rhythmLearned, synchronizationActivated: projection.synchronizationActivated,
@@ -162,10 +256,13 @@ async function runProof() {
     };
   });
   const requiredTrue = [
-    receipt.correctionPreservedPrior, receipt.supersessionPreservedPrior, receipt.openLoopCarryForward,
-    receipt.freshProcessReplay, receipt.firstPersonAutobiographyEligible, receipt.predecessorImpersonationBlocked,
-    receipt.sourceDescentExact, receipt.crashLikeTailPreserved, receipt.priorHeadRemainedCurrentAfterTail,
-    receipt.invalidTailAttention
+    receipt.committedG01SourceVerified, receipt.correctionPreservedPrior, receipt.supersessionPreservedPrior,
+    receipt.openLoopCarryForward, receipt.coerciveOpenLoopResolutionHeld, receipt.freshProcessReplay,
+    receipt.firstPersonAutobiographyEligible, receipt.missingFirstPersonEvidenceBlocked,
+    receipt.substitutedFirstPersonEvidenceBlocked, receipt.predecessorImpersonationBlocked,
+    receipt.sourceDescentExact, receipt.abruptProcessExitProven, receipt.crashLikeTailPreserved,
+    receipt.priorHeadRemainedCurrentAfterTail, receipt.abandonedWriterRecoveryHeld,
+    receipt.readdressedTailAttention, receipt.sourceSubstitutedTailAttention
   ];
   if (requiredTrue.some((value) => value !== true) || receipt.dreamCompleted || receipt.modelWeightsChanged || receipt.rhythmLearned || receipt.synchronizationActivated) {
     receipt.state = 'FAILED';
@@ -183,9 +280,16 @@ function resume(payloadText) {
     scoreHeadSha256: state.head.scoreHeadSha256, openLoopRefs: state.openLoopRefs, currentStatementRefs: state.currentStatementRefs }));
 }
 
+function crashAppend(payloadText) {
+  const payload = JSON.parse(payloadText);
+  appendScoreStatement({ ...payload, faults: { exitAfterEventWrite: true } });
+  throw new Error('abrupt exit fault did not terminate process');
+}
+
 const [command = 'proof', payload] = process.argv.slice(2);
 if (command === 'proof') await runProof();
 else if (command === 'resume') resume(payload);
+else if (command === 'crash-append') crashAppend(payload);
 else throw new Error(`unknown command ${command}`);
 
 // [VXG RealForever]

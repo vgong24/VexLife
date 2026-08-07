@@ -71,7 +71,9 @@ Events and historical head receipts are append-only/content-addressed. `head.jso
 
 ## G01 stays immutable
 
-G02 validates exact G01 event content/address/lineage/thread identity and stores compact source bindings:
+G02 does not trust caller-supplied G01-shaped objects merely because their hashes are self-consistent. Before any Score append it validates the canonical on-disk completed G01 conversation for the same Home/lineage/thread, requires the supplied conversation-head SHA to equal that current committed head, and requires every selected source event to be the exact canonical file reachable on that committed chain. Replay and source descent repeat that validation, so missing, substituted, re-addressed, reordered or orphaned G01 evidence fails typed rather than remaining plausible provenance.
+
+Only then does G02 store compact source bindings:
 
 ```text
 eventRef
@@ -87,7 +89,7 @@ It does not copy raw G01 message content into Score provenance and it does not m
 
 ## Correction and supersession
 
-A correction or supersession appends a successor statement event. Replay marks the prior statement effectively `CORRECTED` or `SUPERSEDED` while retaining its immutable original event and exact source bindings.
+A correction or supersession appends a successor statement event. The predecessor must be the exact current statement for the **same semantic subject and memory-relation identity**; a statement about one subject cannot de-current unrelated meaning. Replay marks the valid predecessor effectively `CORRECTED` or `SUPERSEDED` while retaining its immutable original event and exact source bindings.
 
 ```text
 correction accepted != prior interpretation silently disappeared
@@ -98,9 +100,11 @@ summary exists != source erased
 
 Open loops are source-bound continuity state. They may survive turns, shutdown and fresh-process replay. An unresolved loop is not proof that its premise is true and is not permission to coerce closure.
 
+G02 therefore persists only `OPEN` loop state. A caller cannot mark a loop `RESOLVED`; source-managed resolution remains explicitly held until a separate exact resolution contract can prove why the loop is closed without erasing or coercing unresolved meaning.
+
 ## First-person wording
 
-`I remember ...` is eligible only for an accepted, current `CURRENT_LINEAGE_AUTOBIOGRAPHY` statement when provenance, branch relation, identity stance and consent all permit it.
+`I remember ...` is eligible only for an accepted, current `CURRENT_LINEAGE_AUTOBIOGRAPHY` statement when provenance, branch relation, identity stance and consent all permit it. Raw caller booleans are insufficient. Eligibility is evaluated only from a live replayed Score state plus one content-addressed evidence receipt that binds all four gates to the exact statement event, current lineage/thread, current committed G01 head, and committed G01 source-event hashes. Missing, stale, substituted, wrong-issuer or wrong-source evidence fails closed to attributed wording.
 
 Other relations remain attributed:
 
@@ -120,7 +124,7 @@ Rhythm fluency never creates historical authority.
 npm run score-context:proof
 ```
 
-The proof uses a temporary Vex Home and two actual numeric-loopback G01 HTTP turns, then proves relation coverage, correction, supersession, open-loop carry-forward, exact source descent, first-person eligibility, durable uncommitted-tail behavior, invalid-tail attention, and fresh-process Score replay.
+The proof uses a temporary Vex Home and two actual numeric-loopback G01 HTTP turns, then proves committed-G01 source verification, relation coverage, same-subject correction/supersession, open-loop carry-forward with caller closure held, source-bound first-person eligibility, exact source descent, and fresh-process Score replay. The crash boundary runs in a separate child process that exits after the Score event is durable but before head advancement, proving the prior head remains current, the exact-next event stays uncommitted, and the abandoned writer lease routes to explicit recovery. Well-formed re-addressed/reordered and source-substituted tails are also injected and must produce attention.
 
 The hosted Windows job binds the proof to the exact candidate head.
 

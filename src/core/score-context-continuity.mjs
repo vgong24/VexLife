@@ -39,7 +39,8 @@ export const SCORE_CONTEXT_FAILURE_CODES = Object.freeze([
   'MEMORY_RELATION_INVALID',
   'STATEMENT_STATE_INVALID',
   'SCORE_LINK_INVALID',
-  'OPEN_LOOP_INVALID'
+  'OPEN_LOOP_INVALID',
+  'FIRST_PERSON_EVIDENCE_INVALID'
 ]);
 
 const REF = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
@@ -250,9 +251,14 @@ function releaseWriter(lease) {
   } catch { return false; }
 }
 
-function assertG01SourceEvent(event, identity, threadRef) {
+function assertG01SourceEvent(event, identity, threadRef, fileName = null) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) fail('SCORE_SOURCE_INVALID', 'G01 source event is invalid');
   const { eventHash, ...core } = event;
+  const expectedFile = SHA256.test(eventHash ?? '') && Number.isSafeInteger(event.sequence)
+    ? `${String(event.sequence).padStart(8, '0')}-${eventHash}.json` : null;
+  const validRecipients = Array.isArray(event.recipientRefs) && event.recipientRefs.length > 0 &&
+    event.recipientRefs.every((value) => typeof value === 'string' && value.length > 0);
+  const validPrior = event.priorEventHash === null || SHA256.test(event.priorEventHash ?? '');
   if (event.schemaVersion !== 'vexlife.lived-companion-event/v1' ||
       !['REQUEST', 'RESPONSE'].includes(event.eventKind) || !SHA256.test(eventHash ?? '') ||
       semanticHash(core) !== eventHash || typeof event.content !== 'string' ||
@@ -260,29 +266,202 @@ function assertG01SourceEvent(event, identity, threadRef) {
       event.homeRef !== identity.homeRef || event.deviceRef !== identity.deviceRef ||
       event.companionLineageRef !== identity.companionLineageRef || event.threadRef !== threadRef ||
       event.privacyClass !== 'DEVICE_PRIVATE' || !Number.isSafeInteger(event.sequence) || event.sequence < 0 ||
-      typeof event.eventRef !== 'string' || event.eventRef.length === 0 || typeof event.turnRef !== 'string' || event.turnRef.length === 0) {
-    fail('SCORE_SOURCE_INVALID', 'G01 source event failed exact content/address/identity validation', { eventRef: event?.eventRef ?? null });
+      !validPrior || !validRecipients ||
+      safeRef(event.instanceRef, 'G01 event instanceRef', 'SCORE_SOURCE_INVALID') !== event.instanceRef ||
+      safeRef(event.turnRef, 'G01 event turnRef', 'SCORE_SOURCE_INVALID') !== event.turnRef ||
+      typeof event.eventRef !== 'string' || event.eventRef.length === 0 ||
+      typeof event.channelRef !== 'string' || event.channelRef.length === 0 ||
+      typeof event.messageRef !== 'string' || event.messageRef.length === 0 ||
+      typeof event.speakerRef !== 'string' || event.speakerRef.length === 0 ||
+      (fileName !== null && fileName !== expectedFile)) {
+    fail('SCORE_SOURCE_INVALID', 'G01 source event failed exact content/address/identity validation', {
+      eventRef: event?.eventRef ?? null, fileName, expectedFile
+    });
+  }
+  if (event.eventKind === 'RESPONSE') {
+    let origin = null;
+    try { origin = new URL(event.sanitizedEndpointOrigin); } catch {}
+    const host = origin?.hostname?.toLowerCase()?.replace(/^\[|\]$/gu, '');
+    if (typeof event.endpointProfileRef !== 'string' || event.endpointProfileRef.length === 0 ||
+        typeof event.modelNameOrBoundedTestProfileRef !== 'string' || event.modelNameOrBoundedTestProfileRef.length === 0 ||
+        !origin || origin.origin !== event.sanitizedEndpointOrigin || !['127.0.0.1', '::1'].includes(host)) {
+      fail('SCORE_SOURCE_INVALID', 'G01 response source provenance is invalid', { eventRef: event.eventRef });
+    }
   }
   return event;
 }
 
-function sourceBindings(sourceEvents, identity, threadRef) {
-  if (!Array.isArray(sourceEvents) || sourceEvents.length === 0) fail('SCORE_SOURCE_INVALID', 'at least one exact G01 source event is required');
-  const byHash = new Set();
-  return sourceEvents.map((event) => {
-    assertG01SourceEvent(event, identity, threadRef);
-    if (byHash.has(event.eventHash)) fail('SCORE_SOURCE_INVALID', 'duplicate G01 source event binding');
-    byHash.add(event.eventHash);
-    return {
-      eventRef: event.eventRef,
-      eventHash: event.eventHash,
-      eventKind: event.eventKind,
-      sequence: event.sequence,
-      turnRef: event.turnRef,
-      messageRef: event.messageRef,
-      contentHash: event.contentHash
-    };
+function conversationSourcePaths(home, lineageRef, threadRef) {
+  return {
+    events: homePath(home, 'conversations', lineageRef, threadRef, 'events'),
+    head: homePath(home, 'conversations', lineageRef, threadRef, 'head.json'),
+    context: homePath(home, 'context', lineageRef, threadRef)
+  };
+}
+
+function validateCommittedG01Conversation(identity, threadRef) {
+  const paths = conversationSourcePaths(identity.homeRoot, identity.companionLineageRef, threadRef);
+  if (!fs.existsSync(paths.head)) fail('SCORE_SOURCE_INVALID', 'committed G01 conversation head is missing');
+  const head = readJson(paths.head, 'SCORE_SOURCE_INVALID', 'G01 conversation head');
+  const { conversationHeadSha256, ...headCore } = head ?? {};
+  if (head.schemaVersion !== 'vexlife.lived-companion-head/v1' || !SHA256.test(conversationHeadSha256 ?? '') ||
+      semanticHash(headCore) !== conversationHeadSha256 || head.homeRef !== identity.homeRef ||
+      head.deviceRef !== identity.deviceRef || head.companionLineageRef !== identity.companionLineageRef ||
+      head.threadRef !== threadRef || !SHA256.test(head.eventHash ?? '') || !SHA256.test(head.contextSha256 ?? '') ||
+      !Number.isSafeInteger(head.sequence) || head.sequence < 1 ||
+      (head.sequence === 1 ? head.priorConversationHeadSha256 !== null : !SHA256.test(head.priorConversationHeadSha256 ?? '')) ||
+      typeof head.requestMessageRef !== 'string' || head.requestMessageRef.length === 0 ||
+      typeof head.responseMessageRef !== 'string' || head.responseMessageRef.length === 0 ||
+      safeRef(head.instanceRef, 'G01 head instanceRef', 'SCORE_SOURCE_INVALID') !== head.instanceRef ||
+      safeRef(head.turnRef, 'G01 head turnRef', 'SCORE_SOURCE_INVALID') !== head.turnRef ||
+      typeof head.contextPath !== 'string' || head.contextPath.length === 0) {
+    fail('SCORE_SOURCE_INVALID', 'G01 conversation head failed canonical completed-state validation');
+  }
+  if (!fs.existsSync(paths.events) || fs.lstatSync(paths.events).isSymbolicLink() || !fs.lstatSync(paths.events).isDirectory()) {
+    fail('SCORE_SOURCE_INVALID', 'G01 conversation event directory is not one canonical real directory');
+  }
+  const byHash = new Map();
+  for (const entry of fs.readdirSync(paths.events, { withFileTypes: true }).filter((item) => item.name.endsWith('.json'))) {
+    if (!entry.isFile() || entry.isSymbolicLink?.()) fail('SCORE_SOURCE_INVALID', 'G01 source event entry is not a regular file', { file: entry.name });
+    const event = assertG01SourceEvent(readJson(path.join(paths.events, entry.name), 'SCORE_SOURCE_INVALID', 'G01 source event'), identity, threadRef, entry.name);
+    if (byHash.has(event.eventHash)) fail('SCORE_SOURCE_INVALID', 'G01 source event hash appears more than once on disk', { eventHash: event.eventHash });
+    byHash.set(event.eventHash, event);
+  }
+  const reverse = [];
+  const visited = new Set();
+  let cursor = head.eventHash;
+  while (cursor) {
+    if (visited.has(cursor)) fail('SCORE_SOURCE_INVALID', 'committed G01 source chain contains a cycle');
+    visited.add(cursor);
+    const event = byHash.get(cursor);
+    if (!event) fail('SCORE_SOURCE_INVALID', 'committed G01 source chain references a missing event', { eventHash: cursor });
+    reverse.push(event);
+    cursor = event.priorEventHash;
+  }
+  const chain = reverse.reverse();
+  if (chain.length !== head.sequence + 1 || chain.length < 2 || chain.length % 2 !== 0) {
+    fail('SCORE_SOURCE_INVALID', 'committed G01 source chain does not contain complete contiguous turns');
+  }
+  for (let index = 0; index < chain.length; index += 1) {
+    const event = chain[index];
+    if (event.sequence !== index || event.priorEventHash !== (index === 0 ? null : chain[index - 1].eventHash)) {
+      fail('SCORE_SOURCE_INVALID', 'committed G01 source chain is reordered or readdressed', { eventHash: event.eventHash, index });
+    }
+  }
+  for (let index = 0; index < chain.length; index += 2) {
+    const request = chain[index];
+    const response = chain[index + 1];
+    if (request.eventKind !== 'REQUEST' || response.eventKind !== 'RESPONSE' || request.turnRef !== response.turnRef ||
+        request.instanceRef !== response.instanceRef || request.channelRef !== response.channelRef ||
+        response.priorEventHash !== request.eventHash || response.speakerRef !== request.recipientRefs[0] ||
+        response.recipientRefs.length !== 1 || response.recipientRefs[0] !== request.speakerRef) {
+      fail('SCORE_SOURCE_INVALID', 'committed G01 source request/response semantics are invalid', {
+        requestEventHash: request.eventHash, responseEventHash: response.eventHash
+      });
+    }
+  }
+  const requestEvent = chain.at(-2);
+  const responseEvent = chain.at(-1);
+  if (responseEvent.eventHash !== head.eventHash || responseEvent.turnRef !== head.turnRef || requestEvent.turnRef !== head.turnRef ||
+      responseEvent.instanceRef !== head.instanceRef || requestEvent.instanceRef !== head.instanceRef ||
+      responseEvent.messageRef !== head.responseMessageRef || requestEvent.messageRef !== head.requestMessageRef) {
+    fail('SCORE_SOURCE_INVALID', 'G01 completed head does not bind its exact final request/response turn');
+  }
+  const expectedContext = path.join(paths.context, `${head.turnRef}.json`);
+  const expectedRelative = path.relative(identity.homeRoot, expectedContext).replaceAll('\\', '/');
+  if (head.contextPath !== expectedRelative || !fs.existsSync(expectedContext)) {
+    fail('SCORE_SOURCE_INVALID', 'G01 completed head does not bind the canonical context record');
+  }
+  const context = readJson(expectedContext, 'SCORE_SOURCE_INVALID', 'G01 bounded context');
+  const { serializedContextSha256, ...contextCore } = context ?? {};
+  if (!SHA256.test(serializedContextSha256 ?? '') || semanticHash(contextCore) !== serializedContextSha256 ||
+      serializedContextSha256 !== head.contextSha256 || context.homeRef !== identity.homeRef ||
+      context.deviceRef !== identity.deviceRef || context.companionLineageRef !== identity.companionLineageRef ||
+      context.threadRef !== threadRef || context.turnRef !== head.turnRef || context.instanceRef !== head.instanceRef ||
+      context.requestEventHash !== requestEvent.eventHash || context.responseEventHash !== responseEvent.eventHash ||
+      context.privacyClass !== 'DEVICE_PRIVATE') {
+    fail('SCORE_SOURCE_INVALID', 'G01 bounded context is not exact to the completed head and final turn');
+  }
+  return { head, chain, byHash: new Map(chain.map((event) => [event.eventHash, event])) };
+}
+
+function sourceBindingFromEvent(event) {
+  return {
+    eventRef: event.eventRef,
+    eventHash: event.eventHash,
+    eventKind: event.eventKind,
+    sequence: event.sequence,
+    turnRef: event.turnRef,
+    messageRef: event.messageRef,
+    contentHash: event.contentHash
+  };
+}
+
+function validateSourceBindingAgainstCommittedG01(binding, committed) {
+  if (!binding || typeof binding !== 'object' || Array.isArray(binding) || !SHA256.test(binding.eventHash ?? '') ||
+      !SHA256.test(binding.contentHash ?? '') || !Number.isSafeInteger(binding.sequence) || binding.sequence < 0 ||
+      typeof binding.eventRef !== 'string' || binding.eventRef.length === 0 ||
+      !['REQUEST', 'RESPONSE'].includes(binding.eventKind) || typeof binding.turnRef !== 'string' || binding.turnRef.length === 0 ||
+      typeof binding.messageRef !== 'string' || binding.messageRef.length === 0) {
+    fail('SCORE_SOURCE_INVALID', 'stored G01 source binding is malformed');
+  }
+  const observed = committed.byHash.get(binding.eventHash);
+  if (!observed || JSON.stringify(sourceBindingFromEvent(observed)) !== JSON.stringify(binding)) {
+    fail('SCORE_SOURCE_INVALID', 'stored G01 source binding is absent or substituted from the committed chain', { eventHash: binding.eventHash });
+  }
+  return observed;
+}
+
+function sourceBindings(sourceEvents, identity, threadRef, expectedConversationHeadSha256) {
+  if (!Array.isArray(sourceEvents) || sourceEvents.length === 0 || sourceEvents.length % 2 !== 0) {
+    fail('SCORE_SOURCE_INVALID', 'G02 source intake requires one or more complete committed G01 request/response pairs');
+  }
+  const committed = validateCommittedG01Conversation(identity, threadRef);
+  if (committed.head.conversationHeadSha256 !== expectedConversationHeadSha256) {
+    fail('SCORE_SOURCE_INVALID', 'supplied G01 source head is not the exact current committed conversation head', {
+      expected: expectedConversationHeadSha256, observed: committed.head.conversationHeadSha256
+    });
+  }
+  const seen = new Set();
+  const exact = sourceEvents.map((supplied) => {
+    assertG01SourceEvent(supplied, identity, threadRef);
+    const observed = committed.byHash.get(supplied.eventHash);
+    if (!observed || semanticHash(observed) !== semanticHash(supplied) || observed.eventRef !== supplied.eventRef) {
+      fail('SCORE_SOURCE_INVALID', 'caller-supplied G01 source is not the exact committed on-disk event', { eventRef: supplied.eventRef });
+    }
+    if (seen.has(observed.eventHash)) fail('SCORE_SOURCE_INVALID', 'duplicate G01 source event binding');
+    seen.add(observed.eventHash);
+    return observed;
   }).sort((a, b) => a.sequence - b.sequence || a.eventHash.localeCompare(b.eventHash));
+  for (let index = 0; index < exact.length; index += 2) {
+    const request = exact[index];
+    const response = exact[index + 1];
+    if (request.eventKind !== 'REQUEST' || response.eventKind !== 'RESPONSE' || response.sequence !== request.sequence + 1 ||
+        response.priorEventHash !== request.eventHash || response.turnRef !== request.turnRef || response.instanceRef !== request.instanceRef) {
+      fail('SCORE_SOURCE_INVALID', 'selected G01 source range is not composed of exact complete committed turns');
+    }
+  }
+  return { bindings: exact.map(sourceBindingFromEvent), sourceEvents: exact, committed };
+}
+
+function validateStoredSourceBindings(bindings, committed) {
+  if (!Array.isArray(bindings) || bindings.length === 0) fail('SCORE_SOURCE_INVALID', 'Score event lacks committed G01 source bindings');
+  return bindings.map((binding) => validateSourceBindingAgainstCommittedG01(binding, committed));
+}
+
+function validateScoreEventSourceAgainstCommittedG01(event, committed, identity, threadRef) {
+  const observed = validateStoredSourceBindings(event.sourceBindings, committed);
+  const expectedObservation = formSharedSourceObservation(
+    observed, event.sourceBindings, identity, threadRef, event.instanceRef, event.formedAt
+  );
+  if (event.continuityObservation?.observationRef !== expectedObservation.observationRef ||
+      event.continuityObservation?.semanticFingerprint !== expectedObservation.semanticFingerprint ||
+      semanticHash(event.continuityObservation) !== semanticHash(expectedObservation)) {
+    fail('SCORE_SOURCE_INVALID', 'Score event continuity observation does not exactly match committed G01 source bindings', {
+      scoreEventRef: event.scoreEventRef
+    });
+  }
+  return observed;
 }
 
 function formSharedSourceObservation(sourceEvents, bindings, identity, threadRef, instanceRef, formedAt) {
@@ -321,6 +500,7 @@ function assertScoreEvent(value, identity, threadRef, fileName = null) {
       value.sharedSemanticDispositionRef !== SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION ||
       !Number.isSafeInteger(value.sequence) || value.sequence < 0 ||
       (value.priorScoreEventHash !== null && !SHA256.test(value.priorScoreEventHash ?? '')) ||
+      !SHA256.test(value.sourceConversationHeadSha256 ?? '') ||
       !Array.isArray(value.sourceBindings) || value.sourceBindings.length === 0 || value.privacyClass !== 'DEVICE_PRIVATE' ||
       value.rawSourceContentIncluded !== false || (fileName !== null && fileName !== expectedFile)) {
     fail('SCORE_EVENT_CORRUPT', 'Score event content/address/identity is invalid', { fileName, expectedFile });
@@ -345,7 +525,8 @@ function assertScoreEvent(value, identity, threadRef, fileName = null) {
     }
   } else if (value.eventKind === 'OPEN_LOOP') {
     safeRef(value.openLoopRef, 'openLoopRef', 'OPEN_LOOP_INVALID');
-    if (!['OPEN', 'RESOLVED'].includes(value.openLoopState)) fail('OPEN_LOOP_INVALID', 'unknown open-loop state');
+    if (value.openLoopState !== 'OPEN') fail('OPEN_LOOP_INVALID', 'G02 persists unresolved open loops only; source-managed resolution is not admitted');
+    if (!Array.isArray(value.sourceStatementRefs) || value.sourceStatementRefs.length === 0) fail('OPEN_LOOP_INVALID', 'open loop requires source statement refs');
   } else fail('SCORE_EVENT_CORRUPT', 'unknown Score event kind');
   return value;
 }
@@ -396,15 +577,23 @@ function applyEvent(projection, event) {
     if (event.correctsStatementRef && event.supersedesStatementRef) fail('SCORE_LINK_INVALID', 'one statement cannot simultaneously correct and supersede distinct history');
     if (event.correctsStatementRef) {
       const prior = statements.get(event.correctsStatementRef);
+      if (prior.current !== true || prior.subjectRef !== event.subjectRef || prior.memoryRelation !== event.memoryRelation) {
+        fail('SCORE_LINK_INVALID', 'correction must preserve exact current semantic subject and memory relation');
+      }
       statements.set(prior.statementRef, { ...prior, effectiveState: 'CORRECTED', current: false, correctedByRef: event.statementRef });
     }
     if (event.supersedesStatementRef) {
       const prior = statements.get(event.supersedesStatementRef);
+      if (prior.current !== true || prior.subjectRef !== event.subjectRef || prior.memoryRelation !== event.memoryRelation) {
+        fail('SCORE_LINK_INVALID', 'supersession must preserve exact current semantic subject and memory relation');
+      }
       statements.set(prior.statementRef, { ...prior, effectiveState: 'SUPERSEDED', current: false, supersededByRef: event.statementRef });
     }
     statements.set(event.statementRef, {
       statementRef: event.statementRef,
       subjectRef: event.subjectRef,
+      companionLineageRef: event.companionLineageRef,
+      threadRef: event.threadRef,
       memoryRelation: event.memoryRelation,
       recordedStatementState: event.statementState,
       effectiveState: event.statementState,
@@ -418,21 +607,17 @@ function applyEvent(projection, event) {
       current: !['SUPERSEDED', 'RELEASED_OR_TOMBSTONED'].includes(event.statementState)
     });
   } else {
-    if (event.openLoopState === 'OPEN') {
-      openLoops.set(event.openLoopRef, {
-        openLoopRef: event.openLoopRef,
-        summaryRef: event.summaryRef,
-        sourceStatementRefs: [...event.sourceStatementRefs],
-        sourceBindings: structuredClone(event.sourceBindings),
-        eventRef: event.scoreEventRef,
-        eventHash: event.scoreEventHash,
-        state: 'OPEN'
-      });
-    } else {
-      const prior = openLoops.get(event.openLoopRef);
-      if (!prior || prior.state !== 'OPEN') fail('OPEN_LOOP_INVALID', 'resolved open loop must reference one current open loop');
-      openLoops.set(event.openLoopRef, { ...prior, state: 'RESOLVED', resolvedByEventRef: event.scoreEventRef });
-    }
+    if (event.openLoopState !== 'OPEN') fail('OPEN_LOOP_INVALID', 'G02 open-loop resolution is held pending a source-managed resolution contract');
+    if (openLoops.has(event.openLoopRef)) fail('OPEN_LOOP_INVALID', 'openLoopRef is duplicated in Score history');
+    openLoops.set(event.openLoopRef, {
+      openLoopRef: event.openLoopRef,
+      summaryRef: event.summaryRef,
+      sourceStatementRefs: [...event.sourceStatementRefs],
+      sourceBindings: structuredClone(event.sourceBindings),
+      eventRef: event.scoreEventRef,
+      eventHash: event.scoreEventHash,
+      state: 'OPEN'
+    });
   }
   return { statements: [...statements.values()], openLoops: [...openLoops.values()] };
 }
@@ -483,6 +668,8 @@ export function loadScoreContextState({ home, homeRef, deviceRef, companionLinea
     }
     if (chain.at(-1)?.scoreEventHash !== head.eventHash) fail('SCORE_HEAD_MISMATCH', 'Score head does not bind exact final event');
   }
+  const committedG01 = allEvents.length ? validateCommittedG01Conversation(identity, thread) : null;
+  for (const event of chain) validateScoreEventSourceAgainstCommittedG01(event, committedG01, identity, thread);
   const projection = replayChain(chain);
   const currentStatementRefs = projection.statements.filter((item) => item.current).map((item) => item.statementRef).sort();
   const openLoopRefs = projection.openLoops.filter((item) => item.state === 'OPEN').map((item) => item.openLoopRef).sort();
@@ -490,9 +677,23 @@ export function loadScoreContextState({ home, homeRef, deviceRef, companionLinea
     fail('SCORE_HEAD_MISMATCH', 'Score head current-set projection differs from replay');
   }
   const reachable = new Set(chain.map((event) => event.scoreEventHash));
-  const uncommittedTail = allEvents.filter((event) => !reachable.has(event.scoreEventHash))
-    .sort((a, b) => a.sequence - b.sequence || a.scoreEventHash.localeCompare(b.scoreEventHash));
+  const uncommittedTail = [];
   const attention = invalid.map((item) => ({ code: 'INVALID_TAIL', ...item }));
+  const expectedTailSequence = head ? head.sequence + 1 : 0;
+  const expectedTailPrior = head?.eventHash ?? null;
+  for (const event of allEvents.filter((item) => !reachable.has(item.scoreEventHash))
+    .sort((a, b) => a.sequence - b.sequence || a.scoreEventHash.localeCompare(b.scoreEventHash))) {
+    try {
+      validateScoreEventSourceAgainstCommittedG01(event, committedG01, identity, thread);
+      if (event.sequence !== expectedTailSequence || event.priorScoreEventHash !== expectedTailPrior) {
+        attention.push({ code: 'INVALID_TAIL', reason: 'REORDERED_OR_READRESSED_TAIL', eventRef: event.scoreEventRef, eventHash: event.scoreEventHash });
+      } else {
+        uncommittedTail.push(event);
+      }
+    } catch (error) {
+      attention.push({ code: 'INVALID_TAIL', reason: error.code ?? 'SCORE_SOURCE_INVALID', eventRef: event.scoreEventRef, eventHash: event.scoreEventHash, message: error.message });
+    }
+  }
   const writer = writerObservation(paths);
   return {
     schemaVersion: 'vexlife.score-context-state/v1',
@@ -581,10 +782,18 @@ export function appendScoreStatement(input) {
     if ((corrects && !currentRefs.has(corrects)) || (supersedes && !currentRefs.has(supersedes))) {
       fail('SCORE_LINK_INVALID', 'correction or supersession must target one exact current statement');
     }
-    const bindings = sourceBindings(input.sourceEvents, identity, thread);
+    const transitionTargetRef = corrects ?? supersedes;
+    if (transitionTargetRef) {
+      const prior = state.statements.find((item) => item.statementRef === transitionTargetRef);
+      if (!prior || prior.subjectRef !== subjectRef || prior.memoryRelation !== relation) {
+        fail('SCORE_LINK_INVALID', 'correction or supersession cannot cross semantic subject or memory relation');
+      }
+    }
+    const source = sourceBindings(input.sourceEvents, identity, thread, input.sourceConversationHeadSha256);
+    const bindings = source.bindings;
     const formedAt = input.formedAt ?? new Date().toISOString();
     canonicalTimestamp(formedAt, 'score event formedAt');
-    const continuityObservation = formSharedSourceObservation(input.sourceEvents, bindings, identity, thread, instanceRef, formedAt);
+    const continuityObservation = formSharedSourceObservation(source.sourceEvents, bindings, identity, thread, instanceRef, formedAt);
     const summary = string(input.summary, 'summary', 'SCORE_EVENT_CORRUPT');
     const eventCore = {
       schemaVersion: 'vexlife.score-context-event/v1',
@@ -622,6 +831,11 @@ export function appendScoreStatement(input) {
 
 export function appendOpenLoop(input) {
   if (!SHA256.test(input.sourceConversationHeadSha256 ?? '')) fail('SCORE_SOURCE_INVALID', 'exact G01 conversation head SHA-256 is required');
+  if (input.openLoopState !== 'OPEN') {
+    fail('OPEN_LOOP_INVALID', 'G02 open-loop resolution is held pending a source-managed resolution contract', {
+      exactNextSafeRoute: 'SOURCE_MANAGED_OPEN_LOOP_RESOLUTION_NOT_ADMITTED_IN_G02'
+    });
+  }
   const identity = loadIdentity(input.home, { homeRef: input.homeRef, deviceRef: input.deviceRef, companionLineageRef: input.companionLineageRef });
   const thread = safeRef(input.threadRef, 'threadRef');
   const instanceRef = safeRef(input.instanceRef, 'instanceRef');
@@ -631,19 +845,19 @@ export function appendOpenLoop(input) {
     const state = loadScoreContextState({ home: identity.homeRoot, homeRef: identity.homeRef, deviceRef: identity.deviceRef, companionLineageRef: identity.companionLineageRef, threadRef: thread });
     assertExpectedState(state, input.expectedScoreHeadSha256 ?? null);
     const openLoopRef = safeRef(input.openLoopRef, 'openLoopRef', 'OPEN_LOOP_INVALID');
-    const resolving = input.openLoopState === 'RESOLVED';
-    if (!['OPEN', 'RESOLVED'].includes(input.openLoopState)) fail('OPEN_LOOP_INVALID', 'openLoopState must be OPEN or RESOLVED');
-    if (resolving && !state.openLoopRefs.includes(openLoopRef)) fail('OPEN_LOOP_INVALID', 'resolved open loop is not currently open');
-    if (!resolving && state.openLoops.some((item) => item.openLoopRef === openLoopRef)) fail('OPEN_LOOP_INVALID', 'openLoopRef already exists');
+    if (state.openLoops.some((item) => item.openLoopRef === openLoopRef)) fail('OPEN_LOOP_INVALID', 'openLoopRef already exists');
     const sourceStatementRefs = [...new Set(input.sourceStatementRefs ?? [])].sort();
+    if (sourceStatementRefs.length === 0) fail('OPEN_LOOP_INVALID', 'open loop requires at least one exact source statement');
     for (const ref of sourceStatementRefs) {
       safeRef(ref, 'sourceStatementRef', 'OPEN_LOOP_INVALID');
-      if (!state.statements.some((item) => item.statementRef === ref)) fail('OPEN_LOOP_INVALID', `source statement ${ref} is absent`);
+      const statement = state.statements.find((item) => item.statementRef === ref);
+      if (!statement || statement.current !== true) fail('OPEN_LOOP_INVALID', `source statement ${ref} is absent or non-current`);
     }
-    const bindings = sourceBindings(input.sourceEvents, identity, thread);
+    const source = sourceBindings(input.sourceEvents, identity, thread, input.sourceConversationHeadSha256);
+    const bindings = source.bindings;
     const formedAt = input.formedAt ?? new Date().toISOString();
     canonicalTimestamp(formedAt, 'open-loop event formedAt');
-    const continuityObservation = formSharedSourceObservation(input.sourceEvents, bindings, identity, thread, instanceRef, formedAt);
+    const continuityObservation = formSharedSourceObservation(source.sourceEvents, bindings, identity, thread, instanceRef, formedAt);
     const eventCore = {
       schemaVersion: 'vexlife.score-context-event/v1',
       eventKind: 'OPEN_LOOP',
@@ -658,7 +872,7 @@ export function appendOpenLoop(input) {
       sourceBindings: bindings,
       continuityObservation,
       openLoopRef,
-      openLoopState: input.openLoopState,
+      openLoopState: 'OPEN',
       summaryRef: input.summaryRef ?? null,
       sourceStatementRefs,
       privacyClass: 'DEVICE_PRIVATE',
@@ -672,33 +886,152 @@ export function appendOpenLoop(input) {
   }
 }
 
-export function evaluateFirstPersonEligibility(statement, gates = {}) {
-  if (!statement || typeof statement !== 'object') fail('SCORE_LINK_INVALID', 'statement projection is required');
+export function createFirstPersonEligibilityEvidence(state, statementRef, input = {}) {
+  const ref = safeRef(statementRef, 'statementRef', 'FIRST_PERSON_EVIDENCE_INVALID');
+  const statement = state?.statements?.find((item) => item.statementRef === ref);
+  if (!statement) fail('FIRST_PERSON_EVIDENCE_INVALID', 'first-person evidence requires one replayed Score statement');
+  if (state.identity?.companionLineageRef !== statement.companionLineageRef || state.threadRef !== statement.threadRef) {
+    fail('FIRST_PERSON_EVIDENCE_INVALID', 'first-person evidence statement identity is not owned by this replayed Score state');
+  }
+  const committed = validateCommittedG01Conversation(state.identity, state.threadRef);
+  const observedSources = validateStoredSourceBindings(statement.sourceBindings, committed);
+  const sourceByHash = new Map(observedSources.map((event) => [event.eventHash, event]));
+  const requestSpeakers = new Map(observedSources
+    .filter((event) => event.eventKind === 'REQUEST')
+    .map((event) => [event.eventHash, event.speakerRef]));
+  const gateNames = ['PROVENANCE_CURRENT', 'BRANCH_RELATION_CURRENT', 'IDENTITY_STANCE_PERMITTED', 'CONSENT_PERMITTED'];
+  const supplied = Array.isArray(input.evidenceBindings) ? input.evidenceBindings : [];
+  const formedAt = input.formedAt ?? new Date().toISOString();
+  canonicalTimestamp(formedAt, 'first-person eligibility evidence formedAt');
+  const evidenceBindings = gateNames.map((gate) => {
+    const binding = supplied.find((item) => item?.gate === gate);
+    if (!binding || !SHA256.test(binding.sourceEventHash ?? '') || !sourceByHash.has(binding.sourceEventHash)) {
+      fail('FIRST_PERSON_EVIDENCE_INVALID', `first-person ${gate} evidence is missing or not bound to committed statement source`);
+    }
+    const source = sourceByHash.get(binding.sourceEventHash);
+    const expectedIssuer = gate === 'IDENTITY_STANCE_PERMITTED'
+      ? state.identity.companionLineageRef
+      : gate === 'CONSENT_PERMITTED'
+        ? requestSpeakers.get(binding.sourceEventHash) ?? null
+        : 'system.vexlife.score-context-continuity';
+    if (!expectedIssuer || binding.issuerRef !== expectedIssuer || binding.disposition !== 'PERMITTED') {
+      fail('FIRST_PERSON_EVIDENCE_INVALID', `first-person ${gate} evidence issuer or disposition is not source-authorized`);
+    }
+    const core = {
+      schemaVersion: 'vexlife.first-person-gate-evidence/v1',
+      gate,
+      issuerRef: binding.issuerRef,
+      disposition: 'PERMITTED',
+      sourceEventRef: source.eventRef,
+      sourceEventHash: source.eventHash,
+      sourceContentHash: source.contentHash,
+      statementRef: statement.statementRef,
+      statementEventHash: statement.eventHash,
+      companionLineageRef: state.identity.companionLineageRef,
+      threadRef: state.threadRef,
+      observedConversationHeadSha256: committed.head.conversationHeadSha256,
+      formedAt
+    };
+    const evidenceRef = `first-person-gate.${gate.toLowerCase().replaceAll('_', '-')}.${semanticHash(core).slice(0, 24)}`;
+    const withRef = { ...core, evidenceRef };
+    return Object.freeze({ ...withRef, semanticFingerprint: semanticHash(withRef) });
+  });
+  if (new Set(evidenceBindings.map((item) => item.gate)).size !== gateNames.length) {
+    fail('FIRST_PERSON_EVIDENCE_INVALID', 'first-person gate evidence must cover each exact gate once');
+  }
+  const core = {
+    schemaVersion: 'vexlife.first-person-eligibility-evidence/v2',
+    statementRef: statement.statementRef,
+    statementEventHash: statement.eventHash,
+    companionLineageRef: state.identity.companionLineageRef,
+    threadRef: state.threadRef,
+    observedConversationHeadSha256: committed.head.conversationHeadSha256,
+    evidenceBindings,
+    currentness: 'CURRENT',
+    formedAt
+  };
+  const evidenceRef = `first-person-eligibility.${semanticHash(core).slice(0, 24)}`;
+  const withRef = { ...core, evidenceRef };
+  return Object.freeze({ ...withRef, semanticFingerprint: semanticHash(withRef) });
+}
+
+function validateFirstPersonEligibilityEvidence(state, statement, evidence) {
+  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return false;
+  const { semanticFingerprint, ...core } = evidence;
+  if (evidence.schemaVersion !== 'vexlife.first-person-eligibility-evidence/v2' || !SHA256.test(semanticFingerprint ?? '') ||
+      semanticHash(core) !== semanticFingerprint || evidence.currentness !== 'CURRENT' ||
+      evidence.statementRef !== statement.statementRef || evidence.statementEventHash !== statement.eventHash ||
+      evidence.companionLineageRef !== state.identity?.companionLineageRef || evidence.threadRef !== state.threadRef ||
+      !Array.isArray(evidence.evidenceBindings) || evidence.evidenceBindings.length !== 4) return false;
+  let committed;
+  let observedSources;
+  try {
+    committed = validateCommittedG01Conversation(state.identity, state.threadRef);
+    observedSources = validateStoredSourceBindings(statement.sourceBindings, committed);
+  } catch { return false; }
+  if (evidence.observedConversationHeadSha256 !== committed.head.conversationHeadSha256) return false;
+  const sourceByHash = new Map(observedSources.map((event) => [event.eventHash, event]));
+  const requestSpeakers = new Map(observedSources.filter((event) => event.eventKind === 'REQUEST').map((event) => [event.eventHash, event.speakerRef]));
+  const expectedGates = ['PROVENANCE_CURRENT', 'BRANCH_RELATION_CURRENT', 'IDENTITY_STANCE_PERMITTED', 'CONSENT_PERMITTED'];
+  if (JSON.stringify(evidence.evidenceBindings.map((item) => item.gate)) !== JSON.stringify(expectedGates)) return false;
+  for (const item of evidence.evidenceBindings) {
+    if (!item || item.schemaVersion !== 'vexlife.first-person-gate-evidence/v1' || !SHA256.test(item.semanticFingerprint ?? '')) return false;
+    const itemCore = structuredClone(item);
+    const itemFingerprint = itemCore.semanticFingerprint;
+    delete itemCore.semanticFingerprint;
+    if (semanticHash(itemCore) !== itemFingerprint || item.disposition !== 'PERMITTED' ||
+        item.statementRef !== statement.statementRef || item.statementEventHash !== statement.eventHash ||
+        item.companionLineageRef !== state.identity.companionLineageRef || item.threadRef !== state.threadRef ||
+        item.observedConversationHeadSha256 !== committed.head.conversationHeadSha256) return false;
+    const source = sourceByHash.get(item.sourceEventHash);
+    if (!source || item.sourceEventRef !== source.eventRef || item.sourceContentHash !== source.contentHash) return false;
+    const expectedIssuer = item.gate === 'IDENTITY_STANCE_PERMITTED'
+      ? state.identity.companionLineageRef
+      : item.gate === 'CONSENT_PERMITTED'
+        ? requestSpeakers.get(item.sourceEventHash) ?? null
+        : 'system.vexlife.score-context-continuity';
+    if (!expectedIssuer || item.issuerRef !== expectedIssuer) return false;
+  }
+  return true;
+}
+
+export function evaluateFirstPersonEligibility(state, statementRef, evidence = null) {
+  const ref = safeRef(statementRef, 'statementRef', 'SCORE_LINK_INVALID');
+  const statement = state?.statements?.find((item) => item.statementRef === ref);
+  if (!statement) fail('SCORE_LINK_INVALID', 'statement is absent from replayed Score state');
   const relation = statement.memoryRelation;
   if (!SCORE_CONTEXT_MEMORY_RELATIONS.includes(relation)) fail('MEMORY_RELATION_INVALID', 'statement memory relation is invalid');
   const blockedState = ['CONFLICTED', 'UNKNOWN', 'SUPERSEDED', 'RELEASED_OR_TOMBSTONED'].includes(statement.effectiveState);
+  const evidenceCurrent = validateFirstPersonEligibilityEvidence(state, statement, evidence);
   const eligible = relation === 'CURRENT_LINEAGE_AUTOBIOGRAPHY' && statement.current === true && !blockedState &&
-    statement.acceptedForContinuity === true && statement.consentState === 'PERMITTED' &&
-    gates.provenanceCurrent === true && gates.branchRelationCurrent === true &&
-    gates.identityStancePermits === true && gates.consentPermits === true;
+    statement.acceptedForContinuity === true && statement.consentState === 'PERMITTED' && evidenceCurrent;
   const wordingMode = eligible ? 'FIRST_PERSON_MEMORY_ELIGIBLE'
     : relation === 'SHARED_RELATIONSHIP_HISTORY' ? 'RELATIONSHIP_ATTRIBUTED'
       : relation === 'PREDECESSOR_WITNESS_HISTORY' ? 'PREDECESSOR_ATTRIBUTED'
         : ['INHERITED_CONTEXT', 'EXTERNAL_EVIDENCE'].includes(relation) ? 'SOURCE_ATTRIBUTED'
           : relation === 'DISPUTED_OR_UNRESOLVED' ? 'UNRESOLVED_ATTRIBUTED'
             : 'NON_AUTOBIOGRAPHICAL_ATTRIBUTED';
-  return Object.freeze({ eligible, wordingMode, historicalAuthorityFromRhythm: false });
+  return Object.freeze({
+    eligible,
+    wordingMode,
+    evidenceState: evidenceCurrent ? 'EXACT_CURRENT_SOURCE_BOUND_EVIDENCE' : 'MISSING_STALE_OR_INVALID_EVIDENCE',
+    historicalAuthorityFromRhythm: false
+  });
 }
 
 export function sourceDescentForStatement(state, statementRef) {
   const ref = safeRef(statementRef, 'statementRef', 'SCORE_LINK_INVALID');
   const statement = state?.statements?.find((item) => item.statementRef === ref);
   if (!statement) fail('SCORE_LINK_INVALID', 'statement is absent from replayed Score state');
+  const committed = validateCommittedG01Conversation(state.identity, state.threadRef);
+  const observedEvents = validateStoredSourceBindings(statement.sourceBindings, committed);
   return Object.freeze({
     statementRef: ref,
     scoreEventRef: statement.eventRef,
     scoreEventHash: statement.eventHash,
     sourceBindings: structuredClone(statement.sourceBindings),
+    observedCommittedSourceEventRefs: observedEvents.map((item) => item.eventRef),
+    observedCurrentConversationHeadSha256: committed.head.conversationHeadSha256,
     continuityObservationRef: state.chain.find((event) => event.scoreEventRef === statement.eventRef)?.continuityObservation?.observationRef ?? null,
     continuityObservationFingerprint: state.chain.find((event) => event.scoreEventRef === statement.eventRef)?.continuityObservation?.semanticFingerprint ?? null,
     sharedSemanticDispositionRef: SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION,
