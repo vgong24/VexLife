@@ -210,8 +210,17 @@ function appendStatement(ids, authority, statementRef) {
     semanticAcceptanceRef: authority.acceptance.acceptanceRef, semanticAcceptanceSha256: authority.acceptance.acceptanceSha256 });
 }
 
+function canonicalProofTempRoot() {
+  const requested = path.resolve(os.tmpdir());
+  try {
+    return fs.realpathSync.native(requested);
+  } catch {
+    return requested;
+  }
+}
+
 export function createDailyMemoryDreamFixture(prefix = 'proof', homeOverride = null) {
-  const home = homeOverride ? path.resolve(homeOverride) : path.join(fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-g03-${prefix}-`)), 'home');
+  const home = homeOverride ? path.resolve(homeOverride) : path.join(fs.mkdtempSync(path.join(canonicalProofTempRoot(), `vexlife-g03-${prefix}-`)), 'home');
   if (homeOverride) fs.rmSync(home, { recursive: true, force: true });
   const ids = { home, homeRef: `home.g03.${prefix}`, familyRef: `family.g03.${prefix}`, deviceRef: `device.g03.${prefix}`,
     companionLineageRef: `lineage.g03.${prefix}`, threadRef: `thread.g03.${prefix}`, instanceRef: `instance.g03.${prefix}` };
@@ -241,7 +250,7 @@ function commitInput(fixture, overrides = {}) {
 }
 
 function cloneFixture(source, suffix) {
-  const target = path.join(fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-g03-${suffix}-`)), 'home');
+  const target = path.join(fs.mkdtempSync(path.join(canonicalProofTempRoot(), `vexlife-g03-${suffix}-`)), 'home');
   fs.cpSync(source.ids.home, target, { recursive: true });
   const ids = { ...source.ids, home: target, instanceRef: `instance.g03.${suffix}` };
   return { ids, g01: structuredClone(source.g01), score: structuredClone(source.score), privateNeedles: source.privateNeedles };
