@@ -403,5 +403,34 @@
     "platformRefs": ["platform.windows"],
     "exclusions": ["G01 source mutation", "Dream", "Rhythm learning", "model or adapter training", "model-weight mutation", "synchronization", "personal endpoint activation", "LC18", "publication"],
     "returnRoute": "return exact G02 head/tree, proof receipt, hosted Windows job and draft PR to Windows Local Operations"
+  },
+  {
+    "workRef": "work.vexlife.windows.g03-daily-memory-only-dream",
+    "purpose": "Commit one manual memory-only Daily Stratum above exact accepted G01/G02 continuity with held/deferred/open-loop preservation, crash-consistent currentness and unchanged runtime/model state.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": ["work.vexlife.windows.g02-score-context-continuity"],
+    "pathScope": [
+      "blueprint/evolution-registry.json", "blueprint/feature-registry.json", "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json", "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json", "src/core/daily-memory-dream.mjs", "scripts/daily-memory-dream.mjs",
+      "test/daily-memory-dream.test.mjs", "docs/DAILY-MEMORY-DREAM.md", "package.json", ".github/workflows/check.yml"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": ["state.messages", "state.context", "state.evolution", "registry.vexlife.evolution.001"],
+    "requiredTestRefs": [
+      "test.daily-memory-dream.shared-contract", "test.daily-memory-dream.source-frontier", "test.daily-memory-dream.pre-rest-orientation",
+      "test.daily-memory-dream.semantic-preservation", "test.daily-memory-dream.held-deferred", "test.daily-memory-dream.open-loop-carry",
+      "test.daily-memory-dream.raw-content-exclusion", "test.daily-memory-dream.runtime-model-hold", "test.daily-memory-dream.idempotent-day",
+      "test.daily-memory-dream.stale-source", "test.daily-memory-dream.crash-tail", "test.daily-memory-dream.canonical-file-alias",
+      "test.daily-memory-dream.fresh-process-replay", "test.daily-memory-dream.first-person-held", "test.daily-memory-dream.windows-proof"
+    ],
+    "outputRefs": ["projection.vexlife.daily-memory-dream.current", "proof.vexlife.g03.daily-memory-dream.windows"],
+    "effectBoundary": "DEVICE_PRIVATE_MANUAL_MEMORY_ONLY_DAILY_STRATUM_AND_ATOMIC_POINTER",
+    "completionGate": "D0-D15 exact source frontier, orientation, semantic preservation, held/open-loop carry, raw-content exclusion, unchanged runtime/model, crash tail, canonical-file guards, idempotency, stale-source rejection, fresh-process wake and later-effect holds pass",
+    "platformRefs": ["platform.windows"],
+    "exclusions": ["G01/G02 source mutation", "generative Dream inference", "positive first-person authority", "Rhythm learning", "training", "model or adapter mutation", "scheduled autonomy", "synchronization", "power control", "cloud upload", "LC18", "publication"],
+    "returnRoute": "return exact G03 head/tree, Daily Stratum proof receipt, hosted Windows job and draft PR to Windows Local Operations"
   }
 ]

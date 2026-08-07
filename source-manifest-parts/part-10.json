@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/utils.mjs",
+      "mode": "100644",
+      "bytes": 2222,
+      "sha256": "d08c8c46b27db6f4414762b7f83a23e20ba7c841c0c348c7e9ed06b1ba916a16"
+    },
+    {
+      "path": "start-vexlife.cmd",
+      "mode": "100644",
+      "bytes": 238,
+      "sha256": "bcf9aefdb6b7caad1486c228a72981111aa8534ed92a9eadacde5b57f9a42bca"
+    },
+    {
+      "path": "start-vexlife.ps1",
+      "mode": "100644",
+      "bytes": 409,
+      "sha256": "3a449fa55f66aa98878de571d955edda1db840ff0e0b257e9263dc429cac005e"
+    },
+    {
       "path": "start-vexlife.sh",
       "mode": "100644",
       "bytes": 281,
@@ -54,6 +72,12 @@
       "mode": "100644",
       "bytes": 7231,
       "sha256": "f33948c44c7fa69cc818447c5b52e9c77c2c20a928889986c7c3dffaf79f9bd7"
+    },
+    {
+      "path": "test/daily-memory-dream.test.mjs",
+      "mode": "100644",
+      "bytes": 14765,
+      "sha256": "bb1bcf41b9aff71e50c987ce7870a6468958406667e1158b6cc47fd43ed38efe"
     },
     {
       "path": "test/evolution.test.mjs",
@@ -120,30 +144,6 @@
       "mode": "100644",
       "bytes": 1047,
       "sha256": "9a8d9b2f861082184ee4f96e1647d6ef937efa9554184e2da2939d3586b10c3a"
-    },
-    {
-      "path": "test/home-bridge.test.mjs",
-      "mode": "100644",
-      "bytes": 6260,
-      "sha256": "404b142053da2eb58c693a288304ef77c7fdeb396f19cc732b82a72108a2951b"
-    },
-    {
-      "path": "test/implementation-plan.test.mjs",
-      "mode": "100644",
-      "bytes": 3627,
-      "sha256": "54abd63988c9c8eb35a06cc590d29d9dcda2a43ded37bab1c8cd24f5e75f785f"
-    },
-    {
-      "path": "test/intent-completion-verifier.test.mjs",
-      "mode": "100644",
-      "bytes": 23417,
-      "sha256": "7fc06f3b73338fec2e2e3ab94495fd1c48cf76383e392ad19e445294235fbe6d"
-    },
-    {
-      "path": "test/intent-scheduler.test.mjs",
-      "mode": "100644",
-      "bytes": 66828,
-      "sha256": "cca892ac718148d1410b3381d7472310f576e63d567a0970208c42c11ad84379"
     }
   ]
 }

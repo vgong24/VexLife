@@ -51,7 +51,8 @@
     "pr-ready": "node scripts/build-admission-check.mjs --consumer PR_READY && node scripts/pr-ready.mjs",
     "build-admission:host-proof": "node scripts/build-admission-check.mjs --host-proof",
     "lived-companion:proof": "node scripts/lived-companion.mjs proof",
-    "score-context:proof": "node scripts/score-context-continuity.mjs proof"
+    "score-context:proof": "node scripts/score-context-continuity.mjs proof",
+    "daily-memory-dream:proof": "node scripts/daily-memory-dream.mjs proof"
   },
   "devDependencies": {
     "playwright": "1.61.1"

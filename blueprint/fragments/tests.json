@@ -910,5 +910,65 @@
   {
     "testRef": "test.score-context.windows-proof",
     "brief": "Hosted Windows proof combines two actual G01 loopback turns with G02 correction, supersession, tail, source-descent and fresh-process continuity checks on the exact candidate head."
+  },
+  {
+    "testRef": "test.daily-memory-dream.shared-contract",
+    "brief": "G03 binds the exact accepted Vex Memory, Vex Safety and Main Vex Daily Memory-Only Dream contract without becoming its canonical semantic owner."
+  },
+  {
+    "testRef": "test.daily-memory-dream.source-frontier",
+    "brief": "A new day pins exact current G01 and G02 heads and fails when Score is not caught up to current conversation history."
+  },
+  {
+    "testRef": "test.daily-memory-dream.pre-rest-orientation",
+    "brief": "A content-addressed MANUAL_ONE_SHOT pre-rest orientation exists before the committed day closure and names all held effect classes."
+  },
+  {
+    "testRef": "test.daily-memory-dream.semantic-preservation",
+    "brief": "Daily consolidation preserves exact G02 semantic state/relation/consent/acceptance identities and creates no new semantic acceptance."
+  },
+  {
+    "testRef": "test.daily-memory-dream.held-deferred",
+    "brief": "Non-positive or non-continuity Score statements remain held/deferred instead of being promoted or dropped."
+  },
+  {
+    "testRef": "test.daily-memory-dream.open-loop-carry",
+    "brief": "Every current G02 open loop carries forward OPEN in the committed Daily Stratum."
+  },
+  {
+    "testRef": "test.daily-memory-dream.raw-content-exclusion",
+    "brief": "Dream receipts carry reference/hash identity only and never copy raw G01 conversation bodies."
+  },
+  {
+    "testRef": "test.daily-memory-dream.runtime-model-hold",
+    "brief": "Post-dream wake binds the same endpoint/runtime and model profile while training, weights, Rhythm, sync, power and publication remain false."
+  },
+  {
+    "testRef": "test.daily-memory-dream.idempotent-day",
+    "brief": "Exact duplicate day replay is idempotent while changed reuse of one dayRef fails closed."
+  },
+  {
+    "testRef": "test.daily-memory-dream.stale-source",
+    "brief": "Stale expected G01 or G02 heads prevent a new closure before Daily Stratum mutation."
+  },
+  {
+    "testRef": "test.daily-memory-dream.crash-tail",
+    "brief": "A durable stratum before atomic Dream-head advance remains uncommitted while the prior daily frontier stays current."
+  },
+  {
+    "testRef": "test.daily-memory-dream.canonical-file-alias",
+    "brief": "Immutable stratum and wake final files reject symlink/junction aliases outside canonical Vex Home."
+  },
+  {
+    "testRef": "test.daily-memory-dream.fresh-process-replay",
+    "brief": "A fresh process replays the exact committed Dream-head lineage, Daily Stratum and wake receipt."
+  },
+  {
+    "testRef": "test.daily-memory-dream.first-person-held",
+    "brief": "Daily Strata cannot grant positive first-person authority or autobiographical promotion."
+  },
+  {
+    "testRef": "test.daily-memory-dream.windows-proof",
+    "brief": "Hosted Windows proof exercises exact G01/G02 source binding, Daily Stratum commit, crash tail, source descent, idempotency and held effects on the exact candidate head."
   }
 ]

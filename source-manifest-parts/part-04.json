@@ -68,6 +68,12 @@
       "sha256": "1b5a606f744ae22e4be5e8f7853a1bd383b0dd2a1136f4861b4377567a0d1653"
     },
     {
+      "path": "docs/DAILY-MEMORY-DREAM.md",
+      "mode": "100644",
+      "bytes": 7040,
+      "sha256": "d488a90903f5c9d6ce8b556468851061ed49bdbf3bb7a5a5bb4d63fb5c4b60f8"
+    },
+    {
       "path": "docs/DESKTOP-FIRST-EXECUTION-WAVE.md",
       "mode": "100644",
       "bytes": 1592,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 13044,
       "sha256": "1de3d47ca01fef729a4884c14366b0b7b79265c40232ec0acf8133d985cb2b70"
-    },
-    {
-      "path": "docs/MULTILINGUAL-INTENT-RELAY.md",
-      "mode": "100644",
-      "bytes": 2152,
-      "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
     }
   ]
 }

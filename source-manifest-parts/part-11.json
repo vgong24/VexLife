@@ -2,6 +2,30 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/home-bridge.test.mjs",
+      "mode": "100644",
+      "bytes": 6260,
+      "sha256": "404b142053da2eb58c693a288304ef77c7fdeb396f19cc732b82a72108a2951b"
+    },
+    {
+      "path": "test/implementation-plan.test.mjs",
+      "mode": "100644",
+      "bytes": 3627,
+      "sha256": "54abd63988c9c8eb35a06cc590d29d9dcda2a43ded37bab1c8cd24f5e75f785f"
+    },
+    {
+      "path": "test/intent-completion-verifier.test.mjs",
+      "mode": "100644",
+      "bytes": 23417,
+      "sha256": "7fc06f3b73338fec2e2e3ab94495fd1c48cf76383e392ad19e445294235fbe6d"
+    },
+    {
+      "path": "test/intent-scheduler.test.mjs",
+      "mode": "100644",
+      "bytes": 66828,
+      "sha256": "cca892ac718148d1410b3381d7472310f576e63d567a0970208c42c11ad84379"
+    },
+    {
       "path": "test/intent-workgraph.test.mjs",
       "mode": "100644",
       "bytes": 31577,

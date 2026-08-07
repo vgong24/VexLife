@@ -1113,6 +1113,28 @@
       "publication"
     ]
   },
+  "dailyMemoryDream": {
+    "schemaVersion": "vexlife.daily-memory-dream-product-projection/v1",
+    "projectionState": "PRODUCT_PROJECTION_OF_ACCEPTED_G03_SHARED_SEMANTICS",
+    "contractRef": "contract.multivex.g03.daily-memory-only-dream/v1",
+    "vexMemoryOwnerRef": "github.issue.vextreme-sdk.225.comment.5222362637",
+    "vexSafetyOwnerRef": "github.issue.vextreme-sdk.226.comment.5222369889",
+    "mainVexConvergenceRef": "github.issue.vextreme-sdk.350.comment.5222375713",
+    "canonicalSemanticOwner": "MAIN_VEX_VEX_MEMORY_AND_VEX_SAFETY_SHARED_CONTRACT",
+    "vexLifeCanonicalSemanticOwner": false,
+    "invocationMode": "MANUAL_ONE_SHOT",
+    "selectedMode": "MEMORY_ONLY_CONSOLIDATION",
+    "sourceRule": "EXACT_CURRENT_G01_AND_G02_HEADS_WITH_SCORE_CAUGHT_UP_TO_CONVERSATION",
+    "semanticRule": "PRESERVE_EXISTING_G02_AUTHORITY_WITHOUT_NEW_ACCEPTANCE_OR_RECLASSIFICATION",
+    "currentnessRule": "RAW_DAILY_RECEIPTS_ARE_NOT_CURRENT_UNTIL_IMMUTABLE_HEAD_RECEIPT_AND_ATOMIC_DREAM_HEAD_ADVANCE",
+    "dayIdentityRule": "EXPLICIT_DAY_REF_INDEX_DATE_TIMEZONE_OBSERVED_AT_WITH_EXACT_DUPLICATE_IDEMPOTENCY",
+    "moduleRef": "module.vexlife.core.daily-memory-dream",
+    "proofRef": "proof.vexlife.g03.daily-memory-dream.windows",
+    "heldEffects": [
+      "positive first-person authority", "Dream-aware generative inference", "Rhythm learning", "training",
+      "model or adapter mutation", "scheduled autonomy", "synchronization", "power control", "cloud upload", "LC18", "publication"
+    ]
+  },
   "successorBoundaries": [
     "Runtime Failure & Recovery Spine",
     "ConcernWatch threshold runtime",
