@@ -51,19 +51,22 @@ Unknown/denied standing consent never becomes self-trigger authority.
 current standing policy
 → canonical observed clock
 → rest-window eligibility
-→ interactive/resource yield checks
-→ one independent supervisor writer lease
+→ exact content-addressed supervisor-admission evidence composed from the existing source-managed `vexlife.intent-resource-snapshot/v1` contract bound to policy/tick/all six G01/G02/G03 frontier identities
+→ interactive/resource yield from that evidence (raw caller booleans are not authority)
+→ one PID-bound independent supervisor writer lease
+→ exact standing-policy generation re-read under the same exclusion domain
 → exact current G01/G02/G03 frontier re-read
 → derive policy-bound restInvocationAuthorityRef
 → accepted G03 commitDailyMemoryDream(...)
 → committed G03 Daily Stratum + wake + Dream head
-→ optional learning callback only after wake
+→ exact source-managed G04 Stage-A adapter only after wake (when requested)
 → immutable G05A daily receipt
+→ immutable G05A head lineage
 → atomic G05A current pointer
 → compact Victor/Vex projection + exact source descent
 ```
 
-The supervisor is a deterministic product-core owner, distinct from a model worker and from the G03 writer. This candidate does not install or register a native Windows service. Hosted Windows CI proves that the shared deterministic core executes on Windows; it is not native-service conformance.
+The supervisor is a deterministic product-core owner, distinct from a required model-worker ref and from a distinct G03 writer instance. Inside an eligible window, Dream execution requires one source-managed `vexlife.g05a.supervisor-admission-evidence/v1` receipt that is content-addressed and exact to the Home/device/lineage/thread, supervisor+instance, standing-policy ref/hash/head, observed tick, resource source/current timestamp, and the complete advertised six-field source frontier (`conversationHeadSha256`, `scoreHeadSha256`, `semanticAuthorityHeadSha256`, `dreamHeadSha256`, `dailyStratumSha256`, `wakeReceiptSha256`). Raw `interactivePending` or `resourceEvidence` caller fields are rejected and cannot authorize Dream.  Its lease binds the owning PID. An abandoned lease is recoverable only when that PID is provably absent. Standing-policy writes use the same exclusion domain, so the policy is re-read and exact-generation bound after supervisor admission and immediately before the G03 effect. This candidate does not install or register a native Windows service. Hosted Windows CI proves that the shared deterministic core executes on Windows; it is not native-service conformance.
 
 ## Wake is independent of optional learning
 
@@ -77,7 +80,7 @@ FAILED
 ACCEPTED_INACTIVE
 ```
 
-The callback runs only after the G03 wake is committed. `FAILED` is caught and recorded in the G05A receipt. G05A re-reads Score and the G03 Dream head after the callback and rejects any unexpected continuity mutation. A learning failure therefore cannot roll back or strand the already committed wake.
+G05A does **not** execute caller-supplied callbacks. For `EVALUATE_AFTER_WAKE`, the only executable optional-learning surface is the accepted source-managed G04 Stage-A evaluator, with G05A injecting the exact committed G01/G02/G03 frontier and requiring a content-addressed G04 disposition whose training, activation, Score/G03 mutation, cross-device, and publication effects remain false. Missing plans defer; invalid or failed G04 evaluation is recorded as `FAILED`. G05A also re-reads Score and the G03 Dream head after evaluation. A learning failure therefore cannot roll back or strand the already committed wake.
 
 G04 Stage A remains `FAITHFUL_SIMULATED_RHYTHM_CANDIDATE` / `ACCEPTED_INACTIVE_SIMULATION_ONLY`. Real private training, model/trainer runtime, adapter creation, weight mutation, and Rhythm activation remain separate Stage-B effects.
 
@@ -85,9 +88,9 @@ G04 Stage A remains `FAITHFUL_SIMULATED_RHYTHM_CANDIDATE` / `ACCEPTED_INACTIVE_S
 
 A committed G05A receipt for the same local calendar date suppresses duplicate ticks without forming another G03 day.
 
-If execution stops after G03 wake but before the G05A receipt/current pointer, the next exact tick observes the already committed same-day G03 frontier. It may complete the missing G05A receipt only when the G03 pre-rest orientation carries the exact rest-invocation authority derived from the current standing policy. Policy-generation drift fails closed instead of attaching a new policy to an old wake.
+If the process terminates after G03 wake but before the G05A receipt/current pointer, the PID-bound supervisor lease remains durable. A later process may remove it only after proving the recorded PID is absent, then observes the already committed same-day G03 frontier. It may complete the missing G05A receipt only when the G03 pre-rest orientation carries the exact rest-invocation authority derived from the current standing policy. Policy-generation drift fails closed instead of attaching a new policy to an old wake.
 
-A concurrent supervisor writer is rejected. Interactive work and unknown/insufficient resource evidence yield before Dream.
+A concurrent or unverifiable supervisor writer is rejected. The proof includes a real child-process termination after committed wake and verifies fresh-process absent-owner recovery without rerunning Dream. Interactive work and unknown/insufficient resource evidence yield before Dream.
 
 ## Daily receipt truth
 
@@ -95,11 +98,13 @@ The immutable receipt binds:
 
 ```text
 calendarDateRef / timeZoneRef / observedAt
-standing policy ref/hash + standing authority
-supervisor ref/instance
+standing policy ref/hash + immutable policy-head hash + standing authority
+supervisor ref/instance + model-worker ref + distinct G03 writer instance
+exact supervisor-admission evidence ref/hash + IDLE_CONFIRMED/resource source/currentness
+recovered-abandoned-supervisor flag
 G01 conversation / G02 Score / semantic-owner source heads
 G03 Dream head / Daily Stratum / wake receipt
-optional learning disposition + bounded failure code
+optional learning disposition + bounded failure code + exact G04 disposition ref/hash when executed
 wakeCommitted
 resumedAfterWake
 ```
@@ -117,11 +122,11 @@ nativeWindowsServiceInstalled=false
 publicationPerformed=false
 ```
 
-Raw conversation bodies are not copied into the G05A receipt or projection.
+Each receipt is reachable only through an immutable, contiguous G05A head chain whose current member is atomically projected by `head.json`. Source descent rejects addressed but orphaned receipts. Receipt validation is closed-schema, exact-identity, policy-source-bound, G03 historical-source-bound, and requires every held-effect field to remain false. The projection derives those held-effect values from the validated committed receipt instead of self-certifying constants. Raw conversation bodies are not copied into the G05A receipt or projection.
 
 ## Proof
 
-`npm run scheduled-daily-autonomy:proof` uses isolated synthetic Vex Homes and proves `G05A-0` through `G05A-12`, including standing-consent rejection, timezone/rest-window determinism, single-supervisor exclusion, interactive/resource yielding, actual G03 admission and wake, stale-source rejection, duplicate suppression, optional-learning absence/defer/reject/failure, crash-after-wake recovery, policy-drift rejection, source descent, and all held-effect flags.
+`npm run scheduled-daily-autonomy:proof` uses isolated synthetic Vex Homes and proves `G05A-0` through `G05A-12`, including standing-consent rejection, timezone/rest-window determinism, single-supervisor exclusion, exact supervisor-admission evidence, rejection of raw caller authority, interactive/resource yielding, actual G03 admission and wake, stale-source rejection across all six advertised frontier identities, duplicate suppression, optional-learning absence/defer/reject/failure through the exact G04 Stage-A adapter, arbitrary-callback rejection, real child-process crash-after-wake recovery, stale/policy-generation drift rejection, immutable head ancestry, orphan receipt rejection, source descent, and all held-effect flags.
 
 The hosted Windows job writes:
 

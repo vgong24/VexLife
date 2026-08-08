@@ -100,8 +100,8 @@
     {
       "path": "scripts/scheduled-daily-autonomy.mjs",
       "mode": "100644",
-      "bytes": 13678,
-      "sha256": "28cfae774d395ca68280366b47a51078657ae7cc58c6fa4d82fd50caad792715"
+      "bytes": 24122,
+      "sha256": "e4743db5caa79a89e4f2f619cb413c639fe15e4ac7a3a19ed9c83aaa43418cb3"
     },
     {
       "path": "scripts/scheduler-check.mjs",

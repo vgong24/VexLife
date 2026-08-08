@@ -1065,6 +1065,7 @@
     "reads": [
       "module.vexlife.core.daily-memory-dream",
       "module.vexlife.core.score-context-continuity",
+      "module.vexlife.core.resource-admission",
       "module.vexlife.core.utils"
     ],
     "writes": [

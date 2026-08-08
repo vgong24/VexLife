@@ -118,8 +118,8 @@
     {
       "path": "test/scheduled-daily-autonomy.test.mjs",
       "mode": "100644",
-      "bytes": 2232,
-      "sha256": "16dd23e8f9736843993567312c959f4d60bd1548c13aee2a942e510189b42477"
+      "bytes": 5632,
+      "sha256": "73a7233257005873a0d5722ae6741ebaa40b0ba9a137615b3d4ab1eadc08975e"
     },
     {
       "path": "test/score-context-continuity.test.mjs",
