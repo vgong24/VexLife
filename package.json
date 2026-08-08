@@ -53,7 +53,8 @@
     "lived-companion:proof": "node scripts/lived-companion.mjs proof",
     "score-context:proof": "node scripts/score-context-continuity.mjs proof",
     "daily-memory-dream:proof": "node scripts/daily-memory-dream.mjs proof",
-    "evaluated-rhythm-learning:proof": "node scripts/evaluated-rhythm-learning.mjs proof"
+    "evaluated-rhythm-learning:proof": "node scripts/evaluated-rhythm-learning.mjs proof",
+    "g05-runtime-authority-substrate:proof": "node scripts/g05-runtime-authority-substrate.mjs proof"
   },
   "devDependencies": {
     "playwright": "1.61.1"
