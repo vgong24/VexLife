@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/build-admission.mjs",
+      "mode": "100644",
+      "bytes": 82949,
+      "sha256": "7c43335b59f93018ef33e2ccce58ad32dae4438e9cea4eef47906d5509a60a97"
+    },
+    {
+      "path": "src/core/build-health.mjs",
+      "mode": "100644",
+      "bytes": 4344,
+      "sha256": "462112c34ac3acbab20efebd2f295a6fdac5813cff053df91358d281030c963d"
+    },
+    {
       "path": "src/core/burden-release.mjs",
       "mode": "100644",
       "bytes": 27656,
@@ -42,6 +54,12 @@
       "mode": "100644",
       "bytes": 2171,
       "sha256": "7087c6116acac848adff99a6a060bd67afd4e303df539782442ea1d2cc036331"
+    },
+    {
+      "path": "src/core/daily-memory-dream.mjs",
+      "mode": "100644",
+      "bytes": 60707,
+      "sha256": "1808e03fb3a9069b6b8d67a75a52c1699891f437aca6d9cf1217bf198fc0314f"
     },
     {
       "path": "src/core/device-family.mjs",
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 8289,
       "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
-    },
-    {
-      "path": "src/core/journey.mjs",
-      "mode": "100644",
-      "bytes": 1243,
-      "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
-    },
-    {
-      "path": "src/core/lived-companion.mjs",
-      "mode": "100644",
-      "bytes": 67395,
-      "sha256": "8b7e6a6d27ab0293013c69bd21ca6bc74642deacc1aa632acc692d7a272085d5"
-    },
-    {
-      "path": "src/core/local-git-effect-adapter.mjs",
-      "mode": "100644",
-      "bytes": 22567,
-      "sha256": "bbf90a244ad3e3c63a2521f5561e3ecd29d90bd0841271fdd4c5b04e62688878"
     }
   ]
 }

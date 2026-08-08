@@ -487,11 +487,77 @@ function homePaths(home, companionLineageRef, threadRef) {
   return {
     homeManifest: resolveHomePath(home, 'config', 'home.json'),
     events: resolveHomePath(home, 'conversations', lineage, thread, 'events'),
+    heads: resolveHomePath(home, 'conversations', lineage, thread, 'heads'),
     head: resolveHomePath(home, 'conversations', lineage, thread, 'head.json'),
     context: resolveHomePath(home, 'context', lineage, thread),
     runtime: resolveHomePath(home, 'runtime'),
     recovery: resolveHomePath(home, 'recovery')
   };
+}
+
+function immutableConversationHeadFile(home, admitted, threadRef, conversationHeadSha256) {
+  const safeThread = ensureSafeRef(threadRef, 'threadRef', 'CONVERSATION_HEAD_MISMATCH');
+  if (!/^[0-9a-f]{64}$/u.test(conversationHeadSha256 ?? '')) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'historical conversation head SHA-256 is invalid');
+  }
+  return resolveHomePath(
+    home,
+    'conversations',
+    admitted.companionLineageRef,
+    safeThread,
+    'heads',
+    `${conversationHeadSha256}.json`
+  );
+}
+
+function loadImmutableConversationHead(home, admitted, threadRef, conversationHeadSha256) {
+  const safeThread = ensureSafeRef(threadRef, 'threadRef', 'CONVERSATION_HEAD_MISMATCH');
+  const file = immutableConversationHeadFile(home, admitted, safeThread, conversationHeadSha256);
+  if (!fs.existsSync(file)) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'immutable historical conversation head receipt is missing', { conversationHeadSha256 });
+  }
+  const stat = fs.lstatSync(file);
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'immutable historical conversation head receipt must be one regular file', { file });
+  }
+  const head = verifyHead(readJson(file, 'CONVERSATION_HEAD_MISMATCH', 'immutable historical conversation head'));
+  if (
+    head.schemaVersion !== 'vexlife.lived-companion-head/v1' ||
+    head.homeRef !== admitted.homeRef ||
+    head.deviceRef !== admitted.deviceRef ||
+    head.companionLineageRef !== admitted.companionLineageRef ||
+    head.threadRef !== safeThread ||
+    ensureSafeRef(head.instanceRef, 'historicalHead.instanceRef', 'CONVERSATION_HEAD_MISMATCH') !== head.instanceRef ||
+    ensureSafeRef(head.turnRef, 'historicalHead.turnRef', 'CONVERSATION_HEAD_MISMATCH') !== head.turnRef ||
+    !Number.isSafeInteger(head.sequence) ||
+    head.sequence < 1 ||
+    head.sequence % 2 !== 1 ||
+    !/^[0-9a-f]{64}$/u.test(head.eventHash ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(head.contextSha256 ?? '') ||
+    !isNonEmptyString(head.contextPath) ||
+    !isNonEmptyString(head.requestMessageRef) ||
+    !isNonEmptyString(head.responseMessageRef) ||
+    !isNonEmptyString(head.formedAt) || !Number.isFinite(Date.parse(head.formedAt)) || new Date(head.formedAt).toISOString() !== head.formedAt ||
+    (head.sequence === 1 ? head.priorConversationHeadSha256 !== null : !/^[0-9a-f]{64}$/u.test(head.priorConversationHeadSha256 ?? ''))
+  ) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'immutable historical conversation head identity is invalid', { conversationHeadSha256 });
+  }
+  if (head.conversationHeadSha256 !== conversationHeadSha256) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'immutable historical conversation head filename/hash binding is invalid', { conversationHeadSha256 });
+  }
+  return { head, file };
+}
+
+function writeImmutableConversationHead(home, admitted, threadRef, head) {
+  const file = immutableConversationHeadFile(home, admitted, threadRef, head.conversationHeadSha256);
+  const disposition = writeJsonExclusive(file, head);
+  if (disposition === 'EXISTS') {
+    const existing = loadImmutableConversationHead(home, admitted, threadRef, head.conversationHeadSha256).head;
+    if (JSON.stringify(existing) !== JSON.stringify(head)) {
+      fail('CONVERSATION_HEAD_MISMATCH', 'immutable conversation head address already contains different bytes', { conversationHeadSha256: head.conversationHeadSha256 });
+    }
+  }
+  return { file, disposition };
 }
 
 function loadHome(home) {
@@ -1282,6 +1348,7 @@ export async function performLivedCompanionTurn({
     };
     assertInMemoryAuthorizationNotPersisted(headCore, inMemoryAuthorization, 'conversation head');
     const head = formHead(headCore);
+    writeImmutableConversationHead(identity.homeRoot, admitted, threadRef, head);
     atomicWriteJson(paths.head, head, { failBeforeRename: faults.persistenceFailureBeforeHead === true });
     lastValidHead = head;
     const writerLeaseReleased = releaseThreadWriterLease(writerLease);
@@ -1618,6 +1685,11 @@ function validateCompletedConversationState({ home, admitted, threadRef, paths =
     fail('CONTEXT_HASH_MISMATCH', 'bounded context identity does not match the admitted head and event chain');
   }
 
+  const immutableCurrentHead = loadImmutableConversationHead(home, admitted, safeThreadRef, head.conversationHeadSha256).head;
+  if (JSON.stringify(immutableCurrentHead) !== JSON.stringify(head)) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'current conversation head differs from its exact immutable receipt');
+  }
+
   return {
     paths: resolvedPaths,
     head,
@@ -1627,6 +1699,99 @@ function validateCompletedConversationState({ home, admitted, threadRef, paths =
     requestEvent,
     responseEvent
   };
+}
+
+export function verifyHistoricalLivedCompanionHead({
+  home,
+  homeRef,
+  deviceRef,
+  companionLineageRef,
+  threadRef,
+  conversationHeadSha256
+}) {
+  if (!/^[0-9a-f]{64}$/u.test(conversationHeadSha256 ?? '')) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'requested historical conversation head SHA-256 is invalid');
+  }
+  const identity = loadHome(home);
+  const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
+  const safeThread = ensureSafeRef(threadRef, 'threadRef');
+  const state = validateCompletedConversationState({ home: identity.homeRoot, admitted, threadRef: safeThread });
+  if (!state.head) fail('CONVERSATION_HEAD_MISMATCH', 'conversation head is missing');
+
+  let cursor = state.head;
+  let target = null;
+  const seen = new Set();
+  while (cursor) {
+    if (seen.has(cursor.conversationHeadSha256)) fail('CONVERSATION_HEAD_MISMATCH', 'conversation head ancestry contains a cycle');
+    seen.add(cursor.conversationHeadSha256);
+    const immutable = loadImmutableConversationHead(identity.homeRoot, admitted, safeThread, cursor.conversationHeadSha256).head;
+    if (JSON.stringify(immutable) !== JSON.stringify(cursor)) {
+      fail('CONVERSATION_HEAD_MISMATCH', 'conversation head ancestry differs from immutable receipt');
+    }
+    if (cursor.conversationHeadSha256 === conversationHeadSha256) {
+      target = cursor;
+      break;
+    }
+    if (cursor.priorConversationHeadSha256 === null) break;
+    const prior = loadImmutableConversationHead(identity.homeRoot, admitted, safeThread, cursor.priorConversationHeadSha256).head;
+    if (prior.sequence !== cursor.sequence - 2 || state.chain[prior.sequence]?.eventHash !== prior.eventHash) {
+      fail('CONVERSATION_HEAD_MISMATCH', 'immutable conversation head ancestry is not contiguous');
+    }
+    cursor = prior;
+  }
+  if (!target) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'requested historical conversation head is not in current canonical ancestry', { conversationHeadSha256 });
+  }
+
+  const response = state.chain[target.sequence];
+  const request = state.chain[target.sequence - 1];
+  if (!request || !response || request.eventKind !== 'REQUEST' || response.eventKind !== 'RESPONSE' ||
+      response.eventHash !== target.eventHash || response.turnRef !== target.turnRef || request.turnRef !== target.turnRef ||
+      response.instanceRef !== target.instanceRef || request.instanceRef !== target.instanceRef ||
+      response.messageRef !== target.responseMessageRef || request.messageRef !== target.requestMessageRef ||
+      response.priorEventHash !== request.eventHash) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'historical conversation head does not bind its exact request/response pair');
+  }
+
+  const expectedContextPath = resolveHomePath(identity.homeRoot, 'context', admitted.companionLineageRef, safeThread, `${target.turnRef}.json`);
+  const expectedContextRelative = path.relative(identity.homeRoot, expectedContextPath).replaceAll('\\', '/');
+  if (target.contextPath !== expectedContextRelative || !fs.existsSync(expectedContextPath)) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'historical conversation head does not bind its canonical context record');
+  }
+  const contextRecord = readJson(expectedContextPath, 'CONVERSATION_HEAD_MISMATCH', 'historical bounded context');
+  const { serializedContextSha256, ...contextCore } = contextRecord ?? {};
+  if (!/^[0-9a-f]{64}$/u.test(serializedContextSha256 ?? '') || contentHash(contextCore) !== serializedContextSha256 ||
+      serializedContextSha256 !== target.contextSha256 || contextRecord.homeRef !== admitted.homeRef ||
+      contextRecord.deviceRef !== admitted.deviceRef || contextRecord.companionLineageRef !== admitted.companionLineageRef ||
+      contextRecord.threadRef !== safeThread || contextRecord.turnRef !== target.turnRef ||
+      contextRecord.requestEventHash !== request.eventHash || contextRecord.responseEventHash !== response.eventHash ||
+      contextRecord.privacyClass !== 'DEVICE_PRIVATE') {
+    fail('CONVERSATION_HEAD_MISMATCH', 'historical bounded context does not match the immutable conversation head');
+  }
+
+  return Object.freeze({
+    schemaVersion: 'vexlife.lived-companion-historical-head-verification/v1',
+    state: 'VERIFIED',
+    currentness: target.conversationHeadSha256 === state.head.conversationHeadSha256 ? 'CURRENT' : 'HISTORICAL_SOURCE_VERIFIED',
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    conversationHeadSha256: target.conversationHeadSha256,
+    priorConversationHeadSha256: target.priorConversationHeadSha256,
+    sequence: target.sequence,
+    contextSha256: target.contextSha256,
+    response: Object.freeze({
+      eventRef: response.eventRef,
+      eventHash: response.eventHash,
+      sequence: response.sequence,
+      turnRef: response.turnRef,
+      instanceRef: response.instanceRef,
+      endpointProfileRef: response.endpointProfileRef,
+      modelProfileRef: response.modelNameOrBoundedTestProfileRef
+    }),
+    rawConversationContentIncluded: false
+  });
 }
 
 export function writeLivedCompanionShutdownReceipt({

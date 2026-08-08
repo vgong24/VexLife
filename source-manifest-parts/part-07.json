@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/intent-plan.mjs",
+      "mode": "100644",
+      "bytes": 2303,
+      "sha256": "288dca471a0981f758b9dbec7a8434c9a01d49e63ccf89d7c6771ec74f065e7b"
+    },
+    {
+      "path": "scripts/intent-status.mjs",
+      "mode": "100644",
+      "bytes": 2471,
+      "sha256": "0242e0bf344cefd1026c7cf397a821bc02fec7a08cfa04818f7e37e25d1cc3b0"
+    },
+    {
       "path": "scripts/lived-companion.mjs",
       "mode": "100644",
       "bytes": 90215,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 6968,
       "sha256": "3d257e4f5dd6f9a35a6ad341a6dae66242ee7aad8f2e06422b163342f22a05b0"
-    },
-    {
-      "path": "src/core/build-admission.mjs",
-      "mode": "100644",
-      "bytes": 82949,
-      "sha256": "7c43335b59f93018ef33e2ccce58ad32dae4438e9cea4eef47906d5509a60a97"
-    },
-    {
-      "path": "src/core/build-health.mjs",
-      "mode": "100644",
-      "bytes": 4344,
-      "sha256": "462112c34ac3acbab20efebd2f295a6fdac5813cff053df91358d281030c963d"
     }
   ]
 }

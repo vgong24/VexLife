@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { semanticHash } from './utils.mjs';
+import { verifyHistoricalLivedCompanionHead } from './lived-companion.mjs';
 import { createContinuityObservation, validateContinuityObservation } from './continuity-evolution-router.mjs';
 
 export const SCORE_CONTEXT_SHARED_SEMANTIC_DISPOSITION =
@@ -1397,6 +1398,153 @@ export function loadScoreContextState({ home, homeRef, deviceRef, companionLinea
     safetyAuthorityBindingAddendumRef: SCORE_CONTEXT_SAFETY_AUTHORITY_BINDING_ADDENDUM,
     liveSemanticAuthorityBindingConvergenceRef: SCORE_CONTEXT_LIVE_SEMANTIC_AUTHORITY_BINDING_CONVERGENCE
   };
+}
+
+export function verifyHistoricalScoreContextSnapshot({
+  home,
+  homeRef,
+  deviceRef,
+  companionLineageRef,
+  threadRef,
+  scoreHeadSha256,
+  semanticAuthorityHeadSha256
+}) {
+  if (!SHA256.test(scoreHeadSha256 ?? '')) fail('SCORE_HEAD_MISMATCH', 'requested historical Score head SHA-256 is invalid');
+  if (!SHA256.test(semanticAuthorityHeadSha256 ?? '')) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'requested historical semantic authority head SHA-256 is invalid');
+
+  const state = loadScoreContextState({ home, homeRef, deviceRef, companionLineageRef, threadRef });
+  if (state.currentness !== 'CURRENT' || state.attention.length || !state.head) {
+    fail('SCORE_HEAD_MISMATCH', 'historical Score verification requires one CURRENT canonical Score frontier without attention');
+  }
+  const identity = state.identity;
+  const thread = state.threadRef;
+  const paths = scorePaths(identity.homeRoot, identity.companionLineageRef, thread);
+
+  let scoreCursor = state.head;
+  let historicalScoreHead = null;
+  const scoreSeen = new Set();
+  while (scoreCursor) {
+    if (scoreSeen.has(scoreCursor.scoreHeadSha256)) fail('SCORE_HEAD_MISMATCH', 'Score head ancestry contains a cycle');
+    scoreSeen.add(scoreCursor.scoreHeadSha256);
+    const immutable = verifyHead(readAddressedJson(paths.heads, scoreCursor.scoreHeadSha256, 'SCORE_HEAD_MISMATCH', 'immutable historical Score head'), identity, thread);
+    if (semanticHash(immutable) !== semanticHash(scoreCursor)) fail('SCORE_HEAD_MISMATCH', 'Score head ancestry differs from immutable receipt');
+    if (scoreCursor.scoreHeadSha256 === scoreHeadSha256) {
+      historicalScoreHead = scoreCursor;
+      break;
+    }
+    if (scoreCursor.priorScoreHeadSha256 === null) break;
+    const prior = verifyHead(readAddressedJson(paths.heads, scoreCursor.priorScoreHeadSha256, 'SCORE_HEAD_MISMATCH', 'prior immutable Score head'), identity, thread);
+    if (prior.sequence !== scoreCursor.sequence - 1 || state.chain[prior.sequence]?.scoreEventHash !== prior.eventHash) {
+      fail('SCORE_HEAD_MISMATCH', 'immutable Score head ancestry is not contiguous');
+    }
+    scoreCursor = prior;
+  }
+  if (!historicalScoreHead) fail('SCORE_HEAD_MISMATCH', 'requested historical Score head is not in current canonical ancestry', { scoreHeadSha256 });
+
+  const historicalChain = state.chain.slice(0, historicalScoreHead.sequence + 1);
+  if (historicalChain.length !== historicalScoreHead.sequence + 1 || historicalChain.at(-1)?.scoreEventHash !== historicalScoreHead.eventHash) {
+    fail('SCORE_HEAD_MISMATCH', 'historical Score head does not bind an exact canonical event prefix');
+  }
+  const sourceConversation = verifyHistoricalLivedCompanionHead({
+    home: identity.homeRoot,
+    homeRef: identity.homeRef,
+    deviceRef: identity.deviceRef,
+    companionLineageRef: identity.companionLineageRef,
+    threadRef: thread,
+    conversationHeadSha256: historicalScoreHead.sourceConversationHeadSha256
+  });
+  const committedG01 = validateCommittedG01Conversation(identity, thread);
+  const verifiedG01Heads = new Map([[sourceConversation.conversationHeadSha256, sourceConversation]]);
+  for (const event of historicalChain) {
+    validateScoreEventSourceAgainstCommittedG01(event, committedG01, identity, thread);
+    validateScoreEventSemanticAuthority(event, identity, thread);
+    let eventSourceHead = verifiedG01Heads.get(event.sourceConversationHeadSha256);
+    if (!eventSourceHead) {
+      eventSourceHead = verifyHistoricalLivedCompanionHead({
+        home: identity.homeRoot,
+        homeRef: identity.homeRef,
+        deviceRef: identity.deviceRef,
+        companionLineageRef: identity.companionLineageRef,
+        threadRef: thread,
+        conversationHeadSha256: event.sourceConversationHeadSha256
+      });
+      verifiedG01Heads.set(event.sourceConversationHeadSha256, eventSourceHead);
+    }
+    if (eventSourceHead.sequence > sourceConversation.sequence) {
+      fail('SCORE_SOURCE_INVALID', 'historical Score event claims a G01 source head newer than its bound Score-head conversation frontier', {
+        eventRef: event.scoreEventRef,
+        eventSourceConversationHeadSha256: event.sourceConversationHeadSha256,
+        eventSourceSequence: eventSourceHead.sequence,
+        scoreSourceConversationHeadSha256: sourceConversation.conversationHeadSha256,
+        scoreSourceSequence: sourceConversation.sequence
+      });
+    }
+  }
+  const projection = replayChain(historicalChain);
+  const historicalStatementRefs = projection.statements.filter((item) => item.current).map((item) => item.statementRef).sort();
+  const historicalOpenLoopRefs = projection.openLoops.filter((item) => item.state === 'OPEN').map((item) => item.openLoopRef).sort();
+  if (JSON.stringify(historicalScoreHead.currentStatementRefs) !== JSON.stringify(historicalStatementRefs) ||
+      JSON.stringify(historicalScoreHead.openLoopRefs) !== JSON.stringify(historicalOpenLoopRefs)) {
+    fail('SCORE_HEAD_MISMATCH', 'historical Score head projection differs from source-owned event replay');
+  }
+
+  const currentAuthority = loadSemanticAuthorityHead(identity, thread).head;
+  let authorityCursor = currentAuthority;
+  let historicalAuthorityHead = null;
+  const authoritySeen = new Set();
+  const authoritySequenceBySha = new Map();
+  const authorityPaths = semanticAuthorityPaths(identity.homeRoot, identity.companionLineageRef, thread);
+  while (authorityCursor) {
+    if (authoritySeen.has(authorityCursor.semanticAuthorityHeadSha256)) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority ancestry contains a cycle');
+    authoritySeen.add(authorityCursor.semanticAuthorityHeadSha256);
+    authoritySequenceBySha.set(authorityCursor.semanticAuthorityHeadSha256, authorityCursor.sequence);
+    const immutable = assertSemanticAuthorityHead(
+      readAddressedJson(authorityPaths.heads, authorityCursor.semanticAuthorityHeadSha256, 'SCORE_SEMANTIC_AUTHORITY_INVALID', 'immutable historical semantic authority head'),
+      identity,
+      thread
+    );
+    if (semanticHash(immutable) !== semanticHash(authorityCursor)) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority ancestry differs from immutable receipt');
+    if (authorityCursor.semanticAuthorityHeadSha256 === semanticAuthorityHeadSha256) historicalAuthorityHead = authorityCursor;
+    if (authorityCursor.priorSemanticAuthorityHeadSha256 === null) break;
+    const prior = assertSemanticAuthorityHead(
+      readAddressedJson(authorityPaths.heads, authorityCursor.priorSemanticAuthorityHeadSha256, 'SCORE_SEMANTIC_AUTHORITY_INVALID', 'prior immutable semantic authority head'),
+      identity,
+      thread
+    );
+    if (prior.sequence !== authorityCursor.sequence - 1) fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'semantic authority ancestry is not contiguous');
+    authorityCursor = prior;
+  }
+  if (!historicalAuthorityHead) {
+    fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'requested historical semantic authority head is not in current canonical ancestry', { semanticAuthorityHeadSha256 });
+  }
+  for (const event of historicalChain.filter((item) => item.eventKind === 'STATEMENT')) {
+    const eventAuthoritySequence = authoritySequenceBySha.get(event.semanticAuthorityHeadSha256);
+    if (eventAuthoritySequence === undefined || eventAuthoritySequence > historicalAuthorityHead.sequence) {
+      fail('SCORE_SEMANTIC_AUTHORITY_INVALID', 'historical Score event semantic authority is not in the canonical owner-head ancestry available at the requested historical frontier', {
+        eventRef: event.scoreEventRef,
+        eventSemanticAuthorityHeadSha256: event.semanticAuthorityHeadSha256,
+        requestedSemanticAuthorityHeadSha256: historicalAuthorityHead.semanticAuthorityHeadSha256
+      });
+    }
+  }
+
+  return Object.freeze({
+    schemaVersion: 'vexlife.score-context-historical-snapshot/v1',
+    state: 'VERIFIED',
+    currentness: 'HISTORICAL_SOURCE_VERIFIED',
+    homeRef: identity.homeRef,
+    deviceRef: identity.deviceRef,
+    companionLineageRef: identity.companionLineageRef,
+    threadRef: thread,
+    scoreHead: structuredClone(historicalScoreHead),
+    semanticAuthorityHead: structuredClone(historicalAuthorityHead),
+    sourceConversationHeadSha256: historicalScoreHead.sourceConversationHeadSha256,
+    sourceConversation,
+    statements: structuredClone(projection.statements),
+    openLoops: structuredClone(projection.openLoops),
+    rawConversationContentIncluded: false,
+    semanticAuthorityWriterOwnedByVexLife: false
+  });
 }
 
 function assertExpectedState(state, expectedScoreHeadSha256) {

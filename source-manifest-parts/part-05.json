@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/MULTILINGUAL-INTENT-RELAY.md",
+      "mode": "100644",
+      "bytes": 2152,
+      "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
+    },
+    {
       "path": "docs/NEWCOMER-MAP.md",
       "mode": "100644",
       "bytes": 5418,
@@ -64,8 +70,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 3714,
-      "sha256": "e825c0c718d5e398696d356fadfcda222ae1b189ad5bb32f1828f613e330ee5f"
+      "bytes": 3791,
+      "sha256": "82a9c0b4303da0ffe19b0e88a8a2b34b70c9a5875db3bef03e49ba4ab8945f70"
     },
     {
       "path": "reference/browser/README.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 6248,
       "sha256": "fd5d7155956b92b4630034cfc649915ef52df0548c69e3993f120421965cd31e"
-    },
-    {
-      "path": "scripts/atlas-query.mjs",
-      "mode": "100644",
-      "bytes": 1748,
-      "sha256": "83538b7a319375c8208e281033e049dca1c3224fee0efdb73b0ebde05fc3a327"
     }
   ]
 }
