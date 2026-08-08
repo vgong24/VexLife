@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/score-context-continuity.mjs",
+      "mode": "100644",
+      "bytes": 112205,
+      "sha256": "86d7d66e552c734965f3523b02b70e1cab5cdedc9d6ed5db81dcfefa6e610a74"
+    },
+    {
+      "path": "src/core/source-manifest.mjs",
+      "mode": "100644",
+      "bytes": 12328,
+      "sha256": "36aff4bd6f3d9cdc418550dc97e15b5df43d68ed52b9aef81e43abb53f273f3e"
+    },
+    {
+      "path": "src/core/state-relay.mjs",
+      "mode": "100644",
+      "bytes": 2512,
+      "sha256": "6db63d09620aeea24b4f66f36384201495a65e75efc81ca9dbe75f99787923c7"
+    },
+    {
       "path": "src/core/state.mjs",
       "mode": "100644",
       "bytes": 139824,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 1183,
       "sha256": "5cd56d6980c53c1ed9aba8d501cc3f5202e8fee5395b4b93bb734c09f2ef5de5"
-    },
-    {
-      "path": "test/fixtures/orientation/detached-merge.json",
-      "mode": "100644",
-      "bytes": 1173,
-      "sha256": "ae4f14d6feb5be019abe24c38807cfb5f5f99231ee74164334cd7a6cd4f8ea5c"
-    },
-    {
-      "path": "test/fixtures/orientation/github-pr-current-work-duplicate.json",
-      "mode": "100644",
-      "bytes": 464,
-      "sha256": "2b638ced378662f0b3a02192c64450b5a794059987fde76af08f8ee0c07e8066"
-    },
-    {
-      "path": "test/fixtures/orientation/github-pr-current-work.json",
-      "mode": "100644",
-      "bytes": 505,
-      "sha256": "b7e370bdfc1292cb8f69d83d02035d005beebfc577c88c670fce76d7733e3917"
     }
   ]
 }

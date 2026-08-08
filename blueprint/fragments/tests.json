@@ -1030,5 +1030,57 @@
   {
     "testRef": "test.evaluated-rhythm.windows-proof",
     "brief": "Hosted Windows proof runs the exact G04 Stage-A proof on the exact candidate head while G01/G02/G03 regression jobs remain required."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.predecessor-contracts",
+    "brief": "G05A-0 binds accepted G01-G04 source contracts and grants no later authority."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.standing-policy",
+    "brief": "G05A-1 requires an explicit content-addressed standing policy with positive standing authority."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.rest-window",
+    "brief": "G05A-2 proves timezone/rest-window eligibility is deterministic and outside-window ticks are no-effect."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.supervisor",
+    "brief": "G05A-3 proves one independent supervisor writer and rejects model-worker identity collapse."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.yield",
+    "brief": "G05A-4 yields before Dream for interactive work and unknown/insufficient resources."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.g03-admission",
+    "brief": "G05A-5 derives one eligible day and commits the accepted G03 Daily Stratum and wake."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.stale-source",
+    "brief": "G05A-6 rejects stale G01/G02/G03 source-frontier expectations."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.duplicate-day",
+    "brief": "G05A-7 suppresses an exact duplicate same-day tick without a second Dream."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.optional-nonblocking",
+    "brief": "G05A-8 keeps ABSENT, DEFERRED and REJECTED optional learning nonblocking after wake."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.optional-failure",
+    "brief": "G05A-9 records optional learning failure while preserving the exact committed wake."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.recovery",
+    "brief": "G05A-10 resumes after wake-before-pointer without rerunning Dream and rejects policy-generation drift."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.receipt",
+    "brief": "G05A-11 binds immutable daily receipt, compact projection and source descent to policy/supervisor/G03 wake lineage."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.held-effects",
+    "brief": "G05A-12 proves sync, training, weights, adapter/Rhythm activation, power, native service install and publication remain false."
   }
 ]

@@ -332,3 +332,39 @@ jobs:
           name: vexlife-g04-evaluated-rhythm-learning-windows-${{ github.event.pull_request.head.sha || github.sha }}
           path: generated/health/g04-evaluated-rhythm-learning-proof.json
           if-no-files-found: error
+
+
+  g05a-scheduled-daily-autonomy-windows:
+    name: G05A scheduled daily autonomy Windows proof
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Install declared dependencies
+        run: npm ci
+
+      - name: Run exact G05A deterministic scheduled-autonomy proof
+        shell: pwsh
+        env:
+          VEXLIFE_CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          VEXLIFE_G05A_PROOF_RECEIPT: generated/health/g05a-scheduled-daily-autonomy-windows-proof.json
+        run: npm run scheduled-daily-autonomy:proof
+
+      - name: Preserve exact G05A Windows proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vexlife-g05a-scheduled-daily-autonomy-windows-${{ github.event.pull_request.head.sha || github.sha }}
+          path: generated/health/g05a-scheduled-daily-autonomy-windows-proof.json
+          if-no-files-found: error

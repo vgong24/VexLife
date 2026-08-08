@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "reference/browser/modules/navigation-controller.js",
+      "mode": "100644",
+      "bytes": 2133,
+      "sha256": "3095ff35b0a0b61ba9f5c9fbc6741ae98ef6b0805654babeccb3405bab74eef7"
+    },
+    {
       "path": "reference/browser/modules/terrain-controller.js",
       "mode": "100644",
       "bytes": 6248,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 13496,
       "sha256": "7b11e5fb19b30edc49a25fc807c5c64cfcad2dff1d905e2a16735bc9a01d6971"
-    },
-    {
-      "path": "scripts/impact-report.mjs",
-      "mode": "100644",
-      "bytes": 679,
-      "sha256": "32aade5c1aafe11498c924be9d8c9371e3330ff619f09c9ec478e83d0aee8eab"
     }
   ]
 }

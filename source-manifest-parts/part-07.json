@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/impact-report.mjs",
+      "mode": "100644",
+      "bytes": 679,
+      "sha256": "32aade5c1aafe11498c924be9d8c9371e3330ff619f09c9ec478e83d0aee8eab"
+    },
+    {
       "path": "scripts/implementation-packet.mjs",
       "mode": "100644",
       "bytes": 1364,
@@ -92,6 +98,12 @@
       "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
     },
     {
+      "path": "scripts/scheduled-daily-autonomy.mjs",
+      "mode": "100644",
+      "bytes": 13678,
+      "sha256": "28cfae774d395ca68280366b47a51078657ae7cc58c6fa4d82fd50caad792715"
+    },
+    {
       "path": "scripts/scheduler-check.mjs",
       "mode": "100644",
       "bytes": 5149,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 1218,
       "sha256": "02da952dd3e34fe20796b4a4175844b89b3bce7854fddf8dc0b871416a4c476a"
-    },
-    {
-      "path": "scripts/validate-blueprint.mjs",
-      "mode": "100644",
-      "bytes": 433,
-      "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
-    },
-    {
-      "path": "src/core/atlas.mjs",
-      "mode": "100644",
-      "bytes": 3026,
-      "sha256": "a62a9408b464cf7114ef7f3a1568449fbf416dd1d3b14dd863941c820a8a7b36"
     }
   ]
 }
