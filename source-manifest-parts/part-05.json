@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/INTERFACE-BUILDER.md",
+      "mode": "100644",
+      "bytes": 3664,
+      "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
+    },
+    {
       "path": "docs/LIVED-COMPANION-BASELINE.md",
       "mode": "100644",
       "bytes": 13044,
@@ -82,8 +88,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 3971,
-      "sha256": "d3497cd03e7fd4f19f438c168f2def336a7f7356c49fb611635755109371aa12"
+      "bytes": 4074,
+      "sha256": "b8243a144834dc50b1cc32ee3009f160d13966e17a93207c3b6f90f56cccece9"
     },
     {
       "path": "reference/browser/README.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 1472,
       "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
-    },
-    {
-      "path": "reference/browser/modules/guide-controller.js",
-      "mode": "100644",
-      "bytes": 6258,
-      "sha256": "0d967057c53642a4d106ea00949d82073a9088aab5e57b6293e3ea9e78998326"
     }
   ]
 }

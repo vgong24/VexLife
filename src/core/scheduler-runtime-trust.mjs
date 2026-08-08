@@ -497,6 +497,7 @@ export function createSchedulerRuntimeTrustSnapshot(input, {
   if (!source) throw new Error(`unknown scheduler runtime source ${input.sourceRef}`);
   if (source.evidenceClass !== input.evidenceClass) throw new Error('scheduler runtime source evidence class mismatch');
   if (source.authorityRef !== input.leaseAuthorityRef) throw new Error('scheduler runtime lease authority mismatch');
+  if (source.sourceHash && source.sourceHash !== input.sourceHash) throw new Error('scheduler runtime sourceHash mismatch');
   const worker = schedulerRegistry.workerIdentities.find((item) => item.workerRef === input.workerRef);
   if (!worker) throw new Error(`unknown scheduler worker identity ${input.workerRef}`);
   if (!worker.evidenceClasses.includes(input.evidenceClass)) throw new Error('worker identity is not admitted for runtime evidence class');

@@ -22,8 +22,8 @@
     {
       "path": ".github/workflows/check.yml",
       "mode": "100644",
-      "bytes": 14350,
-      "sha256": "b4cbc2573445f33e44328fa14dd2d027a1f8a29b9dc98df11ba2913ea8275723"
+      "bytes": 15785,
+      "sha256": "93c5a7380e50da1600078f4cb4468b7023279894d1139e61f2be4a251e03a642"
     },
     {
       "path": ".github/workflows/dco.yml",
@@ -136,8 +136,8 @@
     {
       "path": "blueprint/concern-watch-registry.json",
       "mode": "100644",
-      "bytes": 16889,
-      "sha256": "aa534affd7122f1ea8bc07572041e600bf0d1daecd0c6308d6905478849009b9"
+      "bytes": 18097,
+      "sha256": "e9bc4c89a1f0fc2a13ac6626172d06ce9f0ccd921e7381df87dd0004b07817b9"
     },
     {
       "path": "blueprint/design-tokens.json",

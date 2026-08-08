@@ -812,5 +812,29 @@
       "docs/SCHEDULED-DAILY-AUTONOMY.md",
       ".github/workflows/check.yml"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.g05-runtime-authority-substrate",
+    "path": "scripts/g05-runtime-authority-substrate.mjs",
+    "role": "Hosted Windows proof for the G05 source-owned standing-authority consumer and registry-pinned live runtime/clock substrate; uses only synthetic Safety owner data and performs no Dream effect.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.g05-runtime-authority-substrate",
+      "registry.vexlife.intent-scheduler.001"
+    ],
+    "writes": [
+      "generated/health/g05-runtime-authority-substrate-windows-proof.json"
+    ],
+    "loadedBy": [
+      "npm run g05-runtime-authority-substrate:proof"
+    ],
+    "tests": [
+      "test/g05-runtime-authority-substrate.test.mjs"
+    ],
+    "changeMap": [
+      ".github/workflows/check.yml",
+      "package.json",
+      "docs/G05-RUNTIME-AUTHORITY-SUBSTRATE.md"
+    ]
   }
 ]

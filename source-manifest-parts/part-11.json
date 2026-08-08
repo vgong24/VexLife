@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/experience.test.mjs",
+      "mode": "100644",
+      "bytes": 2215,
+      "sha256": "82366babcef80194d3a214efe9c8455a0920f1c3d2e0a7bb8701f3156810bbd0"
+    },
+    {
+      "path": "test/fixtures/orientation/accepted-main.json",
+      "mode": "100644",
+      "bytes": 1054,
+      "sha256": "42c605803b39f8093b5c55957d2e42fe5ef06e30ca642ee1635801104902a980"
+    },
+    {
+      "path": "test/fixtures/orientation/current-pr.json",
+      "mode": "100644",
+      "bytes": 1183,
+      "sha256": "5cd56d6980c53c1ed9aba8d501cc3f5202e8fee5395b4b93bb734c09f2ef5de5"
+    },
+    {
       "path": "test/fixtures/orientation/detached-merge.json",
       "mode": "100644",
       "bytes": 1173,
@@ -36,6 +54,12 @@
       "mode": "100644",
       "bytes": 15521,
       "sha256": "426aebee4f8b0a8c8e3f219719e2eb47802f6fd93e5af0cd6aa268c895a768a7"
+    },
+    {
+      "path": "test/g05-runtime-authority-substrate.test.mjs",
+      "mode": "100644",
+      "bytes": 16779,
+      "sha256": "b3fbb87462a04af61f4b18fb657c2cf732a0826730debef9d5d848b3d0eea5c2"
     },
     {
       "path": "test/generator.test.mjs",
@@ -120,18 +144,6 @@
       "mode": "100644",
       "bytes": 5632,
       "sha256": "73a7233257005873a0d5722ae6741ebaa40b0ba9a137615b3d4ab1eadc08975e"
-    },
-    {
-      "path": "test/score-context-continuity.test.mjs",
-      "mode": "100644",
-      "bytes": 55877,
-      "sha256": "b36b7bd8d992f0cae8643d2255c7e148a2cdfbc99de2eabe55ffa00fa62606cb"
-    },
-    {
-      "path": "test/source-manifest.test.mjs",
-      "mode": "100644",
-      "bytes": 12506,
-      "sha256": "af2f7d18c69794fdd735a1b6bf3466d566304bf142efacd10738929032c11caa"
     }
   ]
 }

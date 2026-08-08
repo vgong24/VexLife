@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/implementation-plan.mjs",
+      "mode": "100644",
+      "bytes": 5655,
+      "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
+    },
+    {
+      "path": "src/core/intent-checkpoint.mjs",
+      "mode": "100644",
+      "bytes": 14269,
+      "sha256": "0378b4c09044be1b871d8517f869abdf50431ff65c12f2314b63fae0ff7fd863"
+    },
+    {
+      "path": "src/core/intent-completion-verifier.mjs",
+      "mode": "100644",
+      "bytes": 21202,
+      "sha256": "96f0a9b20a735753f6974481e468f1f04f87b31785136ca131eb23c945028c36"
+    },
+    {
       "path": "src/core/intent-projection.mjs",
       "mode": "100644",
       "bytes": 5452,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 17151,
       "sha256": "d0b0e6775161695555c6139c479431a42d1e23a857c98f3772ea31533bc86e78"
-    },
-    {
-      "path": "src/core/runtime-recovery.mjs",
-      "mode": "100644",
-      "bytes": 179477,
-      "sha256": "b8cf15cd2730105ca295488e6008533be15e8807d7fe4446e0714aa234a20646"
-    },
-    {
-      "path": "src/core/scheduled-daily-autonomy.mjs",
-      "mode": "100644",
-      "bytes": 81072,
-      "sha256": "0ebe188fb46a1981a5facf123b6003d3efc60003736ed8cbca4fb3dc6bf845bc"
-    },
-    {
-      "path": "src/core/scheduler-runtime-trust.mjs",
-      "mode": "100644",
-      "bytes": 33626,
-      "sha256": "a7ebf4e3df7e6889ccc173a5e610d4d4eeefe4de320dc79d3f0e30b42a15df67"
     }
   ]
 }

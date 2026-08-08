@@ -1082,5 +1082,29 @@
       ".github/workflows/check.yml",
       "package.json"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.g05-runtime-authority-substrate",
+    "path": "src/core/g05-runtime-authority-substrate.mjs",
+    "role": "Consumes source-owned Vex Safety standing-rest authority, forms a registry-pinned Windows live resource/UTC observation, and derives no-effect scheduled G05 provenance without minting consent or invoking Dream.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.g05-runtime-authority-substrate"
+    ],
+    "tests": [
+      "test/g05-runtime-authority-substrate.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-scheduler-registry.json",
+      "docs/G05-RUNTIME-AUTHORITY-SUBSTRATE.md",
+      "src/core/scheduled-daily-autonomy.mjs"
+    ]
   }
 ]

@@ -1082,5 +1082,9 @@
   {
     "testRef": "test.scheduled-daily-autonomy.held-effects",
     "brief": "G05A-12 proves sync, training, weights, adapter/Rhythm activation, power, native service install and publication remain false."
+  },
+  {
+    "testRef": "test.g05-runtime-authority-substrate",
+    "brief": "G05 scheduled autonomy trusts only replayed current Safety standing authority plus the exact registry-pinned Windows live resource/UTC source; manual G03 authority, caller runtime overrides and held native effects remain rejected."
   }
 ]
