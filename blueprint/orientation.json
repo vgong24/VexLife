@@ -44,6 +44,18 @@
       "requireCandidateHeadMatch": true
     }
   },
+  "federatedProvider": {
+    "receiptSchemaVersion": "vextreme.orientation-provider-receipt/v1",
+    "providerRef": "provider.vexlife.orientation",
+    "providerClass": "PRIVATE_VEXLIFE",
+    "repositoryRef": "vgong24/VexLife",
+    "visibility": "PRIVATE",
+    "projectionScope": "PRIVATE",
+    "privateStateRefs": [
+      "state.private.vexlife.orientation"
+    ],
+    "publicationAuthority": false
+  },
   "requiredSources": [
     "docs/CULTURE.md",
     "docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md",

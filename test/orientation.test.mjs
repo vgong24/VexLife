@@ -4,7 +4,12 @@ import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deriveOrientationReceipt, resolveGitHubPullRequestCurrentWork } from '../src/core/orientation.mjs';
+import {
+  deriveFederatedOrientationProviderReceipt,
+  deriveOrientationReceipt,
+  FEDERATED_PROVIDER_QUESTION_CLASSES,
+  resolveGitHubPullRequestCurrentWork
+} from '../src/core/orientation.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const run = (script, args) => spawnSync(process.execPath, [`scripts/${script}`, ...args], { cwd: ROOT, encoding: 'utf8' });
@@ -20,6 +25,11 @@ const blueprint = {
   pathTopologyValid: true
 };
 const fixture = (name) => JSON.parse(fs.readFileSync(path.join(ROOT, 'test/fixtures/orientation', `${name}.json`), 'utf8'));
+const repositoryReceipt = (name, transform = null) => {
+  const input = fixture(name);
+  if (transform) transform(input);
+  return deriveOrientationReceipt({ contract, ...input, blueprint });
+};
 
 test('orientation grounds live current PR inputs without stable correction defaults', () => {
   const result = run('orient.mjs', [
@@ -161,6 +171,223 @@ test('missing lifecycle, visibility, and current work stay UNKNOWN instead of re
   assert.equal(receipt.repository.visibility.value, 'UNKNOWN');
   assert.equal(receipt.lifecycle.state, 'UNKNOWN');
   assert.equal(receipt.currentWork.state, 'UNKNOWN');
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: accepted main maps to the canonical private provider without effect authority', () => {
+  const source = repositoryReceipt('accepted-main');
+  const receipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: source,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+
+  assert.equal(receipt.schemaVersion, 'vextreme.orientation-provider-receipt/v1');
+  assert.equal(receipt.providerRef, 'provider.vexlife.orientation');
+  assert.equal(receipt.providerClass, 'PRIVATE_VEXLIFE');
+  assert.equal(receipt.repositoryRef, 'vgong24/VexLife');
+  assert.equal(receipt.visibility, 'PRIVATE');
+  assert.equal(receipt.projectionScope, 'PRIVATE');
+  assert.equal(receipt.currentState, 'CURRENT');
+  assert.equal(receipt.publicationState.lifecycleState, 'PRIVATE');
+  assert.equal(receipt.publicationState.publicationAuthority, false);
+  assert.equal(receipt.authorityEnvelope.state, 'HELD');
+  assert.deepEqual(receipt.authorityEnvelope.allowedEffectRefs, []);
+  assert.deepEqual(receipt.privateStateRefs, ['state.private.vexlife.orientation']);
+  assert.equal(receipt.relayState.executionState, 'TASK_STATE_UNKNOWN_DO_NOT_EXECUTE');
+  assert.equal(receipt.questionCoverage.length, FEDERATED_PROVIDER_QUESTION_CLASSES.length);
+  assert.ok(receipt.sourceRefs.includes(`github.commit.vexlife.${'4'.repeat(40)}`));
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: active PR preserves bounded work/current refs but does not invent claim authority', () => {
+  const source = repositoryReceipt('current-pr');
+  const receipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: source,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+
+  assert.equal(receipt.currentState, 'CURRENT');
+  assert.equal(receipt.current.currentWorkRef, 'work.vexlife.bounded-correction');
+  assert.deepEqual(receipt.current.currentEntryRefs, ['github.pr.vexlife.7']);
+  assert.deepEqual(receipt.current.currentAcceptedRefs, [`github.commit.vexlife.${'0'.repeat(40)}`]);
+  assert.deepEqual(receipt.currentClaimRefs, []);
+  assert.deepEqual(receipt.conflictingClaimRefs, []);
+  assert.equal(receipt.authorityEnvelope.state, 'HELD');
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: unknown or attention source state fails closed without active capability', () => {
+  const source = repositoryReceipt('current-pr', (input) => {
+    input.currentWork.visibility = 'UNKNOWN';
+    input.currentWork.visibilitySource = 'UNKNOWN';
+    input.currentWork.prNumber = null;
+    input.currentWork.workRef = null;
+    input.lifecycle = { state: 'UNKNOWN', source: 'UNKNOWN' };
+  });
+  assert.equal(source.state, 'ATTENTION');
+
+  const receipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: source,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+  assert.equal(receipt.currentState, 'UNKNOWN');
+  assert.equal(receipt.freshnessState.selectedSourceClass, 'UNKNOWN');
+  assert.deepEqual(receipt.capabilityState.activeCapabilityRefs, []);
+  assert.deepEqual(receipt.capabilityState.blockedCapabilityRefs, ['capability.vexlife.current-state-answer']);
+  assert.equal(receipt.authorityEnvelope.state, 'HELD');
+  assert.deepEqual(receipt.authorityEnvelope.allowedEffectRefs, []);
+  assert.equal(receipt.exactNextActionRef, 'action.vexlife.orientation.refresh-current-state');
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: stale or missing live source evidence fails closed', () => {
+  const stale = repositoryReceipt('accepted-main');
+  stale.currentness = 'STALE';
+  const staleReceipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: stale,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+  assert.equal(staleReceipt.currentState, 'UNKNOWN');
+  assert.equal(staleReceipt.freshnessState.liveSourceRefOrNull, null);
+  assert.deepEqual(staleReceipt.capabilityState.activeCapabilityRefs, []);
+  assert.equal(staleReceipt.exactNextActionRef, 'action.vexlife.orientation.refresh-current-state');
+
+  const missingLive = repositoryReceipt('accepted-main');
+  missingLive.git.candidateHeadSha = null;
+  const missingReceipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: missingLive,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+  assert.equal(missingReceipt.currentState, 'UNKNOWN');
+  assert.equal(missingReceipt.freshnessState.liveSourceRefOrNull, null);
+  assert.deepEqual(missingReceipt.capabilityState.activeCapabilityRefs, []);
+  assert.equal(missingReceipt.exactNextActionRef, 'action.vexlife.orientation.refresh-current-state');
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: public source visibility cannot escape the private provider boundary', () => {
+  const source = repositoryReceipt('public-active');
+  const receipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: source,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+
+  assert.equal(receipt.visibility, 'PRIVATE');
+  assert.equal(receipt.projectionScope, 'PRIVATE');
+  assert.equal(receipt.currentState, 'UNKNOWN');
+  assert.ok(receipt.blockers.includes('blocker.vexlife.provider-private-visibility'));
+  assert.equal(receipt.publicationState.publicationAuthority, false);
+  assert.deepEqual(receipt.capabilityState.activeCapabilityRefs, []);
+  assert.deepEqual(receipt.authorityEnvelope.allowedEffectRefs, []);
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: future-public intent is represented without public visibility or publication authority', () => {
+  const source = repositoryReceipt('accepted-main', (input) => {
+    input.lifecycle = { state: 'PUBLIC_RELEASE_CANDIDATE', source: 'ENVIRONMENT_RECEIPT' };
+  });
+  assert.equal(source.state, 'GROUNDED');
+
+  const receipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: source,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+  assert.equal(receipt.currentState, 'CURRENT');
+  assert.equal(receipt.visibility, 'PRIVATE');
+  assert.equal(receipt.projectionScope, 'PRIVATE');
+  assert.equal(receipt.publicationState.lifecycleState, 'FUTURE_PUBLIC_INTENT');
+  assert.equal(receipt.publicationState.futurePublicIntentSourceRefOrNull, 'source.vexlife.future-public-intent');
+  assert.equal(receipt.publicationState.publicationAuthority, false);
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: output stays content-absent and ignores private bodies, paths, and prose on the source receipt', () => {
+  const source = repositoryReceipt('accepted-main');
+  source.secretPayload = 'do-not-copy-this-private-body';
+  source.privateJournalBody = 'private-memory-body';
+  const receipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: source,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+  const text = JSON.stringify(receipt);
+  assert.doesNotMatch(text, /do-not-copy-this-private-body|private-memory-body/);
+  assert.doesNotMatch(text, /https:\/\/github\.com\/vgong24\/VexLife\.git/);
+  assert.doesNotMatch(text, /docs\/CULTURE\.md|npm run atlas:query/);
+  assert.doesNotMatch(text, /Do not merge, publish/);
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: equal source receipt plus explicit observedAt is deterministic and input-preserving', () => {
+  const source = repositoryReceipt('accepted-main');
+  const before = JSON.stringify(source);
+  const first = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: source,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+  const second = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: structuredClone(source),
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+  assert.deepEqual(first, second);
+  assert.equal(JSON.stringify(source), before);
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: malformed contract, repository identity, or observedAt fails closed', () => {
+  const source = repositoryReceipt('accepted-main');
+  const wrongRepo = structuredClone(source);
+  wrongRepo.repository.slug = 'example.invalid/repository';
+  assert.throws(() => deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: wrongRepo,
+    observedAt: '2026-08-08T21:00:00Z'
+  }), /repository identity mismatch/);
+
+  const wrongProvider = structuredClone(contract);
+  wrongProvider.federatedProvider.publicationAuthority = true;
+  assert.throws(() => deriveFederatedOrientationProviderReceipt({
+    contract: wrongProvider,
+    orientationReceipt: source,
+    observedAt: '2026-08-08T21:00:00Z'
+  }), /publicationAuthority is invalid/);
+
+  assert.throws(() => deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: source,
+    observedAt: 'not-a-time'
+  }), /explicit valid UTC timestamp/);
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: existing orient CLI default remains repository receipt and provider mode is opt-in', () => {
+  const repository = run('orient.mjs', [
+    '--visibility', 'PRIVATE',
+    '--lifecycle', 'PRIVATE_STAGING'
+  ]);
+  assert.equal(repository.status, 0, repository.stderr);
+  assert.equal(JSON.parse(repository.stdout).schemaVersion, 'vexlife.orientation-receipt/v1');
+
+  const provider = run('orient.mjs', [
+    '--visibility', 'PRIVATE',
+    '--lifecycle', 'PRIVATE_STAGING',
+    '--receipt-kind', 'provider',
+    '--observed-at', '2026-08-08T21:00:00Z'
+  ]);
+  assert.equal(provider.status, 0, provider.stderr);
+  const receipt = JSON.parse(provider.stdout);
+  assert.equal(receipt.schemaVersion, 'vextreme.orientation-provider-receipt/v1');
+  assert.equal(receipt.providerClass, 'PRIVATE_VEXLIFE');
+  assert.equal(receipt.publicationState.publicationAuthority, false);
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: provider CLI mode requires an explicit observation timestamp', () => {
+  const result = run('orient.mjs', [
+    '--visibility', 'PRIVATE',
+    '--lifecycle', 'PRIVATE_STAGING',
+    '--receipt-kind', 'provider'
+  ]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /--observed-at is required/);
 });
 
 test('Atlas query enforces bounded traversal and returns coverage', () => {
