@@ -111,7 +111,7 @@ function consents(fixture, patternRef, patternClass, disposition = 'PERMITTED') 
 function baseInput(fixture, g03, supportInfo, overrides = {}) {
   const patternRef = overrides.patternRef ?? 'pattern.g04.source-before-assertion';
   const patternClass = overrides.patternClass ?? 'SOURCE_GROUNDED_REASONING_HABIT';
-  const participantRefs = [fixture.ids.companionLineageRef, 'person.test'];
+  const participantRefs = overrides.participantRefs ?? [fixture.ids.companionLineageRef, 'person.test'];
   return {
     ...fixture.ids,
     ...frontier(fixture, g03),
@@ -224,6 +224,59 @@ export function runEvaluatedRhythmLearningProof() {
     generalizedPattern: fixture.privateNeedles[0]
   })), ['RHYTHM_PRIVACY_REJECTED']);
 
+  const misboundConsentFixture = cloneFixture(fixture, 'misbound-consent');
+  const misboundParticipants = [misboundConsentFixture.ids.companionLineageRef, 'person.test'];
+  const misboundConsentReceipts = [
+    formSyntheticStageAConsentReceipt({
+      lineageRef: misboundConsentFixture.ids.companionLineageRef,
+      patternRef: 'pattern.g04.source-before-assertion',
+      patternClass: 'SOURCE_GROUNDED_REASONING_HABIT',
+      participantRef: misboundConsentFixture.ids.companionLineageRef,
+      consentClass: 'LINEAGE_PARTICIPATION',
+      disposition: 'PERMITTED',
+      participants: misboundParticipants
+    }),
+    formSyntheticStageAConsentReceipt({
+      lineageRef: misboundConsentFixture.ids.companionLineageRef,
+      patternRef: 'pattern.g04.source-before-assertion',
+      patternClass: 'SOURCE_GROUNDED_REASONING_HABIT',
+      participantRef: misboundConsentFixture.ids.companionLineageRef,
+      consentClass: 'DATA_SUBJECT_DERIVATIVE_USE',
+      disposition: 'PERMITTED',
+      participants: misboundParticipants
+    })
+  ];
+  const misboundConsent = expectFailure(() => evaluateStageASimulatedRhythm(baseInput(misboundConsentFixture, g03, supportInfo, {
+    consentReceipts: misboundConsentReceipts
+  })), ['RHYTHM_CONSENT_INVALID']);
+
+  const uncoveredConsentFixture = cloneFixture(fixture, 'uncovered-consent');
+  const uncoveredParticipants = [uncoveredConsentFixture.ids.companionLineageRef, 'person.test', 'person.uncovered'];
+  const uncoveredConsentReceipts = [
+    formSyntheticStageAConsentReceipt({
+      lineageRef: uncoveredConsentFixture.ids.companionLineageRef,
+      patternRef: 'pattern.g04.source-before-assertion',
+      patternClass: 'SOURCE_GROUNDED_REASONING_HABIT',
+      participantRef: uncoveredConsentFixture.ids.companionLineageRef,
+      consentClass: 'LINEAGE_PARTICIPATION',
+      disposition: 'PERMITTED',
+      participants: uncoveredParticipants
+    }),
+    formSyntheticStageAConsentReceipt({
+      lineageRef: uncoveredConsentFixture.ids.companionLineageRef,
+      patternRef: 'pattern.g04.source-before-assertion',
+      patternClass: 'SOURCE_GROUNDED_REASONING_HABIT',
+      participantRef: 'person.test',
+      consentClass: 'DATA_SUBJECT_DERIVATIVE_USE',
+      disposition: 'PERMITTED',
+      participants: uncoveredParticipants
+    })
+  ];
+  const uncoveredDataSubjectConsent = expectFailure(() => evaluateStageASimulatedRhythm(baseInput(uncoveredConsentFixture, g03, supportInfo, {
+    participantRefs: uncoveredParticipants,
+    consentReceipts: uncoveredConsentReceipts
+  })), ['RHYTHM_CONSENT_INVALID']);
+
   const staleSource = expectFailure(() => evaluateStageASimulatedRhythm({
     ...baseInput(cloneFixture(fixture, 'stale'), g03, supportInfo),
     expectedDreamHeadSha256: 'a'.repeat(64)
@@ -267,7 +320,7 @@ export function runEvaluatedRhythmLearningProof() {
     g04_0_exactSyntheticG01G02G03Frontier: accepted.source.conversationHeadSha256 === g03.committed.stratum.sourceConversationHeadSha256 && accepted.source.dreamHeadSha256 === g03.committed.head.dailyDreamHeadSha256,
     g04_1_stablePatternVsHeldClassification: heldEvidence.rejected === true && accepted.corpus.formingScoreRefs.includes('statement.g03.active'),
     g04_2_recurrenceDedupOutlierExclusion: duplicateEvidence.rejected === true && accepted.corpus.supportingSourceEventHashes.length >= 2,
-    g04_3_frozenCorpusConsentProvenance: accepted.corpus.consentReceiptRefs.length === 2 && accepted.corpus.policyRef === EVALUATED_RHYTHM_POLICY_REF,
+    g04_3_frozenCorpusConsentProvenance: accepted.corpus.consentReceiptRefs.length === 2 && accepted.corpus.policyRef === EVALUATED_RHYTHM_POLICY_REF && misboundConsent.rejected === true && uncoveredDataSubjectConsent.rejected === true,
     g04_4_faithfulSimulatedCandidateNoWeights: accepted.candidate.artifactClass === 'FAITHFUL_SIMULATED_RHYTHM_CANDIDATE' && accepted.candidate.modelWeightsChanged === false && accepted.candidate.adapterChanged === false,
     g04_5_noScoreHistoryFirstPersonAuthority: accepted.candidate.historicalFactAuthority === false && accepted.candidate.firstPersonAuthorityGranted === false && scoreBefore === scoreAfter,
     g04_6_priorVsCandidateFixedAnchors: accepted.evaluation.matrix.priorVsCandidateComparison === true && accepted.evaluation.matrix.capabilityRegression === true,
@@ -303,6 +356,8 @@ export function runEvaluatedRhythmLearningProof() {
       duplicateEvidence,
       heldEvidence,
       privacyLeak,
+      misboundConsent,
+      uncoveredDataSubjectConsent,
       staleSource,
       foreignLineage,
       corruptReplay

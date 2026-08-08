@@ -401,9 +401,19 @@ export function evaluateStageASimulatedRhythm(input) {
   const consentReceipts = (input.consentReceipts ?? []).map((receipt) => validateConsentReceipt(receipt, {
     lineageRef: source.daily.identity.companionLineageRef, patternRef, patternClass: input.patternClass, participants, scopeFingerprint
   }));
-  const classes = new Set(consentReceipts.map((item) => item.consentClass));
-  if (!classes.has('LINEAGE_PARTICIPATION') || !classes.has('DATA_SUBJECT_DERIVATIVE_USE')) {
-    fail('RHYTHM_CONSENT_INVALID', 'Stage-A requires separate lineage-participation and data-subject derivative-use receipts');
+  const lineageConsentReceipts = consentReceipts.filter((item) => item.consentClass === 'LINEAGE_PARTICIPATION');
+  const derivativeConsentReceipts = consentReceipts.filter((item) => item.consentClass === 'DATA_SUBJECT_DERIVATIVE_USE');
+  if (lineageConsentReceipts.length !== 1 || lineageConsentReceipts[0].participantRef !== source.daily.identity.companionLineageRef) {
+    fail('RHYTHM_CONSENT_INVALID', 'Stage-A requires exactly one lineage-participation receipt bound to the companion lineage');
+  }
+  const expectedDataSubjectRefs = participants.filter((participantRef) => participantRef !== source.daily.identity.companionLineageRef).sort();
+  const derivativeSubjectRefs = derivativeConsentReceipts.map((item) => item.participantRef).sort();
+  if (derivativeSubjectRefs.length !== expectedDataSubjectRefs.length ||
+      derivativeSubjectRefs.some((participantRef, index) => participantRef !== expectedDataSubjectRefs[index])) {
+    fail('RHYTHM_CONSENT_INVALID', 'Stage-A requires exactly one data-subject derivative-use receipt for every implicated non-lineage participant', {
+      expectedDataSubjectRefs,
+      observedDataSubjectRefs: derivativeSubjectRefs
+    });
   }
   const consentDispositions = consentReceipts.map((item) => item.disposition);
   if (consentDispositions.some((state) => REJECT.has(state))) {
