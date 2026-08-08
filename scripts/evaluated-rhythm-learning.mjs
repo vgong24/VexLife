@@ -28,8 +28,17 @@ function fileSha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
 
+function canonicalProofTempRoot() {
+  const requested = path.resolve(os.tmpdir());
+  try {
+    return fs.realpathSync.native(requested);
+  } catch {
+    return requested;
+  }
+}
+
 function cloneFixture(source, suffix) {
-  const target = path.join(fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-g04-${suffix}-`)), 'home');
+  const target = path.join(fs.mkdtempSync(path.join(canonicalProofTempRoot(), `vexlife-g04-${suffix}-`)), 'home');
   fs.cpSync(source.ids.home, target, { recursive: true });
   return { ...source, ids: { ...source.ids, home: target, instanceRef: `instance.g04.${suffix}` } };
 }
