@@ -345,6 +345,9 @@ function sourceFrontier(input) {
   });
   if (score.currentness !== 'CURRENT' || score.attention?.length) fail('DREAM_SOURCE_INVALID', 'G02 Score must be CURRENT without attention before Dream closure');
   if (!score.head || !SHA256.test(score.head.scoreHeadSha256 ?? '')) fail('DREAM_SOURCE_INVALID', 'G03 requires an accepted current G02 Score head');
+  if (!score.currentSemanticAuthorityHead || !SHA256.test(score.currentSemanticAuthorityHead.semanticAuthorityHeadSha256 ?? '')) {
+    fail('DREAM_SOURCE_INVALID', 'G03 requires the exact current G02 semantic authority head for a new Daily Stratum use');
+  }
   const g01 = validateG01Head(score.identity.homeRoot, score.identity, score.threadRef);
   const response = validateLatestG01Response(score.identity.homeRoot, score.identity, score.threadRef, g01);
   if (input.expectedConversationHeadSha256 !== g01.conversationHeadSha256) {
@@ -399,6 +402,21 @@ function openLoopBinding(loop) {
   };
 }
 
+function hasCurrentSemanticAuthority(statement, currentSemanticAuthorityHead) {
+  const bindings = currentSemanticAuthorityHead?.currentAcceptanceBindings;
+  if (!Array.isArray(bindings)) return false;
+  return bindings.some((binding) =>
+    binding.semanticSubjectFingerprint === statement.semanticSubjectFingerprint &&
+    binding.acceptanceRef === statement.semanticAcceptanceRef &&
+    binding.acceptanceSha256 === statement.semanticAcceptanceSha256 &&
+    binding.candidateRef === statement.semanticCandidateRef &&
+    binding.candidateSha256 === statement.semanticCandidateSha256 &&
+    binding.consentDispositionRef === statement.consentDispositionRef &&
+    binding.consentDispositionSha256 === statement.consentDispositionSha256 &&
+    JSON.stringify(binding.classificationEvidenceBindings) === JSON.stringify(statement.classificationEvidenceBindings ?? [])
+  );
+}
+
 function canonicalDay(input) {
   const dayRef = string(input.dayRef, 'dayRef');
   if (!DAY_REF.test(dayRef)) fail('DREAM_DAY_INVALID', 'dayRef is not portable');
@@ -439,6 +457,20 @@ function loadStratumBundle(home, paths, stratumSha, wakeSha = null) {
   const consolidation = loadAddressed(home, paths.consolidations, stratum.memoryConsolidationSha256, (value) => validateKind('consolidation', value), 'memory consolidation');
   const postDream = loadAddressed(home, paths.postDream, stratum.postDreamStateSha256, (value) => validateKind('postDream', value), 'post-dream state');
   const wake = wakeSha === null ? null : loadAddressed(home, paths.wakes, wakeSha, (value) => validateKind('wake', value), 'wake receipt');
+  const semanticAuthorityHeadSha256 = stratum.sourceSemanticAuthorityHeadSha256;
+  if (!SHA256.test(semanticAuthorityHeadSha256 ?? '')) {
+    fail('DREAM_RECEIPT_CORRUPT', 'Daily Stratum lacks exact G02 semantic authority head binding');
+  }
+  for (const [label, receipt] of [
+    ['orientation', orientation], ['preDream', preDream], ['closure', closure],
+    ['consolidation', consolidation], ['postDream', postDream], ...(wake ? [['wake', wake]] : [])
+  ]) {
+    if (receipt.sourceSemanticAuthorityHeadSha256 !== semanticAuthorityHeadSha256) {
+      fail('DREAM_RECEIPT_CORRUPT', `${label} semantic authority head binding mismatch`, {
+        observed: receipt.sourceSemanticAuthorityHeadSha256, expected: semanticAuthorityHeadSha256
+      });
+    }
+  }
   const causal = [
     [preDream.orientationSha256, orientation.orientationSha256, 'preDream.orientation'],
     [closure.preDreamStateSha256, preDream.preDreamStateSha256, 'closure.preDream'],
@@ -481,6 +513,7 @@ function verifyHead(home, paths, identity, threadRef) {
   const head = validateKind('head', readJson(paths.head, 'DREAM_HEAD_MISMATCH', 'current Daily Dream head'));
   if (head.homeRef !== identity.homeRef || head.deviceRef !== identity.deviceRef || head.companionLineageRef !== identity.companionLineageRef || head.threadRef !== threadRef ||
       !Number.isSafeInteger(head.sequence) || head.sequence < 0 || !SHA256.test(head.dailyStratumSha256 ?? '') ||
+      !SHA256.test(head.sourceSemanticAuthorityHeadSha256 ?? '') ||
       (head.sequence === 0 ? head.priorDailyDreamHeadSha256 !== null : !SHA256.test(head.priorDailyDreamHeadSha256 ?? ''))) {
     fail('DREAM_HEAD_MISMATCH', 'current Daily Dream head identity is invalid');
   }
@@ -610,12 +643,27 @@ export function commitDailyMemoryDream(input) {
       fail('DREAM_HEAD_MISMATCH', 'expected Daily Dream head does not match current head', { expected: input.expectedDailyDreamHeadSha256 ?? null, observed: state.head?.dailyDreamHeadSha256 ?? null });
     }
     const frontier = sourceFrontier({ ...input, home: initialScore.identity.homeRoot, homeRef: initialScore.identity.homeRef, deviceRef: initialScore.identity.deviceRef, companionLineageRef: initialScore.identity.companionLineageRef, threadRef: initialScore.threadRef });
+    const sourceSemanticAuthorityHeadSha256 = frontier.score.currentSemanticAuthorityHead.semanticAuthorityHeadSha256;
+    if (state.uncommittedTail.length && state.uncommittedTail[0].sourceSemanticAuthorityHeadSha256 !== sourceSemanticAuthorityHeadSha256) {
+      fail('DREAM_TAIL_ATTENTION', 'uncommitted Daily Stratum cannot be completed under a different current semantic authority head', {
+        tailSemanticAuthorityHeadSha256: state.uncommittedTail[0].sourceSemanticAuthorityHeadSha256,
+        currentSemanticAuthorityHeadSha256: sourceSemanticAuthorityHeadSha256
+      });
+    }
     if (state.head && day.dayIndex !== state.head.dayIndex + 1) fail('DREAM_DAY_INVALID', 'dayIndex must advance exactly one committed day', { expected: state.head.dayIndex + 1, observed: day.dayIndex });
     if (!state.head && day.dayIndex !== 0) fail('DREAM_DAY_INVALID', 'first Daily Stratum must use dayIndex 0');
 
     const currentStatements = frontier.score.statements.filter((item) => item.current === true).sort((a, b) => a.statementRef.localeCompare(b.statementRef));
-    const active = currentStatements.filter((item) => item.acceptedForContinuity === true && POSITIVE_CONSENT.has(item.consentState)).map(statementBinding);
-    const held = currentStatements.filter((item) => !(item.acceptedForContinuity === true && POSITIVE_CONSENT.has(item.consentState))).map(statementBinding);
+    const active = currentStatements.filter((item) =>
+      item.acceptedForContinuity === true &&
+      POSITIVE_CONSENT.has(item.consentState) &&
+      hasCurrentSemanticAuthority(item, frontier.score.currentSemanticAuthorityHead)
+    ).map(statementBinding);
+    const held = currentStatements.filter((item) => !(
+      item.acceptedForContinuity === true &&
+      POSITIVE_CONSENT.has(item.consentState) &&
+      hasCurrentSemanticAuthority(item, frontier.score.currentSemanticAuthorityHead)
+    )).map(statementBinding);
     const loops = frontier.score.openLoops.filter((item) => item.state === 'OPEN').sort((a, b) => a.openLoopRef.localeCompare(b.openLoopRef)).map(openLoopBinding);
 
     const common = {
@@ -625,7 +673,8 @@ export function commitDailyMemoryDream(input) {
       threadRef: frontier.score.threadRef,
       ...day,
       contractRef: DAILY_MEMORY_DREAM_CONTRACT,
-      privacyClass: 'DEVICE_PRIVATE'
+      privacyClass: 'DEVICE_PRIVATE',
+      sourceSemanticAuthorityHeadSha256
     };
     const orientation = formKind('orientation', {
       ...common,
@@ -777,12 +826,36 @@ export function commitDailyMemoryDream(input) {
       wakeReceiptSha256: wake.wakeReceiptSha256,
       sourceConversationHeadSha256: frontier.g01.conversationHeadSha256,
       sourceScoreHeadSha256: frontier.score.head.scoreHeadSha256,
+      sourceSemanticAuthorityHeadSha256,
       priorDailyDreamHeadSha256: state.head?.dailyDreamHeadSha256 ?? null,
       contractRef: DAILY_MEMORY_DREAM_CONTRACT,
       formedAt: day.observedAt
     };
     const head = formReceipt({ schemaVersion: headCore.schemaVersion, refField: 'dailyDreamHeadRef', hashField: 'dailyDreamHeadSha256', prefix: 'daily-dream-head', core: (() => { const c = { ...headCore }; delete c.schemaVersion; return c; })() });
     writeAddressed(frontier.score.identity.homeRoot, paths.heads, 'dailyDreamHeadSha256', head, 'immutable Daily Dream head');
+
+    const finalFrontier = sourceFrontier({
+      ...input,
+      home: initialScore.identity.homeRoot,
+      homeRef: initialScore.identity.homeRef,
+      deviceRef: initialScore.identity.deviceRef,
+      companionLineageRef: initialScore.identity.companionLineageRef,
+      threadRef: initialScore.threadRef
+    });
+    const finalSemanticAuthorityHeadSha256 = finalFrontier.score.currentSemanticAuthorityHead.semanticAuthorityHeadSha256;
+    if (finalFrontier.g01.conversationHeadSha256 !== frontier.g01.conversationHeadSha256 ||
+        finalFrontier.score.head.scoreHeadSha256 !== frontier.score.head.scoreHeadSha256 ||
+        finalSemanticAuthorityHeadSha256 !== sourceSemanticAuthorityHeadSha256) {
+      fail('DREAM_SOURCE_STALE', 'G03 source frontier changed before atomic Daily Dream head advance', {
+        initialConversationHeadSha256: frontier.g01.conversationHeadSha256,
+        finalConversationHeadSha256: finalFrontier.g01.conversationHeadSha256,
+        initialScoreHeadSha256: frontier.score.head.scoreHeadSha256,
+        finalScoreHeadSha256: finalFrontier.score.head.scoreHeadSha256,
+        initialSemanticAuthorityHeadSha256: sourceSemanticAuthorityHeadSha256,
+        finalSemanticAuthorityHeadSha256
+      });
+    }
+
     atomicWrite(paths.head, head, input.faults ?? {});
     return { state: 'COMMITTED', idempotent: false, orientation, preDream, closure, consolidation, postDream, stratum, wake, head };
   } finally {
@@ -836,6 +909,7 @@ export function sourceDescentForDailyStratum(input, dailyStratumSha256 = null) {
     dailyStratumSha256: bundle.stratum.dailyStratumSha256,
     sourceConversationHeadSha256: bundle.stratum.sourceConversationHeadSha256,
     sourceScoreHeadSha256: bundle.stratum.sourceScoreHeadSha256,
+    sourceSemanticAuthorityHeadSha256: bundle.stratum.sourceSemanticAuthorityHeadSha256,
     orientationSha256: bundle.orientation.orientationSha256,
     preDreamStateSha256: bundle.preDream.preDreamStateSha256,
     dayClosureSha256: bundle.closure.dayClosureSha256,

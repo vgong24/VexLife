@@ -37,20 +37,21 @@ G04 owns evaluated Rhythm learning/adaptation. G05 owns standing rest scheduling
 
 ## Exact source precondition
 
-A new Daily Stratum is allowed only when both current source frontiers are exact and healthy:
+A new Daily Stratum is allowed only when all current source frontiers are exact and healthy:
 
 ```text
 current G01 conversation head
 current G02 Score head
+current G02 semantic owner head
 ```
 
-The caller binds both expected hashes. G03 independently loads G02 and the canonical G01 head. It also requires:
+The caller binds the G01/G02 source heads. G03 independently loads G02, the canonical G01 head, and the validated current semantic owner head exposed by G02. It also requires:
 
 ```text
 G02 sourceConversationHeadSha256 == current G01 conversationHeadSha256
 ```
 
-Therefore Dream fails closed when conversation history has advanced beyond the accepted Score frontier. It does not close a day over two different source generations.
+Therefore Dream fails closed when conversation history has advanced beyond the accepted Score frontier. The exact current semantic owner-head SHA used for a new continuity use is bound into the Daily-Stratum receipt lineage. Immediately before atomic Dream-head advance, G03 revalidates the G01 head, G02 Score head, and semantic owner head; drift leaves only uncommitted tail evidence. It does not close a day over mixed source or authority generations.
 
 ## No second semantic acceptance engine
 
@@ -73,10 +74,13 @@ Current Score is separated into:
 
 ```text
 carriedCurrentScoreBindings[]
-  current statements with acceptedForContinuity=true and PERMITTED|NARROWED continuity consent
+  current statements with acceptedForContinuity=true, PERMITTED|NARROWED continuity consent,
+  and exact membership of the same subject/acceptance/candidate/evidence/consent binding
+  in the validated current G02 semantic owner head
 
 heldOrDeferredScoreBindings[]
-  every other current statement, retained without promotion or loss
+  every other current statement, including historically replayable Score whose
+  prior authority is no longer current for a new use; retained without promotion or loss
 
 openLoopCarryForwardBindings[]
   every current unresolved G02 open loop, still OPEN
@@ -113,7 +117,7 @@ pre-rest orientation
 → atomic current Dream head
 ```
 
-The Daily Stratum contains exact hashes of the pre/closure/consolidation/post receipts. The wake receipt binds the exact Daily Stratum. The immutable Dream head binds both the stratum and wake receipt.
+The Daily Stratum contains exact hashes of the pre/closure/consolidation/post receipts. Every receipt in the committed bundle also binds the exact current G02 semantic-owner-head SHA used to classify active versus held continuity. The wake receipt binds the exact Daily Stratum. The immutable Dream head binds both the stratum and wake receipt.
 
 All final existing receipt files must be regular canonical files inside Vex Home. Final-file symlink/junction aliases and non-canonical ancestors fail closed.
 
@@ -130,7 +134,7 @@ fresh replay reports it as recovery/attention evidence
 no partial consolidation silently becomes current
 ```
 
-The crashed writer lease is not silently deleted. `recoverAbandonedDailyMemoryDreamWriter(...)` may remove it only when the lease is hash-valid, identity-exact, and its recorded process is provably absent. After that, only an exact retry of the same `dayRef` + day metadata + source heads + one-shot invocation ref may reuse the immutable tail and finish the missing wake/head commit. A changed retry remains attention/conflict, and no crash-tail source evidence is deleted.
+The crashed writer lease is not silently deleted. `recoverAbandonedDailyMemoryDreamWriter(...)` may remove it only when the lease is hash-valid, identity-exact, and its recorded process is provably absent. After that, only an exact retry of the same `dayRef` + day metadata + source heads + semantic-owner-head generation + one-shot invocation ref may reuse the immutable tail and finish the missing wake/head commit. A changed retry remains attention/conflict, and no crash-tail source evidence is deleted.
 
 A fresh process replays the exact immutable Dream-head lineage and revalidates each referenced stratum/wake bundle.
 
@@ -183,6 +187,6 @@ publication
 
 ## Proof
 
-`npm run daily-memory-dream:proof` produces `generated/health/g03-daily-memory-dream-proof.json` and proves the D0-D15 Root/Main Vex matrix, including exact G01/G02 heads, reference-only continuity, held/open-loop preservation, raw-content exclusion, unchanged runtime/model, crash-before-head semantics, duplicate-day behavior, stale-source rejection, canonical-file alias guards, fresh-process replay, and all later-effect holds.
+`npm run daily-memory-dream:proof` produces `generated/health/g03-daily-memory-dream-proof.json` and proves the D0-D15 Root/Main Vex matrix, including exact G01/G02 heads, current semantic-owner-head gating for new use, historical-authority hold/defer behavior, reference-only continuity, held/open-loop preservation, raw-content exclusion, unchanged runtime/model, crash-before-head semantics, semantic-authority drift rejection on crash retry, duplicate-day behavior, stale-source rejection, canonical-file alias guards, fresh-process replay, and all later-effect holds.
 
 The normal repository gate must retain G01 and G02 regression proof alongside G03.

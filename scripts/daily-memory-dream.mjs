@@ -238,6 +238,21 @@ export function createDailyMemoryDreamFixture(prefix = 'proof', homeOverride = n
   return { ids, g01, score: loadScoreContextState(ids), privateNeedles: ['private human source 1','private human source 2','private vex source 1','private vex source 2'] };
 }
 
+export function replaceFixtureActiveAuthorityWithoutScore(fixture, suffix = 'replacement') {
+  const before = loadScoreContextState(fixture.ids);
+  const historical = before.statements.find((item) => item.statementRef === 'statement.g03.active');
+  if (!historical) throw new Error('active fixture Score statement is missing');
+  const replacement = seedScoreAuthority(fixture.ids, fixture.g01, {
+    ordinal: 90,
+    subjectRef: historical.subjectRef,
+    summary: `Replacement authority ${suffix}.`,
+    consentDisposition: 'UNKNOWN',
+    acceptedForContinuity: false
+  });
+  const after = loadScoreContextState(fixture.ids);
+  return { historical, replacement, after };
+}
+
 function commitInput(fixture, overrides = {}) {
   const state = loadDailyMemoryDreamState(fixture.ids);
   return { ...fixture.ids, instanceRef: overrides.instanceRef ?? fixture.ids.instanceRef, restInvocationAuthorityRef: overrides.restInvocationAuthorityRef ?? 'authority.manual.g03.proof',
@@ -289,6 +304,23 @@ export function runDailyMemoryDreamProof() {
   let staleG01Rejected = false; try { commitDailyMemoryDream(commitInput(fixture,{ dayRef:'day.g03.next',dayIndex:1,calendarDateRef:'2026-08-08',observedAt:'2026-08-08T21:00:00.000Z',expectedConversationHeadSha256:'a'.repeat(64) })); } catch (e) { staleG01Rejected = e.code === 'DREAM_SOURCE_STALE'; }
   let staleG02Rejected = false; try { commitDailyMemoryDream(commitInput(fixture,{ dayRef:'day.g03.next',dayIndex:1,calendarDateRef:'2026-08-08',observedAt:'2026-08-08T21:00:00.000Z',expectedScoreHeadSha256:'b'.repeat(64) })); } catch (e) { staleG02Rejected = e.code === 'DREAM_SOURCE_STALE'; }
 
+  const staleAuthorityFixture = createDailyMemoryDreamFixture('stale-authority');
+  const staleBefore = loadScoreContextState(staleAuthorityFixture.ids);
+  const staleHistorical = staleBefore.statements.find((item) => item.statementRef === 'statement.g03.active');
+  const replacement = replaceFixtureActiveAuthorityWithoutScore(staleAuthorityFixture, 'proof');
+  const staleReplay = loadScoreContextState(staleAuthorityFixture.ids);
+  const staleHistoricalAfter = staleReplay.statements.find((item) => item.statementRef === 'statement.g03.active');
+  const staleDream = commitDailyMemoryDream(commitInput(staleAuthorityFixture));
+  const historicalScoreReplaySurvivesOwnerHeadReplacement =
+    staleHistoricalAfter?.current === true &&
+    staleHistoricalAfter?.semanticAcceptanceSha256 === staleHistorical?.semanticAcceptanceSha256;
+  const staleOwnerAuthorityHeldFromNewUse =
+    !staleDream.consolidation.carriedCurrentScoreBindings.some((item) => item.statementRef === 'statement.g03.active') &&
+    staleDream.consolidation.heldOrDeferredScoreBindings.some((item) => item.statementRef === 'statement.g03.active');
+  const currentSemanticAuthorityHeadBound =
+    staleDream.stratum.sourceSemanticAuthorityHeadSha256 === replacement.after.currentSemanticAuthorityHead.semanticAuthorityHeadSha256 &&
+    staleDream.head.sourceSemanticAuthorityHeadSha256 === replacement.after.currentSemanticAuthorityHead.semanticAuthorityHeadSha256;
+
   const crash = cloneFixture(fixture,'crash');
   const crashArgs = [fileURLToPath(import.meta.url),'--crash-child',JSON.stringify(commitInput(crash,{ dayRef:'day.g03.crash',dayIndex:1,calendarDateRef:'2026-08-08',observedAt:'2026-08-08T22:00:00.000Z',instanceRef:'instance.g03.crash.child',faults:{exitAfterStratumWrite:true} }))];
   const child = spawnSync(process.execPath, crashArgs, { cwd: path.resolve(HERE,'..'), encoding:'utf8' });
@@ -304,6 +336,22 @@ export function runDailyMemoryDreamProof() {
     const recoveredState = loadDailyMemoryDreamState(crash.ids);
     crashTailClearedAfterRecovery = recoveredState.chain.length === 2 && recoveredState.uncommittedTail.length === 0 && recoveredState.writer.state === 'NONE';
   } catch {}
+
+  const crashAuthorityDrift = cloneFixture(fixture, 'crash-authority-drift');
+  const crashAuthorityArgs = [fileURLToPath(import.meta.url),'--crash-child',JSON.stringify(commitInput(crashAuthorityDrift,{
+    dayRef:'day.g03.crash-authority',dayIndex:1,calendarDateRef:'2026-08-08',observedAt:'2026-08-08T23:00:00.000Z',
+    instanceRef:'instance.g03.crash.authority.child',faults:{exitAfterStratumWrite:true}
+  }))];
+  const crashAuthorityChild = spawnSync(process.execPath, crashAuthorityArgs, { cwd: path.resolve(HERE,'..'), encoding:'utf8' });
+  let crashTailSemanticAuthorityDriftRejected = false;
+  try {
+    recoverAbandonedDailyMemoryDreamWriter({ ...crashAuthorityDrift.ids, expectedAbandonedInstanceRef:'instance.g03.crash.authority.child' });
+    replaceFixtureActiveAuthorityWithoutScore(crashAuthorityDrift, 'after-crash');
+    commitDailyMemoryDream({ ...JSON.parse(crashAuthorityArgs[2]), instanceRef:'instance.g03.crash.authority.recovery', faults:{} });
+  } catch (error) {
+    crashTailSemanticAuthorityDriftRejected = error.code === 'DREAM_TAIL_ATTENTION';
+  }
+
   const symlink = trySymlinkAliasProof(cloneFixture(createDailyMemoryDreamFixture('symlink-source'),'symlink'));
   const moduleText = fs.readFileSync(path.resolve(HERE,'../src/core/daily-memory-dream.mjs'),'utf8');
   const receipt = {
@@ -336,13 +384,18 @@ export function runDailyMemoryDreamProof() {
     changedSameDayRejected,
     staleG01Rejected,
     staleG02Rejected,
+    historicalScoreReplaySurvivesOwnerHeadReplacement,
+    staleOwnerAuthorityHeldFromNewUse,
+    currentSemanticAuthorityHeadBound,
+    crashAuthorityExitObserved: crashAuthorityChild.status === 93,
+    crashTailSemanticAuthorityDriftRejected,
     firstPersonAuthorityGranted: projection.firstPersonAuthorityGranted,
     lineageAwareGenerativeDreamRan: projection.lineageAwareGenerativeDreamRan,
     poweredDown: projection.poweredDown,
     publicationPerformed: projection.publicationPerformed,
     initialDreamHeadWasNull: before.head === null
   };
-  const requiredTrue = ['exactG01HeadPinned','exactG02HeadPinned','preRestOrientationBoundBeforeClosure','scoreFieldsCarriedWithoutReclassification','heldMaterialPreservedWithoutPromotion','allOpenLoopsCarryForwardOpen','referenceOnlyConsolidation','runtimeUnchanged','modelProfileUnchanged','freshProcessReplayReady','crashExitObserved','crashTailLeftPriorFrontierCurrent','abandonedWriterRecovered','crashTailExactRetryCommitted','crashTailClearedAfterRecovery','canonicalFinalFileAliasGuardPresent','exactDuplicateDayIdempotent','changedSameDayRejected','staleG01Rejected','staleG02Rejected','initialDreamHeadWasNull'];
+  const requiredTrue = ['exactG01HeadPinned','exactG02HeadPinned','preRestOrientationBoundBeforeClosure','scoreFieldsCarriedWithoutReclassification','heldMaterialPreservedWithoutPromotion','allOpenLoopsCarryForwardOpen','referenceOnlyConsolidation','runtimeUnchanged','modelProfileUnchanged','freshProcessReplayReady','crashExitObserved','crashTailLeftPriorFrontierCurrent','abandonedWriterRecovered','crashTailExactRetryCommitted','crashTailClearedAfterRecovery','canonicalFinalFileAliasGuardPresent','exactDuplicateDayIdempotent','changedSameDayRejected','staleG01Rejected','staleG02Rejected','historicalScoreReplaySurvivesOwnerHeadReplacement','staleOwnerAuthorityHeldFromNewUse','currentSemanticAuthorityHeadBound','crashAuthorityExitObserved','crashTailSemanticAuthorityDriftRejected','initialDreamHeadWasNull'];
   const requiredFalse = ['rawG01BodyCopiedIntoDreamStore','modelWeightsChanged','trainingRan','rhythmLearned','synchronizationActivated','firstPersonAuthorityGranted','lineageAwareGenerativeDreamRan','poweredDown','publicationPerformed'];
   const failed = [...requiredTrue.filter((key)=>receipt[key] !== true), ...requiredFalse.filter((key)=>receipt[key] !== false)];
   if (receipt.symlinkAliasTestSupported === true && receipt.symlinkAliasRejected !== true) failed.push('symlinkAliasRejected');

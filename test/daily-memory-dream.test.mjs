@@ -16,7 +16,10 @@ import {
   projectDailyMemoryDream,
   sourceDescentForDailyStratum
 } from '../src/core/daily-memory-dream.mjs';
-import { createDailyMemoryDreamFixture } from '../scripts/daily-memory-dream.mjs';
+import {
+  createDailyMemoryDreamFixture,
+  replaceFixtureActiveAuthorityWithoutScore
+} from '../scripts/daily-memory-dream.mjs';
 
 function inputFor(fixture, overrides = {}) {
   const state = loadDailyMemoryDreamState(fixture.ids);
@@ -79,6 +82,37 @@ test('Dream preserves exact accepted Score semantic identities rather than recla
   assert.equal(result.consolidation.newSemanticAcceptanceCreated, false);
 });
 
+test('historical Score replay does not authorize a new active Dream use after current owner-head replacement', () => {
+  const fixture = createDailyMemoryDreamFixture('unit-current-authority');
+  const before = loadDailyMemoryDreamState(fixture.ids);
+  assert.equal(before.head, null);
+  const scoreBefore = fixture.score;
+  const historical = scoreBefore.statements.find((item) => item.statementRef === 'statement.g03.active');
+  assert.equal(historical.current, true);
+  const replaced = replaceFixtureActiveAuthorityWithoutScore(fixture, 'unit');
+  const replayed = replaced.after.statements.find((item) => item.statementRef === 'statement.g03.active');
+  assert.equal(replayed.current, true);
+  assert.equal(replayed.semanticAcceptanceSha256, historical.semanticAcceptanceSha256);
+  assert.notEqual(
+    replaced.after.currentSemanticAuthorityHead.currentAcceptanceBindings.find(
+      (item) => item.semanticSubjectFingerprint === historical.semanticSubjectFingerprint
+    )?.acceptanceSha256,
+    historical.semanticAcceptanceSha256
+  );
+
+  const result = commitDailyMemoryDream(inputFor(fixture));
+  assert.equal(result.consolidation.carriedCurrentScoreBindings.some((item) => item.statementRef === 'statement.g03.active'), false);
+  assert.equal(result.consolidation.heldOrDeferredScoreBindings.some((item) => item.statementRef === 'statement.g03.active'), true);
+  assert.equal(
+    result.stratum.sourceSemanticAuthorityHeadSha256,
+    replaced.after.currentSemanticAuthorityHead.semanticAuthorityHeadSha256
+  );
+  assert.equal(
+    result.head.sourceSemanticAuthorityHeadSha256,
+    replaced.after.currentSemanticAuthorityHead.semanticAuthorityHeadSha256
+  );
+});
+
 test('pre-rest orientation precedes closure and binds exact current G01 + G02 heads', () => {
   const fixture = createDailyMemoryDreamFixture('unit-orientation');
   const result = commitDailyMemoryDream(inputFor(fixture));
@@ -112,6 +146,7 @@ test('source descent binds the exact Daily Stratum back to G01 + G02 without raw
   assert.equal(descent.dailyStratumSha256, result.stratum.dailyStratumSha256);
   assert.equal(descent.sourceConversationHeadSha256, fixture.g01.head.conversationHeadSha256);
   assert.equal(descent.sourceScoreHeadSha256, fixture.score.head.scoreHeadSha256);
+  assert.equal(descent.sourceSemanticAuthorityHeadSha256, fixture.score.currentSemanticAuthorityHead.semanticAuthorityHeadSha256);
   assert.equal(descent.rawConversationContentIncluded, false);
   assert.equal(descent.newSemanticAcceptanceCreated, false);
   assert.equal(descent.firstPersonAuthorityGranted, false);
