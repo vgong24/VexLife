@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { semanticHash } from './utils.mjs';
-import { loadScoreContextState } from './score-context-continuity.mjs';
+import { loadScoreContextState, verifyHistoricalScoreContextSnapshot } from './score-context-continuity.mjs';
 
 export const DAILY_MEMORY_DREAM_CONTRACT = 'contract.multivex.g03.daily-memory-only-dream/v1';
 export const DAILY_MEMORY_DREAM_MEMORY_OWNER = 'github.issue.vextreme-sdk.225.comment.5222362637';
@@ -489,6 +489,115 @@ function loadStratumBundle(home, paths, stratumSha, wakeSha = null) {
   return { stratum, orientation, preDream, closure, consolidation, postDream, wake };
 }
 
+function sourceProjectionFromHistoricalSnapshot(snapshot) {
+  const currentStatements = snapshot.statements
+    .filter((item) => item.current === true)
+    .sort((a, b) => a.statementRef.localeCompare(b.statementRef));
+  const active = currentStatements.filter((item) =>
+    item.acceptedForContinuity === true &&
+    POSITIVE_CONSENT.has(item.consentState) &&
+    hasCurrentSemanticAuthority(item, snapshot.semanticAuthorityHead)
+  ).map(statementBinding);
+  const held = currentStatements.filter((item) => !(
+    item.acceptedForContinuity === true &&
+    POSITIVE_CONSENT.has(item.consentState) &&
+    hasCurrentSemanticAuthority(item, snapshot.semanticAuthorityHead)
+  )).map(statementBinding);
+  const loops = snapshot.openLoops
+    .filter((item) => item.state === 'OPEN')
+    .sort((a, b) => a.openLoopRef.localeCompare(b.openLoopRef))
+    .map(openLoopBinding);
+  return { currentStatements, active, held, loops };
+}
+
+function verifyBundleAgainstHistoricalSource(identity, threadRef, bundle) {
+  let snapshot;
+  try {
+    snapshot = verifyHistoricalScoreContextSnapshot({
+      home: identity.homeRoot,
+      homeRef: identity.homeRef,
+      deviceRef: identity.deviceRef,
+      companionLineageRef: identity.companionLineageRef,
+      threadRef,
+      scoreHeadSha256: bundle.stratum.sourceScoreHeadSha256,
+      semanticAuthorityHeadSha256: bundle.stratum.sourceSemanticAuthorityHeadSha256
+    });
+  } catch (error) {
+    fail('DREAM_SOURCE_INVALID', 'Daily Stratum historical source verification failed', {
+      sourceCode: error?.code ?? 'UNKNOWN',
+      sourceMessage: error?.message ?? String(error)
+    });
+  }
+
+  const { currentStatements, active, held, loops } = sourceProjectionFromHistoricalSnapshot(snapshot);
+  const response = snapshot.sourceConversation?.response;
+  const expectedStatementRefs = currentStatements.map((item) => item.statementRef);
+  const expectedHeldRefs = held.map((item) => item.statementRef);
+  const expectedOpenLoopRefs = loops.map((item) => item.openLoopRef);
+  const exact = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+  const sourceChecks = [
+    [bundle.orientation.exactG01ConversationHeadSha256, snapshot.sourceConversationHeadSha256, 'orientation G01 head'],
+    [bundle.orientation.exactG02ScoreHeadSha256, snapshot.scoreHead.scoreHeadSha256, 'orientation G02 head'],
+    [bundle.preDream.sourceConversationHeadSha256, snapshot.sourceConversationHeadSha256, 'preDream G01 head'],
+    [bundle.preDream.sourceConversationEventHash, response?.eventHash, 'preDream G01 response event'],
+    [bundle.preDream.sourceScoreHeadSha256, snapshot.scoreHead.scoreHeadSha256, 'preDream G02 head'],
+    [bundle.preDream.sourceScoreEventHash, snapshot.scoreHead.eventHash, 'preDream G02 event'],
+    [bundle.closure.sourceConversationHeadSha256, snapshot.sourceConversationHeadSha256, 'closure G01 head'],
+    [bundle.closure.sourceScoreHeadSha256, snapshot.scoreHead.scoreHeadSha256, 'closure G02 head'],
+    [bundle.consolidation.sourceConversationHeadSha256, snapshot.sourceConversationHeadSha256, 'consolidation G01 head'],
+    [bundle.consolidation.sourceScoreHeadSha256, snapshot.scoreHead.scoreHeadSha256, 'consolidation G02 head'],
+    [bundle.postDream.sourceConversationHeadSha256, snapshot.sourceConversationHeadSha256, 'postDream G01 head'],
+    [bundle.postDream.sourceScoreHeadSha256, snapshot.scoreHead.scoreHeadSha256, 'postDream G02 head'],
+    [bundle.stratum.sourceConversationHeadSha256, snapshot.sourceConversationHeadSha256, 'stratum G01 head'],
+    [bundle.stratum.sourceScoreHeadSha256, snapshot.scoreHead.scoreHeadSha256, 'stratum G02 head'],
+    [bundle.stratum.sourceSemanticAuthorityHeadSha256, snapshot.semanticAuthorityHead.semanticAuthorityHeadSha256, 'stratum semantic authority head'],
+    [bundle.preDream.preDreamRuntimeRef, response?.endpointProfileRef, 'preDream runtime'],
+    [bundle.preDream.preDreamModelProfileRef, response?.modelProfileRef, 'preDream model'],
+    [bundle.postDream.selectedRuntimeRef, response?.endpointProfileRef, 'postDream runtime'],
+    [bundle.postDream.selectedModelProfileRef, response?.modelProfileRef, 'postDream model'],
+    [bundle.postDream.preDreamRuntimeRef, response?.endpointProfileRef, 'postDream pre-runtime'],
+    [bundle.postDream.preDreamModelProfileRef, response?.modelProfileRef, 'postDream pre-model'],
+    [bundle.stratum.sourceRuntimeRef, response?.endpointProfileRef, 'stratum runtime'],
+    [bundle.stratum.sourceModelProfileRef, response?.modelProfileRef, 'stratum model']
+  ];
+  if (bundle.wake) sourceChecks.push(
+    [bundle.wake.selectedRuntimeRef, response?.endpointProfileRef, 'wake runtime'],
+    [bundle.wake.selectedModelProfileRef, response?.modelProfileRef, 'wake model'],
+    [bundle.wake.preDreamRuntimeRef, response?.endpointProfileRef, 'wake pre-runtime'],
+    [bundle.wake.preDreamModelProfileRef, response?.modelProfileRef, 'wake pre-model']
+  );
+  const mismatch = sourceChecks.find(([observed, expected]) => observed !== expected);
+  if (mismatch) fail('DREAM_SOURCE_INVALID', `${mismatch[2]} differs from source-owned historical verification`, { observed: mismatch[0], expected: mismatch[1] });
+
+  const projectionChecks = [
+    [bundle.preDream.currentStatementRefs, expectedStatementRefs, 'preDream current statements'],
+    [bundle.preDream.openLoopRefs, expectedOpenLoopRefs, 'preDream open loops'],
+    [bundle.closure.currentStatementRefs, expectedStatementRefs, 'closure current statements'],
+    [bundle.closure.heldOrDeferredStatementRefs, expectedHeldRefs, 'closure held statements'],
+    [bundle.closure.openLoopRefs, expectedOpenLoopRefs, 'closure open loops'],
+    [bundle.consolidation.carriedCurrentScoreBindings, active, 'consolidation active bindings'],
+    [bundle.consolidation.heldOrDeferredScoreBindings, held, 'consolidation held bindings'],
+    [bundle.consolidation.openLoopCarryForwardBindings, loops, 'consolidation open loops'],
+    [bundle.postDream.activeContinuityStatementRefs, active.map((item) => item.statementRef), 'postDream active statements'],
+    [bundle.postDream.heldOrDeferredStatementRefs, expectedHeldRefs, 'postDream held statements'],
+    [bundle.postDream.openLoopRefs, expectedOpenLoopRefs, 'postDream open loops']
+  ];
+  if (bundle.wake) projectionChecks.push(
+    [bundle.wake.openLoopRefs, expectedOpenLoopRefs, 'wake open loops'],
+    [bundle.wake.heldOrDeferredRefs, expectedHeldRefs, 'wake held statements']
+  );
+  const projectionMismatch = projectionChecks.find(([observed, expected]) => !exact(observed, expected));
+  if (projectionMismatch) fail('DREAM_SOURCE_INVALID', `${projectionMismatch[2]} differs from source-owned historical projection`, { observed: projectionMismatch[0], expected: projectionMismatch[1] });
+
+  return snapshot;
+}
+
+function loadVerifiedStratumBundle(identity, threadRef, paths, stratumSha, wakeSha = null) {
+  const bundle = loadStratumBundle(identity.homeRoot, paths, stratumSha, wakeSha);
+  const sourceVerification = verifyBundleAgainstHistoricalSource(identity, threadRef, bundle);
+  return { ...bundle, sourceVerification };
+}
+
 function readAllStrata(home, paths) {
   if (!fs.existsSync(paths.strata)) return { valid: [], invalid: [] };
   const stat = fs.lstatSync(paths.strata);
@@ -556,7 +665,7 @@ export function loadDailyMemoryDreamState({ home, homeRef, deviceRef, companionL
     if (stratum.sequence !== index || stratum.priorDailyStratumSha256 !== (index ? chain[index - 1].dailyStratumSha256 : null) || h.sequence !== index || h.dayRef !== stratum.dayRef || h.dayIndex !== stratum.dayIndex) {
       fail('DREAM_HEAD_MISMATCH', 'Daily Dream head/stratum lineage is not contiguous');
     }
-    loadStratumBundle(identity.homeRoot, paths, stratum.dailyStratumSha256, h.wakeReceiptSha256);
+    loadVerifiedStratumBundle(identity, thread, paths, stratum.dailyStratumSha256, h.wakeReceiptSha256);
     chain.push(stratum);
   }
   if (head && chain.at(-1)?.dailyStratumSha256 !== head.dailyStratumSha256) fail('DREAM_HEAD_MISMATCH', 'Daily Dream head does not bind exact final stratum');
@@ -567,7 +676,7 @@ export function loadDailyMemoryDreamState({ home, homeRef, deviceRef, companionL
   const expectedPrior = head?.dailyStratumSha256 ?? null;
   for (const stratum of strata.filter((item) => !reachable.has(item.dailyStratumSha256)).sort((a, b) => a.sequence - b.sequence || a.dailyStratumSha256.localeCompare(b.dailyStratumSha256))) {
     try {
-      loadStratumBundle(identity.homeRoot, paths, stratum.dailyStratumSha256, null);
+      loadVerifiedStratumBundle(identity, thread, paths, stratum.dailyStratumSha256, null);
       if (stratum.sequence === expectedSequence && stratum.priorDailyStratumSha256 === expectedPrior) uncommittedTail.push(stratum);
       else attention.push({ code: 'INVALID_TAIL', reason: 'REORDERED_OR_READRESSED_DREAM_TAIL', dailyStratumRef: stratum.dailyStratumRef });
     } catch (error) { attention.push({ code: 'INVALID_TAIL', reason: error.code ?? 'DREAM_RECEIPT_CORRUPT', dailyStratumRef: stratum.dailyStratumRef, message: error.message }); }
@@ -584,7 +693,7 @@ export function loadDailyMemoryDreamState({ home, homeRef, deviceRef, companionL
     head: currentHead,
     headChain,
     chain,
-    currentDailyStratum: currentHead ? loadStratumBundle(identity.homeRoot, paths, currentHead.dailyStratumSha256, currentHead.wakeReceiptSha256) : null,
+    currentDailyStratum: currentHead ? loadVerifiedStratumBundle(identity, thread, paths, currentHead.dailyStratumSha256, currentHead.wakeReceiptSha256) : null,
     uncommittedTail,
     attention,
     writer: writerObservation(paths),
@@ -624,7 +733,7 @@ export function commitDailyMemoryDream(input) {
         });
       }
       const tail = state.uncommittedTail[0];
-      const tailBundle = loadStratumBundle(initialScore.identity.homeRoot, paths, tail.dailyStratumSha256, null);
+      const tailBundle = loadVerifiedStratumBundle(initialScore.identity, initialScore.threadRef, paths, tail.dailyStratumSha256, null);
       if (!sameDayInput(tail, tailBundle, day, input)) {
         fail('DREAM_TAIL_ATTENTION', 'uncommitted Daily Stratum differs from the exact retry invocation/source/content identity', { dayRef: day.dayRef });
       }
@@ -633,7 +742,7 @@ export function commitDailyMemoryDream(input) {
     if (existingSameDay) {
       const committedHead = state.headChain.find((item) => item.dailyStratumSha256 === existingSameDay.dailyStratumSha256);
       if (!committedHead) fail('DREAM_HEAD_MISMATCH', 'committed duplicate day lacks its immutable Dream head');
-      const bundle = loadStratumBundle(initialScore.identity.homeRoot, paths, existingSameDay.dailyStratumSha256, committedHead.wakeReceiptSha256);
+      const bundle = loadVerifiedStratumBundle(initialScore.identity, initialScore.threadRef, paths, existingSameDay.dailyStratumSha256, committedHead.wakeReceiptSha256);
       if (!sameDayInput(existingSameDay, bundle, day, input)) {
         fail('DREAM_DAY_CONFLICT', 'dayRef is already committed for a different exact invocation/source/content identity', { dayRef: day.dayRef });
       }
@@ -903,7 +1012,7 @@ export function sourceDescentForDailyStratum(input, dailyStratumSha256 = null) {
   const paths = dreamPaths(state.identity.homeRoot, state.identity.companionLineageRef, state.threadRef);
   const head = state.headChain.find((item) => item.dailyStratumSha256 === sha) ?? null;
   if (!head) fail('DREAM_HEAD_MISMATCH', 'requested Daily Stratum is not in the committed Daily Dream head lineage', { dailyStratumSha256: sha });
-  const bundle = loadStratumBundle(state.identity.homeRoot, paths, sha, head.wakeReceiptSha256);
+  const bundle = loadVerifiedStratumBundle(state.identity, state.threadRef, paths, sha, head.wakeReceiptSha256);
   return {
     dailyStratumRef: bundle.stratum.dailyStratumRef,
     dailyStratumSha256: bundle.stratum.dailyStratumSha256,
@@ -916,6 +1025,10 @@ export function sourceDescentForDailyStratum(input, dailyStratumSha256 = null) {
     memoryConsolidationSha256: bundle.consolidation.memoryConsolidationSha256,
     postDreamStateSha256: bundle.postDream.postDreamStateSha256,
     wakeReceiptSha256: bundle.wake.wakeReceiptSha256,
+    historicalSourceVerificationState: bundle.sourceVerification.state,
+    verifiedSourceConversationResponseEventHash: bundle.sourceVerification.sourceConversation.response.eventHash,
+    verifiedSourceRuntimeRef: bundle.sourceVerification.sourceConversation.response.endpointProfileRef,
+    verifiedSourceModelProfileRef: bundle.sourceVerification.sourceConversation.response.modelProfileRef,
     rawConversationContentIncluded: false,
     newSemanticAcceptanceCreated: bundle.consolidation.newSemanticAcceptanceCreated,
     firstPersonAuthorityGranted: bundle.consolidation.firstPersonAuthorityGranted

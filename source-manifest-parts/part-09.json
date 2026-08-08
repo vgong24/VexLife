@@ -10,8 +10,8 @@
     {
       "path": "src/core/lived-companion.mjs",
       "mode": "100644",
-      "bytes": 67395,
-      "sha256": "8b7e6a6d27ab0293013c69bd21ca6bc74642deacc1aa632acc692d7a272085d5"
+      "bytes": 76404,
+      "sha256": "bbec7804e1ba1ae72d051d27191dec4c3085e6523604cf20b1480b6b0dbeade0"
     },
     {
       "path": "src/core/local-git-effect-adapter.mjs",
@@ -112,8 +112,8 @@
     {
       "path": "src/core/score-context-continuity.mjs",
       "mode": "100644",
-      "bytes": 103658,
-      "sha256": "e95a65d778c2d91546c870defa0d35e3fa837278f65f310ab63e23cd9e0a4ee1"
+      "bytes": 112205,
+      "sha256": "86d7d66e552c734965f3523b02b70e1cab5cdedc9d6ed5db81dcfefa6e610a74"
     },
     {
       "path": "src/core/source-manifest.mjs",

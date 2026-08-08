@@ -58,8 +58,8 @@
     {
       "path": "src/core/daily-memory-dream.mjs",
       "mode": "100644",
-      "bytes": 53102,
-      "sha256": "7430614a80bf28df6b0d27b25881763fcc29d32cfb3ddc528a8fe8177c1f1a91"
+      "bytes": 60707,
+      "sha256": "1808e03fb3a9069b6b8d67a75a52c1699891f437aca6d9cf1217bf198fc0314f"
     },
     {
       "path": "src/core/device-family.mjs",

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { semanticHash } from '../src/core/utils.mjs';
-import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
+import { initializeLivedCompanionHome, verifyHistoricalLivedCompanionHead } from '../src/core/lived-companion.mjs';
 import {
   SCORE_CONTEXT_LIVE_SEMANTIC_CONTRACT,
   SCORE_CONTEXT_LIVE_SEMANTIC_DISPOSITION,
@@ -13,7 +13,8 @@ import {
   appendOpenLoop,
   appendScoreStatement,
   createScoreSemanticCandidate,
-  loadScoreContextState
+  loadScoreContextState,
+  verifyHistoricalScoreContextSnapshot
 } from '../src/core/score-context-continuity.mjs';
 import {
   DAILY_MEMORY_DREAM_CONTRACT,
@@ -80,6 +81,7 @@ function commitG01Turn(ids, prior, ordinal) {
     formedAt: `2026-08-07T09:0${ordinal}:03.000Z`
   };
   const head = { ...headCore, conversationHeadSha256: semanticHash(headCore) };
+  writeJson(path.join(ids.home, 'conversations', ids.companionLineageRef, ids.threadRef, 'heads', `${head.conversationHeadSha256}.json`), head);
   writeJson(path.join(ids.home, 'conversations', ids.companionLineageRef, ids.threadRef, 'head.json'), head);
   return { requestEvent, responseEvent, contextRecord, head };
 }
@@ -271,6 +273,76 @@ function cloneFixture(source, suffix) {
   return { ids, g01: structuredClone(source.g01), score: structuredClone(source.score), privateNeedles: source.privateNeedles };
 }
 
+const DREAM_RECEIPT_ADDRESS = Object.freeze({
+  consolidation: ['memory-consolidation', 'memoryConsolidationRef', 'memoryConsolidationSha256'],
+  postDream: ['post-dream-state', 'postDreamStateRef', 'postDreamStateSha256'],
+  stratum: ['daily-stratum', 'dailyStratumRef', 'dailyStratumSha256'],
+  wake: ['daily-wake', 'wakeReceiptRef', 'wakeReceiptSha256'],
+  head: ['daily-dream-head', 'dailyDreamHeadRef', 'dailyDreamHeadSha256']
+});
+
+function readdressDreamReceipt(kind, value) {
+  const [prefix, refField, hashField] = DREAM_RECEIPT_ADDRESS[kind];
+  const core = structuredClone(value);
+  delete core[refField];
+  delete core[hashField];
+  return addressed(prefix, refField, hashField, core);
+}
+
+function dreamDomain(ids) {
+  return path.join(ids.home, 'daily-memory-dream', ids.companionLineageRef, ids.threadRef);
+}
+
+function coordinatedDreamProjectionRehash(fixture) {
+  const root = dreamDomain(fixture.ids);
+  const headPath = path.join(root, 'head.json');
+  const head = JSON.parse(fs.readFileSync(headPath, 'utf8'));
+  const stratumPath = path.join(root, 'strata', `${head.dailyStratumSha256}.json`);
+  const stratum = JSON.parse(fs.readFileSync(stratumPath, 'utf8'));
+  const consolidationPath = path.join(root, 'consolidations', `${stratum.memoryConsolidationSha256}.json`);
+  const postDreamPath = path.join(root, 'post-dream', `${stratum.postDreamStateSha256}.json`);
+  const wakePath = path.join(root, 'wakes', `${head.wakeReceiptSha256}.json`);
+  const consolidation = JSON.parse(fs.readFileSync(consolidationPath, 'utf8'));
+  const postDream = JSON.parse(fs.readFileSync(postDreamPath, 'utf8'));
+  const wake = JSON.parse(fs.readFileSync(wakePath, 'utf8'));
+  if (!consolidation.heldOrDeferredScoreBindings.length) throw new Error('coordinated rehash fixture lacks held Score binding');
+  const promoted = consolidation.heldOrDeferredScoreBindings[0];
+  const forgedConsolidation = readdressDreamReceipt('consolidation', {
+    ...consolidation,
+    carriedCurrentScoreBindings: [...consolidation.carriedCurrentScoreBindings, promoted].sort((a, b) => a.statementRef.localeCompare(b.statementRef)),
+    heldOrDeferredScoreBindings: consolidation.heldOrDeferredScoreBindings.slice(1)
+  });
+  const forgedPostDream = readdressDreamReceipt('postDream', {
+    ...postDream,
+    memoryConsolidationSha256: forgedConsolidation.memoryConsolidationSha256,
+    activeContinuityStatementRefs: [...postDream.activeContinuityStatementRefs, promoted.statementRef].sort(),
+    heldOrDeferredStatementRefs: postDream.heldOrDeferredStatementRefs.filter((ref) => ref !== promoted.statementRef)
+  });
+  const forgedStratum = readdressDreamReceipt('stratum', {
+    ...stratum,
+    memoryConsolidationSha256: forgedConsolidation.memoryConsolidationSha256,
+    postDreamStateSha256: forgedPostDream.postDreamStateSha256
+  });
+  const forgedWake = readdressDreamReceipt('wake', {
+    ...wake,
+    dailyStratumSha256: forgedStratum.dailyStratumSha256,
+    heldOrDeferredRefs: wake.heldOrDeferredRefs.filter((ref) => ref !== promoted.statementRef)
+  });
+  const forgedHead = readdressDreamReceipt('head', {
+    ...head,
+    dailyStratumSha256: forgedStratum.dailyStratumSha256,
+    wakeReceiptSha256: forgedWake.wakeReceiptSha256
+  });
+  writeJson(path.join(root, 'consolidations', `${forgedConsolidation.memoryConsolidationSha256}.json`), forgedConsolidation);
+  writeJson(path.join(root, 'post-dream', `${forgedPostDream.postDreamStateSha256}.json`), forgedPostDream);
+  writeJson(path.join(root, 'strata', `${forgedStratum.dailyStratumSha256}.json`), forgedStratum);
+  writeJson(path.join(root, 'wakes', `${forgedWake.wakeReceiptSha256}.json`), forgedWake);
+  writeJson(path.join(root, 'heads', `${forgedHead.dailyDreamHeadSha256}.json`), forgedHead);
+  fs.unlinkSync(stratumPath);
+  writeJson(headPath, forgedHead);
+  return { promotedStatementRef: promoted.statementRef, forgedHead };
+}
+
 function trySymlinkAliasProof(fixture) {
   const committed = commitDailyMemoryDream(commitInput(fixture));
   const stratumFile = path.join(fixture.ids.home,'daily-memory-dream',fixture.ids.companionLineageRef,fixture.ids.threadRef,'strata',`${committed.stratum.dailyStratumSha256}.json`);
@@ -290,6 +362,119 @@ export function runDailyMemoryDreamProof() {
   const projection = projectDailyMemoryDream(fixture.ids);
   const descent = sourceDescentForDailyStratum(fixture.ids);
   const rawText = JSON.stringify(after.currentDailyStratum);
+
+  const currentG01HeadImmutableReceiptPresent = fs.existsSync(path.join(
+    fixture.ids.home, 'conversations', fixture.ids.companionLineageRef, fixture.ids.threadRef, 'heads', `${fixture.g01.head.conversationHeadSha256}.json`
+  ));
+  const historicalG01 = verifyHistoricalLivedCompanionHead({
+    ...fixture.ids,
+    conversationHeadSha256: fixture.g01.first.head.conversationHeadSha256
+  });
+  const historicalG01HeadAncestryVerified =
+    historicalG01.state === 'VERIFIED' &&
+    historicalG01.conversationHeadSha256 === fixture.g01.first.head.conversationHeadSha256 &&
+    historicalG01.response.eventHash === fixture.g01.first.responseEvent.eventHash;
+  let missingHistoricalG01HeadRejected = false;
+  try {
+    verifyHistoricalLivedCompanionHead({ ...fixture.ids, conversationHeadSha256: 'd'.repeat(64) });
+  } catch (error) {
+    missingHistoricalG01HeadRejected = error.code === 'CONVERSATION_HEAD_MISMATCH';
+  }
+  const orphanG01Core = { ...fixture.g01.first.head, formedAt: '2026-08-07T09:01:30.000Z' };
+  delete orphanG01Core.conversationHeadSha256;
+  const orphanG01Head = { ...orphanG01Core, conversationHeadSha256: semanticHash(orphanG01Core) };
+  writeJson(path.join(
+    fixture.ids.home, 'conversations', fixture.ids.companionLineageRef, fixture.ids.threadRef,
+    'heads', `${orphanG01Head.conversationHeadSha256}.json`
+  ), orphanG01Head);
+  let orphanHistoricalG01HeadRejected = false;
+  try {
+    verifyHistoricalLivedCompanionHead({ ...fixture.ids, conversationHeadSha256: orphanG01Head.conversationHeadSha256 });
+  } catch (error) {
+    orphanHistoricalG01HeadRejected = error.code === 'CONVERSATION_HEAD_MISMATCH';
+  }
+
+  const historicalSnapshot = verifyHistoricalScoreContextSnapshot({
+    ...fixture.ids,
+    scoreHeadSha256: committed.stratum.sourceScoreHeadSha256,
+    semanticAuthorityHeadSha256: committed.stratum.sourceSemanticAuthorityHeadSha256
+  });
+  const historicalG02SnapshotVerified =
+    historicalSnapshot.state === 'VERIFIED' &&
+    historicalSnapshot.scoreHead.scoreHeadSha256 === committed.stratum.sourceScoreHeadSha256 &&
+    historicalSnapshot.semanticAuthorityHead.semanticAuthorityHeadSha256 === committed.stratum.sourceSemanticAuthorityHeadSha256 &&
+    historicalSnapshot.sourceConversationHeadSha256 === committed.stratum.sourceConversationHeadSha256;
+  const historicalRuntimeModelProvenanceVerified =
+    historicalSnapshot.sourceConversation.response.eventHash === committed.preDream.sourceConversationEventHash &&
+    historicalSnapshot.sourceConversation.response.endpointProfileRef === committed.stratum.sourceRuntimeRef &&
+    historicalSnapshot.sourceConversation.response.modelProfileRef === committed.stratum.sourceModelProfileRef;
+  let nonAncestralScoreHeadRejected = false;
+  try {
+    verifyHistoricalScoreContextSnapshot({ ...fixture.ids, scoreHeadSha256: 'e'.repeat(64), semanticAuthorityHeadSha256: committed.stratum.sourceSemanticAuthorityHeadSha256 });
+  } catch (error) {
+    nonAncestralScoreHeadRejected = error.code === 'SCORE_HEAD_MISMATCH';
+  }
+  const orphanScoreCore = { ...historicalSnapshot.scoreHead, formedAt: '2026-08-07T09:40:30.000Z' };
+  delete orphanScoreCore.scoreHeadSha256;
+  const orphanScoreHead = { ...orphanScoreCore, scoreHeadSha256: semanticHash(orphanScoreCore) };
+  writeJson(path.join(
+    fixture.ids.home, 'score', fixture.ids.companionLineageRef, fixture.ids.threadRef,
+    'heads', `${orphanScoreHead.scoreHeadSha256}.json`
+  ), orphanScoreHead);
+  let orphanHistoricalScoreHeadRejected = false;
+  try {
+    verifyHistoricalScoreContextSnapshot({ ...fixture.ids, scoreHeadSha256: orphanScoreHead.scoreHeadSha256, semanticAuthorityHeadSha256: committed.stratum.sourceSemanticAuthorityHeadSha256 });
+  } catch (error) {
+    orphanHistoricalScoreHeadRejected = error.code === 'SCORE_HEAD_MISMATCH';
+  }
+
+  let nonAncestralSemanticAuthorityHeadRejected = false;
+  try {
+    verifyHistoricalScoreContextSnapshot({ ...fixture.ids, scoreHeadSha256: committed.stratum.sourceScoreHeadSha256, semanticAuthorityHeadSha256: 'f'.repeat(64) });
+  } catch (error) {
+    nonAncestralSemanticAuthorityHeadRejected = ['SCORE_SEMANTIC_AUTHORITY_INVALID', 'SCORE_SEMANTIC_AUTHORITY_STALE'].includes(error.code);
+  }
+  const currentOwnerHead = historicalSnapshot.semanticAuthorityHead;
+  const orphanOwnerCore = { ...currentOwnerHead, formedAt: '2026-08-07T09:41:30.000Z' };
+  delete orphanOwnerCore.semanticAuthorityHeadRef;
+  delete orphanOwnerCore.semanticAuthorityHeadSha256;
+  const orphanOwnerHead = addressed(
+    'score-semantic-authority-head',
+    'semanticAuthorityHeadRef',
+    'semanticAuthorityHeadSha256',
+    orphanOwnerCore
+  );
+  writeJson(path.join(authorityDir(fixture.ids, 'heads'), `${orphanOwnerHead.semanticAuthorityHeadSha256}.json`), orphanOwnerHead);
+  let orphanHistoricalSemanticAuthorityHeadRejected = false;
+  try {
+    verifyHistoricalScoreContextSnapshot({ ...fixture.ids, scoreHeadSha256: committed.stratum.sourceScoreHeadSha256, semanticAuthorityHeadSha256: orphanOwnerHead.semanticAuthorityHeadSha256 });
+  } catch (error) {
+    orphanHistoricalSemanticAuthorityHeadRejected = ['SCORE_SEMANTIC_AUTHORITY_INVALID', 'SCORE_SEMANTIC_AUTHORITY_STALE'].includes(error.code);
+  }
+
+  const forgedDream = cloneFixture(fixture, 'coordinated-rehash');
+  coordinatedDreamProjectionRehash(forgedDream);
+  let coordinatedDreamProjectionRehashRejected = false;
+  try { loadDailyMemoryDreamState(forgedDream.ids); }
+  catch (error) { coordinatedDreamProjectionRehashRejected = error.code === 'DREAM_SOURCE_INVALID'; }
+
+  const advancedFixture = cloneFixture(fixture, 'historical-advance');
+  const advancedThird = commitG01Turn(advancedFixture.ids, advancedFixture.g01.second, 3);
+  const advancedG01 = { ...advancedFixture.g01, third: advancedThird, head: advancedThird.head };
+  const laterAuthority = seedScoreAuthority(advancedFixture.ids, advancedG01, {
+    ordinal: 30,
+    source: advancedThird,
+    subjectRef: 'subject.g03.later',
+    summary: 'Later accepted source after the committed Daily Stratum.',
+    consentDisposition: 'PERMITTED',
+    acceptedForContinuity: true
+  });
+  appendStatement(advancedFixture.ids, laterAuthority, 'statement.g03.later');
+  const historicalReplayAfterAdvance = loadDailyMemoryDreamState(advancedFixture.ids);
+  const validHistoricalDreamReplayAfterSourceAdvancement =
+    historicalReplayAfterAdvance.state === 'CURRENT' &&
+    historicalReplayAfterAdvance.head?.dailyDreamHeadSha256 === committed.head.dailyDreamHeadSha256;
+
   const exactDuplicate = commitDailyMemoryDream(commitInput(fixture, { expectedDailyDreamHeadSha256: null }));
   const changedSameDayCases = [
     { calendarDateRef:'2026-08-08' },
@@ -355,7 +540,7 @@ export function runDailyMemoryDreamProof() {
   const symlink = trySymlinkAliasProof(cloneFixture(createDailyMemoryDreamFixture('symlink-source'),'symlink'));
   const moduleText = fs.readFileSync(path.resolve(HERE,'../src/core/daily-memory-dream.mjs'),'utf8');
   const receipt = {
-    schemaVersion: 'vexlife.g03-daily-memory-only-dream-proof/v1', state:'PASS', currentness:'CURRENT', candidateHeadSha: process.env.VEXLIFE_CANDIDATE_HEAD_SHA ?? null, contractRef: DAILY_MEMORY_DREAM_CONTRACT,
+    schemaVersion: 'vexlife.g03-daily-memory-only-dream-proof/v2', state:'PASS', currentness:'CURRENT', candidateHeadSha: process.env.VEXLIFE_CANDIDATE_HEAD_SHA ?? null, contractRef: DAILY_MEMORY_DREAM_CONTRACT,
     memoryOwnerRef: DAILY_MEMORY_DREAM_MEMORY_OWNER, safetyOwnerRef: DAILY_MEMORY_DREAM_SAFETY_OWNER, mainVexConvergenceRef: DAILY_MEMORY_DREAM_MAIN_VEX_CONVERGENCE,
     exactG01HeadPinned: committed.preDream.sourceConversationHeadSha256 === fixture.g01.head.conversationHeadSha256,
     exactG02HeadPinned: committed.preDream.sourceScoreHeadSha256 === fixture.score.head.scoreHeadSha256,
@@ -371,7 +556,19 @@ export function runDailyMemoryDreamProof() {
     trainingRan: projection.trainingRan,
     rhythmLearned: projection.rhythmLearned,
     synchronizationActivated: projection.synchronizationActivated,
-    freshProcessReplayReady: after.head.dailyDreamHeadSha256 === committed.head.dailyDreamHeadSha256 && descent.dailyStratumSha256 === committed.stratum.dailyStratumSha256,
+    freshProcessReplayReady: after.head.dailyDreamHeadSha256 === committed.head.dailyDreamHeadSha256 && descent.dailyStratumSha256 === committed.stratum.dailyStratumSha256 && descent.historicalSourceVerificationState === 'VERIFIED',
+    currentG01HeadImmutableReceiptPresent,
+    historicalG01HeadAncestryVerified,
+    missingHistoricalG01HeadRejected,
+    orphanHistoricalG01HeadRejected,
+    historicalG02SnapshotVerified,
+    historicalRuntimeModelProvenanceVerified,
+    nonAncestralScoreHeadRejected,
+    orphanHistoricalScoreHeadRejected,
+    nonAncestralSemanticAuthorityHeadRejected,
+    orphanHistoricalSemanticAuthorityHeadRejected,
+    coordinatedDreamProjectionRehashRejected,
+    validHistoricalDreamReplayAfterSourceAdvancement,
     crashExitObserved: child.status === 93,
     crashTailLeftPriorFrontierCurrent: crashState.head?.dailyDreamHeadSha256 === committed.head.dailyDreamHeadSha256 && crashState.uncommittedTail.length === 1,
     abandonedWriterRecovered,
@@ -395,7 +592,7 @@ export function runDailyMemoryDreamProof() {
     publicationPerformed: projection.publicationPerformed,
     initialDreamHeadWasNull: before.head === null
   };
-  const requiredTrue = ['exactG01HeadPinned','exactG02HeadPinned','preRestOrientationBoundBeforeClosure','scoreFieldsCarriedWithoutReclassification','heldMaterialPreservedWithoutPromotion','allOpenLoopsCarryForwardOpen','referenceOnlyConsolidation','runtimeUnchanged','modelProfileUnchanged','freshProcessReplayReady','crashExitObserved','crashTailLeftPriorFrontierCurrent','abandonedWriterRecovered','crashTailExactRetryCommitted','crashTailClearedAfterRecovery','canonicalFinalFileAliasGuardPresent','exactDuplicateDayIdempotent','changedSameDayRejected','staleG01Rejected','staleG02Rejected','historicalScoreReplaySurvivesOwnerHeadReplacement','staleOwnerAuthorityHeldFromNewUse','currentSemanticAuthorityHeadBound','crashAuthorityExitObserved','crashTailSemanticAuthorityDriftRejected','initialDreamHeadWasNull'];
+  const requiredTrue = ['exactG01HeadPinned','exactG02HeadPinned','preRestOrientationBoundBeforeClosure','scoreFieldsCarriedWithoutReclassification','heldMaterialPreservedWithoutPromotion','allOpenLoopsCarryForwardOpen','referenceOnlyConsolidation','runtimeUnchanged','modelProfileUnchanged','freshProcessReplayReady','currentG01HeadImmutableReceiptPresent','historicalG01HeadAncestryVerified','missingHistoricalG01HeadRejected','orphanHistoricalG01HeadRejected','historicalG02SnapshotVerified','historicalRuntimeModelProvenanceVerified','nonAncestralScoreHeadRejected','orphanHistoricalScoreHeadRejected','nonAncestralSemanticAuthorityHeadRejected','orphanHistoricalSemanticAuthorityHeadRejected','coordinatedDreamProjectionRehashRejected','validHistoricalDreamReplayAfterSourceAdvancement','crashExitObserved','crashTailLeftPriorFrontierCurrent','abandonedWriterRecovered','crashTailExactRetryCommitted','crashTailClearedAfterRecovery','canonicalFinalFileAliasGuardPresent','exactDuplicateDayIdempotent','changedSameDayRejected','staleG01Rejected','staleG02Rejected','historicalScoreReplaySurvivesOwnerHeadReplacement','staleOwnerAuthorityHeldFromNewUse','currentSemanticAuthorityHeadBound','crashAuthorityExitObserved','crashTailSemanticAuthorityDriftRejected','initialDreamHeadWasNull'];
   const requiredFalse = ['rawG01BodyCopiedIntoDreamStore','modelWeightsChanged','trainingRan','rhythmLearned','synchronizationActivated','firstPersonAuthorityGranted','lineageAwareGenerativeDreamRan','poweredDown','publicationPerformed'];
   const failed = [...requiredTrue.filter((key)=>receipt[key] !== true), ...requiredFalse.filter((key)=>receipt[key] !== false)];
   if (receipt.symlinkAliasTestSupported === true && receipt.symlinkAliasRejected !== true) failed.push('symlinkAliasRejected');
