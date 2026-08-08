@@ -161,10 +161,12 @@ function loadRegistry() {
   return JSON.parse(fs.readFileSync(path.resolve('blueprint', 'intent-scheduler-registry.json'), 'utf8'));
 }
 
-const proofRoot = path.resolve(process.env.VEXLIFE_G05S_PROOF_HOME || fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-g05s-proof-')));
-fs.mkdirSync(proofRoot, { recursive: true });
-const syntheticHome = path.join(proofRoot, 'synthetic-home');
-fs.mkdirSync(syntheticHome, { recursive: true });
+const proofRootRequested = path.resolve(process.env.VEXLIFE_G05S_PROOF_HOME || fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-g05s-proof-')));
+fs.mkdirSync(proofRootRequested, { recursive: true });
+const proofRoot = fs.realpathSync.native(proofRootRequested);
+const syntheticHomeRequested = path.join(proofRoot, 'synthetic-home');
+fs.mkdirSync(syntheticHomeRequested, { recursive: true });
+const syntheticHome = fs.realpathSync.native(syntheticHomeRequested);
 
 const scope = {
   schemaVersion: 'vextreme.daily-dream-standing-consent-scope/v1',

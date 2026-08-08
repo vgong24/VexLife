@@ -142,8 +142,8 @@
     {
       "path": "scripts/g05-runtime-authority-substrate.mjs",
       "mode": "100644",
-      "bytes": 24484,
-      "sha256": "fceef3a7b9715df493327c634c4c1d1f4cbbe596ec3ef765543ffc42349d7f1e"
+      "bytes": 24652,
+      "sha256": "ce9cfc296dbd1ef16bddd069a8bae683512a7e067bc614fb3b1486f2992128fc"
     }
   ]
 }
