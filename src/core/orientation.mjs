@@ -132,12 +132,17 @@ export function deriveFederatedOrientationProviderReceipt({
   const candidateHeadRef = providerCommitRef(source.git?.candidateHeadSha, 'orientationReceipt.git.candidateHeadSha');
   const baseRef = providerCommitRef(source.git?.baseSha, 'orientationReceipt.git.baseSha');
   const activePrRef = providerPrRef(source.currentWork);
+  const liveCurrentSourceAvailable = currentWorkState === 'ACTIVE_PR'
+    ? Boolean(candidateHeadRef && activePrRef && currentWorkRef)
+    : currentWorkState === 'ACCEPTED_MAIN'
+      ? Boolean(candidateHeadRef)
+      : false;
 
   const sourceGrounded = (
     sourceState === 'GROUNDED' &&
     sourceCurrentness === 'CURRENT' &&
     visibility === 'PRIVATE' &&
-    (currentWorkState === 'ACTIVE_PR' || currentWorkState === 'ACCEPTED_MAIN') &&
+    liveCurrentSourceAvailable &&
     lifecycleState !== 'UNKNOWN'
   );
   const currentState = sourceState === 'BLOCKED' ? 'UNAVAILABLE' : sourceGrounded ? 'CURRENT' : 'UNKNOWN';

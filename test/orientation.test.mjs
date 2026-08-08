@@ -239,6 +239,49 @@ test('PRIVATE-VEXLIFE-PROVIDER: unknown or attention source state fails closed w
   assert.equal(receipt.exactNextActionRef, 'action.vexlife.orientation.refresh-current-state');
 });
 
+test('PRIVATE-VEXLIFE-PROVIDER: stale or missing live source evidence fails closed', () => {
+  const stale = repositoryReceipt('accepted-main');
+  stale.currentness = 'STALE';
+  const staleReceipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: stale,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+  assert.equal(staleReceipt.currentState, 'UNKNOWN');
+  assert.equal(staleReceipt.freshnessState.liveSourceRefOrNull, null);
+  assert.deepEqual(staleReceipt.capabilityState.activeCapabilityRefs, []);
+  assert.equal(staleReceipt.exactNextActionRef, 'action.vexlife.orientation.refresh-current-state');
+
+  const missingLive = repositoryReceipt('accepted-main');
+  missingLive.git.candidateHeadSha = null;
+  const missingReceipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: missingLive,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+  assert.equal(missingReceipt.currentState, 'UNKNOWN');
+  assert.equal(missingReceipt.freshnessState.liveSourceRefOrNull, null);
+  assert.deepEqual(missingReceipt.capabilityState.activeCapabilityRefs, []);
+  assert.equal(missingReceipt.exactNextActionRef, 'action.vexlife.orientation.refresh-current-state');
+});
+
+test('PRIVATE-VEXLIFE-PROVIDER: public source visibility cannot escape the private provider boundary', () => {
+  const source = repositoryReceipt('public-active');
+  const receipt = deriveFederatedOrientationProviderReceipt({
+    contract,
+    orientationReceipt: source,
+    observedAt: '2026-08-08T21:00:00Z'
+  });
+
+  assert.equal(receipt.visibility, 'PRIVATE');
+  assert.equal(receipt.projectionScope, 'PRIVATE');
+  assert.equal(receipt.currentState, 'UNKNOWN');
+  assert.ok(receipt.blockers.includes('blocker.vexlife.provider-private-visibility'));
+  assert.equal(receipt.publicationState.publicationAuthority, false);
+  assert.deepEqual(receipt.capabilityState.activeCapabilityRefs, []);
+  assert.deepEqual(receipt.authorityEnvelope.allowedEffectRefs, []);
+});
+
 test('PRIVATE-VEXLIFE-PROVIDER: future-public intent is represented without public visibility or publication authority', () => {
   const source = repositoryReceipt('accepted-main', (input) => {
     input.lifecycle = { state: 'PUBLIC_RELEASE_CANDIDATE', source: 'ENVIRONMENT_RECEIPT' };
