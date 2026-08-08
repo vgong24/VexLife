@@ -992,5 +992,34 @@
     "loadedBy": ["module.vexlife.script.daily-memory-dream"],
     "tests": ["test/daily-memory-dream.test.mjs"],
     "changeMap": ["blueprint/evolution-registry.json", "docs/DAILY-MEMORY-DREAM.md", ".github/workflows/check.yml"]
+  },
+  {
+    "moduleRef": "module.vexlife.core.evaluated-rhythm-learning",
+    "path": "src/core/evaluated-rhythm-learning.mjs",
+    "role": "Owns the device-private G04 Stage-A source verification, stable-pattern eligibility, synthetic participation/consent gating, frozen generalized corpus, inactive faithful simulated Rhythm candidate, privacy/identity/capability evaluation and rollback evidence without training or activation.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.daily-memory-dream",
+      "module.vexlife.core.score-context-continuity",
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.utils",
+      "state.messages",
+      "state.context",
+      "state.evolution"
+    ],
+    "writes": [
+      "selected Vex Home evaluated-rhythm-learning immutable inactive evidence only"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.evaluated-rhythm-learning"
+    ],
+    "tests": [
+      "test/evaluated-rhythm-learning.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "docs/EVALUATED-RHYTHM-LEARNING.md",
+      ".github/workflows/check.yml"
+    ]
   }
 ]

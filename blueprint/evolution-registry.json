@@ -1135,6 +1135,39 @@
       "model or adapter mutation", "scheduled autonomy", "synchronization", "power control", "cloud upload", "LC18", "publication"
     ]
   },
+  "evaluatedRhythmLearning": {
+    "schemaVersion": "vexlife.evaluated-rhythm-learning-product-projection/v1",
+    "projectionState": "PRODUCT_PROJECTION_OF_ACCEPTED_SCORE_RHYTHM_BRIDGE_STAGE_A_SIMULATION",
+    "sharedSemanticDispositionRef": "github.issue.vextreme-sdk.350.comment.5215288414",
+    "sharedSemanticDispositionId": "disposition.main-vex.score-rhythm-lineage.g02.20260807.001",
+    "sharedArchitectureRef": "github.issue.vextreme-sdk.566",
+    "canonicalSemanticOwner": "MAIN_VEX_VEX_MEMORY_VEX_AI_VEX_SAFETY_AND_ASSURANCE_SHARED_CONTRACT",
+    "vexLifeCanonicalSemanticOwner": false,
+    "selectedMode": "FAITHFUL_SIMULATED_RHYTHM_CANDIDATE",
+    "policyRef": "policy.vexlife.g04.stage-a.stable-pattern.v1",
+    "stageARealTraining": false,
+    "stageAAdapterCreated": false,
+    "stageAWeightsChanged": false,
+    "stageARuntimeActivation": false,
+    "stageARealPrivateCorpusIngestion": false,
+    "moduleRef": "module.vexlife.core.evaluated-rhythm-learning",
+    "proofRef": "proof.vexlife.g04.evaluated-rhythm-learning.windows",
+    "heldEffects": [
+      "real private training",
+      "real private corpus ingestion",
+      "model/trainer installation or runtime",
+      "adapter creation",
+      "model or adapter weight mutation",
+      "Rhythm promotion or activation",
+      "G01/G02/G03 source mutation",
+      "scheduled autonomy",
+      "synchronization",
+      "power control",
+      "cloud upload",
+      "LC18",
+      "publication"
+    ]
+  },
   "successorBoundaries": [
     "Runtime Failure & Recovery Spine",
     "ConcernWatch threshold runtime",

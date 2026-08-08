@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/state.mjs",
+      "mode": "100644",
+      "bytes": 139824,
+      "sha256": "02750419d72f2dae3ed71fd2275333349a8683c65530b6dc13880d82cad6e023"
+    },
+    {
+      "path": "src/core/terrain.mjs",
+      "mode": "100644",
+      "bytes": 1793,
+      "sha256": "1e079ae812b256f5000a6c3c03da7bae3b81d9ec166237de8c6820f24cb6f063"
+    },
+    {
+      "path": "src/core/tool-result-relay.mjs",
+      "mode": "100644",
+      "bytes": 44550,
+      "sha256": "0483c2d41e660d1402723921ddb92ac014218905b431c1df15d20e7174caeb4b"
+    },
+    {
       "path": "src/core/utils.mjs",
       "mode": "100644",
       "bytes": 2222,
@@ -80,6 +98,12 @@
       "sha256": "e8201d58199f0b84c940fcefdeeff0686b52509aec767a3cb38cb28f1204291f"
     },
     {
+      "path": "test/evaluated-rhythm-learning.test.mjs",
+      "mode": "100644",
+      "bytes": 1487,
+      "sha256": "9477a79e35a1cfc58e0dba2ba37eba8d978c9a4461a3eb26fb2a90a35d82e55b"
+    },
+    {
       "path": "test/evolution.test.mjs",
       "mode": "100644",
       "bytes": 3808,
@@ -120,30 +144,6 @@
       "mode": "100644",
       "bytes": 505,
       "sha256": "b7e370bdfc1292cb8f69d83d02035d005beebfc577c88c670fce76d7733e3917"
-    },
-    {
-      "path": "test/fixtures/orientation/public-active.json",
-      "mode": "100644",
-      "bytes": 1051,
-      "sha256": "5cdfa67a043b52b643c37bc8874488140de0e9ef09fa8eaa965e6bd5643d9d54"
-    },
-    {
-      "path": "test/fixtures/public-safety/cases.json",
-      "mode": "100644",
-      "bytes": 795,
-      "sha256": "fc8f7a2303ce6c2d12ca4ceeb8d67e766f9f81aba03a4ffb9cf26545b3eed6f6"
-    },
-    {
-      "path": "test/foundation-health.test.mjs",
-      "mode": "100644",
-      "bytes": 15521,
-      "sha256": "426aebee4f8b0a8c8e3f219719e2eb47802f6fd93e5af0cd6aa268c895a768a7"
-    },
-    {
-      "path": "test/generator.test.mjs",
-      "mode": "100644",
-      "bytes": 1047,
-      "sha256": "9a8d9b2f861082184ee4f96e1647d6ef937efa9554184e2da2939d3586b10c3a"
     }
   ]
 }

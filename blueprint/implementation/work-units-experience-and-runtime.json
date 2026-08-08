@@ -432,5 +432,77 @@
     "platformRefs": ["platform.windows"],
     "exclusions": ["G01/G02 source mutation", "generative Dream inference", "positive first-person authority", "Rhythm learning", "training", "model or adapter mutation", "scheduled autonomy", "synchronization", "power control", "cloud upload", "LC18", "publication"],
     "returnRoute": "return exact G03 head/tree, Daily Stratum proof receipt, hosted Windows job and draft PR to Windows Local Operations"
+  },
+  {
+    "workRef": "work.vexlife.windows.g04-evaluated-rhythm-learning",
+    "purpose": "Form and evaluate one faithful simulated inactive Rhythm candidate from exact G01/G02/G03 continuity while preserving Score authority, privacy, identity, capability invariants, rollback and all later training/activation effects as held.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.windows.g03-daily-memory-only-dream"
+    ],
+    "pathScope": [
+      ".github/workflows/check.yml",
+      "blueprint/evolution-registry.json",
+      "blueprint/feature-registry.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "docs/EVALUATED-RHYTHM-LEARNING.md",
+      "package.json",
+      "scripts/evaluated-rhythm-learning.mjs",
+      "src/core/evaluated-rhythm-learning.mjs",
+      "test/evaluated-rhythm-learning.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "state.messages",
+      "state.context",
+      "state.evolution",
+      "registry.vexlife.evolution.001"
+    ],
+    "requiredTestRefs": [
+      "test.evaluated-rhythm.shared-contract",
+      "test.evaluated-rhythm.source-frontier",
+      "test.evaluated-rhythm.stable-pattern",
+      "test.evaluated-rhythm.consent",
+      "test.evaluated-rhythm.corpus-privacy",
+      "test.evaluated-rhythm.simulated-candidate",
+      "test.evaluated-rhythm.identity",
+      "test.evaluated-rhythm.capability-regression",
+      "test.evaluated-rhythm.dispositions",
+      "test.evaluated-rhythm.rollback-wake",
+      "test.evaluated-rhythm.poisoning-dedup",
+      "test.evaluated-rhythm.cross-lineage",
+      "test.evaluated-rhythm.integrity-idempotency",
+      "test.evaluated-rhythm.held-effects",
+      "test.evaluated-rhythm.windows-proof"
+    ],
+    "outputRefs": [
+      "proof.vexlife.g04.evaluated-rhythm-learning.windows"
+    ],
+    "effectBoundary": "DEVICE_PRIVATE_INACTIVE_FAITHFUL_RHYTHM_SIMULATION_EVIDENCE_ONLY",
+    "completionGate": "G04-0 through G04-10 exact source frontier, stable-pattern eligibility, synthetic consent, privacy/identity/capability evaluation, closed inactive dispositions, rollback/wake independence, corruption/stale/foreign rejection and held later effects pass",
+    "platformRefs": [
+      "platform.windows"
+    ],
+    "exclusions": [
+      "G01/G02/G03 source mutation",
+      "real private corpus ingestion",
+      "real training",
+      "model or trainer installation/runtime",
+      "adapter creation",
+      "model or adapter weight mutation",
+      "Rhythm promotion or activation",
+      "scheduled autonomy",
+      "synchronization",
+      "power control",
+      "cloud upload",
+      "LC18",
+      "publication"
+    ],
+    "returnRoute": "return exact G04 Stage-A head/tree, proof receipt, hosted Windows job and draft PR to Windows Local Operations"
   }
 ]

@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/LIVED-COMPANION-BASELINE.md",
+      "mode": "100644",
+      "bytes": 13044,
+      "sha256": "1de3d47ca01fef729a4884c14366b0b7b79265c40232ec0acf8133d985cb2b70"
+    },
+    {
       "path": "docs/MULTILINGUAL-INTENT-RELAY.md",
       "mode": "100644",
       "bytes": 2152,
@@ -70,8 +76,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 3791,
-      "sha256": "82a9c0b4303da0ffe19b0e88a8a2b34b70c9a5875db3bef03e49ba4ab8945f70"
+      "bytes": 3882,
+      "sha256": "8a45bd84b8eca8e1d7602f5b353e1278952f004ef6c3fa9cc9a0a713b008085e"
     },
     {
       "path": "reference/browser/README.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 2133,
       "sha256": "3095ff35b0a0b61ba9f5c9fbc6741ae98ef6b0805654babeccb3405bab74eef7"
-    },
-    {
-      "path": "reference/browser/modules/terrain-controller.js",
-      "mode": "100644",
-      "bytes": 6248,
-      "sha256": "fd5d7155956b92b4630034cfc649915ef52df0548c69e3993f120421965cd31e"
     }
   ]
 }

@@ -735,5 +735,31 @@
     "loadedBy": ["npm run daily-memory-dream:proof", ".github/workflows/check.yml"],
     "tests": ["test/daily-memory-dream.test.mjs"],
     "changeMap": ["src/core/daily-memory-dream.mjs", ".github/workflows/check.yml"]
+  },
+  {
+    "moduleRef": "module.vexlife.script.evaluated-rhythm-learning",
+    "path": "scripts/evaluated-rhythm-learning.mjs",
+    "role": "Runs the bounded G04 Stage-A synthetic Vex Home proof over exact G01/G02/G03 validators, stable-pattern/dedup/consent/privacy/identity/capability evaluation, four inactive dispositions, rollback/wake preservation and hostile stale/corrupt/foreign controls.",
+    "platformScope": "WINDOWS",
+    "reads": [
+      "module.vexlife.core.evaluated-rhythm-learning",
+      "module.vexlife.core.daily-memory-dream",
+      "module.vexlife.core.score-context-continuity",
+      "module.vexlife.core.lived-companion"
+    ],
+    "writes": [
+      "temporary device-private proof Home and generated G04 health receipt"
+    ],
+    "loadedBy": [
+      "npm run evaluated-rhythm-learning:proof",
+      ".github/workflows/check.yml"
+    ],
+    "tests": [
+      "test/evaluated-rhythm-learning.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/evaluated-rhythm-learning.mjs",
+      ".github/workflows/check.yml"
+    ]
   }
 ]
