@@ -4,7 +4,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import { validateImplementationPlan } from '../src/core/implementation-plan.mjs';
-import { deriveOrientationReceipt, resolveGitHubPullRequestCurrentWork } from '../src/core/orientation.mjs';
+import {
+  deriveFederatedOrientationProviderReceipt,
+  deriveOrientationReceipt,
+  resolveGitHubPullRequestCurrentWork
+} from '../src/core/orientation.mjs';
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest, compareSourceManifest } from '../src/core/source-manifest.mjs';
 import { readJson } from '../src/core/utils.mjs';
@@ -13,11 +17,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const allowedArgs = new Set([
   '--visibility', '--lifecycle', '--pr', '--work-ref', '--prior-reviewed-head',
-  '--candidate-head', '--tested-merge', '--base-sha', '--current-work', '--current-work-event'
+  '--candidate-head', '--tested-merge', '--base-sha', '--current-work', '--current-work-event',
+  '--receipt-kind', '--observed-at'
 ]);
 for (let index = 0; index < args.length; index += 2) {
   if (!allowedArgs.has(args[index]) || !args[index + 1]) {
-    console.error('Usage: npm run orient -- [--visibility PRIVATE|PUBLIC] [--lifecycle PRIVATE_STAGING|PUBLIC_RELEASE_CANDIDATE|PUBLIC_ACTIVE] [--pr <number>] [--work-ref <work.ref>] [--prior-reviewed-head <sha>] [--candidate-head <sha>] [--tested-merge <sha>] [--base-sha <sha>] [--current-work <projection.json>] [--current-work-event <github-event.json>]');
+    console.error('Usage: npm run orient -- [--visibility PRIVATE|PUBLIC] [--lifecycle PRIVATE_STAGING|PUBLIC_RELEASE_CANDIDATE|PUBLIC_ACTIVE] [--pr <number>] [--work-ref <work.ref>] [--prior-reviewed-head <sha>] [--candidate-head <sha>] [--tested-merge <sha>] [--base-sha <sha>] [--current-work <projection.json>] [--current-work-event <github-event.json>] [--receipt-kind repository|provider] [--observed-at <UTC timestamp>]');
     process.exit(2);
   }
 }
@@ -147,7 +152,35 @@ const receipt = deriveOrientationReceipt({
     pathTopologyValid: implementationPlan.ok
   }
 });
-console.log(JSON.stringify(receipt, null, 2));
-if (receipt.state === 'BLOCKED') process.exitCode = 1;
+
+const receiptKind = String(value('--receipt-kind') || 'repository').toLowerCase();
+if (!['repository', 'provider'].includes(receiptKind)) {
+  console.error('--receipt-kind must be repository or provider');
+  process.exit(2);
+}
+
+let output = receipt;
+if (receiptKind === 'provider') {
+  const observedAt = value('--observed-at');
+  if (!observedAt) {
+    console.error('--observed-at is required when --receipt-kind provider is selected');
+    process.exit(2);
+  }
+  try {
+    output = deriveFederatedOrientationProviderReceipt({
+      contract,
+      orientationReceipt: receipt,
+      observedAt
+    });
+  } catch (error) {
+    console.error(`Provider projection failed closed: ${error.message}`);
+    process.exit(2);
+  }
+}
+
+console.log(JSON.stringify(output, null, 2));
+if (receipt.state === 'BLOCKED' || (receiptKind === 'provider' && output.currentState === 'UNAVAILABLE')) {
+  process.exitCode = 1;
+}
 
 // [VXG RealForever]
