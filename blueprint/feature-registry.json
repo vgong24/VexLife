@@ -1348,7 +1348,7 @@
     },
     {
       "featureRef": "feature.vexlife.scheduled-daily-autonomy",
-      "purpose": "Compose one-device scheduled Daily Memory Dream only from current source-owned Safety standing authority plus registered G05S runtime admission; keep policy configuration non-authoritative and preserve a held/no-effect state until separately accepted runtime-supervisor authority can truthfully admit background work.",
+      "purpose": "Compose one-device scheduled Daily Memory Dream only from a final effect-boundary source-owned Safety/runtime admission, commit that admission into immutable G05A reachability before G03, and keep policy configuration non-authoritative with held/no-effect behavior whenever currentness is lost.",
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.context",
@@ -1410,7 +1410,7 @@
       ],
       "resourceClass": "SOURCE_OWNED_G05S_RUNTIME_ADMISSION_REQUIRED_FAIL_CLOSED",
       "dataClass": "DEVICE_PRIVATE_DAILY_CONTINUITY_RECEIPTS",
-      "effectClass": "LOCAL_G03_EFFECT_ONLY_AFTER_EXACT_CURRENT_G05S_ADMISSION_OTHERWISE_NO_EFFECT",
+      "effectClass": "LOCAL_G03_EFFECT_ONLY_AFTER_FINAL_CURRENT_G05S_ADMISSION_AND_COMMITTED_G05A_ADMISSION_HEAD_OTHERWISE_NO_EFFECT",
       "concurrencyClass": "ONE_G05A_SUPERVISOR_WRITER_WITH_EXACT_ABANDONED_LEASE_RECOVERY",
       "rollbackRouteRef": "recovery.lived-companion.last-valid-head",
       "projectionRefs": [

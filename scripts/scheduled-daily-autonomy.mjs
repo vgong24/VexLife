@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -129,13 +130,41 @@ async function runProof() {
     expectedScoreHeadSha256: manual.score.head.scoreHeadSha256,
     expectedDailyDreamHeadSha256: null
   });
+  // Form an abandoned supervisor lease plus an orphan malformed admission file.
+  // Recovery must ignore the orphan because no admission-head lineage commits it.
+  const exited = spawnSync(process.execPath, ['-e', 'process.exit(0)'], { encoding: 'utf8' });
+  const abandonedPid = exited.pid;
+  const scheduledRoot = path.join(manual.ids.home, 'scheduled-daily-autonomy', manual.ids.companionLineageRef, manual.ids.threadRef);
+  fs.mkdirSync(path.join(scheduledRoot, 'admissions'), { recursive: true });
+  const leaseCore = {
+    schemaVersion: 'vexlife.g05a.supervisor-writer/v2',
+    companionLineageRef: manual.ids.companionLineageRef,
+    threadRef: manual.ids.threadRef,
+    supervisorRef: 'supervisor.g05a.manual',
+    instanceRef: 'instance.g05a.manual',
+    pid: abandonedPid,
+    token: 'orphan-recovery-probe-token',
+    formedAt: new Date(now.getTime() - 30_000).toISOString()
+  };
+  writeJson(path.join(scheduledRoot, 'supervisor.lock'), { ...leaseCore, leaseSha256: semanticHash(leaseCore) });
+  writeJson(path.join(scheduledRoot, 'admissions', `${'f'.repeat(64)}.json`), { malformedOrphanAdmission: true });
   let manualLaunderingRejected = false;
+  let orphanHistoricalAdmissionIgnored = false;
   try {
     await runScheduledDailyAutonomyTick({ ...manual.ids, supervisorRef: 'supervisor.g05a.manual', instanceRef: 'instance.g05a.manual', modelWorkerRef: 'worker.g05a.manual', dreamWriterInstanceRef: 'dream-writer.g05a.manual2' });
-  } catch (error) { manualLaunderingRejected = expectCode(error, 'G05A_RECOVERY_POLICY_DRIFT'); }
+  } catch (error) {
+    manualLaunderingRejected = expectCode(error, 'G05A_RECOVERY_POLICY_DRIFT');
+    orphanHistoricalAdmissionIgnored = manualLaunderingRejected;
+  }
 
   const optionalPolicy = formStandingRestPolicy(policyInput(fixture, 'optional', { now, optionalLearningPolicy: 'EVALUATE_AFTER_WAKE' }));
   const optionalScope = buildScheduledStandingScopeForPolicy(optionalPolicy);
+  const coreSource = fs.readFileSync(path.join(ROOT, 'src', 'core', 'scheduled-daily-autonomy.mjs'), 'utf8');
+  const finalBoundaryRevalidationPresent = coreSource.split('resolveCurrentG05ScheduledAdmission({').length - 1 >= 2 &&
+    coreSource.includes('finalCurrentAdmission = await resolveCurrentG05ScheduledAdmission({') &&
+    coreSource.includes('const committedAdmission = commitAdmission(identity, threadRef, admission)') &&
+    coreSource.includes('function loadAdmissionHistory(identity, threadRef)') &&
+    !coreSource.includes('readdirSync(paths.admissions)');
   const checks = {
     'G05A-0': SCHEDULED_DAILY_AUTONOMY_MODE === 'DETERMINISTIC_SCHEDULED_AUTONOMY_CORE' && 'formScheduledAutonomyAdmissionEvidence' in g05aModule === false ? 'PASS' : 'FAIL',
     'G05A-1': committed.policy.executionAuthority === 'NONE_CONFIGURATION_ONLY' && !('consentState' in committed.policy) && !('standingRestAuthorityRef' in committed.policy) ? 'PASS' : 'FAIL',
@@ -144,12 +173,12 @@ async function runProof() {
     'G05A-4': rawRejected ? 'PASS' : 'FAIL',
     'G05A-5': held.state === 'HELD_RUNTIME_RESOURCE_OR_INTERACTIVE_STATE' && held.resourceAdmissionState === 'BLOCKED' ? 'PASS' : 'FAIL',
     'G05A-6': (beforeDream.head?.dailyDreamHeadSha256 ?? null) === (afterDream.head?.dailyDreamHeadSha256 ?? null) ? 'PASS' : 'FAIL',
-    'G05A-7': manualLaunderingRejected ? 'PASS' : 'FAIL',
+    'G05A-7': manualLaunderingRejected && orphanHistoricalAdmissionIgnored && !fs.existsSync(path.join(scheduledRoot, 'admission-head.json')) ? 'PASS' : 'FAIL',
     'G05A-8': projection.livePositiveStandingConsentMaterializedByG05A === false ? 'PASS' : 'FAIL',
     'G05A-9': projection.synchronizationPerformed === false && projection.trainingPerformed === false && projection.modelWeightsChanged === false && projection.adapterChanged === false ? 'PASS' : 'FAIL',
     'G05A-10': projection.nativeWindowsServiceInstalled === false && projection.powerControlPerformed === false && projection.publicationPerformed === false ? 'PASS' : 'FAIL',
     'G05A-11': SHA256.test(safety.head.authorityHeadSha256) && scopeResult.standingScopeFingerprint === safety.scopeFingerprint ? 'PASS' : 'FAIL',
-    'G05A-12': G05_LIVE_RUNTIME_SOURCE_REF === 'source.intent-scheduler.windows-g05-runtime-observer' && SHA256.test(G05_LIVE_RUNTIME_SOURCE_HASH) ? 'PASS' : 'FAIL'
+    'G05A-12': G05_LIVE_RUNTIME_SOURCE_REF === 'source.intent-scheduler.windows-g05-runtime-observer' && SHA256.test(G05_LIVE_RUNTIME_SOURCE_HASH) && finalBoundaryRevalidationPresent ? 'PASS' : 'FAIL'
   };
   const state = Object.values(checks).every((item) => item === 'PASS') ? 'PASS' : 'FAIL';
   const receipt = {
@@ -170,6 +199,10 @@ async function runProof() {
     actualAutomaticDreamInvocationPerformed: false,
     syntheticManualG03LaunderingProbePerformed: true,
     manualPolicyOnlyG03WakeAcceptedAsScheduled: false,
+    orphanHistoricalAdmissionIgnored,
+    committedAdmissionHeadRequired: true,
+    finalG05sEffectBoundaryRevalidationRequired: true,
+    finalG05sEffectBoundaryRevalidationStructuralProof: finalBoundaryRevalidationPresent,
     nativeSupervisorInstalled: false, realTrainingPerformed: false, modelOrAdapterMutationPerformed: false,
     rhythmActivationPerformed: false, synchronizationPerformed: false, powerControlPerformed: false,
     cloudUploadPerformed: false, publicationPerformed: false

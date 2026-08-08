@@ -13,9 +13,11 @@ standing policy configuration
 → exact G05 Safety standing scope
 → source-owned current Safety owner head / consent / authority binding
 → registered Windows live runtime observation
-→ exact G05S current scheduled-admission provenance
-→ G05A supervisor lease + scheduler generation + six-field source frontier
-→ content-addressed scheduled G03 invocation authority
+→ exact G05S preliminary current scheduled-admission gate
+→ unchanged policy + scheduler generation + final six-field source frontier
+→ fresh G05S effect-boundary re-resolution
+→ committed immutable G05A admission-head lineage
+→ G05A supervisor lease + content-addressed scheduled G03 invocation authority
 → accepted G03 memory-only wake
 → immutable G05A daily receipt/head
 ```
@@ -46,7 +48,7 @@ G05A does not export a caller-facing live admission constructor. For a new sched
 4. binds scheduler generation separately from policy generation;
 5. returns current admission only when the runtime resource/interactive state is actually admitted.
 
-Caller-shaped `observedAt`, resource snapshots, admission evidence, consent enums, authority refs and scheduler generations are rejected at the G05A executable boundary.
+Caller-shaped `observedAt`, resource snapshots, admission evidence, consent enums, authority refs and scheduler generations are rejected at the G05A executable boundary. A preliminary G05S result is only a gate: immediately before G03 admission, G05A re-reads the unchanged local policy/frontier and performs a **fresh G05S source descent**. The final persisted admission is formed only from that final resolution. If Safety currentness, runtime admission, rest-window/date eligibility, policy generation, or the six-field source frontier changes, G05A returns held/no-effect instead of crossing into G03.
 
 ## Current truthful runtime state
 
@@ -56,7 +58,7 @@ No proof or relay is allowed to fake `ADMITTED` merely to exercise the automatic
 
 ## Scheduled G03 attribution
 
-When a future current G05S admission is genuinely `ADMITTED`, G05A forms one private, persisted supervisor-admission receipt before invoking G03. The scheduled invocation authority is content-addressed over:
+When a future current G05S admission is genuinely `ADMITTED`, G05A first uses it as a preliminary gate, then performs a fresh effect-boundary G05S resolution from the unchanged policy/scope/scheduler generation and final source frontier. Only that final current resolution may form one private supervisor-admission receipt. The receipt is committed through an immutable `admission-heads/<sha>.json` lineage plus atomic `admission-head.json` current pointer before G03 is invoked. The scheduled invocation authority is content-addressed over:
 
 - exact policy ref/hash/head/generation;
 - exact independently sourced scheduler generation;
@@ -70,19 +72,19 @@ The accepted G03 API still records `invocationMode=MANUAL_ONE_SHOT`; G05A theref
 
 ## Crash recovery
 
-The supervisor admission is persisted before G03. If the process dies after a committed G03 wake but before the G05A receipt/head advances, a fresh process may finish **receipt recovery only** when:
+The supervisor admission is committed into the G05A admission-head lineage before G03. If the process dies after a committed G03 wake but before the G05A daily receipt/head advances, a fresh process may finish **receipt recovery only** when:
 
 - the old G05A supervisor owner is provably absent;
 - the abandoned supervisor lease is recovered explicitly;
-- the same-day G03 orientation authority matches exactly one persisted admission;
+- the same-day G03 orientation authority matches exactly one **head-reachable committed admission**;
 - that admission binds the recovered abandoned lease SHA, exact policy generation, scheduler generation and source frontier;
 - its embedded G05S provenance validates only as historical integrity.
 
-This path creates no new Dream authority. A manual G03 wake made with the old policy-only convention has no matching persisted admission/abandoned lease and is rejected rather than laundered into scheduled history.
+Raw addressed files under `admissions/` are not recovery authority. Orphan, malformed, reordered, or re-addressed admission files that are not reachable from the canonical admission-head pointer/lineage are ignored or rejected. This path creates no new Dream authority and performs no optional learning from historical replay. A manual G03 wake made with the old policy-only convention has no matching committed admission/abandoned lease and is rejected rather than laundered into scheduled history.
 
 ## Historical replay
 
-G05A daily source descent consumes `validateHistoricalG05ScheduledAdmissionProvenance(...)` only as `HISTORICAL_INTEGRITY_ONLY`; it never turns historical G05S bytes into current authority. The daily receipt also recomputes the exact G03 pre-rest orientation SHA to verify its scheduled invocation authority.
+G05A daily source descent consumes `validateHistoricalG05ScheduledAdmissionProvenance(...)` only as `HISTORICAL_INTEGRITY_ONLY`; it never turns historical G05S bytes into current authority. Historical admission evidence is accepted only when reachable through the immutable G05A admission-head lineage, and the daily receipt binds the exact admission-head SHA. The daily receipt also recomputes the exact G03 pre-rest orientation SHA to verify its scheduled invocation authority.
 
 ## Held effects
 

@@ -1053,11 +1053,11 @@
   },
   {
     "testRef": "test.scheduled-daily-autonomy.g03-admission",
-    "brief": "G05A-5 allows automatic G03 only after exact current G05S admission and derives scheduled attribution from policy, scheduler generation, runtime, supervisor and six-field frontier."
+    "brief": "G05A-5 requires a fresh final G05S source descent immediately before effect admission and binds the committed G05A admission to that final current resolution."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.stale-source",
-    "brief": "G05A-6 requires the exact six-field G01/G02/G03 frontier immediately before any scheduled effect."
+    "brief": "G05A-6 requires unchanged policy, rest-window/calendar date, Safety/runtime currentness and exact six-field G01/G02/G03 frontier at the final effect boundary."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.duplicate-day",
@@ -1073,11 +1073,11 @@
   },
   {
     "testRef": "test.scheduled-daily-autonomy.recovery",
-    "brief": "G05A-10 recovers a wake only through one persisted pre-effect admission bound to the recovered abandoned supervisor lease; manual policy-only G03 is rejected."
+    "brief": "G05A-10 recovers a wake only through one immutable admission-head-reachable pre-effect admission bound to the recovered abandoned supervisor lease; orphan/re-addressed admissions and manual policy-only G03 are rejected."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.receipt",
-    "brief": "G05A-11 closed-schema daily receipt/source descent binds historical G05S integrity and recomputes the exact G03 orientation scheduled authority."
+    "brief": "G05A-11 closed-schema daily receipt/source descent binds the exact committed G05A admission-head SHA, historical G05S integrity and recomputed G03 orientation scheduled authority."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.held-effects",

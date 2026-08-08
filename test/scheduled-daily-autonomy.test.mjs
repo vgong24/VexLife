@@ -18,6 +18,8 @@ test('G05A policy is configuration-only and content-addressed', () => {
   assert.equal('consentState' in first, false);
   assert.equal('standingRestAuthorityRef' in first, false);
   assert.equal('formScheduledAutonomyAdmissionEvidence' in g05a, false);
+  assert.equal('commitAdmission' in g05a, false);
+  assert.equal('loadAdmissionHistory' in g05a, false);
 });
 
 test('G05A policy rejects caller consent or authority vocabulary', () => {
@@ -59,6 +61,12 @@ test('G05A wrapping rest windows remain deterministic', () => {
   assert.equal(g05a.isRestWindowEligible(policy, '2026-08-08T06:00:00.000Z').eligible, true);
   assert.equal(g05a.isRestWindowEligible(policy, '2026-08-08T12:00:00.000Z').eligible, true);
   assert.equal(g05a.isRestWindowEligible(policy, '2026-08-08T19:00:00.000Z').eligible, false);
+});
+
+test('G05A committed admission lineage remains private to the source-owned execution path', () => {
+  assert.equal('commitAdmission' in g05a, false);
+  assert.equal('loadAdmissionHistory' in g05a, false);
+  assert.equal('findRecoveryAdmission' in g05a, false);
 });
 
 test('G05A source exposes the authority-provenance failure vocabulary', () => {

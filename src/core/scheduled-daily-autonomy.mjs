@@ -47,12 +47,13 @@ const REF = /^[a-z0-9](?:[a-z0-9._-]{0,190}[a-z0-9])?$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
 const WINDOWS_RESERVED = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/u;
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/u;
-const DAILY_RECEIPT_SCHEMA = 'vexlife.g05a.daily-autonomy-receipt/v3';
+const DAILY_RECEIPT_SCHEMA = 'vexlife.g05a.daily-autonomy-receipt/v4';
 const DAILY_HEAD_SCHEMA = 'vexlife.g05a.daily-autonomy-head/v2';
 const POLICY_SCHEMA = 'vexlife.g05a.standing-rest-policy/v2';
 const POLICY_HEAD_SCHEMA = 'vexlife.g05a.standing-rest-policy-head/v3';
 const ADMISSION_EVIDENCE_SCHEMA = 'vexlife.g05a.supervisor-admission-evidence/v2';
 const ADMISSION_EVIDENCE_CONTRACT = 'contract.vexlife.g05a.supervisor-admission-evidence/v2';
+const ADMISSION_HEAD_SCHEMA = 'vexlife.g05a.supervisor-admission-head/v1';
 const FRONTIER_FIELDS = Object.freeze([
   'conversationHeadSha256', 'scoreHeadSha256', 'semanticAuthorityHeadSha256',
   'dreamHeadSha256', 'dailyStratumSha256', 'wakeReceiptSha256'
@@ -183,9 +184,11 @@ function pathsFor(identity, threadRef) {
     policies: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'policies'),
     policyHeads: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'policy-heads'),
     admissions: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'admissions'),
+    admissionHeads: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'admission-heads'),
     receipts: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'receipts'),
     heads: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'heads'),
     policyHead: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'policy-head.json'),
+    admissionHead: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'admission-head.json'),
     head: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'head.json'),
     lock: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'supervisor.lock'),
     policyLock: homePath(home, 'scheduled-daily-autonomy', lineage, thread, 'policy-writer.lock')
@@ -525,6 +528,8 @@ function validateHistoricalAdmissionEvidence(evidence) {
   if (evidence.g05sProvenance.policyRef !== evidence.standingPolicyRef || evidence.g05sProvenance.policySha256 !== evidence.standingPolicySha256 || evidence.g05sProvenance.policyHeadSha256 !== evidence.standingPolicyHeadSha256 || evidence.g05sProvenance.policyGeneration !== evidence.policyGeneration || evidence.g05sProvenance.schedulerGeneration !== evidence.schedulerGeneration || evidence.g05sProvenance.standingScopeFingerprint !== evidence.standingScopeFingerprint || JSON.stringify(evidence.g05sProvenance.sourceFrontier) !== JSON.stringify(evidence.sourceFrontier)) fail('G05A_ADMISSION_EVIDENCE_INVALID', 'historical admission policy/generation/frontier differs from embedded G05S provenance');
   if (evidence.g05sProvenanceRef !== evidence.g05sProvenance.provenanceRef || evidence.g05sProvenanceSha256 !== evidence.g05sProvenance.provenanceSha256 ||
       evidence.standingAuthorityHeadSha256 !== evidence.g05sProvenance.standingAuthorityHeadSha256 || evidence.standingAuthorityGeneration !== evidence.g05sProvenance.standingAuthorityGeneration ||
+      evidence.standingConsentSha256 !== evidence.g05sProvenance.standingConsentSha256 || evidence.standingAuthoritySha256 !== evidence.g05sProvenance.standingAuthoritySha256 ||
+      evidence.runtimeObservationFingerprint !== evidence.g05sProvenance.runtimeObservationFingerprint ||
       evidence.runtimeTrustSnapshotFingerprint !== evidence.g05sProvenance.runtimeTrustSnapshotFingerprint || evidence.resourceSnapshotFingerprint !== evidence.g05sProvenance.resourceSnapshotFingerprint ||
       evidence.runtimeSourceRef !== G05_LIVE_RUNTIME_SOURCE_REF || evidence.runtimeSourceHash !== G05_LIVE_RUNTIME_SOURCE_HASH ||
       evidence.resourceAdmissionState !== 'ADMITTED' || evidence.resourceAdmissionFingerprint !== evidence.g05sProvenance.resourceAdmissionFingerprint ||
@@ -543,28 +548,119 @@ function validateHistoricalAdmissionEvidence(evidence) {
   if (expectedAuthority !== evidence.scheduledDreamAuthorityRef) fail('G05A_ADMISSION_EVIDENCE_INVALID', 'scheduled Dream authority does not recompute');
   return evidence;
 }
-function persistAdmission(identity, threadRef, evidence) {
+function validateAdmissionHead(head, identity, threadRef) {
+  closedKeys(head, [
+    'schemaVersion','homeRef','deviceRef','companionLineageRef','threadRef','sequence','schedulerGeneration','calendarDateRef',
+    'admissionEvidenceRef','admissionEvidenceSha256','scheduledDreamAuthorityRef','supervisorLeaseSha256',
+    'priorAdmissionHeadSha256','formedAt','admissionHeadSha256'
+  ], 'G05A_ADMISSION_EVIDENCE_INVALID', 'G05A admission head');
+  const { admissionHeadSha256, ...core } = head;
+  if (head.schemaVersion !== ADMISSION_HEAD_SCHEMA || semanticHash(core) !== admissionHeadSha256 ||
+      head.homeRef !== identity.homeRef || head.deviceRef !== identity.deviceRef ||
+      head.companionLineageRef !== identity.companionLineageRef || head.threadRef !== threadRef ||
+      !Number.isSafeInteger(head.sequence) || head.sequence < 0 ||
+      !Number.isSafeInteger(head.schedulerGeneration) || head.schedulerGeneration < 0 ||
+      !CALENDAR_DATE.test(head.calendarDateRef ?? '') ||
+      (head.sequence === 0 ? head.priorAdmissionHeadSha256 !== null : !SHA256.test(head.priorAdmissionHeadSha256 ?? ''))) {
+    fail('G05A_ADMISSION_EVIDENCE_INVALID', 'G05A admission head identity/lineage is invalid');
+  }
+  for (const field of ['admissionEvidenceSha256','supervisorLeaseSha256']) assertSha(head[field], `admissionHead.${field}`, 'G05A_ADMISSION_EVIDENCE_INVALID');
+  safeRef(head.admissionEvidenceRef, 'admissionHead.admissionEvidenceRef', 'G05A_ADMISSION_EVIDENCE_INVALID');
+  safeRef(head.scheduledDreamAuthorityRef, 'admissionHead.scheduledDreamAuthorityRef', 'G05A_ADMISSION_EVIDENCE_INVALID');
+  canonicalTimestamp(head.formedAt, 'admissionHead.formedAt', 'G05A_ADMISSION_EVIDENCE_INVALID');
+  return head;
+}
+function loadAdmissionHistory(identity, threadRef) {
   const paths = pathsFor(identity, threadRef);
+  if (!fs.existsSync(paths.admissionHead)) return { head: null, headChain: [], admissions: [] };
+  ensureRegularCanonicalFile(identity.homeRoot, paths.admissionHead, 'G05A_ADMISSION_EVIDENCE_INVALID', 'G05A admission current pointer');
+  const current = validateAdmissionHead(readJson(paths.admissionHead, 'G05A_ADMISSION_EVIDENCE_INVALID', 'G05A admission current pointer'), identity, threadRef);
+  const immutableCurrent = path.join(paths.admissionHeads, `${current.admissionHeadSha256}.json`);
+  ensureRegularCanonicalFile(identity.homeRoot, immutableCurrent, 'G05A_ADMISSION_EVIDENCE_INVALID', 'immutable G05A admission head');
+  if (semanticHash(validateAdmissionHead(readJson(immutableCurrent, 'G05A_ADMISSION_EVIDENCE_INVALID', 'immutable G05A admission head'), identity, threadRef)) !== semanticHash(current)) {
+    fail('G05A_ADMISSION_EVIDENCE_INVALID', 'G05A admission current pointer lacks exact immutable identity');
+  }
+  const reverse = [];
+  let cursor = current;
+  const seen = new Set();
+  while (cursor) {
+    if (seen.has(cursor.admissionHeadSha256)) fail('G05A_ADMISSION_EVIDENCE_INVALID', 'G05A admission head lineage contains a cycle');
+    seen.add(cursor.admissionHeadSha256);
+    reverse.push(cursor);
+    if (cursor.sequence === 0) break;
+    const priorFile = path.join(paths.admissionHeads, `${cursor.priorAdmissionHeadSha256}.json`);
+    ensureRegularCanonicalFile(identity.homeRoot, priorFile, 'G05A_ADMISSION_EVIDENCE_INVALID', 'prior immutable G05A admission head');
+    const prior = validateAdmissionHead(readJson(priorFile, 'G05A_ADMISSION_EVIDENCE_INVALID', 'prior immutable G05A admission head'), identity, threadRef);
+    if (prior.sequence !== cursor.sequence - 1) fail('G05A_ADMISSION_EVIDENCE_INVALID', 'G05A admission head sequence is not contiguous');
+    cursor = prior;
+  }
+  const headChain = reverse.reverse();
+  const admissions = headChain.map((head, index) => {
+    if (head.sequence !== index || head.priorAdmissionHeadSha256 !== (index ? headChain[index - 1].admissionHeadSha256 : null)) {
+      fail('G05A_ADMISSION_EVIDENCE_INVALID', 'G05A admission ancestry is not canonical');
+    }
+    const file = path.join(paths.admissions, `${head.admissionEvidenceSha256}.json`);
+    ensureRegularCanonicalFile(identity.homeRoot, file, 'G05A_ADMISSION_EVIDENCE_INVALID', 'reachable G05A admission evidence');
+    const evidence = validateHistoricalAdmissionEvidence(readJson(file, 'G05A_ADMISSION_EVIDENCE_INVALID', 'reachable G05A admission evidence'));
+    if (evidence.admissionEvidenceRef !== head.admissionEvidenceRef ||
+        evidence.admissionEvidenceSha256 !== head.admissionEvidenceSha256 ||
+        evidence.schedulerGeneration !== head.schedulerGeneration ||
+        evidence.calendarDateRef !== head.calendarDateRef ||
+        evidence.scheduledDreamAuthorityRef !== head.scheduledDreamAuthorityRef ||
+        evidence.supervisorLeaseSha256 !== head.supervisorLeaseSha256 ||
+        evidence.observedAt !== head.formedAt) {
+      fail('G05A_ADMISSION_EVIDENCE_INVALID', 'G05A admission head differs from reachable admission evidence');
+    }
+    return evidence;
+  });
+  return { head: current, headChain, admissions };
+}
+function commitAdmission(identity, threadRef, evidence) {
+  validateHistoricalAdmissionEvidence(evidence);
+  const paths = pathsFor(identity, threadRef);
+  const prior = loadAdmissionHistory(identity, threadRef).head;
   const file = path.join(paths.admissions, `${evidence.admissionEvidenceSha256}.json`);
   const state = writeExclusive(file, evidence);
-  if (state === 'EXISTS' && semanticHash(validateHistoricalAdmissionEvidence(readJson(file, 'G05A_ADMISSION_EVIDENCE_INVALID', 'admission evidence'))) !== semanticHash(evidence)) fail('G05A_ADMISSION_EVIDENCE_INVALID', 'same admission address contains different content');
-  return file;
-}
-function readAdmissions(identity, threadRef) {
-  const paths = pathsFor(identity, threadRef);
-  if (!fs.existsSync(paths.admissions)) return [];
-  const items = [];
-  for (const name of fs.readdirSync(paths.admissions).sort()) {
-    if (!/^[0-9a-f]{64}\.json$/u.test(name)) continue;
-    const file = path.join(paths.admissions, name);
-    ensureRegularCanonicalFile(identity.homeRoot, file, 'G05A_ADMISSION_EVIDENCE_INVALID', 'historical admission evidence');
-    items.push(validateHistoricalAdmissionEvidence(readJson(file, 'G05A_ADMISSION_EVIDENCE_INVALID', 'historical admission evidence')));
+  if (state === 'EXISTS' && semanticHash(validateHistoricalAdmissionEvidence(readJson(file, 'G05A_ADMISSION_EVIDENCE_INVALID', 'admission evidence'))) !== semanticHash(evidence)) {
+    fail('G05A_ADMISSION_EVIDENCE_INVALID', 'same admission address contains different content');
   }
-  return items;
+  const sequence = prior ? prior.sequence + 1 : 0;
+  const core = {
+    schemaVersion: ADMISSION_HEAD_SCHEMA,
+    homeRef: identity.homeRef,
+    deviceRef: identity.deviceRef,
+    companionLineageRef: identity.companionLineageRef,
+    threadRef,
+    sequence,
+    schedulerGeneration: evidence.schedulerGeneration,
+    calendarDateRef: evidence.calendarDateRef,
+    admissionEvidenceRef: evidence.admissionEvidenceRef,
+    admissionEvidenceSha256: evidence.admissionEvidenceSha256,
+    scheduledDreamAuthorityRef: evidence.scheduledDreamAuthorityRef,
+    supervisorLeaseSha256: evidence.supervisorLeaseSha256,
+    priorAdmissionHeadSha256: prior?.admissionHeadSha256 ?? null,
+    formedAt: evidence.observedAt
+  };
+  const head = { ...core, admissionHeadSha256: semanticHash(core) };
+  const headFile = path.join(paths.admissionHeads, `${head.admissionHeadSha256}.json`);
+  const headState = writeExclusive(headFile, head);
+  if (headState === 'EXISTS' && semanticHash(validateAdmissionHead(readJson(headFile, 'G05A_ADMISSION_EVIDENCE_INVALID', 'immutable G05A admission head'), identity, threadRef)) !== semanticHash(head)) {
+    fail('G05A_ADMISSION_EVIDENCE_INVALID', 'same admission head address contains different content');
+  }
+  atomicWrite(paths.admissionHead, head);
+  return { file, headFile, head };
 }
 function findRecoveryAdmission({ identity, threadRef, loaded, schedulerGeneration, calendarDateRef, orientationAuthorityRef, recoveredLeaseSha256 }) {
-  const matches = readAdmissions(identity, threadRef).filter((item) => item.standingPolicyHeadSha256 === loaded.head.policyHeadSha256 && item.policyGeneration === loaded.head.generation && item.schedulerGeneration === schedulerGeneration && item.calendarDateRef === calendarDateRef && item.scheduledDreamAuthorityRef === orientationAuthorityRef && item.supervisorLeaseSha256 === recoveredLeaseSha256);
-  if (matches.length !== 1) fail('G05A_RECOVERY_POLICY_DRIFT', 'same-day G03 wake lacks one exact persisted scheduled admission tied to the recovered abandoned supervisor lease', { matches: matches.length });
+  const history = loadAdmissionHistory(identity, threadRef);
+  const matches = history.admissions.map((evidence, index) => ({ evidence, head: history.headChain[index] })).filter(({ evidence }) =>
+    evidence.standingPolicyHeadSha256 === loaded.head.policyHeadSha256 &&
+    evidence.policyGeneration === loaded.head.generation &&
+    evidence.schedulerGeneration === schedulerGeneration &&
+    evidence.calendarDateRef === calendarDateRef &&
+    evidence.scheduledDreamAuthorityRef === orientationAuthorityRef &&
+    evidence.supervisorLeaseSha256 === recoveredLeaseSha256
+  );
+  if (matches.length !== 1) fail('G05A_RECOVERY_POLICY_DRIFT', 'same-day G03 wake lacks one exact committed scheduled admission tied to the recovered abandoned supervisor lease', { matches: matches.length });
   return matches[0];
 }
 
@@ -574,7 +670,7 @@ function validateDailyReceipt(receipt, identity, threadRef) {
     'schemaVersion','mode','homeRef','deviceRef','companionLineageRef','threadRef','calendarDateRef','timeZoneRef','observedAt',
     'standingPolicyRef','standingPolicySha256','standingPolicyHeadSha256','policyGeneration','standingScopeFingerprint','schedulerGeneration',
     'scheduledDreamAuthorityRef','supervisorRef','supervisorInstanceRef','supervisorLeaseSha256','recoveredAbandonedSupervisor',
-    'supervisorAdmissionEvidenceRef','supervisorAdmissionEvidenceSha256','g05sProvenanceRef','g05sProvenanceSha256','standingAuthorityHeadSha256',
+    'supervisorAdmissionEvidenceRef','supervisorAdmissionEvidenceSha256','supervisorAdmissionHeadSha256','g05sProvenanceRef','g05sProvenanceSha256','standingAuthorityHeadSha256',
     'standingAuthorityGeneration','runtimeObservationFingerprint','runtimeTrustSnapshotFingerprint','resourceSnapshotFingerprint','runtimeSourceRef',
     'runtimeSourceHash','resourceAdmissionState','resourceAdmissionFingerprint','sourceConversationHeadSha256','sourceScoreHeadSha256',
     'sourceSemanticAuthorityHeadSha256','g03DayRef','g03DayIndex','g03OrientationSha256','g03OrientationOpenLoopRefs','g03DreamHeadSha256',
@@ -586,7 +682,7 @@ function validateDailyReceipt(receipt, identity, threadRef) {
   if (receipt.mode !== SCHEDULED_DAILY_AUTONOMY_MODE || receipt.homeRef !== identity.homeRef || receipt.deviceRef !== identity.deviceRef || receipt.companionLineageRef !== identity.companionLineageRef || receipt.threadRef !== threadRef ||
       !CALENDAR_DATE.test(receipt.calendarDateRef ?? '') || !Number.isSafeInteger(receipt.policyGeneration) || receipt.policyGeneration < 0 || !Number.isSafeInteger(receipt.schedulerGeneration) || receipt.schedulerGeneration < 0 ||
       receipt.resourceAdmissionState !== 'ADMITTED' || receipt.wakeCommitted !== true || receipt.interactiveYielded !== false || receipt.resourceYielded !== false || receipt.duplicateSuppressed !== false || receipt.nextSafeRoute !== NEXT_SAFE_ROUTE) fail('G05A_RECEIPT_CORRUPT', 'G05A daily receipt semantic contract is invalid');
-  for (const field of ['standingPolicySha256','standingPolicyHeadSha256','standingScopeFingerprint','supervisorLeaseSha256','supervisorAdmissionEvidenceSha256','g05sProvenanceSha256','standingAuthorityHeadSha256','runtimeObservationFingerprint','runtimeTrustSnapshotFingerprint','resourceSnapshotFingerprint','resourceAdmissionFingerprint','sourceConversationHeadSha256','sourceScoreHeadSha256','sourceSemanticAuthorityHeadSha256','g03OrientationSha256','g03DreamHeadSha256','g03DailyStratumSha256','g03WakeReceiptSha256']) assertSha(receipt[field], `receipt.${field}`);
+  for (const field of ['standingPolicySha256','standingPolicyHeadSha256','standingScopeFingerprint','supervisorLeaseSha256','supervisorAdmissionEvidenceSha256','supervisorAdmissionHeadSha256','g05sProvenanceSha256','standingAuthorityHeadSha256','runtimeObservationFingerprint','runtimeTrustSnapshotFingerprint','resourceSnapshotFingerprint','resourceAdmissionFingerprint','sourceConversationHeadSha256','sourceScoreHeadSha256','sourceSemanticAuthorityHeadSha256','g03OrientationSha256','g03DreamHeadSha256','g03DailyStratumSha256','g03WakeReceiptSha256']) assertSha(receipt[field], `receipt.${field}`);
   safeRef(receipt.scheduledDreamAuthorityRef, 'receipt.scheduledDreamAuthorityRef', 'G05A_RECEIPT_CORRUPT');
   safeRef(receipt.g03DayRef, 'receipt.g03DayRef', 'G05A_RECEIPT_CORRUPT');
   if (!Number.isSafeInteger(receipt.g03DayIndex) || receipt.g03DayIndex < 0 || !Array.isArray(receipt.g03OrientationOpenLoopRefs) || receipt.g03OrientationOpenLoopRefs.some((item) => typeof item !== 'string')) fail('G05A_RECEIPT_CORRUPT', 'G03 day/orientation metadata is invalid');
@@ -620,8 +716,15 @@ function validateReceiptAgainstSources(receipt, identity, threadRef) {
   const policyHead = validatePolicyHead(readJson(path.join(paths.policyHeads, `${receipt.standingPolicyHeadSha256}.json`)), identity, threadRef);
   const policy = validateStandingRestPolicy(readJson(path.join(paths.policies, `${receipt.standingPolicySha256}.json`)));
   if (policyHead.policySha256 !== receipt.standingPolicySha256 || policyHead.generation !== receipt.policyGeneration || policy.policySha256 !== receipt.standingPolicySha256 || buildScheduledStandingScopeForPolicy(policy).standingScopeFingerprint !== receipt.standingScopeFingerprint) fail('G05A_RECEIPT_CORRUPT', 'receipt policy/scope lineage differs');
-  const admission = validateHistoricalAdmissionEvidence(readJson(path.join(paths.admissions, `${receipt.supervisorAdmissionEvidenceSha256}.json`), 'G05A_RECEIPT_CORRUPT', 'historical admission'));
-  if (admission.admissionEvidenceRef !== receipt.supervisorAdmissionEvidenceRef || admission.scheduledDreamAuthorityRef !== receipt.scheduledDreamAuthorityRef || admission.supervisorLeaseSha256 !== receipt.supervisorLeaseSha256 || admission.g05sProvenanceSha256 !== receipt.g05sProvenanceSha256 || admission.schedulerGeneration !== receipt.schedulerGeneration) fail('G05A_RECEIPT_CORRUPT', 'receipt differs from scheduled admission');
+  const admissionHistory = loadAdmissionHistory(identity, threadRef);
+  const admissionMatches = admissionHistory.admissions.map((evidence, index) => ({ evidence, head: admissionHistory.headChain[index] })).filter(({ evidence, head }) =>
+    evidence.admissionEvidenceSha256 === receipt.supervisorAdmissionEvidenceSha256 &&
+    evidence.admissionEvidenceRef === receipt.supervisorAdmissionEvidenceRef &&
+    head.admissionHeadSha256 === receipt.supervisorAdmissionHeadSha256
+  );
+  if (admissionMatches.length !== 1) fail('G05A_RECEIPT_CORRUPT', 'receipt admission is not reachable from committed G05A admission-head lineage');
+  const admission = admissionMatches[0].evidence;
+  if (admission.scheduledDreamAuthorityRef !== receipt.scheduledDreamAuthorityRef || admission.supervisorLeaseSha256 !== receipt.supervisorLeaseSha256 || admission.g05sProvenanceSha256 !== receipt.g05sProvenanceSha256 || admission.schedulerGeneration !== receipt.schedulerGeneration) fail('G05A_RECEIPT_CORRUPT', 'receipt differs from scheduled admission');
   const descent = sourceDescentForDailyStratum({ home: identity.homeRoot, homeRef: identity.homeRef, deviceRef: identity.deviceRef, companionLineageRef: identity.companionLineageRef, threadRef }, receipt.g03DailyStratumSha256);
   if (descent.orientationSha256 !== receipt.g03OrientationSha256 || recomputeG03OrientationSha(receipt) !== receipt.g03OrientationSha256 || descent.sourceConversationHeadSha256 !== receipt.sourceConversationHeadSha256 || descent.sourceScoreHeadSha256 !== receipt.sourceScoreHeadSha256 || descent.sourceSemanticAuthorityHeadSha256 !== receipt.sourceSemanticAuthorityHeadSha256 || descent.wakeReceiptSha256 !== receipt.g03WakeReceiptSha256) fail('G05A_RECEIPT_CORRUPT', 'receipt differs from exact committed G03 scheduled attribution/source descent');
   const daily = loadDailyMemoryDreamState({ home: identity.homeRoot, homeRef: identity.homeRef, deviceRef: identity.deviceRef, companionLineageRef: identity.companionLineageRef, threadRef });
@@ -732,13 +835,16 @@ export async function runScheduledDailyAutonomyTick(input) {
     const dailyBefore = loadDailyMemoryDreamState({ home: identity.homeRoot, homeRef: identity.homeRef, deviceRef: identity.deviceRef, companionLineageRef: identity.companionLineageRef, threadRef });
     let bundle = g03BundleForDate(dailyBefore, preliminaryEligibility.calendarDateRef);
     let admission;
+    let admissionHeadSha256;
     let observedAt;
     let eligibility;
     let resumedAfterWake = false;
 
     if (bundle) {
       if (!lease.recovered?.recovered || !lease.recovered.leaseSha256) fail('G05A_RECOVERY_POLICY_DRIFT', 'pre-existing same-day G03 wake is not attributable to an abandoned G05A supervisor');
-      admission = findRecoveryAdmission({ identity, threadRef, loaded, schedulerGeneration, calendarDateRef: preliminaryEligibility.calendarDateRef, orientationAuthorityRef: bundle.orientation.restInvocationAuthorityRef, recoveredLeaseSha256: lease.recovered.leaseSha256 });
+      const recoveredAdmission = findRecoveryAdmission({ identity, threadRef, loaded, schedulerGeneration, calendarDateRef: preliminaryEligibility.calendarDateRef, orientationAuthorityRef: bundle.orientation.restInvocationAuthorityRef, recoveredLeaseSha256: lease.recovered.leaseSha256 });
+      admission = recoveredAdmission.evidence;
+      admissionHeadSha256 = recoveredAdmission.head.admissionHeadSha256;
       observedAt = admission.observedAt;
       eligibility = isRestWindowEligible(loaded.policy, observedAt);
       if (!eligibility.eligible) fail('G05A_RECOVERY_POLICY_DRIFT', 'historical scheduled admission falls outside configured rest window');
@@ -758,13 +864,50 @@ export async function runScheduledDailyAutonomyTick(input) {
       eligibility = isRestWindowEligible(loaded.policy, observedAt);
       if (!eligibility.eligible) return Object.freeze({ state: 'OUTSIDE_REST_WINDOW', calendarDateRef: eligibility.calendarDateRef, noEffect: true, wakeCommitted: false, schedulerGeneration });
       if (currentAdmission.state !== 'CURRENT_ADMISSION_EVIDENCE_FORMED') return Object.freeze({ state: 'HELD_RUNTIME_RESOURCE_OR_INTERACTIVE_STATE', calendarDateRef: eligibility.calendarDateRef, noEffect: true, wakeCommitted: false, schedulerGeneration, resourceAdmissionState: currentAdmission.provenance.resourceAdmissionState, livePositiveStandingConsent: true, actualAutomaticDreamInvocationPerformed: false, nativeSupervisorInstalled: false });
-      const finalFrontier = validateFrontier(observeScheduledSourceFrontier(input)); assertSameFrontier(finalFrontier, initialFrontier);
-      admission = formCurrentAdmissionEvidence({ identity, threadRef, loaded: currentPolicy, schedulerGeneration, currentAdmission, supervisorRef, instanceRef, supervisorLeaseSha256: lease.leaseSha256, calendarDateRef: eligibility.calendarDateRef, sourceFrontier: finalFrontier });
-      persistAdmission(identity, threadRef, admission);
-      if (input.faults?.pauseAfterAdmissionPersistMs) {
-        const ms = Number(input.faults.pauseAfterAdmissionPersistMs); if (Number.isSafeInteger(ms) && ms > 0 && ms <= 5000) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+      // Any deliberate test pause occurs before the final source-owned authority resolution.
+      // No caller-controlled delay is permitted after final current admission is formed.
+      if (input.faults?.pauseAfterAdmissionPersistMs || input.faults?.pauseBeforeFinalAdmissionMs) {
+        const requested = input.faults?.pauseBeforeFinalAdmissionMs ?? input.faults?.pauseAfterAdmissionPersistMs;
+        const ms = Number(requested);
+        if (Number.isSafeInteger(ms) && ms > 0 && ms <= 5000) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
       }
-      const beforeEffectPolicy = loadStandingRestPolicy(input); assertSamePolicyGeneration(loaded, beforeEffectPolicy);
+
+      const finalPolicy = loadStandingRestPolicy(input); assertSamePolicyGeneration(loaded, finalPolicy);
+      const finalFrontier = validateFrontier(observeScheduledSourceFrontier(input)); assertSameFrontier(finalFrontier, initialFrontier);
+      let finalCurrentAdmission;
+      try {
+        finalCurrentAdmission = await resolveCurrentG05ScheduledAdmission({
+          home: identity.homeRoot,
+          humanSubjectRef: finalPolicy.policy.humanSubjectRef,
+          companionLineageRef: identity.companionLineageRef,
+          threadRef,
+          policyBinding: policyBinding(finalPolicy),
+          schedulerGeneration,
+          sourceFrontier: finalFrontier
+        });
+      } catch (error) {
+        if (['G05S_STANDING_AUTHORITY_NOT_CURRENT','G05S_STANDING_AUTHORITY_NOT_PERMITTED','G05S_STANDING_AUTHORITY_STALE'].includes(error?.code)) {
+          return Object.freeze({ state: 'HELD_STANDING_AUTHORITY', calendarDateRef: eligibility.calendarDateRef, noEffect: true, wakeCommitted: false, schedulerGeneration, livePositiveStandingConsent: false });
+        }
+        fail('G05A_ADMISSION_EVIDENCE_INVALID', 'final G05S effect-boundary source descent failed', { sourceCode: error?.code ?? 'UNKNOWN', message: error?.message ?? String(error) });
+      }
+      const finalEligibility = isRestWindowEligible(finalPolicy.policy, finalCurrentAdmission.runtimeObservation.observedAt);
+      if (!finalEligibility.eligible || finalEligibility.calendarDateRef !== eligibility.calendarDateRef) {
+        return Object.freeze({ state: 'HELD_CURRENTNESS_RETRY', calendarDateRef: finalEligibility.calendarDateRef, noEffect: true, wakeCommitted: false, schedulerGeneration });
+      }
+      if (finalCurrentAdmission.state !== 'CURRENT_ADMISSION_EVIDENCE_FORMED') {
+        return Object.freeze({ state: 'HELD_RUNTIME_RESOURCE_OR_INTERACTIVE_STATE', calendarDateRef: finalEligibility.calendarDateRef, noEffect: true, wakeCommitted: false, schedulerGeneration, resourceAdmissionState: finalCurrentAdmission.provenance.resourceAdmissionState, livePositiveStandingConsent: true, actualAutomaticDreamInvocationPerformed: false, nativeSupervisorInstalled: false });
+      }
+      observedAt = finalCurrentAdmission.runtimeObservation.observedAt;
+      eligibility = finalEligibility;
+      admission = formCurrentAdmissionEvidence({ identity, threadRef, loaded: finalPolicy, schedulerGeneration, currentAdmission: finalCurrentAdmission, supervisorRef, instanceRef, supervisorLeaseSha256: lease.leaseSha256, calendarDateRef: eligibility.calendarDateRef, sourceFrontier: finalFrontier });
+      const committedAdmission = commitAdmission(identity, threadRef, admission);
+      admissionHeadSha256 = committedAdmission.head.admissionHeadSha256;
+
+      // Only local source state is checked after the final source-owned admission commit.
+      // There is no asynchronous/caller pause between this check and G03 effect entry.
+      const beforeEffectPolicy = loadStandingRestPolicy(input); assertSamePolicyGeneration(finalPolicy, beforeEffectPolicy);
       const beforeEffectFrontier = validateFrontier(observeScheduledSourceFrontier(input)); assertSameFrontier(beforeEffectFrontier, admission.sourceFrontier);
       const refreshedScore = loadScoreContextState({ home: identity.homeRoot, homeRef: identity.homeRef, deviceRef: identity.deviceRef, companionLineageRef: identity.companionLineageRef, threadRef });
       const refreshedDaily = loadDailyMemoryDreamState({ home: identity.homeRoot, homeRef: identity.homeRef, deviceRef: identity.deviceRef, companionLineageRef: identity.companionLineageRef, threadRef });
@@ -806,6 +949,7 @@ export async function runScheduledDailyAutonomyTick(input) {
       supervisorRef, supervisorInstanceRef: instanceRef, supervisorLeaseSha256: resumedAfterWake ? admission.supervisorLeaseSha256 : lease.leaseSha256,
       recoveredAbandonedSupervisor: lease.recovered?.recovered === true,
       supervisorAdmissionEvidenceRef: admission.admissionEvidenceRef, supervisorAdmissionEvidenceSha256: admission.admissionEvidenceSha256,
+      supervisorAdmissionHeadSha256: admissionHeadSha256,
       g05sProvenanceRef: admission.g05sProvenanceRef, g05sProvenanceSha256: admission.g05sProvenanceSha256,
       standingAuthorityHeadSha256: admission.standingAuthorityHeadSha256, standingAuthorityGeneration: admission.standingAuthorityGeneration,
       runtimeObservationFingerprint: admission.runtimeObservationFingerprint, runtimeTrustSnapshotFingerprint: admission.runtimeTrustSnapshotFingerprint,
@@ -842,12 +986,13 @@ export function projectScheduledDailyAutonomy(input) {
   const state = loadScheduledDailyAutonomyState(input);
   const receipt = state.currentReceipt;
   return Object.freeze({
-    schemaVersion: 'vexlife.g05a.scheduled-daily-autonomy-projection/v3', state: state.state,
+    schemaVersion: 'vexlife.g05a.scheduled-daily-autonomy-projection/v4', state: state.state,
     calendarDateRef: receipt?.calendarDateRef ?? null, timeZoneRef: state.policy.timeZoneRef,
     standingPolicyRef: state.policy.policyRef, standingPolicyHeadSha256: receipt?.standingPolicyHeadSha256 ?? state.policyHead.policyHeadSha256,
     policyGeneration: receipt?.policyGeneration ?? state.policyHead.generation, standingScopeFingerprint: buildScheduledStandingScopeForPolicy(state.policy).standingScopeFingerprint,
     schedulerGeneration: receipt?.schedulerGeneration ?? (state.head ? state.head.sequence + 1 : 0), scheduledDreamAuthorityRef: receipt?.scheduledDreamAuthorityRef ?? null,
-    supervisorAdmissionEvidenceRef: receipt?.supervisorAdmissionEvidenceRef ?? null, g05sProvenanceRef: receipt?.g05sProvenanceRef ?? null,
+    supervisorAdmissionEvidenceRef: receipt?.supervisorAdmissionEvidenceRef ?? null, supervisorAdmissionHeadSha256: receipt?.supervisorAdmissionHeadSha256 ?? null,
+    g05sProvenanceRef: receipt?.g05sProvenanceRef ?? null,
     resourceAdmissionState: receipt?.resourceAdmissionState ?? 'HELD', g03DreamHeadSha256: receipt?.g03DreamHeadSha256 ?? null,
     g03DailyStratumSha256: receipt?.g03DailyStratumSha256 ?? null, g03WakeReceiptSha256: receipt?.g03WakeReceiptSha256 ?? null,
     wakeCommitted: receipt?.wakeCommitted ?? false, optionalLearningDisposition: receipt?.optionalLearningDisposition ?? null,
@@ -868,12 +1013,13 @@ export function sourceDescentScheduledDailyAutonomy(input, receiptSha256 = null)
   const receipt = validateDailyReceipt(readJson(path.join(pathsFor(identity, threadRef).receipts, `${sha}.json`)), identity, threadRef);
   const source = validateReceiptAgainstSources(receipt, identity, threadRef);
   return Object.freeze({
-    schemaVersion: 'vexlife.g05a.scheduled-daily-autonomy-source-descent/v3', dailyAutonomyReceiptRef: receipt.dailyAutonomyReceiptRef,
+    schemaVersion: 'vexlife.g05a.scheduled-daily-autonomy-source-descent/v4', dailyAutonomyReceiptRef: receipt.dailyAutonomyReceiptRef,
     dailyAutonomyReceiptSha256: receipt.dailyAutonomyReceiptSha256, standingPolicyRef: receipt.standingPolicyRef,
     standingPolicySha256: receipt.standingPolicySha256, standingPolicyHeadSha256: receipt.standingPolicyHeadSha256,
     policyGeneration: receipt.policyGeneration, standingScopeFingerprint: receipt.standingScopeFingerprint, schedulerGeneration: receipt.schedulerGeneration,
     scheduledDreamAuthorityRef: receipt.scheduledDreamAuthorityRef, supervisorAdmissionEvidenceRef: receipt.supervisorAdmissionEvidenceRef,
-    supervisorAdmissionEvidenceSha256: receipt.supervisorAdmissionEvidenceSha256, g05sProvenanceRef: receipt.g05sProvenanceRef,
+    supervisorAdmissionEvidenceSha256: receipt.supervisorAdmissionEvidenceSha256, supervisorAdmissionHeadSha256: receipt.supervisorAdmissionHeadSha256,
+    g05sProvenanceRef: receipt.g05sProvenanceRef,
     g05sProvenanceSha256: receipt.g05sProvenanceSha256, historicalG05sProvenanceState: validateHistoricalG05ScheduledAdmissionProvenance(source.admission.g05sProvenance).state,
     historicalG05sProvenanceGrantsCurrentAuthority: false, sourceConversationHeadSha256: receipt.sourceConversationHeadSha256,
     sourceScoreHeadSha256: receipt.sourceScoreHeadSha256, sourceSemanticAuthorityHeadSha256: receipt.sourceSemanticAuthorityHeadSha256,

@@ -10,8 +10,8 @@
     {
       "path": "src/core/scheduled-daily-autonomy.mjs",
       "mode": "100644",
-      "bytes": 75939,
-      "sha256": "48d22e516aea9b2120866de30b2eeb482cf29c83934a012ce6a7fb21ec606a8a"
+      "bytes": 86096,
+      "sha256": "8245c1aa48e54395f83676d78bef754d89f237f868554e1a2f7b29b9ad7d1db2"
     },
     {
       "path": "src/core/scheduler-runtime-trust.mjs",

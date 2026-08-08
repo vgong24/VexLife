@@ -1060,7 +1060,7 @@
   {
     "moduleRef": "module.vexlife.core.scheduled-daily-autonomy",
     "path": "src/core/scheduled-daily-autonomy.mjs",
-    "role": "Owns G05A configuration-only standing rest scope, source-descended G05S current admission, independent supervisor recovery, content-addressed scheduled G03 attribution, immutable daily receipts and historical source descent while current runtime/consent and all later effects remain separately owned and fail closed.",
+    "role": "Owns G05A configuration-only standing rest scope, preliminary and final source-descended G05S currentness gates, immutable committed supervisor-admission head lineage, independent supervisor recovery, content-addressed scheduled G03 attribution, immutable daily receipts and historical source descent while current runtime/consent and all later effects remain separately owned and fail closed.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "module.vexlife.core.g05-runtime-authority-substrate",
@@ -1070,7 +1070,7 @@
       "module.vexlife.core.utils"
     ],
     "writes": [
-      "selected Vex Home scheduled-daily-autonomy policy/admission/receipt domain only"
+      "selected Vex Home scheduled-daily-autonomy policy/admission-head/admission/receipt domain only"
     ],
     "loadedBy": [
       "module.vexlife.script.scheduled-daily-autonomy"

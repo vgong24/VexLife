@@ -586,7 +586,7 @@
   },
   {
     "workRef": "work.vexlife.windows.g05a-scheduled-daily-autonomy",
-    "purpose": "Bind the existing one-device G05A scheduled-autonomy core to accepted G05S source-owned standing/runtime authority, derive scheduled G03 attribution from exact policy + runtime + supervisor + frontier evidence, and remain no-effect while current runtime admission is held.",
+    "purpose": "Bind G05A effect entry to a fresh final G05S currentness resolution and immutable G05A admission-head reachability so stale Safety/runtime decisions and orphan historical admissions cannot authorize or recover G03.",
     "distance": "NEXT",
     "milestoneRef": "milestone.vexlife.continuity",
     "dependsOn": [
@@ -629,7 +629,7 @@
     "outputRefs": [
       "proof.vexlife.g05a.scheduled-daily-autonomy.windows"
     ],
-    "effectBoundary": "SOURCE_DESCENDED_G05S_ADMISSION_THEN_DEVICE_PRIVATE_G03_ONLY_OTHERWISE_NO_EFFECT",
+    "effectBoundary": "FINAL_SOURCE_DESCENDED_G05S_ADMISSION_PLUS_COMMITTED_G05A_ADMISSION_HEAD_THEN_DEVICE_PRIVATE_G03_ONLY_OTHERWISE_NO_EFFECT",
     "platformRefs": [
       "platform.windows"
     ],
@@ -646,6 +646,6 @@
       "publication"
     ],
     "returnRoute": "return exact G05A head/tree, deterministic proof receipt and hosted Windows evidence to Windows Local Operations; synchronization remains a separate G05B phase",
-    "completionGate": "G05A-0..G05A-12 prove configuration is not consent, caller-shaped live authority is rejected, G05S live runtime remains held without native supervisor, manual policy-only G03 cannot be laundered, scheduler generation remains durable-state sourced, and all later effects remain false"
+    "completionGate": "G05A-0..G05A-12 prove configuration is not consent, caller-shaped live authority is rejected, final G05S currentness is required immediately before effect admission, recovery consumes only head-reachable committed G05A admissions, orphan historical admissions cannot recover a wake, current runtime remains held without a native supervisor, and all later effects remain false"
   }
 ]
