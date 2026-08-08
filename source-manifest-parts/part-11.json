@@ -40,8 +40,8 @@
     {
       "path": "test/g05-runtime-authority-substrate.test.mjs",
       "mode": "100644",
-      "bytes": 15571,
-      "sha256": "2bb6c10b1f8a4994ba071b5313ebfed25678e90c3c41fabdea2589fe56cfaf53"
+      "bytes": 16779,
+      "sha256": "b3fbb87462a04af61f4b18fb657c2cf732a0826730debef9d5d848b3d0eea5c2"
     },
     {
       "path": "test/generator.test.mjs",

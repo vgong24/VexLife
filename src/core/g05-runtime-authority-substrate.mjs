@@ -32,6 +32,17 @@ const FRONTIER_FIELDS = Object.freeze([
   'dailyStratumSha256',
   'wakeReceiptSha256'
 ]);
+const PROVENANCE_FIELDS = Object.freeze([
+  'schemaVersion', 'contractRef', 'invocationClass', 'standingAuthorityContractRef',
+  'standingAuthorityHeadSha256', 'standingAuthorityGeneration', 'standingConsentRef', 'standingConsentSha256',
+  'standingAuthorityRef', 'standingAuthoritySha256', 'standingScopeFingerprint',
+  'policyRef', 'policySha256', 'policyHeadSha256', 'policyGeneration', 'schedulerGeneration',
+  'runtimeObservationFingerprint', 'runtimeTrustSnapshotRef', 'runtimeTrustSnapshotFingerprint',
+  'resourceSnapshotRef', 'resourceSnapshotFingerprint', 'runtimeSourceRef', 'runtimeSourceHash',
+  'runtimeAuthorityRef', 'runtimeWorkerRef', 'observedAt', 'resourceAdmissionState', 'resourceAdmissionFingerprint',
+  'sourceFrontier', 'manualG03OneShotAuthorityAccepted', 'actualDreamInvocationPerformed',
+  'externalEffectAuthorityGranted', 'nativeSupervisorInstalled'
+]);
 
 export const G05_STANDING_AUTHORITY_CONTRACT_REF = 'contract.multivex.safety.g05.scheduled-daily-memory-dream-standing-rest/v1';
 export const G05_STANDING_PURPOSE_REF = 'purpose.vexlife.g05.scheduled-daily-memory-dream';
@@ -629,10 +640,14 @@ function formG05ScheduledAdmissionProvenance({
   standingAuthority,
   runtimeObservation,
   policyBinding,
+  schedulerGeneration,
   sourceFrontier
 }) {
   const policy = validatePolicyBinding(policyBinding);
-  const runtime = validateRuntimeObservation(runtimeObservation, policy.policyGeneration);
+  if (!Number.isSafeInteger(schedulerGeneration) || schedulerGeneration < 0) {
+    fail('G05S_SCHEDULED_PROVENANCE_INVALID', 'schedulerGeneration must be a non-negative integer distinct from policy generation');
+  }
+  const runtime = validateRuntimeObservation(runtimeObservation, schedulerGeneration);
   if (!standingAuthority || standingAuthority.schemaVersion !== 'vexlife.g05s.current-standing-authority/v1' || standingAuthority.selfCertified !== false ||
       standingAuthority.contractRef !== G05_STANDING_AUTHORITY_CONTRACT_REF || standingAuthority.scopeFingerprint !== policy.standingScopeFingerprint ||
       standingAuthority.observedAt !== runtime.observedAt || !POSITIVE.has(standingAuthority.disposition)) {
@@ -655,6 +670,7 @@ function formG05ScheduledAdmissionProvenance({
     policySha256: policy.policySha256,
     policyHeadSha256: policy.policyHeadSha256,
     policyGeneration: policy.policyGeneration,
+    schedulerGeneration,
     runtimeObservationFingerprint: runtime.semanticFingerprint,
     runtimeTrustSnapshotRef: runtime.trustSnapshot.snapshotRef,
     runtimeTrustSnapshotFingerprint: runtime.trustSnapshot.semanticFingerprint,
@@ -678,16 +694,54 @@ function formG05ScheduledAdmissionProvenance({
   return freeze({ ...core, provenanceRef, provenanceSha256 });
 }
 
-export function validateG05ScheduledAdmissionProvenance(provenance, context) {
+export function validateHistoricalG05ScheduledAdmissionProvenance(provenance) {
+  const code = 'G05S_SCHEDULED_PROVENANCE_INVALID';
   if (!provenance || typeof provenance !== 'object' || Array.isArray(provenance)) {
-    fail('G05S_SCHEDULED_PROVENANCE_INVALID', 'scheduled admission provenance is missing');
+    fail(code, 'scheduled admission provenance is missing');
   }
-  const expected = formG05ScheduledAdmissionProvenance(context);
-  if (provenance.provenanceRef !== expected.provenanceRef || provenance.provenanceSha256 !== expected.provenanceSha256 ||
-      semanticHash(provenance) !== semanticHash(expected)) {
-    fail('G05S_SCHEDULED_PROVENANCE_INVALID', 'scheduled admission provenance differs from exact current Safety/runtime/policy/frontier bindings');
+  exactKeys(provenance, [...PROVENANCE_FIELDS, 'provenanceRef', 'provenanceSha256'], code, 'historical scheduled admission provenance');
+  if (provenance.schemaVersion !== 'vexlife.g05s.scheduled-admission-provenance/v1' ||
+      provenance.contractRef !== G05_SCHEDULED_ADMISSION_CONTRACT_REF || provenance.invocationClass !== 'SCHEDULED_G05A' ||
+      provenance.standingAuthorityContractRef !== G05_STANDING_AUTHORITY_CONTRACT_REF) {
+    fail(code, 'historical scheduled admission provenance contract identity is invalid');
   }
-  return provenance;
+  if (!Number.isSafeInteger(provenance.standingAuthorityGeneration) || provenance.standingAuthorityGeneration < 0 ||
+      !Number.isSafeInteger(provenance.policyGeneration) || provenance.policyGeneration < 0 ||
+      !Number.isSafeInteger(provenance.schedulerGeneration) || provenance.schedulerGeneration < 0) {
+    fail(code, 'historical scheduled admission provenance generations are invalid');
+  }
+  for (const field of ['standingConsentRef','standingAuthorityRef','policyRef','runtimeTrustSnapshotRef','resourceSnapshotRef','runtimeSourceRef','runtimeAuthorityRef','runtimeWorkerRef']) {
+    safeRef(provenance[field], `provenance.${field}`, code);
+  }
+  for (const field of [
+    'standingAuthorityHeadSha256','standingConsentSha256','standingAuthoritySha256','standingScopeFingerprint','policySha256','policyHeadSha256',
+    'runtimeObservationFingerprint','runtimeTrustSnapshotFingerprint','resourceSnapshotFingerprint','runtimeSourceHash','resourceAdmissionFingerprint'
+  ]) assertSha(provenance[field], `provenance.${field}`, code);
+  if (provenance.runtimeSourceRef !== G05_LIVE_RUNTIME_SOURCE_REF || provenance.runtimeSourceHash !== G05_LIVE_RUNTIME_SOURCE_HASH ||
+      provenance.runtimeAuthorityRef !== G05_LIVE_RUNTIME_AUTHORITY_REF || provenance.runtimeWorkerRef !== G05_LIVE_RUNTIME_WORKER_REF) {
+    fail(code, 'historical scheduled admission provenance runtime source identity is invalid');
+  }
+  canonicalTimestamp(provenance.observedAt, 'provenance.observedAt', code);
+  if (!['ADMITTED', 'BLOCKED'].includes(provenance.resourceAdmissionState)) fail(code, 'historical scheduled admission provenance resource admission state is invalid');
+  validateFrontier(provenance.sourceFrontier);
+  if (provenance.manualG03OneShotAuthorityAccepted !== false || provenance.actualDreamInvocationPerformed !== false ||
+      provenance.externalEffectAuthorityGranted !== false || provenance.nativeSupervisorInstalled !== false) {
+    fail(code, 'historical scheduled admission provenance crosses a held-effect boundary');
+  }
+  const core = clone(provenance);
+  delete core.provenanceRef;
+  delete core.provenanceSha256;
+  const expectedRef = `g05s-scheduled-admission.${semanticHash(core).slice(0, 32)}`;
+  const expectedSha = semanticHash({ ...core, provenanceRef: expectedRef });
+  if (provenance.provenanceRef !== expectedRef || provenance.provenanceSha256 !== expectedSha) {
+    fail(code, 'historical scheduled admission provenance content address does not recompute');
+  }
+  return freeze({
+    schemaVersion: 'vexlife.g05s.historical-provenance-integrity/v1',
+    state: 'HISTORICAL_INTEGRITY_ONLY',
+    grantsCurrentAuthority: false,
+    provenance: clone(provenance)
+  });
 }
 
 export async function resolveCurrentG05ScheduledAdmission({
@@ -696,10 +750,14 @@ export async function resolveCurrentG05ScheduledAdmission({
   companionLineageRef,
   threadRef,
   policyBinding,
+  schedulerGeneration,
   sourceFrontier
 }) {
   const policy = validatePolicyBinding(policyBinding);
-  const runtimeObservation = await observeWindowsG05Runtime({ schedulerGeneration: policy.policyGeneration });
+  if (!Number.isSafeInteger(schedulerGeneration) || schedulerGeneration < 0) {
+    fail('G05S_SCHEDULED_PROVENANCE_INVALID', 'current scheduled admission requires an exact non-negative schedulerGeneration');
+  }
+  const runtimeObservation = await observeWindowsG05Runtime({ schedulerGeneration });
   const standingAuthority = resolveCurrentG05StandingAuthority({
     home,
     humanSubjectRef,
@@ -708,12 +766,13 @@ export async function resolveCurrentG05ScheduledAdmission({
     expectedScope: policy.standingScope,
     observedAt: runtimeObservation.observedAt
   });
-  const provenance = formG05ScheduledAdmissionProvenance({ standingAuthority, runtimeObservation, policyBinding: policy, sourceFrontier });
+  const provenance = formG05ScheduledAdmissionProvenance({ standingAuthority, runtimeObservation, policyBinding: policy, schedulerGeneration, sourceFrontier });
   return freeze({
     schemaVersion: 'vexlife.g05s.current-scheduled-admission/v1',
     state: runtimeObservation.resourceAdmission.state === 'ADMITTED' ? 'CURRENT_ADMISSION_EVIDENCE_FORMED' : 'HELD_RUNTIME_RESOURCE_OR_INTERACTIVE_STATE',
     standingAuthority,
     runtimeObservation,
+    schedulerGeneration,
     provenance,
     livePositiveStandingConsent: true,
     actualDreamInvocationPerformed: false,

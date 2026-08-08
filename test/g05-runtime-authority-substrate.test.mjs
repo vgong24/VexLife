@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import * as g05sModule from '../src/core/g05-runtime-authority-substrate.mjs';
 import {
   G05_LIVE_RUNTIME_AUTHORITY_REF,
   G05_LIVE_RUNTIME_EVIDENCE_CLASS,
@@ -17,7 +18,8 @@ import {
   buildG05StandingScopeFingerprint,
   observeWindowsG05Runtime,
   resolveCurrentG05ScheduledAdmission,
-  resolveCurrentG05StandingAuthority
+  resolveCurrentG05StandingAuthority,
+  validateHistoricalG05ScheduledAdmissionProvenance
 } from '../src/core/g05-runtime-authority-substrate.mjs';
 import { createResourceSnapshot } from '../src/core/resource-admission.mjs';
 import { createSchedulerRuntimeTrustSnapshot } from '../src/core/scheduler-runtime-trust.mjs';
@@ -249,7 +251,7 @@ test('G05S live runtime source is registry-pinned and wrong source hash fails sc
 });
 
 test('G05S live observer never accepts caller runtime fact overrides', { skip: process.platform !== 'win32' }, async () => {
-  const result = await observeWindowsG05Runtime({ schedulerGeneration: 0, observedAt: '1999-01-01T00:00:00.000Z', sourceRef: 'source.fake', cpuLoadPct: 0, backgroundWorkAdmission: 'ADMITTED' });
+  const result = await observeWindowsG05Runtime({ schedulerGeneration: 7, observedAt: '1999-01-01T00:00:00.000Z', sourceRef: 'source.fake', cpuLoadPct: 0, backgroundWorkAdmission: 'ADMITTED' });
   assert.notEqual(result.observedAt, '1999-01-01T00:00:00.000Z');
   assert.equal(result.sourceRef, G05_LIVE_RUNTIME_SOURCE_REF);
   assert.equal(result.sourceHash, G05_LIVE_RUNTIME_SOURCE_HASH);
@@ -273,12 +275,29 @@ test('G05S current scheduled admission binds Safety + live runtime and performs 
     conversationHeadSha256: semanticHash({ f: 'c' }), scoreHeadSha256: semanticHash({ f: 's' }), semanticAuthorityHeadSha256: semanticHash({ f: 'a' }),
     dreamHeadSha256: null, dailyStratumSha256: null, wakeReceiptSha256: null
   };
-  const result = await resolveCurrentG05ScheduledAdmission({ home, humanSubjectRef: s.humanSubjectRef, companionLineageRef: s.companionLineageRef, threadRef: s.threadRef, policyBinding, sourceFrontier: frontier });
+  const result = await resolveCurrentG05ScheduledAdmission({ home, humanSubjectRef: s.humanSubjectRef, companionLineageRef: s.companionLineageRef, threadRef: s.threadRef, policyBinding, schedulerGeneration: 7, sourceFrontier: frontier });
   assert.equal(result.state, 'HELD_RUNTIME_RESOURCE_OR_INTERACTIVE_STATE');
+  assert.equal(result.schedulerGeneration, 7);
+  assert.equal(result.provenance.schedulerGeneration, 7);
+  assert.equal(result.provenance.policyGeneration, 0);
+  assert.notEqual(result.provenance.schedulerGeneration, result.provenance.policyGeneration);
   assert.equal(result.provenance.standingAuthorityHeadSha256, seeded.head.authorityHeadSha256);
   assert.equal(result.provenance.runtimeSourceHash, G05_LIVE_RUNTIME_SOURCE_HASH);
   assert.equal(result.provenance.manualG03OneShotAuthorityAccepted, false);
   assert.equal(result.provenance.actualDreamInvocationPerformed, false);
   assert.equal(result.provenance.externalEffectAuthorityGranted, false);
   assert.equal(result.nativeSupervisorInstalled, false);
+  const historical = validateHistoricalG05ScheduledAdmissionProvenance(result.provenance);
+  assert.equal(historical.state, 'HISTORICAL_INTEGRITY_ONLY');
+  assert.equal(historical.grantsCurrentAuthority, false);
+  assert.equal(historical.provenance.provenanceSha256, result.provenance.provenanceSha256);
+  assert.equal('validateG05ScheduledAdmissionProvenance' in g05sModule, false);
+  assert.throws(() => validateHistoricalG05ScheduledAdmissionProvenance({
+    ...result.provenance,
+    schedulerGeneration: 8
+  }), /content address|provenance/i);
+  assert.throws(() => validateHistoricalG05ScheduledAdmissionProvenance({
+    ...result.provenance,
+    sourceFrontier: { ...result.provenance.sourceFrontier, scoreHeadSha256: semanticHash({ drift: 'score' }) }
+  }), /content address|provenance/i);
 });

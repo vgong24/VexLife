@@ -21,7 +21,7 @@ import {
   resolveCurrentG05ScheduledAdmission,
   resolveCurrentG05StandingAuthority,
   validateG05LiveRuntimeRegistry,
-  validateG05ScheduledAdmissionProvenance
+  validateHistoricalG05ScheduledAdmissionProvenance
 } from '../src/core/g05-runtime-authority-substrate.mjs';
 import { createResourceSnapshot } from '../src/core/resource-admission.mjs';
 import { createSchedulerRuntimeTrustSnapshot } from '../src/core/scheduler-runtime-trust.mjs';
@@ -207,7 +207,7 @@ assert(source.authorityRef === G05_LIVE_RUNTIME_AUTHORITY_REF, 'live source auth
 assert(worker?.workerKind === 'NON_MODEL_RUNTIME_SUPERVISOR' && worker.evidenceClasses.includes(G05_LIVE_RUNTIME_EVIDENCE_CLASS), 'non-model live worker');
 
 const runtime = await observeWindowsG05Runtime({
-  schedulerGeneration: 0,
+  schedulerGeneration: 7,
   observedAt: '1999-01-01T00:00:00.000Z',
   sourceRef: 'source.fake',
   authorityRef: 'authority.fake',
@@ -258,9 +258,12 @@ const admission = await resolveCurrentG05ScheduledAdmission({
   companionLineageRef: scope.companionLineageRef,
   threadRef: scope.threadRef,
   policyBinding,
+  schedulerGeneration: 7,
   sourceFrontier: frontier
 });
 assert(admission.state === 'HELD_RUNTIME_RESOURCE_OR_INTERACTIVE_STATE', 'current production path remains held without native supervisor state');
+assert(admission.schedulerGeneration === 7 && admission.provenance.schedulerGeneration === 7, 'scheduler generation is bound distinctly');
+assert(admission.provenance.policyGeneration === 0 && admission.provenance.schedulerGeneration !== admission.provenance.policyGeneration, 'policy and scheduler generations do not collapse');
 assert(admission.provenance.manualG03OneShotAuthorityAccepted === false, 'manual G03 authority cannot satisfy scheduled provenance');
 assert(admission.provenance.actualDreamInvocationPerformed === false && admission.provenance.externalEffectAuthorityGranted === false, 'substrate performs no Dream/effect');
 assert(admission.provenance.standingAuthorityHeadSha256 === seeded.head.authorityHeadSha256 && admission.provenance.runtimeSourceHash === G05_LIVE_RUNTIME_SOURCE_HASH, 'provenance binds Safety head and runtime source');
@@ -355,7 +358,7 @@ expectThrow(() => createSchedulerRuntimeTrustSnapshot({
   sourceHash: wrongHash,
   formationRef: runtime.trustSnapshot.formationRef,
   evidenceClass: G05_LIVE_RUNTIME_EVIDENCE_CLASS,
-  schedulerGeneration: 0,
+  schedulerGeneration: runtime.trustSnapshot.schedulerGeneration,
   formedAt: runtime.trustSnapshot.formedAt,
   observedAt: runtime.trustSnapshot.observedAt,
   expiresAt: runtime.trustSnapshot.expiresAt,
@@ -410,24 +413,17 @@ const wrongProfileSource = wrongProfileRegistry.runtimeSourceIdentities.find((it
 wrongProfileSource.sourceDescriptor.mechanicalProfileRef = 'profile.vexlife.windows.wrong-proof';
 expectThrow(() => validateG05LiveRuntimeRegistry(wrongProfileRegistry), /descriptor\/hash binding|mechanical-profile provenance/i, 'wrong mechanical profile provenance');
 
-validateG05ScheduledAdmissionProvenance(admission.provenance, {
-  standingAuthority: admission.standingAuthority,
-  runtimeObservation: admission.runtimeObservation,
-  policyBinding,
-  sourceFrontier: frontier
-});
-expectThrow(() => validateG05ScheduledAdmissionProvenance(admission.provenance, {
-  standingAuthority: admission.standingAuthority,
-  runtimeObservation: admission.runtimeObservation,
-  policyBinding,
+const historicalReplay = validateHistoricalG05ScheduledAdmissionProvenance(admission.provenance);
+assert(historicalReplay.state === 'HISTORICAL_INTEGRITY_ONLY' && historicalReplay.grantsCurrentAuthority === false, 'historical provenance replay cannot grant current authority');
+assert(!('validateG05ScheduledAdmissionProvenance' in g05sModule), 'caller-context live provenance validator is not exported');
+expectThrow(() => validateHistoricalG05ScheduledAdmissionProvenance({
+  ...admission.provenance,
   sourceFrontier: { ...frontier, scoreHeadSha256: semanticHash({ frontier: 'score-drift' }) }
-}), /differs from exact current|provenance/i, 'source-frontier drift');
-expectThrow(() => validateG05ScheduledAdmissionProvenance(admission.provenance, {
-  standingAuthority: admission.standingAuthority,
-  runtimeObservation: admission.runtimeObservation,
-  policyBinding: { ...policyBinding, policyGeneration: 1 },
-  sourceFrontier: frontier
-}), /generation|provenance|runtime/i, 'runtime/policy generation drift');
+}), /content address|provenance/i, 'source-frontier drift changes provenance identity');
+expectThrow(() => validateHistoricalG05ScheduledAdmissionProvenance({
+  ...admission.provenance,
+  schedulerGeneration: admission.provenance.schedulerGeneration + 1
+}), /content address|provenance/i, 'scheduler generation drift changes provenance identity');
 
 const proof = {
   schemaVersion: 'vexlife.g05s.runtime-authority-substrate-proof/v1',
@@ -447,6 +443,12 @@ const proof = {
   liveRuntimeEvidenceClass: G05_LIVE_RUNTIME_EVIDENCE_CLASS,
   sourceOwnedUtcObservation: true,
   sourceOwnedOsResourceObservation: true,
+  callerContextLiveProvenanceValidatorExported: false,
+  historicalProvenanceReplayState: historicalReplay.state,
+  historicalProvenanceReplayGrantsCurrentAuthority: historicalReplay.grantsCurrentAuthority,
+  schedulerGenerationBoundSeparatelyFromPolicyGeneration: true,
+  schedulerGeneration: admission.provenance.schedulerGeneration,
+  policyGeneration: admission.provenance.policyGeneration,
   logicalSupervisorState: runtime.logicalSupervisorState,
   resourceAdmissionState: runtime.resourceAdmission.state,
   syntheticSafetyOwnerStoreUsed: true,

@@ -78,12 +78,13 @@ The result is real source-owned Windows resource/clock evidence that remains **i
 
 ## Scheduled admission provenance
 
-The production composition entrypoint obtains the runtime observation itself, then resolves Safety authority at that exact runtime-owned `observedAt`. It forms a content-addressed provenance object binding:
+The production composition entrypoint obtains the runtime observation itself, then resolves Safety authority at that exact runtime-owned `observedAt`. It requires the caller to provide the exact current scheduler/supervisor generation as a **separate lineage dimension** from the G05 policy generation; one is not substituted for the other. It forms a content-addressed provenance object binding:
 
 - current Safety authority-head SHA/generation;
 - exact standing-consent and authority-binding identities;
 - exact standing-scope fingerprint;
 - exact G05 policy ref/hash/head/generation;
+- exact scheduler/supervisor generation, distinct from policy generation;
 - exact runtime observation, trust snapshot and resource snapshot fingerprints;
 - registered live source hash/authority/worker;
 - exact six-field G01/G02/G03 source frontier;
@@ -100,6 +101,21 @@ nativeSupervisorInstalled=false
 ```
 
 A manual G03 technical `restInvocationAuthorityRef` is not an input to this contract and cannot be laundered into scheduled authority.
+
+### Current authority versus historical integrity
+
+There is exactly one production route that may form a **current** scheduled-admission result: `resolveCurrentG05ScheduledAdmission(...)`. That route obtains the Windows runtime observation internally and reopens the Safety-owned current authority store at the runtime-owned `observedAt`. It does not accept a caller-authored `standingAuthority` or `runtimeObservation` object as current authority evidence.
+
+The exported replay helper is deliberately named `validateHistoricalG05ScheduledAdmissionProvenance(...)`. It accepts only the already-formed provenance object, recomputes its closed-schema content address and held-effect fields, and returns:
+
+```text
+state=HISTORICAL_INTEGRITY_ONLY
+grantsCurrentAuthority=false
+```
+
+It does **not** take a caller-supplied authority/runtime context, does not claim current Safety membership, and cannot be used as the current admission route. Historical integrity and live authority are therefore structurally separate.
+
+The exact scheduler/supervisor generation supplied to the current route is also distinct from `policyGeneration`; a policy revision cannot masquerade as scheduler/runtime generation merely because the numbers happen to match.
 
 ## Proof boundary
 
@@ -130,4 +146,4 @@ G05S grants none of the following:
 - cloud upload;
 - public release/publication.
 
-After G05S is accepted into `main`, a fresh G05A Coder may ordinary-merge accepted main into the frozen PR #26 branch and replace its caller-shaped standing/runtime inputs with these source-owned prerequisite contracts. Actual unattended activation remains separately held until source-owned positive standing consent and host execution authority exist.
+After G05S is accepted into `main`, a fresh G05A Coder may ordinary-merge accepted main into the frozen PR #26 branch and replace its caller-shaped standing/runtime inputs with these source-owned prerequisite contracts. G05A remains responsible for supplying its own source-owned current policy binding and exact scheduler/supervisor generation; G05S does not mint either. Actual unattended activation remains separately held until source-owned positive standing consent and host execution authority exist.

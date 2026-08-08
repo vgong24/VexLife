@@ -118,8 +118,8 @@
     {
       "path": "src/core/g05-runtime-authority-substrate.mjs",
       "mode": "100644",
-      "bytes": 40626,
-      "sha256": "79a8e9fb14539ddf90e9b6673b0915341db674ba57d727f080685a34984b8ead"
+      "bytes": 44847,
+      "sha256": "9aa7e0c4976f6a334a35d4b32a18b801a1f71437aef021b46e1a8642842507ea"
     },
     {
       "path": "src/core/home-bridge.mjs",
