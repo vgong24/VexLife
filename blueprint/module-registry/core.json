@@ -976,22 +976,57 @@
     "path": "src/core/score-context-continuity.mjs",
     "role": "Owns the device-private G02 Score event journal, immutable head receipts, atomic current pointer, memory-relation projection, correction/supersession lineage, open-loop replay, exact G01 source descent and first-person wording eligibility while later Dream/Rhythm/sync effects remain held.",
     "platformScope": "UNIVERSAL",
-    "reads": ["module.vexlife.core.utils", "module.vexlife.core.lived-companion", "module.vexlife.core.continuity-evolution-router", "state.device-family", "state.messages", "state.context", "registry.vexlife.evolution.001"],
-    "writes": ["selected Vex Home score/runtime score-writer-locks"],
-    "loadedBy": ["module.vexlife.script.score-context-continuity"],
-    "tests": ["test/score-context-continuity.test.mjs"],
-    "changeMap": ["blueprint/evolution-registry.json", "docs/SCORE-AND-CONTEXT-CONTINUITY.md", ".github/workflows/check.yml"]
+    "reads": [
+      "module.vexlife.core.utils",
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.continuity-evolution-router",
+      "state.device-family",
+      "state.messages",
+      "state.context",
+      "registry.vexlife.evolution.001"
+    ],
+    "writes": [
+      "selected Vex Home score/runtime score-writer-locks"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.score-context-continuity"
+    ],
+    "tests": [
+      "test/score-context-continuity.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "docs/SCORE-AND-CONTEXT-CONTINUITY.md",
+      ".github/workflows/check.yml"
+    ]
   },
   {
     "moduleRef": "module.vexlife.core.daily-memory-dream",
     "path": "src/core/daily-memory-dream.mjs",
     "role": "Owns the device-private G03 manual memory-only day closure, immutable Daily Strata receipts, atomic current Dream head, reference-level accepted/held/open-loop projection, crash-tail recovery evidence and fresh-process wake replay without semantic reclassification or model mutation.",
     "platformScope": "UNIVERSAL",
-    "reads": ["module.vexlife.core.score-context-continuity", "module.vexlife.core.lived-companion", "module.vexlife.core.utils", "state.messages", "state.context", "state.evolution"],
-    "writes": ["selected Vex Home daily-memory-dream receipts and writer lease"],
-    "loadedBy": ["module.vexlife.script.daily-memory-dream"],
-    "tests": ["test/daily-memory-dream.test.mjs"],
-    "changeMap": ["blueprint/evolution-registry.json", "docs/DAILY-MEMORY-DREAM.md", ".github/workflows/check.yml"]
+    "reads": [
+      "module.vexlife.core.score-context-continuity",
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.utils",
+      "state.messages",
+      "state.context",
+      "state.evolution"
+    ],
+    "writes": [
+      "selected Vex Home daily-memory-dream receipts and writer lease"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.daily-memory-dream"
+    ],
+    "tests": [
+      "test/daily-memory-dream.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/evolution-registry.json",
+      "docs/DAILY-MEMORY-DREAM.md",
+      ".github/workflows/check.yml"
+    ]
   },
   {
     "moduleRef": "module.vexlife.core.evaluated-rhythm-learning",
@@ -1020,6 +1055,30 @@
       "blueprint/evolution-registry.json",
       "docs/EVALUATED-RHYTHM-LEARNING.md",
       ".github/workflows/check.yml"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.g05-runtime-authority-substrate",
+    "path": "src/core/g05-runtime-authority-substrate.mjs",
+    "role": "Consumes source-owned Vex Safety standing-rest authority, forms a registry-pinned Windows live resource/UTC observation, and derives no-effect scheduled G05 provenance without minting consent or invoking Dream.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.g05-runtime-authority-substrate"
+    ],
+    "tests": [
+      "test/g05-runtime-authority-substrate.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-scheduler-registry.json",
+      "docs/G05-RUNTIME-AUTHORITY-SUBSTRATE.md",
+      "src/core/scheduled-daily-autonomy.mjs"
     ]
   }
 ]

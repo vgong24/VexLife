@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/fixtures/orientation/detached-merge.json",
+      "mode": "100644",
+      "bytes": 1173,
+      "sha256": "ae4f14d6feb5be019abe24c38807cfb5f5f99231ee74164334cd7a6cd4f8ea5c"
+    },
+    {
+      "path": "test/fixtures/orientation/github-pr-current-work-duplicate.json",
+      "mode": "100644",
+      "bytes": 464,
+      "sha256": "2b638ced378662f0b3a02192c64450b5a794059987fde76af08f8ee0c07e8066"
+    },
+    {
+      "path": "test/fixtures/orientation/github-pr-current-work.json",
+      "mode": "100644",
+      "bytes": 505,
+      "sha256": "b7e370bdfc1292cb8f69d83d02035d005beebfc577c88c670fce76d7733e3917"
+    },
+    {
       "path": "test/fixtures/orientation/public-active.json",
       "mode": "100644",
       "bytes": 1051,
@@ -18,6 +36,12 @@
       "mode": "100644",
       "bytes": 15521,
       "sha256": "426aebee4f8b0a8c8e3f219719e2eb47802f6fd93e5af0cd6aa268c895a768a7"
+    },
+    {
+      "path": "test/g05-runtime-authority-substrate.test.mjs",
+      "mode": "100644",
+      "bytes": 15571,
+      "sha256": "2bb6c10b1f8a4994ba071b5313ebfed25678e90c3c41fabdea2589fe56cfaf53"
     },
     {
       "path": "test/generator.test.mjs",

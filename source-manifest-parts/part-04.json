@@ -122,6 +122,12 @@
       "sha256": "3e912fd27db597b16db0a063e82f010469278e6c2557977045df9c834a7fa9e9"
     },
     {
+      "path": "docs/G05-RUNTIME-AUTHORITY-SUBSTRATE.md",
+      "mode": "100644",
+      "bytes": 6278,
+      "sha256": "ef75dfd48f05aea0c5074b9702d116ea0602e910a72056d618a5f7fe42976ccd"
+    },
+    {
       "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
       "mode": "100644",
       "bytes": 3310,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 10152,
       "sha256": "25489693bcff73c5954982ba9d722d951cd486cd6fb8037c3108a3ea16091ce2"
-    },
-    {
-      "path": "docs/INTERFACE-BUILDER.md",
-      "mode": "100644",
-      "bytes": 3664,
-      "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
     }
   ]
 }

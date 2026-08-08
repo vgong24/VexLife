@@ -1030,5 +1030,9 @@
   {
     "testRef": "test.evaluated-rhythm.windows-proof",
     "brief": "Hosted Windows proof runs the exact G04 Stage-A proof on the exact candidate head while G01/G02/G03 regression jobs remain required."
+  },
+  {
+    "testRef": "test.g05-runtime-authority-substrate",
+    "brief": "G05 scheduled autonomy trusts only replayed current Safety standing authority plus the exact registry-pinned Windows live resource/UTC source; manual G03 authority, caller runtime overrides and held native effects remain rejected."
   }
 ]

@@ -719,22 +719,49 @@
     "path": "scripts/score-context-continuity.mjs",
     "role": "Runs the bounded G02 temp-Home proof with actual G01 numeric-loopback turns, Score correction/supersession, open-loop carry-forward, tail failure classification and fresh-process replay.",
     "platformScope": "WINDOWS",
-    "reads": ["module.vexlife.core.score-context-continuity", "module.vexlife.core.lived-companion"],
-    "writes": ["caller-selected proof Home and generated health receipt"],
-    "loadedBy": ["npm run score-context:proof", ".github/workflows/check.yml"],
-    "tests": ["test/score-context-continuity.test.mjs"],
-    "changeMap": ["src/core/score-context-continuity.mjs", ".github/workflows/check.yml"]
+    "reads": [
+      "module.vexlife.core.score-context-continuity",
+      "module.vexlife.core.lived-companion"
+    ],
+    "writes": [
+      "caller-selected proof Home and generated health receipt"
+    ],
+    "loadedBy": [
+      "npm run score-context:proof",
+      ".github/workflows/check.yml"
+    ],
+    "tests": [
+      "test/score-context-continuity.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/score-context-continuity.mjs",
+      ".github/workflows/check.yml"
+    ]
   },
   {
     "moduleRef": "module.vexlife.script.daily-memory-dream",
     "path": "scripts/daily-memory-dream.mjs",
     "role": "Runs the bounded G03 exact-host proof over real G01/G02 validators, memory-only Daily Stratum commit, held/open-loop carry-forward, crash-before-head semantics, canonical-file guards, duplicate-day identity and fresh-process wake replay.",
     "platformScope": "WINDOWS",
-    "reads": ["module.vexlife.core.daily-memory-dream", "module.vexlife.core.score-context-continuity", "module.vexlife.core.lived-companion"],
-    "writes": ["temporary device-private proof Home and generated G03 health receipt"],
-    "loadedBy": ["npm run daily-memory-dream:proof", ".github/workflows/check.yml"],
-    "tests": ["test/daily-memory-dream.test.mjs"],
-    "changeMap": ["src/core/daily-memory-dream.mjs", ".github/workflows/check.yml"]
+    "reads": [
+      "module.vexlife.core.daily-memory-dream",
+      "module.vexlife.core.score-context-continuity",
+      "module.vexlife.core.lived-companion"
+    ],
+    "writes": [
+      "temporary device-private proof Home and generated G03 health receipt"
+    ],
+    "loadedBy": [
+      "npm run daily-memory-dream:proof",
+      ".github/workflows/check.yml"
+    ],
+    "tests": [
+      "test/daily-memory-dream.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/daily-memory-dream.mjs",
+      ".github/workflows/check.yml"
+    ]
   },
   {
     "moduleRef": "module.vexlife.script.evaluated-rhythm-learning",
@@ -760,6 +787,30 @@
     "changeMap": [
       "src/core/evaluated-rhythm-learning.mjs",
       ".github/workflows/check.yml"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.g05-runtime-authority-substrate",
+    "path": "scripts/g05-runtime-authority-substrate.mjs",
+    "role": "Hosted Windows proof for the G05 source-owned standing-authority consumer and registry-pinned live runtime/clock substrate; uses only synthetic Safety owner data and performs no Dream effect.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.g05-runtime-authority-substrate",
+      "registry.vexlife.intent-scheduler.001"
+    ],
+    "writes": [
+      "generated/health/g05-runtime-authority-substrate-windows-proof.json"
+    ],
+    "loadedBy": [
+      "npm run g05-runtime-authority-substrate:proof"
+    ],
+    "tests": [
+      "test/g05-runtime-authority-substrate.test.mjs"
+    ],
+    "changeMap": [
+      ".github/workflows/check.yml",
+      "package.json",
+      "docs/G05-RUNTIME-AUTHORITY-SUBSTRATE.md"
     ]
   }
 ]

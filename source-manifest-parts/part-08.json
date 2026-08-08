@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/validate-blueprint.mjs",
+      "mode": "100644",
+      "bytes": 433,
+      "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
+    },
+    {
+      "path": "src/core/atlas.mjs",
+      "mode": "100644",
+      "bytes": 3026,
+      "sha256": "a62a9408b464cf7114ef7f3a1568449fbf416dd1d3b14dd863941c820a8a7b36"
+    },
+    {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
       "bytes": 39442,
@@ -104,6 +116,12 @@
       "sha256": "14937478c5512706fe208a6959aa9dbb47061fed3e5adb4692339e18f4db3884"
     },
     {
+      "path": "src/core/g05-runtime-authority-substrate.mjs",
+      "mode": "100644",
+      "bytes": 40626,
+      "sha256": "79a8e9fb14539ddf90e9b6673b0915341db674ba57d727f080685a34984b8ead"
+    },
+    {
       "path": "src/core/home-bridge.mjs",
       "mode": "100644",
       "bytes": 7921,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 14269,
       "sha256": "0378b4c09044be1b871d8517f869abdf50431ff65c12f2314b63fae0ff7fd863"
-    },
-    {
-      "path": "src/core/intent-completion-verifier.mjs",
-      "mode": "100644",
-      "bytes": 21202,
-      "sha256": "96f0a9b20a735753f6974481e468f1f04f87b31785136ca131eb23c945028c36"
-    },
-    {
-      "path": "src/core/intent-projection.mjs",
-      "mode": "100644",
-      "bytes": 5452,
-      "sha256": "cffe6f351d90941366f748c7e03fae7a2bcae86abc6464f19776ebaf341b4a7f"
-    },
-    {
-      "path": "src/core/intent-scheduler.mjs",
-      "mode": "100644",
-      "bytes": 119738,
-      "sha256": "cd563c9bc34006d7c83cdde6afb30096671c8f7bb5e30e9e7db458910a2982fc"
     }
   ]
 }
