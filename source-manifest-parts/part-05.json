@@ -56,6 +56,12 @@
       "sha256": "11e7af3fa6e8feeecdd678a25f36d5f5b9a3ee8ca523e20f4f0b300f87c6f1ea"
     },
     {
+      "path": "docs/SCHEDULED-DAILY-AUTONOMY.md",
+      "mode": "100644",
+      "bytes": 7018,
+      "sha256": "a87d87b39db03088bd8f19c6443acfc019e8594271fdfa3607f3d185981867fc"
+    },
+    {
       "path": "docs/SCORE-AND-CONTEXT-CONTINUITY.md",
       "mode": "100644",
       "bytes": 14107,
@@ -82,8 +88,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 3985,
-      "sha256": "4cdb128cd1d3314bb28459bc31b90d9d0ae68bcf182dd0e37cfdc7e2337e26c5"
+      "bytes": 4074,
+      "sha256": "b8243a144834dc50b1cc32ee3009f160d13966e17a93207c3b6f90f56cccece9"
     },
     {
       "path": "reference/browser/README.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 1472,
       "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
-    },
-    {
-      "path": "reference/browser/modules/guide-controller.js",
-      "mode": "100644",
-      "bytes": 6258,
-      "sha256": "0d967057c53642a4d106ea00949d82073a9088aab5e57b6293e3ea9e78998326"
     }
   ]
 }

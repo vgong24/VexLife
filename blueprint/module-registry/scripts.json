@@ -790,6 +790,31 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.script.scheduled-daily-autonomy",
+    "path": "scripts/scheduled-daily-autonomy.mjs",
+    "role": "Runs the G05A Windows final-currentness/recovery proof over configuration-only policy, the real registered G05S Windows observer, fail-closed held runtime admission, caller-authority rejection, committed admission-head reachability, orphan admission rejection and manual-G03 laundering rejection without activating unattended Dream.",
+    "platformScope": "WINDOWS",
+    "reads": [
+      "module.vexlife.core.scheduled-daily-autonomy",
+      "module.vexlife.core.g05-runtime-authority-substrate",
+      "module.vexlife.core.daily-memory-dream",
+      "module.vexlife.core.evaluated-rhythm-learning"
+    ],
+    "writes": [
+      "generated/health/g05a-scheduled-daily-autonomy-windows-proof.json",
+      "caller-selected isolated proof Vex Home"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/scheduled-daily-autonomy.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/scheduled-daily-autonomy.mjs",
+      "docs/SCHEDULED-DAILY-AUTONOMY.md",
+      ".github/workflows/check.yml"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.script.g05-runtime-authority-substrate",
     "path": "scripts/g05-runtime-authority-substrate.mjs",
     "role": "Hosted Windows proof for the G05 source-owned standing-authority consumer and registry-pinned live runtime/clock substrate; uses only synthetic Safety owner data and performs no Dream effect.",

@@ -1058,6 +1058,33 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.scheduled-daily-autonomy",
+    "path": "src/core/scheduled-daily-autonomy.mjs",
+    "role": "Owns G05A configuration-only standing rest scope, preliminary and final source-descended G05S currentness gates, immutable committed supervisor-admission head lineage, independent supervisor recovery, content-addressed scheduled G03 attribution, immutable daily receipts and historical source descent while current runtime/consent and all later effects remain separately owned and fail closed.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.g05-runtime-authority-substrate",
+      "module.vexlife.core.daily-memory-dream",
+      "module.vexlife.core.score-context-continuity",
+      "module.vexlife.core.evaluated-rhythm-learning",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [
+      "selected Vex Home scheduled-daily-autonomy policy/admission-head/admission/receipt domain only"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.scheduled-daily-autonomy"
+    ],
+    "tests": [
+      "test/scheduled-daily-autonomy.test.mjs"
+    ],
+    "changeMap": [
+      "docs/SCHEDULED-DAILY-AUTONOMY.md",
+      ".github/workflows/check.yml",
+      "package.json"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.g05-runtime-authority-substrate",
     "path": "src/core/g05-runtime-authority-substrate.mjs",
     "role": "Consumes source-owned Vex Safety standing-rest authority, forms a registry-pinned Windows live resource/UTC observation, and derives no-effect scheduled G05 provenance without minting consent or invoking Dream.",

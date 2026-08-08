@@ -1032,6 +1032,58 @@
     "brief": "Hosted Windows proof runs the exact G04 Stage-A proof on the exact candidate head while G01/G02/G03 regression jobs remain required."
   },
   {
+    "testRef": "test.scheduled-daily-autonomy.predecessor-contracts",
+    "brief": "G05A-0 binds accepted G01-G04 plus G05S, exposes no caller live-admission constructor, and grants no later authority."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.standing-policy",
+    "brief": "G05A-1 proves standing policy is content-addressed configuration only: no caller consent enum or standing authority ref can become executable authority."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.rest-window",
+    "brief": "G05A-2 uses source-owned runtime time for live eligibility and retains deterministic timezone/rest-window calculation."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.supervisor",
+    "brief": "G05A-3 keeps policy-writer and execution-supervisor locks distinct and binds scheduled authority to the exact G05A supervisor lease."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.yield",
+    "brief": "G05A-4 rejects caller runtime facts and remains held when accepted G05S reports no native supervisor/current background admission."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.g03-admission",
+    "brief": "G05A-5 requires a fresh final G05S source descent immediately before effect admission and binds the committed G05A admission to that final current resolution."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.stale-source",
+    "brief": "G05A-6 requires unchanged policy, rest-window/calendar date, Safety/runtime currentness and exact six-field G01/G02/G03 frontier at the final effect boundary."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.duplicate-day",
+    "brief": "G05A-7 remains exactly-once per local calendar day from durable G05A head state."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.optional-nonblocking",
+    "brief": "G05A-8 keeps optional G04 Stage-A explicit, simulated/inactive and nonblocking; recovery does not create a new optional-use authority."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.optional-failure",
+    "brief": "G05A-9 preserves a committed wake if optional inactive G04 evidence rejects or fails."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.recovery",
+    "brief": "G05A-10 recovers a wake only through one immutable admission-head-reachable pre-effect admission bound to the recovered abandoned supervisor lease; orphan/re-addressed admissions and manual policy-only G03 are rejected."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.receipt",
+    "brief": "G05A-11 closed-schema daily receipt/source descent binds the exact committed G05A admission-head SHA, historical G05S integrity and recomputed G03 orientation scheduled authority."
+  },
+  {
+    "testRef": "test.scheduled-daily-autonomy.held-effects",
+    "brief": "G05A-12 proves live consent minting, native service, sync, real training, weights/adapter, Rhythm activation, power, cloud and publication remain held."
+  },
+  {
     "testRef": "test.g05-runtime-authority-substrate",
     "brief": "G05 scheduled autonomy trusts only replayed current Safety standing authority plus the exact registry-pinned Windows live resource/UTC source; manual G03 authority, caller runtime overrides and held native effects remain rejected."
   }

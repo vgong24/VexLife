@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/g05-runtime-authority-substrate.mjs",
+      "mode": "100644",
+      "bytes": 25472,
+      "sha256": "af2facf5638d1aea9d1fd43e262d4172e15233d8c5308200f7c220242fbf0933"
+    },
+    {
       "path": "scripts/health-check.mjs",
       "mode": "100644",
       "bytes": 13496,
@@ -104,6 +110,12 @@
       "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
     },
     {
+      "path": "scripts/scheduled-daily-autonomy.mjs",
+      "mode": "100644",
+      "bytes": 15911,
+      "sha256": "16c6ea0df748768dcce359a7c61087906d86c6bb075a3424b1b2ec245d08e14f"
+    },
+    {
       "path": "scripts/scheduler-check.mjs",
       "mode": "100644",
       "bytes": 5149,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 1528,
       "sha256": "c00be2e2a257c5f7ca4bd5ac7f03b550cf04254e65e2fc06f5564410c744a835"
-    },
-    {
-      "path": "scripts/source-manifest.mjs",
-      "mode": "100644",
-      "bytes": 3795,
-      "sha256": "942a69a849455237e60185edfb46a19e89fcafddcb436f989594463bfc03cfdf"
-    },
-    {
-      "path": "scripts/test-structured.mjs",
-      "mode": "100644",
-      "bytes": 1218,
-      "sha256": "02da952dd3e34fe20796b4a4175844b89b3bce7854fddf8dc0b871416a4c476a"
     }
   ]
 }
