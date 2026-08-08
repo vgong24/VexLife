@@ -88,8 +88,8 @@
     {
       "path": "src/core/orientation.mjs",
       "mode": "100644",
-      "bytes": 8817,
-      "sha256": "477744f9113602befc6ecebf36948f8163dfedf2fbb46ffe416ce8e7b4fcf291"
+      "bytes": 21787,
+      "sha256": "b9d3286d5f61fabb685e60b47c657d16c41fd4e11974d17ea3ad6c796d84c453"
     },
     {
       "path": "src/core/platform-generator.mjs",
