@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/blueprint.mjs",
+      "mode": "100644",
+      "bytes": 39442,
+      "sha256": "4d569c0bc2f9724c08ed240ec902f718744380fd0c40caff286ec6be3ddef454"
+    },
+    {
+      "path": "src/core/boot.mjs",
+      "mode": "100644",
+      "bytes": 6968,
+      "sha256": "3d257e4f5dd6f9a35a6ad341a6dae66242ee7aad8f2e06422b163342f22a05b0"
+    },
+    {
       "path": "src/core/build-admission.mjs",
       "mode": "100644",
       "bytes": 82949,
@@ -68,6 +80,12 @@
       "sha256": "db0e21e48b2d7c2a9ad4ef1a518b0e64a4e057a3d7a2ed1b2de5aefb21203579"
     },
     {
+      "path": "src/core/evaluated-rhythm-learning.mjs",
+      "mode": "100644",
+      "bytes": 34772,
+      "sha256": "764cc49e49735ad3bda8782ce09579fd937390b9ab2d366b39fadbfa4ff039e1"
+    },
+    {
       "path": "src/core/evolution.mjs",
       "mode": "100644",
       "bytes": 4841,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 119738,
       "sha256": "cd563c9bc34006d7c83cdde6afb30096671c8f7bb5e30e9e7db458910a2982fc"
-    },
-    {
-      "path": "src/core/intent-validation.mjs",
-      "mode": "100644",
-      "bytes": 38570,
-      "sha256": "fd0e655a6e3fbbd8c68ce73f2190c617898f45c348a9faa14c7f8191efe3ad9e"
-    },
-    {
-      "path": "src/core/intent-workgraph.mjs",
-      "mode": "100644",
-      "bytes": 21524,
-      "sha256": "54445fda5f8edaa675f4ce359ea706ec94fcbad19e88f5be4128e304711bf0c3"
-    },
-    {
-      "path": "src/core/interface-builder.mjs",
-      "mode": "100644",
-      "bytes": 8289,
-      "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
     }
   ]
 }

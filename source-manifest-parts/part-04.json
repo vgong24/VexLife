@@ -92,6 +92,12 @@
       "sha256": "a756663612c58c703026282dd5a8eccc839d812d9b483073af13a3b00a3422bf"
     },
     {
+      "path": "docs/EVALUATED-RHYTHM-LEARNING.md",
+      "mode": "100644",
+      "bytes": 6414,
+      "sha256": "32de6af2cc522f8031fcdae43f92b609287a6b6aa6cc6e9d7b214c51d609902e"
+    },
+    {
       "path": "docs/EXPERIENCE-GESTURES-AND-VESSELS.md",
       "mode": "100644",
       "bytes": 4158,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 3664,
       "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
-    },
-    {
-      "path": "docs/LIVED-COMPANION-BASELINE.md",
-      "mode": "100644",
-      "bytes": 13044,
-      "sha256": "1de3d47ca01fef729a4884c14366b0b7b79265c40232ec0acf8133d985cb2b70"
     }
   ]
 }

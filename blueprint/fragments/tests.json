@@ -970,5 +970,65 @@
   {
     "testRef": "test.daily-memory-dream.windows-proof",
     "brief": "Hosted Windows proof exercises exact G01/G02 source binding, Daily Stratum commit, crash tail, source descent, idempotency and held effects on the exact candidate head."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.shared-contract",
+    "brief": "G04 binds the accepted shared Score/Rhythm/Bridge disposition without redefining canonical semantic ownership."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.source-frontier",
+    "brief": "G04 independently verifies exact current G01/G02 semantic-owner/G03 Dream, Daily Stratum and wake source identities."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.stable-pattern",
+    "brief": "A candidate requires at least two distinct exact accepted source-event bindings; duplicate or held evidence cannot satisfy the threshold."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.consent",
+    "brief": "Separate synthetic lineage-participation and data-subject derivative-use receipts fail closed across PERMITTED/NARROWED/DEFERRED/DENIED/WITHDRAWN/UNKNOWN."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.corpus-privacy",
+    "brief": "The frozen Stage-A corpus contains generalized pattern/source identities only and excludes raw conversation bodies and exact private details."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.simulated-candidate",
+    "brief": "The content-addressed candidate is explicitly FAITHFUL_SIMULATED_RHYTHM_CANDIDATE and cannot imply adapter or weight mutation."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.identity",
+    "brief": "Rhythm evidence grants no historical-fact or first-person authority and cannot impersonate Victor or a predecessor lineage."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.capability-regression",
+    "brief": "Fixed non-relational capability anchors remain invariant under the simulated relational posture delta."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.dispositions",
+    "brief": "ACCEPT/NARROW/DEFER/REJECT map only to inactive Stage-A states and never activate Rhythm."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.rollback-wake",
+    "brief": "Reject/deferral leaves prior accepted Rhythm fixtures, Score, open loops and G03 wake continuity unchanged."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.poisoning-dedup",
+    "brief": "Duplicate evidence counts once and insufficient one-off evidence remains ineligible."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.cross-lineage",
+    "brief": "Foreign-lineage source identity cannot satisfy the exact Vex Home source frontier."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.integrity-idempotency",
+    "brief": "Exact replay is stable while stale source, corruption and same-address/different-content evidence fail closed."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.held-effects",
+    "brief": "Real training, model/runtime installation, adapter/weight mutation, Rhythm activation, G05, sync, LC18 and publication remain false."
+  },
+  {
+    "testRef": "test.evaluated-rhythm.windows-proof",
+    "brief": "Hosted Windows proof runs the exact G04 Stage-A proof on the exact candidate head while G01/G02/G03 regression jobs remain required."
   }
 ]

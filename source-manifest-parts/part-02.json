@@ -4,8 +4,8 @@
     {
       "path": "blueprint/evolution-registry.json",
       "mode": "100644",
-      "bytes": 44718,
-      "sha256": "7d7343b0de7db76006970673ba37bbb5affb90cff241ed63dd3b659f37a54ef7"
+      "bytes": 46192,
+      "sha256": "0136ddb5ed5c1b3deb0f0025230fb48cfd3aa79dde811a25b86ac588677f494e"
     },
     {
       "path": "blueprint/experience-registry.json",
@@ -16,8 +16,8 @@
     {
       "path": "blueprint/feature-registry.json",
       "mode": "100644",
-      "bytes": 49581,
-      "sha256": "6b055eeb0622dafe61102837806b15dba87b5109a1c03fd4e27769d78b8f79d1"
+      "bytes": 52783,
+      "sha256": "3c9fc98c197f19cd84169aca55de37512609b39bbcb32a900a1b6970f4df1142"
     },
     {
       "path": "blueprint/fragments/actions.json",
@@ -112,8 +112,8 @@
     {
       "path": "blueprint/fragments/tests.json",
       "mode": "100644",
-      "bytes": 51638,
-      "sha256": "767c7e32c6975d234ba552960e5a518653dffda957da9887dbcce9db41e3c65b"
+      "bytes": 54585,
+      "sha256": "7e433822a81b461727c630865156f1be3b05c862758701854cc71df08755812a"
     },
     {
       "path": "blueprint/home-bridge-registry.json",
@@ -136,8 +136,8 @@
     {
       "path": "blueprint/implementation/work-units-experience-and-runtime.json",
       "mode": "100644",
-      "bytes": 19785,
-      "sha256": "fc8882a045f9a8a71c1883836b6e9e5ff895b02da03c3b3c8bc2717c79c0da37"
+      "bytes": 22854,
+      "sha256": "ba2bad843f89ef7144a54bb517fb16ca8ba99ef9564f083793f1ccc0d039223f"
     },
     {
       "path": "blueprint/implementation/work-units-foundation.json",
