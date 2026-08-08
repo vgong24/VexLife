@@ -1348,7 +1348,7 @@
     },
     {
       "featureRef": "feature.vexlife.scheduled-daily-autonomy",
-      "purpose": "Admit one device-private G03 Daily Dream automatically inside an explicitly permitted standing rest window, always preserving wake when optional learning is absent or fails, and expose one exact daily receipt without synchronization or native service claims.",
+      "purpose": "Compose one-device scheduled Daily Memory Dream only from current source-owned Safety standing authority plus registered G05S runtime admission; keep policy configuration non-authoritative and preserve a held/no-effect state until separately accepted runtime-supervisor authority can truthfully admit background work.",
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.context",
@@ -1408,20 +1408,21 @@
         "lens.vexlife.visibility-terrain-health",
         "lens.vexlife.assurance-and-adversarial"
       ],
-      "resourceClass": "BACKGROUND_DETERMINISTIC_YIELDS_TO_INTERACTIVE",
+      "resourceClass": "SOURCE_OWNED_G05S_RUNTIME_ADMISSION_REQUIRED_FAIL_CLOSED",
       "dataClass": "DEVICE_PRIVATE_DAILY_CONTINUITY_RECEIPTS",
-      "effectClass": "LOCAL_G03_ADMISSION_AND_G05A_RECEIPT_ONLY",
-      "concurrencyClass": "ONE_SUPERVISOR_WRITER_PER_LINEAGE_THREAD",
+      "effectClass": "LOCAL_G03_EFFECT_ONLY_AFTER_EXACT_CURRENT_G05S_ADMISSION_OTHERWISE_NO_EFFECT",
+      "concurrencyClass": "ONE_G05A_SUPERVISOR_WRITER_WITH_EXACT_ABANDONED_LEASE_RECOVERY",
       "rollbackRouteRef": "recovery.lived-companion.last-valid-head",
       "projectionRefs": [
         "projection.vexlife.daily-memory-dream.current"
       ],
       "knownGaps": [
-        "native Windows service installation is not proved or authorized",
+        "live positive standing consent is not materialized by G05A",
+        "accepted G05S currently has no native unattended supervisor and therefore holds background admission",
+        "automatic G03 remains inactive until a separately accepted runtime supervisor can truthfully admit it",
         "G05B bounded synchronization remains separate",
-        "real target-device delivery requires exact recipient and host authority",
         "real private training/model/adapter/weight effects remain separate Stage B",
-        "power control, cloud upload, LC18 and publication remain held"
+        "power control, cloud upload and publication remain held"
       ]
     }
   ]

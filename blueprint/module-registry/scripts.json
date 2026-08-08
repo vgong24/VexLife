@@ -792,10 +792,11 @@
   {
     "moduleRef": "module.vexlife.script.scheduled-daily-autonomy",
     "path": "scripts/scheduled-daily-autonomy.mjs",
-    "role": "Runs the isolated G05A deterministic proof over standing consent, timezone/rest-window admission, supervisor exclusion, G03 wake, optional-learning isolation, duplicate suppression, recovery and held effects.",
+    "role": "Runs the G05A Windows authority-provenance proof over configuration-only policy, synthetic Safety owner source descent, the real registered G05S Windows observer, fail-closed held runtime admission, caller-authority rejection and manual-G03 laundering rejection without activating unattended Dream.",
     "platformScope": "WINDOWS",
     "reads": [
       "module.vexlife.core.scheduled-daily-autonomy",
+      "module.vexlife.core.g05-runtime-authority-substrate",
       "module.vexlife.core.daily-memory-dream",
       "module.vexlife.core.evaluated-rhythm-learning"
     ],

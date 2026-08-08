@@ -1060,16 +1060,17 @@
   {
     "moduleRef": "module.vexlife.core.scheduled-daily-autonomy",
     "path": "src/core/scheduled-daily-autonomy.mjs",
-    "role": "Owns G05A explicit standing rest policy, independent deterministic supervisor admission, exactly-once G03 wake orchestration, optional-learning failure isolation, immutable daily receipts and source descent while synchronization, training, power and native service installation remain held.",
+    "role": "Owns G05A configuration-only standing rest scope, source-descended G05S current admission, independent supervisor recovery, content-addressed scheduled G03 attribution, immutable daily receipts and historical source descent while current runtime/consent and all later effects remain separately owned and fail closed.",
     "platformScope": "UNIVERSAL",
     "reads": [
+      "module.vexlife.core.g05-runtime-authority-substrate",
       "module.vexlife.core.daily-memory-dream",
       "module.vexlife.core.score-context-continuity",
-      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.evaluated-rhythm-learning",
       "module.vexlife.core.utils"
     ],
     "writes": [
-      "selected Vex Home scheduled-daily-autonomy policy/receipt domain only"
+      "selected Vex Home scheduled-daily-autonomy policy/admission/receipt domain only"
     ],
     "loadedBy": [
       "module.vexlife.script.scheduled-daily-autonomy"

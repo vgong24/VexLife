@@ -1033,55 +1033,55 @@
   },
   {
     "testRef": "test.scheduled-daily-autonomy.predecessor-contracts",
-    "brief": "G05A-0 binds accepted G01-G04 source contracts and grants no later authority."
+    "brief": "G05A-0 binds accepted G01-G04 plus G05S, exposes no caller live-admission constructor, and grants no later authority."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.standing-policy",
-    "brief": "G05A-1 requires an explicit content-addressed standing policy with positive standing authority."
+    "brief": "G05A-1 proves standing policy is content-addressed configuration only: no caller consent enum or standing authority ref can become executable authority."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.rest-window",
-    "brief": "G05A-2 proves timezone/rest-window eligibility is deterministic and outside-window ticks are no-effect."
+    "brief": "G05A-2 uses source-owned runtime time for live eligibility and retains deterministic timezone/rest-window calculation."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.supervisor",
-    "brief": "G05A-3 proves one independent supervisor writer and rejects model-worker identity collapse."
+    "brief": "G05A-3 keeps policy-writer and execution-supervisor locks distinct and binds scheduled authority to the exact G05A supervisor lease."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.yield",
-    "brief": "G05A-4 yields before Dream for interactive work and unknown/insufficient resources."
+    "brief": "G05A-4 rejects caller runtime facts and remains held when accepted G05S reports no native supervisor/current background admission."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.g03-admission",
-    "brief": "G05A-5 derives one eligible day and commits the accepted G03 Daily Stratum and wake."
+    "brief": "G05A-5 allows automatic G03 only after exact current G05S admission and derives scheduled attribution from policy, scheduler generation, runtime, supervisor and six-field frontier."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.stale-source",
-    "brief": "G05A-6 rejects stale G01/G02/G03 source-frontier expectations."
+    "brief": "G05A-6 requires the exact six-field G01/G02/G03 frontier immediately before any scheduled effect."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.duplicate-day",
-    "brief": "G05A-7 suppresses an exact duplicate same-day tick without a second Dream."
+    "brief": "G05A-7 remains exactly-once per local calendar day from durable G05A head state."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.optional-nonblocking",
-    "brief": "G05A-8 keeps ABSENT, DEFERRED and REJECTED optional learning nonblocking after wake."
+    "brief": "G05A-8 keeps optional G04 Stage-A explicit, simulated/inactive and nonblocking; recovery does not create a new optional-use authority."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.optional-failure",
-    "brief": "G05A-9 records optional learning failure while preserving the exact committed wake."
+    "brief": "G05A-9 preserves a committed wake if optional inactive G04 evidence rejects or fails."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.recovery",
-    "brief": "G05A-10 resumes after wake-before-pointer without rerunning Dream and rejects policy-generation drift."
+    "brief": "G05A-10 recovers a wake only through one persisted pre-effect admission bound to the recovered abandoned supervisor lease; manual policy-only G03 is rejected."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.receipt",
-    "brief": "G05A-11 binds immutable daily receipt, compact projection and source descent to policy/supervisor/G03 wake lineage."
+    "brief": "G05A-11 closed-schema daily receipt/source descent binds historical G05S integrity and recomputes the exact G03 orientation scheduled authority."
   },
   {
     "testRef": "test.scheduled-daily-autonomy.held-effects",
-    "brief": "G05A-12 proves sync, training, weights, adapter/Rhythm activation, power, native service install and publication remain false."
+    "brief": "G05A-12 proves live consent minting, native service, sync, real training, weights/adapter, Rhythm activation, power, cloud and publication remain held."
   },
   {
     "testRef": "test.g05-runtime-authority-substrate",

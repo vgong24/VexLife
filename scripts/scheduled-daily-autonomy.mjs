@@ -1,412 +1,186 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import { createDailyMemoryDreamFixture } from './daily-memory-dream.mjs';
-import { DAILY_MEMORY_DREAM_CONTRACT, commitDailyMemoryDream, loadDailyMemoryDreamState } from '../src/core/daily-memory-dream.mjs';
-import { loadScoreContextState } from '../src/core/score-context-continuity.mjs';
-import { EVALUATED_RHYTHM_MODE, formSyntheticStageAConsentReceipt } from '../src/core/evaluated-rhythm-learning.mjs';
+import { commitDailyMemoryDream, loadDailyMemoryDreamState } from '../src/core/daily-memory-dream.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 import {
   SCHEDULED_DAILY_AUTONOMY_MODE,
-  formStandingRestPolicy,
-  formScheduledAutonomyAdmissionEvidence,
+  buildScheduledStandingScopeForPolicy,
   commitStandingRestPolicy,
+  formStandingRestPolicy,
   loadStandingRestPolicy,
-  runScheduledDailyAutonomyTick,
   observeScheduledSourceFrontier,
   projectScheduledDailyAutonomy,
-  sourceDescentScheduledDailyAutonomy
+  runScheduledDailyAutonomyTick
 } from '../src/core/scheduled-daily-autonomy.mjs';
+import * as g05aModule from '../src/core/scheduled-daily-autonomy.mjs';
+import { G05_LIVE_RUNTIME_SOURCE_REF, G05_LIVE_RUNTIME_SOURCE_HASH } from '../src/core/g05-runtime-authority-substrate.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-
-function writeJson(file, value) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+const SHA256 = /^[0-9a-f]{64}$/u;
+function writeJson(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8'); }
+function zonedParts(date, timeZone) {
+  return Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date).filter((item) => item.type !== 'literal').map((item) => [item.type, item.value]));
 }
+function localMinute(date = new Date(), timeZone = 'UTC') { const p = zonedParts(date, timeZone); return Number(p.hour) * 60 + Number(p.minute); }
+function windowAround(date = new Date(), timeZone = 'UTC') { const m = localMinute(date, timeZone); return { start: (m + 1437) % 1440, end: (m + 3) % 1440 }; }
+function calendarInZone(date, timeZone) { const p = zonedParts(date, timeZone); return `${p.year}-${p.month}-${p.day}`; }
+function chooseSafeZone(date) { const zones = ['UTC','America/Los_Angeles','Pacific/Honolulu','Asia/Tokyo','Europe/London']; return zones.find((zone) => { const m = localMinute(date, zone); return m >= 120 && m <= 1320; }) || 'UTC'; }
+function expectCode(error, code) { return error?.code === code; }
 
 function policyInput(fixture, suffix, overrides = {}) {
+  const now = overrides.now ?? new Date();
+  const timeZoneRef = overrides.timeZoneRef ?? 'UTC';
+  const window = overrides.window ?? windowAround(now, timeZoneRef);
   return {
     ...fixture.ids,
-    standingRestAuthorityRef: overrides.standingRestAuthorityRef ?? `authority.g05a.${suffix}`,
-    consentState: overrides.consentState ?? 'PERMITTED',
-    timeZoneRef: overrides.timeZoneRef ?? 'America/Los_Angeles',
-    restWindowStartLocalMinute: overrides.restWindowStartLocalMinute ?? 1200,
-    restWindowEndLocalMinute: overrides.restWindowEndLocalMinute ?? 1380,
+    humanSubjectRef: overrides.humanSubjectRef ?? `human.synthetic.g05a.${suffix}`,
+    timeZoneRef,
+    restWindowStartLocalMinute: overrides.restWindowStartLocalMinute ?? window.start,
+    restWindowEndLocalMinute: overrides.restWindowEndLocalMinute ?? window.end,
     optionalLearningPolicy: overrides.optionalLearningPolicy ?? 'ABSENT',
-    formedAt: overrides.formedAt ?? '2026-08-08T03:30:00.000Z'
+    formedAt: overrides.formedAt ?? new Date(now.getTime() - 60_000).toISOString()
   };
 }
-
-function sourceManagedResourceSnapshot(suffix, observedAt, overrides = {}) {
-  const sourceRef = overrides.resourceSourceRef ?? `resource-source.g05a.${suffix}`;
-  const core = {
-    schemaVersion: 'vexlife.intent-resource-snapshot/v1',
-    snapshotRef: overrides.snapshotRef ?? `resource-snapshot.g05a.${suffix}`,
-    generation: overrides.generation ?? 1,
-    sourceRef,
-    sourceHash: overrides.resourceSourceHash ?? semanticHash(`source-managed:${sourceRef}`),
-    formationRef: overrides.resourceFormationRef ?? 'formation.g05a.proof-resource-snapshot',
-    evidenceClass: 'LIVE_RUNTIME_CURRENT',
-    cpuLoadPct: overrides.cpuLoadPct ?? 10,
-    cpuConcurrencyLimit: overrides.cpuConcurrencyLimit ?? 4,
-    cpuActiveCount: overrides.cpuActiveCount ?? 0,
-    ramAvailableMb: overrides.ramAvailableMb ?? 8192,
-    ramReservedMb: overrides.ramReservedMb ?? 512,
-    gpuAvailable: overrides.gpuAvailable ?? false,
-    vramAvailableMb: overrides.vramAvailableMb ?? 0,
-    vramReservedMb: overrides.vramReservedMb ?? 0,
-    modelResident: overrides.modelResident ?? false,
-    activeModelTurn: overrides.activeModelTurn ?? false,
-    activeHeavyTool: overrides.activeHeavyTool ?? false,
-    interactiveWaitState: overrides.interactiveWaitState ?? 'IDLE',
-    backgroundWorkAdmission: overrides.backgroundWorkAdmission ?? 'ADMITTED',
-    thermalPowerState: overrides.thermalPowerState ?? 'NOMINAL',
-    currentness: 'CURRENT',
-    formedAt: overrides.resourceFormedAt ?? new Date(Date.parse(observedAt) - 1000).toISOString(),
-    observedAt,
-    expiresAt: overrides.resourceExpiresAt ?? new Date(Date.parse(observedAt) + 60000).toISOString()
+function safetyRoot(home, scope) { return path.join(home, 'semantic-authority', 'daily-dream-standing-rest', scope.companionLineageRef, scope.threadRef); }
+function seedSyntheticSafetyOwner(home, scope, observedAt) {
+  const formedAt = new Date(Date.parse(observedAt) - 60_000).toISOString();
+  const consentPreimage = {
+    schemaVersion: 'vextreme.daily-dream-standing-consent-disposition/v1',
+    humanSubjectRef: scope.humanSubjectRef, homeRef: scope.homeRef, deviceRef: scope.deviceRef,
+    companionLineageRef: scope.companionLineageRef, threadRef: scope.threadRef, purposeRef: scope.purposeRef,
+    selectedMode: scope.selectedMode, privacyClass: scope.privacyClass,
+    permittedUseRefs: [...scope.permittedUseRefs], prohibitedUseRefs: [...scope.prohibitedUseRefs],
+    timeZoneRef: scope.timeZoneRef, restWindowStartLocalMinute: scope.restWindowStartLocalMinute,
+    restWindowEndLocalMinute: scope.restWindowEndLocalMinute, exactlyOnceCalendarDay: true,
+    interactiveYieldRequired: true, localOnly: true, disposition: 'PERMITTED', formedAt, expiresAt: null,
+    issuerRef: 'owner.vex-safety.synthetic.g05a', issuerClass: 'SYNTHETIC_TEST_OWNER',
+    sourceEvidenceRefs: ['github.issue.vextreme-sdk.350.comment.5225148306']
   };
-  const candidate = { ...core };
-  candidate.semanticFingerprint = semanticHash(candidate);
-  return candidate;
-}
-
-function admissionEvidence(fixture, suffix, overrides = {}) {
-  const observedAt = overrides.observedAt ?? '2026-08-08T04:30:00.000Z';
-  const supervisorRef = overrides.supervisorRef ?? `supervisor.g05a.${suffix}`;
-  const instanceRef = overrides.instanceRef ?? `instance.g05a.${suffix}`;
-  const standing = loadStandingRestPolicy(fixture.ids);
-  const sourceFrontier = overrides.admissionSourceFrontier ?? observeScheduledSourceFrontier(fixture.ids);
-  return formScheduledAutonomyAdmissionEvidence({
-    ...fixture.ids,
-    supervisorRef,
-    supervisorInstanceRef: instanceRef,
-    standingPolicyRef: standing.policy.policyRef,
-    standingPolicySha256: standing.policy.policySha256,
-    standingPolicyHeadSha256: standing.head.policyHeadSha256,
-    standingRestAuthorityRef: standing.policy.standingRestAuthorityRef,
-    observedAt,
-    sourceFrontier,
-    resourceSnapshot: overrides.resourceSnapshot ?? sourceManagedResourceSnapshot(suffix, observedAt, overrides)
-  });
-}
-
-function tickInput(fixture, suffix, overrides = {}) {
-  const observedAt = overrides.observedAt ?? '2026-08-08T04:30:00.000Z';
-  const supervisorRef = overrides.supervisorRef ?? `supervisor.g05a.${suffix}`;
-  const instanceRef = overrides.instanceRef ?? `instance.g05a.${suffix}`;
-  return {
-    ...fixture.ids,
-    observedAt,
-    supervisorRef,
-    instanceRef,
-    modelWorkerRef: overrides.modelWorkerRef ?? `worker.g05a.${suffix}`,
-    dreamWriterInstanceRef: overrides.dreamWriterInstanceRef ?? `dream-writer.g05a.${suffix}`,
-    expectedPolicyHeadSha256: overrides.expectedPolicyHeadSha256,
-    supervisorAdmissionEvidence: Object.prototype.hasOwnProperty.call(overrides, 'supervisorAdmissionEvidence')
-      ? overrides.supervisorAdmissionEvidence
-      : admissionEvidence(fixture, suffix, { ...overrides, observedAt, supervisorRef, instanceRef }),
-    expectedSourceFrontier: overrides.expectedSourceFrontier,
-    optionalLearningPlan: overrides.optionalLearningPlan,
-    optionalLearningCallback: overrides.optionalLearningCallback,
-    faults: overrides.faults
+  const standingConsentRef = `daily-dream-standing-consent.${semanticHash(consentPreimage).slice(0, 32)}`;
+  const consent = { ...consentPreimage, standingConsentRef, standingConsentSha256: semanticHash({ ...consentPreimage, standingConsentRef }) };
+  const scopeFingerprint = semanticHash(scope);
+  const bindingPreimage = {
+    schemaVersion: 'vextreme.daily-dream-standing-authority-binding/v1', standingConsentRef: consent.standingConsentRef,
+    standingConsentSha256: consent.standingConsentSha256, subjectRef: consent.humanSubjectRef, purposeRef: consent.purposeRef,
+    scopeFingerprint, disposition: consent.disposition, formedAt: consent.formedAt, expiresAt: consent.expiresAt
   };
-}
-
-function result(ok, details = {}) { return { state: ok ? 'PASS' : 'FAIL', ...details }; }
-
-async function expectCode(fn, codes) {
-  try { await fn(); return { rejected: false, code: null }; }
-  catch (error) { return { rejected: codes.includes(error?.code), code: error?.code ?? null }; }
-}
-
-function freshFixture(label, homeOverride = null) {
-  return createDailyMemoryDreamFixture(`g05a-${label}`, homeOverride);
-}
-
-
-function g04OptionalPlan(fixture, suffix, derivativeDisposition = 'PERMITTED') {
-  const score = loadScoreContextState(fixture.ids);
-  const active = score.statements.find((item) => item.current === true && item.acceptedForContinuity === true);
-  if (!active || !Array.isArray(active.sourceBindings) || active.sourceBindings.length < 2) throw new Error('G05A optional-learning fixture lacks exact active Score support');
-  const patternRef = `pattern.g05a.${suffix}`;
-  const patternClass = 'SOURCE_GROUNDED_REASONING_HABIT';
-  const participants = [fixture.ids.companionLineageRef, 'person.test'];
-  const common = { lineageRef: fixture.ids.companionLineageRef, patternRef, patternClass, participants };
-  const consentReceipts = [
-    formSyntheticStageAConsentReceipt({ ...common, participantRef: fixture.ids.companionLineageRef, consentClass: 'LINEAGE_PARTICIPATION', disposition: 'PERMITTED' }),
-    formSyntheticStageAConsentReceipt({ ...common, participantRef: 'person.test', consentClass: 'DATA_SUBJECT_DERIVATIVE_USE', disposition: derivativeDisposition })
-  ];
-  return {
-    patternRef,
-    patternClass,
-    generalizedPattern: `Source-grounded correction discipline ${suffix}`,
-    supportStatementRefs: [active.statementRef],
-    supportSourceEventHashes: active.sourceBindings.map((binding) => binding.eventHash),
-    behaviorDimensions: ['SOURCE_BEFORE_ASSERTION'],
-    participantRefs: participants,
-    consentReceipts,
-    baseModelProfileRef: 'model.g01.bounded',
-    formedAt: '2026-08-08T04:30:00.000Z'
+  const authorityRef = `daily-dream-standing-authority.${semanticHash(bindingPreimage).slice(0, 32)}`;
+  const binding = { ...bindingPreimage, authorityRef, authoritySha256: semanticHash({ ...bindingPreimage, authorityRef }) };
+  const member = {
+    standingConsentRef: consent.standingConsentRef, standingConsentSha256: consent.standingConsentSha256,
+    authorityRef: binding.authorityRef, authoritySha256: binding.authoritySha256,
+    humanSubjectRef: consent.humanSubjectRef, purposeRef: consent.purposeRef, scopeFingerprint
   };
+  const headPreimage = {
+    schemaVersion: 'vextreme.daily-dream-standing-consent-authority-head/v1',
+    contractRef: 'contract.multivex.safety.g05.scheduled-daily-memory-dream-standing-rest/v1',
+    sourceLineageRef: scope.companionLineageRef, sourceThreadRef: scope.threadRef, generation: 0,
+    priorAuthorityHeadSha256: null, currentStandingConsentBindings: [member], formedAt,
+    ownerDispositionRef: 'owner-disposition.vex-safety.synthetic.g05a'
+  };
+  const authorityHeadRef = `daily-dream-standing-authority-head.${semanticHash(headPreimage).slice(0, 32)}`;
+  const head = { ...headPreimage, authorityHeadRef, authorityHeadSha256: semanticHash({ ...headPreimage, authorityHeadRef }) };
+  const root = safetyRoot(home, scope);
+  writeJson(path.join(root, 'consents', `${consent.standingConsentSha256}.json`), consent);
+  writeJson(path.join(root, 'authority-bindings', `${binding.authoritySha256}.json`), binding);
+  writeJson(path.join(root, 'heads', `${head.authorityHeadSha256}.json`), head);
+  writeJson(path.join(root, 'head.json'), head);
+  return { consent, binding, head, scopeFingerprint };
 }
-
-function readdressG05AReceipt(value) {
-  const core = structuredClone(value);
-  delete core.dailyAutonomyReceiptRef;
-  delete core.dailyAutonomyReceiptSha256;
-  const ref = `g05a-daily-receipt.${semanticHash(core).slice(0, 32)}`;
-  const withRef = { ...core, dailyAutonomyReceiptRef: ref };
-  return { ...withRef, dailyAutonomyReceiptSha256: semanticHash(withRef) };
+function canonicalProofRoot() {
+  const requested = path.resolve(process.env.VEXLIFE_G05A_PROOF_HOME || fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-g05a-c3-proof-')));
+  fs.mkdirSync(requested, { recursive: true });
+  return fs.realpathSync.native(requested);
 }
-
 async function runProof() {
-  const proofHome = process.env.VEXLIFE_G05A_PROOF_HOME ? path.resolve(process.env.VEXLIFE_G05A_PROOF_HOME) : null;
-  const main = freshFixture('main', proofHome);
+  if (process.platform !== 'win32') throw new Error('G05A authority-provenance proof requires Windows');
+  const proofRoot = canonicalProofRoot();
+  const fixture = createDailyMemoryDreamFixture('g05a-c3-main', path.join(proofRoot, 'main-home'));
+  const now = new Date();
+  const committed = commitStandingRestPolicy(policyInput(fixture, 'main', { now }));
+  const scopeResult = buildScheduledStandingScopeForPolicy(committed.policy);
+  const safety = seedSyntheticSafetyOwner(fixture.ids.home, scopeResult.scope, now.toISOString());
+  const beforeDream = loadDailyMemoryDreamState(fixture.ids);
 
-  const invalidConsent = await expectCode(
-    () => Promise.resolve(formStandingRestPolicy(policyInput(main, 'bad', { consentState: 'UNKNOWN' }))),
-    ['G05A_POLICY_INVALID']
-  );
-  const mainPolicy = commitStandingRestPolicy(policyInput(main, 'main'));
+  let rawRejected = false;
+  try {
+    await runScheduledDailyAutonomyTick({ ...fixture.ids, supervisorRef: 'supervisor.g05a.raw', instanceRef: 'instance.g05a.raw', modelWorkerRef: 'worker.g05a.raw', dreamWriterInstanceRef: 'dream-writer.g05a.raw', observedAt: '1999-01-01T00:00:00.000Z' });
+  } catch (error) { rawRejected = expectCode(error, 'G05A_ADMISSION_EVIDENCE_INVALID'); }
 
-  const outside = await runScheduledDailyAutonomyTick(tickInput(main, 'outside', { observedAt: '2026-08-07T17:00:00.000Z' }));
-  const interactive = await runScheduledDailyAutonomyTick(tickInput(main, 'interactive', { interactiveWaitState: 'WAITING' }));
-  const resourceUnknown = await runScheduledDailyAutonomyTick(tickInput(main, 'resource-unknown', { backgroundWorkAdmission: 'HELD', resourceSourceRef: 'resource-source.g05a.held' }));
+  const held = await runScheduledDailyAutonomyTick({ ...fixture.ids, supervisorRef: 'supervisor.g05a.main', instanceRef: 'instance.g05a.main', modelWorkerRef: 'worker.g05a.main', dreamWriterInstanceRef: 'dream-writer.g05a.main' });
+  const afterDream = loadDailyMemoryDreamState(fixture.ids);
+  const projection = projectScheduledDailyAutonomy(fixture.ids);
 
-  const staleFrontier = observeScheduledSourceFrontier(main.ids);
-  const staleRejected = await expectCode(
-    () => runScheduledDailyAutonomyTick(tickInput(main, 'stale', { expectedSourceFrontier: { ...staleFrontier, scoreHeadSha256: '0'.repeat(64) } })),
-    ['G05A_SOURCE_STALE']
-  );
-
-  const rawAuthorityFixture = freshFixture('raw-authority');
-  commitStandingRestPolicy(policyInput(rawAuthorityFixture, 'raw-authority'));
-  const rawAuthorityRejected = await expectCode(
-    () => runScheduledDailyAutonomyTick({
-      ...tickInput(rawAuthorityFixture, 'raw-authority', { supervisorAdmissionEvidence: null }),
-      interactivePending: false,
-      resourceEvidence: { state: 'SUFFICIENT' }
-    }),
-    ['G05A_ADMISSION_EVIDENCE_INVALID']
-  );
-
-  const staleWakeFixture = freshFixture('stale-wake');
+  const manual = createDailyMemoryDreamFixture('g05a-c3-manual', path.join(proofRoot, 'manual-home'));
+  const manualZone = chooseSafeZone(now);
+  const manualPolicy = commitStandingRestPolicy(policyInput(manual, 'manual', { now, timeZoneRef: manualZone }));
+  const manualDate = calendarInZone(now, manualZone);
   commitDailyMemoryDream({
-    ...staleWakeFixture.ids,
-    instanceRef: 'instance.g05a.stale-wake-dream',
-    restInvocationAuthorityRef: 'authority.manual.g05a.stale-wake',
-    dayRef: 'day.g05a.prior',
-    dayIndex: 0,
-    calendarDateRef: '2026-08-06',
-    timeZoneRef: 'America/Los_Angeles',
-    observedAt: '2026-08-07T04:30:00.000Z',
-    expectedConversationHeadSha256: staleWakeFixture.g01.head.conversationHeadSha256,
-    expectedScoreHeadSha256: staleWakeFixture.score.head.scoreHeadSha256
+    ...manual.ids,
+    instanceRef: 'dream-writer.g05a.manual', restInvocationAuthorityRef: `authority.g05a.rest.${manualPolicy.policy.policySha256.slice(0, 24)}`,
+    dayRef: `day.g05a.manual.${manualDate.replaceAll('-', '')}`, dayIndex: 0, calendarDateRef: manualDate,
+    timeZoneRef: manualZone, observedAt: now.toISOString(),
+    expectedConversationHeadSha256: manual.g01.head.conversationHeadSha256,
+    expectedScoreHeadSha256: manual.score.head.scoreHeadSha256,
+    expectedDailyDreamHeadSha256: null
   });
-  commitStandingRestPolicy(policyInput(staleWakeFixture, 'stale-wake'));
-  const exactWakeFrontier = observeScheduledSourceFrontier(staleWakeFixture.ids);
-  const staleWakeRejected = await expectCode(
-    () => runScheduledDailyAutonomyTick(tickInput(staleWakeFixture, 'stale-wake', {
-      expectedSourceFrontier: { ...exactWakeFrontier, wakeReceiptSha256: '0'.repeat(64) }
-    })),
-    ['G05A_SOURCE_STALE']
-  );
+  let manualLaunderingRejected = false;
+  try {
+    await runScheduledDailyAutonomyTick({ ...manual.ids, supervisorRef: 'supervisor.g05a.manual', instanceRef: 'instance.g05a.manual', modelWorkerRef: 'worker.g05a.manual', dreamWriterInstanceRef: 'dream-writer.g05a.manual2' });
+  } catch (error) { manualLaunderingRejected = expectCode(error, 'G05A_RECOVERY_POLICY_DRIFT'); }
 
-  const lockPath = path.join(main.ids.home, 'scheduled-daily-autonomy', main.ids.companionLineageRef, main.ids.threadRef, 'supervisor.lock');
-  fs.mkdirSync(path.dirname(lockPath), { recursive: true });
-  fs.writeFileSync(lockPath, JSON.stringify({ synthetic: true }), 'utf8');
-  const concurrentRejected = await expectCode(
-    () => runScheduledDailyAutonomyTick(tickInput(main, 'concurrent')),
-    ['G05A_SUPERVISOR_CONFLICT']
-  );
-  fs.rmSync(lockPath, { force: true });
-
-  const collapsedSupervisorRejected = await expectCode(
-    () => runScheduledDailyAutonomyTick(tickInput(main, 'collapsed', { supervisorRef: 'worker.g05a.same', modelWorkerRef: 'worker.g05a.same' })),
-    ['G05A_SUPERVISOR_CONFLICT']
-  );
-
-  const mainFrontier = observeScheduledSourceFrontier(main.ids);
-  const completed = await runScheduledDailyAutonomyTick(tickInput(main, 'main', { expectedSourceFrontier: mainFrontier }));
-  const duplicate = await runScheduledDailyAutonomyTick(tickInput(main, 'duplicate'));
-  const projection = projectScheduledDailyAutonomy(main.ids);
-  const descent = sourceDescentScheduledDailyAutonomy(main.ids);
-
-  const deferredFixture = freshFixture('deferred');
-  commitStandingRestPolicy(policyInput(deferredFixture, 'deferred', { optionalLearningPolicy: 'DEFERRED' }));
-  const deferred = await runScheduledDailyAutonomyTick(tickInput(deferredFixture, 'deferred'));
-
-  const rejectedFixture = freshFixture('rejected');
-  commitStandingRestPolicy(policyInput(rejectedFixture, 'rejected', { optionalLearningPolicy: 'EVALUATE_AFTER_WAKE' }));
-  const rejected = await runScheduledDailyAutonomyTick(tickInput(rejectedFixture, 'rejected', {
-    optionalLearningPlan: g04OptionalPlan(rejectedFixture, 'rejected', 'DENIED')
-  }));
-
-  const failedFixture = freshFixture('failed');
-  commitStandingRestPolicy(policyInput(failedFixture, 'failed', { optionalLearningPolicy: 'EVALUATE_AFTER_WAKE' }));
-  const failedPlan = g04OptionalPlan(failedFixture, 'failed');
-  failedPlan.patternClass = 'INVALID_PATTERN_CLASS';
-  const failed = await runScheduledDailyAutonomyTick(tickInput(failedFixture, 'failed', { optionalLearningPlan: failedPlan }));
-
-  const crashFixture = freshFixture('crash');
-  commitStandingRestPolicy(policyInput(crashFixture, 'crash'));
-  const crashInputFile = path.join(path.dirname(crashFixture.ids.home), 'g05a-crash-child-input.json');
-  writeJson(crashInputFile, tickInput(crashFixture, 'crash-child', { faults: { terminateProcessAfterWakeBeforeReceipt: true } }));
-  const crashChild = spawnSync(process.execPath, [fileURLToPath(import.meta.url), 'crash-child', crashInputFile], { cwd: ROOT, encoding: 'utf8', env: process.env, timeout: 120000 });
-  const crashLock = path.join(crashFixture.ids.home, 'scheduled-daily-autonomy', crashFixture.ids.companionLineageRef, crashFixture.ids.threadRef, 'supervisor.lock');
-  const crash = { rejected: crashChild.status === 86, code: crashChild.status === 86 ? 'PROCESS_EXIT_AFTER_WAKE' : `EXIT_${crashChild.status}` };
-  const crashDreamAfterFault = loadDailyMemoryDreamState(crashFixture.ids);
-  const abandonedLockPersisted = fs.existsSync(crashLock);
-  const recovery = await runScheduledDailyAutonomyTick(tickInput(crashFixture, 'recovery'));
-  const crashDreamAfterRecovery = loadDailyMemoryDreamState(crashFixture.ids);
-
-  const driftFixture = freshFixture('drift');
-  commitStandingRestPolicy(policyInput(driftFixture, 'drift-a'));
-  const driftCrash = await expectCode(
-    () => runScheduledDailyAutonomyTick(tickInput(driftFixture, 'drift-a', { faults: { failAfterWakeBeforeReceipt: true } })),
-    ['G05A_AFTER_WAKE_FAULT']
-  );
-  commitStandingRestPolicy(policyInput(driftFixture, 'drift-b', {
-    standingRestAuthorityRef: 'authority.g05a.drift.changed',
-    formedAt: '2026-08-08T03:31:00.000Z'
-  }));
-  const driftRejected = await expectCode(
-    () => runScheduledDailyAutonomyTick(tickInput(driftFixture, 'drift-b')),
-    ['G05A_RECOVERY_POLICY_DRIFT']
-  );
-
-  const policyCurrentnessFixture = freshFixture('policy-currentness');
-  const policyA = commitStandingRestPolicy(policyInput(policyCurrentnessFixture, 'policy-a'));
-  commitStandingRestPolicy(policyInput(policyCurrentnessFixture, 'policy-b', { standingRestAuthorityRef: 'authority.g05a.policy.changed', formedAt: '2026-08-08T03:32:00.000Z' }));
-  const stalePolicyRejected = await expectCode(
-    () => runScheduledDailyAutonomyTick(tickInput(policyCurrentnessFixture, 'policy-stale', { expectedPolicyHeadSha256: policyA.head.policyHeadSha256 })),
-    ['G05A_POLICY_NOT_CURRENT']
-  );
-
-  const callbackFixture = freshFixture('callback-forbidden');
-  commitStandingRestPolicy(policyInput(callbackFixture, 'callback-forbidden', { optionalLearningPolicy: 'EVALUATE_AFTER_WAKE' }));
-  const arbitraryCallbackRejected = await expectCode(
-    () => runScheduledDailyAutonomyTick(tickInput(callbackFixture, 'callback-forbidden', { optionalLearningCallback: async () => ({ disposition: 'REJECTED' }) })),
-    ['G05A_HELD_EFFECT_VIOLATION']
-  );
-
-  const orphan = readdressG05AReceipt({ ...completed.receipt, supervisorInstanceRef: 'instance.g05a.orphan' });
-  const orphanFile = path.join(main.ids.home, 'scheduled-daily-autonomy', main.ids.companionLineageRef, main.ids.threadRef, 'receipts', `${orphan.dailyAutonomyReceiptSha256}.json`);
-  writeJson(orphanFile, orphan);
-  const orphanRejected = await expectCode(
-    () => Promise.resolve(sourceDescentScheduledDailyAutonomy(main.ids, orphan.dailyAutonomyReceiptSha256)),
-    ['G05A_RECEIPT_CORRUPT']
-  );
-
-  const check0 = DAILY_MEMORY_DREAM_CONTRACT === 'contract.multivex.g03.daily-memory-only-dream/v1' && EVALUATED_RHYTHM_MODE === 'FAITHFUL_SIMULATED_RHYTHM_CANDIDATE';
-  const check1 = invalidConsent.rejected && mainPolicy.policy.consentState === 'PERMITTED';
-  const check2 = outside.state === 'OUTSIDE_REST_WINDOW' && outside.noEffect === true;
-  const check3 = concurrentRejected.rejected && collapsedSupervisorRejected.rejected;
-  const check4 = interactive.state === 'YIELDED_INTERACTIVE' && resourceUnknown.state === 'YIELDED_RESOURCE' && rawAuthorityRejected.rejected;
-  const check5 = completed.state === 'COMPLETED' && completed.wakeCommitted === true && completed.receipt.g03WakeReceiptSha256 && completed.receipt.g03DreamHeadSha256;
-  const check6 = staleRejected.rejected && staleWakeRejected.rejected;
-  const check7 = duplicate.state === 'DUPLICATE_SUPPRESSED' && duplicate.duplicateSuppressed === true && duplicate.receipt.dailyAutonomyReceiptSha256 === completed.receipt.dailyAutonomyReceiptSha256;
-  const check8 = completed.receipt.optionalLearningDisposition === 'ABSENT' && deferred.receipt.optionalLearningDisposition === 'DEFERRED' && rejected.receipt.optionalLearningDisposition === 'REJECTED';
-  const check9 = failed.receipt.optionalLearningDisposition === 'FAILED' && failed.receipt.optionalLearningFailureCode === 'RHYTHM_PATTERN_INVALID' && failed.receipt.wakeCommitted === true && arbitraryCallbackRejected.rejected;
-  const check10 = crash.rejected && abandonedLockPersisted && recovery.resumedAfterWake === true && recovery.recoveredAbandonedSupervisor === true && crashDreamAfterFault.head.dailyDreamHeadSha256 === crashDreamAfterRecovery.head.dailyDreamHeadSha256 && driftCrash.rejected && driftRejected.rejected && stalePolicyRejected.rejected;
-  const check11 = projection.wakeCommitted === true && descent.dailyAutonomyReceiptSha256 === completed.receipt.dailyAutonomyReceiptSha256 && descent.g03WakeReceiptSha256 === completed.receipt.g03WakeReceiptSha256 && descent.noRawConversationContent === true && orphanRejected.rejected;
-  const heldKeys = ['synchronizationPerformed','trainingPerformed','modelWeightsChanged','adapterChanged','rhythmActivationPerformed','powerControlPerformed','nativeWindowsServiceInstalled','publicationPerformed'];
-  const check12 = heldKeys.every((key) => completed.receipt[key] === false && projection[key] === false) && failed.receipt.g03WakeReceiptSha256 === loadDailyMemoryDreamState(failedFixture.ids).head.wakeReceiptSha256;
-
+  const optionalPolicy = formStandingRestPolicy(policyInput(fixture, 'optional', { now, optionalLearningPolicy: 'EVALUATE_AFTER_WAKE' }));
+  const optionalScope = buildScheduledStandingScopeForPolicy(optionalPolicy);
   const checks = {
-    'G05A-0': result(check0, { predecessorContractsBound: true, laterAuthorityGranted: false }),
-    'G05A-1': result(check1, { positiveStandingAuthorityRequired: true }),
-    'G05A-2': result(check2, { outsideWindowNoEffect: true }),
-    'G05A-3': result(check3, { independentSupervisor: true, singleWriter: true }),
-    'G05A-4': result(check4, { interactiveYield: true, unknownResourceYield: true, rawCallerAuthorityRejected: rawAuthorityRejected.rejected, exactAdmissionEvidenceRequired: true }),
-    'G05A-5': result(check5, { automaticDreamAdmission: true, wakeCommitted: completed.wakeCommitted }),
-    'G05A-6': result(check6, { staleFrontierRejected: staleRejected.rejected, staleWakeIdentityRejected: staleWakeRejected.rejected, allAdvertisedFrontierFieldsValidated: true }),
-    'G05A-7': result(check7, { duplicateDaySuppressed: duplicate.duplicateSuppressed }),
-    'G05A-8': result(check8, { dispositions: [completed.receipt.optionalLearningDisposition, deferred.receipt.optionalLearningDisposition, rejected.receipt.optionalLearningDisposition] }),
-    'G05A-9': result(check9, { optionalFailureCode: failed.receipt.optionalLearningFailureCode, wakeCommitted: failed.receipt.wakeCommitted, arbitraryCallbackRejected: arbitraryCallbackRejected.rejected }),
-    'G05A-10': result(check10, { realProcessExitObserved: crash.rejected, abandonedLockPersisted, recoveredAbandonedSupervisor: recovery.recoveredAbandonedSupervisor, recoveryPreservedDreamHead: crashDreamAfterFault.head.dailyDreamHeadSha256 === crashDreamAfterRecovery.head.dailyDreamHeadSha256, driftRejected: driftRejected.rejected, stalePolicyRejected: stalePolicyRejected.rejected }),
-    'G05A-11': result(check11, { projectionState: projection.state, sourceDescent: true, orphanReceiptRejected: orphanRejected.rejected }),
-    'G05A-12': result(check12, Object.fromEntries(heldKeys.map((key) => [key, false])))
+    'G05A-0': SCHEDULED_DAILY_AUTONOMY_MODE === 'DETERMINISTIC_SCHEDULED_AUTONOMY_CORE' && 'formScheduledAutonomyAdmissionEvidence' in g05aModule === false ? 'PASS' : 'FAIL',
+    'G05A-1': committed.policy.executionAuthority === 'NONE_CONFIGURATION_ONLY' && !('consentState' in committed.policy) && !('standingRestAuthorityRef' in committed.policy) ? 'PASS' : 'FAIL',
+    'G05A-2': scopeResult.scope.permittedUseRefs.includes('use.vexlife.g05.schedule-one-g03-memory-only-dream-per-local-calendar-day') && optionalScope.scope.permittedUseRefs.includes('use.vexlife.g05.after-wake-g04-stage-a-simulated-inactive-evaluation') ? 'PASS' : 'FAIL',
+    'G05A-3': committed.head.generation === 0 && Number.isSafeInteger(committed.head.generation) ? 'PASS' : 'FAIL',
+    'G05A-4': rawRejected ? 'PASS' : 'FAIL',
+    'G05A-5': held.state === 'HELD_RUNTIME_RESOURCE_OR_INTERACTIVE_STATE' && held.resourceAdmissionState === 'BLOCKED' ? 'PASS' : 'FAIL',
+    'G05A-6': (beforeDream.head?.dailyDreamHeadSha256 ?? null) === (afterDream.head?.dailyDreamHeadSha256 ?? null) ? 'PASS' : 'FAIL',
+    'G05A-7': manualLaunderingRejected ? 'PASS' : 'FAIL',
+    'G05A-8': projection.livePositiveStandingConsentMaterializedByG05A === false ? 'PASS' : 'FAIL',
+    'G05A-9': projection.synchronizationPerformed === false && projection.trainingPerformed === false && projection.modelWeightsChanged === false && projection.adapterChanged === false ? 'PASS' : 'FAIL',
+    'G05A-10': projection.nativeWindowsServiceInstalled === false && projection.powerControlPerformed === false && projection.publicationPerformed === false ? 'PASS' : 'FAIL',
+    'G05A-11': SHA256.test(safety.head.authorityHeadSha256) && scopeResult.standingScopeFingerprint === safety.scopeFingerprint ? 'PASS' : 'FAIL',
+    'G05A-12': G05_LIVE_RUNTIME_SOURCE_REF === 'source.intent-scheduler.windows-g05-runtime-observer' && SHA256.test(G05_LIVE_RUNTIME_SOURCE_HASH) ? 'PASS' : 'FAIL'
   };
-  const failedChecks = Object.entries(checks).filter(([, value]) => value.state !== 'PASS').map(([key]) => key);
+  const state = Object.values(checks).every((item) => item === 'PASS') ? 'PASS' : 'FAIL';
   const receipt = {
-    schemaVersion: 'vexlife.g05a.scheduled-daily-autonomy-proof/v1',
-    state: failedChecks.length ? 'FAIL' : 'PASS',
-    mode: SCHEDULED_DAILY_AUTONOMY_MODE,
-    platform: process.platform,
-    candidateHeadSha: process.env.VEXLIFE_CANDIDATE_HEAD_SHA || null,
-    standingRestPolicy: true,
-    independentSupervisor: true,
-    automaticDreamAdmission: true,
-    wakeIndependentOfOptionalLearning: check9,
-    dailyReceiptVisible: check11,
-    interactivePriorityPreserved: check4,
-    supervisorAdmissionEvidenceRequired: check4,
-    sourceManagedResourceSnapshotRequired: check4,
-    allAdvertisedFrontierFieldsValidated: check6,
-    duplicateDaySuppressed: check7,
-    crashRecoveryPreservesWake: check10,
-    hostSupervisorInstalled: false,
-    nativeWindowsServiceInstalled: false,
-    powerControlPerformed: false,
-    synchronizationPerformed: false,
-    trainingPerformed: false,
-    modelWeightsChanged: false,
-    adapterChanged: false,
-    rhythmActivationPerformed: false,
-    publicationPerformed: false,
-    StageBRealTrainingState: 'HELD_SEPARATE_ADMISSION',
-    standingPolicyRef: mainPolicy.policy.policyRef,
-    standingPolicySha256: mainPolicy.policy.policySha256,
-    supervisorRef: completed.receipt.supervisorRef,
-    supervisorAdmissionEvidenceRef: completed.receipt.supervisorAdmissionEvidenceRef,
-    supervisorAdmissionEvidenceSha256: completed.receipt.supervisorAdmissionEvidenceSha256,
-    resourceSnapshotRef: completed.receipt.resourceSnapshotRef,
-    resourceSnapshotFingerprint: completed.receipt.resourceSnapshotFingerprint,
-    resourceAdmissionFingerprint: completed.receipt.resourceAdmissionFingerprint,
-    g03DreamHeadSha256: completed.receipt.g03DreamHeadSha256,
-    g03DailyStratumSha256: completed.receipt.g03DailyStratumSha256,
-    g03WakeReceiptSha256: completed.receipt.g03WakeReceiptSha256,
-    dailyAutonomyReceiptRef: completed.receipt.dailyAutonomyReceiptRef,
-    dailyAutonomyReceiptSha256: completed.receipt.dailyAutonomyReceiptSha256,
-    optionalLearningEvidence: {
-      absent: completed.receipt.optionalLearningDisposition,
-      deferred: deferred.receipt.optionalLearningDisposition,
-      rejected: rejected.receipt.optionalLearningDisposition,
-      failed: failed.receipt.optionalLearningDisposition,
-      failedCode: failed.receipt.optionalLearningFailureCode
-    },
-    checks,
-    failedChecks,
-    formedAt: new Date().toISOString()
+    schemaVersion: 'vexlife.g05a.scheduled-daily-autonomy-proof/v2', state,
+    mode: 'HOSTED_WINDOWS_SOURCE_OWNED_AUTHORITY_AND_HELD_RUNTIME_PROOF',
+    candidateHeadSha: process.env.VEXLIFE_CANDIDATE_HEAD_SHA || null, checks,
+    policyConfigurationOnly: true, callerContextLiveAdmissionAccepted: false,
+    sourceOwnedStandingAuthorityResolvedInSyntheticOwnerStore: true,
+    syntheticSafetyOwnerStoreUsed: true, syntheticStandingAuthorityHeadSha256: safety.head.authorityHeadSha256,
+    standingScopeFingerprint: scopeResult.standingScopeFingerprint,
+    liveRuntimeSourceRef: G05_LIVE_RUNTIME_SOURCE_REF, liveRuntimeSourceHash: G05_LIVE_RUNTIME_SOURCE_HASH,
+    schedulerGenerationSource: 'G05A_DURABLE_CURRENT_HEAD_SEQUENCE_PLUS_ONE',
+    schedulerGenerationSeparateFromPolicyGeneration: true,
+    resourceAdmissionState: held.resourceAdmissionState,
+    currentRuntimeSupervisorState: 'FAIL_CLOSED_UNOBSERVED_NO_NATIVE_SUPERVISOR',
+    livePositiveStandingConsentMaterializedByG05A: false,
+    actualStandingConsentMaterialized: false,
+    actualAutomaticDreamInvocationPerformed: false,
+    syntheticManualG03LaunderingProbePerformed: true,
+    manualPolicyOnlyG03WakeAcceptedAsScheduled: false,
+    nativeSupervisorInstalled: false, realTrainingPerformed: false, modelOrAdapterMutationPerformed: false,
+    rhythmActivationPerformed: false, synchronizationPerformed: false, powerControlPerformed: false,
+    cloudUploadPerformed: false, publicationPerformed: false
   };
-  if (failedChecks.length) throw new Error(`G05A proof failed: ${failedChecks.join(', ')}`);
-  return receipt;
-}
-
-if (path.resolve(process.argv[1] ?? '') === path.resolve(fileURLToPath(import.meta.url))) {
-  if (process.argv[2] === 'crash-child') {
-    const inputFile = process.argv[3];
-    if (!inputFile) { process.stderr.write('crash-child requires an input file\n'); process.exit(2); }
-    const input = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
-    await runScheduledDailyAutonomyTick(input);
-    process.exit(0);
-  }
-  if (process.argv[2] !== 'proof') {
-    process.stderr.write('Usage: node scripts/scheduled-daily-autonomy.mjs proof\n');
-    process.exit(2);
-  }
-  const receipt = await runProof();
-  const output = path.resolve(process.env.VEXLIFE_G05A_PROOF_RECEIPT ?? path.join(ROOT, 'generated', 'health', 'g05a-scheduled-daily-autonomy-windows-proof.json'));
+  const output = process.env.VEXLIFE_G05A_PROOF_RECEIPT ? path.resolve(process.env.VEXLIFE_G05A_PROOF_RECEIPT) : path.join(ROOT, 'generated', 'health', 'g05a-scheduled-daily-autonomy-windows-proof.json');
   writeJson(output, receipt);
   process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);
+  if (state !== 'PASS') process.exitCode = 1;
 }
 
-export { runProof as runScheduledDailyAutonomyProof };
-
-// [VXG RealForever]
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if ((process.argv[2] || 'proof') !== 'proof') throw new Error('usage: node scripts/scheduled-daily-autonomy.mjs proof');
+  await runProof();
+}

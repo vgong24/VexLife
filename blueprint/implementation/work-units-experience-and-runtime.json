@@ -586,7 +586,7 @@
   },
   {
     "workRef": "work.vexlife.windows.g05a-scheduled-daily-autonomy",
-    "purpose": "Implement the first deterministic one-device standing daily-autonomy core over accepted G03 wake continuity, with independent supervision, exactly-once admission, optional-learning failure isolation and a visible daily receipt while sync/native service/training remain held.",
+    "purpose": "Bind the existing one-device G05A scheduled-autonomy core to accepted G05S source-owned standing/runtime authority, derive scheduled G03 attribution from exact policy + runtime + supervisor + frontier evidence, and remain no-effect while current runtime admission is held.",
     "distance": "NEXT",
     "milestoneRef": "milestone.vexlife.continuity",
     "dependsOn": [
@@ -629,22 +629,23 @@
     "outputRefs": [
       "proof.vexlife.g05a.scheduled-daily-autonomy.windows"
     ],
-    "effectBoundary": "DEVICE_PRIVATE_DETERMINISTIC_SCHEDULED_AUTONOMY_CORE_ONLY",
+    "effectBoundary": "SOURCE_DESCENDED_G05S_ADMISSION_THEN_DEVICE_PRIVATE_G03_ONLY_OTHERWISE_NO_EFFECT",
     "platformRefs": [
       "platform.windows"
     ],
     "exclusions": [
+      "positive standing-consent materialization",
+      "native Windows supervisor/service installation",
       "G05B synchronization",
       "real target-device delivery",
       "real private training",
       "model or adapter weight mutation",
       "Rhythm activation",
       "power control",
-      "native Windows service installation",
       "cloud upload",
-      "LC18",
       "publication"
     ],
-    "returnRoute": "return exact G05A head/tree, deterministic proof receipt and hosted Windows evidence to Windows Local Operations; synchronization remains a separate G05B phase"
+    "returnRoute": "return exact G05A head/tree, deterministic proof receipt and hosted Windows evidence to Windows Local Operations; synchronization remains a separate G05B phase",
+    "completionGate": "G05A-0..G05A-12 prove configuration is not consent, caller-shaped live authority is rejected, G05S live runtime remains held without native supervisor, manual policy-only G03 cannot be laundered, scheduler generation remains durable-state sourced, and all later effects remain false"
   }
 ]

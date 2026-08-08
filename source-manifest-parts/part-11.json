@@ -142,8 +142,8 @@
     {
       "path": "test/scheduled-daily-autonomy.test.mjs",
       "mode": "100644",
-      "bytes": 5632,
-      "sha256": "73a7233257005873a0d5722ae6741ebaa40b0ba9a137615b3d4ab1eadc08975e"
+      "bytes": 3999,
+      "sha256": "73b395ac70df98c5b36e44ef79440ab6e0a09b74715e321e546e32ecf403259d"
     }
   ]
 }

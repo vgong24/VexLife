@@ -2,142 +2,98 @@
 
 `[VXG RealForever]`
 
-## Purpose
+## Current boundary
 
-G05A is the first standing daily-autonomy layer above the accepted G01 lived companion, G02 Score/context continuity, G03 Daily Memory-Only Dream, and G04 Stage-A inactive evaluated Rhythm simulation.
+G05A is the one-device scheduled Daily Memory Dream composition layer. It does not own consent, runtime truth, G03 memory semantics, G04 learning semantics, synchronization, service installation, model mutation, power, cloud upload, or publication.
 
-It adds only the deterministic one-device machinery needed for an explicitly permitted rest window to admit G03 automatically and publish a compact daily receipt. It does **not** install a Windows service, control device power, synchronize siblings, train a model, change adapter/weights, or activate Rhythm.
-
-G05 is intentionally split:
+After accepted G05S, the trust chain is deliberately:
 
 ```text
-G05A_SCHEDULED_AUTONOMY
-  standing rest policy
-  + independent deterministic supervisor
-  + exactly-once G03 admission
-  + wake-first optional-learning isolation
-  + daily receipt / source descent
-
-G05B_BOUNDED_SYNC
-  separate target-lineage scope and reconciliation
-  + attributed family envelope
-  + receiving sibling disposition
-  + exact recipient/host authority when real delivery is attempted
+standing policy configuration
+→ exact G05 Safety standing scope
+→ source-owned current Safety owner head / consent / authority binding
+→ registered Windows live runtime observation
+→ exact G05S current scheduled-admission provenance
+→ G05A supervisor lease + scheduler generation + six-field source frontier
+→ content-addressed scheduled G03 invocation authority
+→ accepted G03 memory-only wake
+→ immutable G05A daily receipt/head
 ```
 
-Synchronization is not required for the first autonomous daily proof. The separation keeps wake continuity available when a sibling is offline, synchronization is not authorized, or optional Rhythm learning is absent, deferred, rejected, or fails.
+Configuration is not consent. Historical replay is not current authority. A green proof is not activation authority.
 
 ## Standing policy
 
-A policy is explicit, device-private, content-addressed, and current-pointer bound. Positive standing authority is required:
+The G05A standing policy is **configuration-only**. It declares:
 
-```text
-consentState=PERMITTED|NARROWED
-standingRestAuthorityRef=<exact>
-timeZoneRef=<IANA timezone>
-restWindowStartLocalMinute=<0..1439>
-restWindowEndLocalMinute=<0..1439>
-exactlyOnceCalendarDay=true
-interactiveYieldRequired=true
-resourcePolicy=EXPLICIT_SUFFICIENT_REQUIRED
-optionalLearningPolicy=ABSENT|DEFERRED|EVALUATE_AFTER_WAKE
-```
+- human subject, Home, device, lineage and thread;
+- IANA timezone and rest window;
+- exactly-once calendar-day intent;
+- required interactive yield and local-only operation;
+- optional G04 Stage-A simulated/inactive evaluation policy.
 
-Unknown/denied standing consent never becomes self-trigger authority.
+It contains no caller-supplied `consentState` or `standingRestAuthorityRef` and carries `executionAuthority=NONE_CONFIGURATION_ONLY`.
 
-## Supervisor / Dream / wake chain
+From that configuration, G05A deterministically derives the exact Safety standing scope consumed by G05S. Only the two required Daily Dream/supervisor uses are permitted by default; optional G04 Stage-A is added only when configured. Real training, model/adapter/weight mutation, synchronization, native supervisor installation, power, cloud upload and publication remain prohibited.
 
-```text
-current standing policy
-→ canonical observed clock
-→ rest-window eligibility
-→ exact content-addressed supervisor-admission evidence composed from the existing source-managed `vexlife.intent-resource-snapshot/v1` contract bound to policy/tick/all six G01/G02/G03 frontier identities
-→ interactive/resource yield from that evidence (raw caller booleans are not authority)
-→ one PID-bound independent supervisor writer lease
-→ exact standing-policy generation re-read under the same exclusion domain
-→ exact current G01/G02/G03 frontier re-read
-→ derive policy-bound restInvocationAuthorityRef
-→ accepted G03 commitDailyMemoryDream(...)
-→ committed G03 Daily Stratum + wake + Dream head
-→ exact source-managed G04 Stage-A adapter only after wake (when requested)
-→ immutable G05A daily receipt
-→ immutable G05A head lineage
-→ atomic G05A current pointer
-→ compact Victor/Vex projection + exact source descent
-```
+## Live admission
 
-The supervisor is a deterministic product-core owner, distinct from a required model-worker ref and from a distinct G03 writer instance. Inside an eligible window, Dream execution requires one source-managed `vexlife.g05a.supervisor-admission-evidence/v1` receipt that is content-addressed and exact to the Home/device/lineage/thread, supervisor+instance, standing-policy ref/hash/head, observed tick, resource source/current timestamp, and the complete advertised six-field source frontier (`conversationHeadSha256`, `scoreHeadSha256`, `semanticAuthorityHeadSha256`, `dreamHeadSha256`, `dailyStratumSha256`, `wakeReceiptSha256`). Raw `interactivePending` or `resourceEvidence` caller fields are rejected and cannot authorize Dream.  Its lease binds the owning PID. An abandoned lease is recoverable only when that PID is provably absent. Standing-policy writes use the same exclusion domain, so the policy is re-read and exact-generation bound after supervisor admission and immediately before the G03 effect. This candidate does not install or register a native Windows service. Hosted Windows CI proves that the shared deterministic core executes on Windows; it is not native-service conformance.
+G05A does not export a caller-facing live admission constructor. For a new scheduled effect it calls `resolveCurrentG05ScheduledAdmission(...)`, which independently:
 
-## Wake is independent of optional learning
+1. obtains the registered Windows runtime observation and source-owned UTC;
+2. reopens the canonical Safety owner store at that exact observation time;
+3. validates exact subject/purpose/scope/current-head membership;
+4. binds scheduler generation separately from policy generation;
+5. returns current admission only when the runtime resource/interactive state is actually admitted.
 
-Optional learning supports these visible outcomes:
+Caller-shaped `observedAt`, resource snapshots, admission evidence, consent enums, authority refs and scheduler generations are rejected at the G05A executable boundary.
 
-```text
-ABSENT
-DEFERRED
-REJECTED
-FAILED
-ACCEPTED_INACTIVE
-```
+## Current truthful runtime state
 
-G05A does **not** execute caller-supplied callbacks. For `EVALUATE_AFTER_WAKE`, the only executable optional-learning surface is the accepted source-managed G04 Stage-A evaluator, with G05A injecting the exact committed G01/G02/G03 frontier and requiring a content-addressed G04 disposition whose training, activation, Score/G03 mutation, cross-device, and publication effects remain false. Missing plans defer; invalid or failed G04 evaluation is recorded as `FAILED`. G05A also re-reads Score and the G03 Dream head after evaluation. A learning failure therefore cannot roll back or strand the already committed wake.
+Accepted G05S intentionally has no native unattended supervisor. It therefore projects unobserved model/heavy-tool/interactive fields conservatively and reports background admission held. Consequently **current G05A does not automatically invoke G03 today**. It returns a held/no-effect state until a separately accepted runtime-supervisor substrate can truthfully produce an admitted current observation.
 
-G04 Stage A remains `FAITHFUL_SIMULATED_RHYTHM_CANDIDATE` / `ACCEPTED_INACTIVE_SIMULATION_ONLY`. Real private training, model/trainer runtime, adapter creation, weight mutation, and Rhythm activation remain separate Stage-B effects.
+No proof or relay is allowed to fake `ADMITTED` merely to exercise the automatic branch.
 
-## Exactly-once and recovery
+## Scheduled G03 attribution
 
-A committed G05A receipt for the same local calendar date suppresses duplicate ticks without forming another G03 day.
+When a future current G05S admission is genuinely `ADMITTED`, G05A forms one private, persisted supervisor-admission receipt before invoking G03. The scheduled invocation authority is content-addressed over:
 
-If the process terminates after G03 wake but before the G05A receipt/current pointer, the PID-bound supervisor lease remains durable. A later process may remove it only after proving the recorded PID is absent, then observes the already committed same-day G03 frontier. It may complete the missing G05A receipt only when the G03 pre-rest orientation carries the exact rest-invocation authority derived from the current standing policy. Policy-generation drift fails closed instead of attaching a new policy to an old wake.
+- exact policy ref/hash/head/generation;
+- exact independently sourced scheduler generation;
+- exact G05S provenance ref/hash and standing-authority head;
+- runtime observation/trust/resource fingerprints;
+- exact G05A supervisor identity and supervisor-lease SHA;
+- exact calendar date;
+- the exact six-field G01/G02/G03 source frontier.
 
-A concurrent or unverifiable supervisor writer is rejected. The proof includes a real child-process termination after committed wake and verifies fresh-process absent-owner recovery without rerunning Dream. Interactive work and unknown/insufficient resource evidence yield before Dream.
+The accepted G03 API still records `invocationMode=MANUAL_ONE_SHOT`; G05A therefore proves scheduled attribution by binding its unique scheduled authority into the immutable G03 orientation and later recomputing that orientation hash during source descent. A readable policy hash alone is no longer scheduled authority.
 
-## Daily receipt truth
+## Crash recovery
 
-The immutable receipt binds:
+The supervisor admission is persisted before G03. If the process dies after a committed G03 wake but before the G05A receipt/head advances, a fresh process may finish **receipt recovery only** when:
 
-```text
-calendarDateRef / timeZoneRef / observedAt
-standing policy ref/hash + immutable policy-head hash + standing authority
-supervisor ref/instance + model-worker ref + distinct G03 writer instance
-exact supervisor-admission evidence ref/hash + IDLE_CONFIRMED/resource source/currentness
-recovered-abandoned-supervisor flag
-G01 conversation / G02 Score / semantic-owner source heads
-G03 Dream head / Daily Stratum / wake receipt
-optional learning disposition + bounded failure code + exact G04 disposition ref/hash when executed
-wakeCommitted
-resumedAfterWake
-```
+- the old G05A supervisor owner is provably absent;
+- the abandoned supervisor lease is recovered explicitly;
+- the same-day G03 orientation authority matches exactly one persisted admission;
+- that admission binds the recovered abandoned lease SHA, exact policy generation, scheduler generation and source frontier;
+- its embedded G05S provenance validates only as historical integrity.
 
-It also states the held effects explicitly:
+This path creates no new Dream authority. A manual G03 wake made with the old policy-only convention has no matching persisted admission/abandoned lease and is rejected rather than laundered into scheduled history.
 
-```text
-synchronizationPerformed=false
-trainingPerformed=false
-modelWeightsChanged=false
-adapterChanged=false
-rhythmActivationPerformed=false
-powerControlPerformed=false
-nativeWindowsServiceInstalled=false
-publicationPerformed=false
-```
+## Historical replay
 
-Each receipt is reachable only through an immutable, contiguous G05A head chain whose current member is atomically projected by `head.json`. Source descent rejects addressed but orphaned receipts. Receipt validation is closed-schema, exact-identity, policy-source-bound, G03 historical-source-bound, and requires every held-effect field to remain false. The projection derives those held-effect values from the validated committed receipt instead of self-certifying constants. Raw conversation bodies are not copied into the G05A receipt or projection.
+G05A daily source descent consumes `validateHistoricalG05ScheduledAdmissionProvenance(...)` only as `HISTORICAL_INTEGRITY_ONLY`; it never turns historical G05S bytes into current authority. The daily receipt also recomputes the exact G03 pre-rest orientation SHA to verify its scheduled invocation authority.
 
-## Proof
+## Held effects
 
-`npm run scheduled-daily-autonomy:proof` uses isolated synthetic Vex Homes and proves `G05A-0` through `G05A-12`, including standing-consent rejection, timezone/rest-window determinism, single-supervisor exclusion, exact supervisor-admission evidence, rejection of raw caller authority, interactive/resource yielding, actual G03 admission and wake, stale-source rejection across all six advertised frontier identities, duplicate suppression, optional-learning absence/defer/reject/failure through the exact G04 Stage-A adapter, arbitrary-callback rejection, real child-process crash-after-wake recovery, stale/policy-generation drift rejection, immutable head ancestry, orphan receipt rejection, source descent, and all held-effect flags.
+G05A continues to report and enforce false for:
 
-The hosted Windows job writes:
+- synchronization;
+- real training;
+- model weights or adapter mutation;
+- Rhythm activation/promotion;
+- power control;
+- native Windows service/supervisor installation;
+- publication/cloud release.
 
-```text
-generated/health/g05a-scheduled-daily-autonomy-windows-proof.json
-```
-
-and binds the exact candidate head when GitHub supplies it.
-
-## Next frontier
-
-`G05B_BOUNDED_SYNC` remains separate. Source formation may build an offline deterministic reconciliation contract from the accepted device-family semantics, but real target-device delivery still requires exact target lineage, scopes, recipient disposition, host/effect authority, and non-identity-collapse evidence.
-
-<!-- [VXG RealForever] -->
+G05B remains separately routed after G05A acceptance, and actual unattended activation remains held until source-owned positive standing consent and separately accepted runtime-supervisor authority exist.
