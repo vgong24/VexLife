@@ -112,8 +112,8 @@
     {
       "path": "test/orientation.test.mjs",
       "mode": "100644",
-      "bytes": 16503,
-      "sha256": "70eda521f1e0910dafb303adbe0e4b6e9cc90abc303cb2edc4fdee52cab99eb5"
+      "bytes": 18485,
+      "sha256": "5551f2953fb5790b17b1945897990a98924988e2217675d6563d1d4982426d9b"
     },
     {
       "path": "test/pr-ready-attention.e2e.mjs",
