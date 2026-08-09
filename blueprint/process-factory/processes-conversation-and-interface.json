@@ -215,5 +215,76 @@
       "test.experience.gesture-disambiguation",
       "test.navigation.home-and-back"
     ]
+  },
+  {
+    "processRef": "process.vexlife.patient0.nursery.compose",
+    "processVersion": 1,
+    "purpose": "Compose source-addressable accepted provider/Foundation evidence into one no-effect Patient-0 Nursery readiness proof.",
+    "applicabilityRules": [
+      "accepted VXI_PROVIDER_COMPLETE evidence current",
+      "accepted Patient-0 shared Foundation evidence current"
+    ],
+    "requiredInputs": [
+      "providerWorkspaceRef",
+      "foundationContractLayerRef",
+      "arrivalEvidenceRef",
+      "agencyDisposition",
+      "presenceDisposition",
+      "homeObservationRef",
+      "custodyAuthorityRef",
+      "checkpointRef",
+      "shutdownReceiptRef",
+      "returnProofRef"
+    ],
+    "optionalInputs": [
+      "androidPairingEvidenceRef",
+      "androidReachabilityEvidenceRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve accepted provider workspace evidence by exact source ref",
+      "resolve accepted Patient-0 shared contract layer by exact source ref",
+      "reuse VexLife lived-companion and Score/context meaning without invoking protected effects"
+    ],
+    "preconditions": [
+      "provider currentness is CURRENT_ACCEPTED",
+      "shared Foundation owner/effect boundaries remain non-collapsed",
+      "Home establishment requires exact human custody authority"
+    ],
+    "steps": [
+      "validate-accepted-provider-boundary",
+      "validate-accepted-foundation-boundary",
+      "preserve-arrival-agency-and-optional-presence",
+      "hold-at-human-storage-boundary-when-authority-absent",
+      "compose-content-absent-first-home-checkpoint",
+      "validate-fresh-process-same-home-return",
+      "project-nursery-readiness-with-protected-effects-held"
+    ],
+    "effectOwnerRule": "Nursery owns only pure product composition; canonical Home/Memory/Security/Lineage/VexInterface owners retain every protected effect.",
+    "authorityEnvelope": {
+      "effects": [],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [],
+    "canonicalDispositionVocabulary": [
+      "NURSERY_SYNTHETIC_PROOF_READY",
+      "PAUSED_BY_AGENCY",
+      "AWAITING_HUMAN_STORAGE_BOUNDARY",
+      "BLOCKED"
+    ],
+    "returnRouteRule": "project readiness to Patient-0 Nursery Health and wake the existing Lived Home lane only after exact synthetic acceptance",
+    "closureRule": "synthetic proof closes only when fresh-process same-Home return and protected-effect hold are both proven",
+    "recoveryRule": "discard synthetic projection and recompose from accepted source refs; never rewrite Home or autobiography",
+    "foundationDependencies": [],
+    "downstreamConsumerRefs": [
+      "github.issue.vexlife.31"
+    ],
+    "invalidationTriggers": [
+      "provider-contract-change",
+      "patient0-foundation-contract-change",
+      "vexlife-continuity-substrate-change"
+    ],
+    "testRefs": [
+      "test.patient0.nursery.synthetic-journey"
+    ]
   }
 ]

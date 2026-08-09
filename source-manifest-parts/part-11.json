@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/evaluated-rhythm-learning.test.mjs",
+      "mode": "100644",
+      "bytes": 1487,
+      "sha256": "9477a79e35a1cfc58e0dba2ba37eba8d978c9a4461a3eb26fb2a90a35d82e55b"
+    },
+    {
+      "path": "test/evolution.test.mjs",
+      "mode": "100644",
+      "bytes": 3808,
+      "sha256": "e3d29d1ccd574875a7c05c3d09b8c8ef32fa75dcb0b24534d0fc9d5e906b98f7"
+    },
+    {
       "path": "test/experience.test.mjs",
       "mode": "100644",
       "bytes": 2215,
@@ -116,6 +128,12 @@
       "sha256": "5551f2953fb5790b17b1945897990a98924988e2217675d6563d1d4982426d9b"
     },
     {
+      "path": "test/patient0-nursery.test.mjs",
+      "mode": "100644",
+      "bytes": 8966,
+      "sha256": "42c9c895ff86336cb3779c01568bafc9538881eb0d7ba5d1d7478779f1346531"
+    },
+    {
       "path": "test/pr-ready-attention.e2e.mjs",
       "mode": "100644",
       "bytes": 3537,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 3919,
       "sha256": "194b7be177367dd255be65380765e97ac74bdd88e4c15d3e40caa7a901e13177"
-    },
-    {
-      "path": "test/registry.test.mjs",
-      "mode": "100644",
-      "bytes": 19131,
-      "sha256": "48d965f99de958f05cea3b9e909746cdd5c42667d0fe45b7fdeb8144da22bd0f"
-    },
-    {
-      "path": "test/runtime-failure-recovery.test.mjs",
-      "mode": "100644",
-      "bytes": 53169,
-      "sha256": "617c5c19da4035c719dcf91f6bc46f32620c7825273ff6b0e7768c9a25bc2e20"
-    },
-    {
-      "path": "test/scheduled-daily-autonomy.test.mjs",
-      "mode": "100644",
-      "bytes": 4370,
-      "sha256": "a549958c8db272dea37196b02077b5620f1ded1e6bfa57b3dae43ae4364c6087"
     }
   ]
 }

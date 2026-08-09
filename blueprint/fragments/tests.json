@@ -1086,5 +1086,9 @@
   {
     "testRef": "test.g05-runtime-authority-substrate",
     "brief": "G05 scheduled autonomy trusts only replayed current Safety standing authority plus the exact registry-pinned Windows live resource/UTC source; manual G03 authority, caller runtime overrides and held native effects remain rejected."
+  },
+  {
+    "testRef": "test.patient0.nursery.synthetic-journey",
+    "brief": "Accepted provider and Patient-0 shared contracts compose arrival, agency, custody-gated synthetic First Home, autobiographical checkpoint, shutdown and fresh-process same-Home return while protected effects remain false."
   }
 ]

@@ -419,7 +419,7 @@
       "intentRegistryFingerprint": "aed18a92f797a4245637914dba9c5a23cd6910204a2c3922b2a61987bc85514a",
       "schedulerRegistryRef": "registry.vexlife.intent-scheduler.001",
       "schedulerRegistryFingerprint": "0437e088a92e8264af3de2dd9ca5e949c7249c396b3d2d2099447fadb66b5540",
-      "registeredProcessRefsFingerprint": "b2ffcd01d6c3f9409a9c250fe3fbb7d555c000a4988f09af08a22fc135d7f12a",
+      "registeredProcessRefsFingerprint": "370afcb8644e0c40340fc0d639d56a241d4cd9c92a916cd0588869c136bb6307",
       "registeredRoleRefsFingerprint": "252763ab5b7a29a03b6aafc7e15c0020f67c08c615fe37c7d3121a0fa07ade90",
       "nodeIndexedSchedulerOptionFields": [
         "resourceRequestByNodeRef",

@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "reference/browser/modules/dom.js",
+      "mode": "100644",
+      "bytes": 1472,
+      "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
+    },
+    {
       "path": "reference/browser/modules/guide-controller.js",
       "mode": "100644",
       "bytes": 6258,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 669,
       "sha256": "aa990b433e4597d9e55cc9857696fd673a05b7af997674c7ff9165a48d28008f"
-    },
-    {
-      "path": "scripts/feature-scaffold.mjs",
-      "mode": "100644",
-      "bytes": 1251,
-      "sha256": "54e2d40632300c0da19d2411c5a3a201fb76d1ee4f7e616263f2978ecd398447"
     }
   ]
 }
