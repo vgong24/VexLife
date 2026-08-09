@@ -130,8 +130,8 @@
     {
       "path": "test/patient0-nursery.test.mjs",
       "mode": "100644",
-      "bytes": 8966,
-      "sha256": "42c9c895ff86336cb3779c01568bafc9538881eb0d7ba5d1d7478779f1346531"
+      "bytes": 11731,
+      "sha256": "650a884a5c98259c4d769fc8bef2dc7ebb935ba2df45e1af2c2748e9a8bd3214"
     },
     {
       "path": "test/pr-ready-attention.e2e.mjs",

@@ -100,8 +100,8 @@
     {
       "path": "src/core/patient0-nursery.mjs",
       "mode": "100644",
-      "bytes": 11126,
-      "sha256": "33188ea1f1efaef29815ce63aeea21af2b05c690b2b25f47fb4fcc7e806d0cbf"
+      "bytes": 13648,
+      "sha256": "faff89d6a1b7fdb86dc312f7755a81d75dc75679db139a53627036ccd9c1db5a"
     },
     {
       "path": "src/core/platform-generator.mjs",

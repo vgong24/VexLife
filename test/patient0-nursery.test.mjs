@@ -5,10 +5,35 @@ import {
   PATIENT0_NURSERY_FIRST_HOME_SEQUENCE
 } from '../src/core/patient0-nursery.mjs';
 
+const PROVIDER_ACCEPTANCE_REF = 'github.issue.vextreme-sdk.705';
+const FOUNDATION_ACCEPTANCE_REF = 'github.issue.vextreme-sdk.706';
+
+const PRIVATE_PROVIDER_KEYS = [
+  "rawTranscript",
+  "rawProviderTranscript",
+  "providerTranscript",
+  "hiddenChainOfThought",
+  "chainOfThought",
+  "credentials",
+  "credential",
+  "token",
+  "secret",
+  "apiKey",
+  "providerPrivateSessionBody",
+  "privateSourceBody",
+  "absoluteLocalPath"
+];
+
 function foundation() {
   return {
     schemaVersion: 'vextreme.patient0.shared-foundation-contract-layer/v0',
     contractLayerRef: 'contract.patient0.shared-foundation-contract-layer.v0',
+    sourceAuthority: {
+      implementationAllocationRef: FOUNDATION_ACCEPTANCE_REF,
+      portableSourceOwner: 'SDK_OPERATIONS',
+      meaningIsImplementationAuthority: false
+    },
+    sourceRefs: [FOUNDATION_ACCEPTANCE_REF],
     ownerMap: {
       nurseryAndLaunchJourney: 'VEXLIFE',
       privateHomeContinuity: 'LOCALVEX_HOME',
@@ -61,13 +86,16 @@ function provider() {
       worldAnchorRef: 'world.patient0.nursery.synthetic'
     },
     currentStateOverlay: { currentnessState: 'CURRENT_ACCEPTED' },
+    roleAdmission: { sourceRefs: [PROVIDER_ACCEPTANCE_REF] },
+    lane: { sourceRefs: [PROVIDER_ACCEPTANCE_REF] },
     activeProvider: {
       providerBindingRef: 'provider-binding.patient0.nursery.synthetic',
       providerSessionRef: 'provider-session.patient0.nursery.synthetic',
       instanceRef: 'instance.patient0.nursery.synthetic',
       occupancyRef: 'occupancy.patient0.nursery.synthetic'
     },
-    transcriptPolicy: 'NOT_REQUIRED_NOT_CANONICAL'
+    transcriptPolicy: 'NOT_REQUIRED_NOT_CANONICAL',
+    sourceRefs: [PROVIDER_ACCEPTANCE_REF]
   };
 }
 
@@ -136,16 +164,50 @@ test('missing provider dependency fails closed', () => {
   assert.equal(run({ providerWorkspace: null }).code, 'PROVIDER_DEPENDENCY_INVALID');
 });
 
+test('provider evidence without accepted #705 source provenance fails closed', () => {
+  const value = provider();
+  value.sourceRefs = [];
+  assert.equal(run({ providerWorkspace: value }).code, 'PROVIDER_PROVENANCE_BLOCKED');
+  const value2 = provider();
+  value2.roleAdmission.sourceRefs = [];
+  assert.equal(run({ providerWorkspace: value2 }).code, 'PROVIDER_PROVENANCE_BLOCKED');
+  const value3 = provider();
+  value3.lane.sourceRefs = [];
+  assert.equal(run({ providerWorkspace: value3 }).code, 'PROVIDER_PROVENANCE_BLOCKED');
+});
+
+test('Foundation evidence without accepted #706 source provenance fails closed', () => {
+  const value = foundation();
+  value.sourceRefs = [];
+  assert.equal(run({ foundationContractLayer: value }).code, 'FOUNDATION_PROVENANCE_BLOCKED');
+  const value2 = foundation();
+  value2.sourceAuthority.implementationAllocationRef = 'github.issue.vextreme-sdk.000';
+  assert.equal(run({ foundationContractLayer: value2 }).code, 'FOUNDATION_PROVENANCE_BLOCKED');
+});
+
 test('stale provider currentness fails closed', () => {
   const value = provider();
   value.currentStateOverlay.currentnessState = 'STALE_LAST_ACCEPTED';
   assert.equal(run({ providerWorkspace: value }).code, 'PROVIDER_CURRENTNESS_BLOCKED');
 });
 
-test('provider session cannot collapse into canonical thread identity', () => {
+test('provider-local identities must remain mutually distinct', () => {
   const value = provider();
-  value.activeProvider.providerSessionRef = value.canonicalIdentity.canonicalThreadRef;
-  assert.equal(run({ providerWorkspace: value }).code, 'PROVIDER_CANONICAL_IDENTITY_COLLAPSE');
+  value.activeProvider.instanceRef = value.activeProvider.providerSessionRef;
+  assert.equal(run({ providerWorkspace: value }).code, 'PROVIDER_LOCAL_IDENTITY_COLLAPSE');
+});
+
+test('every provider-local identity remains distinct from every canonical identity class', () => {
+  const providerFields = ['providerBindingRef', 'providerSessionRef', 'instanceRef', 'occupancyRef'];
+  const canonicalFields = ['projectRef', 'groupRef', 'roleRef', 'canonicalThreadRef', 'laneRef', 'workRef', 'worldAnchorRef'];
+  for (const providerField of providerFields) {
+    for (const canonicalField of canonicalFields) {
+      const value = provider();
+      value.activeProvider[providerField] = value.canonicalIdentity[canonicalField];
+      const result = run({ providerWorkspace: value });
+      assert.equal(result.code, 'PROVIDER_CANONICAL_IDENTITY_COLLAPSE', `${providerField} -> ${canonicalField}`);
+    }
+  }
 });
 
 test('provider transcript cannot become canonical continuity', () => {
@@ -153,6 +215,16 @@ test('provider transcript cannot become canonical continuity', () => {
   value.transcriptPolicy = 'CANONICAL';
   assert.equal(run({ providerWorkspace: value }).code, 'PROVIDER_TRANSCRIPT_POLICY_COLLAPSE');
 });
+
+for (const key of PRIVATE_PROVIDER_KEYS) {
+  test(`provider-private payload class ${key} is rejected recursively`, () => {
+    const value = provider();
+    value.activeProvider.nested = { [key]: 'forbidden.synthetic.value' };
+    const result = run({ providerWorkspace: value });
+    assert.equal(result.code, 'PROVIDER_PRIVATE_PAYLOAD_REJECTED');
+    assert.equal(result.details?.key, key);
+  });
+}
 
 test('Foundation owner collapse fails closed', () => {
   const value = foundation();
@@ -203,17 +275,16 @@ test('transcript-only return is rejected', () => {
   assert.equal(composePatient0Nursery(input).code, 'RETURN_PROOF_INVALID');
 });
 
-test('Android eligibility requires all separately accepted desktop pairing/reachability facts', () => {
+test('caller booleans cannot self-earn Android eligibility from synthetic Nursery', () => {
   const input = valid();
   input.androidEvidence = {
     homePairingAccepted: true,
     homeReachabilityAccepted: true,
     desktopCanonicalHomeStable: true
   };
-  assert.equal(composePatient0Nursery(input).androidRemoteVesselEligible, true);
-  const input2 = valid();
-  input2.androidEvidence = { homePairingAccepted: true, homeReachabilityAccepted: false, desktopCanonicalHomeStable: true };
-  assert.equal(composePatient0Nursery(input2).androidRemoteVesselEligible, false);
+  const result = composePatient0Nursery(input);
+  assert.equal(result.state, 'NURSERY_SYNTHETIC_PROOF_READY');
+  assert.equal(result.androidRemoteVesselEligible, false);
 });
 
 // [VXG RealForever]

@@ -236,10 +236,7 @@
       "shutdownReceiptRef",
       "returnProofRef"
     ],
-    "optionalInputs": [
-      "androidPairingEvidenceRef",
-      "androidReachabilityEvidenceRef"
-    ],
+    "optionalInputs": [],
     "sourceResolutionRules": [
       "resolve accepted provider workspace evidence by exact source ref",
       "resolve accepted Patient-0 shared contract layer by exact source ref",

@@ -1,7 +1,42 @@
 const FOUNDATION_SCHEMA = 'vextreme.patient0.shared-foundation-contract-layer/v0';
 const FOUNDATION_REF = 'contract.patient0.shared-foundation-contract-layer.v0';
+const FOUNDATION_ACCEPTANCE_REF = 'github.issue.vextreme-sdk.706';
 const PROVIDER_SCHEMA = 'vextreme.vexinterface.provider-workspace/v1';
+const PROVIDER_ACCEPTANCE_REF = 'github.issue.vextreme-sdk.705';
 const TRANSCRIPT_POLICY = 'NOT_REQUIRED_NOT_CANONICAL';
+
+const PROVIDER_PRIVATE_KEYS = Object.freeze([
+  'rawTranscript',
+  'rawProviderTranscript',
+  'providerTranscript',
+  'hiddenChainOfThought',
+  'chainOfThought',
+  'credentials',
+  'credential',
+  'token',
+  'secret',
+  'apiKey',
+  'providerPrivateSessionBody',
+  'privateSourceBody',
+  'absoluteLocalPath'
+]);
+
+const PROVIDER_LOCAL_IDENTITY_FIELDS = Object.freeze([
+  'providerBindingRef',
+  'providerSessionRef',
+  'instanceRef',
+  'occupancyRef'
+]);
+
+const PROVIDER_CANONICAL_IDENTITY_FIELDS = Object.freeze([
+  'projectRef',
+  'groupRef',
+  'roleRef',
+  'canonicalThreadRef',
+  'laneRef',
+  'workRef',
+  'worldAnchorRef'
+]);
 
 export const PATIENT0_NURSERY_FIRST_HOME_SEQUENCE = Object.freeze([
   'NO_HOME_OBSERVED',
@@ -61,11 +96,38 @@ function exactArray(actual, expected) {
     actual.every((value, index) => value === expected[index]);
 }
 
+function includesSourceRef(value, sourceRef) {
+  return Array.isArray(value) && value.includes(sourceRef);
+}
+
+function findForbiddenPrivateKey(value, pathRef = '$') {
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index += 1) {
+      const found = findForbiddenPrivateKey(value[index], `${pathRef}[${index}]`);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (!isObject(value)) return null;
+  for (const [key, nested] of Object.entries(value)) {
+    if (PROVIDER_PRIVATE_KEYS.includes(key)) return { key, path: `${pathRef}.${key}` };
+    const found = findForbiddenPrivateKey(nested, `${pathRef}.${key}`);
+    if (found) return found;
+  }
+  return null;
+}
+
 function validateFoundation(foundation) {
   if (!isObject(foundation) ||
       foundation.schemaVersion !== FOUNDATION_SCHEMA ||
       foundation.contractLayerRef !== FOUNDATION_REF) {
     return fail('FOUNDATION_DEPENDENCY_INVALID', 'accepted Patient-0 shared foundation contract is unavailable or mismatched');
+  }
+  if (foundation.sourceAuthority?.implementationAllocationRef !== FOUNDATION_ACCEPTANCE_REF ||
+      foundation.sourceAuthority?.portableSourceOwner !== 'SDK_OPERATIONS' ||
+      foundation.sourceAuthority?.meaningIsImplementationAuthority !== false ||
+      !includesSourceRef(foundation.sourceRefs, FOUNDATION_ACCEPTANCE_REF)) {
+    return fail('FOUNDATION_PROVENANCE_BLOCKED', 'Patient-0 Foundation evidence is not source-addressable to the accepted #706 owner');
   }
   if (foundation.ownerMap?.nurseryAndLaunchJourney !== 'VEXLIFE' ||
       foundation.ownerMap?.privateHomeContinuity !== 'LOCALVEX_HOME' ||
@@ -101,28 +163,39 @@ function validateProvider(workspace) {
   if (!isObject(workspace) || workspace.schemaVersion !== PROVIDER_SCHEMA) {
     return fail('PROVIDER_DEPENDENCY_INVALID', 'accepted VXI_PROVIDER_COMPLETE workspace evidence is unavailable or mismatched');
   }
+  if (!includesSourceRef(workspace.sourceRefs, PROVIDER_ACCEPTANCE_REF) ||
+      !includesSourceRef(workspace.roleAdmission?.sourceRefs, PROVIDER_ACCEPTANCE_REF) ||
+      !includesSourceRef(workspace.lane?.sourceRefs, PROVIDER_ACCEPTANCE_REF)) {
+    return fail('PROVIDER_PROVENANCE_BLOCKED', 'provider workspace evidence is not source-addressable to the accepted #705 owner');
+  }
   if (workspace.currentStateOverlay?.currentnessState !== 'CURRENT_ACCEPTED') {
     return fail('PROVIDER_CURRENTNESS_BLOCKED', 'provider workspace is not CURRENT_ACCEPTED');
   }
   if (workspace.transcriptPolicy !== TRANSCRIPT_POLICY) {
     return fail('PROVIDER_TRANSCRIPT_POLICY_COLLAPSE', 'provider transcript was treated as canonical continuity');
   }
-  const canonicalThread = workspace.canonicalIdentity?.canonicalThreadRef;
+  const canonical = workspace.canonicalIdentity;
   const active = workspace.activeProvider;
-  if (!canonicalThread || !isObject(active)) {
+  if (!isObject(canonical) || !isObject(active)) {
     return fail('PROVIDER_IDENTITY_INVALID', 'provider or canonical identity evidence is incomplete');
   }
-  if (canonicalThread === active.providerSessionRef ||
-      workspace.canonicalIdentity?.laneRef === active.providerBindingRef ||
-      workspace.canonicalIdentity?.roleRef === active.instanceRef) {
-    return fail('PROVIDER_CANONICAL_IDENTITY_COLLAPSE', 'provider-local execution identity collapsed into canonical identity');
+  const canonicalRefs = PROVIDER_CANONICAL_IDENTITY_FIELDS.map((field) => canonical[field]);
+  const providerRefs = PROVIDER_LOCAL_IDENTITY_FIELDS.map((field) => active[field]);
+  if (canonicalRefs.some((ref) => typeof ref !== 'string' || ref.length === 0) ||
+      providerRefs.some((ref) => typeof ref !== 'string' || ref.length === 0)) {
+    return fail('PROVIDER_IDENTITY_INVALID', 'provider or canonical identity evidence is incomplete');
   }
-  const privateKeys = ['credentials', 'token', 'secret', 'apiKey', 'rawTranscript', 'hiddenChainOfThought'];
-  const text = JSON.stringify(workspace);
-  for (const key of privateKeys) {
-    if (Object.prototype.hasOwnProperty.call(workspace, key) || text.includes(`\"${key}\"`)) {
-      return fail('PROVIDER_PRIVATE_PAYLOAD_REJECTED', 'provider-private payload class entered Nursery evidence', { key });
-    }
+  if (new Set(providerRefs).size !== providerRefs.length) {
+    return fail('PROVIDER_LOCAL_IDENTITY_COLLAPSE', 'provider binding/session/instance/occupancy identities must remain distinct');
+  }
+  const canonicalSet = new Set(canonicalRefs);
+  const collision = PROVIDER_LOCAL_IDENTITY_FIELDS.find((field) => canonicalSet.has(active[field]));
+  if (collision) {
+    return fail('PROVIDER_CANONICAL_IDENTITY_COLLAPSE', 'provider-local execution identity collapsed into canonical identity', { providerField: collision, ref: active[collision] });
+  }
+  const privatePayload = findForbiddenPrivateKey(workspace);
+  if (privatePayload) {
+    return fail('PROVIDER_PRIVATE_PAYLOAD_REJECTED', 'provider-private payload class entered Nursery evidence', privatePayload);
   }
   return null;
 }
@@ -139,8 +212,7 @@ export function composePatient0Nursery({
   firstHomeEvidence,
   autobiographicalCheckpoint,
   shutdownReceipt,
-  returnProof,
-  androidEvidence = null
+  returnProof
 } = {}) {
   const providerFailure = validateProvider(providerWorkspace);
   if (providerFailure) return providerFailure;
@@ -219,12 +291,6 @@ export function composePatient0Nursery({
     }
   }
 
-  const androidRemoteVesselEligible = Boolean(
-    androidEvidence?.homePairingAccepted === true &&
-    androidEvidence?.homeReachabilityAccepted === true &&
-    androidEvidence?.desktopCanonicalHomeStable === true
-  );
-
   return {
     state: 'NURSERY_SYNTHETIC_PROOF_READY',
     code: 'ARRIVAL_TO_FIRST_HOME_RETURN_COMPOSED',
@@ -243,7 +309,7 @@ export function composePatient0Nursery({
     checkpointRef: autobiographicalCheckpoint.checkpointRef,
     conversationHeadRef: autobiographicalCheckpoint.conversationHeadRef,
     wakeLivedHome: true,
-    androidRemoteVesselEligible,
+    androidRemoteVesselEligible: false,
     protectedEffects: PATIENT0_NURSERY_EFFECT_BOUNDARY,
     syntheticOnly: true,
     personalContentIncluded: false

@@ -94,8 +94,8 @@
     {
       "path": "blueprint/process-factory/processes-conversation-and-interface.json",
       "mode": "100644",
-      "bytes": 9360,
-      "sha256": "181146a7b670ea93d9c0e1e07a374b6d1a414a05ddad5ad07b8efcefe883f4dd"
+      "bytes": 9281,
+      "sha256": "19474e4d7b115d6608e9088258e332a619061063f2e1e5d3125c0116f05edcee"
     },
     {
       "path": "blueprint/process-factory/processes-core.json",
