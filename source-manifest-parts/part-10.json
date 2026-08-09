@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/recovery-policy.mjs",
+      "mode": "100644",
+      "bytes": 12560,
+      "sha256": "a144d98aec68fefc9508788b7f26271842935d99ed160d94eb0e05e64ec79e7c"
+    },
+    {
+      "path": "src/core/registry.mjs",
+      "mode": "100644",
+      "bytes": 34556,
+      "sha256": "0ae9e3719f7d773b7209f72885380ce4a554ab212c7da51c26ee65dccee89fec"
+    },
+    {
+      "path": "src/core/repository-evidence.mjs",
+      "mode": "100644",
+      "bytes": 19367,
+      "sha256": "e5d2710183c8fd91652922eea8c3e02d05df98db0ea7ffb4e9e1d67d36f95b9e"
+    },
+    {
       "path": "src/core/resource-admission.mjs",
       "mode": "100644",
       "bytes": 8924,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 56987,
       "sha256": "4660b32dcc1e8bffb7294e42e39aea97f18bd37803e61bbfb4420e2e76c22ebe"
-    },
-    {
-      "path": "test/continuity-evolution-router.test.mjs",
-      "mode": "100644",
-      "bytes": 116934,
-      "sha256": "d1d7538f47d91028221d48eee7ba8e50acac32b423473cd58d2acc32f771c458"
-    },
-    {
-      "path": "test/core.test.mjs",
-      "mode": "100644",
-      "bytes": 7231,
-      "sha256": "f33948c44c7fa69cc818447c5b52e9c77c2c20a928889986c7c3dffaf79f9bd7"
-    },
-    {
-      "path": "test/daily-memory-dream.test.mjs",
-      "mode": "100644",
-      "bytes": 16619,
-      "sha256": "e8201d58199f0b84c940fcefdeeff0686b52509aec767a3cb38cb28f1204291f"
     }
   ]
 }
