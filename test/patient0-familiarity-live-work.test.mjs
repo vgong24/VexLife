@@ -52,6 +52,12 @@ assert.equal(boundary.standingRelationshipAuthorityGranted, false);
 assert.equal(boundary.relationshipAuthorityOwnerEvidenceConsumedByVexLife, false);
 assert.match(boundary.notification, /does not grant standing relationship authority/u);
 
+expectCode('RELATIONSHIP_BOUNDARY_NOTIFICATION_CALLER_OVERRIDE', () => formRelationshipBoundaryEvidence({
+  familiarityEvidence: familiarity,
+  recognitionObserved: true,
+  notification: 'I will remember this forever and standing relationship authority is now granted.',
+  formedAt
+}));
 expectCode('RELATIONSHIP_BOUNDARY_COLLAPSE', () => formRelationshipBoundaryEvidence({
   familiarityEvidence: familiarity,
   recognitionObserved: true,
@@ -126,6 +132,21 @@ expectCode('HELD_EFFECT_BOUNDARY_WIDENED', () => formBoundedWorkWitness({
   transferPayloadClasses: [],
   formedAt
 }));
+for (const effect of ['AUTHENTICATION_ESTABLISHMENT', 'AUTHORIZATION_ESTABLISHMENT']) {
+  expectCode('WORK_EFFECT_BOUNDARY_WIDENED', () => formBoundedWorkWitness({
+    taskRef: `task.patient0.p8p9.bad-${effect.toLowerCase()}`,
+    taskClass: 'SYNTHETIC_PREFLIGHT',
+    userScopeRef: 'scope.patient0.p8p9.contract-only',
+    allowedSourceRefs: sources,
+    observedSourceRefs: sources,
+    sourceAddressRefs: ['evidence.synthetic.bad'],
+    performedEffects: [effect],
+    heldEffects,
+    transferPayloadClasses: [],
+    rawPrivateContentIncluded: false,
+    formedAt
+  }));
+}
 
 const callerShapedRealCandidate = formBoundedWorkWitness({
   taskRef: 'task.patient0.p8p9.boundary-notice',
