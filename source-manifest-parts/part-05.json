@@ -32,6 +32,12 @@
       "sha256": "60e4398cd0c35a86a1e7b6797ca085fc41cd2e32341cfb0ec5446df252f3854e"
     },
     {
+      "path": "docs/PATIENT0-NURSERY.md",
+      "mode": "100644",
+      "bytes": 4551,
+      "sha256": "10e98b1d8b560550ee39436611b144fad9637ed9e7909e8cfb40adb6b946b793"
+    },
+    {
       "path": "docs/PLATFORM-ARCHITECTURE.md",
       "mode": "100644",
       "bytes": 3951,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 9551,
       "sha256": "c22665335377dfe25440dde530cb0af7e273cea6fcc5fa0f0984a3c97d7eeb48"
-    },
-    {
-      "path": "reference/browser/modules/dom.js",
-      "mode": "100644",
-      "bytes": 1472,
-      "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
     }
   ]
 }

@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/resource-admission.mjs",
+      "mode": "100644",
+      "bytes": 8924,
+      "sha256": "36e4b449574fbd2195254b6d3b56178202154f2ca8a41485f212e405c5fd45e2"
+    },
+    {
+      "path": "src/core/runtime-failure.mjs",
+      "mode": "100644",
+      "bytes": 17151,
+      "sha256": "d0b0e6775161695555c6139c479431a42d1e23a857c98f3772ea31533bc86e78"
+    },
+    {
       "path": "src/core/runtime-recovery.mjs",
       "mode": "100644",
       "bytes": 179477,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 16619,
       "sha256": "e8201d58199f0b84c940fcefdeeff0686b52509aec767a3cb38cb28f1204291f"
-    },
-    {
-      "path": "test/evaluated-rhythm-learning.test.mjs",
-      "mode": "100644",
-      "bytes": 1487,
-      "sha256": "9477a79e35a1cfc58e0dba2ba37eba8d978c9a4461a3eb26fb2a90a35d82e55b"
-    },
-    {
-      "path": "test/evolution.test.mjs",
-      "mode": "100644",
-      "bytes": 3808,
-      "sha256": "e3d29d1ccd574875a7c05c3d09b8c8ef32fa75dcb0b24534d0fc9d5e906b98f7"
     }
   ]
 }

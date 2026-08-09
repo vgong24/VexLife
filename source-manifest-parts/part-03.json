@@ -52,8 +52,8 @@
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 37808,
-      "sha256": "dbe3fd30bf6290f2387b09fcda9ad73020a6fea5ba16184320d0f1e7c2c7b5f9"
+      "bytes": 38579,
+      "sha256": "d8cb3fe3038422bea5c1501c57c427ad79f91af3ad76f40618e8409e1d0bf868"
     },
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
@@ -94,8 +94,8 @@
     {
       "path": "blueprint/process-factory/processes-conversation-and-interface.json",
       "mode": "100644",
-      "bytes": 6475,
-      "sha256": "6f5cd28263a94381c9bc9709b70b107dc0f076b716dab07dd3ad3a8baf309022"
+      "bytes": 9281,
+      "sha256": "19474e4d7b115d6608e9088258e332a619061063f2e1e5d3125c0116f05edcee"
     },
     {
       "path": "blueprint/process-factory/processes-core.json",

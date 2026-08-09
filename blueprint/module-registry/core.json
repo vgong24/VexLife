@@ -1107,5 +1107,25 @@
       "docs/G05-RUNTIME-AUTHORITY-SUBSTRATE.md",
       "src/core/scheduled-daily-autonomy.mjs"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.patient0-nursery",
+    "path": "src/core/patient0-nursery.mjs",
+    "role": "Pure content-absent Patient-0 Nursery composition that consumes accepted provider/Foundation evidence and existing VexLife continuity meaning without owning Home, Memory, Security, Lineage or VexInterface semantics.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.score-context-continuity"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/patient0-nursery.test.mjs"
+    ],
+    "changeMap": [
+      "docs/PATIENT0-NURSERY.md",
+      "blueprint/feature-registry.json",
+      "blueprint/process-factory/processes-conversation-and-interface.json"
+    ]
   }
 ]

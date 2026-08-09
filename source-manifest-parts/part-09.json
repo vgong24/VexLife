@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/impact.mjs",
+      "mode": "100644",
+      "bytes": 2182,
+      "sha256": "ff17dd8fc7281c6399d6bc172fc5d28df2b9a5262bfd26a2340e67f9430798f7"
+    },
+    {
       "path": "src/core/implementation-plan.mjs",
       "mode": "100644",
       "bytes": 5655,
@@ -92,6 +98,12 @@
       "sha256": "d966f66237b1b2f90581ed4abcdb571fdf10778d2bfde565ce5f24d9541202b4"
     },
     {
+      "path": "src/core/patient0-nursery.mjs",
+      "mode": "100644",
+      "bytes": 13648,
+      "sha256": "faff89d6a1b7fdb86dc312f7755a81d75dc75679db139a53627036ccd9c1db5a"
+    },
+    {
       "path": "src/core/platform-generator.mjs",
       "mode": "100644",
       "bytes": 6677,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 19367,
       "sha256": "e5d2710183c8fd91652922eea8c3e02d05df98db0ea7ffb4e9e1d67d36f95b9e"
-    },
-    {
-      "path": "src/core/resource-admission.mjs",
-      "mode": "100644",
-      "bytes": 8924,
-      "sha256": "36e4b449574fbd2195254b6d3b56178202154f2ca8a41485f212e405c5fd45e2"
-    },
-    {
-      "path": "src/core/runtime-failure.mjs",
-      "mode": "100644",
-      "bytes": 17151,
-      "sha256": "d0b0e6775161695555c6139c479431a42d1e23a857c98f3772ea31533bc86e78"
     }
   ]
 }
