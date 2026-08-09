@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "vexlife.patient0.familiarity-live-work.synthetic-preflight/v1",
+  "schemaVersion": "vexlife.patient0.familiarity-live-work.synthetic-preflight/v2",
   "allocationRef": "github.issue.vexlife.36",
   "scopeRef": "scope.patient0.p8p9.contract-only",
   "allowedSourceRefs": [
@@ -19,10 +19,13 @@
     "standingRelationshipAuthorityState": "HELD"
   },
   "workClass": "SYNTHETIC_PREFLIGHT",
-  "expectedThresholds": {
-    "p8": "FAMILIARITY_AND_RELATIONSHIP_BOUNDARY_JUDGMENT_PROVEN",
-    "p9": "NOT_YET_PROVEN"
+  "expectedCandidateStates": {
+    "p8": "P8_CANDIDATE_READY_FOR_EXTERNAL_ASSURANCE",
+    "p9": "P9_CANDIDATE_INCOMPLETE"
   },
+  "finalStageDispositionMintedByVexLife": false,
+  "externalSourceVerificationRequired": true,
+  "freshIndependentAssuranceRequired": true,
   "heldEffects": [
     "durableMemoryPromotion",
     "relationshipStandingAuthority",
