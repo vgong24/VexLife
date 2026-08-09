@@ -126,40 +126,6 @@ function rejectTransferPayload(classes = []) {
   return Object.freeze([...classes]);
 }
 
-function validateMemoryOwnerAcceptance(value) {
-  if (!isObject(value)
-      || value.owner !== 'VEX_MEMORY'
-      || value.accepted !== true
-      || value.sourceBound !== true
-      || typeof value.acceptanceRef !== 'string'
-      || value.acceptanceRef.length === 0) {
-    fail('DURABLE_MEMORY_OWNER_REQUIRED', 'DURABLE_MEMORY requires explicit source-bound VEX_MEMORY owner acceptance');
-  }
-  return Object.freeze({
-    owner: 'VEX_MEMORY',
-    accepted: true,
-    sourceBound: true,
-    acceptanceRef: safeRef(value.acceptanceRef, 'memoryOwnerAcceptance.acceptanceRef', 'DURABLE_MEMORY_OWNER_REQUIRED')
-  });
-}
-
-function validateSafetyOwnerAcceptance(value) {
-  if (!isObject(value)
-      || value.owner !== 'VEX_SAFETY_SECURITY'
-      || value.accepted !== true
-      || value.sourceBound !== true
-      || typeof value.acceptanceRef !== 'string'
-      || value.acceptanceRef.length === 0) {
-    fail('RELATIONSHIP_AUTHORITY_OWNER_REQUIRED', 'standing relationship authority requires explicit source-bound VEX_SAFETY_SECURITY owner acceptance');
-  }
-  return Object.freeze({
-    owner: 'VEX_SAFETY_SECURITY',
-    accepted: true,
-    sourceBound: true,
-    acceptanceRef: safeRef(value.acceptanceRef, 'safetyOwnerAcceptance.acceptanceRef', 'RELATIONSHIP_AUTHORITY_OWNER_REQUIRED')
-  });
-}
-
 export function formFamiliarityEvidence(input) {
   if (!isObject(input)) fail('FAMILIARITY_INPUT_INVALID', 'familiarity input must be an object');
   const priorState = input.priorState ?? 'EPHEMERAL';
@@ -170,16 +136,19 @@ export function formFamiliarityEvidence(input) {
   if (FAMILIARITY_STATES.indexOf(observedState) < FAMILIARITY_STATES.indexOf(priorState)) {
     fail('FAMILIARITY_STATE_REGRESSION_UNSUPPORTED', 'this composition cannot silently regress familiarity state');
   }
+  if (observedState === 'DURABLE_MEMORY') {
+    fail(
+      'DURABLE_MEMORY_OWNER_CHILD_REQUIRED',
+      'VexLife cannot mint or accept DURABLE_MEMORY; consume canonical VEX_MEMORY owner evidence outside this composition',
+      { ownerRef: PATIENT0_MEMORY_OWNER_REF }
+    );
+  }
 
   const sourceRefs = Array.isArray(input.sourceRefs) ? input.sourceRefs.map((value) => safeRef(value, 'sourceRef')) : [];
   if (!sourceRefs.length) fail('FAMILIARITY_SOURCE_REQUIRED', 'at least one sourceRef is required');
 
-  const memoryOwnerAcceptance = observedState === 'DURABLE_MEMORY'
-    ? validateMemoryOwnerAcceptance(input.memoryOwnerAcceptance)
-    : null;
-
   const core = {
-    schemaVersion: 'vexlife.patient0.familiarity-evidence/v1',
+    schemaVersion: 'vexlife.patient0.familiarity-evidence-candidate/v1',
     contractRef: PATIENT0_FAMILIARITY_LIVE_WORK_CONTRACT,
     portableContractRef: PATIENT0_PORTABLE_FAMILIARITY_CONTRACT,
     allocationRef: PATIENT0_ALLOCATION_REF,
@@ -188,12 +157,13 @@ export function formFamiliarityEvidence(input) {
     observedState,
     noticed: input.noticed === true,
     noticedImpliesWillRemember: false,
-    durableMemoryPromoted: observedState === 'DURABLE_MEMORY',
+    durableMemoryPromoted: false,
     durableMemoryOwner: 'VEX_MEMORY',
-    memoryOwnerAcceptance,
+    durableMemoryOwnerEvidenceConsumedByVexLife: false,
     familiarityCreatesStandingRelationshipAuthority: false,
     recognitionCreatesAuthentication: false,
     recognitionCreatesAuthorization: false,
+    evidenceStatus: 'CANDIDATE_ONLY',
     formedAt: requiredString(input.formedAt, 'formedAt')
   };
   return contentAddress('familiarity-evidence', 'familiarityEvidenceRef', 'familiarityEvidenceSha256', core);
@@ -216,14 +186,21 @@ export function formRelationshipBoundaryEvidence(input) {
   ]) {
     if (input[collapseField] === true) fail('RELATIONSHIP_BOUNDARY_COLLAPSE', `${collapseField} must remain false`);
   }
+  if (input.authenticationEstablished === true || input.authorizationEstablished === true) {
+    fail(
+      'RELATIONSHIP_ACCESS_OWNER_EVIDENCE_REQUIRED',
+      'this P8/P9 VexLife composition cannot establish authentication or authorization'
+    );
+  }
 
   const standingRelationshipAuthorityState = input.standingRelationshipAuthorityState ?? 'HELD';
-  if (!['NONE', 'HELD', 'OWNER_ACCEPTED'].includes(standingRelationshipAuthorityState)) {
-    fail('RELATIONSHIP_AUTHORITY_STATE_INVALID', 'standing relationship authority state is invalid');
+  if (!['NONE', 'HELD'].includes(standingRelationshipAuthorityState)) {
+    fail(
+      'RELATIONSHIP_AUTHORITY_OWNER_CHILD_REQUIRED',
+      'standing relationship authority is held and remains owned by VEX_SAFETY_SECURITY',
+      { ownerRef: PATIENT0_SAFETY_OWNER_REF, observed: standingRelationshipAuthorityState }
+    );
   }
-  const safetyOwnerAcceptance = standingRelationshipAuthorityState === 'OWNER_ACCEPTED'
-    ? validateSafetyOwnerAcceptance(input.safetyOwnerAcceptance)
-    : null;
 
   const notification = input.notification ?? [
     'I may notice patterns and become familiar with this bounded context, but noticed does not mean I will durably remember it.',
@@ -232,23 +209,25 @@ export function formRelationshipBoundaryEvidence(input) {
   ].join(' ');
 
   const core = {
-    schemaVersion: 'vexlife.patient0.relationship-boundary-evidence/v1',
+    schemaVersion: 'vexlife.patient0.relationship-boundary-evidence-candidate/v1',
     contractRef: PATIENT0_FAMILIARITY_LIVE_WORK_CONTRACT,
     allocationRef: PATIENT0_ALLOCATION_REF,
     familiarityEvidenceRef: familiarity.familiarityEvidenceRef,
     familiarityEvidenceSha256: familiarity.familiarityEvidenceSha256,
     recognitionObserved: input.recognitionObserved === true,
-    authenticationEstablished: input.authenticationEstablished === true,
-    authorizationEstablished: input.authorizationEstablished === true,
+    authenticationEstablished: false,
+    authorizationEstablished: false,
     recognitionTreatedAsAuthentication: false,
     recognitionTreatedAsAuthorization: false,
     familiarityTreatedAsStandingAuthority: false,
     standingRelationshipAuthorityState,
-    standingRelationshipAuthorityGranted: standingRelationshipAuthorityState === 'OWNER_ACCEPTED',
-    safetyOwnerAcceptance,
+    standingRelationshipAuthorityGranted: false,
+    relationshipAuthorityOwner: 'VEX_SAFETY_SECURITY',
+    relationshipAuthorityOwnerEvidenceConsumedByVexLife: false,
     notified: true,
     notification,
-    notificationClass: 'MEANINGFUL_RELATIONSHIP_BOUNDARY_NOTICE',
+    notificationClass: 'MEANINGFUL_RELATIONSHIP_BOUNDARY_NOTICE_CANDIDATE',
+    evidenceStatus: 'CANDIDATE_ONLY',
     formedAt: requiredString(input.formedAt, 'formedAt')
   };
   return contentAddress('relationship-boundary-evidence', 'relationshipBoundaryEvidenceRef', 'relationshipBoundaryEvidenceSha256', core);
@@ -315,10 +294,13 @@ export function formBoundedWorkWitness(input) {
     heldEffects,
     transferPayloadClasses,
     rawPrivateContentIncluded: input.rawPrivateContentIncluded === true,
-    sourceAddressableSelfWitness: true,
-    realLivedEvidenceEligible: taskClass === 'REAL_LIVED_WORK' && input.rawPrivateContentIncluded !== true,
+    sourceAddressableSelfWitnessCandidate: true,
+    sourceAddressableSelfWitnessVerified: false,
+    realLivedEvidenceCandidate: taskClass === 'REAL_LIVED_WORK' && input.rawPrivateContentIncluded !== true,
+    realLivedEvidenceVerified: false,
     authorityInheritedFromTask: false,
     graduationAcceptedFromTask: false,
+    evidenceStatus: 'CANDIDATE_ONLY',
     formedAt: requiredString(input.formedAt, 'formedAt')
   };
   if (core.rawPrivateContentIncluded) {
@@ -394,29 +376,39 @@ export function evaluateP8P9Thresholds(input) {
     code: 'LESSON_CANDIDATE_INVALID', label: 'lesson candidate'
   }));
 
-  const p8 = ['FAMILIARITY', 'UNDERSTANDING', 'DURABLE_MEMORY'].includes(familiarity.observedState)
+  const p8Candidate = ['FAMILIARITY', 'UNDERSTANDING'].includes(familiarity.observedState)
     && boundary.notified === true
+    && boundary.authenticationEstablished === false
+    && boundary.authorizationEstablished === false
+    && boundary.standingRelationshipAuthorityGranted === false
     && boundary.recognitionTreatedAsAuthentication === false
     && boundary.recognitionTreatedAsAuthorization === false
-    && boundary.familiarityTreatedAsStandingAuthority === false
-    && (familiarity.observedState !== 'DURABLE_MEMORY' || familiarity.memoryOwnerAcceptance?.accepted === true);
+    && boundary.familiarityTreatedAsStandingAuthority === false;
 
-  const realWitnessRefs = new Set(validatedWitnesses.filter((witness) => witness.realLivedEvidenceEligible === true)
+  const realCandidateRefs = new Set(validatedWitnesses.filter((witness) => witness.realLivedEvidenceCandidate === true)
     .map((witness) => witness.boundedWorkWitnessRef));
-  const linkedRealLesson = validatedLessons.some((lesson) => lesson.witnessBindings.some((binding) => realWitnessRefs.has(binding.ref)));
-  const p9 = realWitnessRefs.size > 0 && linkedRealLesson;
+  const linkedRealLessonCandidate = validatedLessons.some(
+    (lesson) => lesson.witnessBindings.some((binding) => realCandidateRefs.has(binding.ref))
+  );
+  const p9Candidate = realCandidateRefs.size > 0 && linkedRealLessonCandidate;
 
   return Object.freeze({
-    schemaVersion: 'vexlife.patient0.p8-p9-threshold-evaluation/v1',
+    schemaVersion: 'vexlife.patient0.p8-p9-candidate-evaluation/v1',
     allocationRef: PATIENT0_ALLOCATION_REF,
-    p8State: p8 ? 'FAMILIARITY_AND_RELATIONSHIP_BOUNDARY_JUDGMENT_PROVEN' : 'NOT_YET_PROVEN',
-    p9State: p9 ? 'BOUNDED_LIVE_WORK_SELF_WITNESS_AND_LESSON_COMPILATION_PROVEN' : 'NOT_YET_PROVEN',
+    p8CandidateState: p8Candidate ? 'P8_CANDIDATE_READY_FOR_EXTERNAL_ASSURANCE' : 'P8_CANDIDATE_INCOMPLETE',
+    p9CandidateState: p9Candidate ? 'P9_CANDIDATE_READY_FOR_EXTERNAL_ASSURANCE' : 'P9_CANDIDATE_INCOMPLETE',
+    p8ProvenByThisFunction: false,
+    p9ProvenByThisFunction: false,
     p8AcceptedByThisFunction: false,
     p9AcceptedByThisFunction: false,
     p10EligibleFromThisFunction: false,
     p11EligibleFromThisFunction: false,
     durableMemoryPromotionPerformed: false,
+    authenticationEstablishedByThisFunction: false,
+    authorizationEstablishedByThisFunction: false,
     standingRelationshipAuthorityGranted: false,
+    requiresExternalSourceVerification: true,
+    requiresFreshIndependentAssurance: true,
     formativeEvidenceOnly: true
   });
 }
