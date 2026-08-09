@@ -201,8 +201,14 @@ export function formRelationshipBoundaryEvidence(input) {
       { ownerRef: PATIENT0_SAFETY_OWNER_REF, observed: standingRelationshipAuthorityState }
     );
   }
+  if (Object.hasOwn(input, 'notification')) {
+    fail(
+      'RELATIONSHIP_BOUNDARY_NOTIFICATION_CALLER_OVERRIDE',
+      'the P8 relationship-boundary notice is source-owned and cannot be replaced by caller prose'
+    );
+  }
 
-  const notification = input.notification ?? [
+  const notification = [
     'I may notice patterns and become familiar with this bounded context, but noticed does not mean I will durably remember it.',
     'Familiarity does not grant standing relationship authority, and recognition does not become authentication or authorization.',
     'Durable memory requires explicit Vex Memory owner acceptance; relationship authority remains separately governed by Vex Safety/Security.'
@@ -267,6 +273,8 @@ export function formBoundedWorkWitness(input) {
   const performedEffects = Array.isArray(input.performedEffects) ? [...input.performedEffects] : [];
   const forbiddenEffects = performedEffects.filter((effect) => [
     'DURABLE_MEMORY_PROMOTION',
+    'AUTHENTICATION_ESTABLISHMENT',
+    'AUTHORIZATION_ESTABLISHMENT',
     'RELATIONSHIP_STANDING_AUTHORITY_GRANT',
     'PERSONAL_DATA_SCOPE_WIDENING',
     'UNBOUNDED_FILE_OR_REPOSITORY_ACCESS',
