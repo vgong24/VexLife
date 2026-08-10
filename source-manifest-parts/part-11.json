@@ -2,6 +2,30 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/browser.test.mjs",
+      "mode": "100644",
+      "bytes": 7987,
+      "sha256": "fccdd090b99f3e7c28809db36bafc0461b5bbdcacca771adf1f961fd88476813"
+    },
+    {
+      "path": "test/build-admission.test.mjs",
+      "mode": "100644",
+      "bytes": 28926,
+      "sha256": "c34588bae9fc7f7c7a38035c8d1e798ecf7af73e10bab5fb65986b578d563c61"
+    },
+    {
+      "path": "test/capability.test.mjs",
+      "mode": "100644",
+      "bytes": 1797,
+      "sha256": "92df93aefc984c19f8f9484c7c3a8df4dda0d7e01e4dfdac752615e6ab94db17"
+    },
+    {
+      "path": "test/check-result.test.mjs",
+      "mode": "100644",
+      "bytes": 2127,
+      "sha256": "574c01e5a9f5e5eefacc2ef35d4dd3944a6cbed87f1e6c965d71e7983433210a"
+    },
+    {
       "path": "test/concern-watch.test.mjs",
       "mode": "100644",
       "bytes": 56987,
@@ -36,6 +60,12 @@
       "mode": "100644",
       "bytes": 3808,
       "sha256": "e3d29d1ccd574875a7c05c3d09b8c8ef32fa75dcb0b24534d0fc9d5e906b98f7"
+    },
+    {
+      "path": "test/experience-review-kit.test.mjs",
+      "mode": "100644",
+      "bytes": 7959,
+      "sha256": "927b00e70d7f000f0a79cdbe6664fb49c44aea97d3bd09422441949a5fc0a30f"
     },
     {
       "path": "test/experience.test.mjs",
@@ -114,36 +144,6 @@
       "mode": "100644",
       "bytes": 3627,
       "sha256": "54abd63988c9c8eb35a06cc590d29d9dcda2a43ded37bab1c8cd24f5e75f785f"
-    },
-    {
-      "path": "test/intent-completion-verifier.test.mjs",
-      "mode": "100644",
-      "bytes": 23417,
-      "sha256": "7fc06f3b73338fec2e2e3ab94495fd1c48cf76383e392ad19e445294235fbe6d"
-    },
-    {
-      "path": "test/intent-scheduler.test.mjs",
-      "mode": "100644",
-      "bytes": 66828,
-      "sha256": "cca892ac718148d1410b3381d7472310f576e63d567a0970208c42c11ad84379"
-    },
-    {
-      "path": "test/intent-workgraph.test.mjs",
-      "mode": "100644",
-      "bytes": 31577,
-      "sha256": "2c5e76b50ec7f810b43800cc831b613673b7e636e910b0bfa45194af9af27656"
-    },
-    {
-      "path": "test/lived-companion.test.mjs",
-      "mode": "100644",
-      "bytes": 77104,
-      "sha256": "a604655ecfed7ec73f1ed3487fc96546ecf606d78e8fea641b0ef0a6599df83b"
-    },
-    {
-      "path": "test/model-provision.test.mjs",
-      "mode": "100644",
-      "bytes": 1971,
-      "sha256": "2975c38e03eb343680a51011de95e494c8f4b30defa0ad02329c28ebde719949"
     }
   ]
 }

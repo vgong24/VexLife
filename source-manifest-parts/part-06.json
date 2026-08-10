@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "reference/browser/modules/browser-bundle.js",
+      "mode": "100644",
+      "bytes": 1305,
+      "sha256": "4356abfe264acbff90800ed872ab1a184f11314d96300836a420fb1fef59e2aa"
+    },
+    {
       "path": "reference/browser/modules/chat-controller.js",
       "mode": "100644",
       "bytes": 14195,
@@ -18,6 +24,12 @@
       "mode": "100644",
       "bytes": 1472,
       "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
+    },
+    {
+      "path": "reference/browser/modules/experience-review-adapter.js",
+      "mode": "100644",
+      "bytes": 8335,
+      "sha256": "0b9e853aa940d37dd1b35ed8dac5451af527b4901c12373a91919c61d5349c12"
     },
     {
       "path": "reference/browser/modules/guide-controller.js",
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 13350,
       "sha256": "f9090d3a2ac5755ab4fbe625b56eef8f361182ab962e62d2c96f07338e5c1634"
-    },
-    {
-      "path": "scripts/evolution-simulate.mjs",
-      "mode": "100644",
-      "bytes": 47206,
-      "sha256": "6d8deaf32773ca7ee62832dc3b673f8eca219218932b8885f9be8ca79bd3f91d"
-    },
-    {
-      "path": "scripts/evolution-status.mjs",
-      "mode": "100644",
-      "bytes": 2036,
-      "sha256": "4da487d45026db20feeb5bf561b2413423779065edce86ede9388093c7385217"
     }
   ]
 }

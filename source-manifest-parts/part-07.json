@@ -2,10 +2,28 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/evolution-simulate.mjs",
+      "mode": "100644",
+      "bytes": 47206,
+      "sha256": "6d8deaf32773ca7ee62832dc3b673f8eca219218932b8885f9be8ca79bd3f91d"
+    },
+    {
+      "path": "scripts/evolution-status.mjs",
+      "mode": "100644",
+      "bytes": 2036,
+      "sha256": "4da487d45026db20feeb5bf561b2413423779065edce86ede9388093c7385217"
+    },
+    {
       "path": "scripts/evolution-summary.mjs",
       "mode": "100644",
       "bytes": 725,
       "sha256": "c6ac13ab39f729bfa6515fd77087e3c4ed848537dc6a03ba35137ef2c4ea5979"
+    },
+    {
+      "path": "scripts/experience-review.mjs",
+      "mode": "100644",
+      "bytes": 4993,
+      "sha256": "088ccba996f389ab1fbdf79cd6fcfa2c58f42521c62aa37d27039361245bce8e"
     },
     {
       "path": "scripts/feature-check.mjs",
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 317,
       "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
-    },
-    {
-      "path": "scripts/scheduled-daily-autonomy.mjs",
-      "mode": "100644",
-      "bytes": 15911,
-      "sha256": "16c6ea0df748768dcce359a7c61087906d86c6bb075a3424b1b2ec245d08e14f"
-    },
-    {
-      "path": "scripts/scheduler-check.mjs",
-      "mode": "100644",
-      "bytes": 5149,
-      "sha256": "bd738bf39c00d23a08aa8e5a1e5886c4d7cfc87b280f2b2da634526538964939"
-    },
-    {
-      "path": "scripts/scheduler-simulate.mjs",
-      "mode": "100644",
-      "bytes": 32557,
-      "sha256": "355c3e03d6bc8f7530dfda8cc09fe67f281438a7aedd75ff5a0767586d566b50"
     }
   ]
 }
