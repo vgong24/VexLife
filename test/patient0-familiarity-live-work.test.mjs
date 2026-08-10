@@ -60,6 +60,20 @@ expectCode('RELATIONSHIP_BOUNDARY_NOTIFICATION_CALLER_OVERRIDE', () => formRelat
   formedAt
 }));
 
+const unnotedFamiliarity = formFamiliarityEvidence({
+  priorState: 'EPHEMERAL', observedState: 'FAMILIARITY', noticed: false, sourceRefs: sources, formedAt
+});
+const unnotedBoundary = formRelationshipBoundaryEvidence({
+  familiarityEvidence: unnotedFamiliarity, recognitionObserved: true, formedAt
+});
+const unnotedEvaluation = evaluateP8P9Thresholds({
+  familiarityEvidence: unnotedFamiliarity,
+  relationshipBoundaryEvidence: unnotedBoundary,
+  workWitnesses: [],
+  lessonCandidates: []
+});
+assert.equal(unnotedEvaluation.p8CandidateState, 'P8_CANDIDATE_INCOMPLETE');
+
 
 const forgedBoundaryCore = {
   ...boundary,
@@ -233,6 +247,24 @@ for (const payloadClass of ['HOME_DATA', 'PRIVATE_AUTOBIOGRAPHY_ALIAS', 'CREDENT
   }));
 }
 
+for (const effects of [[], ['RELATIONSHIP_BOUNDARY_NOTIFICATION']]) {
+  expectCode('REAL_WORK_REQUIRED_EFFECT_MISSING', () => formBoundedWorkWitness({
+    taskRef: `task.patient0.p8p9.missing-lived-turn-${effects.length}`,
+    taskClass: 'REAL_LIVED_WORK',
+    userScopeRef: 'scope.patient0.p8p9.contract-only',
+    allowedSourceRefs: sources,
+    observedSourceRefs: sources,
+    sourceAddressRefs: ['evidence.synthetic.missing-lived-turn'],
+    conversationHeadBefore: headA,
+    conversationHeadAfter: headB,
+    performedEffects: effects,
+    heldEffects,
+    transferPayloadClasses: [],
+    rawPrivateContentIncluded: false,
+    formedAt
+  }));
+}
+
 const callerShapedRealCandidate = formBoundedWorkWitness({
   taskRef: 'task.patient0.p8p9.boundary-notice',
   taskClass: 'REAL_LIVED_WORK',
@@ -257,12 +289,23 @@ const syntheticLesson = compileLessonCandidate({
   scopeAndLimits: 'Contract shape only; not lived evidence.',
   formedAt
 });
+const heldRealLesson = compileLessonCandidate({
+  workWitnesses: [callerShapedRealCandidate],
+  lessonSummary: 'Bounded familiarity must remain source-scoped and authority-separated.',
+  scopeAndLimits: 'Candidate only; repeat and transfer evidence are still pending.',
+  formedAt
+});
+assert.equal(heldRealLesson.reusableCapabilityCandidateState, 'HELD_PENDING_REPEAT_TRANSFER');
+
 const callerShapedRealLesson = compileLessonCandidate({
   workWitnesses: [callerShapedRealCandidate],
   lessonSummary: 'Bounded familiarity must remain source-scoped and authority-separated.',
   scopeAndLimits: 'Candidate only; source truth and external Assurance remain required.',
+  repeatEvidenceRefs: ['evidence.repeat.patient0.p8p9'],
+  transferEvidenceRefs: ['evidence.transfer.patient0.p8p9'],
   formedAt
 });
+assert.equal(callerShapedRealLesson.reusableCapabilityCandidateState, 'ELIGIBLE_CANDIDATE');
 
 const syntheticEvaluation = evaluateP8P9Thresholds({
   familiarityEvidence: familiarity,
@@ -274,6 +317,14 @@ assert.equal(syntheticEvaluation.p8CandidateState, 'P8_CANDIDATE_READY_FOR_EXTER
 assert.equal(syntheticEvaluation.p9CandidateState, 'P9_CANDIDATE_INCOMPLETE');
 assert.equal(syntheticEvaluation.p8ProvenByThisFunction, false);
 assert.equal(syntheticEvaluation.p9ProvenByThisFunction, false);
+
+const heldRealEvaluation = evaluateP8P9Thresholds({
+  familiarityEvidence: familiarity,
+  relationshipBoundaryEvidence: boundary,
+  workWitnesses: [callerShapedRealCandidate],
+  lessonCandidates: [heldRealLesson]
+});
+assert.equal(heldRealEvaluation.p9CandidateState, 'P9_CANDIDATE_INCOMPLETE');
 
 const callerShapedRealEvaluation = evaluateP8P9Thresholds({
   familiarityEvidence: familiarity,

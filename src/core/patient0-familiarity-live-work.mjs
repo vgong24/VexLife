@@ -446,6 +446,12 @@ export function formBoundedWorkWitness(input) {
       allowed: ALLOWED_PERFORMED_EFFECTS
     });
   }
+  if (taskClass === 'REAL_LIVED_WORK' && !performedEffects.includes('LIVED_COMPANION_TURN_APPEND')) {
+    fail(
+      'REAL_WORK_REQUIRED_EFFECT_MISSING',
+      'real lived work requires an actual lived-companion turn append effect'
+    );
+  }
 
   const core = {
     schemaVersion: 'vexlife.patient0.bounded-work-witness/v1',
@@ -532,6 +538,7 @@ export function evaluateP8P9Thresholds(input) {
   const validatedLessons = lessonCandidates.map((lesson) => validateLessonCandidate(lesson, witnessByRef));
 
   const p8Candidate = ['FAMILIARITY', 'UNDERSTANDING'].includes(familiarity.observedState)
+    && familiarity.noticed === true
     && boundary.notified === true
     && boundary.authenticationEstablished === false
     && boundary.authorizationEstablished === false
@@ -543,7 +550,8 @@ export function evaluateP8P9Thresholds(input) {
   const realCandidateRefs = new Set(validatedWitnesses.filter((witness) => witness.realLivedEvidenceCandidate === true)
     .map((witness) => witness.boundedWorkWitnessRef));
   const linkedRealLessonCandidate = validatedLessons.some(
-    (lesson) => lesson.witnessBindings.some((binding) => realCandidateRefs.has(binding.ref))
+    (lesson) => lesson.reusableCapabilityCandidateState === 'ELIGIBLE_CANDIDATE'
+      && lesson.witnessBindings.some((binding) => realCandidateRefs.has(binding.ref))
   );
   const p9Candidate = realCandidateRefs.size > 0 && linkedRealLessonCandidate;
 
