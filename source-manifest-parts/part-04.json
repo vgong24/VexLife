@@ -4,20 +4,20 @@
     {
       "path": "blueprint/strings/en.json",
       "mode": "100644",
-      "bytes": 9327,
-      "sha256": "11389c7bc8f19bbbd289aff406bb0b54268bf79dfa4bd3a8d3e4ecf898e14b26"
+      "bytes": 9653,
+      "sha256": "ed2cdb6f7907032e55bae14a4ac460d28c3b6bfc26eccf1fb5665cd610b6b532"
     },
     {
       "path": "blueprint/strings/ja.json",
       "mode": "100644",
-      "bytes": 11186,
-      "sha256": "51731af4bfacda49c7af4423f5da81e95d91eae665a64e72eb4c954593789859"
+      "bytes": 11627,
+      "sha256": "f4c29b70403318d9d26bb1f3642fec0549bcdf57094624295a23237ae513b62d"
     },
     {
       "path": "blueprint/strings/zh.json",
       "mode": "100644",
-      "bytes": 8837,
-      "sha256": "b7eac38573565038ad1d244e23f0412b5310e20f62d6359a8686b7e2487a52f7"
+      "bytes": 9173,
+      "sha256": "ed93b2ad390131c8b573ce9227cd79aedff5676be9350224c56236466e9fc3f2"
     },
     {
       "path": "blueprint/vexlife.blueprint.json",
@@ -77,7 +77,7 @@
       "path": "docs/DESKTOP-FIRST-EXECUTION-WAVE.md",
       "mode": "100644",
       "bytes": 1592,
-      "sha256": "9b90b23b93ac51fd9d71f3699abd5966bb0d38f3553a502e5646ddf0a3ef0ca5"
+      "sha256": "9b90b23b93c51fd9d71f3699abd5966bb0d38f3553a502e5646ddf0a3ef0ca5"
     },
     {
       "path": "docs/DEVICE-FAMILY-SCORE-RHYTHM.md",
