@@ -18,18 +18,10 @@ authority.
 
 ## Decisions and changes
 
-Normal changes use a branch and pull request. Required semantic validation
-evidence must pass, discussion must be resolved, and protected paths require
-code-owner review. GitHub-hosted automation is an accepted evidence producer
-when it actually executes; it is not the semantic identity of proof. Where the
-source-managed provider-neutral validation contract is accepted, an exact
-qualified provider may produce equivalent evidence for the same required proof
-cells. Provider or runner unavailability never becomes PASS, platform-specific
-proof may not be impersonated, and repository rules that require named status
-contexts remain separately binding until explicitly changed.
-
-Reviewers seek consensus. If material disagreement remains, the maintainer
-records the decision and its rationale.
+Normal changes use a branch and pull request. Required automation must pass,
+discussion must be resolved, and protected paths require code-owner review.
+Reviewers seek consensus. If material disagreement remains, the maintainer records
+the decision and its rationale.
 
 The following require explicit maintainer approval:
 
@@ -37,55 +29,17 @@ The following require explicit maintainer approval:
 - security disclosure, permission, capability, or Home Bridge changes;
 - blueprint contract adoption and platform conformance claims;
 - releases, package publication, repository visibility, or public disclosure;
-- changes to CI, provenance, source manifests, validation-evidence policy, or
-  protected release paths.
+- changes to CI, provenance, source manifests, or protected release paths.
 
-## Provider-neutral validation evidence
-
-VexLife preserves one semantic acceptance matrix even when evidence transport
-changes.
-
-```text
-equivalent evidence provider != weaker proof
-hosted runner unavailable != semantic validation passed
-provider identity != proof semantics
-currentness != authority
-```
-
-The canonical mandatory semantic checks remain source-managed by Build Health.
-A provider-neutral validation bundle may aggregate those exact current check
-receipts with required platform proof cells only when every producer profile is
-current and qualified, every receipt is exact-source-addressable, and the bundle
-is bound to the exact repository, base, candidate head/tree, tested checkout,
-source-tree fingerprint, runtime/platform identity, and DCO commit set.
-
-A one-shot local producer may satisfy only the platform cells that it actually
-ran on the qualified platform. Windows evidence does not satisfy Linux evidence;
-macOS evidence does not satisfy either Linux or Windows platform proof. Local
-evidence does not manufacture or impersonate a GitHub status context.
-
-Accepted evidence may be reused only when an independently source-addressable
-currentness receipt proves that every declared dependency binding remains exact.
-Time, cost, or transport outage alone never promotes missing evidence to current.
-
-Validation evidence is evidence only. It grants no source mutation, review,
-approval, ready, merge, publication, host, or execution authority.
-
-A change to this validation policy cannot self-authorize using the policy it is
-introducing. Its first admission requires the predecessor governance rules,
-explicit maintainer approval, complete equivalent evidence, and fresh
-Independent Assurance. Any later policy change follows the then-current
-governance and validation rules.
+Security reports and conduct cases use confidential processes. They are not
+decided in public issue threads.
 
 ## Foundation and release gates
 
 The default branch is changed through pull requests only. Force pushes, history
 rewrites, automatic publication, and direct-main feature work are not accepted.
-Branch protection should require the foundation and DCO checks, code-owner
-review, stale-approval dismissal, and resolved conversations where those
-enforcement adapters are available. Source-managed semantic acceptance
-requirements remain authoritative even when a hosted status provider is
-temporarily unavailable.
+Branch protection should require the foundation and DCO checks, code-owner review,
+stale-approval dismissal, and resolved conversations.
 
 A release or visibility change requires:
 
@@ -97,6 +51,31 @@ A release or visibility change requires:
 - an honest statement that generated scaffolds are not implementation or
   conformance;
 - an independent review and Victor's explicit visibility decision.
+
+### Provider-neutral validation evidence
+
+Build Health owns the semantic proof profile. GitHub-hosted Actions is one
+qualified evidence producer when its exact workflow actually executes; a runner
+allocation, billing, spending-limit, spawn, or timeout failure is provider
+unavailability and never semantic PASS.
+
+A qualified one-shot local producer may satisfy the same required proof cells
+only when its repository, candidate head/tree, platform/runtime qualification,
+receipts, logs, digests, DCO graph proof, dependency/currentness bindings, and
+source manifest are exact and current. Equivalent evidence must not weaken a
+proof cell, impersonate another platform, or represent local evidence as a
+GitHub status context when repository policy actually requires that hosted
+context. Windows, Linux, and macOS evidence are never interchangeable merely
+because the commands are similar.
+
+Evidence currentness, including Event-driven Work Awareness (EWA), is evidence
+about whether prior proof can be reused or must be refreshed. It does not grant
+execution, review, approval, ready, merge, publication, or other lifecycle
+authority.
+
+The first provider-neutral policy candidate is governed by the repository policy
+that existed before that candidate. A candidate must not use its newly proposed
+validation policy to self-authorize its own acceptance.
 
 This foundation task does not authorize making the repository public, publishing a
 package, merging its own pull request, or admitting native/mobile implementation.
