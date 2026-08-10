@@ -52,6 +52,31 @@ A release or visibility change requires:
   conformance;
 - an independent review and Victor's explicit visibility decision.
 
+### Provider-neutral validation evidence
+
+Build Health owns the semantic proof profile. GitHub-hosted Actions is one
+qualified evidence producer when its exact workflow actually executes; a runner
+allocation, billing, spending-limit, spawn, or timeout failure is provider
+unavailability and never semantic PASS.
+
+A qualified one-shot local producer may satisfy the same required proof cells
+only when its repository, candidate head/tree, platform/runtime qualification,
+receipts, logs, digests, DCO graph proof, dependency/currentness bindings, and
+source manifest are exact and current. Equivalent evidence must not weaken a
+proof cell, impersonate another platform, or represent local evidence as a
+GitHub status context when repository policy actually requires that hosted
+context. Windows, Linux, and macOS evidence are never interchangeable merely
+because the commands are similar.
+
+Evidence currentness, including Event-driven Work Awareness (EWA), is evidence
+about whether prior proof can be reused or must be refreshed. It does not grant
+execution, review, approval, ready, merge, publication, or other lifecycle
+authority.
+
+The first provider-neutral policy candidate is governed by the repository policy
+that existed before that candidate. A candidate must not use its newly proposed
+validation policy to self-authorize its own acceptance.
+
 This foundation task does not authorize making the repository public, publishing a
 package, merging its own pull request, or admitting native/mobile implementation.
 
