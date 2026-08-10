@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.build-health-registry/v0",
   "registryRef": "registry.vexlife.build-health.001",
-  "registryVersion": 2,
+  "registryVersion": 3,
   "purpose": "One source-managed list of mandatory health checks and the lenses each protects.",
   "semanticNoOpRule": "Equal check inputs and outputs do not create another durable health transition.",
   "checkResultContract": {
@@ -343,5 +343,96 @@
       "blocking": true,
       "timeoutMs": 120000
     }
-  ]
+  ],
+  "validationEvidencePolicy": {
+    "schemaVersion": "vexlife.validation-evidence-policy/v1",
+    "policyRef": "policy.vexlife.validation-evidence.provider-neutral.001",
+    "policyVersion": 1,
+    "semanticProofOwnerRef": "registry.vexlife.build-health.001",
+    "evidenceSchemaVersion": "vexlife.validation-evidence-bundle/v1",
+    "purpose": "Bind the existing Build Health / PR-ready / Build Admission semantic proof families to exact candidate identity independently of which qualified provider produced the evidence.",
+    "semanticProofIdentity": "REQUIRED_PROOF_CELLS_NOT_PROVIDER_OR_STATUS_CONTEXT",
+    "aggregatePassRule": "EVERY_REQUIRED_CELL_EXACT_HEAD_CURRENT_AND_PROVIDER_PLATFORM_COMPATIBLE",
+    "runnerUnavailableSemanticDisposition": "BLOCKED_PROVIDER_UNAVAILABLE_NOT_PASS",
+    "weakerProofSubstitutionAllowed": false,
+    "ewaCurrentnessGrantsExecutionAuthority": false,
+    "localEvidenceMayImpersonateGitHubStatusContext": false,
+    "exactBindingFields": [
+      "repositoryRef",
+      "baseSha",
+      "candidateHeadSha",
+      "candidateTreeSha",
+      "sourceTreeSha256"
+    ],
+    "producerProfiles": {
+      "GITHUB_HOSTED": {
+        "producerClass": "GITHUB_HOSTED",
+        "producerProfileRef": "producer-profile.vexlife.github-hosted/v1",
+        "executionRequiredForPass": true,
+        "providerUnavailableMayPass": false,
+        "statusContextSurface": "HOSTED_EXECUTION_ONLY"
+      },
+      "ONE_SHOT_LOCAL": {
+        "producerClass": "ONE_SHOT_LOCAL",
+        "producerProfileRef": "producer-profile.vexlife.one-shot-local/v1",
+        "executionRequiredForPass": true,
+        "exactCurrentRepositoryQualificationRequired": true,
+        "statusContextSurface": "NONE",
+        "platformImpersonationAllowed": false
+      }
+    },
+    "requiredProofCells": [
+      {
+        "proofCellRef": "DCO_EVERY_CANDIDATE_COMMIT",
+        "requiredPlatformId": null,
+        "reuseAllowed": false
+      },
+      {
+        "proofCellRef": "FOUNDATION_BUILD_HEALTH_PR_READY",
+        "requiredPlatformId": null,
+        "reuseAllowed": false
+      },
+      {
+        "proofCellRef": "REAL_BROWSER_EVIDENCE",
+        "requiredPlatformId": null,
+        "reuseAllowed": true
+      },
+      {
+        "proofCellRef": "BUILD_ADMISSION_REAL_EFFECT_AND_CURRENT_CONSUMPTION",
+        "requiredPlatformId": null,
+        "reuseAllowed": true
+      },
+      {
+        "proofCellRef": "SOURCE_MANIFEST_CURRENT",
+        "requiredPlatformId": null,
+        "reuseAllowed": false
+      },
+      {
+        "proofCellRef": "MANIFEST_AND_HOST_PROOF_LINUX",
+        "requiredPlatformId": "linux",
+        "reuseAllowed": true
+      },
+      {
+        "proofCellRef": "MANIFEST_AND_HOST_PROOF_WINDOWS",
+        "requiredPlatformId": "windows",
+        "reuseAllowed": true
+      },
+      {
+        "proofCellRef": "G01_G05A_WINDOWS_PROOFS_WHEN_CURRENTNESS_REQUIRES_RERUN",
+        "requiredPlatformId": "windows",
+        "reuseAllowed": true
+      }
+    ],
+    "evidenceDispositions": [
+      "EXECUTED",
+      "REUSED"
+    ],
+    "reuseContract": {
+      "acceptedDisposition": "REUSE",
+      "dependencyFingerprintMatchRequired": true,
+      "currentnessReceiptIntegrityRequired": true,
+      "providerOutageAloneMayAuthorizeReuse": false,
+      "currentnessGrantsExecutionAuthority": false
+    }
+  }
 }
