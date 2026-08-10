@@ -28,8 +28,8 @@
     {
       "path": "reference/browser/modules/experience-review-adapter.js",
       "mode": "100644",
-      "bytes": 6075,
-      "sha256": "f6660abfb95ae517559d790dee1ad7447cf14fe6afbc770900ad64bcc7c529dc"
+      "bytes": 8335,
+      "sha256": "0b9e853aa940d37dd1b35ed8dac5451af527b4901c12373a91919c61d5349c12"
     },
     {
       "path": "reference/browser/modules/guide-controller.js",

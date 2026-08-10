@@ -37,7 +37,7 @@
     "Git internals"
   ],
   "fileCount": 280,
-  "treeSha256": "313afc85dca98f8d120c45d1b6af1b4bc6e57bbb864e1690367e28aeceec1b11",
+  "treeSha256": "04d78070e063a64ac2468b78fd0d69215427369054aeeb254f63554352f53426",
   "composition": "GENERATED_FRAGMENT_COMPOSITION",
   "parts": [
     "source-manifest-parts/part-01.json",

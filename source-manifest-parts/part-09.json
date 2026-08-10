@@ -16,8 +16,8 @@
     {
       "path": "src/core/experience-review-kit.mjs",
       "mode": "100644",
-      "bytes": 9787,
-      "sha256": "f636d5f88f65d856c1b80f299cc9ae7bab773b79616c0ac6b5d27de9ee316166"
+      "bytes": 20334,
+      "sha256": "3b4bfacdfeaf8a59db6c8a88e492ee005cdd41a1675998cfa894d469497b27af"
     },
     {
       "path": "src/core/experience.mjs",

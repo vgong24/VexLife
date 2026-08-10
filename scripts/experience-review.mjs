@@ -9,17 +9,18 @@ import {
 import { createBrowserExperienceReviewAdapter } from '../reference/browser/modules/experience-review-adapter.js';
 
 function usage() {
-  console.error(
-    'Usage: node scripts/experience-review.mjs --request <review-request.json> --bindings <browser-bindings.json> --out <directory>'
-  );
+  console.error('Usage: node scripts/experience-review.mjs --request <review-request.json> --bindings <browser-bindings.json> --out <directory>');
 }
 
 function parseArgs(argv) {
   const result = {};
+  const known = new Set(['request', 'bindings', 'out']);
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (!arg.startsWith('--')) continue;
+    if (!arg.startsWith('--')) throw new Error(`Unexpected positional argument: ${arg}`);
     const key = arg.slice(2);
+    if (!known.has(key)) throw new Error(`Unknown argument: --${key}`);
+    if (Object.hasOwn(result, key)) throw new Error(`Duplicate argument: --${key}`);
     const value = argv[index + 1];
     if (!value || value.startsWith('--')) throw new Error(`Missing value for --${key}`);
     result[key] = value;
@@ -40,6 +41,21 @@ function writeFiles(root, files) {
   }
 }
 
+function artifactLocationsFor(capturePlan, evidence) {
+  const taskByEvidenceBinding = new Map(capturePlan.tasks.map((task) => [
+    `${task.captureRequest.captureRequestRef}\u0000${task.step.reviewStepRef}`,
+    task
+  ]));
+  const locations = {};
+  for (const record of evidence) {
+    if (record.captureState !== 'CAPTURED' || !record.artifact?.artifactRef) continue;
+    const task = taskByEvidenceBinding.get(`${record.captureRequestRef}\u0000${record.reviewStepRef}`);
+    if (!task) throw new Error(`Captured evidence has no local browser task binding: ${record.evidenceRef}`);
+    locations[record.artifact.artifactRef] = path.posix.join('screenshots', task.artifactFileName);
+  }
+  return locations;
+}
+
 try {
   const args = parseArgs(process.argv.slice(2));
   if (!args.request || !args.bindings || !args.out) {
@@ -57,23 +73,21 @@ try {
     const screenshotsDirectory = path.join(out, 'screenshots');
     const adapter = createBrowserExperienceReviewAdapter();
     const evidence = await adapter.captureTasks(capturePlan.tasks, screenshotsDirectory);
+    const artifactLocations = artifactLocationsFor(capturePlan, evidence);
 
-    const sourceReceipt =
-      bundle.sourceReceipt ?? {
-        schemaVersion: 'vexlife.experience-review.source-receipt/v0',
-        reviewEpochRef: bundle.reviewEpoch.reviewEpochRef,
-        sourceVersionRef: bundle.reviewEpoch.sourceVersionRef,
-        truthClass: bundle.reviewEpoch.truthClass,
-        receiptClass: 'REQUEST_DECLARED_SOURCE_VERSION',
-        runtimeProof: false
-      };
+    const sourceReceipt = bundle.sourceReceipt ?? {
+      schemaVersion: 'vexlife.experience-review.source-receipt/v0',
+      reviewEpochRef: bundle.reviewEpoch.reviewEpochRef,
+      sourceVersionRef: bundle.reviewEpoch.sourceVersionRef,
+      truthClass: bundle.reviewEpoch.truthClass,
+      receiptClass: 'REQUEST_DECLARED_SOURCE_VERSION',
+      runtimeProof: false
+    };
 
-    writeFiles(
-      out,
-      buildReviewPackageTextFiles(bundle, evidence, sourceReceipt, {
-        interactiveEntries: bundle.package?.interactiveEntries ?? []
-      })
-    );
+    writeFiles(out, buildReviewPackageTextFiles(bundle, evidence, sourceReceipt, {
+      artifactLocations,
+      interactiveEntries: bundle.package?.interactiveEntries ?? []
+    }));
 
     const result = {
       schemaVersion: 'vexlife.experience-review.cli-result/v0',
@@ -96,17 +110,11 @@ try {
     if (result.state === 'FAILED_SAFE') process.exitCode = 1;
   }
 } catch (error) {
-  console.error(
-    JSON.stringify(
-      {
-        schemaVersion: 'vexlife.experience-review.cli-result/v0',
-        state: 'FAILED_SAFE',
-        reason: error.message
-      },
-      null,
-      2
-    )
-  );
+  console.error(JSON.stringify({
+    schemaVersion: 'vexlife.experience-review.cli-result/v0',
+    state: 'FAILED_SAFE',
+    reason: error.message
+  }, null, 2));
   process.exitCode = 1;
 }
 
