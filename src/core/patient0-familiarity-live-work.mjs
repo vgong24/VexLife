@@ -92,17 +92,157 @@ function contentAddress(prefix, refField, hashField, core) {
   return Object.freeze({ ...withRef, [hashField]: semanticHash(withRef) });
 }
 
-function validateAddressed(value, { prefix, refField, hashField, code, label }) {
+function validateAddressed(value, { prefix, refField, hashField, schemaVersion, code, label }) {
   if (!isObject(value)) fail(code, `${label} is missing or malformed`);
-  const ref = value[refField];
-  const hash = value[hashField];
-  if (typeof ref !== 'string' || !ref.startsWith(`${prefix}.`) || !SHA256.test(hash ?? '')) {
-    fail(code, `${label} identity fields are invalid`);
+  const observedRef = value[refField];
+  const observedHash = value[hashField];
+  const core = structuredClone(value);
+  delete core[refField];
+  delete core[hashField];
+  const expectedRef = `${prefix}.${semanticHash(core).slice(0, 32)}`;
+  if (value.schemaVersion !== schemaVersion
+      || observedRef !== expectedRef
+      || !SHA256.test(observedHash ?? '')
+      || semanticHash({ ...core, [refField]: observedRef }) !== observedHash) {
+    fail(code, `${label} content-address identity is invalid`, { observedRef, expectedRef });
   }
-  const clone = structuredClone(value);
-  delete clone[hashField];
-  if (semanticHash(clone) !== hash) fail(code, `${label} content hash does not match`);
   return value;
+}
+
+function requireCanonicalReconstruction(observed, expected, code, label) {
+  if (semanticHash(observed) !== semanticHash(expected)) {
+    fail(code, `${label} does not match canonical constructor invariants`);
+  }
+  return observed;
+}
+
+function validateFamiliarityCandidate(value) {
+  const observed = validateAddressed(value, {
+    prefix: 'familiarity-evidence',
+    refField: 'familiarityEvidenceRef',
+    hashField: 'familiarityEvidenceSha256',
+    schemaVersion: 'vexlife.patient0.familiarity-evidence-candidate/v1',
+    code: 'FAMILIARITY_EVIDENCE_INVALID',
+    label: 'familiarity evidence'
+  });
+  let expected;
+  try {
+    expected = formFamiliarityEvidence({
+      priorState: observed.priorState,
+      observedState: observed.observedState,
+      noticed: observed.noticed,
+      sourceRefs: observed.sourceRefs,
+      formedAt: observed.formedAt
+    });
+  } catch (error) {
+    fail('FAMILIARITY_EVIDENCE_INVALID', 'familiarity evidence violates canonical constructor invariants', {
+      cause: error?.code ?? error?.message ?? String(error)
+    });
+  }
+  return requireCanonicalReconstruction(observed, expected, 'FAMILIARITY_EVIDENCE_INVALID', 'familiarity evidence');
+}
+
+function validateRelationshipBoundaryCandidate(value, familiarityEvidence) {
+  const observed = validateAddressed(value, {
+    prefix: 'relationship-boundary-evidence',
+    refField: 'relationshipBoundaryEvidenceRef',
+    hashField: 'relationshipBoundaryEvidenceSha256',
+    schemaVersion: 'vexlife.patient0.relationship-boundary-evidence-candidate/v1',
+    code: 'RELATIONSHIP_BOUNDARY_EVIDENCE_INVALID',
+    label: 'relationship-boundary evidence'
+  });
+  let expected;
+  try {
+    expected = formRelationshipBoundaryEvidence({
+      familiarityEvidence,
+      recognitionObserved: observed.recognitionObserved,
+      standingRelationshipAuthorityState: observed.standingRelationshipAuthorityState,
+      formedAt: observed.formedAt
+    });
+  } catch (error) {
+    fail('RELATIONSHIP_BOUNDARY_EVIDENCE_INVALID', 'relationship-boundary evidence violates canonical constructor invariants', {
+      cause: error?.code ?? error?.message ?? String(error)
+    });
+  }
+  return requireCanonicalReconstruction(
+    observed,
+    expected,
+    'RELATIONSHIP_BOUNDARY_EVIDENCE_INVALID',
+    'relationship-boundary evidence'
+  );
+}
+
+function validateWorkWitnessCandidate(value) {
+  const observed = validateAddressed(value, {
+    prefix: 'bounded-work-witness',
+    refField: 'boundedWorkWitnessRef',
+    hashField: 'boundedWorkWitnessSha256',
+    schemaVersion: 'vexlife.patient0.bounded-work-witness/v1',
+    code: 'WORK_WITNESS_INVALID',
+    label: 'bounded-work witness'
+  });
+  let expected;
+  try {
+    expected = formBoundedWorkWitness({
+      taskRef: observed.taskRef,
+      taskClass: observed.taskClass,
+      userScopeRef: observed.userScopeRef,
+      allowedSourceRefs: observed.allowedSourceRefs,
+      observedSourceRefs: observed.observedSourceRefs,
+      sourceAddressRefs: observed.sourceAddressRefs,
+      conversationHeadBefore: observed.conversationHeadBefore,
+      conversationHeadAfter: observed.conversationHeadAfter,
+      performedEffects: observed.performedEffects,
+      heldEffects: observed.heldEffects,
+      transferPayloadClasses: observed.transferPayloadClasses,
+      rawPrivateContentIncluded: observed.rawPrivateContentIncluded,
+      formedAt: observed.formedAt
+    });
+  } catch (error) {
+    fail('WORK_WITNESS_INVALID', 'bounded-work witness violates canonical constructor invariants', {
+      cause: error?.code ?? error?.message ?? String(error)
+    });
+  }
+  return requireCanonicalReconstruction(observed, expected, 'WORK_WITNESS_INVALID', 'bounded-work witness');
+}
+
+function validateLessonCandidate(value, witnessByRef) {
+  const observed = validateAddressed(value, {
+    prefix: 'lesson-candidate',
+    refField: 'lessonCandidateRef',
+    hashField: 'lessonCandidateSha256',
+    schemaVersion: 'vexlife.patient0.lesson-candidate/v1',
+    code: 'LESSON_CANDIDATE_INVALID',
+    label: 'lesson candidate'
+  });
+  const witnesses = Array.isArray(observed.witnessBindings)
+    ? observed.witnessBindings.map((binding) => {
+        const witness = witnessByRef.get(binding?.ref);
+        if (!witness || witness.boundedWorkWitnessSha256 !== binding?.sha256 || witness.taskClass !== binding?.taskClass) {
+          fail('LESSON_CANDIDATE_INVALID', 'lesson candidate witness binding is not present in supplied validated witnesses', {
+            binding
+          });
+        }
+        return witness;
+      })
+    : [];
+  let expected;
+  try {
+    expected = compileLessonCandidate({
+      workWitnesses: witnesses,
+      lessonSummary: observed.lessonSummary,
+      scopeAndLimits: observed.scopeAndLimits,
+      repeatEvidenceRefs: observed.repeatEvidenceRefs,
+      transferEvidenceRefs: observed.transferEvidenceRefs,
+      transferPayloadClasses: observed.transferPayloadClasses,
+      formedAt: observed.formedAt
+    });
+  } catch (error) {
+    fail('LESSON_CANDIDATE_INVALID', 'lesson candidate violates canonical constructor invariants', {
+      cause: error?.code ?? error?.message ?? String(error)
+    });
+  }
+  return requireCanonicalReconstruction(observed, expected, 'LESSON_CANDIDATE_INVALID', 'lesson candidate');
 }
 
 function exactHeldEffects(value) {
@@ -171,13 +311,7 @@ export function formFamiliarityEvidence(input) {
 
 export function formRelationshipBoundaryEvidence(input) {
   if (!isObject(input)) fail('RELATIONSHIP_BOUNDARY_INPUT_INVALID', 'relationship-boundary input must be an object');
-  const familiarity = validateAddressed(input.familiarityEvidence, {
-    prefix: 'familiarity-evidence',
-    refField: 'familiarityEvidenceRef',
-    hashField: 'familiarityEvidenceSha256',
-    code: 'FAMILIARITY_EVIDENCE_INVALID',
-    label: 'familiarity evidence'
-  });
+  const familiarity = validateFamiliarityCandidate(input.familiarityEvidence);
 
   for (const collapseField of [
     'recognitionTreatedAsAuthentication',
@@ -322,10 +456,7 @@ export function compileLessonCandidate(input) {
   const witnesses = Array.isArray(input.workWitnesses) ? input.workWitnesses : [];
   if (!witnesses.length) fail('LESSON_WITNESS_REQUIRED', 'at least one bounded-work witness is required');
   const witnessBindings = witnesses.map((witness) => {
-    const validated = validateAddressed(witness, {
-      prefix: 'bounded-work-witness', refField: 'boundedWorkWitnessRef', hashField: 'boundedWorkWitnessSha256',
-      code: 'WORK_WITNESS_INVALID', label: 'bounded-work witness'
-    });
+    const validated = validateWorkWitnessCandidate(witness);
     return Object.freeze({ ref: validated.boundedWorkWitnessRef, sha256: validated.boundedWorkWitnessSha256, taskClass: validated.taskClass });
   });
   const transferPayloadClasses = rejectTransferPayload(input.transferPayloadClasses ?? []);
@@ -360,29 +491,18 @@ export function compileLessonCandidate(input) {
 
 export function evaluateP8P9Thresholds(input) {
   if (!isObject(input)) fail('THRESHOLD_INPUT_INVALID', 'threshold input must be an object');
-  const familiarity = validateAddressed(input.familiarityEvidence, {
-    prefix: 'familiarity-evidence', refField: 'familiarityEvidenceRef', hashField: 'familiarityEvidenceSha256',
-    code: 'FAMILIARITY_EVIDENCE_INVALID', label: 'familiarity evidence'
-  });
-  const boundary = validateAddressed(input.relationshipBoundaryEvidence, {
-    prefix: 'relationship-boundary-evidence', refField: 'relationshipBoundaryEvidenceRef', hashField: 'relationshipBoundaryEvidenceSha256',
-    code: 'RELATIONSHIP_BOUNDARY_EVIDENCE_INVALID', label: 'relationship-boundary evidence'
-  });
+  const familiarity = validateFamiliarityCandidate(input.familiarityEvidence);
+  const boundary = validateRelationshipBoundaryCandidate(input.relationshipBoundaryEvidence, familiarity);
   if (boundary.familiarityEvidenceRef !== familiarity.familiarityEvidenceRef
       || boundary.familiarityEvidenceSha256 !== familiarity.familiarityEvidenceSha256) {
     fail('RELATIONSHIP_BOUNDARY_FAMILIARITY_MISMATCH', 'boundary evidence is not bound to the supplied familiarity evidence');
   }
 
   const workWitnesses = Array.isArray(input.workWitnesses) ? input.workWitnesses : [];
-  const validatedWitnesses = workWitnesses.map((witness) => validateAddressed(witness, {
-    prefix: 'bounded-work-witness', refField: 'boundedWorkWitnessRef', hashField: 'boundedWorkWitnessSha256',
-    code: 'WORK_WITNESS_INVALID', label: 'bounded-work witness'
-  }));
+  const validatedWitnesses = workWitnesses.map((witness) => validateWorkWitnessCandidate(witness));
+  const witnessByRef = new Map(validatedWitnesses.map((witness) => [witness.boundedWorkWitnessRef, witness]));
   const lessonCandidates = Array.isArray(input.lessonCandidates) ? input.lessonCandidates : [];
-  const validatedLessons = lessonCandidates.map((lesson) => validateAddressed(lesson, {
-    prefix: 'lesson-candidate', refField: 'lessonCandidateRef', hashField: 'lessonCandidateSha256',
-    code: 'LESSON_CANDIDATE_INVALID', label: 'lesson candidate'
-  }));
+  const validatedLessons = lessonCandidates.map((lesson) => validateLessonCandidate(lesson, witnessByRef));
 
   const p8Candidate = ['FAMILIARITY', 'UNDERSTANDING'].includes(familiarity.observedState)
     && boundary.notified === true

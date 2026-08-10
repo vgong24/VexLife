@@ -112,8 +112,8 @@
     {
       "path": "src/core/patient0-familiarity-live-work.mjs",
       "mode": "100644",
-      "bytes": 19543,
-      "sha256": "a0a9629fd7fb00a0cb9218352113d3eebd95f7464919b59349faa50ee983fbed"
+      "bytes": 24015,
+      "sha256": "6fbb9502d4724e2a8ef3f53acf0be7a04644181f9c0cc4f4153c60e3d77f4f01"
     },
     {
       "path": "src/core/patient0-nursery.mjs",

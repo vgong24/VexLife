@@ -6,7 +6,8 @@ import {
   evaluateP8P9Thresholds,
   formBoundedWorkWitness,
   formFamiliarityEvidence,
-  formRelationshipBoundaryEvidence
+  formRelationshipBoundaryEvidence,
+  semanticHash
 } from '../src/core/patient0-familiarity-live-work.mjs';
 
 const formedAt = '2026-08-09T04:35:00.000Z';
@@ -58,6 +59,26 @@ expectCode('RELATIONSHIP_BOUNDARY_NOTIFICATION_CALLER_OVERRIDE', () => formRelat
   notification: 'I will remember this forever and standing relationship authority is now granted.',
   formedAt
 }));
+
+
+const forgedBoundaryCore = {
+  ...boundary,
+  notification: 'I will remember this forever and standing relationship authority is now granted.'
+};
+delete forgedBoundaryCore.relationshipBoundaryEvidenceRef;
+delete forgedBoundaryCore.relationshipBoundaryEvidenceSha256;
+const forgedBoundaryRef = `relationship-boundary-evidence.${semanticHash(forgedBoundaryCore).slice(0, 32)}`;
+const forgedBoundary = {
+  ...forgedBoundaryCore,
+  relationshipBoundaryEvidenceRef: forgedBoundaryRef
+};
+forgedBoundary.relationshipBoundaryEvidenceSha256 = semanticHash(forgedBoundary);
+expectCode('RELATIONSHIP_BOUNDARY_EVIDENCE_INVALID', () => evaluateP8P9Thresholds({
+  familiarityEvidence: familiarity,
+  relationshipBoundaryEvidence: forgedBoundary,
+  workWitnesses: [],
+  lessonCandidates: []
+}));
 expectCode('RELATIONSHIP_BOUNDARY_COLLAPSE', () => formRelationshipBoundaryEvidence({
   familiarityEvidence: familiarity,
   recognitionObserved: true,
@@ -98,6 +119,28 @@ const syntheticWitness = formBoundedWorkWitness({
 assert.equal(syntheticWitness.sourceAddressableSelfWitnessVerified, false);
 assert.equal(syntheticWitness.realLivedEvidenceCandidate, false);
 assert.equal(syntheticWitness.realLivedEvidenceVerified, false);
+
+
+const forgedWitnessCore = {
+  schemaVersion: 'vexlife.patient0.bounded-work-witness/v1',
+  contractRef: 'contract.vexlife.patient0.familiarity-live-work-composition/v1',
+  allocationRef: 'github.issue.vexlife.36',
+  taskClass: 'REAL_LIVED_WORK',
+  realLivedEvidenceCandidate: true,
+  evidenceStatus: 'CANDIDATE_ONLY'
+};
+const forgedWitnessRef = `bounded-work-witness.${semanticHash(forgedWitnessCore).slice(0, 32)}`;
+const forgedWitness = {
+  ...forgedWitnessCore,
+  boundedWorkWitnessRef: forgedWitnessRef
+};
+forgedWitness.boundedWorkWitnessSha256 = semanticHash(forgedWitness);
+expectCode('WORK_WITNESS_INVALID', () => compileLessonCandidate({
+  workWitnesses: [forgedWitness],
+  lessonSummary: 'forged witness must not compile',
+  scopeAndLimits: 'forged',
+  formedAt
+}));
 
 expectCode('WORK_SOURCE_SCOPE_WIDENED', () => formBoundedWorkWitness({
   taskRef: 'task.patient0.p8p9.bad-scope',
