@@ -104,6 +104,12 @@
       "sha256": "0b800aa690bf2b542a6451dba474174ef1c48274f708c66f26f65b01b8fbfb79"
     },
     {
+      "path": "docs/EXPERIENCE-REVIEW-KIT.md",
+      "mode": "100644",
+      "bytes": 7903,
+      "sha256": "8b1273d4da79c70326231a23446459290ecf8a34e41e29ec2c2c842a151fc0b5"
+    },
+    {
       "path": "docs/FOUNDATION-CULTURE-COVERAGE-MAP.md",
       "mode": "100644",
       "bytes": 10250,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 12826,
       "sha256": "f6196dab0cbd79ca34d92f84d5f4698f58323ef09b7319abeb7abbca6c482ad8"
-    },
-    {
-      "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
-      "mode": "100644",
-      "bytes": 10152,
-      "sha256": "25489693bcff73c5954982ba9d722d951cd486cd6fb8037c3108a3ea16091ce2"
     }
   ]
 }

@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/scheduled-daily-autonomy.mjs",
+      "mode": "100644",
+      "bytes": 15911,
+      "sha256": "16c6ea0df748768dcce359a7c61087906d86c6bb075a3424b1b2ec245d08e14f"
+    },
+    {
+      "path": "scripts/scheduler-check.mjs",
+      "mode": "100644",
+      "bytes": 5149,
+      "sha256": "bd738bf39c00d23a08aa8e5a1e5886c4d7cfc87b280f2b2da634526538964939"
+    },
+    {
+      "path": "scripts/scheduler-simulate.mjs",
+      "mode": "100644",
+      "bytes": 32557,
+      "sha256": "355c3e03d6bc8f7530dfda8cc09fe67f281438a7aedd75ff5a0767586d566b50"
+    },
+    {
       "path": "scripts/scheduler-status.mjs",
       "mode": "100644",
       "bytes": 3002,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 2254,
       "sha256": "db0e21e48b2d7c2a9ad4ef1a518b0e64a4e057a3d7a2ed1b2de5aefb21203579"
-    },
-    {
-      "path": "src/core/evaluated-rhythm-learning.mjs",
-      "mode": "100644",
-      "bytes": 35652,
-      "sha256": "b2d1a02f93f49202fc0849ff5ead470b0f617f296b579043e18f5716904aaf1a"
-    },
-    {
-      "path": "src/core/evolution.mjs",
-      "mode": "100644",
-      "bytes": 4841,
-      "sha256": "3547f742d238e92d3e30ce1a0f97124e004a02636023b2827ea62f62ebabba13"
-    },
-    {
-      "path": "src/core/experience.mjs",
-      "mode": "100644",
-      "bytes": 4744,
-      "sha256": "e14e96c19e4feea4060fc56dfe9f3b77d8daea494cdb1e2a782ffe363e4c2e5a"
     }
   ]
 }

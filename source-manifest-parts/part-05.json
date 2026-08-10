@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
+      "mode": "100644",
+      "bytes": 10152,
+      "sha256": "25489693bcff73c5954982ba9d722d951cd486cd6fb8037c3108a3ea16091ce2"
+    },
+    {
       "path": "docs/INTERFACE-BUILDER.md",
       "mode": "100644",
       "bytes": 3664,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 7483,
       "sha256": "7f602d6486b5da811f80117ec0315c93c193501ac88958bed42d089508313562"
-    },
-    {
-      "path": "reference/browser/modules/browser-bundle.js",
-      "mode": "100644",
-      "bytes": 1305,
-      "sha256": "4356abfe264acbff90800ed872ab1a184f11314d96300836a420fb1fef59e2aa"
     }
   ]
 }
