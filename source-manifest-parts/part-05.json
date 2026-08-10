@@ -142,8 +142,8 @@
     {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
-      "bytes": 7483,
-      "sha256": "7f602d6486b5da811f80117ec0315c93c193501ac88958bed42d089508313562"
+      "bytes": 14311,
+      "sha256": "35fbe22f3c7a6058fd418a491ec2a225693a1975da976233f2d8799ad9c44088"
     }
   ]
 }
