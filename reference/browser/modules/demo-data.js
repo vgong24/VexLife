@@ -150,6 +150,8 @@ export function createDemoData({ loadJson, storage = globalThis.localStorage }) 
     guideOpen: storage?.getItem?.('vexlife.guide.open') === 'true',
     guideMinimized: false,
     unread: new Map(),
+    vexAvailability: 'UNAVAILABLE',
+    unsentLocalDraft: null,
     terrain: loadJson('vexlife.terrain.layout', { positions: {}, collapsed: [], selected: null })
   };
 
