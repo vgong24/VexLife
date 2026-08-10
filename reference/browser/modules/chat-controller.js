@@ -26,6 +26,30 @@ export function createChatController({ state, projects, roles, channels, message
   const threadForMessage = (message) => projects
     .find((project) => project.projectRef === message.projectRef)
     ?.threads.find((thread) => thread.threadRef === message.threadRef);
+  const pendingReplyTimers = new Set();
+  const isVexAvailable = () => state.vexAvailability === 'AVAILABLE';
+  const draftForChannel = (channel = currentChannel()) =>
+    state.unsentLocalDraft?.channelRef === channel.channelRef ? state.unsentLocalDraft : null;
+
+  function setLocalDraft(channel, content) {
+    if (!content) {
+      if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
+      return;
+    }
+    state.unsentLocalDraft = {
+      state: 'UNSENT_LOCAL_DRAFT',
+      channelRef: channel.channelRef,
+      content,
+      updatedAt: new Date().toISOString(),
+      queued: false,
+      accepted: false
+    };
+  }
+
+  function cancelPendingReplies() {
+    for (const timer of pendingReplyTimers) window.clearTimeout(timer);
+    pendingReplyTimers.clear();
+  }
 
   function renderProjectRail() {
     const host = $('#projectList');
@@ -193,15 +217,37 @@ export function createChatController({ state, projects, roles, channels, message
     $('#newMessagesButton').hidden = count === 0;
   }
 
+  function renderComposerTruth() {
+    const channel = currentChannel();
+    const draft = draftForChannel(channel);
+    const form = $('#composer');
+    const input = $('#messageInput');
+    const sendButton = $('#composer button[type="submit"]');
+    const channelHint = t('composer.channel-hint', {
+      kind: t(channel.kind === 'GROUP' ? 'channel.kind.group' : 'channel.kind.direct'),
+      count: channel.memberKeys.length
+    });
+    const availabilityRef = isVexAvailable()
+      ? 'composer.availability.available'
+      : draft
+        ? 'composer.availability.unavailable-draft'
+        : 'composer.availability.unavailable';
+    $('#composerHint').textContent = `${t(availabilityRef)} · ${channelHint}`;
+    form.dataset.availabilityState = state.vexAvailability;
+    form.dataset.draftState = draft?.state ?? 'NONE';
+    input.dataset.draftState = draft?.state ?? 'NONE';
+    sendButton.disabled = !isVexAvailable();
+    sendButton.setAttribute('aria-disabled', String(!isVexAvailable()));
+  }
+
   function updateComposer() {
     const channel = currentChannel();
     const recipients = channel.memberKeys.filter((key) => key !== 'victor').map(roleLabel);
     $('#composerAddress').textContent = `${roleLabel('victor')} → ${recipients.join(', ')}`;
-    $('#composerHint').textContent = t('composer.channel-hint', {
-      kind: t(channel.kind === 'GROUP' ? 'channel.kind.group' : 'channel.kind.direct'),
-      count: channel.memberKeys.length
-    });
+    const draft = draftForChannel(channel);
+    if (draft && $('#messageInput').value !== draft.content) $('#messageInput').value = draft.content;
     $('#addGroupButton').hidden = !channelsForThread().some((candidate) => candidate.kind === 'GROUP');
+    renderComposerTruth();
   }
 
   function renderContext() {
@@ -216,6 +262,7 @@ export function createChatController({ state, projects, roles, channels, message
   }
 
   function simulatedReply(channel, frameAtSend) {
+    if (!isVexAvailable()) return false;
     const list = listForChannel(channel);
     const speakerKey = channel.roleKey;
     const recipientKeys = channel.kind === 'GROUP' ? channel.memberKeys.filter((key) => key !== speakerKey) : ['victor'];
@@ -235,7 +282,39 @@ export function createChatController({ state, projects, roles, channels, message
       const messageKey = keyForChannel(channel);
       state.unread.set(messageKey, (state.unread.get(messageKey) || 0) + 1);
     }
+    return true;
   }
+
+  function scheduleSimulatedReply(channel, frameAtSend) {
+    if (!isVexAvailable()) return false;
+    const timer = window.setTimeout(() => {
+      pendingReplyTimers.delete(timer);
+      simulatedReply(channel, frameAtSend);
+    }, 180);
+    pendingReplyTimers.add(timer);
+    return true;
+  }
+
+  function setVexAvailability(nextState) {
+    if (!['AVAILABLE', 'UNAVAILABLE'].includes(nextState)) {
+      throw new Error(`Unsupported Vex availability: ${nextState}`);
+    }
+    if (state.vexAvailability === nextState) {
+      updateComposer();
+      return state.vexAvailability;
+    }
+    state.vexAvailability = nextState;
+    if (!isVexAvailable()) cancelPendingReplies();
+    updateComposer();
+    return state.vexAvailability;
+  }
+
+  $('#messageInput').addEventListener('input', (event) => {
+    const channel = currentChannel();
+    const existing = draftForChannel(channel);
+    if (!isVexAvailable() || existing) setLocalDraft(channel, event.target.value);
+    renderComposerTruth();
+  });
 
   $('#composer').addEventListener('submit', (event) => {
     event.preventDefault();
@@ -243,14 +322,21 @@ export function createChatController({ state, projects, roles, channels, message
     const content = input.value.trim();
     if (!content) return;
     const channel = currentChannel();
+    if (!isVexAvailable()) {
+      setLocalDraft(channel, input.value);
+      renderComposerTruth();
+      return;
+    }
     const recipients = channel.memberKeys.filter((key) => key !== 'victor');
     const list = listForChannel(channel);
     const message = createMessage(channel.channelRef, 'victor', recipients, content, list.length);
     list.push(message);
     appendMessageNode(message);
     input.value = '';
+    if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
+    renderComposerTruth();
     const frameAtSend = navigation.semanticFrame();
-    window.setTimeout(() => simulatedReply(channel, frameAtSend), 180);
+    scheduleSimulatedReply(channel, frameAtSend);
   });
   $('#newMessagesButton').addEventListener('click', () => {
     const feed = $('#messageFeed');
@@ -283,7 +369,9 @@ export function createChatController({ state, projects, roles, channels, message
     renderPresence,
     renderMessages,
     updateComposer,
-    renderContext
+    renderContext,
+    setVexAvailability,
+    pendingReplyCount: () => pendingReplyTimers.size
   };
 }
 
