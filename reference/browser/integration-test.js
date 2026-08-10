@@ -72,6 +72,7 @@ export async function runBrowserIntegration() {
     const blockedDraft = 'integration.marker.unsent-local-draft';
     const blockedList = selectedMessageList(app);
     const blockedCountBefore = blockedList.length;
+    const blockedChannelRef = app.state.channelRef;
 
     assert(app.state.vexAvailability === 'UNAVAILABLE', 'A01 initial Vex availability must be UNAVAILABLE');
     assert(sendButton.disabled, 'A01 Send must be unavailable while Vex is unavailable');
@@ -83,6 +84,7 @@ export async function runBrowserIntegration() {
     assert(blockedList.length === blockedCountBefore, 'A01 unavailable submit appended a message');
     assert(app.chat.pendingReplyCount() === 0, 'A02 unavailable submit scheduled a reply');
     assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT', 'A03 blocked text was not classified as UNSENT_LOCAL_DRAFT');
+    assert(app.state.unsentLocalDraft?.channelRef === blockedChannelRef, 'A03 local draft lost its channel binding');
     assert(app.state.unsentLocalDraft?.content === blockedDraft, 'A03 local draft content changed');
     assert(app.state.unsentLocalDraft?.queued === false, 'A03 local draft was represented as queued');
     assert(app.state.unsentLocalDraft?.accepted === false, 'A03 local draft was represented as accepted');
@@ -91,7 +93,7 @@ export async function runBrowserIntegration() {
     assert(!visibleMessages().some((message) => message.text === blockedDraft), 'A03 blocked draft leaked into message history');
     availabilityChecks.push('A01 unavailable submit appends zero messages');
     availabilityChecks.push('A02 unavailable submit schedules zero replies');
-    availabilityChecks.push('A03 local-only draft remains visible and unqueued');
+    availabilityChecks.push('A03 local-only draft remains visible, channel-bound, and unqueued');
 
     for (const language of ['en', 'zh', 'ja']) {
       selectLanguage(language);
@@ -103,6 +105,26 @@ export async function runBrowserIntegration() {
       localizationChecks.push({ language, availabilityRef: 'composer.availability.unavailable-draft', state: 'PASS' });
     }
     selectLanguage('en');
+
+    click('[data-channel-ref="channel.self-development.guide"]');
+    assert(app.state.channelRef === 'channel.self-development.guide', 'A03 channel-isolation test did not enter the non-owning channel');
+    assert(input.value === '', 'A03 other-channel draft remained visible in the non-owning channel');
+    assert(input.dataset.draftState === 'NONE', 'A03 non-owning channel falsely projected draft ownership');
+    assert(app.state.unsentLocalDraft?.channelRef === blockedChannelRef, 'A03 selecting another channel reassigned the owning draft');
+    assert(app.state.unsentLocalDraft?.content === blockedDraft, 'A03 selecting another channel mutated the owning draft');
+    const nonOwningList = selectedMessageList(app);
+    const nonOwningCountBefore = nonOwningList.length;
+    app.chat.setVexAvailability('AVAILABLE');
+    await delay(230);
+    assert(input.value === '', 'A03 availability restoration exposed another channel\'s stale draft');
+    assert(nonOwningList.length === nonOwningCountBefore, 'A03 availability restoration sent another channel\'s stale draft');
+    assert(app.chat.pendingReplyCount() === 0, 'A03 availability restoration scheduled a non-owning-channel reply');
+    app.chat.setVexAvailability('UNAVAILABLE');
+    click(`[data-channel-ref="${blockedChannelRef}"]`);
+    assert(app.state.channelRef === blockedChannelRef, 'A03 channel-isolation test did not return to the owning channel');
+    assert(input.value === blockedDraft, 'A03 returning to the owning channel did not restore its draft');
+    assert(input.dataset.draftState === 'UNSENT_LOCAL_DRAFT', 'A03 restored owning draft lost its explicit state');
+    availabilityChecks.push('A03 channel-bound draft is hidden outside its owner and restored on return');
 
     click('[data-action="select-view"][data-view="terrain"]');
     assert(document.querySelector('#view-terrain').hidden === false, 'A04 Terrain did not remain usable while Vex was unavailable');

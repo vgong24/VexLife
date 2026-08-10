@@ -245,7 +245,12 @@ export function createChatController({ state, projects, roles, channels, message
     const recipients = channel.memberKeys.filter((key) => key !== 'victor').map(roleLabel);
     $('#composerAddress').textContent = `${roleLabel('victor')} → ${recipients.join(', ')}`;
     const draft = draftForChannel(channel);
-    if (draft && $('#messageInput').value !== draft.content) $('#messageInput').value = draft.content;
+    const input = $('#messageInput');
+    if (draft) {
+      if (input.value !== draft.content) input.value = draft.content;
+    } else if (state.unsentLocalDraft?.channelRef && state.unsentLocalDraft.channelRef !== channel.channelRef) {
+      input.value = '';
+    }
     $('#addGroupButton').hidden = !channelsForThread().some((candidate) => candidate.kind === 'GROUP');
     renderComposerTruth();
   }
