@@ -58,8 +58,8 @@
     {
       "path": "GOVERNANCE.md",
       "mode": "100644",
-      "bytes": 2756,
-      "sha256": "5f7395f25b10f3ca9ed898d2e36fb2b347730e47996403e171b284cd8a7a8d13"
+      "bytes": 4108,
+      "sha256": "99f806b03aa5e5da51588ddbd60141dce82b6681c61d6e224fee5ce1b433049b"
     },
     {
       "path": "LICENSE",
@@ -124,8 +124,8 @@
     {
       "path": "blueprint/build-health-registry.json",
       "mode": "100644",
-      "bytes": 12107,
-      "sha256": "e63274b19c6694ef9e0d73f7ad0fffe0d66bdbaf4ff957336fa90fa5f4227653"
+      "bytes": 15426,
+      "sha256": "3c18759f96df1abf7d96a6b3a711c53579ed692c561deb1af4990d1196dae5d4"
     },
     {
       "path": "blueprint/capability-registry.json",

@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/repository-evidence.mjs",
+      "mode": "100644",
+      "bytes": 19367,
+      "sha256": "e5d2710183c8fd91652922eea8c3e02d05df98db0ea7ffb4e9e1d67d36f95b9e"
+    },
+    {
       "path": "src/core/resource-admission.mjs",
       "mode": "100644",
       "bytes": 8924,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 7231,
       "sha256": "f33948c44c7fa69cc818447c5b52e9c77c2c20a928889986c7c3dffaf79f9bd7"
-    },
-    {
-      "path": "test/daily-memory-dream.test.mjs",
-      "mode": "100644",
-      "bytes": 16619,
-      "sha256": "e8201d58199f0b84c940fcefdeeff0686b52509aec767a3cb38cb28f1204291f"
     }
   ]
 }

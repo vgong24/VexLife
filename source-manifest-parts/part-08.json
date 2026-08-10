@@ -26,6 +26,12 @@
       "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
     },
     {
+      "path": "scripts/validation-evidence.mjs",
+      "mode": "100644",
+      "bytes": 3064,
+      "sha256": "c61a20f91e1f64c5edff6ac7c4b643e5e78c0f8078bdd4964bb9e41fa0b33ec4"
+    },
+    {
       "path": "src/core/atlas.mjs",
       "mode": "100644",
       "bytes": 3026,
@@ -52,8 +58,8 @@
     {
       "path": "src/core/build-health.mjs",
       "mode": "100644",
-      "bytes": 4344,
-      "sha256": "462112c34ac3acbab20efebd2f295a6fdac5813cff053df91358d281030c963d"
+      "bytes": 22297,
+      "sha256": "cb746a2337fa460c1672cd00ef271e6b5b419ce230572e2c4b5d353fa6a51679"
     },
     {
       "path": "src/core/burden-release.mjs",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 44847,
       "sha256": "9aa7e0c4976f6a334a35d4b32a18b801a1f71437aef021b46e1a8642842507ea"
-    },
-    {
-      "path": "src/core/home-bridge.mjs",
-      "mode": "100644",
-      "bytes": 7921,
-      "sha256": "3ceef5d425232ec90b4d59a6e9a8b66510124d0f748ebd695a437e56a48cda81"
     }
   ]
 }
