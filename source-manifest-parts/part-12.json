@@ -2,6 +2,30 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/patient0-familiarity-live-work.test.mjs",
+      "mode": "100644",
+      "bytes": 13617,
+      "sha256": "ee90199e802566aab4dd7aea84947f77056d027d010619a713189708ff85b1a3"
+    },
+    {
+      "path": "test/patient0-nursery.test.mjs",
+      "mode": "100644",
+      "bytes": 11731,
+      "sha256": "650a884a5c98259c4d769fc8bef2dc7ebb935ba2df45e1af2c2748e9a8bd3214"
+    },
+    {
+      "path": "test/pr-ready-attention.e2e.mjs",
+      "mode": "100644",
+      "bytes": 3537,
+      "sha256": "f395bdd9b6d7c04a2a4abaa3d31f1fc82226a52fa0326dcb347d93a6491d0920"
+    },
+    {
+      "path": "test/public-safety.test.mjs",
+      "mode": "100644",
+      "bytes": 3919,
+      "sha256": "194b7be177367dd255be65380765e97ac74bdd88e4c15d3e40caa7a901e13177"
+    },
+    {
       "path": "test/registry.test.mjs",
       "mode": "100644",
       "bytes": 19131,

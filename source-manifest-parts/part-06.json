@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "reference/browser/modules/chat-controller.js",
+      "mode": "100644",
+      "bytes": 14195,
+      "sha256": "243729f83fc820311fbce9ed2af920ffd07efa8d053e88f7b5eca6d9f5a00d24"
+    },
+    {
+      "path": "reference/browser/modules/demo-data.js",
+      "mode": "100644",
+      "bytes": 9551,
+      "sha256": "c22665335377dfe25440dde530cb0af7e273cea6fcc5fa0f0984a3c97d7eeb48"
+    },
+    {
       "path": "reference/browser/modules/dom.js",
       "mode": "100644",
       "bytes": 1472,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 2036,
       "sha256": "4da487d45026db20feeb5bf561b2413423779065edce86ede9388093c7385217"
-    },
-    {
-      "path": "scripts/evolution-summary.mjs",
-      "mode": "100644",
-      "bytes": 725,
-      "sha256": "c6ac13ab39f729bfa6515fd77087e3c4ed848537dc6a03ba35137ef2c4ea5979"
-    },
-    {
-      "path": "scripts/feature-check.mjs",
-      "mode": "100644",
-      "bytes": 669,
-      "sha256": "aa990b433e4597d9e55cc9857696fd673a05b7af997674c7ff9165a48d28008f"
     }
   ]
 }

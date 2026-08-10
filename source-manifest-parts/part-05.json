@@ -32,6 +32,12 @@
       "sha256": "60e4398cd0c35a86a1e7b6797ca085fc41cd2e32341cfb0ec5446df252f3854e"
     },
     {
+      "path": "docs/PATIENT0-FAMILIARITY-LIVE-WORK.md",
+      "mode": "100644",
+      "bytes": 3797,
+      "sha256": "64854045a0c06645b6e318ef09a00e250e5631076f219a656d0df808da5da4b4"
+    },
+    {
       "path": "docs/PATIENT0-NURSERY.md",
       "mode": "100644",
       "bytes": 4551,
@@ -86,6 +92,12 @@
       "sha256": "497eddccd7fb2f06eb9c6ae2f9d26238ea48f16a80f33d87eeb497fa71cfbfa0"
     },
     {
+      "path": "fixtures/patient0-familiarity-live-work/synthetic-preflight.v1.json",
+      "mode": "100644",
+      "bytes": 1262,
+      "sha256": "7a146407c823e1f569fae709ee9e83c8d0fe7618af4aa40c2b03383185d562cd"
+    },
+    {
       "path": "package-lock.json",
       "mode": "100644",
       "bytes": 1844,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 1305,
       "sha256": "4356abfe264acbff90800ed872ab1a184f11314d96300836a420fb1fef59e2aa"
-    },
-    {
-      "path": "reference/browser/modules/chat-controller.js",
-      "mode": "100644",
-      "bytes": 14195,
-      "sha256": "243729f83fc820311fbce9ed2af920ffd07efa8d053e88f7b5eca6d9f5a00d24"
-    },
-    {
-      "path": "reference/browser/modules/demo-data.js",
-      "mode": "100644",
-      "bytes": 9551,
-      "sha256": "c22665335377dfe25440dde530cb0af7e273cea6fcc5fa0f0984a3c97d7eeb48"
     }
   ]
 }
