@@ -10,14 +10,14 @@
     {
       "path": "reference/browser/modules/chat-controller.js",
       "mode": "100644",
-      "bytes": 14195,
-      "sha256": "243729f83fc820311fbce9ed2af920ffd07efa8d053e88f7b5eca6d9f5a00d24"
+      "bytes": 17349,
+      "sha256": "f22ed54007c9985f08a48d427e4f962ba527f3651ecbb668c9d3b90e01dfd4dd"
     },
     {
       "path": "reference/browser/modules/demo-data.js",
       "mode": "100644",
-      "bytes": 9551,
-      "sha256": "c22665335377dfe25440dde530cb0af7e273cea6fcc5fa0f0984a3c97d7eeb48"
+      "bytes": 9615,
+      "sha256": "04a2dd69759db6000a3566d0ab519b6c8817f4e400b3fff8dd01c181c9333771"
     },
     {
       "path": "reference/browser/modules/dom.js",
