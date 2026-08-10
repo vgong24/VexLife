@@ -4,8 +4,8 @@
     {
       "path": "test/patient0-familiarity-live-work.test.mjs",
       "mode": "100644",
-      "bytes": 10099,
-      "sha256": "4a3e920417bac6c86a0b042c7af752c7eff188d63ac7a2998b4e9b61b735d167"
+      "bytes": 11505,
+      "sha256": "57e64d5c2c5fc10888a69323926a94aa7589b9a0bd631ff3113540f1ca2044df"
     },
     {
       "path": "test/patient0-nursery.test.mjs",

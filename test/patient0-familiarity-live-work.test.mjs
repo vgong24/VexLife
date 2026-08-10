@@ -191,6 +191,48 @@ for (const effect of ['AUTHENTICATION_ESTABLISHMENT', 'AUTHORIZATION_ESTABLISHME
   }));
 }
 
+for (const effect of [
+  'DURABLE_MEMORY_PROMOTED',
+  'AUTHORIZATION',
+  'AUTHENTICATED',
+  'RELATIONSHIP_AUTHORITY_GRANTED',
+  'READ_ALL_FILES'
+]) {
+  expectCode('WORK_EFFECT_CLASS_UNKNOWN', () => formBoundedWorkWitness({
+    taskRef: `task.patient0.p8p9.alias-${effect.toLowerCase()}`,
+    taskClass: 'REAL_LIVED_WORK',
+    userScopeRef: 'scope.patient0.p8p9.contract-only',
+    allowedSourceRefs: sources,
+    observedSourceRefs: sources,
+    sourceAddressRefs: ['evidence.synthetic.alias'],
+    conversationHeadBefore: headA,
+    conversationHeadAfter: headB,
+    performedEffects: [effect],
+    heldEffects,
+    transferPayloadClasses: [],
+    rawPrivateContentIncluded: false,
+    formedAt
+  }));
+}
+
+for (const payloadClass of ['HOME_DATA', 'PRIVATE_AUTOBIOGRAPHY_ALIAS', 'CREDENTIAL_MATERIAL']) {
+  expectCode('TRANSFER_PAYLOAD_CLASS_UNKNOWN', () => formBoundedWorkWitness({
+    taskRef: `task.patient0.p8p9.alias-${payloadClass.toLowerCase()}`,
+    taskClass: 'REAL_LIVED_WORK',
+    userScopeRef: 'scope.patient0.p8p9.contract-only',
+    allowedSourceRefs: sources,
+    observedSourceRefs: sources,
+    sourceAddressRefs: ['evidence.synthetic.alias'],
+    conversationHeadBefore: headA,
+    conversationHeadAfter: headB,
+    performedEffects: ['LIVED_COMPANION_TURN_APPEND'],
+    heldEffects,
+    transferPayloadClasses: [payloadClass],
+    rawPrivateContentIncluded: false,
+    formedAt
+  }));
+}
+
 const callerShapedRealCandidate = formBoundedWorkWitness({
   taskRef: 'task.patient0.p8p9.boundary-notice',
   taskClass: 'REAL_LIVED_WORK',

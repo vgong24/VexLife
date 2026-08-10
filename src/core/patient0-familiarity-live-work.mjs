@@ -32,6 +32,15 @@ export const NON_TRANSFERABLE_PAYLOAD_CLASSES = Object.freeze([
   'STANDING_AUTHORITY'
 ]);
 
+export const TRANSFERABLE_PAYLOAD_CLASSES = Object.freeze([
+  'EVALUATED_FOUNDATIONAL_CAPABILITY'
+]);
+
+export const ALLOWED_PERFORMED_EFFECTS = Object.freeze([
+  'LIVED_COMPANION_TURN_APPEND',
+  'RELATIONSHIP_BOUNDARY_NOTIFICATION'
+]);
+
 export const HELD_EFFECT_KEYS = Object.freeze([
   'durableMemoryPromotion',
   'relationshipStandingAuthority',
@@ -263,6 +272,13 @@ function rejectTransferPayload(classes = []) {
       prohibited
     });
   }
+  const unknown = classes.filter((value) => !TRANSFERABLE_PAYLOAD_CLASSES.includes(value));
+  if (unknown.length) {
+    fail('TRANSFER_PAYLOAD_CLASS_UNKNOWN', 'transfer payload class is not in the explicit transferable allowlist', {
+      unknown,
+      allowed: TRANSFERABLE_PAYLOAD_CLASSES
+    });
+  }
   return Object.freeze([...classes]);
 }
 
@@ -404,7 +420,11 @@ export function formBoundedWorkWitness(input) {
     }
   }
 
-  const performedEffects = Array.isArray(input.performedEffects) ? [...input.performedEffects] : [];
+  const performedEffectsInput = input.performedEffects ?? [];
+  if (!Array.isArray(performedEffectsInput)) {
+    fail('WORK_EFFECTS_INVALID', 'performedEffects must be an array');
+  }
+  const performedEffects = [...performedEffectsInput];
   const forbiddenEffects = performedEffects.filter((effect) => [
     'DURABLE_MEMORY_PROMOTION',
     'AUTHENTICATION_ESTABLISHMENT',
@@ -419,6 +439,13 @@ export function formBoundedWorkWitness(input) {
     'P11_RELEASE'
   ].includes(effect));
   if (forbiddenEffects.length) fail('WORK_EFFECT_BOUNDARY_WIDENED', 'bounded work includes a held effect', { forbiddenEffects });
+  const unknownEffects = performedEffects.filter((effect) => !ALLOWED_PERFORMED_EFFECTS.includes(effect));
+  if (unknownEffects.length) {
+    fail('WORK_EFFECT_CLASS_UNKNOWN', 'performed effect is not in the explicit bounded-work allowlist', {
+      unknownEffects,
+      allowed: ALLOWED_PERFORMED_EFFECTS
+    });
+  }
 
   const core = {
     schemaVersion: 'vexlife.patient0.bounded-work-witness/v1',
