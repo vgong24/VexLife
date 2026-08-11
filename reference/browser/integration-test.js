@@ -33,9 +33,15 @@ function assertVisibleOwnership(app, requiredMarker, forbiddenMarkers = []) {
   }
 }
 
+function selectedMessageList(app) {
+  const key = `${app.state.projectRef}::${app.state.threadRef}::${app.state.channelRef}`;
+  return app.messages.get(key);
+}
+
 async function sendMarker(marker) {
   const input = document.querySelector('#messageInput');
   input.value = marker;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
   document.querySelector('#composer').requestSubmit();
   await delay(230);
 }
@@ -53,10 +59,129 @@ export async function runBrowserIntegration() {
   host.textContent = 'RUNNING';
   document.body.append(host);
   const app = globalThis.__VEXLIFE_APP__;
+  const availabilityChecks = [];
   const ownershipChecks = [];
   const localizationChecks = [];
 
   try {
+    const composer = document.querySelector('#composer');
+    const input = document.querySelector('#messageInput');
+    const sendButton = document.querySelector('#composer button[type="submit"]');
+    const composerNodeRef = composer.dataset.nodeRef;
+    const companionIdentityBefore = app.chat.roleLabel('companion');
+    const blockedDraft = 'integration.marker.unsent-local-draft';
+    const blockedList = selectedMessageList(app);
+    const blockedCountBefore = blockedList.length;
+    const blockedChannelRef = app.state.channelRef;
+
+    assert(app.state.vexAvailability === 'UNAVAILABLE', 'A01 initial Vex availability must be UNAVAILABLE');
+    assert(sendButton.disabled, 'A01 Send must be unavailable while Vex is unavailable');
+    input.value = blockedDraft;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    composer.requestSubmit();
+    await delay(230);
+
+    assert(blockedList.length === blockedCountBefore, 'A01 unavailable submit appended a message');
+    assert(app.chat.pendingReplyCount() === 0, 'A02 unavailable submit scheduled a reply');
+    assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT', 'A03 blocked text was not classified as UNSENT_LOCAL_DRAFT');
+    assert(app.state.unsentLocalDraft?.channelRef === blockedChannelRef, 'A03 local draft lost its channel binding');
+    assert(app.state.unsentLocalDraft?.content === blockedDraft, 'A03 local draft content changed');
+    assert(app.state.unsentLocalDraft?.queued === false, 'A03 local draft was represented as queued');
+    assert(app.state.unsentLocalDraft?.accepted === false, 'A03 local draft was represented as accepted');
+    assert(input.value === blockedDraft, 'A03 blocked text did not remain visibly in the composer');
+    assert(input.dataset.draftState === 'UNSENT_LOCAL_DRAFT', 'A03 composer draft state is not explicit');
+    assert(!visibleMessages().some((message) => message.text === blockedDraft), 'A03 blocked draft leaked into message history');
+    availabilityChecks.push('A01 unavailable submit appends zero messages');
+    availabilityChecks.push('A02 unavailable submit schedules zero replies');
+    availabilityChecks.push('A03 local-only draft remains visible, channel-bound, and unqueued');
+
+    for (const language of ['en', 'zh', 'ja']) {
+      selectLanguage(language);
+      assert(document.querySelector('#composer').dataset.nodeRef === composerNodeRef, `A10 ${language} changed composer semantic identity`);
+      assert(
+        document.querySelector('#composerHint').textContent.startsWith(app.t('composer.availability.unavailable-draft')),
+        `A10 ${language} unavailable-draft truth did not render from the stable string ref`
+      );
+      localizationChecks.push({ language, availabilityRef: 'composer.availability.unavailable-draft', state: 'PASS' });
+    }
+    selectLanguage('en');
+
+    click('[data-channel-ref="channel.self-development.guide"]');
+    assert(app.state.channelRef === 'channel.self-development.guide', 'A03 channel-isolation test did not enter the non-owning channel');
+    assert(input.value === '', 'A03 other-channel draft remained visible in the non-owning channel');
+    assert(input.dataset.draftState === 'NONE', 'A03 non-owning channel falsely projected draft ownership');
+    assert(app.state.unsentLocalDraft?.channelRef === blockedChannelRef, 'A03 selecting another channel reassigned the owning draft');
+    assert(app.state.unsentLocalDraft?.content === blockedDraft, 'A03 selecting another channel mutated the owning draft');
+    const nonOwningList = selectedMessageList(app);
+    const nonOwningCountBefore = nonOwningList.length;
+    app.chat.setVexAvailability('AVAILABLE');
+    await delay(230);
+    assert(input.value === '', 'A03 availability restoration exposed another channel\'s stale draft');
+    assert(nonOwningList.length === nonOwningCountBefore, 'A03 availability restoration sent another channel\'s stale draft');
+    assert(app.chat.pendingReplyCount() === 0, 'A03 availability restoration scheduled a non-owning-channel reply');
+    app.chat.setVexAvailability('UNAVAILABLE');
+    click(`[data-channel-ref="${blockedChannelRef}"]`);
+    assert(app.state.channelRef === blockedChannelRef, 'A03 channel-isolation test did not return to the owning channel');
+    assert(input.value === blockedDraft, 'A03 returning to the owning channel did not restore its draft');
+    assert(input.dataset.draftState === 'UNSENT_LOCAL_DRAFT', 'A03 restored owning draft lost its explicit state');
+    availabilityChecks.push('A03 channel-bound draft is hidden outside its owner and restored on return');
+
+    click('[data-action="select-view"][data-view="terrain"]');
+    assert(document.querySelector('#view-terrain').hidden === false, 'A04 Terrain did not remain usable while Vex was unavailable');
+    click('#terrainReset');
+    assert(app.state.vexAvailability === 'UNAVAILABLE', 'A04 Terrain interaction changed Vex availability');
+    assert(input.value === blockedDraft, 'A04 Terrain interaction lost the unsent local draft');
+    availabilityChecks.push('A04 Terrain remains usable while unavailable');
+
+    click('[data-action="select-view"][data-view="chat"]');
+    assert(app.state.vexAvailability === 'UNAVAILABLE', 'A05 returning from Terrain changed availability truth');
+    assert(input.value === blockedDraft, 'A05 returning from Terrain lost the unsent local draft');
+    assert(sendButton.disabled, 'A05 Send became available without an availability transition');
+    availabilityChecks.push('A05 returning from Terrain preserves availability and draft truth');
+
+    app.chat.setVexAvailability('AVAILABLE');
+    await delay(230);
+    assert(blockedList.length === blockedCountBefore, 'A06 availability restoration auto-sent the stale draft');
+    assert(app.chat.pendingReplyCount() === 0, 'A06 availability restoration scheduled a reply');
+    assert(app.state.unsentLocalDraft?.content === blockedDraft, 'A06 availability restoration consumed the stale draft');
+    assert(input.value === blockedDraft, 'A06 availability restoration removed the visible draft');
+    assert(!sendButton.disabled, 'A06 Send did not become available after restoration');
+    availabilityChecks.push('A06 restoration leaves stale draft unsent');
+
+    const countBeforeTransitions = blockedList.length;
+    for (let index = 0; index < 3; index += 1) {
+      app.chat.setVexAvailability('UNAVAILABLE');
+      app.chat.setVexAvailability('AVAILABLE');
+    }
+    await delay(230);
+    assert(blockedList.length === countBeforeTransitions, 'A08 repeated availability transitions sent or duplicated stale content');
+    assert(app.chat.pendingReplyCount() === 0, 'A08 repeated availability transitions scheduled a reply');
+    assert(input.value === blockedDraft, 'A08 repeated availability transitions changed the draft');
+    availabilityChecks.push('A08 repeated transitions do not duplicate or send stale content');
+
+    for (const language of ['en', 'zh', 'ja']) {
+      selectLanguage(language);
+      assert(document.querySelector('#composer').dataset.nodeRef === composerNodeRef, `A10 ${language} changed composer semantic identity after restoration`);
+      assert(
+        document.querySelector('#composerHint').textContent.startsWith(app.t('composer.availability.available')),
+        `A10 ${language} available truth did not render from the stable string ref`
+      );
+      localizationChecks.push({ language, availabilityRef: 'composer.availability.available', state: 'PASS' });
+    }
+    selectLanguage('en');
+
+    assert(app.chat.roleLabel('companion') === companionIdentityBefore, 'A09 visible Vex identity changed with availability state');
+    availabilityChecks.push('A09 visible Vex identity is stable across availability');
+
+    composer.requestSubmit();
+    await delay(230);
+    assert(blockedList.length === blockedCountBefore + 2, 'A07 explicit post-restoration send did not produce exactly one accepted message and one reply');
+    assert(blockedList.some((message) => message.content === blockedDraft), 'A07 explicit send did not accept the visible draft');
+    assert(app.state.unsentLocalDraft === null, 'A07 accepted send left stale draft state behind');
+    assert(input.value === '', 'A07 accepted send did not clear the composer');
+    availabilityChecks.push('A07 explicit send after restoration is the only acceptance path');
+    availabilityChecks.push('A10 EN/JA/ZH availability truth uses stable refs and composer identity');
+
     const markerSelfCompanion = 'integration.marker.self.companion';
     const markerSelfGuide = 'integration.marker.self.guide';
     const markerVexGuided = 'integration.marker.vex-home.guided';
@@ -120,6 +245,7 @@ export async function runBrowserIntegration() {
     const result = {
       schemaVersion: 'vexlife.browser-integration-receipt/v0',
       state: 'PASS',
+      availabilityChecks,
       projectsExercised: ['project.self-development', 'project.vex-home-product', 'project.local-vex'],
       threadsExercised: [
         'thread.self-development.open-conversation',
@@ -146,6 +272,7 @@ export async function runBrowserIntegration() {
       schemaVersion: 'vexlife.browser-integration-receipt/v0',
       state: 'FAIL',
       error: error instanceof Error ? error.message : String(error),
+      availabilityChecks,
       ownershipChecks,
       localizationChecks
     };
