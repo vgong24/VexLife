@@ -128,6 +128,12 @@
       "sha256": "3e912fd27db597b16db0a063e82f010469278e6c2557977045df9c834a7fa9e9"
     },
     {
+      "path": "docs/FOUNDATION-README.md",
+      "mode": "100644",
+      "bytes": 22513,
+      "sha256": "2e3d9f6df0fc3a4ef3f2c76c87569a400d73c5279321d9bb64ed4a6f0c3d5046"
+    },
+    {
       "path": "docs/G05-RUNTIME-AUTHORITY-SUBSTRATE.md",
       "mode": "100644",
       "bytes": 7936,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 3310,
       "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
-    },
-    {
-      "path": "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
-      "mode": "100644",
-      "bytes": 12826,
-      "sha256": "f6196dab0cbd79ca34d92f84d5f4698f58323ef09b7319abeb7abbca6c482ad8"
     }
   ]
 }

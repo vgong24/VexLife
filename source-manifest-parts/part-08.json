@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/recovery-simulate.mjs",
+      "mode": "100644",
+      "bytes": 196410,
+      "sha256": "7cd65f5f6727415668c75476d27df2ad64701cf364cfa76cf37933111577e96f"
+    },
+    {
+      "path": "scripts/recovery-status.mjs",
+      "mode": "100644",
+      "bytes": 816,
+      "sha256": "b898c30ae63b55c1234cd760134aa9b986fd77bdb6f33a33ed9a03163edb07ec"
+    },
+    {
+      "path": "scripts/registry-summary.mjs",
+      "mode": "100644",
+      "bytes": 317,
+      "sha256": "5d59f0c42d2e84297c8f90751628bca0626c44b37f6763fbe14718963f92ab27"
+    },
+    {
       "path": "scripts/scheduled-daily-autonomy.mjs",
       "mode": "100644",
       "bytes": 15911,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 105344,
       "sha256": "1272206f1564d49a885a5bd9b8d9501b3799092a3b523f6f584d89e614661a8c"
-    },
-    {
-      "path": "src/core/conversation.mjs",
-      "mode": "100644",
-      "bytes": 2171,
-      "sha256": "7087c6116acac848adff99a6a060bd67afd4e303df539782442ea1d2cc036331"
-    },
-    {
-      "path": "src/core/daily-memory-dream.mjs",
-      "mode": "100644",
-      "bytes": 60707,
-      "sha256": "1808e03fb3a9069b6b8d67a75a52c1699891f437aca6d9cf1217bf198fc0314f"
-    },
-    {
-      "path": "src/core/device-family.mjs",
-      "mode": "100644",
-      "bytes": 2254,
-      "sha256": "db0e21e48b2d7c2a9ad4ef1a518b0e64a4e057a3d7a2ed1b2de5aefb21203579"
     }
   ]
 }
