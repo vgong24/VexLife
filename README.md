@@ -38,7 +38,7 @@ The script speaks plainly, in everyday words:
 
 - It checks for Node.js 20 or newer, and offers to install it once if it is missing.
 - It asks where Vex should live — press Enter for the default, a folder called `.vexlife` in your own user folder.
-- If Vex already has a home, it is preserved and setup simply continues — nothing is ever deleted.
+- If Vex already has a home, setup leaves its existing identity and data in place: nothing is deleted, moved, or automatically migrated. Setup then continues in that Home and may add or refresh setup-owned runtime logs and `recovery/install-receipt.txt`.
 - It writes a plain-English receipt into Vex's home folder, saying exactly what happened.
 - Then the interface is served locally and your browser opens.
 

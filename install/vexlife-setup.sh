@@ -7,7 +7,7 @@
 #   2. Finds the VexLife folder (the extracted repository).
 #   3. Asks where Vex should keep its home (default: a folder called .vexlife in your home folder).
 #   4. Runs the VexLife bootstrap, which creates Vex's home. If Vex already has a home there,
-#      it is preserved untouched and setup continues.
+#      bootstrap leaves it in place without deleting, moving, or migrating it; setup then continues.
 #   5. Asks ONE optional question about model weights. Skipping is fine and safe.
 #   6. Starts the local VexLife page and opens it in your browser.
 #   7. Writes a plain-English receipt next to Vex's own bootstrap receipt.
@@ -182,7 +182,7 @@ echo "VexLife folder: $REPO_ROOT"
 step "Choosing where Vex lives (VexHome)"
 DEFAULT_HOME="$HOME/.vexlife"
 VEXHOME_DEFAULT_USED="true"
-echo "Vex keeps its home (memories, settings, receipts) OUTSIDE the VexLife folder."
+echo "By default, Vex keeps its home (memories, settings, receipts) outside the VexLife folder. You may choose another path."
 VEX_HOME="$(read_with_default "Where should Vex's home be? Press Enter for the default" "$DEFAULT_HOME")"
 if [ "$VEX_HOME" != "$DEFAULT_HOME" ]; then VEXHOME_DEFAULT_USED="false"; fi
 echo "VexHome: $VEX_HOME"
@@ -203,8 +203,8 @@ if [ "$BOOTSTRAP_EXIT" -eq 0 ]; then
 elif [ "$BOOTSTRAP_EXIT" -eq 3 ]; then
   BOOTSTRAP_OUTCOME="EXISTING_HOME_PRESERVED"
   echo ""
-  echo "Vex already has a home here - it was preserved exactly as it is, and setup is resuming."
-  echo "(Nothing was deleted or moved. There is no automatic migration; your existing home simply stays put.)"
+  echo "Vex already has a home here. Bootstrap left it in place; setup is resuming without deleting, moving, or migrating it."
+  echo "(Setup may add or refresh its own runtime logs and install receipt inside this Home.)"
 else
   echo ""
   echo "Bootstrap stopped with exit code $BOOTSTRAP_EXIT." >&2
@@ -269,7 +269,7 @@ if [ "$ANSWER" = "y" ]; then
       MODEL_STATE="PROVISION_FAILED"
       echo ""
       echo "Model provisioning did not succeed (exit code $PROVISION_EXIT)." >&2
-      echo "Any partial download was deleted. Vex continues without model weights - this is safe."
+      echo "Provisioning did not complete, so Vex remains UNCONFIGURED. Review the exact error above before retrying."
       echo "Setup will continue."
     fi
   fi
@@ -327,14 +327,14 @@ MODEL_LINE="Model weights: none installed - Vex is UNCONFIGURED (this is fine; w
 if [ "$MODEL_STATE" = "PROVISIONED_INACTIVE" ]; then
   MODEL_LINE="Model weights: one file was downloaded, checksum-verified and stored as PROVISIONED_INACTIVE (present, not activated). SHA-256: $PROV_SHA"
 elif [ "$MODEL_STATE" = "PROVISION_FAILED" ]; then
-  MODEL_LINE="Model weights: provisioning was attempted but failed (exit code $PROVISION_EXIT); partial files were deleted; Vex is UNCONFIGURED."
+  MODEL_LINE="Model provisioning did not complete (exit code $PROVISION_EXIT); Vex remains UNCONFIGURED. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying."
 elif [ "$MODEL_STATE" = "SKIPPED_INCOMPLETE_INPUT" ]; then
   MODEL_LINE="Model weights: provisioning was requested but the details were incomplete, so nothing was downloaded; Vex is UNCONFIGURED."
 fi
 
 BOOTSTRAP_LINE="Vex's home was created fresh."
 if [ "$BOOTSTRAP_OUTCOME" = "EXISTING_HOME_PRESERVED" ]; then
-  BOOTSTRAP_LINE="Vex already had a home here. It was preserved exactly as it was (exit code 3 = preserve and resume; VexLife has no automatic migration, so nothing was moved or changed)."
+  BOOTSTRAP_LINE="Vex already had a home here. Bootstrap did not delete, move, migrate, or rewrite the existing bootstrap receipt (exit code 3 = preserve and resume). Setup then continued in place and may have added or refreshed setup-owned runtime logs and this install receipt."
 fi
 
 SERVER_LINE="The local VexLife page is running at $INSTALL_URL (server process id $SERVER_PID) and your browser was opened to it."
@@ -375,7 +375,7 @@ DREAM SYNC
   VexLife today) runs dream sync automatically.
 
 TO START VEX NEXT TIME
-- Easiest: run this setup script again (it preserves any existing home).
+- Easiest: run this setup script again (it does not delete, move, or automatically migrate an existing Home; setup-owned logs and this install receipt may be refreshed).
 - Or run start-vexlife.sh in the VexLife folder, then open
   $INSTALL_URL yourself (that launcher does not open the browser for you).
 

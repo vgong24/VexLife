@@ -7,7 +7,7 @@
     2. Finds the VexLife folder (the extracted repository).
     3. Asks where Vex should keep its home (default: a folder called .vexlife in your user folder).
     4. Runs the VexLife bootstrap, which creates Vex's home. If Vex already has a home there,
-       it is preserved untouched and setup continues.
+       bootstrap leaves it in place without deleting, moving, or migrating it; setup then continues.
     5. Asks ONE optional question about model weights. Skipping is fine and safe.
     6. Starts the local VexLife page and opens it in your browser.
     7. Writes a plain-English receipt next to Vex's own bootstrap receipt.
@@ -220,7 +220,7 @@ Write-Step "Choosing where Vex lives (VexHome)"
 $defaultHome = Join-Path $HOME ".vexlife"
 $vexHomeDefaultUsed = $true
 if ([string]::IsNullOrWhiteSpace($VexHome)) {
-  Write-Host "Vex keeps its home (memories, settings, receipts) OUTSIDE the VexLife folder."
+  Write-Host "By default, Vex keeps its home (memories, settings, receipts) outside the VexLife folder. You may choose another path."
   $VexHome = Read-WithDefault "Where should Vex's home be? Press Enter for the default" $defaultHome
 }
 $VexHome = [System.IO.Path]::GetFullPath($VexHome)
@@ -243,8 +243,8 @@ if ($bootstrapExit -eq 0) {
 } elseif ($bootstrapExit -eq 3) {
   $bootstrapOutcome = "EXISTING_HOME_PRESERVED"
   Write-Host ""
-  Write-Host "Vex already has a home here - it was preserved exactly as it is, and setup is resuming." -ForegroundColor Yellow
-  Write-Host "(Nothing was deleted or moved. There is no automatic migration; your existing home simply stays put.)"
+  Write-Host "Vex already has a home here. Bootstrap left it in place; setup is resuming without deleting, moving, or migrating it." -ForegroundColor Yellow
+  Write-Host "(Setup may add or refresh its own runtime logs and install receipt inside this Home.)"
 } else {
   Write-Host ""
   Write-Host ("Bootstrap stopped with exit code " + $bootstrapExit + ".") -ForegroundColor Red
@@ -306,7 +306,7 @@ if ($wantProvision) {
       $modelState = "PROVISION_FAILED"
       Write-Host ""
       Write-Host ("Model provisioning did not succeed (exit code " + $provisionExit + ").") -ForegroundColor Red
-      Write-Host "Any partial download was deleted. Vex continues without model weights - this is safe."
+      Write-Host "Provisioning did not complete, so Vex remains UNCONFIGURED. Review the exact error above before retrying."
       Write-Host "Setup will continue."
     }
   }
@@ -362,14 +362,14 @@ $modelLine = "Model weights: none installed - Vex is UNCONFIGURED (this is fine;
 if ($modelState -eq "PROVISIONED_INACTIVE") {
   $modelLine = ("Model weights: one file was downloaded, checksum-verified and stored as PROVISIONED_INACTIVE (present, not activated). SHA-256: " + $provSha)
 } elseif ($modelState -eq "PROVISION_FAILED") {
-  $modelLine = ("Model weights: provisioning was attempted but failed (exit code " + $provisionExit + "); partial files were deleted; Vex is UNCONFIGURED.")
+  $modelLine = ("Model provisioning did not complete (exit code " + $provisionExit + "); Vex remains UNCONFIGURED. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying.")
 } elseif ($modelState -eq "SKIPPED_INCOMPLETE_INPUT") {
   $modelLine = "Model weights: provisioning was requested but the details were incomplete, so nothing was downloaded; Vex is UNCONFIGURED."
 }
 
 $bootstrapLine = "Vex's home was created fresh."
 if ($bootstrapOutcome -eq "EXISTING_HOME_PRESERVED") {
-  $bootstrapLine = "Vex already had a home here. It was preserved exactly as it was (exit code 3 = preserve and resume; VexLife has no automatic migration, so nothing was moved or changed)."
+  $bootstrapLine = "Vex already had a home here. Bootstrap did not delete, move, migrate, or rewrite the existing bootstrap receipt (exit code 3 = preserve and resume). Setup then continued in place and may have added or refreshed setup-owned runtime logs and this install receipt."
 }
 
 $serverLine = ("The local VexLife page is running at " + $script:InstallUrl + " (server process id " + $serverPid + ") and your browser was opened to it.")
@@ -408,7 +408,7 @@ DREAM SYNC
   VexLife today) runs dream sync automatically.
 
 TO START VEX NEXT TIME
-- Easiest: run this setup script again (it preserves any existing home).
+- Easiest: run this setup script again (it does not delete, move, or automatically migrate an existing Home; setup-owned logs and this install receipt may be refreshed).
 - Or run start-vexlife.ps1 in the VexLife folder, then open
   $($script:InstallUrl) yourself (that launcher does not open the browser for you).
 
