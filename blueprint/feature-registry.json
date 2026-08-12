@@ -1484,6 +1484,69 @@
       "projectionRefs": [
         "projection.patient0.nursery.readiness"
       ]
+    },
+    {
+      "featureRef": "feature.vexlife.companion-navigation",
+      "purpose": "Register the source-only physical companion-navigation contract and deterministic VNAV-00 proof without equating semantic screen navigation with GPS, activating a map engine, or granting location, message-send, network, driving, retention, Home or Memory effects.",
+      "status": "PREPARED",
+      "canonicalNodeRefs": [
+        "state.process-plans",
+        "state.context",
+        "process.vexlife.companion-navigation.vnav00-compose"
+      ],
+      "stateRefs": [
+        "state.process-plans",
+        "state.context"
+      ],
+      "actionRefs": [
+        "action.context.open"
+      ],
+      "permissionRefs": [
+        "permission.none"
+      ],
+      "processRefs": [
+        "process.vexlife.companion-navigation.vnav00-compose"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.process-factory"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.feature.reference-coverage",
+        "test.permission.no-inferred-effect",
+        "test.context.source-descent"
+      ],
+      "platformRefs": [
+        "platform.browser"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "DETERMINISTIC_SYNTHETIC_LOCAL_GRAPH_ONLY",
+      "dataClass": "SYNTHETIC_CONTENT_ABSENT_NAVIGATION_RECEIPTS",
+      "effectClass": "READ_PROJECTION",
+      "concurrencyClass": "NONE",
+      "rollbackRouteRef": "recovery.vnav00.recompose-from-current-source",
+      "projectionRefs": [
+        "projection.vexlife.companion-navigation.vnav00.synthetic-receipt"
+      ],
+      "knownGaps": [
+        "real GPS/location observation remains held",
+        "MapLibre/Valhalla/PMTiles/OSM runtime dependency qualification remains a later successor",
+        "microphone and spoken full-duplex transport remain held",
+        "human message send remains separately authorized through addressed-conversation transport",
+        "real route/network/driving/vehicle-control effects remain held",
+        "precise trip/search/location retention, Home and Memory mutation remain held",
+        "native platform and Android adoption remain held"
+      ]
     }
   ]
 }

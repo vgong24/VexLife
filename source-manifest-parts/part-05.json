@@ -104,6 +104,12 @@
       "sha256": "497eddccd7fb2f06eb9c6ae2f9d26238ea48f16a80f33d87eeb497fa71cfbfa0"
     },
     {
+      "path": "fixtures/companion-navigation/vnav-00.synthetic.json",
+      "mode": "100644",
+      "bytes": 3465,
+      "sha256": "10e1c27b3cf70d01e102201092f639a9ea1b0bd4ae71a0266533e4fcdbe37298"
+    },
+    {
       "path": "fixtures/patient0-familiarity-live-work/synthetic-preflight.v1.json",
       "mode": "100644",
       "bytes": 1262,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 898,
       "sha256": "df56100f04b33c3b5c61d46565277a5025fb72632408679a1fee5c2f2d06d93f"
-    },
-    {
-      "path": "reference/browser/app.css",
-      "mode": "100644",
-      "bytes": 12669,
-      "sha256": "69e8869423e5a548914b491ae38d00e2a3e3641b193b9ff783ab7e472cd09334"
     }
   ]
 }
