@@ -16,8 +16,8 @@
     {
       "path": "blueprint/feature-registry.json",
       "mode": "100644",
-      "bytes": 59196,
-      "sha256": "b8918fce80d3a76c26b4148b1be28d9bb7230856c9b70f7ad49a04c13bbdf345"
+      "bytes": 61792,
+      "sha256": "a56f7e9126fa87d1a6d3ff5ffbc49bec1243ace9e9f074f43ec0aeafa7daf8eb"
     },
     {
       "path": "blueprint/fragments/actions.json",

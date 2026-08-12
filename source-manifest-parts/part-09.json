@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/context-lease.mjs",
+      "mode": "100644",
+      "bytes": 11526,
+      "sha256": "3109d7e7075ba5508523704fe15e328d93f4d36cb04fe0e45e2abeec5225c456"
+    },
+    {
+      "path": "src/core/continuity-evolution-router.mjs",
+      "mode": "100644",
+      "bytes": 105344,
+      "sha256": "1272206f1564d49a885a5bd9b8d9501b3799092a3b523f6f584d89e614661a8c"
+    },
+    {
       "path": "src/core/conversation.mjs",
       "mode": "100644",
       "bytes": 2171,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 22567,
       "sha256": "bbf90a244ad3e3c63a2521f5561e3ecd29d90bd0841271fdd4c5b04e62688878"
-    },
-    {
-      "path": "src/core/localization.mjs",
-      "mode": "100644",
-      "bytes": 2991,
-      "sha256": "7422edc1bbf79dec7b376765273deb3b05c022e2214bdc92ac5e570306de2682"
-    },
-    {
-      "path": "src/core/model-provision.mjs",
-      "mode": "100644",
-      "bytes": 2525,
-      "sha256": "374ea58d83bdd34a007ac5a1291738531117062d6963742d87c3db08f352b9ed"
     }
   ]
 }
