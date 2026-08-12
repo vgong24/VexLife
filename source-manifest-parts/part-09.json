@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/conversation.mjs",
+      "mode": "100644",
+      "bytes": 2171,
+      "sha256": "7087c6116acac848adff99a6a060bd67afd4e303df539782442ea1d2cc036331"
+    },
+    {
+      "path": "src/core/daily-memory-dream.mjs",
+      "mode": "100644",
+      "bytes": 60707,
+      "sha256": "1808e03fb3a9069b6b8d67a75a52c1699891f437aca6d9cf1217bf198fc0314f"
+    },
+    {
+      "path": "src/core/device-family.mjs",
+      "mode": "100644",
+      "bytes": 2254,
+      "sha256": "db0e21e48b2d7c2a9ad4ef1a518b0e64a4e057a3d7a2ed1b2de5aefb21203579"
+    },
+    {
       "path": "src/core/evaluated-rhythm-learning.mjs",
       "mode": "100644",
       "bytes": 35652,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 2525,
       "sha256": "374ea58d83bdd34a007ac5a1291738531117062d6963742d87c3db08f352b9ed"
-    },
-    {
-      "path": "src/core/navigation.mjs",
-      "mode": "100644",
-      "bytes": 3771,
-      "sha256": "4570ebc451dfffbf22085f881d1477b9ba6cce146294c907d9a7ba05fabac9c3"
-    },
-    {
-      "path": "src/core/orientation.mjs",
-      "mode": "100644",
-      "bytes": 21966,
-      "sha256": "d966f66237b1b2f90581ed4abcdb571fdf10778d2bfde565ce5f24d9541202b4"
-    },
-    {
-      "path": "src/core/patient0-familiarity-live-work.mjs",
-      "mode": "100644",
-      "bytes": 25367,
-      "sha256": "a90ee2bac19e22dc9d51268a0013e42e9442a4ec20ba30cc3c635b0ef4714d78"
     }
   ]
 }

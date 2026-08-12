@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/navigation.mjs",
+      "mode": "100644",
+      "bytes": 3771,
+      "sha256": "4570ebc451dfffbf22085f881d1477b9ba6cce146294c907d9a7ba05fabac9c3"
+    },
+    {
+      "path": "src/core/orientation.mjs",
+      "mode": "100644",
+      "bytes": 21966,
+      "sha256": "d966f66237b1b2f90581ed4abcdb571fdf10778d2bfde565ce5f24d9541202b4"
+    },
+    {
+      "path": "src/core/patient0-familiarity-live-work.mjs",
+      "mode": "100644",
+      "bytes": 25367,
+      "sha256": "a90ee2bac19e22dc9d51268a0013e42e9442a4ec20ba30cc3c635b0ef4714d78"
+    },
+    {
       "path": "src/core/patient0-nursery.mjs",
       "mode": "100644",
       "bytes": 13648,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 238,
       "sha256": "bcf9aefdb6b7caad1486c228a72981111aa8534ed92a9eadacde5b57f9a42bca"
-    },
-    {
-      "path": "start-vexlife.ps1",
-      "mode": "100644",
-      "bytes": 409,
-      "sha256": "3a449fa55f66aa98878de571d955edda1db840ff0e0b257e9263dc429cac005e"
-    },
-    {
-      "path": "start-vexlife.sh",
-      "mode": "100644",
-      "bytes": 281,
-      "sha256": "6e2344723c0871ce76111d5fc298ebbbf3257a898bb7069a590a96f616184376"
-    },
-    {
-      "path": "test/boot.test.mjs",
-      "mode": "100644",
-      "bytes": 2359,
-      "sha256": "b0b3e2a104221ead20bacb62141395583dd12802221480c09aaa0722a11a936f"
     }
   ]
 }

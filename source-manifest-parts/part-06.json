@@ -2,6 +2,24 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "reference/browser/app.js",
+      "mode": "100644",
+      "bytes": 4772,
+      "sha256": "d33047cdc90f19766f02d01e1093b295d775032ca5d77cf7220b3ddec218a946"
+    },
+    {
+      "path": "reference/browser/index.html",
+      "mode": "100644",
+      "bytes": 10602,
+      "sha256": "872b8c8a398b33d575c274b622524aad2b32b233fe7f8ca11907208a1ba0be95"
+    },
+    {
+      "path": "reference/browser/integration-test.js",
+      "mode": "100644",
+      "bytes": 16250,
+      "sha256": "297b70ae7be0a69e3bc46dcb5688fe31f43d3de5f277999766466c0153c71008"
+    },
+    {
       "path": "reference/browser/modules/browser-bundle.js",
       "mode": "100644",
       "bytes": 1305,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 44357,
       "sha256": "1e3ca8211976f05f787046ab63c1220372ae3057fd3dbdc05715e981d616a461"
-    },
-    {
-      "path": "scripts/doctor.mjs",
-      "mode": "100644",
-      "bytes": 1131,
-      "sha256": "60fa71ce359bc99cc1e4f6dc6340707fd370ebadb772d5da28b4f07e756b86b8"
-    },
-    {
-      "path": "scripts/evaluated-rhythm-learning.mjs",
-      "mode": "100644",
-      "bytes": 21738,
-      "sha256": "276e8ba13ae27acc808a4af69f0f2ed4de1e8fdeb08e372fbbe8b583c2746e8f"
-    },
-    {
-      "path": "scripts/evolution-check.mjs",
-      "mode": "100644",
-      "bytes": 13350,
-      "sha256": "f9090d3a2ac5755ab4fbe625b56eef8f361182ab962e62d2c96f07338e5c1634"
     }
   ]
 }

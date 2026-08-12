@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
+      "mode": "100644",
+      "bytes": 12826,
+      "sha256": "f6196dab0cbd79ca34d92f84d5f4698f58323ef09b7319abeb7abbca6c482ad8"
+    },
+    {
       "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
       "mode": "100644",
       "bytes": 10152,
@@ -104,6 +110,18 @@
       "sha256": "7a146407c823e1f569fae709ee9e83c8d0fe7618af4aa40c2b03383185d562cd"
     },
     {
+      "path": "install/vexlife-setup.ps1",
+      "mode": "100644",
+      "bytes": 24356,
+      "sha256": "311f20de160a5a3852c6307ab39df231561874f6a9ebefc6fcf75a05251e1a51"
+    },
+    {
+      "path": "install/vexlife-setup.sh",
+      "mode": "100644",
+      "bytes": 21838,
+      "sha256": "732237ce2ce0755f7adaf32735f90dd45c404909487b82a1a3a4ba2fa309c417"
+    },
+    {
       "path": "package-lock.json",
       "mode": "100644",
       "bytes": 1844,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 12669,
       "sha256": "69e8869423e5a548914b491ae38d00e2a3e3641b193b9ff783ab7e472cd09334"
-    },
-    {
-      "path": "reference/browser/app.js",
-      "mode": "100644",
-      "bytes": 4772,
-      "sha256": "d33047cdc90f19766f02d01e1093b295d775032ca5d77cf7220b3ddec218a946"
-    },
-    {
-      "path": "reference/browser/index.html",
-      "mode": "100644",
-      "bytes": 10602,
-      "sha256": "872b8c8a398b33d575c274b622524aad2b32b233fe7f8ca11907208a1ba0be95"
-    },
-    {
-      "path": "reference/browser/integration-test.js",
-      "mode": "100644",
-      "bytes": 16250,
-      "sha256": "297b70ae7be0a69e3bc46dcb5688fe31f43d3de5f277999766466c0153c71008"
     }
   ]
 }
