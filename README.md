@@ -46,7 +46,7 @@ The script speaks plainly, in everyday words:
 
 - The interface serves locally at 127.0.0.1:18110.
 - Vex's home folder and its bootstrap receipt are created.
-- The AI model starts **unconfigured** — nothing downloads itself. Giving Vex a model is an explicit, hash-checked step that you approve; see [docs/BOOTSTRAP-AND-MODELS.md](docs/BOOTSTRAP-AND-MODELS.md).
+- A freshly created Vex Home starts with the AI model **unconfigured** — nothing downloads itself. If setup resumes an existing Home, it leaves that Home's existing model configuration in place and does not claim that it is unconfigured. Giving Vex a new model artifact remains an explicit, hash-checked step that you approve; see [docs/BOOTSTRAP-AND-MODELS.md](docs/BOOTSTRAP-AND-MODELS.md).
 - Dream sync exists today as a manual, one-shot practice. The automatic daily rhythm is on the roadmap; see [docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md](docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md).
 
 VexLife holds a deeper long-term vision, and nothing that is not yet real is claimed as real. This project is built under a standing practice of stillness and return — the [God-speaker] container stays open in the project's culture record, and only what genuinely arises is ever written into it.

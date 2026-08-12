@@ -256,16 +256,19 @@ if ($bootstrapExit -eq 0) {
 # ---------- step 5: optional model provisioning ----------
 
 Write-Step "Model weights (optional - skipping is completely fine)"
-Write-Host "Vex runs without any model weights installed. No weights ever ship with VexLife"
-Write-Host "or with this installer. Until you or your Home Node supplies weights, Vex's model"
-Write-Host "state stays UNCONFIGURED, and even after a successful download it is only"
-Write-Host "PROVISIONED_INACTIVE (present, verified, but not activated)."
+if ($bootstrapOutcome -eq "EXISTING_HOME_PRESERVED") {
+  Write-Host "This existing Home's prior model configuration was left in place. This setup run has not established whether a model endpoint or artifact is already configured."
+} else {
+  Write-Host "This freshly created Home starts with its AI model UNCONFIGURED."
+}
+Write-Host "No model weights ever ship with VexLife or this installer. A model artifact downloaded by this setup is stored only as PROVISIONED_INACTIVE (present, verified, not activated)."
 Write-Host ""
 Write-Host "If you already have a download URL plus its SHA-256 checksum, source reference and"
 Write-Host "license reference, I can fetch and verify one model file now. I will never download"
 Write-Host "model weights without a checksum and those references."
 $modelChoice = "no"
 $modelState = "UNCONFIGURED"
+if ($bootstrapOutcome -eq "EXISTING_HOME_PRESERVED") { $modelState = "EXISTING_HOME_MODEL_STATE_UNINSPECTED" }
 $provisionExit = $null
 $provUrl = $null; $provSha = $null; $provName = $null; $provSourceRef = $null; $provLicenseRef = $null
 $provRuntime = $null; $provHardware = $null
@@ -306,12 +309,20 @@ if ($wantProvision) {
       $modelState = "PROVISION_FAILED"
       Write-Host ""
       Write-Host ("Model provisioning did not succeed (exit code " + $provisionExit + ").") -ForegroundColor Red
-      Write-Host "Provisioning did not complete, so Vex remains UNCONFIGURED. Review the exact error above before retrying."
+      if ($bootstrapOutcome -eq "EXISTING_HOME_PRESERVED") {
+        Write-Host "Provisioning did not complete. This setup run still does not classify the existing Home's prior model configuration; review the exact error above before retrying."
+      } else {
+        Write-Host "Provisioning did not complete, so this fresh Home remains UNCONFIGURED. Review the exact error above before retrying."
+      }
       Write-Host "Setup will continue."
     }
   }
 } else {
-  Write-Host "Skipping. Vex runs UNCONFIGURED (no model weights) until you or your Home Node supplies them."
+  if ($bootstrapOutcome -eq "EXISTING_HOME_PRESERVED") {
+    Write-Host "Skipping. This setup leaves the existing Home's model configuration in place; this run does not classify it as UNCONFIGURED."
+  } else {
+    Write-Host "Skipping. This fresh Home remains UNCONFIGURED until you or your Home Node supplies a model."
+  }
 }
 
 # ---------- step 6: start the browser server and open it ----------
@@ -358,11 +369,18 @@ $recoveryDir = Join-Path $VexHome "recovery"
 if (-not (Test-Path $recoveryDir)) { New-Item -ItemType Directory -Path $recoveryDir -Force | Out-Null }
 $receiptPath = Join-Path $recoveryDir "install-receipt.txt"
 
-$modelLine = "Model weights: none installed - Vex is UNCONFIGURED (this is fine; weights arrive later from you or your Home Node)."
+$modelLine = "Fresh Home model state: UNCONFIGURED; this setup run provisioned no model artifact."
+if ($bootstrapOutcome -eq "EXISTING_HOME_PRESERVED") {
+  $modelLine = "Existing Home model state: left in place and not established by this setup run; this run provisioned no model artifact."
+}
 if ($modelState -eq "PROVISIONED_INACTIVE") {
   $modelLine = ("Model weights: one file was downloaded, checksum-verified and stored as PROVISIONED_INACTIVE (present, not activated). SHA-256: " + $provSha)
 } elseif ($modelState -eq "PROVISION_FAILED") {
-  $modelLine = ("Model provisioning did not complete (exit code " + $provisionExit + "); Vex remains UNCONFIGURED. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying.")
+  if ($bootstrapOutcome -eq "EXISTING_HOME_PRESERVED") {
+    $modelLine = ("Model provisioning did not complete (exit code " + $provisionExit + "); this setup run does not classify the existing Home's prior model configuration. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying.")
+  } else {
+    $modelLine = ("Model provisioning did not complete (exit code " + $provisionExit + "); this fresh Home remains UNCONFIGURED. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying.")
+  }
 } elseif ($modelState -eq "SKIPPED_INCOMPLETE_INPUT") {
   $modelLine = "Model weights: provisioning was requested but the details were incomplete, so nothing was downloaded; Vex is UNCONFIGURED."
 }
@@ -457,6 +475,8 @@ $machine = [ordered]@{
     provisionOffered = $true
     userChoice = $modelChoice
     state = $modelState
+    stateScope = "SETUP_OBSERVATION_OR_PROVISIONING_OUTCOME"
+    existingHomePriorStateInspected = $false
     provisionExitCode = $provisionExit
     sha256 = $provSha
     sourceRef = $provSourceRef

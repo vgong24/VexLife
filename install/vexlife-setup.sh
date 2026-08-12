@@ -216,16 +216,19 @@ fi
 # ---------- step 5: optional model provisioning ----------
 
 step "Model weights (optional - skipping is completely fine)"
-echo "Vex runs without any model weights installed. No weights ever ship with VexLife"
-echo "or with this installer. Until you or your Home Node supplies weights, Vex's model"
-echo "state stays UNCONFIGURED, and even after a successful download it is only"
-echo "PROVISIONED_INACTIVE (present, verified, but not activated)."
+if [ "$BOOTSTRAP_OUTCOME" = "EXISTING_HOME_PRESERVED" ]; then
+  echo "This existing Home's prior model configuration was left in place. This setup run has not established whether a model endpoint or artifact is already configured."
+else
+  echo "This freshly created Home starts with its AI model UNCONFIGURED."
+fi
+echo "No model weights ever ship with VexLife or this installer. A model artifact downloaded by this setup is stored only as PROVISIONED_INACTIVE (present, verified, not activated)."
 echo ""
 echo "If you already have a download URL plus its SHA-256 checksum, source reference and"
 echo "license reference, I can fetch and verify one model file now. I will never download"
 echo "model weights without a checksum and those references."
 MODEL_CHOICE="no"
 MODEL_STATE="UNCONFIGURED"
+[ "$BOOTSTRAP_OUTCOME" = "EXISTING_HOME_PRESERVED" ] && MODEL_STATE="EXISTING_HOME_MODEL_STATE_UNINSPECTED"
 PROVISION_EXIT=""
 PROV_URL=""; PROV_SHA=""; PROV_NAME=""; PROV_SOURCE_REF=""; PROV_LICENSE_REF=""
 PROV_RUNTIME=""; PROV_HARDWARE=""
@@ -269,12 +272,20 @@ if [ "$ANSWER" = "y" ]; then
       MODEL_STATE="PROVISION_FAILED"
       echo ""
       echo "Model provisioning did not succeed (exit code $PROVISION_EXIT)." >&2
-      echo "Provisioning did not complete, so Vex remains UNCONFIGURED. Review the exact error above before retrying."
+      if [ "$BOOTSTRAP_OUTCOME" = "EXISTING_HOME_PRESERVED" ]; then
+        echo "Provisioning did not complete. This setup run still does not classify the existing Home's prior model configuration; review the exact error above before retrying."
+      else
+        echo "Provisioning did not complete, so this fresh Home remains UNCONFIGURED. Review the exact error above before retrying."
+      fi
       echo "Setup will continue."
     fi
   fi
 else
-  echo "Skipping. Vex runs UNCONFIGURED (no model weights) until you or your Home Node supplies them."
+  if [ "$BOOTSTRAP_OUTCOME" = "EXISTING_HOME_PRESERVED" ]; then
+    echo "Skipping. This setup leaves the existing Home's model configuration in place; this run does not classify it as UNCONFIGURED."
+  else
+    echo "Skipping. This fresh Home remains UNCONFIGURED until you or your Home Node supplies a model."
+  fi
 fi
 
 # ---------- step 6: start the browser server and open it ----------
@@ -323,11 +334,18 @@ RECOVERY_DIR="$VEX_HOME/recovery"
 mkdir -p "$RECOVERY_DIR"
 RECEIPT_PATH="$RECOVERY_DIR/install-receipt.txt"
 
-MODEL_LINE="Model weights: none installed - Vex is UNCONFIGURED (this is fine; weights arrive later from you or your Home Node)."
+MODEL_LINE="Fresh Home model state: UNCONFIGURED; this setup run provisioned no model artifact."
+if [ "$BOOTSTRAP_OUTCOME" = "EXISTING_HOME_PRESERVED" ]; then
+  MODEL_LINE="Existing Home model state: left in place and not established by this setup run; this run provisioned no model artifact."
+fi
 if [ "$MODEL_STATE" = "PROVISIONED_INACTIVE" ]; then
   MODEL_LINE="Model weights: one file was downloaded, checksum-verified and stored as PROVISIONED_INACTIVE (present, not activated). SHA-256: $PROV_SHA"
 elif [ "$MODEL_STATE" = "PROVISION_FAILED" ]; then
-  MODEL_LINE="Model provisioning did not complete (exit code $PROVISION_EXIT); Vex remains UNCONFIGURED. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying."
+  if [ "$BOOTSTRAP_OUTCOME" = "EXISTING_HOME_PRESERVED" ]; then
+    MODEL_LINE="Model provisioning did not complete (exit code $PROVISION_EXIT); this setup run does not classify the existing Home's prior model configuration. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying."
+  else
+    MODEL_LINE="Model provisioning did not complete (exit code $PROVISION_EXIT); this fresh Home remains UNCONFIGURED. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying."
+  fi
 elif [ "$MODEL_STATE" = "SKIPPED_INCOMPLETE_INPUT" ]; then
   MODEL_LINE="Model weights: provisioning was requested but the details were incomplete, so nothing was downloaded; Vex is UNCONFIGURED."
 fi
@@ -409,6 +427,8 @@ BEGIN-INSTALL-RECEIPT-JSON
     "provisionOffered": true,
     "userChoice": "$MODEL_CHOICE",
     "state": "$MODEL_STATE",
+    "stateScope": "SETUP_OBSERVATION_OR_PROVISIONING_OUTCOME",
+    "existingHomePriorStateInspected": false,
     "provisionExitCode": $(json_or_null "$PROVISION_EXIT"),
     "sha256": $(json_or_null "$PROV_SHA"),
     "sourceRef": $(json_or_null "$PROV_SOURCE_REF"),
