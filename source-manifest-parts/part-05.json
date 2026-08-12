@@ -112,14 +112,14 @@
     {
       "path": "install/vexlife-setup.ps1",
       "mode": "100644",
-      "bytes": 23691,
-      "sha256": "03b0ef9c30975fa1c89b0628125a5bfe697b03cee520f06ae33e5185e8161a41"
+      "bytes": 24356,
+      "sha256": "311f20de160a5a3852c6307ab39df231561874f6a9ebefc6fcf75a05251e1a51"
     },
     {
       "path": "install/vexlife-setup.sh",
       "mode": "100644",
-      "bytes": 21173,
-      "sha256": "cec4a0681e08b7297c5084b6b70f613e4c64546dd54bb03bf24375d92346a673"
+      "bytes": 21838,
+      "sha256": "732237ce2ce0755f7adaf32735f90dd45c404909487b82a1a3a4ba2fa309c417"
     },
     {
       "path": "package-lock.json",

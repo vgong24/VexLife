@@ -254,7 +254,11 @@ if [ "$ANSWER" = "y" ]; then
   if [ "$SHA_OK" != "yes" ] || [ "$URL_OK" != "yes" ] || [ -z "$PROV_SOURCE_REF" ] || [ -z "$PROV_LICENSE_REF" ]; then
     echo ""
     echo "That information was incomplete or not in the right shape, so I am NOT downloading anything."
-    echo "Vex stays UNCONFIGURED. You can provision a model later with scripts/provision-model.mjs."
+    if [ "$BOOTSTRAP_OUTCOME" = "EXISTING_HOME_PRESERVED" ]; then
+      echo "No model artifact was downloaded by this setup run. This existing Home's prior model configuration remains in place and unclassified by this run. You can provision a new model artifact later with scripts/provision-model.mjs."
+    else
+      echo "No model artifact was downloaded. This fresh Home remains UNCONFIGURED. You can provision a model later with scripts/provision-model.mjs."
+    fi
     MODEL_STATE="SKIPPED_INCOMPLETE_INPUT"
   else
     PROVISION_EXIT=0
@@ -347,7 +351,11 @@ elif [ "$MODEL_STATE" = "PROVISION_FAILED" ]; then
     MODEL_LINE="Model provisioning did not complete (exit code $PROVISION_EXIT); this fresh Home remains UNCONFIGURED. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying."
   fi
 elif [ "$MODEL_STATE" = "SKIPPED_INCOMPLETE_INPUT" ]; then
-  MODEL_LINE="Model weights: provisioning was requested but the details were incomplete, so nothing was downloaded; Vex is UNCONFIGURED."
+  if [ "$BOOTSTRAP_OUTCOME" = "EXISTING_HOME_PRESERVED" ]; then
+    MODEL_LINE="Model provisioning was requested but the details were incomplete; this setup run downloaded no new model artifact and did not classify the existing Home's prior model configuration."
+  else
+    MODEL_LINE="Model provisioning was requested but the details were incomplete; no model artifact was downloaded and this fresh Home remains UNCONFIGURED."
+  fi
 fi
 
 BOOTSTRAP_LINE="Vex's home was created fresh."

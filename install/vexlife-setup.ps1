@@ -290,7 +290,11 @@ if ($wantProvision) {
   if (-not $shaOk -or -not $urlOk -or [string]::IsNullOrWhiteSpace($provSourceRef) -or [string]::IsNullOrWhiteSpace($provLicenseRef)) {
     Write-Host ""
     Write-Host "That information was incomplete or not in the right shape, so I am NOT downloading anything." -ForegroundColor Yellow
-    Write-Host "Vex stays UNCONFIGURED. You can provision a model later with scripts\provision-model.mjs."
+    if ($bootstrapOutcome -eq "EXISTING_HOME_PRESERVED") {
+      Write-Host "No model artifact was downloaded by this setup run. This existing Home's prior model configuration remains in place and unclassified by this run. You can provision a new model artifact later with scripts\provision-model.mjs."
+    } else {
+      Write-Host "No model artifact was downloaded. This fresh Home remains UNCONFIGURED. You can provision a model later with scripts\provision-model.mjs."
+    }
     $modelState = "SKIPPED_INCOMPLETE_INPUT"
   } else {
     $provArgs = @((Join-Path $RepoRoot "scripts\provision-model.mjs"),
@@ -382,7 +386,11 @@ if ($modelState -eq "PROVISIONED_INACTIVE") {
     $modelLine = ("Model provisioning did not complete (exit code " + $provisionExit + "); this fresh Home remains UNCONFIGURED. This receipt does not claim that no artifact bytes remain; review the provisioning error before retrying.")
   }
 } elseif ($modelState -eq "SKIPPED_INCOMPLETE_INPUT") {
-  $modelLine = "Model weights: provisioning was requested but the details were incomplete, so nothing was downloaded; Vex is UNCONFIGURED."
+  if ($bootstrapOutcome -eq "EXISTING_HOME_PRESERVED") {
+    $modelLine = "Model provisioning was requested but the details were incomplete; this setup run downloaded no new model artifact and did not classify the existing Home's prior model configuration."
+  } else {
+    $modelLine = "Model provisioning was requested but the details were incomplete; no model artifact was downloaded and this fresh Home remains UNCONFIGURED."
+  }
 }
 
 $bootstrapLine = "Vex's home was created fresh."
