@@ -75,6 +75,16 @@ test('VNAV00 N10 network loss preserves local guidance only from current local d
   assert.equal(result.truth.routeGuidanceIsVehicleControl, false);
 });
 
+test('VNAV00 N10 network loss fails closed when local guidance data is insufficient', () => {
+  const candidate = clone(fixture);
+  candidate.network.available = false;
+  candidate.network.localMapDataSufficient = false;
+  const result = evaluateVnav00Fixture(candidate);
+  assert.equal(result.disposition, 'BLOCKED');
+  assert.deepEqual(result.blockers, ['LOCAL_GUIDANCE_DATA_INSUFFICIENT']);
+  assert.equal(result.truth.routeGuidanceIsVehicleControl, false);
+});
+
 test('VNAV00 N11 stale map data fails visibly and live traffic is never fabricated', () => {
   const candidate = clone(fixture);
   candidate.mapPack.currentness = 'STALE';
