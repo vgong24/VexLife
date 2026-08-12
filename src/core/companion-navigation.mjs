@@ -185,6 +185,9 @@ export function evaluateVnav00Fixture(fixture) {
   if (fixture.effectBoundary?.networkEffect !== false) blockers.push('NETWORK_EFFECT_FORBIDDEN');
   if (fixture.effectBoundary?.vehicleControl !== false) blockers.push('VEHICLE_CONTROL_FORBIDDEN');
   if (fixture.effectBoundary?.humanMessageSend !== false) blockers.push('MESSAGE_SEND_FORBIDDEN');
+  if (fixture.network?.available === false && fixture.network?.localMapDataSufficient !== true) {
+    blockers.push('LOCAL_GUIDANCE_DATA_INSUFFICIENT');
+  }
   if (blockers.length) return composeBlocked(fixture, blockers);
 
   const index = graphIndex(fixture.graph);
