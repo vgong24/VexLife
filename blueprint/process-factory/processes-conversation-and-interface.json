@@ -1,5 +1,94 @@
 [
   {
+    "processRef": "process.vexlife.companion-navigation.vnav00-compose",
+    "processVersion": 1,
+    "purpose": "Compose the source-only VNAV-00 synthetic fixture into deterministic route, map-match, reroute, ETA, attention, prepared-message, detour, currentness and privacy receipts without invoking a real navigation effect.",
+    "applicabilityRules": [
+      "feature.vexlife.companion-navigation is registered PREPARED",
+      "feature.vexlife.addressed-conversation remains the canonical messaging owner",
+      "fixture is synthetic and content-absent"
+    ],
+    "requiredInputs": [
+      "fixtureRef",
+      "mapPackRef",
+      "routingGraphRef",
+      "originRef",
+      "destinationRef",
+      "syntheticGpsObservationRefs",
+      "addressedConversationFeatureRef",
+      "privacyRef"
+    ],
+    "optionalInputs": [
+      "trafficCurrentness",
+      "detourCandidateRef",
+      "largeContextQuestionRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve VexLife feature registration from current source",
+      "reuse feature.vexlife.addressed-conversation instead of creating a messaging ontology",
+      "consume accepted ENS-N1, FO-N1, EWA and VexInterface semantics only by source ref",
+      "resolve all route/map/currentness inputs from the caller-supplied synthetic fixture",
+      "perform no external map, routing, geocoder, network, sensor or model lookup"
+    ],
+    "preconditions": [
+      "map-pack and routing-graph currentness are explicit",
+      "web place candidates are not trusted coordinates until locally resolved",
+      "raw GPS retention is EPHEMERAL",
+      "raw search retention is EPHEMERAL or SESSION",
+      "memory promotion is false",
+      "real GPS, network, message-send and vehicle-control effects are false"
+    ],
+    "steps": [
+      "validate-source-and-effect-boundaries",
+      "plan-route-over-synthetic-local-graph",
+      "map-match-synthetic-gps-fixes-without-body-truth-inflation",
+      "detect-deviation-and-compose-local-reroute",
+      "derive-how-much-longer-from-current-route-state",
+      "defer-large-context-answer-at-critical-maneuver",
+      "compose-addressed-message-preparation-without-send",
+      "compare-detour-without-changing-route",
+      "preserve-local-guidance-under-network-loss-when-local-data-suffices",
+      "project-stale-missing-map-and-unknown-traffic-truth",
+      "emit-content-absent-retention-and-source-receipts"
+    ],
+    "effectOwnerRule": "VNAV-00 owns only deterministic source composition; GPS/location, routing runtime, networking, messaging send, Memory, Home and vehicle effects remain with their canonical owners and are not invoked.",
+    "authorityEnvelope": {
+      "effects": [],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [],
+    "canonicalDispositionVocabulary": [
+      "VNAV00_SYNTHETIC_PASS",
+      "BLOCKED"
+    ],
+    "returnRouteRule": "return the synthetic receipt for source-only inspection through state.process-plans/state.context without activating physical navigation",
+    "closureRule": "VNAV-00 closes only when every permanent distinction and held-effect negative control is explicit in the deterministic receipt",
+    "recoveryRule": "discard the synthetic receipt and recompose from current source refs; never retain precise trip/search/location history as recovery state",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "feature.vexlife.companion-navigation",
+      "feature.vexlife.addressed-conversation",
+      "state.process-plans",
+      "state.context"
+    ],
+    "invalidationTriggers": [
+      "companion-navigation-contract-change",
+      "addressed-conversation-owner-change",
+      "map-pack-currentness-change",
+      "routing-graph-currentness-change",
+      "privacy-retention-boundary-change"
+    ],
+    "testRefs": [
+      "test.feature.reference-coverage",
+      "test.permission.no-inferred-effect",
+      "test.context.source-descent"
+    ]
+  },
+  {
     "processRef": "process.vexlife.navigation.semantic-transition",
     "processVersion": 1,
     "purpose": "Translate an interface action into one source-addressable semantic journey step.",
