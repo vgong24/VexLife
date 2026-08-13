@@ -34,6 +34,14 @@ test('projection CSS removes permanent rail and detail-column canvas tax', () =>
   assert.match(css, /prefers-reduced-motion:reduce/);
 });
 
+test('closed projections stay out of keyboard focus order and Reset cannot leave stale adjacent controls visible', () => {
+  assert.match(css, /\.e27-terrain-detail\{[\s\S]*visibility:hidden/);
+  assert.match(css, /\.e27-terrain-detail\.is-open\{[\s\S]*visibility:visible/);
+  assert.match(css, /\.e27-journey-drawer\{[\s\S]*visibility:hidden/);
+  assert.match(css, /\.e27-journey-drawer\.is-open\{[\s\S]*visibility:visible/);
+  assert.match(css, /terrain-layout:not\(:has\(\.terrain-node\.is-selected\)\) \.e27-adjacent-card\{visibility:hidden;pointer-events:none\}/);
+});
+
 test('browser loads the bounded E2.7 convergence layer after accepted app source', () => {
   assert.match(html, /<link rel="stylesheet" href="\.\/e27-convergence\.css">/);
   assert.match(html, /<script type="module" src="\.\/app\.js"><\/script>[\s\S]*<script type="module" src="\.\/modules\/e27-terrain-convergence\.js"><\/script>/);
