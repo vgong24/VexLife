@@ -142,7 +142,12 @@ test('Terrain semantic depth, pixel scale and centering remain independent proje
   assert.throws(() => terrain.setSemanticDepth(3), /semanticDepth/);
 });
 
-test('navigation preserves full journey while projecting a bounded recent window and deterministic siblings', () => {
+test('navigation consumes Terrain spatial sibling order while preserving full and recent journey projections', () => {
+  const terrain = new TerrainLayout([
+    { terrainNodeRef: 'a', parentRef: 'root', defaultPosition: { x: 300, y: 0 } },
+    { terrainNodeRef: 'b', parentRef: 'root', defaultPosition: { x: 200, y: 0 } },
+    { terrainNodeRef: 'c', parentRef: 'root', defaultPosition: { x: 100, y: 0 } }
+  ]);
   const lattice = new NavigationLattice([
     { nodeRef: 'root', parentNodeRef: null, kind: 'ROOT' },
     { nodeRef: 'a', parentNodeRef: 'root', kind: 'THREAD' },
@@ -151,11 +156,18 @@ test('navigation preserves full journey while projecting a bounded recent window
   ]);
   lattice.navigate({ screenRef: 'screen.chat', routeRef: 'route.chat', selectedNodeRef: 'b', actionRef: 'action.seed' });
   assert.deepEqual(lattice.siblingRefs(), ['a', 'b', 'c']);
-  const moved = lattice.navigateSibling('NEXT');
+  const spatialSiblingRefs = terrain.siblingRefs('b');
+  assert.deepEqual(spatialSiblingRefs, ['c', 'b', 'a']);
+  assert.throws(() => lattice.navigateSibling('NEXT'), /ordered sibling projection is required/);
+  const moved = lattice.navigateSibling('NEXT', { orderedSiblingRefs: spatialSiblingRefs });
   assert.equal(moved.changed, true);
-  assert.equal(lattice.state.value.selectedNodeRef, 'c');
+  assert.equal(lattice.state.value.selectedNodeRef, 'a');
   assert.equal(moved.journeyEvent.actionRef, 'action.navigation.sibling');
-  assert.equal(lattice.navigateSibling('NEXT').reason, 'SIBLING_BOUNDARY');
+  assert.equal(lattice.navigateSibling('NEXT', { orderedSiblingRefs: spatialSiblingRefs }).reason, 'SIBLING_BOUNDARY');
+  assert.throws(
+    () => lattice.navigateSibling('PREVIOUS', { orderedSiblingRefs: ['a', 'b'] }),
+    /exactly cover canonical siblings/
+  );
   for (let index = 0; index < 15; index += 1) {
     lattice.navigate({ selectedNodeRef: index % 2 === 0 ? 'a' : 'b', actionRef: `action.synthetic.${index}` });
   }

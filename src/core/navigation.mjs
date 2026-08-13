@@ -92,15 +92,28 @@ export class NavigationLattice {
       .sort();
   }
 
-  navigateSibling(direction) {
+  navigateSibling(direction, { orderedSiblingRefs } = {}) {
     if (!['PREVIOUS', 'NEXT'].includes(direction)) throw new Error(`unsupported sibling direction ${direction}`);
+    if (!Array.isArray(orderedSiblingRefs)) {
+      throw new TypeError('ordered sibling projection is required');
+    }
+
     const currentRef = this.state.value.selectedNodeRef;
-    const siblings = this.siblingRefs(currentRef);
-    const index = siblings.indexOf(currentRef);
+    const canonicalSiblingRefs = this.siblingRefs(currentRef);
+    const uniqueOrderedSiblingRefs = [...new Set(orderedSiblingRefs)];
+    const sameSiblingSet =
+      uniqueOrderedSiblingRefs.length === orderedSiblingRefs.length &&
+      orderedSiblingRefs.length === canonicalSiblingRefs.length &&
+      orderedSiblingRefs.every((ref) => canonicalSiblingRefs.includes(ref));
+    if (!sameSiblingSet) throw new Error('ordered sibling projection must exactly cover canonical siblings');
+
+    const index = orderedSiblingRefs.indexOf(currentRef);
     if (index < 0) return { changed: false, reason: 'NO_CURRENT_SIBLING' };
     const targetIndex = direction === 'PREVIOUS' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= siblings.length) return { changed: false, reason: 'SIBLING_BOUNDARY', siblingRefs: siblings };
-    const targetRef = siblings[targetIndex];
+    if (targetIndex < 0 || targetIndex >= orderedSiblingRefs.length) {
+      return { changed: false, reason: 'SIBLING_BOUNDARY', siblingRefs: [...orderedSiblingRefs] };
+    }
+    const targetRef = orderedSiblingRefs[targetIndex];
     return this.navigate({
       selectedNodeRef: targetRef,
       elementRef: targetRef,
