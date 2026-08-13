@@ -149,7 +149,7 @@ async function send(mode){
  const payload={mode,overall,change:change.value,preserve:preserve.value,extra:extra.value,reviewEpochRef:C.reviewEpochRef,submittedAt:new Date().toISOString()};
  status.textContent='Submitting review and preparing the handoff…';
  let response;
- try{response=await fetch(C.submitPath,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});}catch(error){status.textContent=`Submission failed: ${error.message}`;return;}
+ try{response=await fetch(C.submitPath,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});}catch(error){status.textContent='Submission failed: '+error.message;return;}
  if(!response.ok){status.textContent='Submission failed. Keep this window open and try again.';return;}
  document.querySelectorAll('button,textarea,input').forEach((element)=>element.disabled=true);
  complete.classList.add('is-visible');status.textContent='Submitted successfully. Explorer is opening the canonical return ZIP.';
