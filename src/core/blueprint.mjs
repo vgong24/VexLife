@@ -420,6 +420,77 @@ export function validateEvolutionRegistry(evolution, bundle = null) {
   return { ok: errors.length === 0, errors, stats: { ownedRefs: ownedRefs.length + 3 } };
 }
 
+function validateE27PresentationTopology(bundle, errors) {
+  const contract = bundle.experience?.authoritativeRootDesignContract;
+  if (contract?.contractRef !== 'contract.vexlife.e27.authoritative-root/v1') return;
+  const screens = new Map((bundle.blueprint?.screens ?? []).map((screen) => [screen.screenRef, screen]));
+  const shell = screens.get('screen.vexlife.shell');
+  const chat = screens.get('screen.vexlife.chat');
+  const terrain = screens.get('screen.vexlife.terrain');
+  const guide = screens.get('screen.vexlife.guide-overlay');
+  const region = (screen, ref) => screen?.regions?.find((candidate) => candidate.regionRef === ref);
+  const element = (targetRegion, ref) => targetRegion?.elements?.find((candidate) => candidate.elementRef === ref);
+
+  if (!shell || shell.presentationContractRef !== contract.contractRef || shell.presentationClass !== 'E27_ROOTED_SINGLE_TERRAIN_STAGE') {
+    errors.push('E2.7 canonical shell is not bound to the authoritative root presentation contract');
+  } else {
+    if (shell.defaultPrimaryScreenRef !== 'screen.vexlife.terrain' || shell.defaultPrimaryRouteRef !== 'route.terrain' || shell.persistentPrimaryTabs !== false || shell.primaryNavigationMode !== 'CONTEXTUAL_ROUTE_CONTROLS') {
+      errors.push('E2.7 canonical shell must make Terrain the sole primary stage with contextual route controls');
+    }
+    const nav = region(shell, 'region.shell.primary-nav');
+    if (!nav || nav.presentationClass !== 'CONTEXTUAL_SECONDARY_NAVIGATION' || nav.presentationMode !== 'CONTEXTUAL_ROUTE_CONTROLS' || nav.defaultVisible !== false || nav.persistentCanvasConsumer !== false) {
+      errors.push('E2.7 shell navigation must remain contextual, non-default and non-persistent');
+    }
+    for (const ref of ['element.nav.chat', 'element.nav.terrain', 'element.nav.health']) {
+      const control = element(nav, ref);
+      if (!control || control.selectionGroupRef === 'selection.primary-view' || control.kind === 'VIEW_SELECTOR' || control.accessibility?.role === 'tab') {
+        errors.push(`E2.7 shell cannot preserve primary-view tab topology at ${ref}`);
+      }
+    }
+    if (element(nav, 'element.nav.terrain')?.kind !== 'PRIMARY_STAGE_RETURN') errors.push('E2.7 Terrain route control must return to the primary stage');
+    for (const ref of ['element.nav.chat', 'element.nav.health']) {
+      if (element(nav, ref)?.kind !== 'CONTEXTUAL_PROJECTION_ENTRY') errors.push(`E2.7 ${ref} must be a contextual projection entry`);
+    }
+    const assistance = region(shell, 'region.shell.assistance');
+    const summon = element(assistance, 'element.vex.summon');
+    const legacyGuideToggle = element(assistance, 'element.guide.toggle');
+    if (summon?.presentationClass !== 'AMBIENT_VEX_SUMMON' || summon?.defaultVisible !== true) errors.push('E2.7 shell must expose the ambient Vex summon as the default companion control');
+    if (legacyGuideToggle?.presentationClass !== 'MIGRATION_COMPATIBILITY_CONTROL' || legacyGuideToggle?.defaultVisible !== false) errors.push('legacy Guide toggle must remain non-default migration compatibility evidence');
+  }
+
+  if (!terrain || terrain.presentationContractRef !== contract.contractRef || terrain.presentationClass !== 'PRIMARY_SINGLE_STAGE' || terrain.primaryStage !== true) {
+    errors.push('E2.7 Terrain screen is not the authoritative primary single stage');
+  }
+
+  if (!chat || chat.presentationContractRef !== contract.contractRef || chat.presentationClass !== 'CONTEXTUAL_CONTENT_WORKSPACE_PROJECTION' || chat.primaryStage !== false || chat.persistentCanvasConsumer !== false) {
+    errors.push('E2.7 Chat must be a contextual content/workspace projection, not a primary stage');
+  } else {
+    if (JSON.stringify(chat.defaultVisibleRegionRefs) !== JSON.stringify(['region.chat.feed', 'region.chat.context'])) errors.push('E2.7 Chat default contextual regions must be feed and context');
+    if (JSON.stringify(chat.compatibilityOnlyRegionRefs) !== JSON.stringify(['region.chat.project-rail', 'region.chat.channels'])) errors.push('E2.7 Chat compatibility-only regions changed');
+    for (const ref of ['region.chat.feed', 'region.chat.context']) {
+      const current = region(chat, ref);
+      if (current?.presentationClass !== 'DEFAULT_CONTEXTUAL_PROJECTION' || current?.defaultVisible !== true || current?.persistentCanvasConsumer !== false) errors.push(`${ref} must remain a default contextual E2.7 projection`);
+    }
+    for (const ref of ['region.chat.project-rail', 'region.chat.channels']) {
+      const current = region(chat, ref);
+      if (current?.presentationClass !== 'MIGRATION_COMPATIBILITY_SOURCE_DESCENT' || current?.defaultVisible !== false || current?.persistent !== false || current?.persistentCanvasConsumer !== false) errors.push(`${ref} must remain compatibility-only, non-default and non-persistent`);
+    }
+  }
+
+  if (!guide || guide.presentationContractRef !== contract.contractRef || guide.presentationClass !== 'AMBIENT_VEX_VESSEL_PROJECTION' || guide.visibleIdentityStringRef !== 'vex.visible.name' || guide.titleStringRef !== 'vex.visible.name' || guide.oneVisibleVex !== true || guide.legacyGuidePresentationDefault !== false || guide.primaryStage !== false || guide.persistentCanvasConsumer !== false) {
+    errors.push('E2.7 Guide surface must resolve to one ambient Vex vessel presentation');
+  } else {
+    const windowRegion = region(guide, 'region.guide.window');
+    const windowElement = element(windowRegion, 'element.guide.window');
+    if (windowRegion?.presentationClass !== 'AMBIENT_VEX_VESSEL' || windowRegion?.visibleIdentityStringRef !== 'vex.visible.name' || windowRegion?.labelStringRef !== 'vex.visible.name' || windowRegion?.defaultVisible !== true || windowRegion?.persistentCanvasConsumer !== false) {
+      errors.push('E2.7 ambient Vex region presentation drifted');
+    }
+    if (windowElement?.presentationClass !== 'AMBIENT_VEX_VESSEL' || windowElement?.visibleIdentityStringRef !== 'vex.visible.name' || windowElement?.labelStringRef !== 'vex.visible.name') {
+      errors.push('E2.7 ambient Vex element presentation drifted');
+    }
+  }
+}
+
 export function validateBlueprint(bundle) {
   const { blueprint, tokens, platforms, strings, factory } = bundle;
   const errors = [];
@@ -474,6 +545,7 @@ export function validateBlueprint(bundle) {
     }
     for (const testRef of screen.testRefs ?? []) if (!testRefs.has(testRef)) errors.push(`${screen.screenRef} references missing test ${testRef}`);
   }
+  validateE27PresentationTopology(bundle, errors);
   for (const node of blueprint.terrain) if (node.parentRef && !terrainRefs.has(node.parentRef)) errors.push(`${node.terrainNodeRef} has missing parent ${node.parentRef}`);
 
   const requiredStrings = visibleStringRefs(blueprint, bundle.experience);
