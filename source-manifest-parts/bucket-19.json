@@ -6,7 +6,7 @@
       "path": "LICENSE-POLICY.md",
       "mode": "100644",
       "bytes": 2318,
-      "sha256": "8c815676ba8e0e4b954aee0a5505e8706fec63bdbe9119fc32b310c75e43ed4"
+      "sha256": "8c815676ba8e0e4b954aee0a5505e8706fec63bdbe911acda5c31dab2790df8a"
     },
     {
       "path": "scripts/create-platform.mjs",
