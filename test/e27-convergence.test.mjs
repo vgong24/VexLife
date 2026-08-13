@@ -45,6 +45,7 @@ test('browser loads the bounded E2.7 convergence layer after accepted app source
 test('contextual overlays expose real aria controls and reuse accepted Guide obstruction owner', () => {
   assert.match(convergence, /terrainDetail\.id = terrainDetail\.id \|\| 'terrainDetailPanel'/);
   assert.match(convergence, /detailToggle\.setAttribute\('aria-controls', terrainDetail\.id\)/);
+  assert.match(convergence, /if \(nextOpen\) setTerrainMenuOpen\(false\);[\s\S]*setDetailOpen\(nextOpen\)/);
   assert.match(convergence, /app\.guide\.avoidDeclaredControls\(\)/);
   assert.match(convergence, /app\.guide\.persistGeometry\?\.\(\)/);
   for (const fragment of ['e27-journey-window','e27-adjacent-card:not([hidden])','e27-terrain-detail.is-open','e27-journey-drawer.is-open','project-rail[aria-hidden="false"]']) {
