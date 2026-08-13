@@ -9,6 +9,7 @@
   "defaultPrimaryScreenRef": "screen.vexlife.terrain",
   "defaultPrimaryRouteRef": "route.terrain",
   "persistentPrimaryTabs": false,
+  "primaryNavigationMode": "CONTEXTUAL_ROUTE_CONTROLS",
   "secondaryRouteRefs": [
     "route.chat",
     "route.health"
@@ -36,6 +37,8 @@
       "navigationNodeRef": "nav.region.shell.primary-nav",
       "labelStringRef": "region.navigation.label",
       "presentationClass": "CONTEXTUAL_SECONDARY_NAVIGATION",
+      "presentationMode": "CONTEXTUAL_ROUTE_CONTROLS",
+      "defaultVisible": false,
       "persistentCanvasConsumer": false,
       "elements": [
         {
@@ -45,6 +48,7 @@
           "navigationRef": "navpath.shell.home",
           "journeyEventTypeRef": "journey.home",
           "kind": "HOME_ACTION",
+          "presentationClass": "HOME_RETURN",
           "labelStringRef": "nav.home",
           "actionRef": "action.navigation.home",
           "permissionRef": null,
@@ -65,14 +69,15 @@
           "interactionRef": "interaction.nav.chat",
           "navigationRef": "navpath.shell.chat",
           "journeyEventTypeRef": "journey.view-select",
-          "kind": "VIEW_SELECTOR",
+          "kind": "CONTEXTUAL_PROJECTION_ENTRY",
+          "presentationClass": "CONTEXTUAL_CONTENT_ENTRY",
           "labelStringRef": "nav.chat",
           "actionRef": "action.view.select",
           "permissionRef": null,
-          "selectionGroupRef": "selection.primary-view",
+          "selectionGroupRef": null,
           "terrainNodeRef": null,
           "accessibility": {
-            "role": "tab",
+            "role": "button",
             "minimumTargetPx": 44,
             "stableIdentifierRef": "element.nav.chat"
           },
@@ -86,14 +91,15 @@
           "interactionRef": "interaction.nav.terrain",
           "navigationRef": "navpath.shell.terrain",
           "journeyEventTypeRef": "journey.view-select",
-          "kind": "VIEW_SELECTOR",
+          "kind": "PRIMARY_STAGE_RETURN",
+          "presentationClass": "PRIMARY_TERRAIN_STAGE_RETURN",
           "labelStringRef": "nav.terrain",
           "actionRef": "action.view.select",
           "permissionRef": null,
-          "selectionGroupRef": "selection.primary-view",
+          "selectionGroupRef": null,
           "terrainNodeRef": null,
           "accessibility": {
-            "role": "tab",
+            "role": "button",
             "minimumTargetPx": 44,
             "stableIdentifierRef": "element.nav.terrain"
           },
@@ -107,14 +113,15 @@
           "interactionRef": "interaction.nav.health",
           "navigationRef": "navpath.shell.health",
           "journeyEventTypeRef": "journey.view-select",
-          "kind": "VIEW_SELECTOR",
+          "kind": "CONTEXTUAL_PROJECTION_ENTRY",
+          "presentationClass": "CONTEXTUAL_HEALTH_ENTRY",
           "labelStringRef": "nav.health",
           "actionRef": "action.view.select",
           "permissionRef": null,
-          "selectionGroupRef": "selection.primary-view",
+          "selectionGroupRef": null,
           "terrainNodeRef": null,
           "accessibility": {
-            "role": "tab",
+            "role": "button",
             "minimumTargetPx": 44,
             "stableIdentifierRef": "element.nav.health"
           },
@@ -129,6 +136,7 @@
       "conceptRef": "concept.region.shell.assistance",
       "navigationNodeRef": "nav.region.shell.assistance",
       "labelStringRef": "region.assistance.label",
+      "presentationClass": "AMBIENT_VEX_AND_CONTEXTUAL_UTILITIES",
       "elements": [
         {
           "elementRef": "element.language.selector",
@@ -158,6 +166,8 @@
           "navigationRef": null,
           "journeyEventTypeRef": "journey.vex-summon",
           "kind": "VEX_SUMMON",
+          "presentationClass": "AMBIENT_VEX_SUMMON",
+          "defaultVisible": true,
           "labelStringRef": "vex.summon",
           "actionRef": "action.vex.summon",
           "permissionRef": null,
@@ -177,6 +187,8 @@
           "navigationRef": null,
           "journeyEventTypeRef": "journey.guide-toggle",
           "kind": "GUIDE_TOGGLE",
+          "presentationClass": "MIGRATION_COMPATIBILITY_CONTROL",
+          "defaultVisible": false,
           "labelStringRef": "guide.title",
           "actionRef": "action.guide.toggle",
           "permissionRef": null,
