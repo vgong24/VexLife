@@ -30,11 +30,11 @@
 
 .e27-terrain-detail{
   position:absolute;z-index:42;right:20px;top:20px;bottom:20px;width:min(360px,calc(100% - 40px));
-  max-height:none!important;transform:translateX(calc(100% + 32px));opacity:0;pointer-events:none;
-  box-shadow:0 20px 60px rgba(0,0,0,.48);transition:transform .18s ease,opacity .18s ease;
+  max-height:none!important;transform:translateX(calc(100% + 32px));visibility:hidden;opacity:0;pointer-events:none;
+  box-shadow:0 20px 60px rgba(0,0,0,.48);transition:transform .18s ease,opacity .18s ease,visibility 0s linear .18s;
   background:rgba(16,26,35,.98);backdrop-filter:blur(12px);
 }
-.e27-terrain-detail.is-open{transform:translateX(0);opacity:1;pointer-events:auto}
+.e27-terrain-detail.is-open{transform:translateX(0);visibility:visible;opacity:1;pointer-events:auto;transition-delay:0s}
 .e27-close{float:right;width:44px;min-height:44px;border:1px solid var(--line);background:var(--raised);border-radius:11px;font-size:20px}
 
 .e27-terrain-menu{
@@ -54,6 +54,7 @@
   border:1px solid var(--line)!important;border-radius:14px!important;background:rgba(16,26,35,.93)!important;
   color:var(--muted)!important;backdrop-filter:blur(12px);box-shadow:0 12px 34px rgba(0,0,0,.3);text-align:left!important;
 }
+#view-terrain .terrain-layout:not(:has(.terrain-node.is-selected)) .e27-adjacent-card{visibility:hidden;pointer-events:none}
 .e27-adjacent-card.next{text-align:right!important;margin-left:auto}
 .e27-adjacent-card strong{display:block;color:var(--text);font-size:13px}
 .e27-adjacent-card small{display:block;color:var(--faint);font-size:10px;margin-top:3px}
@@ -74,11 +75,11 @@
 
 .e27-journey-drawer{
   position:absolute;z-index:46;left:20px;top:20px;bottom:20px;width:min(390px,calc(100% - 40px));
-  transform:translateX(calc(-100% - 32px));opacity:0;pointer-events:none;overflow:auto;
+  transform:translateX(calc(-100% - 32px));visibility:hidden;opacity:0;pointer-events:none;overflow:auto;
   border:1px solid var(--line);border-radius:16px;background:rgba(16,26,35,.985);box-shadow:0 20px 70px rgba(0,0,0,.55);
-  padding:12px;transition:transform .18s ease,opacity .18s ease;backdrop-filter:blur(12px);
+  padding:12px;transition:transform .18s ease,opacity .18s ease,visibility 0s linear .18s;backdrop-filter:blur(12px);
 }
-.e27-journey-drawer.is-open{transform:translateX(0);opacity:1;pointer-events:auto}
+.e27-journey-drawer.is-open{transform:translateX(0);visibility:visible;opacity:1;pointer-events:auto;transition-delay:0s}
 .e27-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
 .e27-drawer-head strong{font:12px ui-monospace,monospace;color:var(--muted);line-height:1.4}
 .e27-journey-list{display:grid;gap:7px}
