@@ -234,4 +234,46 @@ test('GuidedEstablishmentPlan grammar can be reused without changing canonical l
   assert.deepEqual(source.guidedEstablishmentPlans[0].stages.map((stage) => stage.stageRef), canonicalStageRefs);
 });
 
+test('E2.7 Stage A keeps semantic depth separate from pixel zoom and scrolling', () => {
+  const registry = new ExperienceRegistry(bundle.experience);
+  const semanticDepth = registry.resolveInteraction({ surfaceKind: 'TERRAIN_CANVAS', inputType: 'SEMANTIC_DEPTH_CONTROL' });
+  assert.equal(semanticDepth.disposition, 'INTERACTION_RESOLVED');
+  assert.equal(semanticDepth.actionRef, 'action.terrain.semantic-depth.set');
+  const zoom = registry.resolveInteraction({ surfaceKind: 'TERRAIN_CANVAS', inputType: 'ZOOM_BUTTON' });
+  assert.equal(zoom.actionRef, 'action.terrain.canvas.zoom');
+  const wheel = registry.resolveInteraction({ surfaceKind: 'TERRAIN_CANVAS', inputType: 'MOUSE_WHEEL' });
+  assert.equal(wheel.disposition, 'NO_MATCH');
+  assert.notEqual(semanticDepth.actionRef, zoom.actionRef);
+});
+
+test('E2.7 Stage A makes the Vex vessel summonable and four-corner resizable without collapsing internal roles', () => {
+  const registry = new ExperienceRegistry(bundle.experience);
+  const vex = registry.vessel('vessel.vexlife.guide');
+  assert.equal(vex.labelStringRef, 'vessel.guide.name');
+  assert.ok(vex.actionRefs.includes('action.vex.summon'));
+  assert.ok(vex.actionRefs.includes('action.vessel.resize'));
+  const resize = registry.resolveInteraction({ surfaceKind: 'FLOATING_VESSEL', inputType: 'CORNER_HANDLE_DRAG' });
+  assert.equal(resize.actionRef, 'action.vessel.resize');
+  for (const language of bundle.blueprint.product.requiredLanguages) {
+    assert.equal(bundle.strings[language]['vex.visible.name'], 'Vex');
+    assert.equal(bundle.strings[language]['vessel.guide.name'], 'Vex');
+    assert.ok(bundle.strings[language]['role.companion.name']);
+    assert.ok(bundle.strings[language]['role.guide.name']);
+    assert.ok(bundle.strings[language]['role.root-hub.name']);
+  }
+  assert.ok(bundle.blueprint.roles.some((role) => role.roleRef === 'role.vex.companion'));
+  assert.ok(bundle.blueprint.roles.some((role) => role.roleRef === 'role.vex.guide'));
+  assert.ok(bundle.blueprint.roles.some((role) => role.roleRef === 'role.vex.root-hub'));
+});
+
+test('E2.7 Stage A leaves the accepted ONB plan identities and Frontdoor bindings unchanged', () => {
+  const registry = new ExperienceRegistry(bundle.experience);
+  const plan = registry.guidedEstablishmentPlan(GUIDED_ESTABLISHMENT_PLAN_REF);
+  assert.deepEqual(
+    plan.platformBindings,
+    Object.entries(GUIDED_ESTABLISHMENT_FRONTDOOR_BINDINGS).map(([platformRef, adapterSourcePath]) => ({ platformRef, adapterSourcePath }))
+  );
+  assert.equal(plan.stages.find((stage) => stage.purposeClass === 'MEET_VEX')?.expectedOutcomeClass, 'FIRST_INTERACTION_READY');
+});
+
 // [VXG RealForever]

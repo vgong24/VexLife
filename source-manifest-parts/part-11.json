@@ -82,8 +82,8 @@
     {
       "path": "test/core.test.mjs",
       "mode": "100644",
-      "bytes": 7231,
-      "sha256": "f33948c44c7fa69cc818447c5b52e9c77c2c20a928889986c7c3dffaf79f9bd7"
+      "bytes": 10640,
+      "sha256": "33fb300e6ad17a83ce480f901c1c011df71474f147d76ab46c57c5cee4952215"
     },
     {
       "path": "test/daily-memory-dream.test.mjs",
@@ -112,8 +112,8 @@
     {
       "path": "test/experience.test.mjs",
       "mode": "100644",
-      "bytes": 12436,
-      "sha256": "dacf407756ea3350e16102407caec01bfbcae0257c60b10856a4208ebec2d740"
+      "bytes": 15079,
+      "sha256": "a4d913281e27451b56de0ef38ae5a400e6548e11b115b7e6e8934f23caaa96ac"
     },
     {
       "path": "test/fixtures/orientation/accepted-main.json",

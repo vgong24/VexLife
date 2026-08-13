@@ -116,4 +116,66 @@ test('Score sync shares scoped records without collapsing device lineages or Rhy
   assert.equal(sync.rhythmImported, false);
 });
 
+test('Terrain semantic depth, pixel scale and centering remain independent projection state', () => {
+  const terrain = new TerrainLayout(bundle.blueprint.terrain);
+  const beforeParents = terrain.projection().map((item) => [item.terrainNodeRef, item.parentRef]);
+  terrain.setPixelScale(1.5);
+  terrain.setSemanticDepth(2);
+  terrain.centerOn('terrain.thread.open-conversation');
+  assert.deepEqual(terrain.viewportProjection(), {
+    pixelScale: 1.5,
+    semanticDepth: 2,
+    semanticDepthRef: 'semantic-depth.terrain.source-descent',
+    semanticDepthClass: 'SOURCE_DESCENT',
+    labelStringRef: 'terrain.semantic-depth.source-descent',
+    centerNodeRef: 'terrain.thread.open-conversation'
+  });
+  terrain.setSemanticDepth(0);
+  assert.equal(terrain.viewportProjection().pixelScale, 1.5);
+  assert.deepEqual(terrain.projection().map((item) => [item.terrainNodeRef, item.parentRef]), beforeParents);
+  terrain.move('terrain.project.vex-home-product', 900, 250);
+  terrain.move('terrain.project.local-vex', 100, 250);
+  assert.deepEqual(
+    terrain.siblingRefs('terrain.project.vex-home-product').slice(0, 2),
+    ['terrain.project.local-vex', 'terrain.project.self-development']
+  );
+  assert.throws(() => terrain.setSemanticDepth(3), /semanticDepth/);
+});
+
+test('navigation consumes Terrain spatial sibling order while preserving full and recent journey projections', () => {
+  const terrain = new TerrainLayout([
+    { terrainNodeRef: 'a', parentRef: 'root', defaultPosition: { x: 300, y: 0 } },
+    { terrainNodeRef: 'b', parentRef: 'root', defaultPosition: { x: 200, y: 0 } },
+    { terrainNodeRef: 'c', parentRef: 'root', defaultPosition: { x: 100, y: 0 } }
+  ]);
+  const lattice = new NavigationLattice([
+    { nodeRef: 'root', parentNodeRef: null, kind: 'ROOT' },
+    { nodeRef: 'a', parentNodeRef: 'root', kind: 'THREAD' },
+    { nodeRef: 'b', parentNodeRef: 'root', kind: 'THREAD' },
+    { nodeRef: 'c', parentNodeRef: 'root', kind: 'THREAD' }
+  ]);
+  lattice.navigate({ screenRef: 'screen.chat', routeRef: 'route.chat', selectedNodeRef: 'b', actionRef: 'action.seed' });
+  assert.deepEqual(lattice.siblingRefs(), ['a', 'b', 'c']);
+  const spatialSiblingRefs = terrain.siblingRefs('b');
+  assert.deepEqual(spatialSiblingRefs, ['c', 'b', 'a']);
+  assert.throws(() => lattice.navigateSibling('NEXT'), /ordered sibling projection is required/);
+  const moved = lattice.navigateSibling('NEXT', { orderedSiblingRefs: spatialSiblingRefs });
+  assert.equal(moved.changed, true);
+  assert.equal(lattice.state.value.selectedNodeRef, 'a');
+  assert.equal(moved.journeyEvent.actionRef, 'action.navigation.sibling');
+  assert.equal(lattice.navigateSibling('NEXT', { orderedSiblingRefs: spatialSiblingRefs }).reason, 'SIBLING_BOUNDARY');
+  assert.throws(
+    () => lattice.navigateSibling('PREVIOUS', { orderedSiblingRefs: ['a', 'b'] }),
+    /exactly cover canonical siblings/
+  );
+  for (let index = 0; index < 15; index += 1) {
+    lattice.navigate({ selectedNodeRef: index % 2 === 0 ? 'a' : 'b', actionRef: `action.synthetic.${index}` });
+  }
+  const projection = lattice.journeyProjection({ recentLimit: 4 });
+  assert.ok(projection.fullEventCount > projection.recentTrajectory.length);
+  assert.equal(projection.recentTrajectory.length, 4);
+  assert.equal(lattice.fullJourney().length, projection.fullEventCount);
+  assert.equal(lattice.screenFrame().journeyEventCount, projection.fullEventCount);
+});
+
 // [VXG RealForever]

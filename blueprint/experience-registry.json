@@ -7,7 +7,10 @@
     "architecture and effect details remain available by descent",
     "platform-native navigation conventions are respected",
     "scrolling never becomes zooming without an explicit affordance",
-    "floating vessels never obscure declared controls or trap focus"
+    "floating vessels never obscure declared controls or trap focus",
+    "one visible Vex presence may project multiple internal source-attributed role refs without collapsing those identities",
+    "semantic depth changes meaning density and never pixel scale or canonical relationships",
+    "the full semantic journey is preserved while bounded recent windows remain projections"
   ],
   "experienceProfiles": [
     {
@@ -140,7 +143,8 @@
         "ordinary wheel scrolling does not zoom by default",
         "zoom has visible controls and a reset route",
         "platform browser zoom and accessibility magnification are not intercepted",
-        "zoom retains the selected node and semantic frame"
+        "zoom retains the selected node and semantic frame",
+        "pixel scale never changes semantic depth"
       ],
       "helpStringRef": "gesture.terrain-zoom.help"
     },
@@ -200,6 +204,43 @@
         "exit only through platform-expected behavior and never by surprise"
       ],
       "helpStringRef": "gesture.navigation-back.help"
+    },
+    {
+      "gestureRef": "gesture.vexlife.terrain-semantic-depth",
+      "surfaceKinds": [
+        "TERRAIN_CANVAS"
+      ],
+      "inputs": [
+        "SEMANTIC_DEPTH_CONTROL",
+        "KEYBOARD_BRACKET_KEYS"
+      ],
+      "resultActionRef": "action.terrain.semantic-depth.set",
+      "rules": [
+        "semantic depth is changed only through an explicit visible control",
+        "semantic depth changes information projection and never pixel scale",
+        "semantic depth never mutates canonical parent or child relationships",
+        "the selected and centered semantic context remain source-addressable"
+      ],
+      "helpStringRef": "gesture.terrain-semantic-depth.help"
+    },
+    {
+      "gestureRef": "gesture.vexlife.vessel-resize",
+      "surfaceKinds": [
+        "FLOATING_GUIDE",
+        "FLOATING_VESSEL"
+      ],
+      "inputs": [
+        "CORNER_HANDLE_DRAG",
+        "KEYBOARD_RESIZE_MODE"
+      ],
+      "resultActionRef": "action.vessel.resize",
+      "rules": [
+        "all four corners expose stable resize handles",
+        "body content remains independently selectable and scrollable",
+        "resizing respects safe viewport and minimum usable dimensions",
+        "vessel size is a local projection preference and not conversational memory"
+      ],
+      "helpStringRef": "gesture.vessel-resize.help"
     }
   ],
   "vessels": [
@@ -258,18 +299,20 @@
       "vesselRef": "vessel.vexlife.guide",
       "labelStringRef": "vessel.guide.name",
       "componentRef": "component.vexlife.action-vessel",
-      "purpose": "Screen-aware help vessel; floating and draggable where appropriate, sheet or full screen where space requires.",
+      "purpose": "Single visible Vex presence for screen-aware assistance; internal role refs remain source-attributed while the vessel may float, resize or dock by platform.",
       "actionRefs": [
+        "action.vex.summon",
         "action.guide.toggle",
         "action.guide.minimize",
-        "action.guide.dock"
+        "action.guide.dock",
+        "action.vessel.resize"
       ],
       "placement": {
-        "wide": "FLOATING_DRAGGABLE",
+        "wide": "FLOATING_DRAGGABLE_RESIZABLE",
         "compact": "BOTTOM_SHEET_OR_FULL_SCREEN"
       },
       "platformAdapters": {
-        "browser": "draggable overlay",
+        "browser": "draggable resizable overlay",
         "android": "overlay, dialog or sheet",
         "ios": "sheet or overlay",
         "windows": "floating window or pane",

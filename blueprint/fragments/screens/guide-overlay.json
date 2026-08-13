@@ -41,6 +41,82 @@
           ]
         },
         {
+          "elementRef": "element.guide.resize-nw",
+          "conceptRef": "concept.element.guide.resize-nw",
+          "interactionRef": "interaction.guide.resize-nw",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-resize",
+          "kind": "VESSEL_RESIZE_HANDLE",
+          "labelStringRef": "vex.resize.nw",
+          "actionRef": "action.vessel.resize",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.resize-nw"
+          },
+          "testRefs": []
+        },
+        {
+          "elementRef": "element.guide.resize-ne",
+          "conceptRef": "concept.element.guide.resize-ne",
+          "interactionRef": "interaction.guide.resize-ne",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-resize",
+          "kind": "VESSEL_RESIZE_HANDLE",
+          "labelStringRef": "vex.resize.ne",
+          "actionRef": "action.vessel.resize",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.resize-ne"
+          },
+          "testRefs": []
+        },
+        {
+          "elementRef": "element.guide.resize-sw",
+          "conceptRef": "concept.element.guide.resize-sw",
+          "interactionRef": "interaction.guide.resize-sw",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-resize",
+          "kind": "VESSEL_RESIZE_HANDLE",
+          "labelStringRef": "vex.resize.sw",
+          "actionRef": "action.vessel.resize",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.resize-sw"
+          },
+          "testRefs": []
+        },
+        {
+          "elementRef": "element.guide.resize-se",
+          "conceptRef": "concept.element.guide.resize-se",
+          "interactionRef": "interaction.guide.resize-se",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-resize",
+          "kind": "VESSEL_RESIZE_HANDLE",
+          "labelStringRef": "vex.resize.se",
+          "actionRef": "action.vessel.resize",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.guide.resize-se"
+          },
+          "testRefs": []
+        },
+        {
           "elementRef": "element.guide.minimize",
           "conceptRef": "concept.element.guide.minimize",
           "interactionRef": "interaction.guide.minimize",

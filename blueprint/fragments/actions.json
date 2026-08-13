@@ -539,5 +539,69 @@
       "state.evolution",
       "state.resource"
     ]
+  },
+  {
+    "actionRef": "action.vex.summon",
+    "permissionRef": "permission.none",
+    "inputSchema": {},
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.guide",
+      "state.navigation",
+      "state.journey"
+    ]
+  },
+  {
+    "actionRef": "action.vessel.resize",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "vesselRef": "ref",
+      "corner": "enum",
+      "width": "number",
+      "height": "number"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.guide"
+    ]
+  },
+  {
+    "actionRef": "action.terrain.semantic-depth.set",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "depth": "integer"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain",
+      "state.navigation",
+      "state.journey"
+    ]
+  },
+  {
+    "actionRef": "action.terrain.center-current-context",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "nodeRef": "ref"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain",
+      "state.navigation",
+      "state.journey"
+    ]
+  },
+  {
+    "actionRef": "action.navigation.sibling",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "direction": "enum"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.navigation",
+      "state.selection",
+      "state.journey"
+    ]
   }
 ]
