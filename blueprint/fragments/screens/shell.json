@@ -4,6 +4,21 @@
   "navigationNodeRef": "nav.screen.vexlife.shell",
   "routeRef": "route.shell",
   "titleStringRef": "screen.shell.title",
+  "presentationContractRef": "contract.vexlife.e27.authoritative-root/v1",
+  "presentationClass": "E27_ROOTED_SINGLE_TERRAIN_STAGE",
+  "defaultPrimaryScreenRef": "screen.vexlife.terrain",
+  "defaultPrimaryRouteRef": "route.terrain",
+  "persistentPrimaryTabs": false,
+  "secondaryRouteRefs": [
+    "route.chat",
+    "route.health"
+  ],
+  "contextualProjectionRegionRefs": [
+    "region.chat.feed",
+    "region.chat.context",
+    "region.health.summary",
+    "region.guide.window"
+  ],
   "stateSelectorRefs": [
     "selector.primary-view",
     "selector.localization",
@@ -20,6 +35,8 @@
       "conceptRef": "concept.region.shell.primary-nav",
       "navigationNodeRef": "nav.region.shell.primary-nav",
       "labelStringRef": "region.navigation.label",
+      "presentationClass": "CONTEXTUAL_SECONDARY_NAVIGATION",
+      "persistentCanvasConsumer": false,
       "elements": [
         {
           "elementRef": "element.nav.home",

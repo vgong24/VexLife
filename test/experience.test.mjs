@@ -276,4 +276,63 @@ test('E2.7 Stage A leaves the accepted ONB plan identities and Frontdoor binding
   assert.equal(plan.stages.find((stage) => stage.purposeClass === 'MEET_VEX')?.expectedOutcomeClass, 'FIRST_INTERACTION_READY');
 });
 
+test('E2.7 authoritative root contract makes Terrain the default body and keeps current routes subordinate', () => {
+  const registry = new ExperienceRegistry(bundle.experience);
+  const contract = registry.authoritativeRootDesignContract();
+  const shell = bundle.blueprint.screens.find((screen) => screen.screenRef === 'screen.vexlife.shell');
+  const terrain = bundle.blueprint.screens.find((screen) => screen.screenRef === 'screen.vexlife.terrain');
+
+  assert.equal(contract.contractRef, 'contract.vexlife.e27.authoritative-root/v1');
+  assert.equal(contract.referenceBaselineRef, 'design-baseline.vexlife.e2.7.scoped-layers-vexorg-sandbox.34f17a12-38b6-438c-b899-6d07c36f1eb0');
+  assert.equal(contract.artifactSha256, '9f944af803c43a494af944e987d1c4c6a6c7f71c89c648cbdf6536c07dbeda17');
+  assert.equal(contract.defaultShellGrammar.primaryStageScreenRef, 'screen.vexlife.terrain');
+  assert.equal(contract.defaultShellGrammar.primaryStageRouteRef, 'route.terrain');
+  assert.equal(contract.defaultShellGrammar.singleStageDefault, true);
+  assert.deepEqual(contract.defaultShellGrammar.permanentPrimaryTabRefs, []);
+  assert.equal(contract.defaultShellGrammar.legacyCurrentBrowserPreservationDefault, false);
+  assert.deepEqual(contract.defaultShellGrammar.secondaryRouteRefs, ['route.chat', 'route.health']);
+  assert.equal(contract.semanticAutoEntry.actionRef, 'action.terrain.semantic-auto-entry.toggle');
+  assert.equal(contract.semanticAutoEntry.visibleThresholdRequired, true);
+  assert.equal(contract.semanticAutoEntry.visibleConfidenceRequired, true);
+  assert.equal(contract.semanticAutoEntry.optOutRequired, true);
+  assert.equal(contract.semanticAutoEntry.ordinaryScrollMayCommit, false);
+  assert.equal(shell.presentationContractRef, contract.contractRef);
+  assert.equal(shell.presentationClass, 'E27_ROOTED_SINGLE_TERRAIN_STAGE');
+  assert.equal(shell.defaultPrimaryScreenRef, terrain.screenRef);
+  assert.equal(shell.defaultPrimaryRouteRef, terrain.routeRef);
+  assert.equal(shell.persistentPrimaryTabs, false);
+  assert.equal(terrain.primaryStage, true);
+  assert.ok(bundle.blueprint.actions.some((action) => action.actionRef === 'action.terrain.semantic-auto-entry.toggle'));
+});
+
+test('E2.7 authoritative root validation fails closed on implicit legacy preservation, incomplete supersession, or synthetic product truth', () => {
+  const legacy = structuredClone(bundle.experience);
+  legacy.authoritativeRootDesignContract.defaultShellGrammar.legacyCurrentBrowserPreservationDefault = true;
+  let result = validateExperienceOnly(legacy);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((error) => error.includes('implicit preservation default')));
+
+  const incompleteSupersession = structuredClone(bundle.experience);
+  incompleteSupersession.authoritativeRootDesignContract.supersessionRecords.push({
+    supersedesRef: 'signal.e27.single-terrain-stage',
+    signalOrRegionRef: 'region.terrain.canvas',
+    delta: 'candidate delta',
+    reason: 'candidate reason',
+    canonicalOwnerRef: 'owner.test',
+    evidenceRefs: ['evidence.test'],
+    protectedPreserveRefs: ['signal.e27.one-visible-vex'],
+    regressionProofRefs: ['proof.test'],
+    humanReviewRef: 'review.test'
+  });
+  result = validateExperienceOnly(incompleteSupersession);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((error) => error.includes('missing assuranceRef')));
+
+  const synthetic = structuredClone(bundle.experience);
+  synthetic.authoritativeRootDesignContract.productExclusions.syntheticOrganizationOrPeopleTruthAllowed = true;
+  result = validateExperienceOnly(synthetic);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((error) => error.includes('synthetic VexOrg review data')));
+});
+
 // [VXG RealForever]
