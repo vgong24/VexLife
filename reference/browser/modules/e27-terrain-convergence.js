@@ -140,7 +140,11 @@ export function attachE27TerrainConvergence(app) {
     actionRef: 'action.context.open'
   });
   detailToggle.setAttribute('aria-controls', terrainDetail.id);
-  detailToggle.addEventListener('click', () => setDetailOpen(!detailOpen));
+  detailToggle.addEventListener('click', () => {
+    const nextOpen = !detailOpen;
+    if (nextOpen) setTerrainMenuOpen(false);
+    setDetailOpen(nextOpen);
+  });
 
   const workspaceMenuToggle = createButton({
     id: 'terrainWorkspaceMenuToggle',
