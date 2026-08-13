@@ -181,6 +181,7 @@ $('#languageSelect').addEventListener('change', (event) => {
   navigation.navigate('element.language.selector', {}, 'action.language.select'); applyLocalization();
 });
 $('#architectureButton').addEventListener('click', () => { guide.setOpen(true); guide.askIntent(GUIDE_INTENTS.ARCHITECTURE); });
+$('.brand')?.addEventListener('click', () => guide.summon());
 
 globalThis.addEventListener('popstate', () => {
   const result = navigation.back();
