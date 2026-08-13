@@ -22,8 +22,8 @@
     {
       "path": "src/core/navigation.mjs",
       "mode": "100644",
-      "bytes": 5821,
-      "sha256": "5ec5bcb30ba24681e2913a4c81a4ad41c0d82a8d6b20e68584f6b06d283f94c1"
+      "bytes": 6467,
+      "sha256": "2b7bc57c8d9c23f1bfb83b8a0e257c29d51645875a00762a2c5bd9036055213f"
     },
     {
       "path": "src/core/orientation.mjs",
