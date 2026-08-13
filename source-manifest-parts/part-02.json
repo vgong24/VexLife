@@ -10,8 +10,8 @@
     {
       "path": "blueprint/experience-registry.json",
       "mode": "100644",
-      "bytes": 10626,
-      "sha256": "a6078a44aeb4c9f775ecdeae6def53e8f0a7c293c8a4a06c666250296e22f595"
+      "bytes": 17171,
+      "sha256": "e2257dc8fb5867eebea79708966583e26ebbf6d0b1363534e113191137902cd0"
     },
     {
       "path": "blueprint/feature-registry.json",

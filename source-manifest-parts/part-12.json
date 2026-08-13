@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/fixtures/orientation/public-active.json",
+      "mode": "100644",
+      "bytes": 1051,
+      "sha256": "5cdfa67a043b52b643c37bc8874488140de0e9ef09fa8eaa965e6bd5643d9d54"
+    },
+    {
       "path": "test/fixtures/public-safety/cases.json",
       "mode": "100644",
       "bytes": 795,

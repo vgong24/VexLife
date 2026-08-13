@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/concern-watch.mjs",
+      "mode": "100644",
+      "bytes": 120155,
+      "sha256": "a65d858e4dffe8915ad1b62df4550ee3d963e7d8de3c360c1b08412e5f87dc51"
+    },
+    {
       "path": "src/core/context-lease.mjs",
       "mode": "100644",
       "bytes": 11526,
@@ -52,8 +58,8 @@
     {
       "path": "src/core/experience.mjs",
       "mode": "100644",
-      "bytes": 4744,
-      "sha256": "e14e96c19e4feea4060fc56dfe9f3b77d8daea494cdb1e2a782ffe363e4c2e5a"
+      "bytes": 15485,
+      "sha256": "c25c8539816967ecca4d9ec6cd23dc5cdea6ebf6e1a7b57e60b6cd9d947d4ab8"
     },
     {
       "path": "src/core/feature-registry.mjs",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 76404,
       "sha256": "bbec7804e1ba1ae72d051d27191dec4c3085e6523604cf20b1480b6b0dbeade0"
-    },
-    {
-      "path": "src/core/local-git-effect-adapter.mjs",
-      "mode": "100644",
-      "bytes": 22567,
-      "sha256": "bbf90a244ad3e3c63a2521f5561e3ecd29d90bd0841271fdd4c5b04e62688878"
     }
   ]
 }

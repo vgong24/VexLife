@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/HUMAN-ONBOARDING-GUIDED-LOCAL-ESTABLISHMENT.md",
+      "mode": "100644",
+      "bytes": 7919,
+      "sha256": "37b1a1e8c6911c29acaacd4e1a889277f9d0bf2045b9c5b8b430ab43019cb7e2"
+    },
+    {
       "path": "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
       "mode": "100644",
       "bytes": 12826,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 4074,
       "sha256": "b8243a144834dc50b1cc32ee3009f160d13966e17a93207c3b6f90f56cccece9"
-    },
-    {
-      "path": "reference/browser/README.md",
-      "mode": "100644",
-      "bytes": 898,
-      "sha256": "df56100f04b33c3b5c61d46565277a5025fb72632408679a1fee5c2f2d06d93f"
     }
   ]
 }
