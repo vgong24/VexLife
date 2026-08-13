@@ -34,9 +34,7 @@ export function createTerrainController({ state, blueprint, t, navigation }) {
     }
     return false;
   }
-  function viewportProjection() {
-    return { pixelScale: state.terrain.pixelScale, semanticDepth: state.terrain.semanticDepth, centerNodeRef: state.terrain.centerNodeRef };
-  }
+  function viewportProjection() { return { pixelScale: state.terrain.pixelScale, semanticDepth: state.terrain.semanticDepth, centerNodeRef: state.terrain.centerNodeRef }; }
   function applyViewport() {
     const canvas=$('#terrainCanvas'); const world=$('#terrainWorld');
     world.style.transform=`scale(${state.terrain.pixelScale})`; world.style.transformOrigin='0 0';
@@ -69,7 +67,13 @@ export function createTerrainController({ state, blueprint, t, navigation }) {
   function toggle(nodeRef){ const set=new Set(state.terrain.collapsed); if(set.has(nodeRef))set.delete(nodeRef);else set.add(nodeRef); state.terrain.collapsed=[...set]; navigation.navigate(nodeRef,{selectedNodeRef:nodeRef},'action.terrain.node.collapse'); render(); }
   function makeDraggable(element,nodeRef){ let start=null; element.addEventListener('pointerdown',(event)=>{if(event.target.closest('button'))return;const pos=terrainPosition(terrainByRef.get(nodeRef));start={pointerX:event.clientX,pointerY:event.clientY,x:pos.x,y:pos.y};element.setPointerCapture(event.pointerId);}); element.addEventListener('pointermove',(event)=>{if(!start||!element.hasPointerCapture(event.pointerId))return;const scale=state.terrain.pixelScale;const x=Math.max(10,start.x+(event.clientX-start.pointerX)/scale);const y=Math.max(10,start.y+(event.clientY-start.pointerY)/scale);state.terrain.positions[nodeRef]={x,y};element.style.left=`${x}px`;element.style.top=`${y}px`;drawEdges();}); element.addEventListener('pointerup',(event)=>{if(!start)return;element.releasePointerCapture(event.pointerId);start=null;navigation.navigate(nodeRef,{selectedNodeRef:nodeRef},'action.terrain.node.move');save();}); }
   function drawEdges(){ const svg=$('#terrainEdges');svg.replaceChildren();for(const node of blueprint.terrain){if(!node.parentRef||isTerrainHidden(node.terrainNodeRef)||isTerrainHidden(node.parentRef))continue;const child=terrainPosition(node);const parent=terrainPosition(terrainByRef.get(node.parentRef));const line=document.createElementNS('http://www.w3.org/2000/svg','line');line.setAttribute('x1',parent.x+130);line.setAttribute('y1',parent.y+112);line.setAttribute('x2',child.x+130);line.setAttribute('y2',child.y);svg.append(line);}}
-  function renderDetail(){ const host=$('#terrainDetail');const node=terrainByRef.get(state.terrain.selected);if(!node){host.innerHTML=`<p>${escapeHtml(t('terrain.empty-detail'))}</p>`;return;}const children=childrenByTerrainRef.get(node.terrainNodeRef)||[];host.innerHTML=`<h2>${escapeHtml(t(node.labelStringRef))}</h2><p>${escapeHtml(node.terrainNodeRef)}</p><dl><dt>${escapeHtml(t('terrain.kind'))}</dt><dd>${escapeHtml(t(`terrain.kind.${node.kind.toLowerCase()}`))}</dd><dt>${escapeHtml(t('terrain.children'))}</dt><dd>${children.length}</dd><dt>${escapeHtml(t('terrain.collapsed'))}</dt><dd>${escapeHtml(t(state.terrain.collapsed.includes(node.terrainNodeRef)?'terrain.yes':'terrain.no')}</dd><dt>${escapeHtml(t('terrain.canonical-parent'))}</dt><dd>${escapeHtml(node.parentRef||t('terrain.root'))}</dd></dl>`; }
+  function renderDetail(){
+    const host=$('#terrainDetail'); const node=terrainByRef.get(state.terrain.selected);
+    if(!node){host.innerHTML=`<p>${escapeHtml(t('terrain.empty-detail'))}</p>`;return;}
+    const children=childrenByTerrainRef.get(node.terrainNodeRef)||[];
+    const collapsedRef=state.terrain.collapsed.includes(node.terrainNodeRef)?'terrain.yes':'terrain.no';
+    host.innerHTML=`<h2>${escapeHtml(t(node.labelStringRef))}</h2><p>${escapeHtml(node.terrainNodeRef)}</p><dl><dt>${escapeHtml(t('terrain.kind'))}</dt><dd>${escapeHtml(t(`terrain.kind.${node.kind.toLowerCase()}`))}</dd><dt>${escapeHtml(t('terrain.children'))}</dt><dd>${children.length}</dd><dt>${escapeHtml(t('terrain.collapsed'))}</dt><dd>${escapeHtml(t(collapsedRef))}</dd><dt>${escapeHtml(t('terrain.canonical-parent'))}</dt><dd>${escapeHtml(node.parentRef||t('terrain.root'))}</dd></dl>`;
+  }
   function setPixelScale(value){ state.terrain.pixelScale=clamp(value,MIN_PIXEL_SCALE,MAX_PIXEL_SCALE); applyViewport(); save(); return state.terrain.pixelScale; }
   function setSemanticDepth(value){ state.terrain.semanticDepth=clamp(Math.round(value),MIN_SEMANTIC_DEPTH,MAX_SEMANTIC_DEPTH); navigation.navigate('element.terrain.semantic-depth-status',{},'action.terrain.semantic-depth.set'); applyViewport(); save(); return state.terrain.semanticDepth; }
   function navigateSibling(direction){ const current=state.terrain.selected;const ordered=siblingRefs(current);const index=ordered.indexOf(current);if(index<0)return false;const nextIndex=direction==='PREVIOUS'?index-1:index+1;if(nextIndex<0||nextIndex>=ordered.length)return false;const target=ordered[nextIndex];state.terrain.selected=target;navigation.navigate(target,{selectedNodeRef:target},'action.navigation.sibling');render();centerOn(target);return true; }
