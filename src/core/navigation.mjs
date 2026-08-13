@@ -3,6 +3,14 @@ import { StateCell } from './state-relay.mjs';
 import { semanticHash } from './utils.mjs';
 import { JourneyLedger } from './journey.mjs';
 
+const recentJourneyRecord = (event) => ({
+  journeyRef: event.journeyRef,
+  elementRef: event.elementRef,
+  actionRef: event.actionRef,
+  toFrame: structuredClone(event.toFrame),
+  formedAt: event.formedAt
+});
+
 export class NavigationLattice {
   constructor(nodes = [], { journeyLedger = new JourneyLedger() } = {}) {
     this.nodes = new Map(nodes.map((node) => [node.nodeRef, { ...node }]));
@@ -57,14 +65,60 @@ export class NavigationLattice {
     return refs;
   }
 
+  fullJourney() {
+    return this.journeyLedger.range().map((event) => structuredClone(event));
+  }
+
+  recentJourney(limit = this.journeyLedger.limit ?? 12) {
+    if (!Number.isInteger(limit) || limit < 1) throw new TypeError('recent journey limit must be a positive integer');
+    return this.journeyLedger.range().slice(-limit).map(recentJourneyRecord);
+  }
+
+  journeyProjection({ recentLimit = this.journeyLedger.limit ?? 12 } = {}) {
+    const full = this.fullJourney();
+    return {
+      fullEventCount: full.length,
+      recentTrajectory: this.recentJourney(recentLimit)
+    };
+  }
+
+  siblingRefs(nodeRef = this.state.value.selectedNodeRef) {
+    const selected = this.nodes.get(nodeRef);
+    if (!selected) return [];
+    const parentNodeRef = selected.parentNodeRef ?? null;
+    return [...this.nodes.values()]
+      .filter((node) => (node.parentNodeRef ?? null) === parentNodeRef)
+      .map((node) => node.nodeRef)
+      .sort();
+  }
+
+  navigateSibling(direction) {
+    if (!['PREVIOUS', 'NEXT'].includes(direction)) throw new Error(`unsupported sibling direction ${direction}`);
+    const currentRef = this.state.value.selectedNodeRef;
+    const siblings = this.siblingRefs(currentRef);
+    const index = siblings.indexOf(currentRef);
+    if (index < 0) return { changed: false, reason: 'NO_CURRENT_SIBLING' };
+    const targetIndex = direction === 'PREVIOUS' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= siblings.length) return { changed: false, reason: 'SIBLING_BOUNDARY', siblingRefs: siblings };
+    const targetRef = siblings[targetIndex];
+    return this.navigate({
+      selectedNodeRef: targetRef,
+      elementRef: targetRef,
+      subjectRef: targetRef,
+      actionRef: 'action.navigation.sibling'
+    });
+  }
+
   screenFrame() {
     const current = this.state.value;
     const selected = current.selectedNodeRef ? this.nodes.get(current.selectedNodeRef) : null;
+    const journey = this.journeyProjection();
     return {
       ...current,
       selectedNode: selected ? { ...selected } : null,
       breadcrumbNodeRefs: selected ? this.breadcrumb(selected.nodeRef) : [],
-      trajectory: this.journeyLedger.currentTrajectory(),
+      trajectory: journey.recentTrajectory,
+      journeyEventCount: journey.fullEventCount,
       rawPointerLogIncluded: false
     };
   }

@@ -137,6 +137,26 @@
         "slotRef": "slot.action-vessel.status",
         "kind": "STATUS_PROJECTION",
         "actionRef": null
+      },
+      {
+        "slotRef": "slot.action-vessel.resize-nw",
+        "kind": "VESSEL_RESIZE_HANDLE",
+        "actionRef": "action.vessel.resize"
+      },
+      {
+        "slotRef": "slot.action-vessel.resize-ne",
+        "kind": "VESSEL_RESIZE_HANDLE",
+        "actionRef": "action.vessel.resize"
+      },
+      {
+        "slotRef": "slot.action-vessel.resize-sw",
+        "kind": "VESSEL_RESIZE_HANDLE",
+        "actionRef": "action.vessel.resize"
+      },
+      {
+        "slotRef": "slot.action-vessel.resize-se",
+        "kind": "VESSEL_RESIZE_HANDLE",
+        "actionRef": "action.vessel.resize"
       }
     ]
   }

@@ -4,7 +4,9 @@
   "titleStringRef": "screen.terrain.title",
   "stateSelectorRefs": [
     "selector.terrain.current",
-    "selector.terrain.layout"
+    "selector.terrain.layout",
+    "selector.terrain.viewport",
+    "selector.terrain.semantic-depth"
   ],
   "regions": [
     {
@@ -50,6 +52,120 @@
           "testRefs": [
             "test.terrain.drag"
           ]
+        },
+        {
+          "elementRef": "element.terrain.semantic-depth-decrease",
+          "conceptRef": "concept.element.terrain.semantic-depth-decrease",
+          "interactionRef": "interaction.terrain.semantic-depth-decrease",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-semantic-depth",
+          "kind": "SEMANTIC_DEPTH_CONTROL",
+          "labelStringRef": "terrain.semantic-depth.decrease",
+          "actionRef": "action.terrain.semantic-depth.set",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.semantic-depth-decrease"
+          },
+          "testRefs": []
+        },
+        {
+          "elementRef": "element.terrain.semantic-depth-status",
+          "conceptRef": "concept.element.terrain.semantic-depth-status",
+          "interactionRef": "interaction.terrain.semantic-depth-status",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-semantic-depth",
+          "kind": "SEMANTIC_DEPTH_STATUS",
+          "labelStringRef": "terrain.semantic-depth",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "status",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.semantic-depth-status"
+          },
+          "testRefs": []
+        },
+        {
+          "elementRef": "element.terrain.semantic-depth-increase",
+          "conceptRef": "concept.element.terrain.semantic-depth-increase",
+          "interactionRef": "interaction.terrain.semantic-depth-increase",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-semantic-depth",
+          "kind": "SEMANTIC_DEPTH_CONTROL",
+          "labelStringRef": "terrain.semantic-depth.increase",
+          "actionRef": "action.terrain.semantic-depth.set",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.semantic-depth-increase"
+          },
+          "testRefs": []
+        },
+        {
+          "elementRef": "element.terrain.center-current-context",
+          "conceptRef": "concept.element.terrain.center-current-context",
+          "interactionRef": "interaction.terrain.center-current-context",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-center-current-context",
+          "kind": "CENTER_CURRENT_CONTEXT",
+          "labelStringRef": "terrain.center-current-context",
+          "actionRef": "action.terrain.center-current-context",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.center-current-context"
+          },
+          "testRefs": []
+        },
+        {
+          "elementRef": "element.terrain.sibling-previous",
+          "conceptRef": "concept.element.terrain.sibling-previous",
+          "interactionRef": "interaction.navigation.sibling-previous",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.navigation-sibling",
+          "kind": "SIBLING_NAVIGATION",
+          "labelStringRef": "terrain.sibling.previous",
+          "actionRef": "action.navigation.sibling",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.sibling-previous"
+          },
+          "testRefs": []
+        },
+        {
+          "elementRef": "element.terrain.sibling-next",
+          "conceptRef": "concept.element.terrain.sibling-next",
+          "interactionRef": "interaction.navigation.sibling-next",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.navigation-sibling",
+          "kind": "SIBLING_NAVIGATION",
+          "labelStringRef": "terrain.sibling.next",
+          "actionRef": "action.navigation.sibling",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.sibling-next"
+          },
+          "testRefs": []
         },
         {
           "elementRef": "element.terrain.details",

@@ -135,6 +135,25 @@
           ]
         },
         {
+          "elementRef": "element.vex.summon",
+          "conceptRef": "concept.element.vex.summon",
+          "interactionRef": "interaction.vex.summon",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vex-summon",
+          "kind": "VEX_SUMMON",
+          "labelStringRef": "vex.summon",
+          "actionRef": "action.vex.summon",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vex.summon"
+          },
+          "testRefs": []
+        },
+        {
           "elementRef": "element.guide.toggle",
           "conceptRef": "concept.element.guide.toggle",
           "interactionRef": "interaction.guide.toggle",
