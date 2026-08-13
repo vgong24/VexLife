@@ -51,6 +51,70 @@ function bindScrollPositions() {
     saveJson('vexlife.scroll.positions', state.scrollPositions);
   }, { passive: true }));
 }
+function visibleVexName() { return t('vex.visible.name'); }
+function internalVexLabels() {
+  return ['companion', 'guide', 'root'].map((key) => roles[key]?.labelRef ? t(roles[key].labelRef) : roles[key]?.label).filter(Boolean);
+}
+function replaceInternalVexLabels(text) {
+  let next = String(text ?? '');
+  for (const label of internalVexLabels()) next = next.split(label).join(visibleVexName());
+  return next;
+}
+function projectVisibleVexIdentity() {
+  const visibleName = visibleVexName();
+  for (const button of $$('#channelTabs [data-channel-ref]')) {
+    const channel = channels.find((candidate) => candidate.channelRef === button.dataset.channelRef);
+    if (!channel || channel.kind !== 'DIRECT' || channel.roleKey === 'victor') continue;
+    const sourceRoleRef = roles[channel.roleKey]?.actorRef;
+    if (!sourceRoleRef) continue;
+    button.dataset.sourceRoleRef = sourceRoleRef;
+    button.setAttribute('aria-label', `${visibleName} · ${sourceRoleRef}`);
+    const existingSource = button.querySelector('.channel-source-ref')?.textContent;
+    if (button.querySelector('.visible-vex-name')?.textContent !== visibleName || existingSource !== sourceRoleRef) {
+      const name = document.createElement('span'); name.className = 'visible-vex-name'; name.textContent = visibleName;
+      const source = document.createElement('small'); source.className = 'channel-source-ref'; source.textContent = sourceRoleRef;
+      button.replaceChildren(name, source);
+    }
+  }
+
+  const memberKeys = chat?.currentChannel()?.memberKeys ?? [];
+  [...($('#presence')?.children ?? [])].forEach((span, index) => {
+    const key = memberKeys[index]; const actorRef = roles[key]?.actorRef;
+    if (!actorRef) return;
+    span.dataset.actorRef = actorRef;
+    if (key !== 'victor') {
+      if (span.textContent !== visibleName) span.textContent = visibleName;
+      span.title = actorRef;
+    }
+  });
+
+  for (const article of $$('#messageFeed .message')) {
+    const strong = article.querySelector('.message-header strong');
+    if (strong) {
+      const normalized = replaceInternalVexLabels(strong.textContent);
+      if (normalized !== strong.textContent) strong.textContent = normalized;
+    }
+    const sourceRoleRef = article.dataset.speaker;
+    if (sourceRoleRef?.startsWith('role.vex.')) {
+      let source = article.querySelector('.message-source-ref');
+      if (!source) {
+        source = document.createElement('span'); source.className = 'message-source-ref';
+        article.querySelector('.message-header')?.append(source);
+      }
+      if (source.textContent !== sourceRoleRef) source.textContent = sourceRoleRef;
+    }
+  }
+
+  const composerAddress = $('#composerAddress');
+  if (composerAddress) {
+    const normalized = replaceInternalVexLabels(composerAddress.textContent);
+    if (normalized !== composerAddress.textContent) composerAddress.textContent = normalized;
+  }
+  for (const strong of $$('#contextSummary strong')) {
+    const normalized = replaceInternalVexLabels(strong.textContent);
+    if (normalized !== strong.textContent) strong.textContent = normalized;
+  }
+}
 function projectCurrentFrame() {
   $$('[data-view-panel]').forEach((panel) => { panel.hidden = panel.dataset.viewPanel !== state.view; });
   const viewNodeRef = `element.nav.${state.view}`;
@@ -63,14 +127,14 @@ function projectCurrentFrame() {
   chat.renderChannels(); chat.renderPresence(); chat.renderMessages(); chat.updateComposer(); chat.renderContext();
   if (state.view === 'terrain') terrain.render();
   if (state.view === 'health') renderHealth();
-  guide.updateFrame();
+  guide.updateFrame(); projectVisibleVexIdentity();
   queueMicrotask(restoreScrollPositions);
 }
 
 navigation = createNavigationController({
   state, elementByRef,
   getProject: () => chat?.currentProject(), getThread: () => chat?.currentThread(), getChannel: () => chat?.currentChannel(),
-  onFrameChange: () => { guide?.updateFrame(); queueMicrotask(restoreScrollPositions); }
+  onFrameChange: () => { guide?.updateFrame(); queueMicrotask(() => { restoreScrollPositions(); projectVisibleVexIdentity(); }); }
 });
 chat = createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation });
 const terrain = createTerrainController({ state, blueprint, t, navigation });
@@ -96,21 +160,21 @@ function applyLocalization() {
   $$('[data-i18n-aria-label]').forEach((element) => { element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel)); });
   $('#languageSelect').value = state.language;
   chat.renderProjectRail(); chat.renderChannels(); chat.renderPresence(); chat.renderMessages(); chat.updateComposer(); chat.renderContext();
-  terrain.render(); guide.updateFrame(); guide.renderMessages(); renderHealth(); restoreScrollPositions();
+  terrain.render(); guide.updateFrame(); guide.renderMessages(); renderHealth(); projectVisibleVexIdentity(); restoreScrollPositions();
 }
 function selectView(view, nodeRef) {
   $$('[data-view-panel]').forEach((panel) => { panel.hidden = panel.dataset.viewPanel !== view; });
   navigation.navigate(nodeRef, { view, selectedNodeRef: nodeRef }, 'action.view.select');
   navigation.setSelection('selection.primary-view', nodeRef);
   if (view === 'terrain') terrain.render(); if (view === 'health') renderHealth();
-  queueMicrotask(restoreScrollPositions);
+  queueMicrotask(() => { restoreScrollPositions(); projectVisibleVexIdentity(); });
 }
 $$('[data-action="select-view"]').forEach((button) => button.addEventListener('click', () => selectView(button.dataset.view, button.dataset.nodeRef)));
 $('#homeButton').addEventListener('click', () => {
   $$('[data-view-panel]').forEach((panel) => { panel.hidden = panel.dataset.viewPanel !== 'chat'; });
   navigation.navigate('element.nav.home', { view: 'chat' }, 'action.navigation.home');
   navigation.setSelection('selection.primary-view', 'element.nav.chat');
-  queueMicrotask(restoreScrollPositions);
+  queueMicrotask(() => { restoreScrollPositions(); projectVisibleVexIdentity(); });
 });
 $('#languageSelect').addEventListener('change', (event) => {
   state.language = event.target.value; localStorage.setItem('vexlife.language', state.language);
@@ -138,8 +202,14 @@ guide.setOpen(state.guideOpen);
 guide.addMessage('guide', { contentRef: 'guide.intro' });
 renderHealth();
 navigation.enableBrowserHistory();
+const visibleIdentityObserver = new MutationObserver(() => queueMicrotask(projectVisibleVexIdentity));
+visibleIdentityObserver.observe($('#app'), { childList: true, subtree: true });
+projectVisibleVexIdentity();
 
-globalThis.__VEXLIFE_APP__ = { state, projects, roles, channels, messages, chat, guide, terrain, navigation, experience, t, semanticScrollKey, restoreScrollPositions, projectCurrentFrame };
+globalThis.__VEXLIFE_APP__ = {
+  state, projects, roles, channels, messages, chat, guide, terrain, navigation, experience, t,
+  semanticScrollKey, restoreScrollPositions, projectCurrentFrame, projectVisibleVexIdentity
+};
 if (new URLSearchParams(globalThis.location.search).get('integration') === '1') {
   const { runBrowserIntegration } = await import('./integration-test.js');
   globalThis.__VEXLIFE_INTEGRATION_PROMISE__ = runBrowserIntegration();
