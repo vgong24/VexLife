@@ -9,10 +9,75 @@ const PROMPT_REF_BY_INTENT = Object.freeze({
 });
 const MIN_WIDTH = 320;
 const MIN_HEIGHT = 330;
+const SAFE_MARGIN = 12;
 
 export function createGuideController({ state, t, navigation, elementByRef, chat }) {
   const records = [];
   const windowElement = $('#guideWindow');
+
+  const rectFor = ({ left, top, width, height }) => ({ left, top, width, height, right: left + width, bottom: top + height });
+  const overlaps = (left, right) => !(
+    left.right + SAFE_MARGIN <= right.left ||
+    left.left >= right.right + SAFE_MARGIN ||
+    left.bottom + SAFE_MARGIN <= right.top ||
+    left.top >= right.bottom + SAFE_MARGIN
+  );
+  const visibleProtectedRects = () => $$('.topbar, .terrain-toolbar')
+    .filter((element) => element.getClientRects().length > 0)
+    .map((element) => element.getBoundingClientRect());
+  function avoidDeclaredControls() {
+    if (windowElement.hidden) return false;
+    const current = windowElement.getBoundingClientRect();
+    const protectedRects = visibleProtectedRects();
+    if (!protectedRects.some((protectedRect) => overlaps(current, protectedRect))) return false;
+
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const rawCandidates = [];
+    for (const protectedRect of protectedRects) {
+      rawCandidates.push(
+        { left: current.left, top: protectedRect.bottom + SAFE_MARGIN },
+        { left: protectedRect.left - current.width - SAFE_MARGIN, top: current.top },
+        { left: protectedRect.right + SAFE_MARGIN, top: current.top },
+        { left: current.left, top: protectedRect.top - current.height - SAFE_MARGIN }
+      );
+    }
+    rawCandidates.push(
+      { left: SAFE_MARGIN, top: viewport.height - current.height - SAFE_MARGIN },
+      { left: viewport.width - current.width - SAFE_MARGIN, top: viewport.height - current.height - SAFE_MARGIN }
+    );
+
+    const candidates = rawCandidates
+      .map((candidate) => ({
+        left: Math.max(SAFE_MARGIN, Math.min(viewport.width - current.width - SAFE_MARGIN, candidate.left)),
+        top: Math.max(SAFE_MARGIN, Math.min(viewport.height - current.height - SAFE_MARGIN, candidate.top))
+      }))
+      .map((candidate) => ({ ...candidate, rect: rectFor({ ...candidate, width: current.width, height: current.height }) }))
+      .filter((candidate) => !protectedRects.some((protectedRect) => overlaps(candidate.rect, protectedRect)))
+      .sort((left, right) => {
+        const leftDistance = (left.left - current.left) ** 2 + (left.top - current.top) ** 2;
+        const rightDistance = (right.left - current.left) ** 2 + (right.top - current.top) ** 2;
+        return leftDistance - rightDistance;
+      });
+
+    let target = candidates[0] ?? null;
+    if (!target) {
+      const protectedBottom = Math.max(0, ...protectedRects.map((protectedRect) => protectedRect.bottom));
+      const safeTop = Math.min(viewport.height - MIN_HEIGHT - SAFE_MARGIN, protectedBottom + SAFE_MARGIN);
+      const availableHeight = viewport.height - safeTop - SAFE_MARGIN;
+      if (availableHeight >= MIN_HEIGHT) {
+        const height = Math.min(current.height, availableHeight);
+        const left = Math.max(SAFE_MARGIN, Math.min(viewport.width - current.width - SAFE_MARGIN, current.left));
+        windowElement.style.height = `${height}px`;
+        target = { left, top: safeTop };
+      }
+    }
+    if (!target) return false;
+
+    windowElement.style.left = `${target.left}px`;
+    windowElement.style.top = `${target.top}px`;
+    windowElement.style.right = 'auto';
+    return true;
+  }
 
   function updateFrame() {
     const frame = navigation.semanticFrame();
@@ -22,6 +87,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
       screenRef: frame.screenRef, selectedNodeRef: selected?.ref || frame.selectedNodeRef,
       steps: navigation.journeyProjection().fullEventCount
     });
+    if (avoidDeclaredControls()) persistGeometry();
   }
   function responseForIntent(intentRef) {
     const frame = navigation.semanticFrame(); const selected = elementByRef.get(frame.selectedNodeRef);
@@ -54,7 +120,11 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
   function ask(question) { addMessage('user', question); addMessage('guide', { contentRef: 'guide.answer.freeform', contentParams: { question } }); }
   function setOpen(open, { focus = false } = {}) {
     state.guideOpen = open; windowElement.hidden = !open; localStorage.setItem('vexlife.guide.open', String(open));
-    if (open) { updateFrame(); if (focus) $('#guideInput')?.focus(); }
+    if (open) {
+      updateFrame();
+      if (avoidDeclaredControls()) persistGeometry();
+      if (focus) $('#guideInput')?.focus();
+    }
   }
   function summon() {
     navigation.navigate('element.vex.summon', {}, 'action.vex.summon');
@@ -63,6 +133,10 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
   function persistGeometry() {
     const rect = windowElement.getBoundingClientRect();
     saveJson('vexlife.guide.geometry', { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+  }
+  function settleGeometry() {
+    avoidDeclaredControls();
+    persistGeometry();
   }
   function restoreGeometry() {
     const saved = loadJson('vexlife.guide.geometry', loadJson('vexlife.guide.position', null)); if (!saved) return;
@@ -75,7 +149,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     const handle = $('#guideHandle'); let drag = null;
     handle.addEventListener('pointerdown', (event) => { if (event.target.closest('button')) return; const rect = windowElement.getBoundingClientRect(); drag = { x:event.clientX,y:event.clientY,left:rect.left,top:rect.top }; handle.setPointerCapture(event.pointerId); });
     handle.addEventListener('pointermove', (event) => { if (!drag || !handle.hasPointerCapture(event.pointerId)) return; const left=Math.max(4,Math.min(window.innerWidth-120,drag.left+event.clientX-drag.x)); const top=Math.max(4,Math.min(window.innerHeight-64,drag.top+event.clientY-drag.y)); windowElement.style.left=`${left}px`; windowElement.style.top=`${top}px`; windowElement.style.right='auto'; });
-    handle.addEventListener('pointerup', (event) => { if (!drag) return; handle.releasePointerCapture(event.pointerId); drag=null; persistGeometry(); });
+    handle.addEventListener('pointerup', (event) => { if (!drag) return; handle.releasePointerCapture(event.pointerId); drag=null; settleGeometry(); });
   }
   function resizeFromCorner(corner, deltaX, deltaY, origin) {
     let { left, top, width, height } = origin;
@@ -91,8 +165,8 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
       let drag = null; const corner = handle.dataset.resizeCorner;
       handle.addEventListener('pointerdown', (event) => { const rect=windowElement.getBoundingClientRect(); drag={x:event.clientX,y:event.clientY,origin:{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}; handle.setPointerCapture(event.pointerId); event.preventDefault(); });
       handle.addEventListener('pointermove', (event) => { if (!drag || !handle.hasPointerCapture(event.pointerId)) return; resizeFromCorner(corner,event.clientX-drag.x,event.clientY-drag.y,drag.origin); });
-      handle.addEventListener('pointerup', (event) => { if (!drag) return; handle.releasePointerCapture(event.pointerId); drag=null; persistGeometry(); });
-      handle.addEventListener('keydown', (event) => { const step=event.shiftKey?24:8; const deltaX=event.key==='ArrowRight'?step:event.key==='ArrowLeft'?-step:0; const deltaY=event.key==='ArrowDown'?step:event.key==='ArrowUp'?-step:0; if (!deltaX&&!deltaY) return; const rect=windowElement.getBoundingClientRect(); resizeFromCorner(corner,deltaX,deltaY,{left:rect.left,top:rect.top,width:rect.width,height:rect.height}); persistGeometry(); event.preventDefault(); });
+      handle.addEventListener('pointerup', (event) => { if (!drag) return; handle.releasePointerCapture(event.pointerId); drag=null; settleGeometry(); });
+      handle.addEventListener('keydown', (event) => { const step=event.shiftKey?24:8; const deltaX=event.key==='ArrowRight'?step:event.key==='ArrowLeft'?-step:0; const deltaY=event.key==='ArrowDown'?step:event.key==='ArrowUp'?-step:0; if (!deltaX&&!deltaY) return; const rect=windowElement.getBoundingClientRect(); resizeFromCorner(corner,deltaX,deltaY,{left:rect.left,top:rect.top,width:rect.width,height:rect.height}); settleGeometry(); event.preventDefault(); });
     });
   }
   $$('[data-guide-intent-ref]').forEach((button) => button.addEventListener('click', () => askIntent(button.dataset.guideIntentRef)));
@@ -102,7 +176,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
   $('#guideClose').addEventListener('click', () => setOpen(false));
   $('#guideMinimize').addEventListener('click', () => { state.guideMinimized=!state.guideMinimized; windowElement.classList.toggle('is-minimized',state.guideMinimized); });
   restoreGeometry(); makeDraggable(); makeResizable();
-  return { updateFrame, responseForIntent, askIntent, ask, addMessage, renderMessages, setOpen, summon, persistGeometry };
+  return { updateFrame, responseForIntent, askIntent, ask, addMessage, renderMessages, setOpen, summon, persistGeometry, avoidDeclaredControls };
 }
 
 // [VXG RealForever]
