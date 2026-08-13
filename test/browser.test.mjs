@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
@@ -24,7 +25,7 @@ test('every static browser data-node-ref resolves through the canonical registry
 test('browser modules remain syntactically valid after composed-foundation materialization', () => {
   for (const name of ['app.js', ...moduleNames.map((moduleName) => `modules/${moduleName}`)]) {
     const file = new URL(name, browserRoot);
-    const result = spawnSync(process.execPath, ['--check', file.pathname], { encoding: 'utf8' });
+    const result = spawnSync(process.execPath, ['--check', fileURLToPath(file)], { encoding: 'utf8' });
     assert.equal(result.status, 0, `${name}: ${result.stderr}`);
   }
 });
