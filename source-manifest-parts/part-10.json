@@ -22,8 +22,8 @@
     {
       "path": "src/core/navigation.mjs",
       "mode": "100644",
-      "bytes": 3771,
-      "sha256": "4570ebc451dfffbf22085f881d1477b9ba6cce146294c907d9a7ba05fabac9c3"
+      "bytes": 5821,
+      "sha256": "5ec5bcb30ba24681e2913a4c81a4ad41c0d82a8d6b20e68584f6b06d283f94c1"
     },
     {
       "path": "src/core/orientation.mjs",
@@ -142,8 +142,8 @@
     {
       "path": "src/core/terrain.mjs",
       "mode": "100644",
-      "bytes": 1793,
-      "sha256": "1e079ae812b256f5000a6c3c03da7bae3b81d9ec166237de8c6820f24cb6f063"
+      "bytes": 4412,
+      "sha256": "4970a104ad0929f817eb6ac0ee8537e0142708df4cbde8ab8977b1272d6338e8"
     }
   ]
 }

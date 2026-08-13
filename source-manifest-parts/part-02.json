@@ -10,8 +10,8 @@
     {
       "path": "blueprint/experience-registry.json",
       "mode": "100644",
-      "bytes": 17171,
-      "sha256": "e2257dc8fb5867eebea79708966583e26ebbf6d0b1363534e113191137902cd0"
+      "bytes": 19009,
+      "sha256": "e9cac7590f1aece6064369b8b9c708de949a8f314a295d3ba97fb0e6fc00314a"
     },
     {
       "path": "blueprint/feature-registry.json",
@@ -22,14 +22,14 @@
     {
       "path": "blueprint/fragments/actions.json",
       "mode": "100644",
-      "bytes": 12437,
-      "sha256": "fa5e9c73a509ab32ffbae89457663bbd1330cf6a397389eb317a784c8d5dff01"
+      "bytes": 13847,
+      "sha256": "6b0d0b01d9e151329a1c8996d2498dcfd23809c3d5e93ca654e977a1f3fa790d"
     },
     {
       "path": "blueprint/fragments/components.json",
       "mode": "100644",
-      "bytes": 4170,
-      "sha256": "90e4b271ae63907380e9d88aafe922bbbc5f39f3595161b81f8be1d28ce164af"
+      "bytes": 4778,
+      "sha256": "d660b5c749e54cf816a7dc119ccd74e56808de456a2692719ff0d840c28f8a18"
     },
     {
       "path": "blueprint/fragments/invariants.json",
@@ -76,8 +76,8 @@
     {
       "path": "blueprint/fragments/screens/guide-overlay.json",
       "mode": "100644",
-      "bytes": 6041,
-      "sha256": "e672f7cde783f3c85e5dea70ad803b91f93088848e61bb26ab7b367d31b8b1a0"
+      "bytes": 8889,
+      "sha256": "556da075fe11f9ec914fb2ce2b6b258281ca829bca4e11813311b401974dc31d"
     },
     {
       "path": "blueprint/fragments/screens/health.json",
@@ -88,14 +88,14 @@
     {
       "path": "blueprint/fragments/screens/shell.json",
       "mode": "100644",
-      "bytes": 5530,
-      "sha256": "436259b71eacf2b3c43582290d3d90956c014f2ba1b89dd41baff7e740f5ea3c"
+      "bytes": 6203,
+      "sha256": "2609c23d01c94d7c7828ec3161404804924a50dd9e51faf68fcbbc1f379fb5aa"
     },
     {
       "path": "blueprint/fragments/screens/terrain.json",
       "mode": "100644",
-      "bytes": 2797,
-      "sha256": "039409728d40a4cb1cd86b604e5261dfc1ab35f783c6eb1235b6c3a236b0e73b"
+      "bytes": 7619,
+      "sha256": "95a7ded3603a1a3ca6f82373bade85a99baa021a7de8c2c33235ab8451fee7d6"
     },
     {
       "path": "blueprint/fragments/state-domains.json",

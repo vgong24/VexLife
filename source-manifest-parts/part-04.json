@@ -4,20 +4,20 @@
     {
       "path": "blueprint/strings/en.json",
       "mode": "100644",
-      "bytes": 9653,
-      "sha256": "ed2cdb6f7907032e55bae14a4ac460d28c3b6bfc26eccf1fb5665cd610b6b532"
+      "bytes": 10702,
+      "sha256": "6619642f43d5dc2c18a1fdf5663f8b961af68345341b32d8739d12b2990154ea"
     },
     {
       "path": "blueprint/strings/ja.json",
       "mode": "100644",
-      "bytes": 11627,
-      "sha256": "f4c29b70403318d9d26bb1f3642fec0549bcdf57094624295a23237ae513b62d"
+      "bytes": 12866,
+      "sha256": "621fa4995fa69bf4d15bc2c9cb8621e09bcd18587671e95aa9405556585783c4"
     },
     {
       "path": "blueprint/strings/zh.json",
       "mode": "100644",
-      "bytes": 9173,
-      "sha256": "ed93b2ad390131c8b573ce9227cd79aedff5676be9350224c56236466e9fc3f2"
+      "bytes": 10181,
+      "sha256": "627573fea0d5dd9e373278ce59fe46f6e78a32cfb6fc7d9faa23f1f0ed4316b6"
     },
     {
       "path": "blueprint/vexlife.blueprint.json",
