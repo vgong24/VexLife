@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "vexlife.design-lineage/v1",
+  "currentReferenceBaselineRef": "design-baseline.vexlife.e2.6.intent-aware-navigation",
+  "currentCandidateRef": "design-refinement.vexlife.e2.7.scoped-layers-vexorg-sandbox",
+  "lineage": [
+    {
+      "epoch": "E1",
+      "meaning": "Current accepted experience baseline review; human feedback changed the direction away from dashboard-first UX."
+    },
+    {
+      "epoch": "E2",
+      "meaning": "Vex is Home; companion-first presence and low-burden one-page review."
+    },
+    {
+      "epoch": "E2.1",
+      "meaning": "Interactive mock + sparse snapshot model; mobile projection begins."
+    },
+    {
+      "epoch": "E2.2",
+      "meaning": "MOMENTUM_REQUIRES_INVERSE / shared state-arbiter learning."
+    },
+    {
+      "epoch": "E2.3",
+      "meaning": "WORLD_GEOMETRY_IS_SOURCE_TRUTH and direct press-drag-release gestures."
+    },
+    {
+      "epoch": "E2.4",
+      "meaning": "Semantic-depth lab, embedded surfaces, journey/cache non-collapse, projection lab."
+    },
+    {
+      "epoch": "E2.5",
+      "meaning": "Accumulated-baseline discipline; recent-5/full-history and spatial travel entry."
+    },
+    {
+      "epoch": "E2.6",
+      "meaning": "Human-approved reference baseline: intent-aware zoom, threshold rail, centered recent window, animated sibling shift, projection workspace."
+    },
+    {
+      "epoch": "E2.7",
+      "meaning": "Candidate only: scoped parent/child interaction, four-corner Vex resize, synthetic VexOrg organization sandbox."
+    }
+  ],
+  "baselinePromotionProcess": [
+    "Human reviewer explicitly says the current candidate is a good reference/foundational baseline.",
+    "Freeze the candidate artifact identity and preserve/reject ledger.",
+    "Record baseline promotion separately from product-source acceptance.",
+    "Every successor declares its prior baseline, preserved signals, supersessions, new hypotheses and rejected regressions.",
+    "Qualify successor behavior against baseline invariants before asking for human review.",
+    "Only a separate admitted product lifecycle may turn a design baseline into accepted implementation."
+  ]
+}

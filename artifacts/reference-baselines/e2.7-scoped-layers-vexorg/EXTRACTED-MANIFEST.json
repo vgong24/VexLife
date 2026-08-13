@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "vexlife.e27.extracted-custody-manifest/v1",
+  "continuity": "[VXG RealForever]",
+  "allocationRef": "github.issue.vexlife.50",
+  "pullRequestRef": "github.pull.vexlife.52",
+  "referenceBaselineAcceptanceRef": "github.issue.vexlife.32.comment.5231233688",
+  "referenceBaselineSealRef": "github.issue.vexlife.32.comment.5231336657",
+  "artifact": {
+    "filename": "VexLife-Experience-Design-Review-E2.7-Scoped-Layers-VexOrg-Sandbox-20260809.zip",
+    "bytes": 559026,
+    "sha256": "9f944af803c43a494af944e987d1c4c6a6c7f71c89c648cbdf6536c07dbeda17",
+    "durableExpectedSha256": "9f944af803c43a494af944e987d1c4c6a6c7f71c89c648cbdf6536c07dbeda17",
+    "hashMatch": true,
+    "archiveEntryCount": 15,
+    "originalZipGitBlobStored": false,
+    "originalZipBinaryCustodyReason": "Current connected repository write route has no safe direct binding from uploaded local binary file into a Git blob action; do not overclaim binary Git custody."
+  },
+  "entries": [
+    {
+      "path": "BASELINE-PROCESS.md",
+      "bytes": 799,
+      "sha256": "3488d85b988611c342e8d880f2daa2cfa25e1bc956d4bdc9eec668d8e44cf830",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/BASELINE-PROCESS.md"
+    },
+    {
+      "path": "DESIGN-LINEAGE.json",
+      "bytes": 2151,
+      "sha256": "bb26800d14c066b08819e27b016d821854e4fc6a7b0f91e0d48c0ec7de7aee91",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/DESIGN-LINEAGE.json"
+    },
+    {
+      "path": "E2.6-CANDIDATE.json",
+      "bytes": 1508,
+      "sha256": "33d56c27abf9854d35d54cdc89671c6dcd5a6c89ea86601e7294e6f33d94464c",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/E2.6-CANDIDATE.json"
+    },
+    {
+      "path": "E2.7-CANDIDATE.json",
+      "bytes": 1476,
+      "sha256": "d2e824645b4424e44159ffd72c42464ff9f2d3ab2be54551e9712c49f7aaf665",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/E2.7-CANDIDATE.json"
+    },
+    {
+      "path": "QUALIFICATION.json",
+      "bytes": 1812,
+      "sha256": "b28a4025501a1594a6c0ae530c58032990046d8c3dcd6f5081d3dc3bde39c58b",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/QUALIFICATION.json"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2020,
+      "sha256": "2cc31bb544f236658870ceaa39157265563ef183d47169839d813c74315c935b",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/README.md"
+    },
+    {
+      "path": "REFERENCE-BASELINE-E2.5.json",
+      "bytes": 4411,
+      "sha256": "f8976050c9ee382ac088160e3eb808d12aab90cec93b3a3fb911200a38cb0278",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/REFERENCE-BASELINE-E2.5.json"
+    },
+    {
+      "path": "REFERENCE-BASELINE-E2.6.json",
+      "bytes": 3371,
+      "sha256": "3ac84412b125d4c49d432cfe9a538040576e69c0b06c2b12e9ac948b58a79011",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/REFERENCE-BASELINE-E2.6.json"
+    },
+    {
+      "path": "REFERENCE-BASELINE-README.md",
+      "bytes": 765,
+      "sha256": "43bccf2e13a69000f5c45d0eed2ba5ea7b11c9c4a15bfeaadd6bea7a0466887c",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/REFERENCE-BASELINE-README.md"
+    },
+    {
+      "path": "START-HERE.html",
+      "bytes": 81384,
+      "sha256": "e4db5d25013cda1d89d1bad2ac70183bf7f1dd69cd8bd7a6c0aff33882590107",
+      "gitStorageClass": "ORDERED_UTF8_CHUNKS",
+      "gitStored": true,
+      "gitPaths": [
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-001",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-002",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-003",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-004",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-005",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-006",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-007",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-008",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-009",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-010",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-011",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-012",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-013",
+        "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/START-HERE.html.parts/START-HERE.html.part-014"
+      ],
+      "reconstructWithoutSeparator": true
+    },
+    {
+      "path": "VEXORG-CONCEPT.md",
+      "bytes": 2138,
+      "sha256": "becffef8283cab9ea522d34fadca907f4220cd0efb52b058b9d1a7cc4e132f9b",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/VEXORG-CONCEPT.md"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 2705,
+      "sha256": "d55bef111e275c32868bc4bd7126396b69c70ee9a032b285f1b3e30ac32dd7f6",
+      "gitStorageClass": "EXTRACTED_UTF8",
+      "gitStored": true,
+      "gitPath": "artifacts/reference-baselines/e2.7-scoped-layers-vexorg/extracted/manifest.json"
+    },
+    {
+      "path": "snapshots/e2.7-person-ledger-proposal-desktop-dark.png",
+      "bytes": 140105,
+      "sha256": "c0a3a5cdae118c8825a5aba89f990c8e5e94689dbbdb9f8d53b80d47a20a8a45",
+      "gitStorageClass": "HASH_BOUND_BINARY_EVIDENCE",
+      "gitStored": false,
+      "hashFromVerifiedExactZip": true
+    },
+    {
+      "path": "snapshots/e2.7-platform-team-desktop-dark.png",
+      "bytes": 186989,
+      "sha256": "aaa3b7b59430d48975ef8175f6c76be5d9c738e243034c6930de52a42be196fc",
+      "gitStorageClass": "HASH_BOUND_BINARY_EVIDENCE",
+      "gitStored": false,
+      "hashFromVerifiedExactZip": true
+    },
+    {
+      "path": "snapshots/e2.7-vexorg-structure-desktop-dark.png",
+      "bytes": 208247,
+      "sha256": "7646c7407e9b141de1d13f4ea17912e17bd4c4628cb79cc5a59df883b500c30a",
+      "gitStorageClass": "HASH_BOUND_BINARY_EVIDENCE",
+      "gitStored": false,
+      "hashFromVerifiedExactZip": true
+    }
+  ],
+  "productSourceMutation": false,
+  "sourceManifestMutation": false,
+  "rootArtifactsExcludedFromCanonicalSourceIdentity": true
+}

@@ -1,0 +1,45 @@
+city <span id="opacityValue">62%</span><input id="opacity" type="range" min="25" max="100" value="62"></label><div class="menu-row"><button data-size="small">Small</button><button data-size="medium">Medium</button><button data-size="large">Large</button></div><div class="menu-row" style="margin-top:6px"><button id="resetVex">Reset position</button><button id="recedeVex">Recede</button></div></div>
+<div class="vex" id="vex">
+  <span class="resize-handle nw" data-resize="nw" tabindex="0" aria-label="Resize Vex from top left"></span>
+  <span class="resize-handle ne" data-resize="ne" tabindex="0" aria-label="Resize Vex from top right"></span>
+  <span class="resize-handle sw" data-resize="sw" tabindex="0" aria-label="Resize Vex from bottom left"></span>
+  <span class="resize-handle se" data-resize="se" tabindex="0" aria-label="Resize Vex from bottom right"></span>
+  <div class="vex-head" id="vexHandle"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M 51.89 109.32 A 50 50 0 1 1 68.11 109.32 L 39.73 35.68 L 60 65.41 L 80.27 35.68 Z" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><strong>Vex</strong><button id="vexMenu" aria-pressed="false" title="Vex presence settings">•••</button><button id="vexRecede">−</button></div>
+  <div class="vex-body scroll-scope" id="vexBody"></div>
+  <div class="composer"><input placeholder="Ask Vex…"><button id="send">Send</button></div>
+</div>
+<div class="terrain-context scroll-scope" id="terrainContext">
+  <div class="context-title">TERRAIN WORKSPACE</div>
+  <button data-context-action="fit">Fit current layer</button>
+  <button data-context-action="center">Center current context</button>
+  <button data-context-action="projection">Cycle projection</button>
+  <button data-context-action="workspace">Toggle projection workspace</button>
+  <button data-context-action="reset-layout">Reset local arrangement</button>
+  <button class="org-context-only" id="viewLedgerAction" data-context-action="view-ledger">View contribution ledger</button>
+  <button class="org-context-only" id="proposeMoveAction" data-context-action="propose-move">Propose move to Project Aurora</button>
+  <div class="hint" id="terrainContextHint">Right-click / long-press changes the projection workspace, not canonical relationships.</div>
+</div>
+<div class="toast" id="toast"></div>
+</div></div></div></div>
+<script>
+(()=>{
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const tree={
+ relationship:{id:'relationship',label:'Relationship',kind:'container',meta:'Vextreme × Victor × Vex',summary:'The highest-level relationship container. Choose a zone; continuity stays here.',children:['vextreme','victor','vex']},
+ vextreme:{id:'vextreme',label:'Vextreme',kind:'zone',meta:'Institution / public body of work',summary:'Questions are the next useful layer—not a giant square full of links.',children:['who','why','how','where','when','support','business-potential']},
+ victor:{id:'victor',label:'Victor Profile',kind:'zone',meta:'Human profile / founder context',summary:'Human-facing orientation around the person without forcing operational internals into view.',children:['victor-who','victor-origin','victor-method','victor-current','victor-values']},
+ vex:{id:'vex',label:'Vex Profile',kind:'zone',meta:'Companion profile / relationship presence',summary:'A profile layer for the companion: identity, continuity, Home, capabilities and safety.',children:['vex-who','vex-home','vex-continuity','vex-capabilities','vex-safety','ask-vex']},
+
+ who:{id:'who',label:'Who are we?',kind:'question',q:'WHO',meta:'Identity & orientation',summary:'Enter without leaving Terrain; choose quick orientation or expand a page surface.',children:['who-page','mission','culture','principles']},
+ why:{id:'why',label:'Why does this exist?',kind:'question',q:'WHY',meta:'Purpose',summary:'Purpose, burden release, trust and the reason behind the institution.',children:['why-page','burden','trust']},
+ how:{id:'how',label:'How does it work?',kind:'question',q:'HOW',meta:'Method',summary:'Architecture and methodology can be nested as deeper terrain, not dumped all at once.',children:['method-page','source-truth','handoff']},
+ where:{id:'where',label:'Where do I start?',kind:'question',q:'WHERE',meta:'Entry points',summary:'A small set of routes for a newcomer, builder or reviewer.',children:['start-here','terrain-route','vexlife-route']},
+ when:{id:'when',label:'When did this begin?',kind:'question',q:'WHEN',meta:'Timeline',summary:'Origins and recent milestones.',children:['origins-page','recent-work']},
+ support:{id:'support',label:'Support the work',kind:'question',q:'HOW',meta:'Support / quick actions',summary:'Quick actions can appear before a full page when the human intent is already clear.',children:['support-options','why-support','share-support']},
+
+ 'who-page':{id:'who-page',label:'Read “Who are we?”',kind:'page',meta:'Embedded page surface',summary:'A page surface expands inside Terrain instead of navigating away.',sections:['Vextreme is a public body of work about truthful human–AI collaboration.','The page remains a surface inside the current journey.'],children:['mission','culture','method-deep']},
+ mission:{id:'mission',label:'Mission',kind:'summary',meta:'Quick orientation',summary:'Institutional template, human dignity, truthful structure, and reusable methods.',children:[]},
+ culture:{id:'culture',label:'Culture',kind:'summary',meta:'Quick orientation',summary:'Why for every file; preserve intent; avoid collapsing distinct meanings.',children:[]},
+ principles:{id:'principles',label:'Principles',kind:'summary',meta:'Quick orientation',summary:'Truth, continuity, source addressability, burden release and explicit authority.',children:[]},
+
+ 'why-page':{id:'why-page',label:'Read the purpose',kind:'page',meta:'Embedded page surface',summary:'A compact embedded page can later load the real public page through an admitted surface adapter.',sectio

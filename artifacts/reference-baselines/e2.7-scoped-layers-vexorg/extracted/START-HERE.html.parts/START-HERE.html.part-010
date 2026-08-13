@@ -1,0 +1,34 @@
+g-card"><strong>Shared assignments</strong><small>${(p.assignments||[]).join(' · ')||'None'}</small></div></div>
+      <div class="privacy-boundary"><strong>Private Vex boundary</strong><br>Employer-visible mock scope: role/team/assignment, self-logged contribution, explicitly shared kudos and declared capacity. Private conversation, private memory and private reflection are not exposed here.</div>
+      <div class="org-ledger"><strong style="font-size:10px">Self-logged contribution ledger</strong>${(p.contributions||[]).map(x=>`<div class="org-entry"><strong>${x}</strong><small>source: SELF_LOGGED · no productivity score</small></div>`).join('')}</div>
+      <div class="org-ledger"><strong style="font-size:10px">Kudos mailbox</strong>${(p.kudos||[]).length?(p.kudos||[]).map((x,i)=>`<div class="org-entry"><strong>${x}</strong><small>recipient controls whether this is saved/shared/exported</small><div class="proposal-actions"><button data-kudos="${i}" data-kudos-action="save">Save</button><button data-kudos="${i}" data-kudos-action="share">Share to review</button><button data-kudos="${i}" data-kudos-action="remove">Remove</button></div></div>`).join(''):'<div class="org-entry"><small>No shared kudos in this synthetic mailbox.</small></div>'}</div>
+      ${proposal?`<div class="proposal"><strong>Pending resource proposal</strong><br>${proposal.label}<br><small>Status: ${proposal.status}. Current assignment has NOT changed.</small>${proposal.status==='PENDING_PERSON_ACKNOWLEDGMENT'?'<div class="proposal-actions"><button data-org-action="ack-move">Acknowledge proposal</button></div>':''}</div>`:''}`;
+  }
+  if(n.kind==='orgPolicy')return base+`<div class="privacy-boundary"><strong>Boundary, not monitoring exception</strong><br>This mock is testing the organization model. It does not grant employer access to private companion context or infer individual worth from velocity.</div><div class="facts"><span class="pill">${direct} direct</span><span class="pill">explicit permission scope</span></div>`;
+  return base+`<div class="facts"><span class="pill">${direct} direct</span><span class="pill">${descendants(n.id)} below</span><span class="pill">depth ${depthOf(n.id)}</span></div>`;
+}
+
+function storeCurrentScopeScroll(){
+  const f=$('#focus');
+  if(f&&f.classList.contains('scroll-scope'))state.scrollScopes[`focus:${state.current}`]=f.scrollTop;
+  const e=f?.querySelector('.embed-body.scroll-scope');
+  if(e)state.scrollScopes[`embed:${state.current}`]=e.scrollTop;
+}
+function restoreCurrentScopeScroll(){
+  const f=$('#focus');
+  if(f&&f.classList.contains('scroll-scope')){
+    f.scrollTop=state.scrollScopes[`focus:${state.current}`]||0;
+    f.onscroll=()=>state.scrollScopes[`focus:${state.current}`]=f.scrollTop;
+  }
+  const e=f?.querySelector('.embed-body.scroll-scope');
+  if(e){
+    e.scrollTop=state.scrollScopes[`embed:${state.current}`]||0;
+    e.onscroll=()=>state.scrollScopes[`embed:${state.current}`]=e.scrollTop;
+  }
+}
+
+function recenterRecentWindow(){const n=state.history.length,size=5;state.recentWindowStart=Math.max(0,Math.min(Math.max(0,n-size),state.cursor-2));state.recentBrowse=false}function record(id){state.history=state.history.slice(0,state.cursor+1);state.history.push({id,seq:state.nextSeq++});state.cursor=state.history.length-1;recenterRecentWindow()}
+async function travel(id,dir='in',recordIt=true){if(state.transitioning||!tree[id])return;storeCurrentScopeScroll();state.transitioning=true;resetIntent();const w=$('#world');const current=tree[state.current],items=fixedRects(current);let point={x:600,y:400};if(dir==='in'){const p=items.find(x=>x.id===id);if(p)point={x:p.x,y:p.y};w.classList.add('travel-in');setCamera(cameraForPoint(point.x,point.y,state.device==='mobile'?1.05:1.55),true)}else{w.classList.add('travel-out');const c=defaultCamera();setCamera({scale:Math.max(.32,c.scale*.62),x:c.x,y:c.y},true)}await new Promise(r=>setTimeout(r,300));if(recordIt)record(id);state.current=id;touchWarm(id);render(false);w.classList.remove('travel-in','travel-out');w.classList.add('arriving');const c=defaultCamera();setCamera({scale:Math.min(1.25,c.scale*1.2),x:c.x,y:c.y},false);requestAnimationFrame(()=>requestAnimationFrame(()=>{w.classList.remove('arriving');setCamera(c,true);state.transitioning=false}))}
+async function back(){if(state.cursor<=0||state.transitioning)return;state.cursor--;recenterRecentWindow();await travel(state.history[state.cursor].id,'out',false)}async function forward(){if(state.cursor>=state.history.length-1||state.transitioning)return;state.cursor++;recenterRecentWindow();await travel(state.history[state.cursor].id,'in',false)}async function up(){const p=parentOf[state.current];if(p)await travel(p,'out')}
+function journeyWindow(){const size=5,n=state.history.length;if(!state.recentBrowse)recenterRecentWindow();const start=Math.max(0,Math.min(Math.max(0,n-size),state.recentWindowStart));return{start,entries:state.history.slice(start,start+size)}}
+function renderJourney(){const win=journeyWindow();$('#recent').innerHTML=win.entries.map(e=>`<button class="visit ${e.seq===state.history[state.cursor]?.seq?'current':''}" data-seq="${e.seq}">#${e.seq} ${tree[e.id].label}</button>`).join('');$$('[data-seq]').forEach(b=>b.onclick=async()=>{const i=state.history.findIndex(e=>e.seq===Number(b.dataset.seq));if(i>=0){const dir=i<state.cursor?'out':'in';state.cursor=i;recenterRecentWindow();await travel(state.history[i].id,dir,false)}});$('#recentPrev').disabled=win.start===0;$('#recentNext').disabled=win.start+win.entries.length>=state.history.length;$('#recentPrev').onclick=()=>{state.recentBrowse=true;state.recentWindowStart=Math.max(0,win.start-5);renderJourney()};$('#recentNext').onclick=()=>{state.recentBrowse=true;state.recentWindowStart=Math.min(Math.max(0,state.history.length-5),win.start+5);renderJourney()};$('#journeyMeta').textContent=`${win.start+1}-${win.start+win.entries.length} of ${state.history.length} · current #${state.history[state.cursor]?.seq||1} · warm ${wa
