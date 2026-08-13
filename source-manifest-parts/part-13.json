@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "files": [
+    {
+      "path": "test/validation-evidence.test.mjs",
+      "mode": "100644",
+      "bytes": 14119,
+      "sha256": "d2a5d2f51e86f5ecdf1ec0e9b02e52e9a0a3099cb0f1a9b79c02a7fa92ae7571"
+    }
+  ]
+}
