@@ -15,10 +15,16 @@ export function createNavigationController({ state, elementByRef, getProject, ge
     const last = state.journey.at(-1);
     if (!last || JSON.stringify(last.after) !== JSON.stringify(after)) {
       state.journey.push({ journeyRef: `journey.browser.${crypto.randomUUID()}`, elementRef: nodeRef, actionRef, before, after, formedAt: new Date().toISOString() });
-      state.journey = state.journey.slice(-12);
     }
     onFrameChange(after);
+    return state.journey.at(-1) ?? null;
   }
+  function recentJourney(limit = 12) {
+    if (!Number.isInteger(limit) || limit < 1) throw new TypeError('recent journey limit must be a positive integer');
+    return state.journey.slice(-limit).map((event) => structuredClone(event));
+  }
+  const fullJourney = () => state.journey.map((event) => structuredClone(event));
+  const journeyProjection = (limit = 12) => ({ fullEventCount: state.journey.length, recentTrajectory: recentJourney(limit) });
   function breadcrumb(ref) {
     const refs = []; let current = elementByRef.get(ref); const seen = new Set();
     while (current && !seen.has(current.ref)) {
@@ -36,7 +42,7 @@ export function createNavigationController({ state, elementByRef, getProject, ge
       if (selected) element.setAttribute('aria-current', 'true'); else element.removeAttribute('aria-current');
     });
   }
-  return { semanticFrame, navigate, breadcrumb, setSelection, currentScreenRef, currentRouteRef, getProject, getThread, getChannel };
+  return { semanticFrame, navigate, recentJourney, fullJourney, journeyProjection, breadcrumb, setSelection, currentScreenRef, currentRouteRef, getProject, getThread, getChannel };
 }
 
 // [VXG RealForever]
