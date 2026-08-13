@@ -19,10 +19,43 @@ const t = (ref, params = {}) => {
 
 let guide = null;
 let chat = null;
-const navigation = createNavigationController({
+let navigation = null;
+const semanticScrollKey = (element) => {
+  const frame = navigation?.semanticFrame?.() ?? {
+    screenRef: `screen.vexlife.${state.view}`,
+    routeRef: `route.${state.view}`,
+    projectRef: state.projectRef,
+    threadRef: state.threadRef,
+    channelRef: state.channelRef,
+    selectedNodeRef: state.selectedNodeRef
+  };
+  return [
+    element.dataset.scrollSurface,
+    frame.screenRef,
+    frame.routeRef,
+    frame.projectRef ?? '',
+    frame.threadRef ?? '',
+    frame.channelRef ?? '',
+    frame.selectedNodeRef ?? ''
+  ].join('::');
+};
+function restoreScrollPositions() {
+  $$('[data-scroll-surface]').forEach((element) => {
+    const saved = state.scrollPositions[semanticScrollKey(element)];
+    if (saved) { element.scrollTop = saved.top ?? 0; element.scrollLeft = saved.left ?? 0; }
+  });
+}
+function bindScrollPositions() {
+  $$('[data-scroll-surface]').forEach((element) => element.addEventListener('scroll', () => {
+    state.scrollPositions[semanticScrollKey(element)] = { top: element.scrollTop, left: element.scrollLeft };
+    saveJson('vexlife.scroll.positions', state.scrollPositions);
+  }, { passive: true }));
+}
+
+navigation = createNavigationController({
   state, elementByRef,
   getProject: () => chat?.currentProject(), getThread: () => chat?.currentThread(), getChannel: () => chat?.currentChannel(),
-  onFrameChange: () => guide?.updateFrame()
+  onFrameChange: () => { guide?.updateFrame(); queueMicrotask(restoreScrollPositions); }
 });
 chat = createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation });
 const terrain = createTerrainController({ state, blueprint, t, navigation });
@@ -40,18 +73,6 @@ function renderHealth() {
     currentScreenFrame: navigation.semanticFrame(), semanticJourneyStepsRetained: navigation.journeyProjection().fullEventCount,
     rawPointerLogging: false, designTokenRef: designTokens.tokenSetRef
   }, null, 2);
-}
-function restoreScrollPositions() {
-  $$('[data-scroll-surface]').forEach((element) => {
-    const saved = state.scrollPositions[element.dataset.scrollSurface];
-    if (saved) { element.scrollTop = saved.top ?? 0; element.scrollLeft = saved.left ?? 0; }
-  });
-}
-function bindScrollPositions() {
-  $$('[data-scroll-surface]').forEach((element) => element.addEventListener('scroll', () => {
-    state.scrollPositions[element.dataset.scrollSurface] = { top: element.scrollTop, left: element.scrollLeft };
-    saveJson('vexlife.scroll.positions', state.scrollPositions);
-  }, { passive: true }));
 }
 function applyLocalization() {
   document.documentElement.lang = state.language;
@@ -91,7 +112,7 @@ guide.setOpen(state.guideOpen);
 guide.addMessage('guide', { contentRef: 'guide.intro' });
 renderHealth();
 
-globalThis.__VEXLIFE_APP__ = { state, projects, channels, messages, chat, guide, terrain, navigation, experience, t };
+globalThis.__VEXLIFE_APP__ = { state, projects, roles, channels, messages, chat, guide, terrain, navigation, experience, t, semanticScrollKey, restoreScrollPositions };
 if (new URLSearchParams(globalThis.location.search).get('integration') === '1') {
   const { runBrowserIntegration } = await import('./integration-test.js');
   globalThis.__VEXLIFE_INTEGRATION_PROMISE__ = runBrowserIntegration();
