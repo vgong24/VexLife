@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ab",
+  "files": [
+    {
+      "path": "blueprint/fragments/invariants.json",
+      "mode": "100644",
+      "bytes": 836,
+      "sha256": "62ea748af23ee6f265a0935f2f8cd50415b20f982a8806516b6bc4271b9c06e4"
+    },
+    {
+      "path": "src/core/feature-registry.mjs",
+      "mode": "100644",
+      "bytes": 8167,
+      "sha256": "14937478c5512706fe208a6959aa9dbb47061fed3e5adb4692339e18f4db3884"
+    },
+    {
+      "path": "src/core/intent-scheduler.mjs",
+      "mode": "100644",
+      "bytes": 119738,
+      "sha256": "cd563c9bc34006d7c83cdde6afb30096671c8f7bb5e30e9e7db458910a2982fc"
+    }
+  ]
+}

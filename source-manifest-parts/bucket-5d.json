@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "5d",
+  "files": [
+    {
+      "path": "blueprint/implementation/milestones.json",
+      "mode": "100644",
+      "bytes": 1960,
+      "sha256": "ef8ff8ba6c5e876f7544936f07299866485188e5642161970de1422c4432e1da"
+    },
+    {
+      "path": "scripts/validate-blueprint.mjs",
+      "mode": "100644",
+      "bytes": 433,
+      "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "14",
+  "files": [
+    {
+      "path": "fixtures/companion-navigation/vnav-00.synthetic.json",
+      "mode": "100644",
+      "bytes": 3465,
+      "sha256": "10e1c27b3cf70d01e102201092f639a9ea1b0bd4ae71a0266533e4fcdbe37298"
+    },
+    {
+      "path": "scripts/orient.mjs",
+      "mode": "100644",
+      "bytes": 9352,
+      "sha256": "2771c83f8c627122f8b754e53edabc69aa3aa0bc3088476d33e94313c9821556"
+    }
+  ]
+}

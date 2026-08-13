@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "52",
+  "files": [
+    {
+      "path": "blueprint/fragments/screens/terrain.json",
+      "mode": "100644",
+      "bytes": 7619,
+      "sha256": "95a7ded3603a1a3ca6f82373bade85a99baa021a7de8c2c33235ab8451fee7d6"
+    },
+    {
+      "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
+      "mode": "100644",
+      "bytes": 10152,
+      "sha256": "25489693bcff73c5954982ba9d722d951cd486cd6fb8037c3108a3ea16091ce2"
+    },
+    {
+      "path": "test/fixtures/orientation/accepted-main.json",
+      "mode": "100644",
+      "bytes": 1054,
+      "sha256": "42c605803b39f8093b5c55957d2e42fe5ef06e30ca642ee1635801104902a980"
+    }
+  ]
+}

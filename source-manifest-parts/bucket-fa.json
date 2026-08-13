@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "fa",
+  "files": [
+    {
+      "path": "scripts/daily-memory-dream.mjs",
+      "mode": "100644",
+      "bytes": 44357,
+      "sha256": "1e3ca8211976f05f787046ab63c1220372ae3057fd3dbdc05715e981d616a461"
+    },
+    {
+      "path": "src/core/lived-companion.mjs",
+      "mode": "100644",
+      "bytes": 76404,
+      "sha256": "bbec7804e1ba1ae72d051d27191dec4c3085e6523604cf20b1480b6b0dbeade0"
+    }
+  ]
+}

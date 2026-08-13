@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "a8",
+  "files": [
+    {
+      "path": "blueprint/fragments/components.json",
+      "mode": "100644",
+      "bytes": 4778,
+      "sha256": "d660b5c749e54cf816a7dc119ccd74e56808de456a2692719ff0d840c28f8a18"
+    },
+    {
+      "path": "blueprint/fragments/terrain.json",
+      "mode": "100644",
+      "bytes": 2192,
+      "sha256": "97b969a3274de72ddecad98d4bc629b314922b86e8b39fd10c601269dae668a1"
+    },
+    {
+      "path": "scripts/health-check.mjs",
+      "mode": "100644",
+      "bytes": 13496,
+      "sha256": "7b11e5fb19b30edc49a25fc807c5c64cfcad2dff1d905e2a16735bc9a01d6971"
+    },
+    {
+      "path": "test/core.test.mjs",
+      "mode": "100644",
+      "bytes": 10640,
+      "sha256": "33fb300e6ad17a83ce480f901c1c011df71474f147d76ab46c57c5cee4952215"
+    }
+  ]
+}

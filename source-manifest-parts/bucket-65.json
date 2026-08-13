@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "65",
+  "files": [
+    {
+      "path": "scripts/lived-companion.mjs",
+      "mode": "100644",
+      "bytes": 90215,
+      "sha256": "447202bbc9f1946835273a6d202307bee8bd5d1019f284f5500f0afecb1f278e"
+    }
+  ]
+}

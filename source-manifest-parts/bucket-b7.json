@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "b7",
+  "files": [
+    {
+      "path": "install/vexlife-setup.sh",
+      "mode": "100644",
+      "bytes": 21838,
+      "sha256": "732237ce2ce0755f7adaf32735f90dd45c404909487b82a1a3a4ba2fa309c417"
+    },
+    {
+      "path": "src/core/tool-result-relay.mjs",
+      "mode": "100644",
+      "bytes": 44550,
+      "sha256": "0483c2d41e660d1402723921ddb92ac014218905b431c1df15d20e7174caeb4b"
+    }
+  ]
+}

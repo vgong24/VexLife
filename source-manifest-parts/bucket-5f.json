@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "5f",
+  "files": [
+    {
+      "path": "reference/browser/e27-convergence.css",
+      "mode": "100644",
+      "bytes": 6904,
+      "sha256": "09d40bf55d6cdb72bd24d2175d9ac3f495567e8285f1d652eab3970e03fa5ac9"
+    },
+    {
+      "path": "src/core/conversation.mjs",
+      "mode": "100644",
+      "bytes": 2171,
+      "sha256": "7087c6116acac848adff99a6a060bd67afd4e303df539782442ea1d2cc036331"
+    }
+  ]
+}

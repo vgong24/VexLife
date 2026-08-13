@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "c4",
+  "files": [
+    {
+      "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
+      "mode": "100644",
+      "bytes": 2475,
+      "sha256": "20e4159c562ec46bfad7643dabb45f047aa005e699811358d87acdd5694ac5c1"
+    }
+  ]
+}

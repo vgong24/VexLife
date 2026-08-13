@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "6d",
+  "files": [
+    {
+      "path": ".github/workflows/dco.yml",
+      "mode": "100644",
+      "bytes": 1952,
+      "sha256": "a5c7792901222d2f04eaa8c87d5d51d9ee55e208eceb2784d27b0966c06d5e98"
+    },
+    {
+      "path": "reference/browser/modules/navigation-controller.js",
+      "mode": "100644",
+      "bytes": 4937,
+      "sha256": "92bfb5222b595fd2c9cea02f4629def6d7ce8a965d35fb46e14d1742170fc734"
+    },
+    {
+      "path": "src/core/implementation-plan.mjs",
+      "mode": "100644",
+      "bytes": 5655,
+      "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
+    },
+    {
+      "path": "test/fixtures/orientation/github-pr-current-work.json",
+      "mode": "100644",
+      "bytes": 505,
+      "sha256": "b7e370bdfc1292cb8f69d83d02035d005beebfc577c88c670fce76d7733e3917"
+    }
+  ]
+}

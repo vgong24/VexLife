@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "a5",
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "bytes": 172,
+      "sha256": "3eb76629cf2e2406b17c8691933af6e0fd623040ac509893fcd9143527bba4a5"
+    },
+    {
+      "path": "src/core/interface-builder.mjs",
+      "mode": "100644",
+      "bytes": 8289,
+      "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "8b",
+  "files": [
+    {
+      "path": "blueprint/experience-registry.json",
+      "mode": "100644",
+      "bytes": 19009,
+      "sha256": "e9cac7590f1aece6064369b8b9c708de949a8f314a295d3ba97fb0e6fc00314a"
+    },
+    {
+      "path": "blueprint/module-registry/core.json",
+      "mode": "100644",
+      "bytes": 38579,
+      "sha256": "d8cb3fe3038422bea5c1501c57c427ad79f91af3ad76f40618e8409e1d0bf868"
+    }
+  ]
+}

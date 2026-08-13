@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "9d",
+  "files": [
+    {
+      "path": "blueprint/home-bridge-registry.json",
+      "mode": "100644",
+      "bytes": 3411,
+      "sha256": "62dbac41ccdc555935a3f4395233a1edc9e955c2a3931b3c219317506c4a59da"
+    },
+    {
+      "path": "reference/browser/index.html",
+      "mode": "100644",
+      "bytes": 14040,
+      "sha256": "bbde357d3fccc16dc189ba8ddb1cf7b56f9f72f79baa1b63ca091c9e642a9b15"
+    }
+  ]
+}

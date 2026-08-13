@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "24",
+  "files": [
+    {
+      "path": "src/core/context-lease.mjs",
+      "mode": "100644",
+      "bytes": 11526,
+      "sha256": "3109d7e7075ba5508523704fe15e328d93f4d36cb04fe0e45e2abeec5225c456"
+    }
+  ]
+}

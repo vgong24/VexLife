@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "29",
+  "files": [
+    {
+      "path": "scripts/atlas-query.mjs",
+      "mode": "100644",
+      "bytes": 1748,
+      "sha256": "83538b7a319375c8208e281033e049dca1c3224fee0efdb73b0ebde05fc3a327"
+    }
+  ]
+}

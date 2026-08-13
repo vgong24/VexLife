@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "50",
+  "files": [
+    {
+      "path": "blueprint/orientation.json",
+      "mode": "100644",
+      "bytes": 2463,
+      "sha256": "b30300288413f2a920320f24f494e7295b418b6148fc069235a9b77ada199883"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "dc",
+  "files": [
+    {
+      "path": "src/core/blueprint.mjs",
+      "mode": "100644",
+      "bytes": 39442,
+      "sha256": "4d569c0bc2f9724c08ed240ec902f718744380fd0c40caff286ec6be3ddef454"
+    },
+    {
+      "path": "src/core/continuity-evolution-router.mjs",
+      "mode": "100644",
+      "bytes": 105344,
+      "sha256": "1272206f1564d49a885a5bd9b8d9501b3799092a3b523f6f584d89e614661a8c"
+    },
+    {
+      "path": "src/core/navigation.mjs",
+      "mode": "100644",
+      "bytes": 6467,
+      "sha256": "2b7bc57c8d9c23f1bfb83b8a0e257c29d51645875a00762a2c5bd9036055213f"
+    }
+  ]
+}

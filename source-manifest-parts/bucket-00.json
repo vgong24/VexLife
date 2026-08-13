@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "00",
+  "files": [
+    {
+      "path": "scripts/scheduler-status.mjs",
+      "mode": "100644",
+      "bytes": 3002,
+      "sha256": "413f1c0d7736176efbb4da2ce8601917c06ab22dc34496f1f31b2a48dc691b02"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ed",
+  "files": [
+    {
+      "path": "blueprint/implementation/work-units-experience-and-runtime.json",
+      "mode": "100644",
+      "bytes": 26440,
+      "sha256": "407fefc05f3ea42961caeff8b2e7ceec737509c6a75a85d15adc0097b2d557dc"
+    },
+    {
+      "path": "reference/browser/modules/e27-terrain-convergence.js",
+      "mode": "100644",
+      "bytes": 14817,
+      "sha256": "3f4b87b1f7f9ac22fdd5221d6294630ca5e6d56bd76e30fcf9903bb90f7ac836"
+    }
+  ]
+}

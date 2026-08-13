@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "d2",
+  "files": [
+    {
+      "path": "docs/BUILD-ADMISSION-COVERAGE.md",
+      "mode": "100644",
+      "bytes": 5031,
+      "sha256": "5fe7b7a91c51202634b9baca6d82a0b69ec5f5dc7b1d26461b046d654e74eecb"
+    },
+    {
+      "path": "docs/PLATFORM-ARCHITECTURE.md",
+      "mode": "100644",
+      "bytes": 3951,
+      "sha256": "85d89ff187d1d06198f8a816aab4938d39ad37f2deca4d53fb1aec86facad969"
+    },
+    {
+      "path": "scripts/g05-runtime-authority-substrate.mjs",
+      "mode": "100644",
+      "bytes": 25472,
+      "sha256": "af2facf5638d1aea9d1fd43e262d4172e15233d8c5308200f7c220242fbf0933"
+    },
+    {
+      "path": "src/core/experience-review-kit.mjs",
+      "mode": "100644",
+      "bytes": 20334,
+      "sha256": "3b4bfacdfeaf8a59db6c8a88e492ee005cdd41a1675998cfa894d469497b27af"
+    }
+  ]
+}

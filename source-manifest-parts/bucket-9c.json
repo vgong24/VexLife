@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "9c",
+  "files": [
+    {
+      "path": "test/build-admission.test.mjs",
+      "mode": "100644",
+      "bytes": 28926,
+      "sha256": "c34588bae9fc7f7c7a38035c8d1e798ecf7af73e10bab5fb65986b578d563c61"
+    },
+    {
+      "path": "test/evaluated-rhythm-learning.test.mjs",
+      "mode": "100644",
+      "bytes": 1487,
+      "sha256": "9477a79e35a1cfc58e0dba2ba37eba8d978c9a4461a3eb26fb2a90a35d82e55b"
+    }
+  ]
+}
