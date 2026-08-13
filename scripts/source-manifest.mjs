@@ -108,47 +108,29 @@ try {
     process.exitCode = 1;
   } else if (writeRequested) {
     const existingDescriptor = fs.existsSync(manifestPath) ? readJson(manifestPath) : null;
-    if (existingDescriptor?.schemaVersion === SOURCE_MANIFEST_V2_SCHEMA && !migrateV3) {
-      console.log(
-        JSON.stringify(
-          {
-            state: 'SOURCE_MANIFEST_MIGRATION_HELD',
-            currentness: 'STALE',
-            reason: 'EXPECTED_PHASE_A_GENERATED_CURRENTNESS_HOLD',
-            existingSchemaVersion: existingDescriptor.schemaVersion,
-            targetSchemaVersion: SOURCE_MANIFEST_V3_SCHEMA,
-            migrationCommand: 'node scripts/source-manifest.mjs --write --migrate-v3',
-            fileCount: actual.fileCount,
-            treeSha256: actual.treeSha256
-          },
-          null,
-          2
-        )
-      );
-      process.exitCode = 1;
-    } else {
-      const writeResult = writeStableManifest(actual, { allowLegacyMigration: migrateV3 });
-      console.log(
-        JSON.stringify(
-          {
-            state: 'SOURCE_MANIFEST_WRITTEN',
-            currentness: 'CURRENT',
-            sourceKind: actual.sourceKind,
-            schemaVersion: actual.schemaVersion,
-            fileCount: actual.fileCount,
-            nonemptyBuckets: writeResult.bucketCount,
-            rootChanged: writeResult.rootChanged,
-            written: writeResult.written,
-            deleted: writeResult.deleted,
-            unchangedBucketCount: writeResult.unchanged.length,
-            treeSha256: actual.treeSha256,
-            contractSha256: actual.contractSha256
-          },
-          null,
-          2
-        )
-      );
-    }
+    const allowLegacyMigration = migrateV3 || existingDescriptor?.schemaVersion === SOURCE_MANIFEST_V2_SCHEMA;
+    const writeResult = writeStableManifest(actual, { allowLegacyMigration });
+    console.log(
+      JSON.stringify(
+        {
+          state: 'SOURCE_MANIFEST_WRITTEN',
+          currentness: 'CURRENT',
+          migrationPerformed: existingDescriptor?.schemaVersion === SOURCE_MANIFEST_V2_SCHEMA,
+          sourceKind: actual.sourceKind,
+          schemaVersion: actual.schemaVersion,
+          fileCount: actual.fileCount,
+          nonemptyBuckets: writeResult.bucketCount,
+          rootChanged: writeResult.rootChanged,
+          written: writeResult.written,
+          deleted: writeResult.deleted,
+          unchangedBucketCount: writeResult.unchanged.length,
+          treeSha256: actual.treeSha256,
+          contractSha256: actual.contractSha256
+        },
+        null,
+        2
+      )
+    );
   } else if (!fs.existsSync(manifestPath)) {
     console.log(
       JSON.stringify(
