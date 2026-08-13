@@ -22,7 +22,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     left.bottom + SAFE_MARGIN <= right.top ||
     left.top >= right.bottom + SAFE_MARGIN
   );
-  const visibleProtectedRects = () => $$('.topbar, .terrain-toolbar')
+  const visibleProtectedRects = () => $$('.topbar, .terrain-toolbar, .e27-journey-window, .e27-adjacent-card:not([hidden]), .e27-terrain-detail.is-open, .e27-journey-drawer.is-open, .project-rail[aria-hidden="false"]')
     .filter((element) => element.getClientRects().length > 0)
     .map((element) => element.getBoundingClientRect());
   function avoidDeclaredControls() {
