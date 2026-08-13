@@ -36,12 +36,15 @@ function createButton({ id, className = '', text = '', ariaLabel = '', actionRef
   return button;
 }
 
-function terrainLabelMap(app) {
-  return new Map(app.blueprint.terrain.map((node) => [node.terrainNodeRef, app.t(node.labelStringRef)]));
+function terrainLabelMap() {
+  return new Map([...document.querySelectorAll('.terrain-node[data-node-ref]')].map((node) => [
+    node.dataset.nodeRef,
+    node.querySelector('h3')?.textContent?.trim() || node.dataset.nodeRef
+  ]));
 }
 
 function labelJourneyEvent(event, app) {
-  const labels = terrainLabelMap(app);
+  const labels = terrainLabelMap();
   const selected = event?.after?.selectedNodeRef;
   if (selected && labels.has(selected)) return labels.get(selected);
   const screenRef = event?.after?.screenRef;
@@ -259,7 +262,7 @@ export function attachE27TerrainConvergence(app) {
     const selected = app.state.terrain?.selected;
     const ordered = selected ? app.terrain.siblingRefs(selected) : [];
     const index = ordered.indexOf(selected);
-    const labels = terrainLabelMap(app);
+    const labels = terrainLabelMap();
     const pair = [
       [previousSibling, index > 0 ? ordered[index - 1] : null, app.t('terrain.sibling.previous')],
       [nextSibling, index >= 0 && index < ordered.length - 1 ? ordered[index + 1] : null, app.t('terrain.sibling.next')]
