@@ -83,6 +83,11 @@ export function attachE27TerrainConvergence(app) {
     throw new Error('E2.7 convergence could not resolve the current browser shell');
   }
 
+  const settleVex = () => queueMicrotask(() => {
+    if (!app.state.guideOpen || !app.guide?.avoidDeclaredControls) return;
+    if (app.guide.avoidDeclaredControls()) app.guide.persistGeometry?.();
+  });
+
   shell.classList.add('e27-converged-shell');
   rail.id = rail.id || 'projectRail';
 
@@ -103,10 +108,12 @@ export function attachE27TerrainConvergence(app) {
     projectToggle.setAttribute('aria-expanded', String(workspaceOpen));
     rail.setAttribute('aria-hidden', String(!workspaceOpen));
     localStorage.setItem(WORKSPACE_STORAGE_KEY, String(workspaceOpen));
+    if (workspaceOpen) settleVex();
   };
   projectToggle.addEventListener('click', () => setWorkspaceOpen(!workspaceOpen));
   setWorkspaceOpen(workspaceOpen);
 
+  terrainDetail.id = terrainDetail.id || 'terrainDetailPanel';
   terrainDetail.classList.add('e27-terrain-detail');
   const detailClose = createButton({
     id: 'terrainDetailClose',
@@ -120,6 +127,7 @@ export function attachE27TerrainConvergence(app) {
     detailOpen = Boolean(open);
     terrainDetail.classList.toggle('is-open', detailOpen);
     terrainDetail.setAttribute('aria-hidden', String(!detailOpen));
+    if (detailOpen) settleVex();
   };
   detailClose.addEventListener('click', () => setDetailOpen(false));
   setDetailOpen(false);
@@ -131,7 +139,7 @@ export function attachE27TerrainConvergence(app) {
     ariaLabel: app.t('terrain.details'),
     actionRef: 'action.context.open'
   });
-  detailToggle.setAttribute('aria-controls', terrainDetail.id || 'terrainDetail');
+  detailToggle.setAttribute('aria-controls', terrainDetail.id);
   detailToggle.addEventListener('click', () => setDetailOpen(!detailOpen));
 
   const workspaceMenuToggle = createButton({
@@ -152,6 +160,7 @@ export function attachE27TerrainConvergence(app) {
     workspaceMenu.classList.toggle('is-open', workspaceMenuOpen);
     workspaceMenu.setAttribute('aria-hidden', String(!workspaceMenuOpen));
     workspaceMenuToggle.setAttribute('aria-expanded', String(workspaceMenuOpen));
+    if (workspaceMenuOpen) settleVex();
   };
   workspaceMenuToggle.addEventListener('click', () => setTerrainMenuOpen(!workspaceMenuOpen));
 
@@ -209,6 +218,7 @@ export function attachE27TerrainConvergence(app) {
     journeyDrawer.classList.toggle('is-open', journeyDrawerOpen);
     journeyDrawer.setAttribute('aria-hidden', String(!journeyDrawerOpen));
     fullJourneyToggle.setAttribute('aria-expanded', String(journeyDrawerOpen));
+    if (journeyDrawerOpen) settleVex();
   };
   fullJourneyToggle.addEventListener('click', () => setJourneyDrawerOpen(!journeyDrawerOpen));
   drawerClose.addEventListener('click', () => setJourneyDrawerOpen(false));
@@ -289,6 +299,7 @@ export function attachE27TerrainConvergence(app) {
     projectToggle.setAttribute('aria-label', app.t('project.rail.aria'));
     detailToggle.textContent = app.t('terrain.details');
     workspaceMenuToggle.setAttribute('aria-label', app.t('workspace.label'));
+    if (terrainActive) settleVex();
   }
 
   const originalNavigate = app.navigation.navigate.bind(app.navigation);
