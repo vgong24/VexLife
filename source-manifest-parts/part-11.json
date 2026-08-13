@@ -112,8 +112,8 @@
     {
       "path": "test/e27-convergence.test.mjs",
       "mode": "100644",
-      "bytes": 3814,
-      "sha256": "b230e80a1a05e495b86c983174e164fc17d02524d9c2428eae4da5a008a8b455"
+      "bytes": 4389,
+      "sha256": "6826e31c2e133239c7b945506f8417db609c4d1aa030080d7c602237709b1ca8"
     },
     {
       "path": "test/evaluated-rhythm-learning.test.mjs",
