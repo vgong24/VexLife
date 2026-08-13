@@ -30,14 +30,15 @@ test('browser modules remain syntactically valid after composed-foundation mater
   }
 });
 
-test('browser reference encodes addressed channels and append-only semantic journey projection', () => {
+test('browser reference encodes addressed channels, semantic Back, scoped scroll, and append-only journey projection', () => {
   assert.match(js, /projectRef/); assert.match(js, /threadRef/); assert.match(js, /channelRef/); assert.match(js, /conversationKey/);
   assert.match(js, /selectedChannelByThread/); assert.match(js, /speakerKey/); assert.match(js, /recipientKeys/); assert.match(js, /appendMessageNode/); assert.match(js, /feed\.append\(article\)/);
   assert.doesNotMatch(js, /state\.journey\s*=\s*state\.journey\.slice\(-12\)/);
   assert.match(js, /journeyProjection/); assert.match(js, /fullEventCount/); assert.match(js, /rawPointerLogging:\s*false/);
+  assert.match(js, /semanticScrollKey/); assert.match(js, /action\.navigation\.back/); assert.match(js, /backStack/); assert.match(js, /popstate/);
 });
 
-test('Stage B consumes canonical experience contracts and renders stable composed-foundation controls', () => {
+test('Stage B consumes canonical experience contracts and renders one visible source-attributed Vex plus stable controls', () => {
   const bundleSource = fs.readFileSync(new URL('modules/browser-bundle.js', browserRoot), 'utf8');
   assert.match(bundleSource, /blueprint\/experience-registry\.json/);
   for (const ref of [
@@ -45,7 +46,7 @@ test('Stage B consumes canonical experience contracts and renders stable compose
     'element.terrain.semantic-depth-decrease','element.terrain.semantic-depth-status','element.terrain.semantic-depth-increase',
     'element.terrain.center-current-context','element.terrain.sibling-previous','element.terrain.sibling-next'
   ]) assert.match(html, new RegExp(`data-node-ref="${ref.replaceAll('.', '\\.')}`));
-  assert.match(js, /CURRENT_SYNTHETIC_REFERENCE/);
+  assert.match(js, /CURRENT_SYNTHETIC_REFERENCE/); assert.match(js, /projectVisibleVexIdentity/); assert.match(js, /vex\.visible\.name/); assert.match(js, /sourceRoleRef/);
   assert.doesNotMatch(`${html}\n${js}`, /VexOrg Demo Company|Maya Chen/);
 });
 
@@ -65,7 +66,7 @@ test('Terrain browser projection keeps semantic depth independent from pixel zoo
 
 test('browser catalogs contain every required visible string in all supported languages', () => {
   for (const ref of [
-    'nav.home','nav.chat','nav.terrain','nav.health','vessel.guide.name','vex.summon','terrain.semantic-depth.context','terrain.center-current-context',
+    'nav.home','nav.chat','nav.terrain','nav.health','vessel.guide.name','vex.visible.name','vex.summon','terrain.semantic-depth.context','terrain.center-current-context',
     'channel.companion.name','terrain.reset','project.vex-home.description','thread.guided-fresh.description','context.visible-to',
     'health.reference.summary','terrain.instructions','guide.answer.current','reply.guide'
   ]) for (const language of bundle.blueprint.product.requiredLanguages) assert.ok(bundle.strings[language][ref], `${language} missing ${ref}`);
