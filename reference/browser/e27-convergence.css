@@ -1,0 +1,111 @@
+/* E2.7 approved-baseline projection convergence.
+   Current canonical state/data/controllers remain authoritative; this file changes browser projection only. */
+.app-shell.e27-converged-shell{
+  grid-template-columns:minmax(0,1fr);
+  grid-template-areas:"top" "main";
+}
+.app-shell.e27-converged-shell .main-surface{grid-area:main;min-width:0}
+.app-shell.e27-converged-shell .project-rail{
+  position:fixed;left:12px;top:76px;bottom:12px;width:min(300px,calc(100vw - 24px));
+  z-index:80;border:1px solid var(--line);border-radius:16px;box-shadow:0 22px 70px rgba(0,0,0,.5);
+  transform:translateX(calc(-100% - 28px));visibility:hidden;opacity:0;
+  transition:transform .18s ease,opacity .18s ease,visibility 0s linear .18s;
+  padding-bottom:18px;
+}
+.app-shell.e27-converged-shell[data-workspace-open="true"] .project-rail{
+  transform:translateX(0);visibility:visible;opacity:1;transition-delay:0s;
+}
+.app-shell.e27-converged-shell .architecture-button{position:static;left:auto;bottom:auto;width:100%;margin-top:14px}
+.e27-project-toggle{white-space:nowrap}
+
+#view-terrain:not([hidden]){display:flex;flex-direction:column;overflow:hidden}
+#view-terrain .terrain-heading{flex:0 0 auto}
+#view-terrain .terrain-layout{
+  position:relative;display:block;flex:1;min-height:0;height:auto;padding:12px;
+}
+#view-terrain .terrain-canvas{height:100%;min-height:0;overscroll-behavior:contain}
+#view-terrain .terrain-toolbar{max-width:760px}
+.e27-terrain-tool{min-width:44px}
+.e27-menu-toggle{font-size:20px;padding:0 14px!important}
+
+.e27-terrain-detail{
+  position:absolute;z-index:42;right:20px;top:20px;bottom:20px;width:min(360px,calc(100% - 40px));
+  max-height:none!important;transform:translateX(calc(100% + 32px));visibility:hidden;opacity:0;pointer-events:none;
+  box-shadow:0 20px 60px rgba(0,0,0,.48);transition:transform .18s ease,opacity .18s ease,visibility 0s linear .18s;
+  background:rgba(16,26,35,.98);backdrop-filter:blur(12px);
+}
+.e27-terrain-detail.is-open{transform:translateX(0);visibility:visible;opacity:1;pointer-events:auto;transition-delay:0s}
+.e27-close{float:right;width:44px;min-height:44px;border:1px solid var(--line);background:var(--raised);border-radius:11px;font-size:20px}
+
+.e27-terrain-menu{
+  position:absolute;right:20px;top:20px;z-index:44;width:min(250px,calc(100% - 40px));
+  display:none;padding:8px;border:1px solid var(--line);border-radius:14px;background:rgba(16,26,35,.98);
+  box-shadow:0 18px 54px rgba(0,0,0,.45);backdrop-filter:blur(12px);
+}
+.e27-terrain-menu.is-open{display:grid;gap:6px}
+.e27-terrain-menu .secondary-button{width:100%;min-height:44px;text-align:left;background:var(--raised-2);color:var(--text);border:1px solid var(--line)}
+
+.e27-adjacent{
+  position:absolute;z-index:36;left:24px;right:24px;bottom:22px;display:flex;justify-content:space-between;gap:12px;
+  pointer-events:none;
+}
+.e27-adjacent-card{
+  pointer-events:auto;width:min(260px,42%);min-height:60px!important;padding:10px 12px!important;
+  border:1px solid var(--line)!important;border-radius:14px!important;background:rgba(16,26,35,.93)!important;
+  color:var(--muted)!important;backdrop-filter:blur(12px);box-shadow:0 12px 34px rgba(0,0,0,.3);text-align:left!important;
+}
+#view-terrain .terrain-layout:not(:has(.terrain-node.is-selected)) .e27-adjacent-card{visibility:hidden;pointer-events:none}
+.e27-adjacent-card.next{text-align:right!important;margin-left:auto}
+.e27-adjacent-card strong{display:block;color:var(--text);font-size:13px}
+.e27-adjacent-card small{display:block;color:var(--faint);font-size:10px;margin-top:3px}
+
+.e27-journey-window{
+  flex:0 0 auto;min-height:64px;border-top:1px solid var(--line);background:var(--panel);
+  display:grid;grid-template-columns:minmax(170px,.55fr) minmax(0,1.45fr) auto;gap:10px;align-items:center;padding:8px 14px;
+}
+.e27-journey-status{font:11px ui-monospace,monospace;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.e27-journey-recent{display:flex;gap:6px;min-width:0;overflow:hidden;justify-content:center}
+.e27-journey-chip{
+  max-width:190px;min-height:36px;border:1px solid var(--line);border-radius:999px;background:var(--raised);
+  color:var(--muted);padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;
+}
+.e27-journey-chip:last-child{border-color:var(--accent);color:var(--text)}
+.e27-journey-empty{color:var(--faint);font-size:11px}
+.e27-full-journey-toggle{min-width:58px;background:var(--raised-2)!important;color:var(--text)!important;border:1px solid var(--line)!important}
+
+.e27-journey-drawer{
+  position:absolute;z-index:46;left:20px;top:20px;bottom:20px;width:min(390px,calc(100% - 40px));
+  transform:translateX(calc(-100% - 32px));visibility:hidden;opacity:0;pointer-events:none;overflow:auto;
+  border:1px solid var(--line);border-radius:16px;background:rgba(16,26,35,.985);box-shadow:0 20px 70px rgba(0,0,0,.55);
+  padding:12px;transition:transform .18s ease,opacity .18s ease,visibility 0s linear .18s;backdrop-filter:blur(12px);
+}
+.e27-journey-drawer.is-open{transform:translateX(0);visibility:visible;opacity:1;pointer-events:auto;transition-delay:0s}
+.e27-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.e27-drawer-head strong{font:12px ui-monospace,monospace;color:var(--muted);line-height:1.4}
+.e27-journey-list{display:grid;gap:7px}
+.e27-history-entry{
+  width:100%;min-height:54px;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--text);
+  padding:9px 11px;text-align:left;font-weight:750;
+}
+.e27-history-entry small{display:block;margin-top:4px;color:var(--faint);font:9px ui-monospace,monospace;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+@media(max-width:1050px){
+  #view-terrain .terrain-layout{grid-template-columns:none}
+  .e27-journey-window{grid-template-columns:1fr auto}.e27-journey-status{display:none}
+}
+@media(max-width:760px){
+  .app-shell.e27-converged-shell{display:grid;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);min-height:100vh}
+  .app-shell.e27-converged-shell .project-rail{top:74px;bottom:10px;left:10px;width:calc(100vw - 20px)}
+  #view-terrain{min-height:calc(100vh - 64px)}
+  #view-terrain .terrain-layout{min-height:620px;padding:8px}
+  .e27-terrain-detail,.e27-journey-drawer{left:10px;right:10px;top:10px;bottom:10px;width:auto}
+  .e27-terrain-detail{transform:translateX(calc(100% + 20px))}
+  .e27-adjacent{left:14px;right:14px;bottom:14px}.e27-adjacent-card{width:46%;padding:8px!important}
+  .e27-journey-window{padding:7px 9px;grid-template-columns:minmax(0,1fr) auto}.e27-journey-recent{justify-content:flex-start;overflow:auto}
+  .e27-journey-chip{flex:0 0 auto;max-width:150px}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell.e27-converged-shell .project-rail,.e27-terrain-detail,.e27-journey-drawer{transition:none}
+}
+
+/* [VXG RealForever] */
