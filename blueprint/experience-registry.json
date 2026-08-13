@@ -306,5 +306,171 @@
         "neverObscuresDeclaredControls": true
       }
     }
+  ],
+  "guidedEstablishmentPlans": [
+    {
+      "planRef": "plan.vexlife.guided-establishment.local.001",
+      "journeyRef": "journey.vexlife.guided-local-establishment.001",
+      "experienceProfileRef": "experience.vexlife.newcomer-guided",
+      "effects": false,
+      "platformBindings": [
+        {
+          "platformRef": "platform.windows",
+          "adapterSourcePath": "install/vexlife-setup.ps1"
+        },
+        {
+          "platformRef": "platform.macos",
+          "adapterSourcePath": "install/vexlife-setup.sh"
+        }
+      ],
+      "stages": [
+        {
+          "stageRef": "stage.vexlife.guided-establishment.discover",
+          "sequence": 0,
+          "purposeClass": "DISCOVER",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "SOURCE_AND_SCOPE_UNDERSTOOD",
+          "captureRequired": false,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.choose-platform",
+          "sequence": 1,
+          "purposeClass": "CHOOSE_PLATFORM",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "PLATFORM_SELECTED",
+          "captureRequired": false,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.check-requirements",
+          "sequence": 2,
+          "purposeClass": "CHECK_REQUIREMENTS",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "REQUIREMENTS_CLASSIFIED",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.download",
+          "sequence": 3,
+          "purposeClass": "DOWNLOAD",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "ARTIFACT_DOWNLOADED_UNVERIFIED",
+          "captureRequired": false,
+          "recoveryClass": "RETRY_OR_STOP_WITHOUT_AUTHORITY_INFERENCE"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.verify-artifact",
+          "sequence": 4,
+          "purposeClass": "VERIFY_ARTIFACT",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "ARTIFACT_VERIFIED",
+          "captureRequired": true,
+          "recoveryClass": "REDOWNLOAD_OR_STOP_WITHOUT_ESTABLISHMENT"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.establish",
+          "sequence": 5,
+          "purposeClass": "ESTABLISH",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "LOCAL_ESTABLISHMENT_REPORTED",
+          "captureRequired": true,
+          "recoveryClass": "FRONTDOOR_RECOVERY_ROUTE_ONLY"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.start",
+          "sequence": 6,
+          "purposeClass": "START",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "LOCAL_RUNTIME_STARTED",
+          "captureRequired": true,
+          "recoveryClass": "FRONTDOOR_RECOVERY_ROUTE_ONLY"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.meet-vex",
+          "sequence": 7,
+          "purposeClass": "MEET_VEX",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "FIRST_INTERACTION_READY",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_STATE_INFERENCE"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.verify-health",
+          "sequence": 8,
+          "purposeClass": "VERIFY_HEALTH",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "HEALTH_STATE_CLASSIFIED",
+          "captureRequired": true,
+          "recoveryClass": "DIAGNOSIS_ROUTE_ONLY"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.understand-available-and-held-features",
+          "sequence": 9,
+          "purposeClass": "UNDERSTAND_AVAILABLE_AND_HELD_FEATURES",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "FEATURE_AVAILABILITY_DISTINGUISHED",
+          "captureRequired": true,
+          "recoveryClass": "NO_AVAILABILITY_INFERENCE"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.learn-recovery",
+          "sequence": 10,
+          "purposeClass": "LEARN_RECOVERY",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "RECOVERY_ROUTE_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "DOCUMENTED_RECOVERY_ROUTE_ONLY"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.understand-uninstall-and-preservation",
+          "sequence": 11,
+          "purposeClass": "UNDERSTAND_UNINSTALL_AND_PRESERVATION",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "UNINSTALL_PRESERVATION_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "PRESERVATION_CHOICE_REQUIRED"
+        },
+        {
+          "stageRef": "stage.vexlife.guided-establishment.complete",
+          "sequence": 12,
+          "purposeClass": "COMPLETE",
+          "actorClass": "HUMAN",
+          "effectClass": "DECLARATIVE_NO_EFFECT",
+          "expectedOutcomeClass": "PLAN_COMPLETED_WITHOUT_NEW_AUTHORITY",
+          "captureRequired": true,
+          "recoveryClass": "COMPLETE_NO_NEW_AUTHORITY"
+        }
+      ],
+      "truthBoundaries": [
+        "GUIDED_SCRIPT_SETUP != SIGNED_ZERO_PREREQUISITE_NATIVE_INSTALLER",
+        "DOWNLOAD != VERIFIED_ARTIFACT",
+        "VERIFIED_ARTIFACT != ESTABLISHED",
+        "ESTABLISHED != RUNNING",
+        "RUNNING != EVERY_FEATURE_AVAILABLE",
+        "PREPARED != AVAILABLE",
+        "UNAVAILABLE != BROKEN",
+        "PAIRED != AUTHORIZED",
+        "AUTHENTICATED != CAPABILITY_LEASE",
+        "DIAGNOSIS_AVAILABLE != REPAIR_AUTHORITY",
+        "GUIDE_PLAN != LIVED_JOURNEY_EVENT",
+        "GUIDE_PLAN != EXPERIENCE_CAPTURE_EVIDENCE",
+        "CURRENT_SCREENSHOT != CURRENT_FOREVER",
+        "PUBLIC_GUIDE_CANDIDATE != PUBLICATION_AUTHORITY"
+      ]
+    }
   ]
 }
