@@ -40,8 +40,8 @@
     {
       "path": "test/browser.test.mjs",
       "mode": "100644",
-      "bytes": 7987,
-      "sha256": "fccdd090b99f3e7c28809db36bafc0461b5bbdcacca771adf1f961fd88476813"
+      "bytes": 9656,
+      "sha256": "96e7ff44d0a4a56019ebc0158789be1c9bd1a8b74426a2291086cd1b7577309a"
     },
     {
       "path": "test/build-admission.test.mjs",
