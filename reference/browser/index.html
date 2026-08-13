@@ -15,6 +15,7 @@
         <span><strong data-i18n="product.vexlife.name">VexLife</strong><small data-i18n="brand.subtitle">Universal companion blueprint</small></span>
       </button>
       <nav class="primary-nav" aria-label="Primary" data-i18n-aria-label="nav.primary.aria" data-node-ref="region.shell.primary-nav">
+        <button id="homeButton" type="button" class="nav-button" data-node-ref="element.nav.home" data-i18n="nav.home">Home</button>
         <button type="button" class="nav-button" data-action="select-view" data-view="chat" data-node-ref="element.nav.chat" data-selection-group="selection.primary-view" data-i18n="nav.chat">Chat</button>
         <button type="button" class="nav-button" data-action="select-view" data-view="terrain" data-node-ref="element.nav.terrain" data-selection-group="selection.primary-view" data-i18n="nav.terrain">Terrain</button>
         <button type="button" class="nav-button" data-action="select-view" data-view="health" data-node-ref="element.nav.health" data-selection-group="selection.primary-view" data-i18n="nav.health">Health</button>
@@ -23,12 +24,11 @@
         <label class="language-control" data-node-ref="element.language.selector">
           <span class="sr-only" data-i18n="language.label">Language</span>
           <select id="languageSelect" data-node-ref="element.language.selector" data-selection-group="selection.language" aria-label="Language" data-i18n-aria-label="language.selector.aria">
-            <option value="en">EN</option>
-            <option value="zh">中文</option>
-            <option value="ja">日本語</option>
+            <option value="en">EN</option><option value="zh">中文</option><option value="ja">日本語</option>
           </select>
         </label>
-        <button type="button" id="guideToggle" class="guide-toggle" data-node-ref="element.guide.toggle"><span aria-hidden="true">✦</span><span data-i18n="guide.title">Vex Guide</span></button>
+        <button type="button" id="vexSummon" class="guide-toggle" data-node-ref="element.vex.summon"><span aria-hidden="true">✦</span><span data-i18n="vex.summon">Summon Vex</span></button>
+        <button type="button" id="guideToggle" class="guide-toggle" data-node-ref="element.guide.toggle"><span aria-hidden="true">✦</span><span data-i18n="vessel.guide.name">Vex</span></button>
       </div>
     </header>
 
@@ -39,7 +39,7 @@
     </aside>
 
     <main class="main-surface">
-      <section id="view-chat" class="view" data-view-panel="chat" data-node-ref="screen.vexlife.chat">
+      <section id="view-chat" class="view semantic-scroll-surface" data-scroll-surface="screen.vexlife.chat" data-view-panel="chat" data-node-ref="screen.vexlife.chat">
         <header class="view-heading">
           <div><small id="chatEyebrow" data-i18n="conversation.eyebrow">CONVERSATION</small><h1 id="threadTitle">Open conversation</h1><p id="threadDescription" data-i18n="conversation.description">A direct conversation with explicit speaker and recipient identity.</p></div>
           <div class="presence" id="presence"></div>
@@ -47,7 +47,7 @@
         <div id="channelTabs" class="channel-tabs" role="tablist" data-node-ref="region.chat.channels"></div>
         <div class="conversation-layout">
           <section class="feed-card" aria-label="Messages" data-i18n-aria-label="region.feed.aria" data-node-ref="region.chat.feed">
-            <div id="messageFeed" class="message-feed" tabindex="0" data-node-ref="element.chat.feed"></div>
+            <div id="messageFeed" class="message-feed semantic-scroll-surface" data-scroll-surface="region.chat.feed" tabindex="0" data-node-ref="element.chat.feed"></div>
             <button id="newMessagesButton" class="new-messages" data-node-ref="element.messages.jump-latest" type="button" hidden><span id="newMessagesCount">0</span> <span data-i18n="messages.new">New messages</span></button>
             <form id="composer" class="composer" data-node-ref="element.chat.composer">
               <div class="composer-address" id="composerAddress"></div>
@@ -55,7 +55,7 @@
               <div class="composer-footer"><span id="composerHint" data-i18n="composer.channel-hint">Channel-scoped context · tools and access loaded by role</span><button type="submit" data-node-ref="element.chat.composer" data-i18n="composer.send">Send</button></div>
             </form>
           </section>
-          <aside class="context-card" aria-label="Current context" data-i18n-aria-label="region.context.aria">
+          <aside class="context-card semantic-scroll-surface" data-scroll-surface="region.chat.context" aria-label="Current context" data-i18n-aria-label="region.context.aria">
             <small data-i18n="context.eyebrow">CONTEXT</small><h2 data-i18n="context.title">Current frame</h2><div id="contextSummary"></div>
             <button id="addGroupButton" data-node-ref="element.channel.add-group" type="button" class="secondary-button" data-i18n="channel.add-group">Add to group</button>
           </aside>
@@ -63,14 +63,26 @@
       </section>
 
       <section id="view-terrain" class="view" data-view-panel="terrain" data-node-ref="screen.vexlife.terrain" hidden>
-        <header class="view-heading"><div><small data-i18n="terrain.eyebrow">LIVING ORCHESTRATION</small><h1 data-i18n="screen.terrain.title">Terrain</h1><p data-i18n="terrain.instructions">Drag higher-level nodes, collapse their children, and inspect canonical relationships without changing them.</p></div><button id="terrainReset" data-node-ref="element.terrain.reset" class="secondary-button" type="button" data-i18n="terrain.reset">Reset layout</button></header>
+        <header class="view-heading terrain-heading">
+          <div><small data-i18n="terrain.eyebrow">LIVING ORCHESTRATION</small><h1 data-i18n="screen.terrain.title">Terrain</h1><p data-i18n="terrain.instructions">Drag higher-level nodes, collapse their children, and inspect canonical relationships without changing them.</p></div>
+          <div class="terrain-toolbar" aria-label="Terrain projection controls">
+            <button id="terrainZoomOut" type="button" class="secondary-button" aria-label="Zoom out">−</button><span id="terrainZoomStatus" class="projection-status">100%</span><button id="terrainZoomIn" type="button" class="secondary-button" aria-label="Zoom in">+</button>
+            <button id="terrainDepthDown" data-node-ref="element.terrain.semantic-depth-decrease" type="button" class="secondary-button" data-i18n="terrain.semantic-depth.decrease">Show broader meaning</button>
+            <span id="terrainSemanticDepthStatus" data-node-ref="element.terrain.semantic-depth-status" class="projection-status" data-i18n="terrain.semantic-depth.context">Context</span>
+            <button id="terrainDepthUp" data-node-ref="element.terrain.semantic-depth-increase" type="button" class="secondary-button" data-i18n="terrain.semantic-depth.increase">Show deeper meaning</button>
+            <button id="terrainCenter" data-node-ref="element.terrain.center-current-context" type="button" class="secondary-button" data-i18n="terrain.center-current-context">Center current context</button>
+            <button id="terrainSiblingPrevious" data-node-ref="element.terrain.sibling-previous" type="button" class="secondary-button" data-i18n="terrain.sibling.previous">Previous sibling</button>
+            <button id="terrainSiblingNext" data-node-ref="element.terrain.sibling-next" type="button" class="secondary-button" data-i18n="terrain.sibling.next">Next sibling</button>
+            <button id="terrainReset" data-node-ref="element.terrain.reset" class="secondary-button" type="button" data-i18n="terrain.reset">Reset layout</button>
+          </div>
+        </header>
         <div class="terrain-layout">
-          <div id="terrainCanvas" class="terrain-canvas" data-node-ref="element.terrain.canvas"><svg id="terrainEdges" class="terrain-edges" aria-hidden="true"></svg><div id="terrainNodes"></div></div>
-          <aside class="terrain-detail" data-node-ref="element.terrain.details"><small data-i18n="terrain.details">Selected node</small><div id="terrainDetail"><p data-i18n="terrain.empty-detail">Select a node to inspect it.</p></div></aside>
+          <div id="terrainCanvas" class="terrain-canvas" data-node-ref="element.terrain.canvas"><div id="terrainWorld" class="terrain-world"><svg id="terrainEdges" class="terrain-edges" aria-hidden="true"></svg><div id="terrainNodes"></div></div></div>
+          <aside class="terrain-detail semantic-scroll-surface" data-scroll-surface="element.terrain.details" data-node-ref="element.terrain.details"><small data-i18n="terrain.details">Selected node</small><div id="terrainDetail"><p data-i18n="terrain.empty-detail">Select a node to inspect it.</p></div></aside>
         </div>
       </section>
 
-      <section id="view-health" class="view" data-view-panel="health" data-node-ref="screen.vexlife.health" hidden>
+      <section id="view-health" class="view semantic-scroll-surface" data-scroll-surface="screen.vexlife.health" data-view-panel="health" data-node-ref="screen.vexlife.health" hidden>
         <header class="view-heading"><div><small data-i18n="health.eyebrow">REFERENCE ENVIRONMENT</small><h1 data-i18n="screen.health.title">Health</h1><p data-i18n="health.reference.summary">This static reference has no current repository or runtime health receipt.</p></div><span id="healthStatus" class="status-pill attention" data-i18n="health.state.attention">● ATTENTION</span></header>
         <div class="health-grid" data-node-ref="region.health.summary">
           <article data-component-ref="component.vexlife.health-card" data-instance-ref="instance.health-card.model"><small data-i18n="health.model">Model</small><h2 data-i18n="health.value.unavailable">Unavailable</h2><p data-i18n="health.model.evidence">No executed current model receipt is available in this static browser reference.</p></article>
@@ -83,16 +95,20 @@
     </main>
   </div>
 
-  <section id="guideWindow" class="guide-window" role="dialog" aria-label="Vex Guide" data-i18n-aria-label="guide.title" data-node-ref="element.guide.window" hidden>
+  <section id="guideWindow" class="guide-window" role="dialog" aria-label="Vex" data-i18n-aria-label="vessel.guide.name" data-node-ref="element.guide.window" hidden>
+    <button class="guide-resize-handle nw" data-resize-corner="nw" data-node-ref="element.guide.resize-nw" type="button" aria-label="Resize Vex from top left" data-i18n-aria-label="vex.resize.nw"></button>
+    <button class="guide-resize-handle ne" data-resize-corner="ne" data-node-ref="element.guide.resize-ne" type="button" aria-label="Resize Vex from top right" data-i18n-aria-label="vex.resize.ne"></button>
+    <button class="guide-resize-handle sw" data-resize-corner="sw" data-node-ref="element.guide.resize-sw" type="button" aria-label="Resize Vex from bottom left" data-i18n-aria-label="vex.resize.sw"></button>
+    <button class="guide-resize-handle se" data-resize-corner="se" data-node-ref="element.guide.resize-se" type="button" aria-label="Resize Vex from bottom right" data-i18n-aria-label="vex.resize.se"></button>
     <header id="guideHandle" class="guide-header">
-      <div class="guide-title"><span class="guide-orb" aria-hidden="true">✦</span><span><small data-i18n="guide.private-assistance">PRIVATE ASSISTANCE</small><strong data-i18n="guide.title">Vex Guide</strong></span></div>
+      <div class="guide-title"><span class="guide-orb" aria-hidden="true">✦</span><span><small data-i18n="guide.private-assistance">PRIVATE ASSISTANCE</small><strong data-i18n="vessel.guide.name">Vex</strong></span></div>
       <div class="guide-controls"><button id="guideMinimize" data-node-ref="element.guide.minimize" type="button" aria-label="Minimize" data-i18n-aria-label="guide.minimize">—</button><button id="guideClose" data-node-ref="element.guide.close" type="button" aria-label="Close" data-i18n-aria-label="guide.close">×</button></div>
     </header>
-    <div id="guideBody" class="guide-body">
+    <div id="guideBody" class="guide-body semantic-scroll-surface" data-scroll-surface="vessel.vexlife.guide">
       <div class="guide-location"><span id="guideBreadcrumb"></span><small id="guideTrajectory"></small></div>
       <div id="guideMessages" class="guide-messages"></div>
       <div class="guide-prompts"><button type="button" data-node-ref="element.guide.ask-current" data-guide-intent-ref="intent.guide.current" data-i18n="guide.ask.current">What am I looking at?</button><button type="button" data-node-ref="element.guide.ask-next" data-guide-intent-ref="intent.guide.next" data-i18n="guide.mode.next">Recommended next step</button><button type="button" data-node-ref="element.guide.ask-protects" data-guide-intent-ref="intent.guide.protects" data-i18n="guide.ask.protects">What protects me?</button></div>
-      <form id="guideComposer" class="guide-composer"><input id="guideInput" data-node-ref="element.guide.composer" data-i18n-placeholder="guide.placeholder" placeholder="Ask Vex Guide about this screen…"><button type="submit" data-node-ref="element.guide.composer">↑</button></form>
+      <form id="guideComposer" class="guide-composer"><input id="guideInput" data-node-ref="element.guide.composer" data-i18n-placeholder="guide.placeholder" placeholder="Ask Vex about this screen…"><button type="submit" data-node-ref="element.guide.composer">↑</button></form>
     </div>
   </section>
 
