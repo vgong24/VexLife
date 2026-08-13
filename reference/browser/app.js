@@ -51,6 +51,21 @@ function bindScrollPositions() {
     saveJson('vexlife.scroll.positions', state.scrollPositions);
   }, { passive: true }));
 }
+function projectCurrentFrame() {
+  $$('[data-view-panel]').forEach((panel) => { panel.hidden = panel.dataset.viewPanel !== state.view; });
+  const viewNodeRef = `element.nav.${state.view}`;
+  navigation.setSelection('selection.primary-view', viewNodeRef);
+  chat.renderProjectRail();
+  const project = chat.currentProject();
+  const thread = chat.currentThread();
+  $('#threadTitle').textContent = t(thread.stringRef);
+  $('#threadDescription').textContent = `${t(project.descriptionRef)} ${t(thread.descriptionRef)}`;
+  chat.renderChannels(); chat.renderPresence(); chat.renderMessages(); chat.updateComposer(); chat.renderContext();
+  if (state.view === 'terrain') terrain.render();
+  if (state.view === 'health') renderHealth();
+  guide.updateFrame();
+  queueMicrotask(restoreScrollPositions);
+}
 
 navigation = createNavigationController({
   state, elementByRef,
@@ -103,6 +118,17 @@ $('#languageSelect').addEventListener('change', (event) => {
 });
 $('#architectureButton').addEventListener('click', () => { guide.setOpen(true); guide.askIntent(GUIDE_INTENTS.ARCHITECTURE); });
 
+globalThis.addEventListener('popstate', () => {
+  const result = navigation.back();
+  if (result.changed) projectCurrentFrame();
+});
+globalThis.addEventListener('keydown', (event) => {
+  if (event.altKey && event.key === 'ArrowLeft' && navigation.backDepth() > 0) {
+    event.preventDefault();
+    globalThis.history.back();
+  }
+});
+
 selectView('chat', 'element.nav.chat');
 chat.renderProjectRail();
 chat.selectThread(projects[2], projects[2].threads[0], 'element.thread.open-conversation', false);
@@ -111,8 +137,9 @@ applyLocalization();
 guide.setOpen(state.guideOpen);
 guide.addMessage('guide', { contentRef: 'guide.intro' });
 renderHealth();
+navigation.enableBrowserHistory();
 
-globalThis.__VEXLIFE_APP__ = { state, projects, roles, channels, messages, chat, guide, terrain, navigation, experience, t, semanticScrollKey, restoreScrollPositions };
+globalThis.__VEXLIFE_APP__ = { state, projects, roles, channels, messages, chat, guide, terrain, navigation, experience, t, semanticScrollKey, restoreScrollPositions, projectCurrentFrame };
 if (new URLSearchParams(globalThis.location.search).get('integration') === '1') {
   const { runBrowserIntegration } = await import('./integration-test.js');
   globalThis.__VEXLIFE_INTEGRATION_PROMISE__ = runBrowserIntegration();
