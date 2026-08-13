@@ -20,10 +20,16 @@
       "sha256": "4f70779cb7c0b81b93093f663451fbd78450b376f42cb28ee7562c9d9b2e61f6"
     },
     {
+      "path": "reference/browser/e27-convergence.css",
+      "mode": "100644",
+      "bytes": 6613,
+      "sha256": "7c1877f8c5c466456efdf8276f9a0cbd80176583cf07ac99ff50d461de93de5c"
+    },
+    {
       "path": "reference/browser/index.html",
       "mode": "100644",
-      "bytes": 13909,
-      "sha256": "7d8970e02d46ce3c60ea32665656ae9aaf5bc7a327b560b018f3f1582384c80b"
+      "bytes": 14040,
+      "sha256": "bbde357d3fccc16dc189ba8ddb1cf7b56f9f72f79baa1b63ca091c9e642a9b15"
     },
     {
       "path": "reference/browser/integration-test.js",
@@ -56,6 +62,12 @@
       "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
     },
     {
+      "path": "reference/browser/modules/e27-terrain-convergence.js",
+      "mode": "100644",
+      "bytes": 14817,
+      "sha256": "3f4b87b1f7f9ac22fdd5221d6294630ca5e6d56bd76e30fcf9903bb90f7ac836"
+    },
+    {
       "path": "reference/browser/modules/experience-review-adapter.js",
       "mode": "100644",
       "bytes": 8335,
@@ -70,8 +82,8 @@
     {
       "path": "reference/browser/modules/guide-controller.js",
       "mode": "100644",
-      "bytes": 12209,
-      "sha256": "136c3151d5f4dcdc81e745f1f6cf5ed8a1993de9d86b08d51a36310041bdba41"
+      "bytes": 12357,
+      "sha256": "b95967f719ec6d9e3e939e29bbae2aeb1b04d65fd03f08102964a0336a7de4f2"
     },
     {
       "path": "reference/browser/modules/navigation-controller.js",
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 4384,
       "sha256": "4bd7ba78d06ef2b8a5790810a6e90da92336f3087f24f39dd30c4cabecb142dc"
-    },
-    {
-      "path": "scripts/build-projections.mjs",
-      "mode": "100644",
-      "bytes": 1875,
-      "sha256": "df09880041da5c58ba3c220a90912eabfa39aa7f08eab48b2d59dc31221255d0"
-    },
-    {
-      "path": "scripts/check-syntax.mjs",
-      "mode": "100644",
-      "bytes": 1187,
-      "sha256": "c09a16c78e67eae90abf371867053419f85674ebd02e976fd2183f91152b1a22"
     }
   ]
 }

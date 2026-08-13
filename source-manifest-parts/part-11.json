@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/state-relay.mjs",
+      "mode": "100644",
+      "bytes": 2512,
+      "sha256": "6db63d09620aeea24b4f66f36384201495a65e75efc81ca9dbe75f99787923c7"
+    },
+    {
+      "path": "src/core/state.mjs",
+      "mode": "100644",
+      "bytes": 139824,
+      "sha256": "02750419d72f2dae3ed71fd2275333349a8683c65530b6dc13880d82cad6e023"
+    },
+    {
       "path": "src/core/terrain.mjs",
       "mode": "100644",
       "bytes": 4412,
@@ -98,6 +110,12 @@
       "sha256": "e8201d58199f0b84c940fcefdeeff0686b52509aec767a3cb38cb28f1204291f"
     },
     {
+      "path": "test/e27-convergence.test.mjs",
+      "mode": "100644",
+      "bytes": 3814,
+      "sha256": "b230e80a1a05e495b86c983174e164fc17d02524d9c2428eae4da5a008a8b455"
+    },
+    {
       "path": "test/evaluated-rhythm-learning.test.mjs",
       "mode": "100644",
       "bytes": 1487,
@@ -126,24 +144,6 @@
       "mode": "100644",
       "bytes": 15079,
       "sha256": "a4d913281e27451b56de0ef38ae5a400e6548e11b115b7e6e8934f23caaa96ac"
-    },
-    {
-      "path": "test/fixtures/orientation/accepted-main.json",
-      "mode": "100644",
-      "bytes": 1054,
-      "sha256": "42c605803b39f8093b5c55957d2e42fe5ef06e30ca642ee1635801104902a980"
-    },
-    {
-      "path": "test/fixtures/orientation/current-pr.json",
-      "mode": "100644",
-      "bytes": 1183,
-      "sha256": "5cd56d6980c53c1ed9aba8d501cc3f5202e8fee5395b4b93bb734c09f2ef5de5"
-    },
-    {
-      "path": "test/fixtures/orientation/detached-merge.json",
-      "mode": "100644",
-      "bytes": 1173,
-      "sha256": "ae4f14d6feb5be019abe24c38807cfb5f5f99231ee74164334cd7a6cd4f8ea5c"
     }
   ]
 }
