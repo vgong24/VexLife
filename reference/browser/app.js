@@ -29,6 +29,7 @@ const semanticScrollKey = (element) => {
     channelRef: state.channelRef,
     selectedNodeRef: state.selectedNodeRef
   };
+  const selectedScope = element.dataset.scrollSurface === 'element.terrain.details' ? (frame.selectedNodeRef ?? '') : '';
   return [
     element.dataset.scrollSurface,
     frame.screenRef,
@@ -36,7 +37,7 @@ const semanticScrollKey = (element) => {
     frame.projectRef ?? '',
     frame.threadRef ?? '',
     frame.channelRef ?? '',
-    frame.selectedNodeRef ?? ''
+    selectedScope
   ].join('::');
 };
 function restoreScrollPositions() {
