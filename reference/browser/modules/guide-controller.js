@@ -56,6 +56,10 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     state.guideOpen = open; windowElement.hidden = !open; localStorage.setItem('vexlife.guide.open', String(open));
     if (open) { updateFrame(); if (focus) $('#guideInput')?.focus(); }
   }
+  function summon() {
+    navigation.navigate('element.vex.summon', {}, 'action.vex.summon');
+    setOpen(true, { focus: true });
+  }
   function persistGeometry() {
     const rect = windowElement.getBoundingClientRect();
     saveJson('vexlife.guide.geometry', { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
@@ -94,11 +98,11 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
   $$('[data-guide-intent-ref]').forEach((button) => button.addEventListener('click', () => askIntent(button.dataset.guideIntentRef)));
   $('#guideComposer').addEventListener('submit', (event) => { event.preventDefault(); const input=$('#guideInput'); const value=input.value.trim(); if (!value) return; ask(value); input.value=''; });
   $('#guideToggle').addEventListener('click', () => setOpen(!state.guideOpen, { focus: !state.guideOpen }));
-  $('#vexSummon')?.addEventListener('click', () => { navigation.navigate('element.vex.summon', {}, 'action.vex.summon'); setOpen(true,{focus:true}); });
+  $('#vexSummon')?.addEventListener('click', summon);
   $('#guideClose').addEventListener('click', () => setOpen(false));
   $('#guideMinimize').addEventListener('click', () => { state.guideMinimized=!state.guideMinimized; windowElement.classList.toggle('is-minimized',state.guideMinimized); });
   restoreGeometry(); makeDraggable(); makeResizable();
-  return { updateFrame, responseForIntent, askIntent, ask, addMessage, renderMessages, setOpen, persistGeometry };
+  return { updateFrame, responseForIntent, askIntent, ask, addMessage, renderMessages, setOpen, summon, persistGeometry };
 }
 
 // [VXG RealForever]
