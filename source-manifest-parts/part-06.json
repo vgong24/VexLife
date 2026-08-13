@@ -62,6 +62,12 @@
       "sha256": "0b9e853aa940d37dd1b35ed8dac5451af527b4901c12373a91919c61d5349c12"
     },
     {
+      "path": "reference/browser/modules/experience-review-human.js",
+      "mode": "100644",
+      "bytes": 11699,
+      "sha256": "5bd1b9e4204abd681ca928abe49ac39eb26941537a7353e33dfead74d481ac31"
+    },
+    {
       "path": "reference/browser/modules/guide-controller.js",
       "mode": "100644",
       "bytes": 12209,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 1187,
       "sha256": "c09a16c78e67eae90abf371867053419f85674ebd02e976fd2183f91152b1a22"
-    },
-    {
-      "path": "scripts/create-platform.mjs",
-      "mode": "100644",
-      "bytes": 1086,
-      "sha256": "1c6a9833e691bf0a05ce478c044c9f32abdd8036bbd3a1da769b56003223b7e2"
     }
   ]
 }

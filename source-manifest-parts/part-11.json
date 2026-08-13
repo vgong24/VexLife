@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/terrain.mjs",
+      "mode": "100644",
+      "bytes": 4412,
+      "sha256": "4970a104ad0929f817eb6ac0ee8537e0142708df4cbde8ab8977b1272d6338e8"
+    },
+    {
       "path": "src/core/tool-result-relay.mjs",
       "mode": "100644",
       "bytes": 44550,
@@ -104,6 +110,12 @@
       "sha256": "e3d29d1ccd574875a7c05c3d09b8c8ef32fa75dcb0b24534d0fc9d5e906b98f7"
     },
     {
+      "path": "test/experience-review-human.test.mjs",
+      "mode": "100644",
+      "bytes": 3771,
+      "sha256": "b6f4458a986b40d3570bb3265d5c1b099623d2876a30ecedcc985cbf1e4200ea"
+    },
+    {
       "path": "test/experience-review-kit.test.mjs",
       "mode": "100644",
       "bytes": 7959,
@@ -132,18 +144,6 @@
       "mode": "100644",
       "bytes": 1173,
       "sha256": "ae4f14d6feb5be019abe24c38807cfb5f5f99231ee74164334cd7a6cd4f8ea5c"
-    },
-    {
-      "path": "test/fixtures/orientation/github-pr-current-work-duplicate.json",
-      "mode": "100644",
-      "bytes": 464,
-      "sha256": "2b638ced378662f0b3a02192c64450b5a794059987fde76af08f8ee0c07e8066"
-    },
-    {
-      "path": "test/fixtures/orientation/github-pr-current-work.json",
-      "mode": "100644",
-      "bytes": 505,
-      "sha256": "b7e370bdfc1292cb8f69d83d02035d005beebfc577c88c670fce76d7733e3917"
     }
   ]
 }

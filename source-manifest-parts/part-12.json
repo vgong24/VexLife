@@ -2,6 +2,18 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/fixtures/orientation/github-pr-current-work-duplicate.json",
+      "mode": "100644",
+      "bytes": 464,
+      "sha256": "2b638ced378662f0b3a02192c64450b5a794059987fde76af08f8ee0c07e8066"
+    },
+    {
+      "path": "test/fixtures/orientation/github-pr-current-work.json",
+      "mode": "100644",
+      "bytes": 505,
+      "sha256": "b7e370bdfc1292cb8f69d83d02035d005beebfc577c88c670fce76d7733e3917"
+    },
+    {
       "path": "test/fixtures/orientation/public-active.json",
       "mode": "100644",
       "bytes": 1051,
@@ -132,12 +144,6 @@
       "mode": "100644",
       "bytes": 12506,
       "sha256": "af2f7d18c69794fdd735a1b6bf3466d566304bf142efacd10738929032c11caa"
-    },
-    {
-      "path": "test/validation-evidence.test.mjs",
-      "mode": "100644",
-      "bytes": 14119,
-      "sha256": "d2a5d2f51e86f5ecdf1ec0e9b02e52e9a0a3099cb0f1a9b79c02a7fa92ae7571"
     }
   ]
 }
