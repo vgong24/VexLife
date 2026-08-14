@@ -46,8 +46,8 @@
     {
       "path": "test/browser.test.mjs",
       "mode": "100644",
-      "bytes": 5512,
-      "sha256": "7548761bb452994192a3459940d05653950c10c30529639a81f80af341faa5ac"
+      "bytes": 5520,
+      "sha256": "94a3b6737d3631d3459963283a16f53ec7dd456f9165e8ff533276d55a1bb43c"
     },
     {
       "path": "test/build-admission.test.mjs",
@@ -100,8 +100,8 @@
     {
       "path": "test/e27-convergence.test.mjs",
       "mode": "100644",
-      "bytes": 3883,
-      "sha256": "d1e4991c34b3e4aca5da921f7ed506f527571e84360a8f6da29345c865cb37ba"
+      "bytes": 5699,
+      "sha256": "9d29168ee64dc4ca6226cb02752d1eb76d8834213e302b41fe4cc29d324d30a9"
     },
     {
       "path": "test/evaluated-rhythm-learning.test.mjs",

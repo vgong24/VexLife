@@ -16,8 +16,8 @@
     {
       "path": "reference/browser/app.js",
       "mode": "100644",
-      "bytes": 11396,
-      "sha256": "010a6753213552025626efb6c51787243acc168a1e98fd8004e20da8b7e04712"
+      "bytes": 11662,
+      "sha256": "01f1abe1986901f070fe198746adbe0b140318ce3c124d53040f9d8fb9e074a8"
     },
     {
       "path": "reference/browser/index.html",
@@ -28,8 +28,8 @@
     {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
-      "bytes": 6337,
-      "sha256": "4150343b9bbe991c88577171decec4b25b53e7f9b327d1ef85a0126f84b7ca57"
+      "bytes": 7721,
+      "sha256": "5e7ab577d8e27ac32d531d80136da1b585e41eebe861624a828c139c7548d3f1"
     },
     {
       "path": "reference/browser/modules/browser-bundle.js",
@@ -70,14 +70,14 @@
     {
       "path": "reference/browser/modules/guide-controller.js",
       "mode": "100644",
-      "bytes": 11303,
-      "sha256": "53aa77fc746b64fda72f273b0b67d608542974da27532e238f83f7f3844db060"
+      "bytes": 12069,
+      "sha256": "b7a7d79ffdd5ebdd3b58941f3da307073dc36a49c64b69b4e98dad102ad54b1a"
     },
     {
       "path": "reference/browser/modules/navigation-controller.js",
       "mode": "100644",
-      "bytes": 7083,
-      "sha256": "42caf9ee81a6ad2ea5e917226f0254e6fcffdb848f029edfe4d0467436ed0c57"
+      "bytes": 7374,
+      "sha256": "4cbd41f7149a6127a463609a4fd71bab22804edc62ccd9af6a48868c98957c43"
     },
     {
       "path": "reference/browser/modules/terrain-controller.js",
