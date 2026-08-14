@@ -19,7 +19,7 @@ const context = () => ({
     title: 'Authoritative E2.7 root',
     artifactRef: 'design-baseline.vexlife.e2.7.scoped-layers-vexorg-sandbox.34f17a12-38b6-438c-b899-6d07c36f1eb0',
     url: '/baseline/E2.7-START-HERE.html',
-    explanation: 'This accepted E2.7 root is the human-visible design authority used to judge whether the product descendant preserved the intended experience grammar.'
+    explanation: 'This accepted E2.7 root is the authoritative design comparator, not a second product to approve.'
   },
   machineEvidence: { state: 'PASS', caseCount: 12 },
   reviewQuestion: 'Does this E2.7-rooted VexLife faithfully carry the authoritative E2.7 root experience in the direction you want to keep?',
@@ -44,7 +44,7 @@ test('human review context preserves wire compatibility while source-managing E2
 
 test('human review shell starts with one E2.7-rooted candidate and an authority comparator', () => {
   const html = renderHumanContinuityReviewHtml(context());
-  assert.match(html, /E2\.7-ROOTED CURRENT OBJECT · HUMAN CONVERGENCE REVIEW/);
+  assert.match(html, /E2\.7-ROOTED CURRENT OBJECT - HUMAN CONVERGENCE REVIEW/);
   assert.match(html, /You are reviewing the E2\.7-rooted VexLife candidate/);
   assert.match(html, />E2\.7-rooted candidate<\/button>/);
   assert.match(html, />Authoritative E2\.7 root<\/button>/);
@@ -64,7 +64,7 @@ test('candidate is the initial rendered object and comparator is opt-in context'
 
 test('human review shell does not expose evidence-matrix navigation as human burden', () => {
   const html = renderHumanContinuityReviewHtml(context());
-  for (const marker of [/C01 —/, /C10 —/, />kind:/, />locale:/, />theme:/, />device:/, />platform:/]) assert.doesNotMatch(html, marker);
+  for (const marker of [/C01 -/, /C10 -/, />kind:/, />locale:/, />theme:/, />device:/, />platform:/]) assert.doesNotMatch(html, marker);
 });
 
 test('submit binds review object and comparator classes and visibly completes handoff', () => {
