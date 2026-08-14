@@ -5,6 +5,23 @@ export const GUIDED_ESTABLISHMENT_JOURNEY_REF = 'journey.vexlife.guided-local-es
 export const GUIDED_ESTABLISHMENT_PROFILE_REF = 'experience.vexlife.newcomer-guided';
 export const GUIDED_ESTABLISHMENT_EFFECT_CLASS = 'DECLARATIVE_NO_EFFECT';
 
+export const E27_AUTHORITATIVE_ROOT_CONTRACT_REF = 'contract.vexlife.e27.authoritative-root/v1';
+export const E27_REFERENCE_BASELINE_REF = 'design-baseline.vexlife.e2.7.scoped-layers-vexorg-sandbox.34f17a12-38b6-438c-b899-6d07c36f1eb0';
+export const E27_ARTIFACT_SHA256 = '9f944af803c43a494af944e987d1c4c6a6c7f71c89c648cbdf6536c07dbeda17';
+export const E27_START_HERE_SHA256 = 'e4db5d25013cda1d89d1bad2ac70183bf7f1dd69cd8bd7a6c0aff33882590107';
+export const E27_SUPERSESSION_REQUIRED_FIELDS = Object.freeze([
+  'supersedesRef',
+  'signalOrRegionRef',
+  'delta',
+  'reason',
+  'canonicalOwnerRef',
+  'evidenceRefs',
+  'protectedPreserveRefs',
+  'regressionProofRefs',
+  'humanReviewRef',
+  'assuranceRef'
+]);
+
 export const GUIDED_ESTABLISHMENT_FRONTDOOR_BINDINGS = Object.freeze({
   'platform.windows': 'install/vexlife-setup.ps1',
   'platform.macos': 'install/vexlife-setup.sh'
@@ -75,6 +92,94 @@ function isSafeRelativeSourcePath(value) {
     !value.startsWith('/') &&
     !/^[a-z]:[\\/]/iu.test(value) &&
     !value.split(/[\\/]/u).includes('..');
+}
+
+export function validateAuthoritativeRootDesignContract(contract, { actionRefs = new Set() } = {}) {
+  const errors = [];
+  if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
+    return ['authoritative E2.7 root design contract is missing'];
+  }
+  if (contract.contractRef !== E27_AUTHORITATIVE_ROOT_CONTRACT_REF) errors.push('authoritative E2.7 root contractRef changed');
+  if (contract.authorityScope !== 'HUMAN_VISIBLE_DESIGN_AND_INTERACTION_GRAMMAR') errors.push('authoritative E2.7 authority scope changed');
+  if (contract.referenceBaselineRef !== E27_REFERENCE_BASELINE_REF) errors.push('authoritative E2.7 reference baseline changed');
+  if (contract.artifactSha256 !== E27_ARTIFACT_SHA256) errors.push('authoritative E2.7 artifact hash changed');
+  if (contract.startHereSha256 !== E27_START_HERE_SHA256) errors.push('authoritative E2.7 start-here hash changed');
+  if (contract.inheritanceDirection !== 'E27_ROOT_BODY_WITH_CURRENT_TRUTH_AND_CAPABILITIES_CARRIED_IN') {
+    errors.push('authoritative E2.7 inheritance direction changed');
+  }
+  for (const field of ['acceptanceRef', 'sealRef', 'custodyRef', 'rootDispositionRef']) {
+    if (typeof contract[field] !== 'string' || !contract[field]) errors.push(`authoritative E2.7 contract missing ${field}`);
+  }
+
+  const shell = contract.defaultShellGrammar;
+  if (!shell || typeof shell !== 'object') errors.push('authoritative E2.7 default shell grammar is missing');
+  else {
+    if (shell.primaryStageScreenRef !== 'screen.vexlife.terrain' || shell.primaryStageRouteRef !== 'route.terrain') {
+      errors.push('authoritative E2.7 default shell must use Terrain as the primary stage');
+    }
+    if (shell.singleStageDefault !== true) errors.push('authoritative E2.7 shell must be single-stage by default');
+    if (!Array.isArray(shell.permanentPrimaryTabRefs) || shell.permanentPrimaryTabRefs.length !== 0) {
+      errors.push('authoritative E2.7 shell cannot preserve permanent primary tabs by default');
+    }
+    if (shell.legacyCurrentBrowserPreservationDefault !== false) {
+      errors.push('legacy current browser cannot be an implicit preservation default');
+    }
+    for (const routeRef of ['route.chat', 'route.health']) {
+      if (!shell.secondaryRouteRefs?.includes(routeRef)) errors.push(`authoritative E2.7 shell missing secondary route ${routeRef}`);
+    }
+  }
+
+  if (!Array.isArray(contract.preserveSignals) || contract.preserveSignals.length === 0 || new Set(contract.preserveSignals).size !== contract.preserveSignals.length) {
+    errors.push('authoritative E2.7 preserve signals must be unique and non-empty');
+  }
+  for (const actionRef of contract.carriedActionRefs ?? []) {
+    if (!actionRefs.has(actionRef)) errors.push(`authoritative E2.7 contract references missing action ${actionRef}`);
+  }
+
+  const autoEntry = contract.semanticAutoEntry;
+  if (!autoEntry || typeof autoEntry !== 'object') errors.push('authoritative E2.7 semantic auto-entry contract is missing');
+  else {
+    if (autoEntry.state !== 'SOURCE_MANAGED_REQUIRED_FOR_STAGE_B') errors.push('semantic auto-entry Stage-B requirement changed');
+    if (autoEntry.actionRef !== 'action.terrain.semantic-auto-entry.toggle' || !actionRefs.has(autoEntry.actionRef)) {
+      errors.push('semantic auto-entry opt-out action is missing');
+    }
+    if (autoEntry.visibleThresholdRequired !== true || autoEntry.visibleConfidenceRequired !== true || autoEntry.optOutRequired !== true) {
+      errors.push('semantic auto-entry must expose threshold, confidence and opt-out');
+    }
+    if (autoEntry.ordinaryScrollMayCommit !== false) errors.push('ordinary scrolling may not commit semantic auto-entry');
+  }
+
+  const supersession = contract.supersessionGrammar;
+  if (!supersession || typeof supersession !== 'object') errors.push('authoritative E2.7 supersession grammar is missing');
+  else {
+    if (supersession.differenceFromE27RequiresAcceptedSupersessionEvidence !== true ||
+        supersession.noAcceptedSupersessionEvidenceMeansE27Wins !== true) {
+      errors.push('authoritative E2.7 supersession precedence changed');
+    }
+    if (JSON.stringify(supersession.requiredFields) !== JSON.stringify(E27_SUPERSESSION_REQUIRED_FIELDS)) {
+      errors.push('authoritative E2.7 supersession required fields changed');
+    }
+  }
+  for (const [index, record] of (contract.supersessionRecords ?? []).entries()) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      errors.push(`authoritative E2.7 supersession record ${index} must be an object`);
+      continue;
+    }
+    for (const field of E27_SUPERSESSION_REQUIRED_FIELDS) {
+      const value = record[field];
+      const missing = Array.isArray(value) ? value.length === 0 : typeof value !== 'string' || value.length === 0;
+      if (missing) errors.push(`authoritative E2.7 supersession record ${index} missing ${field}`);
+    }
+  }
+
+  const exclusions = contract.productExclusions;
+  if (!exclusions || exclusions.syntheticVexOrgDataAllowed !== false || exclusions.syntheticOrganizationOrPeopleTruthAllowed !== false) {
+    errors.push('synthetic VexOrg review data must remain excluded from product truth');
+  }
+  for (const forbidden of ['VexOrg Demo Company', 'Maya Chen']) {
+    if (!exclusions?.forbiddenExamples?.includes(forbidden)) errors.push(`authoritative E2.7 product exclusion missing ${forbidden}`);
+  }
+  return errors;
 }
 
 function validateGuidedEstablishmentPlan(plan, { profileRefs = new Set() } = {}) {
@@ -184,12 +289,17 @@ export class ExperienceRegistry {
   constructor(source) {
     if (!source?.registryRef) throw new Error('experience registryRef is required');
     this.registryRef = source.registryRef;
+    this.rootDesignContract = structuredClone(source.authoritativeRootDesignContract ?? null);
     this.profiles = new Map((source.experienceProfiles ?? []).map((item) => [item.profileRef, structuredClone(item)]));
     this.gestures = new Map((source.gestureContracts ?? []).map((item) => [item.gestureRef, structuredClone(item)]));
     this.vessels = new Map((source.vessels ?? []).map((item) => [item.vesselRef, structuredClone(item)]));
     this.guidedEstablishmentPlans = new Map((source.guidedEstablishmentPlans ?? []).map((item) => [item.planRef, structuredClone(item)]));
   }
 
+  authoritativeRootDesignContract() {
+    if (!this.rootDesignContract) throw new Error('missing authoritative E2.7 root design contract');
+    return structuredClone(this.rootDesignContract);
+  }
   profile(ref) { const value = this.profiles.get(ref); if (!value) throw new Error(`missing experience profile ${ref}`); return structuredClone(value); }
   vessel(ref) { const value = this.vessels.get(ref); if (!value) throw new Error(`missing action vessel ${ref}`); return structuredClone(value); }
   guidedEstablishmentPlan(ref) {
@@ -261,6 +371,7 @@ export function validateExperienceRegistry(source, { actionRefs = new Set(), com
   const errors = [];
   const seen = new Set();
   const add = (ref, kind) => { if (!ref) errors.push(`${kind} missing ref`); else if (seen.has(ref)) errors.push(`duplicate experience ref ${ref}`); else seen.add(ref); };
+  errors.push(...validateAuthoritativeRootDesignContract(source.authoritativeRootDesignContract, { actionRefs }));
   const profileRefs = new Set((source.experienceProfiles ?? []).map((item) => item.profileRef));
   for (const profile of source.experienceProfiles ?? []) {
     add(profile.profileRef, 'profile');

@@ -1,6 +1,93 @@
 {
   "schemaVersion": "vexlife.experience-registry/v0",
   "registryRef": "registry.vexlife.experience.001",
+  "authoritativeRootDesignContract": {
+    "contractRef": "contract.vexlife.e27.authoritative-root/v1",
+    "authorityScope": "HUMAN_VISIBLE_DESIGN_AND_INTERACTION_GRAMMAR",
+    "referenceBaselineRef": "design-baseline.vexlife.e2.7.scoped-layers-vexorg-sandbox.34f17a12-38b6-438c-b899-6d07c36f1eb0",
+    "artifactSha256": "9f944af803c43a494af944e987d1c4c6a6c7f71c89c648cbdf6536c07dbeda17",
+    "startHereSha256": "e4db5d25013cda1d89d1bad2ac70183bf7f1dd69cd8bd7a6c0aff33882590107",
+    "acceptanceRef": "github.issue.vexlife.32.comment.5231233688",
+    "sealRef": "github.issue.vexlife.32.comment.5231336657",
+    "custodyRef": "github.issue.vexlife.50",
+    "rootDispositionRef": "github.issue.vexlife.53.comment.5279817530",
+    "inheritanceDirection": "E27_ROOT_BODY_WITH_CURRENT_TRUTH_AND_CAPABILITIES_CARRIED_IN",
+    "defaultShellGrammar": {
+      "primaryStageScreenRef": "screen.vexlife.terrain",
+      "primaryStageRouteRef": "route.terrain",
+      "singleStageDefault": true,
+      "permanentPrimaryTabRefs": [],
+      "secondaryRouteRefs": [
+        "route.chat",
+        "route.health"
+      ],
+      "contextualRegionRefs": [
+        "region.chat.feed",
+        "region.chat.context",
+        "region.health.summary",
+        "region.guide.window"
+      ],
+      "legacyCurrentBrowserPreservationDefault": false
+    },
+    "preserveSignals": [
+      "signal.e27.single-terrain-stage",
+      "signal.e27.overlay-does-not-consume-terrain-canvas",
+      "signal.e27.vex-is-home",
+      "signal.e27.vextreme-mark-summons-vex",
+      "signal.e27.one-visible-vex",
+      "signal.e27.world-geometry-is-orientation",
+      "signal.e27.center-is-current-semantic-context",
+      "signal.e27.ordinary-scroll-not-zoom",
+      "signal.e27.pixel-zoom-not-semantic-depth",
+      "signal.e27.semantic-auto-entry-visible-threshold-confidence-optout",
+      "signal.e27.full-journey-append-only",
+      "signal.e27.recent-history-centered-max-five",
+      "signal.e27.spatial-entry-parent-sibling-travel",
+      "signal.e27.one-semantic-tree-multiple-projections",
+      "signal.e27.accessibility-complete"
+    ],
+    "carriedActionRefs": [
+      "action.vex.summon",
+      "action.vessel.resize",
+      "action.terrain.semantic-depth.set",
+      "action.terrain.center-current-context",
+      "action.navigation.sibling",
+      "action.terrain.semantic-auto-entry.toggle"
+    ],
+    "semanticAutoEntry": {
+      "state": "SOURCE_MANAGED_REQUIRED_FOR_STAGE_B",
+      "actionRef": "action.terrain.semantic-auto-entry.toggle",
+      "visibleThresholdRequired": true,
+      "visibleConfidenceRequired": true,
+      "optOutRequired": true,
+      "ordinaryScrollMayCommit": false
+    },
+    "supersessionGrammar": {
+      "differenceFromE27RequiresAcceptedSupersessionEvidence": true,
+      "noAcceptedSupersessionEvidenceMeansE27Wins": true,
+      "requiredFields": [
+        "supersedesRef",
+        "signalOrRegionRef",
+        "delta",
+        "reason",
+        "canonicalOwnerRef",
+        "evidenceRefs",
+        "protectedPreserveRefs",
+        "regressionProofRefs",
+        "humanReviewRef",
+        "assuranceRef"
+      ]
+    },
+    "supersessionRecords": [],
+    "productExclusions": {
+      "syntheticVexOrgDataAllowed": false,
+      "syntheticOrganizationOrPeopleTruthAllowed": false,
+      "forbiddenExamples": [
+        "VexOrg Demo Company",
+        "Maya Chen"
+      ]
+    }
+  },
   "principles": [
     "conversation-first for companionship",
     "bounded current projections for leadership",

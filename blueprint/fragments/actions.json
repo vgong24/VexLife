@@ -603,5 +603,17 @@
       "state.selection",
       "state.journey"
     ]
+  },
+  {
+    "actionRef": "action.terrain.semantic-auto-entry.toggle",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "enabled": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain",
+      "state.navigation"
+    ]
   }
 ]

@@ -2,6 +2,9 @@
   "screenRef": "screen.vexlife.terrain",
   "routeRef": "route.terrain",
   "titleStringRef": "screen.terrain.title",
+  "presentationContractRef": "contract.vexlife.e27.authoritative-root/v1",
+  "presentationClass": "PRIMARY_SINGLE_STAGE",
+  "primaryStage": true,
   "stateSelectorRefs": [
     "selector.terrain.current",
     "selector.terrain.layout",
