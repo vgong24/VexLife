@@ -53,6 +53,17 @@ test('W6 Windows launcher exposes only start and uninstall-preserve lifecycle mo
   assert.equal(/ValidateSet\([^)]*remove-local-data/iu.test(script), false);
 });
 
+
+test('W6 Windows launcher never shadows PowerShell automatic HOME with a writable parameter or script variable', () => {
+  const script = fs.readFileSync(path.join(ROOT, 'start-vexlife.ps1'), 'utf8');
+  assert.match(script, /\[Alias\("Home"\)\]\s*\[string\]\$VexHome = ""/u);
+  assert.match(script, /\$resolvedHomeInput = \$VexHome/u);
+  assert.match(script, /Join-Path \$HOME "\.vexlife"/u);
+  assert.equal(/\[string\]\$Home\b/iu.test(script), false);
+  assert.equal(/\$script:Home\b/iu.test(script), false);
+  assert.equal(/if \(\$Home -ne ""\)/iu.test(script), false);
+});
+
 test('W6 uninstall-preserve is bounded to exact Frontdoor process and setup-owned runtime residue', () => {
   const script = fs.readFileSync(path.join(ROOT, 'start-vexlife.ps1'), 'utf8');
   assert.match(script, /Read-InstallReceiptMachineBlock/u);
