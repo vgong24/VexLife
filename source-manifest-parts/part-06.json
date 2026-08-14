@@ -76,8 +76,8 @@
     {
       "path": "reference/browser/modules/experience-review-human.js",
       "mode": "100644",
-      "bytes": 11699,
-      "sha256": "5bd1b9e4204abd681ca928abe49ac39eb26941537a7353e33dfead74d481ac31"
+      "bytes": 11254,
+      "sha256": "e70ebbc755e0f549d1bbd6af5ea93ad632355a3446a19648ebf1db579d461b75"
     },
     {
       "path": "reference/browser/modules/guide-controller.js",
