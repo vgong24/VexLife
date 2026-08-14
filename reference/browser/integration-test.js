@@ -73,7 +73,7 @@ export async function runBrowserIntegration() {
     const journeyBeforeReset=app.navigation.fullJourney().length; app.terrain.reset(); const resetGeometry=app.terrain.geometrySnapshot();
     assert(resetGeometry.manualOverrideRef===null && Object.keys(app.state.terrain.localOffsets).length===0, 'P10 reset did not clear bounded manual geometry state');
     assert(geometryIdentity(resetGeometry)===geometryIdentity(canonical), 'P10 reset did not restore canonical adaptive choreography');
-    assert(app.navigation.fullJourney().length===journeyBeforeReset+1 && app.navigation.fullJourney().at(-1).actionRef==='action.terrain.layout.reset', 'P12 reset changed canonical journey action semantics');
+    assert(app.navigation.fullJourney().length===journeyBeforeReset && app.terrain.currentRef()===currentBeforePin, 'P12 pure geometry reset changed semantic journey or current context');
     checks.push('P09-P12 bounded manual override wins, local offset stays truthful, reset recovers canonical choreography, semantic refs stay stable');
 
     const realMatchMedia=globalThis.matchMedia;
