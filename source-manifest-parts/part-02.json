@@ -70,14 +70,14 @@
     {
       "path": "blueprint/fragments/screens/chat.json",
       "mode": "100644",
-      "bytes": 16474,
-      "sha256": "4d05be7cd1dcd1d47f6b1ef6e4a143b47577d6bc8359446c844e8d35d7b0a707"
+      "bytes": 16081,
+      "sha256": "661b87ec63c91fbfb027308c24de830b5c98c2c37a861f3ad53ea8021f30e1f0"
     },
     {
       "path": "blueprint/fragments/screens/guide-overlay.json",
       "mode": "100644",
-      "bytes": 8889,
-      "sha256": "556da075fe11f9ec914fb2ce2b6b258281ca829bca4e11813311b401974dc31d"
+      "bytes": 8876,
+      "sha256": "b16776c18dc088ee8855636b636fef4197143bcda662c6e8014f4768f267bb35"
     },
     {
       "path": "blueprint/fragments/screens/health.json",
@@ -88,8 +88,8 @@
     {
       "path": "blueprint/fragments/screens/shell.json",
       "mode": "100644",
-      "bytes": 6790,
-      "sha256": "ec0ebd7a365c52a4c1c3eb1766fd8f7528bb4e78161506068c7ae97b065baccb"
+      "bytes": 7397,
+      "sha256": "6f187b076df11f5e59f3a2503bee2d76f2f6095629ded0a66ccab1384910714a"
     },
     {
       "path": "blueprint/fragments/screens/terrain.json",
