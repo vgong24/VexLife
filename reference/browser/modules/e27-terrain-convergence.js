@@ -1,341 +1,39 @@
-const RECENT_LIMIT = 5;
-const WORKSPACE_STORAGE_KEY = 'vexlife.workspace.open';
-
-const clampWindowStart = (events, start, size) => {
-  const max = Math.max(0, events.length - size);
-  return Math.max(0, Math.min(max, Number.isInteger(start) ? start : max));
-};
-
-export function journeyWindow(events, start = null, size = RECENT_LIMIT) {
-  if (!Array.isArray(events)) throw new TypeError('events must be an array');
-  if (!Number.isInteger(size) || size < 1) throw new TypeError('size must be a positive integer');
-  const resolvedStart = start === null ? Math.max(0, events.length - size) : clampWindowStart(events, start, size);
-  return { start: resolvedStart, entries: events.slice(resolvedStart, resolvedStart + size), total: events.length };
-}
-
-export function historicalFramePatch(event) {
-  const frame = event?.after;
-  if (!frame || typeof frame !== 'object') throw new TypeError('journey event.after must be an object');
-  const patch = {};
-  const screenTail = String(frame.screenRef || '').split('.').at(-1);
-  if (screenTail) patch.view = screenTail;
-  for (const key of ['projectRef', 'threadRef', 'channelRef', 'selectedNodeRef']) {
-    if (frame[key] !== null && frame[key] !== undefined) patch[key] = frame[key];
-  }
-  return patch;
-}
-
-function createButton({ id, className = '', text = '', ariaLabel = '', actionRef = '' }) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  if (id) button.id = id;
-  if (className) button.className = className;
-  if (text) button.textContent = text;
-  if (ariaLabel) button.setAttribute('aria-label', ariaLabel);
-  if (actionRef) button.dataset.actionRef = actionRef;
-  return button;
-}
-
-function terrainLabelMap() {
-  return new Map([...document.querySelectorAll('.terrain-node[data-node-ref]')].map((node) => [
-    node.dataset.nodeRef,
-    node.querySelector('h3')?.textContent?.trim() || node.dataset.nodeRef
-  ]));
-}
-
-function labelJourneyEvent(event, app) {
-  const labels = terrainLabelMap();
-  const selected = event?.after?.selectedNodeRef;
-  if (selected && labels.has(selected)) return labels.get(selected);
-  const screenRef = event?.after?.screenRef;
-  if (screenRef) {
-    const screen = String(screenRef).split('.').at(-1);
-    const ref = `screen.${screen}.title`;
-    const value = app.t(ref);
-    if (!value.startsWith('[')) return value;
-  }
-  return selected || event?.elementRef || screenRef || event?.actionRef || '—';
-}
-
-function waitForApp(timeoutMs = 5000) {
-  const started = Date.now();
-  return new Promise((resolve, reject) => {
-    const probe = () => {
-      if (globalThis.__VEXLIFE_APP__) return resolve(globalThis.__VEXLIFE_APP__);
-      if (Date.now() - started >= timeoutMs) return reject(new Error('VexLife app did not become ready for E2.7 convergence'));
-      setTimeout(probe, 20);
-    };
-    probe();
-  });
-}
-
-export function attachE27TerrainConvergence(app) {
-  if (!app?.navigation || !app?.terrain || !app?.state || !app?.t) throw new TypeError('VexLife app bindings are incomplete');
-  const shell = document.querySelector('.app-shell');
-  const rail = document.querySelector('.project-rail');
-  const topActions = document.querySelector('.top-actions');
-  const terrainView = document.querySelector('#view-terrain');
-  const terrainLayout = document.querySelector('.terrain-layout');
-  const terrainCanvas = document.querySelector('#terrainCanvas');
-  const terrainDetail = document.querySelector('.terrain-detail');
-  const terrainToolbar = document.querySelector('.terrain-toolbar');
-  if (!shell || !rail || !topActions || !terrainView || !terrainLayout || !terrainCanvas || !terrainDetail || !terrainToolbar) {
-    throw new Error('E2.7 convergence could not resolve the current browser shell');
-  }
-
-  const settleVex = () => queueMicrotask(() => {
-    if (!app.state.guideOpen || !app.guide?.avoidDeclaredControls) return;
-    if (app.guide.avoidDeclaredControls()) app.guide.persistGeometry?.();
-  });
-
-  shell.classList.add('e27-converged-shell');
-  rail.id = rail.id || 'projectRail';
-
-  const projectToggle = createButton({
-    id: 'projectRailToggle',
-    className: 'guide-toggle e27-project-toggle',
-    text: app.t('region.projects.label'),
-    ariaLabel: app.t('project.rail.aria'),
-    actionRef: 'action.vessel.expand'
-  });
-  projectToggle.setAttribute('aria-controls', rail.id);
-  topActions.prepend(projectToggle);
-
-  let workspaceOpen = localStorage.getItem(WORKSPACE_STORAGE_KEY) === 'true';
-  const setWorkspaceOpen = (open) => {
-    workspaceOpen = Boolean(open);
-    shell.dataset.workspaceOpen = String(workspaceOpen);
-    projectToggle.setAttribute('aria-expanded', String(workspaceOpen));
-    rail.setAttribute('aria-hidden', String(!workspaceOpen));
-    localStorage.setItem(WORKSPACE_STORAGE_KEY, String(workspaceOpen));
-    if (workspaceOpen) settleVex();
-  };
-  projectToggle.addEventListener('click', () => setWorkspaceOpen(!workspaceOpen));
-  setWorkspaceOpen(workspaceOpen);
-
-  terrainDetail.id = terrainDetail.id || 'terrainDetailPanel';
-  terrainDetail.classList.add('e27-terrain-detail');
-  const detailClose = createButton({
-    id: 'terrainDetailClose',
-    className: 'e27-close',
-    text: '×',
-    ariaLabel: app.t('guide.close')
-  });
-  terrainDetail.prepend(detailClose);
-  let detailOpen = false;
-  const setDetailOpen = (open) => {
-    detailOpen = Boolean(open);
-    terrainDetail.classList.toggle('is-open', detailOpen);
-    terrainDetail.setAttribute('aria-hidden', String(!detailOpen));
-    if (detailOpen) settleVex();
-  };
-  detailClose.addEventListener('click', () => setDetailOpen(false));
-  setDetailOpen(false);
-
-  const detailToggle = createButton({
-    id: 'terrainDetailToggle',
-    className: 'secondary-button e27-terrain-tool',
-    text: app.t('terrain.details'),
-    ariaLabel: app.t('terrain.details'),
-    actionRef: 'action.context.open'
-  });
-  detailToggle.setAttribute('aria-controls', terrainDetail.id);
-  detailToggle.addEventListener('click', () => {
-    const nextOpen = !detailOpen;
-    if (nextOpen) setTerrainMenuOpen(false);
-    setDetailOpen(nextOpen);
-  });
-
-  const workspaceMenuToggle = createButton({
-    id: 'terrainWorkspaceMenuToggle',
-    className: 'secondary-button e27-terrain-tool e27-menu-toggle',
-    text: '⋯',
-    ariaLabel: app.t('workspace.label'),
-    actionRef: 'action.vessel.expand'
-  });
-  const workspaceMenu = document.createElement('div');
-  workspaceMenu.id = 'terrainWorkspaceMenu';
-  workspaceMenu.className = 'e27-terrain-menu';
-  workspaceMenu.setAttribute('aria-hidden', 'true');
-  workspaceMenuToggle.setAttribute('aria-controls', workspaceMenu.id);
-  let workspaceMenuOpen = false;
-  const setTerrainMenuOpen = (open) => {
-    workspaceMenuOpen = Boolean(open);
-    workspaceMenu.classList.toggle('is-open', workspaceMenuOpen);
-    workspaceMenu.setAttribute('aria-hidden', String(!workspaceMenuOpen));
-    workspaceMenuToggle.setAttribute('aria-expanded', String(workspaceMenuOpen));
-    if (workspaceMenuOpen) settleVex();
-  };
-  workspaceMenuToggle.addEventListener('click', () => setTerrainMenuOpen(!workspaceMenuOpen));
-
-  for (const id of ['terrainCenter', 'terrainReset']) {
-    const button = document.querySelector(`#${id}`);
-    if (button) workspaceMenu.append(button);
-  }
-  workspaceMenu.prepend(detailToggle);
-  terrainLayout.append(workspaceMenu);
-  terrainToolbar.append(workspaceMenuToggle);
-
-  const adjacent = document.createElement('div');
-  adjacent.id = 'terrainAdjacent';
-  adjacent.className = 'e27-adjacent';
-  const previousSibling = document.querySelector('#terrainSiblingPrevious');
-  const nextSibling = document.querySelector('#terrainSiblingNext');
-  if (previousSibling) { previousSibling.classList.add('e27-adjacent-card', 'previous'); adjacent.append(previousSibling); }
-  if (nextSibling) { nextSibling.classList.add('e27-adjacent-card', 'next'); adjacent.append(nextSibling); }
-  terrainLayout.append(adjacent);
-
-  const journeyBar = document.createElement('div');
-  journeyBar.id = 'terrainJourneyWindow';
-  journeyBar.className = 'e27-journey-window';
-  const journeyStatus = document.createElement('div');
-  journeyStatus.className = 'e27-journey-status';
-  const journeyRecent = document.createElement('div');
-  journeyRecent.id = 'terrainJourneyRecent';
-  journeyRecent.className = 'e27-journey-recent';
-  const fullJourneyToggle = createButton({
-    id: 'terrainFullJourneyToggle',
-    className: 'secondary-button e27-full-journey-toggle',
-    text: '↺',
-    actionRef: 'action.vessel.expand'
-  });
-  journeyBar.append(journeyStatus, journeyRecent, fullJourneyToggle);
-  terrainView.append(journeyBar);
-
-  const journeyDrawer = document.createElement('aside');
-  journeyDrawer.id = 'terrainJourneyDrawer';
-  journeyDrawer.className = 'e27-journey-drawer';
-  journeyDrawer.setAttribute('aria-hidden', 'true');
-  const drawerHeader = document.createElement('header');
-  drawerHeader.className = 'e27-drawer-head';
-  const drawerTitle = document.createElement('strong');
-  const drawerClose = createButton({ className: 'e27-close', text: '×', ariaLabel: app.t('guide.close') });
-  drawerHeader.append(drawerTitle, drawerClose);
-  const drawerList = document.createElement('div');
-  drawerList.id = 'terrainJourneyList';
-  drawerList.className = 'e27-journey-list';
-  journeyDrawer.append(drawerHeader, drawerList);
-  terrainLayout.append(journeyDrawer);
-  let journeyDrawerOpen = false;
-  const setJourneyDrawerOpen = (open) => {
-    journeyDrawerOpen = Boolean(open);
-    journeyDrawer.classList.toggle('is-open', journeyDrawerOpen);
-    journeyDrawer.setAttribute('aria-hidden', String(!journeyDrawerOpen));
-    fullJourneyToggle.setAttribute('aria-expanded', String(journeyDrawerOpen));
-    if (journeyDrawerOpen) settleVex();
-  };
-  fullJourneyToggle.addEventListener('click', () => setJourneyDrawerOpen(!journeyDrawerOpen));
-  drawerClose.addEventListener('click', () => setJourneyDrawerOpen(false));
-
-  function visitEvent(event) {
-    const patch = historicalFramePatch(event);
-    const nodeRef = patch.selectedNodeRef || event.elementRef || event.after?.screenRef || 'product.vexlife';
-    app.navigation.navigate(nodeRef, patch, 'action.context.open');
-    app.projectCurrentFrame();
-    setJourneyDrawerOpen(false);
-  }
-
-  function renderJourney() {
-    const full = app.navigation.fullJourney();
-    const currentFrame = app.navigation.semanticFrame();
-    const selectedNodeRef = currentFrame.selectedNodeRef || '—';
-    const trajectoryLabel = app.t('guide.trajectory', {
-      screenRef: currentFrame.screenRef,
-      selectedNodeRef,
-      steps: full.length
-    });
-    journeyStatus.textContent = trajectoryLabel;
-    drawerTitle.textContent = trajectoryLabel;
-    fullJourneyToggle.setAttribute('aria-label', trajectoryLabel);
-    fullJourneyToggle.textContent = `↺ ${full.length}`;
-
-    const window = journeyWindow(full);
-    journeyRecent.replaceChildren();
-    for (const event of window.entries) {
-      const button = createButton({ className: 'e27-journey-chip', text: labelJourneyEvent(event, app), actionRef: 'action.context.open' });
-      button.dataset.journeyRef = event.journeyRef;
-      button.title = `${event.actionRef} · ${event.journeyRef}`;
-      button.addEventListener('click', () => visitEvent(event));
-      journeyRecent.append(button);
-    }
-    if (window.entries.length === 0) {
-      const empty = document.createElement('span'); empty.className = 'e27-journey-empty'; empty.textContent = trajectoryLabel; journeyRecent.append(empty);
-    }
-
-    drawerList.replaceChildren();
-    for (const event of full) {
-      const button = createButton({ className: 'e27-history-entry', text: labelJourneyEvent(event, app), actionRef: 'action.context.open' });
-      const meta = document.createElement('small'); meta.textContent = `${event.actionRef} · ${event.journeyRef}`;
-      button.append(meta);
-      button.addEventListener('click', () => visitEvent(event));
-      drawerList.append(button);
-    }
-  }
-
-  function renderAdjacent() {
-    const selected = app.state.terrain?.selected;
-    const ordered = selected ? app.terrain.siblingRefs(selected) : [];
-    const index = ordered.indexOf(selected);
-    const labels = terrainLabelMap();
-    const pair = [
-      [previousSibling, index > 0 ? ordered[index - 1] : null, app.t('terrain.sibling.previous')],
-      [nextSibling, index >= 0 && index < ordered.length - 1 ? ordered[index + 1] : null, app.t('terrain.sibling.next')]
-    ];
-    for (const [button, ref, direction] of pair) {
-      if (!button) continue;
-      button.hidden = !ref;
-      button.setAttribute('aria-label', ref ? `${direction}: ${labels.get(ref) || ref}` : direction);
-      if (ref) {
-        const strong = document.createElement('strong'); strong.textContent = labels.get(ref) || ref;
-        const small = document.createElement('small'); small.textContent = direction;
-        button.replaceChildren(strong, small);
-      }
-    }
-  }
-
-  function renderState() {
-    const terrainActive = app.state.view === 'terrain';
-    shell.dataset.terrainActive = String(terrainActive);
-    if (!terrainActive) { setDetailOpen(false); setTerrainMenuOpen(false); setJourneyDrawerOpen(false); }
-    renderAdjacent();
-    renderJourney();
-    projectToggle.textContent = app.t('region.projects.label');
-    projectToggle.setAttribute('aria-label', app.t('project.rail.aria'));
-    detailToggle.textContent = app.t('terrain.details');
-    workspaceMenuToggle.setAttribute('aria-label', app.t('workspace.label'));
-    if (terrainActive) settleVex();
-  }
-
-  const originalNavigate = app.navigation.navigate.bind(app.navigation);
-  app.navigation.navigate = (...args) => {
-    const result = originalNavigate(...args);
-    queueMicrotask(renderState);
-    return result;
-  };
-  const originalBack = app.navigation.back.bind(app.navigation);
-  app.navigation.back = (...args) => {
-    const result = originalBack(...args);
-    queueMicrotask(renderState);
-    return result;
-  };
-
-  document.querySelector('#languageSelect')?.addEventListener('change', () => queueMicrotask(renderState));
-  globalThis.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    if (journeyDrawerOpen) { event.preventDefault(); setJourneyDrawerOpen(false); return; }
-    if (workspaceMenuOpen) { event.preventDefault(); setTerrainMenuOpen(false); return; }
-    if (detailOpen) { event.preventDefault(); setDetailOpen(false); return; }
-    if (workspaceOpen) { event.preventDefault(); setWorkspaceOpen(false); }
-  });
-
-  renderState();
-  return { renderState, setWorkspaceOpen, setDetailOpen, setJourneyDrawerOpen, setTerrainMenuOpen };
-}
-
-if (typeof document !== 'undefined') {
-  waitForApp().then((app) => {
-    globalThis.__VEXLIFE_E27_CONVERGENCE__ = attachE27TerrainConvergence(app);
-  }).catch((error) => console.error(error));
-}
-
+import { loadBrowserBundle } from './browser-bundle.js';
+import { createDemoData } from './demo-data.js';
+import { $, $$, compileInterfaceEntries, loadJson } from './dom.js';
+import { createNavigationController, historicalFramePatch, journeyWindow } from './navigation-controller.js';
+import { createChatController } from './chat-controller.js';
+import { createTerrainController } from './terrain-controller.js';
+import { createGuideController, GUIDE_INTENTS } from './guide-controller.js';
+const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = './e27-convergence.css'; style.dataset.presentationContract = 'contract.vexlife.e27.authoritative-root/v1'; document.head.append(style);
+const { blueprint, experience, designTokens, catalogs } = await loadBrowserBundle('../../../');
+const rootContract = experience.authoritativeRootDesignContract;
+if (rootContract?.contractRef !== 'contract.vexlife.e27.authoritative-root/v1' || rootContract?.defaultShellGrammar?.primaryStageScreenRef !== 'screen.vexlife.terrain' || rootContract?.defaultShellGrammar?.singleStageDefault !== true || rootContract?.defaultShellGrammar?.legacyCurrentBrowserPreservationDefault !== false) throw new Error('Stage B requires accepted E2.7 authoritative-root contract');
+const { projects, roles, channels, messages, state, createMessage, conversationKey } = createDemoData({ loadJson });
+state.view = 'terrain'; state.contextProjection = null; state.workspaceOpen = false; state.dataTruthClass = 'CURRENT_SYNTHETIC_REFERENCE';
+const elementByRef = new Map(compileInterfaceEntries(blueprint).map((entry) => [entry.ref, entry]));
+const t = (ref, params = {}) => { const template = catalogs[state.language]?.[ref] ?? catalogs.en?.[ref] ?? `[${ref}]`; return template.replace(/\{([A-Za-z0-9_]+)\}/g, (_, key) => String(params[key] ?? `{${key}}`)); };
+let chat; let terrain; let guide; let navigation; let detailOpen = false; let journeyOpen = false;
+function visibleVexName(){return t('vex.visible.name');}
+function replaceVexRoleLabels(text){let next=String(text??'');for(const key of ['companion','guide','root']){const label=roles[key]?.labelRef?t(roles[key].labelRef):roles[key]?.label;if(label)next=next.split(label).join(visibleVexName());}return next;}
+function projectVisibleVexIdentity(){const name=visibleVexName();for(const button of $$('#channelTabs [data-channel-ref]')){const channel=channels.find((candidate)=>candidate.channelRef===button.dataset.channelRef);if(!channel||channel.kind!=='DIRECT'||channel.roleKey==='victor')continue;const sourceRoleRef=roles[channel.roleKey]?.actorRef;button.dataset.sourceRoleRef=sourceRoleRef;button.textContent=name;button.title=sourceRoleRef;}const memberKeys=chat.currentChannel().memberKeys;[...$('#presence').children].forEach((span,index)=>{const key=memberKeys[index];if(key!=='victor'&&roles[key]?.actorRef){span.textContent=name;span.title=roles[key].actorRef;}});for(const article of $$('#messageFeed .message')){const header=article.querySelector('.message-header strong');if(header)header.textContent=replaceVexRoleLabels(header.textContent);}for(const selector of ['#composerAddress','#contextSummary']){const host=$(selector);if(!host)continue;for(const node of host.querySelectorAll('strong,span'))node.textContent=replaceVexRoleLabels(node.textContent);}}
+function setWorkspaceOpen(open){state.workspaceOpen=Boolean(open);$('#app').dataset.workspaceOpen=String(state.workspaceOpen);$('#projectRail').setAttribute('aria-hidden',String(!state.workspaceOpen));$('#workspaceToggle').setAttribute('aria-expanded',String(state.workspaceOpen));if(state.workspaceOpen)guide.avoidDeclaredControls();}
+function setDetailOpen(open){detailOpen=Boolean(open);$('#terrainDetailPanel').classList.toggle('is-open',detailOpen);$('#terrainDetailPanel').setAttribute('aria-hidden',String(!detailOpen));if(detailOpen)guide.avoidDeclaredControls();}
+function setJourneyOpen(open){journeyOpen=Boolean(open);$('#terrainJourneyDrawer').classList.toggle('is-open',journeyOpen);$('#terrainJourneyDrawer').setAttribute('aria-hidden',String(!journeyOpen));$('#terrainFullJourneyToggle').setAttribute('aria-expanded',String(journeyOpen));if(journeyOpen)guide.avoidDeclaredControls();}
+function labelEvent(event){const ref=event?.after?.selectedNodeRef||event?.elementRef||event?.after?.screenRef||event?.actionRef;const card=ref?document.querySelector(`.terrain-node[data-node-ref="${CSS.escape(ref)}"] h3`):null;return card?.textContent?.trim()||ref||'—';}
+function visitEvent(event){navigation.navigate(event?.after?.selectedNodeRef||event.elementRef,historicalFramePatch(event),'action.context.open');setJourneyOpen(false);}
+function renderJourney(){const full=navigation.fullJourney();const frame=navigation.semanticFrame();const summary=t('guide.trajectory',{screenRef:frame.screenRef,selectedNodeRef:frame.selectedNodeRef||'—',steps:full.length});$('#terrainJourneyStatus').textContent=summary;$('#terrainJourneyDrawerTitle').textContent=summary;$('#terrainFullJourneyToggle').textContent=`↺ ${full.length}`;const recentHost=$('#terrainJourneyRecent');recentHost.replaceChildren();for(const event of journeyWindow(full).entries){const button=document.createElement('button');button.type='button';button.className='journey-chip';button.textContent=labelEvent(event);button.addEventListener('click',()=>visitEvent(event));recentHost.append(button);}const list=$('#terrainJourneyList');list.replaceChildren();for(const event of full){const button=document.createElement('button');button.type='button';button.className='history-entry';button.textContent=labelEvent(event);button.addEventListener('click',()=>visitEvent(event));list.append(button);}}
+function renderAdjacent(){const selected=state.terrain?.selected;const siblings=selected?terrain.siblingRefs(selected):[];const index=siblings.indexOf(selected);$('#terrainSiblingPrevious').hidden=index<=0;$('#terrainSiblingNext').hidden=index<0||index>=siblings.length-1;}
+function renderHealth(){$('#technicalHealth').textContent=JSON.stringify({healthState:'ATTENTION',evidenceClass:'STATIC_REFERENCE_SYNTHETIC',dataTruthClass:state.dataTruthClass,presentationContractRef:rootContract.contractRef,primaryStageScreenRef:'screen.vexlife.terrain',contextProjection:state.contextProjection,platformRef:'platform.browser',repositoryReceipt:{state:'NOT_RUN',executed:false,currentness:'UNKNOWN'},currentScreenFrame:navigation.semanticFrame(),fullJourneyCount:navigation.fullJourney().length,rawPointerLogging:false,designTokenRef:designTokens.tokenSetRef},null,2);}
+function projectFrame(){state.view='terrain';$('#view-terrain').hidden=false;$('#view-chat').hidden=state.contextProjection!=='chat';$('#view-health').hidden=state.contextProjection!=='health';chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();terrain.render();renderAdjacent();renderJourney();renderHealth();guide.updateFrame();projectVisibleVexIdentity();if(state.contextProjection!=='chat')$('#channelCompatibility').open=false;if(state.contextProjection)setWorkspaceOpen(false);}
+navigation=createNavigationController({state,elementByRef,getProject:()=>chat?.currentProject(),getThread:()=>chat?.currentThread(),getChannel:()=>chat?.currentChannel(),onFrameChange:()=>queueMicrotask(()=>chat&&terrain&&guide&&projectFrame())});
+chat=createChatController({state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation});terrain=createTerrainController({state,blueprint,t,navigation});guide=createGuideController({state,t,navigation,elementByRef,chat});
+function applyLocalization(){document.documentElement.lang=state.language;$$('[data-i18n]').forEach((element)=>{element.textContent=t(element.dataset.i18n);});$$('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder);});$$('[data-i18n-aria-label]').forEach((element)=>{element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel));});$('#languageSelect').value=state.language;projectFrame();guide.renderMessages();}
+function openContext(context,nodeRef=`element.nav.${context}`){navigation.openContext(context,nodeRef);projectFrame();}
+function returnToTerrain(nodeRef='element.nav.terrain'){navigation.returnToPrimaryStage(nodeRef);setWorkspaceOpen(false);setDetailOpen(false);setJourneyOpen(false);projectFrame();}
+$$('[data-action="open-context"]').forEach((button)=>button.addEventListener('click',()=>openContext(button.dataset.context,button.dataset.nodeRef)));$$('[data-action="return-stage"]').forEach((button)=>button.addEventListener('click',()=>returnToTerrain(button.dataset.nodeRef)));$$('[data-close-context]').forEach((button)=>button.addEventListener('click',()=>returnToTerrain()));$('#workspaceToggle').addEventListener('click',()=>setWorkspaceOpen(!state.workspaceOpen));$('#workspaceClose').addEventListener('click',()=>setWorkspaceOpen(false));$('#projectList').addEventListener('click',()=>openContext('chat'));$('#channelTabs').addEventListener('click',()=>openContext('chat'));$('#terrainNodes').addEventListener('click',(event)=>{if(event.target.closest('.terrain-node')&&!event.target.closest('[data-collapse]'))setDetailOpen(true);});$('#terrainDetailClose').addEventListener('click',()=>setDetailOpen(false));$('#terrainFullJourneyToggle').addEventListener('click',()=>setJourneyOpen(!journeyOpen));$('#terrainJourneyClose').addEventListener('click',()=>setJourneyOpen(false));
+$('#languageSelect').addEventListener('change',(event)=>{state.language=event.target.value;localStorage.setItem('vexlife.language',state.language);applyLocalization();});$('#architectureButton').addEventListener('click',()=>{guide.setOpen(true);guide.askIntent(GUIDE_INTENTS.ARCHITECTURE);});$('.brand').addEventListener('click',()=>guide.summon());globalThis.addEventListener('popstate',()=>navigation.back());globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;if(journeyOpen)setJourneyOpen(false);else if(detailOpen)setDetailOpen(false);else if(state.contextProjection)returnToTerrain();else if(state.workspaceOpen)setWorkspaceOpen(false);});
+chat.renderProjectRail();chat.selectThread(projects[2],projects[2].threads[0],'element.thread.open-conversation',false);state.view='terrain';state.contextProjection=null;applyLocalization();guide.setOpen(state.guideOpen);guide.addMessage('guide',{contentRef:'guide.intro'});navigation.enableBrowserHistory();projectFrame();
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,terrain,guide,navigation,rootContract,t,projectFrame,projectVisibleVexIdentity,openContext,returnToTerrain,setWorkspaceOpen,setDetailOpen,setJourneyOpen};
+if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('../integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}
 // [VXG RealForever]

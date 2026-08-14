@@ -1,71 +1,75 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { journeyWindow, historicalFramePatch } from '../reference/browser/modules/e27-terrain-convergence.js';
+import { journeyWindow, historicalFramePatch, RECENT_JOURNEY_LIMIT } from '../reference/browser/modules/navigation-controller.js';
+import { ORDINARY_SCROLL_MAY_COMMIT_SEMANTIC_AUTO_ENTRY } from '../reference/browser/modules/terrain-controller.js';
 
 const browserRoot = new URL('../reference/browser/', import.meta.url);
-const css = fs.readFileSync(new URL('e27-convergence.css', browserRoot), 'utf8');
 const html = fs.readFileSync(new URL('index.html', browserRoot), 'utf8');
-const convergence = fs.readFileSync(new URL('modules/e27-terrain-convergence.js', browserRoot), 'utf8');
+const app = fs.readFileSync(new URL('app.js', browserRoot), 'utf8');
+const rootCss = fs.readFileSync(new URL('e27-convergence.css', browserRoot), 'utf8');
+const canonical = fs.readFileSync(new URL('modules/e27-terrain-convergence.js', browserRoot), 'utf8');
+const navigation = fs.readFileSync(new URL('modules/navigation-controller.js', browserRoot), 'utf8');
+const terrain = fs.readFileSync(new URL('modules/terrain-controller.js', browserRoot), 'utf8');
 const guide = fs.readFileSync(new URL('modules/guide-controller.js', browserRoot), 'utf8');
 
-test('journey window exposes at most five recent semantic events without truncating source', () => {
-  const events = Array.from({length:9}, (_, i) => ({ journeyRef:`journey.${i}` }));
+test('journey window keeps append-only source and exposes at most five recent events', () => {
+  const events = Array.from({length:9}, (_, index) => ({ journeyRef:`journey.${index}` }));
   const window = journeyWindow(events);
-  assert.equal(window.start, 4);
-  assert.equal(window.entries.length, 5);
-  assert.equal(window.total, 9);
-  assert.equal(events.length, 9);
+  assert.equal(RECENT_JOURNEY_LIMIT,5); assert.equal(window.start,4); assert.equal(window.entries.length,5); assert.equal(window.total,9); assert.equal(events.length,9);
 });
 
-test('historical journey visit derives a semantic frame patch without mutating the event', () => {
-  const event = { after:{ screenRef:'screen.vexlife.terrain', projectRef:'project.local-vex', threadRef:'thread.foundation', channelRef:'channel.root', selectedNodeRef:'terrain.node.x' } };
-  const before = structuredClone(event);
-  assert.deepEqual(historicalFramePatch(event), { view:'terrain', projectRef:'project.local-vex', threadRef:'thread.foundation', channelRef:'channel.root', selectedNodeRef:'terrain.node.x' });
-  assert.deepEqual(event, before);
+test('historical visit derives contextual projection without mutating history', () => {
+  const event={after:{primaryStageScreenRef:'screen.vexlife.terrain',screenRef:'screen.vexlife.chat',projectRef:'project.local-vex',threadRef:'thread.foundation',channelRef:'channel.root',selectedNodeRef:'terrain.node.x'}};
+  const before=structuredClone(event);
+  assert.deepEqual(historicalFramePatch(event),{contextProjection:'chat',projectRef:'project.local-vex',threadRef:'thread.foundation',channelRef:'channel.root',selectedNodeRef:'terrain.node.x'});
+  assert.deepEqual(event,before);
 });
 
-test('projection CSS removes permanent rail and detail-column canvas tax', () => {
-  assert.match(css, /grid-template-columns:minmax\(0,1fr\)/);
-  assert.match(css, /\.project-rail\{[\s\S]*position:fixed/);
-  assert.match(css, /\.e27-terrain-detail\{[\s\S]*position:absolute/);
-  assert.match(css, /\.e27-adjacent\{[\s\S]*position:absolute/);
-  assert.match(css, /\.e27-journey-drawer\{[\s\S]*position:absolute/);
-  assert.match(css, /prefers-reduced-motion:reduce/);
+test('Stage B is rooted in Terrain and does not preserve primary-view tab topology', () => {
+  assert.match(html,/data-presentation-contract="contract\.vexlife\.e27\.authoritative-root\/v1"/);
+  assert.match(html,/id="view-terrain"[^>]*data-primary-stage="true"/);
+  assert.match(html,/id="view-chat"[^>]*data-context-projection="chat"[^>]*hidden/);
+  assert.match(html,/id="view-health"[^>]*data-context-projection="health"[^>]*hidden/);
+  assert.match(html,/id="projectRail"[^>]*aria-hidden="true"/);
+  assert.match(html,/id="guideToggle"[^>]*hidden/);
+  assert.doesNotMatch(html,/selection\.primary-view/);
+  assert.match(navigation,/primaryStageScreenRef: 'screen\.vexlife\.terrain'/);
+  assert.match(navigation,/openContext/); assert.match(navigation,/returnToPrimaryStage/);
 });
 
-test('closed projections stay out of keyboard focus order and Reset cannot leave stale adjacent controls visible', () => {
-  assert.match(css, /\.e27-terrain-detail\{[\s\S]*visibility:hidden/);
-  assert.match(css, /\.e27-terrain-detail\.is-open\{[\s\S]*visibility:visible/);
-  assert.match(css, /\.e27-journey-drawer\{[\s\S]*visibility:hidden/);
-  assert.match(css, /\.e27-journey-drawer\.is-open\{[\s\S]*visibility:visible/);
-  assert.match(css, /terrain-layout:not\(:has\(\.terrain-node\.is-selected\)\) \.e27-adjacent-card\{visibility:hidden;pointer-events:none\}/);
+test('legacy filenames carry one canonical Stage-B authority, not a parallel convergence overlay', () => {
+  assert.match(app,/^\/\/ Stage B canonical browser entry/m);
+  assert.match(app,/import '\.\/modules\/e27-terrain-convergence\.js'/);
+  assert.doesNotMatch(app,/selectView|projectCurrentFrame|state\.view\s*=\s*'chat'/);
+  assert.match(canonical,/authoritativeRootDesignContract/);
+  assert.match(canonical,/legacyCurrentBrowserPreservationDefault/);
+  assert.doesNotMatch(canonical,/import .*app\.js/);
+  assert.match(rootCss,/CANONICAL_STAGE_B_ROOT_STYLES/);
+  assert.match(rootCss,/Authority: contract\.vexlife\.e27\.authoritative-root\/v1/);
+  assert.doesNotMatch(rootCss,/Current canonical state\/data\/controllers remain authoritative/);
 });
 
-test('browser loads the bounded E2.7 convergence layer after accepted app source', () => {
-  assert.match(html, /<link rel="stylesheet" href="\.\/e27-convergence\.css">/);
-  assert.match(html, /<script type="module" src="\.\/app\.js"><\/script>[\s\S]*<script type="module" src="\.\/modules\/e27-terrain-convergence\.js"><\/script>/);
-  assert.doesNotMatch(convergence, /app\.blueprint/);
-  assert.match(convergence, /navigation\.fullJourney\(\)/);
-  assert.match(convergence, /navigation\.navigate\(nodeRef, patch, 'action\.context\.open'\)/);
+test('canonical contextual surfaces do not consume Terrain and reuse ambient Vex obstruction ownership', () => {
+  assert.match(rootCss,/\.context-projection\{[\s\S]*position:absolute/);
+  assert.match(rootCss,/\.project-rail\{[\s\S]*position:fixed/);
+  assert.match(rootCss,/\.terrain-detail-drawer\{[\s\S]*position:absolute/);
+  assert.match(rootCss,/\.terrain-journey-drawer\{[\s\S]*position:absolute/);
+  for (const fragment of ['.terrain-journey-window','.terrain-adjacent-card:not([hidden])','.terrain-detail-drawer.is-open','.terrain-journey-drawer.is-open','.project-rail[aria-hidden="false"]','.context-projection:not([hidden])']) assert.ok(guide.includes(fragment),`ambient Vex obstruction owner missing ${fragment}`);
 });
 
-test('contextual overlays expose real aria controls and reuse accepted Guide obstruction owner', () => {
-  assert.match(convergence, /terrainDetail\.id = terrainDetail\.id \|\| 'terrainDetailPanel'/);
-  assert.match(convergence, /detailToggle\.setAttribute\('aria-controls', terrainDetail\.id\)/);
-  assert.match(convergence, /if \(nextOpen\) setTerrainMenuOpen\(false\);[\s\S]*setDetailOpen\(nextOpen\)/);
-  assert.match(convergence, /app\.guide\.avoidDeclaredControls\(\)/);
-  assert.match(convergence, /app\.guide\.persistGeometry\?\.\(\)/);
-  for (const fragment of ['e27-journey-window','e27-adjacent-card:not([hidden])','e27-terrain-detail.is-open','e27-journey-drawer.is-open','project-rail[aria-hidden="false"]']) {
-    assert.ok(guide.includes(fragment), `Guide obstruction owner missing ${fragment}`);
-  }
+test('semantic auto-entry is opt-in, thresholded and ordinary-scroll-safe', () => {
+  assert.equal(ORDINARY_SCROLL_MAY_COMMIT_SEMANTIC_AUTO_ENTRY,false);
+  for (const id of ['terrainAutoEntryEnabled','terrainAutoEntryVisibility','terrainAutoEntryConfidence','terrainAutoEntryStatus']) assert.match(html,new RegExp(`id="${id}"`));
+  assert.match(terrain,/visibilityThreshold/); assert.match(terrain,/confidenceThreshold/); assert.match(terrain,/OPTED_OUT/); assert.match(terrain,/ORDINARY_SCROLL_NEVER_COMMITS/);
+  assert.match(terrain,/allowedSources = new Set\(\['EXPLICIT_SELECTION', 'EXPLICIT_CENTER', 'EXPLICIT_SIBLING'\]\)/);
 });
 
-test('convergence remains projection-only and never imports mock VexOrg product truth', () => {
-  assert.doesNotMatch(`${convergence}\n${css}\n${html}`, /VexOrg Demo Company|Maya Chen/);
-  assert.match(convergence, /state\.guideOpen/);
-  assert.match(convergence, /terrain\.siblingRefs/);
-  assert.doesNotMatch(convergence, /new TerrainLayout|canonicalParent|parentRef\s*=/);
+test('one visible ambient Vex carries source attribution without synthetic organization truth', () => {
+  assert.match(html,/id="vexSummon"[^>]*data-node-ref="element\.vex\.summon"/);
+  assert.match(html,/data-i18n="vex\.visible\.name">Vex</);
+  assert.match(canonical,/projectVisibleVexIdentity/); assert.match(canonical,/sourceRoleRef/);
+  assert.doesNotMatch(`${html}\n${app}\n${canonical}\n${terrain}\n${rootCss}`,/VexOrg Demo Company|Maya Chen/);
 });
 
 // [VXG RealForever]
