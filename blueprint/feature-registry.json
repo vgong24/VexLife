@@ -1487,19 +1487,21 @@
     },
     {
       "featureRef": "feature.vexlife.companion-navigation",
-      "purpose": "Register the source-only physical companion-navigation contract and deterministic VNAV-00 proof without equating semantic screen navigation with GPS, activating a map engine, or granting location, message-send, network, driving, retention, Home or Memory effects.",
-      "status": "PREPARED",
+      "purpose": "Compose accepted FullNav currentness with separately authenticated/authorized private Home routing into a fail-closed HOME_ROUTED physical-guidance consumer without granting standing Home authority, remote Home write, vehicle control, GPS-history, Memory or publication effects.",
+      "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.process-plans",
         "state.context",
-        "process.vexlife.companion-navigation.vnav00-compose"
+        "process.vexlife.companion-navigation.vnav00-compose",
+        "bridge.vexlife.personal-home.001"
       ],
       "stateRefs": [
         "state.process-plans",
         "state.context"
       ],
       "actionRefs": [
-        "action.context.open"
+        "action.context.open",
+        "action.companion-navigation.home-routed-guidance"
       ],
       "permissionRefs": [
         "permission.none"
@@ -1508,7 +1510,8 @@
         "process.vexlife.companion-navigation.vnav00-compose"
       ],
       "moduleRefs": [
-        "module.vexlife.core.process-factory"
+        "module.vexlife.core.companion-navigation",
+        "module.vexlife.core.home-bridge"
       ],
       "localizationRefs": [],
       "testRefs": [
@@ -1528,24 +1531,26 @@
         "lens.vexlife.reuse-and-simplification",
         "lens.vexlife.recovery-migration-continuity",
         "lens.vexlife.visibility-terrain-health",
-        "lens.vexlife.assurance-and-adversarial"
+        "lens.vexlife.assurance-and-adversarial",
+        "lens.vexlife.concurrency-and-relay"
       ],
-      "resourceClass": "DETERMINISTIC_SYNTHETIC_LOCAL_GRAPH_ONLY",
-      "dataClass": "SYNTHETIC_CONTENT_ABSENT_NAVIGATION_RECEIPTS",
-      "effectClass": "READ_PROJECTION",
-      "concurrencyClass": "NONE",
+      "resourceClass": "CURRENTNESS_GATED_HOME_ROUTED_NAVIGATION",
+      "dataClass": "CONTENT_ABSENT_PRIVATE_HOME_NAVIGATION_REFS",
+      "effectClass": "HOME_ROUTED_NAVIGATION_GUIDANCE_NO_HOME_WRITE",
+      "concurrencyClass": "LEASE_AND_HOME_POINTER_CURRENTNESS_BOUND",
       "rollbackRouteRef": "recovery.vnav00.recompose-from-current-source",
       "projectionRefs": [
-        "projection.vexlife.companion-navigation.vnav00.synthetic-receipt"
+        "projection.vexlife.companion-navigation.vnav00.synthetic-receipt",
+        "projection.vexlife.companion-navigation.home-routed"
       ],
       "knownGaps": [
         "real GPS/location observation remains held",
-        "MapLibre/Valhalla/PMTiles/OSM runtime dependency qualification remains a later successor",
         "microphone and spoken full-duplex transport remain held",
         "human message send remains separately authorized through addressed-conversation transport",
         "real route/network/driving/vehicle-control effects remain held",
         "precise trip/search/location retention, Home and Memory mutation remain held",
-        "native platform and Android adoption remain held"
+        "native platform and Android adoption remain held",
+        "HOME_ROUTED remains executable only while external FullNav, graph/data, private Home route, authentication, authorization and lease currentness are all supplied and current"
       ]
     }
   ]
