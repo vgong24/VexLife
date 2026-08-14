@@ -6,6 +6,7 @@ const selectedMessageList = (app) => app.messages.get(`${app.state.projectRef}::
 const overlaps = (left, right) => !(left.right <= right.left || left.left >= right.right || left.bottom <= right.top || left.top >= right.bottom);
 const worldRect = ({ left, top, width, height }) => ({ left:left-width/2, right:left+width/2, top:top-height/2, bottom:top+height/2 });
 const pointOnBoundary = (rect, x, y, epsilon=1.1) => x >= rect.left-epsilon && x <= rect.right+epsilon && y >= rect.top-epsilon && y <= rect.bottom+epsilon && [Math.abs(x-rect.left),Math.abs(x-rect.right),Math.abs(y-rect.top),Math.abs(y-rect.bottom)].some((distance)=>distance<=epsilon);
+const renderedPixelClose = (actual, expected, epsilon=.02) => Math.abs(actual-expected) <= epsilon;
 const geometryIdentity = (snapshot) => JSON.stringify({ current:snapshot.current, nodes:snapshot.nodes.map(({ ref,role,left,top,width,height,localOffset })=>({ref,role,left,top,width,height,localOffset})), edges:snapshot.edges, projectionMode:snapshot.projectionMode, manualOverrideRef:snapshot.manualOverrideRef });
 const assertSettledGeometry = (snapshot, label) => { const rects=[worldRect(snapshot.current),...snapshot.nodes.map(worldRect)]; for(let i=0;i<rects.length;i++) for(let j=i+1;j<rects.length;j++) assert(!overlaps(rects[i],rects[j]), `${label} settled geometry overlap ${i}/${j}`); for(const edge of snapshot.edges){const node=snapshot.nodes.find((candidate)=>candidate.ref===edge.ref);assert(node,`${label} edge missing node ${edge.ref}`);assert(pointOnBoundary(worldRect(snapshot.current),edge.x1,edge.y1),`${label} edge ${edge.ref} does not leave actual current geometry`);assert(pointOnBoundary(worldRect(node),edge.x2,edge.y2),`${label} edge ${edge.ref} does not terminate on actual node geometry`);} };
 
@@ -60,13 +61,13 @@ export async function runBrowserIntegration() {
 
     const journeyBeforePin = app.navigation.fullJourney().length, currentBeforePin = app.terrain.currentRef();
     app.state.terrain.localOffsets[peripheral.ref]={x:34,y:-20}; app.terrain.render(false); const offsetGeometry=app.terrain.geometrySnapshot(),offsetNode=offsetGeometry.nodes.find((node)=>node.ref===peripheral.ref);
-    assert(Math.abs(offsetNode.left-(peripheral.left+34))<.001 && Math.abs(offsetNode.top-(peripheral.top-20))<.001, 'P12 existing local offset is not truthfully composed over adaptive geometry');
+    assert(offsetNode.localOffset.x===34 && offsetNode.localOffset.y===-20 && renderedPixelClose(offsetNode.left,peripheral.left+34) && renderedPixelClose(offsetNode.top,peripheral.top-20), 'P12 existing local offset is not truthfully composed over adaptive geometry');
     assert(app.terrain.toggleWorkspace()===true, 'P09 projection workspace did not enter explicit human-control mode');
     const pinControl=document.querySelector(`[data-terrain-ref="${peripheral.ref}"]`); pinControl.click();
     const pinned = app.terrain.geometrySnapshot(), pinnedNode = pinned.nodes.find((node)=>node.ref===peripheral.ref);
     assert(pinned.manualOverrideRef===peripheral.ref && pinnedNode?.role==='MANUAL_OVERRIDE' && pinnedNode.manualOverride===true, 'P09 manual override did not outrank adaptation');
     assert(pinnedNode.width > peripheral.width, 'P09 manual override did not produce stronger node geometry');
-    assert(Math.abs(pinnedNode.left-(peripheral.left+34))<.001 && Math.abs(pinnedNode.top-(peripheral.top-20))<.001, 'P12 local offset stopped being truthful after manual override');
+    assert(pinnedNode.localOffset.x===34 && pinnedNode.localOffset.y===-20 && renderedPixelClose(pinnedNode.left,peripheral.left+34) && renderedPixelClose(pinnedNode.top,peripheral.top-20), 'P12 local offset stopped being truthful after manual override');
     assert(app.navigation.fullJourney().length===journeyBeforePin && app.terrain.currentRef()===currentBeforePin, 'P12 manual geometry override changed semantic refs or journey');
     assert(pinControl.dataset.manualOverride==='true' || document.querySelector(`[data-terrain-ref="${peripheral.ref}"]`).dataset.manualOverride==='true', 'P09 pinned state is not visibly distinguishable in rendered node state');
     const journeyBeforeReset=app.navigation.fullJourney().length; app.terrain.reset(); const resetGeometry=app.terrain.geometrySnapshot();
