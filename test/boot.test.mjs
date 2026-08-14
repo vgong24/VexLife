@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildBootstrapPlan, applyBootstrapPlan, HOME_DIRECTORIES } from '../src/core/boot.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('bootstrap dry run is cross-platform descriptive and writes nothing', () => {
   const root = path.join(os.tmpdir(), `vexlife-dry-${Date.now()}`);
@@ -36,6 +39,71 @@ test('bootstrap creates a distinct device lineage and refuses to overwrite exist
   assert.equal(second.existing, true);
   assert.equal(second.reason, 'EXISTING_HOME_REQUIRES_MIGRATION_PLAN');
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('W6 Windows launcher exposes only start and uninstall-preserve lifecycle modes', () => {
+  const script = fs.readFileSync(path.join(ROOT, 'start-vexlife.ps1'), 'utf8');
+  assert.match(script, /ValidateSet\("start", "uninstall-preserve"\)/u);
+  assert.match(script, /\[string\]\$Operation = "start"/u);
+  assert.match(script, /if \(\$Operation -eq "uninstall-preserve"\) \{\s*Invoke-UninstallPreserveContinuity\s*\}/u);
+  assert.ok(
+    script.indexOf('Invoke-UninstallPreserveContinuity') < script.indexOf('$ArgsList = @("$Root/scripts/bootstrap.mjs"'),
+    'uninstall-preserve must branch before bootstrap/start'
+  );
+  assert.equal(/ValidateSet\([^)]*remove-local-data/iu.test(script), false);
+});
+
+test('W6 uninstall-preserve is bounded to exact Frontdoor process and setup-owned runtime residue', () => {
+  const script = fs.readFileSync(path.join(ROOT, 'start-vexlife.ps1'), 'utf8');
+  assert.match(script, /Read-InstallReceiptMachineBlock/u);
+  assert.match(script, /machine\.vexHome\.path/u);
+  assert.match(script, /machine\.repo\.root/u);
+  assert.match(script, /Get-CimInstance Win32_Process/u);
+  assert.match(script, /commandLine\.IndexOf\(\$serverScript/u);
+  assert.match(script, /Stop-Process -Id \$serverPid/u);
+  assert.match(script, /runtime\/serve-browser\.log/u);
+  assert.match(script, /runtime\/serve-browser\.err\.log/u);
+  assert.equal(/Remove-Item[^\n]*(?:\$homeRoot|\$Home)[^\n]*-Recurse/iu.test(script), false);
+  assert.equal(/Remove-Item[^\n]*(?:models|conversations|context|recovery|memory|score)/iu.test(script), false);
+});
+
+test('W6 uninstall-preserve proves continuity fingerprints and denies destructive authority', () => {
+  const script = fs.readFileSync(path.join(ROOT, 'start-vexlife.ps1'), 'utf8');
+  for (const required of [
+    'UNINSTALL_PRESERVE_CONTINUITY',
+    'ALREADY_UNINSTALLED_PRESERVE_CONTINUITY',
+    'protectedFingerprintBefore',
+    'protectedFingerprintAfter',
+    'identitySha256Before',
+    'identitySha256After',
+    'conversationHeads',
+    'continuityPreserved = $continuityPreserved',
+    'localDataDeleted = $false',
+    'MemoryPreserved = $true',
+    'recoveryMaterialPreserved = $true',
+    'modelArtifactsPreserved = $true',
+    'destructiveLocalDataRemovalAvailable = $false',
+    'HomeDeletionAuthority = $false',
+    'MemoryDeletionAuthority = $false',
+    'modelArtifactRemoval = $false',
+    'uninstallReceiptGrantsDestructiveAuthority = $false'
+  ]) assert.ok(script.includes(required), `missing W6 boundary: ${required}`);
+  assert.match(script, /ReparsePoint/u);
+  assert.match(script, /UNINSTALL_RUNTIME_REMOVED_CONTINUITY_MISMATCH/u);
+});
+
+test('ONB preservation stage binds the executable W6 route without becoming an effect itself', () => {
+  const doc = fs.readFileSync(path.join(ROOT, 'docs/HUMAN-ONBOARDING-GUIDED-LOCAL-ESTABLISHMENT.md'), 'utf8');
+  assert.match(doc, /UNDERSTAND_UNINSTALL_AND_PRESERVATION/u);
+  assert.match(doc, /effectClass=DECLARATIVE_NO_EFFECT/u);
+  assert.match(doc, /start-vexlife\.ps1 -Operation uninstall-preserve -Home/u);
+  assert.match(doc, /route\.vexlife\.windows\.uninstall-preserve-continuity\.001/u);
+  assert.match(doc, /STOP_SERVER != UNINSTALL_PRODUCT/u);
+  assert.match(doc, /UNINSTALL_PRODUCT != DELETE_HOME/u);
+  assert.match(doc, /REMOVE_RUNTIME != DELETE_HOME/u);
+  assert.match(doc, /REMOVE_MODEL_ARTIFACT != DELETE_HOME/u);
+  assert.match(doc, /UNINSTALL_RECEIPT != DESTRUCTIVE_AUTHORITY/u);
+  assert.match(doc, /UNINSTALL_AND_REMOVE_LOCAL_DATA[^\n]*not reachable/iu);
 });
 
 // [VXG RealForever]
