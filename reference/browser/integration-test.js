@@ -4,10 +4,14 @@ const click = (selector) => { const element = document.querySelector(selector); 
 const selectLanguage = (language) => { const select = document.querySelector('#languageSelect'); select.value = language; select.dispatchEvent(new Event('change', { bubbles: true })); };
 const selectedMessageList = (app) => app.messages.get(`${app.state.projectRef}::${app.state.threadRef}::${app.state.channelRef}`);
 const overlaps = (left, right) => !(left.right <= right.left || left.left >= right.right || left.bottom <= right.top || left.top >= right.bottom);
+const worldRect = ({ left, top, width, height }) => ({ left:left-width/2, right:left+width/2, top:top-height/2, bottom:top+height/2 });
+const pointOnBoundary = (rect, x, y, epsilon=1.1) => x >= rect.left-epsilon && x <= rect.right+epsilon && y >= rect.top-epsilon && y <= rect.bottom+epsilon && [Math.abs(x-rect.left),Math.abs(x-rect.right),Math.abs(y-rect.top),Math.abs(y-rect.bottom)].some((distance)=>distance<=epsilon);
+const geometryIdentity = (snapshot) => JSON.stringify({ current:snapshot.current, nodes:snapshot.nodes.map(({ ref,role,left,top,width,height,localOffset })=>({ref,role,left,top,width,height,localOffset})), edges:snapshot.edges, projectionMode:snapshot.projectionMode, manualOverrideRef:snapshot.manualOverrideRef });
+const assertSettledGeometry = (snapshot, label) => { const rects=[worldRect(snapshot.current),...snapshot.nodes.map(worldRect)]; for(let i=0;i<rects.length;i++) for(let j=i+1;j<rects.length;j++) assert(!overlaps(rects[i],rects[j]), `${label} settled geometry overlap ${i}/${j}`); for(const edge of snapshot.edges){const node=snapshot.nodes.find((candidate)=>candidate.ref===edge.ref);assert(node,`${label} edge missing node ${edge.ref}`);assert(pointOnBoundary(worldRect(snapshot.current),edge.x1,edge.y1),`${label} edge ${edge.ref} does not leave actual current geometry`);assert(pointOnBoundary(worldRect(node),edge.x2,edge.y2),`${label} edge ${edge.ref} does not terminate on actual node geometry`);} };
 
 export async function runBrowserIntegration() {
   const host = document.createElement('pre'); host.id = 'integrationReceipt'; host.dataset.state = 'RUNNING'; document.body.append(host);
-  const app = globalThis.__VEXLIFE_APP__; const checks = [];
+  const app = globalThis.__VEXLIFE_APP__; const checks = []; let e28Poc01 = null;
   try {
     assert(app.rootContract?.contractRef === 'contract.vexlife.e27.authoritative-root/v1', 'D01 authoritative E2.7 contract missing');
     assert(document.querySelector('.e27-appbar') && document.querySelector('.e27-terrain') && document.querySelector('.e27-world') && document.querySelector('.e27-focus'), 'D01 direct-root body missing');
@@ -38,6 +42,57 @@ export async function runBrowserIntegration() {
     assert(protectedTargets.every((node) => !overlaps(vexRect, node.getBoundingClientRect())), 'D05 ambient Vex obscures first-render Terrain content');
     checks.push('D05 one visible Vex starts ambient/minimized without obscuring Terrain');
 
+    const canonical = app.terrain.geometrySnapshot();
+    assert(canonical.current.role === 'CURRENT_CONTEXT', 'P02 current context geometry role missing');
+    const near = canonical.nodes.find((node)=>node.role === 'NEAR_CONTEXT');
+    const peripheral = canonical.nodes.find((node)=>node.role === 'PERIPHERAL_CONTEXT');
+    assert(near && peripheral, 'P02 accepted root context must expose both near and peripheral comparison nodes');
+    assert(canonical.current.width > near.width && near.width > peripheral.width, 'P02 adaptive geometry strength ordering failed');
+    assertSettledGeometry(canonical,'P04/P05 fan');
+    const projectionProofs={fan:canonical};
+    for(const mode of ['rings','carousel','fan']){app.terrain.setProjectionMode(mode);const projection=app.terrain.geometrySnapshot();assertSettledGeometry(projection,`P04/P05 ${mode}`);projectionProofs[mode]=projection;}
+    assert(geometryIdentity(projectionProofs.fan)===geometryIdentity(canonical),'P03 returning to fan did not restore deterministic canonical geometry');
+    const beforeEquivalentJourney = app.navigation.fullJourney().length; app.terrain.render(false); const equivalent = app.terrain.geometrySnapshot();
+    assert(geometryIdentity(canonical) === geometryIdentity(equivalent), 'P03 equivalent semantic state produced different geometry');
+    assert(app.navigation.fullJourney().length === beforeEquivalentJourney, 'P12 adaptive rerender changed semantic journey');
+    assert(document.querySelector('#terrainFocus').textContent.includes('Center is current semantic context.'), 'P06 current context emphasis is not explicit');
+    checks.push('P02-P06 adaptive geometry is ordered, deterministic, overlap-free, edge-true, and unmistakably current');
+
+    const journeyBeforePin = app.navigation.fullJourney().length, currentBeforePin = app.terrain.currentRef();
+    app.state.terrain.localOffsets[peripheral.ref]={x:34,y:-20}; app.terrain.render(false); const offsetGeometry=app.terrain.geometrySnapshot(),offsetNode=offsetGeometry.nodes.find((node)=>node.ref===peripheral.ref);
+    assert(Math.abs(offsetNode.left-(peripheral.left+34))<.001 && Math.abs(offsetNode.top-(peripheral.top-20))<.001, 'P12 existing local offset is not truthfully composed over adaptive geometry');
+    assert(app.terrain.toggleWorkspace()===true, 'P09 projection workspace did not enter explicit human-control mode');
+    const pinControl=document.querySelector(`[data-terrain-ref="${peripheral.ref}"]`); pinControl.click();
+    const pinned = app.terrain.geometrySnapshot(), pinnedNode = pinned.nodes.find((node)=>node.ref===peripheral.ref);
+    assert(pinned.manualOverrideRef===peripheral.ref && pinnedNode?.role==='MANUAL_OVERRIDE' && pinnedNode.manualOverride===true, 'P09 manual override did not outrank adaptation');
+    assert(pinnedNode.width > peripheral.width, 'P09 manual override did not produce stronger node geometry');
+    assert(Math.abs(pinnedNode.left-(peripheral.left+34))<.001 && Math.abs(pinnedNode.top-(peripheral.top-20))<.001, 'P12 local offset stopped being truthful after manual override');
+    assert(app.navigation.fullJourney().length===journeyBeforePin && app.terrain.currentRef()===currentBeforePin, 'P12 manual geometry override changed semantic refs or journey');
+    assert(pinControl.dataset.manualOverride==='true' || document.querySelector(`[data-terrain-ref="${peripheral.ref}"]`).dataset.manualOverride==='true', 'P09 pinned state is not visibly distinguishable in rendered node state');
+    const journeyBeforeReset=app.navigation.fullJourney().length; app.terrain.reset(); const resetGeometry=app.terrain.geometrySnapshot();
+    assert(resetGeometry.manualOverrideRef===null && Object.keys(app.state.terrain.localOffsets).length===0, 'P10 reset did not clear bounded manual geometry state');
+    assert(geometryIdentity(resetGeometry)===geometryIdentity(canonical), 'P10 reset did not restore canonical adaptive choreography');
+    assert(app.navigation.fullJourney().length===journeyBeforeReset+1 && app.navigation.fullJourney().at(-1).actionRef==='action.terrain.layout.reset', 'P12 reset changed canonical journey action semantics');
+    checks.push('P09-P12 bounded manual override wins, local offset stays truthful, reset recovers canonical choreography, semantic refs stay stable');
+
+    const realMatchMedia=globalThis.matchMedia;
+    globalThis.matchMedia=(query)=>query.includes('prefers-reduced-motion')?{matches:true,media:query,onchange:null,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){},dispatchEvent(){return true}}:realMatchMedia(query);
+    app.terrain.render(true);
+    assert(document.querySelector('#terrainFocus').style.transition==='none' && [...document.querySelectorAll('.e27-node')].every((node)=>node.style.transition==='none'), 'P07 reduced-motion projection still depends on geometry animation');
+    const reducedSnapshot=app.terrain.geometrySnapshot(); assert(reducedSnapshot.current.role==='CURRENT_CONTEXT' && reducedSnapshot.nodes.length===rootChildren.length, 'P07 reduced-motion state lost comprehensible geometry');
+    globalThis.matchMedia=realMatchMedia; app.terrain.render(false);
+    checks.push('P07 reduced-motion removes adaptive geometry animation without removing spatial meaning');
+
+    const mobileFrame=document.createElement('iframe'); mobileFrame.style.cssText='position:fixed;left:-10000px;top:0;width:390px;height:844px;border:0'; const mobileUrl=new URL(location.href); mobileUrl.searchParams.delete('integration'); mobileFrame.src=mobileUrl.href; await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('P15 mobile frame timed out')),5000);mobileFrame.onload=()=>{clearTimeout(timeout);resolve()};document.body.append(mobileFrame)}); await delay(50);
+    const mobileWindow=mobileFrame.contentWindow,mobileDocument=mobileFrame.contentDocument,mobileTerrain=mobileDocument.querySelector('#view-terrain'),mobileFocus=mobileDocument.querySelector('#terrainFocus'),mobileVex=mobileDocument.querySelector('#guideWindow');
+    assert(mobileWindow.innerWidth<=390 && mobileDocument.documentElement.scrollWidth<=mobileWindow.innerWidth+1, 'P15 mobile first render introduces horizontal document overflow');
+    assert(mobileFocus?.dataset.adaptiveGeometry==='CURRENT_CONTEXT' && mobileDocument.querySelectorAll('.e27-node').length===rootChildren.length, 'P15 mobile first render lost accepted Terrain context/topology');
+    assert(mobileVex?.classList.contains('is-minimized'), 'P15 mobile first-render Vex no longer starts ambient/minimized');
+    const mobileTerrainRect=mobileTerrain.getBoundingClientRect(),mobileFocusRect=mobileFocus.getBoundingClientRect(); assert(mobileFocusRect.right>mobileTerrainRect.left && mobileFocusRect.left<mobileTerrainRect.right && mobileFocusRect.bottom>mobileTerrainRect.top && mobileFocusRect.top<mobileTerrainRect.bottom, 'P15 current context is not visible in mobile Terrain viewport');
+    const mobileEvidence={viewport:{width:mobileWindow.innerWidth,height:mobileWindow.innerHeight},documentScrollWidth:mobileDocument.documentElement.scrollWidth,currentRole:mobileFocus.dataset.adaptiveGeometry,nodeCount:mobileDocument.querySelectorAll('.e27-node').length,vexAmbient:mobileVex.classList.contains('is-minimized')}; mobileFrame.remove();
+    checks.push('P15 accepted E2.7 mobile first-render Terrain usability remains present at a real 390px Chromium browsing context');
+    e28Poc01={schemaVersion:'vexlife.e28-poc01.browser-proof/v1',semanticContextRef:rootRef,canonical,projectionProofs,offset:offsetGeometry,pinned,recovered:resetGeometry,reducedMotion:reducedSnapshot,mobile:mobileEvidence};
+
     app.openContext('chat'); await delay(0);
     assert(!document.querySelector('#contextSurface').hidden && !document.querySelector('#view-chat').hidden, 'D06 chat contextual surface did not open');
     assert(document.querySelector('.e27-terrain'), 'D06 chat replaced Terrain body');
@@ -58,10 +113,10 @@ export async function runBrowserIntegration() {
     assert(!document.querySelector('#guideWindow').hidden && document.querySelector('#guideWindow').textContent.includes(app.t('vex.visible.name')), 'D12 ambient Vex not visible');
     checks.push('D11 localization remains stable','D12 one visible Vex occupies the E2.7 ambient vessel');
 
-    const result = { schemaVersion:'vexlife.e27-direct-root-browser-integration/v1', state:'PASS', checks, presentationFoundation:'EXACT_E2_7_ROOT_BODY', currentNodeRef:app.terrain.currentRef(), currentFrame:app.navigation.semanticFrame(), initialJourneyCount:initialJourney.length, initialVexState:'AMBIENT_MINIMIZED' };
+    const result = { schemaVersion:'vexlife.e27-direct-root-browser-integration/v1', state:'PASS', checks, presentationFoundation:'EXACT_E2_7_ROOT_BODY', currentNodeRef:app.terrain.currentRef(), currentFrame:app.navigation.semanticFrame(), initialJourneyCount:initialJourney.length, initialVexState:'AMBIENT_MINIMIZED', e28Poc01 };
     host.dataset.state='PASS'; host.textContent=JSON.stringify(result,null,2); globalThis.__VEXLIFE_INTEGRATION_RESULT__=result; return result;
   } catch (error) {
-    const result={schemaVersion:'vexlife.e27-direct-root-browser-integration/v1',state:'FAIL',error:error instanceof Error?error.message:String(error),checks};host.dataset.state='FAIL';host.textContent=JSON.stringify(result,null,2);globalThis.__VEXLIFE_INTEGRATION_RESULT__=result;throw error;
+    const result={schemaVersion:'vexlife.e27-direct-root-browser-integration/v1',state:'FAIL',error:error instanceof Error?error.message:String(error),checks,e28Poc01};host.dataset.state='FAIL';host.textContent=JSON.stringify(result,null,2);globalThis.__VEXLIFE_INTEGRATION_RESULT__=result;throw error;
   }
 }
 
