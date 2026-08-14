@@ -130,8 +130,8 @@
     {
       "path": "blueprint/capability-registry.json",
       "mode": "100644",
-      "bytes": 7654,
-      "sha256": "32bbd35fc40fcd432e128987a28c3a9208107f48bbbf148e3acb58293594dc62"
+      "bytes": 8523,
+      "sha256": "ebec30cf8304edd83a31a6c6ce6c75a45f8cba10699a3a8cb04bcd2f9060ee84"
     },
     {
       "path": "blueprint/concern-watch-registry.json",
