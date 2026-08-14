@@ -1,3 +1,5 @@
+import { evaluateRemoteRequest } from './home-bridge.mjs';
+
 const REQUIRED_FEATURE_REF = 'feature.vexlife.companion-navigation';
 const REQUIRED_CONVERSATION_REF = 'feature.vexlife.addressed-conversation';
 
@@ -336,5 +338,165 @@ export const VNAV00_CONTRACT = Object.freeze({
   locationRetention: false,
   memoryMutation: false
 });
+
+export const HOME_ROUTED_NAVIGATION_ACTION_REF = 'action.companion-navigation.home-routed-guidance';
+export const COMPANION_NAVIGATION_CAPABILITY_REF = 'capability.vexlife.companion-navigation';
+
+const HOME_ROUTED_SCHEMA = 'vexlife.companion-navigation.home-routed/v1';
+
+function homeRoutedTruth() {
+  return Object.freeze({
+    homeRoutedEqualsStandingHomeAuthority: false,
+    routeGuidanceIsVehicleControl: false,
+    gpsHistoryAuthorityGranted: false,
+    memoryAuthorityGranted: false,
+    remoteHomeWriteGranted: false,
+    publicationAuthorityGranted: false
+  });
+}
+
+function homeRoutedUnavailable(reason, details = {}) {
+  return {
+    schemaVersion: HOME_ROUTED_SCHEMA,
+    featureRef: REQUIRED_FEATURE_REF,
+    actionRef: HOME_ROUTED_NAVIGATION_ACTION_REF,
+    state: 'HOME_ROUTED_UNAVAILABLE',
+    reason,
+    effectiveCapabilityRefs: [],
+    canonicalWriter: null,
+    remoteWriterGranted: false,
+    standingHomeAuthority: false,
+    details,
+    truth: homeRoutedTruth()
+  };
+}
+
+function homeRoutedClock(value) {
+  const parsed = typeof value === 'number' ? value : Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function evaluateHomeRoutedCompanionNavigation({
+  request,
+  membership,
+  lease,
+  homeAccess,
+  privateRoute,
+  fullNav,
+  now,
+  currentRevocationGeneration,
+  roleCapabilityRefs = [],
+  projectCapabilityRefs = [],
+  resourceCapabilityRefs = [],
+  rawModelEndpointExposed = false
+} = {}) {
+  const clock = homeRoutedClock(now);
+  if (clock === null) return homeRoutedUnavailable('CLOCK_INVALID');
+  if (!request
+      || request.actionRef !== HOME_ROUTED_NAVIGATION_ACTION_REF
+      || request.deviceRef !== membership?.deviceRef) {
+    return homeRoutedUnavailable('REQUEST_BINDING_INVALID');
+  }
+
+  if (fullNav?.runtimeQualified !== true) return homeRoutedUnavailable('FULL_NAV_RUNTIME_NOT_QUALIFIED');
+  if (fullNav.runtimeCurrentness !== 'CURRENT') return homeRoutedUnavailable('FULL_NAV_RUNTIME_STALE');
+  if (fullNav.graphCurrentness !== 'CURRENT') return homeRoutedUnavailable('ROUTING_GRAPH_STALE');
+  if (fullNav.dataCurrentness !== 'CURRENT') return homeRoutedUnavailable('MAP_DATA_STALE');
+  if (!fullNav.runtimeQualificationRef
+      || !fullNav.graphQualificationRef
+      || !fullNav.graphFingerprint
+      || !fullNav.regionRef) {
+    return homeRoutedUnavailable('FULL_NAV_QUALIFICATION_BINDING_INCOMPLETE');
+  }
+
+  if (privateRoute?.currentness !== 'CURRENT_ACCEPTED'
+      || privateRoute.routeState !== 'REMOTE_CANDIDATE'
+      || privateRoute.gatewayState !== 'READY') {
+    return homeRoutedUnavailable('PRIVATE_HOME_ROUTE_OR_GATEWAY_STALE');
+  }
+  if (privateRoute.homeRef !== membership?.homeRef
+      || privateRoute.homeRef !== lease?.homeRef) {
+    return homeRoutedUnavailable('PRIVATE_HOME_IDENTITY_MISMATCH');
+  }
+
+  if (homeAccess?.authenticationCurrent !== true) {
+    return homeRoutedUnavailable('AUTHENTICATION_STALE');
+  }
+  if (homeAccess.authorizationState !== 'ACCEPTED'
+      || homeAccess.authorizationCurrentnessClass !== 'CURRENT_ACCEPTED'
+      || homeAccess.authorized !== true) {
+    return homeRoutedUnavailable('REMOTE_HOME_ACCESS_NOT_CURRENT');
+  }
+  if (homeAccess.leaseRef !== lease?.leaseRef) {
+    return homeRoutedUnavailable('LEASE_BINDING_MISMATCH');
+  }
+  const validUntil = homeRoutedClock(homeAccess.authorizationValidUntil);
+  if (validUntil === null || clock >= validUntil) {
+    return homeRoutedUnavailable('REMOTE_HOME_ACCESS_EXPIRED');
+  }
+  if (homeAccess.standingHomeAuthority !== false
+      || homeAccess.remoteHomeWriteGranted !== false) {
+    return homeRoutedUnavailable('AUTHORITY_BOUNDARY_COLLAPSE');
+  }
+  if (!Array.isArray(homeAccess.effectiveCapabilityRefs)
+      || !homeAccess.effectiveCapabilityRefs.includes(COMPANION_NAVIGATION_CAPABILITY_REF)) {
+    return homeRoutedUnavailable('CAPABILITY_INTERSECTION_MISSING');
+  }
+
+  const bridgeMembership = {
+    ...membership,
+    homeNodeRef: membership.homeRef
+  };
+  const bridgeLease = {
+    ...lease,
+    homeNodeRef: lease.homeRef
+  };
+  const bridgeAdmission = evaluateRemoteRequest({
+    request,
+    membership: bridgeMembership,
+    lease: bridgeLease,
+    now,
+    currentRevocationGeneration,
+    registeredActionRefs: [HOME_ROUTED_NAVIGATION_ACTION_REF],
+    requiredCapabilityRefs: [COMPANION_NAVIGATION_CAPABILITY_REF],
+    roleCapabilityRefs,
+    projectCapabilityRefs,
+    resourceCapabilityRefs,
+    rawModelEndpointExposed
+  });
+
+  if (bridgeAdmission.state !== 'REMOTE_REQUEST_ADMITTED') {
+    return homeRoutedUnavailable(`HOME_BRIDGE_${bridgeAdmission.state}`, {
+      bridgeReason: bridgeAdmission.reason ?? null
+    });
+  }
+  if (bridgeAdmission.effectiveCapabilityRefs.length !== 1
+      || bridgeAdmission.effectiveCapabilityRefs[0] !== COMPANION_NAVIGATION_CAPABILITY_REF) {
+    return homeRoutedUnavailable('HOME_BRIDGE_EFFECTIVE_CAPABILITY_NOT_EXACT');
+  }
+  if (bridgeAdmission.canonicalWriter !== 'DESKTOP_HOME_NODE'
+      || bridgeAdmission.remoteWriterGranted !== false) {
+    return homeRoutedUnavailable('HOME_BRIDGE_WRITER_BOUNDARY_COLLAPSE');
+  }
+
+  return {
+    schemaVersion: HOME_ROUTED_SCHEMA,
+    featureRef: REQUIRED_FEATURE_REF,
+    actionRef: HOME_ROUTED_NAVIGATION_ACTION_REF,
+    state: 'HOME_ROUTED',
+    requestHash: bridgeAdmission.requestHash,
+    homeRouteRef: privateRoute.routeRef,
+    gatewayRef: privateRoute.gatewayRef,
+    runtimeQualificationRef: fullNav.runtimeQualificationRef,
+    graphQualificationRef: fullNav.graphQualificationRef,
+    graphFingerprint: fullNav.graphFingerprint,
+    regionRef: fullNav.regionRef,
+    effectiveCapabilityRefs: [...bridgeAdmission.effectiveCapabilityRefs],
+    canonicalWriter: bridgeAdmission.canonicalWriter,
+    remoteWriterGranted: false,
+    standingHomeAuthority: false,
+    truth: homeRoutedTruth()
+  };
+}
 
 // [VXG RealForever]
