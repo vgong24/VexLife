@@ -70,8 +70,8 @@
     {
       "path": "test/companion-navigation.test.mjs",
       "mode": "100644",
-      "bytes": 7574,
-      "sha256": "5df89358a7317b7caa662bc34b975ebd6c5977491d5381ddf5377b9012c4e5d1"
+      "bytes": 16070,
+      "sha256": "e075dae20942ee458566152cad9b782f423d99a7e4a0bfdc37636830d53b0015"
     },
     {
       "path": "test/concern-watch.test.mjs",

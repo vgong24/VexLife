@@ -4,8 +4,8 @@
     {
       "path": "src/core/companion-navigation.mjs",
       "mode": "100644",
-      "bytes": 14601,
-      "sha256": "2c11e9943a9cb8497a9529df1eabf6b02ae0e408b619d11b9caccb0c8ae1d679"
+      "bytes": 20459,
+      "sha256": "24430c49917d386e44c26fee0248db506584ce4302989a4fc8ecbf0414d3bcdf"
     },
     {
       "path": "src/core/concern-watch.mjs",
