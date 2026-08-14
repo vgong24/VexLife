@@ -1,135 +1,39 @@
 import { $, escapeHtml, saveJson } from './dom.js';
+import { journeyWindow } from './navigation-controller.js';
 
-const MIN_PIXEL_SCALE = 0.5;
-const MAX_PIXEL_SCALE = 2;
-const MIN_SEMANTIC_DEPTH = 0;
-const MAX_SEMANTIC_DEPTH = 2;
-const DEFAULT_VISIBILITY_THRESHOLD = 0.72;
-const DEFAULT_CONFIDENCE_THRESHOLD = 0.8;
-export const ORDINARY_SCROLL_MAY_COMMIT_SEMANTIC_AUTO_ENTRY = false;
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-
-export function createTerrainController({ state, blueprint, t, navigation }) {
-  const terrainByRef = new Map(blueprint.terrain.map((node) => [node.terrainNodeRef, node]));
-  const childrenByTerrainRef = new Map();
-  for (const node of blueprint.terrain) {
-    if (!node.parentRef) continue;
-    const children = childrenByTerrainRef.get(node.parentRef) || [];
-    children.push(node.terrainNodeRef);
-    childrenByTerrainRef.set(node.parentRef, children);
-  }
-  state.terrain = {
-    positions: state.terrain?.positions || {}, collapsed: state.terrain?.collapsed || [], selected: state.terrain?.selected || null,
-    pixelScale: Number.isFinite(state.terrain?.pixelScale) ? state.terrain.pixelScale : 1,
-    semanticDepth: Number.isInteger(state.terrain?.semanticDepth) ? state.terrain.semanticDepth : 1,
-    centerNodeRef: state.terrain?.centerNodeRef || null,
-    autoEntry: {
-      enabled: state.terrain?.autoEntry?.enabled === true,
-      visibilityThreshold: Number.isFinite(state.terrain?.autoEntry?.visibilityThreshold) ? clamp(state.terrain.autoEntry.visibilityThreshold, 0.5, 1) : DEFAULT_VISIBILITY_THRESHOLD,
-      confidenceThreshold: Number.isFinite(state.terrain?.autoEntry?.confidenceThreshold) ? clamp(state.terrain.autoEntry.confidenceThreshold, 0.5, 1) : DEFAULT_CONFIDENCE_THRESHOLD,
-      lastEvaluation: state.terrain?.autoEntry?.lastEvaluation || null
-    }
-  };
-  const terrainPosition = (node) => state.terrain.positions[node.terrainNodeRef] || node.defaultPosition;
-  const siblingRefs = (nodeRef) => {
-    const node = terrainByRef.get(nodeRef); if (!node) return [];
-    return [...terrainByRef.values()].filter((candidate) => candidate.parentRef === node.parentRef).sort((left, right) => {
-      const a = terrainPosition(left); const b = terrainPosition(right); return a.x - b.x || a.y - b.y || left.terrainNodeRef.localeCompare(right.terrainNodeRef);
-    }).map((candidate) => candidate.terrainNodeRef);
-  };
-  function isTerrainHidden(nodeRef) {
-    let current = terrainByRef.get(nodeRef); const seen = new Set();
-    while (current?.parentRef && !seen.has(current.parentRef)) { seen.add(current.parentRef); if (state.terrain.collapsed.includes(current.parentRef)) return true; current = terrainByRef.get(current.parentRef); }
-    return false;
-  }
-  function viewportProjection() {
-    return { pixelScale: state.terrain.pixelScale, semanticDepth: state.terrain.semanticDepth, centerNodeRef: state.terrain.centerNodeRef, semanticAutoEntry: structuredClone(state.terrain.autoEntry), ordinaryScrollMayCommit: ORDINARY_SCROLL_MAY_COMMIT_SEMANTIC_AUTO_ENTRY };
-  }
-  function renderAutoEntryStatus() {
-    const enabled = $('#terrainAutoEntryEnabled'); const visibility = $('#terrainAutoEntryVisibility'); const confidence = $('#terrainAutoEntryConfidence'); const status = $('#terrainAutoEntryStatus');
-    if (enabled) enabled.checked = state.terrain.autoEntry.enabled;
-    if (visibility) visibility.value = String(state.terrain.autoEntry.visibilityThreshold);
-    if (confidence) confidence.value = String(state.terrain.autoEntry.confidenceThreshold);
-    if (status) { const marker = state.terrain.autoEntry.enabled ? '●' : '○'; status.textContent = `${marker} V≥${Math.round(state.terrain.autoEntry.visibilityThreshold * 100)}% · C≥${Math.round(state.terrain.autoEntry.confidenceThreshold * 100)}%`; }
-  }
-  function applyViewport() {
-    const canvas = $('#terrainCanvas'); const world = $('#terrainWorld');
-    world.style.transform = `scale(${state.terrain.pixelScale})`; world.style.transformOrigin = '0 0'; canvas.dataset.semanticDepth = String(state.terrain.semanticDepth);
-    $('#terrainZoomStatus').textContent = `${Math.round(state.terrain.pixelScale * 100)}%`;
-    $('#terrainSemanticDepthStatus').textContent = t(['terrain.semantic-depth.overview','terrain.semantic-depth.context','terrain.semantic-depth.source-descent'][state.terrain.semanticDepth]);
-    renderAutoEntryStatus();
-  }
-  function nodeVisibilityRatio(nodeRef) {
-    const canvas = $('#terrainCanvas'); const node = document.querySelector(`.terrain-node[data-node-ref="${CSS.escape(nodeRef)}"]`);
-    if (!canvas || !node || node.getClientRects().length === 0) return 0;
-    const c = canvas.getBoundingClientRect(); const n = node.getBoundingClientRect();
-    const width = Math.max(0, Math.min(c.right, n.right) - Math.max(c.left, n.left)); const height = Math.max(0, Math.min(c.bottom, n.bottom) - Math.max(c.top, n.top));
-    return clamp((width * height) / Math.max(1, n.width * n.height), 0, 1);
-  }
-  function evaluateSemanticAutoEntry({ nodeRef = state.terrain.selected, visibilityRatio = nodeVisibilityRatio(nodeRef), confidence = 1, source = 'UNKNOWN' } = {}) {
-    const allowedSources = new Set(['EXPLICIT_SELECTION', 'EXPLICIT_CENTER', 'EXPLICIT_SIBLING']);
-    const record = { nodeRef: nodeRef ?? null, visibilityRatio, confidence, source, committed: false, reason: 'HELD' };
-    if (source === 'ORDINARY_SCROLL') record.reason = 'ORDINARY_SCROLL_NEVER_COMMITS';
-    else if (!allowedSources.has(source)) record.reason = 'SOURCE_NOT_ADMITTED';
-    else if (!state.terrain.autoEntry.enabled) record.reason = 'OPTED_OUT';
-    else if (!nodeRef || !terrainByRef.has(nodeRef)) record.reason = 'NO_CURRENT_NODE';
-    else if (visibilityRatio < state.terrain.autoEntry.visibilityThreshold) record.reason = 'VISIBILITY_BELOW_THRESHOLD';
-    else if (confidence < state.terrain.autoEntry.confidenceThreshold) record.reason = 'CONFIDENCE_BELOW_THRESHOLD';
-    else if (state.terrain.semanticDepth >= MAX_SEMANTIC_DEPTH) record.reason = 'MAX_SEMANTIC_DEPTH';
-    else { state.terrain.semanticDepth += 1; record.committed = true; record.reason = 'EXPLICIT_SAMPLE_ADMITTED'; navigation.navigate(nodeRef, { selectedNodeRef: nodeRef }, 'action.terrain.semantic-depth.set'); applyViewport(); }
-    state.terrain.autoEntry.lastEvaluation = record; save(); return structuredClone(record);
-  }
-  function centerOn(nodeRef = state.terrain.selected, { autoEntrySource = 'EXPLICIT_CENTER' } = {}) {
-    const node = terrainByRef.get(nodeRef); if (!node) return false;
-    state.terrain.centerNodeRef = nodeRef; const pos = terrainPosition(node); const canvas = $('#terrainCanvas'); const scale = state.terrain.pixelScale;
-    canvas.scrollTo({ left: Math.max(0, pos.x * scale - canvas.clientWidth / 2 + 130 * scale), top: Math.max(0, pos.y * scale - canvas.clientHeight / 2 + 56 * scale), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-    navigation.navigate('element.terrain.center-current-context', { selectedNodeRef: nodeRef }, 'action.terrain.center-current-context'); save(); queueMicrotask(() => evaluateSemanticAutoEntry({ nodeRef, confidence: 1, source: autoEntrySource })); return true;
-  }
-  function render() {
-    const host = $('#terrainNodes'); host.replaceChildren();
-    for (const node of blueprint.terrain) {
-      if (isTerrainHidden(node.terrainNodeRef)) continue;
-      const pos = terrainPosition(node); const children = childrenByTerrainRef.get(node.terrainNodeRef) || [];
-      const card = document.createElement('article'); card.className = 'terrain-node'; card.dataset.nodeRef = node.terrainNodeRef; card.dataset.selectionGroup = 'selection.terrain-node'; card.dataset.componentRef = 'component.vexlife.terrain-node'; card.dataset.instanceRef = `instance.terrain-node.${node.terrainNodeRef}`; card.style.left = `${pos.x}px`; card.style.top = `${pos.y}px`; card.classList.toggle('is-selected', state.terrain.selected === node.terrainNodeRef);
-      card.innerHTML = `<h3>${escapeHtml(t(node.labelStringRef))}</h3><p>${escapeHtml(t('terrain.node-summary', { kind: t(`terrain.kind.${node.kind.toLowerCase()}`) }))}</p><footer><span class="child-badge" title="${escapeHtml(t('terrain.direct-children'))}">${children.length}</span>${children.length ? `<button type="button" data-collapse>${state.terrain.collapsed.includes(node.terrainNodeRef) ? escapeHtml(t('terrain.expand')) : escapeHtml(t('terrain.collapse'))}</button>` : ''}</footer>`;
-      card.addEventListener('click', (event) => { if (event.target.closest('[data-collapse]')) return; state.terrain.selected = node.terrainNodeRef; navigation.navigate(node.terrainNodeRef, { selectedNodeRef: node.terrainNodeRef }, 'action.terrain.node.select'); render(); queueMicrotask(() => evaluateSemanticAutoEntry({ nodeRef: node.terrainNodeRef, confidence: 1, source: 'EXPLICIT_SELECTION' })); });
-      const collapseButton = $('[data-collapse]', card); if (collapseButton) { collapseButton.dataset.slotRef = 'slot.terrain-node.collapse'; collapseButton.dataset.instanceRef = `instance.terrain-node.${node.terrainNodeRef}.collapse`; collapseButton.addEventListener('click', (event) => { event.stopPropagation(); toggle(node.terrainNodeRef); }); }
-      makeDraggable(card, node.terrainNodeRef); host.append(card);
-    }
-    drawEdges(); renderDetail(); applyViewport(); save();
-  }
-  function save() { saveJson('vexlife.terrain.layout', state.terrain); }
-  function toggle(nodeRef) { const set = new Set(state.terrain.collapsed); if (set.has(nodeRef)) set.delete(nodeRef); else set.add(nodeRef); state.terrain.collapsed = [...set]; navigation.navigate(nodeRef, { selectedNodeRef: nodeRef }, 'action.terrain.node.collapse'); render(); }
-  function makeDraggable(element, nodeRef) {
-    let start = null;
-    element.addEventListener('pointerdown', (event) => { if (event.target.closest('button')) return; const pos = terrainPosition(terrainByRef.get(nodeRef)); start = { pointerX: event.clientX, pointerY: event.clientY, x: pos.x, y: pos.y }; element.setPointerCapture(event.pointerId); });
-    element.addEventListener('pointermove', (event) => { if (!start || !element.hasPointerCapture(event.pointerId)) return; const scale = state.terrain.pixelScale; const x = Math.max(10, start.x + (event.clientX - start.pointerX) / scale); const y = Math.max(10, start.y + (event.clientY - start.pointerY) / scale); state.terrain.positions[nodeRef] = { x, y }; element.style.left = `${x}px`; element.style.top = `${y}px`; drawEdges(); });
-    element.addEventListener('pointerup', (event) => { if (!start) return; element.releasePointerCapture(event.pointerId); start = null; navigation.navigate(nodeRef, { selectedNodeRef: nodeRef }, 'action.terrain.node.move'); save(); });
-  }
-  function drawEdges() {
-    const svg = $('#terrainEdges'); svg.replaceChildren();
-    for (const node of blueprint.terrain) { if (!node.parentRef || isTerrainHidden(node.terrainNodeRef) || isTerrainHidden(node.parentRef)) continue; const child = terrainPosition(node); const parent = terrainPosition(terrainByRef.get(node.parentRef)); const line = document.createElementNS('http://www.w3.org/2000/svg', 'line'); line.setAttribute('x1', parent.x + 130); line.setAttribute('y1', parent.y + 112); line.setAttribute('x2', child.x + 130); line.setAttribute('y2', child.y); svg.append(line); }
-  }
-  function renderDetail() {
-    const host = $('#terrainDetail'); const node = terrainByRef.get(state.terrain.selected);
-    if (!node) { host.innerHTML = `<p>${escapeHtml(t('terrain.empty-detail'))}</p>`; return; }
-    const children = childrenByTerrainRef.get(node.terrainNodeRef) || []; const collapsedRef = state.terrain.collapsed.includes(node.terrainNodeRef) ? 'terrain.yes' : 'terrain.no';
-    host.innerHTML = `<h2>${escapeHtml(t(node.labelStringRef))}</h2><p>${escapeHtml(node.terrainNodeRef)}</p><dl><dt>${escapeHtml(t('terrain.kind'))}</dt><dd>${escapeHtml(t(`terrain.kind.${node.kind.toLowerCase()}`))}</dd><dt>${escapeHtml(t('terrain.children'))}</dt><dd>${children.length}</dd><dt>${escapeHtml(t('terrain.collapsed'))}</dt><dd>${escapeHtml(t(collapsedRef))}</dd><dt>${escapeHtml(t('terrain.canonical-parent'))}</dt><dd>${escapeHtml(node.parentRef || t('terrain.root'))}</dd></dl>`;
-  }
-  function setPixelScale(value) { state.terrain.pixelScale = clamp(value, MIN_PIXEL_SCALE, MAX_PIXEL_SCALE); applyViewport(); save(); return state.terrain.pixelScale; }
-  function setSemanticDepth(value) { state.terrain.semanticDepth = clamp(Math.round(value), MIN_SEMANTIC_DEPTH, MAX_SEMANTIC_DEPTH); navigation.navigate('element.terrain.semantic-depth-status', {}, 'action.terrain.semantic-depth.set'); applyViewport(); save(); return state.terrain.semanticDepth; }
-  function setAutoEntryEnabled(enabled) { state.terrain.autoEntry.enabled = Boolean(enabled); renderAutoEntryStatus(); save(); return state.terrain.autoEntry.enabled; }
-  function setAutoEntryThresholds({ visibilityThreshold, confidenceThreshold } = {}) { if (Number.isFinite(visibilityThreshold)) state.terrain.autoEntry.visibilityThreshold = clamp(visibilityThreshold, 0.5, 1); if (Number.isFinite(confidenceThreshold)) state.terrain.autoEntry.confidenceThreshold = clamp(confidenceThreshold, 0.5, 1); renderAutoEntryStatus(); save(); return structuredClone(state.terrain.autoEntry); }
-  function navigateSibling(direction) {
-    const current = state.terrain.selected; const ordered = siblingRefs(current); const index = ordered.indexOf(current); if (index < 0) return false; const nextIndex = direction === 'PREVIOUS' ? index - 1 : index + 1; if (nextIndex < 0 || nextIndex >= ordered.length) return false; const target = ordered[nextIndex]; state.terrain.selected = target; navigation.navigate(target, { selectedNodeRef: target }, 'action.navigation.sibling'); render(); centerOn(target, { autoEntrySource: 'EXPLICIT_SIBLING' }); return true;
-  }
-  $('#terrainReset').addEventListener('click', () => { const autoEntry = state.terrain.autoEntry; state.terrain = { positions: {}, collapsed: [], selected: null, pixelScale: 1, semanticDepth: 1, centerNodeRef: null, autoEntry }; render(); });
-  $('#terrainZoomOut')?.addEventListener('click', () => setPixelScale(state.terrain.pixelScale - 0.1)); $('#terrainZoomIn')?.addEventListener('click', () => setPixelScale(state.terrain.pixelScale + 0.1));
-  $('#terrainDepthDown')?.addEventListener('click', () => setSemanticDepth(state.terrain.semanticDepth - 1)); $('#terrainDepthUp')?.addEventListener('click', () => setSemanticDepth(state.terrain.semanticDepth + 1));
-  $('#terrainCenter')?.addEventListener('click', () => centerOn()); $('#terrainSiblingPrevious')?.addEventListener('click', () => navigateSibling('PREVIOUS')); $('#terrainSiblingNext')?.addEventListener('click', () => navigateSibling('NEXT'));
-  $('#terrainAutoEntryEnabled')?.addEventListener('change', (event) => setAutoEntryEnabled(event.currentTarget.checked)); $('#terrainAutoEntryVisibility')?.addEventListener('input', (event) => setAutoEntryThresholds({ visibilityThreshold: Number(event.currentTarget.value) })); $('#terrainAutoEntryConfidence')?.addEventListener('input', (event) => setAutoEntryThresholds({ confidenceThreshold: Number(event.currentTarget.value) }));
-  $('#terrainCanvas')?.addEventListener('scroll', () => { evaluateSemanticAutoEntry({ source: 'ORDINARY_SCROLL', confidence: 0 }); }, { passive: true });
-  return { render, toggle, renderDetail, setPixelScale, setSemanticDepth, centerOn, siblingRefs, navigateSibling, viewportProjection, setAutoEntryEnabled, setAutoEntryThresholds, evaluateSemanticAutoEntry };
+const WORLD_WIDTH=1200,WORLD_HEIGHT=800,ENTER_SCALE_RATIO=1.7,EXIT_SCALE_RATIO=.58,MIN_SCALE_RATIO=.5,MAX_SCALE_RATIO=2.15;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+export function createTerrainController({state,blueprint,t,navigation,semanticPatchForNode=()=>({}),onCurrentNode=()=>{}}){
+ const nodes=blueprint.terrain,byRef=new Map(nodes.map(n=>[n.terrainNodeRef,n])),children=new Map(),parent=new Map();
+ for(const n of nodes)if(n.parentRef){parent.set(n.terrainNodeRef,n.parentRef);const a=children.get(n.parentRef)||[];a.push(n.terrainNodeRef);children.set(n.parentRef,a)}
+ const rootRef=nodes.find(n=>!n.parentRef)?.terrainNodeRef;if(!rootRef)throw new Error('E2.7 Terrain requires one canonical root');
+ state.terrain={...state.terrain,selected:byRef.has(state.terrain?.selected)?state.terrain.selected:rootRef,projectionMode:['fan','rings','carousel'].includes(state.terrain?.projectionMode)?state.terrain.projectionMode:'fan',workspaceMode:state.terrain?.workspaceMode===true,localOffsets:state.terrain?.localOffsets||{},recentWindowStart:Number.isInteger(state.terrain?.recentWindowStart)?state.terrain.recentWindowStart:0,autoEntry:{enabled:state.terrain?.autoEntry?.enabled!==false,visibilityThreshold:Number.isFinite(state.terrain?.autoEntry?.visibilityThreshold)?clamp(state.terrain.autoEntry.visibilityThreshold,.5,1):.72,confidenceThreshold:Number.isFinite(state.terrain?.autoEntry?.confidenceThreshold)?clamp(state.terrain.autoEntry.confidenceThreshold,.5,1):.8,lastEvaluation:state.terrain?.autoEntry?.lastEvaluation||null}};
+ let camera={scale:1,x:0,y:0},transitioning=false,pan=null,intent={confidence:0,outConfidence:0};
+ const currentRef=()=>state.terrain.selected||rootRef,currentNode=()=>byRef.get(currentRef()),childRefs=(r=currentRef())=>children.get(r)||[],parentRef=(r=currentRef())=>parent.get(r)||null;
+ const depthOf=r=>{let d=0,c=r,s=new Set();while(parent.has(c)&&!s.has(c)){s.add(c);d++;c=parent.get(c)}return d},descendantCount=r=>{let n=0,q=[...childRefs(r)];while(q.length){const x=q.shift();n++;q.push(...childRefs(x))}return n};
+ const label=r=>{const n=byRef.get(r);return n?t(n.labelStringRef):r},siblingRefs=(r=currentRef())=>{const p=parentRef(r);return p?[...childRefs(p)]:[]};
+ const pathTo=r=>{const a=[];let c=r,s=new Set();while(c&&!s.has(c)){s.add(c);a.unshift(c);c=parent.get(c)||null}return a};
+ const persist=()=>saveJson('vexlife.terrain.layout',state.terrain);
+ function defaultCamera(){const r=$('#view-terrain').getBoundingClientRect();let s=Math.min(1,(r.width-30)/1120,(r.height-30)/720);if(innerWidth<=760)s=Math.min(s,.72);s=Math.max(.48,s);return{scale:s,x:r.width/2-WORLD_WIDTH/2*s,y:r.height/2-WORLD_HEIGHT/2*s}}
+ function setCamera(c,animate=true){camera={...c};const w=$('#terrainWorld');w.style.transition=animate?'transform .34s cubic-bezier(.2,.75,.2,1),opacity .22s ease':'none';w.style.transform=`translate(${camera.x}px,${camera.y}px) scale(${camera.scale})`;renderZoomRail()}
+ function points(){const refs=childRefs().slice(0,10),cx=600,cy=400;let a=[];if(state.terrain.projectionMode==='fan'){const A=-158,B=-22;a=refs.map((ref,i)=>{const q=(A+(refs.length===1?68:i*(B-A)/Math.max(1,refs.length-1)))*Math.PI/180;return{ref,x:cx+Math.cos(q)*430,y:cy+Math.sin(q)*255,scale:1,z:0}})}else if(state.terrain.projectionMode==='rings')a=refs.map((ref,i)=>{const q=(-90+i*360/Math.max(1,refs.length))*Math.PI/180;return{ref,x:cx+Math.cos(q)*330,y:cy+Math.sin(q)*330,scale:1,z:0}});else{const m=(refs.length-1)/2;a=refs.map((ref,i)=>{const z=i-m;return{ref,x:cx+z*150,y:205+Math.abs(z)*22,scale:Math.max(.64,1-Math.abs(z)*.1),z}})}return a.map(p=>{const o=state.terrain.localOffsets[p.ref]||{x:0,y:0};return{...p,x:p.x+o.x,y:p.y+o.y}})}
+ function drawEdges(a){const svg=$('#terrainEdges');svg.replaceChildren();for(const p of a){const line=document.createElementNS('http://www.w3.org/2000/svg','line');line.classList.add('e27-edge');line.setAttribute('x1','600');line.setAttribute('y1','400');line.setAttribute('x2',p.x);line.setAttribute('y2',p.y);svg.append(line)}}
+ function renderBreadcrumb(){const h=$('#terrainBreadcrumb');h.replaceChildren();pathTo(currentRef()).forEach((r,i)=>{if(i){const s=document.createElement('span');s.className='sep';s.textContent='>';h.append(s)}const b=document.createElement('button');b.type='button';b.textContent=label(r);b.setAttribute('aria-current',String(i===pathTo(currentRef()).length-1));b.onclick=()=>travel(r,i===pathTo(currentRef()).length-1?'center':'out');h.append(b)})}
+ function renderAdjacent(){const h=$('#terrainAdjacent');h.replaceChildren();const a=siblingRefs(),i=a.indexOf(currentRef());for(const [r,d] of [[i>0?a[i-1]:null,'previous'],[i>=0&&i<a.length-1?a[i+1]:null,'next']])if(r){const b=document.createElement('button');b.className=`e27-adjacent-card terrain-adjacent-card ${d}`;b.innerHTML=`<strong>${d==='previous'?'&lt; ':''}${escapeHtml(label(r))}${d==='next'?' &gt;':''}</strong><small>${childRefs(r).length} direct - ${descendantCount(r)} below</small>`;b.onclick=()=>navigateSibling(d==='previous'?'PREVIOUS':'NEXT');h.append(b)}}
+ function renderJourney(){const events=navigation.fullJourney(),view=journeyWindow(events,state.terrain.recentWindowStart,5),h=$('#terrainJourneyRecent');h.replaceChildren();for(const e of view.entries){const b=document.createElement('button');b.className='e27-visit';b.textContent=label(e.after?.selectedNodeRef||e.elementRef);b.onclick=()=>visitJourneyEvent(e);h.append(b)}$('#terrainJourneyStatus').textContent=`${events.length} total`;$('#terrainRecentPrev').disabled=view.start===0;$('#terrainRecentNext').disabled=view.start+view.entries.length>=view.total;const list=$('#terrainJourneyList');list.replaceChildren();for(const e of events){const b=document.createElement('button');b.className='history-entry';b.innerHTML=`<strong>${escapeHtml(label(e.after?.selectedNodeRef||e.elementRef))}</strong><small>${escapeHtml(e.actionRef)}</small>`;b.onclick=()=>visitJourneyEvent(e);list.append(b)}}
+ function renderZoomRail(){const base=defaultCamera().scale,ratio=camera.scale/base,knob=$('#terrainZoomKnob');if(knob)knob.style.bottom=`${clamp((Math.log(ratio/MIN_SCALE_RATIO)/Math.log(MAX_SCALE_RATIO/MIN_SCALE_RATIO))*100,0,100)}%`;$('#terrainZoomStatus').textContent=`${Math.round(ratio*100)}%`;$('#terrainAutoEntryEnabled').checked=state.terrain.autoEntry.enabled;$('#terrainAutoEntryVisibility').value=String(state.terrain.autoEntry.visibilityThreshold);$('#terrainAutoEntryConfidence').value=String(state.terrain.autoEntry.confidenceThreshold);$('#terrainAutoEntryStatus').textContent=`V>=${Math.round(state.terrain.autoEntry.visibilityThreshold*100)}% - C>=${Math.round(state.terrain.autoEntry.confidenceThreshold*100)}%`}
+ function renderIntent(){const h=$('#terrainIntentTracker');if(!h)return;const c=Math.max(intent.confidence,intent.outConfidence);h.classList.toggle('show',c>0);$('#terrainIntentTitle').textContent=intent.confidence>=intent.outConfidence?'Entering':'Pulling outward';$('#terrainIntentDetail').textContent=`intent ${Math.round(c*100)}%`;$('#terrainIntentFill').style.width=`${Math.round(c*100)}%`}
+ function evaluateSemanticAutoEntry({nodeRef=null,visibilityRatio=1,confidence=1,direction='IN'}={}){const r={nodeRef,visibilityRatio,confidence,direction,committed:false,reason:'HELD'};if(!state.terrain.autoEntry.enabled)r.reason='OPTED_OUT';else if(visibilityRatio<state.terrain.autoEntry.visibilityThreshold)r.reason='VISIBILITY_BELOW_THRESHOLD';else if(confidence<state.terrain.autoEntry.confidenceThreshold)r.reason='CONFIDENCE_BELOW_THRESHOLD';else if(direction==='IN'&&(!nodeRef||!byRef.has(nodeRef)||!childRefs().includes(nodeRef)))r.reason='NO_ADMITTED_CHILD';else if(direction==='OUT'&&!parentRef())r.reason='NO_PARENT';else{r.committed=true;r.reason='INTENT_ADMITTED';if(direction==='OUT')up();else travel(nodeRef,'in')}state.terrain.autoEntry.lastEvaluation=r;persist();return{...r}}
+ function zoomAround(x,y,factor,deltaY){const before=camera.scale,base=defaultCamera().scale,next=clamp(before*factor,base*MIN_SCALE_RATIO,base*MAX_SCALE_RATIO),worldX=(x-camera.x)/before,worldY=(y-camera.y)/before;setCamera({scale:next,x:x-worldX*next,y:y-worldY*next},false);const ratio=next/base;if(deltaY<0){intent.confidence=clamp((ratio-1)/(ENTER_SCALE_RATIO-1),0,1);intent.outConfidence=0}else{intent.outConfidence=clamp((1-ratio)/(1-EXIT_SCALE_RATIO),0,1);intent.confidence=0}renderIntent();if(intent.confidence>=1&&childRefs().length)evaluateSemanticAutoEntry({nodeRef:childRefs()[0],visibilityRatio:1,confidence:1,direction:'IN'});else if(intent.outConfidence>=1)evaluateSemanticAutoEntry({nodeRef:parentRef(),visibilityRatio:1,confidence:1,direction:'OUT'})}
+ function visitJourneyEvent(e){const r=e?.after?.selectedNodeRef;if(r&&byRef.has(r)){state.terrain.selected=r;navigation.navigate(r,semanticPatchForNode(r),'action.context.open');onCurrentNode(r);render(false);setCamera(defaultCamera(),true);persist();return true}return false}
+ function openJourney(){$('#terrainJourneyDrawer').classList.add('show');$('#terrainJourneyDrawer').setAttribute('aria-hidden','false');renderJourney()}
+ function closeJourney(){$('#terrainJourneyDrawer').classList.remove('show');$('#terrainJourneyDrawer').setAttribute('aria-hidden','true')}
+ async function travel(r,direction='in'){if(!byRef.has(r)||transitioning)return false;transitioning=true;state.terrain.selected=r;navigation.navigate(r,semanticPatchForNode(r),direction==='out'?'action.navigation.home':'action.terrain.node.select');onCurrentNode(r);render(false);setCamera(defaultCamera(),true);await new Promise(resolve=>setTimeout(resolve,matchMedia('(prefers-reduced-motion: reduce)').matches?0:80));transitioning=false;persist();return true}
+ async function navigateSibling(direction){const a=siblingRefs(),i=a.indexOf(currentRef()),n=direction==='PREVIOUS'?i-1:i+1;if(i<0||n<0||n>=a.length)return false;return travel(a[n],'sibling')}
+ function up(){const p=parentRef();return p?travel(p,'out'):false}function reset(){state.terrain.selected=rootRef;state.terrain.localOffsets={};state.terrain.projectionMode='fan';state.terrain.workspaceMode=false;navigation.navigate(rootRef,semanticPatchForNode(rootRef),'action.terrain.layout.reset');onCurrentNode(rootRef);render(false);setCamera(defaultCamera(),true);persist();return true}function centerOn(){setCamera(defaultCamera(),true);navigation.navigate('element.terrain.center-current-context',semanticPatchForNode(currentRef()),'action.terrain.canvas.pan');return true}
+ function setProjectionMode(m){if(!['fan','rings','carousel'].includes(m))throw new Error(`Unsupported projection mode: ${m}`);state.terrain.projectionMode=m;render(false);persist();return m}function cycleProjection(){const a=['fan','rings','carousel'];return setProjectionMode(a[(a.indexOf(state.terrain.projectionMode)+1)%a.length])}function toggleWorkspace(){state.terrain.workspaceMode=!state.terrain.workspaceMode;$('#terrainWorkspaceBadge').classList.toggle('show',state.terrain.workspaceMode);persist();return state.terrain.workspaceMode}function setAutoEntryEnabled(v){state.terrain.autoEntry.enabled=Boolean(v);renderZoomRail();persist();return state.terrain.autoEntry.enabled}function setAutoEntryThresholds({visibilityThreshold,confidenceThreshold}={}){if(Number.isFinite(visibilityThreshold))state.terrain.autoEntry.visibilityThreshold=clamp(visibilityThreshold,.5,1);if(Number.isFinite(confidenceThreshold))state.terrain.autoEntry.confidenceThreshold=clamp(confidenceThreshold,.5,1);renderZoomRail();persist();return structuredClone(state.terrain.autoEntry)}function viewportProjection(){return{currentNodeRef:currentRef(),pixelScale:camera.scale/defaultCamera().scale,semanticDepth:depthOf(currentRef()),projectionMode:state.terrain.projectionMode,semanticAutoEntry:structuredClone(state.terrain.autoEntry),workspaceMode:state.terrain.workspaceMode}}
+ function render(animate=true){const n=currentNode(),a=points(),f=$('#terrainFocus');f.innerHTML=`<div class="e27-eyebrow">${escapeHtml(n.kind)} - DEPTH ${depthOf(currentRef())}</div><h2>${escapeHtml(t(n.labelStringRef))}</h2><p>Canonical VexLife ${escapeHtml(n.kind.toLowerCase())}. Center is current semantic context.</p><div class="e27-facts"><span class="e27-pill">${childRefs().length} direct</span><span class="e27-pill">${descendantCount(currentRef())} below</span><span class="e27-pill">${state.terrain.projectionMode}</span></div><div class="e27-focus-actions"><button data-focus-action="chat">Open conversation</button><button data-focus-action="vex">Ask Vex</button><button data-focus-action="center">Center current context</button></div>`;f.querySelectorAll('[data-focus-action]').forEach(b=>b.onclick=()=>b.dataset.focusAction==='chat'?document.dispatchEvent(new CustomEvent('vexlife:open-context',{detail:{context:'chat'}})):b.dataset.focusAction==='vex'?$('#vexSummon').click():centerOn());const h=$('#terrainNodes');h.replaceChildren();for(const p of a){const c=byRef.get(p.ref),b=document.createElement('button');b.type='button';b.className='e27-node';b.dataset.terrainRef=p.ref;b.dataset.nodeRef=p.ref;b.innerHTML=`<span class="count">${childRefs(p.ref).length||''}</span><span class="e27-eyebrow">${escapeHtml(c.kind)}</span><strong>${escapeHtml(t(c.labelStringRef))}</strong><small>${childRefs(p.ref).length} direct - ${descendantCount(p.ref)} below</small>`;b.style.left=`${p.x}px`;b.style.top=`${p.y}px`;b.onclick=()=>state.terrain.workspaceMode?null:travel(p.ref,'in');h.append(b)}drawEdges(a);$('#terrainHud').innerHTML=`<span>DEPTH ${depthOf(currentRef())}</span><span>${escapeHtml(n.kind)}</span><span>${childRefs().length} NEXT</span><span>${descendantCount(currentRef())} BELOW</span>`;$('#terrainScopeChip').innerHTML=`interaction scope - <strong>${n.kind==='THREAD'?'embedded surface':'Terrain layer'}</strong>`;$('#terrainWorkspaceBadge').classList.toggle('show',state.terrain.workspaceMode);$('#terrainUp').disabled=!parentRef();renderBreadcrumb();renderAdjacent();renderJourney();renderZoomRail();if(animate&&!transitioning)setCamera(defaultCamera(),false);persist()}
+ const terrain=$('#view-terrain');terrain.addEventListener('wheel',event=>{if(transitioning||event.target.closest('.scroll-scope,.e27-vex,.e27-context-surface'))return;event.preventDefault();const r=terrain.getBoundingClientRect();zoomAround(event.clientX-r.left,event.clientY-r.top,Math.exp(-event.deltaY*.0015),event.deltaY)},{passive:false});terrain.addEventListener('pointerdown',event=>{if(event.button!==0||event.target.closest('button,.e27-focus,.e27-zoom-rail,.e27-adjacent-card'))return;pan={id:event.pointerId,x:event.clientX,y:event.clientY,cx:camera.x,cy:camera.y};terrain.setPointerCapture(event.pointerId)});terrain.addEventListener('pointermove',event=>{if(!pan||event.pointerId!==pan.id)return;setCamera({scale:camera.scale,x:pan.cx+event.clientX-pan.x,y:pan.cy+event.clientY-pan.y},false)});terrain.addEventListener('pointerup',()=>{pan=null;persist()});terrain.addEventListener('contextmenu',event=>{event.preventDefault();const m=$('#terrainContext');m.hidden=false;m.style.left=`${Math.min(innerWidth-230,event.clientX)}px`;m.style.top=`${Math.min(innerHeight-260,event.clientY)}px`});$('#terrainZoomIn').onclick=()=>{const r=terrain.getBoundingClientRect();zoomAround(r.width/2,r.height/2,1.12,-80)};$('#terrainZoomOut').onclick=()=>{const r=terrain.getBoundingClientRect();zoomAround(r.width/2,r.height/2,.88,80)};$('#terrainAutoEntryEnabled').onchange=e=>setAutoEntryEnabled(e.currentTarget.checked);$('#terrainAutoEntryVisibility').oninput=e=>setAutoEntryThresholds({visibilityThreshold:Number(e.currentTarget.value)});$('#terrainAutoEntryConfidence').oninput=e=>setAutoEntryThresholds({confidenceThreshold:Number(e.currentTarget.value)});$('#terrainRecentPrev').onclick=()=>{state.terrain.recentWindowStart=Math.max(0,state.terrain.recentWindowStart-1);renderJourney()};$('#terrainRecentNext').onclick=()=>{state.terrain.recentWindowStart+=1;renderJourney()};addEventListener('resize',()=>setCamera(defaultCamera(),false));
+ render(false);setCamera(defaultCamera(),false);renderIntent();onCurrentNode(currentRef());return{render,currentRef,rootRef,childRefs,parentRef,siblingRefs,navigateSibling,travel,up,reset,centerOn,openJourney,closeJourney,setProjectionMode,cycleProjection,toggleWorkspace,viewportProjection,setAutoEntryEnabled,setAutoEntryThresholds,evaluateSemanticAutoEntry,visitJourneyEvent};
 }
-
 // [VXG RealForever]

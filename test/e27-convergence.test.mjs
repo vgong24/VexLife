@@ -1,82 +1,65 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { journeyWindow, historicalFramePatch, RECENT_JOURNEY_LIMIT } from '../reference/browser/modules/navigation-controller.js';
-import { ORDINARY_SCROLL_MAY_COMMIT_SEMANTIC_AUTO_ENTRY } from '../reference/browser/modules/terrain-controller.js';
+import { journeyWindow, RECENT_JOURNEY_LIMIT } from '../reference/browser/modules/navigation-controller.js';
 
 const browserRoot = new URL('../reference/browser/', import.meta.url);
 const html = fs.readFileSync(new URL('index.html', browserRoot), 'utf8');
+const css = fs.readFileSync(new URL('app.css', browserRoot), 'utf8');
 const app = fs.readFileSync(new URL('app.js', browserRoot), 'utf8');
-const rootCss = fs.readFileSync(new URL('e27-convergence.css', browserRoot), 'utf8');
-const canonical = fs.readFileSync(new URL('modules/e27-terrain-convergence.js', browserRoot), 'utf8');
-const navigation = fs.readFileSync(new URL('modules/navigation-controller.js', browserRoot), 'utf8');
 const terrain = fs.readFileSync(new URL('modules/terrain-controller.js', browserRoot), 'utf8');
 const guide = fs.readFileSync(new URL('modules/guide-controller.js', browserRoot), 'utf8');
+const navigation = fs.readFileSync(new URL('modules/navigation-controller.js', browserRoot), 'utf8');
 
-test('journey window keeps append-only source and exposes at most five recent events', () => {
-  const events = Array.from({length:9}, (_, index) => ({ journeyRef:`journey.${index}` }));
-  const window = journeyWindow(events);
-  assert.equal(RECENT_JOURNEY_LIMIT,5); assert.equal(window.start,4); assert.equal(window.entries.length,5); assert.equal(window.total,9); assert.equal(events.length,9);
+// Direct-root means the accepted E2.7 body is the product presentation foundation.
+test('E2.7 root body is presentation foundation, not a comparator beside old shell', () => {
+  assert.match(html,/class="e27-app"/); assert.match(html,/class="e27-appbar topbar"/); assert.match(html,/class="e27-terrain terrain"/); assert.match(html,/id="terrainWorld" class="e27-world"/); assert.match(html,/id="terrainFocus" class="e27-focus"/); assert.match(html,/id="guideWindow" class="e27-vex guide-window"/);
+  assert.doesNotMatch(html,/class="context-nav"/); assert.doesNotMatch(html,/class="top-actions"/); assert.doesNotMatch(html,/class="primary-stage"/); assert.doesNotMatch(html,/class="project-rail"/);
+  assert.doesNotMatch(app,/e27-terrain-convergence\.js/); assert.doesNotMatch(css,/CANONICAL_STAGE_B_ROOT_STYLES/);
 });
 
-test('historical visit derives contextual projection without mutating history', () => {
-  const event={after:{primaryStageScreenRef:'screen.vexlife.terrain',screenRef:'screen.vexlife.chat',projectRef:'project.local-vex',threadRef:'thread.foundation',channelRef:'channel.root',selectedNodeRef:'terrain.node.x'}};
-  const before=structuredClone(event);
-  assert.deepEqual(historicalFramePatch(event),{contextProjection:'chat',projectRef:'project.local-vex',threadRef:'thread.foundation',channelRef:'channel.root',selectedNodeRef:'terrain.node.x'});
-  assert.deepEqual(event,before);
+test('sealed E2.7 interaction grammar is materialized directly', () => {
+  for (const marker of ['e27-zoom-rail','e27-intent-tracker','e27-adjacent','e27-recentbar','e27-drawer','e27-surface-menu','e27-vex']) assert.match(html,new RegExp(marker));
+  assert.match(terrain,/projectionMode/); assert.match(terrain,/fan/); assert.match(terrain,/rings/); assert.match(terrain,/carousel/); assert.match(terrain,/ENTER_SCALE_RATIO/); assert.match(terrain,/EXIT_SCALE_RATIO/); assert.match(terrain,/navigateSibling/); assert.match(terrain,/workspaceMode/);
 });
 
-test('Stage B is rooted in Terrain and does not preserve primary-view tab topology', () => {
-  assert.match(html,/data-presentation-contract="contract\.vexlife\.e27\.authoritative-root\/v1"/);
-  assert.match(html,/id="view-terrain"[^>]*data-primary-stage="true"/);
-  assert.match(html,/id="view-chat"[^>]*data-context-projection="chat"[^>]*hidden/);
-  assert.match(html,/id="view-health"[^>]*data-context-projection="health"[^>]*hidden/);
-  assert.match(html,/id="projectRail"[^>]*aria-hidden="true"/);
-  assert.match(html,/id="guideToggle"[^>]*hidden/);
-  assert.doesNotMatch(html,/selection\.primary-view/);
-  assert.match(navigation,/primaryStageScreenRef: 'screen\.vexlife\.terrain'/);
-  assert.match(navigation,/openContext/); assert.match(navigation,/returnToPrimaryStage/);
+test('canonical VexLife truth is transplanted into E2.7 body', () => {
+  assert.match(app,/loadBrowserBundle/); assert.match(app,/createDemoData/); assert.match(app,/createChatController/); assert.match(app,/createNavigationController/); assert.match(app,/createGuideController/); assert.match(app,/TERRAIN_CONTEXT/); assert.match(app,/UNAVAILABLE|CURRENT_SYNTHETIC_REFERENCE/);
+  assert.doesNotMatch(`${html}\n${css}\n${app}\n${terrain}`,/VexOrg Demo Company|Maya Chen|Project Aurora|synthetic employee/i);
 });
 
-test('legacy filenames carry one canonical Stage-B authority, not a parallel convergence overlay', () => {
-  assert.match(app,/^\/\/ Stage B canonical browser entry/m);
-  assert.match(app,/import '\.\/modules\/e27-terrain-convergence\.js'/);
-  assert.doesNotMatch(app,/selectView|projectCurrentFrame|state\.view\s*=\s*'chat'/);
-  assert.match(canonical,/authoritativeRootDesignContract/);
-  assert.match(canonical,/legacyCurrentBrowserPreservationDefault/);
-  assert.doesNotMatch(canonical,/import .*app\.js/);
-  assert.match(rootCss,/CANONICAL_STAGE_B_ROOT_STYLES/);
-  assert.match(rootCss,/Authority: contract\.vexlife\.e27\.authoritative-root\/v1/);
-  assert.doesNotMatch(rootCss,/Current canonical state\/data\/controllers remain authoritative/);
+test('conversation and health are contextual surfaces, not permanent product tabs', () => {
+  assert.match(html,/id="contextSurface" class="e27-context-surface context-projection" hidden/); assert.match(html,/id="view-chat"[^>]*hidden/); assert.match(html,/id="view-health"[^>]*hidden/); assert.match(app,/openContext\('chat'\)/); assert.match(app,/openContext\('health'\)/); assert.match(app,/returnToTerrain/);
+  assert.doesNotMatch(html,/data-action="open-context" data-context="chat"/); assert.doesNotMatch(html,/selection\.primary-view/);
 });
 
-test('canonical contextual surfaces do not consume Terrain and reuse ambient Vex obstruction ownership', () => {
-  assert.match(rootCss,/\.context-projection\{[\s\S]*position:absolute/);
-  assert.match(rootCss,/\.project-rail\{[\s\S]*position:fixed/);
-  assert.match(rootCss,/\.terrain-detail-drawer\{[\s\S]*position:absolute/);
-  assert.match(rootCss,/\.terrain-journey-drawer\{[\s\S]*position:absolute/);
-  for (const fragment of ['.terrain-journey-window','.terrain-adjacent-card:not([hidden])','.terrain-detail-drawer.is-open','.terrain-journey-drawer.is-open','.project-rail[aria-hidden="false"]','.context-projection:not([hidden])']) assert.ok(guide.includes(fragment),`ambient Vex obstruction owner missing ${fragment}`);
+test('semantic auto-entry is opt-in and thresholded inside spatial zoom grammar', () => {
+  assert.match(html,/id="terrainAutoEntryEnabled"/); assert.match(html,/id="terrainAutoEntryVisibility"/); assert.match(html,/id="terrainAutoEntryConfidence"/);
+  assert.match(terrain,/OPTED_OUT/); assert.match(terrain,/VISIBILITY_BELOW_THRESHOLD/); assert.match(terrain,/CONFIDENCE_BELOW_THRESHOLD/); assert.match(terrain,/INTENT_ADMITTED/); assert.match(terrain,/event\.target\.closest\('\.scroll-scope/);
 });
 
-test('semantic auto-entry is opt-in, thresholded and ordinary-scroll-safe', () => {
-  assert.equal(ORDINARY_SCROLL_MAY_COMMIT_SEMANTIC_AUTO_ENTRY,false);
-  for (const id of ['terrainAutoEntryEnabled','terrainAutoEntryVisibility','terrainAutoEntryConfidence','terrainAutoEntryStatus']) assert.match(html,new RegExp(`id="${id}"`));
-  assert.match(terrain,/visibilityThreshold/); assert.match(terrain,/confidenceThreshold/); assert.match(terrain,/OPTED_OUT/); assert.match(terrain,/ORDINARY_SCROLL_NEVER_COMMITS/);
-  assert.match(terrain,/allowedSources = new Set\(\['EXPLICIT_SELECTION', 'EXPLICIT_CENTER', 'EXPLICIT_SIBLING'\]\)/);
+test('direct-root first render keeps Vex visible but ambient and protects Terrain controls', () => {
+  assert.match(app,/storedGuideMinimized/);
+  assert.match(app,/storedGuideMinimized === null \? true/);
+  assert.match(guide,/classList\.toggle\('is-minimized', state\.guideMinimized === true\)/);
+  assert.match(guide,/localStorage\.setItem\('vexlife\.guide\.minimized'/);
+  for (const selector of ['\\.e27-appbar','\\.e27-breadcrumb','\\.e27-zoom-rail','\\.e27-focus','\\.e27-node','\\.e27-adjacent-card','\\.e27-recentbar']) assert.match(guide,new RegExp(selector));
+  assert.match(css,/\.e27-vex\.is-minimized\{height:58px\}/);
+  assert.match(css,/@media\(max-width:760px\)[\s\S]*\.e27-vex\{left:10px;right:10px;top:auto;bottom:82px;width:auto\}/);
 });
 
-test('one sibling gesture schedules at most one semantic auto-entry evaluation', () => {
-  assert.match(terrain,/function centerOn\(nodeRef = state\.terrain\.selected, \{ autoEntrySource = 'EXPLICIT_CENTER' \} = \{\}\)/);
-  assert.match(terrain,/evaluateSemanticAutoEntry\(\{ nodeRef, confidence: 1, source: autoEntrySource \}\)/);
-  assert.match(terrain,/centerOn\(target, \{ autoEntrySource: 'EXPLICIT_SIBLING' \}\)/);
-  assert.doesNotMatch(terrain,/centerOn\(target\);\s*queueMicrotask\(\(\) => evaluateSemanticAutoEntry\(/);
+test('initial current semantic context is seeded into append-only journey after Terrain root binding', () => {
+  assert.match(navigation,/function seedCurrentJourney\(/);
+  assert.match(navigation,/if \(state\.journey\.length\) return state\.journey\.at\(-1\)/);
+  assert.match(navigation,/appendJourney\(\{ elementRef, actionRef, before: frame, after: frame \}\)/);
+  assert.match(navigation,/semanticFrame, seedCurrentJourney, navigate/);
+  assert.match(app,/state\.selectedNodeRef = initialTerrainRef/);
+  assert.match(app,/navigation\.seedCurrentJourney\(initialTerrainRef\)/);
+  assert.ok(app.indexOf('state.selectedNodeRef = initialTerrainRef') < app.indexOf('navigation.seedCurrentJourney(initialTerrainRef)'), 'selected Terrain root must bind before journey seed');
 });
 
-test('one visible ambient Vex carries source attribution without synthetic organization truth', () => {
-  assert.match(html,/id="vexSummon"[^>]*data-node-ref="element\.vex\.summon"/);
-  assert.match(html,/data-i18n="vex\.visible\.name">Vex</);
-  assert.match(canonical,/projectVisibleVexIdentity/); assert.match(canonical,/sourceRoleRef/);
-  assert.doesNotMatch(`${html}\n${app}\n${canonical}\n${terrain}\n${rootCss}`,/VexOrg Demo Company|Maya Chen/);
+test('journey projection preserves append-only source and recent-five human window', () => {
+  assert.equal(RECENT_JOURNEY_LIMIT,5); const events=Array.from({length:9},(_,index)=>({journeyRef:`j.${index}`})); const view=journeyWindow(events,2); assert.equal(view.entries.length,5); assert.equal(events.length,9); assert.match(terrain,/navigation\.fullJourney\(\)/); assert.match(terrain,/journeyWindow\(events/);
 });
 
 // [VXG RealForever]

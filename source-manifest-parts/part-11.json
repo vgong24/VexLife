@@ -2,18 +2,6 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
-      "path": "src/core/state-relay.mjs",
-      "mode": "100644",
-      "bytes": 2512,
-      "sha256": "6db63d09620aeea24b4f66f36384201495a65e75efc81ca9dbe75f99787923c7"
-    },
-    {
-      "path": "src/core/state.mjs",
-      "mode": "100644",
-      "bytes": 139824,
-      "sha256": "02750419d72f2dae3ed71fd2275333349a8683c65530b6dc13880d82cad6e023"
-    },
-    {
       "path": "src/core/terrain.mjs",
       "mode": "100644",
       "bytes": 4412,
@@ -58,8 +46,8 @@
     {
       "path": "test/browser.test.mjs",
       "mode": "100644",
-      "bytes": 6960,
-      "sha256": "fd3da4b4c571e499c0e9b18fcc31a5704096e6623a074543ad2c931b88314852"
+      "bytes": 5520,
+      "sha256": "94a3b6737d3631d3459963283a16f53ec7dd456f9165e8ff533276d55a1bb43c"
     },
     {
       "path": "test/build-admission.test.mjs",
@@ -112,8 +100,8 @@
     {
       "path": "test/e27-convergence.test.mjs",
       "mode": "100644",
-      "bytes": 5952,
-      "sha256": "09dc9530142f1ff0e44c296bc782108821ac2c4239b045b70e01b9a4b2077a98"
+      "bytes": 5699,
+      "sha256": "9d29168ee64dc4ca6226cb02752d1eb76d8834213e302b41fe4cc29d324d30a9"
     },
     {
       "path": "test/evaluated-rhythm-learning.test.mjs",
@@ -144,6 +132,18 @@
       "mode": "100644",
       "bytes": 18821,
       "sha256": "3c6f36822293c336df6ad419eb71005109c726fa9748170ae06cbea8c92b5019"
+    },
+    {
+      "path": "test/fixtures/orientation/accepted-main.json",
+      "mode": "100644",
+      "bytes": 1054,
+      "sha256": "42c605803b39f8093b5c55957d2e42fe5ef06e30ca642ee1635801104902a980"
+    },
+    {
+      "path": "test/fixtures/orientation/current-pr.json",
+      "mode": "100644",
+      "bytes": 1183,
+      "sha256": "5cd56d6980c53c1ed9aba8d501cc3f5202e8fee5395b4b93bb734c09f2ef5de5"
     }
   ]
 }

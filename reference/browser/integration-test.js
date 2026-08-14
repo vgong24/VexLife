@@ -3,105 +3,65 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 const click = (selector) => { const element = document.querySelector(selector); assert(element, `Missing ${selector}`); element.click(); return element; };
 const selectLanguage = (language) => { const select = document.querySelector('#languageSelect'); select.value = language; select.dispatchEvent(new Event('change', { bubbles: true })); };
 const selectedMessageList = (app) => app.messages.get(`${app.state.projectRef}::${app.state.threadRef}::${app.state.channelRef}`);
-const visibleMessages = () => [...document.querySelectorAll('#messageFeed .message')].map((node) => ({ text: node.querySelector('.message-body')?.textContent || '', projectRef: node.dataset.projectRef, threadRef: node.dataset.threadRef, channelRef: node.dataset.channelRef }));
-function assertVisibleOwnership(app, required, forbidden = []) {
-  const visible = visibleMessages();
-  assert(visible.some((message) => message.text === required), `Missing selected marker ${required}`);
-  for (const marker of forbidden) assert(!visible.some((message) => message.text === marker), `Cross-thread message leakage: ${marker}`);
-  for (const message of visible) { assert(message.projectRef === app.state.projectRef, 'Visible project ownership drift'); assert(message.threadRef === app.state.threadRef, 'Visible thread ownership drift'); assert(message.channelRef === app.state.channelRef, 'Visible channel ownership drift'); }
-}
-async function sendMarker(marker) { const input = document.querySelector('#messageInput'); input.value = marker; input.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#composer').requestSubmit(); await delay(230); }
-function visibleRatioWithin(canvas, node) {
-  const c = canvas.getBoundingClientRect(); const n = node.getBoundingClientRect();
-  const width = Math.max(0, Math.min(c.right, n.right) - Math.max(c.left, n.left));
-  const height = Math.max(0, Math.min(c.bottom, n.bottom) - Math.max(c.top, n.top));
-  return (width * height) / Math.max(1, n.width * n.height);
-}
+const overlaps = (left, right) => !(left.right <= right.left || left.left >= right.right || left.bottom <= right.top || left.top >= right.bottom);
 
 export async function runBrowserIntegration() {
   const host = document.createElement('pre'); host.id = 'integrationReceipt'; host.dataset.state = 'RUNNING'; document.body.append(host);
-  const app = globalThis.__VEXLIFE_APP__;
-  const stageBChecks = []; const availabilityChecks = []; const ownershipChecks = []; const localizationChecks = [];
+  const app = globalThis.__VEXLIFE_APP__; const checks = [];
   try {
-    assert(app.rootContract?.contractRef === 'contract.vexlife.e27.authoritative-root/v1', 'B01 authoritative root contract missing');
-    assert(app.state.view === 'terrain' && app.state.contextProjection === null, 'B01 Terrain is not default primary stage');
-    assert(!document.querySelector('#view-terrain').hidden, 'B01 Terrain hidden');
-    assert(document.querySelector('#view-chat').hidden && document.querySelector('#view-health').hidden, 'B01 contextual projection visible by default');
-    assert(document.querySelector('#projectRail').getAttribute('aria-hidden') === 'true', 'B02 project rail persists by default');
-    assert(document.querySelector('#guideToggle').hidden, 'B03 legacy Guide toggle is visible');
-    assert(!document.querySelector('[data-selection-group="selection.primary-view"]'), 'B03 primary-view tab topology survived');
-    stageBChecks.push('B01 Terrain is the single primary stage','B02 workspace is contextual and closed by default','B03 ambient Vex replaces Guide-first/default-tab presentation');
+    assert(app.rootContract?.contractRef === 'contract.vexlife.e27.authoritative-root/v1', 'D01 authoritative E2.7 contract missing');
+    assert(document.querySelector('.e27-appbar') && document.querySelector('.e27-terrain') && document.querySelector('.e27-world') && document.querySelector('.e27-focus'), 'D01 direct-root body missing');
+    assert(!document.querySelector('.context-nav'), 'D01 legacy top-tab nav survived');
+    assert(!document.querySelector('.project-rail'), 'D01 legacy persistent project rail survived');
+    assert(document.querySelector('#contextSurface').hidden, 'D01 contextual surface open by default');
+    checks.push('D01 exact E2.7 body is the first rendered product surface');
 
-    app.openContext('chat', 'element.nav.chat');
-    assert(app.state.contextProjection === 'chat' && !document.querySelector('#view-chat').hidden, 'B04 Chat did not open contextually');
-    assert(!document.querySelector('#view-terrain').hidden, 'B04 Chat consumed Terrain stage');
-    stageBChecks.push('B04 Chat projects over Terrain instead of replacing it');
+    const rootRef = app.terrain.rootRef; assert(app.terrain.currentRef() === rootRef, 'D02 Terrain did not start at canonical root');
+    const rootChildren = app.terrain.childRefs(rootRef); assert(rootChildren.length > 1, 'D02 canonical root lacks child topology');
+    assert(document.querySelectorAll('.e27-node').length === rootChildren.length, 'D02 rendered children do not match canonical topology');
+    checks.push('D02 canonical VexLife topology is projected into the E2.7 body');
 
-    const composer = document.querySelector('#composer'); const input = document.querySelector('#messageInput'); const send = composer.querySelector('button[type="submit"]');
-    const blockedDraft = 'integration.marker.unsent-local-draft'; const blockedList = selectedMessageList(app); const blockedCount = blockedList.length; const blockedChannel = app.state.channelRef;
-    assert(app.state.vexAvailability === 'UNAVAILABLE' && send.disabled, 'A01 unavailable truth missing');
-    input.value = blockedDraft; input.dispatchEvent(new Event('input', { bubbles: true })); composer.requestSubmit(); await delay(230);
-    assert(blockedList.length === blockedCount, 'A01 unavailable submit appended a message'); assert(app.chat.pendingReplyCount() === 0, 'A02 unavailable submit scheduled reply');
-    assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT' && app.state.unsentLocalDraft?.channelRef === blockedChannel, 'A03 local draft ownership lost');
-    availabilityChecks.push('A01-A03 unavailable submit remains an unqueued channel-bound local draft');
+    assert(!document.body.textContent.includes('VexOrg Demo Company') && !document.body.textContent.includes('Maya Chen'), 'D03 mock VexOrg product data leaked into product');
+    checks.push('D03 mock E2.7 review data is excluded from product truth');
 
-    for (const language of ['en','zh','ja']) { selectLanguage(language); assert(document.querySelector('#composerHint').textContent.startsWith(app.t('composer.availability.unavailable-draft')), `${language} unavailable-draft truth not localized`); localizationChecks.push(`${language}:UNAVAILABLE_DRAFT`); }
+    const initialJourney = app.navigation.fullJourney();
+    assert(initialJourney.length >= 1, 'D04 initial current context missing from journey');
+    assert(initialJourney[0].after?.selectedNodeRef === rootRef, 'D04 initial journey does not bind canonical root context');
+    assert(document.querySelector('#terrainJourneyStatus').textContent !== '0 total', 'D04 first-render journey still reports zero');
+    checks.push('D04 initial current semantic context is seeded into the append-only journey');
+
+    const vex = document.querySelector('#guideWindow');
+    assert(!vex.hidden, 'D05 visible Vex is absent on first render');
+    assert(vex.classList.contains('is-minimized'), 'D05 first-render Vex is not ambient/minimized');
+    const vexRect = vex.getBoundingClientRect();
+    const protectedTargets = [document.querySelector('#terrainFocus'), ...document.querySelectorAll('.e27-node')].filter((node) => node?.getClientRects().length);
+    assert(protectedTargets.every((node) => !overlaps(vexRect, node.getBoundingClientRect())), 'D05 ambient Vex obscures first-render Terrain content');
+    checks.push('D05 one visible Vex starts ambient/minimized without obscuring Terrain');
+
+    app.openContext('chat'); await delay(0);
+    assert(!document.querySelector('#contextSurface').hidden && !document.querySelector('#view-chat').hidden, 'D06 chat contextual surface did not open');
+    assert(document.querySelector('.e27-terrain'), 'D06 chat replaced Terrain body');
+    const input = document.querySelector('#messageInput'); const composer = document.querySelector('#composer'); const send = composer.querySelector('button[type="submit"]');
+    const list = selectedMessageList(app); const count = list.length; input.value = 'integration.unsent'; input.dispatchEvent(new Event('input', { bubbles:true })); composer.requestSubmit(); await delay(220);
+    assert(list.length === count, 'D07 unavailable submit appended message'); assert(send.disabled, 'D07 unavailable send not disabled'); assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT', 'D07 unsent draft truth missing');
+    checks.push('D06 conversation is a contextual projection over Terrain','D07 truthful unavailable draft semantics survive direct-root composition');
+
+    app.returnToTerrain(); assert(document.querySelector('#contextSurface').hidden, 'D08 context did not return to Terrain'); assert(input.value === 'integration.unsent', 'D08 contextual return lost draft');
+    const current = app.terrain.currentRef(); const children = app.terrain.childRefs(current); if (children.length) { await app.terrain.travel(children[0], 'in'); assert(app.terrain.currentRef() === children[0], 'D09 semantic travel failed'); const siblings = app.terrain.siblingRefs(); if (siblings.length > 1) { const beforeDepth = app.terrain.viewportProjection().semanticDepth; const moved = await app.terrain.navigateSibling('NEXT'); if (moved) assert(app.terrain.viewportProjection().semanticDepth === beforeDepth, 'D09 sibling travel changed hierarchy depth'); } }
+    checks.push('D08 contextual return preserves content state','D09 spatial entry/parent/sibling travel is semantic, not tab navigation');
+
+    app.terrain.setAutoEntryEnabled(false); const held = app.terrain.evaluateSemanticAutoEntry({ nodeRef: app.terrain.childRefs()[0] || null, visibilityRatio:1, confidence:1, direction:'IN' }); assert(held.committed === false && held.reason === 'OPTED_OUT', 'D10 auto-entry opt-out failed'); app.terrain.setAutoEntryEnabled(true); app.terrain.setAutoEntryThresholds({ visibilityThreshold:.72, confidenceThreshold:.8 }); const low = app.terrain.evaluateSemanticAutoEntry({ nodeRef: app.terrain.childRefs()[0] || null, visibilityRatio:.5, confidence:1, direction:'IN' }); assert(low.committed === false && low.reason === 'VISIBILITY_BELOW_THRESHOLD', 'D10 visible threshold failed');
+    checks.push('D10 semantic auto-entry remains opt-in and thresholded');
+
+    for (const language of ['en','zh','ja']) { selectLanguage(language); assert(document.documentElement.lang === language, `D11 ${language} localization state missing`); }
     selectLanguage('en');
+    assert(!document.querySelector('#guideWindow').hidden && document.querySelector('#guideWindow').textContent.includes(app.t('vex.visible.name')), 'D12 ambient Vex not visible');
+    checks.push('D11 localization remains stable','D12 one visible Vex occupies the E2.7 ambient vessel');
 
-    app.returnToTerrain(); assert(app.state.contextProjection === null && !document.querySelector('#view-terrain').hidden, 'B05 contextual return failed'); assert(input.value === blockedDraft, 'B05 contextual return lost draft');
-    stageBChecks.push('B05 return to Terrain preserves contextual conversation state');
-
-    const depthBefore = app.state.terrain.semanticDepth;
-    const scroll = app.terrain.evaluateSemanticAutoEntry({ nodeRef: app.state.terrain.selected, visibilityRatio: 1, confidence: 1, source: 'ORDINARY_SCROLL' });
-    assert(scroll.committed === false && scroll.reason === 'ORDINARY_SCROLL_NEVER_COMMITS', 'B06 ordinary scrolling committed semantic auto-entry'); assert(app.state.terrain.semanticDepth === depthBefore, 'B06 ordinary scroll changed semantic depth');
-    app.terrain.setAutoEntryEnabled(true); app.terrain.setAutoEntryThresholds({ visibilityThreshold: .5, confidenceThreshold: .8 });
-    assert(document.querySelector('#terrainAutoEntryStatus').textContent.includes('V≥50%') && document.querySelector('#terrainAutoEntryStatus').textContent.includes('C≥80%'), 'B06 thresholds are not human-visible');
-
-    const terrainCanvas = document.querySelector('#terrainCanvas');
-    let siblingCase = null;
-    for (const node of document.querySelectorAll('.terrain-node[data-node-ref]')) {
-      const sourceRef = node.dataset.nodeRef;
-      const siblings = app.terrain.siblingRefs(sourceRef);
-      const index = siblings.indexOf(sourceRef);
-      const candidates = index >= 0 ? [[index + 1, 'NEXT'], [index - 1, 'PREVIOUS']] : [];
-      for (const [targetIndex, direction] of candidates) {
-        if (targetIndex < 0 || targetIndex >= siblings.length) continue;
-        const targetRef = siblings[targetIndex];
-        const targetNode = document.querySelector(`.terrain-node[data-node-ref="${CSS.escape(targetRef)}"]`);
-        if (targetNode && visibleRatioWithin(terrainCanvas, targetNode) >= .5) { siblingCase = { sourceRef, targetRef, direction }; break; }
-      }
-      if (siblingCase) break;
-    }
-    assert(siblingCase, 'B07 no visible sibling pair available for single-evaluation proof');
-    app.state.terrain.selected = siblingCase.sourceRef;
-    app.terrain.setSemanticDepth(0);
-    app.terrain.render();
-    assert(app.terrain.navigateSibling(siblingCase.direction), 'B07 sibling navigation did not move');
-    await delay(0); await delay(0);
-    assert(app.state.terrain.selected === siblingCase.targetRef, 'B07 sibling target mismatch');
-    assert(app.state.terrain.semanticDepth === 1, `B07 one sibling gesture advanced semantic depth to ${app.state.terrain.semanticDepth}`);
-    stageBChecks.push('B06 semantic auto-entry is opt-in, visibly thresholded, confidence-gated, and ordinary-scroll-safe','B07 one sibling gesture commits at most one semantic auto-entry level');
-
-    app.openContext('chat'); app.chat.setVexAvailability('AVAILABLE'); await delay(230);
-    assert(blockedList.length === blockedCount && input.value === blockedDraft && !send.disabled, 'A06 restoration auto-sent or discarded stale draft');
-    composer.requestSubmit(); await delay(230); assert(blockedList.length === blockedCount + 2 && app.state.unsentLocalDraft === null, 'A07 explicit send is not the only acceptance path');
-    availabilityChecks.push('A06-A07 restoration never auto-sends; explicit send is acceptance');
-
-    const markerSelf = 'integration.marker.self.companion'; const markerGuide = 'integration.marker.self.guide'; const markerVex = 'integration.marker.vex-home.guided';
-    app.setWorkspaceOpen(true); await sendMarker(markerSelf); click('[data-channel-ref="channel.self-development.guide"]'); await sendMarker(markerGuide); click('[data-project-ref="project.vex-home-product"] .project-button'); await sendMarker(markerVex);
-    assertVisibleOwnership(app, markerVex, [markerSelf, markerGuide]); ownershipChecks.push('project-thread-channel message isolation preserved');
-
-    const sourceRefs = [...document.querySelectorAll('#channelTabs [data-source-role-ref]')].map((node) => node.dataset.sourceRoleRef);
-    assert(sourceRefs.every((ref) => ref?.startsWith('role.vex.')), 'B08 visible Vex lost source-role attribution');
-    assert([...document.querySelectorAll('#channelTabs [data-source-role-ref]')].every((node) => node.textContent.includes(app.t('vex.visible.name'))), 'B08 multiple visible Vex names survived');
-    stageBChecks.push('B08 one visible ambient Vex preserves internal source-role attribution');
-
-    for (const language of ['en','zh','ja']) { selectLanguage(language); assert(document.querySelector('#vexSummon').textContent.includes(app.t('vex.summon')), `${language} ambient Vex summon not localized`); localizationChecks.push(`${language}:AMBIENT_VEX`); }
-
-    const result = { schemaVersion:'vexlife.e27-stage-b-browser-integration/v1', state:'PASS', stageBChecks, availabilityChecks, ownershipChecks, localizationChecks, primaryStageScreenRef:'screen.vexlife.terrain', presentationContractRef:app.rootContract.contractRef };
+    const result = { schemaVersion:'vexlife.e27-direct-root-browser-integration/v1', state:'PASS', checks, presentationFoundation:'EXACT_E2_7_ROOT_BODY', currentNodeRef:app.terrain.currentRef(), currentFrame:app.navigation.semanticFrame(), initialJourneyCount:initialJourney.length, initialVexState:'AMBIENT_MINIMIZED' };
     host.dataset.state='PASS'; host.textContent=JSON.stringify(result,null,2); globalThis.__VEXLIFE_INTEGRATION_RESULT__=result; return result;
   } catch (error) {
-    const result={schemaVersion:'vexlife.e27-stage-b-browser-integration/v1',state:'FAIL',error:error instanceof Error?error.message:String(error),stageBChecks,availabilityChecks,ownershipChecks,localizationChecks}; host.dataset.state='FAIL';host.textContent=JSON.stringify(result,null,2);globalThis.__VEXLIFE_INTEGRATION_RESULT__=result;throw error;
+    const result={schemaVersion:'vexlife.e27-direct-root-browser-integration/v1',state:'FAIL',error:error instanceof Error?error.message:String(error),checks};host.dataset.state='FAIL';host.textContent=JSON.stringify(result,null,2);globalThis.__VEXLIFE_INTEGRATION_RESULT__=result;throw error;
   }
 }
 

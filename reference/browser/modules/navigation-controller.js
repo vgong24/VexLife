@@ -45,6 +45,11 @@ export function createNavigationController({ state, elementByRef, getProject, ge
     const event = { journeyRef: `journey.browser.${crypto.randomUUID()}`, elementRef, actionRef, before: cloneFrame(before), after: cloneFrame(after), formedAt: new Date().toISOString() };
     state.journey.push(event); return event;
   }
+  function seedCurrentJourney(elementRef = state.selectedNodeRef, actionRef = 'action.navigation.home') {
+    if (state.journey.length) return state.journey.at(-1);
+    const frame = semanticFrame();
+    return appendJourney({ elementRef, actionRef, before: frame, after: frame });
+  }
   function pushBackFrame(frame) {
     const last = backStack.at(-1);
     if (!last || !frameEquals(last, frame)) backStack.push(cloneFrame(frame));
@@ -74,13 +79,13 @@ export function createNavigationController({ state, elementByRef, getProject, ge
     const before = semanticFrame(); applyFrame(target); const after = semanticFrame(); const event = appendJourney({ elementRef: target.selectedNodeRef, actionRef: 'action.navigation.back', before, after }); onFrameChange(after); return { changed: !frameEquals(before, after), frame: cloneFrame(after), journeyEvent: event };
   }
   function enableBrowserHistory() { if (!globalThis.history?.replaceState || !globalThis.history?.pushState) return false; backStack.splice(0); globalThis.history.replaceState({ vexlifeSemantic: true }, '', globalThis.location?.href); browserHistoryEnabled = true; return true; }
-  function recentJourney(limit = RECENT_JOURNEY_LIMIT) { if (!Number.isInteger(limit) || limit < 1) throw new TypeError('recent journey limit must be a positive integer'); return state.journey.slice(-limit).map((event) => structuredClone(event)); }
+  function recentJourney(limit = RECENT_JOURNEY_LIMIT) { if (!Number.isInteger(limit) || limit < 1) throw new TypeError('limit must be a positive integer'); return state.journey.slice(-limit).map((event) => structuredClone(event)); }
   const fullJourney = () => state.journey.map((event) => structuredClone(event));
   const journeyProjection = (limit = RECENT_JOURNEY_LIMIT) => ({ fullEventCount: state.journey.length, recentTrajectory: recentJourney(limit) });
   const backDepth = () => backStack.length;
   function breadcrumb(ref) { const refs = []; let current = elementByRef.get(ref); const seen = new Set(); while (current && !seen.has(current.ref)) { seen.add(current.ref); refs.unshift(current.ref); current = current.parentRef ? elementByRef.get(current.parentRef) : null; } return refs; }
   function setSelection(groupRef, nodeRef) { state.selections.set(groupRef, nodeRef); $$(`[data-selection-group="${CSS.escape(groupRef)}"]`).forEach((element) => { const selected = element.dataset.nodeRef === nodeRef || element.dataset.selectionValue === nodeRef; element.classList.toggle('is-selected', selected); element.setAttribute('aria-selected', String(selected)); if (selected) element.setAttribute('aria-current', 'true'); else element.removeAttribute('aria-current'); }); }
-  return { semanticFrame, navigate, openContext, returnToPrimaryStage, back, backDepth, enableBrowserHistory, recentJourney, fullJourney, journeyProjection, breadcrumb, setSelection, currentScreenRef, currentRouteRef, getProject, getThread, getChannel };
+  return { semanticFrame, seedCurrentJourney, navigate, openContext, returnToPrimaryStage, back, backDepth, enableBrowserHistory, recentJourney, fullJourney, journeyProjection, breadcrumb, setSelection, currentScreenRef, currentRouteRef, getProject, getThread, getChannel };
 }
 
 // [VXG RealForever]

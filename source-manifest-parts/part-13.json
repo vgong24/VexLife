@@ -2,18 +2,6 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
-      "path": "test/runtime-failure-recovery.test.mjs",
-      "mode": "100644",
-      "bytes": 53169,
-      "sha256": "617c5c19da4035c719dcf91f6bc46f32620c7825273ff6b0e7768c9a25bc2e20"
-    },
-    {
-      "path": "test/scheduled-daily-autonomy.test.mjs",
-      "mode": "100644",
-      "bytes": 4370,
-      "sha256": "a549958c8db272dea37196b02077b5620f1ded1e6bfa57b3dae43ae4364c6087"
-    },
-    {
       "path": "test/score-context-continuity.test.mjs",
       "mode": "100644",
       "bytes": 55877,

@@ -10,32 +10,26 @@
     {
       "path": "reference/browser/app.css",
       "mode": "100644",
-      "bytes": 14134,
-      "sha256": "b9806a441cd13499c2fed275c76f15acfc1a320cabd7aa75cddcd520af7c6296"
+      "bytes": 16944,
+      "sha256": "84beb3d3d74b2b17f4ee4d00e1992ae2f7beab2af0b90e47623ff1f9aec63bac"
     },
     {
       "path": "reference/browser/app.js",
       "mode": "100644",
-      "bytes": 191,
-      "sha256": "b64553fbf04926105654aa3febeb68a4e156c7300bdbf7f7e1d5e5867743e661"
-    },
-    {
-      "path": "reference/browser/e27-convergence.css",
-      "mode": "100644",
-      "bytes": 4178,
-      "sha256": "37b6ada327e7ddfcdb81c07a30209f1a7719b989fcaf6f9641c86341f81dd308"
+      "bytes": 11662,
+      "sha256": "01f1abe1986901f070fe198746adbe0b140318ce3c124d53040f9d8fb9e074a8"
     },
     {
       "path": "reference/browser/index.html",
       "mode": "100644",
-      "bytes": 15940,
-      "sha256": "6b6790f75fea016b28cb0bcc4a04dc90c86634e8a44650e99e694ac20756963c"
+      "bytes": 12354,
+      "sha256": "1415b8e91286a17db1be5f970c27796d60a1560992343fa648c5b6999047550d"
     },
     {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
-      "bytes": 10880,
-      "sha256": "ef28e08fb4c08e624ec01106dda69083a646bd72666ba62763e5a5e40fd0bbde"
+      "bytes": 7721,
+      "sha256": "5e7ab577d8e27ac32d531d80136da1b585e41eebe861624a828c139c7548d3f1"
     },
     {
       "path": "reference/browser/modules/browser-bundle.js",
@@ -62,12 +56,6 @@
       "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
     },
     {
-      "path": "reference/browser/modules/e27-terrain-convergence.js",
-      "mode": "100644",
-      "bytes": 10938,
-      "sha256": "2f4b687cd1c4b5f62633133b7605935d8a20f4db259d2b3f6bb477b5b0e9aefd"
-    },
-    {
       "path": "reference/browser/modules/experience-review-adapter.js",
       "mode": "100644",
       "bytes": 8335,
@@ -82,20 +70,20 @@
     {
       "path": "reference/browser/modules/guide-controller.js",
       "mode": "100644",
-      "bytes": 11303,
-      "sha256": "53aa77fc746b64fda72f273b0b67d608542974da27532e238f83f7f3844db060"
+      "bytes": 12069,
+      "sha256": "b7a7d79ffdd5ebdd3b58941f3da307073dc36a49c64b69b4e98dad102ad54b1a"
     },
     {
       "path": "reference/browser/modules/navigation-controller.js",
       "mode": "100644",
-      "bytes": 7083,
-      "sha256": "42caf9ee81a6ad2ea5e917226f0254e6fcffdb848f029edfe4d0467436ed0c57"
+      "bytes": 7374,
+      "sha256": "4cbd41f7149a6127a463609a4fd71bab22804edc62ccd9af6a48868c98957c43"
     },
     {
       "path": "reference/browser/modules/terrain-controller.js",
       "mode": "100644",
-      "bytes": 15540,
-      "sha256": "5cc49f942b501fe8de0b87476dad9f80149d15138581fe945bb60b19dbe8f574"
+      "bytes": 16505,
+      "sha256": "4f4e0b1b930015790914cd8dcaba7697035db2f721f442effa96d801b91fe4a3"
     },
     {
       "path": "scripts/atlas-query.mjs",
@@ -144,6 +132,18 @@
       "mode": "100644",
       "bytes": 4384,
       "sha256": "4bd7ba78d06ef2b8a5790810a6e90da92336f3087f24f39dd30c4cabecb142dc"
+    },
+    {
+      "path": "scripts/build-projections.mjs",
+      "mode": "100644",
+      "bytes": 1875,
+      "sha256": "df09880041da5c58ba3c220a90912eabfa39aa7f08eab48b2d59dc31221255d0"
+    },
+    {
+      "path": "scripts/check-syntax.mjs",
+      "mode": "100644",
+      "bytes": 1187,
+      "sha256": "c09a16c78e67eae90abf371867053419f85674ebd02e976fd2183f91152b1a22"
     }
   ]
 }
