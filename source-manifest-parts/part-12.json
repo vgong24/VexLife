@@ -2,18 +2,6 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
-      "path": "test/fixtures/orientation/accepted-main.json",
-      "mode": "100644",
-      "bytes": 1054,
-      "sha256": "42c605803b39f8093b5c55957d2e42fe5ef06e30ca642ee1635801104902a980"
-    },
-    {
-      "path": "test/fixtures/orientation/current-pr.json",
-      "mode": "100644",
-      "bytes": 1183,
-      "sha256": "5cd56d6980c53c1ed9aba8d501cc3f5202e8fee5395b4b93bb734c09f2ef5de5"
-    },
-    {
       "path": "test/fixtures/orientation/detached-merge.json",
       "mode": "100644",
       "bytes": 1173,
@@ -144,6 +132,18 @@
       "mode": "100644",
       "bytes": 19131,
       "sha256": "48d965f99de958f05cea3b9e909746cdd5c42667d0fe45b7fdeb8144da22bd0f"
+    },
+    {
+      "path": "test/runtime-failure-recovery.test.mjs",
+      "mode": "100644",
+      "bytes": 53169,
+      "sha256": "617c5c19da4035c719dcf91f6bc46f32620c7825273ff6b0e7768c9a25bc2e20"
+    },
+    {
+      "path": "test/scheduled-daily-autonomy.test.mjs",
+      "mode": "100644",
+      "bytes": 4370,
+      "sha256": "a549958c8db272dea37196b02077b5620f1ded1e6bfa57b3dae43ae4364c6087"
     }
   ]
 }
