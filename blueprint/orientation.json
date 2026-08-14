@@ -60,7 +60,11 @@
     "docs/CULTURE.md",
     "docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md",
     "docs/FOUNDATION-CULTURE-COVERAGE-MAP.md",
-    "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+    "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",
+    "GOVERNANCE.md",
+    "CONTRIBUTING.md",
+    ".github/CODEOWNERS",
+    ".github/workflows/dco.yml"
   ],
   "heldBoundaries": [
     "no model artifacts in Git",

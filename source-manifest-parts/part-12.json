@@ -104,6 +104,12 @@
       "sha256": "2975c38e03eb343680a51011de95e494c8f4b30defa0ad02329c28ebde719949"
     },
     {
+      "path": "test/orientation-governance.test.mjs",
+      "mode": "100644",
+      "bytes": 4470,
+      "sha256": "a253db5509b5e6a1893c31b2e95d0bdf176b765656b72d197bbfe69d58acb86e"
+    },
+    {
       "path": "test/orientation.test.mjs",
       "mode": "100644",
       "bytes": 18485,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 19131,
       "sha256": "48d965f99de958f05cea3b9e909746cdd5c42667d0fe45b7fdeb8144da22bd0f"
-    },
-    {
-      "path": "test/runtime-failure-recovery.test.mjs",
-      "mode": "100644",
-      "bytes": 53169,
-      "sha256": "617c5c19da4035c719dcf91f6bc46f32620c7825273ff6b0e7768c9a25bc2e20"
     }
   ]
 }

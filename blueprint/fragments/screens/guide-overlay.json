@@ -3,7 +3,14 @@
   "conceptRef": "concept.screen.vexlife.guide-overlay",
   "navigationNodeRef": "nav.screen.vexlife.guide-overlay",
   "routeRef": "route.guide-overlay",
-  "titleStringRef": "guide.title",
+  "titleStringRef": "vex.visible.name",
+  "presentationContractRef": "contract.vexlife.e27.authoritative-root/v1",
+  "presentationClass": "AMBIENT_VEX_VESSEL_PROJECTION",
+  "visibleIdentityStringRef": "vex.visible.name",
+  "oneVisibleVex": true,
+  "legacyGuidePresentationDefault": false,
+  "primaryStage": false,
+  "persistentCanvasConsumer": false,
   "stateSelectorRefs": [
     "selector.current-screen-frame",
     "selector.guide.conversation",
@@ -17,7 +24,11 @@
       "regionRef": "region.guide.window",
       "conceptRef": "concept.region.guide.window",
       "navigationNodeRef": "nav.region.guide.window",
-      "labelStringRef": "guide.title",
+      "labelStringRef": "vex.visible.name",
+      "presentationClass": "AMBIENT_VEX_VESSEL",
+      "visibleIdentityStringRef": "vex.visible.name",
+      "defaultVisible": true,
+      "persistentCanvasConsumer": false,
       "elements": [
         {
           "elementRef": "element.guide.window",
@@ -26,7 +37,9 @@
           "navigationRef": null,
           "journeyEventTypeRef": "journey.floating-guide",
           "kind": "FLOATING_GUIDE",
-          "labelStringRef": "guide.title",
+          "presentationClass": "AMBIENT_VEX_VESSEL",
+          "visibleIdentityStringRef": "vex.visible.name",
+          "labelStringRef": "vex.visible.name",
           "actionRef": null,
           "permissionRef": null,
           "selectionGroupRef": null,
@@ -52,11 +65,7 @@
           "permissionRef": null,
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.resize-nw"
-          },
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.resize-nw"},
           "testRefs": []
         },
         {
@@ -71,11 +80,7 @@
           "permissionRef": null,
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.resize-ne"
-          },
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.resize-ne"},
           "testRefs": []
         },
         {
@@ -90,11 +95,7 @@
           "permissionRef": null,
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.resize-sw"
-          },
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.resize-sw"},
           "testRefs": []
         },
         {
@@ -109,11 +110,7 @@
           "permissionRef": null,
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.resize-se"
-          },
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.resize-se"},
           "testRefs": []
         },
         {
@@ -128,14 +125,8 @@
           "permissionRef": null,
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.minimize"
-          },
-          "testRefs": [
-            "test.navigation.screen-frame"
-          ]
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.minimize"},
+          "testRefs": ["test.navigation.screen-frame"]
         },
         {
           "elementRef": "element.guide.close",
@@ -149,14 +140,8 @@
           "permissionRef": null,
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.close"
-          },
-          "testRefs": [
-            "test.navigation.screen-frame"
-          ]
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.close"},
+          "testRefs": ["test.navigation.screen-frame"]
         },
         {
           "elementRef": "element.guide.ask-current",
@@ -170,14 +155,8 @@
           "permissionRef": "permission.conversation.send",
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.ask-current"
-          },
-          "testRefs": [
-            "test.navigation.screen-frame"
-          ]
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.ask-current"},
+          "testRefs": ["test.navigation.screen-frame"]
         },
         {
           "elementRef": "element.guide.ask-next",
@@ -191,14 +170,8 @@
           "permissionRef": "permission.conversation.send",
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.ask-next"
-          },
-          "testRefs": [
-            "test.navigation.screen-frame"
-          ]
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.ask-next"},
+          "testRefs": ["test.navigation.screen-frame"]
         },
         {
           "elementRef": "element.guide.ask-protects",
@@ -212,14 +185,8 @@
           "permissionRef": "permission.conversation.send",
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.ask-protects"
-          },
-          "testRefs": [
-            "test.navigation.screen-frame"
-          ]
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.ask-protects"},
+          "testRefs": ["test.navigation.screen-frame"]
         },
         {
           "elementRef": "element.guide.composer",
@@ -233,14 +200,8 @@
           "permissionRef": "permission.conversation.send",
           "selectionGroupRef": null,
           "terrainNodeRef": null,
-          "accessibility": {
-            "role": "button",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.guide.composer"
-          },
-          "testRefs": [
-            "test.navigation.screen-frame"
-          ]
+          "accessibility": {"role": "button", "minimumTargetPx": 44, "stableIdentifierRef": "element.guide.composer"},
+          "testRefs": ["test.navigation.screen-frame"]
         }
       ]
     }

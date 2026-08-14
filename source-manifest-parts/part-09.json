@@ -76,8 +76,8 @@
     {
       "path": "src/core/experience.mjs",
       "mode": "100644",
-      "bytes": 15485,
-      "sha256": "c25c8539816967ecca4d9ec6cd23dc5cdea6ebf6e1a7b57e60b6cd9d947d4ab8"
+      "bytes": 22001,
+      "sha256": "d8657e385df99a193780360cf9300db871e41fe45dd232be2ec7bc80101928ae"
     },
     {
       "path": "src/core/feature-registry.mjs",
