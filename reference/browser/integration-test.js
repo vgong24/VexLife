@@ -63,13 +63,13 @@ export async function runBrowserIntegration() {
     app.state.terrain.localOffsets[peripheral.ref]={x:34,y:-20}; app.terrain.render(false); const offsetGeometry=app.terrain.geometrySnapshot(),offsetNode=offsetGeometry.nodes.find((node)=>node.ref===peripheral.ref);
     assert(offsetNode.localOffset.x===34 && offsetNode.localOffset.y===-20 && renderedPixelClose(offsetNode.left,peripheral.left+34) && renderedPixelClose(offsetNode.top,peripheral.top-20), 'P12 existing local offset is not truthfully composed over adaptive geometry');
     assert(app.terrain.toggleWorkspace()===true, 'P09 projection workspace did not enter explicit human-control mode');
-    const pinControl=document.querySelector(`[data-terrain-ref="${peripheral.ref}"]`); pinControl.click();
+    const pinControl=document.querySelector(`.e27-node[data-terrain-ref="${peripheral.ref}"]`); pinControl.click();
     const pinned = app.terrain.geometrySnapshot(), pinnedNode = pinned.nodes.find((node)=>node.ref===peripheral.ref);
     assert(pinned.manualOverrideRef===peripheral.ref && pinnedNode?.role==='MANUAL_OVERRIDE' && pinnedNode.manualOverride===true, 'P09 manual override did not outrank adaptation');
     assert(pinnedNode.width > peripheral.width, 'P09 manual override did not produce stronger node geometry');
     assert(pinnedNode.localOffset.x===34 && pinnedNode.localOffset.y===-20 && renderedPixelClose(pinnedNode.left,peripheral.left+34) && renderedPixelClose(pinnedNode.top,peripheral.top-20), 'P12 local offset stopped being truthful after manual override');
     assert(app.navigation.fullJourney().length===journeyBeforePin && app.terrain.currentRef()===currentBeforePin, 'P12 manual geometry override changed semantic refs or journey');
-    assert(pinControl.dataset.manualOverride==='true' || document.querySelector(`[data-terrain-ref="${peripheral.ref}"]`).dataset.manualOverride==='true', 'P09 pinned state is not visibly distinguishable in rendered node state');
+    assert(pinControl.dataset.manualOverride==='true' || document.querySelector(`.e27-node[data-terrain-ref="${peripheral.ref}"]`).dataset.manualOverride==='true', 'P09 pinned state is not visibly distinguishable in rendered node state');
     const journeyBeforeReset=app.navigation.fullJourney().length; app.terrain.reset(); const resetGeometry=app.terrain.geometrySnapshot();
     assert(resetGeometry.manualOverrideRef===null && Object.keys(app.state.terrain.localOffsets).length===0, 'P10 reset did not clear bounded manual geometry state');
     assert(geometryIdentity(resetGeometry)===geometryIdentity(canonical), 'P10 reset did not restore canonical adaptive choreography');
