@@ -1,5 +1,12 @@
 export const HUMAN_REVIEW_SCHEMA_VERSION = 'vexlife.experience-review.human-continuity/v1';
 
+export const HUMAN_REVIEW_FRAMING = Object.freeze({
+  candidateClass: 'E2.7_ROOTED_CURRENT_CANDIDATE',
+  comparatorClass: 'AUTHORITATIVE_E2.7_ROOT',
+  currentFirstFraming: false,
+  machineEvidenceSubstitutesForHumanConvergence: false
+});
+
 const htmlEscape = (value) => String(value)
   .replaceAll('&', '&amp;')
   .replaceAll('<', '&lt;')
@@ -17,9 +24,7 @@ const localReviewUrl = (value, name) => {
   if (/^javascript:/i.test(url) || /^data:/i.test(url)) throw new Error(`${name} must not be an executable URL`);
   if (/^https?:\/\//i.test(url)) {
     const parsed = new URL(url);
-    if (!['127.0.0.1', 'localhost', '[::1]'].includes(parsed.hostname)) {
-      throw new Error(`${name} must remain local to the review host`);
-    }
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(parsed.hostname)) throw new Error(`${name} must remain local to the review host`);
     return url;
   }
   if (!url.startsWith('/') && !url.startsWith('./')) throw new Error(`${name} must be a local absolute or relative review path`);
@@ -29,7 +34,6 @@ const localReviewUrl = (value, name) => {
 export function validateHumanReviewContext(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('human review context must be an object');
   if (input.schemaVersion !== HUMAN_REVIEW_SCHEMA_VERSION) throw new Error('Unsupported human review context schema');
-
   const current = input.current;
   const baseline = input.baseline;
   const evidence = input.machineEvidence;
@@ -37,15 +41,14 @@ export function validateHumanReviewContext(input) {
   for (const [value, name] of [[current, 'current'], [baseline, 'baseline'], [evidence, 'machineEvidence'], [handoff, 'handoff']]) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError(`${name} must be an object`);
   }
-
   const state = text(evidence.state, 'machineEvidence.state');
   if (!['PASS', 'PARTIAL', 'UNKNOWN'].includes(state)) throw new Error(`Unsupported machine evidence state: ${state}`);
   if (!Number.isInteger(evidence.caseCount) || evidence.caseCount < 0) throw new TypeError('machineEvidence.caseCount must be a non-negative integer');
   if (handoff.explorerWillOpen !== true) throw new Error('handoff.explorerWillOpen must be true for this browser review shell');
-
   return {
     schemaVersion: HUMAN_REVIEW_SCHEMA_VERSION,
     reviewEpochRef: text(input.reviewEpochRef, 'reviewEpochRef'),
+    framing: { ...HUMAN_REVIEW_FRAMING },
     current: {
       title: text(current.title, 'current.title'),
       sourceVersionRef: text(current.sourceVersionRef, 'current.sourceVersionRef'),
@@ -61,104 +64,33 @@ export function validateHumanReviewContext(input) {
     reviewQuestion: text(input.reviewQuestion, 'reviewQuestion'),
     contextSentence: text(input.contextSentence, 'contextSentence'),
     submitPath: localReviewUrl(input.submitPath || '/submit', 'submitPath'),
-    handoff: {
-      returnFilename: text(handoff.returnFilename, 'handoff.returnFilename'),
-      explorerWillOpen: true
-    }
+    handoff: { returnFilename: text(handoff.returnFilename, 'handoff.returnFilename'), explorerWillOpen: true }
   };
 }
 
 export function renderHumanContinuityReviewHtml(input) {
   const context = validateHumanReviewContext(input);
   const payload = JSON.stringify(context).replaceAll('<', '\\u003c');
-  const currentTitle = htmlEscape(context.current.title);
-  const currentRef = htmlEscape(context.current.sourceVersionRef);
-  const baselineTitle = htmlEscape(context.baseline.title);
-  const baselineExplanation = htmlEscape(context.baseline.explanation);
+  const candidateTitle = htmlEscape(context.current.title);
+  const candidateRef = htmlEscape(context.current.sourceVersionRef);
+  const comparatorTitle = htmlEscape(context.baseline.title);
+  const comparatorExplanation = htmlEscape(context.baseline.explanation);
   const question = htmlEscape(context.reviewQuestion);
   const contextSentence = htmlEscape(context.contextSentence);
   const returnFilename = htmlEscape(context.handoff.returnFilename);
-
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-review-framing="E2.7_ROOT_FIRST">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VexLife human review</title>
+<title>VexLife E2.7-rooted human convergence review</title>
 <style>
-:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:#091018;color:#f3f7fa}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#091018;color:#f3f7fa}button,textarea,input{font:inherit}button{min-height:44px}
-header{padding:18px 22px;border-bottom:1px solid #314151;background:#0f1821}.eyebrow{font-size:12px;letter-spacing:.12em;color:#8da3b5;font-weight:800}.headline{margin:4px 0 6px;font-size:24px}.context{margin:0;max-width:900px;color:#b8c7d2;line-height:1.5}
-main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,.7fr);height:calc(100vh - 112px)}.stage{min-width:0;display:flex;flex-direction:column}.stagebar{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid #314151;background:#0c141c}.stagebar button{border:1px solid #425668;border-radius:10px;background:#162433;color:#dfe8ef;padding:0 14px;font-weight:750}.stagebar button[aria-pressed="true"]{background:#72a8ff;color:#071019;border-color:#72a8ff}.ref{margin-left:auto;color:#7f93a4;font:12px ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%}iframe{width:100%;flex:1;border:0;background:#111}
-.panel{overflow:auto;padding:20px 22px;border-left:1px solid #314151;background:#101923}.panel h2{font-size:18px;margin:0 0 8px}.decision{padding:15px;border:1px solid #38516a;border-radius:14px;background:#111f2c;margin-bottom:18px}.decision strong{display:block;font-size:18px;margin-bottom:7px}.note{color:#a9bbc8;line-height:1.5;font-size:14px}.quiet{padding:12px 14px;border-radius:12px;background:#0c141c;color:#9fb2c0;margin:14px 0}.baseline-note{display:none;padding:12px 14px;border:1px solid #425668;border-radius:12px;color:#b7c7d2;margin:10px 0 18px}.baseline-note.is-visible{display:block}
-fieldset{border:0;padding:0;margin:0 0 16px}legend{font-weight:800;margin-bottom:7px}label.choice{display:block;padding:7px 0;color:#d9e3ea}textarea{width:100%;min-height:92px;padding:10px 12px;border:1px solid #425668;border-radius:10px;background:#091018;color:#f3f7fa;resize:vertical}label.prompt{display:block;margin:14px 0 6px;font-weight:750}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.primary{border:0;border-radius:10px;background:#72a8ff;color:#071019;font-weight:850;padding:0 18px}.secondary{border:1px solid #425668;border-radius:10px;background:#172431;color:#e5edf2;padding:0 15px}.status{margin-top:12px;padding:11px 13px;border-radius:10px;background:#162433;color:#cbd9e2}.complete{display:none;margin-top:12px;padding:16px;border-radius:12px;background:#123020;border:1px solid #2c7450}.complete.is-visible{display:block}.complete strong{display:block;margin-bottom:5px}
-@media(max-width:920px){main{display:block;height:auto}.stage{height:66vh}.panel{border-left:0;border-top:1px solid #314151}.ref{display:none}}
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:#091018;color:#f3f7fa}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#091018;color:#f3f7fa}button,textarea,input{font:inherit}button{min-height:44px}header{padding:18px 22px;border-bottom:1px solid #314151;background:#0f1821}.eyebrow{font-size:12px;letter-spacing:.12em;color:#8da3b5;font-weight:800}.headline{margin:4px 0 6px;font-size:24px}.context{margin:0;max-width:900px;color:#b8c7d2;line-height:1.5}main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,.7fr);height:calc(100vh - 112px)}.stage{min-width:0;display:flex;flex-direction:column}.stagebar{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid #314151;background:#0c141c}.stagebar button{border:1px solid #425668;border-radius:10px;background:#162433;color:#dfe8ef;padding:0 14px;font-weight:750}.stagebar button[aria-pressed="true"]{background:#72a8ff;color:#071019;border-color:#72a8ff}.ref{margin-left:auto;color:#7f93a4;font:12px ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%}iframe{width:100%;flex:1;border:0;background:#111}.panel{overflow:auto;padding:20px 22px;border-left:1px solid #314151;background:#101923}.panel h2{font-size:18px;margin:0 0 8px}.decision{padding:15px;border:1px solid #38516a;border-radius:14px;background:#111f2c;margin-bottom:18px}.decision strong{display:block;font-size:18px;margin-bottom:7px}.quiet{padding:12px 14px;border-radius:12px;background:#0c141c;color:#9fb2c0;margin:14px 0;line-height:1.5}.comparator-note{display:none;padding:12px 14px;border:1px solid #425668;border-radius:12px;color:#b7c7d2;margin:10px 0 18px}.comparator-note.is-visible{display:block}fieldset{border:0;padding:0;margin:0 0 16px}legend{font-weight:800;margin-bottom:7px}label.choice{display:block;padding:7px 0;color:#d9e3ea}textarea{width:100%;min-height:92px;padding:10px 12px;border:1px solid #425668;border-radius:10px;background:#091018;color:#f3f7fa;resize:vertical}label.prompt{display:block;margin:14px 0 6px;font-weight:750}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.primary{border:0;border-radius:10px;background:#72a8ff;color:#071019;font-weight:850;padding:0 18px}.secondary{border:1px solid #425668;border-radius:10px;background:#172431;color:#e5edf2;padding:0 15px}.status{margin-top:12px;padding:11px 13px;border-radius:10px;background:#162433;color:#cbd9e2}.complete{display:none;margin-top:12px;padding:16px;border-radius:12px;background:#123020;border:1px solid #2c7450}.complete.is-visible{display:block}.complete strong{display:block;margin-bottom:5px}@media(max-width:920px){main{display:block;height:auto}.stage{height:66vh}.panel{border-left:0;border-top:1px solid #314151}.ref{display:none}}
 </style>
 <header>
-  <div class="eyebrow">ONE CURRENT OBJECT ¬∑ HUMAN DIRECTION REVIEW</div>
-  <h1 class="headline">You are reviewing: ${currentTitle}</h1>
+  <div class="eyebrow">E2.7-ROOTED CURRENT OBJECT ¬∑ HUMAN CONVERGENCE REVIEW</div>
+  <h1 class="headline">You are reviewing the E2.7-rooted VexLife candidate: ${candidateTitle}</h1>
   <p class="context">${contextSentence}</p>
 </header>
 <main>
-  <section class="stage" aria-label="Review surface">
-    <div class="stagebar">
-      <button id="showCurrent" aria-pressed="true">Current VexLife</button>
-      <button id="showBaseline" aria-pressed="false">Why E2.7?</button>
-      <span class="ref" id="sourceRef">${currentRef}</span>
-    </div>
-    <iframe id="reviewFrame" src="${htmlEscape(context.current.url)}" title="Current accepted VexLife"></iframe>
-  </section>
-  <section class="panel">
-    <div class="decision">
-      <strong>What am I deciding?</strong>
-      <div>${question}</div>
-    </div>
-    <div class="quiet">Technical checks already ran (${context.machineEvidence.caseCount} supporting cases, state ${htmlEscape(context.machineEvidence.state)}). You do <strong>not</strong> need to review those cases individually.</div>
-    <div class="baseline-note" id="baselineNote"><strong>${baselineTitle}</strong><br>${baselineExplanation}</div>
-    <fieldset>
-      <legend>Closest reaction</legend>
-      <label class="choice"><input type="radio" name="overall" value="DIRECTION_FEELS_RIGHT"> The current direction feels right</label>
-      <label class="choice"><input type="radio" name="overall" value="DIRECTION_NEEDS_CHANGE"> The current direction needs changes</label>
-      <label class="choice"><input type="radio" name="overall" value="UNSURE"> I‚Äôm not sure yet</label>
-    </fieldset>
-    <label class="prompt" for="change">What should change in the current VexLife?</label>
-    <textarea id="change" placeholder="Write naturally. You do not need to classify the issue."></textarea>
-    <label class="prompt" for="preserve">What should stay or be preserved?</label>
-    <textarea id="preserve"></textarea>
-    <label class="prompt" for="extra">Anything else?</label>
-    <textarea id="extra"></textarea>
-    <div class="actions"><button class="primary" id="submit">Submit review</button><button class="secondary" id="stop">Stop without a decision</button></div>
-    <div class="status" id="status">Review the current VexLife first. Open ‚ÄúWhy E2.7?‚Äù only when that reference helps explain your expectation.</div>
-    <div class="complete" id="complete"><strong>Handoff complete.</strong>Your return is being packaged as <code>${returnFilename}</code>. Explorer will open/select it automatically. This review window will close if the browser permits it.</div>
-  </section>
-</main>
-<script>
-const C=${payload};
-const frame=document.querySelector('#reviewFrame'),currentButton=document.querySelector('#showCurrent'),baselineButton=document.querySelector('#showBaseline'),sourceRef=document.querySelector('#sourceRef'),baselineNote=document.querySelector('#baselineNote'),status=document.querySelector('#status'),complete=document.querySelector('#complete');
-function show(kind){
- const baseline=kind==='baseline';
- frame.src=baseline?C.baseline.url:C.current.url;
- frame.title=baseline?'E2.7 experience-intention reference':'Current accepted VexLife';
- currentButton.setAttribute('aria-pressed',String(!baseline));baselineButton.setAttribute('aria-pressed',String(baseline));
- sourceRef.textContent=baseline?C.baseline.artifactRef:C.current.sourceVersionRef;
- baselineNote.classList.toggle('is-visible',baseline);
-}
-currentButton.onclick=()=>show('current');baselineButton.onclick=()=>show('baseline');
-async function send(mode){
- const overall=document.querySelector('input[name=overall]:checked')?.value||'';
- if(mode==='SUBMIT'&&!overall){status.textContent='Choose the closest reaction first.';return;}
- const payload={mode,overall,change:change.value,preserve:preserve.value,extra:extra.value,reviewEpochRef:C.reviewEpochRef,submittedAt:new Date().toISOString()};
- status.textContent='Submitting review and preparing the handoff‚Ä¶';
- let response;
- try{response=await fetch(C.submitPath,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});}catch(error){status.textContent='Submission failed: '+error.message;return;}
- if(!response.ok){status.textContent='Submission failed. Keep this window open and try again.';return;}
- document.querySelectorAll('button,textarea,input').forEach((element)=>element.disabled=true);
- complete.classList.add('is-visible');status.textContent='Submitted successfully. Explorer is opening the canonical return ZIP.';
- setTimeout(()=>{try{window.close();}catch{}},700);
- setTimeout(()=>{if(!window.closed){document.body.dataset.handoffComplete='true';}},1400);
-}
-document.querySelector('#submit').onclick=()=>send('SUBMIT');document.querySelector('#stop').onclick=()=>send('STOP_NO_DECISION');
-</script>
-</html>`;
-}
-
-// [VXG RealForever]
+  <section class="stage" aria-label="E2.7-rooted review pBÀ Ùàd»8÷∂vVB2∆6ˆFS‚G∑&WGW&‰fñ∆VÊ÷W”¬ˆ6ˆFS‚‚Wá∆˜&W"vñ∆¬˜V‚˜6V∆V7BóBWFˆ÷Fñ6∆«í‚FÜó2&WfñWrvñÊF˜rvñ∆¬6∆˜6RñbFÜR'&˜w6W"W&÷óG2óB„¬ˆFóc‡¢¬˜6V7Fñˆ„‡£¬ˆ÷ñ„‡£«67&óC‡¶6ˆÁ7B3“G∑ñ∆ˆG”∂6ˆÁ7Bg&÷S÷Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"Çr7&WfñWtg&÷Rrí∆6ÊFñFFT'WGFˆ„÷Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"Çr76Ü˜t7W'&VÁBrí«&ˆ˜D'WGFˆ„÷Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"Çr76Ü˜t&6V∆ñÊRrí«6˜W&6U&Vc÷Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"Çr76˜W&6U&Vbrí∆6ˆ◊&F˜$Ê˜FS÷Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"Çr6&6V∆ñÊTÊ˜FRrí«7FGW3÷Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"Çr77FGW2rí∆6ˆ◊∆WFS÷Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"Çr66ˆ◊∆WFRrì∞¶gVÊ7Fñˆ‚6Ü˜rÜ∂ñÊBó∂6ˆÁ7B&ˆ˜C÷∂ñÊC””“w&ˆ˜C∂g&÷RÁ7&3◊&ˆ˜CÙ2Ê&6V∆ñÊRÁW&√§2Ê7W'&VÁBÁW&√∂g&÷RÁFóF∆S◊&ˆ˜CÚtWFÜ˜&óFFófRS"„r&ˆ˜B6ˆ◊&F˜"s¢tS"„r◊&ˆ˜FVBfWÑ∆ñfR6ÊFñFFRs∂6ÊFñFFT'WGFˆ‚Á6WDGG&ñ'WFRÇv&ñ◊&W76VBr≈7G&ñÊrÇ&ˆ˜Bíì∑&ˆ˜D'WGFˆ‚Á6WDGG&ñ'WFRÇv&ñ◊&W76VBr≈7G&ñÊrá&ˆ˜Bíì∑6˜W&6U&VbÁFWáD6ˆÁFVÁC◊&ˆ˜CÙ2Ê&6V∆ñÊRÊ'Fñf7E&Vc§2Ê7W'&VÁBÁ6˜W&6UfW'6ñˆÂ&Vc∂6ˆ◊&F˜$Ê˜FRÊ6∆74∆ó7BÁFˆvv∆RÇvó2◊fó6ñ&∆Rr«&ˆ˜Bó–¶6ÊFñFFT'WGFˆ‚ÊˆÊ6∆ñ6≥“Çì”Á6Ü˜rÇv6ÊFñFFRrì∑&ˆ˜D'WGFˆ‚ÊˆÊ6∆ñ6≥“Çì”Á6Ü˜rÇw&ˆ˜Brì∞¶7ñÊ2gVÊ7Fñˆ‚6VÊBÜ÷ˆFRó∂6ˆÁ7B˜fW&∆√÷Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"ÇvñÁWE∂Ê÷S÷˜fW&∆≈”¶6ÜV6∂VBrìÚÁf«VW«¬rs∂ñbÜ÷ˆFS””“u5T$‘ïBrbb˜fW&∆¬ó∑7FGW2ÁFWáD6ˆÁFVÁC“t6Üˆ˜6RFÜR6∆˜6W7B&V7Fñˆ‚fó'7B‚s∑&WGW&Á÷6ˆÁ7B&WfñWs◊∂÷ˆFR∆˜fW&∆¬∆6ÜÊvS¶6ÜÊvRÁf«VR«&W6W'fSß&W6W'fRÁf«VR∆WáG&¶WáG&Áf«VR«&WfñWtWˆ6Ö&Vc§2Á&WfñWtWˆ6Ö&Vb«7V&÷óGFVDC¶ÊWrFFRÇíÁFÙï4ı7G&ñÊrÇí«&WfñWtˆ&¶V7D6∆73§2Êg&÷ñÊrÊ6ÊFñFFT6∆72∆6ˆ◊&F˜$6∆73§2Êg&÷ñÊrÊ6ˆ◊&F˜$6∆77”∑7FGW2ÁFWáD6ˆÁFVÁC“u7V&÷óGFñÊr&WfñWrÊB&W&ñÊrFÜRÜÊFˆfn(
+n(	ì∂∆WB&W7ˆÁ6S∑G'ó∑&W7ˆÁ6S÷vóBfWF6ÇÑ2Á7V&÷óEFÇ«∂÷WFÜˆC¢uı5Br∆ÜVFW'3ß≤v6ˆÁFVÁB◊GóRs¢v∆ñ6Fñˆ‚ˆß6ˆ‚w“∆&ˆGì§•4Ù‚Á7G&ñÊvñgíá&WfñWró“ó÷6F6ÇÜW'&˜"ó∑7FGW2ÁFWáD6ˆÁFVÁC“u7V&÷ó76ñˆ‚fñ∆VC¢r∂W'&˜"Ê÷W76vS∑&WGW&Á÷ñbÇ&W7ˆÁ6RÊˆ≤ó∑7FGW2ÁFWáD6ˆÁFVÁC“u7V&÷ó76ñˆ‚fñ∆VB‚∂VWFÜó2vñÊF˜r˜V‚ÊBG'ívñ‚‚s∑&WGW&Á÷Fˆ7V÷VÁBÁVW'ï6V∆V7F˜$∆¬Çv'WGFˆ‚«FWáF&V∆ñÁWBríÊf˜$V6ÇÇÜV∆V÷VÁBì”ÊV∆V÷VÁBÊFó6&∆VC◊G'VRì∂6ˆ◊∆WFRÊ6∆74∆ó7BÊFBÇvó2◊fó6ñ&∆Rrì∑7FGW2ÁFWáD6ˆÁFVÁC“u7V&÷óGFVB7V66W76gV∆«í‚Wá∆˜&W"ó2˜VÊñÊrFÜR6ÊˆÊñ6¬&WGW&‚§ï‚s∑6WEFñ÷V˜WBÇÇì”Á∑G'ó∑vñÊF˜rÊ6∆˜6RÇó÷6F6á∑◊“√sì∑6WEFñ÷V˜WBÇÇì”Á∂ñbÇvñÊF˜rÊ6∆˜6VBó∂Fˆ7V÷VÁBÊ&ˆGíÊFF6WBÊÜÊFˆfd6ˆ◊∆WFS“wG'VRw◊“√Có–¶Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"Çr77V&÷óBríÊˆÊ6∆ñ6≥“Çì”Á6VÊBÇu5T$‘ïBrì∂Fˆ7V÷VÁBÁVW'ï6V∆V7F˜"Çr77F˜ríÊˆÊ6∆ñ6≥“Çì”Á6VÊBÇu5DıÙ‰ıÙDT4ï4îÙ‚rì∞£¬˜67&óC‡£¬ˆáF÷√Ê∞ß–†¢ÚÚµeÑr&Vƒf˜&WfW%–
