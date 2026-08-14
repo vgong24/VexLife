@@ -34,6 +34,7 @@ const TERRAIN_CONTEXT = Object.freeze({
 const initialTerrainRef = blueprint.terrain.find((node) => !node.parentRef)?.terrainNodeRef;
 Object.assign(state, TERRAIN_CONTEXT[initialTerrainRef] || {});
 state.terrain = { ...(state.terrain || {}), selected: initialTerrainRef };
+state.selectedNodeRef = initialTerrainRef;
 const elementByRef = new Map(compileInterfaceEntries(blueprint).map((entry) => [entry.ref, entry]));
 const t = (ref, params = {}) => { const template = catalogs[state.language]?.[ref] ?? catalogs.en?.[ref] ?? `[${ref}]`; return template.replace(/\{([A-Za-z0-9_]+)\}/g, (_, key) => String(params[key] ?? `{${key}}`)); };
 const semanticPatchForNode = (nodeRef) => TERRAIN_CONTEXT[nodeRef] || {};

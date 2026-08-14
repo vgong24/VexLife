@@ -48,12 +48,14 @@ test('direct-root first render keeps Vex visible but ambient and protects Terrai
   assert.match(css,/@media\(max-width:760px\)[\s\S]*\.e27-vex\{left:10px;right:10px;top:auto;bottom:82px;width:auto\}/);
 });
 
-test('initial current semantic context is seeded into append-only journey', () => {
+test('initial current semantic context is seeded into append-only journey after Terrain root binding', () => {
   assert.match(navigation,/function seedCurrentJourney\(/);
   assert.match(navigation,/if \(state\.journey\.length\) return state\.journey\.at\(-1\)/);
   assert.match(navigation,/appendJourney\(\{ elementRef, actionRef, before: frame, after: frame \}\)/);
   assert.match(navigation,/semanticFrame, seedCurrentJourney, navigate/);
+  assert.match(app,/state\.selectedNodeRef = initialTerrainRef/);
   assert.match(app,/navigation\.seedCurrentJourney\(initialTerrainRef\)/);
+  assert.ok(app.indexOf('state.selectedNodeRef = initialTerrainRef') < app.indexOf('navigation.seedCurrentJourney(initialTerrainRef)'), 'selected Terrain root must bind before journey seed');
 });
 
 test('journey projection preserves append-only source and recent-five human window', () => {
