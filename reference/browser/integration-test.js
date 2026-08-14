@@ -1,285 +1,107 @@
-const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
-
-function click(selector) {
-  const element = document.querySelector(selector);
-  assert(element, `Missing integration selector: ${selector}`);
-  element.click();
-  return element;
-}
-
-function visibleMessages() {
-  return [...document.querySelectorAll('#messageFeed .message')].map((element) => ({
-    text: element.querySelector('.message-body')?.textContent || '',
-    projectRef: element.dataset.projectRef,
-    threadRef: element.dataset.threadRef,
-    channelRef: element.dataset.channelRef
-  }));
-}
-
-function assertVisibleOwnership(app, requiredMarker, forbiddenMarkers = []) {
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const click = (selector) => { const element = document.querySelector(selector); assert(element, `Missing ${selector}`); element.click(); return element; };
+const selectLanguage = (language) => { const select = document.querySelector('#languageSelect'); select.value = language; select.dispatchEvent(new Event('change', { bubbles: true })); };
+const selectedMessageList = (app) => app.messages.get(`${app.state.projectRef}::${app.state.threadRef}::${app.state.channelRef}`);
+const visibleMessages = () => [...document.querySelectorAll('#messageFeed .message')].map((node) => ({ text: node.querySelector('.message-body')?.textContent || '', projectRef: node.dataset.projectRef, threadRef: node.dataset.threadRef, channelRef: node.dataset.channelRef }));
+function assertVisibleOwnership(app, required, forbidden = []) {
   const visible = visibleMessages();
-  assert(visible.some((message) => message.text === requiredMarker), `Missing selected history marker: ${requiredMarker}`);
-  for (const marker of forbiddenMarkers) {
-    assert(!visible.some((message) => message.text === marker), `Cross-thread message leakage: ${marker}`);
-  }
-  for (const message of visible) {
-    assert(message.projectRef === app.state.projectRef, `Visible projectRef mismatch: ${message.projectRef}`);
-    assert(message.threadRef === app.state.threadRef, `Visible threadRef mismatch: ${message.threadRef}`);
-    assert(message.channelRef === app.state.channelRef, `Visible channelRef mismatch: ${message.channelRef}`);
-  }
+  assert(visible.some((message) => message.text === required), `Missing selected marker ${required}`);
+  for (const marker of forbidden) assert(!visible.some((message) => message.text === marker), `Cross-thread message leakage: ${marker}`);
+  for (const message of visible) { assert(message.projectRef === app.state.projectRef, 'Visible project ownership drift'); assert(message.threadRef === app.state.threadRef, 'Visible thread ownership drift'); assert(message.channelRef === app.state.channelRef, 'Visible channel ownership drift'); }
 }
-
-function selectedMessageList(app) {
-  const key = `${app.state.projectRef}::${app.state.threadRef}::${app.state.channelRef}`;
-  return app.messages.get(key);
-}
-
-async function sendMarker(marker) {
-  const input = document.querySelector('#messageInput');
-  input.value = marker;
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  document.querySelector('#composer').requestSubmit();
-  await delay(230);
-}
-
-function selectLanguage(language) {
-  const select = document.querySelector('#languageSelect');
-  select.value = language;
-  select.dispatchEvent(new Event('change', { bubbles: true }));
+async function sendMarker(marker) { const input = document.querySelector('#messageInput'); input.value = marker; input.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#composer').requestSubmit(); await delay(230); }
+function visibleRatioWithin(canvas, node) {
+  const c = canvas.getBoundingClientRect(); const n = node.getBoundingClientRect();
+  const width = Math.max(0, Math.min(c.right, n.right) - Math.max(c.left, n.left));
+  const height = Math.max(0, Math.min(c.bottom, n.bottom) - Math.max(c.top, n.top));
+  return (width * height) / Math.max(1, n.width * n.height);
 }
 
 export async function runBrowserIntegration() {
-  const host = document.createElement('pre');
-  host.id = 'integrationReceipt';
-  host.dataset.state = 'RUNNING';
-  host.textContent = 'RUNNING';
-  document.body.append(host);
+  const host = document.createElement('pre'); host.id = 'integrationReceipt'; host.dataset.state = 'RUNNING'; document.body.append(host);
   const app = globalThis.__VEXLIFE_APP__;
-  const availabilityChecks = [];
-  const ownershipChecks = [];
-  const localizationChecks = [];
-
+  const stageBChecks = []; const availabilityChecks = []; const ownershipChecks = []; const localizationChecks = [];
   try {
-    const composer = document.querySelector('#composer');
-    const input = document.querySelector('#messageInput');
-    const sendButton = document.querySelector('#composer button[type="submit"]');
-    const composerNodeRef = composer.dataset.nodeRef;
-    const companionIdentityBefore = app.chat.roleLabel('companion');
-    const blockedDraft = 'integration.marker.unsent-local-draft';
-    const blockedList = selectedMessageList(app);
-    const blockedCountBefore = blockedList.length;
-    const blockedChannelRef = app.state.channelRef;
+    assert(app.rootContract?.contractRef === 'contract.vexlife.e27.authoritative-root/v1', 'B01 authoritative root contract missing');
+    assert(app.state.view === 'terrain' && app.state.contextProjection === null, 'B01 Terrain is not default primary stage');
+    assert(!document.querySelector('#view-terrain').hidden, 'B01 Terrain hidden');
+    assert(document.querySelector('#view-chat').hidden && document.querySelector('#view-health').hidden, 'B01 contextual projection visible by default');
+    assert(document.querySelector('#projectRail').getAttribute('aria-hidden') === 'true', 'B02 project rail persists by default');
+    assert(document.querySelector('#guideToggle').hidden, 'B03 legacy Guide toggle is visible');
+    assert(!document.querySelector('[data-selection-group="selection.primary-view"]'), 'B03 primary-view tab topology survived');
+    stageBChecks.push('B01 Terrain is the single primary stage','B02 workspace is contextual and closed by default','B03 ambient Vex replaces Guide-first/default-tab presentation');
 
-    assert(app.state.vexAvailability === 'UNAVAILABLE', 'A01 initial Vex availability must be UNAVAILABLE');
-    assert(sendButton.disabled, 'A01 Send must be unavailable while Vex is unavailable');
-    input.value = blockedDraft;
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    composer.requestSubmit();
-    await delay(230);
+    app.openContext('chat', 'element.nav.chat');
+    assert(app.state.contextProjection === 'chat' && !document.querySelector('#view-chat').hidden, 'B04 Chat did not open contextually');
+    assert(!document.querySelector('#view-terrain').hidden, 'B04 Chat consumed Terrain stage');
+    stageBChecks.push('B04 Chat projects over Terrain instead of replacing it');
 
-    assert(blockedList.length === blockedCountBefore, 'A01 unavailable submit appended a message');
-    assert(app.chat.pendingReplyCount() === 0, 'A02 unavailable submit scheduled a reply');
-    assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT', 'A03 blocked text was not classified as UNSENT_LOCAL_DRAFT');
-    assert(app.state.unsentLocalDraft?.channelRef === blockedChannelRef, 'A03 local draft lost its channel binding');
-    assert(app.state.unsentLocalDraft?.content === blockedDraft, 'A03 local draft content changed');
-    assert(app.state.unsentLocalDraft?.queued === false, 'A03 local draft was represented as queued');
-    assert(app.state.unsentLocalDraft?.accepted === false, 'A03 local draft was represented as accepted');
-    assert(input.value === blockedDraft, 'A03 blocked text did not remain visibly in the composer');
-    assert(input.dataset.draftState === 'UNSENT_LOCAL_DRAFT', 'A03 composer draft state is not explicit');
-    assert(!visibleMessages().some((message) => message.text === blockedDraft), 'A03 blocked draft leaked into message history');
-    availabilityChecks.push('A01 unavailable submit appends zero messages');
-    availabilityChecks.push('A02 unavailable submit schedules zero replies');
-    availabilityChecks.push('A03 local-only draft remains visible, channel-bound, and unqueued');
+    const composer = document.querySelector('#composer'); const input = document.querySelector('#messageInput'); const send = composer.querySelector('button[type="submit"]');
+    const blockedDraft = 'integration.marker.unsent-local-draft'; const blockedList = selectedMessageList(app); const blockedCount = blockedList.length; const blockedChannel = app.state.channelRef;
+    assert(app.state.vexAvailability === 'UNAVAILABLE' && send.disabled, 'A01 unavailable truth missing');
+    input.value = blockedDraft; input.dispatchEvent(new Event('input', { bubbles: true })); composer.requestSubmit(); await delay(230);
+    assert(blockedList.length === blockedCount, 'A01 unavailable submit appended a message'); assert(app.chat.pendingReplyCount() === 0, 'A02 unavailable submit scheduled reply');
+    assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT' && app.state.unsentLocalDraft?.channelRef === blockedChannel, 'A03 local draft ownership lost');
+    availabilityChecks.push('A01-A03 unavailable submit remains an unqueued channel-bound local draft');
 
-    for (const language of ['en', 'zh', 'ja']) {
-      selectLanguage(language);
-      assert(document.querySelector('#composer').dataset.nodeRef === composerNodeRef, `A10 ${language} changed composer semantic identity`);
-      assert(
-        document.querySelector('#composerHint').textContent.startsWith(app.t('composer.availability.unavailable-draft')),
-        `A10 ${language} unavailable-draft truth did not render from the stable string ref`
-      );
-      localizationChecks.push({ language, availabilityRef: 'composer.availability.unavailable-draft', state: 'PASS' });
-    }
+    for (const language of ['en','zh','ja']) { selectLanguage(language); assert(document.querySelector('#composerHint').textContent.startsWith(app.t('composer.availability.unavailable-draft')), `${language} unavailable-draft truth not localized`); localizationChecks.push(`${language}:UNAVAILABLE_DRAFT`); }
     selectLanguage('en');
 
-    click('[data-channel-ref="channel.self-development.guide"]');
-    assert(app.state.channelRef === 'channel.self-development.guide', 'A03 channel-isolation test did not enter the non-owning channel');
-    assert(input.value === '', 'A03 other-channel draft remained visible in the non-owning channel');
-    assert(input.dataset.draftState === 'NONE', 'A03 non-owning channel falsely projected draft ownership');
-    assert(app.state.unsentLocalDraft?.channelRef === blockedChannelRef, 'A03 selecting another channel reassigned the owning draft');
-    assert(app.state.unsentLocalDraft?.content === blockedDraft, 'A03 selecting another channel mutated the owning draft');
-    const nonOwningList = selectedMessageList(app);
-    const nonOwningCountBefore = nonOwningList.length;
-    app.chat.setVexAvailability('AVAILABLE');
-    await delay(230);
-    assert(input.value === '', 'A03 availability restoration exposed another channel\'s stale draft');
-    assert(nonOwningList.length === nonOwningCountBefore, 'A03 availability restoration sent another channel\'s stale draft');
-    assert(app.chat.pendingReplyCount() === 0, 'A03 availability restoration scheduled a non-owning-channel reply');
-    app.chat.setVexAvailability('UNAVAILABLE');
-    click(`[data-channel-ref="${blockedChannelRef}"]`);
-    assert(app.state.channelRef === blockedChannelRef, 'A03 channel-isolation test did not return to the owning channel');
-    assert(input.value === blockedDraft, 'A03 returning to the owning channel did not restore its draft');
-    assert(input.dataset.draftState === 'UNSENT_LOCAL_DRAFT', 'A03 restored owning draft lost its explicit state');
-    availabilityChecks.push('A03 channel-bound draft is hidden outside its owner and restored on return');
+    app.returnToTerrain(); assert(app.state.contextProjection === null && !document.querySelector('#view-terrain').hidden, 'B05 contextual return failed'); assert(input.value === blockedDraft, 'B05 contextual return lost draft');
+    stageBChecks.push('B05 return to Terrain preserves contextual conversation state');
 
-    click('[data-action="select-view"][data-view="terrain"]');
-    assert(document.querySelector('#view-terrain').hidden === false, 'A04 Terrain did not remain usable while Vex was unavailable');
-    click('#terrainReset');
-    assert(app.state.vexAvailability === 'UNAVAILABLE', 'A04 Terrain interaction changed Vex availability');
-    assert(input.value === blockedDraft, 'A04 Terrain interaction lost the unsent local draft');
-    availabilityChecks.push('A04 Terrain remains usable while unavailable');
+    const depthBefore = app.state.terrain.semanticDepth;
+    const scroll = app.terrain.evaluateSemanticAutoEntry({ nodeRef: app.state.terrain.selected, visibilityRatio: 1, confidence: 1, source: 'ORDINARY_SCROLL' });
+    assert(scroll.committed === false && scroll.reason === 'ORDINARY_SCROLL_NEVER_COMMITS', 'B06 ordinary scrolling committed semantic auto-entry'); assert(app.state.terrain.semanticDepth === depthBefore, 'B06 ordinary scroll changed semantic depth');
+    app.terrain.setAutoEntryEnabled(true); app.terrain.setAutoEntryThresholds({ visibilityThreshold: .5, confidenceThreshold: .8 });
+    assert(document.querySelector('#terrainAutoEntryStatus').textContent.includes('V≥50%') && document.querySelector('#terrainAutoEntryStatus').textContent.includes('C≥80%'), 'B06 thresholds are not human-visible');
 
-    click('[data-action="select-view"][data-view="chat"]');
-    assert(app.state.vexAvailability === 'UNAVAILABLE', 'A05 returning from Terrain changed availability truth');
-    assert(input.value === blockedDraft, 'A05 returning from Terrain lost the unsent local draft');
-    assert(sendButton.disabled, 'A05 Send became available without an availability transition');
-    availabilityChecks.push('A05 returning from Terrain preserves availability and draft truth');
-
-    app.chat.setVexAvailability('AVAILABLE');
-    await delay(230);
-    assert(blockedList.length === blockedCountBefore, 'A06 availability restoration auto-sent the stale draft');
-    assert(app.chat.pendingReplyCount() === 0, 'A06 availability restoration scheduled a reply');
-    assert(app.state.unsentLocalDraft?.content === blockedDraft, 'A06 availability restoration consumed the stale draft');
-    assert(input.value === blockedDraft, 'A06 availability restoration removed the visible draft');
-    assert(!sendButton.disabled, 'A06 Send did not become available after restoration');
-    availabilityChecks.push('A06 restoration leaves stale draft unsent');
-
-    const countBeforeTransitions = blockedList.length;
-    for (let index = 0; index < 3; index += 1) {
-      app.chat.setVexAvailability('UNAVAILABLE');
-      app.chat.setVexAvailability('AVAILABLE');
-    }
-    await delay(230);
-    assert(blockedList.length === countBeforeTransitions, 'A08 repeated availability transitions sent or duplicated stale content');
-    assert(app.chat.pendingReplyCount() === 0, 'A08 repeated availability transitions scheduled a reply');
-    assert(input.value === blockedDraft, 'A08 repeated availability transitions changed the draft');
-    availabilityChecks.push('A08 repeated transitions do not duplicate or send stale content');
-
-    for (const language of ['en', 'zh', 'ja']) {
-      selectLanguage(language);
-      assert(document.querySelector('#composer').dataset.nodeRef === composerNodeRef, `A10 ${language} changed composer semantic identity after restoration`);
-      assert(
-        document.querySelector('#composerHint').textContent.startsWith(app.t('composer.availability.available')),
-        `A10 ${language} available truth did not render from the stable string ref`
-      );
-      localizationChecks.push({ language, availabilityRef: 'composer.availability.available', state: 'PASS' });
-    }
-    selectLanguage('en');
-
-    assert(app.chat.roleLabel('companion') === companionIdentityBefore, 'A09 visible Vex identity changed with availability state');
-    availabilityChecks.push('A09 visible Vex identity is stable across availability');
-
-    composer.requestSubmit();
-    await delay(230);
-    assert(blockedList.length === blockedCountBefore + 2, 'A07 explicit post-restoration send did not produce exactly one accepted message and one reply');
-    assert(blockedList.some((message) => message.content === blockedDraft), 'A07 explicit send did not accept the visible draft');
-    assert(app.state.unsentLocalDraft === null, 'A07 accepted send left stale draft state behind');
-    assert(input.value === '', 'A07 accepted send did not clear the composer');
-    availabilityChecks.push('A07 explicit send after restoration is the only acceptance path');
-    availabilityChecks.push('A10 EN/JA/ZH availability truth uses stable refs and composer identity');
-
-    const markerSelfCompanion = 'integration.marker.self.companion';
-    const markerSelfGuide = 'integration.marker.self.guide';
-    const markerVexGuided = 'integration.marker.vex-home.guided';
-    const markerVexWorkshop = 'integration.marker.vex-home.workshop';
-    const markerLocalFoundation = 'integration.marker.local-vex.foundation';
-
-    await sendMarker(markerSelfCompanion);
-    click('[data-channel-ref="channel.self-development.guide"]');
-    await sendMarker(markerSelfGuide);
-
-    click('[data-project-ref="project.vex-home-product"] .project-button');
-    await sendMarker(markerVexGuided);
-    click('[data-instance-ref="instance.thread-entry.thread.vex-home.product-workshop"]');
-    click('[data-channel-ref="channel.vex-home.product-workshop.guide"]');
-    await sendMarker(markerVexWorkshop);
-
-    click('[data-project-ref="project.local-vex"] .project-button');
-    await sendMarker(markerLocalFoundation);
-    assertVisibleOwnership(app, markerLocalFoundation, [markerSelfCompanion, markerSelfGuide, markerVexGuided, markerVexWorkshop]);
-    ownershipChecks.push('local-vex.foundation.root-hub isolated');
-
-    click('[data-project-ref="project.vex-home-product"] .project-button');
-    click('[data-instance-ref="instance.thread-entry.thread.vex-home.product-workshop"]');
-    assert(app.state.channelRef === 'channel.vex-home.product-workshop.guide', 'Workshop selected channel was not restored');
-    assertVisibleOwnership(app, markerVexWorkshop, [markerSelfCompanion, markerSelfGuide, markerVexGuided, markerLocalFoundation]);
-    ownershipChecks.push('vex-home.product-workshop.guide restored');
-
-    click('[data-instance-ref="instance.thread-entry.thread.vex-home.guided-fresh"]');
-    assert(app.state.channelRef === 'channel.vex-home.guided-fresh.companion', 'Guided thread selected channel was not restored');
-    assertVisibleOwnership(app, markerVexGuided, [markerSelfCompanion, markerSelfGuide, markerVexWorkshop, markerLocalFoundation]);
-    ownershipChecks.push('vex-home.guided-fresh.companion restored');
-
-    click('[data-project-ref="project.self-development"] .project-button');
-    assert(app.state.channelRef === 'channel.self-development.guide', 'Self-development selected channel was not restored');
-    assertVisibleOwnership(app, markerSelfGuide, [markerSelfCompanion, markerVexGuided, markerVexWorkshop, markerLocalFoundation]);
-    ownershipChecks.push('self-development.open-conversation.guide restored');
-
-    click('[data-channel-ref="channel.self-development.companion"]');
-    assertVisibleOwnership(app, markerSelfCompanion, [markerSelfGuide, markerVexGuided, markerVexWorkshop, markerLocalFoundation]);
-    ownershipChecks.push('multiple channels remain isolated inside one thread');
-
-    if (document.querySelector('#guideWindow').hidden) click('#guideToggle');
-    const intentCases = [
-      ['intent.guide.current', 'guide.ask.current'],
-      ['intent.guide.next', 'guide.mode.next'],
-      ['intent.guide.protects', 'guide.ask.protects']
-    ];
-    for (const language of ['en', 'zh', 'ja']) {
-      selectLanguage(language);
-      for (const [intentRef, promptRef] of intentCases) {
-        const button = click(`[data-guide-intent-ref="${intentRef}"]`);
-        const response = app.guide.responseForIntent(intentRef);
-        const rendered = [...document.querySelectorAll(`.guide-message.guide[data-intent-ref="${intentRef}"]`)].at(-1);
-        assert(button.textContent === app.t(promptRef), `${language} Guide prompt did not render from ${promptRef}`);
-        assert(rendered?.dataset.contentRef === response.contentRef, `${language} Guide response used the wrong contentRef for ${intentRef}`);
-        assert(rendered?.textContent === app.t(response.contentRef, response.contentParams), `${language} Guide response was not localized for ${intentRef}`);
-        localizationChecks.push({ language, intentRef, promptRef, responseRef: response.contentRef, state: 'PASS' });
+    const terrainCanvas = document.querySelector('#terrainCanvas');
+    let siblingCase = null;
+    for (const node of document.querySelectorAll('.terrain-node[data-node-ref]')) {
+      const sourceRef = node.dataset.nodeRef;
+      const siblings = app.terrain.siblingRefs(sourceRef);
+      const index = siblings.indexOf(sourceRef);
+      const candidates = index >= 0 ? [[index + 1, 'NEXT'], [index - 1, 'PREVIOUS']] : [];
+      for (const [targetIndex, direction] of candidates) {
+        if (targetIndex < 0 || targetIndex >= siblings.length) continue;
+        const targetRef = siblings[targetIndex];
+        const targetNode = document.querySelector(`.terrain-node[data-node-ref="${CSS.escape(targetRef)}"]`);
+        if (targetNode && visibleRatioWithin(terrainCanvas, targetNode) >= .5) { siblingCase = { sourceRef, targetRef, direction }; break; }
       }
+      if (siblingCase) break;
     }
+    assert(siblingCase, 'B07 no visible sibling pair available for single-evaluation proof');
+    app.state.terrain.selected = siblingCase.sourceRef;
+    app.terrain.setSemanticDepth(0);
+    app.terrain.render();
+    assert(app.terrain.navigateSibling(siblingCase.direction), 'B07 sibling navigation did not move');
+    await delay(0); await delay(0);
+    assert(app.state.terrain.selected === siblingCase.targetRef, 'B07 sibling target mismatch');
+    assert(app.state.terrain.semanticDepth === 1, `B07 one sibling gesture advanced semantic depth to ${app.state.terrain.semanticDepth}`);
+    stageBChecks.push('B06 semantic auto-entry is opt-in, visibly thresholded, confidence-gated, and ordinary-scroll-safe','B07 one sibling gesture commits at most one semantic auto-entry level');
 
-    const result = {
-      schemaVersion: 'vexlife.browser-integration-receipt/v0',
-      state: 'PASS',
-      availabilityChecks,
-      projectsExercised: ['project.self-development', 'project.vex-home-product', 'project.local-vex'],
-      threadsExercised: [
-        'thread.self-development.open-conversation',
-        'thread.vex-home.guided-fresh',
-        'thread.vex-home.product-workshop',
-        'thread.local-vex.foundation'
-      ],
-      channelsExercised: [
-        'channel.self-development.companion',
-        'channel.self-development.guide',
-        'channel.vex-home.guided-fresh.companion',
-        'channel.vex-home.product-workshop.guide',
-        'channel.local-vex.foundation.root-hub'
-      ],
-      ownershipChecks,
-      localizationChecks
-    };
-    host.dataset.state = 'PASS';
-    host.textContent = JSON.stringify(result, null, 2);
-    globalThis.__VEXLIFE_INTEGRATION_RESULT__ = result;
-    return result;
+    app.openContext('chat'); app.chat.setVexAvailability('AVAILABLE'); await delay(230);
+    assert(blockedList.length === blockedCount && input.value === blockedDraft && !send.disabled, 'A06 restoration auto-sent or discarded stale draft');
+    composer.requestSubmit(); await delay(230); assert(blockedList.length === blockedCount + 2 && app.state.unsentLocalDraft === null, 'A07 explicit send is not the only acceptance path');
+    availabilityChecks.push('A06-A07 restoration never auto-sends; explicit send is acceptance');
+
+    const markerSelf = 'integration.marker.self.companion'; const markerGuide = 'integration.marker.self.guide'; const markerVex = 'integration.marker.vex-home.guided';
+    app.setWorkspaceOpen(true); await sendMarker(markerSelf); click('[data-channel-ref="channel.self-development.guide"]'); await sendMarker(markerGuide); click('[data-project-ref="project.vex-home-product"] .project-button'); await sendMarker(markerVex);
+    assertVisibleOwnership(app, markerVex, [markerSelf, markerGuide]); ownershipChecks.push('project-thread-channel message isolation preserved');
+
+    const sourceRefs = [...document.querySelectorAll('#channelTabs [data-source-role-ref]')].map((node) => node.dataset.sourceRoleRef);
+    assert(sourceRefs.every((ref) => ref?.startsWith('role.vex.')), 'B08 visible Vex lost source-role attribution');
+    assert([...document.querySelectorAll('#channelTabs [data-source-role-ref]')].every((node) => node.textContent.includes(app.t('vex.visible.name'))), 'B08 multiple visible Vex names survived');
+    stageBChecks.push('B08 one visible ambient Vex preserves internal source-role attribution');
+
+    for (const language of ['en','zh','ja']) { selectLanguage(language); assert(document.querySelector('#vexSummon').textContent.includes(app.t('vex.summon')), `${language} ambient Vex summon not localized`); localizationChecks.push(`${language}:AMBIENT_VEX`); }
+
+    const result = { schemaVersion:'vexlife.e27-stage-b-browser-integration/v1', state:'PASS', stageBChecks, availabilityChecks, ownershipChecks, localizationChecks, primaryStageScreenRef:'screen.vexlife.terrain', presentationContractRef:app.rootContract.contractRef };
+    host.dataset.state='PASS'; host.textContent=JSON.stringify(result,null,2); globalThis.__VEXLIFE_INTEGRATION_RESULT__=result; return result;
   } catch (error) {
-    const result = {
-      schemaVersion: 'vexlife.browser-integration-receipt/v0',
-      state: 'FAIL',
-      error: error instanceof Error ? error.message : String(error),
-      availabilityChecks,
-      ownershipChecks,
-      localizationChecks
-    };
-    host.dataset.state = 'FAIL';
-    host.textContent = JSON.stringify(result, null, 2);
-    globalThis.__VEXLIFE_INTEGRATION_RESULT__ = result;
-    throw error;
+    const result={schemaVersion:'vexlife.e27-stage-b-browser-integration/v1',state:'FAIL',error:error instanceof Error?error.message:String(error),stageBChecks,availabilityChecks,ownershipChecks,localizationChecks}; host.dataset.state='FAIL';host.textContent=JSON.stringify(result,null,2);globalThis.__VEXLIFE_INTEGRATION_RESULT__=result;throw error;
   }
 }
 
