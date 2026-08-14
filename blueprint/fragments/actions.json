@@ -615,5 +615,21 @@
       "state.terrain",
       "state.navigation"
     ]
+  },
+  {
+    "actionRef": "action.companion-navigation.home-routed-guidance",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "requestRef": "ref",
+      "deviceRef": "ref",
+      "leaseRef": "ref",
+      "homeRouteRef": "ref",
+      "runtimeQualificationRef": "ref"
+    },
+    "effectClass": "PRIVATE_HOME_ROUTED_READ_INVOKE_NAVIGATION_GUIDANCE",
+    "outputStateRefs": [
+      "state.context",
+      "state.health"
+    ]
   }
 ]

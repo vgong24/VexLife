@@ -1127,5 +1127,24 @@
       "blueprint/feature-registry.json",
       "blueprint/process-factory/processes-conversation-and-interface.json"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.companion-navigation",
+    "path": "src/core/companion-navigation.mjs",
+    "role": "Deterministic physical-navigation consumer composition with fail-closed HOME_ROUTED admission over existing Home-bridge and externally supplied FullNav/Home/Safety currentness.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.home-bridge"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/companion-navigation.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/capability-registry.json",
+      "blueprint/feature-registry.json",
+      "blueprint/fragments/actions.json"
+    ]
   }
 ]
