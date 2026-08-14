@@ -65,6 +65,13 @@ test('semantic auto-entry is opt-in, thresholded and ordinary-scroll-safe', () =
   assert.match(terrain,/allowedSources = new Set\(\['EXPLICIT_SELECTION', 'EXPLICIT_CENTER', 'EXPLICIT_SIBLING'\]\)/);
 });
 
+test('one sibling gesture schedules at most one semantic auto-entry evaluation', () => {
+  assert.match(terrain,/function centerOn\(nodeRef = state\.terrain\.selected, \{ autoEntrySource = 'EXPLICIT_CENTER' \} = \{\}\)/);
+  assert.match(terrain,/evaluateSemanticAutoEntry\(\{ nodeRef, confidence: 1, source: autoEntrySource \}\)/);
+  assert.match(terrain,/centerOn\(target, \{ autoEntrySource: 'EXPLICIT_SIBLING' \}\)/);
+  assert.doesNotMatch(terrain,/centerOn\(target\);\s*queueMicrotask\(\(\) => evaluateSemanticAutoEntry\(/);
+});
+
 test('one visible ambient Vex carries source attribution without synthetic organization truth', () => {
   assert.match(html,/id="vexSummon"[^>]*data-node-ref="element\.vex\.summon"/);
   assert.match(html,/data-i18n="vex\.visible\.name">Vex</);

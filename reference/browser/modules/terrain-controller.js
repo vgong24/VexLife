@@ -79,11 +79,11 @@ export function createTerrainController({ state, blueprint, t, navigation }) {
     else { state.terrain.semanticDepth += 1; record.committed = true; record.reason = 'EXPLICIT_SAMPLE_ADMITTED'; navigation.navigate(nodeRef, { selectedNodeRef: nodeRef }, 'action.terrain.semantic-depth.set'); applyViewport(); }
     state.terrain.autoEntry.lastEvaluation = record; save(); return structuredClone(record);
   }
-  function centerOn(nodeRef = state.terrain.selected) {
+  function centerOn(nodeRef = state.terrain.selected, { autoEntrySource = 'EXPLICIT_CENTER' } = {}) {
     const node = terrainByRef.get(nodeRef); if (!node) return false;
     state.terrain.centerNodeRef = nodeRef; const pos = terrainPosition(node); const canvas = $('#terrainCanvas'); const scale = state.terrain.pixelScale;
     canvas.scrollTo({ left: Math.max(0, pos.x * scale - canvas.clientWidth / 2 + 130 * scale), top: Math.max(0, pos.y * scale - canvas.clientHeight / 2 + 56 * scale), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-    navigation.navigate('element.terrain.center-current-context', { selectedNodeRef: nodeRef }, 'action.terrain.center-current-context'); save(); queueMicrotask(() => evaluateSemanticAutoEntry({ nodeRef, confidence: 1, source: 'EXPLICIT_CENTER' })); return true;
+    navigation.navigate('element.terrain.center-current-context', { selectedNodeRef: nodeRef }, 'action.terrain.center-current-context'); save(); queueMicrotask(() => evaluateSemanticAutoEntry({ nodeRef, confidence: 1, source: autoEntrySource })); return true;
   }
   function render() {
     const host = $('#terrainNodes'); host.replaceChildren();
@@ -121,7 +121,7 @@ export function createTerrainController({ state, blueprint, t, navigation }) {
   function setAutoEntryEnabled(enabled) { state.terrain.autoEntry.enabled = Boolean(enabled); renderAutoEntryStatus(); save(); return state.terrain.autoEntry.enabled; }
   function setAutoEntryThresholds({ visibilityThreshold, confidenceThreshold } = {}) { if (Number.isFinite(visibilityThreshold)) state.terrain.autoEntry.visibilityThreshold = clamp(visibilityThreshold, 0.5, 1); if (Number.isFinite(confidenceThreshold)) state.terrain.autoEntry.confidenceThreshold = clamp(confidenceThreshold, 0.5, 1); renderAutoEntryStatus(); save(); return structuredClone(state.terrain.autoEntry); }
   function navigateSibling(direction) {
-    const current = state.terrain.selected; const ordered = siblingRefs(current); const index = ordered.indexOf(current); if (index < 0) return false; const nextIndex = direction === 'PREVIOUS' ? index - 1 : index + 1; if (nextIndex < 0 || nextIndex >= ordered.length) return false; const target = ordered[nextIndex]; state.terrain.selected = target; navigation.navigate(target, { selectedNodeRef: target }, 'action.navigation.sibling'); render(); centerOn(target); queueMicrotask(() => evaluateSemanticAutoEntry({ nodeRef: target, confidence: 1, source: 'EXPLICIT_SIBLING' })); return true;
+    const current = state.terrain.selected; const ordered = siblingRefs(current); const index = ordered.indexOf(current); if (index < 0) return false; const nextIndex = direction === 'PREVIOUS' ? index - 1 : index + 1; if (nextIndex < 0 || nextIndex >= ordered.length) return false; const target = ordered[nextIndex]; state.terrain.selected = target; navigation.navigate(target, { selectedNodeRef: target }, 'action.navigation.sibling'); render(); centerOn(target, { autoEntrySource: 'EXPLICIT_SIBLING' }); return true;
   }
   $('#terrainReset').addEventListener('click', () => { const autoEntry = state.terrain.autoEntry; state.terrain = { positions: {}, collapsed: [], selected: null, pixelScale: 1, semanticDepth: 1, centerNodeRef: null, autoEntry }; render(); });
   $('#terrainZoomOut')?.addEventListener('click', () => setPixelScale(state.terrain.pixelScale - 0.1)); $('#terrainZoomIn')?.addEventListener('click', () => setPixelScale(state.terrain.pixelScale + 0.1));
