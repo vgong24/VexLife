@@ -164,6 +164,59 @@ UNDERSTAND_UNINSTALL_AND_PRESERVATION
 
 No stage may report `REPAIRED`, `DELETED`, or `UNINSTALLED_SUCCESSFULLY` as an outcome merely because the plan was projected.
 
+### Windows `UNINSTALL_PRESERVE_CONTINUITY` route
+
+The Windows Frontdoor family now has one separately invoked executable preservation route on the accepted root launcher:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-vexlife.ps1 -Operation uninstall-preserve -Home "<VexHome>"
+```
+
+Canonical route identity:
+
+```text
+routeRef=route.vexlife.windows.uninstall-preserve-continuity.001
+actionClass=UNINSTALL_PRESERVE_CONTINUITY
+```
+
+The route is an effect adapter. It is **not** part of the no-effect `GuidedEstablishmentPlan`, and the existence of the `UNDERSTAND_UNINSTALL_AND_PRESERVATION` stage does not execute it.
+
+The route consumes the exact Frontdoor install receipt to bind the requested canonical Home and VexLife source root. It then:
+
+```text
+verifies the Home and every traversed Home entry are not a symlink/junction/reparse alias
+fingerprints protected Home state and conversation-head evidence before cleanup
+stops only the exact install-receipt PID when it is still a Node process bound to scripts/serve-browser.mjs
+removes only the setup-owned runtime residue:
+  runtime/serve-browser.log
+  runtime/serve-browser.err.log
+fingerprints protected Home state and conversation-head evidence again
+writes recovery/uninstall-preserve-receipt.json
+```
+
+The protected fingerprint excludes only `runtime/**` and the uninstall-preserve receipt itself. Therefore the route may clean the bounded runtime residue it owns and append its receipt without pretending the entire Home is byte-untouched.
+
+The first route deliberately preserves the current user-managed VexLife source folder and all continuity-bearing local state. It does not remove model artifacts. Its product truth is:
+
+```text
+STOP_SERVER != UNINSTALL_PRODUCT
+UNINSTALL_PRODUCT != DELETE_HOME
+REMOVE_RUNTIME != DELETE_HOME
+REMOVE_MODEL_ARTIFACT != DELETE_HOME
+UNINSTALL_RECEIPT != DESTRUCTIVE_AUTHORITY
+
+Vex Home identity = PRESERVED
+lineage / conversation-head evidence = PRESERVED
+Memory / Score / continuity state = PRESERVED
+recovery material = PRESERVED
+model artifacts = PRESERVED
+user-managed source package = PRESERVED
+```
+
+A repeated invocation truthfully returns `ALREADY_UNINSTALLED_PRESERVE_CONTINUITY` when the exact server and bounded runtime residue are already absent. A PID that now belongs to another process, a source/Home receipt mismatch, a reparse path, or a protected continuity mismatch fails closed instead of widening cleanup.
+
+`UNINSTALL_AND_REMOVE_LOCAL_DATA` is **not reachable from this route**. Deleting Home, Memory, recovery material, conversation state, or model artifacts is a separate destructive authority class and requires a separately admitted future path.
+
 ## Reuse boundary
 
 `GuidedEstablishmentPlan` is a reusable no-effect grammar. Future accepted guides may define their own `planRef`, `journeyRef`, stage identities, and safe source bindings while preserving the same strict declarative field set.

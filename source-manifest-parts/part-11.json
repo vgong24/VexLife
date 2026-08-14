@@ -28,8 +28,8 @@
     {
       "path": "start-vexlife.ps1",
       "mode": "100644",
-      "bytes": 409,
-      "sha256": "3a449fa55f66aa98878de571d955edda1db840ff0e0b257e9263dc429cac005e"
+      "bytes": 13425,
+      "sha256": "2a49ab07b61cc3c422708d678c80c0784a57345a9e8d06261b2eeeae4efddc20"
     },
     {
       "path": "start-vexlife.sh",
@@ -40,8 +40,8 @@
     {
       "path": "test/boot.test.mjs",
       "mode": "100644",
-      "bytes": 2359,
-      "sha256": "b0b3e2a104221ead20bacb62141395583dd12802221480c09aaa0722a11a936f"
+      "bytes": 5986,
+      "sha256": "7e658e6f8f64978d9b826902fba09f1c0d23b973acb74c51bd419c3da9700122"
     },
     {
       "path": "test/browser.test.mjs",
