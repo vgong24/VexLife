@@ -11,6 +11,12 @@ function assertVisibleOwnership(app, required, forbidden = []) {
   for (const message of visible) { assert(message.projectRef === app.state.projectRef, 'Visible project ownership drift'); assert(message.threadRef === app.state.threadRef, 'Visible thread ownership drift'); assert(message.channelRef === app.state.channelRef, 'Visible channel ownership drift'); }
 }
 async function sendMarker(marker) { const input = document.querySelector('#messageInput'); input.value = marker; input.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#composer').requestSubmit(); await delay(230); }
+function visibleRatioWithin(canvas, node) {
+  const c = canvas.getBoundingClientRect(); const n = node.getBoundingClientRect();
+  const width = Math.max(0, Math.min(c.right, n.right) - Math.max(c.left, n.left));
+  const height = Math.max(0, Math.min(c.bottom, n.bottom) - Math.max(c.top, n.top));
+  return (width * height) / Math.max(1, n.width * n.height);
+}
 
 export async function runBrowserIntegration() {
   const host = document.createElement('pre'); host.id = 'integrationReceipt'; host.dataset.state = 'RUNNING'; document.body.append(host);
@@ -48,9 +54,33 @@ export async function runBrowserIntegration() {
     const depthBefore = app.state.terrain.semanticDepth;
     const scroll = app.terrain.evaluateSemanticAutoEntry({ nodeRef: app.state.terrain.selected, visibilityRatio: 1, confidence: 1, source: 'ORDINARY_SCROLL' });
     assert(scroll.committed === false && scroll.reason === 'ORDINARY_SCROLL_NEVER_COMMITS', 'B06 ordinary scrolling committed semantic auto-entry'); assert(app.state.terrain.semanticDepth === depthBefore, 'B06 ordinary scroll changed semantic depth');
-    app.terrain.setAutoEntryEnabled(true); app.terrain.setAutoEntryThresholds({ visibilityThreshold: .72, confidenceThreshold: .8 });
-    assert(document.querySelector('#terrainAutoEntryStatus').textContent.includes('V≥72%') && document.querySelector('#terrainAutoEntryStatus').textContent.includes('C≥80%'), 'B06 thresholds are not human-visible');
-    stageBChecks.push('B06 semantic auto-entry is opt-in, visibly thresholded, confidence-gated, and ordinary-scroll-safe');
+    app.terrain.setAutoEntryEnabled(true); app.terrain.setAutoEntryThresholds({ visibilityThreshold: .5, confidenceThreshold: .8 });
+    assert(document.querySelector('#terrainAutoEntryStatus').textContent.includes('V≥50%') && document.querySelector('#terrainAutoEntryStatus').textContent.includes('C≥80%'), 'B06 thresholds are not human-visible');
+
+    const terrainCanvas = document.querySelector('#terrainCanvas');
+    let siblingCase = null;
+    for (const node of document.querySelectorAll('.terrain-node[data-node-ref]')) {
+      const sourceRef = node.dataset.nodeRef;
+      const siblings = app.terrain.siblingRefs(sourceRef);
+      const index = siblings.indexOf(sourceRef);
+      const candidates = index >= 0 ? [[index + 1, 'NEXT'], [index - 1, 'PREVIOUS']] : [];
+      for (const [targetIndex, direction] of candidates) {
+        if (targetIndex < 0 || targetIndex >= siblings.length) continue;
+        const targetRef = siblings[targetIndex];
+        const targetNode = document.querySelector(`.terrain-node[data-node-ref="${CSS.escape(targetRef)}"]`);
+        if (targetNode && visibleRatioWithin(terrainCanvas, targetNode) >= .5) { siblingCase = { sourceRef, targetRef, direction }; break; }
+      }
+      if (siblingCase) break;
+    }
+    assert(siblingCase, 'B07 no visible sibling pair available for single-evaluation proof');
+    app.state.terrain.selected = siblingCase.sourceRef;
+    app.terrain.setSemanticDepth(0);
+    app.terrain.render();
+    assert(app.terrain.navigateSibling(siblingCase.direction), 'B07 sibling navigation did not move');
+    await delay(0); await delay(0);
+    assert(app.state.terrain.selected === siblingCase.targetRef, 'B07 sibling target mismatch');
+    assert(app.state.terrain.semanticDepth === 1, `B07 one sibling gesture advanced semantic depth to ${app.state.terrain.semanticDepth}`);
+    stageBChecks.push('B06 semantic auto-entry is opt-in, visibly thresholded, confidence-gated, and ordinary-scroll-safe','B07 one sibling gesture commits at most one semantic auto-entry level');
 
     app.openContext('chat'); app.chat.setVexAvailability('AVAILABLE'); await delay(230);
     assert(blockedList.length === blockedCount && input.value === blockedDraft && !send.disabled, 'A06 restoration auto-sent or discarded stale draft');
@@ -62,9 +92,9 @@ export async function runBrowserIntegration() {
     assertVisibleOwnership(app, markerVex, [markerSelf, markerGuide]); ownershipChecks.push('project-thread-channel message isolation preserved');
 
     const sourceRefs = [...document.querySelectorAll('#channelTabs [data-source-role-ref]')].map((node) => node.dataset.sourceRoleRef);
-    assert(sourceRefs.every((ref) => ref?.startsWith('role.vex.')), 'B07 visible Vex lost source-role attribution');
-    assert([...document.querySelectorAll('#channelTabs [data-source-role-ref]')].every((node) => node.textContent.includes(app.t('vex.visible.name'))), 'B07 multiple visible Vex names survived');
-    stageBChecks.push('B07 one visible ambient Vex preserves internal source-role attribution');
+    assert(sourceRefs.every((ref) => ref?.startsWith('role.vex.')), 'B08 visible Vex lost source-role attribution');
+    assert([...document.querySelectorAll('#channelTabs [data-source-role-ref]')].every((node) => node.textContent.includes(app.t('vex.visible.name'))), 'B08 multiple visible Vex names survived');
+    stageBChecks.push('B08 one visible ambient Vex preserves internal source-role attribution');
 
     for (const language of ['en','zh','ja']) { selectLanguage(language); assert(document.querySelector('#vexSummon').textContent.includes(app.t('vex.summon')), `${language} ambient Vex summon not localized`); localizationChecks.push(`${language}:AMBIENT_VEX`); }
 
