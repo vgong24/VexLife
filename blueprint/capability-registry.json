@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.capability-registry/v0",
   "registryRef": "registry.vexlife.capabilities.001",
-  "registryVersion": 1,
+  "registryVersion": 2,
   "stages": [
     "DISCOVERABLE",
     "EXPLAINABLE",
@@ -28,6 +28,18 @@
       "roleRefs": ["role.vex.companion", "role.vex.guide", "role.vex.root-hub", "role.vex.operations", "role.vex.developer", "role.vex.reviewer"],
       "platformRefs": ["platform.browser", "platform.android", "platform.ios", "platform.windows", "platform.macos"],
       "resourceClass": "CPU_LIGHT"
+    },
+    {
+      "capabilityRef": "capability.vexlife.companion-navigation",
+      "purpose": "Request bounded physical-navigation guidance through a distinct capability vocabulary; later membership, authorization, lease and route gates remain separate.",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "PHYSICAL_NAVIGATION_GUIDANCE",
+      "defaultStage": "REQUESTABLE",
+      "roleRefs": ["role.vex.companion", "role.vex.guide", "role.vex.operations"],
+      "platformRefs": ["platform.browser", "platform.android", "platform.ios", "platform.windows", "platform.macos"],
+      "resourceClass": "CPU_LIGHT",
+      "notes": ["C0 is vocabulary only and creates no route action or external effect", "GPS, Home, network, vehicle control, Memory, publication, membership grants, authorizations and leases remain separately owned"]
     },
     {
       "capabilityRef": "capability.vexlife.file.read",
