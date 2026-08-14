@@ -3,7 +3,8 @@ param(
   [ValidateSet("start", "uninstall-preserve")]
   [string]$Operation = "start",
   [string]$DeviceName = $env:COMPUTERNAME,
-  [string]$Home = ""
+  [Alias("Home")]
+  [string]$VexHome = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -123,8 +124,9 @@ function Read-InstallReceiptMachineBlock([string]$ReceiptPath) {
 }
 
 function Invoke-UninstallPreserveContinuity {
-  if ([string]::IsNullOrWhiteSpace($Home)) { $script:Home = Join-Path $HOME ".vexlife" }
-  $homeRoot = Assert-CanonicalDirectory $script:Home "Vex Home"
+  $resolvedHomeInput = $VexHome
+  if ([string]::IsNullOrWhiteSpace($resolvedHomeInput)) { $resolvedHomeInput = Join-Path $HOME ".vexlife" }
+  $homeRoot = Assert-CanonicalDirectory $resolvedHomeInput "Vex Home"
   $repoRoot = Assert-CanonicalDirectory $Root "VexLife source root"
   $recoveryRoot = Join-Path $homeRoot "recovery"
   if (-not (Test-Path -LiteralPath $recoveryRoot -PathType Container)) {
@@ -265,7 +267,7 @@ if ($Operation -eq "uninstall-preserve") {
 }
 
 $ArgsList = @("$Root/scripts/bootstrap.mjs", "--device-name", $DeviceName)
-if ($Home -ne "") { $ArgsList += @("--home", $Home) }
+if ($VexHome -ne "") { $ArgsList += @("--home", $VexHome) }
 & node @ArgsList
 if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3) { exit $LASTEXITCODE }
 & node "$Root/scripts/serve-browser.mjs"
