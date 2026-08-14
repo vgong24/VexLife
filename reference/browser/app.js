@@ -16,6 +16,8 @@ state.contextProjection = null;
 state.workspaceOpen = false;
 state.dataTruthClass = 'CURRENT_SYNTHETIC_REFERENCE';
 if (localStorage.getItem('vexlife.guide.open') === null) state.guideOpen = true;
+const storedGuideMinimized = localStorage.getItem('vexlife.guide.minimized');
+state.guideMinimized = storedGuideMinimized === null ? true : storedGuideMinimized === 'true';
 
 const TERRAIN_CONTEXT = Object.freeze({
   'terrain.project.root-hub': { projectRef:'project.vexlife.root-hub', threadRef:'thread.root-hub.welcome', channelRef:'channel.root-hub.welcome.root' },
@@ -47,6 +49,7 @@ function returnToTerrain(){navigation.returnToPrimaryStage('element.terrain.cent
 function projectFrame(){const host=$('#contextSurface');host.hidden=!state.contextProjection;host.setAttribute('aria-hidden',String(!state.contextProjection));$('#view-chat').hidden=state.contextProjection!=='chat';$('#view-health').hidden=state.contextProjection!=='health';chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();terrain?.render(false);renderHealth();guide?.updateFrame();projectVisibleVexIdentity();if(state.contextProjection)guide?.avoidDeclaredControls();}
 
 navigation=createNavigationController({state,elementByRef,getProject:()=>chat?.currentProject(),getThread:()=>chat?.currentThread(),getChannel:()=>chat?.currentChannel(),onFrameChange:()=>queueMicrotask(()=>chat&&terrain&&projectFrame())});
+navigation.seedCurrentJourney(initialTerrainRef);
 chat=createChatController({state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation});
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});
 guide=createGuideController({state,t,navigation,elementByRef,chat});
