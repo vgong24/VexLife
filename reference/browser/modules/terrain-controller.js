@@ -2,7 +2,7 @@ import { $, escapeHtml, saveJson } from './dom.js';
 import { journeyWindow } from './navigation-controller.js';
 
 const WORLD_WIDTH=1200,WORLD_HEIGHT=800,ENTER_SCALE_RATIO=1.7,EXIT_SCALE_RATIO=.58,MIN_SCALE_RATIO=.5,MAX_SCALE_RATIO=2.15;
-const GEOMETRY={CURRENT_CONTEXT:{width:380,minHeight:196},NEAR_CONTEXT:{width:224,minHeight:122},PERIPHERAL_CONTEXT:{width:160,minHeight:96},MANUAL_OVERRIDE:{width:248,minHeight:138}};
+const GEOMETRY={CURRENT_CONTEXT:{width:380,minHeight:196},ACTIVE_SUBCONTEXT:{width:160,minHeight:96},NEAR_CONTEXT:{width:224,minHeight:122},PERIPHERAL_CONTEXT:{width:160,minHeight:96},MANUAL_OVERRIDE:{width:248,minHeight:138}};
 const MIN_RELATIONSHIP_CLEARANCE_WORLD=96;
 const TRANSITION_MS={EXIT:260,ARRIVE:160};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -26,8 +26,8 @@ export function createTerrainController({state,blueprint,t,navigation,semanticPa
  const semanticAffinityFor=r=>{
   if(r===currentRef())return{role:'CURRENT_CONTEXT',relevanceReason:'CURRENT_CONTEXT',relevanceScore:4};
   if(state.terrain.manualOverrideRef===r)return{role:'MANUAL_OVERRIDE',relevanceReason:'USER_MANUAL_OVERRIDE',relevanceScore:5};
-  const patch=semanticPatchFor(r),keys=['projectRef','threadRef','channelRef'].filter(k=>patch[k]!=null);
-  if(keys.length&&keys.every(k=>patch[k]===state[k]))return{role:'NEAR_CONTEXT',relevanceReason:'CURRENT_WORK_MATCH',relevanceScore:3};
+  const patch=semanticPatchFor(r),keys=['projectRef','threadRef','channelRef'].filter(k=>patch[k]!=null),exactCurrentWork=keys.length&&keys.every(k=>patch[k]===state[k]);
+  if(exactCurrentWork){const currentPatch=semanticPatchFor(currentRef()),currentKeys=['projectRef','threadRef','channelRef'].filter(k=>currentPatch[k]!=null),currentAlreadyProjectsWork=currentKeys.length&&currentKeys.every(k=>currentPatch[k]===state[k]);if(parentRef(r)===currentRef()&&currentAlreadyProjectsWork)return{role:'ACTIVE_SUBCONTEXT',relevanceReason:'CURRENT_WORK_SUBCONTEXT',relevanceScore:3};return{role:'NEAR_CONTEXT',relevanceReason:'CURRENT_WORK_MATCH',relevanceScore:3};}
   if(patch.projectRef&&patch.projectRef===state.projectRef&&patch.threadRef&&patch.threadRef===state.threadRef)return{role:'NEAR_CONTEXT',relevanceReason:'CURRENT_THREAD_AFFINITY',relevanceScore:2.6};
   if(patch.projectRef&&patch.projectRef===state.projectRef)return{role:'NEAR_CONTEXT',relevanceReason:'CURRENT_PROJECT_AFFINITY',relevanceScore:2.2};
   return{role:'PERIPHERAL_CONTEXT',relevanceReason:'STRUCTURAL_CONTEXT',relevanceScore:1};
@@ -47,7 +47,18 @@ export function createTerrainController({state,blueprint,t,navigation,semanticPa
  }
  function radialExtent(width,height,ux,uy){return 1/Math.max(Math.abs(ux)/Math.max(1,width/2),Math.abs(uy)/Math.max(1,height/2))}
  function settleRelationshipClearance(list,{sourceWidth=GEOMETRY.CURRENT_CONTEXT.width,sourceHeight=GEOMETRY.CURRENT_CONTEXT.minHeight,targetSizeByRef=null}={}){return list.map(p=>{const o=p.localOffset||{x:0,y:0},ox=Number(o.x)||0,oy=Number(o.y)||0,baseX=p.x-ox,baseY=p.y-oy,dx=baseX-600,dy=baseY-400,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d,targetSize=targetSizeByRef?.get(p.ref)||null,sourceExtent=radialExtent(sourceWidth,sourceHeight,ux,uy),targetExtent=radialExtent(targetSize?.width??p.width,targetSize?.height??p.minHeight,-ux,-uy),required=sourceExtent+targetExtent+MIN_RELATIONSHIP_CLEARANCE_WORLD,automatic=d>=required?{x:baseX,y:baseY,clearance:d-sourceExtent-targetExtent}:{x:600+ux*required,y:400+uy*required,clearance:MIN_RELATIONSHIP_CLEARANCE_WORLD};return{...p,x:automatic.x+ox,y:automatic.y+oy,relationshipClearanceWorld:automatic.clearance}})}
- function projectedPoints(){const refs=childRefs().slice(0,10),cx=600,cy=400;let a=[];if(state.terrain.projectionMode==='fan'){const A=-158,B=-22;a=refs.map((ref,i)=>{const q=(A+(refs.length===1?68:i*(B-A)/Math.max(1,refs.length-1)))*Math.PI/180;return{ref,x:cx+Math.cos(q)*430,y:cy+Math.sin(q)*255,scale:1,z:0}})}else if(state.terrain.projectionMode==='rings')a=refs.map((ref,i)=>{const q=(-90+i*360/Math.max(1,refs.length))*Math.PI/180;return{ref,x:cx+Math.cos(q)*360,y:cy+Math.sin(q)*310,scale:1,z:0}});else{const m=(refs.length-1)/2;a=refs.map((ref,i)=>{const z=i-m;return{ref,x:cx+z*240,y:205+Math.abs(z)*22,scale:1,z}})}const enriched=a.map(p=>({...p,...geometryFor(p.ref)})),manualActive=Boolean(state.terrain.manualOverrideRef),hasPriority=enriched.some(p=>p.role==='MANUAL_OVERRIDE'||p.relevanceScore>=2.6),projected=enriched.map(p=>{const dx=p.x-cx,dy=p.y-cy,length=Math.hypot(dx,dy)||1,priority=p.role==='MANUAL_OVERRIDE'||p.relevanceScore>=2.6;const delta=p.role==='MANUAL_OVERRIDE'?-54:manualActive?(priority?42:96):priority?-34:hasPriority?64:26,factor=Math.max(.55,(length+delta)/length),o=state.terrain.localOffsets[p.ref]||{x:0,y:0},baseX=cx+dx*factor,baseY=cy+dy*factor,rootRelationshipAxis=currentRef()===rootRef&&state.terrain.projectionMode==='fan'&&p.relevanceReason==='CURRENT_WORK_MATCH'&&Math.abs(baseX-cx)>=Math.abs(baseY-cy);return{...p,x:baseX+o.x,y:(rootRelationshipAxis?cy:baseY)+o.y,localOffset:{x:o.x||0,y:o.y||0}}});return settleCarouselSpacing(projected)}
+ function projectedPoints(){
+  const refs=childRefs().slice(0,10),cx=600,cy=400,classified=refs.map(ref=>({ref,...geometryFor(ref)})),activeSubcontexts=classified.filter(p=>p.role==='ACTIVE_SUBCONTEXT'),orbiting=classified.filter(p=>p.role!=='ACTIVE_SUBCONTEXT');
+  let a=[];
+  if(state.terrain.projectionMode==='fan'){
+   const A=-158,B=-22;
+   a=orbiting.map((p,i)=>{const q=(A+(orbiting.length===1?68:i*(B-A)/Math.max(1,orbiting.length-1)))*Math.PI/180;return{...p,x:cx+Math.cos(q)*430,y:cy+Math.sin(q)*255,scale:1,z:0}});
+   activeSubcontexts.forEach((p,i)=>a.push({...p,x:cx+(i-(activeSubcontexts.length-1)/2)*(p.width+28),y:cy+250,scale:1,z:0}));
+  }else if(state.terrain.projectionMode==='rings')a=classified.map((p,i)=>{const q=(-90+i*360/Math.max(1,classified.length))*Math.PI/180;return{...p,x:cx+Math.cos(q)*360,y:cy+Math.sin(q)*310,scale:1,z:0}});
+  else{const m=(classified.length-1)/2;a=classified.map((p,i)=>{const z=i-m;return{...p,x:cx+z*240,y:205+Math.abs(z)*22,scale:1,z}})}
+  const manualActive=Boolean(state.terrain.manualOverrideRef),hasPriority=a.some(p=>p.role!=='ACTIVE_SUBCONTEXT'&&(p.role==='MANUAL_OVERRIDE'||p.relevanceScore>=2.6)),projected=a.map(p=>{const o=state.terrain.localOffsets[p.ref]||{x:0,y:0};if(p.role==='ACTIVE_SUBCONTEXT')return{...p,x:p.x+o.x,y:p.y+o.y,localOffset:{x:o.x||0,y:o.y||0}};const dx=p.x-cx,dy=p.y-cy,length=Math.hypot(dx,dy)||1,priority=p.role==='MANUAL_OVERRIDE'||p.relevanceScore>=2.6,delta=p.role==='MANUAL_OVERRIDE'?-54:manualActive?(priority?42:96):priority?-34:hasPriority?64:26,factor=Math.max(.55,(length+delta)/length);return{...p,x:cx+dx*factor+o.x,y:cy+dy*factor+o.y,localOffset:{x:o.x||0,y:o.y||0}}});
+  return settleCarouselSpacing(projected)
+ }
  function points(options){return settleRelationshipClearance(projectedPoints(),options)}
  function boundary(cx,cy,w,h,tx,ty){const dx=tx-cx,dy=ty-cy,r=1/Math.max(Math.abs(dx)/(w/2),Math.abs(dy)/(h/2));return{x:cx+dx*r,y:cy+dy*r}}
  function renderedSpatialRect(element){const r=element.getBoundingClientRect();return{left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,cx:r.left+r.width/2,cy:r.top+r.height/2}}
