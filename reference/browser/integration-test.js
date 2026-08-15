@@ -24,6 +24,8 @@ const geometryDifferences = (expected, actual, epsilon=.35) => {
 };
 const geometryIdentity = (snapshot) => JSON.stringify({ current:snapshot.current, nodes:snapshot.nodes.map(({ ref,role,relevanceReason,relevanceScore,left,top,width,height,localOffset })=>({ref,role,relevanceReason,relevanceScore,left,top,width,height,localOffset})), edges:snapshot.edges, projectionMode:snapshot.projectionMode, manualOverrideRef:snapshot.manualOverrideRef });
 const radialDistance = ({ left, top }) => Math.hypot(left-600,top-400);
+const motionCssToken = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const transitionProperties = (style) => style.transitionProperty.split(',').map((value)=>value.trim());
 const assertSettledGeometry = (snapshot, label) => { const rects=[worldRect(snapshot.current),...snapshot.nodes.map(worldRect)]; for(let i=0;i<rects.length;i++) for(let j=i+1;j<rects.length;j++) assert(!overlaps(rects[i],rects[j]), `${label} settled geometry overlap ${i}/${j}`); for(const edge of snapshot.edges){const node=snapshot.nodes.find((candidate)=>candidate.ref===edge.ref);assert(node,`${label} edge missing node ${edge.ref}`);assert(pointOnBoundary(worldRect(snapshot.current),edge.x1,edge.y1),`${label} edge ${edge.ref} does not leave actual current geometry`);assert(pointOnBoundary(worldRect(node),edge.x2,edge.y2),`${label} edge ${edge.ref} does not terminate on actual node geometry`);const gap=Math.hypot(edge.x2-edge.x1,edge.y2-edge.y1);assert(gap>=94,`${label} edge ${edge.ref} settled rendered-boundary clearance collapsed below the spatial floor: ${gap}`);} };
 
 export async function runBrowserIntegration() {
@@ -59,19 +61,32 @@ export async function runBrowserIntegration() {
     assert(protectedTargets.every((node) => !overlaps(vexRect, node.getBoundingClientRect())), 'D05 ambient Vex obscures first-render Terrain content');
     checks.push('D05 one visible Vex starts ambient/minimized without obscuring Terrain');
 
+    const motionTokens={tactile:motionCssToken('--motion-duration-tactile'),fast:motionCssToken('--motion-duration-fast'),surface:motionCssToken('--motion-duration-surface'),layout:motionCssToken('--motion-duration-layout'),spatial:motionCssToken('--motion-duration-spatial'),exit:motionCssToken('--motion-duration-semantic-exit'),arrive:motionCssToken('--motion-duration-semantic-arrive'),ease:motionCssToken('--motion-ease-responsive')};
+    assert(Object.values(motionTokens).every(Boolean),'Q6 shared motion token vocabulary is incomplete');
+    const tactileControl=document.querySelector('#terrainReset'),tactileStyle=getComputedStyle(tactileControl);assert(tactileControl&&transitionProperties(tactileStyle).includes('scale'),'Q6 tactile button response is not expressed through independent scale motion');
+    const motionJourneyBefore=app.navigation.fullJourney().length;tactileControl.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:77}));tactileControl.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:77}));assert(app.navigation.fullJourney().length===motionJourneyBefore,'Q6 tactile response mutated Journey truth');
+    const worldMotionRule=[...document.styleSheets].flatMap((sheet)=>{try{return[...sheet.cssRules]}catch{return[]}}).find((rule)=>rule.selectorText==='.e27-world'),worldMotionDeclaration=worldMotionRule?.style?.transition||'';assert(worldMotionDeclaration.includes('var(--motion-duration-spatial)')&&worldMotionDeclaration.includes('var(--motion-duration-surface)'),'Q6 Terrain world stylesheet is not bound to shared motion tokens');
+    const surfaceJourneyBefore=app.navigation.fullJourney().length;app.terrain.openJourney();await delay(70);const drawer=document.querySelector('#terrainJourneyDrawer'),drawerContent=drawer?.querySelector(':scope > .e27-drawer-head'),drawerEarlyStyle=drawerContent?getComputedStyle(drawerContent):null;assert(drawer&&drawer.classList.contains('show')&&drawerEarlyStyle&&drawerEarlyStyle.visibility==='hidden'&&Number(drawerEarlyStyle.opacity)<=.01,'Q6 drawer content was not fully hidden while shell crossed the viewport edge');await delay(120);const drawerLateStyle=getComputedStyle(drawerContent),drawerLateOpacity=Number(drawerLateStyle.opacity);assert(drawerLateStyle.visibility==='visible'&&drawerLateOpacity>.7,'Q6 drawer content did not become visibly revealed after shell entry');app.terrain.closeJourney();await delay(220);assert(app.navigation.fullJourney().length===surfaceJourneyBefore,'Q6 drawer presentation changed Journey truth');
+    checks.push('Q6 shared tactile/surface/spatial motion vocabulary is present and presentation-only','Q6 drawer shell enters before content reveal so text is not visibly clipped');
+
     const canonical = app.terrain.geometrySnapshot();
     assert(canonical.current.role === 'CURRENT_CONTEXT', 'P02 current context geometry role missing');
-    const near = canonical.nodes.find((node)=>node.role === 'NEAR_CONTEXT' && node.relevanceReason === 'CURRENT_WORK_MATCH');
+    const activeSubcontext = canonical.nodes.find((node)=>node.role === 'ACTIVE_SUBCONTEXT' && node.relevanceReason === 'CURRENT_WORK_SUBCONTEXT');
     const peripheral = canonical.nodes.find((node)=>node.role === 'PERIPHERAL_CONTEXT');
-    const structuralPeripheral = canonical.nodes.find((node)=>app.terrain.childRefs(node.ref).length>0 && node.role === 'PERIPHERAL_CONTEXT');
-    assert(near && peripheral, 'P02 accepted root context must expose both relevant and peripheral comparison nodes');
-    assert(near.relevanceReason === 'CURRENT_WORK_MATCH', 'P02 strongest adjacent relevance is not bound to exact current-work semantic truth');
+    const structuralPeripherals = canonical.nodes.filter((node)=>node.role === 'PERIPHERAL_CONTEXT');
+    const structuralPeripheral = structuralPeripherals.find((node)=>app.terrain.childRefs(node.ref).length>0);
+    assert(activeSubcontext && peripheral, 'P02 accepted root context must expose one active subcontext occurrence plus structural children');
+    const activeEdge=canonical.edges.find((edge)=>edge.ref===activeSubcontext.ref),structuralByX=[...structuralPeripherals].sort((a,b)=>a.left-b.left);
+    assert(activeSubcontext.relevanceReason === 'CURRENT_WORK_SUBCONTEXT', 'P02 exact current-work child is not typed as an active subcontext occurrence');
+    assert(activeSubcontext.width===peripheral.width && activeSubcontext.height===peripheral.height, 'Q6 active subcontext still masquerades as a wider independent peer component');
+    assert(Math.abs(activeSubcontext.left-canonical.current.left)<=.5 && activeSubcontext.top-canonical.current.top>(canonical.current.height+activeSubcontext.height)/2+90, 'Q6 active subcontext is not docked below its current semantic owner');
+    assert(activeEdge&&Math.abs(activeEdge.x1-activeEdge.x2)<=1.1, 'Q6 active-subcontext relationship bridge is not vertically anchored to its owner');
     assert(structuralPeripheral, 'P02 descendant-bearing unrelated node was still promoted merely because it has descendants');
-    assert(canonical.current.width > near.width && near.width > peripheral.width, 'P02 adaptive geometry strength ordering failed');
-    assert(radialDistance(near) + 24 < radialDistance(structuralPeripheral), 'P02 semantic relevance does not materially alter spatial accommodation');
-    const nearClearance=worldRelationshipClearance(near.ref),peripheralClearances=canonical.nodes.filter((node)=>node.role==='PERIPHERAL_CONTEXT').map((node)=>worldRelationshipClearance(node.ref));
-    assert(nearClearance>=94,`P02 near-context Terrain-world boundary clearance collapsed below the spatial floor: ${nearClearance}`);
-    assert(peripheralClearances.length>0&&Math.min(...peripheralClearances)>nearClearance+24,`P02 semantic proximity no longer preserves a visible clearance hierarchy: near=${nearClearance} peripheral=${JSON.stringify(peripheralClearances)}`);
+    assert(structuralByX.length===3 && Math.abs(structuralByX[0].top-structuralByX[2].top)<=1.1 && Math.abs((structuralByX[0].left+structuralByX[2].left)/2-canonical.current.left)<=1.1 && Math.abs(structuralByX[1].left-canonical.current.left)<=1.1, 'Q6 structural-child orbit is not symmetrically derived after removing the active subcontext occurrence');
+    assert(canonical.current.width > activeSubcontext.width && activeSubcontext.width===peripheral.width, 'P02 current context strength or shared child footprint drifted');
+    const activeClearance=worldRelationshipClearance(activeSubcontext.ref),peripheralClearances=structuralPeripherals.map((node)=>worldRelationshipClearance(node.ref));
+    assert(activeClearance>=94,`P02 active-subcontext Terrain-world boundary clearance collapsed below the spatial floor: ${activeClearance}`);
+    assert(peripheralClearances.length===3&&Math.min(...peripheralClearances)>=94,`P02 structural-child clearance collapsed below the spatial floor: ${JSON.stringify(peripheralClearances)}`);
     assertSettledGeometry(canonical,'P04/P05 fan');
     const projectionProofs={fan:canonical};
     for(const mode of ['rings','carousel','fan']){app.terrain.setProjectionMode(mode);const projection=app.terrain.geometrySnapshot();assertSettledGeometry(projection,`P04/P05 ${mode}`);projectionProofs[mode]=projection;}
@@ -101,7 +116,7 @@ export async function runBrowserIntegration() {
     assert(geometryIdentity(restoredPinned)===geometryIdentity(pinned), 'P12 restoring the same local offset did not recover deterministic manual-override geometry');
     assert(app.navigation.fullJourney().length===journeyBeforePin && app.terrain.currentRef()===currentBeforePin, 'P12 manual geometry override changed semantic refs or journey');
     assert(pinControl.dataset.manualOverride==='true' || document.querySelector(`.e27-node[data-terrain-ref="${peripheral.ref}"]`).dataset.manualOverride==='true', 'P09 pinned state is not visibly distinguishable in rendered node state');
-    const journeyBeforeReset=app.navigation.fullJourney().length; app.terrain.reset(); const resetGeometry=app.terrain.geometrySnapshot(); await delay(100); const resetNearClearanceWorld=worldRelationshipClearance(near.ref); assert(resetNearClearanceWorld>=90,`P10 reset choreography collapsed near-context Terrain-world boundary clearance: ${resetNearClearanceWorld}`);
+    const journeyBeforeReset=app.navigation.fullJourney().length; app.terrain.reset(); const resetGeometry=app.terrain.geometrySnapshot(); await delay(100); const resetActiveSubcontextClearanceWorld=worldRelationshipClearance(activeSubcontext.ref); assert(resetActiveSubcontextClearanceWorld>=90,`P10 reset choreography collapsed active-subcontext Terrain-world boundary clearance: ${resetActiveSubcontextClearanceWorld}`);
     assert(resetGeometry.manualOverrideRef===null && Object.keys(app.state.terrain.localOffsets).length===0, 'P10 reset did not clear bounded manual geometry state');
     const canonicalResetNode=canonical.nodes.find((node)=>node.ref===peripheral.ref),resetDuringNode=resetGeometry.nodes.find((node)=>node.ref===peripheral.ref);
     assert(canonicalResetNode&&resetDuringNode&&resetDuringNode.role===canonicalResetNode.role&&resetDuringNode.relevanceReason===canonicalResetNode.relevanceReason,'P10 reset did not restore canonical semantic geometry state before visual settlement');

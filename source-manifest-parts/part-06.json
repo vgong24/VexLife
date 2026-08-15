@@ -10,8 +10,8 @@
     {
       "path": "reference/browser/app.css",
       "mode": "100644",
-      "bytes": 16944,
-      "sha256": "84beb3d3d74b2b17f4ee4d00e1992ae2f7beab2af0b90e47623ff1f9aec63bac"
+      "bytes": 18950,
+      "sha256": "c8fe6dafdac0150fd52c9ee992edfdd87e5c20a77e51ff91e656d9886f27c30b"
     },
     {
       "path": "reference/browser/app.js",
@@ -28,8 +28,8 @@
     {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
-      "bytes": 30894,
-      "sha256": "96822765551e180495b529075e60b4462ddb63ec425760248f270dbcc5fa2281"
+      "bytes": 34925,
+      "sha256": "1e11d03f4e543908cca6b2347cd202d06c7ba07371b7a55e985ef30468d54fb5"
     },
     {
       "path": "reference/browser/modules/browser-bundle.js",
@@ -82,8 +82,8 @@
     {
       "path": "reference/browser/modules/terrain-controller.js",
       "mode": "100644",
-      "bytes": 31308,
-      "sha256": "d0b4fb24c152b6447fe8168d2775ada1984a6f17a12142bfc5dc1e6fd096b7fe"
+      "bytes": 33524,
+      "sha256": "f304dcf21527b7db674b8ec374188af5421b64ccd417d74142186df44861ecb9"
     },
     {
       "path": "scripts/atlas-query.mjs",
