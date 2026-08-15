@@ -10,8 +10,8 @@
     {
       "path": "reference/browser/app.css",
       "mode": "100644",
-      "bytes": 18863,
-      "sha256": "a72561787d75bf7cbaca3de6657d07aefaa35d8a45528732260381c6b684c0d0"
+      "bytes": 18950,
+      "sha256": "c8fe6dafdac0150fd52c9ee992edfdd87e5c20a77e51ff91e656d9886f27c30b"
     },
     {
       "path": "reference/browser/app.js",
@@ -28,8 +28,8 @@
     {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
-      "bytes": 34058,
-      "sha256": "5d6a4cb9807812e243aa2369d46a929d0db8d827c58cbab11983e873077b82ec"
+      "bytes": 34178,
+      "sha256": "1c0c27b6b137acccd3e500347b1937120358ff4b1c5a7ad4596cb3545f6330c5"
     },
     {
       "path": "reference/browser/modules/browser-bundle.js",
