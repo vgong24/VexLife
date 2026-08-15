@@ -24,6 +24,8 @@ const geometryDifferences = (expected, actual, epsilon=.35) => {
 };
 const geometryIdentity = (snapshot) => JSON.stringify({ current:snapshot.current, nodes:snapshot.nodes.map(({ ref,role,relevanceReason,relevanceScore,left,top,width,height,localOffset })=>({ref,role,relevanceReason,relevanceScore,left,top,width,height,localOffset})), edges:snapshot.edges, projectionMode:snapshot.projectionMode, manualOverrideRef:snapshot.manualOverrideRef });
 const radialDistance = ({ left, top }) => Math.hypot(left-600,top-400);
+const motionCssToken = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const transitionProperties = (style) => style.transitionProperty.split(',').map((value)=>value.trim());
 const assertSettledGeometry = (snapshot, label) => { const rects=[worldRect(snapshot.current),...snapshot.nodes.map(worldRect)]; for(let i=0;i<rects.length;i++) for(let j=i+1;j<rects.length;j++) assert(!overlaps(rects[i],rects[j]), `${label} settled geometry overlap ${i}/${j}`); for(const edge of snapshot.edges){const node=snapshot.nodes.find((candidate)=>candidate.ref===edge.ref);assert(node,`${label} edge missing node ${edge.ref}`);assert(pointOnBoundary(worldRect(snapshot.current),edge.x1,edge.y1),`${label} edge ${edge.ref} does not leave actual current geometry`);assert(pointOnBoundary(worldRect(node),edge.x2,edge.y2),`${label} edge ${edge.ref} does not terminate on actual node geometry`);const gap=Math.hypot(edge.x2-edge.x1,edge.y2-edge.y1);assert(gap>=94,`${label} edge ${edge.ref} settled rendered-boundary clearance collapsed below the spatial floor: ${gap}`);} };
 
 export async function runBrowserIntegration() {
@@ -58,6 +60,13 @@ export async function runBrowserIntegration() {
     const protectedTargets = [document.querySelector('#terrainFocus'), ...document.querySelectorAll('.e27-node')].filter((node) => node?.getClientRects().length);
     assert(protectedTargets.every((node) => !overlaps(vexRect, node.getBoundingClientRect())), 'D05 ambient Vex obscures first-render Terrain content');
     checks.push('D05 one visible Vex starts ambient/minimized without obscuring Terrain');
+
+    const motionTokens={tactile:motionCssToken('--motion-duration-tactile'),fast:motionCssToken('--motion-duration-fast'),surface:motionCssToken('--motion-duration-surface'),layout:motionCssToken('--motion-duration-layout'),spatial:motionCssToken('--motion-duration-spatial'),exit:motionCssToken('--motion-duration-semantic-exit'),arrive:motionCssToken('--motion-duration-semantic-arrive'),ease:motionCssToken('--motion-ease-responsive')};
+    assert(Object.values(motionTokens).every(Boolean),'Q6 shared motion token vocabulary is incomplete');
+    const tactileControl=document.querySelector('#terrainReset'),tactileStyle=getComputedStyle(tactileControl);assert(tactileControl&&transitionProperties(tactileStyle).includes('scale'),'Q6 tactile button response is not expressed through independent scale motion');
+    const motionJourneyBefore=app.navigation.fullJourney().length;tactileControl.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:77}));tactileControl.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:77}));assert(app.navigation.fullJourney().length===motionJourneyBefore,'Q6 tactile response mutated Journey truth');
+    const worldMotionRule=[...document.styleSheets].flatMap((sheet)=>{try{return[...sheet.cssRules]}catch{return[]}}).find((rule)=>rule.selectorText==='.e27-world'),worldMotionDeclaration=worldMotionRule?.style?.transition||'';assert(worldMotionDeclaration.includes('var(--motion-duration-spatial)')&&worldMotionDeclaration.includes('var(--motion-duration-surface)'),'Q6 Terrain world stylesheet is not bound to shared motion tokens');
+    checks.push('Q6 shared tactile/surface/spatial motion vocabulary is present and presentation-only');
 
     const canonical = app.terrain.geometrySnapshot();
     assert(canonical.current.role === 'CURRENT_CONTEXT', 'P02 current context geometry role missing');
