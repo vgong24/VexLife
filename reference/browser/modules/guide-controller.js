@@ -51,6 +51,20 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
       if (Number.isFinite(geometry.height)) windowElement.style.height=`${Math.max(MIN_HEIGHT,geometry.height)}px`;
     }
   };
+  const isCompactViewport = () => window.innerWidth <= 760;
+  const clearInlinePlacement = () => { for (const property of ['left','right','top','bottom','width','height']) windowElement.style[property]=''; };
+  function applyCompactFallback() {
+    clearInlinePlacement();
+    const compact = snapshotGeometry();
+    resolvedGeometry={...compact,resolution:'COMPACT_FALLBACK'};
+    return true;
+  }
+  function contextDockSuggestion(current) {
+    const frame=navigation.semanticFrame();
+    if (frame.screenRef!=='screen.vexlife.chat'&&frame.screenRef!=='screen.vexlife.health') return null;
+    const maxTop=Math.max(SAFE_MARGIN,window.innerHeight-current.height-SAFE_MARGIN);
+    return {left:SAFE_MARGIN,top:maxTop,width:current.width,height:current.height};
+  }
   const visibleProtectedRects = () => $$('.topbar, .terrain-toolbar, .terrain-journey-window, .terrain-adjacent-card:not([hidden]), .terrain-detail-drawer.is-open, .terrain-journey-drawer.is-open, .project-rail[aria-hidden="false"], .context-projection:not([hidden]), .e27-appbar, .e27-breadcrumb, .e27-zoom-rail, .e27-focus, .e27-node, .e27-adjacent-card, .e27-recentbar, .e27-context-surface:not([hidden]), .e27-surface-menu:not([hidden]), .e27-terrain-context:not([hidden]), .e27-drawer.show').filter((element) => element !== windowElement && !windowElement.contains(element) && element.getClientRects().length > 0).map((element) => element.getBoundingClientRect());
   const preferredResolvedPlacement = (current = snapshotGeometry()) => preferredGeometry ? normalizePlacement(preferredGeometry,current) : null;
   function currentPresenceState() {
@@ -85,26 +99,55 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
   }
   function avoidDeclaredControls({ recoverPreferred = true } = {}) {
     if (windowElement.hidden) return false;
+    if (isCompactViewport()) return applyCompactFallback();
     const current = snapshotGeometry();
     const protectedRects = visibleProtectedRects();
+    const safe = (geometry) => !protectedRects.some((protectedRect)=>overlaps(rectFor(geometry),protectedRect));
     const preferred = recoverPreferred ? preferredResolvedPlacement(current) : null;
-    if (preferred && !protectedRects.some((protectedRect)=>overlaps(rectFor(preferred),protectedRect))) {
+    if (preferred && safe(preferred)) {
       const changed = !samePlacement(current,preferred);
       if (changed) applyPlacement(preferred,{size:!state.guideMinimized});
       resolvedGeometry={...preferred,resolution:'PREFERRED_SAFE'};
       return changed;
     }
-    if (!protectedRects.some((protectedRect) => overlaps(rectFor(current), protectedRect))) {
+    const suggestion = contextDockSuggestion(current);
+    if (!preferredGeometry && suggestion && safe(suggestion)) {
+      const changed=!samePlacement(current,suggestion);
+      if (changed) applyPlacement(suggestion);
+      resolvedGeometry={...suggestion,resolution:'CONTEXT_DOCK_SUGGESTION'};
+      return changed;
+    }
+    if (safe(current)) {
       resolvedGeometry={...current,resolution:preferredGeometry?'CURRENT_SAFE_PREFERRED_UNAVAILABLE':'CURRENT_SAFE_DEFAULT'};
       return false;
     }
-    const viewport = { width: window.innerWidth, height: window.innerHeight }; const rawCandidates = [];
-    for (const protectedRect of protectedRects) rawCandidates.push({ left: current.left, top: protectedRect.bottom + SAFE_MARGIN }, { left: protectedRect.left - current.width - SAFE_MARGIN, top: current.top }, { left: protectedRect.right + SAFE_MARGIN, top: current.top }, { left: current.left, top: protectedRect.top - current.height - SAFE_MARGIN });
-    rawCandidates.push({ left: SAFE_MARGIN, top: viewport.height - current.height - SAFE_MARGIN }, { left: viewport.width - current.width - SAFE_MARGIN, top: viewport.height - current.height - SAFE_MARGIN });
-    const candidates = rawCandidates.map((candidate) => ({ left: Math.max(SAFE_MARGIN, Math.min(viewport.width - current.width - SAFE_MARGIN, candidate.left)), top: Math.max(SAFE_MARGIN, Math.min(viewport.height - current.height - SAFE_MARGIN, candidate.top)) })).map((candidate) => ({ ...candidate, width:current.width, height:current.height, rect: rectFor({ ...candidate, width: current.width, height: current.height }) })).filter((candidate) => !protectedRects.some((protectedRect) => overlaps(candidate.rect, protectedRect))).sort((left, right) => ((left.left-current.left)**2+(left.top-current.top)**2)-((right.left-current.left)**2+(right.top-current.top)**2));
-    const target = candidates[0] ?? null; if (!target) { resolvedGeometry={...current,resolution:'NO_SAFE_CANDIDATE'}; return false; }
+    const maxLeft=Math.max(SAFE_MARGIN,window.innerWidth-current.width-SAFE_MARGIN);
+    const maxTop=Math.max(SAFE_MARGIN,window.innerHeight-current.height-SAFE_MARGIN);
+    const origin=preferredResolvedPlacement(current)||suggestion||current;
+    const xValues=[SAFE_MARGIN,maxLeft,current.left,origin.left];
+    const yValues=[SAFE_MARGIN,maxTop,current.top,origin.top];
+    for(const protectedRect of protectedRects){
+      xValues.push(protectedRect.left-current.width-SAFE_MARGIN,protectedRect.right+SAFE_MARGIN);
+      yValues.push(protectedRect.top-current.height-SAFE_MARGIN,protectedRect.bottom+SAFE_MARGIN);
+    }
+    const candidates=[]; const seen=new Set();
+    for(const rawLeft of xValues) for(const rawTop of yValues){
+      const left=Math.max(SAFE_MARGIN,Math.min(maxLeft,rawLeft));
+      const top=Math.max(SAFE_MARGIN,Math.min(maxTop,rawTop));
+      const key=`${left.toFixed(2)}:${top.toFixed(2)}`;
+      if(seen.has(key))continue; seen.add(key);
+      const candidate={left,top,width:current.width,height:current.height};
+      if(safe(candidate))candidates.push(candidate);
+    }
+    candidates.sort((left,right)=>{
+      const leftDistance=(left.left-origin.left)**2+(left.top-origin.top)**2;
+      const rightDistance=(right.left-origin.left)**2+(right.top-origin.top)**2;
+      return leftDistance-rightDistance || left.top-right.top || left.left-right.left;
+    });
+    const target=candidates[0]??null;
+    if(!target){resolvedGeometry={...current,resolution:'NO_SAFE_CANDIDATE'};return false;}
     applyPlacement(target);
-    resolvedGeometry={left:target.left,top:target.top,width:current.width,height:current.height,resolution:'AUTO_OBSTRUCTION_RESOLVED'};
+    resolvedGeometry={...target,resolution:'AUTO_OBSTRUCTION_RESOLVED'};
     return true;
   }
   function updateFrame() {
@@ -200,6 +243,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
   }
   function settleHumanGeometry() { persistPreferredGeometry(); avoidDeclaredControls({recoverPreferred:false}); projectPresenceState(); }
   function restorePreferredGeometry() {
+    if (isCompactViewport()) return applyCompactFallback();
     if (!preferredGeometry) return false;
     const current=snapshotGeometry();
     const preferred=normalizePlacement(preferredGeometry,current);
@@ -244,6 +288,12 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     avoidDeclaredControls();
   });
   windowElement.classList.toggle('is-minimized', state.guideMinimized === true);
+  globalThis.addEventListener('resize',()=>{
+    if(windowElement.hidden)return;
+    if(isCompactViewport())applyCompactFallback();
+    else { restorePreferredGeometry(); avoidDeclaredControls(); }
+    projectPresenceState();
+  });
   restorePreferredGeometry(); makeDraggable(); makeResizable(); projectPresenceState();
   return {
     updateFrame,

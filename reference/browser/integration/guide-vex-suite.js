@@ -120,24 +120,44 @@ export const guideVexSuite = Object.freeze({
     assert(persistedPreferred && JSON.parse(persistedPreferred).left===preferred.left, 'Q3-06 explicit preferred geometry did not persist');
     const semanticBeforeGeometry = JSON.stringify(app.navigation.semanticFrame());
     const journeyBeforeGeometry = app.navigation.fullJourney().length;
-    const focusRect = document.querySelector('#terrainFocus').getBoundingClientRect();
-    vex.style.left=`${focusRect.left}px`; vex.style.top=`${focusRect.top}px`; vex.style.right='auto'; vex.style.bottom='auto';
-    const autoMoved = app.guide.avoidDeclaredControls({recoverPreferred:false});
-    assert(autoMoved===true, 'Q3-07 obstruction precondition did not produce a transient resolved placement');
-    const resolved = app.guide.resolvedGeometry();
-    assert(resolved.resolution==='AUTO_OBSTRUCTION_RESOLVED', 'Q3-07 resolved geometry does not identify automatic obstruction resolution');
-    assert(localStorage.getItem('vexlife.guide.geometry')===persistedPreferred, 'Q3-07 automatic obstruction resolution overwrote preferred geometry');
+    const focus = document.querySelector('#terrainFocus');
+    assert(focus?.getClientRects().length, 'Q3-07 rendered Terrain focus fixture unavailable');
+    const isolationSelector = '.topbar, .terrain-toolbar, .terrain-journey-window, .terrain-adjacent-card:not([hidden]), .terrain-detail-drawer.is-open, .terrain-journey-drawer.is-open, .project-rail[aria-hidden="false"], .context-projection:not([hidden]), .e27-appbar, .e27-breadcrumb, .e27-zoom-rail, .e27-node, .e27-adjacent-card, .e27-recentbar, .e27-context-surface:not([hidden]), .e27-surface-menu:not([hidden]), .e27-terrain-context:not([hidden]), .e27-drawer.show';
+    const isolatedPeers = [...document.querySelectorAll(isolationSelector)].filter((node)=>node!==focus && node!==vex && !vex.contains(node));
+    const priorDisplays = isolatedPeers.map((node)=>[node,node.style.display]);
+    for (const [node] of priorDisplays) node.style.display='none';
+    try {
+      vex.style.left='12px'; vex.style.top='92px'; vex.style.right='auto'; vex.style.bottom='auto';
+      const controlledPreferred = app.guide.persistPreferredGeometry();
+      const controlledStored = localStorage.getItem('vexlife.guide.geometry');
+      const focusRect = focus.getBoundingClientRect();
+      const preferredRect = {
+        left:controlledPreferred.left,
+        top:controlledPreferred.top,
+        right:controlledPreferred.left+controlledPreferred.width,
+        bottom:controlledPreferred.top+controlledPreferred.height
+      };
+      assert(!overlaps(preferredRect,focusRect), 'Q3-07 controlled preferred anchor is not actually safe from rendered Terrain focus');
+      vex.style.left=String(focusRect.left)+'px'; vex.style.top=String(focusRect.top)+'px'; vex.style.right='auto'; vex.style.bottom='auto';
+      assert(overlaps(vex.getBoundingClientRect(),focusRect), 'Q3-07 rendered Terrain obstruction fixture does not actually overlap Vex');
+      const autoMoved = app.guide.avoidDeclaredControls({recoverPreferred:false});
+      assert(autoMoved===true, 'Q3-07 rendered Terrain obstruction did not produce a transient resolved placement');
+      const resolved = app.guide.resolvedGeometry();
+      assert(resolved.resolution==='AUTO_OBSTRUCTION_RESOLVED', 'Q3-07 resolved geometry does not identify automatic obstruction resolution');
+      const epsilon = 1.1;
+      assert(Math.abs(resolved.left-controlledPreferred.left)<=epsilon && Math.abs(resolved.top-controlledPreferred.top)<=epsilon, 'Q3-07 deterministic resolver did not select the known-safe controlled preferred anchor');
+      assert(localStorage.getItem('vexlife.guide.geometry')===controlledStored, 'Q3-07 automatic obstruction resolution overwrote preferred geometry');
+      assert(Math.abs(vex.getBoundingClientRect().left-controlledPreferred.left)<=epsilon && Math.abs(vex.getBoundingClientRect().top-controlledPreferred.top)<=epsilon, 'Q3-08 preferred geometry was not recovered by the same safe automatic resolution');
+      assert(localStorage.getItem('vexlife.guide.geometry')===controlledStored, 'Q3-08 preferred storage changed during same-cycle recovery');
+    } finally {
+      for (const [node,display] of priorDisplays) node.style.display=display;
+    }
     assert(JSON.stringify(app.navigation.semanticFrame())===semanticBeforeGeometry && app.navigation.fullJourney().length===journeyBeforeGeometry, 'Q3-10 geometry adaptation mutated semantic current context or Journey');
     checks.push('Q3-06 explicit human geometry is the only persisted preference');
-    checks.push('Q3-07 automatic obstruction resolution changes transient resolvedGeometry without overwriting preferredGeometry');
+    checks.push('Q3-07 real rendered Terrain obstruction resolves transiently to a known-safe preferred anchor without overwriting preferredGeometry');
+    checks.push('Q3-08 the same safe automatic resolution recovers preferredGeometry while preserving storage; compact-to-wide recovery is independently executed by the bounded viewport proof');
     checks.push('Q3-10 Vex geometry adaptation leaves semantic current context and Journey unchanged');
 
-    app.guide.avoidDeclaredControls();
-    const recovered = app.guide.resolvedGeometry();
-    const epsilon = 1.1;
-    assert(Math.abs(recovered.left-preferred.left)<=epsilon && Math.abs(recovered.top-preferred.top)<=epsilon, 'Q3-08 safe preferred placement was not recovered after transient resolution');
-    assert(localStorage.getItem('vexlife.guide.geometry')===persistedPreferred, 'Q3-08 preferred storage changed during recovery');
-    checks.push('Q3-08 obstruction recovery returns to the human-preferred geometry when safe');
 
     const stateLabels = {};
     for (const language of ['en','ja','zh']) {

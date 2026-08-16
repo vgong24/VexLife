@@ -335,4 +335,19 @@ test('E2.7 authoritative root validation fails closed on implicit legacy preserv
   assert.ok(result.errors.some((error) => error.includes('synthetic VexOrg review data')));
 });
 
+test('E2.8 Q3 Guide vessel owns bounded presence and preferred-vs-resolved placement policy', () => {
+  const registry = new ExperienceRegistry(bundle.experience);
+  const vex = registry.vessel('vessel.vexlife.guide');
+  assert.equal(vex.presenceStateGrammar.stateOwnerRef, 'state.guide');
+  assert.deepEqual(vex.presenceStateGrammar.states.map((item) => item.state), ['AMBIENT','ATTENTIVE','SUMMONED','ACTIVE_CONVERSATION']);
+  assert.equal(vex.presenceStateGrammar.hiddenModelPriority, false);
+  assert.equal(vex.presenceStateGrammar.unknownNeedFallback, 'AMBIENT');
+  assert.deepEqual(vex.placementPolicy.precedence, ['LATEST_EXPLICIT_HUMAN_SURFACE_INTENT','EXPLICIT_HUMAN_PLACEMENT_PREFERENCE','CONTEXT_DOCK_SUGGESTION','CANONICAL_DEFAULT']);
+  assert.equal(vex.placementPolicy.preferredGeometryPersistence, 'EXPLICIT_HUMAN_DRAG_RESIZE_DOCK_ONLY');
+  assert.equal(vex.placementPolicy.resolvedGeometryPersistence, 'TRANSIENT_NEVER_PROMOTED_BY_AUTOMATIC_RESOLUTION');
+  assert.equal(vex.placementPolicy.automaticObstructionSignal, 'RENDERED_PROTECTED_RECT_PROJECTION');
+  assert.equal(vex.placementPolicy.compactFallbackRewritesWidePreference, false);
+  for (const language of bundle.blueprint.product.requiredLanguages) for (const item of vex.presenceStateGrammar.states) assert.ok(bundle.strings[language][item.stringRef]);
+});
+
 // [VXG RealForever]

@@ -131,7 +131,7 @@
     },
     {
       "featureRef": "feature.vexlife.screen-aware-guide",
-      "purpose": "A draggable Guide reads the semantic current screen, selection and trajectory without raw click surveillance.",
+      "purpose": "One visible Vex projects screen-aware assistance, bounded presence state and viewport-safe preferred-vs-resolved placement without raw click surveillance, hidden priority, or autonomous layout authority.",
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "screen.vexlife.guide-overlay",
@@ -165,7 +165,11 @@
         "module.vexlife.browser.guide-controller"
       ],
       "localizationRefs": [
-        "guide.title"
+        "guide.title",
+        "vex.presence.ambient",
+        "vex.presence.attentive",
+        "vex.presence.summoned",
+        "vex.presence.active-conversation"
       ],
       "testRefs": [
         "test.navigation.screen-frame",

@@ -409,6 +409,55 @@
         "focusOrderStable": true,
         "dismissible": true,
         "neverObscuresDeclaredControls": true
+      },
+      "presenceStateGrammar": {
+        "stateOwnerRef": "state.guide",
+        "states": [
+          {
+            "state": "AMBIENT",
+            "stringRef": "vex.presence.ambient",
+            "projection": "COMPACT",
+            "focusPolicy": "NO_FOCUS_THEFT",
+            "activation": "CANONICAL_DEFAULT"
+          },
+          {
+            "state": "ATTENTIVE",
+            "stringRef": "vex.presence.attentive",
+            "projection": "COMPACT_NON_MODAL",
+            "focusPolicy": "NO_FOCUS_THEFT",
+            "activation": "SOURCE_ADDRESSABLE_UI_NEED"
+          },
+          {
+            "state": "SUMMONED",
+            "stringRef": "vex.presence.summoned",
+            "projection": "EXPANDED",
+            "focusPolicy": "EXPLICIT_REQUEST_MAY_FOCUS",
+            "activation": "EXPLICIT_HUMAN_SUMMON_OR_EXPAND"
+          },
+          {
+            "state": "ACTIVE_CONVERSATION",
+            "stringRef": "vex.presence.active-conversation",
+            "projection": "EXPANDED",
+            "focusPolicy": "CONVERSATION_OWNS_REQUESTED_FOCUS",
+            "activation": "EXPLICIT_GUIDE_OR_CURRENT_VEX_ADDRESSED_CONVERSATION"
+          }
+        ],
+        "hiddenModelPriority": false,
+        "unknownNeedFallback": "AMBIENT"
+      },
+      "placementPolicy": {
+        "precedence": [
+          "LATEST_EXPLICIT_HUMAN_SURFACE_INTENT",
+          "EXPLICIT_HUMAN_PLACEMENT_PREFERENCE",
+          "CONTEXT_DOCK_SUGGESTION",
+          "CANONICAL_DEFAULT"
+        ],
+        "preferredGeometryPersistence": "EXPLICIT_HUMAN_DRAG_RESIZE_DOCK_ONLY",
+        "resolvedGeometryPersistence": "TRANSIENT_NEVER_PROMOTED_BY_AUTOMATIC_RESOLUTION",
+        "automaticObstructionSignal": "RENDERED_PROTECTED_RECT_PROJECTION",
+        "compactFallback": "VIEWPORT_DERIVED_BOTTOM_SHEET_OR_FULL_SCREEN",
+        "compactFallbackRewritesWidePreference": false,
+        "recovery": "RECOVER_PREFERRED_GEOMETRY_WHEN_SAFE"
       }
     },
     {
