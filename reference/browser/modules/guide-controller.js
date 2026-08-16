@@ -2,6 +2,10 @@ import { $, $$, loadJson, saveJson } from './dom.js';
 
 export const GUIDE_INTENTS = Object.freeze({ CURRENT: 'intent.guide.current', NEXT: 'intent.guide.next', PROTECTS: 'intent.guide.protects', ARCHITECTURE: 'intent.guide.architecture' });
 const PROMPT_REF_BY_INTENT = Object.freeze({ [GUIDE_INTENTS.CURRENT]: 'guide.ask.current', [GUIDE_INTENTS.NEXT]: 'guide.mode.next', [GUIDE_INTENTS.PROTECTS]: 'guide.ask.protects', [GUIDE_INTENTS.ARCHITECTURE]: 'architecture.open' });
+const NEXT_TARGET_BY_SCREEN = Object.freeze({
+  'screen.vexlife.terrain': 'element.terrain.reset',
+  'screen.vexlife.chat': 'element.messages.jump-latest'
+});
 const MIN_WIDTH = 320; const MIN_HEIGHT = 330; const SAFE_MARGIN = 12;
 
 export function createGuideController({ state, t, navigation, elementByRef, chat }) {
@@ -23,10 +27,44 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     $('#guideTrajectory').textContent = t('guide.trajectory', { screenRef: frame.screenRef, selectedNodeRef: selected?.ref || frame.selectedNodeRef, steps: navigation.journeyProjection().fullEventCount });
     if (avoidDeclaredControls()) persistGeometry();
   }
+  function evaluateActionTarget(targetNodeRef, frame = navigation.semanticFrame()) {
+    const contract = elementByRef.get(targetNodeRef) ?? null;
+    const base = {
+      state: 'UNAVAILABLE',
+      screenRef: frame.screenRef,
+      targetNodeRef,
+      actionRef: contract?.actionRef ?? null,
+      labelStringRef: contract?.brief ?? null,
+      permissionRef: contract?.permissionRef ?? null
+    };
+    if (!contract || contract.kind !== 'ELEMENT') return { ...base, reason: 'CANONICAL_TARGET_MISSING' };
+    if (!contract.actionRef) return { ...base, reason: 'CANONICAL_ACTION_MISSING' };
+    if (contract.screenRef !== frame.screenRef) return { ...base, reason: 'TARGET_OUTSIDE_CURRENT_FRAME' };
+    if (contract.permissionRef) return { ...base, reason: 'PERMISSION_NOT_ADMITTED_BY_GUIDE' };
+    const target = $(`[data-node-ref="${CSS.escape(targetNodeRef)}"]`);
+    if (!target) return { ...base, reason: 'RENDERED_TARGET_MISSING' };
+    if (target.closest('[hidden], [aria-hidden="true"]')) return { ...base, reason: 'RENDERED_TARGET_HIDDEN' };
+    if (target.matches(':disabled') || target.getAttribute('aria-disabled') === 'true') return { ...base, reason: 'RENDERED_TARGET_DISABLED' };
+    const style = getComputedStyle(target);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none' || target.getClientRects().length === 0) return { ...base, reason: 'RENDERED_TARGET_NOT_DISCOVERABLE' };
+    return { ...base, state: 'AVAILABLE', reason: 'CURRENT_RENDERED_TARGET_EXECUTABLE' };
+  }
+  function nextRecommendation(frame = navigation.semanticFrame()) {
+    const targetNodeRef = NEXT_TARGET_BY_SCREEN[frame.screenRef] ?? null;
+    if (!targetNodeRef) return { state: 'UNAVAILABLE', screenRef: frame.screenRef, actionRef: null, targetNodeRef: null, labelStringRef: null, permissionRef: null, reason: 'NO_CURRENT_FRAME_ACTION_CANDIDATE', evaluated: [] };
+    const candidate = evaluateActionTarget(targetNodeRef, frame);
+    if (candidate.state === 'AVAILABLE') return { ...candidate, evaluated: [candidate] };
+    return { state: 'UNAVAILABLE', screenRef: frame.screenRef, actionRef: null, targetNodeRef: null, labelStringRef: null, permissionRef: null, reason: 'NO_CURRENT_EXECUTABLE_RECOMMENDATION', evaluated: [candidate] };
+  }
   function responseForIntent(intentRef) {
     const frame = navigation.semanticFrame(); const selected = elementByRef.get(frame.selectedNodeRef);
     if (intentRef === GUIDE_INTENTS.CURRENT) return { contentRef: 'guide.answer.current', contentParams: { ...frame, selectedNodeRef: selected?.ref || frame.selectedNodeRef } };
-    if (intentRef === GUIDE_INTENTS.NEXT) return { contentRef: frame.contextProjection === 'chat' ? 'guide.answer.next.chat' : 'guide.answer.next.terrain', contentParams: {} };
+    if (intentRef === GUIDE_INTENTS.NEXT) {
+      const recommendation = nextRecommendation(frame);
+      return recommendation.state === 'AVAILABLE'
+        ? { contentRef: recommendation.labelStringRef, contentParams: {}, recommendation }
+        : { contentRef: 'health.value.unavailable', contentParams: {}, recommendation };
+    }
     if (intentRef === GUIDE_INTENTS.PROTECTS) return { contentRef: 'guide.answer.protects', contentParams: {} };
     if (intentRef === GUIDE_INTENTS.ARCHITECTURE) return { contentRef: 'guide.answer.architecture', contentParams: {} };
     throw new Error(`Unknown Guide intentRef: ${intentRef}`);
@@ -68,7 +106,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
   $('#guideToggle')?.addEventListener('click', () => setOpen(!state.guideOpen, { focus: !state.guideOpen })); $('#vexSummon')?.addEventListener('click', summon); $('#guideClose').addEventListener('click', () => setOpen(false)); $('#guideMinimize').addEventListener('click', () => { state.guideMinimized=!state.guideMinimized; localStorage.setItem('vexlife.guide.minimized', String(state.guideMinimized)); windowElement.classList.toggle('is-minimized',state.guideMinimized); if (!state.guideMinimized && avoidDeclaredControls()) persistGeometry(); });
   windowElement.classList.toggle('is-minimized', state.guideMinimized === true);
   restoreGeometry(); makeDraggable(); makeResizable();
-  return { updateFrame, responseForIntent, askIntent, ask, addMessage, renderMessages, setOpen, summon, persistGeometry, avoidDeclaredControls };
+  return { updateFrame, responseForIntent, evaluateActionTarget, nextRecommendation, askIntent, ask, addMessage, renderMessages, setOpen, summon, persistGeometry, avoidDeclaredControls };
 }
 
 // [VXG RealForever]
