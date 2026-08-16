@@ -170,5 +170,15 @@
   "vex.visible.name": "Vex",
   "terrain.semantic-depth.overview": "概览",
   "terrain.semantic-depth.context": "上下文",
-  "terrain.semantic-depth.source-descent": "来源下钻"
+  "terrain.semantic-depth.source-descent": "来源下钻",
+  "journey.region.label": "语义旅程",
+  "journey.scrub": "浏览历史",
+  "journey.clusters": "最近上下文",
+  "journey.transition-reason": "切换原因",
+  "journey.revisit": "重新访问此上下文",
+  "journey.full-history": "完整旅程",
+  "journey.current-context": "当前上下文",
+  "journey.browsing-history": "正在浏览历史上下文",
+  "journey.semantic-events": "个语义事件",
+  "journey.no-history": "暂无语义历史"
 }
