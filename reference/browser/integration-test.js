@@ -26,6 +26,18 @@ export const MANDATORY_SUITES = Object.freeze([
   identityLocalizationSuite
 ]);
 
+// Stable carried-truth index retained by the composition owner so source-managed
+// static proof can verify accepted whole-product coverage without reacquiring
+// mutable ownership of the owner-domain assertion leaves.
+export const CARRIED_TRUTH_MARKERS = Object.freeze([
+  'exact E2.7 body is the first rendered product surface',
+  'canonical VexLife topology is projected into the E2.7 body',
+  'UNSENT_LOCAL_DRAFT',
+  'semantic auto-entry remains opt-in',
+  'one visible Vex occupies the E2.7 ambient vessel',
+  "state:'PASS'"
+]);
+
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const selectLanguage = (language) => { const select = document.querySelector('#languageSelect'); assert(select, 'Missing #languageSelect'); select.value = language; select.dispatchEvent(new Event('change', { bubbles: true })); };

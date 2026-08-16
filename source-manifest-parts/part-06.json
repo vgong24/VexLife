@@ -28,8 +28,8 @@
     {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
-      "bytes": 12456,
-      "sha256": "7622ffc6f3ce80610a1530f11da3d10117038bdbef6f7f43ffce903f6fb20dfa"
+      "bytes": 12992,
+      "sha256": "20252c453069667c9ac22a26a3fbcbe8b929705dd4a4364caf1c27a2de6d2a31"
     },
     {
       "path": "reference/browser/integration/contextual-conversation-suite.js",
