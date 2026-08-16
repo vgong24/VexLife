@@ -2,6 +2,48 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/blueprint.mjs",
+      "mode": "100644",
+      "bytes": 45602,
+      "sha256": "ff8a4b36e0ffa6bd4684ae8ac1af6e195b0d4211adb26a6f951aa9a5e176d392"
+    },
+    {
+      "path": "src/core/boot.mjs",
+      "mode": "100644",
+      "bytes": 6968,
+      "sha256": "3d257e4f5dd6f9a35a6ad341a6dae66242ee7aad8f2e06422b163342f22a05b0"
+    },
+    {
+      "path": "src/core/build-admission.mjs",
+      "mode": "100644",
+      "bytes": 82949,
+      "sha256": "7c43335b59f93018ef33e2ccce58ad32dae4438e9cea4eef47906d5509a60a97"
+    },
+    {
+      "path": "src/core/build-health.mjs",
+      "mode": "100644",
+      "bytes": 22297,
+      "sha256": "cb746a2337fa460c1672cd00ef271e6b5b419ce230572e2c4b5d353fa6a51679"
+    },
+    {
+      "path": "src/core/burden-release.mjs",
+      "mode": "100644",
+      "bytes": 27656,
+      "sha256": "9d713a2507a4fcc49c08e39acdb7da41df924a627148be1a222f48821f17413e"
+    },
+    {
+      "path": "src/core/capability.mjs",
+      "mode": "100644",
+      "bytes": 2361,
+      "sha256": "00a60fd3f0491923109720586d0f69d6fddfc21b8c57dc540e066434980cba54"
+    },
+    {
+      "path": "src/core/check-result.mjs",
+      "mode": "100644",
+      "bytes": 3466,
+      "sha256": "448fdea1519cad9db9116dd3f370bf42bd7d354ecf417865f8f1eb91e67c3b8f"
+    },
+    {
       "path": "src/core/companion-navigation.mjs",
       "mode": "100644",
       "bytes": 20459,
@@ -102,48 +144,6 @@
       "mode": "100644",
       "bytes": 14269,
       "sha256": "0378b4c09044be1b871d8517f869abdf50431ff65c12f2314b63fae0ff7fd863"
-    },
-    {
-      "path": "src/core/intent-completion-verifier.mjs",
-      "mode": "100644",
-      "bytes": 21202,
-      "sha256": "96f0a9b20a735753f6974481e468f1f04f87b31785136ca131eb23c945028c36"
-    },
-    {
-      "path": "src/core/intent-projection.mjs",
-      "mode": "100644",
-      "bytes": 5452,
-      "sha256": "cffe6f351d90941366f748c7e03fae7a2bcae86abc6464f19776ebaf341b4a7f"
-    },
-    {
-      "path": "src/core/intent-scheduler.mjs",
-      "mode": "100644",
-      "bytes": 119738,
-      "sha256": "cd563c9bc34006d7c83cdde6afb30096671c8f7bb5e30e9e7db458910a2982fc"
-    },
-    {
-      "path": "src/core/intent-validation.mjs",
-      "mode": "100644",
-      "bytes": 38570,
-      "sha256": "fd0e655a6e3fbbd8c68ce73f2190c617898f45c348a9faa14c7f8191efe3ad9e"
-    },
-    {
-      "path": "src/core/intent-workgraph.mjs",
-      "mode": "100644",
-      "bytes": 21524,
-      "sha256": "54445fda5f8edaa675f4ce359ea706ec94fcbad19e88f5be4128e304711bf0c3"
-    },
-    {
-      "path": "src/core/interface-builder.mjs",
-      "mode": "100644",
-      "bytes": 8289,
-      "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
-    },
-    {
-      "path": "src/core/journey.mjs",
-      "mode": "100644",
-      "bytes": 1243,
-      "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
     }
   ]
 }

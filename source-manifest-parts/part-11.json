@@ -2,6 +2,48 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/runtime-recovery.mjs",
+      "mode": "100644",
+      "bytes": 179477,
+      "sha256": "b8cf15cd2730105ca295488e6008533be15e8807d7fe4446e0714aa234a20646"
+    },
+    {
+      "path": "src/core/scheduled-daily-autonomy.mjs",
+      "mode": "100644",
+      "bytes": 86096,
+      "sha256": "8245c1aa48e54395f83676d78bef754d89f237f868554e1a2f7b29b9ad7d1db2"
+    },
+    {
+      "path": "src/core/scheduler-runtime-trust.mjs",
+      "mode": "100644",
+      "bytes": 33751,
+      "sha256": "b879058dc7e440a08fdeda96d3628e57f31dd736e2ef404539ac966e3a5354e9"
+    },
+    {
+      "path": "src/core/score-context-continuity.mjs",
+      "mode": "100644",
+      "bytes": 112205,
+      "sha256": "86d7d66e552c734965f3523b02b70e1cab5cdedc9d6ed5db81dcfefa6e610a74"
+    },
+    {
+      "path": "src/core/source-manifest.mjs",
+      "mode": "100644",
+      "bytes": 12328,
+      "sha256": "36aff4bd6f3d9cdc418550dc97e15b5df43d68ed52b9aef81e43abb53f273f3e"
+    },
+    {
+      "path": "src/core/state-relay.mjs",
+      "mode": "100644",
+      "bytes": 2512,
+      "sha256": "6db63d09620aeea24b4f66f36384201495a65e75efc81ca9dbe75f99787923c7"
+    },
+    {
+      "path": "src/core/state.mjs",
+      "mode": "100644",
+      "bytes": 139824,
+      "sha256": "02750419d72f2dae3ed71fd2275333349a8683c65530b6dc13880d82cad6e023"
+    },
+    {
       "path": "src/core/terrain.mjs",
       "mode": "100644",
       "bytes": 4412,
@@ -102,48 +144,6 @@
       "mode": "100644",
       "bytes": 5699,
       "sha256": "9d29168ee64dc4ca6226cb02752d1eb76d8834213e302b41fe4cc29d324d30a9"
-    },
-    {
-      "path": "test/evaluated-rhythm-learning.test.mjs",
-      "mode": "100644",
-      "bytes": 1487,
-      "sha256": "9477a79e35a1cfc58e0dba2ba37eba8d978c9a4461a3eb26fb2a90a35d82e55b"
-    },
-    {
-      "path": "test/evolution.test.mjs",
-      "mode": "100644",
-      "bytes": 3808,
-      "sha256": "e3d29d1ccd574875a7c05c3d09b8c8ef32fa75dcb0b24534d0fc9d5e906b98f7"
-    },
-    {
-      "path": "test/experience-review-human.test.mjs",
-      "mode": "100644",
-      "bytes": 3771,
-      "sha256": "b6f4458a986b40d3570bb3265d5c1b099623d2876a30ecedcc985cbf1e4200ea"
-    },
-    {
-      "path": "test/experience-review-kit.test.mjs",
-      "mode": "100644",
-      "bytes": 7959,
-      "sha256": "927b00e70d7f000f0a79cdbe6664fb49c44aea97d3bd09422441949a5fc0a30f"
-    },
-    {
-      "path": "test/experience.test.mjs",
-      "mode": "100644",
-      "bytes": 18821,
-      "sha256": "3c6f36822293c336df6ad419eb71005109c726fa9748170ae06cbea8c92b5019"
-    },
-    {
-      "path": "test/fixtures/orientation/accepted-main.json",
-      "mode": "100644",
-      "bytes": 1054,
-      "sha256": "42c605803b39f8093b5c55957d2e42fe5ef06e30ca642ee1635801104902a980"
-    },
-    {
-      "path": "test/fixtures/orientation/current-pr.json",
-      "mode": "100644",
-      "bytes": 1183,
-      "sha256": "5cd56d6980c53c1ed9aba8d501cc3f5202e8fee5395b4b93bb734c09f2ef5de5"
     }
   ]
 }

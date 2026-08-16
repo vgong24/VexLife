@@ -2,6 +2,48 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/evaluated-rhythm-learning.test.mjs",
+      "mode": "100644",
+      "bytes": 1487,
+      "sha256": "9477a79e35a1cfc58e0dba2ba37eba8d978c9a4461a3eb26fb2a90a35d82e55b"
+    },
+    {
+      "path": "test/evolution.test.mjs",
+      "mode": "100644",
+      "bytes": 3808,
+      "sha256": "e3d29d1ccd574875a7c05c3d09b8c8ef32fa75dcb0b24534d0fc9d5e906b98f7"
+    },
+    {
+      "path": "test/experience-review-human.test.mjs",
+      "mode": "100644",
+      "bytes": 3771,
+      "sha256": "b6f4458a986b40d3570bb3265d5c1b099623d2876a30ecedcc985cbf1e4200ea"
+    },
+    {
+      "path": "test/experience-review-kit.test.mjs",
+      "mode": "100644",
+      "bytes": 7959,
+      "sha256": "927b00e70d7f000f0a79cdbe6664fb49c44aea97d3bd09422441949a5fc0a30f"
+    },
+    {
+      "path": "test/experience.test.mjs",
+      "mode": "100644",
+      "bytes": 18821,
+      "sha256": "3c6f36822293c336df6ad419eb71005109c726fa9748170ae06cbea8c92b5019"
+    },
+    {
+      "path": "test/fixtures/orientation/accepted-main.json",
+      "mode": "100644",
+      "bytes": 1054,
+      "sha256": "42c605803b39f8093b5c55957d2e42fe5ef06e30ca642ee1635801104902a980"
+    },
+    {
+      "path": "test/fixtures/orientation/current-pr.json",
+      "mode": "100644",
+      "bytes": 1183,
+      "sha256": "5cd56d6980c53c1ed9aba8d501cc3f5202e8fee5395b4b93bb734c09f2ef5de5"
+    },
+    {
       "path": "test/fixtures/orientation/detached-merge.json",
       "mode": "100644",
       "bytes": 1173,
@@ -102,48 +144,6 @@
       "mode": "100644",
       "bytes": 18485,
       "sha256": "5551f2953fb5790b17b1945897990a98924988e2217675d6563d1d4982426d9b"
-    },
-    {
-      "path": "test/patient0-familiarity-live-work.test.mjs",
-      "mode": "100644",
-      "bytes": 13617,
-      "sha256": "ee90199e802566aab4dd7aea84947f77056d027d010619a713189708ff85b1a3"
-    },
-    {
-      "path": "test/patient0-nursery.test.mjs",
-      "mode": "100644",
-      "bytes": 11731,
-      "sha256": "650a884a5c98259c4d769fc8bef2dc7ebb935ba2df45e1af2c2748e9a8bd3214"
-    },
-    {
-      "path": "test/pr-ready-attention.e2e.mjs",
-      "mode": "100644",
-      "bytes": 3537,
-      "sha256": "f395bdd9b6d7c04a2a4abaa3d31f1fc82226a52fa0326dcb347d93a6491d0920"
-    },
-    {
-      "path": "test/public-safety.test.mjs",
-      "mode": "100644",
-      "bytes": 3919,
-      "sha256": "194b7be177367dd255be65380765e97ac74bdd88e4c15d3e40caa7a901e13177"
-    },
-    {
-      "path": "test/registry.test.mjs",
-      "mode": "100644",
-      "bytes": 19131,
-      "sha256": "48d965f99de958f05cea3b9e909746cdd5c42667d0fe45b7fdeb8144da22bd0f"
-    },
-    {
-      "path": "test/runtime-failure-recovery.test.mjs",
-      "mode": "100644",
-      "bytes": 53169,
-      "sha256": "617c5c19da4035c719dcf91f6bc46f32620c7825273ff6b0e7768c9a25bc2e20"
-    },
-    {
-      "path": "test/scheduled-daily-autonomy.test.mjs",
-      "mode": "100644",
-      "bytes": 4370,
-      "sha256": "a549958c8db272dea37196b02077b5620f1ded1e6bfa57b3dae43ae4364c6087"
     }
   ]
 }

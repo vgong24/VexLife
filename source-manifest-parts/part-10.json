@@ -2,6 +2,48 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/intent-completion-verifier.mjs",
+      "mode": "100644",
+      "bytes": 21202,
+      "sha256": "96f0a9b20a735753f6974481e468f1f04f87b31785136ca131eb23c945028c36"
+    },
+    {
+      "path": "src/core/intent-projection.mjs",
+      "mode": "100644",
+      "bytes": 5452,
+      "sha256": "cffe6f351d90941366f748c7e03fae7a2bcae86abc6464f19776ebaf341b4a7f"
+    },
+    {
+      "path": "src/core/intent-scheduler.mjs",
+      "mode": "100644",
+      "bytes": 119738,
+      "sha256": "cd563c9bc34006d7c83cdde6afb30096671c8f7bb5e30e9e7db458910a2982fc"
+    },
+    {
+      "path": "src/core/intent-validation.mjs",
+      "mode": "100644",
+      "bytes": 38570,
+      "sha256": "fd0e655a6e3fbbd8c68ce73f2190c617898f45c348a9faa14c7f8191efe3ad9e"
+    },
+    {
+      "path": "src/core/intent-workgraph.mjs",
+      "mode": "100644",
+      "bytes": 21524,
+      "sha256": "54445fda5f8edaa675f4ce359ea706ec94fcbad19e88f5be4128e304711bf0c3"
+    },
+    {
+      "path": "src/core/interface-builder.mjs",
+      "mode": "100644",
+      "bytes": 8289,
+      "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
+    },
+    {
+      "path": "src/core/journey.mjs",
+      "mode": "100644",
+      "bytes": 1243,
+      "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
+    },
+    {
       "path": "src/core/lived-companion.mjs",
       "mode": "100644",
       "bytes": 76404,
@@ -102,48 +144,6 @@
       "mode": "100644",
       "bytes": 17151,
       "sha256": "d0b0e6775161695555c6139c479431a42d1e23a857c98f3772ea31533bc86e78"
-    },
-    {
-      "path": "src/core/runtime-recovery.mjs",
-      "mode": "100644",
-      "bytes": 179477,
-      "sha256": "b8cf15cd2730105ca295488e6008533be15e8807d7fe4446e0714aa234a20646"
-    },
-    {
-      "path": "src/core/scheduled-daily-autonomy.mjs",
-      "mode": "100644",
-      "bytes": 86096,
-      "sha256": "8245c1aa48e54395f83676d78bef754d89f237f868554e1a2f7b29b9ad7d1db2"
-    },
-    {
-      "path": "src/core/scheduler-runtime-trust.mjs",
-      "mode": "100644",
-      "bytes": 33751,
-      "sha256": "b879058dc7e440a08fdeda96d3628e57f31dd736e2ef404539ac966e3a5354e9"
-    },
-    {
-      "path": "src/core/score-context-continuity.mjs",
-      "mode": "100644",
-      "bytes": 112205,
-      "sha256": "86d7d66e552c734965f3523b02b70e1cab5cdedc9d6ed5db81dcfefa6e610a74"
-    },
-    {
-      "path": "src/core/source-manifest.mjs",
-      "mode": "100644",
-      "bytes": 12328,
-      "sha256": "36aff4bd6f3d9cdc418550dc97e15b5df43d68ed52b9aef81e43abb53f273f3e"
-    },
-    {
-      "path": "src/core/state-relay.mjs",
-      "mode": "100644",
-      "bytes": 2512,
-      "sha256": "6db63d09620aeea24b4f66f36384201495a65e75efc81ca9dbe75f99787923c7"
-    },
-    {
-      "path": "src/core/state.mjs",
-      "mode": "100644",
-      "bytes": 139824,
-      "sha256": "02750419d72f2dae3ed71fd2275333349a8683c65530b6dc13880d82cad6e023"
     }
   ]
 }
