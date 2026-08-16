@@ -11,6 +11,56 @@ export const crossFeatureSuite = Object.freeze({
     app.terrain.setAutoEntryEnabled(false); const held = app.terrain.evaluateSemanticAutoEntry({ nodeRef: app.terrain.childRefs()[0] || null, visibilityRatio:1, confidence:1, direction:'IN' }); assert(held.committed === false && held.reason === 'OPTED_OUT', 'D10 auto-entry opt-out failed'); app.terrain.setAutoEntryEnabled(true); app.terrain.setAutoEntryThresholds({ visibilityThreshold:.72, confidenceThreshold:.8 }); const low = app.terrain.evaluateSemanticAutoEntry({ nodeRef: app.terrain.childRefs()[0] || null, visibilityRatio:.5, confidence:1, direction:'IN' }); assert(low.committed === false && low.reason === 'VISIBILITY_BELOW_THRESHOLD', 'D10 visible threshold failed');
     checks.push('D10 semantic auto-entry remains opt-in and thresholded');
 
+    const preservedPrefix = structuredClone(app.navigation.fullJourney());
+    const semanticBeforeControls = app.navigation.semanticFrame().selectedNodeRef;
+    const beforeSummonCount = app.navigation.fullJourney().length;
+    app.guide.summon();
+    const summonFrame = app.navigation.semanticFrame();
+    const summonEvent = app.navigation.fullJourney().at(-1);
+    assert(summonFrame.selectedNodeRef === semanticBeforeControls, 'LIVED-A B2 Vex summon rewrote semantic current context');
+    assert(summonEvent?.elementRef === 'element.vex.summon' && summonEvent.actionRef === 'action.vex.summon', 'LIVED-A B2 Vex summon provenance missing');
+    assert(app.navigation.fullJourney().length === beforeSummonCount + 1, 'LIVED-A B2 Vex summon did not append Journey provenance');
+
+    app.openContext('chat');
+    const chatFrame = app.navigation.semanticFrame();
+    const chatEvent = app.navigation.fullJourney().at(-1);
+    assert(chatFrame.selectedNodeRef === semanticBeforeControls, 'LIVED-A B3 Chat entry rewrote semantic current context');
+    assert(chatFrame.contextProjection === 'chat', 'LIVED-A B3 Chat context projection did not open');
+    assert(chatEvent?.elementRef === 'element.nav.chat', 'LIVED-A B3 Chat entry provenance missing');
+
+    const threadButton = document.querySelector('[data-node-ref="element.thread.open-conversation"]');
+    assert(threadButton, 'LIVED-A B6 explicit Self Development thread selector unavailable');
+    threadButton.click();
+    await delay(0);
+    const explicitSemanticFrame = app.navigation.semanticFrame();
+    assert(explicitSemanticFrame.selectedNodeRef === 'terrain.thread.open-conversation', 'LIVED-A B6 explicit thread selector did not promote exact terrainNodeRef: '+explicitSemanticFrame.selectedNodeRef);
+    assert(app.terrain.currentRef() === 'terrain.thread.open-conversation', 'LIVED-A B6 Terrain projection did not follow explicit semantic promotion');
+    const explicitThreadEvent = app.navigation.fullJourney().at(-1);
+    assert(explicitThreadEvent?.elementRef === 'element.thread.open-conversation' && explicitThreadEvent.interactionRef === 'interaction.thread.open-conversation', 'LIVED-A B6 explicit thread interaction provenance missing');
+
+    const groupChannel = document.querySelector('[data-channel-ref="channel.self-development.group"]');
+    assert(groupChannel, 'LIVED-A B5 group channel selector unavailable');
+    groupChannel.click();
+    await delay(0);
+    const channelFrame = app.navigation.semanticFrame();
+    const channelEvent = app.navigation.fullJourney().at(-1);
+    assert(channelFrame.channelRef === 'channel.self-development.group', 'LIVED-A B5 exact channelRef was not selected');
+    assert(channelFrame.selectedNodeRef === 'terrain.thread.open-conversation', 'LIVED-A B5 channel selector rewrote semantic current context');
+    assert(channelEvent?.elementRef === 'element.channel.group', 'LIVED-A B5 channel selector provenance missing');
+
+    const guideCurrent = app.guide.responseForIntent('intent.guide.current');
+    assert(guideCurrent?.contentParams?.selectedNodeRef === 'terrain.thread.open-conversation', 'LIVED-A B7 Guide current-frame projection reports interaction source instead of semantic context');
+
+    app.returnToTerrain();
+    await delay(0);
+    const returnFrame = app.navigation.semanticFrame();
+    const returnEvent = app.navigation.fullJourney().at(-1);
+    assert(returnFrame.contextProjection === null, 'LIVED-A B4 contextual surface did not return to Terrain');
+    assert(returnFrame.selectedNodeRef === 'terrain.thread.open-conversation', 'LIVED-A B4 Terrain return rewrote semantic current context');
+    assert(returnEvent?.elementRef === 'element.terrain.center-current-context', 'LIVED-A B4 return/center provenance missing');
+    assert(JSON.stringify(app.navigation.fullJourney().slice(0, preservedPrefix.length)) === JSON.stringify(preservedPrefix), 'LIVED-A B8 historical Journey events were edited');
+    checks.push('LIVED-A B2-B8 controls preserve semantic current context, retain exact interaction provenance, promote only explicit terrainNodeRef, and keep Journey append-only');
+
     return { suiteRef:this.suiteRef, state:'PASS', baselineRef:'baseline.vexlife.browser.context-return-plus-semantic-travel', checks };
   }
 });

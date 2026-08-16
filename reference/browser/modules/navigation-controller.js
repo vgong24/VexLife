@@ -27,7 +27,7 @@ export function historicalFramePatch(event) {
   return patch;
 }
 
-export function createNavigationController({ state, elementByRef, getProject, getThread, getChannel, onFrameChange = () => {} }) {
+export function createNavigationController({ state, elementByRef, getProject, getThread, getChannel, resolveSemanticNodeRef = () => null, resolveInteractionRef = () => null, onFrameChange = () => {} }) {
   state.view = 'terrain';
   state.contextProjection ??= null;
   const currentScreenRef = () => state.contextProjection ? `screen.vexlife.${state.contextProjection}` : 'screen.vexlife.terrain';
@@ -39,16 +39,29 @@ export function createNavigationController({ state, elementByRef, getProject, ge
   });
   const backStack = [];
   let browserHistoryEnabled = false;
-  function appendJourney({ elementRef, actionRef, before, after }) {
+  function appendJourney({ elementRef, interactionRef = null, actionRef, subjectRef = state.selectedNodeRef, before, after }) {
     const last = state.journey.at(-1);
-    if (last && frameEquals(last.after, after) && last.actionRef === actionRef) return last;
-    const event = { journeyRef: `journey.browser.${crypto.randomUUID()}`, elementRef, actionRef, before: cloneFrame(before), after: cloneFrame(after), formedAt: new Date().toISOString() };
-    state.journey.push(event); return event;
+    if (last && last.elementRef === elementRef && last.interactionRef === interactionRef && last.actionRef === actionRef &&
+        last.subjectRef === subjectRef && frameEquals(last.before, before) && frameEquals(last.after, after)) {
+      return { changed: false, event: last };
+    }
+    const event = {
+      journeyRef: `journey.browser.${crypto.randomUUID()}`,
+      elementRef,
+      interactionRef,
+      actionRef,
+      subjectRef,
+      before: cloneFrame(before),
+      after: cloneFrame(after),
+      formedAt: new Date().toISOString()
+    };
+    state.journey.push(event);
+    return { changed: true, event };
   }
   function seedCurrentJourney(elementRef = state.selectedNodeRef, actionRef = 'action.navigation.home') {
     if (state.journey.length) return state.journey.at(-1);
     const frame = semanticFrame();
-    return appendJourney({ elementRef, actionRef, before: frame, after: frame });
+    return appendJourney({ elementRef, actionRef, before: frame, after: frame }).event;
   }
   function pushBackFrame(frame) {
     const last = backStack.at(-1);
@@ -60,10 +73,36 @@ export function createNavigationController({ state, elementByRef, getProject, ge
     if (Object.hasOwn(next, 'view')) { const requested = next.view; next.contextProjection = requested === 'terrain' ? null : requested; delete next.view; }
     next.view = 'terrain'; return next;
   }
-  function navigate(nodeRef, patch = {}, actionRef = 'action.navigation.semantic') {
-    const before = semanticFrame(); Object.assign(state, normalizePatch(patch)); state.selectedNodeRef = nodeRef || state.selectedNodeRef; const after = semanticFrame();
-    if (!frameEquals(before, after)) { pushBackFrame(before); appendJourney({ elementRef: nodeRef, actionRef, before, after }); if (browserHistoryEnabled && globalThis.history?.pushState) globalThis.history.pushState({ vexlifeSemantic: true }, '', globalThis.location?.href); }
-    onFrameChange(after); return state.journey.at(-1) ?? null;
+  function navigate(elementRef, patch = {}, actionRef = 'action.navigation.semantic', { interactionRef = null, subjectRef = null } = {}) {
+    const before = semanticFrame();
+    const next = normalizePatch(patch);
+    const explicitSemanticNodeRef = Object.hasOwn(next, 'selectedNodeRef') ? next.selectedNodeRef : null;
+    const promotedSemanticNodeRef = explicitSemanticNodeRef ?? resolveSemanticNodeRef(elementRef);
+    if (promotedSemanticNodeRef) next.selectedNodeRef = promotedSemanticNodeRef;
+    else delete next.selectedNodeRef;
+    Object.assign(state, next);
+    const after = semanticFrame();
+    const frameChanged = !frameEquals(before, after);
+    if (frameChanged) pushBackFrame(before);
+    const resolvedInteractionRef = interactionRef ?? resolveInteractionRef(elementRef) ?? null;
+    const suppressSameFrameJourney = !frameChanged &&
+      promotedSemanticNodeRef === after.selectedNodeRef &&
+      actionRef === 'action.terrain.layout.reset';
+    const journey = suppressSameFrameJourney
+      ? { changed:false, event:state.journey.at(-1) ?? null }
+      : appendJourney({
+          elementRef,
+          interactionRef: resolvedInteractionRef,
+          actionRef,
+          subjectRef: subjectRef ?? after.selectedNodeRef,
+          before,
+          after
+        });
+    if (frameChanged && browserHistoryEnabled && globalThis.history?.pushState) {
+      globalThis.history.pushState({ vexlifeSemantic: true }, '', globalThis.location?.href);
+    }
+    onFrameChange(after);
+    return journey.event;
   }
   function openContext(contextProjection, nodeRef, actionRef = 'action.context.open') {
     if (!['chat', 'health'].includes(contextProjection)) throw new Error(`Unsupported contextual projection: ${contextProjection}`);
@@ -76,7 +115,7 @@ export function createNavigationController({ state, elementByRef, getProject, ge
   }
   function back() {
     const target = backStack.pop(); if (!target) return { changed: false, reason: 'BACK_STACK_EMPTY', frame: semanticFrame() };
-    const before = semanticFrame(); applyFrame(target); const after = semanticFrame(); const event = appendJourney({ elementRef: target.selectedNodeRef, actionRef: 'action.navigation.back', before, after }); onFrameChange(after); return { changed: !frameEquals(before, after), frame: cloneFrame(after), journeyEvent: event };
+    const before = semanticFrame(); applyFrame(target); const after = semanticFrame(); const journey = appendJourney({ elementRef: target.selectedNodeRef, actionRef: 'action.navigation.back', before, after }); onFrameChange(after); return { changed: !frameEquals(before, after), frame: cloneFrame(after), journeyEvent: journey.event };
   }
   function enableBrowserHistory() { if (!globalThis.history?.replaceState || !globalThis.history?.pushState) return false; backStack.splice(0); globalThis.history.replaceState({ vexlifeSemantic: true }, '', globalThis.location?.href); browserHistoryEnabled = true; return true; }
   function recentJourney(limit = RECENT_JOURNEY_LIMIT) { if (!Number.isInteger(limit) || limit < 1) throw new TypeError('limit must be a positive integer'); return state.journey.slice(-limit).map((event) => structuredClone(event)); }

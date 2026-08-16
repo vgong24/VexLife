@@ -70,8 +70,8 @@
     {
       "path": "src/core/navigation.mjs",
       "mode": "100644",
-      "bytes": 6467,
-      "sha256": "2b7bc57c8d9c23f1bfb83b8a0e257c29d51645875a00762a2c5bd9036055213f"
+      "bytes": 6702,
+      "sha256": "7c01e0af5d1076bde1cdc64aab47271792c925bc5e88a88f1e36cf815b4b0481"
     },
     {
       "path": "src/core/orientation.mjs",
