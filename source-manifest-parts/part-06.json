@@ -16,8 +16,8 @@
     {
       "path": "reference/browser/app.js",
       "mode": "100644",
-      "bytes": 12585,
-      "sha256": "246f6ec34766b869b7328c4cb1dc9cdf10e111cebc49495dfa8c5fe411da50d6"
+      "bytes": 13927,
+      "sha256": "e998981fed6927fc68f983b5f3ee9b0ac64b9fb951d5e4640e630d21a746062d"
     },
     {
       "path": "reference/browser/index.html",
@@ -52,8 +52,8 @@
     {
       "path": "reference/browser/integration/identity-localization-suite.js",
       "mode": "100644",
-      "bytes": 840,
-      "sha256": "60b767c3730ccdaa40cbfaee300f4c8891e9494f50afb3621653b5e0a476a40b"
+      "bytes": 6654,
+      "sha256": "2462e9125b1bea81d2224e768afe739a1b6a93b0469027898c046f5867931045"
     },
     {
       "path": "reference/browser/integration/journey-suite.js",
