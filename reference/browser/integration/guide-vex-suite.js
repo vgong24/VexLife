@@ -1,15 +1,18 @@
 export const guideVexSuite = Object.freeze({
   suiteRef:'suite.vexlife.browser.guide-vex/v1',
-  async run({ app, state, helpers:{ assert, overlaps, delay, selectLanguage } }) {
+  async run({ app, state, helpers:{ assert, overlaps, delay, selectLanguage, motionCssToken } }) {
     assert(state.rootRef && app.terrain.currentRef() === state.rootRef, 'Guide/Vex suite requires canonical root baseline');
     const checks = [];
     const vex = document.querySelector('#guideWindow');
     assert(!vex.hidden, 'D05 visible Vex is absent on first render');
     assert(vex.classList.contains('is-minimized'), 'D05 first-render Vex is not ambient/minimized');
+    assert(app.guide.currentPresenceState()==='AMBIENT', 'Q3-01 first-render Vex is not in explicit AMBIENT state');
+    assert(document.querySelector('#vexPresenceState')?.textContent===app.t('vex.presence.ambient'), 'Q3-01 AMBIENT state is not visibly projected');
     const vexRect = vex.getBoundingClientRect();
     const protectedTargets = [document.querySelector('#terrainFocus'), ...document.querySelectorAll('.e27-node')].filter((node) => node?.getClientRects().length);
     assert(protectedTargets.every((node) => !overlaps(vexRect, node.getBoundingClientRect())), 'D05 ambient Vex obscures first-render Terrain content');
     checks.push('D05 one visible Vex starts ambient/minimized without obscuring Terrain');
+    checks.push('Q3-01 AMBIENT is the stable compact default and steals no focus');
 
     const nextIntent = 'intent.guide.next';
     const terrainFrame = app.navigation.semanticFrame();
@@ -78,6 +81,82 @@ export const guideVexSuite = Object.freeze({
     assert(JSON.stringify(semanticAfterGuide) === JSON.stringify(semanticBeforeGuide), 'LC9 Guide interaction mutated semantic current context');
     checks.push('LC9 Guide interaction preserves LIVED-A semantic-current-context truth and does not promote interaction source');
     checks.push('LC8 Guide proof remains one mandatory owner-domain suite inside the fail-closed canonical integration composition');
+
+    if (!app.state.guideMinimized) document.querySelector('#guideMinimize').click();
+    app.guide.setAttentionSource(null);
+    const focusBeforeAttention = document.activeElement;
+    app.guide.setAttentionSource('element.terrain.reset');
+    assert(app.guide.currentPresenceState()==='ATTENTIVE', 'Q3-02 source-addressable attention did not reach ATTENTIVE');
+    assert(app.state.guideMinimized===true && vex.classList.contains('is-minimized'), 'Q3-02 ATTENTIVE automatically expanded the vessel');
+    assert(document.activeElement===focusBeforeAttention, 'Q3-02 ATTENTIVE stole focus');
+    assert(document.querySelector('#vexPresenceState')?.textContent===app.t('vex.presence.attentive'), 'Q3-02 ATTENTIVE cue is not visibly named');
+    checks.push('Q3-02 ATTENTIVE is a bounded source-addressable compact cue with no automatic expansion or focus theft');
+
+    app.guide.summon();
+    await delay(20);
+    assert(app.guide.currentPresenceState()==='SUMMONED' && !app.state.guideMinimized && !vex.hidden, 'Q3-03 explicit summon did not reach SUMMONED on the same Vex');
+    assert(document.querySelector('#vexPresenceState')?.textContent===app.t('vex.presence.summoned'), 'Q3-03 SUMMONED state is not visibly named');
+    checks.push('Q3-03 explicit human summon reaches SUMMONED on the same visible Vex');
+
+    app.guide.askIntent(nextIntent);
+    assert(app.guide.currentPresenceState()==='ACTIVE_CONVERSATION', 'Q3-04 explicit Guide interaction did not reach ACTIVE_CONVERSATION');
+    assert(document.querySelector('#vexPresenceState')?.textContent===app.t('vex.presence.active-conversation'), 'Q3-04 ACTIVE_CONVERSATION is not visibly named');
+    checks.push('Q3-04 explicit Guide interaction reaches ACTIVE_CONVERSATION without a new persona or runtime');
+
+    document.querySelector('#guideMinimize').click();
+    app.guide.setAttentionSource('element.terrain.reset');
+    assert(app.state.guideMinimized===true && app.guide.currentPresenceState()==='ATTENTIVE', 'Q3-05 attention overrode explicit minimize');
+    document.querySelector('#guideClose').click();
+    app.guide.setAttentionSource('element.terrain.reset');
+    assert(vex.hidden && app.guide.currentPresenceState()===null, 'Q3-05 attention reopened explicitly dismissed Vex');
+    app.guide.summon();
+    await delay(20);
+    assert(!vex.hidden && !app.state.guideMinimized && app.guide.currentPresenceState()==='SUMMONED', 'Q3-05 later explicit summon did not reverse prior dismiss');
+    checks.push('Q3-05 explicit minimize/dismiss outranks automatic attention until a later explicit human summon');
+
+    app.guide.avoidDeclaredControls();
+    const preferred = app.guide.persistPreferredGeometry();
+    const persistedPreferred = localStorage.getItem('vexlife.guide.geometry');
+    assert(persistedPreferred && JSON.parse(persistedPreferred).left===preferred.left, 'Q3-06 explicit preferred geometry did not persist');
+    const semanticBeforeGeometry = JSON.stringify(app.navigation.semanticFrame());
+    const journeyBeforeGeometry = app.navigation.fullJourney().length;
+    const focusRect = document.querySelector('#terrainFocus').getBoundingClientRect();
+    vex.style.left=`${focusRect.left}px`; vex.style.top=`${focusRect.top}px`; vex.style.right='auto'; vex.style.bottom='auto';
+    const autoMoved = app.guide.avoidDeclaredControls({recoverPreferred:false});
+    assert(autoMoved===true, 'Q3-07 obstruction precondition did not produce a transient resolved placement');
+    const resolved = app.guide.resolvedGeometry();
+    assert(resolved.resolution==='AUTO_OBSTRUCTION_RESOLVED', 'Q3-07 resolved geometry does not identify automatic obstruction resolution');
+    assert(localStorage.getItem('vexlife.guide.geometry')===persistedPreferred, 'Q3-07 automatic obstruction resolution overwrote preferred geometry');
+    assert(JSON.stringify(app.navigation.semanticFrame())===semanticBeforeGeometry && app.navigation.fullJourney().length===journeyBeforeGeometry, 'Q3-10 geometry adaptation mutated semantic current context or Journey');
+    checks.push('Q3-06 explicit human geometry is the only persisted preference');
+    checks.push('Q3-07 automatic obstruction resolution changes transient resolvedGeometry without overwriting preferredGeometry');
+    checks.push('Q3-10 Vex geometry adaptation leaves semantic current context and Journey unchanged');
+
+    app.guide.avoidDeclaredControls();
+    const recovered = app.guide.resolvedGeometry();
+    const epsilon = 1.1;
+    assert(Math.abs(recovered.left-preferred.left)<=epsilon && Math.abs(recovered.top-preferred.top)<=epsilon, 'Q3-08 safe preferred placement was not recovered after transient resolution');
+    assert(localStorage.getItem('vexlife.guide.geometry')===persistedPreferred, 'Q3-08 preferred storage changed during recovery');
+    checks.push('Q3-08 obstruction recovery returns to the human-preferred geometry when safe');
+
+    const stateLabels = {};
+    for (const language of ['en','ja','zh']) {
+      selectLanguage(language);
+      app.guide.projectPresenceState();
+      stateLabels[language]=['vex.presence.ambient','vex.presence.attentive','vex.presence.summoned','vex.presence.active-conversation'].map((ref)=>app.t(ref));
+      assert(stateLabels[language].every((label)=>label && !label.startsWith('[')), `Q3-12 ${language} vessel-state localization has a fallback hole`);
+    }
+    assert(new Set(Object.values(stateLabels).flat()).size>=8, 'Q3-12 EN/JA/ZH vessel-state copy is not materially localized');
+    selectLanguage('en');
+    assert(motionCssToken('--motion-duration-layout') && motionCssToken('--motion-ease-responsive'), 'Q3-11 accepted Q6 shared motion vocabulary is unavailable');
+    checks.push('Q3-11 Q3 consumes the accepted shared motion/reduced-motion vocabulary without motion-dependent meaning');
+    checks.push('Q3-12 EN/JA/ZH visible and nonvisual vessel-state copy remains aligned');
+    checks.push('Q3-13 Guide/Vex Q3 proof remains fail-closed inside one canonical owner-domain suite');
+    checks.push('Q3-14 accepted LIVED-C recommendation/current-frame truth remains unchanged');
+
+    app.guide.setAttentionSource(null);
+    if (!app.state.guideMinimized) document.querySelector('#guideMinimize').click();
+    assert(app.guide.currentPresenceState()==='AMBIENT', 'Q3 cleanup did not restore ambient minimized Vex');
 
     return { suiteRef:this.suiteRef, state:'PASS', baselineRef:'baseline.vexlife.browser.ambient-vex-first-render', checks };
   }
