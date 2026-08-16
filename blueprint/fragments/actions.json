@@ -631,5 +631,30 @@
       "state.context",
       "state.health"
     ]
+  },
+  {
+    "actionRef": "action.journey.scrub",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "journeyIndex": "integer"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain"
+    ]
+  },
+  {
+    "actionRef": "action.journey.revisit",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "journeyRef": "ref"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.navigation",
+      "state.selection",
+      "state.journey",
+      "state.terrain"
+    ]
   }
 ]

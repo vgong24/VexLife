@@ -194,6 +194,119 @@
       ],
       "conceptRef": "concept.region.terrain.canvas",
       "navigationNodeRef": "nav.region.terrain.canvas"
+    },
+    {
+      "regionRef": "region.terrain.journey",
+      "labelStringRef": "journey.region.label",
+      "conceptRef": "concept.region.terrain.journey",
+      "navigationNodeRef": "nav.region.terrain.journey",
+      "elements": [
+        {
+          "elementRef": "element.terrain.journey-scrub",
+          "conceptRef": "concept.element.terrain.journey-scrub",
+          "interactionRef": "interaction.terrain.journey-scrub",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.semantic-history-projection",
+          "kind": "JOURNEY_SCRUB",
+          "labelStringRef": "journey.scrub",
+          "actionRef": "action.journey.scrub",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "slider",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.journey-scrub"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.terrain.journey-clusters",
+          "conceptRef": "concept.element.terrain.journey-clusters",
+          "interactionRef": "interaction.terrain.journey-clusters",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.semantic-history-projection",
+          "kind": "JOURNEY_CLUSTER_PROJECTION",
+          "labelStringRef": "journey.clusters",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "list",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.journey-clusters"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.terrain.journey-transition-reason",
+          "conceptRef": "concept.element.terrain.journey-transition-reason",
+          "interactionRef": "interaction.terrain.journey-transition-reason",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.semantic-history-projection",
+          "kind": "JOURNEY_TRANSITION_REASON",
+          "labelStringRef": "journey.transition-reason",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "status",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.journey-transition-reason"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.terrain.journey-revisit",
+          "conceptRef": "concept.element.terrain.journey-revisit",
+          "interactionRef": "interaction.terrain.journey-revisit",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.semantic-history-revisit",
+          "kind": "JOURNEY_REVISIT",
+          "labelStringRef": "journey.revisit",
+          "actionRef": "action.journey.revisit",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.journey-revisit"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.terrain.journey-full-history",
+          "conceptRef": "concept.element.terrain.journey-full-history",
+          "interactionRef": "interaction.terrain.journey-full-history",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.semantic-history-projection",
+          "kind": "JOURNEY_FULL_HISTORY",
+          "labelStringRef": "journey.full-history",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.journey-full-history"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        }
+      ]
     }
   ],
   "testRefs": [

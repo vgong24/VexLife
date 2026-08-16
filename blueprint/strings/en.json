@@ -170,5 +170,15 @@
   "vex.visible.name": "Vex",
   "terrain.semantic-depth.overview": "Overview",
   "terrain.semantic-depth.context": "Context",
-  "terrain.semantic-depth.source-descent": "Source descent"
+  "terrain.semantic-depth.source-descent": "Source descent",
+  "journey.region.label": "Semantic journey",
+  "journey.scrub": "Browse history",
+  "journey.clusters": "Recent contexts",
+  "journey.transition-reason": "Transition reason",
+  "journey.revisit": "Revisit this context",
+  "journey.full-history": "Full journey",
+  "journey.current-context": "Current context",
+  "journey.browsing-history": "Browsing past context",
+  "journey.semantic-events": "semantic events",
+  "journey.no-history": "No semantic history yet"
 }

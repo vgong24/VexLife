@@ -170,5 +170,15 @@
   "vex.visible.name": "Vex",
   "terrain.semantic-depth.overview": "概要",
   "terrain.semantic-depth.context": "コンテキスト",
-  "terrain.semantic-depth.source-descent": "ソース降下"
+  "terrain.semantic-depth.source-descent": "ソース降下",
+  "journey.region.label": "セマンティック・ジャーニー",
+  "journey.scrub": "履歴をたどる",
+  "journey.clusters": "最近のコンテキスト",
+  "journey.transition-reason": "遷移理由",
+  "journey.revisit": "このコンテキストを再訪",
+  "journey.full-history": "ジャーニー全体",
+  "journey.current-context": "現在のコンテキスト",
+  "journey.browsing-history": "過去のコンテキストを閲覧中",
+  "journey.semantic-events": "件のセマンティックイベント",
+  "journey.no-history": "セマンティック履歴はまだありません"
 }

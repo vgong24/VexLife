@@ -15,7 +15,7 @@
     </button>
     <div class="e27-brand"><strong data-i18n="product.vexlife.name">VexLife</strong><small>VEX IS HOME · CENTER = CURRENT CONTEXT</small></div>
     <div class="e27-actions">
-      <button id="terrainFullJourneyToggle" type="button">Full journey</button>
+      
       <button id="terrainUp" type="button" data-node-ref="element.terrain.semantic-depth-decrease">Up one layer</button>
       <button id="terrainReset" type="button" data-node-ref="element.terrain.reset" data-i18n="terrain.reset">Reset</button>
       <button id="surfaceMenuButton" type="button" aria-controls="surfaceMenu" aria-expanded="false">•••</button>
@@ -50,8 +50,8 @@
     <div id="terrainAdjacent" class="e27-adjacent"></div>
   </main>
 
-  <footer id="terrainJourneyWindow" class="e27-recentbar terrain-journey-window">
-    <span class="e27-recent-title">JOURNEY WINDOW</span>
+  <footer id="terrainJourneyWindow" class="e27-recentbar terrain-journey-window" data-node-ref="region.terrain.journey" aria-label="Semantic journey" data-i18n-aria-label="journey.region.label">
+    <button id="terrainFullJourneyToggle" class="e27-recent-title e28-journey-open" type="button" data-node-ref="element.terrain.journey-full-history" data-i18n="journey.full-history">Full journey</button>
     <button id="terrainRecentPrev" class="e27-recent-edge" type="button" aria-label="Earlier journey items">‹</button>
     <div id="terrainJourneyRecent" class="e27-recent"></div>
     <button id="terrainRecentNext" class="e27-recent-edge" type="button" aria-label="Later journey items">›</button>
@@ -59,8 +59,15 @@
   </footer>
 
   <aside id="terrainJourneyDrawer" class="e27-drawer terrain-journey-drawer" aria-hidden="true">
-    <header class="e27-drawer-head"><h2>Full journey</h2><button id="terrainJourneyClose" type="button" aria-label="Close">×</button></header>
+    <header class="e27-drawer-head"><h2 data-i18n="journey.full-history">Full journey</h2><button id="terrainJourneyClose" type="button" aria-label="Close">×</button></header>
     <p>Full semantic history stays here even when the centered journey window shows only five visits.</p>
+    <section id="terrainJourneyInspector" class="e28-journey-inspector">
+      <div id="terrainJourneyCurrentMarker" class="e28-journey-current" data-history-mode="current" aria-live="polite" data-i18n="journey.current-context">Current context</div>
+      <label class="e28-journey-scrub"><span data-i18n="journey.scrub">Browse history</span><input id="terrainJourneyScrub" type="range" min="0" max="0" step="1" value="0" data-node-ref="element.terrain.journey-scrub" aria-label="Browse history" data-i18n-aria-label="journey.scrub"></label>
+      <div><strong data-i18n="journey.clusters">Recent contexts</strong><div id="terrainJourneyClusters" class="e28-journey-clusters" data-node-ref="element.terrain.journey-clusters" role="list"></div></div>
+      <p id="terrainJourneyTransition" data-node-ref="element.terrain.journey-transition-reason" role="status"><strong data-i18n="journey.transition-reason">Transition reason</strong>: <code id="terrainJourneyReason">—</code></p>
+      <button id="terrainJourneyRevisit" type="button" data-node-ref="element.terrain.journey-revisit" data-i18n="journey.revisit">Revisit this context</button>
+    </section>
     <div id="terrainJourneyList"></div>
   </aside>
 
