@@ -2,6 +2,48 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/patient0-familiarity-live-work.test.mjs",
+      "mode": "100644",
+      "bytes": 13617,
+      "sha256": "ee90199e802566aab4dd7aea84947f77056d027d010619a713189708ff85b1a3"
+    },
+    {
+      "path": "test/patient0-nursery.test.mjs",
+      "mode": "100644",
+      "bytes": 11731,
+      "sha256": "650a884a5c98259c4d769fc8bef2dc7ebb935ba2df45e1af2c2748e9a8bd3214"
+    },
+    {
+      "path": "test/pr-ready-attention.e2e.mjs",
+      "mode": "100644",
+      "bytes": 3537,
+      "sha256": "f395bdd9b6d7c04a2a4abaa3d31f1fc82226a52fa0326dcb347d93a6491d0920"
+    },
+    {
+      "path": "test/public-safety.test.mjs",
+      "mode": "100644",
+      "bytes": 3919,
+      "sha256": "194b7be177367dd255be65380765e97ac74bdd88e4c15d3e40caa7a901e13177"
+    },
+    {
+      "path": "test/registry.test.mjs",
+      "mode": "100644",
+      "bytes": 19131,
+      "sha256": "48d965f99de958f05cea3b9e909746cdd5c42667d0fe45b7fdeb8144da22bd0f"
+    },
+    {
+      "path": "test/runtime-failure-recovery.test.mjs",
+      "mode": "100644",
+      "bytes": 53169,
+      "sha256": "617c5c19da4035c719dcf91f6bc46f32620c7825273ff6b0e7768c9a25bc2e20"
+    },
+    {
+      "path": "test/scheduled-daily-autonomy.test.mjs",
+      "mode": "100644",
+      "bytes": 4370,
+      "sha256": "a549958c8db272dea37196b02077b5620f1ded1e6bfa57b3dae43ae4364c6087"
+    },
+    {
       "path": "test/score-context-continuity.test.mjs",
       "mode": "100644",
       "bytes": 55877,

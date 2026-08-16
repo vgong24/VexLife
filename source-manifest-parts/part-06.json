@@ -28,8 +28,50 @@
     {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
-      "bytes": 34925,
-      "sha256": "1e11d03f4e543908cca6b2347cd202d06c7ba07371b7a55e985ef30468d54fb5"
+      "bytes": 12456,
+      "sha256": "7622ffc6f3ce80610a1530f11da3d10117038bdbef6f7f43ffce903f6fb20dfa"
+    },
+    {
+      "path": "reference/browser/integration/contextual-conversation-suite.js",
+      "mode": "100644",
+      "bytes": 2109,
+      "sha256": "0fd6cfa579b2d652a3265c4e6607d1af971755bfe3ba897be23a7e7bff676b96"
+    },
+    {
+      "path": "reference/browser/integration/cross-feature-suite.js",
+      "mode": "100644",
+      "bytes": 6618,
+      "sha256": "6d415a3c4aba1088747eb17e068e6f35bd1c25dd84b8f09939fe60d542ef2fab"
+    },
+    {
+      "path": "reference/browser/integration/guide-vex-suite.js",
+      "mode": "100644",
+      "bytes": 1141,
+      "sha256": "7888c29f6bea9575ae0db76408d71ce468147c7282d014ef9713183a06d4dfec"
+    },
+    {
+      "path": "reference/browser/integration/identity-localization-suite.js",
+      "mode": "100644",
+      "bytes": 840,
+      "sha256": "60b767c3730ccdaa40cbfaee300f4c8891e9494f50afb3621653b5e0a476a40b"
+    },
+    {
+      "path": "reference/browser/integration/journey-suite.js",
+      "mode": "100644",
+      "bytes": 992,
+      "sha256": "3fd64adb81927681dd87fdffa62c3fa7035e40d6e40a0072c40116bda567fc28"
+    },
+    {
+      "path": "reference/browser/integration/root-contract-suite.js",
+      "mode": "100644",
+      "bytes": 1862,
+      "sha256": "5fdaa1f980d717b42b9aa88b14494bb972e53ceba90f81bcaa9222b21505be9d"
+    },
+    {
+      "path": "reference/browser/integration/terrain-suite.js",
+      "mode": "100644",
+      "bytes": 16844,
+      "sha256": "924affea61d14e561a2a2b0b40529f860d7eddad167fec7989c1d79bed9aeef4"
     },
     {
       "path": "reference/browser/modules/browser-bundle.js",
@@ -102,48 +144,6 @@
       "mode": "100644",
       "bytes": 543,
       "sha256": "6c753287c11e71cb5f397a1562d1a794256fe6dac3c52a7e6316504a86882734"
-    },
-    {
-      "path": "scripts/browser-integration.mjs",
-      "mode": "100644",
-      "bytes": 4555,
-      "sha256": "a09c606e6125d34f4e3fed98c3862a80e9b1f10a47ef35892090e165e77c477e"
-    },
-    {
-      "path": "scripts/browser-structure-check.mjs",
-      "mode": "100644",
-      "bytes": 841,
-      "sha256": "5e2ab0892f914684b0bb67a78ec3f4bdf596275a963a75131624f3b469f7953b"
-    },
-    {
-      "path": "scripts/build-admission-check.mjs",
-      "mode": "100644",
-      "bytes": 20951,
-      "sha256": "f592fa7becb98c8b01a6937e4341253bacd3b34883c70aa3a14e7c47d76ce29e"
-    },
-    {
-      "path": "scripts/build-admission-simulate.mjs",
-      "mode": "100644",
-      "bytes": 13339,
-      "sha256": "017abf5d78313903446dd51f4fbaab56494c9f56a2d90f942f021f4e0061c3eb"
-    },
-    {
-      "path": "scripts/build-admission-status.mjs",
-      "mode": "100644",
-      "bytes": 4384,
-      "sha256": "4bd7ba78d06ef2b8a5790810a6e90da92336f3087f24f39dd30c4cabecb142dc"
-    },
-    {
-      "path": "scripts/build-projections.mjs",
-      "mode": "100644",
-      "bytes": 1875,
-      "sha256": "df09880041da5c58ba3c220a90912eabfa39aa7f08eab48b2d59dc31221255d0"
-    },
-    {
-      "path": "scripts/check-syntax.mjs",
-      "mode": "100644",
-      "bytes": 1187,
-      "sha256": "c09a16c78e67eae90abf371867053419f85674ebd02e976fd2183f91152b1a22"
     }
   ]
 }
