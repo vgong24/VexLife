@@ -6,7 +6,9 @@ import { JourneyLedger } from './journey.mjs';
 const recentJourneyRecord = (event) => ({
   journeyRef: event.journeyRef,
   elementRef: event.elementRef,
+  interactionRef: event.interactionRef,
   actionRef: event.actionRef,
+  subjectRef: event.subjectRef,
   toFrame: structuredClone(event.toFrame),
   formedAt: event.formedAt
 });
@@ -29,6 +31,10 @@ export class NavigationLattice {
 
   navigate(next) {
     const previous = this.state.value;
+    const fromFrame = {
+      screenRef: previous.screenRef, routeRef: previous.routeRef, projectRef: previous.projectRef,
+      threadRef: previous.threadRef, channelRef: previous.channelRef, selectedNodeRef: previous.selectedNodeRef
+    };
     const semanticStep = {
       screenRef: next.screenRef ?? previous.screenRef,
       routeRef: next.routeRef ?? previous.routeRef,
@@ -37,23 +43,27 @@ export class NavigationLattice {
       channelRef: next.channelRef ?? previous.channelRef,
       selectedNodeRef: next.selectedNodeRef ?? previous.selectedNodeRef
     };
-    const same = semanticHash(semanticStep) === semanticHash({
-      screenRef: previous.screenRef, routeRef: previous.routeRef, projectRef: previous.projectRef,
-      threadRef: previous.threadRef, channelRef: previous.channelRef, selectedNodeRef: previous.selectedNodeRef
-    });
-    if (same) return { changed: false, value: previous, journeyEvent: null };
-    const nextState = { ...semanticStep, trajectory: [...previous.trajectory.slice(-11), semanticStep] };
-    const result = this.state.set(nextState);
+    const semanticChanged = semanticHash(semanticStep) !== semanticHash(fromFrame);
+    const hasJourneySemantics = ['journeyRef', 'elementRef', 'interactionRef', 'actionRef', 'subjectRef']
+      .some((key) => Object.hasOwn(next, key));
+    let result = { changed: false, value: previous };
+    if (semanticChanged) {
+      const nextState = { ...semanticStep, trajectory: [...previous.trajectory.slice(-11), semanticStep] };
+      result = this.state.set(nextState);
+    }
+    if (!semanticChanged && !hasJourneySemantics) {
+      return { ...result, journeyEvent: null, journeyChanged: false };
+    }
     const journey = this.journeyLedger.append({
       journeyRef: next.journeyRef ?? `journey.vexlife.${crypto.randomUUID()}`,
       elementRef: next.elementRef ?? semanticStep.selectedNodeRef,
       interactionRef: next.interactionRef ?? null,
       actionRef: next.actionRef ?? 'action.navigation.unknown',
-      fromFrame: { screenRef: previous.screenRef, routeRef: previous.routeRef, projectRef: previous.projectRef, threadRef: previous.threadRef, channelRef: previous.channelRef, selectedNodeRef: previous.selectedNodeRef },
+      fromFrame,
       toFrame: semanticStep,
       subjectRef: next.subjectRef ?? semanticStep.selectedNodeRef
     });
-    return { ...result, journeyEvent: journey.event };
+    return { ...result, journeyEvent: journey.event, journeyChanged: journey.changed };
   }
 
   breadcrumb(nodeRef) {

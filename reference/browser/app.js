@@ -36,6 +36,17 @@ Object.assign(state, TERRAIN_CONTEXT[initialTerrainRef] || {});
 state.terrain = { ...(state.terrain || {}), selected: initialTerrainRef };
 state.selectedNodeRef = initialTerrainRef;
 const elementByRef = new Map(compileInterfaceEntries(blueprint).map((entry) => [entry.ref, entry]));
+const elementContractByRef = new Map(
+  blueprint.screens.flatMap((screen) => screen.regions.flatMap((region) => region.elements))
+    .map((element) => [element.elementRef, element])
+);
+const terrainNodeRefs = new Set(blueprint.terrain.map((node) => node.terrainNodeRef));
+const semanticNodeRefForInteraction = (sourceRef) => {
+  if (terrainNodeRefs.has(sourceRef)) return sourceRef;
+  const mapped = elementContractByRef.get(sourceRef)?.terrainNodeRef ?? null;
+  return mapped && terrainNodeRefs.has(mapped) ? mapped : null;
+};
+const interactionRefForSource = (sourceRef) => elementContractByRef.get(sourceRef)?.interactionRef ?? null;
 const t = (ref, params = {}) => { const template = catalogs[state.language]?.[ref] ?? catalogs.en?.[ref] ?? `[${ref}]`; return template.replace(/\{([A-Za-z0-9_]+)\}/g, (_, key) => String(params[key] ?? `{${key}}`)); };
 const semanticPatchForNode = (nodeRef) => TERRAIN_CONTEXT[nodeRef] || {};
 
@@ -49,7 +60,19 @@ function openContext(context,nodeRef=`element.nav.${context}`){navigation.openCo
 function returnToTerrain(){navigation.returnToPrimaryStage('element.terrain.center-current-context');setWorkspaceOpen(false);projectFrame();}
 function projectFrame(){const host=$('#contextSurface');host.hidden=!state.contextProjection;host.setAttribute('aria-hidden',String(!state.contextProjection));$('#view-chat').hidden=state.contextProjection!=='chat';$('#view-health').hidden=state.contextProjection!=='health';chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();terrain?.render(false);renderHealth();guide?.updateFrame();projectVisibleVexIdentity();if(state.contextProjection)guide?.avoidDeclaredControls();}
 
-navigation=createNavigationController({state,elementByRef,getProject:()=>chat?.currentProject(),getThread:()=>chat?.currentThread(),getChannel:()=>chat?.currentChannel(),onFrameChange:()=>queueMicrotask(()=>chat&&terrain&&projectFrame())});
+navigation=createNavigationController({
+  state,
+  elementByRef,
+  getProject:()=>chat?.currentProject(),
+  getThread:()=>chat?.currentThread(),
+  getChannel:()=>chat?.currentChannel(),
+  resolveSemanticNodeRef:semanticNodeRefForInteraction,
+  resolveInteractionRef:interactionRefForSource,
+  onFrameChange:(frame)=>{
+    if(terrainNodeRefs.has(frame.selectedNodeRef)&&state.terrain?.selected!==frame.selectedNodeRef)state.terrain.selected=frame.selectedNodeRef;
+    queueMicrotask(()=>chat&&terrain&&projectFrame());
+  }
+});
 navigation.seedCurrentJourney(initialTerrainRef);
 chat=createChatController({state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation});
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});

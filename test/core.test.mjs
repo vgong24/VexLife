@@ -67,6 +67,55 @@ test('navigation screen frame preserves selected node and breadcrumb', () => {
   assert.equal(frame.rawPointerLogIncluded, false);
 });
 
+test('navigation keeps semantic current context separate from interaction provenance', () => {
+  const lattice = new NavigationLattice([
+    { nodeRef: 'terrain.a', parentNodeRef: null, kind: 'PROJECT' },
+    { nodeRef: 'terrain.b', parentNodeRef: null, kind: 'PROJECT' }
+  ]);
+  const seeded = lattice.navigate({
+    selectedNodeRef: 'terrain.a',
+    elementRef: 'terrain.a',
+    actionRef: 'action.terrain.node.select'
+  });
+  assert.equal(seeded.changed, true);
+  const historicalSeed = structuredClone(lattice.fullJourney()[0]);
+  const beforeInteractionCount = lattice.fullJourney().length;
+  const interaction = lattice.navigate({
+    elementRef: 'element.vex.summon',
+    interactionRef: 'interaction.vex.summon',
+    actionRef: 'action.vex.summon'
+  });
+  assert.equal(interaction.changed, false);
+  assert.equal(interaction.journeyChanged, true);
+  assert.equal(lattice.state.value.selectedNodeRef, 'terrain.a');
+  assert.equal(interaction.journeyEvent.elementRef, 'element.vex.summon');
+  assert.equal(interaction.journeyEvent.interactionRef, 'interaction.vex.summon');
+  assert.equal(interaction.journeyEvent.actionRef, 'action.vex.summon');
+  assert.equal(lattice.fullJourney().length, beforeInteractionCount + 1);
+  assert.deepEqual(lattice.fullJourney()[0], historicalSeed);
+
+  const duplicate = lattice.navigate({
+    elementRef: 'element.vex.summon',
+    interactionRef: 'interaction.vex.summon',
+    actionRef: 'action.vex.summon'
+  });
+  assert.equal(duplicate.changed, false);
+  assert.equal(duplicate.journeyChanged, false);
+  assert.equal(lattice.fullJourney().length, beforeInteractionCount + 1);
+
+  const transition = lattice.navigate({
+    selectedNodeRef: 'terrain.b',
+    elementRef: 'element.project.b',
+    interactionRef: 'interaction.project.select',
+    actionRef: 'action.project.select'
+  });
+  assert.equal(transition.changed, true);
+  assert.equal(transition.journeyChanged, true);
+  assert.equal(lattice.state.value.selectedNodeRef, 'terrain.b');
+  assert.equal(transition.journeyEvent.toFrame.selectedNodeRef, 'terrain.b');
+  assert.equal(lattice.screenFrame().trajectory.at(-1).interactionRef, 'interaction.project.select');
+});
+
 test('selection is stable by explicit group', () => {
   const store = new SelectionStore();
   store.select('selection.thread', 'thread.one');
