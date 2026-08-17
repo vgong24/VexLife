@@ -28,8 +28,8 @@
     {
       "path": "test/experience.test.mjs",
       "mode": "100644",
-      "bytes": 18821,
-      "sha256": "3c6f36822293c336df6ad419eb71005109c726fa9748170ae06cbea8c92b5019"
+      "bytes": 20154,
+      "sha256": "3ceb043d58fcbaba587c90f922ad0325d45fc2e6d2f9849f4c64843fff505474"
     },
     {
       "path": "test/fixtures/orientation/accepted-main.json",

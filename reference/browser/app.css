@@ -32,4 +32,7 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
 @media(max-width:760px){.e28-journey-inspector{padding:10px}.e28-journey-clusters{display:grid;grid-template-columns:1fr}#terrainJourneyRevisit{width:100%}}
 @media(prefers-reduced-motion:reduce){.e28-journey-inspector,.e28-journey-clusters{scroll-behavior:auto}}
 
+/* E2.8 Q3 adaptive Vex vessel: preferred vs resolved geometry */
+.e28-vex-presence-state{font:700 8px var(--mono);letter-spacing:.06em;color:var(--faint);white-space:nowrap}
+
 /* [VXG RealForever] */

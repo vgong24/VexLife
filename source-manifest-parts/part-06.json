@@ -10,8 +10,8 @@
     {
       "path": "reference/browser/app.css",
       "mode": "100644",
-      "bytes": 20126,
-      "sha256": "ddb841d12fd5ff6c833d866dbab45f3a7525489d19e343e15bdbb2c04362484d"
+      "bytes": 20302,
+      "sha256": "8817aac3fd218e4396c2b0b9bb0b40f5f57f85c895ee429c823e4c6f14ad2258"
     },
     {
       "path": "reference/browser/app.js",
@@ -46,8 +46,8 @@
     {
       "path": "reference/browser/integration/guide-vex-suite.js",
       "mode": "100644",
-      "bytes": 7268,
-      "sha256": "2f4498526ed54ad397cae94cf47b2350462ecfcb0d9563b043780484c882dfb5"
+      "bytes": 16075,
+      "sha256": "e33dd3fbd1edb98687de2136d64785782aba3ec65f38c109ea69b9b8ca561084"
     },
     {
       "path": "reference/browser/integration/identity-localization-suite.js",
@@ -112,8 +112,8 @@
     {
       "path": "reference/browser/modules/guide-controller.js",
       "mode": "100644",
-      "bytes": 14715,
-      "sha256": "772464c1ab425dadf4d79fc83c89fd713f654e2289a0c6c8ba67e1ff771b65f4"
+      "bytes": 22860,
+      "sha256": "133e3625ac2136a1cbe9c2d6e48d48fd31e172acfe11ec015e8f68a5d30bacec"
     },
     {
       "path": "reference/browser/modules/navigation-controller.js",
