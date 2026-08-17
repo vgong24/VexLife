@@ -10,20 +10,20 @@
     {
       "path": "reference/browser/app.css",
       "mode": "100644",
-      "bytes": 25413,
-      "sha256": "fc08d93550eac40fe348d3c2b3c52fefc7d087e8afa41d89ff3633be4535ffbd"
+      "bytes": 29078,
+      "sha256": "13470babdc6070b19b2e66f2d926b1e12e22c687f572e3bcb736995df62f9d0c"
     },
     {
       "path": "reference/browser/app.js",
       "mode": "100644",
-      "bytes": 13927,
-      "sha256": "e998981fed6927fc68f983b5f3ee9b0ac64b9fb951d5e4640e630d21a746062d"
+      "bytes": 20948,
+      "sha256": "42af6450bb464a070c7235fb77254216e2bc89a0ebe3b4bd37bb3b6b2fdf5a12"
     },
     {
       "path": "reference/browser/index.html",
       "mode": "100644",
-      "bytes": 15849,
-      "sha256": "a1a9f986244f3fd5652b65f4d5a2d8fe13b3188c50de3c601a0f12093a99ebb5"
+      "bytes": 18296,
+      "sha256": "f47dc74ee5bce232e1afa361e61c811fb179c0078749f6a62bcae7340628d997"
     },
     {
       "path": "reference/browser/integration-test.js",
@@ -34,8 +34,8 @@
     {
       "path": "reference/browser/integration/contextual-conversation-suite.js",
       "mode": "100644",
-      "bytes": 2109,
-      "sha256": "0fd6cfa579b2d652a3265c4e6607d1af971755bfe3ba897be23a7e7bff676b96"
+      "bytes": 10611,
+      "sha256": "876e1719907a9e1e2dc814c9e2dc512734f6861c3c5652a608b776aeab202f8e"
     },
     {
       "path": "reference/browser/integration/cross-feature-suite.js",

@@ -4,8 +4,8 @@
     {
       "path": "scripts/browser-integration.mjs",
       "mode": "100644",
-      "bytes": 7812,
-      "sha256": "db55971ce7ce8a33cf2543957357ca075a405fb9008ad3ef749eea0b451d083a"
+      "bytes": 10643,
+      "sha256": "6040acbbfaf2bf7e892a81ea743896f3f534ebba49f4d35f25ae936be2e1d262"
     },
     {
       "path": "scripts/browser-structure-check.mjs",
