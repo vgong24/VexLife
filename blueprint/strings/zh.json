@@ -211,5 +211,18 @@
   "terrain.adaptation.reason.current-scope": "{subject} 因匹配当前项目或线程而显示在附近。",
   "terrain.adaptation.reason.structural": "{subject} 作为结构上下文显示。",
   "terrain.adaptation.reason.disabled": "根据你的偏好，自动布局适应已关闭。",
-  "terrain.adaptation.reason.undone": "此上下文的自动适应已被暂时抑制。"
+  "terrain.adaptation.reason.undone": "此上下文的自动适应已被暂时抑制。",
+  "context-workspace.label": "工作区布局",
+  "context-workspace.dock": "工作区位置",
+  "context-workspace.dock.overlay": "浮层",
+  "context-workspace.dock.left": "停靠左侧",
+  "context-workspace.dock.right": "停靠右侧",
+  "context-workspace.split-focus": "与 Terrain 并排显示",
+  "context-workspace.layout-reset": "重置工作区",
+  "context-workspace.resize.nw": "从左上角调整工作区大小",
+  "context-workspace.resize.ne": "从右上角调整工作区大小",
+  "context-workspace.resize.sw": "从左下角调整工作区大小",
+  "context-workspace.resize.se": "从右下角调整工作区大小",
+  "context-workspace.status.compact": "紧凑工作表 · 保留宽屏偏好",
+  "context-workspace.status.wide": "宽屏工作区 · 正在应用偏好"
 }

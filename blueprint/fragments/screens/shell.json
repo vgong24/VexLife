@@ -18,7 +18,8 @@
     "region.chat.feed",
     "region.chat.context",
     "region.health.summary",
-    "region.guide.window"
+    "region.guide.window",
+    "region.shell.contextual-workspace"
   ],
   "stateSelectorRefs": [
     "selector.primary-view",
@@ -198,6 +199,185 @@
             "role": "button",
             "minimumTargetPx": 44,
             "stableIdentifierRef": "element.guide.toggle"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        }
+      ]
+    },
+    {
+      "regionRef": "region.shell.contextual-workspace",
+      "conceptRef": "concept.region.shell.contextual-workspace",
+      "navigationNodeRef": "nav.region.shell.contextual-workspace",
+      "labelStringRef": "context-workspace.label",
+      "presentationClass": "CONTEXTUAL_WORKSPACE_LAYOUT_CONTROLS",
+      "defaultVisible": false,
+      "persistentCanvasConsumer": false,
+      "elements": [
+        {
+          "elementRef": "element.context-workspace.surface",
+          "conceptRef": "concept.element.context-workspace.surface",
+          "interactionRef": "interaction.context-workspace.surface",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.context-workspace-layout",
+          "kind": "CONTEXTUAL_WORKSPACE_SURFACE",
+          "labelStringRef": "context-workspace.label",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "region",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.context-workspace.surface"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.context-workspace.dock",
+          "conceptRef": "concept.element.context-workspace.dock",
+          "interactionRef": "interaction.context-workspace.dock",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.context-workspace-layout",
+          "kind": "CONTEXTUAL_WORKSPACE_DOCK",
+          "labelStringRef": "context-workspace.dock",
+          "actionRef": "action.context-workspace.dock",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "combobox",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.context-workspace.dock"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.context-workspace.split-focus",
+          "conceptRef": "concept.element.context-workspace.split-focus",
+          "interactionRef": "interaction.context-workspace.split-focus",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.context-workspace-layout",
+          "kind": "CONTEXTUAL_WORKSPACE_SPLIT_FOCUS",
+          "labelStringRef": "context-workspace.split-focus",
+          "actionRef": "action.context-workspace.split-focus.set",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "checkbox",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.context-workspace.split-focus"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.context-workspace.layout-reset",
+          "conceptRef": "concept.element.context-workspace.layout-reset",
+          "interactionRef": "interaction.context-workspace.layout-reset",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.context-workspace-layout",
+          "kind": "CONTEXTUAL_WORKSPACE_LAYOUT_RESET",
+          "labelStringRef": "context-workspace.layout-reset",
+          "actionRef": "action.context-workspace.layout.reset",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.context-workspace.layout-reset"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.context-workspace.resize.nw",
+          "conceptRef": "concept.element.context-workspace.resize.nw",
+          "interactionRef": "interaction.context-workspace.resize.nw",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.context-workspace-layout",
+          "kind": "CONTEXTUAL_WORKSPACE_RESIZE_HANDLE",
+          "labelStringRef": "context-workspace.resize.nw",
+          "actionRef": "action.context-workspace.resize",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.context-workspace.resize.nw"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.context-workspace.resize.ne",
+          "conceptRef": "concept.element.context-workspace.resize.ne",
+          "interactionRef": "interaction.context-workspace.resize.ne",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.context-workspace-layout",
+          "kind": "CONTEXTUAL_WORKSPACE_RESIZE_HANDLE",
+          "labelStringRef": "context-workspace.resize.ne",
+          "actionRef": "action.context-workspace.resize",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.context-workspace.resize.ne"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.context-workspace.resize.sw",
+          "conceptRef": "concept.element.context-workspace.resize.sw",
+          "interactionRef": "interaction.context-workspace.resize.sw",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.context-workspace-layout",
+          "kind": "CONTEXTUAL_WORKSPACE_RESIZE_HANDLE",
+          "labelStringRef": "context-workspace.resize.sw",
+          "actionRef": "action.context-workspace.resize",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.context-workspace.resize.sw"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.context-workspace.resize.se",
+          "conceptRef": "concept.element.context-workspace.resize.se",
+          "interactionRef": "interaction.context-workspace.resize.se",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.context-workspace-layout",
+          "kind": "CONTEXTUAL_WORKSPACE_RESIZE_HANDLE",
+          "labelStringRef": "context-workspace.resize.se",
+          "actionRef": "action.context-workspace.resize",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.context-workspace.resize.se"
           },
           "testRefs": [
             "test.navigation.screen-frame"

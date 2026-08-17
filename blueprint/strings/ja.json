@@ -211,5 +211,18 @@
   "terrain.adaptation.reason.current-scope": "{subject} は現在のプロジェクトまたはスレッドに一致するため近く表示されています。",
   "terrain.adaptation.reason.structural": "{subject} は構造上のコンテキストとして表示されています。",
   "terrain.adaptation.reason.disabled": "あなたの設定により自動レイアウト適応はオフです。",
-  "terrain.adaptation.reason.undone": "このコンテキストでは自動適応を一時的に抑制しています。"
+  "terrain.adaptation.reason.undone": "このコンテキストでは自動適応を一時的に抑制しています。",
+  "context-workspace.label": "ワークスペースのレイアウト",
+  "context-workspace.dock": "ワークスペースの位置",
+  "context-workspace.dock.overlay": "オーバーレイ",
+  "context-workspace.dock.left": "左にドッキング",
+  "context-workspace.dock.right": "右にドッキング",
+  "context-workspace.split-focus": "Terrain と並べて表示",
+  "context-workspace.layout-reset": "ワークスペースをリセット",
+  "context-workspace.resize.nw": "左上からワークスペースをサイズ変更",
+  "context-workspace.resize.ne": "右上からワークスペースをサイズ変更",
+  "context-workspace.resize.sw": "左下からワークスペースをサイズ変更",
+  "context-workspace.resize.se": "右下からワークスペースをサイズ変更",
+  "context-workspace.status.compact": "コンパクトシート · ワイド設定を保持",
+  "context-workspace.status.wide": "ワイドワークスペース · 設定を適用中"
 }

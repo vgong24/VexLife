@@ -16,14 +16,14 @@
     {
       "path": "blueprint/feature-registry.json",
       "mode": "100644",
-      "bytes": 66929,
-      "sha256": "d3310d62d50e6ce559cd27231c0c5dd16fd8c964cb2737fc4f10473e79fd0e81"
+      "bytes": 70101,
+      "sha256": "0202c51663a4dd3e6de65357243b65d90bd0a13faa0ce3d1d11b57daaee21cd5"
     },
     {
       "path": "blueprint/fragments/actions.json",
       "mode": "100644",
-      "bytes": 16245,
-      "sha256": "6ba9f3b91fb0a6b7067fd76be1a8ed972bed968fbcbd8efc22b5dd870ea1075a"
+      "bytes": 17103,
+      "sha256": "194003aa32deb6223044f2e41e5429f0aa130d41230e1b8cfa759c535993a675"
     },
     {
       "path": "blueprint/fragments/components.json",
@@ -88,8 +88,8 @@
     {
       "path": "blueprint/fragments/screens/shell.json",
       "mode": "100644",
-      "bytes": 7397,
-      "sha256": "6f187b076df11f5e59f3a2503bee2d76f2f6095629ded0a66ccab1384910714a"
+      "bytes": 14727,
+      "sha256": "3468a9a80c2181d2921d54aa5fb54fe19c3f2fee51f61067ecbf4f893c2ac0c7"
     },
     {
       "path": "blueprint/fragments/screens/terrain.json",

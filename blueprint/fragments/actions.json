@@ -705,5 +705,40 @@
     "outputStateRefs": [
       "state.terrain"
     ]
+  },
+  {
+    "actionRef": "action.context-workspace.resize",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "width": "number",
+      "height": "number"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": []
+  },
+  {
+    "actionRef": "action.context-workspace.dock",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "dockMode": "enum"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": []
+  },
+  {
+    "actionRef": "action.context-workspace.split-focus.set",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "enabled": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": []
+  },
+  {
+    "actionRef": "action.context-workspace.layout.reset",
+    "permissionRef": "permission.none",
+    "inputSchema": {},
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": []
   }
 ]
