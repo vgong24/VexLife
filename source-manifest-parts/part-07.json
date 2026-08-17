@@ -2,6 +2,36 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "reference/browser/modules/navigation-controller.js",
+      "mode": "100644",
+      "bytes": 8788,
+      "sha256": "44321f837cff4ee022e522e42c9efa9a0358deabbb830d2fda6eebbe11942097"
+    },
+    {
+      "path": "reference/browser/modules/terrain-controller.js",
+      "mode": "100644",
+      "bytes": 45745,
+      "sha256": "6a447d1fdbf2f3041a2fa63c44b1b65896bfc3e0a73360b13e3fa043041af81d"
+    },
+    {
+      "path": "scripts/atlas-query.mjs",
+      "mode": "100644",
+      "bytes": 1748,
+      "sha256": "83538b7a319375c8208e281033e049dca1c3224fee0efdb73b0ebde05fc3a327"
+    },
+    {
+      "path": "scripts/bootstrap.mjs",
+      "mode": "100644",
+      "bytes": 804,
+      "sha256": "7bb74626c8bb61e58fa608ec950263908f1af9819307d6426142f655002a4ccc"
+    },
+    {
+      "path": "scripts/bridge-check.mjs",
+      "mode": "100644",
+      "bytes": 543,
+      "sha256": "6c753287c11e71cb5f397a1562d1a794256fe6dac3c52a7e6316504a86882734"
+    },
+    {
       "path": "scripts/browser-integration.mjs",
       "mode": "100644",
       "bytes": 10643,
@@ -114,36 +144,6 @@
       "mode": "100644",
       "bytes": 1251,
       "sha256": "54e2d40632300c0da19d2411c5a3a201fb76d1ee4f7e616263f2978ecd398447"
-    },
-    {
-      "path": "scripts/g05-runtime-authority-substrate.mjs",
-      "mode": "100644",
-      "bytes": 25472,
-      "sha256": "af2facf5638d1aea9d1fd43e262d4172e15233d8c5308200f7c220242fbf0933"
-    },
-    {
-      "path": "scripts/health-check.mjs",
-      "mode": "100644",
-      "bytes": 13496,
-      "sha256": "7b11e5fb19b30edc49a25fc807c5c64cfcad2dff1d905e2a16735bc9a01d6971"
-    },
-    {
-      "path": "scripts/impact-report.mjs",
-      "mode": "100644",
-      "bytes": 679,
-      "sha256": "32aade5c1aafe11498c924be9d8c9371e3330ff619f09c9ec478e83d0aee8eab"
-    },
-    {
-      "path": "scripts/implementation-packet.mjs",
-      "mode": "100644",
-      "bytes": 1364,
-      "sha256": "9eeb77cd282f639a89953d4aad8f23a38e25a8a01d8c6c6986d5f34dafdb7eb5"
-    },
-    {
-      "path": "scripts/intent-check.mjs",
-      "mode": "100644",
-      "bytes": 4897,
-      "sha256": "b22bdf5047bd96452f388f89307ea0868c8a55a8b54667dae6c0fa840810d49a"
     }
   ]
 }

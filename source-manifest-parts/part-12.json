@@ -2,6 +2,36 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "test/concern-watch.test.mjs",
+      "mode": "100644",
+      "bytes": 56987,
+      "sha256": "4660b32dcc1e8bffb7294e42e39aea97f18bd37803e61bbfb4420e2e76c22ebe"
+    },
+    {
+      "path": "test/continuity-evolution-router.test.mjs",
+      "mode": "100644",
+      "bytes": 116934,
+      "sha256": "d1d7538f47d91028221d48eee7ba8e50acac32b423473cd58d2acc32f771c458"
+    },
+    {
+      "path": "test/core.test.mjs",
+      "mode": "100644",
+      "bytes": 12808,
+      "sha256": "bf2adddcd2a70324a0381523f08ba6930f8c3e90749278177c7b7b0a3b6430bd"
+    },
+    {
+      "path": "test/daily-memory-dream.test.mjs",
+      "mode": "100644",
+      "bytes": 16619,
+      "sha256": "e8201d58199f0b84c940fcefdeeff0686b52509aec767a3cb38cb28f1204291f"
+    },
+    {
+      "path": "test/e27-convergence.test.mjs",
+      "mode": "100644",
+      "bytes": 5699,
+      "sha256": "9d29168ee64dc4ca6226cb02752d1eb76d8834213e302b41fe4cc29d324d30a9"
+    },
+    {
       "path": "test/evaluated-rhythm-learning.test.mjs",
       "mode": "100644",
       "bytes": 1487,
@@ -114,36 +144,6 @@
       "mode": "100644",
       "bytes": 66828,
       "sha256": "cca892ac718148d1410b3381d7472310f576e63d567a0970208c42c11ad84379"
-    },
-    {
-      "path": "test/intent-workgraph.test.mjs",
-      "mode": "100644",
-      "bytes": 31577,
-      "sha256": "2c5e76b50ec7f810b43800cc831b613673b7e636e910b0bfa45194af9af27656"
-    },
-    {
-      "path": "test/lived-companion.test.mjs",
-      "mode": "100644",
-      "bytes": 77104,
-      "sha256": "a604655ecfed7ec73f1ed3487fc96546ecf606d78e8fea641b0ef0a6599df83b"
-    },
-    {
-      "path": "test/model-provision.test.mjs",
-      "mode": "100644",
-      "bytes": 1971,
-      "sha256": "2975c38e03eb343680a51011de95e494c8f4b30defa0ad02329c28ebde719949"
-    },
-    {
-      "path": "test/orientation-governance.test.mjs",
-      "mode": "100644",
-      "bytes": 4470,
-      "sha256": "a253db5509b5e6a1893c31b2e95d0bdf176b765656b72d197bbfe69d58acb86e"
-    },
-    {
-      "path": "test/orientation.test.mjs",
-      "mode": "100644",
-      "bytes": 18485,
-      "sha256": "5551f2953fb5790b17b1945897990a98924988e2217675d6563d1d4982426d9b"
     }
   ]
 }
