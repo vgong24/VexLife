@@ -106,8 +106,18 @@
     <button type="button" data-terrain-context="health">Health / source truth</button>
   </div>
 
-  <aside id="contextSurface" class="e27-context-surface context-projection" hidden aria-hidden="true">
-    <button id="contextSurfaceClose" class="e27-context-close" type="button" aria-label="Close">×</button>
+  <aside id="contextSurface" class="e27-context-surface context-projection" hidden aria-hidden="true" data-node-ref="element.context-workspace.surface">
+    <div id="contextWorkspaceControls" class="e28-context-workspace-controls" data-node-ref="region.shell.contextual-workspace" aria-label="Workspace layout" data-i18n-aria-label="context-workspace.label">
+      <label class="e28-context-workspace-dock"><span data-i18n="context-workspace.dock">Workspace position</span><select id="contextWorkspaceDock" data-node-ref="element.context-workspace.dock"><option value="OVERLAY" data-i18n="context-workspace.dock.overlay">Overlay</option><option value="DOCK_LEFT" data-i18n="context-workspace.dock.left">Dock left</option><option value="DOCK_RIGHT" data-i18n="context-workspace.dock.right">Dock right</option></select></label>
+      <label class="e28-context-workspace-split"><input id="contextWorkspaceSplit" type="checkbox" data-node-ref="element.context-workspace.split-focus"> <span data-i18n="context-workspace.split-focus">Show beside Terrain</span></label>
+      <output id="contextWorkspaceStatus" class="e28-context-workspace-status" aria-live="polite"></output>
+      <button id="contextWorkspaceReset" type="button" data-node-ref="element.context-workspace.layout-reset" data-i18n="context-workspace.layout-reset">Reset workspace</button>
+      <button id="contextSurfaceClose" class="e27-context-close" type="button" aria-label="Close">×</button>
+    </div>
+    <button class="e28-context-workspace-resize nw" id="contextWorkspaceResizeNw" data-context-workspace-resize-corner="nw" data-node-ref="element.context-workspace.resize.nw" type="button" aria-label="Resize workspace from top left" data-i18n-aria-label="context-workspace.resize.nw"></button>
+    <button class="e28-context-workspace-resize ne" id="contextWorkspaceResizeNe" data-context-workspace-resize-corner="ne" data-node-ref="element.context-workspace.resize.ne" type="button" aria-label="Resize workspace from top right" data-i18n-aria-label="context-workspace.resize.ne"></button>
+    <button class="e28-context-workspace-resize sw" id="contextWorkspaceResizeSw" data-context-workspace-resize-corner="sw" data-node-ref="element.context-workspace.resize.sw" type="button" aria-label="Resize workspace from bottom left" data-i18n-aria-label="context-workspace.resize.sw"></button>
+    <button class="e28-context-workspace-resize se" id="contextWorkspaceResizeSe" data-context-workspace-resize-corner="se" data-node-ref="element.context-workspace.resize.se" type="button" aria-label="Resize workspace from bottom right" data-i18n-aria-label="context-workspace.resize.se"></button>
     <section id="view-chat" data-node-ref="screen.vexlife.chat" hidden>
       <header class="e27-context-heading"><div><small data-i18n="conversation.eyebrow">CONVERSATION</small><h1 id="threadTitle">Open conversation</h1><p id="threadDescription"></p></div><div id="presence" class="presence"></div></header>
       <details id="projectRail" class="e27-projection-workspace" aria-hidden="true"><summary data-i18n="region.projects.label">Projects</summary><button id="workspaceClose" type="button">Close workspace</button><div id="projectList"></div><button id="architectureButton" type="button" data-node-ref="element.architecture.open" data-i18n="architecture.open">How VexLife is built</button></details>

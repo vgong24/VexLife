@@ -211,5 +211,18 @@
   "terrain.adaptation.reason.current-scope": "{subject} is near because it matches the current project or thread.",
   "terrain.adaptation.reason.structural": "{subject} is shown as structural context.",
   "terrain.adaptation.reason.disabled": "Automatic layout adaptation is off by your preference.",
-  "terrain.adaptation.reason.undone": "Automatic adaptation is temporarily suppressed for this context."
+  "terrain.adaptation.reason.undone": "Automatic adaptation is temporarily suppressed for this context.",
+  "context-workspace.label": "Workspace layout",
+  "context-workspace.dock": "Workspace position",
+  "context-workspace.dock.overlay": "Overlay",
+  "context-workspace.dock.left": "Dock left",
+  "context-workspace.dock.right": "Dock right",
+  "context-workspace.split-focus": "Show beside Terrain",
+  "context-workspace.layout-reset": "Reset workspace",
+  "context-workspace.resize.nw": "Resize workspace from top left",
+  "context-workspace.resize.ne": "Resize workspace from top right",
+  "context-workspace.resize.sw": "Resize workspace from bottom left",
+  "context-workspace.resize.se": "Resize workspace from bottom right",
+  "context-workspace.status.compact": "Compact sheet · wide preference preserved",
+  "context-workspace.status.wide": "Wide workspace · preference active"
 }
