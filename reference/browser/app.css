@@ -35,4 +35,20 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
 /* E2.8 Q3 adaptive Vex vessel: preferred vs resolved geometry */
 .e28-vex-presence-state{font:700 8px var(--mono);letter-spacing:.06em;color:var(--faint);white-space:nowrap}
 
+/* E2.8 LIVED-D calm ordinary Terrain + explicit deep instrumentation */
+.e28-auto-entry-state{display:block;margin-top:4px;color:var(--faint);font:700 8px var(--mono)}
+.e27-auto-entry:has(#terrainAutoEntryEnabled:checked) [data-auto-entry-state="off"],.e27-auto-entry:not(:has(#terrainAutoEntryEnabled:checked)) [data-auto-entry-state="on"]{display:none}
+.e28-terrain-instrumentation{position:absolute;left:auto;right:12px;top:12px;z-index:30;width:min(320px,calc(100% - 118px));display:block;justify-items:initial;gap:0;color:var(--muted);border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:blur(12px);padding:0;max-height:min(68vh,540px);overflow:auto;touch-action:auto;cursor:default}
+.e28-terrain-instrumentation>summary{list-style:none;min-height:44px;display:flex;align-items:center;justify-content:space-between;padding:9px 11px;font:700 9px var(--mono);letter-spacing:.06em;color:var(--text);cursor:pointer}
+.e28-terrain-instrumentation>summary::-webkit-details-marker{display:none}.e28-terrain-instrumentation>summary::after{content:'+';font-size:16px;color:var(--muted)}.e28-terrain-instrumentation[open]>summary::after{content:'−'}
+.e28-terrain-instrumentation-panel{border-top:1px solid var(--line);padding:10px;display:grid;gap:9px;background:color-mix(in srgb,var(--surface) 97%,transparent)}
+.e28-terrain-instrumentation:not([open])>.e28-terrain-instrumentation-panel{display:none}
+.e28-terrain-instrumentation .e27-hud,.e28-terrain-instrumentation .e27-scope-chip,.e28-terrain-instrumentation .e27-intent-tracker{position:static;inset:auto;z-index:auto;min-width:0;max-width:none;width:100%;pointer-events:auto;transform:none}
+.e28-terrain-instrumentation .e27-hud{display:flex}.e28-terrain-instrumentation .e27-scope-chip{display:block}.e28-terrain-instrumentation .e27-intent-tracker{opacity:1;border-radius:10px;background:var(--raised)}
+.e28-terrain-instrumentation .e27-intent-tracker:not(.show){display:none}
+.e28-auto-entry-tuning{margin:0;border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;gap:8px}.e28-auto-entry-tuning legend{padding:0 4px;font:700 9px var(--mono);color:var(--muted)}
+.e28-auto-entry-tuning label{display:grid;grid-template-columns:minmax(72px,auto) minmax(0,1fr);align-items:center;gap:8px;font-size:9px}.e28-auto-entry-tuning input[type="range"]{width:100%;min-width:0}.e28-auto-entry-tuning output{display:block;color:var(--faint);font:700 8px var(--mono)}
+@media(max-width:760px){.e28-terrain-instrumentation{right:10px;top:10px;width:min(270px,calc(100% - 108px));max-height:58vh}.e28-terrain-instrumentation-panel{padding:8px}.e28-auto-entry-tuning label{grid-template-columns:1fr}.e28-auto-entry-tuning input[type="range"]{min-height:32px}}
+@media(prefers-reduced-motion:reduce){.e28-terrain-instrumentation,.e28-terrain-instrumentation *{scroll-behavior:auto}}
+
 /* [VXG RealForever] */

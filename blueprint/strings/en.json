@@ -184,5 +184,15 @@
   "journey.current-context": "Current context",
   "journey.browsing-history": "Browsing past context",
   "journey.semantic-events": "semantic events",
-  "journey.no-history": "No semantic history yet"
+  "journey.no-history": "No semantic history yet",
+  "terrain.instrumentation.summary": "Terrain details",
+  "terrain.instrumentation.tuning": "Auto-entry tuning",
+  "terrain.manual-layout": "Arrange Terrain",
+  "terrain.manual-layout.active": "Manual layout active",
+  "terrain.controls": "Terrain controls",
+  "terrain.auto-entry.enabled": "Auto-enter layers",
+  "terrain.auto-entry.on": "Auto-enter on",
+  "terrain.auto-entry.off": "Auto-enter off",
+  "terrain.auto-entry.visibility": "Visibility",
+  "terrain.auto-entry.confidence": "Confidence"
 }

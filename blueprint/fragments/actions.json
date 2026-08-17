@@ -656,5 +656,25 @@
       "state.journey",
       "state.terrain"
     ]
+  },
+  {
+    "actionRef": "action.terrain.instrumentation.toggle",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "expanded": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": []
+  },
+  {
+    "actionRef": "action.terrain.manual-layout.toggle",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "enabled": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain"
+    ]
   }
 ]

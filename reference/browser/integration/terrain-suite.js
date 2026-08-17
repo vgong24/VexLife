@@ -1,3 +1,33 @@
+export async function runLivedDDisclosureProof({ app, helpers:{ delay, assert }, viewportClass='DESKTOP' }) {
+  const checks=[];
+  const details=document.querySelector('#terrainInstrumentation'),summary=document.querySelector('#terrainInstrumentationToggle'),panel=document.querySelector('#terrainInstrumentationPanel');
+  const hud=document.querySelector('#terrainHud'),scope=document.querySelector('#terrainScopeChip'),intent=document.querySelector('#terrainIntentTracker'),enabled=document.querySelector('#terrainAutoEntryEnabled'),rawVisibility=document.querySelector('#terrainAutoEntryVisibility'),rawConfidence=document.querySelector('#terrainAutoEntryConfidence'),rawStatus=document.querySelector('#terrainAutoEntryStatus');
+  assert(details&&summary&&panel&&hud&&scope&&intent&&enabled&&rawVisibility&&rawConfidence&&rawStatus,'LD00 Terrain instrumentation disclosure fixture incomplete');
+  assert(details.open===false,'LD01 cold Terrain deep instrumentation is not collapsed by default');
+  assert(rawVisibility.getClientRects().length===0&&rawConfidence.getClientRects().length===0&&hud.getClientRects().length===0&&scope.getClientRects().length===0,'LD01 closed deep instrumentation remains visibly rendered');
+  for(const selector of ['#terrainZoomIn','#terrainZoomOut','#terrainAutoEntryEnabled','#terrainFullJourneyToggle','#vexSummon'])assert(document.querySelector(selector)?.getClientRects().length,'LD02 ordinary Terrain lost findable control '+selector);
+  const reset=document.querySelector('#terrainReset');assert(reset?.dataset.nodeRef==='element.terrain.reset','LD02 canonical Terrain reset identity is unavailable');
+  if(viewportClass==='DESKTOP')assert(reset.getClientRects().length,'LD02 desktop Terrain lost direct reset recovery control');
+  else{const menu=document.querySelector('#surfaceMenuButton'),center=document.querySelector('#terrainCenter');assert(menu?.getClientRects().length&&center,'LD02 compact Terrain recovery menu route unavailable');menu.click();await delay(10);assert(center.getClientRects().length,'LD02 compact Terrain did not reveal center-current-context recovery route');menu.click();await delay(10);}
+  assert(enabled.getClientRects().length&&rawStatus.getClientRects().length===0,'LD03 auto-entry opt-out is not ordinary while raw V/C status remains deep');
+  const frameBefore=JSON.stringify(app.navigation.semanticFrame()),journeyBefore=JSON.stringify(app.navigation.fullJourney()),terrainBefore=app.terrain.currentRef(),autoBefore=JSON.stringify(app.terrain.viewportProjection().semanticAutoEntry);
+  summary.focus();summary.click();await delay(20);
+  assert(details.open===true&&panel.getClientRects().length&&hud.getClientRects().length&&scope.getClientRects().length&&rawVisibility.getClientRects().length&&rawConfidence.getClientRects().length&&rawStatus.getClientRects().length,'LD04 explicit disclosure did not expose complete deep instrumentation');
+  if(viewportClass==='COMPACT'){const r=details.getBoundingClientRect();assert(innerWidth<=760&&r.left>=0&&r.right<=innerWidth+1&&r.width>=220&&r.height<=innerHeight*.72,'LD13 compact disclosure geometry unusable: '+JSON.stringify({innerWidth,innerHeight,left:r.left,right:r.right,width:r.width,height:r.height}));}
+  rawVisibility.focus();assert(document.activeElement===rawVisibility,'LD06 revealed raw control is not keyboard focusable');summary.focus();summary.click();await delay(10);
+  assert(details.open===false&&document.activeElement===summary,'LD07 collapse did not deterministically return focus to the disclosure control');
+  assert(rawVisibility.getClientRects().length===0&&rawConfidence.getClientRects().length===0,'LD06 collapsed deep descendants remain keyboard/render targets');
+  assert(JSON.stringify(app.navigation.semanticFrame())===frameBefore&&JSON.stringify(app.navigation.fullJourney())===journeyBefore&&app.terrain.currentRef()===terrainBefore&&JSON.stringify(app.terrain.viewportProjection().semanticAutoEntry)===autoBefore,'LD05 disclosure mutated semantic current context, Journey, Terrain ref, or auto-entry values');
+  const chatProjects=document.querySelector('#openWorkspace'),projectSummary=document.querySelector('#projectRail summary'),manual=document.querySelector('[data-terrain-context="workspace"]'),badge=document.querySelector('#terrainWorkspaceBadge');
+  assert(chatProjects&&projectSummary&&manual&&badge,'LD08 disclosure terminology fixtures unavailable');
+  assert(chatProjects.textContent.trim()===projectSummary.textContent.trim()&&manual.textContent.trim()!==chatProjects.textContent.trim(),'LD08 Chat source descent and Terrain manual layout still share one visible mental model');
+  const manualBefore=app.terrain.viewportProjection().workspaceMode,toggled=app.terrain.toggleWorkspace();assert(toggled!==manualBefore&&badge.classList.contains('show')===toggled,'LD09 existing Terrain manual-layout behavior or visible state drifted');const restored=app.terrain.toggleWorkspace();assert(restored===manualBefore,'LD09 manual-layout state did not restore');
+  for(const lang of ['en','ja','zh']){const response=await fetch('../../blueprint/strings/'+lang+'.json');assert(response.ok,'LD10 '+lang+' localization catalog unavailable');const catalog=await response.json(),detailLabel=catalog['terrain.instrumentation.summary'],manualLabel=catalog['terrain.manual-layout'],projectsLabel=catalog['region.projects.label'];assert(detailLabel&&manualLabel&&projectsLabel,'LD10 '+lang+' disclosure/manual-layout localization fallback');assert(detailLabel!==manualLabel&&manualLabel!==projectsLabel,'LD08 '+lang+' disclosure/manual/source-descent concepts collapsed');}
+  const style=getComputedStyle(details);assert(style.transitionDuration==='0s'||style.transitionProperty==='all'||!style.transitionProperty,'LD11 disclosure meaning unexpectedly depends on animated details state');
+  checks.push('LD01 cold Terrain collapses deep HUD/scope/raw V-C/intent instrumentation by default','LD02-LD03 ordinary Terrain retains semantic depth/zoom/recovery/Journey/Vex and auto-entry opt-out','LD04-LD07 native explicit disclosure is complete, semantic-state neutral, keyboard-safe and focus deterministic','LD08-LD10 Chat Projects, Terrain manual layout and deep Terrain details remain distinct in EN/JA/ZH','LD11 disclosure meaning is motion independent',viewportClass==='COMPACT'?'LD13 compact viewport executes the same disclosure proof without a microscopic always-visible rack':'LD12 desktop owner-domain Terrain suite carries LIVED-D fail-closed proof');
+  return {proofRef:'proof.vexlife.e28.lived-d.progressive-disclosure/v1',state:'PASS',viewportClass,checks};
+}
+
 export const terrainSuite = Object.freeze({
   suiteRef:'suite.vexlife.browser.terrain/v1',
   async run({ app, state, helpers:{ delay, assert, assertLiveEdgeAttachments, worldRelationshipClearance, renderedPixelClose, geometryDifferences, geometryIdentity, radialDistance, motionCssToken, transitionProperties, assertSettledGeometry } }) {
@@ -6,6 +36,7 @@ export const terrainSuite = Object.freeze({
     assert(rootRef && Array.isArray(rootChildren) && app.terrain.currentRef() === rootRef, 'Terrain suite requires canonical root baseline');
     assert(document.querySelector('#contextSurface').hidden, 'Terrain suite requires contextual surface closed');
     const checks = [];
+    const livedD=await runLivedDDisclosureProof({app,helpers:{delay,assert},viewportClass:'DESKTOP'});checks.push(...livedD.checks);
 
     const motionTokens={tactile:motionCssToken('--motion-duration-tactile'),fast:motionCssToken('--motion-duration-fast'),surface:motionCssToken('--motion-duration-surface'),layout:motionCssToken('--motion-duration-layout'),spatial:motionCssToken('--motion-duration-spatial'),exit:motionCssToken('--motion-duration-semantic-exit'),arrive:motionCssToken('--motion-duration-semantic-arrive'),ease:motionCssToken('--motion-ease-responsive')};
     assert(Object.values(motionTokens).every(Boolean),'Q6 shared motion token vocabulary is incomplete');

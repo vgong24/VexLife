@@ -184,5 +184,15 @@
   "journey.current-context": "現在のコンテキスト",
   "journey.browsing-history": "過去のコンテキストを閲覧中",
   "journey.semantic-events": "件のセマンティックイベント",
-  "journey.no-history": "セマンティック履歴はまだありません"
+  "journey.no-history": "セマンティック履歴はまだありません",
+  "terrain.instrumentation.summary": "Terrain の詳細",
+  "terrain.instrumentation.tuning": "自動進入の調整",
+  "terrain.manual-layout": "Terrain を配置",
+  "terrain.manual-layout.active": "手動レイアウト中",
+  "terrain.controls": "Terrain 操作",
+  "terrain.auto-entry.enabled": "レイヤーを自動進入",
+  "terrain.auto-entry.on": "自動進入オン",
+  "terrain.auto-entry.off": "自動進入オフ",
+  "terrain.auto-entry.visibility": "可視性",
+  "terrain.auto-entry.confidence": "確信度"
 }

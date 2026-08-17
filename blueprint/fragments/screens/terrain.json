@@ -190,6 +190,27 @@
           "testRefs": [
             "test.accessibility.terrain"
           ]
+        },
+        {
+          "elementRef": "element.terrain.manual-layout-toggle",
+          "conceptRef": "concept.element.terrain.manual-layout-toggle",
+          "interactionRef": "interaction.terrain.manual-layout-toggle",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-manual-layout-toggle",
+          "kind": "TERRAIN_MANUAL_LAYOUT_TOGGLE",
+          "labelStringRef": "terrain.manual-layout",
+          "actionRef": "action.terrain.manual-layout.toggle",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.manual-layout-toggle"
+          },
+          "testRefs": [
+            "test.accessibility.terrain"
+          ]
         }
       ],
       "conceptRef": "concept.region.terrain.canvas",
@@ -304,6 +325,35 @@
           },
           "testRefs": [
             "test.navigation.screen-frame"
+          ]
+        }
+      ]
+    },
+    {
+      "regionRef": "region.terrain.instrumentation",
+      "labelStringRef": "terrain.instrumentation.summary",
+      "conceptRef": "concept.region.terrain.instrumentation",
+      "navigationNodeRef": "nav.region.terrain.instrumentation",
+      "elements": [
+        {
+          "elementRef": "element.terrain.instrumentation-toggle",
+          "conceptRef": "concept.element.terrain.instrumentation-toggle",
+          "interactionRef": "interaction.terrain.instrumentation-toggle",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-instrumentation-toggle",
+          "kind": "TERRAIN_INSTRUMENTATION_DISCLOSURE",
+          "labelStringRef": "terrain.instrumentation.summary",
+          "actionRef": "action.terrain.instrumentation.toggle",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.instrumentation-toggle"
+          },
+          "testRefs": [
+            "test.accessibility.terrain"
           ]
         }
       ]

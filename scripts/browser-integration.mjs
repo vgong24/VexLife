@@ -84,15 +84,27 @@ if (playwright) {
     await page.goto(`${serverUrl}/reference/browser/?integration=1`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_INTEGRATION_PROMISE__), null, { timeout: 30000 });
     const integration = await page.evaluate(async () => globalThis.__VEXLIFE_INTEGRATION_PROMISE__);
-    const state = integration?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 ? 'PASS' : 'FAILED';
+    const compactConsoleErrors=[];const compactPageErrors=[];const compactPage=await browser.newPage({viewport:{width:390,height:844}});
+    compactPage.on('console',(message)=>{if(message.type()==='error')compactConsoleErrors.push(message.text());});compactPage.on('pageerror',(error)=>compactPageErrors.push(error.message));
+    await compactPage.goto(serverUrl+'/reference/browser/',{waitUntil:'networkidle',timeout:30000});
+    await compactPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
+    const livedDCompact=await compactPage.evaluate(async()=>{
+      const {runLivedDDisclosureProof}=await import('./integration/terrain-suite.js');
+      const assert=(condition,message)=>{if(!condition)throw new Error(message);};
+      const delay=(ms)=>new Promise((resolve)=>setTimeout(resolve,ms));
+      return runLivedDDisclosureProof({app:globalThis.__VEXLIFE_APP__,helpers:{delay,assert},viewportClass:'COMPACT'});
+    });
+    await compactPage.close();
+    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 ? 'PASS' : 'FAILED';
     finish({
       ...baseReceipt,
       state,
       currentness: 'CURRENT',
       browser: { name: browser.browserType().name(), version: browser.version() },
-      consoleErrors,
-      pageErrors,
-      integration
+      consoleErrors:[...consoleErrors,...compactConsoleErrors],
+      pageErrors:[...pageErrors,...compactPageErrors],
+      integration,
+      livedDCompact
     }, state === 'PASS' ? 0 : 1);
   } catch (error) {
     finish({

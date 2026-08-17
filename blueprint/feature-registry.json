@@ -216,7 +216,10 @@
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "screen.vexlife.terrain",
-        "state.terrain"
+        "state.terrain",
+        "region.terrain.instrumentation",
+        "element.terrain.instrumentation-toggle",
+        "element.terrain.manual-layout-toggle"
       ],
       "stateRefs": [
         "state.terrain",
@@ -228,7 +231,9 @@
         "action.terrain.node.collapse",
         "action.terrain.layout.reset",
         "action.terrain.canvas.pan",
-        "action.terrain.canvas.zoom"
+        "action.terrain.canvas.zoom",
+        "action.terrain.instrumentation.toggle",
+        "action.terrain.manual-layout.toggle"
       ],
       "permissionRefs": [
         "permission.none"
@@ -241,7 +246,17 @@
         "module.vexlife.browser.terrain-controller"
       ],
       "localizationRefs": [
-        "screen.terrain.title"
+        "screen.terrain.title",
+        "terrain.instrumentation.summary",
+        "terrain.instrumentation.tuning",
+        "terrain.manual-layout",
+        "terrain.manual-layout.active",
+        "terrain.controls",
+        "terrain.auto-entry.enabled",
+        "terrain.auto-entry.on",
+        "terrain.auto-entry.off",
+        "terrain.auto-entry.visibility",
+        "terrain.auto-entry.confidence"
       ],
       "testRefs": [
         "test.terrain.drag",

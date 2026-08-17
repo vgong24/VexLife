@@ -184,5 +184,15 @@
   "journey.current-context": "当前上下文",
   "journey.browsing-history": "正在浏览历史上下文",
   "journey.semantic-events": "个语义事件",
-  "journey.no-history": "暂无语义历史"
+  "journey.no-history": "暂无语义历史",
+  "terrain.instrumentation.summary": "Terrain 详情",
+  "terrain.instrumentation.tuning": "自动进入调节",
+  "terrain.manual-layout": "排列 Terrain",
+  "terrain.manual-layout.active": "手动布局已启用",
+  "terrain.controls": "Terrain 控制",
+  "terrain.auto-entry.enabled": "自动进入层级",
+  "terrain.auto-entry.on": "自动进入已开启",
+  "terrain.auto-entry.off": "自动进入已关闭",
+  "terrain.auto-entry.visibility": "可见度",
+  "terrain.auto-entry.confidence": "置信度"
 }
