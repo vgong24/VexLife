@@ -194,5 +194,22 @@
   "terrain.auto-entry.on": "自動進入オン",
   "terrain.auto-entry.off": "自動進入オフ",
   "terrain.auto-entry.visibility": "可視性",
-  "terrain.auto-entry.confidence": "確信度"
+  "terrain.auto-entry.confidence": "確信度",
+  "terrain.adaptation.state": "レイアウト適応の状態",
+  "terrain.adaptation.controls": "レイアウト適応",
+  "terrain.adaptation.status.adaptive": "適応中",
+  "terrain.adaptation.status.pinned": "あなたが固定",
+  "terrain.adaptation.status.undone": "この場所の適応を取り消し済み",
+  "terrain.adaptation.status.off": "適応レイアウトはオフ",
+  "terrain.adaptation.why": "このレイアウトの理由",
+  "terrain.adaptation.undo": "適応を取り消す",
+  "terrain.adaptation.restore": "適応を戻す",
+  "terrain.adaptation.preference": "適応レイアウト",
+  "terrain.adaptation.reason.current-context": "現在のコンテキストは中央に保たれます。",
+  "terrain.adaptation.reason.manual-override": "あなたが固定しました。手動レイアウトが自動適応より優先されます。",
+  "terrain.adaptation.reason.current-work": "{subject} は現在の作業に一致するため強調されています。",
+  "terrain.adaptation.reason.current-scope": "{subject} は現在のプロジェクトまたはスレッドに一致するため近く表示されています。",
+  "terrain.adaptation.reason.structural": "{subject} は構造上のコンテキストとして表示されています。",
+  "terrain.adaptation.reason.disabled": "あなたの設定により自動レイアウト適応はオフです。",
+  "terrain.adaptation.reason.undone": "このコンテキストでは自動適応を一時的に抑制しています。"
 }

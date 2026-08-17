@@ -211,6 +211,90 @@
           "testRefs": [
             "test.accessibility.terrain"
           ]
+        },
+        {
+          "elementRef": "element.terrain.adaptation-state",
+          "conceptRef": "concept.element.terrain.adaptation-state",
+          "interactionRef": "interaction.terrain.adaptation-state",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-adaptation-state",
+          "kind": "TERRAIN_ADAPTATION_STATUS",
+          "labelStringRef": "terrain.adaptation.state",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "status",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.adaptation-state"
+          },
+          "testRefs": [
+            "test.accessibility.terrain"
+          ]
+        },
+        {
+          "elementRef": "element.terrain.adaptation-why",
+          "conceptRef": "concept.element.terrain.adaptation-why",
+          "interactionRef": "interaction.terrain.adaptation-why",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-adaptation-explain",
+          "kind": "TERRAIN_ADAPTATION_EXPLANATION",
+          "labelStringRef": "terrain.adaptation.why",
+          "actionRef": "action.terrain.adaptation.explain",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.adaptation-why"
+          },
+          "testRefs": [
+            "test.accessibility.terrain"
+          ]
+        },
+        {
+          "elementRef": "element.terrain.adaptation-undo",
+          "conceptRef": "concept.element.terrain.adaptation-undo",
+          "interactionRef": "interaction.terrain.adaptation-undo",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-adaptation-recovery",
+          "kind": "TERRAIN_ADAPTATION_RECOVERY",
+          "labelStringRef": "terrain.adaptation.undo",
+          "actionRef": "action.terrain.adaptation.undo",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.adaptation-undo"
+          },
+          "testRefs": [
+            "test.accessibility.terrain"
+          ]
+        },
+        {
+          "elementRef": "element.terrain.adaptive-layout-toggle",
+          "conceptRef": "concept.element.terrain.adaptive-layout-toggle",
+          "interactionRef": "interaction.terrain.adaptive-layout-toggle",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.terrain-adaptive-layout-preference",
+          "kind": "TERRAIN_ADAPTIVE_LAYOUT_PREFERENCE",
+          "labelStringRef": "terrain.adaptation.preference",
+          "actionRef": "action.terrain.adaptive-layout.toggle",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "checkbox",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.terrain.adaptive-layout-toggle"
+          },
+          "testRefs": [
+            "test.accessibility.terrain"
+          ]
         }
       ],
       "conceptRef": "concept.region.terrain.canvas",
