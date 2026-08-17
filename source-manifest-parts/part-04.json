@@ -2,28 +2,34 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "blueprint/runtime-recovery-registry.json",
+      "mode": "100644",
+      "bytes": 36020,
+      "sha256": "43a7e906a487e53e0413b846e98d7ee6c44fc410e3c0901d1b80c014d864b343"
+    },
+    {
       "path": "blueprint/strings/en.json",
       "mode": "100644",
-      "bytes": 13881,
-      "sha256": "07db99538bc1cd32a4114692bce2cd81a37d7612d48a466825e0f5ddc7633482"
+      "bytes": 15126,
+      "sha256": "e4802ba01af0a34fd9f13d6a1ad15f3669cbb1f430b9e09657d3f0149a63af47"
     },
     {
       "path": "blueprint/strings/ja.json",
       "mode": "100644",
-      "bytes": 16691,
-      "sha256": "739a94ed0b1f85f7ecab8a28440219ec9204d09a76a25a6c93b27d2f486c0573"
+      "bytes": 18062,
+      "sha256": "c5740939420ffa5a1a31fa1d7c37d6263342b1f6a5d956f1f33dfaee1a34d248"
     },
     {
       "path": "blueprint/strings/zh.json",
       "mode": "100644",
-      "bytes": 13317,
-      "sha256": "884015af6954b2487183a4ccd1ba796e21dd64b825bdd835a61013993cd9d5b2"
+      "bytes": 14519,
+      "sha256": "a6f683b18f68b96fca0bd6103448f38670ce703bef56335454b72f3c865a0950"
     },
     {
       "path": "blueprint/vexlife.blueprint.json",
       "mode": "100644",
-      "bytes": 1510,
-      "sha256": "4a88c75a9b79b0c08483f4ff9b8622a2f5d23d194b1e6eeb1a6d3a711f6737e0"
+      "bytes": 1567,
+      "sha256": "0df90b9a307b6febb4ea93b59c013c570184b4ed939d6d8c0e003c46acb546f8"
     },
     {
       "path": "docs/BLUEPRINT-CHANGE-PROPAGATION.md",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 7936,
       "sha256": "8b55244d3376d069602ccc1b9863dd92043c24851e7c78ff9e2b8f5d45c5ad11"
-    },
-    {
-      "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
-      "mode": "100644",
-      "bytes": 3310,
-      "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
     }
   ]
 }

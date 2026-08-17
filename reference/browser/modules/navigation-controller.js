@@ -105,12 +105,12 @@ export function createNavigationController({ state, elementByRef, getProject, ge
     return journey.event;
   }
   function openContext(contextProjection, nodeRef, actionRef = 'action.context.open') {
-    if (!['chat', 'health'].includes(contextProjection)) throw new Error(`Unsupported contextual projection: ${contextProjection}`);
+    if (!['chat', 'health', 'living-journal'].includes(contextProjection)) throw new Error(`Unsupported contextual projection: ${contextProjection}`);
     return navigate(nodeRef, { contextProjection }, actionRef);
   }
   function returnToPrimaryStage(nodeRef = 'element.nav.terrain', actionRef = 'action.navigation.home') { return navigate(nodeRef, { contextProjection: null }, actionRef); }
   function applyFrame(frame) {
-    const context = frame.contextProjection ?? (() => { const screenTail = String(frame.screenRef || '').split('.').at(-1); return ['chat', 'health'].includes(screenTail) ? screenTail : null; })();
+    const context = frame.contextProjection ?? (() => { const screenTail = String(frame.screenRef || '').split('.').at(-1); return ['chat', 'health', 'living-journal'].includes(screenTail) ? screenTail : null; })();
     state.view = 'terrain'; state.contextProjection = context; state.projectRef = frame.projectRef ?? state.projectRef; state.threadRef = frame.threadRef ?? state.threadRef; state.channelRef = frame.channelRef ?? state.channelRef; state.selectedNodeRef = frame.selectedNodeRef ?? state.selectedNodeRef;
   }
   function back() {

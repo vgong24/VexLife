@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "package.json",
+      "mode": "100644",
+      "bytes": 4074,
+      "sha256": "b8243a144834dc50b1cc32ee3009f160d13966e17a93207c3b6f90f56cccece9"
+    },
+    {
       "path": "reference/browser/README.md",
       "mode": "100644",
       "bytes": 898,
@@ -16,20 +22,20 @@
     {
       "path": "reference/browser/app.js",
       "mode": "100644",
-      "bytes": 20948,
-      "sha256": "42af6450bb464a070c7235fb77254216e2bc89a0ebe3b4bd37bb3b6b2fdf5a12"
+      "bytes": 22285,
+      "sha256": "0fe4db8eca57a4d2ec0ae296dbfb02dc9ae45be1288bd78e6b5a785b3f30c7cd"
     },
     {
       "path": "reference/browser/index.html",
       "mode": "100644",
-      "bytes": 18296,
-      "sha256": "f47dc74ee5bce232e1afa361e61c811fb179c0078749f6a62bcae7340628d997"
+      "bytes": 21856,
+      "sha256": "d5fa110a8703075a3b5ad1ee406996acbb1edcc96405e857eb9b12b2692fbd67"
     },
     {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
-      "bytes": 12992,
-      "sha256": "20252c453069667c9ac22a26a3fbcbe8b929705dd4a4364caf1c27a2de6d2a31"
+      "bytes": 13135,
+      "sha256": "2fb836f50441d06358da16c2b8579f4ae25b7a26c135b694a64644d91e50e2ce"
     },
     {
       "path": "reference/browser/integration/contextual-conversation-suite.js",
@@ -62,6 +68,12 @@
       "sha256": "77f7a226d373d7390fd816db1463e324ec8ce5d5ed8ad61474967c5c369ca237"
     },
     {
+      "path": "reference/browser/integration/living-journal-suite.js",
+      "mode": "100644",
+      "bytes": 13478,
+      "sha256": "ffcbc9dc43aa94df2a75de761da498cc119f624cc491cb017e32d73263ee955f"
+    },
+    {
       "path": "reference/browser/integration/root-contract-suite.js",
       "mode": "100644",
       "bytes": 1862,
@@ -72,6 +84,12 @@
       "mode": "100644",
       "bytes": 40861,
       "sha256": "aa89981224cc213b92a84a1fc822ffae2388a5a17b6a6dbe3312acb03c31fe09"
+    },
+    {
+      "path": "reference/browser/living-journal.css",
+      "mode": "100644",
+      "bytes": 9045,
+      "sha256": "8cfcf9f0f0c80e8d4a10700c81adb1e79d859715679252f7f135eb977ac8a143"
     },
     {
       "path": "reference/browser/modules/browser-bundle.js",
@@ -116,34 +134,16 @@
       "sha256": "133e3625ac2136a1cbe9c2d6e48d48fd31e172acfe11ec015e8f68a5d30bacec"
     },
     {
-      "path": "reference/browser/modules/navigation-controller.js",
+      "path": "reference/browser/modules/living-journal-controller.js",
       "mode": "100644",
-      "bytes": 8752,
-      "sha256": "01c5be36ac959c80e627a89799e40d5265c56f694d01647ec71f172bc5f92ed4"
+      "bytes": 11716,
+      "sha256": "537863d8951d5934f888e718c1bc35d9d440285f683f9e4eeea800595bedd357"
     },
     {
-      "path": "reference/browser/modules/terrain-controller.js",
+      "path": "reference/browser/modules/living-journal-demo-data.js",
       "mode": "100644",
-      "bytes": 45745,
-      "sha256": "6a447d1fdbf2f3041a2fa63c44b1b65896bfc3e0a73360b13e3fa043041af81d"
-    },
-    {
-      "path": "scripts/atlas-query.mjs",
-      "mode": "100644",
-      "bytes": 1748,
-      "sha256": "83538b7a319375c8208e281033e049dca1c3224fee0efdb73b0ebde05fc3a327"
-    },
-    {
-      "path": "scripts/bootstrap.mjs",
-      "mode": "100644",
-      "bytes": 804,
-      "sha256": "7bb74626c8bb61e58fa608ec950263908f1af9819307d6426142f655002a4ccc"
-    },
-    {
-      "path": "scripts/bridge-check.mjs",
-      "mode": "100644",
-      "bytes": 543,
-      "sha256": "6c753287c11e71cb5f397a1562d1a794256fe6dac3c52a7e6316504a86882734"
+      "bytes": 10601,
+      "sha256": "5e718176c1f8cc92e8d1e99504ebb9b2e0008f2ea09abc0a72ea04245c183f21"
     }
   ]
 }

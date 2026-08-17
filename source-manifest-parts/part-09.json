@@ -2,6 +2,36 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "scripts/source-manifest.mjs",
+      "mode": "100644",
+      "bytes": 3795,
+      "sha256": "942a69a849455237e60185edfb46a19e89fcafddcb436f989594463bfc03cfdf"
+    },
+    {
+      "path": "scripts/test-structured.mjs",
+      "mode": "100644",
+      "bytes": 1218,
+      "sha256": "02da952dd3e34fe20796b4a4175844b89b3bce7854fddf8dc0b871416a4c476a"
+    },
+    {
+      "path": "scripts/validate-blueprint.mjs",
+      "mode": "100644",
+      "bytes": 433,
+      "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
+    },
+    {
+      "path": "scripts/validation-evidence.mjs",
+      "mode": "100644",
+      "bytes": 3064,
+      "sha256": "c61a20f91e1f64c5edff6ac7c4b643e5e78c0f8078bdd4964bb9e41fa0b33ec4"
+    },
+    {
+      "path": "src/core/atlas.mjs",
+      "mode": "100644",
+      "bytes": 3026,
+      "sha256": "a62a9408b464cf7114ef7f3a1568449fbf416dd1d3b14dd863941c820a8a7b36"
+    },
+    {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
       "bytes": 45602,
@@ -114,36 +144,6 @@
       "mode": "100644",
       "bytes": 8167,
       "sha256": "14937478c5512706fe208a6959aa9dbb47061fed3e5adb4692339e18f4db3884"
-    },
-    {
-      "path": "src/core/g05-runtime-authority-substrate.mjs",
-      "mode": "100644",
-      "bytes": 44847,
-      "sha256": "9aa7e0c4976f6a334a35d4b32a18b801a1f71437aef021b46e1a8642842507ea"
-    },
-    {
-      "path": "src/core/home-bridge.mjs",
-      "mode": "100644",
-      "bytes": 7921,
-      "sha256": "3ceef5d425232ec90b4d59a6e9a8b66510124d0f748ebd695a437e56a48cda81"
-    },
-    {
-      "path": "src/core/impact.mjs",
-      "mode": "100644",
-      "bytes": 2182,
-      "sha256": "ff17dd8fc7281c6399d6bc172fc5d28df2b9a5262bfd26a2340e67f9430798f7"
-    },
-    {
-      "path": "src/core/implementation-plan.mjs",
-      "mode": "100644",
-      "bytes": 5655,
-      "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
-    },
-    {
-      "path": "src/core/intent-checkpoint.mjs",
-      "mode": "100644",
-      "bytes": 14269,
-      "sha256": "0378b4c09044be1b871d8517f869abdf50431ff65c12f2314b63fae0ff7fd863"
     }
   ]
 }
