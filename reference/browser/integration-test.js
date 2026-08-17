@@ -3,6 +3,7 @@ import { journeySuite } from './integration/journey-suite.js';
 import { guideVexSuite } from './integration/guide-vex-suite.js';
 import { terrainSuite } from './integration/terrain-suite.js';
 import { contextualConversationSuite } from './integration/contextual-conversation-suite.js';
+import { livingJournalSuite } from './integration/living-journal-suite.js';
 import { crossFeatureSuite } from './integration/cross-feature-suite.js';
 import { identityLocalizationSuite } from './integration/identity-localization-suite.js';
 
@@ -12,6 +13,7 @@ export const MANDATORY_SUITE_REFS = Object.freeze([
   'suite.vexlife.browser.guide-vex/v1',
   'suite.vexlife.browser.terrain/v1',
   'suite.vexlife.browser.contextual-conversation/v1',
+  'suite.vexlife.browser.living-journal/v1',
   'suite.vexlife.browser.cross-feature/v1',
   'suite.vexlife.browser.identity-localization/v1'
 ]);
@@ -22,6 +24,7 @@ export const MANDATORY_SUITES = Object.freeze([
   guideVexSuite,
   terrainSuite,
   contextualConversationSuite,
+  livingJournalSuite,
   crossFeatureSuite,
   identityLocalizationSuite
 ]);
