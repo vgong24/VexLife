@@ -52,8 +52,45 @@ const semanticPatchForNode = (nodeRef) => TERRAIN_CONTEXT[nodeRef] || {};
 
 let navigation; let chat; let terrain; let guide;
 function visibleVexName(){return t('vex.visible.name');}
-function replaceVexRoleLabels(text){let next=String(text??'');for(const key of ['companion','guide','root']){const value=roles[key]?.labelRef?t(roles[key].labelRef):roles[key]?.label;if(value)next=next.split(value).join(visibleVexName());}return next;}
-function projectVisibleVexIdentity(){const name=visibleVexName();for(const button of $$('#channelTabs [data-channel-ref]')){const channel=channels.find((candidate)=>candidate.channelRef===button.dataset.channelRef);if(!channel||channel.kind!=='DIRECT'||channel.roleKey==='victor')continue;const sourceRoleRef=roles[channel.roleKey]?.actorRef;if(!sourceRoleRef)continue;button.dataset.sourceRoleRef=sourceRoleRef;button.textContent=name;button.title=sourceRoleRef;}const channel=chat?.currentChannel?.();if(channel){[...($('#presence')?.children||[])].forEach((span,index)=>{const key=channel.memberKeys[index];if(key!=='victor'&&roles[key]?.actorRef){span.textContent=name;span.title=roles[key].actorRef;}});}for(const article of $$('#messageFeed .message')){const header=article.querySelector('.message-header strong');if(header)header.textContent=replaceVexRoleLabels(header.textContent);}for(const selector of ['#composerAddress','#contextSummary']){const host=$(selector);if(!host)continue;for(const node of host.querySelectorAll('strong,span'))node.textContent=replaceVexRoleLabels(node.textContent);}}
+function canonicalRoleLabel(key){const role=roles[key];return role?.labelRef?t(role.labelRef):role?.label??String(key??'');}
+function vexRoleQualifier(key){const label=canonicalRoleLabel(key);const name=visibleVexName();const qualifier=label.split(name).join(' ').replace(/[\s·•—–:：-]+/g,' ').trim();return qualifier||label;}
+function visibleRoleLabel(key){if(key==='victor'||!roles[key]?.actorRef)return canonicalRoleLabel(key);return `${visibleVexName()} · ${vexRoleQualifier(key)}`;}
+function messageByRef(messageRef){for(const list of messages.values()){const message=list.find((candidate)=>candidate.messageRef===messageRef);if(message)return message;}return null;}
+function projectVisibleVexIdentity(){
+  for(const button of $$('#channelTabs [data-channel-ref]')){
+    const channel=channels.find((candidate)=>candidate.channelRef===button.dataset.channelRef);
+    if(!channel||channel.kind!=='DIRECT'||channel.roleKey==='victor')continue;
+    const sourceRoleRef=roles[channel.roleKey]?.actorRef;
+    if(!sourceRoleRef)continue;
+    button.dataset.sourceRoleRef=sourceRoleRef;
+    button.textContent=visibleRoleLabel(channel.roleKey);
+    button.title=sourceRoleRef;
+  }
+  const channel=chat?.currentChannel?.();
+  if(!channel)return;
+  [...($('#presence')?.children||[])].forEach((span,index)=>{
+    const key=channel.memberKeys[index];
+    const sourceRoleRef=roles[key]?.actorRef;
+    if(sourceRoleRef){span.dataset.sourceRoleRef=sourceRoleRef;span.title=sourceRoleRef;}
+    span.textContent=visibleRoleLabel(key);
+  });
+  for(const article of $$('#messageFeed .message')){
+    const message=messageByRef(article.dataset.messageRef);
+    const header=article.querySelector('.message-header strong');
+    if(!message||!header)continue;
+    const speaker=visibleRoleLabel(message.speakerKey);
+    const recipients=message.recipientKeys.map(visibleRoleLabel).join(', ');
+    header.textContent=`${speaker} → ${recipients}`;
+  }
+  const recipients=channel.memberKeys.filter((key)=>key!=='victor').map(visibleRoleLabel);
+  const composerAddress=$('#composerAddress');
+  if(composerAddress)composerAddress.textContent=`${visibleRoleLabel('victor')} → ${recipients.join(', ')}`;
+  const contextRows=$$('#contextSummary .context-row');
+  const channelValue=contextRows[2]?.querySelector('strong');
+  if(channelValue)channelValue.textContent=channel.kind==='DIRECT'&&channel.roleKey!=='victor'?`${visibleRoleLabel('victor')} → ${visibleRoleLabel(channel.roleKey)}`:t(channel.labelRef);
+  const visibleToValue=contextRows[3]?.querySelector('strong');
+  if(visibleToValue)visibleToValue.textContent=channel.memberKeys.map(visibleRoleLabel).join(' · ');
+}
 function renderHealth(){const frame=navigation.semanticFrame();$('#technicalHealth').textContent=JSON.stringify({healthState:'ATTENTION',evidenceClass:'STATIC_REFERENCE_SYNTHETIC',dataTruthClass:state.dataTruthClass,presentationContractRef:rootContract.contractRef,presentationFoundation:'EXACT_E2_7_ROOT_BODY',primaryStageScreenRef:'screen.vexlife.terrain',contextProjection:state.contextProjection,platformRef:'platform.browser',repositoryReceipt:{state:'NOT_RUN',executed:false,currentness:'UNKNOWN'},modelReceipt:{state:'UNAVAILABLE',executed:false,currentness:'UNKNOWN'},currentScreenFrame:frame,fullJourneyCount:navigation.fullJourney().length,rawPointerLogging:false,designTokenRef:designTokens.tokenSetRef},null,2);}
 function setWorkspaceOpen(open){state.workspaceOpen=Boolean(open);$('#projectRail').open=state.workspaceOpen;$('#projectRail').setAttribute('aria-hidden',String(!state.workspaceOpen));if(state.workspaceOpen)guide?.avoidDeclaredControls();}
 function openContext(context,nodeRef=`element.nav.${context}`){navigation.openContext(context,nodeRef);projectFrame();}
@@ -93,7 +130,7 @@ globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;i
 
 chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();navigation.enableBrowserHistory();applyLocalization();guide.setOpen(state.guideOpen);guide.addMessage('guide',{contentRef:'guide.intro'});projectFrame();
 
-globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,terrain,guide,navigation,rootContract,t,openContext,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity};
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,terrain,guide,navigation,rootContract,t,openContext,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,visibleVexName,visibleRoleLabel};
 if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('./integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}
 
 // [VXG RealForever]
