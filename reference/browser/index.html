@@ -85,6 +85,15 @@
     <button id="openHealth" type="button" data-node-ref="element.nav.health">Health / source truth</button>
     <button id="openWorkspace" type="button" data-i18n="region.projects.label">Projects</button>
     <button id="terrainCenter" type="button" data-node-ref="element.terrain.center-current-context" data-i18n="terrain.center-current-context">Center current context</button>
+    <div id="terrainAdaptationMenu" class="e28-adaptation-menu">
+      <strong data-i18n="terrain.adaptation.controls">Layout adaptation</strong>
+      <details id="terrainAdaptationWhy" class="e28-adaptation-why">
+        <summary data-node-ref="element.terrain.adaptation-why" data-i18n="terrain.adaptation.why">Why this layout?</summary>
+        <p id="terrainAdaptationReason"></p>
+      </details>
+      <button id="terrainAdaptationUndo" type="button" data-node-ref="element.terrain.adaptation-undo" data-i18n="terrain.adaptation.undo">Undo adaptation</button>
+      <label class="e28-adaptation-preference"><input id="terrainAdaptiveLayoutEnabled" type="checkbox" checked data-node-ref="element.terrain.adaptive-layout-toggle"> <span data-i18n="terrain.adaptation.preference">Adaptive layout</span></label>
+    </div>
     <label>Language <select id="languageSelect" data-node-ref="element.language.selector" aria-label="Language" data-i18n-aria-label="language.selector.aria"><option value="en">EN</option><option value="zh">中文</option><option value="ja">日本語</option></select></label>
   </div>
 

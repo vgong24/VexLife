@@ -676,5 +676,34 @@
     "outputStateRefs": [
       "state.terrain"
     ]
+  },
+  {
+    "actionRef": "action.terrain.adaptation.explain",
+    "permissionRef": "permission.none",
+    "inputSchema": {},
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": []
+  },
+  {
+    "actionRef": "action.terrain.adaptation.undo",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "suppressed": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain"
+    ]
+  },
+  {
+    "actionRef": "action.terrain.adaptive-layout.toggle",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "enabled": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.terrain"
+    ]
   }
 ]
