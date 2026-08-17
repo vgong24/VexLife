@@ -698,14 +698,14 @@ test('T14 universal Blueprint hash and Atlas compose every Intent registry ident
     .some((error) => error.includes('unknown intent process')));
 });
 
-test('T15 full gate and v2 manifest registrations remain source-managed', () => {
+test('T15 full gate and supported manifest registrations remain source-managed', () => {
   const packageJson = readJson(path.join(root, 'package.json'));
   const health = readJson(path.join(root, 'blueprint/build-health-registry.json'));
   const manifest = readJson(path.join(root, 'SOURCE-MANIFEST.json'));
   assert.equal(packageJson.scripts['intent:check'], 'node scripts/intent-check.mjs');
   assert.ok(health.checks.some((check) => check.checkRef === 'check.intent-orchestration' && check.blocking));
   assert.ok(health.checks.some((check) => check.checkRef === 'check.manifest' && check.blocking));
-  assert.equal(manifest.schemaVersion, 'vexlife.source-manifest/v2');
+  assert.ok(['vexlife.source-manifest/v2', 'vexlife.source-manifest/v3'].includes(manifest.schemaVersion));
   assert.equal(fs.existsSync(path.join(root, 'scripts/intent-check.mjs')), true);
   assert.equal(fs.existsSync(path.join(root, 'blueprint/intent-trust-snapshot.json')), true);
 });
