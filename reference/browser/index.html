@@ -25,24 +25,32 @@
   <nav id="terrainBreadcrumb" class="e27-breadcrumb" aria-label="Current Terrain path"></nav>
 
   <main id="view-terrain" class="e27-terrain terrain" data-node-ref="screen.vexlife.terrain" data-primary-stage="true">
-    <div id="terrainHud" class="e27-hud hud" aria-live="polite"></div>
-    <div id="terrainScopeChip" class="e27-scope-chip scope-chip">interaction scope · <strong>Terrain layer</strong></div>
-
     <div class="e27-zoom-rail terrain-toolbar" aria-label="Terrain zoom controls">
       <button id="terrainZoomIn" class="e27-zoom-button" type="button" aria-label="Zoom in">+</button>
       <div id="terrainZoomTrack" class="e27-zoom-track" aria-hidden="true"><div class="e27-zoom-mark enter"></div><span class="e27-zoom-label enter">enter</span><div class="e27-zoom-mark parent"></div><span class="e27-zoom-label parent">parent</span><div id="terrainZoomKnob" class="e27-zoom-knob"></div></div>
       <button id="terrainZoomOut" class="e27-zoom-button" type="button" aria-label="Zoom out">−</button>
       <output id="terrainZoomStatus" class="e27-zoom-percent">100%</output>
       <div class="e27-auto-entry">
-        <label><input id="terrainAutoEntryEnabled" type="checkbox" checked> Auto-enter layers</label>
-        <label title="Visibility threshold">V <input id="terrainAutoEntryVisibility" type="range" min="0.5" max="1" step="0.01" value="0.72"></label>
-        <label title="Confidence threshold">C <input id="terrainAutoEntryConfidence" type="range" min="0.5" max="1" step="0.01" value="0.8"></label>
-        <output id="terrainAutoEntryStatus">V≥72% · C≥80%</output>
+        <label><input id="terrainAutoEntryEnabled" type="checkbox" checked> <span data-i18n="terrain.auto-entry.enabled">Auto-enter layers</span></label>
+        <span class="e28-auto-entry-state" aria-live="polite"><span data-auto-entry-state="on" data-i18n="terrain.auto-entry.on">Auto-enter on</span><span data-auto-entry-state="off" data-i18n="terrain.auto-entry.off">Auto-enter off</span></span>
       </div>
     </div>
 
-    <div id="terrainIntentTracker" class="e27-intent-tracker"><strong id="terrainIntentTitle">Exploring</strong><small id="terrainIntentDetail">Zoom trajectory is not committed yet.</small><div class="e27-intent-bar"><div id="terrainIntentFill" class="e27-intent-fill"></div></div></div>
-    <div id="terrainWorkspaceBadge" class="e27-workspace-badge">projection workspace</div>
+    <details id="terrainInstrumentation" class="e28-terrain-instrumentation e27-zoom-rail terrain-toolbar scroll-scope" data-node-ref="region.terrain.instrumentation">
+      <summary id="terrainInstrumentationToggle" data-node-ref="element.terrain.instrumentation-toggle" data-i18n="terrain.instrumentation.summary" aria-controls="terrainInstrumentationPanel">Terrain details</summary>
+      <div id="terrainInstrumentationPanel" class="e28-terrain-instrumentation-panel">
+        <div id="terrainHud" class="e27-hud hud" aria-live="polite"></div>
+        <div id="terrainScopeChip" class="e27-scope-chip scope-chip">interaction scope · <strong>Terrain layer</strong></div>
+        <fieldset class="e28-auto-entry-tuning">
+          <legend data-i18n="terrain.instrumentation.tuning">Auto-entry tuning</legend>
+          <label title="Visibility threshold"><span data-i18n="terrain.auto-entry.visibility">Visibility</span> <input id="terrainAutoEntryVisibility" type="range" min="0.5" max="1" step="0.01" value="0.72"></label>
+          <label title="Confidence threshold"><span data-i18n="terrain.auto-entry.confidence">Confidence</span> <input id="terrainAutoEntryConfidence" type="range" min="0.5" max="1" step="0.01" value="0.8"></label>
+          <output id="terrainAutoEntryStatus">V≥72% · C≥80%</output>
+        </fieldset>
+        <div id="terrainIntentTracker" class="e27-intent-tracker"><strong id="terrainIntentTitle">Exploring</strong><small id="terrainIntentDetail">Zoom trajectory is not committed yet.</small><div class="e27-intent-bar"><div id="terrainIntentFill" class="e27-intent-fill"></div></div></div>
+      </div>
+    </details>
+    <div id="terrainWorkspaceBadge" class="e27-workspace-badge" data-i18n="terrain.manual-layout.active">Manual layout active</div>
 
     <div id="terrainCanvas" class="e27-canvas" data-node-ref="element.terrain.canvas">
       <div id="terrainWorld" class="e27-world"><svg id="terrainEdges" class="e27-edges" viewBox="0 0 1200 800" aria-hidden="true"></svg><article id="terrainFocus" class="e27-focus"></article><div id="terrainNodes"></div></div>
@@ -75,16 +83,16 @@
     <strong>Current surface</strong>
     <button id="openConversation" type="button" data-node-ref="element.nav.chat">Open conversation</button>
     <button id="openHealth" type="button" data-node-ref="element.nav.health">Health / source truth</button>
-    <button id="openWorkspace" type="button">Projection workspace</button>
+    <button id="openWorkspace" type="button" data-i18n="region.projects.label">Projects</button>
     <button id="terrainCenter" type="button" data-node-ref="element.terrain.center-current-context" data-i18n="terrain.center-current-context">Center current context</button>
     <label>Language <select id="languageSelect" data-node-ref="element.language.selector" aria-label="Language" data-i18n-aria-label="language.selector.aria"><option value="en">EN</option><option value="zh">中文</option><option value="ja">日本語</option></select></label>
   </div>
 
   <div id="terrainContext" class="e27-terrain-context" hidden>
-    <strong>TERRAIN WORKSPACE</strong>
+    <strong data-i18n="terrain.controls">Terrain controls</strong>
     <button type="button" data-terrain-context="center">Center current context</button>
     <button type="button" data-terrain-context="projection">Cycle projection</button>
-    <button type="button" data-terrain-context="workspace">Toggle projection workspace</button>
+    <button type="button" data-terrain-context="workspace" data-node-ref="element.terrain.manual-layout-toggle" data-i18n="terrain.manual-layout">Arrange Terrain</button>
     <button type="button" data-terrain-context="chat">Open conversation</button>
     <button type="button" data-terrain-context="health">Health / source truth</button>
   </div>
@@ -93,7 +101,7 @@
     <button id="contextSurfaceClose" class="e27-context-close" type="button" aria-label="Close">×</button>
     <section id="view-chat" data-node-ref="screen.vexlife.chat" hidden>
       <header class="e27-context-heading"><div><small data-i18n="conversation.eyebrow">CONVERSATION</small><h1 id="threadTitle">Open conversation</h1><p id="threadDescription"></p></div><div id="presence" class="presence"></div></header>
-      <details id="projectRail" class="e27-projection-workspace" aria-hidden="true"><summary>Projection workspace</summary><button id="workspaceClose" type="button">Close workspace</button><div id="projectList"></div><button id="architectureButton" type="button" data-node-ref="element.architecture.open" data-i18n="architecture.open">How VexLife is built</button></details>
+      <details id="projectRail" class="e27-projection-workspace" aria-hidden="true"><summary data-i18n="region.projects.label">Projects</summary><button id="workspaceClose" type="button">Close workspace</button><div id="projectList"></div><button id="architectureButton" type="button" data-node-ref="element.architecture.open" data-i18n="architecture.open">How VexLife is built</button></details>
       <details id="channelCompatibility" class="e27-channel-controls"><summary data-i18n="region.channels.label">Channels</summary><div id="channelTabs" data-node-ref="region.chat.channels"></div></details>
       <section class="e27-chat-grid">
         <div class="e27-feed" data-node-ref="region.chat.feed"><div id="messageFeed" class="message-feed scroll-scope" data-node-ref="element.chat.feed"></div><button id="newMessagesButton" type="button" hidden><span id="newMessagesCount">0</span> <span data-i18n="messages.new">New messages</span></button><form id="composer" class="composer" data-node-ref="element.chat.composer"><div id="composerAddress"></div><textarea id="messageInput" rows="3" data-i18n-placeholder="composer.placeholder"></textarea><div class="e27-composer-footer"><span id="composerHint"></span><button type="submit" data-i18n="composer.send">Send</button></div></form></div>

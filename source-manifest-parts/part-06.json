@@ -10,8 +10,8 @@
     {
       "path": "reference/browser/app.css",
       "mode": "100644",
-      "bytes": 20302,
-      "sha256": "8817aac3fd218e4396c2b0b9bb0b40f5f57f85c895ee429c823e4c6f14ad2258"
+      "bytes": 23213,
+      "sha256": "ba370fedb238fcd59e9af1bf6f93ee2e64401351f20cdb47cbf8dee32f39c267"
     },
     {
       "path": "reference/browser/app.js",
@@ -22,8 +22,8 @@
     {
       "path": "reference/browser/index.html",
       "mode": "100644",
-      "bytes": 13734,
-      "sha256": "4f43b7d322b86f5370afbf7a411db928d58d0709651b1966e1831c03fb9752bf"
+      "bytes": 15024,
+      "sha256": "e3fb4a7200408d2c3974ae1530c4e0378dd765549bb3824c53e9820d5a33b83e"
     },
     {
       "path": "reference/browser/integration-test.js",
@@ -70,8 +70,8 @@
     {
       "path": "reference/browser/integration/terrain-suite.js",
       "mode": "100644",
-      "bytes": 22387,
-      "sha256": "010e675b28ae39ec54bab97692dc2079bbeff131ba2e220d4e73550c2397a513"
+      "bytes": 29145,
+      "sha256": "c950eed1ab4e398b92c31221f0f53f8c8f62c2a0dbbdd94fd7abfc143937175f"
     },
     {
       "path": "reference/browser/modules/browser-bundle.js",
