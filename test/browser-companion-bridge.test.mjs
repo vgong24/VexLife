@@ -148,6 +148,7 @@ test('browser source never routes companion channel through simulatedReply', () 
   assert.match(chat, /channel\.roleKey === 'companion'[\s\S]*requestRealCompanionReply/u);
   assert.match(chat, /simulatedReply\(channel, frameAtSend\)[\s\S]*channel\.roleKey === 'companion'\) return false/u);
   assert.match(chat, /fetch\('\/api\/v1\/companion\/turn'/u);
+  assert.match(chat, /channel\.roleKey === 'companion' \? companionBindingState === 'BOUND' : isVexAvailable\(\)/u);
   assert.doesNotMatch(chat, /endpoint\s*:/u);
   assert.match(server, /VEXLIFE_COMPANION_ENDPOINT/u);
   assert.match(server, /createBrowserCompanionBridge/u);

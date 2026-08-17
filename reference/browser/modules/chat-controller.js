@@ -30,7 +30,7 @@ export function createChatController({ state, projects, roles, channels, message
   let companionBindingState = 'UNKNOWN';
   const isVexAvailable = () => state.vexAvailability === 'AVAILABLE';
   const channelIsAvailable = (channel = currentChannel()) =>
-    isVexAvailable() && (channel.roleKey !== 'companion' || companionBindingState === 'BOUND');
+    channel.roleKey === 'companion' ? companionBindingState === 'BOUND' : isVexAvailable();
   const draftForChannel = (channel = currentChannel()) =>
     state.unsentLocalDraft?.channelRef === channel.channelRef ? state.unsentLocalDraft : null;
 
