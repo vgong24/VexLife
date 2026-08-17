@@ -219,7 +219,11 @@
         "state.terrain",
         "region.terrain.instrumentation",
         "element.terrain.instrumentation-toggle",
-        "element.terrain.manual-layout-toggle"
+        "element.terrain.manual-layout-toggle",
+        "element.terrain.adaptation-state",
+        "element.terrain.adaptation-why",
+        "element.terrain.adaptation-undo",
+        "element.terrain.adaptive-layout-toggle"
       ],
       "stateRefs": [
         "state.terrain",
@@ -233,7 +237,10 @@
         "action.terrain.canvas.pan",
         "action.terrain.canvas.zoom",
         "action.terrain.instrumentation.toggle",
-        "action.terrain.manual-layout.toggle"
+        "action.terrain.manual-layout.toggle",
+        "action.terrain.adaptation.explain",
+        "action.terrain.adaptation.undo",
+        "action.terrain.adaptive-layout.toggle"
       ],
       "permissionRefs": [
         "permission.none"
@@ -256,7 +263,24 @@
         "terrain.auto-entry.on",
         "terrain.auto-entry.off",
         "terrain.auto-entry.visibility",
-        "terrain.auto-entry.confidence"
+        "terrain.auto-entry.confidence",
+        "terrain.adaptation.state",
+        "terrain.adaptation.controls",
+        "terrain.adaptation.status.adaptive",
+        "terrain.adaptation.status.pinned",
+        "terrain.adaptation.status.undone",
+        "terrain.adaptation.status.off",
+        "terrain.adaptation.why",
+        "terrain.adaptation.undo",
+        "terrain.adaptation.restore",
+        "terrain.adaptation.preference",
+        "terrain.adaptation.reason.current-context",
+        "terrain.adaptation.reason.manual-override",
+        "terrain.adaptation.reason.current-work",
+        "terrain.adaptation.reason.current-scope",
+        "terrain.adaptation.reason.structural",
+        "terrain.adaptation.reason.disabled",
+        "terrain.adaptation.reason.undone"
       ],
       "testRefs": [
         "test.terrain.drag",

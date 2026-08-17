@@ -194,5 +194,22 @@
   "terrain.auto-entry.on": "自动进入已开启",
   "terrain.auto-entry.off": "自动进入已关闭",
   "terrain.auto-entry.visibility": "可见度",
-  "terrain.auto-entry.confidence": "置信度"
+  "terrain.auto-entry.confidence": "置信度",
+  "terrain.adaptation.state": "布局适应状态",
+  "terrain.adaptation.controls": "布局适应",
+  "terrain.adaptation.status.adaptive": "自适应",
+  "terrain.adaptation.status.pinned": "由你固定",
+  "terrain.adaptation.status.undone": "此处适应已撤销",
+  "terrain.adaptation.status.off": "自适应布局已关闭",
+  "terrain.adaptation.why": "为什么这样布局？",
+  "terrain.adaptation.undo": "撤销适应",
+  "terrain.adaptation.restore": "恢复适应",
+  "terrain.adaptation.preference": "自适应布局",
+  "terrain.adaptation.reason.current-context": "当前上下文保持在中心。",
+  "terrain.adaptation.reason.manual-override": "由你固定；手动布局优先于自动适应。",
+  "terrain.adaptation.reason.current-work": "{subject} 因匹配当前工作而被强调。",
+  "terrain.adaptation.reason.current-scope": "{subject} 因匹配当前项目或线程而显示在附近。",
+  "terrain.adaptation.reason.structural": "{subject} 作为结构上下文显示。",
+  "terrain.adaptation.reason.disabled": "根据你的偏好，自动布局适应已关闭。",
+  "terrain.adaptation.reason.undone": "此上下文的自动适应已被暂时抑制。"
 }

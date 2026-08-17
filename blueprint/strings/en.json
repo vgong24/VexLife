@@ -194,5 +194,22 @@
   "terrain.auto-entry.on": "Auto-enter on",
   "terrain.auto-entry.off": "Auto-enter off",
   "terrain.auto-entry.visibility": "Visibility",
-  "terrain.auto-entry.confidence": "Confidence"
+  "terrain.auto-entry.confidence": "Confidence",
+  "terrain.adaptation.state": "Layout adaptation status",
+  "terrain.adaptation.controls": "Layout adaptation",
+  "terrain.adaptation.status.adaptive": "Adaptive",
+  "terrain.adaptation.status.pinned": "Pinned by you",
+  "terrain.adaptation.status.undone": "Adaptation undone here",
+  "terrain.adaptation.status.off": "Adaptive layout off",
+  "terrain.adaptation.why": "Why this layout?",
+  "terrain.adaptation.undo": "Undo adaptation",
+  "terrain.adaptation.restore": "Restore adaptation",
+  "terrain.adaptation.preference": "Adaptive layout",
+  "terrain.adaptation.reason.current-context": "Current context stays centered.",
+  "terrain.adaptation.reason.manual-override": "Pinned by you; manual layout overrides automatic adaptation.",
+  "terrain.adaptation.reason.current-work": "{subject} is emphasized because it matches the current work.",
+  "terrain.adaptation.reason.current-scope": "{subject} is near because it matches the current project or thread.",
+  "terrain.adaptation.reason.structural": "{subject} is shown as structural context.",
+  "terrain.adaptation.reason.disabled": "Automatic layout adaptation is off by your preference.",
+  "terrain.adaptation.reason.undone": "Automatic adaptation is temporarily suppressed for this context."
 }
