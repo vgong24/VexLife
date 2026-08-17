@@ -27,7 +27,10 @@ export function createChatController({ state, projects, roles, channels, message
     .find((project) => project.projectRef === message.projectRef)
     ?.threads.find((thread) => thread.threadRef === message.threadRef);
   const pendingReplyTimers = new Set();
+  let companionBindingState = 'UNKNOWN';
   const isVexAvailable = () => state.vexAvailability === 'AVAILABLE';
+  const channelIsAvailable = (channel = currentChannel()) =>
+    isVexAvailable() && (channel.roleKey !== 'companion' || companionBindingState === 'BOUND');
   const draftForChannel = (channel = currentChannel()) =>
     state.unsentLocalDraft?.channelRef === channel.channelRef ? state.unsentLocalDraft : null;
 
@@ -116,6 +119,7 @@ export function createChatController({ state, projects, roles, channels, message
     updateComposer();
     renderContext();
     if (refreshRail) renderProjectRail();
+    if (channel.roleKey === 'companion') void refreshCompanionAvailability();
   }
 
   function renderChannels() {
@@ -160,6 +164,7 @@ export function createChatController({ state, projects, roles, channels, message
     renderMessages(true);
     updateComposer();
     renderContext();
+    if (channel.roleKey === 'companion') void refreshCompanionAvailability();
   }
 
   function renderPresence() {
@@ -197,6 +202,9 @@ export function createChatController({ state, projects, roles, channels, message
     article.dataset.speaker = roles[message.speakerKey].actorRef;
     article.dataset.componentRef = 'component.vexlife.message-row';
     article.dataset.instanceRef = `instance.message-row.${message.messageRef}`;
+    article.dataset.truthClass = message.truthClass || 'CURRENT_SYNTHETIC_REFERENCE';
+    if (message.conversationHeadSha256) article.dataset.conversationHeadSha256 = message.conversationHeadSha256;
+    if (message.modelNameOrBoundedTestProfileRef) article.dataset.modelRef = message.modelNameOrBoundedTestProfileRef;
     const speaker = roleLabel(message.speakerKey);
     const recipients = message.recipientKeys.map(roleLabel).join(', ');
     const thread = threadForMessage(message);
@@ -227,17 +235,20 @@ export function createChatController({ state, projects, roles, channels, message
       kind: t(channel.kind === 'GROUP' ? 'channel.kind.group' : 'channel.kind.direct'),
       count: channel.memberKeys.length
     });
-    const availabilityRef = isVexAvailable()
+    const available = channelIsAvailable(channel);
+    const availabilityRef = available
       ? 'composer.availability.available'
       : draft
         ? 'composer.availability.unavailable-draft'
         : 'composer.availability.unavailable';
     $('#composerHint').textContent = `${t(availabilityRef)} · ${channelHint}`;
-    form.dataset.availabilityState = state.vexAvailability;
+    form.dataset.availabilityState = available ? 'AVAILABLE' : 'UNAVAILABLE';
+    if (channel.roleKey === 'companion') form.dataset.companionBindingState = companionBindingState;
+    else delete form.dataset.companionBindingState;
     form.dataset.draftState = draft?.state ?? 'NONE';
     input.dataset.draftState = draft?.state ?? 'NONE';
-    sendButton.disabled = !isVexAvailable();
-    sendButton.setAttribute('aria-disabled', String(!isVexAvailable()));
+    sendButton.disabled = !available;
+    sendButton.setAttribute('aria-disabled', String(!available));
   }
 
   function updateComposer() {
@@ -267,7 +278,7 @@ export function createChatController({ state, projects, roles, channels, message
   }
 
   function simulatedReply(channel, frameAtSend) {
-    if (!isVexAvailable()) return false;
+    if (!isVexAvailable() || channel.roleKey === 'companion') return false;
     const list = listForChannel(channel);
     const speakerKey = channel.roleKey;
     const recipientKeys = channel.kind === 'GROUP' ? channel.memberKeys.filter((key) => key !== speakerKey) : ['victor'];
@@ -291,13 +302,70 @@ export function createChatController({ state, projects, roles, channels, message
   }
 
   function scheduleSimulatedReply(channel, frameAtSend) {
-    if (!isVexAvailable()) return false;
+    if (!isVexAvailable() || channel.roleKey === 'companion') return false;
     const timer = window.setTimeout(() => {
       pendingReplyTimers.delete(timer);
       simulatedReply(channel, frameAtSend);
     }, 180);
     pendingReplyTimers.add(timer);
     return true;
+  }
+
+  async function refreshCompanionAvailability() {
+    if (currentChannel()?.roleKey !== 'companion') return companionBindingState;
+    try {
+      const response = await fetch('/api/v1/companion/status', { method: 'GET', cache: 'no-store' });
+      const body = await response.json();
+      companionBindingState = response.ok && body?.state === 'BOUND' ? 'BOUND' : 'UNAVAILABLE';
+    } catch {
+      companionBindingState = 'UNAVAILABLE';
+    }
+    updateComposer();
+    return companionBindingState;
+  }
+
+  async function requestRealCompanionReply(channel, content, frameAtSend) {
+    if (channel.roleKey !== 'companion') return false;
+    companionBindingState = 'BUSY';
+    updateComposer();
+    try {
+      const response = await fetch('/api/v1/companion/turn', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({
+          projectRef: channel.projectRef,
+          threadRef: channel.threadRef,
+          channelRef: channel.channelRef,
+          content,
+          screenRef: frameAtSend.screenRef,
+          selectedNodeRef: frameAtSend.selectedNodeRef
+        })
+      });
+      const body = await response.json();
+      if (!response.ok || body?.state !== 'TURN_COMPLETED' || body?.truthClass !== 'CURRENT_LOCAL_MODEL' || typeof body.content !== 'string' || !body.content) {
+        companionBindingState = 'UNAVAILABLE';
+        updateComposer();
+        return false;
+      }
+      const list = listForChannel(channel);
+      const message = createMessage(channel.channelRef, 'companion', ['victor'], body.content, list.length);
+      message.truthClass = 'CURRENT_LOCAL_MODEL';
+      message.conversationHeadSha256 = body.conversationHeadSha256;
+      message.modelNameOrBoundedTestProfileRef = body.modelNameOrBoundedTestProfileRef;
+      list.push(message);
+      if (!appendMessageNode(message)) {
+        const messageKey = keyForChannel(channel);
+        state.unread.set(messageKey, (state.unread.get(messageKey) || 0) + 1);
+      }
+      companionBindingState = 'BOUND';
+      updateComposer();
+      return true;
+    } catch {
+      companionBindingState = 'UNAVAILABLE';
+      updateComposer();
+      return false;
+    }
   }
 
   function setVexAvailability(nextState) {
@@ -317,17 +385,18 @@ export function createChatController({ state, projects, roles, channels, message
   $('#messageInput').addEventListener('input', (event) => {
     const channel = currentChannel();
     const existing = draftForChannel(channel);
-    if (!isVexAvailable() || existing) setLocalDraft(channel, event.target.value);
+    if (!channelIsAvailable(channel) || existing) setLocalDraft(channel, event.target.value);
     renderComposerTruth();
   });
 
-  $('#composer').addEventListener('submit', (event) => {
+  $('#composer').addEventListener('submit', async (event) => {
     event.preventDefault();
     const input = $('#messageInput');
     const content = input.value.trim();
     if (!content) return;
     const channel = currentChannel();
-    if (!isVexAvailable()) {
+    if (channel.roleKey === 'companion' && companionBindingState === 'UNKNOWN') await refreshCompanionAvailability();
+    if (!channelIsAvailable(channel)) {
       setLocalDraft(channel, input.value);
       renderComposerTruth();
       return;
@@ -341,7 +410,8 @@ export function createChatController({ state, projects, roles, channels, message
     if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
     renderComposerTruth();
     const frameAtSend = navigation.semanticFrame();
-    scheduleSimulatedReply(channel, frameAtSend);
+    if (channel.roleKey === 'companion') await requestRealCompanionReply(channel, content, frameAtSend);
+    else scheduleSimulatedReply(channel, frameAtSend);
   });
   $('#newMessagesButton').addEventListener('click', () => {
     const feed = $('#messageFeed');
@@ -360,6 +430,8 @@ export function createChatController({ state, projects, roles, channels, message
     if (group) selectChannel(group, 'element.channel.group');
   });
 
+  if (currentChannel()?.roleKey === 'companion') void refreshCompanionAvailability();
+
   return {
     currentProject,
     currentThread,
@@ -376,6 +448,8 @@ export function createChatController({ state, projects, roles, channels, message
     updateComposer,
     renderContext,
     setVexAvailability,
+    refreshCompanionAvailability,
+    companionBindingState: () => companionBindingState,
     pendingReplyCount: () => pendingReplyTimers.size
   };
 }
