@@ -5,7 +5,7 @@
 .living-journal-heading h1{margin:2px 0 0;font-size:clamp(22px,3vw,34px)}
 .living-journal-truth{max-width:260px;font-size:12px;line-height:1.35;color:var(--muted)}
 .living-journal-pager,.living-journal-controls,.living-journal-doors{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.living-journal-pager button,.living-journal-controls select,.living-journal-doors button,.living-journal-marginalia button{min-height:44px;min-width:44px}
+.living-journal-pager button,.living-journal-controls select,.living-journal-doors button,.living-journal-marginalia button{min-height:48px;min-width:48px}
 .living-journal-page-status{min-width:120px;text-align:center;font-variant-numeric:tabular-nums}
 .living-journal-controls label{display:flex;align-items:center;gap:7px;min-height:44px}
 .living-journal-controls select{padding:0 30px 0 10px}
