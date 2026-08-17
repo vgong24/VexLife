@@ -1090,5 +1090,37 @@
   {
     "testRef": "test.patient0.nursery.synthetic-journey",
     "brief": "Accepted provider and Patient-0 shared contracts compose arrival, agency, custody-gated synthetic First Home, autobiographical checkpoint, shutdown and fresh-process same-Home return while protected effects remain false."
+  },
+  {
+    "brief": "Living Journal renders only a bounded nearby page window while temporal page succession remains deterministic.",
+    "testRef": "test.living-journal.bounded-pages"
+  },
+  {
+    "brief": "Human, Vex, shared-relationship and source vantages remain attributable projections of one event lineage.",
+    "testRef": "test.living-journal.vantage-separation"
+  },
+  {
+    "brief": "THEN identity remains immutable while LATER stays additive and NOW remains visibly derived/currentness-labelled.",
+    "testRef": "test.living-journal.temporal-integrity"
+  },
+  {
+    "brief": "EN/JA/ZH display switching changes projection only while original language and source remain recoverable.",
+    "testRef": "test.living-journal.multilingual-display"
+  },
+  {
+    "brief": "Source and semantic revisit are explicit doors that never rewrite canonical source or prior Journey history.",
+    "testRef": "test.living-journal.source-and-revisit"
+  },
+  {
+    "brief": "Local marginalia changes only ephemeral Journal projection state and cannot masquerade as durable Memory.",
+    "testRef": "test.living-journal.marginalia-nonmutation"
+  },
+  {
+    "brief": "Journal page controls are keyboard/screen-reader reachable with linear previous/next and >=44px targets.",
+    "testRef": "test.living-journal.accessibility"
+  },
+  {
+    "brief": "Phone Journal uses one-page horizontal snap/gesture grammar with explicit controls and reduced-motion semantic equivalence.",
+    "testRef": "test.living-journal.mobile-book-grammar"
   }
 ]

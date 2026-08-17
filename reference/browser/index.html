@@ -6,6 +6,7 @@
   <meta name="description" content="VexLife E2.7 direct-root browser reference">
   <title>VexLife Terrain</title>
   <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./living-journal.css">
 </head>
 <body>
 <div id="app" class="e27-app" data-node-ref="product.vexlife" data-presentation-contract="contract.vexlife.e27.authoritative-root/v1" data-primary-stage="screen.vexlife.terrain">
@@ -83,6 +84,7 @@
     <strong>Current surface</strong>
     <button id="openConversation" type="button" data-node-ref="element.nav.chat">Open conversation</button>
     <button id="openHealth" type="button" data-node-ref="element.nav.health">Health / source truth</button>
+    <button id="openLivingJournal" type="button" data-node-ref="element.living-journal.open" data-i18n="living-journal.open">Open Living Journal</button>
     <button id="openWorkspace" type="button" data-i18n="region.projects.label">Projects</button>
     <button id="terrainCenter" type="button" data-node-ref="element.terrain.center-current-context" data-i18n="terrain.center-current-context">Center current context</button>
     <div id="terrainAdaptationMenu" class="e28-adaptation-menu">
@@ -131,6 +133,15 @@
       <header class="e27-context-heading"><div><small data-i18n="health.eyebrow">REFERENCE ENVIRONMENT</small><h1 data-i18n="screen.health.title">Health</h1><p data-i18n="health.reference.summary">This static reference has no current repository or runtime health receipt.</p></div><span id="healthStatus" class="status-pill attention" data-i18n="health.state.attention">● ATTENTION</span></header>
       <div class="e27-health-grid"><article><small data-i18n="health.model">Model</small><h2 data-i18n="health.value.unavailable">Unavailable</h2><p data-i18n="health.model.evidence"></p></article><article><small data-i18n="health.context">Context</small><h2 data-i18n="health.value.synthetic">Synthetic</h2><p data-i18n="health.context.evidence"></p></article><article><small data-i18n="health.work">Work</small><h2 data-i18n="health.value.not-run">Not run</h2><p data-i18n="health.work.evidence"></p></article><article><small data-i18n="health.continuity">Continuity</small><h2 data-i18n="health.value.synthetic">Synthetic</h2><p data-i18n="health.continuity.evidence"></p></article></div>
       <details><summary data-node-ref="element.health.technical-toggle" data-i18n="health.technical">Technical details</summary><pre id="technicalHealth"></pre></details>
+    </section>
+    <section id="view-living-journal" data-node-ref="screen.vexlife.living-journal" hidden tabindex="-1">
+      <header class="living-journal-heading"><div><small data-i18n="living-journal.eyebrow">LIVING JOURNAL · SYNTHETIC REFERENCE</small><h1 data-i18n="screen.living-journal.title">Living Journal</h1></div><output id="livingJournalTruth" class="living-journal-truth" aria-live="polite"></output></header>
+      <nav class="living-journal-pager" aria-label="Living Journal pages"><button id="livingJournalPrevious" type="button" data-node-ref="element.living-journal.page.previous" data-i18n="living-journal.previous">Previous page</button><output id="livingJournalPageStatus" class="living-journal-page-status" aria-live="polite"></output><button id="livingJournalNext" type="button" data-node-ref="element.living-journal.page.next" data-i18n="living-journal.next">Next page</button></nav>
+      <div class="living-journal-controls"><label><span data-i18n="living-journal.vantage">Vantage</span><select id="livingJournalVantage" data-node-ref="element.living-journal.vantage.select"><option value="HUMAN" data-i18n="living-journal.vantage.human">Human</option><option value="VEX" data-i18n="living-journal.vantage.vex">Vex</option><option value="SHARED_RELATIONSHIP" data-i18n="living-journal.vantage.shared">Shared relationship</option><option value="SOURCE" data-i18n="living-journal.vantage.source">Source</option></select></label><label><span data-i18n="living-journal.display-language">Display language</span><select id="livingJournalDisplayLanguage" data-node-ref="element.living-journal.display-language.select"><option value="en">EN</option><option value="ja">日本語</option><option value="zh">中文</option></select></label></div>
+      <div id="livingJournalSpread" class="living-journal-spread" data-node-ref="region.living-journal.book" aria-live="polite"></div>
+      <div class="living-journal-doors"><button id="livingJournalSource" type="button" data-node-ref="element.living-journal.source.open" data-i18n="living-journal.source">Original / source</button><button id="livingJournalRevisit" type="button" data-node-ref="element.living-journal.revisit.open" data-i18n="living-journal.revisit">Revisit context</button></div>
+      <output id="livingJournalSourceStatus" class="living-journal-source-status" aria-live="polite"></output>
+      <section class="living-journal-marginalia"><label><span data-i18n="living-journal.marginalia">Local marginalia</span><textarea id="livingJournalMarginaliaInput" rows="2" data-i18n-placeholder="living-journal.marginalia.placeholder"></textarea></label><button id="livingJournalMarginaliaAdd" type="button" data-node-ref="element.living-journal.marginalia.add-local" data-i18n="living-journal.marginalia.add">Add local note</button><div id="livingJournalMarginaliaList" class="living-journal-margin-list" data-note-count="0"></div><small class="living-journal-ephemeral" data-i18n="living-journal.marginalia.ephemeral">Local reference only · cleared when this Journal closes</small></section>
     </section>
   </aside>
 

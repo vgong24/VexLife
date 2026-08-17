@@ -202,5 +202,65 @@
       "reference/browser/modules/guide-controller.js",
       "reference/browser/modules/demo-data.js"
     ]
+  },
+  {
+    "changeMap": [
+      "reference/browser/app.js",
+      "reference/browser/integration/living-journal-suite.js"
+    ],
+    "consumers": [
+      "reference/browser/app.js"
+    ],
+    "moduleRef": "module.vexlife.browser.living-journal-controller",
+    "path": "reference/browser/modules/living-journal-controller.js",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/modules/living-journal-demo-data.js",
+      "blueprint/strings/*.json"
+    ],
+    "role": "Owns bounded lived-book page projection, vantage/display switching, explicit source/revisit doors and ephemeral local marginalia without Memory authority.",
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "writes": [
+      "ephemeral in-page Journal marginalia only"
+    ]
+  },
+  {
+    "changeMap": [
+      "reference/browser/modules/living-journal-controller.js"
+    ],
+    "consumers": [
+      "reference/browser/modules/living-journal-controller.js"
+    ],
+    "moduleRef": "module.vexlife.browser.living-journal-demo-data",
+    "path": "reference/browser/modules/living-journal-demo-data.js",
+    "platformScope": "BROWSER",
+    "reads": [],
+    "role": "Provides clearly labelled CURRENT_SYNTHETIC_REFERENCE event pages for lived-book projection proof; no real Memory, journal body, model, translation or network data.",
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "writes": []
+  },
+  {
+    "changeMap": [
+      "reference/browser/index.html",
+      "reference/browser/modules/living-journal-controller.js"
+    ],
+    "loadedBy": [
+      "reference/browser/index.html"
+    ],
+    "moduleRef": "module.vexlife.browser.living-journal-styles",
+    "path": "reference/browser/living-journal.css",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/design-tokens.json"
+    ],
+    "role": "Projects wide two-page and narrow/phone one-page horizontal book grammar with scroll snap, >=44px controls and reduced-motion equivalence.",
+    "tests": [
+      "test/browser.test.mjs"
+    ],
+    "writes": []
   }
 ]
