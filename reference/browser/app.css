@@ -59,4 +59,16 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
 .e28-adaptation-why p{margin:0;padding:0 9px 9px;font-size:9px;line-height:1.4;color:var(--muted)}#terrainAdaptationUndo{min-height:44px}.e28-adaptation-preference{min-height:44px}
 @media(prefers-reduced-motion:reduce){.e28-adaptation-state,.e28-adaptation-menu,.e28-adaptation-why{transition:none!important;animation:none!important}}
 
+/* E2.8 Q2 mobile-native Terrain projection grammar */
+@media(max-width:760px){
+  .e27-terrain{background-size:auto,36px 36px,36px 36px}
+  .e27-world[data-projection-grammar="MOBILE_STACK"] .e27-focus{border-radius:20px;padding:15px}
+  .e27-world[data-projection-grammar="MOBILE_STACK"] .e27-node{border-radius:18px;touch-action:manipulation}
+  .e27-world[data-projection-grammar="MOBILE_STACK"] .e27-node strong{font-size:14px}
+  .e27-zoom-rail{left:8px;top:48px}
+  .e27-adjacent{left:8px;right:8px;bottom:8px;gap:8px}
+  .e27-adjacent-card{width:min(168px,46%);min-height:44px;padding:8px}
+}
+@media(prefers-reduced-motion:reduce){.e27-world[data-projection-grammar="MOBILE_STACK"] .e27-node{transition:none!important}}
+
 /* [VXG RealForever] */

@@ -88,14 +88,23 @@ if (playwright) {
     compactPage.on('console',(message)=>{if(message.type()==='error')compactConsoleErrors.push(message.text());});compactPage.on('pageerror',(error)=>compactPageErrors.push(error.message));
     await compactPage.goto(serverUrl+'/reference/browser/',{waitUntil:'networkidle',timeout:30000});
     await compactPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
-    const livedDCompact=await compactPage.evaluate(async()=>{
-      const {runLivedDDisclosureProof}=await import('./integration/terrain-suite.js');
+    const compactProof=await compactPage.evaluate(async()=>{
+      const {runLivedDDisclosureProof,runQ2MobileGrammarProof}=await import('./integration/terrain-suite.js');
       const assert=(condition,message)=>{if(!condition)throw new Error(message);};
       const delay=(ms)=>new Promise((resolve)=>setTimeout(resolve,ms));
-      return runLivedDDisclosureProof({app:globalThis.__VEXLIFE_APP__,helpers:{delay,assert},viewportClass:'COMPACT'});
+      const app=globalThis.__VEXLIFE_APP__,semanticFrame=JSON.stringify(app.navigation.semanticFrame()),journey=JSON.stringify(app.navigation.fullJourney()),adaptation=JSON.stringify(app.terrain.adaptationSnapshot()),currentRef=app.terrain.currentRef();
+      const livedDCompact=await runLivedDDisclosureProof({app,helpers:{delay,assert},viewportClass:'COMPACT'});
+      const q2Compact=await runQ2MobileGrammarProof({app,helpers:{delay,assert}});
+      return{livedDCompact,q2Compact,semanticFrame,journey,adaptation,currentRef};
     });
+    await compactPage.setViewportSize({width:900,height:844});await delay(120);
+    const wideInverse=await compactPage.evaluate(()=>{const app=globalThis.__VEXLIFE_APP__;return{projection:app.terrain.viewportProjection(),semanticFrame:JSON.stringify(app.navigation.semanticFrame()),journey:JSON.stringify(app.navigation.fullJourney()),adaptation:JSON.stringify(app.terrain.adaptationSnapshot()),currentRef:app.terrain.currentRef()}});
+    await compactPage.setViewportSize({width:390,height:844});await delay(120);
+    const compactRecovered=await compactPage.evaluate(()=>{const app=globalThis.__VEXLIFE_APP__;return{projection:app.terrain.viewportProjection(),semanticFrame:JSON.stringify(app.navigation.semanticFrame()),journey:JSON.stringify(app.navigation.fullJourney()),adaptation:JSON.stringify(app.terrain.adaptationSnapshot()),currentRef:app.terrain.currentRef()}});
+    const q2ViewportInverse={state:wideInverse.projection?.viewportClass==='DESKTOP'&&wideInverse.projection?.projectionGrammar==='SPATIAL_WORLD'&&compactRecovered.projection?.viewportClass==='COMPACT'&&compactRecovered.projection?.projectionGrammar==='MOBILE_STACK'&&[wideInverse,compactRecovered].every(x=>x.semanticFrame===compactProof.semanticFrame&&x.journey===compactProof.journey&&x.adaptation===compactProof.adaptation&&x.currentRef===compactProof.currentRef)?'PASS':'FAIL',wide:wideInverse.projection,recovered:compactRecovered.projection};
+    const livedDCompact=compactProof.livedDCompact,q2Compact=compactProof.q2Compact;
     await compactPage.close();
-    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 ? 'PASS' : 'FAILED';
+    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 ? 'PASS' : 'FAILED';
     finish({
       ...baseReceipt,
       state,
@@ -104,7 +113,9 @@ if (playwright) {
       consoleErrors:[...consoleErrors,...compactConsoleErrors],
       pageErrors:[...pageErrors,...compactPageErrors],
       integration,
-      livedDCompact
+      livedDCompact,
+      q2Compact,
+      q2ViewportInverse
     }, state === 'PASS' ? 0 : 1);
   } catch (error) {
     finish({
