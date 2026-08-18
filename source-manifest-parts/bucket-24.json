@@ -3,6 +3,12 @@
   "bucketId": "24",
   "files": [
     {
+      "path": "src/core/browser-living-journal-memory-bridge.mjs",
+      "mode": "100644",
+      "bytes": 7319,
+      "sha256": "303351fd0eb0ef9e393fd475b8649605462d65bc81399fceb0cfc57febc7fec5"
+    },
+    {
       "path": "src/core/context-lease.mjs",
       "mode": "100644",
       "bytes": 11526,
