@@ -740,5 +740,98 @@
     "inputSchema": {},
     "effectClass": "READ_ONLY",
     "outputStateRefs": []
+  },
+  {
+    "actionRef": "action.living-journal.open",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {
+      "selectedNodeRef": "ref"
+    },
+    "outputStateRefs": [
+      "state.living-journal",
+      "state.navigation",
+      "state.journey"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.page.previous",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {
+      "pageRef": "ref"
+    },
+    "outputStateRefs": [
+      "state.living-journal"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.page.next",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {
+      "pageRef": "ref"
+    },
+    "outputStateRefs": [
+      "state.living-journal"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.vantage.select",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {
+      "vantage": "enum"
+    },
+    "outputStateRefs": [
+      "state.living-journal"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.display-language.select",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {
+      "language": "string"
+    },
+    "outputStateRefs": [
+      "state.living-journal"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.source.open",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {
+      "sourceRef": "ref"
+    },
+    "outputStateRefs": [
+      "state.living-journal",
+      "state.journey"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.revisit.open",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {
+      "selectedNodeRef": "ref"
+    },
+    "outputStateRefs": [
+      "state.navigation",
+      "state.journey"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.marginalia.add-local",
+    "effectClass": "LOCAL_EPHEMERAL_REFERENCE",
+    "inputSchema": {
+      "content": "string",
+      "pageRef": "ref"
+    },
+    "outputStateRefs": [
+      "state.living-journal"
+    ],
+    "permissionRef": "permission.none"
   }
 ]

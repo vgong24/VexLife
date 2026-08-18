@@ -2,6 +2,12 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
+      "mode": "100644",
+      "bytes": 3310,
+      "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
+    },
+    {
       "path": "docs/HUMAN-ONBOARDING-GUIDED-LOCAL-ESTABLISHMENT.md",
       "mode": "100644",
       "bytes": 10602,
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 1844,
       "sha256": "533db6182bcabd097bcd260d1fbbb414c730c71944843dfc483aa51a1bf9eac3"
-    },
-    {
-      "path": "package.json",
-      "mode": "100644",
-      "bytes": 4074,
-      "sha256": "b8243a144834dc50b1cc32ee3009f160d13966e17a93207c3b6f90f56cccece9"
     }
   ]
 }

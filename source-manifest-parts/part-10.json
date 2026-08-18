@@ -2,6 +2,36 @@
   "schemaVersion": "vexlife.source-manifest-part/v1",
   "files": [
     {
+      "path": "src/core/g05-runtime-authority-substrate.mjs",
+      "mode": "100644",
+      "bytes": 44847,
+      "sha256": "9aa7e0c4976f6a334a35d4b32a18b801a1f71437aef021b46e1a8642842507ea"
+    },
+    {
+      "path": "src/core/home-bridge.mjs",
+      "mode": "100644",
+      "bytes": 7921,
+      "sha256": "3ceef5d425232ec90b4d59a6e9a8b66510124d0f748ebd695a437e56a48cda81"
+    },
+    {
+      "path": "src/core/impact.mjs",
+      "mode": "100644",
+      "bytes": 2182,
+      "sha256": "ff17dd8fc7281c6399d6bc172fc5d28df2b9a5262bfd26a2340e67f9430798f7"
+    },
+    {
+      "path": "src/core/implementation-plan.mjs",
+      "mode": "100644",
+      "bytes": 5655,
+      "sha256": "1b563ba746e04a49a0297b13c61f20a70dc4acf9f343dc637c2943795a496153"
+    },
+    {
+      "path": "src/core/intent-checkpoint.mjs",
+      "mode": "100644",
+      "bytes": 14269,
+      "sha256": "0378b4c09044be1b871d8517f869abdf50431ff65c12f2314b63fae0ff7fd863"
+    },
+    {
       "path": "src/core/intent-completion-verifier.mjs",
       "mode": "100644",
       "bytes": 21202,
@@ -114,36 +144,6 @@
       "mode": "100644",
       "bytes": 8224,
       "sha256": "acabc315d4c926d4eb97b4a3561c391c524e98a11fd04871e89d47266f1533ba"
-    },
-    {
-      "path": "src/core/recovery-policy.mjs",
-      "mode": "100644",
-      "bytes": 12560,
-      "sha256": "a144d98aec68fefc9508788b7f26271842935d99ed160d94eb0e05e64ec79e7c"
-    },
-    {
-      "path": "src/core/registry.mjs",
-      "mode": "100644",
-      "bytes": 34556,
-      "sha256": "0ae9e3719f7d773b7209f72885380ce4a554ab212c7da51c26ee65dccee89fec"
-    },
-    {
-      "path": "src/core/repository-evidence.mjs",
-      "mode": "100644",
-      "bytes": 19367,
-      "sha256": "e5d2710183c8fd91652922eea8c3e02d05df98db0ea7ffb4e9e1d67d36f95b9e"
-    },
-    {
-      "path": "src/core/resource-admission.mjs",
-      "mode": "100644",
-      "bytes": 8924,
-      "sha256": "36e4b449574fbd2195254b6d3b56178202154f2ca8a41485f212e405c5fd45e2"
-    },
-    {
-      "path": "src/core/runtime-failure.mjs",
-      "mode": "100644",
-      "bytes": 17151,
-      "sha256": "d0b0e6775161695555c6139c479431a42d1e23a857c98f3772ea31533bc86e78"
     }
   ]
 }

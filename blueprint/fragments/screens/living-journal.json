@@ -1,0 +1,208 @@
+{
+  "screenRef": "screen.vexlife.living-journal",
+  "routeRef": "route.living-journal",
+  "titleStringRef": "screen.living-journal.title",
+  "presentationContractRef": "contract.vexlife.e27.authoritative-root/v1",
+  "presentationClass": "CONTEXTUAL_LIVING_BOOK_PROJECTION",
+  "primaryStage": false,
+  "persistentCanvasConsumer": false,
+  "stateSelectorRefs": [
+    "selector.current-screen-frame"
+  ],
+  "regions": [
+    {
+      "regionRef": "region.living-journal.book",
+      "labelStringRef": "screen.living-journal.title",
+      "presentationClass": "CONTEXTUAL_LIVING_BOOK",
+      "defaultVisible": true,
+      "persistent": false,
+      "persistentCanvasConsumer": false,
+      "elements": [
+        {
+          "elementRef": "element.living-journal.open",
+          "conceptRef": "concept.element.living-journal.open",
+          "interactionRef": "interaction.living-journal.open",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.open",
+          "kind": "CONTEXTUAL_SCREEN_OPEN",
+          "labelStringRef": "living-journal.open",
+          "actionRef": "action.living-journal.open",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.open"
+          },
+          "testRefs": [
+            "test.living-journal.source-and-revisit"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.page.previous",
+          "conceptRef": "concept.element.living-journal.page.previous",
+          "interactionRef": "interaction.living-journal.page.previous",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.page.previous",
+          "kind": "PAGE_PREVIOUS",
+          "labelStringRef": "living-journal.previous",
+          "actionRef": "action.living-journal.page.previous",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.page.previous"
+          },
+          "testRefs": [
+            "test.living-journal.bounded-pages",
+            "test.living-journal.accessibility"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.page.next",
+          "conceptRef": "concept.element.living-journal.page.next",
+          "interactionRef": "interaction.living-journal.page.next",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.page.next",
+          "kind": "PAGE_NEXT",
+          "labelStringRef": "living-journal.next",
+          "actionRef": "action.living-journal.page.next",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.page.next"
+          },
+          "testRefs": [
+            "test.living-journal.bounded-pages",
+            "test.living-journal.accessibility"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.vantage.select",
+          "conceptRef": "concept.element.living-journal.vantage.select",
+          "interactionRef": "interaction.living-journal.vantage.select",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.vantage.select",
+          "kind": "VANTAGE_SELECTOR",
+          "labelStringRef": "living-journal.vantage",
+          "actionRef": "action.living-journal.vantage.select",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "combobox",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.vantage.select"
+          },
+          "testRefs": [
+            "test.living-journal.vantage-separation"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.display-language.select",
+          "conceptRef": "concept.element.living-journal.display-language.select",
+          "interactionRef": "interaction.living-journal.display-language.select",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.display-language.select",
+          "kind": "DISPLAY_LANGUAGE_SELECTOR",
+          "labelStringRef": "living-journal.display-language",
+          "actionRef": "action.living-journal.display-language.select",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "combobox",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.display-language.select"
+          },
+          "testRefs": [
+            "test.living-journal.multilingual-display"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.source.open",
+          "conceptRef": "concept.element.living-journal.source.open",
+          "interactionRef": "interaction.living-journal.source.open",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.source.open",
+          "kind": "SOURCE_DOOR",
+          "labelStringRef": "living-journal.source",
+          "actionRef": "action.living-journal.source.open",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.source.open"
+          },
+          "testRefs": [
+            "test.living-journal.source-and-revisit"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.revisit.open",
+          "conceptRef": "concept.element.living-journal.revisit.open",
+          "interactionRef": "interaction.living-journal.revisit.open",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.revisit.open",
+          "kind": "REVISIT_DOOR",
+          "labelStringRef": "living-journal.revisit",
+          "actionRef": "action.living-journal.revisit.open",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.revisit.open"
+          },
+          "testRefs": [
+            "test.living-journal.source-and-revisit"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.marginalia.add-local",
+          "conceptRef": "concept.element.living-journal.marginalia.add-local",
+          "interactionRef": "interaction.living-journal.marginalia.add-local",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.marginalia.add-local",
+          "kind": "LOCAL_MARGINALIA",
+          "labelStringRef": "living-journal.marginalia.add",
+          "actionRef": "action.living-journal.marginalia.add-local",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.marginalia.add-local"
+          },
+          "testRefs": [
+            "test.living-journal.marginalia-nonmutation"
+          ]
+        }
+      ],
+      "conceptRef": "concept.region.living-journal.book",
+      "navigationNodeRef": "nav.region.living-journal.book"
+    }
+  ],
+  "testRefs": [
+    "test.living-journal.bounded-pages",
+    "test.living-journal.vantage-separation",
+    "test.living-journal.temporal-integrity",
+    "test.living-journal.multilingual-display",
+    "test.living-journal.source-and-revisit",
+    "test.living-journal.marginalia-nonmutation",
+    "test.living-journal.accessibility",
+    "test.living-journal.mobile-book-grammar"
+  ],
+  "conceptRef": "concept.screen.vexlife.living-journal",
+  "navigationNodeRef": "nav.screen.vexlife.living-journal"
+}
