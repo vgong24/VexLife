@@ -4,9 +4,12 @@ const SYNTHETIC_TRUTH='CURRENT_SYNTHETIC_REFERENCE';
 const MEMORY_TRUTH='CURRENT_MEMORY_REFERENCE';
 const MEMORY_SCHEMA='vexlife.living-journal.memory-projection/v1';
 const POSITIVE_CONSENT=new Set(['PERMITTED','NARROWED']);
+const SHA256=/^[0-9a-f]{64}$/u;
+const MEMORY_EFFECT_KEYS=Object.freeze(['homeMutated','memoryMutated','semanticAcceptanceCreated','firstPersonAuthorityGranted','modelCalled','translationCalled','networkCalled','trainingRan','modelWeightsChanged','publicationPerformed']);
 const q=(selector)=>document.querySelector(selector);
 const object=(value)=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const nonempty=(value)=>typeof value==='string'&&value.length>0;
+const sameOrderedStrings=(left,right)=>Array.isArray(left)&&Array.isArray(right)&&left.length===right.length&&left.every((value,index)=>value===right[index]);
 
 function assertSyntheticData(data){
   if(data?.truthClass!==SYNTHETIC_TRUTH||data.realMemoryLoaded||data.realJournalBodyLoaded||data.modelCalled||data.translationCalled||data.networkCalled||data.persisted||data.published||!Array.isArray(data.pages)||data.pages.length===0)throw new Error('Living Journal demo data boundary is invalid');
@@ -14,20 +17,26 @@ function assertSyntheticData(data){
 }
 
 function assertMemoryPage(page,index){
-  if(!object(page)||!nonempty(page.pageRef)||!nonempty(page.statementRef)||!nonempty(page.summary)||!nonempty(page.summaryHash))throw new Error(`Living Journal Memory page ${index} identity/body is invalid`);
+  if(!object(page)||!nonempty(page.pageRef)||!nonempty(page.statementRef)||!nonempty(page.summary)||!SHA256.test(page.summaryHash??''))throw new Error(`Living Journal Memory page ${index} identity/body is invalid`);
   if(Object.hasOwn(page,'eventRef')||Object.hasOwn(page,'thenRef')||Object.hasOwn(page,'display')||Object.hasOwn(page,'source'))throw new Error(`Living Journal Memory page ${index} cannot impersonate synthetic event/temporal/source-body semantics`);
   if(page.current!==true||page.acceptedForContinuity!==true||!POSITIVE_CONSENT.has(page.consentState))throw new Error(`Living Journal Memory page ${index} current acceptance state is invalid`);
-  if(!nonempty(page.currentDailyStratumRef)||!nonempty(page.currentDailyStratumSha256)||!nonempty(page.dayRef)||!Number.isInteger(page.dayIndex)||page.dayIndex<0)throw new Error(`Living Journal Memory page ${index} Daily identity is invalid`);
-  for(const key of ['sourceConversationHeadSha256','sourceScoreHeadSha256','sourceSemanticAuthorityHeadSha256'])if(!nonempty(page[key]))throw new Error(`Living Journal Memory page ${index} ${key} is invalid`);
-  if(!Array.isArray(page.sourceBindings)||page.sourceBindings.length===0||page.sourceBindings.some((binding)=>!object(binding)||!nonempty(binding.eventRef)))throw new Error(`Living Journal Memory page ${index} source bindings are invalid`);
+  if(!nonempty(page.currentDailyStratumRef)||!SHA256.test(page.currentDailyStratumSha256??'')||!nonempty(page.dayRef)||!Number.isInteger(page.dayIndex)||page.dayIndex<0)throw new Error(`Living Journal Memory page ${index} Daily identity is invalid`);
+  for(const key of ['semanticAcceptanceSha256','semanticAuthorityHeadSha256','sourceConversationHeadSha256','sourceScoreHeadSha256','sourceSemanticAuthorityHeadSha256'])if(!SHA256.test(page[key]??''))throw new Error(`Living Journal Memory page ${index} ${key} is invalid`);
+  if(!Array.isArray(page.sourceBindings)||page.sourceBindings.length===0||page.sourceBindings.some((binding)=>!object(binding)||!nonempty(binding.eventRef)||!SHA256.test(binding.eventHash??'')))throw new Error(`Living Journal Memory page ${index} source bindings are invalid`);
+  const sourceRefs=page.sourceBindings.map((binding)=>binding.eventRef);
+  if(new Set(sourceRefs).size!==sourceRefs.length)throw new Error(`Living Journal Memory page ${index} source bindings contain duplicate event refs`);
   if(!object(page.sourceDescent)||page.sourceDescent.rawSourceContentIncluded!==false||page.rawSourceContentIncluded!==false||page.firstPersonAuthorityGranted!==false)throw new Error(`Living Journal Memory page ${index} source-content boundary is invalid`);
+  if(page.sourceDescent.observedCurrentConversationHeadSha256!==page.sourceConversationHeadSha256)throw new Error(`Living Journal Memory page ${index} source-descent conversation frontier is inconsistent`);
+  if(!sameOrderedStrings(page.sourceDescent.observedCommittedSourceEventRefs,sourceRefs))throw new Error(`Living Journal Memory page ${index} source-descent event refs are inconsistent`);
   return page;
 }
 
 function assertMemoryData(data){
   if(!object(data)||data.schemaVersion!==MEMORY_SCHEMA||data.truthClass!==MEMORY_TRUTH||data.currentness!=='CURRENT'||data.state!=='CURRENT'||data.realMemoryLoaded!==true||data.rawConversationContentIncluded!==false||!Array.isArray(data.pages))throw new Error('Living Journal Memory projection boundary is invalid');
   if(data.realJournalBodyLoaded!==(data.pages.length>0)||data.pageCount!==data.pages.length)throw new Error('Living Journal Memory projection page/body state is invalid');
-  if(!object(data.effects)||Object.values(data.effects).some((value)=>value!==false))throw new Error('Living Journal Memory projection must be effect-free');
+  if(!object(data.effects))throw new Error('Living Journal Memory projection must carry the explicit zero-effect ledger');
+  const observedEffectKeys=Object.keys(data.effects).sort(),expectedEffectKeys=[...MEMORY_EFFECT_KEYS].sort();
+  if(!sameOrderedStrings(observedEffectKeys,expectedEffectKeys)||MEMORY_EFFECT_KEYS.some((key)=>data.effects[key]!==false))throw new Error('Living Journal Memory projection must carry the complete explicit zero-effect ledger');
   data.pages.forEach(assertMemoryPage);
   return data;
 }
@@ -77,6 +86,12 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     article.dataset.truthClass=journalData.truthClass;
     if(view.eventRef)article.dataset.eventRef=view.eventRef;
     if(view.statementRef)article.dataset.statementRef=view.statementRef;
+    if(view.mode==='MEMORY'){
+      article.dataset.currentDailyStratumRef=view.currentDailyStratumRef;
+      article.dataset.sourceConversationHeadSha256=view.sourceConversationHeadSha256;
+      article.dataset.sourceScoreHeadSha256=view.sourceScoreHeadSha256;
+      article.dataset.sourceSemanticAuthorityHeadSha256=view.sourceSemanticAuthorityHeadSha256;
+    }
     if(index===journal.pageIndex)article.setAttribute('aria-current','page');
     const ordinal=document.createElement('small');
     ordinal.className='living-journal-ordinal';
