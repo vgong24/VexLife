@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "0a",
+  "files": [
+    {
+      "path": "src/core/living-journal-memory-projection.mjs",
+      "mode": "100644",
+      "bytes": 10727,
+      "sha256": "d3e4c7b478e12909e5038b18284565a387114d714de6fc54bfaeb707a1f441bc"
+    }
+  ]
+}
