@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "09",
+  "files": [
+    {
+      "path": "docs/EXPERIENCE-GESTURES-AND-VESSELS.md",
+      "mode": "100644",
+      "bytes": 4158,
+      "sha256": "0b800aa690bf2b542a6451dba474174ef1c48274f708c66f26f65b01b8fbfb79"
+    },
+    {
+      "path": "src/core/intent-projection.mjs",
+      "mode": "100644",
+      "bytes": 5452,
+      "sha256": "cffe6f351d90941366f748c7e03fae7a2bcae86abc6464f19776ebaf341b4a7f"
+    },
+    {
+      "path": "src/core/patient0-familiarity-live-work.mjs",
+      "mode": "100644",
+      "bytes": 25367,
+      "sha256": "a90ee2bac19e22dc9d51268a0013e42e9442a4ec20ba30cc3c635b0ef4714d78"
+    },
+    {
+      "path": "test/score-context-continuity.test.mjs",
+      "mode": "100644",
+      "bytes": 55877,
+      "sha256": "b36b7bd8d992f0cae8643d2255c7e148a2cdfbc99de2eabe55ffa00fa62606cb"
+    }
+  ]
+}

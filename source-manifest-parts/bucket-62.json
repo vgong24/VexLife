@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "62",
+  "files": [
+    {
+      "path": "docs/FOUNDATION-README.md",
+      "mode": "100644",
+      "bytes": 22513,
+      "sha256": "2e3d9f6df0fc3a4ef3f2c76c87569a400d73c5279321d9bb64ed4a6f0c3d5046"
+    },
+    {
+      "path": "docs/SCORE-AND-CONTEXT-CONTINUITY.md",
+      "mode": "100644",
+      "bytes": 14107,
+      "sha256": "d307fe51b0ed0bee606de19fb809babcf2e087636ba82f25d73173f11fd07084"
+    }
+  ]
+}

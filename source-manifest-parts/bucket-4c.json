@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "4c",
+  "files": [
+    {
+      "path": "PROVENANCE.md",
+      "mode": "100644",
+      "bytes": 3001,
+      "sha256": "94bc806ae54fa7faeb15616ea897568b90ae3d7dbd6c9d4d340ead8b7c379892"
+    },
+    {
+      "path": "scripts/serve-browser.mjs",
+      "mode": "100644",
+      "bytes": 1528,
+      "sha256": "c00be2e2a257c5f7ca4bd5ac7f03b550cf04254e65e2fc06f5564410c744a835"
+    }
+  ]
+}

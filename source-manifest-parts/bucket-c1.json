@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "c1",
+  "files": [
+    {
+      "path": "blueprint/feature-registry.json",
+      "mode": "100644",
+      "bytes": 74713,
+      "sha256": "21692a18eba85d490360dc6ef3d686701f3dde7a2bdcb857a8c0841c6ca1a5be"
+    },
+    {
+      "path": "docs/SCHEDULED-DAILY-AUTONOMY.md",
+      "mode": "100644",
+      "bytes": 7018,
+      "sha256": "a87d87b39db03088bd8f19c6443acfc019e8594271fdfa3607f3d185981867fc"
+    },
+    {
+      "path": "scripts/bootstrap.mjs",
+      "mode": "100644",
+      "bytes": 804,
+      "sha256": "7bb74626c8bb61e58fa608ec950263908f1af9819307d6426142f655002a4ccc"
+    },
+    {
+      "path": "scripts/evaluated-rhythm-learning.mjs",
+      "mode": "100644",
+      "bytes": 21738,
+      "sha256": "276e8ba13ae27acc808a4af69f0f2ed4de1e8fdeb08e372fbbe8b583c2746e8f"
+    },
+    {
+      "path": "src/core/journey.mjs",
+      "mode": "100644",
+      "bytes": 1243,
+      "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
+    }
+  ]
+}

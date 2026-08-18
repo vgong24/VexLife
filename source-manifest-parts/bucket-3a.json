@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "3a",
+  "files": [
+    {
+      "path": "docs/CAPABILITY-AND-TOOL-ATLAS.md",
+      "mode": "100644",
+      "bytes": 3445,
+      "sha256": "4b190d30e93d6eb39bffbc782dc3cc04a2fa49b5c349bd783ba08cfd7fc0cfed"
+    }
+  ]
+}

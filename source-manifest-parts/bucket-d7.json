@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "d7",
+  "files": [
+    {
+      "path": "blueprint/process-factory/foundations.json",
+      "mode": "100644",
+      "bytes": 7225,
+      "sha256": "24ea68bda62700e5a0ce07f104b58be97d751111eceebd8a7993c3b144a20208"
+    }
+  ]
+}

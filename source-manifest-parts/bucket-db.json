@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "db",
+  "files": [
+    {
+      "path": "reference/browser/integration/identity-localization-suite.js",
+      "mode": "100644",
+      "bytes": 6654,
+      "sha256": "2462e9125b1bea81d2224e768afe739a1b6a93b0469027898c046f5867931045"
+    }
+  ]
+}

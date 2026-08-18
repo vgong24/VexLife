@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "2f",
+  "files": [
+    {
+      "path": "src/core/utils.mjs",
+      "mode": "100644",
+      "bytes": 2222,
+      "sha256": "d08c8c46b27db6f4414762b7f83a23e20ba7c841c0c348c7e9ed06b1ba916a16"
+    },
+    {
+      "path": "test/fixtures/orientation/detached-merge.json",
+      "mode": "100644",
+      "bytes": 1173,
+      "sha256": "ae4f14d6feb5be019abe24c38807cfb5f5f99231ee74164334cd7a6cd4f8ea5c"
+    }
+  ]
+}

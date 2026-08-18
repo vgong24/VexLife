@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +11,13 @@ import {
   resolveGitHubPullRequestCurrentWork
 } from '../src/core/orientation.mjs';
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
-import { buildSourceManifest, compareSourceManifest } from '../src/core/source-manifest.mjs';
+import {
+  SOURCE_MANIFEST_V2_SCHEMA,
+  SOURCE_MANIFEST_V3_SCHEMA,
+  buildSourceManifest,
+  compareSourceManifest,
+  hydrateStoredSourceManifest
+} from '../src/core/source-manifest.mjs';
 import { readJson } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,6 +51,27 @@ const git = (...gitArgs) => {
   return result.status === 0 ? result.stdout.trim() : null;
 };
 
+function readStoredSourceManifest() {
+  const descriptor = readJson(path.join(ROOT, 'SOURCE-MANIFEST.json'));
+  const partsRoot = path.join(ROOT, 'source-manifest-parts');
+  let refs;
+  if (descriptor.schemaVersion === SOURCE_MANIFEST_V2_SCHEMA) {
+    if (!Array.isArray(descriptor.parts)) throw new Error('v2 source manifest descriptor requires parts[]');
+    refs = descriptor.parts;
+  } else if (descriptor.schemaVersion === SOURCE_MANIFEST_V3_SCHEMA) {
+    refs = fs.existsSync(partsRoot)
+      ? fs.readdirSync(partsRoot, { withFileTypes: true }).map((entry) => {
+          if (!entry.isFile()) throw new Error(`v3 source manifest has unknown generated entry: source-manifest-parts/${entry.name}`);
+          return `source-manifest-parts/${entry.name}`;
+        })
+      : [];
+  } else {
+    throw new Error(`Unsupported stored source manifest schema: ${descriptor.schemaVersion}`);
+  }
+  const parts = refs.map((ref) => ({ ref, value: readJson(path.join(ROOT, ref)) }));
+  return hydrateStoredSourceManifest(descriptor, parts);
+}
+
 const contract = readJson(path.join(ROOT, 'blueprint/orientation.json'));
 const projectionPath = value('--current-work') || process.env.VEXLIFE_CURRENT_WORK_PROJECTION;
 const projection = projectionPath ? readJson(path.resolve(ROOT, projectionPath)) : {};
@@ -63,8 +91,8 @@ if (eventPath) {
 const bundle = loadBlueprint(ROOT);
 const validation = validateBlueprint(bundle);
 const implementationPlan = validateImplementationPlan(bundle.implementationPlan);
-const expectedManifest = readJson(path.join(ROOT, 'SOURCE-MANIFEST.json'));
-const actualManifest = buildSourceManifest(ROOT);
+const expectedManifest = readStoredSourceManifest();
+const actualManifest = buildSourceManifest(ROOT, { schemaVersion: expectedManifest.schemaVersion });
 const manifest = compareSourceManifest(expectedManifest, actualManifest);
 const evidence = collectRepositoryEvidence(ROOT);
 const prArgument = value('--pr');

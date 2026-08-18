@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "da",
+  "files": [
+    {
+      "path": "blueprint/intent-trust-snapshot.json",
+      "mode": "100644",
+      "bytes": 1694,
+      "sha256": "b141f88a81e7f17602a39896abce5d9631f2fef36afcdbfe7663bb0543a94f39"
+    }
+  ]
+}

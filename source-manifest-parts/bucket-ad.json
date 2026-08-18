@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ad",
+  "files": [
+    {
+      "path": "docs/MULTILINGUAL-INTENT-RELAY.md",
+      "mode": "100644",
+      "bytes": 2152,
+      "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
+    }
+  ]
+}

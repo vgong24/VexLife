@@ -61,6 +61,9 @@ jobs:
       - name: Install deterministic Chromium runtime
         run: npx playwright install --with-deps chromium
 
+      - name: Run focused source-manifest optimizer proof
+        run: node --test test/source-manifest.test.mjs
+
       - name: Materialize exact candidate source manifest
         run: npm run manifest:write
 
@@ -127,6 +130,10 @@ jobs:
         shell: bash
         run: npm ci
 
+      - name: Run focused source-manifest optimizer proof
+        shell: bash
+        run: node --test test/source-manifest.test.mjs
+
       - name: Materialize exact candidate source manifest
         shell: bash
         run: npm run manifest:write
@@ -149,7 +156,9 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           import { execFileSync } from 'node:child_process';
+          import { buildSourceManifest } from './src/core/source-manifest.mjs';
           const descriptor = JSON.parse(fs.readFileSync('SOURCE-MANIFEST.json', 'utf8'));
+          const actualManifest = buildSourceManifest(process.cwd());
           const checkedOutHead = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
           const receipt = {
             schemaVersion: 'vexlife.source-manifest-portability-receipt/v1',
@@ -165,8 +174,9 @@ jobs:
             sourceRecordSchemaVersion: descriptor.sourceRecordSchemaVersion,
             partSchemaVersion: descriptor.partSchemaVersion,
             manifestState: 'SOURCE_MANIFEST_CURRENT',
-            candidateState: 'CURRENT',
-            treeSha256: descriptor.treeSha256,
+            candidateState: actualManifest.candidate.state,
+            fileCount: actualManifest.fileCount,
+            treeSha256: actualManifest.treeSha256,
             contractSha256: descriptor.contractSha256,
             pathDifferences: [],
             exitCode: 0,
@@ -225,7 +235,6 @@ jobs:
           path: generated/health/g01-lived-companion-windows-proof.json
           if-no-files-found: error
 
-
   g02-score-context-windows:
     name: G02 Score and context continuity Windows proof
     runs-on: windows-latest
@@ -262,7 +271,6 @@ jobs:
           path: generated/health/score-context-continuity-proof.json
           if-no-files-found: error
 
-
   g03-daily-memory-dream-windows:
     name: G03 Daily Memory-Only Dream Windows proof
     runs-on: windows-latest
@@ -297,8 +305,6 @@ jobs:
           path: generated/health/g03-daily-memory-dream-proof.json
           if-no-files-found: error
 
-
-
   g04-evaluated-rhythm-learning-windows:
     name: G04 Evaluated Rhythm Learning Windows proof
     runs-on: windows-latest
@@ -332,7 +338,6 @@ jobs:
           name: vexlife-g04-evaluated-rhythm-learning-windows-${{ github.event.pull_request.head.sha || github.sha }}
           path: generated/health/g04-evaluated-rhythm-learning-proof.json
           if-no-files-found: error
-
 
   g05-runtime-authority-substrate-windows:
     name: G05 runtime authority substrate Windows proof
@@ -403,4 +408,3 @@ jobs:
           name: vexlife-g05a-scheduled-daily-autonomy-windows-${{ github.event.pull_request.head.sha || github.sha }}
           path: generated/health/g05a-scheduled-daily-autonomy-windows-proof.json
           if-no-files-found: error
-

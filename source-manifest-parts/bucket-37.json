@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "37",
+  "files": [
+    {
+      "path": "test/fixtures/public-safety/cases.json",
+      "mode": "100644",
+      "bytes": 795,
+      "sha256": "fc8f7a2303ce6c2d12ca4ceeb8d67e766f9f81aba03a4ffb9cf26545b3eed6f6"
+    }
+  ]
+}

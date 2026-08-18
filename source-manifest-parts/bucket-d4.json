@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "d4",
+  "files": [
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "mode": "100644",
+      "bytes": 1755,
+      "sha256": "feb1e5113d8b35370d60f9ea0060e84583b5f4b77485569f279feac04ccbb4b0"
+    },
+    {
+      "path": "blueprint/process-factory/processes-core.json",
+      "mode": "100644",
+      "bytes": 61584,
+      "sha256": "4476b46f1f57c163ff165fac0ca52aebc0cb8d38895c7494a178e00c62dd3d2d"
+    }
+  ]
+}
