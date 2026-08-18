@@ -1,4 +1,5 @@
 import { semanticHash } from './utils.mjs';
+import { verifyHistoricalLivedCompanionHead } from './lived-companion.mjs';
 import {
   loadScoreContextState,
   sourceDescentForStatement
@@ -138,6 +139,20 @@ export function projectLivingJournalMemory(input) {
   }
   if (dailySource.rawConversationContentIncluded !== false) {
     fail('LIVING_JOURNAL_MEMORY_SOURCE_INVALID', 'Daily Memory source descent unexpectedly includes raw conversation content');
+  }
+
+  const conversationSource = verifyHistoricalLivedCompanionHead({
+    ...ownerInput,
+    conversationHeadSha256: dailySource.sourceConversationHeadSha256
+  });
+  if (conversationSource.rawConversationContentIncluded !== false) {
+    fail('LIVING_JOURNAL_MEMORY_SOURCE_INVALID', 'Conversation source verification unexpectedly includes raw conversation content');
+  }
+  if (conversationSource.currentness !== 'CURRENT') {
+    return held(daily, ['DAILY_MEMORY_SOURCE_FRONTIER_STALE'], {
+      dailySourceConversationHeadSha256: dailySource.sourceConversationHeadSha256,
+      conversationSourceCurrentness: conversationSource.currentness
+    });
   }
 
   const statements = new Map(score.statements.map((statement) => [statement.statementRef, statement]));
