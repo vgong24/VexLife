@@ -17,7 +17,7 @@ function assertSyntheticData(data){
 }
 
 function assertMemoryPage(page,index){
-  if(!object(page)||!nonempty(page.pageRef)||!nonempty(page.statementRef)||!nonempty(page.summary)||!SHA256.test(page.summaryHash??''))throw new Error(`Living Journal Memory page ${index} identity/body is invalid`);
+  if(!object(page)||!nonempty(page.pageRef)||!nonempty(page.statementRef)||page.pageIndex!==index||!nonempty(page.summary)||!SHA256.test(page.summaryHash??''))throw new Error(`Living Journal Memory page ${index} identity/body is invalid`);
   if(Object.hasOwn(page,'eventRef')||Object.hasOwn(page,'thenRef')||Object.hasOwn(page,'display')||Object.hasOwn(page,'source'))throw new Error(`Living Journal Memory page ${index} cannot impersonate synthetic event/temporal/source-body semantics`);
   if(page.current!==true||page.acceptedForContinuity!==true||!POSITIVE_CONSENT.has(page.consentState))throw new Error(`Living Journal Memory page ${index} current acceptance state is invalid`);
   if(!nonempty(page.currentDailyStratumRef)||!SHA256.test(page.currentDailyStratumSha256??'')||!nonempty(page.dayRef)||!Number.isInteger(page.dayIndex)||page.dayIndex<0)throw new Error(`Living Journal Memory page ${index} Daily identity is invalid`);
@@ -59,11 +59,12 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   const clampIndex=(index)=>pageCount()===0?0:Math.max(0,Math.min(pageCount()-1,Number(index)||0));
   const currentPage=()=>pageCount()===0?null:journalData.pages[journal.pageIndex]??null;
   const sourceRefsFor=(page)=>memoryMode()?[...new Set((page?.sourceBindings??[]).map((binding)=>binding.eventRef).filter(nonempty))]:page?.source?.sourceRef?[page.source.sourceRef]:[];
+  const memoryCurrentnessFor=(page)=>page?Object.freeze({currentDailyStratumRef:page.currentDailyStratumRef,currentDailyStratumSha256:page.currentDailyStratumSha256,dayRef:page.dayRef,dayIndex:page.dayIndex,sourceConversationHeadSha256:page.sourceConversationHeadSha256,sourceScoreHeadSha256:page.sourceScoreHeadSha256,sourceSemanticAuthorityHeadSha256:page.sourceSemanticAuthorityHeadSha256}):null;
   const canonicalThenIdentity=()=>memoryMode()
     ?JSON.stringify(journalData.pages.map((page)=>({pageRef:page.pageRef,statementRef:page.statementRef,summaryHash:page.summaryHash,currentDailyStratumSha256:page.currentDailyStratumSha256,sourceConversationHeadSha256:page.sourceConversationHeadSha256,sourceScoreHeadSha256:page.sourceScoreHeadSha256,sourceSemanticAuthorityHeadSha256:page.sourceSemanticAuthorityHeadSha256})))
     :JSON.stringify(journalData.pages.map((page)=>({pageRef:page.pageRef,eventRef:page.eventRef,thenRef:page.thenRef,sourceRef:page.source.sourceRef,originalLanguage:page.source.originalLanguage,originalText:page.source.originalText})));
   function projection(page){
-    if(memoryMode())return{mode:'MEMORY',pageRef:page.pageRef,statementRef:page.statementRef,summary:page.summary,summaryHash:page.summaryHash,current:page.current,acceptedForContinuity:page.acceptedForContinuity,consentState:page.consentState,currentDailyStratumRef:page.currentDailyStratumRef,currentDailyStratumSha256:page.currentDailyStratumSha256,dayRef:page.dayRef,dayIndex:page.dayIndex,sourceConversationHeadSha256:page.sourceConversationHeadSha256,sourceScoreHeadSha256:page.sourceScoreHeadSha256,sourceSemanticAuthorityHeadSha256:page.sourceSemanticAuthorityHeadSha256,sourceRefs:sourceRefsFor(page),sourceDescent:page.sourceDescent};
+    if(memoryMode())return{mode:'MEMORY',pageRef:page.pageRef,statementRef:page.statementRef,summary:page.summary,summaryHash:page.summaryHash,current:page.current,acceptedForContinuity:page.acceptedForContinuity,consentState:page.consentState,...memoryCurrentnessFor(page),sourceRefs:sourceRefsFor(page),sourceDescent:page.sourceDescent};
     const language=DISPLAY_LANGUAGES.includes(journal.displayLanguage)?journal.displayLanguage:'en';
     const localized=page.display[language]??page.display.en;
     return{mode:'SYNTHETIC',pageRef:page.pageRef,eventRef:page.eventRef,sequence:page.sequence,source:page.source,thenRef:page.thenRef,then:localized.then,later:localized.later,now:localized.now,vantage:journal.vantage,vantageText:localized.vantages[journal.vantage],displayLanguage:language};
@@ -88,6 +89,9 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     if(view.statementRef)article.dataset.statementRef=view.statementRef;
     if(view.mode==='MEMORY'){
       article.dataset.currentDailyStratumRef=view.currentDailyStratumRef;
+      article.dataset.currentDailyStratumSha256=view.currentDailyStratumSha256;
+      article.dataset.dayRef=view.dayRef;
+      article.dataset.dayIndex=String(view.dayIndex);
       article.dataset.sourceConversationHeadSha256=view.sourceConversationHeadSha256;
       article.dataset.sourceScoreHeadSha256=view.sourceScoreHeadSha256;
       article.dataset.sourceSemanticAuthorityHeadSha256=view.sourceSemanticAuthorityHeadSha256;
@@ -157,7 +161,7 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     const page=currentPage();if(!page)return snapshot();
     if(memoryMode()){
       journal.sourceDoorRef=page.pageRef;journal.sourceDoorRefs=sourceRefsFor(page);
-      const packet=Object.freeze({pageRef:page.pageRef,statementRef:page.statementRef,sourceRef:null,sourceRefs:[...journal.sourceDoorRefs],sourceDescent:structuredClone(page.sourceDescent),sourceConversationHeadSha256:page.sourceConversationHeadSha256,selectedNodeRef:journal.openedNodeRef});
+      const packet=Object.freeze({pageRef:page.pageRef,statementRef:page.statementRef,sourceRef:null,sourceRefs:[...journal.sourceDoorRefs],sourceDescent:structuredClone(page.sourceDescent),...memoryCurrentnessFor(page),selectedNodeRef:journal.openedNodeRef});
       journal.lastSourcePacket=structuredClone(packet);render();onSourceOpen(packet);return snapshot();
     }
     journal.sourceDoorRef=page.source.sourceRef;journal.sourceDoorRefs=[page.source.sourceRef];
@@ -165,14 +169,15 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   }
   function revisit(){
     const page=currentPage();if(!page)return snapshot();
-    const packet=memoryMode()?Object.freeze({pageRef:page.pageRef,statementRef:page.statementRef,sourceConversationHeadSha256:page.sourceConversationHeadSha256,selectedNodeRef:journal.openedNodeRef}):Object.freeze({eventRef:page.eventRef,selectedNodeRef:journal.openedNodeRef});
+    const packet=memoryMode()?Object.freeze({pageRef:page.pageRef,statementRef:page.statementRef,...memoryCurrentnessFor(page),selectedNodeRef:journal.openedNodeRef}):Object.freeze({eventRef:page.eventRef,selectedNodeRef:journal.openedNodeRef});
     journal.lastRevisitPacket=structuredClone(packet);onRevisit(packet);return snapshot();
   }
   function addMarginalia(content){const page=currentPage();if(!page)return snapshot();const text=String(content??'').trim();if(!text)return snapshot();const pageRef=page.pageRef,notes=journal.marginalia.get(pageRef)??[];notes.push(Object.freeze({marginaliaRef:`marginalia.local.${crypto.randomUUID()}`,pageRef,content:text,localOnly:true}));journal.marginalia.set(pageRef,notes);setMarginaliaExpanded(true);renderMarginalia();return snapshot();}
   function snapshot(){
     const page=currentPage(),synthetic=!memoryMode()&&page;
     const effectSource=memoryMode()?journalData.effects:{};
-    return structuredClone({truthClass:journalData.truthClass,dataMode:memoryMode()?'MEMORY':'SYNTHETIC',open:journal.open,pageIndex:journal.pageIndex,pageRef:page?.pageRef??null,eventRef:synthetic?page.eventRef:null,statementRef:memoryMode()&&page?page.statementRef:null,pageCount:pageCount(),vantage:journal.vantage,displayLanguage:journal.displayLanguage,vantageProjectionAvailable:!memoryMode(),displayLanguageProjectionAvailable:!memoryMode(),openedNodeRef:journal.openedNodeRef,sourceDoorRef:journal.sourceDoorRef,sourceDoorRefs:[...journal.sourceDoorRefs],lastSourcePacket:journal.lastSourcePacket,lastRevisitPacket:journal.lastRevisitPacket,marginaliaCount:page?(journal.marginalia.get(page.pageRef)??[]).length:0,totalMarginaliaCount:[...journal.marginalia.values()].reduce((sum,notes)=>sum+notes.length,0),layoutClass:layoutClass(),visiblePageCount:visiblePageCount(),renderedPageRefs:renderedIndices().map((index)=>journalData.pages[index].pageRef),reducedMotion:reducedMotion(),realMemoryLoaded:journalData.realMemoryLoaded,realJournalBodyLoaded:journalData.realJournalBodyLoaded,modelCalled:memoryMode()?effectSource.modelCalled===true:journalData.modelCalled,translationCalled:memoryMode()?effectSource.translationCalled===true:journalData.translationCalled,networkCalled:memoryMode()?effectSource.networkCalled===true:journalData.networkCalled,persisted:memoryMode()?effectSource.homeMutated===true||effectSource.memoryMutated===true:journalData.persisted,published:memoryMode()?effectSource.publicationPerformed===true:journalData.published,canonicalThenIdentity:canonicalThenIdentity(),originalLanguage:synthetic?page.source.originalLanguage:null,sourceRef:synthetic?page.source.sourceRef:null,originalText:synthetic?page.source.originalText:null,summary:memoryMode()&&page?page.summary:null,summaryHash:memoryMode()&&page?page.summaryHash:null,renderCount:journal.renderCount});
+    const currentness=memoryMode()&&page?memoryCurrentnessFor(page):null;
+    return structuredClone({truthClass:journalData.truthClass,dataMode:memoryMode()?'MEMORY':'SYNTHETIC',open:journal.open,pageIndex:journal.pageIndex,pageRef:page?.pageRef??null,eventRef:synthetic?page.eventRef:null,statementRef:memoryMode()&&page?page.statementRef:null,pageCount:pageCount(),vantage:journal.vantage,displayLanguage:journal.displayLanguage,vantageProjectionAvailable:!memoryMode(),displayLanguageProjectionAvailable:!memoryMode(),openedNodeRef:journal.openedNodeRef,sourceDoorRef:journal.sourceDoorRef,sourceDoorRefs:[...journal.sourceDoorRefs],lastSourcePacket:journal.lastSourcePacket,lastRevisitPacket:journal.lastRevisitPacket,marginaliaCount:page?(journal.marginalia.get(page.pageRef)??[]).length:0,totalMarginaliaCount:[...journal.marginalia.values()].reduce((sum,notes)=>sum+notes.length,0),layoutClass:layoutClass(),visiblePageCount:visiblePageCount(),renderedPageRefs:renderedIndices().map((index)=>journalData.pages[index].pageRef),reducedMotion:reducedMotion(),realMemoryLoaded:journalData.realMemoryLoaded,realJournalBodyLoaded:journalData.realJournalBodyLoaded,modelCalled:memoryMode()?effectSource.modelCalled===true:journalData.modelCalled,translationCalled:memoryMode()?effectSource.translationCalled===true:journalData.translationCalled,networkCalled:memoryMode()?effectSource.networkCalled===true:journalData.networkCalled,persisted:memoryMode()?effectSource.homeMutated===true||effectSource.memoryMutated===true:journalData.persisted,published:memoryMode()?effectSource.publicationPerformed===true:journalData.published,canonicalThenIdentity:canonicalThenIdentity(),originalLanguage:synthetic?page.source.originalLanguage:null,sourceRef:synthetic?page.source.sourceRef:null,originalText:synthetic?page.source.originalText:null,summary:memoryMode()&&page?page.summary:null,summaryHash:memoryMode()&&page?page.summaryHash:null,currentDailyStratumRef:currentness?.currentDailyStratumRef??null,currentDailyStratumSha256:currentness?.currentDailyStratumSha256??null,dayRef:currentness?.dayRef??null,dayIndex:currentness?.dayIndex??null,sourceConversationHeadSha256:currentness?.sourceConversationHeadSha256??null,sourceScoreHeadSha256:currentness?.sourceScoreHeadSha256??null,sourceSemanticAuthorityHeadSha256:currentness?.sourceSemanticAuthorityHeadSha256??null,renderCount:journal.renderCount});
   }
   function bind(){
     q('#livingJournalPrevious')?.addEventListener('click',previous);q('#livingJournalNext')?.addEventListener('click',next);
