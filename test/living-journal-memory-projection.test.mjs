@@ -77,10 +77,22 @@ test('Living Journal projects the current accepted Memory summary into one bound
   assert.equal(page.memoryRelation, accepted.memoryRelation);
   assert.equal(page.recordedStatementState, accepted.recordedStatementState);
   assert.equal(page.effectiveState, accepted.effectiveState);
+  assert.equal(page.current, true);
   assert.equal(page.acceptedForContinuity, true);
   assert.equal(page.consentState, 'PERMITTED');
   assert.equal(page.semanticAcceptanceRef, accepted.semanticAcceptanceRef);
   assert.equal(page.semanticAcceptanceSha256, accepted.semanticAcceptanceSha256);
+  assert.equal(page.semanticAuthorityHeadSha256, accepted.semanticAuthorityHeadSha256);
+  assert.equal(page.currentDailyStratumRef, committed.stratum.dailyStratumRef);
+  assert.equal(page.currentDailyStratumSha256, committed.stratum.dailyStratumSha256);
+  assert.equal(page.dayRef, 'day.living-journal-memory.000');
+  assert.equal(page.dayIndex, 0);
+  assert.equal(page.sourceConversationHeadSha256, fixture.g01.head.conversationHeadSha256);
+  assert.equal(page.sourceScoreHeadSha256, fixture.score.head.scoreHeadSha256);
+  assert.equal(
+    page.sourceSemanticAuthorityHeadSha256,
+    fixture.score.currentSemanticAuthorityHead.semanticAuthorityHeadSha256
+  );
   assert.equal(page.sourceDescent.rawSourceContentIncluded, false);
   assert.equal(page.sourceDescent.observedCurrentConversationHeadSha256, fixture.g01.head.conversationHeadSha256);
   assert.equal(page.sourceDescent.observedCommittedSourceEventRefs.length, 2);
@@ -88,6 +100,7 @@ test('Living Journal projects the current accepted Memory summary into one bound
   assert.equal(page.rawSourceContentIncluded, false);
   assert.equal(page.firstPersonAuthorityGranted, false);
 
+  assert.equal(projection.daily.currentDailyStratumRef, committed.stratum.dailyStratumRef);
   assert.equal(projection.daily.currentDailyStratumSha256, committed.stratum.dailyStratumSha256);
   assert.equal(projection.daily.sourceConversationHeadSha256, fixture.g01.head.conversationHeadSha256);
   assert.equal(projection.daily.sourceScoreHeadSha256, fixture.score.head.scoreHeadSha256);
