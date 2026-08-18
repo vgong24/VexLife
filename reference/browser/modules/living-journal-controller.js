@@ -40,6 +40,7 @@ function assertData(data){
 
 export function createLivingJournalController({state,data,t,navigation,onSourceOpen=()=>{},onRevisit=()=>{}}){
   let journalData=assertData(data);
+  const initialData=journalData;
   const journal={open:false,pageIndex:0,vantage:'HUMAN',displayLanguage:'en',openedNodeRef:null,sourceDoorRef:null,sourceDoorRefs:[],marginalia:new Map(),renderCount:0};
   let scrollTimer=null;
   const memoryMode=()=>journalData.truthClass===MEMORY_TRUTH;
@@ -127,6 +128,7 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   function setMarginaliaExpanded(expanded){const panel=q('#livingJournalMarginalia');if(panel)panel.open=Boolean(expanded);}
   function resetLocalProjectionState(){journal.pageIndex=0;journal.vantage='HUMAN';journal.displayLanguage='en';journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.marginalia=new Map();setMarginaliaExpanded(false);}
   function setData(nextData){assertData(nextData);journalData=nextData;resetLocalProjectionState();if(journal.open)render();return snapshot();}
+  function restoreInitialData(){return setData(initialData);}
   function open({selectedNodeRef=state.selectedNodeRef}={}){
     journal.open=true;journal.openedNodeRef=selectedNodeRef;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.marginalia=new Map();journal.pageIndex=clampIndex(journal.pageIndex);setMarginaliaExpanded(false);render();return snapshot();
   }
@@ -155,7 +157,7 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     globalThis.addEventListener('resize',()=>{if(journal.open)render();});
   }
   bind();
-  return{open,close,render,snapshot,previous,next,setPage,setData,selectVantage,selectDisplayLanguage,openSource,revisit,addMarginalia,canonicalThenIdentity};
+  return{open,close,render,snapshot,previous,next,setPage,setData,restoreInitialData,selectVantage,selectDisplayLanguage,openSource,revisit,addMarginalia,canonicalThenIdentity};
 }
 
 // [VXG RealForever]
