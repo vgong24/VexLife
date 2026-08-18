@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "f6",
+  "files": [
+    {
+      "path": "SECURITY.md",
+      "mode": "100644",
+      "bytes": 2223,
+      "sha256": "6df36f60ca2bd4598886f9d45cdaf837706d2bc500fa63ed7abf17908ec58e79"
+    },
+    {
+      "path": "fixtures/patient0-familiarity-live-work/synthetic-preflight.v1.json",
+      "mode": "100644",
+      "bytes": 1262,
+      "sha256": "7a146407c823e1f569fae709ee9e83c8d0fe7618af4aa40c2b03383185d562cd"
+    },
+    {
+      "path": "reference/browser/modules/chat-controller.js",
+      "mode": "100644",
+      "bytes": 17513,
+      "sha256": "b235fcf8e59a377d8d834c70f41301d2ef6a1ce371bc3a30650f4d18c44927d9"
+    },
+    {
+      "path": "test/fixtures/orientation/public-active.json",
+      "mode": "100644",
+      "bytes": 1051,
+      "sha256": "5cdfa67a043b52b643c37bc8874488140de0e9ef09fa8eaa965e6bd5643d9d54"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "88",
+  "files": [
+    {
+      "path": "blueprint/design-tokens.json",
+      "mode": "100644",
+      "bytes": 1467,
+      "sha256": "02d506c365ebb1bf0f8e6fed1d6a6c8652692b9c2c3d59b114fc7f489b023aad"
+    },
+    {
+      "path": "docs/INTERFACE-BUILDER.md",
+      "mode": "100644",
+      "bytes": 3664,
+      "sha256": "0f8e0f4cfc83220309df60984938c037d7a1bcfa0e3c581723cc5efe0111f696"
+    },
+    {
+      "path": "docs/REGISTRIES-AND-PROCESS-FACTORY.md",
+      "mode": "100644",
+      "bytes": 3816,
+      "sha256": "e131684893e95b9d07ed412ed4aff1daee7e3f85b2eb487729612d21cf311648"
+    },
+    {
+      "path": "test/g05-runtime-authority-substrate.test.mjs",
+      "mode": "100644",
+      "bytes": 16779,
+      "sha256": "b3fbb87462a04af61f4b18fb657c2cf732a0826730debef9d5d848b3d0eea5c2"
+    }
+  ]
+}

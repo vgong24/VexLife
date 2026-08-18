@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ca",
+  "files": [
+    {
+      "path": "docs/EVALUATED-RHYTHM-LEARNING.md",
+      "mode": "100644",
+      "bytes": 6414,
+      "sha256": "32de6af2cc522f8031fcdae43f92b609287a6b6aa6cc6e9d7b214c51d609902e"
+    }
+  ]
+}

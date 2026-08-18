@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "21",
+  "files": [
+    {
+      "path": "src/core/intent-completion-verifier.mjs",
+      "mode": "100644",
+      "bytes": 21202,
+      "sha256": "96f0a9b20a735753f6974481e468f1f04f87b31785136ca131eb23c945028c36"
+    }
+  ]
+}

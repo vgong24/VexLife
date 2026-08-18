@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "e4",
+  "files": [
+    {
+      "path": "src/core/build-admission.mjs",
+      "mode": "100644",
+      "bytes": 82949,
+      "sha256": "7c43335b59f93018ef33e2ccce58ad32dae4438e9cea4eef47906d5509a60a97"
+    },
+    {
+      "path": "src/core/scheduled-daily-autonomy.mjs",
+      "mode": "100644",
+      "bytes": 86096,
+      "sha256": "8245c1aa48e54395f83676d78bef754d89f237f868554e1a2f7b29b9ad7d1db2"
+    }
+  ]
+}

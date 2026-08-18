@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "25",
+  "files": [
+    {
+      "path": "reference/browser/modules/terrain-controller.js",
+      "mode": "100644",
+      "bytes": 45745,
+      "sha256": "6a447d1fdbf2f3041a2fa63c44b1b65896bfc3e0a73360b13e3fa043041af81d"
+    }
+  ]
+}

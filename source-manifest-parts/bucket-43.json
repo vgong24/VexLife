@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "43",
+  "files": [
+    {
+      "path": "reference/browser/integration-test.js",
+      "mode": "100644",
+      "bytes": 13135,
+      "sha256": "2fb836f50441d06358da16c2b8579f4ae25b7a26c135b694a64644d91e50e2ce"
+    },
+    {
+      "path": "start-vexlife.sh",
+      "mode": "100644",
+      "bytes": 281,
+      "sha256": "6e2344723c0871ce76111d5fc298ebbbf3257a898bb7069a590a96f616184376"
+    }
+  ]
+}

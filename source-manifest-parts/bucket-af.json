@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "af",
+  "files": [
+    {
+      "path": "start-vexlife.cmd",
+      "mode": "100644",
+      "bytes": 238,
+      "sha256": "bcf9aefdb6b7caad1486c228a72981111aa8534ed92a9eadacde5b57f9a42bca"
+    }
+  ]
+}

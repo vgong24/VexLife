@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "cc",
+  "files": [
+    {
+      "path": "blueprint/implementation/work-units-foundation.json",
+      "mode": "100644",
+      "bytes": 7288,
+      "sha256": "df7e10ccb551870f7f05963c188a26df93fc38fd91e442eac57a8fb6ec7e475b"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "54",
+  "files": [
+    {
+      "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
+      "mode": "100644",
+      "bytes": 3310,
+      "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
+    }
+  ]
+}

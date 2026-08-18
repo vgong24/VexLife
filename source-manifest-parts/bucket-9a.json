@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "9a",
+  "files": [
+    {
+      "path": "test/orientation.test.mjs",
+      "mode": "100644",
+      "bytes": 18485,
+      "sha256": "5551f2953fb5790b17b1945897990a98924988e2217675d6563d1d4982426d9b"
+    }
+  ]
+}

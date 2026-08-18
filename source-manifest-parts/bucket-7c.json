@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "7c",
+  "files": [
+    {
+      "path": "reference/browser/modules/browser-bundle.js",
+      "mode": "100644",
+      "bytes": 1382,
+      "sha256": "ee445e4744edc8165a1aa7941e7818e390feae7d366edb4612b8806e5caaf39c"
+    },
+    {
+      "path": "test/capability.test.mjs",
+      "mode": "100644",
+      "bytes": 3356,
+      "sha256": "b65980022e24cb78cddffe7fb8883b6c38c5db596267b3c403d0a719ba3a596c"
+    },
+    {
+      "path": "test/intent-scheduler.test.mjs",
+      "mode": "100644",
+      "bytes": 66828,
+      "sha256": "cca892ac718148d1410b3381d7472310f576e63d567a0970208c42c11ad84379"
+    }
+  ]
+}

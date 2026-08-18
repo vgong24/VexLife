@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "84",
+  "files": [
+    {
+      "path": "docs/SECURITY-PERMISSION-EFFECTS.md",
+      "mode": "100644",
+      "bytes": 2170,
+      "sha256": "251360fab4c5908cb00574ad4704a97a5b2e79bc00e9119fc32b310c75e43ed4"
+    }
+  ]
+}

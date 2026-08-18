@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "36",
+  "files": [
+    {
+      "path": "scripts/experience-review.mjs",
+      "mode": "100644",
+      "bytes": 4993,
+      "sha256": "088ccba996f389ab1fbdf79cd6fcfa2c58f42521c62aa37d27039361245bce8e"
+    },
+    {
+      "path": "src/core/local-git-effect-adapter.mjs",
+      "mode": "100644",
+      "bytes": 22567,
+      "sha256": "bbf90a244ad3e3c63a2521f5561e3ecd29d90bd0841271fdd4c5b04e62688878"
+    }
+  ]
+}
