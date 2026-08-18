@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "92",
+  "files": [
+    {
+      "path": "src/core/browser-companion-bridge.mjs",
+      "mode": "100644",
+      "bytes": 12015,
+      "sha256": "ad9fe101b1b8df9d355bad162204191453f598fbf4a8350519c9d7242bd7c095"
+    }
+  ]
+}
