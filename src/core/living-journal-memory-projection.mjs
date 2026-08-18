@@ -164,8 +164,13 @@ export function projectLivingJournalMemory(input) {
         consentState: statement.consentState
       });
     }
-    if (typeof statement.summary !== 'string' || statement.summary.length === 0 || typeof statement.summaryHash !== 'string' || statement.summaryHash.length === 0) {
-      fail('LIVING_JOURNAL_MEMORY_SOURCE_INVALID', 'accepted Score statement is missing its canonical readable summary identity', { statementRef });
+    if (
+      typeof statement.summary !== 'string' || statement.summary.length === 0 ||
+      typeof statement.summaryHash !== 'string' || statement.summaryHash.length === 0 ||
+      typeof statement.recordedStatementState !== 'string' || statement.recordedStatementState.length === 0 ||
+      typeof statement.effectiveState !== 'string' || statement.effectiveState.length === 0
+    ) {
+      fail('LIVING_JOURNAL_MEMORY_SOURCE_INVALID', 'accepted Score statement is missing its canonical readable summary/state identity', { statementRef });
     }
 
     const descent = sourceDescentForStatement(score, statementRef);
@@ -187,7 +192,8 @@ export function projectLivingJournalMemory(input) {
       summary: statement.summary,
       summaryHash: statement.summaryHash,
       memoryRelation: statement.memoryRelation,
-      statementState: statement.statementState,
+      recordedStatementState: statement.recordedStatementState,
+      effectiveState: statement.effectiveState,
       acceptedForContinuity: statement.acceptedForContinuity,
       consentState: statement.consentState,
       semanticSubjectFingerprint: statement.semanticSubjectFingerprint,
