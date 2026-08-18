@@ -1,4 +1,7 @@
-import { projectLivingJournalMemory } from './living-journal-memory-projection.mjs';
+import {
+  LIVING_JOURNAL_MEMORY_PROJECTION_SCHEMA,
+  projectLivingJournalMemory
+} from './living-journal-memory-projection.mjs';
 
 export const BROWSER_LIVING_JOURNAL_MEMORY_API_PATH = '/api/v1/living-journal/memory';
 export const BROWSER_LIVING_JOURNAL_MEMORY_MAX_PAGES = 24;
@@ -38,12 +41,11 @@ function exactKeys(value, expected) {
 }
 
 export class BrowserLivingJournalMemoryBridgeError extends Error {
-  constructor(code, message, httpStatus = 500, internalCause = null) {
+  constructor(code, message, httpStatus = 500) {
     super(message);
     this.name = 'BrowserLivingJournalMemoryBridgeError';
     this.code = code;
     this.httpStatus = httpStatus;
-    this.internalCause = internalCause;
   }
 }
 
@@ -114,10 +116,10 @@ export function validateBrowserLivingJournalMemoryRequest(value) {
 }
 
 function assertNoEffectProjection(projection) {
-  if (!object(projection) || !object(projection.effects)) {
+  if (!object(projection) || projection.schemaVersion !== LIVING_JOURNAL_MEMORY_PROJECTION_SCHEMA || !object(projection.effects)) {
     throw new BrowserLivingJournalMemoryBridgeError(
       'LIVING_JOURNAL_MEMORY_PROJECTION_INVALID',
-      'Living Journal Memory projection is missing its explicit effect ledger',
+      'Living Journal Memory projection schema/effect contract is invalid',
       500
     );
   }
@@ -162,23 +164,20 @@ function publicFailureFor(error) {
     return new BrowserLivingJournalMemoryBridgeError(
       code,
       'Living Journal Memory read request was rejected safely',
-      400,
-      error?.message ?? String(error)
+      400
     );
   }
   if (code === 'LIVING_JOURNAL_MEMORY_SOURCE_INVALID') {
     return new BrowserLivingJournalMemoryBridgeError(
       code,
       'Living Journal Memory source state is unavailable or inconsistent',
-      409,
-      error?.message ?? String(error)
+      409
     );
   }
   return new BrowserLivingJournalMemoryBridgeError(
     'LIVING_JOURNAL_MEMORY_READ_FAILED',
     'Living Journal Memory read failed safely',
-    500,
-    error?.message ?? String(error)
+    500
   );
 }
 
