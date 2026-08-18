@@ -100,8 +100,8 @@
     {
       "path": "src/core/conversation.mjs",
       "mode": "100644",
-      "bytes": 2171,
-      "sha256": "7087c6116acac848adff99a6a060bd67afd4e303df539782442ea1d2cc036331"
+      "bytes": 25812,
+      "sha256": "490eb2691670fd8b5e44f3830a945ee1b84abe209f17077d2b62049984597ec7"
     },
     {
       "path": "src/core/daily-memory-dream.mjs",
