@@ -5,6 +5,7 @@ import {
   LivedCompanionError,
   performLivedCompanionTurn
 } from './lived-companion.mjs';
+import { composeSemanticRelay } from './conversation.mjs';
 
 export const BROWSER_COMPANION_API_PATH = '/api/v1/companion/turn';
 export const BROWSER_COMPANION_STATUS_PATH = '/api/v1/companion/status';
@@ -17,7 +18,9 @@ const REQUEST_KEYS = new Set([
   'channelRef',
   'content',
   'selectedNodeRef',
-  'screenRef'
+  'screenRef',
+  'semanticRelayInput',
+  'semanticRelayAction'
 ]);
 const PORTABLE_REF_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
 
@@ -173,14 +176,97 @@ export function validateBrowserCompanionRequest(value) {
       throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', `${key} is invalid`, 400);
     }
   }
+  const semanticRelayAction = value.semanticRelayAction ?? null;
+  if (semanticRelayAction !== null && !['CONFIRM', 'CORRECT'].includes(semanticRelayAction)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'semanticRelayAction is not admitted', 400);
+  }
+  if (value.semanticRelayInput !== undefined && value.semanticRelayInput !== null) {
+    if (typeof value.semanticRelayInput !== 'object' || Array.isArray(value.semanticRelayInput)) {
+      throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'semanticRelayInput must be one reference-only object', 400);
+    }
+    for (const callerOwnedField of ['sourceMessageRef', 'confirmedByRef', 'confirmationReceiptRef']) {
+      if (Object.hasOwn(value.semanticRelayInput, callerOwnedField)) {
+        throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', `semanticRelayInput cannot supply ${callerOwnedField}`, 400);
+      }
+    }
+  } else if (semanticRelayAction !== null) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'semanticRelayAction requires semanticRelayInput', 400);
+  }
   return Object.freeze({
     projectRef: value.projectRef ?? null,
     threadRef: value.threadRef,
     channelRef: value.channelRef,
     content: value.content,
     selectedNodeRef: value.selectedNodeRef ?? null,
-    screenRef: value.screenRef ?? null
+    screenRef: value.screenRef ?? null,
+    semanticRelayInput: value.semanticRelayInput ? structuredClone(value.semanticRelayInput) : null,
+    semanticRelayAction
   });
+}
+
+const SEMANTIC_RELAY_ATTENTION_SCHEMA = 'vexlife.browser-semantic-relay-attention/v1';
+
+function semanticRelayAttentionPayload(input, composed) {
+  const targets = Array.isArray(input.targets) ? input.targets.map((target) => ({
+    recipientRef: target?.recipientRef ?? null,
+    targetLanguageRef: target?.targetLanguageRef ?? null,
+    targetAudienceRef: target?.targetAudienceRef ?? null,
+    runtimeCapability: target?.runtimeCapability && typeof target.runtimeCapability === 'object' ? {
+      capabilityRef: target.runtimeCapability.capabilityRef ?? null,
+      currentnessState: target.runtimeCapability.currentnessState ?? 'UNKNOWN',
+      multilingualOutput: target.runtimeCapability.multilingualOutput === true,
+      supportedLanguageRefs: Array.isArray(target.runtimeCapability.supportedLanguageRefs) ? [...target.runtimeCapability.supportedLanguageRefs] : [],
+      evidenceRefs: Array.isArray(target.runtimeCapability.evidenceRefs) ? [...target.runtimeCapability.evidenceRefs] : []
+    } : { capabilityRef: null, currentnessState: 'UNKNOWN', multilingualOutput: false, supportedLanguageRefs: [], evidenceRefs: [] }
+  })) : [];
+  return Object.freeze({
+    schemaVersion: SEMANTIC_RELAY_ATTENTION_SCHEMA,
+    state: composed.status === 'HELD_BY_ORIGINATOR' ? 'HELD' : 'CONFIRMATION_REQUIRED',
+    truthClass: 'CURRENT_SEMANTIC_RELAY_ATTENTION',
+    relayRef: input.relayRef ?? null,
+    sourceLanguageRef: input.sourceLanguageRef ?? null,
+    requestedResponseLanguageRef: input.requestedResponseLanguageRef ?? null,
+    uiLocaleRef: input.uiLocaleRef ?? null,
+    interpretationProjectionRef: input.interpretationProjectionRef ?? null,
+    ambiguityState: input.ambiguityState ?? 'UNKNOWN',
+    materiality: input.materiality ?? 'ORDINARY',
+    requiredActions: Object.freeze(['CONFIRM', 'CORRECT', 'HOLD']),
+    reasonCode: composed.status === 'HOLD_CONFIRMATION_REQUIRED' ? 'ORIGINATOR_CONFIRMATION_REQUIRED' : 'ORIGINATOR_HELD',
+    evidenceRefs: Object.freeze(Array.isArray(input.evidenceRefs) ? [...input.evidenceRefs] : []),
+    targets: Object.freeze(targets.map((target) => Object.freeze(target))),
+    rawTextIncluded: false
+  });
+}
+
+function composeBrowserRequestSemanticRelay({ relayInput, relayAction, requestMessageRef }) {
+  if (!relayInput) return Object.freeze({ relay: null, attention: null });
+  if (relayAction !== null && relayInput.originatorRef !== 'person.local-user') {
+    throw new BrowserCompanionBridgeError('COMPANION_SEMANTIC_RELAY_INVALID', 'Only the originating local human may confirm or correct this browser relay', 422);
+  }
+  const input = { ...structuredClone(relayInput), sourceMessageRef: requestMessageRef };
+  if (relayAction === 'CONFIRM') {
+    input.interpretationState = 'CONFIRMED';
+    input.confirmedByRef = input.originatorRef;
+    input.confirmationReceiptRef = ref('receipt.semantic-relay.browser-confirmation');
+    delete input.supersedesInterpretationProjectionRef;
+  } else if (relayAction === 'CORRECT') {
+    input.interpretationState = 'CORRECTED';
+    input.confirmedByRef = input.originatorRef;
+    input.confirmationReceiptRef = ref('receipt.semantic-relay.browser-correction');
+    if (!nonempty(input.supersedesInterpretationProjectionRef) || input.supersedesInterpretationProjectionRef === input.interpretationProjectionRef) {
+      throw new BrowserCompanionBridgeError('COMPANION_SEMANTIC_RELAY_INVALID', 'Corrected relay requires a distinct superseded interpretation projection ref', 422);
+    }
+  }
+  const composed = composeSemanticRelay(input);
+  if (composed.status === 'COMPOSED') return Object.freeze({ relay: composed.relay, attention: null });
+  if (['HOLD_CONFIRMATION_REQUIRED', 'HELD_BY_ORIGINATOR'].includes(composed.status)) {
+    return Object.freeze({ relay: null, attention: semanticRelayAttentionPayload(input, composed) });
+  }
+  throw new BrowserCompanionBridgeError(
+    'COMPANION_SEMANTIC_RELAY_INVALID',
+    'Semantic relay was rejected safely: ' + ((composed.errors ?? []).join('; ') || composed.status),
+    422
+  );
 }
 
 function publicFailureFor(error) {
@@ -196,7 +282,7 @@ function publicFailureFor(error) {
     'THREAD_WRITER_CONFLICT',
     'THREAD_WRITER_RECOVERY_REQUIRED'
   ]);
-  const requestCodes = new Set(['ENDPOINT_PROFILE_NOT_ADMITTED', 'ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'PRIVACY_POLICY_BLOCKED']);
+  const requestCodes = new Set(['ENDPOINT_PROFILE_NOT_ADMITTED', 'ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'PRIVACY_POLICY_BLOCKED', 'SEMANTIC_RELAY_INVALID', 'COMPANION_SEMANTIC_RELAY_INVALID']);
   const httpStatus = conflictCodes.has(error.code) ? 409 : requestCodes.has(error.code) ? 422 : 503;
   return new BrowserCompanionBridgeError(
     error.code,
@@ -255,10 +341,16 @@ export function createBrowserCompanionBridge({
       );
     }
     const request = validateBrowserCompanionRequest(input);
-    const identity = loadBrowserCompanionHomeIdentity(home);
     const turnRef = ref('turn.vexlife.browser-companion');
     const requestMessageRef = ref('message.vexlife.browser-companion.request');
     const responseMessageRef = ref('message.vexlife.browser-companion.response');
+    const relayProjection = composeBrowserRequestSemanticRelay({
+      relayInput: request.semanticRelayInput,
+      relayAction: request.semanticRelayAction,
+      requestMessageRef
+    });
+    if (relayProjection.attention) return relayProjection.attention;
+    const identity = loadBrowserCompanionHomeIdentity(home);
     const contextSourceRefs = [
       'source.vexlife.browser-companion',
       ...(request.projectRef ? [request.projectRef] : []),
@@ -277,6 +369,7 @@ export function createBrowserCompanionBridge({
         speakerRef: 'person.local-user',
         recipientRefs: ['role.vex.companion'],
         content: request.content,
+        requestSemanticRelay: relayProjection.relay,
         endpointProfile: {
           profileRef: binding.profileRef,
           admitted: true,
@@ -294,6 +387,8 @@ export function createBrowserCompanionBridge({
         modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
         turnRef,
         responseMessageRef,
+        requestSemanticRelay: completed.requestEvent.semanticRelay ?? null,
+        responseSemanticRelay: completed.responseEvent.semanticRelay ?? null,
         conversationHeadSha256: completed.head.conversationHeadSha256,
         writerLeaseReleased: completed.writerLeaseReleased === true,
         actualHttpCall: completed.actualHttpCall === true,

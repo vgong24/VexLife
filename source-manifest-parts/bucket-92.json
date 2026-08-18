@@ -5,8 +5,8 @@
     {
       "path": "src/core/browser-companion-bridge.mjs",
       "mode": "100644",
-      "bytes": 12015,
-      "sha256": "ad9fe101b1b8df9d355bad162204191453f598fbf4a8350519c9d7242bd7c095"
+      "bytes": 17931,
+      "sha256": "c568c47a51de87bd24ddc9c505631b5ae91a8a20a385c4b5f85c5d1a95ddae95"
     }
   ]
 }

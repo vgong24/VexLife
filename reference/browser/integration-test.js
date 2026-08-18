@@ -6,6 +6,7 @@ import { contextualConversationSuite } from './integration/contextual-conversati
 import { livingJournalSuite } from './integration/living-journal-suite.js';
 import { crossFeatureSuite } from './integration/cross-feature-suite.js';
 import { identityLocalizationSuite } from './integration/identity-localization-suite.js';
+import { globalizationSemanticRelaySuite } from './integration/globalization-semantic-relay-suite.js';
 
 export const MANDATORY_SUITE_REFS = Object.freeze([
   'suite.vexlife.browser.root-contract/v1',
@@ -15,7 +16,8 @@ export const MANDATORY_SUITE_REFS = Object.freeze([
   'suite.vexlife.browser.contextual-conversation/v1',
   'suite.vexlife.browser.living-journal/v1',
   'suite.vexlife.browser.cross-feature/v1',
-  'suite.vexlife.browser.identity-localization/v1'
+  'suite.vexlife.browser.identity-localization/v1',
+  'suite.vexlife.browser.globalization-semantic-relay/v1'
 ]);
 
 export const MANDATORY_SUITES = Object.freeze([
@@ -26,7 +28,8 @@ export const MANDATORY_SUITES = Object.freeze([
   contextualConversationSuite,
   livingJournalSuite,
   crossFeatureSuite,
-  identityLocalizationSuite
+  identityLocalizationSuite,
+  globalizationSemanticRelaySuite
 ]);
 
 // Stable carried-truth index retained by the composition owner so source-managed

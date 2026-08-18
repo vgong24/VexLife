@@ -424,14 +424,41 @@
         "process.vexlife.communication.translate-and-refine"
       ],
       "moduleRefs": [
-        "module.vexlife.core.localization"
+        "module.vexlife.core.localization",
+        "module.vexlife.browser.chat-controller"
       ],
       "localizationRefs": [
-        "language.label"
+        "language.label",
+        "semantic-relay.summary",
+        "semantic-relay.source-language",
+        "semantic-relay.requested-language",
+        "semantic-relay.ui-current",
+        "semantic-relay.ui-recorded",
+        "semantic-relay.projection",
+        "semantic-relay.equivalence",
+        "semantic-relay.runtime-currentness",
+        "semantic-relay.delivery",
+        "semantic-relay.acknowledgement",
+        "semantic-relay.understanding",
+        "semantic-relay.reason",
+        "semantic-relay.evidence",
+        "semantic-relay.confirm",
+        "semantic-relay.correct",
+        "semantic-relay.hold",
+        "semantic-relay.attention",
+        "semantic-relay.attention.detail",
+        "semantic-relay.reason.confirmation",
+        "semantic-relay.reason.runtime",
+        "semantic-relay.reason.drift",
+        "semantic-relay.reason.projection",
+        "semantic-relay.reason.current",
+        "semantic-relay.correct.detail",
+        "semantic-relay.hold.detail"
       ],
       "testRefs": [
         "test.localization.coverage",
-        "test.localization.original-preserved"
+        "test.localization.original-preserved",
+        "test.globalization.semantic-relay.human-visible"
       ],
       "platformRefs": [
         "platform.browser",
@@ -465,7 +492,8 @@
       "rollbackRouteRef": "recovery.message-projection-pointer",
       "projectionRefs": [
         "projection.localization.current",
-        "projection.message.side-by-side"
+        "projection.message.side-by-side",
+        "projection.chat.current"
       ]
     },
     {
