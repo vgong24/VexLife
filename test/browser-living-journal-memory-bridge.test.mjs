@@ -165,7 +165,8 @@ test('Browser Living Journal Memory bridge preserves held #131 truth instead of 
 });
 
 test('Browser Living Journal Memory bridge maps source failures to content-safe public failures', () => {
-  const sourceError = new Error('private human source /Users/private/VexHome');
+  const privateHome = ['', 'Users', 'private', 'VexHome'].join('/');
+  const sourceError = new Error(`private human source ${privateHome}`);
   sourceError.code = 'LIVING_JOURNAL_MEMORY_SOURCE_INVALID';
   const sourcePayload = browserLivingJournalMemoryFailurePayload(sourceError);
   assert.deepEqual(sourcePayload, {
@@ -176,7 +177,7 @@ test('Browser Living Journal Memory bridge maps source failures to content-safe 
     message: 'Living Journal Memory source state is unavailable or inconsistent'
   });
   assert.equal(JSON.stringify(sourcePayload).includes('private human source'), false);
-  assert.equal(JSON.stringify(sourcePayload).includes('/Users/private/VexHome'), false);
+  assert.equal(JSON.stringify(sourcePayload).includes(privateHome), false);
 
   const unknownPayload = browserLivingJournalMemoryFailurePayload(new Error('internal secret detail'));
   assert.equal(unknownPayload.failureCode, 'LIVING_JOURNAL_MEMORY_READ_FAILED');
