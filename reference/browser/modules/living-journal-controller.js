@@ -82,7 +82,7 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     ordinal.className='living-journal-ordinal';
     ordinal.textContent=view.mode==='MEMORY'?`${String(index+1).padStart(2,'0')} · ${view.statementRef}`:`${String(view.sequence).padStart(2,'0')} · ${view.eventRef}`;
     if(view.mode==='MEMORY'){
-      const summary=document.createElement('section');summary.className='living-journal-memory-summary';summary.dataset.memoryState='CURRENT_ACCEPTED';
+      const summary=document.createElement('section');summary.className='living-journal-time living-journal-memory-summary';summary.dataset.memoryState='CURRENT_ACCEPTED';
       const text=document.createElement('p');text.textContent=view.summary;summary.append(text);
       const source=document.createElement('footer');source.className='living-journal-source-line';source.dataset.rawSourceContentIncluded='false';source.textContent=`${t('living-journal.source-status')}: ${view.sourceRefs.join(' · ')}`;
       article.append(ordinal,summary,source);
