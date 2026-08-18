@@ -41,7 +41,7 @@ function assertData(data){
 export function createLivingJournalController({state,data,t,navigation,onSourceOpen=()=>{},onRevisit=()=>{}}){
   let journalData=assertData(data);
   const initialData=journalData;
-  const journal={open:false,pageIndex:0,vantage:'HUMAN',displayLanguage:'en',openedNodeRef:null,sourceDoorRef:null,sourceDoorRefs:[],marginalia:new Map(),renderCount:0};
+  const journal={open:false,pageIndex:0,vantage:'HUMAN',displayLanguage:'en',openedNodeRef:null,sourceDoorRef:null,sourceDoorRefs:[],lastSourcePacket:null,lastRevisitPacket:null,marginalia:new Map(),renderCount:0};
   let scrollTimer=null;
   const memoryMode=()=>journalData.truthClass===MEMORY_TRUTH;
   const pageCount=()=>journalData.pages.length;
@@ -126,11 +126,11 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     renderMarginalia();journal.renderCount+=1;return snapshot();
   }
   function setMarginaliaExpanded(expanded){const panel=q('#livingJournalMarginalia');if(panel)panel.open=Boolean(expanded);}
-  function resetLocalProjectionState(){journal.pageIndex=0;journal.vantage='HUMAN';journal.displayLanguage='en';journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.marginalia=new Map();setMarginaliaExpanded(false);}
+  function resetLocalProjectionState(){journal.pageIndex=0;journal.vantage='HUMAN';journal.displayLanguage='en';journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.lastSourcePacket=null;journal.lastRevisitPacket=null;journal.marginalia=new Map();setMarginaliaExpanded(false);}
   function setData(nextData){assertData(nextData);journalData=nextData;resetLocalProjectionState();if(journal.open)render();return snapshot();}
   function restoreInitialData(){return setData(initialData);}
   function open({selectedNodeRef=state.selectedNodeRef}={}){
-    journal.open=true;journal.openedNodeRef=selectedNodeRef;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.marginalia=new Map();journal.pageIndex=clampIndex(journal.pageIndex);setMarginaliaExpanded(false);render();return snapshot();
+    journal.open=true;journal.openedNodeRef=selectedNodeRef;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.lastSourcePacket=null;journal.lastRevisitPacket=null;journal.marginalia=new Map();journal.pageIndex=clampIndex(journal.pageIndex);setMarginaliaExpanded(false);render();return snapshot();
   }
   function close(){journal.open=false;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.marginalia=new Map();setMarginaliaExpanded(false);renderMarginalia();return snapshot();}
   function setPage(index){if(pageCount()===0)return snapshot();const next=clampIndex(index);if(next===journal.pageIndex)return snapshot();journal.pageIndex=next;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];render();return snapshot();}
@@ -138,13 +138,26 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   const next=()=>setPage(journal.pageIndex+1);
   function selectVantage(value){if(memoryMode())throw new Error('Living Journal Memory projection has no admitted vantage-text projection');if(!VANTAGES.includes(value))throw new Error(`Unsupported Living Journal vantage: ${value}`);journal.vantage=value;render();return snapshot();}
   function selectDisplayLanguage(value){if(memoryMode())throw new Error('Living Journal Memory projection has no admitted display-language projection');if(!DISPLAY_LANGUAGES.includes(value))throw new Error(`Unsupported Living Journal display language: ${value}`);journal.displayLanguage=value;render();return snapshot();}
-  function openSource(){const page=currentPage();if(!page)return snapshot();if(memoryMode()){journal.sourceDoorRef=page.pageRef;journal.sourceDoorRefs=sourceRefsFor(page);render();onSourceOpen({pageRef:page.pageRef,statementRef:page.statementRef,sourceRef:null,sourceRefs:[...journal.sourceDoorRefs],sourceDescent:structuredClone(page.sourceDescent),selectedNodeRef:journal.openedNodeRef});return snapshot();}journal.sourceDoorRef=page.source.sourceRef;journal.sourceDoorRefs=[page.source.sourceRef];render();onSourceOpen({sourceRef:page.source.sourceRef,eventRef:page.eventRef,selectedNodeRef:journal.openedNodeRef});return snapshot();}
-  function revisit(){const page=currentPage();if(!page)return snapshot();if(memoryMode())onRevisit({pageRef:page.pageRef,statementRef:page.statementRef,sourceConversationHeadSha256:page.sourceConversationHeadSha256,selectedNodeRef:journal.openedNodeRef});else onRevisit({eventRef:page.eventRef,selectedNodeRef:journal.openedNodeRef});return snapshot();}
+  function openSource(){
+    const page=currentPage();if(!page)return snapshot();
+    if(memoryMode()){
+      journal.sourceDoorRef=page.pageRef;journal.sourceDoorRefs=sourceRefsFor(page);
+      const packet=Object.freeze({pageRef:page.pageRef,statementRef:page.statementRef,sourceRef:null,sourceRefs:[...journal.sourceDoorRefs],sourceDescent:structuredClone(page.sourceDescent),sourceConversationHeadSha256:page.sourceConversationHeadSha256,selectedNodeRef:journal.openedNodeRef});
+      journal.lastSourcePacket=structuredClone(packet);render();onSourceOpen(packet);return snapshot();
+    }
+    journal.sourceDoorRef=page.source.sourceRef;journal.sourceDoorRefs=[page.source.sourceRef];
+    const packet=Object.freeze({sourceRef:page.source.sourceRef,eventRef:page.eventRef,selectedNodeRef:journal.openedNodeRef});journal.lastSourcePacket=structuredClone(packet);render();onSourceOpen(packet);return snapshot();
+  }
+  function revisit(){
+    const page=currentPage();if(!page)return snapshot();
+    const packet=memoryMode()?Object.freeze({pageRef:page.pageRef,statementRef:page.statementRef,sourceConversationHeadSha256:page.sourceConversationHeadSha256,selectedNodeRef:journal.openedNodeRef}):Object.freeze({eventRef:page.eventRef,selectedNodeRef:journal.openedNodeRef});
+    journal.lastRevisitPacket=structuredClone(packet);onRevisit(packet);return snapshot();
+  }
   function addMarginalia(content){const page=currentPage();if(!page)return snapshot();const text=String(content??'').trim();if(!text)return snapshot();const pageRef=page.pageRef,notes=journal.marginalia.get(pageRef)??[];notes.push(Object.freeze({marginaliaRef:`marginalia.local.${crypto.randomUUID()}`,pageRef,content:text,localOnly:true}));journal.marginalia.set(pageRef,notes);setMarginaliaExpanded(true);renderMarginalia();return snapshot();}
   function snapshot(){
     const page=currentPage(),synthetic=!memoryMode()&&page;
     const effectSource=memoryMode()?journalData.effects:{};
-    return structuredClone({truthClass:journalData.truthClass,dataMode:memoryMode()?'MEMORY':'SYNTHETIC',open:journal.open,pageIndex:journal.pageIndex,pageRef:page?.pageRef??null,eventRef:synthetic?page.eventRef:null,statementRef:memoryMode()&&page?page.statementRef:null,pageCount:pageCount(),vantage:journal.vantage,displayLanguage:journal.displayLanguage,vantageProjectionAvailable:!memoryMode(),displayLanguageProjectionAvailable:!memoryMode(),openedNodeRef:journal.openedNodeRef,sourceDoorRef:journal.sourceDoorRef,sourceDoorRefs:[...journal.sourceDoorRefs],marginaliaCount:page?(journal.marginalia.get(page.pageRef)??[]).length:0,totalMarginaliaCount:[...journal.marginalia.values()].reduce((sum,notes)=>sum+notes.length,0),layoutClass:layoutClass(),visiblePageCount:visiblePageCount(),renderedPageRefs:renderedIndices().map((index)=>journalData.pages[index].pageRef),reducedMotion:reducedMotion(),realMemoryLoaded:journalData.realMemoryLoaded,realJournalBodyLoaded:journalData.realJournalBodyLoaded,modelCalled:memoryMode()?effectSource.modelCalled===true:journalData.modelCalled,translationCalled:memoryMode()?effectSource.translationCalled===true:journalData.translationCalled,networkCalled:memoryMode()?effectSource.networkCalled===true:journalData.networkCalled,persisted:memoryMode()?effectSource.homeMutated===true||effectSource.memoryMutated===true:journalData.persisted,published:memoryMode()?effectSource.publicationPerformed===true:journalData.published,canonicalThenIdentity:canonicalThenIdentity(),originalLanguage:synthetic?page.source.originalLanguage:null,sourceRef:synthetic?page.source.sourceRef:null,originalText:synthetic?page.source.originalText:null,summary:memoryMode()&&page?page.summary:null,summaryHash:memoryMode()&&page?page.summaryHash:null,renderCount:journal.renderCount});
+    return structuredClone({truthClass:journalData.truthClass,dataMode:memoryMode()?'MEMORY':'SYNTHETIC',open:journal.open,pageIndex:journal.pageIndex,pageRef:page?.pageRef??null,eventRef:synthetic?page.eventRef:null,statementRef:memoryMode()&&page?page.statementRef:null,pageCount:pageCount(),vantage:journal.vantage,displayLanguage:journal.displayLanguage,vantageProjectionAvailable:!memoryMode(),displayLanguageProjectionAvailable:!memoryMode(),openedNodeRef:journal.openedNodeRef,sourceDoorRef:journal.sourceDoorRef,sourceDoorRefs:[...journal.sourceDoorRefs],lastSourcePacket:journal.lastSourcePacket,lastRevisitPacket:journal.lastRevisitPacket,marginaliaCount:page?(journal.marginalia.get(page.pageRef)??[]).length:0,totalMarginaliaCount:[...journal.marginalia.values()].reduce((sum,notes)=>sum+notes.length,0),layoutClass:layoutClass(),visiblePageCount:visiblePageCount(),renderedPageRefs:renderedIndices().map((index)=>journalData.pages[index].pageRef),reducedMotion:reducedMotion(),realMemoryLoaded:journalData.realMemoryLoaded,realJournalBodyLoaded:journalData.realJournalBodyLoaded,modelCalled:memoryMode()?effectSource.modelCalled===true:journalData.modelCalled,translationCalled:memoryMode()?effectSource.translationCalled===true:journalData.translationCalled,networkCalled:memoryMode()?effectSource.networkCalled===true:journalData.networkCalled,persisted:memoryMode()?effectSource.homeMutated===true||effectSource.memoryMutated===true:journalData.persisted,published:memoryMode()?effectSource.publicationPerformed===true:journalData.published,canonicalThenIdentity:canonicalThenIdentity(),originalLanguage:synthetic?page.source.originalLanguage:null,sourceRef:synthetic?page.source.sourceRef:null,originalText:synthetic?page.source.originalText:null,summary:memoryMode()&&page?page.summary:null,summaryHash:memoryMode()&&page?page.summaryHash:null,renderCount:journal.renderCount});
   }
   function bind(){
     q('#livingJournalPrevious')?.addEventListener('click',previous);q('#livingJournalNext')?.addEventListener('click',next);
