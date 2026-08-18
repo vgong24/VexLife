@@ -284,11 +284,15 @@ export function validateSemanticRelay(relay, expected = {}) {
   } else if (relay.supersedesInterpretationProjectionRef !== null && relay.supersedesInterpretationProjectionRef !== undefined) errors.push('non-corrected relay cannot supersede an interpretation projection');
   if (!Array.isArray(relay.targets) || relay.targets.length === 0) errors.push('targets must be non-empty');
   const recipientSet = new Set(relay.recipientRefs ?? []);
+  const targetKeys = new Set();
   for (const [index, target] of (relay.targets ?? []).entries()) {
     const path = `targets[${index}]`;
     if (!isObject(target)) { errors.push(`${path} must be an object`); continue; }
     for (const field of ['recipientRef', 'recipientPreferredLanguageRef', 'targetLanguageRef', 'targetAudienceRef']) requireRef(target[field], `${path}.${field}`, errors);
     if (!recipientSet.has(target.recipientRef)) errors.push(`${path}.recipientRef is not declared`);
+    const targetKey = `${target.recipientRef ?? ''}::${target.targetLanguageRef ?? ''}`;
+    if (targetKeys.has(targetKey)) errors.push(`${path} duplicates a recipient/language target`);
+    targetKeys.add(targetKey);
     if (!PROJECTION_MODES.has(target.projectionMode)) errors.push(`${path}.projectionMode is invalid`);
     for (const field of ['localeQualityState', 'terminologyState', 'authorityState']) if (!ADMISSION_STATES.has(target[field])) errors.push(`${path}.${field} is invalid`);
     if (!LOCALIZATION_READINESS_STATES.has(target.localizationReadinessState)) errors.push(`${path}.localizationReadinessState is invalid`);
@@ -303,6 +307,10 @@ export function validateSemanticRelay(relay, expected = {}) {
     if (capability.capabilityRef !== null && !isRef(capability.capabilityRef)) errors.push(`${path}.runtime capability ref is invalid`);
     requireRefs(capability.supportedLanguageRefs, `${path}.runtime capability supported languages`, errors, { allowEmpty: true });
     requireRefs(capability.evidenceRefs, `${path}.runtime capability evidence`, errors, { allowEmpty: true });
+    const derivedProjectionMode = projectionMode({ ...target, runtimeCapability: capability });
+    if (PROJECTION_MODES.has(target.projectionMode) && target.projectionMode !== derivedProjectionMode) {
+      errors.push(`${path}.projectionMode does not match current target evidence; expected ${derivedProjectionMode}`);
+    }
     if (target.projectionMode === 'MODEL_NATIVE' && !(
       capability.currentnessState === 'CURRENT'
       && capability.multilingualOutput === true
@@ -314,6 +322,9 @@ export function validateSemanticRelay(relay, expected = {}) {
     )) errors.push(`${path}.MODEL_NATIVE lacks current explicit multilingual capability and owner evidence`);
     if (target.deliveryState !== 'DELIVERED' && target.acknowledgementState === 'ACKNOWLEDGED') errors.push(`${path} acknowledges before delivery`);
     if (target.acknowledgementState !== 'ACKNOWLEDGED' && ['UNDERSTOOD', 'MISUNDERSTOOD'].includes(target.understandingState)) errors.push(`${path} records understanding before acknowledgement`);
+  }
+  for (const recipientRef of recipientSet) {
+    if (!(relay.targets ?? []).some((target) => target?.recipientRef === recipientRef)) errors.push(`recipientRef ${recipientRef} has no target`);
   }
   if (expected.sourceMessageRef !== undefined && relay.sourceMessageRef !== expected.sourceMessageRef) errors.push('semantic relay sourceMessageRef does not match event/message source identity');
   if (expected.recipientRefs !== undefined && !sameSet(unique(relay.recipientRefs ?? []), unique(expected.recipientRefs))) errors.push('semantic relay recipientRefs do not match event/message recipients');

@@ -1,10 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import http from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
 import { loadBlueprint, validateBlueprint, buildIdentityIndex } from '../src/core/blueprint.mjs';
 import { StateCell, combineStateCells } from '../src/core/state-relay.mjs';
 import { Atlas } from '../src/core/atlas.mjs';
 import { Localizer, createOriginalMessage, proposeVexRefinement, acceptRefinement } from '../src/core/localization.mjs';
 import { attachSemanticRelay, composeSemanticRelay, createChannel, createMessage, contextForParticipant, validateSemanticRelay } from '../src/core/conversation.mjs';
+import { LivedCompanionError, initializeLivedCompanionHome, performLivedCompanionTurn } from '../src/core/lived-companion.mjs';
 import { NavigationLattice, SelectionStore } from '../src/core/navigation.mjs';
 import { TerrainLayout } from '../src/core/terrain.mjs';
 import { createDeviceInstallation, createScoreRecord, synchronizeScore } from '../src/core/device-family.mjs';
@@ -414,6 +419,119 @@ test('semantic relay runtime multilingual mode fails closed without current expl
   const raw = composeSemanticRelay({ ...semanticRelayFixture(), rawText: 'must never enter metadata' });
   assert.equal(raw.status, 'REJECTED');
   assert.match(raw.errors.join('\n'), /rawText/);
+});
+
+test('persisted semantic relay validation rejects incomplete or duplicate targets and projection-mode drift', () => {
+  const composed = composeSemanticRelay(semanticRelayFixture({ targetLanguageRef: 'language.ja' }));
+  assert.equal(composed.status, 'COMPOSED');
+
+  const missingTarget = structuredClone(composed.relay);
+  missingTarget.recipientRefs.push('role.vex.guide');
+  let validation = validateSemanticRelay(missingTarget);
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /recipientRef role\.vex\.guide has no target/);
+
+  const duplicateTarget = structuredClone(composed.relay);
+  duplicateTarget.targets.push(structuredClone(duplicateTarget.targets[0]));
+  validation = validateSemanticRelay(duplicateTarget);
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /duplicates a recipient\/language target/);
+
+  const localizationDrift = structuredClone(composed.relay);
+  localizationDrift.targets[0].runtimeCapability = {
+    capabilityRef: null,
+    currentnessState: 'UNKNOWN',
+    multilingualOutput: false,
+    supportedLanguageRefs: [],
+    evidenceRefs: []
+  };
+  localizationDrift.targets[0].projectionMode = 'LOCALIZATION_PIPELINE';
+  validation = validateSemanticRelay(localizationDrift);
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /projectionMode does not match current target evidence; expected NONE/);
+
+  const humanReviewDrift = structuredClone(localizationDrift);
+  humanReviewDrift.targets[0].projectionMode = 'HUMAN_REVIEW';
+  validation = validateSemanticRelay(humanReviewDrift);
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /projectionMode does not match current target evidence; expected NONE/);
+});
+
+test('durable G01 relay admission rejects target and projection drift before endpoint or event effects', async () => {
+  let calls = 0;
+  const service = http.createServer((request, response) => {
+    calls += 1;
+    request.resume();
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ model: 'test-model', choices: [{ message: { content: 'reply' } }] }));
+  });
+  await new Promise((resolve) => service.listen(0, '127.0.0.1', resolve));
+  const endpoint = `http://127.0.0.1:${service.address().port}/`;
+  try {
+    for (const variant of ['missing-target', 'projection-mode-drift']) {
+      const home = fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-core-semantic-${variant}-`));
+      const identity = {
+        home,
+        homeRef: `home.semantic.${variant}`,
+        familyRef: `family.semantic.${variant}`,
+        deviceRef: `device.semantic.${variant}`,
+        companionLineageRef: `lineage.semantic.${variant}`
+      };
+      initializeLivedCompanionHome(identity);
+      const requestMessageRef = `message.request.semantic.${variant}`;
+      const relayResult = composeSemanticRelay(semanticRelayFixture({
+        relayRef: `relay.semantic.${variant}`,
+        sourceMessageRef: requestMessageRef,
+        recipientRef: 'role.vex.companion'
+      }));
+      assert.equal(relayResult.status, 'COMPOSED');
+      const invalidRelay = structuredClone(relayResult.relay);
+      if (variant === 'missing-target') {
+        invalidRelay.recipientRefs.push('role.vex.guide');
+      } else {
+        invalidRelay.targets[0].runtimeCapability = {
+          capabilityRef: null,
+          currentnessState: 'UNKNOWN',
+          multilingualOutput: false,
+          supportedLanguageRefs: [],
+          evidenceRefs: []
+        };
+        invalidRelay.targets[0].projectionMode = 'LOCALIZATION_PIPELINE';
+      }
+      const recipientRefs = [...invalidRelay.recipientRefs];
+      const threadRef = `thread.semantic.${variant}`;
+      const callsBefore = calls;
+      await assert.rejects(
+        () => performLivedCompanionTurn({
+          ...identity,
+          instanceRef: `instance.semantic.${variant}`,
+          threadRef,
+          channelRef: `channel.semantic.${variant}`,
+          turnRef: `turn.semantic.${variant}`,
+          requestMessageRef,
+          responseMessageRef: `message.response.semantic.${variant}`,
+          speakerRef: 'person.semantic.test',
+          recipientRefs,
+          content: 'semantic validation probe',
+          requestSemanticRelay: invalidRelay,
+          endpointProfile: {
+            profileRef: 'profile.loopback.semantic',
+            admitted: true,
+            endpoint,
+            model: 'test-model'
+          },
+          timeoutMs: 200
+        }),
+        (error) => error instanceof LivedCompanionError && error.code === 'SEMANTIC_RELAY_INVALID'
+      );
+      assert.equal(calls, callsBefore);
+      const threadRoot = path.join(home, 'conversations', identity.companionLineageRef, threadRef);
+      assert.equal(fs.existsSync(path.join(threadRoot, 'head.json')), false);
+      assert.equal(fs.existsSync(path.join(threadRoot, 'events')), false);
+    }
+  } finally {
+    await new Promise((resolve) => service.close(resolve));
+  }
 });
 
 // [VXG RealForever]
