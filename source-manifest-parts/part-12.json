@@ -16,8 +16,8 @@
     {
       "path": "test/core.test.mjs",
       "mode": "100644",
-      "bytes": 21646,
-      "sha256": "630b0da45f134c083e95247c99c1c99e59765f0c05258302abf8ac8c64750162"
+      "bytes": 26901,
+      "sha256": "70d2813a75ac7c8f0a52fcab5cdac4c2f8e570e0745ef6feececf74f35ad333b"
     },
     {
       "path": "test/daily-memory-dream.test.mjs",
