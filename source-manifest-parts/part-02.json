@@ -16,14 +16,14 @@
     {
       "path": "blueprint/feature-registry.json",
       "mode": "100644",
-      "bytes": 70101,
-      "sha256": "0202c51663a4dd3e6de65357243b65d90bd0a13faa0ce3d1d11b57daaee21cd5"
+      "bytes": 74713,
+      "sha256": "21692a18eba85d490360dc6ef3d686701f3dde7a2bdcb857a8c0841c6ca1a5be"
     },
     {
       "path": "blueprint/fragments/actions.json",
       "mode": "100644",
-      "bytes": 17103,
-      "sha256": "194003aa32deb6223044f2e41e5429f0aa130d41230e1b8cfa759c535993a675"
+      "bytes": 19246,
+      "sha256": "31d2ec8b81d7207ec5113b9d91e674b1110181e173edfcf58129f42ec106d970"
     },
     {
       "path": "blueprint/fragments/components.json",
@@ -86,6 +86,12 @@
       "sha256": "7233df7f67f26905297cbf7b6784de020a43c17514888954a373720a333f48db"
     },
     {
+      "path": "blueprint/fragments/screens/living-journal.json",
+      "mode": "100644",
+      "bytes": 8462,
+      "sha256": "a8edfb0d19399e32796dc45d6f5969a8550d9cfb07a7a2dddcf122d26dad3710"
+    },
+    {
       "path": "blueprint/fragments/screens/shell.json",
       "mode": "100644",
       "bytes": 14727,
@@ -100,8 +106,8 @@
     {
       "path": "blueprint/fragments/state-domains.json",
       "mode": "100644",
-      "bytes": 6485,
-      "sha256": "90bbe121206b5cbffbbd642ce76910ea02a19f220c4a9c5a57b69658b803285a"
+      "bytes": 6754,
+      "sha256": "9af7c2f5df159704da92bc77e98abff60d4d31efed218a77e3d54844e290333d"
     },
     {
       "path": "blueprint/fragments/terrain.json",
@@ -112,8 +118,8 @@
     {
       "path": "blueprint/fragments/tests.json",
       "mode": "100644",
-      "bytes": 58136,
-      "sha256": "49b8dd6b8dc24412867f074a3762d608c26c78c721f5475f62129ca4b16a8527"
+      "bytes": 59661,
+      "sha256": "ad8a623326bcc36aff74cee4e30095fdb92545867be73717ffd31a9301ef1b8f"
     },
     {
       "path": "blueprint/home-bridge-registry.json",
@@ -138,12 +144,6 @@
       "mode": "100644",
       "bytes": 26440,
       "sha256": "407fefc05f3ea42961caeff8b2e7ceec737509c6a75a85d15adc0097b2d557dc"
-    },
-    {
-      "path": "blueprint/implementation/work-units-foundation.json",
-      "mode": "100644",
-      "bytes": 7288,
-      "sha256": "df7e10ccb551870f7f05963c188a26df93fc38fd91e442eac57a8fb6ec7e475b"
     }
   ]
 }

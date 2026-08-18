@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { semanticHash, writeJson } from './utils.mjs';
+import { validateSemanticRelay } from './conversation.mjs';
 
 export const LIVED_COMPANION_FAILURE_CODES = Object.freeze([
   'HOME_NOT_INITIALIZED',
@@ -20,7 +21,8 @@ export const LIVED_COMPANION_FAILURE_CODES = Object.freeze([
   'DUPLICATE_TURN_SUPPRESSED',
   'THREAD_WRITER_CONFLICT',
   'THREAD_WRITER_RECOVERY_REQUIRED',
-  'PRIVACY_POLICY_BLOCKED'
+  'PRIVACY_POLICY_BLOCKED',
+  'SEMANTIC_RELAY_INVALID'
 ]);
 
 export class LivedCompanionError extends Error {
@@ -814,7 +816,8 @@ function verifyCanonicalFirstFailureReceipt(value, safeThread, safeTurn) {
     'CONTEXT_HASH_MISMATCH',
     'DUPLICATE_TURN_SUPPRESSED',
     'THREAD_WRITER_CONFLICT',
-    'THREAD_WRITER_RECOVERY_REQUIRED'
+    'THREAD_WRITER_RECOVERY_REQUIRED',
+    'SEMANTIC_RELAY_INVALID'
   ]);
   const endpointFailure = String(receipt.failureCode || '').startsWith('ENDPOINT_');
   const validDurability =
@@ -1109,6 +1112,18 @@ function assertInMemoryAuthorizationNotPersisted(value, inMemoryAuthorization, l
   visit(value, label);
 }
 
+function validatedEventSemanticRelay(relay, { messageRef, recipientRefs, phase }) {
+  if (relay === undefined || relay === null) return null;
+  const validation = validateSemanticRelay(relay, { sourceMessageRef: messageRef, recipientRefs });
+  if (!validation.ok) {
+    fail('SEMANTIC_RELAY_INVALID', `${phase} semantic relay metadata is invalid`, {
+      messageRef,
+      errors: validation.errors
+    });
+  }
+  return structuredClone(relay);
+}
+
 async function callEndpoint({ endpointProfile, requestContent, inMemoryAuthorization = null, timeoutMs = 5000 }) {
   if (
     !endpointProfile?.admitted ||
@@ -1193,6 +1208,8 @@ export async function performLivedCompanionTurn({
   speakerRef,
   recipientRefs,
   content,
+  requestSemanticRelay = null,
+  responseSemanticRelay = null,
   endpointProfile,
   contextSourceRefs = [],
   inMemoryAuthorization = null,
@@ -1233,9 +1250,21 @@ export async function performLivedCompanionTurn({
       speakerRef,
       recipientRefs,
       content,
+      requestSemanticRelay,
+      responseSemanticRelay,
       contextSourceRefs,
       endpointProfile
     }, inMemoryAuthorization, 'turn persistable input');
+    const requestRelay = validatedEventSemanticRelay(requestSemanticRelay, {
+      messageRef: requestMessageRef,
+      recipientRefs,
+      phase: 'request'
+    });
+    const responseRelay = validatedEventSemanticRelay(responseSemanticRelay, {
+      messageRef: responseMessageRef,
+      recipientRefs: [speakerRef],
+      phase: 'response'
+    });
     const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
     const priorState = validateCompletedConversationState({
       home: identity.homeRoot,
@@ -1254,7 +1283,7 @@ export async function performLivedCompanionTurn({
     });
     const startingSequence = lastValidHead ? Number(lastValidHead.sequence) + 1 : 0;
     const requestCore = {
-      schemaVersion: 'vexlife.lived-companion-event/v1',
+      schemaVersion: requestRelay ? 'vexlife.lived-companion-event/v2' : 'vexlife.lived-companion-event/v1',
       eventRef: `event.vexlife.request.${crypto.randomUUID()}`,
       eventKind: 'REQUEST',
       homeRef: admitted.homeRef,
@@ -1271,6 +1300,7 @@ export async function performLivedCompanionTurn({
       priorEventHash: lastValidHead?.eventHash ?? null,
       content,
       contentHash: contentHash(content),
+      ...(requestRelay ? { semanticRelay: requestRelay } : {}),
       privacyClass: 'DEVICE_PRIVATE',
       formedAt: stableNow(formedAt)
     };
@@ -1282,7 +1312,7 @@ export async function performLivedCompanionTurn({
     const response = await callEndpoint({ endpointProfile, requestContent: content, inMemoryAuthorization, timeoutMs });
     assertInMemoryAuthorizationNotPersisted(response, inMemoryAuthorization, 'endpoint response');
     const responseCore = {
-      schemaVersion: 'vexlife.lived-companion-event/v1',
+      schemaVersion: responseRelay ? 'vexlife.lived-companion-event/v2' : 'vexlife.lived-companion-event/v1',
       eventRef: `event.vexlife.response.${crypto.randomUUID()}`,
       eventKind: 'RESPONSE',
       homeRef: admitted.homeRef,
@@ -1299,6 +1329,7 @@ export async function performLivedCompanionTurn({
       priorEventHash: requestEvent.eventHash,
       content: response.content,
       contentHash: contentHash(response.content),
+      ...(responseRelay ? { semanticRelay: responseRelay } : {}),
       endpointProfileRef: endpointProfile.profileRef,
       sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpointProfile.endpoint),
       modelNameOrBoundedTestProfileRef: response.model,
@@ -1435,9 +1466,15 @@ function assertEventRecord(event, expected = null, fileName = null) {
     /^[0-9a-f]{64}$/u.test(event.eventHash ?? '') && Number.isSafeInteger(event.sequence)
       ? `${String(event.sequence).padStart(8, '0')}-${event.eventHash}.json`
       : null;
+  const isHistoricalV1 = event.schemaVersion === 'vexlife.lived-companion-event/v1';
+  const isRelayV2 = event.schemaVersion === 'vexlife.lived-companion-event/v2';
+  const relayValidation = isRelayV2
+    ? validateSemanticRelay(event.semanticRelay, { sourceMessageRef: event.messageRef, recipientRefs: event.recipientRefs })
+    : { ok: !Object.hasOwn(event, 'semanticRelay'), errors: [] };
 
   if (
-    event.schemaVersion !== 'vexlife.lived-companion-event/v1' ||
+    (!isHistoricalV1 && !isRelayV2) ||
+    !relayValidation.ok ||
     safeInstanceRef !== event.instanceRef ||
     safeTurnRef !== event.turnRef ||
     !isNonEmptyString(event.eventRef) ||

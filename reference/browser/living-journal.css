@@ -1,0 +1,153 @@
+/* Living Journal lived-book projection — reading-first contextual mode */
+#contextSurface:has(#view-living-journal:not([hidden])){
+  overflow:hidden;
+  padding:0;
+  background:color-mix(in srgb,var(--surface) 99%,var(--bg));
+  border-color:var(--strong);
+  box-shadow:0 28px 80px rgba(0,0,0,.42);
+}
+#contextSurface:has(#view-living-journal:not([hidden])) #contextWorkspaceControls{
+  position:absolute;
+  inset:12px 12px auto auto;
+  z-index:45;
+  width:48px;
+  height:48px;
+  min-height:48px;
+  margin:0;
+  padding:0;
+  border:0;
+  background:transparent;
+  backdrop-filter:none;
+  display:block;
+}
+#contextSurface:has(#view-living-journal:not([hidden])) #contextWorkspaceControls>:not(#contextSurfaceClose){display:none!important}
+#contextSurface:has(#view-living-journal:not([hidden])) #contextSurfaceClose{
+  position:static;
+  width:48px;
+  height:48px;
+  min-height:48px;
+  margin:0;
+  padding:0;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--raised);
+  color:var(--text);
+  font-size:20px;
+}
+#contextSurface:has(#view-living-journal:not([hidden])) .e28-context-workspace-resize{opacity:.08}
+
+#view-living-journal{
+  position:relative;
+  width:100%;
+  height:100%;
+  min-height:0;
+  overflow:hidden;
+  display:grid;
+  grid-template-rows:auto auto minmax(0,1fr) auto;
+  gap:14px;
+  padding:22px 28px 20px;
+  color-scheme:dark;
+  background:
+    radial-gradient(circle at 50% -20%,color-mix(in srgb,var(--text) 4%,transparent),transparent 42%),
+    linear-gradient(180deg,color-mix(in srgb,var(--surface) 99%,var(--bg)),var(--surface));
+}
+html[data-theme="light"] #view-living-journal{color-scheme:light}
+#view-living-journal[hidden]{display:none}
+
+.living-journal-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-right:58px}
+.living-journal-heading small{display:block;color:var(--faint);font:700 9px/1.35 var(--mono);letter-spacing:.12em}
+.living-journal-heading h1{margin:3px 0 0;font:700 clamp(30px,3.2vw,42px)/1.02 var(--serif);letter-spacing:-.02em}
+.living-journal-truth{max-width:230px;margin-top:2px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:var(--raised);font:650 10px/1.25 var(--mono);text-align:center}
+
+.living-journal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}
+.living-journal-pager{display:grid;grid-template-columns:auto minmax(94px,auto) auto;align-items:center;gap:8px}
+.living-journal-page-status{min-width:94px;text-align:center;color:var(--muted);font:700 10px/1 var(--mono);font-variant-numeric:tabular-nums}
+.living-journal-controls{display:flex;align-items:end;justify-content:flex-end;gap:10px;min-width:0}
+.living-journal-controls label{display:grid;gap:4px;min-height:0;color:var(--muted);font-size:10px}
+.living-journal-controls label span{padding-left:2px;font:700 9px/1.2 var(--mono);letter-spacing:.05em}
+
+#view-living-journal button,#view-living-journal select,#view-living-journal textarea,.living-journal-marginalia summary{
+  min-height:48px;border:1px solid var(--line);border-radius:10px;background:var(--raised);color:var(--text);font:650 12px/1.2 var(--sans)
+}
+#view-living-journal button{padding:0 14px}
+#view-living-journal button:disabled{opacity:.34;cursor:default}
+#view-living-journal select{min-width:132px;padding:0 34px 0 12px}
+#livingJournalVantage{min-width:184px}
+#view-living-journal textarea{width:100%;min-height:76px;padding:10px 12px;resize:vertical;line-height:1.45}
+#view-living-journal button:hover:not(:disabled),.living-journal-marginalia summary:hover{border-color:var(--strong);background:var(--overlay)}
+
+.living-journal-spread{
+  min-height:0;height:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;overflow:hidden;
+  border:1px solid var(--line);border-radius:20px;background:var(--line);box-shadow:0 18px 46px rgba(0,0,0,.22);scroll-behavior:smooth
+}
+.living-journal-page{
+  min-width:0;min-height:0;overflow:auto;padding:clamp(24px,3vw,38px);border:0;border-radius:0;
+  background:color-mix(in srgb,var(--raised) 78%,var(--surface));box-shadow:inset 0 0 36px rgba(0,0,0,.08);scrollbar-gutter:stable
+}
+.living-journal-page:first-child{border-radius:19px 5px 5px 19px}
+.living-journal-page:last-child{border-radius:5px 19px 19px 5px}
+.living-journal-page:only-child{border-radius:19px}
+.living-journal-page[data-current="true"]{outline:1px solid color-mix(in srgb,var(--text) 16%,transparent);outline-offset:-7px}
+.living-journal-ordinal,.living-journal-source-line{display:block;color:var(--faint);font:650 9px/1.4 var(--mono);overflow-wrap:anywhere}
+.living-journal-time{margin-top:18px;padding-top:13px;border-top:1px solid var(--line)}
+.living-journal-time strong{color:var(--muted);font:750 9px/1 var(--mono);letter-spacing:.14em}
+.living-journal-time p{margin:7px 0 0;color:var(--text);font:400 clamp(16px,1.5vw,19px)/1.58 var(--serif)}
+.living-journal-time.now{border-top-style:dashed;color:var(--muted)}
+.living-journal-vantage{margin:20px 0 4px;padding:13px 15px;border:0;border-left:2px solid var(--strong);background:color-mix(in srgb,var(--surface) 68%,transparent);color:var(--muted);font:500 13px/1.55 var(--sans)}
+.living-journal-source-line{margin-top:20px;padding-top:12px;border-top:1px solid var(--line)}
+
+.living-journal-footer{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;min-width:0}
+.living-journal-doors{display:flex;gap:8px}
+.living-journal-source-status{display:block;min-width:0;min-height:18px;overflow:hidden;color:var(--faint);font:600 10px/1.35 var(--mono);text-overflow:ellipsis;white-space:nowrap}
+
+.living-journal-marginalia{position:relative}
+.living-journal-marginalia summary{min-width:132px;padding:0 13px;display:flex;align-items:center;justify-content:center;cursor:pointer;list-style:none}
+.living-journal-marginalia summary::-webkit-details-marker{display:none}
+.living-journal-marginalia[open]{
+  position:absolute;right:0;bottom:56px;z-index:55;width:min(420px,calc(100% - 44px));max-height:min(420px,70vh);overflow:auto;
+  padding:12px;border:1px solid var(--strong);border-radius:16px;background:var(--surface);box-shadow:0 24px 70px rgba(0,0,0,.48)
+}
+.living-journal-marginalia[open] summary{justify-content:flex-start;width:100%;min-width:0;height:48px;min-height:48px;margin:-4px -2px 10px;padding:0 8px;border:0;background:transparent}
+.living-journal-marginalia-body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:end}
+.living-journal-marginalia-body label{grid-column:1/-1;display:grid;gap:5px;color:var(--muted);font-size:10px}
+.living-journal-margin-list{grid-column:1/-1;display:grid;gap:6px}
+.living-journal-margin-note{margin:0;padding:9px 11px;border-left:2px solid var(--strong);background:var(--raised);color:var(--text);font-size:12px;line-height:1.45}
+.living-journal-ephemeral{grid-column:1/-1;color:var(--faint);font-size:10px}
+
+@media(max-width:999px){
+  .living-journal-spread{display:flex;gap:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}
+  .living-journal-spread::-webkit-scrollbar{display:none}
+  .living-journal-page{flex:0 0 100%;width:100%;border-radius:18px!important;scroll-snap-align:start;scroll-snap-stop:always}
+}
+
+@media(max-width:760px){
+  #contextSurface:has(#view-living-journal:not([hidden])) #contextWorkspaceControls{inset:8px 8px auto auto}
+  #view-living-journal{gap:10px;padding:16px 14px 82px}
+  .living-journal-heading{align-items:flex-start;gap:10px;padding-right:54px}
+  .living-journal-heading h1{font-size:30px}
+  .living-journal-heading small{max-width:190px}
+  .living-journal-truth{max-width:128px;margin-top:0;padding:6px 8px;font-size:8px}
+  .living-journal-toolbar{display:grid;grid-template-columns:1fr;gap:8px}
+  .living-journal-pager{grid-template-columns:1fr auto 1fr;width:100%}
+  .living-journal-pager button:first-child{justify-self:start}
+  .living-journal-pager button:last-child{justify-self:end}
+  .living-journal-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+  .living-journal-controls select,#livingJournalVantage{width:100%;min-width:0}
+  .living-journal-spread{min-height:250px}
+  .living-journal-page{padding:22px 20px}
+  .living-journal-time{margin-top:15px;padding-top:11px}
+  .living-journal-time p{font-size:17px}
+  .living-journal-vantage{margin-top:16px}
+  .living-journal-footer{grid-template-columns:1fr auto;gap:8px}
+  .living-journal-doors{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr}
+  .living-journal-doors button{width:100%}
+  .living-journal-source-status{grid-column:1/2;white-space:nowrap}
+  .living-journal-marginalia{grid-column:2/3}
+  .living-journal-marginalia[open]{left:0;right:0;bottom:56px;width:auto;max-height:min(360px,55vh);grid-column:auto}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .living-journal-spread{scroll-behavior:auto}
+  .living-journal-page{transition:none!important;animation:none!important}
+}
+/* [VXG RealForever] */
