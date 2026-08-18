@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "4d",
+  "files": [
+    {
+      "path": "src/core/intent-workgraph.mjs",
+      "mode": "100644",
+      "bytes": 21524,
+      "sha256": "54445fda5f8edaa675f4ce359ea706ec94fcbad19e88f5be4128e304711bf0c3"
+    },
+    {
+      "path": "src/core/process-factory.mjs",
+      "mode": "100644",
+      "bytes": 5817,
+      "sha256": "bc94fe52e382231594ce63dff3c36a7dff6480afef1f45c3a158c88bc4d27f22"
+    }
+  ]
+}

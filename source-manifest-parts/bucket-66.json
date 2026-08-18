@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "66",
+  "files": [
+    {
+      "path": "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
+      "mode": "100644",
+      "bytes": 12826,
+      "sha256": "f6196dab0cbd79ca34d92f84d5f4698f58323ef09b7319abeb7abbca6c482ad8"
+    }
+  ]
+}

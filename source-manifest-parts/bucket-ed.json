@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ed",
+  "files": [
+    {
+      "path": "blueprint/implementation/work-units-experience-and-runtime.json",
+      "mode": "100644",
+      "bytes": 26440,
+      "sha256": "407fefc05f3ea42961caeff8b2e7ceec737509c6a75a85d15adc0097b2d557dc"
+    }
+  ]
+}

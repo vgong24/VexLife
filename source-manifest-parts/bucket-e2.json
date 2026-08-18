@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "e2",
+  "files": [
+    {
+      "path": "src/core/impact.mjs",
+      "mode": "100644",
+      "bytes": 2182,
+      "sha256": "ff17dd8fc7281c6399d6bc172fc5d28df2b9a5262bfd26a2340e67f9430798f7"
+    }
+  ]
+}

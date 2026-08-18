@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "87",
+  "files": [
+    {
+      "path": "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md",
+      "mode": "100644",
+      "bytes": 9064,
+      "sha256": "17afaa996927c98807a9eede7375497a46e1fa7c0199cd3716f6c9ee371adb1a"
+    },
+    {
+      "path": "src/core/daily-memory-dream.mjs",
+      "mode": "100644",
+      "bytes": 60707,
+      "sha256": "1808e03fb3a9069b6b8d67a75a52c1699891f437aca6d9cf1217bf198fc0314f"
+    },
+    {
+      "path": "src/core/g05-runtime-authority-substrate.mjs",
+      "mode": "100644",
+      "bytes": 44847,
+      "sha256": "9aa7e0c4976f6a334a35d4b32a18b801a1f71437aef021b46e1a8642842507ea"
+    }
+  ]
+}

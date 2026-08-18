@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "95",
+  "files": [
+    {
+      "path": "reference/browser/README.md",
+      "mode": "100644",
+      "bytes": 898,
+      "sha256": "df56100f04b33c3b5c61d46565277a5025fb72632408679a1fee5c2f2d06d93f"
+    }
+  ]
+}

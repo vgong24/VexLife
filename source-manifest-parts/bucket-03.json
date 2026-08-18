@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "03",
+  "files": [
+    {
+      "path": "blueprint/model-profiles.example.json",
+      "mode": "100644",
+      "bytes": 635,
+      "sha256": "92b99a29e5eaed1253cf10540e85654c09a55114a88e2b6e8f417c6b979afc10"
+    },
+    {
+      "path": "src/core/device-family.mjs",
+      "mode": "100644",
+      "bytes": 2254,
+      "sha256": "db0e21e48b2d7c2a9ad4ef1a518b0e64a4e057a3d7a2ed1b2de5aefb21203579"
+    },
+    {
+      "path": "src/core/home-bridge.mjs",
+      "mode": "100644",
+      "bytes": 7921,
+      "sha256": "3ceef5d425232ec90b4d59a6e9a8b66510124d0f748ebd695a437e56a48cda81"
+    }
+  ]
+}

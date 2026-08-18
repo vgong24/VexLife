@@ -1,11 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { buildSourceManifest, compareSourceManifest } from '../src/core/source-manifest.mjs';
+import {
+  SOURCE_MANIFEST_V2_SCHEMA,
+  SOURCE_MANIFEST_V3_SCHEMA,
+  buildSourceManifest,
+  buildSourceManifestDescriptor,
+  changedSourceManifestBuckets,
+  compareSourceManifest,
+  hydrateStoredSourceManifest,
+  partitionSourceManifestFiles,
+  sourceManifestBucketClaim,
+  sourceManifestBucketId,
+  sourceManifestBucketOverlap,
+  sourceManifestBucketPath
+} from '../src/core/source-manifest.mjs';
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,6 +55,24 @@ function blocker(actual, kind) {
   return actual.candidate.blockers.find((entry) => entry.kind === kind);
 }
 
+function record(relativePath, content = relativePath, mode = '100644') {
+  return {
+    path: relativePath,
+    mode,
+    bytes: Buffer.byteLength(content),
+    sha256: crypto.createHash('sha256').update(content).digest('hex')
+  };
+}
+
+function v3Stored(actual) {
+  const descriptor = buildSourceManifestDescriptor(actual);
+  const parts = partitionSourceManifestFiles(actual.files).map((bucket) => ({
+    ref: bucket.path,
+    value: { schemaVersion: actual.partSchemaVersion, bucketId: bucket.bucketId, files: bucket.files }
+  }));
+  return { descriptor, parts };
+}
+
 test('manifest hashes canonical index blobs and excludes ignored, tool-local, model, and self artifacts', (t) => {
   const root = seedRepository(t);
   write(root, 'ignored/ambient.log', 'ambient');
@@ -55,6 +87,7 @@ test('manifest hashes canonical index blobs and excludes ignored, tool-local, mo
   const second = buildSourceManifest(root);
 
   assert.deepEqual(first, second);
+  assert.equal(first.schemaVersion, SOURCE_MANIFEST_V3_SCHEMA);
   assert.equal(first.sourceKind, 'GIT_INDEX_CANONICAL_BLOBS');
   assert.equal(first.sourceRecordSchemaVersion, 'vexlife.source-manifest-record/v1');
   assert.equal(first.partSchemaVersion, 'vexlife.source-manifest-part/v1');
@@ -266,7 +299,7 @@ test('unresolved index entries fail closed', (t) => {
 
 test('missing, extra, changed, and reordered diagnostics are bounded', () => {
   const expected = {
-    schemaVersion: 'vexlife.source-manifest/v2',
+    schemaVersion: SOURCE_MANIFEST_V2_SCHEMA,
     fileCount: 4,
     treeSha256: 'expected',
     files: [
@@ -277,7 +310,7 @@ test('missing, extra, changed, and reordered diagnostics are bounded', () => {
     ]
   };
   const actual = {
-    schemaVersion: 'vexlife.source-manifest/v2',
+    schemaVersion: SOURCE_MANIFEST_V2_SCHEMA,
     fileCount: 4,
     treeSha256: 'actual',
     files: [
@@ -311,20 +344,172 @@ test('missing, extra, changed, and reordered diagnostics are bounded', () => {
   assert.equal(comparison.pathDifferences.reordered.truncated, true);
 });
 
-test('CI keeps the full Linux foundation job and adds exact Windows/Linux manifest receipts', () => {
+test('v3 path hashing uses the first SHA-256 byte of exact UTF-8 Git path bytes', () => {
+  for (const relativePath of ['src/a.txt', 'src/日本語.mjs', 'reference/browser/index.html']) {
+    const expected = crypto.createHash('sha256').update(Buffer.from(relativePath, 'utf8')).digest('hex').slice(0, 2);
+    assert.equal(sourceManifestBucketId(relativePath), expected);
+    assert.equal(sourceManifestBucketPath(expected), `source-manifest-parts/bucket-${expected}.json`);
+  }
+});
+
+test('v3 stable descriptor excludes candidate aggregate snapshot fields', (t) => {
+  const root = seedRepository(t);
+  const actual = buildSourceManifest(root);
+  const descriptor = buildSourceManifestDescriptor(actual);
+
+  assert.equal(descriptor.schemaVersion, SOURCE_MANIFEST_V3_SCHEMA);
+  assert.equal(descriptor.partition.bucketCount, 256);
+  assert.equal(descriptor.partition.bucketInput, 'EXACT_UTF8_GIT_PATH_BYTES');
+  assert.equal(descriptor.partition.emptyBucketPolicy, 'OMIT');
+  assert.equal(Object.hasOwn(descriptor, 'files'), false);
+  assert.equal(Object.hasOwn(descriptor, 'fileCount'), false);
+  assert.equal(Object.hasOwn(descriptor, 'treeSha256'), false);
+  assert.match(descriptor.contractSha256, /^[0-9a-f]{64}$/u);
+});
+
+test('v3 partition hydration reproduces canonical aggregate exactly', (t) => {
+  const root = seedRepository(t);
+  write(root, 'src/日本語.mjs', 'export const multilingual = true;\n');
+  git(root, 'add', 'src/日本語.mjs');
+  const actual = buildSourceManifest(root);
+  const stored = v3Stored(actual);
+  const hydrated = hydrateStoredSourceManifest(stored.descriptor, stored.parts);
+
+  assert.equal(hydrated.fileCount, actual.fileCount);
+  assert.equal(hydrated.treeSha256, actual.treeSha256);
+  assert.deepEqual(hydrated.files, actual.files);
+  assert.equal(compareSourceManifest(hydrated, actual).ok, true);
+});
+
+test('v2 positional manifest remains readable for migration equivalence', (t) => {
+  const root = seedRepository(t);
+  write(root, 'src/b.txt', 'bravo\n');
+  git(root, 'add', 'src/b.txt');
+  const v2 = buildSourceManifest(root, { schemaVersion: SOURCE_MANIFEST_V2_SCHEMA });
+  const descriptor = {
+    ...Object.fromEntries(Object.entries(v2).filter(([key]) => !['files', 'candidate'].includes(key))),
+    composition: 'GENERATED_FRAGMENT_COMPOSITION',
+    parts: ['source-manifest-parts/part-01.json']
+  };
+  const hydrated = hydrateStoredSourceManifest(descriptor, [{
+    ref: 'source-manifest-parts/part-01.json',
+    value: { schemaVersion: v2.partSchemaVersion, files: v2.files }
+  }]);
+
+  assert.equal(hydrated.treeSha256, v2.treeSha256);
+  assert.deepEqual(hydrated.files, v2.files);
+});
+
+test('content and mode edits touch one stable bucket and leave root contract byte-stable', (t) => {
+  const root = seedRepository(t);
+  const before = buildSourceManifest(root);
+  const descriptorBefore = buildSourceManifestDescriptor(before);
+  write(root, 'src/a.txt', 'beta\n');
+  git(root, 'add', 'src/a.txt');
+  const contentAfter = buildSourceManifest(root);
+  assert.deepEqual(changedSourceManifestBuckets(before.files, contentAfter.files), sourceManifestBucketClaim(['src/a.txt']));
+  assert.deepEqual(buildSourceManifestDescriptor(contentAfter), descriptorBefore);
+
+  git(root, 'update-index', '--chmod=+x', 'src/a.txt');
+  fs.chmodSync(path.join(root, 'src/a.txt'), 0o755);
+  const modeAfter = buildSourceManifest(root);
+  assert.deepEqual(changedSourceManifestBuckets(contentAfter.files, modeAfter.files), sourceManifestBucketClaim(['src/a.txt']));
+  assert.deepEqual(buildSourceManifestDescriptor(modeAfter), descriptorBefore);
+});
+
+test('add/delete changes one bucket and rename changes at most two', (t) => {
+  const root = seedRepository(t);
+  const before = buildSourceManifest(root);
+  write(root, 'src/new.mjs', 'export const x = 1;\n');
+  git(root, 'add', 'src/new.mjs');
+  const added = buildSourceManifest(root);
+  assert.deepEqual(changedSourceManifestBuckets(before.files, added.files), sourceManifestBucketClaim(['src/new.mjs']));
+
+  git(root, 'rm', '--quiet', '--force', 'src/new.mjs');
+  const deleted = buildSourceManifest(root);
+  assert.deepEqual(changedSourceManifestBuckets(added.files, deleted.files), sourceManifestBucketClaim(['src/new.mjs']));
+
+  git(root, 'mv', 'src/a.txt', 'src/renamed-a.txt');
+  const renamed = buildSourceManifest(root);
+  assert.equal(changedSourceManifestBuckets(deleted.files, renamed.files).length <= 2, true);
+  assert.deepEqual(
+    changedSourceManifestBuckets(deleted.files, renamed.files),
+    sourceManifestBucketClaim(['src/a.txt', 'src/renamed-a.txt'])
+  );
+});
+
+test('disjoint bucket claims compose and same-bucket claims remain truthful collisions', () => {
+  let different = null;
+  let same = null;
+  const basePath = 'src/candidate-0.mjs';
+  const baseBucket = sourceManifestBucketId(basePath);
+  for (let index = 1; index < 10000 && (!different || !same); index += 1) {
+    const candidate = `src/candidate-${index}.mjs`;
+    const bucket = sourceManifestBucketId(candidate);
+    if (!different && bucket !== baseBucket) different = candidate;
+    if (!same && bucket === baseBucket) same = candidate;
+  }
+  assert.ok(different);
+  assert.ok(same);
+  assert.deepEqual(sourceManifestBucketOverlap([basePath], [different]), []);
+  assert.deepEqual(sourceManifestBucketOverlap([basePath], [same]), sourceManifestBucketClaim([basePath]));
+});
+
+test('v3 reader fails closed on unknown, misbucketed, duplicate, and dynamically snapshotted parts', () => {
+  const files = [record('src/a.txt'), record('src/b.txt')].sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+  const actual = {
+    schemaVersion: SOURCE_MANIFEST_V3_SCHEMA,
+    manifestRef: 'source-manifest.vexlife.universal-blueprint.001',
+    rootRef: 'source-root.vexlife.universal-blueprint',
+    sourceRecordSchemaVersion: 'vexlife.source-manifest-record/v1',
+    partSchemaVersion: 'vexlife.source-manifest-part/v1',
+    sourceKind: 'GIT_INDEX_CANONICAL_BLOBS',
+    pathOrder: 'GIT_PATH_UTF8_BYTE_ORDER',
+    exclusionRules: { rootFiles: [], rootDirectories: [], anyDepthDirectories: [], ignoredUntrackedPolicy: 'GIT_EXCLUDE_STANDARD' },
+    excludedClasses: [],
+    composition: 'STABLE_PATH_HASH_BUCKET_COMPOSITION',
+    partition: {
+      algorithm: 'FIXED_DETERMINISTIC_PATH_HASH_BUCKETS', bucketCount: 256, bucketBits: 8, bucketHash: 'SHA-256',
+      bucketInput: 'EXACT_UTF8_GIT_PATH_BYTES', bucketId: 'LOWERCASE_HEX_OF_FIRST_SHA256_BYTE',
+      bucketPath: 'source-manifest-parts/bucket-<00..ff>.json', emptyBucketPolicy: 'OMIT',
+      withinBucketOrder: 'GIT_PATH_UTF8_BYTE_ORDER', globalCompositionOrder: 'GIT_PATH_UTF8_BYTE_ORDER'
+    },
+    files,
+    candidate: { state: 'CURRENT', blockers: [] }
+  };
+  actual.contractSha256 = buildSourceManifestDescriptor(actual).contractSha256;
+  const descriptor = buildSourceManifestDescriptor(actual);
+  const buckets = partitionSourceManifestFiles(files);
+  const parts = buckets.map((bucket) => ({ ref: bucket.path, value: { schemaVersion: actual.partSchemaVersion, bucketId: bucket.bucketId, files: bucket.files } }));
+
+  assert.throws(() => hydrateStoredSourceManifest(descriptor, [...parts, { ref: 'source-manifest-parts/part-99.json', value: {} }]), /unknown generated part/u);
+
+  const wrongBucket = sourceManifestBucketId(files[0].path) === '00' ? '01' : '00';
+  assert.throws(() => hydrateStoredSourceManifest(descriptor, [{
+    ref: `source-manifest-parts/bucket-${wrongBucket}.json`,
+    value: { schemaVersion: actual.partSchemaVersion, bucketId: wrongBucket, files: [files[0]] }
+  }]), /misbucketed/u);
+
+  assert.throws(() => hydrateStoredSourceManifest(descriptor, [parts[0], parts[0]]), /duplicates bucket/u);
+  assert.throws(() => hydrateStoredSourceManifest({ ...descriptor, fileCount: 2 }, parts), /must not store dynamic fileCount/u);
+});
+
+test('CI keeps Linux foundation, Windows/Linux manifest cells, and derives aggregate identity from source', () => {
   const workflow = fs.readFileSync(path.join(REPOSITORY_ROOT, '.github/workflows/check.yml'), 'utf8');
 
   assert.match(workflow, /foundation:\s+name: Source, blueprint, and actual browser contracts/);
   assert.match(workflow, /manifest-portability:/);
   assert.match(workflow, /runner: ubuntu-latest/);
   assert.match(workflow, /runner: windows-latest/);
+  assert.match(workflow, /node --test test\/source-manifest\.test\.mjs/);
   assert.match(workflow, /npm(?:\.cmd)? run --silent manifest:check/);
   assert.match(workflow, /candidateHeadSha/);
   assert.match(workflow, /baseSha/);
   assert.match(workflow, /manifestSchemaVersion/);
   assert.match(workflow, /sourceRecordSchemaVersion/);
   assert.match(workflow, /partSchemaVersion/);
-  assert.match(workflow, /treeSha256/);
+  assert.match(workflow, /buildSourceManifest/);
+  assert.match(workflow, /treeSha256: actualManifest\.treeSha256/);
   assert.match(workflow, /source-manifest-portability-\$\{\{ matrix\.id \}\}\.json/);
 });
 

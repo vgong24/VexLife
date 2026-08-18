@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "63",
+  "files": [
+    {
+      "path": "src/core/patient0-nursery.mjs",
+      "mode": "100644",
+      "bytes": 13648,
+      "sha256": "faff89d6a1b7fdb86dc312f7755a81d75dc75679db139a53627036ccd9c1db5a"
+    }
+  ]
+}

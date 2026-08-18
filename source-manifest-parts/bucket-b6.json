@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "b6",
+  "files": [
+    {
+      "path": "GOVERNANCE.md",
+      "mode": "100644",
+      "bytes": 4108,
+      "sha256": "99f806b03aa5e5da51588ddbd60141dce82b6681c61d6e224fee5ce1b433049b"
+    },
+    {
+      "path": "docs/PATIENT0-NURSERY.md",
+      "mode": "100644",
+      "bytes": 4551,
+      "sha256": "10e98b1d8b560550ee39436611b144fad9637ed9e7909e8cfb40adb6b946b793"
+    },
+    {
+      "path": "docs/UNIVERSAL-BLUEPRINT.md",
+      "mode": "100644",
+      "bytes": 3917,
+      "sha256": "497eddccd7fb2f06eb9c6ae2f9d26238ea48f16a80f33d87eeb497fa71cfbfa0"
+    }
+  ]
+}

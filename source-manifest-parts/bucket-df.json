@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "df",
+  "files": [
+    {
+      "path": "blueprint/fragments/screens/living-journal.json",
+      "mode": "100644",
+      "bytes": 8462,
+      "sha256": "a8edfb0d19399e32796dc45d6f5969a8550d9cfb07a7a2dddcf122d26dad3710"
+    }
+  ]
+}

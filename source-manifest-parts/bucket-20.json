@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "20",
+  "files": [
+    {
+      "path": "docs/DEVICE-FAMILY-SCORE-RHYTHM.md",
+      "mode": "100644",
+      "bytes": 3016,
+      "sha256": "bbdc2c9b2874bd99bf7affe7bec6a7a0f8c0b80041c3bbee902620f8173f7440"
+    },
+    {
+      "path": "docs/LIVED-COMPANION-BASELINE.md",
+      "mode": "100644",
+      "bytes": 13044,
+      "sha256": "1de3d47ca01fef729a4884c14366b0b7b79265c40232ec0acf8133d985cb2b70"
+    }
+  ]
+}
