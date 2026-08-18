@@ -18,6 +18,7 @@ import {
   writeLivedCompanionShutdownReceipt
 } from '../src/core/lived-companion.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
+import { composeSemanticRelay } from '../src/core/conversation.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -165,8 +166,8 @@ function writeUnverifiableWriterLease(home, threadRef, variant) {
 }
 
 test('failure vocabulary contains every required typed failure', () => {
-  assert.equal(LIVED_COMPANION_FAILURE_CODES.length, 17);
-  assert.equal(new Set(LIVED_COMPANION_FAILURE_CODES).size, 17);
+  assert.equal(LIVED_COMPANION_FAILURE_CODES.length, 18);
+  assert.equal(new Set(LIVED_COMPANION_FAILURE_CODES).size, 18);
 });
 
 test('fresh proof Home forms one explicit device and lineage identity', () => {
@@ -1699,6 +1700,172 @@ test('CLI proof performs loopback turn, shutdown, fresh-process resume, failures
   assert.equal(value.abandonedWriterRecoveryDisposition,true);
   assert.equal(value.abandonedWriterRecoveryOperationHeld,true);
   assert.equal(value.LC18Performed,false);
+});
+
+function durableRelay(messageRef, originatorRef, recipientRef, overrides = {}) {
+  const sourceLanguageRef = overrides.sourceLanguageRef ?? 'language.en';
+  const targetLanguageRef = overrides.targetLanguageRef ?? sourceLanguageRef;
+  const composed = composeSemanticRelay({
+    relayRef: overrides.relayRef ?? `relay.${messageRef}`,
+    sourceMessageRef: messageRef,
+    sourceLanguageRef,
+    sourceLocaleRef: 'locale.en-US',
+    preferredConversationLanguageRef: 'language.en',
+    requestedResponseLanguageRef: targetLanguageRef,
+    uiLocaleRef: 'locale.en-US',
+    originatorRef,
+    originatorKind: overrides.originatorKind ?? (originatorRef.startsWith('person.') ? 'HUMAN' : 'AI'),
+    onBehalfOfOriginator: false,
+    materiality: 'ORDINARY',
+    ambiguityState: 'CLEAR',
+    recipientRefs: [recipientRef],
+    intentRefs: ['intent.lived.semantic-relay'],
+    canonicalMeaningRefs: ['meaning.lived.semantic-relay'],
+    interpretationProjectionRef: `projection.interpretation.${messageRef}`,
+    interpretationState: 'CANDIDATE',
+    boundaryClassRef: 'boundary.device-private.lived-turn',
+    targets: [{
+      recipientRef,
+      recipientPreferredLanguageRef: targetLanguageRef,
+      targetLanguageRef,
+      targetAudienceRef: 'audience.direct-companion',
+      runtimeCapability: {
+        capabilityRef: 'capability.runtime.test-current',
+        currentnessState: 'CURRENT',
+        multilingualOutput: true,
+        supportedLanguageRefs: [targetLanguageRef],
+        evidenceRefs: ['evidence.runtime.test-current']
+      },
+      localeQualityState: 'ADMITTED',
+      terminologyState: 'ADMITTED',
+      authorityState: 'ADMITTED',
+      localizationReadinessState: 'UNAVAILABLE',
+      humanReviewAvailable: false,
+      deliveryState: 'NOT_DELIVERED',
+      acknowledgementState: 'NOT_REQUESTED',
+      understandingState: 'NOT_ASSESSED'
+    }],
+    sourceRefs: [`source.${messageRef}`],
+    evidenceRefs: ['evidence.lived.semantic-relay'],
+    authorityRefs: ['authority.lived.semantic-relay']
+  });
+  assert.equal(composed.status, 'COMPOSED');
+  return composed.relay;
+}
+
+test('durable v2 lived events carry reference-only semantic relay while raw content remains canonical at the event root', async () => {
+  const service = await server();
+  const home = makeHome('semantic-relay-v2');
+  const requestMessageRef = ref('message.request.semantic');
+  const responseMessageRef = ref('message.response.semantic');
+  try {
+    const result = await performLivedCompanionTurn(turn(home, service.endpoint(), {
+      requestMessageRef,
+      responseMessageRef,
+      requestSemanticRelay: durableRelay(requestMessageRef, 'person.test', 'role.vex.companion'),
+      responseSemanticRelay: durableRelay(responseMessageRef, 'role.vex.companion', 'person.test', { originatorKind: 'AI' })
+    }));
+    assert.equal(result.requestEvent.schemaVersion, 'vexlife.lived-companion-event/v2');
+    assert.equal(result.responseEvent.schemaVersion, 'vexlife.lived-companion-event/v2');
+    assert.equal(result.requestEvent.content, 'hello');
+    assert.equal(result.responseEvent.content, 'reply');
+    assert.equal(result.requestEvent.semanticRelay.sourceMessageRef, requestMessageRef);
+    assert.equal(result.responseEvent.semanticRelay.sourceMessageRef, responseMessageRef);
+    assert.equal(JSON.stringify(result.requestEvent.semanticRelay).includes('hello'), false);
+    assert.equal(JSON.stringify(result.responseEvent.semanticRelay).includes('reply'), false);
+    const { eventHash: requestHash, ...requestCore } = result.requestEvent;
+    const { eventHash: responseHash, ...responseCore } = result.responseEvent;
+    assert.equal(semanticHash(requestCore), requestHash);
+    assert.equal(semanticHash(responseCore), responseHash);
+  } finally {
+    await service.close();
+  }
+});
+
+test('historical v1 events remain exact and mixed v1/v2 event chains resume without fabricated relay or confirmation truth', async () => {
+  const service = await server();
+  const home = makeHome('semantic-relay-mixed');
+  const threadRef = ref('thread.semantic.mixed');
+  const channelRef = ref('channel.semantic.mixed');
+  const firstInstanceRef = ref('instance.semantic.v1');
+  const secondInstanceRef = ref('instance.semantic.v2');
+  try {
+    const historical = await performLivedCompanionTurn(turn(home, service.endpoint(), {
+      instanceRef: firstInstanceRef,
+      threadRef,
+      channelRef,
+      turnRef: ref('turn.semantic.v1'),
+      requestMessageRef: ref('message.request.v1'),
+      responseMessageRef: ref('message.response.v1')
+    }));
+    assert.equal(historical.requestEvent.schemaVersion, 'vexlife.lived-companion-event/v1');
+    assert.equal(Object.hasOwn(historical.requestEvent, 'semanticRelay'), false);
+    assert.equal(Object.hasOwn(historical.responseEvent, 'semanticRelay'), false);
+
+    const requestMessageRef = ref('message.request.v2');
+    const responseMessageRef = ref('message.response.v2');
+    const current = await performLivedCompanionTurn(turn(home, service.endpoint(), {
+      instanceRef: secondInstanceRef,
+      threadRef,
+      channelRef,
+      turnRef: ref('turn.semantic.v2'),
+      requestMessageRef,
+      responseMessageRef,
+      requestSemanticRelay: durableRelay(requestMessageRef, 'person.test', 'role.vex.companion'),
+      responseSemanticRelay: durableRelay(responseMessageRef, 'role.vex.companion', 'person.test', { originatorKind: 'AI' })
+    }));
+    const shutdown = writeLivedCompanionShutdownReceipt({
+      ...home,
+      instanceRef: secondInstanceRef,
+      threadRef,
+      expectedConversationHeadSha256: current.head.conversationHeadSha256
+    });
+    const resumed = resumeLivedCompanionConversation({
+      ...home,
+      priorInstanceRef: secondInstanceRef,
+      instanceRef: ref('instance.semantic.resumed'),
+      threadRef,
+      expectedConversationHeadSha256: current.head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
+    });
+    assert.deepEqual(resumed.chain.map((event) => event.schemaVersion), [
+      'vexlife.lived-companion-event/v1',
+      'vexlife.lived-companion-event/v1',
+      'vexlife.lived-companion-event/v2',
+      'vexlife.lived-companion-event/v2'
+    ]);
+    assert.equal(Object.hasOwn(resumed.chain[0], 'semanticRelay'), false);
+    assert.equal(Object.hasOwn(resumed.chain[1], 'semanticRelay'), false);
+    assert.equal(resumed.chain[2].semanticRelay.confirmedByRef, null);
+    assert.equal(resumed.chain[3].semanticRelay.confirmedByRef, null);
+  } finally {
+    await service.close();
+  }
+});
+
+test('raw text inside durable semantic relay metadata fails before any request event or endpoint effect', async () => {
+  const service = await server();
+  const home = makeHome('semantic-relay-raw-reject');
+  const requestMessageRef = ref('message.request.raw-reject');
+  const responseMessageRef = ref('message.response.raw-reject');
+  const invalidRelay = {
+    ...durableRelay(requestMessageRef, 'person.test', 'role.vex.companion'),
+    rawText: 'hello'
+  };
+  const input = turn(home, service.endpoint(), {
+    requestMessageRef,
+    responseMessageRef,
+    requestSemanticRelay: invalidRelay,
+    responseSemanticRelay: durableRelay(responseMessageRef, 'role.vex.companion', 'person.test', { originatorKind: 'AI' })
+  });
+  try {
+    await rejectsCode(() => performLivedCompanionTurn(input), 'SEMANTIC_RELAY_INVALID');
+    assert.equal(service.calls(), 0);
+    const headPath = path.join(home.home, 'conversations', home.companionLineageRef, input.threadRef, 'head.json');
+    assert.equal(fs.existsSync(headPath), false);
+  } finally {
+    await service.close();
+  }
 });
 
 // [VXG RealForever]

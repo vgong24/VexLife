@@ -1,10 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import http from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
 import { loadBlueprint, validateBlueprint, buildIdentityIndex } from '../src/core/blueprint.mjs';
 import { StateCell, combineStateCells } from '../src/core/state-relay.mjs';
 import { Atlas } from '../src/core/atlas.mjs';
 import { Localizer, createOriginalMessage, proposeVexRefinement, acceptRefinement } from '../src/core/localization.mjs';
-import { createChannel, createMessage, contextForParticipant } from '../src/core/conversation.mjs';
+import { attachSemanticRelay, composeSemanticRelay, createChannel, createMessage, contextForParticipant, validateSemanticRelay } from '../src/core/conversation.mjs';
+import { LivedCompanionError, initializeLivedCompanionHome, performLivedCompanionTurn } from '../src/core/lived-companion.mjs';
 import { NavigationLattice, SelectionStore } from '../src/core/navigation.mjs';
 import { TerrainLayout } from '../src/core/terrain.mjs';
 import { createDeviceInstallation, createScoreRecord, synchronizeScore } from '../src/core/device-family.mjs';
@@ -225,6 +230,308 @@ test('navigation consumes Terrain spatial sibling order while preserving full an
   assert.equal(projection.recentTrajectory.length, 4);
   assert.equal(lattice.fullJourney().length, projection.fullEventCount);
   assert.equal(lattice.screenFrame().journeyEventCount, projection.fullEventCount);
+});
+
+function semanticRelayFixture(overrides = {}) {
+  const recipientRef = overrides.recipientRef ?? 'role.vex.companion';
+  const sourceLanguageRef = overrides.sourceLanguageRef ?? 'language.en';
+  const targetLanguageRef = overrides.targetLanguageRef ?? sourceLanguageRef;
+  return {
+    relayRef: overrides.relayRef ?? 'relay.semantic.test',
+    sourceMessageRef: overrides.sourceMessageRef ?? 'message.semantic.test',
+    sourceLanguageRef,
+    sourceLocaleRef: overrides.sourceLocaleRef ?? 'locale.en-US',
+    preferredConversationLanguageRef: overrides.preferredConversationLanguageRef ?? 'language.en',
+    requestedResponseLanguageRef: overrides.requestedResponseLanguageRef ?? targetLanguageRef,
+    uiLocaleRef: overrides.uiLocaleRef ?? 'locale.en-US',
+    originatorRef: overrides.originatorRef ?? 'person.victor',
+    originatorKind: overrides.originatorKind ?? 'HUMAN',
+    onBehalfOfOriginator: overrides.onBehalfOfOriginator ?? false,
+    materiality: overrides.materiality ?? 'ORDINARY',
+    ambiguityState: overrides.ambiguityState ?? 'CLEAR',
+    recipientRefs: [recipientRef],
+    intentRefs: ['intent.semantic.test'],
+    canonicalMeaningRefs: ['meaning.semantic.test'],
+    interpretationProjectionRef: overrides.interpretationProjectionRef ?? 'projection.interpretation.test',
+    interpretationState: overrides.interpretationState ?? 'CANDIDATE',
+    confirmedByRef: overrides.confirmedByRef,
+    confirmationReceiptRef: overrides.confirmationReceiptRef,
+    supersedesInterpretationProjectionRef: overrides.supersedesInterpretationProjectionRef,
+    boundaryClassRef: 'boundary.semantic.test',
+    targets: [{
+      recipientRef,
+      recipientPreferredLanguageRef: targetLanguageRef,
+      targetLanguageRef,
+      targetAudienceRef: 'audience.semantic.test',
+      runtimeCapability: Object.hasOwn(overrides, 'runtimeCapability') ? overrides.runtimeCapability : {
+        capabilityRef: 'capability.runtime.multilingual.test',
+        currentnessState: 'CURRENT',
+        multilingualOutput: true,
+        supportedLanguageRefs: [targetLanguageRef],
+        evidenceRefs: ['evidence.runtime.multilingual.test']
+      },
+      localeQualityState: overrides.localeQualityState ?? 'ADMITTED',
+      terminologyState: overrides.terminologyState ?? 'ADMITTED',
+      authorityState: overrides.authorityState ?? 'ADMITTED',
+      localizationReadinessState: overrides.localizationReadinessState ?? 'UNAVAILABLE',
+      humanReviewAvailable: overrides.humanReviewAvailable ?? false,
+      localizedProjectionRef: overrides.localizedProjectionRef,
+      equivalenceReceipt: overrides.equivalenceReceipt ?? {
+        canonicalMeaningRefs: ['meaning.semantic.test'],
+        intentRefs: ['intent.semantic.test'],
+        sourceRefs: ['source.semantic.test'],
+        evidenceRefs: ['evidence.semantic.test'],
+        boundaryClassRef: 'boundary.semantic.test',
+        contradictionRefs: []
+      },
+      deliveryState: overrides.deliveryState ?? 'DELIVERED',
+      acknowledgementState: overrides.acknowledgementState ?? 'ACKNOWLEDGED',
+      understandingState: overrides.understandingState ?? 'UNKNOWN'
+    }],
+    sourceRefs: ['source.semantic.test'],
+    evidenceRefs: ['evidence.semantic.test'],
+    authorityRefs: ['authority.semantic.test']
+  };
+}
+
+test('semantic relay preserves canonical raw message while source requested and UI languages remain distinct', () => {
+  const channel = createChannel({
+    channelRef: 'channel.semantic',
+    threadRef: 'thread.semantic',
+    kind: 'DIRECT',
+    memberRefs: ['person.victor', 'role.vex.companion'],
+    labelStringRef: 'channel.semantic.name'
+  });
+  const message = createMessage({
+    messageRef: 'message.semantic.source',
+    channel,
+    speakerRef: 'person.victor',
+    recipientRefs: ['role.vex.companion'],
+    language: 'zh',
+    content: '原始内容必须保持不变。',
+    sequence: 0
+  });
+  const attached = attachSemanticRelay(message, semanticRelayFixture({
+    sourceMessageRef: message.messageRef,
+    sourceLanguageRef: 'language.zh',
+    preferredConversationLanguageRef: 'language.en',
+    requestedResponseLanguageRef: 'language.ja',
+    uiLocaleRef: 'locale.en-US',
+    targetLanguageRef: 'language.ja',
+    runtimeCapability: {
+      capabilityRef: 'capability.runtime.stale',
+      currentnessState: 'STALE',
+      multilingualOutput: true,
+      supportedLanguageRefs: ['language.ja'],
+      evidenceRefs: ['evidence.runtime.stale']
+    }
+  }));
+  assert.equal(attached.status, 'COMPOSED');
+  assert.equal(attached.message.content, message.content);
+  assert.equal(attached.message.contentHash, message.contentHash);
+  assert.equal(attached.relay.sourceLanguageRef, 'language.zh');
+  assert.equal(attached.relay.requestedResponseLanguageRef, 'language.ja');
+  assert.equal(attached.relay.uiLocaleRef, 'locale.en-US');
+  assert.equal(attached.relay.targets[0].projectionMode, 'NONE');
+  assert.equal(attached.relay.targets[0].deliveryState, 'DELIVERED');
+  assert.equal(attached.relay.targets[0].acknowledgementState, 'ACKNOWLEDGED');
+  assert.equal(attached.relay.targets[0].understandingState, 'UNKNOWN');
+  assert.equal(JSON.stringify(attached.relay).includes(message.content), false);
+  assert.equal(validateSemanticRelay(attached.relay, { sourceMessageRef: message.messageRef, recipientRefs: message.recipientRefs }).ok, true);
+});
+
+test('material human on-behalf ambiguity or cross-language relay requires confirm correct or hold', () => {
+  const candidate = composeSemanticRelay(semanticRelayFixture({
+    sourceLanguageRef: 'language.en',
+    targetLanguageRef: 'language.ja',
+    onBehalfOfOriginator: true,
+    materiality: 'MATERIAL',
+    ambiguityState: 'AMBIGUOUS',
+    interpretationState: 'CANDIDATE'
+  }));
+  assert.equal(candidate.status, 'HOLD_CONFIRMATION_REQUIRED');
+  assert.equal(candidate.relay, null);
+
+  const held = composeSemanticRelay(semanticRelayFixture({
+    sourceLanguageRef: 'language.en',
+    targetLanguageRef: 'language.ja',
+    onBehalfOfOriginator: true,
+    materiality: 'MATERIAL',
+    ambiguityState: 'AMBIGUOUS',
+    interpretationState: 'HELD'
+  }));
+  assert.equal(held.status, 'HELD_BY_ORIGINATOR');
+
+  const confirmed = composeSemanticRelay(semanticRelayFixture({
+    sourceLanguageRef: 'language.en',
+    targetLanguageRef: 'language.ja',
+    onBehalfOfOriginator: true,
+    materiality: 'MATERIAL',
+    ambiguityState: 'AMBIGUOUS',
+    interpretationState: 'CONFIRMED',
+    confirmedByRef: 'person.victor',
+    confirmationReceiptRef: 'receipt.confirmation.semantic.test'
+  }));
+  assert.equal(confirmed.status, 'COMPOSED');
+  assert.equal(confirmed.relay.confirmedByRef, 'person.victor');
+
+  const corrected = composeSemanticRelay(semanticRelayFixture({
+    sourceLanguageRef: 'language.en',
+    targetLanguageRef: 'language.ja',
+    onBehalfOfOriginator: true,
+    materiality: 'MATERIAL',
+    ambiguityState: 'AMBIGUOUS',
+    interpretationState: 'CORRECTED',
+    interpretationProjectionRef: 'projection.interpretation.corrected',
+    confirmedByRef: 'person.victor',
+    confirmationReceiptRef: 'receipt.correction.semantic.test',
+    supersedesInterpretationProjectionRef: 'projection.interpretation.original'
+  }));
+  assert.equal(corrected.status, 'COMPOSED');
+  assert.equal(corrected.relay.supersedesInterpretationProjectionRef, 'projection.interpretation.original');
+});
+
+test('semantic relay runtime multilingual mode fails closed without current explicit evidence and never carries raw text', () => {
+  const current = composeSemanticRelay(semanticRelayFixture({ targetLanguageRef: 'language.ja' }));
+  assert.equal(current.status, 'COMPOSED');
+  assert.equal(current.relay.targets[0].projectionMode, 'MODEL_NATIVE');
+
+  for (const currentnessState of ['STALE', 'INVALID', 'UNKNOWN']) {
+    const result = composeSemanticRelay(semanticRelayFixture({
+      targetLanguageRef: 'language.ja',
+      runtimeCapability: {
+        capabilityRef: `capability.runtime.${currentnessState.toLowerCase()}`,
+        currentnessState,
+        multilingualOutput: true,
+        supportedLanguageRefs: ['language.ja'],
+        evidenceRefs: ['evidence.runtime.explicit']
+      }
+    }));
+    assert.equal(result.status, 'COMPOSED');
+    assert.equal(result.relay.targets[0].projectionMode, 'NONE');
+  }
+
+  const absent = composeSemanticRelay(semanticRelayFixture({ targetLanguageRef: 'language.ja', runtimeCapability: null }));
+  assert.equal(absent.status, 'COMPOSED');
+  assert.equal(absent.relay.targets[0].runtimeCapability.currentnessState, 'UNKNOWN');
+  assert.equal(absent.relay.targets[0].projectionMode, 'NONE');
+
+  const raw = composeSemanticRelay({ ...semanticRelayFixture(), rawText: 'must never enter metadata' });
+  assert.equal(raw.status, 'REJECTED');
+  assert.match(raw.errors.join('\n'), /rawText/);
+});
+
+test('persisted semantic relay validation rejects incomplete or duplicate targets and projection-mode drift', () => {
+  const composed = composeSemanticRelay(semanticRelayFixture({ targetLanguageRef: 'language.ja' }));
+  assert.equal(composed.status, 'COMPOSED');
+
+  const missingTarget = structuredClone(composed.relay);
+  missingTarget.recipientRefs.push('role.vex.guide');
+  let validation = validateSemanticRelay(missingTarget);
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /recipientRef role\.vex\.guide has no target/);
+
+  const duplicateTarget = structuredClone(composed.relay);
+  duplicateTarget.targets.push(structuredClone(duplicateTarget.targets[0]));
+  validation = validateSemanticRelay(duplicateTarget);
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /duplicates a recipient\/language target/);
+
+  const localizationDrift = structuredClone(composed.relay);
+  localizationDrift.targets[0].runtimeCapability = {
+    capabilityRef: null,
+    currentnessState: 'UNKNOWN',
+    multilingualOutput: false,
+    supportedLanguageRefs: [],
+    evidenceRefs: []
+  };
+  localizationDrift.targets[0].projectionMode = 'LOCALIZATION_PIPELINE';
+  validation = validateSemanticRelay(localizationDrift);
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /projectionMode does not match current target evidence; expected NONE/);
+
+  const humanReviewDrift = structuredClone(localizationDrift);
+  humanReviewDrift.targets[0].projectionMode = 'HUMAN_REVIEW';
+  validation = validateSemanticRelay(humanReviewDrift);
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /projectionMode does not match current target evidence; expected NONE/);
+});
+
+test('durable G01 relay admission rejects target and projection drift before endpoint or event effects', async () => {
+  let calls = 0;
+  const service = http.createServer((request, response) => {
+    calls += 1;
+    request.resume();
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ model: 'test-model', choices: [{ message: { content: 'reply' } }] }));
+  });
+  await new Promise((resolve) => service.listen(0, '127.0.0.1', resolve));
+  const endpoint = `http://127.0.0.1:${service.address().port}/`;
+  try {
+    for (const variant of ['missing-target', 'projection-mode-drift']) {
+      const home = fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-core-semantic-${variant}-`));
+      const identity = {
+        home,
+        homeRef: `home.semantic.${variant}`,
+        familyRef: `family.semantic.${variant}`,
+        deviceRef: `device.semantic.${variant}`,
+        companionLineageRef: `lineage.semantic.${variant}`
+      };
+      initializeLivedCompanionHome(identity);
+      const requestMessageRef = `message.request.semantic.${variant}`;
+      const relayResult = composeSemanticRelay(semanticRelayFixture({
+        relayRef: `relay.semantic.${variant}`,
+        sourceMessageRef: requestMessageRef,
+        recipientRef: 'role.vex.companion'
+      }));
+      assert.equal(relayResult.status, 'COMPOSED');
+      const invalidRelay = structuredClone(relayResult.relay);
+      if (variant === 'missing-target') {
+        invalidRelay.recipientRefs.push('role.vex.guide');
+      } else {
+        invalidRelay.targets[0].runtimeCapability = {
+          capabilityRef: null,
+          currentnessState: 'UNKNOWN',
+          multilingualOutput: false,
+          supportedLanguageRefs: [],
+          evidenceRefs: []
+        };
+        invalidRelay.targets[0].projectionMode = 'LOCALIZATION_PIPELINE';
+      }
+      const recipientRefs = [...invalidRelay.recipientRefs];
+      const threadRef = `thread.semantic.${variant}`;
+      const callsBefore = calls;
+      await assert.rejects(
+        () => performLivedCompanionTurn({
+          ...identity,
+          instanceRef: `instance.semantic.${variant}`,
+          threadRef,
+          channelRef: `channel.semantic.${variant}`,
+          turnRef: `turn.semantic.${variant}`,
+          requestMessageRef,
+          responseMessageRef: `message.response.semantic.${variant}`,
+          speakerRef: 'person.semantic.test',
+          recipientRefs,
+          content: 'semantic validation probe',
+          requestSemanticRelay: invalidRelay,
+          endpointProfile: {
+            profileRef: 'profile.loopback.semantic',
+            admitted: true,
+            endpoint,
+            model: 'test-model'
+          },
+          timeoutMs: 200
+        }),
+        (error) => error instanceof LivedCompanionError && error.code === 'SEMANTIC_RELAY_INVALID'
+      );
+      assert.equal(calls, callsBefore);
+      const threadRoot = path.join(home, 'conversations', identity.companionLineageRef, threadRef);
+      assert.equal(fs.existsSync(path.join(threadRoot, 'head.json')), false);
+      assert.equal(fs.existsSync(path.join(threadRoot, 'events')), false);
+    }
+  } finally {
+    await new Promise((resolve) => service.close(resolve));
+  }
 });
 
 // [VXG RealForever]

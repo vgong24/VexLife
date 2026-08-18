@@ -40,8 +40,8 @@
     {
       "path": "reference/browser/integration/contextual-conversation-suite.js",
       "mode": "100644",
-      "bytes": 10611,
-      "sha256": "876e1719907a9e1e2dc814c9e2dc512734f6861c3c5652a608b776aeab202f8e"
+      "bytes": 10855,
+      "sha256": "a88da1593f1450b83679c9fa4527fde4231455dd1a5fce0a8a1c1199580cace3"
     },
     {
       "path": "reference/browser/integration/cross-feature-suite.js",
