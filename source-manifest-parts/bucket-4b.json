@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "4b",
+  "files": [
+    {
+      "path": "blueprint/build-admission-registry.json",
+      "mode": "100644",
+      "bytes": 14916,
+      "sha256": "a9f9096de4d68df87b3551e2ce9a5f3413be6664ec00d38485c84f18e2ecf91b"
+    },
+    {
+      "path": "docs/OPEN-SOURCE-LEGAL-STEWARDSHIP.md",
+      "mode": "100644",
+      "bytes": 14522,
+      "sha256": "60e4398cd0c35a86a1e7b6797ca085fc41cd2e32341cfb0ec5446df252f3854e"
+    }
+  ]
+}

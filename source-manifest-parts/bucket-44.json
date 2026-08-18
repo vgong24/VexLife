@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "44",
+  "files": [
+    {
+      "path": "blueprint/intent-scheduler-registry.json",
+      "mode": "100644",
+      "bytes": 26712,
+      "sha256": "968cd63cd739ef5ff1b9b1b7e9f35022bfcf5f1cf34eac92305dba98607a6eff"
+    }
+  ]
+}

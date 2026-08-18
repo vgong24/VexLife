@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "fc",
+  "files": [
+    {
+      "path": "blueprint/process-factory/processes-operations-and-publication.json",
+      "mode": "100644",
+      "bytes": 16160,
+      "sha256": "35c984bd6df8a1d78ea3489265ffcf679f6b75383f9ff9c545485146bba218b9"
+    },
+    {
+      "path": "src/core/source-manifest.mjs",
+      "mode": "100644",
+      "bytes": 23039,
+      "sha256": "0783cce738bdb9fbd5b98031b17ef2bb68dee3e505fd7a6727d7b350b35b3a5f"
+    }
+  ]
+}

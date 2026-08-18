@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ef",
+  "files": [
+    {
+      "path": "docs/HUMAN-ONBOARDING-GUIDED-LOCAL-ESTABLISHMENT.md",
+      "mode": "100644",
+      "bytes": 10602,
+      "sha256": "bca3f1305aef0b3102b738dc4ca60827ea7ba72ad4dc53ae66c8194564b24a38"
+    },
+    {
+      "path": "scripts/module-describe.mjs",
+      "mode": "100644",
+      "bytes": 1018,
+      "sha256": "0b3c6ba42dabf658063d7185d365abcb58ce5991e1fbd44fa9d7dae6f8f27968"
+    }
+  ]
+}

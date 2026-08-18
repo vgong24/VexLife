@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "bc",
+  "files": [
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "bytes": 142,
+      "sha256": "5b2256d47cb3ac885f15e52a6a2caafc5b91ecff8752db07ff8fb75477e8aefa"
+    },
+    {
+      "path": "reference/browser/modules/guide-controller.js",
+      "mode": "100644",
+      "bytes": 22860,
+      "sha256": "133e3625ac2136a1cbe9c2d6e48d48fd31e172acfe11ec015e8f68a5d30bacec"
+    }
+  ]
+}

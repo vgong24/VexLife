@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "72",
+  "files": [
+    {
+      "path": "src/core/scheduler-runtime-trust.mjs",
+      "mode": "100644",
+      "bytes": 33751,
+      "sha256": "b879058dc7e440a08fdeda96d3628e57f31dd736e2ef404539ac966e3a5354e9"
+    }
+  ]
+}

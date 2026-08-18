@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "vexlife.source-manifest/v2",
+  "schemaVersion": "vexlife.source-manifest/v3",
   "manifestRef": "source-manifest.vexlife.universal-blueprint.001",
   "rootRef": "source-root.vexlife.universal-blueprint",
   "sourceRecordSchemaVersion": "vexlife.source-manifest-record/v1",
@@ -36,22 +36,18 @@
     "any-depth node dependencies",
     "Git internals"
   ],
-  "fileCount": 303,
-  "treeSha256": "c59242ea17abc5c85d313228648d9b6d6f8f2c83cb11c15b5551cc7c31af51a1",
-  "composition": "GENERATED_FRAGMENT_COMPOSITION",
-  "parts": [
-    "source-manifest-parts/part-01.json",
-    "source-manifest-parts/part-02.json",
-    "source-manifest-parts/part-03.json",
-    "source-manifest-parts/part-04.json",
-    "source-manifest-parts/part-05.json",
-    "source-manifest-parts/part-06.json",
-    "source-manifest-parts/part-07.json",
-    "source-manifest-parts/part-08.json",
-    "source-manifest-parts/part-09.json",
-    "source-manifest-parts/part-10.json",
-    "source-manifest-parts/part-11.json",
-    "source-manifest-parts/part-12.json",
-    "source-manifest-parts/part-13.json"
-  ]
+  "composition": "STABLE_PATH_HASH_BUCKET_COMPOSITION",
+  "partition": {
+    "algorithm": "FIXED_DETERMINISTIC_PATH_HASH_BUCKETS",
+    "bucketCount": 256,
+    "bucketBits": 8,
+    "bucketHash": "SHA-256",
+    "bucketInput": "EXACT_UTF8_GIT_PATH_BYTES",
+    "bucketId": "LOWERCASE_HEX_OF_FIRST_SHA256_BYTE",
+    "bucketPath": "source-manifest-parts/bucket-<00..ff>.json",
+    "emptyBucketPolicy": "OMIT",
+    "withinBucketOrder": "GIT_PATH_UTF8_BYTE_ORDER",
+    "globalCompositionOrder": "GIT_PATH_UTF8_BYTE_ORDER"
+  },
+  "contractSha256": "bc6f9e502749d579bfff2e787f5a41958e72097a40e4ac38943806f7d8ea4947"
 }

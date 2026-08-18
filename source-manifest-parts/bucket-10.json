@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "10",
+  "files": [
+    {
+      "path": "scripts/feature-scaffold.mjs",
+      "mode": "100644",
+      "bytes": 1251,
+      "sha256": "54e2d40632300c0da19d2411c5a3a201fb76d1ee4f7e616263f2978ecd398447"
+    }
+  ]
+}

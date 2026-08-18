@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "29",
+  "files": [
+    {
+      "path": "reference/browser/integration/contextual-conversation-suite.js",
+      "mode": "100644",
+      "bytes": 10855,
+      "sha256": "a88da1593f1450b83679c9fa4527fde4231455dd1a5fce0a8a1c1199580cace3"
+    },
+    {
+      "path": "scripts/atlas-query.mjs",
+      "mode": "100644",
+      "bytes": 1748,
+      "sha256": "83538b7a319375c8208e281033e049dca1c3224fee0efdb73b0ebde05fc3a327"
+    }
+  ]
+}

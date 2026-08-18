@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "13",
+  "files": [
+    {
+      "path": "src/core/companion-navigation.mjs",
+      "mode": "100644",
+      "bytes": 20459,
+      "sha256": "24430c49917d386e44c26fee0248db506584ce4302989a4fc8ecbf0414d3bcdf"
+    }
+  ]
+}

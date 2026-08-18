@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "4f",
+  "files": [
+    {
+      "path": "src/core/concern-watch.mjs",
+      "mode": "100644",
+      "bytes": 120155,
+      "sha256": "a65d858e4dffe8915ad1b62df4550ee3d963e7d8de3c360c1b08412e5f87dc51"
+    }
+  ]
+}

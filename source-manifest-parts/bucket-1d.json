@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "1d",
+  "files": [
+    {
+      "path": "blueprint/fragments/screens/guide-overlay.json",
+      "mode": "100644",
+      "bytes": 8876,
+      "sha256": "b16776c18dc088ee8855636b636fef4197143bcda662c6e8014f4768f267bb35"
+    },
+    {
+      "path": "docs/PATIENT0-FAMILIARITY-LIVE-WORK.md",
+      "mode": "100644",
+      "bytes": 3797,
+      "sha256": "64854045a0c06645b6e318ef09a00e250e5631076f219a656d0df808da5da4b4"
+    }
+  ]
+}

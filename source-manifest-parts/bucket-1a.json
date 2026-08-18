@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "1a",
+  "files": [
+    {
+      "path": "reference/browser/integration/guide-vex-suite.js",
+      "mode": "100644",
+      "bytes": 16075,
+      "sha256": "e33dd3fbd1edb98687de2136d64785782aba3ec65f38c109ea69b9b8ca561084"
+    }
+  ]
+}

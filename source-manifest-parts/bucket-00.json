@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "00",
+  "files": [
+    {
+      "path": "reference/browser/integration/living-journal-suite.js",
+      "mode": "100644",
+      "bytes": 13478,
+      "sha256": "ffcbc9dc43aa94df2a75de761da498cc119f624cc491cb017e32d73263ee955f"
+    },
+    {
+      "path": "scripts/scheduler-status.mjs",
+      "mode": "100644",
+      "bytes": 3002,
+      "sha256": "413f1c0d7736176efbb4da2ce8601917c06ab22dc34496f1f31b2a48dc691b02"
+    }
+  ]
+}

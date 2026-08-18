@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "6c",
+  "files": [
+    {
+      "path": "blueprint/build-health-registry.json",
+      "mode": "100644",
+      "bytes": 15426,
+      "sha256": "3c18759f96df1abf7d96a6b3a711c53579ed692c561deb1af4990d1196dae5d4"
+    }
+  ]
+}

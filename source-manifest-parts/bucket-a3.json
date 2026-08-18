@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "a3",
+  "files": [
+    {
+      "path": "reference/browser/modules/living-journal-demo-data.js",
+      "mode": "100644",
+      "bytes": 10601,
+      "sha256": "5e718176c1f8cc92e8d1e99504ebb9b2e0008f2ea09abc0a72ea04245c183f21"
+    }
+  ]
+}

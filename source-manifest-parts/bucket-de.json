@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "de",
+  "files": [
+    {
+      "path": "src/core/runtime-recovery.mjs",
+      "mode": "100644",
+      "bytes": 179477,
+      "sha256": "b8cf15cd2730105ca295488e6008533be15e8807d7fe4446e0714aa234a20646"
+    }
+  ]
+}

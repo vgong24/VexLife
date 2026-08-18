@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "b0",
+  "files": [
+    {
+      "path": "scripts/build-projections.mjs",
+      "mode": "100644",
+      "bytes": 1875,
+      "sha256": "df09880041da5c58ba3c220a90912eabfa39aa7f08eab48b2d59dc31221255d0"
+    },
+    {
+      "path": "test/home-bridge.test.mjs",
+      "mode": "100644",
+      "bytes": 6260,
+      "sha256": "404b142053da2eb58c693a288304ef77c7fdeb396f19cc732b82a72108a2951b"
+    }
+  ]
+}
