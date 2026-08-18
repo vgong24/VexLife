@@ -19,6 +19,7 @@ import {
   writeLivedCompanionShutdownReceipt
 } from '../src/core/lived-companion.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
+import { composeSemanticRelay } from '../src/core/conversation.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -353,6 +354,67 @@ async function proof() {
   const loopback = await startLoopbackServer(redirectTarget.endpoint);
   const typedFailureProofs = [];
   const negativeControls = {};
+  const semanticRelayProjection = composeSemanticRelay({
+    relayRef: 'relay.g01.semantic-proof',
+    sourceMessageRef: 'message.g01.semantic-proof',
+    sourceLanguageRef: 'language.en',
+    sourceLocaleRef: 'locale.en-US',
+    preferredConversationLanguageRef: 'language.en',
+    requestedResponseLanguageRef: 'language.ja',
+    uiLocaleRef: 'locale.ja-JP',
+    originatorRef: 'person.proof-user',
+    originatorKind: 'HUMAN',
+    onBehalfOfOriginator: false,
+    materiality: 'ORDINARY',
+    ambiguityState: 'CLEAR',
+    recipientRefs: ['role.vex.companion'],
+    intentRefs: ['intent.g01.semantic-proof'],
+    canonicalMeaningRefs: ['meaning.g01.semantic-proof'],
+    interpretationProjectionRef: 'projection.g01.semantic-proof',
+    interpretationState: 'CANDIDATE',
+    boundaryClassRef: 'boundary.device-private.lived-turn',
+    targets: [{
+      recipientRef: 'role.vex.companion',
+      recipientPreferredLanguageRef: 'language.ja',
+      targetLanguageRef: 'language.ja',
+      targetAudienceRef: 'audience.direct-companion',
+      runtimeCapability: {
+        capabilityRef: 'capability.runtime.g01.synthetic-current',
+        currentnessState: 'CURRENT',
+        multilingualOutput: true,
+        supportedLanguageRefs: ['language.ja'],
+        evidenceRefs: ['evidence.runtime.g01.synthetic-current']
+      },
+      localeQualityState: 'ADMITTED',
+      terminologyState: 'ADMITTED',
+      authorityState: 'ADMITTED',
+      localizationReadinessState: 'UNAVAILABLE',
+      humanReviewAvailable: false,
+      deliveryState: 'NOT_DELIVERED',
+      acknowledgementState: 'NOT_REQUESTED',
+      understandingState: 'NOT_ASSESSED'
+    }],
+    sourceRefs: ['source.g01.semantic-proof'],
+    evidenceRefs: ['evidence.g01.semantic-proof'],
+    authorityRefs: ['authority.g01.semantic-proof']
+  });
+  if (semanticRelayProjection.status !== 'COMPOSED') throw new Error(`semantic relay script proof composition failed: ${semanticRelayProjection.errors.join('; ')}`);
+  const semanticRelayProofReceipt = {
+    schemaVersion: semanticRelayProjection.relay.schemaVersion,
+    sourceLanguageRef: semanticRelayProjection.relay.sourceLanguageRef,
+    requestedResponseLanguageRef: semanticRelayProjection.relay.requestedResponseLanguageRef,
+    uiLocaleRef: semanticRelayProjection.relay.uiLocaleRef,
+    targetLanguageRef: semanticRelayProjection.relay.targets[0].targetLanguageRef,
+    projectionMode: semanticRelayProjection.relay.targets[0].projectionMode,
+    runtimeCapability: {
+      capabilityRef: semanticRelayProjection.relay.targets[0].runtimeCapability.capabilityRef,
+      currentnessState: semanticRelayProjection.relay.targets[0].runtimeCapability.currentnessState,
+      supportedLanguageRefs: [...semanticRelayProjection.relay.targets[0].runtimeCapability.supportedLanguageRefs],
+      evidenceRefs: [...semanticRelayProjection.relay.targets[0].runtimeCapability.evidenceRefs]
+    },
+    referenceOnly: true,
+    rawTextPresent: false
+  };
   try {
     const main = makeHome(proofRoot, 'main-home');
     const initialInstanceRef = ref('instance.vexlife.g01.initial');
@@ -1793,6 +1855,30 @@ async function proof() {
     fs.writeFileSync(path.join(privacyHome, 'recovery', 'injected-secret.txt'), injectedSecret, 'utf8');
     typedFailureProofs.push(await expectFailure('PRIVACY_POLICY_BLOCKED', async () => assertNoSensitivePersistence(privacyHome, [injectedSecret]), 'secret persistence detection'));
 
+    const semanticRelayInvalidHome = makeHome(proofRoot, 'semantic-relay-invalid-home');
+    const semanticRelayInvalidCallsBefore = loopback.calls.length;
+    const semanticRelayInvalidTurn = baseTurn(semanticRelayInvalidHome, endpoint, {
+      requestSemanticRelay: { rawText: 'synthetic-forbidden-relay-text' }
+    });
+    const semanticRelayInvalidFailure = await expectFailure(
+      'SEMANTIC_RELAY_INVALID',
+      () => performLivedCompanionTurn(semanticRelayInvalidTurn),
+      'invalid semantic relay metadata before request or endpoint effects'
+    );
+    typedFailureProofs.push(semanticRelayInvalidFailure);
+    const semanticRelayInvalidHead = path.join(
+      semanticRelayInvalidHome.home,
+      'conversations',
+      semanticRelayInvalidHome.companionLineageRef,
+      semanticRelayInvalidTurn.threadRef,
+      'head.json'
+    );
+    negativeControls.semanticRelayInvalidPreEffect =
+      loopback.calls.length === semanticRelayInvalidCallsBefore &&
+      semanticRelayInvalidFailure.requestDurablyRecorded === false &&
+      semanticRelayInvalidFailure.responseDurablyRecorded === false &&
+      !fs.existsSync(semanticRelayInvalidHead);
+
     const observedCodes = new Set(typedFailureProofs.map((item) => item.failureCode));
     for (const code of LIVED_COMPANION_FAILURE_CODES) {
       if (!observedCodes.has(code)) throw new Error(`typed failure proof missing ${code}`);
@@ -1814,6 +1900,8 @@ async function proof() {
       trainingUsed: false,
       modelWeightsChanged: false,
       publicationUsed: false,
+      semanticRelayProofReceipt,
+      semanticRelayInvalidPreEffect: negativeControls.semanticRelayInvalidPreEffect,
       secretLeakCount: privacy.secretLeakCount,
       LC18Performed: false,
       homeRef: main.homeRef,

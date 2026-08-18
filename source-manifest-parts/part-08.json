@@ -46,8 +46,8 @@
     {
       "path": "scripts/lived-companion.mjs",
       "mode": "100644",
-      "bytes": 90215,
-      "sha256": "447202bbc9f1946835273a6d202307bee8bd5d1019f284f5500f0afecb1f278e"
+      "bytes": 94514,
+      "sha256": "4eee2666aabc65318d3a78753f2bda13cfda14c5dd9b74113f281e3a2fef42ea"
     },
     {
       "path": "scripts/localization-check.mjs",
