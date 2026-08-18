@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -10,6 +12,7 @@ import {
   loadDailyMemoryDreamState
 } from '../src/core/daily-memory-dream.mjs';
 import { loadScoreContextState } from '../src/core/score-context-continuity.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
 import {
   createDailyMemoryDreamFixture,
   replaceFixtureActiveAuthorityWithoutScore
@@ -32,6 +35,111 @@ function commitInput(fixture, overrides = {}) {
       ? overrides.expectedDailyDreamHeadSha256
       : (state.head?.dailyDreamHeadSha256 ?? null)
   };
+}
+
+function writeJson(file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+function advanceG01Conversation(fixture, ordinal = 3) {
+  const ids = fixture.ids;
+  const prior = fixture.g01.second;
+  const sequence = prior.head.sequence + 1;
+  const turnRef = `turn.g03.fixture.${ordinal}`;
+  const instanceRef = `instance.g03.fixture.${ordinal}`;
+  const formedAt = (second) => `2026-08-07T09:0${ordinal}:${String(second).padStart(2, '0')}.000Z`;
+  const requestCore = {
+    schemaVersion: 'vexlife.lived-companion-event/v1',
+    eventRef: `event.g03.request.${ordinal}`,
+    eventKind: 'REQUEST',
+    homeRef: ids.homeRef,
+    deviceRef: ids.deviceRef,
+    companionLineageRef: ids.companionLineageRef,
+    instanceRef,
+    threadRef: ids.threadRef,
+    channelRef: 'channel.g03.fixture',
+    turnRef,
+    messageRef: `message.g03.request.${ordinal}`,
+    speakerRef: 'person.test',
+    recipientRefs: ['vex.test'],
+    sequence,
+    priorEventHash: prior.responseEvent.eventHash,
+    content: `private human source ${ordinal}`,
+    contentHash: semanticHash(`private human source ${ordinal}`),
+    privacyClass: 'DEVICE_PRIVATE',
+    formedAt: formedAt(0)
+  };
+  const requestEvent = { ...requestCore, eventHash: semanticHash(requestCore) };
+  const responseCore = {
+    schemaVersion: 'vexlife.lived-companion-event/v1',
+    eventRef: `event.g03.response.${ordinal}`,
+    eventKind: 'RESPONSE',
+    homeRef: ids.homeRef,
+    deviceRef: ids.deviceRef,
+    companionLineageRef: ids.companionLineageRef,
+    instanceRef,
+    threadRef: ids.threadRef,
+    channelRef: 'channel.g03.fixture',
+    turnRef,
+    messageRef: `message.g03.response.${ordinal}`,
+    speakerRef: 'vex.test',
+    recipientRefs: ['person.test'],
+    sequence: sequence + 1,
+    priorEventHash: requestEvent.eventHash,
+    content: `private vex source ${ordinal}`,
+    contentHash: semanticHash(`private vex source ${ordinal}`),
+    endpointProfileRef: 'endpoint.g01.loopback',
+    sanitizedEndpointOrigin: 'http://127.0.0.1:43210',
+    modelNameOrBoundedTestProfileRef: 'model.g01.bounded',
+    privacyClass: 'DEVICE_PRIVATE',
+    formedAt: formedAt(1)
+  };
+  const responseEvent = { ...responseCore, eventHash: semanticHash(responseCore) };
+  const eventDir = path.join(ids.home, 'conversations', ids.companionLineageRef, ids.threadRef, 'events');
+  writeJson(path.join(eventDir, `${String(requestEvent.sequence).padStart(8, '0')}-${requestEvent.eventHash}.json`), requestEvent);
+  writeJson(path.join(eventDir, `${String(responseEvent.sequence).padStart(8, '0')}-${responseEvent.eventHash}.json`), responseEvent);
+
+  const contextCore = {
+    schemaVersion: 'vexlife.lived-companion-context/v1',
+    homeRef: ids.homeRef,
+    deviceRef: ids.deviceRef,
+    companionLineageRef: ids.companionLineageRef,
+    instanceRef,
+    threadRef: ids.threadRef,
+    turnRef,
+    contextSourceRefs: [requestEvent.eventRef, responseEvent.eventRef],
+    requestEventHash: requestEvent.eventHash,
+    responseEventHash: responseEvent.eventHash,
+    privacyClass: 'DEVICE_PRIVATE',
+    formedAt: formedAt(2)
+  };
+  const contextRecord = { ...contextCore, serializedContextSha256: semanticHash(contextCore) };
+  const contextPath = path.join(ids.home, 'context', ids.companionLineageRef, ids.threadRef, `${turnRef}.json`);
+  writeJson(contextPath, contextRecord);
+
+  const headCore = {
+    schemaVersion: 'vexlife.lived-companion-head/v1',
+    homeRef: ids.homeRef,
+    deviceRef: ids.deviceRef,
+    companionLineageRef: ids.companionLineageRef,
+    instanceRef,
+    threadRef: ids.threadRef,
+    turnRef,
+    requestMessageRef: requestEvent.messageRef,
+    responseMessageRef: responseEvent.messageRef,
+    eventHash: responseEvent.eventHash,
+    contextSha256: contextRecord.serializedContextSha256,
+    contextPath: path.relative(ids.home, contextPath).replaceAll('\\', '/'),
+    sequence: responseEvent.sequence,
+    priorConversationHeadSha256: prior.head.conversationHeadSha256,
+    formedAt: formedAt(3)
+  };
+  const head = { ...headCore, conversationHeadSha256: semanticHash(headCore) };
+  const heads = path.join(ids.home, 'conversations', ids.companionLineageRef, ids.threadRef, 'heads');
+  writeJson(path.join(heads, `${head.conversationHeadSha256}.json`), head);
+  writeJson(path.join(ids.home, 'conversations', ids.companionLineageRef, ids.threadRef, 'head.json'), head);
+  return head;
 }
 
 test('Living Journal Memory projection holds before one committed Daily Memory stratum exists', () => {
@@ -162,6 +270,32 @@ test('Living Journal holds a committed Daily Memory projection when the current 
   assert.deepEqual(projection.reasons, ['DAILY_MEMORY_SOURCE_FRONTIER_STALE']);
   assert.equal(projection.realMemoryLoaded, false);
   assert.equal(projection.pages.length, 0);
+  assert.equal(projection.rawConversationContentIncluded, false);
+  assert.equal(projection.effects.memoryMutated, false);
+  assert.equal(projection.effects.homeMutated, false);
+});
+
+test('Living Journal holds an empty-page Daily projection when G01 advances after the committed Daily frontier', () => {
+  const fixture = createDailyMemoryDreamFixture('lj-memory-g01-stale-empty');
+  replaceFixtureActiveAuthorityWithoutScore(fixture, 'living-journal-g01-zero-active');
+  commitDailyMemoryDream(commitInput(fixture));
+
+  const beforeAdvance = projectLivingJournalMemory({ ...fixture.ids, maxPages: 8 });
+  assert.equal(beforeAdvance.state, 'CURRENT');
+  assert.equal(beforeAdvance.pageCount, 0);
+  assert.deepEqual(beforeAdvance.pages, []);
+
+  const advancedHead = advanceG01Conversation(fixture, 3);
+  assert.notEqual(advancedHead.conversationHeadSha256, fixture.g01.head.conversationHeadSha256);
+
+  const projection = projectLivingJournalMemory({ ...fixture.ids, maxPages: 8 });
+  assert.equal(projection.state, 'HELD');
+  assert.deepEqual(projection.reasons, ['DAILY_MEMORY_SOURCE_FRONTIER_STALE']);
+  assert.equal(projection.details.dailySourceConversationHeadSha256, fixture.g01.head.conversationHeadSha256);
+  assert.equal(projection.details.conversationSourceCurrentness, 'HISTORICAL_SOURCE_VERIFIED');
+  assert.equal(projection.realMemoryLoaded, false);
+  assert.equal(projection.realJournalBodyLoaded, false);
+  assert.deepEqual(projection.pages, []);
   assert.equal(projection.rawConversationContentIncluded, false);
   assert.equal(projection.effects.memoryMutated, false);
   assert.equal(projection.effects.homeMutated, false);
