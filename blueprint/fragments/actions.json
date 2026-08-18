@@ -833,5 +833,39 @@
       "state.living-journal"
     ],
     "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.semantic-relay.confirm",
+    "permissionRef": "permission.conversation.send",
+    "inputSchema": {
+      "relayRef": "ref"
+    },
+    "effectClass": "LOCAL_APPEND",
+    "outputStateRefs": [
+      "state.messages",
+      "state.context"
+    ]
+  },
+  {
+    "actionRef": "action.semantic-relay.correct",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "relayRef": "ref"
+    },
+    "effectClass": "LOCAL_DRAFT_ONLY",
+    "outputStateRefs": [
+      "state.messages"
+    ]
+  },
+  {
+    "actionRef": "action.semantic-relay.hold",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "relayRef": "ref"
+    },
+    "effectClass": "LOCAL_DRAFT_ONLY",
+    "outputStateRefs": [
+      "state.messages"
+    ]
   }
 ]

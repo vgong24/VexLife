@@ -408,17 +408,24 @@
       "status": "IMPLEMENTED_REFERENCE",
       "canonicalNodeRefs": [
         "state.localization",
-        "foundation.vexlife.localization-intent.v1"
+        "foundation.vexlife.localization-intent.v1",
+        "element.semantic-relay.confirm",
+        "element.semantic-relay.correct",
+        "element.semantic-relay.hold"
       ],
       "stateRefs": [
         "state.localization",
         "state.messages"
       ],
       "actionRefs": [
-        "action.language.select"
+        "action.language.select",
+        "action.semantic-relay.confirm",
+        "action.semantic-relay.correct",
+        "action.semantic-relay.hold"
       ],
       "permissionRefs": [
-        "permission.none"
+        "permission.none",
+        "permission.conversation.send"
       ],
       "processRefs": [
         "process.vexlife.communication.translate-and-refine"
@@ -487,7 +494,7 @@
       ],
       "resourceClass": "OPTIONAL_MODEL_TRANSLATION_BOUNDED",
       "dataClass": "ATTRIBUTED_MESSAGE_PROJECTION",
-      "effectClass": "PROJECTION_NEVER_SOURCE_REPLACEMENT",
+      "effectClass": "EXPLICIT_ORIGINATOR_DECISION_GATED_LOCAL_APPEND",
       "concurrencyClass": "SOURCE_HASH_BOUND",
       "rollbackRouteRef": "recovery.message-projection-pointer",
       "projectionRefs": [

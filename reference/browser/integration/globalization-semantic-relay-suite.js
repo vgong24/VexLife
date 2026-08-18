@@ -120,6 +120,24 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     assert(panel?.getAttribute('role') === 'status' && panel?.getAttribute('aria-live') === 'polite', 'GPT-06 attention panel is not screen-reader announced');
     const buttons = [...panel.querySelectorAll('button[data-relay-action]')];
     assert(buttons.length === 3 && buttons.every((button) => button.type === 'button'), 'GPT-03 confirmation controls are not bounded buttons');
+    const decisionIdentity = {
+      CONFIRM: { elementRef:'element.semantic-relay.confirm', actionRef:'action.semantic-relay.confirm', permissionRef:'permission.conversation.send' },
+      CORRECT: { elementRef:'element.semantic-relay.correct', actionRef:'action.semantic-relay.correct', permissionRef:'permission.none' },
+      HOLD: { elementRef:'element.semantic-relay.hold', actionRef:'action.semantic-relay.hold', permissionRef:'permission.none' }
+    };
+    for (const button of buttons) {
+      const expected = decisionIdentity[button.dataset.relayAction];
+      assert(expected, 'GPT-03 semantic relay control action identity is unknown');
+      assert(button.dataset.nodeRef === expected.elementRef, `GPT-03 ${button.dataset.relayAction} element identity drifted`);
+      assert(button.dataset.actionRef === expected.actionRef, `GPT-03 ${button.dataset.relayAction} action identity drifted`);
+      assert(button.dataset.permissionRef === expected.permissionRef, `GPT-03 ${button.dataset.relayAction} permission identity drifted`);
+    }
+    const originalFetch = globalThis.fetch;
+    const decisionFetchCalls = [];
+    globalThis.fetch = async (url, options = {}) => {
+      decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
+      return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
+    };
     panel.querySelector('[data-relay-action="HOLD"]').click();
     await delay(0);
     assert(list.length === beforeCount, 'GPT-03 HOLD created a message effect');
@@ -137,6 +155,27 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     assert(list.length === beforeCount, 'GPT-03 CORRECT created a message effect without corrected relay input');
     assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT', 'GPT-03 CORRECT did not return to unsent draft');
     assert(!document.querySelector('.semantic-relay-attention'), 'GPT-03 attention panel did not clear after local correction route');
+    assert(decisionFetchCalls.length === 0, 'GPT-03 CORRECT/HOLD crossed the companion send boundary');
+
+    app.state.unsentLocalDraft = null;
+    const confirmCount = list.length;
+    app.chat.setSemanticRelayAttention(attention, {
+      content: 'Confirm this semantic relay proof draft.',
+      relayInput: { relayRef:'relay.browser.globalization-confirm-route-proof' },
+      frameAtSend: app.navigation.semanticFrame()
+    });
+    await delay(0);
+    panel = document.querySelector('.semantic-relay-attention');
+    panel.querySelector('[data-relay-action="CONFIRM"]').click();
+    await delay(5);
+    assert(decisionFetchCalls.length === 1, 'GPT-03 CONFIRM did not cross exactly one companion API boundary');
+    assert(decisionFetchCalls[0].url.includes('/api/v1/companion/turn'), 'GPT-03 CONFIRM did not use the existing companion-turn API');
+    assert(decisionFetchCalls[0].body?.semanticRelayAction === 'CONFIRM', 'GPT-03 CONFIRM lost its typed relay action');
+    assert(decisionFetchCalls[0].body?.semanticRelayInput?.relayRef === 'relay.browser.globalization-confirm-route-proof', 'GPT-03 CONFIRM lost its relay input identity');
+    globalThis.fetch = originalFetch;
+    while (list.length > confirmCount) list.pop();
+    app.chat.setSemanticRelayAttention(null);
+    app.chat.renderMessages();
     checks.push('GPT-03', 'GPT-06');
 
     app.state.unsentLocalDraft = null;

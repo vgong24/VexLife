@@ -302,8 +302,20 @@ export function createChatController({ state, projects, roles, channels, message
     addRelayRow(grid, 'semantic-relay.evidence', (attention.evidenceRefs ?? []).join(' · ') || '—');
     panel.append(grid);
     const actions = document.createElement('div'); actions.className = 'semantic-relay-actions';
-    for (const [action, labelRef] of [['CONFIRM','semantic-relay.confirm'], ['CORRECT','semantic-relay.correct'], ['HOLD','semantic-relay.hold']]) {
-      const button = document.createElement('button'); button.type = 'button'; button.dataset.relayAction = action; button.textContent = t(labelRef);
+    const decisionIdentity = Object.freeze({
+      CONFIRM: Object.freeze({ elementRef:'element.semantic-relay.confirm', actionRef:'action.semantic-relay.confirm', permissionRef:'permission.conversation.send', labelRef:'semantic-relay.confirm' }),
+      CORRECT: Object.freeze({ elementRef:'element.semantic-relay.correct', actionRef:'action.semantic-relay.correct', permissionRef:'permission.none', labelRef:'semantic-relay.correct' }),
+      HOLD: Object.freeze({ elementRef:'element.semantic-relay.hold', actionRef:'action.semantic-relay.hold', permissionRef:'permission.none', labelRef:'semantic-relay.hold' })
+    });
+    for (const action of ['CONFIRM', 'CORRECT', 'HOLD']) {
+      const identity = decisionIdentity[action];
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.relayAction = action;
+      button.dataset.nodeRef = identity.elementRef;
+      button.dataset.actionRef = identity.actionRef;
+      button.dataset.permissionRef = identity.permissionRef;
+      button.textContent = t(identity.labelRef);
       button.addEventListener('click', () => { void semanticRelayAttentionAction(action); });
       actions.append(button);
     }

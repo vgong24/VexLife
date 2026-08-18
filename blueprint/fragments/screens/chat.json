@@ -393,6 +393,69 @@
             "minimumTargetPx": 44,
             "stableIdentifierRef": "element.chat.composer"
           }
+        },
+        {
+          "elementRef": "element.semantic-relay.confirm",
+          "conceptRef": "concept.element.semantic-relay.confirm",
+          "interactionRef": "interaction.semantic-relay.confirm",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.semantic-relay-confirm",
+          "kind": "SEMANTIC_RELAY_DECISION",
+          "labelStringRef": "semantic-relay.confirm",
+          "actionRef": "action.semantic-relay.confirm",
+          "permissionRef": "permission.conversation.send",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.semantic-relay.confirm"
+          },
+          "testRefs": [
+            "test.globalization.semantic-relay.human-visible"
+          ]
+        },
+        {
+          "elementRef": "element.semantic-relay.correct",
+          "conceptRef": "concept.element.semantic-relay.correct",
+          "interactionRef": "interaction.semantic-relay.correct",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.semantic-relay-correct",
+          "kind": "SEMANTIC_RELAY_DECISION",
+          "labelStringRef": "semantic-relay.correct",
+          "actionRef": "action.semantic-relay.correct",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.semantic-relay.correct"
+          },
+          "testRefs": [
+            "test.globalization.semantic-relay.human-visible"
+          ]
+        },
+        {
+          "elementRef": "element.semantic-relay.hold",
+          "conceptRef": "concept.element.semantic-relay.hold",
+          "interactionRef": "interaction.semantic-relay.hold",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.semantic-relay-hold",
+          "kind": "SEMANTIC_RELAY_DECISION",
+          "labelStringRef": "semantic-relay.hold",
+          "actionRef": "action.semantic-relay.hold",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.semantic-relay.hold"
+          },
+          "testRefs": [
+            "test.globalization.semantic-relay.human-visible"
+          ]
         }
       ],
       "conceptRef": "concept.region.chat.feed",
