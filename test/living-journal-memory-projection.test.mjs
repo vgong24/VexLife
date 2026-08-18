@@ -75,6 +75,8 @@ test('Living Journal projects the current accepted Memory summary into one bound
   assert.equal(page.summary, accepted.summary);
   assert.equal(page.summaryHash, accepted.summaryHash);
   assert.equal(page.memoryRelation, accepted.memoryRelation);
+  assert.equal(page.recordedStatementState, accepted.recordedStatementState);
+  assert.equal(page.effectiveState, accepted.effectiveState);
   assert.equal(page.acceptedForContinuity, true);
   assert.equal(page.consentState, 'PERMITTED');
   assert.equal(page.semanticAcceptanceRef, accepted.semanticAcceptanceRef);
