@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "a6",
+  "files": [
+    {
+      "path": "test/browser-living-journal-memory-bridge.test.mjs",
+      "mode": "100644",
+      "bytes": 8757,
+      "sha256": "b6e2abc52e954b3083b65ab19429c232468fa78e056758be3f85031ffcf604b1"
+    }
+  ]
+}
