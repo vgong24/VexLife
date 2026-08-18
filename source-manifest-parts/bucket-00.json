@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/integration/living-journal-suite.js",
       "mode": "100644",
-      "bytes": 13478,
-      "sha256": "ffcbc9dc43aa94df2a75de761da498cc119f624cc491cb017e32d73263ee955f"
+      "bytes": 22962,
+      "sha256": "1459c73ba936f51a9e2f23b4cdd9c6af926c47e67ca6acd709d0a10b87aeb936"
     },
     {
       "path": "scripts/scheduler-status.mjs",
