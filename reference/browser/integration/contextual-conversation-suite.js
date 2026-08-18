@@ -1,6 +1,7 @@
 export async function runQ5ContextWorkspaceProof({ app, helpers:{ delay, assert }, viewportClass='WIDE' }) {
   const checks=[];const surface=document.querySelector('#contextSurface'),dock=document.querySelector('#contextWorkspaceDock'),split=document.querySelector('#contextWorkspaceSplit'),reset=document.querySelector('#contextWorkspaceReset'),handles=[...document.querySelectorAll('[data-node-ref^="element.context-workspace.resize."]')];
   assert(surface&&dock&&split&&reset&&handles.length===4,'W00 contextual workspace fixture incomplete');
+  const settleSurfaceMotion=async()=>{const animations=surface.getAnimations?.()||[];if(animations.length)await Promise.all(animations.map((animation)=>animation.finished.catch(()=>undefined)));await delay(0)};
   const frameBefore=JSON.stringify(app.navigation.semanticFrame()),journeyBefore=JSON.stringify(app.navigation.fullJourney()),terrainBefore=app.terrain.currentRef(),adaptationBefore=JSON.stringify(app.terrain.adaptationSnapshot());
   let snap=app.contextWorkspaceSnapshot();assert(snap&&snap.preferred&&snap.resolved,'W01 contextual workspace state unavailable');
   if(viewportClass==='WIDE'){
@@ -13,6 +14,7 @@ export async function runQ5ContextWorkspaceProof({ app, helpers:{ delay, assert 
     reset.click();await delay(20);snap=app.contextWorkspaceSnapshot();assert(localStorage.getItem('vexlife.contextual-workspace.layout')===null&&snap.preferred.dockMode==='OVERLAY'&&snap.resolved.mode==='OVERLAY','W07 reset did not restore canonical overlay or clear storage');assert(JSON.stringify(app.navigation.semanticFrame())===frameBefore&&JSON.stringify(app.navigation.fullJourney())===journeyBefore&&app.terrain.currentRef()===terrainBefore&&JSON.stringify(app.terrain.adaptationSnapshot())===adaptationBefore,'W03/W07 layout actions mutated semantic/Journey/Terrain/Q7 truth');
   }else{
     assert(snap.resolved.viewportClass==='COMPACT'&&snap.resolved.mode==='COMPACT_SHEET'&&!snap.resolved.splitFocusApplied,'W09 compact contextual workspace did not resolve to COMPACT_SHEET');
+    await settleSurfaceMotion();
     const targets=[dock,split.closest('label'),reset];for(const target of targets)assert(target?.getClientRects().length&&target.getBoundingClientRect().height>=44,'W16 compact workspace control unavailable or below 44px');
     dock.value='DOCK_LEFT';dock.dispatchEvent(new Event('change',{bubbles:true}));split.checked=true;split.dispatchEvent(new Event('change',{bubbles:true}));await delay(20);snap=app.contextWorkspaceSnapshot();assert(snap.preferred.dockMode==='DOCK_LEFT'&&snap.preferred.splitFocusMode==='TERRAIN_PLUS_ACTIVE_CONTEXT'&&snap.resolved.mode==='COMPACT_SHEET'&&!snap.resolved.splitFocusApplied,'W09 compact fallback rewrote/ignored the wide preference contract');const stored=JSON.parse(localStorage.getItem('vexlife.contextual-workspace.layout')||'{}');assert(stored.dockMode==='DOCK_LEFT'&&stored.splitFocusMode==='TERRAIN_PLUS_ACTIVE_CONTEXT','W09 compact preference was not retained for wide recovery');assert(document.documentElement.scrollWidth<=innerWidth+1&&document.body.scrollWidth<=innerWidth+1,'W16 compact contextual workspace introduced horizontal overflow');
   }

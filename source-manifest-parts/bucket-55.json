@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "55",
+  "files": [
+    {
+      "path": ".github/workflows/check.yml",
+      "mode": "100644",
+      "bytes": 16250,
+      "sha256": "c9b6269f7b705d3e3a20f0de94c858f37ea3aba1d37eef23abe97d1ffb2e5b1e"
+    },
+    {
+      "path": "test/lived-companion.test.mjs",
+      "mode": "100644",
+      "bytes": 84805,
+      "sha256": "9406879a89477bbf0c12fdec8214eca47fd388894728e8d50d82c47571eb5ff8"
+    }
+  ]
+}

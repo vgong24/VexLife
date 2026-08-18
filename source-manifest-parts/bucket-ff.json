@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ff",
+  "files": [
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "mode": "100644",
+      "bytes": 8447,
+      "sha256": "31de1cf0fe842a424bc01055982aaf8b77aa3b1f9dc93ac594f40b9fc97ca42e"
+    }
+  ]
+}

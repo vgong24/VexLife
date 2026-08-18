@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ec",
+  "files": [
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "100644",
+      "bytes": 4604,
+      "sha256": "a042bbb08b039e4c6c9eb1f0a682ccbe845c0641f9b841c9632c38c0be45355d"
+    },
+    {
+      "path": "test/fixtures/orientation/current-pr.json",
+      "mode": "100644",
+      "bytes": 1183,
+      "sha256": "5cd56d6980c53c1ed9aba8d501cc3f5202e8fee5395b4b93bb734c09f2ef5de5"
+    }
+  ]
+}

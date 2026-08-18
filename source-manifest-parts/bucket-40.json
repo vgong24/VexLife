@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "40",
+  "files": [
+    {
+      "path": "docs/DESKTOP-FIRST-EXECUTION-WAVE.md",
+      "mode": "100644",
+      "bytes": 1592,
+      "sha256": "9b90b23b93ac51fd9d71f3699abd5966bb0d38f3553a502e5646ddf0a3ef0ca5"
+    },
+    {
+      "path": "src/core/evolution.mjs",
+      "mode": "100644",
+      "bytes": 4841,
+      "sha256": "3547f742d238e92d3e30ce1a0f97124e004a02636023b2827ea62f62ebabba13"
+    }
+  ]
+}

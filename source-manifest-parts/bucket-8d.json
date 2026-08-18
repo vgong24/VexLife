@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "8d",
+  "files": [
+    {
+      "path": "PUBLIC-SAFETY-MANIFEST.json",
+      "mode": "100644",
+      "bytes": 1915,
+      "sha256": "05421af74cf1ee0edac60a636e9a9b0c716629c634029088b783b2ec9eb082a3"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "27",
+  "files": [
+    {
+      "path": "scripts/build-admission-simulate.mjs",
+      "mode": "100644",
+      "bytes": 13339,
+      "sha256": "017abf5d78313903446dd51f4fbaab56494c9f56a2d90f942f021f4e0061c3eb"
+    }
+  ]
+}

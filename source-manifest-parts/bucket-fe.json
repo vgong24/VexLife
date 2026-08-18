@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "fe",
+  "files": [
+    {
+      "path": "src/core/runtime-failure.mjs",
+      "mode": "100644",
+      "bytes": 17151,
+      "sha256": "d0b0e6775161695555c6139c479431a42d1e23a857c98f3772ea31533bc86e78"
+    },
+    {
+      "path": "test/intent-workgraph.test.mjs",
+      "mode": "100644",
+      "bytes": 31622,
+      "sha256": "b690f23b3b25427d02eaef05abce54a35d443a20d6949043ca81cf2468b5f707"
+    }
+  ]
+}

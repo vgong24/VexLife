@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "97",
+  "files": [
+    {
+      "path": "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
+      "mode": "100644",
+      "bytes": 6715,
+      "sha256": "a756663612c58c703026282dd5a8eccc839d812d9b483073af13a3b00a3422bf"
+    },
+    {
+      "path": "scripts/public-safety-check.mjs",
+      "mode": "100644",
+      "bytes": 948,
+      "sha256": "ce93d4ead2d7cdf1b221a63be589f693c77e676c3dfebe67e8af1492d2e1c3fd"
+    }
+  ]
+}

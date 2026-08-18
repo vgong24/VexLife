@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "3b",
+  "files": [
+    {
+      "path": "scripts/browser-structure-check.mjs",
+      "mode": "100644",
+      "bytes": 841,
+      "sha256": "5e2ab0892f914684b0bb67a78ec3f4bdf596275a963a75131624f3b469f7953b"
+    }
+  ]
+}

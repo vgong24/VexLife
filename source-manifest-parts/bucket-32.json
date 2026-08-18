@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "32",
+  "files": [
+    {
+      "path": "blueprint/intent-orchestration-registry.json",
+      "mode": "100644",
+      "bytes": 12497,
+      "sha256": "27a7a4ab77811c4af2567a0a9d39bbdbbe088c5f22b6a9ba1635e67d95363f1f"
+    }
+  ]
+}

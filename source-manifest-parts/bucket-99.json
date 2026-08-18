@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "99",
+  "files": [
+    {
+      "path": "blueprint/fragments/permissions.json",
+      "mode": "100644",
+      "bytes": 3328,
+      "sha256": "d98dfcb6d716026a9d77ddbbb7ddb4b41d84e1868debeda8052ec1b986711ff7"
+    },
+    {
+      "path": "docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md",
+      "mode": "100644",
+      "bytes": 6513,
+      "sha256": "1dc8db34e5d3e98de2d3befbdbca655617c9b19fb35c9dc276994fa98e60d74f"
+    }
+  ]
+}

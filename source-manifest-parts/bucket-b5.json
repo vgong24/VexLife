@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "b5",
+  "files": [
+    {
+      "path": "scripts/recovery-simulate.mjs",
+      "mode": "100644",
+      "bytes": 196410,
+      "sha256": "7cd65f5f6727415668c75476d27df2ad64701cf364cfa76cf37933111577e96f"
+    },
+    {
+      "path": "src/core/model-provision.mjs",
+      "mode": "100644",
+      "bytes": 2525,
+      "sha256": "374ea58d83bdd34a007ac5a1291738531117062d6963742d87c3db08f352b9ed"
+    }
+  ]
+}

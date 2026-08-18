@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "76",
+  "files": [
+    {
+      "path": "docs/EXPERIENCE-REVIEW-KIT.md",
+      "mode": "100644",
+      "bytes": 7903,
+      "sha256": "8b1273d4da79c70326231a23446459290ecf8a34e41e29ec2c2c842a151fc0b5"
+    },
+    {
+      "path": "scripts/doctor.mjs",
+      "mode": "100644",
+      "bytes": 1131,
+      "sha256": "60fa71ce359bc99cc1e4f6dc6340707fd370ebadb772d5da28b4f07e756b86b8"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "70",
+  "files": [
+    {
+      "path": "blueprint/fragments/state-domains.json",
+      "mode": "100644",
+      "bytes": 6754,
+      "sha256": "9af7c2f5df159704da92bc77e98abff60d4d31efed218a77e3d54844e290333d"
+    }
+  ]
+}

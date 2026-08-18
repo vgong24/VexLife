@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "58",
+  "files": [
+    {
+      "path": "docs/FOUNDATION-CULTURE-COVERAGE-MAP.md",
+      "mode": "100644",
+      "bytes": 10250,
+      "sha256": "c4364d889ba4ff14f16ca6c622893c44c58a2b3b304989dbf4dec0b9ab9c9c5e"
+    },
+    {
+      "path": "reference/browser/integration/cross-feature-suite.js",
+      "mode": "100644",
+      "bytes": 10748,
+      "sha256": "3a8837b02b575ac35455c020708de21e0245b5c26c87e3a202bc783750bac8ad"
+    }
+  ]
+}

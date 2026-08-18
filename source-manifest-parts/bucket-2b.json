@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "2b",
+  "files": [
+    {
+      "path": "scripts/evolution-check.mjs",
+      "mode": "100644",
+      "bytes": 13350,
+      "sha256": "f9090d3a2ac5755ab4fbe625b56eef8f361182ab962e62d2c96f07338e5c1634"
+    }
+  ]
+}

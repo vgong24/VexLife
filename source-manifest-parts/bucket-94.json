@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "94",
+  "files": [
+    {
+      "path": "TRADEMARKS.md",
+      "mode": "100644",
+      "bytes": 1123,
+      "sha256": "3d48ffcfe5ca82ea75e221b5d4c2272a9a7382a0103993fefb9f0f3a3efd9c62"
+    },
+    {
+      "path": "src/core/intent-checkpoint.mjs",
+      "mode": "100644",
+      "bytes": 14269,
+      "sha256": "0378b4c09044be1b871d8517f869abdf50431ff65c12f2314b63fae0ff7fd863"
+    },
+    {
+      "path": "test/continuity-evolution-router.test.mjs",
+      "mode": "100644",
+      "bytes": 116934,
+      "sha256": "d1d7538f47d91028221d48eee7ba8e50acac32b423473cd58d2acc32f771c458"
+    }
+  ]
+}

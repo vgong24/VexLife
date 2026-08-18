@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "98",
+  "files": [
+    {
+      "path": "blueprint/process-factory/processes-evolution.json",
+      "mode": "100644",
+      "bytes": 4612,
+      "sha256": "21f4b1ae2d961e51f01e4eca95ab95e69ef66b45f0ca25070a996e9971c674fb"
+    },
+    {
+      "path": "docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md",
+      "mode": "100644",
+      "bytes": 8248,
+      "sha256": "d4d753973c19ed42eff3edebde7110716def1d3ba53f76d0e39985d6e7dff8f2"
+    },
+    {
+      "path": "docs/FOUNDATION-ORIGIN-RECEIPT.md",
+      "mode": "100644",
+      "bytes": 1624,
+      "sha256": "3e912fd27db597b16db0a063e82f010469278e6c2557977045df9c834a7fa9e9"
+    }
+  ]
+}
