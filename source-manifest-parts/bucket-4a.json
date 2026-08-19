@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "4a",
+  "files": [
+    {
+      "path": "scripts/initialize-vex.mjs",
+      "mode": "100644",
+      "bytes": 19043,
+      "sha256": "cf6140624f3465aff0703eaa43819ae48d3f4a6350a3ee0dcf5f2b04e3c13177"
+    }
+  ]
+}
