@@ -129,11 +129,11 @@ function Stop-ExactQualifiedRuntime([string]$HomeRoot) {
     return [ordered]@{ disposition = "NO_MODEL_CONFIGURATION"; pid = 0 }
   }
   $model = Get-Content -LiteralPath $modelPath -Raw | ConvertFrom-Json
-  $pid = 0
-  try { $pid = [int]$model.runtimePid } catch { $pid = 0 }
-  if ($pid -le 0) { return [ordered]@{ disposition = "NO_OWNED_RUNTIME_PID"; pid = 0 } }
-  $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $pid) -ErrorAction SilentlyContinue
-  if ($null -eq $process) { return [ordered]@{ disposition = "ALREADY_STOPPED"; pid = $pid } }
+  $runtimePid = 0
+  try { $runtimePid = [int]$model.runtimePid } catch { $runtimePid = 0 }
+  if ($runtimePid -le 0) { return [ordered]@{ disposition = "NO_OWNED_RUNTIME_PID"; pid = 0 } }
+  $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $runtimePid) -ErrorAction SilentlyContinue
+  if ($null -eq $process) { return [ordered]@{ disposition = "ALREADY_STOPPED"; pid = $runtimePid } }
   $commandLine = [string]$process.CommandLine
   $processName = [string]$process.Name
   if (($processName -ne "llama-server.exe") -or
@@ -143,8 +143,8 @@ function Stop-ExactQualifiedRuntime([string]$HomeRoot) {
       $commandLine.IndexOf("--port 18080", [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
     throw "Configured runtime PID is active but is not the exact qualified VexLife loopback runtime; refusing to stop it"
   }
-  Stop-Process -Id $pid -ErrorAction Stop
-  return [ordered]@{ disposition = "EXACT_QUALIFIED_RUNTIME_STOPPED"; pid = $pid }
+  Stop-Process -Id $runtimePid -ErrorAction Stop
+  return [ordered]@{ disposition = "EXACT_QUALIFIED_RUNTIME_STOPPED"; pid = $runtimePid }
 }
 
 function Invoke-UninstallPreserveContinuity {
