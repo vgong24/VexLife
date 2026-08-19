@@ -74,7 +74,7 @@ export async function runTerrainZoomTargetRegressionProof({ app, helpers:{ delay
   assert(rootRef&&firstRef&&targetRef&&terrain,'TREG-00 Terrain zoom-target fixture incomplete');
   const resetRoot=async()=>{app.terrain.reset();await delay(90);assert(app.terrain.currentRef()===rootRef,'TREG cleanup did not restore canonical root');};
   const pointForRef=(ref)=>{const node=document.querySelector(`.e27-node[data-terrain-ref="${CSS.escape(ref)}"]`);assert(node?.getClientRects().length,`TREG rendered target unavailable: ${ref}`);const r=node.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};};
-  const wheelAt=async(point,{steps=3,deltaY=-180}={})=>{for(let index=0;index<steps;index++){terrain.dispatchEvent(new WheelEvent('wheel',{bubbles:true,cancelable:true,clientX:point().x,clientY:point().y,deltaY}));await delay(45);}await delay(520);return app.terrain.currentRef();};
+  const wheelAt=async(point,{steps=3,deltaY=-180}={})=>{const anchor=point(),startRef=app.terrain.currentRef();for(let index=0;index<steps;index++){terrain.dispatchEvent(new WheelEvent('wheel',{bubbles:true,cancelable:true,clientX:anchor.x,clientY:anchor.y,deltaY}));await delay(45);if(app.terrain.currentRef()!==startRef)break;}await delay(520);return app.terrain.currentRef();};
   const wheelToward=(ref,options)=>wheelAt(()=>pointForRef(ref),options);
   const emptyPoint=()=>{const r=terrain.getBoundingClientRect(),fractions=[[.84,.78],[.16,.78],[.84,.24],[.16,.24],[.5,.82]];for(const [fx,fy] of fractions){const point={x:r.left+r.width*fx,y:r.top+r.height*fy};const occupied=document.elementsFromPoint(point.x,point.y).some((element)=>element.closest?.('.e27-node,.e27-focus,.e27-vex'));if(!occupied)return point;}return null;};
   try{
