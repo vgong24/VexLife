@@ -109,6 +109,25 @@ export async function runLivingJournalProof({app,helpers:{delay,assert},viewport
   controller.restoreInitialData();app.returnToTerrain();await delay(10);snap=controller.snapshot();assert(snap.truthClass==='CURRENT_SYNTHETIC_REFERENCE'&&snap.dataMode==='SYNTHETIC'&&snap.totalMarginaliaCount===0,'J16 Memory capability proof leaked into the app active data source');
   checks.push('J16');
 
+  const realFetch=globalThis.fetch;
+  globalThis.fetch=(input,init)=>{
+    const url=typeof input==='string'?input:input?.url??String(input);
+    if(url==='/api/v1/living-journal/memory'||url.endsWith('/api/v1/living-journal/memory')){
+      return Promise.resolve(new Response(JSON.stringify({schemaVersion:'vexlife.browser-living-journal-memory-failure/v1',state:'FAILED',truthClass:'CURRENT_LOCAL_MEMORY_FAILURE',failureCode:'LIVING_JOURNAL_MEMORY_HOME_UNAVAILABLE',message:'Living Journal Memory Home identity is unavailable'}),{status:503,headers:{'Content-Type':'application/json'}}));
+    }
+    return realFetch(input,init);
+  };
+  try{
+    app.returnToTerrain();await delay(10);await app.openLivingJournal({loadMemory:true});await delay(10);snap=controller.snapshot();
+    assert(snap.truthClass==='CURRENT_SYNTHETIC_REFERENCE'&&snap.dataMode==='SYNTHETIC','J17 typed Memory failure did not restore explicit synthetic reference truth');
+    assert(app.state.livingJournalMemoryState==='UNAVAILABLE_SYNTHETIC_REFERENCE','J17 typed Memory failure did not expose unavailable synthetic fallback state');
+    assert(app.state.livingJournalMemoryFailureCode==='LIVING_JOURNAL_MEMORY_HOME_UNAVAILABLE','J17 browser dropped the exact top-level typed Memory failureCode');
+    assert(app.state.dataTruthClass==='CURRENT_SYNTHETIC_REFERENCE','J17 browser failure fallback changed product truth class');
+  }finally{
+    globalThis.fetch=realFetch;controller.restoreInitialData();app.returnToTerrain();await delay(10);
+  }
+  checks.push('J17');
+
   return{proofRef:'proof.vexlife.living-journal.lived-book/v1',state:'PASS',viewportClass:viewportClass??(innerWidth<=760?'PHONE':innerWidth<1000?'NARROW':'WIDE'),checks,selectedNodeRef:selectedBefore,terrainRef:terrainBefore,truthClass:controller.snapshot().truthClass};
 }
 
