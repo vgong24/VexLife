@@ -7,6 +7,7 @@ import { ReadableStream } from 'node:stream/web';
 const registry = JSON.parse(fs.readFileSync(new URL('../blueprint/vex-operational-profiles.json', import.meta.url), 'utf8'));
 import {
   browserBindingForProfile,
+  buildQualificationRequest,
   buildRuntimeArguments,
   buildVexInitializationPlan,
   classifyHomeState,
@@ -49,6 +50,15 @@ test('runtime arguments and browser binding stay exact and loopback-bound', () =
     VEXLIFE_COMPANION_MODEL: 'Qwen3.5-4B-Q4_K_M',
     VEXLIFE_OPERATIONAL_PROFILE_REF: profile.profileRef
   });
+});
+
+test('runtime readiness qualification disables thinking without changing normal companion binding', () => {
+  const request = buildQualificationRequest(profile);
+  assert.deepEqual(request.chat_template_kwargs, { enable_thinking: false });
+  assert.equal(request.model, profile.endpoint.requestModel);
+  assert.equal(request.messages[0].content, profile.qualification.probePrompt);
+  assert.equal(request.max_tokens, profile.qualification.probeMaxTokens);
+  assert.equal(request.temperature, 0);
 });
 
 test('initialization plan exposes only the admitted product effects', () => {
