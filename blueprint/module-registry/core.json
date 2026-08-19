@@ -1029,6 +1029,51 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.living-journal-memory-projection",
+    "path": "src/core/living-journal-memory-projection.mjs",
+    "role": "Read-only currentness-gated projection of accepted G03 Daily Memory and G02 continuity summaries into bounded Living Journal CURRENT/HELD page packets without raw conversation content or effects.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils",
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.score-context-continuity",
+      "module.vexlife.core.daily-memory-dream"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.browser-living-journal-memory-bridge"
+    ],
+    "tests": [
+      "test/living-journal-memory-projection.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/browser-living-journal-memory-bridge.mjs",
+      "reference/browser/modules/living-journal-controller.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.browser-living-journal-memory-bridge",
+    "path": "src/core/browser-living-journal-memory-bridge.mjs",
+    "role": "Browser/server boundary that admits only server-owned Home identity plus bounded threadRef/maxPages requests and preserves zero-effect CURRENT/HELD Living Journal Memory truth.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "module.vexlife.core.living-journal-memory-projection"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/browser-living-journal-memory-bridge.test.mjs",
+      "test/browser-living-journal-memory-http-route.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/serve-browser.mjs",
+      "reference/browser/app.js",
+      "reference/browser/modules/living-journal-controller.js"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.evaluated-rhythm-learning",
     "path": "src/core/evaluated-rhythm-learning.mjs",
     "role": "Owns the device-private G04 Stage-A source verification, stable-pattern eligibility, synthetic participation/consent gating, frozen generalized corpus, inactive faithful simulated Rhythm candidate, privacy/identity/capability evaluation and rollback evidence without training or activation.",

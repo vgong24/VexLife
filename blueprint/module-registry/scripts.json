@@ -76,18 +76,20 @@
   {
     "moduleRef": "module.vexlife.script.serve-browser",
     "path": "scripts/serve-browser.mjs",
-    "role": "Dependency-free localhost server for the browser reference.",
+    "role": "Dependency-free localhost browser reference server with existing companion routes plus bounded same-origin Living Journal Memory activation using server-owned Home identity.",
     "platformScope": "BROWSER",
     "reads": [
       "reference/browser/**",
-      "blueprint/**"
+      "blueprint/**",
+      "module.vexlife.core.browser-living-journal-memory-bridge"
     ],
     "writes": [],
     "loadedBy": [
       "npm run browser:start"
     ],
     "tests": [
-      "test/browser.test.mjs"
+      "test/browser.test.mjs",
+      "test/browser-living-journal-memory-http-route.test.mjs"
     ],
     "changeMap": []
   },
