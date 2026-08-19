@@ -250,12 +250,12 @@ function composeBrowserRequestSemanticRelay({ relayInput, relayAction, requestMe
     input.confirmationReceiptRef = ref('receipt.semantic-relay.browser-confirmation');
     delete input.supersedesInterpretationProjectionRef;
   } else if (relayAction === 'CORRECT') {
+    const priorInterpretationProjectionRef = input.interpretationProjectionRef;
     input.interpretationState = 'CORRECTED';
+    input.interpretationProjectionRef = ref('projection.interpretation.browser-correction');
+    input.supersedesInterpretationProjectionRef = priorInterpretationProjectionRef;
     input.confirmedByRef = input.originatorRef;
     input.confirmationReceiptRef = ref('receipt.semantic-relay.browser-correction');
-    if (!nonempty(input.supersedesInterpretationProjectionRef) || input.supersedesInterpretationProjectionRef === input.interpretationProjectionRef) {
-      throw new BrowserCompanionBridgeError('COMPANION_SEMANTIC_RELAY_INVALID', 'Corrected relay requires a distinct superseded interpretation projection ref', 422);
-    }
   }
   const composed = composeSemanticRelay(input);
   if (composed.status === 'COMPOSED') return Object.freeze({ relay: composed.relay, attention: null });

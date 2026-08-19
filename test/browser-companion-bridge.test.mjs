@@ -288,4 +288,37 @@ test('browser semantic relay rejects raw-text metadata before endpoint or durabl
   }
 });
 
+test('originating-human CORRECT mints a distinct server-side interpretation projection and preserves supersession lineage', async () => {
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  try {
+    const bridge = createBrowserCompanionBridge({ home, endpoint: model.endpoint, model: 'Qwen3.5-4B-Q4_K_M', instanceRef: 'instance.vexlife.browser-companion-relay-correct-test' });
+    const priorProjectionRef = 'projection.interpretation.browser-companion-test';
+    const result = await bridge.performTurn({
+      threadRef: 'thread.local-vex.foundation',
+      channelRef: 'channel.local-vex.companion',
+      content: 'Corrected source content remains canonical.',
+      semanticRelayInput: semanticRelayInput({ interpretationProjectionRef: priorProjectionRef }),
+      semanticRelayAction: 'CORRECT'
+    });
+    assert.equal(result.state, 'TURN_COMPLETED');
+    assert.equal(result.requestSemanticRelay.interpretationState, 'CORRECTED');
+    assert.equal(result.requestSemanticRelay.supersedesInterpretationProjectionRef, priorProjectionRef);
+    assert.notEqual(result.requestSemanticRelay.interpretationProjectionRef, priorProjectionRef);
+    assert.match(result.requestSemanticRelay.interpretationProjectionRef, /^projection\.interpretation\.browser-correction\.[0-9a-f-]{36}$/u);
+    assert.equal(result.requestSemanticRelay.confirmedByRef, 'person.local-user');
+    assert.equal(model.calls.length, 1);
+    assert.equal(model.calls[0].body.messages[0].content, 'Corrected source content remains canonical.');
+    const eventsRoot = path.join(home, 'conversations', 'companion-lineage.vexlife.browser-companion-test', 'thread.local-vex.foundation', 'events');
+    const events = fs.readdirSync(eventsRoot).sort().map((name) => JSON.parse(fs.readFileSync(path.join(eventsRoot, name), 'utf8')));
+    assert.equal(events[0].content, 'Corrected source content remains canonical.');
+    assert.equal(events[0].semanticRelay.interpretationState, 'CORRECTED');
+    assert.equal(events[0].semanticRelay.supersedesInterpretationProjectionRef, priorProjectionRef);
+    assert.equal(Object.hasOwn(events[0].semanticRelay, 'rawText'), false);
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // [VXG RealForever]

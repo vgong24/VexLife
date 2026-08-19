@@ -257,8 +257,18 @@ export function createChatController({ state, projects, roles, channels, message
     const pending = semanticRelayAttention;
     if (!pending || !['CONFIRM', 'CORRECT', 'HOLD'].includes(action)) return false;
     const channel = currentChannel();
-    if (action !== 'CONFIRM' || !pending.relayInput) {
+    if (action === 'HOLD' || !pending.relayInput) {
       semanticRelayAttention = null;
+      setSemanticRelayInput(null);
+      setLocalDraft(channel, pending.content);
+      const input = $('#messageInput');
+      if (input) input.value = pending.content;
+      renderComposerTruth();
+      return true;
+    }
+    if (action === 'CORRECT') {
+      semanticRelayAttention = null;
+      setSemanticRelayInput(pending.relayInput, 'CORRECT');
       setLocalDraft(channel, pending.content);
       const input = $('#messageInput');
       if (input) input.value = pending.content;

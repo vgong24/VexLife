@@ -143,20 +143,38 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     assert(list.length === beforeCount, 'GPT-03 HOLD created a message effect');
     assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT', 'GPT-03 HOLD did not preserve unsent draft truth');
 
+    const correctionRelayInput = { relayRef:'relay.browser.globalization-correct-route-proof', interpretationProjectionRef:'projection.interpretation.globalization-correct-route-proof' };
     app.chat.setSemanticRelayAttention(attention, {
       content: 'Correct this semantic relay proof draft.',
-      relayInput: null,
+      relayInput: correctionRelayInput,
       frameAtSend: app.navigation.semanticFrame()
     });
     await delay(0);
     panel = document.querySelector('.semantic-relay-attention');
     panel.querySelector('[data-relay-action="CORRECT"]').click();
     await delay(0);
-    assert(list.length === beforeCount, 'GPT-03 CORRECT created a message effect without corrected relay input');
+    assert(list.length === beforeCount, 'GPT-03 CORRECT created an immediate message effect');
     assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT', 'GPT-03 CORRECT did not return to unsent draft');
     assert(!document.querySelector('.semantic-relay-attention'), 'GPT-03 attention panel did not clear after local correction route');
-    assert(decisionFetchCalls.length === 0, 'GPT-03 CORRECT/HOLD crossed the companion send boundary');
+    assert(decisionFetchCalls.length === 0, 'GPT-03 CORRECT crossed the companion send boundary before explicit human resubmit');
 
+    globalThis.fetch = async (url, options = {}) => {
+      if (String(url).includes('/api/v1/companion/status')) return new Response(JSON.stringify({ state:'BOUND' }), { status:200, headers:{'content-type':'application/json'} });
+      decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
+      return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
+    };
+    await app.chat.refreshCompanionAvailability();
+    const correctionInput = document.querySelector('#messageInput');
+    correctionInput.value = 'Corrected semantic relay proof draft.';
+    document.querySelector('#composer').dispatchEvent(new Event('submit', { bubbles:true, cancelable:true }));
+    await delay(10);
+    assert(decisionFetchCalls.length === 1, 'GPT-03 corrected draft did not cross exactly one companion API boundary on explicit resubmit');
+    assert(decisionFetchCalls[0].body?.semanticRelayAction === 'CORRECT', 'GPT-03 corrected draft lost typed CORRECT action');
+    assert(decisionFetchCalls[0].body?.semanticRelayInput?.relayRef === correctionRelayInput.relayRef, 'GPT-03 corrected draft lost prior relay identity');
+    assert(decisionFetchCalls[0].body?.semanticRelayInput?.interpretationProjectionRef === correctionRelayInput.interpretationProjectionRef, 'GPT-03 corrected draft lost prior interpretation projection lineage');
+    while (list.length > beforeCount) list.pop();
+    decisionFetchCalls.length = 0;
+    app.chat.renderMessages();
     app.state.unsentLocalDraft = null;
     const confirmCount = list.length;
     app.chat.setSemanticRelayAttention(attention, {
