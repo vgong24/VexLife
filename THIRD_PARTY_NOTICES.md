@@ -6,10 +6,32 @@ imports use Node.js built-ins or local modules. No other third-party code was
 identified in launch pack v0.4; this is a provenance record, not a warranty about
 all possible rights.
 
+## Runtime artifacts referenced by operational profiles
+
+Operational profiles may reference external runtime/model artifacts without
+vendoring them into this repository. A profile reference does not itself grant
+network, installation, activation, redistribution, or release authority.
+
+The current Windows candidate profile references:
+
+- **llama.cpp b10107** at immutable revision
+  `c0bc8591e8815c63cb01dd3f051a8b0df02501c9`, distributed by the ggml-org
+  project under the MIT License. The profile pins the Windows x64 CUDA 12.4
+  runtime and CUDA-runtime archives by exact SHA-256 and records the upstream
+  license as the controlling runtime notice.
+- **Qwen3.5-4B** GGUF derivative artifacts published by `bartowski` from the
+  Qwen3.5-4B model family. The selected model and projector are pinned to exact
+  repository revisions and SHA-256 digests. The model repository declares
+  Apache-2.0. Release qualification still requires then-current source/rights/
+  notice review; candidate-profile presence is not a redistribution clearance.
+
+The artifacts remain external to canonical VexLife source. Download providers
+are transport locations, not Vex identity or artifact identity.
+
 ## Contributor Covenant 3.0
 
 `CODE_OF_CONDUCT.md` is adapted from Contributor Covenant 3.0, permanently
-available at <https://www.contributor-covenant.org/version/3/0/> and sourced from
+available at <https://www.contributor-covenant.org/version/3.0/> and sourced from
 the Organization for Ethical Source repository at commit
 `7255a28d23d5bc296de2e4e4e9bb5ee1126f1345`.
 
