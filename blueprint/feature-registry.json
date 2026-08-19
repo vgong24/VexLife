@@ -1818,11 +1818,10 @@
         "element.living-journal.marginalia.add-local"
       ],
       "concurrencyClass": "LOCAL_CONTEXTUAL_PROJECTION",
-      "dataClass": "CURRENT_SYNTHETIC_REFERENCE",
-      "effectClass": "LOCAL_EPHEMERAL_REFERENCE_ONLY",
+      "dataClass": "CURRENT_MEMORY_REFERENCE_OR_MEMORY_REFERENCE_HELD_WITH_EXPLICIT_SYNTHETIC_FALLBACK",
+      "effectClass": "READ_ONLY_MEMORY_PROJECTION_WITH_LOCAL_EPHEMERAL_MARGINALIA",
       "featureRef": "feature.vexlife.living-journal",
       "knownGaps": [
-        "real Memory and real journal bodies remain outside the browser reference",
         "model, translation and network calls remain held",
         "marginalia remains ephemeral reference interaction only"
       ],
@@ -1855,7 +1854,10 @@
       "moduleRefs": [
         "module.vexlife.browser.living-journal-controller",
         "module.vexlife.browser.living-journal-demo-data",
-        "module.vexlife.browser.living-journal-styles"
+        "module.vexlife.browser.living-journal-styles",
+        "module.vexlife.core.living-journal-memory-projection",
+        "module.vexlife.core.browser-living-journal-memory-bridge",
+        "module.vexlife.script.serve-browser"
       ],
       "permissionRefs": [
         "permission.none"
@@ -1869,7 +1871,7 @@
       "projectionRefs": [
         "projection.living-journal.lived-book"
       ],
-      "purpose": "Project one bounded multilingual Living Journal book over the current Terrain context so temporal pages, four attributable vantages, source/revisit doors and ephemeral marginalia remain legible without creating a Memory database or rewriting source/Journey truth.",
+      "purpose": "Project one bounded Living Journal book over the current Terrain context, consuming accepted read-only Memory as CURRENT or HELD when source currentness permits while retaining explicit synthetic reference fallback, source/revisit doors and ephemeral marginalia without raw conversation bodies or canonical Memory writes.",
       "resourceClass": "BOUNDED_CONTEXTUAL_BOOK_PROJECTION",
       "reviewLensRefs": [
         "lens.vexlife.intent-and-placement",
@@ -1905,7 +1907,10 @@
         "test.living-journal.source-and-revisit",
         "test.living-journal.marginalia-nonmutation",
         "test.living-journal.accessibility",
-        "test.living-journal.mobile-book-grammar"
+        "test.living-journal.mobile-book-grammar",
+        "test.living-journal.memory-projection",
+        "test.living-journal.memory-bridge",
+        "test.living-journal.memory-http-app-activation"
       ]
     }
   ]
