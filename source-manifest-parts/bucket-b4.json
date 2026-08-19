@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "b4",
+  "files": [
+    {
+      "path": "blueprint/vex-operational-profiles.json",
+      "mode": "100644",
+      "bytes": 5191,
+      "sha256": "04735c8ad0bbfb00dfb6fbdee4f144f7acf87e27b776b773840e71649dc949b6"
+    }
+  ]
+}
