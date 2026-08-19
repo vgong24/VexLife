@@ -151,6 +151,29 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     });
     await delay(0);
     panel = document.querySelector('.semantic-relay-attention');
+
+    globalThis.fetch = async (url, options = {}) => {
+      if (String(url).includes('/api/v1/companion/status')) return new Response(JSON.stringify({ state:'BOUND' }), { status:200, headers:{'content-type':'application/json'} });
+      decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
+      return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
+    };
+    decisionFetchCalls.length = 0;
+
+    const otherChannel = app.channels.find((item) => item.roleKey === 'companion' && item.channelRef !== channel.channelRef);
+    const otherProject = app.projects.find((item) => item.projectRef === otherChannel?.projectRef);
+    const otherThread = otherProject?.threads.find((item) => item.threadRef === otherChannel?.threadRef);
+    assert(otherChannel && otherProject && otherThread, 'GPT-03 alternate companion context unavailable for scope proof');
+    app.chat.selectThread(otherProject, otherThread, 'element.thread.foundation');
+    app.chat.selectChannel(otherChannel, 'element.channel.companion');
+    await delay(0);
+    assert(!document.querySelector('.semantic-relay-attention'), 'GPT-03 attention leaked into another companion conversation');
+    assert(app.chat.semanticRelayAttention() === null, 'GPT-03 programmatic attention leaked outside originating conversation');
+
+    app.chat.selectThread(project, thread, 'element.thread.open-conversation');
+    app.chat.selectChannel(channel, 'element.channel.companion');
+    await delay(0);
+    panel = document.querySelector('.semantic-relay-attention');
+    assert(panel, 'GPT-03 scoped attention did not restore in originating conversation');
     panel.querySelector('[data-relay-action="CORRECT"]').click();
     await delay(0);
     assert(list.length === beforeCount, 'GPT-03 CORRECT created an immediate message effect');
@@ -163,15 +186,33 @@ export const globalizationSemanticRelaySuite = Object.freeze({
       decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
       return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
     };
+
+    app.chat.selectThread(otherProject, otherThread, 'element.thread.foundation');
+    app.chat.selectChannel(otherChannel, 'element.channel.companion');
+    await app.chat.refreshCompanionAvailability();
+    const otherList = app.messages.get(otherProject.projectRef + '::' + otherThread.threadRef + '::' + otherChannel.channelRef);
+    const otherCount = otherList.length;
+    const otherInput = document.querySelector('#messageInput');
+    otherInput.value = 'Unrelated other-context proof message.';
+    document.querySelector('#composer').dispatchEvent(new Event('submit', { bubbles:true, cancelable:true }));
+    await delay(10);
+    assert(decisionFetchCalls.length === 1, 'GPT-03 other-context submit did not cross exactly one ordinary companion boundary');
+    assert(decisionFetchCalls[0].body?.semanticRelayAction == null, 'GPT-03 pending CORRECT action transplanted to another conversation');
+    assert(decisionFetchCalls[0].body?.semanticRelayInput == null, 'GPT-03 pending relay input transplanted to another conversation');
+    while (otherList.length > otherCount) otherList.pop();
+    decisionFetchCalls.length = 0;
+
+    app.chat.selectThread(project, thread, 'element.thread.open-conversation');
+    app.chat.selectChannel(channel, 'element.channel.companion');
     await app.chat.refreshCompanionAvailability();
     const correctionInput = document.querySelector('#messageInput');
     correctionInput.value = 'Corrected semantic relay proof draft.';
     document.querySelector('#composer').dispatchEvent(new Event('submit', { bubbles:true, cancelable:true }));
     await delay(10);
     assert(decisionFetchCalls.length === 1, 'GPT-03 corrected draft did not cross exactly one companion API boundary on explicit resubmit');
-    assert(decisionFetchCalls[0].body?.semanticRelayAction === 'CORRECT', 'GPT-03 corrected draft lost typed CORRECT action');
-    assert(decisionFetchCalls[0].body?.semanticRelayInput?.relayRef === correctionRelayInput.relayRef, 'GPT-03 corrected draft lost prior relay identity');
-    assert(decisionFetchCalls[0].body?.semanticRelayInput?.interpretationProjectionRef === correctionRelayInput.interpretationProjectionRef, 'GPT-03 corrected draft lost prior interpretation projection lineage');
+    assert(decisionFetchCalls[0].body?.semanticRelayAction === 'CORRECT', 'GPT-03 corrected draft lost typed CORRECT action after cross-context navigation');
+    assert(decisionFetchCalls[0].body?.semanticRelayInput?.relayRef === correctionRelayInput.relayRef, 'GPT-03 corrected draft lost prior relay identity after cross-context navigation');
+    assert(decisionFetchCalls[0].body?.semanticRelayInput?.interpretationProjectionRef === correctionRelayInput.interpretationProjectionRef, 'GPT-03 corrected draft lost prior interpretation projection lineage after cross-context navigation');
     while (list.length > beforeCount) list.pop();
     decisionFetchCalls.length = 0;
     app.chat.renderMessages();

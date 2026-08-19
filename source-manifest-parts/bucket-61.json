@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/integration/globalization-semantic-relay-suite.js",
       "mode": "100644",
-      "bytes": 13480,
-      "sha256": "0943d83848ea51e904088a7d20eec6dfe6e425b7f064bf14df36d2d2b61ea5bc"
+      "bytes": 16677,
+      "sha256": "534cb25ac80dcea831fc85b54341121e564cadaef492f21c267a09213098197a"
     },
     {
       "path": "src/core/repository-evidence.mjs",

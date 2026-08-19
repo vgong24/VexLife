@@ -30,12 +30,22 @@ export function createChatController({ state, projects, roles, channels, message
   let companionBindingState = 'UNKNOWN';
   let pendingSemanticRelayInput = null;
   let pendingSemanticRelayAction = null;
+  let pendingSemanticRelayScope = null;
   let semanticRelayAttention = null;
   const isVexAvailable = () => state.vexAvailability === 'AVAILABLE';
   const channelIsAvailable = (channel = currentChannel()) =>
     channel.roleKey === 'companion' ? companionBindingState === 'BOUND' : isVexAvailable();
   const draftForChannel = (channel = currentChannel()) =>
     state.unsentLocalDraft?.channelRef === channel.channelRef ? state.unsentLocalDraft : null;
+  const semanticRelayScope = (channel = currentChannel()) => Object.freeze({
+    projectRef: channel.projectRef,
+    threadRef: channel.threadRef,
+    channelRef: channel.channelRef
+  });
+  const semanticRelayScopeMatches = (scope, channel = currentChannel()) => Boolean(scope)
+    && scope.projectRef === channel.projectRef
+    && scope.threadRef === channel.threadRef
+    && scope.channelRef === channel.channelRef;
 
   function setLocalDraft(channel, content) {
     if (!content) {
@@ -235,28 +245,34 @@ export function createChatController({ state, projects, roles, channels, message
     article.querySelector('.message-body')?.after(details);
   }
 
-  function setSemanticRelayInput(value, action = null) {
+  function setSemanticRelayInput(value, action = null, scope = semanticRelayScope()) {
     if (action !== null && action !== 'CORRECT') throw new Error('only a corrected relay may be pre-staged for the next send');
     pendingSemanticRelayInput = value ? structuredClone(value) : null;
     pendingSemanticRelayAction = value ? action : null;
+    pendingSemanticRelayScope = value ? structuredClone(scope) : null;
     return pendingSemanticRelayInput ? structuredClone(pendingSemanticRelayInput) : null;
   }
 
   function setSemanticRelayAttention(value, options = {}) {
+    const channel = options.channel ?? currentChannel();
     semanticRelayAttention = value ? {
       publicAttention: structuredClone(value),
       content: String(options.content ?? ''),
       relayInput: options.relayInput ? structuredClone(options.relayInput) : null,
-      frameAtSend: options.frameAtSend ? structuredClone(options.frameAtSend) : null
+      frameAtSend: options.frameAtSend ? structuredClone(options.frameAtSend) : null,
+      scope: semanticRelayScope(channel)
     } : null;
     renderSemanticRelayAttention();
-    return semanticRelayAttention?.publicAttention ? structuredClone(semanticRelayAttention.publicAttention) : null;
+    return semanticRelayAttention?.publicAttention && semanticRelayScopeMatches(semanticRelayAttention.scope)
+      ? structuredClone(semanticRelayAttention.publicAttention)
+      : null;
   }
 
   async function semanticRelayAttentionAction(action) {
     const pending = semanticRelayAttention;
     if (!pending || !['CONFIRM', 'CORRECT', 'HOLD'].includes(action)) return false;
     const channel = currentChannel();
+    if (!semanticRelayScopeMatches(pending.scope, channel)) return false;
     if (action === 'HOLD' || !pending.relayInput) {
       semanticRelayAttention = null;
       setSemanticRelayInput(null);
@@ -268,7 +284,7 @@ export function createChatController({ state, projects, roles, channels, message
     }
     if (action === 'CORRECT') {
       semanticRelayAttention = null;
-      setSemanticRelayInput(pending.relayInput, 'CORRECT');
+      setSemanticRelayInput(pending.relayInput, 'CORRECT', pending.scope);
       setLocalDraft(channel, pending.content);
       const input = $('#messageInput');
       if (input) input.value = pending.content;
@@ -295,7 +311,7 @@ export function createChatController({ state, projects, roles, channels, message
   function renderSemanticRelayAttention() {
     const form = $('#composer');
     let panel = form?.querySelector('.semantic-relay-attention');
-    if (!semanticRelayAttention) { panel?.remove(); return; }
+    if (!semanticRelayAttention || !semanticRelayScopeMatches(semanticRelayAttention.scope)) { panel?.remove(); return; }
     if (!panel) { panel = document.createElement('section'); panel.className = 'semantic-relay-attention'; form?.append(panel); }
     panel.replaceChildren();
     panel.setAttribute('role', 'status');
@@ -512,12 +528,12 @@ export function createChatController({ state, projects, roles, channels, message
         setLocalDraft(channel, content);
         const input = $('#messageInput');
         if (input) input.value = content;
-        semanticRelayAttention = {
-          publicAttention: structuredClone(body),
+        setSemanticRelayAttention(body, {
           content,
-          relayInput: semanticRelayInput ? structuredClone(semanticRelayInput) : null,
-          frameAtSend: structuredClone(frameAtSend)
-        };
+          relayInput: semanticRelayInput,
+          frameAtSend,
+          channel
+        });
         renderMessages();
         updateComposer();
         return false;
@@ -591,10 +607,14 @@ export function createChatController({ state, projects, roles, channels, message
     if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
     renderComposerTruth();
     const frameAtSend = navigation.semanticFrame();
-    const semanticRelayInput = pendingSemanticRelayInput;
-    const semanticRelayAction = pendingSemanticRelayAction;
-    pendingSemanticRelayInput = null;
-    pendingSemanticRelayAction = null;
+    const consumePendingSemanticRelay = pendingSemanticRelayInput !== null && semanticRelayScopeMatches(pendingSemanticRelayScope, channel);
+    const semanticRelayInput = consumePendingSemanticRelay ? pendingSemanticRelayInput : null;
+    const semanticRelayAction = consumePendingSemanticRelay ? pendingSemanticRelayAction : null;
+    if (consumePendingSemanticRelay) {
+      pendingSemanticRelayInput = null;
+      pendingSemanticRelayAction = null;
+      pendingSemanticRelayScope = null;
+    }
     if (channel.roleKey === 'companion') await requestRealCompanionReply(channel, content, frameAtSend, { sourceMessage: message, semanticRelayInput, semanticRelayAction });
     else scheduleSimulatedReply(channel, frameAtSend);
   });
@@ -636,7 +656,9 @@ export function createChatController({ state, projects, roles, channels, message
     refreshCompanionAvailability,
     setSemanticRelayInput,
     setSemanticRelayAttention,
-    semanticRelayAttention: () => semanticRelayAttention?.publicAttention ? structuredClone(semanticRelayAttention.publicAttention) : null,
+    semanticRelayAttention: () => semanticRelayAttention?.publicAttention && semanticRelayScopeMatches(semanticRelayAttention.scope)
+      ? structuredClone(semanticRelayAttention.publicAttention)
+      : null,
     companionBindingState: () => companionBindingState,
     pendingReplyCount: () => pendingReplyTimers.size
   };
