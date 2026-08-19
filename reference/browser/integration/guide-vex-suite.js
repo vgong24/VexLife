@@ -103,7 +103,33 @@ export const guideVexSuite = Object.freeze({
     assert(document.querySelector('#vexPresenceState')?.textContent===app.t('vex.presence.active-conversation'), 'Q3-04 ACTIVE_CONVERSATION is not visibly named');
     checks.push('Q3-04 explicit Guide interaction reaches ACTIVE_CONVERSATION without a new persona or runtime');
 
+    const expandedWitnessWidth = Math.max(360, Math.min(560, innerWidth - 40));
+    const expandedWitnessHeight = Math.max(380, Math.min(640, innerHeight - 40));
+    vex.style.width = `${expandedWitnessWidth}px`;
+    vex.style.height = `${expandedWitnessHeight}px`;
+    const expandedPreference = app.guide.persistPreferredGeometry();
+    const expandedRect = vex.getBoundingClientRect();
+    resetTarget.focus();
+    const focusBeforeMinimize = document.activeElement;
     document.querySelector('#guideMinimize').click();
+    await delay(20);
+    const minimizedRect = vex.getBoundingClientRect();
+    assert(minimizedRect.height <= 80 && minimizedRect.height < expandedRect.height * .4, `VREG-01 minimized Vex retained expanded outer geometry: ${JSON.stringify({ expanded:{width:expandedRect.width,height:expandedRect.height}, minimized:{width:minimizedRect.width,height:minimizedRect.height}, inline:{width:vex.style.width,height:vex.style.height} })}`);
+    assert(document.querySelector('#guideComposer').getClientRects().length===0 && document.querySelector('#guideMessages').getClientRects().length===0, 'VREG-02 minimized Vex retained rendered body/composer content');
+    const preferredWhileMinimized = app.guide.preferredGeometry();
+    assert(preferredWhileMinimized && Math.abs(preferredWhileMinimized.width-expandedPreference.width)<=1 && Math.abs(preferredWhileMinimized.height-expandedPreference.height)<=1, 'VREG-03 compact projection overwrote expanded preferred geometry');
+    assert(document.activeElement===focusBeforeMinimize, 'VREG-07 minimize stole focus from the current external control');
+    document.querySelector('#guideMinimize').click();
+    await delay(20);
+    const restoredWitnessRect = vex.getBoundingClientRect();
+    assert(!app.state.guideMinimized && restoredWitnessRect.height >= Math.min(expandedPreference.height, innerHeight-24)-2, `VREG-04 restore did not recover usable expanded geometry: ${JSON.stringify({preferred:expandedPreference,restored:{width:restoredWitnessRect.width,height:restoredWitnessRect.height}})}`);
+    assert(document.querySelector('#guideComposer').getClientRects().length>0, 'VREG-04 restored Vex composer is not usable');
+    document.querySelector('#guideMinimize').click();
+    await delay(20);
+    checks.push('VREG-01/VREG-02 non-default expanded geometry minimizes to one compact outer vessel with body/composer absent');
+    checks.push('VREG-03/VREG-04 compact projection preserves expanded preference and exact summon/restore recovery');
+    checks.push('VREG-07 minimize is keyboard/focus safe; existing Q3 proof preserves viewport/reduced-motion/close semantics');
+
     app.guide.setAttentionSource('element.terrain.reset');
     assert(app.state.guideMinimized===true && app.guide.currentPresenceState()==='ATTENTIVE', 'Q3-05 attention overrode explicit minimize');
     document.querySelector('#guideClose').click();
@@ -157,7 +183,6 @@ export const guideVexSuite = Object.freeze({
     checks.push('Q3-07 real rendered Terrain obstruction resolves transiently to a known-safe preferred anchor without overwriting preferredGeometry');
     checks.push('Q3-08 the same safe automatic resolution recovers preferredGeometry while preserving storage; compact-to-wide recovery is independently executed by the bounded viewport proof');
     checks.push('Q3-10 Vex geometry adaptation leaves semantic current context and Journey unchanged');
-
 
     const stateLabels = {};
     for (const language of ['en','ja','zh']) {
