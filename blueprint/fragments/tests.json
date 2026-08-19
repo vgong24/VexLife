@@ -1122,5 +1122,9 @@
   {
     "brief": "Phone Journal uses one-page horizontal snap/gesture grammar with explicit controls and reduced-motion semantic equivalence.",
     "testRef": "test.living-journal.mobile-book-grammar"
+  },
+  {
+    "testRef": "test.globalization.semantic-relay.human-visible",
+    "brief": "Browser conversation exposes accepted semantic-relay language, projection, runtime, drift and human confirmation state without rewriting source content or exposing hidden reasoning."
   }
 ]

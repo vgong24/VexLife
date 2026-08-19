@@ -11,8 +11,8 @@
     {
       "path": "blueprint/fragments/tests.json",
       "mode": "100644",
-      "bytes": 59661,
-      "sha256": "ad8a623326bcc36aff74cee4e30095fdb92545867be73717ffd31a9301ef1b8f"
+      "bytes": 59933,
+      "sha256": "8123d8d5600f9646fc3948939a9dc063a497cc4c485ed2de5987b364ad2101ed"
     },
     {
       "path": "scripts/intent-status.mjs",
