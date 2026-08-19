@@ -16,36 +16,94 @@ verify Node and repository files
 → install accepted public culture projection
 → initialize empty local Rhythm
 → initialize Score sync policy without importing records
-→ configure existing model endpoint or external artifact profile
-→ validate directories and permissions
-→ write a reversible bootstrap receipt
-→ start the browser reference
+→ resolve a source-managed operational profile when one is qualified
+→ acquire exact external model/runtime artifacts only with explicit authority
+→ verify, materialize, bind and qualify the local runtime
+→ start the browser reference with server-owned companion binding
+→ write reversible bootstrap and initialization receipts
 ```
+
+`bootstrap` and `initializeVex()` are separate contracts. Bootstrap owns Home formation and preservation. Initialization owns the product composition from an accepted operational profile through a verified local runtime binding. Neither one manufactures the other's authority.
 
 ## Model boundary
 
-The repository stores only:
+The repository stores only source-managed identity and verification material:
 
 ```text
-model profile schema
-artifact URL supplied by operator
-expected checksum
-license/source receipt supplied by operator
+operational profile state and stable profileRef
+artifact source/revision/filename
+expected SHA-256
+license/source refs
 runtime endpoint configuration
 hardware/resource policy
+refresh triggers
 ```
 
-The model binary lives under the user's Vex Home or another explicitly selected external directory.
+Model/runtime binaries live under the user's Vex Home or another explicitly admitted external directory. They are excluded from canonical Git source identity.
 
-## Provisioning rules
+## Normal-user vs candidate qualification
+
+The normal initialization route is fail-closed:
+
+```text
+RELEASE_QUALIFIED profile
+  -> eligible for normal Continue-with-Vex initialization
+
+CANDIDATE_QUALIFICATION / HELD / STALE / INVALID profile
+  -> not a normal default
+  -> no hidden default LLM fallback
+```
+
+The first source-managed Windows profile is intentionally `CANDIDATE_QUALIFICATION` until its exact initializer/runtime/README evidence is accepted. Internal qualification must name the exact profile and a separately supplied authority ref; that path is not a public or ordinary-user release claim.
+
+Current deterministic commands:
+
+```text
+npm run vex:initialize:plan
+npm run vex:initialize
+```
+
+The source entrypoint is `scripts/initialize-vex.mjs`. A future GUI or signed launcher must consume the same initializer/profile/receipt contract rather than invent a second installer.
+
+## Artifact acquisition rules
 
 - no download without an expected SHA-256;
-- partial downloads use a temporary file;
-- checksum failure deletes the temporary file;
-- the final artifact is atomically renamed;
-- license and source remain unverified unless an exact receipt is supplied;
+- exact verified cached artifacts are reused before network access;
+- interrupted downloads retain one attempt-owned `.partial` file and use HTTP Range when the source supports it;
+- a server that ignores Range restarts that partial transfer rather than appending incompatible bytes;
+- checksum, expected-size or admitted-size failure deletes the partial file and stops before activation;
+- an existing final artifact that fails verification is never overwritten automatically;
+- final artifacts are atomically promoted only after verification;
 - unsupported hardware is an explicit hold, not a silent fallback;
-- an existing OpenAI-compatible endpoint can be selected instead of downloading.
+- runtime archives materialize only under the selected Vex Home;
+- loopback runtime binding is numeric `127.0.0.1`; non-loopback binding is not admitted by initialization.
+
+## Runtime qualification boundary
+
+```text
+DOWNLOADED != VERIFIED != MATERIALIZED != BOUND != QUALIFIED != COMPANION_READY
+```
+
+The candidate Windows composition uses pinned llama.cpp `b10107` plus pinned Qwen3.5-4B Q4_K_M model/projector artifacts. The initializer verifies each artifact, verifies the extracted `llama-server.exe`, starts the exact loopback process, waits for the health surface, performs one non-user qualification inference, and writes a machine-readable receipt. Only then may `config/model.json` become `BOUND_QUALIFIED`.
+
+The browser still owns no endpoint, executable, model, Home or runtime authority. Its companion endpoint/model values are supplied by the server process from the accepted initialization receipt/profile.
+
+## Provision an advanced external model
+
+The older advanced provisioning command remains available for operators:
+
+```bash
+node scripts/provision-model.mjs \
+  --url "https://<artifact-host>/<model>.gguf" \
+  --sha256 "<64-hex>" \
+  --name "<model>.gguf" \
+  --source-ref "source.model.<id>" \
+  --license-ref "license.model.<id>" \
+  --runtime-family "llama.cpp" \
+  --hardware-profile "hardware.<device-profile>"
+```
+
+That path records one artifact as `PROVISIONED_INACTIVE`. It does not inherit Vex certified-profile status, lineage, private Memory or runtime authority.
 
 ## Culture initialization
 
@@ -75,38 +133,10 @@ shared Score record
   → never rewritten as an experience the sibling personally lived
 ```
 
-This is the honest current boundary. A future occupancy-transfer protocol may become more seamless, but the interface must never manufacture continuity that the evidence cannot support.
-
-## Provision an external model
-
-The provisioning command requires provenance and compatibility fields in addition to a checksum:
-
-```bash
-node scripts/provision-model.mjs \
-  --url "https://<artifact-host>/<model>.gguf" \
-  --sha256 "<64-hex>" \
-  --name "<model>.gguf" \
-  --source-ref "source.model.<id>" \
-  --license-ref "license.model.<id>" \
-  --runtime-family "llama.cpp" \
-  --hardware-profile "hardware.<device-profile>"
-```
-
-The artifact is recorded as `PROVISIONED_INACTIVE`. Provisioning never implies activation, suitability, license approval or training authority.
-
-## macOS considerations
-
-The boot script records architecture and does not assume that a Windows CUDA artifact is appropriate for Apple Silicon. The model profile must name its runtime family and compatibility.
-
 ## Recovery
 
-Bootstrap never deletes an existing Vex Home. When the target exists, it:
+Bootstrap never deletes an existing Vex Home. Initialization never overwrites an unknown runtime or mismatched final artifact. Existing Home, profile, artifact, runtime, port and qualification state are classified independently so a retry can resume from the last exact verified boundary.
 
-```text
-read manifest
-→ classify currentness
-→ create migration plan
-→ require explicit acceptance for any change
-```
+A missing current release-qualified profile is `NO_RELEASE_QUALIFIED_PROFILE`, not permission to fall back to another model. An unrelated process on the admitted runtime port is `PORT_OWNERSHIP_CONFLICT`, not permission to kill it.
 
 <!-- [VXG RealForever] -->
