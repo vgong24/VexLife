@@ -109,22 +109,47 @@ export async function runTerrainResetSemanticRegressionProof({ app, helpers:{ de
   const returnRoot=async()=>{for(let guard=0;guard<8&&app.terrain.currentRef()!==rootRef;guard++){await app.terrain.up();await delay(90)}assert(app.terrain.currentRef()===rootRef,'RREG cleanup did not restore canonical root');};
   try{
     app.terrain.reset();await delay(90);
+    assert(app.terrain.adaptationSnapshot().enabled===true,'RREG-03A explicit adaptive-layout preference must be enabled before establishing transient suppression');
+    let suppressionContextRef=null;
+    for(const candidateRef of rootChildren.filter((ref)=>app.terrain.childRefs(ref).length>0)){
+      await returnRoot();
+      await app.terrain.travel(candidateRef,'in');await delay(520);
+      const candidateAdaptation=app.terrain.adaptationSnapshot();
+      if(candidateAdaptation.enabled===true&&candidateAdaptation.manualOverrideRef===null&&candidateAdaptation.undoAvailable===true&&candidateAdaptation.suppressedForCurrentContext===false){suppressionContextRef=candidateRef;break}
+    }
+    assert(suppressionContextRef&&app.terrain.currentRef()===suppressionContextRef,'RREG-03A no real non-root context with automatic adaptation available could be established');
+    const suppressionBefore=app.terrain.adaptationSnapshot(),suppressionFrameBefore=JSON.stringify(app.navigation.semanticFrame()),suppressionJourneyBefore=JSON.stringify(app.navigation.fullJourney()),suppressionCurrentBefore=app.terrain.currentRef(),suppressionPreferenceBefore=suppressionBefore.enabled;
+    assert(suppressionBefore.enabled===true&&suppressionBefore.manualOverrideRef===null&&suppressionBefore.undoAvailable===true&&suppressionBefore.suppressedForCurrentContext===false,'RREG-03A transient suppression baseline is not causally admissible');
+    const suppressionResult=app.terrain.setAdaptationSuppressed(true);await delay(320);const suppressionEstablished=app.terrain.adaptationSnapshot();
+    assert(suppressionResult===true&&suppressionEstablished.suppressedForCurrentContext===true&&suppressionEstablished.stateClass==='UNDONE','RREG-03A transient suppression precondition was not genuinely established BEFORE Reset');
+    assert(app.terrain.currentRef()===suppressionCurrentBefore&&JSON.stringify(app.navigation.semanticFrame())===suppressionFrameBefore&&JSON.stringify(app.navigation.fullJourney())===suppressionJourneyBefore,'RREG-03A establishing transient suppression mutated semantic context or Journey');
+    app.terrain.reset();await delay(420);const suppressionAfter=app.terrain.adaptationSnapshot();
+    assert(suppressionAfter.suppressedForCurrentContext===false&&suppressionAfter.enabled===suppressionPreferenceBefore,'RREG-03A Reset did not clear established transient suppression while preserving explicit adaptation preference');
+    assert(app.terrain.currentRef()===suppressionCurrentBefore&&JSON.stringify(app.navigation.semanticFrame())===suppressionFrameBefore&&JSON.stringify(app.navigation.fullJourney())===suppressionJourneyBefore,'RREG-03A Reset changed semantic current context or Journey');
+    checks.push('RREG-03A established real transient suppression BEFORE Reset; Reset clears it without semantic/Journey/preference mutation');
+
+    await returnRoot();
+    app.terrain.reset();await delay(90);
     await app.terrain.travel(targetRef,'in');await delay(520);
     assert(app.terrain.currentRef()===targetRef,'RREG-00 non-root Reset target was not entered');
     app.terrain.setAdaptationSuppressed(false);if(app.terrain.viewportProjection().workspaceMode)app.terrain.toggleWorkspace();app.terrain.setProjectionMode('fan');app.state.terrain.localOffsets={};app.terrain.render(false);await delay(40);
-    const canonicalSameContext=geometryKey(app.terrain.geometrySnapshot()),frameBefore=JSON.stringify(app.navigation.semanticFrame()),journeyBefore=JSON.stringify(app.navigation.fullJourney()),currentBefore=app.terrain.currentRef(),adaptationEnabledBefore=app.terrain.adaptationSnapshot().enabled;
+    const canonicalSameContext=geometryKey(app.terrain.geometrySnapshot()),adaptationEnabledBefore=app.terrain.adaptationSnapshot().enabled;
     const layoutChild=app.terrain.childRefs(targetRef)[0]??null;
-    if(layoutChild){app.state.terrain.localOffsets[layoutChild]={x:31,y:-19};app.terrain.render(false);app.terrain.toggleManualPin(layoutChild)}
+    assert(layoutChild,'RREG-03B manual/layout fixture requires a child of the non-root context');
+    app.state.terrain.localOffsets[layoutChild]={x:31,y:-19};app.terrain.render(false);
+    const manualActivated=app.terrain.toggleManualPin(layoutChild);
     app.terrain.setProjectionMode('rings');
     if(!app.terrain.viewportProjection().workspaceMode)app.terrain.toggleWorkspace();
-    app.terrain.setAdaptationSuppressed(true);
+    const dirtyProjection=app.terrain.viewportProjection(),dirtyAdaptation=app.terrain.adaptationSnapshot(),dirtyOffset=app.state.terrain.localOffsets[layoutChild];
+    assert(manualActivated===true&&dirtyAdaptation.manualOverrideRef===layoutChild&&dirtyProjection.manualOverrideRef===layoutChild&&dirtyProjection.workspaceMode===true&&dirtyProjection.projectionMode==='rings'&&dirtyOffset?.x===31&&dirtyOffset?.y===-19,'RREG-03B manual/layout dirty preconditions were not genuinely established BEFORE Reset');
+    const frameBefore=JSON.stringify(app.navigation.semanticFrame()),journeyBefore=JSON.stringify(app.navigation.fullJourney()),currentBefore=app.terrain.currentRef();
     app.terrain.reset();await delay(420);
     assert(app.terrain.currentRef()===currentBefore&&JSON.stringify(app.navigation.semanticFrame())===frameBefore,'RREG-01 Reset rewrote semantic current context instead of recovering layout in place');
     assert(JSON.stringify(app.navigation.fullJourney())===journeyBefore,'RREG-02 non-root Reset appended or rewrote semantic Journey');
     const projection=app.terrain.viewportProjection(),adaptation=app.terrain.adaptationSnapshot(),recoveredKey=geometryKey(app.terrain.geometrySnapshot());
-    assert(Object.keys(app.state.terrain.localOffsets).length===0&&projection.manualOverrideRef===null&&projection.workspaceMode===false&&projection.projectionMode==='fan'&&!adaptation.suppressedForCurrentContext,'RREG-03 Reset did not clear bounded manual/transient layout state');
-    assert(adaptation.enabled===adaptationEnabledBefore&&recoveredKey===canonicalSameContext,'RREG-03 Reset did not restore canonical same-context geometry while preserving explicit adaptive-layout preference');
-    checks.push('RREG-01 non-root Reset preserves exact semantic current context','RREG-02 non-root Reset is Journey-silent','RREG-03 Reset clears bounded layout/transient state and restores canonical same-context geometry while preserving explicit adaptation preference');
+    assert(Object.keys(app.state.terrain.localOffsets).length===0&&projection.manualOverrideRef===null&&projection.workspaceMode===false&&projection.projectionMode==='fan','RREG-03B Reset did not clear genuinely established bounded manual/layout state');
+    assert(adaptation.enabled===adaptationEnabledBefore&&recoveredKey===canonicalSameContext,'RREG-03B Reset did not restore canonical same-context geometry while preserving explicit adaptive-layout preference');
+    checks.push('RREG-01 non-root Reset preserves exact semantic current context','RREG-02 non-root Reset is Journey-silent','RREG-03B genuinely established local-offset/manual-pin/rings/workspace state is cleared to canonical same-context geometry by Reset');
 
     await returnRoot();
     const rootFrameBefore=JSON.stringify(app.navigation.semanticFrame()),rootJourneyBefore=JSON.stringify(app.navigation.fullJourney());
