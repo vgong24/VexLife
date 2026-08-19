@@ -146,7 +146,7 @@ test('Living Journal Memory route rejects browser attempts to inject Home or ide
     });
     assert.equal(response.status, 400);
     const payload = await response.json();
-    assert.equal(payload.error.code, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
+    assert.equal(payload.failureCode, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
   });
   assert.equal(memoryBridgeCalls, 1);
 });
@@ -171,7 +171,7 @@ test('Living Journal Memory route fails closed when canonical Home identity is u
     });
     assert.equal(response.status, 503);
     const payload = await response.json();
-    assert.equal(payload.error.code, 'LIVING_JOURNAL_MEMORY_HOME_UNAVAILABLE');
+    assert.equal(payload.failureCode, 'LIVING_JOURNAL_MEMORY_HOME_UNAVAILABLE');
     assert.equal(JSON.stringify(payload).includes('ambient path details'), false);
   });
   assert.equal(memoryBridgeCreated, false);
@@ -195,7 +195,7 @@ test('Living Journal Memory route enforces method, content type, and bounded JSO
       body: '{}'
     });
     assert.equal(wrongType.status, 415);
-    assert.equal((await wrongType.json()).error.code, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
+    assert.equal((await wrongType.json()).failureCode, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
 
     const malformed = await fetch(`${baseUrl}${BROWSER_LIVING_JOURNAL_MEMORY_API_PATH}`, {
       method: 'POST',
@@ -203,7 +203,7 @@ test('Living Journal Memory route enforces method, content type, and bounded JSO
       body: '{'
     });
     assert.equal(malformed.status, 400);
-    assert.equal((await malformed.json()).error.code, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
+    assert.equal((await malformed.json()).failureCode, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
   });
   assert.equal(reads, 0);
 });
