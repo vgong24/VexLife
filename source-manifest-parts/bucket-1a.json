@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 16075,
       "sha256": "e33dd3fbd1edb98687de2136d64785782aba3ec65f38c109ea69b9b8ca561084"
+    },
+    {
+      "path": "test/browser-living-journal-memory-http-route.test.mjs",
+      "mode": "100644",
+      "bytes": 12306,
+      "sha256": "8b8e503def1107143484dd5428bfb8b306f9d40f3decdf6759620ed1b92c0d4b"
     }
   ]
 }

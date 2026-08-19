@@ -2,6 +2,8 @@ const VANTAGES=Object.freeze(['HUMAN','VEX','SHARED_RELATIONSHIP','SOURCE']);
 const DISPLAY_LANGUAGES=Object.freeze(['en','ja','zh']);
 const SYNTHETIC_TRUTH='CURRENT_SYNTHETIC_REFERENCE';
 const MEMORY_TRUTH='CURRENT_MEMORY_REFERENCE';
+const MEMORY_HELD_TRUTH='MEMORY_REFERENCE_HELD';
+const MEMORY_TRUTHS=new Set([MEMORY_TRUTH,MEMORY_HELD_TRUTH]);
 const MEMORY_SCHEMA='vexlife.living-journal.memory-projection/v1';
 const POSITIVE_CONSENT=new Set(['PERMITTED','NARROWED']);
 const SHA256=/^[0-9a-f]{64}$/u;
@@ -32,8 +34,12 @@ function assertMemoryPage(page,index){
 }
 
 function assertMemoryData(data){
-  if(!object(data)||data.schemaVersion!==MEMORY_SCHEMA||data.truthClass!==MEMORY_TRUTH||data.currentness!=='CURRENT'||data.state!=='CURRENT'||data.realMemoryLoaded!==true||data.rawConversationContentIncluded!==false||!Array.isArray(data.pages))throw new Error('Living Journal Memory projection boundary is invalid');
-  if(data.realJournalBodyLoaded!==(data.pages.length>0)||data.pageCount!==data.pages.length)throw new Error('Living Journal Memory projection page/body state is invalid');
+  if(!object(data)||data.schemaVersion!==MEMORY_SCHEMA||!MEMORY_TRUTHS.has(data.truthClass)||data.rawConversationContentIncluded!==false||!Array.isArray(data.pages))throw new Error('Living Journal Memory projection boundary is invalid');
+  const current=data.truthClass===MEMORY_TRUTH&&data.currentness==='CURRENT'&&data.state==='CURRENT'&&data.realMemoryLoaded===true;
+  const held=data.truthClass===MEMORY_HELD_TRUTH&&data.currentness==='HELD'&&data.state==='HELD'&&data.realMemoryLoaded===false;
+  if(!current&&!held)throw new Error('Living Journal Memory projection truth/currentness state is invalid');
+  if(current&&(data.realJournalBodyLoaded!==(data.pages.length>0)||data.pageCount!==data.pages.length))throw new Error('Living Journal Memory projection page/body state is invalid');
+  if(held&&(data.realJournalBodyLoaded!==false||data.pageCount!==0||data.pages.length!==0))throw new Error('Living Journal held Memory projection must remain content-absent');
   if(!object(data.effects))throw new Error('Living Journal Memory projection must carry the explicit zero-effect ledger');
   const observedEffectKeys=Object.keys(data.effects).sort(),expectedEffectKeys=[...MEMORY_EFFECT_KEYS].sort();
   if(!sameOrderedStrings(observedEffectKeys,expectedEffectKeys)||MEMORY_EFFECT_KEYS.some((key)=>data.effects[key]!==false))throw new Error('Living Journal Memory projection must carry the complete explicit zero-effect ledger');
@@ -43,7 +49,7 @@ function assertMemoryData(data){
 
 function assertData(data){
   if(data?.truthClass===SYNTHETIC_TRUTH)return assertSyntheticData(data);
-  if(data?.truthClass===MEMORY_TRUTH)return assertMemoryData(data);
+  if(MEMORY_TRUTHS.has(data?.truthClass))return assertMemoryData(data);
   throw new Error('Living Journal data truth class is not admitted');
 }
 
@@ -52,7 +58,8 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   const initialData=journalData;
   const journal={open:false,pageIndex:0,vantage:'HUMAN',displayLanguage:'en',openedNodeRef:null,sourceDoorRef:null,sourceDoorRefs:[],lastSourcePacket:null,lastRevisitPacket:null,marginalia:new Map(),renderCount:0};
   let scrollTimer=null;
-  const memoryMode=()=>journalData.truthClass===MEMORY_TRUTH;
+  const memoryMode=()=>MEMORY_TRUTHS.has(journalData.truthClass);
+  const dataMode=()=>journalData.truthClass===MEMORY_HELD_TRUTH?'MEMORY_HELD':memoryMode()?'MEMORY':'SYNTHETIC';
   const pageCount=()=>journalData.pages.length;
   const layoutClass=()=>innerWidth>=1000?'WIDE_SPREAD':innerWidth<=760?'PHONE_ONE_PAGE':'NARROW_ONE_PAGE';
   const reducedMotion=()=>globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches===true;
@@ -134,8 +141,8 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   function render(){
     const root=q('#view-living-journal');if(!root)return snapshot();
     const spread=q('#livingJournalSpread'),status=q('#livingJournalPageStatus'),truth=q('#livingJournalTruth'),sourceStatus=q('#livingJournalSourceStatus');
-    root.dataset.layoutClass=layoutClass();root.dataset.truthClass=journalData.truthClass;root.dataset.dataMode=memoryMode()?'MEMORY':'SYNTHETIC';root.dataset.open=String(journal.open);
-    if(truth)truth.textContent=memoryMode()?MEMORY_TRUTH:t('living-journal.reference-label');
+    root.dataset.layoutClass=layoutClass();root.dataset.truthClass=journalData.truthClass;root.dataset.dataMode=dataMode();root.dataset.open=String(journal.open);
+    if(truth)truth.textContent=memoryMode()?journalData.truthClass:t('living-journal.reference-label');
     if(status)status.textContent=t('living-journal.page-status',{current:pageCount()?journal.pageIndex+1:0,total:pageCount()});
     const prev=q('#livingJournalPrevious'),next=q('#livingJournalNext');if(prev)prev.disabled=pageCount()===0||journal.pageIndex===0;if(next)next.disabled=pageCount()===0||journal.pageIndex===pageCount()-1;
     const vantage=q('#livingJournalVantage');if(vantage){vantage.value=journal.vantage;vantage.disabled=memoryMode();vantage.setAttribute('aria-disabled',String(memoryMode()));}
@@ -177,7 +184,7 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     const page=currentPage(),synthetic=!memoryMode()&&page;
     const effectSource=memoryMode()?journalData.effects:{};
     const currentness=memoryMode()&&page?memoryCurrentnessFor(page):null;
-    return structuredClone({truthClass:journalData.truthClass,dataMode:memoryMode()?'MEMORY':'SYNTHETIC',open:journal.open,pageIndex:journal.pageIndex,pageRef:page?.pageRef??null,eventRef:synthetic?page.eventRef:null,statementRef:memoryMode()&&page?page.statementRef:null,pageCount:pageCount(),vantage:journal.vantage,displayLanguage:journal.displayLanguage,vantageProjectionAvailable:!memoryMode(),displayLanguageProjectionAvailable:!memoryMode(),openedNodeRef:journal.openedNodeRef,sourceDoorRef:journal.sourceDoorRef,sourceDoorRefs:[...journal.sourceDoorRefs],lastSourcePacket:journal.lastSourcePacket,lastRevisitPacket:journal.lastRevisitPacket,marginaliaCount:page?(journal.marginalia.get(page.pageRef)??[]).length:0,totalMarginaliaCount:[...journal.marginalia.values()].reduce((sum,notes)=>sum+notes.length,0),layoutClass:layoutClass(),visiblePageCount:visiblePageCount(),renderedPageRefs:renderedIndices().map((index)=>journalData.pages[index].pageRef),reducedMotion:reducedMotion(),realMemoryLoaded:journalData.realMemoryLoaded,realJournalBodyLoaded:journalData.realJournalBodyLoaded,modelCalled:memoryMode()?effectSource.modelCalled===true:journalData.modelCalled,translationCalled:memoryMode()?effectSource.translationCalled===true:journalData.translationCalled,networkCalled:memoryMode()?effectSource.networkCalled===true:journalData.networkCalled,persisted:memoryMode()?effectSource.homeMutated===true||effectSource.memoryMutated===true:journalData.persisted,published:memoryMode()?effectSource.publicationPerformed===true:journalData.published,canonicalThenIdentity:canonicalThenIdentity(),originalLanguage:synthetic?page.source.originalLanguage:null,sourceRef:synthetic?page.source.sourceRef:null,originalText:synthetic?page.source.originalText:null,summary:memoryMode()&&page?page.summary:null,summaryHash:memoryMode()&&page?page.summaryHash:null,currentDailyStratumRef:currentness?.currentDailyStratumRef??null,currentDailyStratumSha256:currentness?.currentDailyStratumSha256??null,dayRef:currentness?.dayRef??null,dayIndex:currentness?.dayIndex??null,sourceConversationHeadSha256:currentness?.sourceConversationHeadSha256??null,sourceScoreHeadSha256:currentness?.sourceScoreHeadSha256??null,sourceSemanticAuthorityHeadSha256:currentness?.sourceSemanticAuthorityHeadSha256??null,renderCount:journal.renderCount});
+    return structuredClone({truthClass:journalData.truthClass,dataMode:dataMode(),open:journal.open,pageIndex:journal.pageIndex,pageRef:page?.pageRef??null,eventRef:synthetic?page.eventRef:null,statementRef:memoryMode()&&page?page.statementRef:null,pageCount:pageCount(),vantage:journal.vantage,displayLanguage:journal.displayLanguage,vantageProjectionAvailable:!memoryMode(),displayLanguageProjectionAvailable:!memoryMode(),openedNodeRef:journal.openedNodeRef,sourceDoorRef:journal.sourceDoorRef,sourceDoorRefs:[...journal.sourceDoorRefs],lastSourcePacket:journal.lastSourcePacket,lastRevisitPacket:journal.lastRevisitPacket,marginaliaCount:page?(journal.marginalia.get(page.pageRef)??[]).length:0,totalMarginaliaCount:[...journal.marginalia.values()].reduce((sum,notes)=>sum+notes.length,0),layoutClass:layoutClass(),visiblePageCount:visiblePageCount(),renderedPageRefs:renderedIndices().map((index)=>journalData.pages[index].pageRef),reducedMotion:reducedMotion(),realMemoryLoaded:journalData.realMemoryLoaded,realJournalBodyLoaded:journalData.realJournalBodyLoaded,modelCalled:memoryMode()?effectSource.modelCalled===true:journalData.modelCalled,translationCalled:memoryMode()?effectSource.translationCalled===true:journalData.translationCalled,networkCalled:memoryMode()?effectSource.networkCalled===true:journalData.networkCalled,persisted:memoryMode()?effectSource.homeMutated===true||effectSource.memoryMutated===true:journalData.persisted,published:memoryMode()?effectSource.publicationPerformed===true:journalData.published,canonicalThenIdentity:canonicalThenIdentity(),originalLanguage:synthetic?page.source.originalLanguage:null,sourceRef:synthetic?page.source.sourceRef:null,originalText:synthetic?page.source.originalText:null,summary:memoryMode()&&page?page.summary:null,summaryHash:memoryMode()&&page?page.summaryHash:null,currentDailyStratumRef:currentness?.currentDailyStratumRef??null,currentDailyStratumSha256:currentness?.currentDailyStratumSha256??null,dayRef:currentness?.dayRef??null,dayIndex:currentness?.dayIndex??null,sourceConversationHeadSha256:currentness?.sourceConversationHeadSha256??null,sourceScoreHeadSha256:currentness?.sourceScoreHeadSha256??null,sourceSemanticAuthorityHeadSha256:currentness?.sourceSemanticAuthorityHeadSha256??null,renderCount:journal.renderCount});
   }
   function bind(){
     q('#livingJournalPrevious')?.addEventListener('click',previous);q('#livingJournalNext')?.addEventListener('click',next);
