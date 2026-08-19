@@ -9,6 +9,7 @@ import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import {
   browserBindingForProfile,
+  buildQualificationRequest,
   buildRuntimeArguments,
   buildVexInitializationPlan,
   classifyHomeState,
@@ -166,12 +167,7 @@ async function qualifyInference(profile) {
   const response = await fetch(`${profile.endpoint.origin}${profile.qualification.chatPath}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: profile.endpoint.requestModel,
-      messages: [{ role: 'user', content: profile.qualification.probePrompt }],
-      temperature: 0,
-      max_tokens: profile.qualification.probeMaxTokens
-    }),
+    body: JSON.stringify(buildQualificationRequest(profile)),
     signal: AbortSignal.timeout(30000)
   });
   if (!response.ok) throw new Error(`runtime inference qualification failed: HTTP ${response.status}`);
