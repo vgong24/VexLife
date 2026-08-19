@@ -5,6 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createLivingJournalController } from '../reference/browser/modules/living-journal-controller.js';
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import { BROWSER_COMPANION_API_PATH } from '../src/core/browser-companion-bridge.mjs';
 import {
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
   BrowserLivingJournalMemoryBridgeError
@@ -195,7 +196,9 @@ test('Living Journal Memory route enforces method, content type, and bounded JSO
       body: '{}'
     });
     assert.equal(wrongType.status, 415);
-    assert.equal((await wrongType.json()).failureCode, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
+    const wrongTypePayload = await wrongType.json();
+    assert.equal(wrongTypePayload.failureCode, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
+    assert.equal(wrongTypePayload.message, 'Living Journal Memory request must use application/json');
 
     const malformed = await fetch(`${baseUrl}${BROWSER_LIVING_JOURNAL_MEMORY_API_PATH}`, {
       method: 'POST',
@@ -203,9 +206,45 @@ test('Living Journal Memory route enforces method, content type, and bounded JSO
       body: '{'
     });
     assert.equal(malformed.status, 400);
-    assert.equal((await malformed.json()).failureCode, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
+    const malformedPayload = await malformed.json();
+    assert.equal(malformedPayload.failureCode, 'LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED');
+    assert.equal(malformedPayload.message, 'Living Journal Memory request body is not valid JSON');
   });
   assert.equal(reads, 0);
+});
+
+test('existing companion route preserves the pre-Living-Journal request-body failure contract exactly', async () => {
+  await withServer({ staticRoot: repoRoot, companionBridge: fakeCompanion() }, async (baseUrl) => {
+    const wrongType = await fetch(`${baseUrl}${BROWSER_COMPANION_API_PATH}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: '{}'
+    });
+    assert.equal(wrongType.status, 415);
+    const wrongTypePayload = await wrongType.json();
+    assert.equal(wrongTypePayload.failureCode, 'COMPANION_REQUEST_NOT_ADMITTED');
+    assert.equal(wrongTypePayload.message, 'Companion request must use application/json');
+
+    const malformed = await fetch(`${baseUrl}${BROWSER_COMPANION_API_PATH}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{'
+    });
+    assert.equal(malformed.status, 400);
+    const malformedPayload = await malformed.json();
+    assert.equal(malformedPayload.failureCode, 'COMPANION_REQUEST_NOT_ADMITTED');
+    assert.equal(malformedPayload.message, 'Companion request body is not valid JSON');
+
+    const oversized = await fetch(`${baseUrl}${BROWSER_COMPANION_API_PATH}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'x'.repeat(70 * 1024) })
+    });
+    assert.equal(oversized.status, 413);
+    const oversizedPayload = await oversized.json();
+    assert.equal(oversizedPayload.failureCode, 'COMPANION_REQUEST_NOT_ADMITTED');
+    assert.equal(oversizedPayload.message, 'Companion request exceeds the bounded body size');
+  });
 });
 
 test('browser app source binds Memory activation to the same-origin route without browser-owned Home/model authority', () => {
@@ -220,6 +259,8 @@ test('browser app source binds Memory activation to the same-origin route withou
   for (const forbidden of ['homeRef:', 'deviceRef:', 'companionLineageRef:', 'endpoint:', 'model:']) {
     assert.equal(activation.includes(forbidden), false, `browser Memory activation must not send ${forbidden}`);
   }
+  assert.match(activation, /payload\?\.failureCode\?\?'LIVING_JOURNAL_MEMORY_READ_FAILED'/u);
+  assert.doesNotMatch(activation, /payload\?\.error\?\.code/u);
   assert.match(activation, /livingJournal\.setData\(payload\)/u);
   assert.match(activation, /livingJournal\.restoreInitialData\(\)/u);
 });

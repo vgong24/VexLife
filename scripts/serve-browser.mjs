@@ -47,20 +47,20 @@ function livingJournalMemoryRequestError(message, httpStatus) {
   return new BrowserLivingJournalMemoryBridgeError('LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED', message, httpStatus);
 }
 
-async function readBoundedJson(request, { maxBytes = 64 * 1024, formError = companionRequestError } = {}) {
+async function readBoundedJson(request, { maxBytes = 64 * 1024, formError = companionRequestError, requestLabel = 'Companion request' } = {}) {
   const contentType = String(request.headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase();
-  if (contentType !== 'application/json') throw formError('Request must use application/json', 415);
+  if (contentType !== 'application/json') throw formError(`${requestLabel} must use application/json`, 415);
   const chunks = [];
   let bytes = 0;
   for await (const chunk of request) {
     bytes += chunk.length;
-    if (bytes > maxBytes) throw formError('Request exceeds the bounded body size', 413);
+    if (bytes > maxBytes) throw formError(`${requestLabel} exceeds the bounded body size`, 413);
     chunks.push(chunk);
   }
   try {
     return JSON.parse(Buffer.concat(chunks).toString('utf8'));
   } catch {
-    throw formError('Request body is not valid JSON', 400);
+    throw formError(`${requestLabel} body is not valid JSON`, 400);
   }
 }
 
@@ -113,7 +113,7 @@ export function createVexLifeBrowserServer({
           return;
         }
         try {
-          const input = await readBoundedJson(request, { maxBytes: 8 * 1024, formError: livingJournalMemoryRequestError });
+          const input = await readBoundedJson(request, { maxBytes: 8 * 1024, formError: livingJournalMemoryRequestError, requestLabel: 'Living Journal Memory request' });
           let identity;
           try {
             identity = resolveHomeIdentity();
