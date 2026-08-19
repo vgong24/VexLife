@@ -148,7 +148,7 @@ async function loadLivingJournalMemory(){
   try{
     const response=await fetch(LIVING_JOURNAL_MEMORY_API_PATH,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({threadRef:state.threadRef,maxPages:LIVING_JOURNAL_MEMORY_MAX_PAGES})});
     let payload=null;try{payload=await response.json();}catch{}
-    if(!response.ok){const error=new Error('Living Journal Memory read failed safely');error.code=payload?.error?.code??'LIVING_JOURNAL_MEMORY_READ_FAILED';throw error;}
+    if(!response.ok){const error=new Error('Living Journal Memory read failed safely');error.code=payload?.failureCode??'LIVING_JOURNAL_MEMORY_READ_FAILED';throw error;}
     livingJournal.setData(payload);
     const snapshot=livingJournal.snapshot();
     if(!LIVING_JOURNAL_REAL_MEMORY_TRUTHS.has(snapshot.truthClass))throw new Error('Living Journal Memory route returned a non-Memory truth class');
