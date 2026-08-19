@@ -103,6 +103,9 @@ export const guideVexSuite = Object.freeze({
     assert(document.querySelector('#vexPresenceState')?.textContent===app.t('vex.presence.active-conversation'), 'Q3-04 ACTIVE_CONVERSATION is not visibly named');
     checks.push('Q3-04 explicit Guide interaction reaches ACTIVE_CONVERSATION without a new persona or runtime');
 
+    const vregBaselinePreference = app.guide.preferredGeometry();
+    const vregBaselineRect = vex.getBoundingClientRect();
+    const vregBaselineGeometry = vregBaselinePreference ?? {left:vregBaselineRect.left,top:vregBaselineRect.top,width:vregBaselineRect.width,height:vregBaselineRect.height};
     const expandedWitnessWidth = Math.max(360, Math.min(560, innerWidth - 40));
     const expandedWitnessHeight = Math.max(380, Math.min(640, innerHeight - 40));
     vex.style.width = `${expandedWitnessWidth}px`;
@@ -129,6 +132,18 @@ export const guideVexSuite = Object.freeze({
     checks.push('VREG-01/VREG-02 non-default expanded geometry minimizes to one compact outer vessel with body/composer absent');
     checks.push('VREG-03/VREG-04 compact projection preserves expanded preference and exact summon/restore recovery');
     checks.push('VREG-07 minimize is keyboard/focus safe; existing Q3 proof preserves viewport/reduced-motion/close semantics');
+
+    document.querySelector('#guideMinimize').click();
+    await delay(20);
+    vex.style.left=`${vregBaselineGeometry.left}px`; vex.style.top=`${vregBaselineGeometry.top}px`; vex.style.right='auto'; vex.style.bottom='auto'; vex.style.width=`${vregBaselineGeometry.width}px`; vex.style.height=`${vregBaselineGeometry.height}px`;
+    const vregRestoredPreference=app.guide.persistPreferredGeometry();
+    for(const key of ['left','top','width','height'])assert(Math.abs(vregRestoredPreference[key]-vregBaselineGeometry[key])<=1.1,`VREG-H01 witness cleanup failed to restore pre-witness ${key}`);
+    document.querySelector('#guideMinimize').click();
+    await delay(20);
+    assert(app.state.guideMinimized===true,'VREG-H02 witness cleanup did not return Vex to minimized state before Q3-05');
+    const vregPreferenceAfterCleanup=app.guide.preferredGeometry();
+    for(const key of ['left','top','width','height'])assert(Math.abs(vregPreferenceAfterCleanup[key]-vregBaselineGeometry[key])<=1.1,`VREG-H02 minimized cleanup corrupted restored ${key}`);
+    checks.push('VREG-H01/VREG-H02 regression witness restores its pre-witness expanded geometry and hands unchanged minimized state back to Q3');
 
     app.guide.setAttentionSource('element.terrain.reset');
     assert(app.state.guideMinimized===true && app.guide.currentPresenceState()==='ATTENTIVE', 'Q3-05 attention overrode explicit minimize');
