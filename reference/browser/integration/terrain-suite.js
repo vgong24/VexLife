@@ -63,6 +63,127 @@ export async function runQ2MobileGrammarProof({ app, helpers:{ delay, assert } }
   return{proofRef:'proof.vexlife.e28.q2.mobile-native-spatial-grammar/v1',state:'PASS',viewportClass:'COMPACT',projectionGrammar:'MOBILE_STACK',checks};
 }
 
+export async function runTerrainZoomTargetRegressionProof({ app, helpers:{ delay, assert } }) {
+  const checks=[];
+  const rootRef=app.terrain.rootRef;
+  const rootChildren=app.terrain.childRefs(rootRef);
+  const firstRef=rootChildren[0]??null;
+  const targetRef=rootChildren.find((ref,index)=>index>0&&document.querySelector(`.e27-node[data-terrain-ref="${CSS.escape(ref)}"]`))??null;
+  const terrain=document.querySelector('#view-terrain');
+  const originalAuto=structuredClone(app.terrain.viewportProjection().semanticAutoEntry);
+  assert(rootRef&&firstRef&&targetRef&&terrain,'TREG-00 Terrain zoom-target fixture incomplete');
+  const resetRoot=async()=>{for(let guard=0;guard<8&&app.terrain.currentRef()!==rootRef;guard++){await app.terrain.up();await delay(90)}app.terrain.reset();await delay(90);assert(app.terrain.currentRef()===rootRef,'TREG cleanup did not restore canonical root');};
+  const pointForRef=(ref)=>{const node=document.querySelector(`.e27-node[data-terrain-ref="${CSS.escape(ref)}"]`);assert(node?.getClientRects().length,`TREG rendered target unavailable: ${ref}`);const r=node.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};};
+  const wheelAt=async(point,{steps=3,deltaY=-180}={})=>{const anchor=point(),startRef=app.terrain.currentRef();for(let index=0;index<steps;index++){terrain.dispatchEvent(new WheelEvent('wheel',{bubbles:true,cancelable:true,clientX:anchor.x,clientY:anchor.y,deltaY}));await delay(45);if(app.terrain.currentRef()!==startRef)break;}await delay(520);return app.terrain.currentRef();};
+  const wheelToward=(ref,options)=>wheelAt(()=>pointForRef(ref),options);
+  const emptyPoint=()=>{const r=terrain.getBoundingClientRect(),fractions=[[.84,.78],[.16,.78],[.84,.24],[.16,.24],[.5,.82]];for(const [fx,fy] of fractions){const point={x:r.left+r.width*fx,y:r.top+r.height*fy};const occupied=document.elementsFromPoint(point.x,point.y).some((element)=>element.closest?.('.e27-node,.e27-focus,.e27-vex'));if(!occupied)return point;}return null;};
+  try{
+    await resetRoot();app.terrain.setAutoEntryEnabled(true);app.terrain.setAutoEntryThresholds({visibilityThreshold:.72,confidenceThreshold:.8});
+    await wheelToward(targetRef);assert(app.terrain.currentRef()===targetRef,`TREG-01/TREG-02 zoom anchored on non-first child committed ${app.terrain.currentRef()} instead of ${targetRef}`);const exactJourney=app.navigation.fullJourney().at(-1);assert(exactJourney?.after?.selectedNodeRef===targetRef,'TREG-08 exact zoom destination was not preserved in Journey');checks.push('TREG-01/TREG-02 rendered non-first child under the zoom anchor is the exact semantic destination','TREG-08 zoom destination and Journey semantic destination remain identical');
+
+    await resetRoot();const empty=emptyPoint();assert(empty,'TREG-03 no empty Terrain anchor could be established');await wheelAt(()=>empty);assert(app.terrain.currentRef()===rootRef,'TREG-03 empty-space zoom invented a semantic child entry');checks.push('TREG-03 empty-space zoom never invents a child destination');
+
+    await resetRoot();app.terrain.setAutoEntryThresholds({visibilityThreshold:.5,confidenceThreshold:.9});await wheelToward(firstRef,{steps:1,deltaY:-120});await wheelToward(targetRef,{steps:1,deltaY:-120});assert(app.terrain.currentRef()===rootRef,'TREG-04 candidate switch carried stale confidence into a semantic entry');await wheelToward(targetRef,{steps:2,deltaY:-120});assert(app.terrain.currentRef()===targetRef,'TREG-04 candidate-specific intent did not converge on the switched-to target');checks.push('TREG-04 changing the approached child resets stale intent and later converges only on the new candidate');
+
+    await resetRoot();app.terrain.setAutoEntryEnabled(false);await wheelToward(targetRef,{steps:4,deltaY:-180});assert(app.terrain.currentRef()===rootRef&&app.state.terrain.autoEntry.lastEvaluation?.reason==='OPTED_OUT','TREG-05 auto-entry opt-out did not block zoom semantic entry');checks.push('TREG-05 explicit auto-entry opt-out blocks the same zoom route');
+
+    await resetRoot();app.terrain.setAutoEntryEnabled(true);app.terrain.setAutoEntryThresholds({visibilityThreshold:.5,confidenceThreshold:1});await wheelToward(targetRef,{steps:2,deltaY:-120});assert(app.terrain.currentRef()===rootRef&&app.state.terrain.autoEntry.lastEvaluation?.reason==='CONFIDENCE_BELOW_THRESHOLD','TREG-06 configured high confidence threshold was not causal');await resetRoot();app.terrain.setAutoEntryThresholds({visibilityThreshold:.5,confidenceThreshold:.5});await wheelToward(targetRef,{steps:2,deltaY:-120});assert(app.terrain.currentRef()===targetRef,'TREG-06 lowering configured confidence threshold did not admit the same target-specific gesture');checks.push('TREG-06 configured visibility/confidence thresholds causally gate the semantic commit');
+
+    await resetRoot();const direct=document.querySelector(`.e27-node[data-terrain-ref="${CSS.escape(targetRef)}"]`);direct.click();await delay(520);assert(app.terrain.currentRef()===targetRef,'TREG-07 direct node activation no longer resolves the exact target');checks.push('TREG-07 direct node activation preserves exact target identity');
+
+    await resetRoot();app.terrain.setAutoEntryThresholds({visibilityThreshold:.72,confidenceThreshold:.8});const realMatchMedia=globalThis.matchMedia;globalThis.matchMedia=(query)=>query.includes('prefers-reduced-motion')?{matches:true,media:query,onchange:null,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){},dispatchEvent(){return true}}:realMatchMedia(query);try{await wheelToward(targetRef);assert(app.terrain.currentRef()===targetRef,'TREG-09 reduced-motion zoom changed semantic target correspondence');}finally{globalThis.matchMedia=realMatchMedia;}checks.push('TREG-09 reduced-motion uses the same target correspondence without motion-dependent meaning');
+  }finally{
+    app.terrain.setAutoEntryEnabled(originalAuto.enabled);app.terrain.setAutoEntryThresholds({visibilityThreshold:originalAuto.visibilityThreshold,confidenceThreshold:originalAuto.confidenceThreshold});await resetRoot();
+  }
+  return{proofRef:'proof.vexlife.experience-integrity.terrain-zoom-target-correspondence/v1',state:'PASS',checks};
+}
+
+export async function runTerrainResetSemanticRegressionProof({ app, helpers:{ delay, assert } }) {
+  const checks=[];
+  const rootRef=app.terrain.rootRef;
+  const rootChildren=app.terrain.childRefs(rootRef);
+  const targetRef=rootChildren.find((ref)=>app.terrain.childRefs(ref).length>0)??rootChildren[0]??null;
+  const realMatchMedia=globalThis.matchMedia;
+  const geometryKey=(snapshot)=>JSON.stringify({currentRef:snapshot.currentRef,projectionMode:snapshot.projectionMode,manualOverrideRef:snapshot.manualOverrideRef,nodes:(snapshot.nodes??[]).map(({ref,role,relevanceReason,left,top,width,height,localOffset})=>({ref,role,relevanceReason,left,top,width,height,localOffset})),edges:(snapshot.edges??[]).map(({ref,x1,y1,x2,y2})=>({ref,x1,y1,x2,y2}))});
+  assert(rootRef&&targetRef,'RREG-00 non-root Reset fixture unavailable');
+  const returnRoot=async()=>{for(let guard=0;guard<8&&app.terrain.currentRef()!==rootRef;guard++){await app.terrain.up();await delay(90)}assert(app.terrain.currentRef()===rootRef,'RREG cleanup did not restore canonical root');};
+  try{
+    app.terrain.reset();await delay(90);
+    await app.terrain.travel(targetRef,'in');await delay(520);
+    assert(app.terrain.currentRef()===targetRef,'RREG-00 non-root Reset target was not entered');
+    app.terrain.setAdaptationSuppressed(false);if(app.terrain.viewportProjection().workspaceMode)app.terrain.toggleWorkspace();app.terrain.setProjectionMode('fan');app.state.terrain.localOffsets={};app.terrain.render(false);await delay(40);
+    const canonicalSameContext=geometryKey(app.terrain.geometrySnapshot()),frameBefore=JSON.stringify(app.navigation.semanticFrame()),journeyBefore=JSON.stringify(app.navigation.fullJourney()),currentBefore=app.terrain.currentRef(),adaptationEnabledBefore=app.terrain.adaptationSnapshot().enabled;
+    const layoutChild=app.terrain.childRefs(targetRef)[0]??null;
+    if(layoutChild){app.state.terrain.localOffsets[layoutChild]={x:31,y:-19};app.terrain.render(false);app.terrain.toggleManualPin(layoutChild)}
+    app.terrain.setProjectionMode('rings');
+    if(!app.terrain.viewportProjection().workspaceMode)app.terrain.toggleWorkspace();
+    app.terrain.setAdaptationSuppressed(true);
+    app.terrain.reset();await delay(420);
+    assert(app.terrain.currentRef()===currentBefore&&JSON.stringify(app.navigation.semanticFrame())===frameBefore,'RREG-01 Reset rewrote semantic current context instead of recovering layout in place');
+    assert(JSON.stringify(app.navigation.fullJourney())===journeyBefore,'RREG-02 non-root Reset appended or rewrote semantic Journey');
+    const projection=app.terrain.viewportProjection(),adaptation=app.terrain.adaptationSnapshot(),recoveredKey=geometryKey(app.terrain.geometrySnapshot());
+    assert(Object.keys(app.state.terrain.localOffsets).length===0&&projection.manualOverrideRef===null&&projection.workspaceMode===false&&projection.projectionMode==='fan'&&!adaptation.suppressedForCurrentContext,'RREG-03 Reset did not clear bounded manual/transient layout state');
+    assert(adaptation.enabled===adaptationEnabledBefore&&recoveredKey===canonicalSameContext,'RREG-03 Reset did not restore canonical same-context geometry while preserving explicit adaptive-layout preference');
+    checks.push('RREG-01 non-root Reset preserves exact semantic current context','RREG-02 non-root Reset is Journey-silent','RREG-03 Reset clears bounded layout/transient state and restores canonical same-context geometry while preserving explicit adaptation preference');
+
+    await returnRoot();
+    const rootFrameBefore=JSON.stringify(app.navigation.semanticFrame()),rootJourneyBefore=JSON.stringify(app.navigation.fullJourney());
+    app.terrain.reset();await delay(100);
+    assert(app.terrain.currentRef()===rootRef&&JSON.stringify(app.navigation.semanticFrame())===rootFrameBefore&&JSON.stringify(app.navigation.fullJourney())===rootJourneyBefore,'RREG-04 already-root Reset manufactured semantic history');
+    checks.push('RREG-04 already-root Reset remains a semantic and Journey no-op');
+
+    await app.terrain.travel(targetRef,'in');await delay(520);
+    const reducedFrameBefore=JSON.stringify(app.navigation.semanticFrame()),reducedJourneyBefore=JSON.stringify(app.navigation.fullJourney()),reducedCurrent=app.terrain.currentRef();
+    globalThis.matchMedia=(query)=>query.includes('prefers-reduced-motion')?{matches:true,media:query,onchange:null,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){},dispatchEvent(){return true}}:realMatchMedia(query);
+    app.terrain.reset();await delay(100);
+    assert(app.terrain.currentRef()===reducedCurrent&&JSON.stringify(app.navigation.semanticFrame())===reducedFrameBefore&&JSON.stringify(app.navigation.fullJourney())===reducedJourneyBefore,'RREG-05 reduced-motion changed Reset semantic meaning');
+    checks.push('RREG-05 reduced-motion changes recovery choreography only, not Reset semantics');
+  }finally{
+    globalThis.matchMedia=realMatchMedia;
+    app.terrain.setAdaptationSuppressed(false);
+    await returnRoot();
+    app.terrain.reset();await delay(90);
+  }
+  return{proofRef:'proof.vexlife.experience-integrity.terrain-reset-semantic-context/v1',state:'PASS',checks};
+}
+
+export async function runTerrainSiblingProvenanceRegressionProof({ app, helpers:{ delay, assert } }) {
+  const checks=[];
+  const rootRef=app.terrain.rootRef;
+  const siblings=app.terrain.childRefs(rootRef);
+  const firstRef=siblings[0]??null,secondRef=siblings[1]??null;
+  const realMatchMedia=globalThis.matchMedia;
+  assert(rootRef&&firstRef&&secondRef,'SREG-00 sibling navigation fixture requires at least two root children');
+  const returnRoot=async()=>{for(let guard=0;guard<8&&app.terrain.currentRef()!==rootRef;guard++){await app.terrain.up();await delay(90)}assert(app.terrain.currentRef()===rootRef,'SREG cleanup did not restore canonical root');};
+  try{
+    app.terrain.reset();await delay(90);
+    await app.terrain.travel(firstRef,'in');await delay(520);
+    const depthBefore=app.terrain.viewportProjection().semanticDepth,journalBefore=app.navigation.fullJourney(),prefixBefore=JSON.stringify(journalBefore);
+    const moved=await app.terrain.navigateSibling('NEXT');await delay(520);
+    const after=app.navigation.fullJourney(),last=after.at(-1);
+    assert(moved===true&&app.terrain.currentRef()===secondRef&&app.terrain.viewportProjection().semanticDepth===depthBefore,'SREG-01 sibling navigation lost exact adjacent target or hierarchy depth');
+    assert(after.length===journalBefore.length+1&&JSON.stringify(after.slice(0,journalBefore.length))===prefixBefore&&last?.actionRef==='action.navigation.sibling','SREG-02 sibling navigation did not append exactly one action.navigation.sibling Journey event');
+    checks.push('SREG-01 NEXT reaches the exact spatially adjacent sibling at unchanged depth','SREG-02 successful sibling navigation appends exactly one typed sibling Journey event');
+
+    await returnRoot();
+    const directBefore=app.navigation.fullJourney().length;await app.terrain.travel(firstRef,'in');await delay(520);const directEvent=app.navigation.fullJourney().at(-1);
+    assert(app.navigation.fullJourney().length===directBefore+1&&directEvent?.actionRef==='action.terrain.node.select','SREG-03 direct node selection no longer retains action.terrain.node.select provenance');
+    const boundaryBefore=JSON.stringify(app.navigation.fullJourney()),boundaryMoved=await app.terrain.navigateSibling('PREVIOUS');await delay(60);
+    assert(boundaryMoved===false&&app.terrain.currentRef()===firstRef&&JSON.stringify(app.navigation.fullJourney())===boundaryBefore,'SREG-04 sibling boundary attempt manufactured semantic Journey');
+    checks.push('SREG-03 direct selection remains distinct action.terrain.node.select provenance','SREG-04 sibling boundary attempts append no semantic Journey');
+
+    globalThis.matchMedia=(query)=>query.includes('prefers-reduced-motion')?{matches:true,media:query,onchange:null,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){},dispatchEvent(){return true}}:realMatchMedia(query);
+    const reducedBefore=app.navigation.fullJourney().length,reducedMoved=await app.terrain.navigateSibling('NEXT');await delay(80);const reducedEvent=app.navigation.fullJourney().at(-1);
+    assert(reducedMoved===true&&app.terrain.currentRef()===secondRef&&app.navigation.fullJourney().length===reducedBefore+1&&reducedEvent?.actionRef==='action.navigation.sibling','SREG-05 reduced-motion changed sibling target or action attribution');
+    checks.push('SREG-05 reduced-motion changes choreography only; sibling target and provenance remain identical');
+  }finally{
+    globalThis.matchMedia=realMatchMedia;
+    await returnRoot();
+    app.terrain.reset();await delay(90);
+  }
+  return{proofRef:'proof.vexlife.experience-integrity.terrain-sibling-journey-provenance/v1',state:'PASS',checks};
+}
+
 export const terrainSuite = Object.freeze({
   suiteRef:'suite.vexlife.browser.terrain/v1',
   async run({ app, state, helpers:{ delay, assert, assertLiveEdgeAttachments, worldRelationshipClearance, renderedPixelClose, geometryDifferences, geometryIdentity, radialDistance, motionCssToken, transitionProperties, assertSettledGeometry } }) {
@@ -74,6 +195,10 @@ export const terrainSuite = Object.freeze({
     const desktopProjection=app.terrain.viewportProjection();assert(desktopProjection.viewportClass==='DESKTOP'&&desktopProjection.projectionGrammar==='SPATIAL_WORLD','M01 desktop Terrain projection grammar drifted: '+JSON.stringify(desktopProjection));checks.push('M01 desktop Terrain remains the accepted SPATIAL_WORLD grammar');
     const livedD=await runLivedDDisclosureProof({app,helpers:{delay,assert},viewportClass:'DESKTOP'});checks.push(...livedD.checks);
     const q7=await runQ7AdaptationProof({app,helpers:{delay,assert,geometryDifferences,geometryIdentity}});checks.push(...q7.checks);
+    const terrainRegression=await runTerrainZoomTargetRegressionProof({app,helpers:{delay,assert}});checks.push(...terrainRegression.checks);
+    const resetRegression=await runTerrainResetSemanticRegressionProof({app,helpers:{delay,assert}});checks.push(...resetRegression.checks);
+    const siblingRegression=await runTerrainSiblingProvenanceRegressionProof({app,helpers:{delay,assert}});checks.push(...siblingRegression.checks);
+    checks.push('TREG-10/RREG-06/SREG-06 the remaining owner-domain Terrain suite must also pass before this suite can return PASS');
 
     const motionTokens={tactile:motionCssToken('--motion-duration-tactile'),fast:motionCssToken('--motion-duration-fast'),surface:motionCssToken('--motion-duration-surface'),layout:motionCssToken('--motion-duration-layout'),spatial:motionCssToken('--motion-duration-spatial'),exit:motionCssToken('--motion-duration-semantic-exit'),arrive:motionCssToken('--motion-duration-semantic-arrive'),ease:motionCssToken('--motion-ease-responsive')};
     assert(Object.values(motionTokens).every(Boolean),'Q6 shared motion token vocabulary is incomplete');

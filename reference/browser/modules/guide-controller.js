@@ -52,6 +52,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     }
   };
   const isCompactViewport = () => window.innerWidth <= 760;
+  const clearInlineSize = () => { windowElement.style.width=''; windowElement.style.height=''; };
   const clearInlinePlacement = () => { for (const property of ['left','right','top','bottom','width','height']) windowElement.style[property]=''; };
   function applyCompactFallback() {
     clearInlinePlacement();
@@ -221,7 +222,8 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     if (!state.guideOpen) { activeConversation=false; explicitSummoned=false; projectPresenceState(); return; }
     windowElement.classList.toggle('is-minimized', state.guideMinimized === true);
     if (explicit && !state.guideMinimized) explicitSummoned=true;
-    if (!state.guideMinimized) restorePreferredGeometry();
+    if (state.guideMinimized) clearInlineSize();
+    else restorePreferredGeometry();
     updateFrame();
     if (focus && !state.guideMinimized) $('#guideInput')?.focus();
   }
@@ -282,7 +284,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     localStorage.setItem('vexlife.guide.minimized', String(state.guideMinimized));
     windowElement.classList.toggle('is-minimized',state.guideMinimized);
     activeConversation=false;
-    if (state.guideMinimized) explicitSummoned=false;
+    if (state.guideMinimized) { explicitSummoned=false; clearInlineSize(); }
     else { explicitSummoned=true; attentionSourceRef=null; restorePreferredGeometry(); }
     projectPresenceState();
     avoidDeclaredControls();
