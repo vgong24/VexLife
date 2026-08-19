@@ -1124,6 +1124,18 @@
     "testRef": "test.living-journal.mobile-book-grammar"
   },
   {
+    "testRef": "test.living-journal.memory-projection",
+    "brief": "Accepted Living Journal Memory projection returns bounded summary-backed CURRENT or content-absent HELD truth, excludes raw conversation bodies and preserves the complete zero-effect ledger."
+  },
+  {
+    "testRef": "test.living-journal.memory-bridge",
+    "brief": "Browser Living Journal Memory bridge admits only server-owned Home identity plus bounded thread/maxPages input and preserves exact CURRENT-versus-HELD read-only projection truth."
+  },
+  {
+    "testRef": "test.living-journal.memory-http-app-activation",
+    "brief": "Same-origin Living Journal activation resolves canonical Home identity server-side, reads bounded real Memory on open and fails closed without Memory/Home/model/network/publication effects."
+  },
+  {
     "testRef": "test.globalization.semantic-relay.human-visible",
     "brief": "Browser conversation exposes accepted semantic-relay language, projection, runtime, drift and human confirmation state without rewriting source content or exposing hidden reasoning."
   }
