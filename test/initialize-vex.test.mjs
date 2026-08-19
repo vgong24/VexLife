@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { ReadableStream } from 'node:stream/web';
+import { fileURLToPath } from 'node:url';
 const registry = JSON.parse(fs.readFileSync(new URL('../blueprint/vex-operational-profiles.json', import.meta.url), 'utf8'));
 import {
   browserBindingForProfile,
@@ -18,6 +19,7 @@ import { classifyVerifiedArtifact, downloadVerifiedArtifact, sha256File } from '
 import crypto from 'node:crypto';
 
 const profile = registry.profiles[0];
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('operational profile registry is exact and candidate profiles do not silently become normal defaults', () => {
   assert.deepEqual(validateOperationalProfileRegistry(registry), { ok: true, errors: [] });
@@ -69,6 +71,37 @@ test('initialization plan exposes only the admitted product effects', () => {
   assert.equal(plan.effects.memoryCanonicalWrite, false);
   assert.equal(plan.effects.training, false);
   assert.match(plan.planSha256, /^[0-9a-f]{64}$/u);
+});
+
+test('Windows setup and start surfaces require a qualified model binding before browser startup', () => {
+  const setup = fs.readFileSync(path.join(ROOT, 'install/vexlife-setup.ps1'), 'utf8');
+  const start = fs.readFileSync(path.join(ROOT, 'start-vexlife.ps1'), 'utf8');
+  const cmdText = fs.readFileSync(path.join(ROOT, 'start-vexlife.cmd'), 'utf8');
+
+  for (const script of [setup, start]) {
+    assert.match(script, /scripts[\\\/]initialize-vex\.mjs/u);
+    assert.match(script, /BOUND_QUALIFIED/u);
+    assert.match(script, /VEXLIFE_COMPANION_ENDPOINT/u);
+    assert.match(script, /VEXLIFE_COMPANION_MODEL/u);
+  }
+  assert.ok(setup.indexOf('scripts\\initialize-vex.mjs') < setup.indexOf('scripts\\serve-browser.mjs'));
+  assert.ok(start.indexOf('$initArgs = @("$Root/scripts/initialize-vex.mjs"') < start.indexOf('& node "$Root/scripts/serve-browser.mjs"'));
+  assert.equal(/Read-Host\s+"Model download URL/iu.test(setup), false);
+  assert.equal(/Expected SHA-256 checksum/iu.test(setup), false);
+  assert.match(cmdText, /start-vexlife\.ps1/u);
+  assert.equal(cmdText.includes('scripts\\bootstrap.mjs'), false);
+});
+
+test('candidate launcher authority remains an internal qualification-only environment route', () => {
+  const setup = fs.readFileSync(path.join(ROOT, 'install/vexlife-setup.ps1'), 'utf8');
+  const start = fs.readFileSync(path.join(ROOT, 'start-vexlife.ps1'), 'utf8');
+  for (const script of [setup, start]) {
+    assert.match(script, /VEXLIFE_CANDIDATE_PROFILE_REF/u);
+    assert.match(script, /VEXLIFE_CANDIDATE_AUTHORITY_REF/u);
+    assert.match(script, /candidate-qualification/u);
+  }
+  assert.match(setup, /VEXLIFE_SETUP_RUNTIME_CONSENT/u);
+  assert.equal(setup.includes('--candidate-authority-ref') && setup.includes('Read-Host "Candidate'), false);
 });
 
 test('verified artifact download reuses exact cache, resumes partial range and deletes hash-mismatch partials', async () => {
