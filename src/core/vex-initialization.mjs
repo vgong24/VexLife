@@ -93,6 +93,24 @@ export function buildRuntimeArguments(profile, { modelPath, projectorPath }) {
   return profile.runtime.argumentTemplate.map((arg) => replacements.get(arg) ?? arg);
 }
 
+export function buildQualificationRequest(profile) {
+  requireObject(profile, 'profile');
+  requireObject(profile.endpoint, 'profile.endpoint');
+  requireObject(profile.qualification, 'profile.qualification');
+  requireString(profile.endpoint.requestModel, 'profile.endpoint.requestModel');
+  requireString(profile.qualification.probePrompt, 'profile.qualification.probePrompt');
+  if (!Number.isSafeInteger(profile.qualification.probeMaxTokens) || profile.qualification.probeMaxTokens <= 0) {
+    throw new Error('profile.qualification.probeMaxTokens must be positive');
+  }
+  return {
+    model: profile.endpoint.requestModel,
+    messages: [{ role: 'user', content: profile.qualification.probePrompt }],
+    temperature: 0,
+    max_tokens: profile.qualification.probeMaxTokens,
+    chat_template_kwargs: { enable_thinking: false }
+  };
+}
+
 export function buildVexInitializationPlan({ profile, home, homeState, hostEvidence, mode }) {
   requireObject(profile, 'profile');
   requireString(home, 'home');
