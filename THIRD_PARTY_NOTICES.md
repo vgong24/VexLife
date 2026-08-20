@@ -10,20 +10,27 @@ all possible rights.
 
 Operational profiles may reference external runtime/model artifacts without
 vendoring them into this repository. A profile reference does not itself grant
-network, installation, activation, redistribution, or release authority.
+network, installation, activation, redistribution, publication, or official-build
+authority.
 
-The current Windows candidate profile references:
+The current Windows source-local `RELEASE_QUALIFIED` operational profile references:
 
 - **llama.cpp b10107** at immutable revision
   `c0bc8591e8815c63cb01dd3f051a8b0df02501c9`, distributed by the ggml-org
   project under the MIT License. The profile pins the Windows x64 CUDA 12.4
-  runtime and CUDA-runtime archives by exact SHA-256 and records the upstream
-  license as the controlling runtime notice.
+  runtime archive (`247064556` bytes) and CUDA-runtime archive (`391443627`
+  bytes) by exact SHA-256 and records the upstream license as the controlling
+  runtime notice.
 - **Qwen3.5-4B** GGUF derivative artifacts published by `bartowski` from the
-  Qwen3.5-4B model family. The selected model and projector are pinned to exact
-  repository revisions and SHA-256 digests. The model repository declares
-  Apache-2.0. Release qualification still requires then-current source/rights/
-  notice review; candidate-profile presence is not a redistribution clearance.
+  Qwen3.5-4B model family. The selected Q4_K_M model (`3013027808` bytes) and
+  BF16 projector (`675569216` bytes) are pinned to exact repository revisions
+  and SHA-256 digests. The model repository declares Apache-2.0.
+
+`RELEASE_QUALIFIED` here means the current VexLife source-local Windows setup may
+resolve these exact upstream artifacts for the admitted local companion route. It
+does **not** mean VexLife redistributes the model/runtime bytes, that a signed or
+public `OFFICIAL_VERIFIED_BUILD` exists, or that public distribution rights have
+been separately cleared.
 
 The artifacts remain external to canonical VexLife source. Download providers
 are transport locations, not Vex identity or artifact identity.
@@ -31,7 +38,7 @@ are transport locations, not Vex identity or artifact identity.
 ## Contributor Covenant 3.0
 
 `CODE_OF_CONDUCT.md` is adapted from Contributor Covenant 3.0, permanently
-available at <https://www.contributor-covenant.org/version/3.0/> and sourced from
+available at <https://www.contributor-covenant.org/version/3/0/> and sourced from
 the Organization for Ethical Source repository at commit
 `7255a28d23d5bc296de2e4e4e9bb5ee1126f1345`.
 
