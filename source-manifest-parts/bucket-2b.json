@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 13350,
       "sha256": "f9090d3a2ac5755ab4fbe625b56eef8f361182ab962e62d2c96f07338e5c1634"
+    },
+    {
+      "path": "test/feature-perceptibility-guide-runner.test.mjs",
+      "mode": "100644",
+      "bytes": 9846,
+      "sha256": "0fc13a8b2bec3d5dbc5c97319b8a0c7065816883ba1678d240d685e9d8ace499"
     }
   ]
 }
