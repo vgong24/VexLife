@@ -4,7 +4,7 @@
 
 ## Goal
 
-A fresh checkout on Windows, macOS or Linux should be able to create a valid local Vex Home without copying personal runtime data or a multi-gigabyte model through Git.
+A fresh checkout on Windows, macOS or Linux should be able to create a valid local Vex Home without copying personal runtime data or a multi-gigabyte model through Git. The current **release-qualified local companion baseline** is narrower: Windows x64 with a compatible NVIDIA driver/GPU. Other platform bootstrap/source surfaces remain available, but this document does not claim an equivalent release-qualified local-model profile for them yet.
 
 ## Bootstrap sequence
 
@@ -32,7 +32,7 @@ The repository stores only source-managed identity and verification material:
 ```text
 operational profile state and stable profileRef
 artifact source/revision/filename
-expected SHA-256
+expected byte size and SHA-256
 license/source refs
 runtime endpoint configuration
 hardware/resource policy
@@ -54,7 +54,9 @@ CANDIDATE_QUALIFICATION / HELD / STALE / INVALID profile
   -> no hidden default LLM fallback
 ```
 
-The first source-managed Windows profile is intentionally `CANDIDATE_QUALIFICATION` until its exact initializer/runtime/README evidence is accepted. Internal qualification must name the exact profile and a separately supplied authority ref; that path is not a public or ordinary-user release claim.
+The current Windows x64 NVIDIA profile is `RELEASE_QUALIFIED` for the **source-local normal setup route** after exact Windows evidence proved its pinned artifact/runtime digests and sizes, bounded model generation, local qualification inference, one real Browser→G01 companion turn, Home-preserving uninstall, exact-owned process shutdown, and temporary-test-Home cleanup.
+
+That state does **not** claim a signed installer, public release, `OFFICIAL_VERIFIED_BUILD`, P11 fresh-human proof, or equivalent support on another platform. Those remain separately governed distribution/lifecycle thresholds. Internal `candidate-qualification` mode remains available only for future profile evaluation and requires the exact profile plus separate candidate authority.
 
 Current deterministic commands:
 
@@ -68,6 +70,7 @@ The source entrypoint is `scripts/initialize-vex.mjs`. A future GUI or signed la
 ## Artifact acquisition rules
 
 - no download without an expected SHA-256;
+- release-qualified artifacts also carry exact expected byte sizes;
 - exact verified cached artifacts are reused before network access;
 - interrupted downloads retain one attempt-owned `.partial` file and use HTTP Range when the source supports it;
 - a server that ignores Range restarts that partial transfer rather than appending incompatible bytes;
@@ -84,7 +87,7 @@ The source entrypoint is `scripts/initialize-vex.mjs`. A future GUI or signed la
 DOWNLOADED != VERIFIED != MATERIALIZED != BOUND != QUALIFIED != COMPANION_READY
 ```
 
-The candidate Windows composition uses pinned llama.cpp `b10107` plus pinned Qwen3.5-4B Q4_K_M model/projector artifacts. The initializer verifies each artifact, verifies the extracted `llama-server.exe`, starts the exact loopback process, waits for the health surface, performs one non-user qualification inference, and writes a machine-readable receipt. Only then may `config/model.json` become `BOUND_QUALIFIED`.
+The current release-qualified Windows composition uses pinned llama.cpp `b10107` plus pinned Qwen3.5-4B Q4_K_M model/projector artifacts. Its server profile bounds normal generation to 256 total predicted tokens with a 128-token reasoning budget. The initializer verifies each artifact, verifies the extracted `llama-server.exe`, starts the exact loopback process, waits for the health surface, performs one non-user qualification inference, and writes a machine-readable receipt. Only then may `config/model.json` become `BOUND_QUALIFIED`.
 
 The browser still owns no endpoint, executable, model, Home or runtime authority. Its companion endpoint/model values are supplied by the server process from the accepted initialization receipt/profile.
 
