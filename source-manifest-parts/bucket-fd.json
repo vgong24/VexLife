@@ -5,8 +5,8 @@
     {
       "path": "blueprint/module-registry/browser.json",
       "mode": "100644",
-      "bytes": 7723,
-      "sha256": "03fc2fc346758bfbbe0e115148f0216e9a68fda24f8b2c3adc786318c1b3b941"
+      "bytes": 7773,
+      "sha256": "1ce93018ced3dce031804f37dcd8e171bd10e924fb532672d743bb664ae5d024"
     },
     {
       "path": "test/evolution.test.mjs",

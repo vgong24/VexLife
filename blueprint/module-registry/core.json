@@ -1073,10 +1073,11 @@
   {
     "moduleRef": "module.vexlife.core.browser-living-journal-memory-bridge",
     "path": "src/core/browser-living-journal-memory-bridge.mjs",
-    "role": "Browser/server boundary that admits only server-owned Home identity plus bounded threadRef/maxPages requests and preserves zero-effect CURRENT/HELD Living Journal Memory truth.",
+    "role": "Browser/server boundary for server-owned Home identity plus bounded current-Memory and committed-day archive reads; archive selection never implies current-now or Memory write.",
     "platformScope": "BROWSER",
     "reads": [
-      "module.vexlife.core.living-journal-memory-projection"
+      "module.vexlife.core.living-journal-memory-projection",
+      "module.vexlife.core.living-journal-memory-archive"
     ],
     "writes": [],
     "loadedBy": [

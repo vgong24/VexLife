@@ -1140,6 +1140,10 @@
     "brief": "Committed-day archive windows verified G03 history, projects exact historical G02 summaries without raw conversation bodies, keeps COMMITTED_AT_DAY distinct from current-now, and fails closed on broken or ambiguous lineage."
   },
   {
+    "testRef": "test.living-journal.archive-browser-navigation",
+    "brief": "Same-origin bounded archive navigation renders source-verified COMMITTED_MEMORY_AT_DAY truth, preserves latest-committed != current-now, and returns to separately fetched current Memory without raw conversation or Memory/Home/model effects."
+  },
+  {
     "testRef": "test.globalization.semantic-relay.human-visible",
     "brief": "Browser conversation exposes accepted semantic-relay language, projection, runtime, drift and human confirmation state without rewriting source content or exposing hidden reasoning."
   }

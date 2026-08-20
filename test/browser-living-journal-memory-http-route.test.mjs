@@ -7,6 +7,7 @@ import { createLivingJournalController } from '../reference/browser/modules/livi
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
 import { BROWSER_COMPANION_API_PATH } from '../src/core/browser-companion-bridge.mjs';
 import {
+  BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
   BrowserLivingJournalMemoryBridgeError
 } from '../src/core/browser-living-journal-memory-bridge.mjs';
@@ -315,3 +316,10 @@ test('Living Journal controller preserves HELD as a distinct zero-page real-Memo
     if (priorMatchMedia === undefined) delete globalThis.matchMedia; else globalThis.matchMedia = priorMatchMedia;
   }
 });
+
+test('Living Journal archive route reuses canonical server Home identity and never accepts browser identity authority', async()=>{
+  const identity=Object.freeze({home:'/canonical/home',homeRef:'home.local.test',deviceRef:'device.local.test',companionLineageRef:'companion.lineage.test'});let observed=null;const archive=Object.freeze({schemaVersion:'vexlife.living-journal.memory-archive/v1',ownerRef:'github.issue.vexlife.151',state:'CURRENT',currentness:'CURRENT',truthClass:'COMMITTED_MEMORY_ARCHIVE',rawConversationContentIncluded:false,totalCommittedDays:0,latestCommittedDailyStratumSha256:null,newestFirst:true,maxDays:7,dayOffset:0,nextDayOffset:null,days:[],selectedDay:null,uncommittedTailCount:0,effects:{homeMutated:false,memoryMutated:false,semanticAcceptanceCreated:false,firstPersonAuthorityGranted:false,modelCalled:false,translationCalled:false,networkCalled:false,trainingRan:false,modelWeightsChanged:false,publicationPerformed:false}});
+  await withServer({staticRoot:repoRoot,companionBridge:fakeCompanion(),resolveHomeIdentity:()=>identity,createLivingJournalMemoryBridge:(received)=>({read:()=>{throw new Error('current Memory read must not run');},readArchive:(input)=>{observed={received,input:structuredClone(input)};if(Object.keys(input).some((key)=>['home','homeRef','deviceRef','companionLineageRef','model','endpoint'].includes(key)))throw new BrowserLivingJournalMemoryBridgeError('LIVING_JOURNAL_ARCHIVE_REQUEST_NOT_ADMITTED','browser identity authority rejected',400);return archive;}})},async(baseUrl)=>{const response=await fetch(`${baseUrl}${BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({threadRef:'thread.self-development.open-conversation',maxDays:7,dayOffset:0,maxPages:24})});assert.equal(response.status,200);assert.deepEqual(await response.json(),archive);});
+  assert.deepEqual(observed.received,identity);assert.deepEqual(observed.input,{threadRef:'thread.self-development.open-conversation',maxDays:7,dayOffset:0,maxPages:24});
+});
+

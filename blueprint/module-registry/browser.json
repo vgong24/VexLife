@@ -218,7 +218,7 @@
       "reference/browser/modules/living-journal-demo-data.js",
       "blueprint/strings/*.json"
     ],
-    "role": "Owns bounded lived-book page projection, vantage/display switching, explicit source/revisit doors and ephemeral local marginalia without Memory authority.",
+    "role": "Owns bounded lived-book current Memory and committed-day historical archive projection, explicit source/revisit doors, archive/current temporal labeling, and ephemeral marginalia without Memory authority.",
     "tests": [
       "test/browser.test.mjs"
     ],

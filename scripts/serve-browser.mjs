@@ -13,8 +13,10 @@ import {
   loadBrowserCompanionHomeIdentity
 } from '../src/core/browser-companion-bridge.mjs';
 import {
+  BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
   BrowserLivingJournalMemoryBridgeError,
+  browserLivingJournalArchiveFailurePayload,
   browserLivingJournalMemoryFailurePayload,
   createBrowserLivingJournalMemoryBridge
 } from '../src/core/browser-living-journal-memory-bridge.mjs';
@@ -46,6 +48,9 @@ function companionRequestError(message, httpStatus) {
 function livingJournalMemoryRequestError(message, httpStatus) {
   return new BrowserLivingJournalMemoryBridgeError('LIVING_JOURNAL_MEMORY_REQUEST_NOT_ADMITTED', message, httpStatus);
 }
+function livingJournalArchiveRequestError(message, httpStatus) {
+  return new BrowserLivingJournalMemoryBridgeError('LIVING_JOURNAL_ARCHIVE_REQUEST_NOT_ADMITTED', message, httpStatus);
+}
 
 async function readBoundedJson(request, { maxBytes = 64 * 1024, formError = companionRequestError, requestLabel = 'Companion request' } = {}) {
   const contentType = String(request.headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase();
@@ -62,6 +67,11 @@ async function readBoundedJson(request, { maxBytes = 64 * 1024, formError = comp
   } catch {
     throw formError(`${requestLabel} body is not valid JSON`, 400);
   }
+}
+
+function archiveHomeFailure(error) {
+  const status = error instanceof BrowserCompanionBridgeError && error.httpStatus === 409 ? 409 : 503;
+  return new BrowserLivingJournalMemoryBridgeError('LIVING_JOURNAL_ARCHIVE_HOME_UNAVAILABLE', 'Living Journal archive Home identity is unavailable', status, null);
 }
 
 function memoryHomeFailure(error) {
@@ -127,6 +137,27 @@ export function createVexLifeBrowserServer({
             ? error
             : new BrowserLivingJournalMemoryBridgeError('LIVING_JOURNAL_MEMORY_READ_FAILED', 'Living Journal Memory read failed safely', 500, null);
           sendJson(response, typed.httpStatus, browserLivingJournalMemoryFailurePayload(typed));
+        }
+        return;
+      }
+
+      if (url.pathname === BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH) {
+        if (request.method !== 'POST') {
+          response.writeHead(405, { Allow: 'POST', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const input = await readBoundedJson(request, { maxBytes: 8 * 1024, formError: livingJournalArchiveRequestError, requestLabel: 'Living Journal archive request' });
+          let identity;
+          try { identity = resolveHomeIdentity(); } catch (error) { throw archiveHomeFailure(error); }
+          const result = createLivingJournalMemoryBridge(identity).readArchive(input);
+          sendJson(response, 200, result);
+        } catch (error) {
+          const typed = error instanceof BrowserLivingJournalMemoryBridgeError
+            ? error
+            : new BrowserLivingJournalMemoryBridgeError('LIVING_JOURNAL_ARCHIVE_READ_FAILED', 'Living Journal archive read failed safely', 500, null);
+          sendJson(response, typed.httpStatus, browserLivingJournalArchiveFailurePayload(typed));
         }
         return;
       }
