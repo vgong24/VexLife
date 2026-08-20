@@ -42,10 +42,11 @@ test('Home classification distinguishes fresh, preserved and migration-required 
   assert.equal(classifyHomeState({ homeManifestPresent: false, homeDirectoryPresent: true, homeDirectoryNonEmpty: true }), 'HOME_REQUIRES_MIGRATION_PLAN');
 });
 
-test('runtime arguments and browser binding stay exact and loopback-bound', () => {
+test('runtime arguments and browser binding stay exact, bounded and loopback-bound', () => {
   const args = buildRuntimeArguments(profile, { modelPath: 'C:/home/models/model.gguf', projectorPath: 'C:/home/models/mmproj.gguf' });
   assert.ok(args.includes('127.0.0.1'));
   assert.ok(args.includes('18080'));
+  assert.deepEqual(args.slice(-4), ['--n-predict', '256', '--reasoning-budget', '128']);
   assert.equal(args.includes(profile.endpoint.requestModel), false, 'runtime request-model identity is an API binding, not an assumed llama.cpp --alias capability');
   assert.deepEqual(browserBindingForProfile(profile), {
     VEXLIFE_COMPANION_ENDPOINT: 'http://127.0.0.1:18080',
