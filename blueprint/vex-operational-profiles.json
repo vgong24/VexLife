@@ -72,7 +72,7 @@
           "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
           "expectedBytes": 3013027808,
           "maxBytes": 4294967296,
-          "sourceRef": "hf.bartowski.Qwen3.5-4B-GGUF.ba06320255db2dbec194dad738d066be90dabf29",
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.ba06320255db2dbec194dad738d066be90dabf29",
           "licenseRef": "license.apache-2.0.qwen3.5"
         },
         {
@@ -82,7 +82,7 @@
           "sha256": "463f39bd1c291c1186c319a8c90ff8640aafa678b14cbee2232d695113dfbb66",
           "expectedBytes": 675569216,
           "maxBytes": 1073741824,
-          "sourceRef": "hf.bartowski.Qwen3.5-4B-GGUF.3516418eb75fd2cdf56058f112b403ff47020775",
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.3516418eb75fd2cdf56058f112b403ff47020775",
           "licenseRef": "license.apache-2.0.qwen3.5"
         }
       ],
