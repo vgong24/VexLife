@@ -1052,6 +1052,25 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.living-journal-memory-archive",
+    "path": "src/core/living-journal-memory-archive.mjs",
+    "role": "Read-only bounded committed-day archive projection over source-verified G03 Daily Memory lineage and historical G02 continuity summaries; committed-day truth never implies current-now, and raw conversation bodies/effects remain excluded.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils",
+      "module.vexlife.core.score-context-continuity",
+      "module.vexlife.core.daily-memory-dream"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/living-journal-memory-archive.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/modules/living-journal-controller.js"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.browser-living-journal-memory-bridge",
     "path": "src/core/browser-living-journal-memory-bridge.mjs",
     "role": "Browser/server boundary that admits only server-owned Home identity plus bounded threadRef/maxPages requests and preserves zero-effect CURRENT/HELD Living Journal Memory truth.",
