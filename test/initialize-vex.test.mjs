@@ -21,13 +21,21 @@ import crypto from 'node:crypto';
 const profile = registry.profiles[0];
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('operational profile registry is exact and candidate profiles do not silently become normal defaults', () => {
+test('operational profile registry resolves the release-qualified Windows profile without widening public-release claims', () => {
   assert.deepEqual(validateOperationalProfileRegistry(registry), { ok: true, errors: [] });
   const normal = selectOperationalProfile({ registry, platform: 'win32', architecture: 'x64' });
-  assert.equal(normal.state, 'NO_RELEASE_QUALIFIED_PROFILE');
-  assert.equal(normal.heldProfileRef, profile.profileRef);
-  const candidate = selectOperationalProfile({ registry, platform: 'win32', architecture: 'x64', mode: 'candidate-qualification', profileRef: profile.profileRef });
-  assert.equal(candidate.state, 'PROFILE_RESOLVED');
+  assert.equal(normal.state, 'PROFILE_RESOLVED');
+  assert.equal(normal.profile.profileRef, profile.profileRef);
+  assert.equal(normal.profile.state, 'RELEASE_QUALIFIED');
+  assert.equal(normal.profile.releaseQualification.class, 'SOURCE_LOCAL_OPERATIONAL_PROFILE');
+  assert.equal(normal.profile.releaseQualification.officialVerifiedBuildClaimed, false);
+  assert.equal(normal.profile.releaseQualification.publicReleaseClaimed, false);
+  assert.equal(normal.profile.releaseQualification.p11FreshHumanClaimed, false);
+  for (const artifact of [...normal.profile.runtime.artifacts, ...normal.profile.modelArtifacts]) {
+    assert.ok(Number.isSafeInteger(artifact.expectedBytes) && artifact.expectedBytes > 0);
+  }
+  const qualificationRoute = selectOperationalProfile({ registry, platform: 'win32', architecture: 'x64', mode: 'candidate-qualification', profileRef: profile.profileRef });
+  assert.equal(qualificationRoute.state, 'PROFILE_RESOLVED');
 });
 
 test('unsupported hosts fail closed and no default LLM fallback exists', () => {
