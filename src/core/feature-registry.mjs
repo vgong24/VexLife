@@ -7,6 +7,24 @@ const BASE_REQUIRED_LENSES = [
   'lens.vexlife.assurance-and-adversarial'
 ];
 
+export const HUMAN_INTRODUCTION_DISPOSITIONS = Object.freeze([
+  'WALKTHROUGH',
+  'EXPLANATION_ONLY',
+  'DISCOVERABLE_ONLY',
+  'NONE_JUSTIFIED'
+]);
+
+export const HUMAN_INTRODUCTION_ROUTE_STATES = Object.freeze(['CURRENT', 'HELD']);
+
+const HUMAN_INTRODUCTION_KEYS = new Set([
+  'disposition',
+  'routeState',
+  'planRefOrNull',
+  'rationale'
+]);
+const HUMAN_INTRODUCTION_PLAN_DISPOSITIONS = new Set(['WALKTHROUGH', 'EXPLANATION_ONLY']);
+const HUMAN_INTRODUCTION_NO_PLAN_DISPOSITIONS = new Set(['DISCOVERABLE_ONLY', 'NONE_JUSTIFIED']);
+
 function setOf(items, key) {
   return new Set((items ?? []).map((item) => item[key]).filter(Boolean));
 }
@@ -97,6 +115,61 @@ export function deriveRequiredLensRefs(feature) {
   return [...refs].sort();
 }
 
+export function validateHumanIntroduction(feature, {
+  featureWalkthroughPlans = new Map(),
+  requireCurrentPlan = true
+} = {}) {
+  const errors = [];
+  const featureRef = feature?.featureRef ?? 'unknown feature';
+  const introduction = feature?.humanIntroduction;
+  if (!introduction || typeof introduction !== 'object' || Array.isArray(introduction)) {
+    return [`${featureRef} missing humanIntroduction`];
+  }
+
+  const extraKeys = Object.keys(introduction).filter((key) => !HUMAN_INTRODUCTION_KEYS.has(key));
+  if (extraKeys.length) errors.push(`${featureRef} humanIntroduction unsupported field ${extraKeys[0]}`);
+  if (!HUMAN_INTRODUCTION_DISPOSITIONS.includes(introduction.disposition)) {
+    errors.push(`${featureRef} humanIntroduction has unknown disposition ${introduction.disposition}`);
+  }
+  if (!HUMAN_INTRODUCTION_ROUTE_STATES.includes(introduction.routeState)) {
+    errors.push(`${featureRef} humanIntroduction has unknown routeState ${introduction.routeState}`);
+  }
+  if (typeof introduction.rationale !== 'string' || introduction.rationale.trim().length === 0) {
+    errors.push(`${featureRef} humanIntroduction requires explicit rationale`);
+  }
+  if (!Object.hasOwn(introduction, 'planRefOrNull')) {
+    errors.push(`${featureRef} humanIntroduction missing planRefOrNull`);
+  }
+
+  if (HUMAN_INTRODUCTION_NO_PLAN_DISPOSITIONS.has(introduction.disposition)) {
+    if (introduction.planRefOrNull !== null) {
+      errors.push(`${featureRef} ${introduction.disposition} humanIntroduction must not name a plan`);
+    }
+  }
+
+  if (HUMAN_INTRODUCTION_PLAN_DISPOSITIONS.has(introduction.disposition)) {
+    if (typeof introduction.planRefOrNull !== 'string' || introduction.planRefOrNull.length === 0) {
+      errors.push(`${featureRef} ${introduction.disposition} humanIntroduction requires planRefOrNull`);
+    } else {
+      const plan = featureWalkthroughPlans.get(introduction.planRefOrNull);
+      if (introduction.routeState === 'CURRENT' && requireCurrentPlan && !plan) {
+        errors.push(`${featureRef} CURRENT ${introduction.disposition} missing feature walkthrough plan ${introduction.planRefOrNull}`);
+      }
+      if (plan && plan.featureRef !== feature.featureRef) {
+        errors.push(`${featureRef} humanIntroduction plan ${introduction.planRefOrNull} belongs to ${plan.featureRef}`);
+      }
+    }
+  }
+
+  const humanVisible = (feature?.canonicalNodeRefs ?? []).some((ref) =>
+    ref.startsWith('screen.') || ref.startsWith('element.') || ref.startsWith('region.'));
+  if (humanVisible && introduction.disposition === 'NONE_JUSTIFIED') {
+    errors.push(`${featureRef} cannot use NONE_JUSTIFIED while human-visible canonical refs are registered`);
+  }
+
+  return errors;
+}
+
 export function validateFeatureRegistry(registry, bundle) {
   const errors = [];
   if (!registry?.registryRef) errors.push('feature registry missing registryRef');
@@ -106,6 +179,7 @@ export function validateFeatureRegistry(registry, bundle) {
   const lensRefs = setOf(bundle.reviewLenses?.lenses, 'lensRef');
   const sets = collectReferenceSets(bundle);
   const featureRefs = new Set();
+  const featureWalkthroughPlans = new Map((bundle.experience?.featureWalkthroughPlans ?? []).map((plan) => [plan.planRef, plan]));
 
   const referenceGroups = [
     ['stateRefs', sets.stateRefs],
@@ -127,6 +201,8 @@ export function validateFeatureRegistry(registry, bundle) {
       const value = feature[field];
       if (value === undefined || value === null || value === '' || (Array.isArray(value) && !value.length && !['localizationRefs'].includes(field))) errors.push(`${feature.featureRef ?? 'unknown feature'} missing ${field}`);
     }
+    if (!requiredFields.includes('humanIntroduction')) errors.push('feature schema must require humanIntroduction');
+    errors.push(...validateHumanIntroduction(feature, { featureWalkthroughPlans }));
     if (statuses.size && !statuses.has(feature.status)) errors.push(`${feature.featureRef} has unknown status ${feature.status}`);
     for (const [field, allowed] of referenceGroups) {
       for (const ref of feature[field] ?? []) if (!allowed.has(ref)) errors.push(`${feature.featureRef} ${field} references missing ${ref}`);
@@ -143,13 +219,26 @@ export function validateFeatureRegistry(registry, bundle) {
   };
 }
 
-export function scaffoldFeatureContract({ featureRef, purpose, platformRefs = [], canonicalNodeRefs = [] } = {}) {
+export function scaffoldFeatureContract({
+  featureRef,
+  purpose,
+  platformRefs = [],
+  canonicalNodeRefs = [],
+  humanIntroduction
+} = {}) {
   if (!featureRef || !featureRef.startsWith('feature.')) throw new Error('featureRef must start with feature.');
   if (!purpose) throw new Error('purpose is required');
+  if (humanIntroduction === undefined) throw new Error('humanIntroduction is required');
+  const shapeErrors = validateHumanIntroduction(
+    { featureRef, canonicalNodeRefs, humanIntroduction },
+    { requireCurrentPlan: false }
+  );
+  if (shapeErrors.length) throw new Error(shapeErrors[0]);
   const candidate = {
     featureRef,
     purpose,
     status: 'PROPOSED',
+    humanIntroduction: structuredClone(humanIntroduction),
     canonicalNodeRefs,
     stateRefs: [],
     actionRefs: [],
