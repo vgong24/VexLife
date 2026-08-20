@@ -1923,7 +1923,12 @@
         "action.living-journal.display-language.select",
         "action.living-journal.source.open",
         "action.living-journal.revisit.open",
-        "action.living-journal.marginalia.add-local"
+        "action.living-journal.marginalia.add-local",
+        "action.living-journal.archive.open",
+        "action.living-journal.archive.day.select",
+        "action.living-journal.archive.window.older",
+        "action.living-journal.archive.window.newer",
+        "action.living-journal.archive.return-now"
       ],
       "canonicalNodeRefs": [
         "screen.vexlife.living-journal",
@@ -1976,7 +1981,15 @@
         "living-journal.now",
         "living-journal.page-status",
         "living-journal.source-status",
-        "living-journal.original-language"
+        "living-journal.original-language",
+        "living-journal.archive.current-status",
+        "living-journal.archive.day",
+        "living-journal.archive.historical-status",
+        "living-journal.archive.newer",
+        "living-journal.archive.no-days",
+        "living-journal.archive.older",
+        "living-journal.archive.open",
+        "living-journal.archive.return-now"
       ],
       "moduleRefs": [
         "module.vexlife.browser.living-journal-controller",
@@ -1984,7 +1997,8 @@
         "module.vexlife.browser.living-journal-styles",
         "module.vexlife.core.living-journal-memory-projection",
         "module.vexlife.core.browser-living-journal-memory-bridge",
-        "module.vexlife.script.serve-browser"
+        "module.vexlife.script.serve-browser",
+        "module.vexlife.core.living-journal-memory-archive"
       ],
       "permissionRefs": [
         "permission.none"
@@ -2037,7 +2051,8 @@
         "test.living-journal.mobile-book-grammar",
         "test.living-journal.memory-projection",
         "test.living-journal.memory-bridge",
-        "test.living-journal.memory-http-app-activation"
+        "test.living-journal.memory-http-app-activation",
+        "test.living-journal.archive-browser-navigation"
       ]
     }
   ]
