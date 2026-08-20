@@ -9,7 +9,13 @@ const get = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1
 const featureRef = get('--feature-ref');
 const purpose = get('--purpose');
 const platformRefs = (get('--platforms') ?? '').split(',').map((x) => x.trim()).filter(Boolean);
-const candidate = scaffoldFeatureContract({ featureRef, purpose, platformRefs });
+const humanIntroduction = {
+  disposition: get('--intro-disposition'),
+  routeState: get('--intro-route-state'),
+  planRefOrNull: get('--intro-plan-ref') || null,
+  rationale: get('--intro-rationale')
+};
+const candidate = scaffoldFeatureContract({ featureRef, purpose, platformRefs, humanIntroduction });
 const output = get('--out');
 if (!output) {
   console.log(JSON.stringify(candidate, null, 2));
