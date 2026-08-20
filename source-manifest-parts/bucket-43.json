@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 281,
       "sha256": "6e2344723c0871ce76111d5fc298ebbbf3257a898bb7069a590a96f616184376"
+    },
+    {
+      "path": "test/living-journal-memory-archive.test.mjs",
+      "mode": "100644",
+      "bytes": 9346,
+      "sha256": "380ee882fc1cf32e0b21ed34c3ca2707093d39664283b52352260dda3f43ea67"
     }
   ]
 }
