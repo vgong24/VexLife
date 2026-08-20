@@ -4,6 +4,7 @@ export const GUIDED_ESTABLISHMENT_PLAN_REF = 'plan.vexlife.guided-establishment.
 export const GUIDED_ESTABLISHMENT_JOURNEY_REF = 'journey.vexlife.guided-local-establishment.001';
 export const GUIDED_ESTABLISHMENT_PROFILE_REF = 'experience.vexlife.newcomer-guided';
 export const GUIDED_ESTABLISHMENT_EFFECT_CLASS = 'DECLARATIVE_NO_EFFECT';
+export const FEATURE_WALKTHROUGH_EFFECT_CLASS = 'DECLARATIVE_NO_EFFECT';
 
 export const E27_AUTHORITATIVE_ROOT_CONTRACT_REF = 'contract.vexlife.e27.authoritative-root/v1';
 export const E27_REFERENCE_BASELINE_REF = 'design-baseline.vexlife.e2.7.scoped-layers-vexorg-sandbox.34f17a12-38b6-438c-b899-6d07c36f1eb0';
@@ -80,6 +81,29 @@ const GUIDED_STAGE_KEYS = new Set([
   'captureRequired',
   'recoveryClass'
 ]);
+const FEATURE_WALKTHROUGH_PLAN_KEYS = new Set([
+  'planRef',
+  'journeyRef',
+  'featureRef',
+  'sourceVersionRef',
+  'experienceProfileRef',
+  'effects',
+  'replayable',
+  'stages',
+  'truthBoundaries',
+  'supersedesPlanRefOrNull'
+]);
+const FEATURE_WALKTHROUGH_STAGE_KEYS = new Set([
+  'stageRef',
+  'sequence',
+  'purposeClass',
+  'contentStringRef',
+  'targetRefOrNull',
+  'actionRefOrNull',
+  'expectedOutcomeClass',
+  'captureRequired',
+  'recoveryClass'
+]);
 const SUPPORTED_GUIDE_PLATFORM_REFS = new Set(Object.keys(GUIDED_ESTABLISHMENT_FRONTDOOR_BINDINGS));
 
 function unknownKeys(value, allowed) {
@@ -92,6 +116,10 @@ function isSafeRelativeSourcePath(value) {
     !value.startsWith('/') &&
     !/^[a-z]:[\\/]/iu.test(value) &&
     !value.split(/[\\/]/u).includes('..');
+}
+
+function isNullableRef(value) {
+  return value === null || (typeof value === 'string' && value.length > 0);
 }
 
 export function validateAuthoritativeRootDesignContract(contract, { actionRefs = new Set() } = {}) {
@@ -279,8 +307,78 @@ function validateGuidedEstablishmentPlan(plan, { profileRefs = new Set() } = {})
   return errors;
 }
 
+export function validateFeatureWalkthroughPlan(plan, {
+  profileRefs = new Set(),
+  actionRefs = new Set(),
+  stringRefs = new Set()
+} = {}) {
+  const errors = [];
+  if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return ['feature walkthrough plan must be an object'];
+
+  const label = plan.planRef ?? 'feature walkthrough plan';
+  const extraPlanKeys = unknownKeys(plan, FEATURE_WALKTHROUGH_PLAN_KEYS);
+  if (extraPlanKeys.length) errors.push(`${label} unsupported field ${extraPlanKeys[0]}`);
+  for (const field of ['planRef', 'journeyRef', 'featureRef', 'sourceVersionRef', 'experienceProfileRef']) {
+    if (typeof plan[field] !== 'string' || !plan[field]) errors.push(`${label} missing ${field}`);
+  }
+  if (plan.effects !== false) errors.push(`${label} effects must be false`);
+  if (typeof plan.replayable !== 'boolean') errors.push(`${label} replayable must be boolean`);
+  if (profileRefs.size && !profileRefs.has(plan.experienceProfileRef)) {
+    errors.push(`${label} missing experience profile ${plan.experienceProfileRef}`);
+  }
+  if (!isNullableRef(plan.supersedesPlanRefOrNull)) errors.push(`${label} supersedesPlanRefOrNull must be null or a non-empty ref`);
+  if (plan.supersedesPlanRefOrNull === plan.planRef) errors.push(`${label} cannot supersede itself`);
+
+  if (!Array.isArray(plan.stages) || plan.stages.length === 0) {
+    errors.push(`${label} stages requires at least one stage`);
+  } else {
+    const stageRefs = new Set();
+    for (const [index, stage] of plan.stages.entries()) {
+      if (!stage || typeof stage !== 'object' || Array.isArray(stage)) {
+        errors.push(`${label} stages[${index}] must be an object`);
+        continue;
+      }
+      const extraStageKeys = unknownKeys(stage, FEATURE_WALKTHROUGH_STAGE_KEYS);
+      if (extraStageKeys.length) errors.push(`${label} stage unsupported field ${extraStageKeys[0]}`);
+      if (typeof stage.stageRef !== 'string' || !stage.stageRef) errors.push(`${label} stage missing stageRef`);
+      if (stageRefs.has(stage.stageRef)) errors.push(`${label} duplicate stageRef ${stage.stageRef}`);
+      stageRefs.add(stage.stageRef);
+      if (stage.sequence !== index) errors.push(`${label} stage sequence must be contiguous and zero-based`);
+      for (const field of ['purposeClass', 'contentStringRef', 'expectedOutcomeClass', 'recoveryClass']) {
+        if (typeof stage[field] !== 'string' || !stage[field]) errors.push(`${stage.stageRef ?? `stage[${index}]`} missing ${field}`);
+      }
+      if (stringRefs.size && stage.contentStringRef && !stringRefs.has(stage.contentStringRef)) {
+        errors.push(`${stage.stageRef ?? `stage[${index}]`} missing content string ${stage.contentStringRef}`);
+      }
+      if (!isNullableRef(stage.targetRefOrNull)) errors.push(`${stage.stageRef ?? `stage[${index}]`} targetRefOrNull must be null or a non-empty ref`);
+      if (!isNullableRef(stage.actionRefOrNull)) errors.push(`${stage.stageRef ?? `stage[${index}]`} actionRefOrNull must be null or a non-empty ref`);
+      if (actionRefs.size && stage.actionRefOrNull && !actionRefs.has(stage.actionRefOrNull)) {
+        errors.push(`${stage.stageRef ?? `stage[${index}]`} missing action ${stage.actionRefOrNull}`);
+      }
+      if (typeof stage.captureRequired !== 'boolean') errors.push(`${stage.stageRef ?? `stage[${index}]`} captureRequired must be boolean`);
+    }
+  }
+
+  if (!Array.isArray(plan.truthBoundaries) || plan.truthBoundaries.length === 0) {
+    errors.push(`${label} truthBoundaries requires at least one boundary`);
+  } else {
+    if (new Set(plan.truthBoundaries).size !== plan.truthBoundaries.length) errors.push(`${label} truthBoundaries contains duplicates`);
+    for (const [index, boundary] of plan.truthBoundaries.entries()) {
+      if (typeof boundary !== 'string' || boundary.length === 0) errors.push(`${label} truthBoundaries[${index}] must be non-empty`);
+    }
+  }
+
+  return errors;
+}
+
 function assertGuidedEstablishmentPlan(plan, options) {
   const errors = validateGuidedEstablishmentPlan(plan, options);
+  if (errors.length) throw new Error(errors[0]);
+  return plan;
+}
+
+function assertFeatureWalkthroughPlan(plan, options) {
+  const errors = validateFeatureWalkthroughPlan(plan, options);
   if (errors.length) throw new Error(errors[0]);
   return plan;
 }
@@ -294,6 +392,7 @@ export class ExperienceRegistry {
     this.gestures = new Map((source.gestureContracts ?? []).map((item) => [item.gestureRef, structuredClone(item)]));
     this.vessels = new Map((source.vessels ?? []).map((item) => [item.vesselRef, structuredClone(item)]));
     this.guidedEstablishmentPlans = new Map((source.guidedEstablishmentPlans ?? []).map((item) => [item.planRef, structuredClone(item)]));
+    this.featureWalkthroughPlans = new Map((source.featureWalkthroughPlans ?? []).map((item) => [item.planRef, structuredClone(item)]));
   }
 
   authoritativeRootDesignContract() {
@@ -305,6 +404,11 @@ export class ExperienceRegistry {
   guidedEstablishmentPlan(ref) {
     const value = this.guidedEstablishmentPlans.get(ref);
     if (!value) throw new Error(`missing guided establishment plan ${ref}`);
+    return structuredClone(value);
+  }
+  featureWalkthroughPlan(ref) {
+    const value = this.featureWalkthroughPlans.get(ref);
+    if (!value) throw new Error(`missing feature walkthrough plan ${ref}`);
     return structuredClone(value);
   }
 
@@ -365,6 +469,37 @@ export class ExperienceRegistry {
     };
     return { ...seed, semanticHash: semanticHash(seed) };
   }
+
+  buildFeatureWalkthroughProjection(planRef) {
+    const plan = this.featureWalkthroughPlan(planRef);
+    assertFeatureWalkthroughPlan(plan, { profileRefs: new Set(this.profiles.keys()) });
+    const projection = {
+      planRef: plan.planRef,
+      journeyRef: plan.journeyRef,
+      featureRef: plan.featureRef,
+      sourceVersionRef: plan.sourceVersionRef,
+      experienceProfileRef: plan.experienceProfileRef,
+      effects: false,
+      replayable: plan.replayable,
+      stages: plan.stages.map((stage) => structuredClone(stage)),
+      truthBoundaries: [...plan.truthBoundaries],
+      supersedesPlanRefOrNull: plan.supersedesPlanRefOrNull
+    };
+    return { ...projection, semanticHash: semanticHash(projection) };
+  }
+
+  buildFeatureWalkthroughReviewSeed(planRef) {
+    const plan = this.featureWalkthroughPlan(planRef);
+    assertFeatureWalkthroughPlan(plan, { profileRefs: new Set(this.profiles.keys()) });
+    const seed = {
+      featureOrJourneyRef: plan.journeyRef,
+      reviewStepRefs: plan.stages.map((stage) => stage.stageRef),
+      captureAtStepRefs: plan.stages.filter((stage) => stage.captureRequired).map((stage) => stage.stageRef),
+      sourceVersionRef: plan.sourceVersionRef,
+      effects: false
+    };
+    return { ...seed, semanticHash: semanticHash(seed) };
+  }
 }
 
 export function validateExperienceRegistry(source, { actionRefs = new Set(), componentRefs = new Set(), stringRefs = new Set() } = {}) {
@@ -395,6 +530,12 @@ export function validateExperienceRegistry(source, { actionRefs = new Set(), com
     add(plan.journeyRef, 'guided establishment journey');
     errors.push(...validateGuidedEstablishmentPlan(plan, { profileRefs }));
     for (const stage of plan.stages ?? []) add(stage.stageRef, 'guided establishment stage');
+  }
+  for (const plan of source.featureWalkthroughPlans ?? []) {
+    add(plan.planRef, 'feature walkthrough plan');
+    add(plan.journeyRef, 'feature walkthrough journey');
+    errors.push(...validateFeatureWalkthroughPlan(plan, { profileRefs, actionRefs, stringRefs }));
+    for (const stage of plan.stages ?? []) add(stage.stageRef, 'feature walkthrough stage');
   }
   return { ok: errors.length === 0, errors };
 }

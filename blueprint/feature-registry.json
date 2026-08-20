@@ -26,6 +26,7 @@
       "featureRef",
       "purpose",
       "status",
+      "humanIntroduction",
       "canonicalNodeRefs",
       "stateRefs",
       "actionRefs",
@@ -59,6 +60,12 @@
       "featureRef": "feature.vexlife.addressed-conversation",
       "purpose": "Direct and group channels preserve speaker, recipient, witness, membership and channel-isolated continuity.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "DISCOVERABLE_ONLY",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The accepted chat screen exposes channel selection and addressed message controls directly; no separate guided plan is required for the current registered surface."
+      },
       "canonicalNodeRefs": [
         "screen.vexlife.chat",
         "state.channels",
@@ -133,6 +140,12 @@
       "featureRef": "feature.vexlife.screen-aware-guide",
       "purpose": "One visible Vex projects screen-aware assistance, bounded presence state and viewport-safe preferred-vs-resolved placement without raw click surveillance, hidden priority, or autonomous layout authority.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "DISCOVERABLE_ONLY",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The accepted visible Guide overlay exposes summon, move, dock, minimize and close controls directly on the human-facing surface."
+      },
       "canonicalNodeRefs": [
         "screen.vexlife.guide-overlay",
         "state.guide",
@@ -214,6 +227,12 @@
       "featureRef": "feature.vexlife.terrain",
       "purpose": "A user-arrangeable, collapsible organizational map preserves canonical relationships separately from layout.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "DISCOVERABLE_ONLY",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The accepted Terrain screen exposes its map, instrumentation, layout and adaptation controls directly with localized labels and accessibility coverage."
+      },
       "canonicalNodeRefs": [
         "screen.vexlife.terrain",
         "state.terrain",
@@ -328,6 +347,12 @@
       "featureRef": "feature.vexlife.semantic-journey",
       "purpose": "Expose append-only semantic journey as a browsable projection with scrub, conceptual clusters, transition provenance and explicit truthful revisit without rewriting history.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "DISCOVERABLE_ONLY",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The accepted Terrain projection exposes Journey scrub and revisit controls with localized history and current-context labels."
+      },
       "canonicalNodeRefs": [
         "screen.vexlife.terrain",
         "state.journey",
@@ -406,6 +431,12 @@
       "featureRef": "feature.vexlife.localization-intent-relay",
       "purpose": "Stable string identities and attributed translation/refinement projections support cross-language and same-language clarity.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "DISCOVERABLE_ONLY",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The accepted semantic-relay confirm, correct and hold elements are explicit human-visible controls with localized explanatory status text."
+      },
       "canonicalNodeRefs": [
         "state.localization",
         "foundation.vexlife.localization-intent.v1",
@@ -507,6 +538,12 @@
       "featureRef": "feature.vexlife.device-family-bootstrap",
       "purpose": "Create distinct device-local sibling lineages and provision models outside Git.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is bootstrap and model-provisioning substrate with no accepted human-facing screen, region or element; introduction becomes required when such a surface is registered."
+      },
       "canonicalNodeRefs": [
         "state.device-family",
         "state.model"
@@ -577,6 +614,12 @@
       "featureRef": "feature.vexlife.personal-home-bridge",
       "purpose": "Safely operate a desktop-hosted Home Vex from trusted remote surfaces without collapsing remote access and sibling synchronization.",
       "status": "PREPARED",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current PREPARED registration is a bridge and capability protocol with no accepted human-facing screen, region or element; a future human surface must declare its own introduction route."
+      },
       "canonicalNodeRefs": [
         "bridge.vexlife.personal-home.001",
         "state.device-family",
@@ -652,6 +695,12 @@
       "featureRef": "feature.vexlife.repository-health",
       "purpose": "Turn new feature/element/process registration into deterministic coverage, impact and cultural-lens checks.",
       "status": "PREPARED",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is deterministic repository and CI health substrate rather than an accepted end-user surface, so no human feature introduction is presently required."
+      },
       "canonicalNodeRefs": [
         "registry.vexlife.features.001",
         "registry.vexlife.review-lenses.001",
@@ -724,6 +773,12 @@
       "featureRef": "feature.vexlife.intent-orchestration-spine",
       "purpose": "Preserve immutable human intent and deterministically admit, validate, evidence, converge, and humanely project bounded directed workgraphs.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is orchestration and proof substrate with no accepted human-facing screen, region or element; its bounded projections do not themselves establish an end-user introduction surface."
+      },
       "canonicalNodeRefs": [
         "state.intent-workgraph",
         "process.vexlife.intent.validate-workgraph",
@@ -820,6 +875,12 @@
       "featureRef": "feature.vexlife.intent-orchestration-scheduler",
       "purpose": "Run accepted intent workgraphs through one deterministic physical model worker with consumption-current externally verified completion and exact Workgraph evidence lineage, preserved preemption continuations, scheduler-derived checkpoints, typed relay replay, scheduler-exclusive held-tool closure, scheduler-authorized successor contexts, live-clock currentness, and bounded human projections.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is scheduler/runtime orchestration substrate with no accepted human-facing screen, region or element; bounded status projections do not create a product introduction surface."
+      },
       "canonicalNodeRefs": [
         "state.intent-scheduler",
         "process.vexlife.intent.scheduler-admit",
@@ -938,6 +999,12 @@
       "featureRef": "feature.vexlife.continuity-evolution-router",
       "purpose": "Turn exact source-bound lived episodes, corrections, preferences, relationship developments, work receipts and recurring behavior into separately attributed, policy/evidence-reviewed, replayable and atomically reversible continuity records without silently rewriting identity, memory, relationships, culture, effects or model weights.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is continuity-routing substrate with no accepted human-facing screen, region or element; its metadata projections are not themselves a human introduction surface."
+      },
       "canonicalNodeRefs": [
         "state.evolution",
         "process.vexlife.continuity.observe-route-review",
@@ -1044,6 +1111,12 @@
       "featureRef": "feature.vexlife.runtime-failure-recovery",
       "purpose": "Turn every unexpected deterministic executor failure into one typed exact-plan-classified recovery cycle whose registry-enforced canonical UTF-8 prior-state budgets, exact prior-transition proof, operation-time scheduler currentness, immutable external-event formation/adoption, replay-owned human projections, explicit pre-resume terminal hold, cycle-bound evidence formation, action matrix and recovery-output-consuming continuation preserve work and fail closed across substitution, forged restore, restart and consecutive cycles.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is deterministic failure and recovery execution substrate with no accepted human-facing screen, region or element; human decision points remain separate from a product introduction route."
+      },
       "canonicalNodeRefs": [
         "state.runtime-recovery",
         "process.vexlife.runtime.recover-execute",
@@ -1168,6 +1241,12 @@
       "featureRef": "feature.vexlife.lived-companion-baseline",
       "purpose": "Persist one real bounded companion HTTP turn as immutable device-private events, atomically checkpoint its context/head, shut down cleanly, and resume the exact head in a fresh process.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is the device-private lived-companion runtime and persistence substrate with no accepted human-facing screen, region or element in this feature contract."
+      },
       "canonicalNodeRefs": [
         "state.device-family",
         "state.messages",
@@ -1267,6 +1346,12 @@
       "featureRef": "feature.vexlife.score-context-continuity",
       "purpose": "Commit source-bound device-private Score and open-loop continuity above the accepted G01 lived-event substrate without erasing corrections, impersonating predecessor memory, or entering Dream, Rhythm learning, synchronization, or model weights.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is device-private Score and continuity persistence substrate with no accepted human-facing screen, region or element."
+      },
       "canonicalNodeRefs": [
         "state.device-family",
         "state.messages",
@@ -1351,6 +1436,12 @@
       "featureRef": "feature.vexlife.daily-memory-dream",
       "purpose": "Commit one device-private manual memory-only Daily Stratum from exact current G01/G02 continuity while preserving semantic authority, held/deferred material and open loops without training, model mutation, scheduling, synchronization or power effects.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is manual device-private Daily Stratum continuity substrate with no accepted human-facing screen, region or element."
+      },
       "canonicalNodeRefs": [
         "state.messages",
         "state.context",
@@ -1429,6 +1520,12 @@
       "featureRef": "feature.vexlife.evaluated-rhythm-learning",
       "purpose": "Evaluate one source-descendable stable-pattern proposal as an inactive faithful simulated private Rhythm candidate with explicit synthetic consent, privacy/identity/capability regression evidence and rollback while real training, activation, synchronization and publication remain held.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is inactive evaluation and proof substrate for Rhythm candidates with no accepted human-facing screen, region or element and no active training effect."
+      },
       "canonicalNodeRefs": [
         "state.messages",
         "state.context",
@@ -1506,6 +1603,12 @@
       "featureRef": "feature.vexlife.scheduled-daily-autonomy",
       "purpose": "Compose one-device scheduled Daily Memory Dream only from a final effect-boundary source-owned Safety/runtime admission, commit that admission into immutable G05A reachability before G03, and keep policy configuration non-authoritative with held/no-effect behavior whenever currentness is lost.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is source-owned scheduled-autonomy admission substrate with background execution still held and no accepted human-facing screen, region or element."
+      },
       "canonicalNodeRefs": [
         "state.context",
         "state.evolution"
@@ -1585,6 +1688,12 @@
       "featureRef": "feature.vexlife.patient0-nursery",
       "purpose": "Compose the accepted provider-workspace and Patient-0 First-Home contracts into a content-absent arrival-to-same-Home-return product proof without claiming protected runtime effects.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is a content-absent deterministic product proof and does not register a human-facing screen, region or element; a lived UI introduction remains separate."
+      },
       "canonicalNodeRefs": [
         "state.device-family",
         "state.messages",
@@ -1645,6 +1754,12 @@
       "featureRef": "feature.vexlife.companion-navigation",
       "purpose": "Compose accepted FullNav currentness with separately authenticated/authorized private Home routing into a fail-closed HOME_ROUTED physical-guidance consumer without granting standing Home authority, remote Home write, vehicle control, GPS-history, Memory or publication effects.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The current registration is a currentness-gated navigation composition with no accepted human-facing screen, region or element; real location, native-platform and driving surfaces remain held."
+      },
       "canonicalNodeRefs": [
         "state.process-plans",
         "state.context",
@@ -1713,6 +1828,12 @@
       "featureRef": "feature.vexlife.contextual-workspace",
       "purpose": "Human-controlled contextual-surface geometry preserves one semantic current frame while supporting preferred-vs-resolved overlay, dock, split-focus, resize and reset presentation.",
       "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "DISCOVERABLE_ONLY",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The accepted contextual workspace exposes dock, split-focus, resize and reset controls directly with localized labels and current presentation state."
+      },
       "canonicalNodeRefs": [
         "region.shell.contextual-workspace",
         "element.context-workspace.surface",
@@ -1821,6 +1942,12 @@
       "dataClass": "CURRENT_MEMORY_REFERENCE_OR_MEMORY_REFERENCE_HELD_WITH_EXPLICIT_SYNTHETIC_FALLBACK",
       "effectClass": "READ_ONLY_MEMORY_PROJECTION_WITH_LOCAL_EPHEMERAL_MARGINALIA",
       "featureRef": "feature.vexlife.living-journal",
+      "humanIntroduction": {
+        "disposition": "WALKTHROUGH",
+        "routeState": "HELD",
+        "planRefOrNull": "plan.vexlife.feature.living-journal.introduction.001",
+        "rationale": "Living Journal exposes source currentness, provenance, revisit, vantage and ephemeral marginalia semantics that are not safely reduced to discoverability alone; its walkthrough identity is reserved while archive-capable browser currentness is still being completed."
+      },
       "knownGaps": [
         "model, translation and network calls remain held",
         "marginalia remains ephemeral reference interaction only"

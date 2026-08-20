@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "b8",
+  "files": [
+    {
+      "path": "test/feature-perceptibility.test.mjs",
+      "mode": "100644",
+      "bytes": 13366,
+      "sha256": "3d8f24aba0cdb5631e0a0ea098c651515c2658f67d33f83fb16a5848d7ea26a3"
+    }
+  ]
+}
