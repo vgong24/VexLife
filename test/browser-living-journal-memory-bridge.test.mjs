@@ -1,15 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
+  BROWSER_LIVING_JOURNAL_ARCHIVE_MAX_DAYS,
+  BROWSER_LIVING_JOURNAL_ARCHIVE_MAX_PAGES,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_MAX_PAGES,
   BrowserLivingJournalMemoryBridgeError,
   browserLivingJournalMemoryFailurePayload,
   createBrowserLivingJournalMemoryBridge,
+  validateBrowserLivingJournalArchiveRequest,
   validateBrowserLivingJournalMemoryIdentity,
   validateBrowserLivingJournalMemoryRequest
 } from '../src/core/browser-living-journal-memory-bridge.mjs';
 import { projectLivingJournalMemory } from '../src/core/living-journal-memory-projection.mjs';
+import { projectLivingJournalMemoryArchive } from '../src/core/living-journal-memory-archive.mjs';
 import {
   commitDailyMemoryDream,
   loadDailyMemoryDreamState
@@ -183,6 +188,14 @@ test('Browser Living Journal Memory bridge maps source failures to content-safe 
   assert.equal(unknownPayload.failureCode, 'LIVING_JOURNAL_MEMORY_READ_FAILED');
   assert.equal(unknownPayload.message, 'Living Journal Memory read failed safely');
   assert.equal(JSON.stringify(unknownPayload).includes('internal secret detail'), false);
+});
+
+test('Browser Living Journal archive bridge admits only bounded historical read fields and returns the exact accepted archive projection', () => {
+  const fixture=createDailyMemoryDreamFixture('browser-lj-archive-bridge');const identity=identityFor(fixture);const committed=commitDailyMemoryDream(commitInput(fixture));const bridge=createBrowserLivingJournalMemoryBridge({identity});
+  assert.equal(BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,'/api/v1/living-journal/archive');assert.equal(BROWSER_LIVING_JOURNAL_ARCHIVE_MAX_DAYS,30);assert.equal(BROWSER_LIVING_JOURNAL_ARCHIVE_MAX_PAGES,24);
+  assert.deepEqual(validateBrowserLivingJournalArchiveRequest({threadRef:fixture.ids.threadRef,maxDays:7,dayOffset:0,maxPages:8,selectedDailyStratumSha256:committed.stratum.dailyStratumSha256}),{threadRef:fixture.ids.threadRef,maxDays:7,dayOffset:0,maxPages:8,selectedDayRef:null,selectedDailyStratumSha256:committed.stratum.dailyStratumSha256});
+  for(const injected of [{home:fixture.ids.home},{deviceRef:fixture.ids.deviceRef},{model:'model.injected'},{rawSourceText:'private'}])expectBridgeCode(()=>validateBrowserLivingJournalArchiveRequest({threadRef:fixture.ids.threadRef,...injected}),'LIVING_JOURNAL_ARCHIVE_REQUEST_NOT_ADMITTED');
+  const result=bridge.readArchive({threadRef:fixture.ids.threadRef,maxDays:7,maxPages:8,selectedDailyStratumSha256:committed.stratum.dailyStratumSha256});const canonical=projectLivingJournalMemoryArchive({...fixture.ids,maxDays:7,maxPages:8,selectedDailyStratumSha256:committed.stratum.dailyStratumSha256});assert.deepEqual(result,canonical);assert.equal(result.selectedDay.temporalTruthClass,'COMMITTED_MEMORY_AT_DAY');assert.equal(result.selectedDay.currentNowEvaluated,false);assert.equal(result.rawConversationContentIncluded,false);
 });
 
 // [VXG RealForever]

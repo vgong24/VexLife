@@ -150,4 +150,12 @@ html[data-theme="light"] #view-living-journal{color-scheme:light}
   .living-journal-spread{scroll-behavior:auto}
   .living-journal-page{transition:none!important;animation:none!important}
 }
+.living-journal-archive-controls{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+.living-journal-archive-controls label{display:flex;align-items:center;gap:7px;color:var(--muted);font:700 9px/1.2 var(--mono)}
+.living-journal-archive-controls select{min-width:170px}
+.living-journal-temporal-status{margin-left:auto;min-width:0;color:var(--muted);font:700 10px/1.3 var(--mono);overflow-wrap:anywhere}
+#view-living-journal[data-data-mode="ARCHIVE"] .living-journal-page{background:color-mix(in srgb,var(--raised) 72%,var(--surface))}
+#view-living-journal[data-data-mode="ARCHIVE"] .living-journal-memory-summary[data-current-now-evaluated="false"]{border-top-style:dashed}
+@media(max-width:760px){.living-journal-archive-controls{display:grid;grid-template-columns:1fr 1fr}.living-journal-archive-controls label,.living-journal-temporal-status{grid-column:1/-1}.living-journal-archive-controls select{width:100%;min-width:0}.living-journal-temporal-status{margin-left:0}.living-journal-archive-controls button{width:100%}}
+
 /* [VXG RealForever] */
