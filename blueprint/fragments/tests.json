@@ -1136,6 +1136,10 @@
     "brief": "Same-origin Living Journal activation resolves canonical Home identity server-side, reads bounded real Memory on open and fails closed without Memory/Home/model/network/publication effects."
   },
   {
+    "testRef": "test.living-journal.memory-archive",
+    "brief": "Committed-day archive windows verified G03 history, projects exact historical G02 summaries without raw conversation bodies, keeps COMMITTED_AT_DAY distinct from current-now, and fails closed on broken or ambiguous lineage."
+  },
+  {
     "testRef": "test.globalization.semantic-relay.human-visible",
     "brief": "Browser conversation exposes accepted semantic-relay language, projection, runtime, drift and human confirmation state without rewriting source content or exposing hidden reasoning."
   }
