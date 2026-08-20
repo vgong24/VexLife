@@ -16,15 +16,16 @@ export async function loadBrowserBundle(root = '../../') {
     }
     return output;
   }
-  const [blueprint, experience, designTokens, en, zh, ja] = await Promise.all([
+  const [blueprint, experience, featureRegistry, designTokens, en, zh, ja] = await Promise.all([
     loadComposedBlueprint(),
     fetchJson('blueprint/experience-registry.json'),
+    fetchJson('blueprint/feature-registry.json'),
     fetchJson('blueprint/design-tokens.json'),
     fetchJson('blueprint/strings/en.json'),
     fetchJson('blueprint/strings/zh.json'),
     fetchJson('blueprint/strings/ja.json')
   ]);
-  return { blueprint, experience, designTokens, catalogs: { en, zh, ja } };
+  return { blueprint, experience, featureRegistry, designTokens, catalogs: { en, zh, ja } };
 }
 
 // [VXG RealForever]
