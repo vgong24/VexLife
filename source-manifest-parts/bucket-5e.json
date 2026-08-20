@@ -5,8 +5,8 @@
     {
       "path": "blueprint/fragments/actions.json",
       "mode": "100644",
-      "bytes": 20007,
-      "sha256": "01fe5ed76fdf4860b3ddb6b2660a4f8ecdc3e1ff889d2f94e34a71015d465114"
+      "bytes": 21238,
+      "sha256": "b5468181826ebd91d7843b7bb025f55a46fc226128977e35c5d4c9288ef4f424"
     },
     {
       "path": "scripts/browser-integration.mjs",

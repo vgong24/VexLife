@@ -126,6 +126,111 @@
           ]
         },
         {
+          "elementRef": "element.living-journal.archive.open",
+          "conceptRef": "concept.element.living-journal.archive.open",
+          "interactionRef": "interaction.living-journal.archive.open",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.archive.open",
+          "kind": "ARCHIVE_OPEN",
+          "labelStringRef": "living-journal.archive.open",
+          "actionRef": "action.living-journal.archive.open",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.archive.open"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.archive.day.select",
+          "conceptRef": "concept.element.living-journal.archive.day.select",
+          "interactionRef": "interaction.living-journal.archive.day.select",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.archive.day.select",
+          "kind": "ARCHIVE_DAY_SELECTOR",
+          "labelStringRef": "living-journal.archive.day",
+          "actionRef": "action.living-journal.archive.day.select",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "combobox",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.archive.day.select"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.archive.window.older",
+          "conceptRef": "concept.element.living-journal.archive.window.older",
+          "interactionRef": "interaction.living-journal.archive.window.older",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.archive.window.older",
+          "kind": "ARCHIVE_WINDOW_OLDER",
+          "labelStringRef": "living-journal.archive.older",
+          "actionRef": "action.living-journal.archive.window.older",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.archive.window.older"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.archive.window.newer",
+          "conceptRef": "concept.element.living-journal.archive.window.newer",
+          "interactionRef": "interaction.living-journal.archive.window.newer",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.archive.window.newer",
+          "kind": "ARCHIVE_WINDOW_NEWER",
+          "labelStringRef": "living-journal.archive.newer",
+          "actionRef": "action.living-journal.archive.window.newer",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.archive.window.newer"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.archive.return-now",
+          "conceptRef": "concept.element.living-journal.archive.return-now",
+          "interactionRef": "interaction.living-journal.archive.return-now",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.living-journal.archive.return-now",
+          "kind": "ARCHIVE_RETURN_NOW",
+          "labelStringRef": "living-journal.archive.return-now",
+          "actionRef": "action.living-journal.archive.return-now",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.living-journal.archive.return-now"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
+        },
+        {
           "elementRef": "element.living-journal.source.open",
           "conceptRef": "concept.element.living-journal.source.open",
           "interactionRef": "interaction.living-journal.source.open",
@@ -201,7 +306,8 @@
     "test.living-journal.source-and-revisit",
     "test.living-journal.marginalia-nonmutation",
     "test.living-journal.accessibility",
-    "test.living-journal.mobile-book-grammar"
+    "test.living-journal.mobile-book-grammar",
+    "test.living-journal.archive-browser-navigation"
   ],
   "conceptRef": "concept.screen.vexlife.living-journal",
   "navigationNodeRef": "nav.screen.vexlife.living-journal"
