@@ -59,7 +59,9 @@
           "-m", "{MODEL_PATH}",
           "--mmproj", "{PROJECTOR_PATH}",
           "--host", "127.0.0.1",
-          "--port", "{ENDPOINT_PORT}"
+          "--port", "{ENDPOINT_PORT}",
+          "--n-predict", "256",
+          "--reasoning-budget", "128"
         ]
       },
       "modelArtifacts": [
