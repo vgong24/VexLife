@@ -26,15 +26,23 @@ test('cultural review lenses and registered features validate as part of the uni
 });
 
 test('feature scaffold makes architectural obligations visible instead of silently omitting them', () => {
+  const humanIntroduction = {
+    disposition: 'DISCOVERABLE_ONLY',
+    routeState: 'CURRENT',
+    planRefOrNull: null,
+    rationale: 'Synthetic scaffold proof declares its human-introduction decision explicitly.'
+  };
   const candidate = scaffoldFeatureContract({
     featureRef: 'feature.vexlife.synthetic-proof',
     purpose: 'Prove the scaffold exposes the full foundation contract.',
-    platformRefs: ['platform.browser']
+    platformRefs: ['platform.browser'],
+    humanIntroduction
   });
   assert.equal(candidate.status, 'PROPOSED');
   assert.ok(candidate.reviewLensRefs.includes('lens.vexlife.intent-and-placement'));
   assert.ok(candidate.reviewLensRefs.includes('lens.vexlife.identity-lattice'));
   assert.equal(candidate.rollbackRouteRef, 'REQUIRED');
+  assert.deepEqual(candidate.humanIntroduction, humanIntroduction);
   assert.deepEqual(candidate.stateRefs, []);
 });
 
