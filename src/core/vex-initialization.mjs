@@ -17,6 +17,48 @@ function requireString(value, label) { if (typeof value !== 'string' || value.le
 function requireSha(value, label) { if (typeof value !== 'string' || !SHA256.test(value)) throw new Error(`${label} must be lowercase SHA-256`); }
 function requireHttps(value, label) { const parsed = new URL(value); if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error(`${label} must be credential-free HTTPS`); }
 
+function normalizeProcessIdentityText(value) {
+  return String(value ?? '').replaceAll('\\', '/').toLowerCase();
+}
+
+function tokenizeProcessCommandLine(value) {
+  const text = String(value ?? '');
+  const tokens = [];
+  let current = '';
+  let inQuotes = false;
+  for (const ch of text) {
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (/\s/u.test(ch) && !inQuotes) {
+      if (current) { tokens.push(current); current = ''; }
+      continue;
+    }
+    current += ch;
+  }
+  if (inQuotes) return null;
+  if (current) tokens.push(current);
+  return tokens;
+}
+
+export function runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath, expectedArguments = [] }) {
+  if (!processEvidence || typeof processEvidence !== 'object' || Array.isArray(processEvidence)) return false;
+  const name = String(processEvidence.name ?? '').toLowerCase();
+  if (name !== 'llama-server.exe') return false;
+  const actualExecutable = normalizeProcessIdentityText(processEvidence.executablePath);
+  const expectedExecutable = normalizeProcessIdentityText(expectedExecutablePath);
+  if (!actualExecutable || !expectedExecutable || actualExecutable !== expectedExecutable) return false;
+  const tokens = tokenizeProcessCommandLine(processEvidence.commandLine);
+  if (!tokens || tokens.length !== expectedArguments.length + 1) return false;
+  const actualTokens = tokens.map(normalizeProcessIdentityText);
+  if (actualTokens[0] !== expectedExecutable) return false;
+  for (let index = 0; index < expectedArguments.length; index += 1) {
+    if (actualTokens[index + 1] !== normalizeProcessIdentityText(expectedArguments[index])) return false;
+  }
+  return true;
+}
+
 export function validateOperationalProfileRegistry(registry) {
   const errors = [];
   try {

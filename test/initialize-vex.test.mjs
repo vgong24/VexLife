@@ -12,6 +12,7 @@ import {
   buildRuntimeArguments,
   buildVexInitializationPlan,
   classifyHomeState,
+  runtimeProcessEvidenceMatches,
   selectOperationalProfile,
   validateOperationalProfileRegistry
 } from '../src/core/vex-initialization.mjs';
@@ -48,6 +49,26 @@ test('Home classification distinguishes fresh, preserved and migration-required 
   assert.equal(classifyHomeState({ homeManifestPresent: false, homeDirectoryPresent: false, homeDirectoryNonEmpty: false }), 'FRESH_HOME_ALLOWED');
   assert.equal(classifyHomeState({ homeManifestPresent: true, homeDirectoryPresent: true, homeDirectoryNonEmpty: true }), 'EXISTING_HOME_PRESERVED');
   assert.equal(classifyHomeState({ homeManifestPresent: false, homeDirectoryPresent: true, homeDirectoryNonEmpty: true }), 'HOME_REQUIRES_MIGRATION_PLAN');
+});
+
+test('runtime reuse requires exact executable and exact bound argument tokens across Windows separator forms', () => {
+  const expectedExecutablePath = 'C:\\Vex Home\\runtime\\llama-cpp-b10107\\llama-server.exe';
+  const modelPath = 'C:\\Vex Home\\models\\model.gguf';
+  const projectorPath = 'C:\\Vex Home\\models\\mmproj.gguf';
+  const expectedArguments = buildRuntimeArguments(profile, { modelPath, projectorPath });
+  const processEvidence = {
+    name: 'llama-server.exe',
+    executablePath: expectedExecutablePath,
+    commandLine: '"C:/Vex Home/runtime/llama-cpp-b10107/llama-server.exe" -m "C:/Vex Home/models/model.gguf" --mmproj "C:/Vex Home/models/mmproj.gguf" --host 127.0.0.1 --port 18080 --n-predict 256 --reasoning-budget 128'
+  };
+  assert.equal(runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath, expectedArguments }), true);
+  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: { ...processEvidence, name: 'node.exe' }, expectedExecutablePath, expectedArguments }), false);
+  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: { ...processEvidence, executablePath: 'C:\\Other\\llama-server.exe' }, expectedExecutablePath, expectedArguments }), false);
+  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: { ...processEvidence, commandLine: processEvidence.commandLine.replace('model.gguf"', 'other.gguf"') }, expectedExecutablePath, expectedArguments }), false);
+  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: { ...processEvidence, commandLine: processEvidence.commandLine.replace('--host 127.0.0.1', '--host 0.0.0.0') }, expectedExecutablePath, expectedArguments }), false);
+  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: { ...processEvidence, commandLine: processEvidence.commandLine.replace('model.gguf"', 'model.gguf.evil"') }, expectedExecutablePath, expectedArguments }), false);
+  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: { ...processEvidence, commandLine: `${processEvidence.commandLine} --host 0.0.0.0` }, expectedExecutablePath, expectedArguments }), false);
+  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: { ...processEvidence, commandLine: processEvidence.commandLine.replace('--reasoning-budget 128', '--reasoning-budget 256') }, expectedExecutablePath, expectedArguments }), false);
 });
 
 test('runtime arguments and browser binding stay exact, bounded and loopback-bound', () => {
@@ -99,6 +120,11 @@ test('Windows setup and start surfaces require a qualified model binding before 
   assert.equal(/Expected SHA-256 checksum/iu.test(setup), false);
   assert.match(cmdText, /start-vexlife\.ps1/u);
   assert.equal(cmdText.includes('scripts\\bootstrap.mjs'), false);
+  assert.match(setup, /serverScriptIdentity/u);
+  assert.match(setup, /commandLineIdentity/u);
+  assert.match(start, /serverScriptIdentity/u);
+  assert.match(start, /commandLineIdentity/u);
+  assert.match(start, /homeIdentity/u);
 });
 
 test('candidate launcher authority remains an internal qualification-only environment route', () => {

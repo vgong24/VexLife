@@ -11,8 +11,8 @@
     {
       "path": "test/initialize-vex.test.mjs",
       "mode": "100644",
-      "bytes": 9000,
-      "sha256": "8832cf0b45209cb9b41c88712385413a805156d0254866e15ba00ae956a560e7"
+      "bytes": 11609,
+      "sha256": "01838a0c96e6270be6c19df1e1d201a137cd9892093df95845d8156359bcd4c3"
     }
   ]
 }

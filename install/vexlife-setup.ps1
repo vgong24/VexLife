@@ -112,9 +112,13 @@ function Get-OwnedBrowserServer([string]$ReceiptPath, [string]$RepoPath, [string
   $serverScript = [System.IO.Path]::GetFullPath((Join-Path $RepoPath "scripts\serve-browser.mjs"))
   $commandLine = [string]$process.CommandLine
   $processName = [string]$process.Name
+  $serverScriptIdentity = $serverScript.Replace('/', '\')
+  $commandLineIdentity = $commandLine.Replace('/', '\')
+  $commandLineTokens = @([regex]::Matches($commandLineIdentity, '"[^"]*"|\S+') | ForEach-Object { $_.Value.Trim('"') })
+  $serverScriptMatched = ($commandLineTokens.Count -ge 2 -and [StringComparer]::OrdinalIgnoreCase.Equals([string]$commandLineTokens[1], $serverScriptIdentity))
   if (($processName -ne "node.exe" -and $processName -ne "node") -or
       [string]::IsNullOrWhiteSpace($commandLine) -or
-      $commandLine.IndexOf($serverScript, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
+      -not $serverScriptMatched) {
     return $null
   }
   return [ordered]@{ pid = $ownedPid; process = $process }

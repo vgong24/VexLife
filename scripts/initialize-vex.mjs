@@ -13,6 +13,7 @@ import {
   buildRuntimeArguments,
   buildVexInitializationPlan,
   classifyHomeState,
+  runtimeProcessEvidenceMatches,
   selectOperationalProfile,
   validateOperationalProfileRegistry
 } from '../src/core/vex-initialization.mjs';
@@ -145,13 +146,25 @@ function pidAlive(pid) {
   if (!Number.isInteger(pid) || pid <= 0) return false;
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
-async function existingRuntimeReuse(profile, receiptPath) {
+function windowsProcessEvidence(pid) {
+  if (process.platform !== 'win32' || !Number.isInteger(pid) || pid <= 0) return null;
+  const command = `$p=Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}" -ErrorAction SilentlyContinue; if($null -eq $p){exit 3}; [ordered]@{name=[string]$p.Name;executablePath=[string]$p.ExecutablePath;commandLine=[string]$p.CommandLine}|ConvertTo-Json -Compress`;
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], { encoding: 'utf8', windowsHide: true });
+  if (result.error || result.status !== 0 || !String(result.stdout ?? '').trim()) return null;
+  try { return JSON.parse(String(result.stdout).trim()); } catch { return null; }
+}
+async function existingRuntimeReuse(profile, receiptPath, { executable, modelPath, projectorPath }) {
   if (!fs.existsSync(receiptPath)) return null;
   try {
     const prior = loadJson(receiptPath);
-    if (prior.profileRef !== profile.profileRef || prior.endpoint?.origin !== profile.endpoint.origin || !pidAlive(prior.runtime?.pid)) return null;
+    const pid = Number(prior.runtime?.pid);
+    if (prior.profileRef !== profile.profileRef || prior.endpoint?.origin !== profile.endpoint.origin || !pidAlive(pid)) return null;
+    const processEvidence = windowsProcessEvidence(pid);
+    const expectedArguments = buildRuntimeArguments(profile, { modelPath, projectorPath });
+    if (!runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath: executable, expectedArguments })) return null;
+    if (await sha256File(executable) !== profile.runtime.executableSha256) return null;
     if (!await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) return null;
-    return { pid: prior.runtime.pid, reusedReceiptRef: prior.receiptRef ?? null };
+    return { pid, reusedReceiptRef: prior.receiptRef ?? null };
   } catch { return null; }
 }
 async function waitForRuntime(profile, pid) {
@@ -261,7 +274,11 @@ try {
 
   let runtimePid;
   let runtimeDisposition;
-  const existing = await existingRuntimeReuse(profile, runtimeReceiptPath);
+  const existing = await existingRuntimeReuse(profile, runtimeReceiptPath, {
+    executable: materialization.executable,
+    modelPath,
+    projectorPath
+  });
   if (existing) {
     runtimePid = existing.pid;
     runtimeDisposition = 'REUSED_QUALIFIED_BOUND_RUNTIME';

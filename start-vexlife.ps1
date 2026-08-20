@@ -136,11 +136,22 @@ function Stop-ExactQualifiedRuntime([string]$HomeRoot) {
   if ($null -eq $process) { return [ordered]@{ disposition = "ALREADY_STOPPED"; pid = $runtimePid } }
   $commandLine = [string]$process.CommandLine
   $processName = [string]$process.Name
+  $commandLineIdentity = $commandLine.Replace('/', '\')
+  $homeIdentity = $HomeRoot.Replace('/', '\').TrimEnd('\')
+  $commandLineTokens = @([regex]::Matches($commandLineIdentity, '"[^"]*"|\S+') | ForEach-Object { $_.Value.Trim('"') })
+  $homePrefix = $homeIdentity + '\'
+  $homeMatched = @($commandLineTokens | Where-Object { ([string]$_).StartsWith($homePrefix, [System.StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
+  $hostMatched = $false
+  $portMatched = $false
+  for ($index = 0; $index -lt ($commandLineTokens.Count - 1); $index++) {
+    if ([string]$commandLineTokens[$index] -eq '--host' -and [string]$commandLineTokens[$index + 1] -eq '127.0.0.1') { $hostMatched = $true }
+    if ([string]$commandLineTokens[$index] -eq '--port' -and [string]$commandLineTokens[$index + 1] -eq '18080') { $portMatched = $true }
+  }
   if (($processName -ne "llama-server.exe") -or
       [string]::IsNullOrWhiteSpace($commandLine) -or
-      $commandLine.IndexOf($HomeRoot, [System.StringComparison]::OrdinalIgnoreCase) -lt 0 -or
-      $commandLine.IndexOf("--host 127.0.0.1", [System.StringComparison]::OrdinalIgnoreCase) -lt 0 -or
-      $commandLine.IndexOf("--port 18080", [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
+      -not $homeMatched -or
+      -not $hostMatched -or
+      -not $portMatched) {
     throw "Configured runtime PID is active but is not the exact qualified VexLife loopback runtime; refusing to stop it"
   }
   Stop-Process -Id $runtimePid -ErrorAction Stop
@@ -183,9 +194,13 @@ function Invoke-UninstallPreserveContinuity {
       $serverScript = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "scripts\serve-browser.mjs"))
       $commandLine = [string]$process.CommandLine
       $processName = [string]$process.Name
+      $serverScriptIdentity = $serverScript.Replace('/', '\')
+      $commandLineIdentity = $commandLine.Replace('/', '\')
+      $commandLineTokens = @([regex]::Matches($commandLineIdentity, '"[^"]*"|\S+') | ForEach-Object { $_.Value.Trim('"') })
+      $serverScriptMatched = ($commandLineTokens.Count -ge 2 -and [StringComparer]::OrdinalIgnoreCase.Equals([string]$commandLineTokens[1], $serverScriptIdentity))
       if (($processName -ne "node.exe" -and $processName -ne "node") -or
           [string]::IsNullOrWhiteSpace($commandLine) -or
-          $commandLine.IndexOf($serverScript, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
+          -not $serverScriptMatched) {
         throw "Install receipt PID is active but is not the exact Frontdoor-owned VexLife browser process; refusing to stop it"
       }
       Stop-Process -Id $serverPid -ErrorAction Stop

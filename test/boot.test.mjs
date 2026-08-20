@@ -70,7 +70,13 @@ test('W6 uninstall-preserve is bounded to exact Frontdoor process and setup-owne
   assert.match(script, /machine\.vexHome\.path/u);
   assert.match(script, /machine\.repo\.root/u);
   assert.match(script, /Get-CimInstance Win32_Process/u);
-  assert.match(script, /commandLine\.IndexOf\(\$serverScript/u);
+  for (const required of [
+    "$serverScriptIdentity = $serverScript.Replace('/', '\\')",
+    "$commandLineIdentity = $commandLine.Replace('/', '\\')",
+    '$commandLineTokens = @([regex]::Matches',
+    '$serverScriptMatched = ($commandLineTokens.Count -ge 2',
+    '[StringComparer]::OrdinalIgnoreCase.Equals([string]$commandLineTokens[1], $serverScriptIdentity)'
+  ]) assert.ok(script.includes(required), `missing exact Frontdoor browser ownership boundary: ${required}`);
   assert.match(script, /Stop-Process -Id \$serverPid/u);
   assert.match(script, /runtime\/serve-browser\.log/u);
   assert.match(script, /runtime\/serve-browser\.err\.log/u);
