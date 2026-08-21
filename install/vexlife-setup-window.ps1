@@ -16,6 +16,7 @@ $ErrorActionPreference = "Stop"
 $script:BackendProcess = $null
 $script:Timer = $null
 $script:TempRoot = $null
+$script:TerminalExitCode = 0
 
 function ConvertTo-QuotedProcessArgument([string]$Value) {
   if ([string]$Value -match '"') { throw "Process argument contains an unsupported quote" }
@@ -233,6 +234,7 @@ $continueButton.Add_Click({
     $env:VEXLIFE_CANDIDATE_PROFILE_REF = ""
     $env:VEXLIFE_CANDIDATE_AUTHORITY_REF = ""
     $env:VEXLIFE_SETUP_RUNTIME_CONSENT = ""
+    $script:TerminalExitCode = 1
     try {
       $script:BackendProcess = Start-Process -FilePath "powershell.exe" -ArgumentList $argumentLine `
         -RedirectStandardInput $stdinPath -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath `
@@ -258,7 +260,8 @@ $continueButton.Add_Click({
       $script:BackendProcess.Refresh()
       if ($script:BackendProcess.HasExited) {
         $script:Timer.Stop()
-        $exitCode = $script:BackendProcess.ExitCode
+        $exitCode = [int]$script:BackendProcess.ExitCode
+        $script:TerminalExitCode = $exitCode
         if ($exitCode -eq 0) {
           $statusText.Text = "Setup finished safely. If qualification completed, Vex is opening in your browser."
         } else {
@@ -271,6 +274,7 @@ $continueButton.Add_Click({
     })
     $script:Timer.Start()
   } catch {
+    $script:TerminalExitCode = 1
     $statusText.Text = "Setup could not start: " + $_.Exception.Message
     $continueButton.IsEnabled = $true
     $cancelButton.IsEnabled = $true
@@ -278,6 +282,6 @@ $continueButton.Add_Click({
 })
 
 [void]$window.ShowDialog()
-exit 0
+exit $script:TerminalExitCode
 
 # [VXG RealForever]
