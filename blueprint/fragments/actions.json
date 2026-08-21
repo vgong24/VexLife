@@ -918,5 +918,60 @@
     "outputStateRefs": [
       "state.messages"
     ]
+  },
+  {
+    "actionRef": "action.living-journal.walkthrough.show",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {},
+    "outputStateRefs": [
+      "state.guide",
+      "state.navigation",
+      "state.journey"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.walkthrough.later",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {},
+    "outputStateRefs": [
+      "state.guide",
+      "state.navigation",
+      "state.journey"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.walkthrough.suppress",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {},
+    "outputStateRefs": [
+      "state.guide",
+      "state.navigation",
+      "state.journey"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.walkthrough.replay",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {},
+    "outputStateRefs": [
+      "state.guide",
+      "state.navigation",
+      "state.journey"
+    ],
+    "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.living-journal.walkthrough.next",
+    "effectClass": "READ_ONLY",
+    "inputSchema": {},
+    "outputStateRefs": [
+      "state.guide",
+      "state.navigation",
+      "state.journey"
+    ],
+    "permissionRef": "permission.none"
   }
 ]

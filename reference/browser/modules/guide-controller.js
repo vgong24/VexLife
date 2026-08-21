@@ -171,7 +171,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     if (!contract || contract.kind !== 'ELEMENT') return { ...base, reason: 'CANONICAL_TARGET_MISSING' };
     if (!contract.actionRef) return { ...base, reason: 'CANONICAL_ACTION_MISSING' };
     if (contract.screenRef !== frame.screenRef) return { ...base, reason: 'TARGET_OUTSIDE_CURRENT_FRAME' };
-    if (contract.permissionRef) return { ...base, reason: 'PERMISSION_NOT_ADMITTED_BY_GUIDE' };
+    if (contract.permissionRef && contract.permissionRef !== 'permission.none') return { ...base, reason: 'PERMISSION_NOT_ADMITTED_BY_GUIDE' };
     const target = $(`[data-node-ref="${CSS.escape(targetNodeRef)}"]`);
     if (!target) return { ...base, reason: 'RENDERED_TARGET_MISSING' };
     if (target.closest('[hidden], [aria-hidden="true"]')) return { ...base, reason: 'RENDERED_TARGET_HIDDEN' };

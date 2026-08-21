@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import {
   scaffoldFeatureContract,
@@ -66,7 +67,10 @@ function featurePlan({
 
 function withFeaturePlan(plan = featurePlan()) {
   const source = structuredClone(bundle.experience);
-  source.featureWalkthroughPlans = [plan];
+  source.featureWalkthroughPlans = [
+    plan,
+    ...(source.featureWalkthroughPlans ?? []).filter((existing) => existing.planRef !== plan.planRef)
+  ];
   return source;
 }
 
@@ -160,16 +164,17 @@ test('FPA-04 CURRENT WALKTHROUGH requires a resolving feature walkthrough plan f
   assert.ok(result.errors.some((error) => error.includes('belongs to feature.vexlife.terrain')));
 });
 
-test('FPA-05 HELD WALKTHROUGH reserves identity without pretending the route is current', () => {
+test('FPA-05 Living Journal CURRENT walkthrough resolves the concrete Patient Zero plan without pretending lived completion', () => {
   const livingJournal = featureByRef(bundle.featureRegistry, 'feature.vexlife.living-journal');
-  assert.deepEqual(livingJournal.humanIntroduction, {
-    disposition: 'WALKTHROUGH',
-    routeState: 'HELD',
-    planRefOrNull: 'plan.vexlife.feature.living-journal.introduction.001',
-    rationale: livingJournal.humanIntroduction.rationale
-  });
-  assert.ok(livingJournal.humanIntroduction.rationale.length > 0);
-  assert.equal(validateFeatureOnly(bundle.featureRegistry).ok, true);
+  assert.equal(livingJournal.humanIntroduction.disposition, 'WALKTHROUGH');
+  assert.equal(livingJournal.humanIntroduction.routeState, 'CURRENT');
+  assert.equal(livingJournal.humanIntroduction.planRefOrNull, 'plan.vexlife.feature.living-journal.introduction.001');
+  const plan = bundle.experience.featureWalkthroughPlans.find((candidate) => candidate.planRef === livingJournal.humanIntroduction.planRefOrNull);
+  assert.ok(plan); assert.equal(plan.featureRef, livingJournal.featureRef); assert.equal(plan.effects, false); assert.equal(plan.replayable, true);
+  assert.deepEqual(plan.stages.map((stage) => stage.purposeClass), ['WHY','OPEN','CURRENTNESS','READ_AND_VANTAGE','SOURCE_PROVENANCE','REVISIT','EPHEMERAL_MARGINALIA','BOUNDARIES','COMPLETE']);
+  const experienceResult = validateExperienceOnly(bundle.experience); assert.equal(experienceResult.ok, true, experienceResult.errors.join('\n'));
+  const featureResult = validateFeatureOnly(bundle.featureRegistry); assert.equal(featureResult.ok, true, featureResult.errors.join('\n'));
+  const seed = new ExperienceRegistry(bundle.experience).buildFeatureWalkthroughReviewSeed(plan.planRef); assert.equal(seed.sourceVersionRef, plan.sourceVersionRef); assert.equal(seed.effects, false);
 });
 
 test('FPA-06 FeatureWalkthroughPlan projection is declarative and creates no lived Journey completion', () => {
@@ -294,10 +299,14 @@ test('FPA-12 feature scaffolding requires an explicit introduction decision and 
   assert.equal(candidate.humanIntroduction.planRefOrNull, null);
 });
 
-test('FPA-13 full blueprint remains valid with explicit introduction migration and no concrete feature plan materialized', () => {
-  assert.equal(Object.hasOwn(bundle.experience, 'featureWalkthroughPlans'), false);
-  const result = validateBlueprint(bundle);
-  assert.equal(result.ok, true, result.errors.join('\n'));
+test('FPA-13 Stage D exact authored paths map to the exact claimed Source Manifest v3 buckets', () => {
+  const authored = ["blueprint/feature-registry.json","blueprint/experience-registry.json","blueprint/fragments/actions.json","blueprint/fragments/screens/living-journal.json","blueprint/strings/en.json","blueprint/strings/ja.json","blueprint/strings/zh.json","reference/browser/index.html","reference/browser/app.js","reference/browser/modules/guide-controller.js","reference/browser/integration/feature-perceptibility-suite.js","test/feature-perceptibility.test.mjs"];
+  const expectedBuckets = ["source-manifest-parts/bucket-c1.json","source-manifest-parts/bucket-8b.json","source-manifest-parts/bucket-5e.json","source-manifest-parts/bucket-df.json","source-manifest-parts/bucket-cb.json","source-manifest-parts/bucket-6e.json","source-manifest-parts/bucket-53.json","source-manifest-parts/bucket-9d.json","source-manifest-parts/bucket-56.json","source-manifest-parts/bucket-bc.json","source-manifest-parts/bucket-91.json","source-manifest-parts/bucket-b8.json"];
+  const observed = authored.map((p) => 'source-manifest-parts/bucket-' + createHash('sha256').update(Buffer.from(p)).digest('hex').slice(0,2) + '.json');
+  assert.deepEqual(observed, expectedBuckets);
+  assert.equal(new Set(observed).size, observed.length);
+  assert.equal(observed.includes('SOURCE-MANIFEST.json'), false);
 });
+
 
 // [VXG RealForever]
