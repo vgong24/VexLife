@@ -5,8 +5,8 @@
     {
       "path": "install/vexlife-setup-window.ps1",
       "mode": "100644",
-      "bytes": 11763,
-      "sha256": "b84c405cdc52b416f5aa961499e46e987bc5097354ac2a9bdcccd45745eba035"
+      "bytes": 11931,
+      "sha256": "68a42ab45714e5b628754cc143deeef04f75ebbd575615d127128f8f0b332546"
     },
     {
       "path": "src/core/scheduler-runtime-trust.mjs",
