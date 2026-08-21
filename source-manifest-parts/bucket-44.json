@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 26712,
       "sha256": "968cd63cd739ef5ff1b9b1b7e9f35022bfcf5f1cf34eac92305dba98607a6eff"
+    },
+    {
+      "path": "src/core/continuity-stream-adapter.mjs",
+      "mode": "100644",
+      "bytes": 23069,
+      "sha256": "c1f042af05132438031b5d10c8f16cdb15a1864e4c332d601b288c40ec7b30a2"
     }
   ]
 }
