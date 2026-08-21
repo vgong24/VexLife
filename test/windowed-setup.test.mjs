@@ -70,7 +70,7 @@ test('README exposes the source-local window without claiming a signed public bu
   assert.match(readme, /source-local window/u);
   assert.match(readme, /not a signed\/public `OFFICIAL_VERIFIED_BUILD`/u);
   assert.match(readme, /PowerShell fallback/u);
-  assert.match(readme, /model\/runtime artifacts remain external/u);
+  assert.match(readme, /model\/runtime artifacts remain external/iu);
 });
 
 test('controller files do not introduce model artifacts or the full native Windows shell', () => {
