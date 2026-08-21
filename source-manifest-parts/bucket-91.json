@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "91",
+  "files": [
+    {
+      "path": "reference/browser/integration/feature-perceptibility-suite.js",
+      "mode": "100644",
+      "bytes": 3914,
+      "sha256": "e3d675cf46831c9716b12caea7d1dd07508bccf2a1abb04ad4f14dbdec8d0025"
+    }
+  ]
+}

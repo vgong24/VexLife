@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "93",
+  "files": [
+    {
+      "path": "reference/browser/modules/feature-walkthrough-guide-adapter.js",
+      "mode": "100644",
+      "bytes": 2686,
+      "sha256": "f8924a20a6b8f2b5a35c0533834e12ac03f69d7a0597df03d658aea052a2066f"
+    }
+  ]
+}
