@@ -5,8 +5,8 @@
     {
       "path": "docs/BOOTSTRAP-AND-MODELS.md",
       "mode": "100644",
-      "bytes": 3695,
-      "sha256": "b524de20db45461f2c2dd7a8b0244bb0f2c2563c7f1b8fdf7db08a86a217a080"
+      "bytes": 7202,
+      "sha256": "94f15b3236cb48bc3358eaa2aa12278b95e64d7647a92ff4373bcf98b141c4d9"
     },
     {
       "path": "src/core/burden-release.mjs",
