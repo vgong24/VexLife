@@ -55,11 +55,27 @@ src/core/living-journal-memory-archive.mjs
 src/core/runtime-recovery.mjs
 ```
 
-The adapter invokes owner-native fingerprint/record validators where a
-content-addressed owner contract exposes one. For live projections that are not
-themselves content-addressed (for example Score, Daily Memory and Living
-Journal), Stage C validates the owner schema and copies only bounded refs,
-currentness, hashes and counts. It never copies statement summaries, Journal
+Stage C treats **fingerprint equality as necessary but not sufficient owner
+proof**. The adapter uses repository-owned validation material and owner-native
+formation/validation surfaces before projecting critical current truth:
+
+- the Intent Workgraph is checked with `validateIntentWorkgraph()` against the
+  source-managed intent registry, registered process/role sets and
+  `blueprint/intent-trust-snapshot.json`;
+- the Context Lease is re-admitted through `createContextLease()` and must be
+  the exact `vexlife.intent-context-lease/v1` CURRENT/ACTIVE owner schema;
+- the recovery aggregate is replay-validated through
+  `createRecoveryAggregate()` with the source-managed Runtime Recovery
+  registry, not merely re-hashed.
+
+The registry/trust inputs are **validation-only** and never enter the adapter
+projection. Cross-owner bindings also remain exact: Intent lineage/thread must
+match portable/Score identity, Context `graphFingerprint` must equal the
+validated Intent graph fingerprint, and recovery work-node/generation must
+match the current Context Lease. For live projections that are not themselves
+content-addressed (for example Score, Daily Memory and Living Journal), Stage C
+validates the accepted owner schema and copies only bounded refs, currentness,
+hashes and safe integer counts. It never copies statement summaries, Journal
 page bodies, recovery event payloads or other owner-private bodies into the
 adapter output.
 

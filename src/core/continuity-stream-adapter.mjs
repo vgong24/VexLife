@@ -1,11 +1,24 @@
-import { semanticHash } from './utils.mjs';
-import { buildGraphSnapshotFingerprint } from './intent-workgraph.mjs';
-import { buildContextLeaseFingerprint } from './context-lease.mjs';
+import path from 'node:path';
+import { loadBlueprint, VEXLIFE_ROOT } from './blueprint.mjs';
+import { createContextLease } from './context-lease.mjs';
 import {
   validateContinuityObservation,
   validateContinuityRecordSet,
 } from './continuity-evolution-router.mjs';
-import { buildRecoveryAggregateFingerprint } from './runtime-recovery.mjs';
+import { validateIntentWorkgraph } from './intent-validation.mjs';
+import { createRecoveryAggregate } from './runtime-recovery.mjs';
+import { readJson, semanticHash } from './utils.mjs';
+
+const OWNER_VALIDATION_BUNDLE = loadBlueprint(VEXLIFE_ROOT);
+const OWNER_INTENT_REGISTRY = OWNER_VALIDATION_BUNDLE.intentRegistry;
+const OWNER_INTENT_TRUST_SNAPSHOT = readJson(
+  path.join(VEXLIFE_ROOT, 'blueprint/intent-trust-snapshot.json'),
+);
+const OWNER_INTENT_PROCESS_REFS = OWNER_VALIDATION_BUNDLE.factory.processes
+  .map((item) => item.processRef);
+const OWNER_INTENT_ROLE_REFS = OWNER_VALIDATION_BUNDLE.blueprint.roles
+  .map((item) => item.roleRef);
+const OWNER_RECOVERY_REGISTRY = OWNER_VALIDATION_BUNDLE.blueprint.runtimeRecovery;
 
 export const CONTINUITY_STREAM_ADAPTER_SCHEMA =
   'vexlife.continuity-stream-adapter-projection/v1';
@@ -94,6 +107,17 @@ function optionalSha256(value, label) {
   return value === null || value === undefined ? null : sha256(value, label);
 }
 
+function safeInteger(value, label, minimum = 0) {
+  if (!Number.isSafeInteger(value) || value < minimum) {
+    fail('ADAPTER_INPUT_INVALID', `${label} must be a safe integer >= ${minimum}`);
+  }
+  return value;
+}
+
+function optionalSafeInteger(value, label, minimum = 0) {
+  return value === null || value === undefined ? null : safeInteger(value, label, minimum);
+}
+
 function allObservedEffectsFalse(value, label) {
   if (value === undefined || value === null) return true;
   object(value, label);
@@ -176,20 +200,40 @@ function scoreBinding(value) {
 
 function intentBinding(value) {
   object(value, 'intentWorkgraph');
-  const expected = buildGraphSnapshotFingerprint(value);
-  if (value.semanticFingerprint !== expected) {
-    fail('INTENT_OWNER_FINGERPRINT_MISMATCH', 'intentWorkgraph fingerprint does not match its owner-native builder');
+  if (value.schemaVersion !== 'vexlife.intent-workgraph/v0') {
+    fail('INTENT_OWNER_INVALID', 'intentWorkgraph is not the accepted owner schema');
   }
+  const validation = validateIntentWorkgraph(value, {
+    registry: OWNER_INTENT_REGISTRY,
+    registeredProcessRefs: OWNER_INTENT_PROCESS_REFS,
+    registeredRoleRefs: OWNER_INTENT_ROLE_REFS,
+    trustSnapshot: OWNER_INTENT_TRUST_SNAPSHOT,
+  });
+  if (!validation.ok) {
+    fail('INTENT_OWNER_INVALID', 'intentWorkgraph failed its source-managed owner validator', {
+      errors: validation.errors,
+    });
+  }
+  const envelope = object(value.intent, 'intentWorkgraph.intent');
   const pointers = object(value.currentPointers ?? {}, 'intentWorkgraph.currentPointers');
   const transitions = object(
     pointers.transitionByWorkNodeRef ?? {},
     'intentWorkgraph.currentPointers.transitionByWorkNodeRef',
   );
   return Object.freeze({
-    schemaVersion: stableRef(value.schemaVersion, 'intentWorkgraph.schemaVersion'),
+    schemaVersion: value.schemaVersion,
     graphRef: stableRef(value.graphRef, 'intentWorkgraph.graphRef'),
     rootIntentRef: stableRef(value.rootIntentRef, 'intentWorkgraph.rootIntentRef'),
     semanticFingerprint: sha256(value.semanticFingerprint, 'intentWorkgraph.semanticFingerprint'),
+    sourceLineageRef: stableRef(envelope.sourceLineageRef, 'intentWorkgraph.intent.sourceLineageRef'),
+    threadRef: stableRef(envelope.threadRef, 'intentWorkgraph.intent.threadRef'),
+    validationState: validation.state,
+    attentionCount: Array.isArray(validation.attentions) ? validation.attentions.length : 0,
+    nodeRefs: stableRefs(
+      (value.nodes ?? []).map((item, index) =>
+        stableRef(item?.workNodeRef, `intentWorkgraph.nodes[${index}].workNodeRef`)),
+      'intentWorkgraph.nodeRefs',
+    ),
     currentWorkNodeRefs: stableRefs(Object.keys(transitions), 'intentWorkgraph.currentWorkNodeRefs'),
     currentTransitionRefs: stableRefs(Object.values(transitions), 'intentWorkgraph.currentTransitionRefs'),
     currentReceiptRefs: stableRefs(pointers.currentReceiptRefs ?? [], 'intentWorkgraph.currentReceiptRefs'),
@@ -198,20 +242,39 @@ function intentBinding(value) {
 
 function contextBinding(value) {
   object(value, 'contextLease');
-  const expected = buildContextLeaseFingerprint(value);
-  if (value.semanticFingerprint !== expected) {
-    fail('CONTEXT_OWNER_FINGERPRINT_MISMATCH', 'contextLease fingerprint does not match its owner-native builder');
+  if (value.schemaVersion !== 'vexlife.intent-context-lease/v1') {
+    fail('CONTEXT_OWNER_INVALID', 'contextLease is not the accepted owner schema');
+  }
+  let canonical;
+  try {
+    canonical = createContextLease(value).lease;
+  } catch (error) {
+    fail('CONTEXT_OWNER_INVALID', 'contextLease failed its source-managed owner constructor', {
+      ownerError: error.message,
+    });
   }
   return Object.freeze({
-    schemaVersion: stableRef(value.schemaVersion, 'contextLease.schemaVersion'),
-    leaseRef: stableRef(value.leaseRef, 'contextLease.leaseRef'),
-    workerRef: stableRef(value.workerRef, 'contextLease.workerRef'),
-    workNodeRef: stableRef(value.workNodeRef, 'contextLease.workNodeRef'),
-    semanticFingerprint: sha256(value.semanticFingerprint, 'contextLease.semanticFingerprint'),
-    currentness: stableRef(value.currentness, 'contextLease.currentness'),
-    lifecycle: stableRef(value.lifecycle, 'contextLease.lifecycle'),
-    selectedSourceRefs: stableRefs(value.selectedSourceRefs ?? [], 'contextLease.selectedSourceRefs'),
-    checkpointReturnRef: stableRef(value.checkpointReturnRef, 'contextLease.checkpointReturnRef'),
+    schemaVersion: canonical.schemaVersion,
+    leaseRef: stableRef(canonical.leaseRef, 'contextLease.leaseRef'),
+    workerRef: stableRef(canonical.workerRef, 'contextLease.workerRef'),
+    workNodeRef: stableRef(canonical.workNodeRef, 'contextLease.workNodeRef'),
+    graphFingerprint: sha256(canonical.graphFingerprint, 'contextLease.graphFingerprint'),
+    schedulerGeneration: safeInteger(
+      canonical.schedulerGeneration,
+      'contextLease.schedulerGeneration',
+      0,
+    ),
+    semanticFingerprint: sha256(canonical.semanticFingerprint, 'contextLease.semanticFingerprint'),
+    currentness: stableRef(canonical.currentness, 'contextLease.currentness'),
+    lifecycle: stableRef(canonical.lifecycle, 'contextLease.lifecycle'),
+    selectedSourceRefs: stableRefs(
+      canonical.selectedSourceRefs ?? [],
+      'contextLease.selectedSourceRefs',
+    ),
+    checkpointReturnRef: stableRef(
+      canonical.checkpointReturnRef,
+      'contextLease.checkpointReturnRef',
+    ),
   });
 }
 
@@ -264,7 +327,7 @@ function dailyMemoryBinding(value) {
       'dailyMemory.currentDailyStratumSha256',
     ),
     dayRef: optionalRef(value.dayRef, 'dailyMemory.dayRef'),
-    dayIndex: value.dayIndex === null || value.dayIndex === undefined ? null : value.dayIndex,
+    dayIndex: optionalSafeInteger(value.dayIndex, 'dailyMemory.dayIndex', 0),
     activeContinuityStatementRefs: stableRefs(
       value.activeContinuityStatementRefs ?? [],
       'dailyMemory.activeContinuityStatementRefs',
@@ -323,38 +386,60 @@ function recoveryBinding(value) {
   if (value.schemaVersion !== 'vexlife.runtime-recovery-aggregate/v1') {
     fail('RECOVERY_OWNER_INVALID', 'recoveryAggregate is not the accepted owner aggregate schema');
   }
-  const expected = buildRecoveryAggregateFingerprint(value);
-  if (value.semanticFingerprint !== expected) {
-    fail('RECOVERY_OWNER_FINGERPRINT_MISMATCH', 'recoveryAggregate fingerprint does not match its owner-native builder');
+  let canonical;
+  try {
+    canonical = createRecoveryAggregate(value, { registry: OWNER_RECOVERY_REGISTRY });
+  } catch (error) {
+    fail('RECOVERY_OWNER_INVALID', 'recoveryAggregate failed owner-native replay validation', {
+      ownerError: error.message,
+    });
   }
-  if (!RECOVERY_PHASES.has(value.phase)) {
+  if (!RECOVERY_PHASES.has(canonical.phase)) {
     fail('RECOVERY_OWNER_INVALID', 'recoveryAggregate phase is unsupported');
   }
   return Object.freeze({
-    schemaVersion: value.schemaVersion,
-    aggregateRef: stableRef(value.aggregateRef, 'recoveryAggregate.aggregateRef'),
-    workNodeRef: stableRef(value.workNodeRef, 'recoveryAggregate.workNodeRef'),
+    schemaVersion: canonical.schemaVersion,
+    aggregateRef: stableRef(canonical.aggregateRef, 'recoveryAggregate.aggregateRef'),
+    workNodeRef: stableRef(canonical.workNodeRef, 'recoveryAggregate.workNodeRef'),
     sourceStateFingerprint: sha256(
-      value.sourceStateFingerprint,
+      canonical.sourceStateFingerprint,
       'recoveryAggregate.sourceStateFingerprint',
     ),
-    semanticFingerprint: sha256(value.semanticFingerprint, 'recoveryAggregate.semanticFingerprint'),
-    phase: value.phase,
-    schedulerGeneration: value.schedulerGeneration,
-    eventCount: Array.isArray(value.eventLedger) ? value.eventLedger.length : 0,
+    semanticFingerprint: sha256(
+      canonical.semanticFingerprint,
+      'recoveryAggregate.semanticFingerprint',
+    ),
+    phase: canonical.phase,
+    schedulerGeneration: safeInteger(
+      canonical.schedulerGeneration,
+      'recoveryAggregate.schedulerGeneration',
+      1,
+    ),
+    eventCount: canonical.eventLedger.length,
     currentCheckpointRefOrNull: optionalRef(
-      value.currentCheckpointAdmission?.checkpointRef
-        ?? value.currentCheckpointAdmission?.recoveryCheckpointRef
+      canonical.currentCheckpointAdmission?.checkpointRef
+        ?? canonical.currentCheckpointAdmission?.recoveryCheckpointRef
         ?? null,
       'recoveryAggregate.currentCheckpointRefOrNull',
     ),
   });
 }
 
-function adapterCurrentness({ portable, score, context, continuity, dailyMemory, livingJournal }) {
+function adapterCurrentness({
+  portable,
+  score,
+  intent,
+  context,
+  continuity,
+  dailyMemory,
+  livingJournal,
+}) {
   const reasons = [];
   if (portable.currentness !== 'CURRENT') reasons.push('PORTABLE_FRAME_NOT_CURRENT');
   if (score.currentness !== 'CURRENT' || score.attentionCount > 0) reasons.push('SCORE_NOT_CURRENT');
+  if (intent.validationState !== 'PLAN_VALIDATED' || intent.attentionCount > 0) {
+    reasons.push('INTENT_NOT_CURRENT');
+  }
   if (context.currentness !== 'CURRENT' || context.lifecycle !== 'ACTIVE') reasons.push('CONTEXT_NOT_CURRENT');
   if (continuity.state !== 'CURRENT' || continuity.conflictCount > 0) {
     reasons.push('CONTINUITY_RECORD_SET_NOT_CURRENT');
@@ -368,16 +453,50 @@ function adapterCurrentness({ portable, score, context, continuity, dailyMemory,
   };
 }
 
-function assertCrossOwnerIdentity(portable, score, intent, context) {
-  if (portable.lineageRef !== score.companionLineageRef) {
-    fail('CROSS_OWNER_IDENTITY_MISMATCH', 'portable lineage does not equal Score companion lineage');
+function assertCrossOwnerIdentity(portable, score, intent, context, recovery) {
+  if (portable.lineageRef !== score.companionLineageRef
+      || portable.lineageRef !== intent.sourceLineageRef) {
+    fail(
+      'CROSS_OWNER_IDENTITY_MISMATCH',
+      'portable, Score and intent lineage references must be exact-equal',
+    );
   }
-  if (portable.threadRef !== score.threadRef) {
-    fail('CROSS_OWNER_IDENTITY_MISMATCH', 'portable thread does not equal Score thread');
+  if (portable.threadRef !== score.threadRef || portable.threadRef !== intent.threadRef) {
+    fail(
+      'CROSS_OWNER_IDENTITY_MISMATCH',
+      'portable, Score and intent thread references must be exact-equal',
+    );
   }
-  if (context.workNodeRef && intent.currentWorkNodeRefs.length
+  if (context.graphFingerprint !== intent.semanticFingerprint) {
+    fail(
+      'CROSS_OWNER_IDENTITY_MISMATCH',
+      'context lease graph fingerprint does not equal current intent graph fingerprint',
+    );
+  }
+  if (!intent.nodeRefs.includes(context.workNodeRef)) {
+    fail(
+      'CROSS_OWNER_IDENTITY_MISMATCH',
+      'context lease work node does not exist in the validated intent workgraph',
+    );
+  }
+  if (intent.currentWorkNodeRefs.length
       && !intent.currentWorkNodeRefs.includes(context.workNodeRef)) {
-    fail('CROSS_OWNER_IDENTITY_MISMATCH', 'context lease work node is not current in the intent workgraph');
+    fail(
+      'CROSS_OWNER_IDENTITY_MISMATCH',
+      'context lease work node is not current in validated intent pointers',
+    );
+  }
+  if (recovery && recovery.workNodeRef !== context.workNodeRef) {
+    fail(
+      'CROSS_OWNER_IDENTITY_MISMATCH',
+      'recovery work node does not equal current context lease work node',
+    );
+  }
+  if (recovery && recovery.schedulerGeneration !== context.schedulerGeneration) {
+    fail(
+      'CROSS_OWNER_IDENTITY_MISMATCH',
+      'recovery scheduler generation does not equal current context lease generation',
+    );
   }
 }
 
@@ -396,11 +515,12 @@ export function createContinuityStreamAdapterProjection(input) {
   const dailyMemory = dailyMemoryBinding(input.dailyMemory ?? null);
   const livingJournal = journalBinding(input.livingJournal ?? null);
   const recovery = recoveryBinding(input.recoveryAggregate ?? null);
-  assertCrossOwnerIdentity(portable, score, intent, context);
+  assertCrossOwnerIdentity(portable, score, intent, context, recovery);
 
   const currentness = adapterCurrentness({
     portable,
     score,
+    intent,
     context,
     continuity,
     dailyMemory,

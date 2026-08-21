@@ -11,8 +11,8 @@
     {
       "path": "test/continuity-stream-adapter.test.mjs",
       "mode": "100644",
-      "bytes": 15654,
-      "sha256": "910a7898d6464a60ef91620bd8249ac60ccf450a53004a527350394bab602d44"
+      "bytes": 22404,
+      "sha256": "731c1d1cf97ec9e15a41cd1099b36e87c37fffd6ac454dd6b1e6d0caef9f21c8"
     },
     {
       "path": "test/feature-perceptibility-guide-runner-adversarial.test.mjs",

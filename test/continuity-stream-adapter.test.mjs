@@ -1,41 +1,122 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { loadBlueprint, VEXLIFE_ROOT } from '../src/core/blueprint.mjs';
 import {
   CONTINUITY_STREAM_ADAPTER_ALL_FALSE_EFFECTS,
   createContinuityStreamAdapterProjection,
 } from '../src/core/continuity-stream-adapter.mjs';
+import { buildContextLeaseFingerprint, createContextLease } from '../src/core/context-lease.mjs';
+import {
+  appendReceipt,
+  buildGraphSnapshotFingerprint,
+  createIntentEnvelope,
+  createIntentWorkgraph,
+  createWorkNode,
+  recordIntentTransition,
+} from '../src/core/intent-workgraph.mjs';
+import {
+  buildRecoveryAggregateFingerprint,
+  createRecoveryAggregate,
+} from '../src/core/runtime-recovery.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
-import { buildGraphSnapshotFingerprint } from '../src/core/intent-workgraph.mjs';
-import { buildContextLeaseFingerprint } from '../src/core/context-lease.mjs';
-import { buildRecoveryAggregateFingerprint } from '../src/core/runtime-recovery.mjs';
 
 const H = (label) => semanticHash(label);
+const OWNER_BUNDLE = loadBlueprint(VEXLIFE_ROOT);
+const INTENT_REGISTRY = OWNER_BUNDLE.intentRegistry;
+const RECOVERY_REGISTRY = OWNER_BUNDLE.blueprint.runtimeRecovery;
+
+function bindingRefs(nodes) {
+  return Object.fromEntries(INTENT_REGISTRY.bindingFields.map((field) => [
+    field,
+    [...new Set(nodes.flatMap((item) =>
+      Array.isArray(item[field]) ? item[field] : [item[field]]).filter(Boolean))].sort(),
+  ]));
+}
 
 function fixture() {
-  const intent = {
-    schemaVersion: 'vexlife.intent-workgraph/v0',
+  const envelope = createIntentEnvelope({
+    intentRef: 'intent.fixture.continuity',
+    originMessageRef: 'message.fixture.continuity',
+    originSpeakerRef: 'person.vexlife.owner',
+    recipientRoleRef: 'role.vex.developer',
+    projectRef: 'project.fixture.continuity',
+    threadRef: 'thread.fixture',
+    channelRef: 'channel.fixture',
+    originalContentHash: H('intent-original-content'),
+    desiredOutcome: {
+      intentKey: 'VALIDATE_WORKGRAPH',
+      summary: 'Form canonical Continuity Stream fixture work',
+    },
+    constraints: [],
+    createdAt: '2026-08-21T00:00:00.000Z',
+    sourceLineageRef: 'lineage.fixture',
+  }, INTENT_REGISTRY);
+  const node = createWorkNode({
+    workNodeRef: 'work.fixture.current',
+    rootIntentRef: envelope.intentRef,
+    parentWorkNodeRef: null,
+    purpose: 'Canonical current work for Continuity Stream adapter proof',
+    processRef: 'process.vexlife.intent.validate-workgraph',
+    state: 'CAPTURED',
+    dependencyRefs: [],
+    childRefs: [],
+    roleRef: 'role.vex.developer',
+    priorityClass: 'NORMAL',
+    contextPlanRef: null,
+    applicableCultureRefs: ['foundation.vexlife.state-relay.v1'],
+    applicableLessonRefs: [],
+    applicableBurdenReleaseRefs: [],
+    capabilityEnvelopeRef: 'capability-envelope.intent.contract-validation',
+    effectEnvelopeRef: 'effect-envelope.intent.no-effects',
+    resourceEnvelopeRef: 'resource-envelope.intent.deterministic-local-light',
+    expectedTransitionRef: 'expected-transition.intent.contract-current',
+    completionGateRefs: ['completion-gate.intent.contract-valid'],
+    returnRouteRef: 'return-route.intent.verify-transition',
+    sourceRefs: ['source.fixture.intent-node'],
+    createdAt: '2026-08-21T00:00:00.000Z',
+  }, INTENT_REGISTRY);
+  let intent = createIntentWorkgraph({
     graphRef: 'graph.fixture.continuity',
-    rootIntentRef: 'intent.fixture.continuity',
-    intent: { semanticFingerprint: H('intent') },
+    intent: envelope,
+    nodes: [node],
     interpretations: [],
     proposedPlans: [],
     authorizations: [],
-    nodes: [{ workNodeRef: 'work.fixture.current', sourceRefs: [] }],
     transitions: [],
     receipts: [],
-    bindingRefs: {},
-    currentPointers: {
-      transitionByWorkNodeRef: {
-        'work.fixture.current': 'transition.fixture.current',
-      },
-      currentReceiptRefs: ['receipt.fixture.current'],
-    },
+    bindingRefs: bindingRefs([node]),
     createdAt: '2026-08-21T00:00:00.000Z',
-  };
-  intent.semanticFingerprint = buildGraphSnapshotFingerprint(intent);
+  }, INTENT_REGISTRY);
+  intent = recordIntentTransition(intent, {
+    transitionRef: 'transition.fixture.current',
+    workNodeRef: 'work.fixture.current',
+    priorState: 'CAPTURED',
+    nextState: 'DECOMPOSED',
+    reason: 'Canonical owner transition for Continuity Stream fixture',
+    actorRef: 'vex.vexlife.intent-orchestration',
+    actorRoleRef: 'role.vex.developer',
+    processRef: 'process.vexlife.intent.decompose-candidate',
+    sourceRefs: ['source.fixture.intent-transition'],
+    createdAt: '2026-08-21T00:00:01.000Z',
+  }, INTENT_REGISTRY).graph;
+  const currentNode = intent.nodes.find((item) => item.workNodeRef === 'work.fixture.current');
+  intent = appendReceipt(intent, {
+    receiptRef: 'receipt.fixture.current',
+    workNodeRef: currentNode.workNodeRef,
+    expectedTransitionRef: currentNode.expectedTransitionRef,
+    nodeSemanticFingerprint: currentNode.semanticFingerprint,
+    disposition: currentNode.state,
+    sourceState: currentNode.state,
+    state: 'PROVEN',
+    currentness: 'CURRENT',
+    sourceRefs: ['source.fixture.intent-receipt'],
+    sourceHashes: [H('intent-receipt-source')],
+    formedAt: '2026-08-21T00:00:02.000Z',
+    formationRef: 'formation.fixture.intent-receipt',
+  }, INTENT_REGISTRY).graph;
 
-  const context = {
+  const context = createContextLease({
     schemaVersion: 'vexlife.intent-context-lease/v1',
     leaseRef: 'context-lease.fixture.current',
     workerRef: 'worker.fixture.current',
@@ -66,48 +147,15 @@ function fixture() {
     lifecycle: 'ACTIVE',
     checkpointReturnRef: 'checkpoint.fixture.return',
     observationRefs: [],
-  };
-  context.semanticFingerprint = buildContextLeaseFingerprint(context);
+  }).lease;
 
-  const recovery = {
-    schemaVersion: 'vexlife.runtime-recovery-aggregate/v1',
+  const recovery = createRecoveryAggregate({
     aggregateRef: 'recovery.fixture',
-    workNodeRef: 'work.fixture.current',
+    workNodeRef: context.workNodeRef,
     sourceStateFingerprint: H('source-state'),
-    initialSchedulerGeneration: 2,
-    schedulerGeneration: 2,
-    phase: 'READY',
-    eventLedger: [],
-    activeAttempt: null,
-    activeFailure: null,
-    activeRecoveryCycle: null,
-    recoveryCycleHistory: [],
-    activePolicyDecision: null,
-    currentRecoveryReceipt: null,
-    currentCheckpointAdmission: null,
-    currentRecoveryActionReceipt: null,
-    currentSchedulerClaimLifecycle: null,
-    schedulerClaimLifecycleHistory: [],
-    schedulerRecoveryHold: null,
-    attemptLedger: [],
-    failureHistory: [],
-    retryBudget: {},
-    retryBudgetFingerprint: H('budget'),
-    checkpointLineage: [],
-    continuationLineage: [],
-    contextRecoveryReceipts: [],
-    resourceRecoveryReceipts: [],
-    rollbackLineage: [],
-    quarantinedRefs: [],
-    lastKnownGoodRefs: [],
-    humanDecisionGates: [],
-    terminalRecoveryReceipts: [],
-    acceptedExternalEvents: [],
-    lastSuccessfulExecutionReceipt: null,
-    recoveryConvergenceReceipt: null,
-    recoveredFailure: null,
-  };
-  recovery.semanticFingerprint = buildRecoveryAggregateFingerprint(recovery);
+    schedulerGeneration: context.schedulerGeneration,
+    retryBudget: RECOVERY_REGISTRY.retryPolicy,
+  }, { registry: RECOVERY_REGISTRY });
 
   return {
     portableFrame: {
@@ -233,26 +281,33 @@ test('adapter exposes intent current pointers without creating transitions', () 
 
 test('intent owner fingerprint mismatch fails closed', () => {
   const f = fixture();
-  f.intentWorkgraph.semanticFingerprint = H('forged-intent');
+  f.intentWorkgraph = {
+    ...structuredClone(f.intentWorkgraph),
+    semanticFingerprint: H('forged-intent'),
+  };
   assert.throws(
     () => createContinuityStreamAdapterProjection(f),
-    (error) => error.code === 'INTENT_OWNER_FINGERPRINT_MISMATCH',
+    (error) => error.code === 'INTENT_OWNER_INVALID',
   );
 });
 
 test('context owner fingerprint mismatch fails closed', () => {
   const f = fixture();
-  f.contextLease.selectedSourceRefs.push('source.forged');
+  const forged = structuredClone(f.contextLease);
+  forged.selectedSourceRefs.push('source.forged');
+  f.contextLease = forged;
   assert.throws(
     () => createContinuityStreamAdapterProjection(f),
-    (error) => error.code === 'CONTEXT_OWNER_FINGERPRINT_MISMATCH',
+    (error) => error.code === 'CONTEXT_OWNER_INVALID',
   );
 });
 
 test('context work node must remain current in intent owner pointers', () => {
   const f = fixture();
-  f.contextLease.workNodeRef = 'work.fixture.other';
-  f.contextLease.semanticFingerprint = buildContextLeaseFingerprint(f.contextLease);
+  const other = structuredClone(f.contextLease);
+  delete other.semanticFingerprint;
+  other.workNodeRef = 'work.fixture.other';
+  f.contextLease = createContextLease(other).lease;
   assert.throws(
     () => createContinuityStreamAdapterProjection(f),
     (error) => error.code === 'CROSS_OWNER_IDENTITY_MISMATCH',
@@ -312,10 +367,13 @@ test('recovery aggregate fingerprint is owner-validated and only phase is projec
 
 test('recovery aggregate fingerprint mismatch fails closed', () => {
   const f = fixture();
-  f.recoveryAggregate.phase = 'RECOVERING';
+  f.recoveryAggregate = {
+    ...structuredClone(f.recoveryAggregate),
+    phase: 'RECOVERING',
+  };
   assert.throws(
     () => createContinuityStreamAdapterProjection(f),
-    (error) => error.code === 'RECOVERY_OWNER_FINGERPRINT_MISMATCH',
+    (error) => error.code === 'RECOVERY_OWNER_INVALID',
   );
 });
 
@@ -405,5 +463,119 @@ test('adapter output carries no raw transcript, hidden reasoning, private payloa
   assert.equal(p.projectionTruth.hiddenReasoningIncluded, false);
   assert.equal(p.projectionTruth.rawPrivatePayloadIncluded, false);
 });
+
+
+test('owner-native intent validation rejects a self-hashed noncanonical node', () => {
+  const f = fixture();
+  const forged = structuredClone(f.intentWorkgraph);
+  forged.nodes[0].purpose = 'forged without refreshing the node owner fingerprint';
+  forged.semanticFingerprint = buildGraphSnapshotFingerprint(forged);
+  f.intentWorkgraph = forged;
+  assert.throws(
+    () => createContinuityStreamAdapterProjection(f),
+    (error) => error.code === 'INTENT_OWNER_INVALID',
+  );
+});
+
+test('intent and context schemas are exact owner schemas', () => {
+  for (const field of ['intentWorkgraph', 'contextLease']) {
+    const f = fixture();
+    f[field] = { ...structuredClone(f[field]), schemaVersion: 'vexlife.forged/v999' };
+    assert.throws(
+      () => createContinuityStreamAdapterProjection(f),
+      (error) => ['INTENT_OWNER_INVALID', 'CONTEXT_OWNER_INVALID'].includes(error.code),
+    );
+  }
+});
+
+test('context owner constructor rejects self-hashed invalid token budgets', () => {
+  const f = fixture();
+  const forged = structuredClone(f.contextLease);
+  forged.inputTokenEstimate = forged.hardTokenLimit;
+  forged.reservedOutputTokens = 1;
+  forged.semanticFingerprint = buildContextLeaseFingerprint(forged);
+  f.contextLease = forged;
+  assert.throws(
+    () => createContinuityStreamAdapterProjection(f),
+    (error) => error.code === 'CONTEXT_OWNER_INVALID',
+  );
+});
+
+test('context graph fingerprint binds exactly to the validated intent graph', () => {
+  const f = fixture();
+  const other = structuredClone(f.contextLease);
+  delete other.semanticFingerprint;
+  other.graphFingerprint = H('other-intent-graph');
+  f.contextLease = createContextLease(other).lease;
+  assert.throws(
+    () => createContinuityStreamAdapterProjection(f),
+    (error) => error.code === 'CROSS_OWNER_IDENTITY_MISMATCH',
+  );
+});
+
+test('recovery replay rejects a self-hashed substituted retry budget', () => {
+  const f = fixture();
+  const forged = structuredClone(f.recoveryAggregate);
+  forged.retryBudget = {};
+  forged.retryBudgetFingerprint = H('substituted-retry-budget');
+  forged.semanticFingerprint = buildRecoveryAggregateFingerprint(forged);
+  f.recoveryAggregate = forged;
+  assert.throws(
+    () => createContinuityStreamAdapterProjection(f),
+    (error) => error.code === 'RECOVERY_OWNER_INVALID',
+  );
+});
+
+test('recovery work node binds to the current context work node', () => {
+  const f = fixture();
+  f.recoveryAggregate = createRecoveryAggregate({
+    aggregateRef: 'recovery.fixture.other-work',
+    workNodeRef: 'work.fixture.other',
+    sourceStateFingerprint: H('source-state-other-work'),
+    schedulerGeneration: f.contextLease.schedulerGeneration,
+    retryBudget: RECOVERY_REGISTRY.retryPolicy,
+  }, { registry: RECOVERY_REGISTRY });
+  assert.throws(
+    () => createContinuityStreamAdapterProjection(f),
+    (error) => error.code === 'CROSS_OWNER_IDENTITY_MISMATCH',
+  );
+});
+
+test('recovery scheduler generation binds to current context generation', () => {
+  const f = fixture();
+  f.recoveryAggregate = createRecoveryAggregate({
+    aggregateRef: 'recovery.fixture.other-generation',
+    workNodeRef: f.contextLease.workNodeRef,
+    sourceStateFingerprint: H('source-state-other-generation'),
+    schedulerGeneration: f.contextLease.schedulerGeneration + 1,
+    retryBudget: RECOVERY_REGISTRY.retryPolicy,
+  }, { registry: RECOVERY_REGISTRY });
+  assert.throws(
+    () => createContinuityStreamAdapterProjection(f),
+    (error) => error.code === 'CROSS_OWNER_IDENTITY_MISMATCH',
+  );
+});
+
+test('Daily Memory day index cannot carry an arbitrary owner body', () => {
+  const f = fixture();
+  f.dailyMemory.dayIndex = { privatePayload: 'must not cross adapter' };
+  assert.throws(
+    () => createContinuityStreamAdapterProjection(f),
+    (error) => error.code === 'ADAPTER_INPUT_INVALID',
+  );
+});
+
+test('recovery generation cannot carry an arbitrary owner body through self-hashing', () => {
+  const f = fixture();
+  const forged = structuredClone(f.recoveryAggregate);
+  forged.schedulerGeneration = { privatePayload: 'must not cross adapter' };
+  forged.semanticFingerprint = buildRecoveryAggregateFingerprint(forged);
+  f.recoveryAggregate = forged;
+  assert.throws(
+    () => createContinuityStreamAdapterProjection(f),
+    (error) => error.code === 'RECOVERY_OWNER_INVALID',
+  );
+});
+
 
 // [VXG RealForever]
