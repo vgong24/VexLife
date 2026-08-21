@@ -1,43 +1,22 @@
 export const featurePerceptibilitySuite = Object.freeze({
   suiteRef:'suite.vexlife.browser.feature-perceptibility/v1',
   async run({ app, helpers:{ assert } }) {
-    const checks=[];
-    const adapter=app.featureWalkthrough;
-    assert(adapter?.adapterRef==='adapter.vexlife.browser.feature-walkthrough-guide/v1', 'FPB2-00 live Feature Perceptibility Guide adapter is unavailable');
-
-    const held=adapter.offer('feature.vexlife.living-journal');
-    assert(held.state==='HELD', `FPB2-01 Living Journal introduction route is not HELD: ${held.state}`);
-    assert(held.planRef==='plan.vexlife.feature.living-journal.introduction.001', 'FPB2-01 Living Journal reserved walkthrough identity drifted');
-    assert(held.effects?.protectedActionExecuted===false && held.effects?.journeyCompletionCreated===false && held.effects?.memoryWritten===false, 'FPB2-01 HELD route leaked an effect claim');
-    checks.push('FPB2-01 current Living Journal source remains WALKTHROUGH/HELD; B2 wiring does not fabricate READY');
-
-    const discoverable=adapter.offer('feature.vexlife.addressed-conversation');
-    assert(discoverable.state==='NOT_REQUIRED', `FPB2-02 discoverable-only feature unexpectedly requires a plan: ${discoverable.state}`);
-    checks.push('FPB2-02 DISCOVERABLE_ONLY source truth projects NOT_REQUIRED without inventing walkthrough controls');
-
-    const messageCountBefore=document.querySelectorAll('#guideMessages .guide-message').length;
-    const journeyBefore=app.navigation.fullJourney().length;
-    const frameBefore=JSON.stringify(app.navigation.semanticFrame());
-    const showHeld=adapter.showMe('feature.vexlife.living-journal');
-    assert(showHeld.state==='HELD', `FPB2-03 Show me on HELD route did not stay HELD: ${showHeld.state}`);
-    assert(document.querySelectorAll('#guideMessages .guide-message').length===messageCountBefore, 'FPB2-03 HELD Show me projected a Guide message');
-    assert(app.navigation.fullJourney().length===journeyBefore, 'FPB2-03 HELD Show me fabricated Journey activity');
-    assert(JSON.stringify(app.navigation.semanticFrame())===frameBefore, 'FPB2-03 HELD Show me changed semantic current context');
-    assert(showHeld.effects?.protectedActionExecuted===false && showHeld.effects?.memoryWritten===false, 'FPB2-03 HELD Show me leaked protected action or Memory effect');
-    checks.push('FPB2-03 HELD Show me is fail-closed: no run, Guide message, action, Journey or Memory effect');
-
-    const laterHeld=adapter.later('feature.vexlife.living-journal');
-    const suppressHeld=adapter.dontIntroduceAgain('feature.vexlife.living-journal');
-    assert(laterHeld.state==='HELD' && suppressHeld.state==='HELD', 'FPB2-05 local preference operations bypassed HELD route currentness');
-    assert(laterHeld.effects?.journeyCompletionCreated===false && suppressHeld.effects?.memoryWritten===false, 'FPB2-05 HELD preference path leaked completion or Memory effect');
-    checks.push('FPB2-05 Later/suppression remain subordinate to current route admission and cannot turn HELD into completion or Memory');
-
-    assert(typeof adapter.currentStage==='function' && typeof adapter.advance==='function' && typeof adapter.clearPreference==='function', 'FPB2-00 bounded runner operations are not fully wired');
-    checks.push('FPB2-00 one live adapter exposes the bounded B1 runner operations through existing Guide/current-frame owners');
-    checks.push('FPB2-04 B2 projects only source-owned stage content; action execution remains absent and B1-owned autoExecute=false semantics remain authoritative');
-    checks.push('FPB2-07 existing Guide NEXT/presence/geometry owner suite remains mandatory and byte-independent of this adapter');
-    checks.push('FPB2-08 current-source wiring creates no Journey completion, Memory write, model, network or publication effect');
-
+    const checks=[]; const adapter=app.featureWalkthrough; const patientZero=app.patientZeroWalkthrough;
+    assert(adapter?.adapterRef==='adapter.vexlife.browser.feature-walkthrough-guide/v1','FPD-00 live Feature Perceptibility adapter unavailable');
+    assert(patientZero&&typeof patientZero.replay==='function'&&typeof patientZero.next==='function','FPD-00 Patient Zero controls unavailable');
+    const feature=app.featureWalkthrough.offer('feature.vexlife.living-journal'); assert(feature.state==='READY',`FPD-01 Living Journal route not READY: ${feature.state}`); checks.push('FPD-01 Living Journal WALKTHROUGH route is CURRENT/READY');
+    const originalContext=app.state.contextProjection; const originalGuideOpen=app.state.guideOpen; const originalGuideMinimized=app.state.guideMinimized;
+    const preferenceKey=['vexlife.guide.feature-introduction','feature.vexlife.living-journal',feature.planRef,feature.sourceVersionRef].map(encodeURIComponent).join('/'); const originalPreference=localStorage.getItem(preferenceKey);
+    try {
+      adapter.clearPreference('feature.vexlife.living-journal'); await app.openLivingJournal({loadMemory:false});
+      const archiveTarget=app.guide.evaluateActionTarget('element.living-journal.archive.open'); assert(archiveTarget.state==='AVAILABLE','FPD-02 permission.none archive target not admitted'); checks.push('FPD-02 permission.none target admitted');
+      app.openContext('chat'); const protectedTarget=app.guide.evaluateActionTarget('element.chat.composer'); assert(protectedTarget.state==='UNAVAILABLE'&&protectedTarget.reason==='PERMISSION_NOT_ADMITTED_BY_GUIDE','FPD-03 real permission target unexpectedly admitted'); checks.push('FPD-03 permission.conversation.send remains rejected'); await app.openLivingJournal({loadMemory:false});
+      const journeyStart=app.navigation.fullJourney().length; const later=patientZero.later(); assert(later.state==='DEFERRED','FPD-04 Later did not defer'); assert(app.navigation.fullJourney().length===journeyStart+1,'FPD-04 Later did not append ordinary Journey event');
+      const shown=patientZero.show(); assert(shown.state==='ACTIVE','FPD-05 Show me did not start'); const suppressed=patientZero.suppress(); assert(suppressed.state==='SUPPRESSED','FPD-06 suppression not scoped'); assert(adapter.offer('feature.vexlife.living-journal').state==='SUPPRESSED','FPD-06 unsolicited offer not suppressed'); const replay=patientZero.replay(); assert(replay.state==='ACTIVE','FPD-07 explicit replay blocked by suppression');
+      for(let i=0;i<9;i++){const next=patientZero.next();if(i<8)assert(next.state==='ACTIVE',`FPD-08 stage ${i} did not remain active`);else assert(next.state==='PLAN_STAGES_EXHAUSTED'&&next.completionAuthority==='JOURNEY_REQUIRED','FPD-08 exhaustion fabricated completion authority');}
+      const delta=app.navigation.fullJourney().slice(journeyStart); const actions=delta.map(e=>e.actionRef); for(const ref of ['action.living-journal.walkthrough.later','action.living-journal.walkthrough.show','action.living-journal.walkthrough.suppress','action.living-journal.walkthrough.replay','action.living-journal.walkthrough.next'])assert(actions.includes(ref),`FPD-09 missing Journey action ${ref}`); const nextEvents=delta.filter(e=>e.actionRef==='action.living-journal.walkthrough.next'); assert(nextEvents.length===9,'FPD-09 expected nine Next Journey events'); assert(new Set(nextEvents.map(e=>e.subjectRef)).size===9,'FPD-09 Next Journey subjects are not distinct'); checks.push('FPD-09 controls append ordinary distinct semantic Journey evidence');
+      assert(!Object.hasOwn(replay,'completed')&&!Object.hasOwn(replay,'completion'),'FPD-10 runner fabricated lived completion'); checks.push('FPD-10 plan exhaustion remains distinct from Journey completion');
+    } finally { if(originalPreference===null)localStorage.removeItem(preferenceKey);else localStorage.setItem(preferenceKey,originalPreference); app.guide.setOpen(originalGuideOpen); app.state.guideMinimized=originalGuideMinimized; if(originalContext==='terrain'||originalContext===null)app.returnToTerrain(); else if(originalContext==='living-journal')await app.openLivingJournal({loadMemory:false}); else app.openContext(originalContext); }
     return Object.freeze({suiteRef:this.suiteRef,state:'PASS',checks});
   }
 });

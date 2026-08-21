@@ -1928,7 +1928,12 @@
         "action.living-journal.archive.day.select",
         "action.living-journal.archive.window.older",
         "action.living-journal.archive.window.newer",
-        "action.living-journal.archive.return-now"
+        "action.living-journal.archive.return-now",
+        "action.living-journal.walkthrough.show",
+        "action.living-journal.walkthrough.later",
+        "action.living-journal.walkthrough.suppress",
+        "action.living-journal.walkthrough.replay",
+        "action.living-journal.walkthrough.next"
       ],
       "canonicalNodeRefs": [
         "screen.vexlife.living-journal",
@@ -1941,7 +1946,12 @@
         "element.living-journal.display-language.select",
         "element.living-journal.source.open",
         "element.living-journal.revisit.open",
-        "element.living-journal.marginalia.add-local"
+        "element.living-journal.marginalia.add-local",
+        "element.living-journal.walkthrough.show",
+        "element.living-journal.walkthrough.later",
+        "element.living-journal.walkthrough.suppress",
+        "element.living-journal.walkthrough.replay",
+        "element.living-journal.walkthrough.next"
       ],
       "concurrencyClass": "LOCAL_CONTEXTUAL_PROJECTION",
       "dataClass": "CURRENT_MEMORY_REFERENCE_OR_MEMORY_REFERENCE_HELD_WITH_EXPLICIT_SYNTHETIC_FALLBACK",
@@ -1949,9 +1959,9 @@
       "featureRef": "feature.vexlife.living-journal",
       "humanIntroduction": {
         "disposition": "WALKTHROUGH",
-        "routeState": "HELD",
+        "routeState": "CURRENT",
         "planRefOrNull": "plan.vexlife.feature.living-journal.introduction.001",
-        "rationale": "Living Journal exposes source currentness, provenance, revisit, vantage and ephemeral marginalia semantics that are not safely reduced to discoverability alone; its walkthrough identity is reserved while archive-capable browser currentness is still being completed."
+        "rationale": "The accepted Living Journal Patient Zero plan is source-managed, replayable, visible in the current browser surface, and preserves currentness, provenance, revisit and non-Memory marginalia boundaries."
       },
       "knownGaps": [
         "model, translation and network calls remain held",
@@ -1989,7 +1999,27 @@
         "living-journal.archive.no-days",
         "living-journal.archive.older",
         "living-journal.archive.open",
-        "living-journal.archive.return-now"
+        "living-journal.archive.return-now",
+        "feature-walkthrough.show-me",
+        "feature-walkthrough.later",
+        "feature-walkthrough.dont-introduce-again",
+        "feature-walkthrough.replay",
+        "feature-walkthrough.next",
+        "feature-walkthrough.living-journal.offer",
+        "feature-walkthrough.living-journal.ready",
+        "feature-walkthrough.living-journal.deferred",
+        "feature-walkthrough.living-journal.suppressed",
+        "feature-walkthrough.living-journal.active",
+        "feature-walkthrough.living-journal.exhausted",
+        "feature-walkthrough.living-journal.stage.why",
+        "feature-walkthrough.living-journal.stage.open",
+        "feature-walkthrough.living-journal.stage.currentness",
+        "feature-walkthrough.living-journal.stage.read-and-vantage",
+        "feature-walkthrough.living-journal.stage.source-provenance",
+        "feature-walkthrough.living-journal.stage.revisit",
+        "feature-walkthrough.living-journal.stage.ephemeral-marginalia",
+        "feature-walkthrough.living-journal.stage.boundaries",
+        "feature-walkthrough.living-journal.stage.complete"
       ],
       "moduleRefs": [
         "module.vexlife.browser.living-journal-controller",
