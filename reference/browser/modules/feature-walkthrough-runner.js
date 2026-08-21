@@ -26,7 +26,13 @@ export function featureWalkthroughPreferenceKey(value){
 export function createLocalStorageFeatureWalkthroughPreferenceStore(storage=globalThis.localStorage){
   if(!storage||['getItem','setItem','removeItem'].some((key)=>typeof storage[key]!=='function')) throw new Error('Guide-local feature introduction preferences require Storage-compatible getItem/setItem/removeItem methods');
   return Object.freeze({
-    read(key){try{const value=JSON.parse(storage.getItem(key));return value&&typeof value==='object'?clone(value):null;}catch{return null;}},
+    read(key){
+      const raw=storage.getItem(key);
+      if(raw===null)return null;
+      const value=JSON.parse(raw);
+      if(!value||typeof value!=='object'||Array.isArray(value)) throw new Error('Guide-local feature introduction preference is malformed');
+      return clone(value);
+    },
     write(key,value){storage.setItem(key,JSON.stringify(value));return clone(value);},
     remove(key){storage.removeItem(key);}
   });
@@ -44,7 +50,7 @@ function unavailable(featureRef,reason,details={}){return {state:FEATURE_WALKTHR
 function held(featureRef,intro){return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.HELD,featureRef,disposition:intro?.disposition??null,planRef:intro?.planRefOrNull??null,reason:'HUMAN_INTRODUCTION_ROUTE_HELD',effects:effects()};}
 function notRequired(featureRef,intro){return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.NOT_REQUIRED,featureRef,disposition:intro?.disposition??null,reason:'PLAN_DRIVEN_INTRODUCTION_NOT_DECLARED',effects:effects()};}
 function preferenceMatches(value,id){
-  return Boolean(value&&typeof value==='object'&&value.featureRef===id.featureRef&&value.planRef===id.planRef&&value.sourceVersionRef===id.sourceVersionRef&&Object.values(FEATURE_WALKTHROUGH_PREFERENCE_STATES).includes(value.state));
+  return Boolean(value&&typeof value==='object'&&!Array.isArray(value)&&value.featureRef===id.featureRef&&value.planRef===id.planRef&&value.sourceVersionRef===id.sourceVersionRef&&Object.values(FEATURE_WALKTHROUGH_PREFERENCE_STATES).includes(value.state));
 }
 function validStage(stage,index){
   return Boolean(stage&&typeof stage==='object'&&stage.sequence===index&&nonempty(stage.stageRef)&&
@@ -82,11 +88,12 @@ export function createFeatureWalkthroughRunner({featureRegistry,experience,evalu
 
     const id=identity({featureRef,planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef});
     const preferenceKey=featureWalkthroughPreferenceKey(id);
-    let preference=null;
-    try{preference=preferences.read(preferenceKey);}catch{preference=null;}
-    if(!ignorePreference&&preferenceMatches(preference,id)){
-      if(preference.state===FEATURE_WALKTHROUGH_PREFERENCE_STATES.SUPPRESSED) return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.SUPPRESSED,featureRef,planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey,effects:effects()};
-      if(preference.state===FEATURE_WALKTHROUGH_PREFERENCE_STATES.DEFERRED) return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.DEFERRED,featureRef,planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey,effects:effects()};
+    if(!ignorePreference){
+      let preference=null;
+      try{preference=preferences.read(preferenceKey);}catch{return unavailable(featureRef,'PREFERENCE_READ_FAILED',{planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey});}
+      if(preference!==null&&!preferenceMatches(preference,id)) return unavailable(featureRef,'PREFERENCE_RECORD_INVALID',{planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey});
+      if(preference?.state===FEATURE_WALKTHROUGH_PREFERENCE_STATES.SUPPRESSED) return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.SUPPRESSED,featureRef,planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey,effects:effects()};
+      if(preference?.state===FEATURE_WALKTHROUGH_PREFERENCE_STATES.DEFERRED) return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.DEFERRED,featureRef,planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey,effects:effects()};
     }
     return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.READY,featureRef,disposition:intro.disposition,planRef:plan.planRef,journeyRef:plan.journeyRef,sourceVersionRef:plan.sourceVersionRef,experienceProfileRef:plan.experienceProfileRef,replayable:plan.replayable===true,stageCount:plan.stages.length,preferenceKey,plan,effects:effects()};
   }
