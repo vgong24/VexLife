@@ -19,17 +19,23 @@ The repository also contains macOS/Linux bootstrap and development surfaces, but
 
 **Step 1 — get the folder.** On the repository page, click the green **Code** button, choose **Download ZIP**, and extract the archive so you have a normal folder. If you use Git, cloning the repository is fine too.
 
-**Step 2 — run the guided setup.** Hold Shift and right-click inside the folder, choose **Open PowerShell window here** or **Open in Terminal**, and paste exactly:
+**Step 2 — open the source-local setup window.** Double-click `setup-vexlife.cmd`. It opens **Continue with Vex**, a small Windows setup window over the same accepted setup engine used by the PowerShell route.
+
+**Step 3 — make the understandable choices.** Confirm where Vex Home should live. If Node.js 20+ is missing, the window asks before allowing the accepted setup to install Node.js LTS with `winget`. It separately explains that the current source-managed model/runtime may acquire about 4.0 GiB and requires your explicit Continue choice before that effect.
+
+You do **not** choose a model URL, checksum, runtime package, or license reference. Model/runtime artifacts remain external; the source-managed operational profile owns those exact inputs and the accepted initializer verifies them.
+
+**Step 4 — meet the local companion.** After the accepted backend verifies every pinned artifact, it starts the model only on numeric loopback, qualifies the exact binding, starts the local VexLife browser, and writes recovery receipts. The browser opens at `http://127.0.0.1:18110`.
+
+**PowerShell fallback.** The existing source-local command remains available if you prefer a terminal or need the engineering fallback:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install\vexlife-setup.ps1
 ```
 
-**Step 3 — let setup establish the local companion.** Setup asks where Vex should live and asks before the multi-gigabyte model/runtime effect. You do **not** need to choose a model URL, runtime package, SHA-256, or license reference. The source-managed operational profile owns those exact inputs.
+*Minimal start alternative:* once Node.js is available and setup is complete, `start-vexlife.cmd` consumes the same bootstrap/initializer/browser contract rather than a separate model path.
 
-**Step 4 — meet the local companion.** Setup verifies every pinned artifact, starts the model only on numeric loopback, qualifies the exact binding, starts the local VexLife browser, and writes recovery receipts. The browser opens at `http://127.0.0.1:18110`.
-
-*Minimal alternative:* once Node.js is available, `start-vexlife.cmd` consumes the same bootstrap/initializer/browser contract rather than a separate model path.
+> `setup-vexlife.cmd` is a source-local window over the repository setup engine. It is **not a signed/public `OFFICIAL_VERIFIED_BUILD`**, public download release, or all-platform installer. Signing, packaged-build provenance, repository visibility, and public release remain separate Distribution Trust / lifecycle decisions.
 
 ## What setup does
 
@@ -51,6 +57,8 @@ check source + Node
 
 If Vex already has a Home, bootstrap preserves it rather than deleting, moving, or automatically migrating it. An unknown non-empty Home, a mismatched artifact, an unsupported host, or an unowned process on a required port fails closed instead of being overwritten or killed.
 
+The windowed setup does not duplicate those effects. It only collects the visible Home/permission choices, then delegates to `install/vexlife-setup.ps1`; that accepted backend remains the owner of Home bootstrap, model/runtime acquisition and qualification, browser startup, exact process ownership, and receipts.
+
 ## What is real today
 
 - The current Windows source-local operational profile pins llama.cpp `b10107` and Qwen3.5-4B Q4_K_M/model-projector artifacts by immutable source/revision, exact byte size, and SHA-256.
@@ -66,6 +74,8 @@ For the underlying model/runtime boundaries, advanced custom-model path, and rec
 ## macOS / other platforms
 
 The current repository still contains Mac/Linux setup and development material, but those paths do not inherit the Windows profile's release qualification. Do not treat “same repository” or “same model family” as proof of platform/runtime qualification.
+
+The source-local Windows setup window also does not choose the future full Windows native application technology. The broader Windows Home Node/native VexLife shell remains a separate platform-adoption wave.
 
 ## Where everything lives
 
