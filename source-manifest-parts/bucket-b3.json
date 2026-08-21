@@ -9,6 +9,12 @@
       "sha256": "7a5bc8c58a0d49b2bafbcec29a915674c9c2deefbc4e66298915863f23c79652"
     },
     {
+      "path": "docs/CONTINUITY-STREAM.md",
+      "mode": "100644",
+      "bytes": 5416,
+      "sha256": "85694acb0d440b8debbbe77085bab0c77d99a00fcb95f39f0e9b263372f8d631"
+    },
+    {
       "path": "scripts/implementation-packet.mjs",
       "mode": "100644",
       "bytes": 1364,
