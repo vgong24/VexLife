@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "7f",
+  "files": [
+    {
+      "path": "test/windowed-setup.test.mjs",
+      "mode": "100644",
+      "bytes": 3893,
+      "sha256": "74c45d90e7260f1bbd1bbdd7f21d49718ad043ec7116339bc8ff5fc1a600a50c"
+    }
+  ]
+}

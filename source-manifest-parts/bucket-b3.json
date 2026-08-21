@@ -5,8 +5,8 @@
     {
       "path": "README.md",
       "mode": "100644",
-      "bytes": 5630,
-      "sha256": "e6ca321b62395182add7aaaeb9380e9036917e80beca9ff3d08c2ff8b3bf6e37"
+      "bytes": 7006,
+      "sha256": "7a5bc8c58a0d49b2bafbcec29a915674c9c2deefbc4e66298915863f23c79652"
     },
     {
       "path": "scripts/implementation-packet.mjs",

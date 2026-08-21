@@ -3,6 +3,12 @@
   "bucketId": "13",
   "files": [
     {
+      "path": "setup-vexlife.cmd",
+      "mode": "100644",
+      "bytes": 198,
+      "sha256": "0923a36fdbde39c81ce958aaeedb1d3babf2531ba1f3adb7c91de4931eefbeae"
+    },
+    {
       "path": "src/core/companion-navigation.mjs",
       "mode": "100644",
       "bytes": 20459,

@@ -3,6 +3,12 @@
   "bucketId": "72",
   "files": [
     {
+      "path": "install/vexlife-setup-window.ps1",
+      "mode": "100644",
+      "bytes": 11763,
+      "sha256": "b84c405cdc52b416f5aa961499e46e987bc5097354ac2a9bdcccd45745eba035"
+    },
+    {
       "path": "src/core/scheduler-runtime-trust.mjs",
       "mode": "100644",
       "bytes": 33751,
