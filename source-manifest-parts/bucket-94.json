@@ -9,6 +9,12 @@
       "sha256": "3d48ffcfe5ca82ea75e221b5d4c2272a9a7382a0103993fefb9f0f3a3efd9c62"
     },
     {
+      "path": "reference/browser/modules/feature-walkthrough-runner.js",
+      "mode": "100644",
+      "bytes": 13484,
+      "sha256": "a11c49ce523c47cd964302d30d0e7c72f6b1511ce850c70ac5dcb0be59026bea"
+    },
+    {
       "path": "src/core/intent-checkpoint.mjs",
       "mode": "100644",
       "bytes": 14269,
