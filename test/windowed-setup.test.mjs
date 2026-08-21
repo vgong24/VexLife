@@ -57,6 +57,15 @@ test('accepted backend prompt order remains compatible with deterministic contro
   assert.match(backend, /if \(\[string\]::IsNullOrWhiteSpace\(\$VexHome\)\)/u);
 });
 
+test('windowed setup preserves backend terminal exit code through the root launcher', () => {
+  assert.match(windowed, /\$script:TerminalExitCode = 0/u);
+  assert.match(windowed, /\$script:TerminalExitCode = \$exitCode/u);
+  assert.match(windowed, /exit \$script:TerminalExitCode/u);
+  assert.doesNotMatch(windowed, /\[void\]\$window\.ShowDialog\(\)\s*\r?\nexit 0/u);
+  assert.match(windowed, /\$script:TerminalExitCode = 1\s*\r?\n\s*\$statusText\.Text = "Setup could not start:/u);
+  assert.match(launcher, /exit \/b %ERRORLEVEL%/u);
+});
+
 test('root setup launcher is one hop into the windowed controller', () => {
   assert.match(launcher, /^@echo off\r?\nsetlocal\r?\n/u);
   assert.match(launcher, /powershell\.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%install\\vexlife-setup-window\.ps1" -RepoRoot "%ROOT%" %\*/u);
