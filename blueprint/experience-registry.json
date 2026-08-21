@@ -651,5 +651,131 @@
         "PUBLIC_GUIDE_CANDIDATE != PUBLICATION_AUTHORITY"
       ]
     }
+  ],
+  "featureWalkthroughPlans": [
+    {
+      "planRef": "plan.vexlife.feature.living-journal.introduction.001",
+      "journeyRef": "journey.vexlife.feature.living-journal.introduction.001",
+      "featureRef": "feature.vexlife.living-journal",
+      "sourceVersionRef": "source-version.vexlife.feature.living-journal.introduction.001",
+      "experienceProfileRef": "experience.vexlife.newcomer-guided",
+      "effects": false,
+      "replayable": true,
+      "stages": [
+        {
+          "stageRef": "plan.vexlife.feature.living-journal.introduction.001.stage.why",
+          "sequence": 0,
+          "purposeClass": "WHY",
+          "contentStringRef": "feature-walkthrough.living-journal.stage.why",
+          "targetRefOrNull": null,
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "LIVING_JOURNAL_WHY_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "plan.vexlife.feature.living-journal.introduction.001.stage.open",
+          "sequence": 1,
+          "purposeClass": "OPEN",
+          "contentStringRef": "feature-walkthrough.living-journal.stage.open",
+          "targetRefOrNull": null,
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "LIVING_JOURNAL_OPEN_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "plan.vexlife.feature.living-journal.introduction.001.stage.currentness",
+          "sequence": 2,
+          "purposeClass": "CURRENTNESS",
+          "contentStringRef": "feature-walkthrough.living-journal.stage.currentness",
+          "targetRefOrNull": "element.living-journal.archive.open",
+          "actionRefOrNull": "action.living-journal.archive.open",
+          "expectedOutcomeClass": "LIVING_JOURNAL_CURRENTNESS_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "plan.vexlife.feature.living-journal.introduction.001.stage.read-and-vantage",
+          "sequence": 3,
+          "purposeClass": "READ_AND_VANTAGE",
+          "contentStringRef": "feature-walkthrough.living-journal.stage.read-and-vantage",
+          "targetRefOrNull": "element.living-journal.vantage.select",
+          "actionRefOrNull": "action.living-journal.vantage.select",
+          "expectedOutcomeClass": "LIVING_JOURNAL_READ_AND_VANTAGE_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "plan.vexlife.feature.living-journal.introduction.001.stage.source-provenance",
+          "sequence": 4,
+          "purposeClass": "SOURCE_PROVENANCE",
+          "contentStringRef": "feature-walkthrough.living-journal.stage.source-provenance",
+          "targetRefOrNull": "element.living-journal.source.open",
+          "actionRefOrNull": "action.living-journal.source.open",
+          "expectedOutcomeClass": "LIVING_JOURNAL_SOURCE_PROVENANCE_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "plan.vexlife.feature.living-journal.introduction.001.stage.revisit",
+          "sequence": 5,
+          "purposeClass": "REVISIT",
+          "contentStringRef": "feature-walkthrough.living-journal.stage.revisit",
+          "targetRefOrNull": "element.living-journal.revisit.open",
+          "actionRefOrNull": "action.living-journal.revisit.open",
+          "expectedOutcomeClass": "LIVING_JOURNAL_REVISIT_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "plan.vexlife.feature.living-journal.introduction.001.stage.ephemeral-marginalia",
+          "sequence": 6,
+          "purposeClass": "EPHEMERAL_MARGINALIA",
+          "contentStringRef": "feature-walkthrough.living-journal.stage.ephemeral-marginalia",
+          "targetRefOrNull": null,
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "LIVING_JOURNAL_EPHEMERAL_MARGINALIA_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "plan.vexlife.feature.living-journal.introduction.001.stage.boundaries",
+          "sequence": 7,
+          "purposeClass": "BOUNDARIES",
+          "contentStringRef": "feature-walkthrough.living-journal.stage.boundaries",
+          "targetRefOrNull": null,
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "LIVING_JOURNAL_BOUNDARIES_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "plan.vexlife.feature.living-journal.introduction.001.stage.complete",
+          "sequence": 8,
+          "purposeClass": "COMPLETE",
+          "contentStringRef": "feature-walkthrough.living-journal.stage.complete",
+          "targetRefOrNull": null,
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "LIVING_JOURNAL_COMPLETE_UNDERSTOOD",
+          "captureRequired": true,
+          "recoveryClass": "STOP_WITHOUT_EFFECT"
+        }
+      ],
+      "truthBoundaries": [
+        "CURRENT_MEMORY_REFERENCE != MEMORY_REFERENCE_HELD",
+        "CURRENT_MEMORY_REFERENCE != CURRENT_SYNTHETIC_REFERENCE",
+        "LATEST_COMMITTED_DAY != CURRENT_NOW",
+        "ARCHIVE_SELECTION != MEMORY_WRITE",
+        "REVISIT != HISTORICAL_REENACTMENT",
+        "SOURCE_PROVENANCE != RAW_CONVERSATION_BODY",
+        "EPHEMERAL_MARGINALIA != MEMORY",
+        "GUIDE_PLAN != LIVED_JOURNEY_EVENT",
+        "PLAN_STAGES_EXHAUSTED != JOURNEY_COMPLETION",
+        "TECHNICAL_FEATURE_ACCEPTANCE != HUMAN_PERCEPTIBILITY_COMPLETION",
+        "PERMISSION_NONE != PERMISSION_GRANTED_BY_GUIDE"
+      ],
+      "supersedesPlanRefOrNull": null
+    }
   ]
 }

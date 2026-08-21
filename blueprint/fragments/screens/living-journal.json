@@ -292,6 +292,111 @@
           "testRefs": [
             "test.living-journal.marginalia-nonmutation"
           ]
+        },
+        {
+          "elementRef": "element.living-journal.walkthrough.show",
+          "conceptRef": "concept.living-journal.walkthrough.show",
+          "interactionRef": "interaction.living-journal.walkthrough.show",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.event.living-journal.walkthrough.show",
+          "kind": "button",
+          "labelStringRef": "feature-walkthrough.show-me",
+          "actionRef": "action.living-journal.walkthrough.show",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "stable-id.living-journal.walkthrough.show"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.walkthrough.later",
+          "conceptRef": "concept.living-journal.walkthrough.later",
+          "interactionRef": "interaction.living-journal.walkthrough.later",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.event.living-journal.walkthrough.later",
+          "kind": "button",
+          "labelStringRef": "feature-walkthrough.later",
+          "actionRef": "action.living-journal.walkthrough.later",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "stable-id.living-journal.walkthrough.later"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.walkthrough.suppress",
+          "conceptRef": "concept.living-journal.walkthrough.suppress",
+          "interactionRef": "interaction.living-journal.walkthrough.suppress",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.event.living-journal.walkthrough.suppress",
+          "kind": "button",
+          "labelStringRef": "feature-walkthrough.dont-introduce-again",
+          "actionRef": "action.living-journal.walkthrough.suppress",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "stable-id.living-journal.walkthrough.suppress"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.walkthrough.replay",
+          "conceptRef": "concept.living-journal.walkthrough.replay",
+          "interactionRef": "interaction.living-journal.walkthrough.replay",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.event.living-journal.walkthrough.replay",
+          "kind": "button",
+          "labelStringRef": "feature-walkthrough.replay",
+          "actionRef": "action.living-journal.walkthrough.replay",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "stable-id.living-journal.walkthrough.replay"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
+        },
+        {
+          "elementRef": "element.living-journal.walkthrough.next",
+          "conceptRef": "concept.living-journal.walkthrough.next",
+          "interactionRef": "interaction.living-journal.walkthrough.next",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.event.living-journal.walkthrough.next",
+          "kind": "button",
+          "labelStringRef": "feature-walkthrough.next",
+          "actionRef": "action.living-journal.walkthrough.next",
+          "permissionRef": "permission.none",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "stable-id.living-journal.walkthrough.next"
+          },
+          "testRefs": [
+            "test.living-journal.archive-browser-navigation"
+          ]
         }
       ],
       "conceptRef": "concept.region.living-journal.book",

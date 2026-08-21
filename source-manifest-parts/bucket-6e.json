@@ -5,8 +5,8 @@
     {
       "path": "blueprint/strings/ja.json",
       "mode": "100644",
-      "bytes": 20317,
-      "sha256": "c34567e217c08c957e9ed3a05675a1508dbe76b6681cfb6397d1731296931ae1"
+      "bytes": 22688,
+      "sha256": "e988d6b71f32d511dd71f2a554f2d9304aa2e573c750207dd2ccc50c6ce883f8"
     },
     {
       "path": "scripts/test-structured.mjs",
