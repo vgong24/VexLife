@@ -5,10 +5,11 @@ import { createNavigationController } from './modules/navigation-controller.js';
 import { createChatController } from './modules/chat-controller.js';
 import { createTerrainController } from './modules/terrain-controller.js';
 import { createGuideController, GUIDE_INTENTS } from './modules/guide-controller.js';
+import { createFeatureWalkthroughGuideAdapter } from './modules/feature-walkthrough-guide-adapter.js';
 import { createLivingJournalController } from './modules/living-journal-controller.js';
 import { createLivingJournalDemoData } from './modules/living-journal-demo-data.js';
 
-const { blueprint, experience, designTokens, catalogs } = await loadBrowserBundle('../../');
+const { blueprint, experience, featureRegistry, designTokens, catalogs } = await loadBrowserBundle('../../');
 const rootContract = experience.authoritativeRootDesignContract;
 if (rootContract?.contractRef !== 'contract.vexlife.e27.authoritative-root/v1' || rootContract?.defaultShellGrammar?.singleStageDefault !== true || rootContract?.defaultShellGrammar?.legacyCurrentBrowserPreservationDefault !== false) throw new Error('Direct-root browser requires accepted E2.7 authoritative-root contract');
 
@@ -144,6 +145,7 @@ navigation.seedCurrentJourney(initialTerrainRef);
 chat=createChatController({state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation});
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});
 guide=createGuideController({state,t,navigation,elementByRef,chat});
+const featureWalkthrough=createFeatureWalkthroughGuideAdapter({featureRegistry,experience,guide,navigation});
 livingJournal=createLivingJournalController({state,data:livingJournalData,t,navigation,onSourceOpen:({sourceRef})=>navigation.navigate('element.living-journal.source.open',{},'action.living-journal.source.open',{subjectRef:state.selectedNodeRef}),onRevisit:()=>{livingJournal.close();navigation.returnToPrimaryStage('element.living-journal.revisit.open','action.living-journal.revisit.open');setWorkspaceOpen(false);projectFrame();}});
 
 async function loadLivingJournalMemory(){
@@ -192,7 +194,7 @@ globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;i
 
 chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();navigation.enableBrowserHistory();renderLivingJournalArchiveControls();applyLocalization();guide.setOpen(state.guideOpen);guide.addMessage('guide',{contentRef:'guide.intro'});projectFrame();
 
-globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,terrain,guide,livingJournal,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout};
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,terrain,guide,featureWalkthrough,livingJournal,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout};
 if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('./integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}
 
 // [VXG RealForever]

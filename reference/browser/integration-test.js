@@ -1,6 +1,7 @@
 import { rootContractSuite } from './integration/root-contract-suite.js';
 import { journeySuite } from './integration/journey-suite.js';
 import { guideVexSuite } from './integration/guide-vex-suite.js';
+import { featurePerceptibilitySuite } from './integration/feature-perceptibility-suite.js';
 import { terrainSuite } from './integration/terrain-suite.js';
 import { contextualConversationSuite } from './integration/contextual-conversation-suite.js';
 import { livingJournalSuite } from './integration/living-journal-suite.js';
@@ -12,6 +13,7 @@ export const MANDATORY_SUITE_REFS = Object.freeze([
   'suite.vexlife.browser.root-contract/v1',
   'suite.vexlife.browser.journey/v1',
   'suite.vexlife.browser.guide-vex/v1',
+  'suite.vexlife.browser.feature-perceptibility/v1',
   'suite.vexlife.browser.terrain/v1',
   'suite.vexlife.browser.contextual-conversation/v1',
   'suite.vexlife.browser.living-journal/v1',
@@ -24,6 +26,7 @@ export const MANDATORY_SUITES = Object.freeze([
   rootContractSuite,
   journeySuite,
   guideVexSuite,
+  featurePerceptibilitySuite,
   terrainSuite,
   contextualConversationSuite,
   livingJournalSuite,
