@@ -115,16 +115,28 @@ test('Windows setup and start surfaces require a qualified model binding before 
     assert.match(script, /VEXLIFE_COMPANION_MODEL/u);
   }
   assert.ok(setup.indexOf('scripts\\initialize-vex.mjs') < setup.indexOf('scripts\\serve-browser.mjs'));
-  assert.ok(start.indexOf('$initArgs = @("$Root/scripts/initialize-vex.mjs"') < start.indexOf('& node "$Root/scripts/serve-browser.mjs"'));
+  assert.ok(start.indexOf('$initArgs = @("$Root/scripts/initialize-vex.mjs"') < start.indexOf('$startedBrowser = Start-OwnedBrowserServer'));
   assert.equal(/Read-Host\s+"Model download URL/iu.test(setup), false);
   assert.equal(/Expected SHA-256 checksum/iu.test(setup), false);
   assert.match(cmdText, /start-vexlife\.ps1/u);
   assert.equal(cmdText.includes('scripts\\bootstrap.mjs'), false);
-  assert.match(setup, /serverScriptIdentity/u);
-  assert.match(setup, /commandLineIdentity/u);
-  assert.match(start, /serverScriptIdentity/u);
-  assert.match(start, /commandLineIdentity/u);
-  assert.match(start, /homeIdentity/u);
+  for (const script of [setup, start]) {
+    for (const required of [
+      'vexlife.browser-process-receipt/v1',
+      '--vexlife-browser-owner-token',
+      '--vexlife-home',
+      '--vexlife-repo',
+      'Start-OwnedBrowserServer',
+      'Get-OwnedBrowserServer',
+      'processInstanceRef',
+      'ownerToken'
+    ]) assert.ok(script.includes(required), `missing durable browser process identity contract: ${required}`);
+  }
+  assert.equal(start.includes('& node "$Root/scripts/serve-browser.mjs"'), false);
+  assert.match(start, /Get-ExactQualifiedRuntimeOwnership/u);
+  assert.match(start, /runtime\.executableSha256/u);
+  assert.match(start, /expectedModelPath/u);
+  assert.match(start, /expectedProjectorPath/u);
 });
 
 test('candidate launcher authority remains an internal qualification-only environment route', () => {

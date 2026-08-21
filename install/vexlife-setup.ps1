@@ -99,29 +99,112 @@ function Read-InstallReceiptMachineBlock([string]$ReceiptPath) {
   } catch { return $null }
 }
 
+function ConvertTo-ProcessIdentity([string]$Value) {
+  return ([string]$Value).Replace('/', '\').Trim().Trim('"').ToLowerInvariant()
+}
+
+function Split-ProcessCommandLine([string]$CommandLine) {
+  if ([string]::IsNullOrWhiteSpace($CommandLine)) { return @() }
+  return @([regex]::Matches($CommandLine, '"[^"]*"|\S+') | ForEach-Object { $_.Value.Trim('"') })
+}
+
+function ConvertTo-QuotedProcessArgument([string]$Value) {
+  if ([string]$Value -match '"') { throw "Process identity argument contains an unsupported quote" }
+  return '"' + [string]$Value + '"'
+}
+
+function Read-BrowserProcessReceipt([string]$ReceiptPath) {
+  if (-not (Test-Path -LiteralPath $ReceiptPath -PathType Leaf)) { return $null }
+  $item = Get-Item -LiteralPath $ReceiptPath -Force
+  if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) { throw "Browser process receipt must be a regular non-reparse file" }
+  try { return (Get-Content -LiteralPath $ReceiptPath -Raw | ConvertFrom-Json) }
+  catch { throw "Browser process receipt is not valid JSON" }
+}
+
+function Write-BrowserProcessReceipt([string]$ReceiptPath, [string]$RepoPath, [string]$HomePath, [string]$NodeExecutablePath, [string]$ServerScriptPath, [int]$ProcessId, [string]$OwnerToken, [string]$State = "RUNNING") {
+  $parent = Split-Path -Parent $ReceiptPath
+  if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+  $receipt = [ordered]@{
+    schemaVersion = "vexlife.browser-process-receipt/v1"
+    state = $State
+    processInstanceRef = ("browser-process." + $OwnerToken)
+    ownerToken = $OwnerToken
+    pid = $ProcessId
+    nodeExecutablePath = [System.IO.Path]::GetFullPath($NodeExecutablePath)
+    serverScriptPath = [System.IO.Path]::GetFullPath($ServerScriptPath)
+    vexHomePath = [System.IO.Path]::GetFullPath($HomePath)
+    repoRootPath = [System.IO.Path]::GetFullPath($RepoPath)
+    formedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  }
+  $temporary = $ReceiptPath + ".partial-" + [Guid]::NewGuid().ToString("N")
+  $receipt | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $temporary -Encoding UTF8
+  Move-Item -LiteralPath $temporary -Destination $ReceiptPath -Force
+  return $receipt
+}
+
+function Set-BrowserProcessReceiptStopped([string]$ReceiptPath, [string]$Disposition) {
+  $receipt = Read-BrowserProcessReceipt $ReceiptPath
+  if ($null -eq $receipt) { return }
+  $receipt.state = $Disposition
+  $receipt | Add-Member -NotePropertyName stoppedAtUtc -NotePropertyValue ((Get-Date).ToUniversalTime().ToString("o")) -Force
+  $temporary = $ReceiptPath + ".partial-" + [Guid]::NewGuid().ToString("N")
+  $receipt | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $temporary -Encoding UTF8
+  Move-Item -LiteralPath $temporary -Destination $ReceiptPath -Force
+}
+
 function Get-OwnedBrowserServer([string]$ReceiptPath, [string]$RepoPath, [string]$HomePath) {
-  $machine = Read-InstallReceiptMachineBlock $ReceiptPath
-  if ($null -eq $machine) { return $null }
-  if (-not [StringComparer]::OrdinalIgnoreCase.Equals([System.IO.Path]::GetFullPath([string]$machine.repo.root).TrimEnd('\'), $RepoPath.TrimEnd('\'))) { return $null }
-  if (-not [StringComparer]::OrdinalIgnoreCase.Equals([System.IO.Path]::GetFullPath([string]$machine.vexHome.path).TrimEnd('\'), $HomePath.TrimEnd('\'))) { return $null }
+  $receipt = Read-BrowserProcessReceipt $ReceiptPath
+  if ($null -eq $receipt -or [string]$receipt.state -ne "RUNNING") { return $null }
+  if ([string]$receipt.schemaVersion -ne "vexlife.browser-process-receipt/v1") { throw "Browser process receipt schema is not current" }
+  $repoIdentity = [System.IO.Path]::GetFullPath($RepoPath).TrimEnd('\')
+  $homeIdentity = [System.IO.Path]::GetFullPath($HomePath).TrimEnd('\')
+  $scriptIdentity = [System.IO.Path]::GetFullPath((Join-Path $repoIdentity "scripts\serve-browser.mjs"))
+  if (-not [StringComparer]::OrdinalIgnoreCase.Equals([System.IO.Path]::GetFullPath([string]$receipt.repoRootPath).TrimEnd('\'), $repoIdentity)) { throw "Browser process receipt repo identity does not match this source root" }
+  if (-not [StringComparer]::OrdinalIgnoreCase.Equals([System.IO.Path]::GetFullPath([string]$receipt.vexHomePath).TrimEnd('\'), $homeIdentity)) { throw "Browser process receipt Home identity does not match this Vex Home" }
+  if (-not [StringComparer]::OrdinalIgnoreCase.Equals([System.IO.Path]::GetFullPath([string]$receipt.serverScriptPath), $scriptIdentity)) { throw "Browser process receipt script identity does not match this source" }
   $ownedPid = 0
-  try { $ownedPid = [int]$machine.server.pid } catch { $ownedPid = 0 }
-  if ($ownedPid -le 0) { return $null }
+  try { $ownedPid = [int]$receipt.pid } catch { $ownedPid = 0 }
+  $ownerToken = ([string]$receipt.ownerToken).ToLowerInvariant()
+  if ($ownedPid -le 0 -or $ownerToken -notmatch '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') { throw "Browser process receipt identity is incomplete" }
   $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ownedPid) -ErrorAction SilentlyContinue
   if ($null -eq $process) { return $null }
-  $serverScript = [System.IO.Path]::GetFullPath((Join-Path $RepoPath "scripts\serve-browser.mjs"))
-  $commandLine = [string]$process.CommandLine
-  $processName = [string]$process.Name
-  $serverScriptIdentity = $serverScript.Replace('/', '\')
-  $commandLineIdentity = $commandLine.Replace('/', '\')
-  $commandLineTokens = @([regex]::Matches($commandLineIdentity, '"[^"]*"|\S+') | ForEach-Object { $_.Value.Trim('"') })
-  $serverScriptMatched = ($commandLineTokens.Count -ge 2 -and [StringComparer]::OrdinalIgnoreCase.Equals([string]$commandLineTokens[1], $serverScriptIdentity))
-  if (($processName -ne "node.exe" -and $processName -ne "node") -or
-      [string]::IsNullOrWhiteSpace($commandLine) -or
-      -not $serverScriptMatched) {
-    return $null
+  $tokens = Split-ProcessCommandLine ([string]$process.CommandLine)
+  $expected = @(
+    [System.IO.Path]::GetFullPath([string]$receipt.nodeExecutablePath),
+    $scriptIdentity,
+    "--vexlife-browser-owner-token", $ownerToken,
+    "--vexlife-home", $homeIdentity,
+    "--vexlife-repo", $repoIdentity
+  )
+  $matched = ($tokens.Count -eq $expected.Count)
+  if ($matched) {
+    for ($index = 0; $index -lt $expected.Count; $index++) {
+      if ((ConvertTo-ProcessIdentity ([string]$tokens[$index])) -ne (ConvertTo-ProcessIdentity ([string]$expected[$index]))) { $matched = $false; break }
+    }
   }
-  return [ordered]@{ pid = $ownedPid; process = $process }
+  $processName = ([string]$process.Name).ToLowerInvariant()
+  $actualExecutablePath = [System.IO.Path]::GetFullPath([string]$process.ExecutablePath)
+  $expectedExecutablePath = [System.IO.Path]::GetFullPath([string]$receipt.nodeExecutablePath)
+  if (($processName -ne "node.exe" -and $processName -ne "node") -or -not [StringComparer]::OrdinalIgnoreCase.Equals($actualExecutablePath, $expectedExecutablePath) -or -not $matched) {
+    throw "Browser receipt PID is active but does not prove the exact Home/repo/process instance; refusing reuse or stop"
+  }
+  return [ordered]@{ pid = $ownedPid; process = $process; ownerToken = $ownerToken; processInstanceRef = [string]$receipt.processInstanceRef }
+}
+
+function Start-OwnedBrowserServer([string]$ReceiptPath, [string]$RepoPath, [string]$HomePath, [string]$ServerScriptPath, [string]$StdoutPath, [string]$StderrPath) {
+  $nodeCommand = Get-Command node -ErrorAction Stop
+  $nodeExecutablePath = [System.IO.Path]::GetFullPath([string]$nodeCommand.Source)
+  $ownerToken = [Guid]::NewGuid().ToString("D").ToLowerInvariant()
+  $arguments = @(
+    [System.IO.Path]::GetFullPath($ServerScriptPath),
+    "--vexlife-browser-owner-token", $ownerToken,
+    "--vexlife-home", [System.IO.Path]::GetFullPath($HomePath),
+    "--vexlife-repo", [System.IO.Path]::GetFullPath($RepoPath)
+  )
+  $argumentLine = ($arguments | ForEach-Object { ConvertTo-QuotedProcessArgument ([string]$_) }) -join ' '
+  $process = Start-Process -FilePath $nodeExecutablePath -ArgumentList $argumentLine -WorkingDirectory $RepoPath -PassThru -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath
+  $receipt = Write-BrowserProcessReceipt $ReceiptPath $RepoPath $HomePath $nodeExecutablePath $ServerScriptPath $process.Id $ownerToken
+  return [ordered]@{ pid = $process.Id; process = $process; ownerToken = $ownerToken; processInstanceRef = [string]$receipt.processInstanceRef }
 }
 
 Write-Step "Checking Node.js 20 or newer"
@@ -241,6 +324,7 @@ if (-not (Test-Path -LiteralPath $runtimeDir)) { New-Item -ItemType Directory -P
 $recoveryDir = Join-Path $VexHome "recovery"
 if (-not (Test-Path -LiteralPath $recoveryDir)) { New-Item -ItemType Directory -Path $recoveryDir -Force | Out-Null }
 $receiptPath = Join-Path $recoveryDir "install-receipt.txt"
+$browserProcessReceiptPath = Join-Path $recoveryDir "browser-process.json"
 $serverScript = Join-Path $RepoRoot "scripts\serve-browser.mjs"
 $serverLogOut = Join-Path $runtimeDir "serve-browser.log"
 $serverLogErr = Join-Path $runtimeDir "serve-browser.err.log"
@@ -252,23 +336,38 @@ $env:VEXLIFE_OPERATIONAL_PROFILE_REF = [string]$modelConfig.profileRef
 
 $serverPid = 0
 $serverPidStatus = "not-started"
+$serverOwnerToken = ""
+$serverProcessInstanceRef = ""
 $serverUp = Test-LocalPort $script:InstallPort 500
+$ownedBeforeStart = Get-OwnedBrowserServer $browserProcessReceiptPath $RepoRoot $VexHome
 if ($serverUp) {
-  $owned = Get-OwnedBrowserServer $receiptPath $RepoRoot $VexHome
-  if ($null -eq $owned) {
-    throw "Something is already answering at $($script:InstallUrl), but setup cannot prove it is the exact prior VexLife browser process. Refusing to reuse or stop it."
+  if ($null -eq $ownedBeforeStart) {
+    throw "Something is already answering at $($script:InstallUrl), but setup cannot prove it is the exact current VexLife browser process. Refusing to reuse or stop it."
   }
-  $serverPid = [int]$owned.pid
-  $serverPidStatus = "reused-owned"
+  $serverPid = [int]$ownedBeforeStart.pid
+  $serverOwnerToken = [string]$ownedBeforeStart.ownerToken
+  $serverProcessInstanceRef = [string]$ownedBeforeStart.processInstanceRef
+  $serverPidStatus = "reused-exact-current-process-instance"
+} elseif ($null -ne $ownedBeforeStart) {
+  if (-not (Wait-ForLocalPort -Port $script:InstallPort -Seconds 5)) {
+    throw "The exact current VexLife browser process is active but is not answering on its bounded loopback port; refusing duplicate start"
+  }
+  $serverUp = $true
+  $serverPid = [int]$ownedBeforeStart.pid
+  $serverOwnerToken = [string]$ownedBeforeStart.ownerToken
+  $serverProcessInstanceRef = [string]$ownedBeforeStart.processInstanceRef
+  $serverPidStatus = "reused-exact-current-process-instance"
 } else {
-  $serverProc = Start-Process -FilePath "node" -ArgumentList ('"' + $serverScript + '"') `
-    -WorkingDirectory $RepoRoot -PassThru `
-    -RedirectStandardOutput $serverLogOut -RedirectStandardError $serverLogErr
-  $serverPid = $serverProc.Id
+  $startedBrowser = Start-OwnedBrowserServer $browserProcessReceiptPath $RepoRoot $VexHome $serverScript $serverLogOut $serverLogErr
+  $serverPid = [int]$startedBrowser.pid
+  $serverOwnerToken = [string]$startedBrowser.ownerToken
+  $serverProcessInstanceRef = [string]$startedBrowser.processInstanceRef
   $serverUp = Wait-ForLocalPort -Port $script:InstallPort -Seconds 15
-  $serverProc.Refresh()
-  if ($serverProc.HasExited) { $serverPidStatus = "exited" } else { $serverPidStatus = "running" }
+  $startedBrowser.process.Refresh()
+  if ($startedBrowser.process.HasExited) { $serverPidStatus = "exited" } else { $serverPidStatus = "running-exact-current-process-instance" }
   if (-not $serverUp) {
+    if (-not $startedBrowser.process.HasExited) { Stop-Process -Id $serverPid -ErrorAction SilentlyContinue }
+    Set-BrowserProcessReceiptStopped $browserProcessReceiptPath "START_FAILED"
     throw "The VexLife browser server did not answer within 15 seconds. See $serverLogErr"
   }
 }
@@ -338,7 +437,10 @@ $machine = [ordered]@{
     browserOpened = $browserOpened
     stdoutLog = $serverLogOut
     stderrLog = $serverLogErr
-    stopCommand = ("Stop-Process -Id " + $serverPid)
+    browserProcessReceipt = $browserProcessReceiptPath
+    processInstanceRef = $serverProcessInstanceRef
+    ownerToken = $serverOwnerToken
+    stopCommand = ("Use start-vexlife.ps1 -Operation uninstall-preserve for exact-owned stop; current PID " + $serverPid)
   }
   exitCodes = [ordered]@{ bootstrap = $bootstrapExit; initializeVex = $initializeExit }
   effects = [ordered]@{
