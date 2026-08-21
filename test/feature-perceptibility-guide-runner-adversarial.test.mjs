@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   FEATURE_WALKTHROUGH_RUNNER_STATES,
   createFeatureWalkthroughRunner,
+  createLocalStorageFeatureWalkthroughPreferenceStore,
   featureWalkthroughPreferenceKey
 } from '../reference/browser/modules/feature-walkthrough-runner.js';
 
@@ -60,14 +61,18 @@ test('FPB1-A00 unknown dispositions, held no-plan routes, and duplicate refs fai
   assert.equal(make({ plans:[plan(), plan()] }).offer('feature.test').reason, 'CURRENT_PLAN_AMBIGUOUS');
 });
 
-test('FPB1-A01 malformed preference identity cannot suppress a current route', () => {
+test('FPB1-A01 malformed preference identity fails closed instead of suppressing or re-offering', () => {
   const values = new Map();
   const key = featureWalkthroughPreferenceKey({ featureRef:'feature.test', planRef:'plan.test.001', sourceVersionRef:'source-version.test.001' });
   values.set(key, { state:'SUPPRESSED', featureRef:'feature.other', planRef:'plan.test.001', sourceVersionRef:'source-version.test.001' });
-  assert.equal(make({ preferenceStore:store(values) }).offer('feature.test').state, FEATURE_WALKTHROUGH_RUNNER_STATES.READY);
+  const result = make({ preferenceStore:store(values) }).offer('feature.test');
+  assert.equal(result.state, FEATURE_WALKTHROUGH_RUNNER_STATES.UNAVAILABLE);
+  assert.equal(result.reason, 'PREFERENCE_RECORD_INVALID');
+  assert.equal(result.effects.memoryWritten, false);
+  assert.equal(result.effects.protectedActionExecuted, false);
 });
 
-test('FPB1-A02 injected adapter and storage failures remain no-effect unavailable states', () => {
+test('FPB1-A02 injected adapter and storage write/clear failures remain no-effect unavailable states', () => {
   let runner = make({ evaluateTarget(){ throw new Error('adapter failed'); } });
   let result = runner.stage(runner.showMe('feature.test'));
   assert.equal(result.reason, 'TARGET_EVALUATION_FAILED');
@@ -88,6 +93,29 @@ test('FPB1-A03 forged run state and malformed plan stages do not crash into runn
   const malformed = plan();
   malformed.stages[0].targetRefOrNull = '';
   assert.equal(make({ plans:[malformed] }).offer('feature.test').reason, 'PLAN_STAGE_IDENTITY_INVALID');
+});
+
+test('FPB1-A04 unreadable or malformed scoped preference storage blocks offers fail closed', () => {
+  let result = make({ preferenceStore:{
+    read(){throw new Error('storage denied');},
+    write(){},
+    remove(){}
+  } }).offer('feature.test');
+  assert.equal(result.state, FEATURE_WALKTHROUGH_RUNNER_STATES.UNAVAILABLE);
+  assert.equal(result.reason, 'PREFERENCE_READ_FAILED');
+  assert.equal(result.effects.journeyCompletionCreated, false);
+  assert.equal(result.effects.memoryWritten, false);
+
+  const malformedStorage = {
+    getItem(){ return '{not-json'; },
+    setItem(){},
+    removeItem(){}
+  };
+  const localStore = createLocalStorageFeatureWalkthroughPreferenceStore(malformedStorage);
+  result = make({ preferenceStore:localStore }).offer('feature.test');
+  assert.equal(result.state, FEATURE_WALKTHROUGH_RUNNER_STATES.UNAVAILABLE);
+  assert.equal(result.reason, 'PREFERENCE_READ_FAILED');
+  assert.equal(result.effects.protectedActionExecuted, false);
 });
 
 // [VXG RealForever]
