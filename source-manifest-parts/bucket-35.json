@@ -7,6 +7,12 @@
       "mode": "100755",
       "bytes": 6561,
       "sha256": "00e80d80714921fbc4ca85d2f900787bf3ecc5a6a0111b8ad6d6f54966fbaf14"
+    },
+    {
+      "path": "test/initialize-vex.test.mjs",
+      "mode": "100644",
+      "bytes": 12102,
+      "sha256": "17be3a71d93b4c8da1ef9976f4372f3f05e5492ee2039eee333fcfebd75a2aad"
     }
   ]
 }

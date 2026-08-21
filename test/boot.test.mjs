@@ -64,14 +64,39 @@ test('W6 Windows launcher never shadows PowerShell automatic HOME with a writabl
   assert.equal(/if \(\$Home -ne ""\)/iu.test(script), false);
 });
 
-test('W6 uninstall-preserve is bounded to exact Frontdoor process and setup-owned runtime residue', () => {
+test('W6 uninstall-preserve is bounded to exact current browser process receipt and exact runtime materialization', () => {
   const script = fs.readFileSync(path.join(ROOT, 'start-vexlife.ps1'), 'utf8');
-  assert.match(script, /Read-InstallReceiptMachineBlock/u);
-  assert.match(script, /machine\.vexHome\.path/u);
-  assert.match(script, /machine\.repo\.root/u);
-  assert.match(script, /Get-CimInstance Win32_Process/u);
-  assert.match(script, /commandLine\.IndexOf\(\$serverScript/u);
-  assert.match(script, /Stop-Process -Id \$serverPid/u);
+  for (const required of [
+    'vexlife.browser-process-receipt/v1',
+    'processInstanceRef',
+    'ownerToken',
+    '--vexlife-browser-owner-token',
+    '--vexlife-home',
+    '--vexlife-repo',
+    'Get-OwnedBrowserServer',
+    'Write-BrowserProcessReceipt',
+    'Set-BrowserProcessReceiptStopped',
+    '$actualTokens.Count -eq $expectedTokens.Count',
+    '$tokens.Count -eq $expected.Count',
+    'EXACT_CURRENT_BROWSER_PROCESS_INSTANCE_STOPPED'
+  ]) assert.ok(script.includes(required), 'missing exact browser process-instance boundary: ' + required);
+  for (const required of [
+    'Get-ExactQualifiedRuntimeOwnership',
+    'runtime.executableSha256',
+    'materialization.executableSha256',
+    'process.ExecutablePath',
+    'Get-FileHash -LiteralPath $expectedExecutablePath -Algorithm SHA256',
+    'expectedModelPath',
+    'expectedProjectorPath',
+    'argumentTemplate',
+    '--n-predict',
+    '--reasoning-budget',
+    '$actualTokens.Count -eq $expectedTokens.Count',
+    'EXACT_QUALIFIED_RUNTIME_STOPPED'
+  ]) assert.ok(script.includes(required), 'missing exact runtime-stop ownership boundary: ' + required);
+  assert.ok(script.indexOf('$ownedBrowser = Get-OwnedBrowserServer') < script.indexOf('Stop-Process -Id $serverPid'), 'browser ownership proof must precede stop');
+  assert.ok(script.indexOf('$runtimeOwnership = Get-ExactQualifiedRuntimeOwnership') < script.indexOf('Stop-Process -Id ([int]$runtimeOwnership.pid)'), 'runtime ownership proof must precede stop');
+  assert.equal(script.includes('$machine.server.pid'), false, 'uninstall must consume the durable current browser-process receipt, not a historical install PID');
   assert.match(script, /runtime\/serve-browser\.log/u);
   assert.match(script, /runtime\/serve-browser\.err\.log/u);
   assert.equal(/Remove-Item[^\n]*(?:\$homeRoot|\$Home)[^\n]*-Recurse/iu.test(script), false);
