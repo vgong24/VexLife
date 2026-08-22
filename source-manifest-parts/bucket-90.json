@@ -5,8 +5,8 @@
     {
       "path": "scripts/release-candidate.mjs",
       "mode": "100644",
-      "bytes": 10789,
-      "sha256": "2e01637b5cf9e890d00f016b2f4ed7f18113fd5c9c69ca327d36b08be55ce6fc"
+      "bytes": 13204,
+      "sha256": "93b93f5a0d954d0dbf566d19be45ac6ed70f6e76e9a7af8dfecf416c39b82009"
     }
   ]
 }

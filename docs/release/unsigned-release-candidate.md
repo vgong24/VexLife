@@ -36,12 +36,25 @@ The ordinary command surface is intentionally explicit:
 node scripts/release-candidate.mjs --commit <full-40-hex-commit-sha>
 ```
 
-An explicit `--out <directory>` may redirect local output. Without it, output is
-confined to the ignored, noncanonical boundary:
+Without an output selector, output is confined to the ignored, noncanonical boundary:
 
 ```text
 generated/release-candidates/<full-source-commit-sha>/
 ```
+
+An explicit selector may choose only a **relative subdirectory beneath that same
+qualified root**:
+
+```text
+node scripts/release-candidate.mjs \
+  --commit <full-40-hex-commit-sha> \
+  --out <relative-subdirectory>
+```
+
+`--out` is not a general filesystem destination. Absolute paths, parent traversal,
+the repository root, sibling directories, and any output path whose existing ancestry
+contains a symbolic link or junction fail closed before packet files are created.
+The write API enforces the same containment rule even when called programmatically.
 
 The producer resolves repository identity relative to its own source location, not
 the caller's current directory. Unstaged or untracked worktree content is never an
@@ -100,16 +113,18 @@ Home=false
 Memory=false
 ```
 
-The producer performs only local filesystem writes beneath its selected output
-directory and Git read operations against the current repository. It does not perform
-network acquisition, setup, runtime start, Home creation, model inference, signing,
-release publication, Pages enablement, or repository mutation.
+The producer performs only local filesystem writes beneath
+`generated/release-candidates/**` and Git read operations against the current
+repository. It does not perform network acquisition, setup, runtime start, Home
+creation, model inference, signing, release publication, Pages enablement, repository
+mutation, or arbitrary host-path output.
 
 ## What passing proves
 
 Deterministic tests must prove exact commit/tree resolution, repeated archive identity,
 worktree independence, exact release/provenance identity matching, unsigned-state
-restrictions, zero effects, noncanonical output, and fail-closed hostile mutations.
+restrictions, zero effects, qualified-output containment, noncanonical output, and
+fail-closed hostile mutations.
 
 A later independent cross-repository proof must feed the emitted JSON into the accepted
 SDK Distribution Trust verifier. That proof is external evidence; it must not be

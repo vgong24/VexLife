@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 
 import {
   ROOT,
+  QUALIFIED_OUTPUT_ROOT,
   PROFILE_REF,
   EFFECTS_FALSE,
   sha256,
@@ -16,6 +17,8 @@ import {
   createArchiveBytes,
   buildReleaseCandidatePacket,
   defaultOutputDir,
+  resolveOutputDir,
+  assertQualifiedOutputDir,
   writeReleaseCandidatePacket,
 } from '../scripts/release-candidate.mjs';
 
@@ -155,37 +158,91 @@ test('RC09 stale or missing operational profile states fail closed', () => {
 });
 
 // RC10
-test('RC10 default output is ignored/noncanonical and excluded from Source Manifest membership', () => {
+test('RC10 default output is the exact ignored/noncanonical source-managed candidate directory', () => {
   const head = currentHead();
   const output = defaultOutputDir(head);
-  assert.equal(
-    path.relative(ROOT, output).split(path.sep).slice(0, 2).join('/'),
-    'generated/release-candidates',
-  );
+  assert.equal(output, path.join(QUALIFIED_OUTPUT_ROOT, head));
   const gitignore = readCommitFile(head, '.gitignore').toString('utf8');
   assert.match(gitignore, /^generated\/$/mu);
   const manifest = JSON.parse(readCommitFile(head, 'SOURCE-MANIFEST.json').toString('utf8'));
   assert.ok(manifest.exclusionRules.rootDirectories.includes('generated'));
 });
 
-test('RC10 repeated writes reuse identical local packet bytes and refuse silent mutation', () => {
+test('RC10 explicit output selection is contained under the qualified generated root', () => {
+  const head = currentHead();
+  assert.equal(
+    resolveOutputDir(head, 'proof/run-1'),
+    path.join(QUALIFIED_OUTPUT_ROOT, 'proof', 'run-1'),
+  );
+  assert.throws(
+    () => resolveOutputDir(head, '../escape'),
+    /parent-directory traversal/u,
+  );
+  assert.throws(
+    () => resolveOutputDir(head, 'proof/../../escape'),
+    /parent-directory traversal/u,
+  );
+  assert.throws(
+    () => resolveOutputDir(head, path.resolve(ROOT, 'escape')),
+    /relative to generated\/release-candidates/u,
+  );
+  assert.throws(
+    () => resolveOutputDir(head, '.'),
+    /subdirectory of generated\/release-candidates/u,
+  );
+  assert.throws(
+    () => assertQualifiedOutputDir(ROOT),
+    /subdirectory of generated\/release-candidates/u,
+  );
+});
+
+test('RC10 write API rejects outside-root output before creating packet files', () => {
+  const packet = buildReleaseCandidatePacket(currentHead());
+  const outside = path.join(os.tmpdir(), `vexlife-release-candidate-outside-${process.pid}`);
+  fs.rmSync(outside, { recursive: true, force: true });
+  assert.throws(
+    () => writeReleaseCandidatePacket(packet, outside),
+    /subdirectory of generated\/release-candidates/u,
+  );
+  assert.equal(fs.existsSync(outside), false);
+});
+
+test('RC10 existing symlink or junction ancestors fail closed', () => {
+  const head = currentHead();
+  fs.mkdirSync(QUALIFIED_OUTPUT_ROOT, { recursive: true });
+  const linkName = `test-output-link-${process.pid}`;
+  const linkPath = path.join(QUALIFIED_OUTPUT_ROOT, linkName);
+  fs.rmSync(linkPath, { recursive: true, force: true });
+  try {
+    fs.symlinkSync(os.tmpdir(), linkPath, process.platform === 'win32' ? 'junction' : 'dir');
+    assert.throws(
+      () => resolveOutputDir(head, `${linkName}/nested`),
+      /symbolic-link or junction ancestor/u,
+    );
+  } finally {
+    fs.rmSync(linkPath, { recursive: true, force: true });
+  }
+});
+
+test('RC10 repeated writes reuse identical in-bound packet bytes and refuse silent mutation', () => {
   const head = currentHead();
   const packet = buildReleaseCandidatePacket(head);
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-release-candidate-'));
+  const output = resolveOutputDir(head, `test-packet-${process.pid}`);
+  fs.rmSync(output, { recursive: true, force: true });
   try {
-    const first = writeReleaseCandidatePacket(packet, root);
+    const first = writeReleaseCandidatePacket(packet, output);
     assert.ok(Object.values(first).every((value) => value === 'CREATED'));
-    const second = writeReleaseCandidatePacket(packet, root);
+    const second = writeReleaseCandidatePacket(packet, output);
     assert.ok(Object.values(second).every((value) => value === 'REUSED_IDENTICAL'));
 
-    const releasePath = path.join(root, 'official-release.json');
+    const releasePath = path.join(output, 'official-release.json');
     fs.writeFileSync(releasePath, '{}\n', 'utf8');
     assert.throws(
-      () => writeReleaseCandidatePacket(packet, root),
+      () => writeReleaseCandidatePacket(packet, output),
       /refusing to overwrite non-identical existing output/u,
     );
   } finally {
-    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(output, { recursive: true, force: true });
   }
 });
 

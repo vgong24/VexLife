@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(HERE, '..');
+export const QUALIFIED_OUTPUT_ROOT = path.join(ROOT, 'generated', 'release-candidates');
 export const PROFILE_REF =
   'profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001';
 export const DEPENDENCY_EVIDENCE_REF = 'github.issue.vextreme-sdk.662';
@@ -50,10 +51,14 @@ export function sha256(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');
 }
 
-export function resolveSourceIdentity(commitSha) {
+function requireFullCommitSha(commitSha) {
   if (typeof commitSha !== 'string' || !SHA_RE.test(commitSha)) {
     throw new Error('source commit must be one lowercase full 40-hex Git SHA');
   }
+}
+
+export function resolveSourceIdentity(commitSha) {
+  requireFullCommitSha(commitSha);
   const resolved = runGit(['rev-parse', '--verify', `${commitSha}^{commit}`])
     .stdout.trim();
   if (resolved !== commitSha) {
@@ -65,8 +70,7 @@ export function resolveSourceIdentity(commitSha) {
 }
 
 export function readCommitFile(commitSha, repoPath) {
-  const identity = resolveSourceIdentity(commitSha);
-  void identity;
+  resolveSourceIdentity(commitSha);
   const result = runGit(['show', `${commitSha}:${repoPath}`], { binary: true });
   return Buffer.from(result.stdout);
 }
@@ -116,6 +120,72 @@ function jsonBytes(value) {
 function exactCommitLock(commitSha, repoPath, inputRef) {
   const bytes = readCommitFile(commitSha, repoPath);
   return { inputRef, sha256: sha256(bytes) };
+}
+
+function isInside(parent, target) {
+  const relative = path.relative(parent, target);
+  return relative !== '' &&
+    relative !== '..' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative);
+}
+
+function hasTraversalSegment(value) {
+  return String(value).split(/[\\/]+/u).some((segment) => segment === '..');
+}
+
+function looksAbsoluteOnAnySupportedHost(value) {
+  const text = String(value);
+  return path.isAbsolute(text) ||
+    /^[A-Za-z]:[\\/]/u.test(text) ||
+    /^\\\\/u.test(text) ||
+    /^\/\//u.test(text);
+}
+
+function assertNoExistingSymlinkComponents(targetPath) {
+  const root = path.resolve(ROOT);
+  const target = path.resolve(targetPath);
+  const relative = path.relative(root, target);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error('output path is outside the repository root');
+  }
+
+  let current = root;
+  for (const segment of relative.split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment);
+    if (!fs.existsSync(current)) continue;
+    const stat = fs.lstatSync(current);
+    if (stat.isSymbolicLink()) {
+      throw new Error(`output path contains a symbolic-link or junction ancestor: ${current}`);
+    }
+  }
+}
+
+export function assertQualifiedOutputDir(outputDir) {
+  const qualifiedRoot = path.resolve(QUALIFIED_OUTPUT_ROOT);
+  const resolved = path.resolve(outputDir);
+  if (!isInside(qualifiedRoot, resolved)) {
+    throw new Error('output directory must be a subdirectory of generated/release-candidates');
+  }
+  assertNoExistingSymlinkComponents(resolved);
+  return resolved;
+}
+
+export function resolveOutputDir(commitSha, requestedOut = null) {
+  requireFullCommitSha(commitSha);
+  if (requestedOut == null) {
+    return assertQualifiedOutputDir(path.join(QUALIFIED_OUTPUT_ROOT, commitSha));
+  }
+  if (typeof requestedOut !== 'string' || !requestedOut.trim()) {
+    throw new Error('--out must be a non-empty relative subdirectory');
+  }
+  if (looksAbsoluteOnAnySupportedHost(requestedOut)) {
+    throw new Error('--out must be relative to generated/release-candidates');
+  }
+  if (hasTraversalSegment(requestedOut)) {
+    throw new Error('--out must not contain parent-directory traversal');
+  }
+  return assertQualifiedOutputDir(path.resolve(QUALIFIED_OUTPUT_ROOT, requestedOut));
 }
 
 export function buildReleaseCandidatePacket(commitSha) {
@@ -239,10 +309,7 @@ export function buildReleaseCandidatePacket(commitSha) {
 }
 
 export function defaultOutputDir(commitSha) {
-  if (typeof commitSha !== 'string' || !SHA_RE.test(commitSha)) {
-    throw new Error('source commit must be one lowercase full 40-hex Git SHA');
-  }
-  return path.join(ROOT, 'generated', 'release-candidates', commitSha);
+  return resolveOutputDir(commitSha);
 }
 
 function writeExactFile(targetPath, bytes) {
@@ -259,10 +326,13 @@ function writeExactFile(targetPath, bytes) {
 }
 
 export function writeReleaseCandidatePacket(packet, outputDir) {
+  const resolvedOutputDir = assertQualifiedOutputDir(outputDir);
+  fs.mkdirSync(resolvedOutputDir, { recursive: true });
+  assertNoExistingSymlinkComponents(resolvedOutputDir);
+
   const results = {};
-  fs.mkdirSync(outputDir, { recursive: true });
   for (const [name, bytes] of Object.entries(packet.files)) {
-    results[name] = writeExactFile(path.join(outputDir, name), bytes);
+    results[name] = writeExactFile(path.join(resolvedOutputDir, name), bytes);
   }
   return results;
 }
@@ -273,7 +343,10 @@ function parseArgs(argv) {
     const key = argv[index];
     const value = argv[index + 1];
     if (!['--commit', '--out'].includes(key) || !value) {
-      throw new Error('Usage: node scripts/release-candidate.mjs --commit <full-40-hex-sha> [--out <directory>]');
+      throw new Error(
+        'Usage: node scripts/release-candidate.mjs --commit <full-40-hex-sha> ' +
+        '[--out <relative-subdirectory>]',
+      );
     }
     if (key === '--commit') values.commit = value;
     if (key === '--out') values.out = value;
@@ -287,9 +360,7 @@ function parseArgs(argv) {
 export function runCli(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);
   const packet = buildReleaseCandidatePacket(args.commit);
-  const outputDir = args.out
-    ? path.resolve(process.cwd(), args.out)
-    : defaultOutputDir(packet.identity.commitSha);
+  const outputDir = resolveOutputDir(packet.identity.commitSha, args.out);
   const writes = writeReleaseCandidatePacket(packet, outputDir);
   const result = {
     ...packet.summary,
