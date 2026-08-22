@@ -3,6 +3,12 @@
   "bucketId": "a3",
   "files": [
     {
+      "path": "pages/vexlife-onboarding.html",
+      "mode": "100644",
+      "bytes": 28829,
+      "sha256": "255e8330ec4ee32a187054d381720ec7309a5048bbf7423d038449ed41cccb1b"
+    },
+    {
       "path": "reference/browser/modules/living-journal-demo-data.js",
       "mode": "100644",
       "bytes": 10601,

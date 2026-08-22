@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 6754,
       "sha256": "9af7c2f5df159704da92bc77e98abff60d4d31efed218a77e3d54844e290333d"
+    },
+    {
+      "path": "docs/release/public-onboarding-distribution-claim.md",
+      "mode": "100644",
+      "bytes": 5324,
+      "sha256": "3be1e3e4b8c17fef8bb7c7fb4974b631d1d8be770e0d59c1eba19d625d996c67"
     }
   ]
 }

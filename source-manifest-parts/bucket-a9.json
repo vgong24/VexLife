@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "a9",
+  "files": [
+    {
+      "path": "pages/strings/vexlife-onboarding.zh.json",
+      "mode": "100644",
+      "bytes": 14764,
+      "sha256": "234be2cd1d69af165049ea6ee1ebae8cf2fde1811daeea66fb62b804466b99e4"
+    }
+  ]
+}
