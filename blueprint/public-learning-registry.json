@@ -1,0 +1,240 @@
+{
+  "schemaVersion": "vexlife.public-learning-registry/v1",
+  "registryRef": "registry.vexlife.public-learning.001",
+  "registryVersion": 1,
+  "projectionRef": "projection.vexlife.public-learning.architecture-atlas.001",
+  "purpose": "Provide a deterministic public-safe learning projection over accepted VexLife identities without becoming a canonical product-state owner.",
+  "sourceLocale": "en",
+  "requiredLocales": [
+    "en",
+    "ja",
+    "zh"
+  ],
+  "sourcePolicy": {
+    "inputProductRootClass": "EXACT_SOURCE_BINDING",
+    "acceptedState": "ACCEPTED_CURRENT",
+    "candidateProofState": "CANDIDATE_PROOF_ONLY",
+    "openPrInput": false,
+    "historicalUnmergedInput": false,
+    "worktreeInput": false,
+    "wallClockAsProductTruth": false,
+    "browserRuntimeRepositoryScan": false
+  },
+  "stateDimensions": [
+    "registrationState",
+    "implementationState",
+    "capabilityStage",
+    "publicAvailabilityState",
+    "sourceAcceptanceState",
+    "liveDeploymentState",
+    "currentnessState",
+    "dataClass"
+  ],
+  "prototype": {
+    "prototypeRef": "prototype.vexlife.public-learning.architecture-atlas.001",
+    "entryRef": "public-group.vexlife.architecture.001",
+    "purposeRef": "public.prototype.architecture-atlas.purpose",
+    "finalHomeHierarchy": false
+  },
+  "publicGroups": [
+    {
+      "groupRef": "public-group.vexlife.architecture.001",
+      "parentGroupRef": null,
+      "titleRef": "public.group.architecture.title",
+      "briefRef": "public.group.architecture.brief",
+      "purposeRef": "public.group.architecture.purpose",
+      "childGroupRefs": [
+        "public-group.vexlife.architecture.registries.001",
+        "public-group.vexlife.architecture.atlas.001"
+      ],
+      "memberRefs": [
+        "blueprint.vexlife.universal.001"
+      ]
+    },
+    {
+      "groupRef": "public-group.vexlife.architecture.registries.001",
+      "parentGroupRef": "public-group.vexlife.architecture.001",
+      "titleRef": "public.group.registries.title",
+      "briefRef": "public.group.registries.brief",
+      "purposeRef": "public.group.registries.purpose",
+      "childGroupRefs": [],
+      "memberRefs": [
+        "module.vexlife.core.registry",
+        "registry.vexlife.features.001",
+        "registry.vexlife.capabilities.001"
+      ]
+    },
+    {
+      "groupRef": "public-group.vexlife.architecture.atlas.001",
+      "parentGroupRef": "public-group.vexlife.architecture.001",
+      "titleRef": "public.group.atlas.title",
+      "briefRef": "public.group.atlas.brief",
+      "purposeRef": "public.group.atlas.purpose",
+      "childGroupRefs": [],
+      "memberRefs": [
+        "module.vexlife.core.atlas"
+      ]
+    }
+  ],
+  "canonicalNodes": [
+    {
+      "canonicalRef": "blueprint.vexlife.universal.001",
+      "titleRef": "public.node.blueprint.title",
+      "briefRef": "public.node.blueprint.brief",
+      "publicAvailabilityState": "PUBLIC_STATIC",
+      "leafRef": "public-leaf.vexlife.blueprint.001",
+      "relatedRefs": [
+        "module.vexlife.core.registry"
+      ],
+      "sourcePaths": [
+        "blueprint/vexlife.blueprint.json",
+        "docs/FOUNDATION-README.md"
+      ]
+    },
+    {
+      "canonicalRef": "module.vexlife.core.registry",
+      "titleRef": "public.node.registry-compiler.title",
+      "briefRef": "public.node.registry-compiler.brief",
+      "publicAvailabilityState": "PUBLIC_STATIC",
+      "leafRef": "public-leaf.vexlife.registry-compiler.001",
+      "relatedRefs": [
+        "blueprint.vexlife.universal.001",
+        "module.vexlife.core.atlas",
+        "registry.vexlife.features.001",
+        "registry.vexlife.capabilities.001"
+      ],
+      "sourcePaths": [
+        "src/core/registry.mjs",
+        "docs/REGISTRIES-AND-PROCESS-FACTORY.md",
+        "test/registry.test.mjs"
+      ]
+    },
+    {
+      "canonicalRef": "module.vexlife.core.atlas",
+      "titleRef": "public.node.atlas.title",
+      "briefRef": "public.node.atlas.brief",
+      "publicAvailabilityState": "PUBLIC_STATIC",
+      "leafRef": "public-leaf.vexlife.atlas.001",
+      "relatedRefs": [
+        "module.vexlife.core.registry",
+        "registry.vexlife.features.001",
+        "registry.vexlife.capabilities.001"
+      ],
+      "sourcePaths": [
+        "src/core/atlas.mjs",
+        "docs/CAPABILITY-AND-TOOL-ATLAS.md",
+        "test/core.test.mjs",
+        "test/registry.test.mjs"
+      ]
+    },
+    {
+      "canonicalRef": "registry.vexlife.features.001",
+      "titleRef": "public.node.feature-registry.title",
+      "briefRef": "public.node.feature-registry.brief",
+      "publicAvailabilityState": "PUBLIC_STATIC",
+      "leafRef": "public-leaf.vexlife.feature-registry.001",
+      "relatedRefs": [
+        "module.vexlife.core.registry",
+        "module.vexlife.core.atlas",
+        "registry.vexlife.capabilities.001"
+      ],
+      "sourcePaths": [
+        "blueprint/feature-registry.json",
+        "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+      ]
+    },
+    {
+      "canonicalRef": "registry.vexlife.capabilities.001",
+      "titleRef": "public.node.capability-registry.title",
+      "briefRef": "public.node.capability-registry.brief",
+      "publicAvailabilityState": "PUBLIC_STATIC",
+      "leafRef": "public-leaf.vexlife.capability-registry.001",
+      "relatedRefs": [
+        "module.vexlife.core.registry",
+        "module.vexlife.core.atlas",
+        "registry.vexlife.features.001"
+      ],
+      "sourcePaths": [
+        "blueprint/capability-registry.json",
+        "docs/CAPABILITY-AND-TOOL-ATLAS.md"
+      ]
+    }
+  ],
+  "leafPresentations": [
+    {
+      "leafRef": "public-leaf.vexlife.blueprint.001",
+      "canonicalRef": "blueprint.vexlife.universal.001",
+      "routePath": "/learn/architecture/blueprint/",
+      "titleRef": "public.node.blueprint.title",
+      "summaryRef": "public.node.blueprint.brief",
+      "sectionRefs": {
+        "what": "public.leaf.blueprint.what",
+        "why": "public.leaf.blueprint.why",
+        "how": "public.leaf.blueprint.how",
+        "when": "public.leaf.blueprint.when",
+        "boundaries": "public.leaf.blueprint.boundaries",
+        "related": "public.leaf.blueprint.related"
+      }
+    },
+    {
+      "leafRef": "public-leaf.vexlife.registry-compiler.001",
+      "canonicalRef": "module.vexlife.core.registry",
+      "routePath": "/learn/architecture/registry-compiler/",
+      "titleRef": "public.node.registry-compiler.title",
+      "summaryRef": "public.node.registry-compiler.brief",
+      "sectionRefs": {
+        "what": "public.leaf.registry.what",
+        "why": "public.leaf.registry.why",
+        "how": "public.leaf.registry.how",
+        "when": "public.leaf.registry.when",
+        "boundaries": "public.leaf.registry.boundaries",
+        "related": "public.leaf.registry.related"
+      }
+    },
+    {
+      "leafRef": "public-leaf.vexlife.atlas.001",
+      "canonicalRef": "module.vexlife.core.atlas",
+      "routePath": "/learn/architecture/atlas/",
+      "titleRef": "public.node.atlas.title",
+      "summaryRef": "public.node.atlas.brief",
+      "sectionRefs": {
+        "what": "public.leaf.atlas.what",
+        "why": "public.leaf.atlas.why",
+        "how": "public.leaf.atlas.how",
+        "when": "public.leaf.atlas.when",
+        "boundaries": "public.leaf.atlas.boundaries",
+        "related": "public.leaf.atlas.related"
+      }
+    },
+    {
+      "leafRef": "public-leaf.vexlife.feature-registry.001",
+      "canonicalRef": "registry.vexlife.features.001",
+      "routePath": "/learn/architecture/feature-registry/",
+      "titleRef": "public.node.feature-registry.title",
+      "summaryRef": "public.node.feature-registry.brief",
+      "sectionRefs": {
+        "what": "public.leaf.feature.what",
+        "why": "public.leaf.feature.why",
+        "how": "public.leaf.feature.how",
+        "when": "public.leaf.feature.when",
+        "boundaries": "public.leaf.feature.boundaries",
+        "related": "public.leaf.feature.related"
+      }
+    },
+    {
+      "leafRef": "public-leaf.vexlife.capability-registry.001",
+      "canonicalRef": "registry.vexlife.capabilities.001",
+      "routePath": "/learn/architecture/capability-registry/",
+      "titleRef": "public.node.capability-registry.title",
+      "summaryRef": "public.node.capability-registry.brief",
+      "sectionRefs": {
+        "what": "public.leaf.capability.what",
+        "why": "public.leaf.capability.why",
+        "how": "public.leaf.capability.how",
+        "when": "public.leaf.capability.when",
+        "boundaries": "public.leaf.capability.boundaries",
+        "related": "public.leaf.capability.related"
+      }
+    }
+  ]
+}

@@ -1,13 +1,16 @@
 {
   "schemaVersion": "vexlife.module-registry/v0",
   "registryRef": "registry.vexlife.modules.001",
+  "registryVersion": 1,
+  "purpose": "Map every source module to its stable responsibility, dependencies, consumers, tests and change impact.",
   "composition": "CANONICAL_FRAGMENT_COMPOSITION",
   "includes": {
     "modules": [
       "blueprint/module-registry/core.json",
       "blueprint/module-registry/scripts.json",
       "blueprint/module-registry/browser.json",
-      "blueprint/module-registry/governance-and-bridge.json"
+      "blueprint/module-registry/governance.json",
+      "blueprint/module-registry/public-learning.json"
     ]
   }
 }
