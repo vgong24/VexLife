@@ -221,6 +221,7 @@ function bindHeldReleaseControl() {
   if (!button || !copy) return;
 
   button.setAttribute('aria-expanded', 'false');
+  button.removeAttribute('aria-disabled');
   button.addEventListener('click', () => {
     const willOpen = copy.hidden;
     copy.hidden = !willOpen;
