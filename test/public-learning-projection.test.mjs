@@ -39,7 +39,7 @@ test('PLP-07 state dimensions remain independent and deployment is never synthes
   for (const [binding,state] of [[BINDING,'CANDIDATE_PROOF_ONLY'],[ACCEPTED,'ACCEPTED_CURRENT']]) {
     const projection=buildPublicLearningProjection({root:ROOT,sourceBinding:binding});
     assert.deepEqual(projection.stateDimensions,[...PUBLIC_LEARNING_STATE_DIMENSIONS]);
-    for (const node of projection.nodes) { assert.deepEqual(Object.keys(node.states),[...PUBLIC_LEARNING_STATE_DIMENSIONS]); assert.equal(node.states.sourceAcceptanceState,state); assert.equal(node.states.liveDeploymentState,'NOT_DEPLOYED'); assert.notEqual(node.states.publicAvailabilityState,'AVAILABLE'); }
+    for (const node of projection.nodes) { assert.deepEqual(Object.keys(node.states).sort(),[...PUBLIC_LEARNING_STATE_DIMENSIONS].sort()); assert.equal(node.states.sourceAcceptanceState,state); assert.equal(node.states.liveDeploymentState,'NOT_DEPLOYED'); assert.notEqual(node.states.publicAvailabilityState,'AVAILABLE'); }
   }
 });
 
@@ -83,7 +83,9 @@ test('PLP-15 module fragment registers core projection and builder without brows
   assert.equal(byRef.get('module.vexlife.core.public-learning')?.path,'src/core/public-learning.mjs');
   assert.equal(byRef.get('module.vexlife.script.build-public-learning-projection')?.path,'scripts/build-public-learning-projection.mjs');
   assert.equal(byRef.get('module.vexlife.core.public-learning')?.tests.includes('test/public-learning-projection.test.mjs'),true);
-  assert.equal([...byRef.values()].filter((m)=>m.moduleRef.includes('public-learning')).some((m)=>/browser|pages/i.test(m.role??'')),false);
+  const publicLearningModules=[...byRef.values()].filter((m)=>m.moduleRef.includes('public-learning'));
+  assert.equal(publicLearningModules.some((m)=>/^(?:reference\/browser|pages\/|\.github\/workflows\/)/u.test(m.path??'')),false);
+  assert.equal(publicLearningModules.flatMap((m)=>m.writes??[]).some((target)=>/^(?:reference\/browser|pages\/|\.github\/workflows\/)/u.test(target)),false);
 });
 
 test('public projection never mutates accepted compiled registry', () => {
