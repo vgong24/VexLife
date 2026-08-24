@@ -3,6 +3,12 @@
   "bucketId": "1e",
   "files": [
     {
+      "path": "reference/browser/modules/public-learning-controller.js",
+      "mode": "100644",
+      "bytes": 22114,
+      "sha256": "3c9455e07a52cbd7b2ed981c9849f4b2529b425f1d71a5327237d21e3de8e0cd"
+    },
+    {
       "path": "scripts/evolution-summary.mjs",
       "mode": "100644",
       "bytes": 725,

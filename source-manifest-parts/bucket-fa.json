@@ -3,6 +3,12 @@
   "bucketId": "fa",
   "files": [
     {
+      "path": "reference/browser/public-learning/app.js",
+      "mode": "100644",
+      "bytes": 1244,
+      "sha256": "f7717cf6fd6ea0d7d762b4a9d2729583b596eeff6ed0d7c9f675758ee0c1b116"
+    },
+    {
       "path": "scripts/daily-memory-dream.mjs",
       "mode": "100644",
       "bytes": 44357,
