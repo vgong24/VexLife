@@ -6,6 +6,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  buildRuntimeArguments,
   evaluateOperationalProfileHost,
   qualificationContentMatches,
   selectOperationalProfile,
@@ -116,6 +117,39 @@ test('MAC02B Mac qualification requires the exact readiness sentinel without cha
   const checked = validateOperationalProfileRegistry(invalid);
   assert.equal(checked.ok, false);
   assert.match(checked.errors.join('; '), /expectedContent/i);
+});
+
+test('MAC02C M4 Pro runtime binds the exact discovered MTL0 device and all GPU layers while Windows stays unchanged', () => {
+  const mac = registry.profiles.find((p) => p.profileRef === MAC_REF);
+  const win = registry.profiles.find((p) => p.profileRef === WIN_REF);
+  assert.deepEqual(mac.runtime.devicePolicy, {
+    class: 'EXACT_DEVICE_AND_GPU_LAYER_POLICY',
+    deviceRef: 'MTL0',
+    deviceLabel: 'Apple M4 Pro',
+    gpuLayers: 'all',
+    evidenceRef: 'github.issue.vexlife.194.comment.5393089386',
+    upstreamRevisionRef: 'github.commit.ggml-org.llama-cpp.c0bc8591e8815c63cb01dd3f051a8b0df02501c9'
+  });
+  const args = buildRuntimeArguments(mac, {
+    modelPath: '/tmp/Vex Qualification/models/model.gguf',
+    projectorPath: '/tmp/Vex Qualification/models/mmproj.gguf'
+  });
+  const deviceIndex = args.indexOf('--device');
+  const layersIndex = args.indexOf('--gpu-layers');
+  assert.ok(deviceIndex >= 0);
+  assert.ok(layersIndex >= 0);
+  assert.equal(args[deviceIndex + 1], 'MTL0');
+  assert.equal(args[layersIndex + 1], 'all');
+  assert.equal(Object.hasOwn(win.runtime, 'devicePolicy'), false);
+  assert.equal(win.runtime.argumentTemplate.includes('--device'), false);
+  assert.equal(win.runtime.argumentTemplate.includes('--gpu-layers'), false);
+
+  const mismatch = structuredClone(registry);
+  const bad = mismatch.profiles.find((p) => p.profileRef === MAC_REF);
+  bad.runtime.devicePolicy.deviceRef = 'MTL9';
+  const checked = validateOperationalProfileRegistry(mismatch);
+  assert.equal(checked.ok, false);
+  assert.match(checked.errors.join('; '), /deviceRef must match --device argv/i);
 });
 
 test('MAC03 tar topology admits only bounded same-directory file aliases and rejects link write-through classes', () => {

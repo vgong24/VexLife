@@ -210,6 +210,10 @@
           "{MODEL_PATH}",
           "--mmproj",
           "{PROJECTOR_PATH}",
+          "--device",
+          "MTL0",
+          "--gpu-layers",
+          "all",
           "--host",
           "127.0.0.1",
           "--port",
@@ -243,7 +247,15 @@
         "licenseRef": "license.mit.llama-cpp",
         "noticeRef": "https://github.com/ggml-org/llama.cpp/blob/c0bc8591e8815c63cb01dd3f051a8b0df02501c9/LICENSE",
         "version": "b10107",
-        "executableExpectedBytes": 33472
+        "executableExpectedBytes": 33472,
+        "devicePolicy": {
+          "class": "EXACT_DEVICE_AND_GPU_LAYER_POLICY",
+          "deviceRef": "MTL0",
+          "deviceLabel": "Apple M4 Pro",
+          "gpuLayers": "all",
+          "evidenceRef": "github.issue.vexlife.194.comment.5393089386",
+          "upstreamRevisionRef": "github.commit.ggml-org.llama-cpp.c0bc8591e8815c63cb01dd3f051a8b0df02501c9"
+        }
       },
       "sourceRefs": [
         "github.issue.vextreme-sdk.914",
@@ -252,10 +264,11 @@
         "github.issue.vexlife.194",
         "github.issue.vextreme-sdk.662",
         "github.issue.vexlife.194.comment.5392062860",
-        "github.issue.vexlife.194.comment.5392007503"
+        "github.issue.vexlife.194.comment.5392007503",
+        "github.issue.vexlife.194.comment.5393089386"
       ],
       "state": "CANDIDATE_QUALIFICATION",
-      "stateReason": "Candidate qualification only for the observed Apple M4 Pro macOS arm64 Metal host. The exact upstream b10107 macOS arm64 archive identity, bounded extraction topology, and extracted llama-server SHA-256/byte identity are now source-pinned from bounded host proof. The profile remains CANDIDATE_QUALIFICATION until lived loopback runtime/model qualification, real browser turn, repair, uninstall-preserve, and same-machine rebuild-preserve predicates are independently proven. This one-host candidate does not certify plain M4, M4 Max, or other Apple-Silicon Macs and grants no signed/public build status, P11 fresh-human acceptance, Home deletion, or publication authority."
+      "stateReason": "Candidate qualification only for the observed Apple M4 Pro macOS arm64 host. Exact b10107 archive/executable identities and the exact upstream runtime device token MTL0 are source-pinned. Runtime argv now explicitly selects MTL0 and --gpu-layers all instead of relying on llama.cpp auto device/offload selection. The profile remains CANDIDATE_QUALIFICATION until a fresh cached lived run proves that exact device/offload argv together with loopback ownership and the exact readiness sentinel, followed by real browser turn, repair, uninstall-preserve, and same-machine rebuild-preserve predicates. This one-host candidate does not certify plain M4, M4 Max, or other Apple Silicon and grants no signed/public build, P11 fresh-human, Home deletion, Memory, publication, force, or history-rewrite authority."
     }
   ]
 }

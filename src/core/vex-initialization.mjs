@@ -154,6 +154,29 @@ export function validateOperationalProfileRegistry(registry) {
       }
       if (!Array.isArray(profile.runtime.argumentTemplate) || profile.runtime.argumentTemplate.length === 0) throw new Error(`${p}.runtime.argumentTemplate must be non-empty`);
       for (const arg of profile.runtime.argumentTemplate) requireString(arg, `${p}.runtime.argumentTemplate item`);
+      if (profile.runtime.devicePolicy !== undefined && profile.runtime.devicePolicy !== null) {
+        requireObject(profile.runtime.devicePolicy, `${p}.runtime.devicePolicy`);
+        if (profile.runtime.devicePolicy.class !== 'EXACT_DEVICE_AND_GPU_LAYER_POLICY') {
+          throw new Error(`${p}.runtime.devicePolicy.class must be EXACT_DEVICE_AND_GPU_LAYER_POLICY`);
+        }
+        requireString(profile.runtime.devicePolicy.deviceRef, `${p}.runtime.devicePolicy.deviceRef`);
+        requireString(profile.runtime.devicePolicy.gpuLayers, `${p}.runtime.devicePolicy.gpuLayers`);
+        requireString(profile.runtime.devicePolicy.evidenceRef, `${p}.runtime.devicePolicy.evidenceRef`);
+        requireString(profile.runtime.devicePolicy.upstreamRevisionRef, `${p}.runtime.devicePolicy.upstreamRevisionRef`);
+        const flagValue = (flag) => {
+          const indexes = profile.runtime.argumentTemplate.flatMap((value, index) => value === flag ? [index] : []);
+          if (indexes.length !== 1 || indexes[0] + 1 >= profile.runtime.argumentTemplate.length) {
+            throw new Error(`${p}.runtime.argumentTemplate must contain exactly one ${flag} value`);
+          }
+          return profile.runtime.argumentTemplate[indexes[0] + 1];
+        };
+        if (flagValue('--device') !== profile.runtime.devicePolicy.deviceRef) {
+          throw new Error(`${p}.runtime.devicePolicy.deviceRef must match --device argv`);
+        }
+        if (flagValue('--gpu-layers') !== profile.runtime.devicePolicy.gpuLayers) {
+          throw new Error(`${p}.runtime.devicePolicy.gpuLayers must match --gpu-layers argv`);
+        }
+      }
       if (!Array.isArray(profile.refreshTriggers) || profile.refreshTriggers.length === 0) throw new Error(`${p}.refreshTriggers must be non-empty`);
     }
   } catch (error) { errors.push(error.message); }
@@ -263,6 +286,7 @@ export function buildVexInitializationPlan({ profile, home, homeState, hostEvide
       executableName: profile.runtime.executableName,
       executableSha256: profile.runtime.executableSha256,
       executableExpectedBytes: profile.runtime.executableExpectedBytes ?? null,
+      devicePolicy: profile.runtime.devicePolicy ?? null,
       argumentTemplate: profile.runtime.argumentTemplate
     },
     effects: {
