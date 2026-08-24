@@ -149,7 +149,12 @@ test('MAC03 tar topology admits only bounded same-directory file aliases and rej
   hostile(
     ['llama-b10107/a//b'],
     ['-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/a//b'],
-    /not canonical/
+    /repeated separators/
+  );
+  hostile(
+    ['llama-b10107/dir//'],
+    ['drwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/dir//'],
+    /repeated separators/
   );
   hostile(
     ['././llama-b10107/file'],

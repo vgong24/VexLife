@@ -87,6 +87,9 @@ function normalizeMacTarMemberName(raw) {
     throw new Error('runtime archive member name contains a non-admitted separator or NUL');
   }
   let value = original.startsWith('./') ? original.slice(2) : original;
+  if (value.includes('//')) {
+    throw new Error(`runtime archive member path contains repeated separators: ${original}`);
+  }
   const directoryForm = value.endsWith('/');
   if (directoryForm) value = value.slice(0, -1);
   if (!value || value === '.') throw new Error(`runtime archive member path is empty or root-like: ${original}`);
@@ -95,7 +98,7 @@ function normalizeMacTarMemberName(raw) {
     throw new Error(`runtime archive contains parent traversal: ${original}`);
   }
   const canonical = path.posix.normalize(value);
-  if (canonical !== value || value.includes('//') || value.split('/').some(segment => segment === '.')) {
+  if (canonical !== value || value.split('/').some(segment => segment === '.')) {
     throw new Error(`runtime archive member path is not canonical: ${original}`);
   }
   return canonical;
