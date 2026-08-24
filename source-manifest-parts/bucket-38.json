@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "38",
+  "files": [
+    {
+      "path": "docs/REVIEW-COVERAGE-INVENTORY.md",
+      "mode": "100644",
+      "bytes": 29495,
+      "sha256": "bc9ef82ec2188d83672a0e0bcf5213d5d4cc22ae7775fc2677bbdd1b8bc3642d"
+    }
+  ]
+}
