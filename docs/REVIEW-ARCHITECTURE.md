@@ -51,7 +51,9 @@ FINDING_RECORDED != WORK_ADMITTED
 AUTHOR_SELF_AUDIT != INDEPENDENT_ASSURANCE
 BROWSER_PASS != NATIVE_PLATFORM_CONFORMANCE
 PR_COMMENT_HISTORY != CURRENT_CANONICAL_SOURCE
-CURRENT_CANONICAL_SOURCE != PERMISSION_TO_ERASE_HISTORY
+CURRENT_CANONICAL_SOURCE != PERMISSION_TO ERASE_HISTORY
+PLAN_FORMATION_NO_EFFECT != EXECUTION_MUST_BE_NO_EFFECT
+RENDERED_CLICKABILITY != EFFECT_ADMISSION
 ```
 
 ## Existing semantic owners
@@ -253,7 +255,11 @@ alternative when the action is material.
 
 ## Review journey composition
 
-A review journey is a no-effect plan over existing semantic identities.
+Review-journey **plan formation** is no-effect. Execution is no-effect by
+default; when a feature cannot be reviewed without exercising a bounded effect,
+execution may proceed only through exact registered action, permission and effect
+identity inside an isolated fixture with an explicit authority binding and
+cleanup/recovery proof.
 
 ```text
 ReviewJourneyPlan
@@ -266,7 +272,11 @@ ReviewJourneyPlan
   returnExpectationRef
   recoveryExpectationRef
   fixtureRef
+  executionEffectPolicy = NO_EFFECT | ADMITTED_FIXTURE_EFFECTS
   admittedActionRefs[]
+  admittedEffectClasses[]
+  effectAuthorityRefOrNull
+  cleanupOrRecoveryExpectationRefOrNull
   forbiddenEffectClasses[]
   platformRef
   localeRef
@@ -278,6 +288,10 @@ ReviewJourneyPlan
 
 Each step references an existing element/action/gesture and expected semantic
 state transition. Renderer-specific selectors and commands stay in the adapter.
+`ADMITTED_FIXTURE_EFFECTS` requires every exercised effect to resolve through the
+registered action + permission + effect class and the plan's exact authority/fixture
+binding; clickability, test convenience, or reviewer intent never grants effect
+authority.
 
 ```text
 WHAT_TO_REVIEW != HOW_A_RENDERER_EXECUTES_THE_CAPTURE
@@ -358,7 +372,8 @@ journeys pass. It requires:
 
 ```text
 registered admittedActionRefs
-exact isolated fixture
+registered admittedEffectClasses (or an explicit NO_EFFECT policy)
+exact isolated fixture + effect authority binding when effects are admitted
 reproducible seed
 step and time budget
 forbidden effect classes
@@ -521,7 +536,10 @@ platform cells; keep unsupported cells held rather than implied.
 
 ### R5 — Permission, effect, privacy, resource, concurrency and recovery
 
-Fail closed on unknown authority. Inspection evidence remains no-effect.
+Fail closed on unknown authority. Plan formation and inspection remain no-effect.
+Effectful proof is allowed only when the exact review plan binds an isolated
+fixture to registered action, permission and effect identities, an admitted effect
+class, explicit effect authority, and cleanup/recovery evidence.
 
 ### R6 — Evidence and human review
 
