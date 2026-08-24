@@ -164,6 +164,37 @@ function sourceBundle() {
   };
 }
 
+
+function repositoryEvidenceProvider(trustedBundle = sourceBundle()) {
+  const trustedByKind = new Map(trustedBundle.sources.map((source) => [source.sourceKind, structuredClone(source)]));
+  const verifierRef = 'verifier.fixture.repository-evidence';
+  return {
+    verificationClass: 'INDEPENDENT_REPOSITORY_EVIDENCE',
+    verifierRef,
+    verifySourceBinding({ sourceKind, envelope, valueSemanticHash }) {
+      const trusted = trustedByKind.get(sourceKind);
+      assert.ok(trusted, `untrusted source kind ${sourceKind}`);
+      assert.deepEqual(envelope, trusted.envelope, `${sourceKind} Git/source envelope differs from independently verified fixture binding`);
+      assert.equal(valueSemanticHash, trusted.envelope.valueSemanticHash, `${sourceKind} normalized value hash differs from independently verified fixture binding`);
+      const core = {
+        schemaVersion: 'vexlife.review-source-binding-verification/v1',
+        verificationRef: envelope.verificationRef,
+        verifierRef,
+        verificationClass: 'INDEPENDENT_REPOSITORY_EVIDENCE',
+        verificationState: 'VERIFIED_CURRENT',
+        sourceKind,
+        repositoryRef: envelope.repositoryRef,
+        commitRef: envelope.commitRef,
+        treeRefOrNull: envelope.treeRefOrNull,
+        sourcePathRef: envelope.sourcePathRef,
+        blobRef: envelope.blobRef,
+        valueSemanticHash
+      };
+      return { ...core, semanticFingerprint: semanticHash(core) };
+    }
+  };
+}
+
 function request(subjectRefs = ['feature.test.chat']) {
   return {
     subjectRefs,
@@ -191,7 +222,7 @@ function evidenceBundle() {
         evidenceRef: 'evidence.current.identity',
         dimension: 'canonicalIdentity',
         state: 'CURRENT_PROVEN',
-        coversRefs: ['feature.test.chat', 'screen.test.chat'],
+        coversRefs: ['feature.test.chat', 'screen.test.chat', 'element.test.send'],
         sourceBindingRef: 'evidence.fixture.feature_registry.10'
       },
       {
@@ -217,6 +248,7 @@ test('RCP-00 exact verified source envelopes compile with all-false effects', ()
     processFactory: factory(),
     request: request(),
     sourceBundle: sourceBundle(),
+    repositoryEvidenceProvider: repositoryEvidenceProvider(),
     evidenceBundle: evidenceBundle(),
     currentFoundationVersions: foundationVersions,
     resourceBudget: { requiredTokens: 10, availableTokens: 100 },
@@ -235,7 +267,7 @@ test('RCP-00 exact verified source envelopes compile with all-false effects', ()
 });
 
 test('RCP-01 Feature-backed subject compiles stable source-owned refs', () => {
-  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle() });
+  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider() });
   assert.deepEqual(set.reviewSubject.featureRefs, ['feature.test.chat']);
   assert.ok(set.screenRefs.includes('screen.test.chat'));
   assert.ok(set.actionRefs.includes('action.test.send'));
@@ -243,14 +275,14 @@ test('RCP-01 Feature-backed subject compiles stable source-owned refs', () => {
 });
 
 test('RCP-02 shared Health surface remains featureRefs=[] with UNKNOWN feature binding', () => {
-  const set = compileReviewExpectationSet({ request: request(['screen.vexlife.health']), sourceBundle: sourceBundle() });
+  const set = compileReviewExpectationSet({ request: request(['screen.vexlife.health']), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider() });
   assert.deepEqual(set.reviewSubject.featureRefs, []);
   assert.equal(set.reviewSubject.featureBindingDisposition, 'UNKNOWN');
   assert.match(set.reviewSubject.unresolvedFeatureBindingQuestionOrNull, /Which canonical Feature/);
 });
 
 test('RCP-03 Review Lens obligations join by refs without copying canonical records', () => {
-  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle() });
+  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider() });
   assert.ok(set.reviewLensRefs.includes('lens.vexlife.design-system'));
   assert.deepEqual(
     set.lensEvidenceRequirements.find((item) => item.lensRef === 'lens.vexlife.design-system').requiredEvidence,
@@ -260,7 +292,7 @@ test('RCP-03 Review Lens obligations join by refs without copying canonical reco
 });
 
 test('RCP-04 action, permission, effect class and state owner relations remain exact', () => {
-  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle() });
+  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider() });
   assert.deepEqual(set.actionRefs, ['action.test.send']);
   assert.deepEqual(set.permissionRefs, ['permission.test.send']);
   assert.deepEqual(set.effectClasses, ['APPEND_ONLY_MESSAGE']);
@@ -270,8 +302,8 @@ test('RCP-04 action, permission, effect class and state owner relations remain e
 test('RCP-05 Experience refs are deterministic and caller source bundle remains unchanged', () => {
   const bundle = sourceBundle();
   const before = structuredClone(bundle);
-  const one = compileReviewExpectationSet({ request: request(), sourceBundle: bundle });
-  const two = compileReviewExpectationSet({ request: request(), sourceBundle: bundle });
+  const one = compileReviewExpectationSet({ request: request(), sourceBundle: bundle, repositoryEvidenceProvider: repositoryEvidenceProvider(bundle) });
+  const two = compileReviewExpectationSet({ request: request(), sourceBundle: bundle, repositoryEvidenceProvider: repositoryEvidenceProvider(bundle) });
   assert.equal(one.projectionHash, two.projectionHash);
   assert.ok(one.experienceProfileRefs.includes('experience.test.chat'));
   assert.ok(one.gestureRefs.includes('gesture.test.activate'));
@@ -281,13 +313,13 @@ test('RCP-05 Experience refs are deterministic and caller source bundle remains 
 
 
 test('RCP-05b structural traversal does not spread through shared permission or action refs', () => {
-  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle() });
+  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider() });
   assert.equal(set.screenRefs.includes('screen.vexlife.health'), false);
   assert.equal(set.elementRefs.includes('element.health.disclosure'), false);
 });
 
 test('RCP-06 owner-domain evidence and review captures stay evidence refs, not portable semantics', () => {
-  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle() });
+  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider() });
   assert.deepEqual(set.ownerDomainEvidenceRefs, ['evidence.test.chat']);
   assert.deepEqual(set.reviewCaptureRefs, ['capture.test.chat']);
   assert.equal(set.canonicalNodeRefs.includes('evidence.test.chat'), false);
@@ -295,14 +327,14 @@ test('RCP-06 owner-domain evidence and review captures stay evidence refs, not p
 });
 
 test('RCP-07 unresolved feedback states stay UNKNOWN while explicit focused state is PLACED', () => {
-  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle() });
+  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider() });
   assert.equal(set.feedbackExpectations.find((item) => item.state === 'FOCUSED').disposition, 'PLACED');
   assert.equal(set.feedbackExpectations.find((item) => item.state === 'BUSY').disposition, 'UNKNOWN');
   assert.ok(set.unknowns.some((item) => item.kind === 'INTERACTION_FEEDBACK' && item.state === 'BUSY'));
 });
 
 test('RCP-08 platform registration never becomes CURRENT_PROVEN without exact evidence', () => {
-  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle() });
+  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider() });
   assert.equal(set.environmentCells[0].evidenceState, 'HELD_NO_EXACT_EVIDENCE');
   const receipt = compileReviewCoverageReceipt({ expectationSet: set, evidenceBundle: evidenceBundle() });
   assert.equal(receipt.coverageDimensions.platform.state, 'HELD_NO_EXACT_EVIDENCE');
@@ -312,8 +344,8 @@ test('RCP-09 deterministic ordering is stable across source input order', () => 
   const first = sourceBundle();
   const second = sourceBundle();
   second.sources.reverse();
-  const a = compileReviewExpectationSet({ request: request(), sourceBundle: first });
-  const b = compileReviewExpectationSet({ request: request(), sourceBundle: second });
+  const a = compileReviewExpectationSet({ request: request(), sourceBundle: first, repositoryEvidenceProvider: repositoryEvidenceProvider(first) });
+  const b = compileReviewExpectationSet({ request: request(), sourceBundle: second, repositoryEvidenceProvider: repositoryEvidenceProvider(second) });
   assert.equal(a.projectionHash, b.projectionHash);
   assert.deepEqual(a.placedRefs, [...a.placedRefs].sort());
 });
@@ -327,6 +359,7 @@ test('RCP-10 createReviewFor does not mutate request, source bundle or evidence 
     processFactory: factory(),
     request: req,
     sourceBundle: bundle,
+    repositoryEvidenceProvider: repositoryEvidenceProvider(bundle),
     evidenceBundle: evidence,
     currentFoundationVersions: foundationVersions,
     now: '2026-08-24T00:00:00.000Z'
@@ -338,7 +371,7 @@ test('RCP-11 missing or stale source binding fails closed', () => {
   const missing = sourceBundle();
   missing.sources = missing.sources.filter((item) => item.sourceKind !== 'REVIEW_LENS_REGISTRY');
   const missingResult = createReviewFor({
-    processFactory: factory(), request: request(), sourceBundle: missing, evidenceBundle: evidenceBundle(), currentFoundationVersions: foundationVersions
+    processFactory: factory(), request: request(), sourceBundle: missing, repositoryEvidenceProvider: repositoryEvidenceProvider(), evidenceBundle: evidenceBundle(), currentFoundationVersions: foundationVersions
   });
   assert.equal(missingResult.state, 'BLOCKED_REVIEW_COMPOSITION');
   assert.equal(missingResult.blocker.code, 'MISSING_SOURCE_KIND');
@@ -347,7 +380,7 @@ test('RCP-11 missing or stale source binding fails closed', () => {
   stale.sources[0].envelope.currentness = 'STALE';
   stale.sources[0].envelope.valueSemanticHash = semanticHash(stale.sources[0].value);
   const staleResult = createReviewFor({
-    processFactory: factory(), request: request(), sourceBundle: stale, evidenceBundle: evidenceBundle(), currentFoundationVersions: foundationVersions
+    processFactory: factory(), request: request(), sourceBundle: stale, repositoryEvidenceProvider: repositoryEvidenceProvider(), evidenceBundle: evidenceBundle(), currentFoundationVersions: foundationVersions
   });
   assert.equal(staleResult.state, 'BLOCKED_REVIEW_COMPOSITION');
   assert.equal(staleResult.blocker.code, 'STALE_SOURCE_BINDING');
@@ -359,14 +392,14 @@ test('RCP-12 duplicate canonical identities fail closed', () => {
   interfaceSource.value.screens.push({ screenRef: 'screen.test.chat' });
   interfaceSource.envelope.valueSemanticHash = semanticHash(interfaceSource.value);
   const result = createReviewFor({
-    processFactory: factory(), request: request(), sourceBundle: bundle, evidenceBundle: evidenceBundle(), currentFoundationVersions: foundationVersions
+    processFactory: factory(), request: request(), sourceBundle: bundle, repositoryEvidenceProvider: repositoryEvidenceProvider(bundle), evidenceBundle: evidenceBundle(), currentFoundationVersions: foundationVersions
   });
   assert.equal(result.state, 'BLOCKED_REVIEW_COMPOSITION');
   assert.equal(result.blocker.code, 'DUPLICATE_IDENTITY');
 });
 
 test('RCP-13 coverage preserves separate placed, unknown, failed/current/stale dimensions', () => {
-  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle() });
+  const set = compileReviewExpectationSet({ request: request(), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider() });
   const evidence = evidenceBundle();
   evidence.evidence.push({
     evidenceRef: 'evidence.failed.keyboard',
@@ -388,6 +421,7 @@ test('RCP-14 ProcessFactory admission gates public createReviewFor before projec
     processFactory: factory(),
     request: request(),
     sourceBundle: sourceBundle(),
+    repositoryEvidenceProvider: repositoryEvidenceProvider(),
     evidenceBundle: evidenceBundle(),
     currentFoundationVersions: { ...foundationVersions, 'foundation.vexlife.identity-lattice.v1': 999 },
     now: '2026-08-24T00:00:00.000Z'
@@ -401,7 +435,7 @@ test('RCP-14b missing foundation currentness blocks before ProcessFactory plan a
   const currentness = { ...foundationVersions };
   delete currentness['foundation.vexlife.permission-effects.v1'];
   const result = createReviewFor({
-    processFactory: factory(), request: request(), sourceBundle: sourceBundle(), evidenceBundle: evidenceBundle(), currentFoundationVersions: currentness
+    processFactory: factory(), request: request(), sourceBundle: sourceBundle(), repositoryEvidenceProvider: repositoryEvidenceProvider(), evidenceBundle: evidenceBundle(), currentFoundationVersions: currentness
   });
   assert.equal(result.state, 'BLOCKED_CURRENTNESS_BINDING');
   assert.equal(result.expectationSet, undefined);
@@ -412,6 +446,7 @@ test('RCP-15 no ReviewGraph, Review Registry, ReviewFinding owner or effect auth
     processFactory: factory(),
     request: request(),
     sourceBundle: sourceBundle(),
+    repositoryEvidenceProvider: repositoryEvidenceProvider(),
     evidenceBundle: evidenceBundle(),
     currentFoundationVersions: foundationVersions,
     now: '2026-08-24T00:00:00.000Z'
@@ -422,3 +457,125 @@ test('RCP-15 no ReviewGraph, Review Registry, ReviewFinding owner or effect auth
   assert.equal(result.reviewPlan.authorityEnvelope.effects.length, 0);
   assert.equal(result.reviewPlan.authorityEnvelope.pathScope.length, 0);
 });
+
+
+test('RCP-A2-01 caller-asserted Git-shaped verification cannot compile without independent repository evidence', () => {
+  const result = createReviewFor({
+    processFactory: factory(),
+    request: request(),
+    sourceBundle: sourceBundle(),
+    evidenceBundle: evidenceBundle(),
+    currentFoundationVersions: foundationVersions
+  });
+  assert.equal(result.state, 'BLOCKED_REVIEW_COMPOSITION');
+  assert.equal(result.blocker.code, 'UNVERIFIED_SOURCE_BINDING');
+});
+
+test('RCP-A2-01b forged well-shaped commit/tree/blob binding is rejected by independent repository evidence', () => {
+  const bundle = sourceBundle();
+  for (const source of bundle.sources) {
+    source.envelope.commitRef = 'f'.repeat(40);
+    source.envelope.treeRefOrNull = 'e'.repeat(40);
+    source.envelope.valueSemanticHash = semanticHash(source.value);
+  }
+  const featureSource = bundle.sources.find((item) => item.sourceKind === 'FEATURE_REGISTRY');
+  featureSource.envelope.blobRef = 'd'.repeat(40);
+  const result = createReviewFor({
+    processFactory: factory(),
+    request: request(),
+    sourceBundle: bundle,
+    repositoryEvidenceProvider: repositoryEvidenceProvider(),
+    evidenceBundle: evidenceBundle(),
+    currentFoundationVersions: foundationVersions
+  });
+  assert.equal(result.state, 'BLOCKED_REVIEW_COMPOSITION');
+  assert.equal(result.blocker.code, 'UNVERIFIED_SOURCE_BINDING');
+});
+
+test('RCP-A2-02 CURRENT_PROVEN requires complete expected-ref coverage and ignores unrelated evidence', () => {
+  const set = compileReviewExpectationSet({
+    request: request(),
+    sourceBundle: sourceBundle(),
+    repositoryEvidenceProvider: repositoryEvidenceProvider()
+  });
+  const partial = evidenceBundle();
+  partial.evidence.find((item) => item.evidenceRef === 'evidence.current.identity').coversRefs = ['feature.test.chat'];
+  partial.evidence.push({
+    evidenceRef: 'evidence.failed.unrelated-identity',
+    dimension: 'canonicalIdentity',
+    state: 'FAILED',
+    coversRefs: ['feature.unrelated'],
+    sourceBindingRef: 'evidence.fixture.feature_registry.10'
+  });
+  const receipt = compileReviewCoverageReceipt({ expectationSet: set, evidenceBundle: partial });
+  assert.equal(receipt.coverageDimensions.canonicalIdentity.state, 'UNKNOWN');
+  assert.deepEqual(receipt.coverageDimensions.canonicalIdentity.currentCoveredRefs, ['feature.test.chat']);
+  assert.deepEqual(receipt.coverageDimensions.canonicalIdentity.failedCoveredRefs, []);
+  assert.deepEqual(receipt.coverageDimensions.canonicalIdentity.failedEvidenceRefs, []);
+  assert.ok(receipt.coverageDimensions.canonicalIdentity.uncoveredRefs.includes('screen.test.chat'));
+  assert.ok(receipt.coverageDimensions.canonicalIdentity.uncoveredRefs.includes('element.test.send'));
+});
+
+test('RCP-A2-02b evidence order cannot change the canonical evidence bundle or coverage receipt identity', () => {
+  const set = compileReviewExpectationSet({
+    request: request(),
+    sourceBundle: sourceBundle(),
+    repositoryEvidenceProvider: repositoryEvidenceProvider()
+  });
+  const first = evidenceBundle();
+  const second = evidenceBundle();
+  second.evidence.reverse();
+  const a = compileReviewCoverageReceipt({ expectationSet: set, evidenceBundle: first });
+  const b = compileReviewCoverageReceipt({ expectationSet: set, evidenceBundle: second });
+  assert.equal(a.evidenceBundleRef, b.evidenceBundleRef);
+  assert.equal(a.receiptHash, b.receiptHash);
+});
+
+test('RCP-A2-03 environment scope compiles exact independently evidenceable cells', () => {
+  const req = request();
+  req.environmentScope.localeRefs = ['locale.en', 'locale.ja'];
+  req.environmentScope.viewportClassRefs = ['viewport.desktop', 'viewport.mobile'];
+  req.evidenceBudget.maxEnvironmentCells = 4;
+  const set = compileReviewExpectationSet({
+    request: req,
+    sourceBundle: sourceBundle(),
+    repositoryEvidenceProvider: repositoryEvidenceProvider()
+  });
+  assert.equal(set.environmentCells.length, 4);
+  assert.equal(new Set(set.environmentCells.map((cell) => cell.environmentCellRef)).size, 4);
+  assert.equal(set.environmentCells.every((cell) =>
+    typeof cell.platformRef === 'string' &&
+    typeof cell.localeRef === 'string' &&
+    typeof cell.viewportClassRef === 'string' &&
+    typeof cell.inputModalityRef === 'string' &&
+    typeof cell.reducedMotionRef === 'string' &&
+    !Object.hasOwn(cell, 'localeRefs') &&
+    !Object.hasOwn(cell, 'viewportClassRefs')
+  ), true);
+
+  const evidence = evidenceBundle();
+  evidence.evidence.push({
+    evidenceRef: 'evidence.current.environment-cell',
+    dimension: 'platform',
+    state: 'CURRENT_PROVEN',
+    coversRefs: [set.environmentCells[0].environmentCellRef],
+    sourceBindingRef: 'evidence.fixture.test_and_owner_domain_evidence.16'
+  });
+  const receipt = compileReviewCoverageReceipt({ expectationSet: set, evidenceBundle: evidence });
+  assert.equal(receipt.environmentCells.find((cell) => cell.environmentCellRef === set.environmentCells[0].environmentCellRef).evidenceState, 'CURRENT_PROVEN');
+  assert.equal(receipt.environmentCells.filter((cell) => cell.evidenceState === 'CURRENT_PROVEN').length, 1);
+});
+
+test('RCP-A2-03b maxEnvironmentCells fails closed instead of flattening or silently truncating combinations', () => {
+  const req = request();
+  req.environmentScope.localeRefs = ['locale.en', 'locale.ja'];
+  req.environmentScope.viewportClassRefs = ['viewport.desktop', 'viewport.mobile'];
+  req.evidenceBudget.maxEnvironmentCells = 3;
+  assert.throws(() => compileReviewExpectationSet({
+    request: req,
+    sourceBundle: sourceBundle(),
+    repositoryEvidenceProvider: repositoryEvidenceProvider()
+  }), (error) => error?.code === 'EVIDENCE_BUDGET_EXCEEDED');
+});
+
+// [VXG RealForever]

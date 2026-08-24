@@ -11,8 +11,8 @@
     {
       "path": "src/core/review-composition.mjs",
       "mode": "100644",
-      "bytes": 35376,
-      "sha256": "1aa819fc505a410becc7b3a6df04a577b1c0c3e2d497f7fcc618ce48f1505c11"
+      "bytes": 44713,
+      "sha256": "01f2d5b748ac54e85d7723a865d2f3326ca8c1edd1d0f59d0d933f6dc79bc25e"
     },
     {
       "path": "test/browser.test.mjs",

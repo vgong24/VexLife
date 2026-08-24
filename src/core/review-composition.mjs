@@ -4,6 +4,7 @@ export const REVIEW_PROCESS_REF = 'process.vexlife.review.compile-expectations-a
 export const REVIEW_EXPECTATION_SCHEMA = 'vexlife.review-expectation-set/v1';
 export const REVIEW_COVERAGE_SCHEMA = 'vexlife.review-coverage-receipt/v1';
 export const REVIEW_COMPOSITION_SCHEMA = 'vexlife.review-composition-result/v1';
+export const REVIEW_SOURCE_VERIFICATION_SCHEMA = 'vexlife.review-source-binding-verification/v1';
 
 export const REQUIRED_REVIEW_SOURCE_KINDS = Object.freeze([
   'FEATURE_REGISTRY',
@@ -186,7 +187,72 @@ function normalizeSourceEntry(entry, index) {
   return { sourceKind, envelope: deepFreezeSafeClone(envelope), value: deepFreezeSafeClone(entry.value) };
 }
 
-export function inspectReviewSourceBundle(sourceBundle) {
+function verificationReceiptCore(receipt) {
+  return {
+    schemaVersion: receipt.schemaVersion,
+    verificationRef: receipt.verificationRef,
+    verifierRef: receipt.verifierRef,
+    verificationClass: receipt.verificationClass,
+    verificationState: receipt.verificationState,
+    sourceKind: receipt.sourceKind,
+    repositoryRef: receipt.repositoryRef,
+    commitRef: receipt.commitRef,
+    treeRefOrNull: receipt.treeRefOrNull,
+    sourcePathRef: receipt.sourcePathRef,
+    blobRef: receipt.blobRef,
+    valueSemanticHash: receipt.valueSemanticHash
+  };
+}
+
+function verifyIndependentSourceBinding(source, repositoryEvidenceProvider) {
+  if (repositoryEvidenceProvider == null) {
+    fail('UNVERIFIED_SOURCE_BINDING', 'independent repositoryEvidenceProvider is required for actual source-object binding');
+  }
+  requireObject(repositoryEvidenceProvider, 'repositoryEvidenceProvider');
+  if (repositoryEvidenceProvider.verificationClass !== 'INDEPENDENT_REPOSITORY_EVIDENCE') {
+    fail('UNVERIFIED_SOURCE_BINDING', 'repositoryEvidenceProvider must declare INDEPENDENT_REPOSITORY_EVIDENCE');
+  }
+  const verifierRef = requireString(repositoryEvidenceProvider.verifierRef, 'repositoryEvidenceProvider.verifierRef');
+  if (typeof repositoryEvidenceProvider.verifySourceBinding !== 'function') {
+    fail('UNVERIFIED_SOURCE_BINDING', 'repositoryEvidenceProvider must expose verifySourceBinding()');
+  }
+
+  let receipt;
+  try {
+    receipt = repositoryEvidenceProvider.verifySourceBinding({
+      sourceKind: source.sourceKind,
+      envelope: deepFreezeSafeClone(source.envelope),
+      valueSemanticHash: source.envelope.valueSemanticHash
+    });
+  } catch (error) {
+    fail('UNVERIFIED_SOURCE_BINDING', `${source.sourceKind} independent repository evidence rejected the source binding: ${error?.message ?? error}`);
+  }
+  requireObject(receipt, `${source.sourceKind} repository verification receipt`);
+  const expected = {
+    schemaVersion: REVIEW_SOURCE_VERIFICATION_SCHEMA,
+    verificationRef: source.envelope.verificationRef,
+    verifierRef,
+    verificationClass: 'INDEPENDENT_REPOSITORY_EVIDENCE',
+    verificationState: 'VERIFIED_CURRENT',
+    sourceKind: source.sourceKind,
+    repositoryRef: source.envelope.repositoryRef,
+    commitRef: source.envelope.commitRef,
+    treeRefOrNull: source.envelope.treeRefOrNull,
+    sourcePathRef: source.envelope.sourcePathRef,
+    blobRef: source.envelope.blobRef,
+    valueSemanticHash: source.envelope.valueSemanticHash
+  };
+  const actual = verificationReceiptCore(receipt);
+  if (semanticHash(actual) !== semanticHash(expected)) {
+    fail('UNVERIFIED_SOURCE_BINDING', `${source.sourceKind} repository verification receipt does not exactly bind the supplied source object`);
+  }
+  if (!HEX64.test(receipt.semanticFingerprint ?? '') || receipt.semanticFingerprint !== semanticHash(actual)) {
+    fail('UNVERIFIED_SOURCE_BINDING', `${source.sourceKind} repository verification receipt fingerprint is invalid`);
+  }
+  return { ...actual, semanticFingerprint: receipt.semanticFingerprint };
+}
+
+export function inspectReviewSourceBundle(sourceBundle, { repositoryEvidenceProvider } = {}) {
   requireObject(sourceBundle, 'sourceBundle');
   const sources = Array.isArray(sourceBundle.sources) ? sourceBundle.sources.map(normalizeSourceEntry) : fail('MALFORMED_INPUT', 'sourceBundle.sources must be an array');
   const seenKinds = new Set();
@@ -197,21 +263,39 @@ export function inspectReviewSourceBundle(sourceBundle) {
   const missingKinds = REQUIRED_REVIEW_SOURCE_KINDS.filter((kind) => !seenKinds.has(kind));
   if (missingKinds.length) fail('MISSING_SOURCE_KIND', `missing required review source kinds: ${missingKinds.join(', ')}`, { missingKinds });
   const ordered = [...sources].sort((a, b) => a.sourceKind.localeCompare(b.sourceKind));
-  const sourceBindingCore = ordered.map(({ sourceKind, envelope }) => ({
-    sourceKind,
+
+  const versions = new Set(ordered.map(({ envelope }) => semanticHash({
     repositoryRef: envelope.repositoryRef,
     commitRef: envelope.commitRef,
-    treeRefOrNull: envelope.treeRefOrNull,
-    sourcePathRef: envelope.sourcePathRef,
-    blobRef: envelope.blobRef,
-    schemaVersionOrNull: envelope.schemaVersionOrNull ?? null,
-    registryRefOrNull: envelope.registryRefOrNull ?? null,
-    registryVersionOrNull: envelope.registryVersionOrNull ?? null,
-    currentness: envelope.currentness,
-    bindingState: envelope.bindingState,
-    verificationRef: envelope.verificationRef,
-    valueSemanticHash: envelope.valueSemanticHash
-  }));
+    treeRefOrNull: envelope.treeRefOrNull
+  })));
+  if (versions.size !== 1) {
+    fail('MIXED_SOURCE_VERSION', 'review source bundle must bind one exact repository/commit/tree version');
+  }
+
+  const verificationReceipts = ordered.map((source) => verifyIndependentSourceBinding(source, repositoryEvidenceProvider));
+  const verificationByRef = new Map(verificationReceipts.map((receipt) => [receipt.verificationRef, receipt]));
+  const sourceBindingCore = ordered.map(({ sourceKind, envelope }) => {
+    const verification = verificationByRef.get(envelope.verificationRef);
+    return {
+      sourceKind,
+      repositoryRef: envelope.repositoryRef,
+      commitRef: envelope.commitRef,
+      treeRefOrNull: envelope.treeRefOrNull,
+      sourcePathRef: envelope.sourcePathRef,
+      blobRef: envelope.blobRef,
+      schemaVersionOrNull: envelope.schemaVersionOrNull ?? null,
+      registryRefOrNull: envelope.registryRefOrNull ?? null,
+      registryVersionOrNull: envelope.registryVersionOrNull ?? null,
+      currentness: envelope.currentness,
+      bindingState: envelope.bindingState,
+      verificationRef: envelope.verificationRef,
+      verifierRef: verification.verifierRef,
+      verificationState: verification.verificationState,
+      verificationFingerprint: verification.semanticFingerprint,
+      valueSemanticHash: envelope.valueSemanticHash
+    };
+  });
   const sourceBundleHash = semanticHash(sourceBindingCore);
   return {
     sources: ordered,
@@ -403,31 +487,60 @@ function lensEvidenceRequirements(reviewLensRefs, lenses) {
 }
 
 function environmentCells(request, platformRefs) {
-  const scope = request.environmentScope ?? {};
-  const platforms = sortedUnique(scope.platformRefs?.length ? scope.platformRefs : platformRefs);
-  const locales = sortedUnique(scope.localeRefs ?? []);
-  const viewports = sortedUnique(scope.viewportClassRefs ?? []);
-  const modalities = sortedUnique(scope.inputModalityRefs ?? []);
-  const motion = sortedUnique(scope.reducedMotionRefs ?? []);
-  const cells = [];
-  for (const platformRef of platforms) {
-    cells.push({
-      platformRef,
-      localeRefs: locales,
-      viewportClassRefs: viewports,
-      inputModalityRefs: modalities,
-      reducedMotionRefs: motion,
-      evidenceState: 'HELD_NO_EXACT_EVIDENCE',
-      evidenceRefs: [],
-      unresolvedQuestionOrNull: `Which exact current environment evidence proves ${platformRef} for this review subject?`
-    });
+  const scope = requireObject(request.environmentScope ?? {}, 'request.environmentScope');
+  const scoped = (value, label) => value == null ? [] : [...requireStringArray(value, label)].sort();
+  const platforms = sortedUnique(scoped(scope.platformRefs, 'request.environmentScope.platformRefs').length
+    ? scoped(scope.platformRefs, 'request.environmentScope.platformRefs')
+    : platformRefs);
+  const locales = scoped(scope.localeRefs, 'request.environmentScope.localeRefs');
+  const viewports = scoped(scope.viewportClassRefs, 'request.environmentScope.viewportClassRefs');
+  const modalities = scoped(scope.inputModalityRefs, 'request.environmentScope.inputModalityRefs');
+  const motion = scoped(scope.reducedMotionRefs, 'request.environmentScope.reducedMotionRefs');
+
+  const axes = [
+    platforms,
+    locales.length ? locales : [null],
+    viewports.length ? viewports : [null],
+    modalities.length ? modalities : [null],
+    motion.length ? motion : [null]
+  ];
+  const requiredCellCount = axes.reduce((count, axis) => count * axis.length, 1);
+  const maxEnvironmentCells = request.evidenceBudget?.maxEnvironmentCells;
+  if (maxEnvironmentCells != null && (!Number.isInteger(maxEnvironmentCells) || maxEnvironmentCells < 1)) {
+    fail('MALFORMED_INPUT', 'request.evidenceBudget.maxEnvironmentCells must be a positive integer when supplied');
   }
-  return cells;
+  if (maxEnvironmentCells != null && requiredCellCount > maxEnvironmentCells) {
+    fail('EVIDENCE_BUDGET_EXCEEDED',
+      `environment scope requires ${requiredCellCount} cells but maxEnvironmentCells is ${maxEnvironmentCells}`,
+      { requiredCellCount, maxEnvironmentCells });
+  }
+
+  const cells = [];
+  for (const platformRef of axes[0]) {
+    for (const localeRef of axes[1]) {
+      for (const viewportClassRef of axes[2]) {
+        for (const inputModalityRef of axes[3]) {
+          for (const reducedMotionRef of axes[4]) {
+            const identity = { platformRef, localeRef, viewportClassRef, inputModalityRef, reducedMotionRef };
+            const cellHash = semanticHash(identity);
+            cells.push({
+              environmentCellRef: `environment-cell.vexlife.review.${cellHash.slice(0, 24)}`,
+              ...identity,
+              evidenceState: 'HELD_NO_EXACT_EVIDENCE',
+              evidenceRefs: [],
+              unresolvedQuestionOrNull: `Which exact current evidence proves environment cell ${platformRef} / ${localeRef ?? 'ANY_LOCALE'} / ${viewportClassRef ?? 'ANY_VIEWPORT'} / ${inputModalityRef ?? 'ANY_INPUT'} / ${reducedMotionRef ?? 'ANY_MOTION'}?`
+            });
+          }
+        }
+      }
+    }
+  }
+  return cells.sort((a, b) => a.environmentCellRef.localeCompare(b.environmentCellRef));
 }
 
-export function compileReviewExpectationSet({ request, sourceBundle }) {
+export function compileReviewExpectationSet({ request, sourceBundle, repositoryEvidenceProvider }) {
   const normalizedRequest = normalizeRequest(request);
-  const bundleInspection = inspectReviewSourceBundle(sourceBundle);
+  const bundleInspection = inspectReviewSourceBundle(sourceBundle, { repositoryEvidenceProvider });
   const { byRef, sourceByKind } = indexSourceRecords(bundleInspection);
   const features = findFeatureRecords(sourceByKind);
   const lenses = findLensRecords(sourceByKind);
@@ -623,10 +736,15 @@ function normalizeEvidenceBundle(evidenceBundle) {
     };
   }) : fail('MALFORMED_INPUT', 'evidenceBundle.evidence must be an array');
   if (new Set(evidence.map((item) => item.evidenceRef)).size !== evidence.length) fail('DUPLICATE_IDENTITY', 'evidenceBundle contains duplicate evidenceRef values');
-  const evidenceBundleHash = semanticHash(evidence);
+  const orderedEvidence = [...evidence].sort((a, b) => a.evidenceRef.localeCompare(b.evidenceRef));
+  const evidenceBundleHash = semanticHash(orderedEvidence);
+  const canonicalEvidenceBundleRef = `evidence-bundle.vexlife.review.${evidenceBundleHash.slice(0, 24)}`;
+  if (evidenceBundle.evidenceBundleRef != null && evidenceBundle.evidenceBundleRef !== canonicalEvidenceBundleRef) {
+    fail('EVIDENCE_BUNDLE_REF_MISMATCH', 'evidenceBundleRef must be the canonical content identity of normalized evidence');
+  }
   return {
-    evidence: [...evidence].sort((a, b) => a.evidenceRef.localeCompare(b.evidenceRef)),
-    evidenceBundleRef: evidenceBundle.evidenceBundleRef ?? `evidence-bundle.vexlife.review.${evidenceBundleHash.slice(0, 24)}`,
+    evidence: orderedEvidence,
+    evidenceBundleRef: canonicalEvidenceBundleRef,
     evidenceBundleHash
   };
 }
@@ -654,6 +772,40 @@ function dimensionExpectedRefs(expectationSet) {
   };
 }
 
+function evidenceRefsCovering(evidence, expectedSet, state) {
+  return evidence
+    .filter((item) => item.state === state && item.coversRefs.some((ref) => expectedSet.has(ref)))
+    .map((item) => item.evidenceRef)
+    .sort();
+}
+
+function coveredRefsForState(evidence, expectedSet, state) {
+  return sortedUnique(evidence
+    .filter((item) => item.state === state)
+    .flatMap((item) => item.coversRefs.filter((ref) => expectedSet.has(ref))));
+}
+
+function environmentCoverage(expectationSet, normalizedEvidence) {
+  return expectationSet.environmentCells.map((cell) => {
+    const relevant = normalizedEvidence.evidence.filter((item) => item.coversRefs.includes(cell.environmentCellRef));
+    const current = relevant.filter((item) => item.state === 'CURRENT_PROVEN');
+    const failed = relevant.filter((item) => item.state === 'FAILED');
+    const stale = relevant.filter((item) => item.state === 'STALE');
+    const held = relevant.filter((item) => item.state === 'HELD_NO_EXACT_EVIDENCE');
+    let evidenceState = 'UNKNOWN';
+    if (failed.length) evidenceState = 'FAILED';
+    else if (current.length) evidenceState = 'CURRENT_PROVEN';
+    else if (stale.length) evidenceState = 'STALE';
+    else if (held.length) evidenceState = 'HELD_NO_EXACT_EVIDENCE';
+    return {
+      ...cell,
+      evidenceState,
+      evidenceRefs: relevant.map((item) => item.evidenceRef).sort(),
+      unresolvedQuestionOrNull: evidenceState === 'CURRENT_PROVEN' ? null : cell.unresolvedQuestionOrNull
+    };
+  });
+}
+
 export function compileReviewCoverageReceipt({ expectationSet, evidenceBundle }) {
   requireObject(expectationSet, 'expectationSet');
   if (expectationSet.schemaVersion !== REVIEW_EXPECTATION_SCHEMA || !HEX64.test(expectationSet.projectionHash ?? '')) {
@@ -665,24 +817,53 @@ export function compileReviewCoverageReceipt({ expectationSet, evidenceBundle })
   }
 
   const normalizedEvidence = normalizeEvidenceBundle(evidenceBundle);
+  const validSourceBindingRefs = new Set(expectationSet.sourceEnvelopes.map((envelope) => envelope.verificationRef));
+  for (const item of normalizedEvidence.evidence) {
+    if (item.sourceBindingRef != null && !validSourceBindingRefs.has(item.sourceBindingRef)) {
+      fail('UNBOUND_EVIDENCE_SOURCE', `evidence ${item.evidenceRef} references a source binding outside the exact expectation-set source version`);
+    }
+    if (['CURRENT_PROVEN', 'FAILED', 'STALE'].includes(item.state) && item.sourceBindingRef == null) {
+      fail('UNBOUND_EVIDENCE_SOURCE', `evidence ${item.evidenceRef} with state ${item.state} requires an exact sourceBindingRef`);
+    }
+  }
+
   const expectedByDimension = dimensionExpectedRefs(expectationSet);
   const coverageDimensions = {};
   for (const dimension of REVIEW_COVERAGE_DIMENSIONS) {
     const expectedRefs = sortedUnique(expectedByDimension[dimension] ?? []);
+    const expectedSet = new Set(expectedRefs);
     const evidence = normalizedEvidence.evidence.filter((item) => item.dimension === dimension);
-    const currentEvidenceRefs = evidence.filter((item) => item.state === 'CURRENT_PROVEN').map((item) => item.evidenceRef).sort();
-    const failedEvidenceRefs = evidence.filter((item) => item.state === 'FAILED').map((item) => item.evidenceRef).sort();
-    const staleEvidenceRefs = evidence.filter((item) => item.state === 'STALE').map((item) => item.evidenceRef).sort();
+    const currentCoveredRefs = coveredRefsForState(evidence, expectedSet, 'CURRENT_PROVEN');
+    const failedCoveredRefs = coveredRefsForState(evidence, expectedSet, 'FAILED');
+    const staleCoveredRefs = coveredRefsForState(evidence, expectedSet, 'STALE');
+    const heldCoveredRefs = coveredRefsForState(evidence, expectedSet, 'HELD_NO_EXACT_EVIDENCE');
+    const currentEvidenceRefs = evidenceRefsCovering(evidence, expectedSet, 'CURRENT_PROVEN');
+    const failedEvidenceRefs = evidenceRefsCovering(evidence, expectedSet, 'FAILED');
+    const staleEvidenceRefs = evidenceRefsCovering(evidence, expectedSet, 'STALE');
+    const coveredByAnyDisposition = new Set([
+      ...currentCoveredRefs,
+      ...failedCoveredRefs,
+      ...staleCoveredRefs,
+      ...heldCoveredRefs,
+      ...coveredRefsForState(evidence, expectedSet, 'UNKNOWN'),
+      ...coveredRefsForState(evidence, expectedSet, 'NOT_APPLICABLE')
+    ]);
+    const uncoveredRefs = expectedRefs.filter((ref) => !coveredByAnyDisposition.has(ref));
     let state = 'UNKNOWN';
-    if (failedEvidenceRefs.length) state = 'FAILED';
-    else if (expectedRefs.length === 0 && evidence.some((item) => item.state === 'NOT_APPLICABLE')) state = 'NOT_APPLICABLE';
-    else if (expectedRefs.length === 0) state = 'NOT_APPLICABLE';
-    else if (currentEvidenceRefs.length) state = 'CURRENT_PROVEN';
-    else if (evidence.some((item) => item.state === 'HELD_NO_EXACT_EVIDENCE')) state = 'HELD_NO_EXACT_EVIDENCE';
-    else if (staleEvidenceRefs.length) state = 'STALE';
+    if (expectedRefs.length === 0) state = 'NOT_APPLICABLE';
+    else if (failedCoveredRefs.length) state = 'FAILED';
+    else if (staleCoveredRefs.length) state = 'STALE';
+    else if (currentCoveredRefs.length === expectedRefs.length) state = 'CURRENT_PROVEN';
+    else if (heldCoveredRefs.length) state = 'HELD_NO_EXACT_EVIDENCE';
+
     coverageDimensions[dimension] = {
       state,
       expectedRefs,
+      currentCoveredRefs,
+      failedCoveredRefs,
+      staleCoveredRefs,
+      heldCoveredRefs,
+      uncoveredRefs,
       currentEvidenceRefs,
       failedEvidenceRefs,
       staleEvidenceRefs
@@ -692,6 +873,7 @@ export function compileReviewCoverageReceipt({ expectationSet, evidenceBundle })
   const currentEvidenceRefs = normalizedEvidence.evidence.filter((item) => item.state === 'CURRENT_PROVEN').map((item) => item.evidenceRef).sort();
   const failedEvidenceRefs = normalizedEvidence.evidence.filter((item) => item.state === 'FAILED').map((item) => item.evidenceRef).sort();
   const staleEvidenceRefs = normalizedEvidence.evidence.filter((item) => item.state === 'STALE').map((item) => item.evidenceRef).sort();
+  const resolvedEnvironmentCells = environmentCoverage(expectationSet, normalizedEvidence);
 
   const core = {
     schemaVersion: REVIEW_COVERAGE_SCHEMA,
@@ -699,6 +881,7 @@ export function compileReviewCoverageReceipt({ expectationSet, evidenceBundle })
     expectationSetRef: expectationSet.expectationSetRef,
     subjectRefs: expectationSet.reviewSubject.subjectRefs,
     coverageDimensions,
+    environmentCells: resolvedEnvironmentCells,
     placedRefs: expectationSet.placedRefs,
     notApplicable: expectationSet.notApplicable,
     deferred: expectationSet.deferred,
@@ -734,6 +917,7 @@ export function createReviewFor({
   processFactory,
   request,
   sourceBundle,
+  repositoryEvidenceProvider,
   evidenceBundle,
   currentFoundationVersions = {},
   resourceBudget = {},
@@ -746,7 +930,7 @@ export function createReviewFor({
       fail('INVALID_PROCESS_FACTORY', 'processFactory must expose requireProcess(), compile() and renderReceipt()');
     }
     const normalizedRequest = normalizeRequest(request);
-    const sourceInspection = inspectReviewSourceBundle(sourceBundle);
+    const sourceInspection = inspectReviewSourceBundle(sourceBundle, { repositoryEvidenceProvider });
     const evidenceInspection = normalizeEvidenceBundle(evidenceBundle);
     const process = processFactory.requireProcess(REVIEW_PROCESS_REF);
     const missingFoundationCurrentness = (process.foundationDependencies ?? []).filter((ref) => currentFoundationVersions[ref] === undefined);
@@ -791,7 +975,7 @@ export function createReviewFor({
       fail('PROCESS_EFFECT_BOUNDARY_VIOLATION', 'review composition process must remain no-effect and pathless');
     }
 
-    const expectationSet = compileReviewExpectationSet({ request: normalizedRequest, sourceBundle });
+    const expectationSet = compileReviewExpectationSet({ request: normalizedRequest, sourceBundle, repositoryEvidenceProvider });
     const coverageReceipt = compileReviewCoverageReceipt({ expectationSet, evidenceBundle });
     const processReceipt = processFactory.renderReceipt(admission.plan, {
       disposition: 'REVIEW_COMPOSITION_READY',
