@@ -17,8 +17,9 @@ function requireString(value, label) { if (typeof value !== 'string' || value.le
 function requireSha(value, label) { if (typeof value !== 'string' || !SHA256.test(value)) throw new Error(`${label} must be lowercase SHA-256`); }
 function requireHttps(value, label) { const parsed = new URL(value); if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error(`${label} must be credential-free HTTPS`); }
 
-function normalizeProcessIdentityText(value) {
-  return String(value ?? '').replaceAll('\\', '/').toLowerCase();
+function normalizeProcessIdentityText(value, { caseInsensitive = false } = {}) {
+  const normalized = String(value ?? '').replaceAll('\\', '/');
+  return caseInsensitive ? normalized.toLowerCase() : normalized;
 }
 
 function tokenizeProcessCommandLine(value) {
@@ -42,6 +43,10 @@ function tokenizeProcessCommandLine(value) {
   return tokens;
 }
 
+function expectedFlattenedProcessCommandLine(expectedExecutablePath, expectedArguments) {
+  return [String(expectedExecutablePath ?? ''), ...expectedArguments.map((value) => String(value))].join(' ');
+}
+
 export function runtimeExecutableIdentityMatches({ profile, actualSha256, bytes }) {
   const runtime = profile?.runtime;
   if (!runtime || typeof runtime.executableSha256 !== 'string') return false;
@@ -53,19 +58,38 @@ export function runtimeExecutableIdentityMatches({ profile, actualSha256, bytes 
 
 export function runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath, expectedArguments = [] }) {
   if (!processEvidence || typeof processEvidence !== 'object' || Array.isArray(processEvidence)) return false;
-  const expectedExecutable = normalizeProcessIdentityText(expectedExecutablePath);
+  if (!Array.isArray(expectedArguments) || expectedArguments.some((value) => typeof value !== 'string')) return false;
+  const explicitEvidencePlatform = typeof processEvidence.platform === 'string' ? processEvidence.platform : null;
+  if (explicitEvidencePlatform !== null && !['darwin', 'win32'].includes(explicitEvidencePlatform)) return false;
+  const darwinFlattenedWitness = explicitEvidencePlatform === 'darwin';
+  // Missing platform metadata is the accepted legacy/Windows-compatible evidence shape.
+  // Never infer its semantics from the OS currently running this portable validator.
+  const caseInsensitive = !darwinFlattenedWitness;
+  const expectedExecutable = normalizeProcessIdentityText(expectedExecutablePath, { caseInsensitive });
   if (!expectedExecutable) return false;
   const expectedName = expectedExecutable.split('/').filter(Boolean).at(-1) ?? '';
-  const name = String(processEvidence.name ?? '').toLowerCase();
+  const name = normalizeProcessIdentityText(processEvidence.name, { caseInsensitive });
   if (name !== expectedName) return false;
-  const actualExecutable = normalizeProcessIdentityText(processEvidence.executablePath);
+  const actualExecutable = normalizeProcessIdentityText(processEvidence.executablePath, { caseInsensitive });
   if (!actualExecutable || actualExecutable !== expectedExecutable) return false;
+
+  if (darwinFlattenedWitness) {
+    // Apple's ps obtains NUL-separated argv with KERN_PROCARGS2 and renders argv
+    // boundaries as ordinary spaces. The spawn-owned receipt retains the exact
+    // vector; this live witness is explicitly the exact flattened rendering only.
+    if (processEvidence.commandLineClass !== 'DARWIN_PS_FLATTENED_ARGV' ||
+        processEvidence.argvBoundaryPreserved !== false) return false;
+    const actualFlattened = String(processEvidence.commandLine ?? '').trim();
+    const expectedFlattened = expectedFlattenedProcessCommandLine(expectedExecutablePath, expectedArguments);
+    return actualFlattened === expectedFlattened;
+  }
+
   const tokens = tokenizeProcessCommandLine(processEvidence.commandLine);
   if (!tokens || tokens.length !== expectedArguments.length + 1) return false;
-  const actualTokens = tokens.map(normalizeProcessIdentityText);
+  const actualTokens = tokens.map((value) => normalizeProcessIdentityText(value, { caseInsensitive }));
   if (actualTokens[0] !== expectedExecutable) return false;
   for (let index = 0; index < expectedArguments.length; index += 1) {
-    if (actualTokens[index + 1] !== normalizeProcessIdentityText(expectedArguments[index])) return false;
+    if (actualTokens[index + 1] !== normalizeProcessIdentityText(expectedArguments[index], { caseInsensitive })) return false;
   }
   return true;
 }

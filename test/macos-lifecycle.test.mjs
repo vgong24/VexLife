@@ -274,13 +274,64 @@ test('MAC03 tar topology admits only bounded same-directory file aliases and rej
   );
 });
 
-test('MAC04 process evidence is generic to exact expected executable basename, path and argv', () => {
-  const executable = '/tmp/VexHome/runtime/llama-b10107/llama-server';
-  const args = ['-m', '/tmp/VexHome/models/model.gguf', '--host', '127.0.0.1', '--port', '18080'];
-  const evidence = { name: 'llama-server', executablePath: executable, commandLine: [executable, ...args].join(' ') };
-  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: evidence, expectedExecutablePath: executable, expectedArguments: args }), true);
-  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: { ...evidence, executablePath: '/tmp/other/llama-server' }, expectedExecutablePath: executable, expectedArguments: args }), false);
-  assert.equal(runtimeProcessEvidenceMatches({ processEvidence: evidence, expectedExecutablePath: executable, expectedArguments: [...args, '--extra'] }), false);
+test('MAC04 Darwin process evidence binds the exact flattened ps witness to spawn-owned argv, including paths with spaces', () => {
+  const executable = '/tmp/Vex Life Home/runtime/llama-b10107/llama-server';
+  const args = [
+    '-m', '/tmp/Vex Life Home/models/model.gguf',
+    '--mmproj', '/tmp/Vex Life Home/models/projector.gguf',
+    '--device', 'MTL0', '--gpu-layers', 'all',
+    '--host', '127.0.0.1', '--port', '18080'
+  ];
+  const evidence = {
+    platform: 'darwin',
+    name: 'llama-server',
+    executablePath: executable,
+    commandLine: [executable, ...args].join(' '),
+    commandLineClass: 'DARWIN_PS_FLATTENED_ARGV',
+    argvBoundaryPreserved: false,
+    tokens: null
+  };
+  assert.equal(runtimeProcessEvidenceMatches({
+    processEvidence: evidence,
+    expectedExecutablePath: executable,
+    expectedArguments: args
+  }), true);
+  assert.equal(runtimeProcessEvidenceMatches({
+    processEvidence: { ...evidence, executablePath: '/tmp/Vex Life Home/runtime/other/llama-server' },
+    expectedExecutablePath: executable,
+    expectedArguments: args
+  }), false);
+  assert.equal(runtimeProcessEvidenceMatches({
+    processEvidence: { ...evidence, commandLine: evidence.commandLine.replace('/models/model.gguf', '/models/other.gguf') },
+    expectedExecutablePath: executable,
+    expectedArguments: args
+  }), false);
+  assert.equal(runtimeProcessEvidenceMatches({
+    processEvidence: { ...evidence, executablePath: '/tmp/vex Life Home/runtime/llama-b10107/llama-server' },
+    expectedExecutablePath: executable,
+    expectedArguments: args
+  }), false);
+  assert.equal(runtimeProcessEvidenceMatches({
+    processEvidence: { ...evidence, argvBoundaryPreserved: true },
+    expectedExecutablePath: executable,
+    expectedArguments: args
+  }), false);
+});
+
+test('MAC04B Windows process evidence keeps quote-aware case-insensitive token semantics', () => {
+  const executable = 'C:\\Program Files\\VexLife\\llama-server.exe';
+  const args = ['-m', 'C:\\Users\\Victor\\Vex Life\\model.gguf', '--host', '127.0.0.1', '--port', '18080'];
+  const evidence = {
+    platform: 'win32',
+    name: 'LLAMA-SERVER.EXE',
+    executablePath: 'c:\\program files\\vexlife\\LLAMA-SERVER.EXE',
+    commandLine: '"C:\\Program Files\\VexLife\\llama-server.exe" -m "C:\\Users\\Victor\\Vex Life\\model.gguf" --host 127.0.0.1 --port 18080'
+  };
+  assert.equal(runtimeProcessEvidenceMatches({
+    processEvidence: evidence,
+    expectedExecutablePath: executable,
+    expectedArguments: args
+  }), true);
 });
 
 test('MAC05 Windows normal profile selection remains unchanged', () => {

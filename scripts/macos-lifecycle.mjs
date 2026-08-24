@@ -241,19 +241,6 @@ export function assertSafeMacExtractedTree(root) {
   return true;
 }
 
-function tokenizeCommandLine(text) {
-  const tokens = [];
-  let current = '';
-  let quote = null;
-  for (const ch of String(text || '')) {
-    if ((ch === '"' || ch === "'") && (!quote || quote === ch)) { quote = quote ? null : ch; continue; }
-    if (/\s/u.test(ch) && !quote) { if (current) { tokens.push(current); current = ''; } continue; }
-    current += ch;
-  }
-  if (quote) return null;
-  if (current) tokens.push(current);
-  return tokens;
-}
 export function readMacProcessEvidence(pid, { spawnSyncImpl = spawnSync } = {}) {
   if (!Number.isInteger(Number(pid)) || Number(pid) <= 0) return null;
   const ps = spawnSyncImpl('/bin/ps', ['-ww', '-p', String(pid), '-o', 'command='], {
@@ -269,12 +256,16 @@ export function readMacProcessEvidence(pid, { spawnSyncImpl = spawnSync } = {}) 
     .find((line) => line.startsWith('n'))?.slice(1) || null;
   if (!executablePath) return null;
   return {
+    platform: 'darwin',
     name: path.basename(executablePath),
     executablePath,
     commandLine,
-    tokens: tokenizeCommandLine(commandLine)
+    commandLineClass: 'DARWIN_PS_FLATTENED_ARGV',
+    argvBoundaryPreserved: false,
+    tokens: null
   };
 }
+
 function pidAlive(pid) {
   try { process.kill(Number(pid), 0); return true; } catch { return false; }
 }
