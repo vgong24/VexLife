@@ -17,6 +17,7 @@ import {
 import {
   ALLOWED_OPERATIONS,
   choicesForLifecycleState,
+  canonicalMacHomeDirectory,
   classifyMacLifecycleState,
   cleanupRebuildPreserveState,
   protectedHomeSnapshot,
@@ -353,6 +354,8 @@ test('MAC07B protected continuity skips transient runtime symlinks and rebuild c
   fs.writeFileSync(path.join(home, 'memory', 'memory.json'), '{"keep":true}\n');
   fs.writeFileSync(path.join(home, 'conversations', 'thread-1', 'head.json'), '{"head":"abc"}\n');
 
+  assert.equal(canonicalMacHomeDirectory(home), path.resolve(home));
+  assert.equal(classifyMacLifecycleState(home), 'EXISTING_HEALTHY');
   const before = protectedHomeSnapshot(home);
   assert.equal(before.records.some((record) => record.path === 'runtime' || record.path.startsWith('runtime/')), false);
   const removed = cleanupRebuildPreserveState(home);
@@ -366,7 +369,19 @@ test('MAC07B protected continuity skips transient runtime symlinks and rebuild c
   const hostileHome = path.join(root, 'hostile-home');
   fs.mkdirSync(hostileHome, { recursive: true });
   fs.symlinkSync(outside, path.join(hostileHome, 'runtime'));
+  assert.throws(() => canonicalMacHomeDirectory(hostileHome), /symlink\/junction-like entry is not admitted/i);
+  assert.equal(classifyMacLifecycleState(hostileHome), 'HELD_NONCANONICAL_HOME');
   assert.throws(() => cleanupRebuildPreserveState(hostileHome), /runtime root must be one real directory/i);
+  assert.equal(fs.readFileSync(outsideFile, 'utf8'), 'outside-survives');
+
+  const transientHome = path.join(root, 'transient-hostile-home');
+  fs.mkdirSync(path.join(transientHome, 'config'), { recursive: true });
+  fs.mkdirSync(path.join(transientHome, 'recovery'), { recursive: true });
+  fs.writeFileSync(path.join(transientHome, 'config', 'home.json'), '{"homeRef":"home.transient"}\n');
+  fs.symlinkSync(outsideFile, path.join(transientHome, 'config', 'model.json'));
+  assert.throws(() => canonicalMacHomeDirectory(transientHome), /symlink\/junction-like entry is not admitted/i);
+  assert.throws(() => protectedHomeSnapshot(transientHome), /protected Home contains a symlink: config\/model\.json/i);
+  assert.equal(classifyMacLifecycleState(transientHome), 'HELD_NONCANONICAL_HOME');
   assert.equal(fs.readFileSync(outsideFile, 'utf8'), 'outside-survives');
 
   fs.rmSync(root, { recursive: true, force: true });

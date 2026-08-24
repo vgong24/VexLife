@@ -45,23 +45,33 @@ function ensureInside(root, candidate, label) {
   }
   return candidateAbs;
 }
-function assertNoSymlinkTree(target) {
+function assertNoSymlinkTree(target, { allowRuntimeContainedSymlinks = false, root = target } = {}) {
   if (!fs.existsSync(target)) return;
+  const rootAbs = path.resolve(root);
   const visit = (entry) => {
     const stat = fs.lstatSync(entry);
-    if (stat.isSymbolicLink()) throw new Error(`symlink/junction-like entry is not admitted: ${entry}`);
+    const relative = path.relative(rootAbs, entry).split(path.sep).join('/');
+    if (stat.isSymbolicLink()) {
+      if (allowRuntimeContainedSymlinks && relative.startsWith('runtime/')) return;
+      throw new Error(`symlink/junction-like entry is not admitted: ${entry}`);
+    }
     if (!stat.isDirectory()) return;
     for (const name of fs.readdirSync(entry)) visit(path.join(entry, name));
   };
   visit(target);
 }
-function canonicalExistingDirectory(value, label) {
+function canonicalExistingDirectory(value, label, { allowRuntimeContainedSymlinks = false } = {}) {
   const full = path.resolve(value);
-  if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) throw new Error(`${label} is not a directory: ${full}`);
-  assertNoSymlinkTree(full);
-  const real = fs.realpathSync(full);
+  if (!fs.existsSync(full)) throw new Error(`${label} is not a directory: ${full}`);
+  const rootStat = fs.lstatSync(full);
+  if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) throw new Error(`${label} is not a real directory: ${full}`);
+  assertNoSymlinkTree(full, { allowRuntimeContainedSymlinks, root: full });
+  const real = fs.realpathSync.native(full);
   if (real !== full) throw new Error(`${label} is not its canonical filesystem identity: requested=${full} resolved=${real}`);
   return real;
+}
+export function canonicalMacHomeDirectory(value) {
+  return canonicalExistingDirectory(value, 'Vex Home', { allowRuntimeContainedSymlinks: true });
 }
 
 export function validateMacTarEntries(entries) {
@@ -350,9 +360,13 @@ export async function stopOwnedRuntime(home) {
   return { disposition: 'EXACT_RUNTIME_STOPPED', pid };
 }
 
+function runtimeExcludedFromProtectedSnapshot(relative) {
+  const forward = relative.split(path.sep).join('/');
+  return forward === 'runtime' || forward.startsWith('runtime/');
+}
 function excludedFromProtectedSnapshot(relative) {
   const forward = relative.split(path.sep).join('/');
-  return forward === 'runtime' || forward.startsWith('runtime/') || TRANSIENT_EXACT.has(forward);
+  return runtimeExcludedFromProtectedSnapshot(relative) || TRANSIENT_EXACT.has(forward);
 }
 export function protectedHomeSnapshot(home) {
   const root = path.resolve(home);
@@ -362,11 +376,11 @@ export function protectedHomeSnapshot(home) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       const relative = path.relative(root, full);
-      if (excludedFromProtectedSnapshot(relative)) continue;
+      if (runtimeExcludedFromProtectedSnapshot(relative)) continue;
       const stat = fs.lstatSync(full);
       if (stat.isSymbolicLink()) throw new Error(`protected Home contains a symlink: ${relative}`);
       if (entry.isDirectory()) { visit(full); continue; }
-      if (!entry.isFile()) continue;
+      if (!entry.isFile() || excludedFromProtectedSnapshot(relative)) continue;
       const bytes = fs.readFileSync(full);
       records.push({ path: relative.split(path.sep).join('/'), bytes: bytes.length, sha256: sha256(bytes) });
     }
@@ -427,7 +441,7 @@ export function cleanupRebuildPreserveState(home) {
 export function classifyMacLifecycleState(home) {
   const root = path.resolve(home);
   if (!fs.existsSync(root)) return 'ABSENT';
-  if (!fs.statSync(root).isDirectory()) return 'HELD_NONCANONICAL_HOME';
+  try { canonicalMacHomeDirectory(root); } catch { return 'HELD_NONCANONICAL_HOME'; }
   const entries = fs.readdirSync(root);
   const homeManifest = path.join(root, 'config', 'home.json');
   if (!fs.existsSync(homeManifest)) return entries.length === 0 ? 'ABSENT' : 'HELD_NONCANONICAL_HOME';
@@ -557,7 +571,7 @@ async function runStart(home, repo, options) {
   return { initialized, browser };
 }
 async function uninstallPreserve(home, repo) {
-  const homeRoot = canonicalExistingDirectory(home, 'Vex Home');
+  const homeRoot = canonicalMacHomeDirectory(home);
   const repoRoot = canonicalExistingDirectory(repo, 'VexLife source root');
   const before = protectedHomeSnapshot(homeRoot);
   const browser = await stopOwnedBrowser(homeRoot, repoRoot);
@@ -584,7 +598,7 @@ async function uninstallPreserve(home, repo) {
   return result;
 }
 async function repair(home, repo, options) {
-  const homeRoot = canonicalExistingDirectory(home, 'Vex Home');
+  const homeRoot = canonicalMacHomeDirectory(home);
   const repoRoot = canonicalExistingDirectory(repo, 'VexLife source root');
   const before = protectedHomeSnapshot(homeRoot);
   const browserStop = await stopOwnedBrowser(homeRoot, repoRoot);
