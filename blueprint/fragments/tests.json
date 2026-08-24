@@ -1146,5 +1146,9 @@
   {
     "testRef": "test.globalization.semantic-relay.human-visible",
     "brief": "Browser conversation exposes accepted semantic-relay language, projection, runtime, drift and human confirmation state without rewriting source content or exposing hidden reasoning."
+  },
+  {
+    "testRef": "test.review-composition.contract",
+    "brief": "RCP-00..RCP-15 deterministic no-effect review composition, exact source binding, unknown preservation, Process Factory admission ordering and non-mutation proof"
   }
 ]
