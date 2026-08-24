@@ -174,6 +174,14 @@ the process formed by this compiler remains no-effect. A separate later review
 runner must independently bind any `ADMITTED_FIXTURE_EFFECTS` authority required
 by an effectful feature.
 
+For the public review-orchestration path, Process Factory admission must occur
+**before** the pure projection compilers run. The process definition's ordered
+steps must name the expectation-set and coverage-receipt composition steps, and
+`createReviewFor(...)` must require `PLAN_READY_NO_EFFECT` before executing them.
+A blocked process admission produces no admitted ReviewExpectationSet or
+ReviewCoverageReceipt. The pure functions may remain independently callable in
+focused tests, but their existence does not bypass the selected process owner.
+
 ## Why Process Factory is not the projection compiler
 
 Current `ProcessFactory.compile()` checks process inputs, foundations, effect
@@ -641,12 +649,27 @@ recommended decomposition is:
 
 ```text
 createReviewFor(request)
-  -> validate exact currentness + request
-  -> compileReviewExpectationSet(request, canonicalSourceBundle)
-  -> compileReviewCoverageReceipt(expectationSet, evidenceBundle)
-  -> compile Process Factory no-effect plan
+  -> validate exact currentness + request shape sufficient to form process inputs
+  -> ProcessFactory.compile({
+       processRef: process.vexlife.review.compile-expectations-and-coverage,
+       inputs: source-bound review inputs,
+       sourceRefs: independently verified source bindings,
+       currentFoundationVersions,
+       authority: { effects: [] },
+       resourceBudget: evidence/review budget
+     })
+  -> require PLAN_READY_NO_EFFECT
+  -> execute only the admitted plan's pure composition steps
+       compileReviewExpectationSet(request, canonicalSourceBundle)
+       compileReviewCoverageReceipt(expectationSet, evidenceBundle)
+  -> ProcessFactory.renderReceipt(reviewPlan, {
+       disposition: projection compilation disposition,
+       outputRefs: [expectationSetRef, coverageReceiptRef],
+       effectReceiptRefs: []
+     })
   -> return {
        reviewPlan,
+       processReceipt,
        expectationSet,
        coverageReceipt,
        unresolved,
@@ -665,6 +688,7 @@ compileReviewCoverageReceipt(...)
 
 ```text
 CONVENIENCE_API != CANONICAL_SEMANTIC_OWNER
+BLOCKED_PROCESS_ADMISSION != PARTIAL_REVIEW_PROJECTION
 ```
 
 ## Liberty suggestions
@@ -811,7 +835,7 @@ RCP-10 caller inputs and canonical source bundles remain unmodified
 RCP-11 missing source/schema/currentness fails closed
 RCP-12 malformed / duplicate identities fail closed
 RCP-13 coverage dimensions preserve typed placed/held/unknown dispositions
-RCP-14 `createReviewFor` convenience orchestration does not grant effects
+RCP-14 Process Factory PLAN_READY_NO_EFFECT gates public `createReviewFor` before projection compilation
 RCP-15 no new ReviewGraph / Review Registry / ReviewFinding owner is formed
 ```
 

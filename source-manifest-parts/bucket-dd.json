@@ -5,8 +5,8 @@
     {
       "path": "docs/REVIEW-EXPECTATION-COVERAGE-PLACEMENT.md",
       "mode": "100644",
-      "bytes": 23794,
-      "sha256": "45ece3fe0b6c219d4c82916423a4286dcfab0bffbe629bcaa4a0b8567b40eb8b"
+      "bytes": 25083,
+      "sha256": "692e6cfa820a5c4c9655acaacc37d080ea66bb0c0c12cf42b093c6206a478ba9"
     },
     {
       "path": "test/browser-companion-bridge.test.mjs",
