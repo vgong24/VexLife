@@ -138,12 +138,12 @@
         "origin": "http://127.0.0.1:18080",
         "requestModel": "Qwen3.5-4B-Q4_K_M"
       },
-      "hardwareProfileRef": "hardware.macos-arm64.apple-m4.metal",
+      "hardwareProfileRef": "hardware.macos-arm64.apple-m4-pro.metal",
       "hostRequirements": {
         "minimumFreeDiskBytes": 6442450944,
         "minimumSystemMemoryBytes": 12884901888,
         "requiresNvidiaSmi": false,
-        "appleChipModel": "Apple M4"
+        "appleChipModel": "Apple M4 Pro"
       },
       "modelArtifacts": [
         {
@@ -168,7 +168,7 @@
         }
       ],
       "platform": "darwin",
-      "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-metal.001",
+      "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001",
       "qualification": {
         "chatPath": "/v1/chat/completions",
         "healthPath": "/health",
@@ -251,7 +251,7 @@
         "github.issue.vextreme-sdk.662"
       ],
       "state": "CANDIDATE_QUALIFICATION",
-      "stateReason": "Candidate qualification only for the observed Apple M4 macOS arm64 Metal host. The upstream b10107 macOS arm64 archive and model/projector identities are pinned, but the extracted llama-server executable SHA-256 must be discovered on the bounded M4 qualification host and then source-pinned before RELEASE_QUALIFIED promotion. This one-host candidate does not certify all Apple-Silicon Macs and grants no ordinary normal-route selection, signed/public build status, P11 fresh-human acceptance, Home deletion, or publication authority."
+      "stateReason": "Candidate qualification only for the observed Apple M4 Pro macOS arm64 Metal host. The upstream b10107 macOS arm64 archive and model/projector identities are pinned, but the extracted llama-server executable SHA-256 must be discovered on the bounded M4 qualification host and then source-pinned before RELEASE_QUALIFIED promotion. This one-host candidate does not certify plain M4, M4 Max, or other Apple-Silicon Macs and grants no ordinary normal-route selection, signed/public build status, P11 fresh-human acceptance, Home deletion, or publication authority."
     }
   ]
 }

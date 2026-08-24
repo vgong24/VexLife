@@ -23,7 +23,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const registry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint', 'vex-operational-profiles.json'), 'utf8'));
-const MAC_REF = 'profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-metal.001';
+const MAC_REF = 'profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001';
 const WIN_REF = 'profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001';
 
 test('MAC00 registry admits exact Windows and macOS arm64 pairs only', () => {
@@ -39,22 +39,22 @@ test('MAC01 normal Mac selection remains held until RELEASE_QUALIFIED', () => {
   assert.equal(selected.heldProfileState, 'CANDIDATE_QUALIFICATION');
 });
 
-test('MAC01B M4 host predicate is exact and fails closed for another Apple chip', () => {
+test('MAC01B M4 Pro host predicate is exact and fails closed for plain M4 or missing Apple evidence', () => {
   const mac = registry.profiles.find((p) => p.profileRef === MAC_REF);
-  assert.equal(mac.hostRequirements.appleChipModel, 'Apple M4');
+  assert.equal(mac.hostRequirements.appleChipModel, 'Apple M4 Pro');
   const baseHost = {
     platform: 'darwin', architecture: 'arm64',
-    totalMemoryBytes: 32 * 1024 * 1024 * 1024,
+    totalMemoryBytes: 48 * 1024 * 1024 * 1024,
     freeDiskBytes: 64 * 1024 * 1024 * 1024,
     nvidia: { available: false }
   };
   assert.deepEqual(
-    evaluateOperationalProfileHost(mac, { ...baseHost, apple: { available: true, chipModel: 'Apple M4', machineModel: 'Mac16,10' } }),
+    evaluateOperationalProfileHost(mac, { ...baseHost, apple: { available: true, chipModel: 'Apple M4 Pro', machineModel: 'Mac16,7' } }),
     { ok: true, state: 'HOST_ELIGIBLE' }
   );
   const wrong = evaluateOperationalProfileHost(
     mac,
-    { ...baseHost, apple: { available: true, chipModel: 'Apple M3', machineModel: 'Mac15,3' } }
+    { ...baseHost, apple: { available: true, chipModel: 'Apple M4', machineModel: 'Mac16,10' } }
   );
   assert.equal(wrong.ok, false);
   assert.equal(wrong.reason, 'APPLE_CHIP_MODEL_MISMATCH');

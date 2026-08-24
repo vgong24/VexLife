@@ -42,7 +42,7 @@ test('operational profile registry resolves the release-qualified Windows profil
 test('candidate-only Mac stays held in normal mode and truly unsupported hosts fail closed without a default LLM', () => {
   const mac = selectOperationalProfile({ registry, platform: 'darwin', architecture: 'arm64' });
   assert.equal(mac.state, 'NO_RELEASE_QUALIFIED_PROFILE');
-  assert.equal(mac.heldProfileRef, 'profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-metal.001');
+  assert.equal(mac.heldProfileRef, 'profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001');
   assert.equal(mac.heldProfileState, 'CANDIDATE_QUALIFICATION');
   assert.equal(selectOperationalProfile({ registry, platform: 'linux', architecture: 'x64' }).state, 'UNSUPPORTED_HOST');
   assert.equal(JSON.stringify(registry).includes('default llm'), false);
