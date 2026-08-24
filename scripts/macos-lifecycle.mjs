@@ -78,15 +78,35 @@ export function validateMacTarEntries(entries) {
   }
   return true;
 }
+export function validateMacTarVerboseEntries(lines) {
+  if (!Array.isArray(lines) || lines.length === 0) throw new Error('runtime archive verbose entry list must be non-empty');
+  for (const raw of lines) {
+    const line = String(raw);
+    if (!line) continue;
+    const type = line[0];
+    if (type !== '-' && type !== 'd') {
+      throw new Error(`runtime archive contains a link or special entry type: ${type}`);
+    }
+  }
+  return true;
+}
 export function assertSafeMacTarArchive(archivePath, { spawnSyncImpl = spawnSync } = {}) {
-  const result = spawnSyncImpl('/usr/bin/tar', ['-tzf', archivePath], {
+  const names = spawnSyncImpl('/usr/bin/tar', ['-tzf', archivePath], {
     encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, shell: false
   });
-  if (result.error || result.status !== 0) {
-    throw new Error(`macOS runtime archive listing failed: ${result.stderr || result.error?.message || 'unknown error'}`);
+  if (names.error || names.status !== 0) {
+    throw new Error(`macOS runtime archive listing failed: ${names.stderr || names.error?.message || 'unknown error'}`);
   }
-  const entries = String(result.stdout || '').split(/\r?\n/u).filter(Boolean);
+  const entries = String(names.stdout || '').split(/\r?\n/u).filter(Boolean);
   validateMacTarEntries(entries);
+
+  const verbose = spawnSyncImpl('/usr/bin/tar', ['-tvzf', archivePath], {
+    encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, shell: false
+  });
+  if (verbose.error || verbose.status !== 0) {
+    throw new Error(`macOS runtime archive type listing failed: ${verbose.stderr || verbose.error?.message || 'unknown error'}`);
+  }
+  validateMacTarVerboseEntries(String(verbose.stdout || '').split(/\r?\n/u).filter(Boolean));
   return entries;
 }
 export function assertSafeMacExtractedTree(root) {

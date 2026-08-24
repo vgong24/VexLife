@@ -13,6 +13,7 @@ import {
   buildRuntimeArguments,
   buildVexInitializationPlan,
   classifyHomeState,
+  evaluateOperationalProfileHost,
   runtimeProcessEvidenceMatches,
   selectOperationalProfile,
   validateOperationalProfileRegistry
@@ -70,23 +71,43 @@ function nvidiaEvidence() {
   const first = String(result.stdout).trim().split(/\r?\n/u)[0] ?? '';
   return { available: first.length > 0, detail: first || null };
 }
+function appleHardwareEvidence() {
+  if (process.platform !== 'darwin') return { available: false, chipModel: null, machineModel: null };
+  const result = spawnSync('/usr/sbin/system_profiler', ['SPHardwareDataType', '-json'], {
+    encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, shell: false
+  });
+  if (result.error || result.status !== 0) return { available: false, chipModel: null, machineModel: null };
+  try {
+    const payload = JSON.parse(String(result.stdout || ''));
+    const item = Array.isArray(payload?.SPHardwareDataType) ? payload.SPHardwareDataType[0] : null;
+    const chipModel = typeof item?.chip_type === 'string' ? item.chip_type.trim() : '';
+    const machineModel = typeof item?.machine_model === 'string' ? item.machine_model.trim() : '';
+    return { available: chipModel.length > 0, chipModel: chipModel || null, machineModel: machineModel || null };
+  } catch {
+    return { available: false, chipModel: null, machineModel: null };
+  }
+}
 function inspectHost() {
   const nvidia = nvidiaEvidence();
+  const apple = appleHardwareEvidence();
   return {
     platform: process.platform,
     architecture: process.arch,
     node: process.version,
     totalMemoryBytes: os.totalmem(),
     freeDiskBytes: diskFreeBytes(home),
-    nvidia
+    nvidia,
+    apple
   };
 }
 function assertHostEligible(profile, host) {
-  if (host.platform !== profile.platform || host.architecture !== profile.architecture) throw Object.assign(new Error('This operational profile does not support this platform/architecture.'), { state: 'UNSUPPORTED_HOST' });
-  const req = profile.hostRequirements ?? {};
-  if (Number.isSafeInteger(req.minimumSystemMemoryBytes) && host.totalMemoryBytes < req.minimumSystemMemoryBytes) throw Object.assign(new Error('This computer does not have enough system memory for the current profile.'), { state: 'UNSUPPORTED_HOST' });
-  if (Number.isSafeInteger(req.minimumFreeDiskBytes) && host.freeDiskBytes < req.minimumFreeDiskBytes) throw Object.assign(new Error('There is not enough free disk space for the current profile.'), { state: 'UNSUPPORTED_HOST' });
-  if (req.requiresNvidiaSmi === true && !host.nvidia.available) throw Object.assign(new Error('The current Windows profile requires a compatible NVIDIA GPU/driver that nvidia-smi can identify.'), { state: 'UNSUPPORTED_HOST' });
+  const result = evaluateOperationalProfileHost(profile, host);
+  if (!result.ok) {
+    const error = new Error(`This operational profile does not support the observed host: ${result.reason}`);
+    error.state = result.state;
+    error.detail = result;
+    throw error;
+  }
 }
 function destinationForArtifact(profile, artifact) {
   const isModel = profile.modelArtifacts.some((entry) => entry.artifactRef === artifact.artifactRef);

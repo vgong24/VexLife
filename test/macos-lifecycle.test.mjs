@@ -6,6 +6,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  evaluateOperationalProfileHost,
   selectOperationalProfile,
   runtimeProcessEvidenceMatches,
   validateOperationalProfileRegistry
@@ -16,7 +17,8 @@ import {
   classifyMacLifecycleState,
   cleanupRebuildPreserveState,
   protectedHomeSnapshot,
-  validateMacTarEntries
+  validateMacTarEntries,
+  validateMacTarVerboseEntries
 } from '../scripts/macos-lifecycle.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -37,6 +39,30 @@ test('MAC01 normal Mac selection remains held until RELEASE_QUALIFIED', () => {
   assert.equal(selected.heldProfileState, 'CANDIDATE_QUALIFICATION');
 });
 
+test('MAC01B M4 host predicate is exact and fails closed for another Apple chip', () => {
+  const mac = registry.profiles.find((p) => p.profileRef === MAC_REF);
+  assert.equal(mac.hostRequirements.appleChipModel, 'Apple M4');
+  const baseHost = {
+    platform: 'darwin', architecture: 'arm64',
+    totalMemoryBytes: 32 * 1024 * 1024 * 1024,
+    freeDiskBytes: 64 * 1024 * 1024 * 1024,
+    nvidia: { available: false }
+  };
+  assert.deepEqual(
+    evaluateOperationalProfileHost(mac, { ...baseHost, apple: { available: true, chipModel: 'Apple M4', machineModel: 'Mac16,10' } }),
+    { ok: true, state: 'HOST_ELIGIBLE' }
+  );
+  const wrong = evaluateOperationalProfileHost(
+    mac,
+    { ...baseHost, apple: { available: true, chipModel: 'Apple M3', machineModel: 'Mac15,3' } }
+  );
+  assert.equal(wrong.ok, false);
+  assert.equal(wrong.reason, 'APPLE_CHIP_MODEL_MISMATCH');
+  const missing = evaluateOperationalProfileHost(mac, { ...baseHost, apple: { available: false, chipModel: null } });
+  assert.equal(missing.ok, false);
+  assert.equal(missing.reason, 'APPLE_CHIP_MODEL_MISMATCH');
+});
+
 test('MAC02 candidate Mac selection is exact and nullable executable hash cannot self-promote', () => {
   const selected = selectOperationalProfile({
     registry, platform: 'darwin', architecture: 'arm64',
@@ -54,10 +80,23 @@ test('MAC02 candidate Mac selection is exact and nullable executable hash cannot
   assert.match(checked.errors.join('; '), /executableSha256/i);
 });
 
-test('MAC03 tar path admission rejects traversal and absolute paths', () => {
+test('MAC03 tar path and member-type admission rejects traversal, symlinks, hardlinks and specials before extraction', () => {
   assert.equal(validateMacTarEntries(['./llama-b10107/llama-server', './llama-b10107/libggml.dylib']), true);
   assert.throws(() => validateMacTarEntries(['../outside']), /parent traversal/);
   assert.throws(() => validateMacTarEntries(['/tmp/outside']), /absolute path/);
+  assert.equal(validateMacTarVerboseEntries([
+    '-rwxr-xr-x  0 user group 123 Jan  1 00:00 ./llama-server',
+    'drwxr-xr-x  0 user group   0 Jan  1 00:00 ./lib/'
+  ]), true);
+  assert.throws(() => validateMacTarVerboseEntries([
+    'lrwxr-xr-x  0 user group 0 Jan  1 00:00 ./link -> ../../outside'
+  ]), /link or special/);
+  assert.throws(() => validateMacTarVerboseEntries([
+    'hrw-r--r--  0 user group 0 Jan  1 00:00 ./hard link to ../../outside'
+  ]), /link or special/);
+  assert.throws(() => validateMacTarVerboseEntries([
+    'prw-r--r--  0 user group 0 Jan  1 00:00 ./fifo'
+  ]), /link or special/);
 });
 
 test('MAC04 process evidence is generic to exact expected executable basename, path and argv', () => {

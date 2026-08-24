@@ -81,6 +81,10 @@ export function validateOperationalProfileRegistry(registry) {
         throw new Error(`${p} platform/architecture is not an admitted operational pair: ${platformArchitecture}`);
       }
       requireString(profile.hardwareProfileRef, `${p}.hardwareProfileRef`);
+      requireObject(profile.hostRequirements, `${p}.hostRequirements`);
+      if (profile.platform === 'darwin') {
+        requireString(profile.hostRequirements.appleChipModel, `${p}.hostRequirements.appleChipModel`);
+      }
       requireObject(profile.endpoint, `${p}.endpoint`);
       const match = LOOPBACK_ORIGIN.exec(profile.endpoint.origin);
       if (!match) throw new Error(`${p}.endpoint.origin must use numeric loopback`);
@@ -126,6 +130,36 @@ export function validateOperationalProfileRegistry(registry) {
     }
   } catch (error) { errors.push(error.message); }
   return { ok: errors.length === 0, errors };
+}
+
+export function evaluateOperationalProfileHost(profile, host) {
+  requireObject(profile, 'profile');
+  requireObject(host, 'host');
+  if (host.platform !== profile.platform || host.architecture !== profile.architecture) {
+    return { ok: false, state: 'UNSUPPORTED_HOST', reason: 'PLATFORM_ARCHITECTURE_MISMATCH' };
+  }
+  const req = profile.hostRequirements ?? {};
+  if (Number.isSafeInteger(req.minimumSystemMemoryBytes) && host.totalMemoryBytes < req.minimumSystemMemoryBytes) {
+    return { ok: false, state: 'UNSUPPORTED_HOST', reason: 'INSUFFICIENT_SYSTEM_MEMORY' };
+  }
+  if (Number.isSafeInteger(req.minimumFreeDiskBytes) && host.freeDiskBytes < req.minimumFreeDiskBytes) {
+    return { ok: false, state: 'UNSUPPORTED_HOST', reason: 'INSUFFICIENT_FREE_DISK' };
+  }
+  if (req.requiresNvidiaSmi === true && host.nvidia?.available !== true) {
+    return { ok: false, state: 'UNSUPPORTED_HOST', reason: 'NVIDIA_EVIDENCE_REQUIRED' };
+  }
+  if (typeof req.appleChipModel === 'string' && req.appleChipModel.length > 0) {
+    if (host.apple?.available !== true || host.apple?.chipModel !== req.appleChipModel) {
+      return {
+        ok: false,
+        state: 'UNSUPPORTED_HOST',
+        reason: 'APPLE_CHIP_MODEL_MISMATCH',
+        expectedAppleChipModel: req.appleChipModel,
+        observedAppleChipModel: host.apple?.chipModel ?? null
+      };
+    }
+  }
+  return { ok: true, state: 'HOST_ELIGIBLE' };
 }
 
 export function selectOperationalProfile({ registry, platform, architecture, mode = 'normal', profileRef = null }) {

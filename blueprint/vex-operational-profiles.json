@@ -142,7 +142,8 @@
       "hostRequirements": {
         "minimumFreeDiskBytes": 6442450944,
         "minimumSystemMemoryBytes": 12884901888,
-        "requiresNvidiaSmi": false
+        "requiresNvidiaSmi": false,
+        "appleChipModel": "Apple M4"
       },
       "modelArtifacts": [
         {
