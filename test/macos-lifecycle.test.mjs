@@ -141,6 +141,26 @@ test('MAC03 tar topology admits only bounded same-directory file aliases and rej
     ['-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/file', 'lrwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/link -> file', '-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/link/child'],
     /ancestor/
   );
+  hostile(
+    ['llama-b10107/a/./b'],
+    ['-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/a/./b'],
+    /not canonical/
+  );
+  hostile(
+    ['llama-b10107/a//b'],
+    ['-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/a//b'],
+    /not canonical/
+  );
+  hostile(
+    ['././llama-b10107/file'],
+    ['-rw-r--r-- 0 u g 1 Jan 1 00:00 ././llama-b10107/file'],
+    /not canonical/
+  );
+  hostile(
+    ['llama-b10107/file', 'llama-b10107/./file'],
+    ['-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/file', 'lrwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/./file -> file'],
+    /not canonical/
+  );
 });
 
 test('MAC04 process evidence is generic to exact expected executable basename, path and argv', () => {

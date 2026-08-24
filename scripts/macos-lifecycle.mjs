@@ -79,9 +79,26 @@ export function validateMacTarEntries(entries) {
   return true;
 }
 function normalizeMacTarMemberName(raw) {
-  let value = String(raw).trim().replace(/^\.\//u, '');
-  while (value.endsWith('/') && value.length > 1) value = value.slice(0, -1);
-  return value;
+  const original = String(raw);
+  if (!original || original !== original.trim()) {
+    throw new Error('runtime archive member names must be non-empty and have no leading/trailing whitespace');
+  }
+  if (original.includes('\\') || original.includes('\0')) {
+    throw new Error('runtime archive member name contains a non-admitted separator or NUL');
+  }
+  let value = original.startsWith('./') ? original.slice(2) : original;
+  const directoryForm = value.endsWith('/');
+  if (directoryForm) value = value.slice(0, -1);
+  if (!value || value === '.') throw new Error(`runtime archive member path is empty or root-like: ${original}`);
+  if (path.posix.isAbsolute(value)) throw new Error(`runtime archive contains an absolute path: ${original}`);
+  if (value === '..' || value.startsWith('../') || value.split('/').some(segment => segment === '..')) {
+    throw new Error(`runtime archive contains parent traversal: ${original}`);
+  }
+  const canonical = path.posix.normalize(value);
+  if (canonical !== value || value.includes('//') || value.split('/').some(segment => segment === '.')) {
+    throw new Error(`runtime archive member path is not canonical: ${original}`);
+  }
+  return canonical;
 }
 function pathInsideRoot(root, candidate) {
   const relative = path.relative(root, candidate);
@@ -93,7 +110,7 @@ export function validateMacTarTopology(entries, verboseLines) {
     throw new Error('runtime archive name/type listings must have exact non-empty parity');
   }
   const normalized = entries.map(normalizeMacTarMemberName);
-  if (new Set(normalized).size !== normalized.length) throw new Error('runtime archive contains duplicate member names');
+  if (new Set(normalized).size !== normalized.length) throw new Error('runtime archive contains duplicate or filesystem-equivalent member names');
 
   const records = normalized.map((name, index) => {
     const rawName = String(entries[index]).trim();
