@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "vexlife.public-learning-browser-registry/v1",
+  "registryRef": "registry.vexlife.public-learning-browser.001",
+  "prototypeRef": "prototype.vexlife.public-learning-browser.architecture-atlas.001",
+  "projectionRef": "projection.vexlife.public-learning.architecture-atlas.001",
+  "sourceProjectionPath": "generated/public-learning/projection.json",
+  "fieldRoutePath": "/learn/architecture/",
+  "sourceLocale": "en",
+  "requiredLocales": ["en", "ja", "zh"],
+  "returnSchemaVersion": "vexlife.public-learning-leaf-return/v1",
+  "presentationPolicy": {
+    "entryRef": "public-group.vexlife.architecture.001",
+    "childEdgeTypes": ["PUBLIC_GROUP", "PUBLIC_MEMBER"],
+    "canonicalParentMutation": false,
+    "leafOpenSemanticNavigation": false,
+    "leafOpenJourneyAppend": false,
+    "leafScrollMutatesTerrain": false,
+    "browserHistoryEntryIsJourneyEvent": false
+  },
+  "controls": {
+    "readLeaf": {"controlRef": "control.public-learning.read-leaf", "labelRef": "public.browser.read-leaf"},
+    "returnField": {"controlRef": "control.public-learning.return-field", "labelRef": "public.browser.return-field"},
+    "askVex": {"controlRef": "control.public-learning.ask-vex", "labelRef": "public.browser.ask-vex", "noteRef": "public.browser.ask-vex-held", "effectState": "HELD", "executable": false}
+  },
+  "sectionLabelRefs": {
+    "what": "public.browser.section.what",
+    "why": "public.browser.section.why",
+    "how": "public.browser.section.how",
+    "when": "public.browser.section.when",
+    "boundaries": "public.browser.section.boundaries",
+    "related": "public.browser.section.related"
+  },
+  "runtimeAllowlist": [
+    "/reference/browser/public-learning/index.html",
+    "/reference/browser/public-learning/app.js",
+    "/reference/browser/public-learning/app.css",
+    "/reference/browser/app.css",
+    "/reference/browser/modules/public-learning-controller.js",
+    "/reference/browser/modules/dom.js",
+    "/reference/browser/modules/navigation-controller.js",
+    "/reference/browser/modules/terrain-controller.js",
+    "/blueprint/public-learning-browser-registry.json",
+    "/blueprint/public-learning-browser/strings/en.json",
+    "/blueprint/public-learning-browser/strings/ja.json",
+    "/blueprint/public-learning-browser/strings/zh.json",
+    "/generated/public-learning/projection.json"
+  ],
+  "forbiddenRuntimePrefixes": [
+    "/reference/browser/app.js",
+    "/reference/browser/modules/demo-data.js",
+    "/reference/browser/modules/chat-controller.js",
+    "/reference/browser/modules/guide-controller.js",
+    "/reference/browser/modules/living-journal",
+    "/api/",
+    "/docs/private-continuity/",
+    "/runtime/",
+    "/models/"
+  ],
+  "proofCells": ["B3P-00","B3P-01","B3P-02","B3P-03","B3P-04","B3P-05","B3P-06","B3P-07","B3P-08","B3P-09","B3P-10","B3P-11","B3P-12","B3P-13","B3P-14","B3P-15"]
+}

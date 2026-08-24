@@ -262,5 +262,87 @@
       "test/browser.test.mjs"
     ],
     "writes": []
+  },
+  {
+    "moduleRef": "module.vexlife.browser.public-learning-document",
+    "path": "reference/browser/public-learning/index.html",
+    "role": "Reviewable public Architecture/Atlas prototype document over the exact prebuilt B1 public projection; no product Home or publication authority.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.css",
+      "reference/browser/public-learning/app.css"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/public-learning-browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/public-learning/app.js",
+      "reference/browser/modules/public-learning-controller.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.public-learning-adapter",
+    "path": "reference/browser/public-learning/app.js",
+    "role": "Loads only the prebuilt B1 public projection plus B3 presentation registry/catalogs and starts the bounded public-learning controller.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "generated/public-learning/projection.json",
+      "blueprint/public-learning-browser-registry.json",
+      "blueprint/public-learning-browser/strings/*.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "reference/browser/public-learning/index.html"
+    ],
+    "tests": [
+      "test/public-learning-browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/modules/public-learning-controller.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.public-learning-styles",
+    "path": "reference/browser/public-learning/app.css",
+    "role": "Tiny prototype-local public reading and responsive overrides layered over the accepted browser style owner.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.css"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "reference/browser/public-learning/index.html"
+    ],
+    "tests": [
+      "test/public-learning-browser.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.browser.public-learning-controller",
+    "path": "reference/browser/modules/public-learning-controller.js",
+    "role": "Projects B1 public grouping/member edges into presentation-only Terrain hierarchy, renders complete localized leaves, and restores exact B2 Terrain presentation on Browser Back without semantic leaf navigation.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "generated/public-learning/projection.json",
+      "blueprint/public-learning-browser-registry.json",
+      "blueprint/public-learning-browser/strings/*.json",
+      "reference/browser/modules/dom.js",
+      "reference/browser/modules/navigation-controller.js",
+      "reference/browser/modules/terrain-controller.js"
+    ],
+    "writes": [
+      "browser history entries for public leaf presentation only",
+      "existing Terrain localStorage through the accepted Terrain owner"
+    ],
+    "consumers": [
+      "reference/browser/public-learning/app.js"
+    ],
+    "tests": [
+      "test/public-learning-browser.test.mjs"
+    ],
+    "changeMap": []
   }
 ]

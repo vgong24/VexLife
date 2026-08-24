@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "vexlife.public-learning-browser-strings/v1",
+  "registryRef": "registry.vexlife.public-learning-browser.001",
+  "locale": "ja",
+  "languageName": "日本語",
+  "sourceLocale": "en",
+  "strings": {
+    "public.browser.app-title": "VexLife Architecture Atlas",
+    "public.browser.prototype-label": "公開学習プロトタイプ",
+    "public.browser.current-context": "現在の公開コンテキスト",
+    "public.browser.read-leaf": "完全な項目を読む",
+    "public.browser.return-field": "Atlas フィールドに戻る",
+    "public.browser.language": "言語",
+    "public.browser.section.what": "何か",
+    "public.browser.section.why": "なぜ",
+    "public.browser.section.how": "どのように",
+    "public.browser.section.when": "いつ使うか",
+    "public.browser.section.boundaries": "境界",
+    "public.browser.section.related": "関連",
+    "public.browser.relationships": "登録済みの公開関係",
+    "public.browser.ask-vex": "Vex に聞く",
+    "public.browser.ask-vex-held": "Ask Vex は将来の入口として表示されています。この静的プロトタイプはモデルを実行せず、リクエストも送信しません。",
+    "public.browser.no-leaf": "ここは公開グループ表示です。登録済み項目を選ぶと完全な説明を読めます。",
+    "public.browser.source-note": "公開投影のみ · Home、Memory、モデル、非公開データは使用しません",
+    "public.browser.back-note": "ブラウザーの戻る操作で、離れた時点の意味コンテキストと Terrain 表示へ正確に戻ります。",
+    "public.browser.up-one-layer": "1 つ上の階層へ",
+    "public.browser.reset-view": "表示をリセット",
+    "public.browser.zoom-in": "拡大",
+    "public.browser.zoom-out": "縮小"
+  }
+}

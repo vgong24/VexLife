@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 61584,
       "sha256": "4476b46f1f57c163ff165fac0ca52aebc0cb8d38895c7494a178e00c62dd3d2d"
+    },
+    {
+      "path": "reference/browser/public-learning/index.html",
+      "mode": "100644",
+      "bytes": 6160,
+      "sha256": "2e032c7a8a62a46474c272ea15de855084740d0dd3a666be12b3465aafbf25f1"
     }
   ]
 }

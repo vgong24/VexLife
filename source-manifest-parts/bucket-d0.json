@@ -3,6 +3,12 @@
   "bucketId": "d0",
   "files": [
     {
+      "path": "blueprint/public-learning-browser/strings/zh.json",
+      "mode": "100644",
+      "bytes": 1644,
+      "sha256": "3c7897a293fce79d8ff43155e621a150fd87d85435d47e06ac7d63e6bcc03a36"
+    },
+    {
       "path": "scripts/intent-plan.mjs",
       "mode": "100644",
       "bytes": 2303,

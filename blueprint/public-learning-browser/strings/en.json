@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "vexlife.public-learning-browser-strings/v1",
+  "registryRef": "registry.vexlife.public-learning-browser.001",
+  "locale": "en",
+  "languageName": "English",
+  "sourceLocale": "en",
+  "strings": {
+    "public.browser.app-title": "VexLife Architecture Atlas",
+    "public.browser.prototype-label": "Public learning prototype",
+    "public.browser.current-context": "Current public context",
+    "public.browser.read-leaf": "Read the complete entry",
+    "public.browser.return-field": "Return to the Atlas field",
+    "public.browser.language": "Language",
+    "public.browser.section.what": "What",
+    "public.browser.section.why": "Why",
+    "public.browser.section.how": "How",
+    "public.browser.section.when": "When",
+    "public.browser.section.boundaries": "Boundaries",
+    "public.browser.section.related": "Related",
+    "public.browser.relationships": "Registered public relationships",
+    "public.browser.ask-vex": "Ask Vex",
+    "public.browser.ask-vex-held": "Ask Vex is visible here as a future door. This static prototype does not run a model or send a request.",
+    "public.browser.no-leaf": "This public context is a grouping view. Choose a registered item to read its complete entry.",
+    "public.browser.source-note": "Public projection only · no Home, Memory, model, or private data",
+    "public.browser.back-note": "Browser Back returns to the exact semantic and Terrain presentation you left.",
+    "public.browser.up-one-layer": "Up one layer",
+    "public.browser.reset-view": "Reset view",
+    "public.browser.zoom-in": "Zoom in",
+    "public.browser.zoom-out": "Zoom out"
+  }
+}

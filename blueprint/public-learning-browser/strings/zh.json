@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "vexlife.public-learning-browser-strings/v1",
+  "registryRef": "registry.vexlife.public-learning-browser.001",
+  "locale": "zh",
+  "languageName": "中文",
+  "sourceLocale": "en",
+  "strings": {
+    "public.browser.app-title": "VexLife Architecture Atlas",
+    "public.browser.prototype-label": "公开学习原型",
+    "public.browser.current-context": "当前公开上下文",
+    "public.browser.read-leaf": "阅读完整条目",
+    "public.browser.return-field": "返回 Atlas 关系场",
+    "public.browser.language": "语言",
+    "public.browser.section.what": "是什么",
+    "public.browser.section.why": "为什么",
+    "public.browser.section.how": "如何工作",
+    "public.browser.section.when": "何时使用",
+    "public.browser.section.boundaries": "边界",
+    "public.browser.section.related": "相关",
+    "public.browser.relationships": "已注册的公开关系",
+    "public.browser.ask-vex": "询问 Vex",
+    "public.browser.ask-vex-held": "Ask Vex 在这里作为未来入口可见。这个静态原型不会运行模型，也不会发送请求。",
+    "public.browser.no-leaf": "这是公开分组视图。选择一个已注册项目即可阅读完整条目。",
+    "public.browser.source-note": "仅使用公开投影 · 不使用 Home、Memory、模型或私人数据",
+    "public.browser.back-note": "浏览器返回会恢复你离开时的精确语义上下文与 Terrain 展示状态。",
+    "public.browser.up-one-layer": "返回上一层",
+    "public.browser.reset-view": "重置视图",
+    "public.browser.zoom-in": "放大",
+    "public.browser.zoom-out": "缩小"
+  }
+}

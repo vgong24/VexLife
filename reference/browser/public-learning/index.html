@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Reviewable VexLife public Architecture and Atlas learning prototype">
+  <title>VexLife Architecture Atlas</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/reference/browser/app.css">
+  <link rel="stylesheet" href="/reference/browser/public-learning/app.css">
+</head>
+<body class="public-learning">
+<div id="app" class="e27-app public-learning-app" data-prototype-ref="prototype.vexlife.public-learning-browser.architecture-atlas.001">
+  <header class="e27-appbar topbar public-learning-header">
+    <div class="public-learning-heading">
+      <small id="publicPrototypeLabel">Public learning prototype</small>
+      <strong id="publicAppTitle">VexLife Architecture Atlas</strong>
+      <span id="publicSourceNote">Public projection only</span>
+    </div>
+    <div class="public-learning-header-actions">
+      <label><span id="publicLanguageLabel">Language</span>
+        <select id="languageSelect" aria-label="Language"><option value="en">EN</option><option value="ja">日本語</option><option value="zh">中文</option></select>
+      </label>
+      <button id="vexSummon" type="button" disabled aria-disabled="true" data-effect-state="HELD">Ask Vex</button>
+      <button id="terrainUp" type="button">Up one layer</button>
+      <button id="terrainReset" type="button">Reset view</button>
+    </div>
+  </header>
+
+  <nav id="terrainBreadcrumb" class="e27-breadcrumb public-learning-breadcrumb" aria-label="Current public learning path"></nav>
+
+  <div class="public-learning-stage">
+    <main id="view-terrain" class="e27-terrain terrain public-learning-terrain" data-primary-stage="true">
+      <div class="e27-zoom-rail terrain-toolbar" aria-label="Terrain zoom controls">
+        <button id="terrainZoomIn" class="e27-zoom-button" type="button" aria-label="Zoom in">+</button>
+        <div id="terrainZoomTrack" class="e27-zoom-track" aria-hidden="true"><div id="terrainZoomKnob" class="e27-zoom-knob"></div></div>
+        <button id="terrainZoomOut" class="e27-zoom-button" type="button" aria-label="Zoom out">−</button>
+        <output id="terrainZoomStatus" class="e27-zoom-percent">100%</output>
+        <div class="public-learning-hidden-controls" aria-hidden="true">
+          <input id="terrainAutoEntryEnabled" type="checkbox" checked>
+          <input id="terrainAutoEntryVisibility" type="range" min="0.5" max="1" step="0.01" value="0.72">
+          <input id="terrainAutoEntryConfidence" type="range" min="0.5" max="1" step="0.01" value="0.8">
+          <output id="terrainAutoEntryStatus"></output>
+        </div>
+      </div>
+      <div id="terrainHud" hidden></div>
+      <div id="terrainScopeChip" hidden></div>
+      <div id="terrainWorkspaceBadge" hidden></div>
+      <div id="terrainCanvas" class="e27-canvas">
+        <div id="terrainWorld" class="e27-world">
+          <svg id="terrainEdges" class="e27-edges" viewBox="0 0 1200 800" aria-hidden="true"></svg>
+          <article id="terrainFocus" class="e27-focus"></article>
+          <div id="terrainNodes"></div>
+        </div>
+      </div>
+      <div id="terrainAdjacent" class="e27-adjacent"></div>
+      <div id="terrainContext" class="e27-terrain-context" hidden></div>
+      <div class="public-learning-hidden-controls" aria-hidden="true">
+        <p id="terrainAdaptationReason"></p>
+        <button id="terrainAdaptationUndo" type="button">Undo</button>
+        <input id="terrainAdaptiveLayoutEnabled" type="checkbox" checked>
+        <button id="terrainCenter" type="button">Center</button>
+      </div>
+    </main>
+
+    <aside id="publicCurrentDetail" class="public-current-detail" aria-live="polite">
+      <small id="publicDetailEyebrow">Current public context</small>
+      <h1 id="publicDetailTitle"></h1>
+      <p id="publicDetailBrief"></p>
+      <div id="publicDetailAction"></div>
+      <h2 id="publicDetailRelationshipsHeading" class="public-relationships-heading">Registered public relationships</h2>
+      <ul id="publicDetailRelationships" class="public-relationships"></ul>
+    </aside>
+  </div>
+
+  <footer id="terrainJourneyWindow" class="e27-recentbar public-learning-journey-proof" aria-hidden="true">
+    <button id="terrainFullJourneyToggle" type="button">Full journey</button>
+    <button id="terrainRecentPrev" type="button">‹</button>
+    <div id="terrainJourneyRecent"></div>
+    <button id="terrainRecentNext" type="button">›</button>
+    <span id="terrainJourneyStatus"></span>
+  </footer>
+  <aside id="terrainJourneyDrawer" class="e27-drawer" aria-hidden="true">
+    <button id="terrainJourneyClose" type="button">Close</button>
+    <input id="terrainJourneyScrub" type="range" min="0" max="0" value="0">
+    <div id="terrainJourneyCurrentMarker"></div>
+    <div id="terrainJourneyClusters"></div>
+    <code id="terrainJourneyReason"></code>
+    <button id="terrainJourneyRevisit" type="button">Revisit</button>
+    <div id="terrainJourneyList"></div>
+  </aside>
+</div>
+
+<aside id="publicLeaf" class="public-leaf" hidden aria-modal="true" role="dialog" aria-labelledby="publicLeafTitle">
+  <div id="publicLeafScroller" class="public-leaf-scroller scroll-scope" tabindex="-1">
+    <header class="public-leaf-header">
+      <div><small id="publicLeafEyebrow"></small><h1 id="publicLeafTitle"></h1><p id="publicLeafSummary"></p></div>
+      <button id="publicLeafReturn" type="button">Return to the Atlas field</button>
+    </header>
+    <p id="publicLeafBackNote" class="public-leaf-back-note"></p>
+    <div id="publicLeafSections" class="public-leaf-sections"></div>
+    <section class="public-leaf-relationships"><h2 id="publicLeafRelationshipsHeading">Registered public relationships</h2><ul id="publicLeafRelationships" class="public-relationships"></ul></section>
+    <section class="public-ask-vex-held" data-effect-state="HELD"><h2 id="publicAskVexLabel">Ask Vex</h2><p id="publicAskVexNote"></p></section>
+  </div>
+</aside>
+
+<script type="module" src="/reference/browser/public-learning/app.js"></script>
+</body>
+</html>

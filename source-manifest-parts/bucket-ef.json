@@ -3,6 +3,12 @@
   "bucketId": "ef",
   "files": [
     {
+      "path": "blueprint/public-learning-browser/strings/ja.json",
+      "mode": "100644",
+      "bytes": 1836,
+      "sha256": "922cc94a9798086d69e48652a77e88820e58b66d957b164ee2063adb60e3d1d5"
+    },
+    {
       "path": "docs/HUMAN-ONBOARDING-GUIDED-LOCAL-ESTABLISHMENT.md",
       "mode": "100644",
       "bytes": 10602,
