@@ -137,7 +137,7 @@ function findNamedFile(root, filename) {
   const visit = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
-      if (entry.isSymbolicLink()) throw new Error(`runtime extraction produced a symbolic link: ${full}`);
+      if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) visit(full);
       else if (entry.isFile() && entry.name.toLowerCase() === filename.toLowerCase()) found.push(full);
     }
@@ -155,6 +155,7 @@ async function materializeRuntime(profile, artifactPaths) {
         { state: 'UNPINNED_CANDIDATE_RUNTIME_REUSE_FORBIDDEN' }
       );
     }
+    assertSafeMacExtractedTree(target);
     const executable = findNamedFile(target, profile.runtime.executableName);
     const actual = await sha256File(executable);
     if (actual !== profile.runtime.executableSha256) throw new Error('existing runtime materialization failed executable verification; refusing to overwrite it');

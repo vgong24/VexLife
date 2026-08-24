@@ -78,17 +78,86 @@ export function validateMacTarEntries(entries) {
   }
   return true;
 }
-export function validateMacTarVerboseEntries(lines) {
-  if (!Array.isArray(lines) || lines.length === 0) throw new Error('runtime archive verbose entry list must be non-empty');
-  for (const raw of lines) {
-    const line = String(raw);
-    if (!line) continue;
-    const type = line[0];
-    if (type !== '-' && type !== 'd') {
-      throw new Error(`runtime archive contains a link or special entry type: ${type}`);
+function normalizeMacTarMemberName(raw) {
+  let value = String(raw).trim().replace(/^\.\//u, '');
+  while (value.endsWith('/') && value.length > 1) value = value.slice(0, -1);
+  return value;
+}
+function pathInsideRoot(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+export function validateMacTarTopology(entries, verboseLines) {
+  validateMacTarEntries(entries);
+  if (!Array.isArray(verboseLines) || verboseLines.length !== entries.length || entries.length === 0) {
+    throw new Error('runtime archive name/type listings must have exact non-empty parity');
+  }
+  const normalized = entries.map(normalizeMacTarMemberName);
+  if (new Set(normalized).size !== normalized.length) throw new Error('runtime archive contains duplicate member names');
+
+  const records = normalized.map((name, index) => {
+    const rawName = String(entries[index]).trim();
+    const line = String(verboseLines[index] || '');
+    const type = line[0] || '';
+    if (type === '-') {
+      if (!line.endsWith(rawName)) throw new Error(`runtime archive verbose/name order mismatch: ${rawName}`);
+      return { name, type: 'regular', target: null };
+    }
+    if (type === 'd') {
+      if (!line.endsWith(rawName)) throw new Error(`runtime archive verbose/name order mismatch: ${rawName}`);
+      return { name, type: 'directory', target: null };
+    }
+    if (type === 'l') {
+      const marker = `${rawName} -> `;
+      const at = line.lastIndexOf(marker);
+      if (at < 0) throw new Error(`runtime archive symlink target is not parseable: ${rawName}`);
+      const target = line.slice(at + marker.length);
+      if (!target || path.posix.isAbsolute(target) || target.includes('\\') ||
+          path.posix.basename(target) !== target || target === '.' || target === '..') {
+        throw new Error(`runtime archive symlink target is not an admitted same-directory filename: ${rawName}`);
+      }
+      return { name, type: 'symlink', target };
+    }
+    if (type === 'h') throw new Error(`runtime archive hardlink is not admitted: ${rawName}`);
+    throw new Error(`runtime archive contains a special member type: ${type}`);
+  });
+
+  const byName = new Map(records.map(record => [record.name, record]));
+  for (const record of records) {
+    if (record.type !== 'symlink') continue;
+    const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(record.name), record.target));
+    if (resolved === '..' || resolved.startsWith('../') || path.posix.isAbsolute(resolved)) {
+      throw new Error(`runtime archive symlink escapes archive root: ${record.name}`);
+    }
+    if (!byName.has(resolved)) throw new Error(`runtime archive symlink target is missing: ${record.name}`);
+    for (const candidate of normalized) {
+      if (candidate !== record.name && candidate.startsWith(`${record.name}/`)) {
+        throw new Error(`runtime archive symlink is an ancestor of another member: ${record.name}`);
+      }
+    }
+
+    const seen = new Set([record.name]);
+    let current = record;
+    for (let hop = 0; hop < 16; hop += 1) {
+      if (current.type !== 'symlink') {
+        if (current.type !== 'regular') throw new Error(`runtime archive symlink chain does not terminate at a regular file: ${record.name}`);
+        break;
+      }
+      const nextName = path.posix.normalize(path.posix.join(path.posix.dirname(current.name), current.target));
+      if (seen.has(nextName)) throw new Error(`runtime archive symlink cycle detected: ${record.name}`);
+      seen.add(nextName);
+      const next = byName.get(nextName);
+      if (!next) throw new Error(`runtime archive symlink chain target is missing: ${record.name}`);
+      current = next;
+      if (hop === 15) throw new Error(`runtime archive symlink chain exceeds bounded depth: ${record.name}`);
     }
   }
-  return true;
+  return {
+    entryCount: records.length,
+    symlinkCount: records.filter(record => record.type === 'symlink').length,
+    hardlinkCount: 0,
+    specialCount: 0
+  };
 }
 export function assertSafeMacTarArchive(archivePath, { spawnSyncImpl = spawnSync } = {}) {
   const names = spawnSyncImpl('/usr/bin/tar', ['-tzf', archivePath], {
@@ -98,7 +167,6 @@ export function assertSafeMacTarArchive(archivePath, { spawnSyncImpl = spawnSync
     throw new Error(`macOS runtime archive listing failed: ${names.stderr || names.error?.message || 'unknown error'}`);
   }
   const entries = String(names.stdout || '').split(/\r?\n/u).filter(Boolean);
-  validateMacTarEntries(entries);
 
   const verbose = spawnSyncImpl('/usr/bin/tar', ['-tvzf', archivePath], {
     encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, shell: false
@@ -106,20 +174,40 @@ export function assertSafeMacTarArchive(archivePath, { spawnSyncImpl = spawnSync
   if (verbose.error || verbose.status !== 0) {
     throw new Error(`macOS runtime archive type listing failed: ${verbose.stderr || verbose.error?.message || 'unknown error'}`);
   }
-  validateMacTarVerboseEntries(String(verbose.stdout || '').split(/\r?\n/u).filter(Boolean));
-  return entries;
+  const verboseLines = String(verbose.stdout || '').split(/\r?\n/u).filter(Boolean);
+  return { entries, ...validateMacTarTopology(entries, verboseLines) };
 }
 export function assertSafeMacExtractedTree(root) {
   const rootAbs = path.resolve(root);
-  assertNoSymlinkTree(rootAbs);
-  for (const name of fs.readdirSync(rootAbs)) {
-    const target = path.join(rootAbs, name);
-    const real = fs.realpathSync(target);
-    const relative = path.relative(rootAbs, real);
-    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-      throw new Error(`runtime extraction escaped staging root: ${target}`);
+  if (!fs.existsSync(rootAbs) || !fs.lstatSync(rootAbs).isDirectory()) throw new Error('runtime extraction root must be a directory');
+  const visit = (dir) => {
+    for (const name of fs.readdirSync(dir)) {
+      const target = path.join(dir, name);
+      const stat = fs.lstatSync(target);
+      if (stat.isSymbolicLink()) {
+        const rawLink = fs.readlinkSync(target);
+        if (!rawLink || path.isAbsolute(rawLink) || rawLink.includes('/') || rawLink.includes('\\') ||
+            path.basename(rawLink) !== rawLink || rawLink === '.' || rawLink === '..') {
+          throw new Error(`runtime extraction contains a non-admitted symlink target: ${target}`);
+        }
+        const immediate = path.resolve(path.dirname(target), rawLink);
+        if (!pathInsideRoot(rootAbs, immediate) || !fs.existsSync(immediate)) {
+          throw new Error(`runtime extraction symlink target escapes or is missing: ${target}`);
+        }
+        let real;
+        try { real = fs.realpathSync(target); } catch (error) {
+          throw new Error(`runtime extraction symlink chain is invalid: ${target}: ${error.message}`);
+        }
+        if (!pathInsideRoot(rootAbs, real) || !fs.lstatSync(real).isFile()) {
+          throw new Error(`runtime extraction symlink does not terminate at an in-root regular file: ${target}`);
+        }
+        continue;
+      }
+      if (stat.isDirectory()) { visit(target); continue; }
+      if (!stat.isFile()) throw new Error(`runtime extraction contains a special filesystem entry: ${target}`);
     }
-  }
+  };
+  visit(rootAbs);
   return true;
 }
 

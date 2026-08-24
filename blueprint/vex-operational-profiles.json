@@ -221,7 +221,7 @@
         "artifacts": [
           {
             "artifactRef": "artifact.llama-cpp.b10107.macos-arm64.metal",
-            "expectedBytes": null,
+            "expectedBytes": 10804162,
             "filename": "llama-b10107-bin-macos-arm64.tar.gz",
             "licenseRef": "license.mit.llama-cpp",
             "maxBytes": 134217728,

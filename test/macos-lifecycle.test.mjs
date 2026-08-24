@@ -18,7 +18,7 @@ import {
   cleanupRebuildPreserveState,
   protectedHomeSnapshot,
   validateMacTarEntries,
-  validateMacTarVerboseEntries
+  validateMacTarTopology
 } from '../scripts/macos-lifecycle.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -80,23 +80,67 @@ test('MAC02 candidate Mac selection is exact and nullable executable hash cannot
   assert.match(checked.errors.join('; '), /executableSha256/i);
 });
 
-test('MAC03 tar path and member-type admission rejects traversal, symlinks, hardlinks and specials before extraction', () => {
+test('MAC03 tar topology admits only bounded same-directory file aliases and rejects link write-through classes', () => {
   assert.equal(validateMacTarEntries(['./llama-b10107/llama-server', './llama-b10107/libggml.dylib']), true);
   assert.throws(() => validateMacTarEntries(['../outside']), /parent traversal/);
   assert.throws(() => validateMacTarEntries(['/tmp/outside']), /absolute path/);
-  assert.equal(validateMacTarVerboseEntries([
-    '-rwxr-xr-x  0 user group 123 Jan  1 00:00 ./llama-server',
-    'drwxr-xr-x  0 user group   0 Jan  1 00:00 ./lib/'
-  ]), true);
-  assert.throws(() => validateMacTarVerboseEntries([
-    'lrwxr-xr-x  0 user group 0 Jan  1 00:00 ./link -> ../../outside'
-  ]), /link or special/);
-  assert.throws(() => validateMacTarVerboseEntries([
-    'hrw-r--r--  0 user group 0 Jan  1 00:00 ./hard link to ../../outside'
-  ]), /link or special/);
-  assert.throws(() => validateMacTarVerboseEntries([
-    'prw-r--r--  0 user group 0 Jan  1 00:00 ./fifo'
-  ]), /link or special/);
+
+  const names = [
+    'llama-b10107/',
+    'llama-b10107/libggml.0.17.0.dylib',
+    'llama-b10107/libggml.0.dylib',
+    'llama-b10107/libggml.dylib',
+    'llama-b10107/llama-server'
+  ];
+  const verbose = [
+    'drwxr-xr-x  0 user group 0 Jan  1 00:00 llama-b10107/',
+    '-rwxr-xr-x  0 user group 1 Jan  1 00:00 llama-b10107/libggml.0.17.0.dylib',
+    'lrwxr-xr-x  0 user group 0 Jan  1 00:00 llama-b10107/libggml.0.dylib -> libggml.0.17.0.dylib',
+    'lrwxr-xr-x  0 user group 0 Jan  1 00:00 llama-b10107/libggml.dylib -> libggml.0.dylib',
+    '-rwxr-xr-x  0 user group 1 Jan  1 00:00 llama-b10107/llama-server'
+  ];
+  assert.deepEqual(validateMacTarTopology(names, verbose), {
+    entryCount: 5, symlinkCount: 2, hardlinkCount: 0, specialCount: 0
+  });
+
+  const hostile = (candidateNames, candidateVerbose, pattern) =>
+    assert.throws(() => validateMacTarTopology(candidateNames, candidateVerbose), pattern);
+
+  hostile(
+    ['llama-b10107/link', 'llama-b10107/file'],
+    ['lrwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/link -> ../outside', '-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/file'],
+    /same-directory/
+  );
+  hostile(
+    ['llama-b10107/link'],
+    ['lrwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/link -> missing.dylib'],
+    /target is missing/
+  );
+  hostile(
+    ['llama-b10107/a', 'llama-b10107/b'],
+    ['lrwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/a -> b', 'lrwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/b -> a'],
+    /cycle/
+  );
+  hostile(
+    ['llama-b10107/dir/', 'llama-b10107/link'],
+    ['drwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/dir/', 'lrwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/link -> dir'],
+    /terminate at a regular file/
+  );
+  hostile(
+    ['llama-b10107/file', 'llama-b10107/hard'],
+    ['-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/file', 'hrw-r--r-- 0 u g 0 Jan 1 00:00 llama-b10107/hard link to llama-b10107/file'],
+    /hardlink/
+  );
+  hostile(
+    ['llama-b10107/fifo'],
+    ['prw-r--r-- 0 u g 0 Jan 1 00:00 llama-b10107/fifo'],
+    /special/
+  );
+  hostile(
+    ['llama-b10107/file', 'llama-b10107/link', 'llama-b10107/link/child'],
+    ['-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/file', 'lrwxr-xr-x 0 u g 0 Jan 1 00:00 llama-b10107/link -> file', '-rw-r--r-- 0 u g 1 Jan 1 00:00 llama-b10107/link/child'],
+    /ancestor/
+  );
 });
 
 test('MAC04 process evidence is generic to exact expected executable basename, path and argv', () => {
