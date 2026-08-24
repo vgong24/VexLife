@@ -105,6 +105,8 @@ test('B3P-05..14 rendered Architecture -> Atlas -> leaf path preserves exact Bac
   assert.equal((await fetch(`${base}/api/memory`)).status, 404);
   assert.equal((await fetch(`${base}/docs/private-continuity/secret.txt`)).status, 404);
 
+  requests.length = 0;
+
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
