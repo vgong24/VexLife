@@ -264,7 +264,7 @@
     "writes": []
   },
   {
-    "moduleRef": "module.vexlife.browser.public-learning-document",
+    "moduleRef": "module.vexlife.browser.architecture-atlas-document",
     "path": "reference/browser/public-learning/index.html",
     "role": "Reviewable public Architecture/Atlas prototype document over the exact prebuilt B1 public projection; no product Home or publication authority.",
     "platformScope": "BROWSER",
@@ -283,7 +283,7 @@
     ]
   },
   {
-    "moduleRef": "module.vexlife.browser.public-learning-adapter",
+    "moduleRef": "module.vexlife.browser.architecture-atlas-adapter",
     "path": "reference/browser/public-learning/app.js",
     "role": "Loads only the prebuilt B1 public projection plus B3 presentation registry/catalogs and starts the bounded public-learning controller.",
     "platformScope": "BROWSER",
@@ -304,7 +304,7 @@
     ]
   },
   {
-    "moduleRef": "module.vexlife.browser.public-learning-styles",
+    "moduleRef": "module.vexlife.browser.architecture-atlas-styles",
     "path": "reference/browser/public-learning/app.css",
     "role": "Tiny prototype-local public reading and responsive overrides layered over the accepted browser style owner.",
     "platformScope": "BROWSER",
@@ -321,7 +321,7 @@
     "changeMap": []
   },
   {
-    "moduleRef": "module.vexlife.browser.public-learning-controller",
+    "moduleRef": "module.vexlife.browser.architecture-atlas-controller",
     "path": "reference/browser/modules/public-learning-controller.js",
     "role": "Projects B1 public grouping/member edges into presentation-only Terrain hierarchy, renders complete localized leaves, and restores exact B2 Terrain presentation on Browser Back without semantic leaf navigation.",
     "platformScope": "BROWSER",

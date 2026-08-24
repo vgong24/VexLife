@@ -88,10 +88,10 @@ test('B3P-00/01/02/03/04 source registry, localization and owner reuse remain bo
 
   const modules = new Map(browserModuleRegistry().map((entry) => [entry.moduleRef, entry]));
   for (const [ref, expectedPath] of [
-    ['module.vexlife.browser.public-learning-document','reference/browser/public-learning/index.html'],
-    ['module.vexlife.browser.public-learning-adapter','reference/browser/public-learning/app.js'],
-    ['module.vexlife.browser.public-learning-styles','reference/browser/public-learning/app.css'],
-    ['module.vexlife.browser.public-learning-controller','reference/browser/modules/public-learning-controller.js']
+    ['module.vexlife.browser.architecture-atlas-document','reference/browser/public-learning/index.html'],
+    ['module.vexlife.browser.architecture-atlas-adapter','reference/browser/public-learning/app.js'],
+    ['module.vexlife.browser.architecture-atlas-styles','reference/browser/public-learning/app.css'],
+    ['module.vexlife.browser.architecture-atlas-controller','reference/browser/modules/public-learning-controller.js']
   ]) {
     assert.equal(modules.get(ref)?.path, expectedPath, ref);
     assert.equal(modules.get(ref)?.tests.includes('test/public-learning-browser.test.mjs'), true, `${ref} test ownership`);
@@ -136,7 +136,7 @@ test('B3P-05..14 rendered Architecture -> Atlas -> leaf path preserves exact Bac
   await page.waitForTimeout(20);
   assert.deepEqual((await page.evaluate(() => globalThis.__vexlifePublicLearning.proof())).terrainPresentation, terrainBeforeScroll, 'leaf scrolling must not change Terrain');
   await page.goBack();
-  await page.locator('#publicLeaf[hidden]').waitFor();
+  await page.locator('#publicLeaf[hidden]').waitFor({ state: 'attached' });
   const returned = await page.evaluate(() => globalThis.__vexlifePublicLearning.proof());
   assert.deepEqual(returned.semanticFrame, beforeLeaf.semanticFrame);
   assert.deepEqual(returned.terrainPresentation, beforeLeaf.terrainPresentation);
