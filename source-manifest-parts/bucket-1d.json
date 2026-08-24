@@ -9,6 +9,12 @@
       "sha256": "b16776c18dc088ee8855636b636fef4197143bcda662c6e8014f4768f267bb35"
     },
     {
+      "path": "blueprint/public-learning/strings/zh.json",
+      "mode": "100644",
+      "bytes": 6652,
+      "sha256": "a8856ce794d055e2870e4b5b6d079e69d91052b6eae26c3416d642edf2b09c93"
+    },
+    {
       "path": "docs/PATIENT0-FAMILIARITY-LIVE-WORK.md",
       "mode": "100644",
       "bytes": 3797,

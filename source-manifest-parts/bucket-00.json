@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 3002,
       "sha256": "413f1c0d7736176efbb4da2ce8601917c06ab22dc34496f1f31b2a48dc691b02"
+    },
+    {
+      "path": "test/public-learning-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 10412,
+      "sha256": "a1f80eed073e3c319a4bbccfd38be9f23bdafe62659fcf7d4afefe68eadd5bfc"
     }
   ]
 }
