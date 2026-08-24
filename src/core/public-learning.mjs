@@ -1,5 +1,7 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { Atlas } from './atlas.mjs';
 import { loadBlueprint, VEXLIFE_ROOT } from './blueprint.mjs';
 import { compileRegistryPack, buildRegistryProjection } from './registry.mjs';
@@ -16,12 +18,49 @@ const SOURCE_STATES = new Set(['ACCEPTED_CURRENT', 'CANDIDATE_PROOF_ONLY']);
 const AVAILABILITY = new Set(['PUBLIC_STATIC', 'EXPLAINABLE_ONLY', 'LOCAL_VEXLIFE_REQUIRED', 'HELD', 'UNKNOWN']);
 const GROUP_AUTHORITY = new Set(['actionRef','actionRefs','capabilityStage','effectClass','implementationState','permissionRef','permissionRefs','processRef','processRefs','state','stateRef','stateRefs','status','writes']);
 const PROTECTED = /(?:ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[A-Z0-9]{16}|Bearer\s+[A-Za-z0-9._~+\/-]{16,}|BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY|(?:^|[\\/])(?:\.git|\.ssh|docs[\\/]private-continuity)(?:[\\/]|$)|(?:[A-Za-z]:\\Users\\|\/Users\/|\/home\/)[^\s]+|javascript\s*:|<\s*script\b)/iu;
+const TREE_HEADER = /^(100644|100755|120000) blob ([0-9a-f]{40})$/u;
 
 function need(condition, message) { if (!condition) throw new Error(message); }
 const clone = (value) => structuredClone(value);
 const stable = (value, label) => { need(typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(value), `${label} must be a stable ref`); return value; };
 const stringRef = (value, label) => { need(typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(value), `${label} must be a string ref`); return value; };
 const unique = (values, label) => { need(Array.isArray(values) && new Set(values).size === values.length && values.every(Boolean), `${label} must contain unique refs`); return values; };
+
+function runGit(root, args) {
+  try {
+    return execFileSync('git', args, {
+      cwd: root,
+      encoding: 'buffer',
+      maxBuffer: 32 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+  } catch (error) {
+    const stderr = Buffer.isBuffer(error.stderr) ? error.stderr.toString('utf8').trim() : '';
+    throw new Error(`public learning Git identity check failed (${args.join(' ')}): ${stderr || error.message}`);
+  }
+}
+
+function gitBlobId(bytes) {
+  return crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`, 'utf8'), bytes])).digest('hex');
+}
+
+function splitNullRecords(buffer) {
+  const records = [];
+  let start = 0;
+  for (let index = 0; index < buffer.length; index += 1) {
+    if (buffer[index] !== 0) continue;
+    if (index > start) records.push(buffer.subarray(start, index));
+    start = index + 1;
+  }
+  if (start < buffer.length) records.push(buffer.subarray(start));
+  return records;
+}
+
+function decodeGitPath(buffer) {
+  const value = buffer.toString('utf8');
+  need(Buffer.from(value, 'utf8').equals(buffer), 'public learning source tree contains a non-UTF-8 path');
+  return value;
+}
 
 function safeJson(value, label) {
   const text = JSON.stringify(value);
@@ -65,6 +104,49 @@ export function validatePublicLearningSourceBinding(binding) {
   need(SOURCE_STATES.has(binding?.sourceAcceptanceState), 'invalid sourceAcceptanceState');
   need(Object.keys(binding).every((key) => ['repository','commitSha','treeSha','sourceAcceptanceState'].includes(key)), 'source binding contains an unexpected field');
   return clone(binding);
+}
+
+export function verifyPublicLearningSourceRoot(root = VEXLIFE_ROOT, sourceBinding) {
+  const binding = validatePublicLearningSourceBinding(sourceBinding);
+  const requestedRoot = fs.realpathSync(path.resolve(root));
+  const prefix = runGit(requestedRoot, ['rev-parse', '--show-prefix']).toString('utf8').trim();
+  const gitRoot = fs.realpathSync(runGit(requestedRoot, ['rev-parse', '--show-toplevel']).toString('utf8').trim());
+  need(prefix === '' && gitRoot === requestedRoot, 'public learning source root must be the Git worktree root');
+
+  const commitSha = runGit(requestedRoot, ['rev-parse', '--verify', `${binding.commitSha}^{commit}`]).toString('utf8').trim();
+  need(commitSha === binding.commitSha, 'public learning source commit did not resolve exactly');
+  const treeSha = runGit(requestedRoot, ['show', '-s', '--format=%T', binding.commitSha]).toString('utf8').trim();
+  need(treeSha === binding.treeSha, `public learning source tree mismatch: expected ${binding.treeSha}, got ${treeSha}`);
+  const headSha = runGit(requestedRoot, ['rev-parse', 'HEAD']).toString('utf8').trim();
+  need(headSha === binding.commitSha, `public learning source root HEAD mismatch: expected ${binding.commitSha}, got ${headSha}`);
+
+  const status = runGit(requestedRoot, ['status', '--porcelain=v1', '--untracked-files=all', '--ignore-submodules=none']).toString('utf8');
+  need(status.trim() === '', 'public learning source root must be clean; ambient worktree/index/untracked bytes are not accepted input');
+
+  const records = splitNullRecords(runGit(requestedRoot, ['ls-tree', '-r', '-z', '--full-tree', binding.commitSha]));
+  let verifiedBlobCount = 0;
+  for (const record of records) {
+    const separator = record.indexOf(9);
+    need(separator > 0, 'public learning source tree emitted a malformed entry');
+    const header = record.subarray(0, separator).toString('ascii');
+    const relativePath = decodeGitPath(record.subarray(separator + 1));
+    const match = header.match(TREE_HEADER);
+    need(match, `public learning source tree contains an unsupported entry: ${relativePath}`);
+    const [, mode, objectId] = match;
+    const target = path.join(requestedRoot, ...relativePath.split('/'));
+    let stat;
+    try { stat = fs.lstatSync(target); } catch { throw new Error(`public learning source path is missing: ${relativePath}`); }
+    let bytes;
+    if (mode === '120000' && stat.isSymbolicLink()) bytes = Buffer.from(fs.readlinkSync(target), 'utf8');
+    else {
+      need(stat.isFile(), `public learning source path is not a file: ${relativePath}`);
+      bytes = fs.readFileSync(target);
+    }
+    need(gitBlobId(bytes) === objectId, `public learning source bytes differ from bound Git tree: ${relativePath}`);
+    verifiedBlobCount += 1;
+  }
+  need(verifiedBlobCount > 0, 'public learning source tree contains no verifiable blobs');
+  return { repositoryRoot: requestedRoot, commitSha, treeSha, verifiedBlobCount };
 }
 
 export function loadPublicLearningSource(root = VEXLIFE_ROOT) {
@@ -133,9 +215,11 @@ function states(entry, config, binding, bundle) {
   return { registrationState:'REGISTERED', implementationState:entry.kind === 'FEATURE' ? (entry.status ?? 'UNKNOWN') : null, capabilityStage, publicAvailabilityState:config.publicAvailabilityState, sourceAcceptanceState:binding.sourceAcceptanceState, liveDeploymentState:'NOT_DEPLOYED', currentnessState:binding.sourceAcceptanceState === 'ACCEPTED_CURRENT' ? 'CURRENT_SOURCE_BINDING' : 'CANDIDATE_PROOF_ONLY', dataClass:'PUBLIC_SAFE' };
 }
 
-export function buildPublicLearningProjection({ root = VEXLIFE_ROOT, bundle = null, registry = null, catalogs = null, sourceBinding } = {}) {
-  const binding = validatePublicLearningSourceBinding(sourceBinding), loaded = registry && catalogs ? {registry,catalogs} : loadPublicLearningSource(root);
-  const validation = validatePublicLearningInputs({root,bundle,registry:loaded.registry,catalogs:loaded.catalogs});
+export function buildPublicLearningProjection({ root = VEXLIFE_ROOT, sourceBinding } = {}) {
+  const binding = validatePublicLearningSourceBinding(sourceBinding);
+  verifyPublicLearningSourceRoot(root, binding);
+  const loaded = loadPublicLearningSource(root);
+  const validation = validatePublicLearningInputs({root,registry:loaded.registry,catalogs:loaded.catalogs});
   const compiled = validation.canonicalRegistry, before = buildRegistryProjection(compiled), en = loaded.catalogs.en.strings, nodes = [];
   const leafByCanonical = new Map(loaded.registry.leafPresentations.map((leaf) => [leaf.canonicalRef,leaf]));
   nodes.push({ref:loaded.registry.registryRef,kind:'PUBLIC_PROJECTION_REGISTRY',nodeClass:'PUBLIC_PROJECTION_REGISTRY',brief:loaded.registry.purpose,parentRef:null,states:{registrationState:'REGISTERED',implementationState:null,capabilityStage:null,publicAvailabilityState:'PUBLIC_STATIC',sourceAcceptanceState:binding.sourceAcceptanceState,liveDeploymentState:'NOT_DEPLOYED',currentnessState:binding.sourceAcceptanceState === 'ACCEPTED_CURRENT' ? 'CURRENT_SOURCE_BINDING':'CANDIDATE_PROOF_ONLY',dataClass:'PUBLIC_SAFE'},edges:loaded.registry.publicGroups.filter((g)=>g.parentGroupRef===null).map((g)=>({type:'PUBLIC_GROUP',to:g.groupRef})).sort((a,b)=>a.to.localeCompare(b.to))});
