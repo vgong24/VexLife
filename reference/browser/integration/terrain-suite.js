@@ -204,7 +204,7 @@ export async function runTerrainSiblingProvenanceRegressionProof({ app, helpers:
   }finally{
     globalThis.matchMedia=realMatchMedia;
     await returnRoot();
-    app.terrain.reset();await delay(90);
+    app.terrain.reset();await delay(420);
   }
   return{proofRef:'proof.vexlife.experience-integrity.terrain-sibling-journey-provenance/v1',state:'PASS',checks};
 }
