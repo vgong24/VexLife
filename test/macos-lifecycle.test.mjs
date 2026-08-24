@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -435,6 +436,34 @@ test('MAC07B protected continuity skips transient runtime symlinks and rebuild c
   assert.equal(classifyMacLifecycleState(transientHome), 'HELD_NONCANONICAL_HOME');
   assert.equal(fs.readFileSync(outsideFile, 'utf8'), 'outside-survives');
 
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('MAC07C protected continuity hashes model files incrementally without whole-file read materialization', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-streaming-snapshot-'));
+  const home = path.join(root, 'home');
+  fs.mkdirSync(path.join(home, 'models'), { recursive: true });
+  fs.mkdirSync(path.join(home, 'memory'), { recursive: true });
+  const model = Buffer.alloc((5 * 1024 * 1024) + 17, 0x5a);
+  const modelPath = path.join(home, 'models', 'model.gguf');
+  fs.writeFileSync(modelPath, model);
+  fs.writeFileSync(path.join(home, 'memory', 'sentinel.json'), '{"keep":true}\n');
+  const expectedSha256 = crypto.createHash('sha256').update(model).digest('hex');
+
+  const originalReadFileSync = fs.readFileSync;
+  let snapshot;
+  try {
+    fs.readFileSync = () => { throw new Error('WHOLE_FILE_READ_FORBIDDEN_DURING_PROTECTED_SNAPSHOT'); };
+    snapshot = protectedHomeSnapshot(home);
+  } finally {
+    fs.readFileSync = originalReadFileSync;
+  }
+
+  const record = snapshot.records.find((entry) => entry.path === 'models/model.gguf');
+  assert.ok(record);
+  assert.equal(record.bytes, model.length);
+  assert.equal(record.sha256, expectedSha256);
+  assert.equal(snapshot.records.some((entry) => entry.path === 'memory/sentinel.json'), true);
   fs.rmSync(root, { recursive: true, force: true });
 });
 

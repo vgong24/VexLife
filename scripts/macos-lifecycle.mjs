@@ -36,6 +36,37 @@ function writeJsonAtomic(filePath, value) {
   fs.renameSync(temp, filePath);
 }
 function sha256(bytes) { return crypto.createHash('sha256').update(bytes).digest('hex'); }
+function hashProtectedRegularFile(filePath) {
+  const noFollow = Number(fs.constants.O_NOFOLLOW ?? 0);
+  const fd = fs.openSync(filePath, fs.constants.O_RDONLY | noFollow);
+  try {
+    const before = fs.fstatSync(fd, { bigint: true });
+    if (!before.isFile()) throw new Error(`protected Home file is not regular: ${filePath}`);
+    const hash = crypto.createHash('sha256');
+    const buffer = Buffer.allocUnsafe(4 * 1024 * 1024);
+    let bytesRead = 0n;
+    for (;;) {
+      const count = fs.readSync(fd, buffer, 0, buffer.length, null);
+      if (count === 0) break;
+      hash.update(buffer.subarray(0, count));
+      bytesRead += BigInt(count);
+    }
+    const after = fs.fstatSync(fd, { bigint: true });
+    if (
+      bytesRead !== before.size || after.size !== before.size ||
+      after.dev !== before.dev || after.ino !== before.ino ||
+      after.mtimeNs !== before.mtimeNs || after.ctimeNs !== before.ctimeNs
+    ) {
+      throw new Error(`protected Home file changed while fingerprinting: ${filePath}`);
+    }
+    if (before.size > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new Error(`protected Home file size exceeds safe integer range: ${filePath}`);
+    }
+    return { bytes: Number(before.size), sha256: hash.digest('hex') };
+  } finally {
+    fs.closeSync(fd);
+  }
+}
 function ensureInside(root, candidate, label) {
   const rootAbs = path.resolve(root);
   const candidateAbs = path.resolve(candidate);
@@ -372,8 +403,8 @@ export function protectedHomeSnapshot(home) {
       if (stat.isSymbolicLink()) throw new Error(`protected Home contains a symlink: ${relative}`);
       if (entry.isDirectory()) { visit(full); continue; }
       if (!entry.isFile() || excludedFromProtectedSnapshot(relative)) continue;
-      const bytes = fs.readFileSync(full);
-      records.push({ path: relative.split(path.sep).join('/'), bytes: bytes.length, sha256: sha256(bytes) });
+      const fingerprint = hashProtectedRegularFile(full);
+      records.push({ path: relative.split(path.sep).join('/'), bytes: fingerprint.bytes, sha256: fingerprint.sha256 });
     }
   };
   visit(root);
