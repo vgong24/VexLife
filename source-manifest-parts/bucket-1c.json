@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "1c",
+  "files": [
+    {
+      "path": "src/core/public-learning.mjs",
+      "mode": "100644",
+      "bytes": 23197,
+      "sha256": "a55ab315a108cef7adf5f912ead94cbb820d01ba718d1a296d0c3dc680481607"
+    }
+  ]
+}
