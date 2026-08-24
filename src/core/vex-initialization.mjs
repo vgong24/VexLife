@@ -177,6 +177,28 @@ export function validateOperationalProfileRegistry(registry) {
           throw new Error(`${p}.runtime.devicePolicy.gpuLayers must match --gpu-layers argv`);
         }
       }
+      if (profile.platform === 'darwin' && profile.releaseQualification?.runtimeQualificationPassed === true) {
+        requireObject(profile.releaseQualification.runtimeQualificationEvidence, `${p}.releaseQualification.runtimeQualificationEvidence`);
+        const evidence = profile.releaseQualification.runtimeQualificationEvidence;
+        for (const field of ['acceptanceRef','sourceHead','sourceTree','deviceRef','gpuLayers','artifactCacheClass','runtimeMaterializationClass']) {
+          requireString(evidence[field], `${p}.releaseQualification.runtimeQualificationEvidence.${field}`);
+        }
+        if (!/^[0-9a-f]{40}$/u.test(evidence.sourceHead) || !/^[0-9a-f]{40}$/u.test(evidence.sourceTree)) {
+          throw new Error(`${p}.releaseQualification.runtimeQualificationEvidence sourceHead/sourceTree must be 40-char Git object SHAs`);
+        }
+        requireSha(evidence.responseSha256, `${p}.releaseQualification.runtimeQualificationEvidence.responseSha256`);
+        if (evidence.deviceRef !== profile.runtime.devicePolicy?.deviceRef ||
+            evidence.gpuLayers !== profile.runtime.devicePolicy?.gpuLayers) {
+          throw new Error(`${p}.releaseQualification.runtimeQualificationEvidence device policy must match runtime.devicePolicy`);
+        }
+        if (evidence.artifactCacheClass !== 'REUSED_VERIFIED' ||
+            evidence.runtimeMaterializationClass !== 'REUSED_VERIFIED_RUNTIME') {
+          throw new Error(`${p}.releaseQualification.runtimeQualificationEvidence cache/materialization classes are not exact`);
+        }
+        for (const field of ['exactProcessPathArgv','numericLoopbackOnly','exactOwnedShutdown']) {
+          if (evidence[field] !== true) throw new Error(`${p}.releaseQualification.runtimeQualificationEvidence.${field} must be true`);
+        }
+      }
       if (!Array.isArray(profile.refreshTriggers) || profile.refreshTriggers.length === 0) throw new Error(`${p}.refreshTriggers must be non-empty`);
     }
   } catch (error) { errors.push(error.message); }

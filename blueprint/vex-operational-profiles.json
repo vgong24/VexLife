@@ -200,9 +200,22 @@
         "rebuildPreservePassed": false,
         "repairPassed": false,
         "runtimeExecutableSha256Pinned": true,
-        "runtimeQualificationPassed": false,
+        "runtimeQualificationPassed": true,
         "uninstallPreservePassed": false,
-        "upstreamArchiveSha256Pinned": true
+        "upstreamArchiveSha256Pinned": true,
+        "runtimeQualificationEvidence": {
+          "acceptanceRef": "github.issue.vexlife.194.comment.5393435809",
+          "artifactCacheClass": "REUSED_VERIFIED",
+          "deviceRef": "MTL0",
+          "exactOwnedShutdown": true,
+          "exactProcessPathArgv": true,
+          "gpuLayers": "all",
+          "numericLoopbackOnly": true,
+          "responseSha256": "c530f84a000800321b1b68e58adbee6beda6a7f6a7a32b10bfa0a4f90cf767ce",
+          "runtimeMaterializationClass": "REUSED_VERIFIED_RUNTIME",
+          "sourceHead": "5da31d98a5f140267e54a2b201de94eaafeeb0dc",
+          "sourceTree": "bdca65c47ace299c75b26a3f45f5e9749263d908"
+        }
       },
       "runtime": {
         "argumentTemplate": [
@@ -265,10 +278,11 @@
         "github.issue.vextreme-sdk.662",
         "github.issue.vexlife.194.comment.5392062860",
         "github.issue.vexlife.194.comment.5392007503",
-        "github.issue.vexlife.194.comment.5393089386"
+        "github.issue.vexlife.194.comment.5393089386",
+        "github.issue.vexlife.194.comment.5393435809"
       ],
       "state": "CANDIDATE_QUALIFICATION",
-      "stateReason": "Candidate qualification only for the observed Apple M4 Pro macOS arm64 host. Exact b10107 archive/executable identities and the exact upstream runtime device token MTL0 are source-pinned. Runtime argv now explicitly selects MTL0 and --gpu-layers all instead of relying on llama.cpp auto device/offload selection. The profile remains CANDIDATE_QUALIFICATION until a fresh cached lived run proves that exact device/offload argv together with loopback ownership and the exact readiness sentinel, followed by real browser turn, repair, uninstall-preserve, and same-machine rebuild-preserve predicates. This one-host candidate does not certify plain M4, M4 Max, or other Apple Silicon and grants no signed/public build, P11 fresh-human, Home deletion, Memory, publication, force, or history-rewrite authority."
+      "stateReason": "Candidate qualification for the observed Apple M4 Pro macOS arm64 host has now earned the lived runtime predicate: exact source-pinned artifacts and runtime materialization were reverified, MTL0 / --gpu-layers all was rebound and proven in the live full process argv, the only listener was numeric loopback 127.0.0.1:18080, the exact VEX_RUNTIME_READY sentinel passed, and exact-owned shutdown closed the listener. The profile remains CANDIDATE_QUALIFICATION because browser real-turn, repair, uninstall-preserve, and same-machine rebuild-preserve predicates are still unproven on this lineage. This does not certify plain M4, M4 Max, or other Apple Silicon and grants no signed/public build, P11 fresh-human, Home deletion, Memory, publication, force, or history-rewrite authority."
     }
   ]
 }

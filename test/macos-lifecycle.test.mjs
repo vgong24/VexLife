@@ -77,7 +77,24 @@ test('MAC02 candidate Mac runtime executable identity is source-pinned but relea
   assert.equal(selected.profile.runtime.executableExpectedBytes, 33472);
   assert.equal(selected.profile.runtime.executableSha256DiscoveryRequired, false);
   assert.equal(selected.profile.releaseQualification.runtimeExecutableSha256Pinned, true);
-  assert.equal(selected.profile.releaseQualification.runtimeQualificationPassed, false);
+  assert.equal(selected.profile.releaseQualification.runtimeQualificationPassed, true);
+  assert.deepEqual(selected.profile.releaseQualification.runtimeQualificationEvidence, {
+    acceptanceRef: 'github.issue.vexlife.194.comment.5393435809',
+    sourceHead: '5da31d98a5f140267e54a2b201de94eaafeeb0dc',
+    sourceTree: 'bdca65c47ace299c75b26a3f45f5e9749263d908',
+    deviceRef: 'MTL0',
+    gpuLayers: 'all',
+    responseSha256: 'c530f84a000800321b1b68e58adbee6beda6a7f6a7a32b10bfa0a4f90cf767ce',
+    artifactCacheClass: 'REUSED_VERIFIED',
+    runtimeMaterializationClass: 'REUSED_VERIFIED_RUNTIME',
+    exactProcessPathArgv: true,
+    numericLoopbackOnly: true,
+    exactOwnedShutdown: true
+  });
+  assert.equal(selected.profile.releaseQualification.browserRealTurnPassed, false);
+  assert.equal(selected.profile.releaseQualification.repairPassed, false);
+  assert.equal(selected.profile.releaseQualification.uninstallPreservePassed, false);
+  assert.equal(selected.profile.releaseQualification.rebuildPreservePassed, false);
   assert.equal(
     runtimeExecutableIdentityMatches({ profile: selected.profile, actualSha256: 'a4998768a70ba2be02617ec9d8773accc2952516f4f5a8f38f621ece54cbf04b', bytes: 33472 }),
     true
@@ -150,6 +167,22 @@ test('MAC02C M4 Pro runtime binds the exact discovered MTL0 device and all GPU l
   const checked = validateOperationalProfileRegistry(mismatch);
   assert.equal(checked.ok, false);
   assert.match(checked.errors.join('; '), /deviceRef must match --device argv/i);
+});
+
+test('MAC02D qualified Mac runtime predicate fails closed when evidence is missing or does not match the device policy', () => {
+  const missing = structuredClone(registry);
+  const missingMac = missing.profiles.find((p) => p.profileRef === MAC_REF);
+  delete missingMac.releaseQualification.runtimeQualificationEvidence;
+  const missingChecked = validateOperationalProfileRegistry(missing);
+  assert.equal(missingChecked.ok, false);
+  assert.match(missingChecked.errors.join('; '), /runtimeQualificationEvidence/i);
+
+  const mismatch = structuredClone(registry);
+  const mismatchMac = mismatch.profiles.find((p) => p.profileRef === MAC_REF);
+  mismatchMac.releaseQualification.runtimeQualificationEvidence.deviceRef = 'MTL9';
+  const mismatchChecked = validateOperationalProfileRegistry(mismatch);
+  assert.equal(mismatchChecked.ok, false);
+  assert.match(mismatchChecked.errors.join('; '), /device policy must match/i);
 });
 
 test('MAC03 tar topology admits only bounded same-directory file aliases and rejects link write-through classes', () => {
