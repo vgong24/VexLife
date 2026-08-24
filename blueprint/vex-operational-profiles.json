@@ -198,7 +198,7 @@
         "publicReleaseClaimed": false,
         "rebuildPreservePassed": false,
         "repairPassed": false,
-        "runtimeExecutableSha256Pinned": false,
+        "runtimeExecutableSha256Pinned": true,
         "runtimeQualificationPassed": false,
         "uninstallPreservePassed": false,
         "upstreamArchiveSha256Pinned": true
@@ -232,8 +232,8 @@
         ],
         "dependencyRef": "runtime.llama-cpp.server.b10107.macos-arm64.metal",
         "executableName": "llama-server",
-        "executableSha256": null,
-        "executableSha256DiscoveryRequired": true,
+        "executableSha256": "a4998768a70ba2be02617ec9d8773accc2952516f4f5a8f38f621ece54cbf04b",
+        "executableSha256DiscoveryRequired": false,
         "extraction": {
           "class": "POSIX_TAR_GZ",
           "subdirectory": "runtime/llama-cpp-b10107-macos-arm64"
@@ -241,17 +241,19 @@
         "immutableRevisionRef": "github.commit.ggml-org.llama-cpp.c0bc8591e8815c63cb01dd3f051a8b0df02501c9",
         "licenseRef": "license.mit.llama-cpp",
         "noticeRef": "https://github.com/ggml-org/llama.cpp/blob/c0bc8591e8815c63cb01dd3f051a8b0df02501c9/LICENSE",
-        "version": "b10107"
+        "version": "b10107",
+        "executableExpectedBytes": 33472
       },
       "sourceRefs": [
         "github.issue.vextreme-sdk.914",
         "github.issue.vexlife.152",
         "github.issue.vexlife.193",
         "github.issue.vexlife.194",
-        "github.issue.vextreme-sdk.662"
+        "github.issue.vextreme-sdk.662",
+        "github.issue.vexlife.194.comment.5392062860"
       ],
       "state": "CANDIDATE_QUALIFICATION",
-      "stateReason": "Candidate qualification only for the observed Apple M4 Pro macOS arm64 Metal host. The upstream b10107 macOS arm64 archive and model/projector identities are pinned, but the extracted llama-server executable SHA-256 must be discovered on the bounded M4 qualification host and then source-pinned before RELEASE_QUALIFIED promotion. This one-host candidate does not certify plain M4, M4 Max, or other Apple-Silicon Macs and grants no ordinary normal-route selection, signed/public build status, P11 fresh-human acceptance, Home deletion, or publication authority."
+      "stateReason": "Candidate qualification only for the observed Apple M4 Pro macOS arm64 Metal host. The exact upstream b10107 macOS arm64 archive identity, bounded extraction topology, and extracted llama-server SHA-256/byte identity are now source-pinned from bounded host proof. The profile remains CANDIDATE_QUALIFICATION until lived loopback runtime/model qualification, real browser turn, repair, uninstall-preserve, and same-machine rebuild-preserve predicates are independently proven. This one-host candidate does not certify plain M4, M4 Max, or other Apple-Silicon Macs and grants no signed/public build status, P11 fresh-human acceptance, Home deletion, or publication authority."
     }
   ]
 }

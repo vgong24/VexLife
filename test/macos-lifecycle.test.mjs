@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   evaluateOperationalProfileHost,
   selectOperationalProfile,
+  runtimeExecutableIdentityMatches,
   runtimeProcessEvidenceMatches,
   validateOperationalProfileRegistry
 } from '../src/core/vex-initialization.mjs';
@@ -63,21 +64,37 @@ test('MAC01B M4 Pro host predicate is exact and fails closed for plain M4 or mis
   assert.equal(missing.reason, 'APPLE_CHIP_MODEL_MISMATCH');
 });
 
-test('MAC02 candidate Mac selection is exact and nullable executable hash cannot self-promote', () => {
+test('MAC02 candidate Mac runtime executable identity is source-pinned but release promotion remains held', () => {
   const selected = selectOperationalProfile({
     registry, platform: 'darwin', architecture: 'arm64',
     mode: 'candidate-qualification', profileRef: MAC_REF
   });
   assert.equal(selected.state, 'PROFILE_RESOLVED');
-  assert.equal(selected.profile.runtime.executableSha256, null);
-  assert.equal(selected.profile.runtime.executableSha256DiscoveryRequired, true);
+  assert.equal(selected.profile.state, 'CANDIDATE_QUALIFICATION');
+  assert.equal(selected.profile.runtime.executableSha256, 'a4998768a70ba2be02617ec9d8773accc2952516f4f5a8f38f621ece54cbf04b');
+  assert.equal(selected.profile.runtime.executableExpectedBytes, 33472);
+  assert.equal(selected.profile.runtime.executableSha256DiscoveryRequired, false);
+  assert.equal(selected.profile.releaseQualification.runtimeExecutableSha256Pinned, true);
+  assert.equal(selected.profile.releaseQualification.runtimeQualificationPassed, false);
+  assert.equal(
+    runtimeExecutableIdentityMatches({ profile: selected.profile, actualSha256: 'a4998768a70ba2be02617ec9d8773accc2952516f4f5a8f38f621ece54cbf04b', bytes: 33472 }),
+    true
+  );
+  assert.equal(
+    runtimeExecutableIdentityMatches({ profile: selected.profile, actualSha256: 'a4998768a70ba2be02617ec9d8773accc2952516f4f5a8f38f621ece54cbf04b', bytes: 33473 }),
+    false
+  );
+  assert.equal(
+    runtimeExecutableIdentityMatches({ profile: selected.profile, actualSha256: '0'.repeat(64), bytes: 33472 }),
+    false
+  );
 
-  const promoted = structuredClone(registry);
-  const mac = promoted.profiles.find((p) => p.profileRef === MAC_REF);
-  mac.state = 'RELEASE_QUALIFIED';
-  const checked = validateOperationalProfileRegistry(promoted);
-  assert.equal(checked.ok, false);
-  assert.match(checked.errors.join('; '), /executableSha256/i);
+  const missingBytes = structuredClone(registry);
+  const macWithoutBytes = missingBytes.profiles.find((p) => p.profileRef === MAC_REF);
+  delete macWithoutBytes.runtime.executableExpectedBytes;
+  const missingBytesCheck = validateOperationalProfileRegistry(missingBytes);
+  assert.equal(missingBytesCheck.ok, false);
+  assert.match(missingBytesCheck.errors.join('; '), /executableExpectedBytes/i);
 });
 
 test('MAC03 tar topology admits only bounded same-directory file aliases and rejects link write-through classes', () => {

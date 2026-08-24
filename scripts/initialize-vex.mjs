@@ -14,6 +14,7 @@ import {
   buildVexInitializationPlan,
   classifyHomeState,
   evaluateOperationalProfileHost,
+  runtimeExecutableIdentityMatches,
   runtimeProcessEvidenceMatches,
   selectOperationalProfile,
   validateOperationalProfileRegistry
@@ -157,9 +158,12 @@ async function materializeRuntime(profile, artifactPaths) {
     }
     assertSafeMacExtractedTree(target);
     const executable = findNamedFile(target, profile.runtime.executableName);
+    const executableBytes = fs.statSync(executable).size;
     const actual = await sha256File(executable);
-    if (actual !== profile.runtime.executableSha256) throw new Error('existing runtime materialization failed executable verification; refusing to overwrite it');
-    return { state: 'REUSED_VERIFIED_RUNTIME', target, executable, executableSha256: actual, executableSha256DiscoveryRequired: false };
+    if (!runtimeExecutableIdentityMatches({ profile, actualSha256: actual, bytes: executableBytes })) {
+      throw new Error('existing runtime materialization failed executable SHA-256/byte verification; refusing to overwrite it');
+    }
+    return { state: 'REUSED_VERIFIED_RUNTIME', target, executable, executableSha256: actual, executableBytes, executableSha256DiscoveryRequired: false };
   }
   const staging = `${target}.partial-${process.pid}`;
   if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
@@ -167,9 +171,11 @@ async function materializeRuntime(profile, artifactPaths) {
   try {
     for (const artifact of profile.runtime.artifacts) expandArchive(profile, artifactPaths.get(artifact.artifactRef), staging);
     const executable = findNamedFile(staging, profile.runtime.executableName);
+    const executableBytes = fs.statSync(executable).size;
     const actual = await sha256File(executable);
-    if (profile.runtime.executableSha256 !== null && actual !== profile.runtime.executableSha256) {
-      throw new Error(`runtime executable checksum mismatch: expected ${profile.runtime.executableSha256}, actual ${actual}`);
+    if (profile.runtime.executableSha256 !== null &&
+        !runtimeExecutableIdentityMatches({ profile, actualSha256: actual, bytes: executableBytes })) {
+      throw new Error(`runtime executable identity mismatch: expected sha=${profile.runtime.executableSha256} bytes=${profile.runtime.executableExpectedBytes ?? 'UNPINNED'}, actual sha=${actual} bytes=${executableBytes}`);
     }
     if (profile.runtime.executableSha256 === null &&
         !(profile.state === 'CANDIDATE_QUALIFICATION' && profile.runtime.executableSha256DiscoveryRequired === true)) {
@@ -183,6 +189,7 @@ async function materializeRuntime(profile, artifactPaths) {
       target,
       executable: finalExecutable,
       executableSha256: actual,
+      executableBytes,
       executableSha256DiscoveryRequired: profile.runtime.executableSha256 === null
     };
   } catch (error) {
@@ -219,7 +226,9 @@ async function existingRuntimeReuse(profile, receiptPath, { executable, modelPat
     const processEvidence = platformProcessEvidence(pid);
     const expectedArguments = buildRuntimeArguments(profile, { modelPath, projectorPath });
     if (!runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath: executable, expectedArguments })) return null;
-    if (await sha256File(executable) !== profile.runtime.executableSha256) return null;
+    const executableBytes = fs.statSync(executable).size;
+    const executableSha256 = await sha256File(executable);
+    if (!runtimeExecutableIdentityMatches({ profile, actualSha256: executableSha256, bytes: executableBytes })) return null;
     if (!await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) return null;
     return { pid, reusedReceiptRef: prior.receiptRef ?? null };
   } catch { return null; }
@@ -392,7 +401,9 @@ try {
     materialization: {
       state: materialization.state,
       executableSha256: materialization.executableSha256,
+      executableBytes: materialization.executableBytes,
       sourcePinnedExecutableSha256: profile.runtime.executableSha256,
+      sourcePinnedExecutableExpectedBytes: profile.runtime.executableExpectedBytes ?? null,
       executableSha256DiscoveryRequired: materialization.executableSha256DiscoveryRequired === true,
       target: materialization.target
     },

@@ -42,6 +42,15 @@ function tokenizeProcessCommandLine(value) {
   return tokens;
 }
 
+export function runtimeExecutableIdentityMatches({ profile, actualSha256, bytes }) {
+  const runtime = profile?.runtime;
+  if (!runtime || typeof runtime.executableSha256 !== 'string') return false;
+  if (actualSha256 !== runtime.executableSha256) return false;
+  if (runtime.executableExpectedBytes !== undefined && runtime.executableExpectedBytes !== null &&
+      bytes !== runtime.executableExpectedBytes) return false;
+  return true;
+}
+
 export function runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath, expectedArguments = [] }) {
   if (!processEvidence || typeof processEvidence !== 'object' || Array.isArray(processEvidence)) return false;
   const expectedExecutable = normalizeProcessIdentityText(expectedExecutablePath);
@@ -99,6 +108,14 @@ export function validateOperationalProfileRegistry(registry) {
         profile.runtime.executableSha256 === null &&
         profile.runtime.executableSha256DiscoveryRequired === true;
       if (!executableShaDiscovery) requireSha(profile.runtime.executableSha256, `${p}.runtime.executableSha256`);
+      if (profile.runtime.executableExpectedBytes !== undefined && profile.runtime.executableExpectedBytes !== null &&
+          (!Number.isSafeInteger(profile.runtime.executableExpectedBytes) || profile.runtime.executableExpectedBytes <= 0)) {
+        throw new Error(`${p}.runtime.executableExpectedBytes must be null/absent or a positive safe integer`);
+      }
+      if (profile.platform === 'darwin' && profile.runtime.executableSha256 !== null &&
+          (!Number.isSafeInteger(profile.runtime.executableExpectedBytes) || profile.runtime.executableExpectedBytes <= 0)) {
+        throw new Error(`${p}.runtime.executableExpectedBytes is required when a macOS executable SHA-256 is pinned`);
+      }
       if (profile.state === NORMAL_PROFILE_STATE && profile.runtime.executableSha256 === null) {
         throw new Error(`${p}.runtime.executableSha256 is required for RELEASE_QUALIFIED`);
       }
@@ -225,6 +242,7 @@ export function buildVexInitializationPlan({ profile, home, homeState, hostEvide
       extraction: profile.runtime.extraction,
       executableName: profile.runtime.executableName,
       executableSha256: profile.runtime.executableSha256,
+      executableExpectedBytes: profile.runtime.executableExpectedBytes ?? null,
       argumentTemplate: profile.runtime.argumentTemplate
     },
     effects: {
