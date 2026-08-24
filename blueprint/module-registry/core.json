@@ -1211,5 +1211,28 @@
       "blueprint/feature-registry.json",
       "blueprint/fragments/actions.json"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.review-composition",
+    "path": "src/core/review-composition.mjs",
+    "role": "Derive deterministic read-only ReviewExpectationSet and ReviewCoverageReceipt projections from independently verified VexLife source bundles after Process Factory no-effect admission.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "factory.vexlife.processes.001",
+      "registry.vexlife.features.001",
+      "registry.vexlife.review-lenses.001",
+      "registry.vexlife.experience.001",
+      "module.vexlife.core.process-factory",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/review-composition.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/process-factory/processes-conversation-and-interface.json",
+      "blueprint/fragments/tests.json"
+    ]
   }
 ]
