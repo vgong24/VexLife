@@ -51,15 +51,18 @@ Stage 1 source-descended the accepted current sources in this order:
    canonical nodes, state/action/permission/process/module/test/platform refs,
    effect class, rollback and projections.
 2. Review Lens Registry to identify review questions and required evidence.
-3. Screen, component, action, permission and state-domain sources to locate
-   stable interface identity, action/effect boundaries and state ownership.
-4. Experience Registry to locate profile, gesture and vessel grammar.
-5. Browser owner-domain suites to locate already-executable behavioral proof.
-6. Experience Review Kit to locate the portable request/evidence and
+3. Screen and shell interface sources independently of Feature
+   `humanIntroduction`, so shared/derived human-visible surfaces are not lost
+   merely because no feature-introduction route is justified.
+4. Component, action, permission and state-domain sources to locate stable
+   interface identity, action/effect boundaries and state ownership.
+5. Experience Registry to locate profile, gesture and vessel grammar.
+6. Browser owner-domain suites to locate already-executable behavioral proof.
+7. Experience Review Kit to locate the portable request/evidence and
    human-review packaging seam.
-7. ConcernWatch and Process Factory to preserve finding/admission and process
+8. ConcernWatch and Process Factory to preserve finding/admission and process
    ownership boundaries.
-8. Accepted Institutional Compiler Family V1 lineage to determine whether a
+9. Accepted Institutional Compiler Family V1 lineage to determine whether a
    future read-only review projection can reuse current VexLife adapters rather
    than inventing a parallel structure family.
 
@@ -144,7 +147,7 @@ request `#1140`, with merge commit
 lineage as an architectural input only; no Vextreme-SDK source is copied into
 this repository.
 
-## Current human-facing feature population
+## Current feature-backed human-introduction population
 
 Current Feature Registry source exposes accepted human-facing introduction for
 seven feature families:
@@ -161,11 +164,73 @@ feature.vexlife.living-journal
 
 The other current registered features inspected use
 `humanIntroduction.disposition=NONE_JUSTIFIED`. They remain substrate or held
-work in this inventory. Stage 1 does not invent a screen or end-user journey for
-a feature whose accepted registration says no human-facing introduction is
-currently justified.
+work at the **feature-introduction** layer. Stage 1 does not invent an
+introduction route for a feature whose accepted registration says no such route
+is currently justified.
 
-### Seven-feature coverage matrix
+That cohort is not the complete human-visible interface population:
+
+```text
+FEATURE_HUMAN_INTRODUCTION != COMPLETE_VISIBLE_SURFACE_INDEX
+NONE_JUSTIFIED_FEATURE_INTRODUCTION != SURFACE_DOES_NOT_EXIST
+```
+
+### Shared and derived human-visible interface surfaces
+
+Current screen/shell source independently carries human-visible surfaces that
+must remain in review coverage even when they are not represented by a
+human-introduction Feature entry.
+
+#### Health
+
+`screen.vexlife.health` / `route.health` owns:
+
+```text
+selector.health.human
+selector.health.technical
+region.health.summary
+element.health.summary
+element.health.technical-toggle
+action.health.technical.toggle
+test.health.no-op-dedup
+test.accessibility.health
+```
+
+The technical disclosure has stable element/interaction/Journey/accessibility
+identity and the action resolves to `state.health`. Current state-domain source
+places `state.health` under `service.health`.
+
+`feature.vexlife.repository-health`, however, currently describes deterministic
+repository/CI health substrate and explicitly uses
+`humanIntroduction.disposition=NONE_JUSTIFIED`. Stage 1 does not silently
+declare that feature to be the semantic owner of the human Health projection,
+nor does it exclude the Health surface because the feature-introduction route
+is absent.
+
+```text
+healthInterfaceIdentity=ALREADY_OWNED_AND_DERIVABLE
+healthStateOwner=ALREADY_OWNED_AND_DERIVABLE
+healthExactFeatureBinding=HELD_NOT_ENOUGH_EVIDENCE
+newHealthFeatureMinted=false
+```
+
+The Stage-2 join must preserve the feature-binding question as a typed unknown
+unless a current canonical source resolves it.
+
+#### Shared shell navigation and assistance
+
+`screen.vexlife.shell` carries shared primary navigation, language/Vex
+assistance and contextual-workspace regions. Those controls participate across
+feature boundaries. Their review obligations derive from shell/interface
+identity, Experience vessel grammar, action/state ownership and owner-domain
+proof; they do not require a new “shell feature” merely to be reviewable.
+
+```text
+sharedShellInterface=ALREADY_OWNED_AND_DERIVABLE
+newShellFeatureMinted=false
+```
+
+### Seven-feature-backed coverage matrix
 
 | Feature | Canonical interface / state placement | Existing executable evidence | Stage-1 disposition |
 |---|---|---|---|
@@ -543,7 +608,7 @@ newReviewFindingRegistry=NOT_APPLICABLE_NOT_EARNED
 The manual inventory repeatedly had to perform the same deterministic join:
 
 ```text
-Feature
+Feature or shared/derived interface surface
 + Review Lens
 + Screen / Region / Element
 + Action / Permission / Effect
@@ -682,6 +747,8 @@ The pilot should not send a conversation message. If a later pilot must exercise
 | Journey provenance | `ALREADY_OWNED_AND_DERIVABLE` | Semantic Journey/navigation owner |
 | Browser positive/negative behavior | `ALREADY_OWNED_AND_DERIVABLE` | owner-domain browser suites |
 | Review screenshot / evidence packaging | `ALREADY_OWNED_AND_DERIVABLE` | Experience Review Kit |
+| Shared Health / shell interface surfaces | `ALREADY_OWNED_AND_DERIVABLE` for interface identity; feature binding may remain held | screen/shell source + state/Experience owners |
+| Health exact Feature binding | `HELD_NOT_ENOUGH_EVIDENCE` | preserve typed unknown; do not infer repository-health ownership |
 | Per-control feedback-state linkage | `HELD_NOT_ENOUGH_EVIDENCE` | attempt derivation first; bounded interface/component extension only if repeated unresolved |
 | Native platform conformance | `HELD_NOT_ENOUGH_EVIDENCE` | exact native adapters/evidence per feature |
 | Review expectation join | `DERIVED_PROJECTION_EARNED` | Stage-2 placement required |
@@ -694,6 +761,9 @@ The pilot should not send a conversation message. If a later pilot must exercise
 
 This inventory does not prove:
 
+- every human-visible screen is owned by a human-introduction Feature entry;
+- the human Health projection is semantically owned by
+  `feature.vexlife.repository-health`;
 - every interactive element has a complete source-managed feedback-state
   declaration;
 - every Review Lens evidence obligation is currently satisfied for every
@@ -734,7 +804,9 @@ No new canonical Review registry or graph is pre-authorized.
 
 ```text
 stage1State=INVENTORY_COMPLETE_CANDIDATE
-visibleFeatureFamilies=7
+featureBackedHumanIntroductionFamilies=7
+sharedInterfaceSurfacesIncluded=true
+healthExactFeatureBinding=HELD_NOT_ENOUGH_EVIDENCE
 newRootRequired=false
 newCanonicalReviewRegistryRequired=false
 derivedProjectionNeed=EARNED
