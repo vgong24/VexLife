@@ -56,12 +56,18 @@
           }
         ],
         "argumentTemplate": [
-          "-m", "{MODEL_PATH}",
-          "--mmproj", "{PROJECTOR_PATH}",
-          "--host", "127.0.0.1",
-          "--port", "{ENDPOINT_PORT}",
-          "--n-predict", "256",
-          "--reasoning-budget", "128"
+          "-m",
+          "{MODEL_PATH}",
+          "--mmproj",
+          "{PROJECTOR_PATH}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "{ENDPOINT_PORT}",
+          "--n-predict",
+          "256",
+          "--reasoning-budget",
+          "128"
         ]
       },
       "modelArtifacts": [
@@ -125,6 +131,126 @@
         "github.issue.vexlife.152",
         "github.issue.vextreme-sdk.662"
       ]
+    },
+    {
+      "architecture": "arm64",
+      "endpoint": {
+        "origin": "http://127.0.0.1:18080",
+        "requestModel": "Qwen3.5-4B-Q4_K_M"
+      },
+      "hardwareProfileRef": "hardware.macos-arm64.apple-m4.metal",
+      "hostRequirements": {
+        "minimumFreeDiskBytes": 6442450944,
+        "minimumSystemMemoryBytes": 12884901888,
+        "requiresNvidiaSmi": false
+      },
+      "modelArtifacts": [
+        {
+          "artifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
+          "filename": "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
+          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/ba06320255db2dbec194dad738d066be90dabf29/Qwen_Qwen3.5-4B-Q4_K_M.gguf?download=true",
+          "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
+          "expectedBytes": 3013027808,
+          "maxBytes": 4294967296,
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.ba06320255db2dbec194dad738d066be90dabf29",
+          "licenseRef": "license.apache-2.0.qwen3.5"
+        },
+        {
+          "artifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
+          "filename": "mmproj-Qwen_Qwen3.5-4B-bf16.gguf",
+          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/3516418eb75fd2cdf56058f112b403ff47020775/mmproj-Qwen_Qwen3.5-4B-bf16.gguf?download=true",
+          "sha256": "463f39bd1c291c1186c319a8c90ff8640aafa678b14cbee2232d695113dfbb66",
+          "expectedBytes": 675569216,
+          "maxBytes": 1073741824,
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.3516418eb75fd2cdf56058f112b403ff47020775",
+          "licenseRef": "license.apache-2.0.qwen3.5"
+        }
+      ],
+      "platform": "darwin",
+      "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-metal.001",
+      "qualification": {
+        "chatPath": "/v1/chat/completions",
+        "healthPath": "/health",
+        "probeMaxTokens": 16,
+        "probePrompt": "Reply with exactly VEX_RUNTIME_READY.",
+        "timeoutMs": 120000
+      },
+      "refreshTriggers": [
+        "PROFILE_SOURCE_CHANGE",
+        "RUNTIME_VERSION_CHANGE",
+        "RUNTIME_ARTIFACT_HASH_CHANGE",
+        "MODEL_ARTIFACT_HASH_CHANGE",
+        "LICENSE_OR_NOTICE_CHANGE",
+        "PLATFORM_CHANGE",
+        "ARCHITECTURE_CHANGE",
+        "HARDWARE_ELIGIBILITY_CHANGE",
+        "RUNTIME_QUALIFICATION_FAILURE",
+        "EXECUTABLE_SHA256_DISCOVERY_REQUIRED",
+        "MACOS_METAL_QUALIFICATION_FAILURE"
+      ],
+      "releaseQualification": {
+        "browserRealTurnPassed": false,
+        "candidateQualificationIssueRef": "github.issue.vexlife.194",
+        "class": "SOURCE_LOCAL_OPERATIONAL_PROFILE_CANDIDATE",
+        "officialVerifiedBuildClaimed": false,
+        "p11FreshHumanClaimed": false,
+        "publicReleaseClaimed": false,
+        "rebuildPreservePassed": false,
+        "repairPassed": false,
+        "runtimeExecutableSha256Pinned": false,
+        "runtimeQualificationPassed": false,
+        "uninstallPreservePassed": false,
+        "upstreamArchiveSha256Pinned": true
+      },
+      "runtime": {
+        "argumentTemplate": [
+          "-m",
+          "{MODEL_PATH}",
+          "--mmproj",
+          "{PROJECTOR_PATH}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "{ENDPOINT_PORT}",
+          "--n-predict",
+          "256",
+          "--reasoning-budget",
+          "128"
+        ],
+        "artifacts": [
+          {
+            "artifactRef": "artifact.llama-cpp.b10107.macos-arm64.metal",
+            "expectedBytes": null,
+            "filename": "llama-b10107-bin-macos-arm64.tar.gz",
+            "licenseRef": "license.mit.llama-cpp",
+            "maxBytes": 134217728,
+            "sha256": "b9554ab4c9f6e91199f48387cb4ab27466fb1d724881f81463ef03f6370cfa32",
+            "sourceRef": "github.release.ggml-org.llama-cpp.b10107",
+            "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10107/llama-b10107-bin-macos-arm64.tar.gz"
+          }
+        ],
+        "dependencyRef": "runtime.llama-cpp.server.b10107.macos-arm64.metal",
+        "executableName": "llama-server",
+        "executableSha256": null,
+        "executableSha256DiscoveryRequired": true,
+        "extraction": {
+          "class": "POSIX_TAR_GZ",
+          "subdirectory": "runtime/llama-cpp-b10107-macos-arm64"
+        },
+        "immutableRevisionRef": "github.commit.ggml-org.llama-cpp.c0bc8591e8815c63cb01dd3f051a8b0df02501c9",
+        "licenseRef": "license.mit.llama-cpp",
+        "noticeRef": "https://github.com/ggml-org/llama.cpp/blob/c0bc8591e8815c63cb01dd3f051a8b0df02501c9/LICENSE",
+        "version": "b10107"
+      },
+      "sourceRefs": [
+        "github.issue.vextreme-sdk.914",
+        "github.issue.vexlife.152",
+        "github.issue.vexlife.193",
+        "github.issue.vexlife.194",
+        "github.issue.vextreme-sdk.662"
+      ],
+      "state": "CANDIDATE_QUALIFICATION",
+      "stateReason": "Candidate qualification only for the observed Apple M4 macOS arm64 Metal host. The upstream b10107 macOS arm64 archive and model/projector identities are pinned, but the extracted llama-server executable SHA-256 must be discovered on the bounded M4 qualification host and then source-pinned before RELEASE_QUALIFIED promotion. This one-host candidate does not certify all Apple-Silicon Macs and grants no ordinary normal-route selection, signed/public build status, P11 fresh-human acceptance, Home deletion, or publication authority."
     }
   ]
 }

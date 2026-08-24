@@ -44,11 +44,13 @@ function tokenizeProcessCommandLine(value) {
 
 export function runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath, expectedArguments = [] }) {
   if (!processEvidence || typeof processEvidence !== 'object' || Array.isArray(processEvidence)) return false;
-  const name = String(processEvidence.name ?? '').toLowerCase();
-  if (name !== 'llama-server.exe') return false;
-  const actualExecutable = normalizeProcessIdentityText(processEvidence.executablePath);
   const expectedExecutable = normalizeProcessIdentityText(expectedExecutablePath);
-  if (!actualExecutable || !expectedExecutable || actualExecutable !== expectedExecutable) return false;
+  if (!expectedExecutable) return false;
+  const expectedName = expectedExecutable.split('/').filter(Boolean).at(-1) ?? '';
+  const name = String(processEvidence.name ?? '').toLowerCase();
+  if (name !== expectedName) return false;
+  const actualExecutable = normalizeProcessIdentityText(processEvidence.executablePath);
+  if (!actualExecutable || actualExecutable !== expectedExecutable) return false;
   const tokens = tokenizeProcessCommandLine(processEvidence.commandLine);
   if (!tokens || tokens.length !== expectedArguments.length + 1) return false;
   const actualTokens = tokens.map(normalizeProcessIdentityText);
@@ -74,8 +76,10 @@ export function validateOperationalProfileRegistry(registry) {
       if (refs.has(profile.profileRef)) throw new Error(`duplicate profileRef ${profile.profileRef}`);
       refs.add(profile.profileRef);
       if (![NORMAL_PROFILE_STATE, CANDIDATE_PROFILE_STATE, 'HELD', 'STALE', 'INVALID'].includes(profile.state)) throw new Error(`${p}.state is unknown`);
-      if (profile.platform !== 'win32') throw new Error(`${p}.platform must currently be win32`);
-      if (profile.architecture !== 'x64') throw new Error(`${p}.architecture must currently be x64`);
+      const platformArchitecture = `${profile.platform}/${profile.architecture}`;
+      if (!['win32/x64', 'darwin/arm64'].includes(platformArchitecture)) {
+        throw new Error(`${p} platform/architecture is not an admitted operational pair: ${platformArchitecture}`);
+      }
       requireString(profile.hardwareProfileRef, `${p}.hardwareProfileRef`);
       requireObject(profile.endpoint, `${p}.endpoint`);
       const match = LOOPBACK_ORIGIN.exec(profile.endpoint.origin);
@@ -86,7 +90,14 @@ export function validateOperationalProfileRegistry(registry) {
       requireString(profile.runtime.dependencyRef, `${p}.runtime.dependencyRef`);
       requireString(profile.runtime.version, `${p}.runtime.version`);
       requireString(profile.runtime.immutableRevisionRef, `${p}.runtime.immutableRevisionRef`);
-      requireSha(profile.runtime.executableSha256, `${p}.runtime.executableSha256`);
+      const executableShaDiscovery =
+        profile.state === CANDIDATE_PROFILE_STATE &&
+        profile.runtime.executableSha256 === null &&
+        profile.runtime.executableSha256DiscoveryRequired === true;
+      if (!executableShaDiscovery) requireSha(profile.runtime.executableSha256, `${p}.runtime.executableSha256`);
+      if (profile.state === NORMAL_PROFILE_STATE && profile.runtime.executableSha256 === null) {
+        throw new Error(`${p}.runtime.executableSha256 is required for RELEASE_QUALIFIED`);
+      }
       if (!SAFE_FILE.test(profile.runtime.executableName)) throw new Error(`${p}.runtime.executableName must be a safe filename`);
       if (!Array.isArray(profile.runtime.artifacts) || profile.runtime.artifacts.length < 1) throw new Error(`${p}.runtime.artifacts must be non-empty`);
       if (!Array.isArray(profile.modelArtifacts) || profile.modelArtifacts.length < 1) throw new Error(`${p}.modelArtifacts must be non-empty`);
@@ -101,8 +112,14 @@ export function validateOperationalProfileRegistry(registry) {
         if (!Number.isSafeInteger(artifact.maxBytes) || artifact.maxBytes <= 0) throw new Error(`${p}.maxBytes must be positive`);
         if (artifact.expectedBytes !== null && (!Number.isSafeInteger(artifact.expectedBytes) || artifact.expectedBytes <= 0)) throw new Error(`${p}.expectedBytes must be null or positive`);
       }
+      requireObject(profile.runtime.extraction, `${p}.runtime.extraction`);
+      requireString(profile.runtime.extraction.class, `${p}.runtime.extraction.class`);
       requireString(profile.runtime.extraction.subdirectory, `${p}.runtime.extraction.subdirectory`);
       if (path.isAbsolute(profile.runtime.extraction.subdirectory) || profile.runtime.extraction.subdirectory.includes('..')) throw new Error(`${p}.runtime.extraction.subdirectory must be safe relative`);
+      const requiredExtractionClass = profile.platform === 'win32' ? 'WINDOWS_ZIP_EXPAND_ARCHIVE' : 'POSIX_TAR_GZ';
+      if (profile.runtime.extraction.class !== requiredExtractionClass) {
+        throw new Error(`${p}.runtime.extraction.class must be ${requiredExtractionClass}`);
+      }
       if (!Array.isArray(profile.runtime.argumentTemplate) || profile.runtime.argumentTemplate.length === 0) throw new Error(`${p}.runtime.argumentTemplate must be non-empty`);
       for (const arg of profile.runtime.argumentTemplate) requireString(arg, `${p}.runtime.argumentTemplate item`);
       if (!Array.isArray(profile.refreshTriggers) || profile.refreshTriggers.length === 0) throw new Error(`${p}.refreshTriggers must be non-empty`);
