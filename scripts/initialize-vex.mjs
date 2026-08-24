@@ -14,6 +14,7 @@ import {
   buildVexInitializationPlan,
   classifyHomeState,
   evaluateOperationalProfileHost,
+  qualificationContentMatches,
   runtimeExecutableIdentityMatches,
   runtimeProcessEvidenceMatches,
   selectOperationalProfile,
@@ -252,8 +253,17 @@ async function qualifyInference(profile) {
   if (!response.ok) throw new Error(`runtime inference qualification failed: HTTP ${response.status}`);
   const payload = await response.json();
   const content = payload?.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || content.trim().length === 0) throw new Error('runtime inference qualification returned no assistant content');
-  return { responseSha256: crypto.createHash('sha256').update(content).digest('hex'), contentObserved: true };
+  if (!qualificationContentMatches(profile, content)) {
+    const expected = profile.qualification.expectedContent;
+    if (typeof expected === 'string') throw new Error('runtime inference qualification did not return the exact expected readiness content');
+    throw new Error('runtime inference qualification returned no assistant content');
+  }
+  const normalizedContent = content.trim();
+  return {
+    responseSha256: crypto.createHash('sha256').update(normalizedContent).digest('hex'),
+    contentObserved: true,
+    expectedContentMatched: typeof profile.qualification.expectedContent === 'string' ? true : null
+  };
 }
 async function promptConsent(profile) {
   if (yes) return true;

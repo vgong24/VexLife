@@ -174,7 +174,8 @@
         "healthPath": "/health",
         "probeMaxTokens": 16,
         "probePrompt": "Reply with exactly VEX_RUNTIME_READY.",
-        "timeoutMs": 120000
+        "timeoutMs": 120000,
+        "expectedContent": "VEX_RUNTIME_READY"
       },
       "refreshTriggers": [
         "PROFILE_SOURCE_CHANGE",
@@ -250,7 +251,8 @@
         "github.issue.vexlife.193",
         "github.issue.vexlife.194",
         "github.issue.vextreme-sdk.662",
-        "github.issue.vexlife.194.comment.5392062860"
+        "github.issue.vexlife.194.comment.5392062860",
+        "github.issue.vexlife.194.comment.5392007503"
       ],
       "state": "CANDIDATE_QUALIFICATION",
       "stateReason": "Candidate qualification only for the observed Apple M4 Pro macOS arm64 Metal host. The exact upstream b10107 macOS arm64 archive identity, bounded extraction topology, and extracted llama-server SHA-256/byte identity are now source-pinned from bounded host proof. The profile remains CANDIDATE_QUALIFICATION until lived loopback runtime/model qualification, real browser turn, repair, uninstall-preserve, and same-machine rebuild-preserve predicates are independently proven. This one-host candidate does not certify plain M4, M4 Max, or other Apple-Silicon Macs and grants no signed/public build status, P11 fresh-human acceptance, Home deletion, or publication authority."

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   evaluateOperationalProfileHost,
+  qualificationContentMatches,
   selectOperationalProfile,
   runtimeExecutableIdentityMatches,
   runtimeProcessEvidenceMatches,
@@ -95,6 +96,26 @@ test('MAC02 candidate Mac runtime executable identity is source-pinned but relea
   const missingBytesCheck = validateOperationalProfileRegistry(missingBytes);
   assert.equal(missingBytesCheck.ok, false);
   assert.match(missingBytesCheck.errors.join('; '), /executableExpectedBytes/i);
+});
+
+test('MAC02B Mac qualification requires the exact readiness sentinel without changing Windows response semantics', () => {
+  const mac = registry.profiles.find((p) => p.profileRef === MAC_REF);
+  const win = registry.profiles.find((p) => p.profileRef === WIN_REF);
+  assert.equal(mac.qualification.expectedContent, 'VEX_RUNTIME_READY');
+  assert.equal(Object.hasOwn(win.qualification, 'expectedContent'), false);
+  assert.equal(qualificationContentMatches(mac, 'VEX_RUNTIME_READY'), true);
+  assert.equal(qualificationContentMatches(mac, '  VEX_RUNTIME_READY  '), true);
+  assert.equal(qualificationContentMatches(mac, 'VEX_RUNTIME_NOT_READY'), false);
+  assert.equal(qualificationContentMatches(mac, ''), false);
+  assert.equal(qualificationContentMatches(win, 'any non-empty Windows compatibility response'), true);
+  assert.equal(qualificationContentMatches(win, '   '), false);
+
+  const invalid = structuredClone(registry);
+  const invalidMac = invalid.profiles.find((p) => p.profileRef === MAC_REF);
+  invalidMac.qualification.expectedContent = ' VEX_RUNTIME_READY ';
+  const checked = validateOperationalProfileRegistry(invalid);
+  assert.equal(checked.ok, false);
+  assert.match(checked.errors.join('; '), /expectedContent/i);
 });
 
 test('MAC03 tar topology admits only bounded same-directory file aliases and rejects link write-through classes', () => {

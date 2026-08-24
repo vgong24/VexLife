@@ -99,6 +99,17 @@ export function validateOperationalProfileRegistry(registry) {
       if (!match) throw new Error(`${p}.endpoint.origin must use numeric loopback`);
       if (Number(match[1]) < 1 || Number(match[1]) > 65535) throw new Error(`${p}.endpoint port is invalid`);
       requireString(profile.endpoint.requestModel, `${p}.endpoint.requestModel`);
+      requireObject(profile.qualification, `${p}.qualification`);
+      requireString(profile.qualification.probePrompt, `${p}.qualification.probePrompt`);
+      if (!Number.isSafeInteger(profile.qualification.probeMaxTokens) || profile.qualification.probeMaxTokens <= 0) {
+        throw new Error(`${p}.qualification.probeMaxTokens must be positive`);
+      }
+      if (profile.qualification.expectedContent !== undefined && profile.qualification.expectedContent !== null) {
+        requireString(profile.qualification.expectedContent, `${p}.qualification.expectedContent`);
+        if (profile.qualification.expectedContent !== profile.qualification.expectedContent.trim()) {
+          throw new Error(`${p}.qualification.expectedContent must have no leading/trailing whitespace`);
+        }
+      }
       requireObject(profile.runtime, `${p}.runtime`);
       requireString(profile.runtime.dependencyRef, `${p}.runtime.dependencyRef`);
       requireString(profile.runtime.version, `${p}.runtime.version`);
@@ -201,6 +212,15 @@ export function buildRuntimeArguments(profile, { modelPath, projectorPath }) {
     ['{MODEL_PATH}', modelPath], ['{PROJECTOR_PATH}', projectorPath], ['{ENDPOINT_PORT}', String(new URL(profile.endpoint.origin).port)], ['{REQUEST_MODEL}', profile.endpoint.requestModel]
   ]);
   return profile.runtime.argumentTemplate.map((arg) => replacements.get(arg) ?? arg);
+}
+
+export function qualificationContentMatches(profile, content) {
+  if (typeof content !== 'string') return false;
+  const trimmed = content.trim();
+  if (trimmed.length === 0) return false;
+  const expected = profile?.qualification?.expectedContent;
+  if (expected === undefined || expected === null) return true;
+  return trimmed === expected;
 }
 
 export function buildQualificationRequest(profile) {
