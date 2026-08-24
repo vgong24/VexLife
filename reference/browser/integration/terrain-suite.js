@@ -209,6 +209,55 @@ export async function runTerrainSiblingProvenanceRegressionProof({ app, helpers:
   return{proofRef:'proof.vexlife.experience-integrity.terrain-sibling-journey-provenance/v1',state:'PASS',checks};
 }
 
+export async function runTerrainPresentationReturnProof({app,helpers:{delay,assert}}){
+  const checks=[],rootRef=app.terrain.rootRef,terrain=document.querySelector('#view-terrain'),childRef=app.terrain.childRefs(rootRef)[0]??null,realMatchMedia=globalThis.matchMedia;
+  let nested=null,mobileFrame=null;
+  const exactKeys=(value,expected)=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===expected.length&&expected.every(key=>Object.hasOwn(value,key));
+  const presentationKey=value=>JSON.stringify({boundSemanticNodeRef:value.boundSemanticNodeRef,camera:value.camera,projectionMode:value.projectionMode,projectionGrammar:value.projectionGrammar,localOffsets:value.localOffsets,manualOverrideRef:value.manualOverrideRef,adaptation:value.adaptation});
+  const returnRoot=async()=>{for(let guard=0;guard<8&&app.terrain.currentRef()!==rootRef;guard++){await app.terrain.up();await delay(90)}assert(app.terrain.currentRef()===rootRef,'TPR cleanup did not restore root semantic context');};
+  assert(rootRef&&childRef&&terrain&&typeof app.terrain.presentationSnapshot==='function'&&typeof app.terrain.restorePresentation==='function','TPR-00 presentation-return fixture unavailable');
+  try{
+    await returnRoot();app.terrain.reset();await delay(420);
+    const canonicalSnapshot=app.terrain.presentationSnapshot(),frameBefore=JSON.stringify(app.navigation.semanticFrame()),journeyBefore=JSON.stringify(app.navigation.fullJourney()),relationshipsBefore=JSON.stringify(app.terrain.childRefs(rootRef));
+    app.state.terrain.localOffsets[childRef]={x:26,y:-18};app.terrain.render(false);app.terrain.setProjectionMode('rings');await delay(320);app.terrain.toggleManualPin(childRef);await delay(380);document.querySelector('#terrainZoomOut').click();await delay(40);
+    const snapshot=app.terrain.presentationSnapshot(),topKeys=['schemaVersion','boundSemanticNodeRef','camera','projectionMode','projectionGrammar','localOffsets','manualOverrideRef','adaptation'];
+    assert(exactKeys(snapshot,topKeys)&&exactKeys(snapshot.camera,['x','y','scale'])&&exactKeys(snapshot.adaptation,['enabled','suppressedForCurrentContext']),'TPR-00 snapshot escaped exact presentation field membrane');
+    for(const forbidden of ['journey','semanticFrame','projectRef','threadRef','channelRef','autoEntry','Home','Memory'])assert(!Object.hasOwn(snapshot,forbidden),'TPR-00 snapshot leaked non-presentation field '+forbidden);
+    app.terrain.toggleManualPin(childRef);app.state.terrain.localOffsets={};app.terrain.setProjectionMode('fan');document.querySelector('#terrainZoomIn').click();await delay(320);
+    const restore=app.terrain.restorePresentation(snapshot),restoredSnapshot=app.terrain.presentationSnapshot();
+    assert(restore.restored===true&&restore.reason==='RESTORED'&&presentationKey(restoredSnapshot)===presentationKey(snapshot),'TPR-01 same-node presentation did not restore exactly');
+    assert(JSON.stringify(app.navigation.semanticFrame())===frameBefore&&JSON.stringify(app.navigation.fullJourney())===journeyBefore,'TPR-03 same-node snapshot/restore changed semantic frame or Journey');
+    assert(JSON.stringify(app.terrain.childRefs(rootRef))===relationshipsBefore,'TPR-04 presentation restore changed canonical Terrain relationships');
+    checks.push('TPR-00 snapshot contains only exact bounded presentation fields','TPR-01 same-semantic-node restore reproduces camera/projection/offset/manual/adaptation presentation','TPR-03 snapshot/restore appends zero Journey and changes zero semantic frame','TPR-04 presentation restore leaves canonical Terrain relationships unchanged');
+
+    const hostile=[];
+    const extra=structuredClone(snapshot);extra.unexpected=true;hostile.push(extra);
+    const badScale=structuredClone(snapshot);badScale.camera.scale=Infinity;hostile.push(badScale);
+    const badProjection=structuredClone(snapshot);badProjection.projectionMode='grid';hostile.push(badProjection);
+    const badManual=structuredClone(snapshot);badManual.manualOverrideRef='terrain.unknown';hostile.push(badManual);
+    const badOffset=structuredClone(snapshot);badOffset.localOffsets={'terrain.unknown':{x:1,y:1}};hostile.push(badOffset);
+    const polluted=structuredClone(snapshot);polluted.localOffsets=Object.create({polluted:true});hostile.push(polluted);
+    for(const candidate of hostile){const before=presentationKey(app.terrain.presentationSnapshot()),beforeFrame=JSON.stringify(app.navigation.semanticFrame()),beforeJourney=JSON.stringify(app.navigation.fullJourney()),result=app.terrain.restorePresentation(candidate);assert(result.restored===false&&result.reason==='INVALID_SNAPSHOT','TPR hostile snapshot did not fail closed');assert(presentationKey(app.terrain.presentationSnapshot())===before&&JSON.stringify(app.navigation.semanticFrame())===beforeFrame&&JSON.stringify(app.navigation.fullJourney())===beforeJourney,'TPR hostile rejection produced presentation or semantic side effect');}
+    checks.push('TPR hostile malformed coordinates/projection/manual refs/unexpected fields/prototype-shaped input fail closed without effect');
+
+    globalThis.matchMedia=(query)=>query.includes('prefers-reduced-motion')?{matches:true,media:query,onchange:null,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){},dispatchEvent(){return true}}:realMatchMedia(query);
+    const reduced=app.terrain.restorePresentation(snapshot);assert(reduced.restored===true&&presentationKey(app.terrain.presentationSnapshot())===presentationKey(snapshot),'TPR-06 reduced-motion changed restored presentation meaning');globalThis.matchMedia=realMatchMedia;
+    checks.push('TPR-06 reduced-motion changes animation policy only, not presentation-return meaning');
+
+    const beforeNested=app.terrain.presentationSnapshot(),terrainRect=terrain.getBoundingClientRect();nested=document.createElement('div');nested.className='scroll-scope';nested.style.cssText='position:absolute;left:4px;top:4px;width:20px;height:20px;overflow:auto';terrain.append(nested);const nestedWheel=new WheelEvent('wheel',{bubbles:true,cancelable:true,clientX:terrainRect.left+8,clientY:terrainRect.top+8,deltaY:120});nested.dispatchEvent(nestedWheel);await delay(20);assert(nestedWheel.defaultPrevented===false&&presentationKey(app.terrain.presentationSnapshot())===presentationKey(beforeNested),'TPR-08 nested scroll-scope wheel leaked into Terrain camera');nested.remove();nested=null;
+    const directBefore=app.terrain.presentationSnapshot(),directWheel=new WheelEvent('wheel',{bubbles:true,cancelable:true,clientX:terrainRect.left+terrainRect.width*.8,clientY:terrainRect.top+terrainRect.height*.8,deltaY:120});terrain.dispatchEvent(directWheel);await delay(20);const directAfter=app.terrain.presentationSnapshot();assert(directWheel.defaultPrevented===true&&JSON.stringify(directAfter.camera)!==JSON.stringify(directBefore.camera),'TPR-07 ordinary Terrain wheel policy no longer owns Terrain zoom');app.terrain.restorePresentation(directBefore);
+    checks.push('TPR-07 ordinary Terrain wheel still owns zoom','TPR-08 nested .scroll-scope wheel remains ordinary scroll and leaves Terrain presentation unchanged');
+
+    app.terrain.restorePresentation(canonicalSnapshot);await app.terrain.travel(childRef,'in');await delay(520);const staleJourney=JSON.stringify(app.navigation.fullJourney()),staleCurrent=app.terrain.currentRef(),stale=app.terrain.restorePresentation(canonicalSnapshot);await delay(420);assert(stale.restored===false&&stale.reason==='SEMANTIC_NODE_MISMATCH_CANONICALIZED'&&app.terrain.currentRef()===staleCurrent&&JSON.stringify(app.navigation.fullJourney())===staleJourney,'TPR-02 stale semantic binding changed context/Journey or failed to canonicalize');const canonicalized=app.terrain.presentationSnapshot();assert(canonicalized.projectionMode==='fan'&&canonicalized.manualOverrideRef===null&&Object.keys(canonicalized.localOffsets).length===0,'TPR-02 stale snapshot did not fall to current-node canonical presentation');checks.push('TPR-02 mismatched semantic binding fails closed to current-node canonical presentation without navigation');
+    await returnRoot();app.terrain.reset();await delay(420);
+
+    mobileFrame=document.createElement('iframe');mobileFrame.style.cssText='position:fixed;left:-10000px;top:0;width:390px;height:844px;border:0';const mobileUrl=new URL(location.href);mobileUrl.searchParams.delete('integration');mobileFrame.src=mobileUrl.href;await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('TPR-05 mobile frame timed out')),5000);mobileFrame.onload=()=>{clearTimeout(timeout);resolve()};document.body.append(mobileFrame)});for(let attempt=0;attempt<150&&!mobileFrame.contentWindow?.__VEXLIFE_APP__;attempt++)await delay(20);const mobileApp=mobileFrame.contentWindow?.__VEXLIFE_APP__;assert(mobileApp,'TPR-05 mobile app unavailable');const mobileBefore=mobileApp.terrain.presentationSnapshot(),mobileFrameBefore=JSON.stringify(mobileApp.navigation.semanticFrame()),mobileJourneyBefore=JSON.stringify(mobileApp.navigation.fullJourney());assert(mobileBefore.projectionGrammar==='MOBILE_STACK','TPR-05 compact snapshot lost MOBILE_STACK grammar');const mobileSame=mobileApp.terrain.restorePresentation(mobileBefore);assert(mobileSame.restored===true&&mobileSame.reason==='RESTORED','TPR-05 same-grammar mobile restore failed');const cross=mobileApp.terrain.restorePresentation(canonicalSnapshot),crossAfter=mobileApp.terrain.presentationSnapshot();assert(cross.restored===true&&cross.reason==='RESTORED_WITH_CANONICAL_VIEWPORT_CAMERA'&&crossAfter.projectionGrammar==='MOBILE_STACK','TPR-05 desktop snapshot did not fall to canonical mobile camera while preserving presentation semantics');assert(JSON.stringify(mobileApp.navigation.semanticFrame())===mobileFrameBefore&&JSON.stringify(mobileApp.navigation.fullJourney())===mobileJourneyBefore,'TPR-05 mobile restore changed semantic frame or Journey');mobileApp.terrain.restorePresentation(mobileBefore);checks.push('TPR-05 SPATIAL_WORLD and MOBILE_STACK preserve the same return contract while cross-grammar camera falls canonical');
+  }finally{
+    globalThis.matchMedia=realMatchMedia;if(nested?.isConnected)nested.remove();if(mobileFrame?.isConnected)mobileFrame.remove();await returnRoot();app.terrain.reset();await delay(420);
+  }
+  return{proofRef:'proof.vexlife.refinement.terrain-presentation-return/v1',state:'PASS',checks};
+}
+
 export const terrainSuite = Object.freeze({
   suiteRef:'suite.vexlife.browser.terrain/v1',
   async run({ app, state, helpers:{ delay, assert, assertLiveEdgeAttachments, worldRelationshipClearance, renderedPixelClose, geometryDifferences, geometryIdentity, radialDistance, motionCssToken, transitionProperties, assertSettledGeometry } }) {
@@ -223,6 +272,7 @@ export const terrainSuite = Object.freeze({
     const terrainRegression=await runTerrainZoomTargetRegressionProof({app,helpers:{delay,assert}});checks.push(...terrainRegression.checks);
     const resetRegression=await runTerrainResetSemanticRegressionProof({app,helpers:{delay,assert}});checks.push(...resetRegression.checks);
     const siblingRegression=await runTerrainSiblingProvenanceRegressionProof({app,helpers:{delay,assert}});checks.push(...siblingRegression.checks);
+    const presentationReturn=await runTerrainPresentationReturnProof({app,helpers:{delay,assert}});checks.push(...presentationReturn.checks);await delay(420);
     checks.push('TREG-10/RREG-06/SREG-06 the remaining owner-domain Terrain suite must also pass before this suite can return PASS');
 
     const motionTokens={tactile:motionCssToken('--motion-duration-tactile'),fast:motionCssToken('--motion-duration-fast'),surface:motionCssToken('--motion-duration-surface'),layout:motionCssToken('--motion-duration-layout'),spatial:motionCssToken('--motion-duration-spatial'),exit:motionCssToken('--motion-duration-semantic-exit'),arrive:motionCssToken('--motion-duration-semantic-arrive'),ease:motionCssToken('--motion-ease-responsive')};
