@@ -9,6 +9,12 @@
       "sha256": "e988d6b71f32d511dd71f2a554f2d9304aa2e573c750207dd2ccc50c6ce883f8"
     },
     {
+      "path": "scripts/build-public-learning-projection.mjs",
+      "mode": "100644",
+      "bytes": 3607,
+      "sha256": "68c13404baf6a4724833d27725f8897a39a5bd9cca6e9601e591b72cb9e43df0"
+    },
+    {
       "path": "scripts/test-structured.mjs",
       "mode": "100644",
       "bytes": 1218,

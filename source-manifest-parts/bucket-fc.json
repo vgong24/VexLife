@@ -11,8 +11,8 @@
     {
       "path": "src/core/source-manifest.mjs",
       "mode": "100644",
-      "bytes": 23039,
-      "sha256": "0783cce738bdb9fbd5b98031b17ef2bb68dee3e505fd7a6727d7b350b35b3a5f"
+      "bytes": 22841,
+      "sha256": "341f7dab17858631004dec7dc9b143efe7a04374986fcb91bc2fbd608362dd85"
     }
   ]
 }
