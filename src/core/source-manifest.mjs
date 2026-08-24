@@ -65,17 +65,11 @@ function runGit(root, args, { input } = {}) {
   }
 }
 
-function samePath(left, right) {
-  const normalizedLeft = path.resolve(left);
-  const normalizedRight = path.resolve(right);
-  if (process.platform === 'win32') return normalizedLeft.toLowerCase() === normalizedRight.toLowerCase();
-  return normalizedLeft === normalizedRight;
-}
-
 function resolveRepositoryRoot(root) {
   const requestedRoot = fs.realpathSync(path.resolve(root));
+  const gitPrefix = runGit(requestedRoot, ['rev-parse', '--show-prefix']).toString('utf8').trim();
   const gitRoot = fs.realpathSync(runGit(requestedRoot, ['rev-parse', '--show-toplevel']).toString('utf8').trim());
-  if (!samePath(requestedRoot, gitRoot)) {
+  if (gitPrefix !== '') {
     throw new Error(`Source manifest root must be the Git worktree root: requested=${requestedRoot} git=${gitRoot}`);
   }
   return gitRoot;
