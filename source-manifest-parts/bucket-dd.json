@@ -3,6 +3,12 @@
   "bucketId": "dd",
   "files": [
     {
+      "path": "docs/REVIEW-EXPECTATION-COVERAGE-PLACEMENT.md",
+      "mode": "100644",
+      "bytes": 25083,
+      "sha256": "692e6cfa820a5c4c9655acaacc37d080ea66bb0c0c12cf42b093c6206a478ba9"
+    },
+    {
       "path": "test/browser-companion-bridge.test.mjs",
       "mode": "100644",
       "bytes": 15730,
