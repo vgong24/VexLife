@@ -352,7 +352,7 @@ export async function stopOwnedRuntime(home) {
 
 function excludedFromProtectedSnapshot(relative) {
   const forward = relative.split(path.sep).join('/');
-  return forward.startsWith('runtime/') || TRANSIENT_EXACT.has(forward);
+  return forward === 'runtime' || forward.startsWith('runtime/') || TRANSIENT_EXACT.has(forward);
 }
 export function protectedHomeSnapshot(home) {
   const root = path.resolve(home);
@@ -362,10 +362,11 @@ export function protectedHomeSnapshot(home) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       const relative = path.relative(root, full);
+      if (excludedFromProtectedSnapshot(relative)) continue;
       const stat = fs.lstatSync(full);
       if (stat.isSymbolicLink()) throw new Error(`protected Home contains a symlink: ${relative}`);
       if (entry.isDirectory()) { visit(full); continue; }
-      if (!entry.isFile() || excludedFromProtectedSnapshot(relative)) continue;
+      if (!entry.isFile()) continue;
       const bytes = fs.readFileSync(full);
       records.push({ path: relative.split(path.sep).join('/'), bytes: bytes.length, sha256: sha256(bytes) });
     }
@@ -378,6 +379,21 @@ function removeConfined(home, relative) {
   const target = ensureInside(home, path.join(home, relative), relative);
   if (!fs.existsSync(target)) return false;
   assertNoSymlinkTree(target);
+  fs.rmSync(target, { recursive: true, force: true });
+  return true;
+}
+function removeRuntimeTreeConfined(home) {
+  const target = ensureInside(home, path.join(home, 'runtime'), 'runtime');
+  if (!fs.existsSync(target)) return false;
+  const stat = fs.lstatSync(target);
+  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+    throw new Error('runtime root must be one real directory inside Vex Home');
+  }
+  if (fs.realpathSync.native(target) !== path.resolve(target)) {
+    throw new Error('runtime root is not its canonical filesystem identity');
+  }
+  // fs.rmSync unlinks symlinks contained by this real, confined root; it does not
+  // follow them to their targets. This safely removes admitted dylib aliases.
   fs.rmSync(target, { recursive: true, force: true });
   return true;
 }
@@ -398,8 +414,8 @@ export function cleanupRepairState(home) {
 }
 export function cleanupRebuildPreserveState(home) {
   const removed = [];
+  if (removeRuntimeTreeConfined(home)) removed.push('runtime');
   for (const relative of [
-    'runtime',
     'config/model.json',
     'recovery/vex-initialization-receipt.json',
     'recovery/browser-process.json',

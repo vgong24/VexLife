@@ -333,6 +333,45 @@ test('MAC07 rebuild-preserve cleanup removes runtime binding while preserving Ho
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test('MAC07B protected continuity skips transient runtime symlinks and rebuild cleanup never follows them', { skip: process.platform === 'win32' }, () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-runtime-symlink-'));
+  const home = path.join(root, 'home');
+  const outside = path.join(root, 'outside');
+  for (const dir of ['config','runtime/llama-cpp','recovery','models','memory','conversations/thread-1',outside]) {
+    fs.mkdirSync(path.isAbsolute(dir) ? dir : path.join(home, dir), { recursive: true });
+  }
+  fs.writeFileSync(path.join(home, 'config', 'home.json'), '{"homeRef":"home.keep"}\n');
+  fs.writeFileSync(path.join(home, 'config', 'model.json'), '{"state":"BOUND_QUALIFIED"}\n');
+  fs.writeFileSync(path.join(home, 'runtime', 'llama-cpp', 'llama-server'), 'runtime');
+  fs.writeFileSync(path.join(home, 'runtime', 'llama-cpp', 'libggml.0.17.0.dylib'), 'dylib');
+  fs.symlinkSync('libggml.0.17.0.dylib', path.join(home, 'runtime', 'llama-cpp', 'libggml.dylib'));
+  const outsideFile = path.join(outside, 'must-survive.txt');
+  fs.writeFileSync(outsideFile, 'outside-survives');
+  fs.symlinkSync(outsideFile, path.join(home, 'runtime', 'escape-link'));
+  fs.writeFileSync(path.join(home, 'recovery', 'vex-initialization-receipt.json'), '{"state":"RUNTIME_QUALIFIED"}\n');
+  fs.writeFileSync(path.join(home, 'models', 'model.gguf'), 'model-cache');
+  fs.writeFileSync(path.join(home, 'memory', 'memory.json'), '{"keep":true}\n');
+  fs.writeFileSync(path.join(home, 'conversations', 'thread-1', 'head.json'), '{"head":"abc"}\n');
+
+  const before = protectedHomeSnapshot(home);
+  assert.equal(before.records.some((record) => record.path === 'runtime' || record.path.startsWith('runtime/')), false);
+  const removed = cleanupRebuildPreserveState(home);
+  const after = protectedHomeSnapshot(home);
+  assert.ok(removed.includes('runtime'));
+  assert.equal(fs.existsSync(path.join(home, 'runtime')), false);
+  assert.equal(fs.readFileSync(outsideFile, 'utf8'), 'outside-survives');
+  assert.equal(before.fileCount, after.fileCount);
+  assert.equal(before.fingerprintSha256, after.fingerprintSha256);
+
+  const hostileHome = path.join(root, 'hostile-home');
+  fs.mkdirSync(hostileHome, { recursive: true });
+  fs.symlinkSync(outside, path.join(hostileHome, 'runtime'));
+  assert.throws(() => cleanupRebuildPreserveState(hostileHome), /runtime root must be one real directory/i);
+  assert.equal(fs.readFileSync(outsideFile, 'utf8'), 'outside-survives');
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test('MAC08 lifecycle exposes no destructive local-data removal operation', () => {
   assert.equal(ALLOWED_OPERATIONS.includes('remove-local-data'), false);
   assert.deepEqual(choicesForLifecycleState('EXISTING_HEALTHY'), ['start','repair','rebuild-preserve','uninstall-preserve']);
