@@ -19,6 +19,8 @@ const AVAILABILITY = new Set(['PUBLIC_STATIC', 'EXPLAINABLE_ONLY', 'LOCAL_VEXLIF
 const GROUP_AUTHORITY = new Set(['actionRef','actionRefs','capabilityStage','effectClass','implementationState','permissionRef','permissionRefs','processRef','processRefs','state','stateRef','stateRefs','status','writes']);
 const PROTECTED = /(?:ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[A-Z0-9]{16}|Bearer\s+[A-Za-z0-9._~+\/-]{16,}|BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY|(?:^|[\\/])(?:\.git|\.ssh|docs[\\/]private-continuity)(?:[\\/]|$)|(?:[A-Za-z]:\\Users\\|\/Users\/|\/home\/)[^\s]+|javascript\s*:|<\s*script\b)/iu;
 const TREE_HEADER = /^(100644|100755|120000) blob ([0-9a-f]{40})$/u;
+const SOURCE_MANIFEST_SELF_ROOT_FILES = new Set(['SOURCE-MANIFEST.json']);
+const SOURCE_MANIFEST_SELF_ROOT_DIRECTORIES = new Set(['source-manifest-parts']);
 
 function need(condition, message) { if (!condition) throw new Error(message); }
 const clone = (value) => structuredClone(value);
@@ -60,6 +62,12 @@ function decodeGitPath(buffer) {
   const value = buffer.toString('utf8');
   need(Buffer.from(value, 'utf8').equals(buffer), 'public learning source tree contains a non-UTF-8 path');
   return value;
+}
+
+function isSourceManifestSelfPath(relativePath) {
+  if (SOURCE_MANIFEST_SELF_ROOT_FILES.has(relativePath)) return true;
+  const [rootSegment] = relativePath.split('/');
+  return SOURCE_MANIFEST_SELF_ROOT_DIRECTORIES.has(rootSegment);
 }
 
 function safeJson(value, label) {
@@ -120,8 +128,13 @@ export function verifyPublicLearningSourceRoot(root = VEXLIFE_ROOT, sourceBindin
   const headSha = runGit(requestedRoot, ['rev-parse', 'HEAD']).toString('utf8').trim();
   need(headSha === binding.commitSha, `public learning source root HEAD mismatch: expected ${binding.commitSha}, got ${headSha}`);
 
-  const status = runGit(requestedRoot, ['status', '--porcelain=v1', '--untracked-files=all', '--ignore-submodules=none']).toString('utf8');
-  need(status.trim() === '', 'public learning source root must be clean; ambient worktree/index/untracked bytes are not accepted input');
+  const changedTrackedPaths = splitNullRecords(runGit(requestedRoot, ['diff', '--name-only', '--no-ext-diff', '--ignore-submodules=none', '-z', binding.commitSha, '--']))
+    .map(decodeGitPath)
+    .filter((relativePath) => !isSourceManifestSelfPath(relativePath));
+  const untrackedPaths = splitNullRecords(runGit(requestedRoot, ['ls-files', '--others', '--exclude-standard', '-z']))
+    .map(decodeGitPath)
+    .filter((relativePath) => !isSourceManifestSelfPath(relativePath));
+  need(changedTrackedPaths.length === 0 && untrackedPaths.length === 0, 'public learning source root must be clean outside manifest self-files; ambient worktree/index/untracked bytes are not accepted input');
 
   const records = splitNullRecords(runGit(requestedRoot, ['ls-tree', '-r', '-z', '--full-tree', binding.commitSha]));
   let verifiedBlobCount = 0;
@@ -130,6 +143,7 @@ export function verifyPublicLearningSourceRoot(root = VEXLIFE_ROOT, sourceBindin
     need(separator > 0, 'public learning source tree emitted a malformed entry');
     const header = record.subarray(0, separator).toString('ascii');
     const relativePath = decodeGitPath(record.subarray(separator + 1));
+    if (isSourceManifestSelfPath(relativePath)) continue;
     const match = header.match(TREE_HEADER);
     need(match, `public learning source tree contains an unsupported entry: ${relativePath}`);
     const [, mode, objectId] = match;
