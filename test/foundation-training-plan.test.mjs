@@ -136,7 +136,7 @@ test('partial full-rank mode requires an explicit nonzero language-block selecti
   expectCode(() => validateFoundationTrainingManifest(manifest, {repoRoot: root}), 'G04B_PARAMETER_SELECTION_INVALID');
 });
 
-test('generation-1 Python trainer and evaluator compile when Python is available', t => {
+test('generation-1 Python trainer and evaluator compile without mutating the source tree', t => {
   const candidates = process.platform === 'win32' ? ['python', 'py'] : ['python3', 'python'];
   let runtime = null;
   for (const command of candidates) {
@@ -154,11 +154,26 @@ test('generation-1 Python trainer and evaluator compile when Python is available
     'training/foundation-generation/foundation_train.py',
     'training/foundation-generation/foundation_evaluate.py'
   ];
+  const compileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-g04b-python-compile-'));
+  t.after(() => fs.rmSync(compileRoot, {recursive: true, force: true}));
+  const compileScript = [
+    'import pathlib, py_compile, sys',
+    'output = pathlib.Path(sys.argv[1])',
+    'output.mkdir(parents=True, exist_ok=True)',
+    'for index, source in enumerate(sys.argv[2:]):',
+    "    py_compile.compile(source, cfile=str(output / f'{index}.pyc'), doraise=True)"
+  ].join('\n');
   const result = spawnSync(runtime.command, [
     ...runtime.prefix,
-    '-m',
-    'py_compile',
+    '-c',
+    compileScript,
+    compileRoot,
     ...files
   ], {encoding: 'utf8'});
   assert.equal(result.status, 0, `Python compile failed:\n${result.stdout}\n${result.stderr}`);
+  assert.deepEqual(
+    fs.readdirSync(compileRoot).sort(),
+    ['0.pyc', '1.pyc'],
+    'Python validation must emit bytecode only into the isolated temporary compile root'
+  );
 });
