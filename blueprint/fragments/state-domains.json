@@ -158,5 +158,10 @@
     "brief": "Derived contextual lived-book presentation state over current semantic context; synthetic reference pages, vantage, display language and ephemeral local marginalia only.",
     "ownerRef": "service.context",
     "stateRef": "state.living-journal"
+  },
+  {
+    "stateRef": "state.cdr-s5-closed-alpha-reference",
+    "ownerRef": "service.context",
+    "brief": "Local synthetic closed-alpha reference state for separate alpha consent, invite-only decisions, identity/currentness, truthful presence, route/privacy, delivery acknowledgement, safe support and prospective recovery; grants no participant, network, provider, relationship, Home, Memory, model, payment, publication or public-search authority."
   }
 ]

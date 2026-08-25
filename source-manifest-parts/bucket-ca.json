@@ -3,6 +3,12 @@
   "bucketId": "ca",
   "files": [
     {
+      "path": "blueprint/fragments/screens/cdr-s5-closed-alpha.json",
+      "mode": "100644",
+      "bytes": 6348,
+      "sha256": "aed0f6654429a80f9a9fc618f05ffa6e037aaa2ae8b76ddae46e8c828e5ace86"
+    },
+    {
       "path": "docs/EVALUATED-RHYTHM-LEARNING.md",
       "mode": "100644",
       "bytes": 6414,

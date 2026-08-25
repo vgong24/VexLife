@@ -3,6 +3,12 @@
   "bucketId": "dc",
   "files": [
     {
+      "path": "blueprint/module-registry/cdr-s5-closed-alpha.json",
+      "mode": "100644",
+      "bytes": 1901,
+      "sha256": "503b5b3088b7a41e5d92accfddc3fecac97e0edfd2e51d144373750252078406"
+    },
+    {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
       "bytes": 45602,

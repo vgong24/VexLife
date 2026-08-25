@@ -301,5 +301,14 @@
   "feature-walkthrough.living-journal.stage.revisit": "Revisit 返回当前语义上下文，不会重演历史运行状态。",
   "feature-walkthrough.living-journal.stage.ephemeral-marginalia": "本地页边注是临时参考，不是 Memory。",
   "feature-walkthrough.living-journal.stage.boundaries": "归档选择只读；导览不会授予 Memory、Home、模型或发布权限。",
-  "feature-walkthrough.living-journal.stage.complete": "说明计划在此结束；真实体验完成仍由 Journey 所有。"
+  "feature-walkthrough.living-journal.stage.complete": "说明计划在此结束；真实体验完成仍由 Journey 所有。",
+  "screen.cdr-s5-closed-alpha.title": "封闭 Alpha 旅程",
+  "cdr-s5.closed-alpha.region": "仅限邀请的封闭 Alpha",
+  "cdr-s5.closed-alpha.reference": "仅供参考 · 不产生网络或参与者实际效果",
+  "cdr-s5.closed-alpha.consent": "确认 Alpha 参与同意",
+  "cdr-s5.closed-alpha.invitation": "选择邀请决定",
+  "cdr-s5.closed-alpha.route-privacy": "路由与隐私 · 仅显示类别",
+  "cdr-s5.closed-alpha.support": "打开安全支持参考",
+  "cdr-s5.closed-alpha.withdraw": "退出 Alpha 参考",
+  "cdr-s5.closed-alpha.reset": "重置封闭 Alpha 参考"
 }
