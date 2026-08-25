@@ -11,8 +11,8 @@
     {
       "path": "setup-vexlife.command",
       "mode": "100755",
-      "bytes": 124,
-      "sha256": "94fdd57742ba4daa213c72920d971b179de71c96430f95b7501d965f852a9659"
+      "bytes": 3100,
+      "sha256": "2d572ac26a19cb5520491c7de08df50fd61cfecb4a45f85488ea8272ee130e28"
     }
   ]
 }

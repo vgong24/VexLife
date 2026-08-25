@@ -8,11 +8,35 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const setupCommand = fs.readFileSync(path.join(ROOT, 'setup-vexlife.command'), 'utf8');
 const setup = fs.readFileSync(path.join(ROOT, 'install', 'vexlife-setup.sh'), 'utf8');
 
-test('MACHUMAN01 root Mac front door delegates to one repository setup owner', () => {
+test('MACHUMAN01 root Mac front door is both standalone source bootstrap and one-hop repository delegate', () => {
   assert.match(setupCommand, /^#!\/bin\/bash/m);
+  assert.match(setupCommand, /REPOSITORY="vgong24\/VexLife"/);
+  assert.match(setupCommand, /VEXLIFE_SOURCE_REF:-main/);
+  assert.match(setupCommand, /api\.github\.com\/repos\/\$REPOSITORY\/commits\/\$SOURCE_REF/);
+  assert.match(setupCommand, /codeload\.github\.com\/\$REPOSITORY\/tar\.gz\/\$SOURCE_SHA/);
   assert.match(setupCommand, /install\/vexlife-setup\.sh/);
   assert.doesNotMatch(setupCommand, /initialize-vex\.mjs/);
   assert.doesNotMatch(setupCommand, /macos-lifecycle\.mjs/);
+});
+
+test('MACHUMAN01B standalone bootstrap resolves one exact Git source before downloading and persists source outside Vex Home', () => {
+  const resolveIndex = setupCommand.indexOf('api.github.com/repos/$REPOSITORY/commits/$SOURCE_REF');
+  const downloadIndex = setupCommand.indexOf('codeload.github.com/$REPOSITORY/tar.gz/$SOURCE_SHA');
+  assert.ok(resolveIndex >= 0);
+  assert.ok(downloadIndex > resolveIndex);
+  assert.match(setupCommand, /\[ "\$\{#SOURCE_SHA\}" -eq 40 \]/);
+  assert.match(setupCommand, /Application Support\/VexLife\/source/);
+  assert.match(setupCommand, /TARGET="\$SOURCE_ROOT\/\$SOURCE_SHA"/);
+  assert.doesNotMatch(setupCommand, /\.vexlife\/source/);
+});
+
+test('MACHUMAN01C downloaded archive is topology-checked before extraction and exact source delegates to repository setup', () => {
+  const topologyIndex = setupCommand.indexOf('tar -tzf "$ARCHIVE"');
+  const extractIndex = setupCommand.indexOf('tar -xzf "$ARCHIVE"');
+  assert.ok(topologyIndex >= 0);
+  assert.ok(extractIndex > topologyIndex);
+  assert.match(setupCommand, /downloaded source is missing the Mac setup owner/);
+  assert.match(setupCommand, /exec \/bin\/bash "\$TARGET\/install\/vexlife-setup\.sh" "\$TARGET"/);
 });
 
 test('MACHUMAN02 setup inspects machine state before asking lifecycle choices', () => {
@@ -22,7 +46,7 @@ test('MACHUMAN02 setup inspects machine state before asking lifecycle choices', 
   assert.match(setup, /EXISTING_HEALTHY\)/);
   assert.match(setup, /EXISTING_DEGRADED_REPAIRABLE\)/);
   assert.match(setup, /HELD_NONCANONICAL_HOME\)/);
-  assert.doesNotMatch(setup, /--operation auto/);
+  assert.doesNotMatch(setup, /macos-lifecycle\.mjs" --operation auto/);
 });
 
 test('MACHUMAN03 fresh setup does not offer repair rebuild or uninstall before Home exists', () => {
