@@ -56,12 +56,18 @@
           }
         ],
         "argumentTemplate": [
-          "-m", "{MODEL_PATH}",
-          "--mmproj", "{PROJECTOR_PATH}",
-          "--host", "127.0.0.1",
-          "--port", "{ENDPOINT_PORT}",
-          "--n-predict", "256",
-          "--reasoning-budget", "128"
+          "-m",
+          "{MODEL_PATH}",
+          "--mmproj",
+          "{PROJECTOR_PATH}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "{ENDPOINT_PORT}",
+          "--n-predict",
+          "256",
+          "--reasoning-budget",
+          "128"
         ]
       },
       "modelArtifacts": [
@@ -125,6 +131,185 @@
         "github.issue.vexlife.152",
         "github.issue.vextreme-sdk.662"
       ]
+    },
+    {
+      "architecture": "arm64",
+      "endpoint": {
+        "origin": "http://127.0.0.1:18080",
+        "requestModel": "Qwen3.5-4B-Q4_K_M"
+      },
+      "hardwareProfileRef": "hardware.macos-arm64.apple-m4-pro.metal",
+      "hostRequirements": {
+        "minimumFreeDiskBytes": 6442450944,
+        "minimumSystemMemoryBytes": 12884901888,
+        "requiresNvidiaSmi": false,
+        "appleChipModel": "Apple M4 Pro"
+      },
+      "modelArtifacts": [
+        {
+          "artifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
+          "filename": "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
+          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/ba06320255db2dbec194dad738d066be90dabf29/Qwen_Qwen3.5-4B-Q4_K_M.gguf?download=true",
+          "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
+          "expectedBytes": 3013027808,
+          "maxBytes": 4294967296,
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.ba06320255db2dbec194dad738d066be90dabf29",
+          "licenseRef": "license.apache-2.0.qwen3.5"
+        },
+        {
+          "artifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
+          "filename": "mmproj-Qwen_Qwen3.5-4B-bf16.gguf",
+          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/3516418eb75fd2cdf56058f112b403ff47020775/mmproj-Qwen_Qwen3.5-4B-bf16.gguf?download=true",
+          "sha256": "463f39bd1c291c1186c319a8c90ff8640aafa678b14cbee2232d695113dfbb66",
+          "expectedBytes": 675569216,
+          "maxBytes": 1073741824,
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.3516418eb75fd2cdf56058f112b403ff47020775",
+          "licenseRef": "license.apache-2.0.qwen3.5"
+        }
+      ],
+      "platform": "darwin",
+      "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001",
+      "qualification": {
+        "chatPath": "/v1/chat/completions",
+        "healthPath": "/health",
+        "probeMaxTokens": 16,
+        "probePrompt": "Reply with exactly VEX_RUNTIME_READY.",
+        "timeoutMs": 120000,
+        "expectedContent": "VEX_RUNTIME_READY"
+      },
+      "refreshTriggers": [
+        "PROFILE_SOURCE_CHANGE",
+        "RUNTIME_VERSION_CHANGE",
+        "RUNTIME_ARTIFACT_HASH_CHANGE",
+        "MODEL_ARTIFACT_HASH_CHANGE",
+        "LICENSE_OR_NOTICE_CHANGE",
+        "PLATFORM_CHANGE",
+        "ARCHITECTURE_CHANGE",
+        "HARDWARE_ELIGIBILITY_CHANGE",
+        "RUNTIME_QUALIFICATION_FAILURE",
+        "EXECUTABLE_SHA256_DISCOVERY_REQUIRED",
+        "MACOS_METAL_QUALIFICATION_FAILURE"
+      ],
+      "releaseQualification": {
+        "browserRealTurnPassed": true,
+        "candidateQualificationIssueRef": "github.issue.vexlife.194",
+        "class": "SOURCE_LOCAL_OPERATIONAL_PROFILE",
+        "officialVerifiedBuildClaimed": false,
+        "p11FreshHumanClaimed": false,
+        "publicReleaseClaimed": false,
+        "rebuildPreservePassed": true,
+        "repairPassed": true,
+        "runtimeExecutableSha256Pinned": true,
+        "runtimeQualificationPassed": true,
+        "uninstallPreservePassed": true,
+        "upstreamArchiveSha256Pinned": true,
+        "runtimeQualificationEvidence": {
+          "acceptanceRef": "github.issue.vexlife.194.comment.5393435809",
+          "artifactCacheClass": "REUSED_VERIFIED",
+          "deviceRef": "MTL0",
+          "exactOwnedShutdown": true,
+          "exactProcessPathArgv": true,
+          "gpuLayers": "all",
+          "numericLoopbackOnly": true,
+          "responseSha256": "c530f84a000800321b1b68e58adbee6beda6a7f6a7a32b10bfa0a4f90cf767ce",
+          "runtimeMaterializationClass": "REUSED_VERIFIED_RUNTIME",
+          "sourceHead": "5da31d98a5f140267e54a2b201de94eaafeeb0dc",
+          "sourceTree": "bdca65c47ace299c75b26a3f45f5e9749263d908"
+        },
+        "lifecycleQualificationEvidence": {
+          "HomeDeleted": false,
+          "MemoryDeleted": false,
+          "acceptanceRef": "github.issue.vexlife.194.comment.5402999297",
+          "conversationContinuityPassed": true,
+          "destructiveLocalDataRemovalPerformed": false,
+          "exactOwnedShutdown": true,
+          "finalProtectedHomeFingerprintSha256": "312327fee81fff591aa9bb51275ce05b61b6ae574dc336e6cf68ae6a7d8a4cba",
+          "firstConversationHeadSha256": "9a0a3eda1815306aacc55da553dea934aefe4fe8130c313bf9253b7a8ba00e78",
+          "modelDisposition": "REUSED_VERIFIED",
+          "modelProjectorExternalFetchHeld": true,
+          "onlyExactRuntimeArchiveExternalFetchAllowed": true,
+          "pathWithSpacesProcessOwnershipPassed": true,
+          "personalHome": false,
+          "projectorDisposition": "REUSED_VERIFIED",
+          "returnContentSetSha256": "8d58f84da4de9ba65ac072f404aeaa34d5d6df658faa29dc2abcf3db9097090b",
+          "returnSha256": "b070c6706a37992ba9016ba76a48bb7594ae79e98ea694f36a53ec161ef5e6a0",
+          "runtimeMaterializationDisposition": "MATERIALIZED_VERIFIED_RUNTIME",
+          "runtimeReacquisitionDisposition": "DOWNLOADED_AND_VERIFIED",
+          "secondConversationHeadSha256": "e5df93ef3204b3dcec3ce60ffa6c0b80c9dec9275283b7869276324506c23ee4",
+          "secondPriorConversationHeadSha256": "9a0a3eda1815306aacc55da553dea934aefe4fe8130c313bf9253b7a8ba00e78",
+          "sourceHead": "75c6ad0688a76c7eac5c62c15aa5d5d4f91bb029",
+          "sourceTree": "9070bd8d9b717cf9e6ba3432278c3967ddb25bb1",
+          "technicalMemoryContinuityPassed": true,
+          "technicalMemorySentinelSha256": "c35c1b7cbe5be7aaa7fd8ced2e4695b2226cd4b077d3b509a285f5a3d83bb735"
+        }
+      },
+      "runtime": {
+        "argumentTemplate": [
+          "-m",
+          "{MODEL_PATH}",
+          "--mmproj",
+          "{PROJECTOR_PATH}",
+          "--device",
+          "MTL0",
+          "--gpu-layers",
+          "all",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "{ENDPOINT_PORT}",
+          "--n-predict",
+          "256",
+          "--reasoning-budget",
+          "128"
+        ],
+        "artifacts": [
+          {
+            "artifactRef": "artifact.llama-cpp.b10107.macos-arm64.metal",
+            "expectedBytes": 10804162,
+            "filename": "llama-b10107-bin-macos-arm64.tar.gz",
+            "licenseRef": "license.mit.llama-cpp",
+            "maxBytes": 134217728,
+            "sha256": "b9554ab4c9f6e91199f48387cb4ab27466fb1d724881f81463ef03f6370cfa32",
+            "sourceRef": "github.release.ggml-org.llama-cpp.b10107",
+            "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10107/llama-b10107-bin-macos-arm64.tar.gz"
+          }
+        ],
+        "dependencyRef": "runtime.llama-cpp.server.b10107.macos-arm64.metal",
+        "executableName": "llama-server",
+        "executableSha256": "a4998768a70ba2be02617ec9d8773accc2952516f4f5a8f38f621ece54cbf04b",
+        "executableSha256DiscoveryRequired": false,
+        "extraction": {
+          "class": "POSIX_TAR_GZ",
+          "subdirectory": "runtime/llama-cpp-b10107-macos-arm64"
+        },
+        "immutableRevisionRef": "github.commit.ggml-org.llama-cpp.c0bc8591e8815c63cb01dd3f051a8b0df02501c9",
+        "licenseRef": "license.mit.llama-cpp",
+        "noticeRef": "https://github.com/ggml-org/llama.cpp/blob/c0bc8591e8815c63cb01dd3f051a8b0df02501c9/LICENSE",
+        "version": "b10107",
+        "executableExpectedBytes": 33472,
+        "devicePolicy": {
+          "class": "EXACT_DEVICE_AND_GPU_LAYER_POLICY",
+          "deviceRef": "MTL0",
+          "deviceLabel": "Apple M4 Pro",
+          "gpuLayers": "all",
+          "evidenceRef": "github.issue.vexlife.194.comment.5393089386",
+          "upstreamRevisionRef": "github.commit.ggml-org.llama-cpp.c0bc8591e8815c63cb01dd3f051a8b0df02501c9"
+        }
+      },
+      "sourceRefs": [
+        "github.issue.vextreme-sdk.914",
+        "github.issue.vexlife.152",
+        "github.issue.vexlife.193",
+        "github.issue.vexlife.194",
+        "github.issue.vextreme-sdk.662",
+        "github.issue.vexlife.194.comment.5392062860",
+        "github.issue.vexlife.194.comment.5392007503",
+        "github.issue.vexlife.194.comment.5393089386",
+        "github.issue.vexlife.194.comment.5393435809",
+        "github.issue.vexlife.194.comment.5402999297"
+      ],
+      "state": "RELEASE_QUALIFIED",
+      "stateReason": "Release-qualified for the exact observed Apple M4 Pro / Mac16,7 darwin-arm64 source-local lifecycle after pinned b10107 + Qwen3.5 artifacts, explicit MTL0 / --gpu-layers all runtime qualification, a fresh production-bootstrap technical Home whose actual path contains spaces, two real lifecycle-owned browser companion turns, exact-owned restart/resume, repair, uninstall-preserve, rebuild-preserve, protected multi-GiB model/technical Memory/conversation continuity, and terminal exact-owned cleanup. This is a source-local operational profile qualification only. It does not certify plain M4, M4 Max, other Apple Silicon, a signed/public build, OFFICIAL_VERIFIED_BUILD, or P11 fresh-human/fresh-machine acceptance."
     }
   ]
 }

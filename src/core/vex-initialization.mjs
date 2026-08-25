@@ -17,8 +17,9 @@ function requireString(value, label) { if (typeof value !== 'string' || value.le
 function requireSha(value, label) { if (typeof value !== 'string' || !SHA256.test(value)) throw new Error(`${label} must be lowercase SHA-256`); }
 function requireHttps(value, label) { const parsed = new URL(value); if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error(`${label} must be credential-free HTTPS`); }
 
-function normalizeProcessIdentityText(value) {
-  return String(value ?? '').replaceAll('\\', '/').toLowerCase();
+function normalizeProcessIdentityText(value, { caseInsensitive = false } = {}) {
+  const normalized = String(value ?? '').replaceAll('\\', '/');
+  return caseInsensitive ? normalized.toLowerCase() : normalized;
 }
 
 function tokenizeProcessCommandLine(value) {
@@ -42,19 +43,53 @@ function tokenizeProcessCommandLine(value) {
   return tokens;
 }
 
+function expectedFlattenedProcessCommandLine(expectedExecutablePath, expectedArguments) {
+  return [String(expectedExecutablePath ?? ''), ...expectedArguments.map((value) => String(value))].join(' ');
+}
+
+export function runtimeExecutableIdentityMatches({ profile, actualSha256, bytes }) {
+  const runtime = profile?.runtime;
+  if (!runtime || typeof runtime.executableSha256 !== 'string') return false;
+  if (actualSha256 !== runtime.executableSha256) return false;
+  if (runtime.executableExpectedBytes !== undefined && runtime.executableExpectedBytes !== null &&
+      bytes !== runtime.executableExpectedBytes) return false;
+  return true;
+}
+
 export function runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath, expectedArguments = [] }) {
   if (!processEvidence || typeof processEvidence !== 'object' || Array.isArray(processEvidence)) return false;
-  const name = String(processEvidence.name ?? '').toLowerCase();
-  if (name !== 'llama-server.exe') return false;
-  const actualExecutable = normalizeProcessIdentityText(processEvidence.executablePath);
-  const expectedExecutable = normalizeProcessIdentityText(expectedExecutablePath);
-  if (!actualExecutable || !expectedExecutable || actualExecutable !== expectedExecutable) return false;
+  if (!Array.isArray(expectedArguments) || expectedArguments.some((value) => typeof value !== 'string')) return false;
+  const explicitEvidencePlatform = typeof processEvidence.platform === 'string' ? processEvidence.platform : null;
+  if (explicitEvidencePlatform !== null && !['darwin', 'win32'].includes(explicitEvidencePlatform)) return false;
+  const darwinFlattenedWitness = explicitEvidencePlatform === 'darwin';
+  // Missing platform metadata is the accepted legacy/Windows-compatible evidence shape.
+  // Never infer its semantics from the OS currently running this portable validator.
+  const caseInsensitive = !darwinFlattenedWitness;
+  const expectedExecutable = normalizeProcessIdentityText(expectedExecutablePath, { caseInsensitive });
+  if (!expectedExecutable) return false;
+  const expectedName = expectedExecutable.split('/').filter(Boolean).at(-1) ?? '';
+  const name = normalizeProcessIdentityText(processEvidence.name, { caseInsensitive });
+  if (name !== expectedName) return false;
+  const actualExecutable = normalizeProcessIdentityText(processEvidence.executablePath, { caseInsensitive });
+  if (!actualExecutable || actualExecutable !== expectedExecutable) return false;
+
+  if (darwinFlattenedWitness) {
+    // Apple's ps obtains NUL-separated argv with KERN_PROCARGS2 and renders argv
+    // boundaries as ordinary spaces. The spawn-owned receipt retains the exact
+    // vector; this live witness is explicitly the exact flattened rendering only.
+    if (processEvidence.commandLineClass !== 'DARWIN_PS_FLATTENED_ARGV' ||
+        processEvidence.argvBoundaryPreserved !== false) return false;
+    const actualFlattened = String(processEvidence.commandLine ?? '').trim();
+    const expectedFlattened = expectedFlattenedProcessCommandLine(expectedExecutablePath, expectedArguments);
+    return actualFlattened === expectedFlattened;
+  }
+
   const tokens = tokenizeProcessCommandLine(processEvidence.commandLine);
   if (!tokens || tokens.length !== expectedArguments.length + 1) return false;
-  const actualTokens = tokens.map(normalizeProcessIdentityText);
+  const actualTokens = tokens.map((value) => normalizeProcessIdentityText(value, { caseInsensitive }));
   if (actualTokens[0] !== expectedExecutable) return false;
   for (let index = 0; index < expectedArguments.length; index += 1) {
-    if (actualTokens[index + 1] !== normalizeProcessIdentityText(expectedArguments[index])) return false;
+    if (actualTokens[index + 1] !== normalizeProcessIdentityText(expectedArguments[index], { caseInsensitive })) return false;
   }
   return true;
 }
@@ -74,19 +109,51 @@ export function validateOperationalProfileRegistry(registry) {
       if (refs.has(profile.profileRef)) throw new Error(`duplicate profileRef ${profile.profileRef}`);
       refs.add(profile.profileRef);
       if (![NORMAL_PROFILE_STATE, CANDIDATE_PROFILE_STATE, 'HELD', 'STALE', 'INVALID'].includes(profile.state)) throw new Error(`${p}.state is unknown`);
-      if (profile.platform !== 'win32') throw new Error(`${p}.platform must currently be win32`);
-      if (profile.architecture !== 'x64') throw new Error(`${p}.architecture must currently be x64`);
+      const platformArchitecture = `${profile.platform}/${profile.architecture}`;
+      if (!['win32/x64', 'darwin/arm64'].includes(platformArchitecture)) {
+        throw new Error(`${p} platform/architecture is not an admitted operational pair: ${platformArchitecture}`);
+      }
       requireString(profile.hardwareProfileRef, `${p}.hardwareProfileRef`);
+      requireObject(profile.hostRequirements, `${p}.hostRequirements`);
+      if (profile.platform === 'darwin') {
+        requireString(profile.hostRequirements.appleChipModel, `${p}.hostRequirements.appleChipModel`);
+      }
       requireObject(profile.endpoint, `${p}.endpoint`);
       const match = LOOPBACK_ORIGIN.exec(profile.endpoint.origin);
       if (!match) throw new Error(`${p}.endpoint.origin must use numeric loopback`);
       if (Number(match[1]) < 1 || Number(match[1]) > 65535) throw new Error(`${p}.endpoint port is invalid`);
       requireString(profile.endpoint.requestModel, `${p}.endpoint.requestModel`);
+      requireObject(profile.qualification, `${p}.qualification`);
+      requireString(profile.qualification.probePrompt, `${p}.qualification.probePrompt`);
+      if (!Number.isSafeInteger(profile.qualification.probeMaxTokens) || profile.qualification.probeMaxTokens <= 0) {
+        throw new Error(`${p}.qualification.probeMaxTokens must be positive`);
+      }
+      if (profile.qualification.expectedContent !== undefined && profile.qualification.expectedContent !== null) {
+        requireString(profile.qualification.expectedContent, `${p}.qualification.expectedContent`);
+        if (profile.qualification.expectedContent !== profile.qualification.expectedContent.trim()) {
+          throw new Error(`${p}.qualification.expectedContent must have no leading/trailing whitespace`);
+        }
+      }
       requireObject(profile.runtime, `${p}.runtime`);
       requireString(profile.runtime.dependencyRef, `${p}.runtime.dependencyRef`);
       requireString(profile.runtime.version, `${p}.runtime.version`);
       requireString(profile.runtime.immutableRevisionRef, `${p}.runtime.immutableRevisionRef`);
-      requireSha(profile.runtime.executableSha256, `${p}.runtime.executableSha256`);
+      const executableShaDiscovery =
+        profile.state === CANDIDATE_PROFILE_STATE &&
+        profile.runtime.executableSha256 === null &&
+        profile.runtime.executableSha256DiscoveryRequired === true;
+      if (!executableShaDiscovery) requireSha(profile.runtime.executableSha256, `${p}.runtime.executableSha256`);
+      if (profile.runtime.executableExpectedBytes !== undefined && profile.runtime.executableExpectedBytes !== null &&
+          (!Number.isSafeInteger(profile.runtime.executableExpectedBytes) || profile.runtime.executableExpectedBytes <= 0)) {
+        throw new Error(`${p}.runtime.executableExpectedBytes must be null/absent or a positive safe integer`);
+      }
+      if (profile.platform === 'darwin' && profile.runtime.executableSha256 !== null &&
+          (!Number.isSafeInteger(profile.runtime.executableExpectedBytes) || profile.runtime.executableExpectedBytes <= 0)) {
+        throw new Error(`${p}.runtime.executableExpectedBytes is required when a macOS executable SHA-256 is pinned`);
+      }
+      if (profile.state === NORMAL_PROFILE_STATE && profile.runtime.executableSha256 === null) {
+        throw new Error(`${p}.runtime.executableSha256 is required for RELEASE_QUALIFIED`);
+      }
       if (!SAFE_FILE.test(profile.runtime.executableName)) throw new Error(`${p}.runtime.executableName must be a safe filename`);
       if (!Array.isArray(profile.runtime.artifacts) || profile.runtime.artifacts.length < 1) throw new Error(`${p}.runtime.artifacts must be non-empty`);
       if (!Array.isArray(profile.modelArtifacts) || profile.modelArtifacts.length < 1) throw new Error(`${p}.modelArtifacts must be non-empty`);
@@ -101,14 +168,144 @@ export function validateOperationalProfileRegistry(registry) {
         if (!Number.isSafeInteger(artifact.maxBytes) || artifact.maxBytes <= 0) throw new Error(`${p}.maxBytes must be positive`);
         if (artifact.expectedBytes !== null && (!Number.isSafeInteger(artifact.expectedBytes) || artifact.expectedBytes <= 0)) throw new Error(`${p}.expectedBytes must be null or positive`);
       }
+      requireObject(profile.runtime.extraction, `${p}.runtime.extraction`);
+      requireString(profile.runtime.extraction.class, `${p}.runtime.extraction.class`);
       requireString(profile.runtime.extraction.subdirectory, `${p}.runtime.extraction.subdirectory`);
       if (path.isAbsolute(profile.runtime.extraction.subdirectory) || profile.runtime.extraction.subdirectory.includes('..')) throw new Error(`${p}.runtime.extraction.subdirectory must be safe relative`);
+      const requiredExtractionClass = profile.platform === 'win32' ? 'WINDOWS_ZIP_EXPAND_ARCHIVE' : 'POSIX_TAR_GZ';
+      if (profile.runtime.extraction.class !== requiredExtractionClass) {
+        throw new Error(`${p}.runtime.extraction.class must be ${requiredExtractionClass}`);
+      }
       if (!Array.isArray(profile.runtime.argumentTemplate) || profile.runtime.argumentTemplate.length === 0) throw new Error(`${p}.runtime.argumentTemplate must be non-empty`);
       for (const arg of profile.runtime.argumentTemplate) requireString(arg, `${p}.runtime.argumentTemplate item`);
+      if (profile.runtime.devicePolicy !== undefined && profile.runtime.devicePolicy !== null) {
+        requireObject(profile.runtime.devicePolicy, `${p}.runtime.devicePolicy`);
+        if (profile.runtime.devicePolicy.class !== 'EXACT_DEVICE_AND_GPU_LAYER_POLICY') {
+          throw new Error(`${p}.runtime.devicePolicy.class must be EXACT_DEVICE_AND_GPU_LAYER_POLICY`);
+        }
+        requireString(profile.runtime.devicePolicy.deviceRef, `${p}.runtime.devicePolicy.deviceRef`);
+        requireString(profile.runtime.devicePolicy.gpuLayers, `${p}.runtime.devicePolicy.gpuLayers`);
+        requireString(profile.runtime.devicePolicy.evidenceRef, `${p}.runtime.devicePolicy.evidenceRef`);
+        requireString(profile.runtime.devicePolicy.upstreamRevisionRef, `${p}.runtime.devicePolicy.upstreamRevisionRef`);
+        const flagValue = (flag) => {
+          const indexes = profile.runtime.argumentTemplate.flatMap((value, index) => value === flag ? [index] : []);
+          if (indexes.length !== 1 || indexes[0] + 1 >= profile.runtime.argumentTemplate.length) {
+            throw new Error(`${p}.runtime.argumentTemplate must contain exactly one ${flag} value`);
+          }
+          return profile.runtime.argumentTemplate[indexes[0] + 1];
+        };
+        if (flagValue('--device') !== profile.runtime.devicePolicy.deviceRef) {
+          throw new Error(`${p}.runtime.devicePolicy.deviceRef must match --device argv`);
+        }
+        if (flagValue('--gpu-layers') !== profile.runtime.devicePolicy.gpuLayers) {
+          throw new Error(`${p}.runtime.devicePolicy.gpuLayers must match --gpu-layers argv`);
+        }
+      }
+      if (profile.platform === 'darwin' && profile.releaseQualification?.runtimeQualificationPassed === true) {
+        requireObject(profile.releaseQualification.runtimeQualificationEvidence, `${p}.releaseQualification.runtimeQualificationEvidence`);
+        const evidence = profile.releaseQualification.runtimeQualificationEvidence;
+        for (const field of ['acceptanceRef','sourceHead','sourceTree','deviceRef','gpuLayers','artifactCacheClass','runtimeMaterializationClass']) {
+          requireString(evidence[field], `${p}.releaseQualification.runtimeQualificationEvidence.${field}`);
+        }
+        if (!/^[0-9a-f]{40}$/u.test(evidence.sourceHead) || !/^[0-9a-f]{40}$/u.test(evidence.sourceTree)) {
+          throw new Error(`${p}.releaseQualification.runtimeQualificationEvidence sourceHead/sourceTree must be 40-char Git object SHAs`);
+        }
+        requireSha(evidence.responseSha256, `${p}.releaseQualification.runtimeQualificationEvidence.responseSha256`);
+        if (evidence.deviceRef !== profile.runtime.devicePolicy?.deviceRef ||
+            evidence.gpuLayers !== profile.runtime.devicePolicy?.gpuLayers) {
+          throw new Error(`${p}.releaseQualification.runtimeQualificationEvidence device policy must match runtime.devicePolicy`);
+        }
+        if (evidence.artifactCacheClass !== 'REUSED_VERIFIED' ||
+            evidence.runtimeMaterializationClass !== 'REUSED_VERIFIED_RUNTIME') {
+          throw new Error(`${p}.releaseQualification.runtimeQualificationEvidence cache/materialization classes are not exact`);
+        }
+        for (const field of ['exactProcessPathArgv','numericLoopbackOnly','exactOwnedShutdown']) {
+          if (evidence[field] !== true) throw new Error(`${p}.releaseQualification.runtimeQualificationEvidence.${field} must be true`);
+        }
+      }
+      if (profile.platform === 'darwin') {
+        const release = profile.releaseQualification;
+        requireObject(release, `${p}.releaseQualification`);
+        const lifecycleFields = ['browserRealTurnPassed','repairPassed','uninstallPreservePassed','rebuildPreservePassed'];
+        const anyLifecyclePassed = lifecycleFields.some((field) => release[field] === true);
+        const requiresLifecycleEvidence = anyLifecyclePassed || profile.state === NORMAL_PROFILE_STATE;
+        if (requiresLifecycleEvidence) {
+          requireObject(release.lifecycleQualificationEvidence, `${p}.releaseQualification.lifecycleQualificationEvidence`);
+          const evidence = release.lifecycleQualificationEvidence;
+          for (const field of ['acceptanceRef','sourceHead','sourceTree','returnSha256','returnContentSetSha256',
+            'firstConversationHeadSha256','secondConversationHeadSha256','secondPriorConversationHeadSha256',
+            'technicalMemorySentinelSha256','finalProtectedHomeFingerprintSha256',
+            'modelDisposition','projectorDisposition','runtimeReacquisitionDisposition','runtimeMaterializationDisposition']) {
+            requireString(evidence[field], `${p}.releaseQualification.lifecycleQualificationEvidence.${field}`);
+          }
+          if (!/^[0-9a-f]{40}$/u.test(evidence.sourceHead) || !/^[0-9a-f]{40}$/u.test(evidence.sourceTree)) {
+            throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence sourceHead/sourceTree must be 40-char Git object SHAs`);
+          }
+          for (const field of ['returnSha256','returnContentSetSha256','firstConversationHeadSha256','secondConversationHeadSha256',
+            'secondPriorConversationHeadSha256','technicalMemorySentinelSha256','finalProtectedHomeFingerprintSha256']) {
+            requireSha(evidence[field], `${p}.releaseQualification.lifecycleQualificationEvidence.${field}`);
+          }
+          if (evidence.secondPriorConversationHeadSha256 !== evidence.firstConversationHeadSha256 ||
+              evidence.secondConversationHeadSha256 === evidence.firstConversationHeadSha256) {
+            throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence conversation ancestry is not exact`);
+          }
+          if (evidence.modelDisposition !== 'REUSED_VERIFIED' || evidence.projectorDisposition !== 'REUSED_VERIFIED' ||
+              evidence.runtimeReacquisitionDisposition !== 'DOWNLOADED_AND_VERIFIED' ||
+              evidence.runtimeMaterializationDisposition !== 'MATERIALIZED_VERIFIED_RUNTIME') {
+            throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence artifact lifecycle dispositions are not exact`);
+          }
+          for (const field of ['pathWithSpacesProcessOwnershipPassed','technicalMemoryContinuityPassed','conversationContinuityPassed',
+            'modelProjectorExternalFetchHeld','onlyExactRuntimeArchiveExternalFetchAllowed','exactOwnedShutdown']) {
+            if (evidence[field] !== true) throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence.${field} must be true`);
+          }
+          for (const field of ['personalHome','HomeDeleted','MemoryDeleted','destructiveLocalDataRemovalPerformed']) {
+            if (evidence[field] !== false) throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence.${field} must be false`);
+          }
+        }
+        if (profile.state === NORMAL_PROFILE_STATE) {
+          if (release.class !== 'SOURCE_LOCAL_OPERATIONAL_PROFILE') throw new Error(`${p}.releaseQualification.class must be SOURCE_LOCAL_OPERATIONAL_PROFILE for RELEASE_QUALIFIED`);
+          for (const field of ['runtimeQualificationPassed',...lifecycleFields]) {
+            if (release[field] !== true) throw new Error(`${p}.releaseQualification.${field} must be true for RELEASE_QUALIFIED`);
+          }
+          for (const field of ['officialVerifiedBuildClaimed','publicReleaseClaimed','p11FreshHumanClaimed']) {
+            if (release[field] !== false) throw new Error(`${p}.releaseQualification.${field} must remain false for source-local RELEASE_QUALIFIED`);
+          }
+        }
+      }
       if (!Array.isArray(profile.refreshTriggers) || profile.refreshTriggers.length === 0) throw new Error(`${p}.refreshTriggers must be non-empty`);
     }
   } catch (error) { errors.push(error.message); }
   return { ok: errors.length === 0, errors };
+}
+
+export function evaluateOperationalProfileHost(profile, host) {
+  requireObject(profile, 'profile');
+  requireObject(host, 'host');
+  if (host.platform !== profile.platform || host.architecture !== profile.architecture) {
+    return { ok: false, state: 'UNSUPPORTED_HOST', reason: 'PLATFORM_ARCHITECTURE_MISMATCH' };
+  }
+  const req = profile.hostRequirements ?? {};
+  if (Number.isSafeInteger(req.minimumSystemMemoryBytes) && host.totalMemoryBytes < req.minimumSystemMemoryBytes) {
+    return { ok: false, state: 'UNSUPPORTED_HOST', reason: 'INSUFFICIENT_SYSTEM_MEMORY' };
+  }
+  if (Number.isSafeInteger(req.minimumFreeDiskBytes) && host.freeDiskBytes < req.minimumFreeDiskBytes) {
+    return { ok: false, state: 'UNSUPPORTED_HOST', reason: 'INSUFFICIENT_FREE_DISK' };
+  }
+  if (req.requiresNvidiaSmi === true && host.nvidia?.available !== true) {
+    return { ok: false, state: 'UNSUPPORTED_HOST', reason: 'NVIDIA_EVIDENCE_REQUIRED' };
+  }
+  if (typeof req.appleChipModel === 'string' && req.appleChipModel.length > 0) {
+    if (host.apple?.available !== true || host.apple?.chipModel !== req.appleChipModel) {
+      return {
+        ok: false,
+        state: 'UNSUPPORTED_HOST',
+        reason: 'APPLE_CHIP_MODEL_MISMATCH',
+        expectedAppleChipModel: req.appleChipModel,
+        observedAppleChipModel: host.apple?.chipModel ?? null
+      };
+    }
+  }
+  return { ok: true, state: 'HOST_ELIGIBLE' };
 }
 
 export function selectOperationalProfile({ registry, platform, architecture, mode = 'normal', profileRef = null }) {
@@ -133,6 +330,15 @@ export function buildRuntimeArguments(profile, { modelPath, projectorPath }) {
     ['{MODEL_PATH}', modelPath], ['{PROJECTOR_PATH}', projectorPath], ['{ENDPOINT_PORT}', String(new URL(profile.endpoint.origin).port)], ['{REQUEST_MODEL}', profile.endpoint.requestModel]
   ]);
   return profile.runtime.argumentTemplate.map((arg) => replacements.get(arg) ?? arg);
+}
+
+export function qualificationContentMatches(profile, content) {
+  if (typeof content !== 'string') return false;
+  const trimmed = content.trim();
+  if (trimmed.length === 0) return false;
+  const expected = profile?.qualification?.expectedContent;
+  if (expected === undefined || expected === null) return true;
+  return trimmed === expected;
 }
 
 export function buildQualificationRequest(profile) {
@@ -174,6 +380,8 @@ export function buildVexInitializationPlan({ profile, home, homeState, hostEvide
       extraction: profile.runtime.extraction,
       executableName: profile.runtime.executableName,
       executableSha256: profile.runtime.executableSha256,
+      executableExpectedBytes: profile.runtime.executableExpectedBytes ?? null,
+      devicePolicy: profile.runtime.devicePolicy ?? null,
       argumentTemplate: profile.runtime.argumentTemplate
     },
     effects: {
