@@ -59,30 +59,20 @@ export const REVIEW_COVERAGE_DIMENSIONS = Object.freeze([
 
 const HEX40 = /^[0-9a-f]{40}$/u;
 const HEX64 = /^[0-9a-f]{64}$/u;
-const ID_KEYS = Object.freeze([
-  'featureRef',
-  'lensRef',
-  'elementRef',
-  'regionRef',
-  'screenRef',
-  'componentRef',
-  'actionRef',
-  'permissionRef',
-  'effectRef',
-  'stateRef',
-  'stateOwnerRef',
-  'experienceProfileRef',
-  'gestureRef',
-  'vesselRef',
-  'testRef',
-  'evidenceRef',
-  'captureRef',
-  'platformRef',
-  'processRef',
-  'moduleRef',
-  'projectionRef',
-  'recoveryRef'
-]);
+const SOURCE_PRIMARY_ID_KEYS = Object.freeze({
+  FEATURE_REGISTRY: Object.freeze(['featureRef']),
+  REVIEW_LENS_REGISTRY: Object.freeze(['lensRef']),
+  INTERFACE_SCREEN_AND_SHARED_SURFACE: Object.freeze(['elementRef', 'regionRef', 'screenRef', 'componentRef']),
+  ACTION_PERMISSION_EFFECT: Object.freeze(['actionRef', 'permissionRef', 'effectRef']),
+  STATE_DOMAIN_OWNER: Object.freeze(['stateRef', 'stateOwnerRef']),
+  EXPERIENCE_PROFILE_GESTURE_VESSEL: Object.freeze(['experienceProfileRef', 'gestureRef', 'vesselRef']),
+  TEST_AND_OWNER_DOMAIN_EVIDENCE: Object.freeze(['testRef', 'evidenceRef']),
+  EXPERIENCE_REVIEW_CAPTURE_SEAM: Object.freeze(['captureRef'])
+});
+
+const ALL_PRIMARY_ID_KEYS = Object.freeze(
+  [...new Set(Object.values(SOURCE_PRIMARY_ID_KEYS).flat())]
+);
 
 function fail(code, detail, extra = {}) {
   const error = new Error(detail);
@@ -119,24 +109,24 @@ function deepFreezeSafeClone(value) {
   return structuredClone(value);
 }
 
-function recordIdentity(record) {
+function recordIdentity(record, identityKeys = ALL_PRIMARY_ID_KEYS) {
   if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
-  for (const key of ID_KEYS) {
+  for (const key of identityKeys) {
     if (typeof record[key] === 'string' && record[key].length > 0) return record[key];
   }
   return null;
 }
 
-function walkRecords(value, visitor, seen = new Set()) {
+function walkRecords(value, visitor, seen = new Set(), identityKeys = ALL_PRIMARY_ID_KEYS) {
   if (!value || typeof value !== 'object' || seen.has(value)) return;
   seen.add(value);
   if (!Array.isArray(value)) {
-    const identity = recordIdentity(value);
+    const identity = recordIdentity(value, identityKeys);
     if (identity) visitor(identity, value);
-    for (const child of Object.values(value)) walkRecords(child, visitor, seen);
+    for (const child of Object.values(value)) walkRecords(child, visitor, seen, identityKeys);
     return;
   }
-  for (const child of value) walkRecords(child, visitor, seen);
+  for (const child of value) walkRecords(child, visitor, seen, identityKeys);
 }
 
 function collectRefs(value, refs = new Set(), seen = new Set()) {
@@ -311,6 +301,8 @@ function indexSourceRecords(bundleInspection) {
   const sourceByKind = new Map();
   for (const source of bundleInspection.sources) {
     sourceByKind.set(source.sourceKind, source);
+    const identityKeys = SOURCE_PRIMARY_ID_KEYS[source.sourceKind];
+    if (!identityKeys) fail('MALFORMED_SOURCE_KIND', `no primary identity policy registered for source kind ${source.sourceKind}`);
     walkRecords(source.value, (ref, record) => {
       if (byRef.has(ref)) {
         fail('DUPLICATE_IDENTITY', `canonical ref ${ref} appears more than once in supplied review sources`, {
@@ -320,7 +312,7 @@ function indexSourceRecords(bundleInspection) {
         });
       }
       byRef.set(ref, { sourceKind: source.sourceKind, record });
-    });
+    }, new Set(), identityKeys);
   }
   return { byRef, sourceByKind };
 }
@@ -406,9 +398,9 @@ function hasAllowedPrefix(ref, allowedPrefixes) {
   return typeof ref === 'string' && allowedPrefixes.some((prefix) => ref.startsWith(prefix));
 }
 
-function relatedRecordsByStructuralRefs(value, seedRefs, allowedPrefixes) {
+function relatedRecordsByStructuralRefs(value, seedRefs, allowedPrefixes, identityKeys) {
   const all = [];
-  walkRecords(value, (ref, record) => all.push({ ref, record }));
+  walkRecords(value, (ref, record) => all.push({ ref, record }), new Set(), identityKeys);
   const selected = new Map();
   const frontier = new Set(seedRefs.filter((ref) => hasAllowedPrefix(ref, allowedPrefixes)));
   let changed = true;
@@ -428,14 +420,14 @@ function relatedRecordsByStructuralRefs(value, seedRefs, allowedPrefixes) {
   return [...selected.values()];
 }
 
-function evidenceRefsReferencing(value, targetRefs, idPrefix) {
+function evidenceRefsReferencing(value, targetRefs, idPrefix, identityKeys) {
   const targets = new Set(targetRefs);
   const refs = [];
   walkRecords(value, (ref, record) => {
     if (!ref.startsWith(idPrefix)) return;
     const recordRefs = collectRefs(record);
     if ([...recordRefs].some((candidate) => targets.has(candidate))) refs.push(ref);
-  });
+  }, new Set(), identityKeys);
   return sortedUnique(refs);
 }
 
@@ -556,12 +548,14 @@ export function compileReviewExpectationSet({ request, sourceBundle, repositoryE
 
   const seedRefs = sortedUnique([...normalizedRequest.subjectRefs, ...aggregate.canonicalNodeRefs]);
   const interfaceValue = sourceByKind.get('INTERFACE_SCREEN_AND_SHARED_SURFACE').value;
+  const interfaceIdentityKeys = SOURCE_PRIMARY_ID_KEYS.INTERFACE_SCREEN_AND_SHARED_SURFACE;
   const interfaceRecords = relatedRecordsByStructuralRefs(
     interfaceValue,
     seedRefs,
-    ['screen.', 'region.', 'element.', 'component.', 'shared-surface.']
+    ['screen.', 'region.', 'element.', 'component.', 'shared-surface.'],
+    interfaceIdentityKeys
   );
-  const interfaceRefs = sortedUnique(interfaceRecords.map(recordIdentity));
+  const interfaceRefs = sortedUnique(interfaceRecords.map((record) => recordIdentity(record, interfaceIdentityKeys)));
 
   const screenRefs = sortedUnique([...normalizedRequest.subjectRefs.filter((ref) => ref.startsWith('screen.')), ...interfaceRefs.filter((ref) => ref.startsWith('screen.'))]);
   const regionRefs = interfaceRefs.filter((ref) => ref.startsWith('region.'));
@@ -604,23 +598,31 @@ export function compileReviewExpectationSet({ request, sourceBundle, repositoryE
   }
 
   const experienceValue = sourceByKind.get('EXPERIENCE_PROFILE_GESTURE_VESSEL').value;
+  const experienceIdentityKeys = SOURCE_PRIMARY_ID_KEYS.EXPERIENCE_PROFILE_GESTURE_VESSEL;
   const experienceRecords = relatedRecordsByStructuralRefs(
     experienceValue,
     seedRefs,
-    ['screen.', 'region.', 'element.', 'component.', 'experience.', 'experience-profile.', 'gesture.', 'vessel.']
+    ['screen.', 'region.', 'element.', 'component.', 'experience.', 'experience-profile.', 'gesture.', 'vessel.'],
+    experienceIdentityKeys
   );
-  const experienceRefs = sortedUnique(experienceRecords.map(recordIdentity));
+  const experienceRefs = sortedUnique(experienceRecords.map((record) => recordIdentity(record, experienceIdentityKeys)));
   const experienceProfileRefs = experienceRefs.filter((ref) => ref.startsWith('experience.'));
   const gestureRefs = experienceRefs.filter((ref) => ref.startsWith('gesture.'));
   const vesselRefs = experienceRefs.filter((ref) => ref.startsWith('vessel.'));
 
   const evidenceValue = sourceByKind.get('TEST_AND_OWNER_DOMAIN_EVIDENCE').value;
-  const ownerDomainEvidenceRefs = evidenceRefsReferencing(evidenceValue, aggregate.testRefs, 'evidence.');
+  const ownerDomainEvidenceRefs = evidenceRefsReferencing(
+    evidenceValue,
+    aggregate.testRefs,
+    'evidence.',
+    SOURCE_PRIMARY_ID_KEYS.TEST_AND_OWNER_DOMAIN_EVIDENCE
+  );
   const captureValue = sourceByKind.get('EXPERIENCE_REVIEW_CAPTURE_SEAM').value;
   const reviewCaptureRefs = evidenceRefsReferencing(
     captureValue,
     sortedUnique([...screenRefs, ...regionRefs, ...elementRefs]),
-    'capture.'
+    'capture.',
+    SOURCE_PRIMARY_ID_KEYS.EXPERIENCE_REVIEW_CAPTURE_SEAM
   );
 
   const actionRefs = aggregate.actionRefs;

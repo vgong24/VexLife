@@ -578,4 +578,49 @@ test('RCP-A2-03b maxEnvironmentCells fails closed instead of flattening or silen
   }), (error) => error?.code === 'EVIDENCE_BUDGET_EXCEEDED');
 });
 
+
+test('RCP-A3-01 source-kind primary identity keeps vessel distinct from related component and nested state-owner refs', () => {
+  const bundle = sourceBundle();
+  const interfaceSource = bundle.sources.find((item) => item.sourceKind === 'INTERFACE_SCREEN_AND_SHARED_SURFACE');
+  const experienceSource = bundle.sources.find((item) => item.sourceKind === 'EXPERIENCE_PROFILE_GESTURE_VESSEL');
+
+  interfaceSource.value.components = [{ componentRef: 'component.vexlife.action-vessel' }];
+  experienceSource.value.vessels.push({
+    vesselRef: 'vessel.vexlife.guide',
+    componentRef: 'component.vexlife.action-vessel',
+    elementRefs: ['element.test.send'],
+    presenceStateGrammar: { stateOwnerRef: 'state.test.chat' }
+  });
+  interfaceSource.envelope.valueSemanticHash = semanticHash(interfaceSource.value);
+  experienceSource.envelope.valueSemanticHash = semanticHash(experienceSource.value);
+
+  const set = compileReviewExpectationSet({
+    request: request(['component.vexlife.action-vessel']),
+    sourceBundle: bundle,
+    repositoryEvidenceProvider: repositoryEvidenceProvider(bundle)
+  });
+
+  assert.ok(set.componentRefs.includes('component.vexlife.action-vessel'));
+  assert.ok(set.vesselRefs.includes('vessel.vexlife.guide'));
+  assert.equal(set.vesselRefs.includes('component.vexlife.action-vessel'), false);
+  assert.equal(set.stateRefs.includes('state.test.chat'), false);
+});
+
+test('RCP-A3-02 genuine duplicate primary vessel identity still fails closed', () => {
+  const bundle = sourceBundle();
+  const experienceSource = bundle.sources.find((item) => item.sourceKind === 'EXPERIENCE_PROFILE_GESTURE_VESSEL');
+  experienceSource.value.vessels.push({
+    vesselRef: 'vessel.test.button',
+    componentRef: 'component.vexlife.other-action-vessel',
+    elementRefs: ['element.test.send']
+  });
+  experienceSource.envelope.valueSemanticHash = semanticHash(experienceSource.value);
+
+  assert.throws(() => compileReviewExpectationSet({
+    request: request(),
+    sourceBundle: bundle,
+    repositoryEvidenceProvider: repositoryEvidenceProvider(bundle)
+  }), (error) => error?.code === 'DUPLICATE_IDENTITY' && error?.ref === 'vessel.test.button');
+});
+
 // [VXG RealForever]
