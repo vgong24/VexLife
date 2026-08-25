@@ -33,9 +33,16 @@ function sha256File(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
 
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalize(value[key])]));
+  }
+  return value;
+}
+
 function canonicalFingerprint(value) {
-  const ordered = JSON.stringify(value, Object.keys(value).sort());
-  return crypto.createHash('sha256').update(ordered).digest('hex');
+  return crypto.createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
 }
 
 function stableRefs(value, label, {required = false} = {}) {
