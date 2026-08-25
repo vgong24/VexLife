@@ -43,6 +43,8 @@ test('CDR-S5-A02 alpha consent is distinct from invitation/contact/public/traini
 
 test('CDR-S5-A03 invitation decisions are exact and bounded', () => {
   assert.deepEqual(registry.decisions, ['ACCEPT','NARROW','DEFER','DENY','BLOCK']);
+  assert.match(js, /invitationDecisionEligible\(\)/);
+  assert.match(js, /state\.decision === 'ACCEPT' \|\| state\.decision === 'NARROW'/);
 });
 
 test('CDR-S5-A04 hostile identity/currentness classes fail visibly', () => {
@@ -96,6 +98,8 @@ test('CDR-S5-A09 EN/JA/ZH catalogs have exact key parity and non-empty values', 
 test('CDR-S5-A10 accessibility/mobile/reduced-motion fallback contract is source-visible', () => {
   assert.match(html, /name="viewport"/);
   assert.match(html, /aria-live="polite"/);
+  assert.match(html, /aria-controls="support-panel"/);
+  assert.match(html, /aria-expanded="false"/);
   assert.match(css, /min-height:\s*44px/);
   assert.match(css, /@media \(max-width:\s*720px\)/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
@@ -127,6 +131,7 @@ test('CDR-S5-A13 invitation create/receive lifecycle is explicit and bounded', (
   assert.match(html, /id="invitation"/);
   assert.match(js, /invitationHeld\(\)/);
   assert.match(js, /invitationCurrent\(\)/);
+  assert.match(js, /state\.invitation === 'RECEIVED_VERIFIED_REFERENCE'/);
 });
 
 test('CDR-S5-A14 typed connection/session failures remain distinct and fail closed', () => {
@@ -136,6 +141,13 @@ test('CDR-S5-A14 typed connection/session failures remain distinct and fail clos
   assert.match(html, /id="failure"/);
   assert.match(js, /state\.failure !== 'NONE'.*NOT_CONNECTED/s);
   assert.match(js, /state\.route !== 'UNAVAILABLE'/);
+});
+
+test('CDR-S5-A15 delivery admission requires verified receipt plus an affirmative bounded invitation decision', () => {
+  assert.match(js, /invitationDecisionEligible\(\)/);
+  assert.match(js, /decisionPermitsSession\(\)/);
+  assert.match(js, /delivery\.disabled = !canAdvanceDelivery\(\)/);
+  assert.match(js, /state\.decision = 'DEFER';\s*state\.delivery = 'NOT_CONNECTED'/s);
 });
 
 function contentType(filePath) {
@@ -187,7 +199,7 @@ function assertLoopbackOnly(urls) {
   }
 }
 
-test('CDR-S5-A15 Chromium practicum proves keyboard, compact, reduced-motion and no external effects', { timeout: 60_000 }, async () => {
+test('CDR-S5-A16 Chromium practicum proves consent/invitation gating, keyboard, compact, reduced-motion and no external effects', { timeout: 60_000 }, async () => {
   const server = await openReferenceServer();
   const address = server.address();
   assert.equal(typeof address, 'object');
@@ -209,28 +221,48 @@ test('CDR-S5-A15 Chromium practicum proves keyboard, compact, reduced-motion and
     await page.waitForFunction(() => document.documentElement.dataset.cdrS5Ready === 'true');
 
     assert.equal(await page.locator('#consent-status').textContent(), 'HELD_ALPHA_CONSENT_NOT_ACKNOWLEDGED');
+    assert.equal(await page.locator('#decision').isDisabled(), true);
+    assert.equal(await page.locator('#delivery').isDisabled(), true);
     await page.locator('#consent').focus();
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('#consent-status').textContent(), 'ALPHA_CONSENT_REFERENCE_ACKNOWLEDGED');
 
     await page.selectOption('#invitation', 'CREATED_LOCAL_REFERENCE');
     assert.equal(await page.locator('#invitation-status').textContent(), 'CREATED_LOCAL_REFERENCE');
+    assert.equal(await page.locator('#decision-status').textContent(), 'HELD_AWAITING_RECEIVED_VERIFIED_INVITATION');
+    assert.equal(await page.locator('#decision').isDisabled(), true);
+    assert.equal(await page.locator('#delivery').isDisabled(), true);
+    assert.equal(await page.locator('#delivery').inputValue(), 'NOT_CONNECTED');
 
+    await page.selectOption('#invitation', 'RECEIVED_VERIFIED_REFERENCE');
+    assert.equal(await page.locator('#decision').isDisabled(), false);
+    assert.equal(await page.locator('#delivery').isDisabled(), true);
+    await page.selectOption('#decision', 'ACCEPT');
+    assert.equal(await page.locator('#delivery').isDisabled(), false);
     await page.selectOption('#delivery', 'DELIVERED');
     assert.equal(await page.locator('#delivery').inputValue(), 'DELIVERED');
+
+    await page.selectOption('#decision', 'BLOCK');
+    assert.equal(await page.locator('#delivery').inputValue(), 'NOT_CONNECTED');
+    assert.equal(await page.locator('#delivery').isDisabled(), true);
+    await page.selectOption('#decision', 'NARROW');
+    assert.equal(await page.locator('#delivery').isDisabled(), false);
 
     await page.selectOption('#failure', 'RELAY_UNAVAILABLE');
     assert.equal(await page.locator('#failure-status').textContent(), 'HELD_RELAY_UNAVAILABLE');
     assert.equal(await page.locator('#delivery').inputValue(), 'NOT_CONNECTED');
+    assert.equal(await page.locator('#delivery').isDisabled(), true);
 
     await page.selectOption('#failure', 'NONE');
     await page.selectOption('#route', 'DIRECT_CANDIDATE');
+    assert.equal(await page.locator('#delivery').isDisabled(), false);
     await page.selectOption('#delivery', 'CONNECTED');
     assert.equal(await page.locator('#delivery').inputValue(), 'CONNECTED');
 
     await page.locator('#support').focus();
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('#support-panel').getAttribute('hidden'), null);
+    assert.equal(await page.locator('#support').getAttribute('aria-expanded'), 'true');
 
     const undersized = await page.locator('button, select').evaluateAll((nodes) => nodes
       .map((node) => {
@@ -243,8 +275,15 @@ test('CDR-S5-A15 Chromium practicum proves keyboard, compact, reduced-motion and
     await page.locator('#revoke').focus();
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('#delivery').inputValue(), 'NOT_CONNECTED');
+    assert.equal(await page.locator('#delivery').isDisabled(), true);
     assert.equal(await page.locator('#decision-status').textContent(), 'HELD_INVITATION_OR_SESSION_REVOKED');
     assert.match(await page.locator('#recovery-status').textContent(), /REVOKED/);
+
+    await page.locator('#reset').click();
+    assert.equal(await page.locator('#support-panel').getAttribute('hidden'), '');
+    assert.equal(await page.locator('#support').getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.locator('#decision').isDisabled(), true);
+    assert.equal(await page.locator('#delivery').isDisabled(), true);
 
     assertLoopbackOnly(desktopRequests);
     assert.equal(popups, 0);
@@ -272,6 +311,8 @@ test('CDR-S5-A15 Chromium practicum proves keyboard, compact, reduced-motion and
 
     await mobilePage.selectOption('#invitation', 'RECEIVED_HELD_IDENTITY');
     assert.equal(await mobilePage.locator('#decision-status').textContent(), 'HELD_RECEIVED_HELD_IDENTITY');
+    assert.equal(await mobilePage.locator('#decision').isDisabled(), true);
+    assert.equal(await mobilePage.locator('#delivery').isDisabled(), true);
     assert.equal(await mobilePage.locator('#delivery').inputValue(), 'NOT_CONNECTED');
 
     assertLoopbackOnly(mobileRequests);
