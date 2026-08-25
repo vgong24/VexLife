@@ -26,7 +26,7 @@ export const crossFeatureSuite = Object.freeze({
     const chatEvent = app.navigation.fullJourney().at(-1);
     assert(chatFrame.selectedNodeRef === semanticBeforeControls, 'LIVED-A B3 Chat entry rewrote semantic current context');
     assert(chatFrame.contextProjection === 'chat', 'LIVED-A B3 Chat context projection did not open');
-    assert(chatEvent?.elementRef === 'element.nav.chat', 'LIVED-A B3 Chat entry provenance missing');
+    assert(chatEvent?.elementRef === 'element.nav.chat' && chatEvent.actionRef === 'action.view.select', 'LIVED-A B3 Chat entry provenance missing');
 
     const threadButton = document.querySelector('[data-node-ref="element.thread.open-conversation"]');
     assert(threadButton, 'LIVED-A B6 explicit Self Development thread selector unavailable');
