@@ -9,6 +9,12 @@
       "sha256": "baff3925572a3a39ccc002ce6616ad2bf201059d02ec374398aea319e66016fb"
     },
     {
+      "path": "src/core/review-composition.mjs",
+      "mode": "100644",
+      "bytes": 44713,
+      "sha256": "01f2d5b748ac54e85d7723a865d2f3326ca8c1edd1d0f59d0d933f6dc79bc25e"
+    },
+    {
       "path": "test/browser.test.mjs",
       "mode": "100644",
       "bytes": 5520,

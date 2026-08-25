@@ -372,5 +372,59 @@
     "testRefs": [
       "test.patient0.nursery.synthetic-journey"
     ]
+  },
+  {
+    "processRef": "process.vexlife.review.compile-expectations-and-coverage",
+    "processVersion": 1,
+    "purpose": "Compile one exact review subject into deterministic no-effect expectation and coverage projections.",
+    "applicabilityRules": [
+      "review subject and purpose are explicit"
+    ],
+    "requiredInputs": [
+      "subjectRefs",
+      "purposeRefs",
+      "reviewDepthPolicyRef",
+      "sourceBundleRef",
+      "evidenceBundleRef"
+    ],
+    "optionalInputs": [],
+    "sourceResolutionRules": [
+      "consume independently verified current source bindings only"
+    ],
+    "preconditions": [
+      "all source kinds current",
+      "effects remain empty"
+    ],
+    "steps": [
+      "admit-review-plan",
+      "compile-review-expectation-set",
+      "compile-review-coverage-receipt",
+      "render-process-receipt"
+    ],
+    "effectOwnerRule": "Review composition owns no effects; later execution must independently bind effect authority.",
+    "authorityEnvelope": {
+      "effects": [],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [],
+    "canonicalDispositionVocabulary": [
+      "REVIEW_COMPOSITION_READY",
+      "BLOCKED"
+    ],
+    "returnRouteRule": "return the no-effect plan and derived projections",
+    "closureRule": "close after deterministic projections and process receipt are emitted",
+    "recoveryRule": "discard derived projections and recompile from current verified source bindings",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [],
+    "invalidationTriggers": [
+      "review-source-currentness-change"
+    ],
+    "testRefs": [
+      "test.review-composition.contract"
+    ]
   }
 ]
