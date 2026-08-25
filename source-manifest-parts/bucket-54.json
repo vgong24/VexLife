@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 3310,
       "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
+    },
+    {
+      "path": "test/cdr-s5-closed-alpha-browser.test.mjs",
+      "mode": "100644",
+      "bytes": 5939,
+      "sha256": "3faae2ad0e5b24990b158157dcbc93897d00ec978e6afb3ae34e92817d1fe6fc"
     }
   ]
 }

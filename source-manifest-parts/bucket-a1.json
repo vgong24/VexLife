@@ -3,6 +3,12 @@
   "bucketId": "a1",
   "files": [
     {
+      "path": "blueprint/cdr-s5-closed-alpha-browser-registry.json",
+      "mode": "100644",
+      "bytes": 13714,
+      "sha256": "5725af7577fa5da536d6ff1f691b6761e0f35c1af78d55751f719fa75bbae8ea"
+    },
+    {
       "path": "test/experience.test.mjs",
       "mode": "100644",
       "bytes": 20154,

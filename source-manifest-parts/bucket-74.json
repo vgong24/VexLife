@@ -3,6 +3,12 @@
   "bucketId": "74",
   "files": [
     {
+      "path": "reference/browser/cdr-s5-closed-alpha/app.css",
+      "mode": "100644",
+      "bytes": 2915,
+      "sha256": "f4ccb40fa98b51b9b3eba2a085ed9e3d5dbf12308c97573a221dce55780789b1"
+    },
+    {
       "path": "start-vexlife.ps1",
       "mode": "100644",
       "bytes": 32253,

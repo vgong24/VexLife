@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "f0",
+  "files": [
+    {
+      "path": "reference/browser/cdr-s5-closed-alpha/app.js",
+      "mode": "100644",
+      "bytes": 5709,
+      "sha256": "41b4ed0720fd9cdd34b3d857098569f7cb7d95d85396404f1db7dceee9a3b434"
+    }
+  ]
+}

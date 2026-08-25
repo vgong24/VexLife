@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 8031,
       "sha256": "8edaf6907cad71bf411b919146dc3db227bda619357f6d33098f0ce860081d2a"
+    },
+    {
+      "path": "reference/browser/cdr-s5-closed-alpha/index.html",
+      "mode": "100644",
+      "bytes": 5106,
+      "sha256": "b144974026f969db930e934f9a92b9411873d391f27ca8831e8ebe1848fea7e4"
     }
   ]
 }
