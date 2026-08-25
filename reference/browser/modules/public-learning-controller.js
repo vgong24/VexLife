@@ -208,9 +208,19 @@ export function createPublicLearningController({ projection, registry, catalogs,
     button.textContent = t(terrainByRef.get(ref).labelStringRef);
     if (terrain?.currentRef() === ref) button.setAttribute('aria-current', 'page');
     button.onclick = async () => {
-      if (terrain.currentRef() === ref) return;
-      await terrain.travel(ref, directionTo(ref));
-      renderCurrentDetail();
+      if (terrain.currentRef() !== ref) {
+        await terrain.travel(ref, directionTo(ref));
+        renderCurrentDetail();
+      }
+      if (innerWidth <= 760 && leafByCanonical.has(ref)) {
+        const browse = $('#publicBrowse', root);
+        const stage = root.querySelector('.public-learning-stage');
+        browse.open = false;
+        if (stage) stage.scrollTop = 0;
+        queueMicrotask(() => {
+          root.querySelector('#terrainBreadcrumb button[aria-current="true"]')?.focus({ preventScroll: true });
+        });
+      }
     };
     item.append(button);
     const children = childrenByRef.get(ref) ?? [];

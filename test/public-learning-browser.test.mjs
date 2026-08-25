@@ -241,6 +241,46 @@ test('S7P-05..16 rendered path, accessible list, mobile/keyboard/localization an
   assert.equal(overlap(layout.focus, layout.zoom), false, `mobile current card/zoom rail overlap: ${JSON.stringify(layout)}`);
   assert.ok(layout.scrollWidth <= layout.width + 1, `mobile horizontal overflow: ${JSON.stringify(layout)}`);
 
+  await page.locator('#publicBrowseSummary').click();
+  await page.locator('#publicBrowse[open]').waitFor();
+  await page.locator(`button[data-public-list-ref="${ATLAS_GROUP}"]`).click();
+  await transitionIdle(page);
+  await page.locator(`button[data-public-list-ref="${ATLAS_REF}"]`).click();
+  await transitionIdle(page);
+  await page.waitForFunction(() => {
+    const stage = document.querySelector('.public-learning-stage');
+    return document.querySelector('#publicBrowse')?.open === false && Math.abs(stage?.scrollTop ?? 999) <= 1;
+  });
+  const compactAtlas = await page.evaluate(() => {
+    const box = (selector) => {
+      const r = document.querySelector(selector)?.getBoundingClientRect();
+      return r ? { x:r.x, y:r.y, width:r.width, height:r.height, bottom:r.bottom, right:r.right } : null;
+    };
+    return {
+      terrain: box('.public-learning-terrain'),
+      focus: box('#terrainFocus'),
+      title: box('#terrainFocus h2'),
+      zoom: box('#terrainToolbar'),
+      titleText: document.querySelector('#terrainFocus h2')?.textContent?.trim() ?? '',
+      stageScrollTop: document.querySelector('.public-learning-stage')?.scrollTop ?? null,
+      activeBreadcrumb: Boolean(document.querySelector('#terrainBreadcrumb button[aria-current="true"]')?.matches(':focus'))
+    };
+  });
+  assert.equal((await page.evaluate(() => globalThis.__vexlifePublicLearning.proof())).currentRef, ATLAS_REF);
+  assert.ok(compactAtlas.terrain && compactAtlas.focus && compactAtlas.title, `mobile Atlas containment geometry missing: ${JSON.stringify(compactAtlas)}`);
+  assert.ok(compactAtlas.focus.x >= compactAtlas.terrain.x - 1
+    && compactAtlas.focus.y >= compactAtlas.terrain.y - 1
+    && compactAtlas.focus.right <= compactAtlas.terrain.right + 1
+    && compactAtlas.focus.bottom <= compactAtlas.terrain.bottom + 1, `mobile Atlas current card escaped visible Terrain viewport: ${JSON.stringify(compactAtlas)}`);
+  assert.ok(compactAtlas.title.x >= compactAtlas.terrain.x - 1
+    && compactAtlas.title.y >= compactAtlas.terrain.y - 1
+    && compactAtlas.title.right <= compactAtlas.terrain.right + 1
+    && compactAtlas.title.bottom <= compactAtlas.terrain.bottom + 1, `mobile Atlas current-card title is clipped outside visible Terrain viewport: ${JSON.stringify(compactAtlas)}`);
+  assert.equal(compactAtlas.titleText, PROJECTION.strings.en['public.node.atlas.title']);
+  assert.equal(overlap(compactAtlas.focus, compactAtlas.zoom), false, `mobile Atlas current card/zoom rail overlap after list navigation: ${JSON.stringify(compactAtlas)}`);
+  assert.ok(compactAtlas.stageScrollTop <= 1, `mobile field did not return to visible Terrain after list navigation: ${JSON.stringify(compactAtlas)}`);
+  assert.equal(compactAtlas.activeBreadcrumb, true, `mobile list navigation did not hand stable focus to visible current breadcrumb: ${JSON.stringify(compactAtlas)}`);
+
   assert.ok(requests.every((pathname) => REGISTRY.runtimeAllowlist.includes(pathname) || pathname === REGISTRY.fieldRoutePath || PROJECTION.leaves.some((leaf) => leaf.routePath === pathname)), `unadmitted runtime request: ${requests.find((pathname) => !REGISTRY.runtimeAllowlist.includes(pathname) && pathname !== REGISTRY.fieldRoutePath && !PROJECTION.leaves.some((leaf) => leaf.routePath === pathname))}`);
 });
 
