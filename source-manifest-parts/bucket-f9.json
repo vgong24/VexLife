@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "f9",
+  "files": [
+    {
+      "path": "test/macos-human-setup.test.mjs",
+      "mode": "100644",
+      "bytes": 2689,
+      "sha256": "522b28b4bca05da51cc66963cd29d37b23bad01229dfdbee14aa1decb92bf17f"
+    }
+  ]
+}
