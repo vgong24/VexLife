@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 23197,
       "sha256": "a55ab315a108cef7adf5f912ead94cbb820d01ba718d1a296d0c3dc680481607"
+    },
+    {
+      "path": "training/foundation-generation/foundation_evaluate.py",
+      "mode": "100644",
+      "bytes": 12144,
+      "sha256": "e5894a86a596f1873486ee30ac08030c2adb62868c857150cdd1147e4c19316a"
     }
   ]
 }

@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 4433,
       "sha256": "b89a2255f053b655574ea99c9fa33281c556392760b942637248e209ca1a6a1f"
+    },
+    {
+      "path": "training/foundation-generation/training-manifest.example.json",
+      "mode": "100644",
+      "bytes": 1743,
+      "sha256": "88d7728f78001307470f2f8de13e8c6140ffd5fb7bd165d67fb4fe7b2fe05e0d"
     }
   ]
 }
