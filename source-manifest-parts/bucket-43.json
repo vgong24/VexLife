@@ -10,9 +10,9 @@
     },
     {
       "path": "start-vexlife.sh",
-      "mode": "100644",
-      "bytes": 281,
-      "sha256": "6e2344723c0871ce76111d5fc298ebbbf3257a898bb7069a590a96f616184376"
+      "mode": "100755",
+      "bytes": 194,
+      "sha256": "94dcd9fa78224ab5ae623c5b518ee0a49b3e90754a2888fe901e8b3bf22e73a9"
     },
     {
       "path": "test/living-journal-memory-archive.test.mjs",

@@ -39,8 +39,16 @@ test('operational profile registry resolves the release-qualified Windows profil
   assert.equal(qualificationRoute.state, 'PROFILE_RESOLVED');
 });
 
-test('unsupported hosts fail closed and no default LLM fallback exists', () => {
-  assert.equal(selectOperationalProfile({ registry, platform: 'darwin', architecture: 'arm64' }).state, 'UNSUPPORTED_HOST');
+test('source-local release-qualified Mac resolves in normal mode while truly unsupported hosts still fail closed without a default LLM', () => {
+  const mac = selectOperationalProfile({ registry, platform: 'darwin', architecture: 'arm64' });
+  assert.equal(mac.state, 'PROFILE_RESOLVED');
+  assert.equal(mac.profile.profileRef, 'profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001');
+  assert.equal(mac.profile.state, 'RELEASE_QUALIFIED');
+  assert.equal(mac.profile.releaseQualification.class, 'SOURCE_LOCAL_OPERATIONAL_PROFILE');
+  assert.equal(mac.profile.releaseQualification.officialVerifiedBuildClaimed, false);
+  assert.equal(mac.profile.releaseQualification.publicReleaseClaimed, false);
+  assert.equal(mac.profile.releaseQualification.p11FreshHumanClaimed, false);
+  assert.equal(selectOperationalProfile({ registry, platform: 'linux', architecture: 'x64' }).state, 'UNSUPPORTED_HOST');
   assert.equal(JSON.stringify(registry).includes('default llm'), false);
   assert.equal(JSON.stringify(registry).includes('DEFAULT_LLM'), false);
 });

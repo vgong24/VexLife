@@ -13,11 +13,15 @@ import {
   buildRuntimeArguments,
   buildVexInitializationPlan,
   classifyHomeState,
+  evaluateOperationalProfileHost,
+  qualificationContentMatches,
+  runtimeExecutableIdentityMatches,
   runtimeProcessEvidenceMatches,
   selectOperationalProfile,
   validateOperationalProfileRegistry
 } from '../src/core/vex-initialization.mjs';
 import { classifyVerifiedArtifact, downloadVerifiedArtifact, sha256File } from '../src/core/model-provision.mjs';
+import { assertSafeMacExtractedTree, assertSafeMacTarArchive, readMacProcessEvidence } from './macos-lifecycle.mjs';
 import { writeJson } from '../src/core/utils.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -69,40 +73,73 @@ function nvidiaEvidence() {
   const first = String(result.stdout).trim().split(/\r?\n/u)[0] ?? '';
   return { available: first.length > 0, detail: first || null };
 }
+function appleHardwareEvidence() {
+  if (process.platform !== 'darwin') return { available: false, chipModel: null, machineModel: null };
+  const result = spawnSync('/usr/sbin/system_profiler', ['SPHardwareDataType', '-json'], {
+    encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, shell: false
+  });
+  if (result.error || result.status !== 0) return { available: false, chipModel: null, machineModel: null };
+  try {
+    const payload = JSON.parse(String(result.stdout || ''));
+    const item = Array.isArray(payload?.SPHardwareDataType) ? payload.SPHardwareDataType[0] : null;
+    const chipModel = typeof item?.chip_type === 'string' ? item.chip_type.trim() : '';
+    const machineModel = typeof item?.machine_model === 'string' ? item.machine_model.trim() : '';
+    return { available: chipModel.length > 0, chipModel: chipModel || null, machineModel: machineModel || null };
+  } catch {
+    return { available: false, chipModel: null, machineModel: null };
+  }
+}
 function inspectHost() {
   const nvidia = nvidiaEvidence();
+  const apple = appleHardwareEvidence();
   return {
     platform: process.platform,
     architecture: process.arch,
     node: process.version,
     totalMemoryBytes: os.totalmem(),
     freeDiskBytes: diskFreeBytes(home),
-    nvidia
+    nvidia,
+    apple
   };
 }
 function assertHostEligible(profile, host) {
-  if (host.platform !== profile.platform || host.architecture !== profile.architecture) throw Object.assign(new Error('This operational profile does not support this platform/architecture.'), { state: 'UNSUPPORTED_HOST' });
-  const req = profile.hostRequirements ?? {};
-  if (Number.isSafeInteger(req.minimumSystemMemoryBytes) && host.totalMemoryBytes < req.minimumSystemMemoryBytes) throw Object.assign(new Error('This computer does not have enough system memory for the current profile.'), { state: 'UNSUPPORTED_HOST' });
-  if (Number.isSafeInteger(req.minimumFreeDiskBytes) && host.freeDiskBytes < req.minimumFreeDiskBytes) throw Object.assign(new Error('There is not enough free disk space for the current profile.'), { state: 'UNSUPPORTED_HOST' });
-  if (req.requiresNvidiaSmi === true && !host.nvidia.available) throw Object.assign(new Error('The current Windows profile requires a compatible NVIDIA GPU/driver that nvidia-smi can identify.'), { state: 'UNSUPPORTED_HOST' });
+  const result = evaluateOperationalProfileHost(profile, host);
+  if (!result.ok) {
+    const error = new Error(`This operational profile does not support the observed host: ${result.reason}`);
+    error.state = result.state;
+    error.detail = result;
+    throw error;
+  }
 }
 function destinationForArtifact(profile, artifact) {
   const isModel = profile.modelArtifacts.some((entry) => entry.artifactRef === artifact.artifactRef);
   return isModel ? path.join(home, 'models', artifact.filename) : path.join(home, 'runtime', 'artifacts', artifact.filename);
 }
 function psQuote(value) { return String(value).replace(/'/gu, "''"); }
-function expandArchive(archive, destination) {
-  const command = `Expand-Archive -LiteralPath '${psQuote(archive)}' -DestinationPath '${psQuote(destination)}' -Force`;
-  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], { encoding: 'utf8', windowsHide: true });
-  if (result.error || result.status !== 0) throw new Error(`runtime archive extraction failed: ${result.stderr || result.error?.message || 'unknown error'}`);
+function expandArchive(profile, archive, destination) {
+  if (profile.runtime.extraction.class === 'WINDOWS_ZIP_EXPAND_ARCHIVE') {
+    const command = `Expand-Archive -LiteralPath '${psQuote(archive)}' -DestinationPath '${psQuote(destination)}' -Force`;
+    const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], { encoding: 'utf8', windowsHide: true });
+    if (result.error || result.status !== 0) throw new Error(`runtime archive extraction failed: ${result.stderr || result.error?.message || 'unknown error'}`);
+    return;
+  }
+  if (profile.runtime.extraction.class === 'POSIX_TAR_GZ' && process.platform === 'darwin') {
+    assertSafeMacTarArchive(archive);
+    const result = spawnSync('/usr/bin/tar', ['-xzf', archive, '-C', destination], {
+      encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, shell: false
+    });
+    if (result.error || result.status !== 0) throw new Error(`runtime archive extraction failed: ${result.stderr || result.error?.message || 'unknown error'}`);
+    assertSafeMacExtractedTree(destination);
+    return;
+  }
+  throw new Error(`runtime extraction class is not supported on this host: ${profile.runtime.extraction.class}`);
 }
 function findNamedFile(root, filename) {
   const found = [];
   const visit = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
-      if (entry.isSymbolicLink()) throw new Error(`runtime extraction produced a symbolic link: ${full}`);
+      if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) visit(full);
       else if (entry.isFile() && entry.name.toLowerCase() === filename.toLowerCase()) found.push(full);
     }
@@ -114,23 +151,48 @@ function findNamedFile(root, filename) {
 async function materializeRuntime(profile, artifactPaths) {
   const target = path.join(home, ...profile.runtime.extraction.subdirectory.split('/'));
   if (fs.existsSync(target)) {
+    if (profile.runtime.executableSha256 === null) {
+      throw Object.assign(
+        new Error('candidate runtime executable SHA-256 is not yet source-pinned; refusing to reuse an existing materialization'),
+        { state: 'UNPINNED_CANDIDATE_RUNTIME_REUSE_FORBIDDEN' }
+      );
+    }
+    assertSafeMacExtractedTree(target);
     const executable = findNamedFile(target, profile.runtime.executableName);
+    const executableBytes = fs.statSync(executable).size;
     const actual = await sha256File(executable);
-    if (actual !== profile.runtime.executableSha256) throw new Error('existing runtime materialization failed executable verification; refusing to overwrite it');
-    return { state: 'REUSED_VERIFIED_RUNTIME', target, executable, executableSha256: actual };
+    if (!runtimeExecutableIdentityMatches({ profile, actualSha256: actual, bytes: executableBytes })) {
+      throw new Error('existing runtime materialization failed executable SHA-256/byte verification; refusing to overwrite it');
+    }
+    return { state: 'REUSED_VERIFIED_RUNTIME', target, executable, executableSha256: actual, executableBytes, executableSha256DiscoveryRequired: false };
   }
   const staging = `${target}.partial-${process.pid}`;
   if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
   fs.mkdirSync(staging, { recursive: true });
   try {
-    for (const artifact of profile.runtime.artifacts) expandArchive(artifactPaths.get(artifact.artifactRef), staging);
+    for (const artifact of profile.runtime.artifacts) expandArchive(profile, artifactPaths.get(artifact.artifactRef), staging);
     const executable = findNamedFile(staging, profile.runtime.executableName);
+    const executableBytes = fs.statSync(executable).size;
     const actual = await sha256File(executable);
-    if (actual !== profile.runtime.executableSha256) throw new Error(`runtime executable checksum mismatch: expected ${profile.runtime.executableSha256}, actual ${actual}`);
+    if (profile.runtime.executableSha256 !== null &&
+        !runtimeExecutableIdentityMatches({ profile, actualSha256: actual, bytes: executableBytes })) {
+      throw new Error(`runtime executable identity mismatch: expected sha=${profile.runtime.executableSha256} bytes=${profile.runtime.executableExpectedBytes ?? 'UNPINNED'}, actual sha=${actual} bytes=${executableBytes}`);
+    }
+    if (profile.runtime.executableSha256 === null &&
+        !(profile.state === 'CANDIDATE_QUALIFICATION' && profile.runtime.executableSha256DiscoveryRequired === true)) {
+      throw new Error('runtime executable SHA-256 is absent outside an admitted candidate-discovery state');
+    }
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.renameSync(staging, target);
     const finalExecutable = path.join(target, path.relative(staging, executable));
-    return { state: 'MATERIALIZED_VERIFIED_RUNTIME', target, executable: finalExecutable, executableSha256: actual };
+    return {
+      state: 'MATERIALIZED_VERIFIED_RUNTIME',
+      target,
+      executable: finalExecutable,
+      executableSha256: actual,
+      executableBytes,
+      executableSha256DiscoveryRequired: profile.runtime.executableSha256 === null
+    };
   } catch (error) {
     fs.rmSync(staging, { recursive: true, force: true });
     throw error;
@@ -146,23 +208,28 @@ function pidAlive(pid) {
   if (!Number.isInteger(pid) || pid <= 0) return false;
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
-function windowsProcessEvidence(pid) {
-  if (process.platform !== 'win32' || !Number.isInteger(pid) || pid <= 0) return null;
+function platformProcessEvidence(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return null;
+  if (process.platform === 'darwin') return readMacProcessEvidence(pid);
+  if (process.platform !== 'win32') return null;
   const command = `$p=Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}" -ErrorAction SilentlyContinue; if($null -eq $p){exit 3}; [ordered]@{name=[string]$p.Name;executablePath=[string]$p.ExecutablePath;commandLine=[string]$p.CommandLine}|ConvertTo-Json -Compress`;
   const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], { encoding: 'utf8', windowsHide: true });
   if (result.error || result.status !== 0 || !String(result.stdout ?? '').trim()) return null;
   try { return JSON.parse(String(result.stdout).trim()); } catch { return null; }
 }
 async function existingRuntimeReuse(profile, receiptPath, { executable, modelPath, projectorPath }) {
+  if (profile.runtime.executableSha256 === null) return null;
   if (!fs.existsSync(receiptPath)) return null;
   try {
     const prior = loadJson(receiptPath);
     const pid = Number(prior.runtime?.pid);
     if (prior.profileRef !== profile.profileRef || prior.endpoint?.origin !== profile.endpoint.origin || !pidAlive(pid)) return null;
-    const processEvidence = windowsProcessEvidence(pid);
+    const processEvidence = platformProcessEvidence(pid);
     const expectedArguments = buildRuntimeArguments(profile, { modelPath, projectorPath });
     if (!runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath: executable, expectedArguments })) return null;
-    if (await sha256File(executable) !== profile.runtime.executableSha256) return null;
+    const executableBytes = fs.statSync(executable).size;
+    const executableSha256 = await sha256File(executable);
+    if (!runtimeExecutableIdentityMatches({ profile, actualSha256: executableSha256, bytes: executableBytes })) return null;
     if (!await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) return null;
     return { pid, reusedReceiptRef: prior.receiptRef ?? null };
   } catch { return null; }
@@ -186,8 +253,17 @@ async function qualifyInference(profile) {
   if (!response.ok) throw new Error(`runtime inference qualification failed: HTTP ${response.status}`);
   const payload = await response.json();
   const content = payload?.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || content.trim().length === 0) throw new Error('runtime inference qualification returned no assistant content');
-  return { responseSha256: crypto.createHash('sha256').update(content).digest('hex'), contentObserved: true };
+  if (!qualificationContentMatches(profile, content)) {
+    const expected = profile.qualification.expectedContent;
+    if (typeof expected === 'string') throw new Error('runtime inference qualification did not return the exact expected readiness content');
+    throw new Error('runtime inference qualification returned no assistant content');
+  }
+  const normalizedContent = content.trim();
+  return {
+    responseSha256: crypto.createHash('sha256').update(normalizedContent).digest('hex'),
+    contentObserved: true,
+    expectedContentMatched: typeof profile.qualification.expectedContent === 'string' ? true : null
+  };
 }
 async function promptConsent(profile) {
   if (yes) return true;
@@ -332,8 +408,21 @@ try {
     home: { state: homeStatus.state, homeIdentityRef: loadJson(homeStatus.manifest).homeRef ?? null },
     host,
     artifacts: artifactReceipts,
-    materialization: { state: materialization.state, executableSha256: materialization.executableSha256 },
-    runtime: { pid: runtimePid, disposition: runtimeDisposition },
+    materialization: {
+      state: materialization.state,
+      executableSha256: materialization.executableSha256,
+      executableBytes: materialization.executableBytes,
+      sourcePinnedExecutableSha256: profile.runtime.executableSha256,
+      sourcePinnedExecutableExpectedBytes: profile.runtime.executableExpectedBytes ?? null,
+      executableSha256DiscoveryRequired: materialization.executableSha256DiscoveryRequired === true,
+      target: materialization.target
+    },
+    runtime: {
+      pid: runtimePid,
+      disposition: runtimeDisposition,
+      executablePath: materialization.executable,
+      arguments: buildRuntimeArguments(profile, { modelPath, projectorPath })
+    },
     endpoint: profile.endpoint,
     qualification,
     browserBinding: binding,
@@ -351,6 +440,13 @@ try {
     activeArtifactRef: profile.modelArtifacts[0].artifactRef,
     runtimeDependencyRef: profile.runtime.dependencyRef,
     runtimePid,
+    runtimeExecutablePath: materialization.executable,
+    runtimeExecutableSha256: materialization.executableSha256,
+    runtimeExecutableSha256SourcePinned: profile.runtime.executableSha256,
+    runtimeArguments: buildRuntimeArguments(profile, { modelPath, projectorPath }),
+    runtimeMaterializationRoot: materialization.target,
+    modelPath,
+    projectorPath,
     qualificationReceiptRef: receiptRef,
     automaticDownload: false,
     automaticActivation: false
