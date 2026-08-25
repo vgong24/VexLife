@@ -519,8 +519,62 @@ function bootstrap(home, repo) {
     cwd: repo, accepted: [0, 3]
   });
 }
+export function qualifiedInitializationFromCurrentHome(home, {
+  pidAliveImpl = pidAlive,
+  processEvidenceReader = readMacProcessEvidence
+} = {}) {
+  const root = path.resolve(home);
+  const homeManifest = jsonRead(path.join(root, 'config', 'home.json'));
+  const model = jsonRead(path.join(root, 'config', 'model.json'));
+  const receiptPath = path.join(root, 'recovery', 'vex-initialization-receipt.json');
+  const receipt = jsonRead(receiptPath);
+  if (!homeManifest || !model || !receipt) return null;
+  if (receipt.schemaVersion !== 'vexlife.initialization-receipt/v1' || receipt.state !== 'RUNTIME_QUALIFIED') return null;
+  if (model.schemaVersion !== 'vexlife.model-configuration/v1' || model.state !== 'BOUND_QUALIFIED') return null;
+  if (!receipt.receiptRef || model.qualificationReceiptRef !== receipt.receiptRef) return null;
+  if (!homeManifest.homeRef || receipt.home?.homeIdentityRef !== homeManifest.homeRef) return null;
+  if (!receipt.profileRef || receipt.profileRef !== model.profileRef) return null;
+  if (receipt.endpoint?.origin !== model.endpoint || receipt.endpoint?.requestModel !== model.requestModel) return null;
+
+  const pid = Number(model.runtimePid);
+  if (!Number.isInteger(pid) || pid <= 0 || Number(receipt.runtime?.pid) !== pid || !pidAliveImpl(pid)) return null;
+  if (!model.runtimeExecutablePath || !model.runtimeExecutableSha256 || !Array.isArray(model.runtimeArguments)) return null;
+  const executablePath = path.resolve(model.runtimeExecutablePath);
+  if (!fs.existsSync(executablePath) || !fs.lstatSync(executablePath).isFile()) return null;
+  if (path.resolve(receipt.runtime?.executablePath || '') !== executablePath) return null;
+  if (!Array.isArray(receipt.runtime?.arguments) || JSON.stringify(receipt.runtime.arguments) !== JSON.stringify(model.runtimeArguments)) return null;
+  if (receipt.materialization?.executableSha256 !== model.runtimeExecutableSha256) return null;
+  if (model.runtimeExecutableSha256SourcePinned &&
+      receipt.materialization?.sourcePinnedExecutableSha256 !== model.runtimeExecutableSha256SourcePinned) return null;
+
+  const evidence = processEvidenceReader(pid);
+  if (!evidence || !runtimeProcessEvidenceMatches({
+    processEvidence: evidence,
+    expectedExecutablePath: executablePath,
+    expectedArguments: model.runtimeArguments
+  })) return null;
+  if (sha256(fs.readFileSync(executablePath)) !== model.runtimeExecutableSha256) return null;
+
+  return {
+    schemaVersion: 'vexlife.initialization-result/v1',
+    state: 'RUNTIME_QUALIFIED',
+    profileRef: receipt.profileRef,
+    profileState: receipt.profileState,
+    runtimePid: pid,
+    endpoint: receipt.endpoint.origin,
+    requestModel: receipt.endpoint.requestModel,
+    browserBinding: receipt.browserBinding,
+    receiptPath,
+    reuseDisposition: 'REUSED_CURRENT_QUALIFIED_RUNTIME_RECEIPT'
+  };
+}
 function initialize(home, repo, options) {
-  const argv = [path.join(repo, 'scripts', 'initialize-vex.mjs'), '--home', home, '--yes'];
+  if (!options.candidateProfileRef && !options.candidateAuthorityRef) {
+    const current = qualifiedInitializationFromCurrentHome(home);
+    if (current) return current;
+  }
+  const argv = [path.join(repo, 'scripts', 'initialize-vex.mjs'), '--home', home];
+  if (options.noninteractiveAuthorized === true) argv.push('--yes');
   if (options.candidateProfileRef || options.candidateAuthorityRef) {
     if (!options.candidateProfileRef || !options.candidateAuthorityRef) {
       throw new Error('candidate qualification requires both profile and authority refs');
@@ -680,7 +734,8 @@ export async function runLifecycle(argv = process.argv.slice(2)) {
   const home = path.resolve(String(args['--home'] || path.join(os.homedir(), '.vexlife')));
   const options = {
     candidateProfileRef: args['--candidate-profile-ref'] ? String(args['--candidate-profile-ref']) : null,
-    candidateAuthorityRef: args['--candidate-authority-ref'] ? String(args['--candidate-authority-ref']) : null
+    candidateAuthorityRef: args['--candidate-authority-ref'] ? String(args['--candidate-authority-ref']) : null,
+    noninteractiveAuthorized: args['--yes'] === true
   };
   const state = classifyMacLifecycleState(home);
   if (operation === 'status') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation, state, choices: choicesForLifecycleState(state) };
