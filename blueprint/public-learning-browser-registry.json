@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "vexlife.public-learning-browser-registry/v1",
+  "registryRef": "registry.vexlife.public-learning-browser.001",
+  "surfaceRef": "surface.vexlife.public-learning.architecture-atlas.001",
+  "prototypeRef": "prototype.vexlife.public-learning-browser.architecture-atlas.001",
+  "projectionRef": "projection.vexlife.public-learning.architecture-atlas.001",
+  "sourceProjectionPath": "generated/public-learning/projection.json",
+  "fieldRoutePath": "/learn/architecture/",
+  "sourceLocale": "en",
+  "requiredLocales": [
+    "en",
+    "ja",
+    "zh"
+  ],
+  "returnSchemaVersion": "vexlife.public-learning-leaf-return/v1",
+  "presentationPolicy": {
+    "entryRef": "public-group.vexlife.architecture.001",
+    "childEdgeTypes": [
+      "PUBLIC_GROUP",
+      "PUBLIC_MEMBER"
+    ],
+    "canonicalParentMutation": false,
+    "leafOpenSemanticNavigation": false,
+    "leafOpenJourneyAppend": false,
+    "leafScrollMutatesTerrain": false,
+    "browserHistoryEntryIsJourneyEvent": false,
+    "nonSpatialProjectionSharesTerrainRefs": true
+  },
+  "controls": {
+    "readLeaf": {
+      "controlRef": "control.public-learning.read-leaf",
+      "labelRef": "public.browser.read-leaf"
+    },
+    "returnField": {
+      "controlRef": "control.public-learning.return-field",
+      "labelRef": "public.browser.return-field"
+    },
+    "browseList": {
+      "controlRef": "control.public-learning.browse-list",
+      "labelRef": "public.browser.browse-list",
+      "noteRef": "public.browser.browse-list-note"
+    },
+    "askVex": {
+      "controlRef": "control.public-learning.ask-vex",
+      "labelRef": "public.browser.ask-vex",
+      "noteRef": "public.browser.ask-vex-held",
+      "effectState": "HELD",
+      "executable": false
+    }
+  },
+  "accessibleNameRefs": {
+    "breadcrumb": "public.browser.accessible.breadcrumb",
+    "zoomControls": "public.browser.accessible.zoom-controls",
+    "languageSelect": "public.browser.language",
+    "browseNav": "public.browser.accessible.browse-nav"
+  },
+  "sectionLabelRefs": {
+    "what": "public.browser.section.what",
+    "why": "public.browser.section.why",
+    "how": "public.browser.section.how",
+    "when": "public.browser.section.when",
+    "boundaries": "public.browser.section.boundaries",
+    "related": "public.browser.section.related"
+  },
+  "technicalRelationshipDetailsLabelRef": "public.browser.relationship-details",
+  "runtimeAllowlist": [
+    "/reference/browser/public-learning/index.html",
+    "/reference/browser/public-learning/app.js",
+    "/reference/browser/public-learning/app.css",
+    "/reference/browser/app.css",
+    "/reference/browser/modules/public-learning-controller.js",
+    "/reference/browser/modules/dom.js",
+    "/reference/browser/modules/navigation-controller.js",
+    "/reference/browser/modules/terrain-controller.js",
+    "/blueprint/public-learning-browser-registry.json",
+    "/blueprint/public-learning-browser/strings/en.json",
+    "/blueprint/public-learning-browser/strings/ja.json",
+    "/blueprint/public-learning-browser/strings/zh.json",
+    "/generated/public-learning/projection.json"
+  ],
+  "forbiddenRuntimePrefixes": [
+    "/reference/browser/app.js",
+    "/reference/browser/modules/demo-data.js",
+    "/reference/browser/modules/chat-controller.js",
+    "/reference/browser/modules/guide-controller.js",
+    "/reference/browser/modules/living-journal",
+    "/api/",
+    "/docs/private-continuity/",
+    "/runtime/",
+    "/models/"
+  ],
+  "proofCells": [
+    "S7P-00",
+    "S7P-01",
+    "S7P-02",
+    "S7P-03",
+    "S7P-04",
+    "S7P-05",
+    "S7P-06",
+    "S7P-07",
+    "S7P-08",
+    "S7P-09",
+    "S7P-10",
+    "S7P-11",
+    "S7P-12",
+    "S7P-13",
+    "S7P-14",
+    "S7P-15",
+    "S7P-16",
+    "S7P-17"
+  ]
+}

@@ -9,6 +9,12 @@
       "sha256": "7a5bc8c58a0d49b2bafbcec29a915674c9c2deefbc4e66298915863f23c79652"
     },
     {
+      "path": "blueprint/public-learning-browser-registry.json",
+      "mode": "100644",
+      "bytes": 3722,
+      "sha256": "86de21cd74c87a2145fbae0cd946044a648771d7c73983de3c04b7701b33f1b7"
+    },
+    {
       "path": "docs/CONTINUITY-STREAM.md",
       "mode": "100644",
       "bytes": 6388,

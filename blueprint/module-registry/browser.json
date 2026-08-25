@@ -262,5 +262,88 @@
       "test/browser.test.mjs"
     ],
     "writes": []
+  },
+  {
+    "moduleRef": "module.vexlife.browser.architecture-atlas-document",
+    "path": "reference/browser/public-learning/index.html",
+    "role": "Public Architecture/Atlas learning document over the exact B1 public projection; includes Terrain and a semantically equivalent non-spatial list without product Home or Pages authority.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.css",
+      "reference/browser/public-learning/app.css"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/public-learning-browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/public-learning/app.js",
+      "reference/browser/modules/public-learning-controller.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.architecture-atlas-adapter",
+    "path": "reference/browser/public-learning/app.js",
+    "role": "Loads only the prebuilt B1 public projection plus the public-learning presentation registry/catalogs and starts the bounded source-managed controller.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "generated/public-learning/projection.json",
+      "blueprint/public-learning-browser-registry.json",
+      "blueprint/public-learning-browser/strings/*.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "reference/browser/public-learning/index.html"
+    ],
+    "tests": [
+      "test/public-learning-browser.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/modules/public-learning-controller.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.architecture-atlas-styles",
+    "path": "reference/browser/public-learning/app.css",
+    "role": "Source-managed public reading, accessible-list, responsive and reduced-motion projection layered over accepted browser variables and E2.8 styles.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.css",
+      "blueprint/design-tokens.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "reference/browser/public-learning/index.html"
+    ],
+    "tests": [
+      "test/public-learning-browser.test.mjs"
+    ],
+    "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.browser.architecture-atlas-controller",
+    "path": "reference/browser/modules/public-learning-controller.js",
+    "role": "Projects B1 public grouping/member edges into the existing Terrain owner and a semantically equivalent accessible list, renders localized leaves, and restores exact B2 Terrain presentation on Browser Back without semantic leaf navigation.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "generated/public-learning/projection.json",
+      "blueprint/public-learning-browser-registry.json",
+      "blueprint/public-learning-browser/strings/*.json",
+      "reference/browser/modules/dom.js",
+      "reference/browser/modules/navigation-controller.js",
+      "reference/browser/modules/terrain-controller.js"
+    ],
+    "writes": [
+      "browser history entries for public leaf presentation only",
+      "existing Terrain localStorage through the accepted Terrain owner"
+    ],
+    "consumers": [
+      "reference/browser/public-learning/app.js"
+    ],
+    "tests": [
+      "test/public-learning-browser.test.mjs"
+    ],
+    "changeMap": []
   }
 ]
