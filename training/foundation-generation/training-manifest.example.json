@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "vexlife.foundation-training-manifest/v1",
+  "trainingRunRef": "training-run.vexlife.g04b.example.001",
+  "trainingMode": "FOUNDATION_PARTIAL_FULL_RANK",
+  "sourceModelRepo": "Qwen/Qwen3.5-4B",
+  "sourceModelRevision": "REPLACE_WITH_EXACT_HUGGINGFACE_COMMIT",
+  "sourceModelSnapshotFingerprint": "REPLACE_WITH_VERIFIED_SOURCE_SNAPSHOT_SHA256",
+  "licenseRef": "license.apache-2.0.qwen3.5",
+  "trainingDatasetPath": "training/private/g04b-train.jsonl",
+  "trainingDatasetSha256": "REPLACE_WITH_SHA256",
+  "heldoutDatasetPath": "training/private/g04b-heldout.jsonl",
+  "heldoutDatasetSha256": "REPLACE_WITH_SHA256",
+  "sourceLessonRefs": [
+    "github.issue.vextreme-sdk.335",
+    "github.issue.vextreme-sdk.566"
+  ],
+  "sourceScoreRefs": [],
+  "consentReceiptRefs": [
+    "REPLACE_WITH_EXACT_TRAINING_CONSENT_RECEIPT"
+  ],
+  "trainingIdentityRefs": [
+    "github.issue.vextreme-sdk.335"
+  ],
+  "protectedInvariantRefs": [
+    "invariant.score-remains-source-truth",
+    "invariant.accepted-model-generation-not-overwritten-in-place",
+    "invariant.consent-privacy-effect-gates-remain-external"
+  ],
+  "parameterSelection": {
+    "strategy": "LAST_N_LANGUAGE_BLOCKS",
+    "count": 2,
+    "includeLmHead": false
+  },
+  "seed": 240824,
+  "maxSteps": 1,
+  "epochs": 1,
+  "learningRate": 0.000002,
+  "maxSequenceLength": 512,
+  "gradientAccumulationSteps": 1,
+  "precision": "bf16",
+  "optimizer": "adamw",
+  "outputDir": "training/output/vex-foundation-g1-candidate",
+  "expectedHardwareProfileRef": "hardware.windows-x64.nvidia.cuda12-compatible",
+  "rollbackArtifactRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
+  "activationAuthorized": false,
+  "publicUploadAuthorized": false
+}
