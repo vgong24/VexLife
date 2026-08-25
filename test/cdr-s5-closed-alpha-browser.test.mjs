@@ -146,6 +146,7 @@ test('CDR-S5-A14 typed connection/session failures remain distinct and fail clos
 test('CDR-S5-A15 delivery admission requires verified receipt plus an affirmative bounded invitation decision', () => {
   assert.match(js, /invitationDecisionEligible\(\)/);
   assert.match(js, /decisionPermitsSession\(\)/);
+  assert.match(js, /!state\.disconnected/);
   assert.match(js, /delivery\.disabled = !canAdvanceDelivery\(\)/);
   assert.match(js, /state\.decision = 'DEFER';\s*state\.delivery = 'NOT_CONNECTED'/s);
 });
@@ -283,6 +284,18 @@ test('CDR-S5-A16 Chromium practicum proves consent/invitation gating, keyboard, 
     assert.equal(await page.locator('#support-panel').getAttribute('hidden'), '');
     assert.equal(await page.locator('#support').getAttribute('aria-expanded'), 'false');
     assert.equal(await page.locator('#decision').isDisabled(), true);
+    assert.equal(await page.locator('#delivery').isDisabled(), true);
+
+    await page.locator('#consent').click();
+    await page.selectOption('#invitation', 'RECEIVED_VERIFIED_REFERENCE');
+    await page.selectOption('#decision', 'ACCEPT');
+    assert.equal(await page.locator('#delivery').isDisabled(), false);
+    await page.selectOption('#delivery', 'CONNECTED');
+    await page.locator('#disconnect').click();
+    assert.equal(await page.locator('#delivery').inputValue(), 'NOT_CONNECTED');
+    assert.equal(await page.locator('#delivery').isDisabled(), true);
+    assert.match(await page.locator('#recovery-status').textContent(), /disconnected/i);
+    await page.locator('#reset').click();
     assert.equal(await page.locator('#delivery').isDisabled(), true);
 
     assertLoopbackOnly(desktopRequests);
