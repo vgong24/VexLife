@@ -191,17 +191,17 @@
         "MACOS_METAL_QUALIFICATION_FAILURE"
       ],
       "releaseQualification": {
-        "browserRealTurnPassed": false,
+        "browserRealTurnPassed": true,
         "candidateQualificationIssueRef": "github.issue.vexlife.194",
-        "class": "SOURCE_LOCAL_OPERATIONAL_PROFILE_CANDIDATE",
+        "class": "SOURCE_LOCAL_OPERATIONAL_PROFILE",
         "officialVerifiedBuildClaimed": false,
         "p11FreshHumanClaimed": false,
         "publicReleaseClaimed": false,
-        "rebuildPreservePassed": false,
-        "repairPassed": false,
+        "rebuildPreservePassed": true,
+        "repairPassed": true,
         "runtimeExecutableSha256Pinned": true,
         "runtimeQualificationPassed": true,
-        "uninstallPreservePassed": false,
+        "uninstallPreservePassed": true,
         "upstreamArchiveSha256Pinned": true,
         "runtimeQualificationEvidence": {
           "acceptanceRef": "github.issue.vexlife.194.comment.5393435809",
@@ -215,6 +215,32 @@
           "runtimeMaterializationClass": "REUSED_VERIFIED_RUNTIME",
           "sourceHead": "5da31d98a5f140267e54a2b201de94eaafeeb0dc",
           "sourceTree": "bdca65c47ace299c75b26a3f45f5e9749263d908"
+        },
+        "lifecycleQualificationEvidence": {
+          "HomeDeleted": false,
+          "MemoryDeleted": false,
+          "acceptanceRef": "github.issue.vexlife.194.comment.5402999297",
+          "conversationContinuityPassed": true,
+          "destructiveLocalDataRemovalPerformed": false,
+          "exactOwnedShutdown": true,
+          "finalProtectedHomeFingerprintSha256": "312327fee81fff591aa9bb51275ce05b61b6ae574dc336e6cf68ae6a7d8a4cba",
+          "firstConversationHeadSha256": "9a0a3eda1815306aacc55da553dea934aefe4fe8130c313bf9253b7a8ba00e78",
+          "modelDisposition": "REUSED_VERIFIED",
+          "modelProjectorExternalFetchHeld": true,
+          "onlyExactRuntimeArchiveExternalFetchAllowed": true,
+          "pathWithSpacesProcessOwnershipPassed": true,
+          "personalHome": false,
+          "projectorDisposition": "REUSED_VERIFIED",
+          "returnContentSetSha256": "8d58f84da4de9ba65ac072f404aeaa34d5d6df658faa29dc2abcf3db9097090b",
+          "returnSha256": "b070c6706a37992ba9016ba76a48bb7594ae79e98ea694f36a53ec161ef5e6a0",
+          "runtimeMaterializationDisposition": "MATERIALIZED_VERIFIED_RUNTIME",
+          "runtimeReacquisitionDisposition": "DOWNLOADED_AND_VERIFIED",
+          "secondConversationHeadSha256": "e5df93ef3204b3dcec3ce60ffa6c0b80c9dec9275283b7869276324506c23ee4",
+          "secondPriorConversationHeadSha256": "9a0a3eda1815306aacc55da553dea934aefe4fe8130c313bf9253b7a8ba00e78",
+          "sourceHead": "75c6ad0688a76c7eac5c62c15aa5d5d4f91bb029",
+          "sourceTree": "9070bd8d9b717cf9e6ba3432278c3967ddb25bb1",
+          "technicalMemoryContinuityPassed": true,
+          "technicalMemorySentinelSha256": "c35c1b7cbe5be7aaa7fd8ced2e4695b2226cd4b077d3b509a285f5a3d83bb735"
         }
       },
       "runtime": {
@@ -279,10 +305,11 @@
         "github.issue.vexlife.194.comment.5392062860",
         "github.issue.vexlife.194.comment.5392007503",
         "github.issue.vexlife.194.comment.5393089386",
-        "github.issue.vexlife.194.comment.5393435809"
+        "github.issue.vexlife.194.comment.5393435809",
+        "github.issue.vexlife.194.comment.5402999297"
       ],
-      "state": "CANDIDATE_QUALIFICATION",
-      "stateReason": "Candidate qualification for the observed Apple M4 Pro macOS arm64 host has now earned the lived runtime predicate: exact source-pinned artifacts and runtime materialization were reverified, MTL0 / --gpu-layers all was rebound and proven in the live full process argv, the only listener was numeric loopback 127.0.0.1:18080, the exact VEX_RUNTIME_READY sentinel passed, and exact-owned shutdown closed the listener. The profile remains CANDIDATE_QUALIFICATION because browser real-turn, repair, uninstall-preserve, and same-machine rebuild-preserve predicates are still unproven on this lineage. This does not certify plain M4, M4 Max, or other Apple Silicon and grants no signed/public build, P11 fresh-human, Home deletion, Memory, publication, force, or history-rewrite authority."
+      "state": "RELEASE_QUALIFIED",
+      "stateReason": "Release-qualified for the exact observed Apple M4 Pro / Mac16,7 darwin-arm64 source-local lifecycle after pinned b10107 + Qwen3.5 artifacts, explicit MTL0 / --gpu-layers all runtime qualification, a fresh production-bootstrap technical Home whose actual path contains spaces, two real lifecycle-owned browser companion turns, exact-owned restart/resume, repair, uninstall-preserve, rebuild-preserve, protected multi-GiB model/technical Memory/conversation continuity, and terminal exact-owned cleanup. This is a source-local operational profile qualification only. It does not certify plain M4, M4 Max, other Apple Silicon, a signed/public build, OFFICIAL_VERIFIED_BUILD, or P11 fresh-human/fresh-machine acceptance."
     }
   ]
 }

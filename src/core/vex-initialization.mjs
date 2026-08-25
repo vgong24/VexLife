@@ -223,6 +223,55 @@ export function validateOperationalProfileRegistry(registry) {
           if (evidence[field] !== true) throw new Error(`${p}.releaseQualification.runtimeQualificationEvidence.${field} must be true`);
         }
       }
+      if (profile.platform === 'darwin') {
+        const release = profile.releaseQualification;
+        requireObject(release, `${p}.releaseQualification`);
+        const lifecycleFields = ['browserRealTurnPassed','repairPassed','uninstallPreservePassed','rebuildPreservePassed'];
+        const anyLifecyclePassed = lifecycleFields.some((field) => release[field] === true);
+        const requiresLifecycleEvidence = anyLifecyclePassed || profile.state === NORMAL_PROFILE_STATE;
+        if (requiresLifecycleEvidence) {
+          requireObject(release.lifecycleQualificationEvidence, `${p}.releaseQualification.lifecycleQualificationEvidence`);
+          const evidence = release.lifecycleQualificationEvidence;
+          for (const field of ['acceptanceRef','sourceHead','sourceTree','returnSha256','returnContentSetSha256',
+            'firstConversationHeadSha256','secondConversationHeadSha256','secondPriorConversationHeadSha256',
+            'technicalMemorySentinelSha256','finalProtectedHomeFingerprintSha256',
+            'modelDisposition','projectorDisposition','runtimeReacquisitionDisposition','runtimeMaterializationDisposition']) {
+            requireString(evidence[field], `${p}.releaseQualification.lifecycleQualificationEvidence.${field}`);
+          }
+          if (!/^[0-9a-f]{40}$/u.test(evidence.sourceHead) || !/^[0-9a-f]{40}$/u.test(evidence.sourceTree)) {
+            throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence sourceHead/sourceTree must be 40-char Git object SHAs`);
+          }
+          for (const field of ['returnSha256','returnContentSetSha256','firstConversationHeadSha256','secondConversationHeadSha256',
+            'secondPriorConversationHeadSha256','technicalMemorySentinelSha256','finalProtectedHomeFingerprintSha256']) {
+            requireSha(evidence[field], `${p}.releaseQualification.lifecycleQualificationEvidence.${field}`);
+          }
+          if (evidence.secondPriorConversationHeadSha256 !== evidence.firstConversationHeadSha256 ||
+              evidence.secondConversationHeadSha256 === evidence.firstConversationHeadSha256) {
+            throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence conversation ancestry is not exact`);
+          }
+          if (evidence.modelDisposition !== 'REUSED_VERIFIED' || evidence.projectorDisposition !== 'REUSED_VERIFIED' ||
+              evidence.runtimeReacquisitionDisposition !== 'DOWNLOADED_AND_VERIFIED' ||
+              evidence.runtimeMaterializationDisposition !== 'MATERIALIZED_VERIFIED_RUNTIME') {
+            throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence artifact lifecycle dispositions are not exact`);
+          }
+          for (const field of ['pathWithSpacesProcessOwnershipPassed','technicalMemoryContinuityPassed','conversationContinuityPassed',
+            'modelProjectorExternalFetchHeld','onlyExactRuntimeArchiveExternalFetchAllowed','exactOwnedShutdown']) {
+            if (evidence[field] !== true) throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence.${field} must be true`);
+          }
+          for (const field of ['personalHome','HomeDeleted','MemoryDeleted','destructiveLocalDataRemovalPerformed']) {
+            if (evidence[field] !== false) throw new Error(`${p}.releaseQualification.lifecycleQualificationEvidence.${field} must be false`);
+          }
+        }
+        if (profile.state === NORMAL_PROFILE_STATE) {
+          if (release.class !== 'SOURCE_LOCAL_OPERATIONAL_PROFILE') throw new Error(`${p}.releaseQualification.class must be SOURCE_LOCAL_OPERATIONAL_PROFILE for RELEASE_QUALIFIED`);
+          for (const field of ['runtimeQualificationPassed',...lifecycleFields]) {
+            if (release[field] !== true) throw new Error(`${p}.releaseQualification.${field} must be true for RELEASE_QUALIFIED`);
+          }
+          for (const field of ['officialVerifiedBuildClaimed','publicReleaseClaimed','p11FreshHumanClaimed']) {
+            if (release[field] !== false) throw new Error(`${p}.releaseQualification.${field} must remain false for source-local RELEASE_QUALIFIED`);
+          }
+        }
+      }
       if (!Array.isArray(profile.refreshTriggers) || profile.refreshTriggers.length === 0) throw new Error(`${p}.refreshTriggers must be non-empty`);
     }
   } catch (error) { errors.push(error.message); }

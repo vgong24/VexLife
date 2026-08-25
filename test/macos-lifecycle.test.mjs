@@ -37,11 +37,11 @@ test('MAC00 registry admits exact Windows and macOS arm64 pairs only', () => {
   assert.deepEqual(registry.profiles.map((p) => p.profileRef).sort(), [MAC_REF, WIN_REF].sort());
 });
 
-test('MAC01 normal Mac selection remains held until RELEASE_QUALIFIED', () => {
+test('MAC01 normal Mac selection resolves only after exact source-local release qualification', () => {
   const selected = selectOperationalProfile({ registry, platform: 'darwin', architecture: 'arm64' });
-  assert.equal(selected.state, 'NO_RELEASE_QUALIFIED_PROFILE');
-  assert.equal(selected.heldProfileRef, MAC_REF);
-  assert.equal(selected.heldProfileState, 'CANDIDATE_QUALIFICATION');
+  assert.equal(selected.state, 'PROFILE_RESOLVED');
+  assert.equal(selected.profile.profileRef, MAC_REF);
+  assert.equal(selected.profile.state, 'RELEASE_QUALIFIED');
 });
 
 test('MAC01B M4 Pro host predicate is exact and fails closed for plain M4 or missing Apple evidence', () => {
@@ -68,48 +68,54 @@ test('MAC01B M4 Pro host predicate is exact and fails closed for plain M4 or mis
   assert.equal(missing.reason, 'APPLE_CHIP_MODEL_MISMATCH');
 });
 
-test('MAC02 candidate Mac runtime executable identity is source-pinned but release promotion remains held', () => {
+test('MAC02 Mac release qualification is evidence-bearing and still excludes public/OFFICIAL/P11 claims', () => {
   const selected = selectOperationalProfile({
     registry, platform: 'darwin', architecture: 'arm64',
     mode: 'candidate-qualification', profileRef: MAC_REF
   });
   assert.equal(selected.state, 'PROFILE_RESOLVED');
-  assert.equal(selected.profile.state, 'CANDIDATE_QUALIFICATION');
+  assert.equal(selected.profile.state, 'RELEASE_QUALIFIED');
   assert.equal(selected.profile.runtime.executableSha256, 'a4998768a70ba2be02617ec9d8773accc2952516f4f5a8f38f621ece54cbf04b');
   assert.equal(selected.profile.runtime.executableExpectedBytes, 33472);
-  assert.equal(selected.profile.runtime.executableSha256DiscoveryRequired, false);
-  assert.equal(selected.profile.releaseQualification.runtimeExecutableSha256Pinned, true);
+  assert.equal(selected.profile.releaseQualification.class, 'SOURCE_LOCAL_OPERATIONAL_PROFILE');
   assert.equal(selected.profile.releaseQualification.runtimeQualificationPassed, true);
-  assert.deepEqual(selected.profile.releaseQualification.runtimeQualificationEvidence, {
-    acceptanceRef: 'github.issue.vexlife.194.comment.5393435809',
-    sourceHead: '5da31d98a5f140267e54a2b201de94eaafeeb0dc',
-    sourceTree: 'bdca65c47ace299c75b26a3f45f5e9749263d908',
-    deviceRef: 'MTL0',
-    gpuLayers: 'all',
-    responseSha256: 'c530f84a000800321b1b68e58adbee6beda6a7f6a7a32b10bfa0a4f90cf767ce',
-    artifactCacheClass: 'REUSED_VERIFIED',
-    runtimeMaterializationClass: 'REUSED_VERIFIED_RUNTIME',
-    exactProcessPathArgv: true,
-    numericLoopbackOnly: true,
-    exactOwnedShutdown: true
-  });
-  assert.equal(selected.profile.releaseQualification.browserRealTurnPassed, false);
-  assert.equal(selected.profile.releaseQualification.repairPassed, false);
-  assert.equal(selected.profile.releaseQualification.uninstallPreservePassed, false);
-  assert.equal(selected.profile.releaseQualification.rebuildPreservePassed, false);
+  assert.equal(selected.profile.releaseQualification.browserRealTurnPassed, true);
+  assert.equal(selected.profile.releaseQualification.repairPassed, true);
+  assert.equal(selected.profile.releaseQualification.uninstallPreservePassed, true);
+  assert.equal(selected.profile.releaseQualification.rebuildPreservePassed, true);
+  assert.equal(selected.profile.releaseQualification.officialVerifiedBuildClaimed, false);
+  assert.equal(selected.profile.releaseQualification.publicReleaseClaimed, false);
+  assert.equal(selected.profile.releaseQualification.p11FreshHumanClaimed, false);
+  assert.deepEqual(selected.profile.releaseQualification.lifecycleQualificationEvidence, {
+  "HomeDeleted": false,
+  "MemoryDeleted": false,
+  "acceptanceRef": "github.issue.vexlife.194.comment.5402999297",
+  "conversationContinuityPassed": true,
+  "destructiveLocalDataRemovalPerformed": false,
+  "exactOwnedShutdown": true,
+  "finalProtectedHomeFingerprintSha256": "312327fee81fff591aa9bb51275ce05b61b6ae574dc336e6cf68ae6a7d8a4cba",
+  "firstConversationHeadSha256": "9a0a3eda1815306aacc55da553dea934aefe4fe8130c313bf9253b7a8ba00e78",
+  "modelDisposition": "REUSED_VERIFIED",
+  "modelProjectorExternalFetchHeld": true,
+  "onlyExactRuntimeArchiveExternalFetchAllowed": true,
+  "pathWithSpacesProcessOwnershipPassed": true,
+  "personalHome": false,
+  "projectorDisposition": "REUSED_VERIFIED",
+  "returnContentSetSha256": "8d58f84da4de9ba65ac072f404aeaa34d5d6df658faa29dc2abcf3db9097090b",
+  "returnSha256": "b070c6706a37992ba9016ba76a48bb7594ae79e98ea694f36a53ec161ef5e6a0",
+  "runtimeMaterializationDisposition": "MATERIALIZED_VERIFIED_RUNTIME",
+  "runtimeReacquisitionDisposition": "DOWNLOADED_AND_VERIFIED",
+  "secondConversationHeadSha256": "e5df93ef3204b3dcec3ce60ffa6c0b80c9dec9275283b7869276324506c23ee4",
+  "secondPriorConversationHeadSha256": "9a0a3eda1815306aacc55da553dea934aefe4fe8130c313bf9253b7a8ba00e78",
+  "sourceHead": "75c6ad0688a76c7eac5c62c15aa5d5d4f91bb029",
+  "sourceTree": "9070bd8d9b717cf9e6ba3432278c3967ddb25bb1",
+  "technicalMemoryContinuityPassed": true,
+  "technicalMemorySentinelSha256": "c35c1b7cbe5be7aaa7fd8ced2e4695b2226cd4b077d3b509a285f5a3d83bb735"
+});
   assert.equal(
     runtimeExecutableIdentityMatches({ profile: selected.profile, actualSha256: 'a4998768a70ba2be02617ec9d8773accc2952516f4f5a8f38f621ece54cbf04b', bytes: 33472 }),
     true
   );
-  assert.equal(
-    runtimeExecutableIdentityMatches({ profile: selected.profile, actualSha256: 'a4998768a70ba2be02617ec9d8773accc2952516f4f5a8f38f621ece54cbf04b', bytes: 33473 }),
-    false
-  );
-  assert.equal(
-    runtimeExecutableIdentityMatches({ profile: selected.profile, actualSha256: '0'.repeat(64), bytes: 33472 }),
-    false
-  );
-
   const missingBytes = structuredClone(registry);
   const macWithoutBytes = missingBytes.profiles.find((p) => p.profileRef === MAC_REF);
   delete macWithoutBytes.runtime.executableExpectedBytes;
@@ -185,6 +191,36 @@ test('MAC02D qualified Mac runtime predicate fails closed when evidence is missi
   const mismatchChecked = validateOperationalProfileRegistry(mismatch);
   assert.equal(mismatchChecked.ok, false);
   assert.match(mismatchChecked.errors.join('; '), /device policy must match/i);
+});
+
+test('MAC02E source-local Mac RELEASE_QUALIFIED fails closed without exact lifecycle evidence and every earned predicate', () => {
+  const missingEvidence = structuredClone(registry);
+  const a = missingEvidence.profiles.find((p) => p.profileRef === MAC_REF);
+  delete a.releaseQualification.lifecycleQualificationEvidence;
+  const missingChecked = validateOperationalProfileRegistry(missingEvidence);
+  assert.equal(missingChecked.ok, false);
+  assert.match(missingChecked.errors.join('; '), /lifecycleQualificationEvidence/i);
+
+  const ancestryMismatch = structuredClone(registry);
+  const b = ancestryMismatch.profiles.find((p) => p.profileRef === MAC_REF);
+  b.releaseQualification.lifecycleQualificationEvidence.secondPriorConversationHeadSha256 = '0'.repeat(64);
+  const ancestryChecked = validateOperationalProfileRegistry(ancestryMismatch);
+  assert.equal(ancestryChecked.ok, false);
+  assert.match(ancestryChecked.errors.join('; '), /conversation ancestry/i);
+
+  const missingPredicate = structuredClone(registry);
+  const c = missingPredicate.profiles.find((p) => p.profileRef === MAC_REF);
+  c.releaseQualification.rebuildPreservePassed = false;
+  const predicateChecked = validateOperationalProfileRegistry(missingPredicate);
+  assert.equal(predicateChecked.ok, false);
+  assert.match(predicateChecked.errors.join('; '), /rebuildPreservePassed.*true/i);
+
+  const leakedClaim = structuredClone(registry);
+  const d = leakedClaim.profiles.find((p) => p.profileRef === MAC_REF);
+  d.releaseQualification.publicReleaseClaimed = true;
+  const leakedChecked = validateOperationalProfileRegistry(leakedClaim);
+  assert.equal(leakedChecked.ok, false);
+  assert.match(leakedChecked.errors.join('; '), /publicReleaseClaimed.*false/i);
 });
 
 test('MAC03 tar topology admits only bounded same-directory file aliases and rejects link write-through classes', () => {
