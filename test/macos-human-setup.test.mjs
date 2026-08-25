@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { qualifiedInitializationFromCurrentHome } from '../scripts/macos-lifecycle.mjs';
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const setupCommand = fs.readFileSync(path.join(ROOT, 'setup-vexlife.command'), 'utf8');
 const setup = fs.readFileSync(path.join(ROOT, 'install', 'vexlife-setup.sh'), 'utf8');
+const lifecycle = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
 
 test('MACHUMAN01 root Mac front door is both standalone source bootstrap and one-hop repository delegate', () => {
   assert.match(setupCommand, /^#!\/bin\/bash/m);
@@ -72,6 +77,86 @@ test('MACHUMAN05 state-derived actions are explicit and browser opens only after
   assert.match(setup, /run_lifecycle uninstall-preserve >\/dev\/null/);
   const uninstallTail = setup.slice(setup.lastIndexOf('run_lifecycle uninstall-preserve >/dev/null'));
   assert.doesNotMatch(uninstallTail.split(';;')[0], /open_vex/);
+});
+
+test('MACHUMAN06 exact qualified runtime receipt is reused after consent and byte drift fails closed', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-human-runtime-reuse-'));
+  const home = path.join(root, 'home');
+  for (const dir of ['config', 'recovery', 'runtime']) fs.mkdirSync(path.join(home, dir), { recursive: true });
+
+  const executablePath = path.join(home, 'runtime', 'llama-server');
+  const executableBytes = Buffer.from('exact-qualified-runtime-bytes');
+  fs.writeFileSync(executablePath, executableBytes);
+  const executableSha256 = crypto.createHash('sha256').update(executableBytes).digest('hex');
+  const runtimeArguments = ['-m', path.join(home, 'models', 'model.gguf'), '--host', '127.0.0.1', '--port', '18080'];
+  const homeRef = 'home.vexlife.test.single-consent';
+  const receiptRef = 'receipt.vexlife.initialization.test-single-consent';
+  const endpoint = 'http://127.0.0.1:18080';
+  const requestModel = 'qwen3.5-test';
+  const pid = 4242;
+
+  fs.writeFileSync(path.join(home, 'config', 'home.json'), `${JSON.stringify({ homeRef })}\n`);
+  fs.writeFileSync(path.join(home, 'config', 'model.json'), `${JSON.stringify({
+    schemaVersion: 'vexlife.model-configuration/v1',
+    state: 'BOUND_QUALIFIED',
+    profileRef: 'profile.vexlife.test.mac',
+    endpoint,
+    requestModel,
+    runtimePid: pid,
+    runtimeExecutablePath: executablePath,
+    runtimeExecutableSha256: executableSha256,
+    runtimeExecutableSha256SourcePinned: executableSha256,
+    runtimeArguments,
+    qualificationReceiptRef: receiptRef
+  })}\n`);
+  fs.writeFileSync(path.join(home, 'recovery', 'vex-initialization-receipt.json'), `${JSON.stringify({
+    schemaVersion: 'vexlife.initialization-receipt/v1',
+    receiptRef,
+    state: 'RUNTIME_QUALIFIED',
+    profileRef: 'profile.vexlife.test.mac',
+    profileState: 'RELEASE_QUALIFIED',
+    home: { homeIdentityRef: homeRef },
+    endpoint: { origin: endpoint, requestModel },
+    runtime: { pid, executablePath, arguments: runtimeArguments },
+    materialization: {
+      executableSha256,
+      sourcePinnedExecutableSha256: executableSha256
+    },
+    browserBinding: { origin: 'http://127.0.0.1:18110' }
+  })}\n`);
+
+  const processEvidence = {
+    platform: 'darwin',
+    name: path.basename(executablePath),
+    executablePath,
+    commandLine: [executablePath, ...runtimeArguments].join(' '),
+    commandLineClass: 'DARWIN_PS_FLATTENED_ARGV',
+    argvBoundaryPreserved: false,
+    tokens: null
+  };
+  const reused = qualifiedInitializationFromCurrentHome(home, {
+    pidAliveImpl: () => true,
+    processEvidenceReader: () => processEvidence
+  });
+  assert.equal(reused?.state, 'RUNTIME_QUALIFIED');
+  assert.equal(reused?.reuseDisposition, 'REUSED_CURRENT_QUALIFIED_RUNTIME_RECEIPT');
+  assert.equal(reused?.receiptPath, path.join(home, 'recovery', 'vex-initialization-receipt.json'));
+
+  fs.writeFileSync(executablePath, 'drifted-runtime-bytes');
+  assert.equal(qualifiedInitializationFromCurrentHome(home, {
+    pidAliveImpl: () => true,
+    processEvidenceReader: () => processEvidence
+  }), null);
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('MACHUMAN07 lifecycle forwards noninteractive consent only from an explicit caller flag', () => {
+  assert.match(lifecycle, /const argv = \[path\.join\(repo, 'scripts', 'initialize-vex\.mjs'\), '--home', home\];/);
+  assert.doesNotMatch(lifecycle, /const argv = \[[^\n]*'--yes'[^\n]*\];/);
+  assert.match(lifecycle, /if \(options\.noninteractiveAuthorized === true\) argv\.push\('--yes'\);/);
+  assert.match(lifecycle, /noninteractiveAuthorized: args\['--yes'\] === true/);
+  assert.match(lifecycle, /qualifiedInitializationFromCurrentHome\(home\)/);
 });
 
 // [VXG RealForever]
