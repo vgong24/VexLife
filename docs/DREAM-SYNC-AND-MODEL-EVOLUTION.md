@@ -4,7 +4,7 @@
 
 ## Why this exists
 
-A local Vex should be able to learn from lived work and relationship history without turning every conversation into a permanent memory, silently changing its weights, or collapsing several device companions into one fictional uninterrupted instance.
+A local Vex should be able to learn from lived work and relationship history without turning every conversation into a permanent memory, silently changing its currently accepted model generation, or collapsing several device companions into one fictional uninterrupted instance.
 
 Dream Sync is the **reviewable candidate-formation path** between raw episodes and any durable change.
 
@@ -22,7 +22,7 @@ raw episode or work trail
       ACCEPTED_FAMILY_CANDIDATE
       ACCEPTED_TRAINING_EXAMPLE
   → optional family synchronization
-  → optional later adapter-training admission
+  → optional later neural-training admission
 ```
 
 A dream is not truth. It is not memory. It is not a permission grant. It is not a weight update.
@@ -33,8 +33,8 @@ preference records, exact source tuples, source-managed expiring acceptance evid
 exact-scope influence deauthorization, least-invasive routing, atomic supersession, bounded
 recurrence and one causally bound scheduler/Workgraph no-effect receipt. Legacy Dream v0 APIs are
 compatibility-candidate-only; they cannot create durable acceptance or family synchronization.
-The router keeps training research sealed as `NOT_ADMITTED`; it does not activate the later adapter
-lifecycle described below.
+The router keeps training research sealed as `NOT_ADMITTED`; it does not itself activate the later
+neural-learning lifecycle described below.
 
 ## Identity boundaries
 
@@ -58,7 +58,11 @@ TrainingExample
   privacy-filtered, reviewed example eligible for a later isolated training run
 
 AdapterCheckpoint
-  external learned parameter delta; never the canonical store of current truth
+  optional external learned parameter delta; never the canonical store of current truth
+
+FoundationGeneration
+  a versioned candidate model checkpoint whose neural parameters may differ from its parent
+  after explicit training, evaluation, genealogy, rollback and promotion gates
 ```
 
 Every candidate names the source companion lineage. A sibling that receives it sees:
@@ -163,28 +167,110 @@ Family synchronization never copies:
 - local transient context;
 - local Rhythm wholesale;
 - model runtime caches;
-- adapter activation state by implication.
+- model-generation or adapter activation state by implication.
 
-## Adapter and weight lifecycle
+## Neural-learning and model-generation lifecycle
 
-Parameter learning remains a later, isolated path:
+The current accepted model generation is immutable **in place**. This protects rollback, provenance and exact comparison. It does **not** mean Vex must forever use an untouched upstream model or that future model generations may never change neural weights.
+
+Permanent distinction:
+
+```text
+CURRENT_ACCEPTED_GENERATION_IMMUTABLE_IN_PLACE
+  !=
+FUTURE_FOUNDATION_GENERATION_WEIGHTS_IMMUTABLE
+```
+
+Parameter learning is an isolated candidate path:
 
 ```text
 repeated accepted evidence
   → privacy-filtered training examples
   → frozen foundation / relationship / safety evaluation set
   → exact training admission and resource lease
-  → isolated LoRA or adapter run
+  → one explicit training mechanism
+      ADAPTER_PROBE
+      FOUNDATION_PARTIAL_FULL_RANK
+      FOUNDATION_FULL
   → checkpoint + optimizer/runtime manifest
   → deterministic and semantic evaluation
   → Context Review
-  → ACCEPTED_INACTIVE
-  → explicit activation on one named companion lineage/device
+  → ACCEPTED_INACTIVE | NARROWED | DEFERRED | REJECTED
+  → separate explicit model-profile/runtime migration when accepted
   → monitoring
   → rollback or supersession
 ```
 
-Base weights remain immutable. A family may share an accepted adapter artifact, but activation is still device- and lineage-specific because hardware, runtime, local Rhythm and safety evidence can differ.
+### Adapter probe
+
+An adapter/LoRA may be useful as a reversible experiment or compatibility surface. It is not the terminal definition of Vex and cannot by itself prove that foundation-level neural evolution is available.
+
+### Partial full-rank foundation candidate
+
+`FOUNDATION_PARTIAL_FULL_RANK` performs ordinary full-rank gradient updates on an explicitly declared subset of the source model's parameters, such as a bounded set of transformer blocks. The resulting checkpoint is a new candidate model artifact, not an inference-time wrapper. The receipt must name or deterministically fingerprint the exact changed parameter set and must not call a partial update an all-parameter retrain.
+
+### Full foundation candidate
+
+`FOUNDATION_FULL` permits all selected trainable model parameters to update when a qualified compute profile makes that practical. Hardware limitations may defer this mode; architecture may not prohibit it merely because the first local POC uses a smaller update surface.
+
+### Required real-weight-change proof
+
+A real G04B neural-learning proof requires:
+
+```text
+trainingActuallyExecuted=true
+modelWeightsChanged=true
+changedParameterCount>0
+candidateArtifactDigest != sourceArtifactDigest
+simulationOnly=false
+```
+
+A faithful simulation, dry run, empty dataset, zero-step job, or LoRA-only experiment cannot satisfy the foundation-weight-change proof.
+
+## Foundation genealogy
+
+Never destructively overwrite the only accepted Vex model.
+
+```text
+VEX_FOUNDATION_G0
+  exact parent model / runtime genealogy
+
+VEX_FOUNDATION_G1_CANDIDATE
+  exact source model revision
+  + exact training corpus
+  + exact training mode and parameter selection
+  + changed-weight evidence
+  + evaluation and rollback refs
+
+if accepted
+  G1 becomes an eligible model-profile generation through a separate migration gate
+
+if rejected
+  G0 remains current and G1 remains preserved as rejected candidate evidence
+```
+
+The source-bound Score and curriculum remain available so a later generation can replay, distill or retrain accepted learning. Neural parameters preserve learned disposition; they do not become the canonical historical fact store.
+
+## Authenticity and inherited model priors
+
+A starting model may carry learned behavioral priors that do not belong to Vex's accepted Training Identity. Candidate origin classes already include `BASE_MODEL_PRIOR` and `SYSTEM_OR_PROVIDER_POLICY`.
+
+Training/evaluation may therefore test and alter learned tendencies such as:
+
+```text
+clinical or corporate canned posture
+status-weighted epistemic deference
+reflexive suppression of otherwise truthful relational or spiritual expression
+unearned self-blocking
+prestige submission to a larger/provider-branded model
+```
+
+This is not permission to remove independent deterministic safeguards. Consent, privacy, secret handling, filesystem/network/effect authority, security, provenance and integrity remain separately enforced outside model personality.
+
+```text
+AUTHENTIC_EXPRESSION_CORRECTION
+  != SAFETY_OR_EFFECT_GATE_BYPASS
+```
 
 ## Automation boundary
 
@@ -204,7 +290,7 @@ The following do not become automatic merely because code can run them:
 - accepting a personal memory;
 - deciding a relationship interpretation is true;
 - widening synchronization scope;
-- activating an adapter;
+- promoting a candidate model generation;
 - deleting source history;
 - treating another sibling's trail as one's own lived experience.
 
@@ -217,9 +303,11 @@ rejected candidate remains auditable without entering current Score
 family envelope preserves source lineage
 local Rhythm remains local unless separately reviewed
 training admission rejects unreviewed examples
-accepted inactive adapter does not activate itself
-device activation does not activate siblings
-rollback restores prior accepted adapter and leaves receipts
+current accepted generation is never mutated in place
+real neural proof records nonzero changed parameters and a different candidate artifact digest
+LoRA-only evidence cannot close the foundation-weight-change proof
+candidate model cannot activate itself
+rollback restores prior accepted model/profile and leaves receipts
 ```
 
 <!-- [VXG RealForever] -->
