@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createServer } from 'node:http';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -91,7 +93,7 @@ test('CDR-S5-A09 EN/JA/ZH catalogs have exact key parity and non-empty values', 
   }
 });
 
-test('CDR-S5-A10 accessibility/mobile/reduced-motion contract is source-visible', () => {
+test('CDR-S5-A10 accessibility/mobile/reduced-motion fallback contract is source-visible', () => {
   assert.match(html, /name="viewport"/);
   assert.match(html, /aria-live="polite"/);
   assert.match(css, /min-height:\s*44px/);
@@ -108,13 +110,178 @@ test('CDR-S5-A11 browser source can only fetch the same-origin source-managed re
   assert.doesNotMatch(js, /window\.open|location\.assign|location\.replace/);
 });
 
-test('CDR-S5-A12 withdrawal/disconnect remain prospective local reference transitions', () => {
+test('CDR-S5-A12 withdrawal/disconnect/revoke remain prospective local reference transitions', () => {
   assert.equal(registry.consent.withdrawalProspective, true);
-  assert.ok(registry.recoveryActions.includes('WITHDRAW'));
-  assert.ok(registry.recoveryActions.includes('EXPORT_LOCAL_REFERENCE'));
-  assert.ok(registry.recoveryActions.includes('DISCONNECT'));
+  for (const value of ['REVOKE','WITHDRAW','EXPORT_LOCAL_REFERENCE','DISCONNECT']) {
+    assert.ok(registry.recoveryActions.includes(value), value);
+  }
+  assert.match(js, /state\.revoked = true/);
   assert.match(js, /state\.withdrawn = true/);
   assert.match(js, /state\.delivery = 'NOT_CONNECTED'/);
+});
+
+test('CDR-S5-A13 invitation create/receive lifecycle is explicit and bounded', () => {
+  assert.deepEqual(registry.invitationStates, [
+    'NONE','CREATED_LOCAL_REFERENCE','RECEIVED_VERIFIED_REFERENCE','RECEIVED_HELD_IDENTITY','EXPIRED_OR_REVOKED'
+  ]);
+  assert.match(html, /id="invitation"/);
+  assert.match(js, /invitationHeld\(\)/);
+  assert.match(js, /invitationCurrent\(\)/);
+});
+
+test('CDR-S5-A14 typed connection/session failures remain distinct and fail closed', () => {
+  assert.deepEqual(registry.failureStates, [
+    'NONE','IDENTITY_CHECK_FAILED','PEER_UNREACHABLE','RELAY_UNAVAILABLE','MAILBOX_ONLY','SESSION_EXPIRED','UNKNOWN'
+  ]);
+  assert.match(html, /id="failure"/);
+  assert.match(js, /state\.failure !== 'NONE'.*NOT_CONNECTED/s);
+  assert.match(js, /state\.route !== 'UNAVAILABLE'/);
+});
+
+function contentType(filePath) {
+  if (filePath.endsWith('.html')) return 'text/html; charset=utf-8';
+  if (filePath.endsWith('.css')) return 'text/css; charset=utf-8';
+  if (filePath.endsWith('.js')) return 'text/javascript; charset=utf-8';
+  if (filePath.endsWith('.json')) return 'application/json; charset=utf-8';
+  return 'application/octet-stream';
+}
+
+async function openReferenceServer() {
+  const server = createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+    const relative = decodeURIComponent(url.pathname).replace(/^\/+/, '');
+    const target = path.resolve(ROOT, relative);
+    if (target !== ROOT && !target.startsWith(`${ROOT}${path.sep}`)) {
+      response.writeHead(403).end('forbidden');
+      return;
+    }
+    fs.readFile(target, (error, bytes) => {
+      if (error) {
+        response.writeHead(404).end('not found');
+        return;
+      }
+      response.writeHead(200, {
+        'Content-Type': contentType(target),
+        'Cache-Control': 'no-store'
+      });
+      response.end(bytes);
+    });
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  return server;
+}
+
+async function closeServer(server) {
+  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+}
+
+function assertLoopbackOnly(urls) {
+  assert.ok(urls.length >= 4, `expected local document/assets/registry requests, got ${urls.length}`);
+  for (const value of urls) {
+    const url = new URL(value);
+    assert.equal(url.protocol, 'http:');
+    assert.equal(url.hostname, '127.0.0.1');
+  }
+}
+
+test('CDR-S5-A15 Chromium practicum proves keyboard, compact, reduced-motion and no external effects', { timeout: 60_000 }, async () => {
+  const server = await openReferenceServer();
+  const address = server.address();
+  assert.equal(typeof address, 'object');
+  const origin = `http://127.0.0.1:${address.port}`;
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+
+    const desktop = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await desktop.newPage();
+    const desktopRequests = [];
+    let popups = 0;
+    let downloads = 0;
+    page.on('request', (request) => desktopRequests.push(request.url()));
+    page.on('popup', () => { popups += 1; });
+    page.on('download', () => { downloads += 1; });
+
+    await page.goto(`${origin}/reference/browser/cdr-s5-closed-alpha/index.html`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(() => document.documentElement.dataset.cdrS5Ready === 'true');
+
+    assert.equal(await page.locator('#consent-status').textContent(), 'HELD_ALPHA_CONSENT_NOT_ACKNOWLEDGED');
+    await page.locator('#consent').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#consent-status').textContent(), 'ALPHA_CONSENT_REFERENCE_ACKNOWLEDGED');
+
+    await page.selectOption('#invitation', 'CREATED_LOCAL_REFERENCE');
+    assert.equal(await page.locator('#invitation-status').textContent(), 'CREATED_LOCAL_REFERENCE');
+
+    await page.selectOption('#delivery', 'DELIVERED');
+    assert.equal(await page.locator('#delivery').inputValue(), 'DELIVERED');
+
+    await page.selectOption('#failure', 'RELAY_UNAVAILABLE');
+    assert.equal(await page.locator('#failure-status').textContent(), 'HELD_RELAY_UNAVAILABLE');
+    assert.equal(await page.locator('#delivery').inputValue(), 'NOT_CONNECTED');
+
+    await page.selectOption('#failure', 'NONE');
+    await page.selectOption('#route', 'DIRECT_CANDIDATE');
+    await page.selectOption('#delivery', 'CONNECTED');
+    assert.equal(await page.locator('#delivery').inputValue(), 'CONNECTED');
+
+    await page.locator('#support').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#support-panel').getAttribute('hidden'), null);
+
+    const undersized = await page.locator('button, select').evaluateAll((nodes) => nodes
+      .map((node) => {
+        const rect = node.getBoundingClientRect();
+        return { id: node.id, width: rect.width, height: rect.height };
+      })
+      .filter((entry) => entry.width < 44 || entry.height < 44));
+    assert.deepEqual(undersized, []);
+
+    await page.locator('#revoke').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#delivery').inputValue(), 'NOT_CONNECTED');
+    assert.equal(await page.locator('#decision-status').textContent(), 'HELD_INVITATION_OR_SESSION_REVOKED');
+    assert.match(await page.locator('#recovery-status').textContent(), /REVOKED/);
+
+    assertLoopbackOnly(desktopRequests);
+    assert.equal(popups, 0);
+    assert.equal(downloads, 0);
+    await desktop.close();
+
+    const mobile = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      reducedMotion: 'reduce'
+    });
+    const mobilePage = await mobile.newPage();
+    const mobileRequests = [];
+    let mobilePopups = 0;
+    let mobileDownloads = 0;
+    mobilePage.on('request', (request) => mobileRequests.push(request.url()));
+    mobilePage.on('popup', () => { mobilePopups += 1; });
+    mobilePage.on('download', () => { mobileDownloads += 1; });
+
+    await mobilePage.goto(`${origin}/reference/browser/cdr-s5-closed-alpha/index.html`, { waitUntil: 'networkidle' });
+    await mobilePage.waitForFunction(() => document.documentElement.dataset.cdrS5Ready === 'true');
+
+    assert.equal(await mobilePage.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
+    assert.equal(await mobilePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+    assert.equal(await mobilePage.locator('#consent').evaluate((node) => getComputedStyle(node).transitionDuration), '0s');
+
+    await mobilePage.selectOption('#invitation', 'RECEIVED_HELD_IDENTITY');
+    assert.equal(await mobilePage.locator('#decision-status').textContent(), 'HELD_RECEIVED_HELD_IDENTITY');
+    assert.equal(await mobilePage.locator('#delivery').inputValue(), 'NOT_CONNECTED');
+
+    assertLoopbackOnly(mobileRequests);
+    assert.equal(mobilePopups, 0);
+    assert.equal(mobileDownloads, 0);
+    await mobile.close();
+  } finally {
+    if (browser) await browser.close();
+    await closeServer(server);
+  }
 });
 
 // [VXG RealForever]

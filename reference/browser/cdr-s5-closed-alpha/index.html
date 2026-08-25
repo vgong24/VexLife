@@ -53,6 +53,10 @@
       <section class="card">
         <h2 data-i18n="inviteTitle"></h2>
         <p data-i18n="inviteBody"></p>
+        <label><span data-i18n="invitationState"></span>
+          <select id="invitation"></select>
+        </label>
+        <output id="invitation-status" class="status" aria-live="polite">NONE</output>
         <label><span data-i18n="decision"></span>
           <select id="decision"></select>
         </label>
@@ -99,6 +103,15 @@
       </section>
 
       <section class="card">
+        <h2 data-i18n="failureTitle"></h2>
+        <p data-i18n="failureBody"></p>
+        <label><span data-i18n="failureState"></span>
+          <select id="failure"></select>
+        </label>
+        <output id="failure-status" class="status" aria-live="polite">NONE</output>
+      </section>
+
+      <section class="card">
         <h2 data-i18n="supportTitle"></h2>
         <p data-i18n="supportBody"></p>
         <button id="support" type="button" data-i18n="supportOpen"></button>
@@ -112,6 +125,7 @@
         <h2 data-i18n="recoveryTitle"></h2>
         <p data-i18n="recoveryBody"></p>
         <div class="button-row">
+          <button id="revoke" type="button" data-i18n="revoke"></button>
           <button id="withdraw" type="button" data-i18n="withdraw"></button>
           <button id="export" type="button" data-i18n="export"></button>
           <button id="disconnect" type="button" data-i18n="disconnect"></button>
