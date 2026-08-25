@@ -55,11 +55,20 @@ function invitationCurrent() {
   return state.invitation === 'CREATED_LOCAL_REFERENCE' || state.invitation === 'RECEIVED_VERIFIED_REFERENCE';
 }
 
+function invitationDecisionEligible() {
+  return invitationCurrent() && state.invitation === 'RECEIVED_VERIFIED_REFERENCE';
+}
+
+function decisionPermitsSession() {
+  return state.decision === 'ACCEPT' || state.decision === 'NARROW';
+}
+
 function canAdvanceDelivery() {
   return !state.withdrawn
     && !state.revoked
     && state.alphaConsentAcknowledged
-    && invitationCurrent()
+    && invitationDecisionEligible()
+    && decisionPermitsSession()
     && state.identity === 'VERIFIED_CURRENT'
     && state.route !== 'UNAVAILABLE'
     && state.failure === 'NONE';
@@ -95,10 +104,14 @@ function render() {
   $('invitation').value = state.invitation;
   $('invitation-status').textContent = invitationHeld() ? `HELD_${state.invitation}` : state.invitation;
 
-  $('decision').value = state.decision;
+  const decision = $('decision');
+  decision.value = state.decision;
+  decision.disabled = state.withdrawn || state.revoked || !invitationDecisionEligible();
   if (state.withdrawn) $('decision-status').textContent = 'HELD_PARTICIPATION_WITHDRAWN';
   else if (state.revoked) $('decision-status').textContent = 'HELD_INVITATION_OR_SESSION_REVOKED';
   else if (invitationHeld()) $('decision-status').textContent = `HELD_${state.invitation}`;
+  else if (state.invitation === 'NONE') $('decision-status').textContent = 'HELD_NO_RECEIVED_INVITATION';
+  else if (state.invitation === 'CREATED_LOCAL_REFERENCE') $('decision-status').textContent = 'HELD_AWAITING_RECEIVED_VERIFIED_INVITATION';
   else $('decision-status').textContent = state.decision;
 
   $('identity').value = state.identity;
@@ -117,7 +130,9 @@ function render() {
   $('failure').value = state.failure;
   $('failure-status').textContent = state.failure === 'NONE' ? 'NONE' : `HELD_${state.failure}`;
 
-  $('delivery').value = state.delivery;
+  const delivery = $('delivery');
+  delivery.value = state.delivery;
+  delivery.disabled = !canAdvanceDelivery();
   renderDelivery();
   renderLocale();
 }
@@ -135,15 +150,16 @@ function bind() {
 
   $('invitation').addEventListener('change', (event) => {
     state.invitation = event.target.value;
-    if (invitationHeld()) {
-      state.decision = 'DEFER';
-      state.delivery = 'NOT_CONNECTED';
-    }
+    state.decision = 'DEFER';
+    state.delivery = 'NOT_CONNECTED';
     render();
   });
 
   $('decision').addEventListener('change', (event) => {
-    if (!state.withdrawn && !state.revoked && !invitationHeld()) state.decision = event.target.value;
+    if (!state.withdrawn && !state.revoked && invitationDecisionEligible()) {
+      state.decision = event.target.value;
+      if (!decisionPermitsSession()) state.delivery = 'NOT_CONNECTED';
+    }
     render();
   });
 
@@ -192,7 +208,9 @@ function bind() {
   });
 
   $('support').addEventListener('click', () => {
-    $('support-panel').hidden = !$('support-panel').hidden;
+    const panel = $('support-panel');
+    panel.hidden = !panel.hidden;
+    $('support').setAttribute('aria-expanded', String(!panel.hidden));
   });
 
   $('revoke').addEventListener('click', () => {
@@ -235,6 +253,8 @@ function bind() {
       exported: false,
       disconnected: false
     });
+    $('support-panel').hidden = true;
+    $('support').setAttribute('aria-expanded', 'false');
     render();
   });
 }
