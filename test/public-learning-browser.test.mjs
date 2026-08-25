@@ -142,6 +142,34 @@ test('S7P-05..16 rendered path, accessible list, mobile/keyboard/localization an
   const beforeLeaf = await page.evaluate(() => globalThis.__vexlifePublicLearning.proof());
   assert.equal(beforeLeaf.currentRef, ATLAS_REF);
   assert.equal(await page.locator('#publicDetailTitle').textContent(), PROJECTION.strings.en['public.node.atlas.title']);
+  assert.equal(await page.locator('#terrainScopeChip').isVisible(), false, 'public learning must suppress Terrain-only status chrome');
+  assert.equal(await page.locator('#terrainFocus .e27-facts').isVisible(), false, 'public learning must suppress Terrain-only proof pills');
+  assert.equal(await page.locator('#terrainAdaptationState').isVisible(), false, 'public learning must suppress Terrain-only adaptation status chrome');
+  const visibleRawTerrainRefs = await page.locator('body *').evaluateAll((elements) => {
+    const raw = /\bterrain\.[a-z0-9_.-]+\b/giu;
+    const hiddenBoundary = (element) => Boolean(element.closest('[hidden],[aria-hidden="true"],[inert],.public-learning-hidden-controls,.public-learning-journey-proof'));
+    const rendered = (element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number(style.opacity || '1') > 0
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const found = [];
+    for (const element of elements) {
+      const ownText = [...element.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent ?? '')
+        .join(' ');
+      const matches = ownText.match(raw) ?? [];
+      if (!matches.length || hiddenBoundary(element) || !rendered(element)) continue;
+      found.push(...matches);
+    }
+    return [...new Set(found)].sort();
+  });
+  assert.deepEqual(visibleRawTerrainRefs, [], `public learning must not visibly expose raw Terrain string refs: ${JSON.stringify(visibleRawTerrainRefs)}`);
 
   const technical = page.locator('#publicDetailRelationships details[data-relationship-technical="true"]');
   assert.ok(await technical.count() > 0);
