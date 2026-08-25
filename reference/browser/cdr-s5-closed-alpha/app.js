@@ -66,6 +66,7 @@ function decisionPermitsSession() {
 function canAdvanceDelivery() {
   return !state.withdrawn
     && !state.revoked
+    && !state.disconnected
     && state.alphaConsentAcknowledged
     && invitationDecisionEligible()
     && decisionPermitsSession()
