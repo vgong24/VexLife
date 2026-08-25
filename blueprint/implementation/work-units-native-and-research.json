@@ -184,53 +184,5 @@
       "no training-run self-activation"
     ],
     "returnRoute": "return adapter experiment receipt to model-evolution evaluation without closing foundation-generation proof"
-  },
-  {
-    "workRef": "work.vexlife.foundation-generation.training-proof",
-    "purpose": "Prove an actual neural-weight-changing Vex foundation candidate can be trained from exact source-bound lessons, evaluated against its exact source model, preserved as a separate generation and accepted, narrowed or rejected without overwriting the current accepted model in place.",
-    "distance": "CURRENT_RECOVERED_G04B",
-    "milestoneRef": "milestone.vexlife.model-evolution",
-    "dependsOn": [
-      "work.vexlife.dream.sync",
-      "work.vexlife.model.external-provisioning"
-    ],
-    "pathScope": [
-      "training/foundation-generation/**",
-      "scripts/foundation-training-plan.mjs",
-      "test/foundation-training-plan.test.mjs",
-      "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md"
-    ],
-    "ownershipRoleRef": "role.vex.model-steward",
-    "parallelGroupRef": "parallel.research",
-    "requiredSourceRefs": [
-      "registry.vexlife.evolution.001",
-      "github.issue.vexlife.220",
-      "github.issue.vextreme-sdk.335",
-      "github.issue.vextreme-sdk.566"
-    ],
-    "requiredTestRefs": [
-      "test.foundation-training-plan.real-weight-mode",
-      "test.foundation-training-plan.adapter-not-terminal",
-      "test.foundation-training-plan.no-zero-step",
-      "test.foundation-training-plan.no-auto-activation"
-    ],
-    "outputRefs": [
-      "foundation-generation.vexlife.candidate",
-      "receipt.vexlife.foundation-training",
-      "receipt.vexlife.foundation-evaluation"
-    ],
-    "effectBoundary": "SOURCE_IMPLEMENTATION_NOW__REAL_TRAINING_REQUIRES_EXACT_MODEL_CORPUS_HOST_CONSENT_EFFECT_BINDING",
-    "completionGate": "source implementation accepted and one actual candidate run returns trainingActuallyExecuted=true, modelWeightsChanged=true, changedParameterCount>0, a different candidate artifact digest, held-out evaluation and rollback; LoRA-only cannot satisfy",
-    "platformRefs": [
-      "platform.any"
-    ],
-    "exclusions": [
-      "no current accepted model overwrite",
-      "no training-run self-activation",
-      "no raw private corpus upload by implication",
-      "no safety/effect-gate bypass",
-      "no LoRA-only terminal completion"
-    ],
-    "returnRoute": "return exact training and evaluation receipts to G04B issue #220 and current Root"
   }
 ]
