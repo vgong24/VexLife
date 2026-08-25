@@ -39,7 +39,7 @@
   "gradientAccumulationSteps": 1,
   "precision": "bf16",
   "optimizer": "adamw",
-  "outputDir": "training/output/vex-foundation-g1-candidate",
+  "outputDir": "runtime/training/vex-foundation-g1-candidate",
   "expectedHardwareProfileRef": "hardware.windows-x64.nvidia.cuda12-compatible",
   "rollbackArtifactRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
   "activationAuthorized": false,
