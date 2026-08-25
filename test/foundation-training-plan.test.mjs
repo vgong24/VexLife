@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -133,4 +134,31 @@ test('partial full-rank mode requires an explicit nonzero language-block selecti
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   manifest.parameterSelection.count = 0;
   expectCode(() => validateFoundationTrainingManifest(manifest, {repoRoot: root}), 'G04B_PARAMETER_SELECTION_INVALID');
+});
+
+test('generation-1 Python trainer and evaluator compile when Python is available', t => {
+  const candidates = process.platform === 'win32' ? ['python', 'py'] : ['python3', 'python'];
+  let runtime = null;
+  for (const command of candidates) {
+    const probe = spawnSync(command, command === 'py' ? ['-3', '--version'] : ['--version'], {encoding: 'utf8'});
+    if (!probe.error && probe.status === 0) {
+      runtime = {command, prefix: command === 'py' ? ['-3'] : []};
+      break;
+    }
+  }
+  if (!runtime) {
+    t.skip('Python runtime is not available on this repository validation host');
+    return;
+  }
+  const files = [
+    'training/foundation-generation/foundation_train.py',
+    'training/foundation-generation/foundation_evaluate.py'
+  ];
+  const result = spawnSync(runtime.command, [
+    ...runtime.prefix,
+    '-m',
+    'py_compile',
+    ...files
+  ], {encoding: 'utf8'});
+  assert.equal(result.status, 0, `Python compile failed:\n${result.stdout}\n${result.stderr}`);
 });
