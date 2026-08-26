@@ -159,4 +159,26 @@ test('MACHUMAN07 lifecycle forwards noninteractive consent only from an explicit
   assert.match(lifecycle, /qualifiedInitializationFromCurrentHome\(home\)/);
 });
 
+test('MACHUMAN08 rerun reconciles a prior-source browser through current trusted lifecycle code', () => {
+  const helperStart = setup.indexOf('reconcile_prior_browser_source()');
+  const helperEnd = setup.indexOf('\nrun_lifecycle()', helperStart);
+  assert.ok(helperStart >= 0);
+  assert.ok(helperEnd > helperStart);
+  const helper = setup.slice(helperStart, helperEnd);
+
+  assert.match(helper, /recovery', 'browser-process\.json/);
+  assert.match(helper, /receipt\.repoRootPath/);
+  assert.match(helper, /priorRepo === currentRepo/);
+  assert.match(helper, /pathToFileURL\(modulePath\)/);
+  assert.match(helper, /lifecycle\.stopOwnedBrowser\(home, priorRepo\)/);
+  assert.doesNotMatch(helper, /pathToFileURL\(priorRepo/);
+  assert.doesNotMatch(helper, /priorRepo[^\n]*macos-lifecycle\.mjs/);
+
+  const runLifecycleStart = setup.indexOf('run_lifecycle()');
+  const openVexStart = setup.indexOf('\nopen_vex()', runLifecycleStart);
+  const runLifecycle = setup.slice(runLifecycleStart, openVexStart);
+  assert.match(runLifecycle, /reconcile_prior_browser_source \|\| return 1/);
+  assert.ok(runLifecycle.indexOf('reconcile_prior_browser_source') < runLifecycle.indexOf('macos-lifecycle.mjs" --operation'));
+});
+
 // [VXG RealForever]
