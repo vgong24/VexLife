@@ -26,6 +26,7 @@ test('Navigation Continuity is inherited through universal Blueprint and compile
   const source = registry.require('source.blueprint.navigation-continuity-registry');
   const owner = registry.require('registry.vexlife.navigation-continuity.001');
   const pacingCollection = registry.require('collection.navigation-continuity.pacing');
+  const normal = registry.require('navigation-pacing.vexlife.normal');
   const fast = registry.require('navigation-pacing.vexlife.fast');
   const topologyContract = registry.require('contract.navigation-continuity.topology/v1');
   const runtimeModule = registry.require('module.vexlife.core.navigation-continuity');
@@ -35,6 +36,7 @@ test('Navigation Continuity is inherited through universal Blueprint and compile
   assert.equal(source.kind, 'NAVIGATION_CONTINUITY_SOURCE');
   assert.equal(owner.kind, 'NAVIGATION_CONTINUITY_REGISTRY');
   assert.equal(pacingCollection.kind, 'NAVIGATION_CONTINUITY_DESCRIPTOR_COLLECTION');
+  assert.equal(normal.kind, 'NAVIGATION_PACING');
   assert.equal(fast.kind, 'NAVIGATION_PACING');
   assert.equal(topologyContract.kind, 'NAVIGATION_CONTINUITY_CONTRACT');
   assert.equal(runtimeModule.path, 'src/core/navigation-continuity.mjs');
@@ -44,7 +46,8 @@ test('Navigation Continuity is inherited through universal Blueprint and compile
   assert.ok(contributorModule.loadedBy.includes(registryModule.ref));
 
   assert.ok(edge(owner, 'DESCRIPTOR_COLLECTION', pacingCollection.ref));
-  assert.ok(edge(owner, 'DEFAULT_PACING', fast.ref));
+  assert.ok(edge(owner, 'DEFAULT_PACING', normal.ref));
+  assert.equal(edge(owner, 'DEFAULT_PACING', fast.ref), false);
   assert.ok(edge(fast, 'SETTLEMENT_POLICY', 'settlement.navigation.semantic-current'));
   assert.ok(edge(fast, 'ANIMATION_POLICY', 'animation.navigation.compressed'));
   assert.ok(edge(fast, 'DWELL_POLICY', 'dwell.navigation.minimum'));
