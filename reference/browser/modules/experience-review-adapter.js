@@ -17,8 +17,8 @@ const CONTEXTUAL_PROJECTION_TARGETS = new Map([
 ]);
 const CONTEXTUAL_PROJECTION_REVEAL_SELECTOR = '#surfaceMenuButton';
 const STABLE_TARGET_DISCLOSURES = new Map([
-  ['element.thread.open-conversation', Object.freeze({ actionRef: 'action.thread.select', revealSelector: '#projectRail > summary' })],
-  ['element.channel.group', Object.freeze({ actionRef: 'action.channel.select', revealSelector: '#channelCompatibility > summary' })]
+  ['element.thread.open-conversation', Object.freeze({ actionRef: 'action.thread.select', revealSelectors: Object.freeze(['#surfaceMenuButton', '#openWorkspace']) })],
+  ['element.channel.group', Object.freeze({ actionRef: 'action.channel.select', revealSelectors: Object.freeze(['#channelCompatibility > summary']) })]
 ]);
 const hash = (filePath) => crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 const artifactRefFor = (task) => `artifact.vexlife.browser.${task.captureRequest.captureRequestRef}.${task.step.reviewStepRef}`;
@@ -57,11 +57,13 @@ async function clickStableTarget(page, target, step) {
     if (!disclosure || step.actionRef !== disclosure.actionRef) {
       throw new Error(`Stable review target is hidden without an allowlisted disclosure: ${step.targetNodeRef ?? 'NULL'} + ${step.actionRef ?? 'NULL'}`);
     }
-    const reveal = page.locator(disclosure.revealSelector).first();
-    if (await reveal.count() === 0 || !(await reveal.isVisible())) {
-      throw new Error(`Stable-target disclosure control was unavailable for: ${step.targetNodeRef}`);
+    for (const selector of disclosure.revealSelectors) {
+      const reveal = page.locator(selector).first();
+      if (await reveal.count() === 0 || !(await reveal.isVisible())) {
+        throw new Error(`Stable-target disclosure control was unavailable for: ${step.targetNodeRef}`);
+      }
+      await reveal.click();
     }
-    await reveal.click();
     if (!(await target.isVisible())) {
       throw new Error(`Stable review target remained hidden after fixed disclosure: ${step.targetNodeRef}`);
     }
