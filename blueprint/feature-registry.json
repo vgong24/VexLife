@@ -2084,6 +2084,98 @@
         "test.living-journal.memory-http-app-activation",
         "test.living-journal.archive-browser-navigation"
       ]
+    },
+    {
+      "featureRef": "feature.vexlife.cdr-s5-closed-alpha",
+      "purpose": "Human-facing invite-only closed-alpha participant-journey reference that keeps consent, invitation decisions, truthful currentness/presence, direct-vs-relay disclosure, delivery truth, support and prospective recovery explicit without any real participant or network effect.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "DISCOVERABLE_ONLY",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The accepted closed-alpha reference exposes its consent, invite-only privacy, route disclosure and recovery controls directly; a separate walkthrough would duplicate the reference itself."
+      },
+      "canonicalNodeRefs": [
+        "screen.vexlife.cdr-s5-closed-alpha",
+        "region.cdr-s5-closed-alpha.journey",
+        "element.cdr-s5.closed-alpha.reference-status",
+        "element.cdr-s5.closed-alpha.consent",
+        "element.cdr-s5.closed-alpha.invitation",
+        "element.cdr-s5.closed-alpha.route-privacy",
+        "element.cdr-s5.closed-alpha.support",
+        "element.cdr-s5.closed-alpha.withdraw",
+        "element.cdr-s5.closed-alpha.reset"
+      ],
+      "stateRefs": [
+        "state.cdr-s5-closed-alpha-reference"
+      ],
+      "actionRefs": [
+        "action.cdr-s5.reference.transition",
+        "action.cdr-s5.reference.reset"
+      ],
+      "permissionRefs": [
+        "permission.none"
+      ],
+      "processRefs": [
+        "process.vexlife.interface.render"
+      ],
+      "moduleRefs": [
+        "module.vexlife.browser.cdr-s5-closed-alpha-document",
+        "module.vexlife.browser.cdr-s5-closed-alpha-styles",
+        "module.vexlife.browser.cdr-s5-closed-alpha-controller"
+      ],
+      "localizationRefs": [
+        "screen.cdr-s5-closed-alpha.title",
+        "cdr-s5.closed-alpha.region",
+        "cdr-s5.closed-alpha.reference",
+        "cdr-s5.closed-alpha.consent",
+        "cdr-s5.closed-alpha.invitation",
+        "cdr-s5.closed-alpha.route-privacy",
+        "cdr-s5.closed-alpha.support",
+        "cdr-s5.closed-alpha.withdraw",
+        "cdr-s5.closed-alpha.reset"
+      ],
+      "testRefs": [
+        "test.cdr-s5.closed-alpha-no-effect",
+        "test.cdr-s5.closed-alpha-consent-privacy",
+        "test.cdr-s5.closed-alpha-currentness-delivery",
+        "test.cdr-s5.closed-alpha-recovery-localization-accessibility"
+      ],
+      "platformRefs": [
+        "platform.browser"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "BROWSER_LOCAL_SYNTHETIC_REFERENCE",
+      "dataClass": "SYNTHETIC_PARTICIPANT_REFERENCE_NO_REAL_DATA",
+      "effectClass": "READ_PROJECTION",
+      "concurrencyClass": "NONE",
+      "rollbackRouteRef": "action.cdr-s5.reference.reset",
+      "projectionRefs": [
+        "projection.context.map"
+      ],
+      "knownGaps": [
+        "Real invitation delivery and real participant contact remain held.",
+        "Provider/network session establishment remains held.",
+        "Relationship, Home, Memory and model mutation remain held.",
+        "Payment, terms, publication and public/community discovery remain held."
+      ]
     }
   ]
 }
