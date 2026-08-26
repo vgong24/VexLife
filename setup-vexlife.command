@@ -4,15 +4,9 @@ set -euo pipefail
 REPOSITORY="vgong24/VexLife"
 SOURCE_REF="${VEXLIFE_SOURCE_REF:-main}"
 SOURCE_ROOT="${VEXLIFE_SOURCE_ROOT:-$HOME/Library/Application Support/VexLife/source}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 say() { printf '\n%s\n' "$1"; }
 fail() { printf '\nVexLife setup stopped: %s\n' "$1" >&2; exit 1; }
-
-# When this file is already inside exact VexLife source, do not download a second copy.
-if [ -f "$SCRIPT_DIR/install/vexlife-setup.sh" ]; then
-  exec /bin/bash "$SCRIPT_DIR/install/vexlife-setup.sh" "$SCRIPT_DIR"
-fi
 
 [ "$(uname -s)" = "Darwin" ] || fail "this bootstrap is for macOS."
 case "$SOURCE_REF" in
