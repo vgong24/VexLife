@@ -17,8 +17,8 @@
     {
       "path": "src/core/registry.mjs",
       "mode": "100644",
-      "bytes": 34556,
-      "sha256": "0ae9e3719f7d773b7209f72885380ce4a554ab212c7da51c26ee65dccee89fec"
+      "bytes": 657,
+      "sha256": "4430e053cac84ec481b0f583f708717e8f86bf83e9a67bda397ca7bd0c8e7ef9"
     }
   ]
 }

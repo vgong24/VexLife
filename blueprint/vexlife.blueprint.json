@@ -15,6 +15,7 @@
     "platforms": "blueprint/fragments/platform-bindings.json",
     "tests": "blueprint/fragments/tests.json",
     "registryRefs": "blueprint/fragments/registry-refs.json",
+    "navigationContinuity": "blueprint/navigation-continuity-registry.json",
     "evolution": "blueprint/evolution-registry.json",
     "intentOrchestration": "blueprint/intent-orchestration-registry.json",
     "intentScheduler": "blueprint/intent-scheduler-registry.json",
