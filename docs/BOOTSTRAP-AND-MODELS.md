@@ -40,9 +40,11 @@ obtain or verify exact source route
 The current Apple M4 Pro route has one small public source bootstrap:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command
-bash /tmp/setup-vexlife.command
+rm -f /tmp/setup-vexlife.command
+curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command && bash /tmp/setup-vexlife.command
 ```
+
+The first line removes any older temporary bootstrap, and the `&&` means the downloaded bootstrap runs only when the current GitHub fetch succeeds. A failed download cannot fall through to a stale `/tmp/setup-vexlife.command`.
 
 `setup-vexlife.command` is intentionally small. When downloaded by itself it:
 
