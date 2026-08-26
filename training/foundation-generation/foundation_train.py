@@ -563,8 +563,8 @@ def candidate_file_digests(output_dir: Path) -> dict[str, str]:
     return result
 
 
-def load_model_and_processor(manifest: dict[str, Any]):
-    torch, AutoProcessor, AutoModel = import_runtime()
+def load_model_and_processor(manifest: dict[str, Any], runtime=None):
+    torch, AutoProcessor, AutoModel = runtime or import_runtime()
     local_only = True
     common = {
         "revision": manifest["sourceModelRevision"],
@@ -583,8 +583,10 @@ def load_model_and_processor(manifest: dict[str, Any]):
 def inspect(manifest: dict[str, Any]) -> dict[str, Any]:
     train_path, heldout_path = verify_bound_files(manifest)
     rows = load_training_rows(train_path)
-    torch, processor, model, local_only = load_model_and_processor(manifest)
+    runtime = import_runtime()
+    torch = runtime[0]
     device, execution_observation = observe_execution_device(torch, manifest)
+    torch, processor, model, local_only = load_model_and_processor(manifest, runtime)
     model.to(device)
     selection = configure_trainable_parameters(model, manifest)
     names = sorted(name for name, _ in selection["trainableNamedParameters"])
@@ -625,8 +627,10 @@ def inspect(manifest: dict[str, Any]) -> dict[str, Any]:
 def execute(manifest: dict[str, Any], attempt_state: dict[str, Any]) -> dict[str, Any]:
     train_path, _ = verify_bound_files(manifest)
     rows = load_training_rows(train_path)
-    torch, processor, model, local_only = load_model_and_processor(manifest)
+    runtime = import_runtime()
+    torch = runtime[0]
     device, execution_observation = observe_execution_device(torch, manifest)
+    torch, processor, model, local_only = load_model_and_processor(manifest, runtime)
 
     seed = int(manifest["seed"])
     random.seed(seed)
