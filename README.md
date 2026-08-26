@@ -12,18 +12,20 @@ The current **release-qualified source-local companion profiles** are deliberate
 
 Both normal setup routes require Node.js 20 or newer and an internet connection for first model/runtime acquisition. The pinned Qwen3.5-4B model/projector artifacts are several GiB and exact verified cached artifacts are reused on later runs.
 
-These are source-local operational profiles. They are **not** a claim that a signed/public `OFFICIAL_VERIFIED_BUILD`, packaged public release, all-Mac installer, all-GPU installer, or P11 fresh-human release proof already exists. Linux bootstrap/development surfaces remain available but do not inherit either release-qualified profile.
+These are source-local operational profiles. They are **not a signed/public `OFFICIAL_VERIFIED_BUILD`**, packaged public release, all-Mac installer, all-GPU installer, or P11 fresh-human release proof. Linux bootstrap/development surfaces remain available but do not inherit either release-qualified profile.
 
 ## Quick start — Mac M4 Pro
 
-Open Terminal and run these two lines:
+Open Terminal and run this block:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command
-bash /tmp/setup-vexlife.command
+rm -f /tmp/setup-vexlife.command
+curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command && bash /tmp/setup-vexlife.command
 ```
 
-Those two lines are the stable Mac front door. They intentionally follow the latest accepted `main`: each run fetches the current bootstrap, resolves `main` to one exact immutable 40-character source commit, and downloads those exact repository bytes. The long source SHA is expected to change as accepted source advances; it is an internal reproducibility/evidence identity, not something an ordinary user has to keep current manually.
+This is the stable Mac front door. The first line removes any older temporary bootstrap; the `&&` means VexLife runs only if GitHub returned the new bootstrap successfully. A failed download therefore cannot silently fall through to a stale `/tmp/setup-vexlife.command`.
+
+The command intentionally follows the latest accepted `main`: each run fetches the current bootstrap, resolves `main` to one exact immutable 40-character source commit, and downloads those exact repository bytes. The long source SHA is expected to change as accepted source advances; it is an internal reproducibility/evidence identity, not something an ordinary user has to keep current manually.
 
 That small bootstrap hands control to the repository-owned Mac setup. You do **not** need to download a ZIP, extract the repository, find a launcher, or choose model URLs/checksums yourself.
 
@@ -39,12 +41,13 @@ On first setup, VexLife performs a no-effect host/profile check before model/run
 
 ### Running Mac setup again
 
-Rerunning the same two-line setup is supported. It resolves current source, then classifies the selected Vex Home instead of blindly overwriting it:
+Rerunning the same stable block is the source-local update path. It resolves current accepted source, then classifies the selected Vex Home instead of blindly overwriting it:
 
 - a healthy Home can be opened/resumed directly;
+- if an exact owned browser is still running from an older exact VexLife source checkout, current source proves that old process from its recorded ownership receipt, stops only that exact process, and starts the browser again from current source instead of pretending the old browser is current;
 - repair and rebuild-preserve are offered only when valid for the observed state;
-- `uninstall-preserve` stops owned processes and removes runtime/transient state while preserving Vex Home, Memory, conversations, and verified model artifacts;
-- an unknown/noncanonical Home fails closed instead of being overwritten or deleted.
+- `uninstall-preserve` stops exact owned processes and removes runtime/transient state while preserving Vex Home, Memory, conversations, and verified model artifacts;
+- an unknown/noncanonical Home or a process whose exact ownership cannot be proven fails closed instead of being overwritten, deleted, or killed.
 
 A future full-delete flow, if provided, is a separate destructive consent boundary. `uninstall-preserve` is intentionally not that operation.
 
@@ -68,7 +71,7 @@ powershell -ExecutionPolicy Bypass -File .\install\vexlife-setup.ps1
 
 *Minimal start alternative:* once Node.js is available and setup is complete, `start-vexlife.cmd` consumes the same bootstrap/initializer/browser contract rather than a separate model path.
 
-> The Windows source-local window and Mac source bootstrap are source-local setup routes. They are **not signed/public `OFFICIAL_VERIFIED_BUILD` installers**. Signing, packaged-build provenance, repository visibility, and public release remain separate Distribution Trust / lifecycle decisions.
+> The Windows source-local window and Mac source bootstrap are source-local setup routes. They are **not a signed/public `OFFICIAL_VERIFIED_BUILD`**. Signing, packaged-build provenance, repository visibility, and public release remain separate Distribution Trust / lifecycle decisions.
 
 ## What setup does
 
