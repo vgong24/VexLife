@@ -155,6 +155,8 @@ def load_manifest(path: Path) -> dict[str, Any]:
         fail("training manifest must keep activationAuthorized=false")
     if manifest.get("publicUploadAuthorized") is not False:
         fail("training manifest must keep publicUploadAuthorized=false")
+    if "modelDownloadAuthorized" in manifest:
+        fail("training manifest cannot carry modelDownloadAuthorized; source-model provisioning authority is external to G04B training")
     if int(manifest.get("maxSteps", 0)) <= 0:
         fail("maxSteps must be greater than zero for a real G04B training run")
     if int(manifest.get("epochs", 0)) <= 0:
@@ -419,11 +421,11 @@ def candidate_file_digests(output_dir: Path) -> dict[str, str]:
 
 def load_model_and_processor(manifest: dict[str, Any]):
     torch, AutoProcessor, AutoModel = import_runtime()
-    local_only = not bool(manifest.get("modelDownloadAuthorized", False))
+    local_only = True
     common = {
         "revision": manifest["sourceModelRevision"],
         "trust_remote_code": False,
-        "local_files_only": local_only,
+        "local_files_only": True,
     }
     processor = AutoProcessor.from_pretrained(manifest["sourceModelRepo"], **common)
     model = AutoModel.from_pretrained(
@@ -497,7 +499,6 @@ def execute(manifest: dict[str, Any], attempt_state: dict[str, Any]) -> dict[str
         generator=generator,
         collate_fn=collate_factory(torch, int(tokenizer.pad_token_id)),
     )
-
     trainable_parameters = [parameter for _, parameter in named]
     optimizer = torch.optim.AdamW(trainable_parameters, lr=float(manifest["learningRate"]))
     accumulation = int(manifest["gradientAccumulationSteps"])
