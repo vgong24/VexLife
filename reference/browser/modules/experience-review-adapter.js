@@ -4,21 +4,54 @@ import path from 'node:path';
 import { createExperienceReviewEvidence } from '../../../src/core/experience-review-kit.mjs';
 
 export const ADAPTER_REF = 'adapter.vexlife.browser.playwright.v0';
-export const ADAPTER_VERSION_REF = 'adapter-version.vexlife.browser.playwright.v0.1';
+export const ADAPTER_VERSION_REF = 'adapter-version.vexlife.browser.playwright.v0.2';
 
 export function stableTargetSelector(ref) {
   if (typeof ref !== 'string' || !ref.trim()) throw new TypeError('targetNodeRef must be a non-empty string');
   return `[data-node-ref="${ref.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"]`;
 }
 
+const CONTEXTUAL_PROJECTION_TARGETS = new Map([
+  ['element.nav.chat', 'action.view.select'],
+  ['element.nav.health', 'action.view.select']
+]);
+const CONTEXTUAL_PROJECTION_REVEAL_SELECTOR = '#surfaceMenuButton';
 const hash = (filePath) => crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 const artifactRefFor = (task) => `artifact.vexlife.browser.${task.captureRequest.captureRequestRef}.${task.step.reviewStepRef}`;
+
+function requireContextualProjectionBinding(step, operation) {
+  const operationKeys = Object.keys(operation ?? {}).sort();
+  if (operationKeys.length !== 1 || operationKeys[0] !== 'kind') {
+    throw new Error('CLICK_CONTEXTUAL_PROJECTION_TARGET accepts only the binding kind');
+  }
+  const expectedActionRef = CONTEXTUAL_PROJECTION_TARGETS.get(step.targetNodeRef);
+  if (!expectedActionRef || step.actionRef !== expectedActionRef) {
+    throw new Error(`Unsupported contextual projection target/action: ${step.targetNodeRef ?? 'NULL'} + ${step.actionRef ?? 'NULL'}`);
+  }
+}
+
+async function clickContextualProjectionTarget(page, target, step, operation) {
+  requireContextualProjectionBinding(step, operation);
+  if (await target.count() === 0) throw new Error(`Stable review target was not rendered: ${step.targetNodeRef}`);
+  if (!(await target.isVisible())) {
+    const reveal = page.locator(CONTEXTUAL_PROJECTION_REVEAL_SELECTOR).first();
+    if (await reveal.count() === 0 || !(await reveal.isVisible())) {
+      throw new Error(`Contextual projection reveal control was unavailable for: ${step.targetNodeRef}`);
+    }
+    await reveal.click();
+    if (!(await target.isVisible())) {
+      throw new Error(`Contextual projection target remained hidden after fixed reveal: ${step.targetNodeRef}`);
+    }
+  }
+  return target.click();
+}
 
 async function perform(page, step, binding) {
   const operation = binding.stepBindings?.[step.reviewStepRef] ?? { kind: 'CLICK_STABLE_TARGET' };
   if (operation.kind === 'NOOP') return;
   if (step.targetNodeRef == null) throw new Error(`Browser operation ${operation.kind} requires targetNodeRef`);
   const target = page.locator(stableTargetSelector(step.targetNodeRef)).first();
+  if (operation.kind === 'CLICK_CONTEXTUAL_PROJECTION_TARGET') return clickContextualProjectionTarget(page, target, step, operation);
   if (await target.count() === 0) throw new Error(`Stable review target was not rendered: ${step.targetNodeRef}`);
   if (operation.kind === 'CLICK_STABLE_TARGET') return target.click();
   if (operation.kind === 'FOCUS_STABLE_TARGET') return target.focus();
