@@ -5,8 +5,8 @@
     {
       "path": "blueprint/feature-registry.json",
       "mode": "100644",
-      "bytes": 86043,
-      "sha256": "9f9c41d8c18878855cd0bbf83a2c705dfd579773d90bf6db3edc5368467f7995"
+      "bytes": 89974,
+      "sha256": "bf83e28bb34c40f02a391176c545191bbdd04ea173be511fbf883fea1da4c7f7"
     },
     {
       "path": "docs/SCHEDULED-DAILY-AUTONOMY.md",

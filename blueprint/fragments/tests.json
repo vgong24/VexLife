@@ -1150,5 +1150,21 @@
   {
     "testRef": "test.review-composition.contract",
     "brief": "RCP-00..RCP-15 deterministic no-effect review composition, exact source binding, unknown preservation, Process Factory admission ordering and non-mutation proof"
+  },
+  {
+    "testRef": "test.cdr-s5.closed-alpha-no-effect",
+    "brief": "The S5 closed-alpha reference remains synthetic and performs no participant, network, provider, relationship, Home, Memory, model, payment, publication or public-search effect."
+  },
+  {
+    "testRef": "test.cdr-s5.closed-alpha-consent-privacy",
+    "brief": "Alpha participation consent stays distinct from invitation/contact/public/training/media consent while discovery remains INVITE_ONLY and public/community search remains off."
+  },
+  {
+    "testRef": "test.cdr-s5.closed-alpha-currentness-delivery",
+    "brief": "Identity/currentness and presence failures remain visible; direct/relay disclosure leaks no raw endpoints; CONNECTED, DELIVERED and SEMANTIC_ACKNOWLEDGED never collapse."
+  },
+  {
+    "testRef": "test.cdr-s5.closed-alpha-recovery-localization-accessibility",
+    "brief": "Support excludes secrets and private context; block/revoke/withdraw/export/disconnect are prospective; EN/JA/ZH, keyboard, >=44px, compact layout and reduced-motion meaning remain aligned."
   }
 ]

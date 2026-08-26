@@ -973,5 +973,25 @@
       "state.journey"
     ],
     "permissionRef": "permission.none"
+  },
+  {
+    "actionRef": "action.cdr-s5.reference.transition",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "transition": "enum"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.cdr-s5-closed-alpha-reference"
+    ]
+  },
+  {
+    "actionRef": "action.cdr-s5.reference.reset",
+    "permissionRef": "permission.none",
+    "inputSchema": {},
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.cdr-s5-closed-alpha-reference"
+    ]
   }
 ]
