@@ -201,7 +201,10 @@ test('post-optimizer failures preserve effect truth instead of claiming no train
     'states.append(mod.training_failure_truth({"optimizerAttempted": True, "optimizerSteps": 1, "selectedParameterChangeState": "UNCHANGED"}))',
     'print(json.dumps(states))'
   ].join('\n');
-  const result = spawnSync(runtime.command, [...runtime.prefix, '-c', script, source], {encoding: 'utf8'});
+  const result = spawnSync(runtime.command, [...runtime.prefix, '-c', script, source], {
+    encoding: 'utf8',
+    env: {...process.env, PYTHONDONTWRITEBYTECODE: '1'}
+  });
   assert.equal(result.status, 0, result.stderr);
   const states = JSON.parse(result.stdout);
   assert.deepEqual(states[0], {effectState: 'PRE_EXECUTION_NO_EFFECT', trainingActuallyExecuted: false, modelWeightsChanged: false, optimizerSteps: 0});
@@ -252,7 +255,10 @@ test('evaluator rebinds exact candidate bytes and rejects post-training drift', 
     'else:',
     '    raise SystemExit("post-training candidate drift was accepted")'
   ].join('\n');
-  const result = spawnSync(runtime.command, [...runtime.prefix, '-c', script, source, candidate], {encoding: 'utf8'});
+  const result = spawnSync(runtime.command, [...runtime.prefix, '-c', script, source, candidate], {
+    encoding: 'utf8',
+    env: {...process.env, PYTHONDONTWRITEBYTECODE: '1'}
+  });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /PASS1 [0-9a-f]{64}/u);
   assert.match(result.stdout, /PASS2 candidate bytes drifted after training/u);
