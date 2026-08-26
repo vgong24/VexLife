@@ -12,6 +12,11 @@ export const FOUNDATION_TRAINING_MODES = Object.freeze([
   'FOUNDATION_PARTIAL_FULL_RANK',
   'FOUNDATION_FULL'
 ]);
+export const FOUNDATION_EXECUTION_DEVICES = Object.freeze(['CUDA', 'MPS']);
+export const FOUNDATION_EXECUTION_HARDWARE_PROFILES = Object.freeze({
+  CUDA: 'hardware.windows-x64.nvidia.cuda12-compatible',
+  MPS: 'hardware.macos-arm64.apple-m4-pro.metal'
+});
 
 const HEX40 = /^[0-9a-f]{40}$/u;
 const HEX64 = /^[0-9a-f]{64}$/u;
@@ -92,6 +97,20 @@ export function validateFoundationTrainingManifest(
   if (!HEX64.test(manifest.trainingDatasetSha256 ?? '') || !HEX64.test(manifest.heldoutDatasetSha256 ?? '')) {
     fail('G04B_DATASET_NOT_PINNED', 'training and held-out datasets require lowercase SHA-256');
   }
+  if (!FOUNDATION_EXECUTION_DEVICES.includes(manifest.executionDevice)) {
+    fail('G04B_EXECUTION_DEVICE_UNBOUND', 'executionDevice must explicitly select CUDA or MPS; generation-1 real training has no implicit CPU fallback');
+  }
+  if (typeof manifest.expectedHardwareProfileRef !== 'string' || !manifest.expectedHardwareProfileRef) {
+    fail('G04B_HARDWARE_PROFILE_UNBOUND', 'expectedHardwareProfileRef is required');
+  }
+  const requiredHardwareProfileRef = FOUNDATION_EXECUTION_HARDWARE_PROFILES[manifest.executionDevice];
+  if (manifest.expectedHardwareProfileRef !== requiredHardwareProfileRef) {
+    fail('G04B_HARDWARE_PROFILE_MISMATCH', 'executionDevice must bind its exact admitted hardware profile', {
+      executionDevice: manifest.executionDevice,
+      expected: requiredHardwareProfileRef,
+      observed: manifest.expectedHardwareProfileRef
+    });
+  }
   if (!Number.isSafeInteger(manifest.maxSteps) || manifest.maxSteps <= 0) fail('G04B_NO_REAL_STEP', 'maxSteps must be a positive integer');
   if (!Number.isSafeInteger(manifest.epochs) || manifest.epochs <= 0) fail('G04B_NO_REAL_STEP', 'epochs must be a positive integer');
   if (typeof manifest.learningRate !== 'number' || !(manifest.learningRate > 0)) fail('G04B_MANIFEST_INVALID', 'learningRate must be positive');
@@ -166,6 +185,9 @@ export function validateFoundationTrainingManifest(
     sourceModelIdentityClass: 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION',
     sourceManifestFingerprint: manifest.sourceManifestFingerprint,
     sourceManifestFingerprintVerified: shouldVerifySourceManifest,
+    executionDevice: manifest.executionDevice,
+    expectedHardwareProfileRef: manifest.expectedHardwareProfileRef,
+    executionDeviceProfileBound: true,
     trainingDatasetPath: path.relative(path.resolve(repoRoot), trainingDataset).replaceAll(path.sep, '/'),
     heldoutDatasetPath: path.relative(path.resolve(repoRoot), heldoutDataset).replaceAll(path.sep, '/'),
     outputDir: path.relative(path.resolve(repoRoot), outputDir).replaceAll(path.sep, '/'),
