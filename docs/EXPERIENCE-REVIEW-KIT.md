@@ -210,15 +210,17 @@ element.nav.chat   + action.view.select
 element.nav.health + action.view.select
 ```
 
+Before disclosure, the adapter waits only for the fixed renderer-owned `#app[data-context-projection]` readiness marker that the current browser establishes after its interaction bindings are attached. If that marker never materializes, capture fails safe; the adapter does not call product-internal methods or treat a fixed sleep as readiness evidence.
+
 It still resolves the semantic target only through the stable `data-node-ref` mapping. If that canonical target is hidden in the current reference-browser surface menu, the adapter may use only the fixed renderer-local `#surfaceMenuButton` disclosure control, then requires the same stable target to become visible before clicking it. The binding object accepts only `kind`; selector, reveal-selector, script, function, method, custom-event, context-name, JavaScript, or caller-defined allowlist overrides are rejected.
 
 ```text
 portable semantic target/action = source truth
-fixed menu disclosure = renderer implementation detail
+fixed renderer readiness + menu disclosure = renderer implementation detail
 review adapter != product navigation owner
 ```
 
-An unsupported target/action pair, a missing disclosure seam, or a reveal that does not expose the canonical stable target produces `FAILED_SAFE` before screenshot evidence is marked captured.
+An unsupported target/action pair, an unready renderer, a missing disclosure seam, or a reveal that does not expose the canonical stable target produces `FAILED_SAFE` before screenshot evidence is marked captured.
 
 A missing stable target or browser failure likewise produces `FAILED_SAFE`; the adapter does not silently substitute another platform or truth class.
 
