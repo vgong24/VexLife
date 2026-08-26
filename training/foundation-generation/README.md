@@ -71,6 +71,42 @@ candidateModelIdentity
 
 The evaluator recomputes both identities from the exact manifest and re-hashed candidate bytes before emitting evaluation evidence.
 
+## Execution device and host binding
+
+Generation 1 has no implicit CPU fallback for a real G04B run. The manifest must bind one explicit execution backend to one admitted hardware profile:
+
+```text
+executionDevice=CUDA
+  <-> hardware.windows-x64.nvidia.cuda12-compatible
+
+executionDevice=MPS
+  <-> hardware.macos-arm64.apple-m4-pro.metal
+```
+
+A caller cannot pair `MPS` with the Windows CUDA profile or `CUDA` with the Mac Metal profile. `AUTO`, `CPU`, a missing device, or an unknown device fails before model runtime loading.
+
+The trainer independently re-observes the selected accelerator before loading the checkpoint:
+
+```text
+MPS
+  -> darwin + arm64
+  -> PyTorch MPS built and available
+  -> Apple chip identity is Apple M4 Pro for the admitted profile
+  -> one minimal tensor operation succeeds at the requested precision
+
+CUDA
+  -> Windows x64
+  -> torch.cuda available
+  -> CUDA 12.x PyTorch runtime
+  -> NVIDIA device identity
+  -> requested bf16 support when bf16 is selected
+  -> one minimal tensor operation succeeds at the requested precision
+```
+
+Only after that probe succeeds does the trainer materialize the exact local-only source checkpoint and place it on the selected accelerator. Inspection and training receipts expose the observed execution device, platform, architecture, device identity, runtime version, available accelerator-memory evidence where supported, expected hardware-profile ref, and a deterministic observation fingerprint.
+
+This is execution provenance, not execution authority. A valid host observation does not authorize model download, training, activation, publication, Home mutation, or Memory mutation.
+
 ## Dataset
 
 Training input is JSONL. Each row has:
@@ -94,6 +130,16 @@ The generation-1 trainer uses text-only examples even though Qwen3.5 is multimod
 
 Raw private conversations are not required. A first proof should prefer a small reviewed formation corpus with source refs, desired examples, counterexamples and explicit `notTheLessonRefs`.
 
+For a real private/local proof, keep the reviewed manifest and corpus under the ignored runtime domain, for example:
+
+```text
+runtime/training/g04b/manifest.json
+runtime/training/g04b/g04b-train.jsonl
+runtime/training/g04b/g04b-heldout.jsonl
+```
+
+Do not place private training material under a source-tracked path merely because the public example schema can name repository-relative files. `runtime/` is the source-managed noncanonical local artifact boundary and remains excluded from the Source Manifest and Git commits.
+
 ## Plan first
 
 From repository root:
@@ -102,7 +148,7 @@ From repository root:
 node scripts/foundation-training-plan.mjs training/foundation-generation/training-manifest.example.json
 ```
 
-The plan command performs no network or model operation. It verifies manifest shape, dataset hashes, training mode, exact repository/revision source identity, the exact current Source Manifest fingerprint, and the rule that a dry run or adapter-only route cannot satisfy the G04B real-weight predicate.
+The plan command performs no network or model operation. It verifies manifest shape, dataset hashes, training mode, exact repository/revision source identity, the exact current Source Manifest fingerprint, the exact execution-device/hardware-profile pair, and the rule that a dry run or adapter-only route cannot satisfy the G04B real-weight predicate.
 
 ## Inspect the trainable model before training
 
@@ -114,7 +160,7 @@ python training/foundation-generation/foundation_train.py \
   --inspect-only
 ```
 
-This loads the exact model revision and reports the language-block path it can discover, parameter counts, the exact parameter set that would be trainable, the deterministic prior-model identity, and the admitted Source Manifest fingerprint. It writes no model candidate.
+Inspection first proves the requested accelerator is the admitted host/backend, then loads the exact local-only model revision, places it on that accelerator, and reports the language-block path it can discover, parameter counts, the exact parameter set that would be trainable, the deterministic prior-model identity, the admitted Source Manifest fingerprint, and the execution observation fingerprint. It performs no optimizer step and writes no model candidate.
 
 ## Execute one candidate training run
 
@@ -130,6 +176,10 @@ The trainer fails closed when:
 manifest or dataset identity is wrong
 model revision is not exact
 Source Manifest fingerprint is absent/malformed
+execution device is missing, AUTO, CPU or unknown
+execution device and hardware profile do not match exactly
+selected accelerator/platform/runtime cannot be independently re-observed
+requested precision cannot execute on the selected accelerator
 training mode is adapter-only
 parameter selection resolves zero parameters
 maxSteps <= 0
@@ -145,6 +195,10 @@ priorModelIdentity
 candidateModelIdentity
 sourceManifestFingerprint
 sourceManifestFingerprintObserved=false
+executionDevice
+expectedHardwareProfileRef
+executionObservation
+executionObservationFingerprint
 trainingActuallyExecuted=true
 modelWeightsChanged=true
 changedParameterCount>0

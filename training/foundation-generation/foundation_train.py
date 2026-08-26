@@ -15,8 +15,10 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import random
 import re
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -24,6 +26,10 @@ from typing import Any, Iterable
 
 SCHEMA = "vexlife.foundation-training-manifest/v1"
 MODES = {"ADAPTER_PROBE", "FOUNDATION_PARTIAL_FULL_RANK", "FOUNDATION_FULL"}
+EXECUTION_DEVICE_PROFILES = {
+    "CUDA": "hardware.windows-x64.nvidia.cuda12-compatible",
+    "MPS": "hardware.macos-arm64.apple-m4-pro.metal",
+}
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -171,6 +177,14 @@ def load_manifest(path: Path) -> dict[str, Any]:
     ):
         if not isinstance(manifest.get(field), str) or not manifest[field]:
             fail(f"manifest.{field} is required")
+    execution_device = manifest.get("executionDevice")
+    if execution_device not in EXECUTION_DEVICE_PROFILES:
+        fail("executionDevice must explicitly select CUDA or MPS; generation-1 real training has no implicit CPU fallback")
+    required_hardware_profile = EXECUTION_DEVICE_PROFILES[execution_device]
+    if manifest["expectedHardwareProfileRef"] != required_hardware_profile:
+        fail(
+            f"executionDevice={execution_device} requires expectedHardwareProfileRef={required_hardware_profile}"
+        )
     for field in ("trainingDatasetSha256", "heldoutDatasetSha256"):
         if not HEX64.fullmatch(manifest[field]):
             fail(f"manifest.{field} must be lowercase SHA-256")
@@ -279,6 +293,113 @@ def dtype_for(torch, precision: str):
     if precision == "fp16":
         return torch.float16
     return torch.float32
+
+
+def observe_execution_device(torch, manifest: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
+    requested = manifest["executionDevice"]
+    expected_profile = manifest["expectedHardwareProfileRef"]
+    architecture = platform.machine().lower()
+    precision = manifest["precision"]
+    dtype = dtype_for(torch, precision)
+
+    if requested == "MPS":
+        if sys.platform != "darwin" or architecture != "arm64":
+            fail("executionDevice=MPS requires a darwin/arm64 host")
+        backend = getattr(getattr(torch, "backends", None), "mps", None)
+        if backend is None or not callable(getattr(backend, "is_built", None)) or not backend.is_built():
+            fail("executionDevice=MPS requires a PyTorch build with MPS support")
+        if not callable(getattr(backend, "is_available", None)) or not backend.is_available():
+            fail("executionDevice=MPS is not available on the current host")
+        try:
+            chip_result = subprocess.run(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            device_name = chip_result.stdout.strip()
+        except Exception as exc:  # noqa: BLE001
+            raise FoundationTrainingError(f"could not observe Apple chip identity: {exc}") from exc
+        if expected_profile == "hardware.macos-arm64.apple-m4-pro.metal" and device_name != "Apple M4 Pro":
+            fail(
+                "expected hardware.macos-arm64.apple-m4-pro.metal but current Apple chip is "
+                f"{device_name or 'UNKNOWN'}"
+            )
+        device = torch.device("mps")
+        try:
+            probe = torch.ones((1,), dtype=dtype, device=device)
+            probe = (probe + probe).to("cpu")
+            del probe
+        except Exception as exc:  # noqa: BLE001
+            raise FoundationTrainingError(
+                f"MPS cannot execute the requested precision={precision} before model load: {exc}"
+            ) from exc
+        mps_api = getattr(torch, "mps", None)
+        recommended_memory = getattr(mps_api, "recommended_max_memory", None)
+        accelerator_memory = int(recommended_memory()) if callable(recommended_memory) else None
+        observation = {
+            "executionDevice": requested,
+            "deviceType": device.type,
+            "deviceName": device_name,
+            "platform": sys.platform,
+            "architecture": architecture,
+            "expectedHardwareProfileRef": expected_profile,
+            "torchVersion": str(getattr(torch, "__version__", "UNKNOWN")),
+            "precision": precision,
+            "mpsBuilt": True,
+            "mpsAvailable": True,
+            "acceleratorMemoryBytes": accelerator_memory,
+            "cudaRuntimeVersion": None,
+        }
+    elif requested == "CUDA":
+        if sys.platform != "win32" or architecture not in {"amd64", "x86_64"}:
+            fail("executionDevice=CUDA requires a Windows x64 host for the admitted G04B hardware profile")
+        if not torch.cuda.is_available():
+            fail("executionDevice=CUDA is not available on the current host")
+        cuda_version = str(getattr(getattr(torch, "version", None), "cuda", "") or "")
+        if not cuda_version.startswith("12."):
+            fail(f"executionDevice=CUDA requires a CUDA 12.x PyTorch runtime, observed {cuda_version or 'UNKNOWN'}")
+        device_index = 0
+        properties = torch.cuda.get_device_properties(device_index)
+        device_name = str(getattr(properties, "name", ""))
+        if "nvidia" not in device_name.lower():
+            fail(f"executionDevice=CUDA requires an NVIDIA device, observed {device_name or 'UNKNOWN'}")
+        if precision == "bf16" and callable(getattr(torch.cuda, "is_bf16_supported", None)) and not torch.cuda.is_bf16_supported():
+            fail("executionDevice=CUDA does not support requested bf16 precision")
+        device = torch.device(f"cuda:{device_index}")
+        try:
+            probe = torch.ones((1,), dtype=dtype, device=device)
+            probe = (probe + probe).to("cpu")
+            del probe
+        except Exception as exc:  # noqa: BLE001
+            raise FoundationTrainingError(
+                f"CUDA cannot execute the requested precision={precision} before model load: {exc}"
+            ) from exc
+        observation = {
+            "executionDevice": requested,
+            "deviceType": device.type,
+            "deviceIndex": device_index,
+            "deviceName": device_name,
+            "platform": sys.platform,
+            "architecture": architecture,
+            "expectedHardwareProfileRef": expected_profile,
+            "torchVersion": str(getattr(torch, "__version__", "UNKNOWN")),
+            "precision": precision,
+            "mpsBuilt": False,
+            "mpsAvailable": False,
+            "acceleratorMemoryBytes": int(getattr(properties, "total_memory", 0) or 0),
+            "cudaRuntimeVersion": cuda_version,
+            "computeCapability": [
+                int(getattr(properties, "major", 0) or 0),
+                int(getattr(properties, "minor", 0) or 0),
+            ],
+        }
+    else:
+        fail("unsupported executionDevice; generation-1 real training has no CPU fallback")
+
+    observation["observationFingerprint"] = sha256_bytes(canonical_json(observation))
+    return device, observation
 
 
 def nested_attr(value: Any, dotted: str) -> Any | None:
@@ -442,8 +563,8 @@ def candidate_file_digests(output_dir: Path) -> dict[str, str]:
     return result
 
 
-def load_model_and_processor(manifest: dict[str, Any]):
-    torch, AutoProcessor, AutoModel = import_runtime()
+def load_model_and_processor(manifest: dict[str, Any], runtime=None):
+    torch, AutoProcessor, AutoModel = runtime or import_runtime()
     local_only = True
     common = {
         "revision": manifest["sourceModelRevision"],
@@ -462,7 +583,11 @@ def load_model_and_processor(manifest: dict[str, Any]):
 def inspect(manifest: dict[str, Any]) -> dict[str, Any]:
     train_path, heldout_path = verify_bound_files(manifest)
     rows = load_training_rows(train_path)
-    torch, processor, model, local_only = load_model_and_processor(manifest)
+    runtime = import_runtime()
+    torch = runtime[0]
+    device, execution_observation = observe_execution_device(torch, manifest)
+    torch, processor, model, local_only = load_model_and_processor(manifest, runtime)
+    model.to(device)
     selection = configure_trainable_parameters(model, manifest)
     names = sorted(name for name, _ in selection["trainableNamedParameters"])
     return {
@@ -477,6 +602,12 @@ def inspect(manifest: dict[str, Any]) -> dict[str, Any]:
         "sourceModelIdentityClass": "EXACT_REPOSITORY_PLUS_COMMIT_REVISION",
         "sourceManifestFingerprint": manifest["sourceManifestFingerprint"],
         "sourceManifestFingerprintObserved": False,
+        "executionDevice": manifest["executionDevice"],
+        "expectedHardwareProfileRef": manifest["expectedHardwareProfileRef"],
+        "executionObservation": execution_observation,
+        "executionObservationFingerprint": execution_observation["observationFingerprint"],
+        "modelPlacedOnExecutionDevice": True,
+        "deviceType": device.type,
         "localFilesOnly": local_only,
         "trainingDataset": str(train_path.relative_to(REPO_ROOT)),
         "heldoutDataset": str(heldout_path.relative_to(REPO_ROOT)),
@@ -496,14 +627,20 @@ def inspect(manifest: dict[str, Any]) -> dict[str, Any]:
 def execute(manifest: dict[str, Any], attempt_state: dict[str, Any]) -> dict[str, Any]:
     train_path, _ = verify_bound_files(manifest)
     rows = load_training_rows(train_path)
-    torch, processor, model, local_only = load_model_and_processor(manifest)
+    runtime = import_runtime()
+    torch = runtime[0]
+    device, execution_observation = observe_execution_device(torch, manifest)
+    torch, processor, model, local_only = load_model_and_processor(manifest, runtime)
 
     seed = int(manifest["seed"])
     random.seed(seed)
     torch.manual_seed(seed)
-    if torch.cuda.is_available():
+    if manifest["executionDevice"] == "CUDA":
         torch.cuda.manual_seed_all(seed)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    elif manifest["executionDevice"] == "MPS":
+        mps_manual_seed = getattr(getattr(torch, "mps", None), "manual_seed", None)
+        if callable(mps_manual_seed):
+            mps_manual_seed(seed)
     model.to(device)
     if hasattr(model, "gradient_checkpointing_enable"):
         model.gradient_checkpointing_enable()
@@ -602,6 +739,10 @@ def execute(manifest: dict[str, Any], attempt_state: dict[str, Any]) -> dict[str
         "manifestFingerprint": sha256_bytes(canonical_json(manifest)),
         "trainingDatasetSha256": manifest["trainingDatasetSha256"],
         "heldoutDatasetSha256": manifest["heldoutDatasetSha256"],
+        "executionDevice": manifest["executionDevice"],
+        "expectedHardwareProfileRef": manifest["expectedHardwareProfileRef"],
+        "executionObservation": execution_observation,
+        "executionObservationFingerprint": execution_observation["observationFingerprint"],
         "selectedPath": selection["selectedPath"],
         "trainableTensorCount": selection["trainableTensorCount"],
         "trainableParameterCount": selection["trainableParameterCount"],
