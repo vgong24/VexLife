@@ -141,6 +141,15 @@ test('training cannot authorize its own activation', t => {
   expectCode(() => validateFoundationTrainingManifest(manifest, {repoRoot: root}), 'G04B_ACTIVATION_COLLAPSE');
 });
 
+test('training manifest cannot carry source-model network authority', t => {
+  for (const modelDownloadAuthorized of [false, true]) {
+    const {root, manifest} = fixture();
+    t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+    manifest.modelDownloadAuthorized = modelDownloadAuthorized;
+    expectCode(() => validateFoundationTrainingManifest(manifest, {repoRoot: root}), 'G04B_NETWORK_AUTHORITY_COLLAPSE');
+  }
+});
+
 test('partial full-rank mode requires an explicit nonzero language-block selection', t => {
   const {root, manifest} = fixture();
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
@@ -180,6 +189,43 @@ test('generation-1 Python trainer and evaluator compile without mutating the sou
     ['0.pyc', '1.pyc'],
     'Python validation must emit bytecode only into the isolated temporary compile root'
   );
+});
+
+test('Python trainer and evaluator reject caller model-download authority before runtime loading', t => {
+  const runtime = pythonRuntime();
+  if (!runtime) {
+    t.skip('Python runtime is not available on this repository validation host');
+    return;
+  }
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-g04b-network-authority-'));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const manifestPath = path.join(root, 'manifest.json');
+  const {root: fixtureRoot, manifest} = fixture();
+  t.after(() => fs.rmSync(fixtureRoot, {recursive: true, force: true}));
+  manifest.modelDownloadAuthorized = true;
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  const trainSource = path.resolve('training/foundation-generation/foundation_train.py');
+  const evalSource = path.resolve('training/foundation-generation/foundation_evaluate.py');
+  const script = [
+    'import importlib.util, pathlib, sys',
+    'manifest = pathlib.Path(sys.argv[1])',
+    'for index, source in enumerate(sys.argv[2:]):',
+    '    spec = importlib.util.spec_from_file_location(f"g04b_module_{index}", pathlib.Path(source))',
+    '    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)',
+    '    try:',
+    '        mod.load_manifest(manifest)',
+    '    except Exception as exc:',
+    '        if "modelDownloadAuthorized" not in str(exc): raise',
+    '    else:',
+    '        raise SystemExit(f"{source} accepted caller model-download authority")',
+    'print("NETWORK_AUTHORITY_REJECTED")'
+  ].join('\n');
+  const result = spawnSync(runtime.command, [...runtime.prefix, '-c', script, manifestPath, trainSource, evalSource], {
+    encoding: 'utf8',
+    env: {...process.env, PYTHONDONTWRITEBYTECODE: '1'}
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /NETWORK_AUTHORITY_REJECTED/u);
 });
 
 test('post-optimizer failures preserve effect truth instead of claiming no training occurred', t => {
