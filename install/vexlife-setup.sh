@@ -31,8 +31,49 @@ parse_json_state() {
     });
   '
 }
+reconcile_prior_browser_source() {
+  if ! node --input-type=module - "$REPO_ROOT/scripts/macos-lifecycle.mjs" "$VEX_HOME" "$REPO_ROOT" <<'NODE'
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const [modulePathRaw, homeRaw, currentRepoRaw] = process.argv.slice(2);
+const modulePath = path.resolve(modulePathRaw);
+const home = path.resolve(homeRaw);
+const currentRepo = path.resolve(currentRepoRaw);
+const receiptPath = path.join(home, 'recovery', 'browser-process.json');
+
+try {
+  if (!fs.existsSync(receiptPath)) process.exit(0);
+  const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+  if (!receipt || receipt.state !== 'RUNNING') process.exit(0);
+  if (!receipt.vexHomePath || path.resolve(String(receipt.vexHomePath)) !== home) {
+    throw new Error('browser process receipt Home identity does not match the selected Vex Home');
+  }
+  if (!receipt.repoRootPath) {
+    throw new Error('browser process receipt does not identify the source that launched it');
+  }
+  const priorRepo = path.resolve(String(receipt.repoRootPath));
+  if (priorRepo === currentRepo) process.exit(0);
+
+  const lifecycle = await import(pathToFileURL(modulePath).href);
+  const result = await lifecycle.stopOwnedBrowser(home, priorRepo);
+  if (!result || !['EXACT_BROWSER_STOPPED', 'ALREADY_STOPPED', 'NO_BROWSER_RECEIPT'].includes(result.disposition)) {
+    throw new Error(`prior-source browser stop returned an unexpected disposition: ${result?.disposition || 'UNKNOWN'}`);
+  }
+} catch (error) {
+  console.error(`VEXLIFE_BROWSER_SOURCE_ROTATION_HELD: ${error.message}`);
+  process.exit(1);
+}
+NODE
+  then
+    say "VexLife found browser state from an earlier source version but could not prove it was safe to stop. Nothing else was changed."
+    return 1
+  fi
+}
 run_lifecycle() {
   local operation="$1" result
+  reconcile_prior_browser_source || return 1
   if ! result="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation "$operation" --repo "$REPO_ROOT" --home "$VEX_HOME")"; then
     printf '\nVexLife stopped safely before completing %s.\n' "$operation" >&2
     return 1
