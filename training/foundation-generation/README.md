@@ -35,7 +35,18 @@ Qwen/Qwen3.5-4B
 Qwen/Qwen3.5-4B-Base
 ```
 
-Do not use `main` as the final training identity. Replace the example manifest's revision placeholder with an exact commit and preserve the source snapshot fingerprint.
+Do not use `main` as the final training identity. Generation 1 treats:
+
+```text
+sourceModelRepo + exact 40-character sourceModelRevision
+  = authoritative executable source identity
+
+sourceModelSnapshotFingerprint
+  = caller-declared expected snapshot fingerprint
+  != independently observed snapshot evidence
+```
+
+Until a later source-snapshot verifier derives that fingerprint from resolved model bytes, receipts preserve `sourceModelSnapshotFingerprintObserved=false` and `sourceModelIdentityClass=EXACT_REPOSITORY_PLUS_COMMIT_REVISION`. A declared 64-hex value must never be presented as independently observed provenance.
 
 ## Dataset
 
@@ -68,7 +79,7 @@ From repository root:
 node scripts/foundation-training-plan.mjs training/foundation-generation/training-manifest.example.json
 ```
 
-The plan command performs no network or model operation. It verifies manifest shape, dataset hashes, training mode, source identities and the rule that a dry run or adapter-only route cannot satisfy the G04B real-weight predicate.
+The plan command performs no network or model operation. It verifies manifest shape, dataset hashes, training mode, exact repository/revision source identity and the rule that a dry run or adapter-only route cannot satisfy the G04B real-weight predicate.
 
 ## Inspect the trainable model before training
 
@@ -110,9 +121,24 @@ trainingActuallyExecuted=true
 modelWeightsChanged=true
 changedParameterCount>0
 candidateArtifactDigests
+candidateArtifactFingerprint
 changedParameterNameFingerprint
 activationPerformed=false
 ```
+
+### Failure after an optimizer effect
+
+A later failure must not rewrite history into “training did not happen.” The trainer tracks optimizer progress separately from command success and returns one effect-truth class:
+
+```text
+PRE_EXECUTION_NO_EFFECT
+OPTIMIZER_ATTEMPT_EFFECT_UNKNOWN
+POST_OPTIMIZER_CHANGE_UNKNOWN
+POST_OPTIMIZER_UNCHANGED
+POST_OPTIMIZER_CHANGED
+```
+
+If an optimizer step completed, `trainingActuallyExecuted` is never falsely returned as `false`. If selected tensors were already re-hashed as changed, a later save/output failure preserves `modelWeightsChanged=true` even though the candidate run itself failed.
 
 ## Compare baseline and candidate
 
@@ -124,7 +150,20 @@ python training/foundation-generation/foundation_evaluate.py \
   --candidate <candidate-directory>
 ```
 
-The evaluator runs the same prompts against the exact source model revision and candidate model and emits a comparison receipt. It does **not** auto-promote the candidate. Semantic, culture, privacy, identity and capability review remain separate accepted gates.
+Before loading the trained model, the evaluator:
+
+```text
+reads the exact training receipt
+rebinds receipt identity to the exact manifest
+re-hashes every candidate model/processor file
+rejects missing, extra or changed candidate bytes
+recomputes candidateArtifactFingerprint
+requires exact equality with the training receipt
+```
+
+Evaluation therefore cannot silently consume a checkpoint modified after training while retaining the old candidate identity.
+
+The evaluator then runs the same prompts against the exact source model revision and exact verified candidate and emits a comparison receipt with `candidateArtifactBytesVerified=true`. It does **not** auto-promote the candidate. Semantic, culture, privacy, identity and capability review remain separate accepted gates.
 
 ## What this proof means
 
