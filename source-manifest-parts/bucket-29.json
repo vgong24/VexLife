@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/integration/contextual-conversation-suite.js",
       "mode": "100644",
-      "bytes": 10855,
-      "sha256": "a88da1593f1450b83679c9fa4527fde4231455dd1a5fce0a8a1c1199580cace3"
+      "bytes": 11392,
+      "sha256": "4eea6140e338e60b099e7ded22c880c319d566ee7e0321ae436ec465b525f61f"
     },
     {
       "path": "scripts/atlas-query.mjs",
