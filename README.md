@@ -5,15 +5,46 @@ VexLife is a local-first, lifelong AI companion. It runs on your own computer, a
 
 ## Before you start
 
-The current **release-qualified local companion baseline** is for Windows 10/11 x64 with:
+The current **release-qualified source-local companion profiles** are deliberately narrow:
 
-- a compatible NVIDIA GPU/driver that `nvidia-smi` can identify;
-- at least 12 GiB of system memory;
-- at least 6 GiB of free disk space;
-- Node.js 20 or newer. The guided setup can install Node.js LTS with your permission if `winget` is available;
-- an internet connection for the first model/runtime acquisition. The pinned artifacts total about 4.0 GiB and are reused after exact verification.
+- **Windows 10/11 x64 + compatible NVIDIA GPU/driver** (`nvidia-smi` available), with at least 12 GiB system memory and 6 GiB free disk space.
+- **macOS arm64 on Apple M4 Pro**, with at least 12 GiB system memory and 6 GiB free disk space.
 
-The repository also contains macOS/Linux bootstrap and development surfaces, but this README does **not** claim the same release-qualified local-model baseline on those platforms yet.
+Both normal setup routes require Node.js 20 or newer and an internet connection for first model/runtime acquisition. The pinned Qwen3.5-4B model/projector artifacts are several GiB and exact verified cached artifacts are reused on later runs.
+
+These are source-local operational profiles. They are **not** a claim that a signed/public `OFFICIAL_VERIFIED_BUILD`, packaged public release, all-Mac installer, all-GPU installer, or P11 fresh-human release proof already exists. Linux bootstrap/development surfaces remain available but do not inherit either release-qualified profile.
+
+## Quick start — Mac M4 Pro
+
+Open Terminal and run these two lines:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command
+bash /tmp/setup-vexlife.command
+```
+
+That small bootstrap resolves one exact VexLife source commit, downloads those exact repository bytes, and hands control to the repository-owned Mac setup. You do **not** need to download a ZIP, extract the repository, find a launcher, or choose model URLs/checksums yourself.
+
+Setup checks the Mac and Node.js first, then asks only for choices that belong to you. The default Vex Home is:
+
+```text
+~/.vexlife
+```
+
+Press Enter to use that Home or enter another folder. VexLife inspects the selected Home before offering an action; it does not ask you to guess whether the machine needs a first install, resume, repair, rebuild, or uninstall.
+
+On first setup, VexLife performs a no-effect host/profile check before model/runtime acquisition. If this Mac matches the current release-qualified Apple M4 Pro profile, the initializer separately asks before downloading several GiB of verified model/runtime files and starting the local-only model. After qualification, the browser opens at `http://127.0.0.1:18110`.
+
+### Running Mac setup again
+
+Rerunning the same two-line setup is supported. It resolves current source, then classifies the selected Vex Home instead of blindly overwriting it:
+
+- a healthy Home can be opened/resumed directly;
+- repair and rebuild-preserve are offered only when valid for the observed state;
+- `uninstall-preserve` stops owned processes and removes runtime/transient state while preserving Vex Home, Memory, conversations, and verified model artifacts;
+- an unknown/noncanonical Home fails closed instead of being overwritten or deleted.
+
+A future full-delete flow, if provided, is a separate destructive consent boundary. `uninstall-preserve` is intentionally not that operation.
 
 ## Quick start — Windows
 
@@ -35,47 +66,50 @@ powershell -ExecutionPolicy Bypass -File .\install\vexlife-setup.ps1
 
 *Minimal start alternative:* once Node.js is available and setup is complete, `start-vexlife.cmd` consumes the same bootstrap/initializer/browser contract rather than a separate model path.
 
-> `setup-vexlife.cmd` is a source-local window over the repository setup engine. It is **not a signed/public `OFFICIAL_VERIFIED_BUILD`**, public download release, or all-platform installer. Signing, packaged-build provenance, repository visibility, and public release remain separate Distribution Trust / lifecycle decisions.
+> The Windows setup window and Mac source bootstrap are source-local setup routes. They are **not signed/public `OFFICIAL_VERIFIED_BUILD` installers**. Signing, packaged-build provenance, repository visibility, and public release remain separate Distribution Trust / lifecycle decisions.
 
 ## What setup does
 
 ```text
-check source + Node
-→ establish or preserve Vex Home
-→ resolve the current RELEASE_QUALIFIED Windows profile
+obtain/verify source route
+→ check Node + host eligibility
+→ select, establish or preserve Vex Home
+→ resolve the matching RELEASE_QUALIFIED operational profile
 → ask before model/runtime acquisition
 → download or reuse exact pinned artifacts
 → verify byte sizes + SHA-256
-→ materialize and verify llama-server.exe
+→ materialize and verify the platform runtime
 → start 127.0.0.1:18080
 → perform a non-user runtime qualification turn
 → write BOUND_QUALIFIED model configuration
 → start the local browser at 127.0.0.1:18110
 → expose the server-owned Companion binding
-→ write plain-English + machine-readable receipts
+→ write machine-readable recovery receipts
 ```
 
 If Vex already has a Home, bootstrap preserves it rather than deleting, moving, or automatically migrating it. An unknown non-empty Home, a mismatched artifact, an unsupported host, or an unowned process on a required port fails closed instead of being overwritten or killed.
 
-The windowed setup does not duplicate those effects. It only collects the visible Home/permission choices, then delegates to `install/vexlife-setup.ps1`; that accepted backend remains the owner of Home bootstrap, model/runtime acquisition and qualification, browser startup, exact process ownership, and receipts.
+The human-facing front doors do not duplicate those effects. They collect the visible Home/permission choices and delegate to the repository-owned platform setup/lifecycle logic.
 
 ## What is real today
 
-- The current Windows source-local operational profile pins llama.cpp `b10107` and Qwen3.5-4B Q4_K_M/model-projector artifacts by immutable source/revision, exact byte size, and SHA-256.
+- The current Windows x64 NVIDIA and macOS arm64 Apple M4 Pro source-local operational profiles are `RELEASE_QUALIFIED`.
+- Both profiles pin llama.cpp `b10107` plus Qwen3.5-4B Q4_K_M model/projector artifacts by immutable source/revision, exact byte size, and SHA-256.
 - The model runtime is bound only to `127.0.0.1:18080`; the VexLife browser is served at `127.0.0.1:18110`.
 - The Browser → Companion path performs a real local HTTP model turn and advances durable request/response/context/head evidence. It does not substitute a synthetic reply when that path fails.
+- The Mac profile additionally has accepted repair, rebuild-preserve, uninstall-preserve, restart/resume, exact-owned shutdown, path-with-spaces ownership, and technical continuity evidence on Apple M4 Pro.
 - The **Vex Guide overlay is a different surface**: its screen guidance is deterministic application/semantic-frame behavior, not proof that the local model is perceiving every screen or that repository/project context has already been loaded into the model.
-- Setup and `uninstall-preserve` can stop their exact owned browser/model processes while preserving Home identity, conversation heads, recovery material, Memory, and model artifacts.
-- The current `RELEASE_QUALIFIED` profile is eligibility for this source-local Windows setup route. It is **not** a claim that a signed/public `OFFICIAL_VERIFIED_BUILD`, public download release, all-platform distribution, or P11 fresh-human release proof already exists.
+- Setup and `uninstall-preserve` can stop exact owned browser/model processes while preserving Home identity, conversation heads, recovery material, Memory, and model artifacts.
+- `RELEASE_QUALIFIED` here means eligibility for the matching **source-local normal setup route**. It is not a claim that a signed/public `OFFICIAL_VERIFIED_BUILD`, public download release, all-platform distribution, or P11 fresh-human release proof already exists.
 - Dream sync remains a separate capability; automatic daily dreaming/learning is not implied by local-model setup.
 
 For the underlying model/runtime boundaries, advanced custom-model path, and recovery semantics, see [docs/BOOTSTRAP-AND-MODELS.md](docs/BOOTSTRAP-AND-MODELS.md).
 
-## macOS / other platforms
+## Other platforms
 
-The current repository still contains Mac/Linux setup and development material, but those paths do not inherit the Windows profile's release qualification. Do not treat “same repository” or “same model family” as proof of platform/runtime qualification.
+Linux and other hardware/platform combinations do not inherit the Windows or Apple M4 Pro profile's release qualification. Do not treat “same repository,” “same model family,” or a nearby chip/GPU name as proof of platform/runtime qualification.
 
-The source-local Windows setup window also does not choose the future full Windows native application technology. The broader Windows Home Node/native VexLife shell remains a separate platform-adoption wave.
+The source-local setup front doors also do not choose the future full Windows or Mac native application technology. Native Home Node/application-shell adoption remains a separate platform/distribution wave.
 
 ## Where everything lives
 
