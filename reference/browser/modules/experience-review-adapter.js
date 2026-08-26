@@ -16,6 +16,10 @@ const CONTEXTUAL_PROJECTION_TARGETS = new Map([
   ['element.nav.health', 'action.view.select']
 ]);
 const CONTEXTUAL_PROJECTION_REVEAL_SELECTOR = '#surfaceMenuButton';
+const STABLE_TARGET_DISCLOSURES = new Map([
+  ['element.thread.open-conversation', Object.freeze({ actionRef: 'action.thread.select', revealSelector: '#projectRail > summary' })],
+  ['element.channel.group', Object.freeze({ actionRef: 'action.channel.select', revealSelector: '#channelCompatibility > summary' })]
+]);
 const hash = (filePath) => crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 const artifactRefFor = (task) => `artifact.vexlife.browser.${task.captureRequest.captureRequestRef}.${task.step.reviewStepRef}`;
 
@@ -46,14 +50,33 @@ async function clickContextualProjectionTarget(page, target, step, operation) {
   return target.click();
 }
 
+async function clickStableTarget(page, target, step) {
+  if (await target.count() === 0) throw new Error(`Stable review target was not rendered: ${step.targetNodeRef}`);
+  if (!(await target.isVisible())) {
+    const disclosure = STABLE_TARGET_DISCLOSURES.get(step.targetNodeRef);
+    if (!disclosure || step.actionRef !== disclosure.actionRef) {
+      throw new Error(`Stable review target is hidden without an allowlisted disclosure: ${step.targetNodeRef ?? 'NULL'} + ${step.actionRef ?? 'NULL'}`);
+    }
+    const reveal = page.locator(disclosure.revealSelector).first();
+    if (await reveal.count() === 0 || !(await reveal.isVisible())) {
+      throw new Error(`Stable-target disclosure control was unavailable for: ${step.targetNodeRef}`);
+    }
+    await reveal.click();
+    if (!(await target.isVisible())) {
+      throw new Error(`Stable review target remained hidden after fixed disclosure: ${step.targetNodeRef}`);
+    }
+  }
+  return target.click();
+}
+
 async function perform(page, step, binding) {
   const operation = binding.stepBindings?.[step.reviewStepRef] ?? { kind: 'CLICK_STABLE_TARGET' };
   if (operation.kind === 'NOOP') return;
   if (step.targetNodeRef == null) throw new Error(`Browser operation ${operation.kind} requires targetNodeRef`);
   const target = page.locator(stableTargetSelector(step.targetNodeRef)).first();
   if (operation.kind === 'CLICK_CONTEXTUAL_PROJECTION_TARGET') return clickContextualProjectionTarget(page, target, step, operation);
+  if (operation.kind === 'CLICK_STABLE_TARGET') return clickStableTarget(page, target, step);
   if (await target.count() === 0) throw new Error(`Stable review target was not rendered: ${step.targetNodeRef}`);
-  if (operation.kind === 'CLICK_STABLE_TARGET') return target.click();
   if (operation.kind === 'FOCUS_STABLE_TARGET') return target.focus();
   if (operation.kind === 'FILL_STABLE_TARGET') return target.fill(String(operation.value ?? ''));
   if (operation.kind === 'PRESS_STABLE_TARGET') return target.press(String(operation.key ?? 'Enter'));
