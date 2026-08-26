@@ -3,6 +3,12 @@
   "bucketId": "92",
   "files": [
     {
+      "path": "blueprint/navigation-continuity-registry.json",
+      "mode": "100644",
+      "bytes": 10034,
+      "sha256": "bd83a969ac4f279e314aae221df184c217ce6052b5883da8eb91d3c70c49ecae"
+    },
+    {
       "path": "src/core/browser-companion-bridge.mjs",
       "mode": "100644",
       "bytes": 17865,
