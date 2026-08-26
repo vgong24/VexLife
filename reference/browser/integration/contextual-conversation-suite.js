@@ -32,17 +32,18 @@ export const contextualConversationSuite = Object.freeze({
     const checks = [];
 
     app.openContext('chat'); await delay(0);
+    const chatEntryEvent=app.navigation.fullJourney().at(-1);assert(chatEntryEvent?.elementRef==='element.nav.chat'&&chatEntryEvent.actionRef==='action.view.select','D06 Chat contextual entry action provenance missing');
     assert(!document.querySelector('#contextSurface').hidden && !document.querySelector('#view-chat').hidden, 'D06 chat contextual surface did not open');
     assert(document.querySelector('.e27-terrain'), 'D06 chat replaced Terrain body');
     const q5=await runQ5ContextWorkspaceProof({app,helpers:{delay,assert},viewportClass:'WIDE'});checks.push(...q5.checks);
     const input = document.querySelector('#messageInput'); const composer = document.querySelector('#composer'); const send = composer.querySelector('button[type="submit"]');
     const list = selectedMessageList(app); const count = list.length; input.value = 'integration.unsent'; input.dispatchEvent(new Event('input', { bubbles:true })); composer.requestSubmit(); await delay(220);
     assert(list.length === count, 'D07 unavailable submit appended message'); assert(send.disabled, 'D07 unavailable send not disabled'); assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT', 'D07 unsent draft truth missing');
-    checks.push('D06 conversation is a contextual projection over Terrain','D07 truthful unavailable draft semantics survive direct-root composition');
+    checks.push('D06 conversation is a contextual projection over Terrain with canonical action.view.select provenance','D07 truthful unavailable draft semantics survive direct-root composition');
 
     app.returnToTerrain(); await delay(0); assert(document.querySelector('#contextSurface').hidden, 'D08 context did not return to Terrain'); assert(input.value === 'integration.unsent', 'D08 contextual return lost draft');
     checks.push('D08 contextual return preserves content state');
-    const healthJourneyBefore=app.navigation.fullJourney().length;app.openContext('health');await delay(0);assert(!document.querySelector('#view-health').hidden&&!document.querySelector('#contextSurface').hidden,'W02 Health contextual projection did not open');app.returnToTerrain();await delay(0);assert(document.querySelector('#contextSurface').hidden&&app.navigation.fullJourney().length>=healthJourneyBefore+2,'W02 Health contextual route did not preserve existing semantic owner/return');checks.push('W02 Chat and Health continue to use existing semantic contextual routes while Terrain remains primary');
+    const healthJourneyBefore=app.navigation.fullJourney().length;app.openContext('health');await delay(0);const healthEntryEvent=app.navigation.fullJourney().at(-1);assert(!document.querySelector('#view-health').hidden&&!document.querySelector('#contextSurface').hidden,'W02 Health contextual projection did not open');assert(healthEntryEvent?.elementRef==='element.nav.health'&&healthEntryEvent.actionRef==='action.view.select','W02 Health contextual entry action provenance missing');app.returnToTerrain();await delay(0);assert(document.querySelector('#contextSurface').hidden&&app.navigation.fullJourney().length>=healthJourneyBefore+2,'W02 Health contextual route did not preserve existing semantic owner/return');checks.push('W02 Chat and Health continue to use existing semantic contextual routes with canonical action.view.select provenance while Terrain remains primary');
     state.contextualReturnComplete = true;
     state.contextualDraftValue = input.value;
     return { suiteRef:this.suiteRef, state:'PASS', baselineRef:'baseline.vexlife.browser.contextual-chat-returned-to-terrain', checks };
