@@ -141,6 +141,8 @@ def load_manifest(path: Path) -> dict[str, Any]:
         fail("trainingDatasetSha256 must be lowercase SHA-256")
     if not HEX64.fullmatch(str(manifest.get("heldoutDatasetSha256", ""))):
         fail("heldoutDatasetSha256 must be lowercase SHA-256")
+    if "modelDownloadAuthorized" in manifest:
+        fail("training manifest cannot carry modelDownloadAuthorized; source-model provisioning authority is external to G04B evaluation")
     return manifest
 
 
@@ -220,11 +222,11 @@ def dtype_for(torch, precision: str):
 def load_model_pair(manifest: dict[str, Any], candidate: Path):
     receipt, actual_digests, actual_fingerprint = verify_candidate_receipt_binding(candidate, manifest)
     torch, AutoProcessor, AutoModel = import_runtime()
-    local_only = not bool(manifest.get("modelDownloadAuthorized", False))
+    local_only = True
     common = {
         "revision": manifest["sourceModelRevision"],
         "trust_remote_code": False,
-        "local_files_only": local_only,
+        "local_files_only": True,
     }
     processor = AutoProcessor.from_pretrained(manifest["sourceModelRepo"], **common)
     source = AutoModel.from_pretrained(
