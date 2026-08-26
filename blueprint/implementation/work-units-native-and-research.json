@@ -151,7 +151,7 @@
   },
   {
     "workRef": "work.vexlife.adapter.training-proof",
-    "purpose": "Prove isolated reviewed adapter training, evaluation, inactive acceptance and rollback.",
+    "purpose": "Prove optional isolated adapter training, evaluation, inactive acceptance and rollback as comparative or intermediate evidence without treating an adapter-only result as the terminal Vex foundation-learning architecture.",
     "distance": "RESEARCH",
     "milestoneRef": "milestone.vexlife.model-evolution",
     "dependsOn": [
@@ -175,11 +175,14 @@
       "adapter-checkpoint.vexlife.candidate"
     ],
     "effectBoundary": "EXPLICIT_TRAINING_AND_DEVICE_ACTIVATION_AUTHORITY_REQUIRED",
-    "completionGate": "candidate accepted inactive; separate explicit activation and rollback proven",
+    "completionGate": "adapter candidate may be accepted inactive with rollback, but adapter-only evidence cannot satisfy the G04B foundation-weight-change terminal predicate",
     "platformRefs": [
       "platform.any"
     ],
-    "exclusions": [],
-    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+    "exclusions": [
+      "no adapter-only terminal completion of G04B",
+      "no training-run self-activation"
+    ],
+    "returnRoute": "return adapter experiment receipt to model-evolution evaluation without closing foundation-generation proof"
   }
 ]
