@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 15384,
       "sha256": "29cf745f00c41ecb28bcf16dc3736cb0c0aad808e34dbf9103d9d03506b3eae4"
+    },
+    {
+      "path": "docs/NAVIGATION-CONTINUITY.md",
+      "mode": "100644",
+      "bytes": 7487,
+      "sha256": "186188c5e2a988f6d2763314de01b3b5f42ab5d906a0f557ead7ff46261189f2"
     }
   ]
 }
