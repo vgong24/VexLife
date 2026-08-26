@@ -1,0 +1,50 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.navigation-continuity",
+    "path": "src/core/navigation-continuity.mjs",
+    "role": "Compile source-managed page-state/resource/element/transition topology, descriptor-backed pacing, serialized navigation-session execution, atomic transition bundles, bounded trace projections and exact replay/currentness without platform-owned navigation meaning.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.navigation-continuity.001",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.navigation-continuity-registry"
+    ],
+    "tests": [
+      "test/navigation-continuity.test.mjs",
+      "test/navigation-continuity-registry-inheritance.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/navigation-continuity-registry.json",
+      "blueprint/vexlife.blueprint.json",
+      "src/core/navigation-continuity-registry.mjs",
+      "src/core/atlas.mjs",
+      "src/core/platform-generator.mjs",
+      "docs/NAVIGATION-CONTINUITY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.navigation-continuity-registry",
+    "path": "src/core/navigation-continuity-registry.mjs",
+    "role": "Validate the canonical Navigation Continuity registry and contribute its source, descriptor collections, semantic descriptor relationships, contracts and default-preference edges to the universal compiled Registry.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.navigation-continuity.001",
+      "module.vexlife.core.navigation-continuity"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.registry"
+    ],
+    "tests": [
+      "test/navigation-continuity-registry-inheritance.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/registry.mjs",
+      "blueprint/navigation-continuity-registry.json",
+      "blueprint/vexlife.blueprint.json"
+    ]
+  }
+]
