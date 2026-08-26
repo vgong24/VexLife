@@ -23,7 +23,9 @@ curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.
 bash /tmp/setup-vexlife.command
 ```
 
-That small bootstrap resolves one exact VexLife source commit, downloads those exact repository bytes, and hands control to the repository-owned Mac setup. You do **not** need to download a ZIP, extract the repository, find a launcher, or choose model URLs/checksums yourself.
+Those two lines are the stable Mac front door. They intentionally follow the latest accepted `main`: each run fetches the current bootstrap, resolves `main` to one exact immutable 40-character source commit, and downloads those exact repository bytes. The long source SHA is expected to change as accepted source advances; it is an internal reproducibility/evidence identity, not something an ordinary user has to keep current manually.
+
+That small bootstrap hands control to the repository-owned Mac setup. You do **not** need to download a ZIP, extract the repository, find a launcher, or choose model URLs/checksums yourself.
 
 Setup checks the Mac and Node.js first, then asks only for choices that belong to you. The default Vex Home is:
 
@@ -66,7 +68,7 @@ powershell -ExecutionPolicy Bypass -File .\install\vexlife-setup.ps1
 
 *Minimal start alternative:* once Node.js is available and setup is complete, `start-vexlife.cmd` consumes the same bootstrap/initializer/browser contract rather than a separate model path.
 
-> The Windows setup window and Mac source bootstrap are source-local setup routes. They are **not signed/public `OFFICIAL_VERIFIED_BUILD` installers**. Signing, packaged-build provenance, repository visibility, and public release remain separate Distribution Trust / lifecycle decisions.
+> The Windows source-local window and Mac source bootstrap are source-local setup routes. They are **not signed/public `OFFICIAL_VERIFIED_BUILD` installers**. Signing, packaged-build provenance, repository visibility, and public release remain separate Distribution Trust / lifecycle decisions.
 
 ## What setup does
 
