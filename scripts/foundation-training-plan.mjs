@@ -87,6 +87,9 @@ export function validateFoundationTrainingManifest(input, {repoRoot = REPO_ROOT,
   if (manifest.optimizer !== 'adamw') fail('G04B_MANIFEST_INVALID', 'generation-1 optimizer must be adamw');
   if (manifest.activationAuthorized !== false) fail('G04B_ACTIVATION_COLLAPSE', 'training manifest must keep activationAuthorized=false');
   if (manifest.publicUploadAuthorized !== false) fail('G04B_PUBLICATION_COLLAPSE', 'training manifest must keep publicUploadAuthorized=false');
+  if (Object.prototype.hasOwnProperty.call(manifest, 'modelDownloadAuthorized')) {
+    fail('G04B_NETWORK_AUTHORITY_COLLAPSE', 'training manifest cannot carry modelDownloadAuthorized; source-model provisioning authority is external to G04B training');
+  }
 
   manifest.sourceLessonRefs = stableRefs(manifest.sourceLessonRefs, 'sourceLessonRefs', {required: true});
   manifest.sourceScoreRefs = stableRefs(manifest.sourceScoreRefs ?? [], 'sourceScoreRefs');
