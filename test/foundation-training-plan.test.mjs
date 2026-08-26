@@ -26,6 +26,7 @@ function fixture() {
     sourceModelRepo: 'Qwen/Qwen3.5-4B',
     sourceModelRevision: '1'.repeat(40),
     sourceModelSnapshotFingerprint: '2'.repeat(64),
+    sourceManifestFingerprint: '5'.repeat(64),
     licenseRef: 'license.apache-2.0.qwen3.5',
     trainingDatasetPath: 'train.jsonl',
     trainingDatasetSha256: sha(train),
@@ -89,6 +90,9 @@ test('G04B partial full-rank plan is admitted only as real-weight-change eligibl
   assert.equal(plan.sourceModelSnapshotFingerprint, manifest.sourceModelSnapshotFingerprint);
   assert.equal(plan.sourceModelSnapshotFingerprintObserved, false);
   assert.equal(plan.sourceModelIdentityClass, 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION');
+  assert.equal(plan.sourceManifestFingerprint, manifest.sourceManifestFingerprint);
+  assert.equal(plan.sourceManifestFingerprintVerified, false);
+  assert.match(plan.priorModelIdentity, /^model-source\.vexlife\.sha256\.[0-9a-f]{64}$/u);
 });
 
 test('FOUNDATION_FULL remains a first-class permitted plan', t => {
@@ -118,6 +122,13 @@ test('unpinned model revision fails closed', t => {
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   manifest.sourceModelRevision = 'main';
   expectCode(() => validateFoundationTrainingManifest(manifest, {repoRoot: root}), 'G04B_SOURCE_MODEL_NOT_PINNED');
+});
+
+test('unpinned Source Manifest fingerprint fails closed', t => {
+  const {root, manifest} = fixture();
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  manifest.sourceManifestFingerprint = 'not-current-source';
+  expectCode(() => validateFoundationTrainingManifest(manifest, {repoRoot: root}), 'G04B_SOURCE_MANIFEST_NOT_PINNED');
 });
 
 test('dataset hash mismatch fails closed', t => {
@@ -268,7 +279,7 @@ test('post-optimizer failures preserve effect truth instead of claiming no train
   assert.equal(states[4].modelWeightsChanged, false);
 });
 
-test('evaluator rebinds exact candidate bytes and rejects post-training drift', t => {
+test('evaluator rebinds exact candidate bytes and rejects forged genealogy/source binding', t => {
   const runtime = pythonRuntime();
   if (!runtime) {
     t.skip('Python runtime is not available on this repository validation host');
@@ -286,18 +297,28 @@ test('evaluator rebinds exact candidate bytes and rejects post-training drift', 
     'source = pathlib.Path(sys.argv[1]); candidate = pathlib.Path(sys.argv[2])',
     'spec = importlib.util.spec_from_file_location("g04b_eval", source)',
     'mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)',
-    'manifest = {"trainingRunRef":"run.test","sourceModelRepo":"Qwen/Qwen3.5-4B","sourceModelRevision":"1"*40,"sourceModelSnapshotFingerprint":"2"*64,"trainingDatasetSha256":"3"*64,"heldoutDatasetSha256":"4"*64}',
+    'manifest = {"trainingRunRef":"run.test","sourceModelRepo":"Qwen/Qwen3.5-4B","sourceModelRevision":"1"*40,"sourceModelSnapshotFingerprint":"2"*64,"sourceManifestFingerprint":"5"*64,"trainingDatasetSha256":"3"*64,"heldoutDatasetSha256":"4"*64}',
     'digests = mod.candidate_file_digests(candidate)',
     'fingerprint = mod.sha256_bytes(mod.canonical_json(digests))',
-    'receipt = {"schemaVersion":"vexlife.foundation-training-receipt/v1","trainingRunRef":manifest["trainingRunRef"],"sourceModelRepo":manifest["sourceModelRepo"],"sourceModelRevision":manifest["sourceModelRevision"],"sourceModelSnapshotFingerprint":manifest["sourceModelSnapshotFingerprint"],"sourceModelSnapshotFingerprintObserved":False,"sourceModelIdentityClass":"EXACT_REPOSITORY_PLUS_COMMIT_REVISION","trainingDatasetSha256":manifest["trainingDatasetSha256"],"heldoutDatasetSha256":manifest["heldoutDatasetSha256"],"trainingActuallyExecuted":True,"modelWeightsChanged":True,"changedParameterCount":1,"candidateArtifactDigests":digests,"candidateArtifactFingerprint":fingerprint}',
-    '(candidate / "vex-foundation-training-receipt.json").write_text(json.dumps(receipt), encoding="utf-8")',
+    'receipt = {"schemaVersion":"vexlife.foundation-training-receipt/v1","trainingRunRef":manifest["trainingRunRef"],"priorModelIdentity":mod.prior_model_identity(manifest),"candidateModelIdentity":mod.candidate_model_identity(manifest, fingerprint),"sourceModelRepo":manifest["sourceModelRepo"],"sourceModelRevision":manifest["sourceModelRevision"],"sourceModelSnapshotFingerprint":manifest["sourceModelSnapshotFingerprint"],"sourceModelSnapshotFingerprintObserved":False,"sourceModelIdentityClass":"EXACT_REPOSITORY_PLUS_COMMIT_REVISION","sourceManifestFingerprint":manifest["sourceManifestFingerprint"],"sourceManifestFingerprintObserved":False,"trainingDatasetSha256":manifest["trainingDatasetSha256"],"heldoutDatasetSha256":manifest["heldoutDatasetSha256"],"trainingActuallyExecuted":True,"modelWeightsChanged":True,"changedParameterCount":1,"candidateArtifactDigests":digests,"candidateArtifactFingerprint":fingerprint}',
+    'receipt_path = candidate / "vex-foundation-training-receipt.json"',
+    'receipt_path.write_text(json.dumps(receipt), encoding="utf-8")',
     'verified = mod.verify_candidate_receipt_binding(candidate, manifest)',
-    'print("PASS1", verified[2])',
+    'print("PASS_EXACT", verified[2])',
+    'for field, forged in [("priorModelIdentity","model-source.vexlife.sha256."+"0"*64),("candidateModelIdentity","model-candidate.vexlife.sha256."+"0"*64),("sourceManifestFingerprint","6"*64)]:',
+    '    bad = dict(receipt); bad[field] = forged; receipt_path.write_text(json.dumps(bad), encoding="utf-8")',
+    '    try:',
+    '        mod.verify_candidate_receipt_binding(candidate, manifest)',
+    '    except mod.FoundationEvaluationError:',
+    '        print("PASS_FORGED", field)',
+    '    else:',
+    '        raise SystemExit(f"forged {field} was accepted")',
+    'receipt_path.write_text(json.dumps(receipt), encoding="utf-8")',
     '(candidate / "model.safetensors").write_text("candidate-v2", encoding="utf-8")',
     'try:',
     '    mod.verify_candidate_receipt_binding(candidate, manifest)',
     'except mod.FoundationEvaluationError as exc:',
-    '    print("PASS2", str(exc))',
+    '    print("PASS_DRIFT", str(exc))',
     'else:',
     '    raise SystemExit("post-training candidate drift was accepted")'
   ].join('\n');
@@ -306,6 +327,9 @@ test('evaluator rebinds exact candidate bytes and rejects post-training drift', 
     env: {...process.env, PYTHONDONTWRITEBYTECODE: '1'}
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /PASS1 [0-9a-f]{64}/u);
-  assert.match(result.stdout, /PASS2 candidate bytes drifted after training/u);
+  assert.match(result.stdout, /PASS_EXACT [0-9a-f]{64}/u);
+  assert.match(result.stdout, /PASS_FORGED priorModelIdentity/u);
+  assert.match(result.stdout, /PASS_FORGED candidateModelIdentity/u);
+  assert.match(result.stdout, /PASS_FORGED sourceManifestFingerprint/u);
+  assert.match(result.stdout, /PASS_DRIFT candidate bytes drifted after training/u);
 });

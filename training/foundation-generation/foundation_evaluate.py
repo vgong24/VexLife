@@ -44,6 +44,26 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def prior_model_identity(manifest: dict[str, Any]) -> str:
+    payload = {
+        "schemaVersion": "vexlife.prior-model-identity/v1",
+        "sourceModelRepo": manifest["sourceModelRepo"],
+        "sourceModelRevision": manifest["sourceModelRevision"],
+        "sourceModelIdentityClass": "EXACT_REPOSITORY_PLUS_COMMIT_REVISION",
+    }
+    return f"model-source.vexlife.sha256.{sha256_bytes(canonical_json(payload))}"
+
+
+def candidate_model_identity(manifest: dict[str, Any], candidate_artifact_fingerprint: str) -> str:
+    payload = {
+        "schemaVersion": "vexlife.candidate-model-identity/v1",
+        "priorModelIdentity": prior_model_identity(manifest),
+        "trainingRunRef": manifest["trainingRunRef"],
+        "candidateArtifactFingerprint": candidate_artifact_fingerprint,
+    }
+    return f"model-candidate.vexlife.sha256.{sha256_bytes(canonical_json(payload))}"
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -86,6 +106,7 @@ def verify_candidate_receipt_binding(candidate: Path, manifest: dict[str, Any]) 
         "sourceModelRepo",
         "sourceModelRevision",
         "sourceModelSnapshotFingerprint",
+        "sourceManifestFingerprint",
         "trainingDatasetSha256",
         "heldoutDatasetSha256",
     ):
@@ -95,6 +116,13 @@ def verify_candidate_receipt_binding(candidate: Path, manifest: dict[str, Any]) 
         fail("candidate receipt does not preserve the generation-1 exact source identity class")
     if receipt.get("sourceModelSnapshotFingerprintObserved") is not False:
         fail("candidate receipt must not represent the declared source snapshot fingerprint as independently observed")
+    if receipt.get("sourceManifestFingerprintObserved") is not False:
+        fail("candidate receipt must not represent the admitted Source Manifest fingerprint as independently observed by Python")
+
+    expected_prior_identity = prior_model_identity(manifest)
+    if receipt.get("priorModelIdentity") != expected_prior_identity:
+        fail("candidate receipt priorModelIdentity does not match the deterministic exact source-model identity")
+
     expected_digests = receipt.get("candidateArtifactDigests")
     expected_fingerprint = receipt.get("candidateArtifactFingerprint")
     if not isinstance(expected_digests, dict) or not expected_digests:
@@ -112,6 +140,10 @@ def verify_candidate_receipt_binding(candidate: Path, manifest: dict[str, Any]) 
     actual_fingerprint = sha256_bytes(canonical_json(actual_digests))
     if actual_fingerprint != expected_fingerprint:
         fail("candidate artifact fingerprint does not match the exact observed candidate bytes")
+
+    expected_candidate_identity = candidate_model_identity(manifest, actual_fingerprint)
+    if receipt.get("candidateModelIdentity") != expected_candidate_identity:
+        fail("candidate receipt candidateModelIdentity does not match parent + run + exact candidate bytes")
     return receipt, actual_digests, actual_fingerprint
 
 
@@ -137,6 +169,8 @@ def load_manifest(path: Path) -> dict[str, Any]:
         fail("sourceModelRevision must be one exact 40-character lowercase commit identity")
     if not HEX64.fullmatch(str(manifest.get("sourceModelSnapshotFingerprint", ""))):
         fail("sourceModelSnapshotFingerprint must be a declared lowercase SHA-256 expectation")
+    if not HEX64.fullmatch(str(manifest.get("sourceManifestFingerprint", ""))):
+        fail("sourceManifestFingerprint must be the exact lowercase Source Manifest tree SHA-256 admitted by preflight")
     if not HEX64.fullmatch(str(manifest.get("trainingDatasetSha256", ""))):
         fail("trainingDatasetSha256 must be lowercase SHA-256")
     if not HEX64.fullmatch(str(manifest.get("heldoutDatasetSha256", ""))):
@@ -327,11 +361,15 @@ def main() -> int:
             "schemaVersion": "vexlife.foundation-evaluation-receipt/v1",
             "trainingRunRef": manifest["trainingRunRef"],
             "trainingReceiptFingerprint": sha256_bytes(canonical_json(training_receipt)),
+            "priorModelIdentity": prior_model_identity(manifest),
+            "candidateModelIdentity": candidate_model_identity(manifest, actual_candidate_fingerprint),
             "sourceModelRepo": manifest["sourceModelRepo"],
             "sourceModelRevision": manifest["sourceModelRevision"],
             "sourceModelSnapshotFingerprint": manifest["sourceModelSnapshotFingerprint"],
             "sourceModelSnapshotFingerprintObserved": False,
             "sourceModelIdentityClass": "EXACT_REPOSITORY_PLUS_COMMIT_REVISION",
+            "sourceManifestFingerprint": manifest["sourceManifestFingerprint"],
+            "sourceManifestFingerprintObserved": False,
             "candidateArtifactFingerprint": actual_candidate_fingerprint,
             "candidateArtifactDigests": actual_candidate_digests,
             "candidateArtifactBytesVerified": True,

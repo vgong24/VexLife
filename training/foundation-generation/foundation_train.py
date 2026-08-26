@@ -93,6 +93,26 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def prior_model_identity(manifest: dict[str, Any]) -> str:
+    payload = {
+        "schemaVersion": "vexlife.prior-model-identity/v1",
+        "sourceModelRepo": manifest["sourceModelRepo"],
+        "sourceModelRevision": manifest["sourceModelRevision"],
+        "sourceModelIdentityClass": "EXACT_REPOSITORY_PLUS_COMMIT_REVISION",
+    }
+    return f"model-source.vexlife.sha256.{sha256_bytes(canonical_json(payload))}"
+
+
+def candidate_model_identity(manifest: dict[str, Any], candidate_artifact_fingerprint: str) -> str:
+    payload = {
+        "schemaVersion": "vexlife.candidate-model-identity/v1",
+        "priorModelIdentity": prior_model_identity(manifest),
+        "trainingRunRef": manifest["trainingRunRef"],
+        "candidateArtifactFingerprint": candidate_artifact_fingerprint,
+    }
+    return f"model-candidate.vexlife.sha256.{sha256_bytes(canonical_json(payload))}"
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -134,6 +154,9 @@ def load_manifest(path: Path) -> dict[str, Any]:
     snapshot = manifest.get("sourceModelSnapshotFingerprint")
     if not isinstance(snapshot, str) or not HEX64.fullmatch(snapshot):
         fail("sourceModelSnapshotFingerprint must be a declared lowercase SHA-256 expectation")
+    source_manifest = manifest.get("sourceManifestFingerprint")
+    if not isinstance(source_manifest, str) or not HEX64.fullmatch(source_manifest):
+        fail("sourceManifestFingerprint must be the exact lowercase Source Manifest tree SHA-256 admitted by preflight")
     for field in (
         "trainingRunRef",
         "sourceModelRepo",
@@ -446,11 +469,14 @@ def inspect(manifest: dict[str, Any]) -> dict[str, Any]:
         "schemaVersion": "vexlife.foundation-training-inspection/v1",
         "trainingRunRef": manifest["trainingRunRef"],
         "trainingMode": manifest["trainingMode"],
+        "priorModelIdentity": prior_model_identity(manifest),
         "sourceModelRepo": manifest["sourceModelRepo"],
         "sourceModelRevision": manifest["sourceModelRevision"],
         "sourceModelSnapshotFingerprint": manifest["sourceModelSnapshotFingerprint"],
         "sourceModelSnapshotFingerprintObserved": False,
         "sourceModelIdentityClass": "EXACT_REPOSITORY_PLUS_COMMIT_REVISION",
+        "sourceManifestFingerprint": manifest["sourceManifestFingerprint"],
+        "sourceManifestFingerprintObserved": False,
         "localFilesOnly": local_only,
         "trainingDataset": str(train_path.relative_to(REPO_ROOT)),
         "heldoutDataset": str(heldout_path.relative_to(REPO_ROOT)),
@@ -558,15 +584,21 @@ def execute(manifest: dict[str, Any], attempt_state: dict[str, Any]) -> dict[str
     artifacts = candidate_file_digests(output_dir)
     artifact_fingerprint = sha256_bytes(canonical_json(artifacts))
     changed_fingerprint = sha256_bytes("\n".join(changed_names).encode("utf-8"))
+    prior_identity = prior_model_identity(manifest)
+    candidate_identity = candidate_model_identity(manifest, artifact_fingerprint)
     receipt = {
         "schemaVersion": "vexlife.foundation-training-receipt/v1",
         "trainingRunRef": manifest["trainingRunRef"],
         "trainingMode": manifest["trainingMode"],
+        "priorModelIdentity": prior_identity,
+        "candidateModelIdentity": candidate_identity,
         "sourceModelRepo": manifest["sourceModelRepo"],
         "sourceModelRevision": manifest["sourceModelRevision"],
         "sourceModelSnapshotFingerprint": manifest["sourceModelSnapshotFingerprint"],
         "sourceModelSnapshotFingerprintObserved": False,
         "sourceModelIdentityClass": "EXACT_REPOSITORY_PLUS_COMMIT_REVISION",
+        "sourceManifestFingerprint": manifest["sourceManifestFingerprint"],
+        "sourceManifestFingerprintObserved": False,
         "manifestFingerprint": sha256_bytes(canonical_json(manifest)),
         "trainingDatasetSha256": manifest["trainingDatasetSha256"],
         "heldoutDatasetSha256": manifest["heldoutDatasetSha256"],

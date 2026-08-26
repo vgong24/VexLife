@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 
 export const FOUNDATION_TRAINING_SCHEMA = 'vexlife.foundation-training-manifest/v1';
 export const FOUNDATION_TRAINING_MODES = Object.freeze([
@@ -45,6 +46,15 @@ function canonicalFingerprint(value) {
   return crypto.createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
 }
 
+function priorModelIdentity(manifest) {
+  return `model-source.vexlife.sha256.${canonicalFingerprint({
+    schemaVersion: 'vexlife.prior-model-identity/v1',
+    sourceModelRepo: manifest.sourceModelRepo,
+    sourceModelRevision: manifest.sourceModelRevision,
+    sourceModelIdentityClass: 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION'
+  })}`;
+}
+
 function stableRefs(value, label, {required = false} = {}) {
   if (!Array.isArray(value) || (required && value.length === 0)
       || value.some(item => typeof item !== 'string' || item.length === 0)
@@ -65,7 +75,10 @@ function exactPath(raw, label, repoRoot = REPO_ROOT) {
   return target;
 }
 
-export function validateFoundationTrainingManifest(input, {repoRoot = REPO_ROOT, verifyFiles = true} = {}) {
+export function validateFoundationTrainingManifest(
+  input,
+  {repoRoot = REPO_ROOT, verifyFiles = true, verifySourceManifest = null} = {}
+) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail('G04B_MANIFEST_INVALID', 'manifest must be an object');
   const manifest = structuredClone(input);
   if (manifest.schemaVersion !== FOUNDATION_TRAINING_SCHEMA) fail('G04B_MANIFEST_INVALID', `schemaVersion must be ${FOUNDATION_TRAINING_SCHEMA}`);
@@ -74,6 +87,7 @@ export function validateFoundationTrainingManifest(input, {repoRoot = REPO_ROOT,
   if (typeof manifest.sourceModelRepo !== 'string' || !manifest.sourceModelRepo.includes('/')) fail('G04B_MANIFEST_INVALID', 'sourceModelRepo must be an exact owner/repository identity');
   if (!HEX40.test(manifest.sourceModelRevision ?? '')) fail('G04B_SOURCE_MODEL_NOT_PINNED', 'sourceModelRevision must be one exact 40-character lowercase commit');
   if (!HEX64.test(manifest.sourceModelSnapshotFingerprint ?? '')) fail('G04B_SOURCE_MODEL_NOT_PINNED', 'sourceModelSnapshotFingerprint must be a declared lowercase SHA-256 expectation');
+  if (!HEX64.test(manifest.sourceManifestFingerprint ?? '')) fail('G04B_SOURCE_MANIFEST_NOT_PINNED', 'sourceManifestFingerprint must be the exact lowercase Source Manifest tree SHA-256');
   if (typeof manifest.licenseRef !== 'string' || !manifest.licenseRef) fail('G04B_MANIFEST_INVALID', 'licenseRef is required');
   if (!HEX64.test(manifest.trainingDatasetSha256 ?? '') || !HEX64.test(manifest.heldoutDatasetSha256 ?? '')) {
     fail('G04B_DATASET_NOT_PINNED', 'training and held-out datasets require lowercase SHA-256');
@@ -120,16 +134,38 @@ export function validateFoundationTrainingManifest(input, {repoRoot = REPO_ROOT,
     }
   }
 
+  const shouldVerifySourceManifest = verifySourceManifest ?? path.resolve(repoRoot) === REPO_ROOT;
+  if (shouldVerifySourceManifest) {
+    let actual;
+    try {
+      actual = buildSourceManifest(path.resolve(repoRoot));
+    } catch (error) {
+      fail('G04B_SOURCE_MANIFEST_UNAVAILABLE', `canonical Source Manifest could not be observed: ${error.message}`);
+    }
+    if (actual.candidate?.state !== 'CURRENT') {
+      fail('G04B_SOURCE_MANIFEST_NOT_CURRENT', 'canonical Source Manifest source candidate is not CURRENT', actual.candidate?.blockers ?? []);
+    }
+    if (actual.treeSha256 !== manifest.sourceManifestFingerprint) {
+      fail('G04B_SOURCE_MANIFEST_FINGERPRINT_MISMATCH', 'sourceManifestFingerprint does not match the exact current Git source tree', {
+        expected: manifest.sourceManifestFingerprint,
+        observed: actual.treeSha256
+      });
+    }
+  }
+
   const foundationWeightChangeEligible = ['FOUNDATION_PARTIAL_FULL_RANK', 'FOUNDATION_FULL'].includes(manifest.trainingMode);
   return Object.freeze({
     schemaVersion: 'vexlife.foundation-training-plan/v1',
     trainingRunRef: manifest.trainingRunRef,
     trainingMode: manifest.trainingMode,
+    priorModelIdentity: priorModelIdentity(manifest),
     sourceModelRepo: manifest.sourceModelRepo,
     sourceModelRevision: manifest.sourceModelRevision,
     sourceModelSnapshotFingerprint: manifest.sourceModelSnapshotFingerprint,
     sourceModelSnapshotFingerprintObserved: false,
     sourceModelIdentityClass: 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION',
+    sourceManifestFingerprint: manifest.sourceManifestFingerprint,
+    sourceManifestFingerprintVerified: shouldVerifySourceManifest,
     trainingDatasetPath: path.relative(path.resolve(repoRoot), trainingDataset).replaceAll(path.sep, '/'),
     heldoutDatasetPath: path.relative(path.resolve(repoRoot), heldoutDataset).replaceAll(path.sep, '/'),
     outputDir: path.relative(path.resolve(repoRoot), outputDir).replaceAll(path.sep, '/'),

@@ -48,6 +48,29 @@ sourceModelSnapshotFingerprint
 
 Until a later source-snapshot verifier derives that fingerprint from resolved model bytes, receipts preserve `sourceModelSnapshotFingerprintObserved=false` and `sourceModelIdentityClass=EXACT_REPOSITORY_PLUS_COMMIT_REVISION`. A declared 64-hex value must never be presented as independently observed provenance.
 
+The manifest also binds the exact VexLife source that admitted the run:
+
+```text
+sourceManifestFingerprint
+  = canonical Source Manifest v3 treeSha256 for the exact Git-index source
+```
+
+`node scripts/foundation-training-plan.mjs ...` is the Git-aware preflight. On the real repository it recomputes the canonical Source Manifest and rejects a stale or forged fingerprint. Python training/evaluation then preserve that admitted value as `sourceManifestFingerprintObserved=false`; they do not pretend to independently own Git-index observation.
+
+Model genealogy is explicit rather than reconstructed downstream:
+
+```text
+priorModelIdentity
+  = deterministic identity of exact sourceModelRepo + sourceModelRevision
+
+candidateModelIdentity
+  = deterministic identity of priorModelIdentity
+    + trainingRunRef
+    + exact candidateArtifactFingerprint
+```
+
+The evaluator recomputes both identities from the exact manifest and re-hashed candidate bytes before emitting evaluation evidence.
+
 ## Dataset
 
 Training input is JSONL. Each row has:
@@ -79,7 +102,7 @@ From repository root:
 node scripts/foundation-training-plan.mjs training/foundation-generation/training-manifest.example.json
 ```
 
-The plan command performs no network or model operation. It verifies manifest shape, dataset hashes, training mode, exact repository/revision source identity and the rule that a dry run or adapter-only route cannot satisfy the G04B real-weight predicate.
+The plan command performs no network or model operation. It verifies manifest shape, dataset hashes, training mode, exact repository/revision source identity, the exact current Source Manifest fingerprint, and the rule that a dry run or adapter-only route cannot satisfy the G04B real-weight predicate.
 
 ## Inspect the trainable model before training
 
@@ -91,7 +114,7 @@ python training/foundation-generation/foundation_train.py \
   --inspect-only
 ```
 
-This loads the exact model revision and reports the language-block path it can discover, parameter counts and the exact parameter set that would be trainable. It writes no model candidate.
+This loads the exact model revision and reports the language-block path it can discover, parameter counts, the exact parameter set that would be trainable, the deterministic prior-model identity, and the admitted Source Manifest fingerprint. It writes no model candidate.
 
 ## Execute one candidate training run
 
@@ -106,6 +129,7 @@ The trainer fails closed when:
 ```text
 manifest or dataset identity is wrong
 model revision is not exact
+Source Manifest fingerprint is absent/malformed
 training mode is adapter-only
 parameter selection resolves zero parameters
 maxSteps <= 0
@@ -117,6 +141,10 @@ output directory would overwrite the source/current accepted runtime
 Successful execution writes a separate Hugging Face candidate checkpoint and `vex-foundation-training-receipt.json` with:
 
 ```text
+priorModelIdentity
+candidateModelIdentity
+sourceManifestFingerprint
+sourceManifestFingerprintObserved=false
 trainingActuallyExecuted=true
 modelWeightsChanged=true
 changedParameterCount>0
@@ -155,15 +183,17 @@ Before loading the trained model, the evaluator:
 ```text
 reads the exact training receipt
 rebinds receipt identity to the exact manifest
+re-derives priorModelIdentity
 re-hashes every candidate model/processor file
-rejects missing, extra or changed candidate bytes
 recomputes candidateArtifactFingerprint
-requires exact equality with the training receipt
+re-derives candidateModelIdentity from parent + run + exact bytes
+rejects forged Source Manifest or genealogy bindings
+rejects missing, extra or changed candidate bytes
 ```
 
 Evaluation therefore cannot silently consume a checkpoint modified after training while retaining the old candidate identity.
 
-The evaluator then runs the same prompts against the exact source model revision and exact verified candidate and emits a comparison receipt with `candidateArtifactBytesVerified=true`. It does **not** auto-promote the candidate. Semantic, culture, privacy, identity and capability review remain separate accepted gates.
+The evaluator then runs the same prompts against the exact source model revision and exact verified candidate and emits a comparison receipt with `candidateArtifactBytesVerified=true` plus the same explicit parent/candidate/source identities. It does **not** auto-promote the candidate. Semantic, culture, privacy, identity and capability review remain separate accepted gates.
 
 ## What this proof means
 
