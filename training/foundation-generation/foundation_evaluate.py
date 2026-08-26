@@ -19,6 +19,10 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA = "vexlife.foundation-training-manifest/v1"
+EXECUTION_DEVICE_PROFILES = {
+    "CUDA": "hardware.windows-x64.nvidia.cuda12-compatible",
+    "MPS": "hardware.macos-arm64.apple-m4-pro.metal",
+}
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -42,6 +46,10 @@ def canonical_json(value: Any) -> bytes:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def manifest_fingerprint(manifest: dict[str, Any]) -> str:
+    return sha256_bytes(canonical_json(manifest))
 
 
 def prior_model_identity(manifest: dict[str, Any]) -> str:
@@ -87,7 +95,121 @@ def candidate_file_digests(candidate: Path) -> dict[str, str]:
     return result
 
 
-def verify_candidate_receipt_binding(candidate: Path, manifest: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str], str]:
+def validate_execution_manifest_binding(manifest: dict[str, Any]) -> tuple[str, str]:
+    execution_device = manifest.get("executionDevice")
+    if execution_device not in EXECUTION_DEVICE_PROFILES:
+        fail("executionDevice must explicitly select CUDA or MPS; G04B evaluation cannot accept implicit CPU/AUTO training provenance")
+    expected_profile = EXECUTION_DEVICE_PROFILES[execution_device]
+    observed_profile = manifest.get("expectedHardwareProfileRef")
+    if observed_profile != expected_profile:
+        fail(
+            f"executionDevice={execution_device} requires expectedHardwareProfileRef={expected_profile}"
+        )
+    precision = manifest.get("precision")
+    if precision not in {"bf16", "fp16", "fp32"}:
+        fail("precision must be bf16, fp16 or fp32")
+    return execution_device, expected_profile
+
+
+def verify_training_host_provenance(receipt: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
+    execution_device, expected_profile = validate_execution_manifest_binding(manifest)
+
+    expected_manifest_fingerprint = manifest_fingerprint(manifest)
+    if receipt.get("manifestFingerprint") != expected_manifest_fingerprint:
+        fail("candidate receipt manifestFingerprint does not match the exact training manifest bytes")
+    if receipt.get("executionDevice") != execution_device:
+        fail("candidate receipt executionDevice does not match the exact training manifest")
+    if receipt.get("expectedHardwareProfileRef") != expected_profile:
+        fail("candidate receipt expectedHardwareProfileRef does not match the exact admitted execution profile")
+
+    observation = receipt.get("executionObservation")
+    if not isinstance(observation, dict):
+        fail("candidate receipt contains no executionObservation object")
+    receipt_observation_fingerprint = receipt.get("executionObservationFingerprint")
+    embedded_observation_fingerprint = observation.get("observationFingerprint")
+    if not isinstance(receipt_observation_fingerprint, str) or not HEX64.fullmatch(receipt_observation_fingerprint):
+        fail("candidate receipt contains no valid executionObservationFingerprint")
+    if embedded_observation_fingerprint != receipt_observation_fingerprint:
+        fail("candidate receipt execution observation embedded/top-level fingerprints disagree")
+    observation_payload = dict(observation)
+    observation_payload.pop("observationFingerprint", None)
+    recomputed_observation_fingerprint = sha256_bytes(canonical_json(observation_payload))
+    if recomputed_observation_fingerprint != receipt_observation_fingerprint:
+        fail("candidate receipt executionObservationFingerprint does not match the exact recorded observation bytes")
+
+    if observation.get("executionDevice") != execution_device:
+        fail("candidate receipt executionObservation.executionDevice contradicts the exact training manifest")
+    if observation.get("expectedHardwareProfileRef") != expected_profile:
+        fail("candidate receipt executionObservation.expectedHardwareProfileRef contradicts the exact admitted profile")
+    if observation.get("precision") != manifest.get("precision"):
+        fail("candidate receipt executionObservation.precision contradicts the exact training manifest")
+    if not isinstance(observation.get("torchVersion"), str) or not observation["torchVersion"]:
+        fail("candidate receipt executionObservation has no concrete torchVersion")
+
+    device_type = observation.get("deviceType")
+    platform_name = observation.get("platform")
+    architecture = observation.get("architecture")
+    device_name = observation.get("deviceName")
+    if not isinstance(device_name, str) or not device_name:
+        fail("candidate receipt executionObservation has no concrete deviceName")
+
+    if execution_device == "MPS":
+        if device_type != "mps":
+            fail("MPS training provenance requires deviceType=mps")
+        if platform_name != "darwin" or architecture != "arm64":
+            fail("MPS training provenance requires darwin/arm64")
+        if device_name != "Apple M4 Pro":
+            fail("admitted MPS training provenance requires deviceName=Apple M4 Pro")
+        if observation.get("mpsBuilt") is not True or observation.get("mpsAvailable") is not True:
+            fail("MPS training provenance requires MPS built=true and available=true")
+        if observation.get("cudaRuntimeVersion") is not None:
+            fail("MPS training provenance cannot claim a CUDA runtime version")
+        accelerator_memory = observation.get("acceleratorMemoryBytes")
+        if accelerator_memory is not None and (not isinstance(accelerator_memory, int) or accelerator_memory <= 0):
+            fail("MPS acceleratorMemoryBytes must be null or a positive integer")
+    elif execution_device == "CUDA":
+        if device_type != "cuda":
+            fail("CUDA training provenance requires deviceType=cuda")
+        if platform_name != "win32" or architecture not in {"amd64", "x86_64"}:
+            fail("CUDA training provenance requires Windows x64")
+        if "nvidia" not in device_name.casefold():
+            fail("CUDA training provenance requires a concrete NVIDIA deviceName")
+        cuda_runtime = observation.get("cudaRuntimeVersion")
+        if not isinstance(cuda_runtime, str) or not cuda_runtime.startswith("12."):
+            fail("CUDA training provenance requires a CUDA 12.x runtime")
+        if observation.get("mpsBuilt") is not False or observation.get("mpsAvailable") is not False:
+            fail("CUDA training provenance cannot claim MPS built/available")
+        accelerator_memory = observation.get("acceleratorMemoryBytes")
+        if not isinstance(accelerator_memory, int) or accelerator_memory <= 0:
+            fail("CUDA training provenance requires positive acceleratorMemoryBytes")
+        capability = observation.get("computeCapability")
+        if (
+            not isinstance(capability, list)
+            or len(capability) != 2
+            or any(not isinstance(item, int) or item < 0 for item in capability)
+        ):
+            fail("CUDA training provenance requires a concrete two-part computeCapability")
+
+    return {
+        "manifestFingerprint": expected_manifest_fingerprint,
+        "executionDevice": execution_device,
+        "expectedHardwareProfileRef": expected_profile,
+        "executionObservationFingerprint": receipt_observation_fingerprint,
+        "deviceType": device_type,
+        "platform": platform_name,
+        "architecture": architecture,
+        "deviceName": device_name,
+        "torchVersion": observation["torchVersion"],
+        "precision": observation["precision"],
+        "historicalTrainingHostEvidenceVerified": True,
+        "historicalTrainingHostReobservedByEvaluator": False,
+    }
+
+
+def verify_candidate_receipt_binding(
+    candidate: Path,
+    manifest: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, str], str, dict[str, Any]]:
     receipt_path = candidate / "vex-foundation-training-receipt.json"
     if not receipt_path.is_file():
         fail("candidate directory has no vex-foundation-training-receipt.json")
@@ -119,6 +241,8 @@ def verify_candidate_receipt_binding(candidate: Path, manifest: dict[str, Any]) 
     if receipt.get("sourceManifestFingerprintObserved") is not False:
         fail("candidate receipt must not represent the admitted Source Manifest fingerprint as independently observed by Python")
 
+    training_host_provenance = verify_training_host_provenance(receipt, manifest)
+
     expected_prior_identity = prior_model_identity(manifest)
     if receipt.get("priorModelIdentity") != expected_prior_identity:
         fail("candidate receipt priorModelIdentity does not match the deterministic exact source-model identity")
@@ -144,7 +268,7 @@ def verify_candidate_receipt_binding(candidate: Path, manifest: dict[str, Any]) 
     expected_candidate_identity = candidate_model_identity(manifest, actual_fingerprint)
     if receipt.get("candidateModelIdentity") != expected_candidate_identity:
         fail("candidate receipt candidateModelIdentity does not match parent + run + exact candidate bytes")
-    return receipt, actual_digests, actual_fingerprint
+    return receipt, actual_digests, actual_fingerprint, training_host_provenance
 
 
 def resolve_repo_path(raw: str, label: str) -> Path:
@@ -175,6 +299,11 @@ def load_manifest(path: Path) -> dict[str, Any]:
         fail("trainingDatasetSha256 must be lowercase SHA-256")
     if not HEX64.fullmatch(str(manifest.get("heldoutDatasetSha256", ""))):
         fail("heldoutDatasetSha256 must be lowercase SHA-256")
+    validate_execution_manifest_binding(manifest)
+    if manifest.get("activationAuthorized") is not False:
+        fail("evaluation requires the training manifest to preserve activationAuthorized=false")
+    if manifest.get("publicUploadAuthorized") is not False:
+        fail("evaluation requires the training manifest to preserve publicUploadAuthorized=false")
     if "modelDownloadAuthorized" in manifest:
         fail("training manifest cannot carry modelDownloadAuthorized; source-model provisioning authority is external to G04B evaluation")
     return manifest
@@ -254,7 +383,7 @@ def dtype_for(torch, precision: str):
 
 
 def load_model_pair(manifest: dict[str, Any], candidate: Path):
-    receipt, actual_digests, actual_fingerprint = verify_candidate_receipt_binding(candidate, manifest)
+    receipt, actual_digests, actual_fingerprint, training_host_provenance = verify_candidate_receipt_binding(candidate, manifest)
     torch, AutoProcessor, AutoModel = import_runtime()
     local_only = True
     common = {
@@ -275,7 +404,18 @@ def load_model_pair(manifest: dict[str, Any], candidate: Path):
         local_files_only=True,
     )
     candidate_processor = AutoProcessor.from_pretrained(str(candidate), trust_remote_code=False, local_files_only=True)
-    return torch, processor, source, candidate_processor, trained, receipt, actual_digests, actual_fingerprint, local_only
+    return (
+        torch,
+        processor,
+        source,
+        candidate_processor,
+        trained,
+        receipt,
+        actual_digests,
+        actual_fingerprint,
+        training_host_provenance,
+        local_only,
+    )
 
 
 def generate(torch, processor: Any, model: Any, messages: list[dict[str, str]], max_new_tokens: int, device: Any) -> str:
@@ -335,6 +475,7 @@ def main() -> int:
             training_receipt,
             actual_candidate_digests,
             actual_candidate_fingerprint,
+            training_host_provenance,
             local_only,
         ) = load_model_pair(manifest, candidate)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -361,6 +502,16 @@ def main() -> int:
             "schemaVersion": "vexlife.foundation-evaluation-receipt/v1",
             "trainingRunRef": manifest["trainingRunRef"],
             "trainingReceiptFingerprint": sha256_bytes(canonical_json(training_receipt)),
+            "trainingManifestFingerprint": training_host_provenance["manifestFingerprint"],
+            "trainingExecutionDevice": training_host_provenance["executionDevice"],
+            "trainingExpectedHardwareProfileRef": training_host_provenance["expectedHardwareProfileRef"],
+            "trainingExecutionObservationFingerprint": training_host_provenance["executionObservationFingerprint"],
+            "trainingExecutionDeviceType": training_host_provenance["deviceType"],
+            "trainingExecutionPlatform": training_host_provenance["platform"],
+            "trainingExecutionArchitecture": training_host_provenance["architecture"],
+            "trainingExecutionDeviceName": training_host_provenance["deviceName"],
+            "trainingHostProvenanceVerified": True,
+            "trainingHostProvenanceReobserved": False,
             "priorModelIdentity": prior_model_identity(manifest),
             "candidateModelIdentity": candidate_model_identity(manifest, actual_candidate_fingerprint),
             "sourceModelRepo": manifest["sourceModelRepo"],
