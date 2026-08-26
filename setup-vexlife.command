@@ -66,11 +66,16 @@ DOWNLOADED_ROOT="${entries[0]}"
 TARGET="$SOURCE_ROOT/$SOURCE_SHA"
 /bin/mkdir -p "$SOURCE_ROOT"
 if [ -e "$TARGET" ]; then
-  [ -d "$TARGET" ] && [ -f "$TARGET/install/vexlife-setup.sh" ] \
-    || fail "the existing VexLife source location is not reusable safely."
-else
-  /bin/mv "$DOWNLOADED_ROOT" "$TARGET"
+  # A SHA-shaped path is not proof that its stored bytes are still that Git source.
+  # Preserve the existing cache for diagnosis and execute only this fresh GitHub materialization.
+  COLLISION_PARENT="$(/usr/bin/mktemp -d "$SOURCE_ROOT/$SOURCE_SHA.fresh.XXXXXX")" \
+    || fail "a fresh exact-source location could not be reserved safely."
+  TARGET="$COLLISION_PARENT/source"
 fi
+/bin/mv "$DOWNLOADED_ROOT" "$TARGET" \
+  || fail "the fresh exact VexLife source could not be materialized safely."
+[ -f "$TARGET/install/vexlife-setup.sh" ] && [ -f "$TARGET/SOURCE-MANIFEST.json" ] \
+  || fail "the fresh exact VexLife source did not materialize completely."
 
 say "VexLife source is ready."
 exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"
