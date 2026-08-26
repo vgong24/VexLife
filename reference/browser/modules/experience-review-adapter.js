@@ -51,10 +51,12 @@ async function clickContextualProjectionTarget(page, target, step, operation) {
 }
 
 async function clickStableTarget(page, target, step) {
-  if (await target.count() === 0) throw new Error(`Stable review target was not rendered: ${step.targetNodeRef}`);
-  if (!(await target.isVisible())) {
+  const initialCount = await target.count();
+  const initiallyVisible = initialCount > 0 && await target.isVisible();
+  if (!initiallyVisible) {
     const disclosure = STABLE_TARGET_DISCLOSURES.get(step.targetNodeRef);
     if (!disclosure || step.actionRef !== disclosure.actionRef) {
+      if (initialCount === 0) throw new Error(`Stable review target was not rendered: ${step.targetNodeRef}`);
       throw new Error(`Stable review target is hidden without an allowlisted disclosure: ${step.targetNodeRef ?? 'NULL'} + ${step.actionRef ?? 'NULL'}`);
     }
     for (const selector of disclosure.revealSelectors) {
@@ -63,6 +65,9 @@ async function clickStableTarget(page, target, step) {
         throw new Error(`Stable-target disclosure control was unavailable for: ${step.targetNodeRef}`);
       }
       await reveal.click();
+    }
+    if (await target.count() === 0) {
+      throw new Error(`Stable review target was not rendered after fixed disclosure: ${step.targetNodeRef}`);
     }
     if (!(await target.isVisible())) {
       throw new Error(`Stable review target remained hidden after fixed disclosure: ${step.targetNodeRef}`);
