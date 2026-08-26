@@ -16,6 +16,7 @@ const CONTEXTUAL_PROJECTION_TARGETS = new Map([
   ['element.nav.health', 'action.view.select']
 ]);
 const CONTEXTUAL_PROJECTION_REVEAL_SELECTOR = '#surfaceMenuButton';
+const CONTEXTUAL_PROJECTION_REVEAL_SETTLE_MS = 220;
 const STABLE_TARGET_DISCLOSURES = new Map([
   ['element.thread.open-conversation', Object.freeze({ actionRef: 'action.thread.select', revealSelectors: Object.freeze(['#surfaceMenuButton', '#openWorkspace']) })],
   ['element.channel.group', Object.freeze({ actionRef: 'action.channel.select', revealSelectors: Object.freeze(['#channelCompatibility > summary']) })]
@@ -43,6 +44,7 @@ async function clickContextualProjectionTarget(page, target, step, operation) {
       throw new Error(`Contextual projection reveal control was unavailable for: ${step.targetNodeRef}`);
     }
     await reveal.click();
+    await page.waitForTimeout(CONTEXTUAL_PROJECTION_REVEAL_SETTLE_MS);
     if (!(await target.isVisible())) {
       throw new Error(`Contextual projection target remained hidden after fixed reveal: ${step.targetNodeRef}`);
     }
