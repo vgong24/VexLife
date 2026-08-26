@@ -37,6 +37,54 @@ def fail(message: str) -> None:
     raise FoundationTrainingError(message)
 
 
+def fresh_attempt_state() -> dict[str, Any]:
+    return {
+        "optimizerAttempted": False,
+        "optimizerSteps": 0,
+        "selectedParameterChangeState": "NOT_OBSERVED",
+    }
+
+
+def training_failure_truth(attempt_state: dict[str, Any]) -> dict[str, Any]:
+    attempted = attempt_state.get("optimizerAttempted") is True
+    steps = int(attempt_state.get("optimizerSteps", 0) or 0)
+    change_state = str(attempt_state.get("selectedParameterChangeState", "NOT_OBSERVED"))
+    if not attempted and steps <= 0:
+        return {
+            "effectState": "PRE_EXECUTION_NO_EFFECT",
+            "trainingActuallyExecuted": False,
+            "modelWeightsChanged": False,
+            "optimizerSteps": 0,
+        }
+    if steps <= 0:
+        return {
+            "effectState": "OPTIMIZER_ATTEMPT_EFFECT_UNKNOWN",
+            "trainingActuallyExecuted": None,
+            "modelWeightsChanged": None,
+            "optimizerSteps": 0,
+        }
+    if change_state == "CHANGED":
+        return {
+            "effectState": "POST_OPTIMIZER_CHANGED",
+            "trainingActuallyExecuted": True,
+            "modelWeightsChanged": True,
+            "optimizerSteps": steps,
+        }
+    if change_state == "UNCHANGED":
+        return {
+            "effectState": "POST_OPTIMIZER_UNCHANGED",
+            "trainingActuallyExecuted": True,
+            "modelWeightsChanged": False,
+            "optimizerSteps": steps,
+        }
+    return {
+        "effectState": "POST_OPTIMIZER_CHANGE_UNKNOWN",
+        "trainingActuallyExecuted": True,
+        "modelWeightsChanged": None,
+        "optimizerSteps": steps,
+    }
+
+
 def canonical_json(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
@@ -85,7 +133,7 @@ def load_manifest(path: Path) -> dict[str, Any]:
         fail("sourceModelRevision must be one exact 40-character lowercase commit identity")
     snapshot = manifest.get("sourceModelSnapshotFingerprint")
     if not isinstance(snapshot, str) or not HEX64.fullmatch(snapshot):
-        fail("sourceModelSnapshotFingerprint must be a verified lowercase SHA-256")
+        fail("sourceModelSnapshotFingerprint must be a declared lowercase SHA-256 expectation")
     for field in (
         "trainingRunRef",
         "sourceModelRepo",
@@ -323,7 +371,6 @@ def encode_rows(torch, processor: Any, rows: list[dict[str, Any]], max_length: i
         prefix_ids = template_ids(processor, messages[:-1], add_generation_prompt=True)
         if len(full_ids) > max_length:
             full_ids = full_ids[-max_length:]
-            # If truncation removes the entire target boundary, fail instead of silently training the wrong region.
             removed = max(0, len(template_ids(processor, messages, add_generation_prompt=False)) - max_length)
             prefix_length = max(0, len(prefix_ids) - removed)
         else:
@@ -399,6 +446,9 @@ def inspect(manifest: dict[str, Any]) -> dict[str, Any]:
         "trainingMode": manifest["trainingMode"],
         "sourceModelRepo": manifest["sourceModelRepo"],
         "sourceModelRevision": manifest["sourceModelRevision"],
+        "sourceModelSnapshotFingerprint": manifest["sourceModelSnapshotFingerprint"],
+        "sourceModelSnapshotFingerprintObserved": False,
+        "sourceModelIdentityClass": "EXACT_REPOSITORY_PLUS_COMMIT_REVISION",
         "localFilesOnly": local_only,
         "trainingDataset": str(train_path.relative_to(REPO_ROOT)),
         "heldoutDataset": str(heldout_path.relative_to(REPO_ROOT)),
@@ -415,7 +465,7 @@ def inspect(manifest: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def execute(manifest: dict[str, Any]) -> dict[str, Any]:
+def execute(manifest: dict[str, Any], attempt_state: dict[str, Any]) -> dict[str, Any]:
     train_path, _ = verify_bound_files(manifest)
     rows = load_training_rows(train_path)
     torch, processor, model, local_only = load_model_and_processor(manifest)
@@ -470,25 +520,31 @@ def execute(manifest: dict[str, Any]) -> dict[str, Any]:
             micro_steps += 1
             if micro_steps % accumulation == 0:
                 torch.nn.utils.clip_grad_norm_(trainable_parameters, 1.0)
+                attempt_state["optimizerAttempted"] = True
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
                 optimizer_steps += 1
+                attempt_state["optimizerSteps"] = optimizer_steps
             if optimizer_steps >= max_steps:
                 break
         if optimizer_steps >= max_steps:
             break
     if optimizer_steps == 0 and micro_steps > 0:
         torch.nn.utils.clip_grad_norm_(trainable_parameters, 1.0)
+        attempt_state["optimizerAttempted"] = True
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
         optimizer_steps = 1
+        attempt_state["optimizerSteps"] = optimizer_steps
     if optimizer_steps <= 0:
         fail("no optimizer step executed")
 
     after = parameter_hashes(torch, named)
     changed_names = sorted(name for name in before if before[name] != after[name])
     if not changed_names:
+        attempt_state["selectedParameterChangeState"] = "UNCHANGED"
         fail("training executed but no selected parameter bytes changed")
+    attempt_state["selectedParameterChangeState"] = "CHANGED"
 
     output_dir = resolve_repo_path(manifest["outputDir"], "outputDir")
     if output_dir.exists() and any(output_dir.iterdir()):
@@ -508,6 +564,8 @@ def execute(manifest: dict[str, Any]) -> dict[str, Any]:
         "sourceModelRepo": manifest["sourceModelRepo"],
         "sourceModelRevision": manifest["sourceModelRevision"],
         "sourceModelSnapshotFingerprint": manifest["sourceModelSnapshotFingerprint"],
+        "sourceModelSnapshotFingerprintObserved": False,
+        "sourceModelIdentityClass": "EXACT_REPOSITORY_PLUS_COMMIT_REVISION",
         "manifestFingerprint": sha256_bytes(canonical_json(manifest)),
         "trainingDatasetSha256": manifest["trainingDatasetSha256"],
         "heldoutDatasetSha256": manifest["heldoutDatasetSha256"],
@@ -547,17 +605,18 @@ def main() -> int:
     group.add_argument("--inspect-only", action="store_true")
     group.add_argument("--execute", action="store_true")
     args = parser.parse_args()
+    attempt_state = fresh_attempt_state()
     try:
         manifest = load_manifest(args.manifest.resolve())
-        result = inspect(manifest) if args.inspect_only else execute(manifest)
+        result = inspect(manifest) if args.inspect_only else execute(manifest, attempt_state)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     except FoundationTrainingError as exc:
+        truth = training_failure_truth(attempt_state)
         print(json.dumps({
             "schemaVersion": "vexlife.foundation-training-error/v1",
             "error": str(exc),
-            "trainingActuallyExecuted": False,
-            "modelWeightsChanged": False,
+            **truth,
             "activationPerformed": False,
         }, indent=2, sort_keys=True), file=sys.stderr)
         return 2
