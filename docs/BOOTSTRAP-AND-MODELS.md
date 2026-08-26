@@ -4,13 +4,23 @@
 
 ## Goal
 
-A fresh checkout on Windows, macOS or Linux should be able to create a valid local Vex Home without copying personal runtime data or a multi-gigabyte model through Git. The current **release-qualified local companion baseline** is narrower: Windows x64 with a compatible NVIDIA driver/GPU. Other platform bootstrap/source surfaces remain available, but this document does not claim an equivalent release-qualified local-model profile for them yet.
+A fresh source route on Windows, macOS or Linux should be able to create a valid local Vex Home without copying personal runtime data or a multi-gigabyte model through Git.
+
+The current **release-qualified source-local companion profiles** are narrower than the repository's platform surface:
+
+- Windows 10/11 x64 with a compatible NVIDIA driver/GPU;
+- macOS arm64 on exact `Apple M4 Pro` hardware.
+
+Each current profile requires at least 12 GiB system memory and 6 GiB free disk space. Linux and other Mac/GPU variants retain bootstrap/development surfaces but do not inherit either profile's release qualification.
+
+`RELEASE_QUALIFIED` here means eligible for the matching source-local normal setup route. It does **not** claim a signed/public `OFFICIAL_VERIFIED_BUILD`, packaged public release, all-platform support, or P11 fresh-human release proof.
 
 ## Bootstrap sequence
 
 ```text
-verify Node and repository files
-→ detect platform and architecture
+obtain or verify exact source route
+→ verify Node and required repository files
+→ detect platform, architecture and admitted hardware profile
 → select or create local Vex Home path
 → create device and companion-lineage identities
 → install accepted public culture projection
@@ -24,6 +34,65 @@ verify Node and repository files
 ```
 
 `bootstrap` and `initializeVex()` are separate contracts. Bootstrap owns Home formation and preservation. Initialization owns the product composition from an accepted operational profile through a verified local runtime binding. Neither one manufactures the other's authority.
+
+## Ordinary-human Mac source bootstrap
+
+The current Apple M4 Pro route has one small public source bootstrap:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command
+bash /tmp/setup-vexlife.command
+```
+
+`setup-vexlife.command` is intentionally small. When downloaded by itself it:
+
+```text
+checks required macOS fetch/archive tools
+→ resolves the requested VexLife Git ref to one exact 40-hex commit
+→ downloads that exact source archive
+→ rejects unsafe archive paths
+→ materializes the exact source under application-owned source storage
+→ delegates to install/vexlife-setup.sh from those exact bytes
+```
+
+It does not create Vex Home, choose a model, download model/runtime artifacts, or start the companion itself. Those effects remain owned by repository setup/initializer/lifecycle code.
+
+The default Vex Home remains the established source default:
+
+```text
+~/.vexlife
+```
+
+The human may accept that path or choose another. The selected path is then classified by software before state-dependent choices are offered.
+
+### Mac state-first setup behavior
+
+```text
+ABSENT
+  → explain first setup
+  → ask whether to establish this Home
+  → perform no-effect profile/host plan
+  → ask separately before several-GiB model/runtime acquisition
+  → qualify runtime once
+  → start/open Vex
+
+EXISTING_HEALTHY
+  → open/resume
+  → or offer repair / rebuild-preserve / uninstall-preserve
+
+EXISTING_DEGRADED_REPAIRABLE
+  → offer only recovery actions valid for that observed state
+
+HELD_NONCANONICAL_HOME / unknown state
+  → fail closed
+  → no overwrite/delete
+```
+
+The ordinary human route does not inject `--yes` into the initializer. An already-qualified live runtime may be consumed from current Home receipts without invoking initialization a second time. Explicit noninteractive `--yes` remains a separate caller-owned authorization path.
+
+The literal remote-bootstrap path has been human-rehearsed through cold model/projector acquisition, local runtime materialization and qualification, initialization receipt creation under `~/.vexlife/recovery`, browser startup, and a live rendered VexLife Global Root Hub on `127.0.0.1:18110`.
+
+That rehearsal is a source-local Mac onboarding proof. It is not P11 fresh-human/fresh-machine acceptance and does not elevate the source route into a signed/public build.
 
 ## Model boundary
 
@@ -47,25 +116,27 @@ The normal initialization route is fail-closed:
 
 ```text
 RELEASE_QUALIFIED profile
-  -> eligible for normal Continue-with-Vex initialization
+  -> eligible for the matching normal source-local initialization route
 
 CANDIDATE_QUALIFICATION / HELD / STALE / INVALID profile
   -> not a normal default
   -> no hidden default LLM fallback
 ```
 
-The current Windows x64 NVIDIA profile is `RELEASE_QUALIFIED` for the **source-local normal setup route** after exact Windows evidence proved its pinned artifact/runtime digests and sizes, bounded model generation, local qualification inference, one real Browser→G01 companion turn, Home-preserving uninstall, exact-owned process shutdown, and temporary-test-Home cleanup.
+The current Windows x64 NVIDIA profile is `RELEASE_QUALIFIED` after exact Windows evidence proved pinned artifact/runtime digests and sizes, bounded model generation, local qualification inference, one real Browser→G01 companion turn, Home-preserving uninstall, exact-owned process shutdown, and temporary-test-Home cleanup.
 
-That state does **not** claim a signed installer, public release, `OFFICIAL_VERIFIED_BUILD`, P11 fresh-human proof, or equivalent support on another platform. Those remain separately governed distribution/lifecycle thresholds. Internal `candidate-qualification` mode remains available only for future profile evaluation and requires the exact profile plus separate candidate authority.
+The current macOS arm64 Apple M4 Pro profile is `RELEASE_QUALIFIED` after exact Mac evidence proved pinned upstream/runtime executable identities, Metal runtime qualification, a real Browser→Companion turn, restart/resume, repair, rebuild-preserve, uninstall-preserve, exact-owned shutdown, path-with-spaces ownership, and protected Home/technical continuity. The later ordinary-human front-door rehearsal additionally proved the literal remote-bootstrap path through cold acquisition and live browser opening.
 
-Current deterministic commands:
+Neither state claims a signed installer, public release, `OFFICIAL_VERIFIED_BUILD`, P11 fresh-human proof, or support for a nearby but unqualified platform/hardware combination. Internal `candidate-qualification` mode remains available only for future profile evaluation and requires the exact profile plus separate candidate authority.
+
+Current deterministic initializer commands remain:
 
 ```text
 npm run vex:initialize:plan
 npm run vex:initialize
 ```
 
-The source entrypoint is `scripts/initialize-vex.mjs`. A future GUI or signed launcher must consume the same initializer/profile/receipt contract rather than invent a second installer.
+The initializer source entrypoint is `scripts/initialize-vex.mjs`. Human setup front doors must consume the same initializer/profile/receipt contract rather than inventing a second model installer.
 
 ## Artifact acquisition rules
 
@@ -87,9 +158,9 @@ The source entrypoint is `scripts/initialize-vex.mjs`. A future GUI or signed la
 DOWNLOADED != VERIFIED != MATERIALIZED != BOUND != QUALIFIED != COMPANION_READY
 ```
 
-The current release-qualified Windows composition uses pinned llama.cpp `b10107` plus pinned Qwen3.5-4B Q4_K_M model/projector artifacts. Its server profile bounds normal generation to 256 total predicted tokens with a 128-token reasoning budget. The initializer verifies each artifact, verifies the extracted `llama-server.exe`, starts the exact loopback process, waits for the health surface, performs one non-user qualification inference, and writes a machine-readable receipt. Only then may `config/model.json` become `BOUND_QUALIFIED`.
+The current release-qualified Windows and Apple M4 Pro compositions use pinned llama.cpp `b10107` plus pinned Qwen3.5-4B Q4_K_M model/projector artifacts. Normal generation is bounded by the accepted source-managed profile. The initializer verifies each artifact, verifies the platform runtime executable, starts the exact loopback process, waits for health, performs one non-user qualification inference, and writes a machine-readable receipt. Only then may `config/model.json` become `BOUND_QUALIFIED`.
 
-The browser still owns no endpoint, executable, model, Home or runtime authority. Its companion endpoint/model values are supplied by the server process from the accepted initialization receipt/profile.
+The browser owns no endpoint, executable, model, Home or runtime authority. Its companion endpoint/model values are supplied by the server process from the accepted initialization receipt/profile.
 
 ## Provision an advanced external model
 
@@ -123,7 +194,7 @@ same model family
 
 ## A new device is a sibling, not a teleported instance
 
-Cloning the repository on a MacBook creates a new device-local companion lineage. It may install the same public culture and may later receive explicitly selected Score projections, but it does not inherit another device's running instance identity or local Rhythm.
+Obtaining VexLife on another device creates a new device-local companion lineage. It may install the same public culture and may later receive explicitly selected Score projections, but it does not inherit another device's running instance identity or local Rhythm.
 
 ```text
 same human + same family + same culture
@@ -136,9 +207,15 @@ shared Score record
   → never rewritten as an experience the sibling personally lived
 ```
 
-## Recovery
+## Recovery and reruns
 
 Bootstrap never deletes an existing Vex Home. Initialization never overwrites an unknown runtime or mismatched final artifact. Existing Home, profile, artifact, runtime, port and qualification state are classified independently so a retry can resume from the last exact verified boundary.
+
+On Mac, rerunning the same two-line bootstrap resolves current source and then routes through this classification rather than blindly replacing Home state.
+
+`uninstall-preserve` is intentionally continuity-preserving: it stops exact owned browser/runtime processes and removes runtime/transient state while preserving Home, Memory, conversations and verified model artifacts. It records `HomeDeleted=false`, `MemoryDeleted=false`, and `modelArtifactsDeleted=false` in the lifecycle receipt and fails if protected Home continuity changes.
+
+A future full-delete operation, if admitted, is a separate destructive consent boundary and must not be conflated with `uninstall-preserve`.
 
 A missing current release-qualified profile is `NO_RELEASE_QUALIFIED_PROFILE`, not permission to fall back to another model. An unrelated process on the admitted runtime port is `PORT_OWNERSHIP_CONFLICT`, not permission to kill it.
 
