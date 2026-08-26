@@ -28,15 +28,20 @@ test('Navigation Continuity is inherited through universal Blueprint and compile
   const pacingCollection = registry.require('collection.navigation-continuity.pacing');
   const fast = registry.require('navigation-pacing.vexlife.fast');
   const topologyContract = registry.require('contract.navigation-continuity.topology/v1');
-  const module = registry.require('module.vexlife.core.navigation-continuity');
+  const runtimeModule = registry.require('module.vexlife.core.navigation-continuity');
+  const contributorModule = registry.require('module.vexlife.core.navigation-continuity-registry');
+  const registryModule = registry.require('module.vexlife.core.registry');
 
   assert.equal(source.kind, 'NAVIGATION_CONTINUITY_SOURCE');
   assert.equal(owner.kind, 'NAVIGATION_CONTINUITY_REGISTRY');
   assert.equal(pacingCollection.kind, 'NAVIGATION_CONTINUITY_DESCRIPTOR_COLLECTION');
   assert.equal(fast.kind, 'NAVIGATION_PACING');
   assert.equal(topologyContract.kind, 'NAVIGATION_CONTINUITY_CONTRACT');
-  assert.equal(module.path, 'src/core/navigation-continuity.mjs');
-  assert.ok(module.loadedBy.includes('module.vexlife.core.registry'));
+  assert.equal(runtimeModule.path, 'src/core/navigation-continuity.mjs');
+  assert.equal(contributorModule.path, 'src/core/navigation-continuity-registry.mjs');
+  assert.ok(runtimeModule.loadedBy.includes(contributorModule.ref));
+  assert.ok(contributorModule.reads.includes(runtimeModule.ref));
+  assert.ok(contributorModule.loadedBy.includes(registryModule.ref));
 
   assert.ok(edge(owner, 'DESCRIPTOR_COLLECTION', pacingCollection.ref));
   assert.ok(edge(owner, 'DEFAULT_PACING', fast.ref));
