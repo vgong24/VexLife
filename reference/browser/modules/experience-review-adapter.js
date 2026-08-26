@@ -35,6 +35,34 @@ function requireContextualProjectionBinding(step, operation) {
   }
 }
 
+async function contextualProjectionRendererState(page, step) {
+  const selector = stableTargetSelector(step.targetNodeRef);
+  return page.evaluate(({ selector, revealSelector }) => {
+    const menu = document.querySelector('#surfaceMenu');
+    const reveal = document.querySelector(revealSelector);
+    const matches = [...document.querySelectorAll(selector)].map((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        id: element.id || null,
+        hidden: Boolean(element.hidden),
+        display: style.display,
+        visibility: style.visibility,
+        opacity: style.opacity,
+        width: rect.width,
+        height: rect.height
+      };
+    });
+    return {
+      menuHidden: menu ? Boolean(menu.hidden) : null,
+      menuDisplay: menu ? getComputedStyle(menu).display : null,
+      revealExpanded: reveal?.getAttribute('aria-expanded') ?? null,
+      matchCount: matches.length,
+      matches
+    };
+  }, { selector, revealSelector: CONTEXTUAL_PROJECTION_REVEAL_SELECTOR });
+}
+
 async function clickContextualProjectionTarget(page, target, step, operation) {
   requireContextualProjectionBinding(step, operation);
   if (await target.count() === 0) throw new Error(`Stable review target was not rendered: ${step.targetNodeRef}`);
@@ -46,7 +74,8 @@ async function clickContextualProjectionTarget(page, target, step, operation) {
     await reveal.click();
     await page.waitForTimeout(CONTEXTUAL_PROJECTION_REVEAL_SETTLE_MS);
     if (!(await target.isVisible())) {
-      throw new Error(`Contextual projection target remained hidden after fixed reveal: ${step.targetNodeRef}`);
+      const rendererState = await contextualProjectionRendererState(page, step);
+      throw new Error(`Contextual projection target remained hidden after fixed reveal: ${step.targetNodeRef}; rendererState=${JSON.stringify(rendererState)}`);
     }
   }
   return target.click();
