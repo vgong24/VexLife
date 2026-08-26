@@ -13,7 +13,7 @@ const setupCommand = fs.readFileSync(path.join(ROOT, 'setup-vexlife.command'), '
 const setup = fs.readFileSync(path.join(ROOT, 'install', 'vexlife-setup.sh'), 'utf8');
 const lifecycle = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
 
-test('MACHUMAN01 root Mac front door is both standalone source bootstrap and one-hop repository delegate', () => {
+test('MACHUMAN01 root Mac front door resolves exact Git source before repository delegation', () => {
   assert.match(setupCommand, /^#!\/bin\/bash/m);
   assert.match(setupCommand, /REPOSITORY="vgong24\/VexLife"/);
   assert.match(setupCommand, /VEXLIFE_SOURCE_REF:-main/);
@@ -22,6 +22,13 @@ test('MACHUMAN01 root Mac front door is both standalone source bootstrap and one
   assert.match(setupCommand, /install\/vexlife-setup\.sh/);
   assert.doesNotMatch(setupCommand, /initialize-vex\.mjs/);
   assert.doesNotMatch(setupCommand, /macos-lifecycle\.mjs/);
+  assert.doesNotMatch(setupCommand, /SCRIPT_DIR/);
+  assert.doesNotMatch(setupCommand, /exec \/bin\/bash "\$SCRIPT_DIR\/install\/vexlife-setup\.sh"/);
+
+  const resolveIndex = setupCommand.indexOf('api.github.com/repos/$REPOSITORY/commits/$SOURCE_REF');
+  const delegateIndex = setupCommand.lastIndexOf('exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"');
+  assert.ok(resolveIndex >= 0);
+  assert.ok(delegateIndex > resolveIndex);
 });
 
 test('MACHUMAN01B standalone bootstrap resolves one exact Git source before downloading and persists source outside Vex Home', () => {
