@@ -16,7 +16,7 @@ const CONTEXTUAL_PROJECTION_TARGETS = new Map([
   ['element.nav.health', 'action.view.select']
 ]);
 const CONTEXTUAL_PROJECTION_REVEAL_SELECTOR = '#surfaceMenuButton';
-const CONTEXTUAL_PROJECTION_REVEAL_SETTLE_MS = 220;
+const CONTEXTUAL_PROJECTION_READY_SELECTOR = '#app[data-context-projection]';
 const STABLE_TARGET_DISCLOSURES = new Map([
   ['element.thread.open-conversation', Object.freeze({ actionRef: 'action.thread.select', revealSelectors: Object.freeze(['#surfaceMenuButton', '#openWorkspace']) })],
   ['element.channel.group', Object.freeze({ actionRef: 'action.channel.select', revealSelectors: Object.freeze(['#channelCompatibility > summary']) })]
@@ -35,36 +35,18 @@ function requireContextualProjectionBinding(step, operation) {
   }
 }
 
-async function contextualProjectionRendererState(page, step) {
-  const selector = stableTargetSelector(step.targetNodeRef);
-  return page.evaluate(({ selector, revealSelector }) => {
-    const menu = document.querySelector('#surfaceMenu');
-    const reveal = document.querySelector(revealSelector);
-    const matches = [...document.querySelectorAll(selector)].map((element) => {
-      const rect = element.getBoundingClientRect();
-      const style = getComputedStyle(element);
-      return {
-        id: element.id || null,
-        hidden: Boolean(element.hidden),
-        display: style.display,
-        visibility: style.visibility,
-        opacity: style.opacity,
-        width: rect.width,
-        height: rect.height
-      };
-    });
-    return {
-      menuHidden: menu ? Boolean(menu.hidden) : null,
-      menuDisplay: menu ? getComputedStyle(menu).display : null,
-      revealExpanded: reveal?.getAttribute('aria-expanded') ?? null,
-      matchCount: matches.length,
-      matches
-    };
-  }, { selector, revealSelector: CONTEXTUAL_PROJECTION_REVEAL_SELECTOR });
+async function waitForContextualProjectionRendererReady(page, binding) {
+  const ready = page.locator(CONTEXTUAL_PROJECTION_READY_SELECTOR).first();
+  try {
+    await ready.waitFor({ state: 'attached', timeout: binding.timeoutMs ?? 30000 });
+  } catch {
+    throw new Error('Contextual projection renderer did not become ready');
+  }
 }
 
-async function clickContextualProjectionTarget(page, target, step, operation) {
+async function clickContextualProjectionTarget(page, target, step, operation, binding) {
   requireContextualProjectionBinding(step, operation);
+  await waitForContextualProjectionRendererReady(page, binding);
   if (await target.count() === 0) throw new Error(`Stable review target was not rendered: ${step.targetNodeRef}`);
   if (!(await target.isVisible())) {
     const reveal = page.locator(CONTEXTUAL_PROJECTION_REVEAL_SELECTOR).first();
@@ -72,10 +54,8 @@ async function clickContextualProjectionTarget(page, target, step, operation) {
       throw new Error(`Contextual projection reveal control was unavailable for: ${step.targetNodeRef}`);
     }
     await reveal.click();
-    await page.waitForTimeout(CONTEXTUAL_PROJECTION_REVEAL_SETTLE_MS);
     if (!(await target.isVisible())) {
-      const rendererState = await contextualProjectionRendererState(page, step);
-      throw new Error(`Contextual projection target remained hidden after fixed reveal: ${step.targetNodeRef}; rendererState=${JSON.stringify(rendererState)}`);
+      throw new Error(`Contextual projection target remained hidden after fixed reveal: ${step.targetNodeRef}`);
     }
   }
   return target.click();
@@ -112,7 +92,7 @@ async function perform(page, step, binding) {
   if (operation.kind === 'NOOP') return;
   if (step.targetNodeRef == null) throw new Error(`Browser operation ${operation.kind} requires targetNodeRef`);
   const target = page.locator(stableTargetSelector(step.targetNodeRef)).first();
-  if (operation.kind === 'CLICK_CONTEXTUAL_PROJECTION_TARGET') return clickContextualProjectionTarget(page, target, step, operation);
+  if (operation.kind === 'CLICK_CONTEXTUAL_PROJECTION_TARGET') return clickContextualProjectionTarget(page, target, step, operation, binding);
   if (operation.kind === 'CLICK_STABLE_TARGET') return clickStableTarget(page, target, step);
   if (await target.count() === 0) throw new Error(`Stable review target was not rendered: ${step.targetNodeRef}`);
   if (operation.kind === 'FOCUS_STABLE_TARGET') return target.focus();
