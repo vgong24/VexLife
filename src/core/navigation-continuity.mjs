@@ -105,6 +105,24 @@ function descriptor(registryState, ref, label) {
   return value;
 }
 
+function descriptorInCollection(registryState, ref, collectionField, label) {
+  const value = descriptor(registryState, ref, label);
+  const collection = registryState.registry.descriptorCollections.find((item) => item.field === collectionField);
+  if (!collection) {
+    throw new NavigationContinuityError('DESCRIPTOR_COLLECTION_MISSING', { label, collectionField });
+  }
+  const belongs = (registryState.registry[collectionField] ?? [])
+    .some((item) => item[collection.identityField] === ref);
+  if (!belongs) {
+    throw new NavigationContinuityError('DESCRIPTOR_CLASS_MISMATCH', {
+      label,
+      ref,
+      expectedCollectionField: collectionField
+    });
+  }
+  return value;
+}
+
 function outcomeRef(registryState, outcomeKind) {
   const match = registryState.registry.outcomeDescriptors.find((item) => item.outcomeKind === outcomeKind);
   if (!match) throw new NavigationContinuityError('MISSING_OUTCOME_DESCRIPTOR', { outcomeKind });
@@ -184,11 +202,16 @@ export function validateNavigationContinuityRegistry(registry) {
     }
     const state = { registry, descriptors: descriptorMap(registry) };
     for (const pacing of registry.pacingDescriptors) {
-      descriptor(state, pacing.settlementPolicyRef, `${pacing.pacingRef}.settlementPolicyRef`);
-      descriptor(state, pacing.animationPolicyRef, `${pacing.pacingRef}.animationPolicyRef`);
-      descriptor(state, pacing.dwellPolicyRef, `${pacing.pacingRef}.dwellPolicyRef`);
-      descriptor(state, pacing.advancePolicyRef, `${pacing.pacingRef}.advancePolicyRef`);
-      descriptor(state, pacing.traceVisibilityRef, `${pacing.pacingRef}.traceVisibilityRef`);
+      descriptorInCollection(state, pacing.settlementPolicyRef, 'settlementPolicies',
+        `${pacing.pacingRef}.settlementPolicyRef`);
+      descriptorInCollection(state, pacing.animationPolicyRef, 'animationPolicies',
+        `${pacing.pacingRef}.animationPolicyRef`);
+      descriptorInCollection(state, pacing.dwellPolicyRef, 'dwellPolicies',
+        `${pacing.pacingRef}.dwellPolicyRef`);
+      descriptorInCollection(state, pacing.advancePolicyRef, 'advancePolicies',
+        `${pacing.pacingRef}.advancePolicyRef`);
+      descriptorInCollection(state, pacing.traceVisibilityRef, 'traceVisibilityDescriptors',
+        `${pacing.pacingRef}.traceVisibilityRef`);
       if (pacing.humanSelectable !== true) {
         throw new NavigationContinuityError('PACING_DESCRIPTOR_NOT_HUMAN_SELECTABLE', { ref: pacing.pacingRef });
       }
@@ -198,12 +221,21 @@ export function validateNavigationContinuityRegistry(registry) {
         throw new NavigationContinuityError('MOTION_POLICY_COLLAPSES_SEMANTICS', { ref: policy.motionPolicyRef });
       }
       if (policy.animationOverrideRefOrNull !== null) {
-        descriptor(state, policy.animationOverrideRefOrNull, `${policy.motionPolicyRef}.animationOverrideRefOrNull`);
+        descriptorInCollection(state, policy.animationOverrideRefOrNull, 'animationPolicies',
+          `${policy.motionPolicyRef}.animationOverrideRefOrNull`);
       }
     }
     for (const policy of registry.animationPolicies) {
       if (policy.semanticStepRemovalAllowed !== false) {
         throw new NavigationContinuityError('ANIMATION_POLICY_COLLAPSES_SEMANTICS', { ref: policy.animationPolicyRef });
+      }
+    }
+    for (const transitionClass of registry.transitionClassDescriptors) {
+      if (typeof transitionClass.crossRealmNonHierarchyAllowed !== 'boolean' ||
+          typeof transitionClass.visiblePortalRequired !== 'boolean') {
+        throw new NavigationContinuityError('TRANSITION_CLASS_DESCRIPTOR_INVALID', {
+          ref: transitionClass.transitionClassRef
+        });
       }
     }
     for (const trace of registry.traceVisibilityDescriptors) {
@@ -219,8 +251,13 @@ export function validateNavigationContinuityRegistry(registry) {
       }
       outcomeKinds.add(item.outcomeKind);
     }
-    for (const [field, ref] of Object.entries(registry.defaultPreferenceRefs ?? {})) {
-      descriptor(state, ref, `defaultPreferenceRefs.${field}`);
+    for (const [field, collectionField] of Object.entries({
+      pacingRef: 'pacingDescriptors',
+      motionPolicyRef: 'motionPolicies',
+      traceVisibilityRef: 'traceVisibilityDescriptors'
+    })) {
+      descriptorInCollection(state, registry.defaultPreferenceRefs?.[field], collectionField,
+        `defaultPreferenceRefs.${field}`);
     }
     if (!Number.isInteger(registry.limits?.maximumRecentTraceEntries) ||
         !Number.isInteger(registry.limits?.defaultRecentTraceEntries) ||
@@ -402,8 +439,8 @@ export function compileNavigationTopology({ registry, identityRegistry = null, t
         transitionRef: transition.transitionRef
       });
     }
-    const transitionClass = descriptor(registryState, transition.transitionClassRef,
-      `${transition.transitionRef}.transitionClassRef`);
+    const transitionClass = descriptorInCollection(registryState, transition.transitionClassRef,
+      'transitionClassDescriptors', `${transition.transitionRef}.transitionClassRef`);
     const hierarchyAdjacent = from.parentPageStateRefOrNull === to.pageStateRef ||
       to.parentPageStateRefOrNull === from.pageStateRef;
     const crossRealm = from.realmRef !== to.realmRef;
@@ -436,6 +473,7 @@ export function compileNavigationTopology({ registry, identityRegistry = null, t
     topologyRef: topology.topologyRef,
     registryRef: registry.registryRef,
     registryFingerprint: registryState.registryFingerprint,
+    maximumRouteSteps: registry.limits.maximumRouteSteps,
     initialPageStateRef: topology.initialPageStateRef,
     pageStates: pageStates.map(clone).sort((a, b) => a.pageStateRef.localeCompare(b.pageStateRef)),
     transitions: transitions.map(clone).sort((a, b) => a.transitionRef.localeCompare(b.transitionRef))
@@ -512,6 +550,15 @@ export function planNavigationRoute({ compiledTopology, fromPageStateRef, destin
     stepRefs.unshift(edge.transitionRef);
     stepCursor = edge.priorPageStateRef;
   }
+  if (stepRefs.length > compiledTopology.maximumRouteSteps) {
+    throw new NavigationContinuityError('PLAN_ROUTE_STEP_LIMIT_EXCEEDED', {
+      stepCount: stepRefs.length,
+      maximumRouteSteps: compiledTopology.maximumRouteSteps,
+      fromPageStateRef,
+      destinationPageStateRef,
+      destinationResourceRef
+    });
+  }
   const steps = stepRefs.map((ref) => clone(compiledTopology.transitionByRef[ref]));
   const core = {
     schemaVersion: ROUTE_PLAN_SCHEMA,
@@ -547,18 +594,17 @@ export function validateNavigationPlanCurrent({ plan, compiledTopology }) {
 
 function normalizePreferenceRefs(registryState, refs) {
   exactKeys(refs, ['pacingRef', 'motionPolicyRef', 'traceVisibilityRef'], 'preferenceRefs');
-  const pacing = descriptor(registryState, refs.pacingRef, 'preferenceRefs.pacingRef');
-  const motion = descriptor(registryState, refs.motionPolicyRef, 'preferenceRefs.motionPolicyRef');
-  const trace = descriptor(registryState, refs.traceVisibilityRef, 'preferenceRefs.traceVisibilityRef');
-  if (!Object.hasOwn(pacing, 'pacingRef') || !Object.hasOwn(motion, 'motionPolicyRef') ||
-      !Object.hasOwn(trace, 'traceVisibilityRef')) {
-    throw new NavigationContinuityError('PREFERENCE_DESCRIPTOR_CLASS_MISMATCH');
-  }
+  const pacing = descriptorInCollection(registryState, refs.pacingRef, 'pacingDescriptors',
+    'preferenceRefs.pacingRef');
+  const motion = descriptorInCollection(registryState, refs.motionPolicyRef, 'motionPolicies',
+    'preferenceRefs.motionPolicyRef');
+  const trace = descriptorInCollection(registryState, refs.traceVisibilityRef, 'traceVisibilityDescriptors',
+    'preferenceRefs.traceVisibilityRef');
   return deepFreeze({
     schemaVersion: PREFERENCE_STATE_SCHEMA,
-    pacingRef: refs.pacingRef,
-    motionPolicyRef: refs.motionPolicyRef,
-    traceVisibilityRef: refs.traceVisibilityRef,
+    pacingRef: pacing.pacingRef,
+    motionPolicyRef: motion.motionPolicyRef,
+    traceVisibilityRef: trace.traceVisibilityRef,
     semanticFingerprint: semanticHash(refs)
   });
 }
@@ -606,17 +652,21 @@ export function createNavigationPreferenceStore({ registry, initialPreferenceRef
 
 export function resolveNavigationPresentationPolicy({ registry, preferenceSnapshot }) {
   const registryState = requireValidRegistry(registry);
-  const pacing = descriptor(registryState, preferenceSnapshot.pacingRef, 'preferenceSnapshot.pacingRef');
-  const motion = descriptor(registryState, preferenceSnapshot.motionPolicyRef,
+  const pacing = descriptorInCollection(registryState, preferenceSnapshot.pacingRef, 'pacingDescriptors',
+    'preferenceSnapshot.pacingRef');
+  const motion = descriptorInCollection(registryState, preferenceSnapshot.motionPolicyRef, 'motionPolicies',
     'preferenceSnapshot.motionPolicyRef');
-  const trace = descriptor(registryState, preferenceSnapshot.traceVisibilityRef,
-    'preferenceSnapshot.traceVisibilityRef');
-  const settlement = descriptor(registryState, pacing.settlementPolicyRef,
+  const trace = descriptorInCollection(registryState, preferenceSnapshot.traceVisibilityRef,
+    'traceVisibilityDescriptors', 'preferenceSnapshot.traceVisibilityRef');
+  const settlement = descriptorInCollection(registryState, pacing.settlementPolicyRef, 'settlementPolicies',
     `${pacing.pacingRef}.settlementPolicyRef`);
   const animationRef = motion.animationOverrideRefOrNull ?? pacing.animationPolicyRef;
-  const animation = descriptor(registryState, animationRef, 'effectiveAnimationPolicyRef');
-  const dwell = descriptor(registryState, pacing.dwellPolicyRef, `${pacing.pacingRef}.dwellPolicyRef`);
-  const advance = descriptor(registryState, pacing.advancePolicyRef, `${pacing.pacingRef}.advancePolicyRef`);
+  const animation = descriptorInCollection(registryState, animationRef, 'animationPolicies',
+    'effectiveAnimationPolicyRef');
+  const dwell = descriptorInCollection(registryState, pacing.dwellPolicyRef, 'dwellPolicies',
+    `${pacing.pacingRef}.dwellPolicyRef`);
+  const advance = descriptorInCollection(registryState, pacing.advancePolicyRef, 'advancePolicies',
+    `${pacing.pacingRef}.advancePolicyRef`);
   const core = {
     pacingRef: pacing.pacingRef,
     motionPolicyRef: motion.motionPolicyRef,
@@ -1229,12 +1279,33 @@ export function createNavigationContinuitySession({
       transitionCommitRefs.push(bundle.navigationCommitRef);
 
       if (typeof adapter.waitForPerceptionDwell === 'function') {
-        await adapter.waitForPerceptionDwell(deepFreeze({
-          navigationSessionRef,
-          commandRef,
-          navigationCommitRef: bundle.navigationCommitRef,
-          dwellPolicy: clone(presentationPolicy.dwell)
-        }));
+        try {
+          await adapter.waitForPerceptionDwell(deepFreeze({
+            navigationSessionRef,
+            commandRef,
+            navigationCommitRef: bundle.navigationCommitRef,
+            dwellPolicy: clone(presentationPolicy.dwell)
+          }));
+        } catch (error) {
+          return commandResult({
+            registryState,
+            navigationSessionRef,
+            commandRef,
+            resourceRef,
+            goalRef,
+            outcomeKind: 'ADAPTER_FAILURE',
+            routePlanRefOrNull: plan.routePlanRef,
+            startingFrameRef: startingFrame.frameRef,
+            currentFrameRef: currentFrame.frameRef,
+            lastKnownGoodFrameRef: currentFrame.frameRef,
+            transitionCommitRefs,
+            failureRefOrNull: `failure.navigation.perception-dwell-adapter-exception.${semanticHash({
+              commandRef,
+              stepIndex,
+              message: error?.message ?? String(error)
+            }).slice(0, 24)}`
+          });
+        }
       }
       const hasNextStep = stepIndex < plan.steps.length - 1;
       if (hasNextStep && presentationPolicy.advance.humanAdvanceRequired === true) {
@@ -1254,12 +1325,33 @@ export function createNavigationContinuitySession({
             failureRefOrNull: 'failure.navigation.human-advance-adapter-missing'
           });
         }
-        await adapter.awaitHumanAdvance(deepFreeze({
-          navigationSessionRef,
-          commandRef,
-          navigationCommitRef: bundle.navigationCommitRef,
-          advancePolicy: clone(presentationPolicy.advance)
-        }));
+        try {
+          await adapter.awaitHumanAdvance(deepFreeze({
+            navigationSessionRef,
+            commandRef,
+            navigationCommitRef: bundle.navigationCommitRef,
+            advancePolicy: clone(presentationPolicy.advance)
+          }));
+        } catch (error) {
+          return commandResult({
+            registryState,
+            navigationSessionRef,
+            commandRef,
+            resourceRef,
+            goalRef,
+            outcomeKind: 'ADAPTER_FAILURE',
+            routePlanRefOrNull: plan.routePlanRef,
+            startingFrameRef: startingFrame.frameRef,
+            currentFrameRef: currentFrame.frameRef,
+            lastKnownGoodFrameRef: currentFrame.frameRef,
+            transitionCommitRefs,
+            failureRefOrNull: `failure.navigation.human-advance-adapter-exception.${semanticHash({
+              commandRef,
+              stepIndex,
+              message: error?.message ?? String(error)
+            }).slice(0, 24)}`
+          });
+        }
       }
     }
     return commandResult({
@@ -1279,11 +1371,16 @@ export function createNavigationContinuitySession({
 
   async function executeCommand(resourceRef, options) {
     const goalRef = stableRef(options.goalRef, 'navigateTo.goalRef');
-    const expectedFrameRef = options.expectedFrameRef === null
-      ? currentFrame.frameRef
+    const requestedExpectedFrameRefOrNull = options.expectedFrameRef === null
+      ? null
       : stableRef(options.expectedFrameRef, 'navigateTo.expectedFrameRef');
+    const expectedFrameRef = requestedExpectedFrameRefOrNull ?? currentFrame.frameRef;
     const commandRef = stableRef(options.commandRef, 'navigateTo.commandRef');
-    const inputFingerprint = semanticHash({ resourceRef, goalRef, expectedFrameRef });
+    const inputFingerprint = semanticHash({
+      resourceRef,
+      goalRef,
+      expectedFrameRefOrNull: requestedExpectedFrameRefOrNull
+    });
     const prior = commandLedger.get(commandRef);
     if (prior) {
       if (prior.inputFingerprint !== inputFingerprint) {
@@ -1340,7 +1437,8 @@ export function createNavigationContinuitySession({
         destinationResourceRef: resourceRef
       });
     } catch (error) {
-      if (error.code !== 'NO_REGISTERED_VISIBLE_ROUTE') throw error;
+      if (error.code !== 'NO_REGISTERED_VISIBLE_ROUTE' &&
+          error.code !== 'PLAN_ROUTE_STEP_LIMIT_EXCEEDED') throw error;
       const result = commandResult({
         registryState,
         navigationSessionRef,
@@ -1351,7 +1449,10 @@ export function createNavigationContinuitySession({
         routePlanRefOrNull: null,
         startingFrameRef: currentFrame.frameRef,
         currentFrameRef: currentFrame.frameRef,
-        lastKnownGoodFrameRef: currentFrame.frameRef
+        lastKnownGoodFrameRef: currentFrame.frameRef,
+        failureRefOrNull: error.code === 'PLAN_ROUTE_STEP_LIMIT_EXCEEDED'
+          ? 'failure.navigation.route-step-limit-exceeded'
+          : null
       });
       commandLedger.set(commandRef, { inputFingerprint, result });
       return result;
@@ -1384,9 +1485,6 @@ export function createNavigationContinuitySession({
         commandRef: options.commandRef ?? `command.navigation.${navigationSessionRef}.${commandSequence}`
       };
       return enqueue(() => executeCommand(resourceRef, normalizedOptions));
-    },
-    executePlan(plan, options) {
-      return enqueue(() => executePlan(plan, options));
     },
     projectCurrentFrame() {
       return projectNavigationCurrentFrame(session);

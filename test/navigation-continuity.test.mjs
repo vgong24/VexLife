@@ -129,6 +129,13 @@ test('NCF-00/01 canonical descriptor registry validates and pacing expansion is 
     preferenceSnapshot: changedStore.snapshot()
   });
   assert.equal(changedPolicy.animationPolicyRef, 'animation.navigation.standard');
+
+  const wrongClass = structuredClone(registry);
+  wrongClass.pacingDescriptors.find((item) => item.pacingRef === 'navigation-pacing.vexlife.fast')
+    .animationPolicyRef = 'settlement.navigation.semantic-current';
+  const wrongClassValidation = validateNavigationContinuityRegistry(wrongClass);
+  assert.equal(wrongClassValidation.ok, false);
+  assert.equal(wrongClassValidation.errors[0]?.code, 'DESCRIPTOR_CLASS_MISMATCH');
 });
 
 test('NCF-04/05/08 lookup and route planning are no-effect and cross realms through the registered root path', () => {
@@ -157,7 +164,27 @@ test('NCF-04/05/08 lookup and route planning are no-effect and cross realms thro
   assert.equal(JSON.stringify(topology), before);
 });
 
-test('NCF-08/09 an explicit visible portal is valid while an unclassified cross-realm jump fails closed', () => {
+test('NCF-05 source-managed maximum route steps fail closed before any movement effect', () => {
+  const limitedRegistry = structuredClone(registry);
+  limitedRegistry.limits.maximumRouteSteps = 2;
+  const topology = compileNavigationTopology({
+    registry: limitedRegistry,
+    topology: withoutPortal()
+  });
+  assert.throws(
+    () => planNavigationRoute({
+      compiledTopology: topology,
+      fromPageStateRef: 'page-state.fixture.alpha.leaf',
+      destinationResourceRef: 'resource.fixture.target'
+    }),
+    (error) => error instanceof NavigationContinuityError &&
+      error.code === 'PLAN_ROUTE_STEP_LIMIT_EXCEEDED' &&
+      error.details.stepCount === 6 &&
+      error.details.maximumRouteSteps === 2
+  );
+});
+
+test('NCF-08/09 an explicit visible portal is valid while unclassified or mistyped routes fail closed', () => {
   const topology = compile();
   const plan = planNavigationRoute({
     compiledTopology: topology,
@@ -176,6 +203,16 @@ test('NCF-08/09 an explicit visible portal is valid while an unclassified cross-
     () => compile(malformed),
     (error) => error instanceof NavigationContinuityError &&
       error.code === 'CROSS_REALM_TRANSITION_REQUIRES_VISIBLE_PORTAL'
+  );
+
+  const mistypedClass = structuredClone(fixture);
+  mistypedClass.transitions.find((item) =>
+    item.transitionRef === 'transition.fixture.alpha-leaf-to-branch')
+    .transitionClassRef = 'animation.navigation.standard';
+  assert.throws(
+    () => compile(mistypedClass),
+    (error) => error instanceof NavigationContinuityError &&
+      error.code === 'DESCRIPTOR_CLASS_MISMATCH'
   );
 });
 
@@ -231,6 +268,7 @@ test('NCF-03 one session serializes concurrent navigateTo commands deterministic
   const events = [];
   const adapter = makeAdapter({ events, delayMs: 5 });
   const { session } = makeSession({ adapter });
+  assert.equal(Object.hasOwn(session, 'executePlan'), false);
   const first = session.navigateTo('resource.fixture.target', { goalRef: 'goal.fixture.first' });
   const second = session.navigateTo('resource.fixture.root', { goalRef: 'goal.fixture.second' });
   const [firstResult, secondResult] = await Promise.all([first, second]);
@@ -377,6 +415,52 @@ test('NCF-15/16 stale origin and adapter failure preserve the last committed kno
   assert.equal(failed.session.currentFrame().pageStateRef, 'page-state.fixture.alpha.branch');
   assert.equal(failed.session.transitionBundles().length, 1);
   assert.equal(failedResult.lastKnownGoodFrameRef, failed.session.currentFrame().frameRef);
+
+  const dwellAdapter = makeAdapter();
+  dwellAdapter.waitForPerceptionDwell = async () => {
+    throw new Error('fixture dwell failure');
+  };
+  const dwell = makeSession({
+    adapter: dwellAdapter,
+    sessionRef: 'navigation-session.fixture.dwell-failure'
+  });
+  const dwellResult = await dwell.session.navigateTo('resource.fixture.target', {
+    goalRef: 'goal.fixture.dwell-failure',
+    commandRef: 'command.fixture.dwell-failure'
+  });
+  assert.equal(dwellResult.outcomeRef, 'outcome.navigation.adapter-failure');
+  assert.equal(dwell.session.currentFrame().pageStateRef, 'page-state.fixture.beta.leaf');
+  assert.equal(dwell.session.transitionBundles().length, 1);
+  const dwellRetry = await dwell.session.navigateTo('resource.fixture.target', {
+    goalRef: 'goal.fixture.dwell-failure',
+    commandRef: 'command.fixture.dwell-failure'
+  });
+  assert.equal(dwellRetry.outcomeRef, 'outcome.navigation.duplicate-exact-noop');
+  assert.equal(dwell.session.transitionBundles().length, 1);
+
+  const advanceAdapter = makeAdapter();
+  advanceAdapter.awaitHumanAdvance = async () => {
+    throw new Error('fixture human advance failure');
+  };
+  const advance = makeSession({
+    topology: withoutPortal(),
+    preferenceRefs: preference('navigation-pacing.vexlife.step'),
+    adapter: advanceAdapter,
+    sessionRef: 'navigation-session.fixture.advance-failure'
+  });
+  const advanceResult = await advance.session.navigateTo('resource.fixture.target', {
+    goalRef: 'goal.fixture.advance-failure',
+    commandRef: 'command.fixture.advance-failure'
+  });
+  assert.equal(advanceResult.outcomeRef, 'outcome.navigation.adapter-failure');
+  assert.equal(advance.session.currentFrame().pageStateRef, 'page-state.fixture.alpha.branch');
+  assert.equal(advance.session.transitionBundles().length, 1);
+  const advanceRetry = await advance.session.navigateTo('resource.fixture.target', {
+    goalRef: 'goal.fixture.advance-failure',
+    commandRef: 'command.fixture.advance-failure'
+  });
+  assert.equal(advanceRetry.outcomeRef, 'outcome.navigation.duplicate-exact-noop');
+  assert.equal(advance.session.transitionBundles().length, 1);
 });
 
 test('NCF-17/20/21 replay is exact, topology drift is stale, and command identity is once-only', async () => {
@@ -401,6 +485,19 @@ test('NCF-17/20/21 replay is exact, topology drift is stale, and command identit
   assert.equal(duplicate.outcomeRef, 'outcome.navigation.duplicate-exact-noop');
   assert.equal(divergent.outcomeRef, 'outcome.navigation.divergent-command-identity');
   assert.equal(session.transitionBundles().length, 1);
+
+  const implicit = makeSession({ sessionRef: 'navigation-session.fixture.implicit-retry' });
+  const implicitFirst = await implicit.session.navigateTo('resource.fixture.target', {
+    goalRef: 'goal.fixture.implicit-retry',
+    commandRef: 'command.fixture.implicit-retry'
+  });
+  const implicitDuplicate = await implicit.session.navigateTo('resource.fixture.target', {
+    goalRef: 'goal.fixture.implicit-retry',
+    commandRef: 'command.fixture.implicit-retry'
+  });
+  assert.equal(implicitFirst.outcomeRef, 'outcome.navigation.committed');
+  assert.equal(implicitDuplicate.outcomeRef, 'outcome.navigation.duplicate-exact-noop');
+  assert.equal(implicit.session.transitionBundles().length, 1);
 
   const replay = replayNavigationTransitionBundles({
     registry,
