@@ -73,7 +73,7 @@ export function validateFoundationTrainingManifest(input, {repoRoot = REPO_ROOT,
   if (typeof manifest.trainingRunRef !== 'string' || !manifest.trainingRunRef) fail('G04B_MANIFEST_INVALID', 'trainingRunRef is required');
   if (typeof manifest.sourceModelRepo !== 'string' || !manifest.sourceModelRepo.includes('/')) fail('G04B_MANIFEST_INVALID', 'sourceModelRepo must be an exact owner/repository identity');
   if (!HEX40.test(manifest.sourceModelRevision ?? '')) fail('G04B_SOURCE_MODEL_NOT_PINNED', 'sourceModelRevision must be one exact 40-character lowercase commit');
-  if (!HEX64.test(manifest.sourceModelSnapshotFingerprint ?? '')) fail('G04B_SOURCE_MODEL_NOT_PINNED', 'sourceModelSnapshotFingerprint must be lowercase SHA-256');
+  if (!HEX64.test(manifest.sourceModelSnapshotFingerprint ?? '')) fail('G04B_SOURCE_MODEL_NOT_PINNED', 'sourceModelSnapshotFingerprint must be a declared lowercase SHA-256 expectation');
   if (typeof manifest.licenseRef !== 'string' || !manifest.licenseRef) fail('G04B_MANIFEST_INVALID', 'licenseRef is required');
   if (!HEX64.test(manifest.trainingDatasetSha256 ?? '') || !HEX64.test(manifest.heldoutDatasetSha256 ?? '')) {
     fail('G04B_DATASET_NOT_PINNED', 'training and held-out datasets require lowercase SHA-256');
@@ -125,6 +125,8 @@ export function validateFoundationTrainingManifest(input, {repoRoot = REPO_ROOT,
     sourceModelRepo: manifest.sourceModelRepo,
     sourceModelRevision: manifest.sourceModelRevision,
     sourceModelSnapshotFingerprint: manifest.sourceModelSnapshotFingerprint,
+    sourceModelSnapshotFingerprintObserved: false,
+    sourceModelIdentityClass: 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION',
     trainingDatasetPath: path.relative(path.resolve(repoRoot), trainingDataset).replaceAll(path.sep, '/'),
     heldoutDatasetPath: path.relative(path.resolve(repoRoot), heldoutDataset).replaceAll(path.sep, '/'),
     outputDir: path.relative(path.resolve(repoRoot), outputDir).replaceAll(path.sep, '/'),
