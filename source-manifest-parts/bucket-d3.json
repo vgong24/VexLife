@@ -11,8 +11,8 @@
     {
       "path": "blueprint/fragments/tests.json",
       "mode": "100644",
-      "bytes": 61605,
-      "sha256": "df27f5d9aeb8c0ff43f189880b5525f8390573e3bd846aef53b02368d40f84ff"
+      "bytes": 62666,
+      "sha256": "45686acc47560279f2735ec4fc13619ae51f59ffd0fe0776df0bac7f1a92e11d"
     },
     {
       "path": "docs/REVIEW-ARCHITECTURE-SELF-AUDIT.md",

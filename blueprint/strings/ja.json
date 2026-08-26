@@ -301,5 +301,14 @@
   "feature-walkthrough.living-journal.stage.revisit": "Revisit は現在の意味的文脈に戻り、過去の実行状態を再現しません。",
   "feature-walkthrough.living-journal.stage.ephemeral-marginalia": "ローカルの余白メモは一時的な参照であり、Memory ではありません。",
   "feature-walkthrough.living-journal.stage.boundaries": "アーカイブ選択は読み取り専用で、Memory・Home・モデル・公開権限を付与しません。",
-  "feature-walkthrough.living-journal.stage.complete": "説明プランはここで終了します。実際の体験完了は Journey が所有します。"
+  "feature-walkthrough.living-journal.stage.complete": "説明プランはここで終了します。実際の体験完了は Journey が所有します。",
+  "screen.cdr-s5-closed-alpha.title": "クローズド・アルファの流れ",
+  "cdr-s5.closed-alpha.region": "招待制クローズド・アルファ",
+  "cdr-s5.closed-alpha.reference": "リファレンスのみ・ネットワーク／参加者への実作用なし",
+  "cdr-s5.closed-alpha.consent": "アルファ参加への同意を確認",
+  "cdr-s5.closed-alpha.invitation": "招待への判断を選ぶ",
+  "cdr-s5.closed-alpha.route-privacy": "経路とプライバシー・クラス表示のみ",
+  "cdr-s5.closed-alpha.support": "安全なサポート参照を開く",
+  "cdr-s5.closed-alpha.withdraw": "アルファ参加リファレンスを撤回",
+  "cdr-s5.closed-alpha.reset": "クローズド・アルファ参照をリセット"
 }

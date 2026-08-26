@@ -8,7 +8,9 @@
       "blueprint/module-registry/scripts.json",
       "blueprint/module-registry/browser.json",
       "blueprint/module-registry/governance-and-bridge.json",
-      "blueprint/module-registry/public-learning.json"
+      "blueprint/module-registry/public-learning.json",
+      "blueprint/module-registry/navigation-continuity.json",
+      "blueprint/module-registry/cdr-s5-closed-alpha.json"
     ]
   }
 }

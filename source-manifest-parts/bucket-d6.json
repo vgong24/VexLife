@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 3466,
       "sha256": "448fdea1519cad9db9116dd3f370bf42bd7d354ecf417865f8f1eb91e67c3b8f"
+    },
+    {
+      "path": "src/core/navigation-continuity.mjs",
+      "mode": "100644",
+      "bytes": 62310,
+      "sha256": "eac14e02219c4ce120c1d13766b348522483c145a9b4393b910e07ae055e993b"
     }
   ]
 }

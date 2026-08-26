@@ -7,6 +7,18 @@
       "mode": "100644",
       "bytes": 3310,
       "sha256": "728872e21453f2bba1dd70fad1a3727661e0c6e26c7f54b3951ccffaa621c88f"
+    },
+    {
+      "path": "fixtures/navigation-continuity/cross-realm.json",
+      "mode": "100644",
+      "bytes": 11634,
+      "sha256": "51b639fe6aeeffdee3381ddde0cf31b9cd724f76d930955681d27963ff15560e"
+    },
+    {
+      "path": "test/cdr-s5-closed-alpha-browser.test.mjs",
+      "mode": "100644",
+      "bytes": 16559,
+      "sha256": "d2f527e2fe77b1c0dac5164e24694f10eb61723455f22861f4e8baed67a4d355"
     }
   ]
 }
