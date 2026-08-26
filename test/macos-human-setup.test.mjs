@@ -44,6 +44,21 @@ test('MACHUMAN01C downloaded archive is topology-checked before extraction and e
   assert.match(setupCommand, /exec \/bin\/bash "\$TARGET\/install\/vexlife-setup\.sh" "\$TARGET"/);
 });
 
+test('MACHUMAN01D same-SHA cache collision preserves cached bytes and executes only a fresh materialization', () => {
+  const collisionStart = setupCommand.indexOf('if [ -e "$TARGET" ]; then');
+  const freshMove = setupCommand.indexOf('/bin/mv "$DOWNLOADED_ROOT" "$TARGET"', collisionStart);
+  const delegate = setupCommand.indexOf('exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"', collisionStart);
+  assert.ok(collisionStart >= 0);
+  assert.ok(freshMove > collisionStart);
+  assert.ok(delegate > freshMove);
+
+  const collisionBlock = setupCommand.slice(collisionStart, freshMove);
+  assert.match(collisionBlock, /COLLISION_PARENT="\$\(\/usr\/bin\/mktemp -d "\$SOURCE_ROOT\/\$SOURCE_SHA\.fresh\.XXXXXX"\)"/);
+  assert.match(collisionBlock, /TARGET="\$COLLISION_PARENT\/source"/);
+  assert.doesNotMatch(collisionBlock, /\[ -d "\$TARGET" \]/);
+  assert.doesNotMatch(collisionBlock, /install\/vexlife-setup\.sh" \]/);
+});
+
 test('MACHUMAN02 setup inspects machine state before asking lifecycle choices', () => {
   assert.match(setup, /macos-lifecycle\.mjs" --operation status/);
   assert.match(setup, /case "\$STATE" in/);
