@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 import time
@@ -21,6 +22,10 @@ SCHEMA = "vexlife.foundation-training-manifest/v1"
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 REPO_ROOT = Path(__file__).resolve().parents[2]
+CANDIDATE_EVIDENCE_FILES = {
+    "vex-foundation-training-receipt.json",
+    "vex-foundation-evaluation-receipt.json",
+}
 
 
 class FoundationEvaluationError(RuntimeError):
@@ -29,6 +34,14 @@ class FoundationEvaluationError(RuntimeError):
 
 def fail(message: str) -> None:
     raise FoundationEvaluationError(message)
+
+
+def canonical_json(value: Any) -> bytes:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
 
 
 def sha256_file(path: Path) -> str:
@@ -40,6 +53,66 @@ def sha256_file(path: Path) -> str:
                 break
             digest.update(block)
     return digest.hexdigest()
+
+
+def candidate_file_digests(candidate: Path) -> dict[str, str]:
+    if not candidate.is_dir():
+        fail(f"candidate directory is missing: {candidate}")
+    result: dict[str, str] = {}
+    for path in sorted(candidate.rglob("*")):
+        if path.is_file() and path.name not in CANDIDATE_EVIDENCE_FILES:
+            result[str(path.relative_to(candidate)).replace(os.sep, "/")] = sha256_file(path)
+    if not result:
+        fail("candidate checkpoint contains no model/processor files")
+    return result
+
+
+def verify_candidate_receipt_binding(candidate: Path, manifest: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str], str]:
+    receipt_path = candidate / "vex-foundation-training-receipt.json"
+    if not receipt_path.is_file():
+        fail("candidate directory has no vex-foundation-training-receipt.json")
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        raise FoundationEvaluationError(f"candidate training receipt could not be read: {exc}") from exc
+    if receipt.get("schemaVersion") != "vexlife.foundation-training-receipt/v1":
+        fail("candidate training receipt schema is not current")
+    if receipt.get("trainingActuallyExecuted") is not True or receipt.get("modelWeightsChanged") is not True:
+        fail("candidate receipt does not prove a real weight-changing training execution")
+    if int(receipt.get("changedParameterCount", 0)) <= 0:
+        fail("candidate receipt reports no changed parameters")
+    for field in (
+        "trainingRunRef",
+        "sourceModelRepo",
+        "sourceModelRevision",
+        "sourceModelSnapshotFingerprint",
+        "trainingDatasetSha256",
+        "heldoutDatasetSha256",
+    ):
+        if receipt.get(field) != manifest.get(field):
+            fail(f"candidate receipt {field} does not match the exact training manifest")
+    if receipt.get("sourceModelIdentityClass") != "EXACT_REPOSITORY_PLUS_COMMIT_REVISION":
+        fail("candidate receipt does not preserve the generation-1 exact source identity class")
+    if receipt.get("sourceModelSnapshotFingerprintObserved") is not False:
+        fail("candidate receipt must not represent the declared source snapshot fingerprint as independently observed")
+    expected_digests = receipt.get("candidateArtifactDigests")
+    expected_fingerprint = receipt.get("candidateArtifactFingerprint")
+    if not isinstance(expected_digests, dict) or not expected_digests:
+        fail("candidate receipt contains no exact artifact digest map")
+    if not isinstance(expected_fingerprint, str) or not HEX64.fullmatch(expected_fingerprint):
+        fail("candidate receipt contains no valid candidate artifact fingerprint")
+    actual_digests = candidate_file_digests(candidate)
+    if actual_digests != expected_digests:
+        expected_paths = set(expected_digests)
+        actual_paths = set(actual_digests)
+        missing = sorted(expected_paths - actual_paths)
+        extra = sorted(actual_paths - expected_paths)
+        changed = sorted(path for path in expected_paths & actual_paths if expected_digests[path] != actual_digests[path])
+        fail(f"candidate bytes drifted after training: missing={missing} extra={extra} changed={changed}")
+    actual_fingerprint = sha256_bytes(canonical_json(actual_digests))
+    if actual_fingerprint != expected_fingerprint:
+        fail("candidate artifact fingerprint does not match the exact observed candidate bytes")
+    return receipt, actual_digests, actual_fingerprint
 
 
 def resolve_repo_path(raw: str, label: str) -> Path:
@@ -58,8 +131,14 @@ def load_manifest(path: Path) -> dict[str, Any]:
         raise FoundationEvaluationError(f"manifest could not be read: {exc}") from exc
     if manifest.get("schemaVersion") != SCHEMA:
         fail(f"manifest.schemaVersion must be {SCHEMA}")
+    if not isinstance(manifest.get("sourceModelRepo"), str) or "/" not in manifest["sourceModelRepo"]:
+        fail("sourceModelRepo must be an exact owner/repository identity")
     if not HEX40.fullmatch(str(manifest.get("sourceModelRevision", ""))):
         fail("sourceModelRevision must be one exact 40-character lowercase commit identity")
+    if not HEX64.fullmatch(str(manifest.get("sourceModelSnapshotFingerprint", ""))):
+        fail("sourceModelSnapshotFingerprint must be a declared lowercase SHA-256 expectation")
+    if not HEX64.fullmatch(str(manifest.get("trainingDatasetSha256", ""))):
+        fail("trainingDatasetSha256 must be lowercase SHA-256")
     if not HEX64.fullmatch(str(manifest.get("heldoutDatasetSha256", ""))):
         fail("heldoutDatasetSha256 must be lowercase SHA-256")
     return manifest
@@ -139,6 +218,7 @@ def dtype_for(torch, precision: str):
 
 
 def load_model_pair(manifest: dict[str, Any], candidate: Path):
+    receipt, actual_digests, actual_fingerprint = verify_candidate_receipt_binding(candidate, manifest)
     torch, AutoProcessor, AutoModel = import_runtime()
     local_only = not bool(manifest.get("modelDownloadAuthorized", False))
     common = {
@@ -152,14 +232,6 @@ def load_model_pair(manifest: dict[str, Any], candidate: Path):
         torch_dtype=dtype_for(torch, manifest.get("precision", "bf16")),
         **common,
     )
-    if not candidate.is_dir():
-        fail(f"candidate directory is missing: {candidate}")
-    receipt_path = candidate / "vex-foundation-training-receipt.json"
-    if not receipt_path.is_file():
-        fail("candidate directory has no vex-foundation-training-receipt.json")
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-    if receipt.get("trainingActuallyExecuted") is not True or receipt.get("modelWeightsChanged") is not True:
-        fail("candidate receipt does not prove a real weight-changing training execution")
     trained = AutoModel.from_pretrained(
         str(candidate),
         torch_dtype=dtype_for(torch, manifest.get("precision", "bf16")),
@@ -167,7 +239,7 @@ def load_model_pair(manifest: dict[str, Any], candidate: Path):
         local_files_only=True,
     )
     candidate_processor = AutoProcessor.from_pretrained(str(candidate), trust_remote_code=False, local_files_only=True)
-    return torch, processor, source, candidate_processor, trained, receipt, local_only
+    return torch, processor, source, candidate_processor, trained, receipt, actual_digests, actual_fingerprint, local_only
 
 
 def generate(torch, processor: Any, model: Any, messages: list[dict[str, str]], max_new_tokens: int, device: Any) -> str:
@@ -218,7 +290,17 @@ def main() -> int:
         manifest = load_manifest(args.manifest.resolve())
         rows = load_heldout(manifest)
         candidate = args.candidate.resolve()
-        torch, source_processor, source_model, candidate_processor, candidate_model, training_receipt, local_only = load_model_pair(manifest, candidate)
+        (
+            torch,
+            source_processor,
+            source_model,
+            candidate_processor,
+            candidate_model,
+            training_receipt,
+            actual_candidate_digests,
+            actual_candidate_fingerprint,
+            local_only,
+        ) = load_model_pair(manifest, candidate)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         source_model.to(device).eval()
         candidate_model.to(device).eval()
@@ -242,10 +324,15 @@ def main() -> int:
         receipt = {
             "schemaVersion": "vexlife.foundation-evaluation-receipt/v1",
             "trainingRunRef": manifest["trainingRunRef"],
-            "trainingReceiptFingerprint": hashlib.sha256(json.dumps(training_receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+            "trainingReceiptFingerprint": sha256_bytes(canonical_json(training_receipt)),
             "sourceModelRepo": manifest["sourceModelRepo"],
             "sourceModelRevision": manifest["sourceModelRevision"],
-            "candidateArtifactFingerprint": training_receipt.get("candidateArtifactFingerprint"),
+            "sourceModelSnapshotFingerprint": manifest["sourceModelSnapshotFingerprint"],
+            "sourceModelSnapshotFingerprintObserved": False,
+            "sourceModelIdentityClass": "EXACT_REPOSITORY_PLUS_COMMIT_REVISION",
+            "candidateArtifactFingerprint": actual_candidate_fingerprint,
+            "candidateArtifactDigests": actual_candidate_digests,
+            "candidateArtifactBytesVerified": True,
             "heldoutDatasetSha256": manifest["heldoutDatasetSha256"],
             "caseCount": len(cases),
             "simpleFixtureDeltaTotal": sum(case["simpleFixtureDelta"] for case in cases),
