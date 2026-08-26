@@ -325,28 +325,43 @@ function expectedBrowserArgs(repo, home, receipt) {
     '--vexlife-repo', repo
   ];
 }
-export function getOwnedBrowser(home, repo) {
+export function getOwnedBrowser(home, repo, {
+  allowRepoDrift = false,
+  processEvidenceReader = readMacProcessEvidence
+} = {}) {
   const receipt = jsonRead(browserReceiptPath(home));
   if (!receipt || receipt.state !== 'RUNNING') return null;
   if (receipt.schemaVersion !== MAC_BROWSER_RECEIPT_SCHEMA) throw new Error('browser process receipt schema is not current');
-  if (path.resolve(receipt.vexHomePath) !== home || path.resolve(receipt.repoRootPath) !== repo) {
-    throw new Error('browser process receipt Home/repo identity mismatch');
+  if (typeof receipt.vexHomePath !== 'string' || typeof receipt.repoRootPath !== 'string') {
+    throw new Error('browser process receipt Home/repo identity is incomplete');
   }
+  const receiptHome = path.resolve(receipt.vexHomePath);
+  const receiptRepo = path.resolve(receipt.repoRootPath);
+  const currentRepo = path.resolve(repo);
+  if (receiptHome !== home) throw new Error('browser process receipt Home identity mismatch');
+  if (!allowRepoDrift && receiptRepo !== currentRepo) throw new Error('browser process receipt repo identity mismatch');
   const pid = Number(receipt.pid);
-  const evidence = readMacProcessEvidence(pid);
+  const evidence = processEvidenceReader(pid);
   if (!evidence) return null;
   const expectedExecutablePath = path.resolve(receipt.nodeExecutablePath);
-  const expectedArguments = expectedBrowserArgs(repo, home, receipt);
+  const expectedArguments = expectedBrowserArgs(receiptRepo, home, receipt);
   if (!runtimeProcessEvidenceMatches({ processEvidence: evidence, expectedExecutablePath, expectedArguments })) {
     throw new Error('browser receipt PID is active but exact process-instance ownership is not proven');
   }
-  return { pid, receipt, evidence };
+  return {
+    pid,
+    receipt,
+    evidence,
+    receiptRepo,
+    currentRepo,
+    sourceCurrent: receiptRepo === currentRepo
+  };
 }
 export async function stopOwnedBrowser(home, repo) {
   const receiptPath = browserReceiptPath(home);
   const receipt = jsonRead(receiptPath);
   if (!receipt) return { disposition: 'NO_BROWSER_RECEIPT', pid: null };
-  const owned = getOwnedBrowser(home, repo);
+  const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
   if (!owned) {
     if (pidAlive(Number(receipt.pid))) throw new Error('browser receipt PID is active but ownership cannot be proven');
     receipt.state = 'STALE_STOPPED';
@@ -358,7 +373,12 @@ export async function stopOwnedBrowser(home, repo) {
   owned.receipt.state = 'STOPPED_BY_LIFECYCLE';
   owned.receipt.stoppedAtUtc = new Date().toISOString();
   writeJsonAtomic(receiptPath, owned.receipt);
-  return { disposition: 'EXACT_BROWSER_STOPPED', pid: owned.pid };
+  return {
+    disposition: 'EXACT_BROWSER_STOPPED',
+    pid: owned.pid,
+    sourceDisposition: owned.sourceCurrent ? 'CURRENT_SOURCE' : 'PRIOR_EXACT_SOURCE',
+    receiptRepoRootPath: owned.receiptRepo
+  };
 }
 export async function stopOwnedRuntime(home) {
   const model = jsonRead(path.join(home, 'config', 'model.json'));
@@ -589,9 +609,16 @@ async function startBrowser(home, repo, initialization) {
   const browserPort = 18110;
   const receiptPath = browserReceiptPath(home);
   if (await portOpen(browserPort)) {
-    const owned = getOwnedBrowser(home, repo);
+    const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
     if (!owned) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
-    return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
+    if (owned.sourceCurrent) return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
+    const rotation = await stopOwnedBrowser(home, repo);
+    if (await portOpen(browserPort)) {
+      throw new Error('exact prior-source browser stopped but port 18110 remains occupied');
+    }
+    if (rotation.sourceDisposition !== 'PRIOR_EXACT_SOURCE') {
+      throw new Error('browser source rotation did not preserve prior-source ownership classification');
+    }
   }
   const token = crypto.randomUUID().toLowerCase();
   const serverScript = path.join(repo, 'scripts', 'serve-browser.mjs');
