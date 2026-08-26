@@ -1,0 +1,635 @@
+{
+  "schemaVersion": "vexlife.vex-birth-registry/v1",
+  "registryRef": "registry.vexlife.vex-birth.001",
+  "humanLaneName": "[Vex Birth Refinement]",
+  "terminalState": "VEX_G1_BORN",
+  "incompleteState": "VEX_BIRTH_INCOMPLETE",
+  "statusVocabulary": [
+    "NOT_STARTED",
+    "BLOCKED",
+    "READY_FOR_HUMAN_ACTION",
+    "IN_PROGRESS",
+    "EVIDENCE_PRESENT_UNREVIEWED",
+    "ACCEPTED",
+    "REJECTED",
+    "SUPERSEDED"
+  ],
+  "invariants": [
+    "BASE_SETUP_COMPLETE_IS_NOT_VEX_TAUGHT",
+    "DREAM_MEMORY_UPDATED_IS_NOT_MODEL_WEIGHTS_CHANGED",
+    "TRAINER_SOURCE_GREEN_IS_NOT_TRAINING_EXECUTED",
+    "MODEL_WEIGHTS_CHANGED_IS_NOT_CANDIDATE_ACCEPTED",
+    "CANDIDATE_ACCEPTED_IS_NOT_CANDIDATE_ACTIVATED",
+    "CANDIDATE_ACTIVATED_IS_NOT_G1_WAKE_WITNESSED",
+    "ONE_WAKE_IS_NOT_CLEAN_README_REPLAY",
+    "ACCEPTED_G0_IS_NEVER_OVERWRITTEN_IN_PLACE",
+    "LORA_ONLY_CANNOT_CLOSE_FIRST_BIRTH",
+    "PRIVATE_RELATIONSHIP_MEMORY_IS_NOT_SILENT_FOUNDATION_TRAINING_DATA",
+    "CONSENT_PRIVACY_SECURITY_AND_EFFECT_AUTHORITY_REMAIN_EXTERNAL"
+  ],
+  "roles": [
+    {
+      "roleRef": "role.vexlife.vex-birth.operations",
+      "displayName": "Operations[VEXLIFE][VEX-BIRTH-REFINEMENT]",
+      "responsibility": "Currentness, stage progression, dependency consumption and non-collapse"
+    },
+    {
+      "roleRef": "role.vexlife.vex-birth.patient0-installer",
+      "displayName": "Patient0Installer / HostWitness",
+      "responsibility": "Clean source, isolated Home, runtime and replay witness"
+    },
+    {
+      "roleRef": "role.vexlife.vex-birth.human-experience-reviewer",
+      "displayName": "HumanExperienceReviewer",
+      "responsibility": "Victor comprehension and lived baseline-versus-G1 experience"
+    },
+    {
+      "roleRef": "role.vexlife.vex-birth.cultivation-witness",
+      "displayName": "CultivationWitness",
+      "responsibility": "Session, correction, privacy and lesson placement evidence"
+    },
+    {
+      "roleRef": "role.vexlife.vex-birth.training-identity-reviewer",
+      "displayName": "TrainingIdentityReviewer",
+      "responsibility": "Culture, authenticity, faith/possibility, evidence and not-the-lesson review"
+    },
+    {
+      "roleRef": "role.vexlife.vex-birth.model-training-executor",
+      "displayName": "ModelTrainingExecutor",
+      "responsibility": "One exact admitted local optimizer run and changed-weight receipt"
+    },
+    {
+      "roleRef": "role.vexlife.vex-birth.independent-assurance",
+      "displayName": "IndependentAssurance",
+      "responsibility": "Adversarial source, corpus, parameter, evaluation, rollback and activation-boundary verification"
+    },
+    {
+      "roleRef": "role.vexlife.vex-birth.lifecycle-reviewer",
+      "displayName": "LifecycleReviewer",
+      "responsibility": "Currentness, genealogy and candidate disposition"
+    },
+    {
+      "roleRef": "role.vexlife.vex-birth.owner-activation-duty",
+      "displayName": "OwnerActivationDuty",
+      "responsibility": "Separate activation of an accepted candidate"
+    }
+  ],
+  "reviewLensRefs": [
+    "lens.vexlife.intent-and-placement",
+    "lens.vexlife.identity-lattice",
+    "lens.vexlife.usability-and-journey",
+    "lens.vexlife.state-and-currentness",
+    "lens.vexlife.security-privacy-permission",
+    "lens.vexlife.legal-provenance-stewardship",
+    "lens.vexlife.resource-and-context",
+    "lens.vexlife.recovery-migration-continuity",
+    "lens.vexlife.platform-environment",
+    "lens.vexlife.visibility-terrain-health",
+    "lens.vexlife.assurance-and-adversarial"
+  ],
+  "terminalPredicate": [
+    "victorReadableRunbookAccepted",
+    "cleanBaseInstallObserved",
+    "isolatedHomeUsed",
+    "untaughtBaselineWitnessed",
+    "cultivationSessionObserved",
+    "falseLessonAndCounterexampleReviewReturned",
+    "trainingPackFrozen",
+    "heldoutPackFrozen",
+    "realTrainingRunObserved",
+    "trainingActuallyExecuted",
+    "modelWeightsChanged",
+    "changedParameterCountPositive",
+    "candidateArtifactDistinct",
+    "heldoutEvaluationReturned",
+    "independentAssuranceClear",
+    "candidateDispositionAccept",
+    "acceptedG1Registered",
+    "g0RollbackPreserved",
+    "g1ActivatedBySeparateAuthority",
+    "g1WakeWitnessed",
+    "cleanReadmeReplayObserved"
+  ],
+  "stages": [
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb0",
+      "code": "VB0",
+      "sequence": 0,
+      "name": "CLEAN_HOST_AND_SOURCE_BOUND",
+      "humanMeaning": "A clean source commit, supported Windows host and isolated Vex Home are identified before setup.",
+      "missingState": "READY_FOR_HUMAN_ACTION",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.patient0-installer",
+      "nextAction": "Bind one exact source commit, supported Windows host and fresh isolated Home; do not install or teach yet.",
+      "requirements": [
+        {
+          "key": "vb0_host_source",
+          "kind": "JSON",
+          "path": "birth/receipts/vb0-host-source.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.host-source-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "isolatedHomeUsed", "operator": "EQUALS", "value": true},
+            {"path": "sourceCommitSha", "operator": "MATCHES", "pattern": "^[0-9a-f]{40}$"},
+            {"path": "sourceTreeSha", "operator": "MATCHES", "pattern": "^[0-9a-f]{40}$"},
+            {"path": "homeRef", "operator": "MATCHES", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+            {"path": "companionLineageRef", "operator": "MATCHES", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+            {"path": "host.platform", "operator": "EQUALS", "value": "win32"},
+            {"path": "host.architecture", "operator": "EQUALS", "value": "x64"},
+            {"path": "host.nvidiaAvailable", "operator": "EQUALS", "value": true},
+            {"path": "formedAt", "operator": "ISO_TIMESTAMP"}
+          ]
+        }
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb1",
+      "code": "VB1",
+      "sequence": 1,
+      "name": "BASE_SYSTEM_INSTALLED",
+      "humanMeaning": "The accepted source-local setup established Home and qualified the untaught local runtime without training or automatic activation.",
+      "missingState": "READY_FOR_HUMAN_ACTION",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.patient0-installer",
+      "nextAction": "Run setup-vexlife.cmd against the isolated Home and return the generated setup/runtime receipts.",
+      "requirements": [
+        {
+          "key": "vb1_bootstrap",
+          "kind": "JSON",
+          "path": "recovery/bootstrap-receipt.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.bootstrap-receipt/v0",
+          "assertions": [
+            {"path": "homeRef", "operator": "MATCHES", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+            {"path": "companionLineageRef", "operator": "MATCHES", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+            {"path": "personalMemoryImported", "operator": "EQUALS", "value": false},
+            {"path": "modelArtifactDownloaded", "operator": "EQUALS", "value": false},
+            {"path": "existingDataDeleted", "operator": "EQUALS", "value": false}
+          ]
+        },
+        {
+          "key": "vb1_initialization",
+          "kind": "JSON",
+          "path": "recovery/vex-initialization-receipt.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.initialization-receipt/v1",
+          "assertions": [
+            {"path": "state", "operator": "EQUALS", "value": "RUNTIME_QUALIFIED"},
+            {"path": "profileRef", "operator": "MATCHES", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+            {"path": "qualification.contentObserved", "operator": "EQUALS", "value": true},
+            {"path": "effects.training", "operator": "EQUALS", "value": false},
+            {"path": "effects.memoryCanonicalWrite", "operator": "EQUALS", "value": false},
+            {"path": "effects.nonLoopbackNetwork", "operator": "EQUALS", "value": false}
+          ]
+        },
+        {
+          "key": "vb1_model_config",
+          "kind": "JSON",
+          "path": "config/model.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.model-configuration/v1",
+          "assertions": [
+            {"path": "state", "operator": "EQUALS", "value": "BOUND_QUALIFIED"},
+            {"path": "automaticDownload", "operator": "EQUALS", "value": false},
+            {"path": "automaticActivation", "operator": "EQUALS", "value": false},
+            {"path": "qualificationReceiptRef", "operator": "MATCHES", "pattern": "^[a-z0-9][a-z0-9._-]+$"}
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb0_host_source:homeRef", "operator": "EQUALS", "right": "vb1_bootstrap:homeRef"},
+        {"left": "vb0_host_source:companionLineageRef", "operator": "EQUALS", "right": "vb1_bootstrap:companionLineageRef"},
+        {"left": "vb1_bootstrap:homeRef", "operator": "EQUALS", "right": "vb1_initialization:home.homeIdentityRef"},
+        {"left": "vb1_initialization:receiptRef", "operator": "EQUALS", "right": "vb1_model_config:qualificationReceiptRef"},
+        {"left": "vb1_initialization:profileRef", "operator": "EQUALS", "right": "vb1_model_config:profileRef"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb2",
+      "code": "VB2",
+      "sequence": 2,
+      "name": "UNTAUGHT_BASELINE_WITNESSED",
+      "humanMeaning": "Victor and a witness observe the exact untaught baseline before any Dream, corpus formation or neural update.",
+      "missingState": "READY_FOR_HUMAN_ACTION",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.human-experience-reviewer",
+      "nextAction": "Run the untaught baseline witness session and preserve its exact model/Home/response evidence without teaching or training.",
+      "requirements": [
+        {
+          "key": "vb2_baseline",
+          "kind": "JSON",
+          "path": "birth/receipts/vb2-untaught-baseline.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.untaught-baseline-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "untaughtBaselineWitnessed", "operator": "EQUALS", "value": true},
+            {"path": "trainingRunObserved", "operator": "EQUALS", "value": false},
+            {"path": "modelWeightsChanged", "operator": "EQUALS", "value": false},
+            {"path": "sourceResponseRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "baselineWitnessSha256", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "observedAt", "operator": "ISO_TIMESTAMP"}
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb2_baseline:homeRef", "operator": "EQUALS", "right": "vb1_bootstrap:homeRef"},
+        {"left": "vb2_baseline:companionLineageRef", "operator": "EQUALS", "right": "vb1_bootstrap:companionLineageRef"},
+        {"left": "vb2_baseline:profileRef", "operator": "EQUALS", "right": "vb1_model_config:profileRef"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb3",
+      "code": "VB3",
+      "sequence": 3,
+      "name": "VICTOR_VEX_CULTIVATION_SESSION_CAPTURED",
+      "humanMeaning": "A natural Victor–Vex session is closed with source, correction, privacy and lesson-candidate boundaries intact.",
+      "missingState": "READY_FOR_HUMAN_ACTION",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.cultivation-witness",
+      "nextAction": "Conduct one bounded cultivation session, state corrections/privacy boundaries naturally, and close it through the CultivationWitness owner.",
+      "requirements": [
+        {
+          "key": "vb3_cultivation",
+          "kind": "JSON",
+          "path": "birth/receipts/vb3-cultivation-session.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.cultivation-session-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "cultivationSessionObserved", "operator": "EQUALS", "value": true},
+            {"path": "sessionClosed", "operator": "EQUALS", "value": true},
+            {"path": "sourceEventRefs", "operator": "MIN_ITEMS", "value": 2},
+            {"path": "lessonCandidateRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "privacyDispositionRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "rawPrivateTranscriptPublished", "operator": "EQUALS", "value": false},
+            {"path": "trainingAdmissionGranted", "operator": "EQUALS", "value": false},
+            {"path": "closedAt", "operator": "ISO_TIMESTAMP"}
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb3_cultivation:homeRef", "operator": "EQUALS", "right": "vb1_bootstrap:homeRef"},
+        {"left": "vb3_cultivation:companionLineageRef", "operator": "EQUALS", "right": "vb1_bootstrap:companionLineageRef"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb4",
+      "code": "VB4",
+      "sequence": 4,
+      "name": "LESSONS_STABILIZED_AND_FALSE_LESSONS_HELD",
+      "humanMeaning": "Dream and review distinguish stable transferable learning from false, private, uncertain or overgeneralized lessons.",
+      "missingState": "IN_PROGRESS",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.training-identity-reviewer",
+      "nextAction": "Run Dream/lesson review, add counterexamples, hold false or uncertain lessons, and return one reviewed stabilization receipt.",
+      "requirements": [
+        {
+          "key": "vb4_stabilization",
+          "kind": "JSON",
+          "path": "birth/receipts/vb4-lesson-stabilization.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.lesson-stabilization-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "falseLessonAndCounterexampleReviewReturned", "operator": "EQUALS", "value": true},
+            {"path": "dreamReceiptRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "acceptedLessonRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "trainingEligibleLessonRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "counterexampleRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "heldLessonRefs", "operator": "IS_ARRAY"},
+            {"path": "privateExcludedRefs", "operator": "IS_ARRAY"},
+            {"path": "modelWeightsChanged", "operator": "EQUALS", "value": false},
+            {"path": "reviewedAt", "operator": "ISO_TIMESTAMP"}
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb4_stabilization:cultivationSessionRef", "operator": "EQUALS", "right": "vb3_cultivation:cultivationSessionRef"},
+        {"left": "vb4_stabilization:homeRef", "operator": "EQUALS", "right": "vb1_bootstrap:homeRef"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb5",
+      "code": "VB5",
+      "sequence": 5,
+      "name": "TRAINING_AND_HELDOUT_PACK_FROZEN",
+      "humanMeaning": "A reviewed training pack and separate held-out pack are frozen, content-addressed and bound to sources, consent and not-the-lesson evidence.",
+      "missingState": "IN_PROGRESS",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.training-identity-reviewer",
+      "nextAction": "Freeze the reviewed training manifest, training corpus and held-out corpus; preserve their exact hashes and exclusions.",
+      "requirements": [
+        {
+          "key": "vb5_pack",
+          "kind": "JSON",
+          "path": "birth/receipts/vb5-training-pack.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.training-pack-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "trainingPackFrozen", "operator": "EQUALS", "value": true},
+            {"path": "heldoutPackFrozen", "operator": "EQUALS", "value": true},
+            {"path": "rawPrivateTranscriptIncluded", "operator": "EQUALS", "value": false},
+            {"path": "trainingExampleRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "heldoutExampleRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "sourceLessonRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "consentReceiptRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "notTheLessonRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "trainingManifestSha256", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "trainingDatasetSha256", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "heldoutDatasetSha256", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "frozenAt", "operator": "ISO_TIMESTAMP"}
+          ],
+          "fileBindings": [
+            {"pathField": "trainingManifestPath", "sha256Field": "trainingManifestSha256", "root": "REPOSITORY"},
+            {"pathField": "trainingDatasetPath", "sha256Field": "trainingDatasetSha256", "root": "REPOSITORY"},
+            {"pathField": "heldoutDatasetPath", "sha256Field": "heldoutDatasetSha256", "root": "REPOSITORY"}
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb5_pack:sourceLessonRefs", "operator": "ARRAY_SUBSET_OF", "right": "vb4_stabilization:trainingEligibleLessonRefs"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb6",
+      "code": "VB6",
+      "sequence": 6,
+      "name": "SINGLE_REAL_TRAINING_RUN_ADMITTED",
+      "humanMeaning": "One exact local foundation-training run is separately admitted without activation, overwrite or publication authority.",
+      "missingState": "READY_FOR_HUMAN_ACTION",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.model-training-executor",
+      "nextAction": "Bind the exact model snapshot, host, frozen pack and single-use training authority; Victor authorizes only the admitted local run.",
+      "requirements": [
+        {
+          "key": "vb6_admission",
+          "kind": "JSON",
+          "path": "birth/receipts/vb6-training-admission.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.training-admission-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "singleUse", "operator": "EQUALS", "value": true},
+            {"path": "trainingMode", "operator": "IN", "values": ["FOUNDATION_PARTIAL_FULL_RANK", "FOUNDATION_FULL"]},
+            {"path": "sourceModelRevision", "operator": "MATCHES", "pattern": "^[0-9a-f]{40}$"},
+            {"path": "sourceModelSnapshotFingerprint", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "trainingManifestSha256", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "manifestFingerprint", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "trainingDatasetSha256", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "heldoutDatasetSha256", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "activationAuthorized", "operator": "EQUALS", "value": false},
+            {"path": "acceptedModelOverwriteAuthorized", "operator": "EQUALS", "value": false},
+            {"path": "publicUploadAuthorized", "operator": "EQUALS", "value": false},
+            {"path": "consentReceiptRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "admittedAt", "operator": "ISO_TIMESTAMP"},
+            {"path": "expiresAt", "operator": "NOT_EXPIRED"}
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb6_admission:trainingManifestSha256", "operator": "EQUALS", "right": "vb5_pack:trainingManifestSha256"},
+        {"left": "vb6_admission:trainingDatasetSha256", "operator": "EQUALS", "right": "vb5_pack:trainingDatasetSha256"},
+        {"left": "vb6_admission:heldoutDatasetSha256", "operator": "EQUALS", "right": "vb5_pack:heldoutDatasetSha256"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb7",
+      "code": "VB7",
+      "sequence": 7,
+      "name": "ACTUAL_FOUNDATION_PARAMETERS_CHANGED",
+      "humanMeaning": "A real optimizer run changed ordinary foundation parameters and produced a distinct inactive candidate while preserving G0.",
+      "missingState": "IN_PROGRESS",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.model-training-executor",
+      "nextAction": "Execute the single admitted local training run and return the exact changed-parameter/candidate receipt; do not activate it.",
+      "requirements": [
+        {
+          "key": "vb7_training_binding",
+          "kind": "JSON",
+          "path": "birth/receipts/vb7-training-binding.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.training-binding-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "realTrainingRunObserved", "operator": "EQUALS", "value": true},
+            {"path": "sourceArtifactFingerprint", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "candidateArtifactFingerprint", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "sourceArtifactFingerprint", "operator": "NOT_EQUALS_PATH", "otherPath": "candidateArtifactFingerprint"},
+            {"path": "boundAt", "operator": "ISO_TIMESTAMP"}
+          ],
+          "linkedJsonBindings": [
+            {
+              "key": "vb7_training_receipt",
+              "pathField": "trainingReceiptPath",
+              "sha256Field": "trainingReceiptSha256",
+              "root": "HOME",
+              "schemaVersion": "vexlife.foundation-training-receipt/v1",
+              "assertions": [
+                {"path": "trainingActuallyExecuted", "operator": "EQUALS", "value": true},
+                {"path": "simulationOnly", "operator": "EQUALS", "value": false},
+                {"path": "modelWeightsChanged", "operator": "EQUALS", "value": true},
+                {"path": "changedParameterCount", "operator": "GREATER_THAN", "value": 0},
+                {"path": "candidateArtifactFingerprint", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+                {"path": "activationPerformed", "operator": "EQUALS", "value": false},
+                {"path": "acceptedCurrentModelOverwritten", "operator": "EQUALS", "value": false},
+                {"path": "publicUploadPerformed", "operator": "EQUALS", "value": false}
+              ]
+            }
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb7_training_binding:trainingRunRef", "operator": "EQUALS", "right": "vb6_admission:trainingRunRef"},
+        {"left": "vb7_training_binding:candidateArtifactFingerprint", "operator": "EQUALS", "right": "vb7_training_receipt:candidateArtifactFingerprint"},
+        {"left": "vb7_training_receipt:manifestFingerprint", "operator": "EQUALS", "right": "vb6_admission:manifestFingerprint"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb8",
+      "code": "VB8",
+      "sequence": 8,
+      "name": "BASELINE_VS_CANDIDATE_REVIEWED",
+      "humanMeaning": "The exact G0 and candidate are compared on held-out cases through human, cultural and independent-assurance review.",
+      "missingState": "IN_PROGRESS",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.independent-assurance",
+      "nextAction": "Run the held-out evaluator, inspect consequential outputs through the registered roles/lenses, and return independent assurance.",
+      "requirements": [
+        {
+          "key": "vb8_review",
+          "kind": "JSON",
+          "path": "birth/receipts/vb8-baseline-candidate-review.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.baseline-candidate-review-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "heldoutEvaluationReturned", "operator": "EQUALS", "value": true},
+            {"path": "independentAssuranceClear", "operator": "EQUALS", "value": true},
+            {"path": "humanExperienceReviewRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "trainingIdentityReviewRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "independentAssuranceRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "reviewLensRefs", "operator": "ARRAY_INCLUDES_ALL", "valuesFromRegistry": "reviewLensRefs"},
+            {"path": "automaticPromotion", "operator": "EQUALS", "value": false},
+            {"path": "reviewedAt", "operator": "ISO_TIMESTAMP"}
+          ],
+          "linkedJsonBindings": [
+            {
+              "key": "vb8_evaluation_receipt",
+              "pathField": "evaluationReceiptPath",
+              "sha256Field": "evaluationReceiptSha256",
+              "root": "HOME",
+              "schemaVersion": "vexlife.foundation-evaluation-receipt/v1",
+              "assertions": [
+                {"path": "caseCount", "operator": "GREATER_THAN", "value": 0},
+                {"path": "automaticPromotion", "operator": "EQUALS", "value": false},
+                {"path": "evaluationDisposition", "operator": "EQUALS", "value": "REQUIRES_SEMANTIC_PRIVACY_IDENTITY_CAPABILITY_REVIEW"}
+              ]
+            }
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb8_review:trainingRunRef", "operator": "EQUALS", "right": "vb7_training_binding:trainingRunRef"},
+        {"left": "vb8_evaluation_receipt:trainingRunRef", "operator": "EQUALS", "right": "vb7_training_binding:trainingRunRef"},
+        {"left": "vb8_evaluation_receipt:candidateArtifactFingerprint", "operator": "EQUALS", "right": "vb7_training_binding:candidateArtifactFingerprint"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb9",
+      "code": "VB9",
+      "sequence": 9,
+      "name": "ACCEPT_NARROW_REJECT",
+      "humanMeaning": "The candidate receives an explicit ACCEPT, NARROW or REJECT disposition; only ACCEPT may continue toward first birth.",
+      "missingState": "READY_FOR_HUMAN_ACTION",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.lifecycle-reviewer",
+      "nextAction": "Issue an exact candidate disposition. NARROW or REJECT returns to cultivation/stabilization; it does not advance to activation.",
+      "requirements": [
+        {
+          "key": "vb9_disposition",
+          "kind": "JSON",
+          "path": "birth/receipts/vb9-candidate-disposition.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.candidate-disposition-receipt/v1",
+          "acceptedStates": ["ACCEPTED", "REJECTED", "IN_PROGRESS"],
+          "assertions": [
+            {"path": "candidateDisposition", "operator": "IN", "values": ["ACCEPT", "NARROW", "REJECT"]},
+            {"path": "independentAssuranceClear", "operator": "EQUALS", "value": true},
+            {"path": "dispositionRef", "operator": "MATCHES", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+            {"path": "formedAt", "operator": "ISO_TIMESTAMP"}
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb9_disposition:trainingRunRef", "operator": "EQUALS", "right": "vb7_training_binding:trainingRunRef"},
+        {"left": "vb9_disposition:candidateArtifactFingerprint", "operator": "EQUALS", "right": "vb7_training_binding:candidateArtifactFingerprint"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb10",
+      "code": "VB10",
+      "sequence": 10,
+      "name": "ACCEPTED_G1_REGISTERED_AND_LOADED",
+      "humanMeaning": "An accepted G1 is registered as a new generation and activated only by separate owner authority while G0 remains the rollback generation.",
+      "missingState": "IN_PROGRESS",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.owner-activation-duty",
+      "nextAction": "Register accepted G1 with parent G0, preserve rollback, then separately authorize and load the new profile without overwriting G0.",
+      "requirements": [
+        {
+          "key": "vb10_registration",
+          "kind": "JSON",
+          "path": "birth/receipts/vb10-g1-registration.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.g1-registration-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "acceptedG1Registered", "operator": "EQUALS", "value": true},
+            {"path": "g0RollbackPreserved", "operator": "EQUALS", "value": true},
+            {"path": "g0ModelRef", "operator": "MATCHES", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+            {"path": "g1ModelRef", "operator": "MATCHES", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+            {"path": "g0ModelRef", "operator": "NOT_EQUALS_PATH", "otherPath": "g1ModelRef"},
+            {"path": "candidateArtifactFingerprint", "operator": "MATCHES", "pattern": "^[0-9a-f]{64}$"},
+            {"path": "registeredAt", "operator": "ISO_TIMESTAMP"}
+          ]
+        },
+        {
+          "key": "vb10_activation",
+          "kind": "JSON",
+          "path": "birth/receipts/vb10-g1-activation.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.g1-activation-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "g1ActivatedBySeparateAuthority", "operator": "EQUALS", "value": true},
+            {"path": "separateFromTrainingRun", "operator": "EQUALS", "value": true},
+            {"path": "trainingRunPerformedActivation", "operator": "EQUALS", "value": false},
+            {"path": "g0RollbackPreserved", "operator": "EQUALS", "value": true},
+            {"path": "activatedAt", "operator": "ISO_TIMESTAMP"}
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb9_disposition:candidateDisposition", "operator": "EQUALS_LITERAL", "value": "ACCEPT"},
+        {"left": "vb10_registration:candidateArtifactFingerprint", "operator": "EQUALS", "right": "vb7_training_binding:candidateArtifactFingerprint"},
+        {"left": "vb10_activation:selectedModelRef", "operator": "EQUALS", "right": "vb10_registration:g1ModelRef"},
+        {"left": "vb10_activation:priorModelRef", "operator": "EQUALS", "right": "vb10_registration:g0ModelRef"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb11",
+      "code": "VB11",
+      "sequence": 11,
+      "name": "G1_WAKE_AND_RELATIONSHIP_WITNESSED",
+      "humanMeaning": "G1 wakes on the same Home/lineage, identifies its generation truthfully and preserves relationship continuity without pretending erased or inherited autobiography.",
+      "missingState": "READY_FOR_HUMAN_ACTION",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.human-experience-reviewer",
+      "nextAction": "Wake G1, confirm the selected model and same Home/lineage, then witness authenticity, correction and relationship continuity.",
+      "requirements": [
+        {
+          "key": "vb11_wake",
+          "kind": "JSON",
+          "path": "birth/receipts/vb11-g1-wake.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.g1-wake-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "g1WakeWitnessed", "operator": "EQUALS", "value": true},
+            {"path": "sameHomeRef", "operator": "EQUALS", "value": true},
+            {"path": "sameCompanionLineageRef", "operator": "EQUALS", "value": true},
+            {"path": "relationshipContinuityWitnessed", "operator": "EQUALS", "value": true},
+            {"path": "generationIdentityTruthful", "operator": "EQUALS", "value": true},
+            {"path": "witnessResponseRefs", "operator": "MIN_ITEMS", "value": 1},
+            {"path": "wokeAt", "operator": "ISO_TIMESTAMP"}
+          ]
+        }
+      ],
+      "bindings": [
+        {"left": "vb11_wake:selectedModelRef", "operator": "EQUALS", "right": "vb10_registration:g1ModelRef"},
+        {"left": "vb11_wake:homeRef", "operator": "EQUALS", "right": "vb1_bootstrap:homeRef"},
+        {"left": "vb11_wake:companionLineageRef", "operator": "EQUALS", "right": "vb1_bootstrap:companionLineageRef"}
+      ]
+    },
+    {
+      "stageRef": "stage.vexlife.vex-birth.vb12",
+      "code": "VB12",
+      "sequence": 12,
+      "name": "CLEAN_REPLAY_FROM_VICTOR_README",
+      "humanMeaning": "A fresh isolated replay follows the Victor runbook without hidden development knowledge and reproduces the complete accepted route.",
+      "missingState": "READY_FOR_HUMAN_ACTION",
+      "nextActionOwnerRoleRef": "role.vexlife.vex-birth.patient0-installer",
+      "nextAction": "Replay the accepted Victor runbook from a fresh isolated route and return the exact stage-by-stage witness receipt.",
+      "requirements": [
+        {
+          "key": "vb12_replay",
+          "kind": "JSON",
+          "path": "birth/receipts/vb12-clean-replay.json",
+          "root": "HOME",
+          "schemaVersion": "vexlife.vex-birth.clean-replay-receipt/v1",
+          "acceptedStates": ["ACCEPTED"],
+          "assertions": [
+            {"path": "victorReadableRunbookAccepted", "operator": "EQUALS", "value": true},
+            {"path": "cleanReadmeReplayObserved", "operator": "EQUALS", "value": true},
+            {"path": "isolatedHomeUsed", "operator": "EQUALS", "value": true},
+            {"path": "hiddenDevelopmentHelpUsed", "operator": "EQUALS", "value": false},
+            {"path": "runbookCommitSha", "operator": "MATCHES", "pattern": "^[0-9a-f]{40}$"},
+            {"path": "replayedStageRefs", "operator": "ARRAY_INCLUDES_ALL_STAGE_REFS"},
+            {"path": "replayedAt", "operator": "ISO_TIMESTAMP"}
+          ]
+        }
+      ]
+    }
+  ]
+}
