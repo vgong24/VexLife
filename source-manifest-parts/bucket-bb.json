@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "bb",
+  "files": [
+    {
+      "path": "blueprint/module-registry/navigation-continuity.json",
+      "mode": "100644",
+      "bytes": 1907,
+      "sha256": "54efdaf3443ff346689cd17a8b8960b03fc126a8f6953b352764d01ed08cb8d4"
+    },
+    {
+      "path": "src/core/registry-core.mjs",
+      "mode": "100644",
+      "bytes": 34556,
+      "sha256": "0ae9e3719f7d773b7209f72885380ce4a554ab212c7da51c26ee65dccee89fec"
+    }
+  ]
+}
