@@ -56,13 +56,16 @@ test('contextual close and Escape bind exact canonical Terrain return provenance
   assert.equal(explicitClose.event?.actionRef, 'action.view.select', 'CRT-03 explicit close action provenance drifted');
   assert.deepEqual(explicitClose.journey.slice(0, prefixBeforeClose.length), prefixBeforeClose, 'CRT-06 explicit close edited historical Journey events');
 
-  await openChat(page);
-  await page.locator('#surfaceMenuButton').click();
-  await page.locator('#openWorkspace').click();
-  const thread = page.locator('[data-node-ref="element.thread.open-conversation"]').first();
-  await thread.waitFor({ state: 'visible' });
-  await thread.click();
+  const traveled = await page.evaluate(async () => {
+    const terrain = globalThis.__VEXLIFE_APP__.terrain;
+    return [
+      await terrain.travel('terrain.project.self-development', 'in'),
+      await terrain.travel('terrain.thread.open-conversation', 'in')
+    ];
+  });
+  assert.deepEqual(traveled, [true, true], 'CRT-04 deterministic Terrain setup failed');
   await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.navigation.semanticFrame().selectedNodeRef === 'terrain.thread.open-conversation');
+  await openChat(page);
   const selectedBeforeEscape = await page.evaluate(() => globalThis.__VEXLIFE_APP__.navigation.semanticFrame().selectedNodeRef);
   const prefixBeforeEscape = await page.evaluate(() => globalThis.__VEXLIFE_APP__.navigation.fullJourney());
 
