@@ -52,6 +52,7 @@ WAITING
 PAUSE_REQUESTED
 PAUSED
 CANCEL_REQUESTED
+CANCELLED
 WRAPPING_UP
 DONE
 NEEDS_ATTENTION
@@ -59,9 +60,24 @@ NEEDS_ATTENTION
 
 `STARTING` is the durable run reservation. It is written before a detached supervisor host or payload may be spawned. Only the holder of the exact `launchRef` recorded by that reservation may adopt it and move the worker to `WORKING`. A second launcher therefore cannot pass the runnable boundary merely because the first host has not yet scheduled.
 
+A PAUSE or CANCEL that wins the same mutation boundary while the worker is still `STARTING` changes durable state before payload spawn. The reserved host then fails adoption and no payload starts. `STARTING -> PAUSED` therefore truthfully means no child was started; `STARTING -> CANCELLED` records `HUMAN_CANCEL_REQUEST` with `payloadStarted=false`.
+
 `PAUSE_REQUESTED` is **not** projected as Paused. A running process remains human-visible as Working until a cooperative worker actually yields. This prevents the UI from claiming that compute stopped when it did not.
 
 The generation-1 cooperative yield convention is exit code `75` after the worker observes `VEX_WORKER_CONTROL_PATH` and reaches its own safe checkpoint. A worker that does not implement that contract simply continues until terminal; the supervisor never fakes a frozen process.
+
+A deliberate exact-owned running cancel is distinct from failure:
+
+```text
+WORKING
+  -> CANCEL_REQUESTED
+  -> exact owned child receives stop request
+  -> CANCELLED
+```
+
+`CANCELLED` is a safe terminal work state, not `DONE` and not `NEEDS_ATTENTION`. Its terminal evidence carries `stopReason=HUMAN_CANCEL_REQUEST`. An uncontrolled child failure still becomes `NEEDS_ATTENTION`.
+
+If a successful child terminal result wins before cancellation is actually observed by the owning supervisor, that successful result remains `WRAPPING_UP`; a later control must not retroactively relabel already-returned work.
 
 ## Cross-process single-writer truth
 
@@ -75,6 +91,8 @@ read current
   -> atomically move current.json
   -> release mutation ownership
 ```
+
+The final STARTING verification, payload spawn, and WORKING receipt are one serialized critical section. Therefore either a pre-spawn control transition wins or the exact payload spawn wins; there is no unlocked gap where both can claim ownership.
 
 Receipt generation files are created with exclusive no-clobber semantics. A same-name generation collision is a hard failure rather than an overwrite.
 
@@ -91,15 +109,29 @@ STARTING/WORKING healthy green + Working
 STANDING_BY      primary blue + Standing by
 WAITING          attention yellow + one bounded reason
 PAUSED           ⏸ + Paused
+CANCELLED        × + Cancelled
 NEEDS_ATTENTION  blocked red + one bounded reason/action
 WRAPPING_UP      blue transient + result awaiting consumption
 DONE             ✓ + compact completion summary
 NOT_ACTIVE       neutral/resting; normally hidden
 ```
 
-Pause intentionally uses the **single `⏸` symbol** rather than stacking a blue state marker onto it. Color is never the sole signal.
+Pause intentionally uses the **single `⏸` symbol** rather than stacking a blue state marker onto it. Color is never the sole signal. Cancelled is also neutral rather than red: a deliberate safe stop is not an error condition.
 
 Internal heartbeat/process observations belong in machine state and logs; unchanged observations do not become human notifications.
+
+## Control lifetime
+
+`control.json` is the mutable **current** control edge, not the historical record. Immutable receipts retain the audit truth.
+
+Each run records the control generation that already existed when it was reserved, so the supervisor never treats an older control as a new request. When a running PAUSE or CANCEL reaches the safe terminal `PAUSED` or `CANCELLED` state, that durable terminal receipt is written first and the consumed mutable `control.json` is then retired before the mutation lock is released.
+
+```text
+old control = historical receipt truth
+current control = only a still-live request
+```
+
+This matters for cooperative workers because they can read `VEX_WORKER_CONTROL_PATH` directly. A resumed worker must not immediately obey yesterday's PAUSE merely because an old mutable control file remained on disk.
 
 ## Completion truth
 
@@ -132,7 +164,7 @@ Each worker gets:
   binding.json
   host.json
   current.json
-  control.json              when a control request exists
+  control.json              only while one current running control remains live
   completion.json           only after result consumption
   .mutation-lock/           only while one lifecycle mutation owns the boundary
   receipts/
