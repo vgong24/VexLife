@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createExperienceReviewEvidence } from '../../../src/core/experience-review-kit.mjs';
 
 export const ADAPTER_REF = 'adapter.vexlife.browser.playwright.v0';
-export const ADAPTER_VERSION_REF = 'adapter-version.vexlife.browser.playwright.v0.2';
+export const ADAPTER_VERSION_REF = 'adapter-version.vexlife.browser.playwright.v0.3';
 
 export function stableTargetSelector(ref) {
   if (typeof ref !== 'string' || !ref.trim()) throw new TypeError('targetNodeRef must be a non-empty string');
@@ -19,7 +19,8 @@ const CONTEXTUAL_PROJECTION_REVEAL_SELECTOR = '#surfaceMenuButton';
 const CONTEXTUAL_PROJECTION_READY_SELECTOR = '#app[data-context-projection]';
 const STABLE_TARGET_DISCLOSURES = new Map([
   ['element.thread.open-conversation', Object.freeze({ actionRef: 'action.thread.select', revealSelectors: Object.freeze(['#surfaceMenuButton', '#openWorkspace']) })],
-  ['element.channel.group', Object.freeze({ actionRef: 'action.channel.select', revealSelectors: Object.freeze(['#channelCompatibility > summary']) })]
+  ['element.channel.group', Object.freeze({ actionRef: 'action.channel.select', revealSelectors: Object.freeze(['#channelCompatibility > summary']) })],
+  ['element.guide.ask-current', Object.freeze({ actionRef: 'action.guide.ask', revealSelectors: Object.freeze(['#guideMinimize']) })]
 ]);
 const hash = (filePath) => crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 const artifactRefFor = (task) => `artifact.vexlife.browser.${task.captureRequest.captureRequestRef}.${task.step.reviewStepRef}`;

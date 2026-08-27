@@ -1,4 +1,4 @@
-import { createPublicLearningController } from '../modules/public-learning-controller.js';
+import { createPublicLearningController } from '../modules/public-learning-controller-activated.js';
 
 const json = async (path) => {
   const response = await fetch(path, { credentials: 'same-origin' });
@@ -6,9 +6,10 @@ const json = async (path) => {
   return response.json();
 };
 
-const [projection, registry, en, ja, zh] = await Promise.all([
+const [projection, registry, navigationContinuityRegistry, en, ja, zh] = await Promise.all([
   json('/generated/public-learning/projection.json'),
   json('/blueprint/public-learning-browser-registry.json'),
+  json('/blueprint/navigation-continuity-registry.json'),
   json('/blueprint/public-learning-browser/strings/en.json'),
   json('/blueprint/public-learning-browser/strings/ja.json'),
   json('/blueprint/public-learning-browser/strings/zh.json')
@@ -17,12 +18,13 @@ const [projection, registry, en, ja, zh] = await Promise.all([
 const controller = createPublicLearningController({
   projection,
   registry,
+  navigationContinuityRegistry,
   catalogs: { en, ja, zh }
 });
 
 globalThis.__vexlifePublicLearning = Object.freeze({
   proof: controller.proof,
-  travel: (ref, direction = 'in') => controller.terrain.travel(ref, direction),
+  travel: (ref) => controller.requestSemanticTravel(ref, { sourceRef: 'source.public-learning.programmatic' }),
   openLeafByCanonicalRef: controller.openLeafByCanonicalRef,
   restoreCurrentLeaf: controller.restoreCurrentLeaf,
   setLocale: controller.setLocale,

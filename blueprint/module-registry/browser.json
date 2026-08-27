@@ -4,68 +4,33 @@
     "path": "reference/browser/index.html",
     "role": "Semantic product shell whose interactive elements carry stable data-node-ref identities.",
     "platformScope": "BROWSER",
-    "reads": [
-      "blueprint/vexlife.blueprint.json",
-      "blueprint/strings/*.json"
-    ],
+    "reads": ["blueprint/vexlife.blueprint.json", "blueprint/strings/*.json"],
     "writes": [],
-    "loadedBy": [
-      "module.vexlife.script.serve-browser"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/app.js",
-      "reference/browser/app.css"
-    ]
+    "loadedBy": ["module.vexlife.script.serve-browser"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/app.js", "reference/browser/app.css"]
   },
   {
     "moduleRef": "module.vexlife.browser.styles",
     "path": "reference/browser/app.css",
     "role": "Browser design-token projection, accessibility sizing, responsive layout and low-motion behavior.",
     "platformScope": "BROWSER",
-    "reads": [
-      "blueprint/design-tokens.json"
-    ],
+    "reads": ["blueprint/design-tokens.json"],
     "writes": [],
-    "loadedBy": [
-      "reference/browser/index.html"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "blueprint/design-tokens.json"
-    ]
+    "loadedBy": ["reference/browser/index.html"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["blueprint/design-tokens.json"]
   },
   {
     "moduleRef": "module.vexlife.browser.adapter",
     "path": "reference/browser/app.js",
     "role": "Working browser adapter for selection, channels, bottom append, localization, screen-aware Guide and Terrain.",
     "platformScope": "BROWSER",
-    "reads": [
-      "blueprint/design-tokens.json",
-      "blueprint/strings/*.json",
-      "blueprint/vexlife.blueprint.json",
-      "reference/browser/modules/**"
-    ],
-    "writes": [
-      "browser localStorage for user layout/language only"
-    ],
-    "loadedBy": [
-      "reference/browser/index.html"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/modules/**",
-      "src/core/conversation.mjs",
-      "src/core/localization.mjs",
-      "src/core/navigation.mjs",
-      "src/core/terrain.mjs"
-    ]
+    "reads": ["blueprint/design-tokens.json", "blueprint/strings/*.json", "blueprint/vexlife.blueprint.json", "reference/browser/modules/**"],
+    "writes": ["browser localStorage for user layout/language only"],
+    "loadedBy": ["reference/browser/index.html"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/modules/**", "src/core/conversation.mjs", "src/core/localization.mjs", "src/core/navigation.mjs", "src/core/terrain.mjs"]
   },
   {
     "moduleRef": "module.vexlife.browser.bundle-loader",
@@ -73,15 +38,9 @@
     "role": "Loads the composed universal blueprint and language/design catalogs for the browser projection.",
     "reads": [],
     "writes": [],
-    "consumers": [
-      "reference/browser/app.js"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/app.js"
-    ]
+    "consumers": ["reference/browser/app.js"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/app.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.demo-data",
@@ -89,15 +48,9 @@
     "role": "Provides synthetic projects, roles, addressed channels and initial local UI state for the public reference.",
     "reads": [],
     "writes": [],
-    "consumers": [
-      "reference/browser/app.js"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/app.js"
-    ]
+    "consumers": ["reference/browser/app.js"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/app.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.dom",
@@ -105,15 +58,9 @@
     "role": "Owns small DOM, storage, escaping and interface-entry helper primitives.",
     "reads": [],
     "writes": [],
-    "consumers": [
-      "reference/browser/app.js"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/app.js"
-    ]
+    "consumers": ["reference/browser/app.js"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/app.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.navigation-controller",
@@ -121,15 +68,9 @@
     "role": "Owns semantic screen frames, bounded journey events, breadcrumbs and universal selection behavior.",
     "reads": [],
     "writes": [],
-    "consumers": [
-      "reference/browser/app.js"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/app.js"
-    ]
+    "consumers": ["reference/browser/app.js"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/app.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.chat-controller",
@@ -137,15 +78,9 @@
     "role": "Owns addressed direct/group chat, project/thread/channel selection and incremental bottom append.",
     "reads": [],
     "writes": [],
-    "consumers": [
-      "reference/browser/app.js"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/app.js"
-    ]
+    "consumers": ["reference/browser/app.js"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/app.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.terrain-controller",
@@ -153,15 +88,9 @@
     "role": "Owns draggable/collapsible user Terrain layout without mutating canonical relationships.",
     "reads": [],
     "writes": [],
-    "consumers": [
-      "reference/browser/app.js"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/app.js"
-    ]
+    "consumers": ["reference/browser/app.js"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/app.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.guide-controller",
@@ -169,98 +98,52 @@
     "role": "Owns the floating screen-aware Vex Guide overlay and semantic navigation explanations.",
     "reads": [],
     "writes": [],
-    "consumers": [
-      "reference/browser/app.js"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/app.js"
-    ]
+    "consumers": ["reference/browser/app.js"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/app.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.integration-test",
     "path": "reference/browser/integration-test.js",
     "role": "Runs real rendered project-thread-channel isolation and EN/ZH/JA stable Guide-intent behavior in the browser reference.",
     "platformScope": "BROWSER",
-    "reads": [
-      "reference/browser/app.js",
-      "blueprint/strings/*.json"
-    ],
-    "writes": [
-      "in-page integration receipt only"
-    ],
-    "loadedBy": [
-      "reference/browser/app.js?integration=1"
-    ],
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/modules/chat-controller.js",
-      "reference/browser/modules/guide-controller.js",
-      "reference/browser/modules/demo-data.js"
-    ]
+    "reads": ["reference/browser/app.js", "blueprint/strings/*.json"],
+    "writes": ["in-page integration receipt only"],
+    "loadedBy": ["reference/browser/app.js?integration=1"],
+    "tests": ["test/browser.test.mjs"],
+    "changeMap": ["reference/browser/modules/chat-controller.js", "reference/browser/modules/guide-controller.js", "reference/browser/modules/demo-data.js"]
   },
   {
-    "changeMap": [
-      "reference/browser/app.js",
-      "reference/browser/integration/living-journal-suite.js"
-    ],
-    "consumers": [
-      "reference/browser/app.js"
-    ],
+    "changeMap": ["reference/browser/app.js", "reference/browser/integration/living-journal-suite.js"],
+    "consumers": ["reference/browser/app.js"],
     "moduleRef": "module.vexlife.browser.living-journal-controller",
     "path": "reference/browser/modules/living-journal-controller.js",
     "platformScope": "BROWSER",
-    "reads": [
-      "reference/browser/modules/living-journal-demo-data.js",
-      "blueprint/strings/*.json"
-    ],
+    "reads": ["reference/browser/modules/living-journal-demo-data.js", "blueprint/strings/*.json"],
     "role": "Owns bounded lived-book current Memory and committed-day historical archive projection, explicit source/revisit doors, archive/current temporal labeling, and ephemeral marginalia without Memory authority.",
-    "tests": [
-      "test/browser.test.mjs"
-    ],
-    "writes": [
-      "ephemeral in-page Journal marginalia only"
-    ]
+    "tests": ["test/browser.test.mjs"],
+    "writes": ["ephemeral in-page Journal marginalia only"]
   },
   {
-    "changeMap": [
-      "reference/browser/modules/living-journal-controller.js"
-    ],
-    "consumers": [
-      "reference/browser/modules/living-journal-controller.js"
-    ],
+    "changeMap": ["reference/browser/modules/living-journal-controller.js"],
+    "consumers": ["reference/browser/modules/living-journal-controller.js"],
     "moduleRef": "module.vexlife.browser.living-journal-demo-data",
     "path": "reference/browser/modules/living-journal-demo-data.js",
     "platformScope": "BROWSER",
     "reads": [],
     "role": "Provides clearly labelled CURRENT_SYNTHETIC_REFERENCE event pages for lived-book projection proof; no real Memory, journal body, model, translation or network data.",
-    "tests": [
-      "test/browser.test.mjs"
-    ],
+    "tests": ["test/browser.test.mjs"],
     "writes": []
   },
   {
-    "changeMap": [
-      "reference/browser/index.html",
-      "reference/browser/modules/living-journal-controller.js"
-    ],
-    "loadedBy": [
-      "reference/browser/index.html"
-    ],
+    "changeMap": ["reference/browser/index.html", "reference/browser/modules/living-journal-controller.js"],
+    "loadedBy": ["reference/browser/index.html"],
     "moduleRef": "module.vexlife.browser.living-journal-styles",
     "path": "reference/browser/living-journal.css",
     "platformScope": "BROWSER",
-    "reads": [
-      "blueprint/design-tokens.json"
-    ],
+    "reads": ["blueprint/design-tokens.json"],
     "role": "Projects wide two-page and narrow/phone one-page horizontal book grammar with scroll snap, >=44px controls and reduced-motion equivalence.",
-    "tests": [
-      "test/browser.test.mjs"
-    ],
+    "tests": ["test/browser.test.mjs"],
     "writes": []
   },
   {
@@ -268,82 +151,98 @@
     "path": "reference/browser/public-learning/index.html",
     "role": "Public Architecture/Atlas learning document over the exact B1 public projection; includes Terrain and a semantically equivalent non-spatial list without product Home or Pages authority.",
     "platformScope": "BROWSER",
-    "reads": [
-      "reference/browser/app.css",
-      "reference/browser/public-learning/app.css"
-    ],
+    "reads": ["reference/browser/app.css", "reference/browser/public-learning/app.css"],
     "writes": [],
     "loadedBy": [],
-    "tests": [
-      "test/public-learning-browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/public-learning/app.js",
-      "reference/browser/modules/public-learning-controller.js"
-    ]
+    "tests": ["test/public-learning-browser.test.mjs", "test/public-learning-navigation-activation.test.mjs"],
+    "changeMap": ["reference/browser/public-learning/app.js", "reference/browser/modules/public-learning-controller-activated.js", "reference/browser/modules/public-learning-terrain-controller.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.architecture-atlas-adapter",
     "path": "reference/browser/public-learning/app.js",
-    "role": "Loads only the prebuilt B1 public projection plus the public-learning presentation registry/catalogs and starts the bounded source-managed controller.",
+    "role": "Loads only the prebuilt B1 public projection plus the public-learning and canonical Navigation Continuity registries/catalogs, then starts the bounded activated controller.",
     "platformScope": "BROWSER",
-    "reads": [
-      "generated/public-learning/projection.json",
-      "blueprint/public-learning-browser-registry.json",
-      "blueprint/public-learning-browser/strings/*.json"
-    ],
+    "reads": ["generated/public-learning/projection.json", "blueprint/public-learning-browser-registry.json", "blueprint/navigation-continuity-registry.json", "blueprint/public-learning-browser/strings/*.json"],
     "writes": [],
-    "loadedBy": [
-      "reference/browser/public-learning/index.html"
-    ],
-    "tests": [
-      "test/public-learning-browser.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/modules/public-learning-controller.js"
-    ]
+    "loadedBy": ["reference/browser/public-learning/index.html"],
+    "tests": ["test/public-learning-browser.test.mjs", "test/public-learning-navigation-activation.test.mjs"],
+    "changeMap": ["reference/browser/modules/public-learning-controller-activated.js", "reference/browser/modules/public-learning-navigation-continuity.js", "reference/browser/modules/public-learning-navigation-request.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.architecture-atlas-styles",
     "path": "reference/browser/public-learning/app.css",
     "role": "Source-managed public reading, accessible-list, responsive and reduced-motion projection layered over accepted browser variables and E2.8 styles.",
     "platformScope": "BROWSER",
-    "reads": [
-      "reference/browser/app.css",
-      "blueprint/design-tokens.json"
-    ],
+    "reads": ["reference/browser/app.css", "blueprint/design-tokens.json"],
     "writes": [],
-    "loadedBy": [
-      "reference/browser/public-learning/index.html"
-    ],
-    "tests": [
-      "test/public-learning-browser.test.mjs"
-    ],
+    "loadedBy": ["reference/browser/public-learning/index.html"],
+    "tests": ["test/public-learning-browser.test.mjs"],
     "changeMap": []
+  },
+  {
+    "moduleRef": "module.vexlife.browser.architecture-atlas-navigation-continuity",
+    "path": "reference/browser/modules/public-learning-navigation-continuity.js",
+    "role": "Stage-7 browser adapter over the canonical Navigation Continuity owner; maps the public presentation to registered visible child/Up doors and uses accepted Terrain travel only as the direct per-step performer without owning route semantics.",
+    "platformScope": "BROWSER",
+    "reads": ["blueprint/navigation-continuity-registry.json", "src/core/navigation-continuity.mjs", "src/core/utils.mjs", "reference/browser/modules/terrain-controller.js"],
+    "writes": [],
+    "consumers": ["reference/browser/modules/public-learning-controller-activated.js"],
+    "tests": ["test/public-learning-navigation-continuity.test.mjs", "test/public-learning-navigation-preflight.test.mjs", "test/public-learning-browser.test.mjs", "test/public-learning-navigation-activation.test.mjs"],
+    "changeMap": ["reference/browser/modules/public-learning-controller-activated.js", "reference/browser/public-learning/app.js"]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.architecture-atlas-navigation-request",
+    "path": "reference/browser/modules/public-learning-navigation-request.js",
+    "role": "Captures the exact Navigation Continuity frame at public semantic-request admission time and consumes synchronous/asynchronous request failures into bounded held receipts for fire-and-forget browser callers.",
+    "platformScope": "BROWSER",
+    "reads": ["reference/browser/modules/public-learning-navigation-continuity.js"],
+    "writes": [],
+    "consumers": ["reference/browser/modules/public-learning-controller-activated.js"],
+    "tests": ["test/public-learning-navigation-request.test.mjs", "test/public-learning-navigation-activation.test.mjs"],
+    "changeMap": ["reference/browser/modules/public-learning-navigation-bridge.js", "reference/browser/modules/public-learning-controller-activated.js"]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.architecture-atlas-navigation-bridge",
+    "path": "reference/browser/modules/public-learning-navigation-bridge.js",
+    "role": "Page-scoped fail-closed request bridge from the reused Terrain presentation into the single Stage-7 Navigation Continuity request boundary; owns no route meaning.",
+    "platformScope": "BROWSER",
+    "reads": [],
+    "writes": [],
+    "consumers": ["reference/browser/modules/public-learning-terrain-controller.js", "reference/browser/modules/public-learning-controller-activated.js"],
+    "tests": ["test/public-learning-navigation-activation.test.mjs"],
+    "changeMap": ["reference/browser/modules/public-learning-navigation-request.js"]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.architecture-atlas-terrain-facade",
+    "path": "reference/browser/modules/public-learning-terrain-controller.js",
+    "role": "Page-scoped Terrain facade that injects the accepted semantic-request seam while retaining exactly one direct canonical Terrain performer for Navigation Continuity; it does not change the generic Terrain owner.",
+    "platformScope": "BROWSER",
+    "reads": ["reference/browser/modules/terrain-controller.js", "reference/browser/modules/public-learning-navigation-bridge.js"],
+    "writes": [],
+    "consumers": ["reference/browser/modules/public-learning-controller.js"],
+    "tests": ["test/public-learning-browser.test.mjs", "test/public-learning-navigation-activation.test.mjs"],
+    "changeMap": ["reference/browser/public-learning/index.html", "reference/browser/modules/public-learning-controller-activated.js"]
   },
   {
     "moduleRef": "module.vexlife.browser.architecture-atlas-controller",
     "path": "reference/browser/modules/public-learning-controller.js",
-    "role": "Projects B1 public grouping/member edges into the existing Terrain owner and a semantically equivalent accessible list, renders localized leaves, and restores exact B2 Terrain presentation on Browser Back without semantic leaf navigation.",
+    "role": "Base Stage-7 controller that projects B1 public grouping/member edges into the supplied Terrain implementation, renders a semantically equivalent accessible list and localized leaves, and restores exact B2 Terrain presentation on Browser Back without semantic leaf navigation.",
     "platformScope": "BROWSER",
-    "reads": [
-      "generated/public-learning/projection.json",
-      "blueprint/public-learning-browser-registry.json",
-      "blueprint/public-learning-browser/strings/*.json",
-      "reference/browser/modules/dom.js",
-      "reference/browser/modules/navigation-controller.js",
-      "reference/browser/modules/terrain-controller.js"
-    ],
-    "writes": [
-      "browser history entries for public leaf presentation only",
-      "existing Terrain localStorage through the accepted Terrain owner"
-    ],
-    "consumers": [
-      "reference/browser/public-learning/app.js"
-    ],
-    "tests": [
-      "test/public-learning-browser.test.mjs"
-    ],
-    "changeMap": []
+    "reads": ["generated/public-learning/projection.json", "blueprint/public-learning-browser-registry.json", "blueprint/public-learning-browser/strings/*.json", "reference/browser/modules/dom.js", "reference/browser/modules/navigation-controller.js", "reference/browser/modules/terrain-controller.js"],
+    "writes": ["browser history entries for public leaf presentation only", "existing Terrain localStorage through the supplied Terrain owner"],
+    "consumers": ["reference/browser/modules/public-learning-controller-activated.js"],
+    "tests": ["test/public-learning-browser.test.mjs"],
+    "changeMap": ["reference/browser/modules/public-learning-controller-activated.js"]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.architecture-atlas-activated-controller",
+    "path": "reference/browser/modules/public-learning-controller-activated.js",
+    "role": "Binds the base public Architecture/Atlas projection to canonical Navigation Continuity, physical registered-door/focus receipts, request-time currentness and the page-scoped Terrain facade without duplicating route semantics.",
+    "platformScope": "BROWSER",
+    "reads": ["reference/browser/modules/public-learning-controller.js", "reference/browser/modules/public-learning-navigation-continuity.js", "reference/browser/modules/public-learning-navigation-request.js", "reference/browser/modules/public-learning-navigation-bridge.js", "blueprint/navigation-continuity-registry.json"],
+    "writes": [],
+    "consumers": ["reference/browser/public-learning/app.js"],
+    "tests": ["test/public-learning-browser.test.mjs", "test/public-learning-navigation-activation.test.mjs"],
+    "changeMap": ["reference/browser/modules/public-learning-terrain-controller.js", "reference/browser/modules/public-learning-navigation-continuity.js"]
   }
 ]

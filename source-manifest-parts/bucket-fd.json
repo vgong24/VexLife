@@ -5,8 +5,14 @@
     {
       "path": "blueprint/module-registry/browser.json",
       "mode": "100644",
-      "bytes": 10988,
-      "sha256": "35c937d0470c2159ede6edeea42aeabc8d5e7199775fc620501742a7a94fb234"
+      "bytes": 7773,
+      "sha256": "1ce93018ced3dce031804f37dcd8e171bd10e924fb532672d743bb664ae5d024"
+    },
+    {
+      "path": "reference/browser/relationships/index.html",
+      "mode": "100644",
+      "bytes": 4031,
+      "sha256": "a62ac2aa1ae2b3d3c8ba95a37d60194b9785265f595728a17f861a44808115a0"
     },
     {
       "path": "test/evolution.test.mjs",
