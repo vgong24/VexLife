@@ -3,6 +3,12 @@
   "bucketId": "4f",
   "files": [
     {
+      "path": "scripts/foundation-training-plan.mjs",
+      "mode": "100644",
+      "bytes": 13137,
+      "sha256": "e3aec58b836a8712c7f45a627499db9445b27c99fe72023c531b883860e05abf"
+    },
+    {
       "path": "src/core/concern-watch.mjs",
       "mode": "100644",
       "bytes": 120155,

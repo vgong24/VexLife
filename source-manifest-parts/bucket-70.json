@@ -5,14 +5,14 @@
     {
       "path": "blueprint/fragments/state-domains.json",
       "mode": "100644",
-      "bytes": 6754,
-      "sha256": "9af7c2f5df159704da92bc77e98abff60d4d31efed218a77e3d54844e290333d"
+      "bytes": 7211,
+      "sha256": "ccc062ba08576c8ff5e5b866eab73d2f158b65aa2557a08cffa0958e79fc86a3"
     },
     {
       "path": "docs/release/public-onboarding-distribution-claim.md",
       "mode": "100644",
-      "bytes": 5324,
-      "sha256": "3be1e3e4b8c17fef8bb7c7fb4974b631d1d8be770e0d59c1eba19d625d996c67"
+      "bytes": 5836,
+      "sha256": "ed09d4b7fe018152a9dd4c6b439b21acfa28e842c2b58e04186b0a51c3fdc719"
     }
   ]
 }

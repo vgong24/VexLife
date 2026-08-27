@@ -11,8 +11,8 @@
     {
       "path": "docs/release/public-onboarding-multi-lens-review.md",
       "mode": "100644",
-      "bytes": 22793,
-      "sha256": "e111ed85b68c4a2d7055937de6e3b6ba9b0237160bd268b72eed723614ea4a25"
+      "bytes": 13541,
+      "sha256": "e1e419f82397b6aa92ee9708fd9d5f49c4b9dfb6c106448758b33375caedfbd9"
     },
     {
       "path": "reference/browser/integration/globalization-semantic-relay-suite.js",
@@ -31,6 +31,12 @@
       "mode": "100644",
       "bytes": 14119,
       "sha256": "d2a5d2f51e86f5ecdf1ec0e9b02e52e9a0a3099cb0f1a9b79c02a7fa92ae7571"
+    },
+    {
+      "path": "training/foundation-generation/requirements.txt",
+      "mode": "100644",
+      "bytes": 405,
+      "sha256": "a3aab2b7259a2b54774abf48ea2f2044ee586dd77aca733173e8835a6bf0c5ea"
     }
   ]
 }

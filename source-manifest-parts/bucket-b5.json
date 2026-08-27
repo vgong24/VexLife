@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 7658,
       "sha256": "b5ccc551bd09bbeb04d06f790b31765cbe87d4438533328d92bcf519ae1b5a1a"
+    },
+    {
+      "path": "test/review-composition.test.mjs",
+      "mode": "100644",
+      "bytes": 29570,
+      "sha256": "31eea9df6cb2a19182f6b789c2fd93845742afa47bb2c0c98e294e77075568d3"
     }
   ]
 }

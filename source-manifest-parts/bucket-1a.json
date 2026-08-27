@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 16559,
       "sha256": "dea850ff2ebfeb153fd4d4847051a353288737ddf115a14200994dd35f752fc6"
+    },
+    {
+      "path": "training/foundation-generation/README.md",
+      "mode": "100644",
+      "bytes": 11343,
+      "sha256": "c85bb8b1f572b0f7c1c794ccd3dfb095f8a248fb9e3f8b6fa76a6eca5348fee8"
     }
   ]
 }

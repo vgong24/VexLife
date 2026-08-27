@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
-  <meta name="description" data-i18n-content="meta.description" content="A calm, multilingual guide to what VexLife is, what the current Windows setup requires, what remains held, and how your local Home is preserved.">
+  <meta name="description" data-i18n-content="meta.description" content="A calm, multilingual guide to what VexLife is, what the current Windows and Apple M4 Pro Mac source-local setup paths require, what remains held, and how your local Home is preserved.">
   <meta name="vexlife-page-ref" content="page.vexlife.public-onboarding.001">
   <meta name="vexlife-contract" content="vexlife.public-onboarding-page/v1">
   <title data-i18n="meta.title">VexLife Public Alpha — Meet Vex with a clear path</title>
@@ -58,7 +58,7 @@
         <h2 id="truth-title" data-i18n="status.title">What is real right now</h2>
         <dl class="truth-list">
           <div><dt data-i18n="status.preview.label">This page</dt><dd data-i18n="status.preview.value">Source candidate — not yet published</dd></div>
-          <div><dt data-i18n="status.windows.label">Qualified setup</dt><dd data-i18n="status.windows.value">Windows 10/11 x64 source-local path</dd></div>
+          <div><dt data-i18n="status.windows.label">Qualified setup</dt><dd data-i18n="status.windows.value">Windows 10/11 x64 NVIDIA + macOS Apple M4 Pro source-local paths</dd></div>
           <div><dt data-i18n="status.release.label">Public release</dt><dd data-i18n="status.release.value">Held until exact release evidence is approved</dd></div>
           <div><dt data-i18n="status.effects.label">Page effects</dt><dd class="truth-clear" data-i18n="status.effects.value">None</dd></div>
         </dl>
@@ -80,7 +80,7 @@
         <article class="quick-card">
           <span class="card-number" aria-hidden="true">02</span>
           <h3 data-i18n="quick.two.title">What will I be asked?</h3>
-          <p data-i18n="quick.two.body">Where Vex Home should live, whether setup may install Node.js when needed, and whether it may acquire the pinned model/runtime files.</p>
+          <p data-i18n="quick.two.body">Where Vex Home should live, any platform-supported prerequisite permission, and explicit permission before pinned model/runtime acquisition.</p>
         </article>
         <article class="quick-card">
           <span class="card-number" aria-hidden="true">03</span>
@@ -143,10 +143,10 @@
           <article class="journey-panel" data-chapter-panel="1" data-active="false" data-stage-refs="CHOOSE_PLATFORM CHECK_REQUIREMENTS">
             <p class="panel-index">02</p>
             <h3 data-i18n="chapter.2.title">Check your fit</h3>
-            <p class="panel-body" data-i18n="chapter.2.body">The current release-qualified local-model baseline is Windows 10/11 x64 with a compatible NVIDIA GPU, at least 12 GiB system memory, 6 GiB free disk space, Node.js 20+, and internet for the first pinned acquisition.</p>
+            <p class="panel-body" data-i18n="chapter.2.body">Two source-local profiles are release-qualified today: Windows 10/11 x64 with a compatible NVIDIA GPU/driver, and macOS arm64 on exact Apple M4 Pro hardware. Both require at least 12 GiB system memory, 6 GiB free disk space, Node.js 20+, and internet for first pinned acquisition.</p>
             <div class="choice-held">
               <p class="choice" data-i18n="chapter.2.choice">Your choice: compare the requirements with your computer. This page does not scan it.</p>
-              <p class="held" data-i18n="chapter.2.held">Held here: macOS and Linux do not inherit the Windows qualification merely because source paths exist.</p>
+              <p class="held" data-i18n="chapter.2.held">Held here: Linux, other Mac hardware, and other GPU profiles do not inherit either qualification merely because nearby source paths exist.</p>
             </div>
             <ol class="stage-list">
               <li data-stage-ref="CHOOSE_PLATFORM"><span data-i18n="stage.CHOOSE_PLATFORM">Choose a platform</span><code>CHOOSE_PLATFORM</code></li>
@@ -157,10 +157,10 @@
           <article class="journey-panel" data-chapter-panel="2" data-active="false" data-stage-refs="DOWNLOAD VERIFY_ARTIFACT">
             <p class="panel-index">03</p>
             <h3 data-i18n="chapter.3.title">Obtain it safely</h3>
-            <p class="panel-body" data-i18n="chapter.3.body">The intended public route will point to one exact GitHub Release, its source archive, release evidence, and checksums. A download is not considered verified until those identities match.</p>
+            <p class="panel-body" data-i18n="chapter.3.body">VexLife can deterministically form an unsigned local release candidate from exact accepted source, but that is not a public release. The intended public route remains held until one governed GitHub Release binds its artifact, evidence, checksums, and notices.</p>
             <div class="choice-held">
               <p class="choice" data-i18n="chapter.3.choice">Your choice: use the exact named release and verify what you received before setup.</p>
-              <p class="held" data-i18n="chapter.3.held">Held here: no public release or signed official build exists merely because source setup works.</p>
+              <p class="held" data-i18n="chapter.3.held">Held here: no public release or signed official build exists merely because source setup or an unsigned local candidate works.</p>
             </div>
             <ol class="stage-list">
               <li data-stage-ref="DOWNLOAD"><span data-i18n="stage.DOWNLOAD">Obtain the release</span><code>DOWNLOAD</code></li>
@@ -171,9 +171,9 @@
           <article class="journey-panel" data-chapter-panel="3" data-active="false" data-stage-refs="ESTABLISH START MEET_VEX VERIFY_HEALTH">
             <p class="panel-index">04</p>
             <h3 data-i18n="chapter.4.title">Set up with consent</h3>
-            <p class="panel-body" data-i18n="chapter.4.body">From the extracted source folder, the current Windows path begins with setup-vexlife.cmd. The window asks before Node installation or the roughly 4.0 GiB model/runtime acquisition, preserves or establishes Vex Home, verifies pinned artifacts, and binds only to numeric loopback.</p>
+            <p class="panel-body" data-i18n="chapter.4.body">Windows uses the extracted-source setup-vexlife.cmd window. Apple M4 Pro uses the stable setup-vexlife.command bootstrap, which resolves one exact accepted source commit before state-first setup. Both preserve or establish Vex Home, verify pinned artifacts, ask before model/runtime acquisition, and bind only to numeric loopback.</p>
             <div class="choice-held">
-              <p class="choice" data-i18n="chapter.4.choice">Your choice: Home location, Node permission when needed, and explicit permission before model/runtime acquisition.</p>
+              <p class="choice" data-i18n="chapter.4.choice">Your choice: Home location, any platform-supported prerequisite permission, and explicit permission before model/runtime acquisition.</p>
               <p class="held" data-i18n="chapter.4.held">Held here: this page cannot run setup, and setup completion alone does not prove a real companion response.</p>
             </div>
             <ol class="stage-list">
@@ -232,49 +232,49 @@
         <li class="distribution-node held-node">
           <span class="node-dot" aria-hidden="true"></span>
           <h3 data-i18n="distribution.release.title">3 · Obtain one exact release</h3>
-          <p data-i18n="distribution.release.body">A separately governed GitHub Release will bind versioned source or build artifacts to evidence and checksums.</p>
-          <small data-i18n="distribution.release.status">Current state: held</small>
+          <p data-i18n="distribution.release.body">An unsigned local release candidate can be formed deterministically today; a separately governed GitHub Release would bind a public artifact to evidence, checksums, and notices.</p>
+          <small data-i18n="distribution.release.status">Current state: public release held</small>
         </li>
         <li class="distribution-node">
           <span class="node-dot" aria-hidden="true"></span>
           <h3 data-i18n="distribution.verify.title">4 · Verify before setup</h3>
           <p data-i18n="distribution.verify.body">Artifact name, version, provenance, byte identity, and checksum must match the release evidence.</p>
-          <small data-i18n="distribution.verify.status">Contract exists; release-specific evidence is pending</small>
+          <small data-i18n="distribution.verify.status">Contract exists; public release-specific evidence is pending</small>
         </li>
         <li class="distribution-node">
           <span class="node-dot" aria-hidden="true"></span>
           <h3 data-i18n="distribution.setup.title">5 · Run the accepted setup front door</h3>
-          <p data-i18n="distribution.setup.body">On the current qualified Windows path, setup-vexlife.cmd delegates to the accepted source-local setup and initializer owners.</p>
-          <small data-i18n="distribution.setup.status">Accepted source path; not a native signed installer</small>
+          <p data-i18n="distribution.setup.body">Windows uses setup-vexlife.cmd from extracted source; Apple M4 Pro uses the stable setup-vexlife.command exact-source bootstrap. Both delegate to accepted setup/initializer owners.</p>
+          <small data-i18n="distribution.setup.status">Accepted source-local paths; not native signed installers</small>
         </li>
         <li class="distribution-node">
           <span class="node-dot" aria-hidden="true"></span>
           <h3 data-i18n="distribution.local.title">6 · Meet Vex locally</h3>
           <p data-i18n="distribution.local.body">The verified runtime and browser bind only to loopback, then health and recovery evidence must remain truthful.</p>
-          <small data-i18n="distribution.local.status">Internally qualified; public fresh-human proof remains later</small>
+          <small data-i18n="distribution.local.status">Windows + Apple M4 Pro source-local profiles qualified; public fresh-human P11 proof remains later</small>
         </li>
       </ol>
       <button class="held-release-button" type="button" data-release-held aria-disabled="true" data-i18n="distribution.heldButton">Why the release button is held</button>
-      <p class="held-release-copy" data-release-copy hidden data-i18n="distribution.heldMessage">A public download control stays held until an exact release, evidence, checksums, visibility decision, and publication receipt all exist.</p>
+      <p class="held-release-copy" data-release-copy hidden data-i18n="distribution.heldMessage">A public download control stays held until an exact public release, evidence, checksums, release decision, and publication receipt all exist.</p>
     </section>
 
     <section class="requirements section-shell" aria-labelledby="requirements-title">
       <div class="section-heading section-heading-wide">
         <p class="eyebrow" data-i18n="requirements.eyebrow">Current platform truth</p>
-        <h2 id="requirements-title" data-i18n="requirements.title">Check the qualified Windows baseline without being auto-scanned.</h2>
+        <h2 id="requirements-title" data-i18n="requirements.title">Check the qualified Windows and Apple M4 Pro baselines without being auto-scanned.</h2>
         <p data-i18n="requirements.body">These are the current source-local requirements. They are not a promise of permanent limits or equivalent qualification on every platform.</p>
       </div>
       <dl class="requirements-grid">
-        <div><dt data-i18n="requirements.os.label">Operating system</dt><dd data-i18n="requirements.os.value">Windows 10 or 11, x64</dd></div>
-        <div><dt data-i18n="requirements.gpu.label">Graphics</dt><dd data-i18n="requirements.gpu.value">Compatible NVIDIA GPU and driver visible to nvidia-smi</dd></div>
+        <div><dt data-i18n="requirements.os.label">Operating system</dt><dd data-i18n="requirements.os.value">Windows 10/11 x64, or macOS arm64 on Apple M4 Pro</dd></div>
+        <div><dt data-i18n="requirements.gpu.label">Hardware profile</dt><dd data-i18n="requirements.gpu.value">Windows: compatible NVIDIA GPU/driver visible to nvidia-smi · Mac: exact Apple M4 Pro</dd></div>
         <div><dt data-i18n="requirements.memory.label">System memory</dt><dd data-i18n="requirements.memory.value">At least 12 GiB</dd></div>
         <div><dt data-i18n="requirements.disk.label">Free disk</dt><dd data-i18n="requirements.disk.value">At least 6 GiB</dd></div>
-        <div><dt data-i18n="requirements.node.label">Node.js</dt><dd data-i18n="requirements.node.value">20 or newer; guided setup may ask before installing LTS through winget</dd></div>
-        <div><dt data-i18n="requirements.network.label">First acquisition</dt><dd data-i18n="requirements.network.value">Internet access for about 4.0 GiB of pinned model/runtime files; exact verified files are reused</dd></div>
+        <div><dt data-i18n="requirements.node.label">Node.js</dt><dd data-i18n="requirements.node.value">20 or newer; Windows may ask before installing LTS with winget, while the Mac route requires Node 20+</dd></div>
+        <div><dt data-i18n="requirements.network.label">First acquisition</dt><dd data-i18n="requirements.network.value">Internet access for several GiB of pinned model/runtime files; exact verified cached files are reused</dd></div>
       </dl>
       <aside class="other-platforms">
-        <h3 data-i18n="requirements.other.title">Using macOS or Linux?</h3>
-        <p data-i18n="requirements.other.body">The repository contains bootstrap and development surfaces for other platforms, but they do not inherit the Windows local-model release qualification. The public page must say “not yet qualified” rather than “broken.”</p>
+        <h3 data-i18n="requirements.other.title">Using Linux or another Mac/GPU profile?</h3>
+        <p data-i18n="requirements.other.body">Other bootstrap and development surfaces exist, but Linux, nearby Mac hardware, and other GPU profiles do not inherit either release-qualified source-local profile. “Not yet qualified” is not “broken.”</p>
       </aside>
     </section>
 
@@ -287,7 +287,7 @@
       <div class="trust-grid">
         <article><h3 data-i18n="trust.one.title">Visiting is not downloading</h3><p data-i18n="trust.one.body">This page is explanatory. It has no download attribute, installer invocation, model start, Home write, or external dependency.</p><code>PAGES_VISIT != DOWNLOAD</code></article>
         <article><h3 data-i18n="trust.two.title">Downloading is not verifying</h3><p data-i18n="trust.two.body">A file becomes the intended release only when its exact identity and checksum match current release evidence.</p><code>DOWNLOAD != VERIFIED_RELEASE</code></article>
-        <article><h3 data-i18n="trust.three.title">Source setup is not a native installer</h3><p data-i18n="trust.three.body">setup-vexlife.cmd is the accepted Windows source-local front door. Signing and packaged-build provenance remain separate.</p><code>SOURCE_SETUP != NATIVE_INSTALLER</code></article>
+        <article><h3 data-i18n="trust.three.title">Source setup is not a native installer</h3><p data-i18n="trust.three.body">setup-vexlife.cmd and the Apple M4 Pro setup-vexlife.command bootstrap are accepted source-local front doors. Signing and packaged-build provenance remain separate.</p><code>SOURCE_SETUP != NATIVE_INSTALLER</code></article>
         <article><h3 data-i18n="trust.four.title">A browser opening is not model readiness</h3><p data-i18n="trust.four.body">The runtime must be bound, qualified, and exposed truthfully before the companion can be called ready.</p><code>BROWSER_LOADED != MODEL_READY</code></article>
         <article><h3 data-i18n="trust.five.title">Uninstall-preserve is not delete Home</h3><p data-i18n="trust.five.body">Stopping owned software can preserve identity and continuity. Home deletion requires a different explicit decision.</p><code>UNINSTALL_PRESERVE != DELETE_HOME</code></article>
         <article><h3 data-i18n="trust.six.title">The model provider is not Vex identity</h3><p data-i18n="trust.six.body">The current pinned model is a runtime dependency. Vex identity, culture, interface, Home, and continuity are separate owners.</p><code>MODEL_PROVIDER != VEX_IDENTITY</code></article>
@@ -313,12 +313,12 @@
         <h2 id="faq-title" data-i18n="faq.title">Questions a careful newcomer should not have to hunt for.</h2>
       </div>
       <div class="faq-list">
-        <details><summary data-i18n="faq.one.q">Is VexLife already a public one-click installer?</summary><p data-i18n="faq.one.a">No. The current accepted baseline is a Windows source-local setup window. A public release, signing, packaged installer, Pages publication, and fresh-human proof are separate gates.</p></details>
+        <details><summary data-i18n="faq.one.q">Is VexLife already a public one-click installer?</summary><p data-i18n="faq.one.a">No. The accepted Windows and Apple M4 Pro routes are source-local setup paths. A public release, signing, packaged installer, Pages publication, and fresh-human P11 proof are separate gates.</p></details>
         <details><summary data-i18n="faq.two.q">Does this page install or download anything?</summary><p data-i18n="faq.two.a">No. It only changes in-memory presentation state such as language and chapter selection. It does not persist data or contact an external origin.</p></details>
         <details><summary data-i18n="faq.three.q">Is Vex just the Qwen model?</summary><p data-i18n="faq.three.a">No. The pinned Qwen/llama.cpp profile is a replaceable runtime dependency. Vex identity, culture, Home, interface, permissions, and continuity are not the model provider.</p></details>
         <details><summary data-i18n="faq.four.q">What happens if setup finds something unexpected?</summary><p data-i18n="faq.four.a">It should stop with a plain next action. Unknown Home contents, mismatched artifacts, unsupported hosts, unowned ports, and failed qualification are not overwritten or relabeled as success.</p></details>
         <details><summary data-i18n="faq.five.q">Can I remove the software without erasing the relationship?</summary><p data-i18n="faq.five.a">The accepted uninstall-preserve route stops owned processes while retaining Home and continuity material. Permanent deletion remains a separate explicit action.</p></details>
-        <details><summary data-i18n="faq.six.q">Why is there no public download button yet?</summary><p data-i18n="faq.six.a">Because a button would imply a release target. The control remains held until the exact artifact, checksums, evidence, visibility decision, and publication receipt exist.</p></details>
+        <details><summary data-i18n="faq.six.q">Why is there no public download button yet?</summary><p data-i18n="faq.six.a">Because a button would imply a public release target. The control remains held until the exact artifact, checksums, evidence, release decision, and publication receipt exist.</p></details>
       </div>
     </section>
 

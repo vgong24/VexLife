@@ -301,5 +301,14 @@
   "feature-walkthrough.living-journal.stage.revisit": "Revisit returns to semantic current context; it does not reenact historical runtime.",
   "feature-walkthrough.living-journal.stage.ephemeral-marginalia": "Local marginalia is ephemeral reference text, not Memory.",
   "feature-walkthrough.living-journal.stage.boundaries": "Archive selection is read-only; the walkthrough grants no Memory, Home, model, or publication authority.",
-  "feature-walkthrough.living-journal.stage.complete": "The explanation is exhausted here; actual lived completion remains Journey-owned."
+  "feature-walkthrough.living-journal.stage.complete": "The explanation is exhausted here; actual lived completion remains Journey-owned.",
+  "screen.cdr-s5-closed-alpha.title": "Closed Alpha Journey",
+  "cdr-s5.closed-alpha.region": "Invite-only closed alpha",
+  "cdr-s5.closed-alpha.reference": "Reference only · no network or participant effects",
+  "cdr-s5.closed-alpha.consent": "Acknowledge alpha participation consent",
+  "cdr-s5.closed-alpha.invitation": "Choose invitation decision",
+  "cdr-s5.closed-alpha.route-privacy": "Route and privacy · class disclosure only",
+  "cdr-s5.closed-alpha.support": "Open safe support reference",
+  "cdr-s5.closed-alpha.withdraw": "Withdraw from alpha reference",
+  "cdr-s5.closed-alpha.reset": "Reset closed-alpha reference"
 }

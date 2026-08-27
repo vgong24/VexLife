@@ -5,14 +5,14 @@
     {
       "path": "pages/strings/vexlife-onboarding.en.json",
       "mode": "100644",
-      "bytes": 15588,
-      "sha256": "7cfd6e340efca814efaf376ac09ca03b4d1a096de5d0aa71c50c528aadecf15e"
+      "bytes": 16312,
+      "sha256": "12b6db7d951a5b8358d8e63900eee1342cf277ca36521212e9e8d306a1ab76ef"
     },
     {
       "path": "src/core/vex-initialization.mjs",
       "mode": "100644",
-      "bytes": 11257,
-      "sha256": "01b001f33af5ffd46042d1e2564ee9d48569e1ed706c5ce5b6d9c95bd5609194"
+      "bytes": 25735,
+      "sha256": "0380008207a1e836c46355990affba5a35e58bac844962aba31e8ce9fdcc8e34"
     }
   ]
 }

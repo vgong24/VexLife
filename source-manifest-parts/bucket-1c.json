@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "1c",
+  "files": [
+    {
+      "path": "src/core/public-learning.mjs",
+      "mode": "100644",
+      "bytes": 23197,
+      "sha256": "a55ab315a108cef7adf5f912ead94cbb820d01ba718d1a296d0c3dc680481607"
+    },
+    {
+      "path": "training/foundation-generation/foundation_evaluate.py",
+      "mode": "100644",
+      "bytes": 27389,
+      "sha256": "d1df123c34f8073b585c90d05d0f1f6f92db39a2b031dc9d18dff86b319ccecf"
+    }
+  ]
+}

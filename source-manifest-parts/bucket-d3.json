@@ -11,8 +11,14 @@
     {
       "path": "blueprint/fragments/tests.json",
       "mode": "100644",
-      "bytes": 61369,
-      "sha256": "9d901de94a8b1af17ee7d933d5970f9cc6ddcb8d9c4f93ac549389214aaf840c"
+      "bytes": 62666,
+      "sha256": "45686acc47560279f2735ec4fc13619ae51f59ffd0fe0776df0bac7f1a92e11d"
+    },
+    {
+      "path": "docs/REVIEW-ARCHITECTURE-SELF-AUDIT.md",
+      "mode": "100644",
+      "bytes": 14733,
+      "sha256": "aae3afff6deeb3a7d912ada97f3d5cd72796ba88507cd63c76f6d9b0ffa37104"
     },
     {
       "path": "scripts/intent-status.mjs",

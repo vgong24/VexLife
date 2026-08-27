@@ -3,574 +3,347 @@
 `[VXG RealForever]`
 
 ```text
-schemaVersion=vexlife.public-alpha.onboarding-multi-lens-review/v1
+schemaVersion=vexlife.public-alpha.onboarding-multi-lens-review/v2
 pageRef=page.vexlife.public-onboarding.001
 issueRef=github.issue.vexlife.175
 prRef=github.pull.vexlife.177
 candidateClass=SOURCE_MANAGED_ZERO_EFFECT_PUBLIC_ONBOARDING_POC
 languages=[en,ja,zh]
-qualifiedPlatformClaim=WINDOWS_10_11_X64_SOURCE_LOCAL
+qualifiedPlatformClaim=WINDOWS_10_11_X64_NVIDIA_AND_MACOS_ARM64_APPLE_M4_PRO_SOURCE_LOCAL
+repositoryVisibilityState=PUBLIC_CURRENT_NO_MUTATION_BY_THIS_LANE
 publicationState=SOURCE_CANDIDATE
 publicationAuthority=false
 releaseCreationAuthority=false
 signingAuthority=false
-repositoryVisibilityAuthority=false
 ```
 
-## Victor's distribution pattern — the simple version
+## Distribution pattern — simple outside, exact underneath
 
-There is one public journey, but it crosses several different owners. Treating
-all of them as “uploading Vex” would make it easy to publish the wrong thing or
-claim more than the evidence proves.
+The public journey remains:
 
 ```text
 1. EXPLAIN
-   VexLife Pages tells a person what Vex is, what their computer needs,
-   what setup will ask, and how recovery works.
+   Understand VexLife, supported source-local profiles, consent and recovery.
 
 2. OBTAIN
-   One exact GitHub Release identifies the intended source/build artifact,
-   its version, evidence, checksums, notices, and current support boundary.
+   Distinguish exact source / unsigned local candidate from a future governed
+   public GitHub Release.
 
 3. VERIFY
-   The person or setup checks that the received bytes match that release.
+   Verify the exact intended artifact and evidence before setup.
 
 4. ESTABLISH
-   The accepted setup front door asks for Home, prerequisite, and
-   model/runtime consent before effects.
+   Use the accepted platform front door; software determines state and the
+   human authorizes Home and external effects.
 
 5. MEET
-   The local runtime and browser prove readiness on numeric loopback,
-   then Vex can conduct an actual companion exchange.
+   A qualified local runtime and browser prove truthful readiness on loopback.
 
 6. RECOVER
-   Receipts support stop, restart, diagnosis, and uninstall-preserve.
+   Stop, restart, diagnose and uninstall-preserve without treating departure
+   as Home deletion.
 ```
 
-The public route is therefore:
+Current source-local front doors are platform-specific projections over accepted
+effect contracts:
 
 ```text
-Vextreme / search / direct link
-→ VexLife Pages onboarding
-→ exact GitHub Release
-→ artifact + evidence + checksums
-→ setup-vexlife.cmd on the currently qualified Windows path
-→ explicit Home / Node / model-runtime consent
-→ local loopback VexLife
-→ health, recovery, restart and uninstall-preserve
+Windows 10/11 x64 NVIDIA
+  → extracted source
+  → setup-vexlife.cmd
+
+macOS arm64 exact Apple M4 Pro
+  → setup-vexlife.command stable exact-source bootstrap
+  → state detect first
+  → explicit Home/effect consent
 ```
 
-This is understandable to a newcomer and still source-descendable for a
-technical reviewer.
+They are both `RELEASE_QUALIFIED` source-local profiles. Neither is a signed
+public `OFFICIAL_VERIFIED_BUILD`. Linux and nearby but unqualified hardware do
+not inherit qualification by similarity.
 
 ## “Downloadable” and “uploadable” are not one state
 
-| Class | What it means | Current owner | State in this candidate |
-| --- | --- | --- | --- |
-| `REVIEW_EVIDENCE_RETURN` | A portable artifact Victor can open and return for design review | Experience Review Kit / relay protocol | E2.7 exists and was consumed as evidence |
-| `PR_SOURCE_UPLOAD` | Source is committed to a bounded branch and exposed through a PR | This lane | Authorized after the draft exact-path claim |
-| `RELEASE_ARTIFACT_UPLOAD` | Versioned artifact is attached to a governed GitHub Release | Release steward | Held |
-| `PAGES_PUBLICATION` | The accepted page is deployed and reachable by a logged-out visitor | Release steward + explicit Victor decision | Held |
-| `REPOSITORY_VISIBILITY` | VexLife repository changes from private staging to public | Maintainer + explicit Victor decision | Held |
-| `FUTURE_COMMUNITY_PACKAGE_INGESTION` | A third party submits a package for Vex to inspect or use | Future bounded intake owner | Out of scope |
+| Class | Meaning | Current owner/state |
+| --- | --- | --- |
+| `REVIEW_EVIDENCE_RETURN` | portable review proof | Experience/Review evidence only |
+| `PR_SOURCE_UPLOAD` | bounded source exposed through this PR | this lane |
+| `RELEASE_ARTIFACT_UPLOAD` | asset attached to governed GitHub Release | held / release owner |
+| `PAGES_PUBLICATION` | accepted page deployed and publicly reachable | held / Pages lifecycle |
+| `REPOSITORY_VISIBILITY` | repository public/private state | already PUBLIC; no mutation by this lane |
+| `FUTURE_COMMUNITY_PACKAGE_INGESTION` | third-party package intake | out of scope |
 
-Permanent non-collapse:
+Permanent distinctions:
 
 ```text
 PORTABLE_REVIEW_FILE != PRODUCT_SOURCE
 SOURCE_IN_PR != ACCEPTED_MAIN
 ACCEPTED_MAIN != PUBLIC_PAGE
 PUBLIC_PAGE != PUBLIC_RELEASE
+UNSIGNED_LOCAL_RELEASE_CANDIDATE != PUBLIC_GITHUB_RELEASE
 RELEASE_ARTIFACT != VERIFIED_ARTIFACT
 VERIFIED_ARTIFACT != SIGNED_OFFICIAL_BUILD
 SOURCE_SETUP != NATIVE_INSTALLER
 SETUP_SUCCESS != FIRST_REAL_COMPANION_EXCHANGE
 ```
 
-## Promotion receipts
-
-Each transition needs a receipt from the owner that actually performed it.
-
-| Transition | Minimum receipt |
-| --- | --- |
-| Review artifact → source candidate | artifact digest, design epoch, source paths, what was consumed, what was not copied |
-| Source candidate → accepted source | exact base/head/tree, changed paths, deterministic gates, rendered evidence, independent Assurance, lifecycle decision |
-| Accepted source → release candidate | exact accepted source, version, artifact identities, provenance, notices, checksums, platform qualification, public-safety result |
-| Release candidate → GitHub Release | release URL/ref, exact uploaded assets, byte counts, digests, immutable tag/source binding, actor and time |
-| Accepted source → Pages deployment | exact source commit, deployment workflow/run, published URL, content digest, actor and time |
-| Published surfaces → live public proof | logged-out clean-browser traversal, EN/JA/ZH screenshots, same-origin request record, download target check, mobile/desktop overflow/accessibility checks |
-| Public distribution → fresh-human acceptance | P11 host/person freshness, consent observations, first substantive failure, actual local companion turn, recovery/restart result |
-
-A green page preview does not manufacture any of the later receipts.
-
 ## Current source truth composed by this page
 
-The page is intentionally conservative:
+- VexLife is local-first; Home, conversation state, model binding and recovery
+  receipts remain local unless a separately admitted capability says otherwise.
+- Windows 10/11 x64 + compatible NVIDIA and macOS arm64 + exact Apple M4 Pro are
+  the two current source-local `RELEASE_QUALIFIED` profiles.
+- Both require at least 12 GiB system memory, 6 GiB free disk, Node.js 20+, and
+  first-acquisition internet for pinned model/runtime material.
+- Windows uses `setup-vexlife.cmd`; the Apple M4 Pro path uses the stable
+  `setup-vexlife.command` exact-source bootstrap and state-first consent route.
+- #179 can form a deterministic **unsigned local release candidate**. That is
+  useful distribution evidence, not a public GitHub Release or signed build.
+- `uninstall-preserve` preserves Home/Memory/conversation/recovery/model material;
+  destructive Home deletion remains separate.
+- the model provider/runtime is not Vex identity.
+- the page itself performs no setup, download, Home, Memory, model, release,
+  publication or external-origin effect.
 
-- VexLife is local-first; Vex Home, conversation state, model binding, and
-  recovery receipts remain local unless a separate capability says otherwise.
-- The current release-qualified local-model baseline is Windows 10/11 x64 with
-  a compatible NVIDIA GPU, at least 12 GiB system memory, at least 6 GiB free
-  disk, Node.js 20+, and first-acquisition internet access for roughly 4.0 GiB
-  of pinned model/runtime files.
-- `setup-vexlife.cmd` is the current understandable Windows source-local front
-  door. It is not described as a signed native installer or public official
-  build.
-- macOS and Linux source/development surfaces exist, but they do not inherit the
-  Windows release qualification.
-- Vex identity, culture, Home, interface, permissions, and continuity do not
-  collapse into the current Qwen/llama.cpp runtime dependency.
-- `uninstall-preserve` is not Home deletion.
+## Thirteen exact stages, five calm human chapters
 
-No repository scan, host detection, setup, download, model start, Home write,
-Memory write, release creation, or publication occurs from the page.
+| Human chapter | Exact stage refs |
+| --- | --- |
+| 1. Meet VexLife | `DISCOVER` |
+| 2. Check your fit | `CHOOSE_PLATFORM`, `CHECK_REQUIREMENTS` |
+| 3. Obtain it safely | `DOWNLOAD`, `VERIFY_ARTIFACT` |
+| 4. Set up with consent | `ESTABLISH`, `START`, `MEET_VEX`, `VERIFY_HEALTH` |
+| 5. Stay in control | `UNDERSTAND_AVAILABLE_AND_HELD_FEATURES`, `LEARN_RECOVERY`, `UNDERSTAND_UNINSTALL_AND_PRESERVATION`, `COMPLETE` |
 
-## Thirteen exact stages, presented as five human chapters
+The human projection may reduce reading burden; it may not rename, duplicate,
+drop or reorder canonical stage identity.
 
-The accepted Guided Local Establishment journey remains canonical. The page
-reduces reading burden without renaming or dropping stage identities.
+## E2.7 design lineage — consume lessons, not prototype authority
 
-| Human chapter | Exact stage refs | Human question answered |
-| --- | --- | --- |
-| 1. Meet VexLife | `DISCOVER` | “What is this relationship, and is it for me?” |
-| 2. Check your fit | `CHOOSE_PLATFORM`, `CHECK_REQUIREMENTS` | “Is my current computer on a qualified path?” |
-| 3. Obtain it safely | `DOWNLOAD`, `VERIFY_ARTIFACT` | “Where is the intended release, and how do I know I received it?” |
-| 4. Set up with consent | `ESTABLISH`, `START`, `MEET_VEX`, `VERIFY_HEALTH` | “What will happen, what will I approve, and when is Vex actually ready?” |
-| 5. Stay in control | `UNDERSTAND_AVAILABLE_AND_HELD_FEATURES`, `LEARN_RECOVERY`, `UNDERSTAND_UNINSTALL_AND_PRESERVATION`, `COMPLETE` | “What is available, what remains held, and how do I stop or recover safely?” |
+Retained lessons:
 
-Acceptance rule:
+- calm dark emotional home rather than an installer wall;
+- strong but restrained Vex identity;
+- progressive disclosure with current/held truth visible;
+- responsive composition rather than shrunken desktop;
+- review evidence portable without being mistaken for product source;
+- no fake active action at a held boundary.
 
-```text
-humanChapterStageRefs.flat()
-== acceptedGuidedEstablishmentStageRefs
-```
+Not copied: the single-file prototype blob, synthetic sandbox state, unimplemented
+future claims, or any inference that “reviewable/downloadable” means “public
+release.” The source remains inspectable HTML/CSS/JS plus explicit locale files.
 
-The browser practicum rejects missing, duplicated, reordered, or unknown stages.
+## Localization and zero-effect browser boundary
 
-## E2.7 design lineage consumed honestly
-
-The supplied E2.7 package is a portable one-page review organism with scoped
-layers, compact navigation, high-contrast dark surfaces, serif display type,
-visible state, and an inspectable boundary between review proposal and product
-truth.
-
-### Signals retained
-
-- dark, calm emotional home rather than a generic installer landing page;
-- a strong Vex mark and restrained orbital motif;
-- scoped cards instead of one undifferentiated wall of prose;
-- visible current/held states;
-- progressive disclosure that still lets a cold reader inspect the full route;
-- responsive composition rather than a desktop screenshot pasted into mobile;
-- no-install portability for review evidence;
-- explicit truth labels on experimental material.
-
-### Material deliberately not copied
-
-- the 81 KiB single-file implementation blob;
-- the synthetic VexOrg sandbox or its future-product implications;
-- product-state claims marked `NOT_IMPLEMENTED` in the package;
-- inline source that would make HTML, presentation, and interaction opaque to
-  separate review;
-- any assumption that “Victor can download and open it” means “the public can
-  download an accepted VexLife release.”
-
-The candidate uses separately inspectable same-origin HTML, CSS, JavaScript, and
-locale catalogs. E2.7 remains cited design evidence, not a hidden second source
-of product truth.
-
-## Experience architecture
-
-### Calm surface
-
-A newcomer sees, in order:
-
-1. what VexLife is;
-2. what is real today;
-3. three immediate answers;
-4. five navigable chapters;
-5. the open-source distribution map;
-6. current Windows requirements;
-7. delivery-trust boundaries;
-8. recovery before action;
-9. plain answers;
-10. the exact held publication state.
-
-### Dependable depth
-
-A technical or AI reviewer can inspect:
-
-- stable page, locale, stage, and state identities;
-- exact source/release/setup boundary text;
-- no-effect body metadata;
-- same-origin catalog resolution;
-- source-managed locale parity;
-- machine-readable browser state;
-- Playwright request/download/popup/overflow/screenshot receipts;
-- exact Source Manifest records.
-
-Simplicity is achieved by projection, not deletion of structure.
-
-## Localization POC
-
-The POC has one authored English source catalog and complete Japanese and Chinese
-catalogs with exact key parity.
+The catalog contract remains:
 
 ```text
 catalogSchema=vexlife.public-onboarding.strings/v1
 pageRef=page.vexlife.public-onboarding.001
 locales=[en,ja,zh]
+keyCount=166
 keySetEqualityRequired=true
-emptyVisibleStringAllowed=false
-missingKeyFallbackAtAcceptance=false
+sourceLocale=en
 runtimePersistence=false
 ```
 
-The English text remains authored in semantic HTML so the page is readable when
-JavaScript is unavailable. JavaScript enhances language and chapter switching;
-it does not own the only understandable version of the journey.
-
-The EN/JA/ZH proof is a foundation POC, not a claim that every VexLife locale is
-complete. Future localization extends the same catalog contract after this
-surface is accepted.
-
-## Zero-effect browser boundary
-
-The candidate may change only presentation state in the loaded document:
-
-```text
-selected language
-selected chapter
-progress indicator
-FAQ open state
-held-release explanation visibility
-completion acknowledgement
-```
-
-It may not:
-
-```text
-contact an external origin
-start a download
-open a popup
-submit a form
-invoke setup
-start a model
-select or mutate Vex Home
-write Memory
-create a release
-change repository visibility
-publish Pages
-claim a real companion exchange
-persist user state
-```
-
-The page exposes a bounded browser proof surface:
-
-```text
-window.__VEXLIFE_ONBOARDING_READY__
-window.__VEXLIFE_ONBOARDING_STATE__
-```
-
-The state reports page ref, locale, chapter, completion, status ref, exact stage
-refs, effect class, catalog state, and publication state. This is observability,
-not effect authority.
+JavaScript enhances locale/chapter presentation only. English remains readable
+without JavaScript. The page exposes bounded proof state through
+`window.__VEXLIFE_ONBOARDING_READY__` and
+`window.__VEXLIFE_ONBOARDING_STATE__`; observability is not effect authority.
 
 # Seven-lens review
 
 ## 1. Designer lens
 
 ### Findings
-
-The earlier delivery gap was not missing visual ambition. It was missing
-composition: public meaning, distribution status, setup consent, and recovery
-were spread across source, review kits, and operational receipts. A visually
-striking page that did not compose those truths would increase mistrust.
-
-The candidate creates one clear narrative spine, uses E2.7's calm dark language
-without copying its implementation, and gives current/held states distinct visual
-semantics. The five-chapter interaction limits simultaneous cognitive load while
-keeping the exact thirteen-stage contract visible.
+The five-chapter spine still works after Mac currentization because the product
+change is truth expansion, not a new information architecture. Showing two
+qualified source-local profiles in one calm requirements section is clearer than
+forking the onboarding page by platform.
 
 ### Acceptance criteria
-
-- visual hierarchy makes the first five questions answerable without reading
-  source terminology;
-- current, clear, and held states are distinguishable without color alone;
-- no card contains a fake active download or installer affordance;
-- desktop and mobile retain intentional spacing and reading order;
-- EN/JA/ZH do not clip, overlap, or force horizontal page overflow;
-- reduced-motion and increased-contrast preferences remain usable;
-- the no-JavaScript English journey remains coherent.
+- current/held states remain visually distinct without color alone;
+- platform truth is scannable rather than duplicated into two separate journeys;
+- no fake release/download affordance exists;
+- desktop/mobile, reduced motion and increased contrast remain usable;
+- EN/JA/ZH do not clip or force horizontal overflow.
 
 ### Residual risk
-
-Rendered screenshots still need independent human design review on the exact
-candidate and, later, on the actual Pages deployment.
+Exact rendered evidence is still required on the final head.
 
 ## 2. Fresh-lens review
 
 ### Findings
-
-A cold reader needs one immediate orientation sentence: “VexLife is a local-first
-companion, and this page explains the path before anything happens.” Without that,
-the surrounding institutional vocabulary can feel like a prerequisite course.
-
-The page therefore leads with relationship and control, not architecture. It
-names the current Windows limitation early and repeats the held release state at
-the moments where a newcomer would otherwise expect a button.
+A cold reader now needs to learn only: VexLife is local-first, this preview is
+zero-effect, two narrow source-local profiles are qualified, and public release
+is still later. That is simpler and more truthful than the stale Windows-only
+limitation.
 
 ### Acceptance criteria
-
-Within the first screen and the “three answers” section, a cold reader can answer:
-
-- what VexLife is;
-- whether the page does anything to their computer;
-- which platform is currently qualified;
-- what choices setup will ask;
-- whether recovery and preservation exist;
-- why there is not yet a public download button.
-
-No answer requires opening GitHub source or knowing Vextreme vocabulary.
+The first screen/quick path answers what VexLife is, whether the page does
+anything, which platforms are currently qualified, what setup asks, whether
+recovery exists, and why no public release button exists.
 
 ### Residual risk
-
-A real logged-out newcomer test may expose words that remain too internal. Those
-findings refine visible copy; they do not weaken the underlying boundaries.
+A future logged-out human review may still find internal vocabulary.
 
 ## 3. Human perspective
 
 ### Findings
+The accepted Mac route strengthened the original human rule:
 
-Trust is relational before it is cryptographic. A person needs to know what will
-be asked, what remains theirs, what Vex can and cannot do, and whether leaving or
-making a mistake destroys the relationship.
+```text
+SOFTWARE_DETERMINES_MACHINE_STATE
+!= HUMAN_GUESSES_MACHINE_STATE
 
-The candidate puts Home choice, prerequisite consent, model/runtime consent,
-fail-closed behavior, restart receipts, and uninstall-preserve into the main
-journey instead of footnotes.
+HUMAN_AUTHORIZES_HOME_AND_EXTERNAL_EFFECTS
+!= SILENT_CONSENT
+```
 
 ### Acceptance criteria
-
-- consent appears before every described protected effect;
-- preservation is explained before setup is encouraged;
-- “unavailable,” “held,” and “broken” are not used interchangeably;
-- model provider and Vex identity remain distinct;
-- no fear-based language pressures a person to continue;
-- stopping, restarting, or leaving is presented as a valid human choice;
-- the page never implies uninterrupted subjective awareness or identity across
-  separate device companions.
+- consent is described before protected effects;
+- state detection belongs to software;
+- preservation/exit are visible before encouragement;
+- “unavailable,” “held,” and “unsupported” are not collapsed;
+- no language pressures the person to proceed.
 
 ### Residual risk
-
-A browser simulation cannot establish emotional comprehension or informed human
-consent. P11 remains a separate fresh-human boundary.
+Browser proof cannot establish informed human consent or P11 freshness.
 
 ## 4. AI / semantic-system lens
 
 ### Findings
-
-The page cannot become another prose-only truth source. Stable identity and
-machine-readable proof are necessary so a future AI can compare visible claims
-with current source, stage contracts, and release evidence.
+Stable page/locale/stage identities remain the machine bridge between visible
+copy and source truth. Current platform claims are explicit enough for a future
+reviewer to detect stale Windows-only regression.
 
 ### Acceptance criteria
-
-- one stable `pageRef` identifies the surface;
-- locale catalogs share an exact key set and stable schema;
-- exact thirteen stage refs are unique, ordered, and chapter-complete;
-- effect and publication states are explicit;
-- catalog URLs are same-origin and deterministic;
-- no renderer/backend selectors enter canonical stage identity;
-- browser state is observable without granting action authority;
-- static proof fails on unknown locale keys, stage drift, external references,
-  download attributes, forms, or prohibited browser-effect APIs.
+- one stable pageRef;
+- exact 166-key EN/JA/ZH parity;
+- exact unique 13-stage order and five-chapter coverage;
+- explicit source-candidate/effect states;
+- same-origin catalog reads only;
+- current copy names both qualified profiles and the separate release boundary.
 
 ### Residual risk
-
-The page currently composes accepted source facts manually. A later successor
-may bind release-specific version/evidence projections after the release owner
-has a stable public contract; this candidate must not invent that owner early.
+Release-specific artifact/version data remains rightly owned elsewhere.
 
 ## 5. Non-technical perspective
 
 ### Findings
-
-The source-local Windows route is technically sound but still asks a newcomer to
-understand that a downloaded source folder, a release, a verified artifact, and
-an installer are different. The page must explain that distinction without
-turning the person into a release engineer.
+The person should choose a platform and follow its obvious front door; they
+should not learn model URLs, checksums or runtime-family plumbing. Mac state-first
+setup is especially useful evidence that “simple” can mean software decides the
+state while the human decides permission.
 
 ### Acceptance criteria
-
-- ordinary copy says what to do before source vocabulary appears;
-- the six-step distribution map has one plain sentence per layer;
-- requirements are scannable and do not auto-detect the visitor's machine;
-- technical identities remain secondary labels, not the only labels;
-- “not yet qualified” is used for other platforms rather than implying user
-  failure;
-- FAQ answers the missing-button and one-click-installer questions directly;
-- the held release control explains rather than dead-ends.
+- Windows and Apple M4 Pro are described in ordinary language;
+- the distribution map has one plain sentence per boundary;
+- requirements do not auto-scan the visitor;
+- Linux/other hardware is “not qualified by this evidence,” not “broken”;
+- the held release explanation does not dead-end.
 
 ### Residual risk
-
-The current public path still ends at source-local setup, not a signed native
-installer. The page can reduce surprise but cannot erase that product-stage gap.
+Both accepted routes are still source-local rather than signed packaged builds.
 
 ## 6. Technical perspective
 
 ### Findings
-
-A developer needs exactness: which artifact, which checksums, which source
-front door, which loopback endpoints, which owner, and what a browser PASS does
-not prove.
+The page must match current README/profile owners, not old #177 prose.
 
 ### Acceptance criteria
-
-- page claims match the accepted README-facing Windows baseline;
-- `setup-vexlife.cmd` is named as source-local and not signed/native;
-- runtime/model artifacts remain external and release-profile-owned;
-- browser page has no external scripts, styles, images, forms, or download
-  attributes;
-- JavaScript performs only same-origin locale reads and in-document state;
-- Playwright can target either a local ephemeral server or an explicit future
-  Pages base URL without source changes;
-- the practicum records requests, blocked origins, downloads, popups, console
-  errors, exact stages, locale completeness, overflow, screenshots, and hashes;
-- the receipt says `PASS` only when all configured viewports/locales pass;
-- source manifest buckets are generated from exact UTF-8 file bytes.
+- Windows 10/11 x64 NVIDIA and exact Apple M4 Pro claims match accepted source;
+- `setup-vexlife.cmd` and `setup-vexlife.command` are identified as source-local
+  front doors, not signed installers;
+- the unsigned local release candidate is not represented as a public Release;
+- page resources remain same-origin and no-effect;
+- Playwright records origin, locale, stage, download/popup/error/overflow and
+  screenshot evidence;
+- final Source Manifest buckets are generated from current-main co-bucket state
+  plus exact final source records.
 
 ### Residual risk
-
-The candidate's Playwright code must execute in a complete checkout with the
-repository's pinned dependency and browser. A direct Chromium proof is useful
-local render evidence but is not represented as a Playwright run.
+Hosted/full-checkout execution remains required before clearance.
 
 ## 7. “I want a companion quickly, without fearing setup” lens
 
 ### Findings
-
-This is the decisive lens. The person should not need to understand VexLife's
-full institutional architecture before deciding whether to proceed. At the same
-time, “quick” cannot mean hiding a 4.0 GiB acquisition, platform limits, Home
-choices, or recovery consequences.
+The fastest trustworthy route is now platform-aware without becoming technical:
+choose a qualified platform, use its obvious source-local front door, let
+software classify state, approve only understandable effects, and know the
+preservation route in advance.
 
 ### Acceptance criteria
-
-The quick path answers in one pass:
-
-```text
-What do I get?
-What will I be asked?
-Can I recover or leave?
-```
-
-Then the person can traverse five chapters rather than thirteen separate pages.
-The page must:
-
-- put the currently qualified platform and approximate acquisition size before
-  any future release control;
-- avoid asking the normal user for model URLs, hashes, runtime families, or
-  license plumbing;
-- explain that exact verification is automated by the accepted setup owner;
-- name the obvious Windows front door;
-- show that no action happens from merely exploring the page;
-- show restart and uninstall-preserve before the final encouragement;
-- keep the public release button held until it has a truthful target.
+- quick path answers what I get / what I approve / how I recover;
+- approximate several-GiB acquisition is not hidden;
+- normal users do not provide model/runtime plumbing;
+- both obvious front doors are named;
+- merely exploring the page performs no action;
+- release control remains held until a truthful public target exists.
 
 ### Residual risk
-
-The fastest trustworthy future path is a signed, versioned, double-click build
-that consumes the existing initializer and receipts. That is a later distribution
-successor, not a reason for this page to mislabel source setup today.
+A future signed/double-click distribution surface remains a separate successor,
+not a reason to mislabel source-local routes today.
 
 # Cross-lens acceptance matrix
 
-| Proof | Designer | Fresh | Human | AI/semantic | Non-tech | Technical | Quick companion |
+| Proof | Designer | Fresh | Human | AI | Non-tech | Technical | Quick |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Five chapters preserve all 13 stages | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| EN/JA/ZH exact catalog parity | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Five chapters preserve 13 stages | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| EN/JA/ZH exact parity | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Windows + Mac current truth | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Desktop + mobile render | ✓ | ✓ | ✓ |  | ✓ | ✓ | ✓ |
-| No horizontal overflow | ✓ | ✓ |  |  | ✓ | ✓ | ✓ |
-| Same-origin requests only |  |  | ✓ | ✓ | ✓ | ✓ | ✓ |
-| No download/popup/form/persistence |  | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Current/held/recovery truth visible | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Release button held without target | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Machine-readable practicum receipt |  |  |  | ✓ |  | ✓ |  |
-| Independent rendered review | ✓ | ✓ | ✓ |  | ✓ |  | ✓ |
-| Fresh-human P11 proof |  | ✓ | ✓ |  | ✓ |  | ✓ |
+| Same-origin / zero-effect |  | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Release boundary held truthfully | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Machine-readable practicum |  |  |  | ✓ |  | ✓ |  |
+| Fresh-human P11 |  | ✓ | ✓ |  | ✓ |  | ✓ |
 
-The first nine rows belong to this candidate and its review lifecycle. The last
-row remains later by definition.
+P11 remains later by definition.
 
 # Browser practicum acceptance
 
-The committed practicum is required to run against:
+For every EN/JA/ZH × desktop/mobile case the existing practicum must continue to
+prove: tested origin only, explicit ready/current catalog, non-empty visible
+copy, exact stage/chapter coverage, user-control traversal, held release without
+download, FAQ disclosure, completion, zero downloads/popups/page errors,
+no horizontal overflow, screenshot hash and machine-readable receipt.
+
+Local source proof is not live Pages proof. Live Pages proof is not P11.
+
+# Remaining path after this source candidate
 
 ```text
-LOCAL_EPHEMERAL_SERVER
-or
-EXPLICIT_BASE_URL
-```
-
-For each `en`, `ja`, and `zh` locale at desktop and mobile viewports it must:
-
-1. allow only the tested origin;
-2. wait for the page's explicit ready state;
-3. require `catalogState=CURRENT`;
-4. require all visible localized nodes to be non-empty;
-5. require exact stage order and chapter coverage;
-6. traverse every chapter through user controls;
-7. reveal the held-release explanation without a download;
-8. open FAQ disclosure;
-9. complete the preview;
-10. assert zero downloads and zero popups;
-11. assert zero page console errors;
-12. assert no horizontal document overflow;
-13. capture a screenshot and SHA-256;
-14. write a machine-readable receipt.
-
-A local PASS proves the source candidate in that local environment. A future
-live URL PASS proves the deployed bytes observed at that URL. Neither is fresh
-human P11 evidence.
-
-# Remaining path to a trustworthy public alpha
-
-This source candidate deliberately ends before public effects. The sequence after
-implementation is:
-
-```text
-A. candidate source + deterministic/static/browser evidence
+A. exact currentized source + deterministic/render evidence
 B. fresh claimless Independent Assurance on exact head/tree
-C. distinct lifecycle review on the exact candidate
-D. ordinary owner merge + accepted main/currentness
-E. release-candidate construction from accepted source
-F. exact artifact/checksum/provenance/public-safety/platform evidence
-G. Victor's explicit repository visibility / release / Pages decisions
-H. GitHub Release upload receipt and Pages deployment receipt
-I. logged-out live EN/JA/ZH desktop/mobile practicum
-J. fresh-human P11 establishment, first real exchange, restart and recovery proof
+C. distinct lifecycle/currentness decision
+D. ordinary expected-head merge + post-merge verification
+E. separately governed release/Pages/signing work if and when authorized
+F. logged-out live public proof after actual deployment
+G. fresh-human/fresh-machine P11 under its own owner and consent boundary
 ```
 
-Other-platform local-model parity, native signing/packaging, and future
-community-package ingestion remain independent successors. They should consume
-this distribution grammar rather than widening this page into a mega-owner.
+Repository visibility is already public and is not a future effect in this lane.
+No source-lifecycle completion here creates GitHub Release, Pages, signing or P11
+authority.
 
 # Decision
 
 ```text
-multiLensDisposition=SOURCE_CANDIDATE_READY_FOR_RENDERED_PROOF_AND_INDEPENDENT_REVIEW
+multiLensDisposition=SOURCE_CANDIDATE_READY_FOR_EXACT_GATES_AND_INDEPENDENT_ASSURANCE
 publicReleaseDisposition=HELD
 pagesPublicationDisposition=HELD
-repositoryVisibilityDisposition=HELD
+repositoryVisibilityDisposition=CURRENT_PUBLIC__NO_MUTATION_BY_THIS_LANE
 signedOfficialBuildDisposition=HELD
 freshHumanP11Disposition=HELD
-macosLinuxReleaseQualificationDisposition=HELD
+macosM4ProReleaseQualificationDisposition=SOURCE_LOCAL_RELEASE_QUALIFIED
+windowsNvidiaReleaseQualificationDisposition=SOURCE_LOCAL_RELEASE_QUALIFIED
+linuxAndOtherHardwareQualificationDisposition=HELD_NOT_INHERITED
 communityPackageIngestionDisposition=OUT_OF_SCOPE
 ```
 
-The candidate closes the missing public-journey architecture without pretending
-that source acceptance is public delivery. That separation is the delivery-trust
-feature.
+The feature is the trustworthy composition boundary: make the ordinary path
+understandable while preserving exact owners and refusing to turn adjacent
+success into a stronger claim.
 
 <!-- [VXG RealForever] -->

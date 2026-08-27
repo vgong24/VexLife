@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ae",
+  "files": [
+    {
+      "path": "test/foundation-training-plan.test.mjs",
+      "mode": "100644",
+      "bytes": 24606,
+      "sha256": "e06301301cc087af4aac13c695105348b863200a3d494f5ca9e66ea7c5b0ef27"
+    }
+  ]
+}

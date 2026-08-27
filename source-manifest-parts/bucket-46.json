@@ -5,8 +5,8 @@
     {
       "path": "blueprint/process-factory/processes-conversation-and-interface.json",
       "mode": "100644",
-      "bytes": 13369,
-      "sha256": "5cbd53027131bee81440334bab495ba98804dbd0a40bbad955d019dd75197afe"
+      "bytes": 15173,
+      "sha256": "5b64d62c4990ba7354fd72aee5efed5683e1978f8e9dc276985d2e91a59c4375"
     },
     {
       "path": "scripts/build-admission-check.mjs",
