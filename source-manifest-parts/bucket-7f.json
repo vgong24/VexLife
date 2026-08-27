@@ -11,8 +11,8 @@
     {
       "path": "training/foundation-generation/training-manifest.example.json",
       "mode": "100644",
-      "bytes": 1826,
-      "sha256": "8b07d5a392039de9dc90ddab6893d66495f94b06761bd9f0474e65e04b8cac18"
+      "bytes": 1864,
+      "sha256": "7451b905f893e88c9f515032c6be7fdd711ee0ea692de56bbc67d11ed639ffc1"
     }
   ]
 }

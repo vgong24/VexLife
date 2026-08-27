@@ -5,8 +5,8 @@
     {
       "path": "scripts/foundation-training-plan.mjs",
       "mode": "100644",
-      "bytes": 11854,
-      "sha256": "52edca8585f6aad206a3d39384b0a1c860f284dcfe8121c2cac5faf20b6aa206"
+      "bytes": 13137,
+      "sha256": "e3aec58b836a8712c7f45a627499db9445b27c99fe72023c531b883860e05abf"
     },
     {
       "path": "src/core/concern-watch.mjs",
