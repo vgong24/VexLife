@@ -46,6 +46,7 @@ Machine state is intentionally richer than human presentation:
 ```text
 NOT_ACTIVE
 STANDING_BY
+STARTING
 WORKING
 WAITING
 PAUSE_REQUESTED
@@ -56,16 +57,37 @@ DONE
 NEEDS_ATTENTION
 ```
 
+`STARTING` is the durable run reservation. It is written before a detached supervisor host or payload may be spawned. Only the holder of the exact `launchRef` recorded by that reservation may adopt it and move the worker to `WORKING`. A second launcher therefore cannot pass the runnable boundary merely because the first host has not yet scheduled.
+
 `PAUSE_REQUESTED` is **not** projected as Paused. A running process remains human-visible as Working until a cooperative worker actually yields. This prevents the UI from claiming that compute stopped when it did not.
 
 The generation-1 cooperative yield convention is exit code `75` after the worker observes `VEX_WORKER_CONTROL_PATH` and reaches its own safe checkpoint. A worker that does not implement that contract simply continues until terminal; the supervisor never fakes a frozen process.
+
+## Cross-process single-writer truth
+
+Every lifecycle mutation is serialized through one per-worker mutation lock inside the supervisor boundary. The lock covers the read-current / validate-transition / allocate-generation / write-receipt / move-current-pointer critical section.
+
+```text
+read current
+  -> acquire exact per-worker mutation ownership
+  -> validate expected state / launchRef
+  -> create immutable next-generation receipt with no-clobber semantics
+  -> atomically move current.json
+  -> release mutation ownership
+```
+
+Receipt generation files are created with exclusive no-clobber semantics. A same-name generation collision is a hard failure rather than an overwrite.
+
+The mutation lock is deliberately fail-closed. If a process dies while holding it, later mutation does **not** infer that the lock is stale and delete it automatically. Status remains readable, but further mutation returns an attention condition until an independently qualified recovery path proves the prior owner is gone and reconciles the durable state. This avoids PID folklore or timeout-based ownership theft.
+
+This serialization applies to run reservation, worker-state transitions, control requests, waiting/standby transitions and completion consumption. Two concurrent completion consumers cannot create two `DONE` truths.
 
 ## Quiet Work Pulse
 
 Human projection changes only when meaning changes:
 
 ```text
-WORKING          healthy green + Working
+STARTING/WORKING healthy green + Working
 STANDING_BY      primary blue + Standing by
 WAITING          attention yellow + one bounded reason
 PAUSED           ⏸ + Paused
@@ -98,6 +120,8 @@ machine completion record != human summary
 human summary != second truth source
 ```
 
+Completion materialization itself is exclusive. The first accepted consumer writes `completion.json` and the one `DONE` generation inside the same mutation boundary; a second consumer re-observes `DONE` and is rejected rather than overwriting the record.
+
 ## Persistence and recovery
 
 Each worker gets:
@@ -110,6 +134,7 @@ Each worker gets:
   current.json
   control.json              when a control request exists
   completion.json           only after result consumption
+  .mutation-lock/           only while one lifecycle mutation owns the boundary
   receipts/
   stdout.log
   stderr.log
@@ -119,9 +144,11 @@ Each worker gets:
 
 Receipts are immutable generation files. `current.json` is an atomic pointer containing the exact receipt SHA-256. A missing/malformed/torn pointer fails closed instead of reconstructing a running worker from PID folklore.
 
+The first source stage does not implement automatic stale-lock repair or post-crash process adoption. Those require later host-qualified recovery evidence. A stale mutation lock therefore represents a bounded recovery/attention condition, not permission to start a replacement worker.
+
 ## Detached host
 
-`native-worker-supervisor.mjs start` launches a detached Node host for the worker. The host owns the payload child directly and writes durable lifecycle state. This lets the initiating UI/semantic context return immediately without killing the work.
+`native-worker-supervisor.mjs start` first commits the exact `STARTING` reservation and `launchRef`, then launches a detached Node host carrying that exact launch identity. The host must adopt the same reservation before it can spawn the payload. The host owns the payload child directly and writes durable lifecycle state. This lets the initiating UI/semantic context return immediately without killing the work while preventing duplicate near-simultaneous starts.
 
 The first source stage does not install a native service or auto-start VexCore at boot. Platform service installation and lived host qualification are later effects.
 
