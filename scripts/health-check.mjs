@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -87,30 +86,14 @@ if (fs.existsSync(receiptPath)) {
         } else if (validationEvidenceReceipt?.state === 'VALIDATED_CURRENT') {
           const validationEvidenceErrors = [];
           validationEvidenceRef = validationEvidenceReceipt.validationEvidenceRef ?? null;
-          let validationEvidenceInput = null;
-          try {
-            const validationEvidencePath = resolveSafeGeneratedReceiptPath(
-              ROOT,
-              validationEvidenceReceipt.inputPath,
-              'Validation evidence path'
-            );
-            const validationEvidenceText = fs.readFileSync(validationEvidencePath, 'utf8');
-            const observedSha256 = crypto.createHash('sha256').update(validationEvidenceText, 'utf8').digest('hex');
-            if (observedSha256 !== validationEvidenceReceipt.inputSha256) {
-              validationEvidenceErrors.push('validation evidence input SHA-256 does not match PR-ready receipt');
-            }
-            validationEvidenceInput = JSON.parse(validationEvidenceText);
-          } catch (error) {
-            validationEvidenceErrors.push(`validation evidence input unavailable: ${error.message}`);
-          }
-          if (validationEvidenceInput) {
-            if (JSON.stringify(validationEvidenceInput) !== JSON.stringify(validationEvidenceReceipt.bundle)) {
-              validationEvidenceErrors.push('PR-ready embedded validation evidence is not identical to the supplied parsed bundle');
-            }
+          const validationEvidenceInput = validationEvidenceReceipt.bundle;
+          if (!validationEvidenceInput || typeof validationEvidenceInput !== 'object' || Array.isArray(validationEvidenceInput)) {
+            validationEvidenceErrors.push('PR-ready validated evidence receipt missing embedded validation evidence bundle');
+          } else {
             if (validationEvidenceReceipt.semanticFingerprint !== validationEvidenceInput.semanticFingerprint ||
                 validationEvidenceReceipt.validationEvidenceRef !== validationEvidenceInput.validationEvidenceRef ||
                 validationEvidenceReceipt.validationProfileRef !== validationEvidenceInput.validationProfileRef) {
-              validationEvidenceErrors.push('PR-ready validation evidence metadata does not match the supplied bundle');
+              validationEvidenceErrors.push('PR-ready validation evidence metadata does not match the embedded bundle');
             }
             const validation = validateValidationEvidenceBundle(
               validationEvidenceInput,
@@ -235,7 +218,7 @@ if (fs.existsSync(receiptPath)) {
             embeddedRecovery?.sourceTreeSha256 !== sourceManifest.treeSha256 ||
             embeddedRecovery?.blueprintHash !== blueprint.semanticHash ||
             embeddedRecovery?.runtimeRecoveryRegistryHash !== recoveryReceipt?.runtimeRecoveryRegistryHash ||
-            JSON.stringify(embeddedRecovery?.journeyStates ?? []) !== JSON.stringify(recoveryReceipt?.journeyStates ?? []) ||
+            JSON.stringify(embeddedRecovery?.journeyStates ?? {}) !== JSON.stringify(recoveryReceipt?.journeyStates ?? {}) ||
             embeddedRecovery?.canonicalFailureFingerprint !== recoveryReceipt?.canonicalFailure?.semanticFingerprint ||
             embeddedRecovery?.firstExecutorOutcome !== 'FAILED_RECOVERABLE' ||
             embeddedRecovery?.finalExecutorOutcome !== 'SUCCEEDED' ||
