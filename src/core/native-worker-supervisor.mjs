@@ -318,7 +318,9 @@ function writeRunReceipt(root, launchRef, state, fields, now) {
     if (loaded.receipt.launchRef !== launchRef) {
       fail('NWS_RUN_OWNERSHIP_LOST', 'run launchRef no longer owns worker state', { launchRef, state: loaded.receipt.state, currentLaunchRef: loaded.receipt.launchRef ?? null });
     }
-    return writeReceiptUnlocked(root, loaded.manifest, state, { ...fields, launchRef }, now);
+    const receipt = writeReceiptUnlocked(root, loaded.manifest, state, { ...fields, launchRef }, now);
+    if (['PAUSED', 'CANCELLED'].includes(state) && fs.existsSync(controlPath(root))) fs.rmSync(controlPath(root), { force: true });
+    return receipt;
   }, { now });
 }
 
