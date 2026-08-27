@@ -347,6 +347,32 @@ function markLaunchFailure(root, launchRef, error, now) {
   }, { now });
 }
 
+function markPrePayloadFailure(root, launchRef, error, now) {
+  return withMutationLock(root, 'HOST_PRE_PAYLOAD_FAILURE', () => {
+    const loaded = loadNativeWorker(root);
+    if (loaded.receipt.state !== 'STARTING' || loaded.receipt.launchRef !== launchRef) return null;
+    const terminalEvidence = {
+      exitCode: null,
+      signal: null,
+      cancelRequested: false,
+      pauseRequested: false,
+      payloadStarted: false,
+      stdoutPath: 'stdout.log',
+      stderrPath: 'stderr.log',
+      errorClass: 'SUPERVISOR_HOST_PRE_PAYLOAD_FAILED',
+      errorMessage: String(error?.message ?? error ?? 'unknown supervisor host pre-payload failure').slice(0, MAX_HUMAN_TEXT),
+      terminalObserved: false
+    };
+    const receipt = writeReceiptUnlocked(root, loaded.manifest, 'NEEDS_ATTENTION', {
+      pid: null,
+      waitingReason: 'Supervisor host failed before payload start; no payload ownership was admitted.',
+      terminalEvidence,
+      launchRef
+    }, now);
+    return { receipt, workPulse: projectHumanWorkPulse(receipt) };
+  }, { now });
+}
+
 function spawnReservedPayload(root, launchRef, spawnImpl, { manifest, binding, host, outFd, errFd, now } = {}) {
   return withMutationLock(root, 'SPAWN_PAYLOAD', () => {
     const loaded = assertReservedRun(root, launchRef);
@@ -497,14 +523,18 @@ export async function runPreparedNativeWorker(root, { spawnImpl = spawn, now, po
   const exactLaunchRef = reserved.launchRef;
   const stdoutPath = path.join(root, 'stdout.log');
   const stderrPath = path.join(root, 'stderr.log');
-  const outFd = fs.openSync(stdoutPath, 'a', 0o600);
-  const errFd = fs.openSync(stderrPath, 'a', 0o600);
+  let outFd = null;
+  let errFd = null;
   let spawned;
   try {
+    outFd = fs.openSync(stdoutPath, 'a', 0o600);
+    errFd = fs.openSync(stderrPath, 'a', 0o600);
     spawned = spawnReservedPayload(root, exactLaunchRef, spawnImpl, { manifest, binding, host, outFd, errFd, now });
   } catch (error) {
-    try { fs.closeSync(outFd); } catch {}
-    try { fs.closeSync(errFd); } catch {}
+    if (outFd !== null) try { fs.closeSync(outFd); } catch {}
+    if (errFd !== null) try { fs.closeSync(errFd); } catch {}
+    const durableFailure = markPrePayloadFailure(root, exactLaunchRef, error, now);
+    if (durableFailure) return durableFailure;
     throw error;
   }
   if (!spawned.child) {
