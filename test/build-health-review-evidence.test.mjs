@@ -207,6 +207,14 @@ function parseJsonOutput(result) {
   return JSON.parse(result.stdout);
 }
 
+function isolatedFixtureEnvironment(overrides = {}) {
+  const env = { ...process.env, ...overrides };
+  for (const key of Object.keys(env)) {
+    if (key.startsWith('VEXLIFE_')) delete env[key];
+  }
+  return env;
+}
+
 test('PR-ready and Health consume optional validation evidence without trusting PR-ready blindly', { timeout: 120000 }, () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-review-health-'));
   const repositoryRoot = path.join(workspace, 'repo');
@@ -225,7 +233,8 @@ test('PR-ready and Health consume optional validation evidence without trusting 
     runGit(repositoryRoot, ['remote', 'add', 'origin', 'https://github.com/vgong24/VexLife.git']);
     runGit(repositoryRoot, ['update-ref', 'refs/remotes/origin/main', baseSha]);
 
-    const repository = collectRepositoryEvidence(repositoryRoot);
+    const fixtureEnvironment = isolatedFixtureEnvironment();
+    const repository = collectRepositoryEvidence(repositoryRoot, fixtureEnvironment);
     const gitTreeSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{tree}']);
     assert.equal(repository.git.candidateHeadSha, candidateHeadSha);
     assert.equal(repository.git.candidateTreeSha, gitTreeSha);
@@ -250,7 +259,7 @@ test('PR-ready and Health consume optional validation evidence without trusting 
     fs.mkdirSync(generatedHealth, { recursive: true });
     const fakeNpm = path.join(generatedHealth, 'fake-npm.mjs');
     fs.writeFileSync(fakeNpm, "console.log(JSON.stringify({state:'PASS',currentness:'CURRENT'}));\n", 'utf8');
-    const env = { ...process.env, npm_execpath: fakeNpm };
+    const env = { ...fixtureEnvironment, npm_execpath: fakeNpm };
 
     const evidenceArg = 'generated/health/review-evidence.json';
     const evidencePath = path.join(repositoryRoot, ...evidenceArg.split('/'));
