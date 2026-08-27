@@ -335,15 +335,50 @@ export async function runPreparedNativeWorker(root, { spawnImpl = spawn, now, po
   }, Math.max(50, pollMs));
   timer.unref?.();
 
-  const result = await new Promise((resolve, reject) => {
-    child.once('error', reject);
-    child.once('close', (code, signal) => resolve({ code, signal }));
+  const outcome = await new Promise((resolve) => {
+    let settled = false;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    child.once('error', (error) => settle({ kind: 'error', error }));
+    child.once('close', (code, signal) => settle({ kind: 'close', code, signal }));
   }).finally(() => {
     clearInterval(timer);
     try { fs.closeSync(outFd); } catch {}
     try { fs.closeSync(errFd); } catch {}
   });
 
+  if (outcome.kind === 'error') {
+    const exactPid = Number.isInteger(child.pid) ? child.pid : null;
+    let cleanupAttempted = false;
+    let cleanupSignalSent = false;
+    if (exactPid !== null && typeof child.kill === 'function') {
+      cleanupAttempted = true;
+      try { cleanupSignalSent = child.kill('SIGTERM') !== false; } catch {}
+    }
+    const terminalEvidence = {
+      exitCode: null,
+      signal: null,
+      cancelRequested,
+      pauseRequested,
+      stdoutPath: 'stdout.log',
+      stderrPath: 'stderr.log',
+      errorClass: 'CHILD_PROCESS_ERROR',
+      errorMessage: String(outcome.error?.message ?? outcome.error ?? 'unknown child error').slice(0, MAX_HUMAN_TEXT),
+      terminalObserved: false,
+      cleanupAttempted,
+      cleanupSignalSent
+    };
+    const reason = cleanupSignalSent
+      ? 'Worker emitted an execution error; the exact owned child was asked to stop and requires liveness re-observation.'
+      : 'Worker emitted an execution error; exact child liveness requires attention.';
+    const receipt = writeReceipt(root, manifest, 'NEEDS_ATTENTION', { pid: exactPid, waitingReason: reason, terminalEvidence }, now);
+    return { receipt, workPulse: projectHumanWorkPulse(receipt) };
+  }
+
+  const result = outcome;
   const terminalEvidence = {
     exitCode: Number.isInteger(result.code) ? result.code : null,
     signal: result.signal ?? null,
