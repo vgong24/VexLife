@@ -12,7 +12,7 @@ Project contract, or exact task/relay package supplies a more specific current
 rule, that exact current authority wins.
 
 ```text
-schemaVersion=vexlife.local-operations-cold-start/v2
+schemaVersion=vexlife.local-operations-cold-start/v3
 issueRef=github.issue.vexlife.195
 supersededCarrier=github.pull.vexlife.196
 activeCarrier=github.pull.vexlife.271
@@ -142,9 +142,9 @@ return / wake route
 
 ## 4. Authority is an effect ledger, not a repeated permission ritual
 
-Keep routine authority explicit and current across role transitions and
-provider interruptions. Do not ask Victor to reconfirm an already-current
-routine effect merely because the logical role changed.
+Keep routine authority explicit and current across role transitions and provider
+interruptions. Do not ask Victor to reconfirm an already-current routine effect
+merely because the logical role changed.
 
 Re-ask only when authority is:
 
@@ -197,7 +197,7 @@ DCO_IS_PRE_EFFECT_COMMIT_FORMATION_INVARIANT=true
 UNSIGNED_COMMIT_MUST_BE_PREVENTED_NOT_DISCOVERED_AFTER_A_SOURCE_SEQUENCE=true
 ```
 
-If an immutable PR ancestry contains a bad commit and history rewrite is not
+If immutable PR ancestry contains a bad commit and history rewrite is not
 allowed, preserve the bad carrier as provenance and form a clean successor from
 current accepted source. Do not amend/rebase/force merely to make the UI green.
 
@@ -232,10 +232,37 @@ STALE_GENERATED_BYTES != CURRENT_GENERATED_CLOSURE
 SERIALIZED_GENERATED_WAIT != LANE_TERMINAL
 ```
 
+### Independent candidate/package binding
+
+A relay/package must not prove its own source identity merely by being internally
+self-consistent. Before handoff, independently ground the canonical source and
+bind at least the exact repository/head/tree/path set plus machine-observed Git
+object/content identities. Then recompute the final package digest from the
+actual final package bytes.
+
+Required fail-closed shapes include:
+
+```text
+missing independent source oracle
+repository/head/tree/path-set drift
+valid source identities permuted across paths
+adjacent valid object substituted for one path
+package self-consistency that disagrees with canonical source
+final package digest mismatch
+```
+
+```text
+PACKAGE_DECLARATION != INDEPENDENT_SOURCE_ORACLE
+FINAL_PACKAGE_DIGEST_MUST_BE_RECOMPUTED=true
+```
+
+A binding/harness failure before candidate execution carries
+`candidateFinding=false`; it cannot be promoted into source blame.
+
 ## 7. Select the execution surface before forming executable work
 
-Keep execution surface separate from authority and from evidence interpretation.
-The current Local Operations surface classes are:
+Keep execution surface separate from authority and evidence interpretation. The
+current Local Operations surface classes are:
 
 ```text
 CONNECTOR_DIRECT
@@ -261,7 +288,21 @@ one downloadable ZIP
 The qualified launcher owns package discovery, digest verification, bounded
 extraction, exact task binding, one execution, result validation, result path/hash
 printing, and convenient reveal of the result. Victor does not assemble scripts,
-arguments, Git recovery, or polling logic.
+arguments, Git recovery, or polling logic. The launcher must not mutate the
+human clipboard by default.
+
+Task-specific Windows process mechanics are source-managed. A `.cmd`/`.bat`
+tool is not directly spawned as if it were a native executable and must not
+accept arbitrary shell text. Preserve logical command + typed argv in receipts,
+route physical execution through the current source-managed helper / `ComSpec`
+contract with `shell=false`, and fail closed on prohibited cmd metacharacter or
+expansion shapes. Node/native executable tools remain direct argv execution with
+`shell=false`.
+
+```text
+WINDOWS_HUMAN_POWERSHELL_LAUNCHER != TASK_INTERNAL_CMD_BAT_PROCESS_HELPER
+ARBITRARY_CMD_SHELL_TEXT=false
+```
 
 ### macOS human transport
 
@@ -370,12 +411,50 @@ source gates pass
 
 ## 11. Retry, successor, and dependency sequencing
 
-For the **same semantic task**, preserve the task/lane/work/candidate binding and
-rotate attempt-local identity/evidence. Do not create a new task merely because
-an attempt failed.
+For the **same semantic task**, preserve:
 
-A genuinely new semantic task requires a fresh successor identity and exact
-source/authority placement. Never hide a new frontier inside a terminal lane.
+```text
+laneRef
+workRef / taskRef
+candidate/source binding
+branch/claim/path membrane when still current
+authority binding when still current
+first substantive failure
+```
+
+Rotate fresh attempt-local identity/evidence such as:
+
+```text
+attemptRef
+requestRef / correlationRef when attempt-local
+packageRef / transportRef
+independent source receipt when currentness requires it
+```
+
+Do not create a new semantic task merely because an attempt failed.
+
+A genuinely new semantic task is a successor, not a retry. Automatic bounded
+same-owner successor formation is permitted only when all of these are current:
+
+```text
+same canonical owner
+fresh successor lane/work/task identity
+current authority explicitly covers the successor
+same-or-narrower admitted owner effect class
+exact bounded membrane
+no active or cross-owner conflict
+no protected human decision required
+no material unknowns
+```
+
+Otherwise return to Root/current allocating authority rather than silently
+widening the old lane.
+
+```text
+SAME_SEMANTIC_TASK -> COMPATIBLE_RETRY
+NEW_SEMANTIC_TASK + exact same-owner conditions -> BOUNDED_SUCCESSOR
+OWNER_CHANGE_OR_UNKNOWN_OR_WIDENING -> ROOT_ALLOCATION_REQUIRED
+```
 
 For parallel work, express scheduling causally instead of using vague delay
 language:
@@ -423,7 +502,7 @@ CHANGES_REQUIRED
 BLOCKED_BY_MISSING_EVIDENCE
 ```
 
-Any source-head change makes the prior clearance historical. A Coder-authored
+Any source-head change makes prior clearance historical. A Coder-authored
 self-audit can be useful evidence but is not independent clearance.
 
 If Assurance finds a bounded source defect, return to the same Coder lane,
@@ -468,8 +547,8 @@ provider window closed
 serialized wait reached
 ```
 
-Even merge is not terminal until the required post-merge verification,
-coordination cleanup, and return/wake obligations are complete.
+Even merge is not terminal until required post-merge verification, coordination
+cleanup, and return/wake obligations are complete.
 
 The lane is terminal only when its exact contract says all required effects are
 complete and a durable terminal return records at least:
@@ -514,7 +593,30 @@ A dependent wake grants only currentness/coordination unless the dependent's own
 source authority says otherwise. It does not let one lane mutate another lane's
 source or inherit its semantic proof.
 
-## 16. Victor's role is irreducibly human, not technical state interpreter
+## 16. Exact byte custody and semantic continuity are different
+
+A durable receipt can preserve accepted semantics without preserving exact source
+bytes. Never manufacture byte continuity from memory or from a regenerated
+lookalike.
+
+```text
+receipt exists != source bytes recoverable
+same filename != same artifact
+semantic continuity != byte continuity
+historical hash absent != permission to regenerate old version
+```
+
+If exact required bytes are lost, use only:
+
+```text
+independently verifiable exact-byte recovery
+OR fresh successor source lineage with fresh version/hashes/provenance
+OR exact CAGE
+```
+
+Never regenerate bytes and relabel them as the lost historical version.
+
+## 17. Victor's role is irreducibly human, not technical state interpreter
 
 Victor may be asked to:
 
@@ -539,7 +641,7 @@ repeat already-bound routine permission
 
 Operations owns technical state interpretation and remote observation.
 
-## 17. Cold-start checklist
+## 18. Cold-start checklist
 
 Before mutation, relay delivery, Assurance, lifecycle effect, retry/successor, or
 terminal return, be able to answer `YES` to every applicable item:
@@ -551,17 +653,21 @@ required orientation sources consumed?
 exact current authority covers this effect?
 authored and generated membranes distinct?
 actual Git author + DCO trailer known before commit?
+independent source oracle separate from package under test?
+final package digest recomputed from final bytes?
 execution surface selected before executable handoff?
 Windows exactly one PowerShell command / Mac exactly one Bash command?
+Windows cmd/bat internals use source-managed typed process helper?
 causal evidence bound to exact candidate, not latest?
 failure attributed to the layer that actually executed?
 EDGE continued now; CAGE records exact release predicate?
-same-task retry preserves task identity?
-new semantic successor has fresh identity and source placement?
+same-task retry preserves task identity and rotates attempt identity?
+new semantic successor satisfies exact same-owner conditions or returns to Root?
 Assurance fresh for exact head?
 lifecycle effects individually re-grounded?
 post-merge verification and claim release complete?
 known dependents/parent have been woken/returned?
+byte-continuity claims independently true?
 Victor asked only for irreducible human action?
 hidden Local action remaining is truthfully NONE before terminal return?
 ```
