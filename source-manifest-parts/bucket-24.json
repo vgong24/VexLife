@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 11526,
       "sha256": "3109d7e7075ba5508523704fe15e328d93f4d36cb04fe0e45e2abeec5225c456"
+    },
+    {
+      "path": "test/macos-source-rotation.test.mjs",
+      "mode": "100644",
+      "bytes": 4602,
+      "sha256": "119682c82a425ff88b69c5745bd1024d9157a0c1b9b8c3831cded0b01f41c58e"
     }
   ]
 }

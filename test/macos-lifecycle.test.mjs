@@ -513,8 +513,9 @@ test('MAC09 shell entrypoints delegate to the single Mac lifecycle owner', () =>
   const setup = fs.readFileSync(path.join(ROOT, 'install', 'vexlife-setup.sh'), 'utf8');
   const start = fs.readFileSync(path.join(ROOT, 'start-vexlife.sh'), 'utf8');
   assert.match(setup, /scripts\/macos-lifecycle\.mjs/);
-  assert.match(setup, /--operation auto/);
+  assert.doesNotMatch(setup, /--operation auto/);
   assert.match(start, /scripts\/macos-lifecycle\.mjs/);
+  assert.match(start, /--operation auto/);
   assert.doesNotMatch(start, /serve-browser\.mjs/);
 });
 

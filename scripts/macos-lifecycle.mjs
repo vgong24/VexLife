@@ -325,28 +325,43 @@ function expectedBrowserArgs(repo, home, receipt) {
     '--vexlife-repo', repo
   ];
 }
-export function getOwnedBrowser(home, repo) {
+export function getOwnedBrowser(home, repo, {
+  allowRepoDrift = false,
+  processEvidenceReader = readMacProcessEvidence
+} = {}) {
   const receipt = jsonRead(browserReceiptPath(home));
   if (!receipt || receipt.state !== 'RUNNING') return null;
   if (receipt.schemaVersion !== MAC_BROWSER_RECEIPT_SCHEMA) throw new Error('browser process receipt schema is not current');
-  if (path.resolve(receipt.vexHomePath) !== home || path.resolve(receipt.repoRootPath) !== repo) {
-    throw new Error('browser process receipt Home/repo identity mismatch');
+  if (typeof receipt.vexHomePath !== 'string' || typeof receipt.repoRootPath !== 'string') {
+    throw new Error('browser process receipt Home/repo identity is incomplete');
   }
+  const receiptHome = path.resolve(receipt.vexHomePath);
+  const receiptRepo = path.resolve(receipt.repoRootPath);
+  const currentRepo = path.resolve(repo);
+  if (receiptHome !== home) throw new Error('browser process receipt Home identity mismatch');
+  if (!allowRepoDrift && receiptRepo !== currentRepo) throw new Error('browser process receipt repo identity mismatch');
   const pid = Number(receipt.pid);
-  const evidence = readMacProcessEvidence(pid);
+  const evidence = processEvidenceReader(pid);
   if (!evidence) return null;
   const expectedExecutablePath = path.resolve(receipt.nodeExecutablePath);
-  const expectedArguments = expectedBrowserArgs(repo, home, receipt);
+  const expectedArguments = expectedBrowserArgs(receiptRepo, home, receipt);
   if (!runtimeProcessEvidenceMatches({ processEvidence: evidence, expectedExecutablePath, expectedArguments })) {
     throw new Error('browser receipt PID is active but exact process-instance ownership is not proven');
   }
-  return { pid, receipt, evidence };
+  return {
+    pid,
+    receipt,
+    evidence,
+    receiptRepo,
+    currentRepo,
+    sourceCurrent: receiptRepo === currentRepo
+  };
 }
 export async function stopOwnedBrowser(home, repo) {
   const receiptPath = browserReceiptPath(home);
   const receipt = jsonRead(receiptPath);
   if (!receipt) return { disposition: 'NO_BROWSER_RECEIPT', pid: null };
-  const owned = getOwnedBrowser(home, repo);
+  const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
   if (!owned) {
     if (pidAlive(Number(receipt.pid))) throw new Error('browser receipt PID is active but ownership cannot be proven');
     receipt.state = 'STALE_STOPPED';
@@ -358,7 +373,12 @@ export async function stopOwnedBrowser(home, repo) {
   owned.receipt.state = 'STOPPED_BY_LIFECYCLE';
   owned.receipt.stoppedAtUtc = new Date().toISOString();
   writeJsonAtomic(receiptPath, owned.receipt);
-  return { disposition: 'EXACT_BROWSER_STOPPED', pid: owned.pid };
+  return {
+    disposition: 'EXACT_BROWSER_STOPPED',
+    pid: owned.pid,
+    sourceDisposition: owned.sourceCurrent ? 'CURRENT_SOURCE' : 'PRIOR_EXACT_SOURCE',
+    receiptRepoRootPath: owned.receiptRepo
+  };
 }
 export async function stopOwnedRuntime(home) {
   const model = jsonRead(path.join(home, 'config', 'model.json'));
@@ -478,6 +498,14 @@ export function choicesForLifecycleState(state) {
   if (state === 'EXISTING_DEGRADED_REPAIRABLE') return ['repair', 'rebuild-preserve', 'uninstall-preserve'];
   return [];
 }
+export function assertLifecycleOperationAdmitted(state, operation) {
+  const choices = choicesForLifecycleState(state);
+  if (!choices.includes(operation)) {
+    const admitted = choices.length > 0 ? choices.join(', ') : 'none';
+    throw new Error(`lifecycle operation ${operation} is not admitted for observed state ${state}; admitted operations: ${admitted}`);
+  }
+  return true;
+}
 
 function portOpen(port) {
   return new Promise((resolve) => {
@@ -519,8 +547,62 @@ function bootstrap(home, repo) {
     cwd: repo, accepted: [0, 3]
   });
 }
+export function qualifiedInitializationFromCurrentHome(home, {
+  pidAliveImpl = pidAlive,
+  processEvidenceReader = readMacProcessEvidence
+} = {}) {
+  const root = path.resolve(home);
+  const homeManifest = jsonRead(path.join(root, 'config', 'home.json'));
+  const model = jsonRead(path.join(root, 'config', 'model.json'));
+  const receiptPath = path.join(root, 'recovery', 'vex-initialization-receipt.json');
+  const receipt = jsonRead(receiptPath);
+  if (!homeManifest || !model || !receipt) return null;
+  if (receipt.schemaVersion !== 'vexlife.initialization-receipt/v1' || receipt.state !== 'RUNTIME_QUALIFIED') return null;
+  if (model.schemaVersion !== 'vexlife.model-configuration/v1' || model.state !== 'BOUND_QUALIFIED') return null;
+  if (!receipt.receiptRef || model.qualificationReceiptRef !== receipt.receiptRef) return null;
+  if (!homeManifest.homeRef || receipt.home?.homeIdentityRef !== homeManifest.homeRef) return null;
+  if (!receipt.profileRef || receipt.profileRef !== model.profileRef) return null;
+  if (receipt.endpoint?.origin !== model.endpoint || receipt.endpoint?.requestModel !== model.requestModel) return null;
+
+  const pid = Number(model.runtimePid);
+  if (!Number.isInteger(pid) || pid <= 0 || Number(receipt.runtime?.pid) !== pid || !pidAliveImpl(pid)) return null;
+  if (!model.runtimeExecutablePath || !model.runtimeExecutableSha256 || !Array.isArray(model.runtimeArguments)) return null;
+  const executablePath = path.resolve(model.runtimeExecutablePath);
+  if (!fs.existsSync(executablePath) || !fs.lstatSync(executablePath).isFile()) return null;
+  if (path.resolve(receipt.runtime?.executablePath || '') !== executablePath) return null;
+  if (!Array.isArray(receipt.runtime?.arguments) || JSON.stringify(receipt.runtime.arguments) !== JSON.stringify(model.runtimeArguments)) return null;
+  if (receipt.materialization?.executableSha256 !== model.runtimeExecutableSha256) return null;
+  if (model.runtimeExecutableSha256SourcePinned &&
+      receipt.materialization?.sourcePinnedExecutableSha256 !== model.runtimeExecutableSha256SourcePinned) return null;
+
+  const evidence = processEvidenceReader(pid);
+  if (!evidence || !runtimeProcessEvidenceMatches({
+    processEvidence: evidence,
+    expectedExecutablePath: executablePath,
+    expectedArguments: model.runtimeArguments
+  })) return null;
+  if (sha256(fs.readFileSync(executablePath)) !== model.runtimeExecutableSha256) return null;
+
+  return {
+    schemaVersion: 'vexlife.initialization-result/v1',
+    state: 'RUNTIME_QUALIFIED',
+    profileRef: receipt.profileRef,
+    profileState: receipt.profileState,
+    runtimePid: pid,
+    endpoint: receipt.endpoint.origin,
+    requestModel: receipt.endpoint.requestModel,
+    browserBinding: receipt.browserBinding,
+    receiptPath,
+    reuseDisposition: 'REUSED_CURRENT_QUALIFIED_RUNTIME_RECEIPT'
+  };
+}
 function initialize(home, repo, options) {
-  const argv = [path.join(repo, 'scripts', 'initialize-vex.mjs'), '--home', home, '--yes'];
+  if (!options.candidateProfileRef && !options.candidateAuthorityRef) {
+    const current = qualifiedInitializationFromCurrentHome(home);
+    if (current) return current;
+  }
+  const argv = [path.join(repo, 'scripts', 'initialize-vex.mjs'), '--home', home];
+  if (options.noninteractiveAuthorized === true) argv.push('--yes');
   if (options.candidateProfileRef || options.candidateAuthorityRef) {
     if (!options.candidateProfileRef || !options.candidateAuthorityRef) {
       throw new Error('candidate qualification requires both profile and authority refs');
@@ -535,9 +617,16 @@ async function startBrowser(home, repo, initialization) {
   const browserPort = 18110;
   const receiptPath = browserReceiptPath(home);
   if (await portOpen(browserPort)) {
-    const owned = getOwnedBrowser(home, repo);
+    const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
     if (!owned) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
-    return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
+    if (owned.sourceCurrent) return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
+    const rotation = await stopOwnedBrowser(home, repo);
+    if (await portOpen(browserPort)) {
+      throw new Error('exact prior-source browser stopped but port 18110 remains occupied');
+    }
+    if (rotation.sourceDisposition !== 'PRIOR_EXACT_SOURCE') {
+      throw new Error('browser source rotation did not preserve prior-source ownership classification');
+    }
   }
   const token = crypto.randomUUID().toLowerCase();
   const serverScript = path.join(repo, 'scripts', 'serve-browser.mjs');
@@ -680,13 +769,15 @@ export async function runLifecycle(argv = process.argv.slice(2)) {
   const home = path.resolve(String(args['--home'] || path.join(os.homedir(), '.vexlife')));
   const options = {
     candidateProfileRef: args['--candidate-profile-ref'] ? String(args['--candidate-profile-ref']) : null,
-    candidateAuthorityRef: args['--candidate-authority-ref'] ? String(args['--candidate-authority-ref']) : null
+    candidateAuthorityRef: args['--candidate-authority-ref'] ? String(args['--candidate-authority-ref']) : null,
+    noninteractiveAuthorized: args['--yes'] === true
   };
   const state = classifyMacLifecycleState(home);
   if (operation === 'status') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation, state, choices: choicesForLifecycleState(state) };
   let chosen = operation;
   if (chosen === 'auto') chosen = await promptChoice(state);
   if (chosen === 'quit') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation: 'quit', state: 'USER_STOPPED_NO_EFFECT' };
+  assertLifecycleOperationAdmitted(state, chosen);
   if (chosen === 'start') {
     const started = await runStart(home, repo, options);
     return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation: 'start', state: 'START_OR_RESUME_COMPLETED', priorState: state, started };
