@@ -3,6 +3,12 @@
   "bucketId": "f5",
   "files": [
     {
+      "path": "reference/browser/relationships/app.js",
+      "mode": "100644",
+      "bytes": 6182,
+      "sha256": "39fc4dc9820e4bfe1f5db46592d6b77152bb480a9899e01f4acdd6c07d071a11"
+    },
+    {
       "path": "test/check-result.test.mjs",
       "mode": "100644",
       "bytes": 2127,

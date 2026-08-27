@@ -3,6 +3,12 @@
   "bucketId": "3a",
   "files": [
     {
+      "path": "blueprint/relationships-browser/strings/ja.json",
+      "mode": "100644",
+      "bytes": 4154,
+      "sha256": "1da6fd101f7a106295337b3b2ee8bd0747233eb9d051dc978ff7efe98b373278"
+    },
+    {
       "path": "docs/CAPABILITY-AND-TOOL-ATLAS.md",
       "mode": "100644",
       "bytes": 3445,

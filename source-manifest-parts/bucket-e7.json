@@ -3,6 +3,12 @@
   "bucketId": "e7",
   "files": [
     {
+      "path": "reference/browser/relationships/core.js",
+      "mode": "100644",
+      "bytes": 3093,
+      "sha256": "30a449f1461165a940bc221015dc4b825e245fcf65c5150470e02ccbcba103e2"
+    },
+    {
       "path": "test/release-candidate.test.mjs",
       "mode": "100644",
       "bytes": 9328,

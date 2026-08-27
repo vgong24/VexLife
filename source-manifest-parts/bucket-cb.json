@@ -3,6 +3,12 @@
   "bucketId": "cb",
   "files": [
     {
+      "path": "blueprint/relationships-browser/strings/en.json",
+      "mode": "100644",
+      "bytes": 3815,
+      "sha256": "b125288f3653ba5d18bb586e2c1c5ff8f4a714d286b58de825657b44c37d90ca"
+    },
+    {
       "path": "blueprint/strings/en.json",
       "mode": "100644",
       "bytes": 19966,
