@@ -354,7 +354,7 @@ test('two concurrent result consumers preserve one completion truth and one DONE
   assert.equal(receipts.filter((name) => name.includes('-done.json')).length, 1);
 });
 
-test('STARTING pause and cancel win before payload spawn and preserve truthful terminal state', (t) => {
+test('STARTING pause and cancel win before payload spawn and preserve truthful terminal state', async (t) => {
   for (const action of ['PAUSE', 'CANCEL']) {
     const fixture = rootFixture(t);
     fs.mkdirSync(path.join(fixture.sourceRoot, 'worker'));
@@ -369,8 +369,8 @@ test('STARTING pause and cancel win before payload spawn and preserve truthful t
       assert.equal(controlled.receipt.terminalEvidence.payloadStarted, false);
     }
     let payloadSpawns = 0;
-    assert.throws(
-      () => runPreparedNativeWorker(initial.workerRoot, { launchRef: first.launchRef, spawnImpl: () => { payloadSpawns += 1; return new EventEmitter(); } }),
+    await assert.rejects(
+      runPreparedNativeWorker(initial.workerRoot, { launchRef: first.launchRef, spawnImpl: () => { payloadSpawns += 1; return new EventEmitter(); } }),
       (error) => error instanceof NativeWorkerSupervisorError && error.code === 'NWS_RUN_OWNERSHIP_LOST'
     );
     assert.equal(payloadSpawns, 0);
