@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "77",
+  "files": [
+    {
+      "path": "docs/NATIVE-WORKER-SUPERVISOR.md",
+      "mode": "100644",
+      "bytes": 5417,
+      "sha256": "3e47fd0374ec2846549230cb79b75f7a139c01c1ad0bfc2f98ee6886e99871fe"
+    }
+  ]
+}

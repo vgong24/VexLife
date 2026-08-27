@@ -5,8 +5,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 4205,
-      "sha256": "619dae15c83c748d0c1ecf67973152272fbe9142cd39b2e6cf3edce64509db91"
+      "bytes": 4271,
+      "sha256": "2193e311fd2efea50538d8454b537899e1845764f469d137d792551069d46c77"
     },
     {
       "path": "test/registry.test.mjs",
