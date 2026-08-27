@@ -19,7 +19,7 @@
   "connect": "誰かとつながる",
   "direct": "直接表示の関係",
   "pinned": "固定または最近",
-  "friends": "友だち ({count})",
+  "people": "人 ({count})",
   "groups": "グループ ({count})",
   "invitations": "招待 ({count})",
   "booklet": "関係ブックレットを開く",

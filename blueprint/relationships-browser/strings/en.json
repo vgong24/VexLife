@@ -19,7 +19,7 @@
   "connect": "Connect someone",
   "direct": "Direct relationships",
   "pinned": "Pinned or recent",
-  "friends": "Friends ({count})",
+  "people": "People ({count})",
   "groups": "Groups ({count})",
   "invitations": "Invitations ({count})",
   "booklet": "Open relationship booklet",

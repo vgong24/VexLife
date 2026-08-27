@@ -19,7 +19,7 @@
   "connect": "连接某个人",
   "direct": "直接显示的关系",
   "pinned": "置顶或最近",
-  "friends": "朋友 ({count})",
+  "people": "联系人 ({count})",
   "groups": "群组 ({count})",
   "invitations": "邀请 ({count})",
   "booklet": "打开关系名册",
