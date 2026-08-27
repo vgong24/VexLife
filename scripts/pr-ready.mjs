@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,10 +41,14 @@ const validationEvidencePath = parsedArguments.has('--validation-evidence')
   ? resolveSafeGeneratedReceiptPath(ROOT, parsedArguments.get('--validation-evidence'), 'Validation evidence path')
   : null;
 let validationEvidenceInput = null;
+let validationEvidenceInputText = null;
+let validationEvidenceInputSha256 = null;
 let validationEvidenceInputError = null;
 if (validationEvidencePath) {
   try {
-    validationEvidenceInput = JSON.parse(fs.readFileSync(validationEvidencePath, 'utf8'));
+    validationEvidenceInputText = fs.readFileSync(validationEvidencePath, 'utf8');
+    validationEvidenceInputSha256 = crypto.createHash('sha256').update(validationEvidenceInputText, 'utf8').digest('hex');
+    validationEvidenceInput = JSON.parse(validationEvidenceInputText);
   } catch (error) {
     validationEvidenceInputError = `validation evidence input unavailable: ${error.message}`;
   }
@@ -133,6 +138,7 @@ let validationEvidenceValidation = { ok: true, errors: [] };
 let validationEvidence = {
   state: 'NOT_SUPPLIED',
   inputPath: null,
+  inputSha256: null,
   semanticFingerprint: null,
   validationEvidenceRef: null,
   validationProfileRef: null,
@@ -152,6 +158,7 @@ if (validationEvidencePath) {
   validationEvidence = {
     state: validationEvidenceValidation.ok ? 'VALIDATED_CURRENT' : 'INVALID',
     inputPath: path.relative(ROOT, validationEvidencePath).split(path.sep).join('/'),
+    inputSha256: validationEvidenceInputSha256,
     semanticFingerprint: validationEvidenceInput?.semanticFingerprint ?? null,
     validationEvidenceRef: validationEvidenceInput?.validationEvidenceRef ?? null,
     validationProfileRef: validationEvidenceInput?.validationProfileRef ?? null,
