@@ -57,7 +57,7 @@ export const crossFeatureSuite = Object.freeze({
     const returnEvent = app.navigation.fullJourney().at(-1);
     assert(returnFrame.contextProjection === null, 'LIVED-A B4 contextual surface did not return to Terrain');
     assert(returnFrame.selectedNodeRef === 'terrain.thread.open-conversation', 'LIVED-A B4 Terrain return rewrote semantic current context');
-    assert(returnEvent?.elementRef === 'element.terrain.center-current-context', 'LIVED-A B4 return/center provenance missing');
+    assert(returnEvent?.elementRef === 'element.nav.terrain' && returnEvent.actionRef === 'action.view.select', 'LIVED-A B4 canonical Terrain return provenance missing');
     assert(JSON.stringify(app.navigation.fullJourney().slice(0, preservedPrefix.length)) === JSON.stringify(preservedPrefix), 'LIVED-A B8 historical Journey events were edited');
     checks.push('LIVED-A B2-B8 controls preserve semantic current context, retain exact interaction provenance, promote only explicit terrainNodeRef, and keep Journey append-only');
 

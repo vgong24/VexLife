@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 86096,
       "sha256": "8245c1aa48e54395f83676d78bef754d89f237f868554e1a2f7b29b9ad7d1db2"
+    },
+    {
+      "path": "test/context-return-identity.test.mjs",
+      "mode": "100644",
+      "bytes": 5157,
+      "sha256": "4dd626e0cedd52f67786e27ddcd4fc9fcccf2c497124833602ef6a8b22528a75"
     }
   ]
 }
