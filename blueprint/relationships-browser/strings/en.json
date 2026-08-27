@@ -45,6 +45,7 @@
   "ready": "Ready to preview a local directional relationship.",
   "formed": "Local directional relationship reference previewed. Nothing was sent or persisted.",
   "deliveryTitle": "Connection and delivery truth",
+  "deliveryBody": "Connection, delivery, and semantic acknowledgement stay separate; delivery never proves understanding or relationship meaning.",
   "delivery": "Delivery state",
   "deliveryHeld": "Delivery stays held until invitation, identity, decision, and local reference are valid.",
   "vexTitle": "Vex assistance",

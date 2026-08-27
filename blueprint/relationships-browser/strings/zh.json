@@ -45,6 +45,7 @@
   "ready": "可以预览本地方向关系。",
   "formed": "已预览本地方向关系；未发送或持久化。",
   "deliveryTitle": "连接与送达真相",
+  "deliveryBody": "连接、送达和语义确认彼此独立；送达本身不证明理解或关系含义。",
   "delivery": "送达状态",
   "deliveryHeld": "邀请、身份、决定和本地参考有效前，送达保持暂停。",
   "vexTitle": "Vex 协助",
