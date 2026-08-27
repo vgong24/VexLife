@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -181,4 +182,31 @@ test('source proof worker can run with no repository, Home, Memory, model or net
   const after = fs.readdirSync(sourceRoot, { recursive: true }).sort();
   assert.deepEqual(after, before);
   assert.equal(result.receipt.state, 'WRAPPING_UP');
+});
+
+test('direct child error after WORKING becomes durable NEEDS_ATTENTION instead of false active state', async (t) => {
+  const { prepared: initial } = prepared(t);
+  let killCalls = 0;
+  const fakeChild = new EventEmitter();
+  fakeChild.pid = 4242;
+  fakeChild.kill = (signal) => {
+    assert.equal(signal, 'SIGTERM');
+    killCalls += 1;
+    return true;
+  };
+  const spawnImpl = () => {
+    queueMicrotask(() => fakeChild.emit('error', new Error('synthetic child execution fault')));
+    return fakeChild;
+  };
+  const result = await runPreparedNativeWorker(initial.workerRoot, { spawnImpl, pollMs: 25 });
+  assert.equal(result.receipt.state, 'NEEDS_ATTENTION');
+  assert.equal(result.workPulse.state, 'NEEDS_ATTENTION');
+  assert.equal(result.receipt.pid, 4242);
+  assert.equal(result.receipt.terminalEvidence.errorClass, 'CHILD_PROCESS_ERROR');
+  assert.equal(result.receipt.terminalEvidence.errorMessage, 'synthetic child execution fault');
+  assert.equal(result.receipt.terminalEvidence.terminalObserved, false);
+  assert.equal(result.receipt.terminalEvidence.cleanupAttempted, true);
+  assert.equal(result.receipt.terminalEvidence.cleanupSignalSent, true);
+  assert.equal(killCalls, 1);
+  assert.equal(loadNativeWorker(initial.workerRoot).receipt.state, 'NEEDS_ATTENTION');
 });
