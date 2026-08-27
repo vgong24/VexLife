@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 2170,
       "sha256": "251360fab4c5908cb00574ad4704a97a5b2e79bc00e9119fc32b310c75e43ed4"
+    },
+    {
+      "path": "reference/browser/relationships/app.css",
+      "mode": "100644",
+      "bytes": 3828,
+      "sha256": "78019043e1a0886a07499a7aaf3865ee391ea5450ff25945b214f95d8d891a4e"
     }
   ]
 }
