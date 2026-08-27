@@ -45,7 +45,7 @@ async function main() {
     return;
   }
   if (command === 'host') {
-    print(await runPreparedNativeWorker(workerRoot));
+    print(await runPreparedNativeWorker(workerRoot, { launchRef: required('--launch-ref') }));
     return;
   }
   if (command === 'status') {
