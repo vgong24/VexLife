@@ -70,7 +70,8 @@ function harness({ initialRef = ALPHA_LEAF, failAtCall = null, preferenceRefs = 
       return {
         schemaVersion: receiptSchemas.doors,
         currentRef,
-        availableElementRefs: currentDoors()
+        availableElementRefs: currentDoors(),
+        semanticNavigationPerformed: false
       };
     },
     focusRegisteredElement: (elementRef) => {
@@ -124,7 +125,15 @@ test('S7NC-00 topology exposes only hierarchy-adjacent visible child/up doors an
   ].sort());
 });
 
-test('S7NC-01 cross-branch navigation walks OUT to the LCA then IN with one exact performer call per committed step', async () => {
+test('S7NC-01 initial frame is bound to a synchronized visible door and focus-only preparation performs no movement', () => {
+  const h = harness();
+  assert.equal(h.currentRef(), ALPHA_LEAF);
+  assert.deepEqual(h.performed, []);
+  assert.equal(h.activeFocusRef(), publicLearningUpDoorRef(ALPHA_LEAF, ALPHA_BRANCH));
+  assert.equal(h.continuity.currentFrame().focusElementRefOrNull, publicLearningUpDoorRef(ALPHA_LEAF, ALPHA_BRANCH));
+});
+
+test('S7NC-02 cross-branch navigation walks OUT to the LCA then IN with one exact performer call per committed step', async () => {
   const h = harness();
   const result = await h.continuity.navigateTo(BETA_LEAF, { commandRef: 'command.public-learning.fixture.cross-branch' });
   assert.equal(result.outcomeRef, 'outcome.navigation.committed');
@@ -151,7 +160,7 @@ test('S7NC-01 cross-branch navigation walks OUT to the LCA then IN with one exac
   assert.equal(h.activeFocusRef(), publicLearningUpDoorRef(BETA_LEAF, BETA_BRANCH));
 });
 
-test('S7NC-02 already-present is a no-effect result and never calls the Terrain performer', async () => {
+test('S7NC-03 already-present is a no-effect result and never calls the Terrain performer', async () => {
   const h = harness({ initialRef: BETA_LEAF });
   const result = await h.continuity.navigateTo(BETA_LEAF, { commandRef: 'command.public-learning.fixture.already-present' });
   assert.equal(result.outcomeRef, 'outcome.navigation.already-present');
@@ -160,7 +169,7 @@ test('S7NC-02 already-present is a no-effect result and never calls the Terrain 
   assert.equal(h.currentRef(), BETA_LEAF);
 });
 
-test('S7NC-03 a held performer step stops at the last committed frame and cannot advance presence', async () => {
+test('S7NC-04 a held performer step stops at the last committed frame and cannot advance presence', async () => {
   const h = harness({ failAtCall: 4 });
   const result = await h.continuity.navigateTo(BETA_LEAF, { commandRef: 'command.public-learning.fixture.fail-four' });
   assert.equal(result.outcomeRef, 'outcome.navigation.adapter-failure');
@@ -170,7 +179,7 @@ test('S7NC-03 a held performer step stops at the last committed frame and cannot
   assert.deepEqual(h.performed.map((item) => item.targetRef), [ALPHA_BRANCH, ALPHA, ROOT_REF]);
 });
 
-test('S7NC-04 repeated rapid goals remain serialized rather than racing private Terrain movement', async () => {
+test('S7NC-05 repeated rapid goals remain serialized rather than racing private Terrain movement', async () => {
   const h = harness();
   const first = h.continuity.navigateTo(BETA_LEAF, { commandRef: 'command.public-learning.fixture.serial.first' });
   const second = h.continuity.navigateTo(ALPHA_LEAF, { commandRef: 'command.public-learning.fixture.serial.second' });
@@ -183,7 +192,7 @@ test('S7NC-04 repeated rapid goals remain serialized rather than racing private 
   assert.deepEqual(h.performed.slice(6).map((item) => item.targetRef), [BETA_BRANCH, BETA, ROOT_REF, ALPHA, ALPHA_BRANCH, ALPHA_LEAF]);
 });
 
-test('S7NC-05 fast, slow and reduced-motion preferences never collapse semantic route steps', async () => {
+test('S7NC-06 fast, slow and reduced-motion preferences never collapse semantic route steps', async () => {
   for (const refs of [
     preference('navigation-pacing.vexlife.fast'),
     preference('navigation-pacing.vexlife.slow'),
@@ -197,7 +206,7 @@ test('S7NC-05 fast, slow and reduced-motion preferences never collapse semantic 
   }
 });
 
-test('S7NC-06 source binds canonical Navigation Continuity and never duplicates Terrain transition authority', () => {
+test('S7NC-07 source binds canonical Navigation Continuity and never duplicates Terrain transition authority', () => {
   const helper = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/public-learning-navigation-continuity.js'), 'utf8');
   assert.match(helper, /\.\.\/\.\.\/\.\.\/src\/core\/navigation-continuity\.mjs/u);
   assert.match(helper, /createNavigationContinuitySession/u);

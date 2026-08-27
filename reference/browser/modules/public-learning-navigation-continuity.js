@@ -196,9 +196,13 @@ export function createPublicLearningNavigationContinuity({
       const observedRef = observeCurrentRef();
       const doorReceipt = synchronizeVisibleDoors(observedRef);
       need(doorReceipt?.schemaVersion === REGISTERED_DOORS_RECEIPT_SCHEMA, 'public learning registered-door receipt is invalid');
+      need(doorReceipt.currentRef === observedRef && doorReceipt.semanticNavigationPerformed === false, 'public learning registered-door synchronization must be no-navigation current truth');
       const focusRef = request.transition.focusTargetElementRefOrNull;
       const focusReceipt = focusRef === null ? null : focusRegisteredElement(focusRef);
-      if (focusReceipt !== null) need(focusReceipt?.schemaVersion === FOCUS_RECEIPT_SCHEMA, 'public learning registered-focus receipt is invalid');
+      if (focusReceipt !== null) {
+        need(focusReceipt?.schemaVersion === FOCUS_RECEIPT_SCHEMA, 'public learning registered-focus receipt is invalid');
+        need(focusReceipt.semanticNavigationPerformed === false, 'public learning registered focus cannot perform semantic navigation');
+      }
       const observedPageStateRef = publicLearningPageStateRef(observedRef);
       const exactDoors = sameRefs(doorReceipt.availableElementRefs, request.expectedPageState.availableElementRefs);
       const exactFocus = focusRef === null || (focusReceipt?.focused === true && focusReceipt.elementRef === focusRef);
@@ -222,6 +226,20 @@ export function createPublicLearningNavigationContinuity({
       if (milliseconds > 0) await wait(milliseconds);
     }
   };
+
+  const initialPageState = compiledTopology.pageStateByRef[publicLearningPageStateRef(initialRef)];
+  const initialDoorReceipt = synchronizeVisibleDoors(initialRef);
+  need(initialDoorReceipt?.schemaVersion === REGISTERED_DOORS_RECEIPT_SCHEMA, 'public learning initial registered-door receipt is invalid');
+  need(initialDoorReceipt.currentRef === initialRef && initialDoorReceipt.semanticNavigationPerformed === false, 'public learning initial registered-door synchronization must be no-navigation current truth');
+  need(sameRefs(initialDoorReceipt.availableElementRefs, initialPageState.availableElementRefs), 'public learning initial registered-door set mismatch');
+  need(observeCurrentRef() === initialRef, 'public learning initial Terrain presence mismatch');
+  const initialFocusRef = initialPageState.entryFocusElementRefOrNull;
+  if (initialFocusRef !== null) {
+    const initialFocusReceipt = focusRegisteredElement(initialFocusRef);
+    need(initialFocusReceipt?.schemaVersion === FOCUS_RECEIPT_SCHEMA, 'public learning initial registered-focus receipt is invalid');
+    need(initialFocusReceipt.focused === true && initialFocusReceipt.elementRef === initialFocusRef, 'public learning initial registered focus mismatch');
+    need(initialFocusReceipt.semanticNavigationPerformed === false, 'public learning initial registered focus cannot perform semantic navigation');
+  }
 
   const session = createNavigationContinuitySession({
     registry,

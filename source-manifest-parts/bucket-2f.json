@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/modules/public-learning-navigation-continuity.js",
       "mode": "100644",
-      "bytes": 12283,
-      "sha256": "349c51cb6ca82289d047679a87e09bd289af2979a14bc4332a4d140fd6589015"
+      "bytes": 14017,
+      "sha256": "98dd1cc91f26b88e8d34b0ddbeb55b3e7cd7eb532a7690139456d0c05aded86c"
     },
     {
       "path": "src/core/utils.mjs",
