@@ -128,6 +128,27 @@ function inside(root, candidate, label, code = 'NWS_ROOT_ESCAPE') {
   }
   return target;
 }
+function openOwnedAppendLog(root, name) {
+  const file = inside(root, path.join(root, name), `${name} log`, 'NWS_LOG_INVALID');
+  if (fs.existsSync(file)) {
+    const prior = fs.lstatSync(file);
+    if (prior.isSymbolicLink() || !prior.isFile()) fail('NWS_LOG_INVALID', `${name} must be a regular non-symlink log file`, { file });
+  }
+  const flags = fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_CREAT | Number(fs.constants.O_NOFOLLOW ?? 0);
+  let fd = null;
+  try {
+    fd = fs.openSync(file, flags, 0o600);
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile()) fail('NWS_LOG_INVALID', `${name} opened descriptor is not a regular file`, { file });
+    const real = fs.realpathSync.native(file);
+    if (real !== file) fail('NWS_LOG_INVALID', `${name} resolved outside its canonical worker-root path`, { file, real });
+    return fd;
+  } catch (error) {
+    if (fd !== null) try { fs.closeSync(fd); } catch {}
+    if (error instanceof NativeWorkerSupervisorError) throw error;
+    fail('NWS_LOG_INVALID', `${name} could not be opened as an owned worker log`, { file, cause: error?.message ?? String(error) });
+  }
+}
 function jsonBytes(value) { return Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8'); }
 function writeAtomic(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -603,13 +624,11 @@ export async function runPreparedNativeWorker(root, { spawnImpl = spawn, now, po
   }, { now });
   const { manifest, binding, host } = reserved;
   const exactLaunchRef = reserved.launchRef;
-  const stdoutPath = path.join(root, 'stdout.log');
-  const stderrPath = path.join(root, 'stderr.log');
   let outFd = null;
   let errFd = null;
   try {
-    outFd = fs.openSync(stdoutPath, 'a', 0o600);
-    errFd = fs.openSync(stderrPath, 'a', 0o600);
+    outFd = openOwnedAppendLog(root, 'stdout.log');
+    errFd = openOwnedAppendLog(root, 'stderr.log');
   } catch (error) {
     if (outFd !== null) try { fs.closeSync(outFd); } catch {}
     if (errFd !== null) try { fs.closeSync(errFd); } catch {}
@@ -836,8 +855,8 @@ export function launchDetachedNativeWorkerHost({ workerRoot: root, cliPath, now,
   let supervisorErr = null;
   let child;
   try {
-    supervisorOut = fs.openSync(path.join(root, 'supervisor.log'), 'a', 0o600);
-    supervisorErr = fs.openSync(path.join(root, 'supervisor.err.log'), 'a', 0o600);
+    supervisorOut = openOwnedAppendLog(root, 'supervisor.log');
+    supervisorErr = openOwnedAppendLog(root, 'supervisor.err.log');
     child = spawnImpl(process.execPath, [cli, 'host', '--worker-root', root, '--launch-ref', reserved.launchRef], {
       cwd: reserved.host.sourceRoot,
       detached: true,

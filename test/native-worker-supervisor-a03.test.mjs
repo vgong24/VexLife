@@ -8,6 +8,7 @@ import test from 'node:test';
 import {
   NATIVE_WORKER_BINDING_SCHEMA,
   NATIVE_WORKER_MANIFEST_SCHEMA,
+  launchDetachedNativeWorkerHost,
   loadNativeWorker,
   prepareNativeWorker,
   runPreparedNativeWorker
@@ -48,7 +49,21 @@ function fixture(t) {
     hostRef: 'host.vexlife.a03.synthetic',
     observedAt: '2026-08-27T00:00:00.000Z'
   };
-  return prepareNativeWorker({ runtimeRoot, sourceRoot, manifest, binding });
+  const prepared = prepareNativeWorker({ runtimeRoot, sourceRoot, manifest, binding });
+  return { ...prepared, base };
+}
+
+function symlinkFileOrSkip(t, target, link) {
+  try {
+    fs.symlinkSync(target, link, 'file');
+    return true;
+  } catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error?.code)) {
+      t.skip(`file symlink creation unavailable on this host (${error.code})`);
+      return false;
+    }
+    throw error;
+  }
 }
 
 test('NWS-A03 caught host-side pre-payload setup failure cannot remain human-visible as Working', async (t) => {
@@ -109,6 +124,52 @@ test('NWS-A04 post-spawn state-write failure requests exact cleanup and records 
   assert.equal(current.receipt.state, 'NEEDS_ATTENTION');
   assert.equal(current.workPulse.state, 'NEEDS_ATTENTION');
   assert.ok(receipts.includes('00000004-needs-attention.json'));
+});
+
+test('NWS-A05 payload stdout symlink cannot redirect writes outside the worker root', async (t) => {
+  const prepared = fixture(t);
+  const outside = path.join(prepared.base, 'outside-payload.log');
+  fs.writeFileSync(outside, 'outside-payload-sentinel\n');
+  if (!symlinkFileOrSkip(t, outside, path.join(prepared.workerRoot, 'stdout.log'))) return;
+  let payloadSpawns = 0;
+
+  const result = await runPreparedNativeWorker(prepared.workerRoot, {
+    pollMs: 20,
+    spawnImpl: () => {
+      payloadSpawns += 1;
+      throw new Error('payload must not spawn through a redirected log');
+    }
+  });
+
+  assert.equal(payloadSpawns, 0);
+  assert.equal(result.receipt.state, 'NEEDS_ATTENTION');
+  assert.equal(result.receipt.pid, null);
+  assert.equal(result.receipt.terminalEvidence.payloadStarted, false);
+  assert.equal(result.receipt.terminalEvidence.errorClass, 'SUPERVISOR_HOST_PRE_PAYLOAD_FAILED');
+  assert.equal(fs.readFileSync(outside, 'utf8'), 'outside-payload-sentinel\n');
+});
+
+test('NWS-A05 detached supervisor log symlink cannot redirect writes outside the worker root', (t) => {
+  const prepared = fixture(t);
+  const outside = path.join(prepared.base, 'outside-supervisor.log');
+  fs.writeFileSync(outside, 'outside-supervisor-sentinel\n');
+  if (!symlinkFileOrSkip(t, outside, path.join(prepared.workerRoot, 'supervisor.log'))) return;
+  let hostSpawns = 0;
+
+  const result = launchDetachedNativeWorkerHost({
+    workerRoot: prepared.workerRoot,
+    cliPath: process.execPath,
+    spawnImpl: () => {
+      hostSpawns += 1;
+      return { pid: 8811, unref() {} };
+    }
+  });
+
+  assert.equal(hostSpawns, 0);
+  assert.equal(result.receipt.state, 'NEEDS_ATTENTION');
+  assert.equal(result.receipt.pid, null);
+  assert.equal(result.receipt.terminalEvidence.terminalObserved, false);
+  assert.equal(fs.readFileSync(outside, 'utf8'), 'outside-supervisor-sentinel\n');
 });
 
 // [VXG RealForever]
