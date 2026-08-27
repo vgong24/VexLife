@@ -17,6 +17,7 @@ export const NATIVE_WORKER_STATES = Object.freeze([
   'PAUSE_REQUESTED',
   'PAUSED',
   'CANCEL_REQUESTED',
+  'CANCELLED',
   'WRAPPING_UP',
   'DONE',
   'NEEDS_ATTENTION'
@@ -157,6 +158,11 @@ function pointerPath(root) { return path.join(root, 'current.json'); }
 function controlPath(root) { return path.join(root, 'control.json'); }
 function completionPath(root) { return path.join(root, 'completion.json'); }
 function mutationLockPath(root) { return path.join(root, '.mutation-lock'); }
+function currentControlGeneration(root) {
+  if (!fs.existsSync(controlPath(root))) return 0;
+  const control = readJson(controlPath(root), 'NWS_CONTROL_INVALID');
+  return Number.isSafeInteger(control.generation) && control.generation >= 0 ? control.generation : 0;
+}
 
 function acquireMutationLock(root, operation, { now = () => Date.now(), timeoutMs = MUTATION_LOCK_TIMEOUT_MS } = {}) {
   const lock = mutationLockPath(root);
@@ -286,7 +292,8 @@ function reserveNativeWorkerRun(root, { now } = {}) {
       pid: null,
       waitingReason: null,
       terminalEvidence: null,
-      launchRef
+      launchRef,
+      controlGenerationFloor: currentControlGeneration(root)
     }, now);
     return { launchRef, receipt, workPulse: projectHumanWorkPulse(receipt), manifest: loaded.manifest, binding: loaded.binding, host: loaded.host };
   }, { now });
@@ -338,6 +345,71 @@ function markLaunchFailure(root, launchRef, error, now) {
   }, { now });
 }
 
+function spawnReservedPayload(root, launchRef, spawnImpl, { manifest, binding, host, outFd, errFd, now } = {}) {
+  return withMutationLock(root, 'SPAWN_PAYLOAD', () => {
+    const loaded = assertReservedRun(root, launchRef);
+    let child;
+    try {
+      child = spawnImpl(binding.executablePath, manifest.argv, {
+        cwd: host.workingDirectory,
+        shell: false,
+        detached: false,
+        windowsHide: true,
+        stdio: ['ignore', outFd, errFd],
+        env: childEnvironment(root)
+      });
+    } catch (error) {
+      const terminalEvidence = {
+        exitCode: null,
+        signal: null,
+        cancelRequested: false,
+        pauseRequested: false,
+        payloadStarted: false,
+        stdoutPath: 'stdout.log',
+        stderrPath: 'stderr.log',
+        errorClass: 'PAYLOAD_SPAWN_FAILED',
+        errorMessage: String(error?.message ?? error ?? 'unknown payload spawn failure').slice(0, MAX_HUMAN_TEXT),
+        terminalObserved: false
+      };
+      const receipt = writeReceiptUnlocked(root, loaded.manifest, 'NEEDS_ATTENTION', {
+        pid: null,
+        waitingReason: 'Worker payload could not be started; no payload ownership was admitted.',
+        terminalEvidence,
+        launchRef
+      }, now);
+      return { child: null, receipt, workPulse: projectHumanWorkPulse(receipt) };
+    }
+    if (!child || !Number.isInteger(child.pid)) {
+      const terminalEvidence = {
+        exitCode: null,
+        signal: null,
+        cancelRequested: false,
+        pauseRequested: false,
+        payloadStarted: false,
+        stdoutPath: 'stdout.log',
+        stderrPath: 'stderr.log',
+        errorClass: 'PAYLOAD_SPAWN_FAILED',
+        errorMessage: 'worker spawn did not produce an exact child pid',
+        terminalObserved: false
+      };
+      const receipt = writeReceiptUnlocked(root, loaded.manifest, 'NEEDS_ATTENTION', {
+        pid: null,
+        waitingReason: 'Worker payload did not return an exact owned pid.',
+        terminalEvidence,
+        launchRef
+      }, now);
+      return { child: null, receipt, workPulse: projectHumanWorkPulse(receipt) };
+    }
+    const receipt = writeReceiptUnlocked(root, loaded.manifest, 'WORKING', {
+      pid: child.pid,
+      waitingReason: null,
+      terminalEvidence: null,
+      launchRef
+    }, now);
+    return { child, receipt, workPulse: projectHumanWorkPulse(receipt) };
+  }, { now });
+}
+
 export function projectHumanWorkPulse(receipt, completion = null) {
   requireObject(receipt, 'receipt', 'NWS_STATE_INVALID');
   const reason = typeof receipt.waitingReason === 'string' ? receipt.waitingReason : null;
@@ -349,6 +421,7 @@ export function projectHumanWorkPulse(receipt, completion = null) {
     case 'STANDING_BY': return Object.freeze({ state: 'STANDING_BY', symbol: '●', colorToken: 'accent.primary', label: 'Standing by', detail: null, summary: null });
     case 'WAITING': return Object.freeze({ state: 'WAITING', symbol: '●', colorToken: 'status.attention', label: 'Waiting', detail: reason, summary: null });
     case 'PAUSED': return Object.freeze({ state: 'PAUSED', symbol: '⏸', colorToken: null, label: 'Paused', detail: null, summary: null });
+    case 'CANCELLED': return Object.freeze({ state: 'CANCELLED', symbol: '×', colorToken: null, label: 'Cancelled', detail: reason ?? 'Stopped by request.', summary: null });
     case 'WRAPPING_UP': return Object.freeze({ state: 'WRAPPING_UP', symbol: '…', colorToken: 'accent.primary', label: 'Wrapping up', detail: 'Worker returned; result has not been consumed yet.', summary: null });
     case 'DONE': return Object.freeze({ state: 'DONE', symbol: '✓', colorToken: 'status.healthy', label: 'Done', detail: null, summary });
     case 'NEEDS_ATTENTION': return Object.freeze({ state: 'NEEDS_ATTENTION', symbol: '!', colorToken: 'status.blocked', label: 'Needs attention', detail: reason, summary: null });
@@ -424,55 +497,39 @@ export async function runPreparedNativeWorker(root, { spawnImpl = spawn, now, po
   const stderrPath = path.join(root, 'stderr.log');
   const outFd = fs.openSync(stdoutPath, 'a', 0o600);
   const errFd = fs.openSync(stderrPath, 'a', 0o600);
-  let child;
+  let spawned;
   try {
-    child = spawnImpl(binding.executablePath, manifest.argv, {
-      cwd: host.workingDirectory,
-      shell: false,
-      detached: false,
-      windowsHide: true,
-      stdio: ['ignore', outFd, errFd],
-      env: childEnvironment(root)
-    });
+    spawned = spawnReservedPayload(root, exactLaunchRef, spawnImpl, { manifest, binding, host, outFd, errFd, now });
   } catch (error) {
-    try { fs.closeSync(outFd); } catch {}
-    try { fs.closeSync(errFd); } catch {}
-    return markLaunchFailure(root, exactLaunchRef, error, now);
-  }
-  if (!child || !Number.isInteger(child.pid)) {
-    try { fs.closeSync(outFd); } catch {}
-    try { fs.closeSync(errFd); } catch {}
-    return markLaunchFailure(root, exactLaunchRef, new Error('worker spawn did not produce an exact child pid'), now);
-  }
-  try {
-    writeRunReceipt(root, exactLaunchRef, 'WORKING', { pid: child.pid, waitingReason: null, terminalEvidence: null }, now);
-  } catch (error) {
-    try { child.kill('SIGTERM'); } catch {}
     try { fs.closeSync(outFd); } catch {}
     try { fs.closeSync(errFd); } catch {}
     throw error;
   }
-  let controlGeneration = 0;
+  if (!spawned.child) {
+    try { fs.closeSync(outFd); } catch {}
+    try { fs.closeSync(errFd); } catch {}
+    return { receipt: spawned.receipt, workPulse: spawned.workPulse };
+  }
+  const child = spawned.child;
+  let controlGeneration = Number.isSafeInteger(reserved.receipt.controlGenerationFloor) ? reserved.receipt.controlGenerationFloor : 0;
   let cancelRequested = false;
   let pauseRequested = false;
-  const timer = setInterval(() => {
+  const observeControl = () => {
     if (!fs.existsSync(controlPath(root))) return;
     let control;
     try { control = readJson(controlPath(root), 'NWS_CONTROL_INVALID'); }
     catch { return; }
     if (!Number.isSafeInteger(control.generation) || control.generation <= controlGeneration || !CONTROL_ACTIONS.includes(control.action)) return;
     try {
+      const loaded = loadNativeWorker(root);
+      if (loaded.receipt.launchRef !== exactLaunchRef) return;
       if (control.action === 'PAUSE' && manifest.pauseMode === 'CHECKPOINT_BOUND_COOPERATIVE') {
-        const loaded = loadNativeWorker(root);
-        if (loaded.receipt.launchRef !== exactLaunchRef) return;
         if (loaded.receipt.state === 'WORKING') {
           writeRunReceipt(root, exactLaunchRef, 'PAUSE_REQUESTED', { pid: child.pid, waitingReason: 'cooperative worker checkpoint', terminalEvidence: null }, now);
         }
         pauseRequested = true;
       }
       if (control.action === 'CANCEL') {
-        const loaded = loadNativeWorker(root);
-        if (loaded.receipt.launchRef !== exactLaunchRef) return;
         if (['WORKING', 'PAUSE_REQUESTED'].includes(loaded.receipt.state)) {
           writeRunReceipt(root, exactLaunchRef, 'CANCEL_REQUESTED', { pid: child.pid, waitingReason: 'exact owned worker shutdown', terminalEvidence: null }, now);
         }
@@ -483,7 +540,9 @@ export async function runPreparedNativeWorker(root, { spawnImpl = spawn, now, po
     } catch (error) {
       if (error?.code !== 'NWS_MUTATION_LOCKED') throw error;
     }
-  }, Math.max(50, pollMs));
+  };
+  observeControl();
+  const timer = setInterval(observeControl, Math.max(50, pollMs));
   timer.unref?.();
 
   const outcome = await new Promise((resolve) => {
@@ -514,6 +573,7 @@ export async function runPreparedNativeWorker(root, { spawnImpl = spawn, now, po
       signal: null,
       cancelRequested,
       pauseRequested,
+      payloadStarted: true,
       stdoutPath: 'stdout.log',
       stderrPath: 'stderr.log',
       errorClass: 'CHILD_PROCESS_ERROR',
@@ -535,9 +595,15 @@ export async function runPreparedNativeWorker(root, { spawnImpl = spawn, now, po
     signal: result.signal ?? null,
     cancelRequested,
     pauseRequested,
+    payloadStarted: true,
+    stopReason: cancelRequested ? 'HUMAN_CANCEL_REQUEST' : null,
     stdoutPath: 'stdout.log',
     stderrPath: 'stderr.log'
   };
+  if (cancelRequested) {
+    const receipt = writeRunReceipt(root, exactLaunchRef, 'CANCELLED', { pid: null, waitingReason: 'Stopped by request.', terminalEvidence }, now);
+    return { receipt, workPulse: projectHumanWorkPulse(receipt) };
+  }
   if (pauseRequested && result.code === 75) {
     const receipt = writeRunReceipt(root, exactLaunchRef, 'PAUSED', { pid: null, waitingReason: null, terminalEvidence }, now);
     return { receipt, workPulse: projectHumanWorkPulse(receipt) };
@@ -546,7 +612,7 @@ export async function runPreparedNativeWorker(root, { spawnImpl = spawn, now, po
     const receipt = writeRunReceipt(root, exactLaunchRef, 'WRAPPING_UP', { pid: null, waitingReason: null, terminalEvidence }, now);
     return { receipt, workPulse: projectHumanWorkPulse(receipt) };
   }
-  const reason = cancelRequested ? 'Worker stopped after an exact cancellation request.' : `Worker exited before successful terminal return (code=${result.code ?? 'null'}, signal=${result.signal ?? 'null'}).`;
+  const reason = `Worker exited before successful terminal return (code=${result.code ?? 'null'}, signal=${result.signal ?? 'null'}).`;
   const receipt = writeRunReceipt(root, exactLaunchRef, 'NEEDS_ATTENTION', { pid: null, waitingReason: reason, terminalEvidence }, now);
   return { receipt, workPulse: projectHumanWorkPulse(receipt) };
 }
@@ -561,9 +627,37 @@ export function requestNativeWorkerControl(root, action, { now } = {}) {
         const receipt = writeReceiptUnlocked(root, loaded.manifest, 'PAUSED', { pid: null, waitingReason: null, terminalEvidence: null }, now);
         return { receipt, workPulse: projectHumanWorkPulse(receipt) };
       }
-      if (!['STARTING', 'WORKING', 'PAUSE_REQUESTED'].includes(loaded.receipt.state)) fail('NWS_NOT_PAUSABLE', `worker cannot request pause from ${loaded.receipt.state}`);
+      if (loaded.receipt.state === 'STARTING') {
+        const receipt = writeReceiptUnlocked(root, loaded.manifest, 'PAUSED', {
+          pid: null,
+          waitingReason: null,
+          terminalEvidence: { exitCode: null, signal: null, cancelRequested: false, pauseRequested: true, payloadStarted: false, terminalObserved: true },
+          launchRef: loaded.receipt.launchRef
+        }, now);
+        return { receipt, workPulse: projectHumanWorkPulse(receipt) };
+      }
+      if (!['WORKING', 'PAUSE_REQUESTED'].includes(loaded.receipt.state)) fail('NWS_NOT_PAUSABLE', `worker cannot request pause from ${loaded.receipt.state}`);
     }
-    if (action === 'CANCEL' && !['STARTING', 'WORKING', 'PAUSE_REQUESTED'].includes(loaded.receipt.state)) fail('NWS_NOT_CANCELLABLE', `worker cannot cancel from ${loaded.receipt.state}`);
+    if (action === 'CANCEL') {
+      if (loaded.receipt.state === 'STARTING') {
+        const receipt = writeReceiptUnlocked(root, loaded.manifest, 'CANCELLED', {
+          pid: null,
+          waitingReason: 'Stopped by request before payload start.',
+          terminalEvidence: {
+            exitCode: null,
+            signal: null,
+            cancelRequested: true,
+            pauseRequested: false,
+            payloadStarted: false,
+            stopReason: 'HUMAN_CANCEL_REQUEST',
+            terminalObserved: true
+          },
+          launchRef: loaded.receipt.launchRef
+        }, now);
+        return { receipt, workPulse: projectHumanWorkPulse(receipt) };
+      }
+      if (!['WORKING', 'PAUSE_REQUESTED'].includes(loaded.receipt.state)) fail('NWS_NOT_CANCELLABLE', `worker cannot cancel from ${loaded.receipt.state}`);
+    }
     const prior = fs.existsSync(controlPath(root)) ? readJson(controlPath(root), 'NWS_CONTROL_INVALID') : { generation: 0 };
     const control = { schemaVersion: 'vexlife.native-worker-control/v1', workerRef: loaded.manifest.workerRef, generation: Number(prior.generation ?? 0) + 1, action, requestedAt: nowIso(now) };
     writeAtomic(controlPath(root), control);
