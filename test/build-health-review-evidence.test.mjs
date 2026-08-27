@@ -215,6 +215,20 @@ function isolatedFixtureEnvironment(overrides = {}) {
   return env;
 }
 
+function withIsolatedFixtureProcessEnvironment(callback) {
+  const saved = new Map();
+  for (const key of Object.keys(process.env)) {
+    if (!key.startsWith('VEXLIFE_')) continue;
+    saved.set(key, process.env[key]);
+    delete process.env[key];
+  }
+  try {
+    return callback();
+  } finally {
+    for (const [key, value] of saved) process.env[key] = value;
+  }
+}
+
 test('PR-ready and Health consume optional validation evidence without trusting PR-ready blindly', { timeout: 120000 }, () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-review-health-'));
   const repositoryRoot = path.join(workspace, 'repo');
@@ -251,9 +265,11 @@ test('PR-ready and Health consume optional validation evidence without trusting 
       sourceTreeSha256: source.treeSha256
     };
 
-    runSchedulerSimulation({ root: repositoryRoot, writeReceipt: true });
-    runContinuityEvolutionSimulation({ root: repositoryRoot, writeReceipt: true });
-    runRecoverySimulation({ root: repositoryRoot, writeReceipt: true });
+    withIsolatedFixtureProcessEnvironment(() => {
+      runSchedulerSimulation({ root: repositoryRoot, writeReceipt: true });
+      runContinuityEvolutionSimulation({ root: repositoryRoot, writeReceipt: true });
+      runRecoverySimulation({ root: repositoryRoot, writeReceipt: true });
+    });
 
     const generatedHealth = path.join(repositoryRoot, 'generated', 'health');
     fs.mkdirSync(generatedHealth, { recursive: true });
