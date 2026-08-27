@@ -162,6 +162,35 @@ export function createPublicLearningNavigationContinuity({
     async performTransition(request) {
       const targetRef = request.expectedPageState.resourceRefs[0];
       const direction = request.transition.actionRef === ACTION_RETURN_REF ? 'out' : 'in';
+      const fromPageState = compiledTopology.pageStateByRef[request.fromFrame.pageStateRef];
+      const fromRef = fromPageState?.resourceRefs?.[0] ?? null;
+      const preflightObservedRef = observeCurrentRef();
+      const preflightDoorReceipt = synchronizeVisibleDoors(preflightObservedRef);
+      const preflightDoors = Array.isArray(preflightDoorReceipt?.availableElementRefs)
+        ? [...preflightDoorReceipt.availableElementRefs]
+        : [];
+      const preflightCurrent = preflightDoorReceipt?.schemaVersion === REGISTERED_DOORS_RECEIPT_SCHEMA
+        && preflightDoorReceipt.currentRef === preflightObservedRef
+        && preflightDoorReceipt.semanticNavigationPerformed === false
+        && preflightObservedRef === fromRef
+        && sameRefs(preflightDoors, request.fromFrame.availableElementRefs)
+        && preflightDoors.includes(request.transition.viaElementRef);
+      if (!preflightCurrent) {
+        return {
+          schemaVersion: ADAPTER_RESULT_SCHEMA,
+          adapterResultRef: `adapter-result.public-learning.preflight-held.${stablePart(request.commandRef)}.${request.stepIndex}`,
+          observedPageStateRef: typeof preflightObservedRef === 'string'
+            ? publicLearningPageStateRef(preflightObservedRef)
+            : request.fromFrame.pageStateRef,
+          observedFocusElementRefOrNull: null,
+          observedAvailableElementRefs: preflightDoors,
+          semanticSettled: false,
+          captureRefs: [],
+          continuityEventRefs: [],
+          failureRefOrNull: `failure.public-learning.preflight-door-currentness.${request.stepIndex}`
+        };
+      }
+
       let performed = false;
       try {
         performed = await performTerrainTravel(targetRef, direction);

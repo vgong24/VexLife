@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 78067,
       "sha256": "ba91df3401fd1206da519da419e488b8f33411e754c00bd1e9a93dd75ac39762"
+    },
+    {
+      "path": "test/public-learning-navigation-preflight.test.mjs",
+      "mode": "100644",
+      "bytes": 3779,
+      "sha256": "c8c866cdc1fa32e5abf81104025fcdb94170120c3750aefa949654c605311024"
     }
   ]
 }
