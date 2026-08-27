@@ -17,8 +17,8 @@
     {
       "path": "test/native-worker-supervisor.test.mjs",
       "mode": "100644",
-      "bytes": 15890,
-      "sha256": "e8254fd21a7688134f6738f640d03d6480dfa5cea3d3679ca1c026b9cac27e6c"
+      "bytes": 20542,
+      "sha256": "62a50643bf2254d01c8f77d33dbd0fcda6bc0ccfae65766c0741f5f81288862a"
     }
   ]
 }
