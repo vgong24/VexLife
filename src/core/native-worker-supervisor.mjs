@@ -283,6 +283,42 @@ function writeReceiptUnlocked(root, manifest, state, fields = {}, now = () => Da
   return receipt;
 }
 
+function writeRecoveryReceiptUnlocked(root, manifest, state, fields = {}, now = () => Date.now()) {
+  if (!NATIVE_WORKER_STATES.includes(state)) fail('NWS_STATE_INVALID', `unknown worker state ${state}`);
+  let highestGeneration = fs.existsSync(pointerPath(root)) ? readPointer(root).generation : 0;
+  for (const name of fs.readdirSync(receiptDir(root))) {
+    const match = /^(\d+)-[a-z0-9-]+\.json$/u.exec(name);
+    if (!match) continue;
+    const generation = Number(match[1]);
+    if (!Number.isSafeInteger(generation) || generation < 1) fail('NWS_STATE_CORRUPT', 'receipt generation filename is invalid', { name });
+    highestGeneration = Math.max(highestGeneration, generation);
+  }
+  const generation = highestGeneration + 1;
+  if (!Number.isSafeInteger(generation)) fail('NWS_STATE_CORRUPT', 'recovery receipt generation overflow');
+  const receipt = {
+    schemaVersion: NATIVE_WORKER_RECEIPT_SCHEMA,
+    workerRef: manifest.workerRef,
+    workRef: manifest.workRef,
+    purposeRef: manifest.purposeRef,
+    generation,
+    state,
+    observedAt: nowIso(now),
+    ...fields
+  };
+  const name = `${String(generation).padStart(8, '0')}-${state.toLowerCase().replaceAll('_', '-')}.json`;
+  const file = path.join(receiptDir(root), name);
+  writeExclusive(file, receipt, 'NWS_RECEIPT_COLLISION');
+  const bytes = fs.readFileSync(file);
+  writeAtomic(pointerPath(root), {
+    schemaVersion: 'vexlife.native-worker-current/v1',
+    workerRef: manifest.workerRef,
+    generation,
+    receiptFile: name,
+    receiptSha256: sha256Bytes(bytes)
+  });
+  return receipt;
+}
+
 function reserveNativeWorkerRun(root, { now } = {}) {
   return withMutationLock(root, 'RESERVE_RUN', () => {
     const loaded = loadNativeWorker(root);
@@ -428,13 +464,59 @@ function spawnReservedPayload(root, launchRef, spawnImpl, { manifest, binding, h
       }, now);
       return { child: null, receipt, workPulse: projectHumanWorkPulse(receipt) };
     }
-    const receipt = writeReceiptUnlocked(root, loaded.manifest, 'WORKING', {
-      pid: child.pid,
-      waitingReason: null,
-      terminalEvidence: null,
-      launchRef
-    }, now);
-    return { child, receipt, workPulse: projectHumanWorkPulse(receipt) };
+    try {
+      const receipt = writeReceiptUnlocked(root, loaded.manifest, 'WORKING', {
+        pid: child.pid,
+        waitingReason: null,
+        terminalEvidence: null,
+        launchRef
+      }, now);
+      return { child, receipt, workPulse: projectHumanWorkPulse(receipt) };
+    } catch (error) {
+      let cleanupAttempted = false;
+      let cleanupSignalSent = false;
+      if (typeof child.kill === 'function') {
+        cleanupAttempted = true;
+        try { cleanupSignalSent = child.kill('SIGTERM') !== false; } catch {}
+      }
+      const terminalEvidence = {
+        exitCode: null,
+        signal: null,
+        cancelRequested: false,
+        pauseRequested: false,
+        payloadStarted: true,
+        stdoutPath: 'stdout.log',
+        stderrPath: 'stderr.log',
+        errorClass: 'WORKING_STATE_PERSIST_FAILED',
+        errorMessage: String(error?.message ?? error ?? 'unknown WORKING state persistence failure').slice(0, MAX_HUMAN_TEXT),
+        statePersistenceErrorCode: typeof error?.code === 'string' ? error.code : null,
+        terminalObserved: false,
+        cleanupAttempted,
+        cleanupSignalSent
+      };
+      const waitingReason = cleanupSignalSent
+        ? 'Worker payload started, but WORKING state could not be persisted; the exact child was asked to stop and requires liveness re-observation.'
+        : 'Worker payload started, but WORKING state could not be persisted; exact child liveness requires attention.';
+      try {
+        const receipt = writeRecoveryReceiptUnlocked(root, loaded.manifest, 'NEEDS_ATTENTION', {
+          pid: child.pid,
+          waitingReason,
+          terminalEvidence,
+          launchRef
+        }, now);
+        return { child: null, receipt, workPulse: projectHumanWorkPulse(receipt) };
+      } catch (recoveryError) {
+        if (error instanceof NativeWorkerSupervisorError) {
+          error.details = {
+            ...(error.details ?? {}),
+            postSpawnCleanup: { pid: child.pid, cleanupAttempted, cleanupSignalSent },
+            recoveryErrorCode: typeof recoveryError?.code === 'string' ? recoveryError.code : null,
+            recoveryErrorMessage: String(recoveryError?.message ?? recoveryError ?? 'unknown recovery state persistence failure').slice(0, MAX_HUMAN_TEXT)
+          };
+        }
+        throw error;
+      }
+    }
   }, { now });
 }
 

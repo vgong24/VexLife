@@ -69,30 +69,46 @@ test('NWS-A03 caught host-side pre-payload setup failure cannot remain human-vis
   assert.notEqual(current.workPulse.state, 'WORKING');
 });
 
-test('NWS-A03 post-spawn state-write failure is never mislabeled as no-payload setup failure', async (t) => {
+test('NWS-A04 post-spawn state-write failure requests exact cleanup and records collision-safe attention', async (t) => {
   const prepared = fixture(t);
   const collision = path.join(prepared.workerRoot, 'receipts', '00000003-working.json');
   let payloadSpawns = 0;
+  let killCalls = 0;
 
-  await assert.rejects(
-    runPreparedNativeWorker(prepared.workerRoot, {
-      pollMs: 20,
-      spawnImpl: () => {
-        payloadSpawns += 1;
-        fs.writeFileSync(collision, '{}\n', { flag: 'wx' });
-        const child = new EventEmitter();
-        child.pid = 7711;
-        return child;
-      }
-    }),
-    (error) => error?.code === 'NWS_RECEIPT_COLLISION'
-  );
+  const result = await runPreparedNativeWorker(prepared.workerRoot, {
+    pollMs: 20,
+    spawnImpl: () => {
+      payloadSpawns += 1;
+      fs.writeFileSync(collision, '{}\n', { flag: 'wx' });
+      const child = new EventEmitter();
+      child.pid = 7711;
+      child.kill = (signal) => {
+        assert.equal(signal, 'SIGTERM');
+        killCalls += 1;
+        return true;
+      };
+      return child;
+    }
+  });
 
   const current = loadNativeWorker(prepared.workerRoot);
-  const receipts = fs.readdirSync(path.join(prepared.workerRoot, 'receipts'));
+  const receipts = fs.readdirSync(path.join(prepared.workerRoot, 'receipts')).sort();
   assert.equal(payloadSpawns, 1);
-  assert.equal(current.receipt.state, 'STARTING');
-  assert.equal(receipts.filter((name) => name.includes('needs-attention')).length, 0);
+  assert.equal(killCalls, 1);
+  assert.equal(fs.readFileSync(collision, 'utf8'), '{}\n', 'colliding immutable generation is never overwritten');
+  assert.equal(result.receipt.state, 'NEEDS_ATTENTION');
+  assert.equal(result.workPulse.state, 'NEEDS_ATTENTION');
+  assert.equal(result.receipt.pid, 7711);
+  assert.equal(result.receipt.generation, 4, 'recovery skips the occupied generation rather than reusing it');
+  assert.equal(result.receipt.terminalEvidence.payloadStarted, true);
+  assert.equal(result.receipt.terminalEvidence.errorClass, 'WORKING_STATE_PERSIST_FAILED');
+  assert.equal(result.receipt.terminalEvidence.statePersistenceErrorCode, 'NWS_RECEIPT_COLLISION');
+  assert.equal(result.receipt.terminalEvidence.cleanupAttempted, true);
+  assert.equal(result.receipt.terminalEvidence.cleanupSignalSent, true);
+  assert.equal(result.receipt.terminalEvidence.terminalObserved, false);
+  assert.equal(current.receipt.state, 'NEEDS_ATTENTION');
+  assert.equal(current.workPulse.state, 'NEEDS_ATTENTION');
+  assert.ok(receipts.includes('00000004-needs-attention.json'));
 });
 
 // [VXG RealForever]
