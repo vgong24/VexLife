@@ -25,12 +25,25 @@ const nodeSemanticHash = (value) => crypto.createHash('sha256')
   .update(JSON.stringify(canonicalize(value)))
   .digest('hex');
 
-function priorSafeRelativePathAcceptance(value) {
-  return Boolean(value)
-    && !path.isAbsolute(value)
-    && !path.win32.isAbsolute(value)
-    && !path.posix.isAbsolute(value)
-    && !value.split(/[\\/]/u).includes('..');
+function priorSafeRelativePathResult(value) {
+  try {
+    if (!value || path.isAbsolute(value) || path.win32.isAbsolute(value) || path.posix.isAbsolute(value) ||
+        value.split(/[\\/]/u).includes('..')) {
+      throw new Error('path must be a safe relative path');
+    }
+    return { ok: true, name: null, code: null, message: null };
+  } catch (error) {
+    return { ok: false, name: error.name, code: error.code ?? null, message: error.message };
+  }
+}
+
+function currentSafeRelativePathResult(value) {
+  try {
+    requireSafeRelativePath(value);
+    return { ok: true, name: null, code: null, message: null };
+  } catch (error) {
+    return { ok: false, name: error.name, code: error.code ?? null, message: error.message };
+  }
 }
 
 function deterministicValues(count = 500) {
@@ -154,12 +167,23 @@ test('NCPORT-05 Node filesystem/path helpers remain synchronous and behavior-com
       'C:/absolute',
       '../escape',
       'a/../escape',
-      ''
+      '',
+      undefined,
+      null,
+      false,
+      0,
+      Number.NaN,
+      1,
+      {},
+      [],
+      Symbol('invalid-path'),
+      () => {}
     ]) {
-      const expected = priorSafeRelativePathAcceptance(candidate);
-      let accepted = true;
-      try { requireSafeRelativePath(candidate); } catch { accepted = false; }
-      assert.equal(accepted, expected, `safe-relative parity: ${JSON.stringify(candidate)}`);
+      assert.deepEqual(
+        currentSafeRelativePathResult(candidate),
+        priorSafeRelativePathResult(candidate),
+        `safe-relative Node parity: ${String(candidate)}`
+      );
     }
     assert.equal(
       resolveSafeGeneratedReceiptPath(root, 'generated/health/proof.json'),
@@ -208,10 +232,29 @@ test('NCPORT-07 real Chromium imports the unmodified Navigation Continuity graph
         return { kind, failedClosed: true, errorName: error.name };
       }
     });
+    const browserPathFailures = [
+      ['undefined', undefined],
+      ['null', null],
+      ['false', false],
+      ['zero', 0],
+      ['number', 1],
+      ['object', {}],
+      ['array', []],
+      ['symbol', Symbol('invalid-path')],
+      ['function', () => {}]
+    ].map(([kind, value]) => {
+      try {
+        utils.requireSafeRelativePath(value);
+        return { kind, accepted: true, errorName: null };
+      } catch (error) {
+        return { kind, accepted: false, errorName: error.name };
+      }
+    });
     return {
       validation,
       vectorHashes: browserVectors.map(({ value }) => utils.semanticHash(value)),
       invalidHashFailures,
+      browserPathFailures,
       browserFileSystemFailure,
       browserSafeRelativePath: utils.requireSafeRelativePath('generated/health/browser-proof.json'),
       exports: ['compileNavigationTopology','createNavigationContinuitySession','planNavigationRoute']
@@ -225,6 +268,17 @@ test('NCPORT-07 real Chromium imports the unmodified Navigation Continuity graph
     { kind: 'undefined', failedClosed: true, errorName: 'TypeError' },
     { kind: 'function', failedClosed: true, errorName: 'TypeError' },
     { kind: 'symbol', failedClosed: true, errorName: 'TypeError' }
+  ]);
+  assert.deepEqual(browserValidation.browserPathFailures, [
+    { kind: 'undefined', accepted: false, errorName: 'Error' },
+    { kind: 'null', accepted: false, errorName: 'Error' },
+    { kind: 'false', accepted: false, errorName: 'Error' },
+    { kind: 'zero', accepted: false, errorName: 'Error' },
+    { kind: 'number', accepted: false, errorName: 'TypeError' },
+    { kind: 'object', accepted: false, errorName: 'TypeError' },
+    { kind: 'array', accepted: false, errorName: 'TypeError' },
+    { kind: 'symbol', accepted: false, errorName: 'TypeError' },
+    { kind: 'function', accepted: false, errorName: 'TypeError' }
   ]);
   assert.match(browserValidation.browserFileSystemFailure, /requires a Node\.js filesystem\/path runtime/u);
   assert.equal(browserValidation.browserSafeRelativePath, 'generated/health/browser-proof.json');

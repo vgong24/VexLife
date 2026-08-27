@@ -125,11 +125,18 @@ export function writeJson(filePath, value) {
 }
 
 export function requireSafeRelativePath(value, label = 'path') {
+  if (!value) throw new Error(`${label} must be a safe relative path`);
+  if (nodePath) {
+    if (nodePath.isAbsolute(value) || nodePath.win32.isAbsolute(value) || nodePath.posix.isAbsolute(value) ||
+        value.split(/[\\/]/u).includes('..')) {
+      throw new Error(`${label} must be a safe relative path`);
+    }
+    return value;
+  }
   if (typeof value !== 'string') throw new TypeError(`${label} must be a string`);
-  const text = value;
-  const posixAbsolute = text.startsWith('/');
-  const win32Absolute = /^[\\/]/u.test(text) || /^[A-Za-z]:[\\/]/u.test(text);
-  if (!text || posixAbsolute || win32Absolute || text.split(/[\\/]/u).includes('..')) {
+  const posixAbsolute = value.startsWith('/');
+  const win32Absolute = /^[\\/]/u.test(value) || /^[A-Za-z]:[\\/]/u.test(value);
+  if (posixAbsolute || win32Absolute || value.split(/[\\/]/u).includes('..')) {
     throw new Error(`${label} must be a safe relative path`);
   }
   return value;
