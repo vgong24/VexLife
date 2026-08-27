@@ -76,6 +76,10 @@
     20,
     100
   ],
+  "syntheticFixtureCounts": {
+    "groups": 2,
+    "invitations": 1
+  },
   "invitation": {
     "methods": [
       "CODE",
