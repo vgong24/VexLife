@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 
 import {
   NativeWorkerSupervisorError,
   consumeNativeWorkerResult,
+  launchDetachedNativeWorkerHost,
   loadNativeWorker,
   markNativeWorkerStandingBy,
   markNativeWorkerWaiting,
@@ -18,6 +21,8 @@ import {
   runPreparedNativeWorker,
   validateNativeWorkerManifest
 } from '../src/core/native-worker-supervisor.mjs';
+
+const MODULE_URL = pathToFileURL(path.resolve('src/core/native-worker-supervisor.mjs')).href;
 
 function sha256File(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -79,6 +84,44 @@ function expectCode(fn, code) {
     assert.equal(error.code, code);
     return true;
   });
+}
+async function waitForFiles(files, timeoutMs = 3000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (files.every((file) => fs.existsSync(file))) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`timed out waiting for ${files.join(', ')}`);
+}
+function spawnBarrierActor({ workerRoot, startFile, readyFile, body, extraEnv = {} }) {
+  const script = `
+    import fs from 'node:fs';
+    const sleep = new Int32Array(new SharedArrayBuffer(4));
+    fs.writeFileSync(process.env.READY_FILE, 'ready');
+    while (!fs.existsSync(process.env.START_FILE)) Atomics.wait(sleep, 0, 0, 5);
+    const m = await import(process.env.MODULE_URL);
+    ${body}
+  `;
+  return spawn(process.execPath, ['--input-type=module', '-e', script], {
+    shell: false,
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      MODULE_URL,
+      WORKER_ROOT: workerRoot,
+      START_FILE: startFile,
+      READY_FILE: readyFile,
+      ...extraEnv
+    }
+  });
+}
+function collectActor(child) {
+  let stdout = '';
+  let stderr = '';
+  child.stdout.on('data', (chunk) => { stdout += chunk; });
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  return new Promise((resolve) => child.once('close', (code, signal) => resolve({ code, signal, stdout, stderr })));
 }
 
 test('closed manifest rejects unknown command/shell-shaped fields', () => {
@@ -209,4 +252,94 @@ test('direct child error after WORKING becomes durable NEEDS_ATTENTION instead o
   assert.equal(result.receipt.terminalEvidence.cleanupSignalSent, true);
   assert.equal(killCalls, 1);
   assert.equal(loadNativeWorker(initial.workerRoot).receipt.state, 'NEEDS_ATTENTION');
+});
+
+test('detached launch reserves STARTING before spawn so a second launch cannot create another host', (t) => {
+  const { prepared: initial } = prepared(t);
+  let spawnCalls = 0;
+  const fakeSpawn = () => ({
+    pid: 5100 + ++spawnCalls,
+    unref() {}
+  });
+  const first = launchDetachedNativeWorkerHost({ workerRoot: initial.workerRoot, cliPath: process.execPath, spawnImpl: fakeSpawn });
+  assert.equal(first.workPulse.state, 'WORKING');
+  assert.equal(loadNativeWorker(initial.workerRoot).receipt.state, 'STARTING');
+  expectCode(() => launchDetachedNativeWorkerHost({ workerRoot: initial.workerRoot, cliPath: process.execPath, spawnImpl: fakeSpawn }), 'NWS_NOT_RUNNABLE');
+  assert.equal(spawnCalls, 1);
+});
+
+test('two concurrent host actors can spawn only one payload and receipt generations remain unique', async (t) => {
+  const { prepared: initial, root } = prepared(t, { argv: ['-e', 'setTimeout(() => process.exit(0), 180)'] });
+  const startFile = path.join(root, 'start-run');
+  const readyA = path.join(root, 'ready-run-a');
+  const readyB = path.join(root, 'ready-run-b');
+  const body = `
+    try {
+      const result = await m.runPreparedNativeWorker(process.env.WORKER_ROOT, { pollMs: 20 });
+      process.stdout.write(result.receipt.state);
+      process.exit(0);
+    } catch (error) {
+      process.stderr.write(String(error.code || error.message));
+      process.exit(error.code === 'NWS_NOT_RUNNABLE' ? 23 : 91);
+    }
+  `;
+  const actorA = spawnBarrierActor({ workerRoot: initial.workerRoot, startFile, readyFile: readyA, body });
+  const actorB = spawnBarrierActor({ workerRoot: initial.workerRoot, startFile, readyFile: readyB, body });
+  const resultA = collectActor(actorA);
+  const resultB = collectActor(actorB);
+  await waitForFiles([readyA, readyB]);
+  fs.writeFileSync(startFile, 'go');
+  const outcomes = await Promise.all([resultA, resultB]);
+  assert.deepEqual(outcomes.map((item) => item.code).sort((a, b) => a - b), [0, 23]);
+  assert.equal(outcomes.filter((item) => item.stdout.includes('WRAPPING_UP')).length, 1);
+  const final = loadNativeWorker(initial.workerRoot);
+  assert.equal(final.receipt.state, 'WRAPPING_UP');
+  const receipts = fs.readdirSync(path.join(initial.workerRoot, 'receipts')).sort();
+  assert.equal(new Set(receipts).size, receipts.length);
+  assert.equal(receipts.filter((name) => name.includes('-starting.json')).length, 1);
+  assert.equal(receipts.filter((name) => name.includes('-working.json')).length, 1);
+  assert.equal(receipts.filter((name) => name.includes('-wrapping-up.json')).length, 1);
+});
+
+test('two concurrent result consumers preserve one completion truth and one DONE generation', async (t) => {
+  const { prepared: initial, root } = prepared(t, { argv: ['-e', 'process.exit(0)'] });
+  await runPreparedNativeWorker(initial.workerRoot, { pollMs: 20 });
+  assert.equal(loadNativeWorker(initial.workerRoot).receipt.state, 'WRAPPING_UP');
+  const startFile = path.join(root, 'start-consume');
+  const readyA = path.join(root, 'ready-consume-a');
+  const readyB = path.join(root, 'ready-consume-b');
+  const actor = (suffix, readyFile) => spawnBarrierActor({
+    workerRoot: initial.workerRoot,
+    startFile,
+    readyFile,
+    extraEnv: { RESULT_REF: `result.vexlife.concurrent.${suffix}` },
+    body: `
+      try {
+        const result = m.consumeNativeWorkerResult(process.env.WORKER_ROOT, {
+          resultRef: process.env.RESULT_REF,
+          machineCompletionRecord: { actor: process.env.RESULT_REF, effectPerformed: false },
+          humanSummary: 'One exact concurrent consumer won the completion boundary.'
+        });
+        process.stdout.write(result.completion.resultRef);
+        process.exit(0);
+      } catch (error) {
+        process.stderr.write(String(error.code || error.message));
+        process.exit(error.code === 'NWS_RESULT_NOT_READY' ? 24 : 92);
+      }
+    `
+  });
+  const actorA = actor('a', readyA);
+  const actorB = actor('b', readyB);
+  const resultA = collectActor(actorA);
+  const resultB = collectActor(actorB);
+  await waitForFiles([readyA, readyB]);
+  fs.writeFileSync(startFile, 'go');
+  const outcomes = await Promise.all([resultA, resultB]);
+  assert.deepEqual(outcomes.map((item) => item.code).sort((a, b) => a - b), [0, 24]);
+  const final = loadNativeWorker(initial.workerRoot);
+  assert.equal(final.receipt.state, 'DONE');
+  assert.ok(['result.vexlife.concurrent.a', 'result.vexlife.concurrent.b'].includes(final.completion.resultRef));
+  assert.equal(outcomes.filter((item) => item.stdout.includes(final.completion.resultRef)).length, 1);
+  const receipts = fs.readdirSync(path.join(initial.workerRoot, 'receipts')).sort();
+  assert.equal(receipts.filter((name) => name.includes('-done.json')).length, 1);
 });
