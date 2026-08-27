@@ -122,7 +122,7 @@ PR_SOURCE_UPLOAD
 
 The repository is already public. This lane neither changes visibility nor uses
 public repository visibility as evidence that Pages, a GitHub Release, or a
-signed build exists.
+signed build exists. Publication and release effects remain held.
 
 ## Permanent non-collapse / held effects
 
