@@ -50,6 +50,7 @@ function fixture() {
     gradientAccumulationSteps: 1,
     precision: 'bf16',
     optimizer: 'adamw',
+    executionDevice: 'CUDA',
     outputDir: 'output/candidate',
     expectedHardwareProfileRef: 'hardware.windows-x64.nvidia.cuda12-compatible',
     rollbackArtifactRef: 'profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001',
@@ -92,6 +93,9 @@ test('G04B partial full-rank plan is admitted only as real-weight-change eligibl
   assert.equal(plan.sourceModelIdentityClass, 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION');
   assert.equal(plan.sourceManifestFingerprint, manifest.sourceManifestFingerprint);
   assert.equal(plan.sourceManifestFingerprintVerified, false);
+  assert.equal(plan.executionDevice, 'CUDA');
+  assert.equal(plan.expectedHardwareProfileRef, 'hardware.windows-x64.nvidia.cuda12-compatible');
+  assert.equal(plan.executionDeviceProfileBound, true);
   assert.match(plan.priorModelIdentity, /^model-source\.vexlife\.sha256\.[0-9a-f]{64}$/u);
 });
 
@@ -159,6 +163,28 @@ test('training manifest cannot carry source-model network authority', t => {
     manifest.modelDownloadAuthorized = modelDownloadAuthorized;
     expectCode(() => validateFoundationTrainingManifest(manifest, {repoRoot: root}), 'G04B_NETWORK_AUTHORITY_COLLAPSE');
   }
+});
+
+test('real training requires an explicit accelerator and has no AUTO or CPU fallback', t => {
+  for (const executionDevice of [undefined, 'AUTO', 'CPU']) {
+    const {root, manifest} = fixture();
+    t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+    if (executionDevice === undefined) delete manifest.executionDevice;
+    else manifest.executionDevice = executionDevice;
+    expectCode(() => validateFoundationTrainingManifest(manifest, {repoRoot: root}), 'G04B_EXECUTION_DEVICE_UNBOUND');
+  }
+});
+
+test('execution device and admitted hardware profile are an exact pair', t => {
+  const {root, manifest} = fixture();
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  manifest.executionDevice = 'MPS';
+  expectCode(() => validateFoundationTrainingManifest(manifest, {repoRoot: root}), 'G04B_HARDWARE_PROFILE_MISMATCH');
+  manifest.expectedHardwareProfileRef = 'hardware.macos-arm64.apple-m4-pro.metal';
+  const plan = validateFoundationTrainingManifest(manifest, {repoRoot: root});
+  assert.equal(plan.executionDevice, 'MPS');
+  assert.equal(plan.expectedHardwareProfileRef, 'hardware.macos-arm64.apple-m4-pro.metal');
+  assert.equal(plan.executionDeviceProfileBound, true);
 });
 
 test('partial full-rank mode requires an explicit nonzero language-block selection', t => {
@@ -239,6 +265,52 @@ test('Python trainer and evaluator reject caller model-download authority before
   assert.match(result.stdout, /NETWORK_AUTHORITY_REJECTED/u);
 });
 
+test('Python trainer and evaluator reject execution-device/profile mismatch before runtime loading', t => {
+  const runtime = pythonRuntime();
+  if (!runtime) {
+    t.skip('Python runtime is not available on this repository validation host');
+    return;
+  }
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-g04b-device-binding-'));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const manifestPath = path.join(root, 'manifest.json');
+  const {root: fixtureRoot, manifest} = fixture();
+  t.after(() => fs.rmSync(fixtureRoot, {recursive: true, force: true}));
+  manifest.executionDevice = 'MPS';
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  const trainSource = path.resolve('training/foundation-generation/foundation_train.py');
+  const evalSource = path.resolve('training/foundation-generation/foundation_evaluate.py');
+  const script = [
+    'import importlib.util, pathlib, sys',
+    'manifest = pathlib.Path(sys.argv[1])',
+    'for index, source in enumerate(sys.argv[2:]):',
+    '    spec = importlib.util.spec_from_file_location(f"g04b_device_{index}", pathlib.Path(source))',
+    '    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)',
+    '    try:',
+    '        mod.load_manifest(manifest)',
+    '    except Exception as exc:',
+    '        if "executionDevice=MPS requires expectedHardwareProfileRef=hardware.macos-arm64.apple-m4-pro.metal" not in str(exc): raise',
+    '    else:',
+    '        raise SystemExit(f"{source} accepted mismatched device/profile")',
+    'print("DEVICE_PROFILE_REJECTED_PRE_RUNTIME")'
+  ].join('\n');
+  const result = spawnSync(runtime.command, [...runtime.prefix, '-c', script, manifestPath, trainSource, evalSource], {
+    encoding: 'utf8',
+    env: {...process.env, PYTHONDONTWRITEBYTECODE: '1'}
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /DEVICE_PROFILE_REJECTED_PRE_RUNTIME/u);
+});
+
+test('trainer source exposes explicit CUDA/MPS observation and no implicit CUDA-to-CPU fallback', () => {
+  const source = fs.readFileSync(path.resolve('training/foundation-generation/foundation_train.py'), 'utf8');
+  assert.match(source, /def observe_execution_device\(/u);
+  assert.match(source, /torch\.device\("mps"\)/u);
+  assert.match(source, /torch\.device\(f"cuda:\{device_index\}"\)/u);
+  assert.doesNotMatch(source, /torch\.device\("cuda" if torch\.cuda\.is_available\(\) else "cpu"\)/u);
+  assert.match(source, /generation-1 real training has no CPU fallback/u);
+});
+
 test('post-optimizer failures preserve effect truth instead of claiming no training occurred', t => {
   const runtime = pythonRuntime();
   if (!runtime) {
@@ -279,7 +351,7 @@ test('post-optimizer failures preserve effect truth instead of claiming no train
   assert.equal(states[4].modelWeightsChanged, false);
 });
 
-test('evaluator rebinds exact candidate bytes and rejects forged genealogy/source binding', t => {
+test('evaluator rebinds exact candidate bytes, genealogy, source and training-host provenance', t => {
   const runtime = pythonRuntime();
   if (!runtime) {
     t.skip('Python runtime is not available on this repository validation host');
@@ -297,15 +369,17 @@ test('evaluator rebinds exact candidate bytes and rejects forged genealogy/sourc
     'source = pathlib.Path(sys.argv[1]); candidate = pathlib.Path(sys.argv[2])',
     'spec = importlib.util.spec_from_file_location("g04b_eval", source)',
     'mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)',
-    'manifest = {"trainingRunRef":"run.test","sourceModelRepo":"Qwen/Qwen3.5-4B","sourceModelRevision":"1"*40,"sourceModelSnapshotFingerprint":"2"*64,"sourceManifestFingerprint":"5"*64,"trainingDatasetSha256":"3"*64,"heldoutDatasetSha256":"4"*64}',
+    'manifest = {"schemaVersion":"vexlife.foundation-training-manifest/v1","trainingRunRef":"run.test","trainingMode":"FOUNDATION_PARTIAL_FULL_RANK","sourceModelRepo":"Qwen/Qwen3.5-4B","sourceModelRevision":"1"*40,"sourceModelSnapshotFingerprint":"2"*64,"sourceManifestFingerprint":"5"*64,"licenseRef":"license.apache-2.0.qwen3.5","trainingDatasetPath":"runtime/train.jsonl","trainingDatasetSha256":"3"*64,"heldoutDatasetPath":"runtime/heldout.jsonl","heldoutDatasetSha256":"4"*64,"sourceLessonRefs":["lesson.test"],"sourceScoreRefs":[],"consentReceiptRefs":["consent.test"],"trainingIdentityRefs":["identity.test"],"protectedInvariantRefs":["invariant.test"],"parameterSelection":{"strategy":"LAST_N_LANGUAGE_BLOCKS","count":2,"includeLmHead":False},"seed":1,"maxSteps":1,"epochs":1,"learningRate":0.000002,"maxSequenceLength":512,"gradientAccumulationSteps":1,"precision":"bf16","optimizer":"adamw","executionDevice":"MPS","outputDir":"runtime/candidate","expectedHardwareProfileRef":"hardware.macos-arm64.apple-m4-pro.metal","rollbackArtifactRef":"profile.rollback.test","activationAuthorized":False,"publicUploadAuthorized":False}',
     'digests = mod.candidate_file_digests(candidate)',
     'fingerprint = mod.sha256_bytes(mod.canonical_json(digests))',
-    'receipt = {"schemaVersion":"vexlife.foundation-training-receipt/v1","trainingRunRef":manifest["trainingRunRef"],"priorModelIdentity":mod.prior_model_identity(manifest),"candidateModelIdentity":mod.candidate_model_identity(manifest, fingerprint),"sourceModelRepo":manifest["sourceModelRepo"],"sourceModelRevision":manifest["sourceModelRevision"],"sourceModelSnapshotFingerprint":manifest["sourceModelSnapshotFingerprint"],"sourceModelSnapshotFingerprintObserved":False,"sourceModelIdentityClass":"EXACT_REPOSITORY_PLUS_COMMIT_REVISION","sourceManifestFingerprint":manifest["sourceManifestFingerprint"],"sourceManifestFingerprintObserved":False,"trainingDatasetSha256":manifest["trainingDatasetSha256"],"heldoutDatasetSha256":manifest["heldoutDatasetSha256"],"trainingActuallyExecuted":True,"modelWeightsChanged":True,"changedParameterCount":1,"candidateArtifactDigests":digests,"candidateArtifactFingerprint":fingerprint}',
+    'observation = {"executionDevice":"MPS","deviceType":"mps","deviceName":"Apple M4 Pro","platform":"darwin","architecture":"arm64","expectedHardwareProfileRef":manifest["expectedHardwareProfileRef"],"torchVersion":"2.8.0","precision":"bf16","mpsBuilt":True,"mpsAvailable":True,"acceleratorMemoryBytes":40202412032,"cudaRuntimeVersion":None}',
+    'observation["observationFingerprint"] = mod.sha256_bytes(mod.canonical_json(observation))',
+    'receipt = {"schemaVersion":"vexlife.foundation-training-receipt/v1","trainingRunRef":manifest["trainingRunRef"],"priorModelIdentity":mod.prior_model_identity(manifest),"candidateModelIdentity":mod.candidate_model_identity(manifest, fingerprint),"sourceModelRepo":manifest["sourceModelRepo"],"sourceModelRevision":manifest["sourceModelRevision"],"sourceModelSnapshotFingerprint":manifest["sourceModelSnapshotFingerprint"],"sourceModelSnapshotFingerprintObserved":False,"sourceModelIdentityClass":"EXACT_REPOSITORY_PLUS_COMMIT_REVISION","sourceManifestFingerprint":manifest["sourceManifestFingerprint"],"sourceManifestFingerprintObserved":False,"manifestFingerprint":mod.manifest_fingerprint(manifest),"trainingDatasetSha256":manifest["trainingDatasetSha256"],"heldoutDatasetSha256":manifest["heldoutDatasetSha256"],"executionDevice":manifest["executionDevice"],"expectedHardwareProfileRef":manifest["expectedHardwareProfileRef"],"executionObservation":observation,"executionObservationFingerprint":observation["observationFingerprint"],"trainingActuallyExecuted":True,"modelWeightsChanged":True,"changedParameterCount":1,"candidateArtifactDigests":digests,"candidateArtifactFingerprint":fingerprint}',
     'receipt_path = candidate / "vex-foundation-training-receipt.json"',
     'receipt_path.write_text(json.dumps(receipt), encoding="utf-8")',
     'verified = mod.verify_candidate_receipt_binding(candidate, manifest)',
-    'print("PASS_EXACT", verified[2])',
-    'for field, forged in [("priorModelIdentity","model-source.vexlife.sha256."+"0"*64),("candidateModelIdentity","model-candidate.vexlife.sha256."+"0"*64),("sourceManifestFingerprint","6"*64)]:',
+    'print("PASS_EXACT", verified[2], verified[3]["executionObservationFingerprint"])',
+    'for field, forged in [("priorModelIdentity","model-source.vexlife.sha256."+"0"*64),("candidateModelIdentity","model-candidate.vexlife.sha256."+"0"*64),("sourceManifestFingerprint","6"*64),("manifestFingerprint","0"*64),("executionDevice","CUDA"),("expectedHardwareProfileRef","hardware.windows-x64.nvidia.cuda12-compatible"),("executionObservationFingerprint","0"*64)]:',
     '    bad = dict(receipt); bad[field] = forged; receipt_path.write_text(json.dumps(bad), encoding="utf-8")',
     '    try:',
     '        mod.verify_candidate_receipt_binding(candidate, manifest)',
@@ -313,6 +387,14 @@ test('evaluator rebinds exact candidate bytes and rejects forged genealogy/sourc
     '        print("PASS_FORGED", field)',
     '    else:',
     '        raise SystemExit(f"forged {field} was accepted")',
+    'for nested_field, forged in [("deviceName","Apple M4"),("platform","linux"),("architecture","x86_64"),("precision","fp16")]:',
+    '    bad = dict(receipt); bad_observation = dict(observation); bad_observation[nested_field] = forged; bad_observation.pop("observationFingerprint", None); new_fp = mod.sha256_bytes(mod.canonical_json(bad_observation)); bad_observation["observationFingerprint"] = new_fp; bad["executionObservation"] = bad_observation; bad["executionObservationFingerprint"] = new_fp; receipt_path.write_text(json.dumps(bad), encoding="utf-8")',
+    '    try:',
+    '        mod.verify_candidate_receipt_binding(candidate, manifest)',
+    '    except mod.FoundationEvaluationError:',
+    '        print("PASS_REHASHED_SEMANTIC_FORGERY", nested_field)',
+    '    else:',
+    '        raise SystemExit(f"rehash-valid semantic host forgery {nested_field} was accepted")',
     'receipt_path.write_text(json.dumps(receipt), encoding="utf-8")',
     '(candidate / "model.safetensors").write_text("candidate-v2", encoding="utf-8")',
     'try:',
@@ -327,9 +409,17 @@ test('evaluator rebinds exact candidate bytes and rejects forged genealogy/sourc
     env: {...process.env, PYTHONDONTWRITEBYTECODE: '1'}
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /PASS_EXACT [0-9a-f]{64}/u);
+  assert.match(result.stdout, /PASS_EXACT [0-9a-f]{64} [0-9a-f]{64}/u);
   assert.match(result.stdout, /PASS_FORGED priorModelIdentity/u);
   assert.match(result.stdout, /PASS_FORGED candidateModelIdentity/u);
   assert.match(result.stdout, /PASS_FORGED sourceManifestFingerprint/u);
+  assert.match(result.stdout, /PASS_FORGED manifestFingerprint/u);
+  assert.match(result.stdout, /PASS_FORGED executionDevice/u);
+  assert.match(result.stdout, /PASS_FORGED expectedHardwareProfileRef/u);
+  assert.match(result.stdout, /PASS_FORGED executionObservationFingerprint/u);
+  assert.match(result.stdout, /PASS_REHASHED_SEMANTIC_FORGERY deviceName/u);
+  assert.match(result.stdout, /PASS_REHASHED_SEMANTIC_FORGERY platform/u);
+  assert.match(result.stdout, /PASS_REHASHED_SEMANTIC_FORGERY architecture/u);
+  assert.match(result.stdout, /PASS_REHASHED_SEMANTIC_FORGERY precision/u);
   assert.match(result.stdout, /PASS_DRIFT candidate bytes drifted after training/u);
 });
