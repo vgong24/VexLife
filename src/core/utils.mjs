@@ -103,9 +103,9 @@ function sha256HexUtf8(text) {
 
 export function semanticHash(value) {
   const text = JSON.stringify(canonicalize(value));
-  return nodeCrypto
-    ? nodeCrypto.createHash('sha256').update(text).digest('hex')
-    : sha256HexUtf8(text);
+  if (nodeCrypto) return nodeCrypto.createHash('sha256').update(text).digest('hex');
+  if (typeof text !== 'string') throw new TypeError('semanticHash input must serialize to JSON text');
+  return sha256HexUtf8(text);
 }
 
 export function estimateTokens(value) {

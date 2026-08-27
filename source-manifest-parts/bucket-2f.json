@@ -5,8 +5,8 @@
     {
       "path": "src/core/utils.mjs",
       "mode": "100644",
-      "bytes": 6255,
-      "sha256": "b3c11d89bf5eaf05082f3df434b3e104e0b19a8cf28d834d4d6ec3d1bccf33db"
+      "bytes": 6361,
+      "sha256": "19e3406839d86c75263668428dd4d0e8ecbbdce05a527a85813536ced6616503"
     },
     {
       "path": "test/fixtures/orientation/detached-merge.json",

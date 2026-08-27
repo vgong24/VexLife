@@ -126,6 +126,10 @@ test('NCPORT-01..04 semantic hashes preserve exact canonical SHA-256 meaning', (
     b: { a: 3, y: 2 },
     z: 1
   });
+  for (const invalid of [undefined, () => {}, Symbol('invalid')]) {
+    assert.throws(() => semanticHash(invalid), TypeError);
+    assert.throws(() => nodeSemanticHash(invalid), TypeError);
+  }
 });
 
 test('NCPORT-05 Node filesystem/path helpers remain synchronous and behavior-compatible', () => {
@@ -192,9 +196,22 @@ test('NCPORT-07 real Chromium imports the unmodified Navigation Continuity graph
     let browserFileSystemFailure = null;
     try { utils.readJson('/browser-must-not-read.json'); }
     catch (error) { browserFileSystemFailure = error.message; }
+    const invalidHashFailures = [
+      ['undefined', undefined],
+      ['function', () => {}],
+      ['symbol', Symbol('invalid')]
+    ].map(([kind, value]) => {
+      try {
+        utils.semanticHash(value);
+        return { kind, failedClosed: false, errorName: null };
+      } catch (error) {
+        return { kind, failedClosed: true, errorName: error.name };
+      }
+    });
     return {
       validation,
       vectorHashes: browserVectors.map(({ value }) => utils.semanticHash(value)),
+      invalidHashFailures,
       browserFileSystemFailure,
       browserSafeRelativePath: utils.requireSafeRelativePath('generated/health/browser-proof.json'),
       exports: ['compileNavigationTopology','createNavigationContinuitySession','planNavigationRoute']
@@ -204,6 +221,11 @@ test('NCPORT-07 real Chromium imports the unmodified Navigation Continuity graph
   assert.equal(browserValidation.validation.ok, true, JSON.stringify(browserValidation.validation.errors));
   assert.equal(browserValidation.validation.semanticFingerprint, nodeValidation.semanticFingerprint);
   assert.deepEqual(browserValidation.vectorHashes, browserVectors.map(({ expected }) => expected));
+  assert.deepEqual(browserValidation.invalidHashFailures, [
+    { kind: 'undefined', failedClosed: true, errorName: 'TypeError' },
+    { kind: 'function', failedClosed: true, errorName: 'TypeError' },
+    { kind: 'symbol', failedClosed: true, errorName: 'TypeError' }
+  ]);
   assert.match(browserValidation.browserFileSystemFailure, /requires a Node\.js filesystem\/path runtime/u);
   assert.equal(browserValidation.browserSafeRelativePath, 'generated/health/browser-proof.json');
   assert.deepEqual(browserValidation.exports, [
