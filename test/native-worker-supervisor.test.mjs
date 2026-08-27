@@ -93,6 +93,16 @@ async function waitForFiles(files, timeoutMs = 3000) {
   }
   throw new Error(`timed out waiting for ${files.join(', ')}`);
 }
+async function waitForWorkerState(root, states, timeoutMs = 3000) {
+  const wanted = new Set(Array.isArray(states) ? states : [states]);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const state = loadNativeWorker(root).receipt.state;
+    if (wanted.has(state)) return state;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`timed out waiting for worker state ${[...wanted].join('|')}`);
+}
 function spawnBarrierActor({ workerRoot, startFile, readyFile, body, extraEnv = {} }) {
   const script = `
     import fs from 'node:fs';
@@ -342,4 +352,82 @@ test('two concurrent result consumers preserve one completion truth and one DONE
   assert.equal(outcomes.filter((item) => item.stdout.includes(final.completion.resultRef)).length, 1);
   const receipts = fs.readdirSync(path.join(initial.workerRoot, 'receipts')).sort();
   assert.equal(receipts.filter((name) => name.includes('-done.json')).length, 1);
+});
+
+test('STARTING pause and cancel win before payload spawn and preserve truthful terminal state', (t) => {
+  for (const action of ['PAUSE', 'CANCEL']) {
+    const fixture = rootFixture(t);
+    fs.mkdirSync(path.join(fixture.sourceRoot, 'worker'));
+    const initial = prepareNativeWorker({ runtimeRoot: fixture.runtimeRoot, sourceRoot: fixture.sourceRoot, manifest: manifest({ workerRef: `worker.vexlife.prestart.${action.toLowerCase()}` }), binding: binding() });
+    let hostSpawns = 0;
+    const first = launchDetachedNativeWorkerHost({ workerRoot: initial.workerRoot, cliPath: process.execPath, spawnImpl: () => ({ pid: 6100 + ++hostSpawns, unref() {} }) });
+    const controlled = requestNativeWorkerControl(initial.workerRoot, action);
+    assert.equal(controlled.receipt.state, action === 'PAUSE' ? 'PAUSED' : 'CANCELLED');
+    assert.equal(controlled.workPulse.symbol, action === 'PAUSE' ? '⏸' : '×');
+    if (action === 'CANCEL') {
+      assert.equal(controlled.receipt.terminalEvidence.stopReason, 'HUMAN_CANCEL_REQUEST');
+      assert.equal(controlled.receipt.terminalEvidence.payloadStarted, false);
+    }
+    let payloadSpawns = 0;
+    assert.throws(
+      () => runPreparedNativeWorker(initial.workerRoot, { launchRef: first.launchRef, spawnImpl: () => { payloadSpawns += 1; return new EventEmitter(); } }),
+      (error) => error instanceof NativeWorkerSupervisorError && error.code === 'NWS_RUN_OWNERSHIP_LOST'
+    );
+    assert.equal(payloadSpawns, 0);
+    assert.equal(hostSpawns, 1);
+  }
+});
+
+test('running exact-owned cancel terminates as neutral CANCELLED with human cancel evidence', async (t) => {
+  const { prepared: initial } = prepared(t, { argv: ['-e', 'setInterval(() => {}, 1000)'] });
+  const running = runPreparedNativeWorker(initial.workerRoot, { pollMs: 20 });
+  await waitForWorkerState(initial.workerRoot, 'WORKING');
+  const control = requestNativeWorkerControl(initial.workerRoot, 'CANCEL');
+  assert.equal(control.action, 'CANCEL');
+  const terminal = await running;
+  assert.equal(terminal.receipt.state, 'CANCELLED');
+  assert.equal(terminal.workPulse.state, 'CANCELLED');
+  assert.equal(terminal.workPulse.label, 'Cancelled');
+  assert.equal(terminal.workPulse.colorToken, null);
+  assert.equal(terminal.receipt.terminalEvidence.cancelRequested, true);
+  assert.equal(terminal.receipt.terminalEvidence.payloadStarted, true);
+  assert.equal(terminal.receipt.terminalEvidence.stopReason, 'HUMAN_CANCEL_REQUEST');
+  assert.equal(fs.existsSync(path.join(initial.workerRoot, 'control.json')), false);
+});
+
+test('cooperative pause retires current control so resume does not replay stale PAUSE', async (t) => {
+  const workerCode = `
+    const fs = require('node:fs');
+    const controlPath = process.env.VEX_WORKER_CONTROL_PATH;
+    const started = Date.now();
+    let pauseSeenAt = null;
+    const tick = () => {
+      if (fs.existsSync(controlPath)) {
+        try {
+          const control = JSON.parse(fs.readFileSync(controlPath, 'utf8'));
+          if (control.action === 'PAUSE') {
+            pauseSeenAt ??= Date.now();
+            if (Date.now() - pauseSeenAt >= 80) process.exit(75);
+          }
+        } catch {}
+      }
+      if (Date.now() - started >= 320) process.exit(0);
+      setTimeout(tick, 10);
+    };
+    tick();
+  `;
+  const { prepared: initial } = prepared(t, { argv: ['-e', workerCode] });
+  const firstRun = runPreparedNativeWorker(initial.workerRoot, { pollMs: 20 });
+  await waitForWorkerState(initial.workerRoot, 'WORKING');
+  requestNativeWorkerControl(initial.workerRoot, 'PAUSE');
+  const paused = await firstRun;
+  assert.equal(paused.receipt.state, 'PAUSED');
+  assert.equal(paused.workPulse.symbol, '⏸');
+  assert.equal(fs.existsSync(path.join(initial.workerRoot, 'control.json')), false);
+  const standby = markNativeWorkerStandingBy(initial.workerRoot);
+  assert.equal(standby.receipt.state, 'STANDING_BY');
+  const resumed = await runPreparedNativeWorker(initial.workerRoot, { pollMs: 20 });
+  assert.equal(resumed.receipt.state, 'WRAPPING_UP');
+  assert.equal(resumed.receipt.terminalEvidence.pauseRequested, false);
+  assert.equal(fs.existsSync(path.join(initial.workerRoot, 'control.json')), false);
 });
