@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 52116,
       "sha256": "d44a9ac2c62e8bc1d71c5d192021acd923035405427a5b3b915c74511bc0aa24"
+    },
+    {
+      "path": "test/public-onboarding-practicum.test.mjs",
+      "mode": "100644",
+      "bytes": 8032,
+      "sha256": "06eb74f35b62380885312a5cc89d138fbc2336c32b4cd2529bd3cda5d5dd31c5"
     }
   ]
 }

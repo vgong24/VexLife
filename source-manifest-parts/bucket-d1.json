@@ -3,6 +3,12 @@
   "bucketId": "d1",
   "files": [
     {
+      "path": "pages/strings/vexlife-onboarding.ja.json",
+      "mode": "100644",
+      "bytes": 20130,
+      "sha256": "cec11c20c639ec63dfb6113015c8d0a906b805ab7fda632a7d45cd2d0be15568"
+    },
+    {
       "path": "scripts/recovery-status.mjs",
       "mode": "100644",
       "bytes": 816,

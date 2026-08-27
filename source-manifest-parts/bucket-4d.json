@@ -3,6 +3,12 @@
   "bucketId": "4d",
   "files": [
     {
+      "path": "scripts/public-onboarding-practicum.mjs",
+      "mode": "100644",
+      "bytes": 16717,
+      "sha256": "36b54acbc2a614dffb9cc4fe25438ed6fba0c76c705a0d1fae7545e10723e8ec"
+    },
+    {
       "path": "src/core/intent-workgraph.mjs",
       "mode": "100644",
       "bytes": 21524,

@@ -3,6 +3,12 @@
   "bucketId": "45",
   "files": [
     {
+      "path": "pages/strings/vexlife-onboarding.en.json",
+      "mode": "100644",
+      "bytes": 16312,
+      "sha256": "12b6db7d951a5b8358d8e63900eee1342cf277ca36521212e9e8d306a1ab76ef"
+    },
+    {
       "path": "src/core/vex-initialization.mjs",
       "mode": "100644",
       "bytes": 25735,
