@@ -218,7 +218,7 @@ if (fs.existsSync(receiptPath)) {
             embeddedRecovery?.sourceTreeSha256 !== sourceManifest.treeSha256 ||
             embeddedRecovery?.blueprintHash !== blueprint.semanticHash ||
             embeddedRecovery?.runtimeRecoveryRegistryHash !== recoveryReceipt?.runtimeRecoveryRegistryHash ||
-            JSON.stringify(embeddedRecovery?.journeyStates ?? {}) !== JSON.stringify(recoveryReceipt?.journeyStates ?? {}) ||
+            JSON.stringify(embeddedRecovery?.journeyStates ?? []) !== JSON.stringify(recoveryReceipt?.journeyStates ?? []) ||
             embeddedRecovery?.canonicalFailureFingerprint !== recoveryReceipt?.canonicalFailure?.semanticFingerprint ||
             embeddedRecovery?.firstExecutorOutcome !== 'FAILED_RECOVERABLE' ||
             embeddedRecovery?.finalExecutorOutcome !== 'SUCCEEDED' ||
