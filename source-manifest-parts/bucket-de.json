@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 179477,
       "sha256": "b8cf15cd2730105ca295488e6008533be15e8807d7fe4446e0714aa234a20646"
+    },
+    {
+      "path": "test/public-learning-navigation-request.test.mjs",
+      "mode": "100644",
+      "bytes": 3261,
+      "sha256": "1c6471fc2570c771c03e249d69f19e8f5a2f8355b01043a7c7fd70ff66e07357"
     }
   ]
 }

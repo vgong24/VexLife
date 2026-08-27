@@ -3,6 +3,12 @@
   "bucketId": "17",
   "files": [
     {
+      "path": "reference/browser/modules/public-learning-controller-activated.js",
+      "mode": "100644",
+      "bytes": 5361,
+      "sha256": "f46c90f16a7bf18384f6b8e95b61fbc9d7b8a64a1552c0fc2393617a1227ea26"
+    },
+    {
       "path": "src/core/platform-generator.mjs",
       "mode": "100644",
       "bytes": 6677,

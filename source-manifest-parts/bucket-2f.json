@@ -3,6 +3,12 @@
   "bucketId": "2f",
   "files": [
     {
+      "path": "reference/browser/modules/public-learning-navigation-continuity.js",
+      "mode": "100644",
+      "bytes": 15632,
+      "sha256": "ba62e8b033f4d0d78098667244aae4da5bcc499d8447e888ede64763a20fd516"
+    },
+    {
       "path": "src/core/utils.mjs",
       "mode": "100644",
       "bytes": 6674,
