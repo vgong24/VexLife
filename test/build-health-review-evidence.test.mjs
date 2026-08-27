@@ -297,6 +297,7 @@ test('PR-ready and Health consume optional validation evidence without trusting 
     assert.equal(executedReceipt.validationEvidence.validationEvidenceRef, executed.validationEvidenceRef);
     assert.equal(executedReceipt.validationEvidence.inputSha256, sha256(fs.readFileSync(evidencePath, 'utf8')));
 
+    fs.rmSync(evidencePath);
     const executedHealth = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', executedReceiptArg], {
       cwd: repositoryRoot,
       env,
@@ -323,6 +324,7 @@ test('PR-ready and Health consume optional validation evidence without trusting 
     assert.equal(reusedReceipt.state, 'PR_READY_PASSED');
     assert.equal(reusedReceipt.validationEvidence.state, 'VALIDATED_CURRENT');
 
+    fs.rmSync(evidencePath);
     const reusedHealth = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', reusedReceiptArg], {
       cwd: repositoryRoot,
       env,
@@ -331,24 +333,24 @@ test('PR-ready and Health consume optional validation evidence without trusting 
     assert.equal(reusedHealth.status, 0, reusedHealth.stderr || reusedHealth.stdout);
     assert.equal(parseJsonOutput(reusedHealth).validationEvidenceState, 'VALIDATED_CURRENT');
 
-    fs.appendFileSync(evidencePath, ' ', 'utf8');
-    const byteTamper = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', reusedReceiptArg], {
+    const embeddedTamperReceipt = structuredClone(reusedReceipt);
+    embeddedTamperReceipt.validationEvidence.bundle.repositoryRef = 'vgong24/Other';
+    writeJson(reusedReceiptPath, embeddedTamperReceipt);
+    const embeddedTamper = spawnSync(process.execPath, ['scripts/health-check.mjs', '--receipt', reusedReceiptArg], {
       cwd: repositoryRoot,
       env,
       encoding: 'utf8'
     });
-    assert.equal(byteTamper.status, 1);
-    const byteTamperReceipt = parseJsonOutput(byteTamper);
-    assert.equal(byteTamperReceipt.validationEvidenceState, 'INVALID');
-    assert.match(byteTamperReceipt.errors.join('\n'), /input SHA-256/);
+    assert.equal(embeddedTamper.status, 1);
+    const embeddedTamperHealth = parseJsonOutput(embeddedTamper);
+    assert.equal(embeddedTamperHealth.validationEvidenceState, 'INVALID');
+    assert.match(embeddedTamperHealth.errors.join('\n'), /wrong repositoryRef|semanticFingerprint mismatch/);
 
     const drifted = structuredClone(reused);
     const reusedBrowser = drifted.producerAttestations[0].commandResults.find((item) => item.proofCellRef === 'REAL_BROWSER_EVIDENCE');
     reusedBrowser.dependencyBindings[0].observedFingerprint = 'b'.repeat(64);
     drifted.semanticFingerprint = computeValidationEvidenceFingerprint(drifted);
-    const driftedSha = writeValidationEvidence(evidencePath, drifted);
     const forgedDriftReceipt = structuredClone(reusedReceipt);
-    forgedDriftReceipt.validationEvidence.inputSha256 = driftedSha;
     forgedDriftReceipt.validationEvidence.semanticFingerprint = drifted.semanticFingerprint;
     forgedDriftReceipt.validationEvidence.validationEvidenceRef = drifted.validationEvidenceRef;
     forgedDriftReceipt.validationEvidence.validationProfileRef = drifted.validationProfileRef;
@@ -371,9 +373,7 @@ test('PR-ready and Health consume optional validation evidence without trusting 
       for (const result of producer.commandResults) result.binding.candidateTreeSha = wrongTree.candidateTreeSha;
     }
     wrongTree.semanticFingerprint = computeValidationEvidenceFingerprint(wrongTree);
-    const wrongTreeSha = writeValidationEvidence(evidencePath, wrongTree);
     const forgedTreeReceipt = structuredClone(reusedReceipt);
-    forgedTreeReceipt.validationEvidence.inputSha256 = wrongTreeSha;
     forgedTreeReceipt.validationEvidence.semanticFingerprint = wrongTree.semanticFingerprint;
     forgedTreeReceipt.validationEvidence.validationEvidenceRef = wrongTree.validationEvidenceRef;
     forgedTreeReceipt.validationEvidence.validationProfileRef = wrongTree.validationProfileRef;
