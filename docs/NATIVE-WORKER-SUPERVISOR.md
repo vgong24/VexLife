@@ -1,0 +1,148 @@
+# VexLife Native Worker Supervisor
+
+`[VXG RealForever]`
+
+## Purpose
+
+This module is the first source-managed embodiment between the accepted Process Factory / Intent Scheduler contracts and an exact-owned local OS worker.
+
+It is intentionally **not** a second scheduler, not a replacement Process Factory, not VexLocalBridge long-job mode, and not an always-running expensive semantic model.
+
+```text
+Durable Vex purpose / workgraph
+  -> Process Factory compiles one exact plan (no effect)
+  -> current authority + runtime binding admit execution
+  -> Native Worker Supervisor owns one exact local worker
+  -> durable worker receipts + quiet Work Pulse
+  -> terminal result remains WRAPPING_UP
+  -> result consumer verifies / understands it
+  -> explicit completion record
+  -> DONE
+  -> scheduler / tool-result relay may re-enter semantic Vex only when meaning requires it
+```
+
+## Foreground conversation and parallel work
+
+The existing Intent Scheduler remains the scheduling owner. Interactive work outranks background work. A user turn therefore does not erase a background worker or require the same LLM context to remain alive while the worker executes.
+
+```text
+USER_INTERRUPTION != ACTIVE_TRAJECTORY_RESET
+BACKGROUND_WORKER != FOREGROUND_CONVERSATION_CONTEXT
+WORKER_TERMINAL != SEMANTIC_COMPLETION
+```
+
+A worker's durable state is stored beneath the caller-selected Vex Home runtime domain. Semantic context may rotate independently.
+
+## Closed worker manifest
+
+The manifest contains stable refs plus exact argv. It contains no arbitrary command string or shell switch. The executable is resolved through a separate machine-local runtime binding and its bytes are SHA-256 verified before preparation.
+
+Disk presence is not effect authority. `executionAuthorityRef` binds the requested execution to an external authority record; this supervisor does not validate or manufacture that authority by itself.
+
+## Worker states
+
+Machine state is intentionally richer than human presentation:
+
+```text
+NOT_ACTIVE
+STANDING_BY
+WORKING
+WAITING
+PAUSE_REQUESTED
+PAUSED
+CANCEL_REQUESTED
+WRAPPING_UP
+DONE
+NEEDS_ATTENTION
+```
+
+`PAUSE_REQUESTED` is **not** projected as Paused. A running process remains human-visible as Working until a cooperative worker actually yields. This prevents the UI from claiming that compute stopped when it did not.
+
+The generation-1 cooperative yield convention is exit code `75` after the worker observes `VEX_WORKER_CONTROL_PATH` and reaches its own safe checkpoint. A worker that does not implement that contract simply continues until terminal; the supervisor never fakes a frozen process.
+
+## Quiet Work Pulse
+
+Human projection changes only when meaning changes:
+
+```text
+WORKING          healthy green + Working
+STANDING_BY      primary blue + Standing by
+WAITING          attention yellow + one bounded reason
+PAUSED           ⏸ + Paused
+NEEDS_ATTENTION  blocked red + one bounded reason/action
+WRAPPING_UP      blue transient + result awaiting consumption
+DONE             ✓ + compact completion summary
+NOT_ACTIVE       neutral/resting; normally hidden
+```
+
+Pause intentionally uses the **single `⏸` symbol** rather than stacking a blue state marker onto it. Color is never the sole signal.
+
+Internal heartbeat/process observations belong in machine state and logs; unchanged observations do not become human notifications.
+
+## Completion truth
+
+A successful child exit creates `WRAPPING_UP`, never `DONE`.
+
+`DONE` requires a separate completion input containing:
+
+```text
+resultRef
+machineCompletionRecord
+humanSummary
+```
+
+The full machine record remains durable truth. The human summary is a bounded projection of that record for ordinary interaction.
+
+```text
+machine completion record != human summary
+human summary != second truth source
+```
+
+## Persistence and recovery
+
+Each worker gets:
+
+```text
+<VexHome>/runtime/native-workers/<workerRef>/
+  manifest.json
+  binding.json
+  host.json
+  current.json
+  control.json              when a control request exists
+  completion.json           only after result consumption
+  receipts/
+  stdout.log
+  stderr.log
+  supervisor.log            detached host launcher
+  supervisor.err.log
+```
+
+Receipts are immutable generation files. `current.json` is an atomic pointer containing the exact receipt SHA-256. A missing/malformed/torn pointer fails closed instead of reconstructing a running worker from PID folklore.
+
+## Detached host
+
+`native-worker-supervisor.mjs start` launches a detached Node host for the worker. The host owns the payload child directly and writes durable lifecycle state. This lets the initiating UI/semantic context return immediately without killing the work.
+
+The first source stage does not install a native service or auto-start VexCore at boot. Platform service installation and lived host qualification are later effects.
+
+## G04B / Birth
+
+G04B foundation training is the first intended lived consumer after this source is accepted and host-qualified.
+
+The worker supervisor does not itself:
+
+```text
+install Python/PyTorch
+download a model
+select training data
+create consent
+execute training without admitted authority
+activate candidate weights
+overwrite accepted Vex
+mutate canonical Memory
+publish artifacts
+```
+
+Those remain independently bound by the G04B training manifest, runtime-dependency materialization, consent/effect envelopes, evaluator and rollback policy.
+
+<!-- [VXG RealForever] -->
