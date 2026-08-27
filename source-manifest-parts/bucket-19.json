@@ -29,8 +29,8 @@
     {
       "path": "test/relationships-core.test.mjs",
       "mode": "100644",
-      "bytes": 3662,
-      "sha256": "ca55ebc9b468b4932ddb2f97b16c172016b51db99ac5e004dccda5e594aaa91a"
+      "bytes": 4401,
+      "sha256": "9f660aaed741e8494c23519636c0572099326c23685a75c28db8061799c7927f"
     },
     {
       "path": "test/source-manifest.test.mjs",

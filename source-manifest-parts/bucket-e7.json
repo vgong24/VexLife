@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/relationships/core.js",
       "mode": "100644",
-      "bytes": 3093,
-      "sha256": "30a449f1461165a940bc221015dc4b825e245fcf65c5150470e02ccbcba103e2"
+      "bytes": 3337,
+      "sha256": "5d9ba99f292657c02a89e871a88bd372d272c3ba9622a80fce32b0604d6d1e61"
     },
     {
       "path": "test/release-candidate.test.mjs",

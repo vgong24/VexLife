@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/relationships/app.js",
       "mode": "100644",
-      "bytes": 6182,
-      "sha256": "39fc4dc9820e4bfe1f5db46592d6b77152bb480a9899e01f4acdd6c07d071a11"
+      "bytes": 6180,
+      "sha256": "f4bc85ddd6dcccc17a942205a0a2272cc21e0d11046c7adfd05cd93551ff239a"
     },
     {
       "path": "test/check-result.test.mjs",
