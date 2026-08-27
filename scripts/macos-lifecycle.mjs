@@ -498,6 +498,14 @@ export function choicesForLifecycleState(state) {
   if (state === 'EXISTING_DEGRADED_REPAIRABLE') return ['repair', 'rebuild-preserve', 'uninstall-preserve'];
   return [];
 }
+export function assertLifecycleOperationAdmitted(state, operation) {
+  const choices = choicesForLifecycleState(state);
+  if (!choices.includes(operation)) {
+    const admitted = choices.length > 0 ? choices.join(', ') : 'none';
+    throw new Error(`lifecycle operation ${operation} is not admitted for observed state ${state}; admitted operations: ${admitted}`);
+  }
+  return true;
+}
 
 function portOpen(port) {
   return new Promise((resolve) => {
@@ -769,6 +777,7 @@ export async function runLifecycle(argv = process.argv.slice(2)) {
   let chosen = operation;
   if (chosen === 'auto') chosen = await promptChoice(state);
   if (chosen === 'quit') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation: 'quit', state: 'USER_STOPPED_NO_EFFECT' };
+  assertLifecycleOperationAdmitted(state, chosen);
   if (chosen === 'start') {
     const started = await runStart(home, repo, options);
     return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation: 'start', state: 'START_OR_RESUME_COMPLETED', priorState: state, started };

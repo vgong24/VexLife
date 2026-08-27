@@ -57,15 +57,13 @@ DOWNLOADED_ROOT="${entries[0]}"
 [ -f "$DOWNLOADED_ROOT/SOURCE-MANIFEST.json" ] \
   || fail "the downloaded source is missing its Source Manifest."
 
-TARGET="$SOURCE_ROOT/$SOURCE_SHA"
 /bin/mkdir -p "$SOURCE_ROOT"
-if [ -e "$TARGET" ]; then
-  # A SHA-shaped path is not proof that its stored bytes are still that Git source.
-  # Preserve the existing cache for diagnosis and execute only this fresh GitHub materialization.
-  COLLISION_PARENT="$(/usr/bin/mktemp -d "$SOURCE_ROOT/$SOURCE_SHA.fresh.XXXXXX")" \
-    || fail "a fresh exact-source location could not be reserved safely."
-  TARGET="$COLLISION_PARENT/source"
-fi
+# A SHA-shaped shared path is never execution authority. Every invocation reserves
+# one private execution parent before materialization, so a concurrent same-SHA
+# setup cannot create or substitute the execution target between a check and move.
+RUN_PARENT="$(/usr/bin/mktemp -d "$SOURCE_ROOT/$SOURCE_SHA.run.XXXXXX")" \
+  || fail "a fresh exact-source location could not be reserved safely."
+TARGET="$RUN_PARENT/source"
 /bin/mv "$DOWNLOADED_ROOT" "$TARGET" \
   || fail "the fresh exact VexLife source could not be materialized safely."
 [ -f "$TARGET/install/vexlife-setup.sh" ] && [ -f "$TARGET/SOURCE-MANIFEST.json" ] \

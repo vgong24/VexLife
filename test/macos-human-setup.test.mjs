@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { qualifiedInitializationFromCurrentHome } from '../scripts/macos-lifecycle.mjs';
+import {
+  assertLifecycleOperationAdmitted,
+  qualifiedInitializationFromCurrentHome
+} from '../scripts/macos-lifecycle.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const setupCommand = fs.readFileSync(path.join(ROOT, 'setup-vexlife.command'), 'utf8');
@@ -38,7 +42,8 @@ test('MACHUMAN01B standalone bootstrap resolves one exact Git source before down
   assert.ok(downloadIndex > resolveIndex);
   assert.match(setupCommand, /\[ "\$\{#SOURCE_SHA\}" -eq 40 \]/);
   assert.match(setupCommand, /Application Support\/VexLife\/source/);
-  assert.match(setupCommand, /TARGET="\$SOURCE_ROOT\/\$SOURCE_SHA"/);
+  assert.match(setupCommand, /RUN_PARENT="\$\(\/usr\/bin\/mktemp -d "\$SOURCE_ROOT\/\$SOURCE_SHA\.run\.XXXXXX"\)"/);
+  assert.match(setupCommand, /TARGET="\$RUN_PARENT\/source"/);
   assert.doesNotMatch(setupCommand, /\.vexlife\/source/);
 });
 
@@ -51,19 +56,68 @@ test('MACHUMAN01C downloaded archive is topology-checked before extraction and e
   assert.match(setupCommand, /exec \/bin\/bash "\$TARGET\/install\/vexlife-setup\.sh" "\$TARGET"/);
 });
 
-test('MACHUMAN01D same-SHA cache collision preserves cached bytes and executes only a fresh materialization', () => {
-  const collisionStart = setupCommand.indexOf('if [ -e "$TARGET" ]; then');
-  const freshMove = setupCommand.indexOf('/bin/mv "$DOWNLOADED_ROOT" "$TARGET"', collisionStart);
-  const delegate = setupCommand.indexOf('exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"', collisionStart);
-  assert.ok(collisionStart >= 0);
-  assert.ok(freshMove > collisionStart);
+test('MACHUMAN01D every same-SHA run reserves a unique execution parent before materialization', () => {
+  const reserve = setupCommand.indexOf('RUN_PARENT="$(/usr/bin/mktemp -d "$SOURCE_ROOT/$SOURCE_SHA.run.XXXXXX")"');
+  const bindTarget = setupCommand.indexOf('TARGET="$RUN_PARENT/source"', reserve);
+  const freshMove = setupCommand.indexOf('/bin/mv "$DOWNLOADED_ROOT" "$TARGET"', bindTarget);
+  const delegate = setupCommand.indexOf('exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"', freshMove);
+  assert.ok(reserve >= 0);
+  assert.ok(bindTarget > reserve);
+  assert.ok(freshMove > bindTarget);
   assert.ok(delegate > freshMove);
 
-  const collisionBlock = setupCommand.slice(collisionStart, freshMove);
-  assert.match(collisionBlock, /COLLISION_PARENT="\$\(\/usr\/bin\/mktemp -d "\$SOURCE_ROOT\/\$SOURCE_SHA\.fresh\.XXXXXX"\)"/);
-  assert.match(collisionBlock, /TARGET="\$COLLISION_PARENT\/source"/);
-  assert.doesNotMatch(collisionBlock, /\[ -d "\$TARGET" \]/);
-  assert.doesNotMatch(collisionBlock, /install\/vexlife-setup\.sh" \]/);
+  // Reject the old check-then-move shape: no shared SHA path is ever selected
+  // as the execution target, so a destination appearing concurrently cannot
+  // substitute stale top-level bytes for this invocation's fresh materialization.
+  assert.doesNotMatch(setupCommand, /TARGET="\$SOURCE_ROOT\/\$SOURCE_SHA"/);
+  assert.doesNotMatch(setupCommand, /if \[ -e "\$TARGET" \]; then/);
+  assert.doesNotMatch(setupCommand, /\$SOURCE_SHA\.fresh\.XXXXXX/);
+  assert.doesNotMatch(setupCommand, /\/bin\/rm[^\n]*\$SOURCE_ROOT\/\$SOURCE_SHA/);
+});
+
+test('MACHUMAN01E private execution parent defeats destination-appearance substitution reproduced by the old shape', { skip: process.platform === 'win32' }, () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-source-race-'));
+  try {
+    const sourceRoot = path.join(root, 'source-cache');
+    fs.mkdirSync(sourceRoot, { recursive: true });
+    const sourceSha = 'a'.repeat(40);
+
+    // Historical vulnerable shape: TARGET is observed absent, then a competing
+    // process creates it before mv. POSIX mv nests the fresh directory beneath
+    // the new destination while the top-level executable remains stale.
+    const oldDownloaded = path.join(root, 'downloaded-old');
+    fs.mkdirSync(path.join(oldDownloaded, 'install'), { recursive: true });
+    fs.writeFileSync(path.join(oldDownloaded, 'install', 'vexlife-setup.sh'), 'fresh-old-shape\n');
+    const oldTarget = path.join(sourceRoot, sourceSha);
+    assert.equal(fs.existsSync(oldTarget), false);
+    fs.mkdirSync(path.join(oldTarget, 'install'), { recursive: true });
+    fs.writeFileSync(path.join(oldTarget, 'install', 'vexlife-setup.sh'), 'stale-competitor\n');
+    const oldMove = spawnSync('/bin/mv', [oldDownloaded, oldTarget], { encoding: 'utf8', shell: false });
+    assert.equal(oldMove.status, 0, oldMove.stderr);
+    assert.equal(fs.readFileSync(path.join(oldTarget, 'install', 'vexlife-setup.sh'), 'utf8'), 'stale-competitor\n');
+    assert.equal(
+      fs.readFileSync(path.join(oldTarget, path.basename(oldDownloaded), 'install', 'vexlife-setup.sh'), 'utf8'),
+      'fresh-old-shape\n'
+    );
+
+    // Correct shape: this invocation owns a unique parent first. The shared
+    // SHA path may already contain hostile/stale bytes; it is irrelevant to the
+    // private target selected for execution.
+    const newDownloaded = path.join(root, 'downloaded-new');
+    fs.mkdirSync(path.join(newDownloaded, 'install'), { recursive: true });
+    fs.writeFileSync(path.join(newDownloaded, 'install', 'vexlife-setup.sh'), 'fresh-private-target\n');
+    const runParent = fs.mkdtempSync(path.join(sourceRoot, `${sourceSha}.run.`));
+    const privateTarget = path.join(runParent, 'source');
+    const newMove = spawnSync('/bin/mv', [newDownloaded, privateTarget], { encoding: 'utf8', shell: false });
+    assert.equal(newMove.status, 0, newMove.stderr);
+    assert.equal(
+      fs.readFileSync(path.join(privateTarget, 'install', 'vexlife-setup.sh'), 'utf8'),
+      'fresh-private-target\n'
+    );
+    assert.equal(fs.readFileSync(path.join(oldTarget, 'install', 'vexlife-setup.sh'), 'utf8'), 'stale-competitor\n');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('MACHUMAN02 setup inspects machine state before asking lifecycle choices', () => {
@@ -99,6 +153,28 @@ test('MACHUMAN05 state-derived actions are explicit and browser opens only after
   assert.match(setup, /run_lifecycle uninstall-preserve >\/dev\/null/);
   const uninstallTail = setup.slice(setup.lastIndexOf('run_lifecycle uninstall-preserve >/dev/null'));
   assert.doesNotMatch(uninstallTail.split(';;')[0], /open_vex/);
+});
+
+test('MACHUMAN05B lifecycle owner itself rejects operations outside observed state choices', () => {
+  assert.equal(assertLifecycleOperationAdmitted('ABSENT', 'start'), true);
+  assert.equal(assertLifecycleOperationAdmitted('EXISTING_HEALTHY', 'start'), true);
+  assert.equal(assertLifecycleOperationAdmitted('EXISTING_DEGRADED_REPAIRABLE', 'repair'), true);
+
+  for (const [state, operation] of [
+    ['ABSENT', 'repair'],
+    ['ABSENT', 'rebuild-preserve'],
+    ['ABSENT', 'uninstall-preserve'],
+    ['EXISTING_DEGRADED_REPAIRABLE', 'start'],
+    ['HELD_NONCANONICAL_HOME', 'start'],
+    ['HELD_NONCANONICAL_HOME', 'repair'],
+    ['HELD_NONCANONICAL_HOME', 'rebuild-preserve'],
+    ['HELD_NONCANONICAL_HOME', 'uninstall-preserve']
+  ]) {
+    assert.throws(
+      () => assertLifecycleOperationAdmitted(state, operation),
+      new RegExp(`not admitted for observed state ${state}`, 'i')
+    );
+  }
 });
 
 test('MACHUMAN06 exact qualified runtime receipt is reused after consent and byte drift fails closed', () => {
