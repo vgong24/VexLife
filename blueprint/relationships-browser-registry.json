@@ -1,0 +1,181 @@
+{
+  "schemaVersion": "vexlife.relationships-browser/v2",
+  "registryRef": "registry.vexlife.relationships-browser.002",
+  "productOwnerRef": "github.issue.vexlife.237",
+  "implementationOwnerRef": "github.issue.vexlife.238",
+  "surfaceRef": "surface.vexlife.relationships.phase-a.002",
+  "surfaceState": "SYNTHETIC_REFERENCE_NOT_CANONICAL_FEATURE_REGISTRATION",
+  "truthClass": "REFERENCE_ONLY_NO_EXTERNAL_EFFECT",
+  "participantClass": "SYNTHETIC_ONLY",
+  "resource": {
+    "resourceRef": "resource.vexlife.relationships",
+    "screenRef": "screen.vexlife.relationships",
+    "routeRef": "route.relationships",
+    "stateRef": "state.relationships.reference",
+    "stableAcrossEntryRebind": true
+  },
+  "entryBindings": [
+    {
+      "entryBindingRef": "entry.relationships.self-development.001",
+      "sourceResourceRef": "resource.vexlife.self-development",
+      "viaElementRef": "element.relationships.open",
+      "transitionRef": "transition.relationships.open",
+      "labelKey": "title",
+      "state": "APPROVED_CURRENT",
+      "previewOnly": false
+    },
+    {
+      "entryBindingRef": "entry.relationships.home-preview.001",
+      "sourceResourceRef": "resource.vexlife.home",
+      "viaElementRef": "element.home.relationships.open",
+      "transitionRef": "transition.home.relationships.open",
+      "labelKey": "title",
+      "state": "PREVIEW_ONLY",
+      "previewOnly": true
+    }
+  ],
+  "entryPolicy": {
+    "activeEntryBindingRef": "entry.relationships.self-development.001",
+    "previewEntryBindingRef": "entry.relationships.home-preview.001",
+    "visibleRegisteredDoorRequired": true,
+    "semanticTeleportationAllowed": false,
+    "rebindMigratesRelationshipIdentity": false
+  },
+  "discoveryMode": "INVITE_ONLY",
+  "publicSearch": false,
+  "communitySearch": false,
+  "effects": {
+    "network": false,
+    "provider": false,
+    "participant": false,
+    "relationshipPersistence": false,
+    "memory": false,
+    "home": false,
+    "model": false,
+    "paymentTerms": false,
+    "publication": false,
+    "training": false,
+    "recording": false
+  },
+  "projectionPolicy": {
+    "directPersonNodeLimit": 5,
+    "aggregationThreshold": 6,
+    "directPinnedOrRecentLimitAfterAggregation": 3,
+    "pendingInvitationPreviewLimit": 3,
+    "groupPreviewLimit": 3,
+    "bookletPageSize": 20,
+    "virtualizationThreshold": 100,
+    "accessibleListAlwaysAvailable": true,
+    "aggregationDoesNotCollapseIdentity": true
+  },
+  "scenarioCounts": [
+    0,
+    1,
+    5,
+    6,
+    20,
+    100
+  ],
+  "syntheticFixtureCounts": {
+    "groups": 2,
+    "invitations": 1
+  },
+  "invitation": {
+    "methods": [
+      "CODE",
+      "FILE",
+      "QR_PROJECTION"
+    ],
+    "states": [
+      "NONE",
+      "CREATED_LOCAL_REFERENCE",
+      "RECEIVED_VERIFIED_REFERENCE",
+      "RECEIVED_HELD_IDENTITY",
+      "EXPIRED_OR_REVOKED"
+    ],
+    "decisions": [
+      "ACCEPT",
+      "NARROW",
+      "DEFER",
+      "DENY",
+      "BLOCK"
+    ],
+    "identityStates": [
+      "VERIFIED_CURRENT",
+      "WRONG_KEY",
+      "SIGNATURE_INVALID",
+      "STALE_EVIDENCE",
+      "INVITATION_EXPIRED",
+      "UNKNOWN"
+    ],
+    "admittedDecisions": [
+      "ACCEPT",
+      "NARROW"
+    ]
+  },
+  "deliveryStates": [
+    "NOT_CONNECTED",
+    "SENT_NOT_CONNECTED",
+    "CONNECTED",
+    "DELIVERED",
+    "SEMANTIC_ACKNOWLEDGED"
+  ],
+  "deliveryInvariants": {
+    "sentImpliesConnected": false,
+    "connectedImpliesDelivered": false,
+    "deliveredImpliesSemanticAcknowledged": false,
+    "semanticAcknowledgedImpliesRelationshipPersistence": false
+  },
+  "relationshipTruth": {
+    "localDirectionalOnly": true,
+    "counterpartClaimIndependent": true,
+    "groupMembershipImpliesFriendship": false,
+    "invitationAcceptanceImpliesPersistence": false
+  },
+  "vexAssistance": {
+    "class": "DETERMINISTIC_EXPLANATION_AND_DEEP_LINK_ONLY",
+    "modelRequired": false,
+    "mayDecide": false,
+    "mayPersist": false,
+    "mayRevokeForHuman": false
+  },
+  "recoveryActions": [
+    "BLOCK",
+    "REVOKE",
+    "WITHDRAW",
+    "DISCONNECT",
+    "RESET_REFERENCE"
+  ],
+  "requiredLanguages": [
+    "en",
+    "ja",
+    "zh"
+  ],
+  "localePaths": {
+    "en": "../../../blueprint/relationships-browser/strings/en.json",
+    "ja": "../../../blueprint/relationships-browser/strings/ja.json",
+    "zh": "../../../blueprint/relationships-browser/strings/zh.json"
+  },
+  "proofRefs": [
+    "RPA00",
+    "RPA01",
+    "RPA02",
+    "RPA03",
+    "RPA04",
+    "RPA05",
+    "RPA06",
+    "RPA07",
+    "RPA08",
+    "RPA09",
+    "RPA10",
+    "RPA11",
+    "RPA12",
+    "RPA13",
+    "RPA14",
+    "RPA15",
+    "RPA16",
+    "RPA17",
+    "RPA18",
+    "RPA19"
+  ]
+}
