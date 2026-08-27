@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/modules/experience-review-adapter.js",
       "mode": "100644",
-      "bytes": 12190,
-      "sha256": "68a669bf386ae71af865d4e0ed96d65c0c5645af8e585e0ed347be97d8b806a4"
+      "bytes": 12325,
+      "sha256": "a83727716df8cbde9fe91fcad50f544537954683f2ddee5fdeb8832ed4d0a74a"
     },
     {
       "path": "scripts/evolution-simulate.mjs",
