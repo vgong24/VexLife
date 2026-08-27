@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -66,6 +67,32 @@ test('NWS-A03 caught host-side pre-payload setup failure cannot remain human-vis
   assert.equal(result.receipt.terminalEvidence.terminalObserved, false);
   assert.equal(current.receipt.state, 'NEEDS_ATTENTION');
   assert.notEqual(current.workPulse.state, 'WORKING');
+});
+
+test('NWS-A03 post-spawn state-write failure is never mislabeled as no-payload setup failure', async (t) => {
+  const prepared = fixture(t);
+  const collision = path.join(prepared.workerRoot, 'receipts', '00000003-working.json');
+  let payloadSpawns = 0;
+
+  await assert.rejects(
+    runPreparedNativeWorker(prepared.workerRoot, {
+      pollMs: 20,
+      spawnImpl: () => {
+        payloadSpawns += 1;
+        fs.writeFileSync(collision, '{}\n', { flag: 'wx' });
+        const child = new EventEmitter();
+        child.pid = 7711;
+        return child;
+      }
+    }),
+    (error) => error?.code === 'NWS_RECEIPT_COLLISION'
+  );
+
+  const current = loadNativeWorker(prepared.workerRoot);
+  const receipts = fs.readdirSync(path.join(prepared.workerRoot, 'receipts'));
+  assert.equal(payloadSpawns, 1);
+  assert.equal(current.receipt.state, 'STARTING');
+  assert.equal(receipts.filter((name) => name.includes('needs-attention')).length, 0);
 });
 
 // [VXG RealForever]

@@ -525,16 +525,22 @@ export async function runPreparedNativeWorker(root, { spawnImpl = spawn, now, po
   const stderrPath = path.join(root, 'stderr.log');
   let outFd = null;
   let errFd = null;
-  let spawned;
   try {
     outFd = fs.openSync(stdoutPath, 'a', 0o600);
     errFd = fs.openSync(stderrPath, 'a', 0o600);
-    spawned = spawnReservedPayload(root, exactLaunchRef, spawnImpl, { manifest, binding, host, outFd, errFd, now });
   } catch (error) {
     if (outFd !== null) try { fs.closeSync(outFd); } catch {}
     if (errFd !== null) try { fs.closeSync(errFd); } catch {}
     const durableFailure = markPrePayloadFailure(root, exactLaunchRef, error, now);
     if (durableFailure) return durableFailure;
+    throw error;
+  }
+  let spawned;
+  try {
+    spawned = spawnReservedPayload(root, exactLaunchRef, spawnImpl, { manifest, binding, host, outFd, errFd, now });
+  } catch (error) {
+    try { fs.closeSync(outFd); } catch {}
+    try { fs.closeSync(errFd); } catch {}
     throw error;
   }
   if (!spawned.child) {
