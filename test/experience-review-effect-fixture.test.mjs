@@ -97,7 +97,7 @@ function test(name, optionsOrFn, maybeFn) {
 
 nodeTest('effect fixture host classification is exact, local-only, and fail-closed', () => {
   const sourceText = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8');
-  assert.equal(sourceText.includes("'fetch', '--no-tags'"), false, 'fixture test harness must not hydrate source through git fetch');
+  assert.equal(sourceText.includes(["'fe", "tch', '--no-tags'"].join('')), false, 'fixture test harness must not hydrate source through git fetch');
   assert.equal(ROOT_FIXTURE_HOST.testedCheckoutSha, gitText(ROOT, 'rev-parse', 'HEAD'));
   assert.equal(ROOT_FIXTURE_HOST.testedCheckoutTreeSha, gitText(ROOT, 'rev-parse', 'HEAD^{tree}'));
 
