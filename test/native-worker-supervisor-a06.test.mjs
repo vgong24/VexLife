@@ -492,6 +492,7 @@ test('A06 exact scheduler interactive signal yields running BACKGROUND worker an
   assert.equal(runtime.relay.register(call).changed, true);
 
   const native = nativeWorkerFixture(t);
+  const nativeManifest = loadNativeWorker(native.workerRoot).manifest;
   const running = runPreparedNativeWorker(native.workerRoot, { pollMs: 20 });
   await waitForWorkerState(native.workerRoot, 'WORKING');
 
@@ -574,7 +575,7 @@ test('A06 exact scheduler interactive signal yields running BACKGROUND worker an
   assert.equal(yielded.eventKind, 'CHECKPOINT_BOUND_YIELD_OBSERVED');
   assert.equal(yielded.workerState, 'PAUSED');
   assert.equal(yielded.continuationRef, BACKGROUND_WORK);
-  assert.equal(yielded.resultContractRef, native.manifest.resultContractRef);
+  assert.equal(yielded.resultContractRef, nativeManifest.resultContractRef);
   assert.equal(yielded.sourceDiscarded, false);
 
   const relayResult = createNativeWorkerToolRelayResult(call, yielded, {
@@ -586,7 +587,6 @@ test('A06 exact scheduler interactive signal yields running BACKGROUND worker an
   assert.equal(accepted.observation.summary.continuationRef, BACKGROUND_WORK);
   assert.equal(accepted.observation.rawLogsIncluded, false);
   assert.equal(accepted.observation.externalEffectsExecuted, false);
-
   const reinjected = runtime.relay.reinject(active.contextLease, accepted.observation, { observedAt: RESULT_AT });
   assert.equal(reinjected.state, 'REINJECTED');
   assert.equal(reinjected.frame.rawResultIncluded, false);
@@ -618,8 +618,8 @@ test('A06 exact scheduler interactive signal yields running BACKGROUND worker an
     humanSummary: 'The synthetic background worker yielded, re-entered semantically, resumed, and completed without a protected effect.'
   });
 
-  assert.equal(native.manifest.workRef, BACKGROUND_WORK);
-  assert.equal(native.manifest.resultContractRef, 'contract.vexlife.test-result.v1');
+  assert.equal(nativeManifest.workRef, BACKGROUND_WORK);
+  assert.equal(nativeManifest.resultContractRef, 'contract.vexlife.test-result.v1');
   assert.equal(wrapping.receipt.state, 'WRAPPING_UP');
   assert.equal(wrapping.receipt.workRef, BACKGROUND_WORK);
   assert.equal(wrapping.receipt.terminalEvidence.exitCode, 0);
