@@ -33,6 +33,38 @@ WORKER_TERMINAL != SEMANTIC_COMPLETION
 
 A worker's durable state is stored beneath the caller-selected Vex Home runtime domain. Semantic context may rotate independently.
 
+### Intent Scheduler checkpoint bridge
+
+`src/core/native-worker-intent-bridge.mjs` is a narrow adapter between existing owners. It is **not** a scheduler and does not rank, select, admit, defer, or resume work.
+
+The only interactive-yield path it may admit is:
+
+```text
+Intent Scheduler has already returned CHECKPOINT_REQUIRED
++ decision exactly names the active workRef
++ sourceDiscarded=false
++ NWS manifest says schedulingClass=BACKGROUND
++ NWS manifest says pauseMode=CHECKPOINT_BOUND_COOPERATIVE
++ exact worker is durably WORKING
+-> bridge delegates PAUSE to the existing NWS control path
+-> worker remains human-visible Working while PAUSE_REQUESTED
+-> worker reaches its own safe checkpoint and exits 75
+-> NWS durably records PAUSED with checkpoint evidence
+-> bridge emits CHECKPOINT_BOUND_YIELD_OBSERVED
+-> existing Tool Result Relay accepts the bounded event
+-> existing Context Lease semantics perform bounded REINJECT
+```
+
+The bridge fails closed before worker mutation for a non-interactive/stale scheduler outcome, discarded source, workRef mismatch, non-BACKGROUND worker, non-cooperative worker, or non-WORKING state. It cannot turn an arbitrary object that merely says “interactive” into pause authority.
+
+```text
+Intent Scheduler = priority/preemption owner
+Native Worker Supervisor = exact OS-worker/control owner
+Tool Result Relay = exact result/observation owner
+Context Lease = semantic reinjection owner
+native-worker-intent-bridge = composition adapter only
+```
+
 ## Closed worker manifest
 
 The manifest contains stable refs plus exact argv. It contains no arbitrary command string or shell switch. The executable is resolved through a separate machine-local runtime binding and its bytes are SHA-256 verified before preparation.
@@ -153,6 +185,47 @@ human summary != second truth source
 ```
 
 Completion materialization itself is exclusive. The first accepted consumer writes `completion.json` and the one `DONE` generation inside the same mutation boundary; a second consumer re-observes `DONE` and is rejected rather than overwriting the record.
+
+### NWS-19 aggregate terminal lineage
+
+For the Stage-A NWS-19 contract, “terminal record” means the complete durable semantic-terminal lineage, not the OS-child terminal observation by itself.
+
+```text
+manifest
+  workerRef
+  workRef                    exact durable continuation identity
+  purposeRef
+  resultContractRef          exact expected result contract
+
+WRAPPING_UP receipt
+  same workerRef/workRef/purposeRef
+  exact launchRef
+  bounded terminalEvidence
+  != semantic completion
+
+completion.json
+  same workerRef/workRef
+  exact resultRef
+  machine completion record + digest
+  bounded human summary
+
+DONE receipt
+  same workerRef/workRef/purposeRef
+  same terminalEvidence/launch lineage
+  exact same resultRef
+  = semantic terminal truth
+```
+
+Therefore:
+
+```text
+continuationRef = workRef
+result contract = manifest.resultContractRef
+exact result = completion.json.resultRef = DONE.resultRef
+NWS-19 terminal record = manifest + WRAPPING_UP + completion.json + DONE
+```
+
+No synthetic `continuationRef` field is added to the supervisor's closed manifest or receipts merely to duplicate `workRef`. A consumer claiming NWS-19 must prove the complete aggregate lineage and must not treat `WRAPPING_UP` alone as satisfying it.
 
 ## Persistence and recovery
 
