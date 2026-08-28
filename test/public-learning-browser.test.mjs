@@ -180,6 +180,21 @@ test('S7P-05..16 rendered path, accessible list, mobile/keyboard/localization an
   assert.equal(await technical.first().getAttribute('open'), null, 'raw relationship refs must be progressively disclosed');
 
   const primary = page.locator('[data-public-action="read-leaf"]');
+  const primaryNode = await primary.elementHandle();
+  assert.ok(primaryNode, 'proof requires the exact original Read control DOM node');
+  for (const rerenderLocale of ['ja','en']) {
+    await page.evaluate((nextLocale) => globalThis.__vexlifePublicLearning.setLocale(nextLocale), rerenderLocale);
+    const sameSemanticRerenderState = await primaryNode.evaluate((element) => ({
+      connected: element.isConnected,
+      current: element.ownerDocument.querySelector('[data-public-action="read-leaf"]') === element,
+      focusRef: element.dataset.focusRef ?? null
+    }));
+    assert.deepEqual(
+      sameSemanticRerenderState,
+      { connected: true, current: true, focusRef: `control.public-learning.read-leaf.${ATLAS_REF}` },
+      'same-semantic detail rerender must preserve the exact Read control DOM node'
+    );
+  }
   const primaryColors = await primary.evaluate((el) => {
     const style=getComputedStyle(el); return {color:style.color,background:style.backgroundColor};
   });
@@ -200,15 +215,33 @@ test('S7P-05..16 rendered path, accessible list, mobile/keyboard/localization an
   await page.waitForTimeout(20);
   assert.deepEqual((await page.evaluate(() => globalThis.__vexlifePublicLearning.proof())).terrainPresentation, terrainBeforeScroll, 'leaf scrolling must not change Terrain');
 
+  const expectedReturnFocus = `control.public-learning.read-leaf.${ATLAS_REF}`;
   await page.goBack();
   await page.locator('#publicLeaf').waitFor({ state: 'hidden' });
+  await page.waitForFunction(
+    (focusRef) => document.activeElement?.dataset.focusRef === focusRef,
+    expectedReturnFocus
+  );
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const returned = await page.evaluate(() => globalThis.__vexlifePublicLearning.proof());
   assert.deepEqual(returned.semanticFrame, beforeLeaf.semanticFrame);
   assert.deepEqual(returned.terrainPresentation, beforeLeaf.terrainPresentation);
   assert.equal(returned.journeyEventCount, beforeLeaf.journeyEventCount);
   assert.equal(returned.lastReturnReceipt?.state, 'PASS');
   assert.equal(returned.routePath, REGISTRY.fieldRoutePath);
-  assert.equal(await page.evaluate(() => document.activeElement?.dataset.focusRef ?? null), `control.public-learning.read-leaf.${ATLAS_REF}`);
+  assert.equal(returned.lastReturnReceipt?.stableFocusRef, expectedReturnFocus);
+  const stableNodeState = await primaryNode.evaluate((element) => ({
+    connected: element.isConnected,
+    active: element.ownerDocument.activeElement === element,
+    current: element.ownerDocument.querySelector('[data-public-action="read-leaf"]') === element,
+    focusRef: element.dataset.focusRef ?? null
+  }));
+  assert.deepEqual(
+    stableNodeState,
+    { connected: true, active: true, current: true, focusRef: expectedReturnFocus },
+    'Browser Back must preserve and refocus the exact original Read control DOM node'
+  );
+  assert.equal(await page.evaluate(() => document.activeElement?.dataset.focusRef ?? null), expectedReturnFocus);
 
   assert.equal(await page.locator('#vexSummon').getAttribute('aria-describedby'), 'publicAskVexHeaderNote');
   assert.equal((await page.locator('#publicAskVexHeaderNote').textContent()).trim(), CATALOGS.en.strings['public.browser.ask-vex-held']);

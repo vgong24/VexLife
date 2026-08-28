@@ -249,17 +249,25 @@ export function createPublicLearningController({ projection, registry, catalogs,
     $('#publicDetailBrief', root).textContent = node?.briefRef ? t(node.briefRef) : node?.brief ?? '';
     const action = $('#publicDetailAction', root);
     const leaf = leafByCanonical.get(ref) ?? null;
-    action.replaceChildren();
     if (leaf) {
-      const button = document.createElement('button');
+      const focusRef = readFocusRef(ref);
+      let button = action.firstElementChild;
+      const reusable = action.childElementCount === 1
+        && button instanceof HTMLButtonElement
+        && button.dataset.publicAction === 'read-leaf'
+        && button.dataset.focusRef === focusRef;
+      if (!reusable) {
+        button = document.createElement('button');
+        action.replaceChildren(button);
+      }
       button.type = 'button';
       button.className = 'public-primary-action';
       button.dataset.publicAction = 'read-leaf';
-      button.dataset.focusRef = readFocusRef(ref);
+      button.dataset.focusRef = focusRef;
       button.textContent = t(registry.controls.readLeaf.labelRef);
       button.onclick = () => openLeaf(leaf, { direct: false });
-      action.append(button);
     } else {
+      action.replaceChildren();
       const note = document.createElement('p');
       note.textContent = t('public.browser.no-leaf');
       action.append(note);
@@ -358,9 +366,18 @@ export function createPublicLearningController({ projection, registry, catalogs,
     const leafScrollTop = currentReturnBundle?.leafScrollState?.scrollTop ?? 0;
     currentLeaf = null;
     currentReturnBundle = null;
-    renderCurrentDetail();
-    const focusTarget = root.querySelector(`[data-focus-ref="${CSS.escape(bundle.stableFocusRef)}"]`);
-    focusTarget?.focus({ preventScroll: true });
+    // Preserve the destination field control identity across same-document history
+    // traversal. Any queued same-semantic detail render now reconciles that control
+    // in place instead of detaching it.
+    const restoreStableFocus = () => {
+      if (!leafPanel.hidden || currentLeaf !== null) return false;
+      if (!same(navigation.semanticFrame(), bundle.semanticFrame)) return false;
+      const focusTarget = root.querySelector(`[data-focus-ref="${CSS.escape(bundle.stableFocusRef)}"]`);
+      focusTarget?.focus({ preventScroll: true });
+      return focusTarget?.ownerDocument.activeElement === focusTarget;
+    };
+    if (replaceRoute) restoreStableFocus();
+    else setTimeout(restoreStableFocus, 0);
     lastReturnReceipt = {
       schemaVersion: 'vexlife.public-learning-browser-return-receipt/v1',
       state: frameExact && terrainResult.restored ? 'PASS' : 'FAILED',
