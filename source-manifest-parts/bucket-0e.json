@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "0e",
+  "files": [
+    {
+      "path": "src/core/experience-review-effect-fixture-host.mjs",
+      "mode": "100644",
+      "bytes": 4287,
+      "sha256": "6f8bb3377bd8f8ad8cd8682ed71de2559adac6254f2fc08bb766920ae44a6b44"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { chromium } from 'playwright';
 import { buildGuideEffectFixturePlan, GUIDE_EFFECT_AUTHORITY_REF, GUIDE_EFFECT_FIXTURE_REF } from '../src/core/experience-review-effect-fixture.mjs';
+import { classifyEffectFixtureGitHost } from '../src/core/experience-review-effect-fixture-host.mjs';
 import { createBrowserExperienceReviewAdapter } from '../reference/browser/modules/experience-review-adapter.js';
 import { createVexLifeBrowserServer } from './serve-browser.mjs';
 
@@ -73,18 +74,38 @@ function observeExactSource() {
     .filter((line) => line.startsWith('parent '))
     .map((line) => line.slice('parent '.length));
   const attachedBranch = tryGitText('symbolic-ref', '--short', '-q', 'HEAD');
-  const candidateHeadSha = !attachedBranch && parentShas.length === 2
+  const syntheticCandidateHeadSha = !attachedBranch && parentShas.length === 2
     ? parentShas[1]
-    : testedCheckoutSha;
-  const candidateHeadTreeSha = gitText('rev-parse', `${candidateHeadSha}^{tree}`);
-  if (candidateHeadTreeSha !== testedCheckoutTreeSha) {
+    : '';
+  const syntheticCandidateObjectType = syntheticCandidateHeadSha
+    ? tryGitText('cat-file', '-t', syntheticCandidateHeadSha)
+    : '';
+  const syntheticCandidateHeadTreeSha = syntheticCandidateObjectType === 'commit'
+    ? tryGitText('rev-parse', `${syntheticCandidateHeadSha}^{tree}`)
+    : '';
+  const workspaceRootMatches = !process.env.GITHUB_WORKSPACE
+    || path.resolve(process.env.GITHUB_WORKSPACE) === ROOT;
+  const host = classifyEffectFixtureGitHost({
+    testedCheckoutSha,
+    testedCheckoutTreeSha,
+    parentShas,
+    attachedBranch,
+    environment: process.env,
+    workspaceRootMatches,
+    syntheticCandidateObjectType,
+    syntheticCandidateHeadTreeSha
+  });
+  if (!host.executionAllowed) {
+    throw new Error(`effect fixture exact candidate source is unavailable in ${host.hostClass}`);
+  }
+  if (host.candidateHeadTreeSha !== testedCheckoutTreeSha) {
     throw new Error(`effect fixture tested checkout tree is not exact candidate tree: ${testedCheckoutTreeSha}`);
   }
   return Object.freeze({
     bindingClass: 'GIT_OBSERVED_SOURCE_OWNED_REFERENCE_BROWSER',
-    sourceVersionRef: `github.commit.vexlife.${candidateHeadSha}`,
-    candidateHeadSha,
-    candidateHeadTreeSha,
+    sourceVersionRef: `github.commit.vexlife.${host.candidateHeadSha}`,
+    candidateHeadSha: host.candidateHeadSha,
+    candidateHeadTreeSha: host.candidateHeadTreeSha,
     testedCheckoutSha,
     testedCheckoutTreeSha
   });
