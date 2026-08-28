@@ -50,9 +50,14 @@ jobs:
           SHALLOW_ROOT="$RUNNER_TEMP/vexlife-accepted-main-preflight"
           rm -rf "$SHALLOW_ROOT"
           git clone --depth=1 --no-tags --branch vexlife-accepted-main-preflight "file://$PWD" "$SHALLOW_ROOT"
+          git -C "$SHALLOW_ROOT" checkout --detach "$PREFLIGHT_MERGE_SHA"
+          git -C "$SHALLOW_ROOT" remote set-url origin "https://github.com/${GITHUB_REPOSITORY}"
 
           test "$(git -C "$SHALLOW_ROOT" rev-parse HEAD)" = "$PREFLIGHT_MERGE_SHA"
           test "$(git -C "$SHALLOW_ROOT" rev-parse HEAD^{tree})" = "$PREFLIGHT_TREE_SHA"
+          test -z "$(git -C "$SHALLOW_ROOT" symbolic-ref --short -q HEAD || true)"
+          test -z "$(git -C "$SHALLOW_ROOT" status --porcelain=v1 --untracked-files=all)"
+          test "$(git -C "$SHALLOW_ROOT" remote get-url origin)" = "https://github.com/${GITHUB_REPOSITORY}"
           if git -C "$SHALLOW_ROOT" cat-file -e 'HEAD^' 2>/dev/null; then
             echo "accepted-main preflight checkout unexpectedly retained a parent commit" >&2
             exit 1
@@ -88,24 +93,50 @@ jobs:
           cd "$VEXLIFE_PREFLIGHT_ROOT"
           npx playwright install --with-deps chromium
 
-      - name: Materialize exact merged source manifest
+      - name: Run complete retained gate in clean accepted-main push topology
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           cd "$VEXLIFE_PREFLIGHT_ROOT"
-          npm run manifest:write
 
-      - name: Run complete gate in accepted-main push topology
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$VEXLIFE_PREFLIGHT_ROOT"
-          npm run orient
-          npm run build-admission:check
-          npm run pr-ready
-          npm run health:check
+          ORIENT_EXIT=0
+          MANIFEST_EXIT=0
+          BUILD_ADMISSION_EXIT=0
+          PR_READY_EXIT=0
+          HEALTH_EXIT=0
+
+          npm run orient || ORIENT_EXIT=$?
+          if [ "$ORIENT_EXIT" -eq 0 ]; then
+            npm run --silent manifest:check || MANIFEST_EXIT=$?
+          else
+            MANIFEST_EXIT=125
+          fi
+          if [ "$ORIENT_EXIT" -eq 0 ] && [ "$MANIFEST_EXIT" -eq 0 ]; then
+            npm run build-admission:check || BUILD_ADMISSION_EXIT=$?
+          else
+            BUILD_ADMISSION_EXIT=125
+          fi
+          if [ "$BUILD_ADMISSION_EXIT" -eq 0 ]; then
+            npm run pr-ready || PR_READY_EXIT=$?
+          else
+            PR_READY_EXIT=125
+          fi
+          if [ "$PR_READY_EXIT" -eq 0 ]; then
+            npm run health:check || HEALTH_EXIT=$?
+          else
+            HEALTH_EXIT=125
+          fi
+
+          {
+            echo "VEXLIFE_PREFLIGHT_ORIENT_EXIT=$ORIENT_EXIT"
+            echo "VEXLIFE_PREFLIGHT_MANIFEST_EXIT=$MANIFEST_EXIT"
+            echo "VEXLIFE_PREFLIGHT_BUILD_ADMISSION_EXIT=$BUILD_ADMISSION_EXIT"
+            echo "VEXLIFE_PREFLIGHT_PR_READY_EXIT=$PR_READY_EXIT"
+            echo "VEXLIFE_PREFLIGHT_HEALTH_EXIT=$HEALTH_EXIT"
+          } >> "$GITHUB_ENV"
 
       - name: Seal accepted-main topology receipt
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
@@ -114,19 +145,35 @@ jobs:
           import fs from 'node:fs';
           import { spawnSync } from 'node:child_process';
 
-          const prReady = JSON.parse(fs.readFileSync('generated/health/pr-ready.json', 'utf8'));
+          const readJsonIfPresent = (file) => fs.existsSync(file)
+            ? JSON.parse(fs.readFileSync(file, 'utf8'))
+            : null;
+          const prReady = readJsonIfPresent('generated/health/pr-ready.json');
           const head = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
           const tree = spawnSync('git', ['rev-parse', 'HEAD^{tree}'], { encoding: 'utf8' }).stdout.trim();
           const parentProbe = spawnSync('git', ['cat-file', '-e', 'HEAD^'], { encoding: 'utf8' });
           const parentCommitAvailable = parentProbe.status === 0;
+          const remoteUrl = spawnSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout.trim();
+          const branch = spawnSync('git', ['symbolic-ref', '--short', '-q', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
+          const worktree = spawnSync('git', ['status', '--porcelain=v1', '--untracked-files=all'], { encoding: 'utf8' }).stdout.trim();
+          const exits = {
+            orientation: Number(process.env.VEXLIFE_PREFLIGHT_ORIENT_EXIT ?? 125),
+            manifest: Number(process.env.VEXLIFE_PREFLIGHT_MANIFEST_EXIT ?? 125),
+            buildAdmission: Number(process.env.VEXLIFE_PREFLIGHT_BUILD_ADMISSION_EXIT ?? 125),
+            prReady: Number(process.env.VEXLIFE_PREFLIGHT_PR_READY_EXIT ?? 125),
+            health: Number(process.env.VEXLIFE_PREFLIGHT_HEALTH_EXIT ?? 125)
+          };
           const exact = head === process.env.VEXLIFE_PREFLIGHT_MERGE_SHA
             && tree === process.env.VEXLIFE_PREFLIGHT_TREE_SHA
-            && prReady.state === 'PR_READY_PASSED'
-            && prReady.candidateHeadSha === head
-            && prReady.testedCheckoutSha === head
-            && prReady.testedMergeSha === null
-            && prReady.baseSha === process.env.VEXLIFE_PREFLIGHT_BASE_SHA
-            && parentCommitAvailable === false;
+            && remoteUrl === `https://github.com/${process.env.GITHUB_REPOSITORY}`
+            && branch === ''
+            && parentCommitAvailable === false
+            && Object.values(exits).every((code) => code === 0)
+            && prReady?.state === 'PR_READY_PASSED'
+            && prReady?.candidateHeadSha === head
+            && prReady?.testedCheckoutSha === head
+            && prReady?.testedMergeSha === null
+            && prReady?.baseSha === process.env.VEXLIFE_PREFLIGHT_BASE_SHA;
 
           const receipt = {
             schemaVersion: 'vexlife.accepted-main-topology-preflight/v1',
@@ -137,14 +184,18 @@ jobs:
             simulatedAcceptedMainSha: head,
             simulatedAcceptedMainTreeSha: tree,
             preMergeMainSha: process.env.VEXLIFE_PREFLIGHT_BASE_SHA,
+            canonicalRemoteUrl: remoteUrl,
+            detached: branch === '',
             parentCommitAvailable,
-            prReadyState: prReady.state,
-            prReadySourceTreeSha256: prReady.sourceTreeSha256,
+            finalWorkingTreeDirty: Boolean(worktree),
+            gateExitCodes: exits,
+            prReadyState: prReady?.state ?? null,
+            prReadySourceTreeSha256: prReady?.sourceTreeSha256 ?? null,
             allProductionEffectsAuthorized: false
           };
+          fs.mkdirSync('generated/health', { recursive: true });
           fs.writeFileSync('generated/health/accepted-main-topology-preflight.json', `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
           console.log(JSON.stringify(receipt, null, 2));
-          if (!exact) process.exit(1);
           NODE
 
       - name: Preserve accepted-main topology evidence
@@ -156,6 +207,21 @@ jobs:
             ${{ runner.temp }}/vexlife-accepted-main-preflight/generated/health/accepted-main-topology-preflight.json
             ${{ runner.temp }}/vexlife-accepted-main-preflight/generated/health/pr-ready.json
             ${{ runner.temp }}/vexlife-accepted-main-preflight/generated/health/browser-integration.json
-          if-no-files-found: error
+          if-no-files-found: warn
+
+      - name: Enforce accepted-main topology preflight
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VEXLIFE_PREFLIGHT_ROOT"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const receipt = JSON.parse(fs.readFileSync('generated/health/accepted-main-topology-preflight.json', 'utf8'));
+          if (receipt.state !== 'PASS') {
+            console.error(JSON.stringify(receipt, null, 2));
+            process.exit(1);
+          }
+          NODE
 
 # [VXG RealForever]
