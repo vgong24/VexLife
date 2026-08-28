@@ -4,6 +4,7 @@ set -euo pipefail
 REPOSITORY="vgong24/VexLife"
 SOURCE_REF="${VEXLIFE_SOURCE_REF:-main}"
 SOURCE_ROOT="${VEXLIFE_SOURCE_ROOT:-$HOME/Library/Application Support/VexLife/source}"
+SETUP_MODE="${VEXLIFE_SETUP_MODE:-window}"
 
 say() { printf '\n%s\n' "$1"; }
 fail() { printf '\nVexLife setup stopped: %s\n' "$1" >&2; exit 1; }
@@ -11,6 +12,10 @@ fail() { printf '\nVexLife setup stopped: %s\n' "$1" >&2; exit 1; }
 [ "$(uname -s)" = "Darwin" ] || fail "this bootstrap is for macOS."
 case "$SOURCE_REF" in
   ''|*[!A-Za-z0-9._-]*) fail "the requested source ref is not a supported GitHub ref." ;;
+esac
+case "$SETUP_MODE" in
+  window|terminal) ;;
+  *) fail "VEXLIFE_SETUP_MODE must be 'window' or 'terminal'." ;;
 esac
 for tool in /usr/bin/curl /usr/bin/tar /usr/bin/plutil /usr/bin/mktemp; do
   [ -x "$tool" ] || fail "a required macOS system tool is unavailable: $tool"
@@ -70,6 +75,14 @@ TARGET="$RUN_PARENT/source"
   || fail "the fresh exact VexLife source did not materialize completely."
 
 say "VexLife source is ready."
-exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"
+if [ "$SETUP_MODE" = "terminal" ]; then
+  exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"
+fi
+
+WINDOW="$TARGET/install/vexlife-setup-window.applescript"
+[ -f "$WINDOW" ] || fail "the exact VexLife source is missing the Mac setup window. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
+[ -x /usr/bin/osascript ] || fail "macOS AppleScript is unavailable. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
+
+exec /usr/bin/osascript "$WINDOW" "$TARGET"
 
 # [VXG RealForever]

@@ -1,11 +1,68 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+SCRIPT_REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$SCRIPT_REPO_ROOT"
+if [ "$#" -gt 0 ] && [[ "$1" != --* ]]; then
+  REPO_ROOT="$1"
+  shift
+fi
 INSTALL_URL="http://127.0.0.1:18110"
 DEFAULT_HOME="${VEXLIFE_HOME:-$HOME/.vexlife}"
+CONTROLLER_MODE=false
+CONTROLLER_HOME=""
+CONTROLLER_ACTION=""
+NODE_INSTALL_CONSENT="no"
+RUNTIME_ACQUISITION_CONSENT="no"
 
 say() { printf '\n%s\n' "$1"; }
+fail() { printf '\nVexLife setup stopped: %s\n' "$1" >&2; exit 1; }
+controller_state() { printf 'VEXLIFE_CONTROLLER_STATE\t%s\n' "$1"; }
+controller_result() { printf 'VEXLIFE_CONTROLLER_RESULT\t%s\n' "$1"; }
+controller_actions() { printf 'VEXLIFE_CONTROLLER_ACTIONS\t%s\n' "$1"; }
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --controller)
+      CONTROLLER_MODE=true
+      shift
+      ;;
+    --home)
+      [ "$#" -ge 2 ] || fail "--home requires one path value."
+      CONTROLLER_HOME="$2"
+      shift 2
+      ;;
+    --action)
+      [ "$#" -ge 2 ] || fail "--action requires one controller action."
+      CONTROLLER_ACTION="$2"
+      shift 2
+      ;;
+    --node-install-consent)
+      [ "$#" -ge 2 ] || fail "--node-install-consent requires yes or no."
+      NODE_INSTALL_CONSENT="$2"
+      shift 2
+      ;;
+    --runtime-acquisition-consent)
+      [ "$#" -ge 2 ] || fail "--runtime-acquisition-consent requires yes or no."
+      RUNTIME_ACQUISITION_CONSENT="$2"
+      shift 2
+      ;;
+    *) fail "unknown setup argument: $1" ;;
+  esac
+done
+
+if [ "$CONTROLLER_MODE" = true ]; then
+  [ -n "$CONTROLLER_ACTION" ] || fail "controller mode requires --action."
+  [ -n "$CONTROLLER_HOME" ] || fail "controller mode requires --home."
+  case "$CONTROLLER_ACTION" in
+    inspect|install-node|first-setup|open|repair|rebuild-preserve|uninstall-preserve) ;;
+    *) fail "unknown controller action: $CONTROLLER_ACTION" ;;
+  esac
+  case "$NODE_INSTALL_CONSENT" in yes|no) ;; *) fail "node install consent must be yes or no." ;; esac
+  case "$RUNTIME_ACQUISITION_CONSENT" in yes|no) ;; *) fail "runtime acquisition consent must be yes or no." ;; esac
+  case "$CONTROLLER_HOME" in *$'\n'*|*$'\r'*|*$'\t'*) fail "the selected Home path contains unsupported control characters." ;; esac
+fi
+
 ask_yes_no() {
   local question="$1" default="${2:-y}" answer hint="Y/n"
   if [ "$default" = "n" ]; then hint="y/N"; fi
@@ -84,6 +141,125 @@ open_vex() {
   /usr/bin/open "$INSTALL_URL" >/dev/null 2>&1 || true
   say "VexLife is ready. Your browser should open at $INSTALL_URL"
 }
+canonicalize_home() {
+  local raw="$1"
+  case "$raw" in
+    '~') raw="$HOME" ;;
+    '~/'*) raw="$HOME/${raw#\~/}" ;;
+  esac
+  node -e 'const p=require("node:path"); console.log(p.resolve(process.argv[1]))' "$raw"
+}
+controller_inspect() {
+  local major status_json state actions
+  major="$(node_major)"
+  if [ "$major" = "none" ] || [ "$major" -lt 20 ] 2>/dev/null; then
+    if command -v brew >/dev/null 2>&1; then
+      controller_state "NODE_REQUIRED_HOMEBREW_AVAILABLE"
+      controller_actions "install-node"
+    else
+      controller_state "NODE_REQUIRED_MANUAL_INSTALL"
+      controller_actions ""
+    fi
+    return 0
+  fi
+  VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
+  status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
+  state="$(printf '%s' "$status_json" | parse_json_state)"
+  case "$state" in
+    ABSENT) actions="first-setup" ;;
+    EXISTING_HEALTHY) actions="open,repair,rebuild-preserve,uninstall-preserve" ;;
+    EXISTING_DEGRADED_REPAIRABLE) actions="repair,rebuild-preserve,uninstall-preserve" ;;
+    HELD_NONCANONICAL_HOME) actions="" ;;
+    *) actions="" ;;
+  esac
+  controller_state "$state"
+  controller_actions "$actions"
+}
+controller_run() {
+  local major status_json state plan_output plan_state receipt
+  major="$(node_major)"
+  if [ "$CONTROLLER_ACTION" = "install-node" ]; then
+    if [ "$major" != "none" ] && [ "$major" -ge 20 ] 2>/dev/null; then
+      controller_result "NODE_ALREADY_READY"
+      return 0
+    fi
+    [ "$NODE_INSTALL_CONSENT" = "yes" ] || fail "Node.js installation was not authorized."
+    command -v brew >/dev/null 2>&1 || fail "Homebrew is unavailable; install Node.js 20+ manually, then reopen setup."
+    brew install node
+    major="$(node_major)"
+    if [ "$major" = "none" ] || [ "$major" -lt 20 ] 2>/dev/null; then
+      fail "Node.js was installed, but this process cannot see Node.js 20+ yet. Reopen setup after the shell environment refreshes."
+    fi
+    controller_result "NODE_INSTALLED"
+    return 0
+  fi
+
+  if [ "$major" = "none" ] || [ "$major" -lt 20 ] 2>/dev/null; then
+    fail "Node.js 20+ is required before this controller action."
+  fi
+
+  VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
+  status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
+  state="$(printf '%s' "$status_json" | parse_json_state)"
+
+  if [ "$CONTROLLER_ACTION" = "inspect" ]; then
+    controller_inspect
+    return 0
+  fi
+
+  case "$state:$CONTROLLER_ACTION" in
+    ABSENT:first-setup)
+      [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "model/runtime acquisition was not authorized."
+      node "$REPO_ROOT/scripts/bootstrap.mjs" --device-name "$(scutil --get ComputerName 2>/dev/null || hostname)" --home "$VEX_HOME" >/dev/null
+      if ! plan_output="$(node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --plan-only)"; then
+        fail "this Mac is not currently eligible for automatic VexLife setup; no model/runtime download was started."
+      fi
+      plan_state="$(printf '%s' "$plan_output" | tail -n 1 | parse_json_state)"
+      [ "$plan_state" = "PLAN_READY_NO_EFFECT" ] || fail "this Mac is not currently eligible for automatic VexLife setup; no model/runtime download was started."
+      if ! node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --yes; then
+        fail "setup stopped safely before Vex was ready."
+      fi
+      receipt="$VEX_HOME/recovery/vex-initialization-receipt.json"
+      [ -f "$receipt" ] || fail "setup stopped before model/runtime activation."
+      run_lifecycle start >/dev/null
+      open_vex
+      controller_result "FIRST_SETUP_COMPLETE"
+      ;;
+    EXISTING_HEALTHY:open)
+      run_lifecycle start >/dev/null
+      open_vex
+      controller_result "VEX_OPENED"
+      ;;
+    EXISTING_HEALTHY:repair|EXISTING_DEGRADED_REPAIRABLE:repair)
+      [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "repair was not authorized to verify or reacquire required runtime files."
+      run_lifecycle repair >/dev/null
+      open_vex
+      controller_result "REPAIR_COMPLETE"
+      ;;
+    EXISTING_HEALTHY:rebuild-preserve|EXISTING_DEGRADED_REPAIRABLE:rebuild-preserve)
+      [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "rebuild-preserve was not authorized to reacquire required runtime files."
+      run_lifecycle rebuild-preserve >/dev/null
+      open_vex
+      controller_result "REBUILD_PRESERVE_COMPLETE"
+      ;;
+    EXISTING_HEALTHY:uninstall-preserve|EXISTING_DEGRADED_REPAIRABLE:uninstall-preserve)
+      run_lifecycle uninstall-preserve >/dev/null
+      controller_result "UNINSTALL_PRESERVE_COMPLETE"
+      ;;
+    *)
+      fail "controller action '$CONTROLLER_ACTION' is not admitted by the actual current VexLife state '$state'."
+      ;;
+  esac
+}
+
+if [ "$CONTROLLER_MODE" = true ]; then
+  if [ "$CONTROLLER_ACTION" = "inspect" ]; then
+    controller_inspect
+  else
+    controller_run
+  fi
+  exit 0
+fi
 
 printf '\nVexLife setup for Mac\n'
 printf '%s\n' '---------------------'
@@ -124,7 +300,7 @@ else
     *) VEX_HOME="$HOME_INPUT" ;;
   esac
 fi
-VEX_HOME="$(node -e 'const p=require("node:path"); console.log(p.resolve(process.argv[1]))' "$VEX_HOME")"
+VEX_HOME="$(canonicalize_home "$VEX_HOME")"
 printf 'Vex Home: %s\n' "$VEX_HOME"
 
 STATUS_JSON="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
