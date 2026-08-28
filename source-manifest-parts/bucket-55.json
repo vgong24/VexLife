@@ -9,6 +9,12 @@
       "sha256": "c9b6269f7b705d3e3a20f0de94c858f37ea3aba1d37eef23abe97d1ffb2e5b1e"
     },
     {
+      "path": "reference/browser/modules/public-learning-navigation-request.js",
+      "mode": "100644",
+      "bytes": 2321,
+      "sha256": "14d18669976714d3277f12968ea1e40abbd524f9d36c73fc4169ebb9e5a2f70c"
+    },
+    {
       "path": "test/lived-companion.test.mjs",
       "mode": "100644",
       "bytes": 84805,

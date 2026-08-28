@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 8523,
       "sha256": "ebec30cf8304edd83a31a6c6ce6c75a45f8cba10699a3a8cb04bcd2f9060ee84"
+    },
+    {
+      "path": "test/fixtures/experience-review-guide-local-append/authority.json",
+      "mode": "100644",
+      "bytes": 1244,
+      "sha256": "562a7891eed3c30472da049cceae329ae72a9bf2022a7e6f1ceb39e5a113fe87"
     }
   ]
 }
