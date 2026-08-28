@@ -47,9 +47,11 @@ function gitSource(root = ROOT) {
   const candidateHeadSha = !attachedBranch && parentShas.length === 2
     ? parentShas[1]
     : testedCheckoutSha;
+  const candidateHeadTreeSha = gitText(root, 'rev-parse', `${candidateHeadSha}^{tree}`);
   return {
     sourceVersionRef: `github.commit.vexlife.${candidateHeadSha}`,
     candidateHeadSha,
+    candidateHeadTreeSha,
     testedCheckoutSha,
     testedCheckoutTreeSha
   };
@@ -200,9 +202,10 @@ const CURRENT_RECORDS = Object.freeze([
   { kind: 'guide', intentRef: 'intent.guide.current', contentRef: 'guide.answer.current' }
 ]);
 
-function effectFixtureHtml({ initialRecords = [], clickRecords = CURRENT_RECORDS, spoofReferenceReady = false } = {}) {
+function effectFixtureHtml({ initialRecords = [], clickRecords = CURRENT_RECORDS, spoofReferenceReady = false, externalRequestUrl = null } = {}) {
   return `<!doctype html><html><body>
     <div id="guideMessages">${initialRecords.map(recordMarkup).join('')}</div>
+    ${externalRequestUrl ? `<img src="${externalRequestUrl}" alt="external probe">` : ''}
     <button data-node-ref="element.guide.ask-current" data-guide-intent-ref="intent.guide.current">Ask current</button>
     <script>
       ${spoofReferenceReady ? "globalThis.__VEXLIFE_APP__ = { guide: { askIntent() {} } };" : ''}
@@ -382,6 +385,21 @@ test('actual fixture CLI rejects source-managed permission, effect-class and ext
   }
 });
 
+test('actual fixture CLI rejects a dirty counterfeit reference browser under unchanged Git identity', { timeout: 30_000 }, async (t) => {
+  const root = disposableWorktree(t, 'vexlife-effect-fixture-dirty-browser-', (worktree) => {
+    fs.appendFileSync(path.join(worktree, 'reference/browser/index.html'), '\n<!-- uncommitted counterfeit reference browser -->\n', 'utf8');
+  });
+  const expectedSource = gitSource(root);
+  const workspace = tempWorkspace(t, 'vexlife-effect-fixture-dirty-browser-run-');
+  const execution = await runFixtureCli(requestBundle({ sourceVersionRef: expectedSource.sourceVersionRef }), binding(), workspace, root);
+  assert.equal(execution.code, 1, execution.stdout || execution.stderr);
+  const result = parseResult(execution);
+  assert.equal(result.state, 'FAILED_SAFE');
+  assert.match(result.reason, /source-owned reference browser working tree is not exact current Git source/);
+  assert.equal(result.isolatedFixtureEffectAuthorized, false);
+  assert.equal(result.externalEffectsAuthorized, false);
+});
+
 test('effect fixture CLI executes the source-owned real browser Guide LOCAL_APPEND and proves fresh-browser cleanup', { timeout: 120_000 }, async (t) => {
   const workspace = tempWorkspace(t, 'vexlife-effect-fixture-real-');
   const expectedSource = gitSource(ROOT);
@@ -397,13 +415,22 @@ test('effect fixture CLI executes the source-owned real browser Guide LOCAL_APPE
   assert.equal(result.sourceVersionRef, expectedSource.sourceVersionRef);
   assert.equal(result.source.bindingClass, 'GIT_OBSERVED_SOURCE_OWNED_REFERENCE_BROWSER');
   assert.equal(result.source.candidateHeadSha, expectedSource.candidateHeadSha);
+  assert.equal(result.source.candidateHeadTreeSha, expectedSource.candidateHeadTreeSha);
   assert.equal(result.source.testedCheckoutSha, expectedSource.testedCheckoutSha);
   assert.equal(result.source.testedCheckoutTreeSha, expectedSource.testedCheckoutTreeSha);
+  assert.equal(result.source.candidateHeadTreeSha, result.source.testedCheckoutTreeSha);
+  assert.equal(result.sourceRuntime.bindingClass, 'GIT_CLEAN_WORKTREE_RAW_BYTE_FINGERPRINT');
+  assert.deepEqual(result.sourceRuntime.scopes, ['reference/browser', 'blueprint']);
+  assert.ok(result.sourceRuntime.fileCount > 0);
+  assert.ok(result.sourceRuntime.totalBytes > 0);
+  assert.match(result.sourceRuntime.sha256, /^[0-9a-f]{64}$/);
   assert.equal(result.before.guideMessageCount, 0);
   assert.equal(result.after.guideMessageCount, 2);
   assert.deepEqual(result.after.records, CURRENT_RECORDS);
   assert.equal(result.cleanup.guideMessageCount, 0);
   assert.equal(result.cleanup.cleanupProof, 'FRESH_BROWSER_CONTEXT_ZERO_PRIOR_GUIDE_RECORDS');
+  assert.equal(result.cleanup.blockedRequestCount, 0);
+  assert.equal(result.network.blockedRequestCount, 0);
   assert.equal(result.network.escapedOrigin, false);
   assert.equal(result.isolatedFixtureEffectAuthorized, true);
   assert.equal(result.productionEffectsAuthorized, false);
@@ -413,6 +440,7 @@ test('effect fixture CLI executes the source-owned real browser Guide LOCAL_APPE
   const retained = JSON.parse(fs.readFileSync(path.join(execution.out, 'effect-fixture-result.json'), 'utf8'));
   assert.equal(retained.state, 'PASS');
   assert.deepEqual(retained.source, result.source);
+  assert.deepEqual(retained.sourceRuntime, result.sourceRuntime);
   assert.deepEqual(retained.after.records, CURRENT_RECORDS);
 });
 
@@ -427,6 +455,30 @@ test('counterfeit loopback reference-browser markers cannot mint PASS', { timeou
   assert.equal(result.state, 'FAILED_SAFE');
   assert.match(result.reason, /external loopback fixture is adversarial-only and cannot produce PASS/);
   assert.equal(result.isolatedFixtureEffectAuthorized, false);
+});
+
+test('effect fixture browser aborts cross-origin requests before the probe receives egress', { timeout: 30_000 }, async (t) => {
+  let probeHits = 0;
+  const probe = http.createServer((_request, response) => {
+    probeHits += 1;
+    response.writeHead(204, { 'cache-control': 'no-store' });
+    response.end();
+  });
+  const probeOrigin = await listen(probe);
+  t.after(() => closeServer(probe));
+
+  const fixture = onePageServer(() => effectFixtureHtml({ externalRequestUrl: `${probeOrigin}/probe` }));
+  const fixtureOrigin = await listen(fixture);
+  t.after(() => closeServer(fixture));
+
+  const workspace = tempWorkspace(t, 'vexlife-effect-fixture-external-probe-');
+  const execution = await runFixtureCli(requestBundle(), binding(`${fixtureOrigin}/fixture`), workspace);
+  assert.equal(execution.code, 1, execution.stdout || execution.stderr);
+  const result = parseResult(execution);
+  assert.equal(result.state, 'FAILED_SAFE');
+  assert.equal(result.isolatedFixtureEffectAuthorized, false);
+  assert.equal(result.externalEffectsAuthorized, false);
+  assert.equal(probeHits, 0, 'cross-origin probe must receive zero requests because routing aborts before dispatch');
 });
 
 test('effect fixture CLI refuses preexisting Guide fixture state', { timeout: 30_000 }, async (t) => {
