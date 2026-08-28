@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 7225,
       "sha256": "24ea68bda62700e5a0ce07f104b58be97d751111eceebd8a7993c3b144a20208"
+    },
+    {
+      "path": "test/relationships-visible-adoption.test.mjs",
+      "mode": "100644",
+      "bytes": 11204,
+      "sha256": "d3b0c77efb86ec9b1aa1f4eb2873f3eda8a1875fd83bfb548b79439da06e134d"
     }
   ]
 }
