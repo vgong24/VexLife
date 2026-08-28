@@ -387,7 +387,7 @@ test('seeded CLI hard-stops a non-actionable admitted click at the global time b
   t.after(() => closeServer(server));
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-seeded-cli-deadline-'));
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  const oneStep = [steps()[1]];
+  const oneStep = [{ ...steps()[1], sequence: 0 }];
   const timeBudgetMs = 5_000;
   const request = requestBundle({
     seed: 'seed.cli-deadline',
