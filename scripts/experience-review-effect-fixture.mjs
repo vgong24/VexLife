@@ -35,12 +35,14 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-async function guideMessages(page) {
-  return page.locator(MESSAGE_SELECTOR).evaluateAll((nodes) => nodes.map((node) => ({
-    kind: node.classList.contains('user') ? 'user' : node.classList.contains('guide') ? 'guide' : 'unknown',
-    intentRef: node.dataset.intentRef ?? null,
-    contentRef: node.dataset.contentRef ?? null
-  })));
+async function guideMessages(page, expectedIntentRef) {
+  return page.locator(MESSAGE_SELECTOR).evaluateAll((nodes, intentRef) => nodes
+    .filter((node) => node.dataset.intentRef === intentRef)
+    .map((node) => ({
+      kind: node.classList.contains('user') ? 'user' : node.classList.contains('guide') ? 'guide' : 'unknown',
+      intentRef: node.dataset.intentRef ?? null,
+      contentRef: node.dataset.contentRef ?? null
+    })), expectedIntentRef);
 }
 
 function observedPage(page, plan, sink) {
@@ -51,7 +53,7 @@ function observedPage(page, plan, sink) {
       if (property === 'goto') {
         return async (...args) => {
           const response = await originalGoto(...args);
-          sink.before = await guideMessages(page);
+          sink.before = await guideMessages(page, plan.observations.expectedIntentRef);
           if (sink.before.length !== plan.observations.initialGuideMessageCount) {
             throw new Error(`effect fixture baseline Guide message count mismatch: ${sink.before.length}`);
           }
@@ -61,7 +63,7 @@ function observedPage(page, plan, sink) {
       if (property === 'close') {
         return async (...args) => {
           try {
-            sink.after = await guideMessages(page);
+            sink.after = await guideMessages(page, plan.observations.expectedIntentRef);
           } catch (error) {
             sink.afterObservationError = error.message;
           }
@@ -145,7 +147,7 @@ async function proveFreshBrowserCleanup(plan) {
       waitUntil: plan.binding.waitUntil ?? 'load',
       timeout: plan.binding.timeoutMs ?? 30_000
     });
-    const messages = await guideMessages(page);
+    const messages = await guideMessages(page, plan.observations.expectedIntentRef);
     requireSameLoopbackOrigin(requests, plan.pageOrigin, 'cleanup browser');
     if (messages.length !== plan.observations.initialGuideMessageCount) {
       throw new Error(`fresh-browser cleanup Guide message count mismatch: ${messages.length}`);
@@ -185,7 +187,8 @@ try {
     });
     const evidence = await adapter.captureTasks([plan.task], screenshotsDirectory);
     if (evidence.length !== 1 || evidence[0].captureState !== 'CAPTURED') {
-      throw new Error(`effect fixture adapter did not capture exact action: ${evidence[0]?.captureState ?? 'MISSING'}`);
+      const deviations = Array.isArray(evidence[0]?.deviations) ? evidence[0].deviations.join(' | ') : '';
+      throw new Error(`effect fixture adapter did not capture exact action: ${evidence[0]?.captureState ?? 'MISSING'}${deviations ? `: ${deviations}` : ''}`);
     }
     requireSameLoopbackOrigin(sink.requests, plan.pageOrigin, 'effect fixture browser');
     if (!Array.isArray(sink.before) || sink.before.length !== plan.observations.initialGuideMessageCount) {
