@@ -29,7 +29,6 @@ import {
   loadNativeWorker,
   markNativeWorkerStandingBy,
   prepareNativeWorker,
-  requestNativeWorkerControl,
   runPreparedNativeWorker
 } from '../src/core/native-worker-supervisor.mjs';
 import { createResourceSnapshot } from '../src/core/resource-admission.mjs';
@@ -595,8 +594,8 @@ test('A06 exact scheduler interactive signal yields running BACKGROUND worker an
     releasedAt: CHECKPOINT_AT
   });
   assert.equal(checkpointed.checkpoint.workNodeRef, BACKGROUND_WORK);
-  assert.equal(checkpointed.pendingPreemption.pendingPreemptionRef, decision.pendingPreemptionRef);
-  assert.equal(checkpointed.pendingPreemption.sourceDiscarded, false);
+  assert.equal(runtime.scheduler.aggregate.pendingPreemption.pendingPreemptionRef, decision.pendingPreemptionRef);
+  assert.equal(runtime.scheduler.aggregate.pendingPreemption.sourceDiscarded, false);
 
   const standby = markNativeWorkerStandingBy(native.workerRoot);
   assert.equal(standby.receipt.state, 'STANDING_BY');
