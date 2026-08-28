@@ -122,6 +122,10 @@ export function createRelationshipsController({ state, registry, catalogs, host 
     return true;
   }
 
+  const terrainWorld = document.querySelector('#terrainWorld');
+  const terrainDoorObserver = terrainWorld ? new MutationObserver(() => { bindTerrainDoor(); }) : null;
+  terrainDoorObserver?.observe(terrainWorld, { childList: true, subtree: true });
+
   function resetInteraction() {
     interaction = { method:'CODE', invitation:'NONE', identity:'UNKNOWN', decision:'DEFER', localClass:'FRIEND', localFormed:false, recovery:'ACTIVE', delivery:'NOT_CONNECTED' };
   }
