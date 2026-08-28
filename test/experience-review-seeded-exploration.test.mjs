@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -158,6 +160,62 @@ function action(actions, actionRef) {
   return actions.find((item) => item.actionRef === actionRef);
 }
 
+function writeJson(filePath, value) {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+async function listen(server) {
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  assert.equal(typeof address, 'object');
+  return `http://127.0.0.1:${address.port}/`;
+}
+
+function closeServer(server) {
+  return new Promise((resolve) => server.close(() => resolve()));
+}
+
+function runSeededCli(request, browserBindings, workspace) {
+  const requestPath = path.join(workspace, 'request.json');
+  const bindingsPath = path.join(workspace, 'bindings.json');
+  const out = path.join(workspace, 'out');
+  writeJson(requestPath, request);
+  writeJson(bindingsPath, { browserBindings });
+  const startedAt = Date.now();
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [
+      'scripts/experience-review-seeded.mjs',
+      '--request', requestPath,
+      '--bindings', bindingsPath,
+      '--out', out
+    ], {
+      cwd: ROOT,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.once('error', reject);
+    child.once('close', (code, signal) => {
+      resolve({
+        code,
+        signal,
+        stdout,
+        stderr,
+        elapsedMs: Date.now() - startedAt,
+        out
+      });
+    });
+  });
+}
+
 test('seeded NO_EFFECT selection is reproducible, seed-sensitive and exactly budgeted', () => {
   const alpha = buildSeededNoEffectBrowserCapturePlan(requestBundle({ seed: 'seed.alpha', stepBudget: 2 }), binding(), ACTIONS);
   const alphaAgain = buildSeededNoEffectBrowserCapturePlan(requestBundle({ seed: 'seed.alpha', stepBudget: 2 }), binding(), ACTIONS);
@@ -265,14 +323,8 @@ test('time budget helper is an exact stop bound and deterministic sparse review 
 
 test('current browser route executes one bounded seeded READ_ONLY walk without native or effect authority', { timeout: 120_000 }, async (t) => {
   const server = createVexLifeBrowserServer();
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  t.after(() => new Promise((resolve) => server.close(() => resolve())));
-  const address = server.address();
-  assert.equal(typeof address, 'object');
-  const pageUrl = `http://127.0.0.1:${address.port}/reference/browser/`;
+  const pageUrl = await listen(server);
+  t.after(() => closeServer(server));
   const oneStep = [steps()[0]];
   const request = requestBundle({
     seed: 'seed.real-browser',
@@ -280,7 +332,7 @@ test('current browser route executes one bounded seeded READ_ONLY walk without n
     admittedActionRefs: ['action.view.select'],
     captureSteps: oneStep
   });
-  const plan = buildSeededNoEffectBrowserCapturePlan(request, binding(pageUrl), ACTIONS);
+  const plan = buildSeededNoEffectBrowserCapturePlan(request, binding(`${pageUrl}reference/browser/`), ACTIONS);
   assert.deepEqual(plan.selectedActionRefs, ['action.view.select']);
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-seeded-review-'));
   t.after(() => fs.rmSync(out, { recursive: true, force: true }));
@@ -290,6 +342,74 @@ test('current browser route executes one bounded seeded READ_ONLY walk without n
   assert.equal(evidence[0].captureState, 'CAPTURED', JSON.stringify(evidence[0].adapterReceipt.deviations));
   assert.equal(evidence[0].platformRef, 'platform.browser');
   assert.ok(fs.existsSync(path.join(out, plan.tasks[0].artifactFileName)));
+});
+
+test('seeded CLI itself executes the valid current browser path and emits the bounded machine result', { timeout: 120_000 }, async (t) => {
+  const server = createVexLifeBrowserServer();
+  const pageUrl = await listen(server);
+  t.after(() => closeServer(server));
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-seeded-cli-pass-'));
+  t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
+  const oneStep = [steps()[0]];
+  const request = requestBundle({
+    seed: 'seed.cli-pass',
+    stepBudget: 1,
+    timeBudgetMs: 15_000,
+    admittedActionRefs: ['action.view.select'],
+    captureSteps: oneStep
+  });
+  const execution = await runSeededCli(request, binding(`${pageUrl}reference/browser/`), workspace);
+  assert.equal(execution.code, 0, execution.stderr || execution.stdout);
+  const result = JSON.parse(execution.stdout);
+  assert.equal(result.state, 'PASS');
+  assert.equal(result.executionEffectPolicy, 'NO_EFFECT');
+  assert.deepEqual(result.selectedStepRefs, ['review-step.seeded.chat']);
+  assert.deepEqual(result.executedStepRefs, ['review-step.seeded.chat']);
+  assert.equal(result.externalEffectsAuthorized, false);
+  assert.equal(result.effectAuthorityRef, null);
+  assert.equal(result.fixtureRef, null);
+  const retained = JSON.parse(fs.readFileSync(path.join(execution.out, 'seeded-result.json'), 'utf8'));
+  assert.deepEqual(retained.selectedStepRefs, result.selectedStepRefs);
+  assert.equal(retained.state, 'PASS');
+});
+
+test('seeded CLI hard-stops a non-actionable admitted click at the global time budget', { timeout: 30_000 }, async (t) => {
+  let pageRequests = 0;
+  const server = http.createServer((request, response) => {
+    pageRequests += 1;
+    response.writeHead(200, {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store'
+    });
+    response.end('<!doctype html><html><body><button disabled data-node-ref="element.thread.open-conversation">Thread</button></body></html>');
+  });
+  const pageUrl = await listen(server);
+  t.after(() => closeServer(server));
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-seeded-cli-deadline-'));
+  t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
+  const oneStep = [steps()[1]];
+  const timeBudgetMs = 5_000;
+  const request = requestBundle({
+    seed: 'seed.cli-deadline',
+    stepBudget: 1,
+    timeBudgetMs,
+    admittedActionRefs: ['action.thread.select'],
+    captureSteps: oneStep
+  });
+  const execution = await runSeededCli(request, binding(pageUrl), workspace);
+  assert.equal(execution.code, 1, execution.stdout || execution.stderr);
+  assert.equal(execution.signal, null);
+  assert.ok(pageRequests > 0, 'hostile fixture must be reached so the bound covers the admitted click path');
+  assert.ok(
+    execution.elapsedMs < timeBudgetMs + 5_000,
+    `seeded CLI exceeded bounded deadline envelope: ${execution.elapsedMs}ms`
+  );
+  const result = JSON.parse(execution.stdout);
+  assert.equal(result.state, 'HELD');
+  assert.equal(result.stopReason, 'TIME_BUDGET_EXHAUSTED');
+  assert.equal(result.externalEffectsAuthorized, false);
+  assert.equal(result.effectAuthorityRef, null);
+  assert.equal(result.fixtureRef, null);
 });
 
 // [VXG RealForever]
