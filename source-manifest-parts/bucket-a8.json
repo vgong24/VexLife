@@ -17,8 +17,8 @@
     {
       "path": "scripts/health-check.mjs",
       "mode": "100644",
-      "bytes": 18501,
-      "sha256": "c94987f77219d104eb305bf4c2cff6e243382a43fd15a0721b392ce8777eeecf"
+      "bytes": 17625,
+      "sha256": "f31c8d69c1443a82e85e4587fecae2834957d12f8a3c7dbff07661050fa5f94e"
     },
     {
       "path": "test/core.test.mjs",
