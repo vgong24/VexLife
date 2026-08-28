@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -14,14 +14,48 @@ import {
   GUIDE_EFFECT_AUTHORITY_REF,
   GUIDE_EFFECT_FIXTURE_REF
 } from '../src/core/experience-review-effect-fixture.mjs';
-import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CURRENT_BLUEPRINT = loadBlueprint(ROOT).blueprint;
 const STEP_REF = 'review-step.effect-fixture.guide-current';
 const CAPTURE_REF = 'capture.effect-fixture.guide-current';
+const SOURCE_OWNED_REFERENCE_URL = 'http://127.0.0.1:0/reference/browser/';
 
-function requestBundle() {
+function gitText(root, ...args) {
+  return execFileSync('git', ['-C', root, ...args], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  }).trim();
+}
+
+function tryGitText(root, ...args) {
+  try {
+    return gitText(root, ...args);
+  } catch {
+    return '';
+  }
+}
+
+function gitSource(root = ROOT) {
+  const testedCheckoutSha = gitText(root, 'rev-parse', 'HEAD');
+  const testedCheckoutTreeSha = gitText(root, 'rev-parse', 'HEAD^{tree}');
+  const parentShas = gitText(root, 'cat-file', '-p', testedCheckoutSha)
+    .split(/\r?\n/u)
+    .filter((line) => line.startsWith('parent '))
+    .map((line) => line.slice('parent '.length));
+  const attachedBranch = tryGitText(root, 'symbolic-ref', '--short', '-q', 'HEAD');
+  const candidateHeadSha = !attachedBranch && parentShas.length === 2
+    ? parentShas[1]
+    : testedCheckoutSha;
+  return {
+    sourceVersionRef: `github.commit.vexlife.${candidateHeadSha}`,
+    candidateHeadSha,
+    testedCheckoutSha,
+    testedCheckoutTreeSha
+  };
+}
+
+function requestBundle({ sourceVersionRef = gitSource(ROOT).sourceVersionRef } = {}) {
   return {
     schemaVersion: 'vexlife.experience-review.request/v0',
     portableContractRef: 'contract.vextreme.experience-review.portable.v0',
@@ -30,7 +64,7 @@ function requestBundle() {
       reviewEpochRef: 'epoch.effect-fixture.test',
       reviewPlanRef: 'plan.effect-fixture.test',
       reviewRequestRef: 'request.effect-fixture.test',
-      sourceVersionRef: 'github.commit.vexlife.effect-fixture-test',
+      sourceVersionRef,
       truthClass: 'CURRENT_ACCEPTED_IMPLEMENTATION',
       state: 'PLANNED'
     },
@@ -80,7 +114,7 @@ function requestBundle() {
       localeRef: 'locale.en',
       themeRef: 'theme.foundation',
       deviceProfileRef: 'device.browser.desktop.reference',
-      sourceVersionRef: 'github.commit.vexlife.effect-fixture-test',
+      sourceVersionRef,
       truthClass: 'CURRENT_ACCEPTED_IMPLEMENTATION',
       steps: [{
         reviewStepRef: STEP_REF,
@@ -96,7 +130,7 @@ function requestBundle() {
   };
 }
 
-function binding(pageUrl) {
+function binding(pageUrl = SOURCE_OWNED_REFERENCE_URL) {
   return [{
     captureRequestRef: CAPTURE_REF,
     pageUrl,
@@ -115,7 +149,7 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
-function runFixtureCli(request, browserBindings, workspace) {
+function runFixtureCli(request, browserBindings, workspace, root = ROOT) {
   const requestPath = path.join(workspace, 'request.json');
   const bindingsPath = path.join(workspace, 'bindings.json');
   const out = path.join(workspace, 'out');
@@ -128,7 +162,7 @@ function runFixtureCli(request, browserBindings, workspace) {
       '--bindings', bindingsPath,
       '--out', out
     ], {
-      cwd: ROOT,
+      cwd: root,
       env: { ...process.env },
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -166,11 +200,12 @@ const CURRENT_RECORDS = Object.freeze([
   { kind: 'guide', intentRef: 'intent.guide.current', contentRef: 'guide.answer.current' }
 ]);
 
-function effectFixtureHtml({ initialRecords = [], clickRecords = CURRENT_RECORDS } = {}) {
+function effectFixtureHtml({ initialRecords = [], clickRecords = CURRENT_RECORDS, spoofReferenceReady = false } = {}) {
   return `<!doctype html><html><body>
     <div id="guideMessages">${initialRecords.map(recordMarkup).join('')}</div>
-    <button data-node-ref="element.guide.ask-current">Ask current</button>
+    <button data-node-ref="element.guide.ask-current" data-guide-intent-ref="intent.guide.current">Ask current</button>
     <script>
+      ${spoofReferenceReady ? "globalThis.__VEXLIFE_APP__ = { guide: { askIntent() {} } };" : ''}
       const records = ${JSON.stringify(clickRecords)};
       document.querySelector('[data-node-ref="element.guide.ask-current"]').addEventListener('click', () => {
         const host = document.getElementById('guideMessages');
@@ -201,13 +236,48 @@ function tempWorkspace(t, prefix) {
   return workspace;
 }
 
+function disposableWorktree(t, prefix, mutate) {
+  const holder = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  const worktree = path.join(holder, 'repo');
+  execFileSync('git', ['worktree', 'add', '--detach', worktree, 'HEAD'], {
+    cwd: ROOT,
+    stdio: 'ignore'
+  });
+  fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(worktree, 'node_modules'), 'dir');
+  mutate(worktree);
+  t.after(() => {
+    try {
+      execFileSync('git', ['worktree', 'remove', '--force', worktree], { cwd: ROOT, stdio: 'ignore' });
+    } finally {
+      fs.rmSync(holder, { recursive: true, force: true });
+    }
+  });
+  return worktree;
+}
+
+function mutateGuideAction(root, mutate) {
+  const filePath = path.join(root, 'blueprint/fragments/actions.json');
+  const actions = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const action = actions.find((item) => item.actionRef === 'action.guide.ask');
+  assert.ok(action, 'expected action.guide.ask in source-managed action registry');
+  mutate(action);
+  writeJson(filePath, actions);
+}
+
+function mutateFixtureAuthority(root, mutate) {
+  const filePath = path.join(root, 'test/fixtures/experience-review-guide-local-append/authority.json');
+  const authority = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  mutate(authority);
+  writeJson(filePath, authority);
+}
+
 function parseResult(execution) {
   assert.ok(execution.stdout.trim(), execution.stderr);
   return JSON.parse(execution.stdout);
 }
 
 test('effect fixture plan binds exact source-managed authority and rejects current Blueprint permission/effect drift', () => {
-  const current = buildGuideEffectFixturePlan(requestBundle(), binding('http://127.0.0.1:49152/reference/browser/'), { root: ROOT, blueprint: CURRENT_BLUEPRINT });
+  const current = buildGuideEffectFixturePlan(requestBundle(), binding(), { root: ROOT, blueprint: CURRENT_BLUEPRINT });
   assert.equal(current.fixtureRef, GUIDE_EFFECT_FIXTURE_REF);
   assert.equal(current.effectAuthorityRef, GUIDE_EFFECT_AUTHORITY_REF);
   assert.deepEqual(current.admittedEffectClasses, ['LOCAL_APPEND']);
@@ -218,14 +288,14 @@ test('effect fixture plan binds exact source-managed authority and rejects curre
   const permissionDrift = structuredClone(CURRENT_BLUEPRINT);
   permissionDrift.actions.find((item) => item.actionRef === 'action.guide.ask').permissionRef = 'permission.none';
   assert.throws(
-    () => buildGuideEffectFixturePlan(requestBundle(), binding('http://127.0.0.1:49152/reference/browser/'), { root: ROOT, blueprint: permissionDrift }),
+    () => buildGuideEffectFixturePlan(requestBundle(), binding(), { root: ROOT, blueprint: permissionDrift }),
     /current action permission drift/
   );
 
   const effectDrift = structuredClone(CURRENT_BLUEPRINT);
   effectDrift.actions.find((item) => item.actionRef === 'action.guide.ask').effectClass = 'NETWORK_EFFECT';
   assert.throws(
-    () => buildGuideEffectFixturePlan(requestBundle(), binding('http://127.0.0.1:49152/reference/browser/'), { root: ROOT, blueprint: effectDrift }),
+    () => buildGuideEffectFixturePlan(requestBundle(), binding(), { root: ROOT, blueprint: effectDrift }),
     /current action effect drift/
   );
 
@@ -235,31 +305,34 @@ test('effect fixture plan binds exact source-managed authority and rejects curre
     if (element) element.permissionRef = 'permission.none';
   }
   assert.throws(
-    () => buildGuideEffectFixturePlan(requestBundle(), binding('http://127.0.0.1:49152/reference/browser/'), { root: ROOT, blueprint: elementDrift }),
+    () => buildGuideEffectFixturePlan(requestBundle(), binding(), { root: ROOT, blueprint: elementDrift }),
     /current fixture element permission drift/
   );
 });
 
-test('effect fixture CLI fails closed on authority, action, platform and browser-binding widening before execution', async (t) => {
+test('effect fixture CLI fails closed on authority, action, source, platform and browser-binding widening before execution', async (t) => {
   const cases = [];
 
   const wrongFixture = requestBundle();
   wrongFixture.reviewPlan.effectFixture.fixtureRef = 'fixture.vexlife.review.wrong';
-  cases.push(['wrong fixtureRef', wrongFixture, binding('http://127.0.0.1:49152/reference/browser/')]);
+  cases.push(['wrong fixtureRef', wrongFixture, binding()]);
 
   const wrongAuthority = requestBundle();
   wrongAuthority.reviewPlan.effectFixture.effectAuthorityRef = 'authority.vexlife.review.wrong';
-  cases.push(['wrong effectAuthorityRef', wrongAuthority, binding('http://127.0.0.1:49152/reference/browser/')]);
+  cases.push(['wrong effectAuthorityRef', wrongAuthority, binding()]);
 
   const actionDrift = requestBundle();
   actionDrift.captureRequests[0].steps[0].actionRef = 'action.thread.select';
-  cases.push(['action drift', actionDrift, binding('http://127.0.0.1:49152/reference/browser/')]);
+  cases.push(['action drift', actionDrift, binding()]);
+
+  const wrongSource = requestBundle({ sourceVersionRef: `github.commit.vexlife.${'0'.repeat(40)}` });
+  cases.push(['caller source substitution', wrongSource, binding()]);
 
   const native = requestBundle();
   native.captureRequests[0].platformRef = 'platform.windows';
-  cases.push(['native platform substitution', native, binding('http://127.0.0.1:49152/reference/browser/')]);
+  cases.push(['native platform substitution', native, binding()]);
 
-  const persistent = binding('http://127.0.0.1:49152/reference/browser/');
+  const persistent = binding();
   persistent[0].persistentUserDataDir = '/tmp/not-admitted';
   cases.push(['persistent browser state', requestBundle(), persistent]);
 
@@ -278,12 +351,41 @@ test('effect fixture CLI fails closed on authority, action, platform and browser
   }
 });
 
-test('effect fixture CLI executes exact real browser Guide LOCAL_APPEND and proves fresh-browser cleanup', { timeout: 120_000 }, async (t) => {
-  const server = createVexLifeBrowserServer();
-  const origin = await listen(server);
-  t.after(() => closeServer(server));
+test('actual fixture CLI rejects source-managed permission, effect-class and extra-effect drift', { timeout: 60_000 }, async (t) => {
+  const cases = [
+    {
+      name: 'permission-drift',
+      mutate(root) { mutateGuideAction(root, (action) => { action.permissionRef = 'permission.none'; }); },
+      expected: /current action permission drift/
+    },
+    {
+      name: 'effect-class-drift',
+      mutate(root) { mutateGuideAction(root, (action) => { action.effectClass = 'NETWORK_EFFECT'; }); },
+      expected: /current action effect drift/
+    },
+    {
+      name: 'extra-effect-class',
+      mutate(root) { mutateFixtureAuthority(root, (authority) => { authority.admittedEffectClasses = ['LOCAL_APPEND', 'NETWORK_EFFECT']; }); },
+      expected: /fixture authority must admit exactly LOCAL_APPEND/
+    }
+  ];
+
+  for (const item of cases) {
+    const root = disposableWorktree(t, `vexlife-effect-fixture-${item.name}-`, item.mutate);
+    const workspace = tempWorkspace(t, `vexlife-effect-fixture-${item.name}-run-`);
+    const execution = await runFixtureCli(requestBundle(), binding(), workspace, root);
+    assert.equal(execution.code, 1, `${item.name}: ${execution.stdout || execution.stderr}`);
+    const result = parseResult(execution);
+    assert.equal(result.state, 'FAILED_SAFE');
+    assert.match(result.reason, item.expected);
+    assert.equal(result.isolatedFixtureEffectAuthorized, false);
+  }
+});
+
+test('effect fixture CLI executes the source-owned real browser Guide LOCAL_APPEND and proves fresh-browser cleanup', { timeout: 120_000 }, async (t) => {
   const workspace = tempWorkspace(t, 'vexlife-effect-fixture-real-');
-  const execution = await runFixtureCli(requestBundle(), binding(`${origin}/reference/browser/`), workspace);
+  const expectedSource = gitSource(ROOT);
+  const execution = await runFixtureCli(requestBundle({ sourceVersionRef: expectedSource.sourceVersionRef }), binding(), workspace);
   assert.equal(execution.code, 0, execution.stderr || execution.stdout);
   assert.equal(execution.signal, null);
   const result = parseResult(execution);
@@ -292,6 +394,11 @@ test('effect fixture CLI executes exact real browser Guide LOCAL_APPEND and prov
   assert.equal(result.effectAuthorityRef, GUIDE_EFFECT_AUTHORITY_REF);
   assert.equal(result.executionEffectPolicy, 'ADMITTED_FIXTURE_EFFECTS');
   assert.deepEqual(result.admittedEffectClasses, ['LOCAL_APPEND']);
+  assert.equal(result.sourceVersionRef, expectedSource.sourceVersionRef);
+  assert.equal(result.source.bindingClass, 'GIT_OBSERVED_SOURCE_OWNED_REFERENCE_BROWSER');
+  assert.equal(result.source.candidateHeadSha, expectedSource.candidateHeadSha);
+  assert.equal(result.source.testedCheckoutSha, expectedSource.testedCheckoutSha);
+  assert.equal(result.source.testedCheckoutTreeSha, expectedSource.testedCheckoutTreeSha);
   assert.equal(result.before.guideMessageCount, 0);
   assert.equal(result.after.guideMessageCount, 2);
   assert.deepEqual(result.after.records, CURRENT_RECORDS);
@@ -305,7 +412,21 @@ test('effect fixture CLI executes exact real browser Guide LOCAL_APPEND and prov
   assert.match(result.adapterArtifact.sha256, /^[0-9a-f]{64}$/);
   const retained = JSON.parse(fs.readFileSync(path.join(execution.out, 'effect-fixture-result.json'), 'utf8'));
   assert.equal(retained.state, 'PASS');
+  assert.deepEqual(retained.source, result.source);
   assert.deepEqual(retained.after.records, CURRENT_RECORDS);
+});
+
+test('counterfeit loopback reference-browser markers cannot mint PASS', { timeout: 30_000 }, async (t) => {
+  const server = onePageServer(() => effectFixtureHtml({ spoofReferenceReady: true }));
+  const origin = await listen(server);
+  t.after(() => closeServer(server));
+  const workspace = tempWorkspace(t, 'vexlife-effect-fixture-spoofed-reference-');
+  const execution = await runFixtureCli(requestBundle(), binding(`${origin}/reference/browser/`), workspace);
+  assert.equal(execution.code, 1, execution.stdout || execution.stderr);
+  const result = parseResult(execution);
+  assert.equal(result.state, 'FAILED_SAFE');
+  assert.match(result.reason, /external loopback fixture is adversarial-only and cannot produce PASS/);
+  assert.equal(result.isolatedFixtureEffectAuthorized, false);
 });
 
 test('effect fixture CLI refuses preexisting Guide fixture state', { timeout: 30_000 }, async (t) => {
