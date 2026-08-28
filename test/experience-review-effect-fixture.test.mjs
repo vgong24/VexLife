@@ -14,13 +14,14 @@ import {
   GUIDE_EFFECT_AUTHORITY_REF,
   GUIDE_EFFECT_FIXTURE_REF
 } from '../src/core/experience-review-effect-fixture.mjs';
+import { classifyEffectFixtureGitHost } from '../src/core/experience-review-effect-fixture-host.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CURRENT_BLUEPRINT = loadBlueprint(ROOT).blueprint;
 const STEP_REF = 'review-step.effect-fixture.guide-current';
 const CAPTURE_REF = 'capture.effect-fixture.guide-current';
 const SOURCE_OWNED_REFERENCE_URL = 'http://127.0.0.1:0/reference/browser/';
-const SYNTHETIC_HOST_SKIP_REASON = 'exact candidate object absent only in recognized GitHub PR shallow synthetic merge; mandatory exact-candidate Foundation portability cells own fixture execution';
+const SYNTHETIC_HOST_SKIP_REASON = 'recognized GitHub PR synthetic merge cannot independently prove candidate object/tree equals executed checkout; exact-candidate and accepted-main topology cells own fixture execution';
 
 function gitText(root, ...args) {
   return execFileSync('git', ['-C', root, ...args], {
@@ -48,40 +49,24 @@ function inspectFixtureHost(root = ROOT, environment = process.env) {
   const syntheticCandidateHeadSha = !attachedBranch && parentShas.length === 2
     ? parentShas[1]
     : '';
-  const exactGithubShallowSynthetic = Boolean(syntheticCandidateHeadSha)
-    && environment.VEXLIFE_CURRENT_WORK_EVENT_NAME === 'pull_request'
-    && environment.VEXLIFE_TESTED_MERGE_SHA === testedCheckoutSha
-    && environment.VEXLIFE_CANDIDATE_HEAD_SHA === syntheticCandidateHeadSha
-    && environment.VEXLIFE_BASE_SHA === parentShas[0];
-  const candidateHeadSha = exactGithubShallowSynthetic
-    ? syntheticCandidateHeadSha
-    : testedCheckoutSha;
-  const candidateObjectType = tryGitText(root, 'cat-file', '-t', candidateHeadSha);
+  const syntheticCandidateObjectType = syntheticCandidateHeadSha
+    ? tryGitText(root, 'cat-file', '-t', syntheticCandidateHeadSha)
+    : '';
+  const syntheticCandidateHeadTreeSha = syntheticCandidateObjectType === 'commit'
+    ? tryGitText(root, 'rev-parse', `${syntheticCandidateHeadSha}^{tree}`)
+    : '';
+  const workspaceRootMatches = !environment.GITHUB_WORKSPACE
+    || path.resolve(environment.GITHUB_WORKSPACE) === path.resolve(root);
 
-  if (candidateObjectType === 'commit') {
-    return Object.freeze({
-      hostClass: 'EXACT_CANDIDATE_OBJECT_PRESENT',
-      executionAllowed: true,
-      testedCheckoutSha,
-      testedCheckoutTreeSha,
-      parentShas: Object.freeze([...parentShas]),
-      attachedBranch,
-      candidateHeadSha
-    });
-  }
-
-  if (!exactGithubShallowSynthetic) {
-    throw new Error(`effect fixture candidate commit object is missing outside the recognized GitHub PR shallow synthetic merge host: ${candidateHeadSha}`);
-  }
-
-  return Object.freeze({
-    hostClass: 'GITHUB_PR_SHALLOW_SYNTHETIC_MERGE',
-    executionAllowed: false,
+  return classifyEffectFixtureGitHost({
     testedCheckoutSha,
     testedCheckoutTreeSha,
-    parentShas: Object.freeze([...parentShas]),
+    parentShas,
     attachedBranch,
-    candidateHeadSha
+    environment,
+    workspaceRootMatches,
+    syntheticCandidateObjectType,
+    syntheticCandidateHeadTreeSha
   });
 }
 
@@ -104,14 +89,20 @@ nodeTest('effect fixture host classification is exact, local-only, and fail-clos
 
   if (ROOT_FIXTURE_HOST.executionAllowed) {
     assert.equal(ROOT_FIXTURE_HOST.hostClass, 'EXACT_CANDIDATE_OBJECT_PRESENT');
+    assert.equal(ROOT_FIXTURE_HOST.candidateHeadTreeSha, ROOT_FIXTURE_HOST.testedCheckoutTreeSha);
     assert.equal(tryGitText(ROOT, 'cat-file', '-t', ROOT_FIXTURE_HOST.candidateHeadSha), 'commit');
     return;
   }
 
   assert.equal(ROOT_FIXTURE_HOST.hostClass, 'GITHUB_PR_SHALLOW_SYNTHETIC_MERGE');
+  assert.equal(ROOT_FIXTURE_HOST.exactGithubPrSynthetic, true);
   assert.equal(ROOT_FIXTURE_HOST.attachedBranch, '');
   assert.equal(ROOT_FIXTURE_HOST.parentShas.length, 2);
-  assert.notEqual(tryGitText(ROOT, 'cat-file', '-t', ROOT_FIXTURE_HOST.candidateHeadSha), 'commit');
+  const candidateObjectType = tryGitText(ROOT, 'cat-file', '-t', ROOT_FIXTURE_HOST.candidateHeadSha);
+  const candidateTreeSha = candidateObjectType === 'commit'
+    ? tryGitText(ROOT, 'rev-parse', `${ROOT_FIXTURE_HOST.candidateHeadSha}^{tree}`)
+    : '';
+  assert.equal(candidateObjectType !== 'commit' || candidateTreeSha !== ROOT_FIXTURE_HOST.testedCheckoutTreeSha, true);
   assert.equal(process.env.VEXLIFE_CURRENT_WORK_EVENT_NAME, 'pull_request');
   assert.equal(process.env.VEXLIFE_TESTED_MERGE_SHA, ROOT_FIXTURE_HOST.testedCheckoutSha);
   assert.equal(process.env.VEXLIFE_CANDIDATE_HEAD_SHA, ROOT_FIXTURE_HOST.candidateHeadSha);
@@ -131,10 +122,36 @@ nodeTest('detached accepted-main worktree binds the exact checkout instead of in
   assert.equal(host.hostClass, 'EXACT_CANDIDATE_OBJECT_PRESENT');
   assert.equal(host.attachedBranch, '');
   assert.equal(host.candidateHeadSha, testedCheckoutSha);
+  assert.equal(host.candidateHeadTreeSha, host.testedCheckoutTreeSha);
   if (host.parentShas.length === 2) {
     assert.notEqual(host.candidateHeadSha, host.parentShas[1]);
   }
   assert.equal(tryGitText(root, 'cat-file', '-t', host.candidateHeadSha), 'commit');
+});
+
+nodeTest('pull-request environment cannot lend PR-synthetic candidate authority to a detached child worktree', (t) => {
+  const root = disposableWorktree(t, 'vexlife-effect-fixture-pr-env-child-', () => {});
+  const testedCheckoutSha = gitText(root, 'rev-parse', 'HEAD');
+  const parentShas = gitText(root, 'cat-file', '-p', testedCheckoutSha)
+    .split(/\r?\n/u)
+    .filter((line) => line.startsWith('parent '))
+    .map((line) => line.slice('parent '.length));
+  if (parentShas.length !== 2) {
+    t.skip('exact checkout is not a two-parent merge; accepted-main topology preflight owns that host class');
+    return;
+  }
+  const host = inspectFixtureHost(root, {
+    ...process.env,
+    GITHUB_WORKSPACE: ROOT,
+    VEXLIFE_CURRENT_WORK_EVENT_NAME: 'pull_request',
+    VEXLIFE_TESTED_MERGE_SHA: testedCheckoutSha,
+    VEXLIFE_CANDIDATE_HEAD_SHA: parentShas[1],
+    VEXLIFE_BASE_SHA: parentShas[0]
+  });
+  assert.equal(host.exactGithubPrSynthetic, false);
+  assert.equal(host.executionAllowed, true);
+  assert.equal(host.candidateHeadSha, testedCheckoutSha);
+  assert.equal(host.candidateHeadTreeSha, host.testedCheckoutTreeSha);
 });
 
 function gitSource(root = ROOT) {
@@ -142,11 +159,10 @@ function gitSource(root = ROOT) {
   if (!host.executionAllowed) {
     throw new Error(`effect fixture exact candidate source is unavailable in ${host.hostClass}`);
   }
-  const candidateHeadTreeSha = gitText(root, 'rev-parse', `${host.candidateHeadSha}^{tree}`);
   return {
     sourceVersionRef: `github.commit.vexlife.${host.candidateHeadSha}`,
     candidateHeadSha: host.candidateHeadSha,
-    candidateHeadTreeSha,
+    candidateHeadTreeSha: host.candidateHeadTreeSha,
     testedCheckoutSha: host.testedCheckoutSha,
     testedCheckoutTreeSha: host.testedCheckoutTreeSha
   };
