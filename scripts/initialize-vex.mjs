@@ -15,12 +15,13 @@ import {
   classifyHomeState,
   evaluateOperationalProfileHost,
   qualificationContentMatches,
+  resolveArtifactDeliveryChannels,
   runtimeExecutableIdentityMatches,
   runtimeProcessEvidenceMatches,
   selectOperationalProfile,
   validateOperationalProfileRegistry
 } from '../src/core/vex-initialization.mjs';
-import { classifyVerifiedArtifact, downloadVerifiedArtifact, sha256File } from '../src/core/model-provision.mjs';
+import { classifyVerifiedArtifact, downloadVerifiedArtifactFromChannels, sha256File } from '../src/core/model-provision.mjs';
 import { assertSafeMacExtractedTree, assertSafeMacTarArchive, readMacProcessEvidence } from './macos-lifecycle.mjs';
 import { writeJson } from '../src/core/utils.mjs';
 
@@ -329,16 +330,24 @@ try {
     if (before.state === 'INVALID_HASH' || before.state === 'INVALID_SIZE' || before.state === 'INVALID_NOT_FILE') {
       throw Object.assign(new Error(`${artifact.filename} already exists but does not match the accepted profile; refusing to overwrite it`), { state: 'ARTIFACT_HASH_MISMATCH' });
     }
-    const receipt = await downloadVerifiedArtifact({
-      url: artifact.url,
-      expectedSha256: artifact.sha256,
-      expectedBytes: artifact.expectedBytes,
-      maxBytes: artifact.maxBytes,
+    const channels = resolveArtifactDeliveryChannels(registry, artifact.artifactRef);
+    const receipt = await downloadVerifiedArtifactFromChannels({
+      artifact,
+      channels,
       finalPath: destination,
       onProgress: ({ bytes }) => progress(`${artifact.filename}: ${Math.floor(bytes / (1024 * 1024))} MiB received`)
     });
     artifactPaths.set(artifact.artifactRef, destination);
-    artifactReceipts.push({ artifactRef: artifact.artifactRef, filename: artifact.filename, disposition: receipt.disposition, bytes: receipt.bytes, sha256: receipt.actualSha256 });
+    artifactReceipts.push({
+      artifactRef: artifact.artifactRef,
+      filename: artifact.filename,
+      disposition: receipt.disposition,
+      bytes: receipt.bytes,
+      sha256: receipt.actualSha256,
+      selectedChannelRef: receipt.selectedChannelRef,
+      attemptedChannelRefs: receipt.attemptedChannelRefs,
+      sourceUrlWithoutQuery: receipt.recordedSourceUrl
+    });
   }
 
   progress('Materializing the local runtime...');
@@ -464,8 +473,8 @@ try {
     receiptPath: recoveryReceiptPath
   }));
 } catch (error) {
-  const state = error.state ?? (/checksum mismatch/u.test(error.message) ? 'ARTIFACT_HASH_MISMATCH' : 'INITIALIZATION_FAILED_SAFE');
-  const receiptPath = writeFailureReceipt(profile, state, error.message);
+  const state = error.code ?? error.state ?? (/checksum mismatch/u.test(error.message) ? 'ARTIFACT_HASH_MISMATCH' : 'INITIALIZATION_FAILED_SAFE');
+  const receiptPath = writeFailureReceipt(profile, state, error.message, error.detail ?? {});
   fail(state, error.message, 6, { receiptPath });
 }
 
