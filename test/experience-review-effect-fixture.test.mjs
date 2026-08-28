@@ -36,6 +36,21 @@ function tryGitText(root, ...args) {
   }
 }
 
+function ensureGitCommitAvailable(root, commitSha) {
+  if (tryGitText(root, 'cat-file', '-t', commitSha) === 'commit') return;
+  const remoteUrl = tryGitText(root, 'remote', 'get-url', 'origin');
+  if (!/(?:github\.com[:/])vgong24\/VexLife(?:\.git)?$/u.test(remoteUrl)) {
+    throw new Error(`effect fixture test cannot hydrate missing candidate commit from unexpected origin: ${remoteUrl || 'MISSING'}`);
+  }
+  execFileSync('git', ['-C', root, 'fetch', '--no-tags', '--depth=1', 'origin', commitSha], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  if (tryGitText(root, 'cat-file', '-t', commitSha) !== 'commit') {
+    throw new Error(`effect fixture test could not hydrate exact candidate commit: ${commitSha}`);
+  }
+}
+
 function gitSource(root = ROOT) {
   const testedCheckoutSha = gitText(root, 'rev-parse', 'HEAD');
   const testedCheckoutTreeSha = gitText(root, 'rev-parse', 'HEAD^{tree}');
@@ -47,6 +62,7 @@ function gitSource(root = ROOT) {
   const candidateHeadSha = !attachedBranch && parentShas.length === 2
     ? parentShas[1]
     : testedCheckoutSha;
+  ensureGitCommitAvailable(root, candidateHeadSha);
   const candidateHeadTreeSha = gitText(root, 'rev-parse', `${candidateHeadSha}^{tree}`);
   return {
     sourceVersionRef: `github.commit.vexlife.${candidateHeadSha}`,
