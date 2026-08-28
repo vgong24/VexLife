@@ -9,6 +9,12 @@
       "sha256": "8c815676ba8e0e4b954aee0a5505e8706fec63bdbe911acda5c31dab2790df8a"
     },
     {
+      "path": "reference/browser/modules/public-learning-terrain-controller.js",
+      "mode": "100644",
+      "bytes": 872,
+      "sha256": "167711fb943ba7ea284ad07a75352f74f10b8a0b37b936f2b20410acc5a72507"
+    },
+    {
       "path": "scripts/create-platform.mjs",
       "mode": "100644",
       "bytes": 1086,
