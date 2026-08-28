@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 70526,
       "sha256": "89941e6f2705e91b2230190d265da3633c967f54346cc91ab473c17c8571cde7"
+    },
+    {
+      "path": "test/public-learning-navigation-continuity.test.mjs",
+      "mode": "100644",
+      "bytes": 10969,
+      "sha256": "5952cfce4ac20824e70053001a3cf57a1f52c832c2ba4bf81dc57d03e418bf3b"
     }
   ]
 }
