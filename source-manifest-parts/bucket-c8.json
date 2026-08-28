@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "c8",
+  "files": [
+    {
+      "path": "docs/LOCAL-OPERATIONS-EVIDENCE-AND-APPROVAL.md",
+      "mode": "100644",
+      "bytes": 20789,
+      "sha256": "0f5053097790324456ff624bb3d2fe4f6414bc347c078e953809f671afcc7ce1"
+    }
+  ]
+}
