@@ -30,6 +30,9 @@ FIRST_SUBSTANTIVE_FAILURE_IS_IMMUTABLE_EVIDENCE=true
 GENERATED_CLOSURE_RECOMPOSES_CURRENT_CO_BUCKET_TRUTH=true
 MERGE_IS_NOT_POST_MERGE_VERIFICATION_OR_TERMINAL_RETURN=true
 DEPENDENT_WAKE_IS_PART_OF_TERMINAL_CLOSURE=true
+SAME_OWNER_ROLE_TRANSITION_PRESERVES_LANE_CONTINUITY=true
+ROLE_TRANSITION_DOES_NOT_REQUIRE_NEW_CONVERSATION=true
+NEW_CONVERSATION_DOES_NOT_INHERIT_OWNERSHIP_BY_EXISTENCE=true
 ROOT_ROLE_REQUIRES_EXPLICIT_CURRENT_AUTHORITY=true
 EXPLICIT_CURRENT_ROOT_OCCUPANCY_CAN_UNBLOCK_SAME_LANE=true
 ROOT_ROLE_TRANSITION_DOES_NOT_CREATE_A_NEW_LANE=true
@@ -52,6 +55,16 @@ orientation, source placement, green checks, Assurance, approval, READY, merge,
 a serialized wait, or a provider-window boundary. When a blocker is a mechanical
 EDGE and the exact next executable function/inputs are current, continue it;
 when it is a real CAGE, preserve the lane and exact wake predicate.
+
+When the same owner still owns the same bounded work, institutional role changes
+are fresh internal occupancies, not ownership transfers. Operations, Coder,
+Independent Assurance, Lifecycle Operations, Formal Reviewer, Owner Merge Duty,
+Root when explicitly granted, and other admitted roles may continue the lane in
+the same conversation after fresh role-local grounding. A new conversation or
+thread does not acquire continuity responsibility merely because it exists.
+Handoff is required only when ownership actually transfers, an exact executor or
+provider capability boundary requires another occupancy, or the lane's current
+terminal/successor routing says so.
 
 When explicit current user/Root authority grants this occupancy the Root role for
 the same bounded work, Root may be occupied in the same conversation to resolve
