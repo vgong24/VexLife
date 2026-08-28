@@ -5,8 +5,8 @@
     {
       "path": "AGENTS.md",
       "mode": "100644",
-      "bytes": 1758,
-      "sha256": "7f0db0ec2c6864c5b40d8c0729b196785b9582f77c9729eaed94bb1b5da9f39a"
+      "bytes": 5411,
+      "sha256": "deacbdeb0deb79b5eabcda20c6303e18b72e0f7a25b273a8c1f2619942ccf28a"
     },
     {
       "path": "src/core/interface-builder.mjs",
