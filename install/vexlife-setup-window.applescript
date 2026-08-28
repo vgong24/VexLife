@@ -6,7 +6,10 @@ property NSAlertFirstButtonReturn : 1000
 property NSAlertSecondButtonReturn : 1001
 property NSAlertThirdButtonReturn : 1002
 property NSUTF8StringEncoding : 4
+property NSWindowStyleMaskTitled : 1
+property NSBackingStoreBuffered : 2
 property controllerPrefix : "VEXLIFE_CONTROLLER_STATE\t"
+property actionPrefix : "VEXLIFE_CONTROLLER_ACTIONS\t"
 property resultPrefix : "VEXLIFE_CONTROLLER_RESULT\t"
 
 on run argv
@@ -40,12 +43,17 @@ on run argv
       return
     end if
     set stateValue to my prefixedValue(stdoutText of inspected, controllerPrefix)
-    if stateValue is missing value then
-      my showMessage("VexLife setup stopped", "The accepted setup backend did not return a typed controller state.", "OK")
+    set actionsValue to my prefixedValue(stdoutText of inspected, actionPrefix)
+    if stateValue is missing value or actionsValue is missing value then
+      my showMessage("VexLife setup stopped", "The accepted setup backend did not return both typed state and admitted actions.", "OK")
       return
     end if
 
     if stateValue is "NODE_REQUIRED_HOMEBREW_AVAILABLE" then
+      if not my hasAction(actionsValue, "install-node") then
+        my showMessage("VexLife setup held", "Node.js is needed, but the backend did not admit an installation action. Nothing was changed.", "OK")
+        return
+      end if
       set choice to my ask("Node.js is needed", "VexLife needs Node.js 20 or newer. Homebrew is available, but nothing will be installed without your permission.", "Install Node.js", "Not now", missing value)
       if choice is not NSAlertFirstButtonReturn then return
       set nodeResult to my runBackend(repoRoot, homePath, "install-node", "yes", "no")
@@ -60,6 +68,10 @@ on run argv
       return
 
     else if stateValue is "ABSENT" then
+      if not my hasAction(actionsValue, "first-setup") then
+        my showMessage("VexLife setup held", "No Vex Home exists here, and the accepted backend did not admit first setup. Nothing was changed.", "OK")
+        return
+      end if
       set homeChoice to my ask("Create a Vex Home?", "No VexLife Home was found at the selected location. Continue only if you want VexLife to establish a new local Home there.", "Continue", "Cancel", missing value)
       if homeChoice is not NSAlertFirstButtonReturn then return
       set runtimeChoice to my ask("Prepare the local Vex runtime?", "This supported Mac can use the current release-qualified source-local profile. Continuing may acquire several GiB of verified model/runtime files and start a local-only model. VexLife, not this window, selects and verifies those exact artifacts.", "Download and continue", "Not now", missing value)
@@ -73,20 +85,41 @@ on run argv
       return
 
     else if stateValue is "EXISTING_HEALTHY" then
-      set choice to my ask("VexLife is ready", "This Home is healthy. You can open Vex now or choose a preservation-safe recovery action.", "Open Vex", "Recovery…", "Cancel")
-      if choice is NSAlertFirstButtonReturn then
-        set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
-        if (exitCode of actionResult) is not 0 then my showBackendFailure(actionResult)
+      set openAllowed to my hasAction(actionsValue, "open")
+      set recoveryAllowed to my hasAnyRecoveryAction(actionsValue)
+      if openAllowed and recoveryAllowed then
+        set choice to my ask("VexLife is ready", "This Home is healthy. You can open Vex now or choose a preservation-safe action admitted by the current lifecycle owner.", "Open Vex", "Recovery…", "Cancel")
+        if choice is NSAlertFirstButtonReturn then
+          set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
+          if (exitCode of actionResult) is not 0 then my showBackendFailure(actionResult)
+          return
+        else if choice is NSAlertSecondButtonReturn then
+          my recoveryFlow(repoRoot, homePath, actionsValue, false)
+          return
+        else
+          return
+        end if
+      else if openAllowed then
+        set choice to my ask("VexLife is ready", "The current lifecycle owner admits opening this healthy Home.", "Open Vex", "Cancel", missing value)
+        if choice is NSAlertFirstButtonReturn then
+          set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
+          if (exitCode of actionResult) is not 0 then my showBackendFailure(actionResult)
+        end if
         return
-      else if choice is NSAlertSecondButtonReturn then
-        my recoveryFlow(repoRoot, homePath, false)
+      else if recoveryAllowed then
+        my recoveryFlow(repoRoot, homePath, actionsValue, false)
         return
       else
+        my showMessage("VexLife setup held", "This Home is recognized, but the lifecycle owner currently admits no windowed action. Nothing was changed.", "OK")
         return
       end if
 
     else if stateValue is "EXISTING_DEGRADED_REPAIRABLE" then
-      my recoveryFlow(repoRoot, homePath, true)
+      if my hasAnyRecoveryAction(actionsValue) then
+        my recoveryFlow(repoRoot, homePath, actionsValue, true)
+      else
+        my showMessage("VexLife recovery held", "This Home needs attention, but the lifecycle owner currently admits no preservation-safe recovery action. Nothing was changed.", "OK")
+      end if
       return
 
     else if stateValue is "HELD_NONCANONICAL_HOME" then
@@ -118,27 +151,74 @@ on chooseHome(defaultHome)
   return chosen
 end chooseHome
 
-on recoveryFlow(repoRoot, homePath, degraded)
+on hasAction(actionsText, actionName)
+  if actionsText is missing value or actionsText is "" then return false
+  set oldDelimiters to AppleScript's text item delimiters
+  set AppleScript's text item delimiters to ","
+  set actionItems to text items of actionsText
+  set AppleScript's text item delimiters to oldDelimiters
+  repeat with oneAction in actionItems
+    if (oneAction as text) is actionName then return true
+  end repeat
+  return false
+end hasAction
+
+on hasAnyRecoveryAction(actionsText)
+  return (my hasAction(actionsText, "repair")) or (my hasAction(actionsText, "rebuild-preserve")) or (my hasAction(actionsText, "uninstall-preserve"))
+end hasAnyRecoveryAction
+
+on chooseRecoveryAction(messageText, detailText, actionsText)
+  set alert to current application's NSAlert's alloc()'s init()
+  alert's setMessageText:messageText
+  alert's setInformativeText:detailText
+  set actionKeys to {}
+  if my hasAction(actionsText, "repair") then
+    alert's addButtonWithTitle:"Repair"
+    set end of actionKeys to "repair"
+  end if
+  if my hasAction(actionsText, "rebuild-preserve") then
+    alert's addButtonWithTitle:"Rebuild preserve"
+    set end of actionKeys to "rebuild-preserve"
+  end if
+  if my hasAction(actionsText, "uninstall-preserve") then
+    alert's addButtonWithTitle:"Uninstall preserve"
+    set end of actionKeys to "uninstall-preserve"
+  end if
+  if (count of actionKeys) is 0 then return missing value
+  alert's addButtonWithTitle:"Cancel"
+  current application's NSApp's activateIgnoringOtherApps:true
+  set response to alert's runModal() as integer
+  set actionIndex to response - NSAlertFirstButtonReturn + 1
+  if actionIndex is greater than 0 and actionIndex is less than or equal to (count of actionKeys) then return item actionIndex of actionKeys
+  return missing value
+end chooseRecoveryAction
+
+on recoveryFlow(repoRoot, homePath, actionsText, degraded)
   if degraded then
     set messageText to "VexLife needs recovery"
-    set detailText to "This Home is recognized, but VexLife must repair or rebuild its runtime state before it can start. Both choices preserve Home, Memory, and conversations."
+    set detailText to "This Home is recognized, but VexLife must use one action currently admitted by its lifecycle owner before it can start. Preservation boundaries remain in force."
   else
     set messageText to "Recovery options"
-    set detailText to "Repair verifies or reacquires required runtime files. Rebuild-preserve rebuilds runtime/transient state while preserving Home, Memory, conversations, and verified model cache. Uninstall-preserve removes VexLife runtime state while preserving Home and preserved data."
+    set detailText to "Only actions currently admitted by the lifecycle owner are shown. Repair may verify or reacquire runtime files; rebuild-preserve rebuilds runtime/transient state; uninstall-preserve removes runtime state while preserving Home and preserved data."
   end if
-  set choice to my ask(messageText, detailText, "Repair", "Rebuild preserve", "More…")
-  if choice is NSAlertFirstButtonReturn then
+  set actionName to my chooseRecoveryAction(messageText, detailText, actionsText)
+  if actionName is missing value then return
+
+  if actionName is "repair" then
     set consent to my ask("Repair VexLife?", "Repair may verify or reacquire required runtime files. Continue?", "Repair", "Cancel", missing value)
     if consent is not NSAlertFirstButtonReturn then return
     set actionResult to my runBackend(repoRoot, homePath, "repair", "no", "yes")
-  else if choice is NSAlertSecondButtonReturn then
+  else if actionName is "rebuild-preserve" then
     set consent to my ask("Rebuild while preserving Home?", "This rebuilds runtime/transient state and may reacquire runtime files. Home, Memory, conversations, and verified model cache stay preserved.", "Rebuild preserve", "Cancel", missing value)
     if consent is not NSAlertFirstButtonReturn then return
     set actionResult to my runBackend(repoRoot, homePath, "rebuild-preserve", "no", "yes")
-  else
-    set moreChoice to my ask("More recovery options", "Uninstall-preserve stops owned VexLife processes and removes runtime/transient state while preserving Home, Memory, conversations, and verified model files.", "Uninstall preserve", "Cancel", missing value)
-    if moreChoice is not NSAlertFirstButtonReturn then return
+  else if actionName is "uninstall-preserve" then
+    set consent to my ask("Uninstall while preserving Home?", "This stops owned VexLife processes and removes runtime/transient state while preserving Home, Memory, conversations, and verified model files.", "Uninstall preserve", "Cancel", missing value)
+    if consent is not NSAlertFirstButtonReturn then return
     set actionResult to my runBackend(repoRoot, homePath, "uninstall-preserve", "no", "no")
+  else
+    my showMessage("VexLife recovery held", "The selected action was not admitted by the current controller response. Nothing was changed.", "OK")
+    return
   end if
 
   if (exitCode of actionResult) is not 0 then
@@ -152,6 +232,31 @@ on recoveryFlow(repoRoot, homePath, degraded)
     end if
   end if
 end recoveryFlow
+
+on progressText(actionName)
+  if actionName is "install-node" then return "Installing the prerequisite you approved. Keep this window open."
+  if actionName is "first-setup" then return "Preparing VexLife. Verified model/runtime acquisition can take several minutes; this window will remain responsive."
+  if actionName is "repair" then return "Repairing VexLife under the accepted preservation boundary. Keep this window open."
+  if actionName is "rebuild-preserve" then return "Rebuilding runtime state while preserving Home and durable data. Keep this window open."
+  if actionName is "uninstall-preserve" then return "Removing runtime state while preserving Home and durable data. Keep this window open."
+  return "Opening VexLife. Keep this window open."
+end progressText
+
+on beginProgress(actionName)
+  set panel to current application's NSPanel's alloc()'s initWithContentRect:(current application's NSMakeRect(0, 0, 460, 118)) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:false
+  panel's setTitle:"VexLife setup"
+  set label to current application's NSTextField's labelWithString:(my progressText(actionName))
+  label's setFrame:(current application's NSMakeRect(24, 58, 412, 36))
+  set indicator to current application's NSProgressIndicator's alloc()'s initWithFrame:(current application's NSMakeRect(24, 25, 412, 18))
+  indicator's setIndeterminate:true
+  indicator's startAnimation:(missing value)
+  panel's contentView()'s addSubview:label
+  panel's contentView()'s addSubview:indicator
+  panel's center()
+  panel's makeKeyAndOrderFront:(missing value)
+  current application's NSApp's activateIgnoringOtherApps:true
+  return panel
+end beginProgress
 
 on runBackend(repoRoot, homePath, actionName, nodeConsent, runtimeConsent)
   set fileManager to current application's NSFileManager's defaultManager()
@@ -170,14 +275,23 @@ on runBackend(repoRoot, homePath, actionName, nodeConsent, runtimeConsent)
   task's setStandardOutput:outHandle
   task's setStandardError:errHandle
   set launchErrorText to ""
+  set progressPanel to missing value
+  if actionName is not "inspect" then set progressPanel to my beginProgress(actionName)
   try
     task's |launch|()
-    task's waitUntilExit()
+    if progressPanel is missing value then
+      task's waitUntilExit()
+    else
+      repeat while (task's isRunning() as boolean)
+        current application's NSRunLoop's currentRunLoop()'s runUntilDate:(current application's NSDate's dateWithTimeIntervalSinceNow:0.1)
+      end repeat
+    end if
     set taskStatus to task's terminationStatus() as integer
   on error launchError
     set taskStatus to 127
     set launchErrorText to launchError as text
   end try
+  if progressPanel is not missing value then progressPanel's orderOut:(missing value)
   try
     outHandle's closeFile()
     errHandle's closeFile()

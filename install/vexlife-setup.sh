@@ -88,6 +88,41 @@ parse_json_state() {
     });
   '
 }
+parse_json_choices() {
+  node -e '
+    let s="";
+    process.stdin.on("data", d => s += d);
+    process.stdin.on("end", () => {
+      try {
+        const value = JSON.parse(s);
+        const choices = Array.isArray(value.choices) ? value.choices.map(String) : [];
+        console.log(choices.join(","));
+      } catch { console.log(""); }
+    });
+  '
+}
+csv_has_choice() {
+  local csv="$1" expected="$2"
+  case ",$csv," in
+    *",$expected,"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+append_action() {
+  local current="$1" action="$2"
+  if [ -z "$current" ]; then printf '%s' "$action"; else printf '%s,%s' "$current" "$action"; fi
+}
+controller_actions_from_lifecycle() {
+  local state="$1" choices="$2" actions=""
+  if csv_has_choice "$choices" start; then
+    if [ "$state" = "ABSENT" ]; then actions="$(append_action "$actions" first-setup)"; fi
+    if [ "$state" = "EXISTING_HEALTHY" ]; then actions="$(append_action "$actions" open)"; fi
+  fi
+  for action in repair rebuild-preserve uninstall-preserve; do
+    if csv_has_choice "$choices" "$action"; then actions="$(append_action "$actions" "$action")"; fi
+  done
+  printf '%s' "$actions"
+}
 reconcile_prior_browser_source() {
   if ! node --input-type=module - "$REPO_ROOT/scripts/macos-lifecycle.mjs" "$VEX_HOME" "$REPO_ROOT" <<'NODE'
 import fs from 'node:fs';
@@ -150,7 +185,7 @@ canonicalize_home() {
   node -e 'const p=require("node:path"); console.log(p.resolve(process.argv[1]))' "$raw"
 }
 controller_inspect() {
-  local major status_json state actions
+  local major status_json state lifecycle_choices actions
   major="$(node_major)"
   if [ "$major" = "none" ] || [ "$major" -lt 20 ] 2>/dev/null; then
     if command -v brew >/dev/null 2>&1; then
@@ -165,18 +200,13 @@ controller_inspect() {
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
   status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
   state="$(printf '%s' "$status_json" | parse_json_state)"
-  case "$state" in
-    ABSENT) actions="first-setup" ;;
-    EXISTING_HEALTHY) actions="open,repair,rebuild-preserve,uninstall-preserve" ;;
-    EXISTING_DEGRADED_REPAIRABLE) actions="repair,rebuild-preserve,uninstall-preserve" ;;
-    HELD_NONCANONICAL_HOME) actions="" ;;
-    *) actions="" ;;
-  esac
+  lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"
+  actions="$(controller_actions_from_lifecycle "$state" "$lifecycle_choices")"
   controller_state "$state"
   controller_actions "$actions"
 }
 controller_run() {
-  local major status_json state plan_output plan_state receipt
+  local major status_json state lifecycle_choices required_lifecycle_action plan_output plan_state receipt
   major="$(node_major)"
   if [ "$CONTROLLER_ACTION" = "install-node" ]; then
     if [ "$major" != "none" ] && [ "$major" -ge 20 ] 2>/dev/null; then
@@ -201,11 +231,20 @@ controller_run() {
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
   status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
   state="$(printf '%s' "$status_json" | parse_json_state)"
+  lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"
 
   if [ "$CONTROLLER_ACTION" = "inspect" ]; then
     controller_inspect
     return 0
   fi
+
+  case "$CONTROLLER_ACTION" in
+    first-setup|open) required_lifecycle_action="start" ;;
+    repair|rebuild-preserve|uninstall-preserve) required_lifecycle_action="$CONTROLLER_ACTION" ;;
+    *) fail "controller action '$CONTROLLER_ACTION' has no lifecycle-owner mapping." ;;
+  esac
+  csv_has_choice "$lifecycle_choices" "$required_lifecycle_action" \
+    || fail "controller action '$CONTROLLER_ACTION' is not admitted by the lifecycle owner's current choices for state '$state'."
 
   case "$state:$CONTROLLER_ACTION" in
     ABSENT:first-setup)

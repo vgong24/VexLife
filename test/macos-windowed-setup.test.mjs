@@ -18,7 +18,9 @@ function shellSyntax(file) {
   assert.equal(result.status, 0, result.stderr || result.stdout);
 }
 
-function makeFakeNode(binRoot, state = 'ABSENT') {
+function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
+  const defaultChoices = state === 'ABSENT' ? ['start'] : state === 'EXISTING_HEALTHY' ? ['start', 'repair', 'rebuild-preserve', 'uninstall-preserve'] : state === 'EXISTING_DEGRADED_REPAIRABLE' ? ['repair', 'rebuild-preserve', 'uninstall-preserve'] : [];
+  const lifecycleJson = JSON.stringify({ state, choices: choices ?? defaultChoices });
   const fake = [
     '#!/bin/bash',
     'set -euo pipefail',
@@ -27,12 +29,13 @@ function makeFakeNode(binRoot, state = 'ABSENT') {
     '  script="${2:-}"',
     '  if [[ "$script" == *"path"*"resolve"* ]]; then python3 -c \'import os,sys; print(os.path.abspath(sys.argv[1]))\' "${3:-.}"; exit 0; fi',
     '  input="$(cat)"',
+    `  if [[ "$script" == *"choices.join"* ]]; then printf '%s' "$input" | python3 -c 'import json,sys; print(",".join(map(str,json.load(sys.stdin).get("choices",[]))))'; exit 0; fi`,
     '  value="$(printf \'%s\' "$input" | sed -n \'s/.*"state"[[:space:]]*:[[:space:]]*"\\([^\"]*\\)".*/\\1/p\' | head -n1)"',
     '  printf \'%s\\n\' "${value:-UNKNOWN}"',
     '  exit 0',
     'fi',
     'case "${1:-}" in',
-    `  */scripts/macos-lifecycle.mjs) echo '{"state":"${state}"}'; exit 0 ;;`,
+    `  */scripts/macos-lifecycle.mjs) printf '%s\\n' '${lifecycleJson}'; exit 0 ;;`,
     '  *) echo "UNEXPECTED_FAKE_NODE_CALL: $*" >&2; exit 91 ;;',
     'esac',
     ''
@@ -41,7 +44,7 @@ function makeFakeNode(binRoot, state = 'ABSENT') {
   fs.writeFileSync(file, fake, { mode: 0o755 });
 }
 
-function runController(extraArgs, { state = 'ABSENT', withBrew = false } = {}) {
+function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew = false } = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-window-test-'));
   const bin = path.join(temp, 'bin');
   const repo = path.join(temp, 'repo');
@@ -49,7 +52,7 @@ function runController(extraArgs, { state = 'ABSENT', withBrew = false } = {}) {
   fs.mkdirSync(path.join(repo, 'scripts'), { recursive: true });
   fs.mkdirSync(path.join(repo, 'install'), { recursive: true });
   fs.copyFileSync(backendPath, path.join(repo, 'install', 'vexlife-setup.sh'));
-  makeFakeNode(bin, state);
+  makeFakeNode(bin, state, choices);
   if (withBrew) {
     fs.writeFileSync(path.join(bin, 'brew'), '#!/bin/bash\necho brew-effect >> "$VEX_EFFECT_LOG"\n', { mode: 0o755 });
   }
@@ -79,9 +82,28 @@ test('MAC-WIN-01/02 controller vocabulary is closed and unknown actions fail bef
   assert.equal(fs.existsSync(result.effectLog), false);
 });
 
+
+test('MAC-WIN-02 lifecycle owner choices, not the state label alone, govern controller admission', () => {
+  const inspect = runController(['--action', 'inspect', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'EXISTING_HEALTHY', choices: ['repair']
+  });
+  assert.equal(inspect.status, 0, inspect.stderr);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_ACTIONS\trepair/u);
+  assert.doesNotMatch(inspect.stdout, /VEXLIFE_CONTROLLER_ACTIONS\t[^\n]*open/u);
+
+  const rejected = runController(['--action', 'open', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'EXISTING_HEALTHY', choices: ['repair']
+  });
+  assert.notEqual(rejected.status, 0);
+  assert.match(rejected.stderr, /not admitted by the lifecycle owner's current choices/u);
+  assert.equal(fs.existsSync(rejected.effectLog), false);
+});
+
 test('MAC-WIN-06 selected Home is an argv value and AppKit launches Bash without shell interpolation', () => {
   assert.match(windowSource, /use framework "AppKit"/u);
   assert.match(windowSource, /NSTask/u);
+  assert.match(windowSource, /actionPrefix/u);
+  assert.match(windowSource, /hasAction/u);
   assert.match(windowSource, /setArguments:\{repoRoot & "\/install\/vexlife-setup\.sh", repoRoot, "--controller", "--home", homePath/u);
   assert.doesNotMatch(windowSource, /do shell script/u);
 });
@@ -130,7 +152,10 @@ test('MAC-WIN-04/05/10/11/14 window remains a projection, not model/platform/lif
   assert.match(windowSource, /not a signed\/public build/u);
 });
 
-test('MAC-WIN-13 backend failure is surfaced and no success is synthesized from a failed task', () => {
+test('MAC-WIN-12/13 long backend work keeps an AppKit progress surface responsive and failures stay fail-closed', () => {
+  assert.match(windowSource, /NSProgressIndicator/u);
+  assert.match(windowSource, /NSRunLoop/u);
+  assert.match(windowSource, /isRunning/u);
   assert.match(windowSource, /if \(exitCode of .*\) is not 0 then/u);
   assert.match(windowSource, /showBackendFailure/u);
   assert.doesNotMatch(windowSource, /try[\s\S]*?on error[\s\S]*?exitCode:0/u);
