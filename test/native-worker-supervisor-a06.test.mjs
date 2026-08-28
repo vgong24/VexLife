@@ -657,6 +657,7 @@ test('A06 bridge fails closed for non-BACKGROUND and non-WORKING workers', (t) =
 
 test('A06 relay projection rejects forged or mismatched worker events before relay admission', () => {
   const fakeCall = {
+    toolCallRef: 'tool-call.fake',
     workNodeRef: BACKGROUND_WORK,
     workerRef: WORKER_REF,
     workerLeaseRef: 'worker-lease.fake',
