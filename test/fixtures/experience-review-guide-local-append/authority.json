@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "vexlife.experience-review.effect-fixture-authority/v1",
+  "fixtureRef": "fixture.vexlife.review.guide-transient-local-append.v1",
+  "effectAuthorityRef": "authority.vexlife.review.guide-transient-local-append.v1",
+  "authorityClass": "SOURCE_MANAGED_ISOLATED_REVIEW_FIXTURE",
+  "executionEffectPolicy": "ADMITTED_FIXTURE_EFFECTS",
+  "platformRef": "platform.browser",
+  "targetNodeRef": "element.guide.ask-current",
+  "actionRef": "action.guide.ask",
+  "permissionRef": "permission.conversation.send",
+  "admittedEffectClasses": [
+    "LOCAL_APPEND"
+  ],
+  "isolation": {
+    "freshBrowserProcessRequired": true,
+    "persistentUserDataDirAllowed": false,
+    "externalNetworkAllowed": false,
+    "durableConversationWriteAllowed": false,
+    "homeMemoryWriteAllowed": false,
+    "modelInvocationAllowed": false,
+    "githubPublicEffectAllowed": false,
+    "rawPrivateContentAllowed": false
+  },
+  "observations": {
+    "initialGuideMessageCount": 0,
+    "postActionGuideMessageCount": 2,
+    "expectedIntentRef": "intent.guide.current",
+    "expectedPromptContentRef": "guide.ask.current",
+    "expectedAnswerContentRef": "guide.answer.current",
+    "cleanupProof": "FRESH_BROWSER_CONTEXT_ZERO_PRIOR_GUIDE_RECORDS"
+  }
+}
