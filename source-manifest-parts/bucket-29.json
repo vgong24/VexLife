@@ -3,6 +3,12 @@
   "bucketId": "29",
   "files": [
     {
+      "path": ".github/workflows/accepted-main-preflight.yml",
+      "mode": "100644",
+      "bytes": 10348,
+      "sha256": "6f13c305cd5fd15f6f0a4825b3265f973abc55e3fd08a1e36d4e2601bd2638f4"
+    },
+    {
       "path": "reference/browser/integration/contextual-conversation-suite.js",
       "mode": "100644",
       "bytes": 11392,

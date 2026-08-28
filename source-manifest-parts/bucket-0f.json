@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 2523,
       "sha256": "77f7a226d373d7390fd816db1463e324ec8ce5d5ed8ad61474967c5c369ca237"
+    },
+    {
+      "path": "test/accepted-main-topology-preflight.test.mjs",
+      "mode": "100644",
+      "bytes": 4237,
+      "sha256": "b859cf7730d469bfd1f77c8223965f8a7e32faa9d3c8dc87e48e6da1910bf2dc"
     }
   ]
 }
