@@ -69,7 +69,7 @@ jobs:
             echo "VEXLIFE_PREFLIGHT_TREE_SHA=$PREFLIGHT_TREE_SHA"
             echo "VEXLIFE_PREFLIGHT_BASE_SHA=$CURRENT_MAIN_SHA"
             echo "VEXLIFE_REPOSITORY_VISIBILITY=${{ github.event.repository.visibility }}"
-            echo "VEXLIFE_PR_NUMBER=${{ github.event.pull_request.number }}"
+            echo "VEXLIFE_PR_NUMBER="
             echo "VEXLIFE_WORK_REF="
             echo "VEXLIFE_BRANCH=main"
             echo "VEXLIFE_CURRENT_WORK_EVENT_NAME=push"
@@ -168,6 +168,7 @@ jobs:
             && remoteUrl === `https://github.com/${process.env.GITHUB_REPOSITORY}`
             && branch === ''
             && parentCommitAvailable === false
+            && (process.env.VEXLIFE_PR_NUMBER ?? '') === ''
             && Object.values(exits).every((code) => code === 0)
             && prReady?.state === 'PR_READY_PASSED'
             && prReady?.candidateHeadSha === head
@@ -185,6 +186,7 @@ jobs:
             simulatedAcceptedMainTreeSha: tree,
             preMergeMainSha: process.env.VEXLIFE_PREFLIGHT_BASE_SHA,
             canonicalRemoteUrl: remoteUrl,
+            simulatedPrNumber: process.env.VEXLIFE_PR_NUMBER || null,
             detached: branch === '',
             parentCommitAvailable,
             finalWorkingTreeDirty: Boolean(worktree),

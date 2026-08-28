@@ -32,6 +32,17 @@ test('accepted-main preflight reproduces a clean canonical depth-1 detached push
   assert.match(source, /VEXLIFE_CANDIDATE_HEAD_SHA=\$PREFLIGHT_MERGE_SHA/);
 });
 
+test('accepted-main preflight does not lend originating PR identity into simulated push orientation', () => {
+  const source = workflowText();
+  assert.match(source, /echo "VEXLIFE_PR_NUMBER="/);
+  assert.equal(source.includes('echo "VEXLIFE_PR_NUMBER=${{ github.event.pull_request.number }}"'), false);
+  assert.match(source, /echo "VEXLIFE_BRANCH=main"/);
+  assert.match(source, /echo "VEXLIFE_CURRENT_WORK_EVENT_NAME=push"/);
+  assert.match(source, /\(process\.env\.VEXLIFE_PR_NUMBER \?\? ''\) === ''/);
+  assert.match(source, /simulatedPrNumber: process\.env\.VEXLIFE_PR_NUMBER \|\| null/);
+  assert.match(source, /candidatePrHeadSha: '\$\{\{ github\.event\.pull_request\.head\.sha \}\}'/);
+});
+
 test('accepted-main preflight validates committed source without materializing a different tree before the gate', () => {
   const source = workflowText();
   assert.equal(source.includes('npm run manifest:write'), false);
