@@ -9,6 +9,7 @@ import { createBrowserExperienceReviewAdapter } from '../reference/browser/modul
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MESSAGE_SELECTOR = '#guideMessages [data-component-ref="component.vexlife.guide-message"]';
+const REFERENCE_BROWSER_PATH = '/reference/browser/';
 
 function usage() {
   console.error('Usage: node scripts/experience-review-effect-fixture.mjs --request <review-request.json> --bindings <browser-bindings.json> --out <directory>');
@@ -45,6 +46,33 @@ async function guideMessages(page, expectedIntentRef) {
     })), expectedIntentRef);
 }
 
+async function waitForReferenceBrowserReady(page, plan) {
+  const pageUrl = new URL(plan.binding.pageUrl);
+  if (pageUrl.pathname !== REFERENCE_BROWSER_PATH) return false;
+  try {
+    await page.waitForFunction(
+      ({ targetNodeRef, expectedIntentRef }) => {
+        const app = globalThis.__VEXLIFE_APP__;
+        const target = document.querySelector(`[data-node-ref="${CSS.escape(targetNodeRef)}"]`);
+        return Boolean(
+          app?.guide
+          && typeof app.guide.askIntent === 'function'
+          && target
+          && target.dataset.guideIntentRef === expectedIntentRef
+        );
+      },
+      {
+        targetNodeRef: plan.targetNodeRef,
+        expectedIntentRef: plan.observations.expectedIntentRef
+      },
+      { timeout: plan.binding.timeoutMs ?? 30_000 }
+    );
+  } catch {
+    throw new Error('reference browser did not expose exact Guide app readiness before fixture execution');
+  }
+  return true;
+}
+
 function observedPage(page, plan, sink) {
   const originalGoto = page.goto.bind(page);
   const originalClose = page.close.bind(page);
@@ -53,6 +81,7 @@ function observedPage(page, plan, sink) {
       if (property === 'goto') {
         return async (...args) => {
           const response = await originalGoto(...args);
+          sink.referenceBrowserReady = await waitForReferenceBrowserReady(page, plan);
           sink.before = await guideMessages(page, plan.observations.expectedIntentRef);
           if (sink.before.length !== plan.observations.initialGuideMessageCount) {
             throw new Error(`effect fixture baseline Guide message count mismatch: ${sink.before.length}`);
@@ -147,6 +176,7 @@ async function proveFreshBrowserCleanup(plan) {
       waitUntil: plan.binding.waitUntil ?? 'load',
       timeout: plan.binding.timeoutMs ?? 30_000
     });
+    await waitForReferenceBrowserReady(page, plan);
     const messages = await guideMessages(page, plan.observations.expectedIntentRef);
     requireSameLoopbackOrigin(requests, plan.pageOrigin, 'cleanup browser');
     if (messages.length !== plan.observations.initialGuideMessageCount) {
@@ -179,7 +209,7 @@ try {
     const bindingDocument = readJson(path.resolve(args.bindings));
     const bindings = Array.isArray(bindingDocument) ? bindingDocument : bindingDocument.browserBindings;
     const plan = buildGuideEffectFixturePlan(bundle, bindings, { root: ROOT });
-    const sink = { before: null, after: null, afterObservationError: null, requests: [] };
+    const sink = { before: null, after: null, afterObservationError: null, referenceBrowserReady: false, requests: [] };
     const screenshotsDirectory = path.join(out, 'screenshots');
     const adapter = createBrowserExperienceReviewAdapter({
       browserType: createObservedFixtureBrowserType(plan, sink),
