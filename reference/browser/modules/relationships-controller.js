@@ -3,6 +3,36 @@ import { admission, canAdvance, project, recover, validateRegistry } from '../re
 const SUPPORTED_LANGUAGES = Object.freeze(['en', 'ja', 'zh']);
 const TERRAIN_REF = 'terrain.resource.relationships';
 const ENTRY_ELEMENT_REF = 'element.relationships.open';
+const OPTION_LABEL_KEYS = Object.freeze({
+  CODE:'option.method.code',
+  FILE:'option.method.file',
+  QR_PROJECTION:'option.method.qr',
+  NONE:'option.invitation.none',
+  CREATED_LOCAL_REFERENCE:'option.invitation.created',
+  RECEIVED_VERIFIED_REFERENCE:'option.invitation.receivedVerified',
+  RECEIVED_HELD_IDENTITY:'option.invitation.receivedHeldIdentity',
+  EXPIRED_OR_REVOKED:'option.invitation.expiredOrRevoked',
+  ACCEPT:'option.decision.accept',
+  NARROW:'option.decision.narrow',
+  DEFER:'option.decision.defer',
+  DENY:'option.decision.deny',
+  BLOCK:'option.decision.block',
+  VERIFIED_CURRENT:'option.identity.verified',
+  WRONG_KEY:'option.identity.wrongKey',
+  SIGNATURE_INVALID:'option.identity.signatureInvalid',
+  STALE_EVIDENCE:'option.identity.stale',
+  INVITATION_EXPIRED:'option.identity.invitationExpired',
+  UNKNOWN:'option.identity.unknown',
+  NOT_CONNECTED:'option.delivery.notConnected',
+  SENT_NOT_CONNECTED:'option.delivery.sentNotConnected',
+  CONNECTED:'option.delivery.connected',
+  DELIVERED:'option.delivery.delivered',
+  SEMANTIC_ACKNOWLEDGED:'option.delivery.acknowledged',
+  FRIEND:'classFriend',
+  FAMILY:'classFamily',
+  COLLABORATOR:'classCollaborator',
+  OTHER:'classOther'
+});
 
 async function fetchJson(root, relativePath) {
   const response = await fetch(`${root}${relativePath}`);
@@ -24,6 +54,9 @@ export async function loadRelationshipsReference(root = '../../') {
     if (!SUPPORTED_LANGUAGES.includes(language)) throw new Error(`Unsupported Relationships language ${language}`);
     const candidateKeys = Object.keys(catalogs[language] ?? {}).sort();
     if (JSON.stringify(candidateKeys) !== JSON.stringify(referenceKeys)) throw new Error(`Relationships catalog key drift: ${language}`);
+  }
+  for (const key of new Set(Object.values(OPTION_LABEL_KEYS))) {
+    if (!referenceKeys.includes(key)) throw new Error(`Relationships human option label missing: ${key}`);
   }
   return Object.freeze({ registry, catalogs });
 }
@@ -49,14 +82,14 @@ function actionButton(id, label) {
   return button;
 }
 
-function selectControl(id, labelText, values) {
+function selectControl(id, labelText, values, labelForValue = (value) => value) {
   const label = document.createElement('label');
   label.className = 'e27-context-row';
   const text = document.createElement('span');
   text.textContent = labelText;
   const select = document.createElement('select');
   select.id = id;
-  for (const value of values) select.append(option(value));
+  for (const value of values) select.append(option(value, labelForValue(value)));
   label.append(text, select);
   return { label, select };
 }
@@ -110,6 +143,11 @@ export function createRelationshipsController({ state, registry, catalogs, host 
 
   const language = () => SUPPORTED_LANGUAGES.includes(state.language) ? state.language : 'en';
   const rt = (key, params = {}) => format(catalogs[language()]?.[key] ?? catalogs.en?.[key] ?? `[${key}]`, params);
+  const humanOptionLabel = (value) => {
+    const key = OPTION_LABEL_KEYS[value];
+    if (!key) throw new Error(`Relationships option label unmapped: ${value}`);
+    return rt(key);
+  };
   const auxiliaryCounts = () => scenarioCount === 0
     ? { groups: 0, invitations: 0 }
     : { groups: Math.min(registry.syntheticFixtureCounts.groups, Math.max(1, Math.ceil(scenarioCount / 10))), invitations: registry.syntheticFixtureCounts.invitations };
@@ -140,7 +178,7 @@ export function createRelationshipsController({ state, registry, catalogs, host 
     const body = document.createElement('p');
     body.textContent = rt('entryBody');
     const facts = document.createElement('p');
-    facts.textContent = `${rt('inviteOnly')}: ${registry.discoveryMode} · ${rt('publicSearch')}: ${rt('off')}`;
+    facts.textContent = `${rt('inviteOnly')} · ${rt('publicSearch')}: ${rt('off')}`;
     const entry = document.createElement('p');
     entry.textContent = rt('entryCurrent');
     target.append(title, body, facts, entry);
@@ -180,7 +218,7 @@ export function createRelationshipsController({ state, registry, catalogs, host 
       name.textContent = rt('person', { n: person.nameNumber });
       const summary = document.createElement('span');
       const classKey = person.localClass === 'FRIEND' ? 'classFriend' : person.localClass === 'FAMILY' ? 'classFamily' : person.localClass === 'COLLABORATOR' ? 'classCollaborator' : 'classOther';
-      summary.textContent = rt('summary', { class: rt(classKey), claim: person.counterpartClaim });
+      summary.textContent = rt('summary', { class: rt(classKey) });
       article.append(name, summary);
       target.append(article);
     }
@@ -238,11 +276,11 @@ export function createRelationshipsController({ state, registry, catalogs, host 
     heading.textContent = rt('connectTitle');
     const body = document.createElement('p');
     body.textContent = rt('connectBody');
-    const method = selectControl('relationshipsConnectMethod', rt('method'), registry.invitation.methods);
-    const invitation = selectControl('relationshipsInvitation', rt('invitation'), registry.invitation.states);
-    const identity = selectControl('relationshipsIdentity', rt('identity'), registry.invitation.identityStates);
-    const decision = selectControl('relationshipsDecision', rt('decision'), registry.invitation.decisions);
-    const localClass = selectControl('relationshipsLocalClass', rt('localClass'), ['FRIEND','FAMILY','COLLABORATOR','OTHER']);
+    const method = selectControl('relationshipsConnectMethod', rt('method'), registry.invitation.methods, humanOptionLabel);
+    const invitation = selectControl('relationshipsInvitation', rt('invitation'), registry.invitation.states, humanOptionLabel);
+    const identity = selectControl('relationshipsIdentity', rt('identity'), registry.invitation.identityStates, humanOptionLabel);
+    const decision = selectControl('relationshipsDecision', rt('decision'), registry.invitation.decisions, humanOptionLabel);
+    const localClass = selectControl('relationshipsLocalClass', rt('localClass'), ['FRIEND','FAMILY','COLLABORATOR','OTHER'], humanOptionLabel);
     method.select.value = interaction.method;
     invitation.select.value = interaction.invitation;
     identity.select.value = interaction.identity;
@@ -257,7 +295,7 @@ export function createRelationshipsController({ state, registry, catalogs, host 
     const status = document.createElement('p');
     status.id = 'relationshipsConnectStatus';
     status.setAttribute('role', 'status');
-    status.textContent = interaction.localFormed ? rt('formed') : gate.admitted ? rt('ready') : rt('held', { reasons:gate.reasons.join(', ') });
+    status.textContent = interaction.localFormed ? rt('formed') : gate.admitted ? rt('ready') : rt('held');
     const form = actionButton('relationshipsFormLocal', rt('form'));
     form.disabled = !gate.admitted || interaction.recovery !== 'ACTIVE';
     form.onclick = () => { interaction.localFormed = true; interaction.delivery = 'NOT_CONNECTED'; render(); };
@@ -277,7 +315,7 @@ export function createRelationshipsController({ state, registry, catalogs, host 
 
     const deliveryHeading = document.createElement('h3'); deliveryHeading.textContent = rt('deliveryTitle');
     const deliveryBody = document.createElement('p'); deliveryBody.textContent = rt('deliveryBody');
-    const delivery = document.createElement('p'); delivery.id = 'relationshipsDelivery'; delivery.textContent = `${rt('delivery')}: ${interaction.delivery}`;
+    const delivery = document.createElement('p'); delivery.id = 'relationshipsDelivery'; delivery.textContent = `${rt('delivery')}: ${humanOptionLabel(interaction.delivery)}`;
     const deliveryHeld = document.createElement('p'); deliveryHeld.textContent = canAdvance(interaction) ? rt('active') : rt('deliveryHeld');
 
     const vexHeading = document.createElement('h3'); vexHeading.textContent = rt('vexTitle');
