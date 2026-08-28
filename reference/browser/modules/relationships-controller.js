@@ -44,6 +44,8 @@ function actionButton(id, label) {
   button.id = id;
   button.type = 'button';
   button.textContent = label;
+  button.style.minWidth = '44px';
+  button.style.minHeight = '44px';
   return button;
 }
 
