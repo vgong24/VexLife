@@ -587,6 +587,7 @@ test('A06 exact scheduler interactive signal yields running BACKGROUND worker an
   assert.equal(accepted.observation.summary.continuationRef, BACKGROUND_WORK);
   assert.equal(accepted.observation.rawLogsIncluded, false);
   assert.equal(accepted.observation.externalEffectsExecuted, false);
+
   const reinjected = runtime.relay.reinject(active.contextLease, accepted.observation, { observedAt: RESULT_AT });
   assert.equal(reinjected.state, 'REINJECTED');
   assert.equal(reinjected.frame.rawResultIncluded, false);
