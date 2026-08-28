@@ -558,14 +558,17 @@ test('A06 exact scheduler interactive signal yields running BACKGROUND worker an
   const requested = requestNativeWorkerCheckpointYieldFromScheduler(native.workerRoot, decision);
   assert.equal(requested.control.action, 'PAUSE');
   assert.equal(requested.event.eventKind, 'CHECKPOINT_YIELD_REQUESTED');
+  assert.equal(requested.event.workerState, 'WORKING');
   assert.equal(requested.event.continuationRef, BACKGROUND_WORK);
   assert.equal(requested.event.pendingPreemptionRef, decision.pendingPreemptionRef);
-  assert.equal(loadNativeWorker(native.workerRoot).receipt.state, 'PAUSE_REQUESTED');
+  assert.equal(loadNativeWorker(native.workerRoot).receipt.state, 'WORKING');
 
   const paused = await running;
   assert.equal(paused.receipt.state, 'PAUSED');
   assert.equal(paused.receipt.terminalEvidence.exitCode, 75);
   assert.equal(paused.receipt.terminalEvidence.pauseRequested, true);
+  const receiptNames = fs.readdirSync(path.join(native.workerRoot, 'receipts'));
+  assert.equal(receiptNames.some((name) => name.endsWith('-pause-requested.json')), true);
 
   const yielded = observeNativeWorkerCheckpointYield(native.workerRoot, decision, { observedAt: RESULT_AT });
   assert.equal(yielded.eventKind, 'CHECKPOINT_BOUND_YIELD_OBSERVED');
