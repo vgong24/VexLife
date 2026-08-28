@@ -170,7 +170,7 @@ function resource(generation = 1) {
   return createResourceSnapshot({
     snapshotRef: `resource-snapshot.nws-a06.${generation}`,
     generation,
-    sourceRef: 'source.native-worker-supervisor-a06-runtime',
+    sourceRef: 'source.intent-scheduler.test-runtime',
     sourceHash: SOURCE_HASH,
     formationRef: `formation.nws-a06.resource.${generation}`,
     evidenceClass: 'SIMULATED_CURRENT',
@@ -212,7 +212,7 @@ function runtimeTrust(resourceSnapshot, generation = resourceSnapshot.generation
     roleRef: 'role.vex.developer',
     claimRef: 'claim.scheduler.nws-a06',
     occupancyRef: `occupancy.scheduler.nws-a06.${generation}`,
-    leaseAuthorityRef: 'authority.intent-scheduler.nws-a06-runtime',
+    leaseAuthorityRef: 'authority.intent-scheduler.test-runtime',
     resourceSnapshotRef: resourceSnapshot.snapshotRef,
     resourceSnapshotFingerprint: resourceSnapshot.semanticFingerprint,
     currentness: 'CURRENT'
@@ -346,7 +346,7 @@ function contextInput(generation = 1) {
 
 function makeScheduler() {
   const relay = new ToolResultRelay(null, { schedulerRegistry });
-  const authority = new WorkerLeaseAuthority({ sourceRef: 'source.native-worker-supervisor-a06-runtime' });
+  const authority = new WorkerLeaseAuthority({ sourceRef: 'source.intent-scheduler.test-runtime' });
   const schedulerInstanceRef = `instance.intent-scheduler.nws-a06.${schedulerInstanceSequence += 1}`;
   return {
     relay,
@@ -657,7 +657,6 @@ test('A06 bridge fails closed for non-BACKGROUND and non-WORKING workers', (t) =
 
 test('A06 relay projection rejects forged or mismatched worker events before relay admission', () => {
   const fakeCall = {
-    toolCallRef: 'tool-call.fake',
     workNodeRef: BACKGROUND_WORK,
     workerRef: WORKER_REF,
     workerLeaseRef: 'worker-lease.fake',
