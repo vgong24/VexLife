@@ -1,0 +1,161 @@
+name: Accepted-main topology preflight
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accepted-main-preflight-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  accepted-main-topology:
+    name: Simulated accepted-main depth-1 push gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out exact PR candidate with merge ancestry
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Form ordinary current-main merge and depth-1 push-style checkout
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+          CURRENT_MAIN_SHA="$(git rev-parse "refs/remotes/origin/${BASE_REF}")"
+          git config user.name "VexGPT"
+          git config user.email "victor.gong@vextreme24.com"
+          git switch --detach "$CURRENT_MAIN_SHA"
+          git merge --no-ff --no-commit "$PR_HEAD_SHA"
+          git commit -m "[Preflight] Simulate accepted-main topology" -m "Candidate: $PR_HEAD_SHA" -m "Current main: $CURRENT_MAIN_SHA" -m "Signed-off-by: VexGPT <victor.gong@vextreme24.com>" -m "[VXG RealForever]"
+
+          PREFLIGHT_MERGE_SHA="$(git rev-parse HEAD)"
+          PREFLIGHT_TREE_SHA="$(git rev-parse HEAD^{tree})"
+          git branch -f vexlife-accepted-main-preflight "$PREFLIGHT_MERGE_SHA"
+
+          SHALLOW_ROOT="$RUNNER_TEMP/vexlife-accepted-main-preflight"
+          rm -rf "$SHALLOW_ROOT"
+          git clone --depth=1 --no-tags --branch vexlife-accepted-main-preflight "file://$PWD" "$SHALLOW_ROOT"
+
+          test "$(git -C "$SHALLOW_ROOT" rev-parse HEAD)" = "$PREFLIGHT_MERGE_SHA"
+          test "$(git -C "$SHALLOW_ROOT" rev-parse HEAD^{tree})" = "$PREFLIGHT_TREE_SHA"
+          if git -C "$SHALLOW_ROOT" cat-file -e 'HEAD^' 2>/dev/null; then
+            echo "accepted-main preflight checkout unexpectedly retained a parent commit" >&2
+            exit 1
+          fi
+
+          {
+            echo "VEXLIFE_PREFLIGHT_ROOT=$SHALLOW_ROOT"
+            echo "VEXLIFE_PREFLIGHT_MERGE_SHA=$PREFLIGHT_MERGE_SHA"
+            echo "VEXLIFE_PREFLIGHT_TREE_SHA=$PREFLIGHT_TREE_SHA"
+            echo "VEXLIFE_PREFLIGHT_BASE_SHA=$CURRENT_MAIN_SHA"
+            echo "VEXLIFE_REPOSITORY_VISIBILITY=${{ github.event.repository.visibility }}"
+            echo "VEXLIFE_PR_NUMBER=${{ github.event.pull_request.number }}"
+            echo "VEXLIFE_WORK_REF="
+            echo "VEXLIFE_BRANCH=main"
+            echo "VEXLIFE_CURRENT_WORK_EVENT_NAME=push"
+            echo "VEXLIFE_CURRENT_WORK_EVENT_PATH="
+            echo "VEXLIFE_CANDIDATE_HEAD_SHA=$PREFLIGHT_MERGE_SHA"
+            echo "VEXLIFE_TESTED_MERGE_SHA="
+            echo "VEXLIFE_BASE_SHA=$CURRENT_MAIN_SHA"
+          } >> "$GITHUB_ENV"
+
+      - name: Install declared dependencies in simulated accepted main
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VEXLIFE_PREFLIGHT_ROOT"
+          npm ci
+
+      - name: Install deterministic Chromium runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VEXLIFE_PREFLIGHT_ROOT"
+          npx playwright install --with-deps chromium
+
+      - name: Materialize exact merged source manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VEXLIFE_PREFLIGHT_ROOT"
+          npm run manifest:write
+
+      - name: Run complete gate in accepted-main push topology
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VEXLIFE_PREFLIGHT_ROOT"
+          npm run orient
+          npm run build-admission:check
+          npm run pr-ready
+          npm run health:check
+
+      - name: Seal accepted-main topology receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VEXLIFE_PREFLIGHT_ROOT"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { spawnSync } from 'node:child_process';
+
+          const prReady = JSON.parse(fs.readFileSync('generated/health/pr-ready.json', 'utf8'));
+          const head = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
+          const tree = spawnSync('git', ['rev-parse', 'HEAD^{tree}'], { encoding: 'utf8' }).stdout.trim();
+          const parentProbe = spawnSync('git', ['cat-file', '-e', 'HEAD^'], { encoding: 'utf8' });
+          const parentCommitAvailable = parentProbe.status === 0;
+          const exact = head === process.env.VEXLIFE_PREFLIGHT_MERGE_SHA
+            && tree === process.env.VEXLIFE_PREFLIGHT_TREE_SHA
+            && prReady.state === 'PR_READY_PASSED'
+            && prReady.candidateHeadSha === head
+            && prReady.testedCheckoutSha === head
+            && prReady.testedMergeSha === null
+            && prReady.baseSha === process.env.VEXLIFE_PREFLIGHT_BASE_SHA
+            && parentCommitAvailable === false;
+
+          const receipt = {
+            schemaVersion: 'vexlife.accepted-main-topology-preflight/v1',
+            state: exact ? 'PASS' : 'FAILED',
+            currentness: exact ? 'CURRENT' : 'BLOCKED',
+            simulationClass: 'ORDINARY_TWO_PARENT_MERGE_THEN_DEPTH_1_PUSH_CHECKOUT',
+            candidatePrHeadSha: '${{ github.event.pull_request.head.sha }}',
+            simulatedAcceptedMainSha: head,
+            simulatedAcceptedMainTreeSha: tree,
+            preMergeMainSha: process.env.VEXLIFE_PREFLIGHT_BASE_SHA,
+            parentCommitAvailable,
+            prReadyState: prReady.state,
+            prReadySourceTreeSha256: prReady.sourceTreeSha256,
+            allProductionEffectsAuthorized: false
+          };
+          fs.writeFileSync('generated/health/accepted-main-topology-preflight.json', `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+          console.log(JSON.stringify(receipt, null, 2));
+          if (!exact) process.exit(1);
+          NODE
+
+      - name: Preserve accepted-main topology evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vexlife-accepted-main-preflight-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/vexlife-accepted-main-preflight/generated/health/accepted-main-topology-preflight.json
+            ${{ runner.temp }}/vexlife-accepted-main-preflight/generated/health/pr-ready.json
+            ${{ runner.temp }}/vexlife-accepted-main-preflight/generated/health/browser-integration.json
+          if-no-files-found: error
+
+# [VXG RealForever]
