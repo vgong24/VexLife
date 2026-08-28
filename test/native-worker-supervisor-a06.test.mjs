@@ -617,6 +617,7 @@ test('A06 exact scheduler interactive signal yields running BACKGROUND worker an
     },
     humanSummary: 'The synthetic background worker yielded, re-entered semantically, resumed, and completed without a protected effect.'
   });
+
   assert.equal(native.manifest.workRef, BACKGROUND_WORK);
   assert.equal(native.manifest.resultContractRef, 'contract.vexlife.test-result.v1');
   assert.equal(wrapping.receipt.state, 'WRAPPING_UP');
