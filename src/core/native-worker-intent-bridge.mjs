@@ -131,15 +131,22 @@ export function requestNativeWorkerCheckpointYieldFromScheduler(workerRoot, sche
   assertWorkerMatchesDecision(before, decision, { requireState: 'WORKING' });
 
   const control = requestNativeWorkerControl(workerRoot, 'PAUSE', { now });
-  if (control.receipt.state !== 'PAUSE_REQUESTED') {
+  if (control?.action !== 'PAUSE') {
+    fail('NWS_CHECKPOINT_REQUEST_NOT_DURABLE', 'cooperative pause control was not durably written', {
+      action: control?.action ?? null
+    });
+  }
+  const requested = loadNativeWorker(workerRoot);
+  if (requested.receipt.state !== 'PAUSE_REQUESTED') {
     fail('NWS_CHECKPOINT_REQUEST_NOT_DURABLE', 'cooperative pause request did not become durable PAUSE_REQUESTED', {
-      state: control.receipt.state
+      state: requested.receipt.state
     });
   }
 
   return Object.freeze({
     decision,
-    event: buildEvent('CHECKPOINT_YIELD_REQUESTED', loadNativeWorker(workerRoot), decision, new Date(now()).toISOString())
+    control: Object.freeze(structuredClone(control)),
+    event: buildEvent('CHECKPOINT_YIELD_REQUESTED', requested, decision, new Date(now()).toISOString())
   });
 }
 
