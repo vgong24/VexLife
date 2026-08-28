@@ -31,10 +31,11 @@ GENERATED_CLOSURE_RECOMPOSES_CURRENT_CO_BUCKET_TRUTH=true
 MERGE_IS_NOT_POST_MERGE_VERIFICATION_OR_TERMINAL_RETURN=true
 DEPENDENT_WAKE_IS_PART_OF_TERMINAL_CLOSURE=true
 SAME_OWNER_ROLE_TRANSITION_PRESERVES_LANE_CONTINUITY=true
+CURRENT_OWNERSHIP_AUTHORITY_COVERS_REQUIRED_ROLE_OCCUPANCIES_WITHIN_OWNED_BOUNDED_WORK=true
+SEPARATE_ROLE_PERMISSION_REQUIRED_FOR_SAME_OWNER_SAME_BOUNDED_WORK=false
 ROLE_TRANSITION_DOES_NOT_REQUIRE_NEW_CONVERSATION=true
 NEW_CONVERSATION_DOES_NOT_INHERIT_OWNERSHIP_BY_EXISTENCE=true
-ROOT_ROLE_REQUIRES_EXPLICIT_CURRENT_AUTHORITY=true
-EXPLICIT_CURRENT_ROOT_OCCUPANCY_CAN_UNBLOCK_SAME_LANE=true
+ROOT_CROSS_OWNER_OR_REALLOCATION_EFFECT_REQUIRES_EXPLICIT_ROOT_AUTHORITY=true
 ROOT_ROLE_TRANSITION_DOES_NOT_CREATE_A_NEW_LANE=true
 ```
 
@@ -57,20 +58,23 @@ EDGE and the exact next executable function/inputs are current, continue it;
 when it is a real CAGE, preserve the lane and exact wake predicate.
 
 When the same owner still owns the same bounded work, institutional role changes
-are fresh internal occupancies, not ownership transfers. Operations, Coder,
-Independent Assurance, Lifecycle Operations, Formal Reviewer, Owner Merge Duty,
-Root when explicitly granted, and other admitted roles may continue the lane in
-the same conversation after fresh role-local grounding. A new conversation or
-thread does not acquire continuity responsibility merely because it exists.
-Handoff is required only when ownership actually transfers, an exact executor or
-provider capability boundary requires another occupancy, or the lane's current
-terminal/successor routing says so.
+are fresh internal occupancies, not ownership transfers. Current ownership
+authority itself supplies the explicit current authority needed to occupy any
+required admitted role for effects inside that exact owned membrane—including
+Operations, Coder, Independent Assurance, Lifecycle Operations, Formal Reviewer,
+Owner Merge Duty, and Root. Do not ask for a separate role grant and do not hand
+the continuity to a new conversation merely because the logical role changed.
+Every role transition still re-grounds fresh role-local state and keeps its own
+independence, effect, and protected-human boundaries.
 
-When explicit current user/Root authority grants this occupancy the Root role for
-the same bounded work, Root may be occupied in the same conversation to resolve
-the exact allocation/conflict/currentness blocker and then return to the narrower
-role. That is a fresh role transition with fresh grounding, not standing Root
-authority for future work and not permission to bypass a protected-human gate.
+A new conversation or thread does not acquire continuity responsibility merely
+because it exists. Handoff is required only when ownership actually transfers,
+an exact executor/provider capability boundary requires another occupancy, or the
+lane's current terminal/successor routing says so. Root authority outside the
+already-owned membrane—such as reallocating another owner's lane, crossing into
+unowned work, or materially widening scope—still requires explicit current Root
+or allocating authority and never creates standing global authority or bypasses
+a protected-human gate.
 
 Before any commit-producing effect, resolve the actual Git author name and
 email the selected adapter will create, form the exact matching
@@ -82,6 +86,9 @@ trailer before any subsequent source effect.
 For the full VexLife-facing Local lifecycle, execution-surface, evidence,
 retry/successor, generated-custody, Root-escalation, terminal-return, and
 Victor-interaction contract, read
-`docs/LOCAL-OPERATIONS-EVIDENCE-AND-APPROVAL.md`.
+`docs/LOCAL-OPERATIONS-EVIDENCE-AND-APPROVAL.md`. Interpret that guide's Root
+escalation wording under the same-owner rule above: current ownership authority
+is sufficient for a required Root occupancy inside already-owned bounded work;
+separate Root/allocation authority is required only when crossing that membrane.
 
 <!-- [VXG RealForever] -->
