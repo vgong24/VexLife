@@ -310,5 +310,7 @@
   "cdr-s5.closed-alpha.route-privacy": "路由与隐私 · 仅显示类别",
   "cdr-s5.closed-alpha.support": "打开安全支持参考",
   "cdr-s5.closed-alpha.withdraw": "退出 Alpha 参考",
-  "cdr-s5.closed-alpha.reset": "重置封闭 Alpha 参考"
+  "cdr-s5.closed-alpha.reset": "重置封闭 Alpha 参考",
+  "screen.relationships.title": "关系",
+  "terrain.kind.resource": "资源"
 }

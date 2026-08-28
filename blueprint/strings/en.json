@@ -310,5 +310,7 @@
   "cdr-s5.closed-alpha.route-privacy": "Route and privacy · class disclosure only",
   "cdr-s5.closed-alpha.support": "Open safe support reference",
   "cdr-s5.closed-alpha.withdraw": "Withdraw from alpha reference",
-  "cdr-s5.closed-alpha.reset": "Reset closed-alpha reference"
+  "cdr-s5.closed-alpha.reset": "Reset closed-alpha reference",
+  "screen.relationships.title": "Relationships",
+  "terrain.kind.resource": "Resource"
 }

@@ -8,8 +8,10 @@ import { createGuideController, GUIDE_INTENTS } from './modules/guide-controller
 import { createFeatureWalkthroughGuideAdapter } from './modules/feature-walkthrough-guide-adapter.js';
 import { createLivingJournalController } from './modules/living-journal-controller.js';
 import { createLivingJournalDemoData } from './modules/living-journal-demo-data.js';
+import { createRelationshipsController, loadRelationshipsReference } from './modules/relationships-controller.js';
 
 const { blueprint, experience, featureRegistry, designTokens, catalogs } = await loadBrowserBundle('../../');
+const relationshipsReference = await loadRelationshipsReference('../../');
 const rootContract = experience.authoritativeRootDesignContract;
 if (rootContract?.contractRef !== 'contract.vexlife.e27.authoritative-root/v1' || rootContract?.defaultShellGrammar?.singleStageDefault !== true || rootContract?.defaultShellGrammar?.legacyCurrentBrowserPreservationDefault !== false) throw new Error('Direct-root browser requires accepted E2.7 authoritative-root contract');
 
@@ -54,6 +56,7 @@ const TERRAIN_CONTEXT = Object.freeze({
   'terrain.project.root-hub': { projectRef:'project.vexlife.root-hub', threadRef:'thread.root-hub.welcome', channelRef:'channel.root-hub.welcome.root' },
   'terrain.project.self-development': { projectRef:'project.self-development', threadRef:'thread.self-development.open-conversation', channelRef:'channel.self-development.companion' },
   'terrain.thread.open-conversation': { projectRef:'project.self-development', threadRef:'thread.self-development.open-conversation', channelRef:'channel.self-development.companion' },
+  'terrain.resource.relationships': { projectRef:'project.self-development', threadRef:'thread.self-development.open-conversation', channelRef:'channel.self-development.companion', contextProjection:'relationships' },
   'terrain.project.vex-home-product': { projectRef:'project.vex-home-product', threadRef:'thread.vex-home.guided-fresh', channelRef:'channel.vex-home.guided-fresh.companion' },
   'terrain.thread.guided-fresh': { projectRef:'project.vex-home-product', threadRef:'thread.vex-home.guided-fresh', channelRef:'channel.vex-home.guided-fresh.companion' },
   'terrain.thread.product-workshop': { projectRef:'project.vex-home-product', threadRef:'thread.vex-home.product-workshop', channelRef:'channel.vex-home.product-workshop.companion' },
@@ -79,9 +82,14 @@ const semanticNodeRefForInteraction = (sourceRef) => {
 };
 const interactionRefForSource = (sourceRef) => elementContractByRef.get(sourceRef)?.interactionRef ?? null;
 const t = (ref, params = {}) => { const template = catalogs[state.language]?.[ref] ?? catalogs.en?.[ref] ?? `[${ref}]`; return template.replace(/\{([A-Za-z0-9_]+)\}/g, (_, key) => String(params[key] ?? `{${key}}`)); };
-const semanticPatchForNode = (nodeRef) => TERRAIN_CONTEXT[nodeRef] || {};
+const semanticPatchForNode = (nodeRef) => {
+  const patch = TERRAIN_CONTEXT[nodeRef] || {};
+  if (nodeRef === 'terrain.resource.relationships') return { ...patch, contextProjection:'relationships' };
+  if (state.contextProjection === 'relationships') return { ...patch, contextProjection:null };
+  return patch;
+};
 
-let navigation; let chat; let terrain; let guide; let livingJournal;
+let navigation; let chat; let terrain; let guide; let livingJournal; let relationships;
 function visibleVexName(){return t('vex.visible.name');}
 function canonicalRoleLabel(key){const role=roles[key];return role?.labelRef?t(role.labelRef):role?.label??String(key??'');}
 function vexRoleQualifier(key){const label=canonicalRoleLabel(key);const name=visibleVexName();const qualifier=label.split(name).join(' ').replace(/[\s·•—–:：-]+/g,' ').trim();return qualifier||label;}
@@ -125,8 +133,8 @@ function projectVisibleVexIdentity(){
 function renderHealth(){const frame=navigation.semanticFrame(),evidenceClass=state.dataTruthClass==='CURRENT_SYNTHETIC_REFERENCE'?'STATIC_REFERENCE_SYNTHETIC':'LOCAL_MEMORY_PROJECTION';$('#technicalHealth').textContent=JSON.stringify({healthState:'ATTENTION',evidenceClass,dataTruthClass:state.dataTruthClass,presentationContractRef:rootContract.contractRef,presentationFoundation:'EXACT_E2_7_ROOT_BODY',primaryStageScreenRef:'screen.vexlife.terrain',contextProjection:state.contextProjection,platformRef:'platform.browser',repositoryReceipt:{state:'NOT_RUN',executed:false,currentness:'UNKNOWN'},modelReceipt:{state:'UNAVAILABLE',executed:false,currentness:'UNKNOWN'},currentScreenFrame:frame,fullJourneyCount:navigation.fullJourney().length,rawPointerLogging:false,designTokenRef:designTokens.tokenSetRef},null,2);}
 function setWorkspaceOpen(open){state.workspaceOpen=Boolean(open);$('#projectRail').open=state.workspaceOpen;$('#projectRail').setAttribute('aria-hidden',String(!state.workspaceOpen));if(state.workspaceOpen)guide?.avoidDeclaredControls();}
 function openContext(context,nodeRef=`element.nav.${context}`){navigation.openContext(context,nodeRef,'action.view.select');projectFrame();}
-function returnToTerrain(nodeRef='element.nav.terrain',actionRef='action.view.select'){if(state.contextProjection==='living-journal')livingJournal?.close();navigation.returnToPrimaryStage(nodeRef,actionRef);setWorkspaceOpen(false);projectFrame();}
-function projectFrame(){const host=$('#contextSurface'),app=$('#app'),projection=state.contextProjection??'terrain';host.dataset.contextProjection=projection;app.dataset.contextProjection=projection;host.hidden=!state.contextProjection;host.setAttribute('aria-hidden',String(!state.contextProjection));$('#view-chat').hidden=state.contextProjection!=='chat';$('#view-health').hidden=state.contextProjection!=='health';$('#view-living-journal').hidden=state.contextProjection!=='living-journal';chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();livingJournal?.render();renderLivingJournalWalkthroughControls();terrain?.render(false);applyContextWorkspaceLayout();renderHealth();guide?.updateFrame();projectVisibleVexIdentity();if(state.contextProjection)guide?.avoidDeclaredControls();}
+function returnToTerrain(nodeRef='element.nav.terrain',actionRef='action.view.select'){if(state.contextProjection==='living-journal')livingJournal?.close();if(state.contextProjection==='relationships')relationships?.close();navigation.returnToPrimaryStage(nodeRef,actionRef);setWorkspaceOpen(false);projectFrame();}
+function projectFrame(){const host=$('#contextSurface'),app=$('#app'),projection=state.contextProjection??'terrain';host.dataset.contextProjection=projection;app.dataset.contextProjection=projection;host.hidden=!state.contextProjection;host.setAttribute('aria-hidden',String(!state.contextProjection));$('#view-chat').hidden=state.contextProjection!=='chat';$('#view-health').hidden=state.contextProjection!=='health';$('#view-living-journal').hidden=state.contextProjection!=='living-journal';const relationshipsView=$('#view-relationships');if(relationshipsView)relationshipsView.hidden=state.contextProjection!=='relationships';chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();livingJournal?.render();if(state.contextProjection==='relationships')relationships?.render();else relationships?.close();renderLivingJournalWalkthroughControls();terrain?.render(false);applyContextWorkspaceLayout();renderHealth();guide?.updateFrame();projectVisibleVexIdentity();if(state.contextProjection)guide?.avoidDeclaredControls();}
 
 navigation=createNavigationController({
   state,
@@ -147,6 +155,7 @@ terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNo
 guide=createGuideController({state,t,navigation,elementByRef,chat});
 const featureWalkthrough=createFeatureWalkthroughGuideAdapter({featureRegistry,experience,guide,navigation});
 livingJournal=createLivingJournalController({state,data:livingJournalData,t,navigation,onSourceOpen:({sourceRef})=>navigation.navigate('element.living-journal.source.open',{},'action.living-journal.source.open',{subjectRef:state.selectedNodeRef}),onRevisit:()=>{livingJournal.close();navigation.returnToPrimaryStage('element.living-journal.revisit.open','action.living-journal.revisit.open');setWorkspaceOpen(false);projectFrame();}});
+relationships=createRelationshipsController({state,registry:relationshipsReference.registry,catalogs:relationshipsReference.catalogs});
 
 const LIVING_JOURNAL_FEATURE_REF='feature.vexlife.living-journal';
 let livingJournalWalkthroughRun=null;let livingJournalWalkthroughEventOrdinal=0;let livingJournalWalkthroughUiState='READY';
@@ -205,7 +214,7 @@ globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;i
 
 chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();navigation.enableBrowserHistory();renderLivingJournalArchiveControls();applyLocalization();guide.setOpen(state.guideOpen);guide.addMessage('guide',{contentRef:'guide.intro'});projectFrame();
 
-globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout};
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout};
 if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('./integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}
 
 // [VXG RealForever]

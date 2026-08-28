@@ -2176,6 +2176,88 @@
         "Relationship, Home, Memory and model mutation remain held.",
         "Payment, terms, publication and public/community discovery remain held."
       ]
+    },
+    {
+      "featureRef": "feature.vexlife.relationships",
+      "purpose": "Project the accepted stable invite-only Relationships resource into the canonical Self Development contextual workspace without duplicating transport, relationship persistence, Home, Memory or model authority.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "DISCOVERABLE_ONLY",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The Self Development Terrain child is the canonical visible door; Connect someone remains an explicit local no-effect preview until the separately owned product/runtime bridge is accepted."
+      },
+      "canonicalNodeRefs": [
+        "screen.vexlife.relationships",
+        "region.relationships.body",
+        "element.relationships.open",
+        "element.relationships.connect"
+      ],
+      "stateRefs": [
+        "state.context",
+        "state.navigation",
+        "state.selection",
+        "state.journey"
+      ],
+      "actionRefs": [
+        "action.context.open",
+        "action.navigation.back"
+      ],
+      "permissionRefs": [
+        "permission.none"
+      ],
+      "processRefs": [
+        "process.vexlife.interface.render"
+      ],
+      "moduleRefs": [
+        "module.vexlife.browser.relationships-core",
+        "module.vexlife.browser.relationships-controller"
+      ],
+      "localizationRefs": [
+        "screen.relationships.title"
+      ],
+      "testRefs": [
+        "test.feature.reference-coverage",
+        "test.navigation.screen-frame",
+        "test.navigation.home-and-back",
+        "test.permission.no-inferred-effect",
+        "test.accessibility.terrain"
+      ],
+      "platformRefs": [
+        "platform.browser"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "BROWSER_LOCAL_CONTEXTUAL_RELATIONSHIPS_REFERENCE",
+      "dataClass": "SYNTHETIC_RELATIONSHIP_REFERENCE_NO_REAL_PARTICIPANT_DATA",
+      "effectClass": "READ_PROJECTION",
+      "concurrencyClass": "LOCAL_CONTEXTUAL_PROJECTION",
+      "rollbackRouteRef": "action.navigation.back",
+      "projectionRefs": [
+        "projection.context.map",
+        "projection.terrain.current"
+      ],
+      "knownGaps": [
+        "Real invitation delivery and relationship persistence remain held behind the separately owned product/runtime bridge.",
+        "Relationships Human Experience review remains a distinct post-candidate gate.",
+        "Home, Memory, model, network, provider, participant, publication, public-search and community-search effects remain held."
+      ]
     }
   ]
 }
