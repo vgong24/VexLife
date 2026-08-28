@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 15426,
       "sha256": "3c18759f96df1abf7d96a6b3a711c53579ed692c561deb1af4990d1196dae5d4"
+    },
+    {
+      "path": "install/vexlife-setup-window.applescript",
+      "mode": "100644",
+      "bytes": 18727,
+      "sha256": "053fda33169534a81d9e2c294758a6cf072f6cd4bcc3d6eae7e7396b1f60cd35"
     }
   ]
 }
