@@ -4,6 +4,38 @@
   "ownerRef": "github.issue.vexlife.152",
   "currentnessRef": "github.issue.vextreme-sdk.914",
   "normalSelectionRule": "RELEASE_QUALIFIED_ONLY",
+  "deliveryChannelsByArtifactRef": {
+    "artifact.llama-cpp.b10107.windows-x64.cuda12.4": [
+      {
+        "channelRef": "channel.llama-cpp.b10107.windows-x64.cuda12.4.github-release.001",
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10107/llama-b10107-bin-win-cuda-12.4-x64.zip"
+      }
+    ],
+    "artifact.llama-cpp.b10107.windows-x64.cuda12.4.cudart": [
+      {
+        "channelRef": "channel.llama-cpp.b10107.windows-x64.cuda12.4.cudart.github-release.001",
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10107/cudart-llama-bin-win-cuda-12.4-x64.zip"
+      }
+    ],
+    "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29": [
+      {
+        "channelRef": "channel.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29.huggingface.001",
+        "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/ba06320255db2dbec194dad738d066be90dabf29/Qwen_Qwen3.5-4B-Q4_K_M.gguf?download=true"
+      }
+    ],
+    "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775": [
+      {
+        "channelRef": "channel.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775.huggingface.001",
+        "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/3516418eb75fd2cdf56058f112b403ff47020775/mmproj-Qwen_Qwen3.5-4B-bf16.gguf?download=true"
+      }
+    ],
+    "artifact.llama-cpp.b10107.macos-arm64.metal": [
+      {
+        "channelRef": "channel.llama-cpp.b10107.macos-arm64.metal.github-release.001",
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10107/llama-b10107-bin-macos-arm64.tar.gz"
+      }
+    ]
+  },
   "profiles": [
     {
       "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
@@ -37,7 +69,6 @@
           {
             "artifactRef": "artifact.llama-cpp.b10107.windows-x64.cuda12.4",
             "filename": "llama-b10107-bin-win-cuda-12.4-x64.zip",
-            "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10107/llama-b10107-bin-win-cuda-12.4-x64.zip",
             "sha256": "1e43bbec9691cd0bc636603c366769148fa6265fd261c5f7c67050b450bbc237",
             "expectedBytes": 247064556,
             "maxBytes": 1073741824,
@@ -47,7 +78,6 @@
           {
             "artifactRef": "artifact.llama-cpp.b10107.windows-x64.cuda12.4.cudart",
             "filename": "cudart-llama-bin-win-cuda-12.4-x64.zip",
-            "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10107/cudart-llama-bin-win-cuda-12.4-x64.zip",
             "sha256": "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6",
             "expectedBytes": 391443627,
             "maxBytes": 536870912,
@@ -74,7 +104,6 @@
         {
           "artifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
           "filename": "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
-          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/ba06320255db2dbec194dad738d066be90dabf29/Qwen_Qwen3.5-4B-Q4_K_M.gguf?download=true",
           "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
           "expectedBytes": 3013027808,
           "maxBytes": 4294967296,
@@ -84,7 +113,6 @@
         {
           "artifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
           "filename": "mmproj-Qwen_Qwen3.5-4B-bf16.gguf",
-          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/3516418eb75fd2cdf56058f112b403ff47020775/mmproj-Qwen_Qwen3.5-4B-bf16.gguf?download=true",
           "sha256": "463f39bd1c291c1186c319a8c90ff8640aafa678b14cbee2232d695113dfbb66",
           "expectedBytes": 675569216,
           "maxBytes": 1073741824,
@@ -149,7 +177,6 @@
         {
           "artifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
           "filename": "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
-          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/ba06320255db2dbec194dad738d066be90dabf29/Qwen_Qwen3.5-4B-Q4_K_M.gguf?download=true",
           "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
           "expectedBytes": 3013027808,
           "maxBytes": 4294967296,
@@ -159,7 +186,6 @@
         {
           "artifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
           "filename": "mmproj-Qwen_Qwen3.5-4B-bf16.gguf",
-          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/3516418eb75fd2cdf56058f112b403ff47020775/mmproj-Qwen_Qwen3.5-4B-bf16.gguf?download=true",
           "sha256": "463f39bd1c291c1186c319a8c90ff8640aafa678b14cbee2232d695113dfbb66",
           "expectedBytes": 675569216,
           "maxBytes": 1073741824,
@@ -270,8 +296,7 @@
             "licenseRef": "license.mit.llama-cpp",
             "maxBytes": 134217728,
             "sha256": "b9554ab4c9f6e91199f48387cb4ab27466fb1d724881f81463ef03f6370cfa32",
-            "sourceRef": "github.release.ggml-org.llama-cpp.b10107",
-            "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10107/llama-b10107-bin-macos-arm64.tar.gz"
+            "sourceRef": "github.release.ggml-org.llama-cpp.b10107"
           }
         ],
         "dependencyRef": "runtime.llama-cpp.server.b10107.macos-arm64.metal",
