@@ -164,6 +164,8 @@ test('Relationships root browser route is visible, localized, accessible and no-
     await page.locator('#relationshipsBookletToggle').click();
     assert.equal(await page.locator('[data-virtualization-required="true"]').isVisible(), true);
 
+    await page.locator('#surfaceMenuButton').click();
+    await page.locator('#languageSelect').waitFor({ state:'visible' });
     await page.selectOption('#languageSelect', 'ja');
     await page.waitForFunction(() => document.documentElement.lang === 'ja');
     assert.equal(await page.locator('#view-relationships [data-rel="title"]').textContent(), '関係');
