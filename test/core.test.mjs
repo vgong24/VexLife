@@ -153,9 +153,19 @@ test('Terrain layout can move and collapse without changing canonical parents', 
   const projection = terrain.projection();
   const project = projection.find((item) => item.terrainNodeRef === 'terrain.project.self-development');
   const thread = projection.find((item) => item.terrainNodeRef === 'terrain.thread.open-conversation');
+  const expectedChildren = bundle.blueprint.terrain
+    .filter((item) => item.parentRef === 'terrain.project.self-development')
+    .map((item) => item.terrainNodeRef)
+    .sort();
+  const projectedChildren = projection
+    .filter((item) => item.parentRef === 'terrain.project.self-development')
+    .sort((left, right) => left.terrainNodeRef.localeCompare(right.terrainNodeRef));
   assert.deepEqual(project.position, { x: 10, y: 20 });
-  assert.equal(project.childCount, 1);
-  assert.equal(thread.hidden, true);
+  assert.deepEqual(projectedChildren.map((item) => item.terrainNodeRef), expectedChildren);
+  assert.equal(project.childCount, expectedChildren.length);
+  assert.ok(expectedChildren.includes('terrain.thread.open-conversation'));
+  assert.ok(expectedChildren.includes('terrain.resource.relationships'));
+  assert.equal(projectedChildren.every((item) => item.hidden), true);
   assert.equal(thread.parentRef, 'terrain.project.self-development');
 });
 
