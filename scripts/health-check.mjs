@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
-import { validateBuildHealthRegistry, deriveRepositoryHealth } from '../src/core/build-health.mjs';
+import { validateBuildHealthRegistry, deriveRepositoryHealth, validateValidationEvidenceBundle } from '../src/core/build-health.mjs';
 import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 import { validateIntegratedSchedulerSimulationReceipt } from '../src/core/scheduler-runtime-trust.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
@@ -30,15 +30,23 @@ const repository = collectRepositoryEvidence(ROOT);
 let receipt = null;
 let receiptState = 'NOT_RUN';
 const receiptErrors = [];
+let validationEvidenceState = 'NOT_SUPPLIED';
+let validationEvidenceRef = null;
 let schedulerSimulationState = 'NOT_RUN';
 let continuitySimulationState = 'NOT_RUN';
 let recoverySimulationState = 'NOT_RUN';
 if (fs.existsSync(receiptPath)) {
   try {
     receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+    const evidenceSupplied = receipt.validationEvidence?.state === 'VALIDATED_CURRENT' ||
+      receipt.validationEvidence?.state === 'INVALID' || Boolean(receipt.validationEvidence?.inputPath);
+    const candidateTreeCurrent = evidenceSupplied
+      ? receipt.candidateTreeSha === repository.git.candidateTreeSha
+      : receipt.candidateTreeSha == null || receipt.candidateTreeSha === repository.git.candidateTreeSha;
     const bindingCurrent = receipt.schemaVersion === 'vexlife.pr-ready-receipt/v1' &&
       receipt.state === 'PR_READY_PASSED' &&
       receipt.candidateHeadSha === repository.git.candidateHeadSha &&
+      candidateTreeCurrent &&
       receipt.testedCheckoutSha === repository.git.checkoutSha &&
       receipt.testedMergeSha === repository.git.testedMergeSha &&
       receipt.baseSha === repository.git.baseSha &&
@@ -58,6 +66,63 @@ if (fs.existsSync(receiptPath)) {
         receiptState = 'INVALID';
         receiptErrors.push('current receipt check coverage does not exactly match the build-health registry');
       } else {
+        const validationEvidenceReceipt = receipt.validationEvidence;
+        if (validationEvidenceReceipt === undefined) {
+          validationEvidenceState = 'NOT_SUPPLIED';
+        } else if (validationEvidenceReceipt?.state === 'NOT_SUPPLIED') {
+          const cleanNotSupplied = validationEvidenceReceipt.inputPath == null &&
+            validationEvidenceReceipt.inputSha256 == null &&
+            validationEvidenceReceipt.semanticFingerprint == null &&
+            validationEvidenceReceipt.validationEvidenceRef == null &&
+            validationEvidenceReceipt.validationProfileRef == null &&
+            validationEvidenceReceipt.bundle == null &&
+            Array.isArray(validationEvidenceReceipt.errors) && validationEvidenceReceipt.errors.length === 0;
+          if (!cleanNotSupplied) {
+            validationEvidenceState = 'INVALID';
+            receiptErrors.push('PR-ready validation evidence NOT_SUPPLIED state contains supplied evidence material');
+          } else {
+            validationEvidenceState = 'NOT_SUPPLIED';
+          }
+        } else if (validationEvidenceReceipt?.state === 'VALIDATED_CURRENT') {
+          const validationEvidenceErrors = [];
+          validationEvidenceRef = validationEvidenceReceipt.validationEvidenceRef ?? null;
+          const validationEvidenceInput = validationEvidenceReceipt.bundle;
+          if (!validationEvidenceInput || typeof validationEvidenceInput !== 'object' || Array.isArray(validationEvidenceInput)) {
+            validationEvidenceErrors.push('PR-ready validated evidence receipt missing embedded validation evidence bundle');
+          } else {
+            if (validationEvidenceReceipt.semanticFingerprint !== validationEvidenceInput.semanticFingerprint ||
+                validationEvidenceReceipt.validationEvidenceRef !== validationEvidenceInput.validationEvidenceRef ||
+                validationEvidenceReceipt.validationProfileRef !== validationEvidenceInput.validationProfileRef) {
+              validationEvidenceErrors.push('PR-ready validation evidence metadata does not match the embedded bundle');
+            }
+            const validation = validateValidationEvidenceBundle(
+              validationEvidenceInput,
+              bundle.buildHealth.validationEvidencePolicy,
+              {
+                repositoryRef: repository.repository.slug,
+                baseSha: repository.git.baseSha,
+                candidateHeadSha: repository.git.candidateHeadSha,
+                candidateTreeSha: repository.git.candidateTreeSha,
+                sourceTreeSha256: sourceManifest.treeSha256,
+                observedHeadSha: repository.git.candidateHeadSha
+              }
+            );
+            validationEvidenceErrors.push(...validation.errors);
+          }
+          if (!Array.isArray(validationEvidenceReceipt.errors) || validationEvidenceReceipt.errors.length !== 0) {
+            validationEvidenceErrors.push('PR-ready validated evidence receipt carries validation errors');
+          }
+          if (validationEvidenceErrors.length) {
+            validationEvidenceState = 'INVALID';
+            receiptErrors.push(...validationEvidenceErrors);
+          } else {
+            validationEvidenceState = 'VALIDATED_CURRENT';
+          }
+        } else {
+          validationEvidenceState = 'INVALID';
+          receiptErrors.push('PR-ready receipt has invalid validation evidence state');
+        }
+
         const simulationPath = path.resolve(ROOT, bundle.schedulerRegistry.simulationContract.receiptPath);
         let simulationReceipt = null;
         try {
@@ -167,7 +232,8 @@ if (fs.existsSync(receiptPath)) {
           receiptErrors.push('PR-ready receipt does not exactly bind the current runtime recovery simulation receipt');
         }
         recoverySimulationState = recoveryValidation.ok && receiptErrors.length === 0 ? 'EXECUTED_CURRENT' : 'INVALID';
-        receiptState = schedulerSimulationState === 'EXECUTED_CURRENT' &&
+        receiptState = validationEvidenceState !== 'INVALID' &&
+          schedulerSimulationState === 'EXECUTED_CURRENT' &&
           continuitySimulationState === 'EXECUTED_CURRENT' && recoverySimulationState === 'EXECUTED_CURRENT'
           ? 'EXECUTED_CURRENT'
           : 'INVALID';
@@ -193,12 +259,15 @@ const errors = [...registry.errors, ...(blueprint.ok ? [] : blueprint.errors), .
 console.log(JSON.stringify({
   state: errors.length ? 'REPOSITORY_HEALTH_INVALID' : projection.state,
   receiptState,
+  validationEvidenceState,
+  validationEvidenceRef,
   schedulerSimulationState,
   continuitySimulationState,
   recoverySimulationState,
   receiptPath: path.relative(ROOT, receiptPath).split(path.sep).join('/'),
   registryChecks: registry.stats.checks,
   candidateHeadSha: repository.git.candidateHeadSha,
+  candidateTreeSha: repository.git.candidateTreeSha,
   testedCheckoutSha: repository.git.checkoutSha,
   testedMergeSha: repository.git.testedMergeSha,
   baseSha: repository.git.baseSha,

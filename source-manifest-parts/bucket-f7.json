@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 543,
       "sha256": "6c753287c11e71cb5f397a1562d1a794256fe6dac3c52a7e6316504a86882734"
+    },
+    {
+      "path": "test/build-health-review-evidence.test.mjs",
+      "mode": "100644",
+      "bytes": 19388,
+      "sha256": "def0fdf9327f7c2d2cfd423dff69e4747ae45235536730c997e6ebe65c43c066"
     }
   ]
 }

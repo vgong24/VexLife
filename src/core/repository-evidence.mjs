@@ -135,6 +135,10 @@ export function collectRepositoryEvidence(root, environment = process.env) {
   const remoteSlug = remoteUrl?.replace(/^.*github\.com[/:]/, '').replace(/\.git$/, '') ?? null;
   const primaryRemoteRef = environment.VEXLIFE_PRIMARY_REMOTE_REF || 'origin/main';
   const mergeBase = checkoutSha ? gitOrNull(root, ['merge-base', checkoutSha, primaryRemoteRef]) : null;
+  const candidateHeadSha = environment.VEXLIFE_CANDIDATE_HEAD_SHA || (syntheticMerge ? parents[1] : checkoutSha);
+  const candidateTreeSha = /^[a-f0-9]{40}$/u.test(candidateHeadSha ?? '')
+    ? gitOrNull(root, ['rev-parse', '--verify', `${candidateHeadSha}^{tree}`])
+    : null;
   return {
     repository: { remoteUrl, slug: remoteSlug },
     git: {
@@ -143,7 +147,8 @@ export function collectRepositoryEvidence(root, environment = process.env) {
       branchSource: localBranch ? 'GIT_WORKTREE' : environment.VEXLIFE_BRANCH ? 'ENVIRONMENT_RECEIPT' : 'UNKNOWN',
       detached,
       checkoutKind: syntheticMerge ? 'SYNTHETIC_MERGE' : detached ? 'DETACHED' : 'BRANCH',
-      candidateHeadSha: environment.VEXLIFE_CANDIDATE_HEAD_SHA || (syntheticMerge ? parents[1] : checkoutSha),
+      candidateHeadSha,
+      candidateTreeSha,
       testedMergeSha: environment.VEXLIFE_TESTED_MERGE_SHA || (syntheticMerge ? checkoutSha : null),
       baseSha: environment.VEXLIFE_BASE_SHA || (syntheticMerge ? parents[0] : mergeBase),
       upstreamRef,
@@ -253,7 +258,7 @@ export function assertDisposableRepositoryControlClean(workspaceRoot, repository
   const inventory = inventoryDisposableRepositoryControl(workspaceRoot, repositoryPath);
   if (inventory.ignoredLines.length) throw new Error(`ignored effect material is forbidden: ${inventory.ignoredLines.join(', ')}`);
   if (inventory.unsafeConfigEntries.length) throw new Error(`unsafe local Git configuration is forbidden: ${inventory.unsafeConfigEntries.map((x) => x.key).join(', ')}`);
-  if (inventory.activeHookEntries.length) throw new Error(`repository hook/control material is forbidden: ${inventory.activeHookEntries.map((x) => x.path).join(', ')}`);
+  if (inventory.activeHookEntries.length) throw new Error(`repository hook/control material is forbidden: ${inventory.activeHookEntries.map((entry) => entry.path).join(', ')}`);
   if (inventory.nestedGitPaths.length) throw new Error(`nested Git control material is forbidden: ${inventory.nestedGitPaths.join(', ')}`);
   if (inventory.symlinkPaths.length) throw new Error(`symlink/reparse effect material is forbidden: ${inventory.symlinkPaths.join(', ')}`);
   return inventory;
