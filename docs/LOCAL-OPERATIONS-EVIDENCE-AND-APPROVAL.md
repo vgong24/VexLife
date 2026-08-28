@@ -617,6 +617,21 @@ A child does not need to implement every parent frontier. It **does** need to
 return its accepted result to the parent and wake every known dependent whose
 blocking predicate became true.
 
+Terminal dependency discovery is source-addressed, not memory-addressed. Before a
+terminal lane records `hiddenLocalActionRemaining=false`, query the current
+repository/provider coordination plane for open canonical `VXG-CONVERGENCE`
+markers that name the exact terminal lane/ref as a predecessor. For every match,
+re-ground every named predicate from live source and either perform the earned
+wake or preserve the exact causal `WAIT_FOR_<exact release>` state. If no marker
+matches, record the negative discovery receipt.
+
+```text
+VXG_CONVERGENCE_MARKER_IS_CANONICAL=true
+CONVERGE_LABEL_IS_DISCOVERY_ACCELERATOR_ONLY=true
+CONVERGENCE_MARKER_HIT_GRANTS_COORDINATION_NOT_SOURCE_AUTHORITY=true
+TERMINAL_DEPENDENCY_QUERY_PRECEDES_HIDDEN_LOCAL_ACTION_NONE=true
+```
+
 Common causal wake classes include:
 
 ```text
@@ -707,7 +722,8 @@ new semantic successor satisfies exact same-owner conditions or returns to Root?
 Assurance fresh for exact head?
 lifecycle effects individually re-grounded?
 post-merge verification and claim release complete?
-known dependents/parent have been woken/returned?
+open VXG-CONVERGENCE dependents queried and re-grounded?
+earned dependents/parent have been woken/returned?
 byte-continuity claims independently true?
 Victor asked only for irreducible human action?
 hidden Local action remaining is truthfully NONE before terminal return?

@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 1008,
       "sha256": "5e76ef69e75962e5c66c28701af0d92e95c9fac133780b5df6b1a36edea4db1a"
+    },
+    {
+      "path": "reference/browser/public-learning/app.css",
+      "mode": "100644",
+      "bytes": 6950,
+      "sha256": "3fdfc3490b41515c4eff31f31251e7a4efbab74b8aa1077612ba51e92620c4da"
     }
   ]
 }

@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 22297,
       "sha256": "cb746a2337fa460c1672cd00ef271e6b5b419ce230572e2c4b5d353fa6a51679"
+    },
+    {
+      "path": "test/experience-review-seeded-exploration.test.mjs",
+      "mode": "100644",
+      "bytes": 17636,
+      "sha256": "74abd61a20fced15565f6ef213f1896b7fc471853009a8081ddb94075f833cc7"
     }
   ]
 }

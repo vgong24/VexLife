@@ -9,6 +9,12 @@
       "sha256": "04a2dd69759db6000a3566d0ab519b6c8817f4e400b3fff8dd01c181c9333771"
     },
     {
+      "path": "src/core/experience-review-effect-fixture.mjs",
+      "mode": "100644",
+      "bytes": 13714,
+      "sha256": "7fc14b3cb8fad0aaa1ab5dea427196f985996cb6b9ddf23652be544b4da49af4"
+    },
+    {
       "path": "src/core/state-relay.mjs",
       "mode": "100644",
       "bytes": 2512,
