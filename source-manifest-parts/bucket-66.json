@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 12826,
       "sha256": "f6196dab0cbd79ca34d92f84d5f4698f58323ef09b7319abeb7abbca6c482ad8"
+    },
+    {
+      "path": "scripts/experience-review-seeded.mjs",
+      "mode": "100644",
+      "bytes": 9685,
+      "sha256": "d10026cc29faccca326dd5db32aa20e1fbc306eb0af690c0d748723e3501c23e"
     }
   ]
 }
