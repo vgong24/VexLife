@@ -6,24 +6,19 @@ This is the VexLife-facing **cold-start map** for Local Operations work. It exis
 so a fresh instance can reconstruct the work journey from source instead of
 requiring repeated chat instructions.
 
-It is intentionally a stable summary rather than a frozen copy of one protocol
-release. When a current Root allocation, current `[Local] Vex Operations`
-Project contract, or exact task/relay package supplies a more specific current
-rule, that exact current authority wins.
+It is a stable orientation summary, not a frozen protocol snapshot and not a
+standing work claim. When current explicit human/Root authority, live repository
+state, the current `[Local] Vex Operations` Project contract, or an exact current
+task/relay contract is more specific, that current authority wins.
 
 ```text
-schemaVersion=vexlife.local-operations-cold-start/v3
-issueRef=github.issue.vexlife.195
-supersededCarrier=github.pull.vexlife.196
-activeCarrier=github.pull.vexlife.271
-laneRef=lane.vexlife.process.local-operations-cold-start.20260827.001
-workRef=work.vexlife.process.local-operations-cold-start.20260827.001
+schemaVersion=vexlife.local-operations-cold-start/v4
+formationIssue=github.issue.vexlife.195
+formationLineage=github.pull.vexlife.196 -> github.pull.vexlife.271
+sourceRole=STABLE_ORIENTATION_SUMMARY__NOT_LIVE_LANE_STATE
+currentnessRule=REOBSERVE_LIVE_AUTHORITY_AND_SOURCE_BEFORE_EFFECT
 purpose=FRESH_INSTANCE_CAN_CONTINUE_ONE_BOUNDED_LANE_WITHOUT_ROLE_OR_TERMINALITY_COLLAPSE
 ```
-
-<!-- VXG-WORK-CLAIM
-{"schemaVersion":"work-coordination.claim/v1","workRef":"work.vexlife.process.local-operations-cold-start.20260827.001","actorRef":"Coder[VEXLIFE][PROCESS][LOCAL-OPERATIONS-COLD-START]","instanceRef":"instance.vexlife.process.local-operations-cold-start.20260827.001","repository":"vgong24/VexLife","branch":"VXG-082726-process-local-ops-lifecycle-cold-start-dco-clean","epic":{"name":"VexLife Process","item":"current Local Operations cold-start lifecycle guidance"},"status":"authored-current-guidance-generated-pending","paths":["AGENTS.md","docs/LOCAL-OPERATIONS-EVIDENCE-AND-APPROVAL.md"],"generatedPaths":[],"coordinationOnly":false,"implementationAuthority":true,"sourceManifestSerializerAuthority":false,"reviewAuthority":false,"mergeAuthority":false,"publicationAuthority":false}
-VXG-WORK-CLAIM -->
 
 ## 1. Start from live source, not remembered state
 
@@ -40,17 +35,21 @@ smallest relevant Atlas/module/source neighborhood.
 Use this precedence when sources disagree:
 
 ```text
-current explicit human / Root authority for the exact lane
-> live repository and GitHub state
-> current accepted repository culture / governance / registered owners
-> current Local Operations contract and exact relay/task contract
-> current handoff / durable receipts
-> historical rationale and prior chat
+1. current explicit human / Root authority for the exact lane
+2. live repository and GitHub state
+3. current accepted repository culture / governance / registered owners
+4. current [Local] Vex Operations Project instructions
+5. current relay full prompt / relay package for relay mechanics
+6. current source-managed process / function definitions
+7. exact current handoff / durable current-state capsule
+8. rationale / history
+9. prior chat memory
 ```
 
 A document can preserve valuable institutional meaning while carrying a stale
-lifecycle snapshot. A branch, PR, comment, ZIP, old run, remembered runner, or
-old approval is not current merely because it still exists.
+lifecycle snapshot. A branch, PR, comment, ZIP, old run, remembered runner, old
+approval, or this guide's own formation lineage is not current merely because it
+still exists.
 
 ```text
 LIVE_SOURCE_OUTRANKS_STALE_SNAPSHOT=true
@@ -59,18 +58,19 @@ LATEST_RUN != CAUSAL_RUN
 HISTORICAL_CLEARANCE != CURRENT_CLEARANCE
 ```
 
-If a required current coordinate cannot be established, hold the affected
-effect instead of inferring it.
+If a required current coordinate cannot be established, hold the affected effect
+instead of inferring it.
 
-## 2. Do not collapse lane, role, conversation, attempt, or candidate
+## 2. Do not collapse lane, role, conversation, task, attempt, or candidate
 
 Keep these identities distinct:
 
 ```text
 intent
+authority
 lane
-work / task
 role occupancy
+work / task
 provider / conversation
 attempt
 candidate source
@@ -90,12 +90,18 @@ provider window ending != lane terminal
 candidate package != canonical source
 package failure != candidate failure
 host timeout != source defect
+successful push != hosted validation
+green execution != semantic clearance
+clearance != approval
+approval != ready
+ready != merge
+merge != post-merge verification
 ```
 
 One Local lane may move through several logical roles without making Victor move
 substantive context between conversations.
 
-Normal progression is:
+Ordinary Local progression is:
 
 ```text
 Operations
@@ -103,13 +109,36 @@ Operations
 → Independent Assurance
 → Lifecycle Operations / Formal Reviewer / Owner Merge Duty
 → post-merge verification
+→ claim release / dependent wakes
 → terminal return
 ```
 
 Every role transition re-grounds live mutable state and creates fresh role-local
 identity/authority. Prior role conclusions are evidence, not inherited authority.
 
-## 3. Know the lane's scope before acting
+## 3. Root is an explicit escalation occupancy, not a permission round trip
+
+Root Operations owns global allocation, cross-lane conflict, protected-decision
+routing, and whole-field convergence. A Local lane is not automatically Root.
+
+When **current explicit human/Root authority** grants the present occupancy the
+Root role for the same bounded work, Root may be occupied in the same conversation
+to resolve the exact blocker and then return to the narrower Local role.
+
+```text
+ROOT_ROLE_REQUIRES_EXPLICIT_CURRENT_AUTHORITY=true
+EXPLICIT_CURRENT_ROOT_OCCUPANCY_CAN_UNBLOCK_SAME_LANE=true
+ROOT_ROLE_TRANSITION_DOES_NOT_CREATE_A_NEW_LANE=true
+ROOT_OCCUPANCY_DOES_NOT_CREATE_STANDING_FUTURE_ROOT_AUTHORITY=true
+ROOT_OCCUPANCY_DOES_NOT_BYPASS_PROTECTED_HUMAN_DECISION=true
+```
+
+A Root transition still requires fresh role-local identity, fresh live grounding,
+and exact effect binding. Do not send Victor or another thread a ceremonial
+permission request merely because the currently authorized occupancy can perform
+the Root step itself.
+
+## 4. Know the lane's scope before acting
 
 Classify the current occupancy before mutation:
 
@@ -129,7 +158,7 @@ Before an effect, ground at least the applicable:
 ```text
 repository + accepted main/base
 branch/head/tree
-workRef / claim / exact path membrane
+workRef / taskRef / claim / exact path membrane
 open competing claims
 candidate identity
 completed effects
@@ -140,11 +169,11 @@ exact next executable function
 return / wake route
 ```
 
-## 4. Authority is an effect ledger, not a repeated permission ritual
+## 5. Authority is an effect ledger, not a repeated permission ritual
 
 Keep routine authority explicit and current across role transitions and provider
-interruptions. Do not ask Victor to reconfirm an already-current routine effect
-merely because the logical role changed.
+interruptions. Do not ask Victor or Root to reconfirm an already-current routine
+effect merely because the logical role changed.
 
 Re-ask only when authority is:
 
@@ -180,7 +209,7 @@ NATIVE_GITHUB_APPROVAL_IS_TRANSPORT_ONLY_UNLESS_LIVE_RULESET_REQUIRES=true
 Do not require a human to create or switch accounts merely to represent two
 institutional roles when the live repository rule does not require it.
 
-## 5. Form DCO correctly before the commit exists
+## 6. Form DCO correctly before the commit exists
 
 Every PR commit must carry an author-matching DCO trailer. Before committing,
 resolve the **actual Git author name and email the selected write adapter will
@@ -197,11 +226,11 @@ DCO_IS_PRE_EFFECT_COMMIT_FORMATION_INVARIANT=true
 UNSIGNED_COMMIT_MUST_BE_PREVENTED_NOT_DISCOVERED_AFTER_A_SOURCE_SEQUENCE=true
 ```
 
-If immutable PR ancestry contains a bad commit and history rewrite is not
-allowed, preserve the bad carrier as provenance and form a clean successor from
-current accepted source. Do not amend/rebase/force merely to make the UI green.
+If immutable PR ancestry contains a bad commit and history rewrite is not allowed,
+preserve the bad carrier as provenance and form a clean successor from current
+accepted source. Do not amend/rebase/force merely to make the UI green.
 
-## 6. Source admission and generated-source custody are separate
+## 7. Source admission and generated-source custody are separate
 
 Before authored mutation prove:
 
@@ -223,9 +252,9 @@ When multiple semantic source records share one generated partition:
 shared generated file != shared semantic ownership
 ```
 
-Serialize only the generated path custody that actually collides. After the
-other owner releases it, re-ground current main and **recompose the bucket from
-current co-bucket truth plus the current candidate record**.
+Serialize only the generated path custody that actually collides. After the other
+owner releases it, re-ground current main and **recompose the bucket from current
+co-bucket truth plus the current candidate record**.
 
 ```text
 STALE_GENERATED_BYTES != CURRENT_GENERATED_CLOSURE
@@ -235,10 +264,10 @@ SERIALIZED_GENERATED_WAIT != LANE_TERMINAL
 ### Independent candidate/package binding
 
 A relay/package must not prove its own source identity merely by being internally
-self-consistent. Before handoff, independently ground the canonical source and
-bind at least the exact repository/head/tree/path set plus machine-observed Git
-object/content identities. Then recompute the final package digest from the
-actual final package bytes.
+self-consistent. Before handoff, independently ground canonical source and bind at
+least the exact repository/head/tree/path set plus machine-observed Git
+object/content identities. Then recompute the final package digest from the actual
+final package bytes.
 
 Required fail-closed shapes include:
 
@@ -259,7 +288,7 @@ FINAL_PACKAGE_DIGEST_MUST_BE_RECOMPUTED=true
 A binding/harness failure before candidate execution carries
 `candidateFinding=false`; it cannot be promoted into source blame.
 
-## 7. Select the execution surface before forming executable work
+## 8. Select the execution surface before forming executable work
 
 Keep execution surface separate from authority and evidence interpretation. The
 current Local Operations surface classes are:
@@ -288,15 +317,15 @@ one downloadable ZIP
 The qualified launcher owns package discovery, digest verification, bounded
 extraction, exact task binding, one execution, result validation, result path/hash
 printing, and convenient reveal of the result. Victor does not assemble scripts,
-arguments, Git recovery, or polling logic. The launcher must not mutate the
-human clipboard by default.
+arguments, Git recovery, or polling logic. The launcher must not mutate the human
+clipboard by default.
 
-Task-specific Windows process mechanics are source-managed. A `.cmd`/`.bat`
-tool is not directly spawned as if it were a native executable and must not
-accept arbitrary shell text. Preserve logical command + typed argv in receipts,
-route physical execution through the current source-managed helper / `ComSpec`
-contract with `shell=false`, and fail closed on prohibited cmd metacharacter or
-expansion shapes. Node/native executable tools remain direct argv execution with
+Task-specific Windows process mechanics are source-managed. A `.cmd`/`.bat` tool
+is not directly spawned as if it were a native executable and must not accept
+arbitrary shell text. Preserve logical command + typed argv in receipts, route
+physical execution through the current source-managed helper / `ComSpec` contract
+with `shell=false`, and fail closed on prohibited cmd metacharacter or expansion
+shapes. Node/native executable tools remain direct argv execution with
 `shell=false`.
 
 ```text
@@ -315,14 +344,14 @@ one downloadable ZIP
 ```
 
 The Bash transport verifies/extracts the package and delegates to the accepted
-source-managed `.command` runner mechanics (for example the exact task-bound
-`RUN-VEX-TASK.command` family). Human transport does **not** require Finder
+source-managed `.command` runner mechanics, such as the exact task-manifest-bound
+`RUN-VEX-TASK.command` family. Human transport does **not** require Finder
 double-click and must not invent a second Mac runner.
 
 A host-local relay proves a host-local effect only. It is not Independent
 Assurance or lifecycle approval.
 
-## 8. EDGE versus CAGE: continue mechanics, hold real boundaries
+## 9. EDGE versus CAGE: continue mechanics, hold real boundaries
 
 When blocked, ask:
 
@@ -348,10 +377,10 @@ CAGE != FAILURE
 CAGE != TERMINAL
 ```
 
-A provider failing to allocate a hosted runner before repository code executes
-is provider/execution-surface evidence, not a candidate source failure.
+A provider failing to allocate a hosted runner before repository code executes is
+provider/execution-surface evidence, not a candidate source failure.
 
-## 9. Evidence has multiple independent dimensions
+## 10. Evidence has multiple independent dimensions
 
 Keep these separate:
 
@@ -384,7 +413,7 @@ forbidden and it is not institutional authority.
 
 Never replace a known causal run with an unbound `latest` run.
 
-## 10. Attribute failures to the layer that actually failed
+## 11. Attribute failures to the layer that actually failed
 
 Preserve the first substantive failure as immutable evidence. A later correction
 or PASS does not rewrite the original failure into success.
@@ -409,7 +438,7 @@ source gates pass
 != source formation failed
 ```
 
-## 11. Retry, successor, and dependency sequencing
+## 12. Retry, successor, and dependency sequencing
 
 For the **same semantic task**, preserve:
 
@@ -438,13 +467,15 @@ same-owner successor formation is permitted only when all of these are current:
 
 ```text
 same canonical owner
+semanticRelation=NEW_SEMANTIC_TASK
 fresh successor lane/work/task identity
 current authority explicitly covers the successor
 same-or-narrower admitted owner effect class
 exact bounded membrane
-no active or cross-owner conflict
-no protected human decision required
-no material unknowns
+activeConflictState=NONE
+crossOwnerConflict=false
+protectedDecisionRequired=false
+materialUnknowns=[]
 ```
 
 Otherwise return to Root/current allocating authority rather than silently
@@ -469,20 +500,27 @@ EXACT_NEW_CHILD_REQUIRED
 ```
 
 If a lane is serialized behind another owner, keep it open/source-placed as far
-as safely possible and record:
-
-```text
-who owns the blocking seam
-exact path/predicate
-safe parallel work remaining
-wake predicate
-wake route
-claim state
-```
+as safely possible and record the blocking owner, exact path/predicate, safe
+parallel work remaining, wake predicate, wake route, and claim state.
 
 `WAITING` is a lifecycle state, not permission to disappear.
 
-## 12. Independent Assurance is exact and goes stale on head change
+## 13. Remote observation belongs to Operations
+
+The ordinary host-local sequence is:
+
+```text
+host-local effect
+→ required remote mutation
+→ canonical result returns HOSTED_VALIDATION_PENDING when applicable
+→ Operations observes exact remote evidence
+```
+
+Do not keep Victor's host polling GitHub if Operations can observe it
+independently. Remote evidence binds the exact candidate head, workflow/event
+identity, and terminal condition. Never use `latest` as causal proof.
+
+## 14. Independent Assurance is exact and goes stale on head change
 
 Fresh Independent Assurance is:
 
@@ -509,7 +547,7 @@ If Assurance finds a bounded source defect, return to the same Coder lane,
 correct only the evidence-backed finding, regenerate exact consequences, re-run
 causal gates, and obtain fresh Assurance.
 
-## 13. Lifecycle progression after technical clearance
+## 15. Lifecycle progression after technical clearance
 
 Technical green is not the finish line. Once exact source/evidence/Assurance is
 clear, freshly re-ground current state before each irreversible effect:
@@ -522,13 +560,13 @@ Lifecycle / Currentness
 → OwnerMergeDuty exact expected-head ordinary merge
 → post-merge Foundation / integrity verification
 → claim release
-→ dependent-lane wakes
+→ dependent-lane wakes / parent return
 → F15 terminal return
 ```
 
 Do not infer the next effect merely because the previous one succeeded.
 
-## 14. Checkpoint is not terminal
+## 16. Checkpoint, wait, and merge are not terminal
 
 These are **not** lane terminality by themselves:
 
@@ -569,16 +607,17 @@ hiddenLocalActionRemaining
 ```text
 PROVIDER_WINDOW_END != LANE_TERMINAL
 CHECKPOINT != TERMINAL
+SERIALIZED_WAIT != TERMINAL
 MERGE != TERMINAL_RETURN
 ```
 
-## 15. Convergence and dependent wakes are part of completion
+## 17. Convergence and dependent wakes are part of completion
 
 A child does not need to implement every parent frontier. It **does** need to
 return its accepted result to the parent and wake every known dependent whose
 blocking predicate became true.
 
-Examples of causal wake classes:
+Common causal wake classes include:
 
 ```text
 generated-path custody release
@@ -593,7 +632,7 @@ A dependent wake grants only currentness/coordination unless the dependent's own
 source authority says otherwise. It does not let one lane mutate another lane's
 source or inherit its semantic proof.
 
-## 16. Exact byte custody and semantic continuity are different
+## 18. Exact byte custody and semantic continuity are different
 
 A durable receipt can preserve accepted semantics without preserving exact source
 bytes. Never manufacture byte continuity from memory or from a regenerated
@@ -616,7 +655,7 @@ OR exact CAGE
 
 Never regenerate bytes and relabel them as the lost historical version.
 
-## 17. Victor's role is irreducibly human, not technical state interpreter
+## 19. Victor's role is irreducibly human, not technical state interpreter
 
 Victor may be asked to:
 
@@ -641,16 +680,18 @@ repeat already-bound routine permission
 
 Operations owns technical state interpretation and remote observation.
 
-## 18. Cold-start checklist
+## 20. Cold-start checklist
 
-Before mutation, relay delivery, Assurance, lifecycle effect, retry/successor, or
-terminal return, be able to answer `YES` to every applicable item:
+Before mutation, relay delivery, Assurance, lifecycle effect, retry/successor,
+Root escalation, or terminal return, be able to answer `YES` to every applicable
+item:
 
 ```text
 entry/lane identity exact?
 live main/head/tree/current claims re-grounded?
 required orientation sources consumed?
 exact current authority covers this effect?
+Root occupancy explicit/current if Root is being used?
 authored and generated membranes distinct?
 actual Git author + DCO trailer known before commit?
 independent source oracle separate from package under test?

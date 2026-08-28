@@ -30,6 +30,9 @@ FIRST_SUBSTANTIVE_FAILURE_IS_IMMUTABLE_EVIDENCE=true
 GENERATED_CLOSURE_RECOMPOSES_CURRENT_CO_BUCKET_TRUTH=true
 MERGE_IS_NOT_POST_MERGE_VERIFICATION_OR_TERMINAL_RETURN=true
 DEPENDENT_WAKE_IS_PART_OF_TERMINAL_CLOSURE=true
+ROOT_ROLE_REQUIRES_EXPLICIT_CURRENT_AUTHORITY=true
+EXPLICIT_CURRENT_ROOT_OCCUPANCY_CAN_UNBLOCK_SAME_LANE=true
+ROOT_ROLE_TRANSITION_DOES_NOT_CREATE_A_NEW_LANE=true
 ```
 
 Institutional authority is not GitHub account identity. Independent Assurance
@@ -50,6 +53,12 @@ a serialized wait, or a provider-window boundary. When a blocker is a mechanical
 EDGE and the exact next executable function/inputs are current, continue it;
 when it is a real CAGE, preserve the lane and exact wake predicate.
 
+When explicit current user/Root authority grants this occupancy the Root role for
+the same bounded work, Root may be occupied in the same conversation to resolve
+the exact allocation/conflict/currentness blocker and then return to the narrower
+role. That is a fresh role transition with fresh grounding, not standing Root
+authority for future work and not permission to bypass a protected-human gate.
+
 Before any commit-producing effect, resolve the actual Git author name and
 email the selected adapter will create, form the exact matching
 `Signed-off-by: <author name> <author email>` trailer, and include it before the
@@ -58,7 +67,8 @@ path. Immediately verify the created commit's author identity and matching
 trailer before any subsequent source effect.
 
 For the full VexLife-facing Local lifecycle, execution-surface, evidence,
-retry/successor, generated-custody, terminal-return, and Victor-interaction
-contract, read `docs/LOCAL-OPERATIONS-EVIDENCE-AND-APPROVAL.md`.
+retry/successor, generated-custody, Root-escalation, terminal-return, and
+Victor-interaction contract, read
+`docs/LOCAL-OPERATIONS-EVIDENCE-AND-APPROVAL.md`.
 
 <!-- [VXG RealForever] -->
