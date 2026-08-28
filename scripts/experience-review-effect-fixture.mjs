@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,10 +7,12 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { buildGuideEffectFixturePlan, GUIDE_EFFECT_AUTHORITY_REF, GUIDE_EFFECT_FIXTURE_REF } from '../src/core/experience-review-effect-fixture.mjs';
 import { createBrowserExperienceReviewAdapter } from '../reference/browser/modules/experience-review-adapter.js';
+import { createVexLifeBrowserServer } from './serve-browser.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MESSAGE_SELECTOR = '#guideMessages [data-component-ref="component.vexlife.guide-message"]';
 const REFERENCE_BROWSER_PATH = '/reference/browser/';
+const SOURCE_OWNED_REFERENCE_URL = 'http://127.0.0.1:0/reference/browser/';
 
 function usage() {
   console.error('Usage: node scripts/experience-review-effect-fixture.mjs --request <review-request.json> --bindings <browser-bindings.json> --out <directory>');
@@ -34,6 +37,75 @@ function parseArgs(argv) {
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function gitText(...args) {
+  return execFileSync('git', ['-C', ROOT, ...args], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  }).trim();
+}
+
+function tryGitText(...args) {
+  try {
+    return gitText(...args);
+  } catch {
+    return '';
+  }
+}
+
+function observeExactSource() {
+  const testedCheckoutSha = gitText('rev-parse', 'HEAD');
+  const testedCheckoutTreeSha = gitText('rev-parse', 'HEAD^{tree}');
+  const commitObject = gitText('cat-file', '-p', testedCheckoutSha);
+  const parentShas = commitObject
+    .split(/\r?\n/u)
+    .filter((line) => line.startsWith('parent '))
+    .map((line) => line.slice('parent '.length));
+  const attachedBranch = tryGitText('symbolic-ref', '--short', '-q', 'HEAD');
+  const candidateHeadSha = !attachedBranch && parentShas.length === 2
+    ? parentShas[1]
+    : testedCheckoutSha;
+  return Object.freeze({
+    bindingClass: 'GIT_OBSERVED_SOURCE_OWNED_REFERENCE_BROWSER',
+    sourceVersionRef: `github.commit.vexlife.${candidateHeadSha}`,
+    candidateHeadSha,
+    testedCheckoutSha,
+    testedCheckoutTreeSha
+  });
+}
+
+function requireRequestedSourceMatchesObserved(bundle, source) {
+  if (bundle.reviewEpoch.sourceVersionRef !== source.sourceVersionRef) {
+    throw new Error(`effect fixture sourceVersionRef is not exact current Git source: ${bundle.reviewEpoch.sourceVersionRef}`);
+  }
+}
+
+async function listenSourceServer(server) {
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address !== 'object' || !Number.isInteger(address.port) || address.port < 1) {
+    throw new Error('source-managed reference browser did not bind an exact loopback port');
+  }
+  return `http://127.0.0.1:${address.port}`;
+}
+
+function closeSourceServer(server) {
+  return new Promise((resolve) => server.close(() => resolve()));
+}
+
+function bindSourceOwnedRuntime(plan, pageUrl) {
+  const binding = Object.freeze({ ...plan.binding, pageUrl });
+  const task = Object.freeze({ ...plan.task, binding });
+  return Object.freeze({
+    ...plan,
+    binding,
+    task,
+    pageOrigin: new URL(pageUrl).origin
+  });
 }
 
 async function guideMessages(page, expectedIntentRef) {
@@ -198,6 +270,7 @@ function writeResult(out, result) {
 }
 
 let out = null;
+let sourceServer = null;
 try {
   const args = parseArgs(process.argv.slice(2));
   if (!args.request || !args.bindings || !args.out) {
@@ -208,7 +281,19 @@ try {
     const bundle = readJson(path.resolve(args.request));
     const bindingDocument = readJson(path.resolve(args.bindings));
     const bindings = Array.isArray(bindingDocument) ? bindingDocument : bindingDocument.browserBindings;
-    const plan = buildGuideEffectFixturePlan(bundle, bindings, { root: ROOT });
+    const admittedPlan = buildGuideEffectFixturePlan(bundle, bindings, { root: ROOT });
+    const sourceOwned = admittedPlan.binding.pageUrl === SOURCE_OWNED_REFERENCE_URL;
+    let source = null;
+    let plan = admittedPlan;
+
+    if (sourceOwned) {
+      source = observeExactSource();
+      requireRequestedSourceMatchesObserved(bundle, source);
+      sourceServer = createVexLifeBrowserServer();
+      const sourceOrigin = await listenSourceServer(sourceServer);
+      plan = bindSourceOwnedRuntime(admittedPlan, `${sourceOrigin}${REFERENCE_BROWSER_PATH}`);
+    }
+
     const sink = { before: null, after: null, afterObservationError: null, referenceBrowserReady: false, requests: [] };
     const screenshotsDirectory = path.join(out, 'screenshots');
     const adapter = createBrowserExperienceReviewAdapter({
@@ -226,11 +311,15 @@ try {
     }
     requirePostActionObservation(plan, sink);
     const cleanup = await proveFreshBrowserCleanup(plan);
+    if (!sourceOwned || !source) {
+      throw new Error('external loopback fixture is adversarial-only and cannot produce PASS');
+    }
     const result = {
       schemaVersion: 'vexlife.experience-review.effect-fixture-result/v1',
       state: 'PASS',
       reviewEpochRef: bundle.reviewEpoch.reviewEpochRef,
-      sourceVersionRef: bundle.reviewEpoch.sourceVersionRef,
+      sourceVersionRef: source.sourceVersionRef,
+      source,
       planRef: plan.planRef,
       fixtureRef: plan.fixtureRef,
       effectAuthorityRef: plan.effectAuthorityRef,
@@ -283,6 +372,8 @@ try {
   }
   console.log(JSON.stringify(result, null, 2));
   process.exitCode = 1;
+} finally {
+  if (sourceServer) await closeSourceServer(sourceServer);
 }
 
 // [VXG RealForever]
