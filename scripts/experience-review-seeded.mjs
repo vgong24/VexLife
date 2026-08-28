@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { buildReviewPackageTextFiles, validateReviewRequestBundle } from '../src/core/experience-review-kit.mjs';
 import {
@@ -60,6 +61,77 @@ function artifactLocationsFor(tasks, evidence) {
   return locations;
 }
 
+function deadlineError() {
+  const error = new Error('Seeded exploration time budget exhausted');
+  error.code = 'SEEDED_TIME_BUDGET_EXHAUSTED';
+  return error;
+}
+
+function remainingUntil(deadlineAtMs) {
+  return Math.max(0, Math.floor(deadlineAtMs - Date.now()));
+}
+
+function createDeadlineBoundBrowserType(deadlineAtMs) {
+  return {
+    async launch(launchOptions) {
+      const launchBudgetMs = remainingUntil(deadlineAtMs);
+      if (launchBudgetMs <= 0) throw deadlineError();
+
+      let timedOut = false;
+      let launchTimer = null;
+      const launchPromise = chromium.launch(launchOptions);
+      const browser = await new Promise((resolve, reject) => {
+        launchTimer = setTimeout(() => {
+          timedOut = true;
+          reject(deadlineError());
+        }, launchBudgetMs);
+        launchPromise.then(async (candidate) => {
+          if (timedOut) {
+            try {
+              await candidate.close();
+            } catch {
+              // The late browser is already unavailable; deadline cleanup is complete.
+            }
+            return;
+          }
+          clearTimeout(launchTimer);
+          resolve(candidate);
+        }, (error) => {
+          clearTimeout(launchTimer);
+          reject(error);
+        });
+      });
+
+      const browserBudgetMs = remainingUntil(deadlineAtMs);
+      if (browserBudgetMs <= 0) {
+        await browser.close();
+        throw deadlineError();
+      }
+
+      let deadlineTimer = null;
+      let closePromise = null;
+      const close = (...args) => {
+        if (!closePromise) {
+          if (deadlineTimer) clearTimeout(deadlineTimer);
+          closePromise = browser.close(...args);
+        }
+        return closePromise;
+      };
+      deadlineTimer = setTimeout(() => {
+        void close().catch(() => {});
+      }, browserBudgetMs);
+
+      return new Proxy(browser, {
+        get(target, property) {
+          if (property === 'close') return close;
+          const value = Reflect.get(target, property, target);
+          return typeof value === 'function' ? value.bind(target) : value;
+        }
+      });
+    }
+  };
+}
+
 try {
   const args = parseArgs(process.argv.slice(2));
   if (!args.request || !args.bindings || !args.out) {
@@ -79,6 +151,7 @@ try {
     const evidence = [];
     const executedStepRefs = [];
     const startedAtMs = Date.now();
+    const deadlineAtMs = startedAtMs + plan.timeBudgetMs;
     let stopReason = null;
 
     for (const task of plan.tasks) {
@@ -97,10 +170,25 @@ try {
           timeoutMs: Math.max(1, Math.min(existingTimeout, remainingMs))
         }
       };
-      const adapter = createBrowserExperienceReviewAdapter();
-      const records = await adapter.captureTasks([boundedTask], screenshotsDirectory);
+      const adapter = createBrowserExperienceReviewAdapter({
+        browserType: createDeadlineBoundBrowserType(deadlineAtMs)
+      });
+      let records = null;
+      try {
+        records = await adapter.captureTasks([boundedTask], screenshotsDirectory);
+      } catch (error) {
+        if (error?.code === 'SEEDED_TIME_BUDGET_EXHAUSTED' || remainingUntil(deadlineAtMs) <= 0) {
+          stopReason = 'TIME_BUDGET_EXHAUSTED';
+          break;
+        }
+        throw error;
+      }
       evidence.push(...records);
       executedStepRefs.push(task.step.reviewStepRef);
+      if (seededTimeBudgetRemaining(startedAtMs, plan.timeBudgetMs) <= 0) {
+        stopReason = 'TIME_BUDGET_EXHAUSTED';
+        break;
+      }
       if (records.some((record) => record.captureState !== 'CAPTURED')) {
         stopReason = 'CAPTURE_FAILED_SAFE';
         break;
@@ -126,7 +214,7 @@ try {
     const failedSafeCount = evidence.filter((record) => record.captureState === 'FAILED_SAFE').length;
     const allSelectedExecuted = executedStepRefs.length === plan.selectedStepRefs.length;
     const allCaptured = allSelectedExecuted && capturedCount === plan.selectedStepRefs.length && unsupportedCount === 0 && failedSafeCount === 0;
-    const state = allCaptured
+    const state = allCaptured && stopReason == null
       ? 'PASS'
       : stopReason === 'TIME_BUDGET_EXHAUSTED'
         ? 'HELD'
