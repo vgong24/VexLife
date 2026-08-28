@@ -47,6 +47,18 @@ function expectedFlattenedProcessCommandLine(expectedExecutablePath, expectedArg
   return [String(expectedExecutablePath ?? ''), ...expectedArguments.map((value) => String(value))].join(' ');
 }
 
+function artifactIdentitySnapshot(artifact) {
+  return JSON.stringify({
+    artifactRef: artifact.artifactRef,
+    filename: artifact.filename,
+    sha256: artifact.sha256,
+    expectedBytes: artifact.expectedBytes,
+    maxBytes: artifact.maxBytes,
+    licenseRef: artifact.licenseRef,
+    sourceRef: artifact.sourceRef
+  });
+}
+
 export function runtimeExecutableIdentityMatches({ profile, actualSha256, bytes }) {
   const runtime = profile?.runtime;
   if (!runtime || typeof runtime.executableSha256 !== 'string') return false;
@@ -100,8 +112,11 @@ export function validateOperationalProfileRegistry(registry) {
     requireObject(registry, 'registry');
     if (registry.schemaVersion !== VEX_OPERATIONAL_PROFILE_REGISTRY_SCHEMA) throw new Error(`registry.schemaVersion must be ${VEX_OPERATIONAL_PROFILE_REGISTRY_SCHEMA}`);
     requireString(registry.registryRef, 'registry.registryRef');
+    requireObject(registry.deliveryChannelsByArtifactRef, 'registry.deliveryChannelsByArtifactRef');
     if (!Array.isArray(registry.profiles) || registry.profiles.length === 0) throw new Error('registry.profiles must be non-empty');
     const refs = new Set();
+    const artifactDescriptors = new Map();
+    const usedArtifactRefs = new Set();
     for (const [index, profile] of registry.profiles.entries()) {
       const p = `profiles[${index}]`;
       requireObject(profile, p);
@@ -158,15 +173,21 @@ export function validateOperationalProfileRegistry(registry) {
       if (!Array.isArray(profile.runtime.artifacts) || profile.runtime.artifacts.length < 1) throw new Error(`${p}.runtime.artifacts must be non-empty`);
       if (!Array.isArray(profile.modelArtifacts) || profile.modelArtifacts.length < 1) throw new Error(`${p}.modelArtifacts must be non-empty`);
       for (const artifact of [...profile.runtime.artifacts, ...profile.modelArtifacts]) {
+        requireObject(artifact, `${p}.artifact`);
         requireString(artifact.artifactRef, `${p}.artifactRef`);
         requireString(artifact.filename, `${p}.filename`);
         if (!SAFE_FILE.test(artifact.filename)) throw new Error(`${p}.filename must be safe`);
-        requireHttps(artifact.url, `${p}.url`);
+        if (Object.hasOwn(artifact, 'url')) throw new Error(`${p}.${artifact.artifactRef} must not contain a delivery URL; use registry.deliveryChannelsByArtifactRef`);
         requireSha(artifact.sha256, `${p}.sha256`);
         requireString(artifact.licenseRef, `${p}.licenseRef`);
         requireString(artifact.sourceRef, `${p}.sourceRef`);
         if (!Number.isSafeInteger(artifact.maxBytes) || artifact.maxBytes <= 0) throw new Error(`${p}.maxBytes must be positive`);
         if (artifact.expectedBytes !== null && (!Number.isSafeInteger(artifact.expectedBytes) || artifact.expectedBytes <= 0)) throw new Error(`${p}.expectedBytes must be null or positive`);
+        const identity = artifactIdentitySnapshot(artifact);
+        const priorIdentity = artifactDescriptors.get(artifact.artifactRef);
+        if (priorIdentity !== undefined && priorIdentity !== identity) throw new Error(`artifactRef ${artifact.artifactRef} has conflicting identity across profiles`);
+        artifactDescriptors.set(artifact.artifactRef, identity);
+        usedArtifactRefs.add(artifact.artifactRef);
       }
       requireObject(profile.runtime.extraction, `${p}.runtime.extraction`);
       requireString(profile.runtime.extraction.class, `${p}.runtime.extraction.class`);
@@ -274,8 +295,44 @@ export function validateOperationalProfileRegistry(registry) {
       }
       if (!Array.isArray(profile.refreshTriggers) || profile.refreshTriggers.length === 0) throw new Error(`${p}.refreshTriggers must be non-empty`);
     }
+
+    const deliveryRefs = Object.keys(registry.deliveryChannelsByArtifactRef);
+    for (const artifactRef of usedArtifactRefs) {
+      if (!Object.hasOwn(registry.deliveryChannelsByArtifactRef, artifactRef)) throw new Error(`missing delivery channels for artifactRef ${artifactRef}`);
+    }
+    for (const artifactRef of deliveryRefs) {
+      if (!usedArtifactRefs.has(artifactRef)) throw new Error(`orphan delivery channels for unknown artifactRef ${artifactRef}`);
+    }
+    const globalChannelRefs = new Set();
+    for (const artifactRef of deliveryRefs) {
+      const channels = registry.deliveryChannelsByArtifactRef[artifactRef];
+      if (!Array.isArray(channels) || channels.length === 0) throw new Error(`delivery channels for ${artifactRef} must be non-empty`);
+      const urls = new Set();
+      for (const [index, channel] of channels.entries()) {
+        const label = `deliveryChannelsByArtifactRef.${artifactRef}[${index}]`;
+        requireObject(channel, label);
+        const keys = Object.keys(channel).sort();
+        if (keys.length !== 2 || keys[0] !== 'channelRef' || keys[1] !== 'url') throw new Error(`${label} must contain exactly channelRef and url`);
+        requireString(channel.channelRef, `${label}.channelRef`);
+        if (/\s/u.test(channel.channelRef)) throw new Error(`${label}.channelRef must be whitespace-free`);
+        if (globalChannelRefs.has(channel.channelRef)) throw new Error(`duplicate delivery channelRef ${channel.channelRef}`);
+        globalChannelRefs.add(channel.channelRef);
+        requireHttps(channel.url, `${label}.url`);
+        if (urls.has(channel.url)) throw new Error(`duplicate delivery URL for artifactRef ${artifactRef}`);
+        urls.add(channel.url);
+      }
+    }
   } catch (error) { errors.push(error.message); }
   return { ok: errors.length === 0, errors };
+}
+
+export function resolveArtifactDeliveryChannels(registry, artifactRef) {
+  const validation = validateOperationalProfileRegistry(registry);
+  if (!validation.ok) throw new Error(`operational profile registry is invalid: ${validation.errors.join('; ')}`);
+  requireString(artifactRef, 'artifactRef');
+  const channels = registry.deliveryChannelsByArtifactRef[artifactRef];
+  if (!Array.isArray(channels) || channels.length === 0) throw new Error(`no source-managed delivery channels for artifactRef ${artifactRef}`);
+  return Object.freeze(channels.map((channel) => Object.freeze({ channelRef: channel.channelRef, url: channel.url })));
 }
 
 export function evaluateOperationalProfileHost(profile, host) {
