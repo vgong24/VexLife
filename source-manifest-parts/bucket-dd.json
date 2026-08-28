@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 15730,
       "sha256": "8e0ee6da329d6d913703708b54e2db13085a7f858cb72a79d017937f441037e8"
+    },
+    {
+      "path": "test/experience-review-effect-fixture.test.mjs",
+      "mode": "100644",
+      "bytes": 16291,
+      "sha256": "ae752f0d0346ddf74d9e6054904a6f8f08982603be0b6ce746394def00eccd39"
     }
   ]
 }
