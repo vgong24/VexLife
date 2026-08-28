@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +14,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MESSAGE_SELECTOR = '#guideMessages [data-component-ref="component.vexlife.guide-message"]';
 const REFERENCE_BROWSER_PATH = '/reference/browser/';
 const SOURCE_OWNED_REFERENCE_URL = 'http://127.0.0.1:0/reference/browser/';
+const SOURCE_RUNTIME_SCOPES = Object.freeze(['reference/browser', 'blueprint']);
 
 function usage() {
   console.error('Usage: node scripts/experience-review-effect-fixture.mjs --request <review-request.json> --bindings <browser-bindings.json> --out <directory>');
@@ -46,6 +48,14 @@ function gitText(...args) {
   }).trim();
 }
 
+function gitBuffer(...args) {
+  return execFileSync('git', ['-C', ROOT, ...args], {
+    encoding: null,
+    maxBuffer: 64 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+}
+
 function tryGitText(...args) {
   try {
     return gitText(...args);
@@ -66,12 +76,58 @@ function observeExactSource() {
   const candidateHeadSha = !attachedBranch && parentShas.length === 2
     ? parentShas[1]
     : testedCheckoutSha;
+  const candidateHeadTreeSha = gitText('rev-parse', `${candidateHeadSha}^{tree}`);
+  if (candidateHeadTreeSha !== testedCheckoutTreeSha) {
+    throw new Error(`effect fixture tested checkout tree is not exact candidate tree: ${testedCheckoutTreeSha}`);
+  }
   return Object.freeze({
     bindingClass: 'GIT_OBSERVED_SOURCE_OWNED_REFERENCE_BROWSER',
     sourceVersionRef: `github.commit.vexlife.${candidateHeadSha}`,
     candidateHeadSha,
+    candidateHeadTreeSha,
     testedCheckoutSha,
     testedCheckoutTreeSha
+  });
+}
+
+function observeSourceRuntimeBytes() {
+  const status = gitText('status', '--porcelain=v1', '--untracked-files=all', '--', ...SOURCE_RUNTIME_SCOPES);
+  if (status) {
+    const first = status.split(/\r?\n/u)[0];
+    throw new Error(`source-owned reference browser working tree is not exact current Git source: ${first}`);
+  }
+  const files = gitBuffer('ls-files', '-z', '--', ...SOURCE_RUNTIME_SCOPES)
+    .toString('utf8')
+    .split('\0')
+    .filter(Boolean)
+    .sort();
+  if (!files.length) throw new Error('source-owned reference browser runtime source set is empty');
+
+  const aggregate = createHash('sha256');
+  let totalBytes = 0;
+  for (const relativePath of files) {
+    const filePath = path.resolve(ROOT, relativePath);
+    if (!filePath.startsWith(`${ROOT}${path.sep}`)) throw new Error('source-owned runtime path escaped repository root');
+    const stat = fs.lstatSync(filePath);
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      throw new Error(`source-owned runtime path must be a regular file: ${relativePath}`);
+    }
+    const bytes = fs.readFileSync(filePath);
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    aggregate.update(relativePath, 'utf8');
+    aggregate.update('\0');
+    aggregate.update(String(bytes.length), 'utf8');
+    aggregate.update('\0');
+    aggregate.update(sha256, 'utf8');
+    aggregate.update('\n');
+    totalBytes += bytes.length;
+  }
+  return Object.freeze({
+    bindingClass: 'GIT_CLEAN_WORKTREE_RAW_BYTE_FINGERPRINT',
+    scopes: Object.freeze([...SOURCE_RUNTIME_SCOPES]),
+    fileCount: files.length,
+    totalBytes,
+    sha256: aggregate.digest('hex')
   });
 }
 
@@ -145,6 +201,24 @@ async function waitForReferenceBrowserReady(page, plan) {
   return true;
 }
 
+async function installExactOriginNetworkMembrane(page, plan, sink, label) {
+  await page.route('**/*', async (route) => {
+    const requestUrl = route.request().url();
+    let origin = null;
+    try {
+      origin = new URL(requestUrl).origin;
+    } catch {
+      // Non-URL requests are not admitted by this fixture.
+    }
+    if (origin !== plan.pageOrigin) {
+      sink.blockedRequests.push({ label, requestUrl, origin });
+      await route.abort('blockedbyclient');
+      return;
+    }
+    await route.continue();
+  });
+}
+
 function observedPage(page, plan, sink) {
   const originalGoto = page.goto.bind(page);
   const originalClose = page.close.bind(page);
@@ -192,6 +266,7 @@ function createObservedFixtureBrowserType(plan, sink) {
             return async (options) => {
               const page = await originalNewPage(options);
               page.on('request', (request) => sink.requests.push(request.url()));
+              await installExactOriginNetworkMembrane(page, plan, sink, 'effect fixture browser');
               return observedPage(page, plan, sink);
             };
           }
@@ -239,25 +314,27 @@ function requirePostActionObservation(plan, sink) {
 }
 
 async function proveFreshBrowserCleanup(plan) {
-  const requests = [];
+  const sink = { requests: [], blockedRequests: [] };
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: plan.binding.viewport });
-    page.on('request', (request) => requests.push(request.url()));
+    page.on('request', (request) => sink.requests.push(request.url()));
+    await installExactOriginNetworkMembrane(page, plan, sink, 'cleanup browser');
     await page.goto(plan.binding.pageUrl, {
       waitUntil: plan.binding.waitUntil ?? 'load',
       timeout: plan.binding.timeoutMs ?? 30_000
     });
     await waitForReferenceBrowserReady(page, plan);
     const messages = await guideMessages(page, plan.observations.expectedIntentRef);
-    requireSameLoopbackOrigin(requests, plan.pageOrigin, 'cleanup browser');
+    requireSameLoopbackOrigin(sink.requests, plan.pageOrigin, 'cleanup browser');
     if (messages.length !== plan.observations.initialGuideMessageCount) {
       throw new Error(`fresh-browser cleanup Guide message count mismatch: ${messages.length}`);
     }
     return {
       cleanupProof: plan.observations.cleanupProof,
       guideMessageCount: messages.length,
-      requestCount: requests.length
+      requestCount: sink.requests.length,
+      blockedRequestCount: sink.blockedRequests.length
     };
   } finally {
     await browser.close();
@@ -284,17 +361,19 @@ try {
     const admittedPlan = buildGuideEffectFixturePlan(bundle, bindings, { root: ROOT });
     const sourceOwned = admittedPlan.binding.pageUrl === SOURCE_OWNED_REFERENCE_URL;
     let source = null;
+    let sourceRuntime = null;
     let plan = admittedPlan;
 
     if (sourceOwned) {
       source = observeExactSource();
       requireRequestedSourceMatchesObserved(bundle, source);
+      sourceRuntime = observeSourceRuntimeBytes();
       sourceServer = createVexLifeBrowserServer();
       const sourceOrigin = await listenSourceServer(sourceServer);
       plan = bindSourceOwnedRuntime(admittedPlan, `${sourceOrigin}${REFERENCE_BROWSER_PATH}`);
     }
 
-    const sink = { before: null, after: null, afterObservationError: null, referenceBrowserReady: false, requests: [] };
+    const sink = { before: null, after: null, afterObservationError: null, referenceBrowserReady: false, requests: [], blockedRequests: [] };
     const screenshotsDirectory = path.join(out, 'screenshots');
     const adapter = createBrowserExperienceReviewAdapter({
       browserType: createObservedFixtureBrowserType(plan, sink),
@@ -311,7 +390,7 @@ try {
     }
     requirePostActionObservation(plan, sink);
     const cleanup = await proveFreshBrowserCleanup(plan);
-    if (!sourceOwned || !source) {
+    if (!sourceOwned || !source || !sourceRuntime) {
       throw new Error('external loopback fixture is adversarial-only and cannot produce PASS');
     }
     const result = {
@@ -320,6 +399,7 @@ try {
       reviewEpochRef: bundle.reviewEpoch.reviewEpochRef,
       sourceVersionRef: source.sourceVersionRef,
       source,
+      sourceRuntime,
       planRef: plan.planRef,
       fixtureRef: plan.fixtureRef,
       effectAuthorityRef: plan.effectAuthorityRef,
@@ -345,6 +425,7 @@ try {
       network: {
         allowedOrigin: plan.pageOrigin,
         observedRequestCount: sink.requests.length,
+        blockedRequestCount: sink.blockedRequests.length,
         escapedOrigin: false
       },
       adapterEvidenceRef: evidence[0].evidenceRef,
