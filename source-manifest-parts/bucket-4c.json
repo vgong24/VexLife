@@ -9,6 +9,12 @@
       "sha256": "94bc806ae54fa7faeb15616ea897568b90ae3d7dbd6c9d4d340ead8b7c379892"
     },
     {
+      "path": "scripts/experience-review-effect-fixture.mjs",
+      "mode": "100644",
+      "bytes": 18247,
+      "sha256": "28340f15ec253db4a4c0621b5bbe750c4833ff151a38b5bc650f0fe2500ca5da"
+    },
+    {
       "path": "scripts/serve-browser.mjs",
       "mode": "100644",
       "bytes": 8773,

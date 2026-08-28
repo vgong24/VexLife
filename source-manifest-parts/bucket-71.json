@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "71",
+  "files": [
+    {
+      "path": "src/core/experience-review-seeded.mjs",
+      "mode": "100644",
+      "bytes": 11223,
+      "sha256": "813122473c1cd5915426588df9a4369b6ab4a20a2bfdbee7ce0d163a763c5a25"
+    }
+  ]
+}

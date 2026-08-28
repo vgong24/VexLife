@@ -3,6 +3,12 @@
   "bucketId": "2b",
   "files": [
     {
+      "path": "pages/vexlife-onboarding.css",
+      "mode": "100644",
+      "bytes": 25865,
+      "sha256": "aad1e5ab10caace00a6a53d60597f75b2e640ef4b8d49424e83352c979683cde"
+    },
+    {
       "path": "scripts/evolution-check.mjs",
       "mode": "100644",
       "bytes": 13350,

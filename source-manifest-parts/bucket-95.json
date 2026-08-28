@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 898,
       "sha256": "df56100f04b33c3b5c61d46565277a5025fb72632408679a1fee5c2f2d06d93f"
+    },
+    {
+      "path": "reference/browser/modules/public-learning-navigation-bridge.js",
+      "mode": "100644",
+      "bytes": 1909,
+      "sha256": "fd9e11d0399af26af0939f84df7110f92191212a69931b68d0f2a493ac03975e"
     }
   ]
 }
