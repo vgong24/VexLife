@@ -54,7 +54,7 @@ on run argv
         my showMessage("VexLife setup held", "Node.js is needed, but the backend did not admit an installation action. Nothing was changed.", "OK")
         return
       end if
-      set choice to my ask("Node.js is needed", "VexLife needs Node.js 20 or newer. Homebrew is available, but nothing will be installed without your permission.", "Install Node.js", "Not now", missing value)
+      set choice to my promptChoice("Node.js is needed", "VexLife needs Node.js 20 or newer. Homebrew is available, but nothing will be installed without your permission.", "Install Node.js", "Not now", missing value)
       if choice is not NSAlertFirstButtonReturn then return
       set nodeResult to my runBackend(repoRoot, homePath, "install-node", "yes", "no")
       if (exitCode of nodeResult) is not 0 then
@@ -72,9 +72,9 @@ on run argv
         my showMessage("VexLife setup held", "No Vex Home exists here, and the accepted backend did not admit first setup. Nothing was changed.", "OK")
         return
       end if
-      set homeChoice to my ask("Create a Vex Home?", "No VexLife Home was found at the selected location. Continue only if you want VexLife to establish a new local Home there.", "Continue", "Cancel", missing value)
+      set homeChoice to my promptChoice("Create a Vex Home?", "No VexLife Home was found at the selected location. Continue only if you want VexLife to establish a new local Home there.", "Continue", "Cancel", missing value)
       if homeChoice is not NSAlertFirstButtonReturn then return
-      set runtimeChoice to my ask("Prepare the local Vex runtime?", "This supported Mac can use the current release-qualified source-local profile. Continuing may acquire several GiB of verified model/runtime files and start a local-only model. VexLife, not this window, selects and verifies those exact artifacts.", "Download and continue", "Not now", missing value)
+      set runtimeChoice to my promptChoice("Prepare the local Vex runtime?", "This supported Mac can use the current release-qualified source-local profile. Continuing may acquire several GiB of verified model/runtime files and start a local-only model. VexLife, not this window, selects and verifies those exact artifacts.", "Download and continue", "Not now", missing value)
       if runtimeChoice is not NSAlertFirstButtonReturn then return
       set setupResult to my runBackend(repoRoot, homePath, "first-setup", "no", "yes")
       if (exitCode of setupResult) is not 0 then
@@ -88,7 +88,7 @@ on run argv
       set openAllowed to my hasAction(actionsValue, "open")
       set recoveryAllowed to my hasAnyRecoveryAction(actionsValue)
       if openAllowed and recoveryAllowed then
-        set choice to my ask("VexLife is ready", "This Home is healthy. You can open Vex now or choose a preservation-safe action admitted by the current lifecycle owner.", "Open Vex", "Recovery…", "Cancel")
+        set choice to my promptChoice("VexLife is ready", "This Home is healthy. You can open Vex now or choose a preservation-safe action admitted by the current lifecycle owner.", "Open Vex", "Recovery…", "Cancel")
         if choice is NSAlertFirstButtonReturn then
           set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
           if (exitCode of actionResult) is not 0 then my showBackendFailure(actionResult)
@@ -100,7 +100,7 @@ on run argv
           return
         end if
       else if openAllowed then
-        set choice to my ask("VexLife is ready", "The current lifecycle owner admits opening this healthy Home.", "Open Vex", "Cancel", missing value)
+        set choice to my promptChoice("VexLife is ready", "The current lifecycle owner admits opening this healthy Home.", "Open Vex", "Cancel", missing value)
         if choice is NSAlertFirstButtonReturn then
           set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
           if (exitCode of actionResult) is not 0 then my showBackendFailure(actionResult)
@@ -205,15 +205,15 @@ on recoveryFlow(repoRoot, homePath, actionsText, degraded)
   if actionName is missing value then return
 
   if actionName is "repair" then
-    set consent to my ask("Repair VexLife?", "Repair may verify or reacquire required runtime files. Continue?", "Repair", "Cancel", missing value)
+    set consent to my promptChoice("Repair VexLife?", "Repair may verify or reacquire required runtime files. Continue?", "Repair", "Cancel", missing value)
     if consent is not NSAlertFirstButtonReturn then return
     set actionResult to my runBackend(repoRoot, homePath, "repair", "no", "yes")
   else if actionName is "rebuild-preserve" then
-    set consent to my ask("Rebuild while preserving Home?", "This rebuilds runtime/transient state and may reacquire runtime files. Home, Memory, conversations, and verified model cache stay preserved.", "Rebuild preserve", "Cancel", missing value)
+    set consent to my promptChoice("Rebuild while preserving Home?", "This rebuilds runtime/transient state and may reacquire runtime files. Home, Memory, conversations, and verified model cache stay preserved.", "Rebuild preserve", "Cancel", missing value)
     if consent is not NSAlertFirstButtonReturn then return
     set actionResult to my runBackend(repoRoot, homePath, "rebuild-preserve", "no", "yes")
   else if actionName is "uninstall-preserve" then
-    set consent to my ask("Uninstall while preserving Home?", "This stops owned VexLife processes and removes runtime/transient state while preserving Home, Memory, conversations, and verified model files.", "Uninstall preserve", "Cancel", missing value)
+    set consent to my promptChoice("Uninstall while preserving Home?", "This stops owned VexLife processes and removes runtime/transient state while preserving Home, Memory, conversations, and verified model files.", "Uninstall preserve", "Cancel", missing value)
     if consent is not NSAlertFirstButtonReturn then return
     set actionResult to my runBackend(repoRoot, homePath, "uninstall-preserve", "no", "no")
   else
@@ -324,7 +324,7 @@ on prefixedValue(sourceText, prefixText)
   return missing value
 end prefixedValue
 
-on ask(titleText, detailText, firstTitle, secondTitle, thirdTitle)
+on promptChoice(titleText, detailText, firstTitle, secondTitle, thirdTitle)
   set alert to current application's NSAlert's alloc()'s init()
   alert's setMessageText:titleText
   alert's setInformativeText:detailText
@@ -333,7 +333,7 @@ on ask(titleText, detailText, firstTitle, secondTitle, thirdTitle)
   if thirdTitle is not missing value then alert's addButtonWithTitle:thirdTitle
   current application's NSApp's activateIgnoringOtherApps:true
   return alert's runModal()
-end ask
+end promptChoice
 
 on showMessage(titleText, detailText, buttonTitle)
   set alert to current application's NSAlert's alloc()'s init()
