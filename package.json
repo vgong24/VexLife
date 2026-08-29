@@ -16,6 +16,7 @@
     "bootstrap": "node scripts/bootstrap.mjs",
     "vex:initialize": "node scripts/initialize-vex.mjs",
     "vex:initialize:plan": "node scripts/initialize-vex.mjs --plan-only",
+    "native-worker": "node scripts/native-worker-supervisor.mjs",
     "orient": "node scripts/orient.mjs",
     "atlas:query": "node scripts/atlas-query.mjs",
     "module:describe": "node scripts/module-describe.mjs",
