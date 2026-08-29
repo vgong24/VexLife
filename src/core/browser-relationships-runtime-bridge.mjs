@@ -126,7 +126,7 @@ export function validateRelationshipsRuntimeBridgeSources({ relationshipsRegistr
     sourceError('Relationships admitted decision set drifted');
   }
 
-  if (!isObject(cdrRegistry) || cdrRegistry.schemaVersion !== 'vexlife.cdr.s5-closed-alpha-browser/v1') {
+  if (!isObject(cdrRegistry) || cdrRegistry.schemaVersion !== 'vexlife.cdr-s5-closed-alpha-browser/v1') {
     sourceError('CDR S5 registry schema is not the accepted source');
   }
   if (
