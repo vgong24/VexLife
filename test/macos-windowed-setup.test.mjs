@@ -49,7 +49,9 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
     '    fi',
     '    if [ "${VEX_FAKE_HOST_ELIGIBLE:-yes}" = "yes" ]; then printf \'%s\\n\' \'{"state":"HOME_NOT_ESTABLISHED"}\'; exit 5; else printf \'%s\\n\' \'{"state":"UNSUPPORTED_HOST"}\'; exit 6; fi',
     '    ;;',
-    `  */scripts/macos-lifecycle.mjs) printf '%s\\n' '${lifecycleJson}'; exit 0 ;;`,
+    '  */scripts/macos-lifecycle.mjs)',
+    '    if [ "${VEX_FAKE_LIFECYCLE_START_FAIL:-no}" = "yes" ] && [[ " $* " == *" --operation start "* ]]; then echo FAKE_LIFECYCLE_START_REACHED >&2; exit 92; fi',
+    `    printf '%s\\n' '${lifecycleJson}'; exit 0 ;;`,
     '  *) echo "UNEXPECTED_FAKE_NODE_CALL: $*" >&2; exit 91 ;;',
     'esac',
     ''
@@ -58,7 +60,7 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
   fs.writeFileSync(file, fake, { mode: 0o755 });
 }
 
-function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew = false, hostEligible = true } = {}) {
+function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew = false, hostEligible = true, lifecycleStartFails = false } = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-window-test-'));
   const bin = path.join(temp, 'bin');
   const repo = path.join(temp, 'repo');
@@ -79,7 +81,8 @@ function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew =
       PATH: `${bin}:${process.env.PATH}`,
       VEX_EFFECT_LOG: effectLog,
       VEX_FAKE_HOST_ELIGIBLE: hostEligible ? 'yes' : 'no',
-      VEX_FAKE_EXPECT_PROBE_ROOT: selectedHome
+      VEX_FAKE_EXPECT_PROBE_ROOT: selectedHome,
+      VEX_FAKE_LIFECYCLE_START_FAIL: lifecycleStartFails ? 'yes' : 'no'
     }
   });
   return { ...result, effectLog, temp, selectedHome };
@@ -182,6 +185,44 @@ test('MAC-WIN-10 host eligibility cannot veto lifecycle-admitted uninstall-prese
   assert.notEqual(rejected.status, 0);
   assert.match(rejected.stderr, /not admitted by the lifecycle owner's current choices/u);
   assert.doesNotMatch(rejected.stderr, /could not prove this Mac eligible/u);
+});
+
+test('MAC-WIN-05/10 host-ineligible healthy Home retains lifecycle open reuse plus uninstall, not repair/rebuild', () => {
+  const inspect = runController(['--action', 'inspect', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'EXISTING_HEALTHY',
+    choices: ['start', 'repair', 'rebuild-preserve', 'uninstall-preserve'],
+    hostEligible: false
+  });
+  assert.equal(inspect.status, 0, inspect.stderr);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_STATE\tEXISTING_HEALTHY/u);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_ACTIONS\topen,uninstall-preserve(?:\n|$)/u);
+  assert.doesNotMatch(inspect.stdout, /VEXLIFE_CONTROLLER_ACTIONS\t[^\n]*(?:repair|rebuild-preserve|first-setup)/u);
+  assert.equal(fs.existsSync(inspect.effectLog), false);
+});
+
+test('MAC-WIN-10 healthy open delegates reuse-or-reinitialize to lifecycle owner instead of controller host veto', () => {
+  const opened = runController(['--action', 'open', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'EXISTING_HEALTHY',
+    choices: ['start'],
+    hostEligible: false,
+    lifecycleStartFails: true
+  });
+  assert.notEqual(opened.status, 0);
+  assert.match(opened.stderr, /FAKE_LIFECYCLE_START_REACHED|stopped safely before completing start/u);
+  assert.doesNotMatch(opened.stderr, /could not prove this Mac eligible/u);
+});
+
+test('MAC-WIN-05 repair and rebuild remain host-gated after healthy-open reuse correction', () => {
+  for (const action of ['repair', 'rebuild-preserve']) {
+    const result = runController(['--action', action, '--node-install-consent', 'no', '--runtime-acquisition-consent', 'yes'], {
+      state: 'EXISTING_DEGRADED_REPAIRABLE',
+      choices: [action],
+      hostEligible: false
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /could not prove this Mac eligible/u);
+    assert.equal(fs.existsSync(result.effectLog), false);
+  }
 });
 
 test('MAC-WIN-06 selected Home is an argv value and AppKit launches Bash without shell interpolation', () => {
