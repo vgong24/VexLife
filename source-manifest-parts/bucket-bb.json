@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 34556,
       "sha256": "0ae9e3719f7d773b7209f72885380ce4a554ab212c7da51c26ee65dccee89fec"
+    },
+    {
+      "path": "test/browser-relationships-runtime-bridge.test.mjs",
+      "mode": "100644",
+      "bytes": 10692,
+      "sha256": "0c8f5ac638be491b38034a91c5a21a51a5676c5cee3cfc999ad06b617a1aa6ad"
     }
   ]
 }

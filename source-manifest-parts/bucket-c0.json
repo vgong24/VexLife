@@ -3,6 +3,12 @@
   "bucketId": "c0",
   "files": [
     {
+      "path": "blueprint/module-registry/relationships-runtime-bridge.json",
+      "mode": "100644",
+      "bytes": 1420,
+      "sha256": "d4827f536a3403a26ab1c09dc1915cf4c9905e7b3f65c76c9ddba3717f88af1c"
+    },
+    {
       "path": "src/core/atlas.mjs",
       "mode": "100644",
       "bytes": 3026,
