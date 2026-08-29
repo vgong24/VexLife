@@ -11,8 +11,8 @@
     {
       "path": "test/g04b-native-training-worker.test.mjs",
       "mode": "100644",
-      "bytes": 15018,
-      "sha256": "ddff0dbfd50264959069f288daedfd9e300d3f9a7942637c56b75afb3499d187"
+      "bytes": 18206,
+      "sha256": "ef055d533fc55c5e26aaef2416c140e5bd835cfba476c8950bf224230bd05f0f"
     },
     {
       "path": "test/home-bridge.test.mjs",
