@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -13,12 +14,14 @@ import {
   ACCEPTED_SOCIAL_BRIDGE_COMPOSITION_MERGE,
   BrowserRelationshipsRuntimeBridgeError,
   createBrowserRelationshipsRuntimeBridge,
-  loadRelationshipsRuntimeBridgeSources,
   validateRelationshipsRuntimeBridgeSources
 } from '../src/core/browser-relationships-runtime-bridge.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const sources = loadRelationshipsRuntimeBridgeSources(repoRoot);
+const sources = Object.freeze({
+  relationshipsRegistry: JSON.parse(fs.readFileSync(path.join(repoRoot, 'blueprint', 'relationships-browser-registry.json'), 'utf8')),
+  cdrRegistry: JSON.parse(fs.readFileSync(path.join(repoRoot, 'blueprint', 'cdr-s5-closed-alpha-browser-registry.json'), 'utf8'))
+});
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 function admitted(overrides = {}) {
