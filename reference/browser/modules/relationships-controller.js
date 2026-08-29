@@ -3,6 +3,9 @@ import { admission, canAdvance, project, recover, validateRegistry } from '../re
 const SUPPORTED_LANGUAGES = Object.freeze(['en', 'ja', 'zh']);
 const TERRAIN_REF = 'terrain.resource.relationships';
 const ENTRY_ELEMENT_REF = 'element.relationships.open';
+const RELATIONSHIPS_RUNTIME_API_PATH = '/api/v1/relationships/runtime-plan';
+let loadedCdrRegistry = null;
+
 const OPTION_LABEL_KEYS = Object.freeze({
   CODE:'option.method.code',
   FILE:'option.method.file',
@@ -34,20 +37,60 @@ const OPTION_LABEL_KEYS = Object.freeze({
   OTHER:'classOther'
 });
 
+const REQUIRED_RUNTIME_STRING_KEYS = Object.freeze([
+  'alphaConsentTitle',
+  'alphaConsentBody',
+  'alphaConsentAcknowledge',
+  'alphaConsentReady',
+  'presence',
+  'route',
+  'failure',
+  'runtimeTitle',
+  'runtimeBody',
+  'runtimePrepare',
+  'runtimePreparing',
+  'runtimeBoundary',
+  'runtimeHeld',
+  'runtimeHostBindingRequired',
+  'runtimeFailure'
+]);
+
 async function fetchJson(root, relativePath) {
   const response = await fetch(`${root}${relativePath}`);
   if (!response.ok) throw new Error(`Unable to load ${relativePath}: HTTP ${response.status}`);
   return response.json();
 }
 
+function validateCdrRegistry(registry) {
+  if (registry?.schemaVersion !== 'vexlife.cdr.s5-closed-alpha-browser/v1') throw new Error('Relationships CDR registry schema drift');
+  if (registry.registryRef !== 'registry.vexlife.cdr-s5.closed-alpha-browser.001') throw new Error('Relationships CDR registry identity drift');
+  if (registry.discoveryMode !== 'INVITE_ONLY' || registry.publicSearch !== false || registry.communitySearch !== false) throw new Error('Relationships CDR discovery boundary drift');
+  for (const [field, values] of [
+    ['invitationStates', registry.invitationStates],
+    ['decisions', registry.decisions],
+    ['identityStates', registry.identityStates],
+    ['presenceStates', registry.presenceStates],
+    ['routeClasses', registry.routeClasses],
+    ['failureStates', registry.failureStates]
+  ]) {
+    if (!Array.isArray(values) || values.length === 0 || new Set(values).size !== values.length) throw new Error(`Relationships CDR ${field} unavailable`);
+  }
+  if (!registry.decisions.includes('ACCEPT') || !registry.decisions.includes('NARROW')) throw new Error('Relationships CDR affirmative decisions unavailable');
+  if (!registry.routeClasses.includes('UNAVAILABLE') || !registry.failureStates.includes('NONE')) throw new Error('Relationships CDR route/failure boundary unavailable');
+  return registry;
+}
+
 export async function loadRelationshipsReference(root = '../../') {
-  const [registry, en, ja, zh] = await Promise.all([
+  const [registry, cdrRegistry, en, ja, zh] = await Promise.all([
     fetchJson(root, 'blueprint/relationships-browser-registry.json'),
+    fetchJson(root, 'blueprint/cdr-s5-closed-alpha-browser-registry.json'),
     fetchJson(root, 'blueprint/relationships-browser/strings/en.json'),
     fetchJson(root, 'blueprint/relationships-browser/strings/ja.json'),
     fetchJson(root, 'blueprint/relationships-browser/strings/zh.json')
   ]);
   validateRegistry(registry);
+  validateCdrRegistry(cdrRegistry);
+  loadedCdrRegistry = Object.freeze(cdrRegistry);
   const catalogs = Object.freeze({ en, ja, zh });
   const referenceKeys = Object.keys(en).sort();
   for (const language of registry.requiredLanguages) {
@@ -55,10 +98,10 @@ export async function loadRelationshipsReference(root = '../../') {
     const candidateKeys = Object.keys(catalogs[language] ?? {}).sort();
     if (JSON.stringify(candidateKeys) !== JSON.stringify(referenceKeys)) throw new Error(`Relationships catalog key drift: ${language}`);
   }
-  for (const key of new Set(Object.values(OPTION_LABEL_KEYS))) {
+  for (const key of new Set([...Object.values(OPTION_LABEL_KEYS), ...REQUIRED_RUNTIME_STRING_KEYS])) {
     if (!referenceKeys.includes(key)) throw new Error(`Relationships human option label missing: ${key}`);
   }
-  return Object.freeze({ registry, catalogs });
+  return Object.freeze({ registry, catalogs, cdrRegistry: loadedCdrRegistry });
 }
 
 function format(template, params = {}) {
@@ -119,8 +162,26 @@ function createSurface() {
   return section;
 }
 
-export function createRelationshipsController({ state, registry, catalogs, host = document.querySelector('#contextSurface') }) {
+function initialInteraction(cdrRegistry) {
+  return {
+    method: 'CODE',
+    invitation: 'NONE',
+    identity: 'UNKNOWN',
+    decision: 'DEFER',
+    localClass: 'FRIEND',
+    localFormed: false,
+    recovery: 'ACTIVE',
+    delivery: 'NOT_CONNECTED',
+    alphaConsentAcknowledged: false,
+    presenceClass: cdrRegistry.presenceStates.includes('APP_ON_MODEL_UNLOADED') ? 'APP_ON_MODEL_UNLOADED' : cdrRegistry.presenceStates[0],
+    routeClass: cdrRegistry.routeClasses.includes('DIRECT_CANDIDATE') ? 'DIRECT_CANDIDATE' : cdrRegistry.routeClasses[0],
+    failureState: cdrRegistry.failureStates.includes('NONE') ? 'NONE' : cdrRegistry.failureStates[0]
+  };
+}
+
+export function createRelationshipsController({ state, registry, catalogs, cdrRegistry = loadedCdrRegistry, host = document.querySelector('#contextSurface') }) {
   validateRegistry(registry);
+  validateCdrRegistry(cdrRegistry);
   if (!host) throw new Error('Relationships contextual host unavailable');
   const surface = createSurface();
   host.append(surface);
@@ -130,16 +191,8 @@ export function createRelationshipsController({ state, registry, catalogs, host 
   let bookletOpen = false;
   let connectOpen = false;
   let vexExplanationOpen = false;
-  let interaction = {
-    method: 'CODE',
-    invitation: 'NONE',
-    identity: 'UNKNOWN',
-    decision: 'DEFER',
-    localClass: 'FRIEND',
-    localFormed: false,
-    recovery: 'ACTIVE',
-    delivery: 'NOT_CONNECTED'
-  };
+  let interaction = initialInteraction(cdrRegistry);
+  let runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
 
   const language = () => SUPPORTED_LANGUAGES.includes(state.language) ? state.language : 'en';
   const rt = (key, params = {}) => format(catalogs[language()]?.[key] ?? catalogs.en?.[key] ?? `[${key}]`, params);
@@ -152,6 +205,66 @@ export function createRelationshipsController({ state, registry, catalogs, host 
     ? { groups: 0, invitations: 0 }
     : { groups: Math.min(registry.syntheticFixtureCounts.groups, Math.max(1, Math.ceil(scenarioCount / 10))), invitations: registry.syntheticFixtureCounts.invitations };
   const projection = () => project(registry, scenarioCount, bookletPage, auxiliaryCounts());
+
+  function clearRuntimePlan() {
+    runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
+  }
+
+  function runtimeRequestSnapshot() {
+    return Object.freeze({
+      alphaConsentAcknowledged: interaction.alphaConsentAcknowledged,
+      invitationState: interaction.invitation,
+      invitationDecision: interaction.decision,
+      identityState: interaction.identity,
+      presenceClass: interaction.presenceClass,
+      routeClass: interaction.routeClass,
+      failureState: interaction.failureState,
+      withdrawn: interaction.recovery === 'WITHDRAWN',
+      revoked: interaction.recovery === 'REVOKED',
+      disconnected: interaction.recovery === 'DISCONNECTED',
+      blocked: interaction.recovery === 'BLOCKED',
+      localRelationshipFormed: interaction.localFormed
+    });
+  }
+
+  function normalizeRuntimePlan(payload) {
+    if (!payload || payload.schemaVersion !== 'vexlife.relationships-runtime-bridge-plan/v1') throw new Error('Relationships runtime plan schema invalid');
+    if (!['HELD', 'HOST_BINDING_REQUIRED'].includes(payload.state)) throw new Error('Relationships runtime plan state invalid');
+    if (payload.hostExecutionDeferred !== true || payload.semanticAcknowledged !== false) throw new Error('Relationships runtime plan boundary widened');
+    if (!payload.effects || Object.values(payload.effects).some((value) => value !== false)) throw new Error('Relationships runtime plan effect boundary widened');
+    return payload;
+  }
+
+  async function prepareRuntimePlan() {
+    runtimePlan = Object.freeze({ state: 'PREPARING', reasons: Object.freeze([]) });
+    render();
+    try {
+      const response = await fetch(RELATIONSHIPS_RUNTIME_API_PATH, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(runtimeRequestSnapshot())
+      });
+      let payload = null;
+      try { payload = await response.json(); } catch { payload = null; }
+      if (!response.ok) {
+        runtimePlan = Object.freeze({
+          state: 'FAILURE',
+          reasons: Object.freeze([]),
+          failureCode: payload?.failureCode ?? 'RELATIONSHIPS_RUNTIME_PLAN_FAILED'
+        });
+      } else {
+        runtimePlan = normalizeRuntimePlan(payload);
+      }
+    } catch {
+      runtimePlan = Object.freeze({
+        state: 'FAILURE',
+        reasons: Object.freeze([]),
+        failureCode: 'RELATIONSHIPS_RUNTIME_PLAN_FAILED'
+      });
+    }
+    render();
+    return snapshot();
+  }
 
   function bindTerrainDoor() {
     const door = document.querySelector(`.e27-node[data-terrain-ref="${TERRAIN_REF}"]`);
@@ -167,7 +280,8 @@ export function createRelationshipsController({ state, registry, catalogs, host 
   terrainDoorObserver?.observe(terrainWorld, { childList: true, subtree: true });
 
   function resetInteraction() {
-    interaction = { method:'CODE', invitation:'NONE', identity:'UNKNOWN', decision:'DEFER', localClass:'FRIEND', localFormed:false, recovery:'ACTIVE', delivery:'NOT_CONNECTED' };
+    interaction = initialInteraction(cdrRegistry);
+    clearRuntimePlan();
   }
 
   function renderPrivacy() {
@@ -286,11 +400,12 @@ export function createRelationshipsController({ state, registry, catalogs, host 
     identity.select.value = interaction.identity;
     decision.select.value = interaction.decision;
     localClass.select.value = interaction.localClass;
-    method.select.onchange = (event) => { interaction.method = event.currentTarget.value; };
-    invitation.select.onchange = (event) => { interaction.invitation = event.currentTarget.value; interaction.localFormed = false; render(); };
-    identity.select.onchange = (event) => { interaction.identity = event.currentTarget.value; interaction.localFormed = false; render(); };
-    decision.select.onchange = (event) => { interaction.decision = event.currentTarget.value; interaction.localFormed = false; render(); };
-    localClass.select.onchange = (event) => { interaction.localClass = event.currentTarget.value; interaction.localFormed = false; render(); };
+    method.select.onchange = (event) => { interaction.method = event.currentTarget.value; clearRuntimePlan(); };
+    invitation.select.onchange = (event) => { interaction.invitation = event.currentTarget.value; interaction.localFormed = false; clearRuntimePlan(); render(); };
+    identity.select.onchange = (event) => { interaction.identity = event.currentTarget.value; interaction.localFormed = false; clearRuntimePlan(); render(); };
+    decision.select.onchange = (event) => { interaction.decision = event.currentTarget.value; interaction.localFormed = false; clearRuntimePlan(); render(); };
+    localClass.select.onchange = (event) => { interaction.localClass = event.currentTarget.value; interaction.localFormed = false; clearRuntimePlan(); render(); };
+
     const gate = admission(interaction);
     const status = document.createElement('p');
     status.id = 'relationshipsConnectStatus';
@@ -298,10 +413,73 @@ export function createRelationshipsController({ state, registry, catalogs, host 
     status.textContent = interaction.localFormed ? rt('formed') : gate.admitted ? rt('ready') : rt('held');
     const form = actionButton('relationshipsFormLocal', rt('form'));
     form.disabled = !gate.admitted || interaction.recovery !== 'ACTIVE';
-    form.onclick = () => { interaction.localFormed = true; interaction.delivery = 'NOT_CONNECTED'; render(); };
+    form.onclick = () => { interaction.localFormed = true; interaction.delivery = 'NOT_CONNECTED'; clearRuntimePlan(); render(); };
+
+    const alphaTitle = document.createElement('h3');
+    alphaTitle.textContent = rt('alphaConsentTitle');
+    const alphaBody = document.createElement('p');
+    alphaBody.textContent = rt('alphaConsentBody');
+    const alpha = actionButton('relationshipsAlphaConsent', interaction.alphaConsentAcknowledged ? rt('alphaConsentReady') : rt('alphaConsentAcknowledge'));
+    alpha.setAttribute('aria-pressed', String(interaction.alphaConsentAcknowledged));
+    alpha.disabled = interaction.recovery !== 'ACTIVE';
+    alpha.onclick = () => { interaction.alphaConsentAcknowledged = !interaction.alphaConsentAcknowledged; clearRuntimePlan(); render(); };
+
+    const presence = selectControl('relationshipsPresence', rt('presence'), cdrRegistry.presenceStates);
+    const route = selectControl('relationshipsRoute', rt('route'), cdrRegistry.routeClasses);
+    const failure = selectControl('relationshipsFailure', rt('failure'), cdrRegistry.failureStates);
+    presence.select.value = interaction.presenceClass;
+    route.select.value = interaction.routeClass;
+    failure.select.value = interaction.failureState;
+    presence.select.onchange = (event) => { interaction.presenceClass = event.currentTarget.value; clearRuntimePlan(); render(); };
+    route.select.onchange = (event) => { interaction.routeClass = event.currentTarget.value; clearRuntimePlan(); render(); };
+    failure.select.onchange = (event) => { interaction.failureState = event.currentTarget.value; clearRuntimePlan(); render(); };
+
+    const runtimeHeading = document.createElement('h3');
+    runtimeHeading.textContent = rt('runtimeTitle');
+    const runtimeBody = document.createElement('p');
+    runtimeBody.textContent = rt('runtimeBody');
+    const runtimeStatus = document.createElement('p');
+    runtimeStatus.id = 'relationshipsRuntimePlanStatus';
+    runtimeStatus.setAttribute('role', 'status');
+    runtimeStatus.dataset.runtimePlanState = runtimePlan.state;
+    runtimeStatus.dataset.runtimePlanReasons = Array.isArray(runtimePlan.reasons) ? runtimePlan.reasons.join(',') : '';
+    runtimeStatus.textContent = runtimePlan.state === 'PREPARING'
+      ? rt('runtimePreparing')
+      : runtimePlan.state === 'HELD'
+        ? rt('runtimeHeld')
+        : runtimePlan.state === 'HOST_BINDING_REQUIRED'
+          ? rt('runtimeHostBindingRequired')
+          : runtimePlan.state === 'FAILURE'
+            ? rt('runtimeFailure')
+            : rt('runtimeBoundary');
+    const prepare = actionButton('relationshipsPrepareRuntimePlan', rt('runtimePrepare'));
+    prepare.disabled = !interaction.localFormed || interaction.recovery !== 'ACTIVE' || runtimePlan.state === 'PREPARING';
+    prepare.onclick = () => { void prepareRuntimePlan(); };
+
     const close = actionButton('relationshipsConnectClose', rt('closeConnect'));
     close.onclick = () => { connectOpen = false; render(); surface.querySelector('#relationshipsConnect')?.focus(); };
-    target.append(heading, body, method.label, invitation.label, identity.label, decision.label, localClass.label, status, form, close);
+    target.append(
+      heading,
+      body,
+      method.label,
+      invitation.label,
+      identity.label,
+      decision.label,
+      localClass.label,
+      status,
+      form,
+      alphaTitle,
+      alphaBody,
+      alpha,
+      presence.label,
+      route.label,
+      failure.label,
+      runtimeHeading,
+      runtimeBody,
+      runtimeStatus,
+      prepare,
+      close
+    );
   }
 
   function renderSide(view) {
@@ -336,7 +514,7 @@ export function createRelationshipsController({ state, registry, catalogs, host 
     controls.className = 'e27-focus-actions';
     for (const [id, action, key] of recoveryButtons) {
       const button = actionButton(id, rt(key));
-      button.onclick = () => { interaction = recover(interaction, action); render(); };
+      button.onclick = () => { interaction = recover(interaction, action); clearRuntimePlan(); render(); };
       controls.append(button);
     }
     target.append(counts, deliveryHeading, deliveryBody, delivery, deliveryHeld, vexHeading, vexBody, vex, vexExplanation, recoveryHeading, recoveryBody, recoveryStatus, controls);
@@ -380,6 +558,19 @@ export function createRelationshipsController({ state, registry, catalogs, host 
       admission:admission(interaction),
       delivery:interaction.delivery,
       recovery:interaction.recovery,
+      cdrGate:{
+        alphaConsentAcknowledged:interaction.alphaConsentAcknowledged,
+        presenceClass:interaction.presenceClass,
+        routeClass:interaction.routeClass,
+        failureState:interaction.failureState
+      },
+      runtimePlan:{
+        state:runtimePlan.state,
+        reasons:Array.isArray(runtimePlan.reasons) ? [...runtimePlan.reasons] : [],
+        failureCode:runtimePlan.failureCode ?? null,
+        hostExecutionDeferred:runtimePlan.hostExecutionDeferred ?? true,
+        semanticAcknowledged:runtimePlan.semanticAcknowledged ?? false
+      },
       publicSearch:registry.publicSearch,
       communitySearch:registry.communitySearch,
       effects:{ ...registry.effects }
@@ -404,7 +595,7 @@ export function createRelationshipsController({ state, registry, catalogs, host 
   }
 
   render();
-  return Object.freeze({ render, snapshot, setScenarioCount, bindTerrainDoor, close });
+  return Object.freeze({ render, snapshot, setScenarioCount, bindTerrainDoor, close, prepareRuntimePlan });
 }
 
 // [VXG RealForever]
