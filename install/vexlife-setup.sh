@@ -113,15 +113,26 @@ append_action() {
   if [ -z "$current" ]; then printf '%s' "$action"; else printf '%s,%s' "$current" "$action"; fi
 }
 controller_actions_from_lifecycle() {
-  local state="$1" choices="$2" actions=""
-  if csv_has_choice "$choices" start; then
+  local state="$1" choices="$2" host_eligible="${3:-yes}" actions=""
+  if [ "$host_eligible" = "yes" ] && csv_has_choice "$choices" start; then
     if [ "$state" = "ABSENT" ]; then actions="$(append_action "$actions" first-setup)"; fi
     if [ "$state" = "EXISTING_HEALTHY" ]; then actions="$(append_action "$actions" open)"; fi
   fi
-  for action in repair rebuild-preserve uninstall-preserve; do
-    if csv_has_choice "$choices" "$action"; then actions="$(append_action "$actions" "$action")"; fi
-  done
+  if [ "$host_eligible" = "yes" ]; then
+    for action in repair rebuild-preserve; do
+      if csv_has_choice "$choices" "$action"; then actions="$(append_action "$actions" "$action")"; fi
+    done
+  fi
+  if csv_has_choice "$choices" uninstall-preserve; then
+    actions="$(append_action "$actions" uninstall-preserve)"
+  fi
   printf '%s' "$actions"
+}
+controller_choices_require_host() {
+  local choices="$1"
+  csv_has_choice "$choices" start ||
+    csv_has_choice "$choices" repair ||
+    csv_has_choice "$choices" rebuild-preserve
 }
 reconcile_prior_browser_source() {
   if ! node --input-type=module - "$REPO_ROOT/scripts/macos-lifecycle.mjs" "$VEX_HOME" "$REPO_ROOT" <<'NODE'
@@ -218,7 +229,7 @@ controller_host_eligibility_state() {
   esac
 }
 controller_inspect() {
-  local major status_json state lifecycle_choices actions host_state
+  local major status_json state lifecycle_choices actions host_state host_eligible="yes"
   major="$(node_major)"
   if [ "$major" = "none" ] || [ "$major" -lt 20 ] 2>/dev/null; then
     if command -v brew >/dev/null 2>&1; then
@@ -231,16 +242,24 @@ controller_inspect() {
     return 0
   fi
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
-  if ! host_state="$(controller_host_eligibility_state "$VEX_HOME")"; then
+  status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
+  state="$(printf '%s' "$status_json" | parse_json_state)"
+  lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"
+
+  if controller_choices_require_host "$lifecycle_choices"; then
+    if ! host_state="$(controller_host_eligibility_state "$VEX_HOME")"; then
+      host_eligible="no"
+    fi
+  fi
+
+  actions="$(controller_actions_from_lifecycle "$state" "$lifecycle_choices" "$host_eligible")"
+  if [ "$host_eligible" = "no" ] && [ -z "$actions" ]; then
     controller_state "HOST_ELIGIBILITY_HELD"
     controller_actions ""
     printf 'VexLife setup held: the accepted initialization/profile owner could not prove this Mac eligible (%s). Nothing was changed.\n' "$host_state" >&2
     return 4
   fi
-  status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
-  state="$(printf '%s' "$status_json" | parse_json_state)"
-  lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"
-  actions="$(controller_actions_from_lifecycle "$state" "$lifecycle_choices")"
+
   controller_state "$state"
   controller_actions "$actions"
 }
@@ -268,9 +287,6 @@ controller_run() {
   fi
 
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
-  if ! host_state="$(controller_host_eligibility_state "$VEX_HOME")"; then
-    fail "the accepted initialization/profile owner could not prove this Mac eligible ($host_state); no setup/recovery effect was performed."
-  fi
   status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
   state="$(printf '%s' "$status_json" | parse_json_state)"
   lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"
@@ -287,6 +303,12 @@ controller_run() {
   esac
   csv_has_choice "$lifecycle_choices" "$required_lifecycle_action" \
     || fail "controller action '$CONTROLLER_ACTION' is not admitted by the lifecycle owner's current choices for state '$state'."
+
+  if [ "$CONTROLLER_ACTION" != "uninstall-preserve" ]; then
+    if ! host_state="$(controller_host_eligibility_state "$VEX_HOME")"; then
+      fail "the accepted initialization/profile owner could not prove this Mac eligible ($host_state); no setup/recovery effect was performed."
+    fi
+  fi
 
   case "$state:$CONTROLLER_ACTION" in
     ABSENT:first-setup)

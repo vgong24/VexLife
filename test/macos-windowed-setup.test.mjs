@@ -25,6 +25,7 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
     '#!/bin/bash',
     'set -euo pipefail',
     'if [ "${1:-}" = "--version" ]; then echo v22.0.0; exit 0; fi',
+    'if [ "${1:-}" = "--input-type=module" ]; then cat >/dev/null; exit 0; fi',
     'if [ "${1:-}" = "-e" ]; then',
     '  script="${2:-}"',
     '  if [[ "$script" == *"path"*"resolve"* ]]; then python3 -c \'import os,sys; print(os.path.abspath(sys.argv[1]))\' "${3:-.}"; exit 0; fi',
@@ -148,6 +149,39 @@ test('MAC-WIN-05 unsupported host is held before setup action projection or effe
   assert.match(direct.stderr, /could not prove this Mac eligible/u);
   assert.equal(fs.existsSync(direct.effectLog), false);
   assert.equal(fs.existsSync(direct.selectedHome), false);
+});
+
+test('MAC-WIN-05/10 host-ineligible existing Home retains only lifecycle-admitted uninstall-preserve', () => {
+  const inspect = runController(['--action', 'inspect', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'EXISTING_DEGRADED_REPAIRABLE',
+    choices: ['repair', 'rebuild-preserve', 'uninstall-preserve'],
+    hostEligible: false
+  });
+  assert.equal(inspect.status, 0, inspect.stderr);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_STATE\tEXISTING_DEGRADED_REPAIRABLE/u);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_ACTIONS\tuninstall-preserve(?:\n|$)/u);
+  assert.doesNotMatch(inspect.stdout, /VEXLIFE_CONTROLLER_ACTIONS\t[^\n]*(?:repair|rebuild-preserve|first-setup|open)/u);
+  assert.equal(fs.existsSync(inspect.effectLog), false);
+});
+
+test('MAC-WIN-10 host eligibility cannot veto lifecycle-admitted uninstall-preserve', () => {
+  const allowed = runController(['--action', 'uninstall-preserve', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'EXISTING_DEGRADED_REPAIRABLE',
+    choices: ['uninstall-preserve'],
+    hostEligible: false
+  });
+  assert.equal(allowed.status, 0, allowed.stderr);
+  assert.match(allowed.stdout, /VEXLIFE_CONTROLLER_RESULT\tUNINSTALL_PRESERVE_COMPLETE/u);
+  assert.doesNotMatch(allowed.stderr, /could not prove this Mac eligible/u);
+
+  const rejected = runController(['--action', 'uninstall-preserve', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'EXISTING_DEGRADED_REPAIRABLE',
+    choices: ['repair'],
+    hostEligible: false
+  });
+  assert.notEqual(rejected.status, 0);
+  assert.match(rejected.stderr, /not admitted by the lifecycle owner's current choices/u);
+  assert.doesNotMatch(rejected.stderr, /could not prove this Mac eligible/u);
 });
 
 test('MAC-WIN-06 selected Home is an argv value and AppKit launches Bash without shell interpolation', () => {
