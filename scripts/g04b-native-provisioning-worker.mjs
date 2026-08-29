@@ -6,15 +6,16 @@ import { fileURLToPath } from 'node:url';
 import { downloadVerifiedArtifact } from '../src/core/model-provision.mjs';
 import {
   buildG04BProvisioningWorkerManifest,
-  executeG04BProvisioningWorker,
   G04BProvisioningWorkerError,
-  verifyG04BProvisioningEnvelope,
   verifyG04BProvisioningNodeRuntimeBinding,
-  verifyG04BProvisioningResult,
   validateG04BProvisioningPacket
 } from '../src/core/g04b-native-provisioning-worker.mjs';
 import {
-  consumeNativeWorkerResult,
+  consumeVerifiedG04BProvisioningResult,
+  executeVerifiedG04BProvisioningWorker,
+  G04BProvisioningIntegrityError
+} from '../src/core/g04b-native-provisioning-integrity.mjs';
+import {
   launchDetachedNativeWorkerHost,
   prepareNativeWorker
 } from '../src/core/native-worker-supervisor.mjs';
@@ -82,7 +83,7 @@ async function main() {
   }
   if (command === 'run') {
     const packet = loadPacket(required('--packet'));
-    print(await executeG04BProvisioningWorker(packet, {
+    print(await executeVerifiedG04BProvisioningWorker(packet, {
       downloadArtifact: downloadVerifiedArtifact,
       extractRuntime: extractMacRuntime
     }));
@@ -90,21 +91,15 @@ async function main() {
   }
   if (command === 'consume') {
     const packet = loadPacket(required('--packet'));
-    const workerRoot = path.resolve(required('--worker-root'));
-    verifyG04BProvisioningEnvelope(packet, workerRoot);
-    const result = verifyG04BProvisioningResult(loadJson(path.join(workerRoot, 'g04b-provisioning-result.json')), packet);
-    print(consumeNativeWorkerResult(workerRoot, {
-      resultRef: packet.resultRef,
-      machineCompletionRecord: result,
-      humanSummary: 'G04B exact runtime/model pre-provisioning completed; training remains separately held.'
-    }));
+    print(await consumeVerifiedG04BProvisioningResult(packet, path.resolve(required('--worker-root'))));
     return 0;
   }
   throw new Error('usage: g04b-native-provisioning-worker.mjs manifest|prepare|start|run|consume ...');
 }
 
 main().then((code) => { process.exitCode = code; }).catch((error) => {
-  const payload = error instanceof G04BProvisioningWorkerError
+  const bounded = error instanceof G04BProvisioningWorkerError || error instanceof G04BProvisioningIntegrityError;
+  const payload = bounded
     ? { schemaVersion: 'vexlife.g04b-provisioning-error/v1', code: error.code, error: error.message, details: error.details }
     : { schemaVersion: 'vexlife.g04b-provisioning-error/v1', code: 'G04B_PROVISION_UNEXPECTED', error: error?.message ?? String(error) };
   process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`);
