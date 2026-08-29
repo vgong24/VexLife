@@ -252,7 +252,7 @@ on beginProgress(actionName)
   indicator's startAnimation:(missing value)
   panel's contentView()'s addSubview:label
   panel's contentView()'s addSubview:indicator
-  panel's center()
+  panel's |center|()
   panel's makeKeyAndOrderFront:(missing value)
   current application's NSApp's activateIgnoringOtherApps:true
   return panel
