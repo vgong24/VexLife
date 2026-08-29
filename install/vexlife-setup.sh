@@ -185,20 +185,19 @@ canonicalize_home() {
   node -e 'const p=require("node:path"); console.log(p.resolve(process.argv[1]))' "$raw"
 }
 controller_host_eligibility_state() {
-  local probe_parent="" probe_home output state attempt
+  local selected_home="$1" probe_home="" output state attempt
   for attempt in 1 2 3; do
-    probe_parent="${TMPDIR:-/tmp}/vexlife-host-eligibility-${BASHPID}-${RANDOM}-${RANDOM}"
-    [ ! -e "$probe_parent" ] && break
-    probe_parent=""
+    probe_home="${selected_home%/}/.vexlife-host-eligibility-${BASHPID}-${RANDOM}-${RANDOM}"
+    [ ! -e "$probe_home" ] && break
+    probe_home=""
   done
-  [ -n "$probe_parent" ] || { printf 'HOST_PREFLIGHT_UNAVAILABLE'; return 1; }
-  probe_home="$probe_parent/home"
+  [ -n "$probe_home" ] || { printf 'HOST_PREFLIGHT_UNAVAILABLE'; return 1; }
 
   set +e
   output="$(node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$probe_home" --plan-only 2>/dev/null)"
   set -e
 
-  if [ -e "$probe_parent" ]; then
+  if [ -e "$probe_home" ]; then
     printf 'HOST_PREFLIGHT_MUTATED'
     return 1
   fi
@@ -232,7 +231,7 @@ controller_inspect() {
     return 0
   fi
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
-  if ! host_state="$(controller_host_eligibility_state)"; then
+  if ! host_state="$(controller_host_eligibility_state "$VEX_HOME")"; then
     controller_state "HOST_ELIGIBILITY_HELD"
     controller_actions ""
     printf 'VexLife setup held: the accepted initialization/profile owner could not prove this Mac eligible (%s). Nothing was changed.\n' "$host_state" >&2
@@ -269,7 +268,7 @@ controller_run() {
   fi
 
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
-  if ! host_state="$(controller_host_eligibility_state)"; then
+  if ! host_state="$(controller_host_eligibility_state "$VEX_HOME")"; then
     fail "the accepted initialization/profile owner could not prove this Mac eligible ($host_state); no setup/recovery effect was performed."
   fi
   status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"

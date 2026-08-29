@@ -35,7 +35,19 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
     '  exit 0',
     'fi',
     'case "${1:-}" in',
-    '  */scripts/initialize-vex.mjs) if [ "${VEX_FAKE_HOST_ELIGIBLE:-yes}" = "yes" ]; then printf \'%s\\n\' \'{"state":"HOME_NOT_ESTABLISHED"}\'; exit 5; else printf \'%s\\n\' \'{"state":"UNSUPPORTED_HOST"}\'; exit 6; fi ;;',
+    '  */scripts/initialize-vex.mjs)',
+    '    shift',
+    '    probe_home=""',
+    '    while [ "$#" -gt 0 ]; do',
+    '      if [ "$1" = "--home" ] && [ "$#" -ge 2 ]; then probe_home="$2"; break; fi',
+    '      shift',
+    '    done',
+    '    if [ -n "${VEX_FAKE_EXPECT_PROBE_ROOT:-}" ] && [[ "$probe_home" != "$VEX_FAKE_EXPECT_PROBE_ROOT"/.vexlife-host-eligibility-* ]]; then',
+    '      printf \'%s\\n\' \'{"state":"PROBE_HOME_MISMATCH"}\'',
+    '      exit 7',
+    '    fi',
+    '    if [ "${VEX_FAKE_HOST_ELIGIBLE:-yes}" = "yes" ]; then printf \'%s\\n\' \'{"state":"HOME_NOT_ESTABLISHED"}\'; exit 5; else printf \'%s\\n\' \'{"state":"UNSUPPORTED_HOST"}\'; exit 6; fi',
+    '    ;;',
     `  */scripts/macos-lifecycle.mjs) printf '%s\\n' '${lifecycleJson}'; exit 0 ;;`,
     '  *) echo "UNEXPECTED_FAKE_NODE_CALL: $*" >&2; exit 91 ;;',
     'esac',
@@ -49,6 +61,7 @@ function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew =
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-window-test-'));
   const bin = path.join(temp, 'bin');
   const repo = path.join(temp, 'repo');
+  const selectedHome = path.join(temp, 'home');
   fs.mkdirSync(bin, { recursive: true });
   fs.mkdirSync(path.join(repo, 'scripts'), { recursive: true });
   fs.mkdirSync(path.join(repo, 'install'), { recursive: true });
@@ -58,11 +71,17 @@ function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew =
     fs.writeFileSync(path.join(bin, 'brew'), '#!/bin/bash\necho brew-effect >> "$VEX_EFFECT_LOG"\n', { mode: 0o755 });
   }
   const effectLog = path.join(temp, 'effects.log');
-  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', path.join(temp, 'home'), ...extraArgs], {
+  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', selectedHome, ...extraArgs], {
     encoding: 'utf8',
-    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, VEX_EFFECT_LOG: effectLog, VEX_FAKE_HOST_ELIGIBLE: hostEligible ? 'yes' : 'no' }
+    env: {
+      ...process.env,
+      PATH: `${bin}:${process.env.PATH}`,
+      VEX_EFFECT_LOG: effectLog,
+      VEX_FAKE_HOST_ELIGIBLE: hostEligible ? 'yes' : 'no',
+      VEX_FAKE_EXPECT_PROBE_ROOT: selectedHome
+    }
   });
-  return { ...result, effectLog, temp };
+  return { ...result, effectLog, temp, selectedHome };
 }
 
 test('MAC-WIN-00/03/12 exact-source bootstrap defaults to AppKit window and keeps explicit Terminal fallback', () => {
@@ -100,6 +119,17 @@ test('MAC-WIN-02 lifecycle owner choices, not the state label alone, govern cont
   assert.equal(fs.existsSync(rejected.effectLog), false);
 });
 
+test('MAC-WIN-05 host eligibility preflight is selected-Home anchored and remains no-effect', () => {
+  const inspect = runController(['--action', 'inspect', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'ABSENT', hostEligible: true
+  });
+  assert.equal(inspect.status, 0, inspect.stderr);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_STATE\tABSENT/u);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_ACTIONS\tfirst-setup/u);
+  assert.equal(fs.existsSync(inspect.selectedHome), false);
+  assert.equal(fs.existsSync(inspect.effectLog), false);
+});
+
 test('MAC-WIN-05 unsupported host is held before setup action projection or effect', () => {
   const inspect = runController(['--action', 'inspect', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
     state: 'ABSENT', hostEligible: false
@@ -117,7 +147,7 @@ test('MAC-WIN-05 unsupported host is held before setup action projection or effe
   assert.notEqual(direct.status, 0);
   assert.match(direct.stderr, /could not prove this Mac eligible/u);
   assert.equal(fs.existsSync(direct.effectLog), false);
-  assert.equal(fs.existsSync(path.join(direct.temp, 'home')), false);
+  assert.equal(fs.existsSync(direct.selectedHome), false);
 });
 
 test('MAC-WIN-06 selected Home is an argv value and AppKit launches Bash without shell interpolation', () => {
