@@ -3,6 +3,12 @@
   "bucketId": "fe",
   "files": [
     {
+      "path": "src/core/g04b-native-provisioning-worker.mjs",
+      "mode": "100644",
+      "bytes": 41926,
+      "sha256": "c53cb27dc776b467a681d565a54b328784b4c82c27111f5777fe333b60e5d029"
+    },
+    {
       "path": "src/core/runtime-failure.mjs",
       "mode": "100644",
       "bytes": 17151,
