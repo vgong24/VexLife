@@ -184,8 +184,42 @@ canonicalize_home() {
   esac
   node -e 'const p=require("node:path"); console.log(p.resolve(process.argv[1]))' "$raw"
 }
+controller_host_eligibility_state() {
+  local probe_parent="" probe_home output state attempt
+  for attempt in 1 2 3; do
+    probe_parent="${TMPDIR:-/tmp}/vexlife-host-eligibility-${BASHPID}-${RANDOM}-${RANDOM}"
+    [ ! -e "$probe_parent" ] && break
+    probe_parent=""
+  done
+  [ -n "$probe_parent" ] || { printf 'HOST_PREFLIGHT_UNAVAILABLE'; return 1; }
+  probe_home="$probe_parent/home"
+
+  set +e
+  output="$(node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$probe_home" --plan-only 2>/dev/null)"
+  set -e
+
+  if [ -e "$probe_parent" ]; then
+    printf 'HOST_PREFLIGHT_MUTATED'
+    return 1
+  fi
+  state="$(printf '%s' "$output" | tail -n 1 | parse_json_state)"
+  case "$state" in
+    HOME_NOT_ESTABLISHED|PLAN_READY_NO_EFFECT)
+      printf 'HOST_ELIGIBLE'
+      return 0
+      ;;
+    ''|UNKNOWN)
+      printf 'HOST_PREFLIGHT_UNAVAILABLE'
+      return 1
+      ;;
+    *)
+      printf '%s' "$state"
+      return 1
+      ;;
+  esac
+}
 controller_inspect() {
-  local major status_json state lifecycle_choices actions
+  local major status_json state lifecycle_choices actions host_state
   major="$(node_major)"
   if [ "$major" = "none" ] || [ "$major" -lt 20 ] 2>/dev/null; then
     if command -v brew >/dev/null 2>&1; then
@@ -198,6 +232,12 @@ controller_inspect() {
     return 0
   fi
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
+  if ! host_state="$(controller_host_eligibility_state)"; then
+    controller_state "HOST_ELIGIBILITY_HELD"
+    controller_actions ""
+    printf 'VexLife setup held: the accepted initialization/profile owner could not prove this Mac eligible (%s). Nothing was changed.\n' "$host_state" >&2
+    return 4
+  fi
   status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
   state="$(printf '%s' "$status_json" | parse_json_state)"
   lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"
@@ -206,7 +246,7 @@ controller_inspect() {
   controller_actions "$actions"
 }
 controller_run() {
-  local major status_json state lifecycle_choices required_lifecycle_action plan_output plan_state receipt
+  local major status_json state lifecycle_choices required_lifecycle_action plan_output plan_state receipt host_state
   major="$(node_major)"
   if [ "$CONTROLLER_ACTION" = "install-node" ]; then
     if [ "$major" != "none" ] && [ "$major" -ge 20 ] 2>/dev/null; then
@@ -229,6 +269,9 @@ controller_run() {
   fi
 
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
+  if ! host_state="$(controller_host_eligibility_state)"; then
+    fail "the accepted initialization/profile owner could not prove this Mac eligible ($host_state); no setup/recovery effect was performed."
+  fi
   status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
   state="$(printf '%s' "$status_json" | parse_json_state)"
   lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"

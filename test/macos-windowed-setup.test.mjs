@@ -35,6 +35,7 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
     '  exit 0',
     'fi',
     'case "${1:-}" in',
+    '  */scripts/initialize-vex.mjs) if [ "${VEX_FAKE_HOST_ELIGIBLE:-yes}" = "yes" ]; then printf \'%s\\n\' \'{"state":"HOME_NOT_ESTABLISHED"}\'; exit 5; else printf \'%s\\n\' \'{"state":"UNSUPPORTED_HOST"}\'; exit 6; fi ;;',
     `  */scripts/macos-lifecycle.mjs) printf '%s\\n' '${lifecycleJson}'; exit 0 ;;`,
     '  *) echo "UNEXPECTED_FAKE_NODE_CALL: $*" >&2; exit 91 ;;',
     'esac',
@@ -44,7 +45,7 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
   fs.writeFileSync(file, fake, { mode: 0o755 });
 }
 
-function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew = false } = {}) {
+function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew = false, hostEligible = true } = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-window-test-'));
   const bin = path.join(temp, 'bin');
   const repo = path.join(temp, 'repo');
@@ -59,7 +60,7 @@ function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew =
   const effectLog = path.join(temp, 'effects.log');
   const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', path.join(temp, 'home'), ...extraArgs], {
     encoding: 'utf8',
-    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, VEX_EFFECT_LOG: effectLog }
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, VEX_EFFECT_LOG: effectLog, VEX_FAKE_HOST_ELIGIBLE: hostEligible ? 'yes' : 'no' }
   });
   return { ...result, effectLog, temp };
 }
@@ -97,6 +98,26 @@ test('MAC-WIN-02 lifecycle owner choices, not the state label alone, govern cont
   assert.notEqual(rejected.status, 0);
   assert.match(rejected.stderr, /not admitted by the lifecycle owner's current choices/u);
   assert.equal(fs.existsSync(rejected.effectLog), false);
+});
+
+test('MAC-WIN-05 unsupported host is held before setup action projection or effect', () => {
+  const inspect = runController(['--action', 'inspect', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'ABSENT', hostEligible: false
+  });
+  assert.notEqual(inspect.status, 0);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_STATE\tHOST_ELIGIBILITY_HELD/u);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_ACTIONS\t(?:\n|$)/u);
+  assert.doesNotMatch(inspect.stdout, /first-setup/u);
+  assert.match(inspect.stderr, /could not prove this Mac eligible/u);
+  assert.equal(fs.existsSync(inspect.effectLog), false);
+
+  const direct = runController(['--action', 'first-setup', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'yes'], {
+    state: 'ABSENT', hostEligible: false
+  });
+  assert.notEqual(direct.status, 0);
+  assert.match(direct.stderr, /could not prove this Mac eligible/u);
+  assert.equal(fs.existsSync(direct.effectLog), false);
+  assert.equal(fs.existsSync(path.join(direct.temp, 'home')), false);
 });
 
 test('MAC-WIN-06 selected Home is an argv value and AppKit launches Bash without shell interpolation', () => {
