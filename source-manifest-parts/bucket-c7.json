@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "c7",
+  "files": [
+    {
+      "path": "src/core/g04b-native-provisioning-integrity.mjs",
+      "mode": "100644",
+      "bytes": 23833,
+      "sha256": "f3c524421e678bfa4d8e6c75ac34d96a18fc6a7a3f9020e891a1c2afcaa8d314"
+    }
+  ]
+}
