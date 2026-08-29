@@ -7,19 +7,20 @@ import {
   buildG04BNativeWorkerManifest,
   executeG04BNativeTrainingWorker,
   G04BNativeTrainingWorkerError,
-  verifyG04BMachineResult,
-  verifyG04BNodeRuntimeBinding,
-  verifyG04BNativeWorkerEnvelope
+  verifyG04BNodeRuntimeBinding
 } from '../src/core/g04b-native-training-worker.mjs';
 import {
-  consumeNativeWorkerResult,
+  G04BTerminalEvidenceError,
+  verifyG04BTerminalEvidence
+} from '../src/core/g04b-native-training-terminal.mjs';
+import {
   launchDetachedNativeWorkerHost,
   prepareNativeWorker
 } from '../src/core/native-worker-supervisor.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE_ROOT = path.resolve(HERE, '..');
-const NWS_CLI = path.join(HERE, 'native-worker-supervisor.mjs');
+const G04B_SUPERVISOR_CLI = path.join(HERE, 'g04b-native-training-supervisor.mjs');
 const args = process.argv.slice(2);
 const command = args[0] ?? 'help';
 const value = (name) => {
@@ -76,7 +77,7 @@ async function main() {
   if (command === 'start') {
     print(launchDetachedNativeWorkerHost({
       workerRoot: path.resolve(required('--worker-root')),
-      cliPath: NWS_CLI
+      cliPath: G04B_SUPERVISOR_CLI
     }));
     return 0;
   }
@@ -86,20 +87,22 @@ async function main() {
       sourceRoot: SOURCE_ROOT,
       planValidator: loadFoundationTrainingPlan
     });
-    print(result);
-    return result?.schemaVersion === 'vexlife.g04b-native-training-worker-yield/v1' ? 75 : 0;
+    if (result?.schemaVersion === 'vexlife.g04b-native-training-worker-yield/v1') {
+      print(result);
+      return 75;
+    }
+    const terminal = verifyG04BTerminalEvidence(packet, result, {
+      sourceRoot: SOURCE_ROOT,
+      planValidator: loadFoundationTrainingPlan
+    });
+    print(terminal.result);
+    return 0;
   }
   if (command === 'consume') {
-    const packet = loadPacket(required('--packet'));
-    const workerRoot = path.resolve(required('--worker-root'));
-    verifyG04BNativeWorkerEnvelope(packet, workerRoot);
-    const result = verifyG04BMachineResult(loadJson(path.join(workerRoot, 'g04b-machine-result.json')), packet);
-    print(consumeNativeWorkerResult(workerRoot, {
-      resultRef: packet.resultRef,
-      machineCompletionRecord: result,
-      humanSummary: 'G04B real training/evaluation result returned; semantic candidate disposition remains separate.'
-    }));
-    return 0;
+    throw new G04BTerminalEvidenceError(
+      'G04B_UNSEALED_STANDALONE_CONSUME_FORBIDDEN',
+      'standalone WRAPPING_UP consumption is not trusted; the G04B supervisor must consume its independently captured terminal result in the same host process'
+    );
   }
   throw new Error('usage: g04b-native-training-worker.mjs manifest|prepare|start|run|consume ...');
 }
@@ -107,7 +110,7 @@ async function main() {
 main().then((code) => {
   process.exitCode = code;
 }).catch((error) => {
-  const payload = error instanceof G04BNativeTrainingWorkerError
+  const payload = error instanceof G04BNativeTrainingWorkerError || error instanceof G04BTerminalEvidenceError
     ? { schemaVersion: 'vexlife.g04b-native-training-worker-error/v1', code: error.code, error: error.message, details: error.details }
     : { schemaVersion: 'vexlife.g04b-native-training-worker-error/v1', code: 'G04B_WORKER_UNEXPECTED', error: error?.message ?? String(error) };
   process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`);

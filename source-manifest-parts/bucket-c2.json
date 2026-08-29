@@ -3,6 +3,12 @@
   "bucketId": "c2",
   "files": [
     {
+      "path": "test/g04b-native-training-terminal.test.mjs",
+      "mode": "100644",
+      "bytes": 9228,
+      "sha256": "556e9d5c6f7c7c737aa539e0c8079b057d8a521bcb389a8f546e829b84d15849"
+    },
+    {
       "path": "test/navigation-continuity-portability.test.mjs",
       "mode": "100644",
       "bytes": 11826,
