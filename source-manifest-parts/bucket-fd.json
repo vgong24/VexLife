@@ -5,8 +5,8 @@
     {
       "path": "blueprint/module-registry/browser.json",
       "mode": "100644",
-      "bytes": 15310,
-      "sha256": "39fe7f3eb6dc6bd94c959539c6412c1cd8cef7cc2cbc8c5e2f3fb291b3765874"
+      "bytes": 16857,
+      "sha256": "8c99696c2b85769d9e1ff2b7af22dd7f6de53e8d32b57ae9c936d36fdf252c1e"
     },
     {
       "path": "reference/browser/relationships/index.html",

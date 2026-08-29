@@ -244,5 +244,27 @@
     "consumers": ["reference/browser/public-learning/app.js"],
     "tests": ["test/public-learning-browser.test.mjs", "test/public-learning-navigation-activation.test.mjs"],
     "changeMap": ["reference/browser/modules/public-learning-terrain-controller.js", "reference/browser/modules/public-learning-navigation-continuity.js"]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.relationships-core",
+    "path": "reference/browser/relationships/core.js",
+    "role": "Accepted Phase-A Relationships resource semantics for stable identity, invite-only admission, bounded projection, delivery truth and recovery without external effects.",
+    "platformScope": "BROWSER",
+    "reads": ["blueprint/relationships-browser-registry.json"],
+    "writes": [],
+    "consumers": ["reference/browser/modules/relationships-controller.js"],
+    "tests": ["test/relationships-visible-adoption.test.mjs"],
+    "changeMap": ["reference/browser/modules/relationships-controller.js"]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.relationships-controller",
+    "path": "reference/browser/modules/relationships-controller.js",
+    "role": "Projects the accepted stable Relationships resource into the canonical root contextual workspace through the Self Development visible Terrain door, preserving invite-only/no-effect boundaries and bounded 0/1/5/6/20/100 scale semantics.",
+    "platformScope": "BROWSER",
+    "reads": ["blueprint/relationships-browser-registry.json", "blueprint/relationships-browser/strings/*.json", "reference/browser/relationships/core.js"],
+    "writes": ["ephemeral in-page synthetic Relationships reference state only"],
+    "consumers": ["reference/browser/app.js"],
+    "tests": ["test/relationships-visible-adoption.test.mjs"],
+    "changeMap": ["reference/browser/app.js", "blueprint/fragments/screens/relationships.json", "blueprint/fragments/terrain.json"]
   }
 ]

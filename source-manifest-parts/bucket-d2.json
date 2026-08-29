@@ -15,6 +15,12 @@
       "sha256": "85d89ff187d1d06198f8a816aab4938d39ad37f2deca4d53fb1aec86facad969"
     },
     {
+      "path": "reference/browser/modules/relationships-controller.js",
+      "mode": "100644",
+      "bytes": 19849,
+      "sha256": "ea1c16415d5b72232e13a94e9a825f5c17a1219c6508f1c82bdfe29e2f163123"
+    },
+    {
       "path": "scripts/g05-runtime-authority-substrate.mjs",
       "mode": "100644",
       "bytes": 25472,
