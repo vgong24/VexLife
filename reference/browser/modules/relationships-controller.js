@@ -163,6 +163,8 @@ function selectControl(id, labelText, values, labelForValue = (value) => value) 
   text.textContent = labelText;
   const select = document.createElement('select');
   select.id = id;
+  select.style.minWidth = '44px';
+  select.style.minHeight = '44px';
   for (const value of values) select.append(option(value, labelForValue(value)));
   label.append(text, select);
   return { label, select };
@@ -537,7 +539,6 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     const deliveryBody = document.createElement('p'); deliveryBody.textContent = rt('deliveryBody');
     const delivery = document.createElement('p'); delivery.id = 'relationshipsDelivery'; delivery.textContent = `${rt('delivery')}: ${humanOptionLabel(interaction.delivery)}`;
     const deliveryHeld = document.createElement('p'); deliveryHeld.textContent = canAdvance(interaction) ? rt('active') : rt('deliveryHeld');
-
     const vexHeading = document.createElement('h3'); vexHeading.textContent = rt('vexTitle');
     const vexBody = document.createElement('p'); vexBody.textContent = rt('vexBody');
     const vex = actionButton('relationshipsVexExplain', vexExplanationOpen ? rt('vexHide') : rt('vexShow'));
