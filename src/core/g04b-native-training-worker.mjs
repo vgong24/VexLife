@@ -4,6 +4,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import {
   NATIVE_WORKER_MANIFEST_SCHEMA,
+  validateNativeWorkerBinding,
   validateNativeWorkerManifest
 } from './native-worker-supervisor.mjs';
 
@@ -27,6 +28,7 @@ const PACKET_FIELDS = Object.freeze([
   'resultRef',
   'executionAuthorityRef',
   'hostRef',
+  'nodeRuntimeBinding',
   'trainingManifestPath',
   'trainingManifestSha256',
   'pythonExecutableRef',
@@ -138,6 +140,40 @@ function loadJson(file, code, label) {
   } catch (error) {
     fail(code, `${label} could not be read`, { file, cause: error?.message ?? String(error) });
   }
+}
+
+function validatePacketNodeRuntimeBinding(value, { verifyExecutable = false } = {}) {
+  try {
+    return validateNativeWorkerBinding(value, { verifyExecutable });
+  } catch (error) {
+    fail('G04B_NWS_BINDING_INVALID', 'nodeRuntimeBinding is not one exact valid NWS runtime binding', {
+      cause: error?.message ?? String(error)
+    });
+  }
+}
+
+export function nodeRuntimeBindingFingerprint(binding) {
+  const validated = validatePacketNodeRuntimeBinding(binding, { verifyExecutable: false });
+  return canonicalFingerprint(validated);
+}
+
+export function verifyG04BNodeRuntimeBinding(packet, binding, { verifyExecutable = true } = {}) {
+  const validatedPacket = validateG04BNativeWorkerPacket(packet, { verifyBoundFiles: false, verifySnapshot: false });
+  const observed = validatePacketNodeRuntimeBinding(binding, { verifyExecutable: false });
+  const expectedFingerprint = nodeRuntimeBindingFingerprint(validatedPacket.nodeRuntimeBinding);
+  const observedFingerprint = nodeRuntimeBindingFingerprint(observed);
+  if (observedFingerprint !== expectedFingerprint) {
+    fail('G04B_NWS_BINDING_MISMATCH', 'NWS Node runtime binding does not match the exact frozen G04B worker packet', {
+      expectedBindingRef: validatedPacket.nodeRuntimeBinding.bindingRef,
+      observedBindingRef: observed.bindingRef,
+      expectedHostRef: validatedPacket.hostRef,
+      observedHostRef: observed.hostRef,
+      expectedFingerprint,
+      observedFingerprint
+    });
+  }
+  if (verifyExecutable) validatePacketNodeRuntimeBinding(observed, { verifyExecutable: true });
+  return Object.freeze({ binding: observed, bindingFingerprint: observedFingerprint });
 }
 
 function sourceSnapshotFingerprint(inventory) {
@@ -267,6 +303,13 @@ export function validateG04BNativeWorkerPacket(input, { sourceRoot = null, verif
   const packet = structuredClone(input);
   if (packet.schemaVersion !== G04B_NATIVE_WORKER_PACKET_SCHEMA) fail('G04B_WORKER_PACKET_INVALID', `packet.schemaVersion must be ${G04B_NATIVE_WORKER_PACKET_SCHEMA}`);
   for (const field of ['workerRef', 'workRef', 'purposeRef', 'resultContractRef', 'resultRef', 'executionAuthorityRef', 'hostRef', 'pythonExecutableRef']) stableRef(packet[field], `packet.${field}`);
+  packet.nodeRuntimeBinding = validatePacketNodeRuntimeBinding(packet.nodeRuntimeBinding, { verifyExecutable: verifyBoundFiles });
+  if (packet.nodeRuntimeBinding.hostRef !== packet.hostRef) {
+    fail('G04B_NWS_BINDING_MISMATCH', 'packet.hostRef does not match packet.nodeRuntimeBinding.hostRef', {
+      expected: packet.hostRef,
+      observed: packet.nodeRuntimeBinding.hostRef
+    });
+  }
   safeRelative(packet.trainingManifestPath, 'packet.trainingManifestPath');
   if (!HEX64.test(packet.trainingManifestSha256 ?? '')) fail('G04B_WORKER_PACKET_INVALID', 'trainingManifestSha256 must be lowercase SHA-256');
   if (packet.expectedExecutionDevice !== G04B_FIRST_WORKER_DEVICE || packet.expectedHardwareProfileRef !== G04B_FIRST_WORKER_HARDWARE_PROFILE) {
@@ -330,12 +373,10 @@ export function packetFingerprint(packet) {
 }
 
 export function buildG04BNativeWorkerManifest(packet, {
-  nodeExecutableRef,
   packetRelativePath,
   callerScriptName = 'g04b-native-training-worker.mjs'
 } = {}) {
   const validated = validateG04BNativeWorkerPacket(packet, { verifyBoundFiles: false, verifySnapshot: false });
-  stableRef(nodeExecutableRef, 'nodeExecutableRef');
   safeRelative(packetRelativePath, 'packetRelativePath');
   if (callerScriptName !== 'g04b-native-training-worker.mjs') fail('G04B_CALLER_PATH_INVALID', 'callerScriptName is fixed by source');
   return validateNativeWorkerManifest({
@@ -344,7 +385,7 @@ export function buildG04BNativeWorkerManifest(packet, {
     workRef: validated.workRef,
     purposeRef: validated.purposeRef,
     humanLabel: 'G04B real foundation training proof',
-    executableRef: nodeExecutableRef,
+    executableRef: validated.nodeRuntimeBinding.executableRef,
     argv: [callerScriptName, 'run', '--packet', packetRelativePath],
     sourceRootRelativeWorkingDirectory: 'scripts',
     schedulingClass: 'BACKGROUND',
@@ -358,12 +399,15 @@ export function verifyG04BNativeWorkerEnvelope(packet, workerRoot) {
   const validated = validateG04BNativeWorkerPacket(packet, { verifyBoundFiles: false, verifySnapshot: false });
   const root = canonicalDirectory(workerRoot, 'workerRoot');
   const manifest = validateNativeWorkerManifest(loadJson(path.join(root, 'manifest.json'), 'G04B_NWS_ENVELOPE_INVALID', 'NWS manifest'));
+  const persistedBinding = loadJson(path.join(root, 'binding.json'), 'G04B_NWS_BINDING_INVALID', 'NWS binding');
+  const { binding, bindingFingerprint } = verifyG04BNodeRuntimeBinding(validated, persistedBinding, { verifyExecutable: true });
   for (const [field, expected] of [
     ['workerRef', validated.workerRef],
     ['workRef', validated.workRef],
     ['purposeRef', validated.purposeRef],
     ['resultContractRef', validated.resultContractRef],
-    ['executionAuthorityRef', validated.executionAuthorityRef]
+    ['executionAuthorityRef', validated.executionAuthorityRef],
+    ['executableRef', validated.nodeRuntimeBinding.executableRef]
   ]) {
     if (manifest[field] !== expected) {
       fail('G04B_NWS_ENVELOPE_MISMATCH', `persisted NWS manifest ${field} does not match the exact G04B worker packet`, {
@@ -375,7 +419,7 @@ export function verifyG04BNativeWorkerEnvelope(packet, workerRoot) {
   if (manifest.schedulingClass !== 'BACKGROUND' || manifest.pauseMode !== 'CHECKPOINT_BOUND_COOPERATIVE') {
     fail('G04B_NWS_ENVELOPE_MISMATCH', 'G04B first worker requires BACKGROUND + CHECKPOINT_BOUND_COOPERATIVE NWS ownership');
   }
-  return Object.freeze({ workerRoot: root, manifest });
+  return Object.freeze({ workerRoot: root, manifest, binding, bindingFingerprint });
 }
 
 export function verifyG04BMachineResult(result, packet) {
@@ -390,6 +434,11 @@ export function verifyG04BMachineResult(result, packet) {
     ['resultContractRef', validated.resultContractRef],
     ['resultRef', validated.resultRef],
     ['packetFingerprint', packetFingerprint(validated)],
+    ['hostRef', validated.hostRef],
+    ['nodeBindingRef', validated.nodeRuntimeBinding.bindingRef],
+    ['nodeExecutableRef', validated.nodeRuntimeBinding.executableRef],
+    ['nodeExecutableSha256', validated.nodeRuntimeBinding.executableSha256],
+    ['nodeRuntimeBindingFingerprint', nodeRuntimeBindingFingerprint(validated.nodeRuntimeBinding)],
     ['trainingManifestSha256', validated.trainingManifestSha256],
     ['sourceModelRepo', validated.sourceSnapshotInventory.sourceModelRepo],
     ['sourceModelRevision', validated.sourceSnapshotInventory.sourceModelRevision],
@@ -410,7 +459,7 @@ export function verifyG04BMachineResult(result, packet) {
       || result.publicUploadPerformed !== false) {
     fail('G04B_MACHINE_RESULT_INVALID', 'machine result does not satisfy the real-training/evaluation truth contract');
   }
-  for (const field of ['inspectionFingerprint', 'trainingReceiptFingerprint', 'evaluationReceiptFingerprint', 'candidateArtifactFingerprint']) {
+  for (const field of ['nodeRuntimeBindingFingerprint', 'inspectionFingerprint', 'trainingReceiptFingerprint', 'evaluationReceiptFingerprint', 'candidateArtifactFingerprint']) {
     if (!HEX64.test(result[field] ?? '')) fail('G04B_MACHINE_RESULT_INVALID', `machine result ${field} must be lowercase SHA-256`);
   }
   if (typeof result.priorModelIdentity !== 'string' || !result.priorModelIdentity
@@ -639,6 +688,11 @@ export async function executeG04BNativeTrainingWorker(packet, {
     resultContractRef: validated.resultContractRef,
     resultRef: validated.resultRef,
     packetFingerprint: packetFingerprint(validated),
+    hostRef: validated.hostRef,
+    nodeBindingRef: validated.nodeRuntimeBinding.bindingRef,
+    nodeExecutableRef: validated.nodeRuntimeBinding.executableRef,
+    nodeExecutableSha256: validated.nodeRuntimeBinding.executableSha256,
+    nodeRuntimeBindingFingerprint: nodeRuntimeBindingFingerprint(validated.nodeRuntimeBinding),
     trainingManifestSha256: validated.trainingManifestSha256,
     sourceModelRepo: manifest.sourceModelRepo,
     sourceModelRevision: manifest.sourceModelRevision,

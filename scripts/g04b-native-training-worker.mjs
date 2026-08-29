@@ -8,6 +8,7 @@ import {
   executeG04BNativeTrainingWorker,
   G04BNativeTrainingWorkerError,
   verifyG04BMachineResult,
+  verifyG04BNodeRuntimeBinding,
   verifyG04BNativeWorkerEnvelope
 } from '../src/core/g04b-native-training-worker.mjs';
 import {
@@ -55,20 +56,15 @@ async function main() {
   if (command === 'manifest') {
     const packetRelativePath = required('--packet');
     const packet = loadPacket(packetRelativePath);
-    print(buildG04BNativeWorkerManifest(packet, {
-      nodeExecutableRef: required('--node-executable-ref'),
-      packetRelativePath
-    }));
+    print(buildG04BNativeWorkerManifest(packet, { packetRelativePath }));
     return 0;
   }
   if (command === 'prepare') {
     const packetRelativePath = required('--packet');
     const packet = loadPacket(packetRelativePath);
-    const binding = loadJson(path.resolve(required('--node-binding')));
-    const manifest = buildG04BNativeWorkerManifest(packet, {
-      nodeExecutableRef: binding.executableRef,
-      packetRelativePath
-    });
+    const suppliedBinding = loadJson(path.resolve(required('--node-binding')));
+    const { binding } = verifyG04BNodeRuntimeBinding(packet, suppliedBinding, { verifyExecutable: true });
+    const manifest = buildG04BNativeWorkerManifest(packet, { packetRelativePath });
     print(prepareNativeWorker({
       runtimeRoot: path.resolve(required('--runtime-root')),
       sourceRoot: SOURCE_ROOT,

@@ -10,7 +10,9 @@ import {
   G04B_SOURCE_SNAPSHOT_INVENTORY_SCHEMA,
   buildG04BNativeWorkerManifest,
   executeG04BNativeTrainingWorker,
+  nodeRuntimeBindingFingerprint,
   verifyG04BMachineResult,
+  verifyG04BNodeRuntimeBinding,
   verifyG04BSourceSnapshot
 } from '../src/core/g04b-native-training-worker.mjs';
 
@@ -29,13 +31,15 @@ function fixture() {
   const cacheRoot = path.join(vexHomeRoot, 'models', 'huggingface', 'hub');
   const revision = '851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a';
   const snapshotRoot = path.join(cacheRoot, 'models--Qwen--Qwen3.5-4B', 'snapshots', revision);
+  const nodeExecutablePath = path.join(vexHomeRoot, 'runtime', 'artifacts', 'node-v22.23.2', 'bin', 'node');
   const pythonExecutablePath = path.join(vexHomeRoot, 'runtime', 'artifacts', 'cpython-3.12.14', 'bin', 'python3.12');
   const manifestPath = path.join(sourceRoot, 'runtime', 'training', 'g04b', 'manifest.json');
   const trainerPath = path.join(sourceRoot, 'training', 'foundation-generation', 'foundation_train.py');
   const evaluatorPath = path.join(sourceRoot, 'training', 'foundation-generation', 'foundation_evaluate.py');
-  for (const directory of [snapshotRoot, path.dirname(pythonExecutablePath), path.dirname(manifestPath), path.dirname(trainerPath)]) {
+  for (const directory of [snapshotRoot, path.dirname(nodeExecutablePath), path.dirname(pythonExecutablePath), path.dirname(manifestPath), path.dirname(trainerPath)]) {
     fs.mkdirSync(directory, { recursive: true });
   }
+  fs.writeFileSync(nodeExecutablePath, '# fake exact node runtime bytes\n');
   fs.writeFileSync(pythonExecutablePath, '# fake isolated python bytes\n');
   fs.writeFileSync(trainerPath, '# fixed trainer placeholder\n');
   fs.writeFileSync(evaluatorPath, '# fixed evaluator placeholder\n');
@@ -101,6 +105,15 @@ function fixture() {
   fs.writeFileSync(manifestPath, manifestBytes);
   fs.writeFileSync(path.join(sourceRoot, 'runtime', 'training', 'g04b', 'train.jsonl'), '{}\n');
   fs.writeFileSync(path.join(sourceRoot, 'runtime', 'training', 'g04b', 'heldout.jsonl'), '{}\n');
+  const nodeRuntimeBinding = {
+    schemaVersion: 'vexlife.native-worker-runtime-binding/v1',
+    bindingRef: 'binding.node.g04b.first-proof.001',
+    executableRef: 'runtime.node.v22.exact',
+    executablePath: nodeExecutablePath,
+    executableSha256: sha(fs.readFileSync(nodeExecutablePath)),
+    hostRef: 'host.macos.m4-pro.first-proof',
+    observedAt: '2026-08-29T01:00:00.000Z'
+  };
   const packet = {
     schemaVersion: G04B_NATIVE_WORKER_PACKET_SCHEMA,
     workerRef: 'worker.g04b.first-proof.001',
@@ -109,7 +122,8 @@ function fixture() {
     resultContractRef: 'result-contract.g04b.real-neural-first-proof.v1',
     resultRef: 'result.g04b.real-neural-first-proof.001',
     executionAuthorityRef: 'authority.g04b.real-training-effect.001',
-    hostRef: 'host.macos.m4-pro.first-proof',
+    hostRef: nodeRuntimeBinding.hostRef,
+    nodeRuntimeBinding,
     trainingManifestPath: 'runtime/training/g04b/manifest.json',
     trainingManifestSha256: sha(manifestBytes),
     pythonExecutableRef: 'runtime.python.cpython-3.12.14.macos-arm64',
@@ -180,7 +194,7 @@ function fixture() {
     nonzeroChangedParameterRequired: true,
     automaticActivation: false
   };
-  return { root, sourceRoot, vexHomeRoot, cacheRoot, snapshotRoot, manifestPath, manifest, packet, inspection, training, evaluation, plan };
+  return { root, sourceRoot, vexHomeRoot, cacheRoot, snapshotRoot, manifestPath, manifest, nodeRuntimeBinding, packet, inspection, training, evaluation, plan };
 }
 
 function runnerFor(fx, { forgeEvaluation = false } = {}) {
@@ -199,14 +213,14 @@ function planValidatorFor(fx) {
   return () => structuredClone(fx.plan);
 }
 
-function writeEnvelope(fx, overrides = {}) {
+function writeEnvelope(fx, { manifestOverrides = {}, bindingOverrides = {} } = {}) {
   const workerRoot = path.join(fx.vexHomeRoot, 'runtime', 'native-workers', fx.packet.workerRef);
   fs.mkdirSync(workerRoot, { recursive: true });
   const manifest = buildG04BNativeWorkerManifest(fx.packet, {
-    nodeExecutableRef: 'runtime.node.v22.exact',
     packetRelativePath: 'runtime/training/g04b/worker-packet.json'
   });
-  fs.writeFileSync(path.join(workerRoot, 'manifest.json'), `${JSON.stringify({ ...manifest, ...overrides }, null, 2)}\n`);
+  fs.writeFileSync(path.join(workerRoot, 'manifest.json'), `${JSON.stringify({ ...manifest, ...manifestOverrides }, null, 2)}\n`);
+  fs.writeFileSync(path.join(workerRoot, 'binding.json'), `${JSON.stringify({ ...fx.nodeRuntimeBinding, ...bindingOverrides }, null, 2)}\n`);
   return workerRoot;
 }
 
@@ -232,6 +246,11 @@ test('G04B source-managed first worker composes exact NWS envelope through inspe
   assert.equal(result.heldOutEvaluationReturned, true);
   assert.equal(result.sourceModelSnapshotFingerprintObserved, true);
   assert.equal(result.resultRef, fx.packet.resultRef);
+  assert.equal(result.hostRef, fx.nodeRuntimeBinding.hostRef);
+  assert.equal(result.nodeBindingRef, fx.nodeRuntimeBinding.bindingRef);
+  assert.equal(result.nodeExecutableRef, fx.nodeRuntimeBinding.executableRef);
+  assert.equal(result.nodeExecutableSha256, fx.nodeRuntimeBinding.executableSha256);
+  assert.equal(result.nodeRuntimeBindingFingerprint, nodeRuntimeBindingFingerprint(fx.nodeRuntimeBinding));
   assert.deepEqual(verifyG04BMachineResult(result, fx.packet), result);
   const materialized = JSON.parse(fs.readFileSync(path.join(workerRoot, 'g04b-machine-result.json'), 'utf8'));
   assert.equal(materialized.packetFingerprint, result.packetFingerprint);
@@ -265,7 +284,7 @@ test('G04B first worker cooperatively yields only at the explicit pre-optimizer 
 
 test('G04B worker rejects a persisted NWS workRef substitution before any phase executes', async () => {
   const fx = fixture();
-  const workerRoot = writeEnvelope(fx, { workRef: 'work.vexlife.g04b.forged' });
+  const workerRoot = writeEnvelope(fx, { manifestOverrides: { workRef: 'work.vexlife.g04b.forged' } });
   const { calls, runner } = runnerFor(fx);
   await assert.rejects(
     executeG04BNativeTrainingWorker(fx.packet, {
@@ -280,6 +299,42 @@ test('G04B worker rejects a persisted NWS workRef substitution before any phase 
   assert.equal(calls.length, 0);
 });
 
+test('G04B exact NWS Node binding rejects host, binding, executable-ref, and executable-hash substitution before trainer phases', async () => {
+  const substitutions = [
+    { label: 'hostRef', bindingOverrides: { hostRef: 'host.macos.m4-pro.forged' } },
+    { label: 'bindingRef', bindingOverrides: { bindingRef: 'binding.node.g04b.forged.001' } },
+    { label: 'executableRef', bindingOverrides: { executableRef: 'runtime.node.v22.forged' } },
+    { label: 'executableSha256', bindingOverrides: { executableSha256: '9'.repeat(64) } }
+  ];
+  for (const substitution of substitutions) {
+    const fx = fixture();
+    const workerRoot = writeEnvelope(fx, { bindingOverrides: substitution.bindingOverrides });
+    const { calls, runner } = runnerFor(fx);
+    await assert.rejects(
+      executeG04BNativeTrainingWorker(fx.packet, {
+        sourceRoot: fx.sourceRoot,
+        planValidator: planValidatorFor(fx),
+        processRunner: runner,
+        workerRoot,
+        controlPath: path.join(workerRoot, 'control.json')
+      }),
+      (error) => error.code === 'G04B_NWS_BINDING_MISMATCH',
+      substitution.label
+    );
+    assert.equal(calls.length, 0, substitution.label);
+  }
+});
+
+test('G04B supplied Node binding must exactly match the frozen packet before NWS prepare', () => {
+  const fx = fixture();
+  const verified = verifyG04BNodeRuntimeBinding(fx.packet, fx.nodeRuntimeBinding, { verifyExecutable: true });
+  assert.equal(verified.bindingFingerprint, nodeRuntimeBindingFingerprint(fx.nodeRuntimeBinding));
+  assert.throws(
+    () => verifyG04BNodeRuntimeBinding(fx.packet, { ...fx.nodeRuntimeBinding, observedAt: '2026-08-29T01:00:01.000Z' }),
+    (error) => error.code === 'G04B_NWS_BINDING_MISMATCH'
+  );
+});
+
 test('G04B first worker rejects non-MPS host substitution', () => {
   const fx = fixture();
   const forged = {
@@ -289,7 +344,6 @@ test('G04B first worker rejects non-MPS host substitution', () => {
   };
   assert.throws(
     () => buildG04BNativeWorkerManifest(forged, {
-      nodeExecutableRef: 'runtime.node.v22.exact',
       packetRelativePath: 'runtime/training/g04b/worker-packet.json'
     }),
     (error) => error.code === 'G04B_FIRST_WORKER_HOST_MISMATCH'
@@ -323,7 +377,7 @@ test('G04B worker rejects forged evaluation candidate identity after a real-trai
   );
 });
 
-test('G04B result consumer contract rejects resultRef laundering', async () => {
+test('G04B result consumer contract rejects resultRef and Node-runtime identity laundering', async () => {
   const fx = fixture();
   const workerRoot = writeEnvelope(fx);
   const { runner } = runnerFor(fx);
@@ -336,6 +390,10 @@ test('G04B result consumer contract rejects resultRef laundering', async () => {
   });
   assert.throws(
     () => verifyG04BMachineResult({ ...result, resultRef: 'result.g04b.forged' }, fx.packet),
+    (error) => error.code === 'G04B_MACHINE_RESULT_IDENTITY_MISMATCH'
+  );
+  assert.throws(
+    () => verifyG04BMachineResult({ ...result, nodeBindingRef: 'binding.node.g04b.forged.001' }, fx.packet),
     (error) => error.code === 'G04B_MACHINE_RESULT_IDENTITY_MISMATCH'
   );
 });
