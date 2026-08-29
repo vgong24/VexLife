@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 export const BROWSER_RELATIONSHIPS_RUNTIME_API_PATH = '/api/v1/relationships/runtime-plan';
 export const BROWSER_RELATIONSHIPS_RUNTIME_MAX_BODY_BYTES = 16 * 1024;
 export const RELATIONSHIPS_RUNTIME_PLAN_SCHEMA = 'vexlife.relationships-runtime-bridge-plan/v1';
@@ -89,53 +86,6 @@ function requestError(message) {
     400,
     null
   );
-}
-
-function readJson(file, label) {
-  let stat;
-  try {
-    stat = fs.lstatSync(file);
-  } catch (error) {
-    throw new BrowserRelationshipsRuntimeBridgeError(
-      'RELATIONSHIPS_RUNTIME_SOURCE_UNAVAILABLE',
-      `${label} is unavailable`,
-      503,
-      error.message
-    );
-  }
-  if (stat.isSymbolicLink() || !stat.isFile()) {
-    throw new BrowserRelationshipsRuntimeBridgeError(
-      'RELATIONSHIPS_RUNTIME_SOURCE_NOT_CURRENT',
-      `${label} must be one regular non-link file`,
-      503,
-      null
-    );
-  }
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch (error) {
-    throw new BrowserRelationshipsRuntimeBridgeError(
-      'RELATIONSHIPS_RUNTIME_SOURCE_NOT_CURRENT',
-      `${label} is not valid JSON`,
-      503,
-      error.message
-    );
-  }
-}
-
-export function loadRelationshipsRuntimeBridgeSources(root) {
-  if (typeof root !== 'string' || !root) sourceError('VexLife source root is unavailable');
-  const canonical = path.resolve(root);
-  return Object.freeze({
-    relationshipsRegistry: readJson(
-      path.join(canonical, 'blueprint', 'relationships-browser-registry.json'),
-      'Relationships registry'
-    ),
-    cdrRegistry: readJson(
-      path.join(canonical, 'blueprint', 'cdr-s5-closed-alpha-browser-registry.json'),
-      'CDR S5 registry'
-    )
-  });
 }
 
 export function validateRelationshipsRuntimeBridgeSources({ relationshipsRegistry, cdrRegistry }) {
