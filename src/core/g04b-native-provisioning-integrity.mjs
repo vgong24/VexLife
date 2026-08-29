@@ -132,6 +132,7 @@ function expectedSnapshotInventory(packet) {
   });
 }
 function enumerateRegularFiles(root) {
+  if (!fs.existsSync(root)) return [];
   const result = [];
   const walk = (directory) => {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -139,7 +140,7 @@ function enumerateRegularFiles(root) {
       const relative = path.relative(root, absolute).split(path.sep).join('/');
       if (entry.isDirectory()) walk(absolute);
       else if (entry.isFile()) result.push(relative);
-      else fail('G04B_PROVISION_STATE_SNAPSHOT_INVALID', 'snapshot contains non-regular filesystem entry', { path: relative });
+      else fail('G04B_PROVISION_STATE_SNAPSHOT_INVALID', 'materialized tree contains a non-regular filesystem entry', { path: relative });
     }
   };
   walk(root);
@@ -314,16 +315,95 @@ async function withProvisioningLock(packet, fn) {
     acquiredAt: new Date().toISOString()
   };
   fs.writeFileSync(path.join(lock, 'owner.json'), `${JSON.stringify(owner, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
-  try { return await fn(); }
+  try { return await fn(home); }
   finally { fs.rmSync(lock, { recursive: true, force: true }); }
+}
+
+function snapshotPartialParkingRoot(packet, home) {
+  const root = inside(
+    home,
+    path.join(
+      home,
+      'runtime',
+      'artifacts',
+      'g04b-provisioning-partials',
+      `models--${packet.sourceModel.repo.replaceAll('/', '--')}`,
+      packet.sourceModel.revision
+    ),
+    'snapshot partial parking root'
+  );
+  fs.mkdirSync(root, { recursive: true, mode: 0o700 });
+  if (fs.lstatSync(root).isSymbolicLink() || !fs.lstatSync(root).isDirectory()) fail('G04B_PROVISION_PARTIAL_INVALID', 'snapshot partial parking root must be a real directory');
+  return root;
+}
+function validatePartialFile(file, entry, label) {
+  const stat = fs.lstatSync(file);
+  if (stat.isSymbolicLink() || !stat.isFile()) fail('G04B_PROVISION_PARTIAL_INVALID', `${label} must be a regular non-symlink file`, { file });
+  if (stat.size > entry.maxBytes || stat.size > entry.expectedBytes) {
+    fail('G04B_PROVISION_PARTIAL_INVALID', `${label} exceeds packet size bounds`, { file, bytes: stat.size, expectedBytes: entry.expectedBytes, maxBytes: entry.maxBytes });
+  }
+}
+function parkExpectedSnapshotPartials(packet, home) {
+  const paths = expectedPaths(packet, home);
+  const parkingRoot = snapshotPartialParkingRoot(packet, home);
+  const expectedParkedPaths = packet.sourceModel.files.map((entry) => `${entry.path}.partial`);
+  const parkedExisting = enumerateRegularFiles(parkingRoot);
+  const parkedExtras = parkedExisting.filter((item) => !expectedParkedPaths.includes(item));
+  if (parkedExtras.length) fail('G04B_PROVISION_PARTIAL_INVALID', 'partial parking root contains unbound paths', { extras: parkedExtras });
+  const parkedByFinal = new Map();
+  for (const entry of packet.sourceModel.files) {
+    const finalPath = inside(paths.sourceSnapshotRoot, path.join(paths.sourceSnapshotRoot, ...entry.path.split('/')), `snapshot file ${entry.path}`);
+    const sourcePartial = `${finalPath}.partial`;
+    const relativeParked = `${entry.path}.partial`;
+    const parked = inside(parkingRoot, path.join(parkingRoot, ...relativeParked.split('/')), `parked snapshot partial ${entry.path}`);
+    if (fs.existsSync(sourcePartial)) {
+      validatePartialFile(sourcePartial, entry, `snapshot partial ${entry.path}`);
+      if (fs.existsSync(parked)) fail('G04B_PROVISION_PARTIAL_COLLISION', 'same expected snapshot partial exists in both active and parked locations', { path: entry.path });
+      fs.mkdirSync(path.dirname(parked), { recursive: true });
+      fs.renameSync(sourcePartial, parked);
+    }
+    if (fs.existsSync(parked)) {
+      validatePartialFile(parked, entry, `parked snapshot partial ${entry.path}`);
+      parkedByFinal.set(path.resolve(finalPath), parked);
+    }
+  }
+  return {
+    wrap(downloadArtifact) {
+      if (typeof downloadArtifact !== 'function') fail('G04B_PROVISION_DOWNLOADER_REQUIRED', 'downloadArtifact is required');
+      return async (request) => {
+        const finalPath = path.resolve(request.finalPath);
+        const parked = parkedByFinal.get(finalPath);
+        if (parked && fs.existsSync(parked)) {
+          const activePartial = `${finalPath}.partial`;
+          if (fs.existsSync(activePartial)) fail('G04B_PROVISION_PARTIAL_COLLISION', 'active snapshot partial unexpectedly exists while parked copy is present', { finalPath });
+          fs.mkdirSync(path.dirname(activePartial), { recursive: true });
+          fs.renameSync(parked, activePartial);
+        }
+        return downloadArtifact(request);
+      };
+    },
+    cleanupEmpty() {
+      if (!fs.existsSync(parkingRoot)) return;
+      const remaining = enumerateRegularFiles(parkingRoot);
+      if (remaining.length === 0) fs.rmSync(parkingRoot, { recursive: true, force: true });
+    }
+  };
 }
 
 export async function executeVerifiedG04BProvisioningWorker(packet, options = {}) {
   const validated = validateG04BProvisioningPacket(packet, { verifyNodeExecutable: true });
-  return withProvisioningLock(validated, async () => {
-    const result = await executePrimitive(validated, options);
-    const verified = await verifyG04BProvisionedState(result, validated, { processRunner: options.processRunner ?? defaultProcessRunner });
-    return verified.result;
+  return withProvisioningLock(validated, async (home) => {
+    const partials = parkExpectedSnapshotPartials(validated, home);
+    try {
+      const result = await executePrimitive(validated, {
+        ...options,
+        downloadArtifact: partials.wrap(options.downloadArtifact)
+      });
+      const verified = await verifyG04BProvisionedState(result, validated, { processRunner: options.processRunner ?? defaultProcessRunner });
+      return verified.result;
+    } finally {
+      partials.cleanupEmpty();
+    }
   });
 }
 
@@ -333,8 +413,8 @@ export async function consumeVerifiedG04BProvisioningResult(packet, workerRoot, 
 } = {}) {
   const validated = validateG04BProvisioningPacket(packet);
   return withProvisioningLock(validated, async () => {
-    verifyG04BProvisioningEnvelope(validated, workerRoot);
-    const root = path.resolve(workerRoot);
+    const envelope = verifyG04BProvisioningEnvelope(validated, workerRoot);
+    const root = envelope.workerRoot;
     const resultPath = path.join(root, 'g04b-provisioning-result.json');
     const raw = readJsonNoFollow(resultPath, 'G04B provisioning result');
     const { result } = await verifyG04BProvisionedState(raw, validated, { processRunner });
