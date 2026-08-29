@@ -86,7 +86,7 @@ function fixture() {
       }]
     }
   };
-  return { root, home, sourceArtifacts, packet };
+  return { root, home, sourceArtifacts, packet, modelBytes };
 }
 
 function downloaderFor(fx, { holdRuntime = null } = {}) {
@@ -99,6 +99,15 @@ function downloaderFor(fx, { holdRuntime = null } = {}) {
     }
     const bytes = fx.sourceArtifacts.get(url);
     if (!bytes || bytes.length !== expectedBytes || sha(bytes) !== expectedSha256) throw new Error('fixture artifact mismatch');
+    const partialPath = `${finalPath}.partial`;
+    if (fs.existsSync(partialPath)) {
+      const partial = fs.readFileSync(partialPath);
+      if (partial.length > bytes.length || !bytes.subarray(0, partial.length).equals(partial)) throw new Error('fixture partial is not an exact prefix');
+      fs.mkdirSync(path.dirname(finalPath), { recursive: true });
+      fs.writeFileSync(finalPath, bytes);
+      fs.rmSync(partialPath, { force: true });
+      return { disposition: 'RESUMED_AND_VERIFIED', path: finalPath, bytes: bytes.length, actualSha256: sha(bytes) };
+    }
     fs.mkdirSync(path.dirname(finalPath), { recursive: true });
     fs.writeFileSync(finalPath, bytes);
     return { disposition: 'DOWNLOADED_AND_VERIFIED', path: finalPath, bytes: bytes.length, actualSha256: sha(bytes) };
@@ -147,6 +156,18 @@ test('verified provisioning route independently rebinds deterministic paths, pac
   assert.equal(verified.result.sourceSnapshotRoot, path.join(fx.home, 'models', 'huggingface', 'hub', 'models--Qwen--Qwen3.5-4B', 'snapshots', G04B_PROVISIONING_SOURCE_REVISION));
   assert.equal(verified.snapshotInventory.files[0].path, 'config.json');
   assert.equal(verified.qualification.packageVersions.torch, '2.8.0');
+});
+
+test('verified provisioning preserves exact accepted .partial resume semantics without weakening final snapshot path-set truth', async () => {
+  const fx = fixture();
+  const snapshotRoot = path.join(fx.home, 'models', 'huggingface', 'hub', 'models--Qwen--Qwen3.5-4B', 'snapshots', G04B_PROVISIONING_SOURCE_REVISION);
+  fs.mkdirSync(snapshotRoot, { recursive: true });
+  const partial = path.join(snapshotRoot, 'config.json.partial');
+  fs.writeFileSync(partial, fx.modelBytes.subarray(0, 7));
+  const result = await materialize(fx);
+  assert.equal(result.modelArtifactDispositions[0].disposition, 'RESUMED_AND_VERIFIED');
+  assert.equal(fs.existsSync(partial), false);
+  assert.deepEqual(fs.readdirSync(snapshotRoot).sort(), ['config.json']);
 });
 
 test('materialized-state verifier rejects result path laundering and self-consistent-looking snapshot identity substitution', async () => {
