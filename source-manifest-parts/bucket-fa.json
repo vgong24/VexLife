@@ -21,6 +21,12 @@
       "sha256": "ba91df3401fd1206da519da419e488b8f33411e754c00bd1e9a93dd75ac39762"
     },
     {
+      "path": "test/g04b-native-provisioning-integrity.test.mjs",
+      "mode": "100644",
+      "bytes": 12095,
+      "sha256": "cdd47f7c627878a134d8547a094ed2195edc8163a0c7d638524422d0039da56a"
+    },
+    {
       "path": "test/public-learning-navigation-preflight.test.mjs",
       "mode": "100644",
       "bytes": 3779,

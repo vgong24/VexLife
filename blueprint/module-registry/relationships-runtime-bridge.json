@@ -1,0 +1,31 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.relationships-runtime-bridge",
+    "path": "src/core/browser-relationships-runtime-bridge.mjs",
+    "role": "Validates current Relationships plus accepted CDR S5 product truth and forms a bounded no-effect host-binding request bound to accepted SDK CDR, Friend/Group and Social Bridge source identities without implementing transport or relationship persistence.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.relationships-browser.002",
+      "registry.vexlife.cdr-s5.closed-alpha-browser.001",
+      "github.commit.vexlife.03fc465287e12732899234a8ab1a25caf662e75c",
+      "github.commit.vexlife.70a26e507e6fa96eafebd84d7942daf208961d69",
+      "github.commit.vextreme-sdk.73c6d77820d523dc01f459110b4a9b5500e68a57",
+      "github.commit.vextreme-sdk.51e3f5167bc49c13408a9047cd7c565940a31788",
+      "github.commit.vextreme-sdk.339fc53e6e63fef61e8b3d9153c7e160bb54f232",
+      "github.commit.vextreme-sdk.fa184ba313b4a483efd81dfbbe3d8e6f4b97aef5"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/browser-relationships-runtime-bridge.test.mjs",
+      "test/browser-relationships-runtime-http-route.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/serve-browser.mjs",
+      "reference/browser/modules/relationships-controller.js",
+      "github.issue.vexlife.240"
+    ]
+  }
+]

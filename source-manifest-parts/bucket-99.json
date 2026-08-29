@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 6513,
       "sha256": "1dc8db34e5d3e98de2d3befbdbca655617c9b19fb35c9dc276994fa98e60d74f"
+    },
+    {
+      "path": "test/browser-relationships-runtime-http-route.test.mjs",
+      "mode": "100644",
+      "bytes": 7535,
+      "sha256": "7f4a3e6d3571f6084c48989964fe0fd40b5c91a21b9321b25be44436774f87d0"
     }
   ]
 }
