@@ -62,6 +62,7 @@ async function enterRelationships(page, { keyboard = false } = {}) {
   assert.equal(await door.getAttribute('data-relationship-entry-binding-ref'), 'entry.relationships.self-development.001');
   if (keyboard) {
     await door.focus();
+    assert.equal(await door.evaluate((element) => document.activeElement === element), true);
     await page.keyboard.press('Enter');
   } else {
     await door.click();
@@ -251,9 +252,10 @@ test('Relationships composed compact route is touch-sized, keyboard-operable, sc
     await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__?.relationships));
     assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
 
-    const door = await enterRelationships(page, { keyboard:true });
+    await enterRelationships(page, { keyboard:true });
     assert.equal(await page.locator('#view-relationships').isVisible(), true);
-    assert.equal(await door.evaluate((element) => document.activeElement === element), true);
+    assert.equal(await page.evaluate(() => globalThis.__VEXLIFE_APP__.terrain.currentRef()), RELATIONSHIPS_TERRAIN_REF);
+    assert.equal((await page.evaluate(() => globalThis.__VEXLIFE_APP__.navigation.semanticFrame())).selectedNodeRef, RELATIONSHIPS_TERRAIN_REF);
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert.ok(overflow <= 1, `Relationships compact route overflowed by ${overflow}px`);
