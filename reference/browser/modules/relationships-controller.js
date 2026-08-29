@@ -226,6 +226,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   let vexExplanationOpen = false;
   let interaction = initialInteraction(cdrRegistry);
   let runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
+  let runtimePlanRequestGeneration = 0;
 
   const language = () => SUPPORTED_LANGUAGES.includes(state.language) ? state.language : 'en';
   const rt = (key, params = {}) => format(catalogs[language()]?.[key] ?? catalogs.en?.[key] ?? `[${key}]`, params);
@@ -245,6 +246,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   const projection = () => project(registry, scenarioCount, bookletPage, auxiliaryCounts());
 
   function clearRuntimePlan() {
+    runtimePlanRequestGeneration += 1;
     runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
   }
 
@@ -265,25 +267,95 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     });
   }
 
-  function normalizeRuntimePlan(payload) {
+  function expectedReturnedProductGateSnapshot(requestSnapshot) {
+    return Object.freeze({
+      discoveryMode: cdrRegistry.discoveryMode,
+      publicSearch: cdrRegistry.publicSearch,
+      alphaConsentAcknowledged: requestSnapshot.alphaConsentAcknowledged,
+      invitationState: requestSnapshot.invitationState,
+      invitationDecision: requestSnapshot.invitationDecision,
+      identityState: requestSnapshot.identityState,
+      routeClass: requestSnapshot.routeClass,
+      failureState: requestSnapshot.failureState,
+      withdrawn: requestSnapshot.withdrawn,
+      revoked: requestSnapshot.revoked,
+      disconnected: requestSnapshot.disconnected,
+      presenceClass: requestSnapshot.presenceClass
+    });
+  }
+
+  function requestCanRequireHostBinding(requestSnapshot) {
+    return requestSnapshot.alphaConsentAcknowledged === true &&
+      requestSnapshot.invitationState === 'RECEIVED_VERIFIED_REFERENCE' &&
+      ['ACCEPT', 'NARROW'].includes(requestSnapshot.invitationDecision) &&
+      requestSnapshot.identityState === 'VERIFIED_CURRENT' &&
+      cdrRegistry.presenceStates.includes(requestSnapshot.presenceClass) &&
+      cdrRegistry.routeClasses.includes(requestSnapshot.routeClass) &&
+      requestSnapshot.routeClass !== 'UNAVAILABLE' &&
+      requestSnapshot.failureState === 'NONE' &&
+      requestSnapshot.withdrawn === false &&
+      requestSnapshot.revoked === false &&
+      requestSnapshot.disconnected === false &&
+      requestSnapshot.blocked === false &&
+      requestSnapshot.localRelationshipFormed === true;
+  }
+
+  function normalizeRuntimePlan(payload, requestSnapshot) {
     if (!payload || payload.schemaVersion !== 'vexlife.relationships-runtime-bridge-plan/v1') throw new Error('Relationships runtime plan schema invalid');
     if (!['HELD', 'HOST_BINDING_REQUIRED'].includes(payload.state)) throw new Error('Relationships runtime plan state invalid');
-    if (payload.hostExecutionDeferred !== true || payload.semanticAcknowledged !== false) throw new Error('Relationships runtime plan boundary widened');
+    if (payload.truthClass !== 'CURRENT_PRODUCT_TO_ACCEPTED_CDR_BRIDGE_PLAN') throw new Error('Relationships runtime plan truth class invalid');
+    if (JSON.stringify(payload.productGateSnapshot) !== JSON.stringify(expectedReturnedProductGateSnapshot(requestSnapshot))) throw new Error('Relationships runtime plan product-gate echo mismatch');
+    if (payload.hostExecutionDeferred !== true || payload.semanticAcknowledged !== false || payload.realOutsideParticipantRequired !== false) throw new Error('Relationships runtime plan boundary widened');
     if (!payload.effects || Object.values(payload.effects).some((value) => value !== false)) throw new Error('Relationships runtime plan effect boundary widened');
+    if (
+      !payload.relationshipProjection ||
+      payload.relationshipProjection.localDirectionalOnly !== true ||
+      payload.relationshipProjection.counterpartClaimIndependent !== true ||
+      payload.relationshipProjection.relationshipPersisted !== false
+    ) throw new Error('Relationships runtime relationship projection widened');
+
+    const hostReady = requestCanRequireHostBinding(requestSnapshot);
+    if (payload.state === 'HELD') {
+      if (hostReady) throw new Error('Relationships runtime plan held state contradicts current admitted request');
+      if (!Array.isArray(payload.reasons) || payload.reasons.length === 0) throw new Error('Relationships runtime held plan requires typed reasons');
+      for (const field of ['requiredHostRoles', 'requiredOpaqueBindings', 'requiredPrivateBindings']) {
+        if (!Array.isArray(payload[field]) || payload[field].length !== 0) throw new Error(`Relationships runtime held plan ${field} must remain empty`);
+      }
+    } else {
+      if (!hostReady) throw new Error('Relationships runtime host-binding state contradicts current request');
+      if (!Array.isArray(payload.reasons) || payload.reasons.length !== 0) throw new Error('Relationships runtime host-binding plan reasons must be empty');
+      if (JSON.stringify(payload.requiredHostRoles) !== JSON.stringify([
+        { platformRole: 'MAC_LISTENER', runtimeRole: 'LISTENER' },
+        { platformRole: 'WINDOWS_CONNECTOR', runtimeRole: 'CONNECTOR' }
+      ])) throw new Error('Relationships runtime host roles drifted');
+      if (!Array.isArray(payload.requiredOpaqueBindings) || payload.requiredOpaqueBindings.length === 0) throw new Error('Relationships runtime opaque bindings unavailable');
+      if (!Array.isArray(payload.requiredPrivateBindings) || payload.requiredPrivateBindings.length === 0) throw new Error('Relationships runtime private binding names unavailable');
+      if (payload.nextEffectClass !== 'FORM_EXACT_PAIRED_HOST_REHEARSAL') throw new Error('Relationships runtime next effect class drifted');
+    }
     return payload;
   }
 
+  function requestStillCurrent(requestGeneration, serializedRequestSnapshot) {
+    return requestGeneration === runtimePlanRequestGeneration &&
+      JSON.stringify(runtimeRequestSnapshot()) === serializedRequestSnapshot;
+  }
+
   async function prepareRuntimePlan() {
+    const requestSnapshot = runtimeRequestSnapshot();
+    const serializedRequestSnapshot = JSON.stringify(requestSnapshot);
+    const requestGeneration = runtimePlanRequestGeneration + 1;
+    runtimePlanRequestGeneration = requestGeneration;
     runtimePlan = Object.freeze({ state: 'PREPARING', reasons: Object.freeze([]) });
     render();
     try {
       const response = await fetch(RELATIONSHIPS_RUNTIME_API_PATH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(runtimeRequestSnapshot())
+        body: serializedRequestSnapshot
       });
       let payload = null;
       try { payload = await response.json(); } catch { payload = null; }
+      if (!requestStillCurrent(requestGeneration, serializedRequestSnapshot)) return snapshot();
       if (!response.ok) {
         runtimePlan = Object.freeze({
           state: 'FAILURE',
@@ -291,15 +363,17 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
           failureCode: payload?.failureCode ?? 'RELATIONSHIPS_RUNTIME_PLAN_FAILED'
         });
       } else {
-        runtimePlan = normalizeRuntimePlan(payload);
+        runtimePlan = normalizeRuntimePlan(payload, requestSnapshot);
       }
     } catch {
+      if (!requestStillCurrent(requestGeneration, serializedRequestSnapshot)) return snapshot();
       runtimePlan = Object.freeze({
         state: 'FAILURE',
         reasons: Object.freeze([]),
         failureCode: 'RELATIONSHIPS_RUNTIME_PLAN_FAILED'
       });
     }
+    if (!requestStillCurrent(requestGeneration, serializedRequestSnapshot)) return snapshot();
     render();
     return snapshot();
   }
@@ -501,7 +575,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     prepare.onclick = () => { void prepareRuntimePlan(); };
 
     const close = actionButton('relationshipsConnectClose', rt('closeConnect'));
-    close.onclick = () => { connectOpen = false; render(); surface.querySelector('#relationshipsConnect')?.focus(); };
+    close.onclick = () => { connectOpen = false; clearRuntimePlan(); render(); surface.querySelector('#relationshipsConnect')?.focus(); };
     target.append(
       heading,
       body,

@@ -349,3 +349,111 @@ test('Relationships composed compact route is touch-sized, keyboard-operable, sc
     await closeServer(server);
   }
 });
+
+test('Relationships ignores a delayed host-ready response after the originating route truth changes', { timeout: 90_000 }, async () => {
+  const server = await openReferenceServer();
+  const address = server.address();
+  assert.equal(typeof address, 'object');
+  const origin = `http://127.0.0.1:${address.port}`;
+  let browser;
+  try {
+    browser = await chromium.launch({ headless:true });
+    const context = await browser.newContext({ viewport:{ width:1280, height:900 } });
+    const page = await context.newPage();
+    await page.goto(`${origin}/reference/browser/index.html`, { waitUntil:'networkidle' });
+    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__?.relationships));
+    await enterRelationships(page);
+    await page.locator('#relationshipsConnect').click();
+    await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
+    await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+    await page.selectOption('#relationshipsDecision', 'ACCEPT');
+    await page.locator('#relationshipsFormLocal').click();
+    await page.locator('#relationshipsAlphaConsent').click();
+
+    let interceptedResolve;
+    const intercepted = new Promise((resolve) => { interceptedResolve = resolve; });
+    let releaseResolve;
+    const release = new Promise((resolve) => { releaseResolve = resolve; });
+    let fulfilledResolve;
+    const fulfilled = new Promise((resolve) => { fulfilledResolve = resolve; });
+    await page.route('**/api/v1/relationships/runtime-plan', async (route) => {
+      const response = await route.fetch();
+      interceptedResolve();
+      await release;
+      await route.fulfill({ response });
+      fulfilledResolve();
+    });
+
+    await page.locator('#relationshipsPrepareRuntimePlan').click();
+    await intercepted;
+    assert.equal((await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot())).runtimePlan.state, 'PREPARING');
+
+    await page.selectOption('#relationshipsRoute', 'UNAVAILABLE');
+    const changed = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    assert.equal(changed.cdrGate.routeClass, 'UNAVAILABLE');
+    assert.equal(changed.runtimePlan.state, 'IDLE');
+
+    releaseResolve();
+    await fulfilled;
+    await page.waitForTimeout(50);
+    const afterStaleReturn = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    assert.equal(afterStaleReturn.cdrGate.routeClass, 'UNAVAILABLE');
+    assert.equal(afterStaleReturn.runtimePlan.state, 'IDLE');
+    assert.equal(afterStaleReturn.runtimePlan.semanticAcknowledged, false);
+    assert.equal(afterStaleReturn.delivery, 'NOT_CONNECTED');
+    assert.equal(Object.values(afterStaleReturn.effects).every((value) => value === false), true);
+
+    await context.close();
+  } finally {
+    if (browser) await browser.close();
+    await closeServer(server);
+  }
+});
+
+test('Relationships rejects a substituted runtime-plan product-gate echo instead of presenting host readiness', { timeout: 90_000 }, async () => {
+  const server = await openReferenceServer();
+  const address = server.address();
+  assert.equal(typeof address, 'object');
+  const origin = `http://127.0.0.1:${address.port}`;
+  let browser;
+  try {
+    browser = await chromium.launch({ headless:true });
+    const context = await browser.newContext({ viewport:{ width:1280, height:900 } });
+    const page = await context.newPage();
+    await page.goto(`${origin}/reference/browser/index.html`, { waitUntil:'networkidle' });
+    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__?.relationships));
+    await enterRelationships(page);
+    await page.locator('#relationshipsConnect').click();
+    await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
+    await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+    await page.selectOption('#relationshipsDecision', 'NARROW');
+    await page.locator('#relationshipsFormLocal').click();
+    await page.locator('#relationshipsAlphaConsent').click();
+
+    await page.route('**/api/v1/relationships/runtime-plan', async (route) => {
+      const response = await route.fetch();
+      const payload = await response.json();
+      payload.productGateSnapshot = { ...payload.productGateSnapshot, routeClass: 'RELAYED' };
+      await route.fulfill({
+        status: response.status(),
+        headers: response.headers(),
+        body: `${JSON.stringify(payload)}\n`
+      });
+    });
+
+    await page.locator('#relationshipsPrepareRuntimePlan').click();
+    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.relationships.snapshot().runtimePlan.state === 'FAILURE');
+    const rejected = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    assert.equal(rejected.cdrGate.routeClass, 'DIRECT_CANDIDATE');
+    assert.equal(rejected.runtimePlan.state, 'FAILURE');
+    assert.equal(rejected.runtimePlan.failureCode, 'RELATIONSHIPS_RUNTIME_PLAN_FAILED');
+    assert.equal(rejected.runtimePlan.semanticAcknowledged, false);
+    assert.equal(rejected.delivery, 'NOT_CONNECTED');
+    assert.equal(Object.values(rejected.effects).every((value) => value === false), true);
+
+    await context.close();
+  } finally {
+    if (browser) await browser.close();
+    await closeServer(server);
+  }
+});
