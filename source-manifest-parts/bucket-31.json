@@ -11,8 +11,8 @@
     {
       "path": "test/macos-windowed-setup.test.mjs",
       "mode": "100644",
-      "bytes": 13754,
-      "sha256": "d8b0abe12d43ac720d19b0d5c157c84754f433de6d33a20f4808b0954b2a3d53"
+      "bytes": 15980,
+      "sha256": "64ff15f8428032ba10d0a32f29561435085dbdf54b79a32c7537c16eb28368a6"
     },
     {
       "path": "test/public-learning-navigation-activation.test.mjs",
