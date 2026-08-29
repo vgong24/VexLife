@@ -41,6 +41,41 @@ const PACKET_FIELDS = Object.freeze([
   'expectedExecutionDevice',
   'expectedHardwareProfileRef'
 ]);
+const RESULT_FIELDS = Object.freeze([
+  'schemaVersion',
+  'workerRef',
+  'workRef',
+  'purposeRef',
+  'resultContractRef',
+  'resultRef',
+  'packetFingerprint',
+  'hostRef',
+  'nodeBindingRef',
+  'nodeExecutableRef',
+  'nodeExecutableSha256',
+  'nodeRuntimeBindingFingerprint',
+  'trainingManifestSha256',
+  'sourceModelRepo',
+  'sourceModelRevision',
+  'sourceModelSnapshotFingerprint',
+  'sourceModelSnapshotFingerprintObserved',
+  'sourceManifestFingerprint',
+  'executionDevice',
+  'expectedHardwareProfileRef',
+  'inspectionFingerprint',
+  'trainingReceiptFingerprint',
+  'evaluationReceiptFingerprint',
+  'priorModelIdentity',
+  'candidateModelIdentity',
+  'candidateArtifactFingerprint',
+  'trainingActuallyExecuted',
+  'simulationOnly',
+  'modelWeightsChanged',
+  'changedParameterCount',
+  'heldOutEvaluationReturned',
+  'activationPerformed',
+  'publicUploadPerformed'
+]);
 const INVENTORY_FIELDS = Object.freeze([
   'schemaVersion',
   'sourceModelRepo',
@@ -424,7 +459,8 @@ export function verifyG04BNativeWorkerEnvelope(packet, workerRoot) {
 
 export function verifyG04BMachineResult(result, packet) {
   const validated = validateG04BNativeWorkerPacket(packet, { verifyBoundFiles: false, verifySnapshot: false });
-  if (!result || typeof result !== 'object' || Array.isArray(result) || result.schemaVersion !== G04B_NATIVE_WORKER_RESULT_SCHEMA) {
+  exactKeys(result, RESULT_FIELDS, 'machine result', 'G04B_MACHINE_RESULT_INVALID');
+  if (result.schemaVersion !== G04B_NATIVE_WORKER_RESULT_SCHEMA) {
     fail('G04B_MACHINE_RESULT_INVALID', 'machine result schema is not current');
   }
   for (const [field, expected] of [

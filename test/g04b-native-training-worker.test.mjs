@@ -397,3 +397,26 @@ test('G04B result consumer contract rejects resultRef and Node-runtime identity 
     (error) => error.code === 'G04B_MACHINE_RESULT_IDENTITY_MISMATCH'
   );
 });
+
+test('G04B machine result rejects unknown and missing terminal fields before NWS consumption', async () => {
+  const fx = fixture();
+  const workerRoot = writeEnvelope(fx);
+  const { runner } = runnerFor(fx);
+  const result = await executeG04BNativeTrainingWorker(fx.packet, {
+    sourceRoot: fx.sourceRoot,
+    planValidator: planValidatorFor(fx),
+    processRunner: runner,
+    workerRoot,
+    controlPath: path.join(workerRoot, 'control.json')
+  });
+  assert.throws(
+    () => verifyG04BMachineResult({ ...result, rawPayload: 'forged-extra' }, fx.packet),
+    (error) => error.code === 'G04B_MACHINE_RESULT_INVALID'
+  );
+  const missing = { ...result };
+  delete missing.publicUploadPerformed;
+  assert.throws(
+    () => verifyG04BMachineResult(missing, fx.packet),
+    (error) => error.code === 'G04B_MACHINE_RESULT_INVALID'
+  );
+});
