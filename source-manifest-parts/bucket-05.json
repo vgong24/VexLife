@@ -11,8 +11,8 @@
     {
       "path": "scripts/g04b-native-training-supervisor.mjs",
       "mode": "100644",
-      "bytes": 9280,
-      "sha256": "e8555ef8d8455e3081af3f5a3f000e39509fbd8ede77db12aae1a59bdd038ac9"
+      "bytes": 9316,
+      "sha256": "4111cd7dc9be90ba6f9a828187e9b18f108262ae0fb926ac8a19c457affe69a4"
     },
     {
       "path": "scripts/provision-model.mjs",

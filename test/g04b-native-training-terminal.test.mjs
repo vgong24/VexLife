@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,6 +17,7 @@ import {
 import {
   G04BTerminalEvidenceError,
   g04bCanonicalFingerprint,
+  pythonCanonicalJsonFingerprintFile,
   verifyG04BDerivedPhaseFingerprints,
   verifyG04BPersistedMachineResult
 } from '../src/core/g04b-native-training-terminal.mjs';
@@ -27,6 +30,18 @@ function expectCode(fn, code) {
     assert.equal(error.code, code);
     return true;
   });
+}
+
+function exactSystemPython() {
+  for (const candidate of ['python3', 'python']) {
+    const probe = spawnSync(candidate, ['-I', '-S', '-c', 'import sys; print(sys.executable)'], {
+      encoding: 'utf8',
+      windowsHide: true
+    });
+    if (probe.status !== 0 || probe.signal || !String(probe.stdout ?? '').trim()) continue;
+    return fs.realpathSync.native(path.resolve(String(probe.stdout).trim()));
+  }
+  assert.fail('cross-language G04B terminal proof requires an available Python 3 runtime');
 }
 
 function packetFixture() {
@@ -121,33 +136,70 @@ function machineResultFixture(packet) {
   };
 }
 
-test('G04B terminal derivation recomputes manifest and training-receipt fingerprints instead of accepting 64-hex shape', () => {
+test('Python canonical fingerprint matches trainer/evaluator float semantics and visibly differs from JS JSON.stringify', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-g04b-python-canonical-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const file = path.join(root, 'numeric-evidence.json');
+  fs.writeFileSync(file, `{
+  "floatOne": 1.0,
+  "learningRate": 2e-05,
+  "small": 1e-06,
+  "tiny": 1e-07,
+  "unicode": "天地"
+}
+`);
+  const expectedCanonical = '{"floatOne":1.0,"learningRate":2e-05,"small":1e-06,"tiny":1e-07,"unicode":"天地"}';
+  const expected = crypto.createHash('sha256').update(expectedCanonical).digest('hex');
+  const python = exactSystemPython();
+  const observed = pythonCanonicalJsonFingerprintFile(python, file);
+  const jsFingerprint = g04bCanonicalFingerprint(JSON.parse(fs.readFileSync(file, 'utf8')));
+
+  assert.equal(observed, expected);
+  assert.notEqual(jsFingerprint, expected);
+});
+
+test('G04B terminal derivation binds exact Python phase fingerprints while retaining raw child-object fingerprints for the same-host seal', () => {
+  const manifestFingerprint = 'a'.repeat(64);
+  const trainingReceiptFingerprint = 'b'.repeat(64);
+  const evaluationReceiptFingerprint = 'c'.repeat(64);
   const manifest = {
     schemaVersion: 'vexlife.foundation-training-manifest/v1',
     trainingRunRef: 'training.g04b.terminal.001',
-    sourceManifestFingerprint: 'a'.repeat(64)
+    sourceManifestFingerprint: 'd'.repeat(64),
+    learningRate: 0.00002
   };
   const training = {
     schemaVersion: 'vexlife.foundation-training-receipt/v1',
-    manifestFingerprint: g04bCanonicalFingerprint(manifest),
-    candidateArtifactFingerprint: 'b'.repeat(64)
+    manifestFingerprint,
+    candidateArtifactFingerprint: 'e'.repeat(64),
+    meanTrainingLoss: 1.0,
+    elapsedSeconds: 2.0
   };
   const evaluation = {
     schemaVersion: 'vexlife.foundation-evaluation-receipt/v1',
-    trainingManifestFingerprint: training.manifestFingerprint,
-    trainingReceiptFingerprint: g04bCanonicalFingerprint(training)
+    trainingManifestFingerprint: manifestFingerprint,
+    trainingReceiptFingerprint,
+    elapsedSeconds: 3.0
   };
 
-  const derived = verifyG04BDerivedPhaseFingerprints(manifest, training, evaluation);
-  assert.equal(derived.manifestFingerprint, training.manifestFingerprint);
-  assert.equal(derived.trainingReceiptFingerprint, evaluation.trainingReceiptFingerprint);
-  assert.equal(derived.evaluationReceiptFingerprint, g04bCanonicalFingerprint(evaluation));
+  const derived = verifyG04BDerivedPhaseFingerprints(
+    manifest,
+    training,
+    evaluation,
+    { manifestFingerprint, trainingReceiptFingerprint, evaluationReceiptFingerprint }
+  );
+  assert.equal(derived.manifestFingerprint, manifestFingerprint);
+  assert.equal(derived.trainingReceiptFingerprint, trainingReceiptFingerprint);
+  assert.equal(derived.evaluationReceiptFingerprint, evaluationReceiptFingerprint);
+  assert.equal(derived.rawTrainingReceiptFingerprint, g04bCanonicalFingerprint(training));
+  assert.equal(derived.rawEvaluationReceiptFingerprint, g04bCanonicalFingerprint(evaluation));
 
   expectCode(
     () => verifyG04BDerivedPhaseFingerprints(
       manifest,
-      { ...training, manifestFingerprint: 'c'.repeat(64) },
-      evaluation
+      { ...training, manifestFingerprint: 'f'.repeat(64) },
+      evaluation,
+      { manifestFingerprint, trainingReceiptFingerprint, evaluationReceiptFingerprint }
     ),
     'G04B_TRAINING_MANIFEST_FINGERPRINT_MISMATCH'
   );
@@ -156,7 +208,8 @@ test('G04B terminal derivation recomputes manifest and training-receipt fingerpr
     () => verifyG04BDerivedPhaseFingerprints(
       manifest,
       training,
-      { ...evaluation, trainingReceiptFingerprint: 'd'.repeat(64) }
+      { ...evaluation, trainingReceiptFingerprint: '0'.repeat(64) },
+      { manifestFingerprint, trainingReceiptFingerprint, evaluationReceiptFingerprint }
     ),
     'G04B_EVALUATION_TRAINING_RECEIPT_FINGERPRINT_MISMATCH'
   );
@@ -207,7 +260,7 @@ test('symlinked machine result cannot substitute bytes before G04B consumption',
   );
 });
 
-test('G04B start owns same-host verified capture and standalone later consume is fail-closed', () => {
+test('G04B start owns same-host verified capture, canonical terminal normalization and fail-closed later consume', () => {
   const workerSource = fs.readFileSync(path.join(ROOT, 'scripts', 'g04b-native-training-worker.mjs'), 'utf8');
   const supervisorSource = fs.readFileSync(path.join(ROOT, 'scripts', 'g04b-native-training-supervisor.mjs'), 'utf8');
 
@@ -219,6 +272,7 @@ test('G04B start owns same-host verified capture and standalone later consume is
   assert.match(supervisorSource, /stdio: \['ignore', 'pipe', 'pipe'\]/u);
   assert.match(supervisorSource, /verifyG04BTerminalEvidence/u);
   assert.match(supervisorSource, /verifyG04BPersistedMachineResult/u);
+  assert.match(supervisorSource, /terminal\.canonicalResult/u);
   assert.match(supervisorSource, /capture\.sealedResult/u);
   assert.match(supervisorSource, /consumeNativeWorkerResult/u);
 });

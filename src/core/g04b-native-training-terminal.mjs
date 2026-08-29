@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -10,6 +11,23 @@ import {
 } from './g04b-native-training-worker.mjs';
 
 export const G04B_TERMINAL_EVIDENCE_SCHEMA = 'vexlife.g04b-native-training-terminal-evidence/v1';
+const HEX64 = /^[0-9a-f]{64}$/u;
+const PYTHON_CANONICAL_FINGERPRINT_PROGRAM = String.raw`
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+value = json.loads(source.read_text(encoding="utf-8"))
+canonical = json.dumps(
+    value,
+    ensure_ascii=False,
+    sort_keys=True,
+    separators=(",", ":"),
+).encode("utf-8")
+sys.stdout.write(hashlib.sha256(canonical).hexdigest())
+`.trim();
 
 export class G04BTerminalEvidenceError extends Error {
   constructor(code, message, details = null) {
@@ -50,15 +68,21 @@ function inside(root, target, label) {
   return { root: canonicalRoot, requested };
 }
 
-export function loadExactG04BJsonFile(root, target, label) {
-  const { root: canonicalRoot, requested } = inside(root, target, label);
+function exactRegularFile(target, label, code = 'G04B_TERMINAL_EVIDENCE_NOT_REGULAR') {
+  const requested = path.resolve(target);
   if (!fs.existsSync(requested)) fail('G04B_TERMINAL_EVIDENCE_MISSING', `${label} is missing`, { requested });
   const stat = fs.lstatSync(requested);
   if (stat.isSymbolicLink() || !stat.isFile()) {
-    fail('G04B_TERMINAL_EVIDENCE_NOT_REGULAR', `${label} must be one regular non-symlink file`, { requested });
+    fail(code, `${label} must be one regular non-symlink file`, { requested });
   }
   const real = fs.realpathSync.native(requested);
-  if (real !== requested) fail('G04B_TERMINAL_EVIDENCE_ALIAS', `${label} path is not canonical`, { requested, real });
+  if (real !== requested) fail(code, `${label} path is not canonical`, { requested, real });
+  return real;
+}
+
+export function loadExactG04BJsonFile(root, target, label) {
+  const { root: canonicalRoot, requested } = inside(root, target, label);
+  const real = exactRegularFile(requested, label);
   const relative = path.relative(canonicalRoot, real);
   if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     fail('G04B_TERMINAL_PATH_ESCAPE', `${label} resolved outside its admitted root`, { canonicalRoot, real });
@@ -68,6 +92,46 @@ export function loadExactG04BJsonFile(root, target, label) {
   } catch (error) {
     fail('G04B_TERMINAL_EVIDENCE_INVALID_JSON', `${label} is not valid JSON`, { cause: error.message });
   }
+}
+
+export function pythonCanonicalJsonFingerprintFile(pythonExecutablePath, jsonFile) {
+  const python = exactRegularFile(
+    pythonExecutablePath,
+    'bound Python executable',
+    'G04B_PYTHON_CANONICALIZER_BINDING_INVALID'
+  );
+  const source = exactRegularFile(jsonFile, 'canonical JSON evidence file');
+  const execution = spawnSync(
+    python,
+    ['-I', '-S', '-c', PYTHON_CANONICAL_FINGERPRINT_PROGRAM, source],
+    {
+      cwd: path.dirname(source),
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 10_000,
+      maxBuffer: 16 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe']
+    }
+  );
+  if (execution.error) {
+    fail('G04B_PYTHON_CANONICALIZATION_FAILED', 'exact Python canonical fingerprint process failed to start', {
+      cause: execution.error.message
+    });
+  }
+  if (execution.signal || execution.status !== 0) {
+    fail('G04B_PYTHON_CANONICALIZATION_FAILED', 'exact Python canonical fingerprint process did not complete successfully', {
+      status: execution.status,
+      signal: execution.signal,
+      stderr: String(execution.stderr ?? '').slice(0, 2000)
+    });
+  }
+  const observed = String(execution.stdout ?? '').trim();
+  if (!HEX64.test(observed)) {
+    fail('G04B_PYTHON_CANONICALIZATION_FAILED', 'exact Python canonical fingerprint output is not lowercase SHA-256', {
+      observed: observed.slice(0, 160)
+    });
+  }
+  return observed;
 }
 
 function exactCandidateDirectory(sourceRoot, outputDir) {
@@ -94,15 +158,32 @@ function assertEqual(field, expected, observed, code = 'G04B_TERMINAL_EVIDENCE_M
   if (observed !== expected) fail(code, `${field} does not match exact terminal evidence`, { field, expected, observed });
 }
 
-export function verifyG04BDerivedPhaseFingerprints(manifest, trainingReceipt, evaluationReceipt) {
-  const exactManifestFingerprint = g04bCanonicalFingerprint(manifest);
+function exactFingerprint(value, label) {
+  if (!HEX64.test(value ?? '')) fail('G04B_TERMINAL_FINGERPRINT_INVALID', `${label} must be one exact lowercase SHA-256`);
+  return value;
+}
+
+export function verifyG04BDerivedPhaseFingerprints(
+  manifest,
+  trainingReceipt,
+  evaluationReceipt,
+  {
+    manifestFingerprint,
+    trainingReceiptFingerprint,
+    evaluationReceiptFingerprint
+  } = {}
+) {
+  void manifest;
+  const exactManifestFingerprint = exactFingerprint(manifestFingerprint, 'manifestFingerprint');
+  const exactTrainingReceiptFingerprint = exactFingerprint(trainingReceiptFingerprint, 'trainingReceiptFingerprint');
+  const exactEvaluationReceiptFingerprint = exactFingerprint(evaluationReceiptFingerprint, 'evaluationReceiptFingerprint');
+
   assertEqual(
     'training.manifestFingerprint',
     exactManifestFingerprint,
     trainingReceipt?.manifestFingerprint,
     'G04B_TRAINING_MANIFEST_FINGERPRINT_MISMATCH'
   );
-  const exactTrainingReceiptFingerprint = g04bCanonicalFingerprint(trainingReceipt);
   assertEqual(
     'evaluation.trainingReceiptFingerprint',
     exactTrainingReceiptFingerprint,
@@ -118,7 +199,9 @@ export function verifyG04BDerivedPhaseFingerprints(manifest, trainingReceipt, ev
   return Object.freeze({
     manifestFingerprint: exactManifestFingerprint,
     trainingReceiptFingerprint: exactTrainingReceiptFingerprint,
-    evaluationReceiptFingerprint: g04bCanonicalFingerprint(evaluationReceipt)
+    evaluationReceiptFingerprint: exactEvaluationReceiptFingerprint,
+    rawTrainingReceiptFingerprint: g04bCanonicalFingerprint(trainingReceipt),
+    rawEvaluationReceiptFingerprint: g04bCanonicalFingerprint(evaluationReceipt)
   });
 }
 
@@ -158,23 +241,35 @@ export function verifyG04BTerminalEvidence(packet, machineResult, {
   }
 
   const candidateDirectory = exactCandidateDirectory(source, manifest.outputDir);
+  const trainingReceiptPath = path.join(candidateDirectory, 'vex-foundation-training-receipt.json');
+  const evaluationReceiptPath = path.join(candidateDirectory, 'vex-foundation-evaluation-receipt.json');
   const trainingReceipt = verifyG04BTrainingResult(
-    loadExactG04BJsonFile(candidateDirectory, path.join(candidateDirectory, 'vex-foundation-training-receipt.json'), 'training receipt'),
+    loadExactG04BJsonFile(candidateDirectory, trainingReceiptPath, 'training receipt'),
     manifest,
     validatedPacket
   );
   const evaluationReceipt = verifyG04BEvaluationResult(
-    loadExactG04BJsonFile(candidateDirectory, path.join(candidateDirectory, 'vex-foundation-evaluation-receipt.json'), 'evaluation receipt'),
+    loadExactG04BJsonFile(candidateDirectory, evaluationReceiptPath, 'evaluation receipt'),
     manifest,
     validatedPacket,
     trainingReceipt
   );
-  const derived = verifyG04BDerivedPhaseFingerprints(manifest, trainingReceipt, evaluationReceipt);
-  const result = verifyG04BMachineResult(machineResult, validatedPacket);
+  const derived = verifyG04BDerivedPhaseFingerprints(
+    manifest,
+    trainingReceipt,
+    evaluationReceipt,
+    {
+      manifestFingerprint: pythonCanonicalJsonFingerprintFile(validatedPacket.pythonExecutablePath, manifestPath),
+      trainingReceiptFingerprint: pythonCanonicalJsonFingerprintFile(validatedPacket.pythonExecutablePath, trainingReceiptPath),
+      evaluationReceiptFingerprint: pythonCanonicalJsonFingerprintFile(validatedPacket.pythonExecutablePath, evaluationReceiptPath)
+    }
+  );
+
+  const capturedResult = verifyG04BMachineResult(machineResult, validatedPacket);
   for (const [field, expected] of [
     ['sourceManifestFingerprint', manifest.sourceManifestFingerprint],
-    ['trainingReceiptFingerprint', derived.trainingReceiptFingerprint],
-    ['evaluationReceiptFingerprint', derived.evaluationReceiptFingerprint],
+    ['trainingReceiptFingerprint', derived.rawTrainingReceiptFingerprint],
+    ['evaluationReceiptFingerprint', derived.rawEvaluationReceiptFingerprint],
     ['priorModelIdentity', trainingReceipt.priorModelIdentity],
     ['candidateModelIdentity', trainingReceipt.candidateModelIdentity],
     ['candidateArtifactFingerprint', trainingReceipt.candidateArtifactFingerprint],
@@ -186,12 +281,19 @@ export function verifyG04BTerminalEvidence(packet, machineResult, {
     ['activationPerformed', trainingReceipt.activationPerformed],
     ['publicUploadPerformed', trainingReceipt.publicUploadPerformed]
   ]) {
-    assertEqual(`machineResult.${field}`, expected, result[field], 'G04B_TERMINAL_RESULT_READDRESSING');
+    assertEqual(`machineResult.${field}`, expected, capturedResult[field], 'G04B_TERMINAL_RESULT_READDRESSING');
   }
+
+  const canonicalResult = verifyG04BMachineResult({
+    ...capturedResult,
+    trainingReceiptFingerprint: derived.trainingReceiptFingerprint,
+    evaluationReceiptFingerprint: derived.evaluationReceiptFingerprint
+  }, validatedPacket);
 
   return Object.freeze({
     schemaVersion: G04B_TERMINAL_EVIDENCE_SCHEMA,
-    result,
+    result: capturedResult,
+    canonicalResult,
     manifestFingerprint: derived.manifestFingerprint,
     trainingReceiptFingerprint: derived.trainingReceiptFingerprint,
     evaluationReceiptFingerprint: derived.evaluationReceiptFingerprint,

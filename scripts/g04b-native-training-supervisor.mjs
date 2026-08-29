@@ -177,7 +177,8 @@ function makeVerifiedCapturingSpawn({
             sourceRoot: SOURCE_ROOT,
             planValidator: loadFoundationTrainingPlan
           });
-          capture.sealedResult = verifyG04BPersistedMachineResult(workerRoot, terminal.result, packet);
+          verifyG04BPersistedMachineResult(workerRoot, terminal.result, packet);
+          capture.sealedResult = terminal.canonicalResult;
         } catch (error) {
           capture.validationError = error;
           appendSupervisorValidationError(stderrFd, error);
