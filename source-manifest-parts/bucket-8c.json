@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "8c",
+  "files": [
+    {
+      "path": "src/core/g04b-native-training-worker.mjs",
+      "mode": "100644",
+      "bytes": 48486,
+      "sha256": "50db691fdd116a526cd7927b78dbaf3874f7c46ceebb4da2828bbf589c48fa1c"
+    }
+  ]
+}

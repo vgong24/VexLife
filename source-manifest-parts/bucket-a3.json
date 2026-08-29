@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 10601,
       "sha256": "5e718176c1f8cc92e8d1e99504ebb9b2e0008f2ea09abc0a72ea04245c183f21"
+    },
+    {
+      "path": "src/core/g04b-native-training-terminal.mjs",
+      "mode": "100644",
+      "bytes": 13459,
+      "sha256": "304fb66d4d721b0d519033bdecd64227c649dd1fec2b62c82be2f764ee253602"
     }
   ]
 }

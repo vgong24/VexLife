@@ -9,6 +9,12 @@
       "sha256": "533db6182bcabd097bcd260d1fbbb414c730c71944843dfc483aa51a1bf9eac3"
     },
     {
+      "path": "scripts/g04b-native-training-supervisor.mjs",
+      "mode": "100644",
+      "bytes": 9316,
+      "sha256": "4111cd7dc9be90ba6f9a828187e9b18f108262ae0fb926ac8a19c457affe69a4"
+    },
+    {
       "path": "scripts/provision-model.mjs",
       "mode": "100644",
       "bytes": 3545,
