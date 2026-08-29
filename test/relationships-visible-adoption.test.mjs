@@ -273,7 +273,7 @@ test('Relationships composed compact route is touch-sized, keyboard-operable, sc
     assert.equal(await page.locator('[data-rel="connect-panel"]').isVisible(), true);
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'relationshipsConnectMethod');
     assert.equal(await page.getByLabel('Invitation method').count(), 1);
-    assert.equal(await page.getByLabel('Invitation').count(), 1);
+    assert.equal(await page.getByLabel('Invitation', { exact:true }).count(), 1);
     assert.equal(await page.getByLabel('Identity check').count(), 1);
     assert.equal(await page.getByLabel('Your decision').count(), 1);
     assert.equal(await page.getByLabel('Your label').count(), 1);
