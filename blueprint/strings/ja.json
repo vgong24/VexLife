@@ -310,5 +310,7 @@
   "cdr-s5.closed-alpha.route-privacy": "経路とプライバシー・クラス表示のみ",
   "cdr-s5.closed-alpha.support": "安全なサポート参照を開く",
   "cdr-s5.closed-alpha.withdraw": "アルファ参加リファレンスを撤回",
-  "cdr-s5.closed-alpha.reset": "クローズド・アルファ参照をリセット"
+  "cdr-s5.closed-alpha.reset": "クローズド・アルファ参照をリセット",
+  "screen.relationships.title": "関係",
+  "terrain.kind.resource": "リソース"
 }

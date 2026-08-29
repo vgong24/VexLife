@@ -9,6 +9,12 @@
       "sha256": "df09880041da5c58ba3c220a90912eabfa39aa7f08eab48b2d59dc31221255d0"
     },
     {
+      "path": "test/g04b-native-training-worker.test.mjs",
+      "mode": "100644",
+      "bytes": 27701,
+      "sha256": "4cc4f6b1ac8e7bd3f28e435d53ae7996e6be6ffb5670199c1b46046dfb32e390"
+    },
+    {
       "path": "test/home-bridge.test.mjs",
       "mode": "100644",
       "bytes": 6260,

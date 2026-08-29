@@ -150,6 +150,44 @@ node scripts/foundation-training-plan.mjs training/foundation-generation/trainin
 
 The plan command performs no network or model operation. It verifies manifest shape, dataset hashes, training mode, exact repository/revision source identity, the exact current Source Manifest fingerprint, the exact execution-device/hardware-profile pair, and the rule that a dry run or adapter-only route cannot satisfy the G04B real-weight predicate.
 
+## Source-managed first NWS proving worker
+
+The first lived G04B proof is composed through `scripts/g04b-native-training-worker.mjs`; the direct Python commands below describe its fixed internal phases, not a substitute lifecycle owner.
+
+The worker consumes one closed source-root-relative packet with exact worker/work/purpose/result identities, external execution-authority ref, the complete pre-provisioned NWS Node runtime binding (`bindingRef`, `executableRef`, canonical executable path, executable SHA-256, `hostRef`, and `observedAt`), training-manifest bytes, isolated Python executable bytes, Vex Home root, Hugging Face cache root, exact resolved snapshot root and a complete sorted snapshot inventory. It owns no model-download authority and runs with Hugging Face/Transformers offline mode enabled.
+
+Before Python inspection, the caller independently derives the complete snapshot fingerprint from the resolved model bytes. This is distinct from the Python receipts' intentionally conservative `sourceModelSnapshotFingerprintObserved=false`: the trainer/evaluator still do not claim that provenance, while the outer source-managed caller may return `sourceModelSnapshotFingerprintObserved=true` only after exact path-set, byte-count and SHA-256 verification succeeds.
+
+The source-managed lifecycle is:
+
+```text
+packet carrying the exact Node runtime binding
+  -> g04b-native-training-worker.mjs prepare
+     -> caller verifies supplied binding equals the frozen packet binding
+     -> existing Native Worker Supervisor owns the exact BACKGROUND worker
+  -> g04b-native-training-worker.mjs start
+     -> detached NWS host reserves/adopts the exact launchRef
+     -> caller re-binds its packet to persisted NWS manifest.json + binding.json
+     -> exact source snapshot observation
+     -> Git-aware foundation training plan validation
+     -> fixed foundation_train.py --inspect-only
+     -> cooperative checkpoint: AFTER_INSPECTION_BEFORE_OPTIMIZER_EFFECT
+     -> fixed foundation_train.py --execute
+     -> fixed foundation_evaluate.py
+     -> bounded g04b-machine-result.json carrying the same host/Node binding identity
+     -> NWS WRAPPING_UP
+  -> g04b-native-training-worker.mjs consume
+     -> exact packet.resultRef only
+     -> existing NWS completion materialization
+     -> DONE
+```
+
+A scheduler-requested cooperative pause is honored only at the explicit post-inspection, pre-optimizer safe checkpoint. Once optimizer execution has begun, the caller does not pretend that an arbitrary mid-step point is a safe checkpoint. Existing NWS cancellation still owns exact child-process stop semantics.
+
+The first proving caller is intentionally narrower than the generic training implementation: it is bound to `MPS <-> hardware.macos-arm64.apple-m4-pro.metal`. The standalone trainer retains its separately accepted CUDA/MPS capability; widening this first NWS proving-worker caller requires a later explicit source change rather than silently substituting another host profile.
+
+The caller does **not** install Python/PyTorch, download a model, create consent, authorize optimizer effects, activate a candidate, publish/upload artifacts, overwrite the accepted generation, or mutate canonical Home/Memory semantics. Those remain separate materialization, authority and lifecycle effects.
+
 ## Inspect the trainable model before training
 
 After installing the qualified Python/PyTorch environment:
