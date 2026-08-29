@@ -150,6 +150,63 @@ node scripts/foundation-training-plan.mjs training/foundation-generation/trainin
 
 The plan command performs no network or model operation. It verifies manifest shape, dataset hashes, training mode, exact repository/revision source identity, the exact current Source Manifest fingerprint, the exact execution-device/hardware-profile pair, and the rule that a dry run or adapter-only route cannot satisfy the G04B real-weight predicate.
 
+## Source-managed G04B pre-provisioning worker
+
+The first Mac proof does not ask the training worker to discover, download, or install its own prerequisites. `scripts/g04b-native-provisioning-worker.mjs` is the separate source-managed pre-provisioning surface that turns one **already qualified, closed packet** into exact local runtime/model bindings for the post-provision worker.
+
+The packet binds, before any external effect:
+
+```text
+exact worker/work/purpose/result/execution-authority refs
+exact NWS Node runtime binding + Mac M4 Pro host profile
+Vex Home root
+one Python 3.12 runtime archive URL + SHA-256 + expected/max bytes + source/license refs
+one canonically sorted offline wheel lock
+  -> exact project + version + wheel filename + URL + SHA-256 + bytes + source/license refs
+Qwen/Qwen3.5-4B
+  -> exact revision 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+  -> complete canonically sorted path + URL + SHA-256 + byte inventory
+```
+
+The source does **not** dynamically choose a Python distribution, dependency version, wheel, model file, mirror, repository revision, or license. Those external identities belong to the later F04 effect-binding/qualification step. The descriptive `requirements.txt` version ranges are not package-install authority.
+
+Provisioning reuses the accepted resumable/hash-verifying artifact downloader. For the first Mac runtime, the source-managed CLI also reuses the accepted tar safety checks before `/usr/bin/tar` extraction. Runtime/package materialization is confined below Vex Home and the Python executable must be a regular non-symlink file; a system-Python or symlinked `venv` interpreter does not satisfy the contract.
+
+Dependencies are installed only from the exact pre-fetched wheelhouse:
+
+```text
+python -I -m pip install
+  --no-index
+  --no-deps
+  --require-hashes
+  --find-links <exact-wheelhouse>
+  -r <exact-generated-lock>
+
+python -I -m pip check
+```
+
+`--no-deps` is intentional: dependency discovery is completed before the effect packet is admitted. A missing transitive dependency therefore fails qualification rather than silently becoming an online package-resolution effect. After installation, the isolated Python runtime is independently requalified for exact package versions, Python 3.12, Darwin/arm64 and PyTorch MPS availability.
+
+The Qwen snapshot is materialized under the admitted Hugging Face cache layout and must match the packet's complete path set, byte counts and SHA-256 values. The resulting snapshot inventory/fingerprint uses the same schema consumed by the accepted post-provision G04B training caller.
+
+The admitted source route adds two terminal integrity rules beyond the implementation primitive:
+
+1. one exclusive first-proof provisioning lock serializes shared runtime/model materialization so distinct NWS attempts cannot race a partially promoted runtime;
+2. before successful worker return **and again before NWS DONE consumption**, the caller independently rebinds deterministic Vex Home paths, re-hashes the Python executable and every snapshot file, recomputes the packet-derived snapshot identity, validates runtime/install/download dispositions, re-reads the runtime receipt, and re-runs Python/package/MPS qualification.
+
+A result JSON that merely echoes valid-looking 64-hex fingerprints therefore cannot authorize NWS completion after the materialized state has drifted.
+
+Provisioning may legitimately report that model bytes were downloaded and packages were installed; those are the effects this packet is specifically meant to authorize later. It must still preserve:
+
+```text
+trainingActuallyExecuted=false
+optimizerStepPerformed=false
+activationPerformed=false
+publicUploadPerformed=false
+```
+
+A successful provisioning result is only an input to the post-provision training caller. It does not authorize the optimizer. In particular, unresolved training-dataset byte custody remains an independent hold: frozen corpus bytes may not be reconstructed from prose and relabeled as the prior source generation.
+
 ## Source-managed first NWS proving worker
 
 The first lived G04B proof is composed through `scripts/g04b-native-training-worker.mjs`; the direct Python commands below describe its fixed internal phases, not a substitute lifecycle owner.
