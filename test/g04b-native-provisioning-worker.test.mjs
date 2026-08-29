@@ -239,7 +239,7 @@ test('G04B provisioning rejects a symlinked materialized Python executable and r
     executeG04BProvisioningWorker(fx.packet, {
       downloadArtifact: downloaderFor(fx), extractRuntime: extractorFor({ symlinkPython: true }), processRunner: runnerFor().runner
     }),
-    (error) => error.code === 'G04B_PROVISION_PYTHON_EXECUTABLE_INVALID'
+    (error) => error.code === 'G04B_PROVISION_BOUNDARY_ESCAPE'
   );
   const finalRoot = path.join(fx.home, 'runtime', 'training', fx.packet.pythonRuntime.runtimeRef);
   assert.equal(fs.existsSync(finalRoot), false);
