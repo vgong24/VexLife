@@ -3,6 +3,12 @@
   "bucketId": "e4",
   "files": [
     {
+      "path": "scripts/g04b-native-training-worker.mjs",
+      "mode": "100644",
+      "bytes": 4381,
+      "sha256": "4cd0474c8fbc1f1a4ba23ab642080e9646152b3afc053595fe2bf522d859e222"
+    },
+    {
       "path": "src/core/build-admission.mjs",
       "mode": "100644",
       "bytes": 82949,
