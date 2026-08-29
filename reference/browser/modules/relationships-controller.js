@@ -93,7 +93,7 @@ async function fetchJson(root, relativePath) {
 }
 
 function validateCdrRegistry(registry) {
-  if (registry?.schemaVersion !== 'vexlife.cdr.s5-closed-alpha-browser/v1') throw new Error('Relationships CDR registry schema drift');
+  if (registry?.schemaVersion !== 'vexlife.cdr-s5-closed-alpha-browser/v1') throw new Error('Relationships CDR registry schema drift');
   if (registry.registryRef !== 'registry.vexlife.cdr-s5.closed-alpha-browser.001') throw new Error('Relationships CDR registry identity drift');
   if (registry.discoveryMode !== 'INVITE_ONLY' || registry.publicSearch !== false || registry.communitySearch !== false) throw new Error('Relationships CDR discovery boundary drift');
   for (const [field, values] of [
