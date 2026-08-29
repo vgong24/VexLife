@@ -20,16 +20,74 @@ import {
   browserLivingJournalMemoryFailurePayload,
   createBrowserLivingJournalMemoryBridge
 } from '../src/core/browser-living-journal-memory-bridge.mjs';
+import {
+  BROWSER_RELATIONSHIPS_RUNTIME_API_PATH,
+  BROWSER_RELATIONSHIPS_RUNTIME_MAX_BODY_BYTES,
+  BrowserRelationshipsRuntimeBridgeError,
+  browserRelationshipsRuntimeFailurePayload,
+  createBrowserRelationshipsRuntimeBridge
+} from '../src/core/browser-relationships-runtime-bridge.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+
+function readRelationshipsRuntimeSourceJson(sourceRoot, relativePath, label) {
+  const file = path.resolve(sourceRoot, relativePath);
+  let stat;
+  try {
+    stat = fs.lstatSync(file);
+  } catch (error) {
+    throw new BrowserRelationshipsRuntimeBridgeError(
+      'RELATIONSHIPS_RUNTIME_SOURCE_UNAVAILABLE',
+      `${label} is unavailable`,
+      503,
+      error?.message ?? String(error)
+    );
+  }
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    throw new BrowserRelationshipsRuntimeBridgeError(
+      'RELATIONSHIPS_RUNTIME_SOURCE_NOT_CURRENT',
+      `${label} must be one regular non-link file`,
+      503,
+      null
+    );
+  }
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw new BrowserRelationshipsRuntimeBridgeError(
+      'RELATIONSHIPS_RUNTIME_SOURCE_NOT_CURRENT',
+      `${label} is not valid JSON`,
+      503,
+      error?.message ?? String(error)
+    );
+  }
+}
+
+export function loadBrowserRelationshipsRuntimeSources(sourceRoot = root) {
+  const canonical = path.resolve(sourceRoot);
+  return Object.freeze({
+    relationshipsRegistry: readRelationshipsRuntimeSourceJson(
+      canonical,
+      'blueprint/relationships-browser-registry.json',
+      'Relationships registry'
+    ),
+    cdrRegistry: readRelationshipsRuntimeSourceJson(
+      canonical,
+      'blueprint/cdr-s5-closed-alpha-browser-registry.json',
+      'CDR S5 registry'
+    )
+  });
+}
+
 const companion = createBrowserCompanionBridge({
   home,
   endpoint: process.env.VEXLIFE_COMPANION_ENDPOINT ?? null,
   model: process.env.VEXLIFE_COMPANION_MODEL ?? null
 });
+const relationshipsRuntime = createBrowserRelationshipsRuntimeBridge(loadBrowserRelationshipsRuntimeSources(root));
 
 function sendJson(response, statusCode, value) {
   const body = `${JSON.stringify(value)}\n`;
@@ -50,6 +108,9 @@ function livingJournalMemoryRequestError(message, httpStatus) {
 }
 function livingJournalArchiveRequestError(message, httpStatus) {
   return new BrowserLivingJournalMemoryBridgeError('LIVING_JOURNAL_ARCHIVE_REQUEST_NOT_ADMITTED', message, httpStatus);
+}
+function relationshipsRuntimeRequestError(message, httpStatus) {
+  return new BrowserRelationshipsRuntimeBridgeError('RELATIONSHIPS_RUNTIME_REQUEST_NOT_ADMITTED', message, httpStatus, null);
 }
 
 async function readBoundedJson(request, { maxBytes = 64 * 1024, formError = companionRequestError, requestLabel = 'Companion request' } = {}) {
@@ -87,6 +148,7 @@ function memoryHomeFailure(error) {
 export function createVexLifeBrowserServer({
   staticRoot = root,
   companionBridge = companion,
+  relationshipsRuntimeBridge = relationshipsRuntime,
   resolveHomeIdentity = () => loadBrowserCompanionHomeIdentity(home),
   createLivingJournalMemoryBridge = (identity) => createBrowserLivingJournalMemoryBridge({ identity })
 } = {}) {
@@ -113,6 +175,34 @@ export function createVexLifeBrowserServer({
         const input = await readBoundedJson(request);
         const result = await companionBridge.performTurn(input);
         sendJson(response, 200, result);
+        return;
+      }
+
+      if (url.pathname === BROWSER_RELATIONSHIPS_RUNTIME_API_PATH) {
+        if (request.method !== 'POST') {
+          response.writeHead(405, { Allow: 'POST', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const input = await readBoundedJson(request, {
+            maxBytes: BROWSER_RELATIONSHIPS_RUNTIME_MAX_BODY_BYTES,
+            formError: relationshipsRuntimeRequestError,
+            requestLabel: 'Relationships runtime request'
+          });
+          const result = relationshipsRuntimeBridge.prepare(input);
+          sendJson(response, 200, result);
+        } catch (error) {
+          const typed = error instanceof BrowserRelationshipsRuntimeBridgeError
+            ? error
+            : new BrowserRelationshipsRuntimeBridgeError(
+              'RELATIONSHIPS_RUNTIME_PLAN_FAILED',
+              'Relationships runtime plan failed safely',
+              500,
+              null
+            );
+          sendJson(response, typed.httpStatus, browserRelationshipsRuntimeFailurePayload(typed));
+        }
         return;
       }
 
