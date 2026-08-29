@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { createServer } from 'node:http';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { project, validateRegistry } from '../reference/browser/relationships/core.js';
+import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -13,29 +13,8 @@ const read = (relativePath) => fs.readFileSync(path.join(ROOT, relativePath), 'u
 const json = (relativePath) => JSON.parse(read(relativePath));
 const RELATIONSHIPS_TERRAIN_REF = 'terrain.resource.relationships';
 
-function contentType(filePath) {
-  if (filePath.endsWith('.html')) return 'text/html; charset=utf-8';
-  if (filePath.endsWith('.css')) return 'text/css; charset=utf-8';
-  if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) return 'text/javascript; charset=utf-8';
-  if (filePath.endsWith('.json')) return 'application/json; charset=utf-8';
-  return 'application/octet-stream';
-}
-
 async function openReferenceServer() {
-  const server = createServer((request, response) => {
-    const url = new URL(request.url ?? '/', 'http://127.0.0.1');
-    const relative = decodeURIComponent(url.pathname).replace(/^\/+/, '');
-    const target = path.resolve(ROOT, relative);
-    if (target !== ROOT && !target.startsWith(`${ROOT}${path.sep}`)) {
-      response.writeHead(403).end('forbidden');
-      return;
-    }
-    fs.readFile(target, (error, bytes) => {
-      if (error) { response.writeHead(404).end('not found'); return; }
-      response.writeHead(200, { 'Content-Type': contentType(target), 'Cache-Control':'no-store' });
-      response.end(bytes);
-    });
-  });
+  const server = createVexLifeBrowserServer({ staticRoot: ROOT });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   return server;
 }
@@ -78,6 +57,19 @@ function assertHumanVisibleText(text) {
     'RECEIVED_HELD_IDENTITY',
     'VERIFIED_CURRENT',
     'NOT_CONNECTED',
+    'AVAILABLE_FOR_INVITES',
+    'OFFLINE_PENDING_MAILBOX',
+    'APP_ON_MODEL_UNLOADED',
+    'PRESENCE_HIDDEN',
+    'RELAY_ONLY',
+    'UNREACHABLE_OR_LEASE_EXPIRED',
+    'DIRECT_CANDIDATE',
+    'STORE_FORWARD',
+    'IDENTITY_CHECK_FAILED',
+    'PEER_UNREACHABLE',
+    'RELAY_UNAVAILABLE',
+    'MAILBOX_ONLY',
+    'SESSION_EXPIRED',
     'canonical implementation',
     'no external effect'
   ]) {
@@ -85,11 +77,22 @@ function assertHumanVisibleText(text) {
   }
 }
 
+function undersizedControls(page) {
+  return page.locator('#view-relationships button:visible, #view-relationships select:visible').evaluateAll((elements) =>
+    elements.filter((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.width < 44 || rect.height < 44;
+    }).map((element) => ({ id:element.id, width:element.getBoundingClientRect().width, height:element.getBoundingClientRect().height }))
+  );
+}
+
 test('Relationships visible adoption binds the stable resource to Self Development without effect widening', () => {
   const registry = validateRegistry(json('blueprint/relationships-browser-registry.json'));
   const terrain = json('blueprint/fragments/terrain.json');
   const featureRegistry = json('blueprint/feature-registry.json');
   const moduleRegistry = json('blueprint/module-registry/browser.json');
+  const moduleComposition = json('blueprint/module-registry.json');
+  const runtimeModuleRegistry = json('blueprint/module-registry/relationships-runtime-bridge.json');
   const descriptor = json('blueprint/vexlife.blueprint.json');
   const screen = json('blueprint/fragments/screens/relationships.json');
 
@@ -124,6 +127,12 @@ test('Relationships visible adoption binds the stable resource to Self Developme
   assert.ok(feature.moduleRefs.includes('module.vexlife.browser.relationships-controller'));
   assert.ok(moduleRegistry.some((module) => module.moduleRef === 'module.vexlife.browser.relationships-controller'));
   assert.ok(moduleRegistry.some((module) => module.moduleRef === 'module.vexlife.browser.relationships-core'));
+  assert.ok(moduleComposition.includes.modules.includes('blueprint/module-registry/relationships-runtime-bridge.json'));
+  assert.equal(runtimeModuleRegistry.length, 1);
+  assert.equal(runtimeModuleRegistry[0].moduleRef, 'module.vexlife.core.relationships-runtime-bridge');
+  assert.equal(runtimeModuleRegistry[0].path, 'src/core/browser-relationships-runtime-bridge.mjs');
+  assert.deepEqual(runtimeModuleRegistry[0].writes, []);
+  assert.ok(runtimeModuleRegistry[0].loadedBy.includes('module.vexlife.script.serve-browser'));
 });
 
 test('Relationships scale projection preserves direct identity and aggregation boundaries', () => {
@@ -179,16 +188,47 @@ test('Relationships root browser route is visible, localized, accessible and no-
     assert.equal(await page.locator('#relationshipsInvitation option[value="RECEIVED_VERIFIED_REFERENCE"]').textContent(), 'Invitation received and verified');
     assert.equal(await page.locator('#relationshipsIdentity option[value="VERIFIED_CURRENT"]').textContent(), 'Identity verified');
     assert.equal(await page.locator('#relationshipsDecision option[value="NARROW"]').textContent(), 'Accept with limits');
+    assert.equal(await page.locator('#relationshipsPresence option[value="APP_ON_MODEL_UNLOADED"]').textContent(), 'App open · companion not loaded');
+    assert.equal(await page.locator('#relationshipsRoute option[value="DIRECT_CANDIDATE"]').textContent(), 'Direct connection available');
+    assert.equal(await page.locator('#relationshipsFailure option[value="NONE"]').textContent(), 'No current connection issue');
     await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
     await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
     await page.selectOption('#relationshipsDecision', 'NARROW');
     assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), false);
     await page.locator('#relationshipsFormLocal').click();
     assert.match(await page.locator('#relationshipsConnectStatus').textContent(), /Nothing has been sent or saved/i);
-    const formed = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    let formed = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
     assert.equal(formed.localFormed, true);
     assert.equal(formed.admission.admitted, true);
     assert.equal(formed.delivery, 'NOT_CONNECTED');
+    assert.equal(formed.cdrGate.alphaConsentAcknowledged, false);
+    assert.equal(formed.runtimePlan.state, 'IDLE');
+
+    await page.locator('#relationshipsPrepareRuntimePlan').click();
+    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.relationships.snapshot().runtimePlan.state === 'HELD');
+    let held = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    assert.equal(held.runtimePlan.state, 'HELD');
+    assert.equal(held.delivery, 'NOT_CONNECTED');
+    assert.match(await page.locator('#relationshipsRuntimePlanStatus').textContent(), /Host plan held/i);
+
+    const alpha = page.locator('#relationshipsAlphaConsent');
+    assert.equal(await alpha.isDisabled(), false);
+    await alpha.click();
+    assert.equal(await page.locator('#relationshipsAlphaConsent').isDisabled(), true);
+    assert.match(await page.locator('#relationshipsAlphaConsent').textContent(), /acknowledged/i);
+    formed = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    assert.equal(formed.cdrGate.alphaConsentAcknowledged, true);
+    assert.equal(formed.runtimePlan.state, 'IDLE');
+
+    await page.locator('#relationshipsPrepareRuntimePlan').click();
+    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.relationships.snapshot().runtimePlan.state === 'HOST_BINDING_REQUIRED');
+    const planned = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    assert.equal(planned.runtimePlan.state, 'HOST_BINDING_REQUIRED');
+    assert.equal(planned.runtimePlan.hostExecutionDeferred, true);
+    assert.equal(planned.runtimePlan.semanticAcknowledged, false);
+    assert.equal(planned.delivery, 'NOT_CONNECTED');
+    assert.match(await page.locator('#relationshipsRuntimePlanStatus').textContent(), /no network connection has started/i);
+    assertHumanVisibleText(await page.locator('#view-relationships').textContent());
 
     const hundred = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.setScenarioCount(100));
     assert.equal(hundred.mode, 'AGGREGATE');
@@ -205,15 +245,19 @@ test('Relationships root browser route is visible, localized, accessible and no-
     await page.waitForFunction(() => document.documentElement.lang === 'ja');
     assert.equal(await page.locator('#view-relationships [data-rel="title"]').textContent(), '関係');
     assert.equal(await page.locator('#relationshipsInvitation option[value="RECEIVED_VERIFIED_REFERENCE"]').textContent(), '招待を受信し、検証済み');
+    assert.equal(await page.locator('#relationshipsPresence option[value="APP_ON_MODEL_UNLOADED"]').textContent(), 'アプリは起動中 · コンパニオン未読込');
     await page.selectOption('#languageSelect', 'zh');
     await page.waitForFunction(() => document.documentElement.lang === 'zh');
     assert.equal(await page.locator('#view-relationships [data-rel="title"]').textContent(), '关系');
     assert.equal(await page.locator('#relationshipsInvitation option[value="RECEIVED_VERIFIED_REFERENCE"]').textContent(), '已收到并验证邀请');
+    assert.equal(await page.locator('#relationshipsRoute option[value="DIRECT_CANDIDATE"]').textContent(), '可直接连接');
 
     const snap = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
     assert.equal(snap.resourceRef, 'resource.vexlife.relationships');
     assert.equal(snap.publicSearch, false);
     assert.equal(snap.communitySearch, false);
+    assert.equal(snap.delivery, 'NOT_CONNECTED');
+    assert.equal(snap.runtimePlan.state, 'HOST_BINDING_REQUIRED');
     assert.equal(Object.values(snap.effects).every((value) => value === false), true);
     assert.equal(popups, 0);
     assert.equal(downloads, 0);
@@ -259,13 +303,7 @@ test('Relationships composed compact route is touch-sized, keyboard-operable, sc
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert.ok(overflow <= 1, `Relationships compact route overflowed by ${overflow}px`);
-    const undersized = await page.locator('#view-relationships button:visible, #view-relationships select:visible').evaluateAll((elements) =>
-      elements.filter((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.width < 44 || rect.height < 44;
-      }).map((element) => ({ id:element.id, width:element.getBoundingClientRect().width, height:element.getBoundingClientRect().height }))
-    );
-    assert.deepEqual(undersized, []);
+    assert.deepEqual(await undersizedControls(page), []);
 
     const connect = page.locator('#relationshipsConnect');
     await connect.focus();
@@ -277,9 +315,16 @@ test('Relationships composed compact route is touch-sized, keyboard-operable, sc
     assert.equal(await page.getByLabel('Identity check').count(), 1);
     assert.equal(await page.getByLabel('Your decision').count(), 1);
     assert.equal(await page.getByLabel('Your label').count(), 1);
-    assert.equal(await page.locator('#view-relationships').getByRole('status').count(), 1);
+    assert.equal(await page.getByRole('combobox', { name:'Presence', exact:true }).count(), 1);
+    assert.equal(await page.getByRole('combobox', { name:'Route', exact:true }).count(), 1);
+    assert.equal(await page.getByRole('combobox', { name:'Current connection issue', exact:true }).count(), 1);
+    assert.equal(await page.locator('#view-relationships').getByRole('status').count(), 2);
     assert.equal(await page.locator('#relationshipsConnectMethod option[value="QR_PROJECTION"]').textContent(), 'QR code');
     assert.equal(await page.locator('#relationshipsInvitation option[value="RECEIVED_VERIFIED_REFERENCE"]').textContent(), 'Invitation received and verified');
+    assert.equal(await page.locator('#relationshipsPresence option[value="APP_ON_MODEL_UNLOADED"]').textContent(), 'App open · companion not loaded');
+    assert.equal(await page.locator('#relationshipsRoute option[value="DIRECT_CANDIDATE"]').textContent(), 'Direct connection available');
+    assert.equal(await page.locator('#relationshipsFailure option[value="NONE"]').textContent(), 'No current connection issue');
+    assert.deepEqual(await undersizedControls(page), []);
     assertHumanVisibleText(await page.locator('#view-relationships').textContent());
 
     await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.setScenarioCount(100));
@@ -292,6 +337,7 @@ test('Relationships composed compact route is touch-sized, keyboard-operable, sc
     const snapshot = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
     assert.equal(snapshot.accessibleRelationshipCount, 100);
     assert.equal(snapshot.virtualizationRequired, true);
+    assert.equal(snapshot.runtimePlan.state, 'IDLE');
     assert.equal(Object.values(snapshot.effects).every((value) => value === false), true);
 
     assert.deepEqual(consoleErrors, []);
