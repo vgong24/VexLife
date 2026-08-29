@@ -37,6 +37,37 @@ const OPTION_LABEL_KEYS = Object.freeze({
   OTHER:'classOther'
 });
 
+const CDR_OPTION_LABEL_KEYS = Object.freeze({
+  presence: Object.freeze({
+    AVAILABLE_FOR_INVITES:'option.presence.available',
+    OFFLINE_PENDING_MAILBOX:'option.presence.offlineMailbox',
+    APP_ON_MODEL_UNLOADED:'option.presence.appModelUnloaded',
+    PRESENCE_HIDDEN:'option.presence.hidden',
+    RELAY_ONLY:'option.presence.relayOnly',
+    UNREACHABLE_OR_LEASE_EXPIRED:'option.presence.unreachable',
+    UNKNOWN:'option.presence.unknown'
+  }),
+  route: Object.freeze({
+    DIRECT_CANDIDATE:'option.route.direct',
+    RELAYED:'option.route.relayed',
+    STORE_FORWARD:'option.route.storeForward',
+    UNAVAILABLE:'option.route.unavailable'
+  }),
+  failure: Object.freeze({
+    NONE:'option.failure.none',
+    IDENTITY_CHECK_FAILED:'option.failure.identity',
+    PEER_UNREACHABLE:'option.failure.peer',
+    RELAY_UNAVAILABLE:'option.failure.relay',
+    MAILBOX_ONLY:'option.failure.mailbox',
+    SESSION_EXPIRED:'option.failure.session',
+    UNKNOWN:'option.failure.unknown'
+  })
+});
+
+const CDR_HUMAN_OPTION_KEYS = Object.freeze(
+  Object.values(CDR_OPTION_LABEL_KEYS).flatMap((mapping) => Object.values(mapping))
+);
+
 const REQUIRED_RUNTIME_STRING_KEYS = Object.freeze([
   'alphaConsentTitle',
   'alphaConsentBody',
@@ -98,7 +129,7 @@ export async function loadRelationshipsReference(root = '../../') {
     const candidateKeys = Object.keys(catalogs[language] ?? {}).sort();
     if (JSON.stringify(candidateKeys) !== JSON.stringify(referenceKeys)) throw new Error(`Relationships catalog key drift: ${language}`);
   }
-  for (const key of new Set([...Object.values(OPTION_LABEL_KEYS), ...REQUIRED_RUNTIME_STRING_KEYS])) {
+  for (const key of new Set([...Object.values(OPTION_LABEL_KEYS), ...CDR_HUMAN_OPTION_KEYS, ...REQUIRED_RUNTIME_STRING_KEYS])) {
     if (!referenceKeys.includes(key)) throw new Error(`Relationships human option label missing: ${key}`);
   }
   return Object.freeze({ registry, catalogs, cdrRegistry: loadedCdrRegistry });
@@ -199,6 +230,11 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   const humanOptionLabel = (value) => {
     const key = OPTION_LABEL_KEYS[value];
     if (!key) throw new Error(`Relationships option label unmapped: ${value}`);
+    return rt(key);
+  };
+  const cdrOptionLabel = (category, value) => {
+    const key = CDR_OPTION_LABEL_KEYS[category]?.[value];
+    if (!key) throw new Error(`Relationships CDR ${category} option label unmapped: ${value}`);
     return rt(key);
   };
   const auxiliaryCounts = () => scenarioCount === 0
@@ -421,12 +457,18 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     alphaBody.textContent = rt('alphaConsentBody');
     const alpha = actionButton('relationshipsAlphaConsent', interaction.alphaConsentAcknowledged ? rt('alphaConsentReady') : rt('alphaConsentAcknowledge'));
     alpha.setAttribute('aria-pressed', String(interaction.alphaConsentAcknowledged));
-    alpha.disabled = interaction.recovery !== 'ACTIVE';
-    alpha.onclick = () => { interaction.alphaConsentAcknowledged = !interaction.alphaConsentAcknowledged; clearRuntimePlan(); render(); };
+    alpha.disabled = interaction.alphaConsentAcknowledged || interaction.recovery !== 'ACTIVE';
+    alpha.onclick = () => {
+      if (!interaction.alphaConsentAcknowledged) {
+        interaction.alphaConsentAcknowledged = true;
+        clearRuntimePlan();
+        render();
+      }
+    };
 
-    const presence = selectControl('relationshipsPresence', rt('presence'), cdrRegistry.presenceStates);
-    const route = selectControl('relationshipsRoute', rt('route'), cdrRegistry.routeClasses);
-    const failure = selectControl('relationshipsFailure', rt('failure'), cdrRegistry.failureStates);
+    const presence = selectControl('relationshipsPresence', rt('presence'), cdrRegistry.presenceStates, (value) => cdrOptionLabel('presence', value));
+    const route = selectControl('relationshipsRoute', rt('route'), cdrRegistry.routeClasses, (value) => cdrOptionLabel('route', value));
+    const failure = selectControl('relationshipsFailure', rt('failure'), cdrRegistry.failureStates, (value) => cdrOptionLabel('failure', value));
     presence.select.value = interaction.presenceClass;
     route.select.value = interaction.routeClass;
     failure.select.value = interaction.failureState;
