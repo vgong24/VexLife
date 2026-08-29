@@ -30,6 +30,16 @@
     }
   },
   {
+    "terrainNodeRef": "terrain.resource.relationships",
+    "parentRef": "terrain.project.self-development",
+    "labelStringRef": "screen.relationships.title",
+    "kind": "RESOURCE",
+    "defaultPosition": {
+      "x": 930,
+      "y": 430
+    }
+  },
+  {
     "terrainNodeRef": "terrain.project.vex-home-product",
     "parentRef": "terrain.project.root-hub",
     "labelStringRef": "project.vex-home.name",
