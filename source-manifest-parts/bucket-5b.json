@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "5b",
+  "files": [
+    {
+      "path": "test/g04b-native-provisioning-worker.test.mjs",
+      "mode": "100644",
+      "bytes": 16145,
+      "sha256": "27cc0e11d9027ed8ca662c985c46d1c0edcb40000bf204c5a1627418701a0563"
+    }
+  ]
+}
