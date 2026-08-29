@@ -11,8 +11,8 @@
     {
       "path": "scripts/experience-review-effect-fixture.mjs",
       "mode": "100644",
-      "bytes": 18247,
-      "sha256": "28340f15ec253db4a4c0621b5bbe750c4833ff151a38b5bc650f0fe2500ca5da"
+      "bytes": 19135,
+      "sha256": "766ee16856cc6e2e96577acd9891a863a774c49eaca956b58e409693b462a86b"
     },
     {
       "path": "scripts/serve-browser.mjs",
