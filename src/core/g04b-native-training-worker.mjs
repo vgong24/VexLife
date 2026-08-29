@@ -84,6 +84,21 @@ const INVENTORY_FIELDS = Object.freeze([
   'snapshotFingerprint'
 ]);
 const INVENTORY_FILE_FIELDS = Object.freeze(['path', 'bytes', 'sha256']);
+const MPS_EXECUTION_OBSERVATION_FIELDS = Object.freeze([
+  'executionDevice',
+  'deviceType',
+  'deviceName',
+  'platform',
+  'architecture',
+  'expectedHardwareProfileRef',
+  'torchVersion',
+  'precision',
+  'mpsBuilt',
+  'mpsAvailable',
+  'acceleratorMemoryBytes',
+  'cudaRuntimeVersion',
+  'observationFingerprint'
+]);
 
 export class G04BNativeTrainingWorkerError extends Error {
   constructor(code, message, details = null) {
@@ -505,6 +520,69 @@ export function verifyG04BMachineResult(result, packet) {
   return Object.freeze(structuredClone(result));
 }
 
+function priorModelIdentity(manifest) {
+  return `model-source.vexlife.sha256.${canonicalFingerprint({
+    schemaVersion: 'vexlife.prior-model-identity/v1',
+    sourceModelRepo: manifest.sourceModelRepo,
+    sourceModelRevision: manifest.sourceModelRevision,
+    sourceModelIdentityClass: 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION'
+  })}`;
+}
+
+function candidateModelIdentity(manifest, candidateArtifactFingerprint) {
+  return `model-candidate.vexlife.sha256.${canonicalFingerprint({
+    schemaVersion: 'vexlife.candidate-model-identity/v1',
+    priorModelIdentity: priorModelIdentity(manifest),
+    trainingRunRef: manifest.trainingRunRef,
+    candidateArtifactFingerprint
+  })}`;
+}
+
+function verifyMpsExecutionObservation(payload, manifest, packet, label) {
+  const observation = payload.executionObservation;
+  exactKeys(observation, MPS_EXECUTION_OBSERVATION_FIELDS, `${label}.executionObservation`, 'G04B_PHASE_RESULT_INVALID');
+  const observedFingerprint = payload.executionObservationFingerprint;
+  if (!HEX64.test(observedFingerprint ?? '') || observation.observationFingerprint !== observedFingerprint) {
+    fail('G04B_PHASE_RESULT_INVALID', `${label} execution observation fingerprint is not exact`);
+  }
+  const fingerprintPayload = { ...observation };
+  delete fingerprintPayload.observationFingerprint;
+  const recomputedFingerprint = canonicalFingerprint(fingerprintPayload);
+  if (recomputedFingerprint !== observedFingerprint) {
+    fail('G04B_PHASE_OBSERVATION_MISMATCH', `${label} execution observation fingerprint does not match the exact observation bytes`, {
+      expected: recomputedFingerprint,
+      observed: observedFingerprint
+    });
+  }
+  for (const [field, expected] of [
+    ['executionDevice', packet.expectedExecutionDevice],
+    ['expectedHardwareProfileRef', packet.expectedHardwareProfileRef],
+    ['precision', manifest.precision],
+    ['deviceType', 'mps'],
+    ['platform', 'darwin'],
+    ['architecture', 'arm64'],
+    ['deviceName', 'Apple M4 Pro'],
+    ['mpsBuilt', true],
+    ['mpsAvailable', true],
+    ['cudaRuntimeVersion', null]
+  ]) {
+    if (observation[field] !== expected) {
+      fail('G04B_PHASE_OBSERVATION_MISMATCH', `${label} execution observation ${field} does not match the exact first-worker host`, {
+        expected,
+        observed: observation[field]
+      });
+    }
+  }
+  if (typeof observation.torchVersion !== 'string' || !observation.torchVersion) {
+    fail('G04B_PHASE_OBSERVATION_MISMATCH', `${label} execution observation has no concrete torchVersion`);
+  }
+  if (observation.acceleratorMemoryBytes !== null
+      && (!Number.isSafeInteger(observation.acceleratorMemoryBytes) || observation.acceleratorMemoryBytes <= 0)) {
+    fail('G04B_PHASE_OBSERVATION_MISMATCH', `${label} acceleratorMemoryBytes must be null or a positive safe integer`);
+  }
+  return observation;
+}
+
 function verifyCommonTrainingIdentity(payload, manifest, packet, label) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) fail('G04B_PHASE_RESULT_INVALID', `${label} result must be one object`);
   for (const [field, expected] of [
@@ -520,47 +598,150 @@ function verifyCommonTrainingIdentity(payload, manifest, packet, label) {
   }
   if (payload.sourceModelSnapshotFingerprintObserved !== false) fail('G04B_PHASE_PROVENANCE_COLLAPSE', `${label} must not claim Python independently observed sourceModelSnapshotFingerprint`);
   if (payload.sourceManifestFingerprintObserved !== false) fail('G04B_PHASE_PROVENANCE_COLLAPSE', `${label} must not claim Python independently observed sourceManifestFingerprint`);
-  if (!HEX64.test(payload.executionObservationFingerprint ?? '')) fail('G04B_PHASE_RESULT_INVALID', `${label} has no valid executionObservationFingerprint`);
-  if (!payload.executionObservation || payload.executionObservation.observationFingerprint !== payload.executionObservationFingerprint) {
-    fail('G04B_PHASE_RESULT_INVALID', `${label} execution observation fingerprint is not self-consistent`);
-  }
+  return verifyMpsExecutionObservation(payload, manifest, packet, label);
 }
 
 export function verifyG04BInspectionResult(payload, manifest, packet) {
   if (payload?.schemaVersion !== 'vexlife.foundation-training-inspection/v1') fail('G04B_INSPECTION_RESULT_INVALID', 'inspection result schema is not current');
   verifyCommonTrainingIdentity(payload, manifest, packet, 'inspection');
-  if (payload.localFilesOnly !== true || payload.modelPlacedOnExecutionDevice !== true || payload.deviceType !== 'mps') {
-    fail('G04B_INSPECTION_RESULT_INVALID', 'inspection did not prove local-only MPS model placement');
+  if (payload.trainingMode !== manifest.trainingMode
+      || payload.priorModelIdentity !== priorModelIdentity(manifest)
+      || payload.sourceModelIdentityClass !== 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION') {
+    fail('G04B_INSPECTION_IDENTITY_MISMATCH', 'inspection model identity does not match the exact source model');
+  }
+  if (payload.localFilesOnly !== true
+      || payload.modelPlacedOnExecutionDevice !== true
+      || payload.deviceType !== 'mps'
+      || payload.trainingActuallyExecuted !== false
+      || payload.modelWeightsChanged !== false
+      || payload.activationPerformed !== false) {
+    fail('G04B_INSPECTION_RESULT_INVALID', 'inspection did not preserve local-only no-training MPS truth');
   }
   return payload;
+}
+
+function verifyCandidateArtifactDigests(payload) {
+  const digests = payload.candidateArtifactDigests;
+  if (!digests || typeof digests !== 'object' || Array.isArray(digests) || Object.keys(digests).length === 0) {
+    fail('G04B_TRAINING_RESULT_INVALID', 'training result has no candidate artifact digest map');
+  }
+  for (const [candidatePath, digest] of Object.entries(digests)) {
+    safeRelative(candidatePath, `candidateArtifactDigests.${candidatePath}`);
+    if (candidatePath.includes('\\') || !HEX64.test(digest ?? '')) {
+      fail('G04B_TRAINING_RESULT_INVALID', 'candidate artifact digest map is not canonical', { candidatePath, digest });
+    }
+  }
+  const expectedFingerprint = canonicalFingerprint(digests);
+  if (payload.candidateArtifactFingerprint !== expectedFingerprint) {
+    fail('G04B_TRAINING_IDENTITY_MISMATCH', 'candidateArtifactFingerprint does not match the exact candidate digest map', {
+      expected: expectedFingerprint,
+      observed: payload.candidateArtifactFingerprint
+    });
+  }
+  return digests;
 }
 
 export function verifyG04BTrainingResult(payload, manifest, packet) {
   if (payload?.schemaVersion !== 'vexlife.foundation-training-receipt/v1') fail('G04B_TRAINING_RESULT_INVALID', 'training result schema is not current');
   verifyCommonTrainingIdentity(payload, manifest, packet, 'training');
-  if (payload.trainingActuallyExecuted !== true || payload.modelWeightsChanged !== true || !Number.isSafeInteger(payload.changedParameterCount) || payload.changedParameterCount <= 0) {
-    fail('G04B_TRAINING_RESULT_INVALID', 'training result does not prove a real nonzero weight change');
+  const digests = verifyCandidateArtifactDigests(payload);
+  const expectedPriorModelIdentity = priorModelIdentity(manifest);
+  const expectedCandidateModelIdentity = candidateModelIdentity(manifest, payload.candidateArtifactFingerprint);
+  if (payload.priorModelIdentity !== expectedPriorModelIdentity
+      || payload.candidateModelIdentity !== expectedCandidateModelIdentity
+      || payload.sourceModelIdentityClass !== 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION') {
+    fail('G04B_TRAINING_IDENTITY_MISMATCH', 'training model genealogy does not match exact source + run + candidate bytes', {
+      expectedPriorModelIdentity,
+      observedPriorModelIdentity: payload.priorModelIdentity,
+      expectedCandidateModelIdentity,
+      observedCandidateModelIdentity: payload.candidateModelIdentity
+    });
   }
-  if (payload.activationPerformed !== false) fail('G04B_ACTIVATION_COLLAPSE', 'training result must preserve activationPerformed=false');
-  if (!HEX64.test(payload.candidateArtifactFingerprint ?? '') || typeof payload.candidateModelIdentity !== 'string' || !payload.candidateModelIdentity) {
-    fail('G04B_TRAINING_RESULT_INVALID', 'training result has no exact candidate artifact/model identity');
+  for (const [field, expected] of [
+    ['trainingDatasetSha256', manifest.trainingDatasetSha256],
+    ['heldoutDatasetSha256', manifest.heldoutDatasetSha256]
+  ]) {
+    if (payload[field] !== expected) fail('G04B_TRAINING_IDENTITY_MISMATCH', `training ${field} does not match the exact manifest`, { expected, observed: payload[field] });
   }
-  return payload;
+  if (!HEX64.test(payload.manifestFingerprint ?? '')) fail('G04B_TRAINING_RESULT_INVALID', 'training result has no valid manifestFingerprint');
+  if (payload.trainingActuallyExecuted !== true
+      || payload.simulationOnly !== false
+      || payload.modelWeightsChanged !== true
+      || !Number.isSafeInteger(payload.changedParameterCount)
+      || payload.changedParameterCount <= 0
+      || payload.localFilesOnly !== true
+      || payload.deviceType !== 'mps') {
+    fail('G04B_TRAINING_RESULT_INVALID', 'training result does not prove a real local MPS nonzero weight change');
+  }
+  if (payload.activationPerformed !== false
+      || payload.acceptedCurrentModelOverwritten !== false
+      || payload.publicUploadPerformed !== false) {
+    fail('G04B_ACTIVATION_COLLAPSE', 'training result must preserve activation/publication/current-model immutability');
+  }
+  return Object.freeze({ ...payload, candidateArtifactDigests: structuredClone(digests) });
 }
 
 export function verifyG04BEvaluationResult(payload, manifest, packet, trainingResult) {
   if (payload?.schemaVersion !== 'vexlife.foundation-evaluation-receipt/v1') fail('G04B_EVALUATION_RESULT_INVALID', 'evaluation result schema is not current');
-  if (payload.trainingRunRef !== manifest.trainingRunRef) fail('G04B_EVALUATION_IDENTITY_MISMATCH', 'evaluation trainingRunRef mismatch');
-  if (payload.trainingExecutionDevice !== packet.expectedExecutionDevice || payload.trainingExpectedHardwareProfileRef !== packet.expectedHardwareProfileRef) {
-    fail('G04B_EVALUATION_IDENTITY_MISMATCH', 'evaluation training execution device/profile mismatch');
+  const trainingObservation = trainingResult.executionObservation;
+  for (const [field, expected] of [
+    ['trainingRunRef', manifest.trainingRunRef],
+    ['trainingManifestFingerprint', trainingResult.manifestFingerprint],
+    ['trainingExecutionDevice', packet.expectedExecutionDevice],
+    ['trainingExpectedHardwareProfileRef', packet.expectedHardwareProfileRef],
+    ['trainingExecutionObservationFingerprint', trainingResult.executionObservationFingerprint],
+    ['trainingExecutionDeviceType', trainingObservation.deviceType],
+    ['trainingExecutionPlatform', trainingObservation.platform],
+    ['trainingExecutionArchitecture', trainingObservation.architecture],
+    ['trainingExecutionDeviceName', trainingObservation.deviceName],
+    ['priorModelIdentity', trainingResult.priorModelIdentity],
+    ['candidateModelIdentity', trainingResult.candidateModelIdentity],
+    ['sourceModelRepo', manifest.sourceModelRepo],
+    ['sourceModelRevision', manifest.sourceModelRevision],
+    ['sourceModelSnapshotFingerprint', manifest.sourceModelSnapshotFingerprint],
+    ['sourceManifestFingerprint', manifest.sourceManifestFingerprint],
+    ['candidateArtifactFingerprint', trainingResult.candidateArtifactFingerprint],
+    ['heldoutDatasetSha256', manifest.heldoutDatasetSha256]
+  ]) {
+    if (payload[field] !== expected) {
+      fail('G04B_EVALUATION_IDENTITY_MISMATCH', `evaluation ${field} does not match the exact training/source lineage`, { expected, observed: payload[field] });
+    }
   }
-  if (payload.priorModelIdentity !== trainingResult.priorModelIdentity || payload.candidateModelIdentity !== trainingResult.candidateModelIdentity) {
-    fail('G04B_EVALUATION_IDENTITY_MISMATCH', 'evaluation model genealogy does not match the exact training result');
+  if (!HEX64.test(payload.trainingReceiptFingerprint ?? '') || !HEX64.test(payload.trainingManifestFingerprint ?? '')) {
+    fail('G04B_EVALUATION_RESULT_INVALID', 'evaluation has no valid training receipt/manifest fingerprints');
   }
-  if (payload.candidateArtifactFingerprint !== trainingResult.candidateArtifactFingerprint) {
-    fail('G04B_EVALUATION_IDENTITY_MISMATCH', 'evaluation candidate artifact fingerprint does not match training');
+  if (payload.trainingHostProvenanceVerified !== true
+      || payload.trainingHostProvenanceReobserved !== false
+      || payload.sourceModelSnapshotFingerprintObserved !== false
+      || payload.sourceManifestFingerprintObserved !== false
+      || payload.sourceModelIdentityClass !== 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION') {
+    fail('G04B_EVALUATION_PROVENANCE_MISMATCH', 'evaluation does not preserve exact historical training/source provenance');
   }
-  if (payload.automaticPromotion !== false) fail('G04B_ACTIVATION_COLLAPSE', 'evaluation must preserve automaticPromotion=false');
+  if (payload.candidateArtifactBytesVerified !== true
+      || JSON.stringify(canonicalize(payload.candidateArtifactDigests)) !== JSON.stringify(canonicalize(trainingResult.candidateArtifactDigests))) {
+    fail('G04B_EVALUATION_IDENTITY_MISMATCH', 'evaluation candidate-byte evidence does not match the exact training result');
+  }
+  if (!Array.isArray(payload.cases)
+      || !Number.isSafeInteger(payload.caseCount)
+      || payload.caseCount <= 0
+      || payload.cases.length !== payload.caseCount) {
+    fail('G04B_EVALUATION_RESULT_INVALID', 'evaluation did not return a non-empty exact held-out case set');
+  }
+  const caseRefs = [];
+  for (const [index, evaluationCase] of payload.cases.entries()) {
+    if (!evaluationCase || typeof evaluationCase !== 'object' || Array.isArray(evaluationCase)
+        || typeof evaluationCase.exampleRef !== 'string' || !evaluationCase.exampleRef) {
+      fail('G04B_EVALUATION_RESULT_INVALID', 'evaluation case has no stable exampleRef', { index });
+    }
+    caseRefs.push(evaluationCase.exampleRef);
+  }
+  if (new Set(caseRefs).size !== caseRefs.length) fail('G04B_EVALUATION_RESULT_INVALID', 'evaluation case refs must be unique');
+  if (typeof payload.deviceType !== 'string' || !payload.deviceType
+      || payload.localFilesOnly !== true
+      || payload.automaticPromotion !== false
+      || payload.evaluationDisposition !== 'REQUIRES_SEMANTIC_PRIVACY_IDENTITY_CAPABILITY_REVIEW') {
+    fail('G04B_EVALUATION_RESULT_INVALID', 'evaluation did not preserve local-only held disposition and no-promotion truth');
+  }
   return payload;
 }
 
@@ -743,13 +924,13 @@ export async function executeG04BNativeTrainingWorker(packet, {
     priorModelIdentity: training.priorModelIdentity,
     candidateModelIdentity: training.candidateModelIdentity,
     candidateArtifactFingerprint: training.candidateArtifactFingerprint,
-    trainingActuallyExecuted: true,
-    simulationOnly: false,
-    modelWeightsChanged: true,
+    trainingActuallyExecuted: training.trainingActuallyExecuted,
+    simulationOnly: training.simulationOnly,
+    modelWeightsChanged: training.modelWeightsChanged,
     changedParameterCount: training.changedParameterCount,
-    heldOutEvaluationReturned: true,
-    activationPerformed: false,
-    publicUploadPerformed: false
+    heldOutEvaluationReturned: evaluation.caseCount > 0 && evaluation.candidateArtifactBytesVerified === true,
+    activationPerformed: training.activationPerformed,
+    publicUploadPerformed: training.publicUploadPerformed
   });
 
   if (workerRoot) {

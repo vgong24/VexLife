@@ -23,6 +23,18 @@ const canonicalize = (value) => Array.isArray(value)
     ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]))
     : value;
 const fingerprint = (value) => sha(JSON.stringify(canonicalize(value)));
+const priorModelIdentityFor = (manifest) => `model-source.vexlife.sha256.${fingerprint({
+  schemaVersion: 'vexlife.prior-model-identity/v1',
+  sourceModelRepo: manifest.sourceModelRepo,
+  sourceModelRevision: manifest.sourceModelRevision,
+  sourceModelIdentityClass: 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION'
+})}`;
+const candidateModelIdentityFor = (manifest, candidateArtifactFingerprint) => `model-candidate.vexlife.sha256.${fingerprint({
+  schemaVersion: 'vexlife.candidate-model-identity/v1',
+  priorModelIdentity: priorModelIdentityFor(manifest),
+  trainingRunRef: manifest.trainingRunRef,
+  candidateArtifactFingerprint
+})}`;
 
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-g04b-worker-'));
@@ -136,51 +148,149 @@ function fixture() {
     expectedExecutionDevice: 'MPS',
     expectedHardwareProfileRef: 'hardware.macos-arm64.apple-m4-pro.metal'
   };
-  const executionObservationFingerprint = 'd'.repeat(64);
-  const observation = { observationFingerprint: executionObservationFingerprint };
-  const priorModelIdentity = 'model-source.vexlife.sha256.' + 'e'.repeat(64);
-  const candidateModelIdentity = 'model-candidate.vexlife.sha256.' + 'f'.repeat(64);
-  const candidateArtifactFingerprint = '1'.repeat(64);
+  const observationBase = {
+    executionDevice: 'MPS',
+    deviceType: 'mps',
+    deviceName: 'Apple M4 Pro',
+    platform: 'darwin',
+    architecture: 'arm64',
+    expectedHardwareProfileRef: manifest.expectedHardwareProfileRef,
+    torchVersion: '2.8.0-test',
+    precision: manifest.precision,
+    mpsBuilt: true,
+    mpsAvailable: true,
+    acceleratorMemoryBytes: null,
+    cudaRuntimeVersion: null
+  };
+  const executionObservationFingerprint = fingerprint(observationBase);
+  const observation = { ...observationBase, observationFingerprint: executionObservationFingerprint };
+  const priorModelIdentity = priorModelIdentityFor(manifest);
+  const candidateArtifactDigests = {
+    'config.json': '2'.repeat(64),
+    'model.safetensors': '3'.repeat(64)
+  };
+  const candidateArtifactFingerprint = fingerprint(candidateArtifactDigests);
+  const candidateModelIdentity = candidateModelIdentityFor(manifest, candidateArtifactFingerprint);
   const inspection = {
     schemaVersion: 'vexlife.foundation-training-inspection/v1',
     trainingRunRef: manifest.trainingRunRef,
+    trainingMode: manifest.trainingMode,
+    priorModelIdentity,
     sourceModelRepo: manifest.sourceModelRepo,
     sourceModelRevision: manifest.sourceModelRevision,
     sourceModelSnapshotFingerprint: manifest.sourceModelSnapshotFingerprint,
     sourceModelSnapshotFingerprintObserved: false,
+    sourceModelIdentityClass: 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION',
     sourceManifestFingerprint: manifest.sourceManifestFingerprint,
     sourceManifestFingerprintObserved: false,
     executionDevice: 'MPS',
     expectedHardwareProfileRef: manifest.expectedHardwareProfileRef,
     executionObservation: observation,
     executionObservationFingerprint,
-    localFilesOnly: true,
     modelPlacedOnExecutionDevice: true,
-    deviceType: 'mps'
-  };
-  const training = {
-    ...inspection,
-    schemaVersion: 'vexlife.foundation-training-receipt/v1',
-    priorModelIdentity,
-    candidateModelIdentity,
-    candidateArtifactFingerprint,
-    trainingActuallyExecuted: true,
-    modelWeightsChanged: true,
-    changedParameterCount: 42,
+    deviceType: 'mps',
+    localFilesOnly: true,
+    trainingDataset: manifest.trainingDatasetPath,
+    heldoutDataset: manifest.heldoutDatasetPath,
+    exampleCount: 1,
+    selectedPath: 'model.language_model.layers[-1:]',
+    trainableTensorCount: 1,
+    trainableParameterCount: 42,
+    totalParameterCount: 84,
+    trainableNameFingerprint: '4'.repeat(64),
+    sampleTrainableNames: ['model.language_model.layers.0.weight'],
+    trainingActuallyExecuted: false,
+    modelWeightsChanged: false,
     activationPerformed: false
   };
-  delete training.localFilesOnly;
-  delete training.modelPlacedOnExecutionDevice;
-  delete training.deviceType;
+  const training = {
+    schemaVersion: 'vexlife.foundation-training-receipt/v1',
+    trainingRunRef: manifest.trainingRunRef,
+    trainingMode: manifest.trainingMode,
+    priorModelIdentity,
+    candidateModelIdentity,
+    sourceModelRepo: manifest.sourceModelRepo,
+    sourceModelRevision: manifest.sourceModelRevision,
+    sourceModelSnapshotFingerprint: manifest.sourceModelSnapshotFingerprint,
+    sourceModelSnapshotFingerprintObserved: false,
+    sourceModelIdentityClass: 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION',
+    sourceManifestFingerprint: manifest.sourceManifestFingerprint,
+    sourceManifestFingerprintObserved: false,
+    manifestFingerprint: '5'.repeat(64),
+    trainingDatasetSha256: manifest.trainingDatasetSha256,
+    heldoutDatasetSha256: manifest.heldoutDatasetSha256,
+    executionDevice: 'MPS',
+    expectedHardwareProfileRef: manifest.expectedHardwareProfileRef,
+    executionObservation: observation,
+    executionObservationFingerprint,
+    selectedPath: 'model.language_model.layers[-1:]',
+    trainableTensorCount: 1,
+    trainableParameterCount: 42,
+    totalParameterCount: 84,
+    changedParameterCount: 42,
+    changedTensorCount: 1,
+    changedParameterNameFingerprint: '6'.repeat(64),
+    sampleChangedParameterNames: ['model.language_model.layers.0.weight'],
+    optimizerSteps: 1,
+    microSteps: 1,
+    meanTrainingLoss: 1,
+    elapsedSeconds: 0.1,
+    deviceType: 'mps',
+    localFilesOnly: true,
+    candidateArtifactDigests,
+    candidateArtifactFingerprint,
+    trainingActuallyExecuted: true,
+    simulationOnly: false,
+    modelWeightsChanged: true,
+    activationPerformed: false,
+    acceptedCurrentModelOverwritten: false,
+    publicUploadPerformed: false,
+    rollbackArtifactRef: manifest.rollbackArtifactRef
+  };
   const evaluation = {
     schemaVersion: 'vexlife.foundation-evaluation-receipt/v1',
     trainingRunRef: manifest.trainingRunRef,
+    trainingReceiptFingerprint: '7'.repeat(64),
+    trainingManifestFingerprint: training.manifestFingerprint,
     trainingExecutionDevice: 'MPS',
     trainingExpectedHardwareProfileRef: manifest.expectedHardwareProfileRef,
+    trainingExecutionObservationFingerprint: executionObservationFingerprint,
+    trainingExecutionDeviceType: observation.deviceType,
+    trainingExecutionPlatform: observation.platform,
+    trainingExecutionArchitecture: observation.architecture,
+    trainingExecutionDeviceName: observation.deviceName,
+    trainingHostProvenanceVerified: true,
+    trainingHostProvenanceReobserved: false,
     priorModelIdentity,
     candidateModelIdentity,
+    sourceModelRepo: manifest.sourceModelRepo,
+    sourceModelRevision: manifest.sourceModelRevision,
+    sourceModelSnapshotFingerprint: manifest.sourceModelSnapshotFingerprint,
+    sourceModelSnapshotFingerprintObserved: false,
+    sourceModelIdentityClass: 'EXACT_REPOSITORY_PLUS_COMMIT_REVISION',
+    sourceManifestFingerprint: manifest.sourceManifestFingerprint,
+    sourceManifestFingerprintObserved: false,
     candidateArtifactFingerprint,
-    automaticPromotion: false
+    candidateArtifactDigests,
+    candidateArtifactBytesVerified: true,
+    heldoutDatasetSha256: manifest.heldoutDatasetSha256,
+    caseCount: 1,
+    simpleFixtureDeltaTotal: 1,
+    cases: [{
+      exampleRef: 'heldout.g04b.first-proof.001',
+      evaluationClass: 'VEX_FOUNDATION',
+      sourceRefs: ['source.g04b.first-proof'],
+      baselineOutput: 'baseline',
+      candidateOutput: 'candidate',
+      baselineChecks: { expected: {}, forbidden: {}, expectedPassed: true, forbiddenPassed: true },
+      candidateChecks: { expected: {}, forbidden: {}, expectedPassed: true, forbiddenPassed: true },
+      simpleFixtureDelta: 0
+    }],
+    deviceType: 'cpu',
+    localFilesOnly: true,
+    elapsedSeconds: 0.1,
+    automaticPromotion: false,
+    evaluationDisposition: 'REQUIRES_SEMANTIC_PRIVACY_IDENTITY_CAPABILITY_REVIEW'
   };
   const plan = {
     trainingRunRef: manifest.trainingRunRef,
@@ -197,13 +307,27 @@ function fixture() {
   return { root, sourceRoot, vexHomeRoot, cacheRoot, snapshotRoot, manifestPath, manifest, nodeRuntimeBinding, packet, inspection, training, evaluation, plan };
 }
 
-function runnerFor(fx, { forgeEvaluation = false } = {}) {
+function runnerFor(fx, {
+  forgeEvaluation = false,
+  inspectionTransform = null,
+  trainingTransform = null,
+  evaluationTransform = null
+} = {}) {
   const calls = [];
+  const transformed = (value, transform) => {
+    const clone = structuredClone(value);
+    return typeof transform === 'function' ? (transform(clone) ?? clone) : clone;
+  };
   const runner = async (_executable, argv) => {
     calls.push(argv);
-    if (argv.includes('--inspect-only')) return { code: 0, signal: null, stdout: JSON.stringify(fx.inspection), stderr: '' };
-    if (argv.includes('--execute')) return { code: 0, signal: null, stdout: JSON.stringify(fx.training), stderr: '' };
-    const evaluation = forgeEvaluation ? { ...fx.evaluation, candidateArtifactFingerprint: '9'.repeat(64) } : fx.evaluation;
+    if (argv.includes('--inspect-only')) {
+      return { code: 0, signal: null, stdout: JSON.stringify(transformed(fx.inspection, inspectionTransform)), stderr: '' };
+    }
+    if (argv.includes('--execute')) {
+      return { code: 0, signal: null, stdout: JSON.stringify(transformed(fx.training, trainingTransform)), stderr: '' };
+    }
+    let evaluation = transformed(fx.evaluation, evaluationTransform);
+    if (forgeEvaluation) evaluation = { ...evaluation, candidateArtifactFingerprint: '9'.repeat(64) };
     return { code: 0, signal: null, stdout: JSON.stringify(evaluation), stderr: '' };
   };
   return { calls, runner };
@@ -361,6 +485,53 @@ test('G04B source snapshot verifier rejects byte drift and extra-path injection'
   assert.throws(() => verifyG04BSourceSnapshot(fx2.packet), (error) => error.code === 'G04B_SNAPSHOT_PATH_SET_MISMATCH');
 });
 
+test('G04B phase observation rejects a self-consistent recomputed non-MPS host substitution', async () => {
+  const fx = fixture();
+  const workerRoot = writeEnvelope(fx);
+  const { calls, runner } = runnerFor(fx, {
+    inspectionTransform: (inspection) => {
+      const observation = { ...inspection.executionObservation, platform: 'linux' };
+      delete observation.observationFingerprint;
+      const executionObservationFingerprint = fingerprint(observation);
+      inspection.executionObservation = { ...observation, observationFingerprint: executionObservationFingerprint };
+      inspection.executionObservationFingerprint = executionObservationFingerprint;
+      return inspection;
+    }
+  });
+  await assert.rejects(
+    executeG04BNativeTrainingWorker(fx.packet, {
+      sourceRoot: fx.sourceRoot,
+      planValidator: planValidatorFor(fx),
+      processRunner: runner,
+      workerRoot,
+      controlPath: path.join(workerRoot, 'control.json')
+    }),
+    (error) => error.code === 'G04B_PHASE_OBSERVATION_MISMATCH'
+  );
+  assert.equal(calls.length, 1);
+});
+
+test('G04B worker rejects mutually echoed forged candidate identity before evaluator execution', async () => {
+  const fx = fixture();
+  const workerRoot = writeEnvelope(fx);
+  const forgedCandidateModelIdentity = 'model-candidate.vexlife.sha256.' + '9'.repeat(64);
+  const { calls, runner } = runnerFor(fx, {
+    trainingTransform: (training) => ({ ...training, candidateModelIdentity: forgedCandidateModelIdentity }),
+    evaluationTransform: (evaluation) => ({ ...evaluation, candidateModelIdentity: forgedCandidateModelIdentity })
+  });
+  await assert.rejects(
+    executeG04BNativeTrainingWorker(fx.packet, {
+      sourceRoot: fx.sourceRoot,
+      planValidator: planValidatorFor(fx),
+      processRunner: runner,
+      workerRoot,
+      controlPath: path.join(workerRoot, 'control.json')
+    }),
+    (error) => error.code === 'G04B_TRAINING_IDENTITY_MISMATCH'
+  );
+  assert.equal(calls.length, 2);
+});
+
 test('G04B worker rejects forged evaluation candidate identity after a real-training receipt', async () => {
   const fx = fixture();
   const workerRoot = writeEnvelope(fx);
@@ -375,6 +546,46 @@ test('G04B worker rejects forged evaluation candidate identity after a real-trai
     }),
     (error) => error.code === 'G04B_EVALUATION_IDENTITY_MISMATCH'
   );
+});
+
+test('G04B evaluator provenance cannot be truncated or re-addressed into held-out completion truth', async () => {
+  const substitutions = [
+    {
+      label: 'missing heldout dataset identity',
+      mutate: (evaluation) => {
+        delete evaluation.heldoutDatasetSha256;
+        return evaluation;
+      },
+      code: 'G04B_EVALUATION_IDENTITY_MISMATCH'
+    },
+    {
+      label: 'source manifest re-addressed',
+      mutate: (evaluation) => ({ ...evaluation, sourceManifestFingerprint: '9'.repeat(64) }),
+      code: 'G04B_EVALUATION_IDENTITY_MISMATCH'
+    },
+    {
+      label: 'candidate bytes not verified',
+      mutate: (evaluation) => ({ ...evaluation, candidateArtifactBytesVerified: false }),
+      code: 'G04B_EVALUATION_IDENTITY_MISMATCH'
+    }
+  ];
+  for (const substitution of substitutions) {
+    const fx = fixture();
+    const workerRoot = writeEnvelope(fx);
+    const { calls, runner } = runnerFor(fx, { evaluationTransform: substitution.mutate });
+    await assert.rejects(
+      executeG04BNativeTrainingWorker(fx.packet, {
+        sourceRoot: fx.sourceRoot,
+        planValidator: planValidatorFor(fx),
+        processRunner: runner,
+        workerRoot,
+        controlPath: path.join(workerRoot, 'control.json')
+      }),
+      (error) => error.code === substitution.code,
+      substitution.label
+    );
+    assert.equal(calls.length, 3, substitution.label);
+  }
 });
 
 test('G04B result consumer contract rejects resultRef and Node-runtime identity laundering', async () => {
