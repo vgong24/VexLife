@@ -3,6 +3,12 @@
   "bucketId": "07",
   "files": [
     {
+      "path": "scripts/g04b-native-provisioning-worker.mjs",
+      "mode": "100644",
+      "bytes": 4977,
+      "sha256": "bd064a96b4ece15fe0ef4e112c8f51b350396b077543107d98777317dd477941"
+    },
+    {
       "path": "test/boot.test.mjs",
       "mode": "100644",
       "bytes": 7884,
