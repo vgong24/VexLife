@@ -230,6 +230,8 @@ test('MAC-WIN-06 selected Home is an argv value and AppKit launches Bash without
   assert.match(windowSource, /NSTask/u);
   assert.match(windowSource, /actionPrefix/u);
   assert.match(windowSource, /hasAction/u);
+  assert.match(windowSource, /on promptChoice\(/u);
+  assert.doesNotMatch(windowSource, /\b(?:on\s+ask|my\s+ask)\s*\(/u);
   assert.match(windowSource, /setArguments:\{repoRoot & "\/install\/vexlife-setup\.sh", repoRoot, "--controller", "--home", homePath/u);
   assert.doesNotMatch(windowSource, /do shell script/u);
 });
