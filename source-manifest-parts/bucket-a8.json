@@ -11,8 +11,8 @@
     {
       "path": "blueprint/fragments/terrain.json",
       "mode": "100644",
-      "bytes": 2192,
-      "sha256": "97b969a3274de72ddecad98d4bc629b314922b86e8b39fd10c601269dae668a1"
+      "bytes": 2448,
+      "sha256": "aa64293466573b58bbcc1ace452ea1ec8ceb7062abf4db1eadb88f924691f8d2"
     },
     {
       "path": "scripts/health-check.mjs",
@@ -23,8 +23,8 @@
     {
       "path": "test/core.test.mjs",
       "mode": "100644",
-      "bytes": 26901,
-      "sha256": "70d2813a75ac7c8f0a52fcab5cdac4c2f8e570e0745ef6feececf74f35ad333b"
+      "bytes": 27580,
+      "sha256": "bb394460b6d36d7a984ba5580ef9df5e7a498700e19ad4a3e798ebe6e5f448fc"
     }
   ]
 }

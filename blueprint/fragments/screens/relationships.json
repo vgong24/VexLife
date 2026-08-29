@@ -1,0 +1,68 @@
+{
+  "screenRef": "screen.vexlife.relationships",
+  "routeRef": "route.relationships",
+  "titleStringRef": "screen.relationships.title",
+  "stateSelectorRefs": [
+    "selector.current-screen-frame"
+  ],
+  "regions": [
+    {
+      "regionRef": "region.relationships.body",
+      "labelStringRef": "screen.relationships.title",
+      "elements": [
+        {
+          "elementRef": "element.relationships.open",
+          "kind": "NAVIGATION_DOOR",
+          "labelStringRef": "screen.relationships.title",
+          "actionRef": "action.context.open",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.relationships.open",
+          "interactionRef": "interaction.relationships.open",
+          "navigationRef": null,
+          "terrainNodeRef": "terrain.resource.relationships",
+          "journeyEventTypeRef": "journey.relationships.open",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.relationships.open"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame",
+            "test.navigation.home-and-back",
+            "test.accessibility.terrain"
+          ]
+        },
+        {
+          "elementRef": "element.relationships.connect",
+          "kind": "ACTION",
+          "labelStringRef": "screen.relationships.title",
+          "actionRef": "action.context.open",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.relationships.connect",
+          "interactionRef": "interaction.relationships.connect",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.relationships.connect-preview",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.relationships.connect"
+          },
+          "testRefs": [
+            "test.permission.no-inferred-effect",
+            "test.accessibility.terrain"
+          ]
+        }
+      ],
+      "conceptRef": "concept.region.relationships.body",
+      "navigationNodeRef": "nav.region.relationships.body"
+    }
+  ],
+  "testRefs": [
+    "test.navigation.screen-frame",
+    "test.navigation.home-and-back",
+    "test.permission.no-inferred-effect",
+    "test.accessibility.terrain"
+  ],
+  "conceptRef": "concept.screen.vexlife.relationships",
+  "navigationNodeRef": "nav.screen.vexlife.relationships"
+}
