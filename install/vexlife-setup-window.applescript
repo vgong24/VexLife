@@ -264,8 +264,8 @@ on runBackend(repoRoot, homePath, actionName, nodeConsent, runtimeConsent)
   set tempRoot to current application's NSTemporaryDirectory() as text
   set outPath to tempRoot & "vexlife-setup-" & token & ".out"
   set errPath to tempRoot & "vexlife-setup-" & token & ".err"
-  fileManager's createFileAtPath:outPath contents:(missing value) attributes:(missing value)
-  fileManager's createFileAtPath:errPath contents:(missing value) attributes:(missing value)
+  fileManager's createFileAtPath:outPath |contents|:(missing value) attributes:(missing value)
+  fileManager's createFileAtPath:errPath |contents|:(missing value) attributes:(missing value)
   set outHandle to current application's NSFileHandle's fileHandleForWritingAtPath:outPath
   set errHandle to current application's NSFileHandle's fileHandleForWritingAtPath:errPath
 
