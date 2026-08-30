@@ -79,12 +79,7 @@ function assertString(value, code) {
 
 function assertStringArray(value, code) {
   if (!Array.isArray(value)) fail(code);
-  const seen = new Set();
-  for (const item of value) {
-    assertString(item, code);
-    if (seen.has(item)) fail(`${code}_DUPLICATE`, item);
-    seen.add(item);
-  }
+  for (const item of value) assertString(item, code);
   return value;
 }
 
