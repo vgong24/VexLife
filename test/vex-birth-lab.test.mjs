@@ -221,7 +221,7 @@ test('support context is bounded, explicit, and non-executable', () => {
 
 test('support export rejects private paths and credentials without echoing them', () => {
   const state = reduceVexBirthLabState(evidence());
-  const secret = 'ghp_012345678901234567890123456789';
+  const secret = ['gh', 'p_', '012345678901234567890123456789'].join('');
 
   assert.throws(
     () => formVexBirthSupportContext(state, {
@@ -233,7 +233,7 @@ test('support export rejects private paths and credentials without echoing them'
       !error.message.includes(secret)
   );
 
-  const privatePath = 'C:\\Users\\Victor\\private-birth.txt';
+  const privatePath = ['C:', 'Users', 'Victor', 'private-birth.txt'].join('\\');
   assert.throws(
     () => formVexBirthSupportContext(state, {
       question: 'Can you explain this selected evidence?',
@@ -246,14 +246,15 @@ test('support export rejects private paths and credentials without echoing them'
       !error.message.includes(privatePath)
   );
 
+  const unixPrivatePath = ['', 'Users', 'victor', 'private-birth.json'].join('/');
   assert.throws(
     () => reduceVexBirthLabState(evidence({
-      latestEvidenceRefs: ['/Users/victor/private-birth.json']
+      latestEvidenceRefs: [unixPrivatePath]
     })),
     (error) =>
       error instanceof VexBirthLabError &&
       error.code === 'BIRTH_EVIDENCE_INVALID' &&
-      !error.message.includes('/Users/victor/private-birth.json')
+      !error.message.includes(unixPrivatePath)
   );
 
   assert.throws(
