@@ -45,6 +45,13 @@ const ATLAS_PROJECTION_KEYS = [
 const HUMAN_PROJECTION_KEYS = [
   'subjectRef', 'canonicalName', 'humanShortName', 'oneSentenceMeaning', 'purpose', 'answers'
 ];
+const HUMAN_ANSWER_KEYS = [
+  'subjectRef', 'whatIsThis', 'whyDoesItExist', 'whereDoesItBelong', 'whatMustPrecedeIt',
+  'whatDoesItProduceOrUnlock', 'whatItProves', 'whatItDoesNotProve', 'liveStatusRoute',
+  'deeperSourceRoutes', 'recommendedRewalkEntryRefs'
+];
+const HUMAN_PRECONDITION_KEYS = ['refs', 'plainLanguage'];
+const HUMAN_OUTPUT_KEYS = ['producesRefs', 'producesPlainLanguage', 'unlocksRefs', 'unlocksPlainLanguage'];
 const MAX_BRIEF_CHARS = 1200;
 
 function fail(code, detail = null) {
@@ -81,6 +88,11 @@ function assertStringArray(value, code) {
   return value;
 }
 
+function assertSubset(items, allowed, code) {
+  const allowedSet = new Set(allowed);
+  for (const item of items) if (!allowedSet.has(item)) fail(code, item);
+}
+
 function assertDigest(value, expected, code) {
   if (typeof value !== 'string' || !HEX64.test(value) || value !== expected) fail(code, value ?? null);
 }
@@ -114,23 +126,26 @@ function isPublicVisibility(value) {
   return typeof value === 'string' && value.toLowerCase().includes('public');
 }
 
-function validateAtlasProjection(projection, subjectRef) {
+function validateAtlasProjection(projection, subjectRef, meaningSourceRefs, liveContextRouteRefs) {
   assertExactKeys(projection, ATLAS_PROJECTION_KEYS, 'ATLAS_MEANING_PROJECTION_SCHEMA_DRIFT');
   if (projection.subjectRef !== subjectRef) fail('MEANING_SUBJECT_PROJECTION_MISMATCH');
   assertString(projection.subjectClass, 'ATLAS_MEANING_SUBJECT_CLASS_REQUIRED');
   assertString(projection.brief, 'ATLAS_MEANING_BRIEF_REQUIRED');
   if (projection.brief.length > MAX_BRIEF_CHARS) fail('ATLAS_MEANING_BRIEF_TOO_LARGE');
   assertString(projection.purpose, 'ATLAS_MEANING_PURPOSE_REQUIRED');
-  if (!isObject(projection.proofBoundary)) fail('ATLAS_MEANING_PROOF_BOUNDARY_REQUIRED');
+  assertExactKeys(projection.proofBoundary, ['proves', 'doesNotProve'], 'ATLAS_MEANING_PROOF_BOUNDARY_SCHEMA_DRIFT');
   assertStringArray(projection.proofBoundary.proves, 'ATLAS_MEANING_PROVES_INVALID');
   assertStringArray(projection.proofBoundary.doesNotProve, 'ATLAS_MEANING_DOES_NOT_PROVE_INVALID');
   assertStringArray(projection.sourceRoutes, 'ATLAS_MEANING_SOURCE_ROUTES_INVALID');
   assertStringArray(projection.liveContextRoutes, 'ATLAS_MEANING_LIVE_ROUTES_INVALID');
   assertStringArray(projection.rewalkEntryRefs, 'ATLAS_MEANING_REWALK_REFS_INVALID');
+  assertSubset(projection.sourceRoutes, meaningSourceRefs, 'ATLAS_MEANING_SOURCE_ROUTE_OUTSIDE_ENVELOPE');
+  assertSubset(projection.rewalkEntryRefs, meaningSourceRefs, 'ATLAS_MEANING_REWALK_REF_OUTSIDE_ENVELOPE');
+  assertSubset(projection.liveContextRoutes, liveContextRouteRefs, 'ATLAS_MEANING_LIVE_ROUTE_OUTSIDE_ENVELOPE');
   return projection.brief;
 }
 
-function validateHumanProjection(projection, subjectRef) {
+function validateHumanProjection(projection, subjectRef, meaningSourceRefs, liveContextRouteRefs) {
   assertExactKeys(projection, HUMAN_PROJECTION_KEYS, 'HUMAN_MEANING_PROJECTION_SCHEMA_DRIFT');
   if (projection.subjectRef !== subjectRef) fail('MEANING_SUBJECT_PROJECTION_MISMATCH');
   assertString(projection.canonicalName, 'HUMAN_MEANING_CANONICAL_NAME_REQUIRED');
@@ -138,7 +153,26 @@ function validateHumanProjection(projection, subjectRef) {
   assertString(projection.oneSentenceMeaning, 'HUMAN_MEANING_BRIEF_REQUIRED');
   if (projection.oneSentenceMeaning.length > MAX_BRIEF_CHARS) fail('HUMAN_MEANING_BRIEF_TOO_LARGE');
   assertString(projection.purpose, 'HUMAN_MEANING_PURPOSE_REQUIRED');
-  if (!isObject(projection.answers)) fail('HUMAN_MEANING_ANSWERS_REQUIRED');
+
+  const answers = projection.answers;
+  assertExactKeys(answers, HUMAN_ANSWER_KEYS, 'HUMAN_MEANING_ANSWERS_SCHEMA_DRIFT');
+  if (answers.subjectRef !== subjectRef) fail('HUMAN_MEANING_ANSWER_SUBJECT_MISMATCH');
+  if (answers.whatIsThis !== projection.oneSentenceMeaning) fail('HUMAN_MEANING_SUMMARY_MISMATCH');
+  assertString(answers.whyDoesItExist, 'HUMAN_MEANING_WHY_REQUIRED');
+  assertStringArray(answers.whereDoesItBelong, 'HUMAN_MEANING_PLACEMENT_INVALID');
+  assertExactKeys(answers.whatMustPrecedeIt, HUMAN_PRECONDITION_KEYS, 'HUMAN_MEANING_PRECONDITION_SCHEMA_DRIFT');
+  assertStringArray(answers.whatMustPrecedeIt.refs, 'HUMAN_MEANING_PRECONDITION_REFS_INVALID');
+  assertStringArray(answers.whatMustPrecedeIt.plainLanguage, 'HUMAN_MEANING_PRECONDITION_TEXT_INVALID');
+  assertExactKeys(answers.whatDoesItProduceOrUnlock, HUMAN_OUTPUT_KEYS, 'HUMAN_MEANING_OUTPUT_SCHEMA_DRIFT');
+  for (const key of HUMAN_OUTPUT_KEYS) assertStringArray(answers.whatDoesItProduceOrUnlock[key], `HUMAN_MEANING_OUTPUT_${key}_INVALID`);
+  assertStringArray(answers.whatItProves, 'HUMAN_MEANING_PROVES_INVALID');
+  assertStringArray(answers.whatItDoesNotProve, 'HUMAN_MEANING_DOES_NOT_PROVE_INVALID');
+  assertStringArray(answers.liveStatusRoute, 'HUMAN_MEANING_LIVE_ROUTE_INVALID');
+  assertStringArray(answers.deeperSourceRoutes, 'HUMAN_MEANING_SOURCE_ROUTES_INVALID');
+  assertStringArray(answers.recommendedRewalkEntryRefs, 'HUMAN_MEANING_REWALK_REFS_INVALID');
+  assertSubset(answers.deeperSourceRoutes, meaningSourceRefs, 'HUMAN_MEANING_SOURCE_ROUTE_OUTSIDE_ENVELOPE');
+  assertSubset(answers.recommendedRewalkEntryRefs, meaningSourceRefs, 'HUMAN_MEANING_REWALK_REF_OUTSIDE_ENVELOPE');
+  assertSubset(answers.liveStatusRoute, liveContextRouteRefs, 'HUMAN_MEANING_LIVE_ROUTE_OUTSIDE_ENVELOPE');
   return projection.oneSentenceMeaning;
 }
 
@@ -183,8 +217,8 @@ export function validateArchitectureMeaningEnvelope(envelope, expectedProducer =
   }
 
   const brief = envelope.profile === 'atlas'
-    ? validateAtlasProjection(envelope.projection, envelope.subjectRef)
-    : validateHumanProjection(envelope.projection, envelope.subjectRef);
+    ? validateAtlasProjection(envelope.projection, envelope.subjectRef, envelope.meaningSourceRefs, envelope.liveContextRouteRefs)
+    : validateHumanProjection(envelope.projection, envelope.subjectRef, envelope.meaningSourceRefs, envelope.liveContextRouteRefs);
 
   return Object.freeze({
     schemaVersion: envelope.schemaVersion,
