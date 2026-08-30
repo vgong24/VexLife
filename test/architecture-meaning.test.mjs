@@ -49,8 +49,8 @@ function atlasEnvelope() {
       rewalkEntryRefs: ['github.issue.vexlife.220']
     },
     producer: producer('atlas'),
-    meaningSourceRefs: ['github.issue.vexlife.220'],
-    liveContextRouteRefs: ['github.issue.vexlife.308'],
+    meaningSourceRefs: ['github.issue.vexlife.220', 'github.issue.vexlife.220'],
+    liveContextRouteRefs: ['github.issue.vexlife.308', 'github.issue.vexlife.308'],
     coverage: null,
     guessedMeaning: false,
     publicationAuthority: false,
@@ -90,7 +90,7 @@ function humanEnvelope() {
   return envelope;
 }
 
-test('VLMA-00 accepted atlas and human envelopes validate and project one thin attributed node', () => {
+test('VLMA-00 accepted producer-shaped atlas and human envelopes validate and project one thin attributed node', () => {
   for (const envelope of [atlasEnvelope(), humanEnvelope()]) {
     const validated = validateArchitectureMeaningEnvelope(envelope);
     assert.equal(validated.subjectRef, 'github.issue.vexlife.220');
