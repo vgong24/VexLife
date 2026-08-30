@@ -139,7 +139,8 @@
     "platformScope": "UNIVERSAL",
     "reads": [
       "module.vexlife.core.utils",
-      "module.vexlife.core.registry"
+      "module.vexlife.core.registry",
+      "module.vexlife.core.architecture-meaning"
     ],
     "writes": [],
     "loadedBy": [],
@@ -1244,7 +1245,9 @@
       "module.vexlife.core.utils"
     ],
     "writes": [],
-    "loadedBy": [],
+    "loadedBy": [
+      "module.vexlife.core.atlas"
+    ],
     "tests": [
       "test/architecture-meaning.test.mjs"
     ],
