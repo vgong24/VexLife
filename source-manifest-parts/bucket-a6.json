@@ -5,8 +5,8 @@
     {
       "path": "src/core/vex-birth-lab.mjs",
       "mode": "100644",
-      "bytes": 22485,
-      "sha256": "1d22b1832a8b1ea4b22af574bc5e5fd69127f0eb221b069aa9cbbe2ed17d72d1"
+      "bytes": 27027,
+      "sha256": "e271e75eadcf62d997d89654c76a9208212e14713796ee45d175505808b9e142"
     },
     {
       "path": "test/browser-living-journal-memory-bridge.test.mjs",
