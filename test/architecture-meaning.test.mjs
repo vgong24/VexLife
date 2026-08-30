@@ -68,7 +68,24 @@ function humanEnvelope() {
     humanShortName: 'Vex changed-weight training',
     oneSentenceMeaning: envelope.projection.brief,
     purpose: envelope.projection.purpose,
-    answers: { whatItProves: ['changed weights'], whatItDoesNotProve: ['acceptance'] }
+    answers: {
+      subjectRef: envelope.subjectRef,
+      whatIsThis: envelope.projection.brief,
+      whyDoesItExist: envelope.projection.purpose,
+      whereDoesItBelong: [],
+      whatMustPrecedeIt: { refs: [], plainLanguage: [] },
+      whatDoesItProduceOrUnlock: {
+        producesRefs: [],
+        producesPlainLanguage: [],
+        unlocksRefs: [],
+        unlocksPlainLanguage: []
+      },
+      whatItProves: ['changed weights'],
+      whatItDoesNotProve: ['acceptance'],
+      liveStatusRoute: ['github.issue.vextreme-sdk.231'],
+      deeperSourceRoutes: ['github.issue.vexlife.220'],
+      recommendedRewalkEntryRefs: ['github.issue.vexlife.220']
+    }
   };
   return envelope;
 }
@@ -123,44 +140,52 @@ test('hostile volatile current-status fields are rejected even when nested', () 
   );
 });
 
-test('VLMA-02/08/09 external meaning composes for one bounded query without collision or persistence', () => {
+test('VLMA-02/08/09 Atlas validates envelopes itself, remains bounded and does not persist external meaning', () => {
   const canonical = { ref: 'module.vexlife.core.atlas', kind: 'MODULE', brief: 'Atlas', edges: [] };
   const atlas = new Atlas([canonical]);
-  const external = projectArchitectureMeaningAtlasNode(atlasEnvelope());
+  const envelope = atlasEnvelope();
   const out = atlas.query({
-    startRefs: [external.ref],
-    externalNodes: [external],
+    startRefs: [envelope.subjectRef],
+    externalMeaningEnvelopes: [envelope],
     depthLimit: 0,
     resultLimit: 1,
     tokenBudget: 400
   });
   assert.equal(out.results.length, 1);
-  assert.equal(out.results[0].ref, external.ref);
+  assert.equal(out.results[0].ref, envelope.subjectRef);
   assert.equal(out.results[0].currentness, 'SOURCE_BOUND_EXTERNAL_MEANING');
   assert.equal(out.results[0].meaningSource, 'SDK_MAA_CONSUMER_ENVELOPE');
   assert.equal(out.results[0].canonicalOwnerRepositoryRef, 'vgong24/Vextreme-SDK');
   assert.equal(out.coverage.resultLimit, 1);
   assert.equal(out.coverage.depthLimit, 0);
-  assert.equal(atlas.get(external.ref), null, 'query-scoped node must not persist');
+  assert.equal(atlas.get(envelope.subjectRef), null, 'query-scoped node must not persist');
 
   const collisionEnvelope = atlasEnvelope();
   collisionEnvelope.subjectRef = canonical.ref;
   collisionEnvelope.projection.subjectRef = canonical.ref;
-  const collision = projectArchitectureMeaningAtlasNode(collisionEnvelope);
   assert.throws(
-    () => atlas.query({ externalNodes: [collision] }),
+    () => atlas.query({ externalMeaningEnvelopes: [collisionEnvelope] }),
     (error) => error?.code === 'ATLAS_EXTERNAL_REF_COLLISION'
   );
 });
 
-test('external node state hash and edge admission cannot be forged', () => {
+test('direct prebuilt external-node injection is not an admitted Atlas input surface', () => {
   const atlas = new Atlas([]);
-  const forgedHash = { ...projectArchitectureMeaningAtlasNode(atlasEnvelope()), stateHash: '0'.repeat(64) };
-  assert.throws(() => atlas.query({ externalNodes: [forgedHash] }), (error) => error?.code === 'ATLAS_EXTERNAL_STATE_HASH_MISMATCH');
+  const projected = projectArchitectureMeaningAtlasNode(atlasEnvelope());
+  assert.throws(
+    () => atlas.query({ externalNodes: [projected] }),
+    (error) => error?.code === 'ATLAS_DIRECT_EXTERNAL_NODE_INJECTION_FORBIDDEN'
+  );
+});
 
-  const withEdge = projectArchitectureMeaningAtlasNode(atlasEnvelope());
-  const forgedEdge = { ...withEdge, edges: [{ type: 'ROUTES_TO', to: 'x' }] };
-  assert.throws(() => atlas.query({ externalNodes: [forgedEdge] }), (error) => error?.code === 'ATLAS_EXTERNAL_EDGES_NOT_ADMITTED');
+test('hostile envelope mutation cannot bypass Atlas validation by recomputing a node hash', () => {
+  const atlas = new Atlas([]);
+  const envelope = atlasEnvelope();
+  envelope.producer.sourceDigestSha256 = '0'.repeat(64);
+  assert.throws(
+    () => atlas.query({ externalMeaningEnvelopes: [envelope] }),
+    (error) => error?.code === 'ARCHITECTURE_MEANING_SOURCE_DIGEST_MISMATCH'
+  );
 });
 
 test('VLMA-03/09 adapter does not copy SDK registry bytes or gain filesystem/network/effect machinery', () => {
