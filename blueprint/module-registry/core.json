@@ -1234,5 +1234,22 @@
       "blueprint/process-factory/processes-conversation-and-interface.json",
       "blueprint/fragments/tests.json"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.architecture-meaning",
+    "path": "src/core/architecture-meaning.mjs",
+    "role": "Validates accepted source-bound SDK Meaning Addressability consumer envelopes and projects thin externally attributed noncanonical Atlas nodes without acquiring live-currentness, semantic ownership, persistence or effect authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/architecture-meaning.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/atlas.mjs"
+    ]
   }
 ]
