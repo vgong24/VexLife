@@ -531,6 +531,18 @@ function hasRegisteredAcceptedCandidate(evidence) {
   );
 }
 
+function terminalBirthClaimAllowed(evidence, currentStage) {
+  return Boolean(
+    currentStage === 'BORN' &&
+    evidence.source.currentness === 'CURRENT' &&
+    evidence.model.bindingState === 'BOUND' &&
+    evidence.candidateDisposition === 'ACCEPT' &&
+    hasRegisteredAcceptedCandidate(evidence) &&
+    evidence.lineage.activeGenerationRef ===
+      evidence.lineage.acceptedCandidateRefOrNull
+  );
+}
+
 function derivePrimaryAction(evidence, currentStage) {
   if (currentStage === 'BORN') {
     return null;
@@ -730,7 +742,10 @@ export function reduceVexBirthLabState(value) {
     blockers,
     unknowns,
     latestEvidenceRefs: evidence.latestEvidenceRefs,
-    completionClaimAllowed: currentVBStage === 'BORN',
+    completionClaimAllowed: terminalBirthClaimAllowed(
+      evidence,
+      currentVBStage
+    ),
     effects: {
       modelCalled: false,
       trainingPerformed: false,
