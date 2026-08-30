@@ -105,6 +105,21 @@ test('VLMA-00 accepted atlas and human envelopes validate and project one thin a
   }
 });
 
+test('external meaning stateHash is deterministic over stable envelope semantics rather than query alias', () => {
+  const envelope = atlasEnvelope();
+  const first = projectArchitectureMeaningAtlasNode(envelope);
+  const repeated = projectArchitectureMeaningAtlasNode(atlasEnvelope());
+  assert.equal(first.stateHash, repeated.stateHash);
+
+  const alias = atlasEnvelope();
+  alias.resolutionKey = 'foundation-changing training';
+  assert.equal(projectArchitectureMeaningAtlasNode(alias).stateHash, first.stateHash);
+
+  const changedMeaning = atlasEnvelope();
+  changedMeaning.projection.purpose = `${changedMeaning.projection.purpose} Exact stable semantic change.`;
+  assert.notEqual(projectArchitectureMeaningAtlasNode(changedMeaning).stateHash, first.stateHash);
+});
+
 test('VLMA-01/05/06/07 producer, schema, profile, visibility, digest and authority contradictions fail closed', () => {
   const cases = [
     ['ARCHITECTURE_MEANING_PRODUCER_REPOSITORY_MISMATCH', (e) => { e.producer.repository = 'vgong24/VexLife'; }],
