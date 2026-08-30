@@ -27,5 +27,27 @@
       "reference/browser/modules/relationships-controller.js",
       "github.issue.vexlife.240"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.relationships-store",
+    "path": "src/core/relationships-store.mjs",
+    "role": "Canonical Vex Home local directional relationship persistence with owner isolation, content-addressed history, atomic current heads, durable commit receipts and bounded recovery/export/tombstone semantics; performs no network/provider/Memory/Home-layout/model/publication effect and never infers reciprocal friendship or semantic acknowledgement.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils",
+      "registry.vexlife.relationships-browser.002"
+    ],
+    "writes": [
+      "state.relationships"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/relationships-store.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/browser-relationships-runtime-bridge.mjs",
+      "reference/browser/modules/relationships-controller.js",
+      "github.issue.vexlife.324"
+    ]
   }
 ]
