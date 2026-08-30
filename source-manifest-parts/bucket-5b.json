@@ -5,8 +5,8 @@
     {
       "path": "test/g04b-native-provisioning-worker.test.mjs",
       "mode": "100644",
-      "bytes": 16145,
-      "sha256": "27cc0e11d9027ed8ca662c985c46d1c0edcb40000bf204c5a1627418701a0563"
+      "bytes": 16256,
+      "sha256": "ff2f11808774faba40adfe416b9611ce98e3af67b1e0c25a8772e564c4854b2c"
     }
   ]
 }

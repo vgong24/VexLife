@@ -254,7 +254,7 @@ function validateSourceModel(input) {
   });
   const paths = files.map((entry) => entry.path);
   if (new Set(paths).size !== paths.length) fail('G04B_PROVISION_SOURCE_MODEL_INVALID', 'source model paths must be unique');
-  const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path));
+  const sorted = [...files].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   if (JSON.stringify(files) !== JSON.stringify(sorted)) fail('G04B_PROVISION_SOURCE_MODEL_INVALID', 'source model files must be canonically sorted');
   return Object.freeze({ repo: input.repo, revision: input.revision, licenseRef: input.licenseRef, files: sorted });
 }

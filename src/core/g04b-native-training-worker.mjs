@@ -251,7 +251,7 @@ function validateInventory(value) {
     if (!Number.isSafeInteger(entry.bytes) || entry.bytes < 0) fail('G04B_SNAPSHOT_INVENTORY_INVALID', 'snapshot file bytes must be a nonnegative safe integer', { index });
     if (!HEX64.test(entry.sha256 ?? '')) fail('G04B_SNAPSHOT_INVENTORY_INVALID', 'snapshot file sha256 must be lowercase SHA-256', { index });
     return { path: entry.path.replaceAll('\\', '/'), bytes: entry.bytes, sha256: entry.sha256 };
-  }).sort((a, b) => a.path.localeCompare(b.path));
+  }).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   if (new Set(files.map((entry) => entry.path)).size !== files.length) fail('G04B_SNAPSHOT_INVENTORY_INVALID', 'snapshot inventory paths must be unique');
   const normalized = { ...value, files };
   const expectedFingerprint = sourceSnapshotFingerprint(normalized);
