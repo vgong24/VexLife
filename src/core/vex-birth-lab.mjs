@@ -212,7 +212,7 @@ const STAGE_PRIMARY_ACTIONS = Object.freeze({
 });
 
 const SUPPORT_EXCLUDED_TEXT_PATTERNS = Object.freeze([
-  /(?:^|[\s"'`(])(?:[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|\/(?:Users|home|root|private|tmp|etc|mnt|Volumes|var\/(?:folders|tmp))\/|~[\\/])/u,
+  /(?:^|[\s"'`(=:\[])(?:[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|\/(?:Users|home|root|private|tmp|etc|mnt|Volumes|var\/(?:folders|tmp))\/|~[\\/])/u,
   /(?:\bAuthorization\s*:\s*(?:Bearer|Basic)\s+\S+|\b(?:api[_-]?key|token|password|passwd|secret)\s*[:=]\s*\S+|\bgh[pousr]_[A-Za-z0-9]{20,}\b|\bsk-[A-Za-z0-9_-]{16,}\b|\bAKIA[0-9A-Z]{16}\b)/iu
 ]);
 
@@ -236,6 +236,13 @@ function nonempty(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function containsExcludedSupportText(value) {
+  return (
+    typeof value === 'string' &&
+    SUPPORT_EXCLUDED_TEXT_PATTERNS.some((pattern) => pattern.test(value))
+  );
+}
+
 function requireSupportSafeText(value, label) {
   if (!nonempty(value)) {
     throw new VexBirthLabError(
@@ -243,7 +250,7 @@ function requireSupportSafeText(value, label) {
       `${label} is required`
     );
   }
-  if (SUPPORT_EXCLUDED_TEXT_PATTERNS.some((pattern) => pattern.test(value))) {
+  if (containsExcludedSupportText(value)) {
     throw new VexBirthLabError(
       'BIRTH_SUPPORT_CONTEXT_REDACTION_REQUIRED',
       `${label} contains material excluded from support context`
@@ -270,6 +277,16 @@ function requirePortableRef(value, label) {
     throw new VexBirthLabError(
       'BIRTH_EVIDENCE_INVALID',
       `${label} must be one portable canonical ref`
+    );
+  }
+  return value;
+}
+
+function requireSha256(value, label) {
+  if (typeof value !== 'string' || !/^[a-f0-9]{64}$/u.test(value)) {
+    throw new VexBirthLabError(
+      'BIRTH_EVIDENCE_INVALID',
+      `${label} must be one lowercase SHA-256 digest`
     );
   }
   return value;
@@ -331,6 +348,39 @@ function normalizedEvidence(value) {
     );
   }
 
+  let candidateArtifactOrNull = null;
+  if (
+    evidence.candidateArtifactOrNull !== null &&
+    evidence.candidateArtifactOrNull !== undefined
+  ) {
+    const candidateArtifact = requireObject(
+      evidence.candidateArtifactOrNull,
+      'candidateArtifactOrNull'
+    );
+    requirePortableRef(
+      candidateArtifact.generationRef,
+      'candidateArtifactOrNull.generationRef'
+    );
+    requireSha256(
+      candidateArtifact.sha256,
+      'candidateArtifactOrNull.sha256'
+    );
+    if (
+      !Number.isSafeInteger(candidateArtifact.bytes) ||
+      candidateArtifact.bytes <= 0
+    ) {
+      throw new VexBirthLabError(
+        'BIRTH_EVIDENCE_INVALID',
+        'candidateArtifactOrNull.bytes must be one positive safe integer'
+      );
+    }
+    candidateArtifactOrNull = {
+      generationRef: candidateArtifact.generationRef,
+      sha256: candidateArtifact.sha256,
+      bytes: candidateArtifact.bytes
+    };
+  }
+
   const model = requireObject(evidence.model, 'model');
   if (!MODEL_BINDING_STATES.has(model.bindingState)) {
     throw new VexBirthLabError(
@@ -372,6 +422,12 @@ function normalizedEvidence(value) {
       )].slice(0, 64)
     : [];
   for (const [index, evidenceRef] of latestEvidenceRefs.entries()) {
+    if (containsExcludedSupportText(evidenceRef)) {
+      throw new VexBirthLabError(
+        'BIRTH_EVIDENCE_INVALID',
+        `latestEvidenceRefs[${index}] contains material excluded from support context`
+      );
+    }
     requirePortableRef(evidenceRef, `latestEvidenceRefs[${index}]`);
   }
 
@@ -385,6 +441,7 @@ function normalizedEvidence(value) {
         effectTruth
       }
     },
+    candidateArtifactOrNull,
     candidateDisposition: disposition,
     latestEvidenceRefs
   };
@@ -457,13 +514,18 @@ function available(action) {
   });
 }
 
-function hasCandidateGeneration(evidence) {
-  return nonempty(evidence.lineage.candidateGenerationRefOrNull);
+function hasBoundCandidateBytes(evidence) {
+  return Boolean(
+    nonempty(evidence.lineage.candidateGenerationRefOrNull) &&
+    evidence.candidateArtifactOrNull &&
+    evidence.candidateArtifactOrNull.generationRef ===
+      evidence.lineage.candidateGenerationRefOrNull
+  );
 }
 
 function hasRegisteredAcceptedCandidate(evidence) {
   return (
-    hasCandidateGeneration(evidence) &&
+    hasBoundCandidateBytes(evidence) &&
     evidence.lineage.acceptedCandidateRefOrNull ===
       evidence.lineage.candidateGenerationRefOrNull
   );
@@ -559,13 +621,13 @@ function derivePrimaryAction(evidence, currentStage) {
         )
       };
     }
-    if (!hasCandidateGeneration(evidence)) {
+    if (!hasBoundCandidateBytes(evidence)) {
       return {
         available: null,
         held: hold(
           action,
           'ACCEPTED_CANDIDATE_NOT_BOUND',
-          'Generation registration requires the accepted candidate identity'
+          'Generation registration requires exact candidate byte evidence bound to the candidate generation'
         )
       };
     }
@@ -588,7 +650,7 @@ function derivePrimaryAction(evidence, currentStage) {
         held: hold(
           action,
           'ACCEPTED_CANDIDATE_NOT_BOUND',
-          'Wake requires the registered accepted candidate identity to match the candidate generation'
+          'Wake requires exact candidate byte evidence and a matching registered accepted-candidate identity'
         )
       };
     }
@@ -657,6 +719,7 @@ export function reduceVexBirthLabState(value) {
       evidence.lineage.candidateGenerationRefOrNull ?? null,
     acceptedCandidateRefOrNull:
       evidence.lineage.acceptedCandidateRefOrNull ?? null,
+    candidateArtifactOrNull: clone(evidence.candidateArtifactOrNull),
     modelTruthClass: modelTruth(evidence, currentVBStage),
     trainingEffectTruth: evidence.workers.training.effectTruth,
     workerLifecycle: evidence.workers.training.lifecycle,
