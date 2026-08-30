@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 13044,
       "sha256": "1de3d47ca01fef729a4884c14366b0b7b79265c40232ec0acf8133d985cb2b70"
+    },
+    {
+      "path": "docs/VEX-BIRTH-LAB-ARCHITECTURE.md",
+      "mode": "100644",
+      "bytes": 33895,
+      "sha256": "bd034b97f62ec80a205509826aeb7748bdaa66e1be7e76871b7598872f847e17"
     }
   ]
 }

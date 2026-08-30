@@ -1,0 +1,541 @@
+{
+  "schemaVersion": "vexlife.vex-birth-lab-architecture/v1",
+  "architectureRef": "architecture.vexlife.vex-birth-lab.v0",
+  "truthClass": "IN_FLIGHT_ARCHITECTURE_CANDIDATE",
+  "sourcePlacementRef": "github.issue.vexlife.310",
+  "parentBirthRef": "github.issue.vexlife.229",
+  "currentExecutionRef": "github.issue.vexlife.309",
+  "neuralMachineryOwnerRef": "github.issue.vexlife.220",
+  "retainedEffectRootOwnerRef": "github.issue.vextreme-sdk.1236",
+  "sourceVersionRef": "github.commit.vexlife.948702fe834994164e3f9540563c830c6e3bee00",
+  "effects": {
+    "runtimeIntegration": false,
+    "modelProvisioning": false,
+    "training": false,
+    "activation": false,
+    "publication": false
+  },
+  "principles": [
+    "DISCUSSION_NE_EFFECT",
+    "CHECK_STATUS_NE_ADVANCE_STAGE",
+    "COPY_SUPPORT_CONTEXT_NE_TRAINING_CONSENT",
+    "IMPORTED_GUIDANCE_NE_AUTHORITY",
+    "SELECT_FOR_SUPPORT_NE_SELECT_FOR_TRAINING",
+    "CONVERSATION_NE_TRAINING_DATA_BY_DEFAULT",
+    "MODEL_PROPOSED_LESSON_NE_ACCEPTED_LESSON",
+    "PACK_FROZEN_NE_TRAINING_ADMITTED",
+    "TRAINING_PLAN_READY_NE_OPTIMIZER_STARTED",
+    "COMMAND_FAILED_NE_NO_NEURAL_EFFECT",
+    "WEIGHTS_CHANGED_NE_CANDIDATE_GOOD",
+    "CANDIDATE_ACCEPTED_NE_CANDIDATE_ACTIVATED",
+    "CONTEXT_HANDOFF_NE_EXECUTABLE_RELAY"
+  ],
+  "humanChapters": [
+    {
+      "sequence": 0,
+      "chapterRef": "chapter.vex-birth.prepare",
+      "label": "Prepare",
+      "canonicalVBStages": [
+        "VB0",
+        "VB1"
+      ],
+      "purpose": "Bind one clean source, isolated Home, qualified learning environment and real G0.",
+      "primaryHumanActionRef": "action.birth.prepare-g0",
+      "terminalEvidence": [
+        "vb0HostSourceReceipt",
+        "vb1ProvisioningReceipt"
+      ]
+    },
+    {
+      "sequence": 1,
+      "chapterRef": "chapter.vex-birth.meet-g0",
+      "label": "Meet G0",
+      "canonicalVBStages": [
+        "VB2"
+      ],
+      "purpose": "Witness the real untaught G0 before cultivation or training annotations are admitted.",
+      "primaryHumanActionRef": "action.birth.baseline.finish",
+      "terminalEvidence": [
+        "vb2UntaughtBaselineReceipt"
+      ]
+    },
+    {
+      "sequence": 2,
+      "chapterRef": "chapter.vex-birth.cultivate",
+      "label": "Cultivate",
+      "canonicalVBStages": [
+        "VB3"
+      ],
+      "purpose": "Talk naturally and form explicit candidate annotations without implicit training consent.",
+      "primaryHumanActionRef": "action.birth.cultivation.finish",
+      "terminalEvidence": [
+        "vb3CultivationReceipt"
+      ]
+    },
+    {
+      "sequence": 3,
+      "chapterRef": "chapter.vex-birth.review-freeze",
+      "label": "Review & Freeze",
+      "canonicalVBStages": [
+        "VB4",
+        "VB5"
+      ],
+      "purpose": "Review lessons and counterexamples, preserve exclusions, and freeze immutable training and held-out packs.",
+      "primaryHumanActionRef": "action.birth.pack.freeze",
+      "terminalEvidence": [
+        "vb4LessonReviewReceipt",
+        "vb5FrozenPackReceipt"
+      ]
+    },
+    {
+      "sequence": 4,
+      "chapterRef": "chapter.vex-birth.train-compare",
+      "label": "Train & Compare",
+      "canonicalVBStages": [
+        "VB6",
+        "VB7",
+        "VB8",
+        "VB9"
+      ],
+      "purpose": "Admit one protected run, preserve neural-effect truth, compare G0 and candidate, and record one disposition.",
+      "primaryHumanActionRef": "action.birth.foundation.train-candidate",
+      "terminalEvidence": [
+        "trainingAdmissionReceipt",
+        "trainingResultReceipt",
+        "evaluationReceipt",
+        "dispositionReceipt"
+      ]
+    },
+    {
+      "sequence": 5,
+      "chapterRef": "chapter.vex-birth.accept-reject-wake",
+      "label": "Accept / Reject / Wake",
+      "canonicalVBStages": [
+        "VB10",
+        "VB11",
+        "VB12"
+      ],
+      "purpose": "Register accepted G1, separately activate, witness wake, preserve rollback and replay the route.",
+      "primaryHumanActionRef": "action.birth.generation.wake",
+      "terminalEvidence": [
+        "registrationReceipt",
+        "activationReceipt",
+        "wakeReceipt",
+        "replayReceipt"
+      ]
+    }
+  ],
+  "truthClasses": [
+    "CURRENT_REAL_LOCAL_G0",
+    "CURRENT_REAL_LOCAL_G1",
+    "CURRENT_SYNTHETIC_REFERENCE",
+    "MODEL_UNAVAILABLE_NO_SYNTHETIC_SUBSTITUTE",
+    "TRAINING_NOT_STARTED",
+    "TRAINING_EFFECT_UNKNOWN",
+    "TRAINING_WEIGHTS_UNCHANGED",
+    "TRAINING_WEIGHTS_CHANGED",
+    "CANDIDATE_ACCEPTED_INACTIVE",
+    "CANDIDATE_REJECTED",
+    "SOURCE_STALE_REVALIDATION_REQUIRED"
+  ],
+  "trainingEffectTruth": [
+    "PRE_EXECUTION_NO_EFFECT",
+    "OPTIMIZER_ATTEMPT_EFFECT_UNKNOWN",
+    "POST_OPTIMIZER_CHANGE_UNKNOWN",
+    "POST_OPTIMIZER_UNCHANGED",
+    "POST_OPTIMIZER_CHANGED"
+  ],
+  "annotationDispositions": [
+    {
+      "ref": "TRAIN",
+      "meaning": "Candidate formation material",
+      "implicitConsent": false
+    },
+    {
+      "ref": "COUNTEREXAMPLE",
+      "meaning": "Behavior or overgeneralization to avoid",
+      "implicitConsent": false
+    },
+    {
+      "ref": "HELD_OUT",
+      "meaning": "Evaluation-only material that must not enter training",
+      "implicitConsent": false
+    },
+    {
+      "ref": "DO_NOT_TRAIN",
+      "meaning": "Excluded from neural formation",
+      "implicitConsent": false
+    },
+    {
+      "ref": "SUPPORT_ONLY",
+      "meaning": "Explicitly selected excerpt for external advisory support",
+      "implicitConsent": false
+    }
+  ],
+  "provisionalActions": [
+    {
+      "actionRef": "action.birth.status.inspect",
+      "label": "View current birth status",
+      "effectClass": "READ_ONLY",
+      "permissionRef": "permission.none",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    },
+    {
+      "actionRef": "action.birth.support.copy",
+      "label": "Copy support context",
+      "effectClass": "LOCAL_EXPORT",
+      "permissionRef": "permission.birth.support-export",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    },
+    {
+      "actionRef": "action.birth.status-package.generate",
+      "label": "Generate status ZIP",
+      "effectClass": "LOCAL_EXPORT",
+      "permissionRef": "permission.birth.support-export",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    },
+    {
+      "actionRef": "action.birth.conversation.annotate",
+      "label": "Mark selected exchange",
+      "effectClass": "LOCAL_CANDIDATE_APPEND",
+      "permissionRef": "permission.birth.cultivation-annotate",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    },
+    {
+      "actionRef": "action.birth.lesson.review",
+      "label": "Review lesson",
+      "effectClass": "DURABLE_MEANING_REVIEW",
+      "permissionRef": "permission.birth.lesson-review",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    },
+    {
+      "actionRef": "action.birth.pack.freeze",
+      "label": "Freeze learning pack",
+      "effectClass": "LOCAL_CANDIDATE_APPEND",
+      "permissionRef": "permission.birth.pack-freeze",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    },
+    {
+      "actionRef": "action.birth.training-plan.preflight",
+      "label": "Run no-effect preflight",
+      "effectClass": "READ_ONLY",
+      "permissionRef": "permission.none",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    },
+    {
+      "actionRef": "action.birth.foundation.train-candidate",
+      "label": "Start G1 candidate training",
+      "effectClass": "ISOLATED_FOUNDATION_MODEL_TRAINING",
+      "permissionRef": "permission.birth.foundation.train",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false,
+      "mustNotReuseAs": "action.adapter.train-candidate"
+    },
+    {
+      "actionRef": "action.birth.candidate.disposition",
+      "label": "Accept, narrow, or reject candidate",
+      "effectClass": "DURABLE_MEANING_REVIEW",
+      "permissionRef": "permission.birth.candidate-disposition",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    },
+    {
+      "actionRef": "action.birth.generation.wake",
+      "label": "Wake G1",
+      "effectClass": "MODEL_ACTIVATION",
+      "permissionRef": "permission.birth.generation-activate",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    },
+    {
+      "actionRef": "action.birth.generation.rollback",
+      "label": "Rollback to G0",
+      "effectClass": "MODEL_PROFILE_SELECTION",
+      "permissionRef": "permission.birth.generation-activate",
+      "acceptedRegistryState": "SOURCE_PLACEMENT_REQUIRED",
+      "autoExecute": false
+    }
+  ],
+  "stateReducer": {
+    "schemaVersion": "vexlife.vex-birth-lab-state/v1",
+    "inputClasses": [
+      "sourceCurrentness",
+      "lineage",
+      "canonicalVBReceipts",
+      "workerLifecycles",
+      "trainingEffectEvidence",
+      "supportSelection"
+    ],
+    "outputFields": [
+      "currentChapter",
+      "currentVBStage",
+      "activeGenerationRef",
+      "candidateGenerationRefOrNull",
+      "modelTruthClass",
+      "trainingEffectTruth",
+      "sourceCurrentness",
+      "availableActions",
+      "heldActions",
+      "blockers",
+      "unknowns",
+      "latestEvidenceRefs",
+      "completionClaimAllowed"
+    ],
+    "observationalOperationsCannotAdvance": [
+      "status.inspect",
+      "support.copy",
+      "status-package.generate",
+      "evidence.view",
+      "guidance.import",
+      "navigation"
+    ]
+  },
+  "supportContextContract": {
+    "schemaVersion": "vexlife.vex-birth-support-context/v1",
+    "artifactClass": "CONTEXT_HANDOFF",
+    "executable": false,
+    "previewRequired": true,
+    "include": [
+      "birthSessionRef",
+      "currentChapter",
+      "currentVBStage",
+      "activeGenerationRef",
+      "candidateGenerationRefOrNull",
+      "trainingEffectTruth",
+      "sourceCurrentness",
+      "availableActionRefsAndLabels",
+      "heldActionRefsLabelsAndReasons",
+      "blockers",
+      "unknowns",
+      "selectedExcerptWhenExplicit",
+      "boundedLatestEvidenceRefs",
+      "humanQuestion"
+    ],
+    "excludeByDefault": [
+      "rawFullTranscript",
+      "unselectedHomeContent",
+      "unselectedMemoryContent",
+      "credentials",
+      "absolutePrivatePaths",
+      "modelWeights",
+      "multiGigabyteArtifacts",
+      "executionAuthority"
+    ],
+    "guidanceConsumption": {
+      "authority": "ADVISORY_ONLY",
+      "currentActionRefMustExist": true,
+      "autoExecute": false
+    }
+  },
+  "statusPackageContract": {
+    "artifactClass": "CONTEXT_HANDOFF",
+    "executable": false,
+    "files": [
+      "START-HERE.html",
+      "BIRTH-STATUS.json",
+      "SUPPORT-CONTEXT.md",
+      "CURRENT-STAGE.json",
+      "AVAILABLE-ACTIONS.json",
+      "REDACTION-MANIFEST.json"
+    ],
+    "optionalDirectories": [
+      "receipts/",
+      "plans/",
+      "results/",
+      "excerpts/"
+    ],
+    "forbiddenByDefault": [
+      "rawFullTranscript",
+      "credentials",
+      "privateMemory",
+      "modelWeightFiles",
+      "arbitraryHomeContents",
+      "executionTaskManifest"
+    ]
+  },
+  "verifiedRelayComposition": {
+    "protocolOwner": "VexLocalBridge",
+    "artifactClasses": [
+      "CONTEXT_HANDOFF",
+      "EXECUTABLE_RELAY",
+      "EXECUTION_RETURN"
+    ],
+    "rules": [
+      "FILE_SELECTED_NE_TASK_ADMITTED",
+      "TASK_SHAPE_VALID_NE_EFFECT_ADMITTED",
+      "RESULT_AVAILABLE_NE_RESULT_CONSUMED",
+      "NO_SECOND_RUNNER",
+      "NO_SECOND_RETURN_PROTOCOL"
+    ]
+  },
+  "futureImplementationSlices": [
+    {
+      "sliceRef": "slice.vex-birth-lab.a",
+      "name": "No-effect foundation",
+      "includes": [
+        "pure state reducer",
+        "six chapter projection",
+        "available and held actions",
+        "copy support context",
+        "generate status ZIP",
+        "fixtures and tests"
+      ],
+      "effects": false
+    },
+    {
+      "sliceRef": "slice.vex-birth-lab.b",
+      "name": "Real G0 conversation and annotations",
+      "includes": [
+        "real Companion consumption",
+        "untaught baseline banner and close",
+        "independent annotation layers"
+      ],
+      "effects": "LOCAL_CANDIDATE_ONLY"
+    },
+    {
+      "sliceRef": "slice.vex-birth-lab.c",
+      "name": "Lesson review and pack freeze",
+      "includes": [
+        "candidate lesson cards",
+        "human review",
+        "immutable pack generations"
+      ],
+      "effects": "LOCAL_CANDIDATE_AND_MEANING_REVIEW"
+    },
+    {
+      "sliceRef": "slice.vex-birth-lab.d",
+      "name": "G04B plan and worker hooks",
+      "includes": [
+        "no-effect preflight",
+        "protected training request",
+        "NWS and VexLocalBridge lifecycle",
+        "progress and cancel truth",
+        "canonical return consumption"
+      ],
+      "effects": "DELEGATED_PROTECTED_EFFECTS"
+    },
+    {
+      "sliceRef": "slice.vex-birth-lab.e",
+      "name": "Comparison, disposition, wake",
+      "includes": [
+        "G0 versus candidate review",
+        "ACCEPT NARROW REJECT",
+        "separate activation",
+        "wake and rollback"
+      ],
+      "effects": "DELEGATED_REVIEW_AND_ACTIVATION"
+    }
+  ],
+  "candidateFutureSourceCorridor": {
+    "custodyGranted": false,
+    "paths": [
+      "src/core/vex-birth-lab.mjs",
+      "scripts/vex-birth-lab.mjs",
+      "reference/browser/modules/vex-birth-lab-controller.js",
+      "reference/browser/vex-birth-lab/index.html",
+      "reference/browser/vex-birth-lab/app.js",
+      "reference/browser/vex-birth-lab/app.css",
+      "blueprint/vex-birth-lab-registry.json",
+      "blueprint/vex-birth-lab/strings/en.json",
+      "blueprint/vex-birth-lab/strings/ja.json",
+      "blueprint/vex-birth-lab/strings/zh.json",
+      "test/vex-birth-lab.test.mjs",
+      "test/vex-birth-lab-browser.test.mjs"
+    ],
+    "rule": "Fresh source placement must re-ground and shrink or adjust this hypothesis."
+  },
+  "edgeCases": [
+    {
+      "ref": "edge.support-side-discussion",
+      "response": "Birth stage unchanged; exact resume route preserved."
+    },
+    {
+      "ref": "edge.stale-guidance",
+      "response": "Guidance marked stale; fresh support context required."
+    },
+    {
+      "ref": "edge.train-heldout-overlap",
+      "response": "Fail closed until explicit correction."
+    },
+    {
+      "ref": "edge.do-not-train-leak",
+      "response": "Pack freeze fails."
+    },
+    {
+      "ref": "edge.model-self-approval",
+      "response": "Proposal remains candidate; human review required."
+    },
+    {
+      "ref": "edge.plan-source-drift",
+      "response": "Plan stale; training held."
+    },
+    {
+      "ref": "edge.browser-close-working",
+      "response": "Re-enter existing NWS worker; no duplicate."
+    },
+    {
+      "ref": "edge.cancel-before-optimizer",
+      "response": "Preserve no-effect cancellation receipt."
+    },
+    {
+      "ref": "edge.cancel-after-optimizer",
+      "response": "Preserve neural-effect known or unknown truth."
+    },
+    {
+      "ref": "edge.failure-after-weight-change",
+      "response": "Do not erase modelWeightsChanged=true."
+    },
+    {
+      "ref": "edge.accepted-inactive",
+      "response": "Remain accepted but inactive until separate authority."
+    },
+    {
+      "ref": "edge.unknown-stage",
+      "response": "Show UNKNOWN and status export; never guess."
+    }
+  ],
+  "proofObligations": [
+    "BLA-00",
+    "BLA-01",
+    "BLA-02",
+    "BLA-03",
+    "BLA-04",
+    "BLA-05",
+    "BLA-06",
+    "BLA-07",
+    "BLA-08",
+    "BLA-09",
+    "BLA-10",
+    "BLA-11",
+    "BLA-12",
+    "BLA-13",
+    "BLA-14",
+    "BLA-15",
+    "BLA-16",
+    "BLA-17",
+    "BLA-18",
+    "BLA-19"
+  ],
+  "convergenceOptionsForCurrentBirthOwner": [
+    "CONSUME_BIRTH_LAB_BEFORE_REAL_BASELINE",
+    "CONSUME_MINIMUM_SLICE_A_B_BEFORE_REAL_BASELINE",
+    "RUN_ONE_EXPLICITLY_THROWAWAY_ENGINEERING_REHEARSAL_THEN_CONSUME",
+    "SOURCE_CONTRADICTION_REQUIRES_BOUNDED_CORRECTION"
+  ],
+  "authority": {
+    "architectureOnly": true,
+    "runtimeIntegration": false,
+    "training": false,
+    "activation": false,
+    "sourceManifestSerialization": false,
+    "publication": false
+  },
+  "continuityToken": "[VXG RealForever]"
+}
