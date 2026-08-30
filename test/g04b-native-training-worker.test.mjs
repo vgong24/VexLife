@@ -56,6 +56,8 @@ function fixture() {
   fs.writeFileSync(trainerPath, '# fixed trainer placeholder\n');
   fs.writeFileSync(evaluatorPath, '# fixed evaluator placeholder\n');
   const snapshotFiles = [
+    ['LICENSE', Buffer.from('Apache-2.0\n')],
+    ['README.md', Buffer.from('# Qwen3.5\n')],
     ['config.json', Buffer.from('{"model_type":"qwen3_5"}\n')],
     ['model-00001-of-00002.safetensors', Buffer.from('first shard bytes')]
   ];
@@ -64,7 +66,7 @@ function fixture() {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, bytes);
     return { path: relative, bytes: bytes.length, sha256: sha(bytes) };
-  }).sort((a, b) => a.path.localeCompare(b.path));
+  }).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const inventoryBase = {
     schemaVersion: G04B_SOURCE_SNAPSHOT_INVENTORY_SCHEMA,
     sourceModelRepo: 'Qwen/Qwen3.5-4B',
