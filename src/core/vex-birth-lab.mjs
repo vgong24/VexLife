@@ -211,6 +211,11 @@ const STAGE_PRIMARY_ACTIONS = Object.freeze({
   })
 });
 
+const SUPPORT_EXCLUDED_TEXT_PATTERNS = Object.freeze([
+  /(?:^|[\s"'`(])(?:[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|\/(?:Users|home|root|private|tmp|etc|mnt|Volumes|var\/(?:folders|tmp))\/|~[\\/])/u,
+  /(?:\bAuthorization\s*:\s*(?:Bearer|Basic)\s+\S+|\b(?:api[_-]?key|token|password|passwd|secret)\s*[:=]\s*\S+|\bgh[pousr]_[A-Za-z0-9]{20,}\b|\bsk-[A-Za-z0-9_-]{16,}\b|\bAKIA[0-9A-Z]{16}\b)/iu
+]);
+
 function clone(value) {
   return value === undefined ? undefined : structuredClone(value);
 }
@@ -229,6 +234,22 @@ function freeze(value) {
 
 function nonempty(value) {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function requireSupportSafeText(value, label) {
+  if (!nonempty(value)) {
+    throw new VexBirthLabError(
+      'BIRTH_SUPPORT_CONTEXT_INVALID',
+      `${label} is required`
+    );
+  }
+  if (SUPPORT_EXCLUDED_TEXT_PATTERNS.some((pattern) => pattern.test(value))) {
+    throw new VexBirthLabError(
+      'BIRTH_SUPPORT_CONTEXT_REDACTION_REQUIRED',
+      `${label} contains material excluded from support context`
+    );
+  }
+  return value;
 }
 
 function requireObject(value, label) {
@@ -345,6 +366,15 @@ function normalizedEvidence(value) {
     );
   }
 
+  const latestEvidenceRefs = Array.isArray(evidence.latestEvidenceRefs)
+    ? [...new Set(
+        evidence.latestEvidenceRefs.filter((item) => nonempty(item))
+      )].slice(0, 64)
+    : [];
+  for (const [index, evidenceRef] of latestEvidenceRefs.entries()) {
+    requirePortableRef(evidenceRef, `latestEvidenceRefs[${index}]`);
+  }
+
   return {
     ...clone(evidence),
     receipts: clone(evidence.receipts ?? {}),
@@ -356,11 +386,7 @@ function normalizedEvidence(value) {
       }
     },
     candidateDisposition: disposition,
-    latestEvidenceRefs: Array.isArray(evidence.latestEvidenceRefs)
-      ? [...new Set(
-          evidence.latestEvidenceRefs.filter((item) => nonempty(item))
-        )].slice(0, 64)
-      : []
+    latestEvidenceRefs
   };
 }
 
@@ -429,6 +455,18 @@ function available(action) {
     ...clone(action),
     held: false
   });
+}
+
+function hasCandidateGeneration(evidence) {
+  return nonempty(evidence.lineage.candidateGenerationRefOrNull);
+}
+
+function hasRegisteredAcceptedCandidate(evidence) {
+  return (
+    hasCandidateGeneration(evidence) &&
+    evidence.lineage.acceptedCandidateRefOrNull ===
+      evidence.lineage.candidateGenerationRefOrNull
+  );
 }
 
 function derivePrimaryAction(evidence, currentStage) {
@@ -510,6 +548,29 @@ function derivePrimaryAction(evidence, currentStage) {
     };
   }
 
+  if (currentStage === 'VB10') {
+    if (evidence.candidateDisposition !== 'ACCEPT') {
+      return {
+        available: null,
+        held: hold(
+          action,
+          'CANDIDATE_NOT_ACCEPTED',
+          'Generation registration requires an accepted candidate'
+        )
+      };
+    }
+    if (!hasCandidateGeneration(evidence)) {
+      return {
+        available: null,
+        held: hold(
+          action,
+          'ACCEPTED_CANDIDATE_NOT_BOUND',
+          'Generation registration requires the accepted candidate identity'
+        )
+      };
+    }
+  }
+
   if (currentStage === 'VB11') {
     if (evidence.candidateDisposition !== 'ACCEPT') {
       return {
@@ -518,6 +579,16 @@ function derivePrimaryAction(evidence, currentStage) {
           action,
           'CANDIDATE_NOT_ACCEPTED',
           'Wake requires an accepted candidate'
+        )
+      };
+    }
+    if (!hasRegisteredAcceptedCandidate(evidence)) {
+      return {
+        available: null,
+        held: hold(
+          action,
+          'ACCEPTED_CANDIDATE_NOT_BOUND',
+          'Wake requires the registered accepted candidate identity to match the candidate generation'
         )
       };
     }
@@ -634,18 +705,16 @@ export function formVexBirthSupportContext(
       `state.schemaVersion must be ${VEX_BIRTH_LAB_STATE_SCHEMA}`
     );
   }
-  if (!nonempty(question)) {
-    throw new VexBirthLabError(
-      'BIRTH_SUPPORT_CONTEXT_INVALID',
-      'question is required'
-    );
-  }
+  const safeQuestion = requireSupportSafeText(question, 'question');
   if (includeSelectedExcerpt && !nonempty(selectedExcerpt)) {
     throw new VexBirthLabError(
       'BIRTH_SUPPORT_CONTEXT_INVALID',
       'selectedExcerpt must be explicit when included'
     );
   }
+  const safeSelectedExcerpt = includeSelectedExcerpt
+    ? requireSupportSafeText(selectedExcerpt, 'selectedExcerpt')
+    : null;
 
   return freeze({
     schemaVersion: VEX_BIRTH_SUPPORT_CONTEXT_SCHEMA,
@@ -667,8 +736,8 @@ export function formVexBirthSupportContext(
     })),
     blockers: clone(state.blockers),
     unknowns: clone(state.unknowns),
-    selectedExcerpt: includeSelectedExcerpt ? selectedExcerpt : null,
-    question,
+    selectedExcerpt: safeSelectedExcerpt,
+    question: safeQuestion,
     latestEvidenceRefs: clone(state.latestEvidenceRefs),
     rawTranscriptIncluded: false,
     privateHomeContentIncluded: false,
