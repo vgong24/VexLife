@@ -502,6 +502,53 @@ test('VB11 Wake requires exact registered accepted-candidate identity and bytes'
   );
 });
 
+test('BORN completion claim requires current active accepted G1 with exact bytes', () => {
+  const receipts = acceptedThrough('VB12');
+  const base = {
+    receipts,
+    candidateDisposition: 'ACCEPT',
+    lineage: {
+      candidateGenerationRefOrNull: 'generation.vex.g1.candidate',
+      acceptedCandidateRefOrNull: 'generation.vex.g1.candidate'
+    },
+    candidateArtifactOrNull: candidateArtifact()
+  };
+
+  const g0StillActive = reduceVexBirthLabState(evidence(base));
+  assert.equal(g0StillActive.currentVBStage, 'BORN');
+  assert.equal(g0StillActive.completionClaimAllowed, false);
+
+  const noBytes = reduceVexBirthLabState(evidence({
+    ...base,
+    candidateArtifactOrNull: null,
+    lineage: {
+      ...base.lineage,
+      activeGenerationRef: 'generation.vex.g1.candidate'
+    }
+  }));
+  assert.equal(noBytes.completionClaimAllowed, false);
+
+  const stale = reduceVexBirthLabState(evidence({
+    ...base,
+    source: { currentness: 'STALE' },
+    lineage: {
+      ...base.lineage,
+      activeGenerationRef: 'generation.vex.g1.candidate'
+    }
+  }));
+  assert.equal(stale.completionClaimAllowed, false);
+
+  const complete = reduceVexBirthLabState(evidence({
+    ...base,
+    lineage: {
+      ...base.lineage,
+      activeGenerationRef: 'generation.vex.g1.candidate'
+    }
+  }));
+  assert.equal(complete.modelTruthClass, 'CURRENT_REAL_LOCAL_G1');
+  assert.equal(complete.completionClaimAllowed, true);
+});
+
 test('chapter projection is stable and rejects unknown stages', () => {
   assert.equal(projectVexBirthHumanChapter('VB6'), 'TRAIN_AND_COMPARE');
   assert.equal(projectVexBirthHumanChapter('BORN'), 'COMPLETE');
