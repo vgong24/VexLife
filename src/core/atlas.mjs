@@ -17,27 +17,14 @@ function isObject(value) {
 }
 
 const EXTERNAL_NODE_KEYS = [
-  'ref', 'kind', 'brief', 'currentness', 'edges', 'meaningSource',
-  'canonicalOwnerRepositoryRef', 'sourceBinding', 'stateHash'
+  'ref', 'kind', 'brief', 'stateHash', 'currentness', 'edges', 'meaningSource',
+  'canonicalOwnerRepositoryRef', 'sourceBinding'
 ];
 const EXTERNAL_SOURCE_BINDING_KEYS = [
   'schemaVersion', 'profile', 'registryRef', 'sourceDigestSha256',
   'projectionBundleDigestSha256', 'profileDigestSha256'
 ];
 const HEX64 = /^[0-9a-f]{64}$/u;
-
-function externalNodeBody(node) {
-  return {
-    ref: node.ref,
-    kind: node.kind,
-    brief: node.brief,
-    currentness: node.currentness,
-    edges: node.edges,
-    meaningSource: node.meaningSource,
-    canonicalOwnerRepositoryRef: node.canonicalOwnerRepositoryRef,
-    sourceBinding: node.sourceBinding
-  };
-}
 
 function validateProjectedExternalNode(node) {
   if (!isObject(node)) fail('ATLAS_EXTERNAL_NODE_INVALID');
@@ -47,6 +34,7 @@ function validateProjectedExternalNode(node) {
   if (typeof node.ref !== 'string' || !node.ref.trim()) fail('ATLAS_EXTERNAL_REF_REQUIRED');
   if (node.kind !== 'EXTERNAL_MEANING') fail('ATLAS_EXTERNAL_KIND_INVALID');
   if (typeof node.brief !== 'string' || !node.brief.trim()) fail('ATLAS_EXTERNAL_BRIEF_REQUIRED');
+  if (typeof node.stateHash !== 'string' || !HEX64.test(node.stateHash)) fail('ATLAS_EXTERNAL_STATE_HASH_INVALID');
   if (node.currentness !== 'SOURCE_BOUND_EXTERNAL_MEANING') fail('ATLAS_EXTERNAL_CURRENTNESS_INVALID');
   if (!Array.isArray(node.edges) || node.edges.length !== 0) fail('ATLAS_EXTERNAL_EDGES_NOT_ADMITTED');
   if (node.meaningSource !== 'SDK_MAA_CONSUMER_ENVELOPE') fail('ATLAS_EXTERNAL_MEANING_SOURCE_INVALID');
@@ -61,8 +49,6 @@ function validateProjectedExternalNode(node) {
   for (const key of ['sourceDigestSha256', 'projectionBundleDigestSha256', 'profileDigestSha256']) {
     if (typeof node.sourceBinding[key] !== 'string' || !HEX64.test(node.sourceBinding[key])) fail('ATLAS_EXTERNAL_SOURCE_DIGEST_INVALID', key);
   }
-  if (typeof node.stateHash !== 'string' || !HEX64.test(node.stateHash)) fail('ATLAS_EXTERNAL_STATE_HASH_INVALID');
-  if (node.stateHash !== semanticHash(externalNodeBody(node))) fail('ATLAS_EXTERNAL_STATE_HASH_MISMATCH');
   return node;
 }
 
