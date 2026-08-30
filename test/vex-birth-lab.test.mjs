@@ -29,6 +29,7 @@ function evidence(overrides = {}) {
       acceptedCandidateRefOrNull: null,
       g0RollbackPreserved: true
     },
+    candidateArtifactOrNull: null,
     model: {
       bindingState: 'BOUND'
     },
@@ -75,6 +76,16 @@ function acceptedThrough(lastStage) {
     receipts[stage] = { state: 'ACCEPTED' };
   }
   return receipts;
+}
+
+function candidateArtifact(
+  generationRef = 'generation.vex.g1.candidate'
+) {
+  return {
+    generationRef,
+    sha256: 'a'.repeat(64),
+    bytes: 4096
+  };
 }
 
 test('projects a fresh session to PREPARE / VB0 without effects', () => {
@@ -244,6 +255,16 @@ test('support export rejects private paths and credentials without echoing them'
       error.code === 'BIRTH_EVIDENCE_INVALID' &&
       !error.message.includes('/Users/victor/private-birth.json')
   );
+
+  assert.throws(
+    () => reduceVexBirthLabState(evidence({
+      latestEvidenceRefs: [secret]
+    })),
+    (error) =>
+      error instanceof VexBirthLabError &&
+      error.code === 'BIRTH_EVIDENCE_INVALID' &&
+      !error.message.includes(secret)
+  );
 });
 
 test('status package model cannot become an executable relay', () => {
@@ -304,7 +325,7 @@ test('training and held-out cannot target the same conversation range', () => {
   );
 });
 
-test('VB10 registration requires ACCEPT and a bound candidate generation', () => {
+test('VB10 registration requires ACCEPT and exact candidate byte evidence', () => {
   const receipts = acceptedThrough('VB9');
   for (const candidateDisposition of ['NARROW', 'REJECT']) {
     const held = reduceVexBirthLabState(evidence({
@@ -312,7 +333,8 @@ test('VB10 registration requires ACCEPT and a bound candidate generation', () =>
       candidateDisposition,
       lineage: {
         candidateGenerationRefOrNull: 'generation.vex.g1.candidate'
-      }
+      },
+      candidateArtifactOrNull: candidateArtifact()
     }));
     assert.equal(held.currentVBStage, 'VB10');
     assert.ok(
@@ -328,12 +350,39 @@ test('VB10 registration requires ACCEPT and a bound candidate generation', () =>
     );
   }
 
-  const unbound = reduceVexBirthLabState(evidence({
+  const noCandidate = reduceVexBirthLabState(evidence({
     receipts,
     candidateDisposition: 'ACCEPT'
   }));
   assert.ok(
-    unbound.heldActions.some(
+    noCandidate.heldActions.some(
+      (action) => action.reasonCode === 'ACCEPTED_CANDIDATE_NOT_BOUND'
+    )
+  );
+
+  const noBytes = reduceVexBirthLabState(evidence({
+    receipts,
+    candidateDisposition: 'ACCEPT',
+    lineage: {
+      candidateGenerationRefOrNull: 'generation.vex.g1.candidate'
+    }
+  }));
+  assert.ok(
+    noBytes.heldActions.some(
+      (action) => action.reasonCode === 'ACCEPTED_CANDIDATE_NOT_BOUND'
+    )
+  );
+
+  const wrongBytes = reduceVexBirthLabState(evidence({
+    receipts,
+    candidateDisposition: 'ACCEPT',
+    lineage: {
+      candidateGenerationRefOrNull: 'generation.vex.g1.candidate'
+    },
+    candidateArtifactOrNull: candidateArtifact('generation.vex.g1.other')
+  }));
+  assert.ok(
+    wrongBytes.heldActions.some(
       (action) => action.reasonCode === 'ACCEPTED_CANDIDATE_NOT_BOUND'
     )
   );
@@ -343,7 +392,8 @@ test('VB10 registration requires ACCEPT and a bound candidate generation', () =>
     candidateDisposition: 'ACCEPT',
     lineage: {
       candidateGenerationRefOrNull: 'generation.vex.g1.candidate'
-    }
+    },
+    candidateArtifactOrNull: candidateArtifact()
   }));
   assert.ok(
     bound.availableActions.some(
@@ -360,7 +410,8 @@ test('wake remains held without ACCEPT and separate activation authority', () =>
       candidateDisposition: 'NARROW',
       lineage: {
         candidateGenerationRefOrNull: 'generation.vex.g1.candidate'
-      }
+      },
+      candidateArtifactOrNull: candidateArtifact()
     })
   );
   assert.equal(notAccepted.currentVBStage, 'VB11');
@@ -378,6 +429,7 @@ test('wake remains held without ACCEPT and separate activation authority', () =>
         candidateGenerationRefOrNull: 'generation.vex.g1.candidate',
         acceptedCandidateRefOrNull: 'generation.vex.g1.candidate'
       },
+      candidateArtifactOrNull: candidateArtifact(),
       separateActivationAuthorityAvailable: false
     })
   );
@@ -389,7 +441,7 @@ test('wake remains held without ACCEPT and separate activation authority', () =>
   );
 });
 
-test('VB11 Wake requires exact registered accepted-candidate identity', () => {
+test('VB11 Wake requires exact registered accepted-candidate identity and bytes', () => {
   const receipts = acceptedThrough('VB10');
   for (const acceptedCandidateRefOrNull of [
     null,
@@ -402,6 +454,7 @@ test('VB11 Wake requires exact registered accepted-candidate identity', () => {
         candidateGenerationRefOrNull: 'generation.vex.g1.candidate',
         acceptedCandidateRefOrNull
       },
+      candidateArtifactOrNull: candidateArtifact(),
       separateActivationAuthorityAvailable: true
     }));
     assert.ok(
@@ -417,6 +470,21 @@ test('VB11 Wake requires exact registered accepted-candidate identity', () => {
     );
   }
 
+  const noBytes = reduceVexBirthLabState(evidence({
+    receipts,
+    candidateDisposition: 'ACCEPT',
+    lineage: {
+      candidateGenerationRefOrNull: 'generation.vex.g1.candidate',
+      acceptedCandidateRefOrNull: 'generation.vex.g1.candidate'
+    },
+    separateActivationAuthorityAvailable: true
+  }));
+  assert.ok(
+    noBytes.heldActions.some(
+      (action) => action.reasonCode === 'ACCEPTED_CANDIDATE_NOT_BOUND'
+    )
+  );
+
   const ready = reduceVexBirthLabState(evidence({
     receipts,
     candidateDisposition: 'ACCEPT',
@@ -424,6 +492,7 @@ test('VB11 Wake requires exact registered accepted-candidate identity', () => {
       candidateGenerationRefOrNull: 'generation.vex.g1.candidate',
       acceptedCandidateRefOrNull: 'generation.vex.g1.candidate'
     },
+    candidateArtifactOrNull: candidateArtifact(),
     separateActivationAuthorityAvailable: true
   }));
   assert.ok(
