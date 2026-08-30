@@ -45,12 +45,12 @@ function atlasEnvelope() {
         doesNotProve: ['The candidate is accepted or current.']
       },
       sourceRoutes: ['github.issue.vexlife.220'],
-      liveContextRoutes: ['github.issue.vextreme-sdk.231'],
+      liveContextRoutes: ['github.issue.vexlife.308'],
       rewalkEntryRefs: ['github.issue.vexlife.220']
     },
     producer: producer('atlas'),
     meaningSourceRefs: ['github.issue.vexlife.220'],
-    liveContextRouteRefs: ['github.issue.vextreme-sdk.231'],
+    liveContextRouteRefs: ['github.issue.vexlife.308'],
     coverage: null,
     guessedMeaning: false,
     publicationAuthority: false,
@@ -82,7 +82,7 @@ function humanEnvelope() {
       },
       whatItProves: ['changed weights'],
       whatItDoesNotProve: ['acceptance'],
-      liveStatusRoute: ['github.issue.vextreme-sdk.231'],
+      liveStatusRoute: ['github.issue.vexlife.308'],
       deeperSourceRoutes: ['github.issue.vexlife.220'],
       recommendedRewalkEntryRefs: ['github.issue.vexlife.220']
     }
