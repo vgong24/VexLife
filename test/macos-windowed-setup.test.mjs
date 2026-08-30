@@ -88,13 +88,18 @@ function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew =
   return { ...result, effectLog, temp, selectedHome };
 }
 
-test('MAC-WIN-00/03/12 exact-source bootstrap defaults to AppKit window and keeps explicit Terminal fallback', () => {
+test('MAC-WIN-00/03/12 exact-source bootstrap defaults to an app-hosted AppKit window and keeps explicit Terminal fallback', () => {
   shellSyntax(bootstrapPath);
   assert.match(bootstrap, /SETUP_MODE="\$\{VEXLIFE_SETUP_MODE:-window\}"/u);
-  assert.match(bootstrap, /exec \/usr\/bin\/osascript "\$WINDOW" "\$TARGET"/u);
+  assert.match(bootstrap, /WINDOW_APP="\$TMP_ROOT\/VexLife Setup\.app"/u);
+  assert.match(bootstrap, /\/usr\/bin\/osacompile -o "\$WINDOW_APP" "\$WINDOW"/u);
+  assert.match(bootstrap, /\/usr\/bin\/plutil -insert VexLifeSourceRoot -string "\$TARGET" "\$INFO_PLIST"/u);
+  assert.match(bootstrap, /BOUND_SOURCE_ROOT=.*VexLifeSourceRoot/u);
+  assert.match(bootstrap, /\/usr\/bin\/open -W -n "\$WINDOW_APP"/u);
+  assert.doesNotMatch(bootstrap, /exec \/usr\/bin\/osascript "\$WINDOW" "\$TARGET"/u);
   assert.match(bootstrap, /exec \/bin\/bash "\$TARGET\/install\/vexlife-setup\.sh" "\$TARGET"/u);
   assert.match(bootstrap, /SOURCE_SHA/u);
-  assert.ok(bootstrap.indexOf('SOURCE_SHA') < bootstrap.indexOf('osascript "$WINDOW"'));
+  assert.ok(bootstrap.indexOf('SOURCE_SHA') < bootstrap.indexOf('osacompile -o "$WINDOW_APP"'));
 });
 
 test('MAC-WIN-01/02 controller vocabulary is closed and unknown actions fail before effect', () => {
@@ -225,8 +230,12 @@ test('MAC-WIN-05 repair and rebuild remain host-gated after healthy-open reuse c
   }
 });
 
-test('MAC-WIN-06 selected Home is an argv value and AppKit launches Bash without shell interpolation', () => {
+test('MAC-WIN-06 selected Home and app-hosted source root remain data values without shell interpolation', () => {
   assert.match(windowSource, /use framework "AppKit"/u);
+  assert.match(windowSource, /property sourceRootInfoKey : "VexLifeSourceRoot"/u);
+  assert.match(windowSource, /if \(count of argv\) is 1 then/u);
+  assert.match(windowSource, /else if \(count of argv\) is 0 then/u);
+  assert.match(windowSource, /NSBundle's mainBundle\(\)'s objectForInfoDictionaryKey:sourceRootInfoKey/u);
   assert.match(windowSource, /NSTask/u);
   assert.match(windowSource, /actionPrefix/u);
   assert.match(windowSource, /hasAction/u);

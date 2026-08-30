@@ -11,14 +11,15 @@ property NSBackingStoreBuffered : 2
 property controllerPrefix : "VEXLIFE_CONTROLLER_STATE\t"
 property actionPrefix : "VEXLIFE_CONTROLLER_ACTIONS\t"
 property resultPrefix : "VEXLIFE_CONTROLLER_RESULT\t"
+property sourceRootInfoKey : "VexLifeSourceRoot"
 
 on run argv
-  if (count of argv) is not 1 then
+  set repoRoot to my resolveRepoRoot(argv)
+  if repoRoot is missing value then
     my showMessage("VexLife setup stopped", "The Mac setup window requires one exact source root.", "OK")
     error number 2
   end if
 
-  set repoRoot to item 1 of argv
   set fileManager to current application's NSFileManager's defaultManager()
   set backendPath to repoRoot & "/install/vexlife-setup.sh"
   if ((fileManager's fileExistsAtPath:backendPath) as boolean) is false then
@@ -132,6 +133,21 @@ on run argv
     end if
   end repeat
 end run
+
+on resolveRepoRoot(argv)
+  if (count of argv) is 1 then
+    set directRoot to item 1 of argv as text
+    if directRoot is "" then return missing value
+    return directRoot
+  else if (count of argv) is 0 then
+    set bundledRoot to current application's NSBundle's mainBundle()'s objectForInfoDictionaryKey:sourceRootInfoKey
+    if bundledRoot is missing value then return missing value
+    set boundRoot to bundledRoot as text
+    if boundRoot is "" then return missing value
+    return boundRoot
+  end if
+  return missing value
+end resolveRepoRoot
 
 on chooseHome(defaultHome)
   set alert to current application's NSAlert's alloc()'s init()

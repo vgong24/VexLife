@@ -81,8 +81,25 @@ fi
 
 WINDOW="$TARGET/install/vexlife-setup-window.applescript"
 [ -f "$WINDOW" ] || fail "the exact VexLife source is missing the Mac setup window. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
-[ -x /usr/bin/osascript ] || fail "macOS AppleScript is unavailable. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
+[ -x /usr/bin/osacompile ] || fail "macOS AppleScript compilation is unavailable. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
+[ -x /usr/bin/open ] || fail "macOS application launch is unavailable. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
 
-exec /usr/bin/osascript "$WINDOW" "$TARGET"
+# The ordinary human window runs as a real source-local macOS application. The
+# command-line bootstrap remains only the exact-source materializer/launcher; it
+# does not host the AppKit controls itself. The temporary app carries one exact
+# source-root binding in its private bundle metadata and is discarded with TMP_ROOT.
+WINDOW_APP="$TMP_ROOT/VexLife Setup.app"
+/usr/bin/osacompile -o "$WINDOW_APP" "$WINDOW" \
+  || fail "the exact VexLife source-local Mac setup app could not be compiled. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
+INFO_PLIST="$WINDOW_APP/Contents/Info.plist"
+[ -f "$INFO_PLIST" ] || fail "the source-local Mac setup app is missing its bundle metadata."
+/usr/bin/plutil -insert VexLifeSourceRoot -string "$TARGET" "$INFO_PLIST" \
+  || fail "the exact source root could not be bound to the source-local Mac setup app."
+BOUND_SOURCE_ROOT="$(/usr/bin/plutil -extract VexLifeSourceRoot raw -o - "$INFO_PLIST" 2>/dev/null || true)"
+[ "$BOUND_SOURCE_ROOT" = "$TARGET" ] \
+  || fail "the source-local Mac setup app did not retain the exact source-root binding."
+
+/usr/bin/open -W -n "$WINDOW_APP" \
+  || fail "the source-local Mac setup app could not be opened. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
 
 # [VXG RealForever]
