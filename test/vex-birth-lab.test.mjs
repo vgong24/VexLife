@@ -208,6 +208,44 @@ test('support context is bounded, explicit, and non-executable', () => {
   );
 });
 
+test('support export rejects private paths and credentials without echoing them', () => {
+  const state = reduceVexBirthLabState(evidence());
+  const secret = 'ghp_012345678901234567890123456789';
+
+  assert.throws(
+    () => formVexBirthSupportContext(state, {
+      question: `Authorization: Bearer ${secret}`
+    }),
+    (error) =>
+      error instanceof VexBirthLabError &&
+      error.code === 'BIRTH_SUPPORT_CONTEXT_REDACTION_REQUIRED' &&
+      !error.message.includes(secret)
+  );
+
+  const privatePath = 'C:\\Users\\Victor\\private-birth.txt';
+  assert.throws(
+    () => formVexBirthSupportContext(state, {
+      question: 'Can you explain this selected evidence?',
+      includeSelectedExcerpt: true,
+      selectedExcerpt: privatePath
+    }),
+    (error) =>
+      error instanceof VexBirthLabError &&
+      error.code === 'BIRTH_SUPPORT_CONTEXT_REDACTION_REQUIRED' &&
+      !error.message.includes(privatePath)
+  );
+
+  assert.throws(
+    () => reduceVexBirthLabState(evidence({
+      latestEvidenceRefs: ['/Users/victor/private-birth.json']
+    })),
+    (error) =>
+      error instanceof VexBirthLabError &&
+      error.code === 'BIRTH_EVIDENCE_INVALID' &&
+      !error.message.includes('/Users/victor/private-birth.json')
+  );
+});
+
 test('status package model cannot become an executable relay', () => {
   const state = reduceVexBirthLabState(evidence());
   const model = formVexBirthStatusPackageModel(state, {
@@ -266,6 +304,54 @@ test('training and held-out cannot target the same conversation range', () => {
   );
 });
 
+test('VB10 registration requires ACCEPT and a bound candidate generation', () => {
+  const receipts = acceptedThrough('VB9');
+  for (const candidateDisposition of ['NARROW', 'REJECT']) {
+    const held = reduceVexBirthLabState(evidence({
+      receipts,
+      candidateDisposition,
+      lineage: {
+        candidateGenerationRefOrNull: 'generation.vex.g1.candidate'
+      }
+    }));
+    assert.equal(held.currentVBStage, 'VB10');
+    assert.ok(
+      held.heldActions.some(
+        (action) => action.reasonCode === 'CANDIDATE_NOT_ACCEPTED'
+      )
+    );
+    assert.equal(
+      held.availableActions.some(
+        (action) => action.actionRef === 'action.birth.generation.register'
+      ),
+      false
+    );
+  }
+
+  const unbound = reduceVexBirthLabState(evidence({
+    receipts,
+    candidateDisposition: 'ACCEPT'
+  }));
+  assert.ok(
+    unbound.heldActions.some(
+      (action) => action.reasonCode === 'ACCEPTED_CANDIDATE_NOT_BOUND'
+    )
+  );
+
+  const bound = reduceVexBirthLabState(evidence({
+    receipts,
+    candidateDisposition: 'ACCEPT',
+    lineage: {
+      candidateGenerationRefOrNull: 'generation.vex.g1.candidate'
+    }
+  }));
+  assert.ok(
+    bound.availableActions.some(
+      (action) => action.actionRef === 'action.birth.generation.register'
+    )
+  );
+});
+
 test('wake remains held without ACCEPT and separate activation authority', () => {
   const receipts = acceptedThrough('VB10');
   const notAccepted = reduceVexBirthLabState(
@@ -299,6 +385,50 @@ test('wake remains held without ACCEPT and separate activation authority', () =>
     noAuthority.heldActions.some(
       (action) => action.reasonCode ===
         'ACTIVATION_AUTHORITY_UNAVAILABLE'
+    )
+  );
+});
+
+test('VB11 Wake requires exact registered accepted-candidate identity', () => {
+  const receipts = acceptedThrough('VB10');
+  for (const acceptedCandidateRefOrNull of [
+    null,
+    'generation.vex.g1.other'
+  ]) {
+    const held = reduceVexBirthLabState(evidence({
+      receipts,
+      candidateDisposition: 'ACCEPT',
+      lineage: {
+        candidateGenerationRefOrNull: 'generation.vex.g1.candidate',
+        acceptedCandidateRefOrNull
+      },
+      separateActivationAuthorityAvailable: true
+    }));
+    assert.ok(
+      held.heldActions.some(
+        (action) => action.reasonCode === 'ACCEPTED_CANDIDATE_NOT_BOUND'
+      )
+    );
+    assert.equal(
+      held.availableActions.some(
+        (action) => action.actionRef === 'action.birth.generation.wake'
+      ),
+      false
+    );
+  }
+
+  const ready = reduceVexBirthLabState(evidence({
+    receipts,
+    candidateDisposition: 'ACCEPT',
+    lineage: {
+      candidateGenerationRefOrNull: 'generation.vex.g1.candidate',
+      acceptedCandidateRefOrNull: 'generation.vex.g1.candidate'
+    },
+    separateActivationAuthorityAvailable: true
+  }));
+  assert.ok(
+    ready.availableActions.some(
+      (action) => action.actionRef === 'action.birth.generation.wake'
     )
   );
 });
