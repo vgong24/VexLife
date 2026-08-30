@@ -5,8 +5,8 @@
     {
       "path": "src/core/architecture-meaning.mjs",
       "mode": "100644",
-      "bytes": 12084,
-      "sha256": "a7d236ebe96e123a45c856e080a8d13b125cb37715ee94234d5211f17ea3f26f"
+      "bytes": 14942,
+      "sha256": "bd4fa434719b27b83c63125a86d96ea4da3eaeedae9b5cc05d8a44b7c774a1a5"
     },
     {
       "path": "src/core/g04b-native-provisioning-worker.mjs",
