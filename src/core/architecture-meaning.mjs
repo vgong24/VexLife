@@ -199,11 +199,33 @@ export function validateArchitectureMeaningEnvelope(envelope, expectedProducer =
   });
 }
 
+function stableEnvelopeSemantics(envelope) {
+  return {
+    schemaVersion: envelope.schemaVersion,
+    profile: envelope.profile,
+    profileVisibilityRef: envelope.profileVisibilityRef,
+    subjectRef: envelope.subjectRef,
+    projection: envelope.projection,
+    producer: {
+      repository: envelope.producer.repository,
+      registrySchemaVersion: envelope.producer.registrySchemaVersion,
+      projectionIndexSchemaVersion: envelope.producer.projectionIndexSchemaVersion,
+      registryRef: envelope.producer.registryRef,
+      sourceDigestSha256: envelope.producer.sourceDigestSha256,
+      projectionBundleDigestSha256: envelope.producer.projectionBundleDigestSha256,
+      profileDigestSha256: envelope.producer.profileDigestSha256
+    },
+    meaningSourceRefs: envelope.meaningSourceRefs,
+    liveContextRouteRefs: envelope.liveContextRouteRefs
+  };
+}
+
 function externalNodeBody(envelope, validated) {
   return {
     ref: validated.subjectRef,
     kind: 'EXTERNAL_MEANING',
     brief: validated.brief,
+    stateHash: semanticHash(stableEnvelopeSemantics(envelope)),
     currentness: ARCHITECTURE_MEANING_CURRENTNESS,
     edges: [],
     meaningSource: ARCHITECTURE_MEANING_SOURCE,
@@ -221,8 +243,7 @@ function externalNodeBody(envelope, validated) {
 
 export function projectArchitectureMeaningAtlasNode(envelope, expectedProducer = ACCEPTED_SDK_MEANING_PRODUCER) {
   const validated = validateArchitectureMeaningEnvelope(envelope, expectedProducer);
-  const body = externalNodeBody(envelope, validated);
-  return Object.freeze({ ...body, stateHash: semanticHash(body) });
+  return Object.freeze(externalNodeBody(envelope, validated));
 }
 
 // [VXG RealForever]
