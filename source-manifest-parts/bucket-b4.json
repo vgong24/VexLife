@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 7487,
       "sha256": "186188c5e2a988f6d2763314de01b3b5f42ab5d906a0f557ead7ff46261189f2"
+    },
+    {
+      "path": "test/vex-birth-lab.test.mjs",
+      "mode": "100644",
+      "bytes": 9054,
+      "sha256": "8db7fca451aa223a830b882e769012fa783f6f4a317660d82ae83277fe8f8c1c"
     }
   ]
 }
