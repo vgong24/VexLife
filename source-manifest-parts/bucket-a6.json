@@ -3,6 +3,12 @@
   "bucketId": "a6",
   "files": [
     {
+      "path": "src/core/vex-birth-lab.mjs",
+      "mode": "100644",
+      "bytes": 27027,
+      "sha256": "e271e75eadcf62d997d89654c76a9208212e14713796ee45d175505808b9e142"
+    },
+    {
       "path": "test/browser-living-journal-memory-bridge.test.mjs",
       "mode": "100644",
       "bytes": 10853,
