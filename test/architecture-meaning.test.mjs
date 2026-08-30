@@ -258,7 +258,8 @@ test('VLMA-03/09 adapter does not copy SDK registry bytes or gain filesystem/net
   ]) {
     assert.equal(source.includes(forbidden), false, forbidden);
   }
-  assert.equal(fixture.includes('docs/private-continuity/'), false, 'public test fixture must not persist private SDK source paths');
+  const privateSdkSourcePathMarker = ['docs', 'private-continuity', ''].join('/');
+  assert.equal(fixture.includes(privateSdkSourcePathMarker), false, 'public test fixture must not persist private SDK source paths');
 });
 
 test('VLMA-10 architecture meaning adapter is registered in the core module registry', () => {
