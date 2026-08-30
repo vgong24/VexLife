@@ -1,3 +1,4 @@
+import { projectArchitectureMeaningAtlasNode } from './architecture-meaning.mjs';
 import { estimateTokens, semanticHash } from './utils.mjs';
 
 function terms(value) {
@@ -38,7 +39,7 @@ function externalNodeBody(node) {
   };
 }
 
-function validateExternalNode(node) {
+function validateProjectedExternalNode(node) {
   if (!isObject(node)) fail('ATLAS_EXTERNAL_NODE_INVALID');
   const actual = Object.keys(node).sort();
   const expected = [...EXTERNAL_NODE_KEYS].sort();
@@ -49,9 +50,7 @@ function validateExternalNode(node) {
   if (node.currentness !== 'SOURCE_BOUND_EXTERNAL_MEANING') fail('ATLAS_EXTERNAL_CURRENTNESS_INVALID');
   if (!Array.isArray(node.edges) || node.edges.length !== 0) fail('ATLAS_EXTERNAL_EDGES_NOT_ADMITTED');
   if (node.meaningSource !== 'SDK_MAA_CONSUMER_ENVELOPE') fail('ATLAS_EXTERNAL_MEANING_SOURCE_INVALID');
-  if (typeof node.canonicalOwnerRepositoryRef !== 'string' || !node.canonicalOwnerRepositoryRef.trim()) {
-    fail('ATLAS_EXTERNAL_OWNER_REQUIRED');
-  }
+  if (node.canonicalOwnerRepositoryRef !== 'vgong24/Vextreme-SDK') fail('ATLAS_EXTERNAL_OWNER_INVALID');
   if (!isObject(node.sourceBinding)) fail('ATLAS_EXTERNAL_SOURCE_BINDING_REQUIRED');
   const bindingKeys = Object.keys(node.sourceBinding).sort();
   const expectedBindingKeys = [...EXTERNAL_SOURCE_BINDING_KEYS].sort();
@@ -67,12 +66,12 @@ function validateExternalNode(node) {
   return node;
 }
 
-function composeQueryNodes(canonicalNodes, externalNodes) {
-  if (!Array.isArray(externalNodes)) fail('ATLAS_EXTERNAL_NODES_INVALID');
+function composeQueryNodes(canonicalNodes, externalMeaningEnvelopes) {
+  if (!Array.isArray(externalMeaningEnvelopes)) fail('ATLAS_EXTERNAL_MEANING_ENVELOPES_INVALID');
   const nodes = new Map(canonicalNodes);
   const seen = new Set();
-  for (const candidate of externalNodes) {
-    const node = validateExternalNode(candidate);
+  for (const envelope of externalMeaningEnvelopes) {
+    const node = validateProjectedExternalNode(projectArchitectureMeaningAtlasNode(envelope));
     if (canonicalNodes.has(node.ref)) fail('ATLAS_EXTERNAL_REF_COLLISION', node.ref);
     if (seen.has(node.ref)) fail('ATLAS_EXTERNAL_REF_DUPLICATE', node.ref);
     seen.add(node.ref);
@@ -96,8 +95,18 @@ export class Atlas {
 
   get(ref) { return this.nodes.get(ref) ?? null; }
 
-  query({ intent = '', startRefs = [], edgeTypes = null, depthLimit = 2, resultLimit = 12, tokenBudget = 1200, externalNodes = [] } = {}) {
-    const nodes = composeQueryNodes(this.nodes, externalNodes);
+  query({
+    intent = '',
+    startRefs = [],
+    edgeTypes = null,
+    depthLimit = 2,
+    resultLimit = 12,
+    tokenBudget = 1200,
+    externalMeaningEnvelopes = [],
+    externalNodes = undefined
+  } = {}) {
+    if (externalNodes !== undefined) fail('ATLAS_DIRECT_EXTERNAL_NODE_INJECTION_FORBIDDEN');
+    const nodes = composeQueryNodes(this.nodes, externalMeaningEnvelopes);
     const wantedTerms = new Set(terms(intent));
     const edgeFilter = edgeTypes ? new Set(edgeTypes) : null;
     const queue = [];
