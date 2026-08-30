@@ -5,8 +5,8 @@
     {
       "path": "src/core/g04b-native-provisioning-worker.mjs",
       "mode": "100644",
-      "bytes": 41926,
-      "sha256": "c53cb27dc776b467a681d565a54b328784b4c82c27111f5777fe333b60e5d029"
+      "bytes": 41944,
+      "sha256": "f96b8435f2c119144bd68723c87f96d867a42d005159fe80e3076152d0ab0621"
     },
     {
       "path": "src/core/runtime-failure.mjs",

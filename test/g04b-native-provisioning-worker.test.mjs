@@ -36,6 +36,8 @@ function fixture() {
     ['transformers', '5.12.1', 'transformers-5.12.1-py3-none-any.whl', Buffer.from('transformers wheel')]
   ];
   const modelFiles = [
+    ['LICENSE', Buffer.from('Apache-2.0\n')],
+    ['README.md', Buffer.from('# Qwen3.5\n')],
     ['config.json', Buffer.from('{"model_type":"qwen3_5"}\n')],
     ['model-00001-of-00002.safetensors', Buffer.from('model shard one')],
     ['model-00002-of-00002.safetensors', Buffer.from('model shard two')],
@@ -60,7 +62,7 @@ function fixture() {
       path: modelPath, url, sha256: sha(bytes), expectedBytes: bytes.length,
       maxBytes: bytes.length + 1024, sourceRef: `hf.qwen.${modelPath.replaceAll(/[^A-Za-z0-9]/g, '-')}`.toLowerCase()
     };
-  }).sort((a, b) => a.path.localeCompare(b.path));
+  }).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const nodeRuntimeBinding = {
     schemaVersion: 'vexlife.native-worker-runtime-binding/v1',
     bindingRef: 'binding.node.g04b.preprovision.001',
