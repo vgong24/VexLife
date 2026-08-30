@@ -15,6 +15,12 @@
       "sha256": "4476b46f1f57c163ff165fac0ca52aebc0cb8d38895c7494a178e00c62dd3d2d"
     },
     {
+      "path": "blueprint/vex-birth-lab-architecture.json",
+      "mode": "100644",
+      "bytes": 16245,
+      "sha256": "07e4a40aec03c2fcc947e19cc5879bb0fd6485b8868e8111db7a18c76e06651c"
+    },
+    {
       "path": "reference/browser/public-learning/index.html",
       "mode": "100644",
       "bytes": 6623,
