@@ -18,8 +18,8 @@ function producer(profile = 'atlas') {
     registrySchemaVersion: 'vextreme.architecture-meaning-registry/v1',
     projectionIndexSchemaVersion: 'vextreme.architecture-meaning-projection-index/v1',
     registryRef: 'registry.vextreme.architecture-meaning.maa00.v1',
-    registryPath: 'docs/private-continuity/architecture-accessibility/meaning-addressability-registry.json',
-    projectionPath: 'docs/private-continuity/architecture-accessibility/meaning-addressability-projections.json',
+    registryPath: 'producer-registry-path',
+    projectionPath: 'producer-projection-path',
     topologyRedacted: false,
     sourceDigestSha256: ACCEPTED_SDK_MEANING_PRODUCER.sourceDigestSha256,
     projectionBundleDigestSha256: ACCEPTED_SDK_MEANING_PRODUCER.projectionBundleDigestSha256,
@@ -138,6 +138,52 @@ test('VLMA-01/05/06/07 producer, schema, profile, visibility, digest and authori
   }
 });
 
+test('profile provenance routes must remain inside envelope-level source and live-context bounds', () => {
+  const sourceEscape = atlasEnvelope();
+  sourceEscape.projection.sourceRoutes = ['github.issue.vexlife.999'];
+  assert.throws(
+    () => validateArchitectureMeaningEnvelope(sourceEscape),
+    (error) => error?.code === 'ATLAS_MEANING_SOURCE_ROUTE_OUTSIDE_ENVELOPE'
+  );
+
+  const rewalkEscape = atlasEnvelope();
+  rewalkEscape.projection.rewalkEntryRefs = ['github.issue.vexlife.999'];
+  assert.throws(
+    () => validateArchitectureMeaningEnvelope(rewalkEscape),
+    (error) => error?.code === 'ATLAS_MEANING_REWALK_REF_OUTSIDE_ENVELOPE'
+  );
+
+  const liveEscape = atlasEnvelope();
+  liveEscape.projection.liveContextRoutes = ['github.issue.vexlife.999'];
+  assert.throws(
+    () => validateArchitectureMeaningEnvelope(liveEscape),
+    (error) => error?.code === 'ATLAS_MEANING_LIVE_ROUTE_OUTSIDE_ENVELOPE'
+  );
+});
+
+test('human projection uses the accepted answer schema and bounded provenance routes', () => {
+  const schemaDrift = humanEnvelope();
+  schemaDrift.projection.answers.currentStatus = 'CURRENT';
+  assert.throws(
+    () => validateArchitectureMeaningEnvelope(schemaDrift),
+    (error) => error?.code === 'HUMAN_MEANING_ANSWERS_SCHEMA_DRIFT'
+  );
+
+  const sourceEscape = humanEnvelope();
+  sourceEscape.projection.answers.deeperSourceRoutes = ['github.issue.vexlife.999'];
+  assert.throws(
+    () => validateArchitectureMeaningEnvelope(sourceEscape),
+    (error) => error?.code === 'HUMAN_MEANING_SOURCE_ROUTE_OUTSIDE_ENVELOPE'
+  );
+
+  const liveEscape = humanEnvelope();
+  liveEscape.projection.answers.liveStatusRoute = ['github.issue.vexlife.999'];
+  assert.throws(
+    () => validateArchitectureMeaningEnvelope(liveEscape),
+    (error) => error?.code === 'HUMAN_MEANING_LIVE_ROUTE_OUTSIDE_ENVELOPE'
+  );
+});
+
 test('VLMA-04 private envelope cannot be consumed through a public projection path', () => {
   const expected = { ...ACCEPTED_SDK_MEANING_PRODUCER, consumerVisibilityRef: 'visibility.public' };
   assert.throws(
@@ -205,12 +251,14 @@ test('hostile envelope mutation cannot bypass Atlas validation by recomputing a 
 
 test('VLMA-03/09 adapter does not copy SDK registry bytes or gain filesystem/network/effect machinery', () => {
   const source = fs.readFileSync(path.join(ROOT, 'src/core/architecture-meaning.mjs'), 'utf8');
+  const fixture = fs.readFileSync(path.join(ROOT, 'test/architecture-meaning.test.mjs'), 'utf8');
   for (const forbidden of [
     'meaning-addressability-registry.json', 'meaningCards', 'writeFile', 'fetch(', 'https://', 'http://',
     'child_process', 'spawn(', 'exec('
   ]) {
     assert.equal(source.includes(forbidden), false, forbidden);
   }
+  assert.equal(fixture.includes('docs/private-continuity/'), false, 'public test fixture must not persist private SDK source paths');
 });
 
 test('VLMA-10 architecture meaning adapter is registered in the core module registry', () => {
