@@ -128,11 +128,12 @@ test('Relationships visible adoption binds the stable resource to Self Developme
   assert.ok(moduleRegistry.some((module) => module.moduleRef === 'module.vexlife.browser.relationships-controller'));
   assert.ok(moduleRegistry.some((module) => module.moduleRef === 'module.vexlife.browser.relationships-core'));
   assert.ok(moduleComposition.includes.modules.includes('blueprint/module-registry/relationships-runtime-bridge.json'));
-  assert.equal(runtimeModuleRegistry.length, 1);
-  assert.equal(runtimeModuleRegistry[0].moduleRef, 'module.vexlife.core.relationships-runtime-bridge');
-  assert.equal(runtimeModuleRegistry[0].path, 'src/core/browser-relationships-runtime-bridge.mjs');
-  assert.deepEqual(runtimeModuleRegistry[0].writes, []);
-  assert.ok(runtimeModuleRegistry[0].loadedBy.includes('module.vexlife.script.serve-browser'));
+  const runtimeBridgeModules = runtimeModuleRegistry.filter((module) => module.moduleRef === 'module.vexlife.core.relationships-runtime-bridge');
+  assert.equal(runtimeBridgeModules.length, 1);
+  const [runtimeBridgeModule] = runtimeBridgeModules;
+  assert.equal(runtimeBridgeModule.path, 'src/core/browser-relationships-runtime-bridge.mjs');
+  assert.deepEqual(runtimeBridgeModule.writes, []);
+  assert.ok(runtimeBridgeModule.loadedBy.includes('module.vexlife.script.serve-browser'));
 });
 
 test('Relationships scale projection preserves direct identity and aggregation boundaries', () => {
