@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 4316,
       "sha256": "96c6601e7dd705a5dcd702f52fc9f5db67a5d392f2a2d8f749583c9251b544e6"
+    },
+    {
+      "path": "src/core/scheduler-runtime-observer.mjs",
+      "mode": "100644",
+      "bytes": 9374,
+      "sha256": "c49e8a85cce47df85ee0eb5b461cfcd9ecb02b0b80c00feb93bc8c5a132908b8"
     }
   ]
 }
