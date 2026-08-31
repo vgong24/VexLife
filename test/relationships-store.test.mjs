@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import { semanticHash } from '../src/core/utils.mjs';
 import {
   createRelationship,
@@ -18,7 +18,22 @@ const NOW = '2026-08-30T23:15:00.000Z';
 const LATER = '2026-08-30T23:16:00.000Z';
 const LATER2 = '2026-08-30T23:17:00.000Z';
 
-function home() { return fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-rel-')); }
+const TEST_OWNED_TEMP_DIRS = new Set();
+function tempDir(prefix) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  TEST_OWNED_TEMP_DIRS.add(root);
+  return root;
+}
+function home() { return tempDir('vexlife-rel-'); }
+function disposeTestOwnedTempDirs() {
+  const roots = [...TEST_OWNED_TEMP_DIRS];
+  TEST_OWNED_TEMP_DIRS.clear();
+  for (const root of roots) {
+    fs.rmSync(root, { recursive: true, force: true });
+    assert.equal(fs.existsSync(root), false, 'FRS-CLEAN-05 test-owned temporary Home residue');
+  }
+}
+afterEach(() => disposeTestOwnedTempDirs());
 function owner(root, patch = {}) {
   return {
     home: root,
@@ -99,9 +114,9 @@ test('FRS-00 create requires canonical Vex Home and returns durable local commit
 
 test('FRS-00B symlink Vex Home aliases fail closed', () => {
   const root = home();
-  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-rel-link-'));
+  const parent = tempDir('vexlife-rel-link-');
   const alias = path.join(parent, 'alias');
-  fs.symlinkSync(root, alias, 'dir');
+  fs.symlinkSync(root, alias, process.platform === 'win32' ? 'junction' : 'dir');
   throwsCode(() => createRelationship(createInput(alias)), 'RELATIONSHIP_HOME_IDENTITY_MISMATCH');
 });
 
@@ -358,4 +373,62 @@ test('FRS-10C recomputed internally valid transition cannot drift from its addre
   fs.writeFileSync(transitionFile, `${JSON.stringify(transition, null, 2)}\n`);
 
   throwsCode(() => readRelationship(owner(root)), 'RELATIONSHIP_RECEIPT_CORRUPT');
+});
+
+
+function cleanupOwnerDir(root) {
+  return path.join(root, 'relationships', ownerHash('participant.local.alpha', 'state-root.local.alpha'));
+}
+function assertNoWriterOrHeadTempResidue(root) {
+  assert.equal(fs.existsSync(lockPath(root)), false, 'writer.lock must be absent');
+  const heads = path.join(cleanupOwnerDir(root), 'heads');
+  if (fs.existsSync(heads)) {
+    assert.deepEqual(fs.readdirSync(heads).filter((name) => name.includes('.tmp-')), []);
+  }
+}
+
+test('FRS-CLEAN-00 successful create leaves writer.lock absent', () => {
+  const root = home();
+  createRelationship(createInput(root));
+  assertNoWriterOrHeadTempResidue(root);
+});
+
+test('FRS-CLEAN-01 successful transition leaves writer.lock absent', () => {
+  const root = home();
+  createRelationship(createInput(root));
+  transitionRelationship(transitionInput(root));
+  assertNoWriterOrHeadTempResidue(root);
+});
+
+test('FRS-CLEAN-02 failBeforeHeadRename leaves no writer.lock or head temp residue', () => {
+  const root = home();
+  throwsCode(() => createRelationship(createInput(root, { faults: { failBeforeHeadRename: true } })), 'RELATIONSHIP_HEAD_NOT_COMMITTED');
+  assertNoWriterOrHeadTempResidue(root);
+});
+
+test('FRS-CLEAN-03 failAfterHeadRenameBeforeReceipt leaves no writer.lock or head temp residue', () => {
+  const root = home();
+  throwsCode(() => createRelationship(createInput(root, { faults: { failAfterHeadRenameBeforeReceipt: true } })), 'RELATIONSHIP_RECEIPT_NOT_DURABLE');
+  assertNoWriterOrHeadTempResidue(root);
+});
+
+test('FRS-CLEAN-04 stale and terminal rejected transitions leave writer.lock absent', () => {
+  const staleRoot = home();
+  createRelationship(createInput(staleRoot));
+  transitionRelationship(transitionInput(staleRoot));
+  throwsCode(() => transitionRelationship(transitionInput(staleRoot, { expectedRevision: 0, observedAt: LATER2, instanceRef: 'instance.relationships.clean.stale' })), 'RELATIONSHIP_STALE_REVISION');
+  assertNoWriterOrHeadTempResidue(staleRoot);
+
+  const terminalRoot = home();
+  createRelationship(createInput(terminalRoot));
+  transitionRelationship(transitionInput(terminalRoot, { action: 'TOMBSTONE' }));
+  throwsCode(() => transitionRelationship(transitionInput(terminalRoot, { action: 'UPDATE_CURRENTNESS', expectedRevision: 1, observedAt: LATER2, instanceRef: 'instance.relationships.clean.terminal' })), 'RELATIONSHIP_TERMINAL');
+  assertNoWriterOrHeadTempResidue(terminalRoot);
+});
+
+test('FRS-CLEAN-05 test-created temporary Home roots are disposed by the test harness', () => {
+  const root = home();
+  assert.equal(fs.existsSync(root), true);
+  disposeTestOwnedTempDirs();
+  assert.equal(fs.existsSync(root), false);
 });
