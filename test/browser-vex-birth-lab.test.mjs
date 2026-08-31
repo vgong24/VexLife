@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -163,6 +164,20 @@ test('explicit support excerpt may coexist with held-out training disposition wi
   assert.equal(redaction.rawFullTranscriptIncluded, false);
   assert.equal(redaction.executionAuthorityGranted, false);
   assert.equal(redaction.selectedExcerptIncluded, true);
+});
+
+test('Birth Lab open and close keep surface-menu accessibility and visible focus ownership aligned', () => {
+  const source = readFileSync(
+    new URL('../reference/browser/modules/vex-birth-lab-controller.js', import.meta.url),
+    'utf8'
+  );
+  const openBlock = source.match(/function open\(\) \{[\s\S]*?\n  \}/u)?.[0] ?? '';
+  const closeBlock = source.match(/function close\(\) \{[\s\S]*?\n  \}/u)?.[0] ?? '';
+
+  assert.match(openBlock, /querySelector\('#surfaceMenu'\)[\s\S]*setAttribute\('hidden', ''\)/u);
+  assert.match(openBlock, /querySelector\('#surfaceMenuButton'\)[\s\S]*setAttribute\('aria-expanded', 'false'\)/u);
+  assert.match(closeBlock, /querySelector\('#surfaceMenuButton'\)\?\.focus\(\)/u);
+  assert.doesNotMatch(closeBlock, /#openVexBirthLab/u);
 });
 
 // [VXG RealForever]
