@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 6414,
       "sha256": "32de6af2cc522f8031fcdae43f92b609287a6b6aa6cc6e9d7b214c51d609902e"
+    },
+    {
+      "path": "test/architecture-meaning.test.mjs",
+      "mode": "100644",
+      "bytes": 12324,
+      "sha256": "d2438987b6bcec877ec5ff00f3aa1ea36ee3a29f17c976b4e2574e22236a4275"
     }
   ]
 }
