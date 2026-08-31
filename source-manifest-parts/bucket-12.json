@@ -5,8 +5,8 @@
     {
       "path": "blueprint/vexlife.blueprint.json",
       "mode": "100644",
-      "bytes": 1762,
-      "sha256": "c6ea1a714cdec7f5c94c88926a45351c71b265ceb2a3958850f8b797ac5e75b1"
+      "bytes": 2000,
+      "sha256": "76ad39681f51266fa849fd74889e7071c2a4734d9a9e5ff31e4b6469bff5aee8"
     },
     {
       "path": "test/navigation-continuity-registry-inheritance.test.mjs",

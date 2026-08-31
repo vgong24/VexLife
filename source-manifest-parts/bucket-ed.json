@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 26440,
       "sha256": "407fefc05f3ea42961caeff8b2e7ceec737509c6a75a85d15adc0097b2d557dc"
+    },
+    {
+      "path": "test/security-access-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 2884,
+      "sha256": "fef5e36c079fc449e2f3c33519dcdf1309eda3553fa0226a16773e33048fbc9f"
     }
   ]
 }

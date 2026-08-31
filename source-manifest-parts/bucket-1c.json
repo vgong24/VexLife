@@ -9,6 +9,12 @@
       "sha256": "a55ab315a108cef7adf5f912ead94cbb820d01ba718d1a296d0c3dc680481607"
     },
     {
+      "path": "test/browser-security-access.test.mjs",
+      "mode": "100644",
+      "bytes": 3250,
+      "sha256": "1a05c65ab154e57df27ca685fd7390595467a75a453197a778f310aa068d66fc"
+    },
+    {
       "path": "training/foundation-generation/foundation_evaluate.py",
       "mode": "100644",
       "bytes": 27389,

@@ -11,7 +11,8 @@
       "blueprint/module-registry/public-learning.json",
       "blueprint/module-registry/navigation-continuity.json",
       "blueprint/module-registry/cdr-s5-closed-alpha.json",
-      "blueprint/module-registry/relationships-runtime-bridge.json"
+      "blueprint/module-registry/relationships-runtime-bridge.json",
+      "blueprint/module-registry/security-access-preview.json"
     ]
   }
 }
