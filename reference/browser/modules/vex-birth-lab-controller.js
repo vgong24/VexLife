@@ -1080,6 +1080,8 @@ export function createVexBirthLabController({
     root.setAttribute('aria-hidden', 'false');
     document.querySelector('#surfaceMenu')
       ?.setAttribute('hidden', '');
+    document.querySelector('#surfaceMenuButton')
+      ?.setAttribute('aria-expanded', 'false');
     q('#vblClose')?.focus();
     refreshStatus();
   }
@@ -1087,7 +1089,7 @@ export function createVexBirthLabController({
   function close() {
     root.hidden = true;
     root.setAttribute('aria-hidden', 'true');
-    document.querySelector('#openVexBirthLab')?.focus();
+    document.querySelector('#surfaceMenuButton')?.focus();
   }
 
   q('#vblRefreshStatus').addEventListener(
