@@ -5,7 +5,10 @@ import {
   requireExecutable
 } from './capability.mjs';
 import { createContextLease } from './context-lease.mjs';
-import { selectIndependentReadOnlyBatch } from './intent-scheduler.mjs';
+import {
+  selectIndependentReadOnlyBatch,
+  WorkerLeaseAuthority
+} from './intent-scheduler.mjs';
 import { ProcessFactory } from './process-factory.mjs';
 import { ToolResultRelay } from './tool-result-relay.mjs';
 import { semanticHash } from './utils.mjs';
@@ -19,6 +22,9 @@ export const CAPABILITY_ASSIMILATION_MODES = Object.freeze({
 const MAXIMUM_REQUESTS = 8;
 const MAXIMUM_ARGUMENT_BYTES = 8 * 1024;
 const PROCESS_REF = 'process.vexlife.capability-assimilation.runtime-adoption';
+const MODEL_WORKER_REF = 'worker.model.capability-assimilation.primary';
+const MODEL_SCHEDULER_INSTANCE_REF = 'scheduler.capability-assimilation.model-worker';
+const EXECUTABLE_STAGES = new Set(['EXECUTABLE', 'COMPLETED']);
 
 function clone(value) {
   return structuredClone(value);
@@ -98,6 +104,124 @@ function runtimeSchedulerRegistry(schedulerRegistry, capabilityRegistry) {
   return registry;
 }
 
+function schedulerPolicy(schedulerRegistry) {
+  const policy = schedulerRegistry?.physicalWorkerPolicy;
+  if (!schedulerRegistry?.canonicalSourceRef ||
+      !policy?.policyRef ||
+      policy.modelInferenceConcurrency !== 1 ||
+      policy.backgroundModelConcurrencyWhileInteractiveWaits !== 0 ||
+      policy.activeContextLeasesPerWorker !== 1) {
+    throw new Error('capability runtime requires the exact source-managed single-model-worker scheduler policy');
+  }
+  return freeze({
+    schedulerSourceRef: schedulerRegistry.canonicalSourceRef,
+    policyRef: policy.policyRef,
+    modelInferenceConcurrency: policy.modelInferenceConcurrency,
+    backgroundModelConcurrencyWhileInteractiveWaits: policy.backgroundModelConcurrencyWhileInteractiveWaits,
+    activeContextLeasesPerWorker: policy.activeContextLeasesPerWorker
+  });
+}
+
+function createSchedulerOwnedInferenceGate(schedulerRegistry, nextTime) {
+  const policy = schedulerPolicy(schedulerRegistry);
+  const authority = new WorkerLeaseAuthority({ sourceRef: policy.schedulerSourceRef });
+  let queueTail = Promise.resolve();
+  let generation = 0;
+
+  async function run({ phaseRef, inference, input }) {
+    if (typeof phaseRef !== 'string' || !phaseRef) throw new Error('model inference phaseRef is required');
+    if (typeof inference !== 'function') throw new Error('model inference gate requires an inference function');
+    const predecessor = queueTail;
+    let releaseQueue;
+    queueTail = new Promise((resolve) => { releaseQueue = resolve; });
+    await predecessor;
+
+    const schedulerGeneration = ++generation;
+    const formedAt = nextTime();
+    const expiresAt = new Date(Date.parse(formedAt) + 10 * 60 * 1000).toISOString();
+    const runtimeSnapshot = {
+      sourceRef: policy.schedulerSourceRef,
+      observedAt: formedAt,
+      schedulerGeneration,
+      workerRef: MODEL_WORKER_REF,
+      policyRef: policy.policyRef,
+      policyFingerprint: semanticHash(policy)
+    };
+    runtimeSnapshot.semanticFingerprint = semanticHash(runtimeSnapshot);
+    const lease = {
+      schemaVersion: 'vexlife.capability-assimilation-model-worker-lease/v1',
+      leaseRef: `worker-lease.capability-assimilation.${String(schedulerGeneration).padStart(6, '0')}`,
+      schedulerInstanceRef: MODEL_SCHEDULER_INSTANCE_REF,
+      workerRef: MODEL_WORKER_REF,
+      workNodeRef: phaseRef,
+      graphFingerprint: semanticHash({ phaseRef, schedulerGeneration, policyRef: policy.policyRef }),
+      trustSnapshotFingerprint: runtimeSnapshot.semanticFingerprint,
+      runtimeSnapshotFingerprint: runtimeSnapshot.semanticFingerprint,
+      schedulerGeneration,
+      formedAt,
+      expiresAt,
+      observedAt: formedAt,
+      currentness: 'CURRENT',
+      lifecycle: 'ACTIVE'
+    };
+    lease.semanticFingerprint = semanticHash(lease);
+    const claim = authority.claim(lease, runtimeSnapshot);
+    if (!claim.admitted) {
+      releaseQueue();
+      throw new Error(`model inference worker lease was not admitted: ${claim.reason}`);
+    }
+
+    try {
+      const result = await inference(input);
+      const completedAt = nextTime();
+      const released = authority.release(lease, {
+        lifecycle: 'RELEASED',
+        receiptRef: `${lease.leaseRef}.released`,
+        transitionedAt: completedAt,
+        reason: 'MODEL_INFERENCE_PHASE_COMPLETED'
+      });
+      return freeze({
+        result,
+        receipt: {
+          schemaVersion: 'vexlife.capability-assimilation-model-sequence-receipt/v1',
+          phaseRef,
+          sequence: schedulerGeneration,
+          schedulerInstanceRef: MODEL_SCHEDULER_INSTANCE_REF,
+          schedulerSourceRef: policy.schedulerSourceRef,
+          schedulerPolicyRef: policy.policyRef,
+          schedulerPolicyFingerprint: semanticHash(policy),
+          modelInferenceConcurrency: policy.modelInferenceConcurrency,
+          workerLeaseRef: lease.leaseRef,
+          workerLeaseFingerprint: lease.semanticFingerprint,
+          releaseReceiptRef: released.receipt.receiptRef,
+          releasedLeaseFingerprint: released.lease.semanticFingerprint,
+          formedAt,
+          completedAt,
+          currentness: 'CURRENT'
+        }
+      });
+    } catch (error) {
+      const failedAt = nextTime();
+      authority.release(lease, {
+        lifecycle: 'RELEASED',
+        receiptRef: `${lease.leaseRef}.failed`,
+        transitionedAt: failedAt,
+        reason: 'MODEL_INFERENCE_PHASE_FAILED'
+      });
+      throw error;
+    } finally {
+      releaseQueue();
+    }
+  }
+
+  return freeze({
+    schemaVersion: 'vexlife.capability-assimilation-model-gate/v1',
+    schedulerSourceRef: policy.schedulerSourceRef,
+    schedulerPolicyRef: policy.policyRef,
+    run
+  });
+}
+
 function requestContract(value, frame) {
   if (value.intentDisposition !== 'REQUEST_READ_ONLY_FUNCTIONS') {
     throw new Error('request-formation intentDisposition must be REQUEST_READ_ONLY_FUNCTIONS');
@@ -121,8 +245,10 @@ function requestContract(value, frame) {
       throw new Error(`request ${requestRef} capability is not executable: ${executable.state}`);
     }
     const capability = visible.get(raw.capabilityRef);
-    if (capability.effectClass !== 'READ_ONLY' || capability.currentness.state !== 'CURRENT') {
-      throw new Error(`request ${requestRef} capability is not an exact-current read-only function`);
+    if (capability.effectClass !== 'READ_ONLY' ||
+        capability.currentness.state !== 'CURRENT' ||
+        capability.currentness.compatibility !== 'COMPATIBLE') {
+      throw new Error(`request ${requestRef} capability is not an exact-current compatible read-only function`);
     }
     const argumentsValue = raw.arguments ?? {};
     if (!argumentsValue || typeof argumentsValue !== 'object' || Array.isArray(argumentsValue)) {
@@ -140,8 +266,10 @@ function requestContract(value, frame) {
       reasonCue: typeof raw.reasonCue === 'string' ? raw.reasonCue.slice(0, 240) : null,
       toolContract: clone(capability.toolContract),
       currentness: clone(capability.currentness),
+      permissionRef: capability.permissionRef,
       permissionStage: capability.permissionStage,
       effectStage: capability.effectStage,
+      resourceClass: capability.resourceClass,
       resourceStage: capability.resourceStage,
       effectClass: capability.effectClass,
       parallelClass: capability.parallelClass
@@ -182,10 +310,13 @@ function processDefinition(requests) {
           request.currentness.sourceVersionRef
         ].filter(Boolean)),
         metadata: {
+          permissionRef: request.permissionRef,
           permissionStage: request.permissionStage,
           effectStage: request.effectStage,
+          resourceClass: request.resourceClass,
           resourceStage: request.resourceStage,
-          currentness: request.currentness
+          currentness: request.currentness,
+          toolContractFingerprint: semanticHash(request.toolContract)
         }
       })),
       effectOwnerRule: 'Read-only executors own observations; Process Factory remains no-effect.',
@@ -195,6 +326,66 @@ function processDefinition(requests) {
       recoveryRule: 'Hold exact failed node and do not widen capability, authority, resource or effect scope.'
     }]
   };
+}
+
+function executionEvidenceForRequest(request, capabilityRegistry) {
+  const capability = (capabilityRegistry.capabilities ?? []).find((item) => item.capabilityRef === request.capabilityRef) ?? null;
+  const currentness = capability?.currentness?.state ?? 'UNKNOWN';
+  const compatibility = capability?.currentness?.compatibility ?? 'UNKNOWN';
+  const contractFingerprint = capability?.toolContract ? semanticHash(capability.toolContract) : null;
+  const exactContract = contractFingerprint === semanticHash(request.toolContract);
+  const exactReadOnly = Boolean(capability) &&
+    capability.effectClass === 'READ_ONLY' &&
+    capability.permissionRef === request.permissionRef &&
+    capability.resourceClass === request.resourceClass &&
+    exactContract;
+  const stageExecutable = EXECUTABLE_STAGES.has(capability?.defaultStage ?? 'DISCOVERABLE') &&
+    EXECUTABLE_STAGES.has(request.permissionStage) &&
+    EXECUTABLE_STAGES.has(request.effectStage) &&
+    EXECUTABLE_STAGES.has(request.resourceStage);
+  const evidence = {
+    currentness: exactReadOnly && currentness === 'CURRENT' && compatibility === 'COMPATIBLE' ? 'CURRENT' : currentness,
+    compatibility,
+    authority: exactReadOnly && stageExecutable ? 'ADMITTED' : 'UNKNOWN',
+    resource: exactReadOnly && EXECUTABLE_STAGES.has(request.resourceStage) ? 'AVAILABLE' : 'UNKNOWN',
+    sourceRef: capability?.currentness?.sourceRef ?? request.currentness.sourceRef ?? null,
+    sourceVersionRef: capability?.currentness?.sourceVersionRef ?? request.currentness.sourceVersionRef ?? null,
+    capabilityFingerprint: capability ? semanticHash(capability) : null,
+    toolContractFingerprint: contractFingerprint
+  };
+  evidence.semanticFingerprint = semanticHash(evidence);
+  return freeze(evidence);
+}
+
+function executionEvidenceMaps(dag, requestByRef, capabilityRegistry) {
+  const evidenceByNodeRef = new Map();
+  for (const node of dag.nodes) {
+    const request = requestByRef.get(node.nodeRef);
+    if (!request) continue;
+    evidenceByNodeRef.set(node.nodeRef, executionEvidenceForRequest(request, capabilityRegistry));
+  }
+  return {
+    evidenceByNodeRef,
+    currentnessByNodeRef: Object.fromEntries([...evidenceByNodeRef].map(([nodeRef, evidence]) => [nodeRef, evidence.currentness])),
+    authorityByNodeRef: Object.fromEntries([...evidenceByNodeRef].map(([nodeRef, evidence]) => [nodeRef, evidence.authority])),
+    resourceByNodeRef: Object.fromEntries([...evidenceByNodeRef].map(([nodeRef, evidence]) => [nodeRef, evidence.resource]))
+  };
+}
+
+function assertCurrentObservation(observation, request) {
+  if (!observation || typeof observation !== 'object' || Array.isArray(observation)) {
+    throw new Error(`executor ${request.capabilityRef} returned an invalid observation`);
+  }
+  if (observation.capabilityRef !== request.capabilityRef) {
+    throw new Error(`executor ${request.capabilityRef} returned a mismatched capabilityRef`);
+  }
+  if (observation.currentness?.state !== 'CURRENT' || observation.currentness?.compatibility !== 'COMPATIBLE') {
+    throw new Error(`executor ${request.capabilityRef} returned a stale or incompatible observation`);
+  }
+  if (!Array.isArray(observation.sourceRefs) || observation.sourceRefs.some((value) => typeof value !== 'string' || !value)) {
+    throw new Error(`executor ${request.capabilityRef} returned invalid source refs`);
+  }
+  return observation;
 }
 
 function toolSemanticPurpose(call) {
@@ -212,22 +403,32 @@ function toolSemanticPurpose(call) {
   });
 }
 
-function createRelayBindings(node, request, dag, schedulerRegistry, nextTime) {
+function createRelayBindings(node, request, dag, schedulerRegistry, nextTime, executionEvidence) {
+  if (executionEvidence.currentness !== 'CURRENT' ||
+      executionEvidence.compatibility !== 'COMPATIBLE' ||
+      executionEvidence.authority !== 'ADMITTED' ||
+      executionEvidence.resource !== 'AVAILABLE') {
+    throw new Error(`read-only relay binding requires current admitted execution evidence for ${node.nodeRef}`);
+  }
   const generation = 1;
   const workerRef = 'worker.capability-assimilation.read-only';
   const graphFingerprint = dag.graphHash;
+  const policy = schedulerPolicy(schedulerRegistry);
   const trustSnapshotFingerprint = semanticHash({
-    trustRef: 'trust.capability-assimilation.read-only',
-    currentness: 'CURRENT'
+    schedulerSourceRef: policy.schedulerSourceRef,
+    schedulerPolicyRef: policy.policyRef,
+    executionEvidenceFingerprint: executionEvidence.semanticFingerprint
   });
   const runtimeSnapshotFingerprint = semanticHash({
-    runtimeRef: 'runtime.capability-assimilation.read-only',
+    schedulerSourceRef: policy.schedulerSourceRef,
+    schedulerPolicyRef: policy.policyRef,
     schedulerGeneration: generation,
-    modelInferenceConcurrency: 1
+    modelInferenceConcurrency: policy.modelInferenceConcurrency,
+    executionEvidenceFingerprint: executionEvidence.semanticFingerprint
   });
-  const resourceLeaseFingerprint = semanticHash({ nodeRef: node.nodeRef, class: 'IO_BOUNDED' });
-  const capabilityLeaseFingerprint = semanticHash({ nodeRef: node.nodeRef, capabilityRef: request.capabilityRef });
-  const effectLeaseFingerprint = semanticHash({ nodeRef: node.nodeRef, effectClass: 'READ_ONLY' });
+  const resourceLeaseFingerprint = semanticHash({ nodeRef: node.nodeRef, evidence: executionEvidence.semanticFingerprint, state: executionEvidence.resource });
+  const capabilityLeaseFingerprint = semanticHash({ nodeRef: node.nodeRef, capabilityRef: request.capabilityRef, evidence: executionEvidence.semanticFingerprint });
+  const effectLeaseFingerprint = semanticHash({ nodeRef: node.nodeRef, effectClass: 'READ_ONLY', evidence: executionEvidence.semanticFingerprint });
   const formedAt = nextTime();
   const expiresAt = new Date(Date.parse(formedAt) + 10 * 60 * 1000).toISOString();
   const cancellationTokenRef = `cancel.capability-assimilation.${semanticHash(node.nodeRef).slice(0, 20)}`;
@@ -266,13 +467,8 @@ function createRelayBindings(node, request, dag, schedulerRegistry, nextTime) {
   const contract = schedulerRegistry.mockToolContracts.find((item) =>
     item.toolRef === request.toolContract.toolRef && item.effectRef === request.toolContract.effectRef);
   if (!contract) throw new Error(`scheduler registry is missing tool contract ${request.toolContract.toolRef}`);
-  const sourceEvidenceRef = request.currentness.sourceRef ?? 'source.blueprint.capability-registry';
-  const sourceEvidenceHash = semanticHash({
-    sourceEvidenceRef,
-    sourceVersionRef: request.currentness.sourceVersionRef ?? null,
-    capabilityRef: request.capabilityRef,
-    currentness: request.currentness
-  });
+  const sourceEvidenceRef = executionEvidence.sourceRef ?? request.currentness.sourceRef ?? 'source.blueprint.capability-registry';
+  const sourceEvidenceHash = executionEvidence.semanticFingerprint;
   const call = {
     toolCallRef: `tool-call.capability-assimilation.${semanticHash(node.nodeRef).slice(0, 20)}`,
     schedulerInstanceRef: 'scheduler.capability-assimilation.runtime-adoption',
@@ -475,6 +671,15 @@ export function createCapabilityAssimilationRuntime({
   const runtimeRegistry = runtimeSchedulerRegistry(schedulerRegistry, capabilityRegistry);
   let sequence = 0;
   const nextTime = () => new Date(Number(clock()) + sequence++).toISOString();
+  const inferenceGate = createSchedulerOwnedInferenceGate(schedulerRegistry, nextTime);
+
+  async function gatedInference({ phaseRef, inference, input, label }) {
+    const gated = await inferenceGate.run({ phaseRef, inference, input });
+    return {
+      normalized: normalizedInferenceResult(gated.result, label),
+      receipt: gated.receipt
+    };
+  }
 
   async function resolveTurn({
     taskIntent,
@@ -487,22 +692,24 @@ export function createCapabilityAssimilationRuntime({
     if (typeof taskIntent !== 'string' || !taskIntent.trim()) throw new Error('taskIntent must be non-empty');
     if (typeof inference !== 'function') throw new Error('capability runtime requires one admitted inference function');
     const progress = [progressEvent('TASK_RECEIVED', { taskRef: context.taskRef ?? null })];
+    const modelSequenceReceipts = [];
 
     if (mode === CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN ||
         mode === CAPABILITY_ASSIMILATION_MODES.CANONICAL_E2_UNTAUGHT_G0) {
-      const response = normalizedInferenceResult(await inference({
-        endpointProfile,
-        requestContent: taskIntent,
-        inMemoryAuthorization,
-        timeoutMs
-      }), 'direct');
+      const direct = await gatedInference({
+        phaseRef: `model-phase.${context.taskRef ?? semanticHash(taskIntent).slice(0, 16)}.direct`,
+        inference,
+        input: { endpointProfile, requestContent: taskIntent, inMemoryAuthorization, timeoutMs },
+        label: 'direct'
+      });
+      modelSequenceReceipts.push(direct.receipt);
       progress.push(progressEvent('DIRECT_TOOL_FREE_INFERENCE_COMPLETED', {
         mode,
         inferenceCount: 1,
         toolRequestCount: 0
       }));
       return freeze({
-        response,
+        response: direct.normalized,
         actualHttpCall: true,
         contextSourceRefs: [],
         runtimeProjection: {
@@ -511,6 +718,7 @@ export function createCapabilityAssimilationRuntime({
           inferenceCount: 1,
           toolRequestCount: 0,
           observationRefs: [],
+          modelSequenceReceipts,
           progress,
           hiddenReasoningIncluded: false
         }
@@ -535,12 +743,19 @@ export function createCapabilityAssimilationRuntime({
       rootKernelCount: frontier.rootCapabilityKernel.length
     }));
 
-    const requestInference = normalizedInferenceResult(await inference({
-      endpointProfile,
-      requestContent: requestPrompt(taskIntent, frontier),
-      inMemoryAuthorization,
-      timeoutMs
-    }), 'request-formation');
+    const requestPhase = await gatedInference({
+      phaseRef: `model-phase.${context.taskRef ?? semanticHash(taskIntent).slice(0, 16)}.request-formation`,
+      inference,
+      input: {
+        endpointProfile,
+        requestContent: requestPrompt(taskIntent, frontier),
+        inMemoryAuthorization,
+        timeoutMs
+      },
+      label: 'request-formation'
+    });
+    modelSequenceReceipts.push(requestPhase.receipt);
+    const requestInference = requestPhase.normalized;
     const requestProjection = requestContract(exactJson(requestInference.content, 'request-formation'), frame);
     progress.push(progressEvent('READ_ONLY_REQUESTS_FORMED', {
       requestCount: requestProjection.requests.length
@@ -566,13 +781,7 @@ export function createCapabilityAssimilationRuntime({
     }));
 
     const requestByRef = new Map(requestProjection.requests.map((request) => [request.requestRef, request]));
-    const builtIns = defaultExecutors({
-      capabilityRegistry,
-      processFactoryDefinition,
-      frame,
-      frontier,
-      context
-    });
+    const builtIns = defaultExecutors({ capabilityRegistry, processFactoryDefinition, frame, frontier, context });
     const executorMap = { ...builtIns, ...executors };
     const relay = new ToolResultRelay(null, { schedulerRegistry: runtimeRegistry });
     const completed = new Set();
@@ -581,12 +790,13 @@ export function createCapabilityAssimilationRuntime({
     const exactlyOnceReceipts = [];
 
     while (completed.size < dag.nodes.length) {
+      const evidenceMaps = executionEvidenceMaps(dag, requestByRef, capabilityRegistry);
       const decision = selectIndependentReadOnlyBatch({
         nodes: dag.nodes,
         completedNodeRefs: [...completed],
-        currentnessByNodeRef: Object.fromEntries(dag.nodes.map((node) => [node.nodeRef, 'CURRENT'])),
-        authorityByNodeRef: Object.fromEntries(dag.nodes.map((node) => [node.nodeRef, 'ADMITTED'])),
-        resourceByNodeRef: Object.fromEntries(dag.nodes.map((node) => [node.nodeRef, 'AVAILABLE'])),
+        currentnessByNodeRef: evidenceMaps.currentnessByNodeRef,
+        authorityByNodeRef: evidenceMaps.authorityByNodeRef,
+        resourceByNodeRef: evidenceMaps.resourceByNodeRef,
         maximumConcurrency
       });
       held.splice(0, held.length, ...decision.held);
@@ -601,6 +811,10 @@ export function createCapabilityAssimilationRuntime({
       const batchResults = await Promise.all(decision.batch.map(async (node) => {
         const request = requestByRef.get(node.nodeRef);
         if (!request) throw new Error(`dependency DAG node ${node.nodeRef} has no canonical request`);
+        const beforeEvidence = evidenceMaps.evidenceByNodeRef.get(node.nodeRef);
+        if (!beforeEvidence || beforeEvidence.currentness !== 'CURRENT' || beforeEvidence.authority !== 'ADMITTED' || beforeEvidence.resource !== 'AVAILABLE') {
+          throw new Error(`execution evidence is not current/admitted for ${node.nodeRef}`);
+        }
         const executor = executorMap[request.capabilityRef] ?? executorMap[request.toolContract.toolRef];
         if (typeof executor !== 'function') throw new Error(`no read-only executor for ${request.capabilityRef}`);
         const { call, contextLease } = createRelayBindings(
@@ -608,18 +822,22 @@ export function createCapabilityAssimilationRuntime({
           request,
           dag,
           runtimeRegistry,
-          nextTime
+          nextTime,
+          beforeEvidence
         );
         const registered = relay.register(call);
         if (!registered.changed) throw new Error(`tool call was not registered: ${registered.reason}`);
-        const rawObservation = await executor(clone(request.arguments), freeze({
+        const rawObservation = assertCurrentObservation(await executor(clone(request.arguments), freeze({
           requestRef: request.requestRef,
           capabilityRef: request.capabilityRef,
           frontier,
+          executionEvidence: beforeEvidence,
           context: clone(context)
-        }));
-        if (!rawObservation || typeof rawObservation !== 'object' || Array.isArray(rawObservation)) {
-          throw new Error(`executor ${request.capabilityRef} returned an invalid observation`);
+        })), request);
+        const afterEvidence = executionEvidenceForRequest(request, capabilityRegistry);
+        if (afterEvidence.semanticFingerprint !== beforeEvidence.semanticFingerprint ||
+            afterEvidence.currentness !== 'CURRENT' || afterEvidence.authority !== 'ADMITTED' || afterEvidence.resource !== 'AVAILABLE') {
+          throw new Error(`execution evidence changed or was revoked before relay acceptance for ${node.nodeRef}`);
         }
         const result = resultFromObservation(call, rawObservation);
         const accepted = relay.accept(result, { receivedAt: nextTime() });
@@ -659,12 +877,19 @@ export function createCapabilityAssimilationRuntime({
     progress.push(progressEvent('LATER_SYNTHESIS_STARTED', {
       acceptedObservationCount: observations.length
     }));
-    const synthesis = normalizedInferenceResult(await inference({
-      endpointProfile,
-      requestContent: synthesisPrompt(taskIntent, observations, held),
-      inMemoryAuthorization,
-      timeoutMs
-    }), 'synthesis');
+    const synthesisPhase = await gatedInference({
+      phaseRef: `model-phase.${context.taskRef ?? semanticHash(taskIntent).slice(0, 16)}.synthesis`,
+      inference,
+      input: {
+        endpointProfile,
+        requestContent: synthesisPrompt(taskIntent, observations, held),
+        inMemoryAuthorization,
+        timeoutMs
+      },
+      label: 'synthesis'
+    });
+    modelSequenceReceipts.push(synthesisPhase.receipt);
+    const synthesis = synthesisPhase.normalized;
     progress.push(progressEvent('LATER_SYNTHESIS_COMPLETED', {
       inferenceCount: 2,
       acceptedObservationCount: observations.length
@@ -685,6 +910,7 @@ export function createCapabilityAssimilationRuntime({
         inferenceCount: 2,
         requestModelRef: requestInference.model,
         synthesisModelRef: synthesis.model,
+        modelSequenceReceipts: clone(modelSequenceReceipts),
         capabilityFrontierRef: `frontier.${semanticHash(frontier).slice(0, 24)}`,
         dependencyGraphHash: dag.graphHash,
         toolRequestCount: requestProjection.requests.length,
@@ -701,6 +927,8 @@ export function createCapabilityAssimilationRuntime({
   return freeze({
     schemaVersion: 'vexlife.capability-assimilation-runtime-controller/v1',
     mode,
+    schedulerSourceRef: inferenceGate.schedulerSourceRef,
+    schedulerPolicyRef: inferenceGate.schedulerPolicyRef,
     resolveTurn
   });
 }

@@ -155,12 +155,106 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
   assert.equal(result.runtimeProjection.toolRequestCount, 2);
   assert.equal(result.runtimeProjection.observationRefs.length, 2);
   assert.equal(result.runtimeProjection.exactlyOnceReceipts.length, 2);
+  assert.equal(result.runtimeProjection.modelSequenceReceipts.length, 2);
+  assert.ok(result.runtimeProjection.modelSequenceReceipts.every((item) =>
+    item.schedulerPolicyRef === bundle.schedulerRegistry.physicalWorkerPolicy.policyRef &&
+    item.modelInferenceConcurrency === 1));
   assert.ok(result.runtimeProjection.exactlyOnceReceipts.every((item) =>
     item.duplicateAcceptReason === 'DUPLICATE_RESULT' &&
     item.duplicateReinjectReason === 'OBSERVATION_ALREADY_REINJECTED'));
   assert.ok(result.runtimeProjection.progress.every((item) => item.hiddenReasoningIncluded === false));
   assert.equal(result.runtimeProjection.externalEffectsExecuted, false);
   assert.equal(sequence.filter((item) => item.startsWith('start:')).length, 2);
+});
+
+test('source-managed scheduler gate serializes model inference across simultaneous Companion turns', async () => {
+  let activeInferences = 0;
+  let maximumActiveInferences = 0;
+  const inference = async ({ requestContent }) => {
+    activeInferences += 1;
+    maximumActiveInferences = Math.max(maximumActiveInferences, activeInferences);
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    activeInferences -= 1;
+    if (requestContent.startsWith('VEXLIFE_CAPABILITY_REQUEST_FORMATION/v1')) {
+      const task = requestContent.includes('first simultaneous turn') ? 'first' : 'second';
+      return requestResult([{ requestRef: `read.${task}`, capabilityRef: 'context.where', arguments: {}, dependencyRefs: [] }]);
+    }
+    return { content: 'Serialized synthesis.', model: 'model.test.serialized' };
+  };
+  const runtime = createCapabilityAssimilationRuntime({
+    capabilityRegistry: structuredClone(bundle.capabilities),
+    processFactoryDefinition: bundle.factory,
+    schedulerRegistry: bundle.schedulerRegistry,
+    clock: fixedClock()
+  });
+  const endpointProfile = { profileRef: 'profile.test', admitted: true, endpoint: 'http://127.0.0.1:1', model: 'test' };
+  const [first, second] = await Promise.all([
+    runtime.resolveTurn({ taskIntent: 'first simultaneous turn', inference, endpointProfile, context: { taskRef: 'task.concurrent.first' } }),
+    runtime.resolveTurn({ taskIntent: 'second simultaneous turn', inference, endpointProfile, context: { taskRef: 'task.concurrent.second' } })
+  ]);
+  assert.equal(maximumActiveInferences, 1);
+  assert.equal(first.runtimeProjection.modelSequenceReceipts.length, 2);
+  assert.equal(second.runtimeProjection.modelSequenceReceipts.length, 2);
+  assert.deepEqual(
+    [...first.runtimeProjection.modelSequenceReceipts, ...second.runtimeProjection.modelSequenceReceipts]
+      .map((item) => item.sequence).sort((a, b) => a - b),
+    [1, 2, 3, 4]
+  );
+});
+
+test('execution currentness and authority are revalidated and revocation never reaches relay acceptance', async () => {
+  const capabilityRegistry = structuredClone(bundle.capabilities);
+  let inferenceCount = 0;
+  let executorCount = 0;
+  const runtime = createCapabilityAssimilationRuntime({
+    capabilityRegistry,
+    processFactoryDefinition: bundle.factory,
+    schedulerRegistry: bundle.schedulerRegistry,
+    clock: fixedClock(),
+    executors: {
+      'capability.search': async () => {
+        executorCount += 1;
+        const source = capabilityRegistry.capabilities.find((item) => item.capabilityRef === 'capability.search');
+        source.currentness = { ...source.currentness, state: 'STALE' };
+        return {
+          summaryRef: 'summary.search.revoked',
+          capabilityRef: 'capability.search',
+          sourceRefs: ['source.search.revoked'],
+          currentness: { state: 'CURRENT', sourceRef: 'source.search.revoked', compatibility: 'COMPATIBLE' },
+          payload: {}
+        };
+      }
+    }
+  });
+  await assert.rejects(() => runtime.resolveTurn({
+    taskIntent: 'Search current capabilities.',
+    inference: async () => {
+      inferenceCount += 1;
+      return inferenceCount === 1
+        ? requestResult([{ requestRef: 'search', capabilityRef: 'capability.search', arguments: {}, dependencyRefs: [] }])
+        : { content: 'Must not synthesize.', model: 'model.test.should-not-run' };
+    },
+    endpointProfile: { profileRef: 'profile.test', admitted: true, endpoint: 'http://127.0.0.1:1', model: 'test' }
+  }), /execution evidence changed or was revoked before relay acceptance/u);
+  assert.equal(executorCount, 1);
+  assert.equal(inferenceCount, 1);
+
+  const revokedBeforeFormation = structuredClone(bundle.capabilities);
+  revokedBeforeFormation.capabilities.find((item) => item.capabilityRef === 'capability.search').permissionRef = 'permission.revoked';
+  let revokedExecutorCount = 0;
+  const revokedRuntime = createCapabilityAssimilationRuntime({
+    capabilityRegistry: revokedBeforeFormation,
+    processFactoryDefinition: bundle.factory,
+    schedulerRegistry: bundle.schedulerRegistry,
+    clock: fixedClock(),
+    executors: { 'capability.search': async () => { revokedExecutorCount += 1; return {}; } }
+  });
+  await assert.rejects(() => revokedRuntime.resolveTurn({
+    taskIntent: 'Search with revoked authority.',
+    inference: async () => requestResult([{ requestRef: 'search', capabilityRef: 'capability.search', arguments: {}, dependencyRefs: [] }]),
+    endpointProfile: { profileRef: 'profile.test', admitted: true, endpoint: 'http://127.0.0.1:1', model: 'test' }
+  }), /capability is not executable/u);
+  assert.equal(revokedExecutorCount, 0);
 });
 
 test('true request dependencies serialize read-only functions', async () => {
@@ -232,6 +326,7 @@ test('canonical E2 untaught-G0 policy is tool-free and performs one direct infer
   assert.equal(inferenceCount, 1);
   assert.equal(executorCount, 0);
   assert.equal(result.runtimeProjection.toolRequestCount, 0);
+  assert.equal(result.runtimeProjection.modelSequenceReceipts.length, 1);
   assert.equal(result.runtimeProjection.mode, CAPABILITY_ASSIMILATION_MODES.CANONICAL_E2_UNTAUGHT_G0);
 });
 

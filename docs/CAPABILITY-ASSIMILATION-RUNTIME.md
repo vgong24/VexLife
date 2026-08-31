@@ -34,20 +34,26 @@ TASK_INTENT
 
 ```text
 human task
-→ one Companion request-formation inference
+→ scheduler-policy-bound request-formation inference
 → compact hierarchical capability frontier
 → Process Factory no-effect dependency DAG
 → Intent Scheduler independent READ_ONLY batch selection
+→ execution-time currentness / authority / resource revalidation
 → exact source-bound observations
+→ post-execution currentness revalidation
 → ToolResultRelay accept once
 → ToolResultRelay reinject once
-→ one later Companion synthesis inference
+→ scheduler-policy-bound later synthesis inference
 → final human response
 ```
 
-The existing `SingleWorkerIntentScheduler` remains the single physical model
-worker authority. Concurrent read-only function execution is not concurrent model
-inference.
+The existing Intent Scheduler remains the physical model-worker authority. The
+runtime consumes `policy.intent-scheduler.physical-worker` and its existing
+`WorkerLeaseAuthority`; it does not create an independent model-worker policy.
+All capability-runtime inference phases share one runtime gate with
+`modelInferenceConcurrency=1`, so simultaneous Companion turns cannot create
+concurrent model inference. Concurrent read-only function execution remains
+separate from model inference.
 
 ## Root capability kernel
 
@@ -85,6 +91,21 @@ dependencyRefs[]
 Competence, currentness, permission, effect and resource state remain distinct.
 `UNKNOWN` never becomes execution authority.
 
+## Execution-time revalidation
+
+Request formation is not permanent execution authority. Immediately before each
+read batch, the runtime descends again into the loaded canonical capability
+registry and derives currentness, compatibility, authority and resource evidence.
+The scheduler batch selector receives those derived states rather than constant
+`CURRENT` / `ADMITTED` / `AVAILABLE` values.
+
+Before ToolResultRelay acceptance, the runtime re-derives the same evidence and
+requires its fingerprint to be unchanged. A capability that becomes stale,
+incompatible, permission-revoked, resource-incompatible, or contract-changed is
+rejected before relay acceptance/reinjection. Executor observations must also
+report the requested capability plus `CURRENT` / `COMPATIBLE` currentness and
+bounded source refs.
+
 ## Exactly-once observation boundary
 
 The runtime uses the existing `ToolResultRelay` state machine:
@@ -118,7 +139,10 @@ No hidden chain-of-thought is projected.
 ## E2 and E4/E5
 
 `CANONICAL_E2_UNTAUGHT_G0` performs exactly one direct model inference with no
-capability frontier, no function request and no observation reinjection.
+capability frontier, no function request and no observation reinjection. When E2
+runs through this runtime controller, that one inference still consumes the same
+single-model-worker scheduler policy; the default direct Companion path remains
+unchanged when the capability runtime is disabled.
 
 The final E4/E5 skill-use and held-out curriculum remains held until this runtime
 source and its exact executable evidence are accepted. Training examples must
