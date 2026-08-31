@@ -3,6 +3,12 @@
   "bucketId": "e5",
   "files": [
     {
+      "path": "reference/browser/modules/vex-birth-lab-controller.js",
+      "mode": "100644",
+      "bytes": 37976,
+      "sha256": "d6482bb728e0ed586eb74e53b82bfbe6c225684e854428f1d29a2088beee7e05"
+    },
+    {
       "path": "src/core/intent-validation.mjs",
       "mode": "100644",
       "bytes": 38570,

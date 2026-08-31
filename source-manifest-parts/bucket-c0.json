@@ -11,8 +11,8 @@
     {
       "path": "src/core/atlas.mjs",
       "mode": "100644",
-      "bytes": 3026,
-      "sha256": "a62a9408b464cf7114ef7f3a1568449fbf416dd1d3b14dd863941c820a8a7b36"
+      "bytes": 6817,
+      "sha256": "8c16d6040fc64583ea73aa22c56322e240efa220a8b11b98ee388b3b5d2d6768"
     },
     {
       "path": "src/core/public-safety.mjs",

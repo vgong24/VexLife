@@ -3,6 +3,12 @@
   "bucketId": "fe",
   "files": [
     {
+      "path": "src/core/architecture-meaning.mjs",
+      "mode": "100644",
+      "bytes": 14829,
+      "sha256": "faa7e2275af6120d7505ac6860808d4f1c0e199f3c5918632d7a8697f4f5f25b"
+    },
+    {
       "path": "src/core/g04b-native-provisioning-worker.mjs",
       "mode": "100644",
       "bytes": 41944,

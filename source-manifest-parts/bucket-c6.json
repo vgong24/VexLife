@@ -9,6 +9,12 @@
       "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
     },
     {
+      "path": "test/browser-vex-birth-lab.test.mjs",
+      "mode": "100644",
+      "bytes": 7459,
+      "sha256": "9a30bd2cb9f37b1619080c638f0e86e9ccba8992a55e13a50681b6556d986403"
+    },
+    {
       "path": "test/public-learning-browser.test.mjs",
       "mode": "100644",
       "bytes": 22801,
