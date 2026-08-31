@@ -9,6 +9,12 @@
       "sha256": "d44a9ac2c62e8bc1d71c5d192021acd923035405427a5b3b915c74511bc0aa24"
     },
     {
+      "path": "test/browser-vex-birth-walkthrough.test.mjs",
+      "mode": "100644",
+      "bytes": 2639,
+      "sha256": "c2e9223df662712e8302a70c39ee7e9ec06a72deac13cb2bf0a1f954c2e0a9f2"
+    },
+    {
       "path": "test/public-onboarding-practicum.test.mjs",
       "mode": "100644",
       "bytes": 8032,
