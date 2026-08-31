@@ -11,8 +11,8 @@
     {
       "path": "test/browser-vex-birth-lab.test.mjs",
       "mode": "100644",
-      "bytes": 6644,
-      "sha256": "86e6b0b71911825469fe1930ff75c682b263f7d1dee651334eeaa8364a3fdfd4"
+      "bytes": 7459,
+      "sha256": "9a30bd2cb9f37b1619080c638f0e86e9ccba8992a55e13a50681b6556d986403"
     },
     {
       "path": "test/public-learning-browser.test.mjs",
