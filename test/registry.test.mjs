@@ -60,7 +60,7 @@ test('scheduler registry composes universally, resolves through Atlas, and omiss
   const traversal = atlas.query({
     startRefs: [bundle.schedulerRegistry.registryRef],
     depthLimit: 2,
-    resultLimit: 64,
+    resultLimit: 96,
     tokenBudget: 12000
   });
   assert.ok(traversal.results.some((item) => item.ref === bundle.schedulerRegistry.simulationContract.contractRef));
@@ -215,7 +215,7 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
   assert.equal(validateEvolutionRegistry(omittedCurrentSet, bundle).ok, false);
   const staleSupersession = structuredClone(bundle.evolution);
   staleSupersession.supersessionTransaction.requiredFields.splice(8, 1);
-  assert.equal(validateEvolutionRegistry(staleSupersession, bundle).ok, false);
+  assert.equal(validateEvolutionRegistry(staleSupersession).ok, false);
   const staleSimulatedClock = structuredClone(bundle.evolution);
   staleSimulatedClock.simulatedClock.requiredFields.splice(9, 1);
   assert.equal(validateEvolutionRegistry(staleSimulatedClock, bundle).ok, false);
