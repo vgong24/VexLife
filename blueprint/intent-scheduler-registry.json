@@ -59,7 +59,7 @@
       "maximumNestedStateSlices": 0,
       "maximumPriorEdgeReceiptsInsideStateSlice": 0,
       "maximumRecentLeaseBindings": 18,
-      "exactPriorStateProof": true,
+      "exactPriorTransitionEvidenceRequired": true,
       "exactRestoreRequired": true
     },
     "edgeEvidenceContracts": {
