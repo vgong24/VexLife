@@ -1,3 +1,5 @@
+import './vex-birth-lab-controller.js';
+
 export async function loadBrowserBundle(root = '../../') {
   async function fetchJson(relativePath) {
     const response = await fetch(`${root}${relativePath}`);
