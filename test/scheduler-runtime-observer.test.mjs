@@ -148,13 +148,15 @@ test('observer owns source identity, clock and currentness and uses conservative
 
 test('simulated evidence cannot be promoted through the generic live source', () => {
   const live = observation(observer());
+  const { semanticFingerprint: _liveResourceFingerprint, ...liveResourceFields } = live.resourceSnapshot;
   const simulatedResource = createResourceSnapshot({
-    ...live.resourceSnapshot,
+    ...liveResourceFields,
     snapshotRef: 'resource-snapshot.companion-read.simulated-forgery',
     evidenceClass: 'SIMULATED_CURRENT'
   });
+  const { semanticFingerprint: _liveRuntimeFingerprint, ...liveRuntimeFields } = live.runtimeTrustSnapshot;
   assert.throws(() => createSchedulerRuntimeTrustSnapshot({
-    ...live.runtimeTrustSnapshot,
+    ...liveRuntimeFields,
     snapshotRef: 'runtime-snapshot.companion-read.simulated-forgery',
     evidenceClass: 'SIMULATED_CURRENT',
     resourceSnapshotRef: simulatedResource.snapshotRef,
