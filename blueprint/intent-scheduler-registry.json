@@ -59,7 +59,7 @@
       "maximumNestedStateSlices": 0,
       "maximumPriorEdgeReceiptsInsideStateSlice": 0,
       "maximumRecentLeaseBindings": 18,
-      "exactPriorTransitionEvidenceRequired": true,
+      "exactPriorStateProof": true,
       "exactRestoreRequired": true
     },
     "edgeEvidenceContracts": {
@@ -96,31 +96,11 @@
     "BACKGROUND"
   ],
   "priorityClassIdentities": [
-    {
-      "priorityClassRef": "priority.intent-scheduler.interactive",
-      "name": "INTERACTIVE",
-      "rank": 0
-    },
-    {
-      "priorityClassRef": "priority.intent-scheduler.expedite",
-      "name": "EXPEDITE",
-      "rank": 1
-    },
-    {
-      "priorityClassRef": "priority.intent-scheduler.recovery",
-      "name": "RECOVERY",
-      "rank": 2
-    },
-    {
-      "priorityClassRef": "priority.intent-scheduler.normal",
-      "name": "NORMAL",
-      "rank": 3
-    },
-    {
-      "priorityClassRef": "priority.intent-scheduler.background",
-      "name": "BACKGROUND",
-      "rank": 4
-    }
+    { "priorityClassRef": "priority.intent-scheduler.interactive", "name": "INTERACTIVE", "rank": 0 },
+    { "priorityClassRef": "priority.intent-scheduler.expedite", "name": "EXPEDITE", "rank": 1 },
+    { "priorityClassRef": "priority.intent-scheduler.recovery", "name": "RECOVERY", "rank": 2 },
+    { "priorityClassRef": "priority.intent-scheduler.normal", "name": "NORMAL", "rank": 3 },
+    { "priorityClassRef": "priority.intent-scheduler.background", "name": "BACKGROUND", "rank": 4 }
   ],
   "priorityRules": {
     "INTERACTIVE": "explicit interactive human turn",
@@ -136,329 +116,34 @@
     "sourceDiscardAllowed": false
   },
   "policyIdentities": [
-    {
-      "policyRef": "policy.intent-scheduler.physical-worker",
-      "policyKind": "PHYSICAL_WORKER",
-      "sourceField": "physicalWorkerPolicy"
-    },
-    {
-      "policyRef": "policy.intent-scheduler.fairness",
-      "policyKind": "SCHEDULER_OWNED_FAIRNESS",
-      "sourceField": "fairnessPolicy"
-    },
-    {
-      "policyRef": "policy.intent-scheduler.resource-unknown",
-      "policyKind": "FAIL_CLOSED_RESOURCE_UNKNOWN",
-      "sourceField": "resourceUnknownPolicy"
-    },
-    {
-      "policyRef": "policy.intent-scheduler.checkpoint-replay",
-      "policyKind": "FRESH_GENERATION_CHECKPOINT_REPLAY",
-      "sourceField": "checkpointReplayPolicy"
-    },
-    {
-      "policyRef": "policy.intent-scheduler.mock-tool-effect",
-      "policyKind": "DETERMINISTIC_MOCK_EFFECT_ONLY",
-      "sourceField": "toolEffectPolicy"
-    },
-    {
-      "policyRef": "policy.intent-scheduler.relay-state-machine",
-      "policyKind": "REPLAY_DERIVED_RELAY_STATE",
-      "sourceField": "relayStateMachine"
-    },
-    {
-      "policyRef": "policy.intent-scheduler.held-tool-replacement",
-      "policyKind": "SCHEDULER_OWNED_HELD_TOOL_REPLACEMENT",
-      "sourceField": "heldToolReplacementPolicies"
-    }
+    { "policyRef": "policy.intent-scheduler.physical-worker", "policyKind": "PHYSICAL_WORKER", "sourceField": "physicalWorkerPolicy" },
+    { "policyRef": "policy.intent-scheduler.fairness", "policyKind": "SCHEDULER_OWNED_FAIRNESS", "sourceField": "fairnessPolicy" },
+    { "policyRef": "policy.intent-scheduler.resource-unknown", "policyKind": "FAIL_CLOSED_RESOURCE_UNKNOWN", "sourceField": "resourceUnknownPolicy" },
+    { "policyRef": "policy.intent-scheduler.checkpoint-replay", "policyKind": "FRESH_GENERATION_CHECKPOINT_REPLAY", "sourceField": "checkpointReplayPolicy" },
+    { "policyRef": "policy.intent-scheduler.mock-tool-effect", "policyKind": "DETERMINISTIC_MOCK_EFFECT_ONLY", "sourceField": "toolEffectPolicy" },
+    { "policyRef": "policy.intent-scheduler.relay-state-machine", "policyKind": "REPLAY_DERIVED_RELAY_STATE", "sourceField": "relayStateMachine" },
+    { "policyRef": "policy.intent-scheduler.held-tool-replacement", "policyKind": "SCHEDULER_OWNED_HELD_TOOL_REPLACEMENT", "sourceField": "heldToolReplacementPolicies" }
   ],
   "requiredFieldContracts": [
-    {
-      "contractRef": "contract.intent-scheduler.admission-fields",
-      "contractKind": "ADMISSION_RECEIPT",
-      "sourceField": "admissionRequiredFields"
-    },
-    {
-      "contractRef": "contract.intent-scheduler.context-lease-fields",
-      "contractKind": "CONTEXT_LEASE",
-      "sourceField": "contextLeaseRequiredFields"
-    },
-    {
-      "contractRef": "contract.intent-scheduler.resource-snapshot-fields",
-      "contractKind": "RESOURCE_SNAPSHOT",
-      "sourceField": "resourceSnapshotRequiredFields"
-    },
-    {
-      "contractRef": "contract.intent-scheduler.resource-lease-fields",
-      "contractKind": "RESOURCE_LEASE",
-      "sourceField": "resourceLeaseRequiredFields"
-    },
-    {
-      "contractRef": "contract.intent-scheduler.checkpoint-fields",
-      "contractKind": "CHECKPOINT",
-      "sourceField": "checkpointRequiredFields"
-    },
-    {
-      "contractRef": "contract.intent-scheduler.tool-call-fields",
-      "contractKind": "MOCK_TOOL_CALL",
-      "sourceField": "toolCallRequiredFields"
-    },
-    {
-      "contractRef": "contract.intent-scheduler.tool-result-match-fields",
-      "contractKind": "MOCK_TOOL_RESULT_MATCH",
-      "sourceField": "toolResultMatchFields"
-    },
-    {
-      "contractRef": "contract.intent-scheduler.completion-verifier-currentness",
-      "contractKind": "EXTERNALLY_VERIFIED_COMPLETION",
-      "sourceField": "completionVerificationRequiredFields"
-    },
-    {
-      "contractRef": "contract.intent-scheduler.relay-transition-replay",
-      "contractKind": "REPLAYABLE_RELAY_TRANSITION",
-      "sourceField": "relayTransitionReceiptRequiredFields"
-    }
+    { "contractRef": "contract.intent-scheduler.admission-fields", "contractKind": "ADMISSION_RECEIPT", "sourceField": "admissionRequiredFields" },
+    { "contractRef": "contract.intent-scheduler.context-lease-fields", "contractKind": "CONTEXT_LEASE", "sourceField": "contextLeaseRequiredFields" },
+    { "contractRef": "contract.intent-scheduler.resource-snapshot-fields", "contractKind": "RESOURCE_SNAPSHOT", "sourceField": "resourceSnapshotRequiredFields" },
+    { "contractRef": "contract.intent-scheduler.resource-lease-fields", "contractKind": "RESOURCE_LEASE", "sourceField": "resourceLeaseRequiredFields" },
+    { "contractRef": "contract.intent-scheduler.checkpoint-fields", "contractKind": "CHECKPOINT", "sourceField": "checkpointRequiredFields" },
+    { "contractRef": "contract.intent-scheduler.tool-call-fields", "contractKind": "MOCK_TOOL_CALL", "sourceField": "toolCallRequiredFields" },
+    { "contractRef": "contract.intent-scheduler.tool-result-match-fields", "contractKind": "MOCK_TOOL_RESULT_MATCH", "sourceField": "toolResultMatchFields" },
+    { "contractRef": "contract.intent-scheduler.completion-verifier-currentness", "contractKind": "EXTERNALLY_VERIFIED_COMPLETION", "sourceField": "completionVerificationRequiredFields" },
+    { "contractRef": "contract.intent-scheduler.relay-transition-replay", "contractKind": "REPLAYABLE_RELAY_TRANSITION", "sourceField": "relayTransitionReceiptRequiredFields" }
   ],
-  "admissionRequiredFields": [
-    "schedulerGeneration",
-    "workerRef",
-    "graphRef",
-    "graphFingerprint",
-    "trustSnapshotRef",
-    "trustSnapshotSourceRef",
-    "trustSnapshotSourceHash",
-    "trustSnapshotFingerprint",
-    "trustSnapshotFormationRef",
-    "runtimeSnapshotRef",
-    "runtimeSnapshotFingerprint",
-    "runtimeEvidenceClass",
-    "observedAt",
-    "resourceSnapshotRef",
-    "resourceSnapshotFingerprint",
-    "resourceLeaseRef",
-    "resourceLeaseFingerprint",
-    "workNodeRef",
-    "nodeFingerprint",
-    "occupancyRef",
-    "occupancyFingerprint",
-    "capabilityEnvelopeRef",
-    "capabilityLeaseRef",
-    "capabilityLeaseFingerprint",
-    "effectEnvelopeRef",
-    "effectLeaseRef",
-    "effectLeaseFingerprint",
-    "expectedTransitionRef",
-    "completionGateRefs",
-    "returnRouteRef",
-    "formedAt",
-    "expiresAt",
-    "currentness",
-    "lifecycle",
-    "semanticFingerprint"
-  ],
-  "contextLeaseRequiredFields": [
-    "leaseRef",
-    "workerRef",
-    "workNodeRef",
-    "graphFingerprint",
-    "trustSnapshotFingerprint",
-    "runtimeSnapshotFingerprint",
-    "schedulerGeneration",
-    "resourceLeaseFingerprint",
-    "capabilityLeaseFingerprint",
-    "effectLeaseFingerprint",
-    "cancellationTokenRef",
-    "foundationKernelRef",
-    "roleFrameRef",
-    "intentFrameRef",
-    "selectedAtlasRefs",
-    "selectedSourceRefs",
-    "applicableCultureRefs",
-    "applicableLessonRefs",
-    "applicableReleaseRefs",
-    "inputTokenEstimate",
-    "reservedOutputTokens",
-    "hardTokenLimit",
-    "formedAt",
-    "expiresAt",
-    "observedAt",
-    "currentness",
-    "lifecycle",
-    "checkpointReturnRef",
-    "semanticFingerprint"
-  ],
-  "resourceSnapshotRequiredFields": [
-    "snapshotRef",
-    "generation",
-    "sourceRef",
-    "sourceHash",
-    "formationRef",
-    "evidenceClass",
-    "cpuLoadPct",
-    "cpuConcurrencyLimit",
-    "cpuActiveCount",
-    "ramAvailableMb",
-    "ramReservedMb",
-    "gpuAvailable",
-    "vramAvailableMb",
-    "vramReservedMb",
-    "modelResident",
-    "activeModelTurn",
-    "activeHeavyTool",
-    "interactiveWaitState",
-    "backgroundWorkAdmission",
-    "thermalPowerState",
-    "currentness",
-    "formedAt",
-    "observedAt",
-    "expiresAt",
-    "semanticFingerprint"
-  ],
-  "resourceLeaseRequiredFields": [
-    "leaseRef",
-    "workerRef",
-    "workNodeRef",
-    "graphFingerprint",
-    "runtimeSnapshotRef",
-    "runtimeSnapshotFingerprint",
-    "schedulerGeneration",
-    "resourceSnapshotRef",
-    "resourceSnapshotFingerprint",
-    "request",
-    "formedAt",
-    "expiresAt",
-    "observedAt",
-    "currentness",
-    "lifecycle",
-    "semanticFingerprint"
-  ],
-  "checkpointRequiredFields": [
-    "checkpointRef",
-    "workNodeRef",
-    "graphFingerprint",
-    "trustSnapshotFingerprint",
-    "runtimeSnapshotFingerprint",
-    "priorSchedulerGeneration",
-    "lastCompletedStep",
-    "currentState",
-    "selectedSourceRefs",
-    "selectedContextRefs",
-    "producedArtifactRefs",
-    "producedReceiptRefs",
-    "openQuestions",
-    "nextSafeAction",
-    "pendingToolCallRef",
-    "priorOccupancyRef",
-    "priorCapabilityLeaseRef",
-    "priorEffectLeaseRef",
-    "priorResourceLeaseRef",
-    "priorContextLeaseRef",
-    "priorWorkerLeaseRef",
-    "resourceSnapshotFingerprint",
-    "sourceBindings",
-    "leaseReleaseReceipts",
-    "leaseReleaseLifecycle",
-    "priorLeaseFingerprints",
-    "transitionedLeaseFingerprints",
-    "formedAt",
-    "semanticFingerprint"
-  ],
-  "toolCallRequiredFields": [
-    "toolCallRef",
-    "schedulerInstanceRef",
-    "workNodeRef",
-    "workerRef",
-    "workerLeaseRef",
-    "graphFingerprint",
-    "trustSnapshotFingerprint",
-    "runtimeSnapshotFingerprint",
-    "contextLeaseRef",
-    "contextLeaseFingerprint",
-    "toolRef",
-    "effectRef",
-    "argumentSchemaRef",
-    "argumentHash",
-    "semanticPurposeFingerprint",
-    "capabilityLeaseRef",
-    "capabilityLeaseFingerprint",
-    "effectLeaseRef",
-    "effectLeaseFingerprint",
-    "resourceLeaseRef",
-    "resourceLeaseFingerprint",
-    "resultSchemaRef",
-    "executorRef",
-    "schedulerGeneration",
-    "cancellationTokenRef",
-    "sourceEvidenceRef",
-    "sourceEvidenceHash",
-    "proposedAt",
-    "timeoutAt",
-    "cancellationPolicy",
-    "semanticFingerprint"
-  ],
-  "toolResultMatchFields": [
-    "toolCallRef",
-    "workNodeRef",
-    "workerRef",
-    "workerLeaseRef",
-    "graphFingerprint",
-    "trustSnapshotFingerprint",
-    "runtimeSnapshotFingerprint",
-    "contextLeaseRef",
-    "contextLeaseFingerprint",
-    "toolRef",
-    "effectRef",
-    "capabilityLeaseFingerprint",
-    "effectLeaseFingerprint",
-    "resourceLeaseFingerprint",
-    "schedulerGeneration",
-    "cancellationTokenRef",
-    "executorRef",
-    "sourceEvidenceRef",
-    "sourceEvidenceHash",
-    "schemaRef"
-  ],
-  "completionVerificationRequiredFields": [
-    "verificationReceiptRef",
-    "contractRef",
-    "verifierRef",
-    "verifierSourceRef",
-    "verifierSourceHash",
-    "formationRef",
-    "workNodeRef",
-    "nodeFingerprint",
-    "graphRef",
-    "graphFingerprint",
-    "runtimeSnapshotFingerprint",
-    "schedulerInstanceRef",
-    "schedulerGeneration",
-    "expectedTransitionRef",
-    "completionGateRefs",
-    "gateResultReceipts",
-    "observedBeforeState",
-    "observedAfterState",
-    "returnRouteRef",
-    "formedAt",
-    "observedAt",
-    "expiresAt",
-    "currentness",
-    "selfCertified",
-    "semanticFingerprint"
-  ],
-  "relayTransitionReceiptRequiredFields": [
-    "receiptRef",
-    "eventContractRef",
-    "toolCallRef",
-    "priorState",
-    "nextState",
-    "sequence",
-    "currentness",
-    "sourceRef",
-    "sourceHash",
-    "formationRef",
-    "transitionedAt",
-    "semanticFingerprint"
-  ],
+  "admissionRequiredFields": ["schedulerGeneration","workerRef","graphRef","graphFingerprint","trustSnapshotRef","trustSnapshotSourceRef","trustSnapshotSourceHash","trustSnapshotFingerprint","trustSnapshotFormationRef","runtimeSnapshotRef","runtimeSnapshotFingerprint","runtimeEvidenceClass","observedAt","resourceSnapshotRef","resourceSnapshotFingerprint","resourceLeaseRef","resourceLeaseFingerprint","workNodeRef","nodeFingerprint","occupancyRef","occupancyFingerprint","capabilityEnvelopeRef","capabilityLeaseRef","capabilityLeaseFingerprint","effectEnvelopeRef","effectLeaseRef","effectLeaseFingerprint","expectedTransitionRef","completionGateRefs","returnRouteRef","formedAt","expiresAt","currentness","lifecycle","semanticFingerprint"],
+  "contextLeaseRequiredFields": ["leaseRef","workerRef","workNodeRef","graphFingerprint","trustSnapshotFingerprint","runtimeSnapshotFingerprint","schedulerGeneration","resourceLeaseFingerprint","capabilityLeaseFingerprint","effectLeaseFingerprint","cancellationTokenRef","foundationKernelRef","roleFrameRef","intentFrameRef","selectedAtlasRefs","selectedSourceRefs","applicableCultureRefs","applicableLessonRefs","applicableReleaseRefs","inputTokenEstimate","reservedOutputTokens","hardTokenLimit","formedAt","expiresAt","observedAt","currentness","lifecycle","checkpointReturnRef","semanticFingerprint"],
+  "resourceSnapshotRequiredFields": ["snapshotRef","generation","sourceRef","sourceHash","formationRef","evidenceClass","cpuLoadPct","cpuConcurrencyLimit","cpuActiveCount","ramAvailableMb","ramReservedMb","gpuAvailable","vramAvailableMb","vramReservedMb","modelResident","activeModelTurn","activeHeavyTool","interactiveWaitState","backgroundWorkAdmission","thermalPowerState","currentness","formedAt","observedAt","expiresAt","semanticFingerprint"],
+  "resourceLeaseRequiredFields": ["leaseRef","workerRef","workNodeRef","graphFingerprint","runtimeSnapshotRef","runtimeSnapshotFingerprint","schedulerGeneration","resourceSnapshotRef","resourceSnapshotFingerprint","request","formedAt","expiresAt","observedAt","currentness","lifecycle","semanticFingerprint"],
+  "checkpointRequiredFields": ["checkpointRef","workNodeRef","graphFingerprint","trustSnapshotFingerprint","runtimeSnapshotFingerprint","priorSchedulerGeneration","lastCompletedStep","currentState","selectedSourceRefs","selectedContextRefs","producedArtifactRefs","producedReceiptRefs","openQuestions","nextSafeAction","pendingToolCallRef","priorOccupancyRef","priorCapabilityLeaseRef","priorEffectLeaseRef","priorResourceLeaseRef","priorContextLeaseRef","priorWorkerLeaseRef","resourceSnapshotFingerprint","sourceBindings","leaseReleaseReceipts","leaseReleaseLifecycle","priorLeaseFingerprints","transitionedLeaseFingerprints","formedAt","semanticFingerprint"],
+  "toolCallRequiredFields": ["toolCallRef","schedulerInstanceRef","workNodeRef","workerRef","workerLeaseRef","graphFingerprint","trustSnapshotFingerprint","runtimeSnapshotFingerprint","contextLeaseRef","contextLeaseFingerprint","toolRef","effectRef","argumentSchemaRef","argumentHash","semanticPurposeFingerprint","capabilityLeaseRef","capabilityLeaseFingerprint","effectLeaseRef","effectLeaseFingerprint","resourceLeaseRef","resourceLeaseFingerprint","resultSchemaRef","executorRef","schedulerGeneration","cancellationTokenRef","sourceEvidenceRef","sourceEvidenceHash","proposedAt","timeoutAt","cancellationPolicy","semanticFingerprint"],
+  "toolResultMatchFields": ["toolCallRef","workNodeRef","workerRef","workerLeaseRef","graphFingerprint","trustSnapshotFingerprint","runtimeSnapshotFingerprint","contextLeaseRef","contextLeaseFingerprint","toolRef","effectRef","capabilityLeaseFingerprint","effectLeaseFingerprint","resourceLeaseFingerprint","schedulerGeneration","cancellationTokenRef","executorRef","sourceEvidenceRef","sourceEvidenceHash","schemaRef"],
+  "completionVerificationRequiredFields": ["verificationReceiptRef","contractRef","verifierRef","verifierSourceRef","verifierSourceHash","formationRef","workNodeRef","nodeFingerprint","graphRef","graphFingerprint","runtimeSnapshotFingerprint","schedulerInstanceRef","schedulerGeneration","expectedTransitionRef","completionGateRefs","gateResultReceipts","observedBeforeState","observedAfterState","returnRouteRef","formedAt","observedAt","expiresAt","currentness","selfCertified","semanticFingerprint"],
+  "relayTransitionReceiptRequiredFields": ["receiptRef","eventContractRef","toolCallRef","priorState","nextState","sequence","currentness","sourceRef","sourceHash","formationRef","transitionedAt","semanticFingerprint"],
   "completionVerifierContract": {
     "contractRef": "contract.intent-scheduler.completion-verifier-currentness",
     "verifierRef": "verifier.intent-scheduler.deterministic-fake",
@@ -466,426 +151,54 @@
     "sourceHash": "603e5175165096692f76c48d2c8ab6be128b3e147c7b211cfe388b783db71551",
     "formationRef": "formation.intent-scheduler.completion-verifier.v1",
     "evidenceClass": "DETERMINISTIC_FAKE_EXTERNAL_VERIFIER",
-    "sourceDescriptor": {
-      "sourceRef": "source.intent-scheduler.completion-verifier.deterministic-fake",
-      "sourceClass": "DETERMINISTIC_FAKE_EXTERNAL_VERIFIER",
-      "implementationPath": "src/core/intent-completion-verifier.mjs",
-      "externalEffectsExecuted": false
-    },
+    "sourceDescriptor": {"sourceRef":"source.intent-scheduler.completion-verifier.deterministic-fake","sourceClass":"DETERMINISTIC_FAKE_EXTERNAL_VERIFIER","implementationPath":"src/core/intent-completion-verifier.mjs","externalEffectsExecuted":false},
     "activeWindowRule": "formedAt <= observedAt < expiresAt",
     "consumptionWindowRule": "formedAt <= observedAt <= consumedAt < expiresAt AND consumedAt >= schedulerObservedAt",
     "canonicalWorkgraphLineageRule": "transition and Intent receipt bind exact verification receipt/fingerprint plus every gate-result/source-observation ref/hash",
     "selfCertificationAllowed": false
   },
-  "relayStateMachine": {
-    "policyRef": "policy.intent-scheduler.relay-state-machine",
-    "initialState": "PENDING",
-    "terminalStates": [
-      "REINJECTED",
-      "CLOSED"
-    ],
-    "allowedTransitions": {
-      "PENDING": [
-        "HELD",
-        "ACCEPTED",
-        "CLOSED"
-      ],
-      "HELD": [
-        "CLOSED"
-      ],
-      "ACCEPTED": [
-        "REINJECTED",
-        "CLOSED"
-      ],
-      "REINJECTED": [],
-      "CLOSED": []
-    }
-  },
+  "relayStateMachine": {"policyRef":"policy.intent-scheduler.relay-state-machine","initialState":"PENDING","terminalStates":["REINJECTED","CLOSED"],"allowedTransitions":{"PENDING":["HELD","ACCEPTED","CLOSED"],"HELD":["CLOSED"],"ACCEPTED":["REINJECTED","CLOSED"],"REINJECTED":[],"CLOSED":[]}},
   "relayTransitionContracts": [
-    {
-      "contractRef": "contract.intent-scheduler.relay-event.hold",
-      "eventKind": "HOLD",
-      "priorState": "PENDING",
-      "nextState": "HELD",
-      "receiptSchemaVersion": "vexlife.intent-tool-call-hold/v1",
-      "requiredFields": [
-        "checkpointRef",
-        "workNodeRef",
-        "schedulerGeneration",
-        "heldAt"
-      ]
-    },
-    {
-      "contractRef": "contract.intent-scheduler.relay-event.accept",
-      "eventKind": "ACCEPT",
-      "priorState": "PENDING",
-      "nextState": "ACCEPTED",
-      "receiptSchemaVersion": "vexlife.intent-tool-call-acceptance/v1",
-      "requiredFields": [
-        "observationRef",
-        "observationFingerprint"
-      ]
-    },
-    {
-      "contractRef": "contract.intent-scheduler.relay-event.cancel-pending",
-      "eventKind": "CANCEL_CLOSE",
-      "priorState": "PENDING",
-      "nextState": "CLOSED",
-      "receiptSchemaVersion": "vexlife.intent-tool-call-cancellation/v1",
-      "requiredFields": [
-        "workNodeRef",
-        "schedulerGeneration",
-        "cancellationTokenRef",
-        "reason",
-        "closedAt"
-      ]
-    },
-    {
-      "contractRef": "contract.intent-scheduler.relay-event.held-disposition",
-      "eventKind": "HELD_DISPOSITION",
-      "priorState": "HELD",
-      "nextState": "CLOSED",
-      "receiptSchemaVersion": "vexlife.intent-held-tool-transition/v2",
-      "requiredFields": [
-        "checkpointRef",
-        "action",
-        "schedulerAuthorizationRef",
-        "schedulerAuthorizationFingerprint",
-        "schedulerAuthorization",
-        "schedulerInstanceRef",
-        "priorContextLeaseRef",
-        "priorSemanticPurposeFingerprint",
-        "priorSchedulerGeneration"
-      ]
-    },
-    {
-      "contractRef": "contract.intent-scheduler.relay-event.reinject",
-      "eventKind": "REINJECT",
-      "priorState": "ACCEPTED",
-      "nextState": "REINJECTED",
-      "receiptSchemaVersion": "vexlife.intent-tool-observation-reinjection/v1",
-      "requiredFields": [
-        "contextLeaseRef",
-        "observationRef",
-        "observationFingerprint"
-      ]
-    },
-    {
-      "contractRef": "contract.intent-scheduler.relay-event.cancel-accepted",
-      "eventKind": "CANCEL_CLOSE",
-      "priorState": "ACCEPTED",
-      "nextState": "CLOSED",
-      "receiptSchemaVersion": "vexlife.intent-tool-call-cancellation/v1",
-      "requiredFields": [
-        "workNodeRef",
-        "schedulerGeneration",
-        "cancellationTokenRef",
-        "observationRef",
-        "observationFingerprint",
-        "reason",
-        "closedAt"
-      ]
-    }
+    {"contractRef":"contract.intent-scheduler.relay-event.hold","eventKind":"HOLD","priorState":"PENDING","nextState":"HELD","receiptSchemaVersion":"vexlife.intent-tool-call-hold/v1","requiredFields":["checkpointRef","workNodeRef","schedulerGeneration","heldAt"]},
+    {"contractRef":"contract.intent-scheduler.relay-event.accept","eventKind":"ACCEPT","priorState":"PENDING","nextState":"ACCEPTED","receiptSchemaVersion":"vexlife.intent-tool-call-acceptance/v1","requiredFields":["observationRef","observationFingerprint"]},
+    {"contractRef":"contract.intent-scheduler.relay-event.cancel-pending","eventKind":"CANCEL_CLOSE","priorState":"PENDING","nextState":"CLOSED","receiptSchemaVersion":"vexlife.intent-tool-call-cancellation/v1","requiredFields":["workNodeRef","schedulerGeneration","cancellationTokenRef","reason","closedAt"]},
+    {"contractRef":"contract.intent-scheduler.relay-event.held-disposition","eventKind":"HELD_DISPOSITION","priorState":"HELD","nextState":"CLOSED","receiptSchemaVersion":"vexlife.intent-held-tool-transition/v2","requiredFields":["checkpointRef","action","schedulerAuthorizationRef","schedulerAuthorizationFingerprint","schedulerAuthorization","schedulerInstanceRef","priorContextLeaseRef","priorSemanticPurposeFingerprint","priorSchedulerGeneration"]},
+    {"contractRef":"contract.intent-scheduler.relay-event.reinject","eventKind":"REINJECT","priorState":"ACCEPTED","nextState":"REINJECTED","receiptSchemaVersion":"vexlife.intent-tool-observation-reinjection/v1","requiredFields":["contextLeaseRef","observationRef","observationFingerprint"]},
+    {"contractRef":"contract.intent-scheduler.relay-event.cancel-accepted","eventKind":"CANCEL_CLOSE","priorState":"ACCEPTED","nextState":"CLOSED","receiptSchemaVersion":"vexlife.intent-tool-call-cancellation/v1","requiredFields":["workNodeRef","schedulerGeneration","cancellationTokenRef","observationRef","observationFingerprint","reason","closedAt"]}
   ],
-  "heldToolReplacementPolicies": [
-    {
-      "replacementPolicyRef": "policy.intent-scheduler.held-tool-replacement",
-      "allowedReasonRefs": [
-        "reason.intent-scheduler.capability-replacement",
-        "reason.intent-scheduler.context-replacement"
-      ]
-    }
-  ],
-  "runtimeTrustContract": {
-    "contractRef": "contract.intent-scheduler.runtime-trust-clock",
-    "clockRef": "clock.intent-scheduler.canonical-utc",
-    "purpose": "Externally source scheduler runtime identity, currentness, observed time and expiry before deterministic admission.",
-    "evidenceClasses": [
-      "SIMULATED_CURRENT",
-      "LIVE_RUNTIME_CURRENT"
-    ],
-    "requiredFields": [
-      "snapshotRef",
-      "sourceRef",
-      "sourceHash",
-      "formationRef",
-      "evidenceClass",
-      "schedulerGeneration",
-      "formedAt",
-      "observedAt",
-      "expiresAt",
-      "workerRef",
-      "actorRef",
-      "roleRef",
-      "claimRef",
-      "occupancyRef",
-      "leaseAuthorityRef",
-      "resourceSnapshotRef",
-      "resourceSnapshotFingerprint",
-      "currentness",
-      "semanticFingerprint"
-    ],
-    "activeWindowRule": "formedAt <= observedAt < expiresAt",
-    "selfCertificationAllowed": false
-  },
+  "heldToolReplacementPolicies": [{"replacementPolicyRef":"policy.intent-scheduler.held-tool-replacement","allowedReasonRefs":["reason.intent-scheduler.capability-replacement","reason.intent-scheduler.context-replacement"]}],
+  "runtimeTrustContract": {"contractRef":"contract.intent-scheduler.runtime-trust-clock","clockRef":"clock.intent-scheduler.canonical-utc","purpose":"Externally source scheduler runtime identity, currentness, observed time and expiry before deterministic admission.","evidenceClasses":["SIMULATED_CURRENT","LIVE_RUNTIME_CURRENT"],"requiredFields":["snapshotRef","sourceRef","sourceHash","formationRef","evidenceClass","schedulerGeneration","formedAt","observedAt","expiresAt","workerRef","actorRef","roleRef","claimRef","occupancyRef","leaseAuthorityRef","resourceSnapshotRef","resourceSnapshotFingerprint","currentness","semanticFingerprint"],"activeWindowRule":"formedAt <= observedAt < expiresAt","selfCertificationAllowed":false},
   "runtimeSourceIdentities": [
-    {
-      "sourceRef": "source.intent-scheduler.simulation-runtime",
-      "evidenceClass": "SIMULATED_CURRENT",
-      "authorityRef": "authority.intent-scheduler.simulation-runtime",
-      "liveRuntime": false
-    },
-    {
-      "sourceRef": "source.intent-scheduler.test-runtime",
-      "evidenceClass": "SIMULATED_CURRENT",
-      "authorityRef": "authority.intent-scheduler.test-runtime",
-      "liveRuntime": false
-    },
-    {
-      "sourceRef": "source.intent-scheduler.windows-g05-runtime-observer",
-      "evidenceClass": "LIVE_RUNTIME_CURRENT",
-      "authorityRef": "authority.intent-scheduler.windows-g05-runtime-observer",
-      "liveRuntime": true,
-      "sourceHash": "34ed3993f48b6b6e3b58d050eb541a3e7e480ca9ef3d9e510616752d99b6ac44",
-      "sourceDescriptor": {
-        "schemaVersion": "vexlife.g05s.live-runtime-source-descriptor/v1",
-        "sourceRef": "source.intent-scheduler.windows-g05-runtime-observer",
-        "sourceClass": "SOURCE_MANAGED_WINDOWS_RUNTIME_OBSERVER",
-        "path": "src/core/g05-runtime-authority-substrate.mjs",
-        "evidenceClass": "LIVE_RUNTIME_CURRENT",
-        "authorityRef": "authority.intent-scheduler.windows-g05-runtime-observer",
-        "workerRef": "worker.supervisor.windows-g05-runtime-observer",
-        "platform": "win32",
-        "clockRef": "clock.intent-scheduler.canonical-utc",
-        "resourceProvider": "NODE_OS_OBSERVATION_WITH_FAIL_CLOSED_LOGICAL_SUPERVISOR_STATE",
-        "mechanicalProfileRef": "profile.vexlife.windows.repository-execution.refresh-lc18.03893bc0-974c-474d-b441-1ef0d0da445a",
-        "mechanicalProfileDigestSha256": "7e264b54b1425805ae5e13c423e0e9bb50ba3f1d1579c6e09af526c722b22fc8",
-        "mechanicalQualificationRef": "qualification.vexlocalbridge.windows-victor.refresh-lc18.0547dc64-c293-427e-bc37-978e2abd8505",
-        "profileBindingMode": "PREDECESSOR_MECHANICAL_DEPENDENCY_NOT_CURRENT_HOST_ASSERTION",
-        "selfCertificationAllowed": false
-      }
-    },
-    {
-      "sourceRef": "source.intent-scheduler.companion-read-runtime-observer",
-      "evidenceClass": "LIVE_RUNTIME_CURRENT",
-      "authorityRef": "authority.intent-scheduler.companion-read-runtime-observer",
-      "liveRuntime": true,
-      "sourceHash": "93c5df1596471fb48738876ab255a0f3d98f6580a0c8a345e7ae1fa694eaa283",
-      "sourceDescriptor": {
-        "schemaVersion": "vexlife.intent-scheduler.live-runtime-source-descriptor/v1",
-        "sourceRef": "source.intent-scheduler.companion-read-runtime-observer",
-        "sourceClass": "SOURCE_MANAGED_NODE_DESKTOP_COMPANION_READ_RUNTIME_OBSERVER",
-        "path": "src/core/scheduler-runtime-observer.mjs",
-        "evidenceClass": "LIVE_RUNTIME_CURRENT",
-        "authorityRef": "authority.intent-scheduler.companion-read-runtime-observer",
-        "workerRefs": [
-          "worker.companion.read.slot.01",
-          "worker.companion.read.slot.02",
-          "worker.companion.read.slot.03",
-          "worker.companion.read.slot.04",
-          "worker.companion.read.slot.05",
-          "worker.companion.read.slot.06",
-          "worker.companion.read.slot.07",
-          "worker.companion.read.slot.08"
-        ],
-        "workerClass": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
-        "readWorkerSlotMaximum": 8,
-        "supportedPlatforms": [
-          "darwin",
-          "linux",
-          "win32"
-        ],
-        "clockRef": "clock.intent-scheduler.canonical-utc",
-        "resourceProvider": "NODE_OS_OBSERVATION_WITH_CONSERVATIVE_UNKNOWN_LOGICAL_STATE",
-        "selfCertificationAllowed": false
-      }
-    }
+    {"sourceRef":"source.intent-scheduler.simulation-runtime","evidenceClass":"SIMULATED_CURRENT","authorityRef":"authority.intent-scheduler.simulation-runtime","liveRuntime":false},
+    {"sourceRef":"source.intent-scheduler.test-runtime","evidenceClass":"SIMULATED_CURRENT","authorityRef":"authority.intent-scheduler.test-runtime","liveRuntime":false},
+    {"sourceRef":"source.intent-scheduler.windows-g05-runtime-observer","evidenceClass":"LIVE_RUNTIME_CURRENT","authorityRef":"authority.intent-scheduler.windows-g05-runtime-observer","liveRuntime":true,"sourceHash":"34ed3993f48b6b6e3b58d050eb541a3e7e480ca9ef3d9e510616752d99b6ac44","sourceDescriptor":{"schemaVersion":"vexlife.g05s.live-runtime-source-descriptor/v1","sourceRef":"source.intent-scheduler.windows-g05-runtime-observer","sourceClass":"SOURCE_MANAGED_WINDOWS_RUNTIME_OBSERVER","path":"src/core/g05-runtime-authority-substrate.mjs","evidenceClass":"LIVE_RUNTIME_CURRENT","authorityRef":"authority.intent-scheduler.windows-g05-runtime-observer","workerRef":"worker.supervisor.windows-g05-runtime-observer","platform":"win32","clockRef":"clock.intent-scheduler.canonical-utc","resourceProvider":"NODE_OS_OBSERVATION_WITH_FAIL_CLOSED_LOGICAL_SUPERVISOR_STATE","mechanicalProfileRef":"profile.vexlife.windows.repository-execution.refresh-lc18.03893bc0-974c-474d-b441-1ef0d0da445a","mechanicalProfileDigestSha256":"7e264b54b1425805ae5e13c423e0e9bb50ba3f1d1579c6e09af526c722b22fc8","mechanicalQualificationRef":"qualification.vexlocalbridge.windows-victor.refresh-lc18.0547dc64-c293-427e-bc37-978e2abd8505","profileBindingMode":"PREDECESSOR_MECHANICAL_DEPENDENCY_NOT_CURRENT_HOST_ASSERTION","selfCertificationAllowed":false}},
+    {"sourceRef":"source.intent-scheduler.companion-read-runtime-observer","evidenceClass":"LIVE_RUNTIME_CURRENT","authorityRef":"authority.intent-scheduler.companion-read-runtime-observer","liveRuntime":true,"sourceHash":"93c5df1596471fb48738876ab255a0f3d98f6580a0c8a345e7ae1fa694eaa283","sourceDescriptor":{"schemaVersion":"vexlife.intent-scheduler.live-runtime-source-descriptor/v1","sourceRef":"source.intent-scheduler.companion-read-runtime-observer","sourceClass":"SOURCE_MANAGED_NODE_DESKTOP_COMPANION_READ_RUNTIME_OBSERVER","path":"src/core/scheduler-runtime-observer.mjs","evidenceClass":"LIVE_RUNTIME_CURRENT","authorityRef":"authority.intent-scheduler.companion-read-runtime-observer","workerRefs":["worker.companion.read.slot.01","worker.companion.read.slot.02","worker.companion.read.slot.03","worker.companion.read.slot.04","worker.companion.read.slot.05","worker.companion.read.slot.06","worker.companion.read.slot.07","worker.companion.read.slot.08"],"workerClass":"NON_MODEL_COMPANION_READ_EXECUTOR_SLOT","readWorkerSlotMaximum":8,"supportedPlatforms":["darwin","linux","win32"],"clockRef":"clock.intent-scheduler.canonical-utc","resourceProvider":"NODE_OS_OBSERVATION_WITH_CONSERVATIVE_UNKNOWN_LOGICAL_STATE","selfCertificationAllowed":false}}
   ],
   "workerIdentities": [
-    {
-      "workerRef": "worker.model.mock.primary",
-      "workerKind": "DETERMINISTIC_FAKE_MODEL",
-      "evidenceClasses": [
-        "SIMULATED_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.model.test.primary",
-      "workerKind": "DETERMINISTIC_TEST_MODEL",
-      "evidenceClasses": [
-        "SIMULATED_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.supervisor.windows-g05-runtime-observer",
-      "workerKind": "NON_MODEL_RUNTIME_SUPERVISOR",
-      "evidenceClasses": [
-        "LIVE_RUNTIME_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.companion.read.slot.01",
-      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
-      "evidenceClasses": [
-        "LIVE_RUNTIME_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.companion.read.slot.02",
-      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
-      "evidenceClasses": [
-        "LIVE_RUNTIME_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.companion.read.slot.03",
-      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
-      "evidenceClasses": [
-        "LIVE_RUNTIME_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.companion.read.slot.04",
-      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
-      "evidenceClasses": [
-        "LIVE_RUNTIME_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.companion.read.slot.05",
-      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
-      "evidenceClasses": [
-        "LIVE_RUNTIME_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.companion.read.slot.06",
-      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
-      "evidenceClasses": [
-        "LIVE_RUNTIME_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.companion.read.slot.07",
-      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
-      "evidenceClasses": [
-        "LIVE_RUNTIME_CURRENT"
-      ]
-    },
-    {
-      "workerRef": "worker.companion.read.slot.08",
-      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
-      "evidenceClasses": [
-        "LIVE_RUNTIME_CURRENT"
-      ]
-    }
+    {"workerRef":"worker.model.mock.primary","workerKind":"DETERMINISTIC_FAKE_MODEL","evidenceClasses":["SIMULATED_CURRENT"]},
+    {"workerRef":"worker.model.test.primary","workerKind":"DETERMINISTIC_TEST_MODEL","evidenceClasses":["SIMULATED_CURRENT"]},
+    {"workerRef":"worker.supervisor.windows-g05-runtime-observer","workerKind":"NON_MODEL_RUNTIME_SUPERVISOR","evidenceClasses":["LIVE_RUNTIME_CURRENT"]},
+    {"workerRef":"worker.companion.read.slot.01","workerKind":"NON_MODEL_COMPANION_READ_EXECUTOR_SLOT","evidenceClasses":["LIVE_RUNTIME_CURRENT"]},
+    {"workerRef":"worker.companion.read.slot.02","workerKind":"NON_MODEL_COMPANION_READ_EXECUTOR_SLOT","evidenceClasses":["LIVE_RUNTIME_CURRENT"]},
+    {"workerRef":"worker.companion.read.slot.03","workerKind":"NON_MODEL_COMPANION_READ_EXECUTOR_SLOT","evidenceClasses":["LIVE_RUNTIME_CURRENT"]},
+    {"workerRef":"worker.companion.read.slot.04","workerKind":"NON_MODEL_COMPANION_READ_EXECUTOR_SLOT","evidenceClasses":["LIVE_RUNTIME_CURRENT"]},
+    {"workerRef":"worker.companion.read.slot.05","workerKind":"NON_MODEL_COMPANION_READ_EXECUTOR_SLOT","evidenceClasses":["LIVE_RUNTIME_CURRENT"]},
+    {"workerRef":"worker.companion.read.slot.06","workerKind":"NON_MODEL_COMPANION_READ_EXECUTOR_SLOT","evidenceClasses":["LIVE_RUNTIME_CURRENT"]},
+    {"workerRef":"worker.companion.read.slot.07","workerKind":"NON_MODEL_COMPANION_READ_EXECUTOR_SLOT","evidenceClasses":["LIVE_RUNTIME_CURRENT"]},
+    {"workerRef":"worker.companion.read.slot.08","workerKind":"NON_MODEL_COMPANION_READ_EXECUTOR_SLOT","evidenceClasses":["LIVE_RUNTIME_CURRENT"]}
   ],
-  "mockToolContracts": [
-    {
-      "contractRef": "contract.intent-scheduler.mock-tool.inspect/v0",
-      "toolRef": "tool.mock.inspect",
-      "effectRef": "effect.mock.read",
-      "argumentSchemaRef": "schema.tool.mock.inspect/v0",
-      "resultSchemaRef": "schema.tool.mock.result/v0",
-      "executorRef": "executor.mock.deterministic.inspect",
-      "requiredArgumentFields": [
-        "sourceRef"
-      ],
-      "requiredResultFields": [
-        "summaryRef"
-      ],
-      "maxObservationBytes": 1024,
-      "externalEffectsExecuted": false
-    }
-  ],
-  "simulationContract": {
-    "contractRef": "contract.intent-scheduler.integrated-simulation/v1",
-    "receiptPath": "generated/health/intent-scheduler-simulation.json",
-    "checkRef": "check.intent-scheduler",
-    "requiredJourneyStates": [
-      "WORKGRAPH_VALIDATED",
-      "RUNTIME_SNAPSHOT_CURRENT",
-      "QUEUE_ADMITTED",
-      "WORKER_LEASED",
-      "MOCK_TOOL_PROPOSED",
-      "MOCK_TOOL_RESULT_ACCEPTED",
-      "CHECKPOINT_RELEASED",
-      "TYPED_RELAY_REPLAY_CURRENT",
-      "OUT_OF_BAND_HELD_CLOSE_REJECTED_UNCHANGED",
-      "FRESH_RESOURCE_OBSERVED",
-      "HELD_TOOL_DISPOSITION_COMMITTED",
-      "FRESH_GENERATION_RESUMED",
-      "OBSERVATION_REINJECTED_ONCE",
-      "WORKGRAPH_COMPLETION_VERIFIED",
-      "DEPENDENT_READY_PARENT_CONVERGENCE_PROVEN",
-      "COMPLETED_CLOSED"
-    ],
-    "externalEffectsExecuted": false
-  },
+  "mockToolContracts": [{"contractRef":"contract.intent-scheduler.mock-tool.inspect/v0","toolRef":"tool.mock.inspect","effectRef":"effect.mock.read","argumentSchemaRef":"schema.tool.mock.inspect/v0","resultSchemaRef":"schema.tool.mock.result/v0","executorRef":"executor.mock.deterministic.inspect","requiredArgumentFields":["sourceRef"],"requiredResultFields":["summaryRef"],"maxObservationBytes":1024,"externalEffectsExecuted":false}],
+  "simulationContract": {"contractRef":"contract.intent-scheduler.integrated-simulation/v1","receiptPath":"generated/health/intent-scheduler-simulation.json","checkRef":"check.intent-scheduler","requiredJourneyStates":["WORKGRAPH_VALIDATED","RUNTIME_SNAPSHOT_CURRENT","QUEUE_ADMITTED","WORKER_LEASED","MOCK_TOOL_PROPOSED","MOCK_TOOL_RESULT_ACCEPTED","CHECKPOINT_RELEASED","TYPED_RELAY_REPLAY_CURRENT","OUT_OF_BAND_HELD_CLOSE_REJECTED_UNCHANGED","FRESH_RESOURCE_OBSERVED","HELD_TOOL_DISPOSITION_COMMITTED","FRESH_GENERATION_RESUMED","OBSERVATION_REINJECTED_ONCE","WORKGRAPH_COMPLETION_VERIFIED","DEPENDENT_READY_PARENT_CONVERGENCE_PROVEN","COMPLETED_CLOSED"],"externalEffectsExecuted":false},
   "resourceUnknownPolicy": "UNKNOWN_IS_NOT_SPARE_CAPACITY",
   "checkpointReplayPolicy": "REVALIDATE_GRAPH_TRUST_RESOURCE_CAPABILITY_EFFECT_AND_SOURCE_HASHES_OR_FAIL_CLOSED",
   "toolEffectPolicy": "MODEL_PROPOSES_TYPED_CALL_DETERMINISTIC_CODE_VALIDATES_MOCK_ONLY",
-  "processRefs": [
-    "process.vexlife.intent.scheduler-admit",
-    "process.vexlife.intent.scheduler-select",
-    "process.vexlife.intent.scheduler-checkpoint-resume",
-    "process.vexlife.intent.scheduler-tool-relay",
-    "process.vexlife.intent.scheduler-project-runtime"
-  ],
+  "processRefs": ["process.vexlife.intent.scheduler-admit","process.vexlife.intent.scheduler-select","process.vexlife.intent.scheduler-checkpoint-resume","process.vexlife.intent.scheduler-tool-relay","process.vexlife.intent.scheduler-project-runtime"],
   "projectionIdentities": [
-    {
-      "projectionRef": "projection.intent-scheduler.runtime",
-      "brief": "One bounded runtime projection shared by Queue, Terrain, Health and Guide selectors."
-    },
-    {
-      "projectionRef": "projection.intent-scheduler.terrain",
-      "brief": "Logical ready, active and blocked node refs without loaded model instances."
-    },
-    {
-      "projectionRef": "projection.intent-scheduler.health",
-      "brief": "Worker, resource and blocked reason counts without raw machine dumps."
-    },
-    {
-      "projectionRef": "projection.intent-scheduler.guide",
-      "brief": "What is active, why work waits and one next safe action."
-    }
+    {"projectionRef":"projection.intent-scheduler.runtime","brief":"One bounded runtime projection shared by Queue, Terrain, Health and Guide selectors."},
+    {"projectionRef":"projection.intent-scheduler.terrain","brief":"Logical ready, active and blocked node refs without loaded model instances."},
+    {"projectionRef":"projection.intent-scheduler.health","brief":"Worker, resource and blocked reason counts without raw machine dumps."},
+    {"projectionRef":"projection.intent-scheduler.guide","brief":"What is active, why work waits and one next safe action."}
   ],
-  "testRefs": [
-    "test.intent-scheduler.non-green-zero-admission",
-    "test.intent-scheduler.exact-admission-binding",
-    "test.intent-scheduler.single-worker",
-    "test.intent-scheduler.logical-branches",
-    "test.intent-scheduler.interactive-preemption",
-    "test.intent-scheduler.fairness",
-    "test.intent-scheduler.resource-fail-closed",
-    "test.intent-scheduler.context-budget",
-    "test.intent-scheduler.context-no-op",
-    "test.intent-scheduler.checkpoint-release",
-    "test.intent-scheduler.resume-revalidate",
-    "test.intent-scheduler.tool-lease-boundary",
-    "test.intent-scheduler.tool-result-rejection",
-    "test.intent-scheduler.tool-result-reinjection",
-    "test.intent-scheduler.cancellation-lineage",
-    "test.intent-scheduler.bounded-projections",
-    "test.intent-scheduler.full-gate",
-    "test.intent-scheduler.normal-completion",
-    "test.intent-scheduler.preemption-continuation",
-    "test.intent-scheduler.checkpoint-exact-release-set",
-    "test.intent-scheduler.durable-held-tool",
-    "test.intent-scheduler.live-clock",
-    "test.intent-scheduler.safe-receipt-path",
-    "test.intent-scheduler.external-completion-verifier",
-    "test.intent-scheduler.workgraph-completion-convergence",
-    "test.intent-scheduler.relay-replay-state-machine",
-    "test.g05-runtime-authority-substrate",
-    "test.intent-scheduler.companion-read-runtime-observer"
-  ],
-  "successorBoundaries": [
-    "Intent Orchestration 3/3 Burden Release and Continuity Evolution Router is registration-only and held.",
-    "Generic Node desktop live runtime observation is limited to bounded non-model Companion reads; native platform-specific Companion implementations remain held.",
-    "Android and iOS native runtime authority remain held.",
-    "Real local model provisioning and inference remain held.",
-    "Arbitrary shell, Git, filesystem, network and publication effects remain held.",
-    "Model-weight training, removal and activation remain held."
-  ]
+  "testRefs": ["test.intent-scheduler.non-green-zero-admission","test.intent-scheduler.exact-admission-binding","test.intent-scheduler.single-worker","test.intent-scheduler.logical-branches","test.intent-scheduler.interactive-preemption","test.intent-scheduler.fairness","test.intent-scheduler.resource-fail-closed","test.intent-scheduler.context-budget","test.intent-scheduler.context-no-op","test.intent-scheduler.checkpoint-release","test.intent-scheduler.resume-revalidate","test.intent-scheduler.tool-lease-boundary","test.intent-scheduler.tool-result-rejection","test.intent-scheduler.tool-result-reinjection","test.intent-scheduler.cancellation-lineage","test.intent-scheduler.bounded-projections","test.intent-scheduler.full-gate","test.intent-scheduler.normal-completion","test.intent-scheduler.preemption-continuation","test.intent-scheduler.checkpoint-exact-release-set","test.intent-scheduler.durable-held-tool","test.intent-scheduler.live-clock","test.intent-scheduler.safe-receipt-path","test.intent-scheduler.external-completion-verifier","test.intent-scheduler.workgraph-completion-convergence","test.intent-scheduler.relay-replay-state-machine","test.g05-runtime-authority-substrate"],
+  "successorBoundaries": ["Intent Orchestration 3/3 Burden Release and Continuity Evolution Router is registration-only and held.","Generic Node desktop live runtime observation is limited to bounded non-model Companion reads; native platform-specific Companion implementations remain held.","Android and iOS native runtime authority remain held.","Real local model provisioning and inference remain held.","Arbitrary shell, Git, filesystem, network and publication effects remain held.","Model-weight training, removal and activation remain held."]
 }
