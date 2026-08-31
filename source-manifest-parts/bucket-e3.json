@@ -9,6 +9,12 @@
       "sha256": "a144d98aec68fefc9508788b7f26271842935d99ed160d94eb0e05e64ec79e7c"
     },
     {
+      "path": "src/core/security-access-projection.mjs",
+      "mode": "100644",
+      "bytes": 5208,
+      "sha256": "c806ebc2228a977794cef24cd294bea4a637e6c1cdc3b81a9751c759e3c7a8a2"
+    },
+    {
       "path": "test/experience-review-kit.test.mjs",
       "mode": "100644",
       "bytes": 13661,

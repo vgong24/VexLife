@@ -9,6 +9,7 @@ import { createFeatureWalkthroughGuideAdapter } from './modules/feature-walkthro
 import { createLivingJournalController } from './modules/living-journal-controller.js';
 import { createLivingJournalDemoData } from './modules/living-journal-demo-data.js';
 import { createRelationshipsController, loadRelationshipsReference } from './modules/relationships-controller.js';
+import { createSecurityAccessController } from './modules/security-access-controller.js';
 
 const { blueprint, experience, featureRegistry, designTokens, catalogs } = await loadBrowserBundle('../../');
 const relationshipsReference = await loadRelationshipsReference('../../');
@@ -89,7 +90,7 @@ const semanticPatchForNode = (nodeRef) => {
   return patch;
 };
 
-let navigation; let chat; let terrain; let guide; let livingJournal; let relationships;
+let navigation; let chat; let terrain; let guide; let livingJournal; let relationships; let securityAccess;
 function visibleVexName(){return t('vex.visible.name');}
 function canonicalRoleLabel(key){const role=roles[key];return role?.labelRef?t(role.labelRef):role?.label??String(key??'');}
 function vexRoleQualifier(key){const label=canonicalRoleLabel(key);const name=visibleVexName();const qualifier=label.split(name).join(' ').replace(/[\s·•—–:：-]+/g,' ').trim();return qualifier||label;}
@@ -134,7 +135,7 @@ function renderHealth(){const frame=navigation.semanticFrame(),evidenceClass=sta
 function setWorkspaceOpen(open){state.workspaceOpen=Boolean(open);$('#projectRail').open=state.workspaceOpen;$('#projectRail').setAttribute('aria-hidden',String(!state.workspaceOpen));if(state.workspaceOpen)guide?.avoidDeclaredControls();}
 function openContext(context,nodeRef=`element.nav.${context}`){navigation.openContext(context,nodeRef,'action.view.select');projectFrame();}
 function returnToTerrain(nodeRef='element.nav.terrain',actionRef='action.view.select'){if(state.contextProjection==='living-journal')livingJournal?.close();if(state.contextProjection==='relationships')relationships?.close();navigation.returnToPrimaryStage(nodeRef,actionRef);setWorkspaceOpen(false);projectFrame();}
-function projectFrame(){const host=$('#contextSurface'),app=$('#app'),projection=state.contextProjection??'terrain';host.dataset.contextProjection=projection;app.dataset.contextProjection=projection;host.hidden=!state.contextProjection;host.setAttribute('aria-hidden',String(!state.contextProjection));$('#view-chat').hidden=state.contextProjection!=='chat';$('#view-health').hidden=state.contextProjection!=='health';$('#view-living-journal').hidden=state.contextProjection!=='living-journal';const relationshipsView=$('#view-relationships');if(relationshipsView)relationshipsView.hidden=state.contextProjection!=='relationships';chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();livingJournal?.render();if(state.contextProjection==='relationships')relationships?.render();else relationships?.close();renderLivingJournalWalkthroughControls();terrain?.render(false);applyContextWorkspaceLayout();renderHealth();guide?.updateFrame();projectVisibleVexIdentity();if(state.contextProjection)guide?.avoidDeclaredControls();}
+function projectFrame(){const host=$('#contextSurface'),app=$('#app'),projection=state.contextProjection??'terrain';host.dataset.contextProjection=projection;app.dataset.contextProjection=projection;host.hidden=!state.contextProjection;host.setAttribute('aria-hidden',String(!state.contextProjection));$('#view-chat').hidden=state.contextProjection!=='chat';$('#view-health').hidden=state.contextProjection!=='health';$('#view-living-journal').hidden=state.contextProjection!=='living-journal';const relationshipsView=$('#view-relationships');if(relationshipsView)relationshipsView.hidden=state.contextProjection!=='relationships';chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();livingJournal?.render();if(state.contextProjection==='relationships')relationships?.render();else relationships?.close();renderLivingJournalWalkthroughControls();terrain?.render(false);applyContextWorkspaceLayout();renderHealth();securityAccess?.render();guide?.updateFrame();projectVisibleVexIdentity();if(state.contextProjection)guide?.avoidDeclaredControls();}
 
 navigation=createNavigationController({
   state,
@@ -153,6 +154,8 @@ navigation.seedCurrentJourney(initialTerrainRef);
 chat=createChatController({state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation});
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});
 guide=createGuideController({state,t,navigation,elementByRef,chat});
+securityAccess=createSecurityAccessController({registry:blueprint.securityAccessPreview,t,guide});
+securityAccess.bind();
 const featureWalkthrough=createFeatureWalkthroughGuideAdapter({featureRegistry,experience,guide,navigation});
 livingJournal=createLivingJournalController({state,data:livingJournalData,t,navigation,onSourceOpen:({sourceRef})=>navigation.navigate('element.living-journal.source.open',{},'action.living-journal.source.open',{subjectRef:state.selectedNodeRef}),onRevisit:()=>{livingJournal.close();navigation.returnToPrimaryStage('element.living-journal.revisit.open','action.living-journal.revisit.open');setWorkspaceOpen(false);projectFrame();}});
 relationships=createRelationshipsController({state,registry:relationshipsReference.registry,catalogs:relationshipsReference.catalogs});
@@ -214,7 +217,7 @@ globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;i
 
 chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();navigation.enableBrowserHistory();renderLivingJournalArchiveControls();applyLocalization();guide.setOpen(state.guideOpen);guide.addMessage('guide',{contentRef:'guide.intro'});projectFrame();
 
-globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout};
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout};
 if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('./integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}
 
 // [VXG RealForever]

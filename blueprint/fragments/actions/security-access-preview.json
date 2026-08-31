@@ -1,0 +1,24 @@
+[
+  {
+    "actionRef": "action.security-access.details.toggle",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "expanded": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.health"
+    ]
+  },
+  {
+    "actionRef": "action.security-access.preview.toggle",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "visible": "boolean"
+    },
+    "effectClass": "READ_ONLY",
+    "outputStateRefs": [
+      "state.health"
+    ]
+  }
+]

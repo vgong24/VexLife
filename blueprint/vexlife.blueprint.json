@@ -10,10 +10,16 @@
     "stateDomains": "blueprint/fragments/state-domains.json",
     "roles": "blueprint/fragments/roles.json",
     "permissions": "blueprint/fragments/permissions.json",
-    "actions": "blueprint/fragments/actions.json",
+    "actions": [
+      "blueprint/fragments/actions.json",
+      "blueprint/fragments/actions/security-access-preview.json"
+    ],
     "terrain": "blueprint/fragments/terrain.json",
     "platforms": "blueprint/fragments/platform-bindings.json",
-    "tests": "blueprint/fragments/tests.json",
+    "tests": [
+      "blueprint/fragments/tests.json",
+      "blueprint/fragments/tests/security-access-preview.json"
+    ],
     "registryRefs": "blueprint/fragments/registry-refs.json",
     "navigationContinuity": "blueprint/navigation-continuity-registry.json",
     "evolution": "blueprint/evolution-registry.json",
@@ -32,6 +38,7 @@
       "blueprint/fragments/screens/health.json",
       "blueprint/fragments/screens/guide-overlay.json",
       "blueprint/fragments/screens/cdr-s5-closed-alpha.json"
-    ]
+    ],
+    "securityAccessPreview": "blueprint/security-access-preview-registry.json"
   }
 }

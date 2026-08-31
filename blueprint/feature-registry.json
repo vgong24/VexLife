@@ -2258,6 +2258,96 @@
         "Relationships Human Experience review remains a distinct post-candidate gate.",
         "Home, Memory, model, network, provider, participant, publication, public-search and community-search effects remain held."
       ]
+    },
+    {
+      "featureRef": "feature.vexlife.security-access",
+      "purpose": "Give a person a calm Android-first Security & Access preview that explains current security options and held future actions without performing authentication or authorization.",
+      "status": "IMPLEMENTED_REFERENCE",
+      "humanIntroduction": {
+        "disposition": "DISCOVERABLE_ONLY",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "The Health contextual projection exposes the preview and its held reasons directly; no separate walkthrough is required for the first reference slice."
+      },
+      "canonicalNodeRefs": [
+        "state.health",
+        "region.health.security-access",
+        "element.health.security-access.details-toggle",
+        "element.health.security-access.preview-toggle",
+        "element.health.security-access.ask-vex",
+        "element.health.security-access.held-actions"
+      ],
+      "stateRefs": [
+        "state.health"
+      ],
+      "actionRefs": [
+        "action.security-access.details.toggle",
+        "action.security-access.preview.toggle",
+        "action.guide.ask"
+      ],
+      "permissionRefs": [
+        "permission.none",
+        "permission.conversation.send"
+      ],
+      "processRefs": [
+        "process.vexlife.feature.register-and-project"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.security-access-projection",
+        "module.vexlife.browser.security-access-controller"
+      ],
+      "localizationRefs": [
+        "security-access.title",
+        "security-access.preview.visibility",
+        "security-access.status.preview",
+        "security-access.status.backend-unavailable",
+        "security-access.android-first",
+        "security-access.trusted-devices",
+        "security-access.trusted-devices.none",
+        "security-access.recovery",
+        "security-access.recovery.not-configured-here",
+        "security-access.review-options",
+        "security-access.ask-vex",
+        "security-access.held-actions"
+      ],
+      "testRefs": [
+        "test.security-access.projection",
+        "test.security-access.browser",
+        "test.security-access.zero-effect"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "DETERMINISTIC_LOCAL_PROJECTION",
+      "dataClass": "SYNTHETIC_SECURITY_ACCESS_REFERENCE",
+      "effectClass": "READ_PROJECTION",
+      "concurrencyClass": "LOCAL_PRESENTATION_PREFERENCE_ONLY",
+      "rollbackRouteRef": "action.security-access.preview.toggle",
+      "projectionRefs": [
+        "projection.health.security-access-preview"
+      ],
+      "knownGaps": [
+        "Real authenticator, Android pairing, trusted-device runtime data, recovery execution and LAN/mobile lived proof remain held for separately accepted owner/runtime effects."
+      ]
     }
   ]
 }
