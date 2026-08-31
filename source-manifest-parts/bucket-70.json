@@ -5,8 +5,8 @@
     {
       "path": "blueprint/fragments/state-domains.json",
       "mode": "100644",
-      "bytes": 7211,
-      "sha256": "ccc062ba08576c8ff5e5b866eab73d2f158b65aa2557a08cffa0958e79fc86a3"
+      "bytes": 7640,
+      "sha256": "07ad52068655414fa60e7c0124221af403263befea7d5b4fbf3f7a050bc90471"
     },
     {
       "path": "docs/release/public-onboarding-distribution-claim.md",
