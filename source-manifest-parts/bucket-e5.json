@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/modules/vex-birth-lab-controller.js",
       "mode": "100644",
-      "bytes": 37877,
-      "sha256": "096b2b30b0fc2832019456f37c8023a4ab8ed4fa1e3ef57b3e7785aa08f2b081"
+      "bytes": 37976,
+      "sha256": "d6482bb728e0ed586eb74e53b82bfbe6c225684e854428f1d29a2088beee7e05"
     },
     {
       "path": "src/core/intent-validation.mjs",
