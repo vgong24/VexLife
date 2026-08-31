@@ -9,6 +9,12 @@
       "sha256": "f4d30dd6dfffc0bade909f42a9fe269474c591ffb477f52aa9a0a54c3c1fb291"
     },
     {
+      "path": "reference/browser/vex-birth-lab.css",
+      "mode": "100644",
+      "bytes": 7566,
+      "sha256": "eff1eaa57d37f5362cdec9c2abd41853d62022a2e8b3c854224e28419971e214"
+    },
+    {
       "path": "src/core/experience.mjs",
       "mode": "100644",
       "bytes": 28748,
