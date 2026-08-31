@@ -36,7 +36,7 @@ test('Security & Access projection has a closed input shape and rejects hostile 
   for (const hostile of [
     { runtimeState:'PREVIEW_ONLY', credential:'secret' },
     { runtimeState:'PREVIEW_ONLY', endpoint:'http://127.0.0.1:9000' },
-    { runtimeState:'PREVIEW_ONLY', privateKey:'-----BEGIN PRIVATE KEY-----' },
+    { runtimeState:'PREVIEW_ONLY', privateKey:'hostile-fixture-value' },
     { runtimeState:'PREVIEW_ONLY', nested:{token:'abc'} },
     { runtimeState:'PREVIEW_ONLY', recoverySeed:'123456' }
   ]) assert.throws(() => projectSecurityAccessPreview(registry, hostile), /rejects unregistered input field/);
