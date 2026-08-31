@@ -57,6 +57,13 @@ function action(actionRef, label, effectClass, permissionRef = 'permission.none'
   });
 }
 
+function freezeAnnotations(value) {
+  validateVexBirthAnnotationSet(value);
+  return Object.freeze(
+    value.map((entry) => Object.freeze({ ...entry }))
+  );
+}
+
 export function normalizeVexBirthCompanionStatus(value) {
   const state = STATUS_STATES.has(value?.state) ? value.state : 'UNKNOWN';
   return Object.freeze({
@@ -104,8 +111,18 @@ export function buildVexBirthLabProjection({
   const currentChapter = projectVexBirthHumanChapter(currentVBStage);
   const availableActions = [
     action('action.birth.status.inspect', 'Refresh G0 binding', 'READ_ONLY'),
-    action('action.birth.support.copy', 'Copy support context', 'LOCAL_EXPORT', 'permission.birth.support-export'),
-    action('action.birth.status-package.generate', 'Generate status ZIP', 'LOCAL_EXPORT', 'permission.birth.support-export')
+    action(
+      'action.birth.support.copy',
+      'Copy support context',
+      'LOCAL_EXPORT',
+      'permission.birth.support-export'
+    ),
+    action(
+      'action.birth.status-package.generate',
+      'Generate status ZIP',
+      'LOCAL_EXPORT',
+      'permission.birth.support-export'
+    )
   ];
   const heldActions = [];
   const blockers = [];
@@ -118,8 +135,12 @@ export function buildVexBirthLabProjection({
       'Verify local G0 binding',
       'READ_ONLY'
     );
-    blockers.push(`Local Companion binding is ${status.state}; no synthetic G0 reply is available.`);
-    heldActions.push(...heldTrainingActions('A real bound G0 and accepted untaught baseline are required first.'));
+    blockers.push(
+      `Local Companion binding is ${status.state}; no synthetic G0 reply is available.`
+    );
+    heldActions.push(...heldTrainingActions(
+      'A real bound G0 and accepted untaught baseline are required first.'
+    ));
   } else if (!baselineClosed) {
     primaryAction = action(
       'action.birth.baseline.finish',
@@ -127,7 +148,9 @@ export function buildVexBirthLabProjection({
       'LOCAL_APPEND',
       'permission.birth.baseline-witness'
     );
-    heldActions.push(...heldTrainingActions('Finish the untaught G0 baseline witness before forming training selections.'));
+    heldActions.push(...heldTrainingActions(
+      'Finish the untaught G0 baseline witness before forming training selections.'
+    ));
   } else {
     primaryAction = action(
       'action.birth.cultivation.finish',
@@ -170,52 +193,69 @@ function annotationFor(rangeRef, disposition) {
   };
 }
 
-export function setVexBirthTrainingDisposition(annotationsValue, rangeRef, disposition) {
+export function setVexBirthTrainingDisposition(
+  annotationsValue,
+  rangeRef,
+  disposition
+) {
   if (!TRAINING_DISPOSITIONS.includes(disposition)) {
     throw new TypeError(`unsupported training disposition ${disposition}`);
   }
   const prior = Array.isArray(annotationsValue) ? annotationsValue : [];
   const support = prior.filter(
-    (entry) => entry.conversationRangeRef === rangeRef && entry.disposition === 'SUPPORT_ONLY'
+    (entry) => (
+      entry.conversationRangeRef === rangeRef
+      && entry.disposition === 'SUPPORT_ONLY'
+    )
   );
-  const others = prior.filter((entry) => entry.conversationRangeRef !== rangeRef);
-  const next = [...others, ...support, annotationFor(rangeRef, disposition)];
-  return validateVexBirthAnnotationSet(next);
+  const others = prior.filter(
+    (entry) => entry.conversationRangeRef !== rangeRef
+  );
+  return freezeAnnotations([
+    ...others,
+    ...support,
+    annotationFor(rangeRef, disposition)
+  ]);
 }
 
 export function toggleVexBirthSupportOnly(annotationsValue, rangeRef) {
   const prior = Array.isArray(annotationsValue) ? annotationsValue : [];
   const hasSupport = prior.some(
-    (entry) => entry.conversationRangeRef === rangeRef && entry.disposition === 'SUPPORT_ONLY'
+    (entry) => (
+      entry.conversationRangeRef === rangeRef
+      && entry.disposition === 'SUPPORT_ONLY'
+    )
   );
   const next = hasSupport
     ? prior.filter(
         (entry) => !(
-          entry.conversationRangeRef === rangeRef &&
-          entry.disposition === 'SUPPORT_ONLY'
+          entry.conversationRangeRef === rangeRef
+          && entry.disposition === 'SUPPORT_ONLY'
         )
       )
     : [...prior, annotationFor(rangeRef, 'SUPPORT_ONLY')];
-  return validateVexBirthAnnotationSet(next);
+  return freezeAnnotations(next);
 }
 
 export function annotationDispositionForRange(annotationsValue, rangeRef) {
-  const dispositions = (annotationsValue ?? [])
+  const dispositions = (Array.isArray(annotationsValue) ? annotationsValue : [])
     .filter((entry) => entry.conversationRangeRef === rangeRef)
     .map((entry) => entry.disposition);
   return Object.freeze({
-    training: TRAINING_DISPOSITIONS.find((item) => dispositions.includes(item)) ?? null,
+    training: TRAINING_DISPOSITIONS.find(
+      (item) => dispositions.includes(item)
+    ) ?? null,
     supportOnly: dispositions.includes('SUPPORT_ONLY')
   });
 }
 
 export function supportSelectedExcerpt(turns, annotationsValue) {
   const supportRanges = new Set(
-    (annotationsValue ?? [])
+    (Array.isArray(annotationsValue) ? annotationsValue : [])
       .filter((entry) => entry.disposition === 'SUPPORT_ONLY')
       .map((entry) => entry.conversationRangeRef)
   );
-  return (turns ?? [])
+  return (Array.isArray(turns) ? turns : [])
     .filter((turn) => supportRanges.has(turn.rangeRef))
     .map((turn) => [
       `Human: ${turn.humanContent}`,
@@ -238,19 +278,20 @@ export function buildVexBirthSupportArtifacts({
   includeSelectedExcerpt = false
 } = {}) {
   const excerpt = supportSelectedExcerpt(turns, annotations);
+  const includeExcerpt = includeSelectedExcerpt && Boolean(excerpt);
   const supportContext = formVexBirthSupportContext(projection, {
     question: supportQuestion(question),
     selectedExcerpt: excerpt || null,
-    includeSelectedExcerpt: includeSelectedExcerpt && Boolean(excerpt)
+    includeSelectedExcerpt: includeExcerpt
   });
   const statusPackage = formVexBirthStatusPackageModel(projection, {
-    includeSelectedExcerpts: includeSelectedExcerpt && Boolean(excerpt),
-    selectedExcerptCount: includeSelectedExcerpt && excerpt ? 1 : 0
+    includeSelectedExcerpts: includeExcerpt,
+    selectedExcerptCount: includeExcerpt ? 1 : 0
   });
   return Object.freeze({
     supportContext,
     statusPackage,
-    selectedExcerpt: includeSelectedExcerpt ? excerpt : ''
+    selectedExcerpt: includeExcerpt ? excerpt : ''
   });
 }
 
@@ -268,8 +309,13 @@ function markdownSupportContext(context) {
     `Question: ${context.question}`,
     ''
   ];
-  if (context.selectedExcerptOrNull) {
-    lines.push('## Explicitly selected excerpt', '', context.selectedExcerptOrNull, '');
+  if (context.selectedExcerpt) {
+    lines.push(
+      '## Explicitly selected excerpt',
+      '',
+      context.selectedExcerpt,
+      ''
+    );
   }
   lines.push(
     '## Boundaries',
@@ -313,20 +359,29 @@ export function buildVexBirthStatusZipEntries({
     heldActions: projection.heldActions
   };
   const files = {
-    'START-HERE.html': '<!doctype html><meta charset="utf-8"><title>Vex Birth Status</title><h1>Vex Birth Status</h1><p>This package is non-executable support context. It grants no training or activation authority.</p>',
+    'START-HERE.html':
+      '<!doctype html><meta charset="utf-8"><title>Vex Birth Status</title>'
+      + '<h1>Vex Birth Status</h1>'
+      + '<p>This package is non-executable support context. '
+      + 'It grants no training or activation authority.</p>',
     'BIRTH-STATUS.json': `${JSON.stringify(statusPackage, null, 2)}\n`,
     'SUPPORT-CONTEXT.md': markdownSupportContext(supportContext),
     'CURRENT-STAGE.json': `${JSON.stringify(currentStage, null, 2)}\n`,
     'AVAILABLE-ACTIONS.json': `${JSON.stringify(actions, null, 2)}\n`,
-    'REDACTION-MANIFEST.json': `${JSON.stringify(redactionManifest, null, 2)}\n`
+    'REDACTION-MANIFEST.json':
+      `${JSON.stringify(redactionManifest, null, 2)}\n`
   };
-  if (selectedExcerpt) files['excerpts/selected-excerpts.md'] = `${selectedExcerpt}\n`;
+  if (selectedExcerpt) {
+    files['excerpts/selected-excerpts.md'] = `${selectedExcerpt}\n`;
+  }
   return Object.freeze(files);
 }
 
 function crc32(bytes) {
   let crc = 0xffffffff;
-  for (const byte of bytes) crc = ZIP_CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  for (const byte of bytes) {
+    crc = ZIP_CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  }
   return (crc ^ 0xffffffff) >>> 0;
 }
 
@@ -334,7 +389,7 @@ function dosDateTime(date = new Date()) {
   const year = Math.max(1980, date.getFullYear());
   const time = ((date.getHours() & 0x1f) << 11)
     | ((date.getMinutes() & 0x3f) << 5)
-    | ((Math.floor(date.getSeconds() / 2)) & 0x1f);
+    | (Math.floor(date.getSeconds() / 2) & 0x1f);
   const day = ((year - 1980) << 9)
     | (((date.getMonth() + 1) & 0x0f) << 5)
     | (date.getDate() & 0x1f);
@@ -354,7 +409,10 @@ function set32(dataView, offset, value) {
 }
 
 function concatBytes(chunks) {
-  const length = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+  const length = chunks.reduce(
+    (sum, chunk) => sum + chunk.byteLength,
+    0
+  );
   const result = new Uint8Array(length);
   let offset = 0;
   for (const chunk of chunks) {
@@ -369,14 +427,22 @@ function concatBytes(chunks) {
 
 export function encodeStoredZip(filesValue) {
   const entries = Object.entries(filesValue ?? {});
-  if (!entries.length) throw new TypeError('ZIP requires at least one file');
+  if (!entries.length) {
+    throw new TypeError('ZIP requires at least one file');
+  }
+
   const locals = [];
   const centrals = [];
   let localOffset = 0;
   const stamp = dosDateTime();
 
   for (const [name, content] of entries) {
-    if (!nonempty(name) || name.includes('\\') || name.startsWith('/') || name.split('/').includes('..')) {
+    if (
+      !nonempty(name)
+      || name.includes('\\')
+      || name.startsWith('/')
+      || name.split('/').includes('..')
+    ) {
       throw new TypeError(`unsafe ZIP path ${name}`);
     }
     const nameBytes = ZIP_TEXT_ENCODER.encode(name);
@@ -397,7 +463,11 @@ export function encodeStoredZip(filesValue) {
     set32(local, 22, contentBytes.byteLength);
     set16(local, 26, nameBytes.byteLength);
     set16(local, 28, 0);
-    locals.push(new Uint8Array(local.buffer), nameBytes, contentBytes);
+    locals.push(
+      new Uint8Array(local.buffer),
+      nameBytes,
+      contentBytes
+    );
 
     const central = view(46);
     set32(central, 0, 0x02014b50);
@@ -419,7 +489,11 @@ export function encodeStoredZip(filesValue) {
     set32(central, 42, localOffset);
     centrals.push(new Uint8Array(central.buffer), nameBytes);
 
-    localOffset += 30 + nameBytes.byteLength + contentBytes.byteLength;
+    localOffset += (
+      30
+      + nameBytes.byteLength
+      + contentBytes.byteLength
+    );
   }
 
   const centralBytes = concatBytes(centrals);
@@ -432,7 +506,12 @@ export function encodeStoredZip(filesValue) {
   set32(end, 12, centralBytes.byteLength);
   set32(end, 16, localOffset);
   set16(end, 20, 0);
-  return concatBytes([...locals, centralBytes, new Uint8Array(end.buffer)]);
+
+  return concatBytes([
+    ...locals,
+    centralBytes,
+    new Uint8Array(end.buffer)
+  ]);
 }
 
 function ensureCss() {
@@ -490,7 +569,8 @@ function staticMarkup() {
               <span id="vblBaselineBadge">OPEN</span>
             </div>
             <p id="vblModeExplanation">
-              Nothing in this Birth session has changed neural weights. Ask what you naturally want to ask before teaching anything.
+              Nothing in this Birth session has changed neural weights.
+              Ask what you naturally want to ask before teaching anything.
             </p>
             <div id="vblFeed" class="vbl-feed" aria-live="polite"></div>
             <form id="vblComposer" class="vbl-composer">
@@ -537,9 +617,13 @@ function staticMarkup() {
       <footer class="vbl-footer">
         <label class="vbl-support-question">
           Support question
-          <input id="vblSupportQuestion" value="Help me understand the current Vex Birth Lab step without changing state.">
+          <input id="vblSupportQuestion"
+            value="Help me understand the current Vex Birth Lab step without changing state.">
         </label>
-        <label><input id="vblIncludeExcerpt" type="checkbox"> Include only SUPPORT_ONLY-marked excerpts</label>
+        <label>
+          <input id="vblIncludeExcerpt" type="checkbox">
+          Include only SUPPORT_ONLY-marked excerpts
+        </label>
         <button id="vblCopySupport" type="button">Copy Support Context</button>
         <button id="vblStatusZip" type="button">Generate Status ZIP</button>
         <span id="vblExportStatus" role="status"></span>
@@ -563,17 +647,26 @@ function makeTurnCard(turn, baselineClosed, annotations, onAnnotation) {
   human.className = 'vbl-human';
   const humanStrong = document.createElement('strong');
   humanStrong.textContent = 'You';
-  human.append(humanStrong, document.createTextNode(` ${turn.humanContent}`));
+  human.append(
+    humanStrong,
+    document.createTextNode(` ${turn.humanContent}`)
+  );
 
   const companion = document.createElement('p');
   companion.className = 'vbl-companion';
   const companionStrong = document.createElement('strong');
   companionStrong.textContent = 'G0';
-  companion.append(companionStrong, document.createTextNode(` ${turn.companionContent}`));
+  companion.append(
+    companionStrong,
+    document.createTextNode(` ${turn.companionContent}`)
+  );
 
   const marks = document.createElement('div');
   marks.className = 'vbl-marks';
-  const state = annotationDispositionForRange(annotations, turn.rangeRef);
+  const markState = annotationDispositionForRange(
+    annotations,
+    turn.rangeRef
+  );
 
   const trainingButtons = [
     ['TRAIN', 'Teach this'],
@@ -587,9 +680,18 @@ function makeTurnCard(turn, baselineClosed, annotations, onAnnotation) {
     button.textContent = label;
     button.dataset.disposition = disposition;
     button.disabled = !baselineClosed || turn.phase === 'BASELINE';
-    button.setAttribute('aria-pressed', String(state.training === disposition));
-    if (button.disabled) button.title = 'Training annotations unlock only after the untaught baseline closes.';
-    button.addEventListener('click', () => onAnnotation(turn.rangeRef, disposition));
+    button.setAttribute(
+      'aria-pressed',
+      String(markState.training === disposition)
+    );
+    if (button.disabled) {
+      button.title =
+        'Training annotations unlock only after the untaught baseline closes.';
+    }
+    button.addEventListener(
+      'click',
+      () => onAnnotation(turn.rangeRef, disposition)
+    );
     marks.append(button);
   }
 
@@ -597,15 +699,25 @@ function makeTurnCard(turn, baselineClosed, annotations, onAnnotation) {
   support.type = 'button';
   support.textContent = 'Support only';
   support.dataset.disposition = 'SUPPORT_ONLY';
-  support.setAttribute('aria-pressed', String(state.supportOnly));
-  support.addEventListener('click', () => onAnnotation(turn.rangeRef, 'SUPPORT_ONLY'));
+  support.setAttribute(
+    'aria-pressed',
+    String(markState.supportOnly)
+  );
+  support.addEventListener(
+    'click',
+    () => onAnnotation(turn.rangeRef, 'SUPPORT_ONLY')
+  );
   marks.append(support);
 
   article.append(meta, human, companion, marks);
   return article;
 }
 
-function downloadBytes(bytes, filename, type = 'application/zip') {
+function downloadBytes(
+  bytes,
+  filename,
+  type = 'application/zip'
+) {
   const blob = new Blob([bytes], { type });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -613,10 +725,6 @@ function downloadBytes(bytes, filename, type = 'application/zip') {
   anchor.download = filename;
   anchor.click();
   queueMicrotask(() => URL.revokeObjectURL(url));
-}
-
-function supportContextPlainText(context) {
-  return markdownSupportContext(context);
 }
 
 export function createVexBirthLabController({
@@ -628,11 +736,17 @@ export function createVexBirthLabController({
   if (!root || typeof root.querySelector !== 'function') {
     throw new TypeError('Vex Birth Lab root is required');
   }
-  if (typeof fetchImpl !== 'function') throw new TypeError('fetch implementation is required');
+  if (typeof fetchImpl !== 'function') {
+    throw new TypeError('fetch implementation is required');
+  }
 
   const state = {
-    birthSessionRef: portableRef('birth-session.vex-birth-lab'),
-    companionStatus: normalizeVexBirthCompanionStatus({ state: 'UNKNOWN' }),
+    birthSessionRef: portableRef(
+      'birth-session.vex-birth-lab'
+    ),
+    companionStatus: normalizeVexBirthCompanionStatus({
+      state: 'UNKNOWN'
+    }),
     baselineClosed: false,
     turns: [],
     annotations: [],
@@ -647,8 +761,12 @@ export function createVexBirthLabController({
     return buildVexBirthLabProjection({
       companionStatus: state.companionStatus,
       baselineClosed: state.baselineClosed,
-      baselineExchangeCount: state.turns.filter((turn) => turn.phase === 'BASELINE').length,
-      cultivationExchangeCount: state.turns.filter((turn) => turn.phase === 'CULTIVATION').length,
+      baselineExchangeCount: state.turns.filter(
+        (turn) => turn.phase === 'BASELINE'
+      ).length,
+      cultivationExchangeCount: state.turns.filter(
+        (turn) => turn.phase === 'CULTIVATION'
+      ).length,
       birthSessionRef: state.birthSessionRef
     });
   }
@@ -658,12 +776,15 @@ export function createVexBirthLabController({
     list.replaceChildren();
     if (!current.heldActions.length) {
       const item = document.createElement('li');
-      item.textContent = 'No Slice B annotation hold is active.';
+      item.textContent =
+        'No Slice B annotation hold is active.';
       list.append(item);
       return;
     }
     const unique = [...new Map(
-      current.heldActions.map((entry) => [entry.reasonCode, entry.reason])
+      current.heldActions.map(
+        (entry) => [entry.reasonCode, entry.reason]
+      )
     ).entries()];
     for (const [code, reason] of unique) {
       const item = document.createElement('li');
@@ -678,24 +799,36 @@ export function createVexBirthLabController({
     if (!state.turns.length) {
       const empty = document.createElement('div');
       empty.className = 'vbl-empty';
-      empty.textContent = state.companionStatus.state === 'BOUND'
-        ? 'No baseline exchange yet. Your first real G0 turn will appear here.'
-        : 'G0 is not currently available here. No synthetic reply will be substituted.';
+      empty.textContent =
+        state.companionStatus.state === 'BOUND'
+          ? 'No baseline exchange yet. Your first real G0 turn will appear here.'
+          : 'G0 is not currently available here. No synthetic reply will be substituted.';
       feed.append(empty);
       return;
     }
+
     for (const turn of state.turns) {
-      feed.append(makeTurnCard(
-        turn,
-        state.baselineClosed,
-        state.annotations,
-        (rangeRef, disposition) => {
-          state.annotations = disposition === 'SUPPORT_ONLY'
-            ? [...toggleVexBirthSupportOnly(state.annotations, rangeRef)]
-            : [...setVexBirthTrainingDisposition(state.annotations, rangeRef, disposition)];
-          render();
-        }
-      ));
+      feed.append(
+        makeTurnCard(
+          turn,
+          state.baselineClosed,
+          state.annotations,
+          (rangeRef, disposition) => {
+            state.annotations =
+              disposition === 'SUPPORT_ONLY'
+                ? toggleVexBirthSupportOnly(
+                    state.annotations,
+                    rangeRef
+                  )
+                : setVexBirthTrainingDisposition(
+                    state.annotations,
+                    rangeRef,
+                    disposition
+                  );
+            render();
+          }
+        )
+      );
     }
   }
 
@@ -703,54 +836,99 @@ export function createVexBirthLabController({
     const current = projection();
     q('#vblChapter').textContent = current.currentChapter;
     q('#vblStage').textContent = current.currentVBStage;
-    q('#vblModelState').textContent = current.modelBindingState;
-    q('#vblTruthBanner').textContent = current.modelBindingState === 'BOUND'
-      ? `Vex · Generation G0 · ${state.baselineClosed ? 'Cultivation candidate session' : 'Untaught baseline'} · neural training NOT STARTED`
-      : `G0 ${current.modelBindingState.toLowerCase().replaceAll('_', ' ')} — no synthetic reply substituted.`;
-    q('#vblGuideTruth').textContent = current.modelBindingState === 'BOUND'
-      ? `Real local Companion binding is BOUND. Training effect truth remains ${current.trainingEffectTruth}.`
-      : `Real local Companion binding is ${current.modelBindingState}. Training effect truth remains ${current.trainingEffectTruth}.`;
-    q('#vblGuideNext').textContent = current.primaryAction.label;
-    q('#vblBaselineBadge').textContent = state.baselineClosed ? 'CLOSED' : 'OPEN';
-    q('#vblModeEyebrow').textContent = state.baselineClosed ? 'CULTIVATION' : 'UNTAUGHT BASELINE';
-    q('#vblModeTitle').textContent = state.baselineClosed ? 'Cultivate deliberately' : 'Meet G0 before teaching';
-    q('#vblModeExplanation').textContent = state.baselineClosed
-      ? 'Nothing is selected for neural formation by default. Mark only the exchanges that actually express a lesson, counterexample, held-out check, exclusion, or support excerpt.'
-      : 'Nothing in this Birth session has changed neural weights. Ask what you naturally want to ask before teaching anything. Baseline exchanges cannot become training selections in Slice B.';
-    const send = q('#vblSend');
-    const input = q('#vblInput');
+    q('#vblModelState').textContent =
+      current.modelBindingState;
+    q('#vblTruthBanner').textContent =
+      current.modelBindingState === 'BOUND'
+        ? `Vex · Generation G0 · ${
+            state.baselineClosed
+              ? 'Cultivation candidate session'
+              : 'Untaught baseline'
+          } · neural training NOT STARTED`
+        : `G0 ${current.modelBindingState
+            .toLowerCase()
+            .replaceAll('_', ' ')} — no synthetic reply substituted.`;
+    q('#vblGuideTruth').textContent =
+      `Real local Companion binding is ${
+        current.modelBindingState
+      }. Training effect truth remains ${
+        current.trainingEffectTruth
+      }.`;
+    q('#vblGuideNext').textContent =
+      current.primaryAction.label;
+    q('#vblBaselineBadge').textContent =
+      state.baselineClosed ? 'CLOSED' : 'OPEN';
+    q('#vblModeEyebrow').textContent =
+      state.baselineClosed
+        ? 'CULTIVATION'
+        : 'UNTAUGHT BASELINE';
+    q('#vblModeTitle').textContent =
+      state.baselineClosed
+        ? 'Cultivate deliberately'
+        : 'Meet G0 before teaching';
+    q('#vblModeExplanation').textContent =
+      state.baselineClosed
+        ? 'Nothing is selected for neural formation by default. Mark only the exchanges that actually express a lesson, counterexample, held-out check, exclusion, or support excerpt.'
+        : 'Nothing in this Birth session has changed neural weights. Ask what you naturally want to ask before teaching anything. Baseline exchanges cannot become training selections in Slice B.';
+
     const bound = current.modelBindingState === 'BOUND';
-    send.disabled = !bound || state.busy;
-    input.disabled = !bound || state.busy;
+    q('#vblSend').disabled = !bound || state.busy;
+    q('#vblInput').disabled = !bound || state.busy;
     q('#vblComposerHint').textContent = state.busy
       ? 'Waiting for the real local G0 response…'
       : bound
-        ? (state.baselineClosed ? 'Real G0 conversation · mark exchanges explicitly after they return.' : 'Untaught G0 · baseline questions are never auto-selected for training.')
+        ? (
+            state.baselineClosed
+              ? 'Real G0 conversation · mark exchanges explicitly after they return.'
+              : 'Untaught G0 · baseline questions are never auto-selected for training.'
+          )
         : 'Waiting for a verified local G0 binding.';
-    const baselineTurns = state.turns.filter((turn) => turn.phase === 'BASELINE').length;
-    q('#vblFinishBaseline').disabled = state.baselineClosed || baselineTurns === 0 || !bound;
-    q('#vblFinishBaseline').hidden = state.baselineClosed;
-    for (const item of root.querySelectorAll('[data-vbl-map]')) {
-      item.dataset.current = String(item.dataset.vblMap === current.currentChapter);
+
+    const baselineTurns = state.turns.filter(
+      (turn) => turn.phase === 'BASELINE'
+    ).length;
+    q('#vblFinishBaseline').disabled =
+      state.baselineClosed
+      || baselineTurns === 0
+      || !bound;
+    q('#vblFinishBaseline').hidden =
+      state.baselineClosed;
+
+    for (const item of root.querySelectorAll(
+      '[data-vbl-map]'
+    )) {
+      item.dataset.current = String(
+        item.dataset.vblMap === current.currentChapter
+      );
     }
+
     renderHeld(current);
     renderFeed();
   }
 
   async function refreshStatus() {
     try {
-      const response = await fetchImpl(VEX_BIRTH_COMPANION_STATUS_PATH, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        cache: 'no-store'
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      state.companionStatus = normalizeVexBirthCompanionStatus(await response.json());
+      const response = await fetchImpl(
+        VEX_BIRTH_COMPANION_STATUS_PATH,
+        {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store'
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      state.companionStatus =
+        normalizeVexBirthCompanionStatus(
+          await response.json()
+        );
     } catch {
-      state.companionStatus = normalizeVexBirthCompanionStatus({
-        state: 'UNKNOWN',
-        failureCode: 'COMPANION_STATUS_UNAVAILABLE'
-      });
+      state.companionStatus =
+        normalizeVexBirthCompanionStatus({
+          state: 'UNKNOWN',
+          failureCode: 'COMPANION_STATUS_UNAVAILABLE'
+        });
     }
     state.lastStatusObservedAt = now();
     render();
@@ -759,41 +937,65 @@ export function createVexBirthLabController({
 
   async function sendTurn(content) {
     if (state.companionStatus.state !== 'BOUND') {
-      throw new Error('Real local G0 is not bound; no synthetic turn is allowed.');
+      throw new Error(
+        'Real local G0 is not bound; no synthetic turn is allowed.'
+      );
     }
+
     state.busy = true;
     state.modelTurnRequestCount += 1;
     render();
     try {
-      const response = await fetchImpl(VEX_BIRTH_COMPANION_TURN_PATH, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
-        },
-        cache: 'no-store',
-        body: JSON.stringify({
-          projectRef: 'project.local-vex',
-          threadRef: 'thread.vex-birth-lab.first-g0',
-          channelRef: 'channel.vex-birth-lab.first-g0.companion',
-          content,
-          selectedNodeRef: 'terrain.project.local-vex',
-          screenRef: 'screen.vexlife.chat'
-        })
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload || !nonempty(payload.content)) {
-        const code = payload?.failureCode ?? payload?.code ?? `HTTP_${response.status}`;
-        throw new Error(`Local Companion turn failed safely (${code}); no synthetic reply was substituted.`);
+      const response = await fetchImpl(
+        VEX_BIRTH_COMPANION_TURN_PATH,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          },
+          cache: 'no-store',
+          body: JSON.stringify({
+            projectRef: 'project.local-vex',
+            threadRef: 'thread.vex-birth-lab.first-g0',
+            channelRef:
+              'channel.vex-birth-lab.first-g0.companion',
+            content,
+            selectedNodeRef: 'terrain.project.local-vex',
+            screenRef: 'screen.vexlife.chat'
+          })
+        }
+      );
+      const payload = await response.json().catch(
+        () => null
+      );
+      if (
+        !response.ok
+        || !payload
+        || !nonempty(payload.content)
+      ) {
+        const code =
+          payload?.failureCode
+          ?? payload?.code
+          ?? `HTTP_${response.status}`;
+        throw new Error(
+          `Local Companion turn failed safely (${code}); `
+          + 'no synthetic reply was substituted.'
+        );
       }
+
       const turn = {
         rangeRef: portableRef('range.vex-birth-lab'),
-        phase: state.baselineClosed ? 'CULTIVATION' : 'BASELINE',
+        phase: state.baselineClosed
+          ? 'CULTIVATION'
+          : 'BASELINE',
         humanContent: content,
         companionContent: payload.content,
         turnRef: payload.turnRef ?? null,
-        responseMessageRef: payload.responseMessageRef ?? null,
-        conversationHeadSha256: payload.conversationHeadSha256 ?? null
+        responseMessageRef:
+          payload.responseMessageRef ?? null,
+        conversationHeadSha256:
+          payload.conversationHeadSha256 ?? null
       };
       state.turns.push(turn);
       return Object.freeze(structuredClone(turn));
@@ -804,9 +1006,16 @@ export function createVexBirthLabController({
   }
 
   function finishBaseline() {
-    const baselineTurns = state.turns.filter((turn) => turn.phase === 'BASELINE').length;
-    if (state.companionStatus.state !== 'BOUND' || baselineTurns === 0) {
-      throw new Error('At least one real untaught G0 exchange is required before baseline closure.');
+    const baselineTurns = state.turns.filter(
+      (turn) => turn.phase === 'BASELINE'
+    ).length;
+    if (
+      state.companionStatus.state !== 'BOUND'
+      || baselineTurns === 0
+    ) {
+      throw new Error(
+        'At least one real untaught G0 exchange is required before baseline closure.'
+      );
     }
     state.baselineClosed = true;
     render();
@@ -819,7 +1028,8 @@ export function createVexBirthLabController({
       turns: state.turns,
       annotations: state.annotations,
       question: q('#vblSupportQuestion').value,
-      includeSelectedExcerpt: q('#vblIncludeExcerpt').checked
+      includeSelectedExcerpt:
+        q('#vblIncludeExcerpt').checked
     });
   }
 
@@ -827,12 +1037,18 @@ export function createVexBirthLabController({
     const status = q('#vblExportStatus');
     try {
       const artifacts = supportArtifacts();
-      const text = markdownSupportContext(artifacts.supportContext);
-      if (!clipboard?.writeText) throw new Error('Clipboard API unavailable');
+      const text = markdownSupportContext(
+        artifacts.supportContext
+      );
+      if (!clipboard?.writeText) {
+        throw new Error('Clipboard API unavailable');
+      }
       await clipboard.writeText(text);
-      status.textContent = 'Support context copied. It grants no execution or training authority.';
+      status.textContent =
+        'Support context copied. It grants no execution or training authority.';
     } catch (error) {
-      status.textContent = `Support export held: ${error.message}`;
+      status.textContent =
+        `Support export held: ${error.message}`;
     }
   }
 
@@ -847,43 +1063,24 @@ export function createVexBirthLabController({
       const bytes = encodeStoredZip(entries);
       downloadBytes(
         bytes,
-        `Vex-Birth-Status-${state.birthSessionRef.replaceAll('.', '-')}.zip`
+        `Vex-Birth-Status-${
+          state.birthSessionRef.replaceAll('.', '-')
+        }.zip`
       );
-      status.textContent = 'Status ZIP generated. It is non-executable context only.';
+      status.textContent =
+        'Status ZIP generated. It is non-executable context only.';
     } catch (error) {
-      status.textContent = `Status ZIP held: ${error.message}`;
+      status.textContent =
+        `Status ZIP held: ${error.message}`;
     }
   }
-
-  q('#vblRefreshStatus').addEventListener('click', refreshStatus);
-  q('#vblClose').addEventListener('click', () => close());
-  q('#vblFinishBaseline').addEventListener('click', () => {
-    try {
-      finishBaseline();
-    } catch (error) {
-      q('#vblExportStatus').textContent = error.message;
-    }
-  });
-  q('#vblComposer').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const input = q('#vblInput');
-    const content = input.value.trim();
-    if (!content) return;
-    input.value = '';
-    try {
-      await sendTurn(content);
-    } catch (error) {
-      q('#vblExportStatus').textContent = error.message;
-    }
-  });
-  q('#vblCopySupport').addEventListener('click', copySupport);
-  q('#vblStatusZip').addEventListener('click', generateStatusZip);
 
   function open() {
     root.hidden = false;
     root.setAttribute('aria-hidden', 'false');
-    document.querySelector('#surfaceMenu')?.setAttribute('hidden', '');
-    root.querySelector('#vblClose')?.focus();
+    document.querySelector('#surfaceMenu')
+      ?.setAttribute('hidden', '');
+    q('#vblClose')?.focus();
     refreshStatus();
   }
 
@@ -893,22 +1090,73 @@ export function createVexBirthLabController({
     document.querySelector('#openVexBirthLab')?.focus();
   }
 
+  q('#vblRefreshStatus').addEventListener(
+    'click',
+    refreshStatus
+  );
+  q('#vblClose').addEventListener('click', close);
+  q('#vblFinishBaseline').addEventListener(
+    'click',
+    () => {
+      try {
+        finishBaseline();
+      } catch (error) {
+        q('#vblExportStatus').textContent =
+          error.message;
+      }
+    }
+  );
+  q('#vblComposer').addEventListener(
+    'submit',
+    async (event) => {
+      event.preventDefault();
+      const input = q('#vblInput');
+      const content = input.value.trim();
+      if (!content) return;
+      input.value = '';
+      try {
+        await sendTurn(content);
+      } catch (error) {
+        q('#vblExportStatus').textContent =
+          error.message;
+      }
+    }
+  );
+  q('#vblCopySupport').addEventListener(
+    'click',
+    copySupport
+  );
+  q('#vblStatusZip').addEventListener(
+    'click',
+    generateStatusZip
+  );
+
   function snapshot() {
     const current = projection();
     return Object.freeze({
-      schemaVersion: 'vexlife.vex-birth-lab-browser-snapshot/v1',
+      schemaVersion:
+        'vexlife.vex-birth-lab-browser-snapshot/v1',
       birthSessionRef: state.birthSessionRef,
       currentChapter: current.currentChapter,
       currentVBStage: current.currentVBStage,
-      activeGenerationRef: current.activeGenerationRef,
-      modelBindingState: current.modelBindingState,
-      trainingEffectTruth: current.trainingEffectTruth,
+      activeGenerationRef:
+        current.activeGenerationRef,
+      modelBindingState:
+        current.modelBindingState,
+      trainingEffectTruth:
+        current.trainingEffectTruth,
       baselineClosed: state.baselineClosed,
-      baselineExchangeCount: state.turns.filter((turn) => turn.phase === 'BASELINE').length,
-      cultivationExchangeCount: state.turns.filter((turn) => turn.phase === 'CULTIVATION').length,
+      baselineExchangeCount: state.turns.filter(
+        (turn) => turn.phase === 'BASELINE'
+      ).length,
+      cultivationExchangeCount: state.turns.filter(
+        (turn) => turn.phase === 'CULTIVATION'
+      ).length,
       annotationCount: state.annotations.length,
-      modelTurnRequestCount: state.modelTurnRequestCount,
-      lastStatusObservedAt: state.lastStatusObservedAt,
+      modelTurnRequestCount:
+        state.modelTurnRequestCount,
+      lastStatusObservedAt:
+        state.lastStatusObservedAt,
       rawTranscriptIncluded: false
     });
   }
@@ -930,8 +1178,8 @@ export function installVexBirthLab() {
   if (document.querySelector('#vexBirthLabSurface')) {
     return globalThis.__vexBirthLabController ?? null;
   }
-  ensureCss();
 
+  ensureCss();
   const menu = document.querySelector('#surfaceMenu');
   const app = document.querySelector('#app');
   if (!menu || !app) return null;
@@ -950,18 +1198,27 @@ export function installVexBirthLab() {
   surface.className = 'vex-birth-lab-surface';
   surface.hidden = true;
   surface.setAttribute('aria-hidden', 'true');
-  surface.dataset.nodeRef = 'screen.vexlife.vex-birth-lab';
+  surface.dataset.nodeRef =
+    'screen.vexlife.vex-birth-lab';
   surface.innerHTML = staticMarkup();
   app.append(surface);
 
-  const controller = createVexBirthLabController({ root: surface });
+  const controller = createVexBirthLabController({
+    root: surface
+  });
   globalThis.__vexBirthLabController = controller;
   globalThis.__vexBirthLabDiagnostics = Object.freeze({
     snapshot: () => controller.snapshot()
   });
+
   button.addEventListener('click', controller.open);
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !surface.hidden) controller.close();
+    if (
+      event.key === 'Escape'
+      && !surface.hidden
+    ) {
+      controller.close();
+    }
   });
 
   controller.refreshStatus();
@@ -970,7 +1227,11 @@ export function installVexBirthLab() {
 
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => installVexBirthLab(), { once: true });
+    document.addEventListener(
+      'DOMContentLoaded',
+      () => installVexBirthLab(),
+      { once: true }
+    );
   } else {
     queueMicrotask(() => installVexBirthLab());
   }
