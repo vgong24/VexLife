@@ -664,6 +664,41 @@
         "profileBindingMode": "PREDECESSOR_MECHANICAL_DEPENDENCY_NOT_CURRENT_HOST_ASSERTION",
         "selfCertificationAllowed": false
       }
+    },
+    {
+      "sourceRef": "source.intent-scheduler.companion-read-runtime-observer",
+      "evidenceClass": "LIVE_RUNTIME_CURRENT",
+      "authorityRef": "authority.intent-scheduler.companion-read-runtime-observer",
+      "liveRuntime": true,
+      "sourceHash": "93c5df1596471fb48738876ab255a0f3d98f6580a0c8a345e7ae1fa694eaa283",
+      "sourceDescriptor": {
+        "schemaVersion": "vexlife.intent-scheduler.live-runtime-source-descriptor/v1",
+        "sourceRef": "source.intent-scheduler.companion-read-runtime-observer",
+        "sourceClass": "SOURCE_MANAGED_NODE_DESKTOP_COMPANION_READ_RUNTIME_OBSERVER",
+        "path": "src/core/scheduler-runtime-observer.mjs",
+        "evidenceClass": "LIVE_RUNTIME_CURRENT",
+        "authorityRef": "authority.intent-scheduler.companion-read-runtime-observer",
+        "workerRefs": [
+          "worker.companion.read.slot.01",
+          "worker.companion.read.slot.02",
+          "worker.companion.read.slot.03",
+          "worker.companion.read.slot.04",
+          "worker.companion.read.slot.05",
+          "worker.companion.read.slot.06",
+          "worker.companion.read.slot.07",
+          "worker.companion.read.slot.08"
+        ],
+        "workerClass": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
+        "readWorkerSlotMaximum": 8,
+        "supportedPlatforms": [
+          "darwin",
+          "linux",
+          "win32"
+        ],
+        "clockRef": "clock.intent-scheduler.canonical-utc",
+        "resourceProvider": "NODE_OS_OBSERVATION_WITH_CONSERVATIVE_UNKNOWN_LOGICAL_STATE",
+        "selfCertificationAllowed": false
+      }
     }
   ],
   "workerIdentities": [
@@ -684,6 +719,62 @@
     {
       "workerRef": "worker.supervisor.windows-g05-runtime-observer",
       "workerKind": "NON_MODEL_RUNTIME_SUPERVISOR",
+      "evidenceClasses": [
+        "LIVE_RUNTIME_CURRENT"
+      ]
+    },
+    {
+      "workerRef": "worker.companion.read.slot.01",
+      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
+      "evidenceClasses": [
+        "LIVE_RUNTIME_CURRENT"
+      ]
+    },
+    {
+      "workerRef": "worker.companion.read.slot.02",
+      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
+      "evidenceClasses": [
+        "LIVE_RUNTIME_CURRENT"
+      ]
+    },
+    {
+      "workerRef": "worker.companion.read.slot.03",
+      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
+      "evidenceClasses": [
+        "LIVE_RUNTIME_CURRENT"
+      ]
+    },
+    {
+      "workerRef": "worker.companion.read.slot.04",
+      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
+      "evidenceClasses": [
+        "LIVE_RUNTIME_CURRENT"
+      ]
+    },
+    {
+      "workerRef": "worker.companion.read.slot.05",
+      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
+      "evidenceClasses": [
+        "LIVE_RUNTIME_CURRENT"
+      ]
+    },
+    {
+      "workerRef": "worker.companion.read.slot.06",
+      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
+      "evidenceClasses": [
+        "LIVE_RUNTIME_CURRENT"
+      ]
+    },
+    {
+      "workerRef": "worker.companion.read.slot.07",
+      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
+      "evidenceClasses": [
+        "LIVE_RUNTIME_CURRENT"
+      ]
+    },
+    {
+      "workerRef": "worker.companion.read.slot.08",
+      "workerKind": "NON_MODEL_COMPANION_READ_EXECUTOR_SLOT",
       "evidenceClasses": [
         "LIVE_RUNTIME_CURRENT"
       ]
@@ -786,11 +877,13 @@
     "test.intent-scheduler.external-completion-verifier",
     "test.intent-scheduler.workgraph-completion-convergence",
     "test.intent-scheduler.relay-replay-state-machine",
-    "test.g05-runtime-authority-substrate"
+    "test.g05-runtime-authority-substrate",
+    "test.intent-scheduler.companion-read-runtime-observer"
   ],
   "successorBoundaries": [
     "Intent Orchestration 3/3 Burden Release and Continuity Evolution Router is registration-only and held.",
-    "Windows, macOS, Android and iOS implementation remain held.",
+    "Generic Node desktop live runtime observation is limited to bounded non-model Companion reads; native platform-specific Companion implementations remain held.",
+    "Android and iOS native runtime authority remain held.",
     "Real local model provisioning and inference remain held.",
     "Arbitrary shell, Git, filesystem, network and publication effects remain held.",
     "Model-weight training, removal and activation remain held."
