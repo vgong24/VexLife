@@ -2590,4 +2590,85 @@ export class SingleWorkerIntentScheduler {
 
 export { WorkerLeaseAuthority };
 
+/**
+ * Select a bounded batch of non-model, dependency-ready, exact-current,
+ * authority/resource-compatible read-only nodes. This helper does not replace
+ * SingleWorkerIntentScheduler and never admits more than one model inference.
+ */
+export function selectIndependentReadOnlyBatch({
+  nodes = [],
+  completedNodeRefs = [],
+  currentnessByNodeRef = {},
+  authorityByNodeRef = {},
+  resourceByNodeRef = {},
+  maximumConcurrency = 8
+} = {}) {
+  if (!Number.isInteger(maximumConcurrency) || maximumConcurrency < 1) {
+    throw new Error('maximumConcurrency must be a positive integer');
+  }
+  const completed = new Set(completedNodeRefs);
+  const held = [];
+  const independent = [];
+  const serial = [];
+  const seen = new Set();
+
+  for (const raw of nodes) {
+    const node = structuredClone(raw);
+    const nodeRef = node.nodeRef ?? node.workNodeRef;
+    if (typeof nodeRef !== 'string' || !nodeRef) throw new Error('read-only DAG node missing nodeRef');
+    if (seen.has(nodeRef)) throw new Error(`read-only DAG duplicate nodeRef ${nodeRef}`);
+    seen.add(nodeRef);
+    if (completed.has(nodeRef)) continue;
+
+    const dependencies = [...new Set(node.dependencyRefs ?? [])].sort();
+    const pendingDependencies = dependencies.filter((dependencyRef) => !completed.has(dependencyRef));
+    if (pendingDependencies.length) {
+      held.push({ nodeRef, state: 'BLOCKED_DEPENDENCY', pendingDependencyRefs: pendingDependencies });
+      continue;
+    }
+    if (node.executionClass === 'MODEL_INFERENCE') {
+      held.push({ nodeRef, state: 'HELD_MODEL_INFERENCE_SEPARATE_OWNER' });
+      continue;
+    }
+    if (node.effectClass !== 'READ_ONLY') {
+      held.push({ nodeRef, state: 'HELD_EFFECT_SERIALIZATION_REQUIRED', effectClass: node.effectClass ?? 'UNKNOWN' });
+      continue;
+    }
+    const currentness = currentnessByNodeRef[nodeRef] ?? node.currentness?.state ?? node.currentness ?? 'UNKNOWN';
+    if (currentness !== 'CURRENT') {
+      held.push({ nodeRef, state: 'HELD_SOURCE_NOT_CURRENT', currentness });
+      continue;
+    }
+    const authority = authorityByNodeRef[nodeRef] ?? node.authorityStage ?? 'UNKNOWN';
+    if (!['ADMITTED', 'CURRENT', 'AUTHORIZED', 'EXECUTABLE', 'COMPLETED'].includes(authority)) {
+      held.push({ nodeRef, state: 'HELD_AUTHORITY_NOT_ADMITTED', authority });
+      continue;
+    }
+    const resource = resourceByNodeRef[nodeRef] ?? node.resourceStage ?? 'UNKNOWN';
+    if (!['ADMITTED', 'AVAILABLE', 'CURRENT', 'EXECUTABLE', 'COMPLETED'].includes(resource)) {
+      held.push({ nodeRef, state: 'HELD_RESOURCE_NOT_AVAILABLE', resource });
+      continue;
+    }
+
+    const projected = Object.freeze({ ...node, nodeRef, dependencyRefs: dependencies });
+    if (node.parallelClass === 'INDEPENDENT_READ_ONLY') independent.push(projected);
+    else serial.push(projected);
+  }
+
+  independent.sort((left, right) => left.nodeRef.localeCompare(right.nodeRef));
+  serial.sort((left, right) => left.nodeRef.localeCompare(right.nodeRef));
+  const batch = independent.length
+    ? independent.slice(0, maximumConcurrency)
+    : serial.slice(0, 1);
+
+  return Object.freeze({
+    schemaVersion: 'vexlife.intent-scheduler-read-only-batch/v1',
+    modelInferenceConcurrency: 1,
+    readOnlyFunctionConcurrency: batch.length,
+    batch: Object.freeze(batch),
+    held: Object.freeze(held.sort((left, right) => left.nodeRef.localeCompare(right.nodeRef))),
+    externalEffectsExecuted: false
+  });
+}
+
 // [VXG RealForever]

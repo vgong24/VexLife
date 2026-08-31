@@ -9,6 +9,12 @@
       "sha256": "00bee4274babf471c5ab82939aebe0fd7ed2d862558df8d94250e660335dc3cb"
     },
     {
+      "path": "test/capability-assimilation-runtime.test.mjs",
+      "mode": "100644",
+      "bytes": 13342,
+      "sha256": "fd2f0466710ecbb0f31f75c301dc656e075c2f60e769e32c7a0a5dfa24de0807"
+    },
+    {
       "path": "test/implementation-plan.test.mjs",
       "mode": "100644",
       "bytes": 3627,

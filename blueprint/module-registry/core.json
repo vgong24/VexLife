@@ -87,7 +87,8 @@
     "writes": [],
     "loadedBy": [],
     "tests": [
-      "test/registry.test.mjs"
+      "test/registry.test.mjs",
+      "test/capability-assimilation-runtime.test.mjs"
     ],
     "changeMap": [
       "blueprint/process-factory.json",
@@ -461,7 +462,8 @@
       "role-orientation"
     ],
     "tests": [
-      "test/capability.test.mjs"
+      "test/capability.test.mjs",
+      "test/capability-assimilation-runtime.test.mjs"
     ],
     "changeMap": [
       "blueprint/capability-registry.json",
@@ -844,7 +846,8 @@
     ],
     "tests": [
       "test/intent-scheduler.test.mjs",
-      "test/intent-completion-verifier.test.mjs"
+      "test/intent-completion-verifier.test.mjs",
+      "test/capability-assimilation-runtime.test.mjs"
     ],
     "changeMap": [
       "blueprint/intent-scheduler-registry.json",
@@ -965,7 +968,8 @@
       "module.vexlife.script.lived-companion"
     ],
     "tests": [
-      "test/lived-companion.test.mjs"
+      "test/lived-companion.test.mjs",
+      "test/capability-assimilation-runtime.test.mjs"
     ],
     "changeMap": [
       "scripts/lived-companion.mjs",
@@ -1253,6 +1257,64 @@
     ],
     "changeMap": [
       "src/core/atlas.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.browser-companion-bridge",
+    "path": "src/core/browser-companion-bridge.mjs",
+    "role": "Server-side browser Companion bridge that binds canonical Vex Home identity, admitted loopback runtime identity, semantic relay input, and durable Lived Companion turns; capability assimilation remains an optional server-owned runtime policy and internal tool observations never become human messages.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.conversation",
+      "module.vexlife.core.capability-assimilation-runtime"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/browser-companion-bridge.test.mjs",
+      "test/capability-assimilation-runtime.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/lived-companion.mjs",
+      "scripts/serve-browser.mjs",
+      "docs/CAPABILITY-ASSIMILATION-RUNTIME.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.capability-assimilation-runtime",
+    "path": "src/core/capability-assimilation-runtime.mjs",
+    "role": "Adopt the accepted capability-assimilation route in the real Companion: compact frontier, no-effect dependency DAG, concurrent independent reads, exact-once ToolResultRelay observations, and one later synthesis inference.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.capabilities.001",
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.capability",
+      "module.vexlife.core.process-factory",
+      "module.vexlife.core.intent-scheduler",
+      "module.vexlife.core.tool-result-relay",
+      "module.vexlife.core.context-lease",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.browser-companion-bridge"
+    ],
+    "tests": [
+      "test/capability-assimilation-runtime.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/capability-registry.json",
+      "src/core/capability.mjs",
+      "src/core/process-factory.mjs",
+      "src/core/intent-scheduler.mjs",
+      "src/core/tool-result-relay.mjs",
+      "src/core/lived-companion.mjs",
+      "src/core/browser-companion-bridge.mjs",
+      "scripts/serve-browser.mjs",
+      "docs/CAPABILITY-ASSIMILATION-RUNTIME.md"
     ]
   }
 ]
