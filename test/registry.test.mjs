@@ -215,7 +215,7 @@ test('Evolution composes universally, resolves through Atlas, and malformed or d
   assert.equal(validateEvolutionRegistry(omittedCurrentSet, bundle).ok, false);
   const staleSupersession = structuredClone(bundle.evolution);
   staleSupersession.supersessionTransaction.requiredFields.splice(8, 1);
-  assert.equal(validateEvolutionRegistry(staleSupersession).ok, false);
+  assert.equal(validateEvolutionRegistry(staleSupersession, bundle).ok, false);
   const staleSimulatedClock = structuredClone(bundle.evolution);
   staleSimulatedClock.simulatedClock.requiredFields.splice(9, 1);
   assert.equal(validateEvolutionRegistry(staleSimulatedClock, bundle).ok, false);
