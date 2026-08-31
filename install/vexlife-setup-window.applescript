@@ -135,16 +135,18 @@ on run argv
 end run
 
 on resolveRepoRoot(argv)
+  set bundledRoot to current application's NSBundle's mainBundle()'s objectForInfoDictionaryKey:sourceRootInfoKey
+  if bundledRoot is not missing value then
+    set boundRoot to bundledRoot as text
+    if boundRoot is "" then return missing value
+    if (count of argv) is not 0 then return missing value
+    return boundRoot
+  end if
+
   if (count of argv) is 1 then
     set directRoot to item 1 of argv as text
     if directRoot is "" then return missing value
     return directRoot
-  else if (count of argv) is 0 then
-    set bundledRoot to current application's NSBundle's mainBundle()'s objectForInfoDictionaryKey:sourceRootInfoKey
-    if bundledRoot is missing value then return missing value
-    set boundRoot to bundledRoot as text
-    if boundRoot is "" then return missing value
-    return boundRoot
   end if
   return missing value
 end resolveRepoRoot
