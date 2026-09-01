@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 44847,
       "sha256": "9aa7e0c4976f6a334a35d4b32a18b801a1f71437aef021b46e1a8642842507ea"
+    },
+    {
+      "path": "test/security-access-zero-effect.test.mjs",
+      "mode": "100644",
+      "bytes": 1791,
+      "sha256": "e4c7ffb08c2e78e76ba4f68ac24cbefb911ff7112d7e6d6b9c687103a5781048"
     }
   ]
 }

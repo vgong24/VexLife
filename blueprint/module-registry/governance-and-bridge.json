@@ -70,6 +70,26 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.scheduler-runtime-observer",
+    "path": "src/core/scheduler-runtime-observer.mjs",
+    "role": "Source-managed Node desktop runtime observer for bounded non-model Companion reads; owns live runtime clock/source evidence and a shared eight-slot worker lease authority without changing model inference concurrency.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.scheduler-runtime-trust"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/scheduler-runtime-observer.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/intent-scheduler-registry.json",
+      "src/core/scheduler-runtime-trust.mjs",
+      "test/scheduler-runtime-observer.test.mjs"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.script.feature-check",
     "path": "scripts/feature-check.mjs",
     "role": "Checks feature relationships and required cultural-lens coverage.",

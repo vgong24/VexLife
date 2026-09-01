@@ -60,7 +60,7 @@ test('scheduler registry composes universally, resolves through Atlas, and omiss
   const traversal = atlas.query({
     startRefs: [bundle.schedulerRegistry.registryRef],
     depthLimit: 2,
-    resultLimit: 64,
+    resultLimit: 96,
     tokenBudget: 12000
   });
   assert.ok(traversal.results.some((item) => item.ref === bundle.schedulerRegistry.simulationContract.contractRef));

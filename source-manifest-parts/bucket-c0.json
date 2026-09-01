@@ -5,8 +5,8 @@
     {
       "path": "blueprint/module-registry/relationships-runtime-bridge.json",
       "mode": "100644",
-      "bytes": 1420,
-      "sha256": "d4827f536a3403a26ab1c09dc1915cf4c9905e7b3f65c76c9ddba3717f88af1c"
+      "bytes": 2356,
+      "sha256": "ce323764800f3a42e709d2cad3dd403fd844a51096ea4eb5a2f36757afbc7fd0"
     },
     {
       "path": "src/core/atlas.mjs",

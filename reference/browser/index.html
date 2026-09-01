@@ -7,6 +7,7 @@
   <title>VexLife Terrain</title>
   <link rel="stylesheet" href="./app.css">
   <link rel="stylesheet" href="./living-journal.css">
+  <link rel="stylesheet" href="./security-access.css">
 </head>
 <body>
 <div id="app" class="e27-app" data-node-ref="product.vexlife" data-presentation-contract="contract.vexlife.e27.authoritative-root/v1" data-primary-stage="screen.vexlife.terrain">
@@ -132,6 +133,32 @@
     <section id="view-health" data-node-ref="screen.vexlife.health" hidden>
       <header class="e27-context-heading"><div><small data-i18n="health.eyebrow">REFERENCE ENVIRONMENT</small><h1 data-i18n="screen.health.title">Health</h1><p data-i18n="health.reference.summary">This static reference has no current repository or runtime health receipt.</p></div><span id="healthStatus" class="status-pill attention" data-i18n="health.state.attention">● ATTENTION</span></header>
       <div class="e27-health-grid"><article><small data-i18n="health.model">Model</small><h2 data-i18n="health.value.unavailable">Unavailable</h2><p data-i18n="health.model.evidence"></p></article><article><small data-i18n="health.context">Context</small><h2 data-i18n="health.value.synthetic">Synthetic</h2><p data-i18n="health.context.evidence"></p></article><article><small data-i18n="health.work">Work</small><h2 data-i18n="health.value.not-run">Not run</h2><p data-i18n="health.work.evidence"></p></article><article><small data-i18n="health.continuity">Continuity</small><h2 data-i18n="health.value.synthetic">Synthetic</h2><p data-i18n="health.continuity.evidence"></p></article></div>
+      <section id="securityAccessRegion" class="security-access-region" data-node-ref="region.health.security-access" aria-labelledby="securityAccessTitle">
+        <div class="security-access-preference">
+          <label><input id="securityAccessPreviewVisible" type="checkbox" data-node-ref="element.health.security-access.preview-toggle"> <span data-i18n="security-access.preview.visibility">Show Security &amp; Access preview</span></label>
+          <small data-i18n="security-access.preview.help">This preference only shows or hides the preview. It does not change security policy.</small>
+        </div>
+        <div id="securityAccessPreviewContent" class="security-access-preview">
+          <header>
+            <small data-i18n="security-access.eyebrow">SECURITY &amp; ACCESS · ANDROID-FIRST PREVIEW</small>
+            <h2 id="securityAccessTitle" data-i18n="security-access.title">Security &amp; Access</h2>
+            <p id="securityAccessStatus" class="security-access-status" role="status">Preview — security runtime not connected</p>
+          </header>
+          <div class="security-access-facts">
+            <article><small data-i18n="security-access.phone-support">Phone support</small><h3 data-i18n="security-access.android-first">Android-first</h3></article>
+            <article><small data-i18n="security-access.trusted-devices">Trusted devices</small><h3 data-i18n="security-access.trusted-devices.none">No runtime data available</h3></article>
+            <article><small data-i18n="security-access.recovery">Recovery</small><h3 data-i18n="security-access.recovery.not-configured-here">Not configured here</h3></article>
+          </div>
+          <div class="security-access-actions">
+            <button id="securityAccessDetailsToggle" type="button" data-node-ref="element.health.security-access.details-toggle" data-i18n="security-access.review-options" aria-controls="securityAccessDetails" aria-expanded="false">Review security options</button>
+            <button id="securityAccessAskVex" type="button" data-node-ref="element.health.security-access.ask-vex" data-i18n="security-access.ask-vex">Ask Vex what this means</button>
+          </div>
+          <section id="securityAccessDetails" class="security-access-details" hidden>
+            <p data-i18n="security-access.held-summary">These controls are visible so you can understand the future route. They cannot perform a protected action in this preview.</p>
+            <div id="securityAccessHeldActions" class="security-access-held-list" data-node-ref="element.health.security-access.held-actions" role="region" data-i18n-aria-label="security-access.held-actions"></div>
+          </section>
+        </div>
+      </section>
       <details><summary data-node-ref="element.health.technical-toggle" data-i18n="health.technical">Technical details</summary><pre id="technicalHealth"></pre></details>
     </section>
     <section id="view-living-journal" data-node-ref="screen.vexlife.living-journal" hidden tabindex="-1">

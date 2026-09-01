@@ -7,6 +7,18 @@
       "mode": "100644",
       "bytes": 26440,
       "sha256": "407fefc05f3ea42961caeff8b2e7ceec737509c6a75a85d15adc0097b2d557dc"
+    },
+    {
+      "path": "reference/browser/android-remote-vessel.css",
+      "mode": "100644",
+      "bytes": 718,
+      "sha256": "ca99f9e2142dace7f6b3424b3d1e8cbda80a27513798ada8cc104e6872a08c56"
+    },
+    {
+      "path": "test/security-access-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 2878,
+      "sha256": "19c45dc8e4ccd831c6ddff8c4981c01ffefdbcc4d330afd13c6c939d167df46e"
     }
   ]
 }

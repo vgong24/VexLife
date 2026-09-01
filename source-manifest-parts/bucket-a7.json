@@ -5,8 +5,8 @@
     {
       "path": "blueprint/fragments/screens/health.json",
       "mode": "100644",
-      "bytes": 2012,
-      "sha256": "7233df7f67f26905297cbf7b6784de020a43c17514888954a373720a333f48db"
+      "bytes": 5965,
+      "sha256": "0aab1ed486ce57bd2bfe1f6a21fde846d46d105662cd7c607d52d0ad0b7866e6"
     },
     {
       "path": "test/companion-navigation.test.mjs",

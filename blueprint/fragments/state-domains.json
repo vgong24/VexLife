@@ -163,5 +163,10 @@
     "stateRef": "state.cdr-s5-closed-alpha-reference",
     "ownerRef": "service.context",
     "brief": "Local synthetic closed-alpha reference state for separate alpha consent, invite-only decisions, identity/currentness, truthful presence, route/privacy, delivery acknowledgement, safe support and prospective recovery; grants no participant, network, provider, relationship, Home, Memory, model, payment, publication or public-search authority."
+  },
+  {
+    "stateRef": "state.relationships",
+    "ownerRef": "service.relationships",
+    "brief": "Canonical Vex Home local directional relationship records, content-addressed transition history, atomic current heads, durable commit receipts, owner-isolated restart recovery and bounded tombstone/export truth; provider, peer, delivery and semantic acknowledgement observations cannot become canonical relationship meaning."
   }
 ]
