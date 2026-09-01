@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 48504,
       "sha256": "5161c3431b551174e182d8133d8cce1d1226ea92c0e02f1c2d55ab04f653a7d9"
+    },
+    {
+      "path": "test/intent-scheduler-capability-practice.test.mjs",
+      "mode": "100644",
+      "bytes": 12223,
+      "sha256": "b02d7173cbb7792306816b681a2330fbbb3549e611352f70c97be2ee6ece1b2a"
     }
   ]
 }
