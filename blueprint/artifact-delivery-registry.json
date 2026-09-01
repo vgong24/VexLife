@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "vexlife.artifact-delivery-registry/v1",
+  "registryRef": "registry.vexlife.artifact-delivery.001",
+  "state": "GENERIC_FOUNDATION",
+  "defaultPolicyRef": "policy.vexlife.artifact-delivery.default",
+  "policies": [
+    {
+      "policyRef": "policy.vexlife.artifact-delivery.default",
+      "allowedTransportClasses": [
+        "DIRECT_HTTPS_FILE_V1",
+        "VERIFIED_CHUNK_MANIFEST_V1"
+      ]
+    }
+  ],
+  "channelsByArtifactRef": {}
+}

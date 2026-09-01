@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 2566,
       "sha256": "4e5bd83be1dd9df4f094b4fe420b129b5a5a1819a451381e22da184469ca9c66"
+    },
+    {
+      "path": "scripts/form-artifact-mirror.mjs",
+      "mode": "100644",
+      "bytes": 2200,
+      "sha256": "b990aff8f389000f8ae98ff0fe7730d74bb3906357348837a9e1de4752e1ac09"
     }
   ]
 }
