@@ -63,18 +63,25 @@ function requiredRef(value, label) {
   return value;
 }
 
-function observedCpuLoadPct() {
+function cpuTotals() {
   const cpus = os.cpus();
-  if (!cpus.length) return 100;
-  let total = 0;
-  let idle = 0;
-  for (const cpu of cpus) {
+  if (!cpus.length) return { total: 0, idle: 0 };
+  return cpus.reduce((aggregate, cpu) => {
     const times = Object.values(cpu.times ?? {}).filter(Number.isFinite);
-    total += times.reduce((sum, value) => sum + value, 0);
-    idle += Number.isFinite(cpu.times?.idle) ? cpu.times.idle : 0;
-  }
+    aggregate.total += times.reduce((sum, value) => sum + value, 0);
+    aggregate.idle += Number.isFinite(cpu.times?.idle) ? cpu.times.idle : 0;
+    return aggregate;
+  }, { total: 0, idle: 0 });
+}
+
+async function measureCpuLoadPct(delayMs = 120) {
+  const first = cpuTotals();
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+  const second = cpuTotals();
+  const total = second.total - first.total;
   if (!(total > 0)) return 100;
-  return Math.max(0, Math.min(100, Number((100 * (1 - idle / total)).toFixed(2))));
+  const idle = Math.max(0, second.idle - first.idle);
+  return Math.max(0, Math.min(100, Number((((total - idle) / total) * 100).toFixed(2))));
 }
 
 function canonicalNow(clock) {
@@ -149,7 +156,7 @@ export class CompanionReadRuntimeAuthority {
   get workerRefs() { return [...COMPANION_READ_WORKER_REFS]; }
   get runtimeAuthority() { return this.#workerLeaseAuthority; }
 
-  observe({
+  async observe({
     workerRef,
     schedulerGeneration,
     actorRef,
@@ -168,8 +175,9 @@ export class CompanionReadRuntimeAuthority {
     requiredRef(claimRef, 'claimRef');
     requiredRef(occupancyRef, 'occupancyRef');
 
+    const formedAt = canonicalNow(this.#clock);
+    const cpuLoadPct = await measureCpuLoadPct();
     const observedAt = canonicalNow(this.#clock);
-    const formedAt = observedAt;
     const expiresAt = expiresAfter(observedAt, this.#ttlMs);
     const activeReadLeases = this.#workerLeaseAuthority.snapshot().activeLeases.length;
     const cpuConcurrencyLimit = Math.max(
@@ -177,6 +185,11 @@ export class CompanionReadRuntimeAuthority {
       Number.isInteger(os.availableParallelism?.())
         ? os.availableParallelism()
         : os.cpus().length || 1
+    );
+    const observedCpuActiveCount = Math.ceil((cpuLoadPct / 100) * cpuConcurrencyLimit);
+    const cpuActiveCount = Math.min(
+      cpuConcurrencyLimit,
+      Math.max(activeReadLeases, observedCpuActiveCount)
     );
     const ramAvailableMb = Math.max(0, Math.floor(os.freemem() / (1024 * 1024)));
     const resourceIdentity = semanticHash({
@@ -194,9 +207,9 @@ export class CompanionReadRuntimeAuthority {
       sourceHash: COMPANION_READ_RUNTIME_SOURCE_HASH,
       formationRef: COMPANION_READ_RUNTIME_FORMATION_REF,
       evidenceClass: COMPANION_READ_RUNTIME_EVIDENCE_CLASS,
-      cpuLoadPct: observedCpuLoadPct(),
+      cpuLoadPct,
       cpuConcurrencyLimit,
-      cpuActiveCount: Math.min(activeReadLeases, cpuConcurrencyLimit),
+      cpuActiveCount,
       ramAvailableMb,
       ramReservedMb: 0,
       gpuAvailable: false,
