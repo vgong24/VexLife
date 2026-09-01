@@ -1,0 +1,14 @@
+[
+  {
+    "testRef": "test.security-access.projection",
+    "brief": "Security & Access projects only first-slice truthful preview states from a closed no-secret input shape."
+  },
+  {
+    "testRef": "test.security-access.browser",
+    "brief": "Security & Access remains understandable, keyboard reachable and Android-shaped on the browser reference."
+  },
+  {
+    "testRef": "test.security-access.zero-effect",
+    "brief": "Security & Access preview cannot perform credential, device, network, Home, Memory, Friend, provider, model, training or publication effects."
+  }
+]

@@ -1,0 +1,88 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.security-access-projection",
+    "path": "src/core/security-access-projection.mjs",
+    "role": "Owns strict deterministic Security & Access preview projection and typed no-effect runtime bridge over accepted Health state.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint/security-access-preview-registry.json",
+      "state.health"
+    ],
+    "writes": [],
+    "tests": [
+      "test/security-access-projection.test.mjs",
+      "test/security-access-zero-effect.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/security-access-preview-registry.json",
+      "reference/browser/modules/security-access-controller.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.security-access-controller",
+    "path": "reference/browser/modules/security-access-controller.js",
+    "role": "Projects the Security & Access preview inside Health, persists only preview visibility, exposes deterministic Ask Vex explanation and records bounded in-page proof events.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/security-access-preview-registry.json",
+      "blueprint/strings/*.json"
+    ],
+    "writes": [
+      "browser localStorage preview visibility preference only"
+    ],
+    "consumers": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/browser-security-access.test.mjs",
+      "test/security-access-zero-effect.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/index.html",
+      "reference/browser/security-access.css",
+      "reference/browser/integration/security-access-android-preview-suite.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.security-access-styles",
+    "path": "reference/browser/security-access.css",
+    "role": "Responsive accessible Security & Access Health card styling for desktop and Android-shaped compact browser projection.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/design-tokens.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "reference/browser/index.html"
+    ],
+    "tests": [
+      "test/browser-security-access.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/index.html"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.security-access-integration",
+    "path": "reference/browser/integration/security-access-android-preview-suite.js",
+    "role": "Runs mandatory rendered Security & Access preview truth, held-action, localization and zero-effect checks inside the current browser integration.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.js",
+      "blueprint/security-access-preview-registry.json",
+      "blueprint/strings/*.json"
+    ],
+    "writes": [
+      "in-page integration receipt only"
+    ],
+    "consumers": [
+      "reference/browser/integration-test.js"
+    ],
+    "tests": [
+      "test/browser-security-access.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/integration-test.js"
+    ]
+  }
+]

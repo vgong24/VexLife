@@ -12,7 +12,7 @@
       "path": "scripts/scheduler-check.mjs",
       "mode": "100644",
       "bytes": 5149,
-      "sha256": "bd738bf39c00d23a08aa8e5a1e5886c4d7cfc87b280f2b2da634526538964939"
+      "sha256": "4aeb4a217f99d6e227864deeb171192ded531c1c382b5180d5d175f23a230c17"
     },
     {
       "path": "src/core/registry.mjs",

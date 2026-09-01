@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "9f",
+  "files": [
+    {
+      "path": "test/relationships-store.test.mjs",
+      "mode": "100644",
+      "bytes": 21301,
+      "sha256": "9fab471af3c89517e11bb3a85cba414c088e05a8f4b9075e031e1d35116bd52f"
+    }
+  ]
+}

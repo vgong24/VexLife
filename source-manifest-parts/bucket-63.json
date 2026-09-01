@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 13648,
       "sha256": "faff89d6a1b7fdb86dc312f7755a81d75dc75679db139a53627036ccd9c1db5a"
+    },
+    {
+      "path": "src/core/relationships-store.mjs",
+      "mode": "100644",
+      "bytes": 47306,
+      "sha256": "dc79aad8b8f5731a25a6ecd8ae943cd23b2b8251c5eed5432155172a4dd5ee53"
     }
   ]
 }

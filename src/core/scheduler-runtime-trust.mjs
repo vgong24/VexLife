@@ -270,6 +270,13 @@ function uniqueStrings(values, label) {
   return [...values];
 }
 
+function runtimeSourceWorkerRefs(source) {
+  const descriptor = source?.sourceDescriptor;
+  if (!descriptor) return [];
+  const refs = descriptor.workerRefs ?? (descriptor.workerRef ? [descriptor.workerRef] : []);
+  return uniqueStrings(refs, `${source.sourceRef}.sourceDescriptor.workerRefs`);
+}
+
 export function parseCanonicalTimestamp(value, label = 'timestamp') {
   if (typeof value !== 'string' || !value) throw new Error(`${label} is required`);
   const epochMs = Date.parse(value);
@@ -388,6 +395,34 @@ export function validateIntentSchedulerRegistry(registry) {
   if (!(registry?.runtimeSourceIdentities ?? []).length) errors.push('scheduler runtime source identities are empty');
   if (!(registry?.workerIdentities ?? []).length) errors.push('scheduler worker identities are empty');
   if (!(registry?.mockToolContracts ?? []).length) errors.push('scheduler mock tool contracts are empty');
+  for (const source of registry?.runtimeSourceIdentities ?? []) {
+    if (source.liveRuntime !== true) continue;
+    if (source.evidenceClass !== 'LIVE_RUNTIME_CURRENT') {
+      errors.push(`${source.sourceRef} live runtime source must use LIVE_RUNTIME_CURRENT`);
+    }
+    if (!source.sourceDescriptor || !source.sourceHash) {
+      errors.push(`${source.sourceRef} live runtime source requires a hashed source descriptor`);
+      continue;
+    }
+    if (semanticHash(source.sourceDescriptor) !== source.sourceHash) {
+      errors.push(`${source.sourceRef} live runtime source descriptor hash mismatch`);
+    }
+    if (source.sourceDescriptor.sourceRef !== source.sourceRef ||
+        source.sourceDescriptor.evidenceClass !== source.evidenceClass ||
+        source.sourceDescriptor.authorityRef !== source.authorityRef ||
+        source.sourceDescriptor.selfCertificationAllowed !== false) {
+      errors.push(`${source.sourceRef} live runtime source descriptor identity mismatch`);
+    }
+    let workerRefs = [];
+    catchError(() => { workerRefs = runtimeSourceWorkerRefs(source); });
+    if (!workerRefs.length) errors.push(`${source.sourceRef} live runtime source owns no workers`);
+    for (const workerRef of workerRefs) {
+      const worker = registry.workerIdentities.find((item) => item.workerRef === workerRef);
+      if (!worker || !worker.evidenceClasses?.includes(source.evidenceClass)) {
+        errors.push(`${source.sourceRef} live runtime source worker binding mismatch: ${workerRef}`);
+      }
+    }
+  }
   for (const contract of registry?.mockToolContracts ?? []) {
     catchError(() => uniqueStrings(contract.requiredArgumentFields, `${contract.contractRef}.requiredArgumentFields`));
     catchError(() => uniqueStrings(contract.requiredResultFields, `${contract.contractRef}.requiredResultFields`));
@@ -501,6 +536,10 @@ export function createSchedulerRuntimeTrustSnapshot(input, {
   const worker = schedulerRegistry.workerIdentities.find((item) => item.workerRef === input.workerRef);
   if (!worker) throw new Error(`unknown scheduler worker identity ${input.workerRef}`);
   if (!worker.evidenceClasses.includes(input.evidenceClass)) throw new Error('worker identity is not admitted for runtime evidence class');
+  const sourceWorkerRefs = runtimeSourceWorkerRefs(source);
+  if (source.liveRuntime === true && !sourceWorkerRefs.includes(input.workerRef)) {
+    throw new Error('scheduler runtime source does not own worker');
+  }
   assertSourceHash(input.sourceHash, 'scheduler runtime sourceHash');
   assertActiveInterval(input, 'scheduler runtime trust snapshot');
   if (!resourceSnapshot?.semanticFingerprint ||
