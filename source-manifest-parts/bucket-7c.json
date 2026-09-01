@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/modules/browser-bundle.js",
       "mode": "100644",
-      "bytes": 1912,
-      "sha256": "0006a78fb4e16b247474b7d971364fedf24e0f21f811908c017a80c3d65fb18d"
+      "bytes": 1985,
+      "sha256": "432ac86a9ad634c2ef830d43d842da3aaedcd3c3a905cc33511d6e9479aa14ff"
     },
     {
       "path": "test/capability.test.mjs",
