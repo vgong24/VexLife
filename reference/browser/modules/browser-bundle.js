@@ -1,3 +1,4 @@
+import './browser-random-uuid.js';
 import './vex-birth-lab-controller.js';
 
 export async function loadBrowserBundle(root = '../../') {
