@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 433,
       "sha256": "eab5be6b25f97023a8132ad2c8e74faa469264bf82626a53407a5ea02cef75d8"
+    },
+    {
+      "path": "test/browser-runtime-uuid-portability.test.mjs",
+      "mode": "100644",
+      "bytes": 4816,
+      "sha256": "a26a7c3b795f5690e3485e3b0baa4302eb0d3f9db893d88f6843f7d9ca1e2e27"
     }
   ]
 }
