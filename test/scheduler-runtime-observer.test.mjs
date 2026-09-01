@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -119,8 +120,16 @@ test('unsupported hosts fail before runtime evidence formation', () => {
   }), /unsupported Companion read runtime platform/);
 });
 
-test('observer owns source identity, clock and currentness and uses conservative host evidence', () => {
-  const result = observation(observer());
+test('current CPU evidence uses a two-sample delta and never ignores observed occupancy', () => {
+  const source = fs.readFileSync(path.join(root, 'src/core/scheduler-runtime-observer.mjs'), 'utf8');
+  assert.match(source, /const first = cpuTotals\(\);/);
+  assert.match(source, /const second = cpuTotals\(\);/);
+  assert.match(source, /if \(!\(total > 0\)\) return 100;/);
+  assert.match(source, /Math\.max\(activeReadLeases, observedCpuActiveCount\)/);
+});
+
+test('observer owns source identity, clock and currentness and uses conservative host evidence', async () => {
+  const result = await observation(observer());
   assert.equal(result.externalEffectsExecuted, false);
   assert.equal(result.sourceHash, GENERIC_SOURCE_HASH);
   assert.equal(result.runtimeTrustSnapshot.sourceRef, COMPANION_READ_RUNTIME_SOURCE_REF);
@@ -137,6 +146,11 @@ test('observer owns source identity, clock and currentness and uses conservative
   assert.equal(result.resourceSnapshot.currentness, 'CURRENT');
   assert.ok(result.resourceSnapshot.cpuConcurrencyLimit >= 1);
   assert.ok(result.resourceSnapshot.cpuLoadPct >= 0 && result.resourceSnapshot.cpuLoadPct <= 100);
+  const sampledCpuActiveCount = Math.ceil(
+    (result.resourceSnapshot.cpuLoadPct / 100) * result.resourceSnapshot.cpuConcurrencyLimit
+  );
+  assert.ok(result.resourceSnapshot.cpuActiveCount >= sampledCpuActiveCount);
+  assert.ok(result.resourceSnapshot.cpuActiveCount <= result.resourceSnapshot.cpuConcurrencyLimit);
   assert.ok(result.resourceSnapshot.ramAvailableMb >= 0);
   assert.equal(result.resourceSnapshot.modelResident, false);
   assert.equal(result.resourceSnapshot.activeModelTurn, true);
@@ -146,8 +160,8 @@ test('observer owns source identity, clock and currentness and uses conservative
   assert.equal(result.resourceSnapshot.thermalPowerState, 'NOT_EXPOSED');
 });
 
-test('simulated evidence cannot be promoted through the generic live source', () => {
-  const live = observation(observer());
+test('simulated evidence cannot be promoted through the generic live source', async () => {
+  const live = await observation(observer());
   const { semanticFingerprint: _liveResourceFingerprint, ...liveResourceFields } = live.resourceSnapshot;
   const simulatedResource = createResourceSnapshot({
     ...liveResourceFields,
@@ -167,8 +181,8 @@ test('simulated evidence cannot be promoted through the generic live source', ()
   }), /source evidence class mismatch|not admitted/);
 });
 
-test('live runtime sources cannot issue trust for another source worker', () => {
-  const generic = observation(observer());
+test('live runtime sources cannot issue trust for another source worker', async () => {
+  const generic = await observation(observer());
   const g05 = schedulerRegistry.runtimeSourceIdentities.find(
     (item) => item.sourceRef === 'source.intent-scheduler.windows-g05-runtime-observer'
   );
@@ -234,10 +248,10 @@ test('live runtime sources cannot issue trust for another source worker', () => 
   }), /runtime source does not own worker/);
 });
 
-test('shared source authority blocks same-slot reuse while allowing distinct read slots', () => {
+test('shared source authority blocks same-slot reuse while allowing distinct read slots', async () => {
   const authority = observer();
-  const first = observation(authority, COMPANION_READ_WORKER_REFS[0], GENERATION);
-  const second = observation(authority, COMPANION_READ_WORKER_REFS[1], GENERATION);
+  const first = await observation(authority, COMPANION_READ_WORKER_REFS[0], GENERATION);
+  const second = await observation(authority, COMPANION_READ_WORKER_REFS[1], GENERATION);
 
   const firstLease = workerLease(first.runtimeTrustSnapshot, {
     leaseRef: 'worker-lease.companion-read.slot-01.first',
