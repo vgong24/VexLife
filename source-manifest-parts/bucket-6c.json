@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 15426,
       "sha256": "3c18759f96df1abf7d96a6b3a711c53579ed692c561deb1af4990d1196dae5d4"
+    },
+    {
+      "path": "src/core/android-remote-vessel-projection.mjs",
+      "mode": "100644",
+      "bytes": 6148,
+      "sha256": "b14ad989068fc48cd60126b6bbd9c67aaa155e99f5ab782e814f868a9dfb874e"
     }
   ]
 }

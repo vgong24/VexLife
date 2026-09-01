@@ -15,6 +15,12 @@
       "sha256": "45686acc47560279f2735ec4fc13619ae51f59ffd0fe0776df0bac7f1a92e11d"
     },
     {
+      "path": "docs/ANDROID-REMOTE-VESSEL.md",
+      "mode": "100644",
+      "bytes": 1942,
+      "sha256": "c734b041d0610e2e8e2a3e59eea012a3354e44db11819150ccdd4e5822ca478e"
+    },
+    {
       "path": "docs/REVIEW-ARCHITECTURE-SELF-AUDIT.md",
       "mode": "100644",
       "bytes": 14733,

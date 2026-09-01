@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "vexlife.android-remote-vessel-reference/v1",
+  "registryRef": "registry.vexlife.android-remote-vessel.001",
+  "featureRef": "feature.vexlife.security-access",
+  "homeBridgeRef": "bridge.vexlife.personal-home.001",
+  "mode": "REMOTE_HOME",
+  "androidFirst": true,
+  "iPhoneRequired": false,
+  "projection": {
+    "stateRef": "state.health",
+    "ownerRef": "service.health",
+    "regionRef": "region.health.security-access",
+    "targetPlatformRef": "platform.android",
+    "referencePlatformRef": "platform.browser",
+    "truthClass": "ANDROID_REMOTE_VESSEL_REFERENCE"
+  },
+  "browserRuntimeState": "UNPAIRED",
+  "executableFirstSliceStates": [
+    "UNPAIRED",
+    "HOME_UNREACHABLE",
+    "LEASE_EXPIRED",
+    "REVOKED"
+  ],
+  "heldConnectedStates": [
+    "PAIRING_OFFERED",
+    "PAIRING_APPROVED",
+    "LEASE_ACTIVE",
+    "CONNECTED_DIRECT",
+    "CONNECTED_RELAYED"
+  ],
+  "canonicalWriter": "DESKTOP_HOME_NODE",
+  "remoteWriterGranted": false,
+  "implicitAdmin": false,
+  "rawModelEndpointExposed": false,
+  "protectedEffects": [
+    "pairingOfferCreation",
+    "pairingApproval",
+    "deviceMembershipMutation",
+    "authentication",
+    "authorization",
+    "capabilityLeaseIssuance",
+    "capabilityLeaseRenewal",
+    "revocationMutation",
+    "realTransportConnection",
+    "networkListenerOrExposure",
+    "homeRead",
+    "homeWrite",
+    "homeMutation",
+    "memoryMutation",
+    "friendMutation",
+    "credentialEffect",
+    "rawModelEndpointExposure",
+    "providerEffect",
+    "modelRuntimeEffect",
+    "training",
+    "activation",
+    "publication"
+  ],
+  "permanentNonCollapse": [
+    "ANDROID_REMOTE_VESSEL != LOCAL_ANDROID_MODEL_RUNTIME",
+    "PAIRING != STANDING_HOME_AUTHORITY",
+    "AUTHENTICATED != AUTHORIZED",
+    "REACHABILITY != HOME_ACCESS",
+    "REMOTE_VESSEL != CANONICAL_HOME_WRITER",
+    "RAW_MODEL_ENDPOINT_REMAINS_PRIVATE"
+  ]
+}

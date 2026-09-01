@@ -84,5 +84,46 @@
     "changeMap": [
       "reference/browser/integration-test.js"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.android-remote-vessel-projection",
+    "path": "src/core/android-remote-vessel-projection.mjs",
+    "role": "Projects canonical Home Bridge REMOTE_HOME connection truth into a closed Android-first no-effect Security & Access reference without owning pairing, authorization, Home or transport.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint/android-remote-vessel-registry.json",
+      "blueprint/home-bridge-registry.json",
+      "state.health"
+    ],
+    "writes": [],
+    "tests": [
+      "test/android-remote-vessel-projection.test.mjs",
+      "test/android-remote-vessel-zero-effect.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/modules/android-remote-vessel-controller.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.android-remote-vessel-controller",
+    "path": "reference/browser/modules/android-remote-vessel-controller.js",
+    "role": "Mounts the read-only Android Remote Vessel status inside the existing Security & Access preview using canonical composed registries and existing localized copy.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/android-remote-vessel-registry.json",
+      "blueprint/home-bridge-registry.json",
+      "blueprint/strings/*.json"
+    ],
+    "writes": [],
+    "consumers": [
+      "reference/browser/modules/browser-bundle.js"
+    ],
+    "tests": [
+      "test/browser-android-remote-vessel.test.mjs",
+      "test/android-remote-vessel-zero-effect.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/android-remote-vessel.css"
+    ]
   }
 ]
