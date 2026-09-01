@@ -230,14 +230,15 @@ test('MAC-WIN-05 repair and rebuild remain host-gated after healthy-open reuse c
   }
 });
 
-test('MAC-WIN-06 app-hosted source root is bundle-authoritative and remains data without shell interpolation', () => {
+test('MAC-WIN-06 compiled app source root is bundle-authoritative and production run is argv-free', () => {
   assert.match(windowSource, /use framework "AppKit"/u);
   assert.match(windowSource, /property sourceRootInfoKey : "VexLifeSourceRoot"/u);
-  assert.match(windowSource, /set bundledRoot to current application's NSBundle's mainBundle\(\)'s objectForInfoDictionaryKey:sourceRootInfoKey/u);
-  assert.match(windowSource, /if bundledRoot is not missing value then[\s\S]*?if \(count of argv\) is not 0 then return missing value[\s\S]*?return boundRoot/u);
-  assert.match(windowSource, /if \(count of argv\) is 1 then[\s\S]*?return directRoot/u);
-  assert.ok(windowSource.indexOf('if bundledRoot is not missing value then') < windowSource.indexOf('if (count of argv) is 1 then'));
-  assert.doesNotMatch(windowSource, /if \(count of argv\) is 1 then[\s\S]*?else if \(count of argv\) is 0 then/u);
+  assert.match(windowSource, /^on run$/mu);
+  assert.doesNotMatch(windowSource, /^on run argv$/mu);
+  assert.match(windowSource, /set repoRoot to my resolveRepoRoot\(\)/u);
+  assert.match(windowSource, /on resolveRepoRoot\(\)[\s\S]*?set bundledRoot to current application's NSBundle's mainBundle\(\)'s objectForInfoDictionaryKey:sourceRootInfoKey[\s\S]*?if bundledRoot is missing value then return missing value[\s\S]*?return boundRoot[\s\S]*?end resolveRepoRoot/u);
+  assert.doesNotMatch(windowSource, /count of argv/u);
+  assert.doesNotMatch(windowSource, /\bdirectRoot\b/u);
   assert.match(windowSource, /NSTask/u);
   assert.match(windowSource, /actionPrefix/u);
   assert.match(windowSource, /hasAction/u);
