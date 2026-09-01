@@ -21,7 +21,7 @@ function localizedElement(documentRef, tagName, key, fallback) {
   return element;
 }
 
-export function createAndroidRemoteVesselController({ registry, homeBridge, root = document }) {
+export function createAndroidRemoteVesselController({ registry, homeBridge, root = globalThis.document }) {
   validateAndroidRemoteVesselRegistry(registry, homeBridge);
   let connectionState = registry.browserRuntimeState;
   let mounted = false;
