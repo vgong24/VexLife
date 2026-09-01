@@ -15,6 +15,12 @@
       "sha256": "a62ac2aa1ae2b3d3c8ba95a37d60194b9785265f595728a17f861a44808115a0"
     },
     {
+      "path": "reference/browser/security-access.css",
+      "mode": "100644",
+      "bytes": 2001,
+      "sha256": "8d6cc63d59067b6fe40abc8aa9b35d24a93e24a24abd00b743585e9f6791a9fc"
+    },
+    {
       "path": "test/evolution.test.mjs",
       "mode": "100644",
       "bytes": 3808,

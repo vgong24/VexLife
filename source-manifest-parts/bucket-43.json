@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
-      "bytes": 13507,
-      "sha256": "336ea86af9319b69b2a0e215e0c55a999286d4183542e6412eed1ba84d0500ec"
+      "bytes": 13700,
+      "sha256": "ea7c5eef1b967295f0b89a462906d8ec5385bd12db839cd4390c472329af59fb"
     },
     {
       "path": "start-vexlife.sh",

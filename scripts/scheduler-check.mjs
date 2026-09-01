@@ -61,7 +61,7 @@ const atlas = new Atlas(buildIdentityIndex(bundle));
 const atlasResult = atlas.query({
   startRefs: [schedulerRegistry.registryRef],
   depthLimit: 2,
-  resultLimit: 64,
+  resultLimit: 96,
   tokenBudget: 12000
 });
 for (const ref of [

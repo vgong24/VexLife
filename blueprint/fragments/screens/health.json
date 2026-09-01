@@ -52,10 +52,107 @@
       ],
       "conceptRef": "concept.region.health.summary",
       "navigationNodeRef": "nav.region.health.summary"
+    },
+    {
+      "regionRef": "region.health.security-access",
+      "labelStringRef": "security-access.title",
+      "elements": [
+        {
+          "elementRef": "element.health.security-access.details-toggle",
+          "conceptRef": "concept.element.health.security-access.details-toggle",
+          "interactionRef": "interaction.health.security-access.details-toggle",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.disclosure",
+          "kind": "DISCLOSURE",
+          "labelStringRef": "security-access.review-options",
+          "actionRef": "action.security-access.details.toggle",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.health.security-access.details-toggle"
+          },
+          "testRefs": [
+            "test.security-access.browser"
+          ]
+        },
+        {
+          "elementRef": "element.health.security-access.preview-toggle",
+          "conceptRef": "concept.element.health.security-access.preview-toggle",
+          "interactionRef": "interaction.health.security-access.preview-toggle",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.presentation-preference",
+          "kind": "PRESENTATION_PREFERENCE",
+          "labelStringRef": "security-access.preview.visibility",
+          "actionRef": "action.security-access.preview.toggle",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "checkbox",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.health.security-access.preview-toggle"
+          },
+          "testRefs": [
+            "test.security-access.browser",
+            "test.security-access.zero-effect"
+          ]
+        },
+        {
+          "elementRef": "element.health.security-access.ask-vex",
+          "conceptRef": "concept.element.health.security-access.ask-vex",
+          "interactionRef": "interaction.health.security-access.ask-vex",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.guide-prompt",
+          "kind": "GUIDE_PROMPT",
+          "labelStringRef": "security-access.ask-vex",
+          "actionRef": "action.guide.ask",
+          "permissionRef": "permission.conversation.send",
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.health.security-access.ask-vex"
+          },
+          "testRefs": [
+            "test.security-access.browser",
+            "test.security-access.zero-effect"
+          ]
+        },
+        {
+          "elementRef": "element.health.security-access.held-actions",
+          "conceptRef": "concept.element.health.security-access.held-actions",
+          "interactionRef": "interaction.health.security-access.held-actions",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.health-summary",
+          "kind": "HELD_ACTIONS",
+          "labelStringRef": "security-access.held-actions",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "region",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.health.security-access.held-actions"
+          },
+          "testRefs": [
+            "test.security-access.browser",
+            "test.security-access.zero-effect"
+          ]
+        }
+      ],
+      "conceptRef": "concept.region.health.security-access",
+      "navigationNodeRef": "nav.region.health.security-access"
     }
   ],
   "testRefs": [
-    "test.accessibility.health"
+    "test.accessibility.health",
+    "test.security-access.browser",
+    "test.security-access.zero-effect"
   ],
   "conceptRef": "concept.screen.vexlife.health",
   "navigationNodeRef": "nav.screen.vexlife.health"

@@ -3,6 +3,12 @@
   "bucketId": "85",
   "files": [
     {
+      "path": "blueprint/security-access-preview-registry.json",
+      "mode": "100644",
+      "bytes": 4245,
+      "sha256": "0c30791f7c7da7e9a74cd38d28229de12db325c3949d5148aa86430f3ef1d842"
+    },
+    {
       "path": "reference/browser/modules/demo-data.js",
       "mode": "100644",
       "bytes": 9615,

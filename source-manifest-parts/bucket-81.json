@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "81",
+  "files": [
+    {
+      "path": "blueprint/fragments/actions/security-access-preview.json",
+      "mode": "100644",
+      "bytes": 496,
+      "sha256": "4a1ca3a1dbb1b90304c808caf40fcec6b166158a000386dc744d45112e7b0d55"
+    }
+  ]
+}

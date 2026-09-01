@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "vexlife.security-access-preview/v1",
+  "registryRef": "registry.vexlife.security-access-preview.001",
+  "featureRef": "feature.vexlife.security-access",
+  "purpose": "Project truthful Android-first Security & Access options without creating authentication, credential, device, network, Home, Memory, Friend, provider, model, training or publication authority.",
+  "androidFirst": true,
+  "iPhoneRequired": false,
+  "flag": {
+    "flagRef": "flag.vexlife.security-access.preview",
+    "purpose": "Presentation visibility preference only; never a security-policy switch.",
+    "safeDefault": "FLAG_VISIBLE_PREVIEW",
+    "states": [
+      "FLAG_OFF",
+      "FLAG_VISIBLE_PREVIEW",
+      "FLAG_RUNTIME_BOUND"
+    ],
+    "executableFirstSliceStates": [
+      "FLAG_OFF",
+      "FLAG_VISIBLE_PREVIEW"
+    ],
+    "securityPolicyAuthority": false
+  },
+  "projection": {
+    "stateRef": "state.health",
+    "ownerRef": "service.health",
+    "regionRef": "region.health.security-access",
+    "targetPlatformRef": "platform.android",
+    "referencePlatformRef": "platform.browser",
+    "truthClass": "SECURITY_ACCESS_PREVIEW_REFERENCE"
+  },
+  "statusStates": [
+    "PREVIEW_ONLY",
+    "NOT_CONFIGURED",
+    "BACKEND_UNAVAILABLE",
+    "READY_TO_CONNECT",
+    "CONNECTED",
+    "PROTECTIVE_FREEZE"
+  ],
+  "executableFirstSliceStates": [
+    "PREVIEW_ONLY",
+    "BACKEND_UNAVAILABLE"
+  ],
+  "heldActions": [
+    {
+      "actionKey": "ADD_ANDROID_PHONE",
+      "labelStringRef": "security-access.action.add-android",
+      "reasonStringRef": "security-access.reason.runtime-required",
+      "enabled": false
+    },
+    {
+      "actionKey": "REGISTER_PASSKEY",
+      "labelStringRef": "security-access.action.register-passkey",
+      "reasonStringRef": "security-access.reason.authenticator-runtime-required",
+      "enabled": false
+    },
+    {
+      "actionKey": "USE_AUTHENTICATOR_APP",
+      "labelStringRef": "security-access.action.authenticator-app",
+      "reasonStringRef": "security-access.reason.authenticator-runtime-required",
+      "enabled": false
+    },
+    {
+      "actionKey": "REVIEW_TRUSTED_DEVICES",
+      "labelStringRef": "security-access.action.review-trusted-devices",
+      "reasonStringRef": "security-access.reason.runtime-data-unavailable",
+      "enabled": false
+    },
+    {
+      "actionKey": "END_SESSIONS",
+      "labelStringRef": "security-access.action.end-sessions",
+      "reasonStringRef": "security-access.reason.runtime-required",
+      "enabled": false
+    },
+    {
+      "actionKey": "REVOKE_LOST_DEVICE",
+      "labelStringRef": "security-access.action.revoke-device",
+      "reasonStringRef": "security-access.reason.runtime-required",
+      "enabled": false
+    },
+    {
+      "actionKey": "REVIEW_RECOVERY",
+      "labelStringRef": "security-access.action.review-recovery",
+      "reasonStringRef": "security-access.reason.recovery-runtime-required",
+      "enabled": false
+    },
+    {
+      "actionKey": "SECURE_MY_VEX",
+      "labelStringRef": "security-access.action.secure-my-vex",
+      "reasonStringRef": "security-access.reason.recovery-runtime-required",
+      "enabled": false
+    }
+  ],
+  "protectedEffects": [
+    "realPasskeyRegistration",
+    "realWebAuthnEffect",
+    "realTOTPEnrollment",
+    "totpSecretStorage",
+    "realAndroidPairing",
+    "realIOSPairing",
+    "credentialGeneration",
+    "credentialImport",
+    "credentialSerialization",
+    "privateKeyAccess",
+    "recoveryKeyMutation",
+    "sessionRevocation",
+    "capabilityLeaseGrant",
+    "revocationGenerationMutation",
+    "networkListenerOrExposure",
+    "remoteHomeWrite",
+    "homeMutation",
+    "memoryMutation",
+    "friendRelationshipMutation",
+    "providerEffect",
+    "modelRuntimeEffect",
+    "training",
+    "modelActivation",
+    "publication",
+    "publicSearch"
+  ],
+  "permanentNonCollapse": [
+    "VEX_EXPLAINS != VEX_AUTHENTICATES != VEX_AUTHORIZES",
+    "FEATURE_FLAG != SECURITY_POLICY",
+    "PAIRING_PREVIEW != DEVICE_PAIRED",
+    "AUTHENTICATOR_LIST_PREVIEW != CREDENTIAL_CUSTODY",
+    "LOGIN_SUCCESS != PRIVATE_HOME_AUTHORITY",
+    "DEVICE_PAIRED != EVERY_CAPABILITY_GRANTED",
+    "ROUTE_REACHABLE != AUTHENTICATED != AUTHORIZED",
+    "MODEL_AVAILABLE != SECURITY_CONTROL_AVAILABLE"
+  ]
+}
