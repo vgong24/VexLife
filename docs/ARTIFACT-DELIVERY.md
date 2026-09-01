@@ -69,7 +69,7 @@ resolveAndDownloadArtifact({
 })
 ```
 
-An optional `onProgress` callback is observational only. The production resolver loads the canonical artifact and delivery registries from source and binds the accepted `downloadVerifiedArtifact` primitive itself. Callers cannot supply registries, raw channel arrays/order, URLs, hashes, or an alternate direct verifier. Synthetic tests exercise the internal registry-snapshot engine through a test-only projection that is not exported by production source.
+The caller selects an artifact, an admitted policy identity, and an absolute destination only. The production resolver loads the canonical artifact and delivery registries from source and binds the accepted `downloadVerifiedArtifact` primitive itself. Caller-supplied registries, raw channel arrays/order, URLs, hashes, alternate direct verifiers, and progress callbacks are rejected because they are not part of the production authority contract. Synthetic tests exercise the internal registry-snapshot engine through a test-only projection that is not exported by production source.
 
 ## Failure law
 

@@ -157,6 +157,14 @@ test('MIR-01 production resolver rejects registry/channel/verifier injection and
     channels: [{ channelRef: 'channel.injected' }]
   }), ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED);
 
+  await assert.rejects(resolveAndDownloadArtifact({
+    artifactRef: artifact.artifactRef,
+    finalPath: target,
+    onProgress: () => { throw new Error('observer must not be admitted'); }
+  }), (error) => error?.name === 'ArtifactDeliveryError' &&
+      error?.code === ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED &&
+      error?.detail?.unexpected?.includes('onProgress'));
+
   const calls = [];
   const registry = delivery(artifact.artifactRef, [
     { channelRef: 'channel.primary', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://primary.invalid/a' },

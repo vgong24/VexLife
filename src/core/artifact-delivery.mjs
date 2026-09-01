@@ -29,7 +29,7 @@ const SAFE_ASSET_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,254}$/u;
 const WINDOWS_DEVICE_RE = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/iu;
 const LOCAL_IO_CODES = new Set(['EACCES', 'EPERM', 'ENOSPC', 'EROFS', 'EIO', 'EMFILE', 'ENFILE']);
 const TRANSPORT_CODES = new Set(['ECONNABORTED', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET']);
-const SOURCE_RESOLVER_FIELDS = Object.freeze(['artifactRef', 'deliveryPolicyRef', 'finalPath', 'onProgress']);
+const SOURCE_RESOLVER_FIELDS = Object.freeze(['artifactRef', 'deliveryPolicyRef', 'finalPath']);
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE_ARTIFACT_REGISTRY_PATH = path.resolve(MODULE_DIR, '../../blueprint/artifact-registry.json');
 const SOURCE_DELIVERY_REGISTRY_PATH = path.resolve(MODULE_DIR, '../../blueprint/artifact-delivery-registry.json');
@@ -801,7 +801,7 @@ async function resolveArtifactDeliveryFromRegistrySnapshot({
 
 export async function resolveAndDownloadArtifact(input) {
   allowedKeys(input, SOURCE_RESOLVER_FIELDS, 'resolveAndDownloadArtifact input');
-  const { artifactRef, deliveryPolicyRef = null, finalPath, onProgress = () => {} } = input;
+  const { artifactRef, deliveryPolicyRef = null, finalPath } = input;
   const artifactRegistry = loadSourceJson(SOURCE_ARTIFACT_REGISTRY_PATH, 'source-managed artifact registry');
   const deliveryRegistry = loadSourceJson(SOURCE_DELIVERY_REGISTRY_PATH, 'source-managed artifact delivery registry');
   return resolveArtifactDeliveryFromRegistrySnapshot({
@@ -811,8 +811,7 @@ export async function resolveAndDownloadArtifact(input) {
     artifactRegistry,
     deliveryRegistry,
     directDownload: downloadVerifiedArtifact,
-    fetchImpl: fetch,
-    onProgress
+    fetchImpl: fetch
   });
 }
 
