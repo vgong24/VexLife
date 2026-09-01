@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 3161,
       "sha256": "05d10c37120ba186e1760a8c4ed76cb857fef1912c897b078828a816f766c0a4"
+    },
+    {
+      "path": "reference/browser/modules/android-remote-vessel-controller.js",
+      "mode": "100644",
+      "bytes": 4532,
+      "sha256": "fde44fbabef5e724d778a007e673f9030ae5190b279201dc12212515c6e95901"
     }
   ]
 }

@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 1915,
       "sha256": "05421af74cf1ee0edac60a636e9a9b0c716629c634029088b783b2ec9eb082a3"
+    },
+    {
+      "path": "blueprint/android-remote-vessel-registry.json",
+      "mode": "100644",
+      "bytes": 1882,
+      "sha256": "26484ea647c0ebe5429b733dc5ce6b2eb7f22a4d481a65d8c8923871028738c0"
     }
   ]
 }
