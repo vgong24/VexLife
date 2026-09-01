@@ -15,6 +15,12 @@
       "sha256": "45686acc47560279f2735ec4fc13619ae51f59ffd0fe0776df0bac7f1a92e11d"
     },
     {
+      "path": "docs/ARTIFACT-DELIVERY.md",
+      "mode": "100644",
+      "bytes": 5782,
+      "sha256": "a71390fc07486333935fde2ede28111cc4424e98c97ff36bc5845455ae6bf5dd"
+    },
+    {
       "path": "docs/REVIEW-ARCHITECTURE-SELF-AUDIT.md",
       "mode": "100644",
       "bytes": 14733,

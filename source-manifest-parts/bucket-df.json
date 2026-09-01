@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 17652,
       "sha256": "19048a31f98e732e396efbb5e55cc05838ca257de0314f7e6432fe0ff1038651"
+    },
+    {
+      "path": "src/core/artifact-delivery.mjs",
+      "mode": "100644",
+      "bytes": 43032,
+      "sha256": "a39a1cefe00e91beea6fa28a3349c5de12985ebe279a6ab2b48260b88dcdda27"
     }
   ]
 }
