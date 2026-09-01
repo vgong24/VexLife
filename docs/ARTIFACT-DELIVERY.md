@@ -65,18 +65,15 @@ New source-managed consumers use:
 resolveAndDownloadArtifact({
   artifactRef,
   deliveryPolicyRef,
-  finalPath,
-  artifactRegistry,
-  deliveryRegistry,
-  directDownload
+  finalPath
 })
 ```
 
-The caller selects an artifact and an admitted policy identity only. The registry controls channel order; caller-supplied channel arrays are ignored because they are not part of the function contract.
+An optional `onProgress` callback is observational only. The production resolver loads the canonical artifact and delivery registries from source and binds the accepted `downloadVerifiedArtifact` primitive itself. Callers cannot supply registries, raw channel arrays/order, URLs, hashes, or an alternate direct verifier. Synthetic tests exercise the internal registry-snapshot engine through a test-only projection that is not exported by production source.
 
 ## Failure law
 
-Only typed `CHANNEL_UNAVAILABLE` may advance to another source-managed channel.
+Only typed `CHANNEL_UNAVAILABLE` may advance to another source-managed channel. Local filesystem failures, verifier defects, unknown failures, and protocol contradictions hard-stop and never become provider fallback.
 
 Unavailable transport includes network/DNS/timeout and HTTP-unavailable responses. These do not claim artifact corruption.
 
@@ -129,7 +126,7 @@ licenseRef
 releaseRef
 ```
 
-Each part binds exact index, offset, bytes, SHA-256, cumulative bytes, cumulative SHA-256, safe asset name, and credential-free HTTPS URL.
+Each part binds exact index, offset, bytes, SHA-256, cumulative bytes, cumulative SHA-256, a cross-platform-safe case-fold-unique asset name, and credential-free HTTPS URL. Windows reserved device names and trailing-dot forms are rejected.
 
 The resolver verifies the manifest before touching artifact bytes, downloads one part at a time into a bounded temporary file, verifies that part, streams it into the assembly partial, recomputes the cumulative prefix identity, atomically checkpoints a sidecar, deletes the committed part temp, and continues.
 
@@ -165,7 +162,7 @@ SHA256SUMS
 publication-inventory.json
 ```
 
-Part bytes, manifest bytes, inventory bytes, and checksums are deterministic for the same inputs. The tool has no upload, credential, model-call, training, Home, Memory, activation, or publication behavior.
+The exact bytes read by the splitter are rechecked against the source-managed final byte count and SHA-256 before manifest/inventory success. Part bytes, manifest bytes, inventory bytes, and checksums are deterministic for the same inputs. The tool has no upload, credential, model-call, training, Home, Memory, activation, or publication behavior.
 
 The later P1 publication effect remains separately authorized and must never route model bytes through ChatGPT.
 

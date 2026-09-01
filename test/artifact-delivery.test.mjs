@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { ReadableStream } from 'node:stream/web';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   ARTIFACT_CHUNK_MANIFEST_SCHEMA,
   ARTIFACT_DELIVERY_FAILURE_CODES,
@@ -19,6 +19,21 @@ import {
 } from '../src/core/artifact-delivery.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const resolverHookPromise = (async () => {
+  const sourcePath = path.join(ROOT, 'src/core/artifact-delivery.mjs');
+  const hookPath = path.join(ROOT, 'src/core', `.artifact-delivery-test-hook-${process.pid}-${crypto.randomUUID()}.mjs`);
+  const source = fs.readFileSync(sourcePath, 'utf8').replace(
+    'async function resolveArtifactDeliveryFromRegistrySnapshot(',
+    'export async function resolveArtifactDeliveryFromRegistrySnapshot('
+  );
+  fs.writeFileSync(hookPath, source, { flag: 'wx' });
+  try {
+    return (await import(`${pathToFileURL(hookPath).href}?hook=${crypto.randomUUID()}`)).resolveArtifactDeliveryFromRegistrySnapshot;
+  } finally {
+    fs.rmSync(hookPath, { force: true });
+  }
+})();
+const resolveSnapshotArtifact = async (input) => (await resolverHookPromise)(input);
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const response = (bytes, status = 200, headers = {}) => new Response(new ReadableStream({
   start(controller) { controller.enqueue(Buffer.from(bytes)); controller.close(); }
@@ -117,7 +132,7 @@ function chunkFetch(manifestUrl, manifestBytes, partMap, { failOnce = new Set(),
 }
 
 async function expectCode(promise, code) {
-  await assert.rejects(promise, (error) => error instanceof ArtifactDeliveryError && error.code === code);
+  await assert.rejects(promise, (error) => error?.name === 'ArtifactDeliveryError' && error?.code === code);
 }
 
 test('MIR-00 artifact identity is exact and excludes delivery/provider fields', () => {
@@ -129,26 +144,38 @@ test('MIR-00 artifact identity is exact and excludes delivery/provider fields', 
   }
 });
 
-test('MIR-01 source-managed channel order wins over caller-shaped noise', async () => {
+test('MIR-01 production resolver rejects registry/channel/verifier injection and source snapshot preserves order', async () => {
   const bytes = Buffer.from('primary');
   const artifact = artifactFor(bytes);
   const target = path.join(home(), 'artifact.bin');
+  await expectCode(resolveAndDownloadArtifact({
+    artifactRef: artifact.artifactRef,
+    finalPath: target,
+    artifactRegistry: artifacts(artifact),
+    deliveryRegistry: delivery(artifact.artifactRef, []),
+    directDownload: directDownloadStub(),
+    channels: [{ channelRef: 'channel.injected' }]
+  }), ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED);
+
   const calls = [];
   const registry = delivery(artifact.artifactRef, [
     { channelRef: 'channel.primary', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://primary.invalid/a' },
     { channelRef: 'channel.secondary', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://secondary.invalid/a' }
   ]);
-  const result = await resolveAndDownloadArtifact({
+  const result = await resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef,
     finalPath: target,
     artifactRegistry: artifacts(artifact),
     deliveryRegistry: registry,
     directDownload: directDownloadStub(),
-    channels: [{ channelRef: 'channel.injected' }],
     fetchImpl: async (url, init) => { calls.push({ url, init }); return response(bytes); }
   });
   assert.equal(result.selectedChannelRef, 'channel.primary');
   assert.deepEqual(calls.map((item) => item.url), ['https://primary.invalid/a']);
+  const source = fs.readFileSync(path.join(ROOT, 'src/core/artifact-delivery.mjs'), 'utf8');
+  assert.match(source, /import \{ downloadVerifiedArtifact \} from '\.\/model-provision\.mjs'/u);
+  assert.match(source, /SOURCE_ARTIFACT_REGISTRY_PATH/u);
+  assert.match(source, /SOURCE_DELIVERY_REGISTRY_PATH/u);
 });
 
 test('MIR-02 higher-level delivery does not change the legacy direct call contract', () => {
@@ -161,7 +188,7 @@ test('MIR-03 direct primary channel success is verified', async () => {
   const bytes = Buffer.from('hello-direct');
   const artifact = artifactFor(bytes);
   const target = path.join(home(), artifact.filename);
-  const result = await resolveAndDownloadArtifact({
+  const result = await resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef,
     finalPath: target,
     artifactRegistry: artifacts(artifact),
@@ -179,7 +206,7 @@ test('MIR-04 only typed CHANNEL_UNAVAILABLE advances to fallback', async () => {
   const artifact = artifactFor(bytes);
   const target = path.join(home(), artifact.filename);
   const calls = [];
-  const result = await resolveAndDownloadArtifact({
+  const result = await resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef,
     finalPath: target,
     artifactRegistry: artifacts(artifact),
@@ -194,11 +221,29 @@ test('MIR-04 only typed CHANNEL_UNAVAILABLE advances to fallback', async () => {
   assert.equal(result.selectedChannelRef, 'channel.two');
 });
 
+test('MIR-04 local direct I/O failure hard-stops and never falls back', async () => {
+  const bytes = Buffer.from('local-io');
+  const artifact = artifactFor(bytes);
+  let directCalls = 0;
+  await expectCode(resolveSnapshotArtifact({
+    artifactRef: artifact.artifactRef,
+    finalPath: path.join(home(), artifact.filename),
+    artifactRegistry: artifacts(artifact),
+    deliveryRegistry: delivery(artifact.artifactRef, [
+      { channelRef: 'channel.one', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://one.invalid/a' },
+      { channelRef: 'channel.two', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://two.invalid/a' }
+    ]),
+    directDownload: async () => { directCalls += 1; throw Object.assign(new Error('disk full'), { code: 'ENOSPC' }); },
+    fetchImpl: async () => response(bytes)
+  }), ARTIFACT_DELIVERY_FAILURE_CODES.LOCAL_IO_FAILURE);
+  assert.equal(directCalls, 1);
+});
+
 test('MIR-05 direct integrity mismatch hard-stops without fallback', async () => {
   const bytes = Buffer.from('right');
   const artifact = artifactFor(bytes);
   const calls = [];
-  await expectCode(resolveAndDownloadArtifact({
+  await expectCode(resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef,
     finalPath: path.join(home(), artifact.filename),
     artifactRegistry: artifacts(artifact),
@@ -210,6 +255,23 @@ test('MIR-05 direct integrity mismatch hard-stops without fallback', async () =>
     fetchImpl: async (url) => { calls.push(url); return response(url.includes('bad.invalid') ? Buffer.from('wrong') : bytes); }
   }), ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_INTEGRITY_MISMATCH);
   assert.deepEqual(calls, ['https://bad.invalid/a']);
+});
+
+test('MIR-05 direct verifier claim is independently checked against final bytes', async () => {
+  const bytes = Buffer.from('trusted');
+  const artifact = artifactFor(bytes);
+  const target = path.join(home(), artifact.filename);
+  await expectCode(resolveSnapshotArtifact({
+    artifactRef: artifact.artifactRef,
+    finalPath: target,
+    artifactRegistry: artifacts(artifact),
+    deliveryRegistry: delivery(artifact.artifactRef, [{ channelRef: 'channel.fake', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://fake.invalid/a' }]),
+    directDownload: async ({ finalPath }) => {
+      fs.writeFileSync(finalPath, Buffer.from('WRONG!!'));
+      return { disposition: 'DOWNLOADED_AND_VERIFIED', bytes: bytes.length, actualSha256: artifact.sha256 };
+    },
+    fetchImpl: async () => response(bytes)
+  }), ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_INTEGRITY_MISMATCH);
 });
 
 test('MIR-06/MIR-07 chunk manifest binds source-pinned digest, final identity and contiguous topology', () => {
@@ -228,7 +290,7 @@ test('MIR-06 manifest digest mismatch hard-stops before fallback', async () => {
   const formed = chunkManifest(artifact, [Buffer.from('aaaa'), Buffer.from('bbbb')]);
   const badChannel = { channelRef: 'channel.chunk.bad', transportClass: 'VERIFIED_CHUNK_MANIFEST_V1', manifestUrl: 'https://mirror.invalid/manifest', manifestSha256: '0'.repeat(64) };
   const calls = [];
-  await expectCode(resolveAndDownloadArtifact({
+  await expectCode(resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef,
     finalPath: path.join(home(), artifact.filename),
     artifactRegistry: artifacts(artifact),
@@ -247,7 +309,7 @@ test('MIR-08/MIR-17 synthetic 3-part artifact reconstructs byte-identically', as
   const channel = { channelRef: 'channel.chunk', transportClass: 'VERIFIED_CHUNK_MANIFEST_V1', manifestUrl: 'https://mirror.invalid/manifest', manifestSha256: formed.sha256 };
   const map = new Map(formed.manifest.parts.map((part, index) => [part.url, parts[index]]));
   const target = path.join(home(), artifact.filename);
-  const result = await resolveAndDownloadArtifact({
+  const result = await resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef,
     finalPath: target,
     artifactRegistry: artifacts(artifact),
@@ -268,13 +330,13 @@ test('MIR-09 same-channel retry resumes only after the exact committed sidecar',
   const map = new Map(formed.manifest.parts.map((part, index) => [part.url, parts[index]]));
   const target = path.join(home(), artifact.filename);
   const firstCalls = [];
-  await expectCode(resolveAndDownloadArtifact({
+  await expectCode(resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef, finalPath: target, artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [channel]), directDownload: directDownloadStub(),
     fetchImpl: chunkFetch(channel.manifestUrl, formed.bytes, map, { failOnce: new Set([formed.manifest.parts[1].url]), calls: firstCalls })
   }), ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE);
   assert.equal(fs.existsSync(`${target}.assembly-sidecar.json`), true);
   const secondCalls = [];
-  const result = await resolveAndDownloadArtifact({
+  const result = await resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef, finalPath: target, artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [channel]), directDownload: directDownloadStub(),
     fetchImpl: chunkFetch(channel.manifestUrl, formed.bytes, map, { calls: secondCalls })
   });
@@ -302,7 +364,7 @@ test('MIR-10 switching channels never reuses prior partial provenance', async ()
     return response(map.get(url));
   };
   const target = path.join(home(), artifact.filename);
-  const result = await resolveAndDownloadArtifact({ artifactRef: artifact.artifactRef, finalPath: target, artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [channelA, channelB]), directDownload: directDownloadStub(), fetchImpl });
+  const result = await resolveSnapshotArtifact({ artifactRef: artifact.artifactRef, finalPath: target, artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [channelA, channelB]), directDownload: directDownloadStub(), fetchImpl });
   assert.equal(result.selectedChannelRef, 'channel.b');
   assert.equal(calls.filter((url) => url === b.manifest.parts[0].url).length, 1);
 });
@@ -323,7 +385,7 @@ test('MIR-10 direct-channel fallback clears legacy partial provenance before swi
     fs.writeFileSync(finalPath, bytes);
     return { disposition: 'DOWNLOADED_AND_VERIFIED', bytes: bytes.length, actualSha256: artifact.sha256 };
   };
-  const result = await resolveAndDownloadArtifact({
+  const result = await resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef,
     finalPath: target,
     artifactRegistry: artifacts(artifact),
@@ -338,6 +400,32 @@ test('MIR-10 direct-channel fallback clears legacy partial provenance before swi
   assert.deepEqual(observations, [false]);
 });
 
+test('MIR-10 local chunk write failure hard-stops before a fallback channel', async () => {
+  const parts = [Buffer.from('aaaa'), Buffer.from('bbbb')];
+  const whole = Buffer.concat(parts);
+  const artifact = artifactFor(whole);
+  const a = chunkManifest(artifact, parts, 'https://a.invalid/release/');
+  const b = chunkManifest(artifact, parts, 'https://b.invalid/release/');
+  const channelA = { channelRef: 'channel.a', transportClass: 'VERIFIED_CHUNK_MANIFEST_V1', manifestUrl: 'https://a.invalid/manifest', manifestSha256: a.sha256 };
+  const channelB = { channelRef: 'channel.b', transportClass: 'VERIFIED_CHUNK_MANIFEST_V1', manifestUrl: 'https://b.invalid/manifest', manifestSha256: b.sha256 };
+  const calls = [];
+  const originalCreateWriteStream = fs.createWriteStream;
+  fs.createWriteStream = function localFailure(filePath, options) {
+    if (String(filePath).includes('.part-0000.partial')) throw Object.assign(new Error('permission denied'), { code: 'EACCES' });
+    return originalCreateWriteStream.call(this, filePath, options);
+  };
+  try {
+    await expectCode(resolveSnapshotArtifact({
+      artifactRef: artifact.artifactRef, finalPath: path.join(home(), artifact.filename), artifactRegistry: artifacts(artifact),
+      deliveryRegistry: delivery(artifact.artifactRef, [channelA, channelB]), directDownload: directDownloadStub(),
+      fetchImpl: async (url) => { calls.push(url); if (url === channelA.manifestUrl) return response(a.bytes); if (url === channelB.manifestUrl) return response(b.bytes); return response(parts[0]); }
+    }), ARTIFACT_DELIVERY_FAILURE_CODES.LOCAL_IO_FAILURE);
+    assert.equal(calls.includes(channelB.manifestUrl), false);
+  } finally {
+    fs.createWriteStream = originalCreateWriteStream;
+  }
+});
+
 test('MIR-11 tampered cumulative checkpoint is discarded and restarted', async () => {
   const parts = [Buffer.from('aaaa'), Buffer.from('bbbb')];
   const whole = Buffer.concat(parts);
@@ -346,10 +434,10 @@ test('MIR-11 tampered cumulative checkpoint is discarded and restarted', async (
   const channel = { channelRef: 'channel.chunk', transportClass: 'VERIFIED_CHUNK_MANIFEST_V1', manifestUrl: 'https://mirror.invalid/manifest', manifestSha256: formed.sha256 };
   const map = new Map(formed.manifest.parts.map((part, index) => [part.url, parts[index]]));
   const target = path.join(home(), artifact.filename);
-  await expectCode(resolveAndDownloadArtifact({ artifactRef: artifact.artifactRef, finalPath: target, artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [channel]), directDownload: directDownloadStub(), fetchImpl: chunkFetch(channel.manifestUrl, formed.bytes, map, { failOnce: new Set([formed.manifest.parts[1].url]) }) }), ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE);
+  await expectCode(resolveSnapshotArtifact({ artifactRef: artifact.artifactRef, finalPath: target, artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [channel]), directDownload: directDownloadStub(), fetchImpl: chunkFetch(channel.manifestUrl, formed.bytes, map, { failOnce: new Set([formed.manifest.parts[1].url]) }) }), ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE);
   fs.appendFileSync(`${target}.assembly.partial`, 'tamper');
   const calls = [];
-  await resolveAndDownloadArtifact({ artifactRef: artifact.artifactRef, finalPath: target, artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [channel]), directDownload: directDownloadStub(), fetchImpl: chunkFetch(channel.manifestUrl, formed.bytes, map, { calls }) });
+  await resolveSnapshotArtifact({ artifactRef: artifact.artifactRef, finalPath: target, artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [channel]), directDownload: directDownloadStub(), fetchImpl: chunkFetch(channel.manifestUrl, formed.bytes, map, { calls }) });
   assert.equal(calls.some((item) => item.url === formed.manifest.parts[0].url), true);
 });
 
@@ -359,7 +447,7 @@ test('MIR-12 verified final cache performs zero network and selects no channel',
   const root = home();
   const target = path.join(root, artifact.filename);
   fs.writeFileSync(target, bytes);
-  const result = await resolveAndDownloadArtifact({
+  const result = await resolveSnapshotArtifact({
     artifactRef: artifact.artifactRef, finalPath: target, artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [{ channelRef: 'channel.direct', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://direct.invalid/a' }]), directDownload: directDownloadStub(), fetchImpl: async () => { throw new Error('network must not run'); }
   });
   assert.equal(result.disposition, 'REUSED_VERIFIED');
@@ -371,7 +459,7 @@ test('MIR-12 verified final cache performs zero network and selects no channel',
 test('MIR-13 receipt sanitization removes query material and credential-shaped source URLs fail closed', async () => {
   const bytes = Buffer.from('secretless');
   const artifact = artifactFor(bytes);
-  const result = await resolveAndDownloadArtifact({ artifactRef: artifact.artifactRef, finalPath: path.join(home(), artifact.filename), artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [{ channelRef: 'channel.direct', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://host.invalid/a?download=true' }]), directDownload: directDownloadStub(), fetchImpl: async () => response(bytes) });
+  const result = await resolveSnapshotArtifact({ artifactRef: artifact.artifactRef, finalPath: path.join(home(), artifact.filename), artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [{ channelRef: 'channel.direct', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://host.invalid/a?download=true' }]), directDownload: directDownloadStub(), fetchImpl: async () => response(bytes) });
   assert.equal(JSON.stringify(result).includes('TOPSECRET'), false);
   assert.equal(result.recordedSourceUrl, 'https://host.invalid/a');
   assert.throws(() => validateArtifactDeliveryRegistry(delivery(artifact.artifactRef, [{ channelRef: 'channel.secret', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://host.invalid/a?token=secret' }]), artifacts(artifact)), ArtifactDeliveryError);
@@ -381,7 +469,7 @@ test('MIR-14 direct delivery requests redirect-follow and accepts HTTP 200', asy
   const bytes = Buffer.from('redirect');
   const artifact = artifactFor(bytes);
   let redirect = null;
-  await resolveAndDownloadArtifact({ artifactRef: artifact.artifactRef, finalPath: path.join(home(), artifact.filename), artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [{ channelRef: 'channel.direct', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://direct.invalid/a' }]), directDownload: directDownloadStub(), fetchImpl: async (url, init) => { redirect = init.redirect; return response(bytes, 200); } });
+  await resolveSnapshotArtifact({ artifactRef: artifact.artifactRef, finalPath: path.join(home(), artifact.filename), artifactRegistry: artifacts(artifact), deliveryRegistry: delivery(artifact.artifactRef, [{ channelRef: 'channel.direct', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://direct.invalid/a' }]), directDownload: directDownloadStub(), fetchImpl: async (url, init) => { redirect = init.redirect; return response(bytes, 200); } });
   assert.equal(redirect, 'follow');
 });
 
@@ -396,6 +484,15 @@ test('MIR-15 malformed, duplicate and unsafe chunk definitions fail closed', () 
   const unsafe = structuredClone(formed.manifest);
   unsafe.parts[0].assetName = '../escape';
   assert.throws(() => validateChunkManifest(unsafe, { artifact, channel, manifestSha256: formed.sha256 }), ArtifactDeliveryError);
+  for (const unsafeName of ['CON', 'NUL.txt', 'artifact.bin.']) {
+    const windowsUnsafe = structuredClone(formed.manifest);
+    windowsUnsafe.parts[0].assetName = unsafeName;
+    assert.throws(() => validateChunkManifest(windowsUnsafe, { artifact, channel, manifestSha256: formed.sha256 }), ArtifactDeliveryError);
+  }
+  const caseFold = structuredClone(formed.manifest);
+  caseFold.parts[0].assetName = 'Part.bin';
+  caseFold.parts[1].assetName = 'part.bin';
+  assert.throws(() => validateChunkManifest(caseFold, { artifact, channel, manifestSha256: formed.sha256 }), ArtifactDeliveryError);
 });
 
 test('MIR-16 chunk reconstruction streams part bodies instead of materializing the full artifact buffer', () => {
@@ -421,6 +518,34 @@ test('MIR-18 deterministic packager reproduces manifest and inventory bytes', as
   const rb = await formDeterministicArtifactMirror({ ...args, outputDir: b });
   assert.equal(ra.manifestSha256, rb.manifestSha256);
   for (const name of fs.readdirSync(a).sort()) assert.deepEqual(fs.readFileSync(path.join(a, name)), fs.readFileSync(path.join(b, name)));
+});
+
+test('MIR-18 packager rejects source replacement between pathname verification and exact split read', async () => {
+  const original = Buffer.from('abcdefghijkl');
+  const replacement = Buffer.from('ABCDEFGHIJKL');
+  const artifact = artifactFor(original);
+  const root = home();
+  const input = path.join(root, artifact.filename);
+  const outputDir = path.join(root, 'mutated');
+  fs.writeFileSync(input, original);
+  const originalOpenSync = fs.openSync;
+  let replaced = false;
+  fs.openSync = function patchedOpenSync(filePath, flags, ...rest) {
+    if (!replaced && filePath === input && typeof flags === 'number') {
+      replaced = true;
+      fs.writeFileSync(input, replacement);
+    }
+    return originalOpenSync.call(this, filePath, flags, ...rest);
+  };
+  try {
+    await expectCode(formDeterministicArtifactMirror({
+      inputPath: input, outputDir, artifact, chunkBytes: 4,
+      publicationBaseUrl: 'https://mirror.invalid/releases/tag/', releaseRef: 'release.synthetic.alpha'
+    }), ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_INTEGRITY_MISMATCH);
+    assert.equal(fs.existsSync(path.join(outputDir, 'artifact-manifest.json')), false);
+  } finally {
+    fs.openSync = originalOpenSync;
+  }
 });
 
 test('MIR-19/MIR-20 current direct caller compatibility boundary stays external and source work has no protected effects', () => {

@@ -2,11 +2,12 @@
   {
     "moduleRef": "module.vexlife.core.artifact-delivery",
     "path": "src/core/artifact-delivery.mjs",
-    "role": "Resolve source-managed artifact delivery channels, preserve legacy direct callers, enforce typed fallback, validate verified chunk manifests, stream bounded reconstruction, and retain channel-bound resume provenance without provider-specific model semantics.",
+    "role": "Load canonical source-managed artifact/channel registries, bind the accepted direct verified primitive, enforce closed typed fallback, validate cross-platform-safe chunk manifests, stream bounded reconstruction, and retain channel-bound resume provenance without provider-specific model semantics.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.artifacts.001",
-      "registry.vexlife.artifact-delivery.001"
+      "registry.vexlife.artifact-delivery.001",
+      "src/core/model-provision.mjs"
     ],
     "writes": [
       "caller-selected artifact destination and bounded sibling partial/checkpoint files only"

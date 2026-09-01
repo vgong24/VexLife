@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { fileURLToPath } from 'node:url';
+import { downloadVerifiedArtifact } from './model-provision.mjs';
 
 export const ARTIFACT_REGISTRY_SCHEMA = 'vexlife.artifact-registry/v1';
 export const ARTIFACT_DELIVERY_REGISTRY_SCHEMA = 'vexlife.artifact-delivery-registry/v1';
@@ -17,12 +19,20 @@ export const ARTIFACT_DELIVERY_FAILURE_CODES = Object.freeze({
   CHANNEL_UNAVAILABLE: 'CHANNEL_UNAVAILABLE',
   CHANNEL_PROTOCOL_INVALID: 'CHANNEL_PROTOCOL_INVALID',
   ARTIFACT_INTEGRITY_MISMATCH: 'ARTIFACT_INTEGRITY_MISMATCH',
-  ARTIFACT_POLICY_REJECTED: 'ARTIFACT_POLICY_REJECTED'
+  ARTIFACT_POLICY_REJECTED: 'ARTIFACT_POLICY_REJECTED',
+  LOCAL_IO_FAILURE: 'LOCAL_IO_FAILURE'
 });
 
 const SHA256_RE = /^[0-9a-f]{64}$/u;
 const REF_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$/u;
 const SAFE_ASSET_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,254}$/u;
+const WINDOWS_DEVICE_RE = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/iu;
+const LOCAL_IO_CODES = new Set(['EACCES', 'EPERM', 'ENOSPC', 'EROFS', 'EIO', 'EMFILE', 'ENFILE']);
+const TRANSPORT_CODES = new Set(['ECONNABORTED', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET']);
+const SOURCE_RESOLVER_FIELDS = Object.freeze(['artifactRef', 'deliveryPolicyRef', 'finalPath', 'onProgress']);
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SOURCE_ARTIFACT_REGISTRY_PATH = path.resolve(MODULE_DIR, '../../blueprint/artifact-registry.json');
+const SOURCE_DELIVERY_REGISTRY_PATH = path.resolve(MODULE_DIR, '../../blueprint/artifact-delivery-registry.json');
 const MAX_MANIFEST_BYTES = 8 * 1024 * 1024;
 const MAX_PART_COUNT = 4096;
 const ARTIFACT_REGISTRY_FIELDS = Object.freeze(['schemaVersion', 'registryRef', 'state', 'artifacts']);
@@ -66,6 +76,23 @@ function exactKeys(value, expected, label) {
   }
 }
 
+function allowedKeys(value, allowed, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, `${label} must be one object`);
+  }
+  const unexpected = Object.keys(value).filter((key) => !allowed.includes(key));
+  if (unexpected.length) {
+    fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, `${label} contains caller-controlled authority fields`, { unexpected: unexpected.sort() });
+  }
+}
+
+function loadSourceJson(filePath, label) {
+  const stat = regularFileStat(filePath, label);
+  if (!stat) fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, `${label} is missing`);
+  try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
+  catch { fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, `${label} is not valid JSON`); }
+}
+
 function requireRef(value, label) {
   if (typeof value !== 'string' || !REF_RE.test(value)) {
     fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, `${label} must be one stable ref`);
@@ -95,7 +122,7 @@ function nonNegativeSafeInteger(value, label) {
 }
 
 function requireSafeName(value, label) {
-  if (typeof value !== 'string' || !SAFE_ASSET_RE.test(value) || value === '.' || value === '..' || path.basename(value) !== value) {
+  if (typeof value !== 'string' || !SAFE_ASSET_RE.test(value) || value === '.' || value === '..' || value.endsWith('.') || WINDOWS_DEVICE_RE.test(value) || path.basename(value) !== value) {
     fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, `${label} must be one safe filename`);
   }
   return value;
@@ -345,21 +372,47 @@ function directSidecarFor(artifact, channel) {
   };
 }
 
+function transportFailureDetail(error, extra = {}) {
+  return { ...extra, causeName: typeof error?.name === 'string' ? error.name : null, causeCode: typeof error?.code === 'string' ? error.code : null };
+}
+
+function isTransportUnavailableError(error) {
+  if (error?.name === 'AbortError') return true;
+  if (typeof error?.code === 'string' && TRANSPORT_CODES.has(error.code)) return true;
+  const message = String(error?.message ?? '');
+  return error?.name === 'TypeError' && /(?:fetch|network|socket|connect|timeout|unavailable)/iu.test(message);
+}
+
+function classifyLocalOrUnknownFailure(error, channelRef, stage) {
+  if (typeof error?.code === 'string' && LOCAL_IO_CODES.has(error.code)) {
+    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.LOCAL_IO_FAILURE, `${stage} local filesystem failure`, transportFailureDetail(error, { channelRef }));
+  }
+  if (isTransportUnavailableError(error)) {
+    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `${stage} transport unavailable`, transportFailureDetail(error, { channelRef }));
+  }
+  return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, `${stage} failed without an admitted transport-unavailable classification`, transportFailureDetail(error, { channelRef }));
+}
+
 function classifyLegacyDirectFailure(error, channelRef) {
   const message = String(error?.message ?? error);
-  if (/^download failed: HTTP /u.test(message) || error?.name === 'TypeError' || error?.name === 'AbortError') {
-    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `artifact channel unavailable: ${channelRef}`, { channelRef, causeName: error?.name ?? null, causeMessage: message });
+  const http = message.match(/^download failed: HTTP (\d{3})$/u);
+  if (http) {
+    const status = Number(http[1]);
+    if (status === 404 || status === 408 || status === 425 || status === 429 || status >= 500) {
+      return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `artifact channel unavailable: HTTP ${status}`, { channelRef, status });
+    }
+    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, `artifact channel returned non-fallback HTTP ${status}`, { channelRef, status });
   }
   if (/resume response did not start at the requested byte/u.test(message)) {
-    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, message, { channelRef });
+    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, 'direct artifact resume protocol contradiction', { channelRef });
   }
   if (/checksum mismatch|byte count mismatch|existing artifact failed verification/u.test(message)) {
-    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_INTEGRITY_MISMATCH, message, { channelRef });
+    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_INTEGRITY_MISMATCH, 'direct artifact integrity verification failed', { channelRef });
   }
   if (/exceeded admitted size|exceeds maxBytes|exceeds expectedBytes|credential-free HTTPS|SHA-256|positive safe integer/u.test(message)) {
-    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, message, { channelRef });
+    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, 'direct artifact request violated source-managed policy', { channelRef });
   }
-  return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `artifact channel failed before verified completion: ${channelRef}`, { channelRef, causeName: error?.name ?? null, causeMessage: message });
+  return classifyLocalOrUnknownFailure(error, channelRef, 'direct artifact channel');
 }
 
 async function downloadDirectChannel({ artifact, channel, finalPath, directDownload, fetchImpl, onProgress }) {
@@ -383,13 +436,18 @@ async function downloadDirectChannel({ artifact, channel, finalPath, directDownl
       fetchImpl,
       onProgress
     });
+    const independentlyVerified = await classifyExactArtifact({ finalPath, expectedSha256: artifact.sha256, expectedBytes: artifact.expectedBytes });
+    if (independentlyVerified.state !== 'VERIFIED_REUSABLE') {
+      clearDirectState(finalPath);
+      fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_INTEGRITY_MISMATCH, 'direct artifact implementation returned without exact final-file verification', { channelRef: channel.channelRef, observedState: independentlyVerified.state });
+    }
     removeRegularFileIfPresent(directSidecarPath);
     return {
       state: 'VERIFIED',
       disposition: result.disposition,
       path: finalPath,
-      bytes: result.bytes,
-      actualSha256: result.actualSha256,
+      bytes: independentlyVerified.bytes,
+      actualSha256: independentlyVerified.actualSha256,
       selectedChannelRef: result.disposition === 'REUSED_VERIFIED' ? null : channel.channelRef,
       attemptedChannelRefs: result.disposition === 'REUSED_VERIFIED' ? [] : [channel.channelRef],
       providerOrNetworkEffect: result.disposition !== 'REUSED_VERIFIED',
@@ -479,11 +537,13 @@ export function validateChunkManifest(input, { artifact, channel, manifestSha256
     if (part.bytes > input.chunking.chunkBytes) {
       fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, `parts[${index}].bytes exceeds fixed chunkBytes`);
     }
-    if (assetNames.has(part.assetName) || urls.has(part.url)) {
-      fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, 'artifact manifest contains duplicate part asset or URL');
+    const assetKey = part.assetName.toLowerCase();
+    const urlKey = new URL(part.url).href;
+    if (assetNames.has(assetKey) || urls.has(urlKey)) {
+      fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, 'artifact manifest contains duplicate or case-fold-colliding part asset/URL');
     }
-    assetNames.add(part.assetName);
-    urls.add(part.url);
+    assetNames.add(assetKey);
+    urls.add(urlKey);
     offset += part.bytes;
   }
   if (offset !== artifact.expectedBytes || input.parts.at(-1).cumulativeBytes !== artifact.expectedBytes) {
@@ -586,7 +646,9 @@ async function downloadPartToFile({ part, channelRef, fetchImpl, partPath }) {
   } catch (error) {
     removeRegularFileIfPresent(partPath);
     if (error instanceof ArtifactDeliveryError) throw error;
-    fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, 'artifact part stream unavailable', { channelRef, partIndex: part.index, causeName: error?.name ?? null });
+    const classified = classifyLocalOrUnknownFailure(error, channelRef, 'artifact part stream');
+    classified.detail = { ...classified.detail, partIndex: part.index };
+    throw classified;
   }
   if (total !== part.bytes) {
     removeRegularFileIfPresent(partPath);
@@ -673,7 +735,7 @@ async function downloadChunkChannel({ artifact, channel, finalPath, fetchImpl, o
   };
 }
 
-export async function resolveAndDownloadArtifact({
+async function resolveArtifactDeliveryFromRegistrySnapshot({
   artifactRef,
   deliveryPolicyRef = null,
   finalPath,
@@ -737,6 +799,23 @@ export async function resolveAndDownloadArtifact({
   fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, 'no artifact delivery channel completed', { artifactRef, attemptedChannelRefs });
 }
 
+export async function resolveAndDownloadArtifact(input) {
+  allowedKeys(input, SOURCE_RESOLVER_FIELDS, 'resolveAndDownloadArtifact input');
+  const { artifactRef, deliveryPolicyRef = null, finalPath, onProgress = () => {} } = input;
+  const artifactRegistry = loadSourceJson(SOURCE_ARTIFACT_REGISTRY_PATH, 'source-managed artifact registry');
+  const deliveryRegistry = loadSourceJson(SOURCE_DELIVERY_REGISTRY_PATH, 'source-managed artifact delivery registry');
+  return resolveArtifactDeliveryFromRegistrySnapshot({
+    artifactRef,
+    deliveryPolicyRef,
+    finalPath,
+    artifactRegistry,
+    deliveryRegistry,
+    directDownload: downloadVerifiedArtifact,
+    fetchImpl: fetch,
+    onProgress
+  });
+}
+
 function canonicalJsonBytes(value) {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
@@ -784,8 +863,8 @@ export async function formDeterministicArtifactMirror({
   const parts = [];
   const cumulativeHash = crypto.createHash('sha256');
   const fd = fs.openSync(inputPath, fs.constants.O_RDONLY | Number(fs.constants.O_NOFOLLOW ?? 0));
+  let offset = 0;
   try {
-    let offset = 0;
     for (let index = 0; index < partCount; index += 1) {
       const bytes = Math.min(chunkBytes, descriptor.expectedBytes - offset);
       const assetName = `${descriptor.filename}.part-${String(index + 1).padStart(width, '0')}-of-${String(partCount).padStart(width, '0')}`;
@@ -823,6 +902,13 @@ export async function formDeterministicArtifactMirror({
       });
     }
   } finally { fs.closeSync(fd); }
+  if (offset !== descriptor.expectedBytes) {
+    fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_INTEGRITY_MISMATCH, 'mirror split byte count differs from source-managed artifact identity', { actualBytes: offset, expectedBytes: descriptor.expectedBytes });
+  }
+  const splitSha256 = cumulativeHash.digest('hex');
+  if (splitSha256 !== descriptor.sha256) {
+    fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_INTEGRITY_MISMATCH, 'mirror split bytes differ from the source-managed artifact identity', { actualSha256: splitSha256, expectedSha256: descriptor.sha256 });
+  }
 
   const manifest = {
     schemaVersion: ARTIFACT_CHUNK_MANIFEST_SCHEMA,
