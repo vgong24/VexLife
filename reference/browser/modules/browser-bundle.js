@@ -1,5 +1,6 @@
 import './browser-random-uuid.js';
 import './vex-birth-lab-controller.js';
+import { createAndroidRemoteVesselController } from './android-remote-vessel-controller.js';
 
 export async function loadBrowserBundle(root = '../../') {
   async function fetchJson(relativePath) {
@@ -28,7 +29,16 @@ export async function loadBrowserBundle(root = '../../') {
     fetchJson('blueprint/strings/zh.json'),
     fetchJson('blueprint/strings/ja.json')
   ]);
-  return { blueprint, experience, featureRegistry, designTokens, catalogs: { en, zh, ja } };
+  let androidRemoteVessel = null;
+  if (globalThis.document) {
+    androidRemoteVessel = createAndroidRemoteVesselController({
+      registry: blueprint.androidRemoteVessel,
+      homeBridge: blueprint.homeBridge
+    });
+    androidRemoteVessel.bind();
+    globalThis.__VEXLIFE_ANDROID_REMOTE_VESSEL__ = androidRemoteVessel;
+  }
+  return { blueprint, experience, featureRegistry, designTokens, catalogs: { en, zh, ja }, androidRemoteVessel };
 }
 
 // [VXG RealForever]
