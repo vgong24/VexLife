@@ -5,8 +5,8 @@
     {
       "path": "blueprint/intent-scheduler-registry.json",
       "mode": "100644",
-      "bytes": 26712,
-      "sha256": "968cd63cd739ef5ff1b9b1b7e9f35022bfcf5f1cf34eac92305dba98607a6eff"
+      "bytes": 25654,
+      "sha256": "22edbb74f0b2a607732da04f7a2eef28853820c692283d664f45a485b571673d"
     },
     {
       "path": "src/core/continuity-stream-adapter.mjs",
