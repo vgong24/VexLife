@@ -195,6 +195,38 @@ and aggregate fingerprints convergent. Successor reinjection is
 once-only and requires a scheduler-issued authorization receipt binding the
 prior context/observation and every fresh runtime/lease/generation identity.
 
+### Bounded capability-practice read envelope
+
+Capability assimilation uses the typed tool boundary without transferring
+capability ownership into the scheduler. The scheduler owns exactly one generic
+no-effect practice contract:
+
+```text
+contract.intent-scheduler.mock-tool.capability-practice-read/v1
+tool.mock.capability-practice-read
+effect.mock.capability-practice-read
+schema.tool.mock.capability-practice-read/v1
+schema.tool.mock.capability-practice-observation/v1
+executor.mock.deterministic.capability-practice-read
+```
+
+The exact capability meaning stays source-owned outside that identity space.
+A practice request carries `capabilityRef`, `capabilityToolRef`,
+`capabilityEffectRef`, and `capabilityArguments` as canonical tool arguments.
+Those values are therefore covered by the call's argument hash and semantic
+purpose fingerprint, while the scheduler-issued capability/effect/resource/
+worker/context leases authorize only the generic practice envelope. A shared
+capability-layer identity such as `effect.vexlife.read-only` is evidence about
+what is being practiced; it is **not** registered as a scheduler-owned effect.
+
+The accepted observation is bounded to `summaryRef`, `capabilityRef`,
+`sourceRefs`, `currentness`, and `payload`, with an 8192-byte maximum. The
+canonical ToolResultRelay still rejects wrong tool/effect/schema/executor,
+missing result fields, oversized observations, stale bindings, raw logs, and
+any reported external effect. This envelope grants no general executor and no
+Home/Memory, shell, Git, filesystem, network, publication, model-training, or
+model-activation authority.
+
 This implementation is deliberately a fake/model-free and mock-tool contract.
 It does not download or invoke a model, expose a raw model endpoint, execute
 shell/Git/filesystem/network actions, or mutate a real repository.
@@ -206,6 +238,7 @@ npm run scheduler:check
 npm run scheduler:simulate
 npm run scheduler:status -- --fixture <safe-repository-relative-json-path>
 node --test test/intent-scheduler.test.mjs
+node --test test/intent-scheduler-capability-practice.test.mjs
 node --test test/intent-completion-verifier.test.mjs
 npm run pr-ready
 npm run health:check
@@ -236,8 +269,9 @@ checkpoint lineage, scheduler-exclusive held-tool restore/actions/closure,
 typed relay-event replay, scheduler-issued successor context, consumption-time
 completion currentness, exact-evidence Workgraph convergence,
 live-clock/tool-time progression, safe receipt paths, cancellation
-lineage, bounded projections, and full registration. The dedicated verifier
-and replay cases extend the registered suite through S25.
+lineage, bounded projections, and full registration. The dedicated verifier,
+capability-practice ownership regression, and replay cases extend the
+registered suite through the current scheduler source contract.
 
 ## Held successor boundary
 

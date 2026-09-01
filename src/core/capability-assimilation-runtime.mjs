@@ -4,13 +4,24 @@ import {
   projectCapabilityFrontier,
   requireExecutable
 } from './capability.mjs';
-import { createContextLease } from './context-lease.mjs';
+import { loadBlueprint } from './blueprint.mjs';
 import {
   selectIndependentReadOnlyBatch,
+  SingleWorkerIntentScheduler,
   WorkerLeaseAuthority
 } from './intent-scheduler.mjs';
+import {
+  createIntentEnvelope,
+  createIntentTrustSnapshot,
+  createIntentWorkgraph,
+  createWorkNode
+} from './intent-workgraph.mjs';
 import { ProcessFactory } from './process-factory.mjs';
-import { ToolResultRelay } from './tool-result-relay.mjs';
+import {
+  CompanionReadRuntimeAuthority,
+  COMPANION_READ_WORKER_REFS
+} from './scheduler-runtime-observer.mjs';
+import { createToolCall, ToolResultRelay } from './tool-result-relay.mjs';
 import { semanticHash } from './utils.mjs';
 
 export const CAPABILITY_ASSIMILATION_MODES = Object.freeze({
@@ -77,32 +88,92 @@ function progressEvent(state, details = {}) {
   });
 }
 
-function rootCapabilityContracts(capabilityRegistry) {
-  return ROOT_CAPABILITY_KERNEL.map((capabilityRef) => {
-    const capability = (capabilityRegistry.capabilities ?? []).find((item) => item.capabilityRef === capabilityRef);
-    if (!capability?.toolContract) throw new Error(`root capability ${capabilityRef} is missing its tool contract`);
-    return {
-      contractRef: capability.toolContract.contractRef,
-      toolRef: capability.toolContract.toolRef,
-      effectRef: capability.toolContract.effectRef,
-      argumentSchemaRef: capability.toolContract.argumentSchemaRef,
-      resultSchemaRef: capability.toolContract.resultSchemaRef,
-      executorRef: capability.toolContract.executorRef,
-      requiredArgumentFields: [...(capability.toolContract.requiredArgumentFields ?? [])],
-      requiredResultFields: [...(capability.toolContract.requiredResultFields ?? [])],
-      maxObservationBytes: capability.toolContract.maxObservationBytes ?? 8192,
-      externalEffectsExecuted: false
-    };
+
+const PRACTICE_CONTRACT_REF = 'contract.intent-scheduler.mock-tool.capability-practice-read/v1';
+const PRACTICE_TOOL_REF = 'tool.mock.capability-practice-read';
+const PRACTICE_EFFECT_REF = 'effect.mock.capability-practice-read';
+const PRACTICE_ARGUMENT_SCHEMA_REF = 'schema.tool.mock.capability-practice-read/v1';
+const PRACTICE_RESULT_SCHEMA_REF = 'schema.tool.mock.capability-practice-observation/v1';
+const PRACTICE_EXECUTOR_REF = 'executor.mock.deterministic.capability-practice-read';
+const SCHEDULER_READ_PROCESS_REF = 'process.vexlife.intent.scheduler-tool-relay';
+const SCHEDULER_TRANSITION_PROCESS_REF = 'process.vexlife.intent.verify-transition';
+const SCHEDULER_ACTOR_REF = 'vex.capability-assimilation.runtime';
+const FORBIDDEN_SCHEDULER_CONTEXT_FIELDS = Object.freeze([
+  'schedulerAdmission',
+  'schedulerAdmissionReceipt',
+  'schedulerRuntimeEvidence',
+  'schedulerRuntimeTrustSnapshot',
+  'runtimeTrustSnapshot',
+  'schedulerLeases',
+  'workerLease',
+  'contextLease',
+  'resourceLease',
+  'capabilityLease',
+  'effectLease',
+  'schedulerGeneration',
+  'schedulerWorkerRef',
+  'schedulerOccupancy'
+]);
+
+function practiceContract(schedulerRegistry) {
+  const contract = (schedulerRegistry?.mockToolContracts ?? []).find((item) =>
+    item.contractRef === PRACTICE_CONTRACT_REF &&
+    item.toolRef === PRACTICE_TOOL_REF &&
+    item.effectRef === PRACTICE_EFFECT_REF
+  );
+  if (!contract ||
+      contract.argumentSchemaRef !== PRACTICE_ARGUMENT_SCHEMA_REF ||
+      contract.resultSchemaRef !== PRACTICE_RESULT_SCHEMA_REF ||
+      contract.executorRef !== PRACTICE_EXECUTOR_REF ||
+      contract.externalEffectsExecuted !== false) {
+    throw new Error('capability runtime requires the accepted generic scheduler capability-practice contract');
+  }
+  return freeze(clone(contract));
+}
+
+function schedulerOwnerBundle(schedulerRegistry) {
+  const bundle = loadBlueprint();
+  if (!bundle.intentRegistry || !bundle.schedulerRegistry ||
+      semanticHash(bundle.schedulerRegistry) !== semanticHash(schedulerRegistry)) {
+    throw new Error('capability runtime scheduler registry must equal exact current source-managed Blueprint truth');
+  }
+  const registeredProcessRefs = canonicalRefs([
+    ...(bundle.factory?.processes ?? []).map((item) => item.processRef),
+    ...(bundle.schedulerRegistry?.processRefs ?? [])
+  ]);
+  const registeredRoleRefs = canonicalRefs((bundle.blueprint?.roles ?? []).map((item) => item.roleRef));
+  if (!registeredProcessRefs.includes(SCHEDULER_READ_PROCESS_REF) ||
+      !registeredProcessRefs.includes(SCHEDULER_TRANSITION_PROCESS_REF)) {
+    throw new Error('capability runtime requires accepted scheduler process ownership');
+  }
+  return freeze({
+    intentRegistry: bundle.intentRegistry,
+    registeredProcessRefs,
+    registeredRoleRefs
   });
 }
 
-function runtimeSchedulerRegistry(schedulerRegistry, capabilityRegistry) {
-  const registry = clone(schedulerRegistry);
-  const existing = new Map((registry.mockToolContracts ?? []).map((contract) => [contract.toolRef, contract]));
-  for (const contract of rootCapabilityContracts(capabilityRegistry)) existing.set(contract.toolRef, contract);
-  registry.mockToolContracts = [...existing.values()].sort((left, right) => left.toolRef.localeCompare(right.toolRef));
-  return registry;
+function intentBindingRefs(nodes, intentRegistry) {
+  return Object.fromEntries(intentRegistry.bindingFields.map((field) => [
+    field,
+    canonicalRefs(nodes.flatMap((item) =>
+      Array.isArray(item[field]) ? item[field] : [item[field]]
+    ).filter(Boolean))
+  ]));
 }
+
+function assertNoCallerSchedulerEvidence(context) {
+  if (!context || typeof context !== 'object' || Array.isArray(context)) {
+    throw new Error('capability runtime context must be one object');
+  }
+  const injected = FORBIDDEN_SCHEDULER_CONTEXT_FIELDS.filter((field) =>
+    Object.prototype.hasOwnProperty.call(context, field)
+  );
+  if (injected.length) {
+    throw new Error(`caller cannot supply scheduler admission or lease evidence: ${injected.sort().join(', ')}`);
+  }
+}
+
 
 function schedulerPolicy(schedulerRegistry) {
   const policy = schedulerRegistry?.physicalWorkerPolicy;
@@ -403,116 +474,254 @@ function toolSemanticPurpose(call) {
   });
 }
 
-function createRelayBindings(node, request, dag, schedulerRegistry, nextTime, executionEvidence) {
-  if (executionEvidence.currentness !== 'CURRENT' ||
-      executionEvidence.compatibility !== 'COMPATIBLE' ||
-      executionEvidence.authority !== 'ADMITTED' ||
-      executionEvidence.resource !== 'AVAILABLE') {
-    throw new Error(`read-only relay binding requires current admitted execution evidence for ${node.nodeRef}`);
-  }
-  const generation = 1;
-  const workerRef = 'worker.capability-assimilation.read-only';
-  const graphFingerprint = dag.graphHash;
-  const policy = schedulerPolicy(schedulerRegistry);
-  const trustSnapshotFingerprint = semanticHash({
-    schedulerSourceRef: policy.schedulerSourceRef,
-    schedulerPolicyRef: policy.policyRef,
-    executionEvidenceFingerprint: executionEvidence.semanticFingerprint
+
+function formSchedulerReadGraph({ request, roleRef, schedulerGeneration, owner, formedAt, schedulerRegistry }) {
+  const identity = semanticHash({
+    requestRef: request.requestRef,
+    capabilityRef: request.capabilityRef,
+    schedulerGeneration,
+    formedAt
+  }).slice(0, 24);
+  const intent = createIntentEnvelope({
+    intentRef: `intent.capability-practice.${identity}`,
+    originMessageRef: `message.capability-practice.${identity}`,
+    originSpeakerRef: 'person.local-user',
+    recipientRoleRef: roleRef,
+    projectRef: 'project.vexlife.capability-assimilation.runtime-adoption',
+    threadRef: `thread.capability-practice.${identity}`,
+    channelRef: `channel.capability-practice.${identity}`,
+    originalContentHash: semanticHash({
+      requestRef: request.requestRef,
+      capabilityRef: request.capabilityRef,
+      arguments: request.arguments
+    }),
+    desiredOutcome: {
+      intentKey: 'VALIDATE_WORKGRAPH',
+      summary: `Execute one bounded capability-practice read for ${request.capabilityRef}`
+    },
+    constraints: [],
+    createdAt: formedAt,
+    sourceLineageRef: `lineage.capability-practice.${identity}`
+  }, owner.intentRegistry);
+
+  const sourceRefs = canonicalRefs([
+    schedulerRegistry.canonicalSourceRef,
+    request.currentness?.sourceRef,
+    request.currentness?.sourceVersionRef
+  ].filter(Boolean));
+  const node = createWorkNode({
+    workNodeRef: `work.capability-practice.${identity}`,
+    rootIntentRef: intent.intentRef,
+    purpose: `Practice one bounded read for ${request.capabilityRef} without moving capability ownership into the scheduler.`,
+    processRef: SCHEDULER_READ_PROCESS_REF,
+    state: 'READY',
+    dependencyRefs: [],
+    childRefs: [],
+    roleRef,
+    priorityClass: 'NORMAL',
+    applicableCultureRefs: ['foundation.vexlife.state-relay.v1'],
+    applicableLessonRefs: [],
+    applicableBurdenReleaseRefs: [],
+    capabilityEnvelopeRef: `capability-envelope.capability-practice.${identity}`,
+    effectEnvelopeRef: `effect-envelope.capability-practice.${identity}`,
+    resourceEnvelopeRef: `resource-envelope.capability-practice.${identity}`,
+    expectedTransitionRef: `expected-transition.capability-practice.${identity}`,
+    completionGateRefs: [`completion-gate.capability-practice.${identity}`],
+    returnRouteRef: `return-route.capability-practice.${identity}`,
+    sourceRefs,
+    createdAt: formedAt
+  }, owner.intentRegistry);
+
+  let priorState = 'CAPTURED';
+  const transitions = ['DECOMPOSED', 'PLAN_VALIDATED', 'READY'].map((nextState, sequence) => {
+    const transition = {
+      transitionRef: `transition.capability-practice.${identity}.${sequence}`,
+      workNodeRef: node.workNodeRef,
+      sequence,
+      priorState,
+      nextState,
+      reason: 'capability-practice scheduler formation',
+      actorRef: SCHEDULER_ACTOR_REF,
+      actorRoleRef: roleRef,
+      processRef: SCHEDULER_TRANSITION_PROCESS_REF,
+      sourceRefs,
+      createdAt: new Date(Date.parse(formedAt) + sequence).toISOString()
+    };
+    priorState = nextState;
+    return transition;
   });
-  const runtimeSnapshotFingerprint = semanticHash({
-    schedulerSourceRef: policy.schedulerSourceRef,
-    schedulerPolicyRef: policy.policyRef,
-    schedulerGeneration: generation,
-    modelInferenceConcurrency: policy.modelInferenceConcurrency,
-    executionEvidenceFingerprint: executionEvidence.semanticFingerprint
-  });
-  const resourceLeaseFingerprint = semanticHash({ nodeRef: node.nodeRef, evidence: executionEvidence.semanticFingerprint, state: executionEvidence.resource });
-  const capabilityLeaseFingerprint = semanticHash({ nodeRef: node.nodeRef, capabilityRef: request.capabilityRef, evidence: executionEvidence.semanticFingerprint });
-  const effectLeaseFingerprint = semanticHash({ nodeRef: node.nodeRef, effectClass: 'READ_ONLY', evidence: executionEvidence.semanticFingerprint });
-  const formedAt = nextTime();
-  const expiresAt = new Date(Date.parse(formedAt) + 10 * 60 * 1000).toISOString();
-  const cancellationTokenRef = `cancel.capability-assimilation.${semanticHash(node.nodeRef).slice(0, 20)}`;
-  const contextLease = createContextLease({
-    leaseRef: `context-lease.capability-assimilation.${semanticHash(node.nodeRef).slice(0, 20)}`,
-    workerRef,
-    workNodeRef: node.nodeRef,
-    graphFingerprint,
-    trustSnapshotFingerprint,
-    runtimeSnapshotFingerprint,
-    schedulerGeneration: generation,
-    resourceLeaseFingerprint,
-    capabilityLeaseFingerprint,
-    effectLeaseFingerprint,
-    cancellationTokenRef,
-    foundationKernelRef: 'foundation.vexlife.capability-assimilation.runtime-adoption',
+
+  const bindings = intentBindingRefs([node], owner.intentRegistry);
+  const graph = createIntentWorkgraph({
+    graphRef: `intent-workgraph.capability-practice.${identity}`,
+    intent,
+    nodes: [node],
+    transitions,
+    receipts: [],
+    bindingRefs: bindings,
+    createdAt: formedAt
+  }, owner.intentRegistry);
+  const trustSnapshot = createIntentTrustSnapshot({
+    schemaVersion: 'vexlife.intent-trust-snapshot/v0',
+    snapshotRef: `trust-snapshot.capability-practice.${identity}`,
+    sourceRef: schedulerRegistry.canonicalSourceRef,
+    formationRef: `formation.capability-practice.trust.${identity}`,
+    formedAt,
+    currentness: 'CURRENT',
+    bindingRefs: bindings,
+    actorRefs: ['person.local-user', SCHEDULER_ACTOR_REF],
+    decisionRefs: [],
+    authorizationBindings: []
+  }, owner.intentRegistry);
+  return { identity, graph, node, trustSnapshot };
+}
+
+function schedulerAdmissionOptions({
+  graph,
+  node,
+  trustSnapshot,
+  observed,
+  schedulerGeneration,
+  occupancyRef,
+  roleRef,
+  owner
+}) {
+  const runtime = observed.runtimeTrustSnapshot;
+  const common = {
+    runtimeSnapshotRef: runtime.snapshotRef,
+    runtimeSnapshotFingerprint: runtime.semanticFingerprint,
+    schedulerGeneration,
+    authorityRef: runtime.leaseAuthorityRef,
+    sourceRef: runtime.sourceRef,
+    sourceHash: runtime.sourceHash,
+    formedAt: runtime.formedAt,
+    observedAt: runtime.observedAt,
+    expiresAt: runtime.expiresAt,
+    currentness: 'CURRENT',
+    lifecycle: 'ACTIVE'
+  };
+  return {
+    intentRegistry: owner.intentRegistry,
+    schedulerRegistry: null,
+    registeredProcessRefs: owner.registeredProcessRefs,
+    registeredRoleRefs: owner.registeredRoleRefs,
+    trustSnapshot,
+    runtimeTrustSnapshot: runtime,
+    resourceSnapshot: observed.resourceSnapshot,
+    resourceRequestByNodeRef: {
+      [node.workNodeRef]: clone(observed.resourceRequest)
+    },
+    occupancyByNodeRef: {
+      [node.workNodeRef]: {
+        occupancyRef,
+        actorRef: runtime.actorRef,
+        roleRef,
+        workNodeRef: node.workNodeRef,
+        graphFingerprint: graph.semanticFingerprint,
+        claimRef: runtime.claimRef,
+        formationRef: `formation.occupancy.${node.workNodeRef}.${schedulerGeneration}`,
+        ...common
+      }
+    },
+    capabilityLeaseByNodeRef: {
+      [node.workNodeRef]: {
+        leaseRef: `capability-lease.${node.workNodeRef}.${schedulerGeneration}`,
+        workNodeRef: node.workNodeRef,
+        graphFingerprint: graph.semanticFingerprint,
+        trustSnapshotFingerprint: trustSnapshot.semanticFingerprint,
+        envelopeRef: node.capabilityEnvelopeRef,
+        formationRef: `formation.capability-lease.${node.workNodeRef}.${schedulerGeneration}`,
+        toolRefs: [PRACTICE_TOOL_REF],
+        ...common
+      }
+    },
+    effectLeaseByNodeRef: {
+      [node.workNodeRef]: {
+        leaseRef: `effect-lease.${node.workNodeRef}.${schedulerGeneration}`,
+        workNodeRef: node.workNodeRef,
+        graphFingerprint: graph.semanticFingerprint,
+        trustSnapshotFingerprint: trustSnapshot.semanticFingerprint,
+        envelopeRef: node.effectEnvelopeRef,
+        formationRef: `formation.effect-lease.${node.workNodeRef}.${schedulerGeneration}`,
+        effectDisposition: 'EFFECT_ENVELOPE_BOUND',
+        allowedEffectRefs: [PRACTICE_EFFECT_REF],
+        ...common
+      }
+    },
+    resourceLeaseRefByNodeRef: {
+      [node.workNodeRef]: `resource-lease.${node.workNodeRef}.${schedulerGeneration}`
+    },
+    workerRef: observed.workerRef,
+    schedulerGeneration,
+    formedAt: runtime.formedAt,
+    observedAt: runtime.observedAt,
+    expiresAt: runtime.expiresAt
+  };
+}
+
+function schedulerContextInput({ node, graph, trustSnapshot, observed, schedulerGeneration, identity }) {
+  const runtime = observed.runtimeTrustSnapshot;
+  return {
+    leaseRef: `context-lease.capability-practice.${identity}`,
+    cancellationTokenRef: `cancellation-token.capability-practice.${identity}`,
+    foundationKernelRef: 'foundation.vexlife.state-relay.v1',
     roleFrameRef: 'role-frame.vex.companion',
-    intentFrameRef: 'intent-frame.capability-assimilation.runtime-adoption',
+    intentFrameRef: `intent-frame.capability-practice.${identity}`,
     selectedAtlasRefs: [],
     selectedSourceRefs: canonicalRefs(node.sourceRefs),
-    applicableCultureRefs: [],
+    applicableCultureRefs: ['foundation.vexlife.state-relay.v1'],
     applicableLessonRefs: [],
     applicableReleaseRefs: [],
-    observationRefs: [],
     inputTokenEstimate: 0,
     reservedOutputTokens: 1024,
     hardTokenLimit: 8192,
-    formedAt,
-    expiresAt,
-    observedAt: formedAt,
-    currentness: 'CURRENT',
-    lifecycle: 'ACTIVE',
-    checkpointReturnRef: `checkpoint-return.capability-assimilation.${semanticHash(node.nodeRef).slice(0, 20)}`
-  }).lease;
-
-  const contract = schedulerRegistry.mockToolContracts.find((item) =>
-    item.toolRef === request.toolContract.toolRef && item.effectRef === request.toolContract.effectRef);
-  if (!contract) throw new Error(`scheduler registry is missing tool contract ${request.toolContract.toolRef}`);
-  const sourceEvidenceRef = executionEvidence.sourceRef ?? request.currentness.sourceRef ?? 'source.blueprint.capability-registry';
-  const sourceEvidenceHash = executionEvidence.semanticFingerprint;
-  const call = {
-    toolCallRef: `tool-call.capability-assimilation.${semanticHash(node.nodeRef).slice(0, 20)}`,
-    schedulerInstanceRef: 'scheduler.capability-assimilation.runtime-adoption',
-    workNodeRef: node.nodeRef,
-    workerRef,
-    workerLeaseRef: `worker-lease.${workerRef}.${generation}`,
-    graphFingerprint,
-    trustSnapshotFingerprint,
-    runtimeSnapshotFingerprint,
-    contextLeaseRef: contextLease.leaseRef,
-    contextLeaseFingerprint: contextLease.semanticFingerprint,
-    toolContractRef: contract.contractRef,
-    toolRef: contract.toolRef,
-    effectRef: contract.effectRef,
-    arguments: clone(request.arguments),
-    argumentSchemaRef: contract.argumentSchemaRef,
-    argumentHash: semanticHash(request.arguments),
-    capabilityLeaseRef: `capability-lease.${semanticHash(node.nodeRef).slice(0, 20)}`,
-    capabilityLeaseFingerprint,
-    effectLeaseRef: `effect-lease.${semanticHash(node.nodeRef).slice(0, 20)}`,
-    effectLeaseFingerprint,
-    resourceLeaseRef: `resource-lease.${semanticHash(node.nodeRef).slice(0, 20)}`,
-    resourceLeaseFingerprint,
-    resultSchemaRef: contract.resultSchemaRef,
-    resultRequiredFields: [...contract.requiredResultFields],
-    maxObservationBytes: contract.maxObservationBytes,
-    executorRef: contract.executorRef,
-    schedulerGeneration: generation,
-    cancellationTokenRef,
-    sourceEvidenceRef,
-    sourceEvidenceHash,
-    proposedAt: formedAt,
-    timeoutAt: expiresAt,
-    cancellationPolicy: 'CHECKPOINT_THEN_CANCEL',
-    predecessorToolCallRef: null,
-    heldDisposition: null,
-    replacementPolicyRef: null,
-    replacementReasonRef: null,
-    externalEffectsExecuted: false
+    formedAt: runtime.formedAt,
+    observedAt: runtime.observedAt,
+    expiresAt: runtime.expiresAt,
+    checkpointReturnRef: node.returnRouteRef
   };
-  call.semanticPurposeFingerprint = toolSemanticPurpose(call);
-  call.semanticFingerprint = semanticHash(call);
-  return { call: freeze(call), contextLease };
 }
+
+function mappedPracticeObservation(rawObservation) {
+  return freeze({
+    summaryRef: rawObservation.summaryRef,
+    capabilityRef: rawObservation.capabilityRef,
+    sourceRefs: canonicalRefs(rawObservation.sourceRefs),
+    currentness: rawObservation.currentness.state,
+    payload: clone(rawObservation.payload ?? {})
+  });
+}
+
+function schedulerCompletionEvidence({ graph, node, active, runtimeTrustSnapshot, observation, completedAt }) {
+  return {
+    verificationReceiptRef: `verification.${node.workNodeRef}.${active.active.schedulerGeneration}`,
+    workNodeRef: node.workNodeRef,
+    nodeFingerprint: node.semanticFingerprint,
+    graphRef: graph.graphRef,
+    graphFingerprint: graph.semanticFingerprint,
+    runtimeSnapshotFingerprint: runtimeTrustSnapshot.semanticFingerprint,
+    schedulerInstanceRef: active.active.schedulerInstanceRef,
+    schedulerGeneration: active.active.schedulerGeneration,
+    expectedTransitionRef: node.expectedTransitionRef,
+    gateObservations: node.completionGateRefs.map((completionGateRef) => ({
+      gateResultRef: `gate-result.${completionGateRef}.${active.active.schedulerGeneration}`,
+      completionGateRef,
+      sourceObservationRef: observation.observationRef,
+      sourceObservationHash: observation.semanticFingerprint,
+      observedBeforeState: node.state,
+      observedAfterState: 'COMPLETED',
+      result: 'PASSED'
+    })),
+    observedBeforeState: node.state,
+    observedAfterState: 'COMPLETED',
+    returnRouteRef: node.returnRouteRef,
+    formedAt: completedAt,
+    observedAt: completedAt,
+    expiresAt: runtimeTrustSnapshot.expiresAt,
+    selfCertified: false
+  };
+}
+
 
 function resultFromObservation(call, observation) {
   return freeze({
@@ -668,9 +877,162 @@ export function createCapabilityAssimilationRuntime({
     throw new Error(`unknown capability-assimilation mode ${mode}`);
   }
   if (typeof clock !== 'function') throw new Error('capability runtime clock must be a function');
-  const runtimeRegistry = runtimeSchedulerRegistry(schedulerRegistry, capabilityRegistry);
   let sequence = 0;
   const nextTime = () => new Date(Number(clock()) + sequence++).toISOString();
+
+  const owner = schedulerOwnerBundle(schedulerRegistry);
+  const practice = practiceContract(schedulerRegistry);
+  const readRuntimeAuthority = new CompanionReadRuntimeAuthority({
+    schedulerRegistry,
+    clock: () => {
+      const value = clock();
+      return value instanceof Date ? value : new Date(value);
+    },
+    ttlMs: 10 * 60 * 1000
+  });
+  const reservedReadSlots = new Set();
+  let readDispatchGeneration = 0;
+
+  function reserveReadSlot() {
+    const workerRef = COMPANION_READ_WORKER_REFS.find((ref) => !reservedReadSlots.has(ref));
+    if (!workerRef) throw new Error('no source-managed Companion read worker slot is currently available');
+    reservedReadSlots.add(workerRef);
+    return workerRef;
+  }
+
+  function releaseReadSlot(workerRef) {
+    if (workerRef) reservedReadSlots.delete(workerRef);
+  }
+
+  function nextSchedulerTime(runtimeTrustSnapshot) {
+    const lower = Date.parse(runtimeTrustSnapshot.observedAt) + 1;
+    const upper = Date.parse(runtimeTrustSnapshot.expiresAt) - 1;
+    const candidate = Date.parse(nextTime());
+    if (!(upper > lower)) throw new Error('scheduler runtime interval is too small for a bounded read dispatch');
+    return new Date(Math.max(lower, Math.min(candidate, upper))).toISOString();
+  }
+
+  async function acquireSchedulerDispatch({ request, roleRef }) {
+    const workerRef = reserveReadSlot();
+    const schedulerGeneration = ++readDispatchGeneration;
+    const preIdentity = semanticHash({
+      requestRef: request.requestRef,
+      capabilityRef: request.capabilityRef,
+      schedulerGeneration,
+      workerRef
+    }).slice(0, 24);
+    const occupancyRef = `occupancy.capability-practice.${preIdentity}`;
+    const claimRef = `claim.capability-practice.${preIdentity}`;
+    let scheduler = null;
+    try {
+      const observed = await readRuntimeAuthority.observe({
+        workerRef,
+        schedulerGeneration,
+        actorRef: SCHEDULER_ACTOR_REF,
+        roleRef,
+        claimRef,
+        occupancyRef
+      });
+      const formedAt = observed.runtimeTrustSnapshot.formedAt;
+      const formed = formSchedulerReadGraph({
+        request,
+        roleRef,
+        schedulerGeneration,
+        owner,
+        formedAt,
+        schedulerRegistry
+      });
+      const relay = new ToolResultRelay(null, { schedulerRegistry });
+      const schedulerInstanceRef = `scheduler.capability-practice.${formed.identity}`;
+      scheduler = new SingleWorkerIntentScheduler({
+        workerRef,
+        schedulerInstanceRef,
+        schedulerRegistry,
+        runtimeAuthority: readRuntimeAuthority.runtimeAuthority,
+        toolRelay: relay
+      });
+      const options = schedulerAdmissionOptions({
+        graph: formed.graph,
+        node: formed.node,
+        trustSnapshot: formed.trustSnapshot,
+        observed,
+        schedulerGeneration,
+        occupancyRef,
+        roleRef,
+        owner
+      });
+      const queue = scheduler.admit(formed.graph, options);
+      if (queue.state !== 'ADMITTED' || !queue.selected) {
+        throw new Error(`scheduler runtime admission held capability read ${request.requestRef}: ${JSON.stringify(queue.blocked ?? [])}`);
+      }
+      const active = scheduler.leaseSelected(schedulerContextInput({
+        node: formed.node,
+        graph: formed.graph,
+        trustSnapshot: formed.trustSnapshot,
+        observed,
+        schedulerGeneration,
+        identity: formed.identity
+      }));
+      if (!active.admitted || active.state !== 'RUNNING') {
+        throw new Error(`scheduler did not issue an active read lease for ${request.requestRef}: ${active.reason ?? active.state}`);
+      }
+      const proposedAt = nextSchedulerTime(observed.runtimeTrustSnapshot);
+      const call = createToolCall({
+        toolCallRef: `tool-call.capability-practice.${formed.identity}`,
+        workNodeRef: formed.node.workNodeRef,
+        toolRef: practice.toolRef,
+        effectRef: practice.effectRef,
+        arguments: {
+          capabilityRef: request.capabilityRef,
+          capabilityToolRef: request.toolContract.toolRef,
+          capabilityEffectRef: request.toolContract.effectRef,
+          capabilityArguments: clone(request.arguments)
+        },
+        schedulerGeneration,
+        cancellationTokenRef: active.contextLease.cancellationTokenRef,
+        sourceEvidenceRef: schedulerRegistry.canonicalSourceRef,
+        sourceEvidenceHash: semanticHash(schedulerRegistry),
+        proposedAt,
+        timeoutAt: observed.runtimeTrustSnapshot.expiresAt,
+        cancellationPolicy: 'CHECKPOINT_THEN_CANCEL'
+      }, {
+        contextLease: active.contextLease,
+        capabilityLease: active.capabilityLease,
+        effectLease: active.effectLease,
+        resourceLease: active.resourceLease,
+        workerLease: active.workerLease,
+        runtimeTrustSnapshot: active.runtimeTrustSnapshot,
+        schedulerRegistry,
+        observedAt: proposedAt
+      });
+      const registered = relay.register(call);
+      if (!registered.changed) throw new Error(`generic capability-practice tool call was not registered: ${registered.reason}`);
+      return {
+        workerRef,
+        schedulerGeneration,
+        scheduler,
+        relay,
+        queue,
+        active,
+        call,
+        observed,
+        ...formed
+      };
+    } catch (error) {
+      if (scheduler?.active) {
+        try {
+          scheduler.cancelActive({
+            releaseReceiptRef: `release.capability-practice.acquire-failure.${preIdentity}`,
+            releasedAt: nextSchedulerTime(scheduler.aggregate.runtimeTrust),
+            reason: 'CAPABILITY_PRACTICE_ACQUIRE_FAILED'
+          });
+        } catch {}
+      }
+      releaseReadSlot(workerRef);
+      throw error;
+    }
+  }
+
   const inferenceGate = createSchedulerOwnedInferenceGate(schedulerRegistry, nextTime);
 
   async function gatedInference({ phaseRef, inference, input, label }) {
@@ -691,6 +1053,7 @@ export function createCapabilityAssimilationRuntime({
   }) {
     if (typeof taskIntent !== 'string' || !taskIntent.trim()) throw new Error('taskIntent must be non-empty');
     if (typeof inference !== 'function') throw new Error('capability runtime requires one admitted inference function');
+    assertNoCallerSchedulerEvidence(context);
     const progress = [progressEvent('TASK_RECEIVED', { taskRef: context.taskRef ?? null })];
     const modelSequenceReceipts = [];
 
@@ -783,7 +1146,7 @@ export function createCapabilityAssimilationRuntime({
     const requestByRef = new Map(requestProjection.requests.map((request) => [request.requestRef, request]));
     const builtIns = defaultExecutors({ capabilityRegistry, processFactoryDefinition, frame, frontier, context });
     const executorMap = { ...builtIns, ...executors };
-    const relay = new ToolResultRelay(null, { schedulerRegistry: runtimeRegistry });
+    const schedulerDispatchReceipts = [];
     const completed = new Set();
     const observations = [];
     const held = [];
@@ -817,52 +1180,112 @@ export function createCapabilityAssimilationRuntime({
         }
         const executor = executorMap[request.capabilityRef] ?? executorMap[request.toolContract.toolRef];
         if (typeof executor !== 'function') throw new Error(`no read-only executor for ${request.capabilityRef}`);
-        const { call, contextLease } = createRelayBindings(
-          node,
-          request,
-          dag,
-          runtimeRegistry,
-          nextTime,
-          beforeEvidence
-        );
-        const registered = relay.register(call);
-        if (!registered.changed) throw new Error(`tool call was not registered: ${registered.reason}`);
-        const rawObservation = assertCurrentObservation(await executor(clone(request.arguments), freeze({
-          requestRef: request.requestRef,
-          capabilityRef: request.capabilityRef,
-          frontier,
-          executionEvidence: beforeEvidence,
-          context: clone(context)
-        })), request);
-        const afterEvidence = executionEvidenceForRequest(request, capabilityRegistry);
-        if (afterEvidence.semanticFingerprint !== beforeEvidence.semanticFingerprint ||
-            afterEvidence.currentness !== 'CURRENT' || afterEvidence.authority !== 'ADMITTED' || afterEvidence.resource !== 'AVAILABLE') {
-          throw new Error(`execution evidence changed or was revoked before relay acceptance for ${node.nodeRef}`);
-        }
-        const result = resultFromObservation(call, rawObservation);
-        const accepted = relay.accept(result, { receivedAt: nextTime() });
-        if (!accepted.accepted || accepted.state !== 'ACCEPTED') {
-          throw new Error(`ToolResultRelay rejected ${request.requestRef}: ${accepted.reason}`);
-        }
-        const reinjected = relay.reinject(contextLease, accepted.observation, { observedAt: nextTime() });
-        if (!reinjected.accepted || reinjected.state !== 'REINJECTED') {
-          throw new Error(`ToolResultRelay did not reinject ${request.requestRef}: ${reinjected.reason}`);
-        }
-        if (exactlyOnceNegativeControl) {
-          const duplicateAccept = relay.accept(result, { receivedAt: nextTime() });
-          const duplicateReinject = relay.reinject(contextLease, accepted.observation, { observedAt: nextTime() });
-          if (duplicateAccept.reason !== 'DUPLICATE_RESULT' ||
-              duplicateReinject.reason !== 'OBSERVATION_ALREADY_REINJECTED') {
-            throw new Error('ToolResultRelay exactly-once negative control did not fail closed');
-          }
-          exactlyOnceReceipts.push({
+        let dispatch = null;
+        try {
+          dispatch = await acquireSchedulerDispatch({ request, roleRef });
+          const rawObservation = assertCurrentObservation(await executor(clone(request.arguments), freeze({
             requestRef: request.requestRef,
-            duplicateAcceptReason: duplicateAccept.reason,
-            duplicateReinjectReason: duplicateReinject.reason
+            capabilityRef: request.capabilityRef,
+            frontier,
+            executionEvidence: beforeEvidence,
+            schedulerAdmissionReceiptRef: dispatch.queue.admissionReceipt.admissionReceiptRef,
+            schedulerWorkerRef: dispatch.workerRef,
+            context: clone(context)
+          })), request);
+          const afterEvidence = executionEvidenceForRequest(request, capabilityRegistry);
+          if (afterEvidence.semanticFingerprint !== beforeEvidence.semanticFingerprint ||
+              afterEvidence.currentness !== 'CURRENT' || afterEvidence.authority !== 'ADMITTED' || afterEvidence.resource !== 'AVAILABLE') {
+            throw new Error(`execution evidence changed or was revoked before relay acceptance for ${node.nodeRef}`);
+          }
+          const result = resultFromObservation(dispatch.call, mappedPracticeObservation(rawObservation));
+          const accepted = dispatch.relay.accept(result, { receivedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot) });
+          if (!accepted.accepted || accepted.state !== 'ACCEPTED') {
+            throw new Error(`ToolResultRelay rejected ${request.requestRef}: ${accepted.reason}`);
+          }
+          const reinjected = dispatch.relay.reinject(
+            dispatch.active.contextLease,
+            accepted.observation,
+            { observedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot) }
+          );
+          if (!reinjected.accepted || reinjected.state !== 'REINJECTED') {
+            throw new Error(`ToolResultRelay did not reinject ${request.requestRef}: ${reinjected.reason}`);
+          }
+          if (exactlyOnceNegativeControl) {
+            const duplicateAccept = dispatch.relay.accept(result, {
+              receivedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot)
+            });
+            const duplicateReinject = dispatch.relay.reinject(
+              dispatch.active.contextLease,
+              accepted.observation,
+              { observedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot) }
+            );
+            if (duplicateAccept.reason !== 'DUPLICATE_RESULT' ||
+                duplicateReinject.reason !== 'OBSERVATION_ALREADY_REINJECTED') {
+              throw new Error('ToolResultRelay exactly-once negative control did not fail closed');
+            }
+            exactlyOnceReceipts.push({
+              requestRef: request.requestRef,
+              duplicateAcceptReason: duplicateAccept.reason,
+              duplicateReinjectReason: duplicateReinject.reason
+            });
+          }
+          const completedAt = nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot);
+          const completion = dispatch.scheduler.completeActive({
+            graph: dispatch.graph,
+            intentRegistry: owner.intentRegistry,
+            trustSnapshot: dispatch.trustSnapshot,
+            registeredProcessRefs: owner.registeredProcessRefs,
+            registeredRoleRefs: owner.registeredRoleRefs,
+            completionEvidence: schedulerCompletionEvidence({
+              graph: dispatch.graph,
+              node: dispatch.node,
+              active: dispatch.active,
+              runtimeTrustSnapshot: dispatch.observed.runtimeTrustSnapshot,
+              observation: accepted.observation,
+              completedAt
+            }),
+            completionReceiptRef: `completion.capability-practice.${dispatch.identity}`,
+            releaseReceiptRef: `release.capability-practice.${dispatch.identity}`,
+            completedAt
           });
+          schedulerDispatchReceipts.push(freeze({
+            schemaVersion: 'vexlife.capability-assimilation-scheduler-dispatch/v1',
+            requestRef: request.requestRef,
+            capabilityRef: request.capabilityRef,
+            schedulerInstanceRef: dispatch.active.active.schedulerInstanceRef,
+            schedulerGeneration: dispatch.schedulerGeneration,
+            workerRef: dispatch.workerRef,
+            workerLeaseRef: dispatch.active.workerLease.leaseRef,
+            admissionReceiptRef: dispatch.queue.admissionReceipt.admissionReceiptRef,
+            admissionReceiptFingerprint: dispatch.queue.admissionReceipt.semanticFingerprint,
+            toolCallRef: dispatch.call.toolCallRef,
+            toolContractRef: dispatch.call.toolContractRef,
+            toolRef: dispatch.call.toolRef,
+            effectRef: dispatch.call.effectRef,
+            capabilityToolRef: request.toolContract.toolRef,
+            capabilityEffectRef: request.toolContract.effectRef,
+            capabilityExecutorRef: request.toolContract.executorRef,
+            completionReceiptRef: completion.completionReceipt.receiptRef,
+            completionReceiptFingerprint: completion.completionReceipt.semanticFingerprint,
+            externalEffectsExecuted: false
+          }));
+          return { nodeRef: node.nodeRef, observation: accepted.observation };
+        } catch (error) {
+          if (dispatch?.scheduler?.active) {
+            try {
+              dispatch.scheduler.cancelActive({
+                releaseReceiptRef: `release.capability-practice.failed.${dispatch.identity}`,
+                releasedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot),
+                reason: 'CAPABILITY_PRACTICE_READ_FAILED'
+              });
+            } catch {}
+          }
+          throw error;
+        } finally {
+          releaseReadSlot(dispatch?.workerRef);
         }
-        return { nodeRef: node.nodeRef, observation: accepted.observation };
       }));
+
 
       for (const result of batchResults.sort((left, right) => left.nodeRef.localeCompare(right.nodeRef))) {
         completed.add(result.nodeRef);
@@ -917,6 +1340,7 @@ export function createCapabilityAssimilationRuntime({
         observationRefs: observations.map((observation) => observation.observationRef).sort(),
         heldNodes: clone(held),
         exactlyOnceReceipts: clone(exactlyOnceReceipts),
+        schedulerDispatchReceipts: clone([...schedulerDispatchReceipts].sort((left, right) => left.requestRef.localeCompare(right.requestRef))),
         progress,
         hiddenReasoningIncluded: false,
         externalEffectsExecuted: false
