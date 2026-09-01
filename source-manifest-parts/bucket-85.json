@@ -5,8 +5,8 @@
     {
       "path": "blueprint/security-access-preview-registry.json",
       "mode": "100644",
-      "bytes": 4245,
-      "sha256": "0c30791f7c7da7e9a74cd38d28229de12db325c3949d5148aa86430f3ef1d842"
+      "bytes": 4417,
+      "sha256": "d1ee59ef8194c397939e78621aa9ca831113a4cd0eb91d6dc50738520f0b2e62"
     },
     {
       "path": "reference/browser/modules/demo-data.js",

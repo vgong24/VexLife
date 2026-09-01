@@ -126,5 +126,7 @@
     "DEVICE_PAIRED != EVERY_CAPABILITY_GRANTED",
     "ROUTE_REACHABLE != AUTHENTICATED != AUTHORIZED",
     "MODEL_AVAILABLE != SECURITY_CONTROL_AVAILABLE"
-  ]
+  ],
+  "androidRemoteVesselRegistryRef": "registry.vexlife.android-remote-vessel.001",
+  "androidRemoteVesselProjectionRef": "projection.security-access.android-remote-vessel"
 }
