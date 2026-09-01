@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   LivedCompanionError,
-  performLivedCompanionTurn
+  performLivedCompanionTurn,
+  requestLivedCompanionInference
 } from './lived-companion.mjs';
 import { composeSemanticRelay } from './conversation.mjs';
 
@@ -296,12 +297,16 @@ export function createBrowserCompanionBridge({
   home,
   endpoint = null,
   model = null,
+  capabilityRuntime = null,
   instanceRef = ref('instance.vexlife.browser-companion')
 }) {
   if (!safePortableRef(instanceRef)) {
     throw new BrowserCompanionBridgeError('COMPANION_BRIDGE_IDENTITY_INVALID', 'Browser companion instanceRef is invalid', 500);
   }
   const binding = resolveBrowserCompanionRuntimeBinding({ endpoint, model });
+  if (capabilityRuntime !== null && typeof capabilityRuntime?.resolveTurn !== 'function') {
+    throw new BrowserCompanionBridgeError('COMPANION_CAPABILITY_RUNTIME_INVALID', 'Capability runtime must expose one server-owned resolveTurn function', 500);
+  }
 
   function status() {
     if (binding.state !== 'BOUND') {
@@ -376,6 +381,20 @@ export function createBrowserCompanionBridge({
           endpoint: binding.endpoint,
           model: binding.model
         },
+        responseResolver: capabilityRuntime
+          ? (resolverInput) => capabilityRuntime.resolveTurn({
+              ...resolverInput,
+              taskIntent: request.content,
+              inference: requestLivedCompanionInference,
+              context: {
+                ...(resolverInput.context ?? {}),
+                projectRef: request.projectRef,
+                screenRef: request.screenRef,
+                selectedNodeRef: request.selectedNodeRef,
+                sourceRefs: contextSourceRefs
+              }
+            })
+          : null,
         contextSourceRefs,
         timeoutMs: 120000
       });
@@ -392,7 +411,8 @@ export function createBrowserCompanionBridge({
         conversationHeadSha256: completed.head.conversationHeadSha256,
         writerLeaseReleased: completed.writerLeaseReleased === true,
         actualHttpCall: completed.actualHttpCall === true,
-        loopbackOnly: completed.loopbackOnly === true
+        loopbackOnly: completed.loopbackOnly === true,
+        capabilityRuntime: completed.runtimeProjection ?? null
       });
     } catch (error) {
       throw publicFailureFor(error);

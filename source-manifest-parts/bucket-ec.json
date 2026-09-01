@@ -9,6 +9,12 @@
       "sha256": "a042bbb08b039e4c6c9eb1f0a682ccbe845c0641f9b841c9632c38c0be45355d"
     },
     {
+      "path": "test/capability-assimilation-scheduler-authority.test.mjs",
+      "mode": "100644",
+      "bytes": 6322,
+      "sha256": "c815f7afa22cc9721dd70d93a0dc28f11e0020d4d7feb09689952ea4e070896d"
+    },
+    {
       "path": "test/fixtures/orientation/current-pr.json",
       "mode": "100644",
       "bytes": 1183,

@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 15502,
       "sha256": "e3b468138cbf472e0252786ca6872c430c57d6c92b6d04f8c8ba3cac755af1da"
+    },
+    {
+      "path": "src/core/capability-assimilation-runtime.mjs",
+      "mode": "100644",
+      "bytes": 56870,
+      "sha256": "1963fb2739ca4e08736f4a08f20fcdddd6f6d78cd5b8cdaf7a96e65cf85e91aa"
     }
   ]
 }
