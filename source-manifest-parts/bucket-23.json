@@ -5,8 +5,8 @@
     {
       "path": "blueprint/capability-registry.json",
       "mode": "100644",
-      "bytes": 8523,
-      "sha256": "ebec30cf8304edd83a31a6c6ce6c75a45f8cba10699a3a8cb04bcd2f9060ee84"
+      "bytes": 20712,
+      "sha256": "bf45089222a806520b29b49319842c5baf6a1a82c14eaf9623436605dae564c2"
     },
     {
       "path": "test/fixtures/experience-review-guide-local-append/authority.json",

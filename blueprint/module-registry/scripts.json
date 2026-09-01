@@ -76,12 +76,15 @@
   {
     "moduleRef": "module.vexlife.script.serve-browser",
     "path": "scripts/serve-browser.mjs",
-    "role": "Dependency-free localhost browser reference server with existing companion routes plus bounded same-origin Living Journal Memory activation using server-owned Home identity.",
+    "role": "Dependency-free localhost browser reference server with current server-owned Companion runtime policy, including direct compatibility, adopted read-only capability assimilation, canonical E2 tool-free baseline, Relationships, and Living Journal Memory routes.",
     "platformScope": "BROWSER",
     "reads": [
       "reference/browser/**",
       "blueprint/**",
-      "module.vexlife.core.browser-living-journal-memory-bridge"
+      "module.vexlife.core.browser-living-journal-memory-bridge",
+      "registry.vexlife.capabilities.001",
+      "registry.vexlife.intent-scheduler.001",
+      "module.vexlife.core.capability-assimilation-runtime"
     ],
     "writes": [],
     "loadedBy": [
@@ -89,9 +92,14 @@
     ],
     "tests": [
       "test/browser.test.mjs",
-      "test/browser-living-journal-memory-http-route.test.mjs"
+      "test/browser-living-journal-memory-http-route.test.mjs",
+      "test/capability-assimilation-runtime.test.mjs"
     ],
-    "changeMap": []
+    "changeMap": [
+      "src/core/capability-assimilation-runtime.mjs",
+      "src/core/browser-companion-bridge.mjs",
+      "docs/CAPABILITY-ASSIMILATION-RUNTIME.md"
+    ]
   },
   {
     "moduleRef": "module.vexlife.script.registry-summary",

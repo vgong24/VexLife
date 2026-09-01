@@ -13,6 +13,11 @@ import {
   loadBrowserCompanionHomeIdentity
 } from '../src/core/browser-companion-bridge.mjs';
 import {
+  CAPABILITY_ASSIMILATION_MODES,
+  createCapabilityAssimilationRuntime
+} from '../src/core/capability-assimilation-runtime.mjs';
+import { loadBlueprint } from '../src/core/blueprint.mjs';
+import {
   BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
   BrowserLivingJournalMemoryBridgeError,
@@ -82,10 +87,27 @@ export function loadBrowserRelationshipsRuntimeSources(sourceRoot = root) {
   });
 }
 
+const capabilityRuntimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
+  CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN;
+if (!Object.values(CAPABILITY_ASSIMILATION_MODES).includes(capabilityRuntimeMode)) {
+  throw new Error(`Unsupported VEXLIFE_CAPABILITY_RUNTIME_MODE: ${capabilityRuntimeMode}`);
+}
+const capabilityRuntimeBundle = capabilityRuntimeMode === CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN
+  ? null
+  : loadBlueprint(root);
+const capabilityRuntime = capabilityRuntimeBundle
+  ? createCapabilityAssimilationRuntime({
+      capabilityRegistry: capabilityRuntimeBundle.capabilities,
+      processFactoryDefinition: capabilityRuntimeBundle.factory,
+      schedulerRegistry: capabilityRuntimeBundle.schedulerRegistry,
+      mode: capabilityRuntimeMode
+    })
+  : null;
 const companion = createBrowserCompanionBridge({
   home,
   endpoint: process.env.VEXLIFE_COMPANION_ENDPOINT ?? null,
-  model: process.env.VEXLIFE_COMPANION_MODEL ?? null
+  model: process.env.VEXLIFE_COMPANION_MODEL ?? null,
+  capabilityRuntime
 });
 const relationshipsRuntime = createBrowserRelationshipsRuntimeBridge(loadBrowserRelationshipsRuntimeSources(root));
 
