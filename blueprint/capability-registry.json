@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.capability-registry/v0",
   "registryRef": "registry.vexlife.capabilities.001",
-  "registryVersion": 2,
+  "registryVersion": 3,
   "stages": [
     "DISCOVERABLE",
     "EXPLAINABLE",
@@ -21,12 +21,32 @@
     {
       "capabilityRef": "capability.vexlife.navigation",
       "purpose": "Navigate registered screens, regions, elements and semantic journeys.",
-      "actionRefs": ["action.view.select", "action.project.select", "action.thread.select", "action.channel.select", "action.navigation.back", "action.navigation.home"],
+      "actionRefs": [
+        "action.view.select",
+        "action.project.select",
+        "action.thread.select",
+        "action.channel.select",
+        "action.navigation.back",
+        "action.navigation.home"
+      ],
       "permissionRef": "permission.none",
       "effectClass": "LOCAL_NAVIGATION",
       "defaultStage": "EXECUTABLE",
-      "roleRefs": ["role.vex.companion", "role.vex.guide", "role.vex.root-hub", "role.vex.operations", "role.vex.developer", "role.vex.reviewer"],
-      "platformRefs": ["platform.browser", "platform.android", "platform.ios", "platform.windows", "platform.macos"],
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.guide",
+        "role.vex.root-hub",
+        "role.vex.operations",
+        "role.vex.developer",
+        "role.vex.reviewer"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
       "resourceClass": "CPU_LIGHT"
     },
     {
@@ -36,122 +56,585 @@
       "permissionRef": "permission.none",
       "effectClass": "PHYSICAL_NAVIGATION_GUIDANCE",
       "defaultStage": "REQUESTABLE",
-      "roleRefs": ["role.vex.companion", "role.vex.guide", "role.vex.operations"],
-      "platformRefs": ["platform.browser", "platform.android", "platform.ios", "platform.windows", "platform.macos"],
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.guide",
+        "role.vex.operations"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
       "resourceClass": "CPU_LIGHT",
-      "notes": ["C0 is vocabulary only and creates no route action or external effect", "GPS, Home, network, vehicle control, Memory, publication, membership grants, authorizations and leases remain separately owned"]
+      "notes": [
+        "C0 is vocabulary only and creates no route action or external effect",
+        "GPS, Home, network, vehicle control, Memory, publication, membership grants, authorizations and leases remain separately owned"
+      ]
     },
     {
       "capabilityRef": "capability.vexlife.file.read",
       "purpose": "Read every assigned file type through project-root and role filters.",
-      "actionRefs": ["action.file.root.assign", "action.file.read"],
+      "actionRefs": [
+        "action.file.root.assign",
+        "action.file.read"
+      ],
       "permissionRef": "permission.file.read",
       "effectClass": "BOUNDED_LOCAL_READ",
       "defaultStage": "REQUESTABLE",
-      "roleRefs": ["role.vex.guide", "role.vex.root-hub", "role.vex.operations", "role.vex.developer", "role.vex.reviewer"],
-      "platformRefs": ["platform.android", "platform.ios", "platform.windows", "platform.macos", "platform.browser"],
+      "roleRefs": [
+        "role.vex.guide",
+        "role.vex.root-hub",
+        "role.vex.operations",
+        "role.vex.developer",
+        "role.vex.reviewer"
+      ],
+      "platformRefs": [
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos",
+        "platform.browser"
+      ],
       "resourceClass": "IO_BOUNDED",
-      "notes": ["browser requires a local bridge or supported file-system API", "secrets and Git internals need stronger grants"]
+      "notes": [
+        "browser requires a local bridge or supported file-system API",
+        "secrets and Git internals need stronger grants"
+      ]
     },
     {
       "capabilityRef": "capability.vexlife.file.edit-with-recovery",
       "purpose": "Edit an assigned file with expected hash, recovery copy and atomic replacement.",
-      "actionRefs": ["action.file.edit-with-recovery"],
+      "actionRefs": [
+        "action.file.edit-with-recovery"
+      ],
       "permissionRef": "permission.file.edit",
       "effectClass": "RECOVERY_GUARDED_LOCAL_WRITE",
       "defaultStage": "REQUESTABLE",
-      "roleRefs": ["role.vex.developer"],
-      "platformRefs": ["platform.android", "platform.ios", "platform.windows", "platform.macos", "platform.browser"],
+      "roleRefs": [
+        "role.vex.developer"
+      ],
+      "platformRefs": [
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos",
+        "platform.browser"
+      ],
       "resourceClass": "IO_BOUNDED"
     },
     {
       "capabilityRef": "capability.vexlife.cli.typed",
       "purpose": "Execute registered typed commands with schema, working scope and resource envelope.",
-      "actionRefs": ["action.cli.execute"],
+      "actionRefs": [
+        "action.cli.execute"
+      ],
       "permissionRef": "permission.cli.execute",
       "effectClass": "TYPED_LOCAL_PROCESS",
       "defaultStage": "REQUESTABLE",
-      "roleRefs": ["role.vex.operations", "role.vex.developer", "role.vex.reviewer"],
-      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.browser"],
+      "roleRefs": [
+        "role.vex.operations",
+        "role.vex.developer",
+        "role.vex.reviewer"
+      ],
+      "platformRefs": [
+        "platform.windows",
+        "platform.macos",
+        "platform.android",
+        "platform.browser"
+      ],
       "resourceClass": "COMMAND_DECLARED"
     },
     {
       "capabilityRef": "capability.vexlife.workshop",
       "purpose": "Create, discuss, review and export copy-on-write feature candidates without live apply.",
-      "actionRefs": ["action.workshop.create-candidate", "action.workshop.export"],
+      "actionRefs": [
+        "action.workshop.create-candidate",
+        "action.workshop.export"
+      ],
       "permissionRef": "permission.workshop.mutate",
       "effectClass": "COPY_ON_WRITE_WORKSHOP",
       "defaultStage": "REQUESTABLE",
-      "roleRefs": ["role.vex.operations", "role.vex.developer", "role.vex.reviewer"],
-      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "roleRefs": [
+        "role.vex.operations",
+        "role.vex.developer",
+        "role.vex.reviewer"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.windows",
+        "platform.macos",
+        "platform.android",
+        "platform.ios"
+      ],
       "resourceClass": "WORK_DECLARED"
     },
     {
       "capabilityRef": "capability.vexlife.issue-war-room",
       "purpose": "Triage deduplicated issues, convene bounded role channels and verify closure.",
-      "actionRefs": ["action.issue.triage", "action.issue.approve-implementation"],
+      "actionRefs": [
+        "action.issue.triage",
+        "action.issue.approve-implementation"
+      ],
       "permissionRef": "permission.issue.approve",
       "effectClass": "WORK_APPROVAL",
       "defaultStage": "EXPLAINABLE",
-      "roleRefs": ["role.vex.root-hub", "role.vex.operations", "role.vex.developer", "role.vex.reviewer", "role.vex.guide"],
-      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "roleRefs": [
+        "role.vex.root-hub",
+        "role.vex.operations",
+        "role.vex.developer",
+        "role.vex.reviewer",
+        "role.vex.guide"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.windows",
+        "platform.macos",
+        "platform.android",
+        "platform.ios"
+      ],
       "resourceClass": "MODEL_SERIALIZED"
     },
     {
       "capabilityRef": "capability.vexlife.github.publication",
       "purpose": "Prepare a public-safe manifest, commit locally and push a non-forced branch after exact confirmation.",
-      "actionRefs": ["action.github.prepare-publication", "action.github.commit", "action.github.push-branch"],
+      "actionRefs": [
+        "action.github.prepare-publication",
+        "action.github.commit",
+        "action.github.push-branch"
+      ],
       "permissionRef": "permission.github.publish",
       "effectClass": "PUBLIC_EXTERNAL",
       "defaultStage": "EXPLAINABLE",
-      "roleRefs": ["role.vex.operations", "role.vex.developer"],
-      "platformRefs": ["platform.browser", "platform.windows", "platform.macos"],
+      "roleRefs": [
+        "role.vex.operations",
+        "role.vex.developer"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.windows",
+        "platform.macos"
+      ],
       "resourceClass": "NETWORK_BOUNDED",
-      "notes": ["credentials remain in Git or GitHub CLI", "force push and history rewrite are not included"]
+      "notes": [
+        "credentials remain in Git or GitHub CLI",
+        "force push and history rewrite are not included"
+      ]
     },
     {
       "capabilityRef": "capability.vexlife.model.provision",
       "purpose": "Connect an existing endpoint or download an external checksummed device-compatible model.",
-      "actionRefs": ["action.model.provision"],
+      "actionRefs": [
+        "action.model.provision"
+      ],
       "permissionRef": "permission.model.provision",
       "effectClass": "EXTERNAL_ARTIFACT_DOWNLOAD",
       "defaultStage": "REQUESTABLE",
-      "roleRefs": ["role.vex.operations"],
-      "platformRefs": ["platform.windows", "platform.macos", "platform.android"],
+      "roleRefs": [
+        "role.vex.operations"
+      ],
+      "platformRefs": [
+        "platform.windows",
+        "platform.macos",
+        "platform.android"
+      ],
       "resourceClass": "NETWORK_DISK_HEAVY"
     },
     {
       "capabilityRef": "capability.vexlife.score-family-sync",
       "purpose": "Synchronize explicit accepted Score projections while preserving sibling lineage attribution.",
-      "actionRefs": ["action.score.sync"],
+      "actionRefs": [
+        "action.score.sync"
+      ],
       "permissionRef": "permission.score.sync",
       "effectClass": "SCOPED_FAMILY_SYNC",
       "defaultStage": "EXPLAINABLE",
-      "roleRefs": ["role.vex.companion", "role.vex.guide", "role.vex.operations"],
-      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.guide",
+        "role.vex.operations"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.windows",
+        "platform.macos",
+        "platform.android",
+        "platform.ios"
+      ],
       "resourceClass": "NETWORK_OR_EXPORT_BOUNDED"
     },
     {
       "capabilityRef": "capability.vexlife.dream-review",
       "purpose": "Form and review source-bound Dream candidates without automatic memory or weight effects.",
-      "actionRefs": ["action.dream.form", "action.dream.review"],
+      "actionRefs": [
+        "action.dream.form",
+        "action.dream.review"
+      ],
       "permissionRef": "permission.dream.review",
       "effectClass": "DURABLE_MEANING_REVIEW",
       "defaultStage": "EXPLAINABLE",
-      "roleRefs": ["role.vex.companion", "role.vex.guide", "role.vex.operations", "role.vex.reviewer"],
-      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.guide",
+        "role.vex.operations",
+        "role.vex.reviewer"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.windows",
+        "platform.macos",
+        "platform.android",
+        "platform.ios"
+      ],
       "resourceClass": "MODEL_BACKGROUND_PREEMPTIBLE"
     },
     {
       "capabilityRef": "capability.vexlife.adapter.training",
       "purpose": "Run an isolated reviewed adapter candidate and return evaluation evidence; activation is separate.",
-      "actionRefs": ["action.adapter.train-candidate"],
+      "actionRefs": [
+        "action.adapter.train-candidate"
+      ],
       "permissionRef": "permission.adapter.train",
       "effectClass": "ISOLATED_MODEL_TRAINING",
       "defaultStage": "DISCOVERABLE",
-      "roleRefs": ["role.vex.operations", "role.vex.reviewer"],
-      "platformRefs": ["platform.windows", "platform.macos"],
+      "roleRefs": [
+        "role.vex.operations",
+        "role.vex.reviewer"
+      ],
+      "platformRefs": [
+        "platform.windows",
+        "platform.macos"
+      ],
       "resourceClass": "GPU_HEAVY_EXPLICIT_LEASE"
+    },
+    {
+      "capabilityRef": "capability.search",
+      "purpose": "Find canonical capability candidates from task terms and registered relationships without executing them.",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": true,
+      "rootKernel": true,
+      "parentCapabilityRef": null,
+      "childCapabilityRefs": [],
+      "recommendedNextCapabilityRefs": [
+        "capability.describe",
+        "process.resolve",
+        "context.where",
+        "help.render"
+      ],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v3",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXECUTABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.developer",
+        "role.vex.guide",
+        "role.vex.operations",
+        "role.vex.reviewer",
+        "role.vex.root-hub"
+      ],
+      "platformRefs": [
+        "platform.android",
+        "platform.browser",
+        "platform.ios",
+        "platform.macos",
+        "platform.windows"
+      ],
+      "toolContract": {
+        "contractRef": "contract.vexlife.capability-search.read-only/v1",
+        "toolRef": "tool.capability.search",
+        "effectRef": "effect.vexlife.read-only",
+        "argumentSchemaRef": "schema.vexlife.capability-search.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.capability-search.observation/v1",
+        "executorRef": "executor.vexlife.capability-search.deterministic-read-only",
+        "requiredArgumentFields": [],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 8192,
+        "externalEffectsExecuted": false
+      }
+    },
+    {
+      "capabilityRef": "capability.describe",
+      "purpose": "Project one compact current capability frontier with competence, currentness, permission, effect, resource and dependency gates.",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": true,
+      "rootKernel": true,
+      "parentCapabilityRef": null,
+      "childCapabilityRefs": [],
+      "recommendedNextCapabilityRefs": [
+        "capability.search",
+        "process.resolve",
+        "help.render"
+      ],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v3",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXECUTABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.developer",
+        "role.vex.guide",
+        "role.vex.operations",
+        "role.vex.reviewer",
+        "role.vex.root-hub"
+      ],
+      "platformRefs": [
+        "platform.android",
+        "platform.browser",
+        "platform.ios",
+        "platform.macos",
+        "platform.windows"
+      ],
+      "toolContract": {
+        "contractRef": "contract.vexlife.capability-describe.read-only/v1",
+        "toolRef": "tool.capability.describe",
+        "effectRef": "effect.vexlife.read-only",
+        "argumentSchemaRef": "schema.vexlife.capability-describe.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.capability-describe.observation/v1",
+        "executorRef": "executor.vexlife.capability-describe.deterministic-read-only",
+        "requiredArgumentFields": [],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 8192,
+        "externalEffectsExecuted": false
+      }
+    },
+    {
+      "capabilityRef": "process.resolve",
+      "purpose": "Resolve one task or capability cue to an accepted process source and no-effect dependency plan.",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": true,
+      "rootKernel": true,
+      "parentCapabilityRef": null,
+      "childCapabilityRefs": [],
+      "recommendedNextCapabilityRefs": [
+        "context.where",
+        "help.render"
+      ],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v3",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXECUTABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.developer",
+        "role.vex.guide",
+        "role.vex.operations",
+        "role.vex.reviewer",
+        "role.vex.root-hub"
+      ],
+      "platformRefs": [
+        "platform.android",
+        "platform.browser",
+        "platform.ios",
+        "platform.macos",
+        "platform.windows"
+      ],
+      "toolContract": {
+        "contractRef": "contract.vexlife.process-resolve.read-only/v1",
+        "toolRef": "tool.process.resolve",
+        "effectRef": "effect.vexlife.read-only",
+        "argumentSchemaRef": "schema.vexlife.process-resolve.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.process-resolve.observation/v1",
+        "executorRef": "executor.vexlife.process-resolve.deterministic-read-only",
+        "requiredArgumentFields": [],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 8192,
+        "externalEffectsExecuted": false
+      }
+    },
+    {
+      "capabilityRef": "context.where",
+      "purpose": "Report the current task, process, graph, observation, permission, currentness and resource location.",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": true,
+      "rootKernel": true,
+      "parentCapabilityRef": null,
+      "childCapabilityRefs": [],
+      "recommendedNextCapabilityRefs": [
+        "help.render"
+      ],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v3",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXECUTABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.developer",
+        "role.vex.guide",
+        "role.vex.operations",
+        "role.vex.reviewer",
+        "role.vex.root-hub"
+      ],
+      "platformRefs": [
+        "platform.android",
+        "platform.browser",
+        "platform.ios",
+        "platform.macos",
+        "platform.windows"
+      ],
+      "toolContract": {
+        "contractRef": "contract.vexlife.context-where.read-only/v1",
+        "toolRef": "tool.context.where",
+        "effectRef": "effect.vexlife.read-only",
+        "argumentSchemaRef": "schema.vexlife.context-where.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.context-where.observation/v1",
+        "executorRef": "executor.vexlife.context-where.deterministic-read-only",
+        "requiredArgumentFields": [],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 8192,
+        "externalEffectsExecuted": false
+      }
+    },
+    {
+      "capabilityRef": "help.render",
+      "purpose": "Render compact human-facing guidance and progress from current runtime state without hidden reasoning.",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": true,
+      "rootKernel": true,
+      "parentCapabilityRef": null,
+      "childCapabilityRefs": [],
+      "recommendedNextCapabilityRefs": [
+        "capability.search",
+        "capability.describe"
+      ],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v3",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXECUTABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.developer",
+        "role.vex.guide",
+        "role.vex.operations",
+        "role.vex.reviewer",
+        "role.vex.root-hub"
+      ],
+      "platformRefs": [
+        "platform.android",
+        "platform.browser",
+        "platform.ios",
+        "platform.macos",
+        "platform.windows"
+      ],
+      "toolContract": {
+        "contractRef": "contract.vexlife.help-render.read-only/v1",
+        "toolRef": "tool.help.render",
+        "effectRef": "effect.vexlife.read-only",
+        "argumentSchemaRef": "schema.vexlife.help-render.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.help-render.observation/v1",
+        "executorRef": "executor.vexlife.help-render.deterministic-read-only",
+        "requiredArgumentFields": [],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 8192,
+        "externalEffectsExecuted": false
+      }
     }
+  ],
+  "rootCapabilityKernel": [
+    "capability.search",
+    "capability.describe",
+    "process.resolve",
+    "context.where",
+    "help.render"
+  ],
+  "competenceStates": [
+    "UNKNOWN",
+    "CANDIDATE",
+    "PRACTICED",
+    "IN_EVIDENCE",
+    "BOUNDED_COMPETENT",
+    "HELD"
   ]
 }

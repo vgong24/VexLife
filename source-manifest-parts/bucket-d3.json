@@ -15,10 +15,16 @@
       "sha256": "45686acc47560279f2735ec4fc13619ae51f59ffd0fe0776df0bac7f1a92e11d"
     },
     {
+      "path": "docs/ANDROID-REMOTE-VESSEL.md",
+      "mode": "100644",
+      "bytes": 1942,
+      "sha256": "c734b041d0610e2e8e2a3e59eea012a3354e44db11819150ccdd4e5822ca478e"
+    },
+    {
       "path": "docs/ARTIFACT-DELIVERY.md",
       "mode": "100644",
-      "bytes": 6757,
-      "sha256": "e3561437410f8aea899e1978d13fe612fa4253f0483ddf8c6cb1fd78676a4e3a"
+      "bytes": 7005,
+      "sha256": "76be6279c56b37f89a0c6cb78f4087f9ad19fd40cc0a1abe808a8225cdc98447"
     },
     {
       "path": "docs/REVIEW-ARCHITECTURE-SELF-AUDIT.md",

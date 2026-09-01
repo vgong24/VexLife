@@ -15,6 +15,12 @@
       "sha256": "b37018abb34ef7e1aa27111cb5a125fd13782ef586c6c80127357d48084488bf"
     },
     {
+      "path": "test/android-remote-vessel-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 3141,
+      "sha256": "aff00bea3ac826f0f79720009ab12838013636675ccd23975b5e17c079bb0407"
+    },
+    {
       "path": "test/orientation-governance.test.mjs",
       "mode": "100644",
       "bytes": 4470,

@@ -1124,7 +1124,7 @@ function validatedEventSemanticRelay(relay, { messageRef, recipientRefs, phase }
   return structuredClone(relay);
 }
 
-async function callEndpoint({ endpointProfile, requestContent, inMemoryAuthorization = null, timeoutMs = 5000 }) {
+export async function requestLivedCompanionInference({ endpointProfile, requestContent, inMemoryAuthorization = null, timeoutMs = 5000 }) {
   if (
     !endpointProfile?.admitted ||
     !isNonEmptyString(endpointProfile.profileRef) ||
@@ -1211,6 +1211,7 @@ export async function performLivedCompanionTurn({
   requestSemanticRelay = null,
   responseSemanticRelay = null,
   endpointProfile,
+  responseResolver = null,
   contextSourceRefs = [],
   inMemoryAuthorization = null,
   timeoutMs = 5000,
@@ -1236,6 +1237,9 @@ export async function performLivedCompanionTurn({
     }
     if (!Array.isArray(contextSourceRefs) || contextSourceRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
       fail('HOME_IDENTITY_MISMATCH', 'contextSourceRefs must be an array of non-empty refs');
+    }
+    if (responseResolver !== null && typeof responseResolver !== 'function') {
+      fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'responseResolver must be one server-owned function when provided');
     }
     assertInMemoryAuthorizationNotPersisted({
       homeRef,
@@ -1309,8 +1313,48 @@ export async function performLivedCompanionTurn({
     atomicWriteJson(eventPath(paths.events, requestEvent.sequence, requestEvent.eventHash), requestEvent);
     requestDurablyRecorded = true;
 
-    const response = await callEndpoint({ endpointProfile, requestContent: content, inMemoryAuthorization, timeoutMs });
-    assertInMemoryAuthorizationNotPersisted(response, inMemoryAuthorization, 'endpoint response');
+    let response;
+    let runtimeProjection = null;
+    let additionalContextSourceRefs = [];
+    let actualHttpCall = true;
+    if (responseResolver) {
+      const resolved = await responseResolver({
+        endpointProfile,
+        requestContent: content,
+        inMemoryAuthorization,
+        timeoutMs,
+        context: {
+          homeRef: admitted.homeRef,
+          deviceRef: admitted.deviceRef,
+          companionLineageRef: admitted.companionLineageRef,
+          instanceRef,
+          threadRef,
+          channelRef,
+          turnRef,
+          taskRef: turnRef,
+          sourceRefs: [...contextSourceRefs]
+        }
+      });
+      response = resolved?.response ?? resolved;
+      runtimeProjection = resolved?.runtimeProjection ?? null;
+      additionalContextSourceRefs = [...new Set(resolved?.contextSourceRefs ?? [])].sort();
+      actualHttpCall = resolved?.actualHttpCall === true;
+      if (additionalContextSourceRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
+        fail('HOME_IDENTITY_MISMATCH', 'responseResolver contextSourceRefs must contain only non-empty refs');
+      }
+    } else {
+      response = await requestLivedCompanionInference({
+        endpointProfile,
+        requestContent: content,
+        inMemoryAuthorization,
+        timeoutMs
+      });
+    }
+    if (!response || typeof response.content !== 'string' || !response.content ||
+        typeof response.model !== 'string' || !response.model) {
+      fail('ENDPOINT_RESPONSE_INVALID', 'resolved Companion response must contain content and model provenance');
+    }
+    assertInMemoryAuthorizationNotPersisted({ response, runtimeProjection }, inMemoryAuthorization, 'endpoint response');
     const responseCore = {
       schemaVersion: responseRelay ? 'vexlife.lived-companion-event/v2' : 'vexlife.lived-companion-event/v1',
       eventRef: `event.vexlife.response.${crypto.randomUUID()}`,
@@ -1349,7 +1393,7 @@ export async function performLivedCompanionTurn({
       instanceRef,
       threadRef,
       turnRef,
-      contextSourceRefs: [...contextSourceRefs, requestEvent.eventRef, responseEvent.eventRef],
+      contextSourceRefs: [...new Set([...contextSourceRefs, ...additionalContextSourceRefs].filter((value) => value !== requestEvent.eventRef && value !== responseEvent.eventRef)), requestEvent.eventRef, responseEvent.eventRef],
       requestEventHash: requestEvent.eventHash,
       responseEventHash: responseEvent.eventHash,
       privacyClass: 'DEVICE_PRIVATE',
@@ -1390,8 +1434,9 @@ export async function performLivedCompanionTurn({
     return {
       state: 'TURN_COMPLETED',
       writerLeaseReleased,
-      actualHttpCall: true,
+      actualHttpCall,
       loopbackOnly: isLoopbackHost(new URL(endpointProfile.endpoint).hostname),
+      runtimeProjection: runtimeProjection ? structuredClone(runtimeProjection) : null,
       requestDurablyRecorded,
       responseDurablyRecorded,
       requestEvent,

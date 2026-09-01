@@ -5,14 +5,20 @@
     {
       "path": "blueprint/intent-scheduler-registry.json",
       "mode": "100644",
-      "bytes": 25654,
-      "sha256": "22edbb74f0b2a607732da04f7a2eef28853820c692283d664f45a485b571673d"
+      "bytes": 26312,
+      "sha256": "ecd5d3f6e0bab86f57d6c32b015614911838e552ffefb63f14c3620670aae62f"
     },
     {
       "path": "src/core/continuity-stream-adapter.mjs",
       "mode": "100644",
       "bytes": 23069,
       "sha256": "c1f042af05132438031b5d10c8f16cdb15a1864e4c332d601b288c40ec7b30a2"
+    },
+    {
+      "path": "test/android-remote-vessel-zero-effect.test.mjs",
+      "mode": "100644",
+      "bytes": 1612,
+      "sha256": "f8153b56db76ae783d0df5f1b8f7989404c2bcbbde9317a33caa617db5f5defc"
     }
   ]
 }
