@@ -4,16 +4,41 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { loadBlueprint } from '../src/core/blueprint.mjs';
 import {
   resolveMockToolContract,
   validateIntentSchedulerRegistry
 } from '../src/core/scheduler-runtime-trust.mjs';
 import { createToolCall, ToolResultRelay } from '../src/core/tool-result-relay.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const schedulerRegistry = JSON.parse(
   fs.readFileSync(path.join(root, 'blueprint/intent-scheduler-registry.json'), 'utf8')
 );
+const diagnosticBundle = loadBlueprint(root);
+const diagnosticAuthority = diagnosticBundle.blueprint.concernWatch.schedulerIntegration.externalSchedulerAuthority;
+const diagnosticActual = {
+  intentRegistryRef: diagnosticBundle.intentRegistry.registryRef,
+  intentRegistryFingerprint: semanticHash(diagnosticBundle.intentRegistry),
+  schedulerRegistryRef: diagnosticBundle.schedulerRegistry.registryRef,
+  schedulerRegistryFingerprint: semanticHash(diagnosticBundle.schedulerRegistry),
+  registeredProcessRefsFingerprint: semanticHash(
+    [...diagnosticBundle.factory.processes.map((item) => item.processRef)].sort()
+  ),
+  registeredRoleRefsFingerprint: semanticHash(
+    [...diagnosticBundle.blueprint.roles.map((item) => item.roleRef)].sort()
+  )
+};
+const diagnosticExpected = {
+  intentRegistryRef: diagnosticAuthority.intentRegistryRef,
+  intentRegistryFingerprint: diagnosticAuthority.intentRegistryFingerprint,
+  schedulerRegistryRef: diagnosticAuthority.schedulerRegistryRef,
+  schedulerRegistryFingerprint: diagnosticAuthority.schedulerRegistryFingerprint,
+  registeredProcessRefsFingerprint: diagnosticAuthority.registeredProcessRefsFingerprint,
+  registeredRoleRefsFingerprint: diagnosticAuthority.registeredRoleRefsFingerprint
+};
+console.log(`# HS353_AUTHORITY_CONTEXT ${JSON.stringify({ actual: diagnosticActual, expected: diagnosticExpected })}`);
 
 const PRACTICE = {
   contractRef: 'contract.intent-scheduler.mock-tool.capability-practice-read/v1',
