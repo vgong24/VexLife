@@ -42,7 +42,7 @@
   "form": "Preview relationship",
   "closeConnect": "Close connection preview",
   "held": "Not ready yet. Check the invitation, identity, and your decision.",
-  "ready": "Ready to preview this relationship.",
+  "ready": "Ready for a local decision. Nothing is Saved until an explicit persistence binding returns a durable commit receipt and matching current readback.",
   "formed": "A local relationship preview is ready. Nothing has been sent or saved.",
   "alphaConsentTitle": "Alpha participation consent",
   "alphaConsentBody": "Joining the alpha is a separate choice from accepting this invitation or choosing your relationship label.",
@@ -128,5 +128,10 @@
   "option.failure.relay": "Relay is unavailable",
   "option.failure.mailbox": "Mailbox only",
   "option.failure.session": "Session expired",
-  "option.failure.unknown": "Connection issue not known yet"
+  "option.failure.unknown": "Connection issue not known yet",
+  "persistenceSave": "Save relationship locally",
+  "persistenceSaved": "Saved locally as {class} after durable receipt + current readback. This is still your directional relationship only.",
+  "persistenceBindingRequired": "Saving is held until this Vex has explicit local-owner and counterpart invitation identity bindings.",
+  "persistencePrepared": "Prepared locally — not Saved yet.",
+  "persistenceFailure": "Not Saved — durable receipt/current readback was not verified."
 }

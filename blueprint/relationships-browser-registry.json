@@ -130,7 +130,11 @@
     "localDirectionalOnly": true,
     "counterpartClaimIndependent": true,
     "groupMembershipImpliesFriendship": false,
-    "invitationAcceptanceImpliesPersistence": false
+    "invitationAcceptanceImpliesPersistence": false,
+    "preparedImpliesPersistence": false,
+    "durableReceiptRequiredForSaved": true,
+    "currentReadbackRequiredForSaved": true,
+    "identityInferenceAllowed": false
   },
   "vexAssistance": {
     "class": "DETERMINISTIC_EXPLANATION_AND_DEEP_LINK_ONLY",
@@ -177,5 +181,23 @@
     "RPA17",
     "RPA18",
     "RPA19"
-  ]
+  ],
+  "persistenceAdoption": {
+    "state": "EXPLICIT_BINDING_REQUIRED",
+    "savedTruth": "DURABLE_RECEIPT_AND_CURRENT_READBACK",
+    "prepareTruth": "PREPARED_NO_EFFECT",
+    "runtimePlanRequiresSaved": true,
+    "serverRouteState": "HELD_PENDING_SHARED_PATH_RELEASE",
+    "sourceOwnerRef": "github.issue.vexlife.339",
+    "acceptedPersistenceOwnerRef": "github.pull.vexlife.325",
+    "identityBindingRequired": [
+      "localParticipantRef",
+      "localStateRootRef",
+      "counterpartParticipantRef",
+      "counterpartCurrentKeyRef",
+      "invitationRef",
+      "invitationCurrentnessRef"
+    ],
+    "identityInferenceAllowed": false
+  }
 }
