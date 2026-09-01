@@ -229,6 +229,61 @@ test('MIR-04 only typed CHANNEL_UNAVAILABLE advances to fallback', async () => {
   assert.equal(result.selectedChannelRef, 'channel.two');
 });
 
+test('MIR-04 chunk HTTP fallback admits availability statuses but hard-stops policy/protocol statuses', async () => {
+  const bytes = Buffer.from('chunk-http-law');
+  const artifact = artifactFor(bytes);
+  const secondary = { channelRef: 'channel.secondary', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://secondary.invalid/a' };
+
+  const manifest403Calls = [];
+  await expectCode(resolveSnapshotArtifact({
+    artifactRef: artifact.artifactRef,
+    finalPath: path.join(home(), artifact.filename),
+    artifactRegistry: artifacts(artifact),
+    deliveryRegistry: delivery(artifact.artifactRef, [
+      { channelRef: 'channel.chunk.manifest403', transportClass: 'VERIFIED_CHUNK_MANIFEST_V1', manifestUrl: 'https://chunk.invalid/manifest', manifestSha256: '0'.repeat(64) },
+      secondary
+    ]),
+    directDownload: directDownloadStub(),
+    fetchImpl: async (url) => { manifest403Calls.push(url); return response(Buffer.from('forbidden'), 403); }
+  }), ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID);
+  assert.deepEqual(manifest403Calls, ['https://chunk.invalid/manifest']);
+
+  const formed = chunkManifest(artifact, [bytes], 'https://chunk.invalid/');
+  const primary = { channelRef: 'channel.chunk.part403', transportClass: 'VERIFIED_CHUNK_MANIFEST_V1', manifestUrl: 'https://chunk.invalid/manifest', manifestSha256: formed.sha256 };
+  const part403Calls = [];
+  await expectCode(resolveSnapshotArtifact({
+    artifactRef: artifact.artifactRef,
+    finalPath: path.join(home(), artifact.filename),
+    artifactRegistry: artifacts(artifact),
+    deliveryRegistry: delivery(artifact.artifactRef, [primary, secondary]),
+    directDownload: directDownloadStub(),
+    fetchImpl: async (url) => {
+      part403Calls.push(url);
+      if (url === primary.manifestUrl) return response(formed.bytes, 200, { 'content-length': String(formed.bytes.length) });
+      return response(Buffer.from('forbidden'), 403);
+    }
+  }), ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID);
+  assert.deepEqual(part403Calls, [primary.manifestUrl, formed.manifest.parts[0].url]);
+
+  const unavailableCalls = [];
+  const fallback = await resolveSnapshotArtifact({
+    artifactRef: artifact.artifactRef,
+    finalPath: path.join(home(), artifact.filename),
+    artifactRegistry: artifacts(artifact),
+    deliveryRegistry: delivery(artifact.artifactRef, [
+      { channelRef: 'channel.chunk.manifest404', transportClass: 'VERIFIED_CHUNK_MANIFEST_V1', manifestUrl: 'https://unavailable.invalid/manifest', manifestSha256: '0'.repeat(64) },
+      secondary
+    ]),
+    directDownload: directDownloadStub(),
+    fetchImpl: async (url) => {
+      unavailableCalls.push(url);
+      return url.includes('unavailable.invalid') ? response(Buffer.from('missing'), 404) : response(bytes);
+    }
+  });
+  assert.equal(fallback.selectedChannelRef, 'channel.secondary');
+  assert.deepEqual(unavailableCalls, ['https://unavailable.invalid/manifest', 'https://secondary.invalid/a']);
+});
+
 test('MIR-04 local direct I/O failure hard-stops and never falls back', async () => {
   const bytes = Buffer.from('local-io');
   const artifact = artifactFor(bytes);

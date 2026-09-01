@@ -393,16 +393,21 @@ function classifyLocalOrUnknownFailure(error, channelRef, stage) {
   return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, `${stage} failed without an admitted transport-unavailable classification`, transportFailureDetail(error, { channelRef }));
 }
 
+function isUnavailableHttpStatus(status) {
+  return status === 404 || status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function classifyHttpFailure(status, channelRef, stage) {
+  if (Number.isInteger(status) && isUnavailableHttpStatus(status)) {
+    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `${stage} unavailable: HTTP ${status}`, { channelRef, status });
+  }
+  return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, `${stage} returned non-fallback HTTP ${Number.isInteger(status) ? status : 'NO_RESPONSE'}`, { channelRef, status: Number.isInteger(status) ? status : null });
+}
+
 function classifyLegacyDirectFailure(error, channelRef) {
   const message = String(error?.message ?? error);
   const http = message.match(/^download failed: HTTP (\d{3})$/u);
-  if (http) {
-    const status = Number(http[1]);
-    if (status === 404 || status === 408 || status === 425 || status === 429 || status >= 500) {
-      return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `artifact channel unavailable: HTTP ${status}`, { channelRef, status });
-    }
-    return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, `artifact channel returned non-fallback HTTP ${status}`, { channelRef, status });
-  }
+  if (http) return classifyHttpFailure(Number(http[1]), channelRef, 'artifact channel');
   if (/resume response did not start at the requested byte/u.test(message)) {
     return new ArtifactDeliveryError(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, 'direct artifact resume protocol contradiction', { channelRef });
   }
@@ -460,9 +465,10 @@ async function downloadDirectChannel({ artifact, channel, finalPath, directDownl
   }
 }
 
-async function readResponseBytes(response, maxBytes, label) {
-  if (!response?.ok || !response.body) {
-    fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `${label} unavailable: HTTP ${response?.status ?? 'NO_RESPONSE'}`);
+async function readResponseBytes(response, maxBytes, label, channelRef) {
+  if (!response?.ok) throw classifyHttpFailure(response?.status, channelRef, label);
+  if (!response.body) {
+    fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, `${label} response is missing a body`, { channelRef, status: response.status });
   }
   const chunks = [];
   let total = 0;
@@ -488,7 +494,7 @@ async function fetchManifestBytes(channel, fetchImpl) {
   catch (error) {
     fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `artifact manifest channel unavailable: ${channel.channelRef}`, { causeName: error?.name ?? null });
   }
-  return readResponseBytes(response, MAX_MANIFEST_BYTES, 'artifact manifest');
+  return readResponseBytes(response, MAX_MANIFEST_BYTES, 'artifact manifest', channel.channelRef);
 }
 
 export function validateChunkManifest(input, { artifact, channel, manifestSha256 }) {
@@ -616,8 +622,13 @@ async function downloadPartToFile({ part, channelRef, fetchImpl, partPath }) {
   catch (error) {
     fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `artifact part channel unavailable: ${channelRef}`, { channelRef, partIndex: part.index, causeName: error?.name ?? null });
   }
-  if (!response?.ok || !response.body) {
-    fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, `artifact part unavailable: HTTP ${response?.status ?? 'NO_RESPONSE'}`, { channelRef, partIndex: part.index });
+  if (!response?.ok) {
+    const classified = classifyHttpFailure(response?.status, channelRef, 'artifact part');
+    classified.detail = { ...classified.detail, partIndex: part.index };
+    throw classified;
+  }
+  if (!response.body) {
+    fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, 'artifact part response is missing a body', { channelRef, partIndex: part.index, status: response.status });
   }
   if (response.status !== 200) {
     fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_PROTOCOL_INVALID, 'artifact part must return HTTP 200 when no range was requested', { channelRef, partIndex: part.index, status: response.status });

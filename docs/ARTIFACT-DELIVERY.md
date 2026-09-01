@@ -73,9 +73,9 @@ The caller selects an artifact, an admitted policy identity, and an absolute des
 
 ## Failure law
 
-Only typed `CHANNEL_UNAVAILABLE` may advance to another source-managed channel. Local filesystem failures, verifier defects, unknown failures, and protocol contradictions hard-stop and never become provider fallback.
+Only typed `CHANNEL_UNAVAILABLE` may advance to another source-managed channel. Local filesystem failures, verifier defects, unknown failures, access-policy failures, and protocol contradictions hard-stop and never become provider fallback.
 
-Unavailable transport includes network/DNS/timeout and HTTP-unavailable responses. These do not claim artifact corruption.
+Unavailable transport includes network/DNS/timeout and the closed HTTP set `404`, `408`, `425`, `429`, and `5xx`. Direct, chunk-manifest, and chunk-part delivery share that same classification. Other HTTP failures such as `400`, `401`, and `403` are protocol/policy contradictions and must not advance to another channel. These rules do not claim artifact corruption.
 
 The resolver hard-stops on:
 
