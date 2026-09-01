@@ -29,12 +29,15 @@ export async function loadBrowserBundle(root = '../../') {
     fetchJson('blueprint/strings/zh.json'),
     fetchJson('blueprint/strings/ja.json')
   ]);
-  const androidRemoteVessel = createAndroidRemoteVesselController({
-    registry: blueprint.androidRemoteVessel,
-    homeBridge: blueprint.homeBridge
-  });
-  androidRemoteVessel.bind();
-  globalThis.__VEXLIFE_ANDROID_REMOTE_VESSEL__ = androidRemoteVessel;
+  let androidRemoteVessel = null;
+  if (globalThis.document) {
+    androidRemoteVessel = createAndroidRemoteVesselController({
+      registry: blueprint.androidRemoteVessel,
+      homeBridge: blueprint.homeBridge
+    });
+    androidRemoteVessel.bind();
+    globalThis.__VEXLIFE_ANDROID_REMOTE_VESSEL__ = androidRemoteVessel;
+  }
   return { blueprint, experience, featureRegistry, designTokens, catalogs: { en, zh, ja }, androidRemoteVessel };
 }
 
