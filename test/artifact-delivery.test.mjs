@@ -186,6 +186,55 @@ test('MIR-01 production resolver rejects registry/channel/verifier injection and
   assert.match(source, /SOURCE_DELIVERY_REGISTRY_PATH/u);
 });
 
+test('MIR-01 policy identity is unique and admitted before verified-cache reuse', async () => {
+  const bytes = Buffer.from('policy-cache');
+  const artifact = artifactFor(bytes);
+  const contradictoryA = [
+    { policyRef: 'policy.same', allowedTransportClasses: ['DIRECT_HTTPS_FILE_V1'] },
+    { policyRef: 'policy.same', allowedTransportClasses: ['VERIFIED_CHUNK_MANIFEST_V1'] }
+  ];
+  const contradictoryB = [...contradictoryA].reverse();
+  const channels = [{ channelRef: 'channel.direct', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://direct.invalid/a' }];
+  for (const policies of [contradictoryA, contradictoryB]) {
+    assert.throws(() => validateArtifactDeliveryRegistry(delivery(artifact.artifactRef, channels, policies), artifacts(artifact)),
+      (error) => error?.name === 'ArtifactDeliveryError' &&
+        error?.code === ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED &&
+        /policyRef values must be unique/u.test(error.message));
+  }
+
+  const root = home();
+  const target = path.join(root, artifact.filename);
+  fs.writeFileSync(target, bytes);
+  const registry = delivery(artifact.artifactRef, channels, [
+    { policyRef: 'policy.test.default', allowedTransportClasses: ['DIRECT_HTTPS_FILE_V1'] }
+  ]);
+  let directCalls = 0;
+  let fetchCalls = 0;
+  const args = {
+    artifactRef: artifact.artifactRef,
+    finalPath: target,
+    artifactRegistry: artifacts(artifact),
+    deliveryRegistry: registry,
+    directDownload: async () => { directCalls += 1; throw new Error('cache must not invoke direct download'); },
+    fetchImpl: async () => { fetchCalls += 1; throw new Error('cache must not fetch'); }
+  };
+
+  for (const invalidPolicy of ['policy.unknown', 7, { x: 1 }]) {
+    await expectCode(resolveSnapshotArtifact({ ...args, deliveryPolicyRef: invalidPolicy }),
+      ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED);
+  }
+  assert.equal(directCalls, 0);
+  assert.equal(fetchCalls, 0);
+
+  const reused = await resolveSnapshotArtifact({ ...args, deliveryPolicyRef: 'policy.test.default' });
+  assert.equal(reused.disposition, 'REUSED_VERIFIED');
+  assert.equal(reused.providerOrNetworkEffect, false);
+  assert.equal(reused.selectedChannelRef, null);
+  assert.deepEqual(reused.attemptedChannelRefs, []);
+  assert.equal(directCalls, 0);
+  assert.equal(fetchCalls, 0);
+});
+
 test('MIR-02 higher-level delivery does not change the legacy direct call contract', () => {
   const source = fs.readFileSync(path.join(ROOT, 'src/core/artifact-delivery.mjs'), 'utf8');
   assert.match(source, /directDownload\(\{\s*url:\s*channel\.url,\s*expectedSha256:/su);

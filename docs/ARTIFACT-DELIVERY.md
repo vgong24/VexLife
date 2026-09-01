@@ -34,7 +34,7 @@ licenseRef
 
 It deliberately contains no delivery URL, provider preference, channel order, caller input, generation selection, or active-model choice.
 
-`blueprint/artifact-delivery-registry.json` owns source-managed ordered delivery channels. The first generic transport classes are:
+`blueprint/artifact-delivery-registry.json` owns source-managed ordered delivery channels. Each `policyRef` is a unique stable identity; duplicate policy identities are invalid rather than array-order aliases. The first generic transport classes are:
 
 ```text
 DIRECT_HTTPS_FILE_V1
@@ -95,7 +95,7 @@ Wrong bytes are an integrity incident. They are never hidden by succeeding from 
 
 ## Verified cache
 
-Before choosing any channel the resolver verifies an existing final artifact against exact bytes and SHA-256. Exact cache reuse returns:
+Before choosing any channel the resolver admits the requested `deliveryPolicyRef`, then verifies an existing final artifact against exact bytes and SHA-256. Cache reuse bypasses transport selection, not request/policy identity validation. Exact cache reuse returns:
 
 ```text
 disposition=REUSED_VERIFIED

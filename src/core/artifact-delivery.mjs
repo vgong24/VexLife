@@ -282,6 +282,10 @@ export function validateArtifactDeliveryRegistry(registry, artifactRegistry = nu
     }
     return Object.freeze(structuredClone(policy));
   });
+  const policyRefs = policies.map((policy) => policy.policyRef);
+  if (new Set(policyRefs).size !== policyRefs.length) {
+    fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, 'delivery registry policyRef values must be unique');
+  }
   if (!policies.some((policy) => policy.policyRef === registry.defaultPolicyRef)) {
     fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, 'delivery defaultPolicyRef is not registered');
   }
@@ -318,6 +322,7 @@ export function validateArtifactDeliveryRegistry(registry, artifactRegistry = nu
 
 function policyFor(registry, deliveryPolicyRef) {
   const wanted = deliveryPolicyRef ?? registry.defaultPolicyRef;
+  requireRef(wanted, 'deliveryPolicyRef');
   const policy = registry.policies.find((entry) => entry.policyRef === wanted);
   if (!policy) fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, `unknown delivery policy ${wanted}`);
   return policy;
@@ -764,6 +769,7 @@ async function resolveArtifactDeliveryFromRegistrySnapshot({
   const delivery = validateArtifactDeliveryRegistry(deliveryRegistry, artifacts);
   const artifact = artifacts.artifacts.find((item) => item.artifactRef === artifactRef);
   if (!artifact) fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, `unknown artifactRef ${artifactRef}`);
+  const policy = policyFor(delivery, deliveryPolicyRef);
   const cache = await classifyExactArtifact({ finalPath, expectedSha256: artifact.sha256, expectedBytes: artifact.expectedBytes });
   if (cache.state === 'VERIFIED_REUSABLE') {
     clearAllPartialState(finalPath);
@@ -784,7 +790,6 @@ async function resolveArtifactDeliveryFromRegistrySnapshot({
   if (cache.state !== 'MISSING') {
     fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_INTEGRITY_MISMATCH, `existing artifact failed verification: ${cache.state}`, { artifactRef, cacheState: cache.state });
   }
-  const policy = policyFor(delivery, deliveryPolicyRef);
   const channels = delivery.channelsByArtifactRef[artifactRef];
   if (!channels?.length) fail(ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED, `artifact has no source-managed channels: ${artifactRef}`);
   const admitted = channels.filter((channel) => policy.allowedTransportClasses.includes(channel.transportClass));
