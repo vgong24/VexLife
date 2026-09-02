@@ -11,8 +11,8 @@
     {
       "path": "src/core/model-runtime-adapter.mjs",
       "mode": "100644",
-      "bytes": 15907,
-      "sha256": "66910c3d0bc3abf154553ad4d6a52ee166326e8affaf17c65f9e76b29ba31fd8"
+      "bytes": 9317,
+      "sha256": "59c7f4d34afd58f0a4a7596aaac06fa2b45061f945f794706cfa6e3efd6e8c2a"
     }
   ]
 }
