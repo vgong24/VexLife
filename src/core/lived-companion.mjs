@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { semanticHash, writeJson } from './utils.mjs';
 import { validateSemanticRelay } from './conversation.mjs';
+import { createContextLease } from './context-lease.mjs';
+import { assertCurrentLease } from './scheduler-runtime-trust.mjs';
 
 export const LIVED_COMPANION_FAILURE_CODES = Object.freeze([
   'HOME_NOT_INITIALIZED',
@@ -1124,7 +1126,600 @@ function validatedEventSemanticRelay(relay, { messageRef, recipientRefs, phase }
   return structuredClone(relay);
 }
 
-export async function requestLivedCompanionInference({ endpointProfile, requestContent, inMemoryAuthorization = null, timeoutMs = 5000 }) {
+function promptContextFailure(message, details = null) {
+  fail('CONTEXT_HASH_MISMATCH', message, details);
+}
+
+const TRUSTED_PROMPT_CONTEXT_MATERIALIZATIONS = new WeakMap();
+
+function canonicalPromptContextCurrentEventBinding(value, label = 'current request event binding') {
+  const expectedKeys = ['eventHash', 'eventRef', 'sequence'];
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expectedKeys)) {
+    promptContextFailure(`${label} is invalid`);
+  }
+  const eventRef = ensureSafeRef(value.eventRef, `${label}.eventRef`, 'CONTEXT_HASH_MISMATCH');
+  if (!/^[0-9a-f]{64}$/u.test(value.eventHash ?? '') || !Number.isSafeInteger(value.sequence) || value.sequence < 0) {
+    promptContextFailure(`${label} locator is invalid`);
+  }
+  return Object.freeze({ eventRef, eventHash: value.eventHash, sequence: value.sequence });
+}
+
+function canonicalPromptContextSelectedEventBinding(value, expectedEventRef, index) {
+  const expectedKeys = ['completedHeadSha256', 'eventHash', 'eventRef', 'sequence'];
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expectedKeys)) {
+    promptContextFailure('selected prompt-context event binding is invalid', { index });
+  }
+  const current = canonicalPromptContextCurrentEventBinding({
+    eventRef: value.eventRef,
+    eventHash: value.eventHash,
+    sequence: value.sequence
+  }, `selectedEventBindings[${index}]`);
+  if (current.eventRef !== expectedEventRef || !/^[0-9a-f]{64}$/u.test(value.completedHeadSha256 ?? '')) {
+    promptContextFailure('selected prompt-context event binding does not match the exact selected ref', { index, expectedEventRef });
+  }
+  return Object.freeze({ ...current, completedHeadSha256: value.completedHeadSha256 });
+}
+
+function canonicalPromptContextAuthorityQuery({
+  phase,
+  lineageRef,
+  threadRef,
+  priorConversationHeadSha256,
+  currentRequestBinding,
+  selectedConversationEventRefs,
+  materializationReceipt = null
+}) {
+  if (!['MATERIALIZE', 'PRE_PROVIDER'].includes(phase)) promptContextFailure('prompt-context authority phase is invalid');
+  if (priorConversationHeadSha256 !== null && !/^[0-9a-f]{64}$/u.test(priorConversationHeadSha256 ?? '')) {
+    promptContextFailure('prior conversation head binding is invalid');
+  }
+  return Object.freeze({
+    schemaVersion: 'vexlife.prompt-context-authority-query/v2',
+    phase,
+    lineageRef,
+    threadRef,
+    priorConversationHeadSha256,
+    currentRequestEventRef: currentRequestBinding.eventRef,
+    currentRequestEventHash: currentRequestBinding.eventHash,
+    currentRequestSequence: currentRequestBinding.sequence,
+    selectedConversationEventRefs: Object.freeze([...selectedConversationEventRefs]),
+    materializationReceiptRefOrNull: materializationReceipt?.receiptRef ?? null,
+    materializationReceiptFingerprintOrNull: materializationReceipt?.semanticFingerprint ?? null
+  });
+}
+
+function canonicalAuthorityWitness(value, {
+  phase,
+  lease,
+  projection,
+  lineageRef,
+  threadRef,
+  priorConversationHeadSha256,
+  currentRequestBinding,
+  selectedConversationEventRefs,
+  materializationReceipt = null
+}) {
+  const expectedKeys = [
+    'authorityRef',
+    'contextLeaseFingerprint',
+    'contextLeaseRef',
+    'continuityProjectionFingerprint',
+    'continuityProjectionRef',
+    'currentRequestEventBinding',
+    'currentness',
+    'lifecycle',
+    'lineageRef',
+    'materializationReceiptFingerprintOrNull',
+    'materializationReceiptRefOrNull',
+    'observedAt',
+    'phase',
+    'priorConversationHeadSha256',
+    'runtimeSnapshotFingerprint',
+    'schedulerGeneration',
+    'schemaVersion',
+    'selectedEventBindings',
+    'threadRef'
+  ].sort();
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expectedKeys) ||
+      value.schemaVersion !== 'vexlife.prompt-context-owner-currentness-witness/v2' ||
+      value.phase !== phase || value.currentness !== 'CURRENT' || value.lifecycle !== 'ACTIVE' ||
+      typeof value.authorityRef !== 'string' || !value.authorityRef ||
+      !Number.isInteger(value.schedulerGeneration) || value.schedulerGeneration < 0 ||
+      typeof value.runtimeSnapshotFingerprint !== 'string') {
+    promptContextFailure('prompt-context authority witness is invalid');
+  }
+  const observedMs = Date.parse(value.observedAt);
+  if (!Number.isFinite(observedMs) || new Date(observedMs).toISOString() !== value.observedAt) {
+    promptContextFailure('prompt-context authority witness observedAt is invalid');
+  }
+  const expectedReceiptRef = materializationReceipt?.receiptRef ?? null;
+  const expectedReceiptFingerprint = materializationReceipt?.semanticFingerprint ?? null;
+  if (
+    value.lineageRef !== lineageRef || value.threadRef !== threadRef ||
+    value.contextLeaseRef !== lease.leaseRef || value.contextLeaseFingerprint !== lease.semanticFingerprint ||
+    value.schedulerGeneration !== lease.schedulerGeneration ||
+    value.runtimeSnapshotFingerprint !== lease.runtimeSnapshotFingerprint ||
+    value.continuityProjectionRef !== projection.adapterProjectionRef ||
+    value.continuityProjectionFingerprint !== projection.semanticFingerprint ||
+    value.priorConversationHeadSha256 !== priorConversationHeadSha256 ||
+    value.materializationReceiptRefOrNull !== expectedReceiptRef ||
+    value.materializationReceiptFingerprintOrNull !== expectedReceiptFingerprint
+  ) {
+    promptContextFailure('prompt-context authority witness does not bind the exact current owner evidence');
+  }
+  const current = canonicalPromptContextCurrentEventBinding(value.currentRequestEventBinding);
+  if (JSON.stringify(current) !== JSON.stringify(currentRequestBinding)) {
+    promptContextFailure('prompt-context authority witness does not bind the exact current request event');
+  }
+  if (!Array.isArray(value.selectedEventBindings) || value.selectedEventBindings.length !== selectedConversationEventRefs.length) {
+    promptContextFailure('prompt-context authority witness selected event bindings are incomplete');
+  }
+  const selected = value.selectedEventBindings.map((binding, index) =>
+    canonicalPromptContextSelectedEventBinding(binding, selectedConversationEventRefs[index], index));
+  return Object.freeze({
+    ...structuredClone(value),
+    currentRequestEventBinding: current,
+    selectedEventBindings: Object.freeze(selected)
+  });
+}
+
+function validatePromptContextContinuityProjection(value, contextLease, companionLineageRef, threadRef) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      value.schemaVersion !== 'vexlife.continuity-stream-adapter-projection/v1' || value.currentness !== 'CURRENT') {
+    promptContextFailure('continuity projection is not current');
+  }
+  const { adapterProjectionRef, semanticFingerprint, ...core } = structuredClone(value);
+  if (!/^[0-9a-f]{64}$/u.test(semanticFingerprint ?? '') || contentHash(core) !== semanticFingerprint ||
+      adapterProjectionRef !== `projection.vexlife.continuity-stream-adapter.${semanticFingerprint.slice(0, 32)}`) {
+    promptContextFailure('continuity projection fingerprint is invalid');
+  }
+  if (value.current?.lineageRef !== companionLineageRef || value.current?.threadRef !== threadRef) {
+    promptContextFailure('continuity projection lineage or thread does not match the lived turn');
+  }
+  if (value.owners?.context?.leaseRef !== contextLease.leaseRef ||
+      value.owners?.context?.semanticFingerprint !== contextLease.semanticFingerprint ||
+      value.owners?.context?.currentness !== 'CURRENT' || value.owners?.context?.lifecycle !== 'ACTIVE') {
+    promptContextFailure('continuity projection does not bind the exact current Context Lease');
+  }
+  if (Object.values(value.effects ?? {}).some((observed) => observed !== false) ||
+      value.projectionTruth?.readOnly !== true || value.projectionTruth?.rawTranscriptIncluded !== false ||
+      value.projectionTruth?.hiddenReasoningIncluded !== false) {
+    promptContextFailure('continuity projection carries an effect or raw-history assertion');
+  }
+  return value;
+}
+
+function promptMessageTokenEstimate(message) {
+  return Math.max(1, Math.ceil(Buffer.byteLength(message.content, 'utf8') / 4)) + 4;
+}
+
+function assertPromptContextPriorHead(home, admitted, threadRef, paths, priorConversationHeadSha256) {
+  if (priorConversationHeadSha256 === null) {
+    if (fs.existsSync(paths.head)) promptContextFailure('prompt-context prior head unexpectedly exists');
+    return null;
+  }
+  if (!/^[0-9a-f]{64}$/u.test(priorConversationHeadSha256 ?? '') || !fs.existsSync(paths.head)) {
+    promptContextFailure('prompt-context prior head is missing or invalid');
+  }
+  const head = verifyHead(readJson(paths.head, 'CONVERSATION_HEAD_MISMATCH', 'prompt-context current prior head'));
+  if (head.conversationHeadSha256 !== priorConversationHeadSha256 ||
+      head.homeRef !== admitted.homeRef || head.deviceRef !== admitted.deviceRef ||
+      head.companionLineageRef !== admitted.companionLineageRef || head.threadRef !== threadRef) {
+    promptContextFailure('prompt-context prior head does not match the exact lived thread');
+  }
+  const immutable = loadImmutableConversationHead(home, admitted, threadRef, priorConversationHeadSha256).head;
+  if (JSON.stringify(immutable) !== JSON.stringify(head)) {
+    promptContextFailure('prompt-context mutable and immutable prior heads disagree');
+  }
+  return immutable;
+}
+
+function exactPromptContextEvent(eventsDirectory, binding, expectedIdentity, label) {
+  const file = eventPath(eventsDirectory, binding.sequence, binding.eventHash);
+  if (!fs.existsSync(file)) promptContextFailure(`${label} is missing`, { eventRef: binding.eventRef });
+  const stat = fs.lstatSync(file);
+  if (stat.isSymbolicLink() || !stat.isFile()) promptContextFailure(`${label} is not one exact regular event file`);
+  const event = readJson(file, 'EVENT_CHAIN_CORRUPT', label);
+  assertEventRecord(event, expectedIdentity, path.basename(file));
+  if (event.eventRef !== binding.eventRef || event.eventHash !== binding.eventHash || event.sequence !== binding.sequence) {
+    promptContextFailure(`${label} locator does not match persisted event identity`, { eventRef: binding.eventRef });
+  }
+  return event;
+}
+
+function verifiedPromptContextHeadAncestry(home, admitted, threadRef, priorHead, targetHeadSha256s) {
+  const targets = new Set(targetHeadSha256s);
+  const heads = new Map();
+  let current = priorHead;
+  let headMetadataReadCount = priorHead ? 1 : 0;
+  while (current) {
+    heads.set(current.conversationHeadSha256, current);
+    if ([...targets].every((target) => heads.has(target))) break;
+    if (current.priorConversationHeadSha256 === null) break;
+    const prior = loadImmutableConversationHead(home, admitted, threadRef, current.priorConversationHeadSha256).head;
+    headMetadataReadCount += 1;
+    if (prior.sequence !== current.sequence - 2) {
+      promptContextFailure('prompt-context immutable head ancestry is not contiguous');
+    }
+    current = prior;
+  }
+  const missing = [...targets].filter((target) => !heads.has(target));
+  if (missing.length) promptContextFailure('selected prompt-context event is not in the exact prior lived head ancestry', { missing });
+  return { heads, headMetadataReadCount };
+}
+
+function verifyPromptContextSelectedTurnContext(home, admitted, threadRef, head, event) {
+  const contextFile = resolveHomeRelativePath(home, head.contextPath, 'CONTEXT_HASH_MISMATCH');
+  const context = readJson(contextFile, 'CONTEXT_HASH_MISMATCH', 'selected prompt-context turn context');
+  const { serializedContextSha256, ...core } = context ?? {};
+  if (!/^[0-9a-f]{64}$/u.test(serializedContextSha256 ?? '') || contentHash(core) !== serializedContextSha256 ||
+      serializedContextSha256 !== head.contextSha256 ||
+      context.homeRef !== admitted.homeRef || context.deviceRef !== admitted.deviceRef ||
+      context.companionLineageRef !== admitted.companionLineageRef || context.threadRef !== threadRef ||
+      context.turnRef !== head.turnRef) {
+    promptContextFailure('selected prompt-context turn context does not match its immutable head');
+  }
+  if (event.eventKind === 'REQUEST') {
+    if (head.sequence !== event.sequence + 1 || context.requestEventHash !== event.eventHash) {
+      promptContextFailure('selected request event is not the exact request of its completed lived turn');
+    }
+  } else if (event.eventKind === 'RESPONSE') {
+    if (head.sequence !== event.sequence || context.responseEventHash !== event.eventHash) {
+      promptContextFailure('selected response event is not the exact response of its completed lived turn');
+    }
+  } else {
+    promptContextFailure('selected conversation event has an unsupported role');
+  }
+}
+
+function verifyPromptContextSourceBindings({
+  home,
+  admitted,
+  threadRef,
+  priorConversationHeadSha256,
+  currentRequestBinding,
+  selectedEventBindings,
+  currentRequestContent
+}) {
+  const paths = homePaths(home, admitted.companionLineageRef, threadRef);
+  const priorHead = assertPromptContextPriorHead(home, admitted, threadRef, paths, priorConversationHeadSha256);
+  const expectedIdentity = {
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef
+  };
+  const current = exactPromptContextEvent(paths.events, currentRequestBinding, expectedIdentity, 'current prompt-context request event');
+  if (current.eventKind !== 'REQUEST' || current.content !== currentRequestContent ||
+      current.contentHash !== contentHash(currentRequestContent) ||
+      current.priorEventHash !== (priorHead?.eventHash ?? null)) {
+    promptContextFailure('current request event does not match the exact persisted lived request');
+  }
+  const ancestry = verifiedPromptContextHeadAncestry(
+    home,
+    admitted,
+    threadRef,
+    priorHead,
+    selectedEventBindings.map((binding) => binding.completedHeadSha256)
+  );
+  const selected = selectedEventBindings.map((binding) => {
+    const event = exactPromptContextEvent(paths.events, binding, expectedIdentity, 'selected prompt-context event');
+    if (event.eventRef === current.eventRef || event.sequence >= current.sequence) {
+      promptContextFailure('selected context event is not prior to the current request', { eventRef: event.eventRef });
+    }
+    verifyPromptContextSelectedTurnContext(home, admitted, threadRef, ancestry.heads.get(binding.completedHeadSha256), event);
+    return event;
+  });
+  return {
+    current,
+    selected,
+    headMetadataReadCount: ancestry.headMetadataReadCount,
+    exactEventFileReadCount: selected.length + 1
+  };
+}
+
+function formPromptContextReceipt(core) {
+  const semanticFingerprint = contentHash(core);
+  return Object.freeze({
+    ...core,
+    receiptRef: `receipt.vexlife.prompt-context-materialization.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  });
+}
+
+export async function materializeLivedCompanionPromptContext({
+  home,
+  homeRef,
+  deviceRef,
+  companionLineageRef,
+  threadRef,
+  currentRequestEventRef,
+  currentRequestEventHash,
+  currentRequestSequence,
+  priorConversationHeadSha256 = null,
+  currentRequestContent,
+  contextLease,
+  continuityProjection,
+  selectedConversationEventRefs = [],
+  authorityVerifier
+}) {
+  const identity = loadHome(home);
+  const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
+  const safeThread = ensureSafeRef(threadRef, 'threadRef', 'CONTEXT_HASH_MISMATCH');
+  if (typeof authorityVerifier !== 'function') promptContextFailure('prompt context requires one independently owned currentness verifier');
+  let canonicalLease;
+  try {
+    canonicalLease = createContextLease(contextLease).lease;
+  } catch (error) {
+    promptContextFailure('Context Lease is not canonical for prompt materialization', { cause: error.message });
+  }
+  validatePromptContextContinuityProjection(continuityProjection, canonicalLease, admitted.companionLineageRef, safeThread);
+  if (!Array.isArray(selectedConversationEventRefs) ||
+      selectedConversationEventRefs.some((ref) => typeof ref !== 'string' || !ref) ||
+      new Set(selectedConversationEventRefs).size !== selectedConversationEventRefs.length) {
+    promptContextFailure('selected conversation event refs must be unique stable refs');
+  }
+  const selectedRefs = selectedConversationEventRefs.map((ref, index) =>
+    ensureSafeRef(ref, `selectedConversationEventRefs[${index}]`, 'CONTEXT_HASH_MISMATCH'));
+  const selectedAuthority = new Set(canonicalLease.selectedSourceRefs ?? []);
+  for (const ref of selectedRefs) {
+    if (!selectedAuthority.has(ref)) promptContextFailure('selected event is not authorized by the exact Context Lease', { eventRef: ref });
+  }
+  const currentRequestBinding = canonicalPromptContextCurrentEventBinding({
+    eventRef: currentRequestEventRef,
+    eventHash: currentRequestEventHash,
+    sequence: currentRequestSequence
+  });
+  const query = canonicalPromptContextAuthorityQuery({
+    phase: 'MATERIALIZE',
+    lineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    priorConversationHeadSha256,
+    currentRequestBinding,
+    selectedConversationEventRefs: selectedRefs
+  });
+  const witness = canonicalAuthorityWitness(await authorityVerifier(query), {
+    phase: 'MATERIALIZE',
+    lease: canonicalLease,
+    projection: continuityProjection,
+    lineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    priorConversationHeadSha256,
+    currentRequestBinding,
+    selectedConversationEventRefs: selectedRefs
+  });
+  try {
+    assertCurrentLease(canonicalLease, {
+      label: 'prompt context',
+      observedAt: witness.observedAt,
+      schedulerGeneration: witness.schedulerGeneration,
+      runtimeSnapshotFingerprint: witness.runtimeSnapshotFingerprint
+    });
+  } catch (error) {
+    promptContextFailure('Context Lease is not exact-current under independent owner evidence', { cause: error.message });
+  }
+  const source = verifyPromptContextSourceBindings({
+    home: identity.homeRoot,
+    admitted,
+    threadRef: safeThread,
+    priorConversationHeadSha256,
+    currentRequestBinding: witness.currentRequestEventBinding,
+    selectedEventBindings: witness.selectedEventBindings,
+    currentRequestContent
+  });
+  for (let index = 1; index < source.selected.length; index += 1) {
+    if (source.selected[index - 1].sequence >= source.selected[index].sequence) {
+      promptContextFailure('selected conversation event order does not match canonical event order');
+    }
+  }
+  const entries = source.selected.map((event, index) => ({
+    ordinal: index,
+    role: event.eventKind === 'REQUEST' ? 'user' : event.eventKind === 'RESPONSE' ? 'assistant' : null,
+    sourceEventRef: event.eventRef,
+    sourceEventHash: event.eventHash,
+    sourceContentHash: event.contentHash,
+    sequence: event.sequence,
+    completedHeadSha256: witness.selectedEventBindings[index].completedHeadSha256,
+    estimatedTokens: promptMessageTokenEstimate({ content: event.content })
+  }));
+  if (entries.some((entry) => entry.role === null)) promptContextFailure('selected conversation event has an unsupported role');
+  entries.push({
+    ordinal: entries.length,
+    role: 'user',
+    sourceEventRef: source.current.eventRef,
+    sourceEventHash: source.current.eventHash,
+    sourceContentHash: source.current.contentHash,
+    sequence: source.current.sequence,
+    completedHeadSha256: null,
+    estimatedTokens: promptMessageTokenEstimate({ content: source.current.content })
+  });
+  const messages = [
+    ...source.selected.map((event) => ({ role: event.eventKind === 'REQUEST' ? 'user' : 'assistant', content: event.content })),
+    { role: 'user', content: source.current.content }
+  ];
+  const materializedInputTokenEstimate = entries.reduce((sum, entry) => sum + entry.estimatedTokens, 0);
+  const availableInputTokens = canonicalLease.hardTokenLimit - canonicalLease.reservedOutputTokens;
+  if (availableInputTokens < 0 || materializedInputTokenEstimate > canonicalLease.inputTokenEstimate ||
+      materializedInputTokenEstimate > availableInputTokens) {
+    promptContextFailure('materialized prompt exceeds the exact Context Lease input budget', {
+      materializedInputTokenEstimate,
+      availableInputTokens
+    });
+  }
+  const receipt = formPromptContextReceipt({
+    schemaVersion: 'vexlife.prompt-context-materialization-receipt/v2',
+    authorityRef: witness.authorityRef,
+    authorityObservedAt: witness.observedAt,
+    providerAuthorityRef: null,
+    providerAuthorityObservedAt: null,
+    providerBoundaryCurrentnessVerified: false,
+    providerBoundarySourceBindingsVerified: false,
+    providerExactEventFileReadCount: 0,
+    providerHeadMetadataReadCount: 0,
+    contextLeaseRef: canonicalLease.leaseRef,
+    contextLeaseFingerprint: canonicalLease.semanticFingerprint,
+    continuityProjectionRef: continuityProjection.adapterProjectionRef,
+    continuityProjectionFingerprint: continuityProjection.semanticFingerprint,
+    lineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    priorConversationHeadSha256,
+    turnRef: source.current.turnRef,
+    currentRequestEventRef: source.current.eventRef,
+    currentRequestContentHash: source.current.contentHash,
+    selectedConversationEventRefs: [...selectedRefs],
+    includedSourceRefs: [...selectedRefs, source.current.eventRef],
+    orderedMaterializationEntries: entries,
+    exactMessagesSha256: contentHash(messages),
+    messageCount: messages.length,
+    materializedInputTokenEstimate,
+    contextLeaseInputTokenEstimate: canonicalLease.inputTokenEstimate,
+    reservedOutputTokens: canonicalLease.reservedOutputTokens,
+    hardTokenLimit: canonicalLease.hardTokenLimit,
+    exactEventFileReadCount: source.exactEventFileReadCount,
+    headMetadataReadCount: source.headMetadataReadCount,
+    wholeHistoryEventEnumerationPerformed: false,
+    currentRequestIncludedExactlyOnce: true,
+    priorHumanMessagesUnmodified: true,
+    priorAssistantMessagesUnmodified: true,
+    tokenBudgetSatisfied: true,
+    sourceCurrentnessVerified: true,
+    crossLineageLeakage: false,
+    crossThreadLeakage: false,
+    memoryEffectPerformed: false,
+    trainingSelectionPerformed: false,
+    modelWeightEffectPerformed: false,
+    hiddenReasoningIncluded: false
+  });
+  const materialization = Object.freeze({
+    messages: Object.freeze(messages.map((message) => Object.freeze({ ...message }))),
+    receipt
+  });
+  TRUSTED_PROMPT_CONTEXT_MATERIALIZATIONS.set(materialization, Object.freeze({
+    authorityVerifier,
+    canonicalLease,
+    continuityProjection,
+    home: identity.homeRoot,
+    admitted: Object.freeze({ ...admitted }),
+    threadRef: safeThread,
+    priorConversationHeadSha256,
+    currentRequestBinding: witness.currentRequestEventBinding,
+    selectedConversationEventRefs: Object.freeze([...selectedRefs]),
+    selectedEventBindings: Object.freeze(witness.selectedEventBindings.map((binding) => Object.freeze({ ...binding }))),
+    materializationAuthorityRef: witness.authorityRef,
+    materializationAuthorityObservedAt: witness.observedAt
+  }));
+  return materialization;
+}
+
+async function canonicalTrustedPromptMaterialization(materialization, requestContent) {
+  const state = materialization && typeof materialization === 'object'
+    ? TRUSTED_PROMPT_CONTEXT_MATERIALIZATIONS.get(materialization)
+    : null;
+  if (!state) promptContextFailure('prompt-context inference requires the exact in-process materialization capability');
+  const messages = materialization.messages;
+  const receipt = materialization.receipt;
+  const canonical = messages.map((entry, index) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry) ||
+        !['system', 'user', 'assistant'].includes(entry.role) || typeof entry.content !== 'string' || !entry.content ||
+        Object.keys(entry).some((key) => !['role', 'content'].includes(key))) {
+      promptContextFailure('trusted prompt message is invalid', { index });
+    }
+    return { role: entry.role, content: entry.content };
+  });
+  const last = canonical.at(-1);
+  if (last?.role !== 'user' || last.content !== requestContent) {
+    promptContextFailure('trusted prompt messages must end with the exact current human request');
+  }
+  const { receiptRef, semanticFingerprint, ...receiptCore } = receipt ?? {};
+  if (!/^[0-9a-f]{64}$/u.test(semanticFingerprint ?? '') || contentHash(receiptCore) !== semanticFingerprint ||
+      receiptRef !== `receipt.vexlife.prompt-context-materialization.${semanticFingerprint.slice(0, 32)}` ||
+      receipt.schemaVersion !== 'vexlife.prompt-context-materialization-receipt/v2' ||
+      receipt.exactMessagesSha256 !== contentHash(canonical) || receipt.messageCount !== canonical.length ||
+      receipt.currentRequestContentHash !== contentHash(requestContent) || receipt.sourceCurrentnessVerified !== true ||
+      receipt.wholeHistoryEventEnumerationPerformed !== false || receipt.providerBoundaryCurrentnessVerified !== false ||
+      receipt.providerBoundarySourceBindingsVerified !== false || receipt.providerExactEventFileReadCount !== 0 ||
+      receipt.providerHeadMetadataReadCount !== 0 || receipt.memoryEffectPerformed !== false ||
+      receipt.trainingSelectionPerformed !== false || receipt.modelWeightEffectPerformed !== false) {
+    promptContextFailure('trusted prompt materialization receipt integrity is invalid');
+  }
+  const query = canonicalPromptContextAuthorityQuery({
+    phase: 'PRE_PROVIDER',
+    lineageRef: state.admitted.companionLineageRef,
+    threadRef: state.threadRef,
+    priorConversationHeadSha256: state.priorConversationHeadSha256,
+    currentRequestBinding: state.currentRequestBinding,
+    selectedConversationEventRefs: state.selectedConversationEventRefs,
+    materializationReceipt: receipt
+  });
+  const witness = canonicalAuthorityWitness(await state.authorityVerifier(query), {
+    phase: 'PRE_PROVIDER',
+    lease: state.canonicalLease,
+    projection: state.continuityProjection,
+    lineageRef: state.admitted.companionLineageRef,
+    threadRef: state.threadRef,
+    priorConversationHeadSha256: state.priorConversationHeadSha256,
+    currentRequestBinding: state.currentRequestBinding,
+    selectedConversationEventRefs: state.selectedConversationEventRefs,
+    materializationReceipt: receipt
+  });
+  if (witness.authorityRef !== state.materializationAuthorityRef ||
+      Date.parse(witness.observedAt) < Date.parse(state.materializationAuthorityObservedAt) ||
+      JSON.stringify(witness.selectedEventBindings) !== JSON.stringify(state.selectedEventBindings)) {
+    promptContextFailure('provider-boundary prompt-context authority no longer matches the exact materialization');
+  }
+  try {
+    assertCurrentLease(state.canonicalLease, {
+      label: 'prompt context provider boundary',
+      observedAt: witness.observedAt,
+      schedulerGeneration: witness.schedulerGeneration,
+      runtimeSnapshotFingerprint: witness.runtimeSnapshotFingerprint
+    });
+  } catch (error) {
+    promptContextFailure('Context Lease is not exact-current at the provider boundary', { cause: error.message });
+  }
+  const source = verifyPromptContextSourceBindings({
+    home: state.home,
+    admitted: state.admitted,
+    threadRef: state.threadRef,
+    priorConversationHeadSha256: state.priorConversationHeadSha256,
+    currentRequestBinding: witness.currentRequestEventBinding,
+    selectedEventBindings: witness.selectedEventBindings,
+    currentRequestContent: requestContent
+  });
+  const reboundMessages = [
+    ...source.selected.map((event) => ({ role: event.eventKind === 'REQUEST' ? 'user' : 'assistant', content: event.content })),
+    { role: 'user', content: source.current.content }
+  ];
+  if (contentHash(reboundMessages) !== receipt.exactMessagesSha256 || JSON.stringify(reboundMessages) !== JSON.stringify(canonical)) {
+    promptContextFailure('provider-boundary event bytes no longer match the exact materialized messages');
+  }
+  const finalCore = {
+    ...receiptCore,
+    providerAuthorityRef: witness.authorityRef,
+    providerAuthorityObservedAt: witness.observedAt,
+    providerBoundaryCurrentnessVerified: true,
+    providerBoundarySourceBindingsVerified: true,
+    providerExactEventFileReadCount: source.exactEventFileReadCount,
+    providerHeadMetadataReadCount: source.headMetadataReadCount
+  };
+  return Object.freeze({ messages: canonical, receipt: formPromptContextReceipt(finalCore) });
+}
+
+export async function requestLivedCompanionInference({
+  endpointProfile,
+  requestContent,
+  promptContextMaterialization = null,
+  messages = undefined,
+  promptContextMaterializationReceipt = undefined,
+  inMemoryAuthorization = null,
+  timeoutMs = 5000
+}) {
+  if (messages !== undefined || promptContextMaterializationReceipt !== undefined) {
+    promptContextFailure('plain explicit messages or caller-authored materialization receipts are not accepted');
+  }
   if (
     !endpointProfile?.admitted ||
     !isNonEmptyString(endpointProfile.profileRef) ||
@@ -1146,6 +1741,10 @@ export async function requestLivedCompanionInference({ endpointProfile, requestC
   if (!isLoopbackHost(parsed.hostname)) {
     fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 accepts loopback endpoints only; non-loopback use requires a separately admitted adapter');
   }
+  const trusted = promptContextMaterialization === null
+    ? null
+    : await canonicalTrustedPromptMaterialization(promptContextMaterialization, requestContent);
+  const outboundMessages = trusted?.messages ?? [{ role: 'user', content: requestContent }];
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -1156,7 +1755,7 @@ export async function requestLivedCompanionInference({ endpointProfile, requestC
       headers,
       body: JSON.stringify({
         model: endpointProfile.model || 'bounded-loopback-proof',
-        messages: [{ role: 'user', content: requestContent }]
+        messages: outboundMessages
       }),
       signal: controller.signal,
       redirect: 'manual'
@@ -1182,7 +1781,11 @@ export async function requestLivedCompanionInference({ endpointProfile, requestC
     if (!isNonEmptyString(model)) {
       fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response model provenance must be one non-empty string');
     }
-    const responseValue = { content, model };
+    const responseValue = {
+      content,
+      model,
+      ...(trusted ? { promptContextMaterializationReceipt: trusted.receipt } : {})
+    };
     assertInMemoryAuthorizationNotPersisted(responseValue, inMemoryAuthorization, 'endpoint response');
     return responseValue;
   } catch (error) {
@@ -1193,6 +1796,7 @@ export async function requestLivedCompanionInference({ endpointProfile, requestC
     clearTimeout(timeout);
   }
 }
+
 
 export async function performLivedCompanionTurn({
   home,
@@ -1316,6 +1920,7 @@ export async function performLivedCompanionTurn({
     let response;
     let runtimeProjection = null;
     let additionalContextSourceRefs = [];
+    let promptContextMaterializationReceipt = null;
     let actualHttpCall = true;
     if (responseResolver) {
       const resolved = await responseResolver({
@@ -1332,11 +1937,16 @@ export async function performLivedCompanionTurn({
           channelRef,
           turnRef,
           taskRef: turnRef,
+          currentRequestEventRef: requestEvent.eventRef,
+          currentRequestEventHash: requestEvent.eventHash,
+          currentRequestSequence: requestEvent.sequence,
+          priorConversationHeadSha256: lastValidHead?.conversationHeadSha256 ?? null,
           sourceRefs: [...contextSourceRefs]
         }
       });
       response = resolved?.response ?? resolved;
       runtimeProjection = resolved?.runtimeProjection ?? null;
+      promptContextMaterializationReceipt = resolved?.promptContextMaterializationReceipt ?? null;
       additionalContextSourceRefs = [...new Set(resolved?.contextSourceRefs ?? [])].sort();
       actualHttpCall = resolved?.actualHttpCall === true;
       if (additionalContextSourceRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
@@ -1396,6 +2006,7 @@ export async function performLivedCompanionTurn({
       contextSourceRefs: [...new Set([...contextSourceRefs, ...additionalContextSourceRefs].filter((value) => value !== requestEvent.eventRef && value !== responseEvent.eventRef)), requestEvent.eventRef, responseEvent.eventRef],
       requestEventHash: requestEvent.eventHash,
       responseEventHash: responseEvent.eventHash,
+      ...(promptContextMaterializationReceipt ? { promptContextMaterializationReceipt } : {}),
       privacyClass: 'DEVICE_PRIVATE',
       formedAt: new Date().toISOString()
     };
@@ -1437,6 +2048,7 @@ export async function performLivedCompanionTurn({
       actualHttpCall,
       loopbackOnly: isLoopbackHost(new URL(endpointProfile.endpoint).hostname),
       runtimeProjection: runtimeProjection ? structuredClone(runtimeProjection) : null,
+      promptContextMaterializationReceipt: promptContextMaterializationReceipt ? structuredClone(promptContextMaterializationReceipt) : null,
       requestDurablyRecorded,
       responseDurablyRecorded,
       requestEvent,
