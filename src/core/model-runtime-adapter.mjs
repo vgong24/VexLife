@@ -199,7 +199,7 @@ export function normalizeModelRuntimeResponse({
     modelProvenance: provenance,
     reasoningTrace: reasoningTrace(message),
     usageSummary: usageSummary(responseBody.usage),
-    runtimeTimingSummary: timingSummary(truntimings),
+    runtimeTimingSummary: timingSummary(responseBody.timings),
     structuredOutputState: structuredOutputState(content, structuredOutputRequested),
     unknownUpstreamFields: collectUnknownFields(responseBody),
     privacy: frozen({
