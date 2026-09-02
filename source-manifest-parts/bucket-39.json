@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 6752,
       "sha256": "1ad73cf5d0a6a60788fd5d5feb671dc59ebd1c3525924ecf94e933c4754a5b00"
+    },
+    {
+      "path": "src/core/model-runtime-adapter.mjs",
+      "mode": "100644",
+      "bytes": 10636,
+      "sha256": "3cdea9bb32dcd0bf9051935c1f13902fc0d4ce9d14d86da14d3779bcfe4dee1d"
     }
   ]
 }
