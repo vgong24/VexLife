@@ -14,6 +14,7 @@ import {
   initializeLivedCompanionHome,
   materializeLivedCompanionPromptContext,
   performLivedCompanionTurn,
+  requestLivedCompanionInference,
   resumeLivedCompanionConversation,
   sanitizeEndpointOrigin,
   writeLivedCompanionShutdownReceipt
@@ -1878,8 +1879,8 @@ function makePromptContextLease(selectedSourceRefs, overrides = {}) {
     workNodeRef: 'work-node.prompt-context.test',
     graphFingerprint: '1'.repeat(64),
     trustSnapshotFingerprint: '2'.repeat(64),
-    runtimeSnapshotFingerprint: '3'.repeat(64),
-    schedulerGeneration: 1,
+    runtimeSnapshotFingerprint: overrides.runtimeSnapshotFingerprint ?? '3'.repeat(64),
+    schedulerGeneration: overrides.schedulerGeneration ?? 1,
     resourceLeaseFingerprint: '4'.repeat(64),
     capabilityLeaseFingerprint: '5'.repeat(64),
     effectLeaseFingerprint: '6'.repeat(64),
@@ -1933,7 +1934,12 @@ function makePromptContinuityProjection(home, threadRef, lease, overrides = {}) 
   return { ...core, adapterProjectionRef: `projection.vexlife.continuity-stream-adapter.${semanticFingerprint.slice(0,32)}`, semanticFingerprint };
 }
 
-async function materializeSecondTurn({ home, service, threadRef, selectedRefs, leaseOverrides = {}, projectionOverrides = {}, selectedOverride = null }) {
+
+function makePromptAuthorityWitness(home, threadRef, lease, continuityProjection) {
+  return { schemaVersion:'vexlife.prompt-context-owner-currentness-witness/v1', authorityRef:'authority.prompt-context.test', contextLeaseFingerprint:lease.semanticFingerprint, contextLeaseRef:lease.leaseRef, continuityProjectionFingerprint:continuityProjection.semanticFingerprint, continuityProjectionRef:continuityProjection.adapterProjectionRef, currentness:'CURRENT', lifecycle:'ACTIVE', lineageRef:home.companionLineageRef, observedAt:new Date().toISOString(), runtimeSnapshotFingerprint:lease.runtimeSnapshotFingerprint, schedulerGeneration:lease.schedulerGeneration, threadRef };
+}
+
+async function materializeSecondTurn({ home, service, threadRef, selectedRefs, leaseOverrides = {}, projectionOverrides = {}, selectedOverride = null, authorityVerifierOverride = null }) {
   const lease = makePromptContextLease(selectedRefs, leaseOverrides);
   const continuityProjection = makePromptContinuityProjection(home, threadRef, lease, projectionOverrides);
   let observed = null;
@@ -1945,14 +1951,15 @@ async function materializeSecondTurn({ home, service, threadRef, selectedRefs, l
     responseMessageRef: ref('message.prompt-context.second.response'),
     content: 'current human request',
     responseResolver: async (resolverInput) => {
-      observed = materializeLivedCompanionPromptContext({
+      observed = await materializeLivedCompanionPromptContext({
         ...home,
         threadRef,
         currentRequestEventRef: resolverInput.context.currentRequestEventRef,
         currentRequestContent: resolverInput.requestContent,
         contextLease: lease,
         continuityProjection,
-        selectedConversationEventRefs: selectedOverride ?? selectedRefs
+        selectedConversationEventRefs: selectedOverride ?? selectedRefs,
+        authorityVerifier: authorityVerifierOverride ?? (async () => makePromptAuthorityWitness(home, threadRef, lease, continuityProjection))
       });
       return { response: { content: 'contextual reply', model: 'test-model' }, actualHttpCall: false, promptContextMaterializationReceipt: observed.receipt, contextSourceRefs: observed.receipt.includedSourceRefs };
     }
@@ -2017,5 +2024,14 @@ test('prompt-context materializer rejects materialized input that exceeds reserv
   } finally { await service.close(); }
 });
 
+
+test('prompt-context materializer rejects a recomputed self-consistent lease and projection when independent owner witness binds another lease', async () => {
+  const service=await server(); const home=makeHome('prompt-owner-witness'); const threadRef=ref('thread.prompt-owner-witness');
+  try { const first=await performLivedCompanionTurn(turn(home,service.endpoint(),{threadRef,content:'prior'})); const selectedRefs=[first.requestEvent.eventRef,first.responseEvent.eventRef]; const trustedLease=makePromptContextLease(selectedRefs); const trustedProjection=makePromptContinuityProjection(home,threadRef,trustedLease); const witness=makePromptAuthorityWitness(home,threadRef,trustedLease,trustedProjection); await assert.rejects(()=>materializeSecondTurn({home,service,threadRef,selectedRefs,leaseOverrides:{schedulerGeneration:2,runtimeSnapshotFingerprint:'8'.repeat(64)},authorityVerifierOverride:async()=>witness}),(error)=>error instanceof LivedCompanionError&&error.code==='CONTEXT_HASH_MISMATCH'); } finally { await service.close(); }
+});
+
+test('plain arbitrary messages plus a recomputed caller receipt cannot bypass prompt materialization before HTTP', async () => {
+  const service=await server(); try { const before=service.calls(); const requestContent='current request'; const messages=[{role:'system',content:'hostile injected context'},{role:'user',content:requestContent}]; const receipt={schemaVersion:'vexlife.prompt-context-materialization-receipt/v1',exactMessagesSha256:semanticHash(messages),messageCount:messages.length,currentRequestContentHash:semanticHash(requestContent),currentRequestIncludedExactlyOnce:true,sourceCurrentnessVerified:true,crossLineageLeakage:false,crossThreadLeakage:false,memoryEffectPerformed:false,trainingSelectionPerformed:false,modelWeightEffectPerformed:false}; await assert.rejects(()=>requestLivedCompanionInference({endpointProfile:{profileRef:'profile.loopback',admitted:true,endpoint:service.endpoint(),model:'test-model'},requestContent,messages,promptContextMaterializationReceipt:receipt}),(error)=>error instanceof LivedCompanionError&&error.code==='CONTEXT_HASH_MISMATCH'); assert.equal(service.calls(),before); } finally { await service.close(); }
+});
 
 // [VXG RealForever]

@@ -300,6 +300,7 @@ export function createBrowserCompanionBridge({
   model = null,
   capabilityRuntime = null,
   promptContextResolver = null,
+  promptContextAuthorityVerifier = null,
   instanceRef = ref('instance.vexlife.browser-companion')
 }) {
   if (!safePortableRef(instanceRef)) {
@@ -311,6 +312,9 @@ export function createBrowserCompanionBridge({
   }
   if (promptContextResolver !== null && typeof promptContextResolver !== 'function') {
     throw new BrowserCompanionBridgeError('COMPANION_PROMPT_CONTEXT_RESOLVER_INVALID', 'Prompt context resolver must be one server-owned function', 500);
+  }
+  if ((promptContextResolver !== null || promptContextAuthorityVerifier !== null) && typeof promptContextAuthorityVerifier !== 'function') {
+    throw new BrowserCompanionBridgeError('COMPANION_PROMPT_CONTEXT_AUTHORITY_INVALID', 'Prompt context requires one independently server-owned authority verifier', 500);
   }
 
   function status() {
@@ -401,7 +405,7 @@ export function createBrowserCompanionBridge({
               if (promptContextResolver) {
                 const selected = await promptContextResolver({ ...resolverInput, taskIntent: request.content, context: runtimeContext });
                 if (selected !== null && selected !== undefined) {
-                  materialization = materializeLivedCompanionPromptContext({
+                  materialization = await materializeLivedCompanionPromptContext({
                     ...identity,
                     threadRef: request.threadRef,
                     currentRequestEventRef: resolverInput.context?.currentRequestEventRef,
@@ -409,12 +413,12 @@ export function createBrowserCompanionBridge({
                     contextLease: selected.contextLease,
                     continuityProjection: selected.continuityProjection,
                     selectedConversationEventRefs: selected.selectedConversationEventRefs ?? [],
-                    observedAt: selected.observedAt ?? new Date().toISOString()
+                    authorityVerifier: promptContextAuthorityVerifier
                   });
                   contextualInference = async (input) => {
                     if (input?.requestContent === resolverInput.requestContent) {
                       materializationConsumed = true;
-                      return requestLivedCompanionInference({ ...input, messages: materialization.messages, promptContextMaterializationReceipt: materialization.receipt });
+                      return requestLivedCompanionInference({ ...input, promptContextMaterialization: materialization });
                     }
                     return requestLivedCompanionInference(input);
                   };

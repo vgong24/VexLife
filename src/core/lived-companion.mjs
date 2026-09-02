@@ -1130,206 +1130,60 @@ function promptContextFailure(message, details = null) {
   fail('CONTEXT_HASH_MISMATCH', message, details);
 }
 
-function canonicalExplicitPromptMessages(messages, requestContent, receipt) {
-  if (!Array.isArray(messages) || messages.length === 0) {
-    promptContextFailure('explicit prompt messages must be one non-empty array');
-  }
-  const canonical = messages.map((entry, index) => {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry) ||
-        !['system', 'user', 'assistant'].includes(entry.role) ||
-        typeof entry.content !== 'string' || !entry.content ||
-        Object.keys(entry).some((key) => !['role', 'content'].includes(key))) {
-      promptContextFailure('explicit prompt message is invalid', { index });
-    }
-    return { role: entry.role, content: entry.content };
-  });
-  const last = canonical.at(-1);
-  if (last.role !== 'user' || last.content !== requestContent) {
-    promptContextFailure('explicit prompt messages must end with the exact current human request');
-  }
-  if (!receipt || receipt.schemaVersion !== 'vexlife.prompt-context-materialization-receipt/v1' ||
-      receipt.exactMessagesSha256 !== contentHash(canonical) ||
-      receipt.messageCount !== canonical.length ||
-      receipt.currentRequestContentHash !== contentHash(requestContent) ||
-      receipt.currentRequestIncludedExactlyOnce !== true ||
-      receipt.sourceCurrentnessVerified !== true ||
-      receipt.crossLineageLeakage !== false || receipt.crossThreadLeakage !== false ||
-      receipt.memoryEffectPerformed !== false || receipt.trainingSelectionPerformed !== false ||
-      receipt.modelWeightEffectPerformed !== false) {
-    promptContextFailure('explicit prompt messages are not bound to one valid materialization receipt');
-  }
-  return canonical;
+const TRUSTED_PROMPT_CONTEXT_MATERIALIZATIONS = new WeakSet();
+
+function canonicalAuthorityWitness(value, lease, projection, lineageRef, threadRef) {
+  const expectedKeys = ['authorityRef','contextLeaseFingerprint','contextLeaseRef','continuityProjectionFingerprint','continuityProjectionRef','currentness','lifecycle','lineageRef','observedAt','runtimeSnapshotFingerprint','schedulerGeneration','schemaVersion','threadRef'];
+  if (!value || typeof value !== 'object' || Array.isArray(value) || JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expectedKeys) || value.schemaVersion !== 'vexlife.prompt-context-owner-currentness-witness/v1' || value.currentness !== 'CURRENT' || value.lifecycle !== 'ACTIVE' || typeof value.authorityRef !== 'string' || !value.authorityRef || !Number.isInteger(value.schedulerGeneration) || value.schedulerGeneration < 0 || typeof value.runtimeSnapshotFingerprint !== 'string') promptContextFailure('prompt-context authority witness is invalid');
+  if (Date.parse(value.observedAt) !== Date.parse(value.observedAt) || new Date(value.observedAt).toISOString() !== value.observedAt) promptContextFailure('prompt-context authority witness observedAt is invalid');
+  if (value.lineageRef !== lineageRef || value.threadRef !== threadRef || value.contextLeaseRef !== lease.leaseRef || value.contextLeaseFingerprint !== lease.semanticFingerprint || value.schedulerGeneration !== lease.schedulerGeneration || value.runtimeSnapshotFingerprint !== lease.runtimeSnapshotFingerprint || value.continuityProjectionRef !== projection.adapterProjectionRef || value.continuityProjectionFingerprint !== projection.semanticFingerprint) promptContextFailure('prompt-context authority witness does not bind the exact current owner evidence');
+  return Object.freeze(structuredClone(value));
 }
 
 function validatePromptContextContinuityProjection(value, contextLease, companionLineageRef, threadRef) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) ||
-      value.schemaVersion !== 'vexlife.continuity-stream-adapter-projection/v1' ||
-      value.currentness !== 'CURRENT') {
-    promptContextFailure('continuity projection is not current');
-  }
+  if (!value || typeof value !== 'object' || Array.isArray(value) || value.schemaVersion !== 'vexlife.continuity-stream-adapter-projection/v1' || value.currentness !== 'CURRENT') promptContextFailure('continuity projection is not current');
   const { adapterProjectionRef, semanticFingerprint, ...core } = structuredClone(value);
-  if (!/^[0-9a-f]{64}$/u.test(semanticFingerprint ?? '') ||
-      contentHash(core) !== semanticFingerprint ||
-      adapterProjectionRef !== `projection.vexlife.continuity-stream-adapter.${semanticFingerprint.slice(0, 32)}`) {
-    promptContextFailure('continuity projection fingerprint is invalid');
-  }
-  if (value.current?.lineageRef !== companionLineageRef || value.current?.threadRef !== threadRef) {
-    promptContextFailure('continuity projection lineage or thread does not match the lived turn');
-  }
-  if (value.owners?.context?.leaseRef !== contextLease.leaseRef ||
-      value.owners?.context?.semanticFingerprint !== contextLease.semanticFingerprint ||
-      value.owners?.context?.currentness !== 'CURRENT' || value.owners?.context?.lifecycle !== 'ACTIVE') {
-    promptContextFailure('continuity projection does not bind the exact current Context Lease');
-  }
-  if (Object.values(value.effects ?? {}).some((observed) => observed !== false) ||
-      value.projectionTruth?.readOnly !== true || value.projectionTruth?.rawTranscriptIncluded !== false ||
-      value.projectionTruth?.hiddenReasoningIncluded !== false) {
-    promptContextFailure('continuity projection carries an effect or raw-history assertion');
-  }
+  if (!/^[0-9a-f]{64}$/u.test(semanticFingerprint ?? '') || contentHash(core) !== semanticFingerprint || adapterProjectionRef !== `projection.vexlife.continuity-stream-adapter.${semanticFingerprint.slice(0, 32)}`) promptContextFailure('continuity projection fingerprint is invalid');
+  if (value.current?.lineageRef !== companionLineageRef || value.current?.threadRef !== threadRef) promptContextFailure('continuity projection lineage or thread does not match the lived turn');
+  if (value.owners?.context?.leaseRef !== contextLease.leaseRef || value.owners?.context?.semanticFingerprint !== contextLease.semanticFingerprint || value.owners?.context?.currentness !== 'CURRENT' || value.owners?.context?.lifecycle !== 'ACTIVE') promptContextFailure('continuity projection does not bind the exact current Context Lease');
+  if (Object.values(value.effects ?? {}).some((observed) => observed !== false) || value.projectionTruth?.readOnly !== true || value.projectionTruth?.rawTranscriptIncluded !== false || value.projectionTruth?.hiddenReasoningIncluded !== false) promptContextFailure('continuity projection carries an effect or raw-history assertion');
   return value;
 }
 
-function promptMessageTokenEstimate(message) {
-  return Math.max(1, Math.ceil(Buffer.byteLength(message.content, 'utf8') / 4)) + 4;
-}
+function promptMessageTokenEstimate(message) { return Math.max(1, Math.ceil(Buffer.byteLength(message.content, 'utf8') / 4)) + 4; }
 
-export function materializeLivedCompanionPromptContext({
-  home,
-  homeRef,
-  deviceRef,
-  companionLineageRef,
-  threadRef,
-  currentRequestEventRef,
-  currentRequestContent,
-  contextLease,
-  continuityProjection,
-  selectedConversationEventRefs = [],
-  observedAt = new Date().toISOString()
-}) {
+export async function materializeLivedCompanionPromptContext({ home, homeRef, deviceRef, companionLineageRef, threadRef, currentRequestEventRef, currentRequestContent, contextLease, continuityProjection, selectedConversationEventRefs = [], authorityVerifier }) {
   const identity = loadHome(home);
   const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
   const safeThread = ensureSafeRef(threadRef, 'threadRef', 'CONTEXT_HASH_MISMATCH');
-  let canonicalLease;
-  try {
-    canonicalLease = createContextLease(contextLease).lease;
-    assertCurrentLease(canonicalLease, {
-      label: 'prompt context',
-      observedAt,
-      schedulerGeneration: canonicalLease.schedulerGeneration,
-      runtimeSnapshotFingerprint: canonicalLease.runtimeSnapshotFingerprint
-    });
-  } catch (error) {
-    promptContextFailure('Context Lease is not exact-current for prompt materialization', { cause: error.message });
-  }
+  if (typeof authorityVerifier !== 'function') promptContextFailure('prompt context requires one independently owned currentness verifier');
+  let canonicalLease; try { canonicalLease = createContextLease(contextLease).lease; } catch (error) { promptContextFailure('Context Lease is not canonical for prompt materialization', { cause: error.message }); }
   validatePromptContextContinuityProjection(continuityProjection, canonicalLease, admitted.companionLineageRef, safeThread);
-  if (!Array.isArray(selectedConversationEventRefs) ||
-      selectedConversationEventRefs.some((ref) => typeof ref !== 'string' || !ref) ||
-      new Set(selectedConversationEventRefs).size !== selectedConversationEventRefs.length) {
-    promptContextFailure('selected conversation event refs must be unique stable refs');
-  }
-  const selectedAuthority = new Set(canonicalLease.selectedSourceRefs ?? []);
-  for (const ref of selectedConversationEventRefs) {
-    if (!selectedAuthority.has(ref)) promptContextFailure('selected event is not authorized by the exact Context Lease', { eventRef: ref });
-  }
-  const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, safeThread);
-  const events = existingEvents(paths.events, {
-    homeRef: admitted.homeRef,
-    deviceRef: admitted.deviceRef,
-    companionLineageRef: admitted.companionLineageRef,
-    threadRef: safeThread
-  });
-  const byRef = new Map(events.map((event) => [event.eventRef, event]));
-  const current = byRef.get(currentRequestEventRef);
-  if (!current || current.eventKind !== 'REQUEST' || current.threadRef !== safeThread ||
-      current.companionLineageRef !== admitted.companionLineageRef || current.content !== currentRequestContent ||
-      current.contentHash !== contentHash(currentRequestContent)) {
-    promptContextFailure('current request event does not match the exact persisted lived request');
-  }
-  const selected = selectedConversationEventRefs.map((eventRef) => {
-    const event = byRef.get(eventRef);
-    if (!event) promptContextFailure('selected conversation event is missing', { eventRef });
-    if (event.eventRef === current.eventRef) promptContextFailure('current request event cannot be selected as prior context');
-    if (event.sequence >= current.sequence) promptContextFailure('selected context event is not prior to the current request', { eventRef });
-    return event;
-  });
-  for (let index = 1; index < selected.length; index += 1) {
-    if (selected[index - 1].sequence >= selected[index].sequence) {
-      promptContextFailure('selected conversation event order does not match canonical event order');
-    }
-  }
-  const entries = selected.map((event, index) => ({
-    ordinal: index,
-    role: event.eventKind === 'REQUEST' ? 'user' : event.eventKind === 'RESPONSE' ? 'assistant' : null,
-    sourceEventRef: event.eventRef,
-    sourceEventHash: event.eventHash,
-    sourceContentHash: event.contentHash,
-    sequence: event.sequence,
-    estimatedTokens: promptMessageTokenEstimate({ content: event.content })
-  }));
-  if (entries.some((entry) => entry.role === null)) promptContextFailure('selected conversation event has an unsupported role');
-  entries.push({
-    ordinal: entries.length,
-    role: 'user',
-    sourceEventRef: current.eventRef,
-    sourceEventHash: current.eventHash,
-    sourceContentHash: current.contentHash,
-    sequence: current.sequence,
-    estimatedTokens: promptMessageTokenEstimate({ content: current.content })
-  });
-  const messages = [...selected.map((event) => ({ role: event.eventKind === 'REQUEST' ? 'user' : 'assistant', content: event.content })), { role: 'user', content: current.content }];
-  const materializedInputTokenEstimate = entries.reduce((sum, entry) => sum + entry.estimatedTokens, 0);
-  const availableInputTokens = canonicalLease.hardTokenLimit - canonicalLease.reservedOutputTokens;
-  if (availableInputTokens < 0 || materializedInputTokenEstimate > canonicalLease.inputTokenEstimate || materializedInputTokenEstimate > availableInputTokens) {
-    promptContextFailure('materialized prompt exceeds the exact Context Lease input budget', {
-      materializedInputTokenEstimate,
-      availableInputTokens
-    });
-  }
-  const receiptCore = {
-    schemaVersion: 'vexlife.prompt-context-materialization-receipt/v1',
-    contextLeaseRef: canonicalLease.leaseRef,
-    contextLeaseFingerprint: canonicalLease.semanticFingerprint,
-    continuityProjectionRef: continuityProjection.adapterProjectionRef,
-    continuityProjectionFingerprint: continuityProjection.semanticFingerprint,
-    lineageRef: admitted.companionLineageRef,
-    threadRef: safeThread,
-    turnRef: current.turnRef,
-    currentRequestEventRef: current.eventRef,
-    currentRequestContentHash: current.contentHash,
-    selectedConversationEventRefs: [...selectedConversationEventRefs],
-    includedSourceRefs: [...selectedConversationEventRefs, current.eventRef],
-    orderedMaterializationEntries: entries,
-    exactMessagesSha256: contentHash(messages),
-    messageCount: messages.length,
-    materializedInputTokenEstimate,
-    contextLeaseInputTokenEstimate: canonicalLease.inputTokenEstimate,
-    reservedOutputTokens: canonicalLease.reservedOutputTokens,
-    hardTokenLimit: canonicalLease.hardTokenLimit,
-    currentRequestIncludedExactlyOnce: true,
-    priorHumanMessagesUnmodified: true,
-    priorAssistantMessagesUnmodified: true,
-    tokenBudgetSatisfied: true,
-    sourceCurrentnessVerified: true,
-    crossLineageLeakage: false,
-    crossThreadLeakage: false,
-    memoryEffectPerformed: false,
-    trainingSelectionPerformed: false,
-    modelWeightEffectPerformed: false,
-    hiddenReasoningIncluded: false
-  };
-  const semanticFingerprint = contentHash(receiptCore);
-  const receipt = Object.freeze({
-    ...receiptCore,
-    receiptRef: `receipt.vexlife.prompt-context-materialization.${semanticFingerprint.slice(0, 32)}`,
-    semanticFingerprint
-  });
-  return Object.freeze({
-    messages: Object.freeze(messages.map((message) => Object.freeze({ ...message }))),
-    receipt
-  });
+  const witnessInput = Object.freeze({ schemaVersion:'vexlife.prompt-context-authority-query/v1', lineageRef:admitted.companionLineageRef, threadRef:safeThread, currentRequestEventRef });
+  const witness = canonicalAuthorityWitness(await authorityVerifier(witnessInput), canonicalLease, continuityProjection, admitted.companionLineageRef, safeThread);
+  try { assertCurrentLease(canonicalLease, { label:'prompt context', observedAt:witness.observedAt, schedulerGeneration:witness.schedulerGeneration, runtimeSnapshotFingerprint:witness.runtimeSnapshotFingerprint }); } catch (error) { promptContextFailure('Context Lease is not exact-current under independent owner evidence', { cause:error.message }); }
+  if (!Array.isArray(selectedConversationEventRefs) || selectedConversationEventRefs.some((ref) => typeof ref !== 'string' || !ref) || new Set(selectedConversationEventRefs).size !== selectedConversationEventRefs.length) promptContextFailure('selected conversation event refs must be unique stable refs');
+  const selectedAuthority = new Set(canonicalLease.selectedSourceRefs ?? []); for (const ref of selectedConversationEventRefs) if (!selectedAuthority.has(ref)) promptContextFailure('selected event is not authorized by the exact Context Lease', { eventRef: ref });
+  const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, safeThread); const events = existingEvents(paths.events,{homeRef:admitted.homeRef,deviceRef:admitted.deviceRef,companionLineageRef:admitted.companionLineageRef,threadRef:safeThread}); const byRef=new Map(events.map((event)=>[event.eventRef,event]));
+  const current=byRef.get(currentRequestEventRef); if(!current||current.eventKind!=='REQUEST'||current.threadRef!==safeThread||current.companionLineageRef!==admitted.companionLineageRef||current.content!==currentRequestContent||current.contentHash!==contentHash(currentRequestContent)) promptContextFailure('current request event does not match the exact persisted lived request');
+  const selected=selectedConversationEventRefs.map((eventRef)=>{const event=byRef.get(eventRef);if(!event)promptContextFailure('selected conversation event is missing',{eventRef});if(event.eventRef===current.eventRef)promptContextFailure('current request event cannot be selected as prior context');if(event.sequence>=current.sequence)promptContextFailure('selected context event is not prior to the current request',{eventRef});return event;});
+  for(let i=1;i<selected.length;i+=1)if(selected[i-1].sequence>=selected[i].sequence)promptContextFailure('selected conversation event order does not match canonical event order');
+  const entries=selected.map((event,index)=>({ordinal:index,role:event.eventKind==='REQUEST'?'user':event.eventKind==='RESPONSE'?'assistant':null,sourceEventRef:event.eventRef,sourceEventHash:event.eventHash,sourceContentHash:event.contentHash,sequence:event.sequence,estimatedTokens:promptMessageTokenEstimate({content:event.content})})); if(entries.some((entry)=>entry.role===null))promptContextFailure('selected conversation event has an unsupported role');
+  entries.push({ordinal:entries.length,role:'user',sourceEventRef:current.eventRef,sourceEventHash:current.eventHash,sourceContentHash:current.contentHash,sequence:current.sequence,estimatedTokens:promptMessageTokenEstimate({content:current.content})});
+  const messages=[...selected.map((event)=>({role:event.eventKind==='REQUEST'?'user':'assistant',content:event.content})),{role:'user',content:current.content}]; const materializedInputTokenEstimate=entries.reduce((sum,entry)=>sum+entry.estimatedTokens,0); const availableInputTokens=canonicalLease.hardTokenLimit-canonicalLease.reservedOutputTokens; if(availableInputTokens<0||materializedInputTokenEstimate>canonicalLease.inputTokenEstimate||materializedInputTokenEstimate>availableInputTokens)promptContextFailure('materialized prompt exceeds the exact Context Lease input budget',{materializedInputTokenEstimate,availableInputTokens});
+  const receiptCore={schemaVersion:'vexlife.prompt-context-materialization-receipt/v1',authorityRef:witness.authorityRef,authorityObservedAt:witness.observedAt,contextLeaseRef:canonicalLease.leaseRef,contextLeaseFingerprint:canonicalLease.semanticFingerprint,continuityProjectionRef:continuityProjection.adapterProjectionRef,continuityProjectionFingerprint:continuityProjection.semanticFingerprint,lineageRef:admitted.companionLineageRef,threadRef:safeThread,turnRef:current.turnRef,currentRequestEventRef:current.eventRef,currentRequestContentHash:current.contentHash,selectedConversationEventRefs:[...selectedConversationEventRefs],includedSourceRefs:[...selectedConversationEventRefs,current.eventRef],orderedMaterializationEntries:entries,exactMessagesSha256:contentHash(messages),messageCount:messages.length,materializedInputTokenEstimate,contextLeaseInputTokenEstimate:canonicalLease.inputTokenEstimate,reservedOutputTokens:canonicalLease.reservedOutputTokens,hardTokenLimit:canonicalLease.hardTokenLimit,currentRequestIncludedExactlyOnce:true,priorHumanMessagesUnmodified:true,priorAssistantMessagesUnmodified:true,tokenBudgetSatisfied:true,sourceCurrentnessVerified:true,crossLineageLeakage:false,crossThreadLeakage:false,memoryEffectPerformed:false,trainingSelectionPerformed:false,modelWeightEffectPerformed:false,hiddenReasoningIncluded:false};
+  const semanticFingerprint=contentHash(receiptCore); const receipt=Object.freeze({...receiptCore,receiptRef:`receipt.vexlife.prompt-context-materialization.${semanticFingerprint.slice(0,32)}`,semanticFingerprint}); const materialization=Object.freeze({messages:Object.freeze(messages.map((message)=>Object.freeze({...message}))),receipt}); TRUSTED_PROMPT_CONTEXT_MATERIALIZATIONS.add(materialization); return materialization;
 }
 
-export async function requestLivedCompanionInference({ endpointProfile, requestContent, messages = null, promptContextMaterializationReceipt = null, inMemoryAuthorization = null, timeoutMs = 5000 }) {
+function canonicalTrustedPromptMaterialization(materialization, requestContent) {
+  if (!materialization || typeof materialization !== 'object' || !TRUSTED_PROMPT_CONTEXT_MATERIALIZATIONS.has(materialization)) promptContextFailure('prompt-context inference requires the exact in-process materialization capability');
+  const messages=materialization.messages, receipt=materialization.receipt; const canonical=messages.map((entry,index)=>{if(!entry||typeof entry!=='object'||Array.isArray(entry)||!['system','user','assistant'].includes(entry.role)||typeof entry.content!=='string'||!entry.content||Object.keys(entry).some((key)=>!['role','content'].includes(key)))promptContextFailure('trusted prompt message is invalid',{index});return {role:entry.role,content:entry.content};});
+  const last=canonical.at(-1); if(last?.role!=='user'||last.content!==requestContent)promptContextFailure('trusted prompt messages must end with the exact current human request');
+  const {receiptRef,semanticFingerprint,...receiptCore}=receipt??{}; if(!/^[0-9a-f]{64}$/u.test(semanticFingerprint??'')||contentHash(receiptCore)!==semanticFingerprint||receiptRef!==`receipt.vexlife.prompt-context-materialization.${semanticFingerprint.slice(0,32)}`||receipt.exactMessagesSha256!==contentHash(canonical)||receipt.messageCount!==canonical.length||receipt.currentRequestContentHash!==contentHash(requestContent)||receipt.sourceCurrentnessVerified!==true||receipt.memoryEffectPerformed!==false||receipt.trainingSelectionPerformed!==false||receipt.modelWeightEffectPerformed!==false)promptContextFailure('trusted prompt materialization receipt integrity is invalid'); return canonical;
+}
+
+export async function requestLivedCompanionInference({ endpointProfile, requestContent, promptContextMaterialization = null, messages = undefined, promptContextMaterializationReceipt = undefined, inMemoryAuthorization = null, timeoutMs = 5000 }) {
+  if (messages !== undefined || promptContextMaterializationReceipt !== undefined) promptContextFailure('plain explicit messages or caller-authored materialization receipts are not accepted');
   if (
     !endpointProfile?.admitted ||
     !isNonEmptyString(endpointProfile.profileRef) ||
@@ -1351,9 +1205,9 @@ export async function requestLivedCompanionInference({ endpointProfile, requestC
   if (!isLoopbackHost(parsed.hostname)) {
     fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 accepts loopback endpoints only; non-loopback use requires a separately admitted adapter');
   }
-  const outboundMessages = messages === null
+  const outboundMessages = promptContextMaterialization === null
     ? [{ role: 'user', content: requestContent }]
-    : canonicalExplicitPromptMessages(messages, requestContent, promptContextMaterializationReceipt);
+    : canonicalTrustedPromptMaterialization(promptContextMaterialization, requestContent);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
