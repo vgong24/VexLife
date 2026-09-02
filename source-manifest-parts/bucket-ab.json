@@ -9,6 +9,12 @@
       "sha256": "8cf2db6c01f13ec0cbb19c27f08d54d19f3de9400f87e5d80ef38f8e24f0bd18"
     },
     {
+      "path": "release/windows/bootstrap.ps1",
+      "mode": "100644",
+      "bytes": 4023,
+      "sha256": "53312e61bbdc6ed2977b8c9ca1d3d90cd19ba38e9305c0f478556ec50d0ce0aa"
+    },
+    {
       "path": "src/core/feature-registry.mjs",
       "mode": "100644",
       "bytes": 12127,

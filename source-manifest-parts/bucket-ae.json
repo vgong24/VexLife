@@ -3,6 +3,12 @@
   "bucketId": "ae",
   "files": [
     {
+      "path": "release/windows/build-vexlife-bootstrap.ps1",
+      "mode": "100644",
+      "bytes": 7439,
+      "sha256": "63695faaec1db9c0084ff4356e1a970c5f889a936c524691e40f3f64f55b3b89"
+    },
+    {
       "path": "test/foundation-training-plan.test.mjs",
       "mode": "100644",
       "bytes": 24606,
