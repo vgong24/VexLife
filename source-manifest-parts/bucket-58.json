@@ -15,6 +15,12 @@
       "sha256": "927586e8de63afd0257a25db765f648fe352237d0b2e413a7b38dd16269f2a57"
     },
     {
+      "path": "test/artifact-delivery.test.mjs",
+      "mode": "100644",
+      "bytes": 38643,
+      "sha256": "199d5023b50152d7c882e4c8114bab5c2ca605d28da95514da049aebf7bb339f"
+    },
+    {
       "path": "training/foundation-generation/foundation_train.py",
       "mode": "100644",
       "bytes": 35902,

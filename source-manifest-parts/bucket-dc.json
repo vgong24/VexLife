@@ -3,6 +3,12 @@
   "bucketId": "dc",
   "files": [
     {
+      "path": "blueprint/artifact-delivery-registry.json",
+      "mode": "100644",
+      "bytes": 460,
+      "sha256": "5996351dbd629a6e45cefbd2b3decdbee5862dcc650452b5b9714508bd11a2b3"
+    },
+    {
       "path": "blueprint/module-registry/cdr-s5-closed-alpha.json",
       "mode": "100644",
       "bytes": 1901,
