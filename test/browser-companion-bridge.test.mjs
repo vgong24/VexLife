@@ -13,6 +13,9 @@ import {
   validateBrowserCompanionRequest
 } from '../src/core/browser-companion-bridge.mjs';
 import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
+import { createContextLease } from '../src/core/context-lease.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
+import crypto from 'node:crypto';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -320,5 +323,53 @@ test('originating-human CORRECT mints a distinct server-side interpretation proj
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+function browserPromptContextLease(selectedSourceRefs) {
+  const now=Date.now();
+  return createContextLease({
+    leaseRef:`lease.browser-prompt-context.${crypto.randomUUID()}`, workerRef:'worker.browser-prompt-context.test', workNodeRef:'work-node.browser-prompt-context.test',
+    graphFingerprint:'1'.repeat(64), trustSnapshotFingerprint:'2'.repeat(64), runtimeSnapshotFingerprint:'3'.repeat(64), schedulerGeneration:1,
+    resourceLeaseFingerprint:'4'.repeat(64), capabilityLeaseFingerprint:'5'.repeat(64), effectLeaseFingerprint:'6'.repeat(64), cancellationTokenRef:'cancel.browser-prompt-context.test',
+    foundationKernelRef:'foundation.browser-prompt-context.test', roleFrameRef:'role-frame.browser-prompt-context.test', intentFrameRef:'intent-frame.browser-prompt-context.test',
+    selectedAtlasRefs:[], selectedSourceRefs, applicableCultureRefs:[], applicableLessonRefs:[], applicableReleaseRefs:[], inputTokenEstimate:2048, reservedOutputTokens:512, hardTokenLimit:4096,
+    formedAt:new Date(now-1000).toISOString(), expiresAt:new Date(now+600000).toISOString(), observedAt:new Date(now).toISOString(), currentness:'CURRENT', lifecycle:'ACTIVE', checkpointReturnRef:'checkpoint.browser-prompt-context.test'
+  }).lease;
+}
+function browserPromptContinuity(lineageRef,threadRef,lease){
+  const core={schemaVersion:'vexlife.continuity-stream-adapter-projection/v1',currentness:'CURRENT',currentnessReasonRefs:[],portableFrame:{sourceRefs:[]},owners:{context:{leaseRef:lease.leaseRef,semanticFingerprint:lease.semanticFingerprint,currentness:'CURRENT',lifecycle:'ACTIVE'}},current:{lineageRef,threadRef,cursorEventRef:'event.cursor.browser-prompt',frameRef:'frame.browser-prompt',frameFingerprint:`sha256:${'7'.repeat(64)}`,activeWorkNodeRefs:[],currentIntentReceiptRefs:[],openLoopRefs:[],currentStatementRefs:[],currentContinuityRecordRefs:[],currentDailyStratumRefOrNull:null,recoveryPhaseOrNull:null},sourceRefs:[],effects:{homeMutated:false,memoryPromoted:false,scoreAppended:false,intentTransitioned:false,contextLeaseCreated:false,continuityAcceptanceCreated:false,recoveryActionApplied:false,dailyDreamCommitted:false,journalRewritten:false,providerCalled:false,networkCalled:false,publicationPerformed:false,modelCalled:false,trainingRan:false,modelWeightsChanged:false,relationshipMutated:false,externalDisclosure:false},projectionTruth:{readOnly:true,ownerMutationPerformed:false,rawTranscriptIncluded:false,hiddenReasoningIncluded:false,rawPrivatePayloadIncluded:false,semanticAcceptanceCreated:false,memoryPromotionPerformed:false,recoveryActionPerformed:false,externalEffectPerformed:false}};
+  const semanticFingerprint=semanticHash(core);return {...core,adapterProjectionRef:`projection.vexlife.continuity-stream-adapter.${semanticFingerprint.slice(0,32)}`,semanticFingerprint};
+}
+
+test('browser prompt-context resolver materializes selected lived events into the actual loopback messages request', async () => {
+  const {root,home}=makeHome(); const model=await startModelServer(); const threadRef='thread.local-vex.prompt-context';
+  try {
+    const firstBridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-first'});
+    await firstBridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'Remember cobalt lantern.'});
+    const eventsRoot=path.join(home,'conversations','companion-lineage.vexlife.browser-companion-test',threadRef,'events');
+    const priorEvents=fs.readdirSync(eventsRoot).sort().map(name=>JSON.parse(fs.readFileSync(path.join(eventsRoot,name),'utf8')));
+    const selectedRefs=priorEvents.map(event=>event.eventRef); const lease=browserPromptContextLease(selectedRefs); const continuityProjection=browserPromptContinuity('companion-lineage.vexlife.browser-companion-test',threadRef,lease);
+    const bridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-second',promptContextResolver:async()=>({contextLease:lease,continuityProjection,selectedConversationEventRefs:selectedRefs})});
+    const result=await bridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'What phrase did I ask you to remember?'});
+    assert.deepEqual(model.calls.at(-1).body.messages,[{role:'user',content:'Remember cobalt lantern.'},{role:'assistant',content:'Real local bridge reply.'},{role:'user',content:'What phrase did I ask you to remember?'}]);
+    assert.equal(result.promptContextMaterialization.currentRequestIncludedExactlyOnce,true);
+    assert.equal(result.promptContextMaterialization.exactMessagesSha256,semanticHash(model.calls.at(-1).body.messages));
+  } finally {await model.close();fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('browser context wrapper leaves differently-shaped Home School internal inference prompts separately governed', async () => {
+  const {root,home}=makeHome(); const model=await startModelServer(); const threadRef='thread.local-vex.prompt-context-governed';
+  try {
+    const firstBridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-governed-first'});
+    await firstBridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'Prior exact context.'});
+    const eventsRoot=path.join(home,'conversations','companion-lineage.vexlife.browser-companion-test',threadRef,'events');
+    const selectedRefs=fs.readdirSync(eventsRoot).sort().map(name=>JSON.parse(fs.readFileSync(path.join(eventsRoot,name),'utf8')).eventRef); const lease=browserPromptContextLease(selectedRefs); const continuityProjection=browserPromptContinuity('companion-lineage.vexlife.browser-companion-test',threadRef,lease);
+    const capabilityRuntime={resolveTurn:async({inference,endpointProfile,taskIntent,inMemoryAuthorization,timeoutMs})=>{await inference({endpointProfile,requestContent:'HOME_SCHOOL_INTERNAL_PROMPT',inMemoryAuthorization,timeoutMs});const response=await inference({endpointProfile,requestContent:taskIntent,inMemoryAuthorization,timeoutMs});return {response,actualHttpCall:true,contextSourceRefs:[],runtimeProjection:{schemaVersion:'test.home-school-separated/v1'}};}};
+    const bridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-governed-second',capabilityRuntime,promptContextResolver:async()=>({contextLease:lease,continuityProjection,selectedConversationEventRefs:selectedRefs})});
+    const before=model.calls.length; await bridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'Current exact human request.'}); const calls=model.calls.slice(before);
+    assert.deepEqual(calls[0].body.messages,[{role:'user',content:'HOME_SCHOOL_INTERNAL_PROMPT'}]);
+    assert.deepEqual(calls[1].body.messages,[{role:'user',content:'Prior exact context.'},{role:'assistant',content:'Real local bridge reply.'},{role:'user',content:'Current exact human request.'}]);
+  } finally {await model.close();fs.rmSync(root,{recursive:true,force:true});}
+});
+
 
 // [VXG RealForever]
