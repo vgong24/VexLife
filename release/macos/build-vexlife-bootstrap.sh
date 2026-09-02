@@ -30,6 +30,10 @@ OBSERVED_SHA256="$(/usr/bin/shasum -a 256 "$SOURCE_TAR" | /usr/bin/awk '{print $
 
 /usr/bin/env node "$REPO_ROOT/scripts/release-bootstrap-package.mjs" --platform macos --source-tar "$SOURCE_TAR" --out "$OUT"
 OUT_ROOT="$REPO_ROOT/generated/release-bootstrap-packages/$OUT"
+PACKAGE_PLAN_SHA256="$(/usr/bin/shasum -a 256 "$OUT_ROOT/package-plan.json" | /usr/bin/awk '{print $1}')"
+PACKAGING_SOURCE_COMMIT="$(/usr/bin/env node -e 'const p=require(process.argv[1]); process.stdout.write(p.packagingSource.packagingSourceCommit)' "$OUT_ROOT/package-plan.json")"
+PACKAGING_SOURCE_TREE="$(/usr/bin/env node -e 'const p=require(process.argv[1]); process.stdout.write(p.packagingSource.packagingSourceTree)' "$OUT_ROOT/package-plan.json")"
+PACKAGING_SOURCE_SET_SHA256="$(/usr/bin/env node -e 'const p=require(process.argv[1]); process.stdout.write(p.packagingSource.packagingSourceSetSha256)' "$OUT_ROOT/package-plan.json")"
 APP="$OUT_ROOT/VexLife Setup.app"
 DMG="$OUT_ROOT/VexLife-Setup-macOS-unsigned.dmg"
 /bin/rm -rf "$APP" "$DMG"
@@ -69,6 +73,10 @@ ARTIFACT_BYTES="$(/usr/bin/stat -f '%z' "$DMG")"
   "artifactBytes": $ARTIFACT_BYTES,
   "sourceTarSha256": "$OBSERVED_SHA256",
   "sourceTarBytes": $OBSERVED_BYTES,
+  "packagingSourceCommit": "$PACKAGING_SOURCE_COMMIT",
+  "packagingSourceTree": "$PACKAGING_SOURCE_TREE",
+  "packagingSourceSetSha256": "$PACKAGING_SOURCE_SET_SHA256",
+  "packagePlanSha256": "$PACKAGE_PLAN_SHA256",
   "containerDeterminismState": "HOST_REPEAT_BUILD_QUALIFICATION_REQUIRED",
   "signing": false,
   "notarization": false,

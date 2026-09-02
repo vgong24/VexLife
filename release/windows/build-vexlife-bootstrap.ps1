@@ -23,6 +23,9 @@ $PlanScript = Join-Path $RepoRoot 'scripts\release-bootstrap-package.mjs'
 & $Node $PlanScript --platform windows --source-tar $SourceTar --out $Out
 if ($LASTEXITCODE -ne 0) { throw 'Effect-free package planning failed.' }
 $OutRoot = Join-Path $RepoRoot ('generated\release-bootstrap-packages\' + $Out)
+$PackagePlanPath = Join-Path $OutRoot 'package-plan.json'
+$PackagePlan = Get-Content -LiteralPath $PackagePlanPath -Raw | ConvertFrom-Json
+$PackagePlanSha256 = (Get-FileHash -LiteralPath $PackagePlanPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $Stage = Join-Path $env:TEMP ('VexLife-ReleaseBootstrap-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $Stage -Force | Out-Null
 try {
@@ -89,6 +92,10 @@ FILE4="source-archive-receipt.json"
     artifactBytes = $ArtifactBytes
     sourceTarSha256 = $ObservedSha256
     sourceTarBytes = $ObservedBytes
+    packagingSourceCommit = [string]$PackagePlan.packagingSource.packagingSourceCommit
+    packagingSourceTree = [string]$PackagePlan.packagingSource.packagingSourceTree
+    packagingSourceSetSha256 = [string]$PackagePlan.packagingSource.packagingSourceSetSha256
+    packagePlanSha256 = $PackagePlanSha256
     containerDeterminismState = 'HOST_REPEAT_BUILD_QUALIFICATION_REQUIRED'
     signing = $false
     notarization = $false

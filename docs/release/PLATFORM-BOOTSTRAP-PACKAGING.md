@@ -22,6 +22,12 @@ The packaging tooling may advance after that source freeze. The payload source d
 not. A different TAR digest is a different release input and is rejected before a
 package is formed.
 
+Every package plan separately binds the **packaging-tool** Git HEAD/tree and exact Git
+blob IDs for the six executable packaging sources. Planning fails if any of those
+working-copy bytes differ from their committed blobs. Host build receipts then bind the
+SHA-256 of that exact package plan, so immutable payload identity and packaging recipe
+identity remain distinct and both are auditable.
+
 ## What belongs in the bootstrap
 
 Both platform candidates carry only:

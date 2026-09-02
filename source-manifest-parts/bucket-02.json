@@ -5,8 +5,8 @@
     {
       "path": "docs/release/PLATFORM-BOOTSTRAP-PACKAGING.md",
       "mode": "100644",
-      "bytes": 4255,
-      "sha256": "1bb796d1866222f4ddfcafc3927f2f8fed76899bb4e5c6a9ea0171b545cdb5a7"
+      "bytes": 4649,
+      "sha256": "02fde300efe0c13b9d0bce376dad006b52b91fd2579eb83b1ce75e53a49d902c"
     },
     {
       "path": "test/patient0-familiarity-live-work.test.mjs",

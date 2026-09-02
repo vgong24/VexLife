@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +21,15 @@ export const FROZEN_RELEASE_SOURCE = Object.freeze({
   r2AttemptRef: 'attempt.onb-dist.vexlife.current-unsigned-release-reproduction.r2.001.a003.af70c9e8-b221-43f3-bdbe-93ef1703e4ca',
   r1R2TerminalReceiptRef: 'github.issue.vextreme-sdk.914.comment.5506554191',
 });
+
+export const PACKAGING_SOURCE_PATHS = Object.freeze([
+  'src/core/release-bootstrap-packaging.mjs',
+  'scripts/release-bootstrap-package.mjs',
+  'release/windows/build-vexlife-bootstrap.ps1',
+  'release/windows/bootstrap.ps1',
+  'release/macos/build-vexlife-bootstrap.sh',
+  'release/macos/VexLifeSetupLauncher.sh',
+]);
 
 export const PROTECTED_EFFECTS_FALSE = Object.freeze({
   signing: false,
@@ -236,6 +246,52 @@ export function resolveQualifiedOutputDir(requestedOut) {
   return resolved;
 }
 
+function runGit(repositoryRoot, args) {
+  try {
+    return execFileSync('git', ['-C', repositoryRoot, ...args], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+  } catch (error) {
+    const stderr = error && typeof error === 'object' && 'stderr' in error
+      ? String(error.stderr || '').trim()
+      : '';
+    throw new Error(`packaging source Git identity could not be resolved${stderr ? `: ${stderr}` : ''}`);
+  }
+}
+
+export function resolvePackagingSourceIdentity(repositoryRoot = REPOSITORY_ROOT) {
+  const root = path.resolve(repositoryRoot);
+  const packagingSourceCommit = runGit(root, ['rev-parse', 'HEAD']);
+  const packagingSourceTree = runGit(root, ['rev-parse', 'HEAD^{tree}']);
+  if (!/^[a-f0-9]{40}$/u.test(packagingSourceCommit) || !/^[a-f0-9]{40}$/u.test(packagingSourceTree)) {
+    throw new Error('packaging source Git commit/tree must be exact lowercase 40-hex identities');
+  }
+
+  const status = runGit(root, ['status', '--porcelain=v1', '--untracked-files=all', '--', ...PACKAGING_SOURCE_PATHS]);
+  if (status) throw new Error(`packaging source paths must be clean and committed: ${status.split(/\r?\n/u)[0]}`);
+
+  const blobs = PACKAGING_SOURCE_PATHS.map((relativePath) => {
+    const committedBlob = runGit(root, ['rev-parse', `HEAD:${relativePath}`]);
+    const observedBlob = runGit(root, ['hash-object', '--', relativePath]);
+    if (!/^[a-f0-9]{40}$/u.test(committedBlob) || observedBlob !== committedBlob) {
+      throw new Error(`packaging source blob mismatch for ${relativePath}`);
+    }
+    return { path: relativePath, blobSha1: committedBlob };
+  });
+  const packagingSourceSetSha256 = sha256(Buffer.from(
+    blobs.map((entry) => `${entry.blobSha1}  ${entry.path}\n`).join(''),
+    'utf8',
+  ));
+
+  return {
+    packagingSourceCommit,
+    packagingSourceTree,
+    packagingSourceBlobs: blobs,
+    packagingSourceSetSha256,
+  };
+}
+
 function cloneEffects() {
   return { ...PROTECTED_EFFECTS_FALSE };
 }
@@ -261,11 +317,18 @@ export function buildReleaseNoticeReceipt() {
   };
 }
 
-export function buildPlatformPackagePlan(platform, verifiedArchive) {
+export function buildPlatformPackagePlan(platform, verifiedArchive, packagingSourceIdentity) {
   const contract = PLATFORM_CONTRACTS[platform];
   if (!contract) throw new Error(`unsupported platform: ${platform}`);
   if (!verifiedArchive || verifiedArchive.sourceTarSha256 !== FROZEN_RELEASE_SOURCE.sourceTarSha256) {
     throw new Error('platform package plan requires the exact verified frozen source archive');
+  }
+  if (!packagingSourceIdentity || !/^[a-f0-9]{40}$/u.test(packagingSourceIdentity.packagingSourceCommit || '') ||
+      !/^[a-f0-9]{40}$/u.test(packagingSourceIdentity.packagingSourceTree || '') ||
+      !Array.isArray(packagingSourceIdentity.packagingSourceBlobs) ||
+      packagingSourceIdentity.packagingSourceBlobs.length !== PACKAGING_SOURCE_PATHS.length ||
+      !/^[a-f0-9]{64}$/u.test(packagingSourceIdentity.packagingSourceSetSha256 || '')) {
+    throw new Error('platform package plan requires exact committed packaging-source identity');
   }
   return {
     schemaVersion: 'vexlife.release-bootstrap-package-plan/v1',
@@ -273,6 +336,12 @@ export function buildPlatformPackagePlan(platform, verifiedArchive) {
     platform,
     artifactClass: contract.artifactClass,
     containerClass: contract.containerClass,
+    packagingSource: {
+      packagingSourceCommit: packagingSourceIdentity.packagingSourceCommit,
+      packagingSourceTree: packagingSourceIdentity.packagingSourceTree,
+      packagingSourceBlobs: packagingSourceIdentity.packagingSourceBlobs,
+      packagingSourceSetSha256: packagingSourceIdentity.packagingSourceSetSha256,
+    },
     source: {
       releaseCandidateFreezeRef: FROZEN_RELEASE_SOURCE.releaseCandidateFreezeRef,
       sourceCommit: FROZEN_RELEASE_SOURCE.sourceCommit,
@@ -321,8 +390,9 @@ function jsonBytes(value) {
 export function writePlanningPacket({ platform, sourceTarPath, out }) {
   const verifiedArchive = verifyFrozenSourceArchive(sourceTarPath);
   const outputDir = resolveQualifiedOutputDir(out);
+  const packagingSourceIdentity = resolvePackagingSourceIdentity();
   fs.mkdirSync(outputDir, { recursive: true });
-  const plan = buildPlatformPackagePlan(platform, verifiedArchive);
+  const plan = buildPlatformPackagePlan(platform, verifiedArchive, packagingSourceIdentity);
   const notices = buildReleaseNoticeReceipt();
   const sourceReceipt = {
     schemaVersion: 'vexlife.release-bootstrap-source-receipt/v1',

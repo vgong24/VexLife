@@ -1,18 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   FROZEN_RELEASE_SOURCE,
+  PACKAGING_SOURCE_PATHS,
   PLATFORM_CONTRACTS,
   PROTECTED_EFFECTS_FALSE,
   assertSafeArchivePath,
   buildPlatformPackagePlan,
   buildReleaseNoticeReceipt,
   inspectTarStructure,
+  resolvePackagingSourceIdentity,
   resolveQualifiedOutputDir,
   sha256,
   verifyFrozenSourceArchive,
@@ -20,6 +23,16 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RETAINED_R1 = process.env.VEXLIFE_R1_REFERENCE_TAR || null;
+
+const FIXTURE_PACKAGING_SOURCE_IDENTITY = {
+  packagingSourceCommit: '1'.repeat(40),
+  packagingSourceTree: '2'.repeat(40),
+  packagingSourceBlobs: PACKAGING_SOURCE_PATHS.map((sourcePath, index) => ({
+    path: sourcePath,
+    blobSha1: String((index % 9) + 1).repeat(40),
+  })),
+  packagingSourceSetSha256: 'a'.repeat(64),
+};
 
 function tarHeader(name, size = 0, type = '0') {
   const header = Buffer.alloc(512);
@@ -90,10 +103,14 @@ test('platform plans bind exact accepted setup owners and preserve all protected
     entryCount: 807,
   };
   for (const platform of ['windows', 'macos']) {
-    const plan = buildPlatformPackagePlan(platform, verified);
+    const plan = buildPlatformPackagePlan(platform, verified, FIXTURE_PACKAGING_SOURCE_IDENTITY);
     assert.equal(plan.source.sourceCommit, FROZEN_RELEASE_SOURCE.sourceCommit);
     assert.equal(plan.source.sourceTree, FROZEN_RELEASE_SOURCE.sourceTree);
     assert.equal(plan.source.sourceTarSha256, FROZEN_RELEASE_SOURCE.sourceTarSha256);
+    assert.equal(plan.packagingSource.packagingSourceCommit, FIXTURE_PACKAGING_SOURCE_IDENTITY.packagingSourceCommit);
+    assert.equal(plan.packagingSource.packagingSourceTree, FIXTURE_PACKAGING_SOURCE_IDENTITY.packagingSourceTree);
+    assert.equal(plan.packagingSource.packagingSourceBlobs.length, PACKAGING_SOURCE_PATHS.length);
+    assert.equal(plan.packagingSource.packagingSourceSetSha256, FIXTURE_PACKAGING_SOURCE_IDENTITY.packagingSourceSetSha256);
     assert.equal(plan.releaseClass, 'UNSIGNED_RELEASE_CANDIDATE');
     assert.equal(plan.publicationState, 'LOCAL_CANDIDATE_ONLY');
     assert.equal(plan.certificationState, 'UNSIGNED_LOCAL_CANDIDATE');
@@ -102,6 +119,34 @@ test('platform plans bind exact accepted setup owners and preserve all protected
     assert.equal(plan.excludedPayloadClasses.includes('VEX_HOME'), true);
     assert.equal(plan.delegation.acceptedProjectionPath, PLATFORM_CONTRACTS[platform].acceptedProjectionPath);
   }
+});
+
+test('packaging source identity binds clean committed executable-source blobs and rejects a dirty substitution', (t) => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-packaging-source-identity-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
+  for (const relativePath of PACKAGING_SOURCE_PATHS) {
+    const target = path.join(temp, relativePath);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, relativePath), target);
+  }
+  const git = (...args) => execFileSync('git', ['-C', temp, ...args], { encoding: 'utf8' }).trim();
+  git('init', '-q');
+  git('config', 'user.name', 'Vex Packaging Identity Test');
+  git('config', 'user.email', 'vex-packaging-test@example.invalid');
+  git('add', '--', ...PACKAGING_SOURCE_PATHS);
+  git('commit', '-q', '-m', 'fixture packaging source');
+
+  const identity = resolvePackagingSourceIdentity(temp);
+  assert.match(identity.packagingSourceCommit, /^[a-f0-9]{40}$/u);
+  assert.match(identity.packagingSourceTree, /^[a-f0-9]{40}$/u);
+  assert.equal(identity.packagingSourceBlobs.length, PACKAGING_SOURCE_PATHS.length);
+  assert.match(identity.packagingSourceSetSha256, /^[a-f0-9]{64}$/u);
+  for (const entry of identity.packagingSourceBlobs) {
+    assert.equal(entry.blobSha1, git('rev-parse', `HEAD:${entry.path}`));
+  }
+
+  fs.appendFileSync(path.join(temp, PACKAGING_SOURCE_PATHS[0]), '\n// substituted working-copy byte\n', 'utf8');
+  assert.throws(() => resolvePackagingSourceIdentity(temp), /clean and committed/u);
 });
 
 test('release-level notice receipt distinguishes dependency metadata from bundled bytes', () => {
@@ -129,6 +174,7 @@ test('platform build/launcher sources contain exact source binding and no protec
     assert.match(source, /a09867eb2e827cb3f4ca84b11eae87420ba58738e4dec68de8b11cce3cd84eca/u);
     assert.doesNotMatch(source, /\b(?:signtool|codesign|notarytool)\b/iu);
     assert.doesNotMatch(source, /gh\s+release\s+create/iu);
+    if (relativePath.includes('build-vexlife-bootstrap')) assert.match(source, /packagePlanSha256|PACKAGE_PLAN_SHA256/u);
   }
 });
 
