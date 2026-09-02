@@ -211,12 +211,38 @@ export function createBrowserPromptContextRuntime({
   if (typeof now !== 'function') fail('now must be one source-managed clock function');
   const active = new Map();
 
+  const releaseSelection = (key, expected = null) => {
+    const current = active.get(key);
+    if (!current || (expected !== null && current !== expected)) return false;
+    active.delete(key);
+    if (current.expiryTimer) clearTimeout(current.expiryTimer);
+    return true;
+  };
+
+  const retainSelection = (key, selection, lease, projection) => {
+    releaseSelection(key);
+    let formed = null;
+    const expiryTimer = setTimeout(() => {
+      if (formed && active.get(key) === formed) active.delete(key);
+    }, leaseTtlMs);
+    if (typeof expiryTimer.unref === 'function') expiryTimer.unref();
+    formed = Object.freeze({
+      selection,
+      selectionFingerprint: selectionFingerprint(selection),
+      lease,
+      projection,
+      expiryTimer
+    });
+    active.set(key, formed);
+    return formed;
+  };
+
   const promptContextResolver = async ({ context }) => {
     const current = exactCurrentRequestBinding(context);
     const threadRef = safeRef(context.threadRef, 'threadRef');
     const priorHeadSha256 = context.priorConversationHeadSha256 ?? null;
     if (priorHeadSha256 === null) {
-      active.delete(stateKey(context));
+      releaseSelection(stateKey(context));
       return null;
     }
     if (!/^[0-9a-f]{64}$/u.test(priorHeadSha256)) fail('priorConversationHeadSha256 is invalid');
@@ -243,12 +269,7 @@ export function createBrowserPromptContextRuntime({
     const lease = createContextLease(leaseInput(selection, observedAt, leaseTtlMs)).lease;
     const projection = continuityProjection(selection, lease);
     const key = stateKey(context);
-    active.set(key, Object.freeze({
-      selection,
-      selectionFingerprint: selectionFingerprint(selection),
-      lease,
-      projection
-    }));
+    retainSelection(key, selection, lease, projection);
     return Object.freeze({
       contextLease: lease,
       continuityProjection: projection,
@@ -264,76 +285,81 @@ export function createBrowserPromptContextRuntime({
     const key = safeRef(query.currentRequestEventRef, 'authority currentRequestEventRef');
     const formed = active.get(key);
     if (!formed) fail('prompt-context authority query has no exact active resolver state');
-    if (query.lineageRef !== companionLineageRef ||
-        query.threadRef !== formed.selection.threadRef ||
-        query.priorConversationHeadSha256 !== formed.selection.priorConversationHeadSha256 ||
-        JSON.stringify(query.selectedConversationEventRefs) !== JSON.stringify(
-          formed.selection.selectedEventBindings.map((binding) => binding.eventRef)
-        )) {
-      fail('prompt-context authority query does not match the exact resolver selection');
-    }
-    const current = Object.freeze({
-      eventRef: safeRef(query.currentRequestEventRef, 'authority currentRequestEventRef'),
-      eventHash: /^[0-9a-f]{64}$/u.test(query.currentRequestEventHash ?? '')
-        ? query.currentRequestEventHash
-        : fail('authority currentRequestEventHash is invalid'),
-      sequence: Number.isSafeInteger(query.currentRequestSequence) && query.currentRequestSequence >= 0
-        ? query.currentRequestSequence
-        : fail('authority currentRequestSequence is invalid')
-    });
-    if (JSON.stringify(current) !== JSON.stringify(formed.selection.currentRequestEventBinding)) {
-      fail('prompt-context authority query current request binding changed after selection');
-    }
-
-    const prior = readCurrentLivedCompanionCompletedTurn({
-      home,
-      homeRef,
-      deviceRef,
-      companionLineageRef,
-      threadRef: query.threadRef,
-      expectedConversationHeadSha256: query.priorConversationHeadSha256
-    });
-    const reboundSelection = selectionCore(prior, current);
-    if (selectionFingerprint(reboundSelection) !== formed.selectionFingerprint) {
-      fail('prompt-context prior-turn selection is no longer current');
-    }
-    const observedAt = now();
-    canonicalTimestamp(observedAt, 'authority observedAt');
     try {
-      assertCurrentLease(formed.lease, {
-        label: 'browser prompt context',
-        observedAt,
-        schedulerGeneration: formed.lease.schedulerGeneration,
-        runtimeSnapshotFingerprint: formed.lease.runtimeSnapshotFingerprint
+      if (query.lineageRef !== companionLineageRef ||
+          query.threadRef !== formed.selection.threadRef ||
+          query.priorConversationHeadSha256 !== formed.selection.priorConversationHeadSha256 ||
+          JSON.stringify(query.selectedConversationEventRefs) !== JSON.stringify(
+            formed.selection.selectedEventBindings.map((binding) => binding.eventRef)
+          )) {
+        fail('prompt-context authority query does not match the exact resolver selection');
+      }
+      const current = Object.freeze({
+        eventRef: safeRef(query.currentRequestEventRef, 'authority currentRequestEventRef'),
+        eventHash: /^[0-9a-f]{64}$/u.test(query.currentRequestEventHash ?? '')
+          ? query.currentRequestEventHash
+          : fail('authority currentRequestEventHash is invalid'),
+        sequence: Number.isSafeInteger(query.currentRequestSequence) && query.currentRequestSequence >= 0
+          ? query.currentRequestSequence
+          : fail('authority currentRequestSequence is invalid')
       });
+      if (JSON.stringify(current) !== JSON.stringify(formed.selection.currentRequestEventBinding)) {
+        fail('prompt-context authority query current request binding changed after selection');
+      }
+
+      const prior = readCurrentLivedCompanionCompletedTurn({
+        home,
+        homeRef,
+        deviceRef,
+        companionLineageRef,
+        threadRef: query.threadRef,
+        expectedConversationHeadSha256: query.priorConversationHeadSha256
+      });
+      const reboundSelection = selectionCore(prior, current);
+      if (selectionFingerprint(reboundSelection) !== formed.selectionFingerprint) {
+        fail('prompt-context prior-turn selection is no longer current');
+      }
+      const observedAt = now();
+      canonicalTimestamp(observedAt, 'authority observedAt');
+      try {
+        assertCurrentLease(formed.lease, {
+          label: 'browser prompt context',
+          observedAt,
+          schedulerGeneration: formed.lease.schedulerGeneration,
+          runtimeSnapshotFingerprint: formed.lease.runtimeSnapshotFingerprint
+        });
+      } catch (error) {
+        fail('prompt-context lease is no longer current', { cause: error.message });
+      }
+      const materializationReceiptRefOrNull = query.materializationReceiptRefOrNull ?? null;
+      const materializationReceiptFingerprintOrNull = query.materializationReceiptFingerprintOrNull ?? null;
+      const witness = Object.freeze({
+        schemaVersion: 'vexlife.prompt-context-owner-currentness-witness/v2',
+        phase: query.phase,
+        authorityRef,
+        observedAt,
+        currentness: 'CURRENT',
+        lifecycle: 'ACTIVE',
+        lineageRef: companionLineageRef,
+        threadRef: query.threadRef,
+        priorConversationHeadSha256: query.priorConversationHeadSha256,
+        contextLeaseRef: formed.lease.leaseRef,
+        contextLeaseFingerprint: formed.lease.semanticFingerprint,
+        continuityProjectionRef: formed.projection.adapterProjectionRef,
+        continuityProjectionFingerprint: formed.projection.semanticFingerprint,
+        schedulerGeneration: formed.lease.schedulerGeneration,
+        runtimeSnapshotFingerprint: formed.lease.runtimeSnapshotFingerprint,
+        currentRequestEventBinding: current,
+        selectedEventBindings: formed.selection.selectedEventBindings,
+        materializationReceiptRefOrNull,
+        materializationReceiptFingerprintOrNull
+      });
+      if (query.phase === 'PRE_PROVIDER') releaseSelection(key, formed);
+      return witness;
     } catch (error) {
-      fail('prompt-context lease is no longer current', { cause: error.message });
+      releaseSelection(key, formed);
+      throw error;
     }
-    const materializationReceiptRefOrNull = query.materializationReceiptRefOrNull ?? null;
-    const materializationReceiptFingerprintOrNull = query.materializationReceiptFingerprintOrNull ?? null;
-    const witness = Object.freeze({
-      schemaVersion: 'vexlife.prompt-context-owner-currentness-witness/v2',
-      phase: query.phase,
-      authorityRef,
-      observedAt,
-      currentness: 'CURRENT',
-      lifecycle: 'ACTIVE',
-      lineageRef: companionLineageRef,
-      threadRef: query.threadRef,
-      priorConversationHeadSha256: query.priorConversationHeadSha256,
-      contextLeaseRef: formed.lease.leaseRef,
-      contextLeaseFingerprint: formed.lease.semanticFingerprint,
-      continuityProjectionRef: formed.projection.adapterProjectionRef,
-      continuityProjectionFingerprint: formed.projection.semanticFingerprint,
-      schedulerGeneration: formed.lease.schedulerGeneration,
-      runtimeSnapshotFingerprint: formed.lease.runtimeSnapshotFingerprint,
-      currentRequestEventBinding: current,
-      selectedEventBindings: formed.selection.selectedEventBindings,
-      materializationReceiptRefOrNull,
-      materializationReceiptFingerprintOrNull
-    });
-    if (query.phase === 'PRE_PROVIDER') active.delete(key);
-    return witness;
   };
 
   return Object.freeze({

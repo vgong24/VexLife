@@ -239,6 +239,7 @@ test('authority verifier rejects a stale prior head after the thread advances', 
       (error) => error instanceof LivedCompanionError &&
         ['CONVERSATION_HEAD_MISMATCH', 'CONTEXT_HASH_MISMATCH'].includes(error.code)
     );
+    assert.equal(owner.activeSelectionCount(), 0);
   } finally {
     await model.close();
     fs.rmSync(home.root, { recursive: true, force: true });
@@ -280,6 +281,77 @@ test('authority verifier rejects an expired exact lease', async () => {
       }),
       (error) => error instanceof LivedCompanionError && error.code === 'CONTEXT_HASH_MISMATCH'
     );
+    assert.equal(owner.activeSelectionCount(), 0);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('post-MATERIALIZE failure retains no selection beyond the finite lease TTL', async () => {
+  const home = makeHome('materialization-failure-expiry');
+  const model = await startModelServer();
+  try {
+    await firstTurn(home, model);
+    const owner = runtime(home, { leaseTtlMs: 1_000 });
+    await assert.rejects(
+      () => bridge(home, model, owner, 'instance.vexlife.browser-prompt-context-budget-failure').performTurn({
+        threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
+        channelRef: 'channel.local-vex.companion',
+        content: 'x'.repeat(16_000)
+      })
+    );
+    assert.equal(model.calls.length, 1);
+    assert.equal(owner.activeSelectionCount(), 1);
+    await new Promise((resolve) => setTimeout(resolve, 1_100));
+    assert.equal(owner.activeSelectionCount(), 0);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('verifier failure retires only its exact active selection', async () => {
+  const home = makeHome('exact-cleanup');
+  const model = await startModelServer();
+  try {
+    const first = await firstTurn(home, model);
+    const owner = runtime(home);
+    const common = {
+      threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
+      currentRequestSequence: 2,
+      priorConversationHeadSha256: first.conversationHeadSha256
+    };
+    const firstPending = {
+      ...common,
+      currentRequestEventRef: 'event.vexlife.request.cleanup-first',
+      currentRequestEventHash: '4'.repeat(64)
+    };
+    const secondPending = {
+      ...common,
+      currentRequestEventRef: 'event.vexlife.request.cleanup-second',
+      currentRequestEventHash: '5'.repeat(64)
+    };
+    const firstSelection = await owner.promptContextResolver({ context: firstPending });
+    await owner.promptContextResolver({ context: secondPending });
+    assert.equal(owner.activeSelectionCount(), 2);
+    await assert.rejects(
+      () => owner.promptContextAuthorityVerifier({
+        schemaVersion: 'vexlife.prompt-context-authority-query/v2',
+        phase: 'MATERIALIZE',
+        lineageRef: home.companionLineageRef,
+        threadRef: common.threadRef,
+        priorConversationHeadSha256: first.conversationHeadSha256,
+        currentRequestEventRef: firstPending.currentRequestEventRef,
+        currentRequestEventHash: '6'.repeat(64),
+        currentRequestSequence: firstPending.currentRequestSequence,
+        selectedConversationEventRefs: firstSelection.selectedConversationEventRefs,
+        materializationReceiptRefOrNull: null,
+        materializationReceiptFingerprintOrNull: null
+      }),
+      (error) => error instanceof LivedCompanionError && error.code === 'CONTEXT_HASH_MISMATCH'
+    );
+    assert.equal(owner.activeSelectionCount(), 1);
   } finally {
     await model.close();
     fs.rmSync(home.root, { recursive: true, force: true });
