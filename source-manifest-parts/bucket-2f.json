@@ -11,8 +11,8 @@
     {
       "path": "src/core/model-turn-witness.mjs",
       "mode": "100644",
-      "bytes": 5361,
-      "sha256": "3e11b8ab9cc04113fceac9e81bcff28121557f68dcee11400e85b48a4069beae"
+      "bytes": 12507,
+      "sha256": "1be485aa0ec19f5d8b35ae73eeeb6b7efa2ee5b408a98a7a73e8f423cbb272a9"
     },
     {
       "path": "src/core/utils.mjs",

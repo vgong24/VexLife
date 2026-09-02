@@ -15,6 +15,20 @@ const KNOWN_TIMINGS = new Set([
   'cache_n', 'prompt_n', 'prompt_ms', 'prompt_per_token_ms', 'prompt_per_second',
   'predicted_n', 'predicted_ms', 'predicted_per_token_ms', 'predicted_per_second'
 ]);
+const OBSERVATION_KEYS = new Set([
+  'schemaVersion','truthClass','endpointProfileRef','modelBundleRef','operationalProfileRef','runtimeRevisionRef',
+  'runtimeCapabilityEvidenceRef','observedAt','responseBodySha256','output','modelProvenance','reasoningTrace',
+  'usageSummary','runtimeTimingSummary','structuredOutputState','unknownUpstreamFields','privacy','observationRef','observationSha256'
+]);
+const OUTPUT_KEYS = new Set(['contentSha256','contentCharacters','assistantRoleObserved','finishReasonOrNull','refusalObserved','toolCallsPresent','toolCallCount']);
+const MODEL_PROVENANCE_KEYS = new Set(['compatibilityModel','reportedModelField']);
+const REPORTED_MODEL_KEYS = new Set(['valueType','byteLength','valueSha256','pathClass','rawValuePersisted']);
+const REASONING_KEYS = new Set(['type','present','contentSha256','characterCount','rawState','rawPersisted','humanProjection','modelProjection','trainingProjection']);
+const SUMMARY_KEYS = new Set(['present','values']);
+const STRUCTURED_KEYS = new Set(['requested','observedJsonValue']);
+const UNKNOWN_KEYS = new Set(['jsonPointer','valueType','byteLength','valueSha256','rawValuePersisted','disposition']);
+const PRIVACY_KEYS = new Set(['rawProviderResponsePersisted','rawReasoningPersisted','rawReportedModelPersisted','privateContentAddedByAdapter']);
+const USAGE_VALUE_KEYS = new Set(['completion_tokens','prompt_tokens','total_tokens','cached_prompt_tokens']);
 
 function nonempty(value) { return typeof value === 'string' && value.length > 0; }
 function plainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
@@ -22,15 +36,21 @@ function sha256Bytes(value) { return crypto.createHash('sha256').update(value).d
 function byteLength(value) { return Buffer.byteLength(typeof value === 'string' ? value : JSON.stringify(value), 'utf8'); }
 function valueType(value) { return value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value; }
 function frozen(value) { return Object.freeze(value); }
+function exactKeys(value, allowed) {
+  return plainObject(value) && Object.keys(value).length === allowed.size && Object.keys(value).every((key) => allowed.has(key));
+}
+function canonicalTimestamp(value) {
+  if (!nonempty(value)) return false;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) && new Date(ms).toISOString() === value;
+}
+function nullableRef(value) { return value === null || nonempty(value); }
+function safeCompatibilityModel(value) { return nonempty(value) && value.length <= 256 && !PATH_LIKE.test(value); }
+function finiteNonnegative(value) { return Number.isFinite(value) && value >= 0; }
+function nonnegativeInteger(value) { return Number.isSafeInteger(value) && value >= 0; }
 
 function metadataOnly(value, disposition = 'UNCLASSIFIED_RUNTIME_FIELD') {
-  return frozen({
-    valueType: valueType(value),
-    byteLength: byteLength(value),
-    valueSha256: semanticHash(value),
-    rawValuePersisted: false,
-    disposition
-  });
+  return frozen({ valueType: valueType(value), byteLength: byteLength(value), valueSha256: semanticHash(value), rawValuePersisted: false, disposition });
 }
 
 function modelProvenance(rawModel, fallbackModel) {
@@ -38,15 +58,12 @@ function modelProvenance(rawModel, fallbackModel) {
   const rawPathLike = rawPresent && PATH_LIKE.test(rawModel);
   const safeRaw = rawPresent && !rawPathLike && rawModel.length <= 256 ? rawModel : null;
   const compatibilityModel = safeRaw ?? fallbackModel;
-  if (!nonempty(compatibilityModel)) throw new TypeError('one safe compatibility model identity is required');
+  if (!safeCompatibilityModel(compatibilityModel)) throw new TypeError('one safe non-path compatibility model identity is required');
   return frozen({
     compatibilityModel,
     reportedModelField: rawPresent ? frozen({
-      valueType: 'string',
-      byteLength: Buffer.byteLength(rawModel, 'utf8'),
-      valueSha256: sha256Bytes(Buffer.from(rawModel, 'utf8')),
-      pathClass: rawPathLike ? 'LOCAL_PATH_LIKE' : 'OPAQUE_MODEL_ID',
-      rawValuePersisted: false
+      valueType: 'string', byteLength: Buffer.byteLength(rawModel, 'utf8'), valueSha256: sha256Bytes(Buffer.from(rawModel, 'utf8')),
+      pathClass: rawPathLike ? 'LOCAL_PATH_LIKE' : 'OPAQUE_MODEL_ID', rawValuePersisted: false
     }) : null
   });
 }
@@ -54,54 +71,27 @@ function modelProvenance(rawModel, fallbackModel) {
 function usageSummary(usage) {
   if (!plainObject(usage)) return frozen({ present: false, values: frozen({}) });
   const values = {};
-  for (const key of ['completion_tokens', 'prompt_tokens', 'total_tokens']) {
-    if (Number.isFinite(usage[key])) values[key] = usage[key];
-  }
-  if (plainObject(usage.prompt_tokens_details) && Number.isFinite(usage.prompt_tokens_details.cached_tokens)) {
-    values.cached_prompt_tokens = usage.prompt_tokens_details.cached_tokens;
-  }
+  for (const key of ['completion_tokens', 'prompt_tokens', 'total_tokens']) if (nonnegativeInteger(usage[key])) values[key] = usage[key];
+  if (plainObject(usage.prompt_tokens_details) && nonnegativeInteger(usage.prompt_tokens_details.cached_tokens)) values.cached_prompt_tokens = usage.prompt_tokens_details.cached_tokens;
   return frozen({ present: true, values: frozen(values) });
 }
 
 function timingSummary(timings) {
   if (!plainObject(timings)) return frozen({ present: false, values: frozen({}) });
   const values = {};
-  for (const key of KNOWN_TIMINGS) if (Number.isFinite(timings[key])) values[key] = timings[key];
+  for (const key of KNOWN_TIMINGS) if (finiteNonnegative(timings[key])) values[key] = timings[key];
   return frozen({ present: true, values: frozen(values) });
 }
 
 function reasoningTrace(message) {
   const value = message?.reasoning_content;
   if (typeof value !== 'string' || value.length === 0) {
-    return frozen({
-      type: MODEL_EMITTED_REASONING_TRACE,
-      present: false,
-      contentSha256: null,
-      characterCount: 0,
-      rawState: 'EPHEMERAL',
-      rawPersisted: false,
-      humanProjection: 'SEALED_EXPLICIT_OPEN_ONLY',
-      modelProjection: 'NONE',
-      trainingProjection: 'NONE'
-    });
+    return frozen({ type: MODEL_EMITTED_REASONING_TRACE, present: false, contentSha256: null, characterCount: 0, rawState: 'EPHEMERAL', rawPersisted: false, humanProjection: 'SEALED_EXPLICIT_OPEN_ONLY', modelProjection: 'NONE', trainingProjection: 'NONE' });
   }
-  return frozen({
-    type: MODEL_EMITTED_REASONING_TRACE,
-    present: true,
-    contentSha256: sha256Bytes(Buffer.from(value, 'utf8')),
-    characterCount: [...value].length,
-    rawState: 'EPHEMERAL',
-    rawPersisted: false,
-    humanProjection: 'SEALED_EXPLICIT_OPEN_ONLY',
-    modelProjection: 'NONE',
-    trainingProjection: 'NONE'
-  });
+  return frozen({ type: MODEL_EMITTED_REASONING_TRACE, present: true, contentSha256: sha256Bytes(Buffer.from(value, 'utf8')), characterCount: [...value].length, rawState: 'EPHEMERAL', rawPersisted: false, humanProjection: 'SEALED_EXPLICIT_OPEN_ONLY', modelProjection: 'NONE', trainingProjection: 'NONE' });
 }
 
-function addUnknown(output, pointer, value) {
-  output.push(frozen({ jsonPointer: pointer, ...metadataOnly(value) }));
-}
-
+function addUnknown(output, pointer, value) { output.push(frozen({ jsonPointer: pointer, ...metadataOnly(value) })); }
 function collectUnknownFields(body) {
   const unknown = [];
   if (!plainObject(body)) return frozen(unknown);
@@ -116,9 +106,7 @@ function collectUnknownFields(body) {
         for (const [choiceKey, choiceValue] of Object.entries(choice)) {
           if (!KNOWN_CHOICE.has(choiceKey)) { addUnknown(unknown, `/choices/0/${choiceKey}`, choiceValue); continue; }
           if (choiceKey === 'message' && plainObject(choiceValue)) {
-            for (const [messageKey, messageValue] of Object.entries(choiceValue)) {
-              if (!KNOWN_MESSAGE.has(messageKey)) addUnknown(unknown, `/choices/0/message/${messageKey}`, messageValue);
-            }
+            for (const [messageKey, messageValue] of Object.entries(choiceValue)) if (!KNOWN_MESSAGE.has(messageKey)) addUnknown(unknown, `/choices/0/message/${messageKey}`, messageValue);
           }
         }
       }
@@ -128,18 +116,12 @@ function collectUnknownFields(body) {
       for (const [usageKey, usageValue] of Object.entries(value)) {
         if (!KNOWN_USAGE.has(usageKey)) { addUnknown(unknown, `/usage/${usageKey}`, usageValue); continue; }
         if (usageKey === 'prompt_tokens_details' && plainObject(usageValue)) {
-          for (const [detailKey, detailValue] of Object.entries(usageValue)) {
-            if (!KNOWN_PROMPT_DETAILS.has(detailKey)) addUnknown(unknown, `/usage/prompt_tokens_details/${detailKey}`, detailValue);
-          }
+          for (const [detailKey, detailValue] of Object.entries(usageValue)) if (!KNOWN_PROMPT_DETAILS.has(detailKey)) addUnknown(unknown, `/usage/prompt_tokens_details/${detailKey}`, detailValue);
         }
       }
       continue;
     }
-    if (key === 'timings' && plainObject(value)) {
-      for (const [timingKey, timingValue] of Object.entries(value)) {
-        if (!KNOWN_TIMINGS.has(timingKey)) addUnknown(unknown, `/timings/${timingKey}`, timingValue);
-      }
-    }
+    if (key === 'timings' && plainObject(value)) for (const [timingKey, timingValue] of Object.entries(value)) if (!KNOWN_TIMINGS.has(timingKey)) addUnknown(unknown, `/timings/${timingKey}`, timingValue);
   }
   return frozen(unknown.sort((a, b) => a.jsonPointer.localeCompare(b.jsonPointer)));
 }
@@ -152,84 +134,12 @@ function structuredOutputState(content, requested) {
   return frozen({ requested: requested === true, observedJsonValue: parsedJson });
 }
 
-function validateRuntimeRefs({ modelBundleRef, operationalProfileRef, runtimeRevisionRef, runtimeCapabilityEvidenceRef }) {
-  for (const [key, value] of Object.entries({ modelBundleRef, operationalProfileRef, runtimeRevisionRef, runtimeCapabilityEvidenceRef })) {
-    if (value !== null && value !== undefined && !nonempty(value)) throw new TypeError(`${key} must be null or one non-empty ref`);
-  }
+function validateRuntimeRefs(refs) { for (const [key, value] of Object.entries(refs)) if (!nullableRef(value)) throw new TypeError(`${key} must be null or one non-empty ref`); }
+function validOutput(value) {
+  return exactKeys(value, OUTPUT_KEYS) && HEX64.test(value.contentSha256 ?? '') && nonnegativeInteger(value.contentCharacters)
+    && typeof value.assistantRoleObserved === 'boolean' && (value.finishReasonOrNull === null || typeof value.finishReasonOrNull === 'string')
+    && typeof value.refusalObserved === 'boolean' && typeof value.toolCallsPresent === 'boolean' && nonnegativeInteger(value.toolCallCount)
+    && value.toolCallsPresent === (value.toolCallCount > 0);
 }
-
-export function normalizeModelRuntimeResponse({
-  responseBody,
-  endpointProfile,
-  modelBundleRef = null,
-  operationalProfileRef = null,
-  runtimeRevisionRef = null,
-  runtimeCapabilityEvidenceRef = null,
-  structuredOutputRequested = false,
-  observedAt = new Date().toISOString()
-}) {
-  if (!plainObject(responseBody)) throw new TypeError('runtime response must be one JSON object');
-  if (!endpointProfile?.admitted || !nonempty(endpointProfile.profileRef) || !nonempty(endpointProfile.endpoint)) {
-    throw new TypeError('one admitted endpoint profile is required');
-  }
-  validateRuntimeRefs({ modelBundleRef, operationalProfileRef, runtimeRevisionRef, runtimeCapabilityEvidenceRef });
-  const choice = responseBody.choices?.[0];
-  const message = choice?.message;
-  const content = message?.content;
-  if (typeof content !== 'string' || content.length === 0) throw new TypeError('runtime response lacked non-empty choices[0].message.content');
-  const provenance = modelProvenance(responseBody.model, endpointProfile.model ?? null);
-  const observationCore = {
-    schemaVersion: MODEL_RUNTIME_OBSERVATION_SCHEMA,
-    truthClass: 'EXTERNAL_RUNTIME_OBSERVATION',
-    endpointProfileRef: endpointProfile.profileRef,
-    modelBundleRef,
-    operationalProfileRef,
-    runtimeRevisionRef,
-    runtimeCapabilityEvidenceRef,
-    observedAt,
-    output: frozen({
-      contentSha256: sha256Bytes(Buffer.from(content, 'utf8')),
-      contentCharacters: [...content].length,
-      assistantRoleObserved: message?.role === 'assistant',
-      finishReasonOrNull: typeof choice?.finish_reason === 'string' ? choice.finish_reason : null,
-      refusalObserved: typeof message?.refusal === 'string' && message.refusal.length > 0,
-      toolCallsPresent: Array.isArray(message?.tool_calls) && message.tool_calls.length > 0,
-      toolCallCount: Array.isArray(message?.tool_calls) ? message.tool_calls.length : 0
-    }),
-    modelProvenance: provenance,
-    reasoningTrace: reasoningTrace(message),
-    usageSummary: usageSummary(responseBody.usage),
-    runtimeTimingSummary: timingSummary(responseBody.timings),
-    structuredOutputState: structuredOutputState(content, structuredOutputRequested),
-    unknownUpstreamFields: collectUnknownFields(responseBody),
-    privacy: frozen({
-      rawProviderResponsePersisted: false,
-      rawReasoningPersisted: false,
-      rawReportedModelPersisted: false,
-      privateContentAddedByAdapter: false
-    })
-  };
-  const observationSha256 = semanticHash(observationCore);
-  const runtimeObservation = frozen({
-    ...observationCore,
-    observationRef: `observation.vexlife.model-runtime.${observationSha256.slice(0, 32)}`,
-    observationSha256
-  });
-  return frozen({ content, model: provenance.compatibilityModel, runtimeObservation });
-}
-
-export function verifyModelRuntimeObservation(value) {
-  if (!plainObject(value)) return false;
-  const { observationRef, observationSha256, ...core } = value;
-  return value.schemaVersion === MODEL_RUNTIME_OBSERVATION_SCHEMA
-    && typeof observationSha256 === 'string' && HEX64.test(observationSha256)
-    && observationRef === `observation.vexlife.model-runtime.${observationSha256.slice(0, 32)}`
-    && semanticHash(core) === observationSha256
-    && value.privacy?.rawProviderResponsePersisted === false
-    && value.privacy?.rawReasoningPersisted === false
-    && value.privacy?.rawReportedModelPersisted === false
-    && Array.isArray(value.unknownUpstreamFields)
-    && value.unknownUpstreamFields.every(entry => entry?.rawValuePersisted === false);
-}
-
-// [VXG RealForever]
+function validModelProvenance(value) {
+  if (!
