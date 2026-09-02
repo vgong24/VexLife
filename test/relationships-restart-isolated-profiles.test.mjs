@@ -243,10 +243,13 @@ test('FFR05-07/09 each isolated profile lists only its rightful directional reco
   assert.equal(listA.relationships[0].relationshipRef, savedA.relationshipRef);
   assert.equal(listB.relationships[0].relationshipRef, savedB.relationshipRef);
   assert.notEqual(listA.relationships[0].relationshipRef, listB.relationships[0].relationshipRef);
-  assert.equal(listA.relationships[0].localParticipantRef, 'participant.alice');
-  assert.equal(listB.relationships[0].localParticipantRef, 'participant.bob');
-  assert.equal(listA.relationships[0].semanticAcknowledged, false);
-  assert.equal(listB.relationships[0].semanticAcknowledged, false);
-  assert.equal(listA.relationships[0].reciprocalFriendshipAsserted, false);
-  assert.equal(listB.relationships[0].reciprocalFriendshipAsserted, false);
+  assert.equal(listA.localParticipantRef, 'participant.alice');
+  assert.equal(listB.localParticipantRef, 'participant.bob');
+
+  const currentA = bridgeFor(homeA, bindingA).read({ counterpartParticipantRef: bindingA.counterpartParticipantRef });
+  const currentB = bridgeFor(homeB, bindingB).read({ counterpartParticipantRef: bindingB.counterpartParticipantRef });
+  assert.equal(currentA.record.semanticAcknowledged, false);
+  assert.equal(currentB.record.semanticAcknowledged, false);
+  assert.equal(currentA.record.reciprocalFriendshipAsserted, false);
+  assert.equal(currentB.record.reciprocalFriendshipAsserted, false);
 });
