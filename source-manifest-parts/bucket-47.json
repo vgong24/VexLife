@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "47",
+  "files": [
+    {
+      "path": "test/model-runtime-adapter.test.mjs",
+      "mode": "100644",
+      "bytes": 6135,
+      "sha256": "4170ced78e1984c1dad72c5df2d1f1045a4e437860c4155b952ae65e12d57516"
+    }
+  ]
+}

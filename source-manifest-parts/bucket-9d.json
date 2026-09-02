@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 27577,
       "sha256": "242f3213c205ae91599dd8ad7b334305bce95bc5c4feccf14255ca948322725e"
+    },
+    {
+      "path": "test/model-turn-witness.test.mjs",
+      "mode": "100644",
+      "bytes": 5935,
+      "sha256": "0b4cbd2e2e4d836883c8a778c8b9e088f8e1626cfebd224c1b8a9b0dea83fa2b"
     }
   ]
 }
