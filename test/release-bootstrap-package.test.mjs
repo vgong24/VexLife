@@ -178,6 +178,40 @@ test('platform build/launcher sources contain exact source binding and no protec
   }
 });
 
+test('host builders bind RPB-10 build environment and deterministic pre-container payload evidence', () => {
+  const windows = fs.readFileSync(path.join(ROOT, 'release/windows/build-vexlife-bootstrap.ps1'), 'utf8');
+  const macos = fs.readFileSync(path.join(ROOT, 'release/macos/build-vexlife-bootstrap.sh'), 'utf8');
+
+  for (const source of [windows, macos]) {
+    assert.match(source, /buildEnvironment/u);
+    assert.match(source, /stagedPayloadInventory/u);
+    assert.match(source, /byteLength/u);
+    assert.match(source, /sha256/u);
+    assert.match(source, /HOST_REPEAT_BUILD_QUALIFICATION_REQUIRED/u);
+    assert.match(source, /signing\s*[=:]\s*(?:\$false|false)/u);
+    assert.match(source, /notarization\s*[=:]\s*(?:\$false|false)/u);
+    assert.match(source, /publication\s*[=:]\s*(?:\$false|false)/u);
+    assert.match(source, /officialVerifiedBuildPromotion\s*[=:]\s*(?:\$false|false)/u);
+  }
+
+  assert.match(windows, /OSVersion\.Version/u);
+  assert.match(windows, /PROCESSOR_ARCHITECT/u);
+  assert.match(windows, /NodeVersion/u);
+  assert.match(windows, /IExpress/u);
+  assert.match(windows, /IExpressSha256/u);
+  assert.match(windows, /IExpressVersion/u);
+  assert.match(windows, /Sort-Object/u);
+
+  assert.match(macos, /sw_vers -productVersion/u);
+  assert.match(macos, /sw_vers -buildVersion/u);
+  assert.match(macos, /uname -m/u);
+  assert.match(macos, /\/usr\/bin\/hdiutil/u);
+  assert.match(macos, /\/usr\/bin\/osacompile/u);
+  assert.match(macos, /\/usr\/bin\/plutil/u);
+  assert.match(macos, /rows\.sort\(\(left, right\) => left\.path\.localeCompare/u);
+  assert.match(macos, /STAGED_PAYLOAD_INVENTORY_JSON/u);
+});
+
 test('retained R1 source TAR, when supplied, revalidates exact bytes and safe structure', { skip: !RETAINED_R1 }, () => {
   const verified = verifyFrozenSourceArchive(RETAINED_R1);
   assert.equal(verified.sourceTarSha256, FROZEN_RELEASE_SOURCE.sourceTarSha256);

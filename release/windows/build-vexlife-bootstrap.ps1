@@ -13,10 +13,34 @@ $Node = (Get-Command node.exe -ErrorAction Stop).Source
 $IExpress = Join-Path $env:SystemRoot 'System32\iexpress.exe'
 if (-not (Test-Path -LiteralPath $IExpress -PathType Leaf)) { throw 'Windows IExpress is unavailable on this host.' }
 
+function Get-Sha256Lower([string]$Path) {
+  return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Get-ArchitectureIdentity {
+  $value = [string]$env:PROCESSOR_ARCHITEW6432
+  if ([string]::IsNullOrWhiteSpace($value)) { $value = [string]$env:PROCESSOR_ARCHITECTURE }
+  if ([string]::IsNullOrWhiteSpace($value)) { $value = if ([Environment]::Is64BitOperatingSystem) { '64-bit' } else { '32-bit' } }
+  return $value
+}
+
+$NodeVersion = [string](& $Node --version)
+$NodeVersion = $NodeVersion.Trim()
+if ([string]::IsNullOrWhiteSpace($NodeVersion)) { throw 'Node version identity is unavailable.' }
+$WindowsVersion = [System.Environment]::OSVersion.Version.ToString()
+$WindowsVersionString = [System.Environment]::OSVersion.VersionString
+$WindowsArchitecture = Get-ArchitectureIdentity
+$IExpressItem = Get-Item -LiteralPath $IExpress
+$IExpressVersion = [string]$IExpressItem.VersionInfo.FileVersion
+if ([string]::IsNullOrWhiteSpace($IExpressVersion)) { $IExpressVersion = [string]$IExpressItem.VersionInfo.ProductVersion }
+if ([string]::IsNullOrWhiteSpace($IExpressVersion)) { throw 'IExpress file version identity is unavailable.' }
+$IExpressSha256 = Get-Sha256Lower $IExpress
+$NodeSha256 = Get-Sha256Lower $Node
+
 $SourceTar = [System.IO.Path]::GetFullPath($SourceTar)
 if (-not (Test-Path -LiteralPath $SourceTar -PathType Leaf)) { throw 'Source TAR is missing.' }
 $ObservedBytes = (Get-Item -LiteralPath $SourceTar).Length
-$ObservedSha256 = (Get-FileHash -LiteralPath $SourceTar -Algorithm SHA256).Hash.ToLowerInvariant()
+$ObservedSha256 = Get-Sha256Lower $SourceTar
 if ($ObservedBytes -ne $ExpectedBytes -or $ObservedSha256 -ne $ExpectedSha256) { throw 'Source TAR does not match the frozen R1/R2 candidate.' }
 
 $PlanScript = Join-Path $RepoRoot 'scripts\release-bootstrap-package.mjs'
@@ -25,7 +49,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Effect-free package planning failed.' }
 $OutRoot = Join-Path $RepoRoot ('generated\release-bootstrap-packages\' + $Out)
 $PackagePlanPath = Join-Path $OutRoot 'package-plan.json'
 $PackagePlan = Get-Content -LiteralPath $PackagePlanPath -Raw | ConvertFrom-Json
-$PackagePlanSha256 = (Get-FileHash -LiteralPath $PackagePlanPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$PackagePlanSha256 = Get-Sha256Lower $PackagePlanPath
 $Stage = Join-Path $env:TEMP ('VexLife-ReleaseBootstrap-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $Stage -Force | Out-Null
 try {
@@ -34,6 +58,27 @@ try {
   foreach ($receipt in @('package-plan.json','release-notice-receipt.json','source-archive-receipt.json')) {
     Copy-Item -LiteralPath (Join-Path $OutRoot $receipt) -Destination (Join-Path $Stage $receipt)
   }
+
+  # RPB-10: bind the exact pre-container payload, before package.sed or IExpress output exists.
+  $PayloadNames = @(
+    'bootstrap.ps1',
+    $ExpectedTarName,
+    'package-plan.json',
+    'release-notice-receipt.json',
+    'source-archive-receipt.json'
+  ) | Sort-Object
+  $StagedPayloadInventory = @(
+    foreach ($PayloadName in $PayloadNames) {
+      $PayloadPath = Join-Path $Stage $PayloadName
+      if (-not (Test-Path -LiteralPath $PayloadPath -PathType Leaf)) { throw "Staged payload is missing: $PayloadName" }
+      $PayloadItem = Get-Item -LiteralPath $PayloadPath
+      [ordered]@{
+        path = $PayloadName.Replace('\\','/')
+        byteLength = [int64]$PayloadItem.Length
+        sha256 = Get-Sha256Lower $PayloadPath
+      }
+    }
+  )
 
   $Target = Join-Path $OutRoot 'VexLife-Setup-Windows-unsigned.exe'
   $Sed = Join-Path $Stage 'package.sed'
@@ -80,7 +125,7 @@ FILE4="source-archive-receipt.json"
   & $IExpress /N /Q $Sed
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $Target -PathType Leaf)) { throw 'IExpress did not form the unsigned Windows bootstrap candidate.' }
 
-  $ArtifactSha256 = (Get-FileHash -LiteralPath $Target -Algorithm SHA256).Hash.ToLowerInvariant()
+  $ArtifactSha256 = Get-Sha256Lower $Target
   $ArtifactBytes = (Get-Item -LiteralPath $Target).Length
   $Receipt = [ordered]@{
     schemaVersion = 'vexlife.release-bootstrap-build-receipt/v1'
@@ -96,6 +141,28 @@ FILE4="source-archive-receipt.json"
     packagingSourceTree = [string]$PackagePlan.packagingSource.packagingSourceTree
     packagingSourceSetSha256 = [string]$PackagePlan.packagingSource.packagingSourceSetSha256
     packagePlanSha256 = $PackagePlanSha256
+    buildEnvironment = [ordered]@{
+      hostOs = [ordered]@{
+        family = 'windows'
+        version = $WindowsVersion
+        versionString = $WindowsVersionString
+        architecture = $WindowsArchitecture
+      }
+      node = [ordered]@{
+        path = $Node
+        version = $NodeVersion
+        sha256 = $NodeSha256
+      }
+      containerTools = @(
+        [ordered]@{
+          name = 'IExpress'
+          path = $IExpress
+          sha256 = $IExpressSha256
+          fileVersion = $IExpressVersion
+        }
+      )
+    }
+    stagedPayloadInventory = $StagedPayloadInventory
     containerDeterminismState = 'HOST_REPEAT_BUILD_QUALIFICATION_REQUIRED'
     signing = $false
     notarization = $false
@@ -103,7 +170,7 @@ FILE4="source-archive-receipt.json"
     githubReleaseCreation = $false
     officialVerifiedBuildPromotion = $false
   }
-  $Receipt | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $OutRoot 'build-receipt.json') -Encoding UTF8
+  $Receipt | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $OutRoot 'build-receipt.json') -Encoding UTF8
   "$ArtifactSha256  $([System.IO.Path]::GetFileName($Target))" | Set-Content -LiteralPath (Join-Path $OutRoot 'SHA256SUMS') -Encoding ASCII
   Write-Host "VEXLIFE_UNSIGNED_WINDOWS_BOOTSTRAP_READY=$Target"
 } finally {
