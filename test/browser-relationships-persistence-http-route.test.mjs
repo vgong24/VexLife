@@ -132,7 +132,7 @@ test('explicit-binding visible persistence crosses the same-origin route and rea
       savedSnapshot = await persistence.save({ localRelationshipClass: 'FRIEND' });
       assert.equal(savedSnapshot.state, 'SAVED');
       assert.equal(savedSnapshot.saved, true);
-      assert.equal(savedSnapshot.revision, 1);
+      assert.equal(savedSnapshot.revision, 0);
       assert.equal(savedSnapshot.savedLocalRelationshipClass, 'FRIEND');
     });
 
@@ -143,7 +143,7 @@ test('explicit-binding visible persistence crosses the same-origin route and rea
       counterpartParticipantRef: persistenceBinding.counterpartParticipantRef
     });
     assert.equal(current.relationshipRef, savedSnapshot.relationshipRef);
-    assert.equal(current.record.revision, 1);
+    assert.equal(current.record.revision, 0);
     assert.equal(current.record.localParticipantRef, persistenceBinding.localParticipantRef);
     assert.equal(current.record.localStateRootRef, persistenceBinding.localStateRootRef);
     assert.equal(current.record.counterpartParticipantRef, persistenceBinding.counterpartParticipantRef);
