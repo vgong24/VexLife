@@ -121,7 +121,9 @@ function collectUnknownFields(body) {
       }
       continue;
     }
-    if (key === 'timings' && plainObject(value)) for (const [timingKey, timingValue] of Object.entries(value)) if (!KNOWN_TIMINGS.has(timingKey)) addUnknown(unknown, `/timings/${timingKey}`, timingValue);
+    if (key === 'timings' && plainObject(value)) {
+      for (const [timingKey, timingValue] of Object.entries(value)) if (!KNOWN_TIMINGS.has(timingKey)) addUnknown(unknown, `/timings/${timingKey}`, timingValue);
+    }
   }
   return frozen(unknown.sort((a, b) => a.jsonPointer.localeCompare(b.jsonPointer)));
 }
@@ -142,4 +144,69 @@ function validOutput(value) {
     && value.toolCallsPresent === (value.toolCallCount > 0);
 }
 function validModelProvenance(value) {
-  if (!
+  if (!exactKeys(value, MODEL_PROVENANCE_KEYS) || !safeCompatibilityModel(value.compatibilityModel)) return false;
+  const reported = value.reportedModelField;
+  return reported === null || (exactKeys(reported, REPORTED_MODEL_KEYS) && reported.valueType === 'string' && nonnegativeInteger(reported.byteLength)
+    && HEX64.test(reported.valueSha256 ?? '') && ['LOCAL_PATH_LIKE','OPAQUE_MODEL_ID'].includes(reported.pathClass) && reported.rawValuePersisted === false);
+}
+function validReasoning(value) {
+  if (!exactKeys(value, REASONING_KEYS) || value.type !== MODEL_EMITTED_REASONING_TRACE || typeof value.present !== 'boolean'
+      || !nonnegativeInteger(value.characterCount) || value.rawState !== 'EPHEMERAL' || value.rawPersisted !== false
+      || value.humanProjection !== 'SEALED_EXPLICIT_OPEN_ONLY' || value.modelProjection !== 'NONE' || value.trainingProjection !== 'NONE') return false;
+  return value.present
+    ? HEX64.test(value.contentSha256 ?? '') && value.characterCount > 0
+    : value.contentSha256 === null && value.characterCount === 0;
+}
+function validSummary(value, allowed, integersOnly = false) {
+  if (!exactKeys(value, SUMMARY_KEYS) || typeof value.present !== 'boolean' || !plainObject(value.values)) return false;
+  const keys = Object.keys(value.values);
+  if (keys.some((key) => !allowed.has(key))) return false;
+  if (integersOnly && keys.some((key) => !nonnegativeInteger(value.values[key]))) return false;
+  if (!integersOnly && keys.some((key) => !finiteNonnegative(value.values[key]))) return false;
+  return value.present ? true : keys.length === 0;
+}
+function validUnknown(value) {
+  if (!Array.isArray(value)) return false;
+  const pointers = value.map((entry) => entry?.jsonPointer);
+  if (pointers.some((pointer) => !nonempty(pointer) || !pointer.startsWith('/')) || new Set(pointers).size !== pointers.length) return false;
+  if (JSON.stringify([...pointers].sort()) !== JSON.stringify(pointers)) return false;
+  return value.every((entry) => exactKeys(entry, UNKNOWN_KEYS) && nonempty(entry.valueType) && nonnegativeInteger(entry.byteLength)
+    && HEX64.test(entry.valueSha256 ?? '') && entry.rawValuePersisted === false && entry.disposition === 'UNCLASSIFIED_RUNTIME_FIELD');
+}
+function validPrivacy(value) { return exactKeys(value, PRIVACY_KEYS) && Object.values(value).every((entry) => entry === false); }
+
+export function normalizeModelRuntimeResponse({ responseBody, endpointProfile, modelBundleRef = null, operationalProfileRef = null, runtimeRevisionRef = null, runtimeCapabilityEvidenceRef = null, structuredOutputRequested = false, observedAt = new Date().toISOString() }) {
+  if (!plainObject(responseBody)) throw new TypeError('runtime response must be one JSON object');
+  if (!endpointProfile?.admitted || !nonempty(endpointProfile.profileRef) || !nonempty(endpointProfile.endpoint)) throw new TypeError('one admitted endpoint profile is required');
+  if (!canonicalTimestamp(observedAt)) throw new TypeError('observedAt must be one canonical timestamp');
+  validateRuntimeRefs({ modelBundleRef, operationalProfileRef, runtimeRevisionRef, runtimeCapabilityEvidenceRef });
+  const choice = responseBody.choices?.[0], message = choice?.message, content = message?.content;
+  if (typeof content !== 'string' || content.length === 0) throw new TypeError('runtime response lacked non-empty choices[0].message.content');
+  const provenance = modelProvenance(responseBody.model, endpointProfile.model ?? null);
+  const observationCore = {
+    schemaVersion: MODEL_RUNTIME_OBSERVATION_SCHEMA, truthClass: 'EXTERNAL_RUNTIME_OBSERVATION', endpointProfileRef: endpointProfile.profileRef,
+    modelBundleRef, operationalProfileRef, runtimeRevisionRef, runtimeCapabilityEvidenceRef, observedAt, responseBodySha256: semanticHash(responseBody),
+    output: frozen({ contentSha256: sha256Bytes(Buffer.from(content, 'utf8')), contentCharacters: [...content].length, assistantRoleObserved: message?.role === 'assistant', finishReasonOrNull: typeof choice?.finish_reason === 'string' ? choice.finish_reason : null, refusalObserved: typeof message?.refusal === 'string' && message.refusal.length > 0, toolCallsPresent: Array.isArray(message?.tool_calls) && message.tool_calls.length > 0, toolCallCount: Array.isArray(message?.tool_calls) ? message.tool_calls.length : 0 }),
+    modelProvenance: provenance, reasoningTrace: reasoningTrace(message), usageSummary: usageSummary(responseBody.usage), runtimeTimingSummary: timingSummary(responseBody.timings),
+    structuredOutputState: structuredOutputState(content, structuredOutputRequested), unknownUpstreamFields: collectUnknownFields(responseBody),
+    privacy: frozen({ rawProviderResponsePersisted: false, rawReasoningPersisted: false, rawReportedModelPersisted: false, privateContentAddedByAdapter: false })
+  };
+  const observationSha256 = semanticHash(observationCore);
+  const runtimeObservation = frozen({ ...observationCore, observationRef: `observation.vexlife.model-runtime.${observationSha256.slice(0, 32)}`, observationSha256 });
+  return frozen({ content, model: provenance.compatibilityModel, runtimeObservation });
+}
+
+export function verifyModelRuntimeObservation(value) {
+  if (!exactKeys(value, OBSERVATION_KEYS) || value.schemaVersion !== MODEL_RUNTIME_OBSERVATION_SCHEMA || value.truthClass !== 'EXTERNAL_RUNTIME_OBSERVATION'
+      || !nonempty(value.endpointProfileRef) || !nullableRef(value.modelBundleRef) || !nullableRef(value.operationalProfileRef) || !nullableRef(value.runtimeRevisionRef)
+      || !nullableRef(value.runtimeCapabilityEvidenceRef) || !canonicalTimestamp(value.observedAt) || !HEX64.test(value.responseBodySha256 ?? '')
+      || !validOutput(value.output) || !validModelProvenance(value.modelProvenance) || !validReasoning(value.reasoningTrace)
+      || !validSummary(value.usageSummary, USAGE_VALUE_KEYS, true) || !validSummary(value.runtimeTimingSummary, KNOWN_TIMINGS, false)
+      || !exactKeys(value.structuredOutputState, STRUCTURED_KEYS) || typeof value.structuredOutputState.requested !== 'boolean'
+      || typeof value.structuredOutputState.observedJsonValue !== 'boolean' || (value.structuredOutputState.observedJsonValue && !value.structuredOutputState.requested)
+      || !validUnknown(value.unknownUpstreamFields) || !validPrivacy(value.privacy) || !HEX64.test(value.observationSha256 ?? '')) return false;
+  const { observationRef, observationSha256, ...core } = value;
+  return observationRef === `observation.vexlife.model-runtime.${observationSha256.slice(0, 32)}` && semanticHash(core) === observationSha256;
+}
+
+// [VXG RealForever]
