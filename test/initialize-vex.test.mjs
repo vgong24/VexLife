@@ -6,20 +6,27 @@ import test from 'node:test';
 import { ReadableStream } from 'node:stream/web';
 import { fileURLToPath } from 'node:url';
 const registry = JSON.parse(fs.readFileSync(new URL('../blueprint/vex-operational-profiles.json', import.meta.url), 'utf8'));
+const modelBundleRegistry = JSON.parse(fs.readFileSync(new URL('../blueprint/model-bundle-registry.json', import.meta.url), 'utf8'));
+const artifactRegistry = JSON.parse(fs.readFileSync(new URL('../blueprint/artifact-registry.json', import.meta.url), 'utf8'));
 import {
   browserBindingForProfile,
   buildQualificationRequest,
   buildRuntimeArguments,
   buildVexInitializationPlan,
   classifyHomeState,
+  resolveActiveModelBundle,
   runtimeProcessEvidenceMatches,
   selectOperationalProfile,
+  validateModelBundleRegistry,
   validateOperationalProfileRegistry
 } from '../src/core/vex-initialization.mjs';
 import { classifyVerifiedArtifact, downloadVerifiedArtifact, sha256File } from '../src/core/model-provision.mjs';
 import crypto from 'node:crypto';
 
 const profile = registry.profiles[0];
+const activeModelSelection = resolveActiveModelBundle({ registry: modelBundleRegistry, artifactRegistry, operationalProfile: profile });
+assert.equal(activeModelSelection.state, 'MODEL_BUNDLE_RESOLVED');
+const modelBundle = activeModelSelection.bundle;
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('operational profile registry resolves the release-qualified Windows profile without widening public-release claims', () => {
@@ -35,6 +42,8 @@ test('operational profile registry resolves the release-qualified Windows profil
   for (const artifact of [...normal.profile.runtime.artifacts, ...normal.profile.modelArtifacts]) {
     assert.ok(Number.isSafeInteger(artifact.expectedBytes) && artifact.expectedBytes > 0);
   }
+  for (const artifact of normal.profile.modelArtifacts) assert.equal(Object.hasOwn(artifact, 'url'), false);
+  assert.deepEqual(normal.profile.compatibleModelBundleRefs, [modelBundle.modelBundleRef]);
   const qualificationRoute = selectOperationalProfile({ registry, platform: 'win32', architecture: 'x64', mode: 'candidate-qualification', profileRef: profile.profileRef });
   assert.equal(qualificationRoute.state, 'PROFILE_RESOLVED');
 });
@@ -84,25 +93,26 @@ test('runtime arguments and browser binding stay exact, bounded and loopback-bou
   assert.ok(args.includes('127.0.0.1'));
   assert.ok(args.includes('18080'));
   assert.deepEqual(args.slice(-4), ['--n-predict', '256', '--reasoning-budget', '128']);
-  assert.equal(args.includes(profile.endpoint.requestModel), false, 'runtime request-model identity is an API binding, not an assumed llama.cpp --alias capability');
-  assert.deepEqual(browserBindingForProfile(profile), {
+  assert.equal(args.includes(modelBundle.requestModel), false, 'runtime request-model identity is an API binding, not an assumed llama.cpp --alias capability');
+  assert.deepEqual(browserBindingForProfile(profile, modelBundle), {
     VEXLIFE_COMPANION_ENDPOINT: 'http://127.0.0.1:18080',
     VEXLIFE_COMPANION_MODEL: 'Qwen3.5-4B-Q4_K_M',
-    VEXLIFE_OPERATIONAL_PROFILE_REF: profile.profileRef
+    VEXLIFE_OPERATIONAL_PROFILE_REF: profile.profileRef,
+    VEXLIFE_MODEL_BUNDLE_REF: modelBundle.modelBundleRef
   });
 });
 
 test('runtime readiness qualification disables thinking without changing normal companion binding', () => {
-  const request = buildQualificationRequest(profile);
+  const request = buildQualificationRequest(profile, modelBundle);
   assert.deepEqual(request.chat_template_kwargs, { enable_thinking: false });
-  assert.equal(request.model, profile.endpoint.requestModel);
+  assert.equal(request.model, modelBundle.requestModel);
   assert.equal(request.messages[0].content, profile.qualification.probePrompt);
   assert.equal(request.max_tokens, profile.qualification.probeMaxTokens);
   assert.equal(request.temperature, 0);
 });
 
 test('initialization plan exposes only the admitted product effects', () => {
-  const plan = buildVexInitializationPlan({ profile, home: 'C:/VexHome', homeState: 'FRESH_HOME_ALLOWED', hostEvidence: { platform: 'win32', architecture: 'x64' }, mode: 'candidate-qualification' });
+  const plan = buildVexInitializationPlan({ profile, modelBundle, home: 'C:/VexHome', homeState: 'FRESH_HOME_ALLOWED', hostEvidence: { platform: 'win32', architecture: 'x64' }, mode: 'candidate-qualification' });
   assert.equal(plan.effects.networkFetch, true);
   assert.equal(plan.effects.loopbackOnly, true);
   assert.equal(plan.effects.repositoryWrite, false);
@@ -186,4 +196,28 @@ test('verified artifact download reuses exact cache, resumes partial range and d
   const badFetch = async () => new Response(new ReadableStream({ start(controller) { controller.enqueue(Buffer.from('wrong')); controller.close(); } }), { status: 200 });
   await assert.rejects(() => downloadVerifiedArtifact({ url: 'https://example.invalid/bad.bin', expectedSha256: sha, finalPath: badTarget, maxBytes: 1024, fetchImpl: badFetch }), /checksum mismatch/u);
   assert.equal(fs.existsSync(`${badTarget}.partial`), false);
+});
+
+test('active G0 model bundle is a single source-managed selection identity independent of delivery provider', () => {
+  assert.deepEqual(validateModelBundleRegistry(modelBundleRegistry, { artifactRegistry, operationalProfileRegistry: registry }), { ok: true, errors: [] });
+  assert.equal(modelBundleRegistry.activeModelBundleRef, modelBundle.modelBundleRef);
+  assert.equal(modelBundle.generationRef, 'generation.vexlife.g0.001');
+  assert.equal(modelBundle.baseModelArtifactRef, 'model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29');
+  assert.equal(modelBundle.projectorArtifactRef, 'model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775');
+  assert.equal(modelBundle.requestModel, profile.endpoint.requestModel);
+  assert.ok(modelBundle.compatibleOperationalProfileRefs.includes(profile.profileRef));
+  assert.equal(JSON.stringify(modelBundle).includes('github.com'), false);
+  assert.equal(JSON.stringify(modelBundle).includes('huggingface.co'), false);
+  for (const item of registry.profiles) {
+    assert.ok(item.compatibleModelBundleRefs.includes(modelBundle.modelBundleRef));
+    for (const artifact of item.modelArtifacts) assert.equal(Object.hasOwn(artifact, 'url'), false);
+  }
+});
+
+test('ordinary initializer source consumes canonical resolver for models while runtime archives retain direct verified acquisition', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'scripts/initialize-vex.mjs'), 'utf8');
+  assert.match(source, /resolveAndDownloadArtifact\(\{ artifactRef: artifact\.artifactRef, deliveryPolicyRef: null, finalPath: destination \}\)/u);
+  assert.match(source, /for \(const artifact of profile\.runtime\.artifacts\)[\s\S]*downloadVerifiedArtifact\(\{/u);
+  assert.match(source, /for \(const artifact of profile\.modelArtifacts\)[\s\S]*resolveAndDownloadArtifact\(\{/u);
+  assert.equal(JSON.stringify(registry).includes('https://huggingface.co/'), false);
 });

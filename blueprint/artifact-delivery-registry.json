@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.artifact-delivery-registry/v1",
   "registryRef": "registry.vexlife.artifact-delivery.001",
-  "state": "GENERIC_FOUNDATION",
+  "state": "G0_REGISTERED",
   "defaultPolicyRef": "policy.vexlife.artifact-delivery.default",
   "policies": [
     {
@@ -12,5 +12,32 @@
       ]
     }
   ],
-  "channelsByArtifactRef": {}
+  "channelsByArtifactRef": {
+    "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29": [
+      {
+        "channelRef": "channel.vexlife.g0.qwen3.5-4b-q4-k-m.github-immutable.001",
+        "transportClass": "VERIFIED_CHUNK_MANIFEST_V1",
+        "manifestUrl": "https://github.com/vgong24/VexModelArtifacts/releases/download/g0-qwen3.5-4b-q4-k-m-ba06320255db2dbec194dad738d066be90dabf29/artifact-manifest.json",
+        "manifestSha256": "fe0010d92648bddd22176fffb6eed052bf9c12cf2f1873f47c5b0197e07eef46"
+      },
+      {
+        "channelRef": "channel.vexlife.g0.qwen3.5-4b-q4-k-m.huggingface.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/ba06320255db2dbec194dad738d066be90dabf29/Qwen_Qwen3.5-4B-Q4_K_M.gguf?download=true"
+      }
+    ],
+    "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775": [
+      {
+        "channelRef": "channel.vexlife.g0.qwen3.5-4b-mmproj-bf16.github-immutable.001",
+        "transportClass": "VERIFIED_CHUNK_MANIFEST_V1",
+        "manifestUrl": "https://github.com/vgong24/VexModelArtifacts/releases/download/g0-qwen3.5-4b-mmproj-bf16-3516418eb75fd2cdf56058f112b403ff47020775/artifact-manifest.json",
+        "manifestSha256": "35ba4e5547726b45adf69b208ca18374cb575ff3355fb0cd7d9457bc7e99b575"
+      },
+      {
+        "channelRef": "channel.vexlife.g0.qwen3.5-4b-mmproj-bf16.huggingface.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/3516418eb75fd2cdf56058f112b403ff47020775/mmproj-Qwen_Qwen3.5-4B-bf16.gguf?download=true"
+      }
+    ]
+  }
 }

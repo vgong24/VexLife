@@ -17,8 +17,8 @@
     {
       "path": "test/artifact-delivery.test.mjs",
       "mode": "100644",
-      "bytes": 38643,
-      "sha256": "199d5023b50152d7c882e4c8114bab5c2ca605d28da95514da049aebf7bb339f"
+      "bytes": 40364,
+      "sha256": "8d0be81615255381afc61d391ef2e1a95c85d1e1b633b60e50c842e5bf58adf5"
     },
     {
       "path": "training/foundation-generation/foundation_train.py",

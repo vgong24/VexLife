@@ -3,6 +3,12 @@
   "bucketId": "21",
   "files": [
     {
+      "path": "docs/MODEL-SOVEREIGNTY-SELECTION.md",
+      "mode": "100644",
+      "bytes": 2460,
+      "sha256": "23ccce708cd7d7946bc353c35357498c89876c67ae8342ced58afdcace6a4658"
+    },
+    {
       "path": "src/core/intent-completion-verifier.mjs",
       "mode": "100644",
       "bytes": 21202,
