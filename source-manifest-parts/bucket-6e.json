@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 2462,
       "sha256": "37f1bf544b7d1b18e90736de04f44f912c4dc6886895de683ff3a65ae8b8fab4"
+    },
+    {
+      "path": "test/relationships-restart-isolated-profiles.test.mjs",
+      "mode": "100644",
+      "bytes": 11271,
+      "sha256": "c6789f458e2c9554902b2f430b77529527ac64e944766eb9b2e619480e525d18"
     }
   ]
 }
