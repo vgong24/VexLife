@@ -15,6 +15,12 @@
       "sha256": "5fdaa1f980d717b42b9aa88b14494bb972e53ceba90f81bcaa9222b21505be9d"
     },
     {
+      "path": "release/macos/VexLifeSetupLauncher.sh",
+      "mode": "100755",
+      "bytes": 3534,
+      "sha256": "a2ee98168a9bcac883122ec06d4886c24f8a48bbbc87e66ae55bda10f265fcdb"
+    },
+    {
       "path": "test/public-safety.test.mjs",
       "mode": "100644",
       "bytes": 3919,

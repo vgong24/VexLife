@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 1882,
       "sha256": "26484ea647c0ebe5429b733dc5ce6b2eb7f22a4d481a65d8c8923871028738c0"
+    },
+    {
+      "path": "scripts/release-bootstrap-package.mjs",
+      "mode": "100755",
+      "bytes": 2379,
+      "sha256": "19fe5d4ec7341e745ffc5ecb9319ec9688cf14b694924a0e39d8b2b68f9a4a91"
     }
   ]
 }
