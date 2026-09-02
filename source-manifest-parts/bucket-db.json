@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 6654,
       "sha256": "2462e9125b1bea81d2224e768afe739a1b6a93b0469027898c046f5867931045"
+    },
+    {
+      "path": "src/core/release-bootstrap-packaging.mjs",
+      "mode": "100644",
+      "bytes": 17727,
+      "sha256": "7ce0999aff84cee8a0bbfb35cc4fac2b8c194b910c7dc78e5d9d462c1a7b7601"
     }
   ]
 }
