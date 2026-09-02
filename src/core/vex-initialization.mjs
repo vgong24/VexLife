@@ -1,7 +1,10 @@
 import path from 'node:path';
 import { semanticHash } from './utils.mjs';
+import { validateArtifactRegistry } from './artifact-delivery.mjs';
 
 export const VEX_OPERATIONAL_PROFILE_REGISTRY_SCHEMA = 'vexlife.operational-profiles/v1';
+export const VEX_MODEL_BUNDLE_REGISTRY_SCHEMA = 'vexlife.model-bundle-registry/v1';
+export const NORMAL_MODEL_BUNDLE_STATE = 'RELEASE_QUALIFIED';
 export const VEX_INITIALIZATION_PLAN_SCHEMA = 'vexlife.initialization-plan/v1';
 export const NORMAL_PROFILE_STATE = 'RELEASE_QUALIFIED';
 export const CANDIDATE_PROFILE_STATE = 'CANDIDATE_QUALIFICATION';
@@ -9,11 +12,13 @@ export const CANDIDATE_PROFILE_STATE = 'CANDIDATE_QUALIFICATION';
 const SHA256 = /^[0-9a-f]{64}$/u;
 const LOOPBACK_ORIGIN = /^http:\/\/127\.0\.0\.1:(\d{1,5})$/u;
 const SAFE_FILE = /^[^\\\/:*?"<>|\u0000]+$/u;
+const STABLE_REF = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$/u;
 
 function requireObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be an object`);
 }
 function requireString(value, label) { if (typeof value !== 'string' || value.length === 0) throw new Error(`${label} must be a non-empty string`); }
+function requireStableRef(value, label) { if (typeof value !== 'string' || !STABLE_REF.test(value)) throw new Error(`${label} must be a stable ref`); }
 function requireSha(value, label) { if (typeof value !== 'string' || !SHA256.test(value)) throw new Error(`${label} must be lowercase SHA-256`); }
 function requireHttps(value, label) { const parsed = new URL(value); if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error(`${label} must be credential-free HTTPS`); }
 
@@ -100,6 +105,8 @@ export function validateOperationalProfileRegistry(registry) {
     requireObject(registry, 'registry');
     if (registry.schemaVersion !== VEX_OPERATIONAL_PROFILE_REGISTRY_SCHEMA) throw new Error(`registry.schemaVersion must be ${VEX_OPERATIONAL_PROFILE_REGISTRY_SCHEMA}`);
     requireString(registry.registryRef, 'registry.registryRef');
+    requireStableRef(registry.modelBundleRegistryRef, 'registry.modelBundleRegistryRef');
+    if (registry.modelBundleRegistryRef !== 'registry.vexlife.model-bundles.001') throw new Error('registry.modelBundleRegistryRef is not the canonical model-bundle registry');
     if (!Array.isArray(registry.profiles) || registry.profiles.length === 0) throw new Error('registry.profiles must be non-empty');
     const refs = new Set();
     for (const [index, profile] of registry.profiles.entries()) {
@@ -108,6 +115,7 @@ export function validateOperationalProfileRegistry(registry) {
       requireString(profile.profileRef, `${p}.profileRef`);
       if (refs.has(profile.profileRef)) throw new Error(`duplicate profileRef ${profile.profileRef}`);
       refs.add(profile.profileRef);
+      if (!Array.isArray(profile.compatibleModelBundleRefs) || profile.compatibleModelBundleRefs.length === 0 || profile.compatibleModelBundleRefs.some((value) => typeof value !== 'string' || !STABLE_REF.test(value)) || new Set(profile.compatibleModelBundleRefs).size !== profile.compatibleModelBundleRefs.length) throw new Error(`${p}.compatibleModelBundleRefs must contain unique stable refs`);
       if (![NORMAL_PROFILE_STATE, CANDIDATE_PROFILE_STATE, 'HELD', 'STALE', 'INVALID'].includes(profile.state)) throw new Error(`${p}.state is unknown`);
       const platformArchitecture = `${profile.platform}/${profile.architecture}`;
       if (!['win32/x64', 'darwin/arm64'].includes(platformArchitecture)) {
@@ -157,16 +165,27 @@ export function validateOperationalProfileRegistry(registry) {
       if (!SAFE_FILE.test(profile.runtime.executableName)) throw new Error(`${p}.runtime.executableName must be a safe filename`);
       if (!Array.isArray(profile.runtime.artifacts) || profile.runtime.artifacts.length < 1) throw new Error(`${p}.runtime.artifacts must be non-empty`);
       if (!Array.isArray(profile.modelArtifacts) || profile.modelArtifacts.length < 1) throw new Error(`${p}.modelArtifacts must be non-empty`);
-      for (const artifact of [...profile.runtime.artifacts, ...profile.modelArtifacts]) {
-        requireString(artifact.artifactRef, `${p}.artifactRef`);
-        requireString(artifact.filename, `${p}.filename`);
-        if (!SAFE_FILE.test(artifact.filename)) throw new Error(`${p}.filename must be safe`);
-        requireHttps(artifact.url, `${p}.url`);
-        requireSha(artifact.sha256, `${p}.sha256`);
-        requireString(artifact.licenseRef, `${p}.licenseRef`);
-        requireString(artifact.sourceRef, `${p}.sourceRef`);
-        if (!Number.isSafeInteger(artifact.maxBytes) || artifact.maxBytes <= 0) throw new Error(`${p}.maxBytes must be positive`);
-        if (artifact.expectedBytes !== null && (!Number.isSafeInteger(artifact.expectedBytes) || artifact.expectedBytes <= 0)) throw new Error(`${p}.expectedBytes must be null or positive`);
+      for (const artifact of profile.runtime.artifacts) {
+        requireString(artifact.artifactRef, `${p}.runtime artifactRef`);
+        requireString(artifact.filename, `${p}.runtime filename`);
+        if (!SAFE_FILE.test(artifact.filename)) throw new Error(`${p}.runtime filename must be safe`);
+        requireHttps(artifact.url, `${p}.runtime url`);
+        requireSha(artifact.sha256, `${p}.runtime sha256`);
+        requireString(artifact.licenseRef, `${p}.runtime licenseRef`);
+        requireString(artifact.sourceRef, `${p}.runtime sourceRef`);
+        if (!Number.isSafeInteger(artifact.maxBytes) || artifact.maxBytes <= 0) throw new Error(`${p}.runtime maxBytes must be positive`);
+        if (artifact.expectedBytes !== null && (!Number.isSafeInteger(artifact.expectedBytes) || artifact.expectedBytes <= 0)) throw new Error(`${p}.runtime expectedBytes must be null or positive`);
+      }
+      for (const artifact of profile.modelArtifacts) {
+        requireString(artifact.artifactRef, `${p}.model artifactRef`);
+        requireString(artifact.filename, `${p}.model filename`);
+        if (!SAFE_FILE.test(artifact.filename)) throw new Error(`${p}.model filename must be safe`);
+        if (Object.hasOwn(artifact, 'url')) throw new Error(`${p}.model artifact URL/provider authority belongs in the canonical delivery registry`);
+        requireSha(artifact.sha256, `${p}.model sha256`);
+        requireString(artifact.licenseRef, `${p}.model licenseRef`);
+        requireString(artifact.sourceRef, `${p}.model sourceRef`);
+        if (!Number.isSafeInteger(artifact.maxBytes) || artifact.maxBytes <= 0) throw new Error(`${p}.model maxBytes must be positive`);
+        if (artifact.expectedBytes !== null && (!Number.isSafeInteger(artifact.expectedBytes) || artifact.expectedBytes <= 0)) throw new Error(`${p}.model expectedBytes must be null or positive`);
       }
       requireObject(profile.runtime.extraction, `${p}.runtime.extraction`);
       requireString(profile.runtime.extraction.class, `${p}.runtime.extraction.class`);
@@ -308,6 +327,86 @@ export function evaluateOperationalProfileHost(profile, host) {
   return { ok: true, state: 'HOST_ELIGIBLE' };
 }
 
+export function validateModelBundleRegistry(registry, { artifactRegistry = null, operationalProfileRegistry = null } = {}) {
+  const errors = [];
+  try {
+    requireObject(registry, 'model bundle registry');
+    const rootKeys = Object.keys(registry).sort();
+    const expectedRootKeys = ['activeModelBundleRef','bundles','registryRef','schemaVersion'].sort();
+    if (JSON.stringify(rootKeys) !== JSON.stringify(expectedRootKeys)) throw new Error('model bundle registry fields are not exact');
+    if (registry.schemaVersion !== VEX_MODEL_BUNDLE_REGISTRY_SCHEMA) throw new Error(`model bundle registry schema must be ${VEX_MODEL_BUNDLE_REGISTRY_SCHEMA}`);
+    requireStableRef(registry.registryRef, 'model bundle registryRef');
+    if (registry.registryRef !== 'registry.vexlife.model-bundles.001') throw new Error('model bundle registryRef is not canonical');
+    requireStableRef(registry.activeModelBundleRef, 'model bundle activeModelBundleRef');
+    if (!Array.isArray(registry.bundles) || registry.bundles.length === 0) throw new Error('model bundle registry bundles must be non-empty');
+    const refs = new Set();
+    const bundleKeys = ['baseModelArtifactRef','compatibleOperationalProfileRefs','generationRef','modelBundleRef','modelProfileRef','projectorArtifactRef','requestModel','sourceRefs','state'].sort();
+    for (const [index, bundle] of registry.bundles.entries()) {
+      requireObject(bundle, `bundles[${index}]`);
+      if (JSON.stringify(Object.keys(bundle).sort()) !== JSON.stringify(bundleKeys)) throw new Error(`bundles[${index}] fields are not exact`);
+      for (const field of ['modelBundleRef','generationRef','modelProfileRef','baseModelArtifactRef','projectorArtifactRef']) requireStableRef(bundle[field], `bundles[${index}].${field}`);
+      requireString(bundle.requestModel, `bundles[${index}].requestModel`);
+      if (refs.has(bundle.modelBundleRef)) throw new Error(`duplicate modelBundleRef ${bundle.modelBundleRef}`);
+      refs.add(bundle.modelBundleRef);
+      if (![NORMAL_MODEL_BUNDLE_STATE, CANDIDATE_PROFILE_STATE, 'HELD', 'STALE', 'INVALID'].includes(bundle.state)) throw new Error(`bundles[${index}].state is unknown`);
+      for (const field of ['compatibleOperationalProfileRefs','sourceRefs']) {
+        if (!Array.isArray(bundle[field]) || bundle[field].length === 0 || bundle[field].some((value) => typeof value !== 'string' || !STABLE_REF.test(value)) || new Set(bundle[field]).size !== bundle[field].length) {
+          throw new Error(`bundles[${index}].${field} must contain unique stable refs`);
+        }
+      }
+      if (bundle.baseModelArtifactRef === bundle.projectorArtifactRef) throw new Error(`bundles[${index}] model/projector artifact refs must differ`);
+    }
+    const active = registry.bundles.find((bundle) => bundle.modelBundleRef === registry.activeModelBundleRef);
+    if (!active) throw new Error('activeModelBundleRef is not registered');
+    if (active.state !== NORMAL_MODEL_BUNDLE_STATE) throw new Error('activeModelBundleRef must select one RELEASE_QUALIFIED bundle');
+    if (artifactRegistry) {
+      const artifacts = validateArtifactRegistry(artifactRegistry);
+      const artifactRefs = new Set(artifacts.artifacts.map((artifact) => artifact.artifactRef));
+      for (const bundle of registry.bundles) {
+        if (!artifactRefs.has(bundle.baseModelArtifactRef) || !artifactRefs.has(bundle.projectorArtifactRef)) throw new Error(`bundle ${bundle.modelBundleRef} references an unregistered model artifact`);
+      }
+    }
+    if (operationalProfileRegistry) {
+      const operational = validateOperationalProfileRegistry(operationalProfileRegistry);
+      if (!operational.ok) throw new Error(`operational profile registry invalid: ${operational.errors.join('; ')}`);
+      const profileRefs = new Set(operationalProfileRegistry.profiles.map((profile) => profile.profileRef));
+      for (const bundle of registry.bundles) {
+        for (const profileRef of bundle.compatibleOperationalProfileRefs) if (!profileRefs.has(profileRef)) throw new Error(`bundle ${bundle.modelBundleRef} references unknown operational profile ${profileRef}`);
+      }
+    }
+  } catch (error) { errors.push(error.message); }
+  return { ok: errors.length === 0, errors };
+}
+
+export function resolveActiveModelBundle({ registry, artifactRegistry, operationalProfile }) {
+  const validation = validateModelBundleRegistry(registry, { artifactRegistry });
+  if (!validation.ok) return { state: 'SOURCE_INVALID', errors: validation.errors, bundle: null, artifacts: [] };
+  requireObject(operationalProfile, 'operationalProfile');
+  const bundle = registry.bundles.find((item) => item.modelBundleRef === registry.activeModelBundleRef);
+  if (!operationalProfile.compatibleModelBundleRefs?.includes(bundle.modelBundleRef) || !bundle.compatibleOperationalProfileRefs.includes(operationalProfile.profileRef)) {
+    return { state: 'MODEL_BUNDLE_NOT_COMPATIBLE', bundle: null, artifacts: [], activeModelBundleRef: bundle.modelBundleRef };
+  }
+  if (operationalProfile.endpoint?.requestModel !== bundle.requestModel) {
+    return { state: 'SOURCE_INVALID', errors: ['operational profile requestModel projection contradicts active model bundle'], bundle: null, artifacts: [] };
+  }
+  const artifacts = validateArtifactRegistry(artifactRegistry).artifacts;
+  const byRef = new Map(artifacts.map((artifact) => [artifact.artifactRef, artifact]));
+  const selectedArtifacts = [byRef.get(bundle.baseModelArtifactRef), byRef.get(bundle.projectorArtifactRef)];
+  if (selectedArtifacts.some((artifact) => !artifact)) return { state: 'SOURCE_INVALID', errors: ['active model bundle artifact identity is missing'], bundle: null, artifacts: [] };
+  const profileArtifacts = new Map((operationalProfile.modelArtifacts || []).map((artifact) => [artifact.artifactRef, artifact]));
+  if (profileArtifacts.size !== 2 || !selectedArtifacts.every((artifact) => profileArtifacts.has(artifact.artifactRef))) {
+    return { state: 'SOURCE_INVALID', errors: ['operational profile model qualification projection does not match active model bundle'], bundle: null, artifacts: [] };
+  }
+  const projectionFields = ['artifactRef','filename','sha256','expectedBytes','maxBytes','sourceRef','licenseRef'];
+  for (const canonicalArtifact of selectedArtifacts) {
+    const projection = profileArtifacts.get(canonicalArtifact.artifactRef);
+    if (Object.hasOwn(projection, 'url') || projectionFields.some((field) => projection[field] !== canonicalArtifact[field])) {
+      return { state: 'SOURCE_INVALID', errors: [`operational profile model projection contradicts canonical artifact ${canonicalArtifact.artifactRef}`], bundle: null, artifacts: [] };
+    }
+  }
+  return { state: 'MODEL_BUNDLE_RESOLVED', bundle, artifacts: selectedArtifacts };
+}
+
 export function selectOperationalProfile({ registry, platform, architecture, mode = 'normal', profileRef = null }) {
   const validation = validateOperationalProfileRegistry(registry);
   if (!validation.ok) return { state: 'SOURCE_INVALID', errors: validation.errors, profile: null };
@@ -341,17 +440,18 @@ export function qualificationContentMatches(profile, content) {
   return trimmed === expected;
 }
 
-export function buildQualificationRequest(profile) {
+export function buildQualificationRequest(profile, modelBundle) {
   requireObject(profile, 'profile');
   requireObject(profile.endpoint, 'profile.endpoint');
   requireObject(profile.qualification, 'profile.qualification');
-  requireString(profile.endpoint.requestModel, 'profile.endpoint.requestModel');
+  requireObject(modelBundle, 'modelBundle');
+  requireString(modelBundle.requestModel, 'modelBundle.requestModel');
   requireString(profile.qualification.probePrompt, 'profile.qualification.probePrompt');
   if (!Number.isSafeInteger(profile.qualification.probeMaxTokens) || profile.qualification.probeMaxTokens <= 0) {
     throw new Error('profile.qualification.probeMaxTokens must be positive');
   }
   return {
-    model: profile.endpoint.requestModel,
+    model: modelBundle.requestModel,
     messages: [{ role: 'user', content: profile.qualification.probePrompt }],
     temperature: 0,
     max_tokens: profile.qualification.probeMaxTokens,
@@ -359,22 +459,33 @@ export function buildQualificationRequest(profile) {
   };
 }
 
-export function buildVexInitializationPlan({ profile, home, homeState, hostEvidence, mode }) {
+export function buildVexInitializationPlan({ profile, modelBundle, modelArtifacts, home, homeState, hostEvidence, mode }) {
   requireObject(profile, 'profile');
+  requireObject(modelBundle, 'modelBundle');
+  requireString(modelBundle.modelBundleRef, 'modelBundle.modelBundleRef');
+  requireString(modelBundle.generationRef, 'modelBundle.generationRef');
+  requireString(modelBundle.modelProfileRef, 'modelBundle.modelProfileRef');
+  requireString(modelBundle.requestModel, 'modelBundle.requestModel');
+  if (!Array.isArray(modelArtifacts) || modelArtifacts.length !== 2) throw new Error('modelArtifacts must contain the exact selected base model and projector');
+  const expectedModelRefs = [modelBundle.baseModelArtifactRef, modelBundle.projectorArtifactRef];
+  if (modelArtifacts.some((artifact, index) => artifact?.artifactRef !== expectedModelRefs[index])) throw new Error('modelArtifacts role order must match typed model bundle base/projector refs');
   requireString(home, 'home');
   requireObject(hostEvidence, 'hostEvidence');
-  const modelArtifacts = profile.modelArtifacts.map((artifact) => ({ ...artifact, destinationClass: 'MODEL' }));
+  const selectedModelArtifacts = modelArtifacts.map((artifact) => ({ ...artifact, destinationClass: 'MODEL' }));
   const runtimeArtifacts = profile.runtime.artifacts.map((artifact) => ({ ...artifact, destinationClass: 'RUNTIME_ARCHIVE' }));
   const plan = {
     schemaVersion: VEX_INITIALIZATION_PLAN_SCHEMA,
     profileRef: profile.profileRef,
     profileState: profile.state,
+    modelBundleRef: modelBundle.modelBundleRef,
+    generationRef: modelBundle.generationRef,
+    modelProfileRef: modelBundle.modelProfileRef,
     mode,
     home,
     homeState,
     hostEvidence,
-    endpoint: profile.endpoint,
-    artifacts: [...runtimeArtifacts, ...modelArtifacts],
+    endpoint: { ...profile.endpoint, requestModel: modelBundle.requestModel },
+    artifacts: [...runtimeArtifacts, ...selectedModelArtifacts],
     runtime: {
       dependencyRef: profile.runtime.dependencyRef,
       extraction: profile.runtime.extraction,
@@ -398,11 +509,14 @@ export function buildVexInitializationPlan({ profile, home, homeState, hostEvide
   return { ...plan, planSha256: semanticHash(plan) };
 }
 
-export function browserBindingForProfile(profile) {
+export function browserBindingForProfile(profile, modelBundle) {
+  requireObject(modelBundle, 'modelBundle');
+  requireString(modelBundle.requestModel, 'modelBundle.requestModel');
   return {
     VEXLIFE_COMPANION_ENDPOINT: profile.endpoint.origin,
-    VEXLIFE_COMPANION_MODEL: profile.endpoint.requestModel,
-    VEXLIFE_OPERATIONAL_PROFILE_REF: profile.profileRef
+    VEXLIFE_COMPANION_MODEL: modelBundle.requestModel,
+    VEXLIFE_OPERATIONAL_PROFILE_REF: profile.profileRef,
+    VEXLIFE_MODEL_BUNDLE_REF: modelBundle.modelBundleRef
   };
 }
 

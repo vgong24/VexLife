@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "vexlife.model-bundle-registry/v1",
+  "registryRef": "registry.vexlife.model-bundles.001",
+  "activeModelBundleRef": "model-bundle.vexlife.g0.qwen3.5-4b.q4-k-m.001",
+  "bundles": [
+    {
+      "modelBundleRef": "model-bundle.vexlife.g0.qwen3.5-4b.q4-k-m.001",
+      "generationRef": "generation.vexlife.g0.001",
+      "modelProfileRef": "model-profile.vexlife.g0.qwen3.5-4b.q4-k-m.001",
+      "state": "RELEASE_QUALIFIED",
+      "requestModel": "Qwen3.5-4B-Q4_K_M",
+      "baseModelArtifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
+      "projectorArtifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
+      "compatibleOperationalProfileRefs": [
+        "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
+        "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001"
+      ],
+      "sourceRefs": [
+        "github.issue.vexlife.343",
+        "github.issue.vexlife.359",
+        "github.issue.vextreme-sdk.266"
+      ]
+    }
+  ]
+}
