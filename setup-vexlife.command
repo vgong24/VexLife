@@ -4,6 +4,7 @@ set -euo pipefail
 REPOSITORY="vgong24/VexLife"
 SOURCE_REF="${VEXLIFE_SOURCE_REF:-main}"
 SOURCE_ROOT="${VEXLIFE_SOURCE_ROOT:-$HOME/Library/Application Support/VexLife/source}"
+SETUP_MODE="${VEXLIFE_SETUP_MODE:-window}"
 
 say() { printf '\n%s\n' "$1"; }
 fail() { printf '\nVexLife setup stopped: %s\n' "$1" >&2; exit 1; }
@@ -11,6 +12,10 @@ fail() { printf '\nVexLife setup stopped: %s\n' "$1" >&2; exit 1; }
 [ "$(uname -s)" = "Darwin" ] || fail "this bootstrap is for macOS."
 case "$SOURCE_REF" in
   ''|*[!A-Za-z0-9._-]*) fail "the requested source ref is not a supported GitHub ref." ;;
+esac
+case "$SETUP_MODE" in
+  window|terminal) ;;
+  *) fail "VEXLIFE_SETUP_MODE must be 'window' or 'terminal'." ;;
 esac
 for tool in /usr/bin/curl /usr/bin/tar /usr/bin/plutil /usr/bin/mktemp; do
   [ -x "$tool" ] || fail "a required macOS system tool is unavailable: $tool"
@@ -70,6 +75,31 @@ TARGET="$RUN_PARENT/source"
   || fail "the fresh exact VexLife source did not materialize completely."
 
 say "VexLife source is ready."
-exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"
+if [ "$SETUP_MODE" = "terminal" ]; then
+  exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"
+fi
+
+WINDOW="$TARGET/install/vexlife-setup-window.applescript"
+[ -f "$WINDOW" ] || fail "the exact VexLife source is missing the Mac setup window. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
+[ -x /usr/bin/osacompile ] || fail "macOS AppleScript compilation is unavailable. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
+[ -x /usr/bin/open ] || fail "macOS application launch is unavailable. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
+
+# The ordinary human window runs as a real source-local macOS application. The
+# command-line bootstrap remains only the exact-source materializer/launcher; it
+# does not host the AppKit controls itself. The temporary app carries one exact
+# source-root binding in its private bundle metadata and is discarded with TMP_ROOT.
+WINDOW_APP="$TMP_ROOT/VexLife Setup.app"
+/usr/bin/osacompile -o "$WINDOW_APP" "$WINDOW" \
+  || fail "the exact VexLife source-local Mac setup app could not be compiled. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
+INFO_PLIST="$WINDOW_APP/Contents/Info.plist"
+[ -f "$INFO_PLIST" ] || fail "the source-local Mac setup app is missing its bundle metadata."
+/usr/bin/plutil -insert VexLifeSourceRoot -string "$TARGET" "$INFO_PLIST" \
+  || fail "the exact source root could not be bound to the source-local Mac setup app."
+BOUND_SOURCE_ROOT="$(/usr/bin/plutil -extract VexLifeSourceRoot raw -o - "$INFO_PLIST" 2>/dev/null || true)"
+[ "$BOUND_SOURCE_ROOT" = "$TARGET" ] \
+  || fail "the source-local Mac setup app did not retain the exact source-root binding."
+
+/usr/bin/open -W -n "$WINDOW_APP" \
+  || fail "the source-local Mac setup app could not be opened. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
 
 # [VXG RealForever]
