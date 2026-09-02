@@ -340,7 +340,57 @@ function browserPromptContinuity(lineageRef,threadRef,lease){
   const semanticFingerprint=semanticHash(core);return {...core,adapterProjectionRef:`projection.vexlife.continuity-stream-adapter.${semanticFingerprint.slice(0,32)}`,semanticFingerprint};
 }
 
-function browserPromptAuthority(lineageRef,threadRef,lease,continuityProjection){return {schemaVersion:'vexlife.prompt-context-owner-currentness-witness/v1',authorityRef:'authority.browser-prompt-context.test',contextLeaseFingerprint:lease.semanticFingerprint,contextLeaseRef:lease.leaseRef,continuityProjectionFingerprint:continuityProjection.semanticFingerprint,continuityProjectionRef:continuityProjection.adapterProjectionRef,currentness:'CURRENT',lifecycle:'ACTIVE',lineageRef,observedAt:new Date().toISOString(),runtimeSnapshotFingerprint:lease.runtimeSnapshotFingerprint,schedulerGeneration:lease.schedulerGeneration,threadRef};}
+function browserPromptSelectedBinding(home, lineageRef, threadRef, eventRef) {
+  const eventsRoot = path.join(home, 'conversations', lineageRef, threadRef, 'events');
+  const event = fs.readdirSync(eventsRoot).sort()
+    .map((name) => JSON.parse(fs.readFileSync(path.join(eventsRoot, name), 'utf8')))
+    .find((candidate) => candidate.eventRef === eventRef);
+  if (!event) throw new Error(`browser prompt test event missing ${eventRef}`);
+  const headsRoot = path.join(home, 'conversations', lineageRef, threadRef, 'heads');
+  for (const name of fs.readdirSync(headsRoot).sort()) {
+    const head = JSON.parse(fs.readFileSync(path.join(headsRoot, name), 'utf8'));
+    const context = JSON.parse(fs.readFileSync(path.join(home, ...head.contextPath.split('/')), 'utf8'));
+    if (context.requestEventHash === event.eventHash || context.responseEventHash === event.eventHash) {
+      return {
+        eventRef: event.eventRef,
+        eventHash: event.eventHash,
+        sequence: event.sequence,
+        completedHeadSha256: head.conversationHeadSha256
+      };
+    }
+  }
+  throw new Error(`browser prompt test completed head missing ${eventRef}`);
+}
+
+function browserPromptAuthority(home, lineageRef, threadRef, lease, continuityProjection, query) {
+  return {
+    schemaVersion: 'vexlife.prompt-context-owner-currentness-witness/v2',
+    phase: query.phase,
+    authorityRef: 'authority.browser-prompt-context.test',
+    contextLeaseFingerprint: lease.semanticFingerprint,
+    contextLeaseRef: lease.leaseRef,
+    continuityProjectionFingerprint: continuityProjection.semanticFingerprint,
+    continuityProjectionRef: continuityProjection.adapterProjectionRef,
+    currentRequestEventBinding: {
+      eventRef: query.currentRequestEventRef,
+      eventHash: query.currentRequestEventHash,
+      sequence: query.currentRequestSequence
+    },
+    currentness: 'CURRENT',
+    lifecycle: 'ACTIVE',
+    lineageRef,
+    materializationReceiptFingerprintOrNull: query.materializationReceiptFingerprintOrNull,
+    materializationReceiptRefOrNull: query.materializationReceiptRefOrNull,
+    observedAt: new Date().toISOString(),
+    priorConversationHeadSha256: query.priorConversationHeadSha256,
+    runtimeSnapshotFingerprint: lease.runtimeSnapshotFingerprint,
+    schedulerGeneration: lease.schedulerGeneration,
+    selectedEventBindings: query.selectedConversationEventRefs.map((eventRef) =>
+      browserPromptSelectedBinding(home, lineageRef, threadRef, eventRef)),
+    threadRef
+  };
+}
+
 
 test('browser prompt-context resolver materializes selected lived events into the actual loopback messages request', async () => {
   const {root,home}=makeHome(); const model=await startModelServer(); const threadRef='thread.local-vex.prompt-context';
@@ -350,11 +400,13 @@ test('browser prompt-context resolver materializes selected lived events into th
     const eventsRoot=path.join(home,'conversations','companion-lineage.vexlife.browser-companion-test',threadRef,'events');
     const priorEvents=fs.readdirSync(eventsRoot).sort().map(name=>JSON.parse(fs.readFileSync(path.join(eventsRoot,name),'utf8')));
     const selectedRefs=priorEvents.map(event=>event.eventRef); const lease=browserPromptContextLease(selectedRefs); const continuityProjection=browserPromptContinuity('companion-lineage.vexlife.browser-companion-test',threadRef,lease);
-    const bridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-second',promptContextResolver:async()=>({contextLease:lease,continuityProjection,selectedConversationEventRefs:selectedRefs}),promptContextAuthorityVerifier:async()=>browserPromptAuthority('companion-lineage.vexlife.browser-companion-test',threadRef,lease,continuityProjection)});
+    const bridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-second',promptContextResolver:async()=>({contextLease:lease,continuityProjection,selectedConversationEventRefs:selectedRefs}),promptContextAuthorityVerifier:async(query)=>browserPromptAuthority(home,'companion-lineage.vexlife.browser-companion-test',threadRef,lease,continuityProjection,query)});
     const result=await bridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'What phrase did I ask you to remember?'});
     assert.deepEqual(model.calls.at(-1).body.messages,[{role:'user',content:'Remember cobalt lantern.'},{role:'assistant',content:'Real local bridge reply.'},{role:'user',content:'What phrase did I ask you to remember?'}]);
     assert.equal(result.promptContextMaterialization.currentRequestIncludedExactlyOnce,true);
     assert.equal(result.promptContextMaterialization.exactMessagesSha256,semanticHash(model.calls.at(-1).body.messages));
+    assert.equal(result.promptContextMaterialization.providerBoundaryCurrentnessVerified,true);
+    assert.equal(result.promptContextMaterialization.providerBoundarySourceBindingsVerified,true);
   } finally {await model.close();fs.rmSync(root,{recursive:true,force:true});}
 });
 
@@ -366,7 +418,7 @@ test('browser context wrapper leaves differently-shaped Home School internal inf
     const eventsRoot=path.join(home,'conversations','companion-lineage.vexlife.browser-companion-test',threadRef,'events');
     const selectedRefs=fs.readdirSync(eventsRoot).sort().map(name=>JSON.parse(fs.readFileSync(path.join(eventsRoot,name),'utf8')).eventRef); const lease=browserPromptContextLease(selectedRefs); const continuityProjection=browserPromptContinuity('companion-lineage.vexlife.browser-companion-test',threadRef,lease);
     const capabilityRuntime={resolveTurn:async({inference,endpointProfile,taskIntent,inMemoryAuthorization,timeoutMs})=>{await inference({endpointProfile,requestContent:'HOME_SCHOOL_INTERNAL_PROMPT',inMemoryAuthorization,timeoutMs});const response=await inference({endpointProfile,requestContent:taskIntent,inMemoryAuthorization,timeoutMs});return {response,actualHttpCall:true,contextSourceRefs:[],runtimeProjection:{schemaVersion:'test.home-school-separated/v1'}};}};
-    const bridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-governed-second',capabilityRuntime,promptContextResolver:async()=>({contextLease:lease,continuityProjection,selectedConversationEventRefs:selectedRefs}),promptContextAuthorityVerifier:async()=>browserPromptAuthority('companion-lineage.vexlife.browser-companion-test',threadRef,lease,continuityProjection)});
+    const bridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-governed-second',capabilityRuntime,promptContextResolver:async()=>({contextLease:lease,continuityProjection,selectedConversationEventRefs:selectedRefs}),promptContextAuthorityVerifier:async(query)=>browserPromptAuthority(home,'companion-lineage.vexlife.browser-companion-test',threadRef,lease,continuityProjection,query)});
     const before=model.calls.length; await bridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'Current exact human request.'}); const calls=model.calls.slice(before);
     assert.deepEqual(calls[0].body.messages,[{role:'user',content:'HOME_SCHOOL_INTERNAL_PROMPT'}]);
     assert.deepEqual(calls[1].body.messages,[{role:'user',content:'Prior exact context.'},{role:'assistant',content:'Real local bridge reply.'},{role:'user',content:'Current exact human request.'}]);

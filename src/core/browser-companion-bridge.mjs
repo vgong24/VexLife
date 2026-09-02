@@ -401,6 +401,7 @@ export function createBrowserCompanionBridge({
               };
               let materialization = null;
               let materializationConsumed = false;
+              let consumedMaterializationReceipt = null;
               let contextualInference = requestLivedCompanionInference;
               if (promptContextResolver) {
                 const selected = await promptContextResolver({ ...resolverInput, taskIntent: request.content, context: runtimeContext });
@@ -409,6 +410,9 @@ export function createBrowserCompanionBridge({
                     ...identity,
                     threadRef: request.threadRef,
                     currentRequestEventRef: resolverInput.context?.currentRequestEventRef,
+                    currentRequestEventHash: resolverInput.context?.currentRequestEventHash,
+                    currentRequestSequence: resolverInput.context?.currentRequestSequence,
+                    priorConversationHeadSha256: resolverInput.context?.priorConversationHeadSha256 ?? null,
                     currentRequestContent: resolverInput.requestContent,
                     contextLease: selected.contextLease,
                     continuityProjection: selected.continuityProjection,
@@ -417,8 +421,10 @@ export function createBrowserCompanionBridge({
                   });
                   contextualInference = async (input) => {
                     if (input?.requestContent === resolverInput.requestContent) {
-                      materializationConsumed = true;
-                      return requestLivedCompanionInference({ ...input, promptContextMaterialization: materialization });
+                      const contextualResponse = await requestLivedCompanionInference({ ...input, promptContextMaterialization: materialization });
+                      consumedMaterializationReceipt = contextualResponse.promptContextMaterializationReceipt ?? null;
+                      materializationConsumed = consumedMaterializationReceipt !== null;
+                      return contextualResponse;
                     }
                     return requestLivedCompanionInference(input);
                   };
@@ -426,7 +432,7 @@ export function createBrowserCompanionBridge({
               }
               if (capabilityRuntime) {
                 const resolved = await capabilityRuntime.resolveTurn({ ...resolverInput, taskIntent: request.content, inference: contextualInference, context: runtimeContext });
-                const receipt = materializationConsumed ? materialization?.receipt ?? null : null;
+                const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
                 return {
                   ...resolved,
                   contextSourceRefs: [...new Set([...(resolved?.contextSourceRefs ?? []), ...(receipt?.includedSourceRefs ?? [])])].sort(),
@@ -434,7 +440,7 @@ export function createBrowserCompanionBridge({
                 };
               }
               const response = await contextualInference(resolverInput);
-              const receipt = materializationConsumed ? materialization?.receipt ?? null : null;
+              const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
               return { response, actualHttpCall: true, contextSourceRefs: receipt?.includedSourceRefs ?? [], promptContextMaterializationReceipt: receipt };
             }
           : null,

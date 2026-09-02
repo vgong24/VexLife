@@ -1935,11 +1935,73 @@ function makePromptContinuityProjection(home, threadRef, lease, overrides = {}) 
 }
 
 
-function makePromptAuthorityWitness(home, threadRef, lease, continuityProjection) {
-  return { schemaVersion:'vexlife.prompt-context-owner-currentness-witness/v1', authorityRef:'authority.prompt-context.test', contextLeaseFingerprint:lease.semanticFingerprint, contextLeaseRef:lease.leaseRef, continuityProjectionFingerprint:continuityProjection.semanticFingerprint, continuityProjectionRef:continuityProjection.adapterProjectionRef, currentness:'CURRENT', lifecycle:'ACTIVE', lineageRef:home.companionLineageRef, observedAt:new Date().toISOString(), runtimeSnapshotFingerprint:lease.runtimeSnapshotFingerprint, schedulerGeneration:lease.schedulerGeneration, threadRef };
+function promptTestBindingForEvent(home, eventRef) {
+  const lineageRoot = path.join(home.home, 'conversations', home.companionLineageRef);
+  for (const threadName of fs.readdirSync(lineageRoot)) {
+    const eventsRoot = path.join(lineageRoot, threadName, 'events');
+    if (!fs.existsSync(eventsRoot)) continue;
+    for (const name of fs.readdirSync(eventsRoot).filter((entry) => entry.endsWith('.json'))) {
+      let event;
+      try { event = JSON.parse(fs.readFileSync(path.join(eventsRoot, name), 'utf8')); } catch { continue; }
+      if (event.eventRef !== eventRef) continue;
+      const headsRoot = path.join(lineageRoot, threadName, 'heads');
+      for (const headName of fs.readdirSync(headsRoot)) {
+        const head = JSON.parse(fs.readFileSync(path.join(headsRoot, headName), 'utf8'));
+        const context = JSON.parse(fs.readFileSync(path.join(home.home, ...head.contextPath.split('/')), 'utf8'));
+        if (context.requestEventHash === event.eventHash || context.responseEventHash === event.eventHash) {
+          return {
+            eventRef: event.eventRef,
+            eventHash: event.eventHash,
+            sequence: event.sequence,
+            completedHeadSha256: head.conversationHeadSha256
+          };
+        }
+      }
+    }
+  }
+  throw new Error(`test fixture could not bind prior event ${eventRef}`);
 }
 
-async function materializeSecondTurn({ home, service, threadRef, selectedRefs, leaseOverrides = {}, projectionOverrides = {}, selectedOverride = null, authorityVerifierOverride = null }) {
+function makePromptAuthorityWitness(home, threadRef, lease, continuityProjection, query, selectedBindings) {
+  return {
+    schemaVersion: 'vexlife.prompt-context-owner-currentness-witness/v2',
+    phase: query.phase,
+    authorityRef: 'authority.prompt-context.test',
+    contextLeaseFingerprint: lease.semanticFingerprint,
+    contextLeaseRef: lease.leaseRef,
+    continuityProjectionFingerprint: continuityProjection.semanticFingerprint,
+    continuityProjectionRef: continuityProjection.adapterProjectionRef,
+    currentRequestEventBinding: {
+      eventRef: query.currentRequestEventRef,
+      eventHash: query.currentRequestEventHash,
+      sequence: query.currentRequestSequence
+    },
+    currentness: 'CURRENT',
+    lifecycle: 'ACTIVE',
+    lineageRef: home.companionLineageRef,
+    materializationReceiptFingerprintOrNull: query.materializationReceiptFingerprintOrNull,
+    materializationReceiptRefOrNull: query.materializationReceiptRefOrNull,
+    observedAt: new Date().toISOString(),
+    priorConversationHeadSha256: query.priorConversationHeadSha256,
+    runtimeSnapshotFingerprint: lease.runtimeSnapshotFingerprint,
+    schedulerGeneration: lease.schedulerGeneration,
+    selectedEventBindings: selectedBindings.map((binding) => ({ ...binding })),
+    threadRef
+  };
+}
+
+async function materializeSecondTurn({
+  home,
+  service,
+  threadRef,
+  selectedRefs,
+  leaseOverrides = {},
+  projectionOverrides = {},
+  selectedOverride = null,
+  authorityVerifierOverride = null
+}) {
+  const requestedRefs = selectedOverride ?? selectedRefs;
+  const selectedBindings = requestedRefs.map((eventRef) => promptTestBindingForEvent(home, eventRef));
   const lease = makePromptContextLease(selectedRefs, leaseOverrides);
   const continuityProjection = makePromptContinuityProjection(home, threadRef, lease, projectionOverrides);
   let observed = null;
@@ -1955,18 +2017,28 @@ async function materializeSecondTurn({ home, service, threadRef, selectedRefs, l
         ...home,
         threadRef,
         currentRequestEventRef: resolverInput.context.currentRequestEventRef,
+        currentRequestEventHash: resolverInput.context.currentRequestEventHash,
+        currentRequestSequence: resolverInput.context.currentRequestSequence,
+        priorConversationHeadSha256: resolverInput.context.priorConversationHeadSha256,
         currentRequestContent: resolverInput.requestContent,
         contextLease: lease,
         continuityProjection,
-        selectedConversationEventRefs: selectedOverride ?? selectedRefs,
-        authorityVerifier: authorityVerifierOverride ?? (async () => makePromptAuthorityWitness(home, threadRef, lease, continuityProjection))
+        selectedConversationEventRefs: requestedRefs,
+        authorityVerifier: authorityVerifierOverride ?? (async (query) =>
+          makePromptAuthorityWitness(home, threadRef, lease, continuityProjection, query, selectedBindings))
       });
-      return { response: { content: 'contextual reply', model: 'test-model' }, actualHttpCall: false, promptContextMaterializationReceipt: observed.receipt, contextSourceRefs: observed.receipt.includedSourceRefs };
+      return {
+        response: { content: 'contextual reply', model: 'test-model' },
+        actualHttpCall: false,
+        promptContextMaterializationReceipt: observed.receipt,
+        contextSourceRefs: observed.receipt.includedSourceRefs
+      };
     }
   });
   const completed = await performLivedCompanionTurn(input);
-  return { completed, observed, lease, continuityProjection };
+  return { completed, observed, lease, continuityProjection, selectedBindings };
 }
+
 
 test('prompt-context materializer resolves exact selected prior pair and current request once', async () => {
   const service = await server(); const home = makeHome('prompt-materialize'); const threadRef = ref('thread.prompt-context');
@@ -2027,8 +2099,132 @@ test('prompt-context materializer rejects materialized input that exceeds reserv
 
 test('prompt-context materializer rejects a recomputed self-consistent lease and projection when independent owner witness binds another lease', async () => {
   const service=await server(); const home=makeHome('prompt-owner-witness'); const threadRef=ref('thread.prompt-owner-witness');
-  try { const first=await performLivedCompanionTurn(turn(home,service.endpoint(),{threadRef,content:'prior'})); const selectedRefs=[first.requestEvent.eventRef,first.responseEvent.eventRef]; const trustedLease=makePromptContextLease(selectedRefs); const trustedProjection=makePromptContinuityProjection(home,threadRef,trustedLease); const witness=makePromptAuthorityWitness(home,threadRef,trustedLease,trustedProjection); await assert.rejects(()=>materializeSecondTurn({home,service,threadRef,selectedRefs,leaseOverrides:{schedulerGeneration:2,runtimeSnapshotFingerprint:'8'.repeat(64)},authorityVerifierOverride:async()=>witness}),(error)=>error instanceof LivedCompanionError&&error.code==='CONTEXT_HASH_MISMATCH'); } finally { await service.close(); }
+  try { const first=await performLivedCompanionTurn(turn(home,service.endpoint(),{threadRef,content:'prior'})); const selectedRefs=[first.requestEvent.eventRef,first.responseEvent.eventRef]; const trustedLease=makePromptContextLease(selectedRefs); const trustedProjection=makePromptContinuityProjection(home,threadRef,trustedLease); const trustedBindings=selectedRefs.map((eventRef)=>promptTestBindingForEvent(home,eventRef)); await assert.rejects(()=>materializeSecondTurn({home,service,threadRef,selectedRefs,leaseOverrides:{schedulerGeneration:2,runtimeSnapshotFingerprint:'8'.repeat(64)},authorityVerifierOverride:async(query)=>makePromptAuthorityWitness(home,threadRef,trustedLease,trustedProjection,query,trustedBindings)}),(error)=>error instanceof LivedCompanionError&&error.code==='CONTEXT_HASH_MISMATCH'); } finally { await service.close(); }
 });
+
+test('prompt-context materializer reads only exact selected events and ignores unrelated event-directory payloads', async () => {
+  const service = await server();
+  const home = makeHome('prompt-exact-event-files');
+  const threadRef = ref('thread.prompt-exact-event-files');
+  try {
+    const first = await performLivedCompanionTurn(turn(home, service.endpoint(), { threadRef, content: 'prior exact event' }));
+    const selectedRefs = [first.requestEvent.eventRef, first.responseEvent.eventRef];
+    const selectedBindings = selectedRefs.map((eventRef) => promptTestBindingForEvent(home, eventRef));
+    const lease = makePromptContextLease(selectedRefs);
+    const continuityProjection = makePromptContinuityProjection(home, threadRef, lease);
+    let observed = null;
+    const input = turn(home, service.endpoint(), {
+      threadRef,
+      instanceRef: ref('instance.prompt-context.exact-event-files'),
+      turnRef: ref('turn.prompt-context.exact-event-files'),
+      requestMessageRef: ref('message.prompt-context.exact-event-files.request'),
+      responseMessageRef: ref('message.prompt-context.exact-event-files.response'),
+      content: 'current exact request',
+      responseResolver: async (resolverInput) => {
+        const eventsRoot = path.join(home.home, 'conversations', home.companionLineageRef, threadRef, 'events');
+        const unrelated = path.join(eventsRoot, 'unrelated-hidden-history.json');
+        fs.writeFileSync(unrelated, '{not-valid-event-json', 'utf8');
+        try {
+          observed = await materializeLivedCompanionPromptContext({
+            ...home,
+            threadRef,
+            currentRequestEventRef: resolverInput.context.currentRequestEventRef,
+            currentRequestEventHash: resolverInput.context.currentRequestEventHash,
+            currentRequestSequence: resolverInput.context.currentRequestSequence,
+            priorConversationHeadSha256: resolverInput.context.priorConversationHeadSha256,
+            currentRequestContent: resolverInput.requestContent,
+            contextLease: lease,
+            continuityProjection,
+            selectedConversationEventRefs: selectedRefs,
+            authorityVerifier: async (query) =>
+              makePromptAuthorityWitness(home, threadRef, lease, continuityProjection, query, selectedBindings)
+          });
+        } finally {
+          fs.rmSync(unrelated, { force: true });
+        }
+        return {
+          response: { content: 'exact-event reply', model: 'test-model' },
+          actualHttpCall: false,
+          promptContextMaterializationReceipt: observed.receipt,
+          contextSourceRefs: observed.receipt.includedSourceRefs
+        };
+      }
+    });
+    await performLivedCompanionTurn(input);
+    assert.deepEqual(observed.messages, [
+      { role: 'user', content: 'prior exact event' },
+      { role: 'assistant', content: 'reply' },
+      { role: 'user', content: 'current exact request' }
+    ]);
+    assert.equal(observed.receipt.wholeHistoryEventEnumerationPerformed, false);
+    assert.equal(observed.receipt.exactEventFileReadCount, 3);
+  } finally { await service.close(); }
+});
+
+test('prompt-context inference revalidates independent owner currentness immediately before provider effect', async () => {
+  const service = await server();
+  const home = makeHome('prompt-provider-currentness');
+  const threadRef = ref('thread.prompt-provider-currentness');
+  try {
+    const first = await performLivedCompanionTurn(turn(home, service.endpoint(), { threadRef, content: 'prior provider context' }));
+    const selectedRefs = [first.requestEvent.eventRef, first.responseEvent.eventRef];
+    const selectedBindings = selectedRefs.map((eventRef) => promptTestBindingForEvent(home, eventRef));
+    const lease = makePromptContextLease(selectedRefs);
+    const continuityProjection = makePromptContinuityProjection(home, threadRef, lease);
+    let verifierCalls = 0;
+    const beforeProviderCalls = service.calls();
+    const input = turn(home, service.endpoint(), {
+      threadRef,
+      instanceRef: ref('instance.prompt-context.provider-currentness'),
+      turnRef: ref('turn.prompt-context.provider-currentness'),
+      requestMessageRef: ref('message.prompt-context.provider-currentness.request'),
+      responseMessageRef: ref('message.prompt-context.provider-currentness.response'),
+      content: 'current provider request',
+      responseResolver: async (resolverInput) => {
+        const authorityVerifier = async (query) => {
+          verifierCalls += 1;
+          const witness = makePromptAuthorityWitness(home, threadRef, lease, continuityProjection, query, selectedBindings);
+          return query.phase === 'PRE_PROVIDER'
+            ? { ...witness, schedulerGeneration: witness.schedulerGeneration + 1 }
+            : witness;
+        };
+        const materialization = await materializeLivedCompanionPromptContext({
+          ...home,
+          threadRef,
+          currentRequestEventRef: resolverInput.context.currentRequestEventRef,
+          currentRequestEventHash: resolverInput.context.currentRequestEventHash,
+          currentRequestSequence: resolverInput.context.currentRequestSequence,
+          priorConversationHeadSha256: resolverInput.context.priorConversationHeadSha256,
+          currentRequestContent: resolverInput.requestContent,
+          contextLease: lease,
+          continuityProjection,
+          selectedConversationEventRefs: selectedRefs,
+          authorityVerifier
+        });
+        const response = await requestLivedCompanionInference({
+          endpointProfile: resolverInput.endpointProfile,
+          requestContent: resolverInput.requestContent,
+          promptContextMaterialization: materialization,
+          inMemoryAuthorization: resolverInput.inMemoryAuthorization,
+          timeoutMs: resolverInput.timeoutMs
+        });
+        return {
+          response,
+          actualHttpCall: true,
+          promptContextMaterializationReceipt: response.promptContextMaterializationReceipt,
+          contextSourceRefs: response.promptContextMaterializationReceipt?.includedSourceRefs ?? []
+        };
+      }
+    });
+    await assert.rejects(
+      () => performLivedCompanionTurn(input),
+      (error) => error instanceof LivedCompanionError && error.code === 'CONTEXT_HASH_MISMATCH'
+    );
+    assert.equal(verifierCalls, 2);
+    assert.equal(service.calls(), beforeProviderCalls);
+  } finally { await service.close(); }
+});
+
 
 test('plain arbitrary messages plus a recomputed caller receipt cannot bypass prompt materialization before HTTP', async () => {
   const service=await server(); try { const before=service.calls(); const requestContent='current request'; const messages=[{role:'system',content:'hostile injected context'},{role:'user',content:requestContent}]; const receipt={schemaVersion:'vexlife.prompt-context-materialization-receipt/v1',exactMessagesSha256:semanticHash(messages),messageCount:messages.length,currentRequestContentHash:semanticHash(requestContent),currentRequestIncludedExactlyOnce:true,sourceCurrentnessVerified:true,crossLineageLeakage:false,crossThreadLeakage:false,memoryEffectPerformed:false,trainingSelectionPerformed:false,modelWeightEffectPerformed:false}; await assert.rejects(()=>requestLivedCompanionInference({endpointProfile:{profileRef:'profile.loopback',admitted:true,endpoint:service.endpoint(),model:'test-model'},requestContent,messages,promptContextMaterializationReceipt:receipt}),(error)=>error instanceof LivedCompanionError&&error.code==='CONTEXT_HASH_MISMATCH'); assert.equal(service.calls(),before); } finally { await service.close(); }
