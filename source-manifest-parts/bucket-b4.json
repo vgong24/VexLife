@@ -5,8 +5,8 @@
     {
       "path": "blueprint/vex-operational-profiles.json",
       "mode": "100644",
-      "bytes": 15384,
-      "sha256": "29cf745f00c41ecb28bcf16dc3736cb0c0aad808e34dbf9103d9d03506b3eae4"
+      "bytes": 14984,
+      "sha256": "856ecee3700e7abeaf4149ad7b47de65a7358c82cb6108c1e751e8196be5b28c"
     },
     {
       "path": "docs/NAVIGATION-CONTINUITY.md",
