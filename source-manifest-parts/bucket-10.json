@@ -3,6 +3,12 @@
   "bucketId": "10",
   "files": [
     {
+      "path": "blueprint/model-bundle-registry.json",
+      "mode": "100644",
+      "bytes": 1080,
+      "sha256": "a9d5a4f8d18e331d7f9bdccb8b4d8d784e19cd71b0b77d5742475df21593383b"
+    },
+    {
       "path": "scripts/feature-scaffold.mjs",
       "mode": "100644",
       "bytes": 1474,

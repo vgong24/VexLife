@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   LivedCompanionError,
+  materializeLivedCompanionPromptContext,
   performLivedCompanionTurn,
   requestLivedCompanionInference
 } from './lived-companion.mjs';
@@ -298,6 +299,8 @@ export function createBrowserCompanionBridge({
   endpoint = null,
   model = null,
   capabilityRuntime = null,
+  promptContextResolver = null,
+  promptContextAuthorityVerifier = null,
   instanceRef = ref('instance.vexlife.browser-companion')
 }) {
   if (!safePortableRef(instanceRef)) {
@@ -306,6 +309,12 @@ export function createBrowserCompanionBridge({
   const binding = resolveBrowserCompanionRuntimeBinding({ endpoint, model });
   if (capabilityRuntime !== null && typeof capabilityRuntime?.resolveTurn !== 'function') {
     throw new BrowserCompanionBridgeError('COMPANION_CAPABILITY_RUNTIME_INVALID', 'Capability runtime must expose one server-owned resolveTurn function', 500);
+  }
+  if (promptContextResolver !== null && typeof promptContextResolver !== 'function') {
+    throw new BrowserCompanionBridgeError('COMPANION_PROMPT_CONTEXT_RESOLVER_INVALID', 'Prompt context resolver must be one server-owned function', 500);
+  }
+  if ((promptContextResolver !== null || promptContextAuthorityVerifier !== null) && typeof promptContextAuthorityVerifier !== 'function') {
+    throw new BrowserCompanionBridgeError('COMPANION_PROMPT_CONTEXT_AUTHORITY_INVALID', 'Prompt context requires one independently server-owned authority verifier', 500);
   }
 
   function status() {
@@ -381,19 +390,59 @@ export function createBrowserCompanionBridge({
           endpoint: binding.endpoint,
           model: binding.model
         },
-        responseResolver: capabilityRuntime
-          ? (resolverInput) => capabilityRuntime.resolveTurn({
-              ...resolverInput,
-              taskIntent: request.content,
-              inference: requestLivedCompanionInference,
-              context: {
+        responseResolver: capabilityRuntime || promptContextResolver
+          ? async (resolverInput) => {
+              const runtimeContext = {
                 ...(resolverInput.context ?? {}),
                 projectRef: request.projectRef,
                 screenRef: request.screenRef,
                 selectedNodeRef: request.selectedNodeRef,
                 sourceRefs: contextSourceRefs
+              };
+              let materialization = null;
+              let materializationConsumed = false;
+              let consumedMaterializationReceipt = null;
+              let contextualInference = requestLivedCompanionInference;
+              if (promptContextResolver) {
+                const selected = await promptContextResolver({ ...resolverInput, taskIntent: request.content, context: runtimeContext });
+                if (selected !== null && selected !== undefined) {
+                  materialization = await materializeLivedCompanionPromptContext({
+                    ...identity,
+                    threadRef: request.threadRef,
+                    currentRequestEventRef: resolverInput.context?.currentRequestEventRef,
+                    currentRequestEventHash: resolverInput.context?.currentRequestEventHash,
+                    currentRequestSequence: resolverInput.context?.currentRequestSequence,
+                    priorConversationHeadSha256: resolverInput.context?.priorConversationHeadSha256 ?? null,
+                    currentRequestContent: resolverInput.requestContent,
+                    contextLease: selected.contextLease,
+                    continuityProjection: selected.continuityProjection,
+                    selectedConversationEventRefs: selected.selectedConversationEventRefs ?? [],
+                    authorityVerifier: promptContextAuthorityVerifier
+                  });
+                  contextualInference = async (input) => {
+                    if (input?.requestContent === resolverInput.requestContent) {
+                      const contextualResponse = await requestLivedCompanionInference({ ...input, promptContextMaterialization: materialization });
+                      consumedMaterializationReceipt = contextualResponse.promptContextMaterializationReceipt ?? null;
+                      materializationConsumed = consumedMaterializationReceipt !== null;
+                      return contextualResponse;
+                    }
+                    return requestLivedCompanionInference(input);
+                  };
+                }
               }
-            })
+              if (capabilityRuntime) {
+                const resolved = await capabilityRuntime.resolveTurn({ ...resolverInput, taskIntent: request.content, inference: contextualInference, context: runtimeContext });
+                const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
+                return {
+                  ...resolved,
+                  contextSourceRefs: [...new Set([...(resolved?.contextSourceRefs ?? []), ...(receipt?.includedSourceRefs ?? [])])].sort(),
+                  promptContextMaterializationReceipt: receipt
+                };
+              }
+              const response = await contextualInference(resolverInput);
+              const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
+              return { response, actualHttpCall: true, contextSourceRefs: receipt?.includedSourceRefs ?? [], promptContextMaterializationReceipt: receipt };
+            }
           : null,
         contextSourceRefs,
         timeoutMs: 120000
@@ -412,7 +461,8 @@ export function createBrowserCompanionBridge({
         writerLeaseReleased: completed.writerLeaseReleased === true,
         actualHttpCall: completed.actualHttpCall === true,
         loopbackOnly: completed.loopbackOnly === true,
-        capabilityRuntime: completed.runtimeProjection ?? null
+        capabilityRuntime: completed.runtimeProjection ?? null,
+        promptContextMaterialization: completed.promptContextMaterializationReceipt ?? null
       });
     } catch (error) {
       throw publicFailureFor(error);

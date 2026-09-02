@@ -15,18 +15,23 @@ import {
   classifyHomeState,
   evaluateOperationalProfileHost,
   qualificationContentMatches,
+  resolveActiveModelBundle,
   runtimeExecutableIdentityMatches,
   runtimeProcessEvidenceMatches,
   selectOperationalProfile,
+  validateModelBundleRegistry,
   validateOperationalProfileRegistry
 } from '../src/core/vex-initialization.mjs';
 import { classifyVerifiedArtifact, downloadVerifiedArtifact, sha256File } from '../src/core/model-provision.mjs';
+import { resolveAndDownloadArtifact } from '../src/core/artifact-delivery.mjs';
 import { assertSafeMacExtractedTree, assertSafeMacTarArchive, readMacProcessEvidence } from './macos-lifecycle.mjs';
 import { writeJson } from '../src/core/utils.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE_ROOT = path.resolve(HERE, '..');
 const PROFILE_PATH = path.join(SOURCE_ROOT, 'blueprint', 'vex-operational-profiles.json');
+const MODEL_BUNDLE_PATH = path.join(SOURCE_ROOT, 'blueprint', 'model-bundle-registry.json');
+const ARTIFACT_REGISTRY_PATH = path.join(SOURCE_ROOT, 'blueprint', 'artifact-registry.json');
 const args = process.argv.slice(2);
 const has = (name) => args.includes(name);
 const value = (name, fallback = null) => {
@@ -243,11 +248,11 @@ async function waitForRuntime(profile, pid) {
   }
   throw new Error('runtime did not become healthy before the qualification timeout');
 }
-async function qualifyInference(profile) {
+async function qualifyInference(profile, modelBundle) {
   const response = await fetch(`${profile.endpoint.origin}${profile.qualification.chatPath}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(buildQualificationRequest(profile)),
+    body: JSON.stringify(buildQualificationRequest(profile, modelBundle)),
     signal: AbortSignal.timeout(30000)
   });
   if (!response.ok) throw new Error(`runtime inference qualification failed: HTTP ${response.status}`);
@@ -265,11 +270,11 @@ async function qualifyInference(profile) {
     expectedContentMatched: typeof profile.qualification.expectedContent === 'string' ? true : null
   };
 }
-async function promptConsent(profile) {
+async function promptConsent(profile, modelBundle) {
   if (yes) return true;
   const rl = createInterface({ input, output });
   try {
-    const answer = await rl.question(`Continue with Vex using ${profile.endpoint.requestModel}? This may download several GB and start a local-only model runtime. [Y/n] `);
+    const answer = await rl.question(`Continue with Vex using ${modelBundle.requestModel}? This may download several GB and start a local-only model runtime. [Y/n] `);
     const normalized = answer.trim().toLowerCase();
     return normalized === '' || normalized === 'y' || normalized === 'yes';
   } finally { rl.close(); }
@@ -292,9 +297,14 @@ function writeFailureReceipt(profile, state, message, detail = {}) {
 let profile = null;
 try {
   if (!fs.existsSync(PROFILE_PATH)) fail('SOURCE_NOT_FOUND', `Operational profile registry is missing: ${PROFILE_PATH}`, 2);
+  if (!fs.existsSync(MODEL_BUNDLE_PATH) || !fs.existsSync(ARTIFACT_REGISTRY_PATH)) fail('SOURCE_NOT_FOUND', 'Canonical model-bundle/artifact registries are missing.', 2);
   const registry = loadJson(PROFILE_PATH);
+  const modelBundleRegistry = loadJson(MODEL_BUNDLE_PATH);
+  const artifactRegistry = loadJson(ARTIFACT_REGISTRY_PATH);
   const registryValidation = validateOperationalProfileRegistry(registry);
   if (!registryValidation.ok) fail('SOURCE_INVALID', registryValidation.errors.join('; '), 2);
+  const modelBundleValidation = validateModelBundleRegistry(modelBundleRegistry, { artifactRegistry, operationalProfileRegistry: registry });
+  if (!modelBundleValidation.ok) fail('SOURCE_INVALID', modelBundleValidation.errors.join('; '), 2);
   if (mode === 'candidate-qualification' && (!requestedProfileRef || !candidateAuthorityRef)) {
     fail('CANDIDATE_AUTHORITY_REQUIRED', 'Candidate qualification requires --profile-ref and --candidate-authority-ref.', 2);
   }
@@ -305,24 +315,28 @@ try {
   if (selection.state !== 'PROFILE_RESOLVED') fail(selection.state, 'No current operational profile is eligible for this route.', 4, selection);
   profile = selection.profile;
   assertHostEligible(profile, host);
+  const modelSelection = resolveActiveModelBundle({ registry: modelBundleRegistry, artifactRegistry, operationalProfile: profile });
+  if (modelSelection.state !== 'MODEL_BUNDLE_RESOLVED') fail(modelSelection.state, 'No current model bundle is eligible for this operational profile.', 4, modelSelection);
+  const modelBundle = modelSelection.bundle;
+  const modelArtifacts = modelSelection.artifacts;
 
   const homeStatus = pathState(home);
   if (homeStatus.state === 'HOME_REQUIRES_MIGRATION_PLAN') fail('HOME_REQUIRES_MIGRATION_PLAN', 'The selected Vex Home is non-empty but has no canonical Home identity. Nothing was changed.', 5);
   if (homeStatus.state === 'FRESH_HOME_ALLOWED') fail('HOME_NOT_ESTABLISHED', 'Vex Home must be established by the Frontdoor bootstrap before runtime initialization.', 5);
 
-  const plan = buildVexInitializationPlan({ profile, home, homeState: homeStatus.state, hostEvidence: host, mode });
+  const plan = buildVexInitializationPlan({ profile, modelBundle, modelArtifacts, home, homeState: homeStatus.state, hostEvidence: host, mode });
   if (planOnly) {
     console.log(JSON.stringify({ schemaVersion: 'vexlife.initialization-result/v1', state: 'PLAN_READY_NO_EFFECT', plan }));
     process.exit(0);
   }
 
-  const consent = await promptConsent(profile);
+  const consent = await promptConsent(profile, modelBundle);
   if (!consent) fail('NETWORK_NOT_AUTHORIZED', 'No download or runtime effect was performed.', 0);
   progress(`Profile ${profile.profileRef} selected under ${mode}.`);
 
   const artifactPaths = new Map();
   const artifactReceipts = [];
-  for (const artifact of [...profile.runtime.artifacts, ...profile.modelArtifacts]) {
+  for (const artifact of profile.runtime.artifacts) {
     const destination = destinationForArtifact(profile, artifact);
     progress(`Verifying ${artifact.filename}...`);
     const before = await classifyVerifiedArtifact({ finalPath: destination, expectedSha256: artifact.sha256, expectedBytes: artifact.expectedBytes });
@@ -338,13 +352,38 @@ try {
       onProgress: ({ bytes }) => progress(`${artifact.filename}: ${Math.floor(bytes / (1024 * 1024))} MiB received`)
     });
     artifactPaths.set(artifact.artifactRef, destination);
-    artifactReceipts.push({ artifactRef: artifact.artifactRef, filename: artifact.filename, disposition: receipt.disposition, bytes: receipt.bytes, sha256: receipt.actualSha256 });
+    artifactReceipts.push({ artifactRef: artifact.artifactRef, filename: artifact.filename, destinationClass: 'RUNTIME_ARCHIVE', disposition: receipt.disposition, bytes: receipt.bytes, sha256: receipt.actualSha256, selectedChannelRef: null, attemptedChannelRefs: [], providerOrNetworkEffect: receipt.disposition !== 'REUSED_VERIFIED' });
+  }
+  for (const artifact of modelArtifacts) {
+    const destination = destinationForArtifact(profile, artifact);
+    progress(`Verifying ${artifact.filename} through source-managed model delivery...`);
+    const before = await classifyVerifiedArtifact({ finalPath: destination, expectedSha256: artifact.sha256, expectedBytes: artifact.expectedBytes });
+    if (before.state === 'INVALID_HASH' || before.state === 'INVALID_SIZE' || before.state === 'INVALID_NOT_FILE') {
+      throw Object.assign(new Error(`${artifact.filename} already exists but does not match the accepted profile; refusing to overwrite it`), { state: 'ARTIFACT_HASH_MISMATCH' });
+    }
+    const receipt = await resolveAndDownloadArtifact({ artifactRef: artifact.artifactRef, deliveryPolicyRef: null, finalPath: destination });
+    artifactPaths.set(artifact.artifactRef, destination);
+    artifactReceipts.push({
+      artifactRef: artifact.artifactRef,
+      filename: artifact.filename,
+      destinationClass: 'MODEL',
+      modelBundleRef: modelBundle.modelBundleRef,
+      generationRef: modelBundle.generationRef,
+      disposition: receipt.disposition,
+      bytes: receipt.bytes,
+      sha256: receipt.actualSha256,
+      selectedChannelRef: receipt.selectedChannelRef,
+      attemptedChannelRefs: receipt.attemptedChannelRefs,
+      providerOrNetworkEffect: receipt.providerOrNetworkEffect,
+      manifestSha256: receipt.manifestSha256,
+      recordedSourceUrl: receipt.recordedSourceUrl
+    });
   }
 
   progress('Materializing the local runtime...');
   const materialization = await materializeRuntime(profile, artifactPaths);
-  const modelPath = artifactPaths.get(profile.modelArtifacts[0].artifactRef);
-  const projectorPath = artifactPaths.get(profile.modelArtifacts[1].artifactRef);
+  const modelPath = artifactPaths.get(modelBundle.baseModelArtifactRef);
+  const projectorPath = artifactPaths.get(modelBundle.projectorArtifactRef);
   const runtimeReceiptPath = path.join(home, 'runtime', 'initialization', 'receipt.json');
   fs.mkdirSync(path.dirname(runtimeReceiptPath), { recursive: true });
 
@@ -391,16 +430,19 @@ try {
   }
 
   progress('Qualifying the exact runtime/model binding...');
-  const qualification = await qualifyInference(profile);
-  const binding = browserBindingForProfile(profile);
+  const qualification = await qualifyInference(profile, modelBundle);
+  const binding = browserBindingForProfile(profile, modelBundle);
   const formedAt = new Date().toISOString();
-  const receiptRef = `receipt.vexlife.initialization.${crypto.createHash('sha256').update(`${profile.profileRef}|${runtimePid}|${formedAt}`).digest('hex').slice(0, 24)}`;
+  const receiptRef = `receipt.vexlife.initialization.${crypto.createHash('sha256').update(`${profile.profileRef}|${modelBundle.modelBundleRef}|${runtimePid}|${formedAt}`).digest('hex').slice(0, 24)}`;
   const receipt = {
     schemaVersion: 'vexlife.initialization-receipt/v1',
     receiptRef,
     state: 'RUNTIME_QUALIFIED',
     profileRef: profile.profileRef,
     profileState: profile.state,
+    modelBundleRef: modelBundle.modelBundleRef,
+    generationRef: modelBundle.generationRef,
+    modelProfileRef: modelBundle.modelProfileRef,
     mode,
     candidateAuthorityRef: mode === 'candidate-qualification' ? candidateAuthorityRef : null,
     formedAt,
@@ -423,7 +465,7 @@ try {
       executablePath: materialization.executable,
       arguments: buildRuntimeArguments(profile, { modelPath, projectorPath })
     },
-    endpoint: profile.endpoint,
+    endpoint: { ...profile.endpoint, requestModel: modelBundle.requestModel },
     qualification,
     browserBinding: binding,
     effects: { repository: false, public: false, memoryCanonicalWrite: false, training: false, nonLoopbackNetwork: false }
@@ -435,9 +477,12 @@ try {
     schemaVersion: 'vexlife.model-configuration/v1',
     state: 'BOUND_QUALIFIED',
     profileRef: profile.profileRef,
+    activeModelBundleRef: modelBundle.modelBundleRef,
+    generationRef: modelBundle.generationRef,
+    modelProfileRef: modelBundle.modelProfileRef,
     endpoint: profile.endpoint.origin,
-    requestModel: profile.endpoint.requestModel,
-    activeArtifactRef: profile.modelArtifacts[0].artifactRef,
+    requestModel: modelBundle.requestModel,
+    activeArtifactRef: modelBundle.baseModelArtifactRef,
     runtimeDependencyRef: profile.runtime.dependencyRef,
     runtimePid,
     runtimeExecutablePath: materialization.executable,
@@ -457,9 +502,11 @@ try {
     state: 'RUNTIME_QUALIFIED',
     profileRef: profile.profileRef,
     profileState: profile.state,
+    activeModelBundleRef: modelBundle.modelBundleRef,
+    generationRef: modelBundle.generationRef,
     runtimePid,
     endpoint: profile.endpoint.origin,
-    requestModel: profile.endpoint.requestModel,
+    requestModel: modelBundle.requestModel,
     browserBinding: binding,
     receiptPath: recoveryReceiptPath
   }));

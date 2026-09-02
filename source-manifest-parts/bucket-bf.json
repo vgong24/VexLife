@@ -5,8 +5,8 @@
     {
       "path": "blueprint/artifact-registry.json",
       "mode": "100644",
-      "bytes": 157,
-      "sha256": "8478e3295df8db4fa38b9165f7b5a2d5849c3fab7cd1812817d475242105becf"
+      "bytes": 1149,
+      "sha256": "8d403d766d65bb6aa410f77b019aa0890b96532b145cc9895c3aecc144dda0ef"
     }
   ]
 }

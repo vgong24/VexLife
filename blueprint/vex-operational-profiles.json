@@ -1,12 +1,16 @@
 {
   "schemaVersion": "vexlife.operational-profiles/v1",
   "registryRef": "registry.vexlife.operational-profiles.001",
+  "modelBundleRegistryRef": "registry.vexlife.model-bundles.001",
   "ownerRef": "github.issue.vexlife.152",
   "currentnessRef": "github.issue.vextreme-sdk.914",
   "normalSelectionRule": "RELEASE_QUALIFIED_ONLY",
   "profiles": [
     {
       "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
+      "compatibleModelBundleRefs": [
+        "model-bundle.vexlife.g0.qwen3.5-4b.q4-k-m.001"
+      ],
       "state": "RELEASE_QUALIFIED",
       "stateReason": "Release-qualified for the current source-local Windows x64 NVIDIA setup path after exact host evidence proved pinned artifact/runtime digests, bounded local inference, a real Browser-to-G01 companion turn, uninstall-preserve, and cleanup. This does not claim an OFFICIAL_VERIFIED_BUILD, public release, signed installer, P11 fresh-human proof, or non-Windows support.",
       "platform": "win32",
@@ -70,28 +74,6 @@
           "128"
         ]
       },
-      "modelArtifacts": [
-        {
-          "artifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
-          "filename": "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
-          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/ba06320255db2dbec194dad738d066be90dabf29/Qwen_Qwen3.5-4B-Q4_K_M.gguf?download=true",
-          "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
-          "expectedBytes": 3013027808,
-          "maxBytes": 4294967296,
-          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.ba06320255db2dbec194dad738d066be90dabf29",
-          "licenseRef": "license.apache-2.0.qwen3.5"
-        },
-        {
-          "artifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
-          "filename": "mmproj-Qwen_Qwen3.5-4B-bf16.gguf",
-          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/3516418eb75fd2cdf56058f112b403ff47020775/mmproj-Qwen_Qwen3.5-4B-bf16.gguf?download=true",
-          "sha256": "463f39bd1c291c1186c319a8c90ff8640aafa678b14cbee2232d695113dfbb66",
-          "expectedBytes": 675569216,
-          "maxBytes": 1073741824,
-          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.3516418eb75fd2cdf56058f112b403ff47020775",
-          "licenseRef": "license.apache-2.0.qwen3.5"
-        }
-      ],
       "qualification": {
         "healthPath": "/health",
         "chatPath": "/v1/chat/completions",
@@ -130,9 +112,33 @@
         "github.issue.vextreme-sdk.914",
         "github.issue.vexlife.152",
         "github.issue.vextreme-sdk.662"
+      ],
+      "modelArtifacts": [
+        {
+          "artifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
+          "filename": "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
+          "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
+          "expectedBytes": 3013027808,
+          "maxBytes": 4294967296,
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.ba06320255db2dbec194dad738d066be90dabf29",
+          "licenseRef": "license.apache-2.0.qwen3.5"
+        },
+        {
+          "artifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
+          "filename": "mmproj-Qwen_Qwen3.5-4B-bf16.gguf",
+          "sha256": "463f39bd1c291c1186c319a8c90ff8640aafa678b14cbee2232d695113dfbb66",
+          "expectedBytes": 675569216,
+          "maxBytes": 1073741824,
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.3516418eb75fd2cdf56058f112b403ff47020775",
+          "licenseRef": "license.apache-2.0.qwen3.5"
+        }
       ]
     },
     {
+      "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001",
+      "compatibleModelBundleRefs": [
+        "model-bundle.vexlife.g0.qwen3.5-4b.q4-k-m.001"
+      ],
       "architecture": "arm64",
       "endpoint": {
         "origin": "http://127.0.0.1:18080",
@@ -145,30 +151,7 @@
         "requiresNvidiaSmi": false,
         "appleChipModel": "Apple M4 Pro"
       },
-      "modelArtifacts": [
-        {
-          "artifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
-          "filename": "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
-          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/ba06320255db2dbec194dad738d066be90dabf29/Qwen_Qwen3.5-4B-Q4_K_M.gguf?download=true",
-          "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
-          "expectedBytes": 3013027808,
-          "maxBytes": 4294967296,
-          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.ba06320255db2dbec194dad738d066be90dabf29",
-          "licenseRef": "license.apache-2.0.qwen3.5"
-        },
-        {
-          "artifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
-          "filename": "mmproj-Qwen_Qwen3.5-4B-bf16.gguf",
-          "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/3516418eb75fd2cdf56058f112b403ff47020775/mmproj-Qwen_Qwen3.5-4B-bf16.gguf?download=true",
-          "sha256": "463f39bd1c291c1186c319a8c90ff8640aafa678b14cbee2232d695113dfbb66",
-          "expectedBytes": 675569216,
-          "maxBytes": 1073741824,
-          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.3516418eb75fd2cdf56058f112b403ff47020775",
-          "licenseRef": "license.apache-2.0.qwen3.5"
-        }
-      ],
       "platform": "darwin",
-      "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001",
       "qualification": {
         "chatPath": "/v1/chat/completions",
         "healthPath": "/health",
@@ -309,7 +292,27 @@
         "github.issue.vexlife.194.comment.5402999297"
       ],
       "state": "RELEASE_QUALIFIED",
-      "stateReason": "Release-qualified for the exact observed Apple M4 Pro / Mac16,7 darwin-arm64 source-local lifecycle after pinned b10107 + Qwen3.5 artifacts, explicit MTL0 / --gpu-layers all runtime qualification, a fresh production-bootstrap technical Home whose actual path contains spaces, two real lifecycle-owned browser companion turns, exact-owned restart/resume, repair, uninstall-preserve, rebuild-preserve, protected multi-GiB model/technical Memory/conversation continuity, and terminal exact-owned cleanup. This is a source-local operational profile qualification only. It does not certify plain M4, M4 Max, other Apple Silicon, a signed/public build, OFFICIAL_VERIFIED_BUILD, or P11 fresh-human/fresh-machine acceptance."
+      "stateReason": "Release-qualified for the exact observed Apple M4 Pro / Mac16,7 darwin-arm64 source-local lifecycle after pinned b10107 + Qwen3.5 artifacts, explicit MTL0 / --gpu-layers all runtime qualification, a fresh production-bootstrap technical Home whose actual path contains spaces, two real lifecycle-owned browser companion turns, exact-owned restart/resume, repair, uninstall-preserve, rebuild-preserve, protected multi-GiB model/technical Memory/conversation continuity, and terminal exact-owned cleanup. This is a source-local operational profile qualification only. It does not certify plain M4, M4 Max, other Apple Silicon, a signed/public build, OFFICIAL_VERIFIED_BUILD, or P11 fresh-human/fresh-machine acceptance.",
+      "modelArtifacts": [
+        {
+          "artifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
+          "filename": "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
+          "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
+          "expectedBytes": 3013027808,
+          "maxBytes": 4294967296,
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.ba06320255db2dbec194dad738d066be90dabf29",
+          "licenseRef": "license.apache-2.0.qwen3.5"
+        },
+        {
+          "artifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
+          "filename": "mmproj-Qwen_Qwen3.5-4B-bf16.gguf",
+          "sha256": "463f39bd1c291c1186c319a8c90ff8640aafa678b14cbee2232d695113dfbb66",
+          "expectedBytes": 675569216,
+          "maxBytes": 1073741824,
+          "sourceRef": "hf.bartowski.Qwen_Qwen3.5-4B-GGUF.3516418eb75fd2cdf56058f112b403ff47020775",
+          "licenseRef": "license.apache-2.0.qwen3.5"
+        }
+      ]
     }
   ]
 }

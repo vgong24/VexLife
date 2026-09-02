@@ -17,8 +17,8 @@
     {
       "path": "src/core/lived-companion.mjs",
       "mode": "100644",
-      "bytes": 80025,
-      "sha256": "5910449329ad3f225ff00c7758c3f70fd9588206e3fc3b5e147dc2cc49b9e5b7"
+      "bytes": 117598,
+      "sha256": "e86992ee76fd0902e31c4b2712bd77b93e2617f492e88dc9242028466ecf1642"
     },
     {
       "path": "test/g04b-native-provisioning-integrity.test.mjs",

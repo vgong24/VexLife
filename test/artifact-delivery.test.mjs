@@ -673,12 +673,36 @@ test('MIR-19/MIR-20 current direct caller compatibility boundary stays external 
   assert.equal(cli.includes('child_process'), false);
 });
 
-test('MIR-21 module composition registers the additive fragment and generic registries validate empty', () => {
+test('MIR-21 module composition retains the additive fragment and canonical G0 registries validate', () => {
   const moduleRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/module-registry.json'), 'utf8'));
   assert.equal(moduleRegistry.includes.modules.at(-1), 'blueprint/module-registry/artifact-delivery.json');
   assert.equal(moduleRegistry.includes.modules.includes('blueprint/module-registry/security-access-preview.json'), true);
   const artifactRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-registry.json'), 'utf8'));
   const deliveryRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-delivery-registry.json'), 'utf8'));
-  assert.equal(validateArtifactRegistry(artifactRegistry).artifacts.length, 0);
-  assert.equal(Object.keys(validateArtifactDeliveryRegistry(deliveryRegistry, artifactRegistry).channelsByArtifactRef).length, 0);
+  const validatedArtifacts = validateArtifactRegistry(artifactRegistry);
+  const validatedDelivery = validateArtifactDeliveryRegistry(deliveryRegistry, artifactRegistry);
+  assert.equal(validatedArtifacts.artifacts.length, 2);
+  assert.equal(Object.keys(validatedDelivery.channelsByArtifactRef).length, 2);
+});
+
+test('source G0 artifact registries bind immutable GitHub first and exact Hugging Face direct fallback second', () => {
+  const artifactRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-registry.json'), 'utf8'));
+  const deliveryRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-delivery-registry.json'), 'utf8'));
+  const validatedArtifacts = validateArtifactRegistry(artifactRegistry);
+  const validatedDelivery = validateArtifactDeliveryRegistry(deliveryRegistry, artifactRegistry);
+  assert.equal(validatedArtifacts.artifacts.length, 2);
+  assert.equal(validatedDelivery.defaultPolicyRef, 'policy.vexlife.artifact-delivery.default');
+  const expected = new Map([
+    ['model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29', 'fe0010d92648bddd22176fffb6eed052bf9c12cf2f1873f47c5b0197e07eef46'],
+    ['model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775', '35ba4e5547726b45adf69b208ca18374cb575ff3355fb0cd7d9457bc7e99b575']
+  ]);
+  for (const [artifactRef, manifestSha256] of expected) {
+    const channels = validatedDelivery.channelsByArtifactRef[artifactRef];
+    assert.equal(channels.length, 2);
+    assert.equal(channels[0].transportClass, 'VERIFIED_CHUNK_MANIFEST_V1');
+    assert.equal(channels[0].manifestSha256, manifestSha256);
+    assert.match(channels[0].manifestUrl, /^https:\/\/github\.com\/vgong24\/VexModelArtifacts\/releases\/download\//u);
+    assert.equal(channels[1].transportClass, 'DIRECT_HTTPS_FILE_V1');
+    assert.match(channels[1].url, /^https:\/\/huggingface\.co\/bartowski\/Qwen_Qwen3\.5-4B-GGUF\/resolve\//u);
+  }
 });
