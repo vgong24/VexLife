@@ -2638,4 +2638,183 @@ export function livedCompanionReceiptSha256(file) {
   return fileSha256(file);
 }
 
+export function readCurrentLivedCompanionCompletedTurn({
+  home,
+  homeRef = null,
+  deviceRef = null,
+  companionLineageRef,
+  threadRef,
+  expectedConversationHeadSha256 = null
+}) {
+  const identity = loadHome(home);
+  const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
+  const safeThread = ensureSafeRef(threadRef, 'threadRef', 'CONVERSATION_HEAD_MISMATCH');
+  const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, safeThread);
+  const none = () => Object.freeze({
+    schemaVersion: 'vexlife.lived-companion-current-completed-turn/v1',
+    state: 'NONE',
+    currentness: 'CURRENT',
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    conversationHeadSha256: null,
+    priorConversationHeadSha256: null,
+    headSequence: null,
+    requestEventBinding: null,
+    responseEventBinding: null,
+    exactEventFileReadCount: 0,
+    headMetadataReadCount: 0,
+    wholeHistoryEventEnumerationPerformed: false,
+    rawConversationContentIncluded: false
+  });
+
+  if (!fs.existsSync(paths.head)) {
+    if (expectedConversationHeadSha256 !== null) {
+      fail('CONVERSATION_HEAD_MISMATCH', 'expected current completed conversation head is missing', {
+        expectedConversationHeadSha256
+      });
+    }
+    return none();
+  }
+  if (!/^[0-9a-f]{64}$/u.test(expectedConversationHeadSha256 ?? '')) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'expected current completed conversation head SHA-256 is required');
+  }
+
+  const head = verifyHead(readJson(paths.head, 'CONVERSATION_HEAD_MISMATCH', 'current completed conversation head'));
+  const immutableHead = loadImmutableConversationHead(
+    identity.homeRoot,
+    admitted,
+    safeThread,
+    head.conversationHeadSha256
+  ).head;
+  if (JSON.stringify(immutableHead) !== JSON.stringify(head) ||
+      head.conversationHeadSha256 !== expectedConversationHeadSha256) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'current completed conversation head does not match the exact expected immutable head', {
+      expectedConversationHeadSha256,
+      observedConversationHeadSha256: head.conversationHeadSha256
+    });
+  }
+
+  const expectedIdentity = {
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread
+  };
+  const responseFile = eventPath(paths.events, head.sequence, head.eventHash);
+  if (!fs.existsSync(responseFile)) {
+    fail('EVENT_CHAIN_CORRUPT', 'current completed response event is missing');
+  }
+  const response = readJson(responseFile, 'EVENT_CHAIN_CORRUPT', 'current completed response event');
+  assertEventRecord(response, expectedIdentity, path.basename(responseFile));
+  if (response.eventKind !== 'RESPONSE' ||
+      response.sequence !== head.sequence ||
+      response.eventHash !== head.eventHash ||
+      response.turnRef !== head.turnRef ||
+      response.instanceRef !== head.instanceRef ||
+      response.messageRef !== head.responseMessageRef ||
+      !/^[0-9a-f]{64}$/u.test(response.priorEventHash ?? '')) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'current completed head does not bind its exact response event');
+  }
+
+  const requestFile = eventPath(paths.events, head.sequence - 1, response.priorEventHash);
+  if (!fs.existsSync(requestFile)) {
+    fail('EVENT_CHAIN_CORRUPT', 'current completed request event is missing');
+  }
+  const request = readJson(requestFile, 'EVENT_CHAIN_CORRUPT', 'current completed request event');
+  assertEventRecord(request, expectedIdentity, path.basename(requestFile));
+  if (request.eventKind !== 'REQUEST' ||
+      request.sequence !== head.sequence - 1 ||
+      request.eventHash !== response.priorEventHash ||
+      request.turnRef !== head.turnRef ||
+      request.instanceRef !== head.instanceRef ||
+      request.messageRef !== head.requestMessageRef ||
+      response.priorEventHash !== request.eventHash) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'current completed head does not bind its exact request event');
+  }
+
+  let headMetadataReadCount = 1;
+  if (head.priorConversationHeadSha256 === null) {
+    if (head.sequence !== 1 || request.sequence !== 0 || request.priorEventHash !== null) {
+      fail('CONVERSATION_HEAD_MISMATCH', 'first completed turn predecessor binding is invalid');
+    }
+  } else {
+    const prior = loadImmutableConversationHead(
+      identity.homeRoot,
+      admitted,
+      safeThread,
+      head.priorConversationHeadSha256
+    ).head;
+    headMetadataReadCount += 1;
+    if (prior.sequence !== head.sequence - 2 || request.priorEventHash !== prior.eventHash) {
+      fail('CONVERSATION_HEAD_MISMATCH', 'current completed turn predecessor head binding is invalid');
+    }
+  }
+
+  const expectedContextPath = resolveHomePath(
+    identity.homeRoot,
+    'context',
+    admitted.companionLineageRef,
+    safeThread,
+    `${head.turnRef}.json`
+  );
+  const expectedContextRelative = path.relative(identity.homeRoot, expectedContextPath).replaceAll('\\', '/');
+  if (head.contextPath !== expectedContextRelative || !fs.existsSync(expectedContextPath)) {
+    fail('CONTEXT_HASH_MISMATCH', 'current completed head does not bind its canonical context record');
+  }
+  const contextRecord = readJson(expectedContextPath, 'CONTEXT_HASH_MISMATCH', 'current completed bounded context');
+  const { serializedContextSha256, ...contextCore } = contextRecord ?? {};
+  if (!/^[0-9a-f]{64}$/u.test(serializedContextSha256 ?? '') ||
+      contentHash(contextCore) !== serializedContextSha256 ||
+      serializedContextSha256 !== head.contextSha256 ||
+      contextRecord.schemaVersion !== 'vexlife.lived-companion-context/v1' ||
+      contextRecord.homeRef !== admitted.homeRef ||
+      contextRecord.deviceRef !== admitted.deviceRef ||
+      contextRecord.companionLineageRef !== admitted.companionLineageRef ||
+      contextRecord.threadRef !== safeThread ||
+      contextRecord.turnRef !== head.turnRef ||
+      contextRecord.instanceRef !== head.instanceRef ||
+      contextRecord.requestEventHash !== request.eventHash ||
+      contextRecord.responseEventHash !== response.eventHash ||
+      contextRecord.privacyClass !== 'DEVICE_PRIVATE' ||
+      !Array.isArray(contextRecord.contextSourceRefs) ||
+      contextRecord.contextSourceRefs.length < 2 ||
+      contextRecord.contextSourceRefs.at(-2) !== request.eventRef ||
+      contextRecord.contextSourceRefs.at(-1) !== response.eventRef) {
+    fail('CONTEXT_HASH_MISMATCH', 'current completed bounded context does not match its exact head and event pair');
+  }
+
+  return Object.freeze({
+    schemaVersion: 'vexlife.lived-companion-current-completed-turn/v1',
+    state: 'COMPLETED',
+    currentness: 'CURRENT',
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    conversationHeadSha256: head.conversationHeadSha256,
+    priorConversationHeadSha256: head.priorConversationHeadSha256,
+    headSequence: head.sequence,
+    turnRef: head.turnRef,
+    instanceRef: head.instanceRef,
+    requestEventBinding: Object.freeze({
+      eventRef: request.eventRef,
+      eventHash: request.eventHash,
+      sequence: request.sequence,
+      contentHash: request.contentHash
+    }),
+    responseEventBinding: Object.freeze({
+      eventRef: response.eventRef,
+      eventHash: response.eventHash,
+      sequence: response.sequence,
+      contentHash: response.contentHash
+    }),
+    exactEventFileReadCount: 2,
+    headMetadataReadCount,
+    wholeHistoryEventEnumerationPerformed: false,
+    rawConversationContentIncluded: false
+  });
+}
+
 // [VXG RealForever]

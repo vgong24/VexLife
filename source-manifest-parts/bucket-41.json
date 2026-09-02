@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 755,
       "sha256": "bdf15cd66e784928905966f8927abaddf23ab77543d5b4731d761941eaebfeaa"
+    },
+    {
+      "path": "src/core/browser-prompt-context-runtime.mjs",
+      "mode": "100644",
+      "bytes": 15159,
+      "sha256": "17909f0ddfa56e707c244a293c2d4c2ee33b38664d374d4e0dd8acfad5f15a49"
     }
   ]
 }
