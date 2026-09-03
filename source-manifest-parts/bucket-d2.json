@@ -27,6 +27,12 @@
       "sha256": "af2facf5638d1aea9d1fd43e262d4172e15233d8c5308200f7c220242fbf0933"
     },
     {
+      "path": "src/core/browser-relationships-cdr-observation-bridge.mjs",
+      "mode": "100644",
+      "bytes": 4804,
+      "sha256": "229f3be867fc44bbce5f8548ea1e11b3a41259da657160fea91f5c5fa2cf7e33"
+    },
+    {
       "path": "src/core/experience-review-kit.mjs",
       "mode": "100644",
       "bytes": 20334,

@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 10727,
       "sha256": "d3e4c7b478e12909e5038b18284565a387114d714de6fc54bfaeb707a1f441bc"
+    },
+    {
+      "path": "test/browser-relationships-visible-persistence-composition.test.mjs",
+      "mode": "100644",
+      "bytes": 9271,
+      "sha256": "633c4a57d142403c600b2ec843b5a43e106b247553bd6aa5663c7cefafa72773"
     }
   ]
 }
