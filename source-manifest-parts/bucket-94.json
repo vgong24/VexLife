@@ -9,6 +9,12 @@
       "sha256": "3d48ffcfe5ca82ea75e221b5d4c2272a9a7382a0103993fefb9f0f3a3efd9c62"
     },
     {
+      "path": "docs/MODEL-CONNECTION-COMPILER.md",
+      "mode": "100644",
+      "bytes": 4629,
+      "sha256": "cdc127b0b529a8e483d1cb4ba909906bc9aa4f4ebf7455da4f9f7ee29c657dd3"
+    },
+    {
       "path": "reference/browser/modules/feature-walkthrough-runner.js",
       "mode": "100644",
       "bytes": 13484,
