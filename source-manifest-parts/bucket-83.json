@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 17575,
       "sha256": "eb9f9b182f686cdfd23c36a68007cff28e3d36444c200abb2561eddf3e3611ea"
+    },
+    {
+      "path": "test/model-turn-witness-lived-integration.test.mjs",
+      "mode": "100644",
+      "bytes": 7501,
+      "sha256": "abe30ddf2a6d7b861456a94ca59a96958b2b32e007927c01a5214c5f303658e2"
     }
   ]
 }

@@ -4,8 +4,7 @@ import path from 'node:path';
 import {
   LivedCompanionError,
   materializeLivedCompanionPromptContext,
-  performLivedCompanionTurn,
-  requestLivedCompanionInference
+  performLivedCompanionTurn
 } from './lived-companion.mjs';
 import { composeSemanticRelay } from './conversation.mjs';
 
@@ -392,6 +391,12 @@ export function createBrowserCompanionBridge({
         },
         responseResolver: capabilityRuntime || promptContextResolver
           ? async (resolverInput) => {
+              const livedInference = resolverInput?.inference;
+              const captureInferenceEvidence = resolverInput?.captureInferenceEvidence;
+              if (typeof livedInference !== 'function' || typeof captureInferenceEvidence !== 'function') {
+                throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver requires one Lived-owned current-turn inference/evidence boundary');
+              }
+              const { inference: _inference, captureInferenceEvidence: _capture, ...resolverPublicInput } = resolverInput;
               const runtimeContext = {
                 ...(resolverInput.context ?? {}),
                 projectRef: request.projectRef,
@@ -399,12 +404,20 @@ export function createBrowserCompanionBridge({
                 selectedNodeRef: request.selectedNodeRef,
                 sourceRefs: contextSourceRefs
               };
+              const evidenceTokens = [];
+              const invokeLivedInference = async (input) => {
+                const value = await livedInference(input);
+                const token = captureInferenceEvidence(value);
+                if (!token) throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver could not bind Lived-owned current-turn runtime evidence');
+                evidenceTokens.push(token);
+                return value;
+              };
               let materialization = null;
               let materializationConsumed = false;
               let consumedMaterializationReceipt = null;
-              let contextualInference = requestLivedCompanionInference;
+              let contextualInference = invokeLivedInference;
               if (promptContextResolver) {
-                const selected = await promptContextResolver({ ...resolverInput, taskIntent: request.content, context: runtimeContext });
+                const selected = await promptContextResolver({ ...resolverPublicInput, taskIntent: request.content, context: runtimeContext });
                 if (selected !== null && selected !== undefined) {
                   materialization = await materializeLivedCompanionPromptContext({
                     ...identity,
@@ -421,27 +434,40 @@ export function createBrowserCompanionBridge({
                   });
                   contextualInference = async (input) => {
                     if (input?.requestContent === resolverInput.requestContent) {
-                      const contextualResponse = await requestLivedCompanionInference({ ...input, promptContextMaterialization: materialization });
+                      const contextualResponse = await invokeLivedInference({ ...input, promptContextMaterialization: materialization });
                       consumedMaterializationReceipt = contextualResponse.promptContextMaterializationReceipt ?? null;
                       materializationConsumed = consumedMaterializationReceipt !== null;
                       return contextualResponse;
                     }
-                    return requestLivedCompanionInference(input);
+                    return invokeLivedInference(input);
                   };
                 }
               }
               if (capabilityRuntime) {
-                const resolved = await capabilityRuntime.resolveTurn({ ...resolverInput, taskIntent: request.content, inference: contextualInference, context: runtimeContext });
+                const resolved = await capabilityRuntime.resolveTurn({ ...resolverPublicInput, taskIntent: request.content, inference: contextualInference, context: runtimeContext });
+                if (resolved?.runtimeProjection?.schemaVersion === 'vexlife.capability-assimilation-runtime/v1') {
+                  const expectedInferenceCount = resolved.runtimeProjection.inferenceCount;
+                  if (!Number.isSafeInteger(expectedInferenceCount) || expectedInferenceCount !== evidenceTokens.length) {
+                    throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'capability runtime inference count does not match Lived-owned runtime evidence');
+                  }
+                }
                 const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
                 return {
                   ...resolved,
                   contextSourceRefs: [...new Set([...(resolved?.contextSourceRefs ?? []), ...(receipt?.includedSourceRefs ?? [])])].sort(),
-                  promptContextMaterializationReceipt: receipt
+                  promptContextMaterializationReceipt: receipt,
+                  modelRuntimeEvidenceToken: evidenceTokens.at(-1) ?? null
                 };
               }
-              const response = await contextualInference(resolverInput);
+              const response = await contextualInference(resolverPublicInput);
               const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
-              return { response, actualHttpCall: true, contextSourceRefs: receipt?.includedSourceRefs ?? [], promptContextMaterializationReceipt: receipt };
+              return {
+                response,
+                actualHttpCall: true,
+                contextSourceRefs: receipt?.includedSourceRefs ?? [],
+                promptContextMaterializationReceipt: receipt,
+                modelRuntimeEvidenceToken: evidenceTokens.at(-1) ?? null
+              };
             }
           : null,
         contextSourceRefs,
@@ -462,7 +488,8 @@ export function createBrowserCompanionBridge({
         actualHttpCall: completed.actualHttpCall === true,
         loopbackOnly: completed.loopbackOnly === true,
         capabilityRuntime: completed.runtimeProjection ?? null,
-        promptContextMaterialization: completed.promptContextMaterializationReceipt ?? null
+        promptContextMaterialization: completed.promptContextMaterializationReceipt ?? null,
+        modelTurnWitness: completed.modelTurnWitness ?? null
       });
     } catch (error) {
       throw publicFailureFor(error);

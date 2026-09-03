@@ -5,6 +5,8 @@ import { semanticHash, writeJson } from './utils.mjs';
 import { validateSemanticRelay } from './conversation.mjs';
 import { createContextLease } from './context-lease.mjs';
 import { assertCurrentLease } from './scheduler-runtime-trust.mjs';
+import { normalizeModelRuntimeResponse } from './model-runtime-adapter.mjs';
+import { formModelRuntimeInvocationEvidence, formModelTurnWitness, verifyModelTurnWitness } from './model-turn-witness.mjs';
 
 export const LIVED_COMPANION_FAILURE_CODES = Object.freeze([
   'HOME_NOT_INITIALIZED',
@@ -1131,6 +1133,7 @@ function promptContextFailure(message, details = null) {
 }
 
 const TRUSTED_PROMPT_CONTEXT_MATERIALIZATIONS = new WeakMap();
+const TRUSTED_MODEL_RUNTIME_RESPONSES = new WeakMap();
 
 function canonicalPromptContextCurrentEventBinding(value, label = 'current request event binding') {
   const expectedKeys = ['eventHash', 'eventRef', 'sequence'];
@@ -1745,6 +1748,11 @@ export async function requestLivedCompanionInference({
     ? null
     : await canonicalTrustedPromptMaterialization(promptContextMaterialization, requestContent);
   const outboundMessages = trusted?.messages ?? [{ role: 'user', content: requestContent }];
+  const requestPayload = {
+    model: endpointProfile.model || 'bounded-loopback-proof',
+    messages: outboundMessages
+  };
+  const requestBody = JSON.stringify(requestPayload);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -1753,10 +1761,7 @@ export async function requestLivedCompanionInference({
     const response = await fetch(endpointRequestUrl(endpointProfile.endpoint), {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        model: endpointProfile.model || 'bounded-loopback-proof',
-        messages: outboundMessages
-      }),
+      body: requestBody,
       signal: controller.signal,
       redirect: 'manual'
     });
@@ -1770,23 +1775,43 @@ export async function requestLivedCompanionInference({
     } catch {
       fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response was not valid JSON');
     }
-    const content = body?.choices?.[0]?.message?.content;
-    if (typeof content !== 'string' || content.length === 0) {
-      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response lacked choices[0].message.content');
-    }
-    const model =
-      body?.model === undefined || body?.model === null
-        ? (endpointProfile.model || 'bounded-loopback-proof')
-        : body.model;
-    if (!isNonEmptyString(model)) {
+    if (body?.model !== undefined && body?.model !== null && !isNonEmptyString(body.model)) {
       fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response model provenance must be one non-empty string');
     }
+    let normalized;
+    try {
+      normalized = normalizeModelRuntimeResponse({
+        responseBody: body,
+        endpointProfile,
+        observedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response could not form a closed runtime observation', { cause: error.message });
+    }
+    let invocationEvidence;
+    try {
+      invocationEvidence = formModelRuntimeInvocationEvidence({
+        endpointProfileRef: endpointProfile.profileRef,
+        sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpointProfile.endpoint),
+        requestBodySha256: crypto.createHash('sha256').update(Buffer.from(requestBody, 'utf8')).digest('hex'),
+        runtimeObservation: normalized.runtimeObservation,
+        httpStatus: response.status,
+        actualHttpCall: true,
+        formedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response could not form closed invocation evidence', { cause: error.message });
+    }
     const responseValue = {
-      content,
-      model,
+      content: normalized.content,
+      model: normalized.model,
       ...(trusted ? { promptContextMaterializationReceipt: trusted.receipt } : {})
     };
     assertInMemoryAuthorizationNotPersisted(responseValue, inMemoryAuthorization, 'endpoint response');
+    TRUSTED_MODEL_RUNTIME_RESPONSES.set(responseValue, Object.freeze({
+      runtimeObservation: normalized.runtimeObservation,
+      invocationEvidence
+    }));
     return responseValue;
   } catch (error) {
     if (error instanceof LivedCompanionError) throw error;
@@ -1921,13 +1946,32 @@ export async function performLivedCompanionTurn({
     let runtimeProjection = null;
     let additionalContextSourceRefs = [];
     let promptContextMaterializationReceipt = null;
+    let modelRuntimeEvidence = null;
     let actualHttpCall = true;
+    const turnRuntimeEvidenceByToken = new Map();
+    const turnRuntimeTokenByResponse = new WeakMap();
+    const turnScopedInference = async (input) => {
+      const value = await requestLivedCompanionInference(input);
+      const evidence = TRUSTED_MODEL_RUNTIME_RESPONSES.get(value);
+      if (!evidence) fail('ENDPOINT_RESPONSE_INVALID', 'Lived inference did not retain trusted runtime evidence');
+      const token = Object.freeze({});
+      turnRuntimeEvidenceByToken.set(token, evidence);
+      turnRuntimeTokenByResponse.set(value, token);
+      return value;
+    };
+    const captureInferenceEvidence = (value) => {
+      const token = value && typeof value === 'object' ? turnRuntimeTokenByResponse.get(value) ?? null : null;
+      if (token) turnRuntimeTokenByResponse.delete(value);
+      return token;
+    };
     if (responseResolver) {
       const resolved = await responseResolver({
         endpointProfile,
         requestContent: content,
         inMemoryAuthorization,
         timeoutMs,
+        inference: turnScopedInference,
+        captureInferenceEvidence,
         context: {
           homeRef: admitted.homeRef,
           deviceRef: admitted.deviceRef,
@@ -1949,20 +1993,37 @@ export async function performLivedCompanionTurn({
       promptContextMaterializationReceipt = resolved?.promptContextMaterializationReceipt ?? null;
       additionalContextSourceRefs = [...new Set(resolved?.contextSourceRefs ?? [])].sort();
       actualHttpCall = resolved?.actualHttpCall === true;
+      const evidenceToken = resolved?.modelRuntimeEvidenceToken ?? null;
+      if (evidenceToken !== null) {
+        modelRuntimeEvidence = turnRuntimeEvidenceByToken.get(evidenceToken) ?? null;
+        if (!modelRuntimeEvidence) fail('ENDPOINT_RESPONSE_INVALID', 'responseResolver did not return one current-turn runtime evidence token');
+        turnRuntimeEvidenceByToken.delete(evidenceToken);
+      }
       if (additionalContextSourceRefs.some((value) => typeof value !== 'string' || value.length === 0)) {
         fail('HOME_IDENTITY_MISMATCH', 'responseResolver contextSourceRefs must contain only non-empty refs');
       }
     } else {
-      response = await requestLivedCompanionInference({
+      response = await turnScopedInference({
         endpointProfile,
         requestContent: content,
         inMemoryAuthorization,
         timeoutMs
       });
+      const evidenceToken = captureInferenceEvidence(response);
+      modelRuntimeEvidence = evidenceToken ? turnRuntimeEvidenceByToken.get(evidenceToken) ?? null : null;
+      if (!modelRuntimeEvidence) fail('ENDPOINT_RESPONSE_INVALID', 'direct Lived inference did not bind current-turn runtime evidence');
+      turnRuntimeEvidenceByToken.delete(evidenceToken);
     }
     if (!response || typeof response.content !== 'string' || !response.content ||
         typeof response.model !== 'string' || !response.model) {
       fail('ENDPOINT_RESPONSE_INVALID', 'resolved Companion response must contain content and model provenance');
+    }
+    if (modelRuntimeEvidence) {
+      const visibleContentSha256 = crypto.createHash('sha256').update(Buffer.from(response.content, 'utf8')).digest('hex');
+      if (modelRuntimeEvidence.runtimeObservation.output.contentSha256 !== visibleContentSha256 ||
+          modelRuntimeEvidence.runtimeObservation.modelProvenance.compatibilityModel !== response.model) {
+        fail('ENDPOINT_RESPONSE_INVALID', 'current-turn runtime evidence does not bind the visible Companion response');
+      }
     }
     assertInMemoryAuthorizationNotPersisted({ response, runtimeProjection }, inMemoryAuthorization, 'endpoint response');
     const responseCore = {
@@ -1994,6 +2055,29 @@ export async function performLivedCompanionTurn({
     const responseEvent = formEvent(responseCore);
     atomicWriteJson(eventPath(paths.events, responseEvent.sequence, responseEvent.eventHash), responseEvent);
     responseDurablyRecorded = true;
+
+    let modelTurnWitness = null;
+    if (modelRuntimeEvidence) {
+      modelTurnWitness = formModelTurnWitness({
+        turnRef,
+        requestMessageRef,
+        responseMessageRef,
+        runtimeObservation: modelRuntimeEvidence.runtimeObservation,
+        invocationEvidence: modelRuntimeEvidence.invocationEvidence,
+        promptContextMaterializationReceipt,
+        currentnessRefs: [],
+        availableCapabilityRefs: [],
+        heldCapabilityRefs: [],
+        unavailableCapabilityRefs: [],
+        unknownCapabilityRefs: [],
+        formedAt: new Date().toISOString()
+      });
+      if (!verifyModelTurnWitness(modelTurnWitness)) {
+        fail('ENDPOINT_RESPONSE_INVALID', 'formed ModelTurnWitness failed its accepted closed verifier');
+      }
+      additionalContextSourceRefs = [...new Set([...additionalContextSourceRefs, modelTurnWitness.witnessRef])].sort();
+      actualHttpCall = true;
+    }
 
     const contextCore = {
       schemaVersion: 'vexlife.lived-companion-context/v1',
@@ -2049,6 +2133,7 @@ export async function performLivedCompanionTurn({
       loopbackOnly: isLoopbackHost(new URL(endpointProfile.endpoint).hostname),
       runtimeProjection: runtimeProjection ? structuredClone(runtimeProjection) : null,
       promptContextMaterializationReceipt: promptContextMaterializationReceipt ? structuredClone(promptContextMaterializationReceipt) : null,
+      modelTurnWitness: modelTurnWitness ? structuredClone(modelTurnWitness) : null,
       requestDurablyRecorded,
       responseDurablyRecorded,
       requestEvent,
