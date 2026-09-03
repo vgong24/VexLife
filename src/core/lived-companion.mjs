@@ -1947,7 +1947,7 @@ export async function performLivedCompanionTurn({
     let additionalContextSourceRefs = [];
     let promptContextMaterializationReceipt = null;
     let modelRuntimeEvidence = null;
-    let actualHttpCall = true;
+    let actualHttpCall = false;
     const turnRuntimeEvidenceByToken = new Map();
     const turnRuntimeTokenByResponse = new WeakMap();
     const turnScopedInference = async (input) => {
@@ -1992,7 +1992,6 @@ export async function performLivedCompanionTurn({
       runtimeProjection = resolved?.runtimeProjection ?? null;
       promptContextMaterializationReceipt = resolved?.promptContextMaterializationReceipt ?? null;
       additionalContextSourceRefs = [...new Set(resolved?.contextSourceRefs ?? [])].sort();
-      actualHttpCall = resolved?.actualHttpCall === true;
       const evidenceToken = resolved?.modelRuntimeEvidenceToken ?? null;
       if (evidenceToken !== null) {
         modelRuntimeEvidence = turnRuntimeEvidenceByToken.get(evidenceToken) ?? null;
@@ -2019,6 +2018,10 @@ export async function performLivedCompanionTurn({
       fail('ENDPOINT_RESPONSE_INVALID', 'resolved Companion response must contain content and model provenance');
     }
     if (modelRuntimeEvidence) {
+      actualHttpCall = modelRuntimeEvidence.invocationEvidence?.actualHttpCall === true;
+      if (!actualHttpCall) {
+        fail('ENDPOINT_RESPONSE_INVALID', 'current-turn runtime evidence lacks Lived-owned actual HTTP invocation proof');
+      }
       const visibleContentSha256 = crypto.createHash('sha256').update(Buffer.from(response.content, 'utf8')).digest('hex');
       if (modelRuntimeEvidence.runtimeObservation.output.contentSha256 !== visibleContentSha256 ||
           modelRuntimeEvidence.runtimeObservation.modelProvenance.compatibilityModel !== response.model) {
@@ -2076,7 +2079,6 @@ export async function performLivedCompanionTurn({
         fail('ENDPOINT_RESPONSE_INVALID', 'formed ModelTurnWitness failed its accepted closed verifier');
       }
       additionalContextSourceRefs = [...new Set([...additionalContextSourceRefs, modelTurnWitness.witnessRef])].sort();
-      actualHttpCall = true;
     }
 
     const contextCore = {

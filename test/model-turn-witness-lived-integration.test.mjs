@@ -165,7 +165,7 @@ test('caller-authored compatibility actualHttpCall cannot mint a ModelTurnWitnes
         contextSourceRefs: []
       })
     }));
-    assert.equal(result.actualHttpCall, true);
+    assert.equal(result.actualHttpCall, false);
     assert.equal(result.modelTurnWitness, null);
     assert.equal(result.contextRecord.contextSourceRefs.some((value) => value.startsWith('witness.vexlife.model-turn.')), false);
     assert.equal(model.calls(), 0);

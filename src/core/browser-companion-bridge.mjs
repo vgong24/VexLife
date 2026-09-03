@@ -405,12 +405,37 @@ export function createBrowserCompanionBridge({
                 sourceRefs: contextSourceRefs
               };
               const evidenceTokens = [];
+              const evidenceTokenByResponse = new WeakMap();
               const invokeLivedInference = async (input) => {
                 const value = await livedInference(input);
                 const token = captureInferenceEvidence(value);
                 if (!token) throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver could not bind Lived-owned current-turn runtime evidence');
-                evidenceTokens.push(token);
+                evidenceTokens.push(Object.freeze({ token, content: value.content, model: value.model }));
+                if (value && typeof value === 'object') evidenceTokenByResponse.set(value, token);
                 return value;
+              };
+              const bindVisibleResponseEvidence = (visibleResponse, { acceptedSynthesisLast = false } = {}) => {
+                if (evidenceTokens.length === 0) return null;
+                if (!visibleResponse || typeof visibleResponse.content !== 'string' || typeof visibleResponse.model !== 'string') {
+                  throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver with runtime evidence must select a visible {content,model} response');
+                }
+                if (typeof visibleResponse === 'object') {
+                  const exactToken = evidenceTokenByResponse.get(visibleResponse) ?? null;
+                  if (exactToken) return exactToken;
+                }
+                if (acceptedSynthesisLast) {
+                  const selected = evidenceTokens.at(-1);
+                  if (!selected || selected.content !== visibleResponse.content || selected.model !== visibleResponse.model) {
+                    throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'accepted capability runtime synthesis evidence does not bind the selected visible response');
+                  }
+                  return selected.token;
+                }
+                const matches = evidenceTokens.filter((entry) =>
+                  entry.content === visibleResponse.content && entry.model === visibleResponse.model);
+                if (matches.length !== 1) {
+                  throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', `arbitrary browser resolver visible response matched ${matches.length} current-turn runtime evidence tokens`);
+                }
+                return matches[0].token;
               };
               let materialization = null;
               let materializationConsumed = false;
@@ -445,28 +470,33 @@ export function createBrowserCompanionBridge({
               }
               if (capabilityRuntime) {
                 const resolved = await capabilityRuntime.resolveTurn({ ...resolverPublicInput, taskIntent: request.content, inference: contextualInference, context: runtimeContext });
-                if (resolved?.runtimeProjection?.schemaVersion === 'vexlife.capability-assimilation-runtime/v1') {
+                const acceptedSynthesisLast = resolved?.runtimeProjection?.schemaVersion === 'vexlife.capability-assimilation-runtime/v1';
+                if (acceptedSynthesisLast) {
                   const expectedInferenceCount = resolved.runtimeProjection.inferenceCount;
                   if (!Number.isSafeInteger(expectedInferenceCount) || expectedInferenceCount !== evidenceTokens.length) {
                     throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'capability runtime inference count does not match Lived-owned runtime evidence');
                   }
                 }
+                const visibleResponse = resolved?.response ?? resolved;
+                const evidenceToken = bindVisibleResponseEvidence(visibleResponse, { acceptedSynthesisLast });
                 const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
+                const forwarded = resolved && typeof resolved === 'object' && !Array.isArray(resolved) ? { ...resolved } : { response: resolved };
+                delete forwarded.actualHttpCall;
                 return {
-                  ...resolved,
+                  ...forwarded,
                   contextSourceRefs: [...new Set([...(resolved?.contextSourceRefs ?? []), ...(receipt?.includedSourceRefs ?? [])])].sort(),
                   promptContextMaterializationReceipt: receipt,
-                  modelRuntimeEvidenceToken: evidenceTokens.at(-1) ?? null
+                  modelRuntimeEvidenceToken: evidenceToken
                 };
               }
               const response = await contextualInference(resolverPublicInput);
+              const evidenceToken = bindVisibleResponseEvidence(response);
               const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
               return {
                 response,
-                actualHttpCall: true,
                 contextSourceRefs: receipt?.includedSourceRefs ?? [],
                 promptContextMaterializationReceipt: receipt,
-                modelRuntimeEvidenceToken: evidenceTokens.at(-1) ?? null
+                modelRuntimeEvidenceToken: evidenceToken
               };
             }
           : null,

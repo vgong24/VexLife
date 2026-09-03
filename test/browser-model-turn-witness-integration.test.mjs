@@ -28,7 +28,7 @@ function makeHome() {
   return { root, home };
 }
 
-async function startModelServer() {
+async function startModelServer({ sharedProjection = false } = {}) {
   const calls = [];
   const responses = [];
   const rawModel = 'C:\\models\\Qwen_Qwen3.5-4B-Q4_K_M.gguf';
@@ -39,6 +39,9 @@ async function startModelServer() {
     calls.push(body);
     const last = body.messages?.at(-1)?.content ?? '';
     const internal = last === 'R2B_INTERNAL_REQUEST_FORMATION';
+    const visibleContent = sharedProjection
+      ? 'Shared safe projection response.'
+      : internal ? 'Internal planning response.' : 'Visible final response.';
     const responseBody = {
       id: internal ? 'chatcmpl-r2b-internal' : 'chatcmpl-r2b-visible',
       object: 'chat.completion',
@@ -49,7 +52,7 @@ async function startModelServer() {
         finish_reason: 'stop',
         message: {
           role: 'assistant',
-          content: internal ? 'Internal planning response.' : 'Visible final response.',
+          content: visibleContent,
           reasoning_content: internal ? 'internal-reasoning-never-persist' : 'final-reasoning-never-persist'
         }
       }],
@@ -85,6 +88,17 @@ function readAllText(root) {
   };
   walk(root);
   return chunks.join('\n');
+}
+
+function browserTurn() {
+  return {
+    projectRef: 'project.local-vex',
+    threadRef: 'thread.local-vex.r2b-browser',
+    channelRef: 'channel.local-vex.companion',
+    content: 'Current exact human request.',
+    screenRef: 'screen.vexlife.chat',
+    selectedNodeRef: 'element.channel.companion'
+  };
 }
 
 test('browser scheduler normalization binds the final visible inference rather than internal request formation', async () => {
@@ -123,14 +137,7 @@ test('browser scheduler normalization binds the final visible inference rather t
       instanceRef: 'instance.vexlife.r2b-browser',
       capabilityRuntime
     });
-    const result = await bridge.performTurn({
-      projectRef: 'project.local-vex',
-      threadRef: 'thread.local-vex.r2b-browser',
-      channelRef: 'channel.local-vex.companion',
-      content: 'Current exact human request.',
-      screenRef: 'screen.vexlife.chat',
-      selectedNodeRef: 'element.channel.companion'
-    });
+    const result = await bridge.performTurn(browserTurn());
     assert.equal(model.calls.length, 2);
     assert.equal(result.content, 'Visible final response.');
     assert.equal(result.modelNameOrBoundedTestProfileRef, 'Qwen3.5-4B-Q4_K_M');
@@ -155,6 +162,124 @@ test('browser scheduler normalization binds the final visible inference rather t
     await model.close();
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('arbitrary resolver visible witness selection uses exact Lived-owned response identity before projection fallback', async () => {
+  const { root, home } = makeHome();
+  const model = await startModelServer({ sharedProjection: true });
+  const capabilityRuntime = {
+    resolveTurn: async ({ inference, endpointProfile, taskIntent, inMemoryAuthorization, timeoutMs }) => {
+      await inference({
+        endpointProfile,
+        requestContent: 'R2B_INTERNAL_REQUEST_FORMATION',
+        inMemoryAuthorization,
+        timeoutMs
+      });
+      const visible = await inference({
+        endpointProfile,
+        requestContent: taskIntent,
+        inMemoryAuthorization,
+        timeoutMs
+      });
+      return {
+        response: visible,
+        actualHttpCall: true,
+        contextSourceRefs: [],
+        runtimeProjection: { schemaVersion: 'test.r2b-arbitrary-object-identity/v1', inferenceCount: 2 }
+      };
+    }
+  };
+  try {
+    const bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.r2b-browser-object-identity',
+      capabilityRuntime
+    });
+    const result = await bridge.performTurn(browserTurn());
+    assert.equal(model.calls.length, 2);
+    assert.ok(result.modelTurnWitness);
+    assert.equal(result.actualHttpCall, true);
+    assert.equal(result.modelTurnWitness.runtimeObservation.responseBodySha256, semanticHash(model.responses[1]));
+    assert.notEqual(result.modelTurnWitness.runtimeObservation.responseBodySha256, semanticHash(model.responses[0]));
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('arbitrary resolver visible witness selection fails closed on zero or ambiguous safe-projection matches', async (t) => {
+  await t.test('zero match after a real inference cannot bind that inference to a different visible response', async () => {
+    const { root, home } = makeHome();
+    const model = await startModelServer();
+    const capabilityRuntime = {
+      resolveTurn: async ({ inference, endpointProfile, taskIntent, inMemoryAuthorization, timeoutMs }) => {
+        const visible = await inference({ endpointProfile, requestContent: taskIntent, inMemoryAuthorization, timeoutMs });
+        return {
+          response: { content: `${visible.content} caller-altered`, model: visible.model },
+          contextSourceRefs: [],
+          runtimeProjection: { schemaVersion: 'test.r2b-arbitrary-zero-match/v1', inferenceCount: 1 }
+        };
+      }
+    };
+    try {
+      const bridge = createBrowserCompanionBridge({
+        home,
+        endpoint: model.endpoint,
+        model: 'Qwen3.5-4B-Q4_K_M',
+        instanceRef: 'instance.vexlife.r2b-browser-zero-match',
+        capabilityRuntime
+      });
+      await assert.rejects(
+        () => bridge.performTurn(browserTurn()),
+        (error) => error?.code === 'ENDPOINT_RESPONSE_INVALID'
+      );
+      assert.equal(model.calls.length, 1);
+    } finally {
+      await model.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  await t.test('two distinct raw responses with one identical safe projection are ambiguous', async () => {
+    const { root, home } = makeHome();
+    const model = await startModelServer({ sharedProjection: true });
+    const capabilityRuntime = {
+      resolveTurn: async ({ inference, endpointProfile, taskIntent, inMemoryAuthorization, timeoutMs }) => {
+        const first = await inference({
+          endpointProfile,
+          requestContent: 'R2B_INTERNAL_REQUEST_FORMATION',
+          inMemoryAuthorization,
+          timeoutMs
+        });
+        await inference({ endpointProfile, requestContent: taskIntent, inMemoryAuthorization, timeoutMs });
+        return {
+          response: { content: first.content, model: first.model },
+          contextSourceRefs: [],
+          runtimeProjection: { schemaVersion: 'test.r2b-arbitrary-ambiguous-match/v1', inferenceCount: 2 }
+        };
+      }
+    };
+    try {
+      const bridge = createBrowserCompanionBridge({
+        home,
+        endpoint: model.endpoint,
+        model: 'Qwen3.5-4B-Q4_K_M',
+        instanceRef: 'instance.vexlife.r2b-browser-ambiguous-match',
+        capabilityRuntime
+      });
+      await assert.rejects(
+        () => bridge.performTurn(browserTurn()),
+        (error) => error?.code === 'ENDPOINT_RESPONSE_INVALID'
+      );
+      assert.equal(model.calls.length, 2);
+      assert.notEqual(semanticHash(model.responses[0]), semanticHash(model.responses[1]));
+    } finally {
+      await model.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 // [VXG RealForever]
