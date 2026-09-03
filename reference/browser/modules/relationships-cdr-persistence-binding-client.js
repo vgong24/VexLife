@@ -1,5 +1,6 @@
 export const BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_API_PATH = '/api/v1/relationships/cdr-persistence-binding';
 export const BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_SCHEMA = 'vexlife.browser-relationships-cdr-persistence-binding/v1';
+export const BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_FAILURE_SCHEMA = 'vexlife.browser-relationships-cdr-persistence-binding-failure/v1';
 export const BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_CLIENT_SCHEMA = 'vexlife.browser-relationships-cdr-persistence-binding-client/v1';
 
 const REF = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
@@ -64,6 +65,16 @@ function safeFailureCode(payload) {
     : 'RELATIONSHIPS_CDR_PERSISTENCE_BINDING_UNAVAILABLE';
 }
 
+function isHeldPayload(payload) {
+  return Boolean(
+    payload && typeof payload === 'object' && !Array.isArray(payload) &&
+    Object.keys(payload).length === 3 &&
+    payload.schemaVersion === BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_FAILURE_SCHEMA &&
+    payload.state === 'HELD_BINDING_REQUIRED' &&
+    typeof payload.failureCode === 'string' && FAILURE_CODE.test(payload.failureCode)
+  );
+}
+
 export async function loadRelationshipsCdrPersistenceBinding({
   fetchImpl = globalThis.fetch,
   apiPath = BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_API_PATH
@@ -88,6 +99,7 @@ export async function loadRelationshipsCdrPersistenceBinding({
   } catch {
     return held('RELATIONSHIPS_CDR_PERSISTENCE_BINDING_RESPONSE_INVALID');
   }
+  if (isHeldPayload(payload)) return held(payload.failureCode);
   if (response?.ok !== true) return held(safeFailureCode(payload));
   if (
     !payload || typeof payload !== 'object' || Array.isArray(payload) ||
