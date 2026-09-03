@@ -39,7 +39,7 @@ function clone(value) {
 
 function readObservationFile(observationPath, maxBytes) {
   if (typeof observationPath !== 'string' || !observationPath.trim()) {
-    fail('RELATIONSHIPS_CDR_OBSERVATION_UNBOUND', 'Relationships CDR observation is not bound');
+    fail('RELATIONSHIPS_CDR_OBSERVATION_UNBOUND', 'Relationships CDR observation is not bound', 200);
   }
   if (!path.isAbsolute(observationPath)) {
     fail('RELATIONSHIPS_CDR_OBSERVATION_PATH_INVALID', 'Relationships CDR observation path must be absolute');
