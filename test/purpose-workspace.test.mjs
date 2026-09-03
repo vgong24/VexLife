@@ -51,6 +51,8 @@ test('relationship labels never substitute for an explicit authority source', ()
   assert.equal(receipt.completion.state, 'WAITING_FOR_AUTHORITY');
   assert.equal(receipt.relayEnvelopes[0].relationshipClassRefs.includes('relationship.caretaker-learner'), true);
   assert.equal(receipt.relayEnvelopes[0].authoritySourcePresent, false);
+  assert.equal(receipt.relayEnvelopes[0].recipientRoleRefOrNull, 'role-lens.learning.caretaker');
+  assert.equal(receipt.relayEnvelopes.at(-1).recipientRoleRefOrNull, null);
 });
 
 test('external delivery remains held even when its authority class is present', () => {
@@ -78,6 +80,7 @@ test('Experience Topology maps itself with zero unresolved or human-visible orph
   const topology = buildExperienceTopology({ cases: fixture.boundaryCases });
   assert.equal(topology.audit.ok, true, JSON.stringify(topology.audit, null, 2));
   assert.equal(topology.audit.mapTracksItself, true);
+  assert.deepEqual(topology.audit.missingRequiredNodeKinds, []);
   assert.equal(topology.metrics.domainPackCount, 4);
   assert.equal(topology.metrics.roleLensCount, 16);
   assert.equal(topology.metrics.taskCount, 12);
