@@ -165,7 +165,7 @@ test('FFR05-02/03/04/05 two isolated directional profiles preserve rightful owne
     () => bridgeB.read({ counterpartParticipantRef: bindingB.counterpartParticipantRef }),
     (error) => error?.code === 'RELATIONSHIP_NOT_FOUND'
   );
-  assert.equal(fs.existsSync(path.join(homeB, 'relationships')), true, 'rightful read may establish only owner-local directory structure');
+  assert.equal(fs.existsSync(path.join(homeB, 'relationships')), false, 'rightful read miss must remain no-effect and must not establish durable layout');
 
   const savedB = persist(bridgeB, bindingB);
   assert.notEqual(savedB.relationshipRef, savedA.relationshipRef, 'directional A->B and B->A relationships must not collapse');
