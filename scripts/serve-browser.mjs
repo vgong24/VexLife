@@ -26,6 +26,12 @@ import {
   createBrowserLivingJournalMemoryBridge
 } from '../src/core/browser-living-journal-memory-bridge.mjs';
 import {
+  BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_API_PATH,
+  BrowserRelationshipsCdrObservationBridgeError,
+  browserRelationshipsCdrObservationFailurePayload,
+  createBrowserRelationshipsCdrObservationBridge
+} from '../src/core/browser-relationships-cdr-observation-bridge.mjs';
+import {
   BrowserRelationshipsPersistenceError,
   createBrowserRelationshipsPersistenceBridge
 } from '../src/core/browser-relationships-persistence-bridge.mjs';
@@ -117,6 +123,9 @@ const companion = createBrowserCompanionBridge({
   capabilityRuntime
 });
 const relationshipsRuntime = createBrowserRelationshipsRuntimeBridge(loadBrowserRelationshipsRuntimeSources(root));
+const relationshipsCdrObservation = createBrowserRelationshipsCdrObservationBridge({
+  observationPath: process.env.VEXLIFE_RELATIONSHIPS_CDR_OBSERVATION_PATH ?? null
+});
 
 function sendJson(response, statusCode, value) {
   const body = `${JSON.stringify(value)}\n`;
@@ -225,6 +234,7 @@ export function createVexLifeBrowserServer({
   staticRoot = root,
   companionBridge = companion,
   relationshipsRuntimeBridge = relationshipsRuntime,
+  relationshipsCdrObservationBridge = relationshipsCdrObservation,
   relationshipsPersistenceHome = home,
   relationshipsPersistenceBridgeFactory = (localOwnerBinding) => createBrowserRelationshipsPersistenceBridge({
     home: relationshipsPersistenceHome,
@@ -256,6 +266,28 @@ export function createVexLifeBrowserServer({
         const input = await readBoundedJson(request);
         const result = await companionBridge.performTurn(input);
         sendJson(response, 200, result);
+        return;
+      }
+
+      if (url.pathname === BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_API_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const result = relationshipsCdrObservationBridge.read();
+          sendJson(response, 200, result);
+        } catch (error) {
+          const typed = error instanceof BrowserRelationshipsCdrObservationBridgeError
+            ? error
+            : new BrowserRelationshipsCdrObservationBridgeError(
+              'RELATIONSHIPS_CDR_OBSERVATION_BINDING_FAILED',
+              'Relationships CDR persistence binding failed safely',
+              500
+            );
+          sendJson(response, typed.httpStatus, browserRelationshipsCdrObservationFailurePayload(typed));
+        }
         return;
       }
 
