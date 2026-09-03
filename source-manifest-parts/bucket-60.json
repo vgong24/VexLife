@@ -9,6 +9,12 @@
       "sha256": "56149c78f35fc46093c5afbaff0214bc61b313ccb6eeb7d08a9e4f0dd0ac6e3d"
     },
     {
+      "path": "blueprint/purpose-workspace/domain-packs/apprenticeship-contribution.json",
+      "mode": "100644",
+      "bytes": 5399,
+      "sha256": "b2ce92435488a74f9aedc3f3d39f865c77f0db10698221807adebd1fc1de680c"
+    },
+    {
       "path": "src/core/score-context-continuity.mjs",
       "mode": "100644",
       "bytes": 112205,

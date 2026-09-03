@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 27656,
       "sha256": "9d713a2507a4fcc49c08e39acdb7da41df924a627148be1a222f48821f17413e"
+    },
+    {
+      "path": "test/purpose-workspace.test.mjs",
+      "mode": "100644",
+      "bytes": 5856,
+      "sha256": "5d86eb99e9d891d88ad299551df5531542d47b00aa7bb5b2eed6f2507641c59f"
     }
   ]
 }
