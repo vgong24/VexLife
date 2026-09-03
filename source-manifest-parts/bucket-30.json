@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "30",
+  "files": [
+    {
+      "path": "reference/browser/modules/relationships-persistence-http-client.js",
+      "mode": "100644",
+      "bytes": 6779,
+      "sha256": "3c22357c2981431dccee2e9121ad3139ccb1dad1c5a2da2b914dbcfb2012be2e"
+    }
+  ]
+}
