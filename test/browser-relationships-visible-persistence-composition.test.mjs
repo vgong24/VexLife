@@ -173,7 +173,11 @@ test('FFR06 visible Relationships remains usable but persistence-held when no ho
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await context.newPage();
+    const consoleErrors = [];
     const pageErrors = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
     page.on('pageerror', (error) => pageErrors.push(error.message));
 
     await page.goto(`http://127.0.0.1:${address.port}/reference/browser/index.html`, { waitUntil: 'networkidle' });
@@ -188,6 +192,7 @@ test('FFR06 visible Relationships remains usable but persistence-held when no ho
     const snapshot = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
     assert.equal(snapshot.localFormed, false);
     assert.equal(snapshot.admission.admitted, true);
+    assert.deepEqual(consoleErrors, []);
     assert.deepEqual(pageErrors, []);
     assert.equal(fs.existsSync(path.join(fixture.home, 'relationships')), false);
   } finally {
