@@ -118,7 +118,8 @@ test('FFR06 visible Relationships consumes only the server-projected current CDR
     const address = await listen(fixture.server);
     const origin = `http://127.0.0.1:${address.port}`;
     browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await context.newPage();
     const requests = [];
     page.on('request', (request) => {
       const url = new URL(request.url());
@@ -170,7 +171,8 @@ test('FFR06 visible Relationships remains usable but persistence-held when no ho
   try {
     const address = await listen(fixture.server);
     browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await context.newPage();
     const pageErrors = [];
     page.on('pageerror', (error) => pageErrors.push(error.message));
 
