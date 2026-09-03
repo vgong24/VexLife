@@ -188,10 +188,10 @@ test('host builders bind RPB-10 build environment and deterministic pre-containe
     assert.match(source, /byteLength/u);
     assert.match(source, /sha256/u);
     assert.match(source, /HOST_REPEAT_BUILD_QUALIFICATION_REQUIRED/u);
-    assert.match(source, /signing\s*[=:]\s*(?:\$false|false)/u);
-    assert.match(source, /notarization\s*[=:]\s*(?:\$false|false)/u);
-    assert.match(source, /publication\s*[=:]\s*(?:\$false|false)/u);
-    assert.match(source, /officialVerifiedBuildPromotion\s*[=:]\s*(?:\$false|false)/u);
+    assert.match(source, /"?signing"?\s*[=:]\s*(?:\$false|false)/u);
+    assert.match(source, /"?notarization"?\s*[=:]\s*(?:\$false|false)/u);
+    assert.match(source, /"?publication"?\s*[=:]\s*(?:\$false|false)/u);
+    assert.match(source, /"?officialVerifiedBuildPromotion"?\s*[=:]\s*(?:\$false|false)/u);
   }
 
   assert.match(windows, /OSVersion\.Version/u);
