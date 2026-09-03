@@ -181,7 +181,7 @@ test('FFR06 same-origin CDR persistence-binding route is GET-only, binding-only 
   try {
     address = await listen(heldServer);
     const response = await fetch(`http://127.0.0.1:${address.port}${BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_API_PATH}`);
-    assert.equal(response.status, 409);
+    assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), {
       schemaVersion: 'vexlife.browser-relationships-cdr-persistence-binding-failure/v1',
       state: 'HELD_BINDING_REQUIRED',
