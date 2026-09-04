@@ -29,8 +29,8 @@
     {
       "path": "test/browser-relationships-cdr-persistence-binding-route.test.mjs",
       "mode": "100644",
-      "bytes": 8283,
-      "sha256": "274a4af85ea254de1f4c7b856ecc73d48b73a48d2f300381c7c9bd64e730df37"
+      "bytes": 9058,
+      "sha256": "47890cd211faab3bafed73e9d276e81e3f0349b048bd1aed3a66f3c14b8347bf"
     },
     {
       "path": "test/experience-review-seeded-exploration.test.mjs",
