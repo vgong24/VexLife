@@ -121,7 +121,7 @@ test('FFR06 CDR observation bridge projects only the admitted FFR-04 persistence
   }
 });
 
-test('FFR06 CDR observation bridge fails closed for absent, relative, symlinked, oversized and stale evidence', () => {
+test('FFR06 CDR observation bridge fails closed for absent, relative, symlinked, oversized, concurrently-grown and stale evidence', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ffr06-cdr-held-'));
   try {
     assert.throws(() => createBrowserRelationshipsCdrObservationBridge().read(), { code: 'RELATIONSHIPS_CDR_OBSERVATION_UNBOUND' });
@@ -135,6 +135,27 @@ test('FFR06 CDR observation bridge fails closed for absent, relative, symlinked,
     const oversizedPath = path.join(root, 'oversized.json');
     fs.writeFileSync(oversizedPath, ' '.repeat(2048));
     assert.throws(() => createBrowserRelationshipsCdrObservationBridge({ observationPath: oversizedPath, maxBytes: 1024 }).read(), { code: 'RELATIONSHIPS_CDR_OBSERVATION_TOO_LARGE' });
+
+    const growthPath = writeObservation(root, observation());
+    const originalLstatSync = fs.lstatSync;
+    let grewAfterStat = false;
+    fs.lstatSync = (...args) => {
+      const result = originalLstatSync(...args);
+      if (!grewAfterStat && path.resolve(String(args[0])) === path.resolve(growthPath)) {
+        fs.appendFileSync(growthPath, ' '.repeat(4096));
+        grewAfterStat = true;
+      }
+      return result;
+    };
+    try {
+      assert.throws(
+        () => createBrowserRelationshipsCdrObservationBridge({ observationPath: growthPath, maxBytes: 4096 }).read(),
+        { code: 'RELATIONSHIPS_CDR_OBSERVATION_TOO_LARGE' }
+      );
+      assert.equal(grewAfterStat, true);
+    } finally {
+      fs.lstatSync = originalLstatSync;
+    }
 
     const target = writeObservation(root, observation());
     const link = path.join(root, 'observation-link.json');
