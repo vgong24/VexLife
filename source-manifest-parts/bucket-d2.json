@@ -29,8 +29,8 @@
     {
       "path": "src/core/browser-relationships-cdr-observation-bridge.mjs",
       "mode": "100644",
-      "bytes": 4809,
-      "sha256": "30265b30b6a8c099097677f63dccd9f0d40444be8b2feef9c804c8b84d2fd76c"
+      "bytes": 6793,
+      "sha256": "17ba4b083dbc474f94cb7069981135d744259e508960a54a30242a40757e715c"
     },
     {
       "path": "src/core/experience-review-kit.mjs",
