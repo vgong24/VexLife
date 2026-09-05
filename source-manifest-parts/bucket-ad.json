@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 2152,
       "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
+    },
+    {
+      "path": "src/core/model-connection-atlas.mjs",
+      "mode": "100644",
+      "bytes": 11103,
+      "sha256": "f837c0f640ff0afc2009c138634f1e492031e5e6ef93169b92294dde654587c6"
     }
   ]
 }
