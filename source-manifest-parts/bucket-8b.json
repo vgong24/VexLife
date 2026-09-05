@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 45965,
       "sha256": "634c6aa2c5c3e6e94aebb88064df837639cbe6161e26da05c02daeecd4b5f722"
+    },
+    {
+      "path": "docs/PURPOSE-WORKSPACE-AND-EXPERIENCE-TOPOLOGY.md",
+      "mode": "100644",
+      "bytes": 3649,
+      "sha256": "41984e4f14b2479d023ba071e256de3bc434b4165345dff2f73a38822e2a0dd5"
     }
   ]
 }

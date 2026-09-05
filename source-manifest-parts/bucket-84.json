@@ -15,6 +15,12 @@
       "sha256": "251360fab4c5908cb00574ad4704a97a5b2e79bc00e9119fc32b310c75e43ed4"
     },
     {
+      "path": "fixtures/purpose-workspace/synthetic-scenarios.json",
+      "mode": "100644",
+      "bytes": 10475,
+      "sha256": "0865f0be6f1e13825145f2548b6ff547cc4917e88c308e3ce3916a681db790c1"
+    },
+    {
       "path": "reference/browser/relationships/app.css",
       "mode": "100644",
       "bytes": 3828,
