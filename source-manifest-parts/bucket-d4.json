@@ -29,8 +29,8 @@
     {
       "path": "src/core/model-connection-compiler.mjs",
       "mode": "100644",
-      "bytes": 17060,
-      "sha256": "95eb881251c2a71b47c2f68dab0b39a23bda70e9ed646983ebc8b370c989359a"
+      "bytes": 17215,
+      "sha256": "cd0012fe81e892e1c47df482b146967a0a33ec4821e56f03114ba6acefc84bbd"
     }
   ]
 }

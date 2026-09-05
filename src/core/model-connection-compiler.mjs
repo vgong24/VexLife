@@ -207,6 +207,9 @@ function capabilityDisposition(entry, requirement) {
   if (requirement.state === 'HELD') return Object.freeze({ state: 'HELD', reason: requirement.reason });
   if (requirement.state === 'UNAVAILABLE') return Object.freeze({ state: 'UNAVAILABLE', reason: requirement.reason });
   if (requirement.state === 'UNKNOWN') return Object.freeze({ state: 'UNKNOWN', reason: requirement.reason });
+  if (entry.currentness?.state !== 'CURRENT') {
+    return Object.freeze({ state: 'UNKNOWN', reason: 'CANONICAL_CURRENTNESS_UNKNOWN' });
+  }
   return Object.freeze({ state: 'AVAILABLE', reason: null });
 }
 function currentBindingMap(registry) {
@@ -293,11 +296,11 @@ export function compileModelConnection({
     operationalProfileRegistry.registryRef,
     ...runtimeProfile.evidenceRefs
   ]);
-  const currentnessRefs = sortedUnique([
+  const currentnessRefs = sortedUnique([...new Set([
     ...(modelTurnWitness.currentnessRefs ?? []),
     ...(nonempty(operationalProfileRegistry.currentnessRef) ? [operationalProfileRegistry.currentnessRef] : []),
     runtimeProfile.currentness.acceptedMainRef
-  ]);
+  ])]);
 
   const core = {
     schemaVersion: MODEL_CONNECTION_PROJECTION_SCHEMA,

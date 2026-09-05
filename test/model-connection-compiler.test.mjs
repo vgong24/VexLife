@@ -199,4 +199,45 @@ test('canonical module registry registers the R3 fragment exactly once', () => {
   ]);
 });
 
+test('R3 currentness composition collapses only internally assembled duplicate refs', () => {
+  const projection = compile();
+  assert.deepEqual(projection.currentnessRefs, [
+    'github.commit.vexlife.97919adb85d0609633ea7d1673adc83ed1300c7f',
+    operationalProfileRegistry.currentnessRef
+  ].sort());
+  assert.throws(
+    () => compile({ actuallyUsedRefs: ['capability.search', 'capability.search'] }),
+    /refs must contain unique non-empty strings/u
+  );
+});
+
+test('R3 canonical non-current capability truth never promotes to AVAILABLE', () => {
+  for (const currentness of [{}, { state: 'UNKNOWN' }, { state: 'FUTURE' }]) {
+    const projection = compile({
+      capabilityInput: capabilityInput({
+        capabilityCurrentness: { 'capability.search': currentness }
+      })
+    });
+    const search = projection.capabilityEntries.find((entry) => entry.capabilityRef === 'capability.search');
+    assert.equal(search.canonicalExecutable, true);
+    assert.equal(search.disposition, 'UNKNOWN');
+    assert.equal(search.dispositionReason, 'CANONICAL_CURRENTNESS_UNKNOWN');
+  }
+  const current = compile({
+    capabilityInput: capabilityInput({
+      capabilityCurrentness: { 'capability.search': { state: 'CURRENT' } }
+    })
+  }).capabilityEntries.find((entry) => entry.capabilityRef === 'capability.search');
+  assert.equal(current.disposition, 'AVAILABLE');
+});
+
+test('R3 self-frame priority reads projected state rather than removed disposition', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'src/core/vex-self-capability-frame.mjs'), 'utf8');
+  const priority = source.match(/function entryPriority\(entry, rootKernel\) \{[\s\S]*?\n\}/u)?.[0] ?? '';
+  assert.match(priority, /entry\.state === 'AVAILABLE'/u);
+  assert.match(priority, /entry\.state === 'HELD'/u);
+  assert.match(priority, /entry\.state === 'UNAVAILABLE'/u);
+  assert.doesNotMatch(priority, /entry\.disposition/u);
+});
+
 // [VXG RealForever]

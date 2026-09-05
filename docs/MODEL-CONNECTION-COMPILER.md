@@ -97,7 +97,8 @@ explicit stale/blocked/superseded currentness -> HELD
 required runtime cell intentionally held -> HELD
 required runtime cell not supported -> UNAVAILABLE
 required runtime cell missing/unknown -> UNKNOWN
-otherwise canonical executable -> AVAILABLE
+canonical currentness missing/unknown/unrecognized -> UNKNOWN
+otherwise canonical CURRENT + executable -> AVAILABLE
 ```
 
 `actuallyUsedRefs[]` must be visible and AVAILABLE. The projection still grants

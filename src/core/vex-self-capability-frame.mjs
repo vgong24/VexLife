@@ -70,9 +70,9 @@ function selfCapabilityEntry(entry) {
 }
 function entryPriority(entry, rootKernel) {
   if (rootKernel.includes(entry.capabilityRef)) return 0;
-  if (entry.disposition === 'AVAILABLE') return 1;
-  if (entry.disposition === 'HELD') return 2;
-  if (entry.disposition === 'UNAVAILABLE') return 3;
+  if (entry.state === 'AVAILABLE') return 1;
+  if (entry.state === 'HELD') return 2;
+  if (entry.state === 'UNAVAILABLE') return 3;
   return 4;
 }
 
