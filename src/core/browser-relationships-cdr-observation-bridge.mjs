@@ -37,16 +37,32 @@ function clone(value) {
   }
 }
 
+function sameFileIdentity(left, right) {
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
+function sameOpenedSnapshot(pathStat, descriptorStat) {
+  if (process.platform !== 'win32') return sameFileIdentity(pathStat, descriptorStat);
+  return pathStat.size === descriptorStat.size
+    && pathStat.mode === descriptorStat.mode
+    && pathStat.birthtimeMs === descriptorStat.birthtimeMs
+    && pathStat.mtimeMs === descriptorStat.mtimeMs
+    && pathStat.ctimeMs === descriptorStat.ctimeMs;
+}
+
 function readBoundedRegularFile({ requested, canonical, initialStat, maxBytes }) {
   let descriptor = null;
   try {
     descriptor = fs.openSync(canonical, 'r');
-    const openedStat = fs.fstatSync(descriptor);
-    if (!openedStat.isFile()) {
-      fail('RELATIONSHIPS_CDR_OBSERVATION_PATH_INVALID', 'Relationships CDR observation must remain one regular file');
-    }
-    if (openedStat.dev !== initialStat.dev || openedStat.ino !== initialStat.ino) {
+
+    const openedPathStat = fs.lstatSync(requested);
+    if (openedPathStat.isSymbolicLink() || !openedPathStat.isFile() || !sameFileIdentity(openedPathStat, initialStat)) {
       fail('RELATIONSHIPS_CDR_OBSERVATION_PATH_INVALID', 'Relationships CDR observation changed before it could be opened');
+    }
+
+    const openedStat = fs.fstatSync(descriptor);
+    if (!openedStat.isFile() || !sameOpenedSnapshot(openedPathStat, openedStat)) {
+      fail('RELATIONSHIPS_CDR_OBSERVATION_PATH_INVALID', 'Relationships CDR observation descriptor does not match the opened path');
     }
 
     const openedCanonical = fs.realpathSync.native(requested);
@@ -67,6 +83,26 @@ function readBoundedRegularFile({ requested, canonical, initialStat, maxBytes })
     if (offset > maxBytes) {
       fail('RELATIONSHIPS_CDR_OBSERVATION_TOO_LARGE', 'Relationships CDR observation exceeded the bounded size while being read', 413);
     }
+
+    const finalStat = fs.fstatSync(descriptor);
+    const finalPathStat = fs.lstatSync(requested);
+    const finalCanonical = fs.realpathSync.native(requested);
+    if (!finalStat.isFile()
+      || finalPathStat.isSymbolicLink()
+      || !finalPathStat.isFile()
+      || !sameFileIdentity(finalStat, openedStat)
+      || !sameFileIdentity(finalPathStat, openedPathStat)
+      || !sameCanonicalPath(finalCanonical, canonical)
+      || !sameCanonicalPath(finalCanonical, requested)) {
+      fail('RELATIONSHIPS_CDR_OBSERVATION_PATH_INVALID', 'Relationships CDR observation changed while it was being read');
+    }
+    if (finalStat.size > maxBytes) {
+      fail('RELATIONSHIPS_CDR_OBSERVATION_TOO_LARGE', 'Relationships CDR observation exceeded the bounded size while being read', 413);
+    }
+    if (finalStat.size !== offset) {
+      fail('RELATIONSHIPS_CDR_OBSERVATION_PATH_INVALID', 'Relationships CDR observation size changed while it was being read');
+    }
+
     return buffer.toString('utf8', 0, offset);
   } catch (error) {
     if (error instanceof BrowserRelationshipsCdrObservationBridgeError) throw error;

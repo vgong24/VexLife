@@ -92,6 +92,41 @@ async function close(server) {
   await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 }
 
+// Privacy is structural: admitted portable reference values may contain
+// "currentness"; the raw observation's currentness object must not escape.
+function assertPublicBindingOnly(payload, observationPath) {
+  assert.deepEqual(Object.keys(payload).sort(), ['binding', 'schemaVersion', 'state']);
+  assert.equal(payload.schemaVersion, BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_SCHEMA);
+  assert.equal(payload.state, 'BOUND_CURRENT');
+  assert.deepEqual(Object.keys(payload.binding).sort(), [
+    'counterpartCurrentKeyRef', 'counterpartParticipantRef', 'deliveryObservationRef',
+    'instanceRef', 'invitationCurrentnessRef', 'invitationRef',
+    'lastAcceptedPeerCurrentnessRef', 'localParticipantRef', 'localStateRootRef',
+    'routeRef', 'sessionGeneration'
+  ]);
+  for (const [key, value] of Object.entries(payload.binding)) {
+    if (key === 'sessionGeneration') {
+      assert.ok(value === null || (Number.isSafeInteger(value) && value >= 0));
+    } else if (key === 'routeRef' || key === 'deliveryObservationRef') {
+      assert.ok(value === null || typeof value === 'string');
+    } else {
+      assert.equal(typeof value, 'string', `${key} must not contain a private nested object`);
+    }
+  }
+  const source = observation(); // Synthetic fixture only; not real CDR evidence.
+  const serialized = JSON.stringify(payload);
+  const forbiddenValues = [
+    observationPath, 'friend-cdr-observation.json',
+    source.local.deviceRef, source.peer.deviceRef,
+    source.local.authorityRef, source.peer.authorityRef,
+    source.peer.stateRootRef, source.peer.processInstanceRef,
+    ...Object.values(source.sourceWitness)
+  ];
+  for (const forbidden of forbiddenValues) {
+    assert.equal(serialized.includes(forbidden), false, `browser projection leaked ${forbidden}`);
+  }
+}
+
 test('FFR06 CDR observation bridge projects only the admitted FFR-04 persistence binding', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ffr06-cdr-binding-'));
   try {
@@ -112,10 +147,7 @@ test('FFR06 CDR observation bridge projects only the admitted FFR-04 persistence
       sessionGeneration: null,
       deliveryObservationRef: null
     });
-    const serialized = JSON.stringify(result);
-    for (const forbidden of ['friend-cdr-observation.json', 'device.local.1', 'authority.cdr.local.1', 'sourceWitness', 'productGate', 'currentness']) {
-      assert.equal(serialized.includes(forbidden), false, `browser projection leaked ${forbidden}`);
-    }
+    assertPublicBindingOnly(result, observationPath);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -170,6 +202,112 @@ test('FFR06 CDR observation bridge fails closed for absent, relative, symlinked,
   }
 });
 
+test('FFR06 public-binding privacy oracle permits currentness refs but rejects private fields and values', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ffr06-cdr-privacy-'));
+  try {
+    const observationPath = writeObservation(root);
+    const payload = createBrowserRelationshipsCdrObservationBridge({ observationPath }).read();
+    assertPublicBindingOnly(payload, observationPath);
+    assert.equal(payload.binding.invitationCurrentnessRef, 'currentness.invitation.1');
+    assert.equal(payload.binding.lastAcceptedPeerCurrentnessRef, 'currentness.peer.1');
+    const source = observation();
+    for (const field of ['sourceWitness', 'productGate', 'currentness', 'local', 'peer', 'invitation', 'runtime']) {
+      assert.throws(() => assertPublicBindingOnly({ ...payload, [field]: source[field] }, observationPath), { code: 'ERR_ASSERTION' });
+      assert.throws(() => assertPublicBindingOnly({ ...payload, binding: { ...payload.binding, [field]: source[field] } }, observationPath), { code: 'ERR_ASSERTION' });
+      assert.throws(() => assertPublicBindingOnly({ ...payload, binding: { ...payload.binding, invitationRef: source[field] } }, observationPath), { code: 'ERR_ASSERTION' });
+    }
+    for (const privateValue of [observationPath, source.local.deviceRef, source.peer.deviceRef, source.local.authorityRef, source.peer.authorityRef, ...Object.values(source.sourceWitness)]) {
+      const leaked = { ...payload, binding: { ...payload.binding, invitationRef: privateValue } };
+      assert.throws(() => assertPublicBindingOnly(leaked, observationPath), { code: 'ERR_ASSERTION' });
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('FFR06 Windows path/descriptor identity does not require cross-API inode equality', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ffr06-cdr-windows-identity-'));
+  const observationPath = writeObservation(root);
+  const originalFstatSync = fs.fstatSync;
+  const platformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform');
+  try {
+    Object.defineProperty(process, 'platform', { ...platformDescriptor, value: 'win32' });
+    fs.fstatSync = (fd, ...args) => {
+      const stat = originalFstatSync(fd, ...args);
+      return new Proxy(stat, {
+        get(target, property, receiver) {
+          if (property === 'dev') return target.dev + 101;
+          if (property === 'ino') return target.ino + 103;
+          const value = Reflect.get(target, property, receiver);
+          return typeof value === 'function' ? value.bind(target) : value;
+        }
+      });
+    };
+    const payload = createBrowserRelationshipsCdrObservationBridge({ observationPath }).read();
+    assertPublicBindingOnly(payload, observationPath);
+  } finally {
+    fs.fstatSync = originalFstatSync;
+    Object.defineProperty(process, 'platform', platformDescriptor);
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('FFR06 descriptor read remains bounded after fstat and closes on growth or read failure', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ffr06-cdr-descriptor-'));
+  const originalFstatSync = fs.fstatSync;
+  const originalReadSync = fs.readSync;
+  const originalCloseSync = fs.closeSync;
+  const maxBytes = 4096;
+  try {
+    for (const mode of ['grow-after-fstat', 'read-error']) {
+      const observationPath = writeObservation(root);
+      let descriptor;
+      let bytesRead = 0;
+      let closeCount = 0;
+      let readCount = 0;
+      fs.fstatSync = (fd, ...args) => {
+        const stat = originalFstatSync(fd, ...args);
+        assert.equal(descriptor, undefined, 'the bridge must hold one observation descriptor');
+        descriptor = fd;
+        assert.ok(stat.size < maxBytes);
+        if (mode === 'grow-after-fstat') fs.appendFileSync(observationPath, ' '.repeat(maxBytes * 2));
+        return stat;
+      };
+      fs.readSync = (fd, buffer, offset, length, position) => {
+        assert.equal(fd, descriptor);
+        assert.ok(length <= maxBytes + 1 - bytesRead, 'read request exceeded the remaining ceiling');
+        readCount += 1;
+        if (mode === 'read-error') throw Object.assign(new Error('synthetic read failure'), { code: 'EIO' });
+        const count = originalReadSync(fd, buffer, offset, length, position);
+        bytesRead += count;
+        return count;
+      };
+      fs.closeSync = (fd) => {
+        if (fd === descriptor) closeCount += 1;
+        return originalCloseSync(fd);
+      };
+      try {
+        assert.throws(() => createBrowserRelationshipsCdrObservationBridge({ observationPath, maxBytes }).read(), {
+          code: mode === 'grow-after-fstat' ? 'RELATIONSHIPS_CDR_OBSERVATION_TOO_LARGE' : 'RELATIONSHIPS_CDR_OBSERVATION_UNAVAILABLE'
+        });
+        assert.ok(readCount > 0, 'the negative control must reach the descriptor read');
+        assert.equal(bytesRead, mode === 'grow-after-fstat' ? maxBytes + 1 : 0);
+        assert.equal(closeCount, 1);
+        assert.throws(() => originalFstatSync(descriptor), { code: 'EBADF' });
+      } finally {
+        fs.fstatSync = originalFstatSync;
+        fs.readSync = originalReadSync;
+        fs.closeSync = originalCloseSync;
+      }
+    }
+  } finally {
+    fs.fstatSync = originalFstatSync;
+    fs.readSync = originalReadSync;
+    fs.closeSync = originalCloseSync;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('FFR06 same-origin CDR persistence-binding route is GET-only, binding-only and safely held when unbound', { timeout: 30_000 }, async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-ffr06-cdr-route-'));
   const observationPath = writeObservation(root);
@@ -184,9 +322,7 @@ test('FFR06 same-origin CDR persistence-binding route is GET-only, binding-only 
     assert.equal(response.headers.get('cache-control'), 'no-store');
     const payload = await response.json();
     assert.equal(payload.state, 'BOUND_CURRENT');
-    assert.deepEqual(Object.keys(payload).sort(), ['binding', 'schemaVersion', 'state']);
-    assert.equal(JSON.stringify(payload).includes(observationPath), false);
-    assert.equal(JSON.stringify(payload).includes('device.local.1'), false);
+    assertPublicBindingOnly(payload, observationPath);
 
     const rejected = await fetch(`${origin}${BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_API_PATH}`, { method: 'POST' });
     assert.equal(rejected.status, 405);
