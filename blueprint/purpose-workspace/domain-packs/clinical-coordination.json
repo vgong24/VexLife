@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "vexlife.purpose-workspace-domain-pack/v1",
+  "domainRef": "domain.purpose-workspace.clinical-coordination",
+  "label": "Clinical Coordination",
+  "purpose": "Coordinate patient-authored goals, source-bound clinical review and explicit human authorization without turning the workspace into a diagnosis, treatment, prescribing or medical-record owner.",
+  "workspaceRef": "workspace.vexlife.scoped-purpose.001",
+  "featureRef": "feature.vexlife.scoped-purpose-workspace",
+  "terrainNodeRef": "terrain.resource.purpose-workspace.clinical-coordination",
+  "syntheticOnly": true,
+  "dataPosture": "NO_REAL_PATIENT_DATA",
+  "purposeCompletionQuestion": "Is the patient purpose source-bound, professionally reviewed, explicitly authorized where required, and still held before any real clinical effect?",
+  "roleLenses": [
+    {"roleLensRef":"role-lens.clinical.patient","label":"Patient","relationshipClassRefs":["relationship.patient-clinician","relationship.patient-caregiver"],"authorityClassRefs":["authority.request","authority.human.authorize","authority.recipient.disposition"]},
+    {"roleLensRef":"role-lens.clinical.clinician","label":"Clinician","relationshipClassRefs":["relationship.patient-clinician"],"authorityClassRefs":["authority.professional.review","authority.review","authority.action.prepare"]},
+    {"roleLensRef":"role-lens.clinical.caregiver","label":"Caregiver","relationshipClassRefs":["relationship.patient-caregiver"],"authorityClassRefs":["authority.source.capture","authority.relay.prepare","authority.escalate"]},
+    {"roleLensRef":"role-lens.clinical.coordinator","label":"Care coordinator","relationshipClassRefs":["relationship.patient-clinician","relationship.patient-caregiver"],"authorityClassRefs":["authority.route","authority.handoff.issue","authority.handoff.verify"]}
+  ],
+  "primaryTaskRefs": ["task.clinical.prepare-visit-brief","task.clinical.coordinate-handoff","task.clinical.escalate-concern"],
+  "tasks": [
+    {"taskRef":"task.clinical.prepare-visit-brief","label":"Prepare visit brief","processPatternRef":"process-pattern.request-advise-authorize-act/v1","completionContractRef":"completion-contract.authorized-action/v1","entryRoleRef":"role-lens.clinical.patient","stageOwnerRefs":["role-lens.clinical.patient","role-lens.clinical.clinician","role-lens.clinical.patient","role-lens.clinical.clinician","role-lens.clinical.clinician"],"stageAuthorityClassRefs":["authority.request","authority.professional.review","authority.human.authorize","authority.action.prepare","authority.external.effect"],"stageEvidenceClasses":["REQUEST_RECORD","REVIEW_RECEIPT","AUTHORIZATION_RECEIPT","ACTION_PLAN","EXTERNAL_EFFECT_RECEIPT"],"stageEffectClasses":["LOCAL_DRAFT","NO_EFFECT","LOCAL_APPEND","LOCAL_DRAFT","EXTERNAL_EFFECT"],"stageCommunicationKinds":["REQUEST","INTERPRETATION","AUTHORIZATION","SOURCE_CONTEXT","RECEIPT"]},
+    {"taskRef":"task.clinical.coordinate-handoff","label":"Coordinate care handoff","processPatternRef":"process-pattern.handoff-verify-disposition-continue/v1","completionContractRef":"completion-contract.handoff-accepted/v1","entryRoleRef":"role-lens.clinical.coordinator","stageOwnerRefs":["role-lens.clinical.coordinator","role-lens.clinical.coordinator","role-lens.clinical.patient","role-lens.clinical.patient","role-lens.clinical.coordinator"],"stageAuthorityClassRefs":["authority.handoff.issue","authority.handoff.verify","authority.recipient.disposition","authority.human.authorize","authority.route"],"stageEvidenceClasses":["HANDOFF_MANIFEST","VERIFICATION_RECEIPT","DISPOSITION_RECEIPT","IMPORT_RECEIPT","CONTINUATION_RECEIPT"],"stageEffectClasses":["LOCAL_DRAFT","NO_EFFECT","LOCAL_APPEND","LOCAL_APPEND","NO_EFFECT"],"stageCommunicationKinds":["HANDOFF","REVIEW","CORRECTION","AUTHORIZATION","RECEIPT"]},
+    {"taskRef":"task.clinical.escalate-concern","label":"Escalate concern","processPatternRef":"process-pattern.escalate-triage-route-resolve/v1","completionContractRef":"completion-contract.routed-resolution/v1","entryRoleRef":"role-lens.clinical.caregiver","stageOwnerRefs":["role-lens.clinical.caregiver","role-lens.clinical.clinician","role-lens.clinical.coordinator","role-lens.clinical.clinician","role-lens.clinical.patient"],"stageAuthorityClassRefs":["authority.escalate","authority.triage","authority.route","authority.resolve","authority.recipient.disposition"],"stageEvidenceClasses":["CONCERN_RECORD","TRIAGE_RECEIPT","ROUTE_RECEIPT","RESOLUTION_RECEIPT","CLOSURE_OR_CONTINUATION_RECEIPT"],"stageEffectClasses":["LOCAL_DRAFT","NO_EFFECT","NO_EFFECT","LOCAL_APPEND","LOCAL_APPEND"],"stageCommunicationKinds":["ESCALATION","INTERPRETATION","HANDOFF","RECEIPT","CORRECTION"]}
+  ],
+  "ledgerBindings": [
+    {"ledgerClass":"PATIENT_PURPOSE_AND_SOURCE","portfolioEligible":false},
+    {"ledgerClass":"PROFESSIONAL_REVIEW_AND_COORDINATION","portfolioEligible":false},
+    {"ledgerClass":"RESTRICTED_CLINICAL_RECORD","portfolioEligible":false}
+  ],
+  "heldBoundaries": ["real patient data","diagnosis","treatment","prescribing","clinical record mutation","external clinical action"],
+  "featureWalkthroughPlanRef": "plan.vexlife.feature.scoped-purpose-workspace.introduction.001",
+  "contextCaseFamilyRef": "test-case-family.purpose-workspace.clinical.001"
+}
