@@ -1,0 +1,49 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.model-connection-compiler",
+    "path": "src/core/model-connection-compiler.mjs",
+    "role": "Compose the canonical capability frame with accepted model-bundle, operational-profile, runtime-capability and external ModelTurnWitness truth without becoming a second capability compiler, scheduler or effect authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.capabilities.001",
+      "registry.vexlife.model-bundles.001",
+      "registry.vexlife.operational-profiles.001",
+      "registry.vexlife.model-runtime-capabilities.001",
+      "registry.vexlife.model-connections.001",
+      "module.vexlife.core.capability",
+      "src/core/model-turn-witness.mjs"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.vex-self-capability-frame"
+    ],
+    "tests": [
+      "test/model-connection-compiler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/model-runtime-capabilities.json",
+      "blueprint/model-connection-binding-registry.json",
+      "blueprint/model-bundle-registry.json",
+      "blueprint/vex-operational-profiles.json",
+      "src/core/model-turn-witness.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.vex-self-capability-frame",
+    "path": "src/core/vex-self-capability-frame.mjs",
+    "role": "Project one bounded source-bound current self-capability frame from the model-connection projection; never grant effects, expose raw reasoning, or replace canonical capability/source owners.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.model-connection-compiler",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/vex-self-capability-frame.test.mjs"
+    ],
+    "changeMap": [
+      "docs/MODEL-CONNECTION-COMPILER.md"
+    ]
+  }
+]

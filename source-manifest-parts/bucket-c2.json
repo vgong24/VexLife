@@ -3,6 +3,12 @@
   "bucketId": "c2",
   "files": [
     {
+      "path": "blueprint/model-runtime-capabilities.json",
+      "mode": "100644",
+      "bytes": 4992,
+      "sha256": "53e30a02417a561bb9200152d8ec7629609d0b1cffa69ac79298131cd4cf1fc8"
+    },
+    {
       "path": "test/g04b-native-training-terminal.test.mjs",
       "mode": "100644",
       "bytes": 11541,

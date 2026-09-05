@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 4994,
       "sha256": "1160108e7f4480d791011de6deafae2a416ec257295b4b29c4e62a7649154b88"
+    },
+    {
+      "path": "test/model-connection-compiler.test.mjs",
+      "mode": "100644",
+      "bytes": 10920,
+      "sha256": "8e4c9da983764c430e640444daffaaad44ba962d3aa72c36525b4aa526133752"
     }
   ]
 }
