@@ -3,6 +3,12 @@
   "bucketId": "8c",
   "files": [
     {
+      "path": "blueprint/model-turn-formation-browser/strings/en.json",
+      "mode": "100644",
+      "bytes": 942,
+      "sha256": "1eccf5d82ddd815cd4b02adede6f5c75682296a5894cb33c020557aa2301cd78"
+    },
+    {
       "path": "src/core/g04b-native-training-worker.mjs",
       "mode": "100644",
       "bytes": 48504,

@@ -188,15 +188,18 @@ test('model-connection projection is stable under binding input order', () => {
   assert.deepEqual(left, right);
 });
 
-test('canonical module registry registers the R3 fragment exactly once', () => {
+test('canonical module registry keeps the R3 owners exact-once under additive composition', () => {
   const root = readJson('blueprint/module-registry.json');
   const fragment = 'blueprint/module-registry/model-connection.json';
   assert.equal(root.includes.modules.filter((value) => value === fragment).length, 1);
-  const modules = readJson(fragment);
-  assert.deepEqual(modules.map((entry) => entry.moduleRef), [
+  const moduleRefs = readJson(fragment).map((entry) => entry.moduleRef);
+  assert.equal(new Set(moduleRefs).size, moduleRefs.length);
+  for (const requiredRef of [
     'module.vexlife.core.model-connection-compiler',
     'module.vexlife.core.vex-self-capability-frame'
-  ]);
+  ]) {
+    assert.equal(moduleRefs.filter((value) => value === requiredRef).length, 1);
+  }
 });
 
 test('R3 currentness composition collapses only internally assembled duplicate refs', () => {

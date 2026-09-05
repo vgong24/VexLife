@@ -45,5 +45,50 @@
     "changeMap": [
       "docs/MODEL-CONNECTION-COMPILER.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.model-connection-atlas",
+    "path": "src/core/model-connection-atlas.mjs",
+    "role": "Compose one bounded turn-formation projection through the canonical Atlas query owner over accepted witness/runtime/model-connection/self-capability references without creating a second graph, compiler, scheduler or effect authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.model-connection-compiler",
+      "module.vexlife.core.vex-self-capability-frame",
+      "src/core/atlas.mjs",
+      "src/core/model-turn-witness.mjs"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.browser.model-turn-formation-disclosure"
+    ],
+    "tests": [
+      "test/model-turn-formation-atlas.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/model-turn-formation-browser-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.model-turn-formation-disclosure",
+    "path": "reference/browser/modules/model-turn-formation-disclosure.js",
+    "role": "Project bounded source-owned How This Turn Formed evidence into an exact response-message-attached native details disclosure; missing R3 projection remains UNKNOWN and raw reasoning/provider/private data never projects.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "src/core/model-connection-atlas.mjs",
+      "blueprint/model-turn-formation-browser-registry.json",
+      "blueprint/model-turn-formation-browser/strings/en.json",
+      "blueprint/model-turn-formation-browser/strings/ja.json",
+      "blueprint/model-turn-formation-browser/strings/zh.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.browser.chat-controller"
+    ],
+    "tests": [
+      "test/browser-model-turn-formation.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/modules/chat-controller.js"
+    ]
   }
 ]

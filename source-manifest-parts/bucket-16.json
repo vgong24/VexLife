@@ -11,8 +11,8 @@
     {
       "path": "test/model-connection-compiler.test.mjs",
       "mode": "100644",
-      "bytes": 10920,
-      "sha256": "8e4c9da983764c430e640444daffaaad44ba962d3aa72c36525b4aa526133752"
+      "bytes": 11089,
+      "sha256": "d430686ffdc4284205c995e99da953c3aea86dd1130d89de359454587071ec12"
     }
   ]
 }
