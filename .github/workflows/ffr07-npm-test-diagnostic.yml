@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      VEXLIFE_PR_NUMBER: '400'
-      VEXLIFE_WORK_REF: work.vexlife.relationships.friend-ffr06.22520493-ff76-4eab-a96b-b0651aeada1b
-      VEXLIFE_BRANCH: VXG-090326-coder-vexlife-friend-ffr06-visible-binding-composition
-      VEXLIFE_CURRENT_WORK_EVENT_NAME: pull_request
-      VEXLIFE_CANDIDATE_HEAD_SHA: 98ca40dc04d1c76ddb81607748771ecc70a5990c
-      VEXLIFE_TESTED_MERGE_SHA: b212ed444c882920f2cbb2b7dc5d0a7cc31ed7d8
+      VEXLIFE_PR_NUMBER: ''
+      VEXLIFE_WORK_REF: ''
+      VEXLIFE_BRANCH: main
+      VEXLIFE_CURRENT_WORK_EVENT_NAME: push
+      VEXLIFE_CANDIDATE_HEAD_SHA: 2efecd7523befd67e3571ab31005480c8ba0a95d
+      VEXLIFE_TESTED_MERGE_SHA: ''
       VEXLIFE_BASE_SHA: f93e86e17ad6e00f13362c3e77ecf0c09ec39d32
     steps:
       - name: Check out diagnostic branch
@@ -26,10 +26,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pin exact failed synthetic merge checkout
+      - name: Pin exact post-merge main checkout
         run: |
-          git checkout --detach b212ed444c882920f2cbb2b7dc5d0a7cc31ed7d8
-          test "$(git rev-parse HEAD)" = "b212ed444c882920f2cbb2b7dc5d0a7cc31ed7d8"
+          git checkout --detach 2efecd7523befd67e3571ab31005480c8ba0a95d
+          test "$(git rev-parse HEAD)" = "2efecd7523befd67e3571ab31005480c8ba0a95d"
 
       - name: Use Node.js 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -49,7 +49,7 @@ jobs:
           npm run orient
           npm run build-admission:check
 
-      - name: Retain exact PR-ready output without hiding failure
+      - name: Retain exact PR-ready output without hiding result
         id: prready
         shell: bash
         run: |
@@ -69,15 +69,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ffr07-npm-test-diagnostic
+          name: ffr07-postmerge-main-diagnostic
           path: ${{ runner.temp }}/ffr07-diagnostics/
           if-no-files-found: error
           retention-days: 7
 
-      - name: Assert original failure reproduced
+      - name: Verify diagnostic evidence retained
         if: always()
         shell: bash
         run: |
           EVIDENCE="$RUNNER_TEMP/ffr07-diagnostics"
           test -f "$EVIDENCE/pr-ready-exit-code.txt"
-          test "$(cat "$EVIDENCE/pr-ready-exit-code.txt")" -ne 0
+          test -f "$EVIDENCE/pr-ready.log"
+          test -f "$EVIDENCE/pr-ready.json"
