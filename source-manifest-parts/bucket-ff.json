@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 8447,
       "sha256": "31de1cf0fe842a424bc01055982aaf8b77aa3b1f9dc93ac594f40b9fc97ca42e"
+    },
+    {
+      "path": "test/model-connection-turn-composer.test.mjs",
+      "mode": "100644",
+      "bytes": 6594,
+      "sha256": "d8698e9a3395a01f885afc391f4a3f55730dc3735df6d980c602551f85b52f02"
     }
   ]
 }

@@ -11,8 +11,8 @@
     {
       "path": "test/browser-model-turn-formation.test.mjs",
       "mode": "100644",
-      "bytes": 4428,
-      "sha256": "7788cacfd1df6dcead15bd4df825333f3f66a7b84cafaf5cfa43281d759de55c"
+      "bytes": 7750,
+      "sha256": "e8cb7979cbf235aa711173b3e90b7d8723ff1109e9d6a2b1dad4b9556d030d5a"
     },
     {
       "path": "test/capability.test.mjs",

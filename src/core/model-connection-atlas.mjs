@@ -83,6 +83,89 @@ function safeReasoningTrace(runtimeObservation) {
     rawIncluded: false
   });
 }
+function safeNumericSummary(value) {
+  if (!object(value) || value.present !== true || !object(value.values)) {
+    return freezeDeep({ present: false, values: {} });
+  }
+  const values = Object.fromEntries(Object.entries(value.values)
+    .filter(([, item]) => Number.isFinite(item) && item >= 0)
+    .sort(([left], [right]) => left.localeCompare(right)));
+  return freezeDeep({ present: true, values });
+}
+function safeRuntimeObservationMetadata(runtimeObservation) {
+  const output = object(runtimeObservation?.output) ? runtimeObservation.output : {};
+  const provenance = object(runtimeObservation?.modelProvenance) ? runtimeObservation.modelProvenance : {};
+  const reported = object(provenance.reportedModelField) ? provenance.reportedModelField : null;
+  const unknownFields = Array.isArray(runtimeObservation?.unknownUpstreamFields)
+    ? runtimeObservation.unknownUpstreamFields
+      .filter((entry) => object(entry) && nonempty(entry.jsonPointer))
+      .map((entry) => ({
+        jsonPointer: entry.jsonPointer,
+        valueType: nonempty(entry.valueType) ? entry.valueType : null,
+        byteLength: Number.isSafeInteger(entry.byteLength) && entry.byteLength >= 0 ? entry.byteLength : null,
+        valueSha256: safeSha(entry.valueSha256),
+        disposition: nonempty(entry.disposition) ? entry.disposition : null,
+        rawValueIncluded: false
+      }))
+      .sort((left, right) => left.jsonPointer.localeCompare(right.jsonPointer))
+    : [];
+  return freezeDeep({
+    state: 'CURRENT_SAFE_RUNTIME_METADATA',
+    endpointProfileRef: nonempty(runtimeObservation?.endpointProfileRef) ? runtimeObservation.endpointProfileRef : null,
+    observationRef: nonempty(runtimeObservation?.observationRef) ? runtimeObservation.observationRef : null,
+    observationSha256: safeSha(runtimeObservation?.observationSha256),
+    responseBodySha256: safeSha(runtimeObservation?.responseBodySha256),
+    observedAt: nonempty(runtimeObservation?.observedAt) ? runtimeObservation.observedAt : null,
+    output: {
+      contentSha256: safeSha(output.contentSha256),
+      contentCharacters: Number.isSafeInteger(output.contentCharacters) && output.contentCharacters >= 0 ? output.contentCharacters : null,
+      assistantRoleObserved: output.assistantRoleObserved === true,
+      finishReasonOrNull: typeof output.finishReasonOrNull === 'string' ? output.finishReasonOrNull : null,
+      refusalObserved: output.refusalObserved === true,
+      toolCallsPresent: output.toolCallsPresent === true,
+      toolCallCount: Number.isSafeInteger(output.toolCallCount) && output.toolCallCount >= 0 ? output.toolCallCount : null
+    },
+    modelProvenance: {
+      compatibilityModel: nonempty(provenance.compatibilityModel) ? provenance.compatibilityModel : null,
+      reportedModelField: reported ? {
+        valueType: nonempty(reported.valueType) ? reported.valueType : null,
+        byteLength: Number.isSafeInteger(reported.byteLength) && reported.byteLength >= 0 ? reported.byteLength : null,
+        valueSha256: safeSha(reported.valueSha256),
+        pathClass: nonempty(reported.pathClass) ? reported.pathClass : null,
+        rawValueIncluded: false
+      } : null
+    },
+    usageSummary: safeNumericSummary(runtimeObservation?.usageSummary),
+    runtimeTimingSummary: safeNumericSummary(runtimeObservation?.runtimeTimingSummary),
+    structuredOutputState: {
+      requested: runtimeObservation?.structuredOutputState?.requested === true,
+      observedJsonValue: runtimeObservation?.structuredOutputState?.observedJsonValue === true
+    },
+    unknownUpstreamFields: unknownFields
+  });
+}
+function safeCapabilityDispositionFromProjection(projection, fallback, modelConnection) {
+  const fallbackDisposition = safeCapabilityDisposition(fallback);
+  if (modelConnection.state !== 'CURRENT_SOURCE_BOUND_REFERENCE' || !Array.isArray(projection?.capabilityEntries)) {
+    return freezeDeep({ source: 'MODEL_TURN_WITNESS', disposition: fallbackDisposition });
+  }
+  const grouped = { AVAILABLE: [], HELD: [], UNAVAILABLE: [], UNKNOWN: [] };
+  for (const entry of projection.capabilityEntries) {
+    if (!object(entry) || !nonempty(entry.capabilityRef) || !Object.hasOwn(grouped, entry.disposition)) {
+      return freezeDeep({ source: 'MODEL_TURN_WITNESS', disposition: fallbackDisposition });
+    }
+    grouped[entry.disposition].push(entry.capabilityRef);
+  }
+  return freezeDeep({
+    source: 'MODEL_CONNECTION_PROJECTION',
+    disposition: {
+      availableRefs: uniqueSortedRefs(grouped.AVAILABLE),
+      heldRefs: uniqueSortedRefs(grouped.HELD),
+      unavailableRefs: uniqueSortedRefs(grouped.UNAVAILABLE),
+      unknownRefs: uniqueSortedRefs(grouped.UNKNOWN)
+    }
+  });
+}
 function safeRuntimeProjection(runtime) {
   if (!object(runtime) || runtime.schemaVersion !== CAPABILITY_RUNTIME_SCHEMA) {
     return freezeDeep({ state: 'UNKNOWN_NOT_PROJECTED', schemaVersion: null });
@@ -177,6 +260,11 @@ export function projectTurnFormationEvidence({
   const runtimeObservation = witness.runtimeObservation;
   const modelConnection = safeModelConnection(modelConnectionProjection, witness.witnessRef);
   const selfCapability = safeSelfFrame(selfCapabilityFrame, modelConnection);
+  const capabilityTruth = safeCapabilityDispositionFromProjection(
+    modelConnectionProjection,
+    witness.capabilityDisposition,
+    modelConnection
+  );
   return freezeDeep({
     schemaVersion: MODEL_TURN_FORMATION_EVIDENCE_SCHEMA,
     truthClass: 'BOUNDED_CURRENT_TURN_FORMATION_EVIDENCE',
@@ -189,8 +277,10 @@ export function projectTurnFormationEvidence({
       runtimeRevisionRef: nonempty(runtimeObservation.runtimeRevisionRef) ? runtimeObservation.runtimeRevisionRef : null,
       runtimeCapabilityEvidenceRef: nonempty(runtimeObservation.runtimeCapabilityEvidenceRef) ? runtimeObservation.runtimeCapabilityEvidenceRef : null
     },
-    capabilityDisposition: safeCapabilityDisposition(witness.capabilityDisposition),
+    capabilityDisposition: capabilityTruth.disposition,
+    capabilityDispositionSource: capabilityTruth.source,
     capabilityRuntime: safeRuntimeProjection(capabilityRuntime),
+    runtimeObservation: safeRuntimeObservationMetadata(runtimeObservation),
     promptContext: safePromptContext(promptContextMaterialization, witness),
     modelConnection,
     selfCapability,

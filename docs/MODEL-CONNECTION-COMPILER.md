@@ -141,4 +141,54 @@ R4 (`github.issue.vexlife.371`) consumes the accepted R3 projection for
 R3 itself performs no model call, tool call, network action, Home/Memory
 mutation, training, activation, or publication.
 
+
+## Parent re-entry: reusable live-turn projection closure
+
+After the bounded R4 disclosure was accepted, the Model Connection Totality parent
+re-entered the producer/consumer chain. The accepted R3 owners were present, but the
+real browser-turn producer did not yet carry their projection/frame, and R2 safe
+runtime metadata remained deeper than the visible R4 row set.
+
+The reusable composition therefore remains layered:
+
+```text
+closed external ModelTurnWitness
++ source-owned ADOPTED_READ_ONLY capabilityFrameInput
++ schedulerDispatchReceipts[].capabilityRef actual-use evidence
++ accepted R3 registries
+-> full modelConnectionProjection
+-> separately token-bounded selfCapabilityFrame
+-> safe R4 machine evidence
+-> existing calm bounded human disclosure
+```
+
+Direct single-turn / untaught-G0 runtime modes do not own the adopted capability-frame
+input and therefore remain typed UNKNOWN for model-connection composition. They do not
+borrow the adopted runtime's executable/current stages.
+
+`actuallyUsedRefs[]` is derived only from accepted scheduler-dispatch receipts whose
+admission/completion fingerprints are present and whose `externalEffectsExecuted` is
+false. Model prose, request formation, visible response text, and mere capability
+availability cannot claim actual use.
+
+The full R3 projection is reusable independently of the self-frame token budget. R4's
+machine projection may additionally carry the already-safe R2 output hash/count/role/
+finish/refusal/tool-count fields, usage/timing summaries, structured-output state, and
+unknown-upstream **metadata**. Raw provider response, raw unknown values, raw reported
+local paths, and raw reasoning remain excluded; reasoning trace content remains sealed.
+
+The browser bridge only consumes a server-owned composer. Browser requests cannot inject
+that owner. The later `scripts/serve-browser.mjs` composition tail is serialized behind
+its current foreign writer custody and is not part of this source phase.
+
+```text
+CAPABILITY_AVAILABLE != CAPABILITY_EXECUTED
+BOUNDED_SELF_FRAME != EXHAUSTIVE_REUSABLE_SOURCE
+R4_MACHINE_PROJECTION != R4_VISIBLE_ROW_SET
+UNKNOWN != AVAILABLE
+HELD != UNAVAILABLE
+C11/C12 remain HELD absent independent later evidence and authority
+VISIBLE_DISCLOSURE != EFFECT_AUTHORITY
+```
+
 <!-- [VXG RealForever] -->

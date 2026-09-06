@@ -47,6 +47,31 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.model-connection-turn-composer",
+    "path": "src/core/model-connection-turn-composer.mjs",
+    "role": "Compose accepted R3 model-connection and bounded self-capability projections from one closed external turn witness plus source-owned adopted capability input and scheduler-dispatch use evidence; direct mode remains UNKNOWN and no effect authority is granted.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.model-connection-compiler",
+      "module.vexlife.core.vex-self-capability-frame",
+      "registry.vexlife.capabilities.001",
+      "registry.vexlife.model-bundles.001",
+      "registry.vexlife.operational-profiles.001",
+      "registry.vexlife.model-runtime-capabilities.001",
+      "registry.vexlife.model-connections.001"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/model-connection-turn-composer.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/capability-assimilation-runtime.mjs",
+      "src/core/browser-companion-bridge.mjs",
+      "src/core/model-connection-atlas.mjs"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.model-connection-atlas",
     "path": "src/core/model-connection-atlas.mjs",
     "role": "Compose one bounded turn-formation projection through the canonical Atlas query owner over accepted witness/runtime/model-connection/self-capability references without creating a second graph, compiler, scheduler or effect authority.",
