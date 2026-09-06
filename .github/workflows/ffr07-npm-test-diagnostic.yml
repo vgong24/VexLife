@@ -1,0 +1,80 @@
+name: FFR-07 npm-test diagnostics
+
+on:
+  push:
+    branches:
+      - VXG-090626-localops-friend-ffr07-npm-test-diagnostic
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VEXLIFE_PR_NUMBER: '400'
+      VEXLIFE_WORK_REF: work.vexlife.relationships.friend-ffr06.22520493-ff76-4eab-a96b-b0651aeada1b
+      VEXLIFE_BRANCH: VXG-090326-coder-vexlife-friend-ffr06-visible-binding-composition
+      VEXLIFE_CURRENT_WORK_EVENT_NAME: pull_request
+      VEXLIFE_CANDIDATE_HEAD_SHA: 98ca40dc04d1c76ddb81607748771ecc70a5990c
+      VEXLIFE_TESTED_MERGE_SHA: b212ed444c882920f2cbb2b7dc5d0a7cc31ed7d8
+      VEXLIFE_BASE_SHA: f93e86e17ad6e00f13362c3e77ecf0c09ec39d32
+    steps:
+      - name: Check out diagnostic branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Pin exact failed synthetic merge checkout
+        run: |
+          git checkout --detach b212ed444c882920f2cbb2b7dc5d0a7cc31ed7d8
+          test "$(git rev-parse HEAD)" = "b212ed444c882920f2cbb2b7dc5d0a7cc31ed7d8"
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+
+      - name: Install declared dependencies
+        run: npm ci
+
+      - name: Install deterministic Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Reproduce exact Foundation preconditions
+        run: |
+          node --test test/source-manifest.test.mjs
+          npm run manifest:write
+          npm run orient
+          npm run build-admission:check
+
+      - name: Retain exact PR-ready output without hiding failure
+        id: prready
+        shell: bash
+        run: |
+          mkdir -p ffr07-diagnostics
+          set +e
+          npm run pr-ready > ffr07-diagnostics/pr-ready.log 2>&1
+          code=$?
+          set -e
+          printf '%s\n' "$code" > ffr07-diagnostics/pr-ready-exit-code.txt
+          cp generated/health/pr-ready.json ffr07-diagnostics/pr-ready.json || true
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload retained diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffr07-npm-test-diagnostic
+          path: ffr07-diagnostics/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Assert original failure reproduced
+        if: always()
+        shell: bash
+        run: |
+          test -f ffr07-diagnostics/pr-ready-exit-code.txt
+          test "$(cat ffr07-diagnostics/pr-ready-exit-code.txt)" -ne 0
