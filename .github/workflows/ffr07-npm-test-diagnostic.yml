@@ -53,13 +53,15 @@ jobs:
         id: prready
         shell: bash
         run: |
-          mkdir -p ffr07-diagnostics
+          EVIDENCE="$RUNNER_TEMP/ffr07-diagnostics"
+          rm -rf "$EVIDENCE"
+          mkdir -p "$EVIDENCE"
           set +e
-          npm run pr-ready > ffr07-diagnostics/pr-ready.log 2>&1
+          npm run pr-ready > "$EVIDENCE/pr-ready.log" 2>&1
           code=$?
           set -e
-          printf '%s\n' "$code" > ffr07-diagnostics/pr-ready-exit-code.txt
-          cp generated/health/pr-ready.json ffr07-diagnostics/pr-ready.json || true
+          printf '%s\n' "$code" > "$EVIDENCE/pr-ready-exit-code.txt"
+          cp generated/health/pr-ready.json "$EVIDENCE/pr-ready.json" || true
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
 
@@ -68,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ffr07-npm-test-diagnostic
-          path: ffr07-diagnostics/
+          path: ${{ runner.temp }}/ffr07-diagnostics/
           if-no-files-found: error
           retention-days: 7
 
@@ -76,5 +78,6 @@ jobs:
         if: always()
         shell: bash
         run: |
-          test -f ffr07-diagnostics/pr-ready-exit-code.txt
-          test "$(cat ffr07-diagnostics/pr-ready-exit-code.txt)" -ne 0
+          EVIDENCE="$RUNNER_TEMP/ffr07-diagnostics"
+          test -f "$EVIDENCE/pr-ready-exit-code.txt"
+          test "$(cat "$EVIDENCE/pr-ready-exit-code.txt")" -ne 0
