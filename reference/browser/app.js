@@ -9,10 +9,24 @@ import { createFeatureWalkthroughGuideAdapter } from './modules/feature-walkthro
 import { createLivingJournalController } from './modules/living-journal-controller.js';
 import { createLivingJournalDemoData } from './modules/living-journal-demo-data.js';
 import { createRelationshipsController, loadRelationshipsReference } from './modules/relationships-controller.js';
+import { loadRelationshipsCdrPersistenceBinding } from './modules/relationships-cdr-persistence-binding-client.js';
+import { createRelationshipsPersistenceHttpClient } from './modules/relationships-persistence-http-client.js';
 import { createSecurityAccessController } from './modules/security-access-controller.js';
 
 const { blueprint, experience, featureRegistry, designTokens, catalogs } = await loadBrowserBundle('../../');
 const relationshipsReference = await loadRelationshipsReference('../../');
+const relationshipsPersistenceBindingResult = await loadRelationshipsCdrPersistenceBinding();
+const relationshipsPersistenceBinding = relationshipsPersistenceBindingResult.state === 'BOUND_CURRENT'
+  ? relationshipsPersistenceBindingResult.binding
+  : null;
+const relationshipsPersistenceBridge = relationshipsPersistenceBinding
+  ? createRelationshipsPersistenceHttpClient({
+      ownerBinding: {
+        localParticipantRef: relationshipsPersistenceBinding.localParticipantRef,
+        localStateRootRef: relationshipsPersistenceBinding.localStateRootRef
+      }
+    })
+  : null;
 const rootContract = experience.authoritativeRootDesignContract;
 if (rootContract?.contractRef !== 'contract.vexlife.e27.authoritative-root/v1' || rootContract?.defaultShellGrammar?.singleStageDefault !== true || rootContract?.defaultShellGrammar?.legacyCurrentBrowserPreservationDefault !== false) throw new Error('Direct-root browser requires accepted E2.7 authoritative-root contract');
 
@@ -158,7 +172,14 @@ securityAccess=createSecurityAccessController({registry:blueprint.securityAccess
 securityAccess.bind();
 const featureWalkthrough=createFeatureWalkthroughGuideAdapter({featureRegistry,experience,guide,navigation});
 livingJournal=createLivingJournalController({state,data:livingJournalData,t,navigation,onSourceOpen:({sourceRef})=>navigation.navigate('element.living-journal.source.open',{},'action.living-journal.source.open',{subjectRef:state.selectedNodeRef}),onRevisit:()=>{livingJournal.close();navigation.returnToPrimaryStage('element.living-journal.revisit.open','action.living-journal.revisit.open');setWorkspaceOpen(false);projectFrame();}});
-relationships=createRelationshipsController({state,registry:relationshipsReference.registry,catalogs:relationshipsReference.catalogs});
+relationships=createRelationshipsController({
+  state,
+  registry:relationshipsReference.registry,
+  catalogs:relationshipsReference.catalogs,
+  cdrRegistry:relationshipsReference.cdrRegistry,
+  persistenceBridge:relationshipsPersistenceBridge,
+  persistenceBinding:relationshipsPersistenceBinding
+});
 
 const LIVING_JOURNAL_FEATURE_REF='feature.vexlife.living-journal';
 let livingJournalWalkthroughRun=null;let livingJournalWalkthroughEventOrdinal=0;let livingJournalWalkthroughUiState='READY';

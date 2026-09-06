@@ -31,6 +31,12 @@
       "mode": "100644",
       "bytes": 1243,
       "sha256": "f0d62344f58bc007f14efe43d58e36ed61184d1711d112b88e09bc6bed805f7e"
+    },
+    {
+      "path": "test/browser-relationships-persistence-http-route.test.mjs",
+      "mode": "100644",
+      "bytes": 10947,
+      "sha256": "a899583afd07121ba8fe5f49763acfa1f70ff848617ed6b01c4cb753aeab3b1c"
     }
   ]
 }

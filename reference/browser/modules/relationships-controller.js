@@ -86,6 +86,8 @@ const REQUIRED_RUNTIME_STRING_KEYS = Object.freeze([
   'runtimeFailure'
 ]);
 
+const REQUIRED_PERSISTENCE_STRING_KEYS=Object.freeze(['persistenceSave','persistenceSaved','persistenceBindingRequired','persistencePrepared','persistenceFailure']);
+
 async function fetchJson(root, relativePath) {
   const response = await fetch(`${root}${relativePath}`);
   if (!response.ok) throw new Error(`Unable to load ${relativePath}: HTTP ${response.status}`);
@@ -129,7 +131,7 @@ export async function loadRelationshipsReference(root = '../../') {
     const candidateKeys = Object.keys(catalogs[language] ?? {}).sort();
     if (JSON.stringify(candidateKeys) !== JSON.stringify(referenceKeys)) throw new Error(`Relationships catalog key drift: ${language}`);
   }
-  for (const key of new Set([...Object.values(OPTION_LABEL_KEYS), ...CDR_HUMAN_OPTION_KEYS, ...REQUIRED_RUNTIME_STRING_KEYS])) {
+  for (const key of new Set([...Object.values(OPTION_LABEL_KEYS), ...CDR_HUMAN_OPTION_KEYS, ...REQUIRED_RUNTIME_STRING_KEYS, ...REQUIRED_PERSISTENCE_STRING_KEYS])) {
     if (!referenceKeys.includes(key)) throw new Error(`Relationships human option label missing: ${key}`);
   }
   return Object.freeze({ registry, catalogs, cdrRegistry: loadedCdrRegistry });
@@ -195,6 +197,114 @@ function createSurface() {
   return section;
 }
 
+const RELATIONSHIPS_PERSISTENCE_REF=/^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
+const RELATIONSHIPS_PERSISTENCE_CLASSES=new Set(['FRIEND','FAMILY','COLLABORATOR','OTHER']);
+const RELATIONSHIPS_PERSISTENCE_BINDING_KEYS=new Set([
+  'localParticipantRef','localStateRootRef','counterpartParticipantRef','counterpartCurrentKeyRef',
+  'invitationRef','invitationCurrentnessRef','instanceRef','lastAcceptedPeerCurrentnessRef',
+  'routeRef','sessionGeneration','deliveryObservationRef'
+]);
+const RELATIONSHIPS_PERSISTENCE_FORBIDDEN_EFFECTS=Object.freeze([
+  'networkEffectPerformed','providerEffectPerformed','MemoryEffectPerformed','HomeLayoutEffectPerformed',
+  'modelRuntimePerformed','publicationPerformed','publicSearchPerformed',
+  'semanticAcknowledgementCreated','reciprocalFriendshipCreated'
+]);
+
+function persistenceRef(value,label,optional=false){
+  if(optional&&(value===undefined||value===null))return null;
+  if(typeof value!=='string'||!RELATIONSHIPS_PERSISTENCE_REF.test(value))throw new Error(`${label} requires one explicit portable canonical ref`);
+  return value;
+}
+function canonicalPersistenceTime(value){
+  const date=value instanceof Date?value:new Date(value);
+  if(!Number.isFinite(date.getTime()))throw new Error('Relationships persistence clock returned an invalid time');
+  return date.toISOString();
+}
+function normalizePersistenceBinding(value){
+  if(value===undefined||value===null)return null;
+  if(typeof value!=='object'||Array.isArray(value))throw new Error('Relationships persistence binding must be one explicit object');
+  const extra=Object.keys(value).find((key)=>!RELATIONSHIPS_PERSISTENCE_BINDING_KEYS.has(key));
+  if(extra)throw new Error(`Relationships persistence binding rejects inferred or unadmitted field ${extra}`);
+  const binding={
+    localParticipantRef:persistenceRef(value.localParticipantRef,'localParticipantRef'),
+    localStateRootRef:persistenceRef(value.localStateRootRef,'localStateRootRef'),
+    counterpartParticipantRef:persistenceRef(value.counterpartParticipantRef,'counterpartParticipantRef'),
+    counterpartCurrentKeyRef:persistenceRef(value.counterpartCurrentKeyRef,'counterpartCurrentKeyRef'),
+    invitationRef:persistenceRef(value.invitationRef,'invitationRef'),
+    invitationCurrentnessRef:persistenceRef(value.invitationCurrentnessRef,'invitationCurrentnessRef'),
+    instanceRef:persistenceRef(value.instanceRef,'instanceRef'),
+    lastAcceptedPeerCurrentnessRef:persistenceRef(value.lastAcceptedPeerCurrentnessRef,'lastAcceptedPeerCurrentnessRef',true),
+    routeRef:persistenceRef(value.routeRef,'routeRef',true),
+    sessionGeneration:value.sessionGeneration??null,
+    deliveryObservationRef:persistenceRef(value.deliveryObservationRef,'deliveryObservationRef',true)
+  };
+  if(binding.sessionGeneration!==null&&(!Number.isSafeInteger(binding.sessionGeneration)||binding.sessionGeneration<0))throw new Error('sessionGeneration must be a non-negative safe integer');
+  return Object.freeze(binding);
+}
+function assertPersistenceBridgeOwner(bridge,binding){
+  if(!bridge||typeof bridge.prepare!=='function'||typeof bridge.commit!=='function')throw new Error('RELATIONSHIPS_PERSISTENCE_BINDING_REQUIRED');
+  if(bridge.ownerBinding?.localParticipantRef!==binding.localParticipantRef||bridge.ownerBinding?.localStateRootRef!==binding.localStateRootRef)throw new Error('RELATIONSHIPS_IDENTITY_BINDING_REQUIRED');
+}
+export function createRelationshipsPersistenceStateMachine({persistenceBridge=null,persistenceBinding=null,clock=()=>new Date()}={}){
+  const binding=normalizePersistenceBinding(persistenceBinding);
+  let phase=persistenceBridge&&binding?'READY':'HELD_BINDING_REQUIRED';
+  let relationshipRef=null,revision=null,savedLocalRelationshipClass=null,failureCode=null;
+  const snapshot=()=>Object.freeze({
+    schemaVersion:'vexlife.relationships-visible-persistence-state/v1',
+    state:phase,
+    saved:phase==='SAVED',
+    relationshipRef,
+    revision,
+    savedLocalRelationshipClass,
+    failureCode,
+    bindingPresent:Boolean(binding),
+    bridgePresent:Boolean(persistenceBridge)
+  });
+  const isSavedFor=({localRelationshipClass}={})=>phase==='SAVED'&&savedLocalRelationshipClass===localRelationshipClass;
+  async function save({localRelationshipClass}={}){
+    relationshipRef=null;revision=null;savedLocalRelationshipClass=null;failureCode=null;
+    if(!RELATIONSHIPS_PERSISTENCE_CLASSES.has(localRelationshipClass)){
+      phase='HELD_PERSISTENCE_FAILURE';failureCode='RELATIONSHIPS_PERSISTENCE_CLASS_INVALID';return snapshot();
+    }
+    if(!persistenceBridge||!binding){
+      phase='HELD_BINDING_REQUIRED';failureCode='RELATIONSHIPS_PERSISTENCE_BINDING_REQUIRED';return snapshot();
+    }
+    try{
+      assertPersistenceBridgeOwner(persistenceBridge,binding);
+      const prepared=persistenceBridge.prepare({
+        counterpartParticipantRef:binding.counterpartParticipantRef,
+        counterpartCurrentKeyRef:binding.counterpartCurrentKeyRef,
+        localRelationshipClass,
+        invitationRef:binding.invitationRef,
+        invitationCurrentnessRef:binding.invitationCurrentnessRef,
+        observedAt:canonicalPersistenceTime(clock()),
+        instanceRef:binding.instanceRef,
+        lastAcceptedPeerCurrentnessRef:binding.lastAcceptedPeerCurrentnessRef,
+        routeRef:binding.routeRef,
+        sessionGeneration:binding.sessionGeneration,
+        deliveryObservationRef:binding.deliveryObservationRef
+      });
+      if(prepared?.state!=='PREPARED_NO_EFFECT'||!prepared.effects||Object.values(prepared.effects).some((value)=>value!==false))throw new Error('RELATIONSHIPS_PERSISTENCE_PREPARED_INVALID');
+      phase='PREPARED';
+      await Promise.resolve();
+      phase='COMMITTING';
+      const saved=await Promise.resolve(persistenceBridge.commit(prepared));
+      const receipt=saved?.receipt,current=saved?.current;
+      if(saved?.state!=='SAVED'||typeof saved.relationshipRef!=='string'||receipt?.state!=='COMMITTED'||receipt.relationshipPersisted!==true)throw new Error('RELATIONSHIPS_PERSISTENCE_RECEIPT_REQUIRED');
+      if(current?.relationshipRef!==saved.relationshipRef||receipt.relationshipRef!==saved.relationshipRef||current?.record?.revision!==receipt.revision)throw new Error('RELATIONSHIPS_PERSISTENCE_READBACK_MISMATCH');
+      if(current.record.localParticipantRef!==binding.localParticipantRef||current.record.localStateRootRef!==binding.localStateRootRef)throw new Error('RELATIONSHIPS_PERSISTENCE_READBACK_MISMATCH');
+      for(const field of RELATIONSHIPS_PERSISTENCE_FORBIDDEN_EFFECTS)if(saved.effects?.[field]===true)throw new Error('RELATIONSHIPS_PERSISTENCE_EFFECT_CONTRADICTION');
+      phase='SAVED';relationshipRef=saved.relationshipRef;revision=receipt.revision;savedLocalRelationshipClass=localRelationshipClass;
+    }catch(error){
+      phase=String(error?.message||'').includes('IDENTITY_BINDING')?'HELD_BINDING_REQUIRED':'HELD_PERSISTENCE_FAILURE';
+      failureCode=error?.code||error?.message||'RELATIONSHIPS_PERSISTENCE_FAILED';
+      relationshipRef=null;revision=null;savedLocalRelationshipClass=null;
+    }
+    return snapshot();
+  }
+  return Object.freeze({snapshot,isSavedFor,save});
+}
+
 function initialInteraction(cdrRegistry) {
   return {
     method: 'CODE',
@@ -212,7 +322,7 @@ function initialInteraction(cdrRegistry) {
   };
 }
 
-export function createRelationshipsController({ state, registry, catalogs, cdrRegistry = loadedCdrRegistry, host = document.querySelector('#contextSurface') }) {
+export function createRelationshipsController({ state, registry, catalogs, cdrRegistry = loadedCdrRegistry, persistenceBridge = null, persistenceBinding = null, host = document.querySelector('#contextSurface') }) {
   validateRegistry(registry);
   validateCdrRegistry(cdrRegistry);
   if (!host) throw new Error('Relationships contextual host unavailable');
@@ -225,6 +335,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   let connectOpen = false;
   let vexExplanationOpen = false;
   let interaction = initialInteraction(cdrRegistry);
+  const persistence=createRelationshipsPersistenceStateMachine({persistenceBridge,persistenceBinding});
   let runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
   let runtimePlanRequestGeneration = 0;
 
@@ -263,7 +374,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
       revoked: interaction.recovery === 'REVOKED',
       disconnected: interaction.recovery === 'DISCONNECTED',
       blocked: interaction.recovery === 'BLOCKED',
-      localRelationshipFormed: interaction.localFormed
+      localRelationshipFormed: persistence.isSavedFor({localRelationshipClass:interaction.localClass})
     });
   }
 
@@ -513,19 +624,41 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     decision.select.value = interaction.decision;
     localClass.select.value = interaction.localClass;
     method.select.onchange = (event) => { interaction.method = event.currentTarget.value; clearRuntimePlan(); };
-    invitation.select.onchange = (event) => { interaction.invitation = event.currentTarget.value; interaction.localFormed = false; clearRuntimePlan(); render(); };
-    identity.select.onchange = (event) => { interaction.identity = event.currentTarget.value; interaction.localFormed = false; clearRuntimePlan(); render(); };
-    decision.select.onchange = (event) => { interaction.decision = event.currentTarget.value; interaction.localFormed = false; clearRuntimePlan(); render(); };
-    localClass.select.onchange = (event) => { interaction.localClass = event.currentTarget.value; interaction.localFormed = false; clearRuntimePlan(); render(); };
+    invitation.select.onchange = (event) => { interaction.invitation = event.currentTarget.value; clearRuntimePlan(); render(); };
+    identity.select.onchange = (event) => { interaction.identity = event.currentTarget.value; clearRuntimePlan(); render(); };
+    decision.select.onchange = (event) => { interaction.decision = event.currentTarget.value; clearRuntimePlan(); render(); };
+    localClass.select.onchange = (event) => { interaction.localClass = event.currentTarget.value; clearRuntimePlan(); render(); };
 
     const gate = admission(interaction);
+    const persistenceState = persistence.snapshot();
+    const savedForCurrentClass = persistence.isSavedFor({localRelationshipClass:interaction.localClass});
     const status = document.createElement('p');
     status.id = 'relationshipsConnectStatus';
     status.setAttribute('role', 'status');
-    status.textContent = interaction.localFormed ? rt('formed') : gate.admitted ? rt('ready') : rt('held');
-    const form = actionButton('relationshipsFormLocal', rt('form'));
-    form.disabled = !gate.admitted || interaction.recovery !== 'ACTIVE';
-    form.onclick = () => { interaction.localFormed = true; interaction.delivery = 'NOT_CONNECTED'; clearRuntimePlan(); render(); };
+    status.textContent = savedForCurrentClass
+      ? rt('persistenceSaved',{class:humanOptionLabel(interaction.localClass)})
+      : !gate.admitted
+        ? rt('held')
+        : persistenceState.state === 'HELD_BINDING_REQUIRED'
+          ? rt('persistenceBindingRequired')
+          : ['PREPARED','COMMITTING'].includes(persistenceState.state)
+            ? rt('persistencePrepared')
+            : persistenceState.state === 'HELD_PERSISTENCE_FAILURE'
+              ? rt('persistenceFailure')
+              : rt('ready');
+    const form = actionButton('relationshipsFormLocal', rt('persistenceSave'));
+    form.disabled = !gate.admitted || interaction.recovery !== 'ACTIVE' || ['HELD_BINDING_REQUIRED','PREPARED','COMMITTING'].includes(persistenceState.state);
+    form.onclick = async () => {
+      clearRuntimePlan();
+      const pendingPersistence=persistence.save({localRelationshipClass:interaction.localClass});
+      render();
+      const persistenceResult=await pendingPersistence;
+      interaction.delivery = 'NOT_CONNECTED';
+      clearRuntimePlan();
+      render();
+      if(persistenceResult.state!=='SAVED')return snapshot();
+      return snapshot();
+    };
 
     const alphaTitle = document.createElement('h3');
     alphaTitle.textContent = rt('alphaConsentTitle');
@@ -571,7 +704,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
             ? rt('runtimeFailure')
             : rt('runtimeBoundary');
     const prepare = actionButton('relationshipsPrepareRuntimePlan', rt('runtimePrepare'));
-    prepare.disabled = !interaction.localFormed || interaction.recovery !== 'ACTIVE' || runtimePlan.state === 'PREPARING';
+    prepare.disabled = !persistence.isSavedFor({localRelationshipClass:interaction.localClass}) || interaction.recovery !== 'ACTIVE' || runtimePlan.state === 'PREPARING';
     prepare.onclick = () => { void prepareRuntimePlan(); };
 
     const close = actionButton('relationshipsConnectClose', rt('closeConnect'));
@@ -612,7 +745,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     const deliveryHeading = document.createElement('h3'); deliveryHeading.textContent = rt('deliveryTitle');
     const deliveryBody = document.createElement('p'); deliveryBody.textContent = rt('deliveryBody');
     const delivery = document.createElement('p'); delivery.id = 'relationshipsDelivery'; delivery.textContent = `${rt('delivery')}: ${humanOptionLabel(interaction.delivery)}`;
-    const deliveryHeld = document.createElement('p'); deliveryHeld.textContent = canAdvance(interaction) ? rt('active') : rt('deliveryHeld');
+    const deliveryHeld = document.createElement('p'); deliveryHeld.textContent = canAdvance({...interaction,localFormed:persistence.isSavedFor({localRelationshipClass:interaction.localClass})}) ? rt('active') : rt('deliveryHeld');
     const vexHeading = document.createElement('h3'); vexHeading.textContent = rt('vexTitle');
     const vexBody = document.createElement('p'); vexBody.textContent = rt('vexBody');
     const vex = actionButton('relationshipsVexExplain', vexExplanationOpen ? rt('vexHide') : rt('vexShow'));
@@ -671,7 +804,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
       accessibleRelationshipCount:view.accessibleRows.length,
       virtualizationRequired:view.virtualizationRequired,
       connectOpen,
-      localFormed:interaction.localFormed,
+      localFormed:persistence.isSavedFor({localRelationshipClass:interaction.localClass}),
       admission:admission(interaction),
       delivery:interaction.delivery,
       recovery:interaction.recovery,

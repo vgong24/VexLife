@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 7535,
       "sha256": "7f4a3e6d3571f6084c48989964fe0fd40b5c91a21b9321b25be44436774f87d0"
+    },
+    {
+      "path": "test/relationships-cdr-observation-binding.test.mjs",
+      "mode": "100644",
+      "bytes": 10888,
+      "sha256": "338159b81372319985b11377828cefab54af37c175c51db69072ada8bb9d6309"
     }
   ]
 }

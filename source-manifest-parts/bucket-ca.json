@@ -15,6 +15,12 @@
       "sha256": "32de6af2cc522f8031fcdae43f92b609287a6b6aa6cc6e9d7b214c51d609902e"
     },
     {
+      "path": "reference/browser/modules/relationships-cdr-persistence-binding-client.js",
+      "mode": "100644",
+      "bytes": 5300,
+      "sha256": "bcec807efd92db562ff8f81be056f1ca604272400d0e755e21fe17766c357c81"
+    },
+    {
       "path": "test/architecture-meaning.test.mjs",
       "mode": "100644",
       "bytes": 12324,
