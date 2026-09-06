@@ -49,6 +49,24 @@ export function resolveInterruptAction(phase, { toolAbortable = false } = {}) {
   }
 }
 
+export function resolveInputAdmission(phase, { visibleDraftSupported = false } = {}) {
+  assertPhase(phase);
+  switch (phase) {
+    case 'IDLE':
+    case 'COMPOSING':
+    case 'PASTE_CAPTURE':
+      return 'ACCEPT_COMPOSITION';
+    case 'TURN_ADMITTED':
+    case 'MODEL_INFERENCE':
+    case 'TOOL_EXECUTION':
+    case 'INTERRUPT_REQUESTED':
+      return visibleDraftSupported ? 'VISIBLE_DRAFT_ONLY' : 'REJECT_WHILE_BUSY';
+    case 'SESSION_CLOSING':
+    case 'CLOSED':
+      return 'REJECT_SESSION_NOT_INTERACTIVE';
+  }
+}
+
 function levenshtein(left, right) {
   const a = Array.from(String(left));
   const b = Array.from(String(right));
