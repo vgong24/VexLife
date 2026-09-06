@@ -109,6 +109,19 @@ export function classifyLocalCommand(input, knownCommands, { suggestionDistance 
   return Object.freeze({ kind: 'UNKNOWN_COMMAND', command, suggestion });
 }
 
+export function projectContextEligibleEvents(events, { roles = ['user', 'assistant'], limit = null } = {}) {
+  if (!Array.isArray(events)) throw new Error('events must be an array');
+  const admittedRoles = new Set(roles);
+  const terminalTurnRefs = new Set(events
+    .filter((event) => ['TURN_INTERRUPTED', 'TURN_FAILED'].includes(event?.eventKind) && event?.turnRef)
+    .map((event) => event.turnRef));
+  const projected = events.filter((event) =>
+    admittedRoles.has(event?.role) && (!event?.turnRef || !terminalTurnRefs.has(event.turnRef))
+  );
+  const selected = Number.isInteger(limit) && limit >= 0 ? projected.slice(-limit) : projected;
+  return selected.map((event) => structuredClone(event));
+}
+
 function freezeSnapshot(value) {
   return Object.freeze(structuredClone(value));
 }
