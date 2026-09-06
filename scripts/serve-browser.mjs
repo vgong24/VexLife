@@ -18,6 +18,10 @@ import {
 } from '../src/core/capability-assimilation-runtime.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import {
+  createModelConnectionTurnComposer,
+  loadModelConnectionTurnSources
+} from '../src/core/model-connection-turn-composer.mjs';
+import {
   BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
   BrowserLivingJournalMemoryBridgeError,
@@ -100,28 +104,47 @@ export function loadBrowserRelationshipsRuntimeSources(sourceRoot = root) {
   });
 }
 
-const capabilityRuntimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
-  CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN;
-if (!Object.values(CAPABILITY_ASSIMILATION_MODES).includes(capabilityRuntimeMode)) {
-  throw new Error(`Unsupported VEXLIFE_CAPABILITY_RUNTIME_MODE: ${capabilityRuntimeMode}`);
+export function createServerOwnedBrowserCompanionBridge({
+  sourceRoot = root,
+  companionHome = home,
+  endpoint = process.env.VEXLIFE_COMPANION_ENDPOINT ?? null,
+  model = process.env.VEXLIFE_COMPANION_MODEL ?? null,
+  runtimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
+    CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN,
+  bridgeFactory = createBrowserCompanionBridge
+} = {}) {
+  if (!Object.values(CAPABILITY_ASSIMILATION_MODES).includes(runtimeMode)) {
+    throw new Error(`Unsupported VEXLIFE_CAPABILITY_RUNTIME_MODE: ${runtimeMode}`);
+  }
+  if (typeof bridgeFactory !== 'function') {
+    throw new TypeError('Browser Companion bridge factory must be one function');
+  }
+  const capabilityRuntimeBundle = runtimeMode === CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN
+    ? null
+    : loadBlueprint(sourceRoot);
+  const capabilityRuntime = capabilityRuntimeBundle
+    ? createCapabilityAssimilationRuntime({
+        capabilityRegistry: capabilityRuntimeBundle.capabilities,
+        processFactoryDefinition: capabilityRuntimeBundle.factory,
+        schedulerRegistry: capabilityRuntimeBundle.schedulerRegistry,
+        mode: runtimeMode
+      })
+    : null;
+  const modelConnectionComposer = capabilityRuntime
+    ? createModelConnectionTurnComposer({
+        sourceBundle: loadModelConnectionTurnSources(sourceRoot)
+      })
+    : null;
+  return bridgeFactory({
+    home: companionHome,
+    endpoint,
+    model,
+    capabilityRuntime,
+    modelConnectionComposer
+  });
 }
-const capabilityRuntimeBundle = capabilityRuntimeMode === CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN
-  ? null
-  : loadBlueprint(root);
-const capabilityRuntime = capabilityRuntimeBundle
-  ? createCapabilityAssimilationRuntime({
-      capabilityRegistry: capabilityRuntimeBundle.capabilities,
-      processFactoryDefinition: capabilityRuntimeBundle.factory,
-      schedulerRegistry: capabilityRuntimeBundle.schedulerRegistry,
-      mode: capabilityRuntimeMode
-    })
-  : null;
-const companion = createBrowserCompanionBridge({
-  home,
-  endpoint: process.env.VEXLIFE_COMPANION_ENDPOINT ?? null,
-  model: process.env.VEXLIFE_COMPANION_MODEL ?? null,
-  capabilityRuntime
-});
+
+const companion = createServerOwnedBrowserCompanionBridge();
 const relationshipsRuntime = createBrowserRelationshipsRuntimeBridge(loadBrowserRelationshipsRuntimeSources(root));
 const relationshipsCdrObservation = createBrowserRelationshipsCdrObservationBridge({
   observationPath: process.env.VEXLIFE_RELATIONSHIPS_CDR_OBSERVATION_PATH ?? null
