@@ -298,6 +298,7 @@ export function createBrowserCompanionBridge({
   endpoint = null,
   model = null,
   capabilityRuntime = null,
+  modelConnectionComposer = null,
   promptContextResolver = null,
   promptContextAuthorityVerifier = null,
   instanceRef = ref('instance.vexlife.browser-companion')
@@ -308,6 +309,9 @@ export function createBrowserCompanionBridge({
   const binding = resolveBrowserCompanionRuntimeBinding({ endpoint, model });
   if (capabilityRuntime !== null && typeof capabilityRuntime?.resolveTurn !== 'function') {
     throw new BrowserCompanionBridgeError('COMPANION_CAPABILITY_RUNTIME_INVALID', 'Capability runtime must expose one server-owned resolveTurn function', 500);
+  }
+  if (modelConnectionComposer !== null && typeof modelConnectionComposer?.composeTurn !== 'function') {
+    throw new BrowserCompanionBridgeError('COMPANION_MODEL_CONNECTION_COMPOSER_INVALID', 'Model connection composer must expose one server-owned composeTurn function', 500);
   }
   if (promptContextResolver !== null && typeof promptContextResolver !== 'function') {
     throw new BrowserCompanionBridgeError('COMPANION_PROMPT_CONTEXT_RESOLVER_INVALID', 'Prompt context resolver must be one server-owned function', 500);
@@ -503,6 +507,22 @@ export function createBrowserCompanionBridge({
         contextSourceRefs,
         timeoutMs: 120000
       });
+      const modelConnectionComposition = modelConnectionComposer && completed.modelTurnWitness
+        ? modelConnectionComposer.composeTurn({
+            modelTurnWitness: completed.modelTurnWitness,
+            capabilityRuntime: completed.runtimeProjection,
+            currentContext: {
+              homeRef: identity.homeRef,
+              deviceRef: identity.deviceRef,
+              companionLineageRef: identity.companionLineageRef,
+              projectRef: request.projectRef ?? null,
+              threadRef: request.threadRef,
+              channelRef: request.channelRef,
+              screenRef: request.screenRef ?? null,
+              selectedNodeRef: request.selectedNodeRef ?? null
+            }
+          })
+        : null;
       return Object.freeze({
         schemaVersion: 'vexlife.browser-companion-turn/v1',
         state: 'TURN_COMPLETED',
@@ -519,7 +539,9 @@ export function createBrowserCompanionBridge({
         loopbackOnly: completed.loopbackOnly === true,
         capabilityRuntime: completed.runtimeProjection ?? null,
         promptContextMaterialization: completed.promptContextMaterializationReceipt ?? null,
-        modelTurnWitness: completed.modelTurnWitness ?? null
+        modelTurnWitness: completed.modelTurnWitness ?? null,
+        modelConnectionProjection: modelConnectionComposition?.modelConnectionProjection ?? null,
+        selfCapabilityFrame: modelConnectionComposition?.selfCapabilityFrame ?? null
       });
     } catch (error) {
       throw publicFailureFor(error);

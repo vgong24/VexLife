@@ -426,4 +426,93 @@ test('browser context wrapper leaves differently-shaped Home School internal inf
 });
 
 
+test('browser bridge carries one server-owned same-turn model-connection projection and bounded self-frame', async () => {
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  let compositionInput = null;
+  try {
+    const capabilityRuntime = {
+      resolveTurn: async ({ inference, endpointProfile, taskIntent, inMemoryAuthorization, timeoutMs }) => {
+        const response = await inference({ endpointProfile, requestContent: taskIntent, inMemoryAuthorization, timeoutMs });
+        return {
+          response,
+          runtimeProjection: {
+            schemaVersion: 'vexlife.capability-assimilation-runtime/v1',
+            mode: 'ADOPTED_READ_ONLY',
+            inferenceCount: 1,
+            toolRequestCount: 0,
+            observationRefs: [],
+            schedulerDispatchReceipts: [],
+            capabilityFrameInput: {
+              roleRef: 'role.vex.companion',
+              platformRef: 'platform.browser',
+              projectCapabilityStages: {},
+              permissionStages: {},
+              effectStages: {},
+              resourceStages: {}
+            },
+            hiddenReasoningIncluded: false,
+            externalEffectsExecuted: false
+          }
+        };
+      }
+    };
+    const modelConnectionComposer = {
+      composeTurn(input) {
+        compositionInput = input;
+        const modelConnectionProjection = {
+          schemaVersion: 'vexlife.model-connection-projection/v1',
+          truthClass: 'SOURCE_BOUND_MODEL_CONNECTION',
+          projectionRef: 'projection.vexlife.model-connection.browser-carry',
+          projectionSha256: 'a'.repeat(64),
+          modelTurnWitnessRef: input.modelTurnWitness.witnessRef,
+          currentnessRefs: [],
+          sourceRefs: [],
+          effectAuthorityGranted: false
+        };
+        const selfCapabilityFrame = {
+          schemaVersion: 'vexlife.vex-self-capability-frame/v1',
+          truthClass: 'BOUNDED_SOURCE_BOUND_SELF_CAPABILITY_FRAME',
+          selfCapabilityFrameRef: 'frame.vex-self-capability.browser-carry',
+          semanticFingerprint: 'b'.repeat(64),
+          modelConnectionProjectionRef: modelConnectionProjection.projectionRef,
+          availableCapabilityRefs: [],
+          heldCapabilityEntries: [],
+          unavailableCapabilityRefs: [],
+          unknownCapabilityRefs: [],
+          actuallyUsedRefs: [],
+          effectAuthorityGranted: false
+        };
+        return { modelConnectionProjection, selfCapabilityFrame };
+      }
+    };
+    const bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-model-connection-carry',
+      capabilityRuntime,
+      modelConnectionComposer
+    });
+    const result = await bridge.performTurn({
+      projectRef: 'project.local-vex',
+      threadRef: 'thread.local-vex.model-connection-carry',
+      channelRef: 'channel.local-vex.companion',
+      content: 'Carry the current projection.',
+      screenRef: 'screen.vexlife.chat',
+      selectedNodeRef: 'element.channel.companion'
+    });
+    assert.equal(compositionInput.modelTurnWitness.witnessRef, result.modelTurnWitness.witnessRef);
+    assert.equal(compositionInput.capabilityRuntime.mode, 'ADOPTED_READ_ONLY');
+    assert.equal(compositionInput.currentContext.projectRef, 'project.local-vex');
+    assert.equal(compositionInput.currentContext.screenRef, 'screen.vexlife.chat');
+    assert.equal(result.modelConnectionProjection.modelTurnWitnessRef, result.modelTurnWitness.witnessRef);
+    assert.equal(result.selfCapabilityFrame.modelConnectionProjectionRef, result.modelConnectionProjection.projectionRef);
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+
 // [VXG RealForever]

@@ -61,3 +61,77 @@ test('chat controller attaches bounded formation projection to the exact returne
   assert.match(source,/capabilityRuntime:\s*body\.capabilityRuntime/u);
   assert.match(source,/promptContextMaterialization:\s*body\.promptContextMaterialization/u);
 });
+
+
+test('browser machine projection prefers valid R3 capability truth and carries only R2 safe runtime metadata', () => {
+  const richWitness = structuredClone(witness);
+  richWitness.capabilityDisposition = { availableRefs: [], heldRefs: [], unavailableRefs: [], unknownRefs: [] };
+  richWitness.runtimeObservation = {
+    ...richWitness.runtimeObservation,
+    endpointProfileRef: 'model-profile.vexlife.browser-companion.local',
+    observationRef: 'observation.vexlife.model-runtime.safe-browser',
+    observationSha256: H,
+    responseBodySha256: H,
+    observedAt: '2026-09-06T01:00:00.000Z',
+    output: {
+      contentSha256: H,
+      contentCharacters: 12,
+      assistantRoleObserved: true,
+      finishReasonOrNull: 'stop',
+      refusalObserved: false,
+      toolCallsPresent: false,
+      toolCallCount: 0
+    },
+    modelProvenance: {
+      compatibilityModel: 'Qwen3.5-4B-Q4_K_M',
+      reportedModelField: {
+        valueType: 'string',
+        byteLength: 48,
+        valueSha256: H,
+        pathClass: 'LOCAL_PATH_LIKE',
+        rawValuePersisted: false
+      }
+    },
+    usageSummary: { present: true, values: { prompt_tokens: 3, completion_tokens: 4, total_tokens: 7 } },
+    runtimeTimingSummary: { present: true, values: { prompt_ms: 2, predicted_ms: 3 } },
+    structuredOutputState: { requested: false, observedJsonValue: false },
+    unknownUpstreamFields: [{
+      jsonPointer: '/future_field',
+      valueType: 'object',
+      byteLength: 15,
+      valueSha256: H,
+      rawValuePersisted: false,
+      disposition: 'UNCLASSIFIED_RUNTIME_FIELD'
+    }]
+  };
+  const modelConnectionProjection = {
+    schemaVersion: 'vexlife.model-connection-projection/v1',
+    truthClass: 'SOURCE_BOUND_MODEL_CONNECTION',
+    projectionRef: 'projection.vexlife.model-connection.browser-safe',
+    projectionSha256: H,
+    modelTurnWitnessRef: richWitness.witnessRef,
+    currentnessRefs: ['current.browser'],
+    sourceRefs: ['registry.vexlife.model-connections.001'],
+    capabilityEntries: [
+      { capabilityRef: 'capability.search', disposition: 'AVAILABLE' },
+      { capabilityRef: 'capability.native-held', disposition: 'HELD' }
+    ],
+    effectAuthorityGranted: false
+  };
+  const result = projectBrowserModelTurnFormation({
+    modelTurnWitness: richWitness,
+    modelConnectionProjection
+  });
+  assert.equal(result.capabilityDispositionSource, 'MODEL_CONNECTION_PROJECTION');
+  assert.deepEqual(result.capabilityDisposition.availableRefs, ['capability.search']);
+  assert.deepEqual(result.capabilityDisposition.heldRefs, ['capability.native-held']);
+  assert.equal(result.runtimeObservation.output.contentCharacters, 12);
+  assert.equal(result.runtimeObservation.usageSummary.values.total_tokens, 7);
+  assert.equal(result.runtimeObservation.runtimeTimingSummary.values.predicted_ms, 3);
+  assert.equal(result.runtimeObservation.unknownUpstreamFields[0].jsonPointer, '/future_field');
+  assert.equal(result.runtimeObservation.unknownUpstreamFields[0].rawValueIncluded, false);
+  assert.equal(Object.hasOwn(result.runtimeObservation.unknownUpstreamFields[0], 'rawValue'), false);
+  assert.equal(result.runtimeObservation.modelProvenance.reportedModelField.rawValueIncluded, false);
+  assert.equal(result.privacy.rawReasoningIncluded, false);
+  assert.equal(result.effectAuthorityGranted, false);
+});

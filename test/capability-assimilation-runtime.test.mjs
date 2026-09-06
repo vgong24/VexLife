@@ -164,6 +164,11 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
     item.duplicateReinjectReason === 'OBSERVATION_ALREADY_REINJECTED'));
   assert.ok(result.runtimeProjection.progress.every((item) => item.hiddenReasoningIncluded === false));
   assert.equal(result.runtimeProjection.externalEffectsExecuted, false);
+  assert.equal(result.runtimeProjection.capabilityFrameInput.roleRef, 'role.vex.companion');
+  assert.equal(result.runtimeProjection.capabilityFrameInput.platformRef, 'platform.browser');
+  assert.deepEqual(result.runtimeProjection.capabilityFrameInput.projectCapabilityStages,
+    Object.fromEntries(ROOT_CAPABILITY_KERNEL.map((ref) => [ref, 'COMPLETED'])));
+  assert.equal(result.runtimeProjection.capabilityFrameInput.effectStages.READ_ONLY, 'COMPLETED');
   assert.equal(sequence.filter((item) => item.startsWith('start:')).length, 2);
 });
 
@@ -328,6 +333,7 @@ test('canonical E2 untaught-G0 policy is tool-free and performs one direct infer
   assert.equal(result.runtimeProjection.toolRequestCount, 0);
   assert.equal(result.runtimeProjection.modelSequenceReceipts.length, 1);
   assert.equal(result.runtimeProjection.mode, CAPABILITY_ASSIMILATION_MODES.CANONICAL_E2_UNTAUGHT_G0);
+  assert.equal(Object.hasOwn(result.runtimeProjection, 'capabilityFrameInput'), false);
 });
 
 test('Lived Companion response resolver persists only the human request and final synthesis', async () => {
