@@ -9,6 +9,12 @@
       "sha256": "5e76ef69e75962e5c66c28701af0d92e95c9fac133780b5df6b1a36edea4db1a"
     },
     {
+      "path": "docs/FRIEND-RELATIONSHIP-PERSISTENCE-ADOPTION.md",
+      "mode": "100644",
+      "bytes": 2845,
+      "sha256": "3a338ea5239a89cea3b3e8a434507c265122ab3024042ee68c6cb3a7ee94cd8e"
+    },
+    {
       "path": "reference/browser/public-learning/app.css",
       "mode": "100644",
       "bytes": 6950,

@@ -42,7 +42,7 @@
   "form": "预览关系",
   "closeConnect": "关闭连接预览",
   "held": "还没准备好。请检查邀请、身份验证和你的决定。",
-  "ready": "可以预览这段关系。",
+  "ready": "可以进行本地关系决定。只有在明确的持久化绑定返回持久提交回执，并且当前读取结果与之匹配后，才会显示“已保存”。",
   "formed": "本地关系预览已准备好。尚未发送或保存任何内容。",
   "alphaConsentTitle": "Alpha 参与同意",
   "alphaConsentBody": "参加 Alpha 与接受此邀请或选择你的关系标签是彼此独立的决定。",
@@ -128,5 +128,10 @@
   "option.failure.relay": "中继不可用",
   "option.failure.mailbox": "仅可使用邮箱",
   "option.failure.session": "会话已过期",
-  "option.failure.unknown": "连接问题尚不明确"
+  "option.failure.unknown": "连接问题尚不明确",
+  "persistenceSave": "在本地保存关系",
+  "persistenceSaved": "已在持久提交回执与当前读取结果一致后，以 {class} 保存到本地。这仍然只是你这一侧的单向关系。",
+  "persistenceBindingRequired": "在明确绑定本地所有者、对方身份与邀请身份之前，保存保持暂停。",
+  "persistencePrepared": "已在本地准备 — 还没有保存。",
+  "persistenceFailure": "未保存 — 未能验证持久提交回执与当前读取结果一致。"
 }

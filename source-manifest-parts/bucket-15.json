@@ -5,8 +5,8 @@
     {
       "path": "blueprint/relationships-browser-registry.json",
       "mode": "100644",
-      "bytes": 4629,
-      "sha256": "8ec3d1ff72ad76deab3366d0ac30011f93aef859b0dbda9b41cb383639d0fce9"
+      "bytes": 5441,
+      "sha256": "86362997a7b2ef0be60c1c0047e6f86b2dfc8c2e21241fd9c0efe7903ed1e97c"
     },
     {
       "path": "test/native-worker-supervisor-a06.test.mjs",

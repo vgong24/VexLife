@@ -7,6 +7,7 @@ import { semanticHash } from '../src/core/utils.mjs';
 import {
   createRelationship,
   exportRelationship,
+  listRelationships,
   readRelationship,
   recoverAbandonedRelationshipWriter,
   relationshipRefFor,
@@ -432,3 +433,59 @@ test('FRS-CLEAN-05 test-created temporary Home roots are disposed by the test ha
   disposeTestOwnedTempDirs();
   assert.equal(fs.existsSync(root), false);
 });
+
+test('FFR03-LIST-00 bounded list projects verified rightful-owner canonical relationships only', () => {
+  const root = home();
+  createRelationship(createInput(root));
+  createRelationship(createInput(root, {
+    counterpartParticipantRef: 'participant.peer.gamma',
+    counterpartCurrentKeyRef: 'key.peer.gamma.current',
+    invitationRef: 'invitation.friend.alpha-gamma.001',
+    invitationCurrentnessRef: 'currentness.invitation.alpha-gamma.001',
+    lastAcceptedPeerCurrentnessRef: 'currentness.peer.gamma.001',
+    observedAt: LATER,
+    instanceRef: 'instance.relationships.list.gamma'
+  }));
+  const listed = listRelationships({
+    home: root,
+    localParticipantRef: 'participant.local.alpha',
+    localStateRootRef: 'state-root.local.alpha',
+    maxRelationships: 1
+  });
+  assert.equal(listed.state, 'CURRENT_LIST');
+  assert.equal(listed.totalCount, 2);
+  assert.equal(listed.returnedCount, 1);
+  assert.equal(listed.truncated, true);
+  assert.equal(Object.hasOwn(listed.relationships[0], 'home'), false);
+  assert.equal(Object.hasOwn(listed.relationships[0], 'recordSha256'), false);
+});
+
+test('FFR03-LIST-01 wrong local state-root is isolated and tombstones are hidden unless explicitly requested', () => {
+  const root = home();
+  createRelationship(createInput(root));
+  transitionRelationship(transitionInput(root, { action: 'TOMBSTONE' }));
+  const activeOnly = listRelationships({
+    home: root,
+    localParticipantRef: 'participant.local.alpha',
+    localStateRootRef: 'state-root.local.alpha',
+    maxRelationships: 8
+  });
+  assert.equal(activeOnly.totalCount, 0);
+  const withTombstones = listRelationships({
+    home: root,
+    localParticipantRef: 'participant.local.alpha',
+    localStateRootRef: 'state-root.local.alpha',
+    maxRelationships: 8,
+    includeTombstoned: true
+  });
+  assert.equal(withTombstones.totalCount, 1);
+  assert.equal(withTombstones.relationships[0].tombstoned, true);
+  const wrongOwner = listRelationships({
+    home: root,
+    localParticipantRef: 'participant.local.alpha',
+    localStateRootRef: 'state-root.local.other',
+    maxRelationships: 8
+  });
+  assert.equal(wrongOwner.totalCount, 0);
+});
+

@@ -26,6 +26,16 @@ import {
   createBrowserLivingJournalMemoryBridge
 } from '../src/core/browser-living-journal-memory-bridge.mjs';
 import {
+  BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_API_PATH,
+  BrowserRelationshipsCdrObservationBridgeError,
+  browserRelationshipsCdrObservationFailurePayload,
+  createBrowserRelationshipsCdrObservationBridge
+} from '../src/core/browser-relationships-cdr-observation-bridge.mjs';
+import {
+  BrowserRelationshipsPersistenceError,
+  createBrowserRelationshipsPersistenceBridge
+} from '../src/core/browser-relationships-persistence-bridge.mjs';
+import {
   BROWSER_RELATIONSHIPS_RUNTIME_API_PATH,
   BROWSER_RELATIONSHIPS_RUNTIME_MAX_BODY_BYTES,
   BrowserRelationshipsRuntimeBridgeError,
@@ -37,6 +47,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+export const BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH = '/api/v1/relationships/persistence';
+export const BROWSER_RELATIONSHIPS_PERSISTENCE_MAX_BODY_BYTES = 16 * 1024;
+const RELATIONSHIPS_PERSISTENCE_REQUEST_KEYS = new Set(['localOwnerBinding', 'input']);
 
 function readRelationshipsRuntimeSourceJson(sourceRoot, relativePath, label) {
   const file = path.resolve(sourceRoot, relativePath);
@@ -110,6 +123,9 @@ const companion = createBrowserCompanionBridge({
   capabilityRuntime
 });
 const relationshipsRuntime = createBrowserRelationshipsRuntimeBridge(loadBrowserRelationshipsRuntimeSources(root));
+const relationshipsCdrObservation = createBrowserRelationshipsCdrObservationBridge({
+  observationPath: process.env.VEXLIFE_RELATIONSHIPS_CDR_OBSERVATION_PATH ?? null
+});
 
 function sendJson(response, statusCode, value) {
   const body = `${JSON.stringify(value)}\n`;
@@ -133,6 +149,11 @@ function livingJournalArchiveRequestError(message, httpStatus) {
 }
 function relationshipsRuntimeRequestError(message, httpStatus) {
   return new BrowserRelationshipsRuntimeBridgeError('RELATIONSHIPS_RUNTIME_REQUEST_NOT_ADMITTED', message, httpStatus, null);
+}
+function relationshipsPersistenceRequestError(message, httpStatus) {
+  const error = new BrowserRelationshipsPersistenceError('RELATIONSHIPS_PERSISTENCE_REQUEST_NOT_ADMITTED', message);
+  error.httpStatus = httpStatus;
+  return error;
 }
 
 async function readBoundedJson(request, { maxBytes = 64 * 1024, formError = companionRequestError, requestLabel = 'Companion request' } = {}) {
@@ -167,10 +188,58 @@ function memoryHomeFailure(error) {
   );
 }
 
+function admitRelationshipsPersistenceRequest(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw relationshipsPersistenceRequestError('Relationships persistence request must be one object', 400);
+  }
+  const keys = Object.keys(value);
+  if (keys.length !== RELATIONSHIPS_PERSISTENCE_REQUEST_KEYS.size || keys.some((key) => !RELATIONSHIPS_PERSISTENCE_REQUEST_KEYS.has(key))) {
+    throw relationshipsPersistenceRequestError('Relationships persistence request must contain only localOwnerBinding and input', 400);
+  }
+  if (!value.localOwnerBinding || typeof value.localOwnerBinding !== 'object' || Array.isArray(value.localOwnerBinding)) {
+    throw relationshipsPersistenceRequestError('Relationships persistence request requires one explicit local owner binding', 400);
+  }
+  if (!value.input || typeof value.input !== 'object' || Array.isArray(value.input)) {
+    throw relationshipsPersistenceRequestError('Relationships persistence request requires one save input object', 400);
+  }
+  return value;
+}
+
+function relationshipsPersistenceHttpStatus(error) {
+  if (Number.isInteger(error?.httpStatus)) return error.httpStatus;
+  if (!(error instanceof BrowserRelationshipsPersistenceError)) return 500;
+  if (['RELATIONSHIPS_PERSISTENCE_INPUT_INVALID', 'RELATIONSHIPS_PERSISTENCE_IDENTITY_INVALID', 'RELATIONSHIPS_PERSISTENCE_PREPARED_INVALID'].includes(error.code)) return 400;
+  if (['RELATIONSHIPS_IDENTITY_BINDING_REQUIRED', 'RELATIONSHIPS_PERSISTENCE_HOME_REQUIRED'].includes(error.code)) return 409;
+  return 500;
+}
+
+function relationshipsPersistenceFailurePayload(error) {
+  if (error instanceof BrowserRelationshipsPersistenceError) {
+    return Object.freeze({
+      schemaVersion: 'vexlife.browser-relationships-persistence-http-failure/v1',
+      state: 'HELD_PERSISTENCE_FAILURE',
+      failureCode: error.code,
+      message: error.message
+    });
+  }
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-relationships-persistence-http-failure/v1',
+    state: 'HELD_PERSISTENCE_FAILURE',
+    failureCode: 'RELATIONSHIPS_PERSISTENCE_SAVE_FAILED',
+    message: 'Relationships persistence save failed safely'
+  });
+}
+
 export function createVexLifeBrowserServer({
   staticRoot = root,
   companionBridge = companion,
   relationshipsRuntimeBridge = relationshipsRuntime,
+  relationshipsCdrObservationBridge = relationshipsCdrObservation,
+  relationshipsPersistenceHome = home,
+  relationshipsPersistenceBridgeFactory = (localOwnerBinding) => createBrowserRelationshipsPersistenceBridge({
+    home: relationshipsPersistenceHome,
+    localOwnerBinding
+  }),
   resolveHomeIdentity = () => loadBrowserCompanionHomeIdentity(home),
   createLivingJournalMemoryBridge = (identity) => createBrowserLivingJournalMemoryBridge({ identity })
 } = {}) {
@@ -197,6 +266,50 @@ export function createVexLifeBrowserServer({
         const input = await readBoundedJson(request);
         const result = await companionBridge.performTurn(input);
         sendJson(response, 200, result);
+        return;
+      }
+
+      if (url.pathname === BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_API_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const result = relationshipsCdrObservationBridge.read();
+          sendJson(response, 200, result);
+        } catch (error) {
+          const typed = error instanceof BrowserRelationshipsCdrObservationBridgeError
+            ? error
+            : new BrowserRelationshipsCdrObservationBridgeError(
+              'RELATIONSHIPS_CDR_OBSERVATION_BINDING_FAILED',
+              'Relationships CDR persistence binding failed safely',
+              500
+            );
+          sendJson(response, typed.httpStatus, browserRelationshipsCdrObservationFailurePayload(typed));
+        }
+        return;
+      }
+
+      if (url.pathname === BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH) {
+        if (request.method !== 'POST') {
+          response.writeHead(405, { Allow: 'POST', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const requestValue = admitRelationshipsPersistenceRequest(await readBoundedJson(request, {
+            maxBytes: BROWSER_RELATIONSHIPS_PERSISTENCE_MAX_BODY_BYTES,
+            formError: relationshipsPersistenceRequestError,
+            requestLabel: 'Relationships persistence request'
+          }));
+          const persistenceBridge = relationshipsPersistenceBridgeFactory(requestValue.localOwnerBinding);
+          const prepared = persistenceBridge.prepare(requestValue.input);
+          const result = persistenceBridge.commit(prepared);
+          sendJson(response, 200, result);
+        } catch (error) {
+          sendJson(response, relationshipsPersistenceHttpStatus(error), relationshipsPersistenceFailurePayload(error));
+        }
         return;
       }
 
