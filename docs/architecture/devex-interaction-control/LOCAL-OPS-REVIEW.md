@@ -35,9 +35,13 @@ Rejected. Existing runtime-recovery and lifecycle sources already own recovery, 
 
 Rejected. Current context leases already carry `cancellationTokenRef`. The controller accepts/binds that ref; it does not define a second cancellation authority.
 
-## Deterministic cases
+### A6 — “Busy input can be safely queued even when it is invisible”
 
-The current unit suite checks:
+Rejected. The lived v0.5.4 terminal admitted hidden characters while Devex was active. The controller now exposes `resolveInputAdmission(...)` so a terminal can reject busy input and a richer UI may preserve only a visibly rendered draft.
+
+## Deterministic and integrated cases
+
+The current suite checks:
 
 ```text
 IC-00 phase/action map
@@ -53,7 +57,13 @@ IC-09 composition Ctrl+C clears input only
 IC-10 graceful close != turn stop
 IC-11 cancellationTokenRef continuity
 IC-12 session close rejected during active turn
+IC-13 busy input rejects invisible composition / allows future visible-draft adapter
+IC-14 integrated /quiy route wakes model zero times
+IC-15 integrated Stop aborts one inference and permits a clean next turn
+IC-16 integrated non-abortable effect completes once and launches zero successor rounds
 ```
+
+A first version of the integrated `/quiy` test failed because the test harness spread the classifier result after its local route marker and accidentally overwrote the marker. That was a reviewer-harness defect, not a production-controller failure. The harness was corrected and the complete 16-test suite then passed. The incident is preserved because the review itself should be falsifiable rather than ceremonial.
 
 ## Held gaps
 
@@ -68,10 +78,12 @@ IC-12 session close rejected during active turn
 ```text
 semanticController=PASS_FOR_DRAFT_SOURCE_PLACEMENT
 unknownCommandBoundary=PASS
+busyInputAdmission=PASS_AT_SEMANTIC_CONTROLLER_LEVEL
 modelAbortContract=PASS_AT_SYNTHETIC_SIGNAL_LEVEL
 toolStopAfterBoundary=PASS
 rollbackSeparation=PASS
 sharedOllamaPreservation=PASS_BY_SCOPE_NOT_REAL_HOST_PROOF
+localDeterministicAndIntegratedTests=16/16_PASS_AFTER_REVIEW_HARNESS_CORRECTION
 realMacAdapterQualification=HELD
 B1Resume=HELD_UNTIL_RUNTIME_ADAPTER_QUALIFIED
 ```
