@@ -3,10 +3,22 @@ import test from 'node:test';
 import {
   classifyLocalCommand,
   createInteractionController,
+  resolveInputAdmission,
   resolveInterruptAction
 } from '../src/core/interaction-control.mjs';
 
 const KNOWN = ['/help', '/quit', '/exit', '/input-status', '/school', '/sync'];
+
+function abortError(signal) {
+  return signal?.reason instanceof Error ? signal.reason : new Error('aborted');
+}
+
+function waitForAbort(signal) {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(abortError(signal));
+    signal.addEventListener('abort', () => reject(abortError(signal)), { once: true });
+  });
+}
 
 test('interrupt mapping distinguishes composition, inference, tool boundary, closing, and closed', () => {
   assert.equal(resolveInterruptAction('COMPOSING'), 'CLEAR_PENDING_INPUT');
@@ -118,4 +130,73 @@ test('cannot close a session while a turn is active', () => {
   const controller = createInteractionController();
   controller.admitTurn({ turnRef: 'turn.open', cancellationTokenRef: 'cancel.open' });
   assert.throws(() => controller.beginSessionClosing(), /cannot close session/);
+});
+
+test('busy input admission forbids invisible composition while preserving future visible-draft adapters', () => {
+  assert.equal(resolveInputAdmission('IDLE'), 'ACCEPT_COMPOSITION');
+  assert.equal(resolveInputAdmission('MODEL_INFERENCE'), 'REJECT_WHILE_BUSY');
+  assert.equal(resolveInputAdmission('TOOL_EXECUTION'), 'REJECT_WHILE_BUSY');
+  assert.equal(resolveInputAdmission('MODEL_INFERENCE', { visibleDraftSupported: true }), 'VISIBLE_DRAFT_ONLY');
+  assert.equal(resolveInputAdmission('SESSION_CLOSING'), 'REJECT_SESSION_NOT_INTERACTIVE');
+  assert.equal(resolveInputAdmission('CLOSED'), 'REJECT_SESSION_NOT_INTERACTIVE');
+});
+
+test('integrated typo route never wakes model', async () => {
+  let modelCalls = 0;
+  async function dispatch(text) {
+    const local = classifyLocalCommand(text, KNOWN);
+    if (local.kind === 'UNKNOWN_COMMAND') return { ...local, route: 'LOCAL_REJECT' };
+    if (local.kind === 'KNOWN_COMMAND') return { ...local, route: 'LOCAL_COMMAND' };
+    modelCalls += 1;
+    return { kind: 'MODEL' };
+  }
+  const result = await dispatch('/quiy');
+  assert.equal(result.route, 'LOCAL_REJECT');
+  assert.equal(result.kind, 'UNKNOWN_COMMAND');
+  assert.equal(result.suggestion, '/quit');
+  assert.equal(modelCalls, 0);
+});
+
+test('integrated Stop aborts inference, rejects ghost input, then permits next turn', async () => {
+  const controller = createInteractionController();
+  const first = controller.admitTurn({ turnRef: 'turn.first', cancellationTokenRef: 'cancel.first' });
+  controller.beginInference();
+  assert.equal(resolveInputAdmission(controller.snapshot().phase), 'REJECT_WHILE_BUSY');
+
+  const inference = waitForAbort(first.signal);
+  controller.requestInterrupt({ reason: 'VICTOR_STOP' });
+  await assert.rejects(inference, /VICTOR_STOP/);
+  assert.equal(controller.completeTurn().interrupted, true);
+  assert.equal(resolveInputAdmission(controller.snapshot().phase), 'ACCEPT_COMPOSITION');
+
+  const second = controller.admitTurn({ turnRef: 'turn.second', cancellationTokenRef: 'cancel.second' });
+  controller.beginInference();
+  assert.equal(second.signal.aborted, false);
+  controller.completeTurn({ interrupted: false });
+  assert.equal(controller.snapshot().phase, 'IDLE');
+});
+
+test('integrated non-abortable tool settles exactly once and no successor model round runs', async () => {
+  const controller = createInteractionController();
+  controller.admitTurn({ turnRef: 'turn.tool', cancellationTokenRef: 'cancel.tool' });
+  controller.beginInference();
+  controller.beginTool({ toolRef: 'tool.effect', abortable: false, effectClass: 'EXTERNAL_EFFECT' });
+
+  let toolCompletions = 0;
+  let successorModelRounds = 0;
+  const tool = (async () => {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    toolCompletions += 1;
+    return { effectReceiptRef: 'effect.receipt.1' };
+  })();
+
+  assert.equal(controller.requestInterrupt({ reason: 'VICTOR_STOP' }).action, 'STOP_AFTER_ACTIVE_TOOL');
+  const result = await tool;
+  assert.equal(result.effectReceiptRef, 'effect.receipt.1');
+  const completion = controller.completeTool({ completed: true });
+  if (completion.shouldContinue) successorModelRounds += 1;
+
+  assert.equal(toolCompletions, 1);
+  assert.equal(successorModelRounds, 0);
+  assert.equal(controller.completeTurn().interrupted, true);
 });
