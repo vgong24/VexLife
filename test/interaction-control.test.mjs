@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   classifyLocalCommand,
   createInteractionController,
+  projectContextEligibleEvents,
   resolveInputAdmission,
   resolveInterruptAction
 } from '../src/core/interaction-control.mjs';
@@ -199,4 +200,28 @@ test('integrated non-abortable tool settles exactly once and no successor model 
   assert.equal(toolCompletions, 1);
   assert.equal(successorModelRounds, 0);
   assert.equal(controller.completeTurn().interrupted, true);
+});
+
+test('interrupted and failed turns remain ledger evidence but are excluded from active context projection', () => {
+  const events = [
+    {role:'user',content:'cancelled ask',turnRef:'turn.1',eventKind:'TURN_SUBMITTED'},
+    {role:'system',content:'interrupted',turnRef:'turn.1',eventKind:'TURN_INTERRUPTED'},
+    {role:'user',content:'good ask',turnRef:'turn.2',eventKind:'TURN_SUBMITTED'},
+    {role:'assistant',content:'good answer',turnRef:'turn.2',eventKind:'TURN_COMPLETED'},
+    {role:'user',content:'failed ask',turnRef:'turn.3',eventKind:'TURN_SUBMITTED'},
+    {role:'system',content:'failed',turnRef:'turn.3',eventKind:'TURN_FAILED'}
+  ];
+  assert.deepEqual(projectContextEligibleEvents(events).map(event=>event.content),['good ask','good answer']);
+  assert.equal(events.length,6);
+});
+
+test('current unclosed user turn remains eligible and bounded limit applies after interruption filtering', () => {
+  const events = [
+    {role:'user',content:'old cancelled',turnRef:'turn.old',eventKind:'TURN_SUBMITTED'},
+    {role:'system',content:'stop',turnRef:'turn.old',eventKind:'TURN_INTERRUPTED'},
+    {role:'user',content:'prior complete',turnRef:'turn.done',eventKind:'TURN_SUBMITTED'},
+    {role:'assistant',content:'prior answer',turnRef:'turn.done',eventKind:'TURN_COMPLETED'},
+    {role:'user',content:'current ask',turnRef:'turn.current',eventKind:'TURN_SUBMITTED'}
+  ];
+  assert.deepEqual(projectContextEligibleEvents(events,{limit:2}).map(event=>event.content),['prior answer','current ask']);
 });
