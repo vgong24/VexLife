@@ -61,7 +61,9 @@
       "registry.vexlife.model-connections.001"
     ],
     "writes": [],
-    "loadedBy": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
     "tests": [
       "test/model-connection-turn-composer.test.mjs"
     ],
