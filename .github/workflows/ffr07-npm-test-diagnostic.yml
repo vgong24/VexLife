@@ -11,22 +11,14 @@ permissions:
 jobs:
   diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      VEXLIFE_PR_NUMBER: ''
-      VEXLIFE_WORK_REF: ''
-      VEXLIFE_BRANCH: main
-      VEXLIFE_CURRENT_WORK_EVENT_NAME: push
-      VEXLIFE_CANDIDATE_HEAD_SHA: 2efecd7523befd67e3571ab31005480c8ba0a95d
-      VEXLIFE_TESTED_MERGE_SHA: ''
-      VEXLIFE_BASE_SHA: f93e86e17ad6e00f13362c3e77ecf0c09ec39d32
+    timeout-minutes: 25
     steps:
       - name: Check out diagnostic branch
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
 
-      - name: Pin exact post-merge main checkout
+      - name: Pin exact accepted-main checkout
         run: |
           git checkout --detach 2efecd7523befd67e3571ab31005480c8ba0a95d
           test "$(git rev-parse HEAD)" = "2efecd7523befd67e3571ab31005480c8ba0a95d"
@@ -49,28 +41,38 @@ jobs:
           npm run orient
           npm run build-admission:check
 
-      - name: Retain exact PR-ready output without hiding result
-        id: prready
+      - name: Capture bounded npm-test reproduction evidence
         shell: bash
         run: |
-          EVIDENCE="$RUNNER_TEMP/ffr07-diagnostics"
+          EVIDENCE="$RUNNER_TEMP/ffr07-npm-test-reproduction"
           rm -rf "$EVIDENCE"
           mkdir -p "$EVIDENCE"
-          set +e
-          npm run pr-ready > "$EVIDENCE/pr-ready.log" 2>&1
-          code=$?
-          set -e
-          printf '%s\n' "$code" > "$EVIDENCE/pr-ready-exit-code.txt"
-          cp generated/health/pr-ready.json "$EVIDENCE/pr-ready.json" || true
-          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
-          exit 0
+          printf '%s\n' '2efecd7523befd67e3571ab31005480c8ba0a95d' > "$EVIDENCE/tested-main-sha.txt"
+          printf '%s\n' "$(node --version)" > "$EVIDENCE/node-version.txt"
+          captured=0
+          attempts=0
+          for attempt in 1 2 3 4 5; do
+            attempts=$attempt
+            set +e
+            npm test > "$EVIDENCE/npm-test-attempt-$attempt.log" 2>&1
+            code=$?
+            set -e
+            printf '%s\n' "$code" > "$EVIDENCE/npm-test-attempt-$attempt.exit-code.txt"
+            if [ "$code" -ne 0 ]; then
+              captured=1
+              break
+            fi
+          done
+          printf '%s\n' "$attempts" > "$EVIDENCE/attempt-count.txt"
+          printf '%s\n' "$captured" > "$EVIDENCE/failure-captured.txt"
+          git status --porcelain=v1 --untracked-files=all > "$EVIDENCE/git-status-after-tests.txt"
 
-      - name: Upload retained diagnostic evidence
+      - name: Upload retained reproduction evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ffr07-postmerge-main-diagnostic
-          path: ${{ runner.temp }}/ffr07-diagnostics/
+          name: ffr07-postmerge-npm-test-reproduction
+          path: ${{ runner.temp }}/ffr07-npm-test-reproduction/
           if-no-files-found: error
           retention-days: 7
 
@@ -78,7 +80,8 @@ jobs:
         if: always()
         shell: bash
         run: |
-          EVIDENCE="$RUNNER_TEMP/ffr07-diagnostics"
-          test -f "$EVIDENCE/pr-ready-exit-code.txt"
-          test -f "$EVIDENCE/pr-ready.log"
-          test -f "$EVIDENCE/pr-ready.json"
+          EVIDENCE="$RUNNER_TEMP/ffr07-npm-test-reproduction"
+          test -f "$EVIDENCE/tested-main-sha.txt"
+          test -f "$EVIDENCE/attempt-count.txt"
+          test -f "$EVIDENCE/failure-captured.txt"
+          test -f "$EVIDENCE/npm-test-attempt-1.log"
