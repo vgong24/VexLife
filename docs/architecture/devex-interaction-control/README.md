@@ -26,6 +26,14 @@ UNKNOWN_SLASH_COMMAND -> model turn          # should be local rejection
 CTRL_C_DURING_MODEL_TURN -> input clear only # should interrupt active turn
 ```
 
+The Local Operations review then exposed a third interaction/context defect before real-host qualification:
+
+```text
+INTERRUPTED_USER_TURN
+  -> raw ledger evidence must remain
+  -> but it must not reappear as an unanswered ambient prompt
+```
+
 ## Existing owners this composes
 
 This feature does not invent a second scheduler or cancellation universe.
@@ -42,6 +50,8 @@ TURN_INTERRUPT != PROCESS_KILL
 TURN_INTERRUPT != ROLLBACK
 TURN_INTERRUPT != SESSION_CLOSE
 INTERFACE_BINDING != SEMANTIC_ACTION
+RAW_LEDGER_EVIDENCE != AMBIENT_MODEL_CONTEXT
+INTERRUPTED_TURN != OPEN_REQUEST
 ```
 
 ## Semantic phase map
@@ -112,6 +122,21 @@ INVISIBLE_INPUT_ADMISSION = PROHIBITED
 
 A future graphical interface may preserve a visible draft while Devex works. The terminal prototype may instead refuse ordinary text until the active turn stops or completes. Both are valid adapters if the user can see what is happening.
 
+## Cancelled-turn context rule
+
+Interruption is both an execution boundary and a context boundary. A stopped request remains attributable historical evidence, but it must not silently become the next active request merely because the raw conversation ledger contains a `user` event without a completed assistant answer.
+
+`projectContextEligibleEvents(...)` therefore removes `turnRef`s terminated by `TURN_INTERRUPTED` or `TURN_FAILED` from the active user/assistant projection while leaving the source ledger untouched.
+
+```text
+PRESERVE_RAW_EVENT
++ PRESERVE_INTERRUPT_RECEIPT
++ REMOVE_CANCELLED_PAYLOAD_FROM_AMBIENT_CONTEXT
+!= DELETE_HISTORY
+```
+
+A current unclosed user turn remains eligible normally. This projection is not permission to erase or rewrite source events.
+
 ## Cancellation and effect boundary
 
 ```text
@@ -128,9 +153,11 @@ The controller stops the earliest safely cancellable boundary:
 
 ## Current executable surface
 
-`src/core/interaction-control.mjs` is the platform-neutral reference controller and command classifier. `test/interaction-control.test.mjs` exercises the semantic contract independently of Ollama or a terminal.
+`src/core/interaction-control.mjs` is the platform-neutral reference controller, command classifier, busy-input admission resolver, and interrupted-turn context projector. `test/interaction-control.test.mjs` exercises the semantic contract independently of Ollama or a terminal.
 
-The current Home runtime remains a prototype consumer. A follow-up adapter can bind its bracketed-paste composer and Ollama request to this contract after this source shape survives review.
+A Home Runtime **v0.5.5 local adapter candidate** was formed from this map. Its same-instance Local Operations qualification includes real HTTP `AbortSignal` tests against a fake Ollama-compatible endpoint, terminal busy-input tests, stopped-tool successor suppression, interrupted-context quarantine, and preservation dry-runs against the latest returned B1/B0 state. That ZIP remains prototype transport, not accepted-main source.
+
+Real Mac Ollama cancellation still requires lived qualification before School resumes.
 
 ## School boundary
 
@@ -139,6 +166,6 @@ B1 = HELD
 weightLearningOccurred = false
 ```
 
-Runtime repair comes before further B1 teaching. The School should not train compensatory behavior around invisible input, non-cancellable inference, or command-routing defects.
+Runtime repair comes before further B1 teaching. The School should not train compensatory behavior around invisible input, non-cancellable inference, command-routing defects, or cancelled requests leaking back into ambient context.
 
 <!-- [VXG RealForever] -->
