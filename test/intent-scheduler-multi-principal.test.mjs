@@ -158,6 +158,71 @@ test('MPQ-04 strict class hierarchy keeps INTERACTIVE ahead of older NORMAL work
   assert.equal(selected.schedulingClass, 'INTERACTIVE');
 });
 
+test('MPQ-05/06 root enqueue and preemption transitions preserve unrelated active scheduler truth', () => {
+  let pendingState = emptyState();
+  pendingState = append(pendingState, pending('intent.family.waiting-a', 'person.family.a', 'NORMAL', 1));
+  pendingState = append(pendingState, pending('intent.family.waiting-b', 'person.family.b', 'INTERACTIVE', 2));
+
+  const activeSentinel = {
+    schemaVersion: 'vexlife.intent-worker-lease/v1',
+    workerLeaseRef: 'worker-lease.existing.active',
+    workerRef: 'worker.model.test.primary',
+    workNodeRef: 'work.existing.active',
+    schedulerGeneration: 2,
+    semanticFingerprint: semanticHash({ marker: 'existing-active-worker' })
+  };
+  const queueSentinel = {
+    schemaVersion: 'vexlife.intent-scheduler-queue/v1',
+    state: 'LEASED',
+    lifecycle: 'LEASED',
+    generation: 2,
+    graphFingerprint: semanticHash({ marker: 'existing-active-graph' }),
+    semanticFingerprint: semanticHash({ marker: 'existing-active-queue' })
+  };
+
+  let aggregate = createInitialSchedulerAggregate();
+  aggregate = {
+    ...aggregate,
+    phase: 'RUNNING',
+    generation: 2,
+    active: activeSentinel,
+    queue: queueSentinel
+  };
+  delete aggregate.semanticFingerprint;
+  aggregate.semanticFingerprint = semanticHash(aggregate);
+
+  const enqueued = reduceSchedulerAggregate(aggregate, {
+    type: 'ROOT_ENQUEUED',
+    transitionRef: 'transition.intent-scheduler.root-enqueued.while-active',
+    pendingRootIntents: pendingState.pendingRootIntents,
+    principalFairnessLedger: pendingState.principalFairnessLedger
+  }, { schedulerRegistry });
+
+  assert.deepEqual(enqueued.active, activeSentinel);
+  assert.deepEqual(enqueued.queue, queueSentinel);
+  assert.deepEqual(enqueued.pendingRootIntents, pendingState.pendingRootIntents);
+  assert.deepEqual(enqueued.principalFairnessLedger, pendingState.principalFairnessLedger);
+
+  const preemptionSentinel = {
+    schemaVersion: 'vexlife.intent-scheduler-pending-preemption/v1',
+    pendingPreemptionRef: 'preemption.existing.active.incoming',
+    activeWorkNodeRef: activeSentinel.workNodeRef,
+    incomingWorkNodeRef: 'work.incoming.interactive',
+    state: 'CHECKPOINT_REQUIRED',
+    semanticFingerprint: semanticHash({ marker: 'pending-preemption' })
+  };
+  const preempting = reduceSchedulerAggregate(enqueued, {
+    type: 'PREEMPTION_REQUESTED',
+    transitionRef: 'transition.intent-scheduler.preemption-request.root-retention',
+    pendingPreemption: preemptionSentinel
+  }, { schedulerRegistry });
+
+  assert.deepEqual(preempting.pendingRootIntents, pendingState.pendingRootIntents);
+  assert.deepEqual(preempting.principalFairnessLedger, pendingState.principalFairnessLedger);
+  assert.deepEqual(preempting.active, activeSentinel);
+  assert.deepEqual(preempting.pendingPreemption, preemptionSentinel);
+});
+
 test('MPQ-07 restart aggregate restores exact pending roots and content-free shared projection', () => {
   let pendingState = emptyState();
   pendingState = append(pendingState, pending('intent.family.restart-a', 'person.family.a', 'NORMAL', 0));
