@@ -6,7 +6,7 @@
 schemaVersion=vexlife.experience-guidance/v1
 formationRef=github.issue.vexlife.420
 workRef=work.vexlife.experience-guidance.efx01.e88b6ba3-66ce-4fe2-816b-c1abbc2b12c7
-implementationState=SOURCE_IMPLEMENTATION_IN_PROGRESS
+implementationState=SOURCE_IMPLEMENTED__NO_EFFECT_GUIDANCE_FOUNDATION
 ```
 
 ## Purpose
@@ -104,7 +104,8 @@ resolvedGuidance = derive(
 
 Safe candidates outrank obstructed candidates. Among safe candidates, the resolver prefers the
 logical direction with the most usable room before using caller preference order as a tie-breaker.
-It must not cover navigation/focus/protected controls merely to honor a preferred direction.
+Logical inline start/end are resolved against `LTR` or `RTL` reading direction. It must not cover
+navigation/focus/protected controls merely to honor a preferred direction.
 
 If no safe anchored position exists it falls back to an edge callout, in-flow guidance,
 Guide-vessel explanation, compact sheet or nonvisual description. The resolver does not emit the

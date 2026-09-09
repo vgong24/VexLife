@@ -41,6 +41,7 @@ export const GUIDANCE_HELP_SECTION_KINDS = Object.freeze([
   'RECOVERY_AND_GET_BACK',
   'ADVANCED_WHEN_I_WANT_IT'
 ]);
+export const GUIDANCE_READING_DIRECTIONS = Object.freeze(['LTR', 'RTL']);
 
 const nonempty = (value) => typeof value === 'string' && value.trim().length > 0;
 const nullableRef = (value) => value === null || nonempty(value);
@@ -144,29 +145,33 @@ const outsideArea = (candidate, safe) => {
   return candidate.width * candidate.height - clippedWidth * clippedHeight;
 };
 
-function placementGeometry(direction, anchor, size, margin) {
+function placementGeometry(direction, anchor, size, margin, readingDirection) {
   const centerX = anchor.left + anchor.width / 2;
   const centerY = anchor.top + anchor.height / 2;
+  const inlineEndLeft = readingDirection === 'RTL' ? anchor.left - size.width - margin : anchor.right + margin;
+  const inlineStartLeft = readingDirection === 'RTL' ? anchor.right + margin : anchor.left - size.width - margin;
   const placements = {
     BLOCK_START: { left: centerX - size.width / 2, top: anchor.top - size.height - margin },
-    INLINE_END: { left: anchor.right + margin, top: centerY - size.height / 2 },
+    INLINE_END: { left: inlineEndLeft, top: centerY - size.height / 2 },
     BLOCK_END: { left: centerX - size.width / 2, top: anchor.bottom + margin },
-    INLINE_START: { left: anchor.left - size.width - margin, top: centerY - size.height / 2 },
-    BLOCK_START_INLINE_END: { left: anchor.right + margin, top: anchor.top - size.height - margin },
-    BLOCK_END_INLINE_END: { left: anchor.right + margin, top: anchor.bottom + margin },
-    BLOCK_END_INLINE_START: { left: anchor.left - size.width - margin, top: anchor.bottom + margin },
-    BLOCK_START_INLINE_START: { left: anchor.left - size.width - margin, top: anchor.top - size.height - margin }
+    INLINE_START: { left: inlineStartLeft, top: centerY - size.height / 2 },
+    BLOCK_START_INLINE_END: { left: inlineEndLeft, top: anchor.top - size.height - margin },
+    BLOCK_END_INLINE_END: { left: inlineEndLeft, top: anchor.bottom + margin },
+    BLOCK_END_INLINE_START: { left: inlineStartLeft, top: anchor.bottom + margin },
+    BLOCK_START_INLINE_START: { left: inlineStartLeft, top: anchor.top - size.height - margin }
   };
   const point = placements[direction];
   if (!point) throw new Error(`unsupported guidance direction ${direction}`);
   return { ...point, width: size.width, height: size.height, right: point.left + size.width, bottom: point.top + size.height };
 }
 
-function directionCapacity(direction, anchor, safe) {
+function directionCapacity(direction, anchor, safe, readingDirection) {
   const blockStart = Math.max(0, anchor.top - safe.top);
   const blockEnd = Math.max(0, safe.bottom - anchor.bottom);
-  const inlineStart = Math.max(0, anchor.left - safe.left);
-  const inlineEnd = Math.max(0, safe.right - anchor.right);
+  const physicalLeft = Math.max(0, anchor.left - safe.left);
+  const physicalRight = Math.max(0, safe.right - anchor.right);
+  const inlineStart = readingDirection === 'RTL' ? physicalRight : physicalLeft;
+  const inlineEnd = readingDirection === 'RTL' ? physicalLeft : physicalRight;
   const capacities = {
     BLOCK_START: blockStart,
     INLINE_END: inlineEnd,
@@ -190,8 +195,10 @@ export function resolveGuidancePlacement({
   navigationRects = [],
   focusRect = null,
   preferredDirections = ['BLOCK_START', 'INLINE_END', 'BLOCK_END', 'INLINE_START'],
+  readingDirection = 'LTR',
   margin = 12
 } = {}) {
+  if (!GUIDANCE_READING_DIRECTIONS.includes(readingDirection)) throw new Error(`unsupported readingDirection ${readingDirection}`);
   const anchor = rect(targetRect, 'targetRect');
   const viewport = rect(viewportRect, 'viewportRect');
   const safe = safeArea ? rect(safeArea, 'safeArea') : viewport;
@@ -201,22 +208,22 @@ export function resolveGuidancePlacement({
   const navigationValues = navigationRects.map((value, index) => rect(value, `navigationRects[${index}]`));
   const focusValue = focusRect ? rect(focusRect, 'focusRect') : null;
   const candidates = [...new Set(preferredDirections)].map((direction, preferenceIndex) => {
-    const geometry = placementGeometry(direction, anchor, size, margin);
+    const geometry = placementGeometry(direction, anchor, size, margin, readingDirection);
     const outside = outsideArea(geometry, safe);
     const targetOverlap = overlapArea(geometry, anchor);
     const focusOverlap = focusValue ? overlapArea(geometry, focusValue) : 0;
     const navigationOverlap = navigationValues.reduce((sum, item) => sum + overlapArea(geometry, item), 0);
     const protectedOverlap = protectedValues.reduce((sum, item) => sum + overlapArea(geometry, item), 0);
     const violationScore = outside * 1_000_000 + targetOverlap * 100_000 + focusOverlap * 100_000 + navigationOverlap * 75_000 + protectedOverlap * 50_000;
-    const capacity = directionCapacity(direction, anchor, safe);
+    const capacity = directionCapacity(direction, anchor, safe, readingDirection);
     const safeCandidate = violationScore === 0;
     return { direction, geometry, preferenceIndex, capacity, safeCandidate, violationScore, outside, targetOverlap, focusOverlap, navigationOverlap, protectedOverlap };
   }).sort((a, b) => Number(b.safeCandidate) - Number(a.safeCandidate) || a.violationScore - b.violationScore || b.capacity - a.capacity || a.preferenceIndex - b.preferenceIndex || a.direction.localeCompare(b.direction));
   const best = candidates[0] ?? null;
   if (best?.safeCandidate) {
-    return Object.freeze({ state: 'ANCHORED', presentationKind: 'ANCHORED_CALLOUT', direction: best.direction, geometry: best.geometry, availableCapacity: best.capacity, persistedPreferenceMutation: false, semanticNavigationEffect: false, journeyEffect: false });
+    return Object.freeze({ state: 'ANCHORED', presentationKind: 'ANCHORED_CALLOUT', direction: best.direction, readingDirection, geometry: best.geometry, availableCapacity: best.capacity, persistedPreferenceMutation: false, semanticNavigationEffect: false, journeyEffect: false });
   }
-  return Object.freeze({ state: 'FALLBACK_REQUIRED', presentationKind: 'CONTEXTUAL_EDGE_CALLOUT', direction: null, geometry: null, rejectedCandidateDirection: best?.direction ?? null, fallbackOrder: ['CONTEXTUAL_EDGE_CALLOUT', 'IN_FLOW_GUIDANCE', 'GUIDE_VESSEL_EXPLANATION', 'COMPACT_CONTEXT_SHEET', 'NONVISUAL_DESCRIPTION'], persistedPreferenceMutation: false, semanticNavigationEffect: false, journeyEffect: false });
+  return Object.freeze({ state: 'FALLBACK_REQUIRED', presentationKind: 'CONTEXTUAL_EDGE_CALLOUT', direction: null, readingDirection, geometry: null, rejectedCandidateDirection: best?.direction ?? null, fallbackOrder: ['CONTEXTUAL_EDGE_CALLOUT', 'IN_FLOW_GUIDANCE', 'GUIDE_VESSEL_EXPLANATION', 'COMPACT_CONTEXT_SHEET', 'NONVISUAL_DESCRIPTION'], persistedPreferenceMutation: false, semanticNavigationEffect: false, journeyEffect: false });
 }
 
 export function buildHelpProjection({ currentFrameRef, sections = [], proposals = [] } = {}) {

@@ -89,6 +89,8 @@
       "BLOCK_END_INLINE_START",
       "BLOCK_START_INLINE_START"
     ],
+    "readingDirections": ["LTR", "RTL"],
+    "logicalInlineDirectionsRespectReadingDirection": true,
     "safeMargin": 12,
     "selectionPolicy": "SAFE_FIRST_THEN_MAX_USABLE_DIRECTIONAL_CAPACITY_THEN_PREFERENCE_ORDER",
     "penalties": {

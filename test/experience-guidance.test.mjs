@@ -134,10 +134,32 @@ test('GDX-09 placement chooses the safest usable direction with the most room', 
   });
   assert.equal(result.state, 'ANCHORED');
   assert.equal(result.direction, 'INLINE_END');
+  assert.equal(result.readingDirection, 'LTR');
   assert.equal(result.availableCapacity, 720);
   assert.equal(result.persistedPreferenceMutation, false);
   assert.equal(result.semanticNavigationEffect, false);
   assert.equal(result.journeyEffect, false);
+});
+
+test('GDX-09b logical inline placement respects RTL reading direction', () => {
+  const targetRect = { left: 500, top: 300, width: 80, height: 44 };
+  const result = resolveGuidancePlacement({
+    targetRect,
+    surfaceSize: { width: 200, height: 100 },
+    viewportRect: { left: 0, top: 0, width: 1200, height: 800 },
+    preferredDirections: ['INLINE_END'],
+    readingDirection: 'RTL'
+  });
+  assert.equal(result.state, 'ANCHORED');
+  assert.equal(result.direction, 'INLINE_END');
+  assert.equal(result.readingDirection, 'RTL');
+  assert.ok(result.geometry.right < targetRect.left);
+  assert.throws(() => resolveGuidancePlacement({
+    targetRect,
+    surfaceSize: { width: 200, height: 100 },
+    viewportRect: { left: 0, top: 0, width: 1200, height: 800 },
+    readingDirection: 'SIDEWAYS'
+  }), /unsupported readingDirection/);
 });
 
 test('GDX-10 no safe anchored candidate returns bounded fallback without unsafe geometry', () => {
