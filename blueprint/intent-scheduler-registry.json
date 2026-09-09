@@ -131,9 +131,10 @@
     "rawPromptTitleContentStored": false,
     "defaultRequesterCancellationScope": "OWN_QUEUED_ROOT_ONLY",
     "modelInferenceConcurrency": 1,
-    "maximumPendingRoots": 128,
-    "maximumPendingPrincipals": 32,
-    "maximumPendingRootsPerPrincipal": 32,
+    "maximumPendingRoots": 16,
+    "maximumPendingPrincipals": 8,
+    "maximumPendingRootsPerPrincipal": 8,
+    "maximumPendingRootStateBytes": 16384,
     "sourceDiscardAllowed": false
   },
   "policyIdentities": [
