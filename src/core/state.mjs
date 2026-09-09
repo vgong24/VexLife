@@ -1103,7 +1103,8 @@ function compactPendingRootState(aggregate) {
       readySinceGeneration: item.readySinceGeneration,
       principalDeferralCount: item.principalDeferralCount,
       currentness: item.currentness,
-      state: item.state
+      state: item.state,
+      cancellationState: item.cancellationState
     })),
     rawPromptTitleContentIncluded: false
   };
@@ -1187,6 +1188,8 @@ export function reduceSchedulerAggregate(current, event, {
       next.phase = 'RUNNING';
       next.active = clone(event.active);
       next.queue.lifecycle = 'LEASED';
+      if (event.pendingRootIntents !== undefined) next.pendingRootIntents = clone(event.pendingRootIntents);
+      if (event.principalFairnessLedger !== undefined) next.principalFairnessLedger = clone(event.principalFairnessLedger);
       for (const lease of Object.values(event.leases)) next.leaseLedger[lease.leaseRef] = clone(lease);
       break;
     case 'PREEMPTION_REQUESTED':
