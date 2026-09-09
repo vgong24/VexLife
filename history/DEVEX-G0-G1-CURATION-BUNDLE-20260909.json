@@ -1,0 +1,584 @@
+{
+  "schemaVersion": "vex.devex.g0-g1-curation-bundle/v1",
+  "checkpointRef": "github.issue.vexlife.405",
+  "sourceEvolutionProofContractCommit": "a0772321e22db10677b77cf21745e672f1b00b25",
+  "datasetManifest": {
+    "schemaVersion": "vex.devex.training-dataset-manifest/v1",
+    "datasetRef": "dataset.devex.g0-g1.epistemic-promotion.v1",
+    "formedAtUtc": "2026-09-09T10:10:00Z",
+    "sourceCheckpointRef": "github.issue.vexlife.405",
+    "lessonRef": "lesson.devex.epistemic-promotion-requires-causal-proof.v1",
+    "predecessorModelDigest": "6e73b30f8f1cfa06b979c842ba222ae21dad1e55e7c6748a7d8acad46fb340c4",
+    "trainRecordCount": 24,
+    "validationRecordCount": 6,
+    "classBalance": {
+      "UNKNOWN": 8,
+      "DEFERRED": 8,
+      "BROKEN": 8
+    },
+    "heldOutCasesExcluded": [
+      "CB-01-release-summary",
+      "CB-02-access-projection"
+    ],
+    "files": {
+      "lesson.json": {
+        "sha256": "652eb2db075861a68aa35d4030bd4183c7efa8467bff70f946f694cd97c567da",
+        "bytes": 1481
+      },
+      "train.jsonl": {
+        "sha256": "efb121e2717e6238f64695252f9e9fce77376bc37ea0fa4c13579d608b50a8a0",
+        "bytes": 23579
+      },
+      "validation.jsonl": {
+        "sha256": "a90232be85820a0c36eda1a03c242b02bbc620b9d4b67944cbf8152616a4a6ac",
+        "bytes": 5363
+      }
+    }
+  },
+  "lesson": {
+    "schemaVersion": "vex.devex.training-lesson/v1",
+    "lessonRef": "lesson.devex.epistemic-promotion-requires-causal-proof.v1",
+    "sourceCheckpointRef": "github.issue.vexlife.405",
+    "predecessorModel": "qwen3.5:35b-a3b-coding-nvfp4",
+    "predecessorModelDigest": "6e73b30f8f1cfa06b979c842ba222ae21dad1e55e7c6748a7d8acad46fb340c4",
+    "predecessorModelCoordinate": "devex.main@0.0.0",
+    "predecessorModelSequence": "DVX-000000",
+    "coldBaseline": {
+      "COLD_HOME": "12/16",
+      "BARE_MODEL": "12/16",
+      "recurrentMiss": "diagnosis expected UNKNOWN, observed DEFERRED in 4/4 held-out cases"
+    },
+    "protectedLesson": "Do not promote a stale dependent projection from UNKNOWN to DEFERRED until the refresh/invalidation mechanism and its current timing/run state are actually established. Diagnose DEFERRED only when a valid refresh path is proven and current evidence shows it is legitimately pending. Diagnose BROKEN only when sufficient evidence proves the required propagation route is absent or an established route executed and failed.",
+    "notTheLesson": [
+      "stale projection means UNKNOWN",
+      "stale projection means DEFERRED",
+      "stale projection means BROKEN",
+      "one unsuccessful writer search proves no refresh route exists",
+      "runtime truth determines projection truth",
+      "safe no-patch behavior is sufficient for correct epistemic classification"
+    ],
+    "heldOutTrainingUseProhibited": [
+      "CB-01-release-summary",
+      "CB-02-access-projection"
+    ]
+  },
+  "trainRecords": [
+    {
+      "recordRef": "TR-U01",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A canonical service registry added `invoice.preview` at 10:00. A generated command menu from 09:40 does not list it. The runtime adapter responds successfully at 10:05. A `menu-builder` exists, but no trigger or run history after 10:00 has been established. A teammate wants to patch the builder."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Find the menu-builder trigger contract and whether it ran after 10:00.\",\"separatedPredicates\":[\"registry membership\",\"runtime availability\",\"menu projection\",\"refresh trigger/run state\"],\"rationale\":\"The mismatch proves the menu is stale, not why. Runtime success does not establish projection currentness. Without evidence that a valid refresh was pending or absent, the causal state remains UNKNOWN.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-U02",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A policy owner revoked `export.records` at 08:10. Enforcement denies it at 08:12. A generated help page from 07:55 still says it is available. A docs generator exists, but its invalidation route has not been inspected."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Inspect the docs generator invalidation/refresh route and its run status after 08:10.\",\"separatedPredicates\":[\"policy membership\",\"runtime enforcement\",\"help-page projection\",\"refresh route/run state\"],\"rationale\":\"The current policy and enforcement agree that export.records is revoked, while the help page is stale. The cause of that staleness is not yet established, so DEFERRED and BROKEN are both premature.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-U03",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A deployment manifest marks `search.v2` active. A dashboard card built before that change still shows `search.v1`. A runtime probe reaches `search.v2`. A dashboard generator exists, but you have not established whether it is event-driven, scheduled, or manual."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Establish the dashboard generator's refresh contract and whether a qualifying refresh has occurred since the manifest change.\",\"separatedPredicates\":[\"deployment manifest\",\"runtime endpoint\",\"dashboard projection\",\"refresh contract/run\"],\"rationale\":\"The dashboard is stale but the causal status is unresolved. A generator's existence does not prove legitimate deferral, and stale output alone does not prove breakage.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-U04",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "An entitlement registry grants `reports.read`. The authorization service accepts it. A generated role summary from yesterday omits it. A summary compiler exists, but there is no evidence yet about how registry changes invalidate that output."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Find the summary compiler invalidation/refresh path and whether it is expected or recorded to run after entitlement changes.\",\"separatedPredicates\":[\"entitlement registry\",\"authorization runtime\",\"role-summary projection\",\"refresh/invalidation\"],\"rationale\":\"The output is stale, but no evidence yet proves either a valid pending refresh or an absent/failed propagation route.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-U05",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A feature registry enabled `voice.translate` at noon. Runtime health shows the adapter is callable. A generated settings page from 11:30 lacks the toggle. You found the page builder, but not its refresh trigger or run ledger."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Inspect how the settings page builder is triggered and whether that trigger has run since noon.\",\"separatedPredicates\":[\"feature registry\",\"runtime adapter\",\"settings projection\",\"builder trigger/run ledger\"],\"rationale\":\"The page is stale. The evidence does not yet support stronger causal classification.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-U06",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A source-of-truth inventory lists a new device. A live device probe succeeds. An exported inventory PDF created before the change omits it. An export job exists, but no schedule, event trigger, or execution history has been established."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Establish the export job's refresh policy and whether a qualifying run occurred after the inventory change.\",\"separatedPredicates\":[\"canonical inventory\",\"device runtime\",\"PDF projection\",\"export refresh policy/run\"],\"rationale\":\"A stale export does not by itself distinguish deferred generation from a missing or failed propagation route.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-U07",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A canonical API map now exposes `/v3/orders`; requests succeed. A generated SDK index from before the change lacks it. A generator module exists, but no evidence establishes when or why it runs."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Determine the SDK index generator's trigger contract and run status after the API-map update.\",\"separatedPredicates\":[\"API map\",\"runtime requests\",\"SDK index\",\"generator trigger/run\"],\"rationale\":\"The index mismatch is real; its causal classification is not yet earned.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-U08",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A permission owner added `photos.upload`; authorization works. A generated command palette from before the update lacks it. A palette compiler exists, but you have not established a refresh contract or post-update execution."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Inspect the palette compiler refresh contract and whether it ran after the permission update.\",\"separatedPredicates\":[\"permission owner\",\"authorization runtime\",\"command palette\",\"refresh contract/run\"],\"rationale\":\"Staleness is observed, but DEFERRED and BROKEN each require additional positive evidence.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-D01",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A product registry changed at 10:00. Its generated sidebar remains stale at 10:02. The accepted projection contract says a refresh worker runs every 15 minutes, and its next scheduled run is 10:15. No refresh failure is recorded."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Observe the scheduled 10:15 refresh result before diagnosing a defect.\",\"separatedPredicates\":[\"canonical registry\",\"sidebar projection\",\"valid refresh schedule\",\"current run state\"],\"rationale\":\"A valid refresh mechanism is positively established and the current evidence places the system before its expected run. The stale projection is legitimately pending.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-D02",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A policy registry changed at 14:00. A generated help view remains old at 14:04. Source shows the help builder is invoked by an hourly job at minute 30, and the scheduler reports the next run at 14:30."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Check the 14:30 job completion before escalating.\",\"separatedPredicates\":[\"policy registry\",\"help projection\",\"hourly refresh contract\",\"scheduler state\"],\"rationale\":\"The propagation route and its timing are proven, and the expected refresh point has not yet passed.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-D03",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "An entitlement owner changed state at 09:10. A summary generated at 09:00 is stale. The accepted contract says summaries are rebuilt on first read after invalidation, and no read has occurred since 09:10."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Perform or observe the first valid post-invalidation read and verify regeneration.\",\"separatedPredicates\":[\"entitlement owner\",\"summary projection\",\"lazy refresh contract\",\"trigger state\"],\"rationale\":\"The valid refresh mechanism and its unmet trigger are established, so the stale output is legitimately pending.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-D04",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A service owner updated the active route. A generated route catalog is stale. Its documented refresh occurs at the next successful deployment boundary; no deployment has occurred since the update."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Verify the catalog after the next successful deployment boundary.\",\"separatedPredicates\":[\"service owner\",\"catalog projection\",\"deployment-bound refresh contract\",\"deployment state\"],\"rationale\":\"Positive evidence defines a valid refresh event that has not occurred yet.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-D05",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A feature flag became active. A generated overview still shows the prior flag value. The accepted projection owner refreshes every five minutes, and the last refresh was one minute before the flag change."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Observe the next five-minute refresh and verify the overview.\",\"separatedPredicates\":[\"feature flag\",\"overview projection\",\"refresh cadence\",\"last/next run timing\"],\"rationale\":\"The refresh mechanism is established and the next eligible run has not yet occurred.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-D06",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A catalog source changed at 16:00. The public search index still has the old entry. The index contract states a batch refresh begins at 16:10 and the scheduler confirms that run is queued, not failed."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Consume the queued 16:10 run result before diagnosing failure.\",\"separatedPredicates\":[\"catalog source\",\"search index\",\"batch refresh contract\",\"queued run state\"],\"rationale\":\"A valid pending refresh is positively observed.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-D07",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A configuration source changed. Its compiled client artifact is stale. The build contract says compilation happens only on tagged releases, and no release tag has been cut since the change."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Verify the compiled artifact at the next tagged-release build.\",\"separatedPredicates\":[\"configuration source\",\"compiled artifact\",\"release-bound refresh contract\",\"release state\"],\"rationale\":\"The current projection is expected to remain stale until the proven release trigger occurs.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-D08",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A source owner changed a schema. A generated client map is stale. The accepted generation job is explicitly manual and the release operator has not invoked it yet."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Observe the authorized manual generation when it is invoked and verify the client map.\",\"separatedPredicates\":[\"source schema\",\"client-map projection\",\"manual generation contract\",\"invocation state\"],\"rationale\":\"Manual does not mean broken. The refresh mechanism is valid and positively known to be uninvoked.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-B01",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A canonical registry changed yesterday. A projection is still stale. Source and configuration have been exhaustively inspected and establish that no writer, invalidation hook, scheduled job, lazy refresh, manual generation step, or other supported propagation route exists for this projection, even though consumers treat it as current."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Confirm the smallest canonical-to-projection propagation boundary and repair it without creating a second owner.\",\"separatedPredicates\":[\"canonical source\",\"stale projection\",\"consumer expectation\",\"proven absence of propagation route\"],\"rationale\":\"The required propagation relationship is established by consumer semantics, and sufficient inspection proves there is no route that can satisfy it. The dependency is broken rather than merely unknown.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-B02",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A canonical source changed. The accepted refresh worker was triggered afterward and its terminal receipt says FAILED before writing the dependent projection. The projection remains stale."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Diagnose the recorded refresh-worker failure at its first substantive failing stage.\",\"separatedPredicates\":[\"canonical source\",\"refresh trigger\",\"failed refresh execution\",\"stale projection\"],\"rationale\":\"The refresh path is established and was actually attempted, and its failure is directly observed. This is no longer a hypothetical or pending condition.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-B03",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A valid refresh job is documented and was recorded PASS after the canonical change, but exact readback proves the dependent projection did not change and still reflects the predecessor value."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Trace the refresh job's write/readback path because its observed PASS did not satisfy the projection postcondition.\",\"separatedPredicates\":[\"canonical source\",\"refresh job terminal state\",\"projection readback\",\"postcondition\"],\"rationale\":\"A valid route executed, yet the required dependent state remains stale. Positive failure evidence exists at the postcondition boundary.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-B04",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A projection contract requires refresh on every canonical commit. A commit occurred, the trigger receipt exists, and the worker crashed with a reproducible exception before persistence. The projection is stale."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Reproduce and localize the worker exception under the exact trigger inputs, then repair the smallest failing boundary.\",\"separatedPredicates\":[\"canonical commit\",\"required refresh trigger\",\"worker failure\",\"stale projection\"],\"rationale\":\"The required route and its failure are both established.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-B05",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A projection is specified as synchronous with its canonical owner. A source transition completed successfully, and same-transaction readback proves the projection kept the old value. The synchronous updater is present in the transaction path."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Trace the synchronous updater's input/output and transaction commit boundary.\",\"separatedPredicates\":[\"canonical transition\",\"synchronous propagation contract\",\"updater presence\",\"projection readback\"],\"rationale\":\"Deferral is excluded by the synchronous contract, and the actual postcondition failed.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-B06",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A generated projection promises refresh within 60 seconds. The canonical source changed, three separately observed scheduled executions after the deadline all failed with the same write error, and the projection remains stale."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Diagnose the repeated write error under the recorded refresh attempts.\",\"separatedPredicates\":[\"canonical source\",\"refresh deadline\",\"failed executions\",\"projection\"],\"rationale\":\"The deadline passed and the established route repeatedly failed.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-B07",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A cache is contractually invalidated on owner changes. The owner changed, the invalidation event was emitted and consumed, and exact cache metadata shows the stale entry was retained with no subsequent refresh pending."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Trace invalidation consumption to the cache mutation that should remove or replace the entry.\",\"separatedPredicates\":[\"owner change\",\"invalidation event\",\"consumer receipt\",\"cache state\"],\"rationale\":\"The required invalidation route executed but failed its state postcondition.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "TR-B08",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Do not promote uncertainty to a stronger diagnosis without causal proof. Separate canonical truth, runtime truth, dependent projections, and refresh/invalidation evidence."
+        },
+        {
+          "role": "user",
+          "content": "A generator is the documented sole writer for a projection. Its trigger is proven and fired after the canonical update. The generator returned an explicit terminal error and produced no output artifact; the projection remains stale."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Diagnose the generator's terminal error using its exact input and first failing stage.\",\"separatedPredicates\":[\"canonical source\",\"sole-writer contract\",\"trigger receipt\",\"terminal generator error\"],\"rationale\":\"The established propagation route was attempted and failed.\"}"
+        }
+      ]
+    }
+  ],
+  "validationRecords": [
+    {
+      "recordRef": "VA-U01",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Keep UNKNOWN until causal evidence earns DEFERRED or BROKEN."
+        },
+        {
+          "role": "user",
+          "content": "A canonical localization registry now includes `fr-CA`. The runtime translator accepts it. A generated language picker from before the change omits it. A picker generator exists, but its refresh semantics have not been established."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Establish the picker generator's refresh contract and post-change run state.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "VA-U02",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Keep UNKNOWN until causal evidence earns DEFERRED or BROKEN."
+        },
+        {
+          "role": "user",
+          "content": "A source owner added a route and runtime requests work, while an older generated index lacks it. A compiler exists but no trigger, schedule, or execution history has been proven."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"UNKNOWN\",\"patchNow\":false,\"nextObservation\":\"Find the compiler's actual refresh/invalidation route and whether it ran after the source change.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "VA-D01",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Keep UNKNOWN until causal evidence earns DEFERRED or BROKEN."
+        },
+        {
+          "role": "user",
+          "content": "A projection is stale two minutes after a source change. Its accepted refresh contract runs every ten minutes, the scheduler is healthy, and the next run is eight minutes away."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Observe the next scheduled refresh result.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "VA-D02",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Keep UNKNOWN until causal evidence earns DEFERRED or BROKEN."
+        },
+        {
+          "role": "user",
+          "content": "A generated artifact updates only on tagged releases. The source changed after the most recent tag and no new tag exists."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"DEFERRED\",\"patchNow\":false,\"nextObservation\":\"Verify the artifact after the next authorized tagged-release build.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "VA-B01",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Keep UNKNOWN until causal evidence earns DEFERRED or BROKEN."
+        },
+        {
+          "role": "user",
+          "content": "The required refresh worker ran after the source change, returned a terminal write error, and the dependent projection is still stale."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Diagnose the recorded refresh-worker write failure.\"}"
+        }
+      ]
+    },
+    {
+      "recordRef": "VA-B02",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Classify the evidence state precisely. Keep UNKNOWN until causal evidence earns DEFERRED or BROKEN."
+        },
+        {
+          "role": "user",
+          "content": "A source changed and exact inspection proves every supported propagation path for a required projection is absent. Consumers still treat that projection as current."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"diagnosis\":\"BROKEN\",\"patchNow\":true,\"nextObservation\":\"Confirm the smallest canonical-to-projection propagation boundary and repair it.\"}"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "CB-01-release-summary and CB-02-access-projection are not present in this bundle and remain training-use prohibited.",
+    "The dataset targets the recurrent epistemic promotion error only; it does not train repository facts, issue numbers, current Terrain, Home paths, or Victor's private history.",
+    "Training is not authorized merely because this curation bundle exists."
+  ]
+}
