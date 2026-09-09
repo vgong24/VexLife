@@ -1,12 +1,20 @@
 const REQUIRED_PROPOSAL_FIELDS = Object.freeze([
-  'proposalRef', 'featureRef', 'currentFrameRef', 'purposeClass', 'whyRelevantRefs',
+  'proposalRef', 'featureRef', 'currentFrameRef', 'invocationClass', 'purposeClass', 'whyRelevantRefs',
   'awarenessState', 'routeState', 'availabilityState', 'exposureRef', 'effects'
 ]);
 
 export const GUIDANCE_DERIVED_AWARENESS_STATES = Object.freeze(['UNINTRODUCED']);
 export const GUIDANCE_EPHEMERAL_AWARENESS_STATES = Object.freeze(['OFFERED_THIS_SESSION']);
 export const GUIDANCE_LOCAL_PREFERENCE_STATES = Object.freeze(['DEFERRED', 'ACKNOWLEDGED', 'SUPPRESSED']);
+export const GUIDANCE_AWARENESS_STATES = Object.freeze([
+  ...GUIDANCE_DERIVED_AWARENESS_STATES,
+  ...GUIDANCE_EPHEMERAL_AWARENESS_STATES,
+  ...GUIDANCE_LOCAL_PREFERENCE_STATES
+]);
+export const GUIDANCE_INVOCATION_CLASSES = Object.freeze(['PROACTIVE_INTRODUCTION', 'EXPLICIT_HELP', 'EXPLICIT_SHOW_ME']);
 export const GUIDANCE_PURPOSE_CLASSES = Object.freeze(['EXPLORE', 'TRY', 'BUILD', 'REVISIT', 'LEARN', 'RECOVER']);
+export const GUIDANCE_ROUTE_STATES = Object.freeze(['CURRENT', 'HELD']);
+export const GUIDANCE_AVAILABILITY_STATES = Object.freeze(['AVAILABLE', 'HELD', 'UNAVAILABLE', 'UNKNOWN']);
 export const GUIDANCE_TARGET_KINDS = Object.freeze(['ELEMENT', 'COMPONENT', 'COMPONENT_SLOT', 'REGION', 'TERRAIN_NODE', 'VESSEL']);
 export const GUIDANCE_BINDING_POLICIES = Object.freeze([
   'STATIC_CANONICAL_TARGET',
@@ -24,10 +32,20 @@ export const GUIDANCE_PRESENTATION_KINDS = Object.freeze([
   'COMPACT_CONTEXT_SHEET',
   'NONVISUAL_DESCRIPTION'
 ]);
+export const GUIDANCE_HELP_SECTION_KINDS = Object.freeze([
+  'WHAT_CAN_I_DO_HERE',
+  'WHAT_CAN_VEX_HELP_WITH_HERE',
+  'SHOW_ME_HOW',
+  'RELEVANT_NOT_YET_INTRODUCED',
+  'WHY_UNAVAILABLE',
+  'RECOVERY_AND_GET_BACK',
+  'ADVANCED_WHEN_I_WANT_IT'
+]);
 
 const nonempty = (value) => typeof value === 'string' && value.trim().length > 0;
 const nullableRef = (value) => value === null || nonempty(value);
 const clone = (value) => value == null ? value : structuredClone(value);
+const sameIdentity = (left, right) => left.featureRef === right.featureRef && left.planRef === right.planRef && left.sourceVersionRef === right.sourceVersionRef;
 
 export function guidancePreferenceIdentity({ featureRef, planRef, sourceVersionRef } = {}) {
   if (![featureRef, planRef, sourceVersionRef].every(nonempty)) {
@@ -36,11 +54,13 @@ export function guidancePreferenceIdentity({ featureRef, planRef, sourceVersionR
   return Object.freeze({ featureRef, planRef, sourceVersionRef });
 }
 
-export function deriveGuidanceAwareness({ preference = null, offeredThisSession = false } = {}) {
+export function deriveGuidanceAwareness({ identity, preference = null, offeredThisSession = false } = {}) {
+  const currentIdentity = guidancePreferenceIdentity(identity);
   if (preference === null) return offeredThisSession ? 'OFFERED_THIS_SESSION' : 'UNINTRODUCED';
   if (!preference || typeof preference !== 'object' || Array.isArray(preference)) throw new Error('guidance preference must be an object or null');
   if (!GUIDANCE_LOCAL_PREFERENCE_STATES.includes(preference.state)) throw new Error(`unsupported guidance preference state ${preference.state}`);
-  guidancePreferenceIdentity(preference);
+  const preferenceIdentity = guidancePreferenceIdentity(preference);
+  if (!sameIdentity(currentIdentity, preferenceIdentity)) return offeredThisSession ? 'OFFERED_THIS_SESSION' : 'UNINTRODUCED';
   return preference.state;
 }
 
@@ -80,13 +100,20 @@ export function validateGuidanceProposal(proposal) {
   if (!proposal || typeof proposal !== 'object' || Array.isArray(proposal)) return ['guidance proposal must be an object'];
   for (const field of REQUIRED_PROPOSAL_FIELDS) if (!Object.hasOwn(proposal, field)) errors.push(`guidance proposal missing ${field}`);
   for (const field of ['proposalRef', 'featureRef', 'currentFrameRef', 'exposureRef']) if (!nonempty(proposal[field])) errors.push(`guidance proposal invalid ${field}`);
+  if (!GUIDANCE_INVOCATION_CLASSES.includes(proposal.invocationClass)) errors.push(`unsupported guidance invocationClass ${proposal.invocationClass}`);
   if (!GUIDANCE_PURPOSE_CLASSES.includes(proposal.purposeClass)) errors.push(`unsupported guidance purposeClass ${proposal.purposeClass}`);
+  if (!GUIDANCE_AWARENESS_STATES.includes(proposal.awarenessState)) errors.push(`unsupported guidance awarenessState ${proposal.awarenessState}`);
+  if (!GUIDANCE_ROUTE_STATES.includes(proposal.routeState)) errors.push(`unsupported guidance routeState ${proposal.routeState}`);
+  if (!GUIDANCE_AVAILABILITY_STATES.includes(proposal.availabilityState)) errors.push(`unsupported guidance availabilityState ${proposal.availabilityState}`);
   if (!Array.isArray(proposal.whyRelevantRefs) || proposal.whyRelevantRefs.length === 0 || proposal.whyRelevantRefs.some((ref) => !nonempty(ref))) errors.push('guidance proposal requires non-empty whyRelevantRefs');
   if (proposal.effects !== false) errors.push('guidance proposal effects must be false');
   if (proposal.targetBindingOrNull != null) errors.push(...validateGuidanceTargetBinding(proposal.targetBindingOrNull, { actionBearing: nonempty(proposal.suggestedActionRefOrNull) }));
   if (!nullableRef(proposal.planRefOrNull)) errors.push('guidance proposal invalid planRefOrNull');
   if (!nullableRef(proposal.sourceVersionRefOrNull)) errors.push('guidance proposal invalid sourceVersionRefOrNull');
   if (!nullableRef(proposal.suggestedActionRefOrNull)) errors.push('guidance proposal invalid suggestedActionRefOrNull');
+  if (proposal.invocationClass === 'PROACTIVE_INTRODUCTION' && proposal.awarenessState !== 'UNINTRODUCED') {
+    errors.push('proactive introduction requires UNINTRODUCED awarenessState');
+  }
   if (proposal.routeState !== 'CURRENT' && nonempty(proposal.suggestedActionRefOrNull)) errors.push('non-current guidance route cannot suggest a runnable action');
   if (proposal.availabilityState !== 'AVAILABLE' && nonempty(proposal.suggestedActionRefOrNull)) errors.push('unavailable guidance proposal cannot suggest a runnable action');
   return errors;
@@ -135,6 +162,25 @@ function placementGeometry(direction, anchor, size, margin) {
   return { ...point, width: size.width, height: size.height, right: point.left + size.width, bottom: point.top + size.height };
 }
 
+function directionCapacity(direction, anchor, safe) {
+  const blockStart = Math.max(0, anchor.top - safe.top);
+  const blockEnd = Math.max(0, safe.bottom - anchor.bottom);
+  const inlineStart = Math.max(0, anchor.left - safe.left);
+  const inlineEnd = Math.max(0, safe.right - anchor.right);
+  const capacities = {
+    BLOCK_START: blockStart,
+    INLINE_END: inlineEnd,
+    BLOCK_END: blockEnd,
+    INLINE_START: inlineStart,
+    BLOCK_START_INLINE_END: Math.min(blockStart, inlineEnd),
+    BLOCK_END_INLINE_END: Math.min(blockEnd, inlineEnd),
+    BLOCK_END_INLINE_START: Math.min(blockEnd, inlineStart),
+    BLOCK_START_INLINE_START: Math.min(blockStart, inlineStart)
+  };
+  if (!Object.hasOwn(capacities, direction)) throw new Error(`unsupported guidance direction ${direction}`);
+  return capacities[direction];
+}
+
 export function resolveGuidancePlacement({
   targetRect,
   surfaceSize,
@@ -161,21 +207,22 @@ export function resolveGuidancePlacement({
     const focusOverlap = focusValue ? overlapArea(geometry, focusValue) : 0;
     const navigationOverlap = navigationValues.reduce((sum, item) => sum + overlapArea(geometry, item), 0);
     const protectedOverlap = protectedValues.reduce((sum, item) => sum + overlapArea(geometry, item), 0);
-    const distance = (geometry.left - anchor.left) ** 2 + (geometry.top - anchor.top) ** 2;
-    const score = outside * 1_000_000 + targetOverlap * 100_000 + focusOverlap * 100_000 + navigationOverlap * 75_000 + protectedOverlap * 50_000 + distance + preferenceIndex;
-    return { direction, geometry, score, outside, targetOverlap, focusOverlap, navigationOverlap, protectedOverlap };
-  }).sort((a, b) => a.score - b.score || a.direction.localeCompare(b.direction));
+    const violationScore = outside * 1_000_000 + targetOverlap * 100_000 + focusOverlap * 100_000 + navigationOverlap * 75_000 + protectedOverlap * 50_000;
+    const capacity = directionCapacity(direction, anchor, safe);
+    const safeCandidate = violationScore === 0;
+    return { direction, geometry, preferenceIndex, capacity, safeCandidate, violationScore, outside, targetOverlap, focusOverlap, navigationOverlap, protectedOverlap };
+  }).sort((a, b) => Number(b.safeCandidate) - Number(a.safeCandidate) || a.violationScore - b.violationScore || b.capacity - a.capacity || a.preferenceIndex - b.preferenceIndex || a.direction.localeCompare(b.direction));
   const best = candidates[0] ?? null;
-  if (best && best.outside === 0 && best.targetOverlap === 0 && best.focusOverlap === 0 && best.navigationOverlap === 0 && best.protectedOverlap === 0) {
-    return Object.freeze({ state: 'ANCHORED', presentationKind: 'ANCHORED_CALLOUT', direction: best.direction, geometry: best.geometry, persistedPreferenceMutation: false, semanticNavigationEffect: false, journeyEffect: false });
+  if (best?.safeCandidate) {
+    return Object.freeze({ state: 'ANCHORED', presentationKind: 'ANCHORED_CALLOUT', direction: best.direction, geometry: best.geometry, availableCapacity: best.capacity, persistedPreferenceMutation: false, semanticNavigationEffect: false, journeyEffect: false });
   }
-  return Object.freeze({ state: 'FALLBACK_REQUIRED', presentationKind: 'CONTEXTUAL_EDGE_CALLOUT', direction: best?.direction ?? null, geometry: best?.geometry ?? null, fallbackOrder: ['CONTEXTUAL_EDGE_CALLOUT', 'IN_FLOW_GUIDANCE', 'GUIDE_VESSEL_EXPLANATION', 'COMPACT_CONTEXT_SHEET', 'NONVISUAL_DESCRIPTION'], persistedPreferenceMutation: false, semanticNavigationEffect: false, journeyEffect: false });
+  return Object.freeze({ state: 'FALLBACK_REQUIRED', presentationKind: 'CONTEXTUAL_EDGE_CALLOUT', direction: null, geometry: null, rejectedCandidateDirection: best?.direction ?? null, fallbackOrder: ['CONTEXTUAL_EDGE_CALLOUT', 'IN_FLOW_GUIDANCE', 'GUIDE_VESSEL_EXPLANATION', 'COMPACT_CONTEXT_SHEET', 'NONVISUAL_DESCRIPTION'], persistedPreferenceMutation: false, semanticNavigationEffect: false, journeyEffect: false });
 }
 
 export function buildHelpProjection({ currentFrameRef, sections = [], proposals = [] } = {}) {
   if (!nonempty(currentFrameRef)) throw new Error('currentFrameRef is required');
   const normalizedSections = sections.map((section) => {
-    if (!section || typeof section !== 'object' || !nonempty(section.sectionKind)) throw new Error('Help section requires sectionKind');
+    if (!section || typeof section !== 'object' || !GUIDANCE_HELP_SECTION_KINDS.includes(section.sectionKind)) throw new Error(`unsupported Help sectionKind ${section?.sectionKind}`);
     return clone(section);
   });
   const normalizedProposals = proposals.map((proposal) => buildGuidanceProposal(proposal));
