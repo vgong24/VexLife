@@ -15,10 +15,16 @@
       "sha256": "4aeb4a217f99d6e227864deeb171192ded531c1c382b5180d5d175f23a230c17"
     },
     {
+      "path": "src/core/experience-guidance.mjs",
+      "mode": "100644",
+      "bytes": 16589,
+      "sha256": "9ca5a20ae8e782b0c962b717ce8bdc9bae97d688e6cd0bc734f9424d4d2a4f28"
+    },
+    {
       "path": "src/core/registry.mjs",
       "mode": "100644",
-      "bytes": 657,
-      "sha256": "4430e053cac84ec481b0f583f708717e8f86bf83e9a67bda397ca7bd0c8e7ef9"
+      "bytes": 18652,
+      "sha256": "d08a2cab9c5149b863a1d1e379e2fafb66f62c19140da60ab983b7e65c604c78"
     }
   ]
 }
