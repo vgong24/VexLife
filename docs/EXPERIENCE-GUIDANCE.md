@@ -31,10 +31,12 @@ ACKNOWLEDGED != FEATURE_COMPLETION
 ACKNOWLEDGED != MEMORY
 DEFERRED != MEMORY
 SUPPRESSED != MEMORY
+OFFERED_THIS_SESSION != ACKNOWLEDGED
 ```
 
 `UNINTRODUCED` is derived. `OFFERED_THIS_SESSION` is ephemeral. `DEFERRED`, `ACKNOWLEDGED` and
-`SUPPRESSED` are exact-version Guide-local presentation preferences only. A new plan/source version
+`SUPPRESSED` are exact-version Guide-local presentation preferences only. Awareness is always
+derived against the current exact introduction identity. A different plan/source version therefore
 does not silently inherit an older preference.
 
 A derived unintroduced/relevant count is presentation-only. It is not an engagement score, KPI,
@@ -54,9 +56,11 @@ RELEVANCE != AUTO_EXECUTION
 SHOW_ME != AUTO_EXECUTION
 ```
 
-A proactive proposal is admissible only when its current route and availability are truthful and
-its exact-version local preference is neither acknowledged nor suppressed. Explicit Help/Show Me
-remains available even after proactive suppression.
+The proposal records whether it is a `PROACTIVE_INTRODUCTION`, `EXPLICIT_HELP` or
+`EXPLICIT_SHOW_ME`. A proactive introduction is admissible only while the exact current
+introduction is `UNINTRODUCED`, its route is current and its availability is truthful. Once it has
+been offered in the session, deferred, acknowledged or suppressed, that proactive introduction
+must not repeat. Explicit Help/Show Me remains available regardless of proactive suppression.
 
 ## Stable meaning and runtime target binding
 
@@ -98,9 +102,13 @@ resolvedGuidance = derive(
 )
 ```
 
-The resolver prefers an unobstructed anchored callout. If no safe anchored position exists it may
-fall back to an edge callout, in-flow guidance, Guide-vessel explanation, compact sheet or nonvisual
-description.
+Safe candidates outrank obstructed candidates. Among safe candidates, the resolver prefers the
+logical direction with the most usable room before using caller preference order as a tie-breaker.
+It must not cover navigation/focus/protected controls merely to honor a preferred direction.
+
+If no safe anchored position exists it falls back to an edge callout, in-flow guidance,
+Guide-vessel explanation, compact sheet or nonvisual description. The resolver does not emit the
+unsafe candidate geometry as if it were renderable.
 
 Automatic collision avoidance never persists itself as a human layout preference.
 
