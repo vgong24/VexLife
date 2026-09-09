@@ -211,6 +211,8 @@ export function createSchedulerPriorStateSlice(aggregate, { checkpointRef, sched
     schedulerAggregateFingerprint: aggregate.semanticFingerprint,
     phase: aggregate.phase,
     generation: aggregate.generation,
+    pendingRootIntents: clone(aggregate.pendingRootIntents ?? []),
+    principalFairnessLedger: clone(aggregate.principalFairnessLedger ?? {}),
     queue: clone(aggregate.queue),
     active: clone(aggregate.active),
     resourceSnapshot: clone(aggregate.resource),
@@ -1088,6 +1090,25 @@ function compactQueue(queue) {
   };
 }
 
+function compactPendingRootState(aggregate) {
+  const roots = aggregate?.pendingRootIntents ?? [];
+  return {
+    count: roots.length,
+    principalCount: Object.keys(aggregate?.principalFairnessLedger ?? {}).length,
+    entries: roots.map((item) => ({
+      intentRef: item.intentRef,
+      originPrincipalRef: item.originPrincipalRef,
+      schedulingClass: item.schedulingClass,
+      submittedGeneration: item.submittedGeneration,
+      readySinceGeneration: item.readySinceGeneration,
+      principalDeferralCount: item.principalDeferralCount,
+      currentness: item.currentness,
+      state: item.state
+    })),
+    rawPromptTitleContentIncluded: false
+  };
+}
+
 export function createInitialSchedulerAggregate() {
   const aggregate = {
     schemaVersion: 'vexlife.intent-scheduler-aggregate/v1',
@@ -1118,6 +1139,8 @@ export function createInitialSchedulerAggregate() {
     heldToolDispositions: [],
     terminalReceipts: [],
     fairnessLedger: {},
+    pendingRootIntents: [],
+    principalFairnessLedger: {},
     pendingPreemption: null,
     leaseLedger: {},
     relayLedger: {
@@ -1150,8 +1173,15 @@ export function reduceSchedulerAggregate(current, event, {
       next.resource = clone(event.resourceSnapshot);
       next.runtimeTrust = clone(event.runtimeTrustSnapshot);
       next.fairnessLedger = clone(event.fairnessLedger);
+      if (event.pendingRootIntents !== undefined) next.pendingRootIntents = clone(event.pendingRootIntents);
+      if (event.principalFairnessLedger !== undefined) next.principalFairnessLedger = clone(event.principalFairnessLedger);
       next.pendingPreemption = null;
       if (event.observedClock) next.observedClock = clone(event.observedClock);
+      break;
+    case 'ROOT_ENQUEUED':
+    case 'ROOT_CANCELLED':
+      next.pendingRootIntents = clone(event.pendingRootIntents);
+      next.principalFairnessLedger = clone(event.principalFairnessLedger);
       break;
     case 'LEASED':
       next.phase = 'RUNNING';
@@ -1225,6 +1255,8 @@ export function reduceSchedulerAggregate(current, event, {
       next.resource = clone(event.resourceSnapshot);
       next.runtimeTrust = clone(event.runtimeTrustSnapshot);
       next.fairnessLedger = clone(event.fairnessLedger);
+      if (event.pendingRootIntents !== undefined) next.pendingRootIntents = clone(event.pendingRootIntents);
+      if (event.principalFairnessLedger !== undefined) next.principalFairnessLedger = clone(event.principalFairnessLedger);
       if (event.checkpointPointerTransition) {
         next.checkpointPointerLedger = [
           ...next.checkpointPointerLedger,
@@ -1457,6 +1489,7 @@ export function createIntentSchedulerState({
     currentness: current.queue?.currentness ?? 'HELD_UNKNOWN',
     phase: current.phase,
     queue: compactQueue(current.queue),
+    pendingRoots: compactPendingRootState(current),
     active: current.active ? {
       workerRef: current.active.workerRef,
       workNodeRef: current.active.workNodeRef,
@@ -1507,6 +1540,7 @@ export function createIntentSchedulerState({
     activeWorkNodeRef: value.active?.workNodeRef ?? null,
     logicalReadyRefs: value.queue.logicalReady.map((item) => item.workNodeRef),
     blockedRefs: value.queue.blocked.map((item) => item.workNodeRef),
+    pendingRootIntentRefs: value.pendingRoots.entries.map((item) => item.intentRef),
     sourceProjectionRef: 'projection.intent-scheduler.runtime'
   }), { name: 'intent-scheduler.terrain' });
 
@@ -1519,6 +1553,8 @@ export function createIntentSchedulerState({
       activeWorkerCount: value.active ? 1 : 0,
       admittedReadyCount: value.queue?.admittedReady?.length ?? 0,
       blockedCount: value.queue?.blocked?.length ?? 0,
+      pendingRootCount: value.pendingRootIntents?.length ?? 0,
+      pendingPrincipalCount: Object.keys(value.principalFairnessLedger ?? {}).length,
       reasonRefs: status.reasonRefs,
       runtimeEvidenceClass: value.runtimeTrust?.evidenceClass ?? null,
       rawMachineDumpIncluded: false
@@ -1539,7 +1575,9 @@ export function createIntentSchedulerState({
               ? `CONTINUATION_READY:${value.continuations.at(-1)?.workNodeRef ?? 'UNKNOWN'}`
           : value.queue.selectedWorkNodeRef
             ? `READY:${value.queue.selectedWorkNodeRef}`
-            : 'NO_ADMITTED_WORK',
+            : value.pendingRoots.count
+              ? `PENDING_ROOTS:${value.pendingRoots.count}`
+              : 'NO_ADMITTED_WORK',
     whyWaiting: value.queue.blocked.slice(0, 3),
     nextSafeAction: value.active
       ? 'CONTINUE_OR_CHECKPOINT_ACTIVE_NODE'
@@ -1553,7 +1591,9 @@ export function createIntentSchedulerState({
               ? 'FORM_FRESH_RUNTIME_AND_RESUME_PREEMPTED_WORK'
           : value.queue.selectedWorkNodeRef
             ? 'LEASE_SELECTED_NODE'
-            : 'REPAIR_OR_WAIT',
+            : value.pendingRoots.count
+              ? 'SELECT_AND_ADMIT_PENDING_ROOT'
+              : 'REPAIR_OR_WAIT',
     sourceDescentRef: 'projection.intent-scheduler.runtime'
   }), { name: 'intent-scheduler.guide' });
 
