@@ -6,7 +6,7 @@
 schemaVersion=vexlife.experience-foundation/v1
 formationRef=github.issue.vexlife.418
 workRef=work.vexlife.experience-foundation.f39c1bd2-4c92-4bb9-81b2-f0632bd8c14f
-implementationState=COORDINATION_ANCHOR__DRAFT_CLAIM_REQUIRED_BEFORE_REMAINING_SOURCE_MUTATION
+implementationState=SOURCE_IMPLEMENTED__PENDING_EXACT_GENERATED_CLOSURE_AND_FINAL_REVIEW
 ```
 
 ## Purpose
