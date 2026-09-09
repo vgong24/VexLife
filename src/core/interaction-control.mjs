@@ -118,7 +118,7 @@ export function projectContextEligibleEvents(events, { roles = ['user', 'assista
   const projected = events.filter((event) =>
     admittedRoles.has(event?.role) && (!event?.turnRef || !terminalTurnRefs.has(event.turnRef))
   );
-  const selected = Number.isInteger(limit) && limit >= 0 ? projected.slice(-limit) : projected;
+  const selected = Number.isInteger(limit) && limit >= 0 ? (limit === 0 ? [] : projected.slice(-limit)) : projected;
   return selected.map((event) => structuredClone(event));
 }
 
@@ -130,6 +130,7 @@ export function createInteractionController({ onAbort = null } = {}) {
   let phase = 'IDLE';
   let activeTurn = null;
   let activeTool = null;
+  let lastCompletedToolRef = null;
   let stopAfterActiveTool = false;
   let interruptOrdinal = 0;
   let lastInterrupt = null;
@@ -176,6 +177,7 @@ export function createInteractionController({ onAbort = null } = {}) {
     const abortController = new AbortController();
     activeTurn = { turnRef, cancellationTokenRef, abortController };
     activeTool = null;
+    lastCompletedToolRef = null;
     stopAfterActiveTool = false;
     setPhase('TURN_ADMITTED');
     return { signal: abortController.signal, snapshot: snapshot() };
@@ -205,11 +207,12 @@ export function createInteractionController({ onAbort = null } = {}) {
     lastInterrupt = Object.freeze({ action, reason, ordinal: interruptOrdinal });
 
     if (action === 'INTERRUPT_ACTIVE_TURN') {
+      // Commit control state before abort observers can throw or re-enter.
+      setPhase('INTERRUPT_REQUESTED');
       if (activeTurn && !activeTurn.abortController.signal.aborted) {
         activeTurn.abortController.abort(new Error(reason));
         onAbort?.({ reason, phase, turnRef: activeTurn.turnRef, toolRef: activeTool?.toolRef ?? null });
       }
-      setPhase('INTERRUPT_REQUESTED');
     } else if (action === 'STOP_AFTER_ACTIVE_TOOL') {
       stopAfterActiveTool = true;
       setPhase('INTERRUPT_REQUESTED');
@@ -220,6 +223,7 @@ export function createInteractionController({ onAbort = null } = {}) {
   function completeTool({ completed = true } = {}) {
     if (!activeTool) throw new Error('no active tool to complete');
     const completedTool = { ...activeTool, completed: Boolean(completed) };
+    if (completedTool.completed) lastCompletedToolRef = completedTool.toolRef;
     activeTool = null;
     const shouldContinue = !stopAfterActiveTool && !(activeTurn?.abortController.signal.aborted ?? false);
     setPhase(shouldContinue ? 'TURN_ADMITTED' : 'INTERRUPT_REQUESTED');
@@ -232,11 +236,12 @@ export function createInteractionController({ onAbort = null } = {}) {
 
   function completeTurn({ interrupted = false } = {}) {
     if (!activeTurn) throw new Error('no active turn to complete');
+    if (activeTool) throw new Error('cannot complete turn while an active tool is unsettled');
     const receipt = freezeSnapshot({
       turnRef: activeTurn.turnRef,
       cancellationTokenRef: activeTurn.cancellationTokenRef,
       interrupted: Boolean(interrupted || activeTurn.abortController.signal.aborted || stopAfterActiveTool),
-      completedToolRef: activeTool?.toolRef ?? null,
+      completedToolRef: lastCompletedToolRef,
       stopAfterActiveTool
     });
     activeTurn = null;
