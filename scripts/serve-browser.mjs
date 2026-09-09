@@ -21,6 +21,7 @@ import {
   createModelConnectionTurnComposer,
   loadModelConnectionTurnSources
 } from '../src/core/model-connection-turn-composer.mjs';
+import { createBrowserPromptContextRuntime } from '../src/core/browser-prompt-context-runtime.mjs';
 import {
   BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
@@ -135,12 +136,46 @@ export function createServerOwnedBrowserCompanionBridge({
         sourceBundle: loadModelConnectionTurnSources(sourceRoot)
       })
     : null;
+  let promptContextBinding = null;
+  const currentPromptContextRuntime = () => {
+    const identity = loadBrowserCompanionHomeIdentity(companionHome);
+    if (promptContextBinding === null) {
+      promptContextBinding = Object.freeze({
+        identity,
+        runtime: createBrowserPromptContextRuntime({
+          home: identity.home,
+          homeRef: identity.homeRef,
+          deviceRef: identity.deviceRef,
+          companionLineageRef: identity.companionLineageRef
+        })
+      });
+      return promptContextBinding.runtime;
+    }
+    const bound = promptContextBinding.identity;
+    if (
+      identity.home !== bound.home ||
+      identity.homeRef !== bound.homeRef ||
+      identity.deviceRef !== bound.deviceRef ||
+      identity.companionLineageRef !== bound.companionLineageRef
+    ) {
+      throw new BrowserCompanionBridgeError(
+        'COMPANION_HOME_IDENTITY_INVALID',
+        'Vex Home identity changed after prompt-context runtime binding',
+        409
+      );
+    }
+    return promptContextBinding.runtime;
+  };
+  const promptContextResolver = (input) => currentPromptContextRuntime().promptContextResolver(input);
+  const promptContextAuthorityVerifier = (query) => currentPromptContextRuntime().promptContextAuthorityVerifier(query);
   return bridgeFactory({
     home: companionHome,
     endpoint,
     model,
     capabilityRuntime,
-    modelConnectionComposer
+    modelConnectionComposer,
+    promptContextResolver,
+    promptContextAuthorityVerifier
   });
 }
 
