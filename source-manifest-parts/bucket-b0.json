@@ -3,6 +3,12 @@
   "bucketId": "b0",
   "files": [
     {
+      "path": "blueprint/experience-guidance.json",
+      "mode": "100644",
+      "bytes": 5079,
+      "sha256": "26e91a820fa2f38adf524a899c49234955058387206ea89ee85f8aabcf9f8082"
+    },
+    {
       "path": "scripts/build-projections.mjs",
       "mode": "100644",
       "bytes": 1875,
