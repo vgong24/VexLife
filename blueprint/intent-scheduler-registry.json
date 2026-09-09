@@ -177,7 +177,7 @@
     "activeWindowRule": "formedAt <= observedAt < expiresAt",
     "consumptionWindowRule": "formedAt <= observedAt <= consumedAt < expiresAt AND consumedAt >= schedulerObservedAt",
     "canonicalWorkgraphLineageRule": "transition and Intent receipt bind exact verification receipt/fingerprint plus every gate-result/source-observation ref/hash",
-    "selfCertifiedAllowed": false
+    "selfCertificationAllowed": false
   },
   "relayStateMachine": {"policyRef":"policy.intent-scheduler.relay-state-machine","initialState":"PENDING","terminalStates":["REINJECTED","CLOSED"],"allowedTransitions":{"PENDING":["HELD","ACCEPTED","CLOSED"],"HELD":["CLOSED"],"ACCEPTED":["REINJECTED","CLOSED"],"REINJECTED":[],"CLOSED":[]}},
   "relayTransitionContracts": [
