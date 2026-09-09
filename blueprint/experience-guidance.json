@@ -15,11 +15,15 @@
     "derivedRelevantCountIsCanonical": false
   },
   "proposal": {
+    "invocationClasses": ["PROACTIVE_INTRODUCTION", "EXPLICIT_HELP", "EXPLICIT_SHOW_ME"],
     "purposeClasses": ["EXPLORE", "TRY", "BUILD", "REVISIT", "LEARN", "RECOVER"],
+    "routeStates": ["CURRENT", "HELD"],
+    "availabilityStates": ["AVAILABLE", "HELD", "UNAVAILABLE", "UNKNOWN"],
     "requiredFields": [
       "proposalRef",
       "featureRef",
       "currentFrameRef",
+      "invocationClass",
       "purposeClass",
       "whyRelevantRefs",
       "awarenessState",
@@ -28,6 +32,8 @@
       "exposureRef",
       "effects"
     ],
+    "proactiveIntroductionRequiresAwarenessState": "UNINTRODUCED",
+    "explicitHelpIgnoresProactiveSuppression": true,
     "effects": false,
     "modelMayUpgradeAvailability": false,
     "modelMayGrantAuthority": false
@@ -84,13 +90,13 @@
       "BLOCK_START_INLINE_START"
     ],
     "safeMargin": 12,
+    "selectionPolicy": "SAFE_FIRST_THEN_MAX_USABLE_DIRECTIONAL_CAPACITY_THEN_PREFERENCE_ORDER",
     "penalties": {
       "outsideSafeArea": 1000000,
       "overlapTarget": 100000,
       "overlapFocusedControl": 100000,
       "overlapNavigationControl": 75000,
-      "overlapProtectedControl": 50000,
-      "distanceSquaredMultiplier": 1
+      "overlapProtectedControl": 50000
     },
     "fallbackOrder": [
       "CONTEXTUAL_EDGE_CALLOUT",
@@ -99,6 +105,7 @@
       "COMPACT_CONTEXT_SHEET",
       "NONVISUAL_DESCRIPTION"
     ],
+    "unsafeFallbackGeometryEmitted": false,
     "persistResolvedPlacement": false,
     "semanticNavigationEffect": false,
     "journeyEffect": false
@@ -143,6 +150,7 @@
     "ACKNOWLEDGED != MASTERED",
     "ACKNOWLEDGED != FEATURE_COMPLETION",
     "ACKNOWLEDGED != MEMORY",
+    "OFFERED_THIS_SESSION != ACKNOWLEDGED",
     "GUIDANCE_PROPOSAL != ENGAGEMENT_TARGET",
     "RELEVANCE != AUTHORITY",
     "GUIDANCE_TARGET != DOM_ID",
