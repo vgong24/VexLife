@@ -115,9 +115,28 @@
     "rule": "Oldest admitted work beyond maxDeferrals wins within the non-interactive pool; interactive wait still holds all background model work.",
     "sourceDiscardAllowed": false
   },
+  "multiRootPrincipalQueuePolicy": {
+    "policyRef": "policy.intent-scheduler.multi-root-principal-fairness",
+    "contractRef": "contract.intent-scheduler.multi-root-principal-queue/v1",
+    "aggregateFields": ["pendingRootIntents","principalFairnessLedger"],
+    "originPrincipalSource": "intent.originSpeakerRef",
+    "classHierarchy": ["INTERACTIVE","EXPEDITE","RECOVERY","NORMAL","BACKGROUND"],
+    "principalFirst": true,
+    "eachPrincipalContributesOldestEligibleIntent": true,
+    "selectedPrincipalDeferralResets": true,
+    "otherEligiblePrincipalDeferralsAge": true,
+    "lowerPriorityClassMayJumpInteractive": false,
+    "freshCanonicalAdmissionRequiredBeforeLease": true,
+    "secondSchedulerAllowed": false,
+    "rawPromptTitleContentStored": false,
+    "defaultRequesterCancellationScope": "OWN_QUEUED_ROOT_ONLY",
+    "modelInferenceConcurrency": 1,
+    "sourceDiscardAllowed": false
+  },
   "policyIdentities": [
     { "policyRef": "policy.intent-scheduler.physical-worker", "policyKind": "PHYSICAL_WORKER", "sourceField": "physicalWorkerPolicy" },
     { "policyRef": "policy.intent-scheduler.fairness", "policyKind": "SCHEDULER_OWNED_FAIRNESS", "sourceField": "fairnessPolicy" },
+    { "policyRef": "policy.intent-scheduler.multi-root-principal-fairness", "policyKind": "MULTI_ROOT_PRINCIPAL_FAIRNESS", "sourceField": "multiRootPrincipalQueuePolicy" },
     { "policyRef": "policy.intent-scheduler.resource-unknown", "policyKind": "FAIL_CLOSED_RESOURCE_UNKNOWN", "sourceField": "resourceUnknownPolicy" },
     { "policyRef": "policy.intent-scheduler.checkpoint-replay", "policyKind": "FRESH_GENERATION_CHECKPOINT_REPLAY", "sourceField": "checkpointReplayPolicy" },
     { "policyRef": "policy.intent-scheduler.mock-tool-effect", "policyKind": "DETERMINISTIC_MOCK_EFFECT_ONLY", "sourceField": "toolEffectPolicy" },
