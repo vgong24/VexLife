@@ -131,6 +131,9 @@
     "rawPromptTitleContentStored": false,
     "defaultRequesterCancellationScope": "OWN_QUEUED_ROOT_ONLY",
     "modelInferenceConcurrency": 1,
+    "maximumPendingRoots": 128,
+    "maximumPendingPrincipals": 32,
+    "maximumPendingRootsPerPrincipal": 32,
     "sourceDiscardAllowed": false
   },
   "policyIdentities": [
@@ -174,7 +177,7 @@
     "activeWindowRule": "formedAt <= observedAt < expiresAt",
     "consumptionWindowRule": "formedAt <= observedAt <= consumedAt < expiresAt AND consumedAt >= schedulerObservedAt",
     "canonicalWorkgraphLineageRule": "transition and Intent receipt bind exact verification receipt/fingerprint plus every gate-result/source-observation ref/hash",
-    "selfCertificationAllowed": false
+    "selfCertifiedAllowed": false
   },
   "relayStateMachine": {"policyRef":"policy.intent-scheduler.relay-state-machine","initialState":"PENDING","terminalStates":["REINJECTED","CLOSED"],"allowedTransitions":{"PENDING":["HELD","ACCEPTED","CLOSED"],"HELD":["CLOSED"],"ACCEPTED":["REINJECTED","CLOSED"],"REINJECTED":[],"CLOSED":[]}},
   "relayTransitionContracts": [
