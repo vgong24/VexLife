@@ -86,17 +86,15 @@ function fakeProjectionEnvironment() {
     addEventListener() {},
     removeEventListener() {}
   };
-  const messages = [];
   const projection = createBrowserHumanHelpProjection({
     navigation: { semanticFrame:() => terrainFrame },
-    addMessage:(...args) => messages.push(args),
     nextRecommendation:() => availableRecommendation,
     translate:(ref) => `Visible copy for ${ref}`,
     windowElement:guideWindow,
     documentRef,
     windowRef
   });
-  return { targetElement, guideWindow, transientNodes, documentRef, windowRef, messages, projection };
+  return { targetElement, guideWindow, transientNodes, documentRef, windowRef, projection };
 }
 
 test('EFX01C-01/03 explicit current Help emits at most one deterministic no-effect proposal', () => {
@@ -198,7 +196,7 @@ test('EFX01C-07 target disappearance degrades truthfully without mutating Guide 
   projection.dispose();
 });
 
-test('EFX01C-01 browser-ready binding reuses existing CURRENT Help control without a second public runtime API', () => {
+test('EFX01C-01 browser-ready binding reuses existing CURRENT Help control without duplicating canonical Guide output or creating a second public runtime API', () => {
   const listeners = new Map();
   const buttonListeners = [];
   const button = { addEventListener:(type, fn) => buttonListeners.push([type, fn]) };
@@ -241,13 +239,12 @@ test('EFX01C-01 browser-ready binding reuses existing CURRENT Help control witho
   assert.equal(buttonListeners.length, 1);
   assert.equal(buttonListeners[0][0], 'click');
   buttonListeners[0][1]();
-  assert.equal(messages.length, 1);
-  assert.equal(messages[0][1].contentRef, 'health.value.unavailable');
+  assert.equal(messages.length, 0);
   assert.equal(Object.hasOwn(globalRef, '__VEXLIFE_HUMAN_HELP_PROJECTION__'), false);
 });
 
 
-test('EFX01C-01 delayed app publication after DOMContentLoaded still binds exactly once', () => {
+test('EFX01C-01 delayed app publication after DOMContentLoaded still binds exactly once without taking Guide message ownership', () => {
   const listeners = new Map();
   const timers = new Map();
   let nextTimerId = 1;
@@ -306,8 +303,7 @@ test('EFX01C-01 delayed app publication after DOMContentLoaded still binds exact
   assert.equal(buttonListeners.length, 1);
   assert.equal(buttonListeners[0][0], 'click');
   buttonListeners[0][1]();
-  assert.equal(messages.length, 1);
-  assert.equal(messages[0][1].contentRef, 'health.value.unavailable');
+  assert.equal(messages.length, 0);
   assert.equal(bindBrowserHumanHelpProjectionAtReady({ globalRef }).state, 'ALREADY_BOUND');
   assert.equal(buttonListeners.length, 1);
   assert.equal(Object.hasOwn(globalRef, '__VEXLIFE_HUMAN_HELP_PROJECTION__'), false);
@@ -318,14 +314,14 @@ test('EFX01C-09 accepted Terrain wheel scope excludes Guide and scroll-scope des
   assert.match(terrain, /event\.target\.closest\('\.scroll-scope,\.e27-vex,\.e27-context-surface'\)/);
 });
 
-test('EFX01C-09/12 source has no persistence, navigation mutation, auto-execution, or second public runtime path', () => {
+test('EFX01C-09/12 source has no persistence, navigation mutation, auto-execution, duplicate Guide messaging, or second public runtime path', () => {
   const adapter = fs.readFileSync(new URL('../reference/browser/modules/experience-guidance-human-projection.js', import.meta.url), 'utf8');
   const bundle = fs.readFileSync(new URL('../reference/browser/modules/browser-bundle.js', import.meta.url), 'utf8');
   assert.match(adapter, /buildHelpProjection/);
   assert.match(adapter, /resolveGuidancePlacement/);
   assert.match(adapter, /data-vex-human-projection-transient/);
   assert.doesNotMatch(adapter, /__VEXLIFE_HUMAN_HELP_PROJECTION__/);
-  assert.doesNotMatch(adapter, /localStorage\.setItem|navigation\.navigate|\.click\(\)|autoExecute\s*:\s*true/);
+  assert.doesNotMatch(adapter, /guide\.addMessage|addMessage\('guide'|localStorage\.setItem|navigation\.navigate|\.click\(\)|autoExecute\s*:\s*true/);
   assert.match(bundle, /import '\.\/experience-guidance-human-projection\.js';/);
 });
 
