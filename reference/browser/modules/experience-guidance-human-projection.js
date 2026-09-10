@@ -156,7 +156,6 @@ function styleTransientSurface(element) {
 
 export function createBrowserHumanHelpProjection({
   navigation,
-  addMessage,
   nextRecommendation,
   translate,
   windowElement,
@@ -164,7 +163,6 @@ export function createBrowserHumanHelpProjection({
   windowRef = globalThis.window
 } = {}) {
   if (typeof navigation?.semanticFrame !== 'function') throw new Error('Human Help projection requires navigation.semanticFrame()');
-  if (typeof addMessage !== 'function') throw new Error('Human Help projection requires addMessage()');
   if (typeof nextRecommendation !== 'function') throw new Error('Human Help projection requires nextRecommendation()');
   if (typeof translate !== 'function') throw new Error('Human Help projection requires current browser translation');
   if (!windowElement || !documentRef || !windowRef || typeof documentRef.createElement !== 'function') throw new Error('Human Help projection requires current browser DOM');
@@ -248,7 +246,6 @@ export function createBrowserHumanHelpProjection({
     const recommendation = nextRecommendation(frame);
     const featureRef = HUMAN_HELP_FEATURE_BY_SCREEN[frame.screenRef] ?? null;
     const projection = deriveHumanHelpProjection({ frame, recommendation, featureRef });
-    addMessage('guide', { contentRef:projection.responseContentRef, contentParams:{}, intentRef:null });
     transientContent = translate(projection.responseContentRef, {});
     const targetRef = recommendation?.state === 'AVAILABLE' ? recommendation.targetNodeRef : frame.selectedNodeRef;
     activeTarget = nonempty(targetRef) ? documentRef.querySelector(`[data-node-ref="${selectorEscape(targetRef)}"]`) : null;
@@ -287,11 +284,10 @@ export function bindBrowserHumanHelpProjectionAtReady({ globalRef = globalThis }
     const button = documentRef.querySelector('[data-guide-intent-ref="intent.guide.current"]');
     const windowElement = documentRef.querySelector('#guideWindow');
     if (!app?.navigation || !guide || !button || !windowElement || typeof app.t !== 'function') return null;
-    if (typeof guide.addMessage !== 'function' || typeof guide.nextRecommendation !== 'function') return null;
+    if (typeof guide.nextRecommendation !== 'function') return null;
 
     const projection = createBrowserHumanHelpProjection({
       navigation: app.navigation,
-      addMessage: (...args) => guide.addMessage(...args),
       nextRecommendation: (...args) => guide.nextRecommendation(...args),
       translate: (...args) => app.t(...args),
       windowElement,
