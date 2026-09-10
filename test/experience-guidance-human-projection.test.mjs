@@ -190,7 +190,7 @@ test('EFX01C-07 target disappearance degrades truthfully without mutating Guide 
   targetElement.isConnected = false;
   const degraded = projection.refreshPlacement();
   assert.equal(degraded.state, 'FALLBACK_REQUIRED');
-  assert.equal(degraded.reason, 'CURRENT_RENDERED_TARGET_DISAPPEARERED');
+  assert.equal(degraded.reason, 'CURRENT_RENDERED_TARGET_DISAPPEARED');
   assert.equal(degraded.geometry, null);
   assert.deepEqual(guideWindow.style, before);
   assert.equal(transientNodes.some((node) => node.isConnected), false);
