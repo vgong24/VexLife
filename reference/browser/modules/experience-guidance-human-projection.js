@@ -20,6 +20,9 @@ const NAVIGATION_SELECTOR = '.e27-appbar, .e27-breadcrumb, .e27-recentbar';
 const PROTECTED_SELECTOR = '.terrain-toolbar, .terrain-journey-window, .e27-context-surface:not([hidden]), .e27-surface-menu:not([hidden]), .e27-terrain-context:not([hidden]), .e27-drawer.show';
 const TRANSIENT_ATTRIBUTE = 'data-vex-human-projection-transient';
 const BROWSER_HUMAN_HELP_BINDINGS = new WeakMap();
+const BROWSER_HUMAN_HELP_BIND_JOBS = new WeakMap();
+const BROWSER_HUMAN_HELP_BIND_RETRY_MS = 25;
+const BROWSER_HUMAN_HELP_BIND_MAX_ATTEMPTS = 600;
 
 const nonempty = (value) => typeof value === 'string' && value.trim().length > 0;
 const frameRef = (frame) => `frame.browser.${frame?.screenRef ?? 'unknown'}.${frame?.routeRef ?? 'unknown'}.${frame?.selectedNodeRef ?? 'none'}`;
@@ -273,6 +276,8 @@ export function createBrowserHumanHelpProjection({
 export function bindBrowserHumanHelpProjectionAtReady({ globalRef = globalThis } = {}) {
   const documentRef = globalRef?.document;
   if (!documentRef || typeof globalRef.addEventListener !== 'function') return Object.freeze({ state:'NOT_BROWSER' });
+  if (BROWSER_HUMAN_HELP_BINDINGS.has(globalRef)) return Object.freeze({ state:'ALREADY_BOUND' });
+  if (BROWSER_HUMAN_HELP_BIND_JOBS.has(globalRef)) return Object.freeze({ state:'BIND_PENDING' });
 
   function bind() {
     const existing = BROWSER_HUMAN_HELP_BINDINGS.get(globalRef);
@@ -298,11 +303,56 @@ export function bindBrowserHumanHelpProjectionAtReady({ globalRef = globalThis }
     return projection;
   }
 
+  let attempts = 0;
+  let timerId = null;
+  let settled = false;
+  const onReady = () => { attempt(); };
+
+  function cleanup() {
+    if (timerId !== null && typeof globalRef.clearTimeout === 'function') {
+      globalRef.clearTimeout(timerId);
+      timerId = null;
+    }
+    globalRef.removeEventListener?.('DOMContentLoaded', onReady);
+    globalRef.removeEventListener?.('load', onReady);
+    BROWSER_HUMAN_HELP_BIND_JOBS.delete(globalRef);
+  }
+
+  function scheduleRetry() {
+    if (settled || attempts >= BROWSER_HUMAN_HELP_BIND_MAX_ATTEMPTS) return;
+    if (typeof globalRef.setTimeout === 'function') {
+      timerId = globalRef.setTimeout(attempt, BROWSER_HUMAN_HELP_BIND_RETRY_MS);
+    }
+  }
+
+  function attempt() {
+    if (settled) return null;
+    attempts += 1;
+    const projection = bind();
+    if (projection) {
+      settled = true;
+      cleanup();
+      return projection;
+    }
+    if (attempts >= BROWSER_HUMAN_HELP_BIND_MAX_ATTEMPTS) {
+      settled = true;
+      cleanup();
+      return null;
+    }
+    scheduleRetry();
+    return null;
+  }
+
+  BROWSER_HUMAN_HELP_BIND_JOBS.set(globalRef, Object.freeze({ attempt }));
+  globalRef.addEventListener('DOMContentLoaded', onReady, { once:true });
+  globalRef.addEventListener('load', onReady, { once:true });
+
   if (documentRef.readyState === 'complete') {
-    globalRef.queueMicrotask?.(bind);
+    if (typeof globalRef.queueMicrotask === 'function') globalRef.queueMicrotask(attempt);
+    else attempt();
     return Object.freeze({ state:'BIND_QUEUED' });
   }
-  globalRef.addEventListener('DOMContentLoaded', bind, { once:true });
+  if (typeof globalRef.setTimeout === 'function') timerId = globalRef.setTimeout(attempt, 0);
   return Object.freeze({ state:'BIND_ON_DOM_CONTENT_LOADED' });
 }
 
