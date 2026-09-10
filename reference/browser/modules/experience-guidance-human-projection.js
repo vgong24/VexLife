@@ -18,7 +18,8 @@ const FALLBACK_PRESENTATION_KIND = 'GUIDE_VESSEL_EXPLANATION';
 const COMPACT_PRESENTATION_KIND = 'COMPACT_CONTEXT_SHEET';
 const NAVIGATION_SELECTOR = '.e27-appbar, .e27-breadcrumb, .e27-recentbar';
 const PROTECTED_SELECTOR = '.terrain-toolbar, .terrain-journey-window, .e27-context-surface:not([hidden]), .e27-surface-menu:not([hidden]), .e27-terrain-context:not([hidden]), .e27-drawer.show';
-const STYLE_PROPERTIES = Object.freeze(['left', 'right', 'top', 'bottom', 'width', 'height']);
+const TRANSIENT_ATTRIBUTE = 'data-vex-human-projection-transient';
+const BROWSER_HUMAN_HELP_BINDINGS = new WeakMap();
 
 const nonempty = (value) => typeof value === 'string' && value.trim().length > 0;
 const frameRef = (frame) => `frame.browser.${frame?.screenRef ?? 'unknown'}.${frame?.routeRef ?? 'unknown'}.${frame?.selectedNodeRef ?? 'none'}`;
@@ -95,23 +96,23 @@ function collectRects(documentRef, selector, excluded = new Set()) {
     .filter(Boolean);
 }
 
-export function resolveHumanHelpPlacement({ targetElement, guideElement, documentRef = globalThis.document, windowRef = globalThis.window } = {}) {
+export function resolveHumanHelpPlacement({ targetElement, surfaceElement = null, guideElement = null, documentRef = globalThis.document, windowRef = globalThis.window } = {}) {
   const targetRect = geometry(targetElement);
-  const guideRect = geometry(guideElement);
-  if (!targetRect || !guideRect || !documentRef || !windowRef) {
+  const surfaceRect = geometry(surfaceElement ?? guideElement);
+  if (!targetRect || !surfaceRect || !documentRef || !windowRef) {
     return Object.freeze({ state:'FALLBACK_REQUIRED', presentationKind:FALLBACK_PRESENTATION_KIND, geometry:null, reason:'CURRENT_RENDERED_TARGET_UNAVAILABLE', coreResult:null });
   }
   const viewportRect = { left:0, top:0, width:Number(windowRef.innerWidth), height:Number(windowRef.innerHeight) };
   if (![viewportRect.width, viewportRect.height].every(Number.isFinite) || viewportRect.width <= 0 || viewportRect.height <= 0) {
     return Object.freeze({ state:'FALLBACK_REQUIRED', presentationKind:'NONVISUAL_DESCRIPTION', geometry:null, reason:'VIEWPORT_GEOMETRY_UNAVAILABLE', coreResult:null });
   }
-  const excluded = new Set([targetElement, guideElement]);
+  const excluded = new Set([targetElement, surfaceElement ?? guideElement]);
   const activeElement = documentRef.activeElement;
   const focusRect = activeElement && !excluded.has(activeElement) ? geometry(activeElement) : null;
   const direction = (windowRef.getComputedStyle?.(documentRef.documentElement) ?? globalThis.getComputedStyle?.(documentRef.documentElement))?.direction === 'rtl' ? 'RTL' : 'LTR';
   const coreResult = resolveGuidancePlacement({
     targetRect,
-    surfaceSize: { width:guideRect.width, height:guideRect.height },
+    surfaceSize: { width:surfaceRect.width, height:surfaceRect.height },
     viewportRect,
     safeArea: viewportRect,
     protectedRects: collectRects(documentRef, PROTECTED_SELECTOR, excluded),
@@ -128,18 +129,33 @@ export function resolveHumanHelpPlacement({ targetElement, guideElement, documen
   return Object.freeze({ ...coreResult, presentationKind:FALLBACK_PRESENTATION_KIND, geometry:null, reason:'NO_SAFE_ANCHORED_GUIDE_POSITION', coreResult });
 }
 
-function captureInlineStyle(element) {
-  return Object.fromEntries(STYLE_PROPERTIES.map((property) => [property, element.style[property] ?? '']));
-}
-function restoreInlineStyle(element, snapshot) {
-  if (!snapshot) return;
-  for (const property of STYLE_PROPERTIES) element.style[property] = snapshot[property] ?? '';
+function styleTransientSurface(element) {
+  Object.assign(element.style, {
+    position:'fixed',
+    left:'-10000px',
+    top:'-10000px',
+    right:'auto',
+    bottom:'auto',
+    width:'min(300px, calc(100vw - 24px))',
+    height:'auto',
+    padding:'10px 12px',
+    border:'1px solid var(--line)',
+    borderRadius:'12px',
+    background:'color-mix(in srgb,var(--surface) 96%,transparent)',
+    color:'var(--text)',
+    boxShadow:'var(--shadow)',
+    fontSize:'11px',
+    lineHeight:'1.45',
+    zIndex:'69',
+    pointerEvents:'none'
+  });
 }
 
 export function createBrowserHumanHelpProjection({
   navigation,
   addMessage,
   nextRecommendation,
+  translate,
   windowElement,
   documentRef = globalThis.document,
   windowRef = globalThis.window
@@ -147,10 +163,12 @@ export function createBrowserHumanHelpProjection({
   if (typeof navigation?.semanticFrame !== 'function') throw new Error('Human Help projection requires navigation.semanticFrame()');
   if (typeof addMessage !== 'function') throw new Error('Human Help projection requires addMessage()');
   if (typeof nextRecommendation !== 'function') throw new Error('Human Help projection requires nextRecommendation()');
-  if (!windowElement || !documentRef || !windowRef) throw new Error('Human Help projection requires current browser DOM');
+  if (typeof translate !== 'function') throw new Error('Human Help projection requires current browser translation');
+  if (!windowElement || !documentRef || !windowRef || typeof documentRef.createElement !== 'function') throw new Error('Human Help projection requires current browser DOM');
 
-  let baselineStyle = null;
   let activeTarget = null;
+  let transientSurface = null;
+  let transientContent = '';
   let lastProjection = null;
   let resizeObserver = null;
   let mutationObserver = null;
@@ -161,24 +179,41 @@ export function createBrowserHumanHelpProjection({
     resizeObserver = null;
     mutationObserver = null;
   }
+  function removeTransientSurface() {
+    transientSurface?.remove?.();
+    transientSurface = null;
+  }
+  function ensureTransientSurface() {
+    if (transientSurface && transientSurface.isConnected !== false) return transientSurface;
+    const node = documentRef.createElement('div');
+    node.setAttribute(TRANSIENT_ATTRIBUTE, 'true');
+    node.setAttribute('aria-hidden', 'true');
+    node.textContent = transientContent;
+    styleTransientSurface(node);
+    documentRef.body?.append?.(node);
+    transientSurface = node;
+    return node;
+  }
   function applyPlacement(placement) {
-    if (baselineStyle === null) baselineStyle = captureInlineStyle(windowElement);
-    if (placement?.state === 'ANCHORED' && placement.geometry) {
-      windowElement.style.left = `${placement.geometry.left}px`;
-      windowElement.style.top = `${placement.geometry.top}px`;
-      windowElement.style.right = 'auto';
-      windowElement.style.bottom = 'auto';
-    } else restoreInlineStyle(windowElement, baselineStyle);
-    windowElement.dataset.guidancePresentationKind = placement?.presentationKind ?? FALLBACK_PRESENTATION_KIND;
-    windowElement.dataset.guidanceTransient = 'true';
+    if (placement?.state !== 'ANCHORED' || !placement.geometry) {
+      removeTransientSurface();
+      return;
+    }
+    const node = ensureTransientSurface();
+    node.style.left = `${placement.geometry.left}px`;
+    node.style.top = `${placement.geometry.top}px`;
   }
   function fallback(reason = 'CURRENT_RENDERED_TARGET_UNAVAILABLE') {
     return Object.freeze({ state:'FALLBACK_REQUIRED', presentationKind:windowRef.innerWidth <= 760 ? COMPACT_PRESENTATION_KIND : FALLBACK_PRESENTATION_KIND, geometry:null, reason, coreResult:null });
   }
+  function currentPlacement() {
+    if (!activeTarget) return fallback('CURRENT_RENDERED_TARGET_UNAVAILABLE');
+    if (activeTarget.isConnected === false || !visibleElement(activeTarget)) return fallback('CURRENT_RENDERED_TARGET_DISAPPEARED');
+    const surface = ensureTransientSurface();
+    return resolveHumanHelpPlacement({ targetElement:activeTarget, surfaceElement:surface, documentRef, windowRef });
+  }
   function refreshPlacement() {
-    const placement = activeTarget?.isConnected !== false && visibleElement(activeTarget)
-      ? resolveHumanHelpPlacement({ targetElement:activeTarget, guideElement:windowElement, documentRef, windowRef })
-      : fallback('CURRENT_RENDERED_TARGET_DISAPPEARED');
+    const placement = currentPlacement();
     applyPlacement(placement);
     if (lastProjection) lastProjection = Object.freeze({ ...lastProjection, placement });
     return placement;
@@ -200,10 +235,8 @@ export function createBrowserHumanHelpProjection({
   function dismiss() {
     clearObservers();
     activeTarget = null;
-    restoreInlineStyle(windowElement, baselineStyle);
-    baselineStyle = null;
-    delete windowElement.dataset.guidancePresentationKind;
-    delete windowElement.dataset.guidanceTransient;
+    transientContent = '';
+    removeTransientSurface();
     return true;
   }
   function projectExplicitHelp() {
@@ -213,11 +246,10 @@ export function createBrowserHumanHelpProjection({
     const featureRef = HUMAN_HELP_FEATURE_BY_SCREEN[frame.screenRef] ?? null;
     const projection = deriveHumanHelpProjection({ frame, recommendation, featureRef });
     addMessage('guide', { contentRef:projection.responseContentRef, contentParams:{}, intentRef:null });
+    transientContent = translate(projection.responseContentRef, {});
     const targetRef = recommendation?.state === 'AVAILABLE' ? recommendation.targetNodeRef : frame.selectedNodeRef;
     activeTarget = nonempty(targetRef) ? documentRef.querySelector(`[data-node-ref="${selectorEscape(targetRef)}"]`) : null;
-    const placement = activeTarget
-      ? resolveHumanHelpPlacement({ targetElement:activeTarget, guideElement:windowElement, documentRef, windowRef })
-      : fallback('CURRENT_RENDERED_TARGET_UNAVAILABLE');
+    const placement = currentPlacement();
     applyPlacement(placement);
     lastProjection = Object.freeze({ ...projection, frame:structuredClone(frame), placement });
     observeTarget();
@@ -238,30 +270,31 @@ export function createBrowserHumanHelpProjection({
   return Object.freeze({ projectExplicitHelp, refreshPlacement, dismiss, snapshot, dispose });
 }
 
-
 export function bindBrowserHumanHelpProjectionAtReady({ globalRef = globalThis } = {}) {
   const documentRef = globalRef?.document;
   if (!documentRef || typeof globalRef.addEventListener !== 'function') return Object.freeze({ state:'NOT_BROWSER' });
 
   function bind() {
-    if (globalRef.__VEXLIFE_HUMAN_HELP_PROJECTION__) return globalRef.__VEXLIFE_HUMAN_HELP_PROJECTION__;
+    const existing = BROWSER_HUMAN_HELP_BINDINGS.get(globalRef);
+    if (existing) return existing;
     const app = globalRef.__VEXLIFE_APP__;
     const guide = app?.guide;
     const button = documentRef.querySelector('[data-guide-intent-ref="intent.guide.current"]');
     const windowElement = documentRef.querySelector('#guideWindow');
-    if (!app?.navigation || !guide || !button || !windowElement) return null;
+    if (!app?.navigation || !guide || !button || !windowElement || typeof app.t !== 'function') return null;
     if (typeof guide.addMessage !== 'function' || typeof guide.nextRecommendation !== 'function') return null;
 
     const projection = createBrowserHumanHelpProjection({
       navigation: app.navigation,
       addMessage: (...args) => guide.addMessage(...args),
       nextRecommendation: (...args) => guide.nextRecommendation(...args),
+      translate: (...args) => app.t(...args),
       windowElement,
       documentRef,
       windowRef: globalRef
     });
     button.addEventListener('click', projection.projectExplicitHelp);
-    globalRef.__VEXLIFE_HUMAN_HELP_PROJECTION__ = projection;
+    BROWSER_HUMAN_HELP_BINDINGS.set(globalRef, projection);
     return projection;
   }
 
