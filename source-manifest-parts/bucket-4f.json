@@ -3,6 +3,12 @@
   "bucketId": "4f",
   "files": [
     {
+      "path": "blueprint/purpose-workspace/completion-contracts.json",
+      "mode": "100644",
+      "bytes": 3611,
+      "sha256": "6ae4794545ed088e2202622b7d0fc5bea4b910507c0cce73d6e1feda0d663e66"
+    },
+    {
       "path": "scripts/foundation-training-plan.mjs",
       "mode": "100644",
       "bytes": 13137,
