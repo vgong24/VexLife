@@ -199,7 +199,7 @@ function runtimeResource(generation = 1) {
   return createResourceSnapshot({
     snapshotRef: `resource-snapshot.family.test.${generation}`,
     generation,
-    sourceRef: 'source.intent-scheduler.family-test-runtime',
+    sourceRef: 'source.intent-scheduler.test-runtime',
     sourceHash: RUNTIME_SOURCE_HASH,
     formationRef: `formation.family.scheduler.resource.${generation}`,
     evidenceClass: 'SIMULATED_CURRENT',
@@ -241,7 +241,7 @@ function runtimeTrust(resourceSnapshot, generation = resourceSnapshot.generation
     roleRef: 'role.vex.developer',
     claimRef: 'claim.family.scheduler.test',
     occupancyRef: `occupancy.family.scheduler.test.${generation}`,
-    leaseAuthorityRef: 'authority.intent-scheduler.family-test-runtime',
+    leaseAuthorityRef: 'authority.intent-scheduler.test-runtime',
     resourceSnapshotRef: resourceSnapshot.snapshotRef,
     resourceSnapshotFingerprint: resourceSnapshot.semanticFingerprint,
     currentness: 'CURRENT'
@@ -378,7 +378,7 @@ function makeRuntimeScheduler({ authority = null, schedulerInstanceRef = null } 
     workerRef: 'worker.model.test.primary',
     schedulerInstanceRef: schedulerInstanceRef ?? `instance.family.scheduler.test.${schedulerInstanceSequence += 1}`,
     schedulerRegistry,
-    runtimeAuthority: authority ?? new WorkerLeaseAuthority({ sourceRef: 'source.intent-scheduler.family-test-runtime' })
+    runtimeAuthority: authority ?? new WorkerLeaseAuthority({ sourceRef: 'source.intent-scheduler.test-runtime' })
   });
 }
 
@@ -596,7 +596,7 @@ test('MPQ-05 legacy unleased admission also becomes stale when a root ledger app
 });
 
 test('MPQ-01 rejected physical worker claim leaves the selected root and fairness state untouched', () => {
-  const authority = new WorkerLeaseAuthority({ sourceRef: 'source.intent-scheduler.family-test-runtime' });
+  const authority = new WorkerLeaseAuthority({ sourceRef: 'source.intent-scheduler.test-runtime' });
   const holder = makeRuntimeScheduler({ authority, schedulerInstanceRef: 'instance.family.scheduler.holder' });
   const held = runtimeAdmission('intent.family.worker-holder', 'person.family.holder');
   holder.admit(held.candidate, held.options);
