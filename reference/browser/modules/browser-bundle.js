@@ -1,5 +1,6 @@
 import './browser-random-uuid.js';
 import './vex-birth-lab-controller.js';
+import './experience-guidance-human-projection.js';
 import { createAndroidRemoteVesselController } from './android-remote-vessel-controller.js';
 
 export async function loadBrowserBundle(root = '../../') {
