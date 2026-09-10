@@ -675,8 +675,12 @@ test('MIR-19/MIR-20 current direct caller compatibility boundary stays external 
 
 test('MIR-21 module composition retains the additive fragment and canonical G0 registries validate', () => {
   const moduleRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/module-registry.json'), 'utf8'));
-  assert.equal(moduleRegistry.includes.modules.at(-1), 'blueprint/module-registry/artifact-delivery.json');
-  assert.equal(moduleRegistry.includes.modules.includes('blueprint/module-registry/security-access-preview.json'), true);
+  const modules = moduleRegistry.includes.modules;
+  const artifactFragment = 'blueprint/module-registry/artifact-delivery.json';
+  const securityFragment = 'blueprint/module-registry/security-access-preview.json';
+  assert.equal(modules.filter((value) => value === artifactFragment).length, 1);
+  assert.equal(modules.filter((value) => value === securityFragment).length, 1);
+  assert.ok(modules.indexOf(securityFragment) < modules.indexOf(artifactFragment));
   const artifactRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-registry.json'), 'utf8'));
   const deliveryRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-delivery-registry.json'), 'utf8'));
   const validatedArtifacts = validateArtifactRegistry(artifactRegistry);

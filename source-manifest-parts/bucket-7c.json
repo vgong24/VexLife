@@ -9,6 +9,12 @@
       "sha256": "432ac86a9ad634c2ef830d43d842da3aaedcd3c3a905cc33511d6e9479aa14ff"
     },
     {
+      "path": "test/browser-model-turn-formation.test.mjs",
+      "mode": "100644",
+      "bytes": 7750,
+      "sha256": "e8cb7979cbf235aa711173b3e90b7d8723ff1109e9d6a2b1dad4b9556d030d5a"
+    },
+    {
       "path": "test/capability.test.mjs",
       "mode": "100644",
       "bytes": 3356,

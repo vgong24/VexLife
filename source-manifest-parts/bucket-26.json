@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 3485,
       "sha256": "c1923db71d440bfd87852df1890a37e371d2d1f1cf50ccdd1456d6fd4c86a13e"
+    },
+    {
+      "path": "test/model-turn-formation-atlas.test.mjs",
+      "mode": "100644",
+      "bytes": 4720,
+      "sha256": "809ac670d7a9f081a431a8c1f9331b315b209d78107677d6b0135222973933a0"
     }
   ]
 }

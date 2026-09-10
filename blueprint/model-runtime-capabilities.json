@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "vexlife.model-runtime-capability-registry/v1",
+  "registryRef": "registry.vexlife.model-runtime-capabilities.001",
+  "activeRuntimeCapabilityProfileRef": "profile.model-runtime-capability.vexlife.g0.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
+  "profiles": [
+    {
+      "runtimeCapabilityProfileRef": "profile.model-runtime-capability.vexlife.g0.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
+      "generationRef": "generation.vexlife.g0.001",
+      "modelBundleRef": "model-bundle.vexlife.g0.qwen3.5-4b.q4-k-m.001",
+      "operationalProfileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
+      "runtimeRevisionRef": "github.commit.ggml-org.llama-cpp.c0bc8591e8815c63cb01dd3f051a8b0df02501c9",
+      "runtimeExecutableSha256": "af3e56d6bdb84a9b6bd50f6ad748809370bc29be42d58088041408b2933d80f7",
+      "modelArtifactRef": "model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29",
+      "projectorArtifactRef": "model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775",
+      "endpointClass": "NUMERIC_LOOPBACK_HTTP",
+      "chatTemplateSha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+      "capabilities": {
+        "messageRoles": [
+          "assistant",
+          "system",
+          "tool",
+          "user"
+        ],
+        "modalities": {
+          "visionDeclared": true,
+          "videoDeclared": true,
+          "audioDeclared": false,
+          "multimodalInputObserved": false
+        },
+        "reasoning": {
+          "reasoningContentEmissionObserved": true,
+          "rawReasoningRetained": false
+        },
+        "tools": {
+          "runtimeNativeSupportDeclared": true,
+          "toolExecutionObserved": false,
+          "vexlifeAuthorityPath": "SCHEDULER_TOOL_RESULT_RELAY"
+        },
+        "structuredOutputObserved": true,
+        "usageMetadataObserved": true,
+        "timingMetadataObserved": true,
+        "propsEndpointObserved": true
+      },
+      "cells": [
+        {
+          "cellRef": "C00",
+          "requestClass": "CURRENT_PRODUCTION_REQUEST_RESPONSE_KEY_INVENTORY",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C01",
+          "requestClass": "GET_HEALTH",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C02",
+          "requestClass": "GET_PROPS_READ_ONLY",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C03",
+          "requestClass": "CURRENT_REASONING_DEFAULT",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C04",
+          "requestClass": "EXTRACTED_REASONING_CONTROL",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C05",
+          "requestClass": "THINKING_DISABLED_CONTROL",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C06",
+          "requestClass": "USAGE_FINISH_METADATA",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C07",
+          "requestClass": "TIMING_METADATA",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C08",
+          "requestClass": "STRUCTURED_OUTPUT_CONTROL",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C09",
+          "requestClass": "UNKNOWN_FIELD_INVENTORY",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C10",
+          "requestClass": "EXACT_CHAT_TEMPLATE_FINGERPRINT",
+          "disposition": "AVAILABLE_AND_OBSERVED"
+        },
+        {
+          "cellRef": "C11",
+          "requestClass": "MULTIMODAL_DECLARATION_ONLY",
+          "disposition": "INTENTIONALLY_HELD",
+          "holdReason": "NO_MULTIMODAL_EXECUTION_AUTHORITY_OR_LIVED_PROOF"
+        },
+        {
+          "cellRef": "C12",
+          "requestClass": "NATIVE_TOOL_CALL_DECLARATION_ONLY",
+          "disposition": "INTENTIONALLY_HELD",
+          "holdReason": "SCHEDULER_TOOL_RESULT_RELAY_REMAINS_CANONICAL_TOOL_EFFECT_PATH"
+        }
+      ],
+      "currentness": {
+        "state": "CURRENT",
+        "acceptedMainRef": "github.commit.vexlife.97919adb85d0609633ea7d1673adc83ed1300c7f",
+        "refreshTriggers": [
+          "MODEL_BUNDLE_CHANGE",
+          "OPERATIONAL_PROFILE_CHANGE",
+          "RUNTIME_REVISION_CHANGE",
+          "RUNTIME_EXECUTABLE_HASH_CHANGE",
+          "CHAT_TEMPLATE_CHANGE",
+          "CAPABILITY_CENSUS_REPLACED"
+        ]
+      },
+      "evidenceRefs": [
+        "task.vexlife.model-connection.runtime-capability-census.001",
+        "attempt.vexlife.model-connection.runtime-capability-census.a003.cfb1a7ff-006a-4e93-8bb1-6018e4cc5244",
+        "github.issue.vexlife.365",
+        "github.pull.vexlife.377",
+        "github.commit.vexlife.97919adb85d0609633ea7d1673adc83ed1300c7f"
+      ]
+    }
+  ]
+}

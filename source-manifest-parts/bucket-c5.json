@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "c5",
+  "files": [
+    {
+      "path": "test/vex-self-capability-frame.test.mjs",
+      "mode": "100644",
+      "bytes": 5705,
+      "sha256": "c55ecb7d1c60571ca2445fa2235be4811053791d870a748beb28ed298cc5974d"
+    }
+  ]
+}

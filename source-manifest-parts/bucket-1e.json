@@ -3,6 +3,12 @@
   "bucketId": "1e",
   "files": [
     {
+      "path": "blueprint/model-turn-formation-browser-registry.json",
+      "mode": "100644",
+      "bytes": 1728,
+      "sha256": "9f809a773e97717d17129aa6361cdfb784b526b4c268d4789f9026fc88f03811"
+    },
+    {
       "path": "reference/browser/modules/public-learning-controller.js",
       "mode": "100644",
       "bytes": 23391,

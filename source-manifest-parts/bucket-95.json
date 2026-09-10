@@ -3,6 +3,12 @@
   "bucketId": "95",
   "files": [
     {
+      "path": "blueprint/model-turn-formation-browser/strings/ja.json",
+      "mode": "100644",
+      "bytes": 1075,
+      "sha256": "bd157d97c6f777df57c4c9cac007ad61e8fb94169e7d8b0cb34ce663126ea873"
+    },
+    {
       "path": "reference/browser/README.md",
       "mode": "100644",
       "bytes": 898,

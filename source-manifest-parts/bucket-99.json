@@ -9,6 +9,12 @@
       "sha256": "d98dfcb6d716026a9d77ddbbb7ddb4b41d84e1868debeda8052ec1b986711ff7"
     },
     {
+      "path": "docs/EXPERIENCE-FOUNDATION.md",
+      "mode": "100644",
+      "bytes": 3373,
+      "sha256": "b7fe6685db18953289c6d39124a6ae987461499f56a1d47573ba87f20c9f5517"
+    },
+    {
       "path": "docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md",
       "mode": "100644",
       "bytes": 6513,
@@ -19,6 +25,18 @@
       "mode": "100644",
       "bytes": 7535,
       "sha256": "7f4a3e6d3571f6084c48989964fe0fd40b5c91a21b9321b25be44436774f87d0"
+    },
+    {
+      "path": "test/experience-guidance.test.mjs",
+      "mode": "100644",
+      "bytes": 7988,
+      "sha256": "17103fcb931a6a49dcc0c797b98cb4ff44592984d40ac63f800e2b4442e3b46a"
+    },
+    {
+      "path": "test/relationships-cdr-observation-binding.test.mjs",
+      "mode": "100644",
+      "bytes": 10888,
+      "sha256": "338159b81372319985b11377828cefab54af37c175c51db69072ada8bb9d6309"
     }
   ]
 }

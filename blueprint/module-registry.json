@@ -7,13 +7,15 @@
       "blueprint/module-registry/core.json",
       "blueprint/module-registry/scripts.json",
       "blueprint/module-registry/browser.json",
+      "blueprint/module-registry/browser-prompt-context-runtime.json",
       "blueprint/module-registry/governance-and-bridge.json",
       "blueprint/module-registry/public-learning.json",
       "blueprint/module-registry/navigation-continuity.json",
       "blueprint/module-registry/cdr-s5-closed-alpha.json",
       "blueprint/module-registry/relationships-runtime-bridge.json",
       "blueprint/module-registry/security-access-preview.json",
-      "blueprint/module-registry/artifact-delivery.json"
+      "blueprint/module-registry/artifact-delivery.json",
+      "blueprint/module-registry/model-connection.json"
     ]
   }
 }

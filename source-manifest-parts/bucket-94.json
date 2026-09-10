@@ -9,10 +9,16 @@
       "sha256": "3d48ffcfe5ca82ea75e221b5d4c2272a9a7382a0103993fefb9f0f3a3efd9c62"
     },
     {
+      "path": "docs/MODEL-CONNECTION-COMPILER.md",
+      "mode": "100644",
+      "bytes": 6973,
+      "sha256": "9bfbc62df42b85ba39a91c5a566b15870a95e392d4f1999104d49ca3b386d412"
+    },
+    {
       "path": "reference/browser/modules/feature-walkthrough-runner.js",
       "mode": "100644",
-      "bytes": 13484,
-      "sha256": "a11c49ce523c47cd964302d30d0e7c72f6b1511ce850c70ac5dcb0be59026bea"
+      "bytes": 17039,
+      "sha256": "f5eed2f7d0a09b5fc6c6540dedc75ea384a0d7ad6f539f43922994bf3437984b"
     },
     {
       "path": "src/core/intent-checkpoint.mjs",

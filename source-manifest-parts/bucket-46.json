@@ -9,6 +9,12 @@
       "sha256": "5b64d62c4990ba7354fd72aee5efed5683e1978f8e9dc276985d2e91a59c4375"
     },
     {
+      "path": "docs/FRIEND-RELATIONSHIP-CDR-OBSERVATION-BINDING.md",
+      "mode": "100644",
+      "bytes": 4042,
+      "sha256": "c5711296c95db64feb1677dbf4d4a18d595561091580c1c98662a561b19e5bd8"
+    },
+    {
       "path": "scripts/build-admission-check.mjs",
       "mode": "100644",
       "bytes": 20951,

@@ -15,6 +15,12 @@
       "sha256": "c1f042af05132438031b5d10c8f16cdb15a1864e4c332d601b288c40ec7b30a2"
     },
     {
+      "path": "src/core/relationships-cdr-observation-binding.mjs",
+      "mode": "100644",
+      "bytes": 11485,
+      "sha256": "b8abaee5946e87bb1f5a31db30ef71a667a579e97a7f559ef7e39d626988562e"
+    },
+    {
       "path": "test/android-remote-vessel-zero-effect.test.mjs",
       "mode": "100644",
       "bytes": 1612,

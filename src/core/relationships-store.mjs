@@ -996,6 +996,78 @@ function transitionStatus(action, record) {
   return expectedStatusForAction(action, record.status);
 }
 
+export function listRelationships(value) {
+  const admitted = new Set(['home', 'localParticipantRef', 'localStateRootRef', 'maxRelationships', 'includeTombstoned']);
+  requireExactObjectKeys(value, admitted, 'list input');
+  const home = canonicalHomeRoot(value.home);
+  const localParticipantRef = requireRef(value.localParticipantRef, 'localParticipantRef');
+  const localStateRootRef = requireRef(value.localStateRootRef, 'localStateRootRef');
+  const maxRelationships = value.maxRelationships ?? 100;
+  const includeTombstoned = value.includeTombstoned ?? false;
+  if (!Number.isSafeInteger(maxRelationships) || maxRelationships < 1 || maxRelationships > 256) {
+    fail('RELATIONSHIP_LIST_BOUNDED', 'maxRelationships must be between 1 and 256');
+  }
+  if (typeof includeTombstoned !== 'boolean') {
+    fail('RELATIONSHIP_INPUT_INVALID', 'includeTombstoned must be boolean');
+  }
+  const paths = storePaths({ home, localParticipantRef, localStateRootRef });
+  if (!fs.existsSync(paths.heads)) {
+    return Object.freeze({
+      schemaVersion: RELATIONSHIPS_STORE_SCHEMA,
+      state: 'CURRENT_LIST',
+      localParticipantRef,
+      localStateRootRef,
+      totalCount: 0,
+      returnedCount: 0,
+      truncated: false,
+      relationships: Object.freeze([])
+    });
+  }
+  const headsStat = fs.lstatSync(paths.heads);
+  if (headsStat.isSymbolicLink() || !headsStat.isDirectory() || !samePath(fs.realpathSync.native(paths.heads), paths.heads)) {
+    fail('RELATIONSHIP_RECEIPT_CORRUPT', 'relationship heads directory is not canonical');
+  }
+  const entries = fs.readdirSync(paths.heads, { withFileTypes: true });
+  if (entries.length > 4096) fail('RELATIONSHIP_LIST_BOUNDED', 'relationship head inventory exceeds the bounded scan ceiling');
+  const relationships = [];
+  for (const entry of entries.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0)) {
+    if (!entry.isFile() || !entry.name.endsWith('.json')) fail('RELATIONSHIP_RECEIPT_CORRUPT', 'relationship head inventory contains a non-file entry');
+    const relationshipRef = requireRef(entry.name.slice(0, -5), 'relationshipRef', 'RELATIONSHIP_RECEIPT_CORRUPT');
+    const head = validateHead(readJson(headPath(paths, relationshipRef), 'RELATIONSHIP_RECEIPT_CORRUPT', 'relationship head'), relationshipRef);
+    if (head.localParticipantRef !== localParticipantRef || head.localStateRootRef !== localStateRootRef) {
+      fail('RELATIONSHIP_RECEIPT_CORRUPT', 'relationship head owner binding is invalid');
+    }
+    const current = currentRelationship(paths, {
+      home,
+      localParticipantRef,
+      localStateRootRef,
+      counterpartParticipantRef: head.counterpartParticipantRef
+    });
+    if (!includeTombstoned && current.record.tombstoned) continue;
+    relationships.push(Object.freeze({
+      relationshipRef: current.relationshipRef,
+      counterpartParticipantRef: current.record.counterpartParticipantRef,
+      localRelationshipClass: current.record.localRelationshipClass,
+      status: current.record.status,
+      revision: current.record.revision,
+      updatedAt: current.record.updatedAt,
+      tombstoned: current.record.tombstoned
+    }));
+  }
+  relationships.sort((left, right) => left.relationshipRef < right.relationshipRef ? -1 : left.relationshipRef > right.relationshipRef ? 1 : 0);
+  const selected = relationships.slice(0, maxRelationships);
+  return Object.freeze({
+    schemaVersion: RELATIONSHIPS_STORE_SCHEMA,
+    state: 'CURRENT_LIST',
+    localParticipantRef,
+    localStateRootRef,
+    totalCount: relationships.length,
+    returnedCount: selected.length,
+    truncated: selected.length < relationships.length,
+    relationships: Object.freeze(selected)
+  });
+}
+
 export function transitionRelationship(value) {
   const input = normalizeTransitionInput(value);
   const paths = storePaths(input);

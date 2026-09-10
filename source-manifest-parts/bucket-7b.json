@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "7b",
+  "files": [
+    {
+      "path": "src/core/model-connection-turn-composer.mjs",
+      "mode": "100644",
+      "bytes": 6265,
+      "sha256": "f1728a2436dee4c9f101f2fa8de045f4d71835fccea1a2d36d308607ff2578b0"
+    }
+  ]
+}

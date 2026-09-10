@@ -1,4 +1,8 @@
 import { $, escapeHtml } from './dom.js';
+import {
+  projectBrowserModelTurnFormation,
+  renderModelTurnFormationDisclosure
+} from './model-turn-formation-disclosure.js';
 
 const PROJECT_NODE = {
   'project.self-development': 'element.project.self-development',
@@ -382,6 +386,9 @@ export function createChatController({ state, projects, roles, channels, message
     article.innerHTML = `<div class="avatar" aria-hidden="true">${escapeHtml(roles[message.speakerKey].avatar)}</div><div><div class="message-header"><strong>${escapeHtml(speaker)} → ${escapeHtml(recipients)}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : message.threadRef)}</span><span class="message-index">[${String(message.sequence).padStart(2, '0')}]</span></div><div class="message-body"></div></div>`;
     $('.message-body', article).textContent = message.contentRef ? t(message.contentRef, message.contentParams) : message.content;
     renderSemanticRelayDisclosure(article, message);
+    if (message.modelTurnFormation) {
+      void renderModelTurnFormationDisclosure(article, message.modelTurnFormation, { language: state.language }).catch(() => {});
+    }
     feed.append(article);
     if (!considerScroll || wasNearBottom || message.speakerKey === 'victor') feed.scrollTop = feed.scrollHeight;
     else {
@@ -550,6 +557,13 @@ export function createChatController({ state, projects, roles, channels, message
       if (body.responseSemanticRelay) message.semanticRelay = body.responseSemanticRelay;
       message.conversationHeadSha256 = body.conversationHeadSha256;
       message.modelNameOrBoundedTestProfileRef = body.modelNameOrBoundedTestProfileRef;
+      message.modelTurnFormation = projectBrowserModelTurnFormation({
+        modelTurnWitness: body.modelTurnWitness ?? null,
+        capabilityRuntime: body.capabilityRuntime ?? null,
+        promptContextMaterialization: body.promptContextMaterialization ?? null,
+        modelConnectionProjection: body.modelConnectionProjection ?? null,
+        selfCapabilityFrame: body.selfCapabilityFrame ?? null
+      });
       list.push(message);
       if (!appendMessageNode(message)) {
         const messageKey = keyForChannel(channel);

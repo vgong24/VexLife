@@ -9,6 +9,12 @@
       "sha256": "3c18759f96df1abf7d96a6b3a711c53579ed692c561deb1af4990d1196dae5d4"
     },
     {
+      "path": "blueprint/model-connection-binding-registry.json",
+      "mode": "100644",
+      "bytes": 2893,
+      "sha256": "a9a98260a67a61f54b3d797884466d7b6e33924d20234865321423ae85e9adbc"
+    },
+    {
       "path": "install/vexlife-setup-window.applescript",
       "mode": "100644",
       "bytes": 19195,

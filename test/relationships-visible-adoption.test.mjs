@@ -86,6 +86,104 @@ function undersizedControls(page) {
   );
 }
 
+async function mountSavedFfr03Relationships(page, { decision }) {
+  await page.evaluate(async () => {
+    const { createRelationshipsController, loadRelationshipsReference } = await import('/reference/browser/modules/relationships-controller.js');
+    const reference = await loadRelationshipsReference('/');
+    document.querySelector('#view-relationships')?.remove();
+    document.querySelector('#ffr03RelationshipsHost')?.remove();
+    const host = document.createElement('div');
+    host.id = 'ffr03RelationshipsHost';
+    document.body.append(host);
+    const binding = Object.freeze({
+      localParticipantRef:'participant.local.alpha',
+      localStateRootRef:'state-root.local.alpha',
+      counterpartParticipantRef:'participant.peer.beta',
+      counterpartCurrentKeyRef:'key.peer.beta.current',
+      invitationRef:'invitation.friend.alpha-beta.001',
+      invitationCurrentnessRef:'currentness.invitation.alpha-beta.001',
+      instanceRef:'instance.relationships.browser.ffr03'
+    });
+    const preparedEffects = Object.freeze({
+      relationshipMutationPerformed:false,canonicalRelationshipPersisted:false,networkEffectPerformed:false,
+      providerEffectPerformed:false,MemoryEffectPerformed:false,HomeLayoutEffectPerformed:false,
+      modelRuntimePerformed:false,publicationPerformed:false,publicSearchPerformed:false,
+      semanticAcknowledgementCreated:false,reciprocalFriendshipCreated:false
+    });
+    const savedEffects = Object.freeze({
+      relationshipMutationPerformed:true,canonicalRelationshipPersisted:true,networkEffectPerformed:false,
+      providerEffectPerformed:false,MemoryEffectPerformed:false,HomeLayoutEffectPerformed:false,
+      modelRuntimePerformed:false,publicationPerformed:false,publicSearchPerformed:false,
+      semanticAcknowledgementCreated:false,reciprocalFriendshipCreated:false
+    });
+    const bridge = Object.freeze({
+      ownerBinding:Object.freeze({
+        localParticipantRef:binding.localParticipantRef,
+        localStateRootRef:binding.localStateRootRef
+      }),
+      prepare(input) {
+        return Object.freeze({
+          schemaVersion:'vexlife.browser-relationships-prepared/v1',
+          state:'PREPARED_NO_EFFECT',
+          relationshipRef:'relationship.local.alpha.peer.beta',
+          ...input,
+          effects:preparedEffects
+        });
+      },
+      commit() {
+        return Object.freeze({
+          schemaVersion:'vexlife.browser-relationships-persistence/v1',
+          state:'SAVED',
+          relationshipRef:'relationship.local.alpha.peer.beta',
+          receipt:Object.freeze({
+            state:'COMMITTED',
+            relationshipPersisted:true,
+            relationshipRef:'relationship.local.alpha.peer.beta',
+            revision:1
+          }),
+          current:Object.freeze({
+            relationshipRef:'relationship.local.alpha.peer.beta',
+            record:Object.freeze({
+              revision:1,
+              localParticipantRef:binding.localParticipantRef,
+              localStateRootRef:binding.localStateRootRef
+            })
+          }),
+          effects:savedEffects
+        });
+      }
+    });
+    const controller = createRelationshipsController({
+      state:{ language:'en', contextProjection:'relationships' },
+      registry:reference.registry,
+      catalogs:reference.catalogs,
+      cdrRegistry:reference.cdrRegistry,
+      persistenceBridge:bridge,
+      persistenceBinding:binding,
+      host
+    });
+    globalThis.__FFR03_RELATIONSHIPS_TEST__ = controller;
+    controller.render();
+    document.querySelector('#view-relationships').hidden = false;
+  });
+  await page.locator('#relationshipsConnect').click();
+  await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
+  await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+  await page.selectOption('#relationshipsDecision', decision);
+  assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), false);
+  await page.locator('#relationshipsFormLocal').click();
+  await page.waitForFunction(() => globalThis.__FFR03_RELATIONSHIPS_TEST__?.snapshot().localFormed === true);
+  const saved = await page.evaluate(() => globalThis.__FFR03_RELATIONSHIPS_TEST__.snapshot());
+  assert.equal(saved.localFormed, true);
+  assert.equal(saved.admission.admitted, true);
+  assert.equal(saved.delivery, 'NOT_CONNECTED');
+  assert.equal(saved.runtimePlan.state, 'IDLE');
+  assert.equal(Object.values(saved.effects).every((value) => value === false), true);
+  assert.match(await page.locator('#relationshipsConnectStatus').textContent(), /Saved locally as/i);
+  await page.locator('#relationshipsAlphaConsent').click();
+  assert.equal((await page.evaluate(() => globalThis.__FFR03_RELATIONSHIPS_TEST__.snapshot())).cdrGate.alphaConsentAcknowledged, true);
+}
+
 test('Relationships visible adoption binds the stable resource to Self Development without effect widening', () => {
   const registry = validateRegistry(json('blueprint/relationships-browser-registry.json'));
   const terrain = json('blueprint/fragments/terrain.json');
@@ -195,40 +293,27 @@ test('Relationships root browser route is visible, localized, accessible and no-
     await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
     await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
     await page.selectOption('#relationshipsDecision', 'NARROW');
-    assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), false);
-    await page.locator('#relationshipsFormLocal').click();
-    assert.match(await page.locator('#relationshipsConnectStatus').textContent(), /Nothing has been sent or saved/i);
-    let formed = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
-    assert.equal(formed.localFormed, true);
-    assert.equal(formed.admission.admitted, true);
-    assert.equal(formed.delivery, 'NOT_CONNECTED');
-    assert.equal(formed.cdrGate.alphaConsentAcknowledged, false);
-    assert.equal(formed.runtimePlan.state, 'IDLE');
-
-    await page.locator('#relationshipsPrepareRuntimePlan').click();
-    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.relationships.snapshot().runtimePlan.state === 'HELD');
+    assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), true);
+    assert.match(await page.locator('#relationshipsConnectStatus').textContent(), /Saving is held until this Vex has explicit local-owner and counterpart invitation identity bindings/i);
     let held = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
-    assert.equal(held.runtimePlan.state, 'HELD');
+    assert.equal(held.localFormed, false);
+    assert.equal(held.admission.admitted, true);
     assert.equal(held.delivery, 'NOT_CONNECTED');
-    assert.match(await page.locator('#relationshipsRuntimePlanStatus').textContent(), /Host plan held/i);
+    assert.equal(held.cdrGate.alphaConsentAcknowledged, false);
+    assert.equal(held.runtimePlan.state, 'IDLE');
+    assert.equal(await page.locator('#relationshipsPrepareRuntimePlan').isDisabled(), true);
+    assert.equal(Object.values(held.effects).every((value) => value === false), true);
 
     const alpha = page.locator('#relationshipsAlphaConsent');
     assert.equal(await alpha.isDisabled(), false);
     await alpha.click();
     assert.equal(await page.locator('#relationshipsAlphaConsent').isDisabled(), true);
     assert.match(await page.locator('#relationshipsAlphaConsent').textContent(), /acknowledged/i);
-    formed = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
-    assert.equal(formed.cdrGate.alphaConsentAcknowledged, true);
-    assert.equal(formed.runtimePlan.state, 'IDLE');
-
-    await page.locator('#relationshipsPrepareRuntimePlan').click();
-    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.relationships.snapshot().runtimePlan.state === 'HOST_BINDING_REQUIRED');
-    const planned = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
-    assert.equal(planned.runtimePlan.state, 'HOST_BINDING_REQUIRED');
-    assert.equal(planned.runtimePlan.hostExecutionDeferred, true);
-    assert.equal(planned.runtimePlan.semanticAcknowledged, false);
-    assert.equal(planned.delivery, 'NOT_CONNECTED');
-    assert.match(await page.locator('#relationshipsRuntimePlanStatus').textContent(), /no network connection has started/i);
+    held = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    assert.equal(held.localFormed, false);
+    assert.equal(held.cdrGate.alphaConsentAcknowledged, true);
+    assert.equal(held.runtimePlan.state, 'IDLE');
+    assert.equal(await page.locator('#relationshipsPrepareRuntimePlan').isDisabled(), true);
     assertHumanVisibleText(await page.locator('#view-relationships').textContent());
 
     const hundred = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.setScenarioCount(100));
@@ -257,8 +342,10 @@ test('Relationships root browser route is visible, localized, accessible and no-
     assert.equal(snap.resourceRef, 'resource.vexlife.relationships');
     assert.equal(snap.publicSearch, false);
     assert.equal(snap.communitySearch, false);
+    assert.equal(snap.localFormed, false);
+    assert.equal(snap.admission.admitted, true);
     assert.equal(snap.delivery, 'NOT_CONNECTED');
-    assert.equal(snap.runtimePlan.state, 'HOST_BINDING_REQUIRED');
+    assert.equal(snap.runtimePlan.state, 'IDLE');
     assert.equal(Object.values(snap.effects).every((value) => value === false), true);
     assert.equal(popups, 0);
     assert.equal(downloads, 0);
@@ -363,13 +450,7 @@ test('Relationships ignores a delayed host-ready response after the originating 
     const page = await context.newPage();
     await page.goto(`${origin}/reference/browser/index.html`, { waitUntil:'networkidle' });
     await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__?.relationships));
-    await enterRelationships(page);
-    await page.locator('#relationshipsConnect').click();
-    await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
-    await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
-    await page.selectOption('#relationshipsDecision', 'ACCEPT');
-    await page.locator('#relationshipsFormLocal').click();
-    await page.locator('#relationshipsAlphaConsent').click();
+    await mountSavedFfr03Relationships(page, { decision:'ACCEPT' });
 
     let interceptedResolve;
     const intercepted = new Promise((resolve) => { interceptedResolve = resolve; });
@@ -387,17 +468,17 @@ test('Relationships ignores a delayed host-ready response after the originating 
 
     await page.locator('#relationshipsPrepareRuntimePlan').click();
     await intercepted;
-    assert.equal((await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot())).runtimePlan.state, 'PREPARING');
+    assert.equal((await page.evaluate(() => globalThis.__FFR03_RELATIONSHIPS_TEST__.snapshot())).runtimePlan.state, 'PREPARING');
 
     await page.selectOption('#relationshipsRoute', 'UNAVAILABLE');
-    const changed = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    const changed = await page.evaluate(() => globalThis.__FFR03_RELATIONSHIPS_TEST__.snapshot());
     assert.equal(changed.cdrGate.routeClass, 'UNAVAILABLE');
     assert.equal(changed.runtimePlan.state, 'IDLE');
 
     releaseResolve();
     await fulfilled;
     await page.waitForTimeout(50);
-    const afterStaleReturn = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    const afterStaleReturn = await page.evaluate(() => globalThis.__FFR03_RELATIONSHIPS_TEST__.snapshot());
     assert.equal(afterStaleReturn.cdrGate.routeClass, 'UNAVAILABLE');
     assert.equal(afterStaleReturn.runtimePlan.state, 'IDLE');
     assert.equal(afterStaleReturn.runtimePlan.semanticAcknowledged, false);
@@ -423,13 +504,7 @@ test('Relationships rejects a substituted runtime-plan product-gate echo instead
     const page = await context.newPage();
     await page.goto(`${origin}/reference/browser/index.html`, { waitUntil:'networkidle' });
     await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__?.relationships));
-    await enterRelationships(page);
-    await page.locator('#relationshipsConnect').click();
-    await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
-    await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
-    await page.selectOption('#relationshipsDecision', 'NARROW');
-    await page.locator('#relationshipsFormLocal').click();
-    await page.locator('#relationshipsAlphaConsent').click();
+    await mountSavedFfr03Relationships(page, { decision:'NARROW' });
 
     await page.route('**/api/v1/relationships/runtime-plan', async (route) => {
       const response = await route.fetch();
@@ -443,8 +518,8 @@ test('Relationships rejects a substituted runtime-plan product-gate echo instead
     });
 
     await page.locator('#relationshipsPrepareRuntimePlan').click();
-    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.relationships.snapshot().runtimePlan.state === 'FAILURE');
-    const rejected = await page.evaluate(() => globalThis.__VEXLIFE_APP__.relationships.snapshot());
+    await page.waitForFunction(() => globalThis.__FFR03_RELATIONSHIPS_TEST__.snapshot().runtimePlan.state === 'FAILURE');
+    const rejected = await page.evaluate(() => globalThis.__FFR03_RELATIONSHIPS_TEST__.snapshot());
     assert.equal(rejected.cdrGate.routeClass, 'DIRECT_CANDIDATE');
     assert.equal(rejected.runtimePlan.state, 'FAILURE');
     assert.equal(rejected.runtimePlan.failureCode, 'RELATIONSHIPS_RUNTIME_PLAN_FAILED');

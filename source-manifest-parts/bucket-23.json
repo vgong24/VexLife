@@ -9,6 +9,12 @@
       "sha256": "bf45089222a806520b29b49319842c5baf6a1a82c14eaf9623436605dae564c2"
     },
     {
+      "path": "blueprint/model-turn-formation-browser/strings/zh.json",
+      "mode": "100644",
+      "bytes": 913,
+      "sha256": "8348051a8f5bfecf5f5f450aa18da184892d5b00d1a11c6d4c76e3427bdf11f2"
+    },
+    {
       "path": "test/fixtures/experience-review-guide-local-append/authority.json",
       "mode": "100644",
       "bytes": 1244,

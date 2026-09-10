@@ -1090,14 +1090,15 @@ export function createCapabilityAssimilationRuntime({
 
     const projectCapabilityStages = Object.fromEntries(
       ROOT_CAPABILITY_KERNEL.map((capabilityRef) => [capabilityRef, 'COMPLETED']));
-    const frame = compileCapabilityFrame(capabilityRegistry, {
+    const capabilityFrameInput = freeze({
       roleRef,
       platformRef,
-      projectCapabilityStages,
+      projectCapabilityStages: clone(projectCapabilityStages),
       permissionStages: { 'permission.none': 'COMPLETED' },
       effectStages: { READ_ONLY: 'COMPLETED' },
       resourceStages: { IO_BOUNDED: 'COMPLETED' }
     });
+    const frame = compileCapabilityFrame(capabilityRegistry, capabilityFrameInput);
     const frontier = projectCapabilityFrontier(frame, {
       activeCapabilityRef: context.activeCapabilityRef ?? null
     });
@@ -1330,6 +1331,7 @@ export function createCapabilityAssimilationRuntime({
       runtimeProjection: {
         schemaVersion: 'vexlife.capability-assimilation-runtime/v1',
         mode,
+        capabilityFrameInput: clone(capabilityFrameInput),
         inferenceCount: 2,
         requestModelRef: requestInference.model,
         synthesisModelRef: synthesis.model,

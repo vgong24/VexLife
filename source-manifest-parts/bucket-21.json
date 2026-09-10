@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 21202,
       "sha256": "96f0a9b20a735753f6974481e468f1f04f87b31785136ca131eb23c945028c36"
+    },
+    {
+      "path": "test/browser-model-connection-server-composition.test.mjs",
+      "mode": "100644",
+      "bytes": 7199,
+      "sha256": "2d60360fb77be8a6085293c3419ba1dac473bbadd253398901036f2785935fbd"
     }
   ]
 }

@@ -3,6 +3,12 @@
   "bucketId": "e1",
   "files": [
     {
+      "path": "docs/FRIEND-RELATIONSHIP-RESTART-ISOLATION.md",
+      "mode": "100644",
+      "bytes": 2105,
+      "sha256": "6cd92ce4f8decf285f5de2f4e41f77824671ea96ec95a417cee22f44166f38bb"
+    },
+    {
       "path": "reference/browser/app.css",
       "mode": "100644",
       "bytes": 30599,

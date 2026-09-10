@@ -3,6 +3,12 @@
   "bucketId": "ed",
   "files": [
     {
+      "path": "blueprint/experience-foundation.json",
+      "mode": "100644",
+      "bytes": 11063,
+      "sha256": "2b480643efb4d7d8288018e2668df6408600a077700bb59ad28b2978209655f9"
+    },
+    {
       "path": "blueprint/implementation/work-units-experience-and-runtime.json",
       "mode": "100644",
       "bytes": 26440,

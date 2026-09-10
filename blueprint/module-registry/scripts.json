@@ -84,7 +84,9 @@
       "module.vexlife.core.browser-living-journal-memory-bridge",
       "registry.vexlife.capabilities.001",
       "registry.vexlife.intent-scheduler.001",
-      "module.vexlife.core.capability-assimilation-runtime"
+      "module.vexlife.core.capability-assimilation-runtime",
+      "module.vexlife.core.model-connection-turn-composer",
+      "module.vexlife.core.browser-prompt-context-runtime"
     ],
     "writes": [],
     "loadedBy": [
@@ -93,11 +95,17 @@
     "tests": [
       "test/browser.test.mjs",
       "test/browser-living-journal-memory-http-route.test.mjs",
-      "test/capability-assimilation-runtime.test.mjs"
+      "test/capability-assimilation-runtime.test.mjs",
+      "test/browser-model-connection-server-composition.test.mjs",
+      "test/browser-prompt-context-runtime.test.mjs"
     ],
     "changeMap": [
       "src/core/capability-assimilation-runtime.mjs",
       "src/core/browser-companion-bridge.mjs",
+      "src/core/model-connection-turn-composer.mjs",
+      "src/core/browser-prompt-context-runtime.mjs",
+      "blueprint/module-registry/browser-prompt-context-runtime.json",
+      "blueprint/module-registry/model-connection.json",
       "docs/CAPABILITY-ASSIMILATION-RUNTIME.md"
     ]
   },

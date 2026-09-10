@@ -42,7 +42,7 @@
   "form": "関係をプレビュー",
   "closeConnect": "接続プレビューを閉じる",
   "held": "まだ準備ができていません。招待、本人確認、あなたの判断を確認してください。",
-  "ready": "この関係をプレビューできます。",
+  "ready": "ローカルでの判断を進められます。明示的な永続化バインディングから永続コミット受領証と一致する最新読出しが得られるまで「保存済み」にはなりません。",
   "formed": "ローカル関係のプレビューを準備しました。送信も保存もしていません。",
   "alphaConsentTitle": "アルファ参加への同意",
   "alphaConsentBody": "アルファへの参加は、この招待を承認することや関係ラベルを選ぶこととは別の選択です。",
@@ -128,5 +128,10 @@
   "option.failure.relay": "リレーを利用できません",
   "option.failure.mailbox": "メールボックス経由のみ",
   "option.failure.session": "セッションの期限が切れました",
-  "option.failure.unknown": "接続上の問題はまだ不明"
+  "option.failure.unknown": "接続上の問題はまだ不明",
+  "persistenceSave": "関係をローカルに保存",
+  "persistenceSaved": "永続コミット受領証と最新読出しの一致を確認して {class} としてローカルに保存しました。これは引き続き、あなた側だけの方向性のある関係です。",
+  "persistenceBindingRequired": "明示的なローカル所有者と相手・招待のIDバインディングが揃うまで保存は保留です。",
+  "persistencePrepared": "ローカルで準備済み — まだ保存済みではありません。",
+  "persistenceFailure": "保存されていません — 永続コミット受領証と最新読出しの一致を確認できませんでした。"
 }

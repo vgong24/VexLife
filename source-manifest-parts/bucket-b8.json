@@ -3,6 +3,12 @@
   "bucketId": "b8",
   "files": [
     {
+      "path": "reference/browser/modules/model-turn-formation-disclosure.js",
+      "mode": "100644",
+      "bytes": 7083,
+      "sha256": "a532d05ad6fe9a5de41e0751ad63fbdc2936e1dacb94ce98e7d7b05e15e1bd76"
+    },
+    {
       "path": "test/feature-perceptibility.test.mjs",
       "mode": "100644",
       "bytes": 15492,

@@ -1,0 +1,121 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.model-connection-compiler",
+    "path": "src/core/model-connection-compiler.mjs",
+    "role": "Compose the canonical capability frame with accepted model-bundle, operational-profile, runtime-capability and external ModelTurnWitness truth without becoming a second capability compiler, scheduler or effect authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.capabilities.001",
+      "registry.vexlife.model-bundles.001",
+      "registry.vexlife.operational-profiles.001",
+      "registry.vexlife.model-runtime-capabilities.001",
+      "registry.vexlife.model-connections.001",
+      "module.vexlife.core.capability",
+      "src/core/model-turn-witness.mjs"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.vex-self-capability-frame"
+    ],
+    "tests": [
+      "test/model-connection-compiler.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/model-runtime-capabilities.json",
+      "blueprint/model-connection-binding-registry.json",
+      "blueprint/model-bundle-registry.json",
+      "blueprint/vex-operational-profiles.json",
+      "src/core/model-turn-witness.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.vex-self-capability-frame",
+    "path": "src/core/vex-self-capability-frame.mjs",
+    "role": "Project one bounded source-bound current self-capability frame from the model-connection projection; never grant effects, expose raw reasoning, or replace canonical capability/source owners.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.model-connection-compiler",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/vex-self-capability-frame.test.mjs"
+    ],
+    "changeMap": [
+      "docs/MODEL-CONNECTION-COMPILER.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.model-connection-turn-composer",
+    "path": "src/core/model-connection-turn-composer.mjs",
+    "role": "Compose accepted R3 model-connection and bounded self-capability projections from one closed external turn witness plus source-owned adopted capability input and scheduler-dispatch use evidence; direct mode remains UNKNOWN and no effect authority is granted.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.model-connection-compiler",
+      "module.vexlife.core.vex-self-capability-frame",
+      "registry.vexlife.capabilities.001",
+      "registry.vexlife.model-bundles.001",
+      "registry.vexlife.operational-profiles.001",
+      "registry.vexlife.model-runtime-capabilities.001",
+      "registry.vexlife.model-connections.001"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/model-connection-turn-composer.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/capability-assimilation-runtime.mjs",
+      "src/core/browser-companion-bridge.mjs",
+      "src/core/model-connection-atlas.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.model-connection-atlas",
+    "path": "src/core/model-connection-atlas.mjs",
+    "role": "Compose one bounded turn-formation projection through the canonical Atlas query owner over accepted witness/runtime/model-connection/self-capability references without creating a second graph, compiler, scheduler or effect authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.model-connection-compiler",
+      "module.vexlife.core.vex-self-capability-frame",
+      "src/core/atlas.mjs",
+      "src/core/model-turn-witness.mjs"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.browser.model-turn-formation-disclosure"
+    ],
+    "tests": [
+      "test/model-turn-formation-atlas.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/model-turn-formation-browser-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.model-turn-formation-disclosure",
+    "path": "reference/browser/modules/model-turn-formation-disclosure.js",
+    "role": "Project bounded source-owned How This Turn Formed evidence into an exact response-message-attached native details disclosure; missing R3 projection remains UNKNOWN and raw reasoning/provider/private data never projects.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "src/core/model-connection-atlas.mjs",
+      "blueprint/model-turn-formation-browser-registry.json",
+      "blueprint/model-turn-formation-browser/strings/en.json",
+      "blueprint/model-turn-formation-browser/strings/ja.json",
+      "blueprint/model-turn-formation-browser/strings/zh.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.browser.chat-controller"
+    ],
+    "tests": [
+      "test/browser-model-turn-formation.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/modules/chat-controller.js"
+    ]
+  }
+]
