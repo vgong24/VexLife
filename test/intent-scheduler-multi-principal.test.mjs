@@ -711,6 +711,62 @@ test('MPQ-06 interactive pending root survives checkpoint and is consumed only b
   assert.equal(scheduler.projections.health.value.activeWorkerCount, 1);
 });
 
+test('MPQ-04/06 complete-preemption resume fails closed when a newer current principal-first interactive root appears', () => {
+  const background = runtimeAdmission('intent.family.preempted-background-stale', 'person.family.a', {
+    nodeOverrides: { priorityClass: 'LOW', background: true }
+  });
+  const scheduler = makeRuntimeScheduler();
+  const queue = scheduler.admit(background.candidate, background.options);
+  const active = scheduler.leaseSelected(runtimeContextInput(1, 'background-stale'));
+  assert.equal(active.admitted, true);
+
+  const retained = runtimeAdmission('intent.family.preempting-z-retained', 'person.family.b', { generation: 2 });
+  scheduler.enqueueRootIntent(retained.candidate, { schedulingClass: 'INTERACTIVE' });
+  const requested = scheduler.requestPendingRootPreemption(retained.candidate, retained.options);
+  assert.equal(requested.state, 'CHECKPOINT_REQUIRED');
+  assert.equal(scheduler.aggregate.pendingPreemption.incomingRootIntentRef, 'intent.family.preempting-z-retained');
+
+  const checkpointed = scheduler.checkpoint(runtimeCheckpointInput({ queue, active }, 'checkpoint.family.preemption-stale'), {
+    releaseReceiptRef: 'release.family.preemption-stale',
+    releasedAt: CHECKPOINT_AT
+  });
+  assert.equal(scheduler.active, null);
+
+  const late = runtimeAdmission('intent.family.preempting-a-late', 'person.family.c', { generation: 2 });
+  scheduler.enqueueRootIntent(late.candidate, { schedulingClass: 'INTERACTIVE' });
+  const current = selectNextPendingRoot(
+    scheduler.aggregate.pendingRootIntents,
+    scheduler.aggregate.principalFairnessLedger,
+    { schedulerRegistry }
+  );
+  assert.equal(current.intentRef, 'intent.family.preempting-a-late');
+
+  const priorRootState = semanticHash({
+    pendingRootIntents: scheduler.aggregate.pendingRootIntents,
+    principalFairnessLedger: scheduler.aggregate.principalFairnessLedger
+  });
+  const pendingPreemptionFingerprint = scheduler.aggregate.pendingPreemption.semanticFingerprint;
+
+  assert.throws(() => scheduler.resume(checkpointed.checkpoint.checkpointRef, {
+    graph: retained.candidate,
+    options: retained.options,
+    contextInput: runtimeContextInput(2, 'retained-stale'),
+    sourceBindings: SOURCE_BINDINGS,
+    completePreemption: true
+  }), /current principal-first selection/);
+
+  assert.equal(scheduler.active, null);
+  assert.deepEqual(scheduler.pendingRoots.map((item) => item.intentRef), [
+    'intent.family.preempting-a-late',
+    'intent.family.preempting-z-retained'
+  ]);
+  assert.equal(semanticHash({
+    pendingRootIntents: scheduler.aggregate.pendingRootIntents,
+    principalFairnessLedger: scheduler.aggregate.principalFairnessLedger
+  }), priorRootState);
+  assert.equal(scheduler.aggregate.pendingPreemption.semanticFingerprint, pendingPreemptionFingerprint);
+});
+
 test('MPQ-07 restart aggregate restores exact pending roots and content-free shared projection', () => {
   let pendingState = emptyState();
   pendingState = append(pendingState, pending('intent.family.restart-a', 'person.family.a', 'NORMAL', 0));

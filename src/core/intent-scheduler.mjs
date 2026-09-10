@@ -2301,7 +2301,7 @@ export class SingleWorkerIntentScheduler {
         schedulerRegistry: this.#schedulerRegistry,
         schedulerGeneration: generation,
         expectedRootFingerprint: preemptionRoot.semanticFingerprint,
-        requireCurrentSelection: false
+        requireCurrentSelection: true
       })
       : null;
     const priorContextLease = aggregate.leaseLedger[checkpoint.priorContextLeaseRef];
