@@ -11,8 +11,8 @@
     {
       "path": "test/intent-scheduler-multi-principal.test.mjs",
       "mode": "100644",
-      "bytes": 38552,
-      "sha256": "024c67ff03f29998f63b4d6a1c12ffaf01f00c74fedd1821597dc546e09ccc6b"
+      "bytes": 39665,
+      "sha256": "57082e5e58245a0771b362fdf4ac15a6a555a4948c7b74b9552c98177c918dd1"
     },
     {
       "path": "test/model-connection-compiler.test.mjs",
