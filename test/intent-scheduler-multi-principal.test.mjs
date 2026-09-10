@@ -401,10 +401,10 @@ function runtimeCheckpointInput(fixture, checkpointRef = 'checkpoint.family.sche
 
 test('MPQ-00 independent root intents coexist as exact aggregate-owned identities', () => {
   let state = emptyState();
-  state = append(state, pending('intent.family.a1', 'person.family.a', 'NORMAL', 0));
-  state = append(state, pending('intent.family.a2', 'person.family.a', 'NORMAL', 1));
-  state = append(state, pending('intent.family.b1', 'person.family.b', 'NORMAL', 0));
-  state = append(state, pending('intent.family.c1', 'person.family.c', 'NORMAL', 0));
+  state = append(state, pending('intent.family.a1', 'person.family.a', 'INTERACTIVE', 0));
+  state = append(state, pending('intent.family.a2', 'person.family.a', 'INTERACTIVE', 1));
+  state = append(state, pending('intent.family.b1', 'person.family.b', 'INTERACTIVE', 0));
+  state = append(state, pending('intent.family.c1', 'person.family.c', 'INTERACTIVE', 0));
 
   const validated = validatePendingRootSchedulerState(state, { schedulerRegistry });
   assert.equal(validated.ok, true);
