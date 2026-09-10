@@ -467,6 +467,23 @@ test('MPQ-04 strict class hierarchy keeps INTERACTIVE ahead of older NORMAL work
   assert.equal(selected.schedulingClass, 'INTERACTIVE');
 });
 
+test('MPQ-04B lower-class age cannot bias principal ordering within the highest eligible class', () => {
+  let state = emptyState();
+  state = append(state, pending('intent.family.a-normal-old', 'person.family.a', 'NORMAL', 0));
+  state = append(state, pending('intent.family.a-interactive-new', 'person.family.a', 'INTERACTIVE', 10));
+  state = append(state, pending('intent.family.b-interactive-older', 'person.family.b', 'INTERACTIVE', 5));
+
+  assert.equal(state.principalFairnessLedger['person.family.a'].readySinceGeneration, 0);
+  assert.equal(state.principalFairnessLedger['person.family.b'].readySinceGeneration, 5);
+  assert.equal(state.principalFairnessLedger['person.family.a'].deferralCount, 0);
+  assert.equal(state.principalFairnessLedger['person.family.b'].deferralCount, 0);
+
+  const selected = selectNextPendingRoot(state.pendingRootIntents, state.principalFairnessLedger, { schedulerRegistry });
+  assert.equal(selected.intentRef, 'intent.family.b-interactive-older');
+  assert.equal(selected.originPrincipalRef, 'person.family.b');
+  assert.equal(selected.schedulingClass, 'INTERACTIVE');
+});
+
 test('MPQ-05/06 root enqueue and preemption transitions preserve unrelated active scheduler truth', () => {
   let pendingState = emptyState();
   pendingState = append(pendingState, pending('intent.family.waiting-a', 'person.family.a', 'NORMAL', 1));

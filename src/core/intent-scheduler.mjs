@@ -653,8 +653,6 @@ export function selectNextPendingRoot(pendingRootIntents, principalFairnessLedge
   return clone(principalCandidates.sort((left, right) =>
     principalFairnessLedger[right.originPrincipalRef].deferralCount -
       principalFairnessLedger[left.originPrincipalRef].deferralCount ||
-    principalFairnessLedger[left.originPrincipalRef].readySinceGeneration -
-      principalFairnessLedger[right.originPrincipalRef].readySinceGeneration ||
     left.readySinceGeneration - right.readySinceGeneration ||
     left.submittedGeneration - right.submittedGeneration ||
     left.intentRef.localeCompare(right.intentRef)
