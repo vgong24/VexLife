@@ -246,6 +246,73 @@ test('EFX01C-01 browser-ready binding reuses existing CURRENT Help control witho
   assert.equal(Object.hasOwn(globalRef, '__VEXLIFE_HUMAN_HELP_PROJECTION__'), false);
 });
 
+
+test('EFX01C-01 delayed app publication after DOMContentLoaded still binds exactly once', () => {
+  const listeners = new Map();
+  const timers = new Map();
+  let nextTimerId = 1;
+  const buttonListeners = [];
+  const button = { addEventListener:(type, fn) => buttonListeners.push([type, fn]) };
+  const guideWindow = fakeElement({ left:20, top:20, width:340, height:330 });
+  const documentRef = {
+    readyState: 'loading',
+    body: { append(node) { node.isConnected = true; } },
+    documentElement: {},
+    activeElement: null,
+    createElement() { return fakeElement({ width:260, height:72, connected:false }); },
+    querySelector(selector) {
+      if (selector === '[data-guide-intent-ref="intent.guide.current"]') return button;
+      if (selector === '#guideWindow') return guideWindow;
+      return null;
+    },
+    querySelectorAll: () => []
+  };
+  const messages = [];
+  const globalRef = {
+    document: documentRef,
+    innerWidth: 1200,
+    innerHeight: 800,
+    getComputedStyle: () => ({ direction:'ltr' }),
+    addEventListener(type, fn) { listeners.set(type, fn); },
+    removeEventListener(type, fn) { if (listeners.get(type) === fn) listeners.delete(type); },
+    setTimeout(fn) { const id = nextTimerId++; timers.set(id, fn); return id; },
+    clearTimeout(id) { timers.delete(id); },
+    t:(ref) => `Visible copy for ${ref}`
+  };
+
+  const scheduled = bindBrowserHumanHelpProjectionAtReady({ globalRef });
+  assert.equal(scheduled.state, 'BIND_ON_DOM_CONTENT_LOADED');
+  assert.equal(bindBrowserHumanHelpProjectionAtReady({ globalRef }).state, 'BIND_PENDING');
+  assert.equal(typeof listeners.get('DOMContentLoaded'), 'function');
+
+  listeners.get('DOMContentLoaded')();
+  assert.equal(buttonListeners.length, 0);
+
+  globalRef.__VEXLIFE_APP__ = {
+    navigation: { semanticFrame:() => terrainFrame },
+    guide: {
+      addMessage:(...args) => messages.push(args),
+      nextRecommendation:() => ({ state:'UNAVAILABLE', reason:'NO_CURRENT_EXECUTABLE_RECOMMENDATION' })
+    },
+    t: globalRef.t
+  };
+
+  for (let guard = 0; guard < 10 && buttonListeners.length === 0 && timers.size > 0; guard += 1) {
+    const [id, callback] = timers.entries().next().value;
+    timers.delete(id);
+    callback();
+  }
+
+  assert.equal(buttonListeners.length, 1);
+  assert.equal(buttonListeners[0][0], 'click');
+  buttonListeners[0][1]();
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0][1].contentRef, 'health.value.unavailable');
+  assert.equal(bindBrowserHumanHelpProjectionAtReady({ globalRef }).state, 'ALREADY_BOUND');
+  assert.equal(buttonListeners.length, 1);
+  assert.equal(Object.hasOwn(globalRef, '__VEXLIFE_HUMAN_HELP_PROJECTION__'), false);
+});
+
 test('EFX01C-09 accepted Terrain wheel scope excludes Guide and scroll-scope descendants', () => {
   const terrain = fs.readFileSync(new URL('../reference/browser/modules/terrain-controller.js', import.meta.url), 'utf8');
   assert.match(terrain, /event\.target\.closest\('\.scroll-scope,\.e27-vex,\.e27-context-surface'\)/);
