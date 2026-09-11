@@ -318,7 +318,47 @@ test('EFX01E-08 keeps HELD and UNAVAILABLE guidance distinct and non-runnable', 
   assert.equal(projection.effectEvidence.commandExecuted, false);
 });
 
-test('EFX01E-09 is deterministic, deeply immutable and performs no model/tool/Memory/network effect', () => {
+test('EFX01E-09 strips unregistered fields from guidance, target, cue and self-capability input', () => {
+  const hostileProposal = {
+    ...structuredClone(availableProposal),
+    privateHumanMemory: { ref:'memory.private.should-not-cross' },
+    targetBindingOrNull: {
+      ...structuredClone(targetBinding),
+      rawHumanContent: 'must-not-cross'
+    }
+  };
+  const hostileHelp = {
+    ...structuredClone(availableHelp),
+    privateHumanMemory: { ref:'memory.private.help' },
+    proposals: [hostileProposal]
+  };
+  const hostileCue = {
+    ...structuredClone(panCue),
+    rawProviderReasoning: 'must-not-cross'
+  };
+  const hostileSelfFrame = makeSelfCapabilityFrame({
+    privateHumanMemory: { ref:'memory.private.self-frame' }
+  });
+
+  const projection = project({
+    helpProjection: hostileHelp,
+    interactionCueOrNull: hostileCue,
+    selfCapabilityFrame: hostileSelfFrame
+  });
+
+  assert.equal(Object.hasOwn(projection.currentGuidance.proposals[0], 'privateHumanMemory'), false);
+  assert.equal(
+    Object.hasOwn(projection.currentGuidance.proposals[0].targetBindingOrNull, 'rawHumanContent'),
+    false
+  );
+  assert.equal(
+    Object.hasOwn(projection.currentGuidance.interactionCueOrNull, 'rawProviderReasoning'),
+    false
+  );
+  assert.equal(Object.hasOwn(projection.selfCapabilityContext, 'privateHumanMemory'), false);
+});
+
+test('EFX01E-10 is deterministic, deeply immutable and performs no model/tool/Memory/network effect', () => {
   const first = project();
   const second = project();
   assert.equal(first.semanticFingerprint, second.semanticFingerprint);
