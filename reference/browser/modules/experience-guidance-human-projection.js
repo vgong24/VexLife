@@ -161,30 +161,43 @@ function makeInteractionCandidate(preference, experience, documentRef, { require
   return Object.freeze({ cue, selector, element });
 }
 
-export function deriveHumanHelpInteractionCandidates({ frame, experience = experienceRegistry, documentRef = null } = {}) {
-  if (!frame || typeof frame !== 'object' || !nonempty(frame.screenRef)) throw new Error('current semantic frame is required');
-  const candidates = [];
-  const primary = HUMAN_HELP_INTERACTION_BY_SCREEN[frame.screenRef] ?? null;
+function declaredInteractionPreferences(frame) {
+  const preferences = [];
+  const primary = HUMAN_HELP_INTERACTION_BY_SCREEN[frame?.screenRef] ?? null;
   if (primary) {
-    const candidate = makeInteractionCandidate({
+    preferences.push(Object.freeze({
       ...primary,
       selector:HUMAN_HELP_CURRENT_SURFACE_SELECTOR_BY_SCREEN[frame.screenRef] ?? null
-    }, experience, documentRef, { requireRendered:Boolean(documentRef) });
-    if (candidate) candidates.push(candidate);
+    }));
   }
-  for (const preference of HUMAN_HELP_DYNAMIC_INTERACTIONS_BY_SCREEN[frame.screenRef] ?? []) {
-    const candidate = makeInteractionCandidate(preference, experience, documentRef, { requireRendered:Boolean(documentRef) });
-    if (candidate) candidates.push(candidate);
-  }
-  for (const preference of HUMAN_HELP_SHARED_INTERACTIONS) {
-    const candidate = makeInteractionCandidate(preference, experience, documentRef, { requireRendered:Boolean(documentRef) });
-    if (candidate) candidates.push(candidate);
-  }
+  preferences.push(...(HUMAN_HELP_DYNAMIC_INTERACTIONS_BY_SCREEN[frame?.screenRef] ?? []));
+  preferences.push(...HUMAN_HELP_SHARED_INTERACTIONS);
+  return Object.freeze(preferences);
+}
+
+function normalizedInteractionIndex(interactionIndex, length) {
+  if (!Number.isInteger(interactionIndex) || length <= 0) return 0;
+  return ((interactionIndex % length) + length) % length;
+}
+
+function interactionCandidateAt({ frame, experience = experienceRegistry, documentRef = null, interactionIndex = 0 } = {}) {
+  if (!frame || typeof frame !== 'object' || !nonempty(frame.screenRef)) throw new Error('current semantic frame is required');
+  const preferences = declaredInteractionPreferences(frame);
+  if (preferences.length === 0) return null;
+  const preference = preferences[normalizedInteractionIndex(interactionIndex, preferences.length)];
+  return makeInteractionCandidate(preference, experience, documentRef, { requireRendered:Boolean(documentRef) });
+}
+
+export function deriveHumanHelpInteractionCandidates({ frame, experience = experienceRegistry, documentRef = null } = {}) {
+  if (!frame || typeof frame !== 'object' || !nonempty(frame.screenRef)) throw new Error('current semantic frame is required');
+  const candidates = declaredInteractionPreferences(frame)
+    .map((preference) => makeInteractionCandidate(preference, experience, documentRef, { requireRendered:Boolean(documentRef) }))
+    .filter(Boolean);
   return Object.freeze(candidates);
 }
 
-export function deriveHumanHelpInteractionCue({ frame, experience = experienceRegistry } = {}) {
-  return deriveHumanHelpInteractionCandidates({ frame, experience })[0]?.cue ?? null;
+export function deriveHumanHelpInteractionCue({ frame, experience = experienceRegistry, interactionIndex = 0 } = {}) {
+  return interactionCandidateAt({ frame, experience, interactionIndex })?.cue ?? null;
 }
 
 export function deriveHumanHelpProjection({
@@ -404,11 +417,12 @@ export function createBrowserHumanHelpProjection({
     return true;
   }
   function selectCurrentInteraction(frame) {
-    const candidates = deriveHumanHelpInteractionCandidates({ frame, experience, documentRef });
-    if (candidates.length === 0) return null;
+    const preferences = declaredInteractionPreferences(frame);
+    if (preferences.length === 0) return null;
     const key = frameRef(frame);
     const cursor = interactionCursorByFrame.get(key) ?? 0;
-    const candidate = candidates[cursor % candidates.length];
+    const candidate = interactionCandidateAt({ frame, experience, documentRef, interactionIndex:cursor });
+    if (!candidate) return null;
     interactionCursorByFrame.set(key, cursor + 1);
     return candidate;
   }
