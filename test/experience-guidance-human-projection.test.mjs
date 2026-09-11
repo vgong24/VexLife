@@ -6,6 +6,7 @@ import { loadBlueprint } from '../src/core/blueprint.mjs';
 import {
   bindBrowserHumanHelpProjectionAtReady,
   createBrowserHumanHelpProjection,
+  deriveHumanHelpInteractionCue,
   deriveHumanHelpProjection,
   resolveHumanHelpPlacement
 } from '../reference/browser/modules/experience-guidance-human-projection.js';
@@ -19,6 +20,28 @@ const terrainFrame = Object.freeze({
   threadRef: 'thread.root-hub.welcome',
   channelRef: 'channel.root-hub.welcome.root',
   selectedNodeRef: 'terrain.project.root-hub'
+});
+
+const chatFrame = Object.freeze({
+  ...terrainFrame,
+  screenRef: 'screen.vexlife.chat',
+  routeRef: 'route.chat',
+  contextProjection: 'chat'
+});
+
+const interactionExperience = Object.freeze({
+  gestureContracts: Object.freeze([
+    Object.freeze({
+      gestureRef: 'gesture.vexlife.terrain-pan',
+      resultActionRef: 'action.terrain.canvas.pan',
+      helpStringRef: 'gesture.terrain-pan.help'
+    }),
+    Object.freeze({
+      gestureRef: 'gesture.vexlife.content-scroll',
+      resultActionRef: 'action.content.scroll',
+      helpStringRef: 'gesture.content-scroll.help'
+    })
+  ])
 });
 
 const availableRecommendation = Object.freeze({
@@ -58,8 +81,9 @@ function fakePlacementDocument() {
   };
 }
 
-function fakeProjectionEnvironment() {
+function fakeProjectionEnvironment({ experience = { gestureContracts:[] } } = {}) {
   const targetElement = fakeElement({ left:400, top:300, width:80, height:44 });
+  const selectedElement = fakeElement({ left:520, top:300, width:110, height:44 });
   const guideWindow = fakeElement({ left:20, top:20, width:340, height:330 });
   Object.assign(guideWindow.style, { left:'20px', right:'14px', top:'92px', bottom:'', width:'340px', height:'330px' });
   const transientNodes = [];
@@ -75,6 +99,7 @@ function fakeProjectionEnvironment() {
     createElement() { return fakeElement({ left:-10000, top:-10000, width:260, height:72, connected:false }); },
     querySelector(selector) {
       if (selector === '[data-node-ref="element.terrain.reset"]') return targetElement;
+      if (selector === '[data-node-ref="terrain.project.root-hub"]') return selectedElement;
       return null;
     },
     querySelectorAll: () => []
@@ -91,10 +116,11 @@ function fakeProjectionEnvironment() {
     nextRecommendation:() => availableRecommendation,
     translate:(ref) => `Visible copy for ${ref}`,
     windowElement:guideWindow,
+    experience,
     documentRef,
     windowRef
   });
-  return { targetElement, guideWindow, transientNodes, documentRef, windowRef, projection };
+  return { targetElement, selectedElement, guideWindow, transientNodes, documentRef, windowRef, projection };
 }
 
 test('EFX01C-01/03 explicit current Help emits at most one deterministic no-effect proposal', () => {
@@ -118,6 +144,68 @@ test('EFX01C-01/03 explicit current Help emits at most one deterministic no-effe
   assert.equal(projection.journeyEffect, false);
   assert.equal(projection.persistenceEffect, false);
   assert.equal(projection.autoExecute, false);
+});
+
+test('EFX01D-D2-01/02/04/05 Terrain current Help consumes the accepted PAN owner without granting its action', () => {
+  const cue = deriveHumanHelpInteractionCue({ frame:terrainFrame, experience:interactionExperience });
+  assert.equal(cue.interactionFamily, 'PAN');
+  assert.equal(cue.gestureRefOrNull, 'gesture.vexlife.terrain-pan');
+  assert.equal(cue.actionRefOrNull, 'action.terrain.canvas.pan');
+  assert.equal(cue.intentionContentRef, 'gesture.terrain-pan.help');
+  assert.equal(cue.targetBindingOrNull, null);
+  assert.equal(cue.effects, false);
+  assert.equal(cue.grantsActionAuthority, false);
+  assert.equal(cue.autoExecute, false);
+  assert.equal(cue.navigationEffect, false);
+  assert.equal(cue.journeyEffect, false);
+  assert.equal(cue.persistenceEffect, false);
+  assert.notEqual(cue.intentionContentRef, cue.gestureRefOrNull);
+  assert.notEqual(cue.intentionContentRef, cue.actionRefOrNull);
+});
+
+test('EFX01D-D2-03 Chat current Help consumes the accepted SCOPED_SCROLL owner independently of NEXT availability', () => {
+  const projection = deriveHumanHelpProjection({
+    frame: chatFrame,
+    recommendation: { state:'UNAVAILABLE', reason:'RENDERED_TARGET_MISSING' },
+    featureRef: 'feature.vexlife.addressed-conversation',
+    experience: interactionExperience
+  });
+  assert.equal(projection.interactionCue.interactionFamily, 'SCOPED_SCROLL');
+  assert.equal(projection.interactionCue.gestureRefOrNull, 'gesture.vexlife.content-scroll');
+  assert.equal(projection.interactionCue.actionRefOrNull, 'action.content.scroll');
+  assert.equal(projection.interactionCue.intentionContentRef, 'gesture.content-scroll.help');
+  assert.equal(projection.interactionCue.targetBindingOrNull, null);
+  assert.equal(projection.offerCount, 0);
+});
+
+test('EFX01D-D2-07 missing or malformed registry ownership fails closed to existing Help instead of inventing a cue', () => {
+  const missing = deriveHumanHelpProjection({
+    frame: terrainFrame,
+    recommendation: availableRecommendation,
+    featureRef: 'feature.vexlife.terrain',
+    experience: { gestureContracts:[] }
+  });
+  assert.equal(missing.interactionCue, null);
+  assert.equal(missing.responseContentRef, 'guide.answer.next.terrain');
+  assert.equal(missing.offerCount, 1);
+
+  const malformed = deriveHumanHelpInteractionCue({
+    frame: terrainFrame,
+    experience: { gestureContracts:[{ gestureRef:'gesture.vexlife.terrain-pan', helpStringRef:'gesture.terrain-pan.help' }] }
+  });
+  assert.equal(malformed, null);
+});
+
+test('EFX01D-D2-08 visible interaction teaching uses owner help copy and never relabels the unrelated NEXT target as a gesture target', () => {
+  const { transientNodes, projection } = fakeProjectionEnvironment({ experience:interactionExperience });
+  const shown = projection.projectExplicitHelp();
+  assert.equal(shown.interactionCue.targetBindingOrNull, null);
+  assert.equal(shown.recommendation.targetNodeRef, 'element.terrain.reset');
+  assert.equal(shown.interactionCue.gestureRefOrNull, 'gesture.vexlife.terrain-pan');
+  const activeTransient = transientNodes.find((node) => node.isConnected);
+  assert.ok(activeTransient);
+  assert.equal(activeTransient.textContent, 'Visible copy for gesture.terrain-pan.help');
+  projection.dispose();
 });
 
 test('EFX01C-02/08 unavailable current Help fails closed without a runnable offer', () => {
@@ -314,10 +402,12 @@ test('EFX01C-09 accepted Terrain wheel scope excludes Guide and scroll-scope des
   assert.match(terrain, /event\.target\.closest\('\.scroll-scope,\.e27-vex,\.e27-context-surface'\)/);
 });
 
-test('EFX01C-09/12 source has no persistence, navigation mutation, auto-execution, duplicate Guide messaging, or second public runtime path', () => {
+test('EFX01C-09/12 + EFX01D-D2-05/06 source has no persistence, navigation mutation, auto-execution, duplicate Guide messaging, or second public runtime path', () => {
   const adapter = fs.readFileSync(new URL('../reference/browser/modules/experience-guidance-human-projection.js', import.meta.url), 'utf8');
   const bundle = fs.readFileSync(new URL('../reference/browser/modules/browser-bundle.js', import.meta.url), 'utf8');
   assert.match(adapter, /buildHelpProjection/);
+  assert.match(adapter, /buildInteractionCue/);
+  assert.match(adapter, /experience-registry\.json/);
   assert.match(adapter, /resolveGuidancePlacement/);
   assert.match(adapter, /data-vex-human-projection-transient/);
   assert.doesNotMatch(adapter, /__VEXLIFE_HUMAN_HELP_PROJECTION__/);
@@ -325,14 +415,16 @@ test('EFX01C-09/12 source has no persistence, navigation mutation, auto-executio
   assert.match(bundle, /import '\.\/experience-guidance-human-projection\.js';/);
 });
 
-test('EFX01C-13 reused Help copy exists in every required language without catalog mutation', () => {
+test('EFX01C-13 + EFX01D-D2-09 reused Help and interaction teaching copy exists in every required language without catalog mutation', () => {
   const bundle = loadBlueprint();
   const refs = [
     'guide.ask.current',
     'guide.answer.current',
     'guide.answer.next.terrain',
     'guide.answer.next.chat',
-    'health.value.unavailable'
+    'health.value.unavailable',
+    'gesture.terrain-pan.help',
+    'gesture.content-scroll.help'
   ];
   for (const language of bundle.blueprint.product.requiredLanguages) {
     for (const ref of refs) assert.ok(bundle.strings[language][ref], `${language} missing ${ref}`);
