@@ -177,18 +177,56 @@ test('FS-07 leave preserves membership history and last active owner fails close
   } finally { fx.cleanup(); }
 });
 
-test('FS-15..17 Family Vex lineage binding is explicit and generation is separate from membership', () => {
+test('FS-15..17 Family Vex lineage binding is explicit, typed and OWNER-managed', () => {
   const fx = fixture();
   try {
+    assert.throws(() => createFamilySpace({
+      home: fx.home,
+      ...base,
+      familyCompanionLineageRef: undefined
+    }), (error) => error instanceof FamilySpaceStoreError && error.code === 'FAMILY_SPACE_COMPANION_BINDING_NOT_ACCEPTED');
+    assert.throws(() => createFamilySpace({
+      home: fx.home,
+      ...base,
+      familyCompanionLineageRef: 'endpoint.vex.family.alpha'
+    }), (error) => error instanceof FamilySpaceStoreError && error.code === 'FAMILY_SPACE_COMPANION_BINDING_NOT_ACCEPTED');
+
     const created = createFamilySpace({ home: fx.home, ...base });
+    const admin = addFamilyMember({
+      home: fx.home, spaceRef: base.spaceRef, actorPrincipalRef: base.ownerPrincipalRef,
+      principalRef: 'person.admin', principalBindingRef: 'binding.person.admin.device.host', role: 'ADMIN',
+      expectedRevision: created.record.revision, expectedMembershipGeneration: created.record.membershipGeneration,
+      observedAt: t1, instanceRef: base.instanceRef
+    });
+
+    assert.throws(() => updateFamilyCompanionBinding({
+      home: fx.home, spaceRef: base.spaceRef, actorPrincipalRef: 'person.admin',
+      familyCompanionLineageRef: 'lineage.vex.family.alpha.admin', familyCompanionState: 'ACTIVE',
+      expectedRevision: admin.record.revision,
+      expectedBindingGeneration: admin.record.familyCompanionBindingGeneration,
+      observedAt: t2, instanceRef: base.instanceRef
+    }), (error) => error instanceof FamilySpaceStoreError && error.code === 'FAMILY_SPACE_AUTHORITY_DENIED');
+    assert.throws(() => updateFamilyCompanionBinding({
+      home: fx.home, spaceRef: base.spaceRef, actorPrincipalRef: base.ownerPrincipalRef,
+      familyCompanionLineageRef: 'endpoint.vex.family.alpha.next', familyCompanionState: 'ACTIVE',
+      expectedRevision: admin.record.revision,
+      expectedBindingGeneration: admin.record.familyCompanionBindingGeneration,
+      observedAt: t2, instanceRef: base.instanceRef
+    }), (error) => error instanceof FamilySpaceStoreError && error.code === 'FAMILY_SPACE_COMPANION_BINDING_NOT_ACCEPTED');
+
+    const before = readFamilySpace({ home: fx.home, spaceRef: base.spaceRef });
+    assert.equal(before.record.familyCompanionLineageRef, base.familyCompanionLineageRef);
+    assert.equal(before.record.familyCompanionBindingGeneration, created.record.familyCompanionBindingGeneration);
+
     const next = updateFamilyCompanionBinding({
       home: fx.home, spaceRef: base.spaceRef, actorPrincipalRef: base.ownerPrincipalRef,
       familyCompanionLineageRef: 'lineage.vex.family.alpha.next', familyCompanionState: 'ACTIVE',
-      expectedRevision: created.record.revision, expectedBindingGeneration: created.record.familyCompanionBindingGeneration,
-      observedAt: t1, instanceRef: base.instanceRef
+      expectedRevision: admin.record.revision,
+      expectedBindingGeneration: admin.record.familyCompanionBindingGeneration,
+      observedAt: t2, instanceRef: base.instanceRef
     });
     assert.equal(next.record.familyCompanionBindingGeneration, 2);
-    assert.equal(next.record.membershipGeneration, created.record.membershipGeneration);
+    assert.equal(next.record.membershipGeneration, admin.record.membershipGeneration);
     assert.equal(next.record.familyCompanionLineageRef, 'lineage.vex.family.alpha.next');
   } finally { fx.cleanup(); }
 });

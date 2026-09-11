@@ -18,6 +18,7 @@ export const FAMILY_HISTORY_VISIBILITY_POLICIES = Object.freeze([
 const REF = /^[a-z0-9](?:[a-z0-9._-]{0,190}[a-z0-9])?$/u;
 const SHA = /^[0-9a-f]{64}$/u;
 const FROM_JOIN = FAMILY_HISTORY_VISIBILITY_POLICIES[0];
+const FAMILY_COMPANION_LINEAGE_PREFIX = 'lineage.vex.family.';
 
 export class FamilySpaceStoreError extends Error {
   constructor(code, message, details = null) {
@@ -38,6 +39,22 @@ const ref = (value, label) => {
   return value;
 };
 const optRef = (value, label) => value == null ? null : ref(value, label);
+const familyCompanionLineage = (value, state) => {
+  const lineageRef = optRef(value, 'familyCompanionLineageRef');
+  if (lineageRef != null && !lineageRef.startsWith(FAMILY_COMPANION_LINEAGE_PREFIX)) {
+    fail(
+      'FAMILY_SPACE_COMPANION_BINDING_NOT_ACCEPTED',
+      'Family companion binding must reference one source-owned Family lineage identity'
+    );
+  }
+  if (state === 'ACTIVE' && lineageRef == null) {
+    fail(
+      'FAMILY_SPACE_COMPANION_BINDING_NOT_ACCEPTED',
+      'ACTIVE Family companion binding requires an explicit Family lineage identity'
+    );
+  }
+  return lineageRef;
+};
 const historyPolicy = (value) => {
   const policyRef = ref(value, 'historyVisibilityPolicyRef');
   if (!FAMILY_HISTORY_VISIBILITY_POLICIES.includes(policyRef)) {
@@ -279,7 +296,12 @@ function validate(record) {
     fail('FAMILY_SPACE_CORRUPT', 'Family companion state is invalid');
   }
   if (record.familyCompanionLineageRef != null) {
-    ref(record.familyCompanionLineageRef, 'familyCompanionLineageRef');
+    const lineageRef = ref(record.familyCompanionLineageRef, 'familyCompanionLineageRef');
+    if (!lineageRef.startsWith(FAMILY_COMPANION_LINEAGE_PREFIX)) {
+      fail('FAMILY_SPACE_CORRUPT', 'Family companion lineage identity class is invalid');
+    }
+  } else if (record.familyCompanionState === 'ACTIVE') {
+    fail('FAMILY_SPACE_CORRUPT', 'ACTIVE Family companion binding is missing lineage identity');
   }
   const members = (record.members ?? []).map(normalizeMember);
   if (!members.length || new Set(members.map((m) => m.principalRef)).size !== members.length) {
@@ -417,12 +439,12 @@ export function createFamilySpace(input = {}) {
   const paths = pathsFor(home, spaceRef);
   const ownerRef = ref(ownerPrincipalRef, 'ownerPrincipalRef');
   const bindingRef = ref(ownerPrincipalBindingRef, 'ownerPrincipalBindingRef');
-  const companionRef = optRef(familyCompanionLineageRef, 'familyCompanionLineageRef');
-  const policyRef = historyPolicy(historyVisibilityPolicyRef);
-  const at = time(observedAt);
   if (!FAMILY_COMPANION_STATES.includes(familyCompanionState)) {
     fail('FAMILY_SPACE_INPUT_INVALID', 'familyCompanionState invalid');
   }
+  const companionRef = familyCompanionLineage(familyCompanionLineageRef, familyCompanionState);
+  const policyRef = historyPolicy(historyVisibilityPolicyRef);
+  const at = time(observedAt);
   return withWriter(paths, instanceRef, at, () => {
     const existing = current(paths);
     if (existing) {
@@ -629,12 +651,15 @@ export function updateFamilyCompanionBinding(input = {}) {
   }
   const paths = pathsFor(home, spaceRef);
   const actor = ref(actorPrincipalRef, 'actorPrincipalRef');
-  const lineage = optRef(familyCompanionLineageRef, 'familyCompanionLineageRef');
+  const lineage = familyCompanionLineage(familyCompanionLineageRef, familyCompanionState);
   const at = time(observedAt);
   return withWriter(paths, instanceRef, at, () => {
     const record = current(paths);
     if (!record) fail('FAMILY_SPACE_NOT_FOUND', 'Family Space does not exist');
-    manager(record, actor);
+    const actorMember = manager(record, actor);
+    if (actorMember.role !== 'OWNER') {
+      fail('FAMILY_SPACE_AUTHORITY_DENIED', 'Family companion binding requires current OWNER authority');
+    }
     if (
       record.revision !== gen(expectedRevision, 'expectedRevision') ||
       record.familyCompanionBindingGeneration !== gen(expectedBindingGeneration, 'expectedBindingGeneration')
