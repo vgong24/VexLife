@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH,
+  BROWSER_RELATIONSHIPS_PERSISTENCE_HTTP_CLIENT_LIST_SCHEMA,
   BROWSER_RELATIONSHIPS_PERSISTENCE_HTTP_CLIENT_NO_EFFECTS,
   BROWSER_RELATIONSHIPS_PERSISTENCE_HTTP_CLIENT_PREPARED_SCHEMA,
   createRelationshipsPersistenceHttpClient
@@ -56,6 +57,30 @@ function saveInput(localRelationshipClass = 'FRIEND') {
     sessionGeneration: value.sessionGeneration,
     deliveryObservationRef: value.deliveryObservationRef
   });
+}
+
+function listPayload(overrides = {}) {
+  const owner = ownerBinding();
+  const relationship = Object.freeze({
+    relationshipRef: 'relationship.vexlife.local.0123456789abcdef0123456789abcdef',
+    counterpartParticipantRef: 'participant.peer.bob',
+    localRelationshipClass: 'FRIEND',
+    status: 'ACTIVE',
+    revision: 0,
+    updatedAt: '2026-09-02T12:00:00.000Z',
+    tombstoned: false
+  });
+  return {
+    schemaVersion: BROWSER_RELATIONSHIPS_PERSISTENCE_HTTP_CLIENT_LIST_SCHEMA,
+    state: 'CURRENT_LIST',
+    localParticipantRef: owner.localParticipantRef,
+    localStateRootRef: owner.localStateRootRef,
+    totalCount: 1,
+    returnedCount: 1,
+    truncated: false,
+    relationships: [relationship],
+    ...overrides
+  };
 }
 
 function fakeCompanion() {
@@ -247,6 +272,76 @@ test('FFR06-CLIENT-09 alternate endpoint injection is rejected instead of becomi
     () => createRelationshipsPersistenceHttpClient({ ownerBinding: ownerBinding(), fetchImpl: async () => null, apiPath: '/api/v1/relationships/alternate' }),
     (error) => error?.code === 'RELATIONSHIPS_PERSISTENCE_HTTP_CLIENT_PATH_INVALID'
   );
+});
+
+test('UX03-CLIENT-10 list emits one exact read-only same-origin request and validates rightful current durable rows', async () => {
+  const requests = [];
+  const serverResult = listPayload();
+  const client = createRelationshipsPersistenceHttpClient({
+    ownerBinding: ownerBinding(),
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return Object.freeze({ ok: true, status: 200, json: async () => serverResult });
+    }
+  });
+  const listed = await client.list();
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH);
+  assert.deepEqual(requests[0].init, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+  assert.equal(listed.state, 'CURRENT_LIST');
+  assert.equal(listed.totalCount, 1);
+  assert.equal(listed.returnedCount, 1);
+  assert.equal(listed.relationships[0].counterpartParticipantRef, 'participant.peer.bob');
+  assert.equal(listed.relationships[0].localRelationshipClass, 'FRIEND');
+  assert.equal(listed.relationships[0].status, 'ACTIVE');
+  assert.equal(listed.relationships[0].tombstoned, false);
+  assert.equal(Object.isFrozen(listed.relationships), true);
+});
+
+test('UX03-CLIENT-11 list fails closed on owner substitution, duplicates, tombstones, invalid classes/statuses, and unadmitted response fields', async () => {
+  const invalidPayloads = [
+    listPayload({ localStateRootRef: 'state.relationships.other' }),
+    listPayload({ relationships: [listPayload().relationships[0], listPayload().relationships[0]], totalCount: 2, returnedCount: 2 }),
+    listPayload({ relationships: [{ ...listPayload().relationships[0], tombstoned: true }] }),
+    listPayload({ relationships: [{ ...listPayload().relationships[0], localRelationshipClass: 'UNKNOWN' }] }),
+    listPayload({ relationships: [{ ...listPayload().relationships[0], status: 'UNKNOWN' }] }),
+    { ...listPayload(), ambientHome: 'must-not-cross' }
+  ];
+  for (const payload of invalidPayloads) {
+    const client = createRelationshipsPersistenceHttpClient({
+      ownerBinding: ownerBinding(),
+      fetchImpl: async () => Object.freeze({ ok: true, status: 200, json: async () => payload })
+    });
+    await assert.rejects(client.list(), (error) => error?.code === 'RELATIONSHIPS_PERSISTENCE_HTTP_RESPONSE_INVALID');
+  }
+});
+
+test('UX03-CLIENT-12 list remote hold preserves only bounded failure code and transport failure stays non-secret', async () => {
+  const held = createRelationshipsPersistenceHttpClient({
+    ownerBinding: ownerBinding(),
+    fetchImpl: async () => Object.freeze({
+      ok: false,
+      status: 409,
+      json: async () => ({ state: 'HELD_BINDING_REQUIRED', failureCode: 'RELATIONSHIPS_CDR_OBSERVATION_UNBOUND', privateDetail: 'must not surface' })
+    })
+  });
+  await assert.rejects(held.list(), (error) => {
+    assert.equal(error.code, 'RELATIONSHIPS_CDR_OBSERVATION_UNBOUND');
+    assert.equal(error.message, 'RELATIONSHIPS_CDR_OBSERVATION_UNBOUND');
+    assert.equal(error.message.includes('privateDetail'), false);
+    return true;
+  });
+
+  const unavailable = createRelationshipsPersistenceHttpClient({
+    ownerBinding: ownerBinding(),
+    fetchImpl: async () => { throw new Error('private transport implementation'); }
+  });
+  await assert.rejects(unavailable.list(), (error) => {
+    assert.equal(error.code, 'RELATIONSHIPS_PERSISTENCE_HTTP_UNAVAILABLE');
+    assert.equal(error.message, 'Relationships persistence list is unavailable');
+    assert.equal(error.message.includes('private transport'), false);
+    return true;
+  });
 });
 
 // [VXG RealForever]
