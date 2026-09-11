@@ -3,6 +3,12 @@
   "bucketId": "f9",
   "files": [
     {
+      "path": "reference/browser/integration/experience-guidance-dynamic-spatial-suite.js",
+      "mode": "100644",
+      "bytes": 3557,
+      "sha256": "70f79cd8b3e53986ec75dad4247ac8f297e2c22d59e9fb209381ca2b10fd2c77"
+    },
+    {
       "path": "test/macos-human-setup.test.mjs",
       "mode": "100644",
       "bytes": 14813,
