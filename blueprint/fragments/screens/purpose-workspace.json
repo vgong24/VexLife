@@ -1,0 +1,25 @@
+{
+  "screenRef": "screen.vexlife.purpose-workspace",
+  "routeRef": "route.purpose-workspace",
+  "titleStringRef": "screen.purpose-workspace.title",
+  "stateSelectorRefs": [
+    "selector.current-screen-frame"
+  ],
+  "regions": [
+    {
+      "regionRef": "region.purpose-workspace.body",
+      "labelStringRef": "screen.purpose-workspace.title",
+      "elements": [],
+      "conceptRef": "concept.region.purpose-workspace.body",
+      "navigationNodeRef": "nav.region.purpose-workspace.body"
+    }
+  ],
+  "testRefs": [
+    "test.navigation.screen-frame",
+    "test.navigation.home-and-back",
+    "test.permission.no-inferred-effect",
+    "test.localization.coverage"
+  ],
+  "conceptRef": "concept.screen.vexlife.purpose-workspace",
+  "navigationNodeRef": "nav.screen.vexlife.purpose-workspace"
+}
