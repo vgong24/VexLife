@@ -1,3 +1,5 @@
+import { deriveHumanHelpInteractionCandidates } from '../modules/experience-guidance-human-projection.js';
+
 export const experienceGuidanceDynamicSpatialSuite = Object.freeze({
   suiteRef:'suite.vexlife.browser.experience-guidance-dynamic-spatial/v1',
   async run({ app, helpers:{ assert, delay } }) {
@@ -38,6 +40,16 @@ export const experienceGuidanceDynamicSpatialSuite = Object.freeze({
 
     checks.push('EFX01D-D3 repeated explicit CURRENT Help advances through accepted Terrain ZOOM and SEMANTIC_DEPTH_SHIFT owners');
     checks.push('EFX01D-D3 preserves one transient teaching surface, canonical Guide message ownership, semantic context and Journey state');
+
+    const terrainOwnerCandidates = deriveHumanHelpInteractionCandidates({ frame:app.navigation.semanticFrame() });
+    const journeyScrubOwner = terrainOwnerCandidates.find((candidate) => candidate.cue.interactionRefOrNull === 'interaction.terrain.journey-scrub');
+    assert(journeyScrubOwner?.cue.actionRefOrNull === 'action.journey.scrub', 'EFX01D-D4 Journey scrub action owner is unavailable');
+    assert(journeyScrubOwner?.accessibilityRole === 'slider' && journeyScrubOwner?.stableIdentifierRef === 'element.terrain.journey-scrub', 'EFX01D-D4 Journey scrub did not consume accepted accessibility role/stable identifier');
+    const chatOwnerCandidates = deriveHumanHelpInteractionCandidates({ frame:{ ...app.navigation.semanticFrame(), screenRef:'screen.vexlife.chat', routeRef:'route.chat' } });
+    const workspaceDockOwner = chatOwnerCandidates.find((candidate) => candidate.cue.interactionRefOrNull === 'interaction.context-workspace.dock');
+    assert(workspaceDockOwner?.cue.actionRefOrNull === 'action.context-workspace.dock', 'EFX01D-D4 workspace dock action owner is unavailable');
+    assert(workspaceDockOwner?.accessibilityRole === 'combobox' && workspaceDockOwner?.stableIdentifierRef === 'element.context-workspace.dock', 'EFX01D-D4 workspace dock did not consume accepted accessibility role/stable identifier');
+    checks.push('EFX01D-D4 non-gesture Journey/workspace teaching consumes accepted action/interaction/accessibility owner metadata without minting gesture refs');
 
     currentHelp.focus();
     const focusBeforeAccessibility = document.activeElement;
