@@ -5,8 +5,8 @@
     {
       "path": "blueprint/fragments/state-domains.json",
       "mode": "100644",
-      "bytes": 7640,
-      "sha256": "07ad52068655414fa60e7c0124221af403263befea7d5b4fbf3f7a050bc90471"
+      "bytes": 8026,
+      "sha256": "1732781ac0377e5d3fe37a2e758f87c5fea3a6462107f8d1cdd3081530a9327b"
     },
     {
       "path": "blueprint/purpose-workspace-registry.json",

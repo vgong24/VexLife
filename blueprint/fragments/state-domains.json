@@ -168,5 +168,10 @@
     "stateRef": "state.relationships",
     "ownerRef": "service.relationships",
     "brief": "Canonical Vex Home local directional relationship records, content-addressed transition history, atomic current heads, durable commit receipts, owner-isolated restart recovery and bounded tombstone/export truth; provider, peer, delivery and semantic acknowledgement observations cannot become canonical relationship meaning."
+  },
+  {
+    "stateRef": "state.family-space",
+    "ownerRef": "service.family-space",
+    "brief": "Canonical Vex Home local Family Space membership, principal-binding references, explicit owner/admin/member roles, membership generations, history-visibility policy and independently versioned Family Vex lineage binding; device pairing and relationship labels cannot grant membership."
   }
 ]
