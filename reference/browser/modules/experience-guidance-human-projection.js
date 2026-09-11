@@ -16,6 +16,11 @@ export const HUMAN_HELP_INTERACTION_BY_SCREEN = Object.freeze({
   'screen.vexlife.chat': Object.freeze({ gestureRef:'gesture.vexlife.content-scroll', interactionFamily:'SCOPED_SCROLL' })
 });
 
+export const HUMAN_HELP_CURRENT_SURFACE_SELECTOR_BY_SCREEN = Object.freeze({
+  'screen.vexlife.terrain': '#terrainFocus',
+  'screen.vexlife.chat': '#view-chat'
+});
+
 const HUMAN_HELP_RESPONSE_BY_SCREEN = Object.freeze({
   'screen.vexlife.terrain': 'guide.answer.next.terrain',
   'screen.vexlife.chat': 'guide.answer.next.chat'
@@ -55,6 +60,11 @@ function currentTargetBinding(recommendation, frame) {
     selectionRefOrNull: null,
     bindingPolicy: 'STATIC_CANONICAL_TARGET'
   });
+}
+
+function currentRenderedInteractionSurface(frame, documentRef) {
+  const selector = HUMAN_HELP_CURRENT_SURFACE_SELECTOR_BY_SCREEN[frame?.screenRef] ?? null;
+  return selector && documentRef ? documentRef.querySelector(selector) : null;
 }
 
 export function deriveHumanHelpInteractionCue({ frame, experience = experienceRegistry } = {}) {
@@ -282,8 +292,12 @@ export function createBrowserHumanHelpProjection({
     const featureRef = HUMAN_HELP_FEATURE_BY_SCREEN[frame.screenRef] ?? null;
     const projection = deriveHumanHelpProjection({ frame, recommendation, featureRef, experience });
     transientContent = translate(projection.interactionCue?.intentionContentRef ?? projection.responseContentRef, {});
-    const targetRef = projection.interactionCue ? frame.selectedNodeRef : recommendation?.state === 'AVAILABLE' ? recommendation.targetNodeRef : frame.selectedNodeRef;
-    activeTarget = nonempty(targetRef) ? documentRef.querySelector(`[data-node-ref="${selectorEscape(targetRef)}"]`) : null;
+    if (projection.interactionCue) {
+      activeTarget = currentRenderedInteractionSurface(frame, documentRef);
+    } else {
+      const targetRef = recommendation?.state === 'AVAILABLE' ? recommendation.targetNodeRef : frame.selectedNodeRef;
+      activeTarget = nonempty(targetRef) ? documentRef.querySelector(`[data-node-ref="${selectorEscape(targetRef)}"]`) : null;
+    }
     const placement = currentPlacement();
     applyPlacement(placement);
     lastProjection = Object.freeze({ ...projection, frame:structuredClone(frame), placement });
