@@ -17,8 +17,8 @@
     {
       "path": "scripts/test-structured.mjs",
       "mode": "100644",
-      "bytes": 2792,
-      "sha256": "fa7cdf68d615356be56ceb231d492a3146a684c49b00bb1c7cc36efb767cc985"
+      "bytes": 2988,
+      "sha256": "b307abaf8ac5eb640d20ef7fbaea16f98bcc099760a556b47e18cf460b41b8f1"
     },
     {
       "path": "test/relationships-restart-isolated-profiles.test.mjs",
