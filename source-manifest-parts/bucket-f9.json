@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/integration/experience-guidance-dynamic-spatial-suite.js",
       "mode": "100644",
-      "bytes": 3557,
-      "sha256": "70f79cd8b3e53986ec75dad4247ac8f297e2c22d59e9fb209381ca2b10fd2c77"
+      "bytes": 3956,
+      "sha256": "15096ff853eb444eb4a9512799622019b0d31f3d498e3db5311beab8301a70d2"
     },
     {
       "path": "test/macos-human-setup.test.mjs",
