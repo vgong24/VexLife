@@ -14,17 +14,30 @@ import {
 const fixture = JSON.parse(fs.readFileSync(new URL('../fixtures/purpose-workspace/synthetic-scenarios.json', import.meta.url), 'utf8'));
 const bundle = loadPurposeWorkspaceRegistry();
 
-test('SPW-01 source foundation validates four domains and three primary tasks each', () => {
+test('SPW source foundation validates four domains and three primary tasks each', () => {
   const result = validatePurposeWorkspaceRegistry(bundle);
   assert.equal(result.ok, true, result.errors.join('\n'));
   assert.deepEqual(result.stats, { domains: 4, roles: 16, tasks: 12, processPatterns: 6, completionContracts: 6 });
   assert.equal(bundle.domainPacks.every((domain) => domain.primaryTaskRefs.length === 3), true);
 });
 
-test('public establishment stays current while Purpose Workspace feature introduction remains a future registered successor', () => {
+test('SPW-02 registers the source membrane while browser introduction remains held', () => {
   assert.equal(bundle.registry.entryContinuityContract.publicEstablishmentPlanRef, 'plan.vexlife.guided-establishment.local.001');
   assert.equal(bundle.registry.entryContinuityContract.publicEstablishmentOwnerCurrent, true);
   assert.equal(bundle.registry.entryContinuityContract.featureWalkthroughPlanCurrent, false);
+  assert.equal(bundle.registry.entryContinuityContract.integrationState, 'REGISTERED_PLAN_HELD_UNTIL_FEATURE_CURRENT_AND_DISCOVERABLE');
+  assert.equal(bundle.registry.workspaceDefinitions[0].integrationState, 'REGISTERED_PREPARED_BROWSER_HELD');
+  assert.equal(bundle.registry.registrationPlacement.stageRef, 'SPW-02');
+  assert.equal(bundle.registry.registrationPlacement.status, 'REGISTERED_PREPARED_BROWSER_HELD');
+  assert.equal(bundle.registry.registrationPlacement.featureRef, 'feature.vexlife.scoped-purpose-workspace');
+  assert.equal(bundle.registry.registrationPlacement.screenRef, 'screen.vexlife.purpose-workspace');
+  assert.equal(bundle.registry.registrationPlacement.routeRef, 'route.purpose-workspace');
+  assert.equal(bundle.registry.registrationPlacement.moduleRef, 'module.vexlife.core.purpose-workspace');
+  assert.equal(bundle.registry.registrationPlacement.processRef, 'process.vexlife.purpose-workspace.coordinate');
+  assert.equal(bundle.registry.registrationPlacement.featureWalkthroughPlanRef, 'plan.vexlife.feature.scoped-purpose-workspace.introduction.001');
+  assert.equal(bundle.registry.registrationPlacement.browserRuntimeMutation, false);
+  assert.equal(bundle.registry.registrationPlacement.featureWalkthroughPlanCurrent, false);
+  assert.equal(bundle.registry.registrationPlacement.experienceReviewCurrent, false);
   assert.equal(bundle.registry.sourcePlacement.status, 'SOURCE_FOUNDATION_ONLY');
 });
 
@@ -34,6 +47,7 @@ test('Do Understand Steward are projections over one domain/task rather than sep
   const steward = compilePurposeWorkspace({ domainRef: doView.domainRef, taskRef: doView.task.taskRef, semanticDepth: 'STEWARD' });
   assert.equal(doView.task.taskRef, understand.task.taskRef);
   assert.equal(understand.task.taskRef, steward.task.taskRef);
+  assert.equal(doView.integrationState, 'REGISTERED_PREPARED_BROWSER_HELD');
   assert.equal(doView.effects, false);
   assert.equal(understand.stages.length, 5);
   assert.equal(steward.heldBoundaries.includes('real child data'), true);
