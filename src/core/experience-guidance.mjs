@@ -42,6 +42,29 @@ export const GUIDANCE_HELP_SECTION_KINDS = Object.freeze([
   'ADVANCED_WHEN_I_WANT_IT'
 ]);
 export const GUIDANCE_READING_DIRECTIONS = Object.freeze(['LTR', 'RTL']);
+export const GUIDANCE_INTERACTION_FAMILIES = Object.freeze([
+  'SELECT_OR_ENTER',
+  'DRAG_OR_MOVE',
+  'PAN',
+  'ZOOM',
+  'SEMANTIC_DEPTH_SHIFT',
+  'SCOPED_SCROLL',
+  'SCRUB_OR_REVISIT',
+  'RESIZE',
+  'DOCK',
+  'SPATIAL_REVEAL',
+  'VOICE',
+  'KEYBOARD',
+  'COMMAND',
+  'MODEL_TOOL'
+]);
+export const GUIDANCE_INTERACTION_REFERENCE_FIELDS = Object.freeze([
+  'actionRefOrNull',
+  'interactionRefOrNull',
+  'gestureRefOrNull',
+  'componentRefOrNull',
+  'slotRefOrNull'
+]);
 
 const nonempty = (value) => typeof value === 'string' && value.trim().length > 0;
 const nullableRef = (value) => value === null || nonempty(value);
@@ -128,6 +151,69 @@ export function buildGuidanceProposal(value) {
   const errors = validateGuidanceProposal(proposal);
   if (errors.length) throw new Error(errors[0]);
   return Object.freeze(proposal);
+}
+
+export function validateInteractionCue(cue, { isKnownSemanticRef = null } = {}) {
+  const errors = [];
+  if (!cue || typeof cue !== 'object' || Array.isArray(cue)) return ['interaction cue must be an object'];
+  if (!nonempty(cue.cueRef)) errors.push('interaction cue missing cueRef');
+  if (!GUIDANCE_INTERACTION_FAMILIES.includes(cue.interactionFamily)) errors.push(`unsupported interaction family ${cue.interactionFamily}`);
+  if (!nonempty(cue.intentionContentRef)) errors.push('interaction cue requires intentionContentRef');
+  if (!GUIDANCE_ROUTE_STATES.includes(cue.routeState)) errors.push(`unsupported interaction cue routeState ${cue.routeState}`);
+  if (!GUIDANCE_AVAILABILITY_STATES.includes(cue.availabilityState)) errors.push(`unsupported interaction cue availabilityState ${cue.availabilityState}`);
+
+  const semanticRefs = [];
+  for (const field of GUIDANCE_INTERACTION_REFERENCE_FIELDS) {
+    if (!Object.hasOwn(cue, field) || !nullableRef(cue[field])) {
+      errors.push(`interaction cue invalid ${field}`);
+      continue;
+    }
+    if (nonempty(cue[field])) semanticRefs.push([field, cue[field]]);
+  }
+  if (semanticRefs.length === 0) errors.push('interaction cue requires at least one semantic interaction reference');
+  if (typeof isKnownSemanticRef !== 'function') {
+    errors.push('interaction cue requires current semantic owner validation');
+  } else {
+    for (const [field, ref] of semanticRefs) {
+      if (!isKnownSemanticRef(ref, field)) errors.push(`interaction cue unresolved ${field}: ${ref}`);
+    }
+  }
+
+  if (!Object.hasOwn(cue, 'targetBindingOrNull') || (cue.targetBindingOrNull !== null && typeof cue.targetBindingOrNull !== 'object')) {
+    errors.push('interaction cue invalid targetBindingOrNull');
+  } else if (cue.targetBindingOrNull !== null) {
+    errors.push(...validateGuidanceTargetBinding(cue.targetBindingOrNull));
+  }
+  if (cue.effects !== false) errors.push('interaction cue effects must be false');
+  if (cue.grantsActionAuthority !== false) errors.push('interaction cue grantsActionAuthority must be false');
+  if (cue.autoExecute !== false) errors.push('interaction cue autoExecute must be false');
+  if (cue.navigationEffect !== false) errors.push('interaction cue navigationEffect must be false');
+  if (cue.journeyEffect !== false) errors.push('interaction cue journeyEffect must be false');
+  if (cue.persistenceEffect !== false) errors.push('interaction cue persistenceEffect must be false');
+  if (cue.memoryWritten !== false) errors.push('interaction cue memoryWritten must be false');
+  if (cue.networkTelemetry !== false) errors.push('interaction cue networkTelemetry must be false');
+  return errors;
+}
+
+export function buildInteractionCue(value, { isKnownSemanticRef = null } = {}) {
+  const cue = {
+    ...clone(value),
+    effects: false,
+    grantsActionAuthority: false,
+    autoExecute: false,
+    navigationEffect: false,
+    journeyEffect: false,
+    persistenceEffect: false,
+    memoryWritten: false,
+    networkTelemetry: false
+  };
+  for (const field of GUIDANCE_INTERACTION_REFERENCE_FIELDS) {
+    if (!Object.hasOwn(cue, field)) cue[field] = null;
+  }
+  if (!Object.hasOwn(cue, 'targetBindingOrNull')) cue.targetBindingOrNull = null;
+  const errors = validateInteractionCue(cue, { isKnownSemanticRef });
+  if (errors.length) throw new Error(errors[0]);
+  return Object.freeze(cue);
 }
 
 function rect(value, label) {
