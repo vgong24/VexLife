@@ -96,6 +96,62 @@ test('FS-02/09 relationship or device existence cannot infer membership and stal
   } finally { fx.cleanup(); }
 });
 
+test('FS-02 ADMIN cannot create or promote OWNER membership', () => {
+  const fx = fixture();
+  try {
+    const created = createFamilySpace({ home: fx.home, ...base });
+    const admin = addFamilyMember({
+      home: fx.home, spaceRef: base.spaceRef, actorPrincipalRef: base.ownerPrincipalRef,
+      principalRef: 'person.admin', principalBindingRef: 'binding.person.admin.device.host', role: 'ADMIN',
+      expectedRevision: created.record.revision, expectedMembershipGeneration: created.record.membershipGeneration,
+      observedAt: t1, instanceRef: base.instanceRef
+    });
+    assert.throws(() => addFamilyMember({
+      home: fx.home, spaceRef: base.spaceRef, actorPrincipalRef: 'person.admin',
+      principalRef: 'person.owner2', principalBindingRef: 'binding.person.owner2.device.host', role: 'OWNER',
+      expectedRevision: admin.record.revision, expectedMembershipGeneration: admin.record.membershipGeneration,
+      observedAt: t2, instanceRef: base.instanceRef
+    }), (error) => error instanceof FamilySpaceStoreError && error.code === 'FAMILY_SPACE_AUTHORITY_DENIED');
+    const member = addFamilyMember({
+      home: fx.home, spaceRef: base.spaceRef, actorPrincipalRef: base.ownerPrincipalRef,
+      principalRef: 'person.member', principalBindingRef: 'binding.person.member.device.host', role: 'MEMBER',
+      expectedRevision: admin.record.revision, expectedMembershipGeneration: admin.record.membershipGeneration,
+      observedAt: t2, instanceRef: base.instanceRef
+    });
+    assert.throws(() => transitionFamilyMember({
+      home: fx.home, spaceRef: base.spaceRef, actorPrincipalRef: 'person.admin', principalRef: 'person.member',
+      action: 'CHANGE_ROLE', role: 'OWNER',
+      expectedRevision: member.record.revision, expectedMembershipGeneration: member.record.membershipGeneration,
+      observedAt: t3, instanceRef: base.instanceRef
+    }), (error) => error instanceof FamilySpaceStoreError && error.code === 'FAMILY_SPACE_AUTHORITY_DENIED');
+    const reread = readFamilySpace({ home: fx.home, spaceRef: base.spaceRef });
+    assert.equal(reread.record.members.filter((item) => item.role === 'OWNER' && item.status === 'ACTIVE').length, 1);
+    assert.equal(reread.record.members.find((item) => item.principalRef === 'person.member').role, 'MEMBER');
+  } finally { fx.cleanup(); }
+});
+
+test('FS-05 arbitrary well-formed history policy refs fail closed until separately accepted', () => {
+  const fx = fixture();
+  try {
+    assert.throws(() => createFamilySpace({
+      home: fx.home,
+      ...base,
+      historyVisibilityPolicyRef: 'policy.vex-family.history.all-prior'
+    }), (error) => error instanceof FamilySpaceStoreError && error.code === 'FAMILY_SPACE_HISTORY_POLICY_NOT_ACCEPTED');
+    const created = createFamilySpace({ home: fx.home, ...base });
+    assert.throws(() => addFamilyMember({
+      home: fx.home, spaceRef: base.spaceRef, actorPrincipalRef: base.ownerPrincipalRef,
+      principalRef: 'person.mei', principalBindingRef: 'binding.person.mei.device.phone',
+      historyVisibilityPolicyRef: 'policy.vex-family.history.all-prior',
+      expectedRevision: created.record.revision, expectedMembershipGeneration: created.record.membershipGeneration,
+      observedAt: t1, instanceRef: base.instanceRef
+    }), (error) => error instanceof FamilySpaceStoreError && error.code === 'FAMILY_SPACE_HISTORY_POLICY_NOT_ACCEPTED');
+    const reread = readFamilySpace({ home: fx.home, spaceRef: base.spaceRef });
+    assert.equal(reread.record.members.length, 1);
+    assert.equal(reread.record.members[0].historyVisibilityPolicyRef, 'policy.vex-family.history.from-join');
+  } finally { fx.cleanup(); }
+});
+
 test('FS-07 leave preserves membership history and last active owner fails closed', () => {
   const fx = fixture();
   try {
