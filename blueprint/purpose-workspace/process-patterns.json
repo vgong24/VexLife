@@ -1,0 +1,50 @@
+[
+  {
+    "processPatternRef": "process-pattern.capture-distinguish-review-relay/v1",
+    "label": "Capture → Distinguish → Review → Relay",
+    "purpose": "Preserve direct source material, separate interpretation, obtain rightful review, and prepare an addressed handoff without inferring delivery authority.",
+    "stagePurposes": ["CAPTURE_SOURCE","DISTINGUISH_CLAIM_CLASSES","REVIEW","PREPARE_RELAY","RECIPIENT_DISPOSITION"],
+    "protectedBoundaries": ["OBSERVATION != INTERPRETATION","DRAFT != REVIEWED","PREPARED != DELIVERED","RELATIONSHIP != AUTHORITY"],
+    "defaultExternalEffect": "HELD_UNTIL_EXPLICIT_AUTHORITY"
+  },
+  {
+    "processPatternRef": "process-pattern.request-advise-authorize-act/v1",
+    "label": "Request → Advise → Authorize → Act",
+    "purpose": "Keep the human request, professional interpretation, rightful authorization, and external action as separately attributable stages.",
+    "stagePurposes": ["REQUEST","PROFESSIONAL_REVIEW","HUMAN_AUTHORIZATION","PREPARE_ACTION","EXTERNAL_EFFECT"],
+    "protectedBoundaries": ["REQUEST != ADVICE","ADVICE != AUTHORIZATION","AUTHORIZATION != EFFECT","ROLE != CURRENT_LICENSE_OR_SCOPE"],
+    "defaultExternalEffect": "HELD_UNTIL_EXPLICIT_AUTHORITY"
+  },
+  {
+    "processPatternRef": "process-pattern.draft-review-attest-deliver/v1",
+    "label": "Draft → Review → Attest → Deliver",
+    "purpose": "Compose a source-bound draft, review it, attest the reviewed version, and keep delivery separately authorized and receipted.",
+    "stagePurposes": ["DRAFT","REVIEW","ATTEST","AUTHORIZE_DELIVERY","DELIVER"],
+    "protectedBoundaries": ["DRAFT != FINAL","REVIEW != ATTESTATION","ATTESTATION != DELIVERY","DELIVERY != RECIPIENT_ACCEPTANCE"],
+    "defaultExternalEffect": "HELD_UNTIL_EXPLICIT_AUTHORITY"
+  },
+  {
+    "processPatternRef": "process-pattern.handoff-verify-disposition-continue/v1",
+    "label": "Handoff → Verify → Disposition → Continue",
+    "purpose": "Receive a bounded handoff, verify source and currentness, let the rightful recipient decide, and continue without rewriting prior history.",
+    "stagePurposes": ["FORM_HANDOFF","VERIFY","RECIPIENT_DISPOSITION","IMPORT_SELECTED","CONTINUE"],
+    "protectedBoundaries": ["RECEIVED != VERIFIED","VERIFIED != ACCEPTED","ACCEPTED_PART != WHOLE_HANDOFF","CORRECTION != ERASURE"],
+    "defaultExternalEffect": "LOCAL_ONLY_UNTIL_EXPLICIT_SHARE"
+  },
+  {
+    "processPatternRef": "process-pattern.plan-practice-evidence-reflect-replan/v1",
+    "label": "Plan → Practice → Evidence → Reflect → Replan",
+    "purpose": "Support growth through a versioned plan and evidence loop without turning one observation into a permanent identity.",
+    "stagePurposes": ["PLAN","PRACTICE","CAPTURE_EVIDENCE","REFLECT","REPLAN"],
+    "protectedBoundaries": ["PLAN != PERSON","PRACTICE != MASTERY","EVIDENCE != PERMANENT_LABEL","REPLAN != FAILURE"],
+    "defaultExternalEffect": "NO_EXTERNAL_EFFECT"
+  },
+  {
+    "processPatternRef": "process-pattern.escalate-triage-route-resolve/v1",
+    "label": "Escalate → Triage → Route → Resolve",
+    "purpose": "Surface a concern, classify urgency without overclaiming, route it to the rightful owner, and record a bounded resolution receipt.",
+    "stagePurposes": ["ESCALATE","TRIAGE","ROUTE","RESOLVE","CLOSE_OR_CONTINUE"],
+    "protectedBoundaries": ["CONCERN != DIAGNOSIS","TRIAGE != FINAL_DECISION","ROUTED != RESOLVED","CLOSED != ERASED"],
+    "defaultExternalEffect": "HELD_UNTIL_RIGHTFUL_OWNER"
+  }
+]

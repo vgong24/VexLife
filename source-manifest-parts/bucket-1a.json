@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/integration/guide-vex-suite.js",
       "mode": "100644",
-      "bytes": 20165,
-      "sha256": "749f74f3b0c61a5622eee797747d99cec79c4f2c4c1eace48a1d959f07ef4fae"
+      "bytes": 21717,
+      "sha256": "7cac9de06746ae66f37ad65db99262d0261fb09c64a120d51d6d6cbc6862e292"
     },
     {
       "path": "test/browser-living-journal-memory-http-route.test.mjs",

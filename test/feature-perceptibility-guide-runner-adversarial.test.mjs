@@ -118,4 +118,75 @@ test('FPB1-A04 unreadable or malformed scoped preference storage blocks offers f
   assert.equal(result.effects.protectedActionExecuted, false);
 });
 
+test('FPB1-A05 required repeated target binding cannot silently fall back to a singleton match', () => {
+  const runner = make({
+    evaluateTarget: (targetRef) => ({
+      state: 'AVAILABLE',
+      targetNodeRef: targetRef,
+      actionRef: 'action.test.open',
+      bindingRequired: true,
+      targetBindingOrNull: null
+    })
+  });
+  const result = runner.stage(runner.showMe('feature.test'));
+  assert.equal(result.state, FEATURE_WALKTHROUGH_RUNNER_STATES.UNAVAILABLE);
+  assert.equal(result.reason, 'TARGET_BINDING_REQUIRED');
+  assert.equal(result.effects.protectedActionExecuted, false);
+  assert.equal('stage' in result, false);
+});
+
+test('FPB1-A06 ambiguous dynamic action-bearing target fails closed without an exact instance or selection', () => {
+  const runner = make({
+    evaluateTarget: (targetRef) => ({
+      state: 'AVAILABLE',
+      targetNodeRef: targetRef,
+      actionRef: 'action.test.open',
+      bindingRequired: true,
+      targetBindingOrNull: {
+        targetRef,
+        targetKind: 'ELEMENT',
+        screenRefOrNull: 'screen.test',
+        regionRefOrNull: 'region.test.rows',
+        componentRefOrNull: 'component.test.row',
+        slotRefOrNull: null,
+        instanceRefOrNull: null,
+        entityRefOrNull: null,
+        selectionRefOrNull: null,
+        bindingPolicy: 'CURRENT_SELECTED_INSTANCE'
+      }
+    })
+  });
+  const result = runner.stage(runner.showMe('feature.test'));
+  assert.equal(result.state, FEATURE_WALKTHROUGH_RUNNER_STATES.UNAVAILABLE);
+  assert.equal(result.reason, 'TARGET_BINDING_INVALID');
+  assert.match(result.bindingErrors[0], /exact selectionRefOrNull or instanceRefOrNull/);
+  assert.equal(result.effects.protectedActionExecuted, false);
+});
+
+test('FPB1-A07 runtime binding cannot point at a different canonical target than the plan stage', () => {
+  const runner = make({
+    evaluateTarget: () => ({
+      state: 'AVAILABLE',
+      actionRef: 'action.test.open',
+      targetBindingOrNull: {
+        targetRef: 'element.test.other',
+        targetKind: 'ELEMENT',
+        screenRefOrNull: 'screen.test',
+        regionRefOrNull: null,
+        componentRefOrNull: null,
+        slotRefOrNull: null,
+        instanceRefOrNull: null,
+        entityRefOrNull: null,
+        selectionRefOrNull: null,
+        bindingPolicy: 'STATIC_CANONICAL_TARGET'
+      }
+    })
+  });
+  const result = runner.stage(runner.showMe('feature.test'));
+  assert.equal(result.state, FEATURE_WALKTHROUGH_RUNNER_STATES.UNAVAILABLE);
+  assert.equal(result.reason, 'TARGET_BINDING_INVALID');
+  assert.match(result.bindingErrors[0], /must match the walkthrough targetRef/);
+  assert.equal(result.effects.protectedActionExecuted, false);
+});
+
 // [VXG RealForever]

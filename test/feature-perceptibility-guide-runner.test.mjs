@@ -193,12 +193,67 @@ test("FPB1-06 Don't introduce again is scoped to exact feature/plan/sourceVersio
   assert.equal(store.values.has(expectedKey), true);
 });
 
-test('FPB1-07 sourceVersion change does not inherit old suppression', () => {
+test('FPB1-06A acknowledge is exact-version Guide-local preference and explicit Show me remains available', () => {
   const store = preferenceStore();
-  runner({ store }).value.suppress('feature.test');
-  const next = runner({ store, source: { sourceVersionRef: 'source-version.test.002' } });
-  assert.equal(next.value.offer('feature.test').state, FEATURE_WALKTHROUGH_RUNNER_STATES.READY);
-  assert.equal(store.values.size, 1);
+  const first = runner({ store, runRef: 'run.test.after-acknowledge' });
+  const acknowledged = first.value.acknowledge('feature.test');
+  assert.equal(acknowledged.state, FEATURE_WALKTHROUGH_RUNNER_STATES.ACKNOWLEDGED);
+  assert.equal(acknowledged.completionAuthority, 'JOURNEY_REQUIRED');
+  assert.equal(acknowledged.effects.journeyCompletionCreated, false);
+  assert.equal(acknowledged.effects.memoryWritten, false);
+  assert.equal(first.value.offer('feature.test').state, FEATURE_WALKTHROUGH_RUNNER_STATES.ACKNOWLEDGED);
+
+  const explicit = first.value.showMe('feature.test');
+  assert.equal(explicit.state, FEATURE_WALKTHROUGH_RUNNER_STATES.ACTIVE);
+  assert.equal(explicit.runRef, 'run.test.after-acknowledge');
+  assert.equal(explicit.effects.protectedActionExecuted, false);
+});
+
+test('FPB1-07 sourceVersion change does not inherit old suppression or acknowledgement', () => {
+  const suppressedStore = preferenceStore();
+  runner({ store: suppressedStore }).value.suppress('feature.test');
+  const nextSuppressed = runner({ store: suppressedStore, source: { sourceVersionRef: 'source-version.test.002' } });
+  assert.equal(nextSuppressed.value.offer('feature.test').state, FEATURE_WALKTHROUGH_RUNNER_STATES.READY);
+  assert.equal(suppressedStore.values.size, 1);
+
+  const acknowledgedStore = preferenceStore();
+  runner({ store: acknowledgedStore }).value.acknowledge('feature.test');
+  const nextAcknowledged = runner({ store: acknowledgedStore, source: { sourceVersionRef: 'source-version.test.002' } });
+  assert.equal(nextAcknowledged.value.offer('feature.test').state, FEATURE_WALKTHROUGH_RUNNER_STATES.READY);
+  assert.equal(acknowledgedStore.values.size, 1);
+});
+
+test('FPB1-07A exact repeated-instance target binding survives projection without changing canonical target identity', () => {
+  const { value } = runner({
+    evaluateTarget(targetRef) {
+      return {
+        state: 'AVAILABLE',
+        targetNodeRef: targetRef,
+        actionRef: 'action.test.open',
+        bindingRequired: true,
+        targetBindingOrNull: {
+          targetRef,
+          targetKind: 'ELEMENT',
+          screenRefOrNull: 'screen.test',
+          regionRefOrNull: 'region.test.rows',
+          componentRefOrNull: 'component.test.row',
+          slotRefOrNull: null,
+          instanceRefOrNull: 'instance.test.row.007',
+          entityRefOrNull: 'entity.test.007',
+          selectionRefOrNull: null,
+          bindingPolicy: 'EXACT_COMPONENT_INSTANCE'
+        }
+      };
+    }
+  });
+  const projected = value.stage(value.showMe('feature.test'));
+  assert.equal(projected.state, FEATURE_WALKTHROUGH_RUNNER_STATES.ACTIVE);
+  assert.equal(projected.stage.targetRefOrNull, 'element.test.open');
+  assert.equal(projected.targetEvaluation.targetBindingOrNull.targetRef, 'element.test.open');
+  assert.equal(projected.targetEvaluation.targetBindingOrNull.instanceRefOrNull, 'instance.test.row.007');
+  assert.equal(projected.targetEvaluation.targetBindingOrNull.entityRefOrNull, 'entity.test.007');
+  assert.equal(projected.autoExecute, false);
+  assert.equal(projected.effects.protectedActionExecuted, false);
 });
 
 test('FPB1-08 exhausting plan stages never creates Journey completion', () => {

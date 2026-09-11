@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "42",
+  "files": [
+    {
+      "path": "blueprint/purpose-workspace/domain-packs/legal.json",
+      "mode": "100644",
+      "bytes": 5062,
+      "sha256": "59a5c721706a884209e9ee290929a0bf2ffb2cc048a03ea4f07c6fb06363db6f"
+    }
+  ]
+}
