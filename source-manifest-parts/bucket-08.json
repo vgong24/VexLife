@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "08",
+  "files": [
+    {
+      "path": "test/experience-guidance-devex-perception.test.mjs",
+      "mode": "100644",
+      "bytes": 13494,
+      "sha256": "b823796e37cf56311ef14cd7a1f5ba8e4c95544a87d4d23602800fef8af332c4"
+    }
+  ]
+}
