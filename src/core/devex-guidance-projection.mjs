@@ -126,6 +126,9 @@ function currentHelpProjection(helpProjection) {
   const proposals = helpProjection.proposals.map((proposal) => {
     const errors = validateGuidanceProposal(proposal);
     if (errors.length) throw new TypeError(`Help proposal is invalid: ${errors[0]}`);
+    if (proposal.currentFrameRef !== helpProjection.currentFrameRef) {
+      throw new TypeError('Help proposal must share the Help projection currentFrameRef');
+    }
     return freezeDeep({
       proposalRef: proposal.proposalRef,
       featureRef: proposal.featureRef,
@@ -188,7 +191,7 @@ function contentAddressedSelfCapabilityFrame(frame) {
     frame.unknownCapabilityRefs,
     'unknownCapabilityRefs'
   );
-  const actuallyUsedRefs = uniqueStrings(frame.actuallyUsedRefs, 'actuallyUsedRefs');
+  uniqueStrings(frame.actuallyUsedRefs, 'actuallyUsedRefs');
   const currentnessRefs = uniqueStrings(frame.currentnessRefs, 'currentnessRefs');
   const sourceRefs = uniqueStrings(frame.sourceRefs, 'sourceRefs');
   const omittedRefs = uniqueStrings(frame.coverage.omittedRefs, 'coverage.omittedRefs');
@@ -239,7 +242,6 @@ function contentAddressedSelfCapabilityFrame(frame) {
     heldCapabilityEntries,
     unavailableCapabilityRefs,
     unknownCapabilityRefs,
-    actuallyUsedRefs,
     currentnessRefs,
     sourceRefs,
     coverage: {
