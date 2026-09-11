@@ -41,11 +41,13 @@ const groups = [
     files: [...regular, ...endToEnd],
     arguments: ['--test', ...regular, ...endToEnd]
   },
-  ...isolated.map((file) => ({
+  {
     executionClass: 'ISOLATED_TIMING_SENSITIVE',
-    files: [file],
-    arguments: ['--test', '--test-concurrency=1', file]
-  }))
+    files: isolated,
+    // Node's process-isolated test runner still starts each file in its own
+    // child process; concurrency=1 keeps exactly one isolated file active.
+    arguments: ['--test', '--test-concurrency=1', ...isolated]
+  }
 ].filter((group) => group.files.length > 0);
 
 let failed = false;
