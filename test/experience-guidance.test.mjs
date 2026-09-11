@@ -4,11 +4,13 @@ import test from 'node:test';
 import {
   buildGuidanceProposal,
   buildHelpProjection,
+  buildInteractionCue,
   deriveGuidanceAwareness,
   guidancePreferenceIdentity,
   makeGuidancePreference,
   resolveGuidancePlacement,
-  validateGuidanceTargetBinding
+  validateGuidanceTargetBinding,
+  validateInteractionCue
 } from '../src/core/experience-guidance.mjs';
 
 const exactIdentity = Object.freeze({
@@ -187,6 +189,116 @@ test('GDX-13 Help projection is current-context bounded, reopenable and no-effec
   assert.equal(help.memoryWritten, false);
   assert.equal(help.networkTelemetry, false);
   assert.equal(help.explicitHelpBlockedBySuppression, false);
+});
+
+const knownInteractionRefs = new Set([
+  'action.terrain.canvas.pan',
+  'gesture.vexlife.terrain-pan',
+  'action.terrain.node.move',
+  'gesture.vexlife.node-drag'
+]);
+const isKnownSemanticRef = (ref) => knownInteractionRefs.has(ref);
+
+const interactionCueBase = Object.freeze({
+  cueRef: 'cue.vexlife.terrain.pan.current',
+  interactionFamily: 'PAN',
+  intentionContentRef: 'gesture.terrain-pan.help',
+  routeState: 'CURRENT',
+  availabilityState: 'AVAILABLE',
+  actionRefOrNull: 'action.terrain.canvas.pan',
+  interactionRefOrNull: null,
+  gestureRefOrNull: 'gesture.vexlife.terrain-pan',
+  componentRefOrNull: null,
+  slotRefOrNull: null,
+  targetBindingOrNull: staticTarget
+});
+
+test('EFX01D-01/02/04/05 builds an authority-free cue over existing action and gesture identities', () => {
+  const cue = buildInteractionCue(interactionCueBase, { isKnownSemanticRef });
+  assert.equal(cue.interactionFamily, 'PAN');
+  assert.equal(cue.actionRefOrNull, 'action.terrain.canvas.pan');
+  assert.equal(cue.gestureRefOrNull, 'gesture.vexlife.terrain-pan');
+  assert.notEqual(cue.actionRefOrNull, cue.gestureRefOrNull);
+  assert.equal(cue.effects, false);
+  assert.equal(cue.grantsActionAuthority, false);
+  assert.equal(cue.autoExecute, false);
+  assert.equal(cue.navigationEffect, false);
+  assert.equal(cue.journeyEffect, false);
+  assert.equal(cue.persistenceEffect, false);
+  assert.equal(cue.memoryWritten, false);
+  assert.equal(cue.networkTelemetry, false);
+});
+
+test('EFX01D-03/09 empty or unsupported interaction cues fail closed', () => {
+  assert.throws(() => buildInteractionCue({
+    ...interactionCueBase,
+    interactionFamily: 'BUTTONIFY_EVERYTHING'
+  }, { isKnownSemanticRef }), /unsupported interaction family/);
+  assert.throws(() => buildInteractionCue({
+    ...interactionCueBase,
+    actionRefOrNull: null,
+    gestureRefOrNull: null
+  }, { isKnownSemanticRef }), /at least one semantic interaction reference/);
+});
+
+test('EFX01D-02/03 requires current semantic-owner validation and rejects unresolved refs', () => {
+  assert.match(validateInteractionCue(interactionCueBase).join('\n'), /requires current semantic owner validation/);
+  assert.throws(() => buildInteractionCue({
+    ...interactionCueBase,
+    gestureRefOrNull: 'gesture.vexlife.imaginary-pan'
+  }, { isKnownSemanticRef }), /unresolved gestureRefOrNull/);
+});
+
+test('EFX01D-06 held or unavailable cues remain descriptive and cannot gain execution authority', () => {
+  for (const [routeState, availabilityState] of [['HELD', 'AVAILABLE'], ['CURRENT', 'UNAVAILABLE']]) {
+    const cue = buildInteractionCue({
+      ...interactionCueBase,
+      cueRef: `cue.${routeState}.${availabilityState}`,
+      routeState,
+      availabilityState
+    }, { isKnownSemanticRef });
+    assert.equal(cue.actionRefOrNull, 'action.terrain.canvas.pan');
+    assert.equal(cue.autoExecute, false);
+    assert.equal(cue.grantsActionAuthority, false);
+    assert.equal(cue.effects, false);
+  }
+});
+
+test('EFX01D-07/08 direct-manipulation meaning and human copy remain separate projections', () => {
+  const checkedRefs = [];
+  const cue = buildInteractionCue({
+    ...interactionCueBase,
+    cueRef: 'cue.vexlife.node.move.current',
+    interactionFamily: 'DRAG_OR_MOVE',
+    intentionContentRef: 'gesture.node-drag.help',
+    actionRefOrNull: 'action.terrain.node.move',
+    gestureRefOrNull: 'gesture.vexlife.node-drag'
+  }, {
+    isKnownSemanticRef(ref, field) {
+      checkedRefs.push([field, ref]);
+      return knownInteractionRefs.has(ref);
+    }
+  });
+  assert.deepEqual(checkedRefs, [
+    ['actionRefOrNull', 'action.terrain.node.move'],
+    ['gestureRefOrNull', 'gesture.vexlife.node-drag']
+  ]);
+  assert.equal(cue.intentionContentRef, 'gesture.node-drag.help');
+  assert.notEqual(cue.intentionContentRef, cue.actionRefOrNull);
+  assert.notEqual(cue.intentionContentRef, cue.gestureRefOrNull);
+  assert.equal(Object.hasOwn(cue, 'buttonRef'), false);
+});
+
+test('EFX01D-10 target context is structural projection only and never upgrades cue effects', () => {
+  const cue = buildInteractionCue({
+    ...interactionCueBase,
+    targetBindingOrNull: repeatedTarget
+  }, { isKnownSemanticRef });
+  assert.deepEqual(validateGuidanceTargetBinding(cue.targetBindingOrNull), []);
+  assert.equal(cue.effects, false);
+  assert.equal(cue.navigationEffect, false);
+  assert.equal(cue.journeyEffect, false);
+  assert.equal(cue.persistenceEffect, false);
 });
 
 // [VXG RealForever]
