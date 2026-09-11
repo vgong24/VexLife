@@ -15,6 +15,12 @@
       "sha256": "4eea6140e338e60b099e7ded22c880c319d566ee7e0321ae436ec465b525f61f"
     },
     {
+      "path": "reference/browser/modules/experience-gallery-controller.js",
+      "mode": "100644",
+      "bytes": 23454,
+      "sha256": "7bf6dd5606b77be173348f8255e541b771a400ffc7ccd960c27fb08ccbd0d92d"
+    },
+    {
       "path": "scripts/atlas-query.mjs",
       "mode": "100644",
       "bytes": 1748,

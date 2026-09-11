@@ -33,6 +33,12 @@
       "sha256": "d966f66237b1b2f90581ed4abcdb571fdf10778d2bfde565ce5f24d9541202b4"
     },
     {
+      "path": "test/experience-gallery.test.mjs",
+      "mode": "100644",
+      "bytes": 7426,
+      "sha256": "389a7d8208278c344f42b40316c6ff624ad8e9cdc04b96360f340a1414d77d2b"
+    },
+    {
       "path": "test/relationships-core.test.mjs",
       "mode": "100644",
       "bytes": 4913,
