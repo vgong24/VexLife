@@ -59,6 +59,22 @@ function uniqueStrings(value, label) {
   return [...value];
 }
 
+function guidanceTargetBindingProjection(bindingOrNull) {
+  if (bindingOrNull === null) return null;
+  return freezeDeep({
+    targetRef: bindingOrNull.targetRef,
+    targetKind: bindingOrNull.targetKind,
+    screenRefOrNull: bindingOrNull.screenRefOrNull,
+    regionRefOrNull: bindingOrNull.regionRefOrNull,
+    componentRefOrNull: bindingOrNull.componentRefOrNull,
+    slotRefOrNull: bindingOrNull.slotRefOrNull,
+    instanceRefOrNull: bindingOrNull.instanceRefOrNull,
+    entityRefOrNull: bindingOrNull.entityRefOrNull,
+    selectionRefOrNull: bindingOrNull.selectionRefOrNull,
+    bindingPolicy: bindingOrNull.bindingPolicy
+  });
+}
+
 function acceptedHelpCommandBinding(binding) {
   if (!object(binding)) throw new TypeError('one Experience Foundation Help CommandBinding is required');
   if (binding.commandRef !== DEVEX_GUIDANCE_HELP_COMMAND_REF) {
@@ -110,7 +126,23 @@ function currentHelpProjection(helpProjection) {
   const proposals = helpProjection.proposals.map((proposal) => {
     const errors = validateGuidanceProposal(proposal);
     if (errors.length) throw new TypeError(`Help proposal is invalid: ${errors[0]}`);
-    return freezeDeep(clone(proposal));
+    return freezeDeep({
+      proposalRef: proposal.proposalRef,
+      featureRef: proposal.featureRef,
+      planRefOrNull: proposal.planRefOrNull,
+      sourceVersionRefOrNull: proposal.sourceVersionRefOrNull,
+      currentFrameRef: proposal.currentFrameRef,
+      invocationClass: proposal.invocationClass,
+      purposeClass: proposal.purposeClass,
+      whyRelevantRefs: [...proposal.whyRelevantRefs],
+      awarenessState: proposal.awarenessState,
+      routeState: proposal.routeState,
+      availabilityState: proposal.availabilityState,
+      targetBindingOrNull: guidanceTargetBindingProjection(proposal.targetBindingOrNull),
+      suggestedActionRefOrNull: proposal.suggestedActionRefOrNull,
+      exposureRef: proposal.exposureRef,
+      effects: false
+    });
   });
   const proposalRefs = proposals.map((proposal) => proposal.proposalRef);
   if (new Set(proposalRefs).size !== proposalRefs.length) {
@@ -221,7 +253,27 @@ function interactionCueProjection(interactionCueOrNull, isKnownSemanticRef) {
   if (interactionCueOrNull === null) return null;
   const errors = validateInteractionCue(interactionCueOrNull, { isKnownSemanticRef });
   if (errors.length) throw new TypeError(`InteractionCue is invalid: ${errors[0]}`);
-  return freezeDeep(clone(interactionCueOrNull));
+  return freezeDeep({
+    cueRef: interactionCueOrNull.cueRef,
+    interactionFamily: interactionCueOrNull.interactionFamily,
+    intentionContentRef: interactionCueOrNull.intentionContentRef,
+    routeState: interactionCueOrNull.routeState,
+    availabilityState: interactionCueOrNull.availabilityState,
+    actionRefOrNull: interactionCueOrNull.actionRefOrNull,
+    interactionRefOrNull: interactionCueOrNull.interactionRefOrNull,
+    gestureRefOrNull: interactionCueOrNull.gestureRefOrNull,
+    componentRefOrNull: interactionCueOrNull.componentRefOrNull,
+    slotRefOrNull: interactionCueOrNull.slotRefOrNull,
+    targetBindingOrNull: guidanceTargetBindingProjection(interactionCueOrNull.targetBindingOrNull),
+    effects: false,
+    grantsActionAuthority: false,
+    autoExecute: false,
+    navigationEffect: false,
+    journeyEffect: false,
+    persistenceEffect: false,
+    memoryWritten: false,
+    networkTelemetry: false
+  });
 }
 
 function availabilitySummary(proposals) {
