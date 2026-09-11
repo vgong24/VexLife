@@ -15,6 +15,12 @@
       "sha256": "b2ce92435488a74f9aedc3f3d39f865c77f0db10698221807adebd1fc1de680c"
     },
     {
+      "path": "src/core/devex-guidance-projection.mjs",
+      "mode": "100644",
+      "bytes": 11454,
+      "sha256": "9cefdbef17cc301fad20d7826e870f4873cf96fe911a767b62c5bc30958b567a"
+    },
+    {
       "path": "src/core/score-context-continuity.mjs",
       "mode": "100644",
       "bytes": 112205,
