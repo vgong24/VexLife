@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "6b",
+  "files": [
+    {
+      "path": "reference/browser/modules/experience-guidance-human-projection.js",
+      "mode": "100644",
+      "bytes": 15932,
+      "sha256": "ee8e265fd808a64ff187d527e61885f1fcb371284afcedaa0a4716d70ac61651"
+    }
+  ]
+}
