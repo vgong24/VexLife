@@ -11,8 +11,8 @@
     {
       "path": "test/family-space-store.test.mjs",
       "mode": "100644",
-      "bytes": 15573,
-      "sha256": "56d0d001ef4c3028a1c57f0243a2354bbc18eee4b33e86a4ee6ac45313274f44"
+      "bytes": 17836,
+      "sha256": "12202e471fc7bed1f331c0157f575a1cd10905907ce0db2bbf4606ef3b8f2a63"
     },
     {
       "path": "test/fixtures/public-safety/cases.json",
