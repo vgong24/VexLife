@@ -12,6 +12,9 @@ const isolatedTestFiles = new Set([
   // perturb the CPU/resource predicate that they are explicitly proving.
   'capability-assimilation-runtime.test.mjs',
   'capability-assimilation-scheduler-authority.test.mjs',
+  // This suite uses bounded cooperative-control timing across a child process.
+  // Keep its timing assertions intact, but remove unrelated test-file load.
+  'native-worker-supervisor.test.mjs',
   // This suite contains live loopback and atomic-writer timing assertions.
   // Keep its internal concurrency intact, but do not let unrelated test-file
   // scheduling consume the endpoint timeout window it is explicitly proving.
