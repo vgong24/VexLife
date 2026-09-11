@@ -241,6 +241,7 @@ test('EFX01E-04 consumes bounded self-capability truth while excluding private H
   }]);
   assert.deepEqual(context.unavailableCapabilityRefs, ['capability.vexlife.unavailable-fixture']);
   assert.deepEqual(context.unknownCapabilityRefs, ['capability.vexlife.unknown-fixture']);
+  assert.equal(Object.hasOwn(context, 'actuallyUsedRefs'), false);
   assert.equal(context.coverage.truncated, true);
   assert.deepEqual(context.coverage.omittedRefs, ['capability.vexlife.omitted-fixture']);
   assert.equal(projection.boundaries.privateHumanMemoryProjected, false);
@@ -358,7 +359,19 @@ test('EFX01E-09 strips unregistered fields from guidance, target, cue and self-c
   assert.equal(Object.hasOwn(projection.selfCapabilityContext, 'privateHumanMemory'), false);
 });
 
-test('EFX01E-10 is deterministic, deeply immutable and performs no model/tool/Memory/network effect', () => {
+test('EFX01E-10 rejects a proposal from a different current frame', () => {
+  const staleProposal = {
+    ...structuredClone(availableProposal),
+    currentFrameRef: 'frame.browser.screen.vexlife.chat.route.chat'
+  };
+  const helpProjection = {
+    ...structuredClone(availableHelp),
+    proposals: [staleProposal]
+  };
+  assert.throws(() => project({ helpProjection }), /share the Help projection currentFrameRef/);
+});
+
+test('EFX01E-11 is deterministic, deeply immutable and performs no model/tool/Memory/network effect', () => {
   const first = project();
   const second = project();
   assert.equal(first.semanticFingerprint, second.semanticFingerprint);
