@@ -39,6 +39,11 @@ export const experienceGuidanceDynamicSpatialSuite = Object.freeze({
     checks.push('EFX01D-D3 repeated explicit CURRENT Help advances through accepted Terrain ZOOM and SEMANTIC_DEPTH_SHIFT owners');
     checks.push('EFX01D-D3 preserves one transient teaching surface, canonical Guide message ownership, semantic context and Journey state');
 
+    app.guide.setAttentionSource(null);
+    if (!app.state.guideMinimized) document.querySelector('#guideMinimize').click();
+    assert(app.guide.currentPresenceState() === 'AMBIENT', 'EFX01D-D3 cleanup did not restore ambient minimized Vex for downstream suites');
+    checks.push('EFX01D-D3 owner-domain proof restores ambient minimized Vex and does not leak local projection state downstream');
+
     return Object.freeze({
       suiteRef:'suite.vexlife.browser.experience-guidance-dynamic-spatial/v1',
       state:'PASS',
