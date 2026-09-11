@@ -410,7 +410,70 @@ test('EFX02-13 whitelists accepted source fields and never projects private extr
   assert.equal(JSON.stringify(projection).includes('must-not-cross'), false);
 });
 
-test('EFX02-14 is deterministic, deeply immutable, content-addressed, and performs no effect', () => {
+test('EFX02-14 pins the canonical Foundation source, command owners, aliases, and operator forms', () => {
+  for (const [field, replacement] of [
+    ['foundationRef', 'foundation.vexlife.experience.forged'],
+    ['foundationVersion', 2],
+    ['sourceRef', 'source.blueprint.forged'],
+    ['sourcePath', 'blueprint/forged.json']
+  ]) {
+    const foundation = structuredClone(experienceFoundation);
+    foundation[field] = replacement;
+    assert.throws(() => slash({
+      kind: 'KNOWN_COMMAND',
+      command: '/where',
+      suggestion: null
+    }, { foundation }), /canonical source identity drifted/);
+  }
+
+  const unacceptedCommand = structuredClone(experienceFoundation);
+  unacceptedCommand.commandBindings.push({
+    commandRef: 'command.vexlife.unaccepted',
+    purpose: 'Structurally plausible but not accepted source.',
+    capabilityRef: 'capability.unaccepted',
+    actionRefOrNull: null,
+    processRefOrNull: null,
+    aliases: [{
+      literal: '/unaccepted',
+      formRef: EXPERIENCE_COMMAND_SLASH_FORM_REF
+    }]
+  });
+  assert.throws(() => slash({
+    kind: 'KNOWN_COMMAND',
+    command: '/unaccepted',
+    suggestion: null
+  }, { foundation: unacceptedCommand }), /accepted command owner set drifted/);
+
+  const capabilityDrift = structuredClone(experienceFoundation);
+  capabilityDrift.commandBindings.find(
+    (binding) => binding.commandRef === 'command.vexlife.where'
+  ).capabilityRef = 'capability.unaccepted';
+  assert.throws(() => slash({
+    kind: 'KNOWN_COMMAND',
+    command: '/where',
+    suggestion: null
+  }, { foundation: capabilityDrift }), /CommandBinding owner drifted/);
+
+  const aliasDrift = structuredClone(experienceFoundation);
+  aliasDrift.commandBindings.find(
+    (binding) => binding.commandRef === 'command.vexlife.where'
+  ).aliases[0].literal = '/elsewhere';
+  assert.throws(() => slash({
+    kind: 'KNOWN_COMMAND',
+    command: '/elsewhere',
+    suggestion: null
+  }, { foundation: aliasDrift }), /CommandBinding owner drifted/);
+
+  const formPlatformDrift = structuredClone(experienceFoundation);
+  formPlatformDrift.interactionForms.find(
+    (form) => form.formRef === EXPERIENCE_COMMAND_MODEL_TOOL_FORM_REF
+  ).platformRefs.push('platform.ios');
+  assert.throws(() => modelTool('command.vexlife.where', {
+    foundation: formPlatformDrift
+  }), /MODEL_TOOL platformRefs drifted/);
+});
+
+test('EFX02-15 is deterministic, deeply immutable, content-addressed, and performs no effect', () => {
   const first = slash({
     kind: 'KNOWN_COMMAND',
     command: '/help',

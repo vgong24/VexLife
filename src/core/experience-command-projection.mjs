@@ -15,6 +15,43 @@ export const EXPERIENCE_COMMAND_REQUEST_KINDS = Object.freeze([
 export const EXPERIENCE_COMMAND_SLASH_FORM_REF = 'form.vexlife.operator.slash-alias';
 export const EXPERIENCE_COMMAND_MODEL_TOOL_FORM_REF = 'form.vexlife.operator.model-tool';
 
+const EXPERIENCE_COMMAND_FOUNDATION_REF = 'foundation.vexlife.experience.001';
+const EXPERIENCE_COMMAND_FOUNDATION_VERSION = 1;
+const EXPERIENCE_COMMAND_FOUNDATION_SOURCE_REF = 'source.blueprint.experience-foundation';
+const EXPERIENCE_COMMAND_FOUNDATION_SOURCE_PATH = 'blueprint/experience-foundation.json';
+const EXPERIENCE_COMMAND_OPERATOR_PLATFORM_REFS = Object.freeze([
+  'platform.android',
+  'platform.browser',
+  'platform.macos',
+  'platform.windows'
+]);
+const EXPERIENCE_COMMAND_OWNER_CONTRACT = Object.freeze([
+  Object.freeze({
+    commandRef: 'command.vexlife.describe',
+    capabilityRef: 'capability.describe',
+    alias: '/describe'
+  }),
+  Object.freeze({
+    commandRef: 'command.vexlife.help',
+    capabilityRef: 'help.render',
+    alias: '/help'
+  }),
+  Object.freeze({
+    commandRef: 'command.vexlife.resolve-process',
+    capabilityRef: 'process.resolve',
+    alias: '/resolve'
+  }),
+  Object.freeze({
+    commandRef: 'command.vexlife.search',
+    capabilityRef: 'capability.search',
+    alias: '/search'
+  }),
+  Object.freeze({
+    commandRef: 'command.vexlife.where',
+    capabilityRef: 'context.where',
+    alias: '/where'
+  })
+]);
 const REQUIRED_NON_COLLAPSE_RULES = Object.freeze([
   'COMMAND_BINDING != EFFECT_AUTHORITY',
   'SLASH_STRING != COMMAND_IDENTITY',
@@ -83,11 +120,15 @@ function projectInteractionForm(form, expectedKind) {
       new Set(form.platformRefs).size !== form.platformRefs.length) {
     throw new TypeError(`Experience Foundation ${expectedKind} platformRefs are invalid`);
   }
+  const platformRefs = [...form.platformRefs].sort();
+  if (JSON.stringify(platformRefs) !== JSON.stringify(EXPERIENCE_COMMAND_OPERATOR_PLATFORM_REFS)) {
+    throw new TypeError(`Experience Foundation ${expectedKind} platformRefs drifted`);
+  }
   return freezeDeep({
     formRef: form.formRef,
     formKind: form.formKind,
     consumerClass: form.consumerClass,
-    platformRefs: [...form.platformRefs].sort(),
+    platformRefs,
     purpose: nonempty(form.purpose) ? form.purpose : null
   });
 }
@@ -131,10 +172,33 @@ function projectCommandBinding(binding, aliasOwners) {
   });
 }
 
+function requireAcceptedCommandOwners(commandBindings) {
+  if (commandBindings.length !== EXPERIENCE_COMMAND_OWNER_CONTRACT.length) {
+    throw new TypeError('Experience Foundation accepted command owner set drifted');
+  }
+  const byCommand = new Map(commandBindings.map((binding) => [binding.commandRef, binding]));
+  for (const expected of EXPERIENCE_COMMAND_OWNER_CONTRACT) {
+    const binding = byCommand.get(expected.commandRef);
+    if (!binding ||
+        binding.capabilityRef !== expected.capabilityRef ||
+        binding.aliases.length !== 1 ||
+        binding.aliases[0].literal !== expected.alias ||
+        binding.aliases[0].formRef !== EXPERIENCE_COMMAND_SLASH_FORM_REF) {
+      throw new TypeError(`Experience Foundation CommandBinding owner drifted for ${expected.commandRef}`);
+    }
+  }
+}
+
 function acceptedExperienceFoundation(source) {
   if (!object(source) || source.schemaVersion !== EXPERIENCE_COMMAND_FOUNDATION_SCHEMA ||
-      source.effects !== false || !nonempty(source.foundationRef) || !nonempty(source.sourceRef)) {
+      source.effects !== false) {
     throw new TypeError('one accepted no-effect Experience Foundation is required');
+  }
+  if (source.foundationRef !== EXPERIENCE_COMMAND_FOUNDATION_REF ||
+      source.foundationVersion !== EXPERIENCE_COMMAND_FOUNDATION_VERSION ||
+      source.sourceRef !== EXPERIENCE_COMMAND_FOUNDATION_SOURCE_REF ||
+      source.sourcePath !== EXPERIENCE_COMMAND_FOUNDATION_SOURCE_PATH) {
+    throw new TypeError('Experience Foundation canonical source identity drifted');
   }
   for (const rule of REQUIRED_NON_COLLAPSE_RULES) {
     if (!source.nonCollapseRules?.includes(rule)) {
@@ -173,6 +237,7 @@ function acceptedExperienceFoundation(source) {
     commandRefs.add(binding?.commandRef);
     return projectCommandBinding(binding, aliasOwners);
   }).sort((left, right) => left.commandRef.localeCompare(right.commandRef));
+  requireAcceptedCommandOwners(commandBindings);
 
   return freezeDeep({
     foundationRef: source.foundationRef,
