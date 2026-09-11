@@ -17,8 +17,8 @@
     {
       "path": "src/core/devex-guidance-projection.mjs",
       "mode": "100644",
-      "bytes": 11454,
-      "sha256": "9cefdbef17cc301fad20d7826e870f4873cf96fe911a767b62c5bc30958b567a"
+      "bytes": 13711,
+      "sha256": "307bc353e57d089fb6825d928ec8c921c7a52a66c117a747f5659374d63a1822"
     },
     {
       "path": "src/core/score-context-continuity.mjs",
