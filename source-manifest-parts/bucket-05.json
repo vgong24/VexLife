@@ -3,6 +3,12 @@
   "bucketId": "05",
   "files": [
     {
+      "path": "blueprint/purpose-workspace/process-patterns.json",
+      "mode": "100644",
+      "bytes": 3507,
+      "sha256": "2454de856407946804c870b209e6ae41da79a163195b8b3f5bf6a59be0330f69"
+    },
+    {
       "path": "package-lock.json",
       "mode": "100644",
       "bytes": 1844,

@@ -1,12 +1,28 @@
 const PLAN_DISPOSITIONS = new Set(['WALKTHROUGH', 'EXPLANATION_ONLY']);
 const NO_PLAN_DISPOSITIONS = new Set(['DISCOVERABLE_ONLY', 'NONE_JUSTIFIED']);
+const GUIDANCE_TARGET_KINDS = new Set(['ELEMENT', 'COMPONENT', 'COMPONENT_SLOT', 'REGION', 'TERRAIN_NODE', 'VESSEL']);
+const GUIDANCE_BINDING_POLICIES = new Set([
+  'STATIC_CANONICAL_TARGET',
+  'EXACT_COMPONENT_INSTANCE',
+  'EXACT_COMPONENT_SLOT_INSTANCE',
+  'CURRENT_SELECTED_INSTANCE',
+  'CURRENT_TERRAIN_NODE_INSTANCE',
+  'CURRENT_VESSEL'
+]);
+const DYNAMIC_GUIDANCE_BINDING_POLICIES = new Set([
+  'CURRENT_SELECTED_INSTANCE',
+  'CURRENT_TERRAIN_NODE_INSTANCE',
+  'CURRENT_VESSEL'
+]);
 
 export const FEATURE_WALKTHROUGH_RUNNER_STATES = Object.freeze({
   READY:'READY', ACTIVE:'ACTIVE', HELD:'HELD', NOT_REQUIRED:'NOT_REQUIRED',
-  DEFERRED:'DEFERRED', SUPPRESSED:'SUPPRESSED', UNAVAILABLE:'UNAVAILABLE',
+  DEFERRED:'DEFERRED', ACKNOWLEDGED:'ACKNOWLEDGED', SUPPRESSED:'SUPPRESSED', UNAVAILABLE:'UNAVAILABLE',
   PLAN_STAGES_EXHAUSTED:'PLAN_STAGES_EXHAUSTED'
 });
-export const FEATURE_WALKTHROUGH_PREFERENCE_STATES = Object.freeze({ DEFERRED:'DEFERRED', SUPPRESSED:'SUPPRESSED' });
+export const FEATURE_WALKTHROUGH_PREFERENCE_STATES = Object.freeze({
+  DEFERRED:'DEFERRED', ACKNOWLEDGED:'ACKNOWLEDGED', SUPPRESSED:'SUPPRESSED'
+});
 
 const PREFERENCE_PREFIX='vexlife.guide.feature-introduction';
 const NO_EFFECTS=Object.freeze({journeyCompletionCreated:false,memoryWritten:false,protectedActionExecuted:false,modelCalled:false,networkCalled:false,publicationPerformed:false});
@@ -57,6 +73,22 @@ function validStage(stage,index){
     [stage.purposeClass,stage.contentStringRef,stage.expectedOutcomeClass,stage.recoveryClass].every(nonempty)&&
     nullableRef(stage.targetRefOrNull)&&nullableRef(stage.actionRefOrNull));
 }
+function targetBindingErrors(binding,{targetRef,actionBearing=false}={}){
+  const errors=[];
+  if(!binding||typeof binding!=='object'||Array.isArray(binding)) return ['targetBindingOrNull must be an object when supplied'];
+  if(binding.targetRef!==targetRef) errors.push('targetBindingOrNull.targetRef must match the walkthrough targetRef');
+  if(!GUIDANCE_TARGET_KINDS.has(binding.targetKind)) errors.push(`unsupported targetBindingOrNull.targetKind ${binding.targetKind}`);
+  if(!GUIDANCE_BINDING_POLICIES.has(binding.bindingPolicy)) errors.push(`unsupported targetBindingOrNull.bindingPolicy ${binding.bindingPolicy}`);
+  for(const key of ['screenRefOrNull','regionRefOrNull','componentRefOrNull','slotRefOrNull','instanceRefOrNull','entityRefOrNull','selectionRefOrNull']){
+    if(!Object.hasOwn(binding,key)||!nullableRef(binding[key])) errors.push(`targetBindingOrNull invalid ${key}`);
+  }
+  if(binding.bindingPolicy==='STATIC_CANONICAL_TARGET'&&binding.instanceRefOrNull!==null) errors.push('STATIC_CANONICAL_TARGET must not include instanceRefOrNull');
+  if(binding.bindingPolicy==='EXACT_COMPONENT_INSTANCE'&&(!nonempty(binding.componentRefOrNull)||!nonempty(binding.instanceRefOrNull))) errors.push('EXACT_COMPONENT_INSTANCE requires componentRefOrNull and instanceRefOrNull');
+  if(binding.bindingPolicy==='EXACT_COMPONENT_SLOT_INSTANCE'&&![binding.componentRefOrNull,binding.slotRefOrNull,binding.instanceRefOrNull].every(nonempty)) errors.push('EXACT_COMPONENT_SLOT_INSTANCE requires componentRefOrNull, slotRefOrNull and instanceRefOrNull');
+  if(binding.targetKind==='COMPONENT_SLOT'&&!nonempty(binding.slotRefOrNull)) errors.push('COMPONENT_SLOT target requires slotRefOrNull');
+  if(actionBearing&&DYNAMIC_GUIDANCE_BINDING_POLICIES.has(binding.bindingPolicy)&&!nonempty(binding.selectionRefOrNull)&&!nonempty(binding.instanceRefOrNull)) errors.push('action-bearing dynamic target requires exact selectionRefOrNull or instanceRefOrNull');
+  return errors;
+}
 
 export function createFeatureWalkthroughRunner({featureRegistry,experience,evaluateTarget=null,currentFrame=()=>null,preferenceStore,runRefFactory=()=>`run.vexlife.feature-walkthrough.${crypto.randomUUID()}`}={}){
   const featureIndex=indexBy(featureRegistry?.features,'featureRef');
@@ -93,6 +125,7 @@ export function createFeatureWalkthroughRunner({featureRegistry,experience,evalu
       try{preference=preferences.read(preferenceKey);}catch{return unavailable(featureRef,'PREFERENCE_READ_FAILED',{planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey});}
       if(preference!==null&&!preferenceMatches(preference,id)) return unavailable(featureRef,'PREFERENCE_RECORD_INVALID',{planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey});
       if(preference?.state===FEATURE_WALKTHROUGH_PREFERENCE_STATES.SUPPRESSED) return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.SUPPRESSED,featureRef,planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey,effects:effects()};
+      if(preference?.state===FEATURE_WALKTHROUGH_PREFERENCE_STATES.ACKNOWLEDGED) return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.ACKNOWLEDGED,featureRef,planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey,completionAuthority:'JOURNEY_REQUIRED',effects:effects()};
       if(preference?.state===FEATURE_WALKTHROUGH_PREFERENCE_STATES.DEFERRED) return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.DEFERRED,featureRef,planRef:plan.planRef,sourceVersionRef:plan.sourceVersionRef,preferenceKey,effects:effects()};
     }
     return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.READY,featureRef,disposition:intro.disposition,planRef:plan.planRef,journeyRef:plan.journeyRef,sourceVersionRef:plan.sourceVersionRef,experienceProfileRef:plan.experienceProfileRef,replayable:plan.replayable===true,stageCount:plan.stages.length,preferenceKey,plan,effects:effects()};
@@ -120,6 +153,12 @@ export function createFeatureWalkthroughRunner({featureRegistry,experience,evalu
       if(typeof evaluateTarget!=='function') return unavailable(run.featureRef,'TARGET_EVALUATOR_UNAVAILABLE',{stageRef:sourceStage.stageRef,targetRef:sourceStage.targetRefOrNull});
       try{targetEvaluation=evaluateTarget(sourceStage.targetRefOrNull,frame);}catch{return unavailable(run.featureRef,'TARGET_EVALUATION_FAILED',{stageRef:sourceStage.stageRef,targetRef:sourceStage.targetRefOrNull});}
       if(!targetEvaluation||targetEvaluation.state!=='AVAILABLE') return unavailable(run.featureRef,'CURRENT_TARGET_UNAVAILABLE',{stageRef:sourceStage.stageRef,targetRef:sourceStage.targetRefOrNull,targetEvaluation:clone(targetEvaluation)});
+      const binding=targetEvaluation.targetBindingOrNull??null;
+      if(targetEvaluation.bindingRequired===true&&binding===null) return unavailable(run.featureRef,'TARGET_BINDING_REQUIRED',{stageRef:sourceStage.stageRef,targetRef:sourceStage.targetRefOrNull});
+      if(binding!==null){
+        const bindingErrors=targetBindingErrors(binding,{targetRef:sourceStage.targetRefOrNull,actionBearing:sourceStage.actionRefOrNull!==null});
+        if(bindingErrors.length) return unavailable(run.featureRef,'TARGET_BINDING_INVALID',{stageRef:sourceStage.stageRef,targetRef:sourceStage.targetRefOrNull,bindingErrors});
+      }
       if(sourceStage.actionRefOrNull!==null&&targetEvaluation.actionRef!==sourceStage.actionRefOrNull) return unavailable(run.featureRef,'ACTION_TARGET_MISMATCH',{stageRef:sourceStage.stageRef,declaredActionRef:sourceStage.actionRefOrNull,currentActionRef:targetEvaluation.actionRef??null});
     }
     return {state:FEATURE_WALKTHROUGH_RUNNER_STATES.ACTIVE,featureRef:run.featureRef,runRef:run.runRef,planRef:run.planRef,journeyRef:route.journeyRef,sourceVersionRef:run.sourceVersionRef,stageIndex:run.stageIndex,stageCount:route.plan.stages.length,stage:clone(sourceStage),targetEvaluation:clone(targetEvaluation),autoExecute:false,completionAuthority:'JOURNEY_REQUIRED',effects:effects()};
@@ -132,13 +171,14 @@ export function createFeatureWalkthroughRunner({featureRegistry,experience,evalu
     return {state,featureRef,planRef:route.planRef,sourceVersionRef:route.sourceVersionRef,preferenceKey:route.preferenceKey,completionAuthority:'JOURNEY_REQUIRED',effects:effects()};
   }
   const later=(featureRef)=>writePreference(featureRef,FEATURE_WALKTHROUGH_PREFERENCE_STATES.DEFERRED);
+  const acknowledge=(featureRef)=>writePreference(featureRef,FEATURE_WALKTHROUGH_PREFERENCE_STATES.ACKNOWLEDGED);
   const suppress=(featureRef)=>writePreference(featureRef,FEATURE_WALKTHROUGH_PREFERENCE_STATES.SUPPRESSED);
   function clearPreference(featureRef){
     const route=resolve(featureRef,{ignorePreference:true});if(route.state!==FEATURE_WALKTHROUGH_RUNNER_STATES.READY)return route;
     try{preferences.remove(route.preferenceKey);}catch{return unavailable(featureRef,'PREFERENCE_CLEAR_FAILED',{planRef:route.planRef,sourceVersionRef:route.sourceVersionRef});}
     return offer(featureRef);
   }
-  return Object.freeze({offer,showMe,stage,advance,later,suppress,clearPreference});
+  return Object.freeze({offer,showMe,stage,advance,later,acknowledge,suppress,clearPreference});
 }
 
 // [VXG RealForever]

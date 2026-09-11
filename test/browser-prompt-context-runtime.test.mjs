@@ -5,7 +5,9 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
+import { createServerOwnedBrowserCompanionBridge } from '../scripts/serve-browser.mjs';
 import { createBrowserCompanionBridge } from '../src/core/browser-companion-bridge.mjs';
 import {
   LivedCompanionError,
@@ -356,6 +358,159 @@ test('verifier failure retires only its exact active selection', async () => {
     await model.close();
     fs.rmSync(home.root, { recursive: true, force: true });
   }
+});
+
+
+const SOURCE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+test('server-owned prompt-context composition stays lazy until a real turn needs Home identity', () => {
+  let captured = null;
+  const sentinel = Object.freeze({ ref: 'bridge.vexlife.birth-pcr13.lazy' });
+  const missingHome = path.join(os.tmpdir(), `vexlife-birth-pcr13-missing-${crypto.randomUUID()}`);
+  const result = createServerOwnedBrowserCompanionBridge({
+    sourceRoot: SOURCE_ROOT,
+    companionHome: missingHome,
+    endpoint: 'http://127.0.0.1:18080',
+    model: 'Qwen3.5-4B-Q4_K_M',
+    runtimeMode: 'DIRECT_SINGLE_TURN',
+    bridgeFactory(options) {
+      captured = options;
+      return sentinel;
+    }
+  });
+
+  assert.equal(result, sentinel);
+  assert.equal(fs.existsSync(missingHome), false);
+  assert.equal(captured.capabilityRuntime, null);
+  assert.equal(captured.modelConnectionComposer, null);
+  assert.equal(typeof captured.promptContextResolver, 'function');
+  assert.equal(typeof captured.promptContextAuthorityVerifier, 'function');
+  assert.throws(
+    () => captured.promptContextResolver({ context: {} }),
+    (error) => error?.code === 'COMPANION_HOME_UNAVAILABLE'
+  );
+});
+
+test('production server-owned bridge adopts the immediate prior completed turn into the ordinary provider request', async () => {
+  const home = makeHome('server-owned-real-provider');
+  const model = await startModelServer();
+  try {
+    const production = createServerOwnedBrowserCompanionBridge({
+      sourceRoot: SOURCE_ROOT,
+      companionHome: home.home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      runtimeMode: 'DIRECT_SINGLE_TURN'
+    });
+    const first = await production.performTurn({
+      threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
+      channelRef: 'channel.local-vex.companion',
+      content: 'Prior exact human message.'
+    });
+    assert.equal(first.state, 'TURN_COMPLETED');
+    assert.equal(first.promptContextMaterialization, null);
+    assert.deepEqual(model.calls[0].body.messages, [
+      { role: 'user', content: 'Prior exact human message.' }
+    ]);
+
+    const second = await production.performTurn({
+      threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
+      channelRef: 'channel.local-vex.companion',
+      content: 'Current exact human message.'
+    });
+    assert.equal(second.state, 'TURN_COMPLETED');
+    assert.equal(model.calls.length, 2);
+    assert.deepEqual(model.calls[1].body.messages, [
+      { role: 'user', content: 'Prior exact human message.' },
+      { role: 'assistant', content: 'Prior exact reply.' },
+      { role: 'user', content: 'Current exact human message.' }
+    ]);
+    assert.equal(second.promptContextMaterialization.providerBoundaryCurrentnessVerified, true);
+    assert.equal(second.promptContextMaterialization.providerBoundarySourceBindingsVerified, true);
+    assert.equal(second.promptContextMaterialization.wholeHistoryEventEnumerationPerformed, false);
+    assert.equal(second.promptContextMaterialization.currentRequestIncludedExactlyOnce, true);
+    assert.equal(second.promptContextMaterialization.memoryEffectPerformed, false);
+    assert.equal(second.promptContextMaterialization.trainingSelectionPerformed, false);
+    assert.equal(second.promptContextMaterialization.modelWeightEffectPerformed, false);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('server-owned prompt-context binding fails closed if the canonical Home identity later contradicts its bound identity', async () => {
+  const home = makeHome('identity-drift');
+  let captured = null;
+  try {
+    createServerOwnedBrowserCompanionBridge({
+      sourceRoot: SOURCE_ROOT,
+      companionHome: home.home,
+      endpoint: 'http://127.0.0.1:18080',
+      model: 'Qwen3.5-4B-Q4_K_M',
+      runtimeMode: 'DIRECT_SINGLE_TURN',
+      bridgeFactory(options) {
+        captured = options;
+        return Object.freeze({ ref: 'bridge.vexlife.birth-pcr13.identity-drift' });
+      }
+    });
+    const firstContext = {
+      threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
+      currentRequestEventRef: 'event.vexlife.request.identity-drift-one',
+      currentRequestEventHash: '7'.repeat(64),
+      currentRequestSequence: 0,
+      priorConversationHeadSha256: null
+    };
+    assert.equal(await captured.promptContextResolver({ context: firstContext }), null);
+    const homeManifestPath = path.join(home.home, 'config', 'home.json');
+    const homeManifest = JSON.parse(fs.readFileSync(homeManifestPath, 'utf8'));
+    fs.writeFileSync(homeManifestPath, `${JSON.stringify({
+      ...homeManifest,
+      homeRef: 'vex-home.browser-prompt-context-runtime-test.changed'
+    }, null, 2)}\n`);
+    assert.throws(
+      () => captured.promptContextResolver({
+        context: {
+          ...firstContext,
+          currentRequestEventRef: 'event.vexlife.request.identity-drift-two',
+          currentRequestEventHash: '8'.repeat(64)
+        }
+      }),
+      (error) => error?.code === 'COMPANION_HOME_IDENTITY_INVALID'
+    );
+  } finally {
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('canonical module registries bind prompt-context runtime to serve-browser exactly once', () => {
+  const rootRegistry = JSON.parse(fs.readFileSync(path.join(SOURCE_ROOT, 'blueprint/module-registry.json'), 'utf8'));
+  const scripts = JSON.parse(fs.readFileSync(path.join(SOURCE_ROOT, 'blueprint/module-registry/scripts.json'), 'utf8'));
+  const promptRuntime = JSON.parse(fs.readFileSync(
+    path.join(SOURCE_ROOT, 'blueprint/module-registry/browser-prompt-context-runtime.json'),
+    'utf8'
+  ));
+  assert.equal(
+    rootRegistry.includes.modules.filter((entry) => entry === 'blueprint/module-registry/browser-prompt-context-runtime.json').length,
+    1
+  );
+  const server = scripts.find((entry) => entry.moduleRef === 'module.vexlife.script.serve-browser');
+  const runtimeEntry = promptRuntime.find(
+    (entry) => entry.moduleRef === 'module.vexlife.core.browser-prompt-context-runtime'
+  );
+  assert.ok(server);
+  assert.ok(runtimeEntry);
+  assert.equal(
+    server.reads.filter((entry) => entry === 'module.vexlife.core.browser-prompt-context-runtime').length,
+    1
+  );
+  assert.equal(
+    server.tests.filter((entry) => entry === 'test/browser-prompt-context-runtime.test.mjs').length,
+    1
+  );
+  assert.equal(
+    runtimeEntry.loadedBy.filter((entry) => entry === 'module.vexlife.script.serve-browser').length,
+    1
+  );
 });
 
 // [VXG RealForever]
