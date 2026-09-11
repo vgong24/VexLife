@@ -32,6 +32,10 @@ import {
 } from './state.mjs';
 import { validateIntentWorkgraph } from './intent-validation.mjs';
 import {
+  buildGraphSnapshotFingerprint,
+  buildIntentFingerprint
+} from './intent-workgraph.mjs';
+import {
   DeterministicFakeCompletionVerifier,
   reduceVerifiedWorkCompletion
 } from './intent-completion-verifier.mjs';
@@ -367,6 +371,414 @@ export function schedulingClass(node) {
   if (node.schedulingClass === 'RECOVERY' || ['FAILED_RECOVERABLE', 'BLOCKED'].includes(node.state)) return 'RECOVERY';
   if (node.background === true || node.priorityClass === 'LOW' || node.schedulingClass === 'BACKGROUND') return 'BACKGROUND';
   return 'NORMAL';
+}
+
+const PENDING_ROOT_FIELDS = Object.freeze([
+  'schemaVersion', 'intentRef', 'intentFingerprint', 'graphRef', 'graphFingerprint',
+  'originPrincipalRef', 'projectRef', 'threadRef', 'channelRef', 'schedulingClass',
+  'submittedGeneration', 'readySinceGeneration', 'principalDeferralCount', 'currentness',
+  'state', 'cancellationState', 'rawPromptTitleContentStored', 'semanticFingerprint'
+]);
+
+const PRINCIPAL_FAIRNESS_FIELDS = Object.freeze([
+  'schemaVersion', 'principalRef', 'readySinceGeneration', 'deferralCount',
+  'lastConsideredGeneration', 'lastDisposition', 'pendingRootCount', 'semanticFingerprint'
+]);
+
+function exactKeys(value, fields) {
+  return JSON.stringify(Object.keys(value ?? {}).sort()) === JSON.stringify([...fields].sort());
+}
+
+function validateFinalizedRecord(value, label) {
+  if (!value?.semanticFingerprint) throw new Error(`${label} is missing semanticFingerprint`);
+  const candidate = clone(value);
+  const fingerprint = candidate.semanticFingerprint;
+  delete candidate.semanticFingerprint;
+  if (semanticHash(candidate) !== fingerprint) throw new Error(`${label} semantic fingerprint mismatch`);
+  return value;
+}
+
+function multiRootPolicy(schedulerRegistry) {
+  const policy = schedulerRegistry?.multiRootPrincipalQueuePolicy;
+  const classes = [...CLASS_ORDER.keys()];
+  if (!policy || policy.policyRef !== 'policy.intent-scheduler.multi-root-principal-fairness' ||
+      policy.contractRef !== 'contract.intent-scheduler.multi-root-principal-queue/v1' ||
+      JSON.stringify(policy.aggregateFields) !== JSON.stringify(['pendingRootIntents', 'principalFairnessLedger']) ||
+      policy.originPrincipalSource !== 'intent.originSpeakerRef' ||
+      JSON.stringify(policy.classHierarchy) !== JSON.stringify(classes) ||
+      policy.principalFirst !== true || policy.eachPrincipalContributesOldestEligibleIntent !== true ||
+      policy.selectedPrincipalDeferralResets !== true || policy.otherEligiblePrincipalDeferralsAge !== true ||
+      policy.lowerPriorityClassMayJumpInteractive !== false || policy.freshCanonicalAdmissionRequiredBeforeLease !== true ||
+      policy.secondSchedulerAllowed !== false || policy.rawPromptTitleContentStored !== false ||
+      policy.defaultRequesterCancellationScope !== 'OWN_QUEUED_ROOT_ONLY' ||
+      policy.modelInferenceConcurrency !== 1 || policy.sourceDiscardAllowed !== false) {
+    throw new Error('scheduler multi-root principal queue policy is missing, substituted, or incomplete');
+  }
+  for (const field of [
+    'maximumPendingRoots', 'maximumPendingPrincipals',
+    'maximumPendingRootsPerPrincipal', 'maximumPendingRootStateBytes'
+  ]) {
+    if (!Number.isInteger(policy[field]) || policy[field] < 1) {
+      throw new Error(`scheduler multi-root ${field} must be a positive integer`);
+    }
+  }
+  if (policy.maximumPendingRootsPerPrincipal > policy.maximumPendingRoots ||
+      policy.maximumPendingPrincipals > policy.maximumPendingRoots) {
+    throw new Error('scheduler multi-root cardinality limits are internally inconsistent');
+  }
+  return policy;
+}
+
+function validatePendingRootRecord(root, policy) {
+  if (!exactKeys(root, PENDING_ROOT_FIELDS) || root?.schemaVersion !== 'vexlife.intent-scheduler-pending-root/v1' ||
+      !root.intentRef || !root.intentFingerprint || !root.graphRef || !root.graphFingerprint ||
+      !root.originPrincipalRef || !root.projectRef || !root.threadRef || !root.channelRef ||
+      !policy.classHierarchy.includes(root.schedulingClass) ||
+      !Number.isInteger(root.submittedGeneration) || root.submittedGeneration < 0 ||
+      !Number.isInteger(root.readySinceGeneration) || root.readySinceGeneration < 0 ||
+      !Number.isInteger(root.principalDeferralCount) || root.principalDeferralCount < 0 ||
+      root.currentness !== 'CURRENT' || root.state !== 'PENDING' || root.cancellationState !== 'OPEN' ||
+      root.rawPromptTitleContentStored !== false) {
+    throw new Error('scheduler pending root record is malformed or contains unowned content');
+  }
+  validateFinalizedRecord(root, `pending root ${root.intentRef}`);
+  return root;
+}
+
+function validatePrincipalFairnessRecord(entry, principalRef) {
+  if (!exactKeys(entry, PRINCIPAL_FAIRNESS_FIELDS) ||
+      entry?.schemaVersion !== 'vexlife.intent-scheduler-principal-fairness/v1' ||
+      entry.principalRef !== principalRef || !principalRef ||
+      !Number.isInteger(entry.readySinceGeneration) || entry.readySinceGeneration < 0 ||
+      !Number.isInteger(entry.deferralCount) || entry.deferralCount < 0 ||
+      !(entry.lastConsideredGeneration === null ||
+        (Number.isInteger(entry.lastConsideredGeneration) && entry.lastConsideredGeneration >= 0)) ||
+      !['QUEUED', 'SELECTED', 'DEFERRED', 'CANCELLED'].includes(entry.lastDisposition) ||
+      !Number.isInteger(entry.pendingRootCount) || entry.pendingRootCount < 1) {
+    throw new Error(`scheduler principal fairness record ${principalRef ?? 'UNKNOWN'} is malformed`);
+  }
+  validateFinalizedRecord(entry, `principal fairness ${principalRef}`);
+  return entry;
+}
+
+export function validatePendingRootSchedulerState({
+  pendingRootIntents = [],
+  principalFairnessLedger = {}
+} = {}, { schedulerRegistry } = {}) {
+  const policy = multiRootPolicy(schedulerRegistry);
+  if (!Array.isArray(pendingRootIntents) || !principalFairnessLedger ||
+      typeof principalFairnessLedger !== 'object' || Array.isArray(principalFairnessLedger)) {
+    throw new Error('scheduler pending root state must use array/object aggregate fields');
+  }
+  if (pendingRootIntents.length > policy.maximumPendingRoots) {
+    throw new Error('scheduler pending root ledger exceeds source-managed root cardinality');
+  }
+  const intentRefs = pendingRootIntents.map((root) => validatePendingRootRecord(root, policy).intentRef);
+  if (new Set(intentRefs).size !== intentRefs.length ||
+      JSON.stringify(intentRefs) !== JSON.stringify([...intentRefs].sort())) {
+    throw new Error('scheduler pending roots must be unique and canonically sorted by intentRef');
+  }
+  const principalRefs = Object.keys(principalFairnessLedger);
+  if (principalRefs.length > policy.maximumPendingPrincipals ||
+      JSON.stringify(principalRefs) !== JSON.stringify([...principalRefs].sort())) {
+    throw new Error('scheduler principal fairness ledger exceeds bounds or is not canonically ordered');
+  }
+  for (const principalRef of principalRefs) validatePrincipalFairnessRecord(principalFairnessLedger[principalRef], principalRef);
+  const rootsByPrincipal = new Map();
+  for (const root of pendingRootIntents) {
+    const roots = rootsByPrincipal.get(root.originPrincipalRef) ?? [];
+    roots.push(root);
+    rootsByPrincipal.set(root.originPrincipalRef, roots);
+  }
+  if (rootsByPrincipal.size !== principalRefs.length ||
+      [...rootsByPrincipal.keys()].some((principalRef) => !principalFairnessLedger[principalRef])) {
+    throw new Error('scheduler pending roots and principal fairness ownership differ');
+  }
+  for (const [principalRef, roots] of rootsByPrincipal) {
+    if (roots.length > policy.maximumPendingRootsPerPrincipal) {
+      throw new Error(`scheduler principal ${principalRef} exceeds source-managed pending-root cardinality`);
+    }
+    const fairness = principalFairnessLedger[principalRef];
+    const readySinceGeneration = Math.min(...roots.map((root) => root.readySinceGeneration));
+    if (fairness.pendingRootCount !== roots.length || fairness.readySinceGeneration !== readySinceGeneration ||
+        roots.some((root) => root.principalDeferralCount !== fairness.deferralCount)) {
+      throw new Error(`scheduler principal ${principalRef} fairness mirror differs from pending roots`);
+    }
+  }
+  const stateBytes = canonicalUtf8ByteLength({ pendingRootIntents, principalFairnessLedger });
+  if (stateBytes > policy.maximumPendingRootStateBytes) {
+    throw new Error('scheduler pending root state exceeds source-managed canonical byte budget');
+  }
+  return freeze({
+    ok: true,
+    pendingRootCount: pendingRootIntents.length,
+    principalCount: principalRefs.length,
+    canonicalBytes: stateBytes
+  });
+}
+
+function assertCanonicalRootGraph(graph) {
+  if (!graph?.intent?.semanticFingerprint || !graph.semanticFingerprint ||
+      buildIntentFingerprint(graph.intent) !== graph.intent.semanticFingerprint ||
+      buildGraphSnapshotFingerprint(graph) !== graph.semanticFingerprint ||
+      graph.rootIntentRef !== graph.intent.intentRef || !graph.intent.originSpeakerRef) {
+    throw new Error('scheduler pending root requires exact immutable Intent and Workgraph fingerprints');
+  }
+  return graph;
+}
+
+export function createPendingRootIntent(graph, {
+  schedulerRegistry,
+  schedulingClass: rootSchedulingClass = 'NORMAL',
+  submittedGeneration = 0
+} = {}) {
+  const policy = multiRootPolicy(schedulerRegistry);
+  assertCanonicalRootGraph(graph);
+  if (!policy.classHierarchy.includes(rootSchedulingClass)) {
+    throw new Error(`scheduler pending root has unknown scheduling class ${rootSchedulingClass}`);
+  }
+  if (!Number.isInteger(submittedGeneration) || submittedGeneration < 0) {
+    throw new Error('scheduler pending root submittedGeneration must be a non-negative integer');
+  }
+  return finalized({
+    schemaVersion: 'vexlife.intent-scheduler-pending-root/v1',
+    intentRef: graph.intent.intentRef,
+    intentFingerprint: graph.intent.semanticFingerprint,
+    graphRef: graph.graphRef,
+    graphFingerprint: graph.semanticFingerprint,
+    originPrincipalRef: graph.intent.originSpeakerRef,
+    projectRef: graph.intent.projectRef,
+    threadRef: graph.intent.threadRef,
+    channelRef: graph.intent.channelRef,
+    schedulingClass: rootSchedulingClass,
+    submittedGeneration,
+    readySinceGeneration: submittedGeneration,
+    principalDeferralCount: 0,
+    currentness: 'CURRENT',
+    state: 'PENDING',
+    cancellationState: 'OPEN',
+    rawPromptTitleContentStored: false
+  });
+}
+
+export function assertPendingRootGraphBinding(root, graph, { schedulerRegistry } = {}) {
+  validatePendingRootRecord(root, multiRootPolicy(schedulerRegistry));
+  assertCanonicalRootGraph(graph);
+  if (root.intentRef !== graph.intent.intentRef || root.intentFingerprint !== graph.intent.semanticFingerprint ||
+      root.graphRef !== graph.graphRef || root.graphFingerprint !== graph.semanticFingerprint ||
+      root.originPrincipalRef !== graph.intent.originSpeakerRef || root.projectRef !== graph.intent.projectRef ||
+      root.threadRef !== graph.intent.threadRef || root.channelRef !== graph.intent.channelRef) {
+    throw new Error('scheduler pending root graph binding is stale, substituted, or cross-principal');
+  }
+  return true;
+}
+
+function principalFairness(principalRef, roots, prior = null, patch = {}) {
+  const owned = roots.filter((root) => root.originPrincipalRef === principalRef);
+  if (!owned.length) return null;
+  return finalized({
+    schemaVersion: 'vexlife.intent-scheduler-principal-fairness/v1',
+    principalRef,
+    readySinceGeneration: Math.min(...owned.map((root) => root.readySinceGeneration)),
+    deferralCount: prior?.deferralCount ?? 0,
+    lastConsideredGeneration: prior?.lastConsideredGeneration ?? null,
+    lastDisposition: prior?.lastDisposition ?? 'QUEUED',
+    pendingRootCount: owned.length,
+    ...clone(patch)
+  });
+}
+
+function mirrorPrincipalDeferrals(roots, ledger) {
+  return roots.map((root) => finalized({
+    ...clone(root),
+    principalDeferralCount: ledger[root.originPrincipalRef].deferralCount
+  })).sort((left, right) => left.intentRef.localeCompare(right.intentRef));
+}
+
+function rebuildPrincipalFairness(roots, priorLedger = {}, patches = {}) {
+  const ledger = {};
+  for (const principalRef of [...new Set(roots.map((root) => root.originPrincipalRef))].sort()) {
+    ledger[principalRef] = principalFairness(
+      principalRef,
+      roots,
+      priorLedger[principalRef] ?? null,
+      patches[principalRef] ?? {}
+    );
+  }
+  return ledger;
+}
+
+export function appendPendingRootState({ pendingRootIntents = [], principalFairnessLedger = {} }, root, {
+  schedulerRegistry
+} = {}) {
+  validatePendingRootSchedulerState({ pendingRootIntents, principalFairnessLedger }, { schedulerRegistry });
+  validatePendingRootRecord(root, multiRootPolicy(schedulerRegistry));
+  const existing = pendingRootIntents.find((item) => item.intentRef === root.intentRef);
+  if (existing) {
+    if (existing.graphFingerprint !== root.graphFingerprint ||
+        existing.intentFingerprint !== root.intentFingerprint ||
+        existing.originPrincipalRef !== root.originPrincipalRef ||
+        existing.schedulingClass !== root.schedulingClass) {
+      throw new Error('scheduler pending root same intentRef has different exact identity');
+    }
+    return freeze({ changed: false, pendingRootIntents: clone(pendingRootIntents), principalFairnessLedger: clone(principalFairnessLedger) });
+  }
+  const prior = principalFairnessLedger[root.originPrincipalRef] ?? null;
+  const provisional = [...pendingRootIntents, finalized({
+    ...clone(root),
+    principalDeferralCount: prior?.deferralCount ?? 0
+  })].sort((left, right) => left.intentRef.localeCompare(right.intentRef));
+  const ledger = rebuildPrincipalFairness(provisional, principalFairnessLedger, prior ? {} : {
+    [root.originPrincipalRef]: { lastDisposition: 'QUEUED' }
+  });
+  const roots = mirrorPrincipalDeferrals(provisional, ledger);
+  validatePendingRootSchedulerState({ pendingRootIntents: roots, principalFairnessLedger: ledger }, { schedulerRegistry });
+  return freeze({ changed: true, pendingRootIntents: roots, principalFairnessLedger: ledger });
+}
+
+export function selectNextPendingRoot(pendingRootIntents, principalFairnessLedger, { schedulerRegistry } = {}) {
+  validatePendingRootSchedulerState({ pendingRootIntents, principalFairnessLedger }, { schedulerRegistry });
+  if (!pendingRootIntents.length) return null;
+  const highestRank = Math.min(...pendingRootIntents.map((root) => CLASS_ORDER.get(root.schedulingClass) ?? 99));
+  const classPool = pendingRootIntents.filter((root) =>
+    (CLASS_ORDER.get(root.schedulingClass) ?? 99) === highestRank
+  );
+  const principalCandidates = [...new Set(classPool.map((root) => root.originPrincipalRef))].map((principalRef) =>
+    classPool.filter((root) => root.originPrincipalRef === principalRef).sort((left, right) =>
+      left.readySinceGeneration - right.readySinceGeneration ||
+      left.submittedGeneration - right.submittedGeneration ||
+      left.intentRef.localeCompare(right.intentRef)
+    )[0]
+  );
+  return clone(principalCandidates.sort((left, right) =>
+    principalFairnessLedger[right.originPrincipalRef].deferralCount -
+      principalFairnessLedger[left.originPrincipalRef].deferralCount ||
+    left.readySinceGeneration - right.readySinceGeneration ||
+    left.submittedGeneration - right.submittedGeneration ||
+    left.intentRef.localeCompare(right.intentRef)
+  )[0]);
+}
+
+export function consumePendingRootSelection({ pendingRootIntents = [], principalFairnessLedger = {} }, intentRef, {
+  schedulerRegistry,
+  schedulerGeneration,
+  expectedRootFingerprint = null,
+  requireCurrentSelection = true
+} = {}) {
+  validatePendingRootSchedulerState({ pendingRootIntents, principalFairnessLedger }, { schedulerRegistry });
+  if (!Number.isInteger(schedulerGeneration) || schedulerGeneration < 0) {
+    throw new Error('scheduler pending root consumption requires a non-negative schedulerGeneration');
+  }
+  const selected = pendingRootIntents.find((root) => root.intentRef === intentRef);
+  if (!selected || (expectedRootFingerprint && selected.semanticFingerprint !== expectedRootFingerprint)) {
+    throw new Error('scheduler pending root selection is absent, stale, or substituted');
+  }
+  if (requireCurrentSelection) {
+    const current = selectNextPendingRoot(pendingRootIntents, principalFairnessLedger, { schedulerRegistry });
+    if (!current || current.semanticFingerprint !== selected.semanticFingerprint) {
+      throw new Error('scheduler pending root consumption does not match current principal-first selection');
+    }
+  }
+  const selectedRank = CLASS_ORDER.get(selected.schedulingClass);
+  const competingPrincipals = new Set(pendingRootIntents
+    .filter((root) => CLASS_ORDER.get(root.schedulingClass) === selectedRank)
+    .map((root) => root.originPrincipalRef));
+  const remaining = pendingRootIntents.filter((root) => root.intentRef !== selected.intentRef);
+  const patches = {};
+  for (const principalRef of Object.keys(principalFairnessLedger)) {
+    if (principalRef === selected.originPrincipalRef) {
+      patches[principalRef] = {
+        deferralCount: 0,
+        lastConsideredGeneration: schedulerGeneration,
+        lastDisposition: 'SELECTED'
+      };
+    } else if (competingPrincipals.has(principalRef)) {
+      patches[principalRef] = {
+        deferralCount: principalFairnessLedger[principalRef].deferralCount + 1,
+        lastConsideredGeneration: schedulerGeneration,
+        lastDisposition: 'DEFERRED'
+      };
+    }
+  }
+  const ledger = rebuildPrincipalFairness(remaining, principalFairnessLedger, patches);
+  const roots = mirrorPrincipalDeferrals(remaining, ledger);
+  validatePendingRootSchedulerState({ pendingRootIntents: roots, principalFairnessLedger: ledger }, { schedulerRegistry });
+  return freeze({
+    selected: clone(selected),
+    pendingRootIntents: roots,
+    principalFairnessLedger: ledger
+  });
+}
+
+export function cancelPendingRootState({ pendingRootIntents = [], principalFairnessLedger = {} }, intentRef, {
+  requesterRef,
+  schedulerRegistry,
+  schedulerGeneration
+} = {}) {
+  validatePendingRootSchedulerState({ pendingRootIntents, principalFairnessLedger }, { schedulerRegistry });
+  if (!Number.isInteger(schedulerGeneration) || schedulerGeneration < 0) {
+    throw new Error('scheduler pending root cancellation requires a non-negative schedulerGeneration');
+  }
+  const cancelled = pendingRootIntents.find((root) => root.intentRef === intentRef);
+  if (!cancelled) return freeze({ changed: false, reason: 'PENDING_ROOT_NOT_FOUND' });
+  if (requesterRef !== cancelled.originPrincipalRef) {
+    throw new Error('scheduler requester may cancel only its own queued root intent');
+  }
+  const remaining = pendingRootIntents.filter((root) => root.intentRef !== intentRef);
+  const patches = remaining.some((root) => root.originPrincipalRef === cancelled.originPrincipalRef)
+    ? {
+        [cancelled.originPrincipalRef]: {
+          lastConsideredGeneration: schedulerGeneration,
+          lastDisposition: 'CANCELLED'
+        }
+      }
+    : {};
+  const ledger = rebuildPrincipalFairness(remaining, principalFairnessLedger, patches);
+  const roots = mirrorPrincipalDeferrals(remaining, ledger);
+  validatePendingRootSchedulerState({ pendingRootIntents: roots, principalFairnessLedger: ledger }, { schedulerRegistry });
+  return freeze({
+    changed: true,
+    cancelled: clone(cancelled),
+    pendingRootIntents: roots,
+    principalFairnessLedger: ledger
+  });
+}
+
+function bindPendingRootQueue(queue, root) {
+  return finalized({
+    ...clone(queue),
+    pendingRootIntentRef: root.intentRef,
+    pendingRootFingerprint: root.semanticFingerprint,
+    pendingRootOriginPrincipalRef: root.originPrincipalRef,
+    pendingRootSchedulingClass: root.schedulingClass
+  });
+}
+
+function resolvePendingRootQueueBinding(queue, aggregate, {
+  schedulerRegistry,
+  requireCurrentSelection = true
+} = {}) {
+  if (!queue?.pendingRootIntentRef) return null;
+  validatePendingRootSchedulerState(aggregate, { schedulerRegistry });
+  const root = (aggregate.pendingRootIntents ?? []).find((item) => item.intentRef === queue.pendingRootIntentRef);
+  if (!root ||
+      root.semanticFingerprint !== queue.pendingRootFingerprint ||
+      root.originPrincipalRef !== queue.pendingRootOriginPrincipalRef ||
+      root.schedulingClass !== queue.pendingRootSchedulingClass ||
+      root.graphFingerprint !== queue.graphFingerprint) {
+    throw new Error('scheduler pending-root queue binding is absent, stale, or substituted');
+  }
+  if (requireCurrentSelection) {
+    const current = selectNextPendingRoot(
+      aggregate.pendingRootIntents,
+      aggregate.principalFairnessLedger,
+      { schedulerRegistry }
+    );
+    if (!current || current.semanticFingerprint !== root.semanticFingerprint) {
+      throw new Error('scheduler pending-root queue no longer matches current principal-first selection');
+    }
+  }
+  return root;
 }
 
 export function selectNextAdmittedNode(entries, {
@@ -828,6 +1240,7 @@ export class SingleWorkerIntentScheduler {
         schedulerRegistry
       })
       : createIntentSchedulerState({ recoveryClaimReceiptValidator, schedulerRegistry });
+    validatePendingRootSchedulerState(this.#state.aggregate.value, { schedulerRegistry: this.#schedulerRegistry });
   }
 
   get workerRef() { return this.#workerRef; }
@@ -837,6 +1250,7 @@ export class SingleWorkerIntentScheduler {
   get queue() { return this.#state.aggregate.value.queue; }
   get aggregate() { return this.#state.aggregate.value; }
   get continuations() { return clone(this.#state.aggregate.value.continuations); }
+  get pendingRoots() { return clone(this.#state.aggregate.value.pendingRootIntents ?? []); }
   get projections() { return this.#state; }
 
   recoveryClaimCurrentness(checkpointRef, { observedAt } = {}) {
@@ -918,6 +1332,47 @@ export class SingleWorkerIntentScheduler {
     };
   }
 
+  enqueueRootIntent(graph, { schedulingClass: rootSchedulingClass = 'NORMAL' } = {}) {
+    const current = this.#state.aggregate.value;
+    const rootIntent = createPendingRootIntent(graph, {
+      schedulerRegistry: this.#schedulerRegistry,
+      schedulingClass: rootSchedulingClass,
+      submittedGeneration: current.generation
+    });
+    const appended = appendPendingRootState(current, rootIntent, { schedulerRegistry: this.#schedulerRegistry });
+    if (!appended.changed) {
+      return { changed: false, rootIntent: clone(rootIntent), pendingRoots: this.pendingRoots };
+    }
+    this.#commit({
+      type: 'ROOT_ENQUEUED',
+      transitionRef: `transition.intent-scheduler.root-enqueue.${current.generation}.${rootIntent.semanticFingerprint.slice(0, 12)}`,
+      pendingRootIntents: appended.pendingRootIntents,
+      principalFairnessLedger: appended.principalFairnessLedger
+    });
+    return { changed: true, rootIntent: clone(rootIntent), pendingRoots: this.pendingRoots };
+  }
+
+  cancelQueuedRootIntent(intentRef, { requesterRef } = {}) {
+    const current = this.#state.aggregate.value;
+    const cancelled = cancelPendingRootState(current, intentRef, {
+      requesterRef,
+      schedulerRegistry: this.#schedulerRegistry,
+      schedulerGeneration: current.generation
+    });
+    if (!cancelled.changed) return cancelled;
+    this.#commit({
+      type: 'ROOT_CANCELLED',
+      transitionRef: `transition.intent-scheduler.root-cancel.${current.generation}.${cancelled.cancelled.semanticFingerprint.slice(0, 12)}`,
+      pendingRootIntents: cancelled.pendingRootIntents,
+      principalFairnessLedger: cancelled.principalFairnessLedger
+    });
+    return {
+      changed: true,
+      cancelled: clone(cancelled.cancelled),
+      pendingRoots: this.pendingRoots
+    };
+  }
+
   admit(graph, options) {
     const current = this.#state.aggregate.value;
     if (current.active) throw new Error('cannot replace scheduler admission while a worker lease is active');
@@ -929,7 +1384,13 @@ export class SingleWorkerIntentScheduler {
     }
     const generation = options.schedulerGeneration ?? current.generation + 1;
     if (generation <= current.generation) throw new Error('scheduler generation must advance');
-    const queue = admitIntentSchedulerQueue(graph, {
+    const pendingRoot = current.pendingRootIntents?.length
+      ? selectNextPendingRoot(current.pendingRootIntents, current.principalFairnessLedger, {
+        schedulerRegistry: this.#schedulerRegistry
+      })
+      : null;
+    if (pendingRoot) assertPendingRootGraphBinding(pendingRoot, graph, { schedulerRegistry: this.#schedulerRegistry });
+    const admittedQueue = admitIntentSchedulerQueue(graph, {
       ...options,
       schedulerRegistry: this.#schedulerRegistry,
       workerRef: this.#workerRef,
@@ -937,6 +1398,7 @@ export class SingleWorkerIntentScheduler {
       schedulerGeneration: generation,
       fairnessLedger: current.fairnessLedger
     });
+    const queue = pendingRoot ? bindPendingRootQueue(admittedQueue, pendingRoot) : admittedQueue;
     this.#commit({
       type: 'ADMITTED',
       transitionRef: `transition.intent-scheduler.admit.${generation}`,
@@ -1049,13 +1511,43 @@ export class SingleWorkerIntentScheduler {
     if (aggregate.active) {
       return { admitted: false, state: 'BLOCKED', reason: 'PHYSICAL_WORKER_ALREADY_LEASED', active: aggregate.active };
     }
+    if ((aggregate.pendingRootIntents?.length ?? 0) > 0 && !aggregate.queue?.pendingRootIntentRef) {
+      return { admitted: false, state: 'BLOCKED', reason: 'PENDING_ROOT_SELECTION_STALE' };
+    }
+    let rootConsumption = null;
+    if (aggregate.queue?.pendingRootIntentRef) {
+      let pendingRoot;
+      try {
+        pendingRoot = resolvePendingRootQueueBinding(aggregate.queue, aggregate, {
+          schedulerRegistry: this.#schedulerRegistry,
+          requireCurrentSelection: true
+        });
+        rootConsumption = consumePendingRootSelection(aggregate, pendingRoot.intentRef, {
+          schedulerRegistry: this.#schedulerRegistry,
+          schedulerGeneration: aggregate.queue.generation,
+          expectedRootFingerprint: pendingRoot.semanticFingerprint,
+          requireCurrentSelection: true
+        });
+      } catch (error) {
+        return {
+          admitted: false,
+          state: 'BLOCKED',
+          reason: 'PENDING_ROOT_SELECTION_STALE',
+          detail: error.message
+        };
+      }
+    }
     const formed = this.#formActive(aggregate.queue, contextInput);
     if (!formed.admitted) return formed;
     this.#commit({
       type: 'LEASED',
       transitionRef: `transition.intent-scheduler.lease.${aggregate.queue.generation}`,
       active: formed.active,
-      leases: formed.leases
+      leases: formed.leases,
+      ...(rootConsumption ? {
+        pendingRootIntents: rootConsumption.pendingRootIntents,
+        principalFairnessLedger: rootConsumption.principalFairnessLedger
+      } : {})
     });
     return {
       admitted: true,
@@ -1071,11 +1563,60 @@ export class SingleWorkerIntentScheduler {
     };
   }
 
+  requestPendingRootPreemption(graph, options) {
+    const aggregate = this.#state.aggregate.value;
+    if (!aggregate.active) return { state: 'NO_ACTIVE_WORK', safeToStart: true };
+    const pendingRoot = selectNextPendingRoot(
+      aggregate.pendingRootIntents ?? [],
+      aggregate.principalFairnessLedger ?? {},
+      { schedulerRegistry: this.#schedulerRegistry }
+    );
+    if (!pendingRoot || pendingRoot.schedulingClass !== 'INTERACTIVE') {
+      return { state: 'CONTINUE_ACTIVE', safeToStart: false, reason: 'NO_INTERACTIVE_PENDING_ROOT' };
+    }
+    assertPendingRootGraphBinding(pendingRoot, graph, { schedulerRegistry: this.#schedulerRegistry });
+    if (aggregate.observedClock &&
+        parseCanonicalTimestamp(options.observedAt, 'preemption admission observedAt') <
+          parseCanonicalTimestamp(aggregate.observedClock.observedAt, 'scheduler observed clock')) {
+      throw new Error('preemption admission observed clock must be monotonic');
+    }
+    const generation = options.schedulerGeneration ?? aggregate.generation + 1;
+    if (generation <= aggregate.generation) throw new Error('preemption scheduler generation must advance');
+    const admittedQueue = admitIntentSchedulerQueue(graph, {
+      ...options,
+      schedulerRegistry: this.#schedulerRegistry,
+      workerRef: this.#workerRef,
+      schedulerInstanceRef: this.#instanceRef,
+      schedulerGeneration: generation,
+      fairnessLedger: aggregate.fairnessLedger
+    });
+    const queue = bindPendingRootQueue(admittedQueue, pendingRoot);
+    return this.requestPreemption(queue);
+  }
+
   requestPreemption(incomingQueue) {
     const aggregate = this.#state.aggregate.value;
     if (!aggregate.active) return { state: 'NO_ACTIVE_WORK', safeToStart: true };
+    let incomingRoot = null;
+    if (incomingQueue?.pendingRootIntentRef) {
+      try {
+        incomingRoot = resolvePendingRootQueueBinding(incomingQueue, aggregate, {
+          schedulerRegistry: this.#schedulerRegistry,
+          requireCurrentSelection: true
+        });
+      } catch (error) {
+        return {
+          state: 'CONTINUE_ACTIVE',
+          safeToStart: false,
+          reason: 'INCOMING_PENDING_ROOT_STALE',
+          detail: error.message
+        };
+      }
+    }
     if (incomingQueue?.state !== 'ADMITTED' || !incomingQueue.selected ||
-        incomingQueue.selected.schedulingClass !== 'INTERACTIVE') {
+        (incomingRoot
+          ? incomingRoot.schedulingClass !== 'INTERACTIVE'
+          : incomingQueue.selected.schedulingClass !== 'INTERACTIVE')) {
       return { state: 'CONTINUE_ACTIVE', safeToStart: false, reason: 'INCOMING_NOT_EXACT_ADMITTED_INTERACTIVE' };
     }
     if (incomingQueue.generation <= aggregate.generation) {
@@ -1095,6 +1636,12 @@ export class SingleWorkerIntentScheduler {
       admissionReceiptRef: incomingQueue.admissionReceipt.admissionReceiptRef,
       admissionFingerprint: incomingQueue.admissionReceipt.semanticFingerprint,
       requestedGeneration: incomingQueue.generation,
+      ...(incomingRoot ? {
+        incomingRootIntentRef: incomingRoot.intentRef,
+        incomingRootFingerprint: incomingRoot.semanticFingerprint,
+        incomingRootOriginPrincipalRef: incomingRoot.originPrincipalRef,
+        incomingRootSchedulingClass: incomingRoot.schedulingClass
+      } : {}),
       state: 'CHECKPOINT_REQUIRED',
       sourceDiscarded: false
     });
@@ -1682,7 +2229,22 @@ export class SingleWorkerIntentScheduler {
     const generation = options.schedulerGeneration ?? aggregate.generation + 1;
     if (generation <= aggregate.generation) throw new Error('resume scheduler generation must advance');
     const recoveryResume = completePreemption ? null : this.#validateRecoveryResume(checkpoint, recovery, options, contextInput);
-    const queue = admitIntentSchedulerQueue(graph, {
+    const retainedPreemption = completePreemption ? aggregate.pendingPreemption : null;
+    let preemptionRoot = null;
+    if (retainedPreemption?.incomingRootIntentRef) {
+      preemptionRoot = (aggregate.pendingRootIntents ?? []).find((item) =>
+        item.intentRef === retainedPreemption.incomingRootIntentRef
+      ) ?? null;
+      if (!preemptionRoot ||
+          preemptionRoot.semanticFingerprint !== retainedPreemption.incomingRootFingerprint ||
+          preemptionRoot.originPrincipalRef !== retainedPreemption.incomingRootOriginPrincipalRef ||
+          preemptionRoot.schedulingClass !== retainedPreemption.incomingRootSchedulingClass ||
+          preemptionRoot.schedulingClass !== 'INTERACTIVE') {
+        throw new Error('retained preemption pending-root identity is absent, stale, or substituted');
+      }
+      assertPendingRootGraphBinding(preemptionRoot, graph, { schedulerRegistry: this.#schedulerRegistry });
+    }
+    let queue = admitIntentSchedulerQueue(graph, {
       ...options,
       ...(recoveryResume?.resourceBinding ? {
         recoveryResourceBindingByNodeRef: {
@@ -1696,6 +2258,7 @@ export class SingleWorkerIntentScheduler {
       schedulerGeneration: generation,
       fairnessLedger: aggregate.fairnessLedger
     });
+    if (preemptionRoot) queue = bindPendingRootQueue(queue, preemptionRoot);
     if (queue.state !== 'ADMITTED') throw new Error('fresh resume admission did not select a current node');
     if (completePreemption) {
       const pending = aggregate.pendingPreemption;
@@ -1731,6 +2294,14 @@ export class SingleWorkerIntentScheduler {
       });
       if (!validation.admitted) throw new Error(`checkpoint resume validation failed: ${validation.reasons.join(', ')}`);
     }
+    const preemptionRootConsumption = preemptionRoot
+      ? consumePendingRootSelection(aggregate, preemptionRoot.intentRef, {
+        schedulerRegistry: this.#schedulerRegistry,
+        schedulerGeneration: generation,
+        expectedRootFingerprint: preemptionRoot.semanticFingerprint,
+        requireCurrentSelection: true
+      })
+      : null;
     const priorContextLease = aggregate.leaseLedger[checkpoint.priorContextLeaseRef];
     const successorContextAuthorization = completePreemption
       ? null
@@ -1882,6 +2453,10 @@ export class SingleWorkerIntentScheduler {
       runtimeTrustSnapshot: options.runtimeTrustSnapshot,
       fairnessLedger: queue.fairnessLedger,
       leases: formed.leases,
+      ...(preemptionRootConsumption ? {
+        pendingRootIntents: preemptionRootConsumption.pendingRootIntents,
+        principalFairnessLedger: preemptionRootConsumption.principalFairnessLedger
+      } : {}),
       recoveryClaimTransition: resumeClaimTransition,
       heldToolDisposition: dispositionResult,
       relayLedger: this.#relay?.snapshot ?? aggregate.relayLedger,

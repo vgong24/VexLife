@@ -45,6 +45,26 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.family-space-store",
+    "path": "src/core/family-space-store.mjs",
+    "role": "Canonical Vex Home local Family Space membership owner with explicit human principal-binding references, role/currentness generations, history visibility and independently versioned Family Vex lineage binding.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "state.family-space"
+    ],
+    "writes": [
+      "Vex Home family-spaces/** only through the Family Space writer lease"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/family-space-store.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/fragments/state-domains.json",
+      "docs/VEX-FAMILY-SPACE-MEMBERSHIP.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.build-health",
     "path": "src/core/build-health.mjs",
     "role": "Validates source-managed repository checks and derives compact semantic current/health projections.",

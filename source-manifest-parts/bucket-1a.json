@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/integration/guide-vex-suite.js",
       "mode": "100644",
-      "bytes": 20165,
-      "sha256": "749f74f3b0c61a5622eee797747d99cec79c4f2c4c1eace48a1d959f07ef4fae"
+      "bytes": 21717,
+      "sha256": "7cac9de06746ae66f37ad65db99262d0261fb09c64a120d51d6d6cbc6862e292"
     },
     {
       "path": "test/browser-living-journal-memory-http-route.test.mjs",
@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 5910,
       "sha256": "adb93fdc196b56cc6ec14846493215adc7102b12aef78c3a61d304606a67586a"
+    },
+    {
+      "path": "test/experience-foundation.test.mjs",
+      "mode": "100644",
+      "bytes": 6643,
+      "sha256": "77ae646fed80bc98b03e8dca2b5d7aba649290f8d1422ef3c77cf945bbf58d62"
     },
     {
       "path": "training/foundation-generation/README.md",
