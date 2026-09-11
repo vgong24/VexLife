@@ -21,6 +21,12 @@
       "sha256": "aff00bea3ac826f0f79720009ab12838013636675ccd23975b5e17c079bb0407"
     },
     {
+      "path": "test/experience-command-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 16781,
+      "sha256": "dcd4d0d7c1dae85d51fb38a825be7a783c85efedb06ded6583d052183583b449"
+    },
+    {
       "path": "test/orientation-governance.test.mjs",
       "mode": "100644",
       "bytes": 4470,

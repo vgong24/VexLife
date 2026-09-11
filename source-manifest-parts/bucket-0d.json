@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 11699,
       "sha256": "5bd1b9e4204abd681ca928abe49ac39eb26941537a7353e33dfead74d481ac31"
+    },
+    {
+      "path": "src/core/experience-command-projection.mjs",
+      "mode": "100644",
+      "bytes": 14900,
+      "sha256": "3fd4507b894d781c60f7ce2bd68765fd1962d21baa62dfdd491f4a921ed85708"
     }
   ]
 }
