@@ -3,6 +3,12 @@
   "bucketId": "0d",
   "files": [
     {
+      "path": "blueprint/purpose-workspace/domain-packs/learning.json",
+      "mode": "100644",
+      "bytes": 5257,
+      "sha256": "3a8dbdde3ee0f833dbf08802dc856b0afe1d23fb3023168859b112986798d771"
+    },
+    {
       "path": "reference/browser/modules/experience-review-human.js",
       "mode": "100644",
       "bytes": 11699,

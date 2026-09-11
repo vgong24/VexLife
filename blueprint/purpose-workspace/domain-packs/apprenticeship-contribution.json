@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "vexlife.purpose-workspace-domain-pack/v1",
+  "domainRef": "domain.purpose-workspace.apprenticeship",
+  "label": "Apprenticeship and Contribution",
+  "purpose": "Support practice, evidence, reflection, mentorship, contribution attestation and portable handoff without making a program the permanent owner of the apprentice's history.",
+  "workspaceRef": "workspace.vexlife.scoped-purpose.001",
+  "featureRef": "feature.vexlife.scoped-purpose-workspace",
+  "terrainNodeRef": "terrain.resource.purpose-workspace.apprenticeship",
+  "syntheticOnly": true,
+  "dataPosture": "NO_REAL_APPRENTICE_DATA",
+  "purposeCompletionQuestion": "Is the work evidenced, reflected on, reviewed and portable without collapsing participation into mastery or program custody into lifelong ownership?",
+  "roleLenses": [
+    {"roleLensRef":"role-lens.apprenticeship.apprentice","label":"Apprentice","relationshipClassRefs":["relationship.apprentice-mentor","relationship.team-collaboration"],"authorityClassRefs":["authority.practice","authority.evidence.capture","authority.reflect","authority.recipient.disposition"]},
+    {"roleLensRef":"role-lens.apprenticeship.mentor","label":"Mentor","relationshipClassRefs":["relationship.apprentice-mentor"],"authorityClassRefs":["authority.plan","authority.review","authority.attest","authority.replan"]},
+    {"roleLensRef":"role-lens.apprenticeship.steward","label":"Program steward","relationshipClassRefs":["relationship.apprentice-mentor","relationship.team-collaboration"],"authorityClassRefs":["authority.handoff.issue","authority.route","authority.delivery.authorize"]},
+    {"roleLensRef":"role-lens.apprenticeship.verifier","label":"Verifier","relationshipClassRefs":[],"authorityClassRefs":["authority.handoff.verify","authority.review"]}
+  ],
+  "primaryTaskRefs": ["task.apprenticeship.run-learning-loop","task.apprenticeship.prepare-contribution-attestation","task.apprenticeship.prepare-portable-handoff"],
+  "tasks": [
+    {"taskRef":"task.apprenticeship.run-learning-loop","label":"Run learning loop","processPatternRef":"process-pattern.plan-practice-evidence-reflect-replan/v1","completionContractRef":"completion-contract.growth-loop/v1","entryRoleRef":"role-lens.apprenticeship.mentor","stageOwnerRefs":["role-lens.apprenticeship.mentor","role-lens.apprenticeship.apprentice","role-lens.apprenticeship.apprentice","role-lens.apprenticeship.apprentice","role-lens.apprenticeship.mentor"],"stageAuthorityClassRefs":["authority.plan","authority.practice","authority.evidence.capture","authority.reflect","authority.replan"],"stageEvidenceClasses":["PLAN_GENERATION","PRACTICE_RECEIPT","EVIDENCE_RECORD","REFLECTION_RECORD","NEXT_PLAN_GENERATION"],"stageEffectClasses":["LOCAL_APPEND","NO_EFFECT","LOCAL_DRAFT","LOCAL_APPEND","LOCAL_APPEND"],"stageCommunicationKinds":["SOURCE_CONTEXT","RECEIPT","DIRECT_OBSERVATION","CORRECTION","RECEIPT"]},
+    {"taskRef":"task.apprenticeship.prepare-contribution-attestation","label":"Prepare contribution attestation","processPatternRef":"process-pattern.draft-review-attest-deliver/v1","completionContractRef":"completion-contract.attested-delivery/v1","entryRoleRef":"role-lens.apprenticeship.apprentice","stageOwnerRefs":["role-lens.apprenticeship.apprentice","role-lens.apprenticeship.mentor","role-lens.apprenticeship.mentor","role-lens.apprenticeship.apprentice","role-lens.apprenticeship.steward"],"stageAuthorityClassRefs":["authority.draft","authority.review","authority.attest","authority.delivery.authorize","authority.deliver"],"stageEvidenceClasses":["DRAFT_RECORD","REVIEW_RECEIPT","ATTESTATION_RECEIPT","DELIVERY_AUTHORIZATION","DELIVERY_RECEIPT"],"stageEffectClasses":["LOCAL_DRAFT","NO_EFFECT","LOCAL_APPEND","LOCAL_APPEND","EXTERNAL_EFFECT"],"stageCommunicationKinds":["SOURCE_CONTEXT","REVIEW","RECEIPT","AUTHORIZATION","HANDOFF"]},
+    {"taskRef":"task.apprenticeship.prepare-portable-handoff","label":"Prepare portable handoff","processPatternRef":"process-pattern.handoff-verify-disposition-continue/v1","completionContractRef":"completion-contract.handoff-accepted/v1","entryRoleRef":"role-lens.apprenticeship.steward","stageOwnerRefs":["role-lens.apprenticeship.steward","role-lens.apprenticeship.verifier","role-lens.apprenticeship.apprentice","role-lens.apprenticeship.apprentice","role-lens.apprenticeship.apprentice"],"stageAuthorityClassRefs":["authority.handoff.issue","authority.handoff.verify","authority.recipient.disposition","authority.human.authorize","authority.route"],"stageEvidenceClasses":["HANDOFF_MANIFEST","VERIFICATION_RECEIPT","DISPOSITION_RECEIPT","IMPORT_RECEIPT","CONTINUATION_RECEIPT"],"stageEffectClasses":["LOCAL_DRAFT","NO_EFFECT","LOCAL_APPEND","LOCAL_APPEND","NO_EFFECT"],"stageCommunicationKinds":["HANDOFF","REVIEW","CORRECTION","AUTHORIZATION","RECEIPT"]}
+  ],
+  "ledgerBindings": [
+    {"ledgerClass":"PROGRAM_OPERATIONS","portfolioEligible":false},
+    {"ledgerClass":"PRACTICE_AND_CONTRIBUTION_EVIDENCE","portfolioEligible":false},
+    {"ledgerClass":"APPRENTICE_OWNED_PORTABLE_HISTORY","portfolioEligible":true}
+  ],
+  "heldBoundaries": ["real employment decision","public portfolio","client disclosure","automatic mastery claim","permanent program ownership"],
+  "featureWalkthroughPlanRef": "plan.vexlife.feature.scoped-purpose-workspace.introduction.001",
+  "contextCaseFamilyRef": "test-case-family.purpose-workspace.apprenticeship.001"
+}

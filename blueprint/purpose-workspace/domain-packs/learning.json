@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "vexlife.purpose-workspace-domain-pack/v1",
+  "domainRef": "domain.purpose-workspace.learning",
+  "label": "Learning and Care",
+  "purpose": "Preserve care and learning evidence, learner voice, family handoff and learner-owned continuity without collapsing operations, evidence, lineage or restricted care records.",
+  "workspaceRef": "workspace.vexlife.scoped-purpose.001",
+  "featureRef": "feature.vexlife.scoped-purpose-workspace",
+  "terrainNodeRef": "terrain.resource.purpose-workspace.learning",
+  "syntheticOnly": true,
+  "dataPosture": "NO_REAL_CHILD_DATA",
+  "purposeCompletionQuestion": "Has the bounded moment been sourced, reviewed, dispositioned and continued without changing ownership or overstating the learner?",
+  "roleLenses": [
+    {"roleLensRef":"role-lens.learning.caretaker","label":"Caretaker","relationshipClassRefs":["relationship.caretaker-learner"],"authorityClassRefs":["authority.source.capture","authority.claim.distinguish","authority.relay.prepare","authority.draft","authority.deliver"]},
+    {"roleLensRef":"role-lens.learning.educator","label":"Educator","relationshipClassRefs":["relationship.educator-learner"],"authorityClassRefs":["authority.review","authority.attest","authority.plan","authority.replan"]},
+    {"roleLensRef":"role-lens.learning.guardian","label":"Guardian steward","relationshipClassRefs":["relationship.guardian-learner"],"authorityClassRefs":["authority.recipient.disposition","authority.delivery.authorize","authority.lineage.import"]},
+    {"roleLensRef":"role-lens.learning.learner","label":"Learner","relationshipClassRefs":["relationship.educator-learner","relationship.guardian-learner"],"authorityClassRefs":["authority.practice","authority.evidence.capture","authority.reflect","authority.recipient.disposition"]}
+  ],
+  "primaryTaskRefs": ["task.learning.capture-growth-moment","task.learning.prepare-family-update","task.learning.review-growth-loop"],
+  "tasks": [
+    {"taskRef":"task.learning.capture-growth-moment","label":"Capture a growth moment","processPatternRef":"process-pattern.capture-distinguish-review-relay/v1","completionContractRef":"completion-contract.reviewed-relay/v1","entryRoleRef":"role-lens.learning.caretaker","stageOwnerRefs":["role-lens.learning.caretaker","role-lens.learning.caretaker","role-lens.learning.educator","role-lens.learning.caretaker","role-lens.learning.guardian"],"stageAuthorityClassRefs":["authority.source.capture","authority.claim.distinguish","authority.review","authority.relay.prepare","authority.recipient.disposition"],"stageEvidenceClasses":["SOURCE_RECORD","CLAIM_CLASSIFICATION","REVIEW_RECEIPT","RELAY_MANIFEST","DISPOSITION_RECEIPT"],"stageEffectClasses":["LOCAL_DRAFT","LOCAL_DRAFT","NO_EFFECT","LOCAL_DRAFT","LOCAL_APPEND"],"stageCommunicationKinds":["DIRECT_OBSERVATION","INTERPRETATION","REVIEW","HANDOFF","CORRECTION"]},
+    {"taskRef":"task.learning.prepare-family-update","label":"Prepare family update","processPatternRef":"process-pattern.draft-review-attest-deliver/v1","completionContractRef":"completion-contract.attested-delivery/v1","entryRoleRef":"role-lens.learning.caretaker","stageOwnerRefs":["role-lens.learning.caretaker","role-lens.learning.educator","role-lens.learning.educator","role-lens.learning.guardian","role-lens.learning.caretaker"],"stageAuthorityClassRefs":["authority.draft","authority.review","authority.attest","authority.delivery.authorize","authority.deliver"],"stageEvidenceClasses":["DRAFT_RECORD","REVIEW_RECEIPT","ATTESTATION_RECEIPT","DELIVERY_AUTHORIZATION","DELIVERY_RECEIPT"],"stageEffectClasses":["LOCAL_DRAFT","NO_EFFECT","LOCAL_APPEND","LOCAL_APPEND","EXTERNAL_EFFECT"],"stageCommunicationKinds":["SOURCE_CONTEXT","REVIEW","RECEIPT","AUTHORIZATION","HANDOFF"]},
+    {"taskRef":"task.learning.review-growth-loop","label":"Review learning loop","processPatternRef":"process-pattern.plan-practice-evidence-reflect-replan/v1","completionContractRef":"completion-contract.growth-loop/v1","entryRoleRef":"role-lens.learning.educator","stageOwnerRefs":["role-lens.learning.educator","role-lens.learning.learner","role-lens.learning.learner","role-lens.learning.learner","role-lens.learning.educator"],"stageAuthorityClassRefs":["authority.plan","authority.practice","authority.evidence.capture","authority.reflect","authority.replan"],"stageEvidenceClasses":["PLAN_GENERATION","PRACTICE_RECEIPT","EVIDENCE_RECORD","REFLECTION_RECORD","NEXT_PLAN_GENERATION"],"stageEffectClasses":["LOCAL_APPEND","NO_EFFECT","LOCAL_DRAFT","LOCAL_APPEND","LOCAL_APPEND"],"stageCommunicationKinds":["SOURCE_CONTEXT","RECEIPT","DIRECT_OBSERVATION","CORRECTION","RECEIPT"]}
+  ],
+  "ledgerBindings": [
+    {"ledgerClass":"CARE_AND_LEARNING_OPERATIONS","portfolioEligible":false},
+    {"ledgerClass":"LEARNING_AND_GROWTH_EVIDENCE","portfolioEligible":false},
+    {"ledgerClass":"LEARNER_LINEAGE","portfolioEligible":true},
+    {"ledgerClass":"RESTRICTED_CARE_HEALTH_SAFEGUARDING","portfolioEligible":false}
+  ],
+  "heldBoundaries": ["real child data","real media","diagnosis","public portfolio","model training"],
+  "featureWalkthroughPlanRef": "plan.vexlife.feature.scoped-purpose-workspace.introduction.001",
+  "contextCaseFamilyRef": "test-case-family.purpose-workspace.learning.001"
+}
