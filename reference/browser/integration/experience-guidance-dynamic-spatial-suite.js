@@ -1,5 +1,31 @@
 import { deriveHumanHelpInteractionCandidates } from '../modules/experience-guidance-human-projection.js';
 
+const cssListEquals = (value, expected) => {
+  const values = String(value ?? '').split(',').map((item) => item.trim()).filter(Boolean);
+  return values.length > 0 && values.every((item) => item === expected);
+};
+
+function motionState(element) {
+  const computed = getComputedStyle(element);
+  return Object.freeze({
+    inlineAnimation:element.style.animation,
+    inlineAnimationName:element.style.animationName,
+    computedAnimation:computed.animation,
+    computedAnimationName:computed.animationName,
+    inlineTransition:element.style.transition,
+    inlineTransitionProperty:element.style.transitionProperty,
+    computedTransition:computed.transition,
+    computedTransitionProperty:computed.transitionProperty
+  });
+}
+
+function hasNoMotionSemantics(state) {
+  return cssListEquals(state.inlineAnimationName, 'none')
+    && cssListEquals(state.computedAnimationName, 'none')
+    && cssListEquals(state.inlineTransitionProperty, 'none')
+    && cssListEquals(state.computedTransitionProperty, 'none');
+}
+
 export const experienceGuidanceDynamicSpatialSuite = Object.freeze({
   suiteRef:'suite.vexlife.browser.experience-guidance-dynamic-spatial/v1',
   async run({ app, helpers:{ assert, delay } }) {
@@ -74,8 +100,10 @@ export const experienceGuidanceDynamicSpatialSuite = Object.freeze({
     const describedByDuring = describedTarget.getAttribute('aria-describedby');
     const priorTokens = describedByDuring.split(/\s+/).filter((token) => token && token !== nonvisual.id);
     assert(document.activeElement === focusBeforeAccessibility, 'EFX01D-D4 guidance stole focus while projecting keyboard/nonvisual equivalence');
-    assert(visual.style.animation === 'none' && visual.style.transition === 'none', 'EFX01D-D4 visual teaching introduced motion-only meaning');
-    assert(nonvisual.style.animation === 'none' && nonvisual.style.transition === 'none', 'EFX01D-D4 nonvisual teaching introduced motion-only meaning');
+    const visualMotionState = motionState(visual);
+    const nonvisualMotionState = motionState(nonvisual);
+    assert(hasNoMotionSemantics(visualMotionState), `EFX01D-D4 visual teaching introduced motion-only meaning: ${JSON.stringify(visualMotionState)}`);
+    assert(hasNoMotionSemantics(nonvisualMotionState), `EFX01D-D4 nonvisual teaching introduced motion-only meaning: ${JSON.stringify(nonvisualMotionState)}`);
     assert(JSON.stringify(app.navigation.semanticFrame()) === semanticBefore, 'EFX01D-D4 projection changed semantic current context');
     assert(JSON.stringify(app.navigation.fullJourney()) === journeyBefore, 'EFX01D-D4 projection wrote Journey state');
     assert(document.querySelectorAll('#guideMessages .guide-message').length === guideMessagesBefore + 6, 'EFX01D-D4 explicit Help did not preserve exactly one canonical user/Guide pair');
