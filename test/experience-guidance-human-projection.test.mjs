@@ -6,6 +6,7 @@ import { loadBlueprint } from '../src/core/blueprint.mjs';
 import {
   bindBrowserHumanHelpProjectionAtReady,
   createBrowserHumanHelpProjection,
+  deriveHumanHelpInteractionCandidates,
   deriveHumanHelpInteractionCue,
   deriveHumanHelpProjection,
   resolveHumanHelpPlacement
@@ -40,6 +41,31 @@ const interactionExperience = Object.freeze({
       gestureRef: 'gesture.vexlife.content-scroll',
       resultActionRef: 'action.content.scroll',
       helpStringRef: 'gesture.content-scroll.help'
+    }),
+    Object.freeze({
+      gestureRef: 'gesture.vexlife.terrain-zoom',
+      resultActionRef: 'action.terrain.canvas.zoom',
+      helpStringRef: 'gesture.terrain-zoom.help'
+    }),
+    Object.freeze({
+      gestureRef: 'gesture.vexlife.terrain-semantic-depth',
+      resultActionRef: 'action.terrain.semantic-depth.set',
+      helpStringRef: 'gesture.terrain-semantic-depth.help'
+    }),
+    Object.freeze({
+      gestureRef: 'gesture.vexlife.node-drag',
+      resultActionRef: 'action.terrain.node.move',
+      helpStringRef: 'gesture.node-drag.help'
+    }),
+    Object.freeze({
+      gestureRef: 'gesture.vexlife.overlay-drag',
+      resultActionRef: 'action.guide.move',
+      helpStringRef: 'gesture.overlay-drag.help'
+    }),
+    Object.freeze({
+      gestureRef: 'gesture.vexlife.vessel-resize',
+      resultActionRef: 'action.vessel.resize',
+      helpStringRef: 'gesture.vessel-resize.help'
     })
   ])
 });
@@ -81,10 +107,19 @@ function fakePlacementDocument() {
   };
 }
 
-function fakeProjectionEnvironment({ experience = { gestureContracts:[] } } = {}) {
+function fakeProjectionEnvironment({ experience = { gestureContracts:[] }, frame = terrainFrame } = {}) {
   const targetElement = fakeElement({ left:400, top:300, width:80, height:44 });
   const currentTerrainSurface = fakeElement({ left:470, top:250, width:380, height:196 });
   const currentChatSurface = fakeElement({ left:280, top:160, width:620, height:520 });
+  const terrainZoom = fakeElement({ left:20, top:160, width:44, height:44 });
+  const terrainDepth = fakeElement({ left:1020, top:18, width:110, height:44 });
+  const terrainNode = fakeElement({ left:720, top:340, width:160, height:90 });
+  const journeyScrub = fakeElement({ left:360, top:690, width:320, height:44 });
+  const journeyRevisit = fakeElement({ left:700, top:690, width:160, height:44 });
+  const workspaceDock = fakeElement({ left:300, top:120, width:220, height:44 });
+  const workspaceResize = fakeElement({ left:880, top:680, width:44, height:44 });
+  const guideHandle = fakeElement({ left:30, top:30, width:280, height:44 });
+  const guideResize = fakeElement({ left:320, top:310, width:44, height:44 });
   const guideWindow = fakeElement({ left:20, top:20, width:340, height:330 });
   Object.assign(guideWindow.style, { left:'20px', right:'14px', top:'92px', bottom:'', width:'340px', height:'330px' });
   const transientNodes = [];
@@ -102,6 +137,15 @@ function fakeProjectionEnvironment({ experience = { gestureContracts:[] } } = {}
       if (selector === '[data-node-ref="element.terrain.reset"]') return targetElement;
       if (selector === '#terrainFocus') return currentTerrainSurface;
       if (selector === '#view-chat') return currentChatSurface;
+      if (selector === '#terrainZoomIn') return terrainZoom;
+      if (selector === '#terrainUp') return terrainDepth;
+      if (selector === '.e27-node') return terrainNode;
+      if (selector === '#terrainJourneyScrub') return journeyScrub;
+      if (selector === '#terrainJourneyRevisit') return journeyRevisit;
+      if (selector === '#contextWorkspaceDock') return workspaceDock;
+      if (selector === '#contextWorkspaceResizeSe') return workspaceResize;
+      if (selector === '#guideHandle') return guideHandle;
+      if (selector === '[data-resize-corner="se"]') return guideResize;
       return null;
     },
     querySelectorAll: () => []
@@ -114,7 +158,7 @@ function fakeProjectionEnvironment({ experience = { gestureContracts:[] } } = {}
     removeEventListener() {}
   };
   const projection = createBrowserHumanHelpProjection({
-    navigation: { semanticFrame:() => terrainFrame },
+    navigation: { semanticFrame:() => frame },
     nextRecommendation:() => availableRecommendation,
     translate:(ref) => `Visible copy for ${ref}`,
     windowElement:guideWindow,
@@ -122,7 +166,16 @@ function fakeProjectionEnvironment({ experience = { gestureContracts:[] } } = {}
     documentRef,
     windowRef
   });
-  return { targetElement, currentTerrainSurface, currentChatSurface, guideWindow, transientNodes, documentRef, windowRef, projection };
+  return {
+    targetElement,
+    currentTerrainSurface,
+    currentChatSurface,
+    guideWindow,
+    transientNodes,
+    documentRef,
+    windowRef,
+    projection
+  };
 }
 
 test('EFX01C-01/03 explicit current Help emits at most one deterministic no-effect proposal', () => {
@@ -209,6 +262,70 @@ test('EFX01D-D2-08 teaching stays semantically targetless while visually anchori
   const activeTransient = transientNodes.find((node) => node.isConnected);
   assert.ok(activeTransient);
   assert.equal(activeTransient.textContent, 'Visible copy for gesture.terrain-pan.help');
+  projection.dispose();
+});
+
+test('EFX01D-D3-01/02 accepted dynamic/spatial candidates consume current owners and never mint SPATIAL_REVEAL', () => {
+  const { documentRef } = fakeProjectionEnvironment({ experience:interactionExperience });
+  const candidates = deriveHumanHelpInteractionCandidates({ frame:terrainFrame, experience:interactionExperience, documentRef });
+  const cues = candidates.map(({ cue }) => cue);
+  assert.deepEqual(
+    cues.slice(0, 3).map((cue) => cue.interactionFamily),
+    ['PAN', 'ZOOM', 'SEMANTIC_DEPTH_SHIFT']
+  );
+  assert.equal(cues[1].gestureRefOrNull, 'gesture.vexlife.terrain-zoom');
+  assert.equal(cues[1].actionRefOrNull, 'action.terrain.canvas.zoom');
+  assert.equal(cues[2].gestureRefOrNull, 'gesture.vexlife.terrain-semantic-depth');
+  assert.equal(cues[2].actionRefOrNull, 'action.terrain.semantic-depth.set');
+  const scrub = cues.find((cue) => cue.interactionRefOrNull === 'interaction.terrain.journey-scrub');
+  const revisit = cues.find((cue) => cue.interactionRefOrNull === 'interaction.terrain.journey-revisit');
+  assert.equal(scrub?.interactionFamily, 'SCRUB_OR_REVISIT');
+  assert.equal(scrub?.actionRefOrNull, 'action.journey.scrub');
+  assert.equal(scrub?.gestureRefOrNull, null);
+  assert.equal(scrub?.intentionContentRef, 'journey.scrub');
+  assert.equal(revisit?.actionRefOrNull, 'action.journey.revisit');
+  assert.equal(revisit?.gestureRefOrNull, null);
+  assert.equal(cues.some((cue) => cue.interactionFamily === 'SPATIAL_REVEAL'), false);
+  assert.ok(cues.every((cue) => cue.effects === false && cue.grantsActionAuthority === false && cue.autoExecute === false));
+});
+
+test('EFX01D-D3-03 contextual workspace DOCK/RESIZE teaching consumes interaction/action owners without inventing gestures', () => {
+  const { documentRef } = fakeProjectionEnvironment({ experience:interactionExperience, frame:chatFrame });
+  const cues = deriveHumanHelpInteractionCandidates({ frame:chatFrame, experience:interactionExperience, documentRef }).map(({ cue }) => cue);
+  const dock = cues.find((cue) => cue.interactionRefOrNull === 'interaction.context-workspace.dock');
+  const resize = cues.find((cue) => cue.interactionRefOrNull === 'interaction.context-workspace.resize.se');
+  assert.equal(dock?.interactionFamily, 'DOCK');
+  assert.equal(dock?.actionRefOrNull, 'action.context-workspace.dock');
+  assert.equal(dock?.gestureRefOrNull, null);
+  assert.equal(dock?.intentionContentRef, 'context-workspace.dock');
+  assert.equal(resize?.interactionFamily, 'RESIZE');
+  assert.equal(resize?.actionRefOrNull, 'action.context-workspace.resize');
+  assert.equal(resize?.gestureRefOrNull, null);
+  assert.equal(resize?.intentionContentRef, 'context-workspace.resize.se');
+});
+
+test('EFX01D-D3-04 repeated explicit Help advances session-locally while preserving one transient no-effect surface', () => {
+  const { guideWindow, transientNodes, projection } = fakeProjectionEnvironment({ experience:interactionExperience });
+  const before = { ...guideWindow.style };
+  const first = projection.projectExplicitHelp();
+  const second = projection.projectExplicitHelp();
+  const third = projection.projectExplicitHelp();
+  assert.equal(first.interactionCue.interactionFamily, 'PAN');
+  assert.equal(second.interactionCue.interactionFamily, 'ZOOM');
+  assert.equal(second.interactionCue.gestureRefOrNull, 'gesture.vexlife.terrain-zoom');
+  assert.equal(third.interactionCue.interactionFamily, 'SEMANTIC_DEPTH_SHIFT');
+  assert.equal(third.interactionCue.gestureRefOrNull, 'gesture.vexlife.terrain-semantic-depth');
+  const active = transientNodes.filter((node) => node.isConnected);
+  assert.equal(active.length, 1);
+  assert.equal(active[0].dataset.interactionFamily, 'SEMANTIC_DEPTH_SHIFT');
+  assert.equal(active[0].dataset.actionRef, 'action.terrain.semantic-depth.set');
+  assert.equal(active[0].textContent, 'Visible copy for gesture.terrain-semantic-depth.help');
+  assert.deepEqual(guideWindow.style, before);
+  assert.equal(third.effects, false);
+  assert.equal(third.navigationEffect, false);
+  assert.equal(third.journeyEffect, false);
+  assert.equal(third.persistenceEffect, false);
+  assert.equal(third.autoExecute, false);
   projection.dispose();
 });
 
@@ -406,7 +523,7 @@ test('EFX01C-09 accepted Terrain wheel scope excludes Guide and scroll-scope des
   assert.match(terrain, /event\.target\.closest\('\.scroll-scope,\.e27-vex,\.e27-context-surface'\)/);
 });
 
-test('EFX01C-09/12 + EFX01D-D2-05/06 source has no persistence, navigation mutation, auto-execution, duplicate Guide messaging, or second public runtime path', () => {
+test('EFX01C-09/12 + EFX01D-D2-05/06 + D3 source has no persistence, navigation mutation, auto-execution, duplicate Guide messaging, or second public runtime path', () => {
   const adapter = fs.readFileSync(new URL('../reference/browser/modules/experience-guidance-human-projection.js', import.meta.url), 'utf8');
   const bundle = fs.readFileSync(new URL('../reference/browser/modules/browser-bundle.js', import.meta.url), 'utf8');
   assert.match(adapter, /buildHelpProjection/);
@@ -414,6 +531,9 @@ test('EFX01C-09/12 + EFX01D-D2-05/06 source has no persistence, navigation mutat
   assert.match(adapter, /experience-registry\.json/);
   assert.match(adapter, /#terrainFocus/);
   assert.match(adapter, /#view-chat/);
+  assert.match(adapter, /#terrainZoomIn/);
+  assert.match(adapter, /#terrainJourneyScrub/);
+  assert.match(adapter, /#contextWorkspaceDock/);
   assert.match(adapter, /resolveGuidancePlacement/);
   assert.match(adapter, /data-vex-human-projection-transient/);
   assert.doesNotMatch(adapter, /__VEXLIFE_HUMAN_HELP_PROJECTION__/);
@@ -421,7 +541,7 @@ test('EFX01C-09/12 + EFX01D-D2-05/06 source has no persistence, navigation mutat
   assert.match(bundle, /import '\.\/experience-guidance-human-projection\.js';/);
 });
 
-test('EFX01C-13 + EFX01D-D2-09 reused Help and interaction teaching copy exists in every required language without catalog mutation', () => {
+test('EFX01C-13 + EFX01D-D2-09 + D3 accepted teaching copy exists in every required language without catalog mutation', () => {
   const bundle = loadBlueprint();
   const refs = [
     'guide.ask.current',
@@ -430,7 +550,16 @@ test('EFX01C-13 + EFX01D-D2-09 reused Help and interaction teaching copy exists 
     'guide.answer.next.chat',
     'health.value.unavailable',
     'gesture.terrain-pan.help',
-    'gesture.content-scroll.help'
+    'gesture.content-scroll.help',
+    'gesture.terrain-zoom.help',
+    'gesture.terrain-semantic-depth.help',
+    'gesture.node-drag.help',
+    'gesture.overlay-drag.help',
+    'gesture.vessel-resize.help',
+    'journey.scrub',
+    'journey.revisit',
+    'context-workspace.dock',
+    'context-workspace.resize.se'
   ];
   for (const language of bundle.blueprint.product.requiredLanguages) {
     for (const ref of refs) assert.ok(bundle.strings[language][ref], `${language} missing ${ref}`);
