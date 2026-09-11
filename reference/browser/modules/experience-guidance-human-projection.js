@@ -155,7 +155,8 @@ export function resolveHumanHelpPlacement({ targetElement, surfaceElement = null
   }
   const excluded = new Set([targetElement, surfaceElement ?? guideElement]);
   const activeElement = documentRef.activeElement;
-  const focusRect = activeElement && !excluded.has(activeElement) ? geometry(activeElement) : null;
+  const activeElementIsDocumentRoot = activeElement === documentRef.body || activeElement === documentRef.documentElement;
+  const focusRect = activeElement && !activeElementIsDocumentRoot && !excluded.has(activeElement) ? geometry(activeElement) : null;
   const direction = (windowRef.getComputedStyle?.(documentRef.documentElement) ?? globalThis.getComputedStyle?.(documentRef.documentElement))?.direction === 'rtl' ? 'RTL' : 'LTR';
   const coreResult = resolveGuidancePlacement({
     targetRect,
