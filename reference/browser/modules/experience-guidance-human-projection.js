@@ -1,12 +1,19 @@
+import experienceRegistry from '../../../blueprint/experience-registry.json' with { type:'json' };
 import {
   buildGuidanceProposal,
   buildHelpProjection,
+  buildInteractionCue,
   resolveGuidancePlacement
 } from '../../../src/core/experience-guidance.mjs';
 
 export const HUMAN_HELP_FEATURE_BY_SCREEN = Object.freeze({
   'screen.vexlife.terrain': 'feature.vexlife.terrain',
   'screen.vexlife.chat': 'feature.vexlife.addressed-conversation'
+});
+
+export const HUMAN_HELP_INTERACTION_BY_SCREEN = Object.freeze({
+  'screen.vexlife.terrain': Object.freeze({ gestureRef:'gesture.vexlife.terrain-pan', interactionFamily:'PAN' }),
+  'screen.vexlife.chat': Object.freeze({ gestureRef:'gesture.vexlife.content-scroll', interactionFamily:'SCOPED_SCROLL' })
 });
 
 const HUMAN_HELP_RESPONSE_BY_SCREEN = Object.freeze({
@@ -50,10 +57,36 @@ function currentTargetBinding(recommendation, frame) {
   });
 }
 
-export function deriveHumanHelpProjection({ frame, recommendation = null, featureRef = null } = {}) {
+export function deriveHumanHelpInteractionCue({ frame, experience = experienceRegistry } = {}) {
+  if (!frame || typeof frame !== 'object' || !nonempty(frame.screenRef)) throw new Error('current semantic frame is required');
+  const preference = HUMAN_HELP_INTERACTION_BY_SCREEN[frame.screenRef] ?? null;
+  if (!preference || !Array.isArray(experience?.gestureContracts)) return null;
+  const contract = experience.gestureContracts.find((candidate) => candidate?.gestureRef === preference.gestureRef) ?? null;
+  if (!contract || !nonempty(contract.gestureRef) || !nonempty(contract.resultActionRef) || !nonempty(contract.helpStringRef)) return null;
+  const ownerRefs = new Set([contract.gestureRef, contract.resultActionRef]);
+  try {
+    return buildInteractionCue({
+      cueRef: `cue.browser.human-help.${frame.screenRef}.${contract.gestureRef}`,
+      interactionFamily: preference.interactionFamily,
+      intentionContentRef: contract.helpStringRef,
+      routeState: 'CURRENT',
+      availabilityState: 'AVAILABLE',
+      actionRefOrNull: contract.resultActionRef,
+      gestureRefOrNull: contract.gestureRef,
+      targetBindingOrNull: null
+    }, {
+      isKnownSemanticRef: (ref) => ownerRefs.has(ref)
+    });
+  } catch {
+    return null;
+  }
+}
+
+export function deriveHumanHelpProjection({ frame, recommendation = null, featureRef = null, experience = experienceRegistry } = {}) {
   if (!frame || typeof frame !== 'object' || !nonempty(frame.screenRef)) throw new Error('current semantic frame is required');
   const currentFrameRef = frameRef(frame);
   const available = recommendation?.state === 'AVAILABLE' && nonempty(recommendation.actionRef) && nonempty(recommendation.targetNodeRef);
+  const interactionCue = deriveHumanHelpInteractionCue({ frame, experience });
   const sections = [
     { sectionKind:'WHAT_CAN_I_DO_HERE', itemRefs:[available ? recommendation.actionRef : frame.screenRef] },
     ...(nonempty(featureRef) ? [{ sectionKind:'WHAT_CAN_VEX_HELP_WITH_HERE', itemRefs:[featureRef] }] : []),
@@ -80,6 +113,7 @@ export function deriveHumanHelpProjection({ frame, recommendation = null, featur
   const help = buildHelpProjection({ currentFrameRef, sections, proposals });
   return Object.freeze({
     help,
+    interactionCue,
     featureRef: nonempty(featureRef) ? featureRef : null,
     recommendation: recommendation ? structuredClone(recommendation) : null,
     offerCount: help.proposals.length,
@@ -159,6 +193,7 @@ export function createBrowserHumanHelpProjection({
   nextRecommendation,
   translate,
   windowElement,
+  experience = experienceRegistry,
   documentRef = globalThis.document,
   windowRef = globalThis.window
 } = {}) {
@@ -245,9 +280,9 @@ export function createBrowserHumanHelpProjection({
     const frame = navigation.semanticFrame();
     const recommendation = nextRecommendation(frame);
     const featureRef = HUMAN_HELP_FEATURE_BY_SCREEN[frame.screenRef] ?? null;
-    const projection = deriveHumanHelpProjection({ frame, recommendation, featureRef });
-    transientContent = translate(projection.responseContentRef, {});
-    const targetRef = recommendation?.state === 'AVAILABLE' ? recommendation.targetNodeRef : frame.selectedNodeRef;
+    const projection = deriveHumanHelpProjection({ frame, recommendation, featureRef, experience });
+    transientContent = translate(projection.interactionCue?.intentionContentRef ?? projection.responseContentRef, {});
+    const targetRef = projection.interactionCue ? frame.selectedNodeRef : recommendation?.state === 'AVAILABLE' ? recommendation.targetNodeRef : frame.selectedNodeRef;
     activeTarget = nonempty(targetRef) ? documentRef.querySelector(`[data-node-ref="${selectorEscape(targetRef)}"]`) : null;
     const placement = currentPlacement();
     applyPlacement(placement);
