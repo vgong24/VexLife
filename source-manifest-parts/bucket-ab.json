@@ -15,6 +15,12 @@
       "sha256": "53312e61bbdc6ed2977b8c9ca1d3d90cd19ba38e9305c0f478556ec50d0ce0aa"
     },
     {
+      "path": "src/core/family-space-store.mjs",
+      "mode": "100644",
+      "bytes": 24239,
+      "sha256": "ce8a5750a5054d4701d0b87be1ec883bde1640d68d68bc27fb70043cd0de05c1"
+    },
+    {
       "path": "src/core/feature-registry.mjs",
       "mode": "100644",
       "bytes": 12127,

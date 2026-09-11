@@ -25,6 +25,22 @@ export const guideVexSuite = Object.freeze({
     assert(!JSON.stringify(terrainNext).includes('collapse'), 'LC1 stale collapse recommendation leaked into current Guide truth');
     checks.push('LC1-LC2 Guide NEXT binds current Terrain advice to rendered reset action identity, never stale collapse copy');
 
+    const currentHelp = document.querySelector('[data-guide-intent-ref="intent.guide.current"]');
+    assert(currentHelp, 'EFX01D-D2-10 existing CURRENT Help control is missing');
+    const helpMessagesBefore = document.querySelectorAll('#guideMessages .guide-message').length;
+    const helpSemanticBefore = JSON.stringify(app.navigation.semanticFrame());
+    const helpJourneyBefore = app.navigation.fullJourney().length;
+    currentHelp.click();
+    await delay(20);
+    const interactionCue = document.querySelector('[data-vex-human-projection-transient="true"]');
+    assert(interactionCue?.getClientRects().length > 0, 'EFX01D-D2-10 CURRENT Help did not visibly project the accepted interaction cue');
+    assert(interactionCue.textContent === app.t('gesture.terrain-pan.help'), 'EFX01D-D2-02/09 Terrain CURRENT Help did not reuse the accepted localized pan helpStringRef');
+    assert(document.querySelectorAll('#guideMessages .guide-message').length === helpMessagesBefore + 2, 'EFX01D-D2-06 CURRENT Help produced more than the one canonical user/Guide message pair');
+    assert(JSON.stringify(app.navigation.semanticFrame()) === helpSemanticBefore, 'EFX01D-D2-10 interaction teaching changed semantic current context');
+    assert(app.navigation.fullJourney().length === helpJourneyBefore, 'EFX01D-D2-10 interaction teaching wrote a Journey event');
+    interactionCue.remove();
+    checks.push('EFX01D-D2-02/06/09/10 CURRENT Help visibly teaches accepted Terrain PAN copy with one canonical Guide response and no semantic/Journey effect');
+
     const resetTarget = document.querySelector('[data-node-ref="element.terrain.reset"]');
     assert(resetTarget && !resetTarget.disabled && resetTarget.getClientRects().length > 0, 'LC7 exact recommended reset target is not rendered and executable');
     app.terrain.setProjectionMode('rings');
