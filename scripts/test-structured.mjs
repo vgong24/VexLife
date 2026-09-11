@@ -7,6 +7,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const testRoot = path.join(ROOT, 'test');
 const isolatedTestFiles = new Set([
+  // These suites consume live host resource evidence. Keep each suite's
+  // internal assertions intact, but do not let unrelated test-file scheduling
+  // perturb the CPU/resource predicate that they are explicitly proving.
+  'capability-assimilation-runtime.test.mjs',
+  'capability-assimilation-scheduler-authority.test.mjs',
+  // This suite uses bounded cooperative-control timing across a child process.
+  // Keep its timing assertions intact, but remove unrelated test-file load.
+  'native-worker-supervisor.test.mjs',
   // This suite contains live loopback and atomic-writer timing assertions.
   // Keep its internal concurrency intact, but do not let unrelated test-file
   // scheduling consume the endpoint timeout window it is explicitly proving.
@@ -33,11 +41,13 @@ const groups = [
     files: [...regular, ...endToEnd],
     arguments: ['--test', ...regular, ...endToEnd]
   },
-  ...isolated.map((file) => ({
+  {
     executionClass: 'ISOLATED_TIMING_SENSITIVE',
-    files: [file],
-    arguments: ['--test', '--test-concurrency=1', file]
-  }))
+    files: isolated,
+    // Node's process-isolated test runner still starts each file in its own
+    // child process; concurrency=1 keeps exactly one isolated file active.
+    arguments: ['--test', '--test-concurrency=1', ...isolated]
+  }
 ].filter((group) => group.files.length > 0);
 
 let failed = false;
