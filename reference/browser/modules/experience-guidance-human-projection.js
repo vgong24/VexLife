@@ -53,6 +53,8 @@ const COMPACT_PRESENTATION_KIND = 'COMPACT_CONTEXT_SHEET';
 const NAVIGATION_SELECTOR = '.e27-appbar, .e27-breadcrumb, .e27-recentbar';
 const PROTECTED_SELECTOR = '.terrain-toolbar, .terrain-journey-window, .e27-context-surface:not([hidden]), .e27-surface-menu:not([hidden]), .e27-terrain-context:not([hidden]), .e27-drawer.show';
 const TRANSIENT_ATTRIBUTE = 'data-vex-human-projection-transient';
+const NONVISUAL_ATTRIBUTE = 'data-vex-human-projection-nonvisual';
+const NONVISUAL_ID = 'vexHumanHelpNonvisual';
 const BROWSER_HUMAN_HELP_BINDINGS = new WeakMap();
 const BROWSER_HUMAN_HELP_BIND_JOBS = new WeakMap();
 const BROWSER_HUMAN_HELP_BIND_RETRY_MS = 25;
@@ -104,7 +106,7 @@ function semanticGestureCandidate(preference, experience) {
   if (!contract || !nonempty(contract.gestureRef) || !nonempty(contract.resultActionRef) || !nonempty(contract.helpStringRef)) return null;
   const ownerRefs = new Set([contract.gestureRef, contract.resultActionRef]);
   try {
-    return buildInteractionCue({
+    const cue = buildInteractionCue({
       cueRef: `cue.browser.human-help.gesture.${contract.gestureRef}`,
       interactionFamily: preference.interactionFamily,
       intentionContentRef: contract.helpStringRef,
@@ -115,6 +117,12 @@ function semanticGestureCandidate(preference, experience) {
       targetBindingOrNull: null
     }, {
       isKnownSemanticRef: (ref) => ownerRefs.has(ref)
+    });
+    return Object.freeze({
+      cue,
+      inputMethods:Object.freeze(Array.isArray(contract.inputs) ? [...contract.inputs] : []),
+      accessibilityRole:null,
+      stableIdentifierRef:null
     });
   } catch {
     return null;
@@ -127,7 +135,7 @@ function semanticElementCandidate(preference) {
   if (!owner || !nonempty(owner.elementRef) || !nonempty(owner.interactionRef) || !nonempty(owner.actionRef) || !nonempty(owner.labelStringRef)) return null;
   const ownerRefs = new Set([owner.interactionRef, owner.actionRef]);
   try {
-    return buildInteractionCue({
+    const cue = buildInteractionCue({
       cueRef: `cue.browser.human-help.interaction.${owner.interactionRef}`,
       interactionFamily: preference.interactionFamily,
       intentionContentRef: owner.labelStringRef,
@@ -138,6 +146,12 @@ function semanticElementCandidate(preference) {
       targetBindingOrNull: null
     }, {
       isKnownSemanticRef: (ref) => ownerRefs.has(ref)
+    });
+    return Object.freeze({
+      cue,
+      inputMethods:Object.freeze([]),
+      accessibilityRole:nonempty(owner.accessibility?.role) ? owner.accessibility.role : null,
+      stableIdentifierRef:nonempty(owner.accessibility?.stableIdentifierRef) ? owner.accessibility.stableIdentifierRef : null
     });
   } catch {
     return null;
@@ -151,14 +165,14 @@ function candidateRenderedSurface(selector, documentRef) {
 }
 
 function makeInteractionCandidate(preference, experience, documentRef, { requireRendered = false } = {}) {
-  const cue = preference?.gestureRef
+  const semantic = preference?.gestureRef
     ? semanticGestureCandidate(preference, experience)
     : semanticElementCandidate(preference);
-  if (!cue) return null;
+  if (!semantic) return null;
   const selector = preference.selector ?? null;
   const element = selector ? candidateRenderedSurface(selector, documentRef) : null;
   if (requireRendered && !element) return null;
-  return Object.freeze({ cue, selector, element });
+  return Object.freeze({ ...semantic, selector, element });
 }
 
 function declaredInteractionPreferences(frame) {
@@ -311,7 +325,25 @@ function styleTransientSurface(element) {
     fontSize:'11px',
     lineHeight:'1.45',
     zIndex:'69',
-    pointerEvents:'none'
+    pointerEvents:'none',
+    animation:'none',
+    transition:'none'
+  });
+}
+
+function styleNonvisualSurface(element) {
+  Object.assign(element.style, {
+    position:'fixed',
+    width:'1px',
+    height:'1px',
+    padding:'0',
+    margin:'-1px',
+    overflow:'hidden',
+    clip:'rect(0 0 0 0)',
+    whiteSpace:'nowrap',
+    border:'0',
+    animation:'none',
+    transition:'none'
   });
 }
 
@@ -331,7 +363,11 @@ export function createBrowserHumanHelpProjection({
 
   let activeTarget = null;
   let activeInteractionCue = null;
+  let activeInteractionCandidate = null;
   let transientSurface = null;
+  let nonvisualSurface = null;
+  let describedTarget = null;
+  let priorDescribedBy = null;
   let transientContent = '';
   let lastProjection = null;
   let resizeObserver = null;
@@ -348,15 +384,24 @@ export function createBrowserHumanHelpProjection({
     transientSurface?.remove?.();
     transientSurface = null;
   }
+  function removeNonvisualSurface() {
+    nonvisualSurface?.remove?.();
+    nonvisualSurface = null;
+  }
   function applyInteractionMetadata(node) {
     const cue = activeInteractionCue;
+    node.dataset.cueRef = cue?.cueRef ?? '';
     node.dataset.interactionFamily = cue?.interactionFamily ?? '';
     node.dataset.gestureRef = cue?.gestureRefOrNull ?? '';
     node.dataset.actionRef = cue?.actionRefOrNull ?? '';
     node.dataset.interactionRef = cue?.interactionRefOrNull ?? '';
+    node.dataset.inputMethods = (activeInteractionCandidate?.inputMethods ?? []).join(' ');
+    node.dataset.accessibilityRole = activeInteractionCandidate?.accessibilityRole ?? '';
+    node.dataset.stableIdentifierRef = activeInteractionCandidate?.stableIdentifierRef ?? '';
   }
   function ensureTransientSurface() {
     if (transientSurface && transientSurface.isConnected !== false) {
+      transientSurface.textContent = transientContent;
       applyInteractionMetadata(transientSurface);
       return transientSurface;
     }
@@ -369,6 +414,43 @@ export function createBrowserHumanHelpProjection({
     documentRef.body?.append?.(node);
     transientSurface = node;
     return node;
+  }
+  function ensureNonvisualSurface() {
+    if (!activeInteractionCue || typeof documentRef.body?.appendChild !== 'function') return null;
+    if (nonvisualSurface && nonvisualSurface.isConnected !== false) {
+      nonvisualSurface.textContent = transientContent;
+      applyInteractionMetadata(nonvisualSurface);
+      return nonvisualSurface;
+    }
+    const node = documentRef.createElement('div');
+    node.id = NONVISUAL_ID;
+    node.setAttribute(NONVISUAL_ATTRIBUTE, 'true');
+    node.setAttribute('role', 'status');
+    node.setAttribute('aria-live', 'polite');
+    node.setAttribute('aria-atomic', 'true');
+    node.textContent = transientContent;
+    applyInteractionMetadata(node);
+    styleNonvisualSurface(node);
+    documentRef.body.appendChild(node);
+    nonvisualSurface = node;
+    return node;
+  }
+  function clearTargetDescription() {
+    if (!describedTarget) return;
+    if (priorDescribedBy === null) describedTarget.removeAttribute?.('aria-describedby');
+    else describedTarget.setAttribute?.('aria-describedby', priorDescribedBy);
+    describedTarget = null;
+    priorDescribedBy = null;
+  }
+  function bindTargetDescription() {
+    clearTargetDescription();
+    const description = ensureNonvisualSurface();
+    if (!description || !activeTarget?.setAttribute) return;
+    describedTarget = activeTarget;
+    priorDescribedBy = activeTarget.getAttribute?.('aria-describedby') ?? null;
+    const tokens = new Set(String(priorDescribedBy ?? '').split(/\s+/).filter(Boolean));
+    tokens.add(description.id);
+    activeTarget.setAttribute('aria-describedby', [...tokens].join(' '));
   }
   function applyPlacement(placement) {
     if (placement?.state !== 'ANCHORED' || !placement.geometry) {
@@ -384,7 +466,11 @@ export function createBrowserHumanHelpProjection({
   }
   function currentPlacement() {
     if (!activeTarget) return fallback('CURRENT_RENDERED_TARGET_UNAVAILABLE');
-    if (activeTarget.isConnected === false || !visibleElement(activeTarget)) return fallback('CURRENT_RENDERED_TARGET_DISAPPEARED');
+    if (activeTarget.isConnected === false || !visibleElement(activeTarget)) {
+      clearTargetDescription();
+      removeNonvisualSurface();
+      return fallback('CURRENT_RENDERED_TARGET_DISAPPEARED');
+    }
     const surface = ensureTransientSurface();
     return resolveHumanHelpPlacement({ targetElement:activeTarget, surfaceElement:surface, documentRef, windowRef });
   }
@@ -410,10 +496,13 @@ export function createBrowserHumanHelpProjection({
   }
   function dismiss() {
     clearObservers();
+    clearTargetDescription();
     activeTarget = null;
     activeInteractionCue = null;
+    activeInteractionCandidate = null;
     transientContent = '';
     removeTransientSurface();
+    removeNonvisualSurface();
     return true;
   }
   function selectCurrentInteraction(frame) {
@@ -432,6 +521,7 @@ export function createBrowserHumanHelpProjection({
     const recommendation = nextRecommendation(frame);
     const featureRef = HUMAN_HELP_FEATURE_BY_SCREEN[frame.screenRef] ?? null;
     const candidate = selectCurrentInteraction(frame);
+    activeInteractionCandidate = candidate;
     activeInteractionCue = candidate?.cue ?? null;
     const projection = deriveHumanHelpProjection({
       frame,
@@ -447,9 +537,19 @@ export function createBrowserHumanHelpProjection({
       const targetRef = recommendation?.state === 'AVAILABLE' ? recommendation.targetNodeRef : frame.selectedNodeRef;
       activeTarget = nonempty(targetRef) ? documentRef.querySelector(`[data-node-ref="${selectorEscape(targetRef)}"]`) : null;
     }
+    if (activeInteractionCue && activeTarget) bindTargetDescription();
     const placement = currentPlacement();
     applyPlacement(placement);
-    lastProjection = Object.freeze({ ...projection, frame:structuredClone(frame), placement });
+    lastProjection = Object.freeze({
+      ...projection,
+      frame:structuredClone(frame),
+      placement,
+      interactionProjection: candidate ? Object.freeze({
+        inputMethods:[...(candidate.inputMethods ?? [])],
+        accessibilityRole:candidate.accessibilityRole ?? null,
+        stableIdentifierRef:candidate.stableIdentifierRef ?? null
+      }) : null
+    });
     observeTarget();
     return lastProjection;
   }
@@ -458,11 +558,21 @@ export function createBrowserHumanHelpProjection({
   const onPointerDown = (event) => {
     if (event.target?.closest?.('#guideHandle, [data-resize-corner]')) dismiss();
   };
+  const onKeyDown = (event) => {
+    if (event?.key !== 'Escape') return;
+    if (!activeInteractionCue && !transientSurface && !nonvisualSurface) return;
+    dismiss();
+    event.preventDefault?.();
+    event.stopImmediatePropagation?.();
+    event.stopPropagation?.();
+  };
   windowRef.addEventListener('resize', onResize);
+  windowRef.addEventListener('keydown', onKeyDown, true);
   windowElement.addEventListener('pointerdown', onPointerDown, true);
   function dispose() {
     dismiss();
     windowRef.removeEventListener('resize', onResize);
+    windowRef.removeEventListener('keydown', onKeyDown, true);
     windowElement.removeEventListener('pointerdown', onPointerDown, true);
   }
   return Object.freeze({ projectExplicitHelp, refreshPlacement, dismiss, snapshot, dispose });
