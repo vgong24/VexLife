@@ -30,8 +30,8 @@ const HUMAN_HELP_RESPONSE_BY_SCREEN = Object.freeze({
 
 const HUMAN_HELP_DYNAMIC_INTERACTIONS_BY_SCREEN = Object.freeze({
   'screen.vexlife.terrain': Object.freeze([
-    Object.freeze({ gestureRef:'gesture.vexlife.terrain-zoom', interactionFamily:'ZOOM', selector:'#terrainZoomIn' }),
-    Object.freeze({ gestureRef:'gesture.vexlife.terrain-semantic-depth', interactionFamily:'SEMANTIC_DEPTH_SHIFT', selector:'#terrainUp' }),
+    Object.freeze({ gestureRef:'gesture.vexlife.terrain-zoom', interactionFamily:'ZOOM', selector:'#terrainFocus', alternateControlSelector:'#terrainZoomIn' }),
+    Object.freeze({ gestureRef:'gesture.vexlife.terrain-semantic-depth', interactionFamily:'SEMANTIC_DEPTH_SHIFT', selector:'#terrainFocus', alternateControlSelector:'#terrainUp' }),
     Object.freeze({ gestureRef:'gesture.vexlife.node-drag', interactionFamily:'DRAG_OR_MOVE', selector:'.e27-node' }),
     Object.freeze({ elementRef:'element.terrain.journey-scrub', ownerScreen:'terrain', interactionFamily:'SCRUB_OR_REVISIT', selector:'#terrainJourneyScrub' }),
     Object.freeze({ elementRef:'element.terrain.journey-revisit', ownerScreen:'terrain', interactionFamily:'SCRUB_OR_REVISIT', selector:'#terrainJourneyRevisit' })
