@@ -34,6 +34,7 @@
       "blueprint/fragments/screens/chat.json",
       "blueprint/fragments/screens/living-journal.json",
       "blueprint/fragments/screens/relationships.json",
+      "blueprint/fragments/screens/purpose-workspace.json",
       "blueprint/fragments/screens/terrain.json",
       "blueprint/fragments/screens/health.json",
       "blueprint/fragments/screens/guide-overlay.json",
