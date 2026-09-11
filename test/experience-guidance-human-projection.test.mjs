@@ -83,7 +83,8 @@ function fakePlacementDocument() {
 
 function fakeProjectionEnvironment({ experience = { gestureContracts:[] } } = {}) {
   const targetElement = fakeElement({ left:400, top:300, width:80, height:44 });
-  const selectedElement = fakeElement({ left:520, top:300, width:110, height:44 });
+  const currentTerrainSurface = fakeElement({ left:470, top:250, width:380, height:196 });
+  const currentChatSurface = fakeElement({ left:280, top:160, width:620, height:520 });
   const guideWindow = fakeElement({ left:20, top:20, width:340, height:330 });
   Object.assign(guideWindow.style, { left:'20px', right:'14px', top:'92px', bottom:'', width:'340px', height:'330px' });
   const transientNodes = [];
@@ -99,7 +100,8 @@ function fakeProjectionEnvironment({ experience = { gestureContracts:[] } } = {}
     createElement() { return fakeElement({ left:-10000, top:-10000, width:260, height:72, connected:false }); },
     querySelector(selector) {
       if (selector === '[data-node-ref="element.terrain.reset"]') return targetElement;
-      if (selector === '[data-node-ref="terrain.project.root-hub"]') return selectedElement;
+      if (selector === '#terrainFocus') return currentTerrainSurface;
+      if (selector === '#view-chat') return currentChatSurface;
       return null;
     },
     querySelectorAll: () => []
@@ -120,7 +122,7 @@ function fakeProjectionEnvironment({ experience = { gestureContracts:[] } } = {}
     documentRef,
     windowRef
   });
-  return { targetElement, selectedElement, guideWindow, transientNodes, documentRef, windowRef, projection };
+  return { targetElement, currentTerrainSurface, currentChatSurface, guideWindow, transientNodes, documentRef, windowRef, projection };
 }
 
 test('EFX01C-01/03 explicit current Help emits at most one deterministic no-effect proposal', () => {
@@ -196,12 +198,14 @@ test('EFX01D-D2-07 missing or malformed registry ownership fails closed to exist
   assert.equal(malformed, null);
 });
 
-test('EFX01D-D2-08 visible interaction teaching uses owner help copy and never relabels the unrelated NEXT target as a gesture target', () => {
-  const { transientNodes, projection } = fakeProjectionEnvironment({ experience:interactionExperience });
+test('EFX01D-D2-08 teaching stays semantically targetless while visually anchoring to the current rendered surface, never the unrelated NEXT target', () => {
+  const { currentTerrainSurface, transientNodes, projection } = fakeProjectionEnvironment({ experience:interactionExperience });
   const shown = projection.projectExplicitHelp();
   assert.equal(shown.interactionCue.targetBindingOrNull, null);
   assert.equal(shown.recommendation.targetNodeRef, 'element.terrain.reset');
   assert.equal(shown.interactionCue.gestureRefOrNull, 'gesture.vexlife.terrain-pan');
+  assert.equal(shown.placement.state, 'ANCHORED');
+  assert.equal(currentTerrainSurface.isConnected, true);
   const activeTransient = transientNodes.find((node) => node.isConnected);
   assert.ok(activeTransient);
   assert.equal(activeTransient.textContent, 'Visible copy for gesture.terrain-pan.help');
@@ -408,6 +412,8 @@ test('EFX01C-09/12 + EFX01D-D2-05/06 source has no persistence, navigation mutat
   assert.match(adapter, /buildHelpProjection/);
   assert.match(adapter, /buildInteractionCue/);
   assert.match(adapter, /experience-registry\.json/);
+  assert.match(adapter, /#terrainFocus/);
+  assert.match(adapter, /#view-chat/);
   assert.match(adapter, /resolveGuidancePlacement/);
   assert.match(adapter, /data-vex-human-projection-transient/);
   assert.doesNotMatch(adapter, /__VEXLIFE_HUMAN_HELP_PROJECTION__/);
