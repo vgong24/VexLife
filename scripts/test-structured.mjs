@@ -7,6 +7,11 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const testRoot = path.join(ROOT, 'test');
 const isolatedTestFiles = new Set([
+  // These suites consume live host resource evidence. Keep each suite's
+  // internal assertions intact, but do not let unrelated test-file scheduling
+  // perturb the CPU/resource predicate that they are explicitly proving.
+  'capability-assimilation-runtime.test.mjs',
+  'capability-assimilation-scheduler-authority.test.mjs',
   // This suite contains live loopback and atomic-writer timing assertions.
   // Keep its internal concurrency intact, but do not let unrelated test-file
   // scheduling consume the endpoint timeout window it is explicitly proving.
