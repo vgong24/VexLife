@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import {
   buildExperienceTopology,
   compilePurposeWorkspace,
@@ -39,6 +40,29 @@ test('SPW-02 registers the source membrane while browser introduction remains he
   assert.equal(bundle.registry.registrationPlacement.featureWalkthroughPlanCurrent, false);
   assert.equal(bundle.registry.registrationPlacement.experienceReviewCurrent, false);
   assert.equal(bundle.registry.sourcePlacement.status, 'SOURCE_FOUNDATION_ONLY');
+});
+
+test('SPW-02 composed registration resolves through canonical Blueprint validation', () => {
+  const effective = loadBlueprint();
+  const feature = effective.featureRegistry.features.find((item) => item.featureRef === 'feature.vexlife.scoped-purpose-workspace');
+  const plan = effective.experience.featureWalkthroughPlans.find((item) => item.planRef === 'plan.vexlife.feature.scoped-purpose-workspace.introduction.001');
+  assert.ok(feature);
+  assert.equal(feature.status, 'PREPARED');
+  assert.equal(feature.humanIntroduction.disposition, 'WALKTHROUGH');
+  assert.equal(feature.humanIntroduction.routeState, 'HELD');
+  assert.equal(feature.humanIntroduction.planRefOrNull, plan.planRef);
+  assert.equal(plan.effects, false);
+  assert.equal(plan.replayable, true);
+  assert.equal(plan.stages.length, 5);
+  assert.equal(effective.modules.modules.some((item) => item.moduleRef === 'module.vexlife.core.purpose-workspace'), true);
+  assert.equal(effective.factory.processes.some((item) => item.processRef === 'process.vexlife.purpose-workspace.coordinate'), true);
+  assert.equal(effective.blueprint.screens.some((item) => item.screenRef === 'screen.vexlife.purpose-workspace' && item.routeRef === 'route.purpose-workspace'), true);
+  for (const language of ['en', 'ja', 'zh']) {
+    assert.equal(typeof effective.strings[language]['screen.purpose-workspace.title'], 'string');
+    for (const stage of plan.stages) assert.equal(typeof effective.strings[language][stage.contentStringRef], 'string');
+  }
+  const validation = validateBlueprint(effective);
+  assert.equal(validation.ok, true, validation.errors.join('\n'));
 });
 
 test('Do Understand Steward are projections over one domain/task rather than separate truth', () => {
