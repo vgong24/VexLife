@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 20271,
       "sha256": "0e526021d03cb4ca501ff64513061a215044122ceaacb0e618f0b19016aafd66"
+    },
+    {
+      "path": "test/experience-guidance-human-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 14644,
+      "sha256": "b00755f7f591b2a1fcfd2f90568fec6eab492d019729d1ccd98eb0d3083b61b6"
     }
   ]
 }
