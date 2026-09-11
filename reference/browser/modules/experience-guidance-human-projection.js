@@ -1,4 +1,6 @@
 import experienceRegistry from '../../../blueprint/experience-registry.json' with { type:'json' };
+import terrainScreen from '../../../blueprint/fragments/screens/terrain.json' with { type:'json' };
+import shellScreen from '../../../blueprint/fragments/screens/shell.json' with { type:'json' };
 import {
   buildGuidanceProposal,
   buildHelpProjection,
@@ -26,6 +28,26 @@ const HUMAN_HELP_RESPONSE_BY_SCREEN = Object.freeze({
   'screen.vexlife.chat': 'guide.answer.next.chat'
 });
 
+const HUMAN_HELP_DYNAMIC_INTERACTIONS_BY_SCREEN = Object.freeze({
+  'screen.vexlife.terrain': Object.freeze([
+    Object.freeze({ gestureRef:'gesture.vexlife.terrain-zoom', interactionFamily:'ZOOM', selector:'#terrainZoomIn' }),
+    Object.freeze({ gestureRef:'gesture.vexlife.terrain-semantic-depth', interactionFamily:'SEMANTIC_DEPTH_SHIFT', selector:'#terrainUp' }),
+    Object.freeze({ gestureRef:'gesture.vexlife.node-drag', interactionFamily:'DRAG_OR_MOVE', selector:'.e27-node' }),
+    Object.freeze({ elementRef:'element.terrain.journey-scrub', ownerScreen:'terrain', interactionFamily:'SCRUB_OR_REVISIT', selector:'#terrainJourneyScrub' }),
+    Object.freeze({ elementRef:'element.terrain.journey-revisit', ownerScreen:'terrain', interactionFamily:'SCRUB_OR_REVISIT', selector:'#terrainJourneyRevisit' })
+  ]),
+  'screen.vexlife.chat': Object.freeze([
+    Object.freeze({ elementRef:'element.context-workspace.dock', ownerScreen:'shell', interactionFamily:'DOCK', selector:'#contextWorkspaceDock' }),
+    Object.freeze({ elementRef:'element.context-workspace.resize.se', ownerScreen:'shell', interactionFamily:'RESIZE', selector:'#contextWorkspaceResizeSe' })
+  ])
+});
+
+const HUMAN_HELP_SHARED_INTERACTIONS = Object.freeze([
+  Object.freeze({ gestureRef:'gesture.vexlife.overlay-drag', interactionFamily:'DRAG_OR_MOVE', selector:'#guideHandle' }),
+  Object.freeze({ gestureRef:'gesture.vexlife.vessel-resize', interactionFamily:'RESIZE', selector:'[data-resize-corner="se"]' })
+]);
+
+const SCREEN_OWNER_BY_KEY = Object.freeze({ terrain:terrainScreen, shell:shellScreen });
 const FALLBACK_PRESENTATION_KIND = 'GUIDE_VESSEL_EXPLANATION';
 const COMPACT_PRESENTATION_KIND = 'COMPACT_CONTEXT_SHEET';
 const NAVIGATION_SELECTOR = '.e27-appbar, .e27-breadcrumb, .e27-recentbar';
@@ -67,16 +89,23 @@ function currentRenderedInteractionSurface(frame, documentRef) {
   return selector && documentRef ? documentRef.querySelector(selector) : null;
 }
 
-export function deriveHumanHelpInteractionCue({ frame, experience = experienceRegistry } = {}) {
-  if (!frame || typeof frame !== 'object' || !nonempty(frame.screenRef)) throw new Error('current semantic frame is required');
-  const preference = HUMAN_HELP_INTERACTION_BY_SCREEN[frame.screenRef] ?? null;
-  if (!preference || !Array.isArray(experience?.gestureContracts)) return null;
+function flattenScreenElements(screen) {
+  return (screen?.regions ?? []).flatMap((region) => region?.elements ?? []);
+}
+
+function interactionOwnerElement(ownerScreen, elementRef) {
+  const screen = SCREEN_OWNER_BY_KEY[ownerScreen] ?? null;
+  return flattenScreenElements(screen).find((candidate) => candidate?.elementRef === elementRef) ?? null;
+}
+
+function semanticGestureCandidate(preference, experience) {
+  if (!preference?.gestureRef || !Array.isArray(experience?.gestureContracts)) return null;
   const contract = experience.gestureContracts.find((candidate) => candidate?.gestureRef === preference.gestureRef) ?? null;
   if (!contract || !nonempty(contract.gestureRef) || !nonempty(contract.resultActionRef) || !nonempty(contract.helpStringRef)) return null;
   const ownerRefs = new Set([contract.gestureRef, contract.resultActionRef]);
   try {
     return buildInteractionCue({
-      cueRef: `cue.browser.human-help.${frame.screenRef}.${contract.gestureRef}`,
+      cueRef: `cue.browser.human-help.gesture.${contract.gestureRef}`,
       interactionFamily: preference.interactionFamily,
       intentionContentRef: contract.helpStringRef,
       routeState: 'CURRENT',
@@ -92,11 +121,85 @@ export function deriveHumanHelpInteractionCue({ frame, experience = experienceRe
   }
 }
 
-export function deriveHumanHelpProjection({ frame, recommendation = null, featureRef = null, experience = experienceRegistry } = {}) {
+function semanticElementCandidate(preference) {
+  if (!preference?.elementRef || !preference?.ownerScreen) return null;
+  const owner = interactionOwnerElement(preference.ownerScreen, preference.elementRef);
+  if (!owner || !nonempty(owner.elementRef) || !nonempty(owner.interactionRef) || !nonempty(owner.actionRef) || !nonempty(owner.labelStringRef)) return null;
+  const ownerRefs = new Set([owner.interactionRef, owner.actionRef]);
+  try {
+    return buildInteractionCue({
+      cueRef: `cue.browser.human-help.interaction.${owner.interactionRef}`,
+      interactionFamily: preference.interactionFamily,
+      intentionContentRef: owner.labelStringRef,
+      routeState: 'CURRENT',
+      availabilityState: 'AVAILABLE',
+      actionRefOrNull: owner.actionRef,
+      interactionRefOrNull: owner.interactionRef,
+      targetBindingOrNull: null
+    }, {
+      isKnownSemanticRef: (ref) => ownerRefs.has(ref)
+    });
+  } catch {
+    return null;
+  }
+}
+
+function candidateRenderedSurface(selector, documentRef) {
+  if (!documentRef) return null;
+  const element = documentRef.querySelector(selector);
+  return visibleElement(element) ? element : null;
+}
+
+function makeInteractionCandidate(preference, experience, documentRef, { requireRendered = false } = {}) {
+  const cue = preference?.gestureRef
+    ? semanticGestureCandidate(preference, experience)
+    : semanticElementCandidate(preference);
+  if (!cue) return null;
+  const selector = preference.selector ?? null;
+  const element = selector ? candidateRenderedSurface(selector, documentRef) : null;
+  if (requireRendered && !element) return null;
+  return Object.freeze({ cue, selector, element });
+}
+
+export function deriveHumanHelpInteractionCandidates({ frame, experience = experienceRegistry, documentRef = null } = {}) {
+  if (!frame || typeof frame !== 'object' || !nonempty(frame.screenRef)) throw new Error('current semantic frame is required');
+  const candidates = [];
+  const primary = HUMAN_HELP_INTERACTION_BY_SCREEN[frame.screenRef] ?? null;
+  if (primary) {
+    const candidate = makeInteractionCandidate({
+      ...primary,
+      selector:HUMAN_HELP_CURRENT_SURFACE_SELECTOR_BY_SCREEN[frame.screenRef] ?? null
+    }, experience, documentRef, { requireRendered:Boolean(documentRef) });
+    if (candidate) candidates.push(candidate);
+  }
+  for (const preference of HUMAN_HELP_DYNAMIC_INTERACTIONS_BY_SCREEN[frame.screenRef] ?? []) {
+    const candidate = makeInteractionCandidate(preference, experience, documentRef, { requireRendered:Boolean(documentRef) });
+    if (candidate) candidates.push(candidate);
+  }
+  for (const preference of HUMAN_HELP_SHARED_INTERACTIONS) {
+    const candidate = makeInteractionCandidate(preference, experience, documentRef, { requireRendered:Boolean(documentRef) });
+    if (candidate) candidates.push(candidate);
+  }
+  return Object.freeze(candidates);
+}
+
+export function deriveHumanHelpInteractionCue({ frame, experience = experienceRegistry } = {}) {
+  return deriveHumanHelpInteractionCandidates({ frame, experience })[0]?.cue ?? null;
+}
+
+export function deriveHumanHelpProjection({
+  frame,
+  recommendation = null,
+  featureRef = null,
+  experience = experienceRegistry,
+  interactionCueOverride = undefined
+} = {}) {
   if (!frame || typeof frame !== 'object' || !nonempty(frame.screenRef)) throw new Error('current semantic frame is required');
   const currentFrameRef = frameRef(frame);
   const available = recommendation?.state === 'AVAILABLE' && nonempty(recommendation.actionRef) && nonempty(recommendation.targetNodeRef);
-  const interactionCue = deriveHumanHelpInteractionCue({ frame, experience });
+  const interactionCue = interactionCueOverride === undefined
+    ? deriveHumanHelpInteractionCue({ frame, experience })
+    : interactionCueOverride;
   const sections = [
     { sectionKind:'WHAT_CAN_I_DO_HERE', itemRefs:[available ? recommendation.actionRef : frame.screenRef] },
     ...(nonempty(featureRef) ? [{ sectionKind:'WHAT_CAN_VEX_HELP_WITH_HERE', itemRefs:[featureRef] }] : []),
@@ -214,11 +317,13 @@ export function createBrowserHumanHelpProjection({
   if (!windowElement || !documentRef || !windowRef || typeof documentRef.createElement !== 'function') throw new Error('Human Help projection requires current browser DOM');
 
   let activeTarget = null;
+  let activeInteractionCue = null;
   let transientSurface = null;
   let transientContent = '';
   let lastProjection = null;
   let resizeObserver = null;
   let mutationObserver = null;
+  const interactionCursorByFrame = new Map();
 
   function clearObservers() {
     resizeObserver?.disconnect?.();
@@ -230,12 +335,23 @@ export function createBrowserHumanHelpProjection({
     transientSurface?.remove?.();
     transientSurface = null;
   }
+  function applyInteractionMetadata(node) {
+    const cue = activeInteractionCue;
+    node.dataset.interactionFamily = cue?.interactionFamily ?? '';
+    node.dataset.gestureRef = cue?.gestureRefOrNull ?? '';
+    node.dataset.actionRef = cue?.actionRefOrNull ?? '';
+    node.dataset.interactionRef = cue?.interactionRefOrNull ?? '';
+  }
   function ensureTransientSurface() {
-    if (transientSurface && transientSurface.isConnected !== false) return transientSurface;
+    if (transientSurface && transientSurface.isConnected !== false) {
+      applyInteractionMetadata(transientSurface);
+      return transientSurface;
+    }
     const node = documentRef.createElement('div');
     node.setAttribute(TRANSIENT_ATTRIBUTE, 'true');
     node.setAttribute('aria-hidden', 'true');
     node.textContent = transientContent;
+    applyInteractionMetadata(node);
     styleTransientSurface(node);
     documentRef.body?.append?.(node);
     transientSurface = node;
@@ -282,19 +398,37 @@ export function createBrowserHumanHelpProjection({
   function dismiss() {
     clearObservers();
     activeTarget = null;
+    activeInteractionCue = null;
     transientContent = '';
     removeTransientSurface();
     return true;
+  }
+  function selectCurrentInteraction(frame) {
+    const candidates = deriveHumanHelpInteractionCandidates({ frame, experience, documentRef });
+    if (candidates.length === 0) return null;
+    const key = frameRef(frame);
+    const cursor = interactionCursorByFrame.get(key) ?? 0;
+    const candidate = candidates[cursor % candidates.length];
+    interactionCursorByFrame.set(key, cursor + 1);
+    return candidate;
   }
   function projectExplicitHelp() {
     dismiss();
     const frame = navigation.semanticFrame();
     const recommendation = nextRecommendation(frame);
     const featureRef = HUMAN_HELP_FEATURE_BY_SCREEN[frame.screenRef] ?? null;
-    const projection = deriveHumanHelpProjection({ frame, recommendation, featureRef, experience });
+    const candidate = selectCurrentInteraction(frame);
+    activeInteractionCue = candidate?.cue ?? null;
+    const projection = deriveHumanHelpProjection({
+      frame,
+      recommendation,
+      featureRef,
+      experience,
+      interactionCueOverride:activeInteractionCue
+    });
     transientContent = translate(projection.interactionCue?.intentionContentRef ?? projection.responseContentRef, {});
     if (projection.interactionCue) {
-      activeTarget = currentRenderedInteractionSurface(frame, documentRef);
+      activeTarget = candidate?.element ?? currentRenderedInteractionSurface(frame, documentRef);
     } else {
       const targetRef = recommendation?.state === 'AVAILABLE' ? recommendation.targetNodeRef : frame.selectedNodeRef;
       activeTarget = nonempty(targetRef) ? documentRef.querySelector(`[data-node-ref="${selectorEscape(targetRef)}"]`) : null;
