@@ -39,10 +39,51 @@ export const experienceGuidanceDynamicSpatialSuite = Object.freeze({
     checks.push('EFX01D-D3 repeated explicit CURRENT Help advances through accepted Terrain ZOOM and SEMANTIC_DEPTH_SHIFT owners');
     checks.push('EFX01D-D3 preserves one transient teaching surface, canonical Guide message ownership, semantic context and Journey state');
 
+    currentHelp.focus();
+    const focusBeforeAccessibility = document.activeElement;
+    currentHelp.click();
+    await delay(20);
+
+    const visual = document.querySelector('[data-vex-human-projection-transient="true"]');
+    const nonvisual = document.querySelector('[data-vex-human-projection-nonvisual="true"]');
+    assert(visual?.getClientRects().length > 0, 'EFX01D-D4 visual same-cue projection is unavailable');
+    assert(nonvisual, 'EFX01D-D4 nonvisual same-cue projection is unavailable');
+    assert(visual.dataset.cueRef && visual.dataset.cueRef === nonvisual.dataset.cueRef, 'EFX01D-D4 visual/nonvisual cue identity diverged');
+    assert(visual.dataset.interactionFamily === nonvisual.dataset.interactionFamily, 'EFX01D-D4 visual/nonvisual interaction family diverged');
+    assert(visual.dataset.gestureRef === 'gesture.vexlife.node-drag', `EFX01D-D4 expected node-drag owner after D3 sequence, got ${visual.dataset.gestureRef || 'missing'}`);
+    assert(visual.dataset.actionRef === 'action.terrain.node.move', 'EFX01D-D4 node-drag action owner drifted');
+    assert(nonvisual.textContent === visual.textContent, 'EFX01D-D4 nonvisual content diverged from visual teaching content');
+    assert(nonvisual.getAttribute('role') === 'status' && nonvisual.getAttribute('aria-live') === 'polite' && nonvisual.getAttribute('aria-atomic') === 'true', 'EFX01D-D4 nonvisual projection is not a polite atomic status route');
+    assert((nonvisual.dataset.inputMethods || '').split(' ').includes('KEYBOARD_MOVE_MODE'), 'EFX01D-D4 did not consume accepted KEYBOARD_MOVE_MODE from the node-drag owner');
+    assert(!(nonvisual.dataset.gestureRef || '').startsWith('platform.') && !(nonvisual.dataset.actionRef || '').startsWith('platform.') && !(nonvisual.dataset.interactionRef || '').startsWith('platform.'), 'EFX01D-D4 minted platform-specific semantic identity');
+
+    const describedTarget = [...document.querySelectorAll('.e27-node')].find((node) => (node.getAttribute('aria-describedby') || '').split(/\s+/).includes(nonvisual.id));
+    assert(describedTarget?.getClientRects().length > 0, 'EFX01D-D4 exact rendered teaching target lacks a reversible aria-describedby relation');
+    const describedByDuring = describedTarget.getAttribute('aria-describedby');
+    const priorTokens = describedByDuring.split(/\s+/).filter((token) => token && token !== nonvisual.id);
+    assert(document.activeElement === focusBeforeAccessibility, 'EFX01D-D4 guidance stole focus while projecting keyboard/nonvisual equivalence');
+    assert(visual.style.animation === 'none' && visual.style.transition === 'none', 'EFX01D-D4 visual teaching introduced motion-only meaning');
+    assert(nonvisual.style.animation === 'none' && nonvisual.style.transition === 'none', 'EFX01D-D4 nonvisual teaching introduced motion-only meaning');
+    assert(JSON.stringify(app.navigation.semanticFrame()) === semanticBefore, 'EFX01D-D4 projection changed semantic current context');
+    assert(JSON.stringify(app.navigation.fullJourney()) === journeyBefore, 'EFX01D-D4 projection wrote Journey state');
+    assert(document.querySelectorAll('#guideMessages .guide-message').length === guideMessagesBefore + 6, 'EFX01D-D4 explicit Help did not preserve exactly one canonical user/Guide pair');
+    checks.push('EFX01D-D4 same InteractionCue identity/content is projected visually and nonvisually with accepted keyboard input metadata and exact target relation');
+    checks.push('EFX01D-D4 projection preserves focus, canonical Guide ownership, semantic context, Journey state and reduced-motion equivalence');
+
+    focusBeforeAccessibility.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape', bubbles:true, cancelable:true }));
+    await delay(20);
+    assert(!document.querySelector('[data-vex-human-projection-transient="true"]'), 'EFX01D-D4 Escape did not dismiss visual teaching');
+    assert(!document.querySelector('[data-vex-human-projection-nonvisual="true"]'), 'EFX01D-D4 Escape did not dismiss nonvisual teaching');
+    assert((describedTarget.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean).join(' ') === priorTokens.join(' '), 'EFX01D-D4 Escape did not restore the prior accessibility relation exactly');
+    assert(document.activeElement === focusBeforeAccessibility, 'EFX01D-D4 Escape dismissal moved focus');
+    assert(JSON.stringify(app.navigation.semanticFrame()) === semanticBefore, 'EFX01D-D4 Escape dismissal became semantic navigation');
+    assert(JSON.stringify(app.navigation.fullJourney()) === journeyBefore, 'EFX01D-D4 Escape dismissal wrote Journey state');
+    checks.push('EFX01D-D4 Escape dismisses guidance before parent navigation and restores relation/focus/current-context/Journey state');
+
     app.guide.setAttentionSource(null);
     if (!app.state.guideMinimized) document.querySelector('#guideMinimize').click();
-    assert(app.guide.currentPresenceState() === 'AMBIENT', 'EFX01D-D3 cleanup did not restore ambient minimized Vex for downstream suites');
-    checks.push('EFX01D-D3 owner-domain proof restores ambient minimized Vex and does not leak local projection state downstream');
+    assert(app.guide.currentPresenceState() === 'AMBIENT', 'EFX01D-D3/D4 cleanup did not restore ambient minimized Vex for downstream suites');
+    checks.push('EFX01D-D3/D4 owner-domain proof restores ambient minimized Vex and leaks no local projection state downstream');
 
     return Object.freeze({
       suiteRef:'suite.vexlife.browser.experience-guidance-dynamic-spatial/v1',
@@ -52,4 +93,4 @@ export const experienceGuidanceDynamicSpatialSuite = Object.freeze({
   }
 });
 
-// [VXG RealForever][EFX-01D][D3]
+// [VXG RealForever][EFX-01D][D3-D4]
