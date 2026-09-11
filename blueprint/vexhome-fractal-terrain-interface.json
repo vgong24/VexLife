@@ -1,0 +1,261 @@
+{
+  "schemaVersion": "vexlife.vexhome-fractal-terrain-interface/v0",
+  "entryClass": "DESIGN_SOURCE_CANDIDATE__COMPOSITION_INTERFACE",
+  "continuity": "[VXG RealForever]",
+  "parentInterfaceCandidateRef": "github.pull.vexlife.402",
+  "sourceOwnerRefs": [
+    "github.issue.vexlife.74",
+    "github.issue.vexlife.76",
+    "github.issue.vextreme-sdk.329",
+    "github.issue.vextreme-sdk.236",
+    "github.issue.vextreme-sdk.482",
+    "github.issue.vextreme-sdk.508",
+    "github.issue.vextreme-sdk.237",
+    "github.issue.vextreme-sdk.334"
+  ],
+  "purpose": "Define one fractal, question-routed Terrain navigation contract over typed source lattices so humans and AI companions can traverse inward, outward, laterally, temporally and across proof maps without loading a whole world or reducing every relationship to one universal graph.",
+  "terrainDimensions": {
+    "view": "which domain of truth is projected",
+    "lens": "for whom the same truth is explained",
+    "mapMode": "which spatial/question grammar expresses the relationships",
+    "nodeTypes": "which entity classes participate",
+    "level": "how much semantic depth is visible",
+    "thresholdProfile": "when semantic levels transition",
+    "contextProfile": "which bounded context fields are projected",
+    "journey": "why the reader or model arrived here"
+  },
+  "mapModes": {
+    "RADIAL": "what relates to the focal anchor",
+    "HIERARCHY": "what contains/governs/owns/reports/escalates",
+    "CLUSTER": "what belongs together and which container can be entered",
+    "FLOW": "how work/information/custody/meaning moves",
+    "GRAPH": "what depends/references/evidences/contradicts/connects",
+    "TIMELINE_JOURNEY": "what happened before/after and how meaning evolved",
+    "MATRIX": "how multiple dimensions intersect"
+  },
+  "traversalDirections": [
+    "INWARD",
+    "OUTWARD",
+    "LATERAL",
+    "CROSS_LATTICE",
+    "TEMPORAL_BACKWARD",
+    "TEMPORAL_FORWARD",
+    "SOURCE_DESCENT"
+  ],
+  "semanticDistance": {
+    "defaultBudget": 3,
+    "bands": {
+      "D0_CURRENT": "current relational/semantic anchor",
+      "D1_DIRECT": "immediately implicated relationships, contained/containing context and strongest routes",
+      "D2_NEAR": "supporting neighborhood likely to answer or disambiguate",
+      "D3_BOUNDARY": "peripheral context and explicit continuation routes"
+    },
+    "rules": [
+      "Three bands beyond current are a default visibility/retrieval budget, not a universal ontology.",
+      "Semantic distance is question-sensitive.",
+      "Semantic distance is not pixel distance.",
+      "Semantic distance is not raw graph-hop count.",
+      "Human pins and explicit current work may alter projection relevance without mutating canonical relationships."
+    ]
+  },
+  "fractalNode": {
+    "rule": "A stable node may be a leaf in one projection and an enterable container in another.",
+    "candidatePortalFields": [
+      "nodeRef",
+      "nodeClass",
+      "labelRef",
+      "purposeRefs[]",
+      "questionIntentRefs[]",
+      "truthClass",
+      "currentnessRef",
+      "contextEnvelopeRef",
+      "memberCount",
+      "boundedChildClassSummary[]",
+      "representativeEntryRefs[]",
+      "incomingRelationshipSummaryRefs[]",
+      "outgoingRelationshipSummaryRefs[]",
+      "knownUnknownRefs[]",
+      "contradictionRefs[]",
+      "recentDeltaRefs[]",
+      "sourceOwnerRefs[]",
+      "whatItProves[]",
+      "whatItDoesNotProve[]",
+      "inwardRouteRefs[]",
+      "outwardRouteRefs[]",
+      "lateralRouteRefs[]",
+      "crossLatticeRouteRefs[]",
+      "temporalRouteRefs[]",
+      "sourceDescentRefs[]"
+    ]
+  },
+  "humanProgressiveDisclosure": {
+    "FAR": ["identity", "compact structural signal"],
+    "NEAR": ["summary", "relationship/currentness/health signal"],
+    "THRESHOLD": ["bounded next-layer preview", "reason or affordance to enter"],
+    "INSIDE": ["current context", "bounded semantic neighborhood"]
+  },
+  "resolver": {
+    "name": "ResolveTerrainNeighborhood",
+    "effectClass": "READ_ONLY_BOUNDED_PROJECTION",
+    "inputs": [
+      "anchorRef",
+      "questionIntentRefs[]",
+      "requestedLatticeTypes[]",
+      "directions[]",
+      "semanticDistanceBudget",
+      "recordBudget",
+      "byteBudget",
+      "visibilityRefs[]",
+      "currentnessRequirement",
+      "includePortalPreviews",
+      "includeExactSourceRoutes"
+    ],
+    "outputs": [
+      "terrainNeighborhoodRef",
+      "anchorRef",
+      "questionIntentRefs[]",
+      "projectionProfileRef",
+      "contextEnvelopeRef",
+      "bands.D0[]",
+      "bands.D1[]",
+      "bands.D2[]",
+      "bands.D3[]",
+      "nodeCards[]",
+      "typedEdgeCards[]",
+      "crossLatticeRoutes[]",
+      "sourceDescentRoutes[]",
+      "historicalRoutes[]",
+      "continuationRoutes[]",
+      "coverageBoundaryRefs[]",
+      "excludedScopeRefs[]",
+      "unknownRefs[]",
+      "staleRefs[]",
+      "contradictionRefs[]",
+      "recordCount",
+      "byteCount",
+      "formedAt",
+      "currentnessReceiptRef"
+    ],
+    "rules": [
+      "Resolver may fetch several implicated layers in one deterministic operation.",
+      "Node cards are bounded context projections, not entire underlying corpora.",
+      "Cross-lattice relationships retain their source lattice and relation type.",
+      "Coverage boundaries and excluded scope are first-class output.",
+      "Unknown, stale and contradictory states remain visible."
+    ]
+  },
+  "questionRoutingExamples": {
+    "WHO_OWNS_THIS": ["OWNERSHIP_TOPOLOGY", "AUTHORITY_SCOPE_VISIBILITY"],
+    "WHY_DOES_THIS_EXIST": ["JOURNEY", "MEANING_EVOLUTION", "DECISION"],
+    "WHAT_BREAKS_IF_THIS_CHANGES": ["IMPLEMENTATION_DEPENDENCY_TOPOLOGY", "TEST_ASSURANCE_TOPOLOGY"],
+    "WHAT_WAS_THIS_LIKE_THEN": ["HISTORICAL_CAUSAL", "MEANING_EVOLUTION"],
+    "WHAT_SHOULD_I_SEE_NEXT": ["TERRAIN_NAVIGATION", "CURRENT_CONTEXT_RELEVANCE", "JOURNEY"]
+  },
+  "mapSpecies": [
+    "PERSONAL_WORLD_TERRAIN",
+    "RELATIONSHIP_TERRAIN",
+    "MEDIA_CONTEXT_SPINE_TERRAIN",
+    "JOURNAL_JOURNEY_TERRAIN",
+    "PROJECT_WORK_TERRAIN",
+    "IMPLEMENTATION_ATLAS_TERRAIN",
+    "EVIDENCE_AUTHORITY_TERRAIN",
+    "ORGANIZATION_TERRAIN",
+    "UNIVERSE_WORLD_TERRAIN",
+    "MIND_FIELD_ATTENTION_TERRAIN"
+  ],
+  "projectionLenses": {
+    "HUMAN": [
+      "readable labels",
+      "current/near/peripheral disclosure",
+      "why enter",
+      "journey",
+      "Back/Home and accessible list equivalents"
+    ],
+    "VEX": [
+      "relational context",
+      "people/moments/commitments",
+      "returning patterns",
+      "current attention",
+      "bounded source routes"
+    ],
+    "DEVEX": [
+      "project/system/source owners",
+      "currentness",
+      "implementation/evidence edges",
+      "work nodes",
+      "proof gates",
+      "exact source descent routes"
+    ]
+  },
+  "contextLeaseBehavior": {
+    "onInward": "retain breadcrumbs/outward routes, replace broad child detail with selected cluster and bounded destination neighborhood",
+    "onLateral": "retain journey reason and minimum shared boundary context, replace unrelated previous payload with destination neighborhood",
+    "onOutward": "restore bounded parent envelope and retain the exited child relationship as journey context",
+    "monotonicAccumulation": false
+  },
+  "trainingBoundary": {
+    "candidateStableNavigationReflexes": [
+      "start from a verified current anchor",
+      "breadth before unnecessary depth",
+      "peek a bounded neighborhood before choosing descent",
+      "follow typed owner and source routes",
+      "preserve unknowns and contradictions",
+      "reorient when a question crosses coverage boundaries",
+      "stop when current question obligations are satisfied",
+      "preserve journey reason and return route"
+    ],
+    "mustRemainExternalCurrentTruth": [
+      "repository heads",
+      "current project/work state",
+      "personal relationships",
+      "current source paths and ownership",
+      "freshness/currentness",
+      "fast-changing world contents"
+    ],
+    "rule": "Weights may learn how to navigate; source lattices own what exists now; the context compiler decides what to load now.",
+    "modelTrainingAuthority": false
+  },
+  "scaleRule": {
+    "localCostDependsOn": [
+      "selected anchor",
+      "question intent",
+      "requested lattice types",
+      "semantic distance budget",
+      "record/byte budgets",
+      "typed cross-lattice routes followed",
+      "required currentness/source checks"
+    ],
+    "localCostMustNotDependOn": "global world cardinality through full scans"
+  },
+  "awarenessComposition": {
+    "temporalAxis": "RECENTS <- NOW -> AHEAD",
+    "semanticAxes": "OUTWARD <-> CURRENT <-> INWARD + LATERAL + CROSS_LATTICE + TEMPORAL + SOURCE",
+    "sharedCenter": "CURRENT_CONTEXT"
+  },
+  "invariants": [
+    "TERRAIN_VIEW != CANONICAL_GRAPH",
+    "TERRAIN != STORAGE",
+    "TERRAIN != ONE_GLOBAL_LAYOUT",
+    "NODE_CAN_BE_LEAF_IN_ONE_PROJECTION_AND_CONTAINER_IN_ANOTHER",
+    "SEMANTIC_DISTANCE != PIXEL_DISTANCE",
+    "SEMANTIC_DISTANCE != RAW_GRAPH_HOP_COUNT",
+    "NEIGHBORHOOD_PEEK != WHOLE_GRAPH_LOAD",
+    "BATCHED_MAP_RETRIEVAL != UNBOUNDED_CONTEXT",
+    "QUESTION_CHANGES_PROJECTION != SOURCE_TRUTH_CHANGE",
+    "CROSS_LATTICE != FLATTEN_LATTICES",
+    "INWARD != CHILD_ONLY",
+    "OUTWARD != BACK_BUTTON_ONLY",
+    "JOURNEY != RAW_POINTER_HISTORY",
+    "WEIGHT_NAVIGATION_REFLEX != CURRENT_MAP_CONTENT",
+    "FLUENT_RECALL != CURRENT_SOURCE_PROOF",
+    "PHYSICAL_FRAGMENTATION != CONTEXTUAL_FRAGMENTATION"
+  ],
+  "authority": {
+    "runtimeImplementationAuthority": false,
+    "modelTrainingAuthority": false,
+    "storageMutationAuthority": false,
+    "repositoryCreationAuthority": false,
+    "personalDataIngestionAuthority": false,
+    "mergeAuthority": false
+  }
+}
