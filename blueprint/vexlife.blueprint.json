@@ -40,6 +40,9 @@
       "blueprint/fragments/screens/guide-overlay.json",
       "blueprint/fragments/screens/cdr-s5-closed-alpha.json"
     ],
+    "registrationExtensions": [
+      "blueprint/purpose-workspace/registration.json"
+    ],
     "securityAccessPreview": "blueprint/security-access-preview-registry.json",
     "homeBridge": "blueprint/home-bridge-registry.json",
     "androidRemoteVessel": "blueprint/android-remote-vessel-registry.json"
