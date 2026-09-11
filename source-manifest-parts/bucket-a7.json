@@ -11,8 +11,8 @@
     {
       "path": "test/companion-navigation.test.mjs",
       "mode": "100644",
-      "bytes": 16070,
-      "sha256": "e075dae20942ee458566152cad9b782f423d99a7e4a0bfdc37636830d53b0015"
+      "bytes": 16256,
+      "sha256": "c9069bb729ec2a16f46829d993480bd4d394da7662006fb794132bd4797e4d1e"
     },
     {
       "path": "test/e27-convergence.test.mjs",
