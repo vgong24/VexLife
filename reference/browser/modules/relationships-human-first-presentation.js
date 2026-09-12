@@ -154,12 +154,28 @@ export function installRelationshipsHumanFirstPresentation({ root = document.que
   };
 
   const observer = new MutationObserver(apply);
-  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  observer.observe(root, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ['hidden']
+  });
+
+  const languageObserver = new MutationObserver(apply);
+  languageObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['lang']
+  });
+
   applyRelationshipsHumanFirstPresentation();
 
   return Object.freeze({
     installed: true,
-    disconnect() { observer.disconnect(); }
+    disconnect() {
+      observer.disconnect();
+      languageObserver.disconnect();
+    }
   });
 }
 
