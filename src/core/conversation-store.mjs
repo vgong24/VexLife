@@ -254,11 +254,109 @@ function readEvent(paths, messageRef) {
   return validateEvent(readJson(file));
 }
 
+function resolveHeadEvent(paths, head) {
+  const event = readEvent(paths, head.messageRef);
+  if (
+    !event
+    || event.channelRef !== head.channelRef
+    || event.sequence !== head.sequence
+    || event.eventSha256 !== head.eventSha256
+  ) fail('CONVERSATION_CORRUPT', 'conversation head does not resolve to the exact current event');
+  return event;
+}
+
+function readPriorEvent(paths, cursor, channelRef) {
+  if (cursor.priorMessageRef == null) {
+    if (cursor.priorEventSha256 != null) fail('CONVERSATION_CORRUPT', 'root conversation event carries an impossible prior hash');
+    return null;
+  }
+  const prior = readEvent(paths, cursor.priorMessageRef);
+  if (!prior) fail('CONVERSATION_CORRUPT', 'conversation lineage references a missing prior event');
+  if (prior.channelRef !== channelRef) fail('CONVERSATION_CORRUPT', 'conversation lineage crossed channel identity');
+  if (prior.sequence !== cursor.sequence - 1) fail('CONVERSATION_CORRUPT', 'conversation lineage sequence is not contiguous');
+  if (prior.eventSha256 !== cursor.priorEventSha256) fail('CONVERSATION_CORRUPT', 'conversation prior event hash does not match lineage');
+  return prior;
+}
+
+function currentLineageContains(paths, head, expected) {
+  let cursor = resolveHeadEvent(paths, head);
+  while (cursor) {
+    if (cursor.sequence === expected.sequence) {
+      return cursor.messageRef === expected.messageRef && cursor.eventSha256 === expected.eventSha256;
+    }
+    if (cursor.sequence < expected.sequence) return false;
+    cursor = readPriorEvent(paths, cursor, head.channelRef);
+  }
+  return false;
+}
+
 function sameCanonicalMessage(event, message) {
   const fields = ['messageRef','spaceRef','threadRef','channelRef','speakerRef','membershipSnapshotRef','membershipGeneration','sequence','content','contentHash','createdAt'];
   return fields.every((field) => event[field] === message[field])
     && JSON.stringify(event.recipientRefs) === JSON.stringify(message.recipientRefs)
     && JSON.stringify(event.witnessRefs) === JSON.stringify(message.witnessRefs);
+}
+
+function commitEventHead({ paths, event, instanceRef, committedAt, faults = {} }) {
+  const nextHead = hash({
+    schemaVersion: CONVERSATION_STORE_HEAD_SCHEMA,
+    channelRef: event.channelRef,
+    messageRef: event.messageRef,
+    sequence: event.sequence,
+    eventSha256: event.eventSha256,
+    updatedAt: committedAt
+  }, 'headSha256');
+
+  atomicHead(paths, nextHead, faults);
+  if (faults.failAfterHeadRenameBeforeReceipt === true) fail('CONVERSATION_RECEIPT_NOT_EMITTED', 'simulated failure after conversation head rename');
+
+  const receipt = hash({
+    schemaVersion: CONVERSATION_STORE_RECEIPT_SCHEMA,
+    channelRef: event.channelRef,
+    messageRef: event.messageRef,
+    sequence: event.sequence,
+    eventSha256: event.eventSha256,
+    headSha256: nextHead.headSha256,
+    instanceRef: ref(instanceRef, 'instanceRef'),
+    committedAt,
+    durable: true
+  }, 'receiptSha256');
+  writeExclusive(paths.home, under(paths.home, path.join(paths.receipts, `${receipt.receiptSha256}.json`)), receipt);
+
+  return Object.freeze({ state: 'APPENDED', event, head: nextHead, receipt });
+}
+
+function reconcileExistingEvent({ paths, existing, canonical, instanceRef, committedAt, faults }) {
+  if (!sameCanonicalMessage(existing, canonical)) fail('CONVERSATION_MESSAGE_CONFLICT', 'messageRef already exists with different canonical content');
+  const head = currentHead(paths);
+  if (!head) {
+    if (existing.sequence !== 0 || existing.priorMessageRef != null || existing.priorEventSha256 != null) {
+      fail('CONVERSATION_CORRUPT', 'orphan conversation event cannot establish a root head');
+    }
+    return commitEventHead({ paths, event: existing, instanceRef, committedAt, faults });
+  }
+
+  resolveHeadEvent(paths, head);
+  if (head.messageRef === existing.messageRef) {
+    if (head.eventSha256 !== existing.eventSha256 || head.sequence !== existing.sequence || head.channelRef !== existing.channelRef) {
+      fail('CONVERSATION_CORRUPT', 'current head conflicts with the existing message event');
+    }
+    return Object.freeze({ state: 'IDEMPOTENT_CURRENT', event: existing, head });
+  }
+
+  if (existing.sequence === head.sequence + 1) {
+    if (
+      existing.channelRef !== head.channelRef
+      || existing.priorMessageRef !== head.messageRef
+      || existing.priorEventSha256 !== head.eventSha256
+    ) fail('CONVERSATION_CORRUPT', 'orphan conversation event does not extend the exact current head');
+    return commitEventHead({ paths, event: existing, instanceRef, committedAt, faults });
+  }
+
+  if (existing.sequence <= head.sequence && currentLineageContains(paths, head, existing)) {
+    return Object.freeze({ state: 'IDEMPOTENT_CURRENT', event: existing, head });
+  }
+  fail('CONVERSATION_CORRUPT', 'existing message event is not reachable from the exact current lineage');
 }
 
 export function appendConversationMessage({ home, message, instanceRef, observedAt = message?.createdAt, faults = {} } = {}) {
@@ -267,21 +365,10 @@ export function appendConversationMessage({ home, message, instanceRef, observed
   const at = time(observedAt, 'observedAt');
   return withWriter(paths, instanceRef, at, () => {
     const existing = readEvent(paths, canonical.messageRef);
-    if (existing) {
-      if (!sameCanonicalMessage(existing, canonical)) fail('CONVERSATION_MESSAGE_CONFLICT', 'messageRef already exists with different canonical content');
-      return Object.freeze({ state: 'IDEMPOTENT_CURRENT', event: existing, head: currentHead(paths) });
-    }
+    if (existing) return reconcileExistingEvent({ paths, existing, canonical, instanceRef, committedAt: at, faults });
 
     const head = currentHead(paths);
-    if (head) {
-      const headEvent = readEvent(paths, head.messageRef);
-      if (
-        !headEvent
-        || headEvent.channelRef !== canonical.channelRef
-        || headEvent.sequence !== head.sequence
-        || headEvent.eventSha256 !== head.eventSha256
-      ) fail('CONVERSATION_CORRUPT', 'conversation head does not resolve to the exact current event');
-    }
+    if (head) resolveHeadEvent(paths, head);
     const expectedSequence = head ? head.sequence + 1 : 0;
     if (canonical.sequence !== expectedSequence) fail('CONVERSATION_STALE', `message sequence ${canonical.sequence} does not equal expected ${expectedSequence}`);
 
@@ -300,32 +387,7 @@ export function appendConversationMessage({ home, message, instanceRef, observed
       if (!stored || stored.eventSha256 !== event.eventSha256) fail('CONVERSATION_CORRUPT', 'message address collision');
     }
 
-    const nextHead = hash({
-      schemaVersion: CONVERSATION_STORE_HEAD_SCHEMA,
-      channelRef: canonical.channelRef,
-      messageRef: canonical.messageRef,
-      sequence: canonical.sequence,
-      eventSha256: event.eventSha256,
-      updatedAt: at
-    }, 'headSha256');
-
-    atomicHead(paths, nextHead, faults);
-    if (faults.failAfterHeadRenameBeforeReceipt === true) fail('CONVERSATION_RECEIPT_NOT_EMITTED', 'simulated failure after conversation head rename');
-
-    const receipt = hash({
-      schemaVersion: CONVERSATION_STORE_RECEIPT_SCHEMA,
-      channelRef: canonical.channelRef,
-      messageRef: canonical.messageRef,
-      sequence: canonical.sequence,
-      eventSha256: event.eventSha256,
-      headSha256: nextHead.headSha256,
-      instanceRef: ref(instanceRef, 'instanceRef'),
-      committedAt: at,
-      durable: true
-    }, 'receiptSha256');
-    writeExclusive(paths.home, under(paths.home, path.join(paths.receipts, `${receipt.receiptSha256}.json`)), receipt);
-
-    return Object.freeze({ state: 'APPENDED', event, head: nextHead, receipt });
+    return commitEventHead({ paths, event, instanceRef, committedAt: at, faults });
   });
 }
 
@@ -342,23 +404,10 @@ export function readConversationChannel({ home, channelRef, limit = 100 } = {}) 
   if (!head) return Object.freeze({ state: 'EMPTY', head: null, messages: Object.freeze([]), truncated: false });
 
   const reversed = [];
-  let cursor = readEvent(paths, head.messageRef);
-  if (!cursor || cursor.eventSha256 !== head.eventSha256 || cursor.sequence !== head.sequence || cursor.channelRef !== head.channelRef) {
-    fail('CONVERSATION_CORRUPT', 'conversation head does not resolve to the exact current event');
-  }
+  let cursor = resolveHeadEvent(paths, head);
   while (cursor && reversed.length < limit) {
     reversed.push(cursor);
-    if (cursor.priorMessageRef == null) {
-      if (cursor.priorEventSha256 != null) fail('CONVERSATION_CORRUPT', 'root conversation event carries an impossible prior hash');
-      cursor = null;
-      break;
-    }
-    const prior = readEvent(paths, cursor.priorMessageRef);
-    if (!prior) fail('CONVERSATION_CORRUPT', 'conversation lineage references a missing prior event');
-    if (prior.channelRef !== head.channelRef) fail('CONVERSATION_CORRUPT', 'conversation lineage crossed channel identity');
-    if (prior.sequence !== cursor.sequence - 1) fail('CONVERSATION_CORRUPT', 'conversation lineage sequence is not contiguous');
-    if (prior.eventSha256 !== cursor.priorEventSha256) fail('CONVERSATION_CORRUPT', 'conversation prior event hash does not match lineage');
-    cursor = prior;
+    cursor = readPriorEvent(paths, cursor, head.channelRef);
   }
   const truncated = cursor != null;
   const messages = Object.freeze(reversed.reverse());

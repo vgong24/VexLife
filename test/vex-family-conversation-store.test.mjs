@@ -129,6 +129,19 @@ test('VFS-02 exact retry is idempotent and conflicting messageRef fails closed',
   } finally { fx.cleanup(); }
 });
 
+test('VFS-02 historical retry remains idempotent only through the verified current lineage', () => {
+  const fx = fixture();
+  try {
+    appendConversationMessage({ home: fx.home, message: m0(), instanceRef });
+    appendConversationMessage({ home: fx.home, message: m1(), instanceRef });
+    appendConversationMessage({ home: fx.home, message: m2(), instanceRef });
+    const duplicate = appendConversationMessage({ home: fx.home, message: m0(), instanceRef, observedAt: t2 });
+    assert.equal(duplicate.state, 'IDEMPOTENT_CURRENT');
+    assert.equal(duplicate.head.messageRef, 'message.family.alpha.002');
+    assert.equal(readConversationChannel({ home: fx.home, channelRef }).messages.length, 3);
+  } finally { fx.cleanup(); }
+});
+
 test('VFS-02 wrong sequence/stale append fails without advancing head', () => {
   const fx = fixture();
   try {
@@ -140,12 +153,34 @@ test('VFS-02 wrong sequence/stale append fails without advancing head', () => {
   } finally { fx.cleanup(); }
 });
 
-test('VFS-05 fail-before-head does not advance current and leaves no writer/temp residue', () => {
+test('VFS-05 fail-before-root-head exact retry commits the verified orphan event without residue', () => {
   const fx = fixture();
   try {
     assert.throws(() => appendConversationMessage({ home: fx.home, message: m0(), instanceRef, faults: { failBeforeHeadRename: true } }),
       (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_HEAD_NOT_COMMITTED');
     assert.equal(readConversationChannel({ home: fx.home, channelRef }).state, 'EMPTY');
+    assert.deepEqual(residue(fx.home), []);
+
+    const recovered = appendConversationMessage({ home: fx.home, message: m0(), instanceRef, observedAt: t1 });
+    assert.equal(recovered.state, 'APPENDED');
+    assert.equal(recovered.head.messageRef, 'message.family.alpha.000');
+    assert.deepEqual(readConversationChannel({ home: fx.home, channelRef }).messages.map((event) => event.messageRef), ['message.family.alpha.000']);
+    assert.deepEqual(residue(fx.home), []);
+  } finally { fx.cleanup(); }
+});
+
+test('VFS-05 fail-before-successor-head exact retry advances only matching current lineage', () => {
+  const fx = fixture();
+  try {
+    appendConversationMessage({ home: fx.home, message: m0(), instanceRef });
+    assert.throws(() => appendConversationMessage({ home: fx.home, message: m1(), instanceRef, faults: { failBeforeHeadRename: true } }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_HEAD_NOT_COMMITTED');
+    assert.deepEqual(readConversationChannel({ home: fx.home, channelRef }).messages.map((event) => event.messageRef), ['message.family.alpha.000']);
+
+    const recovered = appendConversationMessage({ home: fx.home, message: m1(), instanceRef, observedAt: t2 });
+    assert.equal(recovered.state, 'APPENDED');
+    assert.equal(recovered.head.sequence, 1);
+    assert.deepEqual(readConversationChannel({ home: fx.home, channelRef }).messages.map((event) => event.messageRef), ['message.family.alpha.000','message.family.alpha.001']);
     assert.deepEqual(residue(fx.home), []);
   } finally { fx.cleanup(); }
 });
