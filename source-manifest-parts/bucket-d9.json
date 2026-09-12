@@ -5,8 +5,8 @@
     {
       "path": "test/browser-relationships-persistence-http-client.test.mjs",
       "mode": "100644",
-      "bytes": 11083,
-      "sha256": "36e03645edf0fe4856f5e2268e417cfa322dded8175520d8820575a19d1fe982"
+      "bytes": 15445,
+      "sha256": "ece608eaf5f275be7a88b9ce8109b1149e6dfe5c3141b4c3f4079149e73931b7"
     }
   ]
 }

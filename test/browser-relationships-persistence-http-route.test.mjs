@@ -7,9 +7,11 @@ import { fileURLToPath } from 'node:url';
 
 import {
   BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH,
+  BROWSER_RELATIONSHIPS_PERSISTENCE_LIST_MAX,
   BROWSER_RELATIONSHIPS_PERSISTENCE_MAX_BODY_BYTES,
   createVexLifeBrowserServer
 } from '../scripts/serve-browser.mjs';
+import { BrowserRelationshipsCdrObservationBridgeError } from '../src/core/browser-relationships-cdr-observation-bridge.mjs';
 import { createRelationshipsPersistenceStateMachine } from '../reference/browser/modules/relationships-controller.js';
 import { readRelationship } from '../src/core/relationships-store.mjs';
 
@@ -65,6 +67,40 @@ function binding() {
   });
 }
 
+function ownerBinding(patch = {}) {
+  const value = binding();
+  return Object.freeze({
+    localParticipantRef: value.localParticipantRef,
+    localStateRootRef: value.localStateRootRef,
+    ...patch
+  });
+}
+
+function boundObservationBridge(patch = {}) {
+  const value = binding();
+  return Object.freeze({
+    read() {
+      return Object.freeze({
+        schemaVersion: 'vexlife.browser-relationships-cdr-persistence-binding/v1',
+        state: 'BOUND_CURRENT',
+        binding: Object.freeze({ ...value, ...patch })
+      });
+    }
+  });
+}
+
+function unboundObservationBridge() {
+  return Object.freeze({
+    read() {
+      throw new BrowserRelationshipsCdrObservationBridgeError(
+        'RELATIONSHIPS_CDR_OBSERVATION_UNBOUND',
+        'Relationships CDR observation is not bound',
+        409
+      );
+    }
+  });
+}
+
 function saveInput(localRelationshipClass = 'FRIEND') {
   const value = binding();
   return Object.freeze({
@@ -83,12 +119,12 @@ function saveInput(localRelationshipClass = 'FRIEND') {
 }
 
 function sameOriginPersistenceBridge(baseUrl, value) {
-  const ownerBinding = Object.freeze({
+  const owner = Object.freeze({
     localParticipantRef: value.localParticipantRef,
     localStateRootRef: value.localStateRootRef
   });
   return Object.freeze({
-    ownerBinding,
+    ownerBinding: owner,
     prepare(input) {
       return Object.freeze({
         state: 'PREPARED_NO_EFFECT',
@@ -100,7 +136,7 @@ function sameOriginPersistenceBridge(baseUrl, value) {
       const response = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ localOwnerBinding: ownerBinding, input: prepared.input })
+        body: JSON.stringify({ localOwnerBinding: owner, input: prepared.input })
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -121,7 +157,8 @@ test('explicit-binding visible persistence crosses the same-origin route and rea
     await withServer({
       staticRoot: repoRoot,
       companionBridge: fakeCompanion(),
-      relationshipsPersistenceHome: vexHome
+      relationshipsPersistenceHome: vexHome,
+      relationshipsCdrObservationBridge: boundObservationBridge()
     }, async (baseUrl) => {
       const persistence = createRelationshipsPersistenceStateMachine({
         persistenceBridge: sameOriginPersistenceBridge(baseUrl, persistenceBinding),
@@ -163,14 +200,15 @@ test('persistence route enforces method, media type, malformed JSON and body bou
       staticRoot: repoRoot,
       companionBridge: fakeCompanion(),
       relationshipsPersistenceHome: vexHome,
+      relationshipsCdrObservationBridge: unboundObservationBridge(),
       relationshipsPersistenceBridgeFactory() {
         factoryCalls += 1;
         throw new Error('factory must not run for request-form rejection');
       }
     }, async (baseUrl) => {
-      const get = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`);
-      assert.equal(get.status, 405);
-      assert.equal(get.headers.get('allow'), 'POST');
+      const put = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`, { method: 'PUT' });
+      assert.equal(put.status, 405);
+      assert.equal(put.headers.get('allow'), 'GET, POST');
 
       const wrongType = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`, {
         method: 'POST',
@@ -209,7 +247,8 @@ test('route rejects inferred local identity fields instead of deriving participa
     await withServer({
       staticRoot: repoRoot,
       companionBridge: fakeCompanion(),
-      relationshipsPersistenceHome: vexHome
+      relationshipsPersistenceHome: vexHome,
+      relationshipsCdrObservationBridge: boundObservationBridge()
     }, async (baseUrl) => {
       const value = binding();
       const response = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`, {
@@ -242,6 +281,7 @@ test('unknown persistence host failure is normalized without leaking internal ca
       staticRoot: repoRoot,
       companionBridge: fakeCompanion(),
       relationshipsPersistenceHome: vexHome,
+      relationshipsCdrObservationBridge: boundObservationBridge(),
       relationshipsPersistenceBridgeFactory() {
         throw new Error('private local path and implementation detail');
       }
@@ -263,6 +303,96 @@ test('unknown persistence host failure is normalized without leaking internal ca
       assert.equal(payload.failureCode, 'RELATIONSHIPS_PERSISTENCE_SAVE_FAILED');
       assert.equal(payload.message, 'Relationships persistence save failed safely');
       assert.equal(JSON.stringify(payload).includes('private local path'), false);
+    });
+  } finally {
+    fs.rmSync(vexHome, { recursive: true, force: true });
+  }
+});
+
+test('UX03-ROUTE-00 rightful GET is read-only, empty before save, and returns exactly one durable non-tombstoned row after save', async () => {
+  const vexHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-relationships-list-route-'));
+  try {
+    await withServer({
+      staticRoot: repoRoot,
+      companionBridge: fakeCompanion(),
+      relationshipsPersistenceHome: vexHome,
+      relationshipsCdrObservationBridge: boundObservationBridge()
+    }, async (baseUrl) => {
+      const before = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`, { method: 'GET' });
+      assert.equal(before.status, 200);
+      const empty = await before.json();
+      assert.equal(empty.state, 'CURRENT_LIST');
+      assert.equal(empty.totalCount, 0);
+      assert.equal(empty.returnedCount, 0);
+      assert.deepEqual(empty.relationships, []);
+      assert.equal(fs.existsSync(path.join(vexHome, 'relationships')), false, 'GET must not create durable relationship layout');
+
+      const save = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ localOwnerBinding: ownerBinding(), input: saveInput() })
+      });
+      assert.equal(save.status, 200);
+      assert.equal((await save.json()).state, 'SAVED');
+
+      const after = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`, { method: 'GET' });
+      assert.equal(after.status, 200);
+      const listed = await after.json();
+      assert.equal(listed.totalCount, 1);
+      assert.equal(listed.returnedCount, 1);
+      assert.equal(listed.truncated, false);
+      assert.equal(listed.relationships[0].counterpartParticipantRef, binding().counterpartParticipantRef);
+      assert.equal(listed.relationships[0].localRelationshipClass, 'FRIEND');
+      assert.equal(listed.relationships[0].status, 'ACTIVE');
+      assert.equal(listed.relationships[0].tombstoned, false);
+      assert.ok(BROWSER_RELATIONSHIPS_PERSISTENCE_LIST_MAX >= listed.returnedCount);
+    });
+  } finally {
+    fs.rmSync(vexHome, { recursive: true, force: true });
+  }
+});
+
+test('UX03-ROUTE-01 unbound owner is held and wrong state-root gets an isolated empty list instead of cross-profile data', async () => {
+  const vexHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-relationships-list-isolation-'));
+  try {
+    await withServer({
+      staticRoot: repoRoot,
+      companionBridge: fakeCompanion(),
+      relationshipsPersistenceHome: vexHome,
+      relationshipsCdrObservationBridge: boundObservationBridge()
+    }, async (baseUrl) => {
+      const save = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ localOwnerBinding: ownerBinding(), input: saveInput() })
+      });
+      assert.equal(save.status, 200);
+    });
+
+    await withServer({
+      staticRoot: repoRoot,
+      companionBridge: fakeCompanion(),
+      relationshipsPersistenceHome: vexHome,
+      relationshipsCdrObservationBridge: unboundObservationBridge()
+    }, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`);
+      assert.equal(response.status, 409);
+      const payload = await response.json();
+      assert.equal(payload.state, 'HELD_BINDING_REQUIRED');
+      assert.equal(payload.failureCode, 'RELATIONSHIPS_CDR_OBSERVATION_UNBOUND');
+    });
+
+    await withServer({
+      staticRoot: repoRoot,
+      companionBridge: fakeCompanion(),
+      relationshipsPersistenceHome: vexHome,
+      relationshipsCdrObservationBridge: boundObservationBridge({ localStateRootRef: 'state.relationships.other' })
+    }, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH}`);
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.totalCount, 0);
+      assert.deepEqual(payload.relationships, []);
     });
   } finally {
     fs.rmSync(vexHome, { recursive: true, force: true });
