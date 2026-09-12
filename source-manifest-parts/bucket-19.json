@@ -35,8 +35,8 @@
     {
       "path": "test/experience-gallery.test.mjs",
       "mode": "100644",
-      "bytes": 7426,
-      "sha256": "389a7d8208278c344f42b40316c6ff624ad8e9cdc04b96360f340a1414d77d2b"
+      "bytes": 8040,
+      "sha256": "286141411325cf03ce4d45f04b82d4f0ebec88fd06e47f91dcf1a63e4abcaf12"
     },
     {
       "path": "test/relationships-core.test.mjs",
