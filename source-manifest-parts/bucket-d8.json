@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 28379,
       "sha256": "37810386a537b31b3ebbbf36948fbaa4650b665677347741ab5fc80ea8dd1bbf"
+    },
+    {
+      "path": "test/relationships-runtime-status-visible.test.mjs",
+      "mode": "100644",
+      "bytes": 11901,
+      "sha256": "eb722f5773d2fb61a53906165c084379e0755605b9f935eb2afcdc3d1a404701"
     }
   ]
 }
