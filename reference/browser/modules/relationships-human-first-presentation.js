@@ -150,7 +150,7 @@ export function applyRelationshipsHumanFirstPresentation() {
   });
 }
 
-export function installRelationshipsHumanFirstPresentation({ root = document.querySelector('#contextSurface') } = {}) {
+export function installRelationshipsHumanFirstPresentation({ root = document.querySelector('#app') } = {}) {
   if (!root) return Object.freeze({ installed: false, disconnect() {} });
 
   const apply = () => {
