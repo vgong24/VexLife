@@ -394,7 +394,13 @@ export function appendConversationMessage({ home, message, instanceRef, observed
 export function readConversationMessage({ home, channelRef, messageRef } = {}) {
   const paths = pathsFor(home, channelRef);
   const event = readEvent(paths, messageRef);
-  return Object.freeze({ state: event ? 'CURRENT' : 'NOT_FOUND', event });
+  const head = currentHead(paths);
+  if (head) resolveHeadEvent(paths, head);
+  if (!event) return Object.freeze({ state: 'NOT_FOUND', event });
+  if (!head || !currentLineageContains(paths, head, event)) {
+    fail('CONVERSATION_CORRUPT', 'addressed conversation event is not reachable from the exact current lineage');
+  }
+  return Object.freeze({ state: 'CURRENT', event });
 }
 
 export function readConversationChannel({ home, channelRef, limit = 100 } = {}) {

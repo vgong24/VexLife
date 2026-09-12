@@ -159,6 +159,8 @@ test('VFS-05 fail-before-root-head exact retry commits the verified orphan event
     assert.throws(() => appendConversationMessage({ home: fx.home, message: m0(), instanceRef, faults: { failBeforeHeadRename: true } }),
       (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_HEAD_NOT_COMMITTED');
     assert.equal(readConversationChannel({ home: fx.home, channelRef }).state, 'EMPTY');
+    assert.throws(() => readConversationMessage({ home: fx.home, channelRef, messageRef: 'message.family.alpha.000' }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_CORRUPT');
     assert.deepEqual(residue(fx.home), []);
 
     const recovered = appendConversationMessage({ home: fx.home, message: m0(), instanceRef, observedAt: t1 });
@@ -176,6 +178,8 @@ test('VFS-05 fail-before-successor-head exact retry advances only matching curre
     assert.throws(() => appendConversationMessage({ home: fx.home, message: m1(), instanceRef, faults: { failBeforeHeadRename: true } }),
       (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_HEAD_NOT_COMMITTED');
     assert.deepEqual(readConversationChannel({ home: fx.home, channelRef }).messages.map((event) => event.messageRef), ['message.family.alpha.000']);
+    assert.throws(() => readConversationMessage({ home: fx.home, channelRef, messageRef: 'message.family.alpha.001' }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_CORRUPT');
 
     const recovered = appendConversationMessage({ home: fx.home, message: m1(), instanceRef, observedAt: t2 });
     assert.equal(recovered.state, 'APPENDED');
@@ -208,6 +212,8 @@ test('VFS-06 corrupt head, addressed event, and missing prior lineage all fail c
     const head = JSON.parse(goodHead);
     fs.writeFileSync(headPath, `${JSON.stringify({ ...head, sequence: 99 }, null, 2)}\n`);
     assert.throws(() => readConversationChannel({ home: fx.home, channelRef }), (error) => error.code === 'CONVERSATION_CORRUPT');
+    assert.throws(() => readConversationMessage({ home: fx.home, channelRef, messageRef: 'message.family.alpha.001' }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_CORRUPT');
     fs.writeFileSync(headPath, goodHead);
 
     const latestPath = messagePath(fx.home, 'message.family.alpha.001');
