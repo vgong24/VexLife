@@ -9,6 +9,12 @@
       "sha256": "ef4ccce50ea8beaf131a1d3c29187c8a356ce759f068dd29987211807c072ffa"
     },
     {
+      "path": "test/family-space-store.test.mjs",
+      "mode": "100644",
+      "bytes": 17836,
+      "sha256": "12202e471fc7bed1f331c0157f575a1cd10905907ce0db2bbf4606ef3b8f2a63"
+    },
+    {
       "path": "test/fixtures/public-safety/cases.json",
       "mode": "100644",
       "bytes": 795,
