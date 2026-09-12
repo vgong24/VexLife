@@ -23,17 +23,18 @@ export function createPairingOffer({ pairingRef, homeNodeRef, homePublicKey, one
   return { ...offer, offerHash: semanticHash(offer) };
 }
 
-export function approvePairing({ offer, deviceRef, devicePublicKey, approvedCapabilityRefs = [], approvedBy, approvedAt, expectedFingerprint } = {}) {
-  if (!offer || !deviceRef || !devicePublicKey || !approvedBy || !approvedAt) throw new Error('pairing approval missing required field');
+export function approvePairing({ offer, principalRef, deviceRef, devicePublicKey, approvedCapabilityRefs = [], approvedBy, approvedAt, expectedFingerprint } = {}) {
+  if (!offer || !principalRef || !deviceRef || !devicePublicKey || !approvedBy || !approvedAt) throw new Error('pairing approval missing required field');
   if (offer.state !== 'PAIRING_OFFERED' || Number(offer.useCount ?? 0) !== 0) return { state: 'PAIRING_REPLAY_REJECTED' };
   if (nowMs(approvedAt) >= nowMs(offer.expiresAt)) return { state: 'PAIRING_EXPIRED' };
   if (expectedFingerprint && expectedFingerprint !== offer.humanFingerprint) return { state: 'PAIRING_REJECTED', reason: 'FINGERPRINT_MISMATCH' };
   const requested = new Set(offer.requestedCapabilityRefs ?? []);
   const approved = [...new Set(approvedCapabilityRefs)].filter((ref) => requested.has(ref)).sort();
   const membership = {
-    schemaVersion: 'vexlife.bridge-device-membership/v0',
-    membershipRef: `membership.${deviceRef}.${semanticHash({ deviceRef, devicePublicKey, approvedAt }).slice(0, 12)}`,
+    schemaVersion: 'vexlife.bridge-device-membership/v1',
+    membershipRef: `membership.${deviceRef}.${semanticHash({ principalRef, deviceRef, devicePublicKey, approvedAt }).slice(0, 12)}`,
     homeNodeRef: offer.homeNodeRef,
+    principalRef,
     deviceRef,
     devicePublicKey,
     capabilityRefs: approved,
@@ -52,13 +53,15 @@ export function approvePairing({ offer, deviceRef, devicePublicKey, approvedCapa
 export function issueCapabilityLease({ leaseRef, membership, requestedCapabilityRefs = [], projectRefs = [], issuedAt, expiresAt, revocationGeneration } = {}) {
   if (!leaseRef || !membership || !issuedAt || !expiresAt) throw new Error('lease missing required field');
   if (membership.state !== 'ACTIVE') throw new Error('membership is not active');
+  if (!membership.principalRef) throw new Error('membership principal binding is missing');
   if (nowMs(expiresAt) <= nowMs(issuedAt)) throw new Error('lease expiry must be after issue time');
   const membershipCaps = new Set(membership.capabilityRefs ?? []);
   const capabilityRefs = [...new Set(requestedCapabilityRefs)].filter((ref) => membershipCaps.has(ref)).sort();
   const lease = {
-    schemaVersion: 'vexlife.bridge-capability-lease/v0',
+    schemaVersion: 'vexlife.bridge-capability-lease/v1',
     leaseRef,
     homeNodeRef: membership.homeNodeRef,
+    principalRef: membership.principalRef,
     deviceRef: membership.deviceRef,
     capabilityRefs,
     projectRefs: [...new Set(projectRefs)].sort(),
@@ -92,7 +95,17 @@ export function classifyActiveCompanion({ mode, remoteCompanionLineageRef = null
 export function evaluateRemoteRequest({ request, membership, lease, now, currentRevocationGeneration, registeredActionRefs = [], requiredCapabilityRefs = [], roleCapabilityRefs = [], projectCapabilityRefs = [], resourceCapabilityRefs = [], rawModelEndpointExposed = false } = {}) {
   if (!request || !membership || !lease) return { state: 'CAPABILITY_DENIED', reason: 'MISSING_IDENTITY_OR_LEASE' };
   if (rawModelEndpointExposed) return { state: 'CAPABILITY_DENIED', reason: 'RAW_MODEL_ENDPOINT_EXPOSED' };
-  if (membership.state !== 'ACTIVE' || membership.deviceRef !== request.deviceRef || membership.homeNodeRef !== lease.homeNodeRef) return { state: 'DEVICE_REVOKED' };
+  if (
+    membership.state !== 'ACTIVE'
+    || membership.deviceRef !== request.deviceRef
+    || membership.deviceRef !== lease.deviceRef
+    || membership.homeNodeRef !== lease.homeNodeRef
+  ) return { state: 'DEVICE_REVOKED' };
+  if (
+    !membership.principalRef
+    || lease.principalRef !== membership.principalRef
+    || request.speakerRef !== membership.principalRef
+  ) return { state: 'CAPABILITY_DENIED', reason: 'PRINCIPAL_BINDING_MISMATCH' };
   if (Number(currentRevocationGeneration) !== Number(lease.revocationGeneration)) return { state: 'DEVICE_REVOKED' };
   if (lease.state !== 'ACTIVE' || nowMs(now) >= nowMs(lease.expiresAt)) return { state: 'LEASE_EXPIRED' };
   if (!registeredActionRefs.includes(request.actionRef)) return { state: 'CAPABILITY_DENIED', reason: 'UNREGISTERED_ACTION' };
@@ -106,6 +119,7 @@ export function evaluateRemoteRequest({ request, membership, lease, now, current
   for (const required of requiredCapabilityRefs) if (!effective.includes(required)) return { state: 'CAPABILITY_DENIED', reason: `MISSING_${required}` };
   return {
     state: 'REMOTE_REQUEST_ADMITTED',
+    principalRef: membership.principalRef,
     effectiveCapabilityRefs: effective,
     canonicalWriter: 'DESKTOP_HOME_NODE',
     remoteWriterGranted: false,
@@ -130,7 +144,14 @@ export function validateHomeBridgeRegistry(registry, { testRefs = new Set() } = 
   const errors = [];
   if (!registry?.bridgeRef) errors.push('bridge registry missing bridgeRef');
   for (const mode of ['REMOTE_HOME', 'LOCAL_SIBLING', 'HYBRID']) if (!(registry?.modes ?? []).includes(mode)) errors.push(`bridge missing mode ${mode}`);
-  for (const invariant of ['remote surface never becomes the Home writer', 'local sibling is a distinct lineage', 'model endpoint remains loopback/private behind the gateway']) if (!(registry?.invariants ?? []).includes(invariant)) errors.push(`bridge missing invariant: ${invariant}`);
+  for (const invariant of [
+    'remote surface never becomes the Home writer',
+    'local sibling is a distinct lineage',
+    'model endpoint remains loopback/private behind the gateway',
+    'paired device membership binds an explicit human principal independently from approver'
+  ]) if (!(registry?.invariants ?? []).includes(invariant)) errors.push(`bridge missing invariant: ${invariant}`);
+  if (!(registry?.pairingContract?.approvalFields ?? []).includes('principalRef')) errors.push('pairing approval must bind principalRef');
+  if (!(registry?.leaseContract?.leaseFields ?? []).includes('principalRef')) errors.push('capability lease must bind principalRef');
   if (registry?.pairingContract?.replayAllowed !== false) errors.push('pairing replay must be false');
   if (registry?.leaseContract?.implicitAdmin !== false) errors.push('implicit admin must be false');
   for (const testRef of registry?.testRefs ?? []) if (!testRefs.has(testRef)) errors.push(`bridge references missing test ${testRef}`);

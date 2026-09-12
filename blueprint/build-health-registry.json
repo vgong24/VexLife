@@ -162,7 +162,8 @@
         "lens.vexlife.platform-environment",
         "lens.vexlife.recovery-migration-continuity"
       ],
-      "blocking": true
+      "blocking": true,
+      "timeoutMs": 240000
     },
     {
       "checkRef": "check.manifest",

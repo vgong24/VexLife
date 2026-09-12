@@ -1,8 +1,8 @@
 {
   "schemaVersion": "vexlife.home-bridge-registry/v0",
   "bridgeRef": "bridge.vexlife.personal-home.001",
-  "bridgeVersion": 1,
-  "purpose": "Accountless-first trusted-device access to a desktop-hosted canonical Vex Home, with honest local sibling alternatives.",
+  "bridgeVersion": 2,
+  "purpose": "Accountless-first trusted-device access to a desktop-hosted canonical Vex Home, with explicit human-principal binding and honest local sibling alternatives.",
   "modes": [
     "REMOTE_HOME",
     "LOCAL_SIBLING",
@@ -36,6 +36,7 @@
     "mode switches are announced before message delivery",
     "model endpoint remains loopback/private behind the gateway",
     "pairing offers are short-lived and single-use",
+    "paired device membership binds an explicit human principal independently from approver",
     "every request intersects family, device, lease, role, project, tool and resource scopes",
     "revocation blocks future requests without erasing prior receipts",
     "transport security does not replace application authorization"
@@ -51,6 +52,7 @@
       "expiresAt"
     ],
     "approvalFields": [
+      "principalRef",
       "deviceRef",
       "devicePublicKey",
       "approvedCapabilityRefs",
@@ -62,6 +64,7 @@
   "leaseContract": {
     "leaseFields": [
       "leaseRef",
+      "principalRef",
       "deviceRef",
       "homeNodeRef",
       "capabilityRefs",

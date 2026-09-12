@@ -157,18 +157,21 @@ test('VNAV00 permanent distinction receipt remains explicit', () => {
 });
 
 const HOME_ROUTED_CAP = 'capability.vexlife.companion-navigation';
+const HOME_ROUTED_PRINCIPAL = 'person.vnav.synthetic.001';
 
 function homeRoutedCandidate() {
   return {
     request: {
       requestRef: 'request.vnav.c4.synthetic.001',
       deviceRef: 'device.vexlife.synthetic.remote.001',
+      speakerRef: HOME_ROUTED_PRINCIPAL,
       actionRef: HOME_ROUTED_NAVIGATION_ACTION_REF
     },
     membership: {
       membershipRef: 'membership.vexlife.synthetic.001',
       homeRef: 'vex-home.synthetic.001',
       deviceRef: 'device.vexlife.synthetic.remote.001',
+      principalRef: HOME_ROUTED_PRINCIPAL,
       state: 'ACTIVE',
       capabilityRefs: [HOME_ROUTED_CAP],
       revocationGeneration: 0,
@@ -178,6 +181,7 @@ function homeRoutedCandidate() {
       leaseRef: 'lease.vexlife.synthetic.navigation.001',
       homeRef: 'vex-home.synthetic.001',
       deviceRef: 'device.vexlife.synthetic.remote.001',
+      principalRef: HOME_ROUTED_PRINCIPAL,
       state: 'ACTIVE',
       capabilityRefs: [HOME_ROUTED_CAP],
       revocationGeneration: 0,

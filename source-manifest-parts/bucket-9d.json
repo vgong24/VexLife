@@ -5,8 +5,8 @@
     {
       "path": "blueprint/home-bridge-registry.json",
       "mode": "100644",
-      "bytes": 3411,
-      "sha256": "62dbac41ccdc555935a3f4395233a1edc9e955c2a3931b3c219317506c4a59da"
+      "bytes": 3586,
+      "sha256": "eb6702b5140607c8c7d7a7d9788a01b0a33a40c7f26b586feac70eb664691658"
     },
     {
       "path": "reference/browser/index.html",

@@ -74,6 +74,8 @@ jobs:
         run: npm run build-admission:check
 
       - name: Run the complete foundation gate from the retained exact receipt
+        env:
+          DCO_TRUSTED_VEXGPT_SIGNERS_JSON: '["VexGPT"]'
         run: npm run pr-ready
 
       - name: Verify Health independently consumes the same exact receipt

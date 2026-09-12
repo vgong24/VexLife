@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 16047,
       "sha256": "176eb087c03f7028ee9c80dfeb8e4a9e68c1c390383bb44266d051190d488ced"
+    },
+    {
+      "path": "test/vex-family-conversation-store.test.mjs",
+      "mode": "100644",
+      "bytes": 16290,
+      "sha256": "91259cd34922ccc08bfa0e2de3e3c4c94817a84d87472dd5776b772f5c7cf346"
     }
   ]
 }
