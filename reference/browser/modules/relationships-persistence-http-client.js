@@ -1,5 +1,6 @@
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH = '/api/v1/relationships/persistence';
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_HTTP_CLIENT_PREPARED_SCHEMA = 'vexlife.browser-relationships-persistence-http-client-prepared/v1';
+export const BROWSER_RELATIONSHIPS_PERSISTENCE_HTTP_CLIENT_LIST_SCHEMA = 'vexlife.relationships-store/v1';
 
 const REF = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
 const FAILURE_CODE = /^[A-Z][A-Z0-9_]{0,127}$/u;
@@ -18,6 +19,16 @@ const SAVE_INPUT_KEYS = new Set([
   'deliveryObservationRef'
 ]);
 const PREPARED_KEYS = new Set(['schemaVersion', 'state', 'input', 'effects']);
+const LIST_KEYS = new Set([
+  'schemaVersion', 'state', 'localParticipantRef', 'localStateRootRef',
+  'totalCount', 'returnedCount', 'truncated', 'relationships'
+]);
+const LIST_RELATIONSHIP_KEYS = new Set([
+  'relationshipRef', 'counterpartParticipantRef', 'localRelationshipClass',
+  'status', 'revision', 'updatedAt', 'tombstoned'
+]);
+const RELATIONSHIP_CLASSES = new Set(['FRIEND', 'FAMILY', 'COLLABORATOR', 'OTHER']);
+const RELATIONSHIP_STATUSES = new Set(['ACTIVE', 'BLOCKED', 'REVOKED', 'WITHDRAWN', 'DISCONNECTED']);
 
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_HTTP_CLIENT_NO_EFFECTS = Object.freeze({
   relationshipMutationPerformed: false,
@@ -122,6 +133,69 @@ function safeRemoteFailureCode(payload) {
     : 'RELATIONSHIPS_PERSISTENCE_HTTP_FAILED';
 }
 
+function responseInvalid(httpStatus = null) {
+  fail('RELATIONSHIPS_PERSISTENCE_HTTP_RESPONSE_INVALID', 'Relationships persistence response is invalid', httpStatus);
+}
+
+function exactResponseKeys(value, admitted, httpStatus) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) responseInvalid(httpStatus);
+  const keys = Object.keys(value);
+  if (keys.length !== admitted.size || keys.some((key) => !admitted.has(key))) responseInvalid(httpStatus);
+}
+
+function canonicalResponseRef(value, httpStatus) {
+  if (typeof value !== 'string' || !REF.test(value)) responseInvalid(httpStatus);
+  return value;
+}
+
+function canonicalResponseTime(value, httpStatus) {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString() !== value) responseInvalid(httpStatus);
+  return value;
+}
+
+function validateListPayload(payload, owner, httpStatus) {
+  exactResponseKeys(payload, LIST_KEYS, httpStatus);
+  if (payload.schemaVersion !== BROWSER_RELATIONSHIPS_PERSISTENCE_HTTP_CLIENT_LIST_SCHEMA || payload.state !== 'CURRENT_LIST') responseInvalid(httpStatus);
+  const localParticipantRef = canonicalResponseRef(payload.localParticipantRef, httpStatus);
+  const localStateRootRef = canonicalResponseRef(payload.localStateRootRef, httpStatus);
+  if (localParticipantRef !== owner.localParticipantRef || localStateRootRef !== owner.localStateRootRef) responseInvalid(httpStatus);
+  if (!Number.isSafeInteger(payload.totalCount) || payload.totalCount < 0) responseInvalid(httpStatus);
+  if (!Number.isSafeInteger(payload.returnedCount) || payload.returnedCount < 0 || payload.returnedCount > payload.totalCount) responseInvalid(httpStatus);
+  if (typeof payload.truncated !== 'boolean' || !Array.isArray(payload.relationships) || payload.relationships.length !== payload.returnedCount) responseInvalid(httpStatus);
+  if (payload.truncated !== (payload.returnedCount < payload.totalCount)) responseInvalid(httpStatus);
+  const seen = new Set();
+  const relationships = payload.relationships.map((item) => {
+    exactResponseKeys(item, LIST_RELATIONSHIP_KEYS, httpStatus);
+    const relationshipRef = canonicalResponseRef(item.relationshipRef, httpStatus);
+    if (seen.has(relationshipRef)) responseInvalid(httpStatus);
+    seen.add(relationshipRef);
+    const counterpartParticipantRef = canonicalResponseRef(item.counterpartParticipantRef, httpStatus);
+    if (!RELATIONSHIP_CLASSES.has(item.localRelationshipClass) || !RELATIONSHIP_STATUSES.has(item.status)) responseInvalid(httpStatus);
+    if (!Number.isSafeInteger(item.revision) || item.revision < 0) responseInvalid(httpStatus);
+    const updatedAt = canonicalResponseTime(item.updatedAt, httpStatus);
+    if (item.tombstoned !== false) responseInvalid(httpStatus);
+    return Object.freeze({
+      relationshipRef,
+      counterpartParticipantRef,
+      localRelationshipClass: item.localRelationshipClass,
+      status: item.status,
+      revision: item.revision,
+      updatedAt,
+      tombstoned: false
+    });
+  });
+  return Object.freeze({
+    schemaVersion: payload.schemaVersion,
+    state: payload.state,
+    localParticipantRef,
+    localStateRootRef,
+    totalCount: payload.totalCount,
+    returnedCount: payload.returnedCount,
+    truncated: payload.truncated,
+    relationships: Object.freeze(relationships)
+  });
+}
+
 export function createRelationshipsPersistenceHttpClient({
   ownerBinding,
   fetchImpl = globalThis.fetch,
@@ -144,6 +218,24 @@ export function createRelationshipsPersistenceHttpClient({
     });
   }
 
+  async function parseResponse(response, unavailableMessage) {
+    let payload;
+    try {
+      payload = await response?.json?.();
+    } catch {
+      responseInvalid(Number.isInteger(response?.status) ? response.status : null);
+    }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      responseInvalid(Number.isInteger(response?.status) ? response.status : null);
+    }
+    if (response?.ok !== true) {
+      const code = safeRemoteFailureCode(payload);
+      fail(code, code, Number.isInteger(response?.status) ? response.status : null);
+    }
+    if (!response) fail('RELATIONSHIPS_PERSISTENCE_HTTP_UNAVAILABLE', unavailableMessage);
+    return payload;
+  }
+
   async function commit(prepared) {
     const input = validatePrepared(prepared);
     let response;
@@ -158,27 +250,29 @@ export function createRelationshipsPersistenceHttpClient({
     } catch {
       fail('RELATIONSHIPS_PERSISTENCE_HTTP_UNAVAILABLE', 'Relationships persistence request is unavailable');
     }
+    return parseResponse(response, 'Relationships persistence request is unavailable');
+  }
 
-    let payload;
+  async function list() {
+    let response;
     try {
-      payload = await response?.json?.();
+      response = await fetchImpl(apiPath, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
     } catch {
-      fail('RELATIONSHIPS_PERSISTENCE_HTTP_RESPONSE_INVALID', 'Relationships persistence response is invalid', Number.isInteger(response?.status) ? response.status : null);
+      fail('RELATIONSHIPS_PERSISTENCE_HTTP_UNAVAILABLE', 'Relationships persistence list is unavailable');
     }
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-      fail('RELATIONSHIPS_PERSISTENCE_HTTP_RESPONSE_INVALID', 'Relationships persistence response is invalid', Number.isInteger(response?.status) ? response.status : null);
-    }
-    if (response?.ok !== true) {
-      const code = safeRemoteFailureCode(payload);
-      fail(code, code, Number.isInteger(response?.status) ? response.status : null);
-    }
-    return payload;
+    const payload = await parseResponse(response, 'Relationships persistence list is unavailable');
+    return validateListPayload(payload, owner, Number.isInteger(response?.status) ? response.status : null);
   }
 
   return Object.freeze({
     ownerBinding: owner,
     prepare,
-    commit
+    commit,
+    list
   });
 }
 
