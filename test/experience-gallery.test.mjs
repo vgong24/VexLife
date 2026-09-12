@@ -101,6 +101,20 @@ test('Product features, Experience patterns and interaction forms remain distinc
   assert.ok(projection.boundaries.includes('EXPERIENCE_PATTERN != FEATURE'));
 });
 
+test('Gallery reference ordering is Unicode-scalar deterministic, not locale-sensitive', () => {
+  const input = sources();
+  const template = input.featureRegistry.features[0];
+  input.featureRegistry.features.push(
+    { ...structuredClone(template), featureRef: 'feature.vexlife.zeta' },
+    { ...structuredClone(template), featureRef: 'feature.vexlife.äther' }
+  );
+  const projection = buildExperienceGalleryProjection(input);
+  assert.deepEqual(
+    projection.productFeatures.map((feature) => feature.featureRef),
+    ['feature.vexlife.terrain', 'feature.vexlife.zeta', 'feature.vexlife.äther']
+  );
+});
+
 test('Command and Guidance vocabulary is descriptive only', () => {
   const projection = buildExperienceGalleryProjection(sources());
   assert.deepEqual(projection.commandBindings[0].aliases, [{ literal: '/help', formRef: 'form.vexlife.operator.slash-alias' }]);
