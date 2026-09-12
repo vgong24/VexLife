@@ -19,15 +19,24 @@ function touchSizedSummary(summary) {
 function makeDisclosure({ id, kind, summaryText, nodes }) {
   const usableNodes = nodes.filter(Boolean);
   if (!summaryText || usableNodes.length !== nodes.length) return null;
-  const parent = usableNodes[0]?.parentElement;
-  if (!parent || usableNodes.some((node) => node.parentElement !== parent)) return null;
 
   const existing = document.getElementById(id);
   if (existing) {
     const summary = existing.querySelector(':scope > summary');
     if (summary && summary.textContent !== summaryText) summary.textContent = summaryText;
+
+    const externalNodes = usableNodes.filter((node) => node.parentElement !== existing);
+    if (externalNodes.length > 0) {
+      const parent = externalNodes[0]?.parentElement;
+      if (!parent || externalNodes.some((node) => node.parentElement !== parent)) return null;
+      if (existing.parentElement !== parent) parent.insertBefore(existing, externalNodes[0]);
+      existing.append(...usableNodes);
+    }
     return existing;
   }
+
+  const parent = usableNodes[0]?.parentElement;
+  if (!parent || usableNodes.some((node) => node.parentElement !== parent)) return null;
 
   const details = document.createElement('details');
   details.id = id;
