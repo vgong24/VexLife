@@ -5,8 +5,8 @@
     {
       "path": "blueprint/module-registry.json",
       "mode": "100644",
-      "bytes": 895,
-      "sha256": "9ee8e93a166efa72509818d5e694457865802d87170f9c530539b3406d77822d"
+      "bytes": 953,
+      "sha256": "5b162dbed61689e7d484b2874c0373a8768942d87d35298124d43cfa13806fae"
     },
     {
       "path": "src/core/review-composition.mjs",

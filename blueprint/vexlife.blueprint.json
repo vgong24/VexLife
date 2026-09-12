@@ -34,10 +34,14 @@
       "blueprint/fragments/screens/chat.json",
       "blueprint/fragments/screens/living-journal.json",
       "blueprint/fragments/screens/relationships.json",
+      "blueprint/fragments/screens/purpose-workspace.json",
       "blueprint/fragments/screens/terrain.json",
       "blueprint/fragments/screens/health.json",
       "blueprint/fragments/screens/guide-overlay.json",
       "blueprint/fragments/screens/cdr-s5-closed-alpha.json"
+    ],
+    "registrationExtensions": [
+      "blueprint/purpose-workspace/registration.json"
     ],
     "securityAccessPreview": "blueprint/security-access-preview-registry.json",
     "homeBridge": "blueprint/home-bridge-registry.json",

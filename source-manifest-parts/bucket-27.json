@@ -3,6 +3,12 @@
   "bucketId": "27",
   "files": [
     {
+      "path": "docs/VEX-FAMILY-CONVERSATION-PERSISTENCE.md",
+      "mode": "100644",
+      "bytes": 6604,
+      "sha256": "12b70a3cb9cfffdacecccb38d1a40845a73c1658cb1f7bd01d2090439d234d94"
+    },
+    {
       "path": "scripts/build-admission-simulate.mjs",
       "mode": "100644",
       "bytes": 13339,

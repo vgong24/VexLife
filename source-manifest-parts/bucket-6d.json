@@ -5,8 +5,8 @@
     {
       "path": ".github/workflows/dco.yml",
       "mode": "100644",
-      "bytes": 1952,
-      "sha256": "a5c7792901222d2f04eaa8c87d5d51d9ee55e208eceb2784d27b0966c06d5e98"
+      "bytes": 3246,
+      "sha256": "0af8c25499a9b8d8c3d4bea31b93338d24cd6ee81af4be83abf7551ef4f83a4d"
     },
     {
       "path": "reference/browser/modules/navigation-controller.js",
