@@ -221,6 +221,28 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.conversation-store",
+    "path": "src/core/conversation-store.mjs",
+    "role": "Canonical Vex Home durable multi-human channel event store with immutable hash-linked message events and append receipts, atomic current heads, explicit single-writer recovery, exact retry semantics and bounded local read/export independently of model turns.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.utils",
+      "state.channels",
+      "state.messages"
+    ],
+    "writes": [
+      "selected Vex Home conversations/channels message events, append receipts, current heads and writer locks"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/vex-family-conversation-store.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/conversation.mjs",
+      "docs/VEX-FAMILY-CONVERSATION-PERSISTENCE.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.terrain",
     "path": "src/core/terrain.mjs",
     "role": "Canonical Terrain relationships plus separate movable/collapsible user-layout state.",
