@@ -1,8 +1,8 @@
 {
   "schemaVersion": "vexlife.purpose-workspace-registry/v1",
   "registryRef": "registry.vexlife.purpose-workspaces.001",
-  "registryVersion": 3,
-  "purpose": "Source-place one reusable role/purpose/process/completion foundation across synthetic domains while explicitly deferring VexLife Feature/Experience/Blueprint/browser integration to later bounded successors.",
+  "registryVersion": 4,
+  "purpose": "Preserve the accepted reusable Purpose Workspace source foundation while registering its smallest current Feature/Blueprint/Experience/Module/Process/localization membrane without inferring browser runtime adoption or external professional effects.",
   "composition": "CANONICAL_FRAGMENT_COMPOSITION",
   "workspaceDefinitions": [
     {
@@ -32,7 +32,7 @@
         "component.vexlife.experience-topology",
         "component.vexlife.onboarding-step"
       ],
-      "integrationState": "SOURCE_PLACED_NOT_REGISTERED"
+      "integrationState": "REGISTERED_PREPARED_BROWSER_HELD"
     }
   ],
   "completionStateVocabulary": [
@@ -122,6 +122,7 @@
     "contract.vextreme.experience-review.portable.v0",
     "experience.vexlife.newcomer-guided",
     "factory.vexlife.processes.001",
+    "feature.vexlife.scoped-purpose-workspace",
     "foundation.vexlife.identity-lattice.v1",
     "foundation.vexlife.permission-effects.v1",
     "foundation.vexlife.state-relay.v1",
@@ -142,15 +143,18 @@
     "lens.vexlife.state-and-currentness",
     "lens.vexlife.usability-and-journey",
     "lens.vexlife.visibility-terrain-health",
+    "module.vexlife.core.purpose-workspace",
     "module.vexlife.core.utils",
     "page.vexlife.public-onboarding.001",
     "permission.none",
+    "plan.vexlife.feature.scoped-purpose-workspace.introduction.001",
     "plan.vexlife.guided-establishment.local.001",
     "platform.android",
     "platform.browser",
     "platform.ios",
     "platform.macos",
     "platform.windows",
+    "process.vexlife.purpose-workspace.coordinate",
     "registry.vexlife.experience.001",
     "registry.vexlife.features.001",
     "registry.vexlife.modules.001",
@@ -244,7 +248,7 @@
       "GUIDE_PLAN != JOURNEY_COMPLETION",
       "REVIEW_ARTIFACT != PRODUCT_SCREEN"
     ],
-    "integrationState": "TARGET_CONTRACT_NOT_YET_REGISTERED",
+    "integrationState": "REGISTERED_PLAN_HELD_UNTIL_FEATURE_CURRENT_AND_DISCOVERABLE",
     "featureWalkthroughPlanCurrent": false,
     "publicEstablishmentOwnerCurrent": true
   },
@@ -263,6 +267,25 @@
     "truthClass": "ARCHITECTURAL_TARGET_ONLY",
     "reviewHtmlClass": "SYNTHETIC_REVIEW_ARTIFACT_ONLY",
     "integrationState": "TARGET_REVIEW_REQUEST_NOT_YET_REGISTERED"
+  },
+  "registrationPlacement": {
+    "stageRef": "SPW-02",
+    "status": "REGISTERED_PREPARED_BROWSER_HELD",
+    "featureRef": "feature.vexlife.scoped-purpose-workspace",
+    "screenRef": "screen.vexlife.purpose-workspace",
+    "routeRef": "route.purpose-workspace",
+    "moduleRef": "module.vexlife.core.purpose-workspace",
+    "processRef": "process.vexlife.purpose-workspace.coordinate",
+    "featureWalkthroughPlanRef": "plan.vexlife.feature.scoped-purpose-workspace.introduction.001",
+    "blueprintScreenRegistered": true,
+    "featureRegistered": true,
+    "experiencePlanRegistered": true,
+    "moduleRegistered": true,
+    "processRegistered": true,
+    "localizationRegistered": true,
+    "browserRuntimeMutation": false,
+    "featureWalkthroughPlanCurrent": false,
+    "experienceReviewCurrent": false
   },
   "sourcePlacement": {
     "stageRef": "SPW-01",

@@ -15,6 +15,12 @@
       "sha256": "45686acc47560279f2735ec4fc13619ae51f59ffd0fe0776df0bac7f1a92e11d"
     },
     {
+      "path": "blueprint/process-factory/processes-purpose-workspace.json",
+      "mode": "100644",
+      "bytes": 2705,
+      "sha256": "a203f1465ba5a2c263079165163acdbd5da17cf0df7517f0e7d6854176d83623"
+    },
+    {
       "path": "docs/ANDROID-REMOTE-VESSEL.md",
       "mode": "100644",
       "bytes": 1942,

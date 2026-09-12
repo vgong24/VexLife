@@ -1,0 +1,691 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readJson, semanticHash } from './utils.mjs';
+import { validateProcessFactory } from './process-factory.mjs';
+import { compileRegistryPack } from './registry.mjs';
+import { validateExperienceRegistry } from './experience.mjs';
+import { validateImplementationPlan } from './implementation-plan.mjs';
+import { validateReviewLensRegistry, validateFeatureRegistry } from './feature-registry.mjs';
+import { validateHomeBridgeRegistry } from './home-bridge.mjs';
+import { validateBuildHealthRegistry } from './build-health.mjs';
+import { validateIntentRegistry } from './intent-validation.mjs';
+import { validateIntentSchedulerRegistry } from './scheduler-runtime-trust.mjs';
+import {
+  BURDEN_RELEASE_REQUIRED_FIELDS,
+  CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATION_AUTHORITY_SOURCE
+} from './burden-release.mjs';
+import {
+  CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS,
+  CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS,
+  CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS,
+  CONTINUITY_SUBJECT_REQUIRED_FIELDS,
+  CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS
+} from './continuity-evolution-router.mjs';
+import {
+  CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS,
+  CONTINUITY_SIMULATED_CLOCK_SOURCE
+} from './state.mjs';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+export const VEXLIFE_ROOT = path.resolve(HERE, '../..');
+
+function optionalJson(filePath, fallback) {
+  return fs.existsSync(filePath) ? readJson(filePath) : fallback;
+}
+
+function resolveFragment(root, source) {
+  return readJson(path.resolve(root, source));
+}
+
+export function loadComposedRecord(root, descriptorPath, fallback) {
+  const absolute = path.join(root, descriptorPath);
+  if (!fs.existsSync(absolute)) return fallback;
+  const descriptor = readJson(absolute);
+  if (!descriptor.includes) return descriptor;
+  const output = Object.fromEntries(Object.entries(descriptor).filter(([key]) => key !== 'includes' && key !== 'composition'));
+  for (const [field, source] of Object.entries(descriptor.includes)) {
+    if (Array.isArray(source)) {
+      const fragments = source.map((item) => resolveFragment(root, item));
+      output[field] = fragments.every(Array.isArray) ? fragments.flat() : fragments;
+    } else {
+      output[field] = resolveFragment(root, source);
+    }
+  }
+  return output;
+}
+
+export function loadBlueprint(root = VEXLIFE_ROOT) {
+  const blueprint = loadComposedRecord(root, 'blueprint/vexlife.blueprint.json', {});
+  const tokens = readJson(path.join(root, 'blueprint/design-tokens.json'));
+  const platforms = readJson(path.join(root, 'blueprint/platforms.json'));
+  const factory = loadComposedRecord(root, 'blueprint/process-factory.json', { foundations: [], processes: [], templates: [], workedExamples: [] });
+  const modules = loadComposedRecord(root, 'blueprint/module-registry.json', { modules: [] });
+  const experience = optionalJson(path.join(root, 'blueprint/experience-registry.json'), { experienceProfiles: [], gestureContracts: [], vessels: [] });
+  const evolution = optionalJson(path.join(root, 'blueprint/evolution-registry.json'), { candidateTypes: [], dreamStates: [], synchronizationScopes: [], weightLifecycleStates: [] });
+  const implementationPlan = loadComposedRecord(root, 'blueprint/implementation-plan.json', { milestones: [], workUnits: [] });
+  const capabilities = optionalJson(path.join(root, 'blueprint/capability-registry.json'), { capabilities: [] });
+  const reviewLenses = optionalJson(path.join(root, 'blueprint/review-lens-registry.json'), { lenses: [] });
+  const featureRegistry = optionalJson(path.join(root, 'blueprint/feature-registry.json'), { features: [] });
+  const buildHealth = optionalJson(path.join(root, 'blueprint/build-health-registry.json'), { checks: [] });
+  const bridge = optionalJson(path.join(root, 'blueprint/home-bridge-registry.json'), {});
+  const intentRegistry = blueprint.intentOrchestration ?? null;
+  const schedulerRegistry = blueprint.intentScheduler ?? null;
+  const strings = Object.fromEntries(blueprint.product.requiredLanguages.map((language) => [
+    language,
+    readJson(path.join(root, `blueprint/strings/${language}.json`))
+  ]));
+  return {
+    blueprint,
+    tokens,
+    platforms,
+    strings,
+    factory,
+    modules,
+    experience,
+    evolution,
+    implementationPlan,
+    capabilities,
+    reviewLenses,
+    featureRegistry,
+    buildHealth,
+    bridge,
+    intentRegistry,
+    schedulerRegistry,
+    root
+  };
+}
+
+function collectRefs(bundle) {
+  const {
+    blueprint,
+    factory,
+    modules,
+    experience,
+    evolution,
+    implementationPlan,
+    capabilities,
+    reviewLenses,
+    featureRegistry,
+    buildHealth,
+    bridge,
+    intentRegistry,
+    schedulerRegistry
+  } = bundle;
+  const refs = [];
+  const add = (kind, ref) => refs.push({ kind, ref });
+  add('blueprint', blueprint.blueprintRef);
+  add('product', blueprint.product.productRef);
+  for (const item of blueprint.stateDomains) add('state', item.stateRef);
+  for (const item of blueprint.roles) add('role', item.roleRef);
+  for (const item of blueprint.permissions) add('permission', item.permissionRef);
+  for (const item of blueprint.actions) add('action', item.actionRef);
+  for (const component of blueprint.components ?? []) { add('component', component.componentRef); for (const slot of component.slots ?? []) add('component-slot', slot.slotRef); }
+  for (const screen of blueprint.screens) {
+    add('screen', screen.screenRef);
+    add('concept', screen.conceptRef);
+    add('route', screen.routeRef);
+    add('navigation-node', screen.navigationNodeRef);
+    for (const region of screen.regions) {
+      add('region', region.regionRef);
+      add('concept', region.conceptRef);
+      add('navigation-node', region.navigationNodeRef);
+      for (const element of region.elements) {
+        add('element', element.elementRef);
+        add('concept', element.conceptRef);
+        add('interaction', element.interactionRef);
+        if (element.navigationRef) add('navigation-path', element.navigationRef);
+      }
+    }
+  }
+  for (const item of blueprint.terrain) add('terrain', item.terrainNodeRef);
+  for (const item of blueprint.platforms) add('platform', item.platformRef);
+  for (const item of blueprint.tests) add('test', item.testRef);
+  for (const item of factory.foundations ?? []) add('foundation', item.foundationRef);
+  for (const item of factory.processes ?? []) add('process', item.processRef);
+  for (const item of factory.templates ?? []) add('template', item.templateRef);
+  for (const item of factory.workedExamples ?? []) add('worked-example', item.exampleRef);
+  for (const item of modules.modules ?? []) add('module', item.moduleRef);
+  for (const item of experience?.experienceProfiles ?? []) add('experience-profile', item.profileRef);
+  for (const item of experience?.gestureContracts ?? []) add('gesture', item.gestureRef);
+  for (const item of experience?.vessels ?? []) add('vessel', item.vesselRef);
+  if (evolution?.registryRef) add('evolution-registry', evolution.registryRef);
+  if (evolution?.canonicalSourceRef) add('evolution-source', evolution.canonicalSourceRef);
+  if (evolution?.systemRef) add('evolution-system', evolution.systemRef);
+  for (const item of evolution?.contractIdentities ?? []) add('evolution-contract', item.contractRef);
+  for (const item of evolution?.authorityTrustSources ?? []) add('evolution-authority-source', item.authoritySourceRef);
+  for (const item of evolution?.behaviorOriginIdentities ?? []) add('evolution-origin', item.originRef);
+  for (const item of evolution?.scopeIdentities ?? []) add('evolution-scope', item.scopeRef);
+  for (const item of evolution?.primaryDestinationIdentities ?? []) add('evolution-primary-destination', item.destinationRef);
+  for (const item of evolution?.linkedDestinationIdentities ?? []) add('evolution-linked-destination', item.destinationRef);
+  for (const item of evolution?.acceptancePolicies ?? []) add('evolution-acceptance-policy', item.policyRef);
+  for (const item of evolution?.projectionIdentities ?? []) add('evolution-projection', item.projectionRef);
+  for (const item of evolution?.candidateTypes ?? []) add('dream-candidate-type', item.candidateTypeRef);
+  if (implementationPlan?.planRef) add('implementation-plan', implementationPlan.planRef);
+  if (implementationPlan?.demoContractRef) add('demo-contract', implementationPlan.demoContractRef);
+  for (const item of implementationPlan?.milestones ?? []) add('milestone', item.milestoneRef);
+  for (const item of implementationPlan?.workUnits ?? []) add('work-unit', item.workRef);
+  if (capabilities?.registryRef) add('capability-registry', capabilities.registryRef);
+  for (const item of capabilities?.capabilities ?? []) add('capability', item.capabilityRef);
+  if (reviewLenses?.registryRef) add('review-lens-registry', reviewLenses.registryRef);
+  for (const item of reviewLenses?.lenses ?? []) add('review-lens', item.lensRef);
+  if (featureRegistry?.registryRef) add('feature-registry', featureRegistry.registryRef);
+  for (const item of featureRegistry?.features ?? []) add('feature', item.featureRef);
+  if (buildHealth?.registryRef) add('build-health-registry', buildHealth.registryRef);
+  for (const item of buildHealth?.checks ?? []) add('health-check', item.checkRef);
+  if (bridge?.bridgeRef) add('home-bridge', bridge.bridgeRef);
+  for (const item of bridge?.transportAdapters ?? []) add('transport', item.transportRef);
+  if (intentRegistry?.registryRef) add('intent-registry', intentRegistry.registryRef);
+  if (intentRegistry?.systemRef) add('intent-system', intentRegistry.systemRef);
+  for (const item of intentRegistry?.lifecycleStateRefs ?? []) add('intent-lifecycle-state', item.ref);
+  if (intentRegistry?.receiptContract?.contractRef) add('intent-receipt-contract', intentRegistry.receiptContract.contractRef);
+  for (const item of intentRegistry?.receiptStateRefs ?? []) add('intent-receipt-state', item.ref);
+  for (const item of intentRegistry?.projectionIdentities ?? []) add('intent-projection', item.projectionRef);
+  for (const item of Object.values(intentRegistry?.attributedProjectionContracts ?? {})) add('intent-attributed-contract', item.contractRef);
+  for (const item of intentRegistry?.knownIntentProcessRoutes ?? []) add('intent-resolution', item.resolutionRef);
+  if (schedulerRegistry?.registryRef) add('intent-scheduler-registry', schedulerRegistry.registryRef);
+  if (schedulerRegistry?.systemRef) add('intent-scheduler-system', schedulerRegistry.systemRef);
+  if (schedulerRegistry?.canonicalSourceRef) add('intent-scheduler-source', schedulerRegistry.canonicalSourceRef);
+  for (const item of schedulerRegistry?.priorityClassIdentities ?? []) add('intent-scheduler-priority', item.priorityClassRef);
+  for (const item of schedulerRegistry?.policyIdentities ?? []) add('intent-scheduler-policy', item.policyRef);
+  for (const item of schedulerRegistry?.requiredFieldContracts ?? []) add('intent-scheduler-field-contract', item.contractRef);
+  if (schedulerRegistry?.runtimeTrustContract?.contractRef) add('intent-scheduler-runtime-contract', schedulerRegistry.runtimeTrustContract.contractRef);
+  if (schedulerRegistry?.runtimeTrustContract?.clockRef) add('intent-scheduler-clock', schedulerRegistry.runtimeTrustContract.clockRef);
+  for (const item of schedulerRegistry?.runtimeSourceIdentities ?? []) {
+    add('intent-scheduler-runtime-source', item.sourceRef);
+    add('intent-scheduler-runtime-authority', item.authorityRef);
+  }
+  for (const item of schedulerRegistry?.workerIdentities ?? []) add('intent-scheduler-worker', item.workerRef);
+  for (const item of schedulerRegistry?.mockToolContracts ?? []) {
+    add('intent-scheduler-mock-tool-contract', item.contractRef);
+    add('intent-scheduler-mock-tool', item.toolRef);
+    add('intent-scheduler-mock-effect', item.effectRef);
+    add('intent-scheduler-argument-schema', item.argumentSchemaRef);
+    add('intent-scheduler-result-schema', item.resultSchemaRef);
+    add('intent-scheduler-executor', item.executorRef);
+  }
+  if (schedulerRegistry?.simulationContract?.contractRef) add('intent-scheduler-simulation-contract', schedulerRegistry.simulationContract.contractRef);
+  for (const item of schedulerRegistry?.projectionIdentities ?? []) add('intent-scheduler-projection', item.projectionRef);
+  return refs;
+}
+
+export function visibleStringRefs(blueprint, experience = null) {
+  const refs = new Set([blueprint.product.displayNameStringRef]);
+  for (const role of blueprint.roles) refs.add(role.labelStringRef);
+  for (const screen of blueprint.screens) {
+    refs.add(screen.titleStringRef);
+    for (const region of screen.regions) {
+      refs.add(region.labelStringRef);
+      for (const element of region.elements) refs.add(element.labelStringRef);
+    }
+  }
+  for (const node of blueprint.terrain) refs.add(node.labelStringRef);
+  for (const profile of experience?.experienceProfiles ?? []) refs.add(profile.labelStringRef);
+  for (const gesture of experience?.gestureContracts ?? []) refs.add(gesture.helpStringRef);
+  for (const vessel of experience?.vessels ?? []) refs.add(vessel.labelStringRef);
+  return [...refs].sort();
+}
+
+function validateModuleRegistry(bundle, errors) {
+  const modules = bundle.modules?.modules ?? [];
+  const moduleRefs = new Set();
+  const paths = new Set();
+  for (const module of modules) {
+    if (!module.moduleRef) errors.push('module missing moduleRef');
+    if (moduleRefs.has(module.moduleRef)) errors.push(`duplicate moduleRef ${module.moduleRef}`);
+    moduleRefs.add(module.moduleRef);
+    if (!module.path) errors.push(`${module.moduleRef} missing path`);
+    if (paths.has(module.path)) errors.push(`duplicate module path ${module.path}`);
+    paths.add(module.path);
+    if (bundle.root && module.path && !fs.existsSync(path.join(bundle.root, module.path))) errors.push(`${module.moduleRef} path does not exist: ${module.path}`);
+    if (bundle.root) for (const testPath of module.tests ?? []) if (!fs.existsSync(path.join(bundle.root, testPath))) errors.push(`${module.moduleRef} test path does not exist: ${testPath}`);
+    if (!module.role) errors.push(`${module.moduleRef} missing role`);
+  }
+  if (!modules.length) errors.push('module registry is empty');
+}
+
+export function validateEvolutionRegistry(evolution, bundle = null) {
+  const errors = [];
+  if (!evolution || typeof evolution !== 'object') {
+    return { ok: false, errors: ['evolution registry is missing'], stats: { ownedRefs: 0 } };
+  }
+  for (const field of ['registryRef', 'systemRef', 'canonicalSourceRef', 'purpose']) {
+    if (!evolution[field]) errors.push(`evolution registry missing ${field}`);
+  }
+  if (evolution.canonicalSource?.sourceRef !== evolution.canonicalSourceRef ||
+      evolution.canonicalSource?.path !== 'blueprint/evolution-registry.json' ||
+      evolution.canonicalSource?.field !== 'evolution' ||
+      evolution.canonicalSource?.compositionRef !== 'blueprint.vexlife.universal.001') {
+    errors.push('evolution registry canonical source identity/path/field/composition is malformed');
+  }
+  if (evolution.system?.systemRef !== evolution.systemRef ||
+      evolution.system?.sourceRef !== evolution.canonicalSourceRef) {
+    errors.push('evolution registry system does not bind the canonical source');
+  }
+
+  const ownedRefs = [];
+  const collect = (label, items, refField, valueField = null, vocabulary = null) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      errors.push(`evolution registry ${label} is empty`);
+      return;
+    }
+    const refs = new Set();
+    const values = [];
+    for (const item of items) {
+      if (!item?.[refField]) errors.push(`evolution registry ${label} item missing ${refField}`);
+      else if (refs.has(item[refField])) errors.push(`evolution registry ${label} duplicate ${item[refField]}`);
+      else { refs.add(item[refField]); ownedRefs.push(item[refField]); }
+      if (valueField) {
+        if (!item?.[valueField]) errors.push(`evolution registry ${label} item missing ${valueField}`);
+        values.push(item?.[valueField]);
+      }
+    }
+    if (vocabulary && JSON.stringify(values) !== JSON.stringify(vocabulary)) {
+      errors.push(`evolution registry ${label} does not exactly cover its canonical vocabulary`);
+    }
+  };
+  collect('contracts', evolution.contractIdentities, 'contractRef');
+  collect('authority trust sources', evolution.authorityTrustSources, 'authoritySourceRef');
+  collect('clock trust sources', evolution.clockTrustSources, 'clockSourceRef');
+  collect('behavior origins', evolution.behaviorOriginIdentities, 'originRef', 'value', evolution.behaviorOriginClasses);
+  collect('scopes', evolution.scopeIdentities, 'scopeRef', 'value', evolution.scopeClasses);
+  collect('primary destinations', evolution.primaryDestinationIdentities, 'destinationRef', 'value', evolution.primaryDestinations);
+  collect('linked destinations', evolution.linkedDestinationIdentities, 'destinationRef', 'value', evolution.linkedDestinations);
+  collect('acceptance policies', evolution.acceptancePolicies, 'policyRef', 'recordClass');
+  collect('projections', evolution.projectionIdentities, 'projectionRef', 'projectionKind');
+  collect('candidate types', evolution.candidateTypes, 'candidateTypeRef');
+
+  const contractRefs = new Set((evolution.contractIdentities ?? []).map((item) => item.contractRef));
+  for (const contract of evolution.contractIdentities ?? []) {
+    if (!contract.contractKind || contract.sourceRef !== evolution.canonicalSourceRef) {
+      errors.push(`${contract.contractRef ?? 'evolution contract'} has malformed kind or sourceRef`);
+    }
+  }
+  const exactRequiredFields = (label, actual, expected) => {
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      errors.push(`evolution registry ${label} requiredFields do not exactly match the implementation contract`);
+    }
+  };
+  exactRequiredFields('Burden Release', evolution.burdenRelease?.requiredFields, BURDEN_RELEASE_REQUIRED_FIELDS);
+  exactRequiredFields('context review', evolution.contextReview?.requiredFields, CONTINUITY_CONTEXT_REVIEW_REQUIRED_FIELDS);
+  exactRequiredFields('acceptance evidence', evolution.acceptanceEvidence?.requiredFields, CONTINUITY_ACCEPTANCE_EVIDENCE_REQUIRED_FIELDS);
+  exactRequiredFields('authority snapshot', evolution.authorityTrust?.requiredFields, CONTINUITY_AUTHORITY_SNAPSHOT_REQUIRED_FIELDS);
+  exactRequiredFields('scope target', evolution.scopeTarget?.requiredFields, CONTINUITY_SCOPE_TARGET_REQUIRED_FIELDS);
+  exactRequiredFields('continuity subject', evolution.continuitySubject?.requiredFields, CONTINUITY_SUBJECT_REQUIRED_FIELDS);
+  exactRequiredFields('supersession transaction', evolution.supersessionTransaction?.requiredFields, CONTINUITY_SUPERSESSION_TRANSACTION_REQUIRED_FIELDS);
+  exactRequiredFields('current record set', evolution.currentRecordSet?.requiredFields, CONTINUITY_CURRENT_RECORD_SET_RECEIPT_REQUIRED_FIELDS);
+  exactRequiredFields('simulated clock snapshot', evolution.simulatedClock?.requiredFields, CONTINUITY_SIMULATED_CLOCK_SNAPSHOT_REQUIRED_FIELDS);
+  exactRequiredFields('projection clock', evolution.projectionClock?.requiredFields, CONTINUITY_PROJECTION_CLOCK_RECEIPT_REQUIRED_FIELDS);
+  exactRequiredFields('aggregate projection', evolution.aggregateProjection?.requiredFields, CONTINUITY_AGGREGATE_PROJECTION_RECEIPT_REQUIRED_FIELDS);
+  const expectedContractSources = new Map([
+    ['contract.vexlife.continuity-scope-target/v1', 'scopeTarget'],
+    ['contract.vexlife.continuity-subject/v1', 'continuitySubject'],
+    ['contract.vexlife.continuity-acceptance-evidence/v1', 'acceptanceEvidence'],
+    ['contract.vexlife.continuity-authority-snapshot/v1', 'authorityTrust'],
+    ['contract.vexlife.continuity-context-review/v1', 'contextReview'],
+    ['contract.vexlife.burden-release/v1', 'burdenRelease'],
+    ['contract.vexlife.continuity-supersession-transaction/v1', 'supersessionTransaction'],
+    ['contract.vexlife.continuity-current-record-set-receipt/v1', 'currentRecordSet'],
+    ['contract.vexlife.continuity-simulated-clock-snapshot/v1', 'simulatedClock'],
+    ['contract.vexlife.continuity-projection-clock-receipt/v2', 'projectionClock'],
+    ['contract.vexlife.continuity-aggregate-projection-receipt/v1', 'aggregateProjection']
+  ]);
+  for (const [contractRef, sourceField] of expectedContractSources) {
+    const contract = (evolution.contractIdentities ?? []).find((item) => item.contractRef === contractRef);
+    if (contract?.sourceField !== sourceField || contract?.sourceRef !== evolution.canonicalSourceRef) {
+      errors.push(`evolution contract ${contractRef} does not resolve its exact canonical nested source`);
+    }
+  }
+  const authoritySource = (evolution.authorityTrustSources ?? [])[0];
+  if ((evolution.authorityTrustSources ?? []).length !== 1 ||
+      semanticHash(authoritySource) !== semanticHash(CONTINUITY_SIMULATION_AUTHORITY_SOURCE) ||
+      evolution.authorityTrust?.contractRef !== 'contract.vexlife.continuity-authority-snapshot/v1' ||
+      evolution.authorityTrust?.authoritySourceRef !== authoritySource?.authoritySourceRef ||
+      evolution.authorityTrust?.sourceRef !== authoritySource?.sourceRef ||
+      evolution.authorityTrust?.sourceField !== authoritySource?.sourceField ||
+      evolution.authorityTrust?.evidenceClass !== authoritySource?.evidenceClass ||
+      evolution.authorityTrust?.currentness !== authoritySource?.currentness ||
+      evolution.authorityTrust?.authorityMode !== authoritySource?.authorityMode ||
+      evolution.authorityTrust?.liveAuthorityGranted !== false ||
+      evolution.authorityTrust?.externalEffectsAuthorized !== false) {
+    errors.push('evolution authority trust does not exactly bind the registered simulated-current no-effect source');
+  }
+  const clockSource = (evolution.clockTrustSources ?? [])[0];
+  if ((evolution.clockTrustSources ?? []).length !== 1 ||
+      semanticHash(clockSource) !== semanticHash(CONTINUITY_SIMULATED_CLOCK_SOURCE) ||
+      evolution.simulatedClock?.contractRef !== 'contract.vexlife.continuity-simulated-clock-snapshot/v1' ||
+      evolution.simulatedClock?.clockSourceRef !== clockSource?.clockSourceRef ||
+      evolution.simulatedClock?.sourceRef !== clockSource?.sourceRef ||
+      evolution.simulatedClock?.evidenceClass !== clockSource?.evidenceClass ||
+      evolution.simulatedClock?.currentness !== clockSource?.currentness ||
+      evolution.simulatedClock?.clockMode !== clockSource?.clockMode ||
+      evolution.simulatedClock?.simulatedClock !== true ||
+      evolution.simulatedClock?.liveClockGranted !== false ||
+      evolution.simulatedClock?.externalTimeServiceUsed !== false) {
+    errors.push('evolution clock trust does not exactly bind the registered deterministic simulated-current no-effect source');
+  }
+  for (const ref of [
+    evolution.authorityTrust?.contractRef,
+    evolution.acceptanceEvidence?.contractRef,
+    evolution.scopeTarget?.contractRef,
+    evolution.continuitySubject?.contractRef,
+    evolution.supersessionTransaction?.contractRef,
+    evolution.currentRecordSet?.contractRef,
+    evolution.simulatedClock?.contractRef,
+    evolution.projectionClock?.contractRef,
+    evolution.aggregateProjection?.contractRef,
+    evolution.burdenRelease?.contractRef,
+    evolution.contextReview?.contractRef,
+    evolution.recurrencePolicy?.contractRef,
+    evolution.simulationContract?.contractRef
+  ]) if (!contractRefs.has(ref)) errors.push(`evolution registry nested contract is not canonically registered: ${ref}`);
+  for (const ref of evolution.system?.contractRefs ?? []) {
+    if (!contractRefs.has(ref)) errors.push(`evolution system references missing contract ${ref}`);
+  }
+  for (const policy of evolution.acceptancePolicies ?? []) {
+    if (!policy.recordClass || !policy.authorityRule) errors.push(`${policy.policyRef ?? 'acceptance policy'} is malformed`);
+  }
+  const projectionRefs = new Set((evolution.projectionIdentities ?? []).map((item) => item.projectionRef));
+  for (const ref of evolution.projectionRefs ?? []) {
+    if (!projectionRefs.has(ref)) errors.push(`evolution projection identity missing ${ref}`);
+  }
+  if (!(evolution.observationRequiredFields ?? []).includes('sourceBindings') ||
+      (evolution.observationRequiredFields ?? []).some((field) => ['sourceRangeRefs', 'sourceHashes'].includes(field))) {
+    errors.push('evolution observation contract must require exact sourceBindings instead of parallel arrays');
+  }
+  if (!(evolution.acceptedRecordRequiredFields ?? []).includes('sourceBindings') ||
+      !(evolution.acceptedRecordRequiredFields ?? []).includes('acceptanceEvidenceRefs') ||
+      !(evolution.acceptedRecordRequiredFields ?? []).includes('scopeTargetRef') ||
+      !(evolution.acceptedRecordRequiredFields ?? []).includes('acceptanceDisposition')) {
+    errors.push('evolution accepted-record contract is missing source, exact-target or authority-disposition fields');
+  }
+  if (evolution.resourceRules?.maximumConcurrentTrainingRuns !== 0 ||
+      evolution.recurrencePolicy?.automaticWeightEscalationAllowed !== false ||
+      evolution.simulationContract?.externalEffectsExecuted !== false ||
+      evolution.simulationContract?.modelWeightsChanged !== false) {
+    errors.push('evolution registry violates sealed no-effect/no-weight boundaries');
+  }
+  if (bundle) {
+    const processRefs = new Set((bundle.factory?.processes ?? []).map((item) => item.processRef));
+    const moduleRefs = new Set((bundle.modules?.modules ?? []).map((item) => item.moduleRef));
+    const testRefs = new Set((bundle.blueprint?.tests ?? []).map((item) => item.testRef));
+    for (const ref of evolution.processRefs ?? []) if (!processRefs.has(ref)) errors.push(`evolution registry references missing process ${ref}`);
+    for (const ref of evolution.moduleRefs ?? []) if (!moduleRefs.has(ref)) errors.push(`evolution registry references missing module ${ref}`);
+    for (const ref of evolution.testRefs ?? []) if (!testRefs.has(ref)) errors.push(`evolution registry references missing test ${ref}`);
+  }
+  return { ok: errors.length === 0, errors, stats: { ownedRefs: ownedRefs.length + 3 } };
+}
+
+function validateE27PresentationTopology(bundle, errors) {
+  const contract = bundle.experience?.authoritativeRootDesignContract;
+  if (contract?.contractRef !== 'contract.vexlife.e27.authoritative-root/v1') return;
+  const screens = new Map((bundle.blueprint?.screens ?? []).map((screen) => [screen.screenRef, screen]));
+  const shell = screens.get('screen.vexlife.shell');
+  const chat = screens.get('screen.vexlife.chat');
+  const terrain = screens.get('screen.vexlife.terrain');
+  const guide = screens.get('screen.vexlife.guide-overlay');
+  const region = (screen, ref) => screen?.regions?.find((candidate) => candidate.regionRef === ref);
+  const element = (targetRegion, ref) => targetRegion?.elements?.find((candidate) => candidate.elementRef === ref);
+
+  if (!shell || shell.presentationContractRef !== contract.contractRef || shell.presentationClass !== 'E27_ROOTED_SINGLE_TERRAIN_STAGE') {
+    errors.push('E2.7 canonical shell is not bound to the authoritative root presentation contract');
+  } else {
+    if (shell.defaultPrimaryScreenRef !== 'screen.vexlife.terrain' || shell.defaultPrimaryRouteRef !== 'route.terrain' || shell.persistentPrimaryTabs !== false || shell.primaryNavigationMode !== 'CONTEXTUAL_ROUTE_CONTROLS') {
+      errors.push('E2.7 canonical shell must make Terrain the sole primary stage with contextual route controls');
+    }
+    const nav = region(shell, 'region.shell.primary-nav');
+    if (!nav || nav.presentationClass !== 'CONTEXTUAL_SECONDARY_NAVIGATION' || nav.presentationMode !== 'CONTEXTUAL_ROUTE_CONTROLS' || nav.defaultVisible !== false || nav.persistentCanvasConsumer !== false) {
+      errors.push('E2.7 shell navigation must remain contextual, non-default and non-persistent');
+    }
+    for (const ref of ['element.nav.chat', 'element.nav.terrain', 'element.nav.health']) {
+      const control = element(nav, ref);
+      if (!control || control.selectionGroupRef === 'selection.primary-view' || control.kind === 'VIEW_SELECTOR' || control.accessibility?.role === 'tab') {
+        errors.push(`E2.7 shell cannot preserve primary-view tab topology at ${ref}`);
+      }
+    }
+    if (element(nav, 'element.nav.terrain')?.kind !== 'PRIMARY_STAGE_RETURN') errors.push('E2.7 Terrain route control must return to the primary stage');
+    for (const ref of ['element.nav.chat', 'element.nav.health']) {
+      if (element(nav, ref)?.kind !== 'CONTEXTUAL_PROJECTION_ENTRY') errors.push(`E2.7 ${ref} must be a contextual projection entry`);
+    }
+    const assistance = region(shell, 'region.shell.assistance');
+    const summon = element(assistance, 'element.vex.summon');
+    const legacyGuideToggle = element(assistance, 'element.guide.toggle');
+    if (summon?.presentationClass !== 'AMBIENT_VEX_SUMMON' || summon?.defaultVisible !== true) errors.push('E2.7 shell must expose the ambient Vex summon as the default companion control');
+    if (legacyGuideToggle?.presentationClass !== 'MIGRATION_COMPATIBILITY_CONTROL' || legacyGuideToggle?.defaultVisible !== false) errors.push('legacy Guide toggle must remain non-default migration compatibility evidence');
+  }
+
+  if (!terrain || terrain.presentationContractRef !== contract.contractRef || terrain.presentationClass !== 'PRIMARY_SINGLE_STAGE' || terrain.primaryStage !== true) {
+    errors.push('E2.7 Terrain screen is not the authoritative primary single stage');
+  }
+
+  if (!chat || chat.presentationContractRef !== contract.contractRef || chat.presentationClass !== 'CONTEXTUAL_CONTENT_WORKSPACE_PROJECTION' || chat.primaryStage !== false || chat.persistentCanvasConsumer !== false) {
+    errors.push('E2.7 Chat must be a contextual content/workspace projection, not a primary stage');
+  } else {
+    if (JSON.stringify(chat.defaultVisibleRegionRefs) !== JSON.stringify(['region.chat.feed', 'region.chat.context'])) errors.push('E2.7 Chat default contextual regions must be feed and context');
+    if (JSON.stringify(chat.compatibilityOnlyRegionRefs) !== JSON.stringify(['region.chat.project-rail', 'region.chat.channels'])) errors.push('E2.7 Chat compatibility-only regions changed');
+    for (const ref of ['region.chat.feed', 'region.chat.context']) {
+      const current = region(chat, ref);
+      if (current?.presentationClass !== 'DEFAULT_CONTEXTUAL_PROJECTION' || current?.defaultVisible !== true || current?.persistentCanvasConsumer !== false) errors.push(`${ref} must remain a default contextual E2.7 projection`);
+    }
+    for (const ref of ['region.chat.project-rail', 'region.chat.channels']) {
+      const current = region(chat, ref);
+      if (current?.presentationClass !== 'MIGRATION_COMPATIBILITY_SOURCE_DESCENT' || current?.defaultVisible !== false || current?.persistent !== false || current?.persistentCanvasConsumer !== false) errors.push(`${ref} must remain compatibility-only, non-default and non-persistent`);
+    }
+  }
+
+  if (!guide || guide.presentationContractRef !== contract.contractRef || guide.presentationClass !== 'AMBIENT_VEX_VESSEL_PROJECTION' || guide.visibleIdentityStringRef !== 'vex.visible.name' || guide.titleStringRef !== 'vex.visible.name' || guide.oneVisibleVex !== true || guide.legacyGuidePresentationDefault !== false || guide.primaryStage !== false || guide.persistentCanvasConsumer !== false) {
+    errors.push('E2.7 Guide surface must resolve to one ambient Vex vessel presentation');
+  } else {
+    const windowRegion = region(guide, 'region.guide.window');
+    const windowElement = element(windowRegion, 'element.guide.window');
+    if (windowRegion?.presentationClass !== 'AMBIENT_VEX_VESSEL' || windowRegion?.visibleIdentityStringRef !== 'vex.visible.name' || windowRegion?.labelStringRef !== 'vex.visible.name' || windowRegion?.defaultVisible !== true || windowRegion?.persistentCanvasConsumer !== false) {
+      errors.push('E2.7 ambient Vex region presentation drifted');
+    }
+    if (windowElement?.presentationClass !== 'AMBIENT_VEX_VESSEL' || windowElement?.visibleIdentityStringRef !== 'vex.visible.name' || windowElement?.labelStringRef !== 'vex.visible.name') {
+      errors.push('E2.7 ambient Vex element presentation drifted');
+    }
+  }
+}
+
+export function validateBlueprint(bundle) {
+  const { blueprint, tokens, platforms, strings, factory } = bundle;
+  const errors = [];
+  const refs = collectRefs(bundle);
+  const seen = new Map();
+  for (const item of refs) {
+    if (!item.ref) errors.push(`missing ${item.kind} ref`);
+    if (seen.has(item.ref)) errors.push(`duplicate ref ${item.ref} (${seen.get(item.ref)} and ${item.kind})`);
+    seen.set(item.ref, item.kind);
+  }
+
+  const stateRefs = new Set(blueprint.stateDomains.map((item) => item.stateRef));
+  const permissionRefs = new Set(blueprint.permissions.map((item) => item.permissionRef));
+  const actionRefs = new Set(blueprint.actions.map((item) => item.actionRef));
+  const testRefs = new Set(blueprint.tests.map((item) => item.testRef));
+  const terrainRefs = new Set(blueprint.terrain.map((item) => item.terrainNodeRef));
+  const roleRefs = new Set(blueprint.roles.map((item) => item.roleRef));
+  const platformRefs = new Set(blueprint.platforms.map((item) => item.platformRef));
+  for (const capability of bundle.capabilities?.capabilities ?? []) {
+    if (!capability.capabilityRef || !capability.purpose) errors.push('capability missing ref or purpose');
+    if (!permissionRefs.has(capability.permissionRef)) errors.push(`${capability.capabilityRef} references missing permission ${capability.permissionRef}`);
+    for (const actionRef of capability.actionRefs ?? []) if (!actionRefs.has(actionRef)) errors.push(`${capability.capabilityRef} references missing action ${actionRef}`);
+    for (const roleRef of capability.roleRefs ?? []) if (!roleRefs.has(roleRef)) errors.push(`${capability.capabilityRef} references missing role ${roleRef}`);
+    for (const platformRef of capability.platformRefs ?? []) if (!platformRefs.has(platformRef)) errors.push(`${capability.capabilityRef} references missing platform ${platformRef}`);
+  }
+
+  for (const component of blueprint.components ?? []) {
+    if (!component.instanceRefPattern?.includes('{')) errors.push(`${component.componentRef} missing instance placeholder`);
+    for (const slot of component.slots ?? []) if (slot.actionRef && !actionRefs.has(slot.actionRef)) errors.push(`${slot.slotRef} references missing action ${slot.actionRef}`);
+  }
+  for (const action of blueprint.actions) {
+    if (!permissionRefs.has(action.permissionRef)) errors.push(`${action.actionRef} references missing permission ${action.permissionRef}`);
+    for (const stateRef of action.outputStateRefs ?? []) if (!stateRefs.has(stateRef)) errors.push(`${action.actionRef} updates missing state ${stateRef}`);
+    if (!action.effectClass) errors.push(`${action.actionRef} missing effectClass`);
+  }
+  for (const role of blueprint.roles) {
+    for (const target of role.mayReachRoleRefs ?? []) if (!roleRefs.has(target)) errors.push(`${role.roleRef} reaches missing role ${target}`);
+  }
+  for (const screen of blueprint.screens) {
+    if (!screen.conceptRef || !screen.navigationNodeRef) errors.push(`${screen.screenRef} missing concept or navigation node`);
+    for (const region of screen.regions) {
+      if (!region.conceptRef || !region.navigationNodeRef) errors.push(`${region.regionRef} missing concept or navigation node`);
+      for (const element of region.elements) {
+        if (!element.conceptRef || !element.interactionRef || !element.journeyEventTypeRef) errors.push(`${element.elementRef} missing identity/interaction/journey contract`);
+        if (element.actionRef && !actionRefs.has(element.actionRef)) errors.push(`${element.elementRef} references missing action ${element.actionRef}`);
+        if (element.permissionRef && !permissionRefs.has(element.permissionRef)) errors.push(`${element.elementRef} references missing permission ${element.permissionRef}`);
+        if (element.terrainNodeRef && !terrainRefs.has(element.terrainNodeRef)) errors.push(`${element.elementRef} references missing Terrain node ${element.terrainNodeRef}`);
+        for (const testRef of element.testRefs ?? []) if (!testRefs.has(testRef)) errors.push(`${element.elementRef} references missing test ${testRef}`);
+        if (element.actionRef && !element.accessibility?.stableIdentifierRef) errors.push(`${element.elementRef} missing accessibility stable identifier`);
+        if (element.accessibility?.minimumTargetPx < 44) errors.push(`${element.elementRef} target size below 44px`);
+      }
+    }
+    for (const testRef of screen.testRefs ?? []) if (!testRefs.has(testRef)) errors.push(`${screen.screenRef} references missing test ${testRef}`);
+  }
+  validateE27PresentationTopology(bundle, errors);
+  for (const node of blueprint.terrain) if (node.parentRef && !terrainRefs.has(node.parentRef)) errors.push(`${node.terrainNodeRef} has missing parent ${node.parentRef}`);
+
+  const requiredStrings = visibleStringRefs(blueprint, bundle.experience);
+  for (const language of blueprint.product.requiredLanguages) {
+    if (!strings[language]) {
+      errors.push(`missing required language catalog ${language}`);
+      continue;
+    }
+    for (const ref of requiredStrings) if (!(ref in strings[language])) errors.push(`${language} missing string ${ref}`);
+  }
+
+  if ((tokens.typography?.basePx ?? 0) < 16) errors.push('design token typography.basePx must be at least 16');
+  if ((tokens.typography?.nodeTitlePx ?? 0) < 20) errors.push('terrain node title must be at least 20px');
+  if ((tokens.accessibility?.minimumTargetPx ?? 0) < 44) errors.push('minimum target must be at least 44px');
+  const registeredPlatformIds = new Set(platforms.platforms.map((item) => item.id));
+  for (const platform of blueprint.platforms) if (!registeredPlatformIds.has(platform.generatorId)) errors.push(`missing platform generator ${platform.generatorId}`);
+
+  for (const process of factory.processes ?? []) for (const testRef of process.testRefs ?? []) if (!testRefs.has(testRef)) errors.push(`${process.processRef} references missing test ${testRef}`);
+  for (const work of bundle.implementationPlan?.workUnits ?? []) for (const testRef of work.requiredTestRefs ?? []) if (!testRefs.has(testRef)) errors.push(`${work.workRef} references missing test ${testRef}`);
+  const factoryValidation = validateProcessFactory(factory);
+  errors.push(...factoryValidation.errors.map((error) => `process factory: ${error}`));
+  const planValidation = validateImplementationPlan(bundle.implementationPlan);
+  errors.push(...planValidation.errors.map((error) => `implementation plan: ${error}`));
+  const stringRefs = new Set(Object.keys(strings[blueprint.product.defaultLanguage] ?? {}));
+  const experienceValidation = validateExperienceRegistry(bundle.experience, { actionRefs, componentRefs: new Set((blueprint.components ?? []).map((item) => item.componentRef)), stringRefs });
+  errors.push(...experienceValidation.errors.map((error) => `experience registry: ${error}`));
+  validateModuleRegistry(bundle, errors);
+  const lensValidation = validateReviewLensRegistry(bundle.reviewLenses);
+  errors.push(...lensValidation.errors.map((error) => `review lens registry: ${error}`));
+  const featureValidation = validateFeatureRegistry(bundle.featureRegistry, bundle);
+  errors.push(...featureValidation.errors.map((error) => `feature registry: ${error}`));
+  const healthValidation = validateBuildHealthRegistry(bundle.buildHealth, bundle.reviewLenses);
+  errors.push(...healthValidation.errors.map((error) => `build health registry: ${error}`));
+  const bridgeValidation = validateHomeBridgeRegistry(bundle.bridge, { testRefs });
+  errors.push(...bridgeValidation.errors.map((error) => `home bridge registry: ${error}`));
+  if (!blueprint.intentOrchestration) errors.push('universal blueprint missing intentOrchestration composition');
+  else if (semanticHash(blueprint.intentOrchestration) !== semanticHash(bundle.intentRegistry)) {
+    errors.push('universal blueprint intentOrchestration composition does not match loaded intent registry');
+  }
+  const intentValidation = validateIntentRegistry(bundle.intentRegistry);
+  errors.push(...intentValidation.errors.map((error) => `intent registry: ${error}`));
+  if (!blueprint.intentScheduler) errors.push('universal blueprint missing intentScheduler composition');
+  else if (!bundle.schedulerRegistry) errors.push('loaded bundle missing canonical intent scheduler registry');
+  else if (semanticHash(blueprint.intentScheduler) !== semanticHash(bundle.schedulerRegistry)) {
+    errors.push('universal blueprint intentScheduler composition does not match loaded scheduler registry');
+  }
+  const schedulerValidation = validateIntentSchedulerRegistry(bundle.schedulerRegistry);
+  errors.push(...schedulerValidation.errors.map((error) => `intent scheduler registry: ${error}`));
+  if (!blueprint.evolution) errors.push('universal blueprint missing evolution composition');
+  else if (!bundle.evolution) errors.push('loaded bundle missing canonical evolution registry');
+  else if (semanticHash(blueprint.evolution) !== semanticHash(bundle.evolution)) {
+    errors.push('universal blueprint evolution composition does not match loaded evolution registry');
+  }
+  const evolutionValidation = validateEvolutionRegistry(bundle.evolution, bundle);
+  errors.push(...evolutionValidation.errors.map((error) => `evolution registry: ${error}`));
+  const processRefs = new Set(factory.processes.map((item) => item.processRef));
+  const moduleRefs = new Set((bundle.modules?.modules ?? []).map((item) => item.moduleRef));
+  for (const processRef of bundle.schedulerRegistry?.processRefs ?? []) {
+    if (!processRefs.has(processRef)) errors.push(`intent scheduler registry references missing process ${processRef}`);
+  }
+  for (const testRef of bundle.schedulerRegistry?.testRefs ?? []) {
+    if (!testRefs.has(testRef)) errors.push(`intent scheduler registry references missing test ${testRef}`);
+  }
+  for (const moduleRef of [
+    'module.vexlife.core.scheduler-runtime-trust',
+    'module.vexlife.core.resource-admission',
+    'module.vexlife.core.context-lease',
+    'module.vexlife.core.intent-checkpoint',
+    'module.vexlife.core.tool-result-relay',
+    'module.vexlife.core.intent-scheduler'
+  ]) {
+    if (!moduleRefs.has(moduleRef)) errors.push(`intent scheduler registry requires missing module ${moduleRef}`);
+  }
+
+  let registryStats = null;
+  try {
+    const registry = compileRegistryPack(bundle);
+    registryStats = { entries: registry.entries.size };
+  } catch (error) {
+    errors.push(`registry compilation failed: ${error.message}`);
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    stats: {
+      refs: refs.length,
+      screens: blueprint.screens.length,
+      elements: blueprint.screens.flatMap((screen) => screen.regions.flatMap((region) => region.elements)).length,
+      strings: requiredStrings.length,
+      languages: blueprint.product.requiredLanguages.length,
+      platforms: blueprint.platforms.length,
+      processes: factoryValidation.stats.processes,
+      modules: bundle.modules?.modules?.length ?? 0,
+      milestones: planValidation.stats.milestones,
+      workUnits: planValidation.stats.workUnits,
+      dreamCandidateTypes: bundle.evolution?.candidateTypes?.length ?? 0,
+      capabilities: bundle.capabilities?.capabilities?.length ?? 0,
+      reviewLenses: lensValidation.stats.lenses,
+      features: featureValidation.stats.features,
+      healthChecks: healthValidation.stats.checks,
+      bridgeModes: bridgeValidation.stats.modes,
+      schedulerOwnedRefs: schedulerValidation.stats.ownedRefs,
+      evolutionOwnedRefs: evolutionValidation.stats.ownedRefs,
+      registryEntries: registryStats?.entries ?? 0
+    },
+    semanticHash: semanticHash({
+      blueprint,
+      tokens,
+      platforms,
+      strings,
+      factory,
+      modules: bundle.modules,
+      experience: bundle.experience,
+      evolution: bundle.evolution,
+      implementationPlan: bundle.implementationPlan,
+      capabilities: bundle.capabilities,
+      reviewLenses: bundle.reviewLenses,
+      featureRegistry: bundle.featureRegistry,
+      buildHealth: bundle.buildHealth,
+      bridge: bundle.bridge,
+      intentRegistry: bundle.intentRegistry,
+      schedulerRegistry: bundle.schedulerRegistry
+    })
+  };
+}
+
+export function buildIdentityIndex(blueprintOrBundle) {
+  const bundle = blueprintOrBundle.blueprint ? blueprintOrBundle : {
+    blueprint: blueprintOrBundle, strings: { [blueprintOrBundle.product.defaultLanguage]: {} },
+    factory: { foundations: [], processes: [], templates: [], workedExamples: [] }, modules: { modules: [] },
+    experience: { experienceProfiles: [], gestureContracts: [], vessels: [] }, evolution: { candidateTypes: [] }, implementationPlan: { milestones: [], workUnits: [] }, capabilities: { capabilities: [] }, reviewLenses: { lenses: [] }, featureRegistry: { features: [] }, buildHealth: { checks: [] }, bridge: {}, intentRegistry: blueprintOrBundle.intentOrchestration ?? null, schedulerRegistry: blueprintOrBundle.intentScheduler ?? null
+  };
+  return [...compileRegistryPack(bundle).entries.values()].map((entry) => ({
+    ref: entry.ref,
+    kind: entry.kind,
+    brief: entry.brief,
+    stateHash: entry.stateHash,
+    edges: entry.edges ?? []
+  }));
+}
+
+// [VXG RealForever]
