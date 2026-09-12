@@ -48,7 +48,20 @@ async function openConnect(page, { keyboard = false } = {}) {
   } else {
     await connect.click();
   }
-  await page.locator('#relationshipsConnectionDetails').waitFor({ state: 'attached' });
+  await page.waitForFunction(() => {
+    const panel = document.querySelector('[data-rel="connect-panel"]');
+    const method = document.querySelector('#relationshipsConnectMethod');
+    const details = document.querySelector('#relationshipsConnectionDetails');
+    return Boolean(
+      panel &&
+      panel.hidden === false &&
+      method &&
+      details &&
+      panel.contains(method) &&
+      panel.contains(details) &&
+      method.getClientRects().length > 0
+    );
+  });
 }
 
 async function disclosureState(page, selector) {
