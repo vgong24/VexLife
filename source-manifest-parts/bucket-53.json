@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 21531,
       "sha256": "078fc11c339c9d32b380b2575e05cd62afe512726fc4145f0adfbcff6c7c4aab"
+    },
+    {
+      "path": "docs/VEX-FAMILY-CONVERSATION.md",
+      "mode": "100644",
+      "bytes": 4429,
+      "sha256": "ba20d7e31a46c8bab457d01559966a2a9731e358e167912cde7c460dea7f5ec0"
     }
   ]
 }
