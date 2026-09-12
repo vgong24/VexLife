@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 18097,
       "sha256": "8b87734f096543df04561677b688acc5bfe2f0723ca8fd780688a31836af9cd7"
+    },
+    {
+      "path": "src/core/family-conversation.mjs",
+      "mode": "100644",
+      "bytes": 17741,
+      "sha256": "c44cc716540c894f731d97dc646abeb2ae2c638dbb6e71684fd2a1149cc6cb23"
     }
   ]
 }
