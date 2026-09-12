@@ -386,6 +386,39 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
   }
 
+  function visibleConnectionStatus() {
+    const admittedStates = new Set(['IDLE', 'PREPARING', 'HELD', 'HOST_BINDING_REQUIRED', 'FAILURE']);
+    if (!admittedStates.has(runtimePlan.state)) throw new Error('Relationships visible connection status received an unadmitted runtime state');
+    const hostExecutionDeferred = runtimePlan.hostExecutionDeferred ?? true;
+    const semanticAcknowledged = runtimePlan.semanticAcknowledged ?? false;
+    const networkEffectPerformed = runtimePlan.effects?.networkEffectPerformed ?? false;
+    if (hostExecutionDeferred !== true || semanticAcknowledged !== false || networkEffectPerformed !== false) {
+      throw new Error('Relationships visible connection status cannot widen accepted runtime truth');
+    }
+    return Object.freeze({
+      state: runtimePlan.state,
+      deliveryTruth: 'NOT_CONNECTED',
+      reasons: Object.freeze(Array.isArray(runtimePlan.reasons) ? [...runtimePlan.reasons] : []),
+      hostExecutionDeferred: true,
+      networkEffectPerformed: false,
+      connected: false,
+      delivered: false,
+      semanticAcknowledged: false
+    });
+  }
+
+  function visibleConnectionStatusText(status = visibleConnectionStatus()) {
+    return status.state === 'PREPARING'
+      ? rt('runtimePreparing')
+      : status.state === 'HELD'
+        ? rt('runtimeHeld')
+        : status.state === 'HOST_BINDING_REQUIRED'
+          ? rt('runtimeHostBindingRequired')
+          : status.state === 'FAILURE'
+            ? rt('runtimeFailure')
+            : humanOptionLabel(status.deliveryTruth);
+  }
+
   function hydrationSnapshot(){
     return Object.freeze({
       state:hydrationState,
@@ -399,7 +432,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   async function hydratePersistedRelationships(){
     const requestGeneration=hydrationRequestGeneration+1;
     hydrationRequestGeneration=requestGeneration;
-    if(!persistenceBridge||!hydrationBinding||typeof persistenceBridge.list!=='function'){
+    if(!persistenceBridge||!hydrationBinding||typeof persistenceBridge.list==='function'){
       hydratedRelationships=Object.freeze([]);
       hydrationState='HELD_BINDING_REQUIRED';
       hydrationFailureCode='RELATIONSHIPS_PERSISTENCE_BINDING_REQUIRED';
@@ -852,9 +885,16 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     const invitations = document.createElement('p'); invitations.textContent = rt('invitations', { count:view.counts.invitations });
     counts.append(people, groups, invitations);
 
+    const connectionStatus = visibleConnectionStatus();
     const deliveryHeading = document.createElement('h3'); deliveryHeading.textContent = rt('deliveryTitle');
     const deliveryBody = document.createElement('p'); deliveryBody.textContent = rt('deliveryBody');
-    const delivery = document.createElement('p'); delivery.id = 'relationshipsDelivery'; delivery.textContent = `${rt('delivery')}: ${humanOptionLabel(interaction.delivery)}`;
+    const delivery = document.createElement('p');
+    delivery.id = 'relationshipsDelivery';
+    delivery.dataset.runtimePlanState = connectionStatus.state;
+    delivery.dataset.deliveryTruth = connectionStatus.deliveryTruth;
+    delivery.dataset.networkEffectPerformed = String(connectionStatus.networkEffectPerformed);
+    delivery.dataset.semanticAcknowledged = String(connectionStatus.semanticAcknowledged);
+    delivery.textContent = `${rt('delivery')}: ${visibleConnectionStatusText(connectionStatus)}`;
     const deliveryHeld = document.createElement('p'); deliveryHeld.textContent = canAdvance({...interaction,localFormed:persistence.isSavedFor({localRelationshipClass:interaction.localClass})}) ? rt('active') : rt('deliveryHeld');
     const vexHeading = document.createElement('h3'); vexHeading.textContent = rt('vexTitle');
     const vexBody = document.createElement('p'); vexBody.textContent = rt('vexBody');
@@ -920,6 +960,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
       connectOpen,
       localFormed:persistence.isSavedFor({localRelationshipClass:interaction.localClass}),
       admission:admission(interaction),
+      connectionStatus:visibleConnectionStatus(),
       delivery:interaction.delivery,
       recovery:interaction.recovery,
       cdrGate:{
