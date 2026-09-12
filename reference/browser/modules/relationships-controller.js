@@ -432,7 +432,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   async function hydratePersistedRelationships(){
     const requestGeneration=hydrationRequestGeneration+1;
     hydrationRequestGeneration=requestGeneration;
-    if(!persistenceBridge||!hydrationBinding||typeof persistenceBridge.list==='function'){
+    if(!persistenceBridge||!hydrationBinding||typeof persistenceBridge.list!=='function'){
       hydratedRelationships=Object.freeze([]);
       hydrationState='HELD_BINDING_REQUIRED';
       hydrationFailureCode='RELATIONSHIPS_PERSISTENCE_BINDING_REQUIRED';
