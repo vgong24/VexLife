@@ -170,13 +170,18 @@ test('UX05 keeps the ordinary Relationships path primary while progressively dis
     }
 
     const englishDiagnosticsLabel = (await disclosureState(page, '#relationshipsConnectionDetails')).summary;
+    assert.equal(englishDiagnosticsLabel, 'Connection status');
     await page.locator('#surfaceMenuButton').click();
     await page.locator('#languageSelect').waitFor({ state: 'visible' });
     await page.selectOption('#languageSelect', 'ja');
     await page.waitForFunction(() => document.documentElement.lang === 'ja');
-    await page.waitForFunction(() => document.querySelector('#relationshipsConnectionDetails')?.open === true);
+    await page.waitForFunction(() => {
+      const details = document.querySelector('#relationshipsConnectionDetails');
+      const summary = details?.querySelector(':scope > summary');
+      return details?.open === true && summary?.textContent?.trim() === '接続状況';
+    });
     const japaneseDiagnosticsLabel = (await disclosureState(page, '#relationshipsConnectionDetails')).summary;
-    assert.notEqual(japaneseDiagnosticsLabel, englishDiagnosticsLabel);
+    assert.equal(japaneseDiagnosticsLabel, '接続状況');
     assert.equal((await disclosureState(page, '#relationshipsConnectionDetails')).open, true);
 
     const vexSummary = page.locator('#relationshipsVexDetails > summary');
