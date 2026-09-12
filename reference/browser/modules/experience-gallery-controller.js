@@ -75,10 +75,23 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
+function compareScalarRefs(left, right) {
+  const a = [...String(left)];
+  const b = [...String(right)];
+  const sharedLength = Math.min(a.length, b.length);
+  for (let index = 0; index < sharedLength; index += 1) {
+    const aScalar = a[index].codePointAt(0);
+    const bScalar = b[index].codePointAt(0);
+    if (aScalar === bScalar) continue;
+    return aScalar < bScalar ? -1 : 1;
+  }
+  return a.length - b.length;
+}
+
 function byRef(left, right) {
   const a = left.featureRef ?? left.patternRef ?? left.formRef ?? left.commandRef ?? left.projectionRef ?? '';
   const b = right.featureRef ?? right.patternRef ?? right.formRef ?? right.commandRef ?? right.projectionRef ?? '';
-  return a.localeCompare(b, 'en');
+  return compareScalarRefs(a, b);
 }
 
 function projectFeature(feature) {
