@@ -1,8 +1,8 @@
-# Scoped Purpose Workspace — SPW-01 source foundation
+# Scoped Purpose Workspace — SPW source and registration foundation
 
 `[VXG RealForever]`
 
-SPW-01 source-places one reusable role/purpose/process/completion foundation for four **synthetic-only** domain families:
+SPW-01 source-placed one reusable role/purpose/process/completion foundation for four **synthetic-only** domain families:
 
 ```text
 Learning and Care
@@ -11,14 +11,30 @@ Legal Service
 Apprenticeship and Contribution
 ```
 
-It does not yet register a live VexLife feature, screen, route, Terrain node, module-registry entry, Feature Registry entry, Experience Registry walkthrough, localized human-visible surface, browser controller, or external professional effect.
+SPW-02 registers the smallest current source-managed Feature/Blueprint/Experience/Module/Process/localization membrane over that accepted foundation. The registration is **PREPARED / browser-held**: it does not claim a rendered Purpose Workspace, browser controller, Terrain adoption, lived feature walkthrough, or external professional effect.
 
 ```text
 SPW01_SOURCE_FOUNDATION
-!= LIVE_FEATURE_REGISTRATION
++ SPW02_REGISTERED_PREPARED_MEMBRANE
 != BROWSER_RUNTIME_INTEGRATION
+!= LIVED_FEATURE_WALKTHROUGH
 != REAL_DOMAIN_EFFECT
 ```
+
+Current registration identities:
+
+```text
+feature.vexlife.scoped-purpose-workspace
+workspace.vexlife.scoped-purpose.001
+screen.vexlife.purpose-workspace
+route.purpose-workspace
+module.vexlife.core.purpose-workspace
+process.vexlife.purpose-workspace.coordinate
+plan.vexlife.feature.scoped-purpose-workspace.introduction.001
+experience.vexlife.newcomer-guided
+```
+
+The canonical screen/route now exists in Blueprint source, but its registered feature remains `PREPARED` with its human-introduction route `HELD`. The Experience walkthrough is declarative and no-effect; `featureWalkthroughPlanCurrent=false` remains true until the later browser-adoption owner proves the feature current and discoverable.
 
 ## Reuse instead of parallel owners
 
@@ -35,7 +51,9 @@ Experience Review Kit
 Process Factory / Module Registry / Build Health
 ```
 
-SPW-01 records target identities for those owners without mutating them. Public onboarding remains the establishment entrance; the future in-product introduction is one Feature Registry → Experience Registry → Guide walkthrough contextualized by the selected domain, not four new onboarding systems.
+Public onboarding remains the establishment entrance. The in-product introduction is one Feature Registry → Experience Registry → Guide walkthrough contextualized by the selected domain, not four new onboarding systems.
+
+SPW-02 uses dedicated Module Registry and Process Factory fragments. It does not seize unrelated shared fragment custody and does not create a second runtime/process owner.
 
 ## Human grammar
 
@@ -61,7 +79,7 @@ Plan → Practice → Evidence → Reflect → Replan
 Escalate → Triage → Route → Resolve
 ```
 
-Six completion contracts define evidence requirements independently of UI rendering. A real external effect is never inferred from a prepared/reviewed state.
+Six completion contracts define evidence requirements independently of UI rendering. `process.vexlife.purpose-workspace.coordinate` registers their no-effect coordination projection into the Process Factory; it does not acquire authority for any external stage.
 
 Permanent non-collapse:
 
@@ -81,10 +99,17 @@ CORRECTION != ERASURE
 
 `src/core/purpose-workspace.mjs` provides source-only loading, validation, role-relay simulation, completion evaluation, semantic-depth projection, reusable boundary-case evaluation, and deterministic Experience Topology generation.
 
-The topology intentionally represents the future Purpose Workspace screen/components as **planned, not current**. A map node existing is never evidence that the product surface is already registered.
+The topology still represents the Purpose Workspace screen/components as **not runtime-current**. Source registration never substitutes for browser adoption or rendered Experience Review evidence.
 
-## Bounded successor
+## Current bounded continuation
 
-After SPW-01 is accepted, a fresh same-owner successor may register the smallest current Feature/Blueprint/Experience/Module/Process/localization membrane after a new overlap census. Browser adoption and rendered Experience Review evidence remain later bounded work if they are not safely co-owned by that successor.
+SPW-02 owns only the source-managed registration membrane and its exact proof. After that membrane is accepted, browser adoption and rendered Experience Review remain later bounded work unless a separately current grant safely co-owns them.
+
+```text
+REGISTERED != BROWSER_ADOPTED
+WALKTHROUGH_REGISTERED != WALKTHROUGH_CURRENT
+WALKTHROUGH_PLAN != LIVED_JOURNEY_EVENT
+SOURCE_SCREEN != RENDERED_SCREEN
+```
 
 <!-- [VXG RealForever] -->

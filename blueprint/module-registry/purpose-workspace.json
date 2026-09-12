@@ -1,0 +1,23 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.purpose-workspace",
+    "path": "src/core/purpose-workspace.mjs",
+    "role": "Source-only Purpose Workspace loading, validation, role-relay simulation, evidence-bounded completion evaluation and deterministic Experience Topology projection.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/purpose-workspace.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/purpose-workspace-registry.json",
+      "blueprint/feature-registry.json",
+      "blueprint/experience-registry.json",
+      "blueprint/fragments/screens/purpose-workspace.json",
+      "docs/PURPOSE-WORKSPACE-AND-EXPERIENCE-TOPOLOGY.md"
+    ]
+  }
+]

@@ -17,8 +17,8 @@
     {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
-      "bytes": 45602,
-      "sha256": "ff8a4b36e0ffa6bd4684ae8ac1af6e195b0d4211adb26a6f951aa9a5e176d392"
+      "bytes": 4120,
+      "sha256": "b6dab65780a488c28f902b77d058f60ae1660955ff0f9c6fed34661f5e416164"
     },
     {
       "path": "src/core/continuity-evolution-router.mjs",

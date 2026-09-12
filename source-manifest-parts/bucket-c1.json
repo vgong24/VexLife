@@ -9,6 +9,12 @@
       "sha256": "10f6102b270b0ec52a8345da05ade29afddca07ef1db73180b5edf8f41c47e03"
     },
     {
+      "path": "blueprint/purpose-workspace/registration.json",
+      "mode": "100644",
+      "bytes": 9727,
+      "sha256": "725e5c77e377051e275c38cd93e08796240ace8de496fa29ae55bb7d7573e773"
+    },
+    {
       "path": "docs/SCHEDULED-DAILY-AUTONOMY.md",
       "mode": "100644",
       "bytes": 7018,

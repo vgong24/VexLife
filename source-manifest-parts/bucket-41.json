@@ -5,8 +5,8 @@
     {
       "path": "blueprint/process-factory.json",
       "mode": "100644",
-      "bytes": 755,
-      "sha256": "bdf15cd66e784928905966f8927abaddf23ab77543d5b4731d761941eaebfeaa"
+      "bytes": 823,
+      "sha256": "bae23f8d1e836d177b835d6878a7ad514b6fb7760c4a86a843358254e1d35f1f"
     },
     {
       "path": "src/core/browser-prompt-context-runtime.mjs",
