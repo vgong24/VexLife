@@ -3,7 +3,11 @@ import { semanticHash } from './utils.mjs';
 
 const isObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 const unique = (values) => [...new Set(values)];
-const sameSet = (left, right) => left.length === right.length && left.every((value) => right.includes(value));
+const sameSet = (left, right) =>
+  left.length === right.length
+  && new Set(left).size === left.length
+  && new Set(right).size === right.length
+  && left.every((value) => right.includes(value));
 
 export const FAMILY_CONVERSATION_BINDING_SCHEMA = 'vexlife.family-conversation-binding/v1';
 export const FAMILY_CONVERSATION_MESSAGE_SCHEMA = 'vexlife.family-conversation-message/v1';
@@ -208,6 +212,18 @@ function assertFamilyChannelCurrent(channel, rawRecord) {
   }
   const record = validateFamilySpaceConversationRecord(rawRecord);
   const binding = channel.familySpaceBinding;
+  if (!FAMILY_CHANNEL_KINDS.has(binding.audienceKind) || channel.kind !== binding.audienceKind) {
+    familyFail('FAMILY_CONVERSATION_STALE', 'Family channel kind does not match its admitted audience binding');
+  }
+  if (!Array.isArray(binding.audienceMemberBindings)) {
+    familyFail('FAMILY_CONVERSATION_RECORD_INVALID', 'Family channel audience binding must be an array');
+  }
+  if (binding.historyVisibilityPolicyRef !== FAMILY_HISTORY_FROM_JOIN_POLICY) {
+    familyFail(
+      'FAMILY_CONVERSATION_HISTORY_POLICY_UNSUPPORTED',
+      'Family channel history policy is not accepted FROM_JOIN'
+    );
+  }
   if (
     binding.spaceRef !== record.spaceRef
     || binding.familySpaceRecordSha256 !== record.recordSha256

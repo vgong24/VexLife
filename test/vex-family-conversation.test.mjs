@@ -192,6 +192,35 @@ test('VFC-03: stale record hash or generation cannot form a Family message', () 
   );
 });
 
+test('VFC-03A/VFC-09: reconstructed Family channel cannot narrow or duplicate the exact GROUP audience', () => {
+  const snapshot = record({
+    members: [member('victor', { role: 'OWNER' }), member('alex'), member('bri')]
+  });
+  const channel = groupChannel(snapshot);
+
+  const narrowed = structuredClone(channel);
+  narrowed.familySpaceBinding.audienceKind = 'PRIVATE';
+  narrowed.familySpaceBinding.audienceMemberBindings = narrowed.familySpaceBinding.audienceMemberBindings.slice(0, 2);
+  narrowed.familySpaceBinding.channelMemberRefs = [
+    'principal.victor',
+    'principal.alex',
+    'lineage.vex.family.household'
+  ];
+  assert.throws(
+    () => familyMessage(narrowed, snapshot, 'victor'),
+    (error) => error instanceof FamilyConversationError && error.code === 'FAMILY_CONVERSATION_STALE'
+  );
+
+  const duplicated = structuredClone(channel);
+  duplicated.familySpaceBinding.audienceMemberBindings[2] =
+    duplicated.familySpaceBinding.audienceMemberBindings[1];
+  duplicated.familySpaceBinding.channelMemberRefs[2] = 'principal.alex';
+  assert.throws(
+    () => familyMessage(duplicated, snapshot, 'victor'),
+    (error) => error instanceof FamilyConversationError && error.code === 'FAMILY_CONVERSATION_STALE'
+  );
+});
+
 test('VFC-04: removal advances the future audience without rewriting historical witnesses', () => {
   const initial = record({
     members: [member('victor', { role: 'OWNER' }), member('alex'), member('bri')]
