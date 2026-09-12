@@ -8,6 +8,7 @@
     "processes": [
       "blueprint/process-factory/processes-core.json",
       "blueprint/process-factory/processes-conversation-and-interface.json",
+      "blueprint/process-factory/processes-purpose-workspace.json",
       "blueprint/process-factory/processes-evolution.json",
       "blueprint/process-factory/processes-operations-and-publication.json",
       "blueprint/process-factory/processes-health-and-bridge.json"
