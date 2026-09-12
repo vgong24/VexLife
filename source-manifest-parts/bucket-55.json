@@ -5,8 +5,8 @@
     {
       "path": ".github/workflows/check.yml",
       "mode": "100644",
-      "bytes": 16250,
-      "sha256": "c9b6269f7b705d3e3a20f0de94c858f37ea3aba1d37eef23abe97d1ffb2e5b1e"
+      "bytes": 16319,
+      "sha256": "a20e3d1133ae5493efc4efb925e4f0b137b7dd017189cc7cdd1fdf4ace6ce4e9"
     },
     {
       "path": "reference/browser/modules/public-learning-navigation-request.js",
