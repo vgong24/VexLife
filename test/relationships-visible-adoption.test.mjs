@@ -86,6 +86,23 @@ function undersizedControls(page) {
   );
 }
 
+async function openConnectionDiagnostics(page, { keyboard = false } = {}) {
+  const details = page.locator('#relationshipsConnectionDetails');
+  await details.waitFor({ state:'visible' });
+  if (await details.evaluate((element) => element.open)) return details;
+
+  const summary = details.locator(':scope > summary');
+  if (keyboard) {
+    await summary.focus();
+    assert.equal(await summary.evaluate((element) => document.activeElement === element), true);
+    await page.keyboard.press('Enter');
+  } else {
+    await summary.click();
+  }
+  await page.waitForFunction(() => document.querySelector('#relationshipsConnectionDetails')?.open === true);
+  return details;
+}
+
 async function mountSavedFfr03Relationships(page, { decision }) {
   await page.evaluate(async () => {
     const { createRelationshipsController, loadRelationshipsReference } = await import('/reference/browser/modules/relationships-controller.js');
@@ -282,6 +299,7 @@ test('Relationships root browser route is visible, localized, accessible and no-
     assert.ok(box && box.height >= 44 && box.width >= 44, `Connect someone target too small: ${JSON.stringify(box)}`);
     await connect.click();
     assert.equal(await page.locator('[data-rel="connect-panel"]').isVisible(), true);
+    await openConnectionDiagnostics(page);
     assert.match(await page.locator('[data-rel="connect-panel"]').textContent(), /does not send or save anything yet/i);
     assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), true);
     assert.equal(await page.locator('#relationshipsInvitation option[value="RECEIVED_VERIFIED_REFERENCE"]').textContent(), 'Invitation received and verified');
@@ -403,6 +421,15 @@ test('Relationships composed compact route is touch-sized, keyboard-operable, sc
     assert.equal(await page.getByRole('combobox', { name:'Identity check', exact:true }).count(), 1);
     assert.equal(await page.getByLabel('Your decision').count(), 1);
     assert.equal(await page.getByLabel('Your label').count(), 1);
+
+    const diagnostics = page.locator('#relationshipsConnectionDetails');
+    await diagnostics.waitFor({ state:'visible' });
+    assert.equal(await diagnostics.evaluate((element) => element.open), false);
+    assert.equal(await page.getByRole('combobox', { name:'Presence', exact:true }).count(), 0);
+    assert.equal(await page.getByRole('combobox', { name:'Route', exact:true }).count(), 0);
+    assert.equal(await page.getByRole('combobox', { name:'Current connection issue', exact:true }).count(), 0);
+
+    await openConnectionDiagnostics(page, { keyboard:true });
     assert.equal(await page.getByRole('combobox', { name:'Presence', exact:true }).count(), 1);
     assert.equal(await page.getByRole('combobox', { name:'Route', exact:true }).count(), 1);
     assert.equal(await page.getByRole('combobox', { name:'Current connection issue', exact:true }).count(), 1);
