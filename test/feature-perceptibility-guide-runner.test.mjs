@@ -277,6 +277,8 @@ test('FPB1-09 browser bundle exposes FeatureRegistry without removing existing f
     ['blueprint/vexlife.blueprint.json', { screens: [], includes: null }],
     ['blueprint/experience-registry.json', { registryRef: 'experience.test' }],
     ['blueprint/feature-registry.json', { registryRef: 'features.test', features: [] }],
+    ['blueprint/experience-foundation.json', { foundationRef: 'foundation.test' }],
+    ['blueprint/experience-guidance.json', { guidanceRef: 'guidance.test' }],
     ['blueprint/design-tokens.json', { tokenSetRef: 'tokens.test' }],
     ['blueprint/strings/en.json', { language: 'English' }],
     ['blueprint/strings/zh.json', { language: '中文' }],
