@@ -84,6 +84,51 @@ scheduler-owned, source-bound deferral count, oldest ready generation and then
 stable work-node ref. Callers cannot inject fairness truth. Priority changes
 never delete the workgraph or its source.
 
+### Multi-root principal fairness boundary
+
+Independent human root intents are a second fairness layer **inside the same
+canonical scheduler aggregate**, not a second scheduler. The source-managed
+aggregate fields are:
+
+```text
+pendingRootIntents
+principalFairnessLedger
+```
+
+A pending root stores only exact identity/currentness/fairness metadata:
+`intentRef`, exact Intent/Workgraph fingerprints, `originPrincipalRef` derived
+from `graph.intent.originSpeakerRef`, project/thread/channel refs, scheduling
+class, submitted/ready generation, principal deferral binding, lifecycle and
+cancellation state. It stores no raw prompt, title, desired-outcome text or
+conversation content. Shared Queue/Terrain/Health/Guide projection therefore
+exposes only bounded refs/classes/counts/currentness needed to explain
+scheduling state.
+
+The source-managed first proof ceiling is 16 pending roots, 8 principals,
+8 roots per principal and 16 KiB of canonical root/fairness state. Exceeding a
+cardinality or byte ceiling fails closed; it does not silently evict another
+principal's work.
+
+Selection preserves the existing class hierarchy. Within the highest eligible
+class, each principal contributes its oldest eligible root. The most deferred
+or longest-waiting principal wins, followed by oldest-root and stable ref
+tie-breaks. Only a successful physical-worker lease may consume the selected
+root: the selected principal resets while other eligible principals age.
+Speculative admission, a stale pre-lease selection, or a rejected worker claim
+must not discard or age queued roots.
+
+Every selected root must still pass through the existing exact Workgraph
+validation, runtime trust, resource, occupancy, capability/effect, context and
+worker-lease path. A newly queued higher-priority/principal-fairer root can make
+an older unleased admission stale, and that staleness must be detected before
+worker claim. A root queued while another intent owns the worker remains durable
+through checkpoint/preemption/restart. Default requester cancellation is
+limited to that requester's own queued root; active-work cancellation remains
+the existing separate scheduler transition.
+
+These rules do not change `modelInferenceConcurrency=1`, do not create a model
+worker pool, and grant no new effect authority.
+
 An interactive arrival can request preemption of background work. The retained
 incoming admission must match its complete fingerprint plus runtime, worker,
 graph and node identities. The active

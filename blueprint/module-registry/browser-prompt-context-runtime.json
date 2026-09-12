@@ -1,0 +1,26 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.browser-prompt-context-runtime",
+    "path": "src/core/browser-prompt-context-runtime.mjs",
+    "role": "Server-owned bounded immediate-prior completed-turn prompt-context resolver and independently revalidated authority-witness runtime for real browser Companion turns.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.context-lease",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/browser-prompt-context-runtime.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/serve-browser.mjs",
+      "src/core/browser-companion-bridge.mjs",
+      "src/core/lived-companion.mjs"
+    ]
+  }
+]

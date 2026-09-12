@@ -15,6 +15,12 @@
       "sha256": "4aeb4a217f99d6e227864deeb171192ded531c1c382b5180d5d175f23a230c17"
     },
     {
+      "path": "src/core/experience-guidance.mjs",
+      "mode": "100644",
+      "bytes": 20425,
+      "sha256": "6add3a15e6022b29a2996222029939a365afa48c3ec596d24e1d771b0355825d"
+    },
+    {
       "path": "src/core/registry.mjs",
       "mode": "100644",
       "bytes": 18652,

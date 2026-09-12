@@ -3,6 +3,12 @@
   "bucketId": "72",
   "files": [
     {
+      "path": "blueprint/purpose-workspace/domain-packs/clinical-coordination.json",
+      "mode": "100644",
+      "bytes": 5275,
+      "sha256": "bbef6a6137c30416fe4dc59ed2c975da6716da23cf54359c11335bfc0e18ca4a"
+    },
+    {
       "path": "install/vexlife-setup-window.ps1",
       "mode": "100644",
       "bytes": 11931,

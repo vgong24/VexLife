@@ -4,6 +4,7 @@ const SUPPORTED_LANGUAGES = Object.freeze(['en', 'ja', 'zh']);
 const TERRAIN_REF = 'terrain.resource.relationships';
 const ENTRY_ELEMENT_REF = 'element.relationships.open';
 const RELATIONSHIPS_RUNTIME_API_PATH = '/api/v1/relationships/runtime-plan';
+const DURABLE_RELATIONSHIP_TRUTH_CLASS = 'DURABLE_LOCAL_DIRECTIONAL_RELATIONSHIP';
 let loadedCdrRegistry = null;
 
 const OPTION_LABEL_KEYS = Object.freeze({
@@ -336,6 +337,12 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   let vexExplanationOpen = false;
   let interaction = initialInteraction(cdrRegistry);
   const persistence=createRelationshipsPersistenceStateMachine({persistenceBridge,persistenceBinding});
+  const hydrationBinding=normalizePersistenceBinding(persistenceBinding);
+  let hydratedRelationships=Object.freeze([]);
+  let hydrationState=persistenceBridge&&hydrationBinding&&typeof persistenceBridge.list==='function'?'UNREQUESTED':'HELD_BINDING_REQUIRED';
+  let hydrationFailureCode=hydrationState==='HELD_BINDING_REQUIRED'?'RELATIONSHIPS_PERSISTENCE_BINDING_REQUIRED':null;
+  let hydrationTruncated=false;
+  let hydrationRequestGeneration=0;
   let runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
   let runtimePlanRequestGeneration = 0;
 
@@ -354,11 +361,97 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   const auxiliaryCounts = () => scenarioCount === 0
     ? { groups: 0, invitations: 0 }
     : { groups: Math.min(registry.syntheticFixtureCounts.groups, Math.max(1, Math.ceil(scenarioCount / 10))), invitations: registry.syntheticFixtureCounts.invitations };
-  const projection = () => project(registry, scenarioCount, bookletPage, auxiliaryCounts());
+
+  function durableProjection() {
+    const all=[...hydratedRelationships];
+    const policy=registry.projectionPolicy;
+    const pages=Math.max(1,Math.ceil(all.length/policy.bookletPageSize));
+    const resolved=Math.min(Math.max(1,bookletPage),pages);
+    const start=(resolved-1)*policy.bookletPageSize;
+    return Object.freeze({
+      mode:all.length<policy.aggregationThreshold?'DIRECT':'AGGREGATE',
+      direct:Object.freeze(all.length<policy.aggregationThreshold?all:all.slice(0,policy.directPinnedOrRecentLimitAfterAggregation)),
+      counts:Object.freeze({people:all.length,groups:0,invitations:0}),
+      booklet:Object.freeze({page:resolved,pages,total:all.length,rows:Object.freeze(all.slice(start,start+policy.bookletPageSize))}),
+      accessibleRows:Object.freeze(all),
+      virtualizationRequired:all.length>=policy.virtualizationThreshold
+    });
+  }
+  const projection = () => scenarioCount === 0
+    ? durableProjection()
+    : project(registry, scenarioCount, bookletPage, auxiliaryCounts());
 
   function clearRuntimePlan() {
     runtimePlanRequestGeneration += 1;
     runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
+  }
+
+  function hydrationSnapshot(){
+    return Object.freeze({
+      state:hydrationState,
+      count:hydratedRelationships.length,
+      truncated:hydrationTruncated,
+      failureCode:hydrationFailureCode,
+      truthClass:DURABLE_RELATIONSHIP_TRUTH_CLASS
+    });
+  }
+
+  async function hydratePersistedRelationships(){
+    const requestGeneration=hydrationRequestGeneration+1;
+    hydrationRequestGeneration=requestGeneration;
+    if(!persistenceBridge||!hydrationBinding||typeof persistenceBridge.list!=='function'){
+      hydratedRelationships=Object.freeze([]);
+      hydrationState='HELD_BINDING_REQUIRED';
+      hydrationFailureCode='RELATIONSHIPS_PERSISTENCE_BINDING_REQUIRED';
+      hydrationTruncated=false;
+      render();
+      return snapshot();
+    }
+    if(persistenceBridge.ownerBinding?.localParticipantRef!==hydrationBinding.localParticipantRef||persistenceBridge.ownerBinding?.localStateRootRef!==hydrationBinding.localStateRootRef){
+      hydratedRelationships=Object.freeze([]);
+      hydrationState='HELD_BINDING_REQUIRED';
+      hydrationFailureCode='RELATIONSHIPS_IDENTITY_BINDING_REQUIRED';
+      hydrationTruncated=false;
+      render();
+      return snapshot();
+    }
+    hydrationState='LOADING';
+    hydrationFailureCode=null;
+    render();
+    try{
+      const listed=await Promise.resolve(persistenceBridge.list());
+      if(requestGeneration!==hydrationRequestGeneration)return snapshot();
+      if(listed?.state!=='CURRENT_LIST'||listed.localParticipantRef!==hydrationBinding.localParticipantRef||listed.localStateRootRef!==hydrationBinding.localStateRootRef||!Array.isArray(listed.relationships))throw new Error('RELATIONSHIPS_PERSISTENCE_READBACK_MISMATCH');
+      const seen=new Set();
+      const rows=listed.relationships.map((row)=>{
+        if(!row||typeof row!=='object'||typeof row.relationshipRef!=='string'||seen.has(row.relationshipRef)||row.tombstoned!==false)throw new Error('RELATIONSHIPS_PERSISTENCE_READBACK_MISMATCH');
+        seen.add(row.relationshipRef);
+        return Object.freeze({
+          relationshipRef:row.relationshipRef,
+          counterpartParticipantRef:row.counterpartParticipantRef,
+          localClass:row.localRelationshipClass,
+          status:row.status,
+          revision:row.revision,
+          updatedAt:row.updatedAt,
+          tombstoned:false,
+          truthClass:DURABLE_RELATIONSHIP_TRUTH_CLASS
+        });
+      });
+      hydratedRelationships=Object.freeze(rows);
+      hydrationState='READY';
+      hydrationFailureCode=null;
+      hydrationTruncated=listed.truncated===true;
+      bookletPage=Math.min(bookletPage,Math.max(1,Math.ceil(rows.length/registry.projectionPolicy.bookletPageSize)));
+    }catch(error){
+      if(requestGeneration!==hydrationRequestGeneration)return snapshot();
+      hydratedRelationships=Object.freeze([]);
+      const code=error?.code||error?.message||'RELATIONSHIPS_PERSISTENCE_HYDRATION_FAILED';
+      hydrationState=/BINDING|OBSERVATION_UNBOUND|IDENTITY_BINDING/u.test(String(code))?'HELD_BINDING_REQUIRED':'FAILURE';
+      hydrationFailureCode=String(code);
+      hydrationTruncated=false;
+    }
+    render();
+    return snapshot();
   }
 
   function runtimeRequestSnapshot() {
@@ -521,9 +614,9 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     target.append(title, body, facts, entry);
   }
 
-  function renderEmpty() {
+  function renderEmpty(view) {
     const target = surface.querySelector('[data-rel="empty"]');
-    target.hidden = scenarioCount !== 0;
+    target.hidden = view.counts.people !== 0;
     target.replaceChildren();
     if (target.hidden) return;
     const heading = document.createElement('h3');
@@ -551,15 +644,24 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
       const article = document.createElement('article');
       article.className = 'e27-context-row';
       article.dataset.relationshipRef = person.relationshipRef;
+      if(person.truthClass===DURABLE_RELATIONSHIP_TRUTH_CLASS){
+        article.dataset.relationshipTruthClass=person.truthClass;
+        article.dataset.relationshipStatus=person.status;
+        article.dataset.counterpartParticipantRef=person.counterpartParticipantRef;
+        article.dataset.relationshipRevision=String(person.revision);
+      }
       const name = document.createElement('strong');
-      name.textContent = rt('person', { n: person.nameNumber });
+      name.textContent = person.truthClass===DURABLE_RELATIONSHIP_TRUTH_CLASS
+        ? person.counterpartParticipantRef
+        : rt('person', { n: person.nameNumber });
       const summary = document.createElement('span');
-      const classKey = person.localClass === 'FRIEND' ? 'classFriend' : person.localClass === 'FAMILY' ? 'classFamily' : person.localClass === 'COLLABORATOR' ? 'classCollaborator' : 'classOther';
+      const localClass=person.localClass;
+      const classKey = localClass === 'FRIEND' ? 'classFriend' : localClass === 'FAMILY' ? 'classFamily' : localClass === 'COLLABORATOR' ? 'classCollaborator' : 'classOther';
       summary.textContent = rt('summary', { class: rt(classKey) });
       article.append(name, summary);
       target.append(article);
     }
-    if (scenarioCount > 0) {
+    if (view.counts.people > 0) {
       const connect = actionButton('relationshipsConnectExisting', rt('connect'));
       connect.dataset.nodeRef = 'element.relationships.connect';
       connect.onclick = () => { connectOpen = true; render(); surface.querySelector('#relationshipsConnectMethod')?.focus(); };
@@ -570,7 +672,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   function renderBooklet(view) {
     const target = surface.querySelector('[data-rel="booklet"]');
     target.replaceChildren();
-    if (scenarioCount === 0) { target.hidden = true; return; }
+    if (view.counts.people === 0) { target.hidden = true; return; }
     target.hidden = false;
     const button = actionButton('relationshipsBookletToggle', bookletOpen ? rt('closeBooklet') : rt('booklet'));
     button.setAttribute('aria-expanded', String(bookletOpen));
@@ -586,7 +688,14 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     for (const person of view.booklet.rows) {
       const row = document.createElement('li');
       row.dataset.relationshipRef = person.relationshipRef;
-      row.textContent = rt('person', { n: person.nameNumber });
+      if(person.truthClass===DURABLE_RELATIONSHIP_TRUTH_CLASS){
+        row.dataset.relationshipTruthClass=person.truthClass;
+        row.dataset.relationshipStatus=person.status;
+        row.dataset.counterpartParticipantRef=person.counterpartParticipantRef;
+      }
+      row.textContent = person.truthClass===DURABLE_RELATIONSHIP_TRUTH_CLASS
+        ? person.counterpartParticipantRef
+        : rt('person', { n: person.nameNumber });
       list.append(row);
     }
     const prev = actionButton('relationshipsBookletPrevious', rt('previous'));
@@ -657,6 +766,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
       clearRuntimePlan();
       render();
       if(persistenceResult.state!=='SAVED')return snapshot();
+      await hydratePersistedRelationships();
       return snapshot();
     };
 
@@ -773,11 +883,14 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   function render() {
     bindTerrainDoor();
     const view = projection();
+    surface.dataset.relationshipsHydrationState=hydrationState;
+    surface.dataset.relationshipsHydrationCount=String(hydratedRelationships.length);
+    surface.dataset.relationshipsHydrationTruncated=String(hydrationTruncated);
     surface.querySelector('[data-rel="badge"]').textContent = rt('badge');
     surface.querySelector('[data-rel="title"]').textContent = rt('title');
     surface.querySelector('[data-rel="subtitle"]').textContent = rt('subtitle');
     renderPrivacy();
-    renderEmpty();
+    renderEmpty(view);
     renderDirect(view);
     renderBooklet(view);
     renderConnect();
@@ -803,6 +916,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
       booklet:{ ...view.booklet, rows:view.booklet.rows.map((person)=>person.relationshipRef) },
       accessibleRelationshipCount:view.accessibleRows.length,
       virtualizationRequired:view.virtualizationRequired,
+      hydration:hydrationSnapshot(),
       connectOpen,
       localFormed:persistence.isSavedFor({localRelationshipClass:interaction.localClass}),
       admission:admission(interaction),
@@ -833,6 +947,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     bookletPage = 1;
     bookletOpen = false;
     render();
+    if(count===0)void hydratePersistedRelationships();
     return snapshot();
   }
 
@@ -845,7 +960,8 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   }
 
   render();
-  return Object.freeze({ render, snapshot, setScenarioCount, bindTerrainDoor, close, prepareRuntimePlan });
+  void hydratePersistedRelationships();
+  return Object.freeze({ render, snapshot, setScenarioCount, bindTerrainDoor, close, prepareRuntimePlan, hydratePersistedRelationships });
 }
 
 // [VXG RealForever]

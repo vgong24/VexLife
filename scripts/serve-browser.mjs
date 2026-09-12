@@ -21,6 +21,7 @@ import {
   createModelConnectionTurnComposer,
   loadModelConnectionTurnSources
 } from '../src/core/model-connection-turn-composer.mjs';
+import { createBrowserPromptContextRuntime } from '../src/core/browser-prompt-context-runtime.mjs';
 import {
   BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
@@ -53,6 +54,7 @@ const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH = '/api/v1/relationships/persistence';
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_MAX_BODY_BYTES = 16 * 1024;
+export const BROWSER_RELATIONSHIPS_PERSISTENCE_LIST_MAX = 256;
 const RELATIONSHIPS_PERSISTENCE_REQUEST_KEYS = new Set(['localOwnerBinding', 'input']);
 
 function readRelationshipsRuntimeSourceJson(sourceRoot, relativePath, label) {
@@ -135,12 +137,46 @@ export function createServerOwnedBrowserCompanionBridge({
         sourceBundle: loadModelConnectionTurnSources(sourceRoot)
       })
     : null;
+  let promptContextBinding = null;
+  const currentPromptContextRuntime = () => {
+    const identity = loadBrowserCompanionHomeIdentity(companionHome);
+    if (promptContextBinding === null) {
+      promptContextBinding = Object.freeze({
+        identity,
+        runtime: createBrowserPromptContextRuntime({
+          home: identity.home,
+          homeRef: identity.homeRef,
+          deviceRef: identity.deviceRef,
+          companionLineageRef: identity.companionLineageRef
+        })
+      });
+      return promptContextBinding.runtime;
+    }
+    const bound = promptContextBinding.identity;
+    if (
+      identity.home !== bound.home ||
+      identity.homeRef !== bound.homeRef ||
+      identity.deviceRef !== bound.deviceRef ||
+      identity.companionLineageRef !== bound.companionLineageRef
+    ) {
+      throw new BrowserCompanionBridgeError(
+        'COMPANION_HOME_IDENTITY_INVALID',
+        'Vex Home identity changed after prompt-context runtime binding',
+        409
+      );
+    }
+    return promptContextBinding.runtime;
+  };
+  const promptContextResolver = (input) => currentPromptContextRuntime().promptContextResolver(input);
+  const promptContextAuthorityVerifier = (query) => currentPromptContextRuntime().promptContextAuthorityVerifier(query);
   return bridgeFactory({
     home: companionHome,
     endpoint,
     model,
     capabilityRuntime,
-    modelConnectionComposer
+    modelConnectionComposer,
+    promptContextResolver,
+    promptContextAuthorityVerifier
   });
 }
 
@@ -315,8 +351,37 @@ export function createVexLifeBrowserServer({
       }
 
       if (url.pathname === BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH) {
+        if (request.method === 'GET') {
+          try {
+            const bindingResult = relationshipsCdrObservationBridge.read();
+            const binding = bindingResult?.binding;
+            if (bindingResult?.state !== 'BOUND_CURRENT' || !binding) {
+              throw new BrowserRelationshipsCdrObservationBridgeError(
+                'RELATIONSHIPS_CDR_OBSERVATION_HELD',
+                'Relationships CDR observation is not currently admissible',
+                409
+              );
+            }
+            const persistenceBridge = relationshipsPersistenceBridgeFactory(Object.freeze({
+              localParticipantRef: binding.localParticipantRef,
+              localStateRootRef: binding.localStateRootRef
+            }));
+            const result = persistenceBridge.list({
+              maxRelationships: BROWSER_RELATIONSHIPS_PERSISTENCE_LIST_MAX,
+              includeTombstoned: false
+            });
+            sendJson(response, 200, result);
+          } catch (error) {
+            if (error instanceof BrowserRelationshipsCdrObservationBridgeError) {
+              sendJson(response, error.httpStatus, browserRelationshipsCdrObservationFailurePayload(error));
+            } else {
+              sendJson(response, relationshipsPersistenceHttpStatus(error), relationshipsPersistenceFailurePayload(error));
+            }
+          }
+          return;
+        }
         if (request.method !== 'POST') {
-          response.writeHead(405, { Allow: 'POST', 'Cache-Control': 'no-store' });
+          response.writeHead(405, { Allow: 'GET, POST', 'Cache-Control': 'no-store' });
           response.end();
           return;
         }
