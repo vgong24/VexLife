@@ -3,6 +3,12 @@
   "bucketId": "d9",
   "files": [
     {
+      "path": "reference/browser/experience-gallery.css",
+      "mode": "100644",
+      "bytes": 4884,
+      "sha256": "73919fc037d3e1c283997724e279353726c6cf3319297071d13b8c99513b6de0"
+    },
+    {
       "path": "test/browser-relationships-persistence-http-client.test.mjs",
       "mode": "100644",
       "bytes": 15445,
