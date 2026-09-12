@@ -15,6 +15,12 @@
       "sha256": "242f3213c205ae91599dd8ad7b334305bce95bc5c4feccf14255ca948322725e"
     },
     {
+      "path": "src/core/blueprint-base.mjs",
+      "mode": "100644",
+      "bytes": 45602,
+      "sha256": "ff8a4b36e0ffa6bd4684ae8ac1af6e195b0d4211adb26a6f951aa9a5e176d392"
+    },
+    {
       "path": "test/model-turn-witness.test.mjs",
       "mode": "100644",
       "bytes": 5935,

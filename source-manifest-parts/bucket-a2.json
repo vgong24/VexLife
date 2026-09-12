@@ -3,6 +3,12 @@
   "bucketId": "a2",
   "files": [
     {
+      "path": "blueprint/module-registry/purpose-workspace.json",
+      "mode": "100644",
+      "bytes": 763,
+      "sha256": "fa36b57f114dc6e8e1cb0db7ec6e9ff8b5124baa9a841d54403a862e64897d63"
+    },
+    {
       "path": "reference/browser/modules/living-journal-controller.js",
       "mode": "100644",
       "bytes": 35180,
