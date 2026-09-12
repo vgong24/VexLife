@@ -48,9 +48,18 @@ function makeDisclosure({ id, kind, summaryText, nodes }) {
   return details;
 }
 
+function nearestHeadingBefore(element) {
+  let cursor = element?.previousElementSibling ?? null;
+  while (cursor) {
+    if (/^H[1-6]$/u.test(cursor.tagName)) return cursor;
+    cursor = cursor.previousElementSibling;
+  }
+  return null;
+}
+
 function deliveryHeadingText() {
   const delivery = document.querySelector('#relationshipsDelivery');
-  const heading = delivery?.previousElementSibling?.previousElementSibling;
+  const heading = nearestHeadingBefore(delivery);
   return heading?.textContent?.trim() || null;
 }
 
