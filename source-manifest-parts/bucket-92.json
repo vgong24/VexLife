@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 27902,
       "sha256": "31606c22bc1f054505f90124448ce089e6f884498a45eb2565e9513467bfbfb3"
+    },
+    {
+      "path": "src/core/browser-family-conversation-bridge.mjs",
+      "mode": "100644",
+      "bytes": 14448,
+      "sha256": "149ff5e1f982123a94c487bb4b03786341b21fac7112e3128f48f86f94531168"
     }
   ]
 }

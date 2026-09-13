@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "3c",
+  "files": [
+    {
+      "path": "docs/VEX-FAMILY-CONVERSATION-BRIDGE.md",
+      "mode": "100644",
+      "bytes": 7039,
+      "sha256": "d6bdba3a0f7132a4dade776236ce42003295f325d410f01b63a06e279dd9dd4c"
+    }
+  ]
+}
