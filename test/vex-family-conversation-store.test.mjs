@@ -5,10 +5,18 @@ import os from 'node:os';
 import path from 'node:path';
 import { semanticHash } from '../src/core/utils.mjs';
 import {
+  FamilyConversationError,
+  createFamilyChannel,
+  createFamilyMessage
+} from '../src/core/family-conversation.mjs';
+import {
   ConversationStoreError,
   appendConversationMessage,
   exportConversationChannel,
+  listConversationChannelBindings,
+  materializeConversationChannel,
   readConversationChannel,
+  readConversationChannelBinding,
   readConversationMessage,
   recoverAbandonedConversationWriter
 } from '../src/core/conversation-store.mjs';
@@ -22,6 +30,7 @@ function fixture() {
 const t0 = '2026-09-09T08:10:00.000Z';
 const t1 = '2026-09-09T08:10:01.000Z';
 const t2 = '2026-09-09T08:10:02.000Z';
+const t3 = '2026-09-09T08:10:03.000Z';
 const instanceRef = 'instance.test.vf02b';
 const channelRef = 'channel.vex-family.alpha';
 const threadRef = 'thread.vex-family.alpha';
@@ -79,6 +88,9 @@ function channelRoot(home, channel = channelRef) {
   const key = semanticHash({ schemaVersion: 'vexlife.conversation-storage/v1', channelRef: channel });
   return path.join(home, 'conversations', 'channels', key);
 }
+function channelPath(home, channel = channelRef) {
+  return path.join(channelRoot(home, channel), 'channel.json');
+}
 function messagePath(home, messageRef, channel = channelRef) {
   const identity = semanticHash({ schemaVersion: 'vexlife.conversation-message-address/v1', messageRef });
   return path.join(channelRoot(home, channel), 'messages', `${identity}.json`);
@@ -95,6 +107,69 @@ function residue(home) {
   };
   walk(home);
   return found;
+}
+
+function familyRecord({
+  revision = 1,
+  membershipGeneration = 1,
+  updatedAt = t1,
+  priorRecordSha256 = null
+} = {}) {
+  const member = (name, role) => ({
+    membershipRef: `membership.${name}`,
+    principalRef: `principal.${name}`,
+    principalBindingRef: `principal-binding.${name}`,
+    role,
+    status: 'ACTIVE',
+    joinedAt: t0,
+    leftOrRevokedAtOrNull: null,
+    historyVisibilityPolicyRef: 'policy.vex-family.history.from-join'
+  });
+  const core = {
+    schemaVersion: 'vexlife.family-space/v1',
+    spaceRef,
+    revision,
+    membershipGeneration,
+    familyCompanionBindingGeneration: 1,
+    familyCompanionState: 'ACTIVE',
+    familyCompanionLineageRef: 'lineage.vex.family.alpha',
+    createdAt: t0,
+    updatedAt,
+    priorRecordSha256,
+    members: [
+      member('victor', 'OWNER'),
+      member('mei', 'MEMBER'),
+      member('alex', 'MEMBER')
+    ]
+  };
+  return Object.freeze({ ...core, recordSha256: semanticHash(core) });
+}
+
+function groupFamilyChannel(record = familyRecord()) {
+  return createFamilyChannel({
+    channelRef,
+    threadRef,
+    kind: 'GROUP',
+    familySpaceRecord: record,
+    labelStringRef: 'string.vex-family.alpha',
+    createdAt: t1
+  });
+}
+
+function privateFamilyChannel(record = familyRecord(), {
+  channel = 'channel.vex-family.alpha.private',
+  members = ['principal.victor', 'principal.mei']
+} = {}) {
+  return createFamilyChannel({
+    channelRef: channel,
+    threadRef: 'thread.vex-family.alpha.private',
+    kind: 'PRIVATE',
+    familySpaceRecord: record,
+    memberPrincipalRefs: members,
+    includeFamilyCompanion: false,
+    labelStringRef: 'string.vex-family.alpha.private',
+    createdAt: t1
+  });
 }
 
 test('VFS-01/03 A/B/C human events append independently and restart preserves exact order', () => {
@@ -304,4 +379,233 @@ test('VFS-00 symlink Home alias is rejected', (t) => {
     assert.throws(() => appendConversationMessage({ home: link, message: m0(), instanceRef }),
       (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_HOME_INVALID');
   } finally { fs.rmSync(link, { force:true }); fx.cleanup(); }
+});
+
+test('VFCSTORE-CH-00/01/04 GROUP and PRIVATE Family channels materialize exact trusted bindings before any message and survive restart reads', () => {
+  const fx = fixture();
+  try {
+    const record = familyRecord();
+    const group = groupFamilyChannel(record);
+    const privateChannel = privateFamilyChannel(record);
+
+    const groupWrite = materializeConversationChannel({
+      home: fx.home,
+      channel: group,
+      instanceRef: 'instance.test.vf02b.channel-group'
+    });
+    const privateWrite = materializeConversationChannel({
+      home: fx.home,
+      channel: privateChannel,
+      instanceRef: 'instance.test.vf02b.channel-private'
+    });
+    assert.equal(groupWrite.state, 'MATERIALIZED');
+    assert.equal(privateWrite.state, 'MATERIALIZED');
+    assert.equal(fs.existsSync(path.join(channelRoot(fx.home, group.channelRef), 'current.json')), false);
+    assert.equal(fs.existsSync(path.join(channelRoot(fx.home, privateChannel.channelRef), 'current.json')), false);
+
+    const groupRead = readConversationChannelBinding({ home: fx.home, channelRef: group.channelRef });
+    const privateRead = readConversationChannelBinding({ home: fx.home, channelRef: privateChannel.channelRef });
+    assert.equal(groupRead.state, 'CURRENT');
+    assert.equal(privateRead.state, 'CURRENT');
+    assert.deepEqual(groupRead.channel, group);
+    assert.deepEqual(privateRead.channel, privateChannel);
+    assert.deepEqual(
+      privateRead.channel.familySpaceBinding.audienceMemberBindings.map((member) => member.principalRef),
+      ['principal.victor', 'principal.mei']
+    );
+
+    const restarted = readConversationChannelBinding({ home: fx.home, channelRef: group.channelRef });
+    assert.equal(restarted.record.channelSha256, groupRead.record.channelSha256);
+    assert.deepEqual(restarted.channel, groupRead.channel);
+    assert.deepEqual(residue(fx.home), []);
+  } finally { fx.cleanup(); }
+});
+
+test('VFCSTORE-CH-02/03 duplicate materialization is idempotent and changed canonical meaning conflicts', () => {
+  const fx = fixture();
+  try {
+    const record = familyRecord();
+    const group = groupFamilyChannel(record);
+    const first = materializeConversationChannel({ home: fx.home, channel: group, instanceRef });
+    const duplicate = materializeConversationChannel({ home: fx.home, channel: group, instanceRef, observedAt: t2 });
+    assert.equal(duplicate.state, 'IDEMPOTENT_CURRENT');
+    assert.equal(duplicate.record.channelSha256, first.record.channelSha256);
+
+    const changedThread = { ...group, threadRef: 'thread.vex-family.changed' };
+    assert.throws(
+      () => materializeConversationChannel({ home: fx.home, channel: changedThread, instanceRef }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_CHANNEL_CONFLICT'
+    );
+
+    const changedKindAndAudience = privateFamilyChannel(record, {
+      channel: group.channelRef,
+      members: ['principal.victor', 'principal.alex']
+    });
+    assert.throws(
+      () => materializeConversationChannel({ home: fx.home, channel: changedKindAndAudience, instanceRef }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_CHANNEL_CONFLICT'
+    );
+    assert.deepEqual(readConversationChannelBinding({ home: fx.home, channelRef }).channel, group);
+  } finally { fx.cleanup(); }
+});
+
+test('VFCSTORE-CH-05 channel hash corruption and wrong durable address fail closed', () => {
+  const fx = fixture();
+  try {
+    const group = groupFamilyChannel();
+    materializeConversationChannel({ home: fx.home, channel: group, instanceRef });
+    const file = channelPath(fx.home);
+    const good = fs.readFileSync(file, 'utf8');
+    const parsed = JSON.parse(good);
+    parsed.channel.familySpaceBinding.membershipGeneration += 1;
+    fs.writeFileSync(file, `${JSON.stringify(parsed, null, 2)}\n`);
+    assert.throws(
+      () => readConversationChannelBinding({ home: fx.home, channelRef }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_CHANNEL_CORRUPT'
+    );
+    fs.writeFileSync(file, good);
+
+    const channelsDir = path.join(fx.home, 'conversations', 'channels');
+    const wrongDir = path.join(channelsDir, '0'.repeat(64));
+    fs.mkdirSync(wrongDir, { recursive: true });
+    fs.copyFileSync(file, path.join(wrongDir, 'channel.json'));
+    assert.throws(
+      () => listConversationChannelBindings({ home: fx.home }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_CHANNEL_CORRUPT'
+    );
+  } finally { fx.cleanup(); }
+});
+
+test('VFCSTORE-CH-06 enumeration derives only verified canonical records and ignores message-only/no-record directories', () => {
+  const fx = fixture();
+  try {
+    const record = familyRecord();
+    const group = groupFamilyChannel(record);
+    const privateChannel = privateFamilyChannel(record);
+    materializeConversationChannel({ home: fx.home, channel: privateChannel, instanceRef });
+    materializeConversationChannel({ home: fx.home, channel: group, instanceRef });
+
+    const noise = path.join(fx.home, 'conversations', 'channels', 'not-a-channel-address');
+    fs.mkdirSync(noise, { recursive: true });
+    fs.writeFileSync(path.join(noise, 'current.json'), '{}\n');
+
+    const listed = listConversationChannelBindings({ home: fx.home });
+    assert.equal(listed.state, 'CURRENT');
+    assert.equal(listed.truncated, false);
+    assert.deepEqual(listed.channels.map((channel) => channel.channelRef), [
+      'channel.vex-family.alpha',
+      'channel.vex-family.alpha.private'
+    ]);
+    assert.deepEqual(listed.channels[0], group);
+    assert.deepEqual(listed.channels[1], privateChannel);
+  } finally { fx.cleanup(); }
+});
+
+test('VFCSTORE-CH-07 Family Space generation change leaves durable channel bytes immutable and the current Family validator classifies the old binding stale', () => {
+  const fx = fixture();
+  try {
+    const originalRecord = familyRecord();
+    const group = groupFamilyChannel(originalRecord);
+    materializeConversationChannel({ home: fx.home, channel: group, instanceRef });
+    const storedBefore = fs.readFileSync(channelPath(fx.home), 'utf8');
+    const storedChannel = readConversationChannelBinding({ home: fx.home, channelRef }).channel;
+    const nextRecord = familyRecord({
+      revision: 2,
+      membershipGeneration: 2,
+      updatedAt: t2,
+      priorRecordSha256: originalRecord.recordSha256
+    });
+
+    assert.throws(
+      () => createFamilyMessage({
+        messageRef: 'message.family.stale.000',
+        channel: storedChannel,
+        familySpaceRecord: nextRecord,
+        speakerRef: 'principal.victor',
+        speakerPrincipalBindingRef: 'principal-binding.victor',
+        recipientRefs: ['principal.mei', 'principal.alex'],
+        content: 'This must not use stale channel authority.',
+        sequence: 0,
+        createdAt: t3
+      }),
+      (error) => error instanceof FamilyConversationError && error.code === 'FAMILY_CONVERSATION_STALE'
+    );
+    assert.equal(fs.readFileSync(channelPath(fx.home), 'utf8'), storedBefore);
+  } finally { fx.cleanup(); }
+});
+
+test('VFCSTORE-CH-08 channel materialization does not change existing message event/head lineage', () => {
+  const withChannel = fixture();
+  const withoutChannel = fixture();
+  try {
+    materializeConversationChannel({
+      home: withChannel.home,
+      channel: groupFamilyChannel(),
+      instanceRef: 'instance.test.vf02b.channel-lineage'
+    });
+    for (const event of [m0(), m1()]) {
+      appendConversationMessage({ home: withChannel.home, message: event, instanceRef });
+      appendConversationMessage({ home: withoutChannel.home, message: event, instanceRef });
+    }
+    const materialized = readConversationChannel({ home: withChannel.home, channelRef });
+    const legacy = readConversationChannel({ home: withoutChannel.home, channelRef });
+    assert.deepEqual(
+      materialized.messages.map((event) => event.eventSha256),
+      legacy.messages.map((event) => event.eventSha256)
+    );
+    assert.equal(materialized.head.eventSha256, legacy.head.eventSha256);
+    assert.equal(materialized.head.headSha256, legacy.head.headSha256);
+  } finally {
+    withChannel.cleanup();
+    withoutChannel.cleanup();
+  }
+});
+
+test('VFCSTORE-CH-09/10 durable channel records preserve the existing owner envelope without endpoint/model/filesystem authority', () => {
+  const fx = fixture();
+  try {
+    const group = groupFamilyChannel();
+    const written = materializeConversationChannel({ home: fx.home, channel: group, instanceRef });
+    assert.equal(written.record.schemaVersion, 'vexlife.conversation-channel-record/v1');
+    assert.deepEqual(written.record.channel.familySpaceBinding, group.familySpaceBinding);
+    const serialized = JSON.stringify(written.record);
+    for (const forbidden of ['endpoint', 'modelRef', 'providerRef', 'homePath', 'filesystemPath', 'membershipAuthority']) {
+      assert.equal(serialized.includes(`"${forbidden}"`), false, forbidden);
+    }
+    assert.equal(readConversationChannel({ home: fx.home, channelRef }).state, 'EMPTY');
+  } finally { fx.cleanup(); }
+});
+
+test('VFCSTORE-CH-11 injected pre/post durable-write failures leave no lock/temp residue and exact retry recovers post-write result', () => {
+  const fx = fixture();
+  try {
+    const group = groupFamilyChannel();
+    assert.throws(
+      () => materializeConversationChannel({
+        home: fx.home,
+        channel: group,
+        instanceRef,
+        faults: { failBeforeChannelWrite: true }
+      }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_CHANNEL_NOT_MATERIALIZED'
+    );
+    assert.equal(fs.existsSync(channelPath(fx.home)), false);
+    assert.deepEqual(residue(fx.home), []);
+
+    assert.throws(
+      () => materializeConversationChannel({
+        home: fx.home,
+        channel: group,
+        instanceRef,
+        observedAt: t2,
+        faults: { failAfterChannelWrite: true }
+      }),
+      (error) => error instanceof ConversationStoreError && error.code === 'CONVERSATION_CHANNEL_RESULT_NOT_EMITTED'
+    );
+    assert.equal(readConversationChannelBinding({ home: fx.home, channelRef }).state, 'CURRENT');
+    assert.deepEqual(residue(fx.home), []);
+    const retry = materializeConversationChannel({ home: fx.home, channel: group, instanceRef, observedAt: t3 });
+    assert.equal(retry.state, 'IDEMPOTENT_CURRENT');
+    assert.deepEqual(residue(fx.home), []);
+  } finally { fx.cleanup(); }
 });
