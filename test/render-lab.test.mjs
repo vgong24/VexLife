@@ -10,6 +10,28 @@ import {
 
 function sources() {
   return {
+    blueprint: {
+      schemaVersion: 'vexlife.universal-blueprint/v0',
+      blueprintRef: 'blueprint.vexlife.universal.001',
+      screens: [{
+        screenRef: 'screen.vexlife.terrain',
+        regions: [
+          {
+            regionRef: 'region.terrain.canvas',
+            elements: [
+              { elementRef: 'element.terrain.canvas', interactionRef: 'interaction.terrain.canvas', actionRef: null },
+              { elementRef: 'element.terrain.manual-layout-toggle', interactionRef: 'interaction.terrain.manual-layout-toggle', actionRef: 'action.terrain.manual-layout.toggle' }
+            ]
+          },
+          {
+            regionRef: 'region.terrain.instrumentation',
+            elements: [
+              { elementRef: 'element.terrain.instrumentation-toggle', interactionRef: 'interaction.terrain.instrumentation-toggle', actionRef: 'action.terrain.instrumentation.toggle' }
+            ]
+          }
+        ]
+      }]
+    },
     featureRegistry: {
       schemaVersion: 'vexlife.feature-registry/v0',
       registryRef: 'registry.vexlife.features.001',
@@ -93,12 +115,14 @@ test('specimens carry accepted semantic target/action/state refs rather than DOM
   const projection = buildRenderLabProjection(sources());
   const pan = projection.specimens.find((entry) => entry.specimenRef === 'specimen.render-lab.terrain-pan');
   const toggle = projection.specimens.find((entry) => entry.specimenRef === 'specimen.render-lab.instrumentation-toggle');
-  assert.equal(pan.targetBinding.targetRef, 'region.terrain.canvas');
+  assert.equal(pan.targetBinding.targetRef, 'element.terrain.canvas');
   assert.equal(pan.targetBinding.screenRefOrNull, 'screen.vexlife.terrain');
   assert.equal(pan.interactionCue.actionRefOrNull, 'action.terrain.canvas.pan');
+  assert.equal(pan.interactionCue.interactionRefOrNull, 'interaction.terrain.canvas');
   assert.equal(pan.expectedStateRef, 'state.terrain');
   assert.equal(toggle.targetBinding.targetRef, 'element.terrain.instrumentation-toggle');
   assert.equal(toggle.interactionCue.actionRefOrNull, 'action.terrain.instrumentation.toggle');
+  assert.equal(toggle.interactionCue.interactionRefOrNull, 'interaction.terrain.instrumentation-toggle');
   assert.equal(toggle.targetBinding.instanceRefOrNull, null);
   assert.notEqual(toggle.title, toggle.targetBinding.targetRef);
   assert.equal(Object.hasOwn(toggle.targetBinding, 'domId'), false);
@@ -116,13 +140,29 @@ test('direct manipulation keeps canonical gesture semantics distinct from button
   assert.ok(projection.boundaries.includes('DIRECT_MANIPULATION != BUTTON'));
 });
 
-test('source mismatches fail closed instead of inventing automation identities', () => {
+test('source mismatches fail closed against the accepted blueprint instead of feature-summary projections', () => {
   const input = sources();
   input.experienceRegistry.gestureContracts[0].resultActionRef = 'action.other';
   assert.throws(() => buildRenderLabProjection(input), /gesture\/action mismatch/);
+
+  const featureSummaryIsNotTargetRegistry = sources();
+  featureSummaryIsNotTargetRegistry.featureRegistry.features[0].canonicalNodeRefs = ['screen.vexlife.terrain', 'state.terrain'];
+  assert.doesNotThrow(() => buildRenderLabProjection(featureSummaryIsNotTargetRegistry));
+
   const targetMismatch = sources();
-  targetMismatch.featureRegistry.features[0].canonicalNodeRefs = targetMismatch.featureRegistry.features[0].canonicalNodeRefs.filter((ref) => ref !== 'region.terrain.canvas');
-  assert.throws(() => buildRenderLabProjection(targetMismatch), /target ref is not canonical/);
+  targetMismatch.blueprint.screens[0].regions[0].elements = targetMismatch.blueprint.screens[0].regions[0].elements
+    .filter((entry) => entry.elementRef !== 'element.terrain.canvas');
+  assert.throws(() => buildRenderLabProjection(targetMismatch), /element target is not canonical/);
+
+  const hierarchyMismatch = sources();
+  hierarchyMismatch.blueprint.screens[0].regions[0].elements = hierarchyMismatch.blueprint.screens[0].regions[0].elements
+    .filter((entry) => entry.elementRef !== 'element.terrain.manual-layout-toggle');
+  hierarchyMismatch.blueprint.screens[0].regions[1].elements.push({
+    elementRef: 'element.terrain.manual-layout-toggle',
+    interactionRef: 'interaction.terrain.manual-layout-toggle',
+    actionRef: 'action.terrain.manual-layout.toggle'
+  });
+  assert.throws(() => buildRenderLabProjection(hierarchyMismatch), /element\/region binding mismatch/);
 });
 
 test('accepted token and availability vocabularies are projected without claiming product currentness', () => {
