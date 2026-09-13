@@ -8,8 +8,8 @@ const SPECIMEN_BLUEPRINTS = Object.freeze([
     purpose: 'Review direct-manipulation affordance without turning the gesture into a button or granting action authority.',
     featureRef: 'feature.vexlife.terrain',
     targetBinding: Object.freeze({
-      targetRef: 'region.terrain.canvas',
-      targetKind: 'REGION',
+      targetRef: 'element.terrain.canvas',
+      targetKind: 'ELEMENT',
       screenRefOrNull: 'screen.vexlife.terrain',
       regionRefOrNull: 'region.terrain.canvas',
       componentRefOrNull: null,
@@ -21,7 +21,7 @@ const SPECIMEN_BLUEPRINTS = Object.freeze([
     }),
     interactionCue: Object.freeze({
       actionRefOrNull: 'action.terrain.canvas.pan',
-      interactionRefOrNull: null,
+      interactionRefOrNull: 'interaction.terrain.canvas',
       gestureRefOrNull: 'gesture.vexlife.terrain-pan',
       componentRefOrNull: null,
       slotRefOrNull: null
@@ -50,7 +50,7 @@ const SPECIMEN_BLUEPRINTS = Object.freeze([
     }),
     interactionCue: Object.freeze({
       actionRefOrNull: 'action.terrain.instrumentation.toggle',
-      interactionRefOrNull: null,
+      interactionRefOrNull: 'interaction.terrain.instrumentation-toggle',
       gestureRefOrNull: null,
       componentRefOrNull: null,
       slotRefOrNull: null
@@ -69,7 +69,7 @@ const SPECIMEN_BLUEPRINTS = Object.freeze([
       targetRef: 'element.terrain.manual-layout-toggle',
       targetKind: 'ELEMENT',
       screenRefOrNull: 'screen.vexlife.terrain',
-      regionRefOrNull: 'region.terrain.instrumentation',
+      regionRefOrNull: 'region.terrain.canvas',
       componentRefOrNull: null,
       slotRefOrNull: null,
       instanceRefOrNull: null,
@@ -79,7 +79,7 @@ const SPECIMEN_BLUEPRINTS = Object.freeze([
     }),
     interactionCue: Object.freeze({
       actionRefOrNull: 'action.terrain.manual-layout.toggle',
-      interactionRefOrNull: null,
+      interactionRefOrNull: 'interaction.terrain.manual-layout-toggle',
       gestureRefOrNull: null,
       componentRefOrNull: null,
       slotRefOrNull: null
@@ -132,7 +132,26 @@ function lookupFeature(featureRegistry, featureRef) {
   return feature;
 }
 
-function validateTargetBinding(binding, experienceGuidance, feature) {
+function buildBlueprintTargetIndex(blueprint) {
+  const screens = new Map();
+  const regions = new Map();
+  const elements = new Map();
+  for (const screen of asArray(blueprint.screens, 'blueprint.screens')) {
+    requiredString(screen.screenRef, 'blueprint.screen.screenRef');
+    screens.set(screen.screenRef, screen);
+    for (const region of asArray(screen.regions ?? [], `blueprint.screen.${screen.screenRef}.regions`)) {
+      requiredString(region.regionRef, 'blueprint.region.regionRef');
+      regions.set(region.regionRef, { screenRef: screen.screenRef, region });
+      for (const element of asArray(region.elements ?? [], `blueprint.region.${region.regionRef}.elements`)) {
+        requiredString(element.elementRef, 'blueprint.element.elementRef');
+        elements.set(element.elementRef, { screenRef: screen.screenRef, regionRef: region.regionRef, element });
+      }
+    }
+  }
+  return Object.freeze({ screens, regions, elements });
+}
+
+function validateTargetBinding(binding, experienceGuidance, targetIndex) {
   requiredString(binding.targetRef, 'targetBinding.targetRef');
   requiredString(binding.targetKind, 'targetBinding.targetKind');
   requiredString(binding.bindingPolicy, 'targetBinding.bindingPolicy');
@@ -142,21 +161,50 @@ function validateTargetBinding(binding, experienceGuidance, feature) {
   if (!asArray(experienceGuidance.targetBinding?.bindingPolicies, 'experienceGuidance.targetBinding.bindingPolicies').includes(binding.bindingPolicy)) {
     throw new Error(`Render Lab binding policy is not accepted by Experience Guidance: ${binding.bindingPolicy}`);
   }
-  const canonicalRefs = new Set(feature.canonicalNodeRefs ?? []);
-  for (const ref of [binding.targetRef, binding.screenRefOrNull, binding.regionRefOrNull].filter(Boolean)) {
-    if (!canonicalRefs.has(ref)) throw new Error(`Render Lab target ref is not canonical for ${feature.featureRef}: ${ref}`);
+  if (binding.screenRefOrNull && !targetIndex.screens.has(binding.screenRefOrNull)) {
+    throw new Error(`Render Lab screen ref is not canonical in the accepted blueprint: ${binding.screenRefOrNull}`);
+  }
+  if (binding.regionRefOrNull) {
+    const regionEntry = targetIndex.regions.get(binding.regionRefOrNull);
+    if (!regionEntry) throw new Error(`Render Lab region ref is not canonical in the accepted blueprint: ${binding.regionRefOrNull}`);
+    if (binding.screenRefOrNull && regionEntry.screenRef !== binding.screenRefOrNull) {
+      throw new Error(`Render Lab region/screen binding mismatch: ${binding.regionRefOrNull} -> ${regionEntry.screenRef}`);
+    }
+  }
+  if (binding.targetKind === 'ELEMENT') {
+    const elementEntry = targetIndex.elements.get(binding.targetRef);
+    if (!elementEntry) throw new Error(`Render Lab element target is not canonical in the accepted blueprint: ${binding.targetRef}`);
+    if (binding.screenRefOrNull && elementEntry.screenRef !== binding.screenRefOrNull) {
+      throw new Error(`Render Lab element/screen binding mismatch: ${binding.targetRef} -> ${elementEntry.screenRef}`);
+    }
+    if (binding.regionRefOrNull && elementEntry.regionRef !== binding.regionRefOrNull) {
+      throw new Error(`Render Lab element/region binding mismatch: ${binding.targetRef} -> ${elementEntry.regionRef}`);
+    }
+  } else if (binding.targetKind === 'REGION') {
+    if (!targetIndex.regions.has(binding.targetRef)) throw new Error(`Render Lab region target is not canonical in the accepted blueprint: ${binding.targetRef}`);
+  } else {
+    throw new Error(`Render Lab target kind has no admitted source resolver yet: ${binding.targetKind}`);
   }
   if (binding.instanceRefOrNull !== null && typeof binding.instanceRefOrNull !== 'string') throw new Error('Render Lab instanceRefOrNull must be null or string');
   if (binding.entityRefOrNull !== null && typeof binding.entityRefOrNull !== 'string') throw new Error('Render Lab entityRefOrNull must be null or string');
 }
 
-function validateInteractionCue(cue, experienceRegistry, experienceGuidance, feature) {
+function validateInteractionCue(cue, experienceRegistry, experienceGuidance, feature, binding, targetIndex) {
   const allowedFields = new Set(experienceGuidance.interactionCue?.referenceFields ?? []);
   for (const field of ['actionRefOrNull', 'interactionRefOrNull', 'gestureRefOrNull', 'componentRefOrNull', 'slotRefOrNull']) {
     if (!allowedFields.has(field)) throw new Error(`Render Lab requires accepted InteractionCue field ${field}`);
   }
   if (cue.actionRefOrNull && !asArray(feature.actionRefs ?? [], 'feature.actionRefs').includes(cue.actionRefOrNull)) {
     throw new Error(`Render Lab action ref is not canonical for ${feature.featureRef}: ${cue.actionRefOrNull}`);
+  }
+  const targetElement = binding.targetKind === 'ELEMENT' ? targetIndex.elements.get(binding.targetRef)?.element ?? null : null;
+  if (cue.interactionRefOrNull) {
+    if (!targetElement?.interactionRef || targetElement.interactionRef !== cue.interactionRefOrNull) {
+      throw new Error(`Render Lab interaction ref does not match the canonical target element: ${cue.interactionRefOrNull}`);
+    }
+  }
+  if (targetElement?.actionRef && cue.actionRefOrNull !== targetElement.actionRef) {
+    throw new Error(`Render Lab action ref does not match the canonical target element: ${binding.targetRef}`);
   }
   if (cue.gestureRefOrNull) {
     const gesture = asArray(experienceRegistry.gestureContracts, 'experienceRegistry.gestureContracts')
@@ -182,12 +230,14 @@ function projectTokenGroup(value, groupRef) {
 }
 
 export function buildRenderLabProjection({
+  blueprint,
   featureRegistry,
   experienceRegistry,
   experienceFoundation,
   experienceGuidance,
   designTokens
 }) {
+  if (blueprint?.schemaVersion !== 'vexlife.universal-blueprint/v0') throw new Error('Render Lab requires the accepted universal blueprint schema');
   if (featureRegistry?.schemaVersion !== 'vexlife.feature-registry/v0') throw new Error('Render Lab requires the accepted feature registry schema');
   if (experienceRegistry?.schemaVersion !== 'vexlife.experience-registry/v0') throw new Error('Render Lab requires the accepted experience registry schema');
   if (experienceFoundation?.schemaVersion !== 'vexlife.experience-foundation/v1') throw new Error('Render Lab requires the accepted Experience Foundation schema');
@@ -198,18 +248,19 @@ export function buildRenderLabProjection({
   if (experienceGuidance.featurePerceptibilityOwnerRef !== featureRegistry.registryRef) throw new Error('Render Lab Experience Guidance is not bound to the supplied feature registry');
   if (experienceFoundation.effects !== false || experienceGuidance.effects !== false) throw new Error('Render Lab refuses effect-bearing Experience sources');
 
-  const specimens = SPECIMEN_BLUEPRINTS.map((blueprint) => {
-    const feature = lookupFeature(featureRegistry, blueprint.featureRef);
-    validateTargetBinding(blueprint.targetBinding, experienceGuidance, feature);
-    validateInteractionCue(blueprint.interactionCue, experienceRegistry, experienceGuidance, feature);
-    validateForm(blueprint.formRefOrNull, experienceFoundation);
-    if (!asArray(feature.stateRefs ?? [], 'feature.stateRefs').includes(blueprint.expectedStateRef)) {
-      throw new Error(`Render Lab expected state ref is not canonical for ${feature.featureRef}: ${blueprint.expectedStateRef}`);
+  const targetIndex = buildBlueprintTargetIndex(blueprint);
+  const specimens = SPECIMEN_BLUEPRINTS.map((specimenBlueprint) => {
+    const feature = lookupFeature(featureRegistry, specimenBlueprint.featureRef);
+    validateTargetBinding(specimenBlueprint.targetBinding, experienceGuidance, targetIndex);
+    validateInteractionCue(specimenBlueprint.interactionCue, experienceRegistry, experienceGuidance, feature, specimenBlueprint.targetBinding, targetIndex);
+    validateForm(specimenBlueprint.formRefOrNull, experienceFoundation);
+    if (!asArray(feature.stateRefs ?? [], 'feature.stateRefs').includes(specimenBlueprint.expectedStateRef)) {
+      throw new Error(`Render Lab expected state ref is not canonical for ${feature.featureRef}: ${specimenBlueprint.expectedStateRef}`);
     }
-    if (!asArray(feature.stateRefs ?? [], 'feature.stateRefs').includes(blueprint.currentStateRef)) {
-      throw new Error(`Render Lab current state ref is not canonical for ${feature.featureRef}: ${blueprint.currentStateRef}`);
+    if (!asArray(feature.stateRefs ?? [], 'feature.stateRefs').includes(specimenBlueprint.currentStateRef)) {
+      throw new Error(`Render Lab current state ref is not canonical for ${feature.featureRef}: ${specimenBlueprint.currentStateRef}`);
     }
-    return cloneRecord(blueprint);
+    return cloneRecord(specimenBlueprint);
   });
 
   const availabilityStates = asArray(experienceFoundation.availabilityStates, 'experienceFoundation.availabilityStates')
@@ -229,6 +280,7 @@ export function buildRenderLabProjection({
     canonicalRegistryCreated: false,
     automationIdentityCreated: false,
     sourceRefs: {
+      blueprintRef: blueprint.blueprintRef,
       featureRegistryRef: featureRegistry.registryRef,
       experienceRegistryRef: experienceRegistry.registryRef,
       experienceFoundationRef: experienceFoundation.foundationRef,
@@ -342,6 +394,7 @@ function ensureStylesheet(documentRef) {
 }
 
 export function createRenderLabController({
+  blueprint,
   featureRegistry,
   experienceRegistry,
   experienceFoundation,
@@ -350,7 +403,7 @@ export function createRenderLabController({
   documentRef = globalThis.document,
   windowRef = globalThis
 } = {}) {
-  const projection = buildRenderLabProjection({ featureRegistry, experienceRegistry, experienceFoundation, experienceGuidance, designTokens });
+  const projection = buildRenderLabProjection({ blueprint, featureRegistry, experienceRegistry, experienceFoundation, experienceGuidance, designTokens });
   let openButton = null;
   let drawer = null;
   let priorFocus = null;
