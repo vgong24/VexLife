@@ -368,9 +368,16 @@ export function listBrowserFamilyChannels({
     for (const channel of channels) {
       if (!isObject(channel) || channel.familySpaceBinding?.spaceRef !== currentIntent.spaceRef) continue;
       try {
+        assertChannelIdentity(channel, {
+          spaceRef: currentIntent.spaceRef,
+          channelRef: channel.channelRef
+        });
         visibleToCurrentMember([], channel, record, member);
       } catch (error) {
-        if (error instanceof FamilyConversationError) continue;
+        if (
+          error instanceof FamilyConversationError
+          || (error instanceof BrowserFamilyConversationBridgeError && error.code === 'BROWSER_FAMILY_BRIDGE_DENIED')
+        ) continue;
         throw error;
       }
       visible.push(Object.freeze({
