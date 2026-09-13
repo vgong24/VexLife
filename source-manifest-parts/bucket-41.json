@@ -9,6 +9,12 @@
       "sha256": "bae23f8d1e836d177b835d6878a7ad514b6fb7760c4a86a843358254e1d35f1f"
     },
     {
+      "path": "reference/browser/modules/render-lab-controller.js",
+      "mode": "100644",
+      "bytes": 23017,
+      "sha256": "f019bc3f23aff5c5eeeaab51426fd3b5182bffde3107d0a0a5a787bd2307ccee"
+    },
+    {
       "path": "src/core/browser-prompt-context-runtime.mjs",
       "mode": "100644",
       "bytes": 15159,
