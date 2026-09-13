@@ -292,6 +292,51 @@ test('VFB-06: private-channel metadata is not listed or readable by a Family-roo
   assert.deepEqual(listed.channels.map((item) => item.channelRef), [GROUP]);
 });
 
+test('VFB-12: reconstructed PRIVATE channels with malformed human audiences are not listed', (t) => {
+  const { home, record, channel: group } = setupFamily(t);
+  const privateChannel = createFamilyChannel({
+    channelRef: 'channel.vex-family.private-victor-alex',
+    threadRef: 'thread.vex-family.private-victor-alex',
+    kind: 'PRIVATE',
+    familySpaceRecord: record,
+    memberPrincipalRefs: ['principal.victor', 'principal.alex'],
+    createdAt: T3
+  });
+  const firstBinding = privateChannel.familySpaceBinding.audienceMemberBindings[0];
+  const singlePrivate = Object.freeze({
+    ...privateChannel,
+    channelRef: 'channel.vex-family.private-single',
+    threadRef: 'thread.vex-family.private-single',
+    familySpaceBinding: Object.freeze({
+      ...privateChannel.familySpaceBinding,
+      audienceMemberBindings: Object.freeze([firstBinding]),
+      channelMemberRefs: Object.freeze([firstBinding.principalRef])
+    })
+  });
+  const duplicatePrivate = Object.freeze({
+    ...privateChannel,
+    channelRef: 'channel.vex-family.private-duplicate',
+    threadRef: 'thread.vex-family.private-duplicate',
+    familySpaceBinding: Object.freeze({
+      ...privateChannel.familySpaceBinding,
+      audienceMemberBindings: Object.freeze([firstBinding, firstBinding]),
+      channelMemberRefs: Object.freeze([firstBinding.principalRef, firstBinding.principalRef])
+    })
+  });
+
+  const victor = bridgeIdentity('victor');
+  const listed = listBrowserFamilyChannels({
+    home,
+    intent: { spaceRef: SPACE, expectedMembershipGeneration: record.membershipGeneration },
+    channels: [group, singlePrivate, duplicatePrivate],
+    membership: victor.membership,
+    lease: victor.lease,
+    currentRevocationGeneration: victor.membership.revocationGeneration,
+    now: T5
+  });
+  assert.deepEqual(listed.channels.map((item) => item.channelRef), [GROUP]);
+});
+
 test('VFB-07/VFB-10: idempotent retry and stateless restart preserve one durable event identity', (t) => {
   const { home, record, channel } = setupFamily(t);
   const args = appendArgs({ home, record, channel, idempotencyKey: 'retry-001' });
