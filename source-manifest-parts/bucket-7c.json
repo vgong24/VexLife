@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/modules/browser-bundle.js",
       "mode": "100644",
-      "bytes": 2686,
-      "sha256": "20aa98fc3a75904c59f735a02a02fab5f0be0a6dc4c5f97e0fbe1513b7ba88f9"
+      "bytes": 3057,
+      "sha256": "8e79044348ddad9d23cbb02858b6333ee5972716a8c06ac7e3b5598c0445becc"
     },
     {
       "path": "test/browser-model-turn-formation.test.mjs",
