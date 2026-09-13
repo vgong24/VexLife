@@ -55,6 +55,7 @@ export async function loadBrowserBundle(root = '../../') {
     globalThis.__VEXLIFE_EXPERIENCE_GALLERY__ = experienceGallery;
 
     renderLab = createRenderLabController({
+      blueprint,
       featureRegistry,
       experienceRegistry: experience,
       experienceFoundation,
