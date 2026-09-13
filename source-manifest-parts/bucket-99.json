@@ -41,8 +41,8 @@
     {
       "path": "test/render-lab.test.mjs",
       "mode": "100644",
-      "bytes": 7985,
-      "sha256": "bacec12939e6000a860f5ee0918ac408675c92dd8e0a114eb9e1087df203dd54"
+      "bytes": 10043,
+      "sha256": "bfc7fe05d2e2c04ad25b828ec47272d9d174ecc7d68c00e61d768cc523fbebea"
     }
   ]
 }
