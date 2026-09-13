@@ -3,6 +3,7 @@ import './vex-birth-lab-controller.js';
 import './experience-guidance-human-projection.js';
 import { createAndroidRemoteVesselController } from './android-remote-vessel-controller.js';
 import { createExperienceGalleryController } from './experience-gallery-controller.js';
+import { createRenderLabController } from './render-lab-controller.js';
 
 export async function loadBrowserBundle(root = '../../') {
   async function fetchJson(relativePath) {
@@ -35,6 +36,7 @@ export async function loadBrowserBundle(root = '../../') {
   ]);
   let androidRemoteVessel = null;
   let experienceGallery = null;
+  let renderLab = null;
   if (globalThis.document) {
     androidRemoteVessel = createAndroidRemoteVesselController({
       registry: blueprint.androidRemoteVessel,
@@ -51,6 +53,16 @@ export async function loadBrowserBundle(root = '../../') {
     });
     experienceGallery.bind();
     globalThis.__VEXLIFE_EXPERIENCE_GALLERY__ = experienceGallery;
+
+    renderLab = createRenderLabController({
+      featureRegistry,
+      experienceRegistry: experience,
+      experienceFoundation,
+      experienceGuidance,
+      designTokens
+    });
+    renderLab.bind();
+    globalThis.__VEXLIFE_RENDER_LAB__ = renderLab;
   }
   return {
     blueprint,
@@ -61,7 +73,8 @@ export async function loadBrowserBundle(root = '../../') {
     designTokens,
     catalogs: { en, zh, ja },
     androidRemoteVessel,
-    experienceGallery
+    experienceGallery,
+    renderLab
   };
 }
 
