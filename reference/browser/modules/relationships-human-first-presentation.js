@@ -66,14 +66,14 @@ function nearestHeadingBefore(element) {
   return null;
 }
 
-function deliveryHeadingText() {
-  const delivery = document.querySelector('#relationshipsDelivery');
+function deliveryHeadingText(surface) {
+  const delivery = surface.querySelector('#relationshipsDelivery');
   const heading = nearestHeadingBefore(delivery);
   return heading?.textContent?.trim() || null;
 }
 
-function applyConnectionDiagnosticsDisclosure() {
-  const panel = document.querySelector('[data-rel="connect-panel"]');
+function applyConnectionDiagnosticsDisclosure(surface) {
+  const panel = surface.querySelector('[data-rel="connect-panel"]');
   if (!panel || panel.hidden) {
     openState.set(DISCLOSURE_IDS.diagnostics, false);
     return null;
@@ -93,7 +93,7 @@ function applyConnectionDiagnosticsDisclosure() {
   return makeDisclosure({
     id: DISCLOSURE_IDS.diagnostics,
     kind: 'connection-diagnostics',
-    summaryText: deliveryHeadingText(),
+    summaryText: deliveryHeadingText(surface),
     nodes: [
       alphaHeading,
       alphaBody,
@@ -109,8 +109,8 @@ function applyConnectionDiagnosticsDisclosure() {
   });
 }
 
-function applyVexDisclosure() {
-  const button = document.querySelector('#relationshipsVexExplain');
+function applyVexDisclosure(surface) {
+  const button = surface.querySelector('#relationshipsVexExplain');
   const body = button?.previousElementSibling;
   const heading = body?.previousElementSibling;
   const explanation = button?.nextElementSibling;
@@ -122,8 +122,8 @@ function applyVexDisclosure() {
   });
 }
 
-function applyRecoveryDisclosure() {
-  const controls = document.querySelector('#relationshipsBlock')?.closest('.e27-focus-actions');
+function applyRecoveryDisclosure(surface) {
+  const controls = surface.querySelector('#relationshipsBlock')?.closest('.e27-focus-actions');
   const status = controls?.previousElementSibling;
   const body = status?.previousElementSibling;
   const heading = body?.previousElementSibling;
@@ -135,8 +135,8 @@ function applyRecoveryDisclosure() {
   });
 }
 
-export function applyRelationshipsHumanFirstPresentation() {
-  const surface = document.querySelector('#view-relationships');
+export function applyRelationshipsHumanFirstPresentation({ root = document } = {}) {
+  const surface = root.querySelector('#view-relationships');
   if (!surface) return Object.freeze({ installed: false });
   if (surface.hidden) {
     openState.set(DISCLOSURE_IDS.diagnostics, false);
@@ -144,9 +144,9 @@ export function applyRelationshipsHumanFirstPresentation() {
     openState.set(DISCLOSURE_IDS.recovery, false);
   }
 
-  const diagnostics = applyConnectionDiagnosticsDisclosure();
-  const vex = applyVexDisclosure();
-  const recovery = applyRecoveryDisclosure();
+  const diagnostics = applyConnectionDiagnosticsDisclosure(surface);
+  const vex = applyVexDisclosure(surface);
+  const recovery = applyRecoveryDisclosure(surface);
   surface.dataset.humanFirstPresentation = 'progressive-disclosure-v1';
 
   return Object.freeze({
@@ -167,7 +167,7 @@ export function installRelationshipsHumanFirstPresentation({ root = document.que
     applyScheduled = true;
     queueMicrotask(() => {
       applyScheduled = false;
-      applyRelationshipsHumanFirstPresentation();
+      applyRelationshipsHumanFirstPresentation({ root });
     });
   };
 
@@ -186,7 +186,7 @@ export function installRelationshipsHumanFirstPresentation({ root = document.que
     attributeFilter: ['lang']
   });
 
-  applyRelationshipsHumanFirstPresentation();
+  applyRelationshipsHumanFirstPresentation({ root });
 
   return Object.freeze({
     installed: true,
