@@ -21,6 +21,12 @@
       "sha256": "f5eed2f7d0a09b5fc6c6540dedc75ea384a0d7ad6f539f43922994bf3437984b"
     },
     {
+      "path": "reference/browser/render-lab.css",
+      "mode": "100644",
+      "bytes": 5665,
+      "sha256": "0f9b42e5b1b993be122b267cd129c15efbe7707aadb873ff02563335758d1088"
+    },
+    {
       "path": "src/core/intent-checkpoint.mjs",
       "mode": "100644",
       "bytes": 14269,

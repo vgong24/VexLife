@@ -37,6 +37,12 @@
       "mode": "100644",
       "bytes": 10888,
       "sha256": "338159b81372319985b11377828cefab54af37c175c51db69072ada8bb9d6309"
+    },
+    {
+      "path": "test/render-lab.test.mjs",
+      "mode": "100644",
+      "bytes": 10043,
+      "sha256": "bfc7fe05d2e2c04ad25b828ec47272d9d174ecc7d68c00e61d768cc523fbebea"
     }
   ]
 }
