@@ -65,6 +65,29 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.browser-family-conversation-bridge",
+    "path": "src/core/browser-family-conversation-bridge.mjs",
+    "role": "Model-free authenticated Family human-chat adapter that composes Home Bridge principal admission, current Family Space membership, Family Conversation visibility and the durable Conversation Store without becoming a second semantic owner.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.home-bridge",
+      "module.vexlife.core.family-space-store",
+      "src/core/family-conversation.mjs",
+      "module.vexlife.core.conversation-store"
+    ],
+    "writes": [
+      "Vex Home conversations/** only through module.vexlife.core.conversation-store"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/browser-family-conversation-bridge.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEX-FAMILY-CONVERSATION-BRIDGE.md",
+      "scripts/serve-browser.mjs"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.build-health",
     "path": "src/core/build-health.mjs",
     "role": "Validates source-managed repository checks and derives compact semantic current/health projections.",
