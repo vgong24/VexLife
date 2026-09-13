@@ -21,6 +21,12 @@
       "sha256": "a87d87b39db03088bd8f19c6443acfc019e8594271fdfa3607f3d185981867fc"
     },
     {
+      "path": "reference/browser/modules/relationships-human-first-presentation.js",
+      "mode": "100644",
+      "bytes": 6618,
+      "sha256": "84e91f4979e6dd6481f8b661c0c7343c8b6bf79b9f7b06035bd64063fd5bc6a9"
+    },
+    {
       "path": "scripts/bootstrap.mjs",
       "mode": "100644",
       "bytes": 804,
