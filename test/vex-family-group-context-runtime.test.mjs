@@ -405,6 +405,10 @@ test('FGC-09 independent re-witness rejects a self-hashed frontier that omits an
     fx.appendHuman('bri', 'message.vf03a.rewitness.002', 'Current tail.');
     const formedAt = fx.at();
     const frontier = frontierFor(fx, trigger.messageRef, { formedAt });
+    assert.deepEqual(
+      frontier.selectedMessageBindings.map((message) => message.messageRef),
+      ['message.vf03a.rewitness.000', 'message.vf03a.rewitness.001', 'message.vf03a.rewitness.002']
+    );
     const tampered = structuredClone(frontier);
     tampered.selectedMessageBindings = tampered.selectedMessageBindings
       .filter((message) => message.messageRef !== 'message.vf03a.rewitness.001');

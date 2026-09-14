@@ -351,7 +351,10 @@ export function verifyFamilyGroupFrontierCurrent({ home, frontier, observedAt = 
     maxInputTokens: frontier.maxInputTokens,
     formedAt: frontier.formedAt
   });
-  if (reproduced.frontierSha256 !== frontier.frontierSha256) {
+  if (
+    !sameOrderedRefs(reproduced.sourceRefs, frontier.sourceRefs)
+    || reproduced.frontierSha256 !== frontier.frontierSha256
+  ) {
     fail('FAMILY_GROUP_CONTEXT_STALE', 'Family frontier no longer reproduces the exact current authorized selection');
   }
 
