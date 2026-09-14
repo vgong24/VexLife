@@ -97,7 +97,7 @@ function fixture(humans = ['victor', 'alex', 'bri']) {
     const familyRecord = readFamilySpace({ home, spaceRef }).record;
     const sequence = messageSequence++;
     const recipientRefs = humans.map((name) => `principal.${name}`);
-    const witnessRefs = [...recipientRefs, companionRef];
+    const witnessRefs = [...channel.familySpaceBinding.channelMemberRefs];
     const message = {
       messageRef,
       spaceRef,
