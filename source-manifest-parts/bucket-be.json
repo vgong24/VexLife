@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "be",
+  "files": [
+    {
+      "path": "src/core/family-group-context-runtime.mjs",
+      "mode": "100644",
+      "bytes": 14180,
+      "sha256": "8497ab23dcb88eee81a24623d24b1a8097eb8bd8ddf9c428d62ebae8cafcd9c6"
+    }
+  ]
+}
