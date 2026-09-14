@@ -1,6 +1,7 @@
 import {
   FAMILY_HISTORY_FROM_JOIN_POLICY,
-  contextForFamilyParticipant
+  contextForFamilyParticipant,
+  familySpaceRecordSnapshotRef
 } from './family-conversation.mjs';
 import { readFamilySpace } from './family-space-store.mjs';
 import {
@@ -48,6 +49,11 @@ const positiveBound = (value, label, maximum) => {
   return value;
 };
 const canonicalRefs = (values) => [...new Set(values)].sort();
+const sameOrderedRefs = (left, right) =>
+  Array.isArray(left)
+  && Array.isArray(right)
+  && left.length === right.length
+  && left.every((value, index) => value === right[index]);
 
 function estimateContentTokens(content) {
   const bytes = Buffer.byteLength(String(content ?? ''), 'utf8');
@@ -101,6 +107,31 @@ function currentRequestMember(familyRecord, requestPrincipalRef, requestPrincipa
     fail('FAMILY_GROUP_CONTEXT_HISTORY_POLICY_UNSUPPORTED', 'request principal lacks accepted FROM_JOIN history');
   }
   return member;
+}
+
+function assertCanonicalFamilyEvent(event, family, channel) {
+  const binding = channel.familySpaceBinding;
+  if (
+    event.spaceRef !== family.spaceRef
+    || event.threadRef !== channel.threadRef
+    || event.channelRef !== channel.channelRef
+    || event.membershipGeneration !== family.membershipGeneration
+    || event.membershipSnapshotRef !== familySpaceRecordSnapshotRef(family.recordSha256)
+  ) {
+    fail('FAMILY_GROUP_CONTEXT_SOURCE_INVALID', 'durable Family event is not bound to the exact current Family source identity');
+  }
+  if (!sameOrderedRefs(event.witnessRefs, binding.channelMemberRefs)) {
+    fail('FAMILY_GROUP_CONTEXT_SOURCE_INVALID', 'durable Family event witnesses do not match the exact channel audience');
+  }
+  if (!Array.isArray(event.recipientRefs) || event.recipientRefs.some((recipientRef) => !binding.channelMemberRefs.includes(recipientRef))) {
+    fail('FAMILY_GROUP_CONTEXT_SOURCE_INVALID', 'durable Family event recipients escape the exact channel audience');
+  }
+  const humanSpeaker = binding.audienceMemberBindings.find((member) => member.principalRef === event.speakerRef);
+  const companionSpeaker = event.speakerRef === binding.familyCompanionLineageRef;
+  if (!humanSpeaker && !companionSpeaker) {
+    fail('FAMILY_GROUP_CONTEXT_MEMBER_DENIED', 'durable Family event speaker is not an admitted Family human or exact Family Vex lineage');
+  }
+  return event;
 }
 
 function selectedBinding(event) {
@@ -191,6 +222,7 @@ export function formFamilyGroupFrontier({
   if (projection.truncated) {
     fail('FAMILY_GROUP_CONTEXT_BOUNDS_EXCEEDED', 'conversation exceeds the maximum verifiable durable read bound');
   }
+  for (const event of projection.messages) assertCanonicalFamilyEvent(event, family, channel);
   const trigger = projection.messages.find((event) => event.messageRef === triggerRef);
   if (!trigger) {
     fail('FAMILY_GROUP_CONTEXT_TRIGGER_NOT_FOUND', 'trigger message is not in the exact current channel lineage');
@@ -277,6 +309,7 @@ export function verifyFamilyGroupFrontierCurrent({ home, frontier, observedAt = 
   if (projection.state !== 'CURRENT' || projection.truncated) {
     fail('FAMILY_GROUP_CONTEXT_STALE', 'Family frontier channel lineage is unavailable or no longer bounded');
   }
+  for (const event of projection.messages) assertCanonicalFamilyEvent(event, family, channel);
   const byRef = new Map(projection.messages.map((event) => [event.messageRef, event]));
   for (const binding of frontier.selectedMessageBindings) {
     const event = byRef.get(binding.messageRef);
@@ -296,17 +329,38 @@ export function verifyFamilyGroupFrontierCurrent({ home, frontier, observedAt = 
   }
 
   const lastSequence = frontier.selectedMessageBindings.at(-1)?.sequence ?? trigger.sequence;
-  const advanced = projection.messages.find((event) =>
-    event.sequence > lastSequence
-    && event.createdAt > frontier.formedAt
-    && event.createdAt <= at
-  );
+  const advanced = projection.messages.find((event) => event.sequence > lastSequence);
+  if (advanced) {
+    return Object.freeze({
+      state: FAMILY_GROUP_FRONTIER_ADVANCED,
+      frontierRef: frontier.frontierRef,
+      frontierSha256: frontier.frontierSha256,
+      latestMessageRef: projection.head?.messageRef ?? null,
+      advancedMessageRef: advanced.messageRef,
+      verifiedAt: at
+    });
+  }
+
+  const reproduced = formFamilyGroupFrontier({
+    home,
+    spaceRef: frontier.spaceRef,
+    channelRef: frontier.channelRef,
+    triggerMessageRef: frontier.triggerMessageRef,
+    expectedMembershipGeneration: frontier.membershipGeneration,
+    maxMessages: frontier.maxMessages,
+    maxInputTokens: frontier.maxInputTokens,
+    formedAt: frontier.formedAt
+  });
+  if (reproduced.frontierSha256 !== frontier.frontierSha256) {
+    fail('FAMILY_GROUP_CONTEXT_STALE', 'Family frontier no longer reproduces the exact current authorized selection');
+  }
+
   return Object.freeze({
-    state: advanced ? FAMILY_GROUP_FRONTIER_ADVANCED : FAMILY_GROUP_FRONTIER_CURRENTNESS,
+    state: FAMILY_GROUP_FRONTIER_CURRENTNESS,
     frontierRef: frontier.frontierRef,
     frontierSha256: frontier.frontierSha256,
     latestMessageRef: projection.head?.messageRef ?? null,
-    advancedMessageRef: advanced?.messageRef ?? null,
+    advancedMessageRef: null,
     verifiedAt: at
   });
 }

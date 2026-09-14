@@ -177,6 +177,18 @@ function leaseInput(observedAt) {
   };
 }
 
+function selfHashedFrontier(core) {
+  const candidate = structuredClone(core);
+  delete candidate.frontierRef;
+  delete candidate.frontierSha256;
+  const frontierSha256 = semanticHash(candidate);
+  return Object.freeze({
+    ...candidate,
+    frontierRef: `frontier.vex-family.${frontierSha256}`,
+    frontierSha256
+  });
+}
+
 test('FGC-00 three humans and Family Vex preserve exact distinct canonical speakers', () => {
   const fx = fixture();
   try {
@@ -251,6 +263,40 @@ test('FGC-02 non-group/private source is rejected before frontier formation', ()
         formedAt: fx.at()
       }),
       (error) => error instanceof FamilyGroupContextError && error.code === 'FAMILY_GROUP_CONTEXT_CHANNEL_DENIED'
+    );
+  } finally { fx.cleanup(); }
+});
+
+test('FGC-02 nonmember durable group source is rejected before selection', () => {
+  const fx = fixture();
+  try {
+    const trigger = fx.appendHuman('victor', 'message.vf03a.nonmember.000', 'Canonical trigger.');
+    const family = fx.currentFamily();
+    const createdAt = fx.at();
+    const content = 'Injected nonmember source.';
+    appendConversationMessage({
+      home: fx.home,
+      instanceRef,
+      observedAt: createdAt,
+      message: {
+        messageRef: 'message.vf03a.nonmember.001',
+        spaceRef,
+        threadRef,
+        channelRef,
+        speakerRef: 'principal.mallory',
+        recipientRefs: ['principal.victor'],
+        witnessRefs: [...fx.channel.familySpaceBinding.channelMemberRefs],
+        membershipSnapshotRef: familySpaceRecordSnapshotRef(family.recordSha256),
+        membershipGeneration: family.membershipGeneration,
+        sequence: 1,
+        content,
+        contentHash: semanticHash(content),
+        createdAt
+      }
+    });
+    assert.throws(
+      () => frontierFor(fx, trigger.messageRef),
+      (error) => error instanceof FamilyGroupContextError && error.code === 'FAMILY_GROUP_CONTEXT_MEMBER_DENIED'
     );
   } finally { fx.cleanup(); }
 });
@@ -351,7 +397,27 @@ test('FGC-08 message and token bounds fail closed without whole-history fallback
   } finally { fx.cleanup(); }
 });
 
-test('FGC-09 currentness re-witness reproduces current selection and reports later frontier advance', () => {
+test('FGC-09 independent re-witness rejects a self-hashed frontier that omits an authorized source', () => {
+  const fx = fixture();
+  try {
+    const trigger = fx.appendHuman('victor', 'message.vf03a.rewitness.000', 'Trigger.');
+    fx.appendHuman('alex', 'message.vf03a.rewitness.001', 'Must remain in exact selection.');
+    fx.appendHuman('bri', 'message.vf03a.rewitness.002', 'Current tail.');
+    const formedAt = fx.at();
+    const frontier = frontierFor(fx, trigger.messageRef, { formedAt });
+    const tampered = structuredClone(frontier);
+    tampered.selectedMessageBindings = tampered.selectedMessageBindings
+      .filter((message) => message.messageRef !== 'message.vf03a.rewitness.001');
+    tampered.sourceRefs = tampered.selectedMessageBindings.map((message) => message.messageRef).sort();
+    const selfHashed = selfHashedFrontier(tampered);
+    assert.throws(
+      () => verifyFamilyGroupFrontierCurrent({ home: fx.home, frontier: selfHashed, observedAt: formedAt }),
+      (error) => error instanceof FamilyGroupContextError && error.code === 'FAMILY_GROUP_CONTEXT_STALE'
+    );
+  } finally { fx.cleanup(); }
+});
+
+test('FGC-09 durable sequence advancement wins over equal/backdated source timestamps', () => {
   const fx = fixture();
   try {
     fx.appendHuman('victor', 'message.vf03a.verify.000', 'Trigger.');
@@ -360,7 +426,12 @@ test('FGC-09 currentness re-witness reproduces current selection and reports lat
     const first = verifyFamilyGroupFrontierCurrent({ home: fx.home, frontier, observedAt: formedAt });
     assert.equal(first.state, FAMILY_GROUP_FRONTIER_CURRENTNESS);
 
-    const later = fx.appendHuman('alex', 'message.vf03a.verify.001', 'Arrived after frontier formation.', fx.at());
+    const later = fx.appendHuman(
+      'alex',
+      'message.vf03a.verify.001',
+      'Appended later while preserving the frontier timestamp.',
+      formedAt
+    );
     const verifiedAt = fx.at();
     const advanced = verifyFamilyGroupFrontierCurrent({ home: fx.home, frontier, observedAt: verifiedAt });
     assert.equal(advanced.state, FAMILY_GROUP_FRONTIER_ADVANCED);
