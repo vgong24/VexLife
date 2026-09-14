@@ -47,6 +47,17 @@ import {
   browserRelationshipsRuntimeFailurePayload,
   createBrowserRelationshipsRuntimeBridge
 } from '../src/core/browser-relationships-runtime-bridge.mjs';
+import {
+  BrowserFamilyConversationBridgeError,
+  appendBrowserFamilyMessage,
+  listBrowserFamilyChannels,
+  readBrowserFamilyConversation
+} from '../src/core/browser-family-conversation-bridge.mjs';
+import {
+  ConversationStoreError,
+  listConversationChannelBindings,
+  readConversationChannelBinding
+} from '../src/core/conversation-store.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
@@ -55,7 +66,12 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH = '/api/v1/relationships/persistence';
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_LIST_MAX = 256;
+export const BROWSER_FAMILY_CONVERSATION_API_PATH = '/api/v1/family/conversation';
+export const BROWSER_FAMILY_CONVERSATION_MAX_BODY_BYTES = 16 * 1024;
+export const BROWSER_FAMILY_CONVERSATION_LIST_MAX = 1000;
 const RELATIONSHIPS_PERSISTENCE_REQUEST_KEYS = new Set(['localOwnerBinding', 'input']);
+const FAMILY_CONVERSATION_REQUEST_KEYS = new Set(['operation', 'intent']);
+const FAMILY_CONVERSATION_OPERATIONS = new Set(['APPEND', 'READ', 'LIST']);
 
 function readRelationshipsRuntimeSourceJson(sourceRoot, relativePath, label) {
   const file = path.resolve(sourceRoot, relativePath);
@@ -289,6 +305,224 @@ function relationshipsPersistenceFailurePayload(error) {
   });
 }
 
+class BrowserFamilyConversationServerError extends Error {
+  constructor(code, message, httpStatus) {
+    super(message);
+    this.name = 'BrowserFamilyConversationServerError';
+    this.code = code;
+    this.httpStatus = httpStatus;
+  }
+}
+
+function familyConversationRequestError(message, httpStatus = 400) {
+  return new BrowserFamilyConversationServerError(
+    'FAMILY_CONVERSATION_REQUEST_NOT_ADMITTED',
+    message,
+    httpStatus
+  );
+}
+
+function admitFamilyConversationRequest(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw familyConversationRequestError('Family conversation request must be one object');
+  }
+  const keys = Object.keys(value);
+  if (
+    keys.length !== FAMILY_CONVERSATION_REQUEST_KEYS.size
+    || keys.some((key) => !FAMILY_CONVERSATION_REQUEST_KEYS.has(key))
+  ) {
+    throw familyConversationRequestError('Family conversation request must contain only operation and intent');
+  }
+  if (!FAMILY_CONVERSATION_OPERATIONS.has(value.operation)) {
+    throw familyConversationRequestError('Family conversation operation is not admitted');
+  }
+  if (!value.intent || typeof value.intent !== 'object' || Array.isArray(value.intent)) {
+    throw familyConversationRequestError('Family conversation intent must be one object');
+  }
+  return Object.freeze({ operation: value.operation, intent: value.intent });
+}
+
+function familyConversationHttpStatus(error) {
+  if (Number.isInteger(error?.httpStatus)) return error.httpStatus;
+  if (error instanceof BrowserFamilyConversationBridgeError) {
+    if (['BROWSER_FAMILY_BRIDGE_INPUT_INVALID', 'BROWSER_FAMILY_BRIDGE_UNTRUSTED_FIELD'].includes(error.code)) return 400;
+    if (error.code === 'BROWSER_FAMILY_BRIDGE_DENIED') return 403;
+    if (error.code === 'BROWSER_FAMILY_BRIDGE_NOT_FOUND') return 404;
+    if (['BROWSER_FAMILY_BRIDGE_STALE', 'BROWSER_FAMILY_BRIDGE_IDEMPOTENCY_CONFLICT'].includes(error.code)) return 409;
+    if (['BROWSER_FAMILY_BRIDGE_FAMILY_SPACE_UNAVAILABLE', 'BROWSER_FAMILY_BRIDGE_STORE_UNAVAILABLE'].includes(error.code)) return 503;
+  }
+  if (error instanceof ConversationStoreError) return 503;
+  return 500;
+}
+
+function familyConversationFailurePayload(error) {
+  if (error instanceof BrowserFamilyConversationServerError || error instanceof BrowserFamilyConversationBridgeError) {
+    return Object.freeze({
+      schemaVersion: 'vexlife.browser-family-conversation-http-failure/v1',
+      state: 'HELD_FAMILY_CONVERSATION_FAILURE',
+      failureCode: error.code,
+      message: error.message
+    });
+  }
+  if (error instanceof ConversationStoreError) {
+    return Object.freeze({
+      schemaVersion: 'vexlife.browser-family-conversation-http-failure/v1',
+      state: 'HELD_FAMILY_CONVERSATION_FAILURE',
+      failureCode: 'FAMILY_CONVERSATION_CHANNEL_UNAVAILABLE',
+      message: 'Family conversation durable channel binding is unavailable'
+    });
+  }
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-family-conversation-http-failure/v1',
+    state: 'HELD_FAMILY_CONVERSATION_FAILURE',
+    failureCode: 'FAMILY_CONVERSATION_SERVER_FAILED',
+    message: 'Family conversation request failed safely'
+  });
+}
+
+async function currentFamilyConversationAuthority(resolveAuthority, request, admitted) {
+  if (typeof resolveAuthority !== 'function') {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_SESSION_AUTHORITY_UNAVAILABLE',
+      'Family conversation requires a server-owned authenticated session resolver',
+      503
+    );
+  }
+  let authority;
+  try {
+    authority = await resolveAuthority(Object.freeze({
+      request,
+      operation: admitted.operation,
+      target: Object.freeze({
+        spaceRef: admitted.intent.spaceRef ?? null,
+        channelRef: admitted.intent.channelRef ?? null
+      })
+    }));
+  } catch {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_SESSION_AUTHORITY_UNAVAILABLE',
+      'Family conversation authenticated session authority is unavailable',
+      503
+    );
+  }
+  if (
+    !authority
+    || typeof authority !== 'object'
+    || Array.isArray(authority)
+    || !authority.membership
+    || typeof authority.membership !== 'object'
+    || Array.isArray(authority.membership)
+    || !authority.lease
+    || typeof authority.lease !== 'object'
+    || Array.isArray(authority.lease)
+    || !Number.isSafeInteger(authority.currentRevocationGeneration)
+    || authority.currentRevocationGeneration < 0
+  ) {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_SESSION_AUTHORITY_UNAVAILABLE',
+      'Family conversation authenticated session authority is unavailable',
+      503
+    );
+  }
+  return Object.freeze({
+    membership: authority.membership,
+    lease: authority.lease,
+    currentRevocationGeneration: authority.currentRevocationGeneration
+  });
+}
+
+function currentFamilyConversationTime(nowProvider) {
+  if (typeof nowProvider !== 'function') {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_SERVER_TIME_UNAVAILABLE',
+      'Family conversation server time is unavailable',
+      503
+    );
+  }
+  const now = nowProvider();
+  if (
+    typeof now !== 'string'
+    || !Number.isFinite(Date.parse(now))
+    || new Date(now).toISOString() !== now
+  ) {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_SERVER_TIME_UNAVAILABLE',
+      'Family conversation server time is unavailable',
+      503
+    );
+  }
+  return now;
+}
+
+function currentFamilyConversationChannel(familyHome, intent) {
+  const binding = readConversationChannelBinding({
+    home: familyHome,
+    channelRef: intent.channelRef
+  });
+  if (binding.state !== 'CURRENT' || !binding.channel) {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_CONVERSATION_CHANNEL_NOT_FOUND',
+      'Family conversation channel is unavailable',
+      404
+    );
+  }
+  return binding.channel;
+}
+
+async function performFamilyConversationHttpRequest({
+  request,
+  familyHome,
+  resolveAuthority,
+  nowProvider,
+  instanceRef
+}) {
+  const admitted = admitFamilyConversationRequest(await readBoundedJson(request, {
+    maxBytes: BROWSER_FAMILY_CONVERSATION_MAX_BODY_BYTES,
+    formError: familyConversationRequestError,
+    requestLabel: 'Family conversation request'
+  }));
+  const authority = await currentFamilyConversationAuthority(resolveAuthority, request, admitted);
+  const now = currentFamilyConversationTime(nowProvider);
+  const common = {
+    home: familyHome,
+    intent: admitted.intent,
+    membership: authority.membership,
+    lease: authority.lease,
+    currentRevocationGeneration: authority.currentRevocationGeneration,
+    now
+  };
+
+  if (admitted.operation === 'APPEND') {
+    if (typeof instanceRef !== 'string' || instanceRef.length === 0) {
+      throw new BrowserFamilyConversationServerError(
+        'FAMILY_SERVER_INSTANCE_UNAVAILABLE',
+        'Family conversation server writer identity is unavailable',
+        503
+      );
+    }
+    return appendBrowserFamilyMessage({
+      ...common,
+      channel: currentFamilyConversationChannel(familyHome, admitted.intent),
+      instanceRef
+    });
+  }
+  if (admitted.operation === 'READ') {
+    return readBrowserFamilyConversation({
+      ...common,
+      channel: currentFamilyConversationChannel(familyHome, admitted.intent)
+    });
+  }
+
+  const bindings = listConversationChannelBindings({
+    home: familyHome,
+    limit: BROWSER_FAMILY_CONVERSATION_LIST_MAX
+  });
+  return listBrowserFamilyChannels({
+    ...common,
+    channels: bindings.channels
+  });
+}
+
 export function createVexLifeBrowserServer({
   staticRoot = root,
   companionBridge = companion,
@@ -300,7 +534,11 @@ export function createVexLifeBrowserServer({
     localOwnerBinding
   }),
   resolveHomeIdentity = () => loadBrowserCompanionHomeIdentity(home),
-  createLivingJournalMemoryBridge = (identity) => createBrowserLivingJournalMemoryBridge({ identity })
+  createLivingJournalMemoryBridge = (identity) => createBrowserLivingJournalMemoryBridge({ identity }),
+  familyConversationHome = home,
+  resolveFamilyConversationAuthority = null,
+  familyConversationNow = () => new Date().toISOString(),
+  familyConversationInstanceRef = 'instance.vexlife.browser-family-server'
 } = {}) {
   return http.createServer(async (request, response) => {
     try {
@@ -425,6 +663,27 @@ export function createVexLifeBrowserServer({
               null
             );
           sendJson(response, typed.httpStatus, browserRelationshipsRuntimeFailurePayload(typed));
+        }
+        return;
+      }
+
+      if (url.pathname === BROWSER_FAMILY_CONVERSATION_API_PATH) {
+        if (request.method !== 'POST') {
+          response.writeHead(405, { Allow: 'POST', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const result = await performFamilyConversationHttpRequest({
+            request,
+            familyHome: familyConversationHome,
+            resolveAuthority: resolveFamilyConversationAuthority,
+            nowProvider: familyConversationNow,
+            instanceRef: familyConversationInstanceRef
+          });
+          sendJson(response, 200, result);
+        } catch (error) {
+          sendJson(response, familyConversationHttpStatus(error), familyConversationFailurePayload(error));
         }
         return;
       }
