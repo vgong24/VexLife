@@ -8,7 +8,9 @@ export const CONVERSATION_STORE_HEAD_SCHEMA = 'vexlife.conversation-head/v1';
 export const CONVERSATION_STORE_RECEIPT_SCHEMA = 'vexlife.conversation-append-receipt/v1';
 export const CONVERSATION_STORE_WRITER_SCHEMA = 'vexlife.conversation-writer/v1';
 export const CONVERSATION_STORE_EXPORT_SCHEMA = 'vexlife.conversation-export/v1';
+export const CONVERSATION_STORE_CHANNEL_RECORD_SCHEMA = 'vexlife.conversation-channel-record/v1';
 
+const FAMILY_CONVERSATION_BINDING_SCHEMA = 'vexlife.family-conversation-binding/v1';
 const REF = /^[a-z0-9](?:[a-z0-9._-]{0,220}[a-z0-9])?$/u;
 const SHA = /^[0-9a-f]{64}$/u;
 
@@ -49,6 +51,19 @@ const hash = (core, field) => Object.freeze({ ...core, [field]: semanticHash(cor
 const samePath = (a, b) => process.platform === 'win32'
   ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase()
   : path.resolve(a) === path.resolve(b);
+const exactKeys = (value, allowed, label) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail('CONVERSATION_INPUT_INVALID', `${label} must be one object`);
+  }
+  const extras = Object.keys(value).filter((key) => !allowed.has(key));
+  if (extras.length) fail('CONVERSATION_INPUT_INVALID', `${label} contains unadmitted fields`, { extras });
+};
+const token = (value, label) => {
+  if (typeof value !== 'string' || value.length < 1 || value.length > 128) {
+    fail('CONVERSATION_INPUT_INVALID', `${label} must be one bounded string`);
+  }
+  return value;
+};
 
 function canonicalHome(home) {
   if (typeof home !== 'string' || !home) fail('CONVERSATION_HOME_INVALID', 'Vex Home path is required');
@@ -76,6 +91,14 @@ function under(home, target) {
   return full;
 }
 
+function channelsRoot(home) {
+  const rootHome = canonicalHome(home);
+  return Object.freeze({
+    home: rootHome,
+    root: under(rootHome, path.join(rootHome, 'conversations', 'channels'))
+  });
+}
+
 function pathsFor(home, channelRef) {
   const rootHome = canonicalHome(home);
   const channel = ref(channelRef, 'channelRef');
@@ -83,7 +106,9 @@ function pathsFor(home, channelRef) {
   const root = under(rootHome, path.join(rootHome, 'conversations', 'channels', key));
   return Object.freeze({
     home: rootHome,
+    key,
     root,
+    channel: under(rootHome, path.join(root, 'channel.json')),
     messages: under(rootHome, path.join(root, 'messages')),
     receipts: under(rootHome, path.join(root, 'receipts')),
     head: under(rootHome, path.join(root, 'current.json')),
@@ -194,6 +219,192 @@ function atomicHead(paths, value, faults = {}) {
 function messagePath(paths, messageRef) {
   const identity = semanticHash({ schemaVersion: 'vexlife.conversation-message-address/v1', messageRef: ref(messageRef, 'messageRef') });
   return under(paths.home, path.join(paths.messages, `${identity}.json`));
+}
+
+function normalizeAudienceMemberBinding(value, index) {
+  exactKeys(value, new Set([
+    'membershipRef',
+    'principalRef',
+    'principalBindingRef',
+    'role',
+    'joinedAt',
+    'historyVisibilityPolicyRef'
+  ]), `familySpaceBinding.audienceMemberBindings[${index}]`);
+  return Object.freeze({
+    membershipRef: ref(value.membershipRef, `audienceMemberBindings[${index}].membershipRef`),
+    principalRef: ref(value.principalRef, `audienceMemberBindings[${index}].principalRef`),
+    principalBindingRef: ref(value.principalBindingRef, `audienceMemberBindings[${index}].principalBindingRef`),
+    role: token(value.role, `audienceMemberBindings[${index}].role`),
+    joinedAt: time(value.joinedAt, `audienceMemberBindings[${index}].joinedAt`),
+    historyVisibilityPolicyRef: ref(value.historyVisibilityPolicyRef, `audienceMemberBindings[${index}].historyVisibilityPolicyRef`)
+  });
+}
+
+function normalizeFamilySpaceBinding(binding, channelKind, channelCreatedAt) {
+  exactKeys(binding, new Set([
+    'schemaVersion',
+    'spaceRef',
+    'familySpaceRecordSha256',
+    'membershipSnapshotRef',
+    'membershipGeneration',
+    'historyVisibilityPolicyRef',
+    'audienceKind',
+    'audienceMemberBindings',
+    'channelMemberRefs',
+    'familyCompanionIncluded',
+    'familyCompanionLineageRef',
+    'formedAt'
+  ]), 'familySpaceBinding');
+  if (binding.schemaVersion !== FAMILY_CONVERSATION_BINDING_SCHEMA) {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding schema is invalid');
+  }
+  if (!SHA.test(binding.familySpaceRecordSha256 ?? '')) {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding.familySpaceRecordSha256 must be one lowercase SHA-256');
+  }
+  if (!Array.isArray(binding.audienceMemberBindings)) {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding.audienceMemberBindings must be an array');
+  }
+  const audienceMemberBindings = Object.freeze(
+    binding.audienceMemberBindings.map((value, index) => normalizeAudienceMemberBinding(value, index))
+  );
+  const principalRefs = audienceMemberBindings.map((member) => member.principalRef);
+  if (new Set(principalRefs).size !== principalRefs.length) {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding audience principals must be unique');
+  }
+  const channelMemberRefs = refs(binding.channelMemberRefs, 'familySpaceBinding.channelMemberRefs');
+  const audienceKind = token(binding.audienceKind, 'familySpaceBinding.audienceKind');
+  if (audienceKind !== channelKind) {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding audienceKind must match channel kind');
+  }
+  if (!principalRefs.every((principalRef) => channelMemberRefs.includes(principalRef))) {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding channel members must contain every audience principal');
+  }
+  if (typeof binding.familyCompanionIncluded !== 'boolean') {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding.familyCompanionIncluded must be boolean');
+  }
+  const familyCompanionLineageRef = optRef(binding.familyCompanionLineageRef, 'familySpaceBinding.familyCompanionLineageRef');
+  if (
+    (binding.familyCompanionIncluded && (!familyCompanionLineageRef || !channelMemberRefs.includes(familyCompanionLineageRef)))
+    || (!binding.familyCompanionIncluded && familyCompanionLineageRef !== null)
+  ) {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding companion identity is inconsistent');
+  }
+  const formedAt = time(binding.formedAt, 'familySpaceBinding.formedAt');
+  if (formedAt !== channelCreatedAt) {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding formedAt must equal channel createdAt');
+  }
+  const expectedChannelMemberRefs = [
+    ...principalRefs,
+    ...(familyCompanionLineageRef ? [familyCompanionLineageRef] : [])
+  ];
+  if (
+    expectedChannelMemberRefs.length !== channelMemberRefs.length
+    || !expectedChannelMemberRefs.every((memberRef, index) => memberRef === channelMemberRefs[index])
+  ) {
+    fail('CONVERSATION_INPUT_INVALID', 'familySpaceBinding channelMemberRefs do not match exact audience order');
+  }
+  return Object.freeze({
+    schemaVersion: FAMILY_CONVERSATION_BINDING_SCHEMA,
+    spaceRef: ref(binding.spaceRef, 'familySpaceBinding.spaceRef'),
+    familySpaceRecordSha256: binding.familySpaceRecordSha256,
+    membershipSnapshotRef: ref(binding.membershipSnapshotRef, 'familySpaceBinding.membershipSnapshotRef'),
+    membershipGeneration: sequence(binding.membershipGeneration),
+    historyVisibilityPolicyRef: ref(binding.historyVisibilityPolicyRef, 'familySpaceBinding.historyVisibilityPolicyRef'),
+    audienceKind,
+    audienceMemberBindings,
+    channelMemberRefs,
+    familyCompanionIncluded: binding.familyCompanionIncluded,
+    familyCompanionLineageRef,
+    formedAt
+  });
+}
+
+function normalizeChannel(channel) {
+  exactKeys(channel, new Set([
+    'channelRef',
+    'threadRef',
+    'kind',
+    'memberRefs',
+    'labelStringRef',
+    'state',
+    'createdAt',
+    'familySpaceBinding'
+  ]), 'channel envelope');
+  const createdAt = time(channel.createdAt);
+  const kind = token(channel.kind, 'channel.kind');
+  const memberRefs = refs(channel.memberRefs ?? [], 'channel.memberRefs', { allowEmpty: true });
+  const familySpaceBinding = channel.familySpaceBinding == null
+    ? null
+    : normalizeFamilySpaceBinding(channel.familySpaceBinding, kind, createdAt);
+  if (familySpaceBinding !== null && memberRefs.length !== 0) {
+    fail('CONVERSATION_INPUT_INVALID', 'Family channel generic memberRefs must remain fail-closed');
+  }
+  const canonical = {
+    channelRef: ref(channel.channelRef, 'channelRef'),
+    threadRef: ref(channel.threadRef, 'threadRef'),
+    kind,
+    memberRefs,
+    labelStringRef: optRef(channel.labelStringRef, 'labelStringRef'),
+    state: token(channel.state, 'channel.state'),
+    createdAt
+  };
+  if (familySpaceBinding !== null) canonical.familySpaceBinding = familySpaceBinding;
+  return Object.freeze(canonical);
+}
+
+function storedCanonicalChannel(channel) {
+  try {
+    return normalizeChannel(channel);
+  } catch (error) {
+    if (error instanceof ConversationStoreError && error.code === 'CONVERSATION_INPUT_INVALID') {
+      fail('CONVERSATION_CHANNEL_CORRUPT', 'stored conversation channel envelope is invalid', { cause: error.message });
+    }
+    throw error;
+  }
+}
+
+function channelRecord(canonical, materializedAt) {
+  const channelSha256 = semanticHash(canonical);
+  return hash({
+    schemaVersion: CONVERSATION_STORE_CHANNEL_RECORD_SCHEMA,
+    channelRef: canonical.channelRef,
+    channelSha256,
+    materializedAt,
+    channel: canonical
+  }, 'recordSha256');
+}
+
+function validateChannelRecord(record, expectedChannelRef = null) {
+  if (
+    !record
+    || record.schemaVersion !== CONVERSATION_STORE_CHANNEL_RECORD_SCHEMA
+    || !SHA.test(record.channelSha256 ?? '')
+    || !SHA.test(record.recordSha256 ?? '')
+  ) {
+    fail('CONVERSATION_CHANNEL_CORRUPT', 'conversation channel record identity is invalid');
+  }
+  const core = structuredClone(record);
+  delete core.recordSha256;
+  if (semanticHash(core) !== record.recordSha256) {
+    fail('CONVERSATION_CHANNEL_CORRUPT', 'conversation channel record hash is invalid');
+  }
+  if (semanticHash(record.channel) !== record.channelSha256) {
+    fail('CONVERSATION_CHANNEL_CORRUPT', 'conversation channel envelope hash is invalid');
+  }
+  const channel = storedCanonicalChannel(record.channel);
+  if (semanticHash(channel) !== record.channelSha256 || record.channelRef !== channel.channelRef) {
+    fail('CONVERSATION_CHANNEL_CORRUPT', 'conversation channel canonical identity is inconsistent');
+  }
+  if (expectedChannelRef !== null && channel.channelRef !== ref(expectedChannelRef, 'expected channelRef')) {
+    fail('CONVERSATION_CHANNEL_CORRUPT', 'conversation channel record does not match addressed channelRef');
+  }
+  time(record.materializedAt, 'materializedAt');
+  return Object.freeze({ ...record, channel });
+}
+
+function readChannelRecordAt(paths, expectedChannelRef) {
+  if (!fs.existsSync(paths.channel)) return null;
+  return validateChannelRecord(readJson(paths.channel, 'CONVERSATION_CHANNEL_CORRUPT'), expectedChannelRef);
 }
 
 function normalizeMessage(message) {
@@ -357,6 +568,83 @@ function reconcileExistingEvent({ paths, existing, canonical, instanceRef, commi
     return Object.freeze({ state: 'IDEMPOTENT_CURRENT', event: existing, head });
   }
   fail('CONVERSATION_CORRUPT', 'existing message event is not reachable from the exact current lineage');
+}
+
+export function materializeConversationChannel({ home, channel, instanceRef, observedAt = channel?.createdAt, faults = {} } = {}) {
+  const canonical = normalizeChannel(channel);
+  const paths = pathsFor(home, canonical.channelRef);
+  const at = time(observedAt, 'observedAt');
+  return withWriter(paths, instanceRef, at, () => {
+    const existing = readChannelRecordAt(paths, canonical.channelRef);
+    if (existing) {
+      if (existing.channelSha256 !== semanticHash(canonical)) {
+        fail('CONVERSATION_CHANNEL_CONFLICT', 'channelRef already exists with different canonical meaning');
+      }
+      return Object.freeze({ state: 'IDEMPOTENT_CURRENT', channel: existing.channel, record: existing });
+    }
+
+    if (faults.failBeforeChannelWrite === true) {
+      fail('CONVERSATION_CHANNEL_NOT_MATERIALIZED', 'simulated failure before durable channel write');
+    }
+    const record = channelRecord(canonical, at);
+    if (!writeExclusive(paths.home, paths.channel, record)) {
+      const stored = readChannelRecordAt(paths, canonical.channelRef);
+      if (!stored || stored.channelSha256 !== record.channelSha256) {
+        fail('CONVERSATION_CHANNEL_CONFLICT', 'channel address already contains different canonical meaning');
+      }
+      return Object.freeze({ state: 'IDEMPOTENT_CURRENT', channel: stored.channel, record: stored });
+    }
+    if (faults.failAfterChannelWrite === true) {
+      fail('CONVERSATION_CHANNEL_RESULT_NOT_EMITTED', 'simulated failure after durable channel write');
+    }
+    return Object.freeze({ state: 'MATERIALIZED', channel: canonical, record });
+  });
+}
+
+export function readConversationChannelBinding({ home, channelRef } = {}) {
+  const paths = pathsFor(home, channelRef);
+  const record = readChannelRecordAt(paths, channelRef);
+  if (!record) return Object.freeze({ state: 'NOT_FOUND', channel: null, record: null });
+  return Object.freeze({ state: 'CURRENT', channel: record.channel, record });
+}
+
+export function listConversationChannelBindings({ home, limit = 1000 } = {}) {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) {
+    fail('CONVERSATION_INPUT_INVALID', 'limit must be 1..1000');
+  }
+  const channels = channelsRoot(home);
+  if (!fs.existsSync(channels.root)) {
+    return Object.freeze({ state: 'EMPTY', channels: Object.freeze([]), truncated: false });
+  }
+  const rootStat = fs.lstatSync(channels.root);
+  if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
+    fail('CONVERSATION_CHANNEL_CORRUPT', 'conversation channels root must be one regular directory');
+  }
+
+  const verified = [];
+  for (const entry of fs.readdirSync(channels.root, { withFileTypes: true })) {
+    const entryPath = under(channels.home, path.join(channels.root, entry.name));
+    if (entry.isSymbolicLink()) {
+      fail('CONVERSATION_CHANNEL_CORRUPT', 'conversation channel enumeration encountered symbolic alias');
+    }
+    if (!entry.isDirectory()) continue;
+    const channelFile = under(channels.home, path.join(entryPath, 'channel.json'));
+    if (!fs.existsSync(channelFile)) continue;
+    const record = validateChannelRecord(readJson(channelFile, 'CONVERSATION_CHANNEL_CORRUPT'));
+    const expected = pathsFor(channels.home, record.channel.channelRef);
+    if (entry.name !== expected.key || !samePath(entryPath, expected.root)) {
+      fail('CONVERSATION_CHANNEL_CORRUPT', 'conversation channel record is stored under the wrong channel address');
+    }
+    verified.push(record.channel);
+  }
+  verified.sort((left, right) => left.channelRef < right.channelRef ? -1 : left.channelRef > right.channelRef ? 1 : 0);
+  const truncated = verified.length > limit;
+  const selected = Object.freeze(verified.slice(0, limit));
+  return Object.freeze({
+    state: selected.length === 0 ? 'EMPTY' : 'CURRENT',
+    channels: selected,
+    truncated
+  });
 }
 
 export function appendConversationMessage({ home, message, instanceRef, observedAt = message?.createdAt, faults = {} } = {}) {

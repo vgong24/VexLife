@@ -5,8 +5,8 @@
     {
       "path": "docs/VEX-FAMILY-CONVERSATION-PERSISTENCE.md",
       "mode": "100644",
-      "bytes": 6604,
-      "sha256": "12b70a3cb9cfffdacecccb38d1a40845a73c1658cb1f7bd01d2090439d234d94"
+      "bytes": 12237,
+      "sha256": "77f765e7602f63acebe271eb8efb6192a029384015cfc642a178e5edec70ebc9"
     },
     {
       "path": "scripts/build-admission-simulate.mjs",
