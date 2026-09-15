@@ -3,6 +3,12 @@
   "bucketId": "91",
   "files": [
     {
+      "path": "blueprint/module-registry/vex-family.json",
+      "mode": "100644",
+      "bytes": 899,
+      "sha256": "7f29d499ceb7cc97284fbea8fc0a4e6f149429c07e8bc28e68912537c0a3ac9c"
+    },
+    {
       "path": "reference/browser/integration/feature-perceptibility-suite.js",
       "mode": "100644",
       "bytes": 4489,

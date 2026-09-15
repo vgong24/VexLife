@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 7199,
       "sha256": "2d60360fb77be8a6085293c3419ba1dac473bbadd253398901036f2785935fbd"
+    },
+    {
+      "path": "test/vex-family-group-context-runtime.test.mjs",
+      "mode": "100644",
+      "bytes": 18606,
+      "sha256": "b259fdb00bd9ab46a070e442d7d3da68d02add50a96c8663ff874a11aaaf4444"
     }
   ]
 }
