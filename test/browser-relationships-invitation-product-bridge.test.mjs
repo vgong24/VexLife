@@ -14,6 +14,7 @@ const SOURCES = ['github.issue.vexlife.485', 'github.issue.vextreme-sdk.1365'];
 const ARTIFACT = Buffer.from('{"signedInvitation":"opaque-public-artifact"}\n', 'utf8');
 const ARTIFACT_BASE64 = ARTIFACT.toString('base64');
 const ARTIFACT_SHA256 = createHash('sha256').update(ARTIFACT).digest('hex');
+const SYNTHETIC_PRIVATE_KEY_HEADER = ['-----BEGIN', 'PRIVATE KEY-----'].join(' ');
 
 function request(operation, overrides = {}) {
   return {
@@ -179,7 +180,7 @@ test('protected material is rejected before reaching the upstream adapter', asyn
   });
   await assert.rejects(
     bridge.execute(request('CREATE_EXPORT', {
-      payload: { privateKey: '-----BEGIN PRIVATE KEY----- not-allowed' },
+      payload: { privateKey: `${SYNTHETIC_PRIVATE_KEY_HEADER} not-allowed` },
     })),
     /protected/u,
   );
