@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
@@ -61,7 +62,7 @@ function exportedResult(request) {
     artifact: Object.freeze({
       artifactSchemaRef: 'artifact.invitation.test.1',
       canonicalPayloadSchemaRef: 'vextreme.cdr.bridge-invitation-signing-payload/v1',
-      artifactSha256: '1558f95ce8e0bb3c7a5fca3c0d60d44d9f1da6bc8148db02ae9f33fe5f2e8732',
+      artifactSha256: createHash('sha256').update(bytes).digest('hex'),
       artifactBytesBase64: bytes.toString('base64'),
       artifactByteLength: bytes.length,
       transport: 'FILE',
@@ -179,7 +180,7 @@ test('unknown route bridge failure is normalized without leaking implementation 
 test('route does not reinterpret CODE/QR codec hold as successful transfer', async () => {
   const bridge = createBrowserRelationshipsInvitationProductBridge({
     upstreamAdapter: Object.freeze({
-      async invoke(request) {
+      async invoke() {
         return Object.freeze({
           state: 'HELD_CODEC_DEPENDENCY',
           adapterEvidenceRef: 'evidence.synthetic.codec.http.1',
