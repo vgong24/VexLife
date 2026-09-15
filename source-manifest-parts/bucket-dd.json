@@ -1,1 +1,24 @@
-{"schemaVersion":"source-manifest-part/v1","bucket":"dd","entries":[{"path":"test/browser-relationships-invitation-product-http-route.test.mjs","sha256":"04dd522dc18ea56fed5992472c407105662b42f9cdc085066c335ba102a4814b"},{"path":"test/friend-codec.test.mjs","sha256":"3743551114100353f165651d8b02e33a59b4f8fca9d9a9cd416d51de8944065a"},{"path":"test/relay-test-worker.mjs","sha256":"4dfb4a864bc144fd7a14dfb7f509037618d772342b0a0cc907af0dcb1b106d89"},{"path":"test/vex-family-group-context-browser.test.mjs","sha256":"f24e69f2bb0dc6d4cb1d8324c820b00c1a121b37a74c1104d3fa187a7da0bf45"}]}
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "dd",
+  "files": [
+    {
+      "path": "docs/REVIEW-EXPECTATION-COVERAGE-PLACEMENT.md",
+      "mode": "100644",
+      "bytes": 25083,
+      "sha256": "692e6cfa820a5c4c9655acaacc37d080ea66bb0c0c12cf42b093c6206a478ba9"
+    },
+    {
+      "path": "test/browser-companion-bridge.test.mjs",
+      "mode": "100644",
+      "bytes": 29978,
+      "sha256": "6caeb03fc44fe545ab0a2b5d3415f98085e69e258e02b6090bc7646ab5c3bd6a"
+    },
+    {
+      "path": "test/experience-review-effect-fixture.test.mjs",
+      "mode": "100644",
+      "bytes": 30083,
+      "sha256": "6cdd4709ba1dac4f35c2f8595a9b632e4dd3c56d87b1ae08dbffe6d530158165"
+    }
+  ]
+}

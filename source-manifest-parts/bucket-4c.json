@@ -1,1 +1,24 @@
-{"schemaVersion":"source-manifest-part/v1","bucket":"4c","entries":[{"path":"scripts/serve-browser-core.mjs","sha256":"3a4524b7509d21040e69dde3b87aaa25793219554e2f11b6edb4a38fe08da9d1"},{"path":"src/core/vex-daycare-learning-lineage/learning-library.mjs","sha256":"5086665a2f0611e8f492e3c16e3c886292a8d7b45e8a5446577430a8d392fc71"},{"path":"src/product/vex-family/family-group-context-presenter.mjs","sha256":"f0d3ef6a661248c27b9ee4d347ece1569086a01e56facb925c5e12feead342bf"}]}
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "4c",
+  "files": [
+    {
+      "path": "PROVENANCE.md",
+      "mode": "100644",
+      "bytes": 3001,
+      "sha256": "94bc806ae54fa7faeb15616ea897568b90ae3d7dbd6c9d4d340ead8b7c379892"
+    },
+    {
+      "path": "scripts/experience-review-effect-fixture.mjs",
+      "mode": "100644",
+      "bytes": 19135,
+      "sha256": "766ee16856cc6e2e96577acd9891a863a774c49eaca956b58e409693b462a86b"
+    },
+    {
+      "path": "scripts/serve-browser.mjs",
+      "mode": "100644",
+      "bytes": 4362,
+      "sha256": "bc4a584968009641728672c685e9a53ed83b5a7a9eb55450acbce93edf557fd7"
+    }
+  ]
+}

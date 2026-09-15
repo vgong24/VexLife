@@ -1,1 +1,24 @@
-{"schemaVersion":"source-manifest-part/v1","bucket":"ce","entries":[{"path":"scripts/serve-browser.mjs","sha256":"8f8152318c3a622b4fe09df31ce050ef8c0c65bb22b751015530639f61c93bdc"},{"path":"src/core/browser-relationships-invitation-product-bridge.mjs","sha256":"07a7c4ca545215f44ebeb0cf59fe7fb58d55f1cbab6c4e3231105e4494e44463"},{"path":"src/core/vex-family/family-membership-store.mjs","sha256":"8348e99924d95574d29ff0bdc4ef60546c1b0eb0fa9c1d6d99f8f164db41257e"},{"path":"src/product/friendship-boundary.js","sha256":"849d6a72c805b449bbcd983ac8c4798843940ecc7490be296df95cff39cd7e0a"}]}
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ce",
+  "files": [
+    {
+      "path": "blueprint/concern-watch-registry.json",
+      "mode": "100644",
+      "bytes": 18097,
+      "sha256": "8b87734f096543df04561677b688acc5bfe2f0723ca8fd780688a31836af9cd7"
+    },
+    {
+      "path": "src/core/family-conversation.mjs",
+      "mode": "100644",
+      "bytes": 17741,
+      "sha256": "c44cc716540c894f731d97dc646abeb2ae2c638dbb6e71684fd2a1149cc6cb23"
+    },
+    {
+      "path": "test/browser-relationships-invitation-product-http-route.test.mjs",
+      "mode": "100644",
+      "bytes": 8547,
+      "sha256": "df2c6cb2b109731e3e84f4532d9d1a1c9b7aab5d8fe744de87e2dcadfc49d4ab"
+    }
+  ]
+}

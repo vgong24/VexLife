@@ -1,1 +1,18 @@
-{"schemaVersion":"source-manifest-part/v1","bucket":"3b","entries":[{"path":"reference/browser/modules/relationships-invitation-product-client.js","sha256":"756c9639740dd781a53cb7f6bf9832cebf0b67aa76d08915e86442f06630c601"},{"path":"reference/browser/modules/relationships-ui.js","sha256":"20c028a28cc5fc33763f1c9bdd045f4be5d38197dca45618071976493efb0e6f"},{"path":"src/product/presence-boundary.js","sha256":"7b68806bf16b3f8f96850696355b3616ef61523f5720cc5696262b5b9e8d01ad"}]}
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "3b",
+  "files": [
+    {
+      "path": "scripts/browser-structure-check.mjs",
+      "mode": "100644",
+      "bytes": 841,
+      "sha256": "5e2ab0892f914684b0bb67a78ec3f4bdf596275a963a75131624f3b469f7953b"
+    },
+    {
+      "path": "scripts/serve-browser-core.mjs",
+      "mode": "100644",
+      "bytes": 31242,
+      "sha256": "488ff4185841aa40ac9b7391be4dea4c6f99680f4112d4cbfce959ad2d278809"
+    }
+  ]
+}
