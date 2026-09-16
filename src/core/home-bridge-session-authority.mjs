@@ -15,6 +15,34 @@ const SESSION_KEYS = new Set([
   'principalRef',
   'deviceRef'
 ]);
+const MEMBERSHIP_KEYS = new Set([
+  'schemaVersion',
+  'membershipRef',
+  'homeNodeRef',
+  'principalRef',
+  'deviceRef',
+  'devicePublicKey',
+  'capabilityRefs',
+  'approvedBy',
+  'approvedAt',
+  'revocationGeneration',
+  'state',
+  'membershipHash'
+]);
+const LEASE_KEYS = new Set([
+  'schemaVersion',
+  'leaseRef',
+  'homeNodeRef',
+  'principalRef',
+  'deviceRef',
+  'capabilityRefs',
+  'projectRefs',
+  'issuedAt',
+  'expiresAt',
+  'revocationGeneration',
+  'state',
+  'leaseHash'
+]);
 
 export class HomeBridgeSessionAuthorityError extends Error {
   constructor(code, message) {
@@ -60,6 +88,33 @@ function refs(values, label) {
   return normalized;
 }
 
+function optionalRefs(values, label, failureCode) {
+  if (!Array.isArray(values)) {
+    fail(failureCode, `${label} must be a ref array`);
+  }
+  const normalized = values.map((value, index) => ref(value, `${label}[${index}]`));
+  if (new Set(normalized).size !== normalized.length) {
+    fail(failureCode, `${label} must not contain duplicate refs`);
+  }
+  return normalized;
+}
+
+function exactSourceObject(value, keys, label, failureCode, hashField) {
+  exactKeys(value, keys, label);
+  if (Object.keys(value).length !== keys.size) {
+    fail(failureCode, `${label} is missing source-managed fields`);
+  }
+  if (typeof value[hashField] !== 'string') {
+    fail(failureCode, `${label} source hash is missing`);
+  }
+  const core = structuredClone(value);
+  delete core[hashField];
+  if (semanticHash(core) !== value[hashField]) {
+    fail(failureCode, `${label} source hash does not match its content`);
+  }
+  return value;
+}
+
 function ownerEnvelope(result, label) {
   if (Array.isArray(result)) {
     fail('HOME_BRIDGE_SESSION_AMBIGUOUS_OWNER_RESULT', `${label} returned multiple candidates`);
@@ -99,7 +154,14 @@ function authenticatedSession(value) {
 }
 
 function membership(value, session) {
-  if (!isObject(value) || value.schemaVersion !== 'vexlife.bridge-device-membership/v1') {
+  exactSourceObject(
+    value,
+    MEMBERSHIP_KEYS,
+    'Home Bridge membership',
+    'HOME_BRIDGE_SESSION_MEMBERSHIP_REQUIRED',
+    'membershipHash'
+  );
+  if (value.schemaVersion !== 'vexlife.bridge-device-membership/v1') {
     fail('HOME_BRIDGE_SESSION_MEMBERSHIP_REQUIRED', 'current Home Bridge membership is required');
   }
   if (value.state !== 'ACTIVE') {
@@ -116,11 +178,32 @@ function membership(value, session) {
   }
   ref(value.membershipRef, 'membership.membershipRef');
   ref(value.homeNodeRef, 'membership.homeNodeRef');
+  ref(value.principalRef, 'membership.principalRef');
+  ref(value.deviceRef, 'membership.deviceRef');
+  ref(value.approvedBy, 'membership.approvedBy');
+  if (typeof value.devicePublicKey !== 'string' || value.devicePublicKey.length === 0) {
+    fail('HOME_BRIDGE_SESSION_MEMBERSHIP_REQUIRED', 'membership device public key is invalid');
+  }
+  if (typeof value.approvedAt !== 'string' || !Number.isFinite(Date.parse(value.approvedAt))) {
+    fail('HOME_BRIDGE_SESSION_MEMBERSHIP_REQUIRED', 'membership approval time is invalid');
+  }
+  optionalRefs(
+    value.capabilityRefs,
+    'membership.capabilityRefs',
+    'HOME_BRIDGE_SESSION_MEMBERSHIP_REQUIRED'
+  );
   return value;
 }
 
 function lease(value, session, currentMembership, now) {
-  if (!isObject(value) || value.schemaVersion !== 'vexlife.bridge-capability-lease/v1') {
+  exactSourceObject(
+    value,
+    LEASE_KEYS,
+    'Home Bridge capability lease',
+    'HOME_BRIDGE_SESSION_LEASE_REQUIRED',
+    'leaseHash'
+  );
+  if (value.schemaVersion !== 'vexlife.bridge-capability-lease/v1') {
     fail('HOME_BRIDGE_SESSION_LEASE_REQUIRED', 'current Home Bridge capability lease is required');
   }
   if (value.state !== 'ACTIVE') {
@@ -141,6 +224,9 @@ function lease(value, session, currentMembership, now) {
   if (!Number.isSafeInteger(value.revocationGeneration) || value.revocationGeneration < 0) {
     fail('HOME_BRIDGE_SESSION_LEASE_REQUIRED', 'lease revocation generation is invalid');
   }
+  if (typeof value.issuedAt !== 'string' || !Number.isFinite(Date.parse(value.issuedAt))) {
+    fail('HOME_BRIDGE_SESSION_LEASE_REQUIRED', 'lease issue time is invalid');
+  }
   if (typeof value.expiresAt !== 'string' || !Number.isFinite(Date.parse(value.expiresAt))) {
     fail('HOME_BRIDGE_SESSION_LEASE_REQUIRED', 'lease expiry is invalid');
   }
@@ -152,6 +238,19 @@ function lease(value, session, currentMembership, now) {
     fail('HOME_BRIDGE_SESSION_LEASE_EXPIRED', 'Home Bridge capability lease is expired');
   }
   ref(value.leaseRef, 'lease.leaseRef');
+  ref(value.homeNodeRef, 'lease.homeNodeRef');
+  ref(value.principalRef, 'lease.principalRef');
+  ref(value.deviceRef, 'lease.deviceRef');
+  optionalRefs(
+    value.capabilityRefs,
+    'lease.capabilityRefs',
+    'HOME_BRIDGE_SESSION_LEASE_REQUIRED'
+  );
+  optionalRefs(
+    value.projectRefs,
+    'lease.projectRefs',
+    'HOME_BRIDGE_SESSION_LEASE_REQUIRED'
+  );
   return value;
 }
 
