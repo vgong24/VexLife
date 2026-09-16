@@ -197,6 +197,7 @@ async function mountSavedFfr03Relationships(page, { decision }) {
   assert.equal(saved.runtimePlan.state, 'IDLE');
   assert.equal(Object.values(saved.effects).every((value) => value === false), true);
   assert.match(await page.locator('#relationshipsConnectStatus').textContent(), /Saved locally as/i);
+  await openConnectionDiagnostics(page);
   await page.locator('#relationshipsAlphaConsent').click();
   assert.equal((await page.evaluate(() => globalThis.__FFR03_RELATIONSHIPS_TEST__.snapshot())).cdrGate.alphaConsentAcknowledged, true);
 }
@@ -432,7 +433,17 @@ test('Relationships composed compact route is touch-sized, keyboard-operable, sc
     assert.equal(await page.getByRole('combobox', { name:'Presence', exact:true }).count(), 1);
     assert.equal(await page.getByRole('combobox', { name:'Route', exact:true }).count(), 1);
     assert.equal(await page.getByRole('combobox', { name:'Current connection issue', exact:true }).count(), 1);
-    assert.equal(await page.locator('#view-relationships').getByRole('status').count(), 2);
+    const liveStatuses = [
+      '#relationshipsInvitationProductStatus',
+      '#relationshipsConnectStatus',
+      '#relationshipsRuntimePlanStatus'
+    ];
+    assert.equal(await page.locator('#view-relationships').getByRole('status').count(), liveStatuses.length);
+    for (const selector of liveStatuses) {
+      const status = page.locator(selector);
+      assert.equal(await status.getAttribute('role'), 'status');
+      assert.equal(await status.isVisible(), true);
+    }
     assert.equal(await page.locator('#relationshipsConnectMethod option[value="QR_PROJECTION"]').textContent(), 'QR code');
     assert.equal(await page.locator('#relationshipsInvitation option[value="RECEIVED_VERIFIED_REFERENCE"]').textContent(), 'Invitation received and verified');
     assert.equal(await page.locator('#relationshipsPresence option[value="APP_ON_MODEL_UNLOADED"]').textContent(), 'App open · companion not loaded');
