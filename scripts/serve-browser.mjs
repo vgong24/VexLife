@@ -81,7 +81,13 @@ export function createVexLifeBrowserServer(options = {}) {
   const coreHandler = coreHandlers[0];
 
   return http.createServer(async (request, response) => {
-    const url = new URL(request.url, `http://${request.headers.host || `127.0.0.1:${port}`}`);
+    let url;
+    try {
+      url = new URL(request.url, `http://${request.headers.host || `127.0.0.1:${port}`}`);
+    } catch {
+      await coreHandler(request, response);
+      return;
+    }
     if (url.pathname !== BROWSER_RELATIONSHIPS_INVITATION_PRODUCT_API_PATH) {
       await coreHandler(request, response);
       return;

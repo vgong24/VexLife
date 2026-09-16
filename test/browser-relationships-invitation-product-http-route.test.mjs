@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import http from 'node:http';
 import test from 'node:test';
 
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
@@ -51,6 +52,29 @@ async function withServer(options, run) {
   }
 }
 
+async function rawRequest(baseUrl, { path = '/', host = '127.0.0.1' } = {}) {
+  const target = new URL(baseUrl);
+  return new Promise((resolve, reject) => {
+    const request = http.request({
+      hostname: target.hostname,
+      port: Number(target.port),
+      path,
+      method: 'GET',
+      headers: { Host: host },
+    }, (response) => {
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve(Object.freeze({
+        statusCode: response.statusCode,
+        body: Buffer.concat(chunks).toString('utf8'),
+      })));
+    });
+    request.on('error', reject);
+    request.setTimeout(2_000, () => request.destroy(new Error('raw browser request timed out')));
+    request.end();
+  });
+}
+
 function exportedResult(request) {
   const bytes = Buffer.from('opaque-public-signed-invitation', 'utf8');
   return Object.freeze({
@@ -97,6 +121,18 @@ test('invitation product route forwards one bounded same-origin request to the i
     assert.equal(payload.state, 'EXPORTED');
     assert.equal(payload.syntheticAdapter, true);
     assert.deepEqual(payload.effects, RELATIONSHIPS_INVITATION_EFFECTS_NONE);
+  });
+});
+
+test('wrapper delegates malformed Host parsing to the core fail-safe boundary', async () => {
+  await withServer({}, async (baseUrl) => {
+    const response = await rawRequest(baseUrl, {
+      path: '/reference/browser/',
+      host: '%',
+    });
+    assert.equal(response.statusCode, 500);
+    const payload = JSON.parse(response.body);
+    assert.equal(payload.failureCode, 'COMPANION_TURN_FAILED');
   });
 });
 
