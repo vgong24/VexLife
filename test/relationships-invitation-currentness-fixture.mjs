@@ -131,16 +131,16 @@ export async function importVerifiedRelationshipsInvitation(page) {
     buffer: bytes
   });
   await page.waitForFunction(() => {
-    const state = globalThis.__VEXLIFE_APP__?.relationships?.snapshot?.().invitationProduct?.state
-      ?? globalThis.__FFR03_RELATIONSHIPS_TEST__?.snapshot?.().invitationProduct?.state
-      ?? globalThis.__UX04_RELATIONSHIPS_TEST__?.snapshot?.().invitationProduct?.state;
+    const state = globalThis.__FFR03_RELATIONSHIPS_TEST__?.snapshot?.().invitationProduct?.state
+      ?? globalThis.__UX04_RELATIONSHIPS_TEST__?.snapshot?.().invitationProduct?.state
+      ?? globalThis.__VEXLIFE_APP__?.relationships?.snapshot?.().invitationProduct?.state;
     return state === 'IMPORTED_VERIFIED_CURRENT' || String(state ?? '').startsWith('HELD_');
   });
 
   const snapshot = await page.evaluate(() => {
-    const controller = globalThis.__VEXLIFE_APP__?.relationships
-      ?? globalThis.__FFR03_RELATIONSHIPS_TEST__
-      ?? globalThis.__UX04_RELATIONSHIPS_TEST__;
+    const controller = globalThis.__FFR03_RELATIONSHIPS_TEST__
+      ?? globalThis.__UX04_RELATIONSHIPS_TEST__
+      ?? globalThis.__VEXLIFE_APP__?.relationships;
     return controller.snapshot();
   });
   assert.equal(snapshot.invitationProduct.state, 'IMPORTED_VERIFIED_CURRENT');
