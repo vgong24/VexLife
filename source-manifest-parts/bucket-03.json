@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 8833,
       "sha256": "5b2a385377c152164585b2144ae62cbf4638bb4b08d8e298cb19307c9cae97c3"
+    },
+    {
+      "path": "test/vex-family-companion-runtime.test.mjs",
+      "mode": "100644",
+      "bytes": 33768,
+      "sha256": "c465455c2f02c791d086519512c49478fa5f01a58cd7224a11e3d34f059217e6"
     }
   ]
 }
