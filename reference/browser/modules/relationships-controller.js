@@ -1,10 +1,20 @@
 import { admission, canAdvance, project, recover, validateRegistry } from '../relationships/core.js';
+import { createRelationshipsInvitationProductClient } from './relationships-invitation-product-client.js';
 
 const SUPPORTED_LANGUAGES = Object.freeze(['en', 'ja', 'zh']);
 const TERRAIN_REF = 'terrain.resource.relationships';
 const ENTRY_ELEMENT_REF = 'element.relationships.open';
 const RELATIONSHIPS_RUNTIME_API_PATH = '/api/v1/relationships/runtime-plan';
 const DURABLE_RELATIONSHIP_TRUTH_CLASS = 'DURABLE_LOCAL_DIRECTIONAL_RELATIONSHIP';
+const INVITATION_SOURCE_REFS = Object.freeze([
+  'github.issue.vexlife.407',
+  'github.issue.vexlife.484',
+  'github.issue.vextreme-sdk.1341'
+]);
+const INVITATION_PURPOSE_REF = 'purpose.friend-introduction';
+const INVITATION_SCOPE_REFS = Object.freeze(['scope.profile', 'scope.presence']);
+const INVITATION_CHANNEL_REFS = Object.freeze(['channel.manual']);
+const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 let loadedCdrRegistry = null;
 
 const OPTION_LABEL_KEYS = Object.freeze({
@@ -87,6 +97,9 @@ const REQUIRED_RUNTIME_STRING_KEYS = Object.freeze([
   'runtimeFailure'
 ]);
 
+const REQUIRED_INVITATION_PRODUCT_STRING_KEYS=Object.freeze([
+  'invitationRecipientCommunity','invitationRecipientUniverse','invitationCreateFile','invitationImportFile'
+]);
 const REQUIRED_PERSISTENCE_STRING_KEYS=Object.freeze(['persistenceSave','persistenceSaved','persistenceBindingRequired','persistencePrepared','persistenceFailure']);
 
 async function fetchJson(root, relativePath) {
@@ -132,7 +145,7 @@ export async function loadRelationshipsReference(root = '../../') {
     const candidateKeys = Object.keys(catalogs[language] ?? {}).sort();
     if (JSON.stringify(candidateKeys) !== JSON.stringify(referenceKeys)) throw new Error(`Relationships catalog key drift: ${language}`);
   }
-  for (const key of new Set([...Object.values(OPTION_LABEL_KEYS), ...CDR_HUMAN_OPTION_KEYS, ...REQUIRED_RUNTIME_STRING_KEYS, ...REQUIRED_PERSISTENCE_STRING_KEYS])) {
+  for (const key of new Set([...Object.values(OPTION_LABEL_KEYS), ...CDR_HUMAN_OPTION_KEYS, ...REQUIRED_RUNTIME_STRING_KEYS, ...REQUIRED_INVITATION_PRODUCT_STRING_KEYS, ...REQUIRED_PERSISTENCE_STRING_KEYS])) {
     if (!referenceKeys.includes(key)) throw new Error(`Relationships human option label missing: ${key}`);
   }
   return Object.freeze({ registry, catalogs, cdrRegistry: loadedCdrRegistry });
@@ -173,11 +186,27 @@ function selectControl(id, labelText, values, labelForValue = (value) => value) 
   return { label, select };
 }
 
+function textControl(id, labelText) {
+  const label = document.createElement('label');
+  label.className = 'e27-context-row';
+  const text = document.createElement('span');
+  text.textContent = labelText;
+  const input = document.createElement('input');
+  input.id = id;
+  input.type = 'text';
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  input.style.minHeight = '44px';
+  label.append(text, input);
+  return { label, input };
+}
+
 function createSurface() {
   const section = document.createElement('section');
   section.id = 'view-relationships';
   section.dataset.nodeRef = 'screen.vexlife.relationships';
   section.dataset.relationshipsSurface = 'canonical-contextual-projection';
+  section.dataset.humanFirstPresentation = 'progressive-disclosure-v1';
   section.hidden = true;
   section.innerHTML = `
     <header class="e27-context-heading">
@@ -308,7 +337,7 @@ export function createRelationshipsPersistenceStateMachine({persistenceBridge=nu
 
 function initialInteraction(cdrRegistry) {
   return {
-    method: 'CODE',
+    method: 'FILE',
     invitation: 'NONE',
     identity: 'UNKNOWN',
     decision: 'DEFER',
@@ -323,10 +352,58 @@ function initialInteraction(cdrRegistry) {
   };
 }
 
-export function createRelationshipsController({ state, registry, catalogs, cdrRegistry = loadedCdrRegistry, persistenceBridge = null, persistenceBinding = null, host = document.querySelector('#contextSurface') }) {
+function productTransport(method) {
+  return method === 'QR_PROJECTION' ? 'QR' : method;
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + 0x8000)));
+  }
+  return btoa(binary);
+}
+
+async function sha256Hex(bytes) {
+  if (!globalThis.crypto?.subtle) throw new Error('RELATIONSHIPS_INVITATION_DIGEST_UNAVAILABLE');
+  const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', bytes));
+  return [...digest].map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+function downloadInvitationArtifact(artifact) {
+  if (!artifact?.artifactBytesBase64 || !artifact?.artifactSha256) return false;
+  const binary = atob(artifact.artifactBytesBase64);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+  try {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `vexlife-invitation-${artifact.artifactSha256}.vexinvite`;
+    anchor.style.display = 'none';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    return true;
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+}
+
+export function createRelationshipsController({
+  state,
+  registry,
+  catalogs,
+  cdrRegistry = loadedCdrRegistry,
+  persistenceBridge = null,
+  persistenceBinding = null,
+  invitationProductClient = createRelationshipsInvitationProductClient(),
+  invitationClock = () => Date.now(),
+  host = document.querySelector('#contextSurface')
+}) {
   validateRegistry(registry);
   validateCdrRegistry(cdrRegistry);
   if (!host) throw new Error('Relationships contextual host unavailable');
+  if (!invitationProductClient || typeof invitationProductClient.createExport !== 'function' || typeof invitationProductClient.importVerify !== 'function') throw new Error('Relationships invitation product client unavailable');
   const surface = createSurface();
   host.append(surface);
 
@@ -334,6 +411,9 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   let bookletPage = 1;
   let bookletOpen = false;
   let connectOpen = false;
+  let diagnosticsOpen = false;
+  let vexDetailsOpen = false;
+  let recoveryDetailsOpen = false;
   let vexExplanationOpen = false;
   let interaction = initialInteraction(cdrRegistry);
   const persistence=createRelationshipsPersistenceStateMachine({persistenceBridge,persistenceBinding});
@@ -343,6 +423,11 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   let hydrationFailureCode=hydrationState==='HELD_BINDING_REQUIRED'?'RELATIONSHIPS_PERSISTENCE_BINDING_REQUIRED':null;
   let hydrationTruncated=false;
   let hydrationRequestGeneration=0;
+  let invitationRequestGeneration=0;
+  let invitationRequestSequence=0;
+  let invitationProduct=Object.freeze({
+    state:'IDLE',operation:null,requestRef:null,transport:'FILE',artifact:null,evidence:null,failureCode:null,syntheticAdapter:false,effects:null
+  });
   let runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
   let runtimePlanRequestGeneration = 0;
 
@@ -384,6 +469,123 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
   function clearRuntimePlan() {
     runtimePlanRequestGeneration += 1;
     runtimePlan = Object.freeze({ state: 'IDLE', reasons: Object.freeze([]) });
+  }
+
+  function resetDerivedInvitation({ keepProduct = false } = {}) {
+    interaction.invitation = 'NONE';
+    interaction.identity = 'UNKNOWN';
+    interaction.decision = 'DEFER';
+    if (!keepProduct) {
+      invitationRequestGeneration += 1;
+      invitationProduct = Object.freeze({ state:'IDLE',operation:null,requestRef:null,transport:productTransport(interaction.method),artifact:null,evidence:null,failureCode:null,syntheticAdapter:false,effects:null });
+    }
+    clearRuntimePlan();
+  }
+
+  function nextInvitationRequestRef(operation) {
+    invitationRequestSequence += 1;
+    return `request.relationships.${operation.toLowerCase()}.${invitationRequestSequence}`;
+  }
+
+  function setInvitationProductFromResult(result) {
+    invitationProduct = Object.freeze({
+      state:result.state,
+      operation:result.operation,
+      requestRef:result.requestRef,
+      transport:result.transport,
+      artifact:result.artifact ? Object.freeze({ ...result.artifact }) : null,
+      evidence:result.evidence ? Object.freeze({ ...result.evidence }) : null,
+      failureCode:result.failureCode,
+      syntheticAdapter:result.syntheticAdapter === true,
+      effects:result.effects ? Object.freeze({ ...result.effects }) : null
+    });
+    if (result.state === 'EXPORTED') {
+      interaction.invitation = 'CREATED_LOCAL_REFERENCE';
+      interaction.identity = 'UNKNOWN';
+      interaction.decision = 'DEFER';
+    } else if (result.state === 'IMPORTED_VERIFIED_CURRENT') {
+      interaction.invitation = 'RECEIVED_VERIFIED_REFERENCE';
+      interaction.identity = 'VERIFIED_CURRENT';
+      interaction.decision = 'DEFER';
+    } else {
+      interaction.invitation = 'NONE';
+      interaction.identity = 'UNKNOWN';
+      interaction.decision = 'DEFER';
+    }
+    clearRuntimePlan();
+  }
+
+  async function createInvitationExport({ recipientCommunityIdentityRef, recipientUniverseRef } = {}) {
+    const communityRef = String(recipientCommunityIdentityRef ?? '').trim();
+    const universeRef = String(recipientUniverseRef ?? '').trim();
+    if (!communityRef || !universeRef) {
+      resetDerivedInvitation({ keepProduct: true });
+      invitationProduct = Object.freeze({ state:'HELD_UPSTREAM_UNAVAILABLE',operation:'CREATE_EXPORT',requestRef:null,transport:productTransport(interaction.method),artifact:null,evidence:null,failureCode:'RELATIONSHIPS_INVITATION_RECIPIENT_REQUIRED',syntheticAdapter:false,effects:null });
+      render();
+      return snapshot();
+    }
+    const transport = productTransport(interaction.method);
+    const requestRef = nextInvitationRequestRef('CREATE_EXPORT');
+    const requestGeneration = invitationRequestGeneration + 1;
+    invitationRequestGeneration = requestGeneration;
+    invitationProduct = Object.freeze({ state:'PREPARING',operation:'CREATE_EXPORT',requestRef,transport,artifact:null,evidence:null,failureCode:null,syntheticAdapter:false,effects:null });
+    render();
+    let result;
+    try {
+      const now = Number(invitationClock());
+      if (!Number.isFinite(now)) throw new Error('RELATIONSHIPS_INVITATION_CLOCK_INVALID');
+      result = await invitationProductClient.createExport({
+        requestRef,
+        transport,
+        payload:Object.freeze({
+          recipientCommunityIdentityRef:communityRef,
+          recipientUniverseRef:universeRef,
+          purposeRef:INVITATION_PURPOSE_REF,
+          requestedScopeRefs:[...INVITATION_SCOPE_REFS],
+          requestedChannelRefs:[...INVITATION_CHANNEL_REFS],
+          audienceRefs:[communityRef],
+          expiresAtMs:Math.trunc(now) + INVITATION_TTL_MS
+        }),
+        sourceRefs:[...INVITATION_SOURCE_REFS]
+      });
+    } catch {
+      result = Object.freeze({ state:'HELD_UPSTREAM_UNAVAILABLE',operation:'CREATE_EXPORT',requestRef,transport,artifact:null,evidence:null,failureCode:'RELATIONSHIPS_INVITATION_UPSTREAM_UNAVAILABLE',syntheticAdapter:false,effects:null });
+    }
+    if (requestGeneration !== invitationRequestGeneration) return snapshot();
+    setInvitationProductFromResult(result);
+    render();
+    return snapshot();
+  }
+
+  async function importInvitationArtifact({ artifactBytesBase64, expectedArtifactSha256 } = {}) {
+    const requestRef = nextInvitationRequestRef('IMPORT_VERIFY');
+    const requestGeneration = invitationRequestGeneration + 1;
+    invitationRequestGeneration = requestGeneration;
+    invitationProduct = Object.freeze({ state:'PREPARING',operation:'IMPORT_VERIFY',requestRef,transport:'FILE',artifact:null,evidence:null,failureCode:null,syntheticAdapter:false,effects:null });
+    render();
+    let result;
+    try {
+      result = await invitationProductClient.importVerify({
+        requestRef,
+        transport:'FILE',
+        payload:Object.freeze({ artifactBytesBase64, expectedArtifactSha256, transportRecoveryEvidenceRefOrNull:null }),
+        sourceRefs:[...INVITATION_SOURCE_REFS]
+      });
+    } catch {
+      result = Object.freeze({ state:'HELD_UPSTREAM_UNAVAILABLE',operation:'IMPORT_VERIFY',requestRef,transport:'FILE',artifact:null,evidence:null,failureCode:'RELATIONSHIPS_INVITATION_UPSTREAM_UNAVAILABLE',syntheticAdapter:false,effects:null });
+    }
+    if (requestGeneration !== invitationRequestGeneration) return snapshot();
+    setInvitationProductFromResult(result);
+    render();
+    return snapshot();
+  }
+
+  function invitationProductStatusText() {
+    if (invitationProduct.state === 'PREPARING') return rt('runtimePreparing');
+    if (invitationProduct.state === 'EXPORTED') return humanOptionLabel('CREATED_LOCAL_REFERENCE');
+    if (invitationProduct.state === 'IMPORTED_VERIFIED_CURRENT') return humanOptionLabel('RECEIVED_VERIFIED_REFERENCE');
+    if (invitationProduct.state === 'IDLE') return humanOptionLabel(interaction.invitation);
+    return rt('held');
   }
 
   function visibleConnectionStatus() {
@@ -630,6 +832,11 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
 
   function resetInteraction() {
     interaction = initialInteraction(cdrRegistry);
+    invitationRequestGeneration += 1;
+    invitationProduct = Object.freeze({ state:'IDLE',operation:null,requestRef:null,transport:'FILE',artifact:null,evidence:null,failureCode:null,syntheticAdapter:false,effects:null });
+    diagnosticsOpen = false;
+    vexDetailsOpen = false;
+    recoveryDetailsOpen = false;
     clearRuntimePlan();
   }
 
@@ -746,6 +953,23 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     }
   }
 
+  function disclosure(id, kind, summaryText, open, onToggle) {
+    const details = document.createElement('details');
+    details.id = id;
+    details.dataset.relationshipsDisclosure = kind;
+    details.open = open;
+    const summary = document.createElement('summary');
+    summary.textContent = summaryText;
+    summary.dataset.relationshipsDisclosureSummary = kind;
+    summary.style.minWidth = '44px';
+    summary.style.minHeight = '44px';
+    summary.style.display = 'flex';
+    summary.style.alignItems = 'center';
+    details.append(summary);
+    details.ontoggle = () => onToggle(details.open);
+    return details;
+  }
+
   function renderConnect() {
     const target = surface.querySelector('[data-rel="connect-panel"]');
     target.hidden = !connectOpen;
@@ -756,6 +980,25 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     const body = document.createElement('p');
     body.textContent = rt('connectBody');
     const method = selectControl('relationshipsConnectMethod', rt('method'), registry.invitation.methods, humanOptionLabel);
+    const recipientCommunity = textControl('relationshipsRecipientCommunity', rt('invitationRecipientCommunity'));
+    const recipientUniverse = textControl('relationshipsRecipientUniverse', rt('invitationRecipientUniverse'));
+    const createExport = actionButton('relationshipsCreateInvitationFile', rt('invitationCreateFile'));
+    const importLabel = document.createElement('label');
+    importLabel.className = 'e27-context-row';
+    const importText = document.createElement('span');
+    importText.textContent = rt('invitationImportFile');
+    const importFile = document.createElement('input');
+    importFile.id = 'relationshipsImportInvitationFile';
+    importFile.type = 'file';
+    importFile.accept = '.vexinvite,application/octet-stream';
+    importFile.style.minHeight = '44px';
+    importLabel.append(importText, importFile);
+    const invitationProductStatus = document.createElement('p');
+    invitationProductStatus.id = 'relationshipsInvitationProductStatus';
+    invitationProductStatus.setAttribute('role', 'status');
+    invitationProductStatus.dataset.invitationProductState = invitationProduct.state;
+    invitationProductStatus.dataset.invitationProductFailureCode = invitationProduct.failureCode ?? '';
+    invitationProductStatus.textContent = invitationProductStatusText();
     const invitation = selectControl('relationshipsInvitation', rt('invitation'), registry.invitation.states, humanOptionLabel);
     const identity = selectControl('relationshipsIdentity', rt('identity'), registry.invitation.identityStates, humanOptionLabel);
     const decision = selectControl('relationshipsDecision', rt('decision'), registry.invitation.decisions, humanOptionLabel);
@@ -765,11 +1008,37 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     identity.select.value = interaction.identity;
     decision.select.value = interaction.decision;
     localClass.select.value = interaction.localClass;
-    method.select.onchange = (event) => { interaction.method = event.currentTarget.value; clearRuntimePlan(); };
-    invitation.select.onchange = (event) => { interaction.invitation = event.currentTarget.value; clearRuntimePlan(); render(); };
-    identity.select.onchange = (event) => { interaction.identity = event.currentTarget.value; clearRuntimePlan(); render(); };
+    invitation.select.disabled = true;
+    identity.select.disabled = true;
+    invitation.label.dataset.derivedFromInvitationProduct = 'true';
+    identity.label.dataset.derivedFromInvitationProduct = 'true';
+    method.select.disabled = invitationProduct.state === 'PREPARING';
+    createExport.disabled = invitationProduct.state === 'PREPARING';
+    importFile.disabled = invitationProduct.state === 'PREPARING';
+    method.select.onchange = (event) => { interaction.method = event.currentTarget.value; resetDerivedInvitation(); render(); };
     decision.select.onchange = (event) => { interaction.decision = event.currentTarget.value; clearRuntimePlan(); render(); };
     localClass.select.onchange = (event) => { interaction.localClass = event.currentTarget.value; clearRuntimePlan(); render(); };
+    createExport.onclick = async () => {
+      const pending = createInvitationExport({
+        recipientCommunityIdentityRef:recipientCommunity.input.value,
+        recipientUniverseRef:recipientUniverse.input.value
+      });
+      const current = await pending;
+      if (current.invitationProduct.state === 'EXPORTED') downloadInvitationArtifact(invitationProduct.artifact);
+    };
+    importFile.onchange = async (event) => {
+      const file = event.currentTarget.files?.[0] ?? null;
+      if (!file) return;
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const expectedArtifactSha256 = await sha256Hex(bytes);
+        await importInvitationArtifact({ artifactBytesBase64:bytesToBase64(bytes), expectedArtifactSha256 });
+      } catch {
+        resetDerivedInvitation({ keepProduct:true });
+        invitationProduct = Object.freeze({ state:'HELD_UPSTREAM_UNAVAILABLE',operation:'IMPORT_VERIFY',requestRef:null,transport:'FILE',artifact:null,evidence:null,failureCode:'RELATIONSHIPS_INVITATION_ARTIFACT_INVALID',syntheticAdapter:false,effects:null });
+        render();
+      }
+    };
 
     const gate = admission(interaction);
     const persistenceState = persistence.snapshot();
@@ -803,6 +1072,7 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
       return snapshot();
     };
 
+    const diagnostics = disclosure('relationshipsConnectionDetails', 'connection-diagnostics', rt('deliveryTitle'), diagnosticsOpen, (open) => { diagnosticsOpen = open; });
     const alphaTitle = document.createElement('h3');
     alphaTitle.textContent = rt('alphaConsentTitle');
     const alphaBody = document.createElement('p');
@@ -817,7 +1087,6 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
         render();
       }
     };
-
     const presence = selectControl('relationshipsPresence', rt('presence'), cdrRegistry.presenceStates, (value) => cdrOptionLabel('presence', value));
     const route = selectControl('relationshipsRoute', rt('route'), cdrRegistry.routeClasses, (value) => cdrOptionLabel('route', value));
     const failure = selectControl('relationshipsFailure', rt('failure'), cdrRegistry.failureStates, (value) => cdrOptionLabel('failure', value));
@@ -827,7 +1096,6 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     presence.select.onchange = (event) => { interaction.presenceClass = event.currentTarget.value; clearRuntimePlan(); render(); };
     route.select.onchange = (event) => { interaction.routeClass = event.currentTarget.value; clearRuntimePlan(); render(); };
     failure.select.onchange = (event) => { interaction.failureState = event.currentTarget.value; clearRuntimePlan(); render(); };
-
     const runtimeHeading = document.createElement('h3');
     runtimeHeading.textContent = rt('runtimeTitle');
     const runtimeBody = document.createElement('p');
@@ -849,29 +1117,66 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     const prepare = actionButton('relationshipsPrepareRuntimePlan', rt('runtimePrepare'));
     prepare.disabled = !persistence.isSavedFor({localRelationshipClass:interaction.localClass}) || interaction.recovery !== 'ACTIVE' || runtimePlan.state === 'PREPARING';
     prepare.onclick = () => { void prepareRuntimePlan(); };
+    diagnostics.append(alphaTitle, alphaBody, alpha, presence.label, route.label, failure.label, runtimeHeading, runtimeBody, runtimeStatus, prepare);
+
+    const vexDetails = disclosure('relationshipsVexDetails', 'vex-assistance', rt('vexTitle'), vexDetailsOpen, (open) => { vexDetailsOpen = open; });
+    const vexBody = document.createElement('p');
+    vexBody.textContent = rt('vexBody');
+    const vex = actionButton('relationshipsVexExplain', vexExplanationOpen ? rt('vexHide') : rt('vexShow'));
+    vex.setAttribute('aria-expanded', String(vexExplanationOpen));
+    vex.onclick = () => { vexExplanationOpen = !vexExplanationOpen; render(); };
+    const vexExplanation = document.createElement('p');
+    vexExplanation.id = 'relationshipsVexExplanation';
+    vexExplanation.hidden = !vexExplanationOpen;
+    vexExplanation.textContent = rt('vexExplanation');
+    vexDetails.append(vexBody, vex, vexExplanation);
+
+    const recoveryDetails = disclosure('relationshipsRecoveryDetails', 'safety-recovery', rt('recoveryTitle'), recoveryDetailsOpen, (open) => { recoveryDetailsOpen = open; });
+    const recoveryBody = document.createElement('p');
+    recoveryBody.textContent = rt('recoveryBody');
+    const recoveryStatus = document.createElement('p');
+    recoveryStatus.id = 'relationshipsRecoveryStatus';
+    const recoveryKey = interaction.recovery === 'BLOCKED' ? 'blocked' : interaction.recovery === 'REVOKED' ? 'revoked' : interaction.recovery === 'WITHDRAWN' ? 'withdrawn' : interaction.recovery === 'DISCONNECTED' ? 'disconnected' : 'active';
+    recoveryStatus.textContent = rt(recoveryKey);
+    const recoveryControls = document.createElement('div');
+    recoveryControls.className = 'e27-focus-actions';
+    for (const [id, action, key] of [
+      ['relationshipsBlock','BLOCK','block'],['relationshipsRevoke','REVOKE','revoke'],['relationshipsWithdraw','WITHDRAW','withdraw'],['relationshipsDisconnect','DISCONNECT','disconnect'],['relationshipsReset','RESET_REFERENCE','reset']
+    ]) {
+      const button = actionButton(id, rt(key));
+      button.onclick = () => { interaction = recover(interaction, action); clearRuntimePlan(); render(); };
+      recoveryControls.append(button);
+    }
+    recoveryDetails.append(recoveryBody, recoveryStatus, recoveryControls);
 
     const close = actionButton('relationshipsConnectClose', rt('closeConnect'));
-    close.onclick = () => { connectOpen = false; clearRuntimePlan(); render(); surface.querySelector('#relationshipsConnect')?.focus(); };
+    close.onclick = () => {
+      connectOpen = false;
+      diagnosticsOpen = false;
+      vexDetailsOpen = false;
+      recoveryDetailsOpen = false;
+      clearRuntimePlan();
+      render();
+      surface.querySelector('#relationshipsConnect')?.focus();
+    };
     target.append(
       heading,
       body,
       method.label,
+      recipientCommunity.label,
+      recipientUniverse.label,
+      createExport,
+      importLabel,
+      invitationProductStatus,
       invitation.label,
       identity.label,
       decision.label,
       localClass.label,
       status,
       form,
-      alphaTitle,
-      alphaBody,
-      alpha,
-      presence.label,
-      route.label,
-      failure.label,
-      runtimeHeading,
-      runtimeBody,
-      runtimeStatus,
-      prepare,
+      diagnostics,
+      vexDetails,
+      recoveryDetails,
       close
     );
   }
@@ -884,7 +1189,6 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     const groups = document.createElement('p'); groups.textContent = rt('groups', { count:view.counts.groups });
     const invitations = document.createElement('p'); invitations.textContent = rt('invitations', { count:view.counts.invitations });
     counts.append(people, groups, invitations);
-
     const connectionStatus = visibleConnectionStatus();
     const deliveryHeading = document.createElement('h3'); deliveryHeading.textContent = rt('deliveryTitle');
     const deliveryBody = document.createElement('p'); deliveryBody.textContent = rt('deliveryBody');
@@ -895,29 +1199,9 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
     delivery.dataset.networkEffectPerformed = String(connectionStatus.networkEffectPerformed);
     delivery.dataset.semanticAcknowledged = String(connectionStatus.semanticAcknowledged);
     delivery.textContent = `${rt('delivery')}: ${visibleConnectionStatusText(connectionStatus)}`;
-    const deliveryHeld = document.createElement('p'); deliveryHeld.textContent = canAdvance({...interaction,localFormed:persistence.isSavedFor({localRelationshipClass:interaction.localClass})}) ? rt('active') : rt('deliveryHeld');
-    const vexHeading = document.createElement('h3'); vexHeading.textContent = rt('vexTitle');
-    const vexBody = document.createElement('p'); vexBody.textContent = rt('vexBody');
-    const vex = actionButton('relationshipsVexExplain', vexExplanationOpen ? rt('vexHide') : rt('vexShow'));
-    vex.onclick = () => { vexExplanationOpen = !vexExplanationOpen; render(); };
-    const vexExplanation = document.createElement('p'); vexExplanation.hidden = !vexExplanationOpen; vexExplanation.textContent = rt('vexExplanation');
-
-    const recoveryHeading = document.createElement('h3'); recoveryHeading.textContent = rt('recoveryTitle');
-    const recoveryBody = document.createElement('p'); recoveryBody.textContent = rt('recoveryBody');
-    const recoveryStatus = document.createElement('p'); recoveryStatus.id = 'relationshipsRecoveryStatus';
-    const recoveryKey = interaction.recovery === 'BLOCKED' ? 'blocked' : interaction.recovery === 'REVOKED' ? 'revoked' : interaction.recovery === 'WITHDRAWN' ? 'withdrawn' : interaction.recovery === 'DISCONNECTED' ? 'disconnected' : 'active';
-    recoveryStatus.textContent = rt(recoveryKey);
-    const recoveryButtons = [
-      ['relationshipsBlock','BLOCK','block'],['relationshipsRevoke','REVOKE','revoke'],['relationshipsWithdraw','WITHDRAW','withdraw'],['relationshipsDisconnect','DISCONNECT','disconnect'],['relationshipsReset','RESET_REFERENCE','reset']
-    ];
-    const controls = document.createElement('div');
-    controls.className = 'e27-focus-actions';
-    for (const [id, action, key] of recoveryButtons) {
-      const button = actionButton(id, rt(key));
-      button.onclick = () => { interaction = recover(interaction, action); clearRuntimePlan(); render(); };
-      controls.append(button);
-    }
-    target.append(counts, deliveryHeading, deliveryBody, delivery, deliveryHeld, vexHeading, vexBody, vex, vexExplanation, recoveryHeading, recoveryBody, recoveryStatus, controls);
+    const deliveryHeld = document.createElement('p');
+    deliveryHeld.textContent = canAdvance({...interaction,localFormed:persistence.isSavedFor({localRelationshipClass:interaction.localClass})}) ? rt('active') : rt('deliveryHeld');
+    target.append(counts, deliveryHeading, deliveryBody, delivery, deliveryHeld);
   }
 
   function render() {
@@ -960,6 +1244,23 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
       connectOpen,
       localFormed:persistence.isSavedFor({localRelationshipClass:interaction.localClass}),
       admission:admission(interaction),
+      invitationProduct:{
+        state:invitationProduct.state,
+        operation:invitationProduct.operation,
+        requestRef:invitationProduct.requestRef,
+        transport:invitationProduct.transport,
+        artifactSha256:invitationProduct.artifact?.artifactSha256 ?? null,
+        artifactByteLength:invitationProduct.artifact?.artifactByteLength ?? null,
+        verificationEvidenceRef:invitationProduct.evidence?.verificationEvidenceRef ?? null,
+        currentnessEvidenceRef:invitationProduct.evidence?.currentnessEvidenceRef ?? null,
+        failureCode:invitationProduct.failureCode,
+        syntheticAdapter:invitationProduct.syntheticAdapter,
+        effects:invitationProduct.effects ? { ...invitationProduct.effects } : null
+      },
+      invitationState:interaction.invitation,
+      identityState:interaction.identity,
+      invitationDecision:interaction.decision,
+      localRelationshipClass:interaction.localClass,
       connectionStatus:visibleConnectionStatus(),
       delivery:interaction.delivery,
       recovery:interaction.recovery,
@@ -1002,7 +1303,17 @@ export function createRelationshipsController({ state, registry, catalogs, cdrRe
 
   render();
   void hydratePersistedRelationships();
-  return Object.freeze({ render, snapshot, setScenarioCount, bindTerrainDoor, close, prepareRuntimePlan, hydratePersistedRelationships });
+  return Object.freeze({
+    render,
+    snapshot,
+    setScenarioCount,
+    bindTerrainDoor,
+    close,
+    prepareRuntimePlan,
+    hydratePersistedRelationships,
+    createInvitationExport,
+    importInvitationArtifact
+  });
 }
 
 // [VXG RealForever]
