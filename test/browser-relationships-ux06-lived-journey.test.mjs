@@ -15,6 +15,7 @@ import {
   RELATIONSHIPS_INVITATION_EFFECTS_NONE,
   createBrowserRelationshipsInvitationProductBridge,
 } from '../src/core/browser-relationships-invitation-product-bridge.mjs';
+import { BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_SCHEMA } from '../src/core/browser-relationships-cdr-observation-bridge.mjs';
 import { createBrowserRelationshipsPersistenceBridge } from '../src/core/browser-relationships-persistence-bridge.mjs';
 import { bindRelationshipsCdrObservation } from '../src/core/relationships-cdr-observation-binding.mjs';
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
@@ -105,7 +106,14 @@ function bindingResult(value) {
 }
 
 function fixedCdrBridge(result) {
-  return Object.freeze({ read: () => result });
+  assert.equal(result.state, 'BOUND_CURRENT');
+  assert.ok(result.binding);
+  const projected = Object.freeze({
+    schemaVersion: BROWSER_RELATIONSHIPS_CDR_PERSISTENCE_BINDING_SCHEMA,
+    state: 'BOUND_CURRENT',
+    binding: result.binding
+  });
+  return Object.freeze({ read: () => projected });
 }
 
 function sha256(bytes) {
