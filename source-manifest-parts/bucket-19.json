@@ -39,6 +39,12 @@
       "sha256": "286141411325cf03ce4d45f04b82d4f0ebec88fd06e47f91dcf1a63e4abcaf12"
     },
     {
+      "path": "test/home-bridge-session-authority.test.mjs",
+      "mode": "100644",
+      "bytes": 8625,
+      "sha256": "d75ba6b161057a12b005420ba19122bca2630de89f67ab121d5d1d85db5462d2"
+    },
+    {
       "path": "test/relationships-core.test.mjs",
       "mode": "100644",
       "bytes": 4913,

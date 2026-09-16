@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 5062,
       "sha256": "59a5c721706a884209e9ee290929a0bf2ffb2cc048a03ea4f07c6fb06363db6f"
+    },
+    {
+      "path": "src/core/home-bridge-session-authority.mjs",
+      "mode": "100644",
+      "bytes": 12640,
+      "sha256": "97cd4e44b784ab22146ee300d4fe2198347e30741ee3ec63b1048c0c8856de0d"
     }
   ]
 }

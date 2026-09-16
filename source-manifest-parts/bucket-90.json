@@ -3,6 +3,12 @@
   "bucketId": "90",
   "files": [
     {
+      "path": "docs/HOME-BRIDGE-SESSION-AUTHORITY.md",
+      "mode": "100644",
+      "bytes": 6464,
+      "sha256": "8282b74e5feb8dbe360dd97cdd7b039f6b1e03e62c6224c9734b815fa34eaa47"
+    },
+    {
       "path": "scripts/release-candidate.mjs",
       "mode": "100644",
       "bytes": 13204,
