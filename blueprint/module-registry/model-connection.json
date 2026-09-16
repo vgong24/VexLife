@@ -117,5 +117,31 @@
     "changeMap": [
       "reference/browser/modules/chat-controller.js"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.family-companion-runtime",
+    "path": "src/core/family-companion-runtime.mjs",
+    "role": "Compose one persisted Family trigger through the canonical multi-root single-worker scheduler, accepted Family frontier/context owners, trusted Family provider materialization, existing Lived Companion inference owner, and canonical Conversation Store response append without creating a second scheduler, provider, evidence owner, store, Memory path or server listener.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "src/core/intent-workgraph.mjs",
+      "src/core/intent-scheduler.mjs",
+      "src/core/family-space-store.mjs",
+      "src/core/family-conversation.mjs",
+      "module.vexlife.core.conversation-store",
+      "src/core/family-group-context-runtime.mjs",
+      "src/core/lived-companion.mjs",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [
+      "canonical Family response events only through module.vexlife.core.conversation-store"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/vex-family-companion-runtime.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEX-FAMILY-COMPANION-RUNTIME.md"
+    ]
   }
 ]
