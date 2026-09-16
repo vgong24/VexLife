@@ -117,6 +117,16 @@ test('HBSA-00/HBSA-01: one authenticated current session resolves exact principa
   assert.equal(Object.hasOwn(result, 'sessionRef'), false);
   assert.equal(JSON.stringify(result).includes('opaque-session-handle'), false);
   assert.ok(Object.values(result.effects).every((value) => value === false));
+  assert.throws(
+    () => result.membership.capabilityRefs.push('capability.forged'),
+    TypeError
+  );
+  assert.throws(
+    () => result.lease.projectRefs.push('project.forged'),
+    TypeError
+  );
+  assert.deepEqual(result.membership.capabilityRefs, ['capability.vexlife.companion-navigation']);
+  assert.deepEqual(result.lease.projectRefs, ['project.vex-family']);
   assert.deepEqual(result.sourceReceiptRefs, [
     'receipt.lease',
     'receipt.membership',

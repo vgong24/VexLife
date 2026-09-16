@@ -177,8 +177,16 @@ function combineRefs(envelopes, field) {
   ].sort());
 }
 
+function deepFreeze(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const nested of Object.values(value)) deepFreeze(nested);
+    Object.freeze(value);
+  }
+  return value;
+}
+
 function cloneFreeze(value) {
-  return Object.freeze(structuredClone(value));
+  return deepFreeze(structuredClone(value));
 }
 
 export function createHomeBridgeSessionAuthorityResolver({
