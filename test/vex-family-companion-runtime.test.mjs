@@ -44,8 +44,8 @@ const schedulerRegistry = bundle.schedulerRegistry;
 const registeredProcessRefs = bundle.factory.processes.map((item) => item.processRef);
 const registeredRoleRefs = bundle.blueprint.roles.map((item) => item.roleRef);
 const roleRef = 'role.vex.developer';
-const workerRef = 'worker.model.vf03c.test.primary';
-const runtimeSourceRef = 'source.intent-scheduler.vf03c-test-runtime';
+const workerRef = 'worker.model.test.primary';
+const runtimeSourceRef = 'source.intent-scheduler.test-runtime';
 const runtimeSourceHash = semanticHash({ fixture: 'vf03c-scheduler-runtime/v1' });
 let schedulerSequence = 0;
 
@@ -254,7 +254,7 @@ function runtimeTrust(resource, generation, observedAt) {
     roleRef,
     claimRef: 'claim.vf03c.synthetic-runtime',
     occupancyRef: `occupancy.vf03c.synthetic.${generation}`,
-    leaseAuthorityRef: 'authority.intent-scheduler.vf03c-test-runtime',
+    leaseAuthorityRef: 'authority.intent-scheduler.test-runtime',
     resourceSnapshotRef: resource.snapshotRef,
     resourceSnapshotFingerprint: resource.semanticFingerprint,
     currentness: 'CURRENT'
