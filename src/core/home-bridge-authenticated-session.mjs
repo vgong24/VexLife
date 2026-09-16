@@ -347,9 +347,8 @@ export function createHomeBridgeAuthenticatedSessionOwner(options = {}) {
       sessionReceiptRef
     });
 
-    return Object.freeze({
+    const result = {
       state: 'AUTHENTICATED_SESSION_ESTABLISHED',
-      sessionRef,
       stableSessionBindingRef,
       principalRef: decision.principalRef,
       deviceRef: binding.deviceRef,
@@ -368,7 +367,14 @@ export function createHomeBridgeAuthenticatedSessionOwner(options = {}) {
         networkMutation: false,
         modelInvocation: false
       })
+    };
+    Object.defineProperty(result, 'sessionRef', {
+      value: sessionRef,
+      enumerable: false,
+      writable: false,
+      configurable: false
     });
+    return Object.freeze(result);
   }
 
   function resolve(input = {}) {
