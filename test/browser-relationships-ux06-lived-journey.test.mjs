@@ -353,7 +353,7 @@ test('UX06 lived FILE journey composes create -> transfer -> verified import -> 
     const listB = bridgeFor(homeB, cdrB.binding).list({ maxRelationships: 8, includeTombstoned: false });
     assert.equal(listA.relationships.length, 0);
     assert.equal(listB.relationships.length, 1);
-    assert.equal(listB.relationships[0].localParticipantRef, 'participant.bob');
+    assert.equal(listB.localParticipantRef, 'participant.bob');
     assert.equal(listB.relationships[0].counterpartParticipantRef, 'participant.alice');
 
     await contextA.close();
