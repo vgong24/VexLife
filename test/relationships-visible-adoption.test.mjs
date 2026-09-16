@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { project, validateRegistry } from '../reference/browser/relationships/core.js';
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import { importVerifiedRelationshipsInvitation } from './relationships-invitation-currentness-fixture.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -184,8 +185,7 @@ async function mountSavedFfr03Relationships(page, { decision }) {
     document.querySelector('#view-relationships').hidden = false;
   });
   await page.locator('#relationshipsConnect').click();
-  await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
-  await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+  await importVerifiedRelationshipsInvitation(page);
   await page.selectOption('#relationshipsDecision', decision);
   assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), false);
   await page.locator('#relationshipsFormLocal').click();
@@ -308,8 +308,7 @@ test('Relationships root browser route is visible, localized, accessible and no-
     assert.equal(await page.locator('#relationshipsPresence option[value="APP_ON_MODEL_UNLOADED"]').textContent(), 'App open · companion not loaded');
     assert.equal(await page.locator('#relationshipsRoute option[value="DIRECT_CANDIDATE"]').textContent(), 'Direct connection available');
     assert.equal(await page.locator('#relationshipsFailure option[value="NONE"]').textContent(), 'No current connection issue');
-    await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
-    await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+    await importVerifiedRelationshipsInvitation(page);
     await page.selectOption('#relationshipsDecision', 'NARROW');
     assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), true);
     assert.match(await page.locator('#relationshipsConnectStatus').textContent(), /Saving is held until this Vex has explicit local-owner and counterpart invitation identity bindings/i);
