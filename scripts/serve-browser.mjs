@@ -17,6 +17,7 @@ import {
 } from '../src/core/browser-relationships-invitation-product-bridge.mjs';
 
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
+export const BROWSER_RELATIONSHIPS_INVITATION_REQUEST_MAX_BYTES = BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES * 2;
 
 function sendJson(response, statusCode, value) {
   const body = `${JSON.stringify(value)}\n`;
@@ -45,7 +46,7 @@ async function readInvitationRequest(request) {
   let bytes = 0;
   for await (const chunk of request) {
     bytes += chunk.length;
-    if (bytes > BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES) {
+    if (bytes > BROWSER_RELATIONSHIPS_INVITATION_REQUEST_MAX_BYTES) {
       throw invitationRequestError('Relationships invitation request exceeds the bounded body size', 413);
     }
     chunks.push(chunk);

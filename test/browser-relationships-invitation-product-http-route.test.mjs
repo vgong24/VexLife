@@ -3,7 +3,10 @@ import { createHash } from 'node:crypto';
 import http from 'node:http';
 import test from 'node:test';
 
-import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import {
+  BROWSER_RELATIONSHIPS_INVITATION_REQUEST_MAX_BYTES,
+  createVexLifeBrowserServer,
+} from '../scripts/serve-browser.mjs';
 import { createRelationshipsInvitationProductClient } from '../reference/browser/modules/relationships-invitation-product-client.js';
 import {
   BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES,
@@ -167,6 +170,40 @@ test('default production route is present but held when no upstream invitation a
   });
 });
 
+test('invitation product route carries the maximum exact FILE artifact through the bounded JSON envelope', async () => {
+  const artifactBytes = Buffer.alloc(BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES, 0x78);
+  let calls = 0;
+  const bridge = createBrowserRelationshipsInvitationProductBridge({
+    upstreamAdapter: Object.freeze({
+      async invoke() {
+        calls += 1;
+        throw new Error('synthetic downstream unavailable after exact artifact admission');
+      },
+    }),
+  });
+  await withServer({ relationshipsInvitationProductBridge: bridge }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_INVITATION_PRODUCT_API_PATH}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...REQUEST,
+        operation: 'IMPORT_VERIFY',
+        requestRef: 'request.relationships.http.max-import.1',
+        payload: {
+          artifactBytesBase64: artifactBytes.toString('base64'),
+          expectedArtifactSha256: createHash('sha256').update(artifactBytes).digest('hex'),
+          transportRecoveryEvidenceRefOrNull: null,
+        },
+      }),
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.state, 'HELD_UPSTREAM_UNAVAILABLE');
+    assert.equal(payload.failureCode, 'RELATIONSHIPS_INVITATION_UPSTREAM_UNAVAILABLE');
+  });
+  assert.equal(calls, 1, 'maximum-size exact artifact must reach bridge-level admission and the injected adapter');
+});
+
 test('invitation product route enforces POST, JSON media type, malformed JSON and body bound before bridge invocation', async () => {
   let calls = 0;
   await withServer({
@@ -200,7 +237,7 @@ test('invitation product route enforces POST, JSON media type, malformed JSON an
     const oversized = await fetch(`${baseUrl}${BROWSER_RELATIONSHIPS_INVITATION_PRODUCT_API_PATH}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ padding: 'x'.repeat(BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES + 1024) }),
+      body: JSON.stringify({ padding: 'x'.repeat(BROWSER_RELATIONSHIPS_INVITATION_REQUEST_MAX_BYTES + 1024) }),
     });
     assert.equal(oversized.status, 413);
     assert.equal((await oversized.json()).failureCode, 'RELATIONSHIPS_INVITATION_REQUEST_INVALID');
