@@ -9,6 +9,7 @@ import { chromium } from 'playwright';
 import { createBrowserRelationshipsCdrObservationBridge } from '../src/core/browser-relationships-cdr-observation-bridge.mjs';
 import { createBrowserRelationshipsPersistenceBridge } from '../src/core/browser-relationships-persistence-bridge.mjs';
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import { importVerifiedRelationshipsInvitation } from './relationships-invitation-currentness-fixture.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RELATIONSHIPS_TERRAIN_REF = 'terrain.resource.relationships';
@@ -178,8 +179,7 @@ test('FFR06 visible Relationships consumes only the server-projected current CDR
     assert.equal(initial.hydration.count, 0);
     assert.equal(initial.counts.people, 0);
 
-    await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
-    await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+    await importVerifiedRelationshipsInvitation(page);
     await page.selectOption('#relationshipsDecision', 'ACCEPT');
     assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), false);
 
@@ -259,8 +259,7 @@ test('FFR06 visible Relationships remains usable but persistence and hydration a
     await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__?.relationships));
     await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.relationships.snapshot().hydration.state === 'HELD_BINDING_REQUIRED');
     await enterRelationships(page);
-    await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
-    await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+    await importVerifiedRelationshipsInvitation(page);
     await page.selectOption('#relationshipsDecision', 'NARROW');
 
     assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), true);
