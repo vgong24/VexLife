@@ -224,11 +224,23 @@ test('HBSA-06: ambiguous or evidence-free owner results cannot become authority'
   );
 });
 
-test('HBSA-07: session assertion is closed and cannot smuggle bearer or credential material', async () => {
+test('HBSA-07: session, membership, and lease authority objects are closed against secret or endpoint smuggling', async () => {
   const authority = pairedAuthority();
   await expectCode(
     resolver(authority, {
       session: { bearerToken: 'secret' }
+    }).resolve({ sessionRef: 'opaque-session-handle' }),
+    'HOME_BRIDGE_SESSION_UNTRUSTED_FIELD'
+  );
+  await expectCode(
+    resolver(authority, {
+      membership: { ...authority.membership, privateKey: 'secret' }
+    }).resolve({ sessionRef: 'opaque-session-handle' }),
+    'HOME_BRIDGE_SESSION_UNTRUSTED_FIELD'
+  );
+  await expectCode(
+    resolver(authority, {
+      lease: { ...authority.lease, rawEndpoint: 'http://127.0.0.1:11434' }
     }).resolve({ sessionRef: 'opaque-session-handle' }),
     'HOME_BRIDGE_SESSION_UNTRUSTED_FIELD'
   );
