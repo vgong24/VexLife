@@ -430,6 +430,115 @@ function deliveryReceipt({
   return finalized(core, 'receiptRef', 'receipt.vex-family.runtime.delivery.');
 }
 
+const FAMILY_COMPANION_RECOVERY_SCHEMA = 'vexlife.family-companion-runtime-recovery/v1';
+
+function familyDeliverySnapshot(current) {
+  const trigger = current?.trigger ? {
+    messageRef: current.trigger.messageRef,
+    eventSha256: current.trigger.eventSha256,
+    speakerRef: current.trigger.speakerRef,
+    spaceRef: current.trigger.spaceRef,
+    threadRef: current.trigger.threadRef,
+    channelRef: current.trigger.channelRef,
+    membershipSnapshotRef: current.trigger.membershipSnapshotRef,
+    membershipGeneration: current.trigger.membershipGeneration,
+    sequence: current.trigger.sequence,
+    contentHash: current.trigger.contentHash,
+    createdAt: current.trigger.createdAt
+  } : null;
+  return freeze({
+    family: clone(current.family),
+    channel: clone(current.channel),
+    binding: clone(current.binding),
+    trigger,
+    member: current.member ? clone(current.member) : null
+  });
+}
+
+function frontierSourceBindings(frontier) {
+  return frontier.selectedMessageBindings
+    .map((message) => ({ sourceRef: message.messageRef, sourceHash: message.eventSha256 }))
+    .sort((left, right) =>
+      left.sourceRef.localeCompare(right.sourceRef) ||
+      left.sourceHash.localeCompare(right.sourceHash)
+    );
+}
+
+function validateDeliveryReceipt(receipt) {
+  if (!receipt?.semanticFingerprint || !receipt.receiptRef) {
+    fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'recovery delivery receipt identity is missing');
+  }
+  const candidate = clone(receipt);
+  const fingerprint = candidate.semanticFingerprint;
+  const receiptRef = candidate.receiptRef;
+  delete candidate.semanticFingerprint;
+  delete candidate.receiptRef;
+  if (semanticHash(candidate) !== fingerprint ||
+      receiptRef !== `receipt.vex-family.runtime.delivery.${fingerprint.slice(0, 32)}`) {
+    fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'recovery delivery receipt fingerprint is invalid');
+  }
+  return receipt;
+}
+
+function exactPausedFamilyRecovery(scheduler, request, identity, responseEvent) {
+  const aggregate = scheduler?.aggregate;
+  const pointers = (aggregate?.checkpointPointers ?? []).filter((item) =>
+    item.workNodeRef === identity.workNodeRef &&
+    item.currentState === 'PAUSED_AT_CHECKPOINT'
+  );
+  if (pointers.length > 1) {
+    fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'multiple paused checkpoints exist for one Family request');
+  }
+  if (pointers.length === 0) return null;
+
+  const pointer = pointers[0];
+  const checkpoints = aggregate?.canonicalCheckpoints ?? aggregate?.checkpoints ?? [];
+  const checkpoint = checkpoints.find((item) => item.checkpointRef === pointer.checkpointRef);
+  if (!checkpoint) {
+    fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'paused Family checkpoint pointer is detached from canonical checkpoint truth');
+  }
+
+  const recovery = checkpoint.familyCompanionRecovery;
+  if (!recovery || recovery.schemaVersion !== FAMILY_COMPANION_RECOVERY_SCHEMA ||
+      recovery.requestRef !== request.requestRef ||
+      recovery.requestFingerprint !== identity.requestFingerprint ||
+      recovery.intentRef !== identity.intentRef ||
+      recovery.workNodeRef !== identity.workNodeRef ||
+      recovery.responseMessageRef !== identity.responseMessageRef ||
+      recovery.responseEventSha256 !== responseEvent?.eventSha256 ||
+      recovery.graph?.semanticFingerprint !== checkpoint.graphFingerprint ||
+      recovery.node?.workNodeRef !== identity.workNodeRef ||
+      recovery.trustSnapshot?.semanticFingerprint !== checkpoint.trustSnapshotFingerprint) {
+    fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'paused Family recovery payload does not match exact request/checkpoint identity');
+  }
+
+  const graphNode = recovery.graph.nodes?.find((item) => item.workNodeRef === identity.workNodeRef);
+  if (!graphNode || graphNode.semanticFingerprint !== recovery.node.semanticFingerprint) {
+    fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'paused Family recovery node is detached from the exact Workgraph');
+  }
+
+  const receipt = validateDeliveryReceipt(recovery.deliveryReceipt);
+  if (receipt.requestRef !== request.requestRef ||
+      receipt.intentRef !== identity.intentRef ||
+      receipt.graphFingerprint !== recovery.graph.semanticFingerprint ||
+      receipt.responseMessageRef !== responseEvent.messageRef ||
+      receipt.responseEventSha256 !== responseEvent.eventSha256 ||
+      receipt.promptMaterializationReceiptRef !== recovery.promptMaterializationReceipt?.receiptRef ||
+      receipt.promptMaterializationReceiptFingerprint !== recovery.promptMaterializationReceipt?.semanticFingerprint ||
+      semanticHash(receipt.modelProvenance) !== semanticHash(recovery.modelProvenance)) {
+    fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'paused Family delivery provenance is inconsistent');
+  }
+
+  const expectedBindings = frontierSourceBindings(recovery.frontier);
+  const expectedRefs = expectedBindings.map((item) => item.sourceRef).sort();
+  if (JSON.stringify(checkpoint.sourceBindings) !== JSON.stringify(expectedBindings) ||
+      JSON.stringify(checkpoint.selectedSourceRefs) !== JSON.stringify(expectedRefs)) {
+    fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'paused Family checkpoint source coverage is inconsistent');
+  }
+
+  return freeze({ checkpoint: clone(checkpoint), recovery: clone(recovery) });
+}
+
 export class FamilyCompanionRuntime {
   #home;
   #instanceRef;
@@ -478,7 +587,7 @@ export class FamilyCompanionRuntime {
     for (const [name, value] of Object.entries({ admissionOptionsFor, contextInputFor, completionEvidenceFor, inference, clock })) {
       if (typeof value !== 'function') fail('FAMILY_COMPANION_RUNTIME_CONFIG_INVALID', `${name} must be one function`);
     }
-    for (const method of ['enqueueRootIntent', 'admit', 'leaseSelected', 'cancelQueuedRootIntent', 'cancelActive', 'completeActive']) {
+    for (const method of ['enqueueRootIntent', 'admit', 'leaseSelected', 'cancelQueuedRootIntent', 'cancelActive', 'checkpoint', 'resume', 'completeActive']) {
       if (typeof scheduler?.[method] !== 'function') {
         fail('FAMILY_COMPANION_RUNTIME_CONFIG_INVALID', `canonical scheduler lacks ${method}`);
       }
@@ -530,14 +639,301 @@ export class FamilyCompanionRuntime {
     return { request, current, work };
   }
 
+  #checkpointDurableResponse({
+    request,
+    work,
+    current,
+    frontier,
+    frontierState,
+    frontierWitness,
+    response,
+    responseEvent,
+    deliveryReceipt: suppliedReceipt = null,
+    admissionOptions,
+    queue,
+    leased,
+    releasedAt
+  }) {
+    if (!responseEvent?.eventSha256 ||
+        !response?.promptContextMaterializationReceipt?.semanticFingerprint ||
+        !admissionOptions?.trustSnapshot?.semanticFingerprint) {
+      fail('FAMILY_COMPANION_RECOVERY_BINDING_INVALID', 'durable Family response recovery is missing exact provenance bindings');
+    }
+
+    const receipt = suppliedReceipt ?? deliveryReceipt({
+      request,
+      graph: work.graph,
+      responseEvent,
+      frontier,
+      frontierState,
+      promptReceipt: response.promptContextMaterializationReceipt,
+      model: response.model,
+      queue,
+      leased,
+      membershipGenerationAtDelivery: current.family.membershipGeneration,
+      deliveredAt: responseEvent.createdAt
+    });
+    validateDeliveryReceipt(receipt);
+
+    const generation = leased.workerLease?.schedulerGeneration ?? leased.contextLease?.schedulerGeneration;
+    if (!Number.isInteger(generation) || generation < 1) {
+      fail('FAMILY_COMPANION_RECOVERY_BINDING_INVALID', 'durable Family response recovery lacks one scheduler generation');
+    }
+
+    const checkpointRef =
+      `checkpoint.vex-family.runtime.${work.identity.requestFingerprint.slice(0, 24)}.${generation}`;
+    const familyCompanionRecovery = {
+      schemaVersion: FAMILY_COMPANION_RECOVERY_SCHEMA,
+      requestRef: request.requestRef,
+      requestFingerprint: work.identity.requestFingerprint,
+      intentRef: work.intent.intentRef,
+      workNodeRef: work.node.workNodeRef,
+      responseMessageRef: responseEvent.messageRef,
+      responseEventSha256: responseEvent.eventSha256,
+      graph: clone(work.graph),
+      node: clone(work.node),
+      deliverySnapshot: familyDeliverySnapshot(current),
+      frontier: clone(frontier),
+      frontierState,
+      frontierWitness: clone(frontierWitness),
+      promptMaterializationReceipt: clone(response.promptContextMaterializationReceipt),
+      modelProvenance: clone(response.model),
+      deliveryReceipt: clone(receipt),
+      trustSnapshot: clone(admissionOptions.trustSnapshot)
+    };
+
+    return this.#scheduler.checkpoint({
+      checkpointRef,
+      workNodeRef: work.node.workNodeRef,
+      lastCompletedStep: 'DURABLE_FAMILY_RESPONSE_APPENDED',
+      selectedSourceRefs: [...leased.contextLease.selectedSourceRefs],
+      selectedContextRefs: [leased.contextLease.leaseRef],
+      producedArtifactRefs: [],
+      producedReceiptRefs: [queue.admissionReceipt.admissionReceiptRef],
+      openQuestions: [],
+      nextSafeAction: 'RECONCILE_DURABLE_FAMILY_RESPONSE_COMPLETION',
+      pendingToolCallRef: 'NONE',
+      sourceBindings: frontierSourceBindings(frontier),
+      formedAt: releasedAt,
+      familyCompanionRecovery
+    }, {
+      releaseReceiptRef:
+        `receipt.vex-family.runtime.checkpoint.${work.identity.requestFingerprint.slice(0, 24)}.${generation}`,
+      releasedAt
+    });
+  }
+
+  async #recoverDurableResponse({ request, identity, responseEvent, checkpoint, recovery, observedAt }) {
+    for (const binding of recovery.frontier.selectedMessageBindings) {
+      const source = readConversationMessage({
+        home: this.#home,
+        channelRef: request.channelRef,
+        messageRef: binding.messageRef
+      });
+      if (source.state !== 'CURRENT' || source.event?.eventSha256 !== binding.eventSha256) {
+        fail('FAMILY_COMPANION_RECOVERY_SOURCE_STALE', 'paused Family recovery source event is unavailable or changed');
+      }
+    }
+
+    const trigger = readConversationMessage({
+      home: this.#home,
+      channelRef: request.channelRef,
+      messageRef: request.triggerMessageRef
+    });
+    if (trigger.state !== 'CURRENT' ||
+        trigger.event?.eventSha256 !== recovery.deliverySnapshot?.trigger?.eventSha256) {
+      fail('FAMILY_COMPANION_RECOVERY_SOURCE_STALE', 'paused Family trigger source is unavailable or changed');
+    }
+    const recoveryCurrent = freeze({
+      ...clone(recovery.deliverySnapshot),
+      trigger: clone(trigger.event)
+    });
+
+    const admissionOptions = await this.#admissionOptionsFor({
+      request,
+      current: recoveryCurrent,
+      graph: recovery.graph,
+      node: recovery.node,
+      scheduler: this.#scheduler,
+      observedAt,
+      recoveringDurableResponse: true,
+      recoveryCheckpoint: checkpoint,
+      resumeTrustSnapshot: clone(recovery.trustSnapshot)
+    });
+    if (admissionOptions?.trustSnapshot?.semanticFingerprint !== recovery.trustSnapshot.semanticFingerprint) {
+      fail('FAMILY_COMPANION_RECOVERY_TRUST_STALE', 'recovery admission did not preserve the checkpoint-bound trust snapshot');
+    }
+
+    const baseContextInput = await this.#contextInputFor({
+      request,
+      current: recoveryCurrent,
+      graph: recovery.graph,
+      node: recovery.node,
+      queue: null,
+      frontier: recovery.frontier,
+      admissionOptions,
+      scheduler: this.#scheduler,
+      observedAt,
+      recoveringDurableResponse: true,
+      recoveryCheckpoint: checkpoint
+    });
+
+    const resumed = this.#scheduler.resume(checkpoint.checkpointRef, {
+      graph: recovery.graph,
+      options: admissionOptions,
+      contextInput: familyContextInput(baseContextInput, recovery.frontier),
+      sourceBindings: frontierSourceBindings(recovery.frontier)
+    });
+    if (!resumed?.admitted || resumed.state !== 'RESUMED') {
+      fail('FAMILY_COMPANION_RECOVERY_BLOCKED', 'canonical scheduler did not resume the paused Family completion');
+    }
+
+    const response = freeze({
+      content: responseEvent.content,
+      model: clone(recovery.modelProvenance),
+      promptContextMaterializationReceipt: clone(recovery.promptMaterializationReceipt)
+    });
+    const work = freeze({
+      identity,
+      intent: clone(recovery.graph.intent),
+      node: clone(recovery.node),
+      graph: clone(recovery.graph)
+    });
+
+    try {
+      const completedAt = this.#clock();
+      const completionInput = await this.#completionEvidenceFor({
+        request,
+        current: recoveryCurrent,
+        graph: recovery.graph,
+        node: recovery.node,
+        queue: resumed.queue,
+        leased: resumed,
+        frontier: recovery.frontier,
+        frontierState: recovery.frontierState,
+        response,
+        responseEvent,
+        deliveryReceipt: recovery.deliveryReceipt,
+        admissionOptions,
+        completedAt,
+        recoveringDurableResponse: true,
+        recoveryCheckpoint: checkpoint
+      });
+      if (!completionInput?.completionEvidence ||
+          !completionInput.completionReceiptRef ||
+          !completionInput.releaseReceiptRef) {
+        fail('FAMILY_COMPANION_COMPLETION_EVIDENCE_INVALID', 'external completion evidence producer returned an incomplete recovery binding');
+      }
+
+      const completion = this.#scheduler.completeActive({
+        graph: recovery.graph,
+        intentRegistry: this.#intentRegistry,
+        trustSnapshot: admissionOptions.trustSnapshot,
+        registeredProcessRefs: this.#registeredProcessRefs,
+        registeredRoleRefs: this.#registeredRoleRefs,
+        completionEvidence: completionInput.completionEvidence,
+        completionReceiptRef: completionInput.completionReceiptRef,
+        releaseReceiptRef: completionInput.releaseReceiptRef,
+        completedAt
+      });
+
+      return freeze({
+        schemaVersion: FAMILY_COMPANION_RUNTIME_SCHEMA,
+        state: 'COMPLETED',
+        requestRef: request.requestRef,
+        intentRef: identity.intentRef,
+        requestPrincipalRef: recovery.deliveryReceipt.requestPrincipalRef,
+        response: safeCurrentResponse(
+          responseEvent,
+          request,
+          recovery.deliveryReceipt.familyCompanionLineageRef
+        ),
+        appendState: 'IDEMPOTENT_CURRENT',
+        frontierState: recovery.frontierState,
+        frontierWitness: clone(recovery.frontierWitness),
+        promptMaterializationReceipt: clone(recovery.promptMaterializationReceipt),
+        deliveryReceipt: clone(recovery.deliveryReceipt),
+        schedulerCompletion: clone(completion),
+        modelCallPerformed: false,
+        recoveryCheckpointRef: checkpoint.checkpointRef
+      });
+    } catch (error) {
+      let schedulerCheckpoint = null;
+      if (this.#scheduler.active) {
+        try {
+          schedulerCheckpoint = this.#checkpointDurableResponse({
+            request,
+            work,
+            current: recoveryCurrent,
+            frontier: recovery.frontier,
+            frontierState: recovery.frontierState,
+            frontierWitness: recovery.frontierWitness,
+            response,
+            responseEvent,
+            deliveryReceipt: recovery.deliveryReceipt,
+            admissionOptions,
+            queue: resumed.queue,
+            leased: resumed,
+            releasedAt: this.#clock()
+          });
+        } catch (checkpointError) {
+          throw new FamilyCompanionRuntimeError(
+            'FAMILY_COMPANION_SCHEDULER_RELEASE_UNPROVEN',
+            'Family recovery failed and the canonical scheduler checkpoint could not be proven',
+            {
+              sourceErrorCode: error?.code ?? null,
+              sourceErrorMessage: error?.message ?? String(error),
+              checkpointError: checkpointError?.message ?? String(checkpointError),
+              responseAppended: false,
+              responseDurable: true
+            }
+          );
+        }
+      }
+      throw new FamilyCompanionRuntimeError(
+        error instanceof FamilyCompanionRuntimeError ? error.code : 'FAMILY_COMPANION_EXECUTION_FAILED',
+        error?.message ?? String(error),
+        {
+          ...(error instanceof FamilyCompanionRuntimeError && error.details ? error.details : {}),
+          sourceErrorCode: error?.code ?? null,
+          responseAppended: false,
+          responseDurable: true,
+          schedulerCancellation: null,
+          schedulerCheckpoint: schedulerCheckpoint ? clone(schedulerCheckpoint.checkpoint) : null
+        }
+      );
+    }
+  }
+
   queue(rawRequest) {
-    const source = this.#requestSource(rawRequest);
-    const { request, current, work } = source;
+    const request = exactRequest(rawRequest);
+    const identity = runtimeIdentity(request);
     const priorResponse = currentResponseEvent({
       home: this.#home,
       request,
-      responseMessageRef: work.identity.responseMessageRef
+      responseMessageRef: identity.responseMessageRef
     });
+    const recovery = priorResponse
+      ? exactPausedFamilyRecovery(this.#scheduler, request, identity, priorResponse)
+      : null;
+    if (recovery) {
+      return freeze({
+        schemaVersion: FAMILY_COMPANION_RUNTIME_SCHEMA,
+        state: 'RECOVERY_REQUIRED',
+        requestRef: request.requestRef,
+        intentRef: identity.intentRef,
+        response: safeCurrentResponse(
+          priorResponse,
+          request,
+          recovery.recovery.deliveryReceipt.familyCompanionLineageRef
+        ),
+        recoveryCheckpointRef: recovery.checkpoint.checkpointRef,
+        modelCallPerformed: false
+      });
+    }
+
+    const source = this.#requestSource(request);
+    const { current, work } = source;
     if (priorResponse) {
       return freeze({
         schemaVersion: FAMILY_COMPANION_RUNTIME_SCHEMA,
@@ -602,13 +998,29 @@ export class FamilyCompanionRuntime {
   }
 
   async runSelected(rawRequest, { endpointProfile = this.#endpointProfile, observedAt = this.#clock() } = {}) {
-    const source = this.#requestSource(rawRequest);
-    const { request, current, work } = source;
+    const request = exactRequest(rawRequest);
+    const identity = runtimeIdentity(request);
     const existingResponse = currentResponseEvent({
       home: this.#home,
       request,
-      responseMessageRef: work.identity.responseMessageRef
+      responseMessageRef: identity.responseMessageRef
     });
+    const recovery = existingResponse
+      ? exactPausedFamilyRecovery(this.#scheduler, request, identity, existingResponse)
+      : null;
+    if (recovery) {
+      return this.#recoverDurableResponse({
+        request,
+        identity,
+        responseEvent: existingResponse,
+        checkpoint: recovery.checkpoint,
+        recovery: recovery.recovery,
+        observedAt
+      });
+    }
+
+    const source = this.#requestSource(request);
+    const { current, work } = source;
     if (existingResponse) {
       return freeze({
         schemaVersion: FAMILY_COMPANION_RUNTIME_SCHEMA,
@@ -698,6 +1110,8 @@ export class FamilyCompanionRuntime {
     }
 
     let responseAppended = false;
+    let responseDurable = false;
+    let durableRecovery = null;
     try {
       const familyContextLease = recanonicalizeFamilyContextLease({
         home: this.#home,
@@ -775,6 +1189,21 @@ export class FamilyCompanionRuntime {
         responseAppended = true;
       }
       safeCurrentResponse(responseEvent, request, deliveryCurrent.family.familyCompanionLineageRef);
+      responseDurable = true;
+      durableRecovery = {
+        request,
+        work,
+        current: deliveryCurrent,
+        frontier,
+        frontierState,
+        frontierWitness,
+        response,
+        responseEvent,
+        deliveryReceipt: null,
+        admissionOptions,
+        queue,
+        leased
+      };
 
       const receipt = deliveryReceipt({
         request,
@@ -789,6 +1218,7 @@ export class FamilyCompanionRuntime {
         membershipGenerationAtDelivery: deliveryCurrent.family.membershipGeneration,
         deliveredAt
       });
+      durableRecovery.deliveryReceipt = receipt;
 
       const completedAt = this.#clock();
       const completionInput = await this.#completionEvidenceFor({
@@ -838,25 +1268,32 @@ export class FamilyCompanionRuntime {
       });
     } catch (error) {
       let schedulerCancellation = null;
+      let schedulerCheckpoint = null;
       if (this.#scheduler.active) {
         try {
           const releasedAt = this.#clock();
-          schedulerCancellation = this.#scheduler.cancelActive({
-            releaseReceiptRef: `receipt.vex-family.runtime.cancel.${work.identity.requestFingerprint.slice(0, 32)}`,
-            releasedAt,
-            reason: responseAppended
-              ? 'FAMILY_RUNTIME_COMPLETION_FAILED_AFTER_DURABLE_RESPONSE'
-              : 'FAMILY_RUNTIME_EXECUTION_FAILED_BEFORE_DURABLE_RESPONSE'
-          });
-        } catch (cancelError) {
+          if (responseDurable && durableRecovery) {
+            schedulerCheckpoint = this.#checkpointDurableResponse({
+              ...durableRecovery,
+              releasedAt
+            });
+          } else {
+            schedulerCancellation = this.#scheduler.cancelActive({
+              releaseReceiptRef: `receipt.vex-family.runtime.cancel.${work.identity.requestFingerprint.slice(0, 32)}`,
+              releasedAt,
+              reason: 'FAMILY_RUNTIME_EXECUTION_FAILED_BEFORE_DURABLE_RESPONSE'
+            });
+          }
+        } catch (releaseError) {
           throw new FamilyCompanionRuntimeError(
             'FAMILY_COMPANION_SCHEDULER_RELEASE_UNPROVEN',
-            'Family runtime failed and the canonical scheduler lease release could not be proven',
+            'Family runtime failed and the canonical scheduler release/checkpoint could not be proven',
             {
               sourceErrorCode: error?.code ?? null,
               sourceErrorMessage: error?.message ?? String(error),
-              cancellationError: cancelError?.message ?? String(cancelError),
-              responseAppended
+              releaseError: releaseError?.message ?? String(releaseError),
+              responseAppended,
+              responseDurable
             }
           );
         }
@@ -868,7 +1305,9 @@ export class FamilyCompanionRuntime {
           ...(error instanceof FamilyCompanionRuntimeError && error.details ? error.details : {}),
           sourceErrorCode: error?.code ?? null,
           responseAppended,
-          schedulerCancellation: schedulerCancellation ? clone(schedulerCancellation) : null
+          responseDurable,
+          schedulerCancellation: schedulerCancellation ? clone(schedulerCancellation) : null,
+          schedulerCheckpoint: schedulerCheckpoint ? clone(schedulerCheckpoint.checkpoint) : null
         }
       );
     }

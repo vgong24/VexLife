@@ -332,23 +332,26 @@ function runtimeBindings(graph, trust, runtime, generation, observedAt) {
   };
 }
 
-function runtimeHarness(fx, service, scheduler = makeScheduler()) {
+function runtimeHarness(fx, service, scheduler = makeScheduler(), { failCompletionAttempts = 0 } = {}) {
   const schedulerInstanceRef = scheduler.aggregate?.schedulerInstanceRef ?? null;
   let lastAdmission = null;
-  const admissionOptionsFor = ({ graph, observedAt }) => {
+  let completionAttempts = 0;
+  const admissionOptionsFor = ({ graph, observedAt, resumeTrustSnapshot = null }) => {
     const generation = scheduler.generation + 1;
-    const trust = createIntentTrustSnapshot({
-      schemaVersion: 'vexlife.intent-trust-snapshot/v0',
-      snapshotRef: `trust-snapshot.vf03c.${generation}.${graph.intent.intentRef.split('.').at(-1)}`,
-      sourceRef: 'test/vex-family-companion-runtime.test.mjs#trust',
-      formationRef: 'formation.vf03c.scheduler.trust.test',
-      formedAt: around(observedAt).formedAt,
-      currentness: 'CURRENT',
-      bindingRefs: graph.bindingRefs,
-      actorRefs: [graph.intent.originSpeakerRef, 'module.vexlife.core.family-companion-runtime', 'vex.test.vf03c'],
-      decisionRefs: [],
-      authorizationBindings: []
-    }, intentRegistry);
+    const trust = resumeTrustSnapshot
+      ? createIntentTrustSnapshot(resumeTrustSnapshot, intentRegistry)
+      : createIntentTrustSnapshot({
+        schemaVersion: 'vexlife.intent-trust-snapshot/v0',
+        snapshotRef: `trust-snapshot.vf03c.${generation}.${graph.intent.intentRef.split('.').at(-1)}`,
+        sourceRef: 'test/vex-family-companion-runtime.test.mjs#trust',
+        formationRef: 'formation.vf03c.scheduler.trust.test',
+        formedAt: around(observedAt).formedAt,
+        currentness: 'CURRENT',
+        bindingRefs: graph.bindingRefs,
+        actorRefs: [graph.intent.originSpeakerRef, 'module.vexlife.core.family-companion-runtime', 'vex.test.vf03c'],
+        decisionRefs: [],
+        authorizationBindings: []
+      }, intentRegistry);
     const resource = resourceSnapshot(generation, observedAt);
     const runtime = runtimeTrust(resource, generation, observedAt);
     const options = {
@@ -442,6 +445,10 @@ function runtimeHarness(fx, service, scheduler = makeScheduler()) {
     admissionOptionsFor,
     contextInputFor,
     completionEvidenceFor: (args) => {
+      completionAttempts += 1;
+      if (completionAttempts <= failCompletionAttempts) {
+        throw new Error('synthetic post-append completion evidence failure');
+      }
       const result = completionEvidenceFor(args);
       // Test scheduler identity is recoverable from the active occupancy binding.
       // The verifier compares against the actual constructor identity, supplied by
@@ -452,7 +459,7 @@ function runtimeHarness(fx, service, scheduler = makeScheduler()) {
     endpointProfile: service.endpointProfile,
     clock: fx.clock
   });
-  return { runtime, scheduler };
+  return { runtime, scheduler, completionAttempts: () => completionAttempts };
 }
 
 function testScheduler({ aggregate = null, authority = null } = {}) {
@@ -682,6 +689,95 @@ test('FCR-09 requester cancellation and inference failure create no fake Family 
     assert.equal(service.calls(), 1);
     assert.equal(scheduler.active, null);
     assert.equal(responseState(fx, failedRequest, failedResponseRef).state, 'NOT_FOUND');
+  } finally {
+    await service.close();
+    fx.cleanup();
+  }
+});
+
+test('FCR-13 post-append completion failure checkpoints exact provenance and reconstructs to truthful completion without model replay', async () => {
+  const fx = familyFixture();
+  const service = await captureServer({ content: 'One recoverable Family response.' });
+  try {
+    const schedulerA = testScheduler();
+    const first = runtimeHarness(fx, service, schedulerA, { failCompletionAttempts: 1 });
+    const trigger = fx.appendHuman('alex', 'message.vf03c.recovery.000', 'Recover this exact Family response after completion failure.');
+    const request = fx.requestFor('alex', trigger, 'recovery-alex');
+    const queued = first.runtime.queue(request);
+    const responseMessageRef = `message.vex-family.runtime.${queued.intentRef.split('.').at(-1)}`;
+    let checkpointRef = null;
+
+    await assert.rejects(first.runtime.runSelected(request), (error) => {
+      assert.equal(error instanceof FamilyCompanionRuntimeError, true);
+      assert.equal(error.details.responseAppended, true);
+      assert.equal(error.details.responseDurable, true);
+      assert.equal(error.details.schedulerCancellation, null);
+      assert.ok(error.details.schedulerCheckpoint?.checkpointRef);
+      checkpointRef = error.details.schedulerCheckpoint.checkpointRef;
+      return true;
+    });
+
+    assert.equal(service.calls(), 1);
+    assert.equal(first.completionAttempts(), 1);
+    assert.equal(schedulerA.active, null);
+    assert.equal(schedulerA.aggregate.phase, 'PAUSED');
+    const pausedPointer = schedulerA.aggregate.checkpointPointers
+      .find((item) => item.checkpointRef === checkpointRef);
+    assert.equal(pausedPointer?.currentState, 'PAUSED_AT_CHECKPOINT');
+
+    const paused = schedulerA.aggregate.canonicalCheckpoints
+      .find((item) => item.checkpointRef === checkpointRef);
+    assert.ok(paused?.familyCompanionRecovery);
+    const durableBefore = responseState(fx, request, responseMessageRef);
+    assert.equal(durableBefore.state, 'CURRENT');
+    assert.equal(
+      paused.familyCompanionRecovery.deliveryReceipt.responseEventSha256,
+      durableBefore.event.eventSha256
+    );
+    assert.equal(
+      paused.familyCompanionRecovery.deliveryReceipt.promptMaterializationReceiptFingerprint,
+      paused.familyCompanionRecovery.promptMaterializationReceipt.semanticFingerprint
+    );
+
+    const queuedRecovery = first.runtime.queue(request);
+    assert.equal(queuedRecovery.state, 'RECOVERY_REQUIRED');
+    assert.equal(queuedRecovery.recoveryCheckpointRef, checkpointRef);
+    assert.equal(queuedRecovery.modelCallPerformed, false);
+    assert.equal(service.calls(), 1);
+
+    const aggregate = structuredClone(schedulerA.aggregate);
+    const schedulerB = testScheduler({ aggregate });
+    const second = runtimeHarness(fx, service, schedulerB);
+    const reconstructedQueue = second.runtime.queue(request);
+    assert.equal(reconstructedQueue.state, 'RECOVERY_REQUIRED');
+    assert.equal(reconstructedQueue.recoveryCheckpointRef, checkpointRef);
+    assert.equal(reconstructedQueue.modelCallPerformed, false);
+
+    const recovered = await second.runtime.runSelected(request);
+    assert.equal(recovered.state, 'COMPLETED');
+    assert.equal(recovered.modelCallPerformed, false);
+    assert.equal(recovered.appendState, 'IDEMPOTENT_CURRENT');
+    assert.equal(recovered.recoveryCheckpointRef, checkpointRef);
+    assert.equal(second.completionAttempts(), 1);
+    assert.equal(service.calls(), 1);
+    assert.equal(schedulerB.active, null);
+    assert.equal(schedulerB.projections.health.value.activeWorkerCount, 0);
+    assert.equal(recovered.schedulerCompletion.canonicalWorkgraphTransition.nextState, 'COMPLETED');
+
+    const durableAfter = responseState(fx, request, responseMessageRef);
+    assert.equal(durableAfter.state, 'CURRENT');
+    assert.equal(durableAfter.event.eventSha256, durableBefore.event.eventSha256);
+    assert.equal(durableAfter.event.sequence, durableBefore.event.sequence);
+    assert.equal(recovered.response.eventSha256, durableBefore.event.eventSha256);
+    assert.equal(
+      recovered.deliveryReceipt.semanticFingerprint,
+      paused.familyCompanionRecovery.deliveryReceipt.semanticFingerprint
+    );
+
+    const settledReplay = second.runtime.queue(request);
+    assert.equal(settledReplay.state, 'IDEMPOTENT_RESPONSE_CURRENT');
+    assert.equal(settledReplay.modelCallPerformed, false);
+    assert.equal(service.calls(), 1);
   } finally {
     await service.close();
     fx.cleanup();
