@@ -345,7 +345,7 @@ function runtimeHarness(fx, service, scheduler = makeScheduler()) {
       formedAt: around(observedAt).formedAt,
       currentness: 'CURRENT',
       bindingRefs: graph.bindingRefs,
-      actorRefs: [graph.intent.originSpeakerRef, 'vex.test.vf03c'],
+      actorRefs: [graph.intent.originSpeakerRef, 'module.vexlife.core.family-companion-runtime', 'vex.test.vf03c'],
       decisionRefs: [],
       authorizationBindings: []
     }, intentRegistry);
