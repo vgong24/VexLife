@@ -292,7 +292,7 @@ test('UX06 lived FILE journey composes create -> transfer -> verified import -> 
     assert.equal(sha256(transferredBytes), exported.invitationProduct.artifactSha256);
     assert.equal(download.suggestedFilename().includes(exported.invitationProduct.artifactSha256), true);
 
-    const contextB = await browser.newContext({ viewport: { width: 1280, height: 900 });
+    const contextB = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const pageB = await contextB.newPage();
     await pageB.goto(`${originB}/reference/browser/index.html`, { waitUntil: 'networkidle' });
     await pageB.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__?.relationships));
