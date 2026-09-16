@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 19388,
       "sha256": "def0fdf9327f7c2d2cfd423dff69e4747ae45235536730c997e6ebe65c43c066"
+    },
+    {
+      "path": "test/relationships-invitation-currentness-fixture.mjs",
+      "mode": "100644",
+      "bytes": 6789,
+      "sha256": "333fa9abfd2a72b9b9bd96b1c2cc75b2c9c62077839e4f6fadfffdea73d8ddcf"
     }
   ]
 }

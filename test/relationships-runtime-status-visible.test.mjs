@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import { importVerifiedRelationshipsInvitation } from './relationships-invitation-currentness-fixture.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -137,11 +138,15 @@ async function mountSavedRuntimeStatusController(page) {
 
   await page.waitForFunction(() => globalThis.__UX04_RELATIONSHIPS_TEST__?.snapshot().hydration.state === 'READY');
   await page.locator('#relationshipsConnect').click();
-  await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
-  await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+  await importVerifiedRelationshipsInvitation(page);
   await page.selectOption('#relationshipsDecision', 'ACCEPT');
   await page.locator('#relationshipsFormLocal').click();
   await page.waitForFunction(() => globalThis.__UX04_RELATIONSHIPS_TEST__?.snapshot().localFormed === true);
+  const connectionDetails = page.locator('#relationshipsConnectionDetails');
+  if (!await connectionDetails.evaluate((element) => element.open)) {
+    await connectionDetails.locator('summary').click();
+    await page.waitForFunction(() => document.querySelector('#relationshipsConnectionDetails')?.open === true);
+  }
   await page.locator('#relationshipsAlphaConsent').click();
   await page.waitForFunction(() => globalThis.__UX04_RELATIONSHIPS_TEST__?.snapshot().cdrGate.alphaConsentAcknowledged === true);
 }

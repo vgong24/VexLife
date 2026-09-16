@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { project, validateRegistry } from '../reference/browser/relationships/core.js';
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import { importVerifiedRelationshipsInvitation } from './relationships-invitation-currentness-fixture.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -184,8 +185,7 @@ async function mountSavedFfr03Relationships(page, { decision }) {
     document.querySelector('#view-relationships').hidden = false;
   });
   await page.locator('#relationshipsConnect').click();
-  await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
-  await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+  await importVerifiedRelationshipsInvitation(page);
   await page.selectOption('#relationshipsDecision', decision);
   assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), false);
   await page.locator('#relationshipsFormLocal').click();
@@ -197,6 +197,7 @@ async function mountSavedFfr03Relationships(page, { decision }) {
   assert.equal(saved.runtimePlan.state, 'IDLE');
   assert.equal(Object.values(saved.effects).every((value) => value === false), true);
   assert.match(await page.locator('#relationshipsConnectStatus').textContent(), /Saved locally as/i);
+  await openConnectionDiagnostics(page);
   await page.locator('#relationshipsAlphaConsent').click();
   assert.equal((await page.evaluate(() => globalThis.__FFR03_RELATIONSHIPS_TEST__.snapshot())).cdrGate.alphaConsentAcknowledged, true);
 }
@@ -308,8 +309,7 @@ test('Relationships root browser route is visible, localized, accessible and no-
     assert.equal(await page.locator('#relationshipsPresence option[value="APP_ON_MODEL_UNLOADED"]').textContent(), 'App open · companion not loaded');
     assert.equal(await page.locator('#relationshipsRoute option[value="DIRECT_CANDIDATE"]').textContent(), 'Direct connection available');
     assert.equal(await page.locator('#relationshipsFailure option[value="NONE"]').textContent(), 'No current connection issue');
-    await page.selectOption('#relationshipsInvitation', 'RECEIVED_VERIFIED_REFERENCE');
-    await page.selectOption('#relationshipsIdentity', 'VERIFIED_CURRENT');
+    await importVerifiedRelationshipsInvitation(page);
     await page.selectOption('#relationshipsDecision', 'NARROW');
     assert.equal(await page.locator('#relationshipsFormLocal').isDisabled(), true);
     assert.match(await page.locator('#relationshipsConnectStatus').textContent(), /Saving is held until this Vex has explicit local-owner and counterpart invitation identity bindings/i);
@@ -433,7 +433,17 @@ test('Relationships composed compact route is touch-sized, keyboard-operable, sc
     assert.equal(await page.getByRole('combobox', { name:'Presence', exact:true }).count(), 1);
     assert.equal(await page.getByRole('combobox', { name:'Route', exact:true }).count(), 1);
     assert.equal(await page.getByRole('combobox', { name:'Current connection issue', exact:true }).count(), 1);
-    assert.equal(await page.locator('#view-relationships').getByRole('status').count(), 2);
+    const liveStatuses = [
+      '#relationshipsInvitationProductStatus',
+      '#relationshipsConnectStatus',
+      '#relationshipsRuntimePlanStatus'
+    ];
+    assert.equal(await page.locator('#view-relationships').getByRole('status').count(), liveStatuses.length);
+    for (const selector of liveStatuses) {
+      const status = page.locator(selector);
+      assert.equal(await status.getAttribute('role'), 'status');
+      assert.equal(await status.isVisible(), true);
+    }
     assert.equal(await page.locator('#relationshipsConnectMethod option[value="QR_PROJECTION"]').textContent(), 'QR code');
     assert.equal(await page.locator('#relationshipsInvitation option[value="RECEIVED_VERIFIED_REFERENCE"]').textContent(), 'Invitation received and verified');
     assert.equal(await page.locator('#relationshipsPresence option[value="APP_ON_MODEL_UNLOADED"]').textContent(), 'App open · companion not loaded');
