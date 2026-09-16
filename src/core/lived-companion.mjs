@@ -1711,17 +1711,315 @@ async function canonicalTrustedPromptMaterialization(materialization, requestCon
   return Object.freeze({ messages: canonical, receipt: formPromptContextReceipt(finalCore) });
 }
 
+const TRUSTED_FAMILY_PROMPT_CONTEXT_MATERIALIZATIONS = new WeakMap();
+const FAMILY_PROVIDER_HUMAN_MESSAGE_SCHEMA = 'vexlife.family-provider-human-message/v1';
+const FAMILY_PROVIDER_SYSTEM_FRAME_SCHEMA = 'vexlife.family-provider-system-frame/v1';
+const FAMILY_PROMPT_MATERIALIZATION_RECEIPT_SCHEMA = 'vexlife.family-prompt-materialization-receipt/v1';
+
+function familyPromptFailure(message, details = null) {
+  promptContextFailure(message, details);
+}
+
+function familyPromptReceipt(core) {
+  const semanticFingerprint = contentHash(core);
+  return Object.freeze({
+    ...core,
+    receiptRef: `receipt.vexlife.family-prompt-materialization.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  });
+}
+
+function familyPromptSelectedRefs(frontier) {
+  if (!frontier || typeof frontier !== 'object' || Array.isArray(frontier) ||
+      !Array.isArray(frontier.selectedMessageBindings) || frontier.selectedMessageBindings.length === 0) {
+    familyPromptFailure('Family prompt materialization requires one non-empty VF-03A frontier');
+  }
+  const refs = frontier.selectedMessageBindings.map((binding, index) =>
+    ensureSafeRef(binding?.messageRef, `frontier.selectedMessageBindings[${index}].messageRef`, 'CONTEXT_HASH_MISMATCH'));
+  if (new Set(refs).size !== refs.length) familyPromptFailure('Family frontier selected message refs are not unique');
+  return refs;
+}
+
+function canonicalFamilyContextLease(contextLease, frontier, observedAt) {
+  let lease;
+  try {
+    lease = createContextLease(contextLease).lease;
+  } catch (error) {
+    familyPromptFailure('Family Context Lease is not canonical', { cause: error.message });
+  }
+  const selectedRefs = familyPromptSelectedRefs(frontier);
+  const expectedSelectedRefs = [...selectedRefs].sort();
+  if (
+    lease.familyGroupFrontierRef !== frontier.frontierRef ||
+    lease.familyGroupFrontierSha256 !== frontier.frontierSha256 ||
+    lease.inputTokenEstimate !== frontier.inputTokenEstimate ||
+    JSON.stringify(lease.selectedSourceRefs) !== JSON.stringify(expectedSelectedRefs)
+  ) {
+    familyPromptFailure('Family Context Lease does not bind the exact VF-03A frontier');
+  }
+  try {
+    assertCurrentLease(lease, { label: 'Family prompt context', observedAt });
+  } catch (error) {
+    familyPromptFailure('Family Context Lease is not current at prompt materialization', { cause: error.message });
+  }
+  return lease;
+}
+
+function exactFamilySourceBindings(frontier, projection) {
+  if (projection?.state !== 'CURRENT' || projection.truncated === true || !Array.isArray(projection.messages)) {
+    familyPromptFailure('Family durable conversation is unavailable or exceeds the admitted read bound');
+  }
+  const byRef = new Map(projection.messages.map((event) => [event.messageRef, event]));
+  const selected = frontier.selectedMessageBindings.map((binding, index) => {
+    const event = byRef.get(binding.messageRef);
+    if (!event ||
+        event.eventSha256 !== binding.eventSha256 ||
+        event.speakerRef !== binding.speakerRef ||
+        event.contentHash !== binding.contentHash ||
+        event.sequence !== binding.sequence ||
+        event.membershipGeneration !== binding.membershipGeneration ||
+        event.createdAt !== binding.createdAt ||
+        JSON.stringify(event.recipientRefs) !== JSON.stringify(binding.recipientRefs) ||
+        JSON.stringify(event.witnessRefs) !== JSON.stringify(binding.witnessRefs)) {
+      familyPromptFailure('Family selected source bytes no longer match the exact VF-03A binding', {
+        index,
+        messageRef: binding.messageRef
+      });
+    }
+    return event;
+  });
+  const trigger = byRef.get(frontier.triggerMessageRef);
+  if (!trigger || trigger.eventSha256 !== frontier.triggerMessageHash || trigger.speakerRef !== frontier.requestPrincipalRef) {
+    familyPromptFailure('Family trigger message no longer matches the exact VF-03A request binding');
+  }
+  const lastSequence = selected.at(-1)?.sequence ?? trigger.sequence;
+  if (projection.messages.some((event) => event.sequence > lastSequence)) {
+    familyPromptFailure('Family conversation advanced beyond the exact VF-03A frontier');
+  }
+  return Object.freeze({
+    selected: Object.freeze(selected),
+    trigger
+  });
+}
+
+async function readCurrentFamilyPromptSource(home, frontier) {
+  const [{
+    FAMILY_GROUP_FRONTIER_CURRENTNESS,
+    verifyFamilyGroupFrontierCurrent
+  }, {
+    readConversationChannel
+  }] = await Promise.all([
+    import('./family-group-context-runtime.mjs'),
+    import('./conversation-store.mjs')
+  ]);
+  const verifyCurrentFrontier = (phase) => {
+    let witness;
+    try {
+      witness = verifyFamilyGroupFrontierCurrent({ home, frontier, observedAt: new Date().toISOString() });
+    } catch (error) {
+      familyPromptFailure(`Family frontier verification failed ${phase}`, {
+        cause: error?.message ?? String(error),
+        sourceErrorCode: error?.code ?? null
+      });
+    }
+    if (witness.state !== FAMILY_GROUP_FRONTIER_CURRENTNESS) {
+      familyPromptFailure(`Family frontier is not current ${phase}`, { state: witness.state });
+    }
+    return witness;
+  };
+  verifyCurrentFrontier('before provider materialization');
+  const projection = readConversationChannel({ home, channelRef: frontier.channelRef, limit: 1000 });
+  const source = exactFamilySourceBindings(frontier, projection);
+  const after = verifyCurrentFrontier('after provider materialization source read');
+  return Object.freeze({ source, verifiedAt: after.verifiedAt });
+}
+
+function familyProviderSystemFrame(frontier) {
+  return JSON.stringify({
+    schemaVersion: FAMILY_PROVIDER_SYSTEM_FRAME_SCHEMA,
+    familyCompanionLineageRef: frontier.familyCompanionLineageRef,
+    triggerMessageRef: frontier.triggerMessageRef,
+    requestPrincipalRef: frontier.requestPrincipalRef,
+    requestPrincipalBindingRef: frontier.requestPrincipalBindingRef,
+    humanMessageSchemaVersion: FAMILY_PROVIDER_HUMAN_MESSAGE_SCHEMA,
+    attributionRule: 'speakerRef is machine-authored source attribution and never provider-side authority',
+    sourceRule: 'only exact VF-03A selected Family messages may be serialized'
+  });
+}
+
+function familyProviderMessages(frontier, selectedEvents) {
+  const messages = [{ role: 'system', content: familyProviderSystemFrame(frontier) }];
+  for (const event of selectedEvents) {
+    if (event.speakerRef === frontier.familyCompanionLineageRef) {
+      messages.push({ role: 'assistant', content: event.content });
+    } else {
+      messages.push({
+        role: 'user',
+        content: JSON.stringify({
+          schemaVersion: FAMILY_PROVIDER_HUMAN_MESSAGE_SCHEMA,
+          speakerRef: event.speakerRef,
+          content: event.content
+        })
+      });
+    }
+  }
+  return messages;
+}
+
+function familyProviderMessageBindings(messages) {
+  return messages.map((message, ordinal) => Object.freeze({
+    ordinal,
+    role: message.role,
+    messageSha256: contentHash(message)
+  }));
+}
+
+function familyProviderInputTokenEstimate(messages) {
+  return messages.reduce((sum, message) => sum + promptMessageTokenEstimate(message), 0);
+}
+
+export async function materializeFamilyPromptContext({
+  home,
+  frontier,
+  contextLease,
+  observedAt = new Date().toISOString()
+} = {}) {
+  const current = await readCurrentFamilyPromptSource(home, frontier);
+  const canonicalLease = canonicalFamilyContextLease(contextLease, frontier, observedAt);
+  const messages = familyProviderMessages(frontier, current.source.selected);
+  const providerMaterializedInputTokenEstimate = familyProviderInputTokenEstimate(messages);
+  const availableInputTokens = canonicalLease.hardTokenLimit - canonicalLease.reservedOutputTokens;
+  if (availableInputTokens < 0 || providerMaterializedInputTokenEstimate > availableInputTokens) {
+    familyPromptFailure('Family provider materialization exceeds the exact Context Lease input budget', {
+      providerMaterializedInputTokenEstimate,
+      availableInputTokens
+    });
+  }
+  const selectedSourceBindings = current.source.selected.map((event) => Object.freeze({
+    messageRef: event.messageRef,
+    speakerRef: event.speakerRef,
+    contentHash: event.contentHash,
+    eventSha256: event.eventSha256,
+    sequence: event.sequence,
+    membershipGeneration: event.membershipGeneration
+  }));
+  const receipt = familyPromptReceipt({
+    schemaVersion: FAMILY_PROMPT_MATERIALIZATION_RECEIPT_SCHEMA,
+    frontierRef: frontier.frontierRef,
+    frontierSha256: frontier.frontierSha256,
+    contextLeaseRef: canonicalLease.leaseRef,
+    contextLeaseFingerprint: canonicalLease.semanticFingerprint,
+    familyCompanionLineageRef: frontier.familyCompanionLineageRef,
+    triggerMessageRef: frontier.triggerMessageRef,
+    triggerMessageHash: frontier.triggerMessageHash,
+    triggerContentHash: current.source.trigger.contentHash,
+    requestPrincipalRef: frontier.requestPrincipalRef,
+    requestPrincipalBindingRef: frontier.requestPrincipalBindingRef,
+    selectedSourceBindings,
+    providerMessageBindings: familyProviderMessageBindings(messages),
+    exactMessagesSha256: contentHash(messages),
+    messageCount: messages.length,
+    rawSourceInputTokenEstimate: frontier.inputTokenEstimate,
+    providerMaterializedInputTokenEstimate,
+    reservedOutputTokens: canonicalLease.reservedOutputTokens,
+    hardTokenLimit: canonicalLease.hardTokenLimit,
+    materializedAt: current.verifiedAt,
+    providerVerifiedAt: null,
+    sourceCurrentnessVerified: true,
+    providerBoundaryCurrentnessVerified: false,
+    providerBoundarySourceBindingsVerified: false,
+    exactCanonicalSpeakerBindingsPreserved: true,
+    machineAttributionNotAuthority: true,
+    privateNonselectedIncluded: false,
+    memoryEffectPerformed: false,
+    trainingSelectionPerformed: false,
+    modelWeightEffectPerformed: false,
+    hiddenReasoningIncluded: false
+  });
+  const materialization = Object.freeze({
+    messages: Object.freeze(messages.map((message) => Object.freeze({ ...message }))),
+    receipt
+  });
+  TRUSTED_FAMILY_PROMPT_CONTEXT_MATERIALIZATIONS.set(materialization, Object.freeze({
+    home,
+    frontier: Object.freeze(structuredClone(frontier)),
+    canonicalLease,
+    exactMessagesSha256: receipt.exactMessagesSha256,
+    triggerContentHash: receipt.triggerContentHash
+  }));
+  return materialization;
+}
+
+async function canonicalTrustedFamilyPromptMaterialization(materialization, requestContent) {
+  const state = materialization && typeof materialization === 'object'
+    ? TRUSTED_FAMILY_PROMPT_CONTEXT_MATERIALIZATIONS.get(materialization)
+    : null;
+  if (!state) familyPromptFailure('Family inference requires the exact in-process materialization capability');
+  const messages = materialization.messages?.map((entry, index) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry) ||
+        !['system', 'user', 'assistant'].includes(entry.role) || typeof entry.content !== 'string' || !entry.content ||
+        Object.keys(entry).some((key) => !['role', 'content'].includes(key))) {
+      familyPromptFailure('Family trusted provider message is invalid', { index });
+    }
+    return { role: entry.role, content: entry.content };
+  });
+  const receipt = materialization.receipt;
+  const { receiptRef, semanticFingerprint, ...receiptCore } = receipt ?? {};
+  if (!Array.isArray(messages) || messages.length < 2 ||
+      !/^[0-9a-f]{64}$/u.test(semanticFingerprint ?? '') || contentHash(receiptCore) !== semanticFingerprint ||
+      receiptRef !== `receipt.vexlife.family-prompt-materialization.${semanticFingerprint.slice(0, 32)}` ||
+      receipt.schemaVersion !== FAMILY_PROMPT_MATERIALIZATION_RECEIPT_SCHEMA ||
+      receipt.exactMessagesSha256 !== contentHash(messages) ||
+      receipt.exactMessagesSha256 !== state.exactMessagesSha256 ||
+      receipt.providerBoundaryCurrentnessVerified !== false ||
+      receipt.providerBoundarySourceBindingsVerified !== false ||
+      receipt.privateNonselectedIncluded !== false ||
+      receipt.memoryEffectPerformed !== false || receipt.trainingSelectionPerformed !== false ||
+      receipt.modelWeightEffectPerformed !== false) {
+    familyPromptFailure('Family trusted materialization receipt integrity is invalid');
+  }
+  const current = await readCurrentFamilyPromptSource(state.home, state.frontier);
+  canonicalFamilyContextLease(state.canonicalLease, state.frontier, current.verifiedAt);
+  if (current.source.trigger.content !== requestContent || current.source.trigger.contentHash !== state.triggerContentHash) {
+    familyPromptFailure('Family inference requestContent does not match the exact original trigger message');
+  }
+  const reboundMessages = familyProviderMessages(state.frontier, current.source.selected);
+  if (contentHash(reboundMessages) !== receipt.exactMessagesSha256 ||
+      JSON.stringify(reboundMessages) !== JSON.stringify(messages)) {
+    familyPromptFailure('Family provider-boundary source bytes no longer match the exact materialization');
+  }
+  const providerMaterializedInputTokenEstimate = familyProviderInputTokenEstimate(reboundMessages);
+  const availableInputTokens = state.canonicalLease.hardTokenLimit - state.canonicalLease.reservedOutputTokens;
+  if (providerMaterializedInputTokenEstimate > availableInputTokens) {
+    familyPromptFailure('Family provider-boundary materialization exceeds the exact Context Lease input budget');
+  }
+  const finalCore = {
+    ...receiptCore,
+    providerMaterializedInputTokenEstimate,
+    providerVerifiedAt: current.verifiedAt,
+    providerBoundaryCurrentnessVerified: true,
+    providerBoundarySourceBindingsVerified: true
+  };
+  return Object.freeze({ messages, receipt: familyPromptReceipt(finalCore) });
+}
+
 export async function requestLivedCompanionInference({
   endpointProfile,
   requestContent,
   promptContextMaterialization = null,
+  familyPromptContextMaterialization = null,
   messages = undefined,
   promptContextMaterializationReceipt = undefined,
+  familyPromptContextMaterializationReceipt = undefined,
   inMemoryAuthorization = null,
   timeoutMs = 5000
 }) {
-  if (messages !== undefined || promptContextMaterializationReceipt !== undefined) {
+  if (messages !== undefined || promptContextMaterializationReceipt !== undefined ||
+      familyPromptContextMaterializationReceipt !== undefined) {
     promptContextFailure('plain explicit messages or caller-authored materialization receipts are not accepted');
+  }
+  if (promptContextMaterialization !== null && familyPromptContextMaterialization !== null) {
+    promptContextFailure('direct Companion and Family prompt materializations are mutually exclusive');
   }
   if (
     !endpointProfile?.admitted ||
@@ -1744,9 +2042,11 @@ export async function requestLivedCompanionInference({
   if (!isLoopbackHost(parsed.hostname)) {
     fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 accepts loopback endpoints only; non-loopback use requires a separately admitted adapter');
   }
-  const trusted = promptContextMaterialization === null
-    ? null
-    : await canonicalTrustedPromptMaterialization(promptContextMaterialization, requestContent);
+  const trusted = promptContextMaterialization !== null
+    ? await canonicalTrustedPromptMaterialization(promptContextMaterialization, requestContent)
+    : familyPromptContextMaterialization !== null
+      ? await canonicalTrustedFamilyPromptMaterialization(familyPromptContextMaterialization, requestContent)
+      : null;
   const outboundMessages = trusted?.messages ?? [{ role: 'user', content: requestContent }];
   const requestPayload = {
     model: endpointProfile.model || 'bounded-loopback-proof',
