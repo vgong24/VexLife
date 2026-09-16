@@ -18,12 +18,12 @@ const RESULT_STATES = new Set([
 const TRANSPORTS = new Set(['FILE', 'CODE', 'QR']);
 const FAILURE_CODE = /^[A-Z][A-Z0-9_]{0,127}$/u;
 
-function held(operation, requestRef, transport, failureCode) {
+function held(operation, requestRef, transport, failureCode, state = 'HELD_UPSTREAM_UNAVAILABLE') {
   return Object.freeze({
     schemaVersion: BROWSER_RELATIONSHIPS_INVITATION_PRODUCT_RESULT_SCHEMA,
     operation,
     requestRef,
-    state: 'HELD_UPSTREAM_UNAVAILABLE',
+    state,
     transport,
     artifact: null,
     evidence: null,
@@ -71,7 +71,13 @@ export function createRelationshipsInvitationProductClient({
     if (!['CREATE_EXPORT', 'IMPORT_VERIFY'].includes(operation)) return held(operation, requestRef, transport, 'RELATIONSHIPS_INVITATION_OPERATION_UNSUPPORTED');
     if (!TRANSPORTS.has(transport)) return held(operation, requestRef, transport, 'RELATIONSHIPS_INVITATION_TRANSPORT_UNSUPPORTED');
     if (typeof fetchImpl !== 'function' || apiPath !== BROWSER_RELATIONSHIPS_INVITATION_PRODUCT_API_PATH) {
-      return held(operation, requestRef, transport, 'RELATIONSHIPS_INVITATION_HOST_BINDING_REQUIRED');
+      return held(
+        operation,
+        requestRef,
+        transport,
+        'RELATIONSHIPS_INVITATION_HOST_BINDING_REQUIRED',
+        'HELD_HOST_BINDING_REQUIRED',
+      );
     }
     const request = {
       schemaVersion: BROWSER_RELATIONSHIPS_INVITATION_PRODUCT_REQUEST_SCHEMA,

@@ -4,6 +4,7 @@ import http from 'node:http';
 import test from 'node:test';
 
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import { createRelationshipsInvitationProductClient } from '../reference/browser/modules/relationships-invitation-product-client.js';
 import {
   BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES,
   BROWSER_RELATIONSHIPS_INVITATION_PRODUCT_API_PATH,
@@ -134,6 +135,20 @@ test('wrapper delegates malformed Host parsing to the core fail-safe boundary', 
     const payload = JSON.parse(response.body);
     assert.equal(payload.failureCode, 'COMPANION_TURN_FAILED');
   });
+});
+
+test('browser client preserves the typed host-binding hold when local transport is unbound', async () => {
+  const client = createRelationshipsInvitationProductClient({ fetchImpl: null });
+  const result = await client.createExport({
+    requestRef: 'request.relationships.client.unbound.1',
+    transport: 'FILE',
+    payload: Object.freeze({}),
+    sourceRefs: Object.freeze(['github.issue.vexlife.485']),
+  });
+  assert.equal(result.state, 'HELD_HOST_BINDING_REQUIRED');
+  assert.equal(result.failureCode, 'RELATIONSHIPS_INVITATION_HOST_BINDING_REQUIRED');
+  assert.equal(result.syntheticAdapter, false);
+  assert.equal(Object.values(result.effects).every((value) => value === false), true);
 });
 
 test('default production route is present but held when no upstream invitation adapter is bound', async () => {
