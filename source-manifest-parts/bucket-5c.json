@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/modules/relationships-invitation-product-client.js",
       "mode": "100644",
-      "bytes": 6846,
-      "sha256": "ef3a830a680b46e8d6f1a0d6b193613fcd3d159800f548ce665931c68b21524f"
+      "bytes": 6933,
+      "sha256": "6ca7095d181f469a089e9aedd7b38aca026f42da2940b35a51c45b6b627475eb"
     },
     {
       "path": "scripts/intent-check.mjs",
