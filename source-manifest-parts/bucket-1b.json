@@ -9,6 +9,12 @@
       "sha256": "0136ddb5ed5c1b3deb0f0025230fb48cfd3aa79dde811a25b86ac588677f494e"
     },
     {
+      "path": "docs/VEX-FAMILY-COMPANION-RUNTIME.md",
+      "mode": "100644",
+      "bytes": 11076,
+      "sha256": "68e5f64bffc6bcddcec8ae4529676fb7a48bdafec058f0960c867a06d831b453"
+    },
+    {
       "path": "src/core/evaluated-rhythm-learning.mjs",
       "mode": "100644",
       "bytes": 35652,
