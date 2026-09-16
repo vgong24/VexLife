@@ -21,6 +21,12 @@
       "sha256": "0ae9e3719f7d773b7209f72885380ce4a554ab212c7da51c26ee65dccee89fec"
     },
     {
+      "path": "test/browser-relationships-invitation-product-bridge.test.mjs",
+      "mode": "100644",
+      "bytes": 7578,
+      "sha256": "03f2c8f4a6b1cba4872169f59eb3b8b987befdb099b21edda1be6abdabc2635f"
+    },
+    {
       "path": "test/browser-relationships-runtime-bridge.test.mjs",
       "mode": "100644",
       "bytes": 10692,

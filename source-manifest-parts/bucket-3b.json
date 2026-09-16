@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 841,
       "sha256": "5e2ab0892f914684b0bb67a78ec3f4bdf596275a963a75131624f3b469f7953b"
+    },
+    {
+      "path": "scripts/serve-browser-core.mjs",
+      "mode": "100644",
+      "bytes": 31242,
+      "sha256": "488ff4185841aa40ac9b7391be4dea4c6f99680f4112d4cbfce959ad2d278809"
     }
   ]
 }
