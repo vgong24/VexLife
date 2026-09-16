@@ -3,6 +3,12 @@
   "bucketId": "d9",
   "files": [
     {
+      "path": "docs/HOME-BRIDGE-AUTHENTICATED-SESSION.md",
+      "mode": "100644",
+      "bytes": 5309,
+      "sha256": "eb01d8016893c1c0dc274eb24f522a2800786ff3e37ec3b6f3591c5275abb893"
+    },
+    {
       "path": "reference/browser/experience-gallery.css",
       "mode": "100644",
       "bytes": 4884,
