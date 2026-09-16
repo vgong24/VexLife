@@ -148,7 +148,9 @@ test('browser companion delegates the visible turn to G01 and persists its exact
 
 test('browser source never routes companion channel through simulatedReply', () => {
   const chat = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/chat-controller.js'), 'utf8');
-  const server = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser.mjs'), 'utf8');
+  const serverEntry = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser.mjs'), 'utf8');
+  const serverCore = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
+  const server = `${serverEntry}\n${serverCore}`;
   assert.match(chat, /channel\.roleKey === 'companion'[\s\S]*requestRealCompanionReply/u);
   assert.match(chat, /simulatedReply\(channel, frameAtSend\)[\s\S]*channel\.roleKey === 'companion'\) return false/u);
   assert.match(chat, /fetch\('\/api\/v1\/companion\/turn'/u);
