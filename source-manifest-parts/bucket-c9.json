@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 4543,
       "sha256": "0115261bffc2d8bf7746c7ce990f2b6846db1a1013bf17ab18f58a69fbd978fe"
+    },
+    {
+      "path": "src/core/home-bridge-authenticated-session.mjs",
+      "mode": "100644",
+      "bytes": 14875,
+      "sha256": "7e2163614e04ba893fc8b7f86c702e76d6a4a7ebbe17533867713922e21b996c"
     }
   ]
 }
