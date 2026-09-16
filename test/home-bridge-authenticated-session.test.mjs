@@ -76,6 +76,8 @@ test('HBAS-00/HBAS-01: current local-device auth plus explicit principal decisio
   });
   assert.equal(established.state, 'AUTHENTICATED_SESSION_ESTABLISHED');
   assert.match(established.sessionRef, /^session\.vexlife\.home-bridge\./u);
+  assert.equal(Object.keys(established).includes('sessionRef'), false);
+  assert.equal(JSON.stringify(established).includes(established.sessionRef), false);
   assert.equal(established.principalRef, 'person.victor-gong');
   assert.equal(established.effects.authorizationGranted, false);
   assert.equal(established.effects.capabilityLeaseGranted, false);
