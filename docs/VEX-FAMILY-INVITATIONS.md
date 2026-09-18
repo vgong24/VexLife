@@ -111,6 +111,6 @@ and prove the recoverable order between invitation-state writes and Family membe
 
 ## Proof
 
-`test/vex-family-invitation-store.test.mjs` covers FIS-00 through FIS-12: manager-only targetless MEMBER issuance; caller identity/binding/role/state rejection; deterministic retry/conflict behavior; expiry; current manager/current Family record enforcement; terminal non-reactivation; post-head result-loss recovery; stale Family currentness rejection; safe export; ACCEPTED/DECLINED reservation; no Family membership/conversation/Relationships/model/Memory/publication effect; and early-expiry fail-closed behavior.
+`test/vex-family-invitation-store.test.mjs` covers FIS-00 through FIS-14: manager-only targetless MEMBER issuance; caller identity/binding/role/state rejection; deterministic retry/conflict behavior; expiry; current manager/current Family record enforcement; terminal non-reactivation; post-head result-loss recovery; stale Family currentness rejection; safe export; ACCEPTED/DECLINED reservation; no Family membership/conversation/Relationships/model/Memory/publication effect; exact N→N+1 revoke/expiry retry recovery; and early-expiry fail-closed behavior.
 
 <!-- [VEX-FAMILY][VF07B-JOIN][INVITATION-STORE][SOURCE-CONTRACT][VXG RealForever] -->
