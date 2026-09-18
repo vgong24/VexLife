@@ -329,5 +329,27 @@
     "changeMap": [
       "docs/VEX-FAMILY-HOST-ESTABLISHMENT.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.family-invitation-store",
+    "path": "src/core/family-invitation-store.mjs",
+    "role": "Canonical local Family invitation/consent persistence owner for deterministic targetless MEMBER invitations, exact Family-manager issuance/revocation currentness, expiry, immutable state history and writer recovery without becoming the Join membership orchestrator.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.family-space-store",
+      "module.vexlife.core.utils",
+      "state.family-space"
+    ],
+    "writes": [
+      "Vex Home family-invitations/** only through the Family invitation writer lease"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/vex-family-invitation-store.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEX-FAMILY-INVITATIONS.md",
+      "future Join orchestration consumer only after this owner is accepted"
+    ]
   }
 ]
