@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 4897,
       "sha256": "b22bdf5047bd96452f388f89307ea0868c8a55a8b54667dae6c0fa840810d49a"
+    },
+    {
+      "path": "src/core/family-invitation-store.mjs",
+      "mode": "100644",
+      "bytes": 34619,
+      "sha256": "08f65825363702a3ebcc1485cf201d5a16f8680a1891ac8b9a993348e90e28fe"
     }
   ]
 }

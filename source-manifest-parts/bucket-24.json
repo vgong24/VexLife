@@ -31,6 +31,12 @@
       "mode": "100644",
       "bytes": 4602,
       "sha256": "119682c82a425ff88b69c5745bd1024d9157a0c1b9b8c3831cded0b01f41c58e"
+    },
+    {
+      "path": "test/vex-family-invitation-store.test.mjs",
+      "mode": "100644",
+      "bytes": 15948,
+      "sha256": "1a21da0da42c546101f2fec0ce6814f83a6ae1df1cf383db54230b0e2841643b"
     }
   ]
 }
