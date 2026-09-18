@@ -3,6 +3,12 @@
   "bucketId": "00",
   "files": [
     {
+      "path": "docs/VEX-FAMILY-INVITATIONS.md",
+      "mode": "100644",
+      "bytes": 4323,
+      "sha256": "09596085efa6eb732ed06668b805c4b1fd138ceeb6ebb0a450ea180505fc53c0"
+    },
+    {
       "path": "reference/browser/integration/living-journal-suite.js",
       "mode": "100644",
       "bytes": 31392,
