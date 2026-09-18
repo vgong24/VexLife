@@ -305,5 +305,29 @@
       "src/core/browser-family-conversation-bridge.mjs",
       "scripts/serve-browser-core.mjs"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.family-host-runtime",
+    "path": "src/core/family-host-runtime.mjs",
+    "role": "Owner-aligned authenticated Family Host establishment runtime that consumes current VEX_CORE Home authority, derives source-owned Family principal/lineage identities, and composes canonical Family Space plus Conversation owners with exact retry recovery.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "src/core/vex-core-family-session-authority.mjs",
+      "module.vexlife.core.family-space-store",
+      "src/core/family-conversation.mjs",
+      "module.vexlife.core.conversation-store",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [
+      "Vex Home family-spaces/** only through module.vexlife.core.family-space-store",
+      "Vex Home conversations/channels/** only through module.vexlife.core.conversation-store"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/vex-family-host-runtime.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEX-FAMILY-HOST-ESTABLISHMENT.md"
+    ]
   }
 ]
