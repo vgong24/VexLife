@@ -1,0 +1,537 @@
+[
+  {
+    "processRef": "process.vexlife.platform.adopt-blueprint",
+    "processVersion": 1,
+    "purpose": "Generate a bounded platform adoption kit from one accepted blueprint change.",
+    "applicabilityRules": [
+      "source blueprint validates",
+      "target platform registered"
+    ],
+    "requiredInputs": [
+      "blueprintChangeRef",
+      "targetPlatformRef",
+      "sourceBlueprintVersion",
+      "targetRepositoryRef"
+    ],
+    "optionalInputs": [
+      "targetBranchRef",
+      "existingConformanceRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve changed refs",
+      "traverse module and interface registry impact",
+      "resolve platform adaptation notes"
+    ],
+    "preconditions": [
+      "stable platform main remains unchanged",
+      "adoption branch is isolated"
+    ],
+    "steps": [
+      "generate-contract-catalogs",
+      "generate-adapter-stubs",
+      "generate-conformance-tests",
+      "emit-impact-report",
+      "open-adoption-work"
+    ],
+    "effectOwnerRule": "platform owner implements and reviews native code",
+    "authorityEnvelope": {
+      "effects": [
+        "GENERATE_ADOPTION_KIT"
+      ],
+      "pathScope": [
+        "generated-platform-workspace"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.platform-adoption-kit"
+    ],
+    "canonicalDispositionVocabulary": [
+      "ADOPTION_KIT_READY",
+      "PLATFORM_ALREADY_CONFORMANT",
+      "PLATFORM_HELD_WITH_REASON"
+    ],
+    "returnRouteRule": "return conformance receipt to blueprint matrix",
+    "closureRule": "close after platform acceptance or explicit held disposition",
+    "recoveryRule": "discard generated adoption branch without changing accepted release",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "platform.browser",
+      "platform.android",
+      "platform.ios",
+      "platform.windows",
+      "platform.macos"
+    ],
+    "invalidationTriggers": [
+      "contract-version-change",
+      "platform-capability-change",
+      "security-boundary-change"
+    ],
+    "testRefs": [
+      "test.platform.generator",
+      "test.blueprint.impact-report"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.file.register-project-root",
+    "processVersion": 1,
+    "purpose": "Register one local folder root for explicit projects, roles and access modes without following unapproved boundaries.",
+    "applicabilityRules": [
+      "absolute root supplied by human or native picker",
+      "project exists"
+    ],
+    "requiredInputs": [
+      "absolutePath",
+      "projectRefs",
+      "roleRefs",
+      "accessMode"
+    ],
+    "optionalInputs": [
+      "exclusionPatterns",
+      "depthLimit",
+      "fileCountLimit",
+      "byteLimit"
+    ],
+    "sourceResolutionRules": [
+      "canonicalize path without traversing symlinks",
+      "classify filesystem root/home-sensitive scope",
+      "resolve platform permission mechanism"
+    ],
+    "preconditions": [
+      "human scope confirmation",
+      "access mode registered",
+      "platform grant available"
+    ],
+    "steps": [
+      "normalize-root",
+      "preview-scope",
+      "confirm-project-role-mode",
+      "persist-access-grant",
+      "scan-bounded-metadata",
+      "emit-access-receipt"
+    ],
+    "effectOwnerRule": "file access broker owns root registration; roles only consume bounded projections",
+    "authorityEnvelope": {
+      "effects": [
+        "REGISTER_PROJECT_FILE_ROOT"
+      ],
+      "pathScope": [
+        "human-selected-root-only"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.file-root-access-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "ROOT_REGISTERED",
+      "BLOCKED_ROOT_TOO_BROAD",
+      "BLOCKED_PLATFORM_PERMISSION",
+      "REVOKED"
+    ],
+    "returnRouteRule": "publish capability-frame update to affected project roles",
+    "closureRule": "close after root and scan receipts",
+    "recoveryRule": "revoke grant without deleting files",
+    "foundationDependencies": [
+      "foundation.vexlife.permission-effects.v1",
+      "foundation.vexlife.capability-atlas.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "capability.vexlife.file.read",
+      "capability.vexlife.file.edit-with-recovery"
+    ],
+    "invalidationTriggers": [
+      "root-path-change",
+      "project-role-change",
+      "permission-revocation"
+    ],
+    "testRefs": [
+      "test.file.root-boundary"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.file.edit-with-recovery",
+    "processVersion": 1,
+    "purpose": "Apply one bounded file replacement using expected hash, recovery copy, atomic write and verification.",
+    "applicabilityRules": [
+      "file lies under admitted project root",
+      "role has direct-edit grant"
+    ],
+    "requiredInputs": [
+      "rootRef",
+      "relativePath",
+      "expectedSha256",
+      "replacementContentRef"
+    ],
+    "optionalInputs": [
+      "encoding",
+      "binaryReplacementRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve canonical path under root",
+      "read current hash",
+      "resolve effect and resource envelope"
+    ],
+    "preconditions": [
+      "current hash matches",
+      "recovery directory writable",
+      "file is not excluded secret or Git internal without stronger grant"
+    ],
+    "steps": [
+      "revalidate-current-hash",
+      "copy-before-image",
+      "write-temporary",
+      "atomic-replace",
+      "verify-post-write-hash",
+      "record-effect-receipt"
+    ],
+    "effectOwnerRule": "file effect broker owns write; model only supplies reviewed intent/content",
+    "authorityEnvelope": {
+      "effects": [
+        "RECOVERY_GUARDED_FILE_WRITE"
+      ],
+      "pathScope": [
+        "exact-file-only"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.file-edit-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "EDIT_COMPLETED",
+      "BLOCKED_HASH_DRIFT",
+      "BLOCKED_SCOPE",
+      "RESTORED"
+    ],
+    "returnRouteRule": "return diff, before/after hashes and restore action to originating channel",
+    "closureRule": "close after verification or restoration receipt",
+    "recoveryRule": "restore before-image atomically and retain both receipts",
+    "foundationDependencies": [
+      "foundation.vexlife.permission-effects.v1",
+      "foundation.vexlife.capability-atlas.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "capability.vexlife.file.edit-with-recovery"
+    ],
+    "invalidationTriggers": [
+      "file-hash-change",
+      "grant-change",
+      "recovery-policy-change"
+    ],
+    "testRefs": [
+      "test.file.edit-recovery"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.cli.execute-typed",
+    "processVersion": 1,
+    "purpose": "Execute one registered command with schema, working scope, resource lease, timeout and captured result.",
+    "applicabilityRules": [
+      "commandRef registered",
+      "platform adapter available"
+    ],
+    "requiredInputs": [
+      "commandRef",
+      "parameters",
+      "workingScopeRef",
+      "resourceLeaseRef"
+    ],
+    "optionalInputs": [
+      "timeoutMs",
+      "environmentRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve command schema",
+      "resolve allowed executable and arguments",
+      "resolve working directory under admitted scope"
+    ],
+    "preconditions": [
+      "parameters validate",
+      "resource lease current",
+      "command effect class admitted"
+    ],
+    "steps": [
+      "compile-command-plan",
+      "show-effect-preview-if-required",
+      "spawn-bounded-process",
+      "stream-capped-output",
+      "enforce-timeout-cancellation",
+      "emit-command-receipt"
+    ],
+    "effectOwnerRule": "command executor owns process; model cannot bypass registry with arbitrary shell text",
+    "authorityEnvelope": {
+      "effects": [
+        "EXECUTE_TYPED_COMMAND"
+      ],
+      "pathScope": [
+        "registered-working-scope"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.command-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "COMMAND_COMPLETED",
+      "COMMAND_FAILED",
+      "COMMAND_CANCELLED",
+      "BLOCKED_SCHEMA",
+      "BLOCKED_RESOURCE"
+    ],
+    "returnRouteRule": "return bounded stdout/stderr, exit code and effect refs to model/user",
+    "closureRule": "close after process and child-process cleanup",
+    "recoveryRule": "run command-specific rollback or report no rollback available",
+    "foundationDependencies": [
+      "foundation.vexlife.permission-effects.v1",
+      "foundation.vexlife.capability-atlas.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "capability.vexlife.cli.typed"
+    ],
+    "invalidationTriggers": [
+      "command-schema-change",
+      "executable-change",
+      "resource-policy-change"
+    ],
+    "testRefs": [
+      "test.cli.typed-command-boundary"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.workshop.review-export",
+    "processVersion": 1,
+    "purpose": "Develop one feature in a copy-on-write Workshop, discuss it with role lenses, review an exact revision and export without live apply.",
+    "applicabilityRules": [
+      "featureRef exists",
+      "source revision is current"
+    ],
+    "requiredInputs": [
+      "featureRef",
+      "sourceVersionRef",
+      "authorRoleRef",
+      "reviewerRoleRef"
+    ],
+    "optionalInputs": [
+      "platformRef",
+      "humanApprovalRef"
+    ],
+    "sourceResolutionRules": [
+      "create isolated workspace",
+      "resolve blueprint and platform contracts",
+      "resolve exact revision manifest"
+    ],
+    "preconditions": [
+      "author and reviewer are distinct",
+      "live product path is not writable by Workshop process"
+    ],
+    "steps": [
+      "create-copy-on-write-candidate",
+      "run-designer-developer-discussion",
+      "apply-candidate-edits",
+      "run-tests-and-preview",
+      "bind-exact-revision",
+      "independent-review",
+      "human-approve-export",
+      "create-zip-and-manifest"
+    ],
+    "effectOwnerRule": "Workshop owns candidate and export; no live source apply or publication",
+    "authorityEnvelope": {
+      "effects": [
+        "MUTATE_WORKSHOP_COPY",
+        "EXPORT_REVIEWED_CANDIDATE"
+      ],
+      "pathScope": [
+        "workshop-feature-directory-only"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.workshop-export-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "CANDIDATE_ACTIVE",
+      "REVISION_REQUIRED",
+      "REVIEW_APPROVED",
+      "EXPORT_READY",
+      "BLOCKED_SELF_REVIEW"
+    ],
+    "returnRouteRule": "return candidate ZIP, manifest, review and held gaps to user/Operations",
+    "closureRule": "close after export or explicit discard",
+    "recoveryRule": "discard candidate directory; source remains unchanged",
+    "foundationDependencies": [
+      "foundation.vexlife.workshop-issue-publication.v1",
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "capability.vexlife.workshop"
+    ],
+    "invalidationTriggers": [
+      "source-version-change",
+      "blueprint-change",
+      "review-head-change"
+    ],
+    "testRefs": [
+      "test.workshop.copy-on-write"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.issue.war-room",
+    "processVersion": 1,
+    "purpose": "Deduplicate an observed fault, assemble only implicated roles, reach a bounded decision, verify the fix and close with evidence.",
+    "applicabilityRules": [
+      "issue fingerprint exists or can be formed",
+      "implicated project/role routes resolve"
+    ],
+    "requiredInputs": [
+      "errorFingerprint",
+      "evidenceRefs",
+      "projectRef",
+      "severity"
+    ],
+    "optionalInputs": [
+      "humanQuestion",
+      "candidateWorkRef"
+    ],
+    "sourceResolutionRules": [
+      "deduplicate by stable fingerprint",
+      "resolve implicated current projections",
+      "resolve role responsibility path"
+    ],
+    "preconditions": [
+      "evidence is preserved",
+      "approval required before implementation effect"
+    ],
+    "steps": [
+      "detect-or-increment-issue",
+      "triage",
+      "form-temporary-war-room",
+      "investigate",
+      "record-options-consequences",
+      "obtain-scope-approval",
+      "route-implementation",
+      "verify",
+      "close-and-return-participants"
+    ],
+    "effectOwnerRule": "issue service owns lifecycle; Operations owns routing; implementation remains in separately claimed lane",
+    "authorityEnvelope": {
+      "effects": [
+        "APPEND_ISSUE_STATE",
+        "FORM_TEMPORARY_CHANNEL"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.issue-close-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "DETECTED",
+      "TRIAGED",
+      "INVESTIGATING",
+      "APPROVED_FOR_IMPLEMENTATION",
+      "VERIFYING",
+      "CLOSED",
+      "NEEDS_HUMAN"
+    ],
+    "returnRouteRule": "publish compact Root Hub notice and exact implementation packet",
+    "closureRule": "close only after verification evidence and current projection update",
+    "recoveryRule": "reopen from exact evidence without duplicating issue identity",
+    "foundationDependencies": [
+      "foundation.vexlife.workshop-issue-publication.v1",
+      "foundation.vexlife.implementation-roadmap.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "capability.vexlife.issue-war-room"
+    ],
+    "invalidationTriggers": [
+      "new-evidence",
+      "verification-failure",
+      "scope-change"
+    ],
+    "testRefs": [
+      "test.issue.verified-close"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.github.publish-public-branch",
+    "processVersion": 1,
+    "purpose": "Prepare and push one public-safe non-forced branch while credentials remain outside model context.",
+    "applicabilityRules": [
+      "local Git repository currentness known",
+      "target repository and visibility chosen"
+    ],
+    "requiredInputs": [
+      "sourceManifestRef",
+      "repositoryRef",
+      "branchRef",
+      "expectedRemoteRef",
+      "humanConfirmationRef"
+    ],
+    "optionalInputs": [
+      "licenseState",
+      "draftPrRequested"
+    ],
+    "sourceResolutionRules": [
+      "resolve public inclusion/exclusion manifest",
+      "run secret/model/runtime scan",
+      "resolve Git/GitHub CLI credential broker state"
+    ],
+    "preconditions": [
+      "public confirmation exact",
+      "no private/runtime/model artifacts",
+      "branch update is non-forced",
+      "license state visible"
+    ],
+    "steps": [
+      "prepare-public-tree",
+      "scan-exclusions-secrets-and-large-artifacts",
+      "show-manifest",
+      "create-local-commit",
+      "push-non-forced-branch",
+      "open-draft-pr-if-requested",
+      "record-external-receipts"
+    ],
+    "effectOwnerRule": "Git broker owns credentials and effects; model receives only plan/status/receipts",
+    "authorityEnvelope": {
+      "effects": [
+        "GIT_COMMIT",
+        "GIT_PUSH_NONFORCED",
+        "OPEN_DRAFT_PR"
+      ],
+      "pathScope": [
+        "public-manifest-included-paths-only"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.publication-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "PUBLICATION_PLAN_READY",
+      "PUSHED_BRANCH",
+      "DRAFT_PR_OPEN",
+      "BLOCKED_SECRET_SCAN",
+      "BLOCKED_REMOTE_DRIFT",
+      "BLOCKED_LICENSE_DECISION"
+    ],
+    "returnRouteRule": "return commit, branch, remote and PR receipts to Operations and user",
+    "closureRule": "close after external refs re-read exactly",
+    "recoveryRule": "revert with a new commit; never rewrite public history",
+    "foundationDependencies": [
+      "foundation.vexlife.workshop-issue-publication.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "capability.vexlife.github.publication"
+    ],
+    "invalidationTriggers": [
+      "manifest-change",
+      "remote-ref-change",
+      "secret-scan-change",
+      "visibility-change"
+    ],
+    "testRefs": [
+      "test.public.no-private-runtime"
+    ]
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "3d",
+  "files": [
+    {
+      "path": ".github/CODEOWNERS",
+      "mode": "100644",
+      "bytes": 1008,
+      "sha256": "5e76ef69e75962e5c66c28701af0d92e95c9fac133780b5df6b1a36edea4db1a"
+    },
+    {
+      "path": "docs/FRIEND-RELATIONSHIP-PERSISTENCE-ADOPTION.md",
+      "mode": "100644",
+      "bytes": 2845,
+      "sha256": "3a338ea5239a89cea3b3e8a434507c265122ab3024042ee68c6cb3a7ee94cd8e"
+    },
+    {
+      "path": "reference/browser/public-learning/app.css",
+      "mode": "100644",
+      "bytes": 6950,
+      "sha256": "3fdfc3490b41515c4eff31f31251e7a4efbab74b8aa1077612ba51e92620c4da"
+    }
+  ]
+}

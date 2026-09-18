@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "8f",
+  "files": [
+    {
+      "path": "src/core/native-worker-intent-bridge.mjs",
+      "mode": "100644",
+      "bytes": 9315,
+      "sha256": "25d23bd1dfd0902c5742a3977f24a0184727d523930df70d138764d9d5e77841"
+    }
+  ]
+}

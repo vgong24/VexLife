@@ -1,0 +1,171 @@
+[
+  {
+    "templateRef": "template.vexlife.platform-render-contract",
+    "templateVersion": 1,
+    "purpose": "Human and platform-readable screen projection."
+  },
+  {
+    "templateRef": "template.vexlife.navigation-event",
+    "templateVersion": 1,
+    "purpose": "Semantic from/to journey event."
+  },
+  {
+    "templateRef": "template.vexlife.addressed-message",
+    "templateVersion": 1,
+    "purpose": "Speaker-to-recipient message envelope."
+  },
+  {
+    "templateRef": "template.vexlife.message-projection",
+    "templateVersion": 1,
+    "purpose": "Attributed translation or Vex-refinement projection."
+  },
+  {
+    "templateRef": "template.vexlife.bootstrap-receipt",
+    "templateVersion": 1,
+    "purpose": "Device-local home and lineage creation receipt."
+  },
+  {
+    "templateRef": "template.vexlife.platform-adoption-kit",
+    "templateVersion": 1,
+    "purpose": "Changed identities, stubs, tests and platform return contract."
+  },
+  {
+    "templateRef": "template.vexlife.registered-interface-node",
+    "templateVersion": 1,
+    "purpose": "One canonical node plus generated identity/localization/navigation/permission/Terrain relationships."
+  },
+  {
+    "templateRef": "template.vexlife.interaction-resolution",
+    "templateVersion": 1,
+    "purpose": "Resolved gesture action, ambiguity state and semantic-journey decision."
+  },
+  {
+    "templateRef": "template.vexlife.dream-candidate",
+    "templateVersion": 1,
+    "purpose": "Source-bound unreviewed Dream candidate."
+  },
+  {
+    "templateRef": "template.vexlife.dream-review",
+    "templateVersion": 1,
+    "purpose": "Consent, privacy, contradiction and scope review disposition."
+  },
+  {
+    "templateRef": "template.vexlife.family-evolution-envelope",
+    "templateVersion": 1,
+    "purpose": "Sibling-attributed family sync delivery envelope."
+  },
+  {
+    "templateRef": "template.vexlife.adapter-training-receipt",
+    "templateVersion": 1,
+    "purpose": "Isolated training, checkpoint, evaluation and accepted-inactive receipt."
+  },
+  {
+    "templateRef": "template.vexlife.implementation-packet",
+    "templateVersion": 1,
+    "purpose": "Bounded dependency, path, source, test, exclusion and return packet."
+  },
+  {
+    "templateRef": "template.vexlife.demo-distance",
+    "templateVersion": 1,
+    "purpose": "Named-gate demo distance and next-safe-lane projection."
+  },
+  {
+    "templateRef": "template.vexlife.file-root-access-receipt",
+    "templateVersion": 1,
+    "purpose": "Project/role/mode folder grant and bounded scan receipt."
+  },
+  {
+    "templateRef": "template.vexlife.file-edit-receipt",
+    "templateVersion": 1,
+    "purpose": "Expected hash, before-image, atomic replacement and restore receipt."
+  },
+  {
+    "templateRef": "template.vexlife.command-receipt",
+    "templateVersion": 1,
+    "purpose": "Typed command plan, process result, resource and cancellation receipt."
+  },
+  {
+    "templateRef": "template.vexlife.workshop-export-receipt",
+    "templateVersion": 1,
+    "purpose": "Exact feature revision, tests, review, approval and ZIP manifest."
+  },
+  {
+    "templateRef": "template.vexlife.issue-close-receipt",
+    "templateVersion": 1,
+    "purpose": "Issue fingerprint, triage, decision, implementation and verification close receipt."
+  },
+  {
+    "templateRef": "template.vexlife.publication-receipt",
+    "templateVersion": 1,
+    "purpose": "Public manifest, scan, commit, non-forced push and draft PR receipt."
+  },
+  {
+    "templateRef": "template.vexlife.feature-registration-receipt",
+    "templateVersion": 1,
+    "purpose": "Record feature identity, missing relationships, lens coverage and affected-platform projection.",
+    "requiredFields": [
+      "featureRef",
+      "sourceHash",
+      "lensRefs",
+      "affectedRefs",
+      "affectedPlatforms",
+      "missingFields",
+      "disposition"
+    ]
+  },
+  {
+    "templateRef": "template.vexlife.health-receipt",
+    "templateVersion": 1,
+    "purpose": "Compact repository health with check refs and source-bound details.",
+    "requiredFields": [
+      "sourceTreeRef",
+      "blueprintHash",
+      "state",
+      "checkResults",
+      "changedFromRef",
+      "receiptHash"
+    ]
+  },
+  {
+    "templateRef": "template.vexlife.bridge-pairing-receipt",
+    "templateVersion": 1,
+    "purpose": "Record trusted-device pairing without exposing private keys or secrets.",
+    "requiredFields": [
+      "pairingRef",
+      "homeNodeRef",
+      "deviceRef",
+      "approvedCapabilityRefs",
+      "leaseRef",
+      "expiresAt",
+      "receiptHash"
+    ]
+  },
+  {
+    "templateRef": "template.vexlife.bridge-request-receipt",
+    "templateVersion": 1,
+    "purpose": "Bind a remote request to device, lease, action, currentness, resource and result projections.",
+    "requiredFields": [
+      "requestRef",
+      "deviceRef",
+      "leaseRef",
+      "actionRef",
+      "sourceStateRef",
+      "resultState",
+      "projectionRefs",
+      "receiptHash"
+    ]
+  },
+  {
+    "templateRef": "template.vexlife.bridge-revocation-receipt",
+    "templateVersion": 1,
+    "purpose": "Record revocation generation, affected leases and retained history.",
+    "requiredFields": [
+      "deviceRef",
+      "priorGeneration",
+      "newGeneration",
+      "affectedLeaseRefs",
+      "reason",
+      "receiptHash"
+    ]
+  }
+]

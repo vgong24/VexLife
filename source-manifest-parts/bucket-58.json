@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "58",
+  "files": [
+    {
+      "path": "docs/FOUNDATION-CULTURE-COVERAGE-MAP.md",
+      "mode": "100644",
+      "bytes": 10250,
+      "sha256": "c4364d889ba4ff14f16ca6c622893c44c58a2b3b304989dbf4dec0b9ab9c9c5e"
+    },
+    {
+      "path": "reference/browser/integration/cross-feature-suite.js",
+      "mode": "100644",
+      "bytes": 10837,
+      "sha256": "927586e8de63afd0257a25db765f648fe352237d0b2e413a7b38dd16269f2a57"
+    },
+    {
+      "path": "test/artifact-delivery.test.mjs",
+      "mode": "100644",
+      "bytes": 40595,
+      "sha256": "fa9958026f0eb963d0e97ee1aa066194d88c1bf23691079a4079eedbe6dcda54"
+    },
+    {
+      "path": "training/foundation-generation/foundation_train.py",
+      "mode": "100644",
+      "bytes": 35902,
+      "sha256": "feb9bbc2fddcf86faca645ebc8a79ba1375040948a28c7dd6e831c1f414a4931"
+    }
+  ]
+}

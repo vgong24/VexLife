@@ -1,0 +1,64 @@
+[
+  {
+    "moduleRef": "module.vexlife.browser.cdr-s5-closed-alpha-document",
+    "path": "reference/browser/cdr-s5-closed-alpha/index.html",
+    "role": "Invite-only closed-alpha human reference document with no participant or network effect.",
+    "platformScope": [
+      "BROWSER"
+    ],
+    "reads": [
+      "registry.vexlife.cdr-s5.closed-alpha-browser.001"
+    ],
+    "writes": [],
+    "tests": [
+      "test/cdr-s5-closed-alpha-browser.test.mjs"
+    ],
+    "changeMap": [
+      "screen.vexlife.cdr-s5-closed-alpha",
+      "feature.vexlife.cdr-s5-closed-alpha"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.cdr-s5-closed-alpha-styles",
+    "path": "reference/browser/cdr-s5-closed-alpha/app.css",
+    "role": "Accessible responsive closed-alpha reference styling with reduced-motion support.",
+    "platformScope": [
+      "BROWSER"
+    ],
+    "reads": [
+      "screen.vexlife.cdr-s5-closed-alpha"
+    ],
+    "writes": [],
+    "tests": [
+      "test/cdr-s5-closed-alpha-browser.test.mjs"
+    ],
+    "changeMap": [
+      "screen.vexlife.cdr-s5-closed-alpha"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.cdr-s5-closed-alpha-controller",
+    "path": "reference/browser/cdr-s5-closed-alpha/app.js",
+    "role": "Deterministic synthetic closed-alpha controller for consent, invitation, currentness, route, delivery, support and prospective recovery reference state.",
+    "platformScope": [
+      "BROWSER"
+    ],
+    "reads": [
+      "registry.vexlife.cdr-s5.closed-alpha-browser.001"
+    ],
+    "writes": [
+      "state.cdr-s5-closed-alpha-reference"
+    ],
+    "loadedBy": [
+      "reference/browser/cdr-s5-closed-alpha/index.html"
+    ],
+    "tests": [
+      "test/cdr-s5-closed-alpha-browser.test.mjs"
+    ],
+    "changeMap": [
+      "state.cdr-s5-closed-alpha-reference",
+      "screen.vexlife.cdr-s5-closed-alpha",
+      "feature.vexlife.cdr-s5-closed-alpha"
+    ]
+  }
+]

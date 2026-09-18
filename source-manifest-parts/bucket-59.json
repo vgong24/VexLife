@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "59",
+  "files": [
+    {
+      "path": "docs/DAILY-MEMORY-DREAM.md",
+      "mode": "100644",
+      "bytes": 7977,
+      "sha256": "dad0ff7deff99ec5fe67c0d36161b7b5e36945747dea8015e10d1ad09e3dd0ce"
+    }
+  ]
+}

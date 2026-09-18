@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "51",
+  "files": [
+    {
+      "path": "reference/browser/modules/experience-review-adapter.js",
+      "mode": "100644",
+      "bytes": 12325,
+      "sha256": "a83727716df8cbde9fe91fcad50f544537954683f2ddee5fdeb8832ed4d0a74a"
+    },
+    {
+      "path": "scripts/evolution-simulate.mjs",
+      "mode": "100644",
+      "bytes": 47206,
+      "sha256": "6d8deaf32773ca7ee62832dc3b673f8eca219218932b8885f9be8ca79bd3f91d"
+    },
+    {
+      "path": "src/core/capability.mjs",
+      "mode": "100644",
+      "bytes": 8539,
+      "sha256": "1319469b8f89e54a09c41c5d13afced41519bee23d5b9974f53392a21383a656"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "vexlife.design-review.qualification/v3",
+  "reviewEpochRef": "review-epoch.vexlife.design.e2.7.scoped-layers-vexorg",
+  "status": "PASS",
+  "priorReferenceBaselineRef": "design-baseline.vexlife.e2.6.intent-aware-navigation",
+  "baselineRegressionChecks": {
+    "projectionLabPresent": "PASS",
+    "semanticZoomRailPresent": "PASS",
+    "autoSemanticEntryControlPresent": "PASS",
+    "recentJourneyWindowMax5": "PASS",
+    "fullJourneyPreserved": "PASS",
+    "spaceTravelNavigationPreserved": "PASS",
+    "presenceMenuActiveAndOutsideClose": "PASS",
+    "floatingVexDirectMovementPreserved": "PASS",
+    "referenceBaselineLedgerPresent": "PASS"
+  },
+  "e27Checks": {
+    "embeddedScrollOwnsWheelWithoutTerrainZoom": "PASS",
+    "embeddedScrollDoesNotScrollOuterReviewPage": "PASS",
+    "scopedSurfaceScrollStateStartsAtOwnOrigin": "PASS",
+    "fourResizeCornerHandlesPresent": "PASS",
+    "southwestResizeGesture": "PASS",
+    "northeastResizeGesture": "PASS",
+    "resizeGestureReleasesWithoutStickyMode": "PASS",
+    "vexOrgEntryVisibleUnderVextreme": "PASS",
+    "vexOrgStructureLens": "PASS",
+    "vexOrgProjectsLens": "PASS",
+    "vexOrgContributionsLens": "PASS",
+    "departmentTeamPersonTraversal": "PASS",
+    "personPrivateVexBoundaryVisible": "PASS",
+    "selfLoggedContributionLedgerVisible": "PASS",
+    "recipientControlledKudosActionsVisible": "PASS",
+    "resourceMoveBeginsAsPendingProposal": "PASS",
+    "personAcknowledgmentDoesNotMutateAssignment": "PASS",
+    "noBrowserPageErrors": "PASS"
+  },
+  "sparseSnapshots": [
+    "snapshots/e2.7-vexorg-structure-desktop-dark.png",
+    "snapshots/e2.7-platform-team-desktop-dark.png",
+    "snapshots/e2.7-person-ledger-proposal-desktop-dark.png"
+  ],
+  "repositoryMutationPerformed": false,
+  "sourceMutationPerformed": false
+}

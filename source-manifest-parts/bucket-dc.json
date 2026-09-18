@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "dc",
+  "files": [
+    {
+      "path": "blueprint/artifact-delivery-registry.json",
+      "mode": "100644",
+      "bytes": 2102,
+      "sha256": "02c78970d61f010d72e920757a2de69de80726d797daceed5c81a93ad6e81747"
+    },
+    {
+      "path": "blueprint/module-registry/cdr-s5-closed-alpha.json",
+      "mode": "100644",
+      "bytes": 1901,
+      "sha256": "503b5b3088b7a41e5d92accfddc3fecac97e0edfd2e51d144373750252078406"
+    },
+    {
+      "path": "src/core/blueprint.mjs",
+      "mode": "100644",
+      "bytes": 4120,
+      "sha256": "b6dab65780a488c28f902b77d058f60ae1660955ff0f9c6fed34661f5e416164"
+    },
+    {
+      "path": "src/core/continuity-evolution-router.mjs",
+      "mode": "100644",
+      "bytes": 105344,
+      "sha256": "1272206f1564d49a885a5bd9b8d9501b3799092a3b523f6f584d89e614661a8c"
+    },
+    {
+      "path": "src/core/navigation.mjs",
+      "mode": "100644",
+      "bytes": 6702,
+      "sha256": "7c01e0af5d1076bde1cdc64aab47271792c925bc5e88a88f1e36cf815b4b0481"
+    },
+    {
+      "path": "test/living-journal-memory-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 14747,
+      "sha256": "baeb6b8c245dc9ea1417fc10c7b7137f1bccf26506b7288782070c4da5767623"
+    },
+    {
+      "path": "test/release-bootstrap-package.test.mjs",
+      "mode": "100644",
+      "bytes": 11818,
+      "sha256": "5180b0ce2789fbd88b93a2dcd78444a41343beee67612311d775d290f748ce82"
+    }
+  ]
+}

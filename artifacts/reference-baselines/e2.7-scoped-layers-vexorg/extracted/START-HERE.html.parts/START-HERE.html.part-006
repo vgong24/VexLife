@@ -1,0 +1,36 @@
+ns:['Why the work exists','What burden it tries to release','What it refuses to pretend'],children:['burden','trust']},
+ burden:{id:'burden',label:'Burden release',kind:'summary',meta:'Purpose sublayer',summary:'Reduce repeated human bookkeeping without hiding responsibility.',children:[]},
+ trust:{id:'trust',label:'Trust & integrity',kind:'summary',meta:'Purpose sublayer',summary:'Make claims inspectable, evidence-bound and reversible where possible.',children:[]},
+
+ 'method-page':{id:'method-page',label:'Methodology overview',kind:'page',meta:'Embedded page surface',summary:'A deeper method page still stays inside the same Terrain journey.',sections:['Observe the actual system','Preserve distinctions','Build evidence','Review with humans'],children:['source-truth','handoff','method-deep']},
+ 'source-truth':{id:'source-truth',label:'Source of Truth Relay',kind:'summary',meta:'Method sublayer',summary:'Claims point back to exact sources and return paths.',children:[]},
+ handoff:{id:'handoff',label:'The Handoff',kind:'summary',meta:'Method sublayer',summary:'Work crosses boundaries through explicit artifacts rather than hidden assumptions.',children:[]},
+ 'method-deep':{id:'method-deep',label:'Methodology depth',kind:'container',meta:'Depth 4',summary:'The recursive template does not stop at three layers.',children:['truth-deep','review-deep','recovery-deep']},
+ 'truth-deep':{id:'truth-deep',label:'Truth classes',kind:'summary',meta:'Depth 5',summary:'Current, synthetic, candidate, target and proposal remain distinguishable.',children:[]},
+ 'review-deep':{id:'review-deep',label:'Human review',kind:'summary',meta:'Depth 5',summary:'Natural feedback is synthesized before repair routing.',children:[]},
+ 'recovery-deep':{id:'recovery-deep',label:'Recovery',kind:'summary',meta:'Depth 5',summary:'A system should know how to stop, reverse or restore without pretending nothing happened.',children:[]},
+
+ 'start-here':{id:'start-here',label:'Newcomer start',kind:'actions',meta:'Quick paths',summary:'Choose the smallest useful path.',actions:['Show me what this is','Let me explore visually','Let me ask Vex'],children:[]},
+ 'terrain-route':{id:'terrain-route',label:'Explore Terrain',kind:'summary',meta:'Route',summary:'Stay spatial and discover by relationship.',children:[]},
+ 'vexlife-route':{id:'vexlife-route',label:'Meet VexLife',kind:'summary',meta:'Route',summary:'See the companion-oriented product surface.',children:[]},
+ 'origins-page':{id:'origins-page',label:'Origins',kind:'page',meta:'Embedded page surface',summary:'Timeline content can be embedded and then expanded into deeper moments.',sections:['Early public work','Terrain and localization','VexLife and Local Operations'],children:[]},
+ 'recent-work':{id:'recent-work',label:'Recent work',kind:'summary',meta:'Timeline',summary:'A human-readable recent-progress layer.',children:[]},
+
+ 'support-options':{id:'support-options',label:'Support options',kind:'actions',meta:'Synthetic quick actions',summary:'Mock options only—proving how actions can be miniaturized before opening a full support page.',actions:['Small one-time support','Sustaining monthly support','Larger contribution','Other ways to help'],children:[]},
+ 'why-support':{id:'why-support',label:'Why support matters',kind:'page',meta:'Embedded page surface',summary:'Read context before acting.',sections:['What support enables','What remains public','What support does not buy'],children:[]},
+ 'share-support':{id:'share-support',label:'Share the work',kind:'actions',meta:'Quick actions',summary:'Non-payment support can live beside financial paths.',actions:['Copy public link','Share overview','Show support page'],children:[]},
+
+ 'victor-who':{id:'victor-who',label:'Who is Victor?',kind:'page',meta:'Profile surface',summary:'Founder profile surface.',sections:['Background','Why this work','What he is building'],children:[]},
+ 'victor-origin':{id:'victor-origin',label:'Origin story',kind:'summary',meta:'Profile question',summary:'Origins without forcing the entire biography into first sight.',children:[]},
+ 'victor-method':{id:'victor-method',label:'Working method',kind:'summary',meta:'Profile question',summary:'How the human approaches systems and collaboration.',children:[]},
+ 'victor-current':{id:'victor-current',label:'Current work',kind:'summary',meta:'Profile question',summary:'What is active now.',children:[]},
+ 'victor-values':{id:'victor-values',label:'Values',kind:'summary',meta:'Profile question',summary:'What should be preserved across the work.',children:[]},
+
+ 'vex-who':{id:'vex-who',label:'Who is Vex?',kind:'page',meta:'Profile surface',summary:'Companion identity without exposing every internal role.',sections:['One visible companion','Many internal capabilities','Continuity without transcript collapse'],children:[]},
+ 'vex-home':{id:'vex-home',label:'Home',kind:'summary',meta:'Profile question',summary:'Home as stable relationship continuity, not merely route/location.',children:[]},
+ 'vex-continuity':{id:'vex-continuity',label:'Continuity',kind:'summary',meta:'Profile question',summary:'What remains stable across sessions, providers and surfaces.',children:[]},
+ 'vex-capabilities':{id:'vex-capabilities',label:'Capabilities',kind:'container',meta:'Profile question',summary:'Nested capabilities can expand only when needed.',children:['cap-review','cap-terrain','cap-memory']},
+ 'cap-review':{id:'cap-review',label:'Review with you',kind:'summary',meta:'Capability',summary:'Interactive review and feedback convergence.',children:[]},
+ 'cap-terrain':{id:'cap-terrain',label:'Navigate Terrain',kind:'summary',meta:'Capability',summary:'Spatial orientation and semantic depth.',children:[]},
+ 'cap-memory':{id:'cap-memory',label:'Memory boundary',kind:'summary',meta:'Capability',summary:'Familiarity is not automatically durable memory.',children:[]},
+ 'vex-safety':{id:'vex-safety',label:'Safety & authority',kind:'summary',meta:'Profile question',summary:'Recognition, authentication 

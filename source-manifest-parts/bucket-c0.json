@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "c0",
+  "files": [
+    {
+      "path": "blueprint/module-registry/relationships-runtime-bridge.json",
+      "mode": "100644",
+      "bytes": 2356,
+      "sha256": "ce323764800f3a42e709d2cad3dd403fd844a51096ea4eb5a2f36757afbc7fd0"
+    },
+    {
+      "path": "src/core/atlas.mjs",
+      "mode": "100644",
+      "bytes": 6817,
+      "sha256": "8c16d6040fc64583ea73aa22c56322e240efa220a8b11b98ee388b3b5d2d6768"
+    },
+    {
+      "path": "src/core/public-safety.mjs",
+      "mode": "100644",
+      "bytes": 5576,
+      "sha256": "88af603fcbfb2f1572633a1530a5eccc874ade81dff91b704b69f165f4952e8e"
+    },
+    {
+      "path": "test/native-worker-supervisor-a03.test.mjs",
+      "mode": "100644",
+      "bytes": 7178,
+      "sha256": "f8c2ee17f7dd926f63fdefbe03e70fd56b38900ddbb282033acb84088a90c595"
+    }
+  ]
+}

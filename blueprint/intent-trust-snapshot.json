@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "vexlife.intent-trust-snapshot/v0",
+  "snapshotRef": "trust-snapshot.vexlife.intent.source-managed.001",
+  "sourceRef": "blueprint/intent-trust-snapshot.json",
+  "sourceHash": "b6c1c643e385dc2a6b871ae5b4cc8dc7d924e36a8ff3416bbe0f7e29f80a9387",
+  "formationRef": "formation.vexlife.intent-trust.source-managed.001",
+  "formedAt": "2026-07-31T00:00:00.000Z",
+  "currentness": "CURRENT",
+  "bindingRefs": {
+    "capabilityEnvelopeRef": [
+      "capability-envelope.intent.contract-validation"
+    ],
+    "effectEnvelopeRef": [
+      "effect-envelope.intent.no-effects",
+      "effect-envelope.intent.source-managed.bounded"
+    ],
+    "resourceEnvelopeRef": [
+      "resource-envelope.intent.deterministic-local-light"
+    ],
+    "expectedTransitionRef": [
+      "expected-transition.intent.contract-current"
+    ],
+    "completionGateRefs": [
+      "completion-gate.intent.contract-valid"
+    ],
+    "returnRouteRef": [
+      "return-route.intent.verify-transition"
+    ]
+  },
+  "actorRefs": [
+    "person.vexlife.owner",
+    "vex.vexlife.intent-orchestration"
+  ],
+  "decisionRefs": [
+    "decision.intent.source-managed.review"
+  ],
+  "authorizationBindings": [
+    {
+      "authorizationRef": "authorization.intent.source-managed.review",
+      "actorRef": "person.vexlife.owner",
+      "actorRoleRef": "role.vex.operations",
+      "decisionRef": "decision.intent.source-managed.review",
+      "effectEnvelopeRef": "effect-envelope.intent.source-managed.bounded",
+      "authorityDisposition": "AUTHORIZED_BOUNDED",
+      "effectDisposition": "EFFECT_ENVELOPE_BOUND"
+    }
+  ],
+  "semanticFingerprint": "c57d39bf2bb42f7f43f49b134a7a2aee4fa47f65d5b00ea4806dc1e78e8c4247"
+}

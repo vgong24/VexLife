@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "f3",
+  "files": [
+    {
+      "path": "blueprint/public-learning/strings/ja.json",
+      "mode": "100644",
+      "bytes": 8031,
+      "sha256": "8edaf6907cad71bf411b919146dc3db227bda619357f6d33098f0ce860081d2a"
+    },
+    {
+      "path": "reference/browser/cdr-s5-closed-alpha/index.html",
+      "mode": "100644",
+      "bytes": 5762,
+      "sha256": "54323e40f5b78c4bcec5beb39de8b5375a5e96defc83dc892224f25aaabb44dc"
+    }
+  ]
+}

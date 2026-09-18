@@ -1,0 +1,190 @@
+{
+  "schemaVersion": "vexlife.registration-extension/v1",
+  "registrationRef": "registration.vexlife.purpose-workspace.spw02.001",
+  "features": [
+    {
+      "featureRef": "feature.vexlife.scoped-purpose-workspace",
+      "purpose": "Register one reusable source-managed Purpose Workspace across synthetic domain, role, process and completion contracts while preserving explicit authority/evidence boundaries and holding browser adoption and real external effects.",
+      "status": "PREPARED",
+      "humanIntroduction": {
+        "disposition": "WALKTHROUGH",
+        "routeState": "HELD",
+        "planRefOrNull": "plan.vexlife.feature.scoped-purpose-workspace.introduction.001",
+        "rationale": "The no-effect walkthrough contract is source-registered, but the Purpose Workspace is not yet browser-current or discoverable; the later browser owner must establish that currentness before introduction can run."
+      },
+      "canonicalNodeRefs": [
+        "screen.vexlife.purpose-workspace"
+      ],
+      "stateRefs": [
+        "state.context",
+        "state.selection",
+        "state.navigation",
+        "state.journey"
+      ],
+      "actionRefs": [
+        "action.context.open"
+      ],
+      "permissionRefs": [
+        "permission.none"
+      ],
+      "processRefs": [
+        "process.vexlife.purpose-workspace.coordinate"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.purpose-workspace"
+      ],
+      "localizationRefs": [
+        "screen.purpose-workspace.title",
+        "feature-walkthrough.purpose-workspace.stage.orient",
+        "feature-walkthrough.purpose-workspace.stage.do",
+        "feature-walkthrough.purpose-workspace.stage.understand",
+        "feature-walkthrough.purpose-workspace.stage.steward",
+        "feature-walkthrough.purpose-workspace.stage.complete"
+      ],
+      "testRefs": [
+        "test.navigation.screen-frame",
+        "test.navigation.home-and-back",
+        "test.permission.no-inferred-effect",
+        "test.localization.coverage",
+        "test.blueprint.identity-and-reference-integrity"
+      ],
+      "platformRefs": [
+        "platform.browser"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.accessibility",
+        "lens.vexlife.assurance-and-adversarial",
+        "lens.vexlife.design-system",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.visibility-terrain-health"
+      ],
+      "resourceClass": "DETERMINISTIC_SOURCE_MANAGED_PROJECTION",
+      "dataClass": "SYNTHETIC_DOMAIN_AND_CONTEXT_REFS_ONLY",
+      "effectClass": "READ_PROJECTION",
+      "concurrencyClass": "NONE",
+      "rollbackRouteRef": "action.navigation.back",
+      "projectionRefs": [
+        "projection.purpose-workspace.planned"
+      ],
+      "knownGaps": [
+        "Browser controller, Terrain adoption and discoverability remain held for a later browser owner.",
+        "Rendered Experience Review evidence remains a later bounded gate.",
+        "Real learner, patient, client, apprentice, professional, Home, Memory, model, training, network and publication effects remain held."
+      ]
+    }
+  ],
+  "featureWalkthroughPlans": [
+    {
+      "planRef": "plan.vexlife.feature.scoped-purpose-workspace.introduction.001",
+      "journeyRef": "journey.vexlife.feature.scoped-purpose-workspace.introduction.001",
+      "featureRef": "feature.vexlife.scoped-purpose-workspace",
+      "sourceVersionRef": "source-version.vexlife.scoped-purpose-workspace.registration.001",
+      "experienceProfileRef": "experience.vexlife.newcomer-guided",
+      "effects": false,
+      "replayable": true,
+      "stages": [
+        {
+          "stageRef": "stage.vexlife.feature.scoped-purpose-workspace.orient",
+          "sequence": 0,
+          "purposeClass": "ORIENT",
+          "contentStringRef": "feature-walkthrough.purpose-workspace.stage.orient",
+          "targetRefOrNull": "screen.vexlife.purpose-workspace",
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "PURPOSE_WORKSPACE_BOUNDARIES_UNDERSTOOD",
+          "captureRequired": false,
+          "recoveryClass": "HOLD_WITHOUT_NAVIGATION"
+        },
+        {
+          "stageRef": "stage.vexlife.feature.scoped-purpose-workspace.do",
+          "sequence": 1,
+          "purposeClass": "DO",
+          "contentStringRef": "feature-walkthrough.purpose-workspace.stage.do",
+          "targetRefOrNull": "screen.vexlife.purpose-workspace",
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "DO_DEPTH_UNDERSTOOD",
+          "captureRequired": false,
+          "recoveryClass": "HOLD_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "stage.vexlife.feature.scoped-purpose-workspace.understand",
+          "sequence": 2,
+          "purposeClass": "UNDERSTAND",
+          "contentStringRef": "feature-walkthrough.purpose-workspace.stage.understand",
+          "targetRefOrNull": "screen.vexlife.purpose-workspace",
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "UNDERSTAND_DEPTH_UNDERSTOOD",
+          "captureRequired": false,
+          "recoveryClass": "HOLD_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "stage.vexlife.feature.scoped-purpose-workspace.steward",
+          "sequence": 3,
+          "purposeClass": "STEWARD",
+          "contentStringRef": "feature-walkthrough.purpose-workspace.stage.steward",
+          "targetRefOrNull": "screen.vexlife.purpose-workspace",
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "STEWARD_DEPTH_AND_AUTHORITY_BOUNDARIES_UNDERSTOOD",
+          "captureRequired": false,
+          "recoveryClass": "HOLD_WITHOUT_EFFECT"
+        },
+        {
+          "stageRef": "stage.vexlife.feature.scoped-purpose-workspace.complete",
+          "sequence": 4,
+          "purposeClass": "COMPLETE",
+          "contentStringRef": "feature-walkthrough.purpose-workspace.stage.complete",
+          "targetRefOrNull": "screen.vexlife.purpose-workspace",
+          "actionRefOrNull": null,
+          "expectedOutcomeClass": "INTRODUCTION_READY_FOR_LATER_BROWSER_ADOPTION",
+          "captureRequired": false,
+          "recoveryClass": "RETURN_TO_CURRENT_CONTEXT"
+        }
+      ],
+      "truthBoundaries": [
+        "RELATIONSHIP != AUTHORITY",
+        "ROLE_LENS != AUTHORITY",
+        "OBSERVATION != INTERPRETATION",
+        "REVIEW != AUTHORIZATION",
+        "AUTHORIZATION != EXTERNAL_EFFECT",
+        "PREPARED != DELIVERED",
+        "CORRECTION != ERASURE",
+        "REGISTERED != BROWSER_ADOPTED",
+        "WALKTHROUGH_REGISTERED != WALKTHROUGH_CURRENT",
+        "WALKTHROUGH_PLAN != LIVED_JOURNEY_EVENT",
+        "SOURCE_SCREEN != RENDERED_SCREEN"
+      ],
+      "supersedesPlanRefOrNull": null
+    }
+  ],
+  "strings": {
+    "en": {
+      "screen.purpose-workspace.title": "Purpose Workspace",
+      "feature-walkthrough.purpose-workspace.stage.orient": "Purpose Workspace keeps role, authority, evidence, and completion boundaries explicit before any external effect.",
+      "feature-walkthrough.purpose-workspace.stage.do": "Do shows the three tasks that need attention now for the selected purpose and domain.",
+      "feature-walkthrough.purpose-workspace.stage.understand": "Understand shows how stages, evidence, and relay developed without rewriting the underlying work.",
+      "feature-walkthrough.purpose-workspace.stage.steward": "Steward shows ownership, authority, held effects, and the evidence required for completion.",
+      "feature-walkthrough.purpose-workspace.stage.complete": "The source contract is registered. Browser adoption and any real external effect remain separate and held."
+    },
+    "ja": {
+      "screen.purpose-workspace.title": "目的ワークスペース",
+      "feature-walkthrough.purpose-workspace.stage.orient": "Purpose Workspace は、外部効果を実行する前に、役割・権限・証拠・完了の境界を明示します。",
+      "feature-walkthrough.purpose-workspace.stage.do": "Do は、選択した目的と領域について今対応が必要な3つのタスクを示します。",
+      "feature-walkthrough.purpose-workspace.stage.understand": "Understand は、基礎となる作業を書き換えずに、段階・証拠・リレーがどのように進んだかを示します。",
+      "feature-walkthrough.purpose-workspace.stage.steward": "Steward は、所有者、権限、保留中の効果、完了に必要な証拠を示します。",
+      "feature-walkthrough.purpose-workspace.stage.complete": "ソース契約は登録済みです。ブラウザー採用と実際の外部効果は別扱いのまま保留されています。"
+    },
+    "zh": {
+      "screen.purpose-workspace.title": "目的工作区",
+      "feature-walkthrough.purpose-workspace.stage.orient": "Purpose Workspace 会在任何外部效果发生前，明确区分角色、权限、证据与完成边界。",
+      "feature-walkthrough.purpose-workspace.stage.do": "Do 显示所选目的和领域当前需要关注的三个任务。",
+      "feature-walkthrough.purpose-workspace.stage.understand": "Understand 显示阶段、证据与交接如何发展，同时不改写底层工作记录。",
+      "feature-walkthrough.purpose-workspace.stage.steward": "Steward 显示负责人、权限、被保留的效果，以及完成所需的证据。",
+      "feature-walkthrough.purpose-workspace.stage.complete": "源合同已完成注册。浏览器采用和任何真实外部效果仍是独立且被保留的后续工作。"
+    }
+  }
+}

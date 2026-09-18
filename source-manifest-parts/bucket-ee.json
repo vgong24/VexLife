@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ee",
+  "files": [
+    {
+      "path": "blueprint/process-factory/processes-health-and-bridge.json",
+      "mode": "100644",
+      "bytes": 11192,
+      "sha256": "1f5f69cdf9398c6a254e1e7a4418eb6d2f1125f89b196d65e7112ac171ad5ee0"
+    },
+    {
+      "path": "docs/NEWCOMER-MAP.md",
+      "mode": "100644",
+      "bytes": 5418,
+      "sha256": "fa851e7174736adf4714fb532cb79528405dac4e3b3091de28a8d6bb1d4a993a"
+    },
+    {
+      "path": "scripts/scheduled-daily-autonomy.mjs",
+      "mode": "100644",
+      "bytes": 15911,
+      "sha256": "16c6ea0df748768dcce359a7c61087906d86c6bb075a3424b1b2ec245d08e14f"
+    }
+  ]
+}

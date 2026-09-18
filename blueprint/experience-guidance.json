@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "vexlife.experience-guidance/v1",
+  "guidanceRef": "guidance.vexlife.experience.001",
+  "parentExperienceFoundationRef": "foundation.vexlife.experience.001",
+  "featurePerceptibilityOwnerRef": "registry.vexlife.features.001",
+  "effects": false,
+  "awareness": {
+    "scopeFields": ["featureRef", "planRef", "sourceVersionRef"],
+    "derivedStates": ["UNINTRODUCED"],
+    "ephemeralStates": ["OFFERED_THIS_SESSION"],
+    "localPreferenceStates": ["DEFERRED", "ACKNOWLEDGED", "SUPPRESSED"],
+    "inheritAcrossSourceVersion": false,
+    "memoryTruth": false,
+    "networkTelemetry": false,
+    "derivedRelevantCountIsCanonical": false
+  },
+  "proposal": {
+    "invocationClasses": ["PROACTIVE_INTRODUCTION", "EXPLICIT_HELP", "EXPLICIT_SHOW_ME"],
+    "purposeClasses": ["EXPLORE", "TRY", "BUILD", "REVISIT", "LEARN", "RECOVER"],
+    "routeStates": ["CURRENT", "HELD"],
+    "availabilityStates": ["AVAILABLE", "HELD", "UNAVAILABLE", "UNKNOWN"],
+    "requiredFields": [
+      "proposalRef",
+      "featureRef",
+      "currentFrameRef",
+      "invocationClass",
+      "purposeClass",
+      "whyRelevantRefs",
+      "awarenessState",
+      "routeState",
+      "availabilityState",
+      "exposureRef",
+      "effects"
+    ],
+    "proactiveIntroductionRequiresAwarenessState": "UNINTRODUCED",
+    "explicitHelpIgnoresProactiveSuppression": true,
+    "effects": false,
+    "modelMayUpgradeAvailability": false,
+    "modelMayGrantAuthority": false
+  },
+  "targetBinding": {
+    "targetKinds": [
+      "ELEMENT",
+      "COMPONENT",
+      "COMPONENT_SLOT",
+      "REGION",
+      "TERRAIN_NODE",
+      "VESSEL"
+    ],
+    "bindingPolicies": [
+      "STATIC_CANONICAL_TARGET",
+      "EXACT_COMPONENT_INSTANCE",
+      "EXACT_COMPONENT_SLOT_INSTANCE",
+      "CURRENT_SELECTED_INSTANCE",
+      "CURRENT_TERRAIN_NODE_INSTANCE",
+      "CURRENT_VESSEL"
+    ],
+    "fields": [
+      "targetRef",
+      "targetKind",
+      "screenRefOrNull",
+      "regionRefOrNull",
+      "componentRefOrNull",
+      "slotRefOrNull",
+      "instanceRefOrNull",
+      "entityRefOrNull",
+      "selectionRefOrNull",
+      "bindingPolicy"
+    ],
+    "actionBearingAmbiguityPolicy": "FAIL_CLOSED",
+    "firstRenderedMatchMayAuthorizeAction": false
+  },
+  "placement": {
+    "presentationKinds": [
+      "ANCHORED_CALLOUT",
+      "CONTEXTUAL_EDGE_CALLOUT",
+      "IN_FLOW_GUIDANCE",
+      "GUIDE_VESSEL_EXPLANATION",
+      "COMPACT_CONTEXT_SHEET",
+      "NONVISUAL_DESCRIPTION"
+    ],
+    "candidateDirections": [
+      "BLOCK_START",
+      "INLINE_END",
+      "BLOCK_END",
+      "INLINE_START",
+      "BLOCK_START_INLINE_END",
+      "BLOCK_END_INLINE_END",
+      "BLOCK_END_INLINE_START",
+      "BLOCK_START_INLINE_START"
+    ],
+    "readingDirections": ["LTR", "RTL"],
+    "logicalInlineDirectionsRespectReadingDirection": true,
+    "safeMargin": 12,
+    "selectionPolicy": "SAFE_FIRST_THEN_MAX_USABLE_DIRECTIONAL_CAPACITY_THEN_PREFERENCE_ORDER",
+    "penalties": {
+      "outsideSafeArea": 1000000,
+      "overlapTarget": 100000,
+      "overlapFocusedControl": 100000,
+      "overlapNavigationControl": 75000,
+      "overlapProtectedControl": 50000
+    },
+    "fallbackOrder": [
+      "CONTEXTUAL_EDGE_CALLOUT",
+      "IN_FLOW_GUIDANCE",
+      "GUIDE_VESSEL_EXPLANATION",
+      "COMPACT_CONTEXT_SHEET",
+      "NONVISUAL_DESCRIPTION"
+    ],
+    "unsafeFallbackGeometryEmitted": false,
+    "persistResolvedPlacement": false,
+    "semanticNavigationEffect": false,
+    "journeyEffect": false
+  },
+  "help": {
+    "sectionKinds": [
+      "WHAT_CAN_I_DO_HERE",
+      "WHAT_CAN_VEX_HELP_WITH_HERE",
+      "SHOW_ME_HOW",
+      "RELEVANT_NOT_YET_INTRODUCED",
+      "WHY_UNAVAILABLE",
+      "RECOVERY_AND_GET_BACK",
+      "ADVANCED_WHEN_I_WANT_IT"
+    ],
+    "contextFirst": true,
+    "featureCatalogDump": false,
+    "suppressionBlocksExplicitHelp": false
+  },
+  "interactionCue": {
+    "referenceFields": ["actionRefOrNull", "interactionRefOrNull", "gestureRefOrNull", "componentRefOrNull", "slotRefOrNull"],
+    "grantsActionAuthority": false,
+    "requiresExistingSemanticOwner": true,
+    "candidateFamilies": [
+      "SELECT_OR_ENTER",
+      "DRAG_OR_MOVE",
+      "PAN",
+      "ZOOM",
+      "SEMANTIC_DEPTH_SHIFT",
+      "SCOPED_SCROLL",
+      "SCRUB_OR_REVISIT",
+      "RESIZE",
+      "DOCK",
+      "SPATIAL_REVEAL",
+      "VOICE",
+      "KEYBOARD",
+      "COMMAND",
+      "MODEL_TOOL"
+    ]
+  },
+  "nonCollapseRules": [
+    "NOT_INTRODUCED != USER_DOES_NOT_KNOW",
+    "ACKNOWLEDGED != MASTERED",
+    "ACKNOWLEDGED != FEATURE_COMPLETION",
+    "ACKNOWLEDGED != MEMORY",
+    "OFFERED_THIS_SESSION != ACKNOWLEDGED",
+    "GUIDANCE_PROPOSAL != ENGAGEMENT_TARGET",
+    "RELEVANCE != AUTHORITY",
+    "GUIDANCE_TARGET != DOM_ID",
+    "ELEMENT_REF != INSTANCE_REF",
+    "INSTANCE_REF != ENTITY_REF",
+    "RESOLVED_GUIDANCE_PLACEMENT != PERSISTED_HUMAN_PREFERENCE",
+    "GUIDANCE_SCROLL != TERRAIN_SCROLL",
+    "SCROLL_EVENT != SEMANTIC_COMMIT",
+    "INTERACTION_CUE != ACTION_AUTHORITY",
+    "GESTURE != BUTTON",
+    "DIRECT_MANIPULATION != BUTTON",
+    "DERIVED_UNINTRODUCED_COUNT != ENGAGEMENT_SCORE"
+  ]
+}

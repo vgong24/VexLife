@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "vexlife.implementation-plan/v0",
+  "planRef": "plan.vexlife.foundation-to-demo.001",
+  "planVersion": 1,
+  "demoContractRef": "demo.vexlife.complete-local-journey.001",
+  "principles": [
+    "dependency distance outranks invented certainty",
+    "stable mains remain green while adoption branches reveal work",
+    "one exact writer per path scope",
+    "blueprint fixes propagate by conformance receipts",
+    "Codex receives bounded packets rather than whole-repo dumps"
+  ],
+  "demoJourneyRefs": [
+    "journey.demo.clone-and-bootstrap",
+    "journey.demo.addressed-conversation",
+    "journey.demo.guide-screen-awareness",
+    "journey.demo.localization",
+    "journey.demo.safe-delete-restore",
+    "journey.demo.terrain-health",
+    "journey.demo.public-safe-export"
+  ],
+  "parallelismRules": [
+    "work units in the same path scope do not run concurrently",
+    "native platform adoptions may run concurrently after one accepted blueprint release",
+    "semantic contracts complete before UI that depends on them",
+    "resource-heavy model work yields to interactive conversation",
+    "convergence requires exact blueprint hash and independent review"
+  ],
+  "composition": "CANONICAL_FRAGMENT_COMPOSITION",
+  "includes": {
+    "milestones": "blueprint/implementation/milestones.json",
+    "workUnits": [
+      "blueprint/implementation/work-units-foundation.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json",
+      "blueprint/implementation/work-units-orchestration-and-publication.json",
+      "blueprint/implementation/work-units-native-and-research.json"
+    ]
+  }
+}

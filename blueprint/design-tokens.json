@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "vexlife.design-tokens/v0",
+  "tokenSetRef": "tokens.vexlife.core.001",
+  "color": {
+    "surface.canvas": "#081016",
+    "surface.panel": "#101A23",
+    "surface.raised": "#172431",
+    "text.primary": "#F4F7FA",
+    "text.secondary": "#A8BAC9",
+    "accent.primary": "#73A8FF",
+    "accent.guide": "#D98DEB",
+    "status.healthy": "#67D792",
+    "status.attention": "#F4C56A",
+    "status.blocked": "#F47B7B",
+    "focus.ring": "#8CC2FF"
+  },
+  "typography": {
+    "basePx": 16,
+    "smallPx": 14,
+    "bodyPx": 17,
+    "nodeMetaPx": 15,
+    "nodeTitlePx": 21,
+    "headingPx": 28,
+    "lineHeight": 1.55
+  },
+  "space": {
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "5": 24,
+    "6": 32
+  },
+  "radius": {
+    "small": 8,
+    "medium": 14,
+    "large": 20
+  },
+  "motion": {
+    "fastMs": 120,
+    "normalMs": 180,
+    "reducedMotionFallback": "none"
+  },
+  "accessibility": {
+    "minimumTargetPx": 44,
+    "minimumBodyPx": 16,
+    "colorNotSoleSignal": true
+  },
+  "layer": {
+    "content": 0,
+    "navigation": 40,
+    "vessel": 80,
+    "guide": 100,
+    "criticalDialog": 120
+  },
+  "interaction": {
+    "wheelZoomDefault": false,
+    "dragThresholdPx": 6,
+    "nearBottomPx": 72,
+    "floatingSafeInsetPx": 8,
+    "focusRingPx": 3,
+    "canvasMinimumZoom": 0.5,
+    "canvasMaximumZoom": 2.5
+  },
+  "vessel": {
+    "minimumDiameterPx": 48,
+    "compactGapPx": 8,
+    "expandedActionLimit": 7,
+    "nestedWhenCompact": true
+  }
+}

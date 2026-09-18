@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "9d",
+  "files": [
+    {
+      "path": "blueprint/home-bridge-registry.json",
+      "mode": "100644",
+      "bytes": 3586,
+      "sha256": "eb6702b5140607c8c7d7a7d9788a01b0a33a40c7f26b586feac70eb664691658"
+    },
+    {
+      "path": "reference/browser/index.html",
+      "mode": "100644",
+      "bytes": 27667,
+      "sha256": "39fdec013e872487c204e01b71559aa0837138369c8434d1a2965a54370fedd4"
+    },
+    {
+      "path": "src/core/blueprint-base.mjs",
+      "mode": "100644",
+      "bytes": 45602,
+      "sha256": "ff8a4b36e0ffa6bd4684ae8ac1af6e195b0d4211adb26a6f951aa9a5e176d392"
+    },
+    {
+      "path": "test/model-turn-witness.test.mjs",
+      "mode": "100644",
+      "bytes": 5935,
+      "sha256": "0b4cbd2e2e4d836883c8a778c8b9e088f8e1626cfebd224c1b8a9b0dea83fa2b"
+    }
+  ]
+}

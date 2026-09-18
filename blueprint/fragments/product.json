@@ -1,0 +1,11 @@
+{
+  "productRef": "product.vexlife",
+  "displayNameStringRef": "product.vexlife.name",
+  "rootProjectRef": "project.vexlife.root-hub",
+  "defaultLanguage": "en",
+  "requiredLanguages": [
+    "en",
+    "zh",
+    "ja"
+  ]
+}

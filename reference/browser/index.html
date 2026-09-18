@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="VexLife E2.7 direct-root browser reference">
+  <title>VexLife Terrain</title>
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./living-journal.css">
+  <link rel="stylesheet" href="./security-access.css">
+</head>
+<body>
+<div id="app" class="e27-app" data-node-ref="product.vexlife" data-presentation-contract="contract.vexlife.e27.authoritative-root/v1" data-primary-stage="screen.vexlife.terrain">
+  <header class="e27-appbar topbar" data-node-ref="screen.vexlife.shell">
+    <button class="e27-mark brand" id="vexSummon" data-node-ref="element.vex.summon" type="button" aria-label="Summon Vex" data-i18n-aria-label="vex.summon">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><path d="M 51.89 109.32 A 50 50 0 1 1 68.11 109.32 L 39.73 35.68 L 60 65.41 L 80.27 35.68 Z" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+    </button>
+    <div class="e27-brand"><strong data-i18n="product.vexlife.name">VexLife</strong><small>VEX IS HOME · CENTER = CURRENT CONTEXT</small></div>
+    <div class="e27-actions">
+      
+      <button id="terrainUp" type="button" data-node-ref="element.terrain.semantic-depth-decrease">Up one layer</button>
+      <button id="terrainReset" type="button" data-node-ref="element.terrain.reset" data-i18n="terrain.reset">Reset</button>
+      <button id="surfaceMenuButton" type="button" aria-controls="surfaceMenu" aria-expanded="false">•••</button>
+    </div>
+  </header>
+
+  <nav id="terrainBreadcrumb" class="e27-breadcrumb" aria-label="Current Terrain path"></nav>
+
+  <main id="view-terrain" class="e27-terrain terrain" data-node-ref="screen.vexlife.terrain" data-primary-stage="true">
+    <div class="e27-zoom-rail terrain-toolbar" aria-label="Terrain zoom controls">
+      <button id="terrainZoomIn" class="e27-zoom-button" type="button" aria-label="Zoom in">+</button>
+      <div id="terrainZoomTrack" class="e27-zoom-track" aria-hidden="true"><div class="e27-zoom-mark enter"></div><span class="e27-zoom-label enter">enter</span><div class="e27-zoom-mark parent"></div><span class="e27-zoom-label parent">parent</span><div id="terrainZoomKnob" class="e27-zoom-knob"></div></div>
+      <button id="terrainZoomOut" class="e27-zoom-button" type="button" aria-label="Zoom out">−</button>
+      <output id="terrainZoomStatus" class="e27-zoom-percent">100%</output>
+      <div class="e27-auto-entry">
+        <label><input id="terrainAutoEntryEnabled" type="checkbox" checked> <span data-i18n="terrain.auto-entry.enabled">Auto-enter layers</span></label>
+        <span class="e28-auto-entry-state" aria-live="polite"><span data-auto-entry-state="on" data-i18n="terrain.auto-entry.on">Auto-enter on</span><span data-auto-entry-state="off" data-i18n="terrain.auto-entry.off">Auto-enter off</span></span>
+      </div>
+    </div>
+
+    <details id="terrainInstrumentation" class="e28-terrain-instrumentation e27-zoom-rail terrain-toolbar scroll-scope" data-node-ref="region.terrain.instrumentation">
+      <summary id="terrainInstrumentationToggle" data-node-ref="element.terrain.instrumentation-toggle" data-i18n="terrain.instrumentation.summary" aria-controls="terrainInstrumentationPanel">Terrain details</summary>
+      <div id="terrainInstrumentationPanel" class="e28-terrain-instrumentation-panel">
+        <div id="terrainHud" class="e27-hud hud" aria-live="polite"></div>
+        <div id="terrainScopeChip" class="e27-scope-chip scope-chip">interaction scope · <strong>Terrain layer</strong></div>
+        <fieldset class="e28-auto-entry-tuning">
+          <legend data-i18n="terrain.instrumentation.tuning">Auto-entry tuning</legend>
+          <label title="Visibility threshold"><span data-i18n="terrain.auto-entry.visibility">Visibility</span> <input id="terrainAutoEntryVisibility" type="range" min="0.5" max="1" step="0.01" value="0.72"></label>
+          <label title="Confidence threshold"><span data-i18n="terrain.auto-entry.confidence">Confidence</span> <input id="terrainAutoEntryConfidence" type="range" min="0.5" max="1" step="0.01" value="0.8"></label>
+          <output id="terrainAutoEntryStatus">V≥72% · C≥80%</output>
+        </fieldset>
+        <div id="terrainIntentTracker" class="e27-intent-tracker"><strong id="terrainIntentTitle">Exploring</strong><small id="terrainIntentDetail">Zoom trajectory is not committed yet.</small><div class="e27-intent-bar"><div id="terrainIntentFill" class="e27-intent-fill"></div></div></div>
+      </div>
+    </details>
+    <div id="terrainWorkspaceBadge" class="e27-workspace-badge" data-i18n="terrain.manual-layout.active">Manual layout active</div>
+
+    <div id="terrainCanvas" class="e27-canvas" data-node-ref="element.terrain.canvas">
+      <div id="terrainWorld" class="e27-world"><svg id="terrainEdges" class="e27-edges" viewBox="0 0 1200 800" aria-hidden="true"></svg><article id="terrainFocus" class="e27-focus"></article><div id="terrainNodes"></div></div>
+    </div>
+    <div id="terrainAdjacent" class="e27-adjacent"></div>
+  </main>
+
+  <footer id="terrainJourneyWindow" class="e27-recentbar terrain-journey-window" data-node-ref="region.terrain.journey" aria-label="Semantic journey" data-i18n-aria-label="journey.region.label">
+    <button id="terrainFullJourneyToggle" class="e27-recent-title e28-journey-open" type="button" data-node-ref="element.terrain.journey-full-history" data-i18n="journey.full-history">Full journey</button>
+    <button id="terrainRecentPrev" class="e27-recent-edge" type="button" aria-label="Earlier journey items">‹</button>
+    <div id="terrainJourneyRecent" class="e27-recent"></div>
+    <button id="terrainRecentNext" class="e27-recent-edge" type="button" aria-label="Later journey items">›</button>
+    <span id="terrainJourneyStatus" class="e27-journey-meta"></span>
+  </footer>
+
+  <aside id="terrainJourneyDrawer" class="e27-drawer terrain-journey-drawer" aria-hidden="true">
+    <header class="e27-drawer-head"><h2 data-i18n="journey.full-history">Full journey</h2><button id="terrainJourneyClose" type="button" aria-label="Close">×</button></header>
+    <p>Full semantic history stays here even when the centered journey window shows only five visits.</p>
+    <section id="terrainJourneyInspector" class="e28-journey-inspector">
+      <div id="terrainJourneyCurrentMarker" class="e28-journey-current" data-history-mode="current" aria-live="polite" data-i18n="journey.current-context">Current context</div>
+      <label class="e28-journey-scrub"><span data-i18n="journey.scrub">Browse history</span><input id="terrainJourneyScrub" type="range" min="0" max="0" step="1" value="0" data-node-ref="element.terrain.journey-scrub" aria-label="Browse history" data-i18n-aria-label="journey.scrub"></label>
+      <div><strong data-i18n="journey.clusters">Recent contexts</strong><div id="terrainJourneyClusters" class="e28-journey-clusters" data-node-ref="element.terrain.journey-clusters" role="list"></div></div>
+      <p id="terrainJourneyTransition" data-node-ref="element.terrain.journey-transition-reason" role="status"><strong data-i18n="journey.transition-reason">Transition reason</strong>: <code id="terrainJourneyReason">—</code></p>
+      <button id="terrainJourneyRevisit" type="button" data-node-ref="element.terrain.journey-revisit" data-i18n="journey.revisit">Revisit this context</button>
+    </section>
+    <div id="terrainJourneyList"></div>
+  </aside>
+
+  <div id="surfaceMenu" class="e27-surface-menu" hidden>
+    <strong>Current surface</strong>
+    <button id="openConversation" type="button" data-node-ref="element.nav.chat">Open conversation</button>
+    <button id="openHealth" type="button" data-node-ref="element.nav.health">Health / source truth</button>
+    <button id="openLivingJournal" type="button" data-node-ref="element.living-journal.open" data-i18n="living-journal.open">Open Living Journal</button>
+    <button id="openWorkspace" type="button" data-i18n="region.projects.label">Projects</button>
+    <button id="terrainCenter" type="button" data-node-ref="element.terrain.center-current-context" data-i18n="terrain.center-current-context">Center current context</button>
+    <div id="terrainAdaptationMenu" class="e28-adaptation-menu">
+      <strong data-i18n="terrain.adaptation.controls">Layout adaptation</strong>
+      <details id="terrainAdaptationWhy" class="e28-adaptation-why">
+        <summary data-node-ref="element.terrain.adaptation-why" data-i18n="terrain.adaptation.why">Why this layout?</summary>
+        <p id="terrainAdaptationReason"></p>
+      </details>
+      <button id="terrainAdaptationUndo" type="button" data-node-ref="element.terrain.adaptation-undo" data-i18n="terrain.adaptation.undo">Undo adaptation</button>
+      <label class="e28-adaptation-preference"><input id="terrainAdaptiveLayoutEnabled" type="checkbox" checked data-node-ref="element.terrain.adaptive-layout-toggle"> <span data-i18n="terrain.adaptation.preference">Adaptive layout</span></label>
+    </div>
+    <label>Language <select id="languageSelect" data-node-ref="element.language.selector" aria-label="Language" data-i18n-aria-label="language.selector.aria"><option value="en">EN</option><option value="zh">中文</option><option value="ja">日本語</option></select></label>
+  </div>
+
+  <div id="terrainContext" class="e27-terrain-context" hidden>
+    <strong data-i18n="terrain.controls">Terrain controls</strong>
+    <button type="button" data-terrain-context="center">Center current context</button>
+    <button type="button" data-terrain-context="projection">Cycle projection</button>
+    <button type="button" data-terrain-context="workspace" data-node-ref="element.terrain.manual-layout-toggle" data-i18n="terrain.manual-layout">Arrange Terrain</button>
+    <button type="button" data-terrain-context="chat">Open conversation</button>
+    <button type="button" data-terrain-context="health">Health / source truth</button>
+  </div>
+
+  <aside id="contextSurface" class="e27-context-surface context-projection" hidden aria-hidden="true" data-node-ref="element.context-workspace.surface">
+    <div id="contextWorkspaceControls" class="e28-context-workspace-controls" data-node-ref="region.shell.contextual-workspace" aria-label="Workspace layout" data-i18n-aria-label="context-workspace.label">
+      <label class="e28-context-workspace-dock"><span data-i18n="context-workspace.dock">Workspace position</span><select id="contextWorkspaceDock" data-node-ref="element.context-workspace.dock"><option value="OVERLAY" data-i18n="context-workspace.dock.overlay">Overlay</option><option value="DOCK_LEFT" data-i18n="context-workspace.dock.left">Dock left</option><option value="DOCK_RIGHT" data-i18n="context-workspace.dock.right">Dock right</option></select></label>
+      <label class="e28-context-workspace-split"><input id="contextWorkspaceSplit" type="checkbox" data-node-ref="element.context-workspace.split-focus"> <span data-i18n="context-workspace.split-focus">Show beside Terrain</span></label>
+      <output id="contextWorkspaceStatus" class="e28-context-workspace-status" aria-live="polite"></output>
+      <button id="contextWorkspaceReset" type="button" data-node-ref="element.context-workspace.layout-reset" data-i18n="context-workspace.layout-reset">Reset workspace</button>
+      <button id="contextSurfaceClose" class="e27-context-close" type="button" aria-label="Close">×</button>
+    </div>
+    <button class="e28-context-workspace-resize nw" id="contextWorkspaceResizeNw" data-context-workspace-resize-corner="nw" data-node-ref="element.context-workspace.resize.nw" type="button" aria-label="Resize workspace from top left" data-i18n-aria-label="context-workspace.resize.nw"></button>
+    <button class="e28-context-workspace-resize ne" id="contextWorkspaceResizeNe" data-context-workspace-resize-corner="ne" data-node-ref="element.context-workspace.resize.ne" type="button" aria-label="Resize workspace from top right" data-i18n-aria-label="context-workspace.resize.ne"></button>
+    <button class="e28-context-workspace-resize sw" id="contextWorkspaceResizeSw" data-context-workspace-resize-corner="sw" data-node-ref="element.context-workspace.resize.sw" type="button" aria-label="Resize workspace from bottom left" data-i18n-aria-label="context-workspace.resize.sw"></button>
+    <button class="e28-context-workspace-resize se" id="contextWorkspaceResizeSe" data-context-workspace-resize-corner="se" data-node-ref="element.context-workspace.resize.se" type="button" aria-label="Resize workspace from bottom right" data-i18n-aria-label="context-workspace.resize.se"></button>
+    <section id="view-chat" data-node-ref="screen.vexlife.chat" hidden>
+      <header class="e27-context-heading"><div><small data-i18n="conversation.eyebrow">CONVERSATION</small><h1 id="threadTitle">Open conversation</h1><p id="threadDescription"></p></div><div id="presence" class="presence"></div></header>
+      <details id="projectRail" class="e27-projection-workspace" aria-hidden="true"><summary data-i18n="region.projects.label">Projects</summary><button id="workspaceClose" type="button">Close workspace</button><div id="projectList"></div><button id="architectureButton" type="button" data-node-ref="element.architecture.open" data-i18n="architecture.open">How VexLife is built</button></details>
+      <details id="channelCompatibility" class="e27-channel-controls"><summary data-i18n="region.channels.label">Channels</summary><div id="channelTabs" data-node-ref="region.chat.channels"></div></details>
+      <section class="e27-chat-grid">
+        <div class="e27-feed" data-node-ref="region.chat.feed"><div id="messageFeed" class="message-feed scroll-scope" data-node-ref="element.chat.feed"></div><button id="newMessagesButton" type="button" hidden><span id="newMessagesCount">0</span> <span data-i18n="messages.new">New messages</span></button><form id="composer" class="composer" data-node-ref="element.chat.composer"><div id="composerAddress"></div><textarea id="messageInput" rows="3" data-i18n-placeholder="composer.placeholder"></textarea><div class="e27-composer-footer"><span id="composerHint"></span><button type="submit" data-i18n="composer.send">Send</button></div></form></div>
+        <aside class="e27-context-card" data-node-ref="region.chat.context"><small data-i18n="context.eyebrow">CONTEXT</small><h2 data-i18n="context.title">Current frame</h2><div id="contextSummary"></div><button id="addGroupButton" data-node-ref="element.channel.add-group" type="button" data-i18n="channel.add-group">Add to group</button></aside>
+      </section>
+    </section>
+    <section id="view-health" data-node-ref="screen.vexlife.health" hidden>
+      <header class="e27-context-heading"><div><small data-i18n="health.eyebrow">REFERENCE ENVIRONMENT</small><h1 data-i18n="screen.health.title">Health</h1><p data-i18n="health.reference.summary">This static reference has no current repository or runtime health receipt.</p></div><span id="healthStatus" class="status-pill attention" data-i18n="health.state.attention">● ATTENTION</span></header>
+      <div class="e27-health-grid"><article><small data-i18n="health.model">Model</small><h2 data-i18n="health.value.unavailable">Unavailable</h2><p data-i18n="health.model.evidence"></p></article><article><small data-i18n="health.context">Context</small><h2 data-i18n="health.value.synthetic">Synthetic</h2><p data-i18n="health.context.evidence"></p></article><article><small data-i18n="health.work">Work</small><h2 data-i18n="health.value.not-run">Not run</h2><p data-i18n="health.work.evidence"></p></article><article><small data-i18n="health.continuity">Continuity</small><h2 data-i18n="health.value.synthetic">Synthetic</h2><p data-i18n="health.continuity.evidence"></p></article></div>
+      <section id="securityAccessRegion" class="security-access-region" data-node-ref="region.health.security-access" aria-labelledby="securityAccessTitle">
+        <div class="security-access-preference">
+          <label><input id="securityAccessPreviewVisible" type="checkbox" data-node-ref="element.health.security-access.preview-toggle"> <span data-i18n="security-access.preview.visibility">Show Security &amp; Access preview</span></label>
+          <small data-i18n="security-access.preview.help">This preference only shows or hides the preview. It does not change security policy.</small>
+        </div>
+        <div id="securityAccessPreviewContent" class="security-access-preview">
+          <header>
+            <small data-i18n="security-access.eyebrow">SECURITY &amp; ACCESS · ANDROID-FIRST PREVIEW</small>
+            <h2 id="securityAccessTitle" data-i18n="security-access.title">Security &amp; Access</h2>
+            <p id="securityAccessStatus" class="security-access-status" role="status">Preview — security runtime not connected</p>
+          </header>
+          <div class="security-access-facts">
+            <article><small data-i18n="security-access.phone-support">Phone support</small><h3 data-i18n="security-access.android-first">Android-first</h3></article>
+            <article><small data-i18n="security-access.trusted-devices">Trusted devices</small><h3 data-i18n="security-access.trusted-devices.none">No runtime data available</h3></article>
+            <article><small data-i18n="security-access.recovery">Recovery</small><h3 data-i18n="security-access.recovery.not-configured-here">Not configured here</h3></article>
+          </div>
+          <div class="security-access-actions">
+            <button id="securityAccessDetailsToggle" type="button" data-node-ref="element.health.security-access.details-toggle" data-i18n="security-access.review-options" aria-controls="securityAccessDetails" aria-expanded="false">Review security options</button>
+            <button id="securityAccessAskVex" type="button" data-node-ref="element.health.security-access.ask-vex" data-i18n="security-access.ask-vex">Ask Vex what this means</button>
+          </div>
+          <section id="securityAccessDetails" class="security-access-details" hidden>
+            <p data-i18n="security-access.held-summary">These controls are visible so you can understand the future route. They cannot perform a protected action in this preview.</p>
+            <div id="securityAccessHeldActions" class="security-access-held-list" data-node-ref="element.health.security-access.held-actions" role="region" data-i18n-aria-label="security-access.held-actions"></div>
+          </section>
+        </div>
+      </section>
+      <details><summary data-node-ref="element.health.technical-toggle" data-i18n="health.technical">Technical details</summary><pre id="technicalHealth"></pre></details>
+    </section>
+    <section id="view-living-journal" data-node-ref="screen.vexlife.living-journal" hidden tabindex="-1">
+      <header class="living-journal-heading"><div><small data-i18n="living-journal.eyebrow">LIVING JOURNAL · SYNTHETIC REFERENCE</small><h1 data-i18n="screen.living-journal.title">Living Journal</h1></div><output id="livingJournalTruth" class="living-journal-truth" aria-live="polite"></output></header>
+      <div class="living-journal-toolbar">
+        <nav class="living-journal-pager" aria-label="Living Journal pages"><button id="livingJournalPrevious" type="button" data-node-ref="element.living-journal.page.previous" data-i18n="living-journal.previous">Previous page</button><output id="livingJournalPageStatus" class="living-journal-page-status" aria-live="polite"></output><button id="livingJournalNext" type="button" data-node-ref="element.living-journal.page.next" data-i18n="living-journal.next">Next page</button></nav>
+        <div class="living-journal-controls"><label><span data-i18n="living-journal.vantage">Vantage</span><select id="livingJournalVantage" data-node-ref="element.living-journal.vantage.select"><option value="HUMAN" data-i18n="living-journal.vantage.human">Human</option><option value="VEX" data-i18n="living-journal.vantage.vex">Vex</option><option value="SHARED_RELATIONSHIP" data-i18n="living-journal.vantage.shared">Shared relationship</option><option value="SOURCE" data-i18n="living-journal.vantage.source">Source</option></select></label><label><span data-i18n="living-journal.display-language">Display language</span><select id="livingJournalDisplayLanguage" data-node-ref="element.living-journal.display-language.select"><option value="en">EN</option><option value="ja">日本語</option><option value="zh">中文</option></select></label></div>
+      </div>
+      <div id="livingJournalArchiveControls" class="living-journal-archive-controls">
+        <button id="livingJournalArchiveOpen" type="button" data-node-ref="element.living-journal.archive.open" data-i18n="living-journal.archive.open">Browse archive</button>
+        <button id="livingJournalArchiveNewer" type="button" data-node-ref="element.living-journal.archive.window.newer" data-i18n="living-journal.archive.newer" hidden>Newer days</button>
+        <label id="livingJournalArchiveDayLabel" hidden><span data-i18n="living-journal.archive.day">Committed day</span><select id="livingJournalArchiveDay" data-node-ref="element.living-journal.archive.day.select"></select></label>
+        <button id="livingJournalArchiveOlder" type="button" data-node-ref="element.living-journal.archive.window.older" data-i18n="living-journal.archive.older" hidden>Older days</button>
+        <button id="livingJournalReturnNow" type="button" data-node-ref="element.living-journal.archive.return-now" data-i18n="living-journal.archive.return-now" hidden>Return to now</button>
+        <output id="livingJournalTemporalStatus" class="living-journal-temporal-status" aria-live="polite"></output>
+      </div>
+      <section id="livingJournalWalkthrough" aria-label="Living Journal walkthrough" style="position:absolute;left:28px;right:86px;bottom:84px;z-index:50;max-height:min(260px,45%);overflow:auto;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 18px 46px rgba(0,0,0,.32)" hidden>
+        <p id="livingJournalWalkthroughOffer" data-i18n="feature-walkthrough.living-journal.offer">A short Living Journal walkthrough is available.</p>
+        <output id="livingJournalWalkthroughStatus" aria-live="polite"></output>
+        <div>
+          <button id="livingJournalWalkthroughShow" type="button" data-node-ref="element.living-journal.walkthrough.show" data-i18n="feature-walkthrough.show-me" style="min-width:44px;min-height:44px">Show me</button>
+          <button id="livingJournalWalkthroughLater" type="button" data-node-ref="element.living-journal.walkthrough.later" data-i18n="feature-walkthrough.later" style="min-width:44px;min-height:44px">Later</button>
+          <button id="livingJournalWalkthroughSuppress" type="button" data-node-ref="element.living-journal.walkthrough.suppress" data-i18n="feature-walkthrough.dont-introduce-again" style="min-width:44px;min-height:44px">Don't introduce this again</button>
+          <button id="livingJournalWalkthroughReplay" type="button" data-node-ref="element.living-journal.walkthrough.replay" data-i18n="feature-walkthrough.replay" style="min-width:44px;min-height:44px">Replay walkthrough</button>
+          <button id="livingJournalWalkthroughNextStep" type="button" data-node-ref="element.living-journal.walkthrough.next" data-i18n="feature-walkthrough.next" style="min-width:44px;min-height:44px">Next</button>
+        </div>
+      </section>
+      <div id="livingJournalSpread" class="living-journal-spread" data-node-ref="region.living-journal.book" aria-live="polite"></div>
+      <footer class="living-journal-footer">
+        <div class="living-journal-doors"><button id="livingJournalSource" type="button" data-node-ref="element.living-journal.source.open" data-i18n="living-journal.source">Original / source</button><button id="livingJournalRevisit" type="button" data-node-ref="element.living-journal.revisit.open" data-i18n="living-journal.revisit">Revisit context</button></div>
+        <output id="livingJournalSourceStatus" class="living-journal-source-status" aria-live="polite"></output>
+        <details id="livingJournalMarginalia" class="living-journal-marginalia"><summary data-i18n="living-journal.marginalia">Local marginalia</summary><div class="living-journal-marginalia-body"><label><span data-i18n="living-journal.marginalia">Local marginalia</span><textarea id="livingJournalMarginaliaInput" rows="2" data-i18n-placeholder="living-journal.marginalia.placeholder"></textarea></label><button id="livingJournalMarginaliaAdd" type="button" data-node-ref="element.living-journal.marginalia.add-local" data-i18n="living-journal.marginalia.add">Add local note</button><div id="livingJournalMarginaliaList" class="living-journal-margin-list" data-note-count="0"></div><small class="living-journal-ephemeral" data-i18n="living-journal.marginalia.ephemeral">Local reference only · cleared when this Journal closes</small></div></details>
+      </footer>
+    </section>
+  </aside>
+
+  <section id="guideWindow" class="e27-vex guide-window" role="dialog" aria-label="Vex" data-node-ref="element.guide.window" hidden>
+    <button class="guide-resize-handle nw" data-resize-corner="nw" data-node-ref="element.guide.resize-nw" type="button" aria-label="Resize Vex from top left"></button><button class="guide-resize-handle ne" data-resize-corner="ne" data-node-ref="element.guide.resize-ne" type="button" aria-label="Resize Vex from top right"></button><button class="guide-resize-handle sw" data-resize-corner="sw" data-node-ref="element.guide.resize-sw" type="button" aria-label="Resize Vex from bottom left"></button><button class="guide-resize-handle se" data-resize-corner="se" data-node-ref="element.guide.resize-se" type="button" aria-label="Resize Vex from bottom right"></button>
+    <header id="guideHandle" class="e27-vex-head guide-header"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M 51.89 109.32 A 50 50 0 1 1 68.11 109.32 L 39.73 35.68 L 60 65.41 L 80.27 35.68 Z" stroke="currentColor" stroke-width="5" fill="none"/></svg><strong data-i18n="vex.visible.name">Vex</strong><div class="guide-controls"><button id="guideMinimize" type="button" data-node-ref="element.guide.minimize">−</button><button id="guideClose" type="button" data-node-ref="element.guide.close">×</button></div></header>
+    <div id="guideBody" class="e27-vex-body scroll-scope"><div class="e27-vex-location"><span id="guideBreadcrumb"></span><small id="guideTrajectory"></small></div><div id="guideMessages" class="guide-messages"></div><div class="e27-vex-prompts"><button type="button" data-guide-intent-ref="intent.guide.current" data-node-ref="element.guide.ask-current" data-i18n="guide.ask.current">What am I looking at?</button><button type="button" data-guide-intent-ref="intent.guide.next" data-node-ref="element.guide.ask-next" data-i18n="guide.mode.next">Recommended next step</button><button type="button" data-guide-intent-ref="intent.guide.protects" data-node-ref="element.guide.ask-protects" data-i18n="guide.ask.protects">What does this protect?</button></div></div>
+    <form id="guideComposer" class="e27-vex-composer"><input id="guideInput" type="text" placeholder="Ask Vex…"><button type="submit">Send</button></form>
+  </section>
+  <button id="guideToggle" type="button" hidden aria-hidden="true" tabindex="-1"></button>
+</div>
+<script type="module" src="./app.js"></script>
+<script type="module" src="./modules/relationships-human-first-presentation.js"></script>
+</body>
+</html>
+<!-- [VXG RealForever] -->

@@ -1,0 +1,27 @@
+[
+  {
+    "platformRef": "platform.browser",
+    "generatorId": "browser",
+    "supportState": "REFERENCE_IMPLEMENTED"
+  },
+  {
+    "platformRef": "platform.android",
+    "generatorId": "android",
+    "supportState": "CONTRACT_SCAFFOLD"
+  },
+  {
+    "platformRef": "platform.ios",
+    "generatorId": "ios",
+    "supportState": "CONTRACT_SCAFFOLD"
+  },
+  {
+    "platformRef": "platform.windows",
+    "generatorId": "windows",
+    "supportState": "CONTRACT_SCAFFOLD"
+  },
+  {
+    "platformRef": "platform.macos",
+    "generatorId": "macos",
+    "supportState": "CONTRACT_SCAFFOLD"
+  }
+]

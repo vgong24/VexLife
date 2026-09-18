@@ -1,0 +1,177 @@
+[
+  {
+    "stateRef": "state.navigation",
+    "ownerRef": "service.navigation",
+    "brief": "Current semantic route, selected node and bounded trajectory."
+  },
+  {
+    "stateRef": "state.selection",
+    "ownerRef": "service.selection",
+    "brief": "Selected project, thread, channel, view and Terrain node."
+  },
+  {
+    "stateRef": "state.projects",
+    "ownerRef": "service.projects",
+    "brief": "Projects, links, attention and startup foundations."
+  },
+  {
+    "stateRef": "state.channels",
+    "ownerRef": "service.conversation",
+    "brief": "Addressed direct, group, relay and war-room channels."
+  },
+  {
+    "stateRef": "state.messages",
+    "ownerRef": "service.conversation",
+    "brief": "Immutable speaker-to-recipient message envelopes."
+  },
+  {
+    "stateRef": "state.context",
+    "ownerRef": "service.context",
+    "brief": "Current frames, sealed ranges and source descent."
+  },
+  {
+    "stateRef": "state.guide",
+    "ownerRef": "service.guide",
+    "brief": "Floating Guide placement and current screen frame."
+  },
+  {
+    "stateRef": "state.terrain",
+    "ownerRef": "service.terrain",
+    "brief": "Canonical graph plus user layout and collapse projection."
+  },
+  {
+    "stateRef": "state.localization",
+    "ownerRef": "service.localization",
+    "brief": "Current locale, catalogs and translation debt."
+  },
+  {
+    "stateRef": "state.permissions",
+    "ownerRef": "service.permissions",
+    "brief": "Platform and project capability stages."
+  },
+  {
+    "stateRef": "state.device-family",
+    "ownerRef": "service.device-family",
+    "brief": "Device lineages, sibling trails, Score scopes and local Rhythm."
+  },
+  {
+    "stateRef": "state.registry",
+    "ownerRef": "service.registry",
+    "brief": "Canonical identity, string, module, interface and process registries."
+  },
+  {
+    "stateRef": "state.journey",
+    "ownerRef": "service.navigation",
+    "brief": "Append-only semantic traversal events and bounded current trajectory."
+  },
+  {
+    "stateRef": "state.process-plans",
+    "ownerRef": "service.process-factory",
+    "brief": "Compiled no-effect plans, source bindings and execution receipts."
+  },
+  {
+    "stateRef": "state.resource",
+    "ownerRef": "service.resource-governor",
+    "brief": "Current hardware pressure, context budget and admitted leases."
+  },
+  {
+    "stateRef": "state.health",
+    "ownerRef": "service.health",
+    "brief": "Human-readable semantic health transitions over technical evidence."
+  },
+  {
+    "stateRef": "state.evolution",
+    "ownerRef": "service.evolution",
+    "brief": "One canonical Dream and continuity aggregate validates typed exact-source events and owns separate-self candidates, Context Reviews, current authority evidence, durable records, transient current-context leases, replayed Burden Releases, atomic supersessions, bounded recurrence evidence, family attribution and inactive training research state for Queue/Terrain/Health/Guide/evolution projections."
+  },
+  {
+    "stateRef": "state.implementation-plan",
+    "ownerRef": "service.roadmap",
+    "brief": "Dependency-distance milestones, bounded work packets and platform conformance returns."
+  },
+  {
+    "stateRef": "state.files",
+    "ownerRef": "service.file-access",
+    "brief": "Project-assigned roots, metadata, reads, recovery copies and file-effect receipts."
+  },
+  {
+    "stateRef": "state.cli",
+    "ownerRef": "service.command-atlas",
+    "brief": "Typed command plans, execution state and bounded stdout/stderr receipts."
+  },
+  {
+    "stateRef": "state.github",
+    "ownerRef": "service.github-broker",
+    "brief": "Repository currentness, publication plans, commits, pushes and external receipts."
+  },
+  {
+    "stateRef": "state.workshop",
+    "ownerRef": "service.workshop",
+    "brief": "Copy-on-write feature candidates, discussions, reviews, approvals and exports."
+  },
+  {
+    "stateRef": "state.issues",
+    "ownerRef": "service.issue-war-room",
+    "brief": "Deduplicated issues, triage, investigation, approval, implementation and verification."
+  },
+  {
+    "stateRef": "state.model",
+    "ownerRef": "service.model-runtime",
+    "brief": "External model profiles, endpoint/artifact currentness and device-local runtime health."
+  },
+  {
+    "stateRef": "state.capabilities",
+    "ownerRef": "service.capability-atlas",
+    "brief": "Role/platform/project capability stages and exact tool availability."
+  },
+  {
+    "stateRef": "state.intent-workgraph",
+    "ownerRef": "service.intent-orchestration",
+    "brief": "Immutable human intent, attributed interpretations, admitted workgraph nodes, exact transition receipts, and bounded next-safe-action projections."
+  },
+  {
+    "stateRef": "state.intent-scheduler",
+    "ownerRef": "service.intent-scheduler",
+    "brief": "One canonical aggregate owns observed clock, physical worker, admitted queue, source-bound fairness, generation, externally verified Workgraph completion, preempted continuations, held-tool dispositions, every lease transition, checkpoint, relay and cancellation truth used by bounded Queue/Terrain/Health/Guide projections."
+  },
+  {
+    "stateRef": "state.context-lease",
+    "ownerRef": "service.context-lease",
+    "brief": "One bounded ref-only context selection per active physical worker with explicit token admission, semantic no-op suppression and scheduler-issued successor-observation authorization."
+  },
+  {
+    "stateRef": "state.intent-checkpoint",
+    "ownerRef": "service.intent-checkpoint",
+    "brief": "Recoverable pause and resume lineage derived from the scheduler aggregate and bound to the exact six-lease release set, graph, trust, resource and source identities."
+  },
+  {
+    "stateRef": "state.tool-result-relay",
+    "ownerRef": "service.tool-result-relay",
+    "brief": "Durably restorable typed mock calls whose current state is derived by replaying one registered transition graph, with scheduler-owned held-call dispositions, exact successor lineage, bounded observations and once-only reinjection."
+  },
+  {
+    "stateRef": "state.runtime-recovery",
+    "ownerRef": "service.runtime-recovery",
+    "brief": "One typed-semantic-replay aggregate owns active failure, exact attempt chronology and registry budget, scheduler checkpoint/once-only six-release consumption, action-specific policy evidence, scheduler-output-consuming continuation, quarantine, last-known-good, human decision and unique terminal recovery truth for compact Queue, Terrain, Health and Guide projections."
+  },
+  {
+    "brief": "Derived contextual lived-book presentation state over current semantic context; synthetic reference pages, vantage, display language and ephemeral local marginalia only.",
+    "ownerRef": "service.context",
+    "stateRef": "state.living-journal"
+  },
+  {
+    "stateRef": "state.cdr-s5-closed-alpha-reference",
+    "ownerRef": "service.context",
+    "brief": "Local synthetic closed-alpha reference state for separate alpha consent, invite-only decisions, identity/currentness, truthful presence, route/privacy, delivery acknowledgement, safe support and prospective recovery; grants no participant, network, provider, relationship, Home, Memory, model, payment, publication or public-search authority."
+  },
+  {
+    "stateRef": "state.relationships",
+    "ownerRef": "service.relationships",
+    "brief": "Canonical Vex Home local directional relationship records, content-addressed transition history, atomic current heads, durable commit receipts, owner-isolated restart recovery and bounded tombstone/export truth; provider, peer, delivery and semantic acknowledgement observations cannot become canonical relationship meaning."
+  },
+  {
+    "stateRef": "state.family-space",
+    "ownerRef": "service.family-space",
+    "brief": "Canonical Vex Home local Family Space membership, principal-binding references, explicit owner/admin/member roles, membership generations, history-visibility policy and independently versioned Family Vex lineage binding; device pairing and relationship labels cannot grant membership."
+  }
+]

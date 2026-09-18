@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "2d",
+  "files": [
+    {
+      "path": "blueprint/review-lens-registry.json",
+      "mode": "100644",
+      "bytes": 10353,
+      "sha256": "dcceb87a089d56ff2cfc969e5e4e3a0ed6b67864561a9b339cadd74b9220b0f0"
+    }
+  ]
+}

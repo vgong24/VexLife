@@ -1,0 +1,47 @@
+[
+  {
+    "milestoneRef": "milestone.vexlife.foundation",
+    "distance": "NOW",
+    "purpose": "Universal culture, identity, registry, state and permission contracts are source-managed and testable."
+  },
+  {
+    "milestoneRef": "milestone.vexlife.browser-reference",
+    "distance": "NOW",
+    "purpose": "Working browser projection proves addressed conversation, navigation, Guide, localization and Terrain interaction contracts."
+  },
+  {
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "distance": "NEXT",
+    "purpose": "Cross-platform boot, model endpoint/artifact provisioning and resource-aware local runtime are complete."
+  },
+  {
+    "milestoneRef": "milestone.vexlife.desktop-home-bridge-wave",
+    "distance": "NEXT_AFTER_FOUNDATION_REVIEW",
+    "purpose": "Windows hosts the first Home Node and macOS proves trusted remote access plus honest local-sibling fallback against one accepted bridge contract."
+  },
+  {
+    "milestoneRef": "milestone.vexlife.continuity",
+    "distance": "NEAR_DEMO",
+    "purpose": "Context frames, Score/trails, safe deletion/recovery and Dream candidate formation are integrated."
+  },
+  {
+    "milestoneRef": "milestone.vexlife.work-orchestration",
+    "distance": "NEAR_DEMO",
+    "purpose": "Workshop, issue/war-room, bounded tools and review/approval paths form one demonstrable trajectory."
+  },
+  {
+    "milestoneRef": "milestone.vexlife.public-port",
+    "distance": "NEAR_DEMO",
+    "purpose": "Public-safe VexLife repository port is reviewed, licensed or explicitly unlicensed, and reproducible."
+  },
+  {
+    "milestoneRef": "milestone.vexlife.native-wave",
+    "distance": "POST_DEMO",
+    "purpose": "Android, iOS, Windows and macOS adopt the accepted blueprint with native evidence."
+  },
+  {
+    "milestoneRef": "milestone.vexlife.model-evolution",
+    "distance": "RESEARCH",
+    "purpose": "Reviewed Dream data, frozen evaluations and device-specific adapter activation are proven."
+  }
+]

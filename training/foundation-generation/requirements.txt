@@ -1,0 +1,10 @@
+# G04B executable foundation-training environment.
+# Install PyTorch using the wheel/index appropriate for the qualified host first
+# when CUDA/accelerator-specific installation is required.
+# Qwen's current model card requires a current Transformers build for Qwen3.5.
+transformers>=5.12.0,<6.0.0
+accelerate>=1.10.0,<2.0.0
+safetensors>=0.6.2,<1.0.0
+numpy>=2.2.0,<3.0.0
+torchvision>=0.23.0
+pillow>=11.0.0

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "4f",
+  "files": [
+    {
+      "path": "blueprint/purpose-workspace/completion-contracts.json",
+      "mode": "100644",
+      "bytes": 3611,
+      "sha256": "6ae4794545ed088e2202622b7d0fc5bea4b910507c0cce73d6e1feda0d663e66"
+    },
+    {
+      "path": "scripts/foundation-training-plan.mjs",
+      "mode": "100644",
+      "bytes": 13137,
+      "sha256": "e3aec58b836a8712c7f45a627499db9445b27c99fe72023c531b883860e05abf"
+    },
+    {
+      "path": "src/core/concern-watch.mjs",
+      "mode": "100644",
+      "bytes": 120155,
+      "sha256": "a65d858e4dffe8915ad1b62df4550ee3d963e7d8de3c360c1b08412e5f87dc51"
+    }
+  ]
+}

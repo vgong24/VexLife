@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "da",
+  "files": [
+    {
+      "path": "blueprint/intent-trust-snapshot.json",
+      "mode": "100644",
+      "bytes": 1694,
+      "sha256": "b141f88a81e7f17602a39896abce5d9631f2fef36afcdbfe7663bb0543a94f39"
+    },
+    {
+      "path": "pages/vexlife-onboarding.js",
+      "mode": "100644",
+      "bytes": 11484,
+      "sha256": "a9298b6ce6bc57a523572bf3c74473a1757425dd371c02447d22174097798250"
+    },
+    {
+      "path": "test/browser-model-turn-witness-integration.test.mjs",
+      "mode": "100644",
+      "bytes": 11508,
+      "sha256": "a19b33514dcbc25ef617d287e462168c172f2349f0147c779c0a42aee7b5d535"
+    }
+  ]
+}

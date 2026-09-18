@@ -1,0 +1,26 @@
+[
+  {
+    "testRef": "test.security-access.projection",
+    "brief": "Security & Access projects only first-slice truthful preview states from a closed no-secret input shape."
+  },
+  {
+    "testRef": "test.security-access.browser",
+    "brief": "Security & Access remains understandable, keyboard reachable and Android-shaped on the browser reference."
+  },
+  {
+    "testRef": "test.security-access.zero-effect",
+    "brief": "Security & Access preview cannot perform credential, device, network, Home, Memory, Friend, provider, model, training or publication effects."
+  },
+  {
+    "testRef": "test.android-remote-vessel.projection",
+    "brief": "Android Remote Vessel reuses the exact Home Bridge connection-state vocabulary and projects only bounded first-slice no-effect states."
+  },
+  {
+    "testRef": "test.android-remote-vessel.browser",
+    "brief": "Android Remote Vessel status mounts inside the existing Android-first Security & Access browser surface without a new route or action."
+  },
+  {
+    "testRef": "test.android-remote-vessel.zero-effect",
+    "brief": "Android Remote Vessel reference cannot pair, authenticate, authorize, issue leases, connect transport, access Home or expose the raw model endpoint."
+  }
+]

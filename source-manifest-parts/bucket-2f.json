@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "2f",
+  "files": [
+    {
+      "path": "reference/browser/modules/public-learning-navigation-continuity.js",
+      "mode": "100644",
+      "bytes": 15632,
+      "sha256": "ba62e8b033f4d0d78098667244aae4da5bcc499d8447e888ede64763a20fd516"
+    },
+    {
+      "path": "src/core/model-turn-witness.mjs",
+      "mode": "100644",
+      "bytes": 12507,
+      "sha256": "1be485aa0ec19f5d8b35ae73eeeb6b7efa2ee5b408a98a7a73e8f423cbb272a9"
+    },
+    {
+      "path": "src/core/utils.mjs",
+      "mode": "100644",
+      "bytes": 6674,
+      "sha256": "213c92f9c3bde26dd50a93e82124a5c66269a1bd7ae3042c688a56c4a5b25156"
+    },
+    {
+      "path": "test/fixtures/orientation/detached-merge.json",
+      "mode": "100644",
+      "bytes": 1173,
+      "sha256": "ae4f14d6feb5be019abe24c38807cfb5f5f99231ee74164334cd7a6cd4f8ea5c"
+    }
+  ]
+}

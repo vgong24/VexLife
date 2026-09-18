@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "4e",
+  "files": [
+    {
+      "path": "docs/EXPERIENCE-GUIDANCE.md",
+      "mode": "100644",
+      "bytes": 6734,
+      "sha256": "b92e07a445d85bd896d987c72be3ef9c5a3ed4fa232161933ec64e1bc6e77349"
+    }
+  ]
+}

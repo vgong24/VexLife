@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VexLife · Closed Alpha Journey</title>
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+  <main class="shell" data-surface-ref="surface.vexlife.cdr-s5.closed-alpha-reference.001">
+    <header class="hero">
+      <div>
+        <p class="eyebrow" data-i18n="referenceBadge">Reference only · no network or participant effects</p>
+        <h1 data-i18n="title">Closed Alpha Journey</h1>
+        <p class="subtitle" data-i18n="subtitle"></p>
+      </div>
+      <label class="language-control">
+        <span data-i18n="language">Language</span>
+        <select id="language" aria-label="Language">
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+          <option value="zh">中文</option>
+        </select>
+      </label>
+    </header>
+
+    <section class="truth-strip" aria-label="Reference boundaries">
+      <strong>INVITE_ONLY</strong>
+      <span><span data-i18n="noPublicSearch">Public search</span>: <strong data-i18n="off">OFF</strong></span>
+      <span data-i18n="synthetic">Synthetic participant only</span>
+      <span data-i18n="noEffect">No external effect performed</span>
+    </section>
+
+    <div class="grid">
+      <section class="card" id="consent-card">
+        <h2 data-i18n="consentTitle"></h2>
+        <p data-i18n="consentBody"></p>
+        <button id="consent" type="button" data-i18n="consentButton"></button>
+        <output id="consent-status" class="status" aria-live="polite">HELD_ALPHA_CONSENT_NOT_ACKNOWLEDGED</output>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="privacyTitle"></h2>
+        <p data-i18n="privacyBody"></p>
+        <dl>
+          <div><dt>discoveryMode</dt><dd>INVITE_ONLY</dd></div>
+          <div><dt>publicSearch</dt><dd>false</dd></div>
+          <div><dt>communitySearch</dt><dd>false</dd></div>
+          <div><dt>trainingEligible</dt><dd>false</dd></div>
+        </dl>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="inviteTitle"></h2>
+        <p data-i18n="inviteBody"></p>
+        <label><span data-i18n="invitationState"></span>
+          <select id="invitation"></select>
+        </label>
+        <output id="invitation-status" class="status" aria-live="polite">NONE</output>
+        <label><span data-i18n="decision"></span>
+          <select id="decision"></select>
+        </label>
+        <output id="decision-status" class="status" aria-live="polite">DEFER</output>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="identityTitle"></h2>
+        <p data-i18n="identityBody"></p>
+        <label><span data-i18n="identityState"></span>
+          <select id="identity"></select>
+        </label>
+        <output id="identity-status" class="status" aria-live="polite">VERIFIED_CURRENT</output>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="presenceTitle"></h2>
+        <p data-i18n="presenceBody"></p>
+        <label><span data-i18n="presenceState"></span>
+          <select id="presence"></select>
+        </label>
+        <output id="presence-status" class="status" aria-live="polite">AVAILABLE_FOR_INVITES</output>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="routeTitle"></h2>
+        <p data-i18n="routeBody"></p>
+        <label><span data-i18n="routeClass"></span>
+          <select id="route"></select>
+        </label>
+        <div class="route-meta">
+          <span><span data-i18n="costClass"></span>: <strong id="cost">LOCAL_OR_DIRECT</strong></span>
+          <span><span data-i18n="providerClass"></span>: <strong id="provider">NONE_LOCAL</strong></span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="deliveryTitle"></h2>
+        <p data-i18n="deliveryBody"></p>
+        <label><span data-i18n="deliveryState"></span>
+          <select id="delivery"></select>
+        </label>
+        <ol class="ladder" id="delivery-ladder"></ol>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="failureTitle"></h2>
+        <p data-i18n="failureBody"></p>
+        <label><span data-i18n="failureState"></span>
+          <select id="failure"></select>
+        </label>
+        <output id="failure-status" class="status" aria-live="polite">NONE</output>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="supportTitle"></h2>
+        <p data-i18n="supportBody"></p>
+        <button id="support" type="button" data-i18n="supportOpen" aria-controls="support-panel" aria-expanded="false"></button>
+        <div id="support-panel" class="support-panel" hidden>
+          <p class="allowed" data-i18n="supportAllowed"></p>
+          <p class="forbidden" data-i18n="supportForbidden"></p>
+        </div>
+      </section>
+
+      <section class="card recovery-card">
+        <h2 data-i18n="recoveryTitle"></h2>
+        <p data-i18n="recoveryBody"></p>
+        <div class="button-row">
+          <button id="revoke" type="button" data-i18n="revoke"></button>
+          <button id="withdraw" type="button" data-i18n="withdraw"></button>
+          <button id="export" type="button" data-i18n="export"></button>
+          <button id="disconnect" type="button" data-i18n="disconnect"></button>
+          <button id="reset" type="button" data-i18n="reset"></button>
+        </div>
+        <output id="recovery-status" class="status" aria-live="polite" data-i18n="active"></output>
+      </section>
+    </div>
+
+    <footer>
+      <span data-i18n="status"></span>:
+      <strong id="effect-status">REFERENCE_ONLY_NO_EXTERNAL_EFFECT</strong>
+    </footer>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

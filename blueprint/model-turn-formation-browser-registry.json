@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "vexlife.model-turn-formation-browser/v1",
+  "registryRef": "registry.vexlife.model-turn-formation-browser.001",
+  "productOwnerRef": "github.issue.vexlife.371",
+  "surfaceRef": "surface.vexlife.chat.turn-formation-disclosure.001",
+  "surfaceState": "BOUNDED_MESSAGE_ATTACHED_DISCLOSURE",
+  "truthClass": "SOURCE_BOUND_REFERENCE_ONLY_NO_EXTERNAL_EFFECT",
+  "screenRef": "screen.vexlife.chat",
+  "regionRef": "region.chat.feed",
+  "elementRef": "element.chat.turn-formation-disclosure",
+  "requiredLanguages": [
+    "en",
+    "ja",
+    "zh"
+  ],
+  "localePaths": {
+    "en": "blueprint/model-turn-formation-browser/strings/en.json",
+    "ja": "blueprint/model-turn-formation-browser/strings/ja.json",
+    "zh": "blueprint/model-turn-formation-browser/strings/zh.json"
+  },
+  "projection": {
+    "requiresExactMessageAttachment": true,
+    "modelConnectionProjectionMayBeAbsent": true,
+    "selfCapabilityFrameMayBeAbsent": true,
+    "absentProjectionDisposition": "UNKNOWN_NOT_PROJECTED_TO_THIS_SURFACE",
+    "rawReasoningAllowed": false,
+    "rawProviderPayloadAllowed": false,
+    "absoluteLocalPathAllowed": false,
+    "privateHomeMemoryAllowed": false,
+    "heldCapabilityMayBecomeExecuted": false,
+    "unknownCapabilityMayBecomeAvailable": false,
+    "effectAuthorityGranted": false
+  },
+  "consumes": [
+    "vexlife.model-turn-witness/v1",
+    "vexlife.capability-assimilation-runtime/v1",
+    "vexlife.model-connection-projection/v1",
+    "vexlife.vex-self-capability-frame/v1"
+  ],
+  "proofRefs": [
+    "R4-00",
+    "R4-01",
+    "R4-02",
+    "R4-03",
+    "R4-04",
+    "R4-05",
+    "R4-06",
+    "R4-07",
+    "R4-08",
+    "R4-09",
+    "R4-10",
+    "R4-11",
+    "R4-12",
+    "R4-13",
+    "R4-14"
+  ]
+}

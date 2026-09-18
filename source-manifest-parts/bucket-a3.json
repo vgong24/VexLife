@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "a3",
+  "files": [
+    {
+      "path": "pages/vexlife-onboarding.html",
+      "mode": "100644",
+      "bytes": 29553,
+      "sha256": "d7abe8762781f562b2b61dde7da5bedb70463ee661e90c0ac61da621b53cb96d"
+    },
+    {
+      "path": "reference/browser/modules/living-journal-demo-data.js",
+      "mode": "100644",
+      "bytes": 10601,
+      "sha256": "5e718176c1f8cc92e8d1e99504ebb9b2e0008f2ea09abc0a72ea04245c183f21"
+    },
+    {
+      "path": "src/core/g04b-native-training-terminal.mjs",
+      "mode": "100644",
+      "bytes": 13459,
+      "sha256": "304fb66d4d721b0d519033bdecd64227c649dd1fec2b62c82be2f764ee253602"
+    },
+    {
+      "path": "test/scheduler-runtime-observer.test.mjs",
+      "mode": "100644",
+      "bytes": 12119,
+      "sha256": "db503af64c57a26ddf91c0ad18ce402a2cb3c75db93f16ab8543c359365f0734"
+    }
+  ]
+}

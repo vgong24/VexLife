@@ -1,0 +1,31 @@
+],risk:'Schedule pressure if UI integration slips'},children:[]},
+ 'project-orbit':{id:'project-orbit',label:'Project Orbit',kind:'project',meta:'4/6 milestones · companion experience',summary:'A synthetic companion-experience project touching Experience and Companion teams.',project:{status:'ACTIVE',milestones:'4 / 6',need:'No immediate resource request',teams:['Experience Team','Companion Team'],risk:'Normal'},children:[]},
+ 'project-evidence':{id:'project-evidence',label:'Evidence Refresh',kind:'project',meta:'2/4 milestones · validation',summary:'A synthetic validation project coordinating evidence and review.',project:{status:'ACTIVE',milestones:'2 / 4',need:'Reviewer availability next week',teams:['Quality Systems'],risk:'Reviewer timing'},children:[]},
+
+ 'person-maya':{id:'person-maya',label:'Maya Chen',kind:'person',meta:'Senior Frontend Engineer · Platform Team',summary:'Synthetic employee profile with limited org-visible contribution scope.',person:{role:'Senior Frontend Engineer',team:'Platform Team',declaredCapacity:'20% volunteered / available',assignments:['Project Aurora'],contributions:['Self-logged: stabilized Terrain viewport behavior','Self-logged: paired on review adapter accessibility','Self-logged: documented rollback path'],kudos:['From Nia: “Made the interaction review much easier to reason about.”','From Jordan: “Caught the scope leak before it reached QA.”']},children:[]},
+ 'person-jordan':{id:'person-jordan',label:'Jordan Kim',kind:'person',meta:'Platform Engineer · Platform Team',summary:'Synthetic employee profile.',person:{role:'Platform Engineer',team:'Platform Team',declaredCapacity:'At capacity',assignments:['Project Aurora'],contributions:['Self-logged: browser adapter test coverage','Self-logged: deployment script cleanup'],kudos:['From Maya: “Great pairing partner on the capture regression.”']},children:[]},
+ 'person-eli':{id:'person-eli',label:'Eli Torres',kind:'person',meta:'Infrastructure Engineer · Platform Team',summary:'Synthetic employee profile.',person:{role:'Infrastructure Engineer',team:'Platform Team',declaredCapacity:'10% flexible',assignments:['Project Aurora'],contributions:['Self-logged: CI runner diagnostics'],kudos:[]},children:[]},
+ 'person-nia':{id:'person-nia',label:'Nia Patel',kind:'person',meta:'Product Designer · Experience Team',summary:'Synthetic employee profile.',person:{role:'Product Designer',team:'Experience Team',declaredCapacity:'15% flexible',assignments:['Project Orbit'],contributions:['Self-logged: semantic zoom interaction study'],kudos:['From Maya: “Turned a fuzzy interaction into a testable model.”']},children:[]},
+ 'person-owen':{id:'person-owen',label:'Owen Reed',kind:'person',meta:'UX Researcher · Experience Team',summary:'Synthetic employee profile.',person:{role:'UX Researcher',team:'Experience Team',declaredCapacity:'At capacity',assignments:['Project Orbit'],contributions:['Self-logged: review-session synthesis'],kudos:[]},children:[]},
+ 'person-sam':{id:'person-sam',label:'Sam Rivera',kind:'person',meta:'Companion Engineer · Companion Team',summary:'Synthetic employee profile.',person:{role:'Companion Engineer',team:'Companion Team',declaredCapacity:'10% flexible',assignments:['Project Orbit'],contributions:['Self-logged: continuity-state adapter'],kudos:[]},children:[]},
+ 'person-lee':{id:'person-lee',label:'Lee Park',kind:'person',meta:'V&V Engineer · Quality Systems',summary:'Synthetic employee profile.',person:{role:'V&V Engineer',team:'Quality Systems',declaredCapacity:'Reviewer window next week',assignments:['Evidence Refresh'],contributions:['Self-logged: qualification matrix refresh'],kudos:[]},children:[]},
+ 'person-rina':{id:'person-rina',label:'Rina Sato',kind:'person',meta:'Labeling Lead · Labeling & Launch',summary:'Synthetic employee profile.',person:{role:'Labeling Lead',team:'Labeling & Launch',declaredCapacity:'At capacity',assignments:[],contributions:['Self-logged: release messaging taxonomy'],kudos:[]},children:[]},
+ 'person-ava':{id:'person-ava',label:'Ava Brooks',kind:'person',meta:'Program Director · Program Coordination',summary:'Synthetic employee profile.',person:{role:'Program Director',team:'Program Coordination',declaredCapacity:'Portfolio role',assignments:['Project Aurora','Project Orbit'],contributions:['Self-logged: cross-team dependency map'],kudos:[]},children:[]}
+};
+const parentOf={};Object.values(tree).forEach(n=>(n.children||[]).forEach(c=>parentOf[c]=n.id));
+const descendants=id=>{let c=0,q=[...(tree[id]?.children||[])];while(q.length){const x=q.shift();c++;q.push(...(tree[x]?.children||[]))}return c};
+const depthOf=id=>{let d=0,x=id;while(parentOf[x]){d++;x=parentOf[x]}return d};
+const pathTo=id=>{const a=[];let x=id;while(x){a.unshift(x);x=parentOf[x]}return a};
+let state={current:'relationship',geometry:'fan',theme:'dark',device:'desktop',history:[{id:'relationship',seq:1}],cursor:0,nextSeq:2,recentWindowStart:0,recentBrowse:false,vexMode:'ambient',vexOpacity:62,vexSize:'medium',vexPos:null,vexDims:null,drawer:false,drawerReturn:null,transitioning:false,autoSemantic:true,workspaceMode:false,localOffsets:{},orgLens:'structure',orgProposals:{},scrollScopes:{}};
+const warm=new Map(),WARM_CAP=5;function touchWarm(id){const n=tree[id];if(!n||!['page','actions'].includes(n.kind))return;if(warm.has(id))warm.delete(id);warm.set(id,true);while(warm.size>WARM_CAP)warm.delete(warm.keys().next().value)}
+function inVexOrg(id=state.current){return pathTo(id).includes('business-potential')}
+function childrenFor(n){
+  if(n.id==='vexorg-demo'){
+    if(state.orgLens==='projects')return ['project-aurora','project-orbit','project-evidence'];
+    if(state.orgLens==='contributions')return ['team-experience','team-platform','team-companion','team-quality','team-labeling','team-program'];
+  }
+  return n.children||[];
+}
+function scopeName(){
+  const n=tree[state.current];
+  if(['page','actions','person','project','orgPolicy'].includes(n.kind))return n.kind==='person'?'employee surface':n.k

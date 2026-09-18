@@ -1,0 +1,104 @@
+[
+  {
+    "permissionRef": "permission.none",
+    "effectClass": "READ_ONLY",
+    "confirmation": "NONE",
+    "recovery": "NOT_APPLICABLE"
+  },
+  {
+    "permissionRef": "permission.conversation.send",
+    "effectClass": "LOCAL_APPEND",
+    "confirmation": "COMPOSER_SEND",
+    "recovery": "MESSAGE_CORRECTION_NOT_ERASURE"
+  },
+  {
+    "permissionRef": "permission.thread.delete",
+    "effectClass": "RECOVERABLE_DELETE",
+    "confirmation": "IMPACT_PLUS_EXACT_PHRASE",
+    "recovery": "RECOVERY_BIN"
+  },
+  {
+    "permissionRef": "permission.folder.assign",
+    "effectClass": "ACCESS_GRANT",
+    "confirmation": "SCOPE_AND_MODE",
+    "recovery": "REVOKE_ASSIGNMENT"
+  },
+  {
+    "permissionRef": "permission.github.publish",
+    "effectClass": "PUBLIC_EXTERNAL",
+    "confirmation": "MANIFEST_SECRET_SCAN_EXACT_PHRASE",
+    "recovery": "GIT_HISTORY_AND_REVERT"
+  },
+  {
+    "permissionRef": "permission.project.create",
+    "effectClass": "LOCAL_APPEND",
+    "confirmation": "PROJECT_DETAILS_CONFIRMATION",
+    "recovery": "RECOVERABLE_PROJECT_RECORD"
+  },
+  {
+    "permissionRef": "permission.dream.candidate",
+    "effectClass": "LOCAL_CANDIDATE_APPEND",
+    "confirmation": "CONSENT_STATE_REQUIRED",
+    "recovery": "REJECT_OR_SUPERSEDE_WITH_SOURCE_PRESERVED"
+  },
+  {
+    "permissionRef": "permission.dream.review",
+    "effectClass": "DURABLE_MEANING_REVIEW",
+    "confirmation": "PRIVACY_CONSENT_CONTRADICTION_SCOPE",
+    "recovery": "CURRENT_POINTER_ROLLBACK_WITH_AUDIT"
+  },
+  {
+    "permissionRef": "permission.adapter.train",
+    "effectClass": "ISOLATED_MODEL_TRAINING",
+    "confirmation": "EXPLICIT_TRAINING_ADMISSION_RESOURCE_LEASE",
+    "recovery": "DELETE_CANDIDATE_ARTIFACT_KEEP_RECEIPT"
+  },
+  {
+    "permissionRef": "permission.roadmap.read",
+    "effectClass": "READ_ONLY",
+    "confirmation": "NONE",
+    "recovery": "RECOMPILE_FROM_CURRENT_PLAN"
+  },
+  {
+    "permissionRef": "permission.file.read",
+    "effectClass": "BOUNDED_LOCAL_READ",
+    "confirmation": "PROJECT_ROOT_AND_ROLE_GRANT",
+    "recovery": "NOT_APPLICABLE"
+  },
+  {
+    "permissionRef": "permission.file.edit",
+    "effectClass": "RECOVERY_GUARDED_LOCAL_WRITE",
+    "confirmation": "EXPECTED_HASH_SCOPE_AND_RECOVERY_PREVIEW",
+    "recovery": "RESTORE_BEFORE_IMAGE"
+  },
+  {
+    "permissionRef": "permission.cli.execute",
+    "effectClass": "TYPED_LOCAL_PROCESS",
+    "confirmation": "COMMAND_CAPABILITY_SCOPE_AND_RESOURCE_ENVELOPE",
+    "recovery": "PROCESS_TERMINATION_AND_EFFECT_SPECIFIC_ROLLBACK"
+  },
+  {
+    "permissionRef": "permission.workshop.mutate",
+    "effectClass": "COPY_ON_WRITE_WORKSHOP",
+    "confirmation": "FEATURE_SCOPE",
+    "recovery": "DISCARD_OR_RESTORE_WORKSHOP_REVISION"
+  },
+  {
+    "permissionRef": "permission.issue.approve",
+    "effectClass": "WORK_APPROVAL",
+    "confirmation": "EXACT_IMPLEMENTATION_SCOPE",
+    "recovery": "WITHDRAW_APPROVAL_BEFORE_EFFECT"
+  },
+  {
+    "permissionRef": "permission.model.provision",
+    "effectClass": "EXTERNAL_ARTIFACT_DOWNLOAD",
+    "confirmation": "URL_CHECKSUM_LICENSE_AND_HARDWARE",
+    "recovery": "DELETE_UNACCEPTED_DEVICE_ARTIFACT"
+  },
+  {
+    "permissionRef": "permission.score.sync",
+    "effectClass": "SCOPED_FAMILY_SYNC",
+    "confirmation": "RECORD_SCOPE_TARGET_LINEAGES_AND_CONSENT",
+    "recovery": "REVOKE_CURRENT_POINTER_KEEP_SOURCE_RECEIPTS"
+  }
+]

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "vexlife.design-review.external-package/v5",
+  "reviewEpochRef": "review-epoch.vexlife.design.e2.7.scoped-layers-vexorg",
+  "priorReferenceBaselineRef": "design-baseline.vexlife.e2.6.intent-aware-navigation",
+  "truthClass": "A_B_VARIANT_PROPOSAL",
+  "implementationState": "NOT_IMPLEMENTED",
+  "repositoryMutationPerformed": false,
+  "sourceMutationPerformed": false,
+  "fileCountExcludingManifest": 14,
+  "files": [
+    {
+      "path": "BASELINE-PROCESS.md",
+      "sha256": "3488d85b988611c342e8d880f2daa2cfa25e1bc956d4bdc9eec668d8e44cf830",
+      "bytes": 799
+    },
+    {
+      "path": "DESIGN-LINEAGE.json",
+      "sha256": "bb26800d14c066b08819e27b016d821854e4fc6a7b0f91e0d48c0ec7de7aee91",
+      "bytes": 2151
+    },
+    {
+      "path": "E2.6-CANDIDATE.json",
+      "sha256": "33d56c27abf9854d35d54cdc89671c6dcd5a6c89ea86601e7294e6f33d94464c",
+      "bytes": 1508
+    },
+    {
+      "path": "E2.7-CANDIDATE.json",
+      "sha256": "d2e824645b4424e44159ffd72c42464ff9f2d3ab2be54551e9712c49f7aaf665",
+      "bytes": 1476
+    },
+    {
+      "path": "QUALIFICATION.json",
+      "sha256": "b28a4025501a1594a6c0ae530c58032990046d8c3dcd6f5081d3dc3bde39c58b",
+      "bytes": 1812
+    },
+    {
+      "path": "README.md",
+      "sha256": "2cc31bb544f236658870ceaa39157265563ef183d47169839d813c74315c935b",
+      "bytes": 2020
+    },
+    {
+      "path": "REFERENCE-BASELINE-E2.5.json",
+      "sha256": "f8976050c9ee382ac088160e3eb808d12aab90cec93b3a3fb911200a38cb0278",
+      "bytes": 4411
+    },
+    {
+      "path": "REFERENCE-BASELINE-E2.6.json",
+      "sha256": "3ac84412b125d4c49d432cfe9a538040576e69c0b06c2b12e9ac948b58a79011",
+      "bytes": 3371
+    },
+    {
+      "path": "REFERENCE-BASELINE-README.md",
+      "sha256": "43bccf2e13a69000f5c45d0eed2ba5ea7b11c9c4a15bfeaadd6bea7a0466887c",
+      "bytes": 765
+    },
+    {
+      "path": "START-HERE.html",
+      "sha256": "e4db5d25013cda1d89d1bad2ac70183bf7f1dd69cd8bd7a6c0aff33882590107",
+      "bytes": 81384
+    },
+    {
+      "path": "VEXORG-CONCEPT.md",
+      "sha256": "becffef8283cab9ea522d34fadca907f4220cd0efb52b058b9d1a7cc4e132f9b",
+      "bytes": 2138
+    },
+    {
+      "path": "snapshots/e2.7-person-ledger-proposal-desktop-dark.png",
+      "sha256": "c0a3a5cdae118c8825a5aba89f990c8e5e94689dbbdb9f8d53b80d47a20a8a45",
+      "bytes": 140105
+    },
+    {
+      "path": "snapshots/e2.7-platform-team-desktop-dark.png",
+      "sha256": "aaa3b7b59430d48975ef8175f6c76be5d9c738e243034c6930de52a42be196fc",
+      "bytes": 186989
+    },
+    {
+      "path": "snapshots/e2.7-vexorg-structure-desktop-dark.png",
+      "sha256": "7646c7407e9b141de1d13f4ea17912e17bd4c4628cb79cc5a59df883b500c30a",
+      "bytes": 208247
+    }
+  ]
+}

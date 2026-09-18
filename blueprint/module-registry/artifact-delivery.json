@@ -1,0 +1,44 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.artifact-delivery",
+    "path": "src/core/artifact-delivery.mjs",
+    "role": "Load canonical source-managed artifact/channel registries, bind the accepted direct verified primitive, enforce closed typed fallback, validate cross-platform-safe chunk manifests, stream bounded reconstruction, and retain channel-bound resume provenance without provider-specific model semantics.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.artifacts.001",
+      "registry.vexlife.artifact-delivery.001",
+      "src/core/model-provision.mjs"
+    ],
+    "writes": [
+      "caller-selected artifact destination and bounded sibling partial/checkpoint files only"
+    ],
+    "tests": [
+      "test/artifact-delivery.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/artifact-registry.json",
+      "blueprint/artifact-delivery-registry.json",
+      "scripts/form-artifact-mirror.mjs",
+      "docs/ARTIFACT-DELIVERY.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.form-artifact-mirror",
+    "path": "scripts/form-artifact-mirror.mjs",
+    "role": "Deterministically split one already-verified local artifact into fixed-size publication parts and form a manifest, SHA256SUMS, and publication inventory without upload, credential, model, Home, Memory, or training effects.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.artifacts.001",
+      "module.vexlife.core.artifact-delivery"
+    ],
+    "writes": [
+      "caller-selected mirror staging directory only"
+    ],
+    "tests": [
+      "test/artifact-delivery.test.mjs"
+    ],
+    "changeMap": [
+      "docs/ARTIFACT-DELIVERY.md"
+    ]
+  }
+]

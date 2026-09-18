@@ -1,0 +1,38 @@
+{
+  "evidence": {
+    "repository": {
+      "slug": "vgong24/VexLife",
+      "remoteUrl": "https://github.com/vgong24/VexLife.git"
+    },
+    "git": {
+      "checkoutSha": "5555555555555555555555555555555555555555",
+      "branch": "main",
+      "branchSource": "GIT_WORKTREE",
+      "detached": false,
+      "checkoutKind": "BRANCH",
+      "candidateHeadSha": "5555555555555555555555555555555555555555",
+      "testedMergeSha": null,
+      "baseSha": "5555555555555555555555555555555555555555",
+      "upstreamRef": "origin/main",
+      "upstreamSha": "5555555555555555555555555555555555555555",
+      "ahead": 0,
+      "behind": 0,
+      "workingTree": "CLEAN",
+      "changedPaths": 0
+    }
+  },
+  "currentWork": {
+    "visibility": "PUBLIC",
+    "visibilitySource": "ENVIRONMENT_RECEIPT",
+    "prNumber": null,
+    "prSource": "UNKNOWN",
+    "workRef": null,
+    "workSource": "UNKNOWN",
+    "priorReviewedHead": null,
+    "commitsAbovePriorHead": null
+  },
+  "lifecycle": {
+    "state": "PUBLIC_ACTIVE",
+    "source": "ENVIRONMENT_RECEIPT"
+  }
+}

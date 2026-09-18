@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "e0",
+  "files": [
+    {
+      "path": "blueprint/runtime-recovery-registry.json",
+      "mode": "100644",
+      "bytes": 36020,
+      "sha256": "43a7e906a487e53e0413b846e98d7ee6c44fc410e3c0901d1b80c014d864b343"
+    },
+    {
+      "path": "test/intent-completion-verifier.test.mjs",
+      "mode": "100644",
+      "bytes": 23417,
+      "sha256": "7fc06f3b73338fec2e2e3ab94495fd1c48cf76383e392ad19e445294235fbe6d"
+    }
+  ]
+}

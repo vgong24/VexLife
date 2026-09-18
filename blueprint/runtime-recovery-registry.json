@@ -1,0 +1,662 @@
+{
+  "schemaVersion": "vexlife.runtime-recovery-registry/v1",
+  "registryRef": "registry.vexlife.runtime-recovery.001",
+  "registryVersion": 1,
+  "purpose": "Own one deterministic no-effect failure, recovery, retry, checkpoint, context, rollback, replay and projection contract before any later real runtime effect may be admitted.",
+  "canonicalSourceRef": "source.blueprint.runtime-recovery-registry",
+  "canonicalSource": {
+    "path": "blueprint/runtime-recovery-registry.json",
+    "sourceClass": "SOURCE_MANAGED_CONTENT_ADDRESSED_RUNTIME_CONTRACT"
+  },
+  "systemRef": "system.vexlife.runtime-failure-recovery",
+  "schedulerClaimLifecycleRecoveryContract": {
+    "contractRef": "contract.runtime-recovery.scheduler-claim-lifecycle/v1",
+    "claimedCurrentRequiredBeforeResume": true,
+    "resumedConsumedRequiredForContinuationSuccessAndConvergence": true,
+    "terminalConsumedRequiredForHistoricalTerminalClosure": true,
+    "invalidatedClaimForcesExactBlockedHold": true,
+    "staleClaimAdmissionOrEvidenceReuseAllowed": false,
+    "schedulerAndRecoveryAggregateMutationOnRejectedUseAllowed": false,
+    "humanProjectionMustExposeExactDispositionReason": true,
+    "everyExternalEventRequiresExactCurrentClaimLifecycle": true
+  },
+  "operationTimeSchedulerCurrentnessContract": {
+    "contractRef": "contract.runtime-recovery.operation-time-scheduler-currentness/v1",
+    "receiptSchemaVersion": "vexlife.runtime-recovery-operation-currentness-receipt/v1",
+    "operationClasses": [
+      "POLICY_FORMATION",
+      "CONTEXT_FORMATION",
+      "RESOURCE_FORMATION",
+      "TRANSACTION_ADOPTION",
+      "HUMAN_GATE_FORMATION",
+      "WAIT_RESUME_FORMATION",
+      "SPLIT_ROUTE_FORMATION",
+      "ACTION_FORMATION",
+      "EXTERNAL_EVENT_ADOPTION",
+      "EXTERNAL_EVENT_ADMISSION",
+      "CONTINUATION_FORMATION",
+      "CONTINUATION_APPLICATION",
+      "RETRY_ATTEMPT",
+      "CONVERGENCE_FORMATION",
+      "CONVERGENCE_APPLICATION",
+      "TERMINAL_CLOSURE",
+      "CURRENT_PROJECTION"
+    ],
+    "requiredBindings": [
+      "schedulerAggregateFingerprint",
+      "schedulerClaimCurrentnessReceiptRef",
+      "schedulerClaimCurrentnessReceiptFingerprint",
+      "schedulerClaimTransitionRef",
+      "schedulerClaimTransitionFingerprint",
+      "checkpointRef",
+      "checkpointFingerprint",
+      "checkpointPointerRef",
+      "checkpointPointerFingerprint",
+      "recoveryAggregateRef",
+      "recoveryAggregateFingerprint",
+      "recoveryCycleRef",
+      "recoveryCycleFingerprint",
+      "failureRef",
+      "failureFingerprint",
+      "onceOnlyActivationRef",
+      "workNodeRef",
+      "schedulerGeneration",
+      "claimLifecycle",
+      "observedAt"
+    ],
+    "invalidatedUseReason": "SCHEDULER_CLAIM_INVALIDATED_OPERATION_REJECTED",
+    "terminalUseReason": "SCHEDULER_CLAIM_TERMINAL_OPERATION_REJECTED",
+    "staleUseReason": "SCHEDULER_CLAIM_STALE_OPERATION_REJECTED",
+    "staleCurrentProjectionState": "HELD_UNKNOWN",
+    "historicalProjectionMustBeExplicit": true,
+    "rejectedSchedulerOrRecoveryMutationAllowed": false,
+    "liveClockOrSynchronizationGranted": false
+  },
+  "externalRecoveryEventClaimLifecycleContract": {
+    "contractRef": "contract.runtime-recovery.external-event-claim-lifecycle/v1",
+    "managedWaitResumeAndSplitAllowedLifecycle": [
+      "CLAIMED_CURRENT"
+    ],
+    "genericExternalEventAllowedLifecycle": [
+      "CLAIMED_CURRENT",
+      "RESUMED_CONSUMED"
+    ],
+    "requiredBindings": [
+      "schedulerClaimLifecycle",
+      "schedulerClaimCurrentnessReceiptRef",
+      "schedulerClaimCurrentnessReceiptFingerprint"
+    ],
+    "invalidatedReason": "SCHEDULER_CLAIM_INVALIDATED_EXTERNAL_EVENT_REJECTED",
+    "terminalReason": "SCHEDULER_CLAIM_TERMINAL_EXTERNAL_EVENT_REJECTED",
+    "rejectedAggregateMutationAllowed": false,
+    "replayMustRevalidateExactCurrentness": true
+  },
+  "externalEventFormationAdoptionContract": {
+    "contractRef": "contract.runtime-recovery.external-event-formation-adoption/v1",
+    "receiptSchemaVersion": "vexlife.runtime-recovery-external-event-adoption-receipt/v1",
+    "managedEventSchemas": [
+      "vexlife.runtime-recovery-external-wait-event/v1",
+      "vexlife.runtime-recovery-external-resume-event/v1",
+      "vexlife.runtime-recovery-split-route-event/v1"
+    ],
+    "genericSourceEventClass": "GENERIC_IMMUTABLE_EXTERNAL_EVENT",
+    "exactSourceCycleAndLifecycleBindingsMayBypassAdoption": true,
+    "unscopedGenericEventRequiresAdoption": true,
+    "sourceObservedAtMustNotPrecedeClaimCurrentness": true,
+    "adoptionMustNotPrecedeSourceObservation": true,
+    "sourceMutationOrRefingerprintAllowed": false,
+    "sourceRefReuseAcrossCycleOrLifecycleAllowed": false,
+    "requiredReceiptBindings": [
+      "sourceEventRef",
+      "sourceEventFingerprint",
+      "sourceEventClass",
+      "sourceObservedAt",
+      "schedulerAggregateFingerprint",
+      "schedulerClaimCurrentnessReceiptRef",
+      "schedulerClaimCurrentnessReceiptFingerprint",
+      "checkpointPointerRef",
+      "checkpointPointerFingerprint",
+      "recoveryAggregateRef",
+      "recoveryCycleRef",
+      "recoveryCycleFingerprint",
+      "failureRef",
+      "failureFingerprint",
+      "workNodeRef",
+      "schedulerGeneration",
+      "adoptionObservedAt"
+    ]
+  },
+  "failureEnvelope": {
+    "contractRef": "contract.vexlife.runtime-failure-envelope/v1",
+    "identityRule": "failureRef and semanticFingerprint derive from the complete canonical source-bound envelope; a thrown string or stack is evidence input only",
+    "requiredFields": [
+      "failureRef",
+      "failureClass",
+      "originRef",
+      "workNodeRef",
+      "schedulerGeneration",
+      "operationRef",
+      "attemptRef",
+      "sourceStateFingerprint",
+      "expectedTransitionRef",
+      "observedAt",
+      "currentness",
+      "retriableClass",
+      "partialEffectState",
+      "humanAttentionClass",
+      "classificationSourceRef",
+      "classificationAdapterRef",
+      "classifierPlanRef",
+      "classifierPlanReceiptFingerprint",
+      "classificationEvidenceFingerprint",
+      "classificationEvidence",
+      "evidenceRefs",
+      "semanticFingerprint"
+    ]
+  },
+  "classifierContract": {
+    "contractRef": "contract.vexlife.runtime-failure-classifier/v1",
+    "executorFieldsAreEvidenceOnly": true,
+    "canonicalDefaultsArePolicyAuthority": true,
+    "currentnessRequired": "CURRENT",
+    "exactPlanReceiptRequired": true,
+    "callerAuthoredInlinePlanAllowed": false,
+    "sources": [
+      {
+        "sourceRef": "source.runtime-recovery.default-unexpected",
+        "adapterRef": "adapter.runtime-recovery.classifier.default-unexpected",
+        "allowedFailureClasses": [
+          "UNEXPECTED_EXCEPTION",
+          "UNKNOWN_FAILURE"
+        ]
+      },
+      {
+        "sourceRef": "source.runtime-recovery.deterministic-fault-plan",
+        "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan",
+        "allowedFailureClasses": [
+          "CONTEXT_BUDGET_EXCEEDED",
+          "MODEL_TIMEOUT_SIMULATED",
+          "RESOURCE_EXHAUSTION_SIMULATED",
+          "PROCESS_TERMINATED_SIMULATED",
+          "DISK_FULL_SIMULATED",
+          "PARTIAL_WRITE_SIMULATED",
+          "NETWORK_INTERRUPTION_SIMULATED",
+          "ROLLBACK_FAILED_SIMULATED",
+          "INVALID_INDEX_OR_BOUNDS",
+          "INVALID_STATE_TRANSITION",
+          "MALFORMED_INPUT_OR_RESULT",
+          "DUPLICATE_OR_REPLAYED_EVENT",
+          "STALE_OR_CORRUPTED_CHECKPOINT"
+        ]
+      },
+      {
+        "sourceRef": "source.runtime-recovery.internal.partial-success",
+        "adapterRef": "adapter.runtime-recovery.classifier.internal-boundary",
+        "allowedFailureClasses": [
+          "MALFORMED_INPUT_OR_RESULT"
+        ]
+      },
+      {
+        "sourceRef": "source.runtime-recovery.internal.malformed-input",
+        "adapterRef": "adapter.runtime-recovery.classifier.internal-boundary",
+        "allowedFailureClasses": [
+          "UNKNOWN_FAILURE"
+        ]
+      }
+    ],
+    "plans": [
+      { "planRef": "classifier-plan.runtime-recovery.default-unexpected", "sourceRef": "source.runtime-recovery.default-unexpected", "adapterRef": "adapter.runtime-recovery.classifier.default-unexpected", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "UNEXPECTED_EXCEPTION" }, { "attempt": 2, "failureClass": "UNEXPECTED_EXCEPTION" }, { "attempt": 3, "failureClass": "UNEXPECTED_EXCEPTION" }] },
+      { "planRef": "classifier-plan.runtime-recovery.default-unknown", "sourceRef": "source.runtime-recovery.default-unexpected", "adapterRef": "adapter.runtime-recovery.classifier.default-unexpected", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "UNKNOWN_FAILURE" }, { "attempt": 2, "failureClass": "UNKNOWN_FAILURE" }, { "attempt": 3, "failureClass": "UNKNOWN_FAILURE" }] },
+      { "planRef": "classifier-plan.runtime-recovery.internal-malformed-input", "sourceRef": "source.runtime-recovery.internal.malformed-input", "adapterRef": "adapter.runtime-recovery.classifier.internal-boundary", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "UNKNOWN_FAILURE" }] },
+      { "planRef": "classifier-plan.runtime-recovery.internal-partial-success", "sourceRef": "source.runtime-recovery.internal.partial-success", "adapterRef": "adapter.runtime-recovery.classifier.internal-boundary", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "MALFORMED_INPUT_OR_RESULT" }] },
+      { "planRef": "classifier-plan.runtime-recovery.test.classification", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "PARTIAL_WRITE_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.test.chronology", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "MODEL_TIMEOUT_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.test.other-owner", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "MODEL_TIMEOUT_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.simulation.main", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "PARTIAL_WRITE_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.simulation.quarantine", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "ROLLBACK_FAILED_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.direct-timeout-retry", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "MODEL_TIMEOUT_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.context-condensation", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "CONTEXT_BUDGET_EXCEEDED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.resource-reduced-retry", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "RESOURCE_EXHAUSTION_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.transactional-rollback", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "PARTIAL_WRITE_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.last-known-good-restore", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "PROCESS_TERMINATED_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.external-wait-resume", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "NETWORK_INTERRUPTION_SIMULATED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.split-work-return", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "CONTEXT_BUDGET_EXCEEDED" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.human-decision-hold", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "INVALID_STATE_TRANSITION" }] },
+      { "planRef": "classifier-plan.runtime-recovery.representative.terminal-block", "sourceRef": "source.runtime-recovery.deterministic-fault-plan", "adapterRef": "adapter.runtime-recovery.classifier.deterministic-fault-plan", "formationRef": "formation.runtime-recovery.classifier-plan-registry.v1", "currentness": "CURRENT", "plan": [{ "attempt": 1, "failureClass": "STALE_OR_CORRUPTED_CHECKPOINT" }] }
+    ]
+  },
+  "failureClasses": [
+    "UNEXPECTED_EXCEPTION",
+    "INVALID_INDEX_OR_BOUNDS",
+    "INVALID_STATE_TRANSITION",
+    "MALFORMED_INPUT_OR_RESULT",
+    "CONTEXT_BUDGET_EXCEEDED",
+    "MODEL_TIMEOUT_SIMULATED",
+    "RESOURCE_EXHAUSTION_SIMULATED",
+    "PROCESS_TERMINATED_SIMULATED",
+    "DISK_FULL_SIMULATED",
+    "PARTIAL_WRITE_SIMULATED",
+    "NETWORK_INTERRUPTION_SIMULATED",
+    "DUPLICATE_OR_REPLAYED_EVENT",
+    "STALE_OR_CORRUPTED_CHECKPOINT",
+    "ROLLBACK_FAILED_SIMULATED",
+    "UNKNOWN_FAILURE"
+  ],
+  "executorOutcomes": [
+    "SUCCEEDED",
+    "FAILED_RECOVERABLE",
+    "FAILED_NEEDS_HUMAN",
+    "FAILED_QUARANTINED",
+    "FAILED_BLOCKED"
+  ],
+  "recoveryActions": [
+    "RETRY_SAME_BUDGET",
+    "RETRY_REDUCED_BUDGET",
+    "CHECKPOINT_AND_WAIT",
+    "CONDENSE_CONTEXT_AND_REACQUIRE",
+    "SPLIT_WORK_NODE",
+    "ROLLBACK_TO_BEFORE_IMAGE",
+    "RESTORE_LAST_KNOWN_GOOD",
+    "QUARANTINE_ADAPTER_OR_ARTIFACT",
+    "REQUEST_HUMAN_DECISION",
+    "TERMINAL_BLOCK"
+  ],
+  "recoveryActionEvidenceMatrix": [
+    { "action": "RETRY_SAME_BUDGET", "required": [], "optional": [], "forbidden": ["context", "resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "RETRY_REDUCED_BUDGET", "required": ["resource"], "optional": [], "forbidden": ["context", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "CHECKPOINT_AND_WAIT", "required": ["externalWait", "externalResume"], "optional": [], "forbidden": ["context", "resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": true, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "CONDENSE_CONTEXT_AND_REACQUIRE", "required": ["context"], "optional": [], "forbidden": ["resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "SPLIT_WORK_NODE", "required": ["context", "splitRoute"], "optional": [], "forbidden": ["resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "ROLLBACK_TO_BEFORE_IMAGE", "required": ["transaction"], "optional": ["lastKnownGood"], "forbidden": ["context", "resource", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "RESTORE_LAST_KNOWN_GOOD", "required": ["transaction", "lastKnownGood"], "optional": [], "forbidden": ["context", "resource", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "RECOVERING", "continuationRequired": true, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": true },
+    { "action": "QUARANTINE_ADAPTER_OR_ARTIFACT", "required": ["transaction", "quarantine"], "optional": [], "forbidden": ["context", "resource", "lastKnownGood", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "QUARANTINED", "continuationRequired": false, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": false },
+    { "action": "REQUEST_HUMAN_DECISION", "required": ["humanGate"], "optional": [], "forbidden": ["context", "resource", "transaction", "lastKnownGood", "quarantine", "externalWait", "externalResume", "splitRoute"], "disposition": "WAITING_HUMAN", "continuationRequired": false, "externalWaitRequired": false, "humanDecisionRequired": true, "completionEligible": false },
+    { "action": "TERMINAL_BLOCK", "required": [], "optional": [], "forbidden": ["context", "resource", "transaction", "lastKnownGood", "quarantine", "humanGate", "externalWait", "externalResume", "splitRoute"], "disposition": "BLOCKED", "continuationRequired": false, "externalWaitRequired": false, "humanDecisionRequired": false, "completionEligible": false }
+  ],
+  "retryPolicy": {
+    "contractRef": "contract.vexlife.runtime-retry-policy/v1",
+    "budgetRef": "budget.vexlife.runtime-recovery.default",
+    "maximumAttemptCount": 3,
+    "maximumRepeatedIdenticalFailureCount": 2,
+    "maximumWallTimeClass": "SHORT_DETERMINISTIC",
+    "maximumWallTimeMs": 5000,
+    "maximumTotalWallTimeMs": 15000,
+    "freshCurrentnessRequired": true,
+    "freshResourceAdmissionRequired": true,
+    "freshContextAdmissionRequired": true,
+    "checkpointBeforeConsequentialRetry": true,
+    "callerMayBroadenAuthority": false,
+    "callerMayResetBudget": false,
+    "recursiveRetryAllowed": false
+  },
+  "recoveryCycleContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-cycle/v1",
+    "contentAddressedAtFailureActivation": true,
+    "bindsExactAggregateWorkSourceGenerationFailureOperationAndAttempt": true,
+    "requiredOnEveryDownstreamRecoveryReceipt": true,
+    "historicalCyclesImmutable": true,
+    "currentPointersResetOnNewCycle": true,
+    "priorCycleEvidenceMaySatisfyCurrentCycle": false,
+    "currentSuccessRequiresCurrentActionContinuationAndFreshGeneration": true
+  },
+  "humanProjectionApplicabilityContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-human-projection-applicability/v1",
+    "currentCycleEvidenceOnly": true,
+    "aggregateHistoryFallbackAllowed": false,
+    "preCheckpointPreservationState": "AWAITING_CURRENT_CYCLE_EVIDENCE",
+    "preCheckpointPreservationFingerprint": null,
+    "requiresReplayDerivedAggregate": true
+  },
+  "replayOwnedHumanProjectionContract": {
+    "contractRef": "contract.runtime-recovery.replay-owned-human-projection/v1",
+    "projectionKind": "QUEUE_TERRAIN_HEALTH_GUIDE",
+    "requiresFullAggregateReplayBeforeProjection": true,
+    "requiredBindings": [
+      "aggregateFingerprint",
+      "activeRecoveryCycleFingerprint",
+      "activeFailureFingerprint",
+      "recoveredFailureFingerprint",
+      "schedulerClaimCurrentnessReceiptFingerprint",
+      "schedulerRecoveryHoldFingerprint",
+      "schedulerDispositionReceiptFingerprint",
+      "currentActionReceiptFingerprint",
+      "currentSuccessReceiptFingerprint",
+      "currentConvergenceReceiptFingerprint",
+      "currentTerminalReceiptFingerprint",
+      "semanticFingerprint"
+    ],
+    "rejectedTamperClasses": [
+      "REMOVED_SCHEDULER_HOLD",
+      "BLOCKED_TO_COMPLETED_OR_CLEAR",
+      "HISTORICAL_EVIDENCE_SUBSTITUTION",
+      "CLAIM_LIFECYCLE_OR_CURRENTNESS_SUBSTITUTION",
+      "REHASHED_DISPLAY_AGGREGATE",
+      "ILLEGAL_LEDGER_HISTORY"
+    ],
+    "failedProjectionMayReturnPlausibleView": false
+  },
+  "schedulerRecoveryClaimContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-scheduler-claim/v1",
+    "requiresReplayDerivedRecoveryAggregate": true,
+    "bindsExactSchedulerAggregateFingerprint": true,
+    "bindsExactRecoveryAggregateFingerprint": true,
+    "bindsExactCycleFailureWorkSourceCheckpointAndSixReleases": true,
+    "bindsOnceOnlyActivationLifecycleAndCurrentness": true,
+    "requiresEdgeSpecificSourceManagedReplayEvidence": true,
+    "restoredClaimLedgerMaySelfAuthorize": false,
+    "durableLifecycle": [
+      "CLAIMED_CURRENT",
+      "RESUMED_CONSUMED",
+      "TERMINAL_CONSUMED",
+      "INVALIDATED_OR_ABANDONED"
+    ],
+    "privateInMemoryOwnershipAllowed": false,
+    "duplicateLiveOrRestartClaimAllowed": false,
+    "forgedClaimantMayConsumeCheckpoint": false,
+    "preResumeDispositionRequired": true,
+    "postDispositionCheckpointPolicies": [
+      "TERMINALLY_HELD_WITH_EXACT_REASON"
+    ]
+  },
+  "checkpointContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-checkpoint/v1",
+    "requiresAcceptedSchedulerCheckpointFingerprint": true,
+    "requiresExactSixLeaseReleaseFingerprints": true,
+    "requiresSchedulerOwnedCurrentPointerConsumptionReceipt": true,
+    "bindsExactAggregateAndFailure": true,
+    "onceOnlyActivationRequired": true,
+    "releasedLeaseReuseAllowed": false,
+    "freshGenerationRequired": true,
+    "rejects": [
+      "STALE",
+      "CORRUPTED",
+      "CROSS_WORK",
+      "CROSS_GENERATION",
+      "WRONG_SOURCE",
+      "SAME_REF_DIFFERENT_CONTENT"
+    ]
+  },
+  "contextRecoveryContract": {
+    "contractRef": "contract.vexlife.runtime-context-recovery/v1",
+    "modelInvocationBeforeFitAllowed": false,
+    "invisibleTruncationAllowed": false,
+    "sourceHistoryDeletionClaimAllowed": false,
+    "preservedFields": [
+      "immutableSourceCoverage",
+      "preservedIntentRef",
+      "preservedInterpretationRef",
+      "preservedUnknownRefs",
+      "preservedAuthorityRef",
+      "returnRouteRef"
+    ],
+    "oversizeRoutes": [
+      "SPLIT_WORK_NODE",
+      "REQUEST_HUMAN_DECISION",
+      "TERMINAL_BLOCK"
+    ]
+  },
+  "schedulerContinuationContract": {
+    "contractRef": "contract.vexlife.runtime-recovery-scheduler-continuation/v1",
+    "requiresSchedulerOwnedResumeReceipt": true,
+    "requiresExactActionAndCheckpointAdmission": true,
+    "requiresSixFreshLeases": true,
+    "contextActionsConsumeExactCoverageSummaryPreservationAndTokenBindings": true,
+    "resourceActionsConsumeExactReducedRequestAndAdmission": true,
+    "genericContextOrDetachedResourceSubstitutionAllowed": false
+  },
+  "transactionalRecoveryContract": {
+    "contractRef": "contract.vexlife.runtime-transactional-recovery/v1",
+    "requiredEvidence": [
+      "expectedBeforeFingerprint",
+      "observedBeforeFingerprint",
+      "partialResultFingerprint",
+      "rollbackReadBackFingerprint",
+      "lastKnownGoodRef",
+      "lastKnownGoodExpectedFingerprint",
+      "lastKnownGoodReadBackFingerprint",
+      "quarantineRef",
+      "quarantineReason",
+      "recoveryCycleRef",
+      "recoveryCycleFingerprint",
+      "recoveryClaimReceiptFingerprint",
+      "checkpointAdmissionFingerprint",
+      "cycleAdoptedAt"
+    ],
+    "rollbackFailureGreenAllowed": false,
+    "exactCycleClaimAndAdmissionAtFormationRequired": true,
+    "silentCycleBackfillAllowed": false,
+    "cycleAdoptionReceiptSchemaVersion": "vexlife.runtime-recovery-cycle-transaction-receipt/v1",
+    "admittedAdapterClass": "DETERMINISTIC_NO_EFFECT",
+    "admittedAdapters": [
+      {
+        "adapterRef": "adapter.runtime-recovery.no-effect",
+        "effectClass": "DETERMINISTIC_NO_EFFECT",
+        "allowedFaultPlanRefs": [
+          "fault-plan.runtime-recovery.partial-write.rollback-restores",
+          "fault-plan.runtime-recovery.partial-write.rollback-fails-lkg-restores",
+          "fault-plan.runtime-recovery.partial-write.rollback-and-lkg-fail"
+        ]
+      },
+      {
+        "adapterRef": "adapter.runtime-recovery.no-effect.quarantine",
+        "effectClass": "DETERMINISTIC_NO_EFFECT",
+        "allowedFaultPlanRefs": [
+          "fault-plan.runtime-recovery.partial-write.rollback-and-lkg-fail"
+        ]
+      }
+    ]
+  },
+  "recoveryAggregate": {
+    "contractRef": "contract.vexlife.runtime-recovery-aggregate/v1",
+    "stateOwnerRef": "state.runtime-recovery",
+    "requiredFields": [
+      "aggregateRef",
+      "workNodeRef",
+      "sourceStateFingerprint",
+      "initialSchedulerGeneration",
+      "schedulerGeneration",
+      "phase",
+      "eventLedger",
+      "activeAttempt",
+      "activeFailure",
+      "activeRecoveryCycle",
+      "recoveryCycleHistory",
+      "activePolicyDecision",
+      "currentRecoveryReceipt",
+      "currentCheckpointAdmission",
+      "currentRecoveryActionReceipt",
+      "currentSchedulerClaimLifecycle",
+      "schedulerClaimLifecycleHistory",
+      "schedulerRecoveryHold",
+      "attemptLedger",
+      "failureHistory",
+      "retryBudget",
+      "retryBudgetFingerprint",
+      "checkpointLineage",
+      "continuationLineage",
+      "contextRecoveryReceipts",
+      "resourceRecoveryReceipts",
+      "rollbackLineage",
+      "quarantinedRefs",
+      "lastKnownGoodRefs",
+      "humanDecisionGates",
+      "terminalRecoveryReceipts",
+      "acceptedExternalEvents",
+      "lastSuccessfulExecutionReceipt",
+      "recoveryConvergenceReceipt",
+      "recoveredFailure",
+      "semanticFingerprint"
+    ],
+    "eventTypes": [
+      "ATTEMPT_STARTED",
+      "ATTEMPT_SUCCEEDED",
+      "ATTEMPT_FAILED",
+      "FAILURE_ACTIVATED",
+      "CHECKPOINT_ADMITTED",
+      "SCHEDULER_CLAIM_LIFECYCLE_RECORDED",
+      "POLICY_DECIDED",
+      "CONTEXT_RECOVERED",
+      "RESOURCE_RECOVERED",
+      "ROLLBACK_ATTEMPTED",
+      "ROLLBACK_VERIFIED",
+      "LAST_KNOWN_GOOD_RESTORED",
+      "QUARANTINED",
+      "HUMAN_DECISION_REQUESTED",
+      "RECOVERY_ACTION_APPLIED",
+      "GENERATION_CONTINUED",
+      "EXTERNAL_EVENT_ACCEPTED",
+      "RECOVERY_CONVERGED",
+      "TERMINAL_CLOSED"
+    ],
+    "eventPayloadContracts": [
+      { "type": "ATTEMPT_STARTED", "fields": ["attempt"] },
+      { "type": "ATTEMPT_SUCCEEDED", "fields": ["attemptRef", "completedAt", "executionReceipt"] },
+      { "type": "ATTEMPT_FAILED", "fields": ["failure", "recoveryCycle"] },
+      { "type": "FAILURE_ACTIVATED", "fields": ["failure", "recoveryCycle"] },
+      { "type": "CHECKPOINT_ADMITTED", "fields": ["admission", "checkpoint", "schedulerConsumptionReceipt"] },
+      { "type": "SCHEDULER_CLAIM_LIFECYCLE_RECORDED", "fields": ["receipt"] },
+      { "type": "POLICY_DECIDED", "fields": ["authorityBoundary", "checkpointAdmission", "contextAdmissionReceipt", "decision", "recoveryReceipt", "resourceAdmissionReceipt"] },
+      { "type": "CONTEXT_RECOVERED", "fields": ["receipt"] },
+      { "type": "RESOURCE_RECOVERED", "fields": ["receipt"] },
+      { "type": "ROLLBACK_ATTEMPTED", "fields": ["receipt"] },
+      { "type": "ROLLBACK_VERIFIED", "fields": ["receipt"] },
+      { "type": "LAST_KNOWN_GOOD_RESTORED", "fields": ["receipt"] },
+      { "type": "QUARANTINED", "fields": ["receipt"] },
+      { "type": "HUMAN_DECISION_REQUESTED", "fields": ["gate"] },
+      { "type": "RECOVERY_ACTION_APPLIED", "fields": ["receipt"] },
+      { "type": "GENERATION_CONTINUED", "fields": ["continuation"] },
+      { "type": "EXTERNAL_EVENT_ACCEPTED", "fields": ["adoptionReceipt", "event"] },
+      { "type": "RECOVERY_CONVERGED", "fields": ["receipt"] },
+      { "type": "TERMINAL_CLOSED", "fields": ["receipt"] }
+    ],
+    "replayRule": "typed content-addressed events are the only mutation route; restore replays legal edges and recomputes phase, cycle-scoped budget use, generation, current pointers, immutable historical recovery lineages and at most one terminal state per recovery cycle",
+    "semanticNoOpRule": "equal aggregate projection fingerprints do not emit another Queue, Terrain, Health or Guide revision"
+  },
+  "projectionIdentities": [
+    {
+      "projectionRef": "projection.runtime-recovery.queue",
+      "projectionKind": "QUEUE"
+    },
+    {
+      "projectionRef": "projection.runtime-recovery.terrain",
+      "projectionKind": "TERRAIN"
+    },
+    {
+      "projectionRef": "projection.runtime-recovery.health",
+      "projectionKind": "HEALTH"
+    },
+    {
+      "projectionRef": "projection.runtime-recovery.guide",
+      "projectionKind": "GUIDE"
+    }
+  ],
+  "processRefs": [
+    "process.vexlife.runtime.capture-classify",
+    "process.vexlife.runtime.recover-execute",
+    "process.vexlife.runtime.project-recovery"
+  ],
+  "moduleRefs": [
+    "module.vexlife.core.runtime-failure",
+    "module.vexlife.core.recovery-policy",
+    "module.vexlife.core.runtime-recovery",
+    "module.vexlife.core.recovery-fault-injector",
+    "module.vexlife.script.recovery-check",
+    "module.vexlife.script.recovery-simulate",
+    "module.vexlife.script.recovery-status"
+  ],
+  "testRefs": [
+    "test.runtime-recovery.r0-totality",
+    "test.runtime-recovery.r1-canonical-identity",
+    "test.runtime-recovery.r2-malformed-visible",
+    "test.runtime-recovery.r3-bounded-budget",
+    "test.runtime-recovery.r4-recurrence-stop",
+    "test.runtime-recovery.r5-checkpoint-required",
+    "test.runtime-recovery.r6-fresh-generation",
+    "test.runtime-recovery.r7-resource-reduction",
+    "test.runtime-recovery.r8-context-no-invoke",
+    "test.runtime-recovery.r9-context-preservation",
+    "test.runtime-recovery.r10-context-oversize-route",
+    "test.runtime-recovery.r11-model-timeout",
+    "test.runtime-recovery.r12-process-restart",
+    "test.runtime-recovery.r13-disk-full",
+    "test.runtime-recovery.r14-partial-write",
+    "test.runtime-recovery.r15-network-checkpoint",
+    "test.runtime-recovery.r16-replay-once",
+    "test.runtime-recovery.r17-checkpoint-rejection",
+    "test.runtime-recovery.r18-rollback-failure",
+    "test.runtime-recovery.r19-last-known-good",
+    "test.runtime-recovery.r20-human-decision",
+    "test.runtime-recovery.r21-canonical-projections",
+    "test.runtime-recovery.r22-semantic-no-op",
+    "test.runtime-recovery.r23-integrated-scheduler-workgraph",
+    "test.runtime-recovery.r24-full-gate",
+    "test.runtime-recovery.r25-exact-classifier-plan",
+    "test.runtime-recovery.r26-replay-durable-scheduler-claim",
+    "test.runtime-recovery.r27-cycle-isolation",
+    "test.runtime-recovery.r28-canonical-claim-semantic-replay",
+    "test.runtime-recovery.r29-pre-resume-disposition",
+    "test.runtime-recovery.r30-exact-cycle-local-evidence",
+    "test.runtime-recovery.r31-canonical-checkpoint-preclaim-replay",
+    "test.runtime-recovery.r32-complete-claim-edge-replay",
+    "test.runtime-recovery.r33-scheduler-claim-lifecycle-recovery",
+    "test.runtime-recovery.r34-bounded-non-recursive-scheduler-state",
+    "test.runtime-recovery.r35-external-event-claim-lifecycle",
+    "test.runtime-recovery.r36-replay-owned-human-projection",
+    "test.runtime-recovery.r37-source-managed-prior-state-budget-transition",
+    "test.runtime-recovery.r38-operation-time-scheduler-currentness",
+    "test.runtime-recovery.r39-external-event-formation-adoption"
+  ],
+  "simulationContract": {
+    "contractRef": "contract.runtime-recovery.integrated-simulation/v1",
+    "checkRef": "check.runtime-recovery",
+    "receiptPath": "generated/health/runtime-recovery-simulation.json",
+    "workNodeRef": "work.runtime-recovery.simulation",
+    "requiredJourneyStates": [
+      "RECOVERY_WORK_NODE_ADMITTED",
+      "TOTAL_BOUNDARY_FAILURE_TYPED",
+      "EXACT_SCHEDULER_CHECKPOINT_AND_SIX_RELEASES",
+      "CANONICAL_SCHEDULER_CLAIM_REPLAY_VERIFIED",
+      "PRE_RESUME_CLAIM_TERMINALLY_HELD",
+      "CHECKPOINT_ADMISSION_RECORDED",
+      "EXACT_SOURCE_POLICY_DECIDED",
+      "AGGREGATE_OWNED_RECOVERY_ACTION_APPLIED",
+      "SCHEDULER_CLAIM_LIFECYCLE_RECOVERY_HELD",
+      "QUARANTINE_ATTENTION_OWNED",
+      "FRESH_GENERATION_AND_SIX_LEASES_CONTINUED",
+      "FRESH_GENERATION_RETRY_SUCCEEDED",
+      "REPLAY_DERIVED_AGGREGATE_RESTORED",
+      "WORKGRAPH_CAUSAL_RECOVERY_VERIFIED",
+      "TERMINAL_RECOVERY_CLOSED",
+      "HUMAN_PROJECTIONS_RETAIN_RECOVERY_EVIDENCE",
+      "EXACT_CYCLE_LOCAL_EVIDENCE_REJECTED",
+      "BOUNDED_NON_RECURSIVE_SCHEDULER_STATE_PROVEN",
+      "SOURCE_MANAGED_PRIOR_STATE_BUDGET_AND_TRANSITION_PROVEN",
+      "EXTERNAL_EVENT_CLAIM_CURRENTNESS_PROVEN",
+      "OPERATION_TIME_SCHEDULER_CURRENTNESS_PROVEN",
+      "EXTERNAL_EVENT_FORMATION_ADOPTION_PROVEN",
+      "REPLAY_OWNED_HUMAN_PROJECTION_PROVEN"
+    ],
+    "requiredSchedulerBindings": [
+      "checkpointFingerprint",
+      "completionVerificationFingerprint",
+      "completionEvidenceLineageFingerprint",
+      "workgraphTransitionFingerprint",
+      "completionFingerprint"
+    ],
+    "externalEffectsExecuted": false,
+    "realModelInvoked": false,
+    "modelWeightsChanged": false,
+    "selfCertifiedRuntimeEvidence": false
+  },
+  "heldBoundaries": [
+    "no full ConcernWatch threshold runtime",
+    "no Build Admission Coverage or real mutation enforcement",
+    "no Judgment Route Compiler, Qwen training or evaluation",
+    "no Council of Lenses or Memory Conformance adapter",
+    "no embodiment, Godot or Open-LLM-VTuber runtime",
+    "no native platform implementation",
+    "no real model, shell, Git, filesystem, network or publication effect",
+    "no live OS clock, live identity or synchronization activation",
+    "no model-weight training, removal or activation"
+  ]
+}

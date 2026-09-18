@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "1f",
+  "files": [
+    {
+      "path": "scripts/localization-check.mjs",
+      "mode": "100644",
+      "bytes": 901,
+      "sha256": "18bc4e340b8a62142dc9484524895cb357ca53360ecd057a69d11b6a82c5e719"
+    },
+    {
+      "path": "test/foundation-health.test.mjs",
+      "mode": "100644",
+      "bytes": 15832,
+      "sha256": "fb27eae19d9077b22316dfbc79a2ceda3ff397718a74aa2127f728de689c2b61"
+    }
+  ]
+}

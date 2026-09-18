@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "04",
+  "files": [
+    {
+      "path": "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md",
+      "mode": "100644",
+      "bytes": 20119,
+      "sha256": "70e6757abe5dd1495f2b355739d629ad460bad28758b8296f4e3e55e9175a720"
+    }
+  ]
+}

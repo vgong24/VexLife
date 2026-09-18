@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "0f",
+  "files": [
+    {
+      "path": "blueprint/module-registry/governance-and-bridge.json",
+      "mode": "100644",
+      "bytes": 8738,
+      "sha256": "ec183ff5dbd0909284b8b03e2db0ba01a34503d9086c06df44c3e735b8358eb7"
+    },
+    {
+      "path": "reference/browser/integration/journey-suite.js",
+      "mode": "100644",
+      "bytes": 2523,
+      "sha256": "77f7a226d373d7390fd816db1463e324ec8ce5d5ed8ad61474967c5c369ca237"
+    },
+    {
+      "path": "test/accepted-main-topology-preflight.test.mjs",
+      "mode": "100644",
+      "bytes": 4237,
+      "sha256": "b859cf7730d469bfd1f77c8223965f8a7e32faa9d3c8dc87e48e6da1910bf2dc"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "vexlife.model-profiles/v0",
+  "note": "Examples only. Exact artifact, checksum, license and hardware compatibility must be supplied and verified by the operator.",
+  "profiles": [
+    {
+      "profileRef": "model-profile.existing-openai-compatible",
+      "mode": "ENDPOINT",
+      "endpointEnv": "VEX_MODEL_ENDPOINT",
+      "modelNameEnv": "VEX_MODEL_NAME"
+    },
+    {
+      "profileRef": "model-profile.external-gguf",
+      "mode": "EXTERNAL_ARTIFACT",
+      "required": [
+        "url",
+        "sha256",
+        "runtimeFamily",
+        "licenseReceiptRef",
+        "hardwareProfileRef"
+      ]
+    }
+  ]
+}

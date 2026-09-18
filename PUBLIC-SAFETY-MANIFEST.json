@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "vexlife.public-safety-manifest/v0",
+  "manifestRef": "public-safety.vexlife.blueprint-foundation.001",
+  "candidateSourcePath": "**",
+  "licenseState": "SELECTED_MPL_2_0_PRIVATE_STAGING",
+  "publicationState": "PRIVATE_STAGING_REQUIRES_REVIEW_BEFORE_PUBLIC",
+  "allowedContentClasses": [
+    "public-candidate architecture and culture",
+    "universal interface and process blueprints",
+    "synthetic fixtures and deterministic tests",
+    "browser reference implementation",
+    "platform scaffold generators",
+    "boot and model-provisioning code without model binaries"
+  ],
+  "excludedContentClasses": [
+    "credentials, tokens and environment secrets",
+    "raw personal conversations and private Guide content",
+    "personal Score, Rhythm, sibling trails and Dream candidates",
+    "runtime logs and machine-specific Vex Home contents",
+    "model weights, adapters, optimizer states and training datasets",
+    "private Vextreme-SDK implementation outside this repository root"
+  ],
+  "forbiddenArtifactPatterns": [
+    "*.gguf",
+    "*.safetensors",
+    "*.onnx",
+    "*.bin",
+    ".env",
+    ".env.*",
+    "runtime/**",
+    "models/**",
+    ".vexlife/**"
+  ],
+  "scanExclusionPatterns": [
+    ".git/**",
+    "node_modules/**",
+    "generated/**"
+  ],
+  "allowedBinaryPatterns": [
+    "test/fixtures/public-safety/allowed/*.dat"
+  ],
+  "prePublicationChecks": [
+    "exact source commit and independent review known",
+    "npm run check passes",
+    "generated platform scaffolds pass",
+    "public file manifest reviewed",
+    "secret and absolute-home-path scan passes",
+    "MPL-2.0 LICENSE and DCO contribution policy present",
+    "browser evidence captured",
+    "target visibility explicitly confirmed by Victor"
+  ],
+  "automaticPublication": false,
+  "forcePushAllowed": false,
+  "historyRewriteAllowed": false,
+  "contributionPolicy": "DCO_1_1_INBOUND_EQUALS_OUTBOUND"
+}

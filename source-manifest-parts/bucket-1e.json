@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "1e",
+  "files": [
+    {
+      "path": "blueprint/model-turn-formation-browser-registry.json",
+      "mode": "100644",
+      "bytes": 1728,
+      "sha256": "9f809a773e97717d17129aa6361cdfb784b526b4c268d4789f9026fc88f03811"
+    },
+    {
+      "path": "reference/browser/modules/public-learning-controller.js",
+      "mode": "100644",
+      "bytes": 23391,
+      "sha256": "964fcbbe79115f228462979f5207d408b5cdee4aa63ab01342008ef4361f8ce0"
+    },
+    {
+      "path": "scripts/evolution-summary.mjs",
+      "mode": "100644",
+      "bytes": 725,
+      "sha256": "c6ac13ab39f729bfa6515fd77087e3c4ed848537dc6a03ba35137ef2c4ea5979"
+    }
+  ]
+}

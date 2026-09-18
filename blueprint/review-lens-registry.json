@@ -1,0 +1,267 @@
+{
+  "schemaVersion": "vexlife.review-lens-registry/v0",
+  "registryRef": "registry.vexlife.review-lenses.001",
+  "registryVersion": 1,
+  "purpose": "Make architecture, culture and whole-system review obligations executable instead of relying on memory.",
+  "lenses": [
+    {
+      "lensRef": "lens.vexlife.intent-and-placement",
+      "purpose": "Prove what the change is for, where its canonical identity lives and why it belongs there.",
+      "requiredQuestions": [
+        "What human or institutional burden is this relieving?",
+        "Which source owns the meaning?",
+        "Is this universal, platform-specific, generated or historical?",
+        "Does an existing registry/process/component already own this responsibility?"
+      ],
+      "requiredEvidence": [
+        "purpose",
+        "canonicalRef",
+        "parentRef",
+        "sourceOwnerRef",
+        "changeEntryRouteRef"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.identity-lattice",
+      "purpose": "Keep stable identity, parent/child relationships, aliases and traversal routes explicit.",
+      "requiredQuestions": [
+        "Does every new screen, region, element, process, tool, state and projection have one stable ref?",
+        "Are parent and cross-domain edges registered once?",
+        "Can a bounded Atlas query find it without a grep hunt?"
+      ],
+      "requiredEvidence": [
+        "stableRefs",
+        "parentRefs",
+        "typedEdges",
+        "atlasTraversalReceipt"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.localization-intent",
+      "purpose": "Make localization and intention-preserving communication foundational.",
+      "requiredQuestions": [
+        "Does every visible string have a stable stringRef?",
+        "Is original speech preserved beside translations/refinements?",
+        "Are fallback and missing-translation states deterministic?",
+        "Could this layout break under longer or RTL text?"
+      ],
+      "requiredEvidence": [
+        "stringRefs",
+        "localeCoverage",
+        "fallbackRule",
+        "layoutEvidence"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.design-system",
+      "purpose": "Prevent one-off interface code and visual drift.",
+      "requiredQuestions": [
+        "Is this built from registered tokens/components/action vessels?",
+        "Should it be a menu item, FAB/action vessel, shared button, panel or platform-native equivalent?",
+        "Does the component expose stable identity, states and accessibility semantics?"
+      ],
+      "requiredEvidence": [
+        "componentRefs",
+        "designTokenRefs",
+        "interactionStateRefs",
+        "platformBindingRefs"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.usability-and-journey",
+      "purpose": "Protect calm human use across companionship, leadership, hybrid and newcomer paths.",
+      "requiredQuestions": [
+        "What does the user expect to happen?",
+        "Are scroll, zoom, pan, drag, back, focus and selection unambiguous?",
+        "Can a newcomer safely test mistakes and recover?",
+        "Can Vex Guide explain the current screen from semantic trajectory rather than raw click spam?"
+      ],
+      "requiredEvidence": [
+        "journeyRefs",
+        "gestureRefs",
+        "selectionGroupRefs",
+        "walkthroughRefs",
+        "guideFrameRefs"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.accessibility",
+      "purpose": "Keep keyboard, screen-reader, reduced-motion, magnification and small-screen use complete.",
+      "requiredQuestions": [
+        "Is meaning independent of color and pointer precision?",
+        "Is every control named and reachable?",
+        "Is there a non-spatial alternative to Terrain?",
+        "Does reduced motion preserve comprehension?"
+      ],
+      "requiredEvidence": [
+        "accessibilityRefs",
+        "keyboardEvidence",
+        "screenReaderEvidence",
+        "reducedMotionEvidence"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.state-and-currentness",
+      "purpose": "Enforce one owner per state domain, narrow selectors and semantic distinct-until-changed delivery.",
+      "requiredQuestions": [
+        "Who owns the canonical state?",
+        "Which consumers observe which selectors?",
+        "Will equal semantic output suppress rerender/snapshot churn?",
+        "How is current distinguished from history and unknown?"
+      ],
+      "requiredEvidence": [
+        "stateOwnerRefs",
+        "selectorRefs",
+        "semanticEqualityRule",
+        "currentPointerRef"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.concurrency-and-relay",
+      "purpose": "Prevent races, identity collapse and undirected communication.",
+      "requiredQuestions": [
+        "Who is speaker, recipient, witness and transport?",
+        "Which writer owns the effect?",
+        "What happens if state changes while the model is thinking?",
+        "How are retries, deduplication, cancellation and return routing handled?"
+      ],
+      "requiredEvidence": [
+        "channelRef",
+        "speakerRecipientContract",
+        "expectedStateHash",
+        "claimOrLeaseRef",
+        "retryAndCancellationRule"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.security-privacy-permission",
+      "purpose": "Make security and permission gates part of the interface contract.",
+      "requiredQuestions": [
+        "What data/effect boundary is crossed?",
+        "What is the most restrictive authority intersection?",
+        "Can the model inspect this without being allowed to mutate it?",
+        "What private data is explicitly excluded from projections, logs and public export?"
+      ],
+      "requiredEvidence": [
+        "permissionRefs",
+        "capabilityRefs",
+        "dataClass",
+        "effectClass",
+        "publicPrivateBoundaryRefs"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.legal-provenance-stewardship",
+      "purpose": "Preserve license, origin, contribution and public-claim integrity without turning developers into lawyers.",
+      "requiredQuestions": [
+        "What is the source and license of every added dependency/asset/snippet?",
+        "Does this alter public claims, trademarks, user data or contribution terms?",
+        "Is legal uncertainty preserved and routed rather than guessed?",
+        "Does public export exclude private or third-party restricted material?"
+      ],
+      "requiredEvidence": [
+        "provenanceRefs",
+        "licenseClassification",
+        "thirdPartyNoticeImpact",
+        "legalUnknowns",
+        "publicSafetyReceipt"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.resource-and-context",
+      "purpose": "Keep local hardware, token, time, I/O and human-attention use bounded.",
+      "requiredQuestions": [
+        "What resource envelope does this require?",
+        "Can deterministic retrieval replace a model call?",
+        "Is context source-descendable and within the serialized token budget?",
+        "Does background work yield to interactive conversation?"
+      ],
+      "requiredEvidence": [
+        "resourceEnvelopeRef",
+        "contextBudgetRef",
+        "retrievalPlanRef",
+        "preemptionRule"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.reuse-and-simplification",
+      "purpose": "Offload repetition into mature functions, registries and generated projections.",
+      "requiredQuestions": [
+        "Is this repetition generic, domain-specific, intentionally different or accidentally divergent?",
+        "Can a registry entry replace a switch?",
+        "Can one super-function or process definition serve all consumers?",
+        "What complexity can be removed rather than abstracted?"
+      ],
+      "requiredEvidence": [
+        "reuseClassification",
+        "existingPatternRefs",
+        "simplificationDecision",
+        "generatedProjectionRefs"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.recovery-migration-continuity",
+      "purpose": "Make mistakes, upgrades and deletion recoverable and traceable.",
+      "requiredQuestions": [
+        "What is the before-image, rollback and quarantine route?",
+        "Can migration be retried or resumed without overwriting accepted state?",
+        "Does deletion preserve a tombstone and recovery window?",
+        "Will a future instance understand why this changed?"
+      ],
+      "requiredEvidence": [
+        "migrationRef",
+        "rollbackRouteRef",
+        "recoveryReceiptRef",
+        "decisionRecordRef"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.platform-environment",
+      "purpose": "Require evidence from each environment instead of assuming browser behavior generalizes.",
+      "requiredQuestions": [
+        "Which behavior is universal and which belongs to the platform adapter?",
+        "Which OS, device, lifecycle, permission, line-ending, filesystem or packaging differences matter?",
+        "What does generated scaffold prove versus not prove?"
+      ],
+      "requiredEvidence": [
+        "platformRefs",
+        "environmentMatrix",
+        "nativeEvidenceRefs",
+        "heldPlatformDifferences"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.visibility-terrain-health",
+      "purpose": "Ensure important currentness, debt and consequences are perceivable without raw engineering noise.",
+      "requiredQuestions": [
+        "Who needs to see this and at what depth?",
+        "Should it appear in Terrain, Health, Root Hub, Guide, a menu or only audit evidence?",
+        "What semantic transition merits a durable notice?",
+        "Can the projection remain compact and source-descendable?"
+      ],
+      "requiredEvidence": [
+        "projectionRefs",
+        "terrainRefs",
+        "healthRefs",
+        "attentionRule",
+        "sourceDescentRefs"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.assurance-and-adversarial",
+      "purpose": "Look for failure modes beyond the happy-path implementation.",
+      "requiredQuestions": [
+        "Which malformed, stale, duplicated, interrupted or hostile inputs must fail closed?",
+        "What assumption is easiest for a future agent to miss?",
+        "What test proves the boundary, not just the output?",
+        "What does passing still not prove?"
+      ],
+      "requiredEvidence": [
+        "negativeTestRefs",
+        "boundaryProofRefs",
+        "knownUnknowns",
+        "passDoesNotMean"
+      ]
+    }
+  ]
+}

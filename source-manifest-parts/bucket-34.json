@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "34",
+  "files": [
+    {
+      "path": "docs/G05-RUNTIME-AUTHORITY-SUBSTRATE.md",
+      "mode": "100644",
+      "bytes": 7936,
+      "sha256": "8b55244d3376d069602ccc1b9863dd92043c24851e7c78ff9e2b8f5d45c5ad11"
+    },
+    {
+      "path": "reference/browser/integration/root-contract-suite.js",
+      "mode": "100644",
+      "bytes": 1862,
+      "sha256": "5fdaa1f980d717b42b9aa88b14494bb972e53ceba90f81bcaa9222b21505be9d"
+    },
+    {
+      "path": "release/macos/VexLifeSetupLauncher.sh",
+      "mode": "100755",
+      "bytes": 3534,
+      "sha256": "a2ee98168a9bcac883122ec06d4886c24f8a48bbbc87e66ae55bda10f265fcdb"
+    },
+    {
+      "path": "src/core/browser-relationships-invitation-product-bridge.mjs",
+      "mode": "100644",
+      "bytes": 15063,
+      "sha256": "81ae5649dba167a2e947e73582209a65958dc8965850b05a8207b7f426cb5071"
+    },
+    {
+      "path": "test/public-safety.test.mjs",
+      "mode": "100644",
+      "bytes": 3919,
+      "sha256": "194b7be177367dd255be65380765e97ac74bdd88e4c15d3e40caa7a901e13177"
+    }
+  ]
+}

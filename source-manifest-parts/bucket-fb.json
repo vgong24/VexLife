@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "fb",
+  "files": [
+    {
+      "path": "test/fixtures/orientation/github-pr-current-work-duplicate.json",
+      "mode": "100644",
+      "bytes": 464,
+      "sha256": "2b638ced378662f0b3a02192c64450b5a794059987fde76af08f8ee0c07e8066"
+    },
+    {
+      "path": "test/pr-ready-attention.e2e.mjs",
+      "mode": "100644",
+      "bytes": 3537,
+      "sha256": "f395bdd9b6d7c04a2a4abaa3d31f1fc82226a52fa0326dcb347d93a6491d0920"
+    }
+  ]
+}

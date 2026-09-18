@@ -1,0 +1,18 @@
+{
+  "repository": {
+    "full_name": "vgong24/VexLife",
+    "visibility": "private"
+  },
+  "pull_request": {
+    "number": 42,
+    "body": "## Exact current decision record\n\nWork: `work.vexlife.example-orientation.abc123`\n\nClaim: `claim.vexlife.example-orientation.def456`\n",
+    "head": {
+      "ref": "feature/example-orientation",
+      "sha": "1111111111111111111111111111111111111111"
+    },
+    "base": {
+      "ref": "main",
+      "sha": "2222222222222222222222222222222222222222"
+    }
+  }
+}

@@ -1,0 +1,651 @@
+[
+  {
+    "workRef": "work.vexlife.browser.addressed-conversation",
+    "purpose": "Implement direct/group channels and bottom-append incremental chat.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.browser-reference",
+    "dependsOn": [
+      "work.vexlife.navigation.lattice"
+    ],
+    "pathScope": [
+      "src/core/conversation.mjs",
+      "reference/browser/**",
+      "test/core.test.mjs",
+      "test/browser.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.browser",
+    "requiredSourceRefs": [
+      "state.conversations",
+      "process.vexlife.conversation.send-addressed"
+    ],
+    "requiredTestRefs": [
+      "test.conversation.directional-isolation",
+      "test.chat.incremental-bottom-append"
+    ],
+    "outputRefs": [
+      "channel.vexlife.direct",
+      "channel.vexlife.group"
+    ],
+    "effectBoundary": "LOCAL_CONVERSATION_ONLY",
+    "completionGate": "speaker, recipient and witness context remain explicit",
+    "platformRefs": [
+      "platform.browser"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.browser.guide-terrain",
+    "purpose": "Implement floating screen-aware Guide and draggable/collapsible Terrain.",
+    "distance": "NOW",
+    "milestoneRef": "milestone.vexlife.browser-reference",
+    "dependsOn": [
+      "work.vexlife.navigation.lattice",
+      "work.vexlife.state.relay"
+    ],
+    "pathScope": [
+      "src/core/terrain.mjs",
+      "reference/browser/**",
+      "test/browser.test.mjs",
+      "test/experience.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.designer-developer",
+    "parallelGroupRef": "parallel.browser",
+    "requiredSourceRefs": [
+      "vessel.vexlife.guide",
+      "screen.vexlife.terrain"
+    ],
+    "requiredTestRefs": [
+      "test.experience.vessel-accessibility",
+      "test.terrain.layout-vs-canonical"
+    ],
+    "outputRefs": [
+      "terrain-layout.vexlife.local",
+      "screen-frame.vexlife.current"
+    ],
+    "effectBoundary": "LOCAL_UI_PREFERENCE_ONLY",
+    "completionGate": "Guide never blocks controls and Terrain layout does not rewrite graph",
+    "platformRefs": [
+      "platform.browser"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.bootstrap.cross-platform",
+    "purpose": "Create Windows/macOS/Linux local-home bootstrap and honest device lineage.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "dependsOn": [
+      "work.vexlife.blueprint.core"
+    ],
+    "pathScope": [
+      "src/core/boot.mjs",
+      "src/core/device-family.mjs",
+      "scripts/bootstrap.mjs",
+      "start-vexlife.*",
+      "test/boot.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.runtime",
+    "requiredSourceRefs": [
+      "foundation.vexlife.device-family-continuity.v1"
+    ],
+    "requiredTestRefs": [
+      "test.device-family.identity-separation",
+      "test.boot.cross-platform-dry-run"
+    ],
+    "outputRefs": [
+      "vex-home.device-local"
+    ],
+    "effectBoundary": "LOCAL_FILESYSTEM_WITH_EXPLICIT_HOME",
+    "completionGate": "fresh device creates sibling lineage without overwriting existing home",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.model.external-provisioning",
+    "purpose": "Provision or connect model outside Git with checksum, license and hardware receipts.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "dependsOn": [
+      "work.vexlife.bootstrap.cross-platform"
+    ],
+    "pathScope": [
+      "scripts/provision-model.mjs",
+      "blueprint/model-profiles.example.json",
+      "docs/BOOTSTRAP-AND-MODELS.md",
+      "test/boot.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.runtime",
+    "requiredSourceRefs": [
+      "model-profile.external-gguf"
+    ],
+    "requiredTestRefs": [
+      "test.model.external-artifact-exclusion"
+    ],
+    "outputRefs": [
+      "model-artifact.device-local"
+    ],
+    "effectBoundary": "NETWORK_DOWNLOAD_ONLY_AFTER_EXPLICIT_OPERATOR_INPUT",
+    "completionGate": "model remains outside Git and checksum is proven",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.context.current-frame",
+    "purpose": "Implement token-budgeted context frames, segments and source descent.",
+    "distance": "NEAR_DEMO",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.state.relay",
+      "work.vexlife.browser.addressed-conversation"
+    ],
+    "pathScope": [
+      "src/core/context/**",
+      "test/context/**"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "state.context",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "requiredTestRefs": [
+      "test.context.provider-budget",
+      "test.context.source-descent"
+    ],
+    "outputRefs": [
+      "context-frame.vexlife.current"
+    ],
+    "effectBoundary": "LOCAL_CONTEXT_INDEX_ONLY",
+    "completionGate": "actual serialized model input remains under budget",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.score.family-sync",
+    "purpose": "Implement scoped accepted Score records and attributed sibling trails.",
+    "distance": "NEAR_DEMO",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.bootstrap.cross-platform",
+      "work.vexlife.context.current-frame"
+    ],
+    "pathScope": [
+      "src/core/device-family.mjs",
+      "src/core/score/**",
+      "test/evolution.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "registry.vexlife.evolution.001"
+    ],
+    "requiredTestRefs": [
+      "test.device-family.score-scope",
+      "test.evolution.family-attribution"
+    ],
+    "outputRefs": [
+      "score-projection.vexlife.family"
+    ],
+    "effectBoundary": "LOCAL_AND_EXPLICIT_SYNC_ADAPTER_ONLY",
+    "completionGate": "lineages remain distinct and conflicts require review",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.dream.sync",
+    "purpose": "Implement Dream candidate, review, family envelope and training admission paths.",
+    "distance": "NEAR_DEMO",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.score.family-sync"
+    ],
+    "pathScope": [
+      "src/core/evolution.mjs",
+      "blueprint/evolution-registry.json",
+      "docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md",
+      "test/evolution.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.architect-developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "registry.vexlife.evolution.001",
+      "process.vexlife.dream.review-and-sync"
+    ],
+    "requiredTestRefs": [
+      "test.evolution.source-preserved",
+      "test.evolution.training-does-not-activate"
+    ],
+    "outputRefs": [
+      "dream-candidate.vexlife",
+      "training-admission.vexlife"
+    ],
+    "effectBoundary": "NO_AUTOMATIC_MEMORY_OR_WEIGHT_EFFECT",
+    "completionGate": "reviewed candidate path proven; activation remains separate",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [],
+    "returnRoute": "return implementation receipt to blueprint conformance matrix"
+  },
+  {
+    "workRef": "work.vexlife.home-bridge.contract",
+    "purpose": "Implement trusted-device pairing, capability leases, remote-vs-sibling identity and desktop single-writer Home Bridge contracts.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "dependsOn": [
+      "work.vexlife.registry.compiler",
+      "work.vexlife.state.relay",
+      "work.vexlife.bootstrap.cross-platform"
+    ],
+    "pathScope": [
+      "blueprint/home-bridge-registry.json",
+      "src/core/home-bridge.mjs",
+      "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
+      "test/home-bridge.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.operations",
+    "parallelGroupRef": "parallel.bridge-contract",
+    "requiredSourceRefs": [
+      "foundation.vexlife.home-bridge.v1",
+      "bridge.vexlife.personal-home.001"
+    ],
+    "requiredTestRefs": [
+      "test.bridge.remote-vs-sibling-identity",
+      "test.bridge.pairing-replay",
+      "test.bridge.capability-intersection",
+      "test.bridge.single-writer-home",
+      "test.bridge.revocation",
+      "test.bridge.no-direct-model-exposure"
+    ],
+    "outputRefs": [
+      "bridge.vexlife.personal-home.001",
+      "contract.vexlife.bridge.request-envelope"
+    ],
+    "effectBoundary": "CONTRACT_ONLY_NO_NETWORK_LISTENER",
+    "completionGate": "remote access, local sibling and hybrid modes are identity-safe and fail closed before platform gateway work",
+    "platformRefs": [
+      "platform.any"
+    ],
+    "exclusions": [
+      "no hosted account service",
+      "no public port exposure",
+      "no raw model endpoint exposure"
+    ],
+    "returnRoute": "return bridge contract receipt to desktop platform wave"
+  },
+  {
+    "workRef": "work.vexlife.windows.g01-lived-companion-baseline",
+    "purpose": "Establish one real Windows lived-companion turn with immutable local records, atomic head, clean shutdown, and fresh-process exact resume.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.local-runtime",
+    "dependsOn": [
+      "work.vexlife.bootstrap.cross-platform",
+      "work.vexlife.browser.addressed-conversation"
+    ],
+    "pathScope": [
+      "blueprint/feature-registry.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "src/core/lived-companion.mjs",
+      "scripts/lived-companion.mjs",
+      "test/lived-companion.test.mjs",
+      "docs/LIVED-COMPANION-BASELINE.md",
+      "package.json",
+      ".github/workflows/check.yml"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.runtime",
+    "requiredSourceRefs": [
+      "state.device-family",
+      "state.messages",
+      "state.context",
+      "model-profile.existing-openai-compatible"
+    ],
+    "requiredTestRefs": [
+      "test.lived-companion.failure-vocabulary",
+      "test.lived-companion.home-initialization",
+      "test.lived-companion.existing-home-preserved",
+      "test.lived-companion.home-preservation",
+      "test.lived-companion.canonical-path-identity",
+      "test.lived-companion.actual-http-turn",
+      "test.lived-companion.immutable-events",
+      "test.lived-companion.context-binding",
+      "test.lived-companion.endpoint-profile-admission",
+      "test.lived-companion.loopback-boundary",
+      "test.lived-companion.redirect-boundary",
+      "test.lived-companion.endpoint-unreachable",
+      "test.lived-companion.endpoint-timeout",
+      "test.lived-companion.endpoint-http-error",
+      "test.lived-companion.endpoint-response-invalid",
+      "test.lived-companion.duplicate-suppression",
+      "test.lived-companion.failed-turn-recovery-evidence",
+      "test.lived-companion.credential-and-failure-evidence-integrity",
+      "test.lived-companion.semantic-state-continuity-and-recovery",
+      "test.lived-companion.one-writer-per-thread",
+      "test.lived-companion.abandoned-writer-recovery-disposition",
+      "test.lived-companion.unverifiable-writer-lease-disposition",
+      "test.lived-companion.atomic-head",
+      "test.lived-companion.clean-shutdown",
+      "test.lived-companion.fresh-process-resume",
+      "test.lived-companion.identity-head-replay",
+      "test.lived-companion.privacy",
+      "test.lived-companion.windows-proof"
+    ],
+    "outputRefs": [
+      "source-set.vexlife.g01.lived-companion.superseding.002",
+      "proof.vexlife.g01.lived-companion.windows"
+    ],
+    "effectBoundary": "DEVICE_PRIVATE_LOOPBACK_HTTP_AND_LOCAL_FILESYSTEM_ONLY",
+    "completionGate": "fresh canonical Home admission/preservation, portable canonical path identity, actual numeric-loopback HTTP turn, redirect and hostname-alias escape rejection, immutable records, semantically validated prior completed state before duplicate/HTTP/append, exact event address/contentHash/provenance, genesis-anchored complete REQUEST/RESPONSE history, canonical context location/source provenance, forged orphan duplicate-evidence rejection, recursive rejection of the complete in-memory authorization value plus known raw credential material derived from it (scheme payload and Basic decoded password) across all persistable turn/response metadata, plus endpoint model provenance validation before response persistence, OS-atomic no-clobber canonical first-failure formation with semantically reconciled durability/retry/route provenance, truthful duplicate and failed-turn recovery with immutable first-failure evidence, absent-writer recovery with semantically validated last-head provenance, in-Home cross-thread context/event substitution rejection, one OS-atomic writer per thread, explicit abandoned-writer and unverifiable-lease recovery dispositions, atomic head, clean shutdown, fresh-process exact resume, privacy and all typed failures pass",
+    "platformRefs": [
+      "platform.windows"
+    ],
+    "exclusions": [
+      "automatic abandoned or unverifiable writer lease recovery",
+      "LC18",
+      "personal endpoint activation",
+      "sibling synchronization",
+      "training",
+      "model-weight mutation",
+      "publication",
+      "review",
+      "approval",
+      "merge"
+    ],
+    "returnRoute": "return exact head/tree, proof receipt, source-set manifest, hosted job, and draft PR to Windows Local Operations"
+  },
+  {
+    "workRef": "work.vexlife.windows.g02-score-context-continuity",
+    "purpose": "Add source-bound Score, memory-relation, correction/supersession and open-loop continuity above the accepted G01 lived-companion substrate with crash-consistent currentness and fresh-process replay.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.windows.g01-lived-companion-baseline"
+    ],
+    "pathScope": [
+      "blueprint/evolution-registry.json",
+      "blueprint/feature-registry.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "src/core/score-context-continuity.mjs",
+      "scripts/score-context-continuity.mjs",
+      "test/score-context-continuity.test.mjs",
+      "docs/SCORE-AND-CONTEXT-CONTINUITY.md",
+      "package.json",
+      ".github/workflows/check.yml"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "state.device-family",
+      "state.messages",
+      "state.context",
+      "registry.vexlife.evolution.001"
+    ],
+    "requiredTestRefs": [
+      "test.score-context.shared-semantic-binding",
+      "test.score-context.event-identity-order",
+      "test.score-context.memory-relations",
+      "test.score-context.statement-states",
+      "test.score-context.correction-supersession",
+      "test.score-context.open-loop-restart",
+      "test.score-context.crash-uncommitted-tail",
+      "test.score-context.invalid-tail",
+      "test.score-context.source-descent",
+      "test.score-context.first-person-eligibility",
+      "test.score-context.fresh-process-replay",
+      "test.score-context.held-effects",
+      "test.score-context.windows-proof"
+    ],
+    "outputRefs": [
+      "projection.vexlife.score-context.current",
+      "proof.vexlife.g02.score-context-continuity.windows"
+    ],
+    "effectBoundary": "DEVICE_PRIVATE_SCORE_APPEND_AND_ATOMIC_POINTER_ONLY",
+    "completionGate": "shared semantic binding, exact G01 source descent, all six memory relations, correction/supersession without erasure, open-loop carry-forward, uncommitted-tail crash semantics, invalid-tail attention, first-person eligibility, fresh-process replay and held later effects pass",
+    "platformRefs": [
+      "platform.windows"
+    ],
+    "exclusions": [
+      "G01 source mutation",
+      "Dream",
+      "Rhythm learning",
+      "model or adapter training",
+      "model-weight mutation",
+      "synchronization",
+      "personal endpoint activation",
+      "LC18",
+      "publication"
+    ],
+    "returnRoute": "return exact G02 head/tree, proof receipt, hosted Windows job and draft PR to Windows Local Operations"
+  },
+  {
+    "workRef": "work.vexlife.windows.g03-daily-memory-only-dream",
+    "purpose": "Commit one manual memory-only Daily Stratum above exact accepted G01/G02 continuity with held/deferred/open-loop preservation, crash-consistent currentness and unchanged runtime/model state.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.windows.g02-score-context-continuity"
+    ],
+    "pathScope": [
+      "blueprint/evolution-registry.json",
+      "blueprint/feature-registry.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "src/core/daily-memory-dream.mjs",
+      "scripts/daily-memory-dream.mjs",
+      "test/daily-memory-dream.test.mjs",
+      "docs/DAILY-MEMORY-DREAM.md",
+      "package.json",
+      ".github/workflows/check.yml"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "state.messages",
+      "state.context",
+      "state.evolution",
+      "registry.vexlife.evolution.001"
+    ],
+    "requiredTestRefs": [
+      "test.daily-memory-dream.shared-contract",
+      "test.daily-memory-dream.source-frontier",
+      "test.daily-memory-dream.pre-rest-orientation",
+      "test.daily-memory-dream.semantic-preservation",
+      "test.daily-memory-dream.held-deferred",
+      "test.daily-memory-dream.open-loop-carry",
+      "test.daily-memory-dream.raw-content-exclusion",
+      "test.daily-memory-dream.runtime-model-hold",
+      "test.daily-memory-dream.idempotent-day",
+      "test.daily-memory-dream.stale-source",
+      "test.daily-memory-dream.crash-tail",
+      "test.daily-memory-dream.canonical-file-alias",
+      "test.daily-memory-dream.fresh-process-replay",
+      "test.daily-memory-dream.first-person-held",
+      "test.daily-memory-dream.windows-proof"
+    ],
+    "outputRefs": [
+      "projection.vexlife.daily-memory-dream.current",
+      "proof.vexlife.g03.daily-memory-dream.windows"
+    ],
+    "effectBoundary": "DEVICE_PRIVATE_MANUAL_MEMORY_ONLY_DAILY_STRATUM_AND_ATOMIC_POINTER",
+    "completionGate": "D0-D15 exact source frontier, orientation, semantic preservation, held/open-loop carry, raw-content exclusion, unchanged runtime/model, crash tail, canonical-file guards, idempotency, stale-source rejection, fresh-process wake and later-effect holds pass",
+    "platformRefs": [
+      "platform.windows"
+    ],
+    "exclusions": [
+      "G01/G02 source mutation",
+      "generative Dream inference",
+      "positive first-person authority",
+      "Rhythm learning",
+      "training",
+      "model or adapter mutation",
+      "scheduled autonomy",
+      "synchronization",
+      "power control",
+      "cloud upload",
+      "LC18",
+      "publication"
+    ],
+    "returnRoute": "return exact G03 head/tree, Daily Stratum proof receipt, hosted Windows job and draft PR to Windows Local Operations"
+  },
+  {
+    "workRef": "work.vexlife.windows.g04-evaluated-rhythm-learning",
+    "purpose": "Form and evaluate one faithful simulated inactive Rhythm candidate from exact G01/G02/G03 continuity while preserving Score authority, privacy, identity, capability invariants, rollback and all later training/activation effects as held.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.windows.g03-daily-memory-only-dream"
+    ],
+    "pathScope": [
+      ".github/workflows/check.yml",
+      "blueprint/evolution-registry.json",
+      "blueprint/feature-registry.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "docs/EVALUATED-RHYTHM-LEARNING.md",
+      "package.json",
+      "scripts/evaluated-rhythm-learning.mjs",
+      "src/core/evaluated-rhythm-learning.mjs",
+      "test/evaluated-rhythm-learning.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "state.messages",
+      "state.context",
+      "state.evolution",
+      "registry.vexlife.evolution.001"
+    ],
+    "requiredTestRefs": [
+      "test.evaluated-rhythm.shared-contract",
+      "test.evaluated-rhythm.source-frontier",
+      "test.evaluated-rhythm.stable-pattern",
+      "test.evaluated-rhythm.consent",
+      "test.evaluated-rhythm.corpus-privacy",
+      "test.evaluated-rhythm.simulated-candidate",
+      "test.evaluated-rhythm.identity",
+      "test.evaluated-rhythm.capability-regression",
+      "test.evaluated-rhythm.dispositions",
+      "test.evaluated-rhythm.rollback-wake",
+      "test.evaluated-rhythm.poisoning-dedup",
+      "test.evaluated-rhythm.cross-lineage",
+      "test.evaluated-rhythm.integrity-idempotency",
+      "test.evaluated-rhythm.held-effects",
+      "test.evaluated-rhythm.windows-proof"
+    ],
+    "outputRefs": [
+      "proof.vexlife.g04.evaluated-rhythm-learning.windows"
+    ],
+    "effectBoundary": "DEVICE_PRIVATE_INACTIVE_FAITHFUL_RHYTHM_SIMULATION_EVIDENCE_ONLY",
+    "completionGate": "G04-0 through G04-10 exact source frontier, stable-pattern eligibility, synthetic consent, privacy/identity/capability evaluation, closed inactive dispositions, rollback/wake independence, corruption/stale/foreign rejection and held later effects pass",
+    "platformRefs": [
+      "platform.windows"
+    ],
+    "exclusions": [
+      "G01/G02/G03 source mutation",
+      "real private corpus ingestion",
+      "real training",
+      "model or trainer installation/runtime",
+      "adapter creation",
+      "model or adapter weight mutation",
+      "Rhythm promotion or activation",
+      "scheduled autonomy",
+      "synchronization",
+      "power control",
+      "cloud upload",
+      "LC18",
+      "publication"
+    ],
+    "returnRoute": "return exact G04 Stage-A head/tree, proof receipt, hosted Windows job and draft PR to Windows Local Operations"
+  },
+  {
+    "workRef": "work.vexlife.windows.g05a-scheduled-daily-autonomy",
+    "purpose": "Bind G05A effect entry to a fresh final G05S currentness resolution and immutable G05A admission-head reachability so stale Safety/runtime decisions and orphan historical admissions cannot authorize or recover G03.",
+    "distance": "NEXT",
+    "milestoneRef": "milestone.vexlife.continuity",
+    "dependsOn": [
+      "work.vexlife.windows.g04-evaluated-rhythm-learning"
+    ],
+    "pathScope": [
+      ".github/workflows/check.yml",
+      "blueprint/feature-registry.json",
+      "blueprint/fragments/tests.json",
+      "blueprint/implementation/work-units-experience-and-runtime.json",
+      "blueprint/module-registry/core.json",
+      "blueprint/module-registry/scripts.json",
+      "docs/SCHEDULED-DAILY-AUTONOMY.md",
+      "package.json",
+      "scripts/scheduled-daily-autonomy.mjs",
+      "src/core/scheduled-daily-autonomy.mjs",
+      "test/scheduled-daily-autonomy.test.mjs"
+    ],
+    "ownershipRoleRef": "role.vex.developer",
+    "parallelGroupRef": "parallel.continuity",
+    "requiredSourceRefs": [
+      "state.context",
+      "state.evolution"
+    ],
+    "requiredTestRefs": [
+      "test.scheduled-daily-autonomy.predecessor-contracts",
+      "test.scheduled-daily-autonomy.standing-policy",
+      "test.scheduled-daily-autonomy.rest-window",
+      "test.scheduled-daily-autonomy.supervisor",
+      "test.scheduled-daily-autonomy.yield",
+      "test.scheduled-daily-autonomy.g03-admission",
+      "test.scheduled-daily-autonomy.stale-source",
+      "test.scheduled-daily-autonomy.duplicate-day",
+      "test.scheduled-daily-autonomy.optional-nonblocking",
+      "test.scheduled-daily-autonomy.optional-failure",
+      "test.scheduled-daily-autonomy.recovery",
+      "test.scheduled-daily-autonomy.receipt",
+      "test.scheduled-daily-autonomy.held-effects"
+    ],
+    "outputRefs": [
+      "proof.vexlife.g05a.scheduled-daily-autonomy.windows"
+    ],
+    "effectBoundary": "FINAL_SOURCE_DESCENDED_G05S_ADMISSION_PLUS_COMMITTED_G05A_ADMISSION_HEAD_THEN_DEVICE_PRIVATE_G03_ONLY_OTHERWISE_NO_EFFECT",
+    "platformRefs": [
+      "platform.windows"
+    ],
+    "exclusions": [
+      "positive standing-consent materialization",
+      "native Windows supervisor/service installation",
+      "G05B synchronization",
+      "real target-device delivery",
+      "real private training",
+      "model or adapter weight mutation",
+      "Rhythm activation",
+      "power control",
+      "cloud upload",
+      "publication"
+    ],
+    "returnRoute": "return exact G05A head/tree, deterministic proof receipt and hosted Windows evidence to Windows Local Operations; synchronization remains a separate G05B phase",
+    "completionGate": "G05A-0..G05A-12 prove configuration is not consent, caller-shaped live authority is rejected, final G05S currentness is required immediately before effect admission, recovery consumes only head-reachable committed G05A admissions, orphan historical admissions cannot recover a wake, current runtime remains held without a native supervisor, and all later effects remain false"
+  }
+]

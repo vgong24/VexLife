@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "8d",
+  "files": [
+    {
+      "path": "PUBLIC-SAFETY-MANIFEST.json",
+      "mode": "100644",
+      "bytes": 1915,
+      "sha256": "05421af74cf1ee0edac60a636e9a9b0c716629c634029088b783b2ec9eb082a3"
+    },
+    {
+      "path": "blueprint/android-remote-vessel-registry.json",
+      "mode": "100644",
+      "bytes": 1882,
+      "sha256": "26484ea647c0ebe5429b733dc5ce6b2eb7f22a4d481a65d8c8923871028738c0"
+    },
+    {
+      "path": "scripts/release-bootstrap-package.mjs",
+      "mode": "100755",
+      "bytes": 2379,
+      "sha256": "19fe5d4ec7341e745ffc5ecb9319ec9688cf14b694924a0e39d8b2b68f9a4a91"
+    }
+  ]
+}

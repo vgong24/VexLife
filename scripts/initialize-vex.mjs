@@ -1,0 +1,519 @@
+#!/usr/bin/env node
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawn, spawnSync } from 'node:child_process';
+import { createInterface } from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
+import {
+  browserBindingForProfile,
+  buildQualificationRequest,
+  buildRuntimeArguments,
+  buildVexInitializationPlan,
+  classifyHomeState,
+  evaluateOperationalProfileHost,
+  qualificationContentMatches,
+  resolveActiveModelBundle,
+  runtimeExecutableIdentityMatches,
+  runtimeProcessEvidenceMatches,
+  selectOperationalProfile,
+  validateModelBundleRegistry,
+  validateOperationalProfileRegistry
+} from '../src/core/vex-initialization.mjs';
+import { classifyVerifiedArtifact, downloadVerifiedArtifact, sha256File } from '../src/core/model-provision.mjs';
+import { resolveAndDownloadArtifact } from '../src/core/artifact-delivery.mjs';
+import { assertSafeMacExtractedTree, assertSafeMacTarArchive, readMacProcessEvidence } from './macos-lifecycle.mjs';
+import { writeJson } from '../src/core/utils.mjs';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const SOURCE_ROOT = path.resolve(HERE, '..');
+const PROFILE_PATH = path.join(SOURCE_ROOT, 'blueprint', 'vex-operational-profiles.json');
+const MODEL_BUNDLE_PATH = path.join(SOURCE_ROOT, 'blueprint', 'model-bundle-registry.json');
+const ARTIFACT_REGISTRY_PATH = path.join(SOURCE_ROOT, 'blueprint', 'artifact-registry.json');
+const args = process.argv.slice(2);
+const has = (name) => args.includes(name);
+const value = (name, fallback = null) => {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] : fallback;
+};
+const mode = value('--mode', 'normal');
+const requestedProfileRef = value('--profile-ref');
+const candidateAuthorityRef = value('--candidate-authority-ref');
+const yes = has('--yes');
+const planOnly = has('--plan-only');
+const home = path.resolve(value('--home', path.join(os.homedir(), '.vexlife')));
+
+function progress(message) { console.error(`[VexLife] ${message}`); }
+function fail(state, message, exitCode = 2, detail = {}) {
+  const payload = { schemaVersion: 'vexlife.initialization-result/v1', state, message, ...detail };
+  console.log(JSON.stringify(payload));
+  process.exit(exitCode);
+}
+function loadJson(filePath) { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
+function pathState(homePath) {
+  const manifest = path.join(homePath, 'config', 'home.json');
+  const homeDirectoryPresent = fs.existsSync(homePath) && fs.statSync(homePath).isDirectory();
+  let homeDirectoryNonEmpty = false;
+  if (homeDirectoryPresent) homeDirectoryNonEmpty = fs.readdirSync(homePath).length > 0;
+  return {
+    state: classifyHomeState({ homeManifestPresent: fs.existsSync(manifest), homeDirectoryPresent, homeDirectoryNonEmpty }),
+    manifest
+  };
+}
+function diskFreeBytes(targetPath) {
+  let cursor = targetPath;
+  while (!fs.existsSync(cursor)) {
+    const parent = path.dirname(cursor);
+    if (parent === cursor) break;
+    cursor = parent;
+  }
+  const stat = fs.statfsSync(cursor);
+  return Number(stat.bavail) * Number(stat.bsize);
+}
+function nvidiaEvidence() {
+  const result = spawnSync('nvidia-smi', ['--query-gpu=name,driver_version', '--format=csv,noheader'], { encoding: 'utf8', windowsHide: true });
+  if (result.error || result.status !== 0) return { available: false, detail: null };
+  const first = String(result.stdout).trim().split(/\r?\n/u)[0] ?? '';
+  return { available: first.length > 0, detail: first || null };
+}
+function appleHardwareEvidence() {
+  if (process.platform !== 'darwin') return { available: false, chipModel: null, machineModel: null };
+  const result = spawnSync('/usr/sbin/system_profiler', ['SPHardwareDataType', '-json'], {
+    encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, shell: false
+  });
+  if (result.error || result.status !== 0) return { available: false, chipModel: null, machineModel: null };
+  try {
+    const payload = JSON.parse(String(result.stdout || ''));
+    const item = Array.isArray(payload?.SPHardwareDataType) ? payload.SPHardwareDataType[0] : null;
+    const chipModel = typeof item?.chip_type === 'string' ? item.chip_type.trim() : '';
+    const machineModel = typeof item?.machine_model === 'string' ? item.machine_model.trim() : '';
+    return { available: chipModel.length > 0, chipModel: chipModel || null, machineModel: machineModel || null };
+  } catch {
+    return { available: false, chipModel: null, machineModel: null };
+  }
+}
+function inspectHost() {
+  const nvidia = nvidiaEvidence();
+  const apple = appleHardwareEvidence();
+  return {
+    platform: process.platform,
+    architecture: process.arch,
+    node: process.version,
+    totalMemoryBytes: os.totalmem(),
+    freeDiskBytes: diskFreeBytes(home),
+    nvidia,
+    apple
+  };
+}
+function assertHostEligible(profile, host) {
+  const result = evaluateOperationalProfileHost(profile, host);
+  if (!result.ok) {
+    const error = new Error(`This operational profile does not support the observed host: ${result.reason}`);
+    error.state = result.state;
+    error.detail = result;
+    throw error;
+  }
+}
+function destinationForArtifact(profile, artifact) {
+  const isModel = profile.modelArtifacts.some((entry) => entry.artifactRef === artifact.artifactRef);
+  return isModel ? path.join(home, 'models', artifact.filename) : path.join(home, 'runtime', 'artifacts', artifact.filename);
+}
+function psQuote(value) { return String(value).replace(/'/gu, "''"); }
+function expandArchive(profile, archive, destination) {
+  if (profile.runtime.extraction.class === 'WINDOWS_ZIP_EXPAND_ARCHIVE') {
+    const command = `Expand-Archive -LiteralPath '${psQuote(archive)}' -DestinationPath '${psQuote(destination)}' -Force`;
+    const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], { encoding: 'utf8', windowsHide: true });
+    if (result.error || result.status !== 0) throw new Error(`runtime archive extraction failed: ${result.stderr || result.error?.message || 'unknown error'}`);
+    return;
+  }
+  if (profile.runtime.extraction.class === 'POSIX_TAR_GZ' && process.platform === 'darwin') {
+    assertSafeMacTarArchive(archive);
+    const result = spawnSync('/usr/bin/tar', ['-xzf', archive, '-C', destination], {
+      encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, shell: false
+    });
+    if (result.error || result.status !== 0) throw new Error(`runtime archive extraction failed: ${result.stderr || result.error?.message || 'unknown error'}`);
+    assertSafeMacExtractedTree(destination);
+    return;
+  }
+  throw new Error(`runtime extraction class is not supported on this host: ${profile.runtime.extraction.class}`);
+}
+function findNamedFile(root, filename) {
+  const found = [];
+  const visit = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) visit(full);
+      else if (entry.isFile() && entry.name.toLowerCase() === filename.toLowerCase()) found.push(full);
+    }
+  };
+  visit(root);
+  if (found.length !== 1) throw new Error(`runtime extraction must contain exactly one ${filename}; found ${found.length}`);
+  return found[0];
+}
+async function materializeRuntime(profile, artifactPaths) {
+  const target = path.join(home, ...profile.runtime.extraction.subdirectory.split('/'));
+  if (fs.existsSync(target)) {
+    if (profile.runtime.executableSha256 === null) {
+      throw Object.assign(
+        new Error('candidate runtime executable SHA-256 is not yet source-pinned; refusing to reuse an existing materialization'),
+        { state: 'UNPINNED_CANDIDATE_RUNTIME_REUSE_FORBIDDEN' }
+      );
+    }
+    assertSafeMacExtractedTree(target);
+    const executable = findNamedFile(target, profile.runtime.executableName);
+    const executableBytes = fs.statSync(executable).size;
+    const actual = await sha256File(executable);
+    if (!runtimeExecutableIdentityMatches({ profile, actualSha256: actual, bytes: executableBytes })) {
+      throw new Error('existing runtime materialization failed executable SHA-256/byte verification; refusing to overwrite it');
+    }
+    return { state: 'REUSED_VERIFIED_RUNTIME', target, executable, executableSha256: actual, executableBytes, executableSha256DiscoveryRequired: false };
+  }
+  const staging = `${target}.partial-${process.pid}`;
+  if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
+  fs.mkdirSync(staging, { recursive: true });
+  try {
+    for (const artifact of profile.runtime.artifacts) expandArchive(profile, artifactPaths.get(artifact.artifactRef), staging);
+    const executable = findNamedFile(staging, profile.runtime.executableName);
+    const executableBytes = fs.statSync(executable).size;
+    const actual = await sha256File(executable);
+    if (profile.runtime.executableSha256 !== null &&
+        !runtimeExecutableIdentityMatches({ profile, actualSha256: actual, bytes: executableBytes })) {
+      throw new Error(`runtime executable identity mismatch: expected sha=${profile.runtime.executableSha256} bytes=${profile.runtime.executableExpectedBytes ?? 'UNPINNED'}, actual sha=${actual} bytes=${executableBytes}`);
+    }
+    if (profile.runtime.executableSha256 === null &&
+        !(profile.state === 'CANDIDATE_QUALIFICATION' && profile.runtime.executableSha256DiscoveryRequired === true)) {
+      throw new Error('runtime executable SHA-256 is absent outside an admitted candidate-discovery state');
+    }
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.renameSync(staging, target);
+    const finalExecutable = path.join(target, path.relative(staging, executable));
+    return {
+      state: 'MATERIALIZED_VERIFIED_RUNTIME',
+      target,
+      executable: finalExecutable,
+      executableSha256: actual,
+      executableBytes,
+      executableSha256DiscoveryRequired: profile.runtime.executableSha256 === null
+    };
+  } catch (error) {
+    fs.rmSync(staging, { recursive: true, force: true });
+    throw error;
+  }
+}
+async function endpointResponding(origin, pathname = '/health', timeoutMs = 1200) {
+  try {
+    const response = await fetch(`${origin}${pathname}`, { signal: AbortSignal.timeout(timeoutMs) });
+    return response.ok;
+  } catch { return false; }
+}
+function pidAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try { process.kill(pid, 0); return true; } catch { return false; }
+}
+function platformProcessEvidence(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return null;
+  if (process.platform === 'darwin') return readMacProcessEvidence(pid);
+  if (process.platform !== 'win32') return null;
+  const command = `$p=Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}" -ErrorAction SilentlyContinue; if($null -eq $p){exit 3}; [ordered]@{name=[string]$p.Name;executablePath=[string]$p.ExecutablePath;commandLine=[string]$p.CommandLine}|ConvertTo-Json -Compress`;
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], { encoding: 'utf8', windowsHide: true });
+  if (result.error || result.status !== 0 || !String(result.stdout ?? '').trim()) return null;
+  try { return JSON.parse(String(result.stdout).trim()); } catch { return null; }
+}
+async function existingRuntimeReuse(profile, receiptPath, { executable, modelPath, projectorPath }) {
+  if (profile.runtime.executableSha256 === null) return null;
+  if (!fs.existsSync(receiptPath)) return null;
+  try {
+    const prior = loadJson(receiptPath);
+    const pid = Number(prior.runtime?.pid);
+    if (prior.profileRef !== profile.profileRef || prior.endpoint?.origin !== profile.endpoint.origin || !pidAlive(pid)) return null;
+    const processEvidence = platformProcessEvidence(pid);
+    const expectedArguments = buildRuntimeArguments(profile, { modelPath, projectorPath });
+    if (!runtimeProcessEvidenceMatches({ processEvidence, expectedExecutablePath: executable, expectedArguments })) return null;
+    const executableBytes = fs.statSync(executable).size;
+    const executableSha256 = await sha256File(executable);
+    if (!runtimeExecutableIdentityMatches({ profile, actualSha256: executableSha256, bytes: executableBytes })) return null;
+    if (!await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) return null;
+    return { pid, reusedReceiptRef: prior.receiptRef ?? null };
+  } catch { return null; }
+}
+async function waitForRuntime(profile, pid) {
+  const deadline = Date.now() + profile.qualification.timeoutMs;
+  while (Date.now() < deadline) {
+    if (!pidAlive(pid)) throw new Error('runtime process exited before qualification');
+    if (await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath, 1500)) return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error('runtime did not become healthy before the qualification timeout');
+}
+async function qualifyInference(profile, modelBundle) {
+  const response = await fetch(`${profile.endpoint.origin}${profile.qualification.chatPath}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildQualificationRequest(profile, modelBundle)),
+    signal: AbortSignal.timeout(30000)
+  });
+  if (!response.ok) throw new Error(`runtime inference qualification failed: HTTP ${response.status}`);
+  const payload = await response.json();
+  const content = payload?.choices?.[0]?.message?.content;
+  if (!qualificationContentMatches(profile, content)) {
+    const expected = profile.qualification.expectedContent;
+    if (typeof expected === 'string') throw new Error('runtime inference qualification did not return the exact expected readiness content');
+    throw new Error('runtime inference qualification returned no assistant content');
+  }
+  const normalizedContent = content.trim();
+  return {
+    responseSha256: crypto.createHash('sha256').update(normalizedContent).digest('hex'),
+    contentObserved: true,
+    expectedContentMatched: typeof profile.qualification.expectedContent === 'string' ? true : null
+  };
+}
+async function promptConsent(profile, modelBundle) {
+  if (yes) return true;
+  const rl = createInterface({ input, output });
+  try {
+    const answer = await rl.question(`Continue with Vex using ${modelBundle.requestModel}? This may download several GB and start a local-only model runtime. [Y/n] `);
+    const normalized = answer.trim().toLowerCase();
+    return normalized === '' || normalized === 'y' || normalized === 'yes';
+  } finally { rl.close(); }
+}
+function writeFailureReceipt(profile, state, message, detail = {}) {
+  if (!fs.existsSync(home)) return null;
+  const receiptPath = path.join(home, 'recovery', 'vex-initialization-failure.json');
+  writeJson(receiptPath, {
+    schemaVersion: 'vexlife.initialization-failure/v1',
+    state,
+    message,
+    profileRef: profile?.profileRef ?? null,
+    formedAt: new Date().toISOString(),
+    detail,
+    effects: { repository: false, public: false, memoryCanonicalWrite: false, training: false, nonLoopbackNetwork: false }
+  });
+  return receiptPath;
+}
+
+let profile = null;
+try {
+  if (!fs.existsSync(PROFILE_PATH)) fail('SOURCE_NOT_FOUND', `Operational profile registry is missing: ${PROFILE_PATH}`, 2);
+  if (!fs.existsSync(MODEL_BUNDLE_PATH) || !fs.existsSync(ARTIFACT_REGISTRY_PATH)) fail('SOURCE_NOT_FOUND', 'Canonical model-bundle/artifact registries are missing.', 2);
+  const registry = loadJson(PROFILE_PATH);
+  const modelBundleRegistry = loadJson(MODEL_BUNDLE_PATH);
+  const artifactRegistry = loadJson(ARTIFACT_REGISTRY_PATH);
+  const registryValidation = validateOperationalProfileRegistry(registry);
+  if (!registryValidation.ok) fail('SOURCE_INVALID', registryValidation.errors.join('; '), 2);
+  const modelBundleValidation = validateModelBundleRegistry(modelBundleRegistry, { artifactRegistry, operationalProfileRegistry: registry });
+  if (!modelBundleValidation.ok) fail('SOURCE_INVALID', modelBundleValidation.errors.join('; '), 2);
+  if (mode === 'candidate-qualification' && (!requestedProfileRef || !candidateAuthorityRef)) {
+    fail('CANDIDATE_AUTHORITY_REQUIRED', 'Candidate qualification requires --profile-ref and --candidate-authority-ref.', 2);
+  }
+  if (!['normal', 'candidate-qualification'].includes(mode)) fail('SOURCE_INVALID', `Unknown initialization mode: ${mode}`, 2);
+
+  const host = inspectHost();
+  const selection = selectOperationalProfile({ registry, platform: host.platform, architecture: host.architecture, mode, profileRef: requestedProfileRef });
+  if (selection.state !== 'PROFILE_RESOLVED') fail(selection.state, 'No current operational profile is eligible for this route.', 4, selection);
+  profile = selection.profile;
+  assertHostEligible(profile, host);
+  const modelSelection = resolveActiveModelBundle({ registry: modelBundleRegistry, artifactRegistry, operationalProfile: profile });
+  if (modelSelection.state !== 'MODEL_BUNDLE_RESOLVED') fail(modelSelection.state, 'No current model bundle is eligible for this operational profile.', 4, modelSelection);
+  const modelBundle = modelSelection.bundle;
+  const modelArtifacts = modelSelection.artifacts;
+
+  const homeStatus = pathState(home);
+  if (homeStatus.state === 'HOME_REQUIRES_MIGRATION_PLAN') fail('HOME_REQUIRES_MIGRATION_PLAN', 'The selected Vex Home is non-empty but has no canonical Home identity. Nothing was changed.', 5);
+  if (homeStatus.state === 'FRESH_HOME_ALLOWED') fail('HOME_NOT_ESTABLISHED', 'Vex Home must be established by the Frontdoor bootstrap before runtime initialization.', 5);
+
+  const plan = buildVexInitializationPlan({ profile, modelBundle, modelArtifacts, home, homeState: homeStatus.state, hostEvidence: host, mode });
+  if (planOnly) {
+    console.log(JSON.stringify({ schemaVersion: 'vexlife.initialization-result/v1', state: 'PLAN_READY_NO_EFFECT', plan }));
+    process.exit(0);
+  }
+
+  const consent = await promptConsent(profile, modelBundle);
+  if (!consent) fail('NETWORK_NOT_AUTHORIZED', 'No download or runtime effect was performed.', 0);
+  progress(`Profile ${profile.profileRef} selected under ${mode}.`);
+
+  const artifactPaths = new Map();
+  const artifactReceipts = [];
+  for (const artifact of profile.runtime.artifacts) {
+    const destination = destinationForArtifact(profile, artifact);
+    progress(`Verifying ${artifact.filename}...`);
+    const before = await classifyVerifiedArtifact({ finalPath: destination, expectedSha256: artifact.sha256, expectedBytes: artifact.expectedBytes });
+    if (before.state === 'INVALID_HASH' || before.state === 'INVALID_SIZE' || before.state === 'INVALID_NOT_FILE') {
+      throw Object.assign(new Error(`${artifact.filename} already exists but does not match the accepted profile; refusing to overwrite it`), { state: 'ARTIFACT_HASH_MISMATCH' });
+    }
+    const receipt = await downloadVerifiedArtifact({
+      url: artifact.url,
+      expectedSha256: artifact.sha256,
+      expectedBytes: artifact.expectedBytes,
+      maxBytes: artifact.maxBytes,
+      finalPath: destination,
+      onProgress: ({ bytes }) => progress(`${artifact.filename}: ${Math.floor(bytes / (1024 * 1024))} MiB received`)
+    });
+    artifactPaths.set(artifact.artifactRef, destination);
+    artifactReceipts.push({ artifactRef: artifact.artifactRef, filename: artifact.filename, destinationClass: 'RUNTIME_ARCHIVE', disposition: receipt.disposition, bytes: receipt.bytes, sha256: receipt.actualSha256, selectedChannelRef: null, attemptedChannelRefs: [], providerOrNetworkEffect: receipt.disposition !== 'REUSED_VERIFIED' });
+  }
+  for (const artifact of modelArtifacts) {
+    const destination = destinationForArtifact(profile, artifact);
+    progress(`Verifying ${artifact.filename} through source-managed model delivery...`);
+    const before = await classifyVerifiedArtifact({ finalPath: destination, expectedSha256: artifact.sha256, expectedBytes: artifact.expectedBytes });
+    if (before.state === 'INVALID_HASH' || before.state === 'INVALID_SIZE' || before.state === 'INVALID_NOT_FILE') {
+      throw Object.assign(new Error(`${artifact.filename} already exists but does not match the accepted profile; refusing to overwrite it`), { state: 'ARTIFACT_HASH_MISMATCH' });
+    }
+    const receipt = await resolveAndDownloadArtifact({ artifactRef: artifact.artifactRef, deliveryPolicyRef: null, finalPath: destination });
+    artifactPaths.set(artifact.artifactRef, destination);
+    artifactReceipts.push({
+      artifactRef: artifact.artifactRef,
+      filename: artifact.filename,
+      destinationClass: 'MODEL',
+      modelBundleRef: modelBundle.modelBundleRef,
+      generationRef: modelBundle.generationRef,
+      disposition: receipt.disposition,
+      bytes: receipt.bytes,
+      sha256: receipt.actualSha256,
+      selectedChannelRef: receipt.selectedChannelRef,
+      attemptedChannelRefs: receipt.attemptedChannelRefs,
+      providerOrNetworkEffect: receipt.providerOrNetworkEffect,
+      manifestSha256: receipt.manifestSha256,
+      recordedSourceUrl: receipt.recordedSourceUrl
+    });
+  }
+
+  progress('Materializing the local runtime...');
+  const materialization = await materializeRuntime(profile, artifactPaths);
+  const modelPath = artifactPaths.get(modelBundle.baseModelArtifactRef);
+  const projectorPath = artifactPaths.get(modelBundle.projectorArtifactRef);
+  const runtimeReceiptPath = path.join(home, 'runtime', 'initialization', 'receipt.json');
+  fs.mkdirSync(path.dirname(runtimeReceiptPath), { recursive: true });
+
+  let runtimePid;
+  let runtimeDisposition;
+  const existing = await existingRuntimeReuse(profile, runtimeReceiptPath, {
+    executable: materialization.executable,
+    modelPath,
+    projectorPath
+  });
+  if (existing) {
+    runtimePid = existing.pid;
+    runtimeDisposition = 'REUSED_QUALIFIED_BOUND_RUNTIME';
+    progress(`Reusing already-qualified runtime process ${runtimePid}.`);
+  } else {
+    if (await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) {
+      throw Object.assign(new Error(`Something is already answering at ${profile.endpoint.origin}, but it is not owned by this Home/profile receipt.`), { state: 'PORT_OWNERSHIP_CONFLICT' });
+    }
+    const runtimeDir = path.dirname(materialization.executable);
+    const stdoutPath = path.join(home, 'runtime', 'llama-server.out.log');
+    const stderrPath = path.join(home, 'runtime', 'llama-server.err.log');
+    fs.mkdirSync(path.dirname(stdoutPath), { recursive: true });
+    const outFd = fs.openSync(stdoutPath, 'a');
+    const errFd = fs.openSync(stderrPath, 'a');
+    const runtimeArgs = buildRuntimeArguments(profile, { modelPath, projectorPath });
+    progress('Starting the local-only model runtime...');
+    runtimePid = await new Promise((resolve, reject) => {
+      const child = spawn(materialization.executable, runtimeArgs, { cwd: runtimeDir, detached: true, windowsHide: true, stdio: ['ignore', outFd, errFd] });
+      const cleanupDescriptors = () => {
+        try { fs.closeSync(outFd); } catch {}
+        try { fs.closeSync(errFd); } catch {}
+      };
+      child.once('error', (error) => { cleanupDescriptors(); reject(error); });
+      child.once('spawn', () => {
+        const pid = child.pid;
+        child.unref();
+        cleanupDescriptors();
+        if (!pid) reject(new Error('runtime process did not return a PID'));
+        else resolve(pid);
+      });
+    });
+    runtimeDisposition = 'STARTED_NEW_RUNTIME';
+    await waitForRuntime(profile, runtimePid);
+  }
+
+  progress('Qualifying the exact runtime/model binding...');
+  const qualification = await qualifyInference(profile, modelBundle);
+  const binding = browserBindingForProfile(profile, modelBundle);
+  const formedAt = new Date().toISOString();
+  const receiptRef = `receipt.vexlife.initialization.${crypto.createHash('sha256').update(`${profile.profileRef}|${modelBundle.modelBundleRef}|${runtimePid}|${formedAt}`).digest('hex').slice(0, 24)}`;
+  const receipt = {
+    schemaVersion: 'vexlife.initialization-receipt/v1',
+    receiptRef,
+    state: 'RUNTIME_QUALIFIED',
+    profileRef: profile.profileRef,
+    profileState: profile.state,
+    modelBundleRef: modelBundle.modelBundleRef,
+    generationRef: modelBundle.generationRef,
+    modelProfileRef: modelBundle.modelProfileRef,
+    mode,
+    candidateAuthorityRef: mode === 'candidate-qualification' ? candidateAuthorityRef : null,
+    formedAt,
+    planSha256: plan.planSha256,
+    home: { state: homeStatus.state, homeIdentityRef: loadJson(homeStatus.manifest).homeRef ?? null },
+    host,
+    artifacts: artifactReceipts,
+    materialization: {
+      state: materialization.state,
+      executableSha256: materialization.executableSha256,
+      executableBytes: materialization.executableBytes,
+      sourcePinnedExecutableSha256: profile.runtime.executableSha256,
+      sourcePinnedExecutableExpectedBytes: profile.runtime.executableExpectedBytes ?? null,
+      executableSha256DiscoveryRequired: materialization.executableSha256DiscoveryRequired === true,
+      target: materialization.target
+    },
+    runtime: {
+      pid: runtimePid,
+      disposition: runtimeDisposition,
+      executablePath: materialization.executable,
+      arguments: buildRuntimeArguments(profile, { modelPath, projectorPath })
+    },
+    endpoint: { ...profile.endpoint, requestModel: modelBundle.requestModel },
+    qualification,
+    browserBinding: binding,
+    effects: { repository: false, public: false, memoryCanonicalWrite: false, training: false, nonLoopbackNetwork: false }
+  };
+  writeJson(runtimeReceiptPath, receipt);
+  const recoveryReceiptPath = path.join(home, 'recovery', 'vex-initialization-receipt.json');
+  writeJson(recoveryReceiptPath, receipt);
+  writeJson(path.join(home, 'config', 'model.json'), {
+    schemaVersion: 'vexlife.model-configuration/v1',
+    state: 'BOUND_QUALIFIED',
+    profileRef: profile.profileRef,
+    activeModelBundleRef: modelBundle.modelBundleRef,
+    generationRef: modelBundle.generationRef,
+    modelProfileRef: modelBundle.modelProfileRef,
+    endpoint: profile.endpoint.origin,
+    requestModel: modelBundle.requestModel,
+    activeArtifactRef: modelBundle.baseModelArtifactRef,
+    runtimeDependencyRef: profile.runtime.dependencyRef,
+    runtimePid,
+    runtimeExecutablePath: materialization.executable,
+    runtimeExecutableSha256: materialization.executableSha256,
+    runtimeExecutableSha256SourcePinned: profile.runtime.executableSha256,
+    runtimeArguments: buildRuntimeArguments(profile, { modelPath, projectorPath }),
+    runtimeMaterializationRoot: materialization.target,
+    modelPath,
+    projectorPath,
+    qualificationReceiptRef: receiptRef,
+    automaticDownload: false,
+    automaticActivation: false
+  });
+
+  console.log(JSON.stringify({
+    schemaVersion: 'vexlife.initialization-result/v1',
+    state: 'RUNTIME_QUALIFIED',
+    profileRef: profile.profileRef,
+    profileState: profile.state,
+    activeModelBundleRef: modelBundle.modelBundleRef,
+    generationRef: modelBundle.generationRef,
+    runtimePid,
+    endpoint: profile.endpoint.origin,
+    requestModel: modelBundle.requestModel,
+    browserBinding: binding,
+    receiptPath: recoveryReceiptPath
+  }));
+} catch (error) {
+  const state = error.state ?? (/checksum mismatch/u.test(error.message) ? 'ARTIFACT_HASH_MISMATCH' : 'INITIALIZATION_FAILED_SAFE');
+  const receiptPath = writeFailureReceipt(profile, state, error.message);
+  fail(state, error.message, 6, { receiptPath });
+}
+
+// [VXG RealForever]

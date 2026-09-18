@@ -1,0 +1,293 @@
+{
+  "schemaVersion": "vexlife.navigation-continuity-registry/v1",
+  "registryRef": "registry.vexlife.navigation-continuity.001",
+  "registryVersion": 1,
+  "canonicalSourceRef": "source.blueprint.navigation-continuity-registry",
+  "canonicalSource": {
+    "sourceRef": "source.blueprint.navigation-continuity-registry",
+    "path": "blueprint/navigation-continuity-registry.json",
+    "sourceClass": "SOURCE_MANAGED_BLUEPRINT"
+  },
+  "purpose": "Compile user-visible page-state transitions into deterministic no-teleport routes, serialize one traversal stream per navigation session, and project bounded current-frame and recent-path truth across platforms.",
+  "identityRule": {
+    "canonicalRefOwnsMeaning": true,
+    "displayNameOwnsMeaning": false,
+    "propertyNameOwnsMeaning": false,
+    "platformEnumOwnsMeaning": false,
+    "descriptorExpansionIsDataDriven": true
+  },
+  "rules": {
+    "visibleStateChangeRequiresRegisteredVisibleDoor": true,
+    "semanticTeleportationAllowed": false,
+    "lookupMutatesPresence": false,
+    "routePlanMutatesPresence": false,
+    "crossRealmNonHierarchyRequiresVisiblePortal": true,
+    "failedStepAdvancesPresence": false,
+    "semanticStepsMayCollapseForPacing": false,
+    "traceBodiesEmbedded": false
+  },
+  "descriptorCollections": [
+    {
+      "collectionRef": "collection.navigation-continuity.pacing",
+      "field": "pacingDescriptors",
+      "identityField": "pacingRef",
+      "descriptorClass": "NAVIGATION_PACING"
+    },
+    {
+      "collectionRef": "collection.navigation-continuity.settlement",
+      "field": "settlementPolicies",
+      "identityField": "settlementPolicyRef",
+      "descriptorClass": "SEMANTIC_SETTLEMENT"
+    },
+    {
+      "collectionRef": "collection.navigation-continuity.animation",
+      "field": "animationPolicies",
+      "identityField": "animationPolicyRef",
+      "descriptorClass": "NAVIGATION_ANIMATION"
+    },
+    {
+      "collectionRef": "collection.navigation-continuity.dwell",
+      "field": "dwellPolicies",
+      "identityField": "dwellPolicyRef",
+      "descriptorClass": "PERCEPTION_DWELL"
+    },
+    {
+      "collectionRef": "collection.navigation-continuity.advance",
+      "field": "advancePolicies",
+      "identityField": "advancePolicyRef",
+      "descriptorClass": "SEQUENCE_ADVANCE"
+    },
+    {
+      "collectionRef": "collection.navigation-continuity.motion",
+      "field": "motionPolicies",
+      "identityField": "motionPolicyRef",
+      "descriptorClass": "MOTION_PRESENTATION"
+    },
+    {
+      "collectionRef": "collection.navigation-continuity.trace-visibility",
+      "field": "traceVisibilityDescriptors",
+      "identityField": "traceVisibilityRef",
+      "descriptorClass": "TRACE_VISIBILITY"
+    },
+    {
+      "collectionRef": "collection.navigation-continuity.transition-class",
+      "field": "transitionClassDescriptors",
+      "identityField": "transitionClassRef",
+      "descriptorClass": "TRANSITION_CLASS"
+    },
+    {
+      "collectionRef": "collection.navigation-continuity.outcome",
+      "field": "outcomeDescriptors",
+      "identityField": "outcomeRef",
+      "descriptorClass": "NAVIGATION_OUTCOME"
+    }
+  ],
+  "pacingDescriptors": [
+    {
+      "pacingRef": "navigation-pacing.vexlife.normal",
+      "settlementPolicyRef": "settlement.navigation.semantic-current",
+      "animationPolicyRef": "animation.navigation.standard",
+      "dwellPolicyRef": "dwell.navigation.ordinary",
+      "advancePolicyRef": "advance.navigation.automatic",
+      "traceVisibilityRef": "trace-visibility.navigation.visible",
+      "humanSelectable": true
+    },
+    {
+      "pacingRef": "navigation-pacing.vexlife.fast",
+      "settlementPolicyRef": "settlement.navigation.semantic-current",
+      "animationPolicyRef": "animation.navigation.compressed",
+      "dwellPolicyRef": "dwell.navigation.minimum",
+      "advancePolicyRef": "advance.navigation.automatic",
+      "traceVisibilityRef": "trace-visibility.navigation.visible",
+      "humanSelectable": true
+    },
+    {
+      "pacingRef": "navigation-pacing.vexlife.slow",
+      "settlementPolicyRef": "settlement.navigation.semantic-current",
+      "animationPolicyRef": "animation.navigation.standard",
+      "dwellPolicyRef": "dwell.navigation.extended",
+      "advancePolicyRef": "advance.navigation.automatic",
+      "traceVisibilityRef": "trace-visibility.navigation.visible",
+      "humanSelectable": true
+    },
+    {
+      "pacingRef": "navigation-pacing.vexlife.step",
+      "settlementPolicyRef": "settlement.navigation.semantic-current",
+      "animationPolicyRef": "animation.navigation.standard",
+      "dwellPolicyRef": "dwell.navigation.until-advance",
+      "advancePolicyRef": "advance.navigation.human-continue",
+      "traceVisibilityRef": "trace-visibility.navigation.visible",
+      "humanSelectable": true
+    }
+  ],
+  "settlementPolicies": [
+    {
+      "settlementPolicyRef": "settlement.navigation.semantic-current",
+      "observedPageStateRequired": true,
+      "observedAvailableElementSetRequired": true,
+      "adapterSemanticSettlementRequired": true,
+      "nextStepBeforeSettlementAllowed": false
+    }
+  ],
+  "animationPolicies": [
+    {
+      "animationPolicyRef": "animation.navigation.standard",
+      "durationClass": "PRODUCT_STANDARD",
+      "semanticStepRemovalAllowed": false
+    },
+    {
+      "animationPolicyRef": "animation.navigation.compressed",
+      "durationClass": "PRODUCT_COMPRESSED",
+      "semanticStepRemovalAllowed": false
+    },
+    {
+      "animationPolicyRef": "animation.navigation.immediate",
+      "durationClass": "NO_INTERPOLATION",
+      "semanticStepRemovalAllowed": false
+    }
+  ],
+  "dwellPolicies": [
+    {
+      "dwellPolicyRef": "dwell.navigation.minimum",
+      "dwellClass": "MINIMUM_AFTER_SETTLEMENT",
+      "minimumMilliseconds": 0
+    },
+    {
+      "dwellPolicyRef": "dwell.navigation.ordinary",
+      "dwellClass": "ORDINARY_AFTER_SETTLEMENT",
+      "minimumMilliseconds": 120
+    },
+    {
+      "dwellPolicyRef": "dwell.navigation.extended",
+      "dwellClass": "EXTENDED_AFTER_SETTLEMENT",
+      "minimumMilliseconds": 700
+    },
+    {
+      "dwellPolicyRef": "dwell.navigation.until-advance",
+      "dwellClass": "UNTIL_EXPLICIT_ADVANCE",
+      "minimumMilliseconds": 0
+    }
+  ],
+  "advancePolicies": [
+    {
+      "advancePolicyRef": "advance.navigation.automatic",
+      "humanAdvanceRequired": false
+    },
+    {
+      "advancePolicyRef": "advance.navigation.human-continue",
+      "humanAdvanceRequired": true
+    }
+  ],
+  "motionPolicies": [
+    {
+      "motionPolicyRef": "motion.navigation.standard",
+      "animationOverrideRefOrNull": null,
+      "semanticStepsMayCollapse": false
+    },
+    {
+      "motionPolicyRef": "motion.navigation.reduced",
+      "animationOverrideRefOrNull": "animation.navigation.immediate",
+      "semanticStepsMayCollapse": false
+    }
+  ],
+  "traceVisibilityDescriptors": [
+    {
+      "traceVisibilityRef": "trace-visibility.navigation.visible",
+      "renderCurrentPath": true,
+      "recordTrace": true
+    },
+    {
+      "traceVisibilityRef": "trace-visibility.navigation.compact",
+      "renderCurrentPath": true,
+      "recordTrace": true
+    },
+    {
+      "traceVisibilityRef": "trace-visibility.navigation.hidden",
+      "renderCurrentPath": false,
+      "recordTrace": true
+    }
+  ],
+  "transitionClassDescriptors": [
+    {
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "crossRealmNonHierarchyAllowed": false,
+      "visiblePortalRequired": false
+    },
+    {
+      "transitionClassRef": "transition-class.navigation.visible-portal",
+      "crossRealmNonHierarchyAllowed": true,
+      "visiblePortalRequired": true
+    }
+  ],
+  "outcomeDescriptors": [
+    {
+      "outcomeRef": "outcome.navigation.committed",
+      "terminalClass": "SUCCESS",
+      "outcomeKind": "COMMITTED"
+    },
+    {
+      "outcomeRef": "outcome.navigation.already-present",
+      "terminalClass": "NO_EFFECT",
+      "outcomeKind": "ALREADY_PRESENT"
+    },
+    {
+      "outcomeRef": "outcome.navigation.duplicate-exact-noop",
+      "terminalClass": "NO_EFFECT",
+      "outcomeKind": "DUPLICATE_EXACT_NOOP"
+    },
+    {
+      "outcomeRef": "outcome.navigation.blocked-no-visible-route",
+      "terminalClass": "HELD",
+      "outcomeKind": "BLOCKED_NO_VISIBLE_ROUTE"
+    },
+    {
+      "outcomeRef": "outcome.navigation.blocked-stale-frame",
+      "terminalClass": "HELD",
+      "outcomeKind": "BLOCKED_STALE_FRAME"
+    },
+    {
+      "outcomeRef": "outcome.navigation.blocked-stale-topology",
+      "terminalClass": "HELD",
+      "outcomeKind": "BLOCKED_STALE_TOPOLOGY"
+    },
+    {
+      "outcomeRef": "outcome.navigation.adapter-failure",
+      "terminalClass": "SAFE_FAILURE",
+      "outcomeKind": "ADAPTER_FAILURE"
+    },
+    {
+      "outcomeRef": "outcome.navigation.divergent-command-identity",
+      "terminalClass": "CONFLICT",
+      "outcomeKind": "DIVERGENT_COMMAND_IDENTITY"
+    }
+  ],
+  "defaultPreferenceRefs": {
+    "pacingRef": "navigation-pacing.vexlife.normal",
+    "motionPolicyRef": "motion.navigation.standard",
+    "traceVisibilityRef": "trace-visibility.navigation.visible"
+  },
+  "contracts": {
+    "topologyContractRef": "contract.navigation-continuity.topology/v1",
+    "sessionContractRef": "contract.navigation-continuity.session/v1",
+    "adapterContractRef": "contract.navigation-continuity.platform-adapter/v1",
+    "transitionBundleContractRef": "contract.navigation-continuity.transition-bundle/v1",
+    "currentFrameProjectionContractRef": "contract.navigation-continuity.current-frame-projection/v1",
+    "recentTraceProjectionContractRef": "contract.navigation-continuity.recent-trace-projection/v1"
+  },
+  "limits": {
+    "maximumRecentTraceEntries": 32,
+    "defaultRecentTraceEntries": 12,
+    "maximumRouteSteps": 128
+  },
+  "effects": {
+    "network": false,
+    "provider": false,
+    "publication": false,
+    "Home": false,
+    "MemoryPromotion": false,
+    "training": false,
+    "modelWeights": false,
+    "sensorActivation": false,
+    "externalDisclosure": false
+  }
+}

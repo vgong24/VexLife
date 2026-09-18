@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "vexlife.model-connection-binding-registry/v1",
+  "registryRef": "registry.vexlife.model-connections.001",
+  "capabilityRegistryRef": "registry.vexlife.capabilities.001",
+  "runtimeCapabilityRegistryRef": "registry.vexlife.model-runtime-capabilities.001",
+  "bindings": [
+    {
+      "bindingRef": "binding.model-connection.capability-search.model-assisted-read-only",
+      "subjectRef": "capability.search",
+      "modelParticipationClasses": [
+        "MODEL_SYNTHESIS",
+        "MODEL_TOOL_PROPOSAL"
+      ],
+      "requiredRuntimeCellRefs": [
+        "C00"
+      ],
+      "authorityRef": "registry.vexlife.capabilities.001",
+      "sourceRefs": [
+        "blueprint/capability-registry.json",
+        "src/core/capability-assimilation-runtime.mjs"
+      ],
+      "status": "CURRENT"
+    },
+    {
+      "bindingRef": "binding.model-connection.capability-describe.model-assisted-read-only",
+      "subjectRef": "capability.describe",
+      "modelParticipationClasses": [
+        "MODEL_SYNTHESIS",
+        "MODEL_TOOL_PROPOSAL"
+      ],
+      "requiredRuntimeCellRefs": [
+        "C00"
+      ],
+      "authorityRef": "registry.vexlife.capabilities.001",
+      "sourceRefs": [
+        "blueprint/capability-registry.json",
+        "src/core/capability-assimilation-runtime.mjs"
+      ],
+      "status": "CURRENT"
+    },
+    {
+      "bindingRef": "binding.model-connection.process-resolve.model-assisted-read-only",
+      "subjectRef": "process.resolve",
+      "modelParticipationClasses": [
+        "MODEL_SYNTHESIS",
+        "MODEL_TOOL_PROPOSAL"
+      ],
+      "requiredRuntimeCellRefs": [
+        "C00"
+      ],
+      "authorityRef": "registry.vexlife.capabilities.001",
+      "sourceRefs": [
+        "blueprint/capability-registry.json",
+        "src/core/capability-assimilation-runtime.mjs"
+      ],
+      "status": "CURRENT"
+    },
+    {
+      "bindingRef": "binding.model-connection.context-where.model-assisted-read-only",
+      "subjectRef": "context.where",
+      "modelParticipationClasses": [
+        "MODEL_SYNTHESIS",
+        "MODEL_TOOL_PROPOSAL"
+      ],
+      "requiredRuntimeCellRefs": [
+        "C00"
+      ],
+      "authorityRef": "registry.vexlife.capabilities.001",
+      "sourceRefs": [
+        "blueprint/capability-registry.json",
+        "src/core/capability-assimilation-runtime.mjs"
+      ],
+      "status": "CURRENT"
+    },
+    {
+      "bindingRef": "binding.model-connection.help-render.model-assisted-read-only",
+      "subjectRef": "help.render",
+      "modelParticipationClasses": [
+        "MODEL_SYNTHESIS",
+        "MODEL_TOOL_PROPOSAL"
+      ],
+      "requiredRuntimeCellRefs": [
+        "C00"
+      ],
+      "authorityRef": "registry.vexlife.capabilities.001",
+      "sourceRefs": [
+        "blueprint/capability-registry.json",
+        "src/core/capability-assimilation-runtime.mjs"
+      ],
+      "status": "CURRENT"
+    }
+  ]
+}

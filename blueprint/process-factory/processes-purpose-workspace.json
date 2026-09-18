@@ -1,0 +1,71 @@
+[
+  {
+    "processRef": "process.vexlife.purpose-workspace.coordinate",
+    "processVersion": 1,
+    "purpose": "Resolve one registered Purpose Workspace context into an evidence-bounded no-effect coordination plan while preserving role, authority, observation, review, authorization and external-effect boundaries.",
+    "applicabilityRules": [
+      "workspaceRef resolves to workspace.vexlife.scoped-purpose.001",
+      "selected domain pack is source-managed",
+      "requested task belongs to the selected domain"
+    ],
+    "requiredInputs": [
+      "workspaceRef",
+      "domainRef",
+      "taskRef",
+      "semanticDepth"
+    ],
+    "optionalInputs": [
+      "recipientRoleRefOrNull",
+      "authorityClassRefs",
+      "explicitBlockers"
+    ],
+    "sourceResolutionRules": [
+      "resolve the canonical Purpose Workspace registry and selected domain pack",
+      "resolve the task process pattern and completion contract",
+      "preserve source/currentness distinctions and held external effects"
+    ],
+    "preconditions": [
+      "Purpose Workspace registry validates",
+      "requested semantic depth is DO, UNDERSTAND or STEWARD"
+    ],
+    "steps": [
+      "resolve-workspace-and-domain",
+      "compile-evidence-bounded-task-stages",
+      "project-current-role-authority-and-held-boundaries",
+      "return-no-effect-coordination-plan"
+    ],
+    "effectOwnerRule": "This process forms a declarative coordination projection only; any external effect remains separately owned and separately authorized.",
+    "authorityEnvelope": {
+      "effects": [],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [],
+    "canonicalDispositionVocabulary": [
+      "PLAN_READY_NO_EFFECT",
+      "WAITING_FOR_AUTHORITY",
+      "HELD_EXTERNAL_EFFECT",
+      "CORRECTION_REQUIRED"
+    ],
+    "returnRouteRule": "return the bounded Purpose Workspace projection and unresolved blockers to the caller",
+    "closureRule": "close only when the requested projection is formed or an explicit blocker is returned",
+    "recoveryRule": "discard derived projection and rebuild from current source-managed Purpose Workspace records",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.localization-intent.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "feature.vexlife.scoped-purpose-workspace"
+    ],
+    "invalidationTriggers": [
+      "purpose-workspace-registry-change",
+      "domain-pack-change",
+      "process-pattern-change",
+      "completion-contract-change"
+    ],
+    "testRefs": [
+      "test.permission.no-inferred-effect",
+      "test.blueprint.identity-and-reference-integrity"
+    ]
+  }
+]

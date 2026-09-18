@@ -1,0 +1,256 @@
+{
+  "schemaVersion": "vexlife.navigation-topology/v1",
+  "topologyRef": "topology.navigation-continuity.fixture.cross-realm",
+  "registryRef": "registry.vexlife.navigation-continuity.001",
+  "initialPageStateRef": "page-state.fixture.alpha.leaf",
+  "pageStates": [
+    {
+      "pageStateRef": "page-state.fixture.root",
+      "screenRef": "screen.fixture.root",
+      "routeRef": "route.fixture.root",
+      "realmRef": "realm.fixture.root",
+      "parentPageStateRefOrNull": null,
+      "resourceRefs": ["resource.fixture.root"],
+      "availableElementRefs": [
+        "element.fixture.root.enter-alpha",
+        "element.fixture.root.enter-beta"
+      ],
+      "entryFocusElementRefOrNull": "element.fixture.root.enter-alpha"
+    },
+    {
+      "pageStateRef": "page-state.fixture.alpha.realm",
+      "screenRef": "screen.fixture.alpha.realm",
+      "routeRef": "route.fixture.alpha.realm",
+      "realmRef": "realm.fixture.alpha",
+      "parentPageStateRefOrNull": "page-state.fixture.root",
+      "resourceRefs": ["resource.fixture.alpha.realm"],
+      "availableElementRefs": [
+        "element.fixture.alpha.realm.return-root",
+        "element.fixture.alpha.realm.enter-branch"
+      ],
+      "entryFocusElementRefOrNull": "element.fixture.alpha.realm.enter-branch"
+    },
+    {
+      "pageStateRef": "page-state.fixture.alpha.branch",
+      "screenRef": "screen.fixture.alpha.branch",
+      "routeRef": "route.fixture.alpha.branch",
+      "realmRef": "realm.fixture.alpha",
+      "parentPageStateRefOrNull": "page-state.fixture.alpha.realm",
+      "resourceRefs": ["resource.fixture.alpha.branch"],
+      "availableElementRefs": [
+        "element.fixture.alpha.branch.return-realm",
+        "element.fixture.alpha.branch.enter-leaf"
+      ],
+      "entryFocusElementRefOrNull": "element.fixture.alpha.branch.enter-leaf"
+    },
+    {
+      "pageStateRef": "page-state.fixture.alpha.leaf",
+      "screenRef": "screen.fixture.alpha.leaf",
+      "routeRef": "route.fixture.alpha.leaf",
+      "realmRef": "realm.fixture.alpha",
+      "parentPageStateRefOrNull": "page-state.fixture.alpha.branch",
+      "resourceRefs": ["resource.fixture.alpha.leaf"],
+      "availableElementRefs": [
+        "element.fixture.alpha.leaf.return-branch",
+        "element.fixture.alpha.leaf.portal-beta-leaf"
+      ],
+      "entryFocusElementRefOrNull": "element.fixture.alpha.leaf.return-branch"
+    },
+    {
+      "pageStateRef": "page-state.fixture.beta.realm",
+      "screenRef": "screen.fixture.beta.realm",
+      "routeRef": "route.fixture.beta.realm",
+      "realmRef": "realm.fixture.beta",
+      "parentPageStateRefOrNull": "page-state.fixture.root",
+      "resourceRefs": ["resource.fixture.beta.realm"],
+      "availableElementRefs": [
+        "element.fixture.beta.realm.return-root",
+        "element.fixture.beta.realm.enter-branch"
+      ],
+      "entryFocusElementRefOrNull": "element.fixture.beta.realm.enter-branch"
+    },
+    {
+      "pageStateRef": "page-state.fixture.beta.branch",
+      "screenRef": "screen.fixture.beta.branch",
+      "routeRef": "route.fixture.beta.branch",
+      "realmRef": "realm.fixture.beta",
+      "parentPageStateRefOrNull": "page-state.fixture.beta.realm",
+      "resourceRefs": ["resource.fixture.beta.branch"],
+      "availableElementRefs": [
+        "element.fixture.beta.branch.return-realm",
+        "element.fixture.beta.branch.enter-leaf"
+      ],
+      "entryFocusElementRefOrNull": "element.fixture.beta.branch.enter-leaf"
+    },
+    {
+      "pageStateRef": "page-state.fixture.beta.leaf",
+      "screenRef": "screen.fixture.beta.leaf",
+      "routeRef": "route.fixture.beta.leaf",
+      "realmRef": "realm.fixture.beta",
+      "parentPageStateRefOrNull": "page-state.fixture.beta.branch",
+      "resourceRefs": ["resource.fixture.beta.leaf", "resource.fixture.target"],
+      "availableElementRefs": [
+        "element.fixture.beta.leaf.return-branch"
+      ],
+      "entryFocusElementRefOrNull": "element.fixture.beta.leaf.return-branch"
+    }
+  ],
+  "transitions": [
+    {
+      "transitionRef": "transition.fixture.root-to-alpha-realm",
+      "fromPageStateRef": "page-state.fixture.root",
+      "viaElementRef": "element.fixture.root.enter-alpha",
+      "interactionRef": "interaction.fixture.root.enter-alpha",
+      "actionRef": "action.fixture.enter",
+      "toPageStateRef": "page-state.fixture.alpha.realm",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.alpha.realm.enter-branch"
+    },
+    {
+      "transitionRef": "transition.fixture.alpha-realm-to-root",
+      "fromPageStateRef": "page-state.fixture.alpha.realm",
+      "viaElementRef": "element.fixture.alpha.realm.return-root",
+      "interactionRef": "interaction.fixture.alpha.realm.return-root",
+      "actionRef": "action.fixture.return",
+      "toPageStateRef": "page-state.fixture.root",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.root.enter-beta"
+    },
+    {
+      "transitionRef": "transition.fixture.alpha-realm-to-branch",
+      "fromPageStateRef": "page-state.fixture.alpha.realm",
+      "viaElementRef": "element.fixture.alpha.realm.enter-branch",
+      "interactionRef": "interaction.fixture.alpha.realm.enter-branch",
+      "actionRef": "action.fixture.enter",
+      "toPageStateRef": "page-state.fixture.alpha.branch",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.alpha.branch.enter-leaf"
+    },
+    {
+      "transitionRef": "transition.fixture.alpha-branch-to-realm",
+      "fromPageStateRef": "page-state.fixture.alpha.branch",
+      "viaElementRef": "element.fixture.alpha.branch.return-realm",
+      "interactionRef": "interaction.fixture.alpha.branch.return-realm",
+      "actionRef": "action.fixture.return",
+      "toPageStateRef": "page-state.fixture.alpha.realm",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.alpha.realm.return-root"
+    },
+    {
+      "transitionRef": "transition.fixture.alpha-branch-to-leaf",
+      "fromPageStateRef": "page-state.fixture.alpha.branch",
+      "viaElementRef": "element.fixture.alpha.branch.enter-leaf",
+      "interactionRef": "interaction.fixture.alpha.branch.enter-leaf",
+      "actionRef": "action.fixture.enter",
+      "toPageStateRef": "page-state.fixture.alpha.leaf",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.alpha.leaf.return-branch"
+    },
+    {
+      "transitionRef": "transition.fixture.alpha-leaf-to-branch",
+      "fromPageStateRef": "page-state.fixture.alpha.leaf",
+      "viaElementRef": "element.fixture.alpha.leaf.return-branch",
+      "interactionRef": "interaction.fixture.alpha.leaf.return-branch",
+      "actionRef": "action.fixture.return",
+      "toPageStateRef": "page-state.fixture.alpha.branch",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.alpha.branch.return-realm"
+    },
+    {
+      "transitionRef": "transition.fixture.root-to-beta-realm",
+      "fromPageStateRef": "page-state.fixture.root",
+      "viaElementRef": "element.fixture.root.enter-beta",
+      "interactionRef": "interaction.fixture.root.enter-beta",
+      "actionRef": "action.fixture.enter",
+      "toPageStateRef": "page-state.fixture.beta.realm",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.beta.realm.enter-branch"
+    },
+    {
+      "transitionRef": "transition.fixture.beta-realm-to-root",
+      "fromPageStateRef": "page-state.fixture.beta.realm",
+      "viaElementRef": "element.fixture.beta.realm.return-root",
+      "interactionRef": "interaction.fixture.beta.realm.return-root",
+      "actionRef": "action.fixture.return",
+      "toPageStateRef": "page-state.fixture.root",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.root.enter-alpha"
+    },
+    {
+      "transitionRef": "transition.fixture.beta-realm-to-branch",
+      "fromPageStateRef": "page-state.fixture.beta.realm",
+      "viaElementRef": "element.fixture.beta.realm.enter-branch",
+      "interactionRef": "interaction.fixture.beta.realm.enter-branch",
+      "actionRef": "action.fixture.enter",
+      "toPageStateRef": "page-state.fixture.beta.branch",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.beta.branch.enter-leaf"
+    },
+    {
+      "transitionRef": "transition.fixture.beta-branch-to-realm",
+      "fromPageStateRef": "page-state.fixture.beta.branch",
+      "viaElementRef": "element.fixture.beta.branch.return-realm",
+      "interactionRef": "interaction.fixture.beta.branch.return-realm",
+      "actionRef": "action.fixture.return",
+      "toPageStateRef": "page-state.fixture.beta.realm",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.beta.realm.return-root"
+    },
+    {
+      "transitionRef": "transition.fixture.beta-branch-to-leaf",
+      "fromPageStateRef": "page-state.fixture.beta.branch",
+      "viaElementRef": "element.fixture.beta.branch.enter-leaf",
+      "interactionRef": "interaction.fixture.beta.branch.enter-leaf",
+      "actionRef": "action.fixture.enter",
+      "toPageStateRef": "page-state.fixture.beta.leaf",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.beta.leaf.return-branch"
+    },
+    {
+      "transitionRef": "transition.fixture.beta-leaf-to-branch",
+      "fromPageStateRef": "page-state.fixture.beta.leaf",
+      "viaElementRef": "element.fixture.beta.leaf.return-branch",
+      "interactionRef": "interaction.fixture.beta.leaf.return-branch",
+      "actionRef": "action.fixture.return",
+      "toPageStateRef": "page-state.fixture.beta.branch",
+      "transitionClassRef": "transition-class.navigation.registered-door",
+      "userFacing": true,
+      "portalRefOrNull": null,
+      "focusTargetElementRefOrNull": "element.fixture.beta.branch.return-realm"
+    },
+    {
+      "transitionRef": "transition.fixture.alpha-leaf-to-beta-leaf-portal",
+      "fromPageStateRef": "page-state.fixture.alpha.leaf",
+      "viaElementRef": "element.fixture.alpha.leaf.portal-beta-leaf",
+      "interactionRef": "interaction.fixture.alpha.leaf.portal-beta-leaf",
+      "actionRef": "action.fixture.portal",
+      "toPageStateRef": "page-state.fixture.beta.leaf",
+      "transitionClassRef": "transition-class.navigation.visible-portal",
+      "userFacing": true,
+      "portalRefOrNull": "portal.fixture.alpha-to-beta",
+      "focusTargetElementRefOrNull": "element.fixture.beta.leaf.return-branch"
+    }
+  ]
+}

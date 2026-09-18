@@ -1,0 +1,266 @@
+{
+  "schemaVersion": "vexlife.experience-foundation/v1",
+  "foundationRef": "foundation.vexlife.experience.001",
+  "foundationVersion": 1,
+  "parentExperienceRegistryRef": "registry.vexlife.experience.001",
+  "sourceRef": "source.blueprint.experience-foundation",
+  "sourcePath": "blueprint/experience-foundation.json",
+  "purpose": "Parent-bound Experience compilation inputs for reusable patterns, interaction forms, exposure, availability, typed command projections and currentness.",
+  "effects": false,
+  "nonCollapseRules": [
+    "ELEMENT_REF != LABEL_STRING_REF",
+    "ACTION_REF != INTERACTION_FORM",
+    "ACTION_REF != BUTTON",
+    "ACTION_REF != SLASH_ALIAS",
+    "ACTION_REF != MODEL_TOOL",
+    "COMPONENT != EXPERIENCE_PATTERN",
+    "EXPERIENCE_PATTERN != FEATURE",
+    "INTERACTION_FORM != SEMANTIC_MEANING",
+    "COMMAND_BINDING != EFFECT_AUTHORITY",
+    "SLASH_STRING != COMMAND_IDENTITY",
+    "SLASH_STRING != HUMAN_MESSAGE",
+    "UNKNOWN_SLASH_COMMAND != MODEL_TURN",
+    "AVAILABILITY != PERMISSION",
+    "AVAILABILITY != CAPABILITY_STAGE",
+    "EXPOSURE != AVAILABILITY",
+    "PERSONAL_LAYOUT != CANONICAL_TOPOLOGY",
+    "PROJECTION != CANONICAL_MEANING",
+    "EXPERIENCE_REVISION != MODEL_MEMORY"
+  ],
+  "exposureClasses": [
+    {
+      "exposureRef": "exposure.vexlife.primary",
+      "exposureClass": "PRIMARY",
+      "purpose": "Ordinary first-choice action or orientation affordance for the current human intent."
+    },
+    {
+      "exposureRef": "exposure.vexlife.secondary",
+      "exposureClass": "SECONDARY",
+      "purpose": "Useful alternate action that should remain visible without competing with the primary path."
+    },
+    {
+      "exposureRef": "exposure.vexlife.contextual",
+      "exposureClass": "CONTEXTUAL",
+      "purpose": "Affordance shown when the current semantic context makes it relevant."
+    },
+    {
+      "exposureRef": "exposure.vexlife.recovery",
+      "exposureClass": "RECOVERY",
+      "purpose": "Repair, reset, undo or return route shown when recovery is materially useful."
+    },
+    {
+      "exposureRef": "exposure.vexlife.expert",
+      "exposureClass": "EXPERT",
+      "purpose": "Advanced or diagnostic affordance intentionally outside the ordinary human path."
+    },
+    {
+      "exposureRef": "exposure.vexlife.ambient",
+      "exposureClass": "AMBIENT",
+      "purpose": "Low-attention status or presence that should not compete with the active task."
+    },
+    {
+      "exposureRef": "exposure.vexlife.overflow-only",
+      "exposureClass": "OVERFLOW_ONLY",
+      "purpose": "Non-primary affordance intentionally available only through an overflow/advanced surface."
+    }
+  ],
+  "availabilityStates": [
+    {
+      "availabilityRef": "availability.vexlife.available",
+      "availabilityState": "AVAILABLE",
+      "operable": true,
+      "reasonRequired": false,
+      "recoveryRefsAllowed": true
+    },
+    {
+      "availabilityRef": "availability.vexlife.held",
+      "availabilityState": "HELD",
+      "operable": false,
+      "reasonRequired": true,
+      "recoveryRefsAllowed": true
+    },
+    {
+      "availabilityRef": "availability.vexlife.unavailable",
+      "availabilityState": "UNAVAILABLE",
+      "operable": false,
+      "reasonRequired": true,
+      "recoveryRefsAllowed": true
+    },
+    {
+      "availabilityRef": "availability.vexlife.unknown",
+      "availabilityState": "UNKNOWN",
+      "operable": false,
+      "reasonRequired": true,
+      "recoveryRefsAllowed": false
+    }
+  ],
+  "interactionForms": [
+    {
+      "formRef": "form.vexlife.human.button",
+      "formKind": "BUTTON",
+      "consumerClass": "HUMAN",
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "purpose": "Visible primary or secondary action control."
+    },
+    {
+      "formRef": "form.vexlife.human.icon-action",
+      "formKind": "ICON_ACTION",
+      "consumerClass": "HUMAN",
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "purpose": "Compact visible action with a stable accessible name."
+    },
+    {
+      "formRef": "form.vexlife.human.menu-item",
+      "formKind": "MENU_ITEM",
+      "consumerClass": "HUMAN",
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "purpose": "Action projected inside a menu, overflow or contextual choice surface."
+    },
+    {
+      "formRef": "form.vexlife.human.vessel-action",
+      "formKind": "VESSEL_ACTION",
+      "consumerClass": "HUMAN",
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "purpose": "Action projected through one stable adaptive VexLife vessel."
+    },
+    {
+      "formRef": "form.vexlife.native.control",
+      "formKind": "NATIVE_CONTROL",
+      "consumerClass": "HUMAN",
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "purpose": "Platform-native control that preserves the canonical semantic action."
+    },
+    {
+      "formRef": "form.vexlife.operator.slash-alias",
+      "formKind": "SLASH_ALIAS",
+      "consumerClass": "OPERATOR",
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.browser"],
+      "purpose": "Typed control-plane alias for a registered command; never canonical command identity or an ordinary model turn."
+    },
+    {
+      "formRef": "form.vexlife.operator.model-tool",
+      "formKind": "MODEL_TOOL",
+      "consumerClass": "OPERATOR",
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.browser"],
+      "purpose": "Structured tool projection for an admitted model/operator capability."
+    },
+    {
+      "formRef": "form.vexlife.voice.action",
+      "formKind": "VOICE_ACTION",
+      "consumerClass": "HUMAN",
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.ios"],
+      "purpose": "Voice expression of an existing semantic action under the same capability/authority contract."
+    }
+  ],
+  "experiencePatterns": [
+    {
+      "patternRef": "pattern.vexlife.first-run-empty-state",
+      "patternKind": "FIRST_RUN_EMPTY_STATE",
+      "purpose": "Explain an empty or unestablished state and expose one safe next action without fabricating content.",
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.native.control", "form.vexlife.human.vessel-action"],
+      "defaultExposureRef": "exposure.vexlife.primary"
+    },
+    {
+      "patternRef": "pattern.vexlife.action-decision",
+      "patternKind": "ACTION_DECISION",
+      "purpose": "Show one semantic action with availability, typed reason and recovery rather than a context-free disabled control.",
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.human.menu-item", "form.vexlife.human.vessel-action", "form.vexlife.native.control"],
+      "defaultExposureRef": "exposure.vexlife.primary"
+    },
+    {
+      "patternRef": "pattern.vexlife.transaction",
+      "patternKind": "TRANSACTION",
+      "purpose": "Compose intention, review/confirmation, bounded effect, receipt and recovery without collapsing those stages.",
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.native.control", "form.vexlife.voice.action"],
+      "defaultExposureRef": "exposure.vexlife.contextual"
+    },
+    {
+      "patternRef": "pattern.vexlife.selection-detail",
+      "patternKind": "SELECTION_DETAIL",
+      "purpose": "Keep a stable entity selection distinct from the contextual detail projection shown for it.",
+      "formRefs": ["form.vexlife.human.menu-item", "form.vexlife.native.control"],
+      "defaultExposureRef": "exposure.vexlife.contextual"
+    },
+    {
+      "patternRef": "pattern.vexlife.progressive-disclosure",
+      "patternKind": "PROGRESSIVE_DISCLOSURE",
+      "purpose": "Keep ordinary human paths calm while preserving explicit advanced or diagnostic descent.",
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.human.menu-item", "form.vexlife.human.vessel-action"],
+      "defaultExposureRef": "exposure.vexlife.secondary"
+    },
+    {
+      "patternRef": "pattern.vexlife.preference",
+      "patternKind": "PREFERENCE",
+      "purpose": "Represent reversible local presentation/arrangement choice without mutating canonical semantic topology.",
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.human.menu-item", "form.vexlife.native.control"],
+      "defaultExposureRef": "exposure.vexlife.secondary"
+    }
+  ],
+  "commandBindings": [
+    {
+      "commandRef": "command.vexlife.search",
+      "purpose": "Find a registered capability/source/semantic identity without moving navigation presence.",
+      "capabilityRef": "capability.search",
+      "actionRefOrNull": null,
+      "processRefOrNull": null,
+      "aliases": [
+        {"literal": "/search", "formRef": "form.vexlife.operator.slash-alias"}
+      ]
+    },
+    {
+      "commandRef": "command.vexlife.describe",
+      "purpose": "Describe one registered capability or semantic identity from current source-managed metadata.",
+      "capabilityRef": "capability.describe",
+      "actionRefOrNull": null,
+      "processRefOrNull": null,
+      "aliases": [
+        {"literal": "/describe", "formRef": "form.vexlife.operator.slash-alias"}
+      ]
+    },
+    {
+      "commandRef": "command.vexlife.resolve-process",
+      "purpose": "Resolve a task/capability cue to a source-managed no-effect process plan.",
+      "capabilityRef": "process.resolve",
+      "actionRefOrNull": null,
+      "processRefOrNull": null,
+      "aliases": [
+        {"literal": "/resolve", "formRef": "form.vexlife.operator.slash-alias"}
+      ]
+    },
+    {
+      "commandRef": "command.vexlife.where",
+      "purpose": "Report current task/process/observation/currentness location without moving semantic presence.",
+      "capabilityRef": "context.where",
+      "actionRefOrNull": null,
+      "processRefOrNull": null,
+      "aliases": [
+        {"literal": "/where", "formRef": "form.vexlife.operator.slash-alias"}
+      ]
+    },
+    {
+      "commandRef": "command.vexlife.help",
+      "purpose": "Render compact current guidance from source-managed runtime state without hidden reasoning.",
+      "capabilityRef": "help.render",
+      "actionRefOrNull": null,
+      "processRefOrNull": null,
+      "aliases": [
+        {"literal": "/help", "formRef": "form.vexlife.operator.slash-alias"}
+      ]
+    }
+  ],
+  "projectionRefs": {
+    "sourceMap": "projection.vexlife.experience.source-map.001",
+    "revision": "projection.vexlife.experience.revision.001"
+  },
+  "sourceMapPolicy": {
+    "referenceOnly": true,
+    "forbiddenFieldNames": ["content", "message", "prompt", "providerPayload", "rawText", "secret", "credential"]
+  },
+  "revisionPolicy": {
+    "includeStringCatalogValues": false,
+    "includeCanonicalInterfaceStructure": true,
+    "includeExperienceRegistry": true,
+    "includeCapabilityRegistry": true,
+    "includeFoundationContract": true
+  }
+}

@@ -1,0 +1,33 @@
+# Licensing, governance, security, blueprint, CI, and release authority
+/.github/CODEOWNERS @vgong24
+/.github/pull_request_template.md @vgong24
+/.github/workflows/** @vgong24
+/.gitattributes @vgong24
+
+/LICENSE @vgong24
+/LICENSE-POLICY.md @vgong24
+/CONTRIBUTING.md @vgong24
+/GOVERNANCE.md @vgong24
+/SECURITY.md @vgong24
+/TRADEMARKS.md @vgong24
+/THIRD_PARTY_NOTICES.md @vgong24
+/CODE_OF_CONDUCT.md @vgong24
+/PROVENANCE.md @vgong24
+/docs/OPEN-SOURCE-LEGAL-STEWARDSHIP.md @vgong24
+
+/PUBLIC-SAFETY-MANIFEST.json @vgong24
+/SOURCE-MANIFEST.json @vgong24
+/source-manifest-parts/** @vgong24
+/package.json @vgong24
+/start-vexlife.* @vgong24
+
+/blueprint/** @vgong24
+/docs/UNIVERSAL-BLUEPRINT.md @vgong24
+/docs/SECURITY-PERMISSION-EFFECTS.md @vgong24
+/docs/HOME-BRIDGE-REMOTE-SURFACES.md @vgong24
+/src/core/capability.mjs @vgong24
+/src/core/home-bridge.mjs @vgong24
+/src/core/model-provision.mjs @vgong24
+/scripts/bridge-check.mjs @vgong24
+/scripts/public-safety-check.mjs @vgong24
+/scripts/source-manifest.mjs @vgong24

@@ -1,0 +1,82 @@
+import './browser-random-uuid.js';
+import './vex-birth-lab-controller.js';
+import './experience-guidance-human-projection.js';
+import { createAndroidRemoteVesselController } from './android-remote-vessel-controller.js';
+import { createExperienceGalleryController } from './experience-gallery-controller.js';
+import { createRenderLabController } from './render-lab-controller.js';
+
+export async function loadBrowserBundle(root = '../../') {
+  async function fetchJson(relativePath) {
+    const response = await fetch(`${root}${relativePath}`);
+    if (!response.ok) throw new Error(`Unable to load ${relativePath}: HTTP ${response.status}`);
+    return response.json();
+  }
+  async function loadComposedBlueprint() {
+    const descriptor = await fetchJson('blueprint/vexlife.blueprint.json');
+    if (!descriptor.includes) return descriptor;
+    const output = Object.fromEntries(Object.entries(descriptor).filter(([key]) => key !== 'includes' && key !== 'composition'));
+    for (const [field, source] of Object.entries(descriptor.includes)) {
+      if (Array.isArray(source)) {
+        const fragments = await Promise.all(source.map(fetchJson));
+        output[field] = fragments.every(Array.isArray) ? fragments.flat() : fragments;
+      } else output[field] = await fetchJson(source);
+    }
+    return output;
+  }
+  const [blueprint, experience, featureRegistry, experienceFoundation, experienceGuidance, designTokens, en, zh, ja] = await Promise.all([
+    loadComposedBlueprint(),
+    fetchJson('blueprint/experience-registry.json'),
+    fetchJson('blueprint/feature-registry.json'),
+    fetchJson('blueprint/experience-foundation.json'),
+    fetchJson('blueprint/experience-guidance.json'),
+    fetchJson('blueprint/design-tokens.json'),
+    fetchJson('blueprint/strings/en.json'),
+    fetchJson('blueprint/strings/zh.json'),
+    fetchJson('blueprint/strings/ja.json')
+  ]);
+  let androidRemoteVessel = null;
+  let experienceGallery = null;
+  let renderLab = null;
+  if (globalThis.document) {
+    androidRemoteVessel = createAndroidRemoteVesselController({
+      registry: blueprint.androidRemoteVessel,
+      homeBridge: blueprint.homeBridge
+    });
+    androidRemoteVessel.bind();
+    globalThis.__VEXLIFE_ANDROID_REMOTE_VESSEL__ = androidRemoteVessel;
+
+    experienceGallery = createExperienceGalleryController({
+      featureRegistry,
+      experienceRegistry: experience,
+      experienceFoundation,
+      experienceGuidance
+    });
+    experienceGallery.bind();
+    globalThis.__VEXLIFE_EXPERIENCE_GALLERY__ = experienceGallery;
+
+    renderLab = createRenderLabController({
+      blueprint,
+      featureRegistry,
+      experienceRegistry: experience,
+      experienceFoundation,
+      experienceGuidance,
+      designTokens
+    });
+    renderLab.bind();
+    globalThis.__VEXLIFE_RENDER_LAB__ = renderLab;
+  }
+  return {
+    blueprint,
+    experience,
+    featureRegistry,
+    experienceFoundation,
+    experienceGuidance,
+    designTokens,
+    catalogs: { en, zh, ja },
+    androidRemoteVessel,
+    experienceGallery,
+    renderLab
+  };
+}
+
+// [VXG RealForever]

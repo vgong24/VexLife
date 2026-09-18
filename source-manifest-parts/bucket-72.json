@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "72",
+  "files": [
+    {
+      "path": "blueprint/purpose-workspace/domain-packs/clinical-coordination.json",
+      "mode": "100644",
+      "bytes": 5275,
+      "sha256": "bbef6a6137c30416fe4dc59ed2c975da6716da23cf54359c11335bfc0e18ca4a"
+    },
+    {
+      "path": "install/vexlife-setup-window.ps1",
+      "mode": "100644",
+      "bytes": 11931,
+      "sha256": "68a42ab45714e5b628754cc143deeef04f75ebbd575615d127128f8f0b332546"
+    },
+    {
+      "path": "src/core/scheduler-runtime-trust.mjs",
+      "mode": "100644",
+      "bytes": 35790,
+      "sha256": "21a08aaf45962e6508f7f5b47156c5e9ad51fddc5bbb02d0efd16f0f9ac027a8"
+    }
+  ]
+}

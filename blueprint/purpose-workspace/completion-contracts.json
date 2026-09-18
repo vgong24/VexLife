@@ -1,0 +1,118 @@
+[
+  {
+    "completionContractRef": "completion-contract.reviewed-relay/v1",
+    "purpose": "Complete only when source, claim separation, review, relay preparation, and recipient disposition are evidenced.",
+    "requiredStagePurposes": [
+      "CAPTURE_SOURCE",
+      "DISTINGUISH_CLAIM_CLASSES",
+      "REVIEW",
+      "PREPARE_RELAY",
+      "RECIPIENT_DISPOSITION"
+    ],
+    "requiredEvidenceClasses": [
+      "SOURCE_RECORD",
+      "CLAIM_CLASSIFICATION",
+      "REVIEW_RECEIPT",
+      "RELAY_MANIFEST",
+      "DISPOSITION_RECEIPT"
+    ],
+    "completionState": "COMPLETE_WITH_EVIDENCE",
+    "externalEffectRequired": false
+  },
+  {
+    "completionContractRef": "completion-contract.authorized-action/v1",
+    "purpose": "Complete through preparation and explicit authorization; any real external action remains separately receipted.",
+    "requiredStagePurposes": [
+      "REQUEST",
+      "PROFESSIONAL_REVIEW",
+      "HUMAN_AUTHORIZATION",
+      "PREPARE_ACTION"
+    ],
+    "requiredEvidenceClasses": [
+      "REQUEST_RECORD",
+      "REVIEW_RECEIPT",
+      "AUTHORIZATION_RECEIPT",
+      "ACTION_PLAN"
+    ],
+    "completionState": "READY_FOR_EXTERNAL_EFFECT",
+    "externalEffectRequired": false
+  },
+  {
+    "completionContractRef": "completion-contract.attested-delivery/v1",
+    "purpose": "Complete the internal document lifecycle while distinguishing a reviewed attestation from external delivery.",
+    "requiredStagePurposes": [
+      "DRAFT",
+      "REVIEW",
+      "ATTEST",
+      "AUTHORIZE_DELIVERY"
+    ],
+    "requiredEvidenceClasses": [
+      "DRAFT_RECORD",
+      "REVIEW_RECEIPT",
+      "ATTESTATION_RECEIPT",
+      "DELIVERY_AUTHORIZATION"
+    ],
+    "completionState": "READY_FOR_EXTERNAL_EFFECT",
+    "externalEffectRequired": false
+  },
+  {
+    "completionContractRef": "completion-contract.handoff-accepted/v1",
+    "purpose": "Complete when a verified handoff receives an explicit disposition and selected material is imported with source preserved.",
+    "requiredStagePurposes": [
+      "FORM_HANDOFF",
+      "VERIFY",
+      "RECIPIENT_DISPOSITION",
+      "IMPORT_SELECTED",
+      "CONTINUE"
+    ],
+    "requiredEvidenceClasses": [
+      "HANDOFF_MANIFEST",
+      "VERIFICATION_RECEIPT",
+      "DISPOSITION_RECEIPT",
+      "IMPORT_RECEIPT",
+      "CONTINUATION_RECEIPT"
+    ],
+    "completionState": "COMPLETE_WITH_EVIDENCE",
+    "externalEffectRequired": false
+  },
+  {
+    "completionContractRef": "completion-contract.growth-loop/v1",
+    "purpose": "Complete one learning loop when plan, practice, evidence, reflection, and a current next plan are source-bound.",
+    "requiredStagePurposes": [
+      "PLAN",
+      "PRACTICE",
+      "CAPTURE_EVIDENCE",
+      "REFLECT",
+      "REPLAN"
+    ],
+    "requiredEvidenceClasses": [
+      "PLAN_GENERATION",
+      "PRACTICE_RECEIPT",
+      "EVIDENCE_RECORD",
+      "REFLECTION_RECORD",
+      "NEXT_PLAN_GENERATION"
+    ],
+    "completionState": "COMPLETE_WITH_EVIDENCE",
+    "externalEffectRequired": false
+  },
+  {
+    "completionContractRef": "completion-contract.routed-resolution/v1",
+    "purpose": "Complete when a concern is source-captured, triaged, routed, resolved, and explicitly closed or continued by the affected human.",
+    "requiredStagePurposes": [
+      "ESCALATE",
+      "TRIAGE",
+      "ROUTE",
+      "RESOLVE",
+      "CLOSE_OR_CONTINUE"
+    ],
+    "requiredEvidenceClasses": [
+      "CONCERN_RECORD",
+      "TRIAGE_RECEIPT",
+      "ROUTE_RECEIPT",
+      "RESOLUTION_RECEIPT",
+      "CLOSURE_OR_CONTINUATION_RECEIPT"
+    ],
+    "completionState": "COMPLETE_WITH_EVIDENCE",
+    "externalEffectRequired": false
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "cd",
+  "files": [
+    {
+      "path": "blueprint/public-learning-browser/strings/en.json",
+      "mode": "100644",
+      "bytes": 2095,
+      "sha256": "eab19c485415aa9a987c4a2fc658494e7cf8c5e811acc8873b46b8bef9544522"
+    }
+  ]
+}

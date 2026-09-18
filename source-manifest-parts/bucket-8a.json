@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "8a",
+  "files": [
+    {
+      "path": "blueprint/module-registry/browser-prompt-context-runtime.json",
+      "mode": "100644",
+      "bytes": 858,
+      "sha256": "d9aa712f0391b3263ef8251ddc9e61117cafef831819e7a2120d09649a947676"
+    }
+  ]
+}

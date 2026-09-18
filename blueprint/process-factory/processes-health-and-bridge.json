@@ -1,0 +1,376 @@
+[
+  {
+    "processRef": "process.vexlife.feature.register-and-project",
+    "processVersion": 1,
+    "purpose": "Register one feature and derive required identities, lenses, tests, platform impact and human projections before implementation.",
+    "applicabilityRules": [
+      "feature intent is stable enough to name",
+      "canonical parent and source owner are known"
+    ],
+    "requiredInputs": [
+      "featureRef",
+      "purpose",
+      "canonicalNodeRefs",
+      "platformRefs"
+    ],
+    "optionalInputs": [
+      "screenRefs",
+      "actionRefs",
+      "permissionRefs",
+      "featureFlagRef",
+      "knownGaps"
+    ],
+    "sourceResolutionRules": [
+      "load feature schema and review lenses",
+      "resolve every referenced identity from compiled registry",
+      "derive required lenses from data/effect/concurrency classes"
+    ],
+    "preconditions": [
+      "blueprint valid",
+      "no duplicate featureRef",
+      "source owner identified"
+    ],
+    "steps": [
+      "scaffold-feature-contract",
+      "resolve-required-lenses",
+      "validate-relationships",
+      "derive-platform-impact",
+      "emit-human-review-projection"
+    ],
+    "effectOwnerRule": "registration tool may write only the explicitly selected feature-registry path",
+    "authorityEnvelope": {
+      "effects": [
+        "READ_PROJECTION",
+        "EXPLICIT_SCAFFOLD_WRITE"
+      ],
+      "pathScope": [
+        "blueprint/feature-registry.json"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.feature-registration-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "FEATURE_CONTRACT_READY",
+      "FEATURE_REQUIRES_CLARIFICATION",
+      "FEATURE_REFERENCE_OR_LENS_GAP"
+    ],
+    "returnRouteRule": "return compact missing-field and affected-platform report",
+    "closureRule": "close after source read-back and tests are bound",
+    "recoveryRule": "remove unaccepted candidate entry; preserve receipt",
+    "foundationDependencies": [
+      "foundation.vexlife.culture-build-health.v1",
+      "foundation.vexlife.identity-lattice.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "factory.vexlife.processes.001",
+      "registry.vexlife.modules.001"
+    ],
+    "invalidationTriggers": [
+      "feature-schema-change",
+      "identity-change",
+      "review-lens-change"
+    ],
+    "testRefs": [
+      "test.feature.required-lenses",
+      "test.feature.reference-coverage"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.repository.health-evaluate",
+    "processVersion": 1,
+    "purpose": "Evaluate source-managed health checks, collapse semantic no-ops and emit a compact current projection plus source receipts.",
+    "applicabilityRules": [
+      "repository root contains build-health registry"
+    ],
+    "requiredInputs": [
+      "sourceTreeRef",
+      "blueprintHash"
+    ],
+    "optionalInputs": [
+      "changedRefs",
+      "platformRef"
+    ],
+    "sourceResolutionRules": [
+      "load build-health registry",
+      "run only registered commands",
+      "bind outputs to source hashes"
+    ],
+    "preconditions": [
+      "commands resolve inside repository",
+      "no unregistered write effect"
+    ],
+    "steps": [
+      "resolve-check-set",
+      "run-deterministic-checks",
+      "classify-blockers-and-debt",
+      "suppress-equal-health-state",
+      "emit-current-health-projection"
+    ],
+    "effectOwnerRule": "health runner owns derived receipts only",
+    "authorityEnvelope": {
+      "effects": [
+        "READ",
+        "DERIVED_PROJECTION_WRITE"
+      ],
+      "pathScope": [
+        "generated/health"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.health-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "HEALTHY",
+      "ATTENTION",
+      "BLOCKED",
+      "UNKNOWN"
+    ],
+    "returnRouteRule": "return one human summary and exact failed check refs",
+    "closureRule": "close after receipt is source-bound",
+    "recoveryRule": "discard generated projection and rerun",
+    "foundationDependencies": [
+      "foundation.vexlife.culture-build-health.v1",
+      "foundation.vexlife.state-relay.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "screen.vexlife.health",
+      "terrain.project.vex-home-product"
+    ],
+    "invalidationTriggers": [
+      "source-tree-change",
+      "health-registry-change",
+      "platform-evidence-change"
+    ],
+    "testRefs": [
+      "test.health.registered-checks",
+      "test.health.no-op-dedup"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.bridge.pair-device",
+    "processVersion": 1,
+    "purpose": "Pair one trusted device to a desktop Home Node with an expiring single-use offer and explicit capability approval.",
+    "applicabilityRules": [
+      "home node is reachable locally",
+      "device has generated its own keypair"
+    ],
+    "requiredInputs": [
+      "homeNodeRef",
+      "deviceRef",
+      "devicePublicKey",
+      "pairingRef",
+      "requestedCapabilityRefs",
+      "humanFingerprint"
+    ],
+    "optionalInputs": [
+      "projectRefs",
+      "leaseDuration"
+    ],
+    "sourceResolutionRules": [
+      "load Home Bridge registry",
+      "resolve requested capabilities and current revocation generation"
+    ],
+    "preconditions": [
+      "pairing offer unexpired",
+      "pairing offer unused",
+      "human approves matching fingerprint"
+    ],
+    "steps": [
+      "verify-offer",
+      "intersect-requested-capabilities",
+      "record-device-membership",
+      "issue-expiring-capability-lease",
+      "invalidate-pairing-offer"
+    ],
+    "effectOwnerRule": "desktop Home Bridge gateway owns membership and lease writes",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_MEMBERSHIP_WRITE"
+      ],
+      "pathScope": [
+        "vex-home/bridge/memberships",
+        "vex-home/bridge/leases"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.bridge-pairing-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "PAIRED_LEASE_ACTIVE",
+      "PAIRING_REJECTED",
+      "PAIRING_EXPIRED",
+      "PAIRING_REPLAY_REJECTED"
+    ],
+    "returnRouteRule": "return matching fingerprint, approved capabilities and expiry",
+    "closureRule": "close after membership and lease read-back",
+    "recoveryRule": "revoke membership generation; preserve receipt",
+    "foundationDependencies": [
+      "foundation.vexlife.home-bridge.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "platform.windows",
+      "platform.macos",
+      "platform.android",
+      "platform.ios"
+    ],
+    "invalidationTriggers": [
+      "capability-policy-change",
+      "device-key-change",
+      "home-generation-change"
+    ],
+    "testRefs": [
+      "test.bridge.pairing-replay",
+      "test.bridge.capability-intersection"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.bridge.remote-request",
+    "processVersion": 1,
+    "purpose": "Route one authenticated remote request through the Home Bridge gateway while keeping the desktop Home authoritative.",
+    "applicabilityRules": [
+      "device membership and lease active",
+      "request action is registered"
+    ],
+    "requiredInputs": [
+      "requestRef",
+      "deviceRef",
+      "leaseRef",
+      "actionRef",
+      "expectedCurrentStateRef",
+      "idempotencyKey"
+    ],
+    "optionalInputs": [
+      "channelRef",
+      "projectRef",
+      "resourceEnvelopeRef"
+    ],
+    "sourceResolutionRules": [
+      "load current membership, lease and revocation generation",
+      "intersect family/device/lease/role/project/permission/resource scopes",
+      "resolve current Home state"
+    ],
+    "preconditions": [
+      "raw model endpoint is not public",
+      "expected current state matches or request is read-only",
+      "idempotency key not completed with divergent payload"
+    ],
+    "steps": [
+      "authenticate-device",
+      "intersect-capabilities",
+      "validate-currentness-and-resources",
+      "route-to-home-service",
+      "record-receipt",
+      "return-bounded-projection"
+    ],
+    "effectOwnerRule": "desktop Home service remains sole canonical writer",
+    "authorityEnvelope": {
+      "effects": [
+        "LEASED_REMOTE_REQUEST"
+      ],
+      "pathScope": [
+        "vex-home/bridge/receipts"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.bridge-request-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "REMOTE_REQUEST_COMPLETE",
+      "CURRENTNESS_CONFLICT",
+      "CAPABILITY_DENIED",
+      "HOME_UNREACHABLE",
+      "LEASE_EXPIRED",
+      "DEVICE_REVOKED"
+    ],
+    "returnRouteRule": "return active companion identity, result projection and receipt",
+    "closureRule": "close after idempotent receipt is durable",
+    "recoveryRule": "retry only safe/idempotent requests; never transfer Home write authority",
+    "foundationDependencies": [
+      "foundation.vexlife.home-bridge.v1",
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "platform.windows",
+      "platform.macos",
+      "platform.android",
+      "platform.ios",
+      "platform.browser"
+    ],
+    "invalidationTriggers": [
+      "lease-change",
+      "home-state-change",
+      "resource-state-change",
+      "action-contract-change"
+    ],
+    "testRefs": [
+      "test.bridge.remote-vs-sibling-identity",
+      "test.bridge.single-writer-home",
+      "test.bridge.revocation",
+      "test.bridge.no-direct-model-exposure"
+    ]
+  },
+  {
+    "processRef": "process.vexlife.bridge.revoke-device",
+    "processVersion": 1,
+    "purpose": "Revoke one device membership generation and reject future leases without erasing historical receipts.",
+    "applicabilityRules": [
+      "device membership exists"
+    ],
+    "requiredInputs": [
+      "deviceRef",
+      "homeNodeRef",
+      "reason",
+      "approvedBy"
+    ],
+    "optionalInputs": [
+      "revokeAllDeviceLeases"
+    ],
+    "sourceResolutionRules": [
+      "load current device membership and leases"
+    ],
+    "preconditions": [
+      "approver has local Home administration authority"
+    ],
+    "steps": [
+      "advance-revocation-generation",
+      "mark-leases-revoked",
+      "emit-device-removal-projection"
+    ],
+    "effectOwnerRule": "desktop Home Bridge gateway owns revocation",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_MEMBERSHIP_WRITE"
+      ],
+      "pathScope": [
+        "vex-home/bridge/memberships",
+        "vex-home/bridge/leases"
+      ]
+    },
+    "outputTemplateRefs": [
+      "template.vexlife.bridge-revocation-receipt"
+    ],
+    "canonicalDispositionVocabulary": [
+      "DEVICE_REVOKED",
+      "DEVICE_ALREADY_REVOKED",
+      "DEVICE_NOT_FOUND"
+    ],
+    "returnRouteRule": "return exact affected leases and retained receipt refs",
+    "closureRule": "close after read-back rejects prior lease generation",
+    "recoveryRule": "re-pair as a new approved membership; never silently un-revoke",
+    "foundationDependencies": [
+      "foundation.vexlife.home-bridge.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "screen.vexlife.health"
+    ],
+    "invalidationTriggers": [
+      "membership-change"
+    ],
+    "testRefs": [
+      "test.bridge.revocation"
+    ]
+  }
+]

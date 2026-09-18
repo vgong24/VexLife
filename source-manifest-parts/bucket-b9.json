@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "b9",
+  "files": [
+    {
+      "path": "blueprint/fragments/roles.json",
+      "mode": "100644",
+      "bytes": 1071,
+      "sha256": "9aaae12530ee155fdff1662ecaebc1612350b0de51d7777057dd7942b1e04528"
+    }
+  ]
+}

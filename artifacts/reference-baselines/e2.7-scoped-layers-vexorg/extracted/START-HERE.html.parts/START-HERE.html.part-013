@@ -1,0 +1,59 @@
+e.vexDims=null;renderVex()});$('#resetVex').onclick=()=>{state.vexPos=null;renderVex()};function closePresenceMenu(){$('#presenceMenu').classList.remove('show');$('#vexMenu').classList.remove('active');$('#vexMenu').setAttribute('aria-pressed','false')}document.addEventListener('pointerdown',e=>{if($('#presenceMenu').classList.contains('show')&&!e.target.closest('#presenceMenu')&&!e.target.closest('#vexMenu'))closePresenceMenu();if($('#terrainContext').classList.contains('show')&&!e.target.closest('#terrainContext'))closeTerrainContext()});$('#send').onclick=()=>toast('Mock Vex response · current Terrain context preserved');
+let drag=null;const handle=$('#vexHandle'),vex=$('#vex'),app=$('#app');handle.addEventListener('pointerdown',e=>{if(state.device!=='desktop'||e.target.closest('button'))return;const r=vex.getBoundingClientRect(),a=app.getBoundingClientRect();drag={id:e.pointerId,sx:e.clientX,sy:e.clientY,dx:e.clientX-r.left,dy:e.clientY-r.top,a,started:false,start:state.vexPos?{...state.vexPos}:null};handle.setPointerCapture(e.pointerId)});handle.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(!drag.started&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<5)return;drag.started=true;vex.classList.add('dragging');const left=Math.max(0,Math.min(drag.a.width-vex.offsetWidth,e.clientX-drag.a.left-drag.dx)),top=Math.max(70,Math.min(drag.a.height-160,e.clientY-drag.a.top-drag.dy));state.vexPos={left,top};renderVex()});function endDrag(cancel=false){if(!drag)return;if(cancel&&drag.started)state.vexPos=drag.start;try{if(handle.hasPointerCapture(drag.id))handle.releasePointerCapture(drag.id)}catch(_){}drag=null;vex.classList.remove('dragging');renderVex()}handle.addEventListener('pointerup',()=>endDrag(false));handle.addEventListener('pointercancel',()=>endDrag(true));handle.addEventListener('lostpointercapture',()=>{if(drag)endDrag(false)});
+
+
+// E2.7: four-corner Vex resizing is a continuous gesture, not a persistent mode.
+let vexResize=null;
+$$('[data-resize]').forEach(h=>{
+  h.addEventListener('pointerdown',e=>{
+    if(state.device!=='desktop'||state.vexMode==='ambient')return;
+    e.stopPropagation();e.preventDefault();
+    const r=vex.getBoundingClientRect(),a=app.getBoundingClientRect();
+    vexResize={pid:e.pointerId,corner:h.dataset.resize,sx:e.clientX,sy:e.clientY,
+      base:{left:r.left-a.left,top:r.top-a.top,width:r.width,height:r.height},app:a};
+    h.setPointerCapture(e.pointerId);
+  });
+  h.addEventListener('pointermove',e=>{
+    if(!vexResize||vexResize.pid!==e.pointerId)return;
+    const dX=e.clientX-vexResize.sx,dY=e.clientY-vexResize.sy,c=vexResize.corner,b=vexResize.base;
+    let left=b.left,top=b.top,width=b.width,height=b.height;
+    if(c.includes('e'))width=b.width+dX;
+    if(c.includes('w')){left=b.left+dX;width=b.width-dX}
+    if(c.includes('s'))height=b.height+dY;
+    if(c.includes('n')){top=b.top+dY;height=b.height-dY}
+    const minW=260,minH=220,maxRight=vexResize.app.width-4,maxBottom=vexResize.app.height-74;
+    const right=b.left+b.width,bottom=b.top+b.height;
+    if(width<minW){width=minW;if(c.includes('w'))left=right-minW}
+    if(height<minH){height=minH;if(c.includes('n'))top=bottom-minH}
+    left=Math.max(0,left);top=Math.max(70,top);
+    width=Math.min(width,maxRight-left);height=Math.min(height,maxBottom-top);
+    state.vexPos={left,top};state.vexDims={width,height};renderVex();
+  });
+  const finish=e=>{
+    if(!vexResize||vexResize.pid!==e.pointerId)return;
+    try{if(h.hasPointerCapture(e.pointerId))h.releasePointerCapture(e.pointerId)}catch(_){}
+    vexResize=null;
+  };
+  h.addEventListener('pointerup',finish);h.addEventListener('pointercancel',finish);
+});
+
+let terrainPan=null;const terrain=$('#terrain');
+terrain.addEventListener('pointerdown',e=>{if(state.transitioning||e.target.closest('.node,.focus,.adjacent-card,.hud,.intent-tracker,.zoom-rail'))return;if(e.button!==0)return;terrainPan={id:e.pointerId,sx:e.clientX,sy:e.clientY,x:camera.x,y:camera.y};terrain.classList.add('panning');terrain.setPointerCapture(e.pointerId);resetIntent()});
+terrain.addEventListener('pointermove',e=>{if(!terrainPan||e.pointerId!==terrainPan.id)return;setCamera({scale:camera.scale,x:terrainPan.x+(e.clientX-terrainPan.sx),y:terrainPan.y+(e.clientY-terrainPan.sy)},false)});
+function endTerrainPan(){terrainPan=null;terrain.classList.remove('panning')}terrain.addEventListener('pointerup',endTerrainPan);terrain.addEventListener('pointercancel',endTerrainPan);terrain.addEventListener('lostpointercapture',endTerrainPan);
+terrain.addEventListener('wheel',e=>{if(state.transitioning||state.drawer||e.target.closest('.scroll-scope'))return;e.preventDefault();const rect=terrain.getBoundingClientRect(),sx=e.clientX-rect.left,sy=e.clientY-rect.top;zoomAround(sx,sy,Math.exp(-e.deltaY*.0015),e.deltaY)},{passive:false});
+$('#zoomIn').onclick=()=>{const r=terrain.getBoundingClientRect();zoomAround(r.width/2,r.height/2,1.12,-80)};
+$('#zoomOut').onclick=()=>{const r=terrain.getBoundingClientRect();zoomAround(r.width/2,r.height/2,.88,80)};
+$('#autoSemantic').onchange=e=>{state.autoSemantic=e.target.checked;resetIntent();renderZoomRail()};
+
+const tctx=$('#terrainContext');
+function openTerrainContext(x,y,nodeId=null){
+  tctx.dataset.nodeId=nodeId||'';
+  tctx.style.left=Math.min(window.innerWidth-230,x)+'px';tctx.style.top=Math.min(window.innerHeight-290,y)+'px';
+  const isPerson=!!nodeId&&tree[nodeId]?.kind==='person';
+  $('#viewLedgerAction').classList.toggle('show',isPerson);$('#proposeMoveAction').classList.toggle('show',isPerson);
+  $('#terrainContextHint').textContent=isPerson?'Person actions create mock org-visible proposals only. Private Vex context remains outside this menu.':'Right-click / long-press changes the projection workspace, not canonical relationships.';
+  tctx.classList.add('show')
+}
+function closeTerrainContext(){tctx.classList.remove('show');tctx.dataset.nodeId=''}
+terrain.addEventListener('contextmenu',e=>{e.preventDefault();const node=e.targ

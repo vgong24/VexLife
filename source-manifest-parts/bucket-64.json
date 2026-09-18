@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "64",
+  "files": [
+    {
+      "path": "scripts/impact-report.mjs",
+      "mode": "100644",
+      "bytes": 679,
+      "sha256": "32aade5c1aafe11498c924be9d8c9371e3330ff619f09c9ec478e83d0aee8eab"
+    }
+  ]
+}

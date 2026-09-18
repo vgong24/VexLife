@@ -1,0 +1,38 @@
+.android-remote-vessel {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  display: grid;
+  gap: 10px;
+}
+.android-remote-vessel header,
+.android-remote-vessel-status {
+  display: grid;
+  gap: 4px;
+}
+.android-remote-vessel h3,
+.android-remote-vessel p {
+  margin: 0;
+}
+.android-remote-vessel-status code,
+.android-remote-vessel-truth code {
+  overflow-wrap: anywhere;
+}
+.android-remote-vessel-held {
+  opacity: .72;
+}
+@media(max-width:760px) {
+  .android-remote-vessel {
+    padding: 14px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .android-remote-vessel {
+    scroll-behavior: auto;
+  }
+}
+
+/* [VXG RealForever] */

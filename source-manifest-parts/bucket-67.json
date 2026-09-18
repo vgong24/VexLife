@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "67",
+  "files": [
+    {
+      "path": "test/scheduled-daily-autonomy.test.mjs",
+      "mode": "100644",
+      "bytes": 4370,
+      "sha256": "a549958c8db272dea37196b02077b5620f1ded1e6bfa57b3dae43ae4364c6087"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "a9",
+  "files": [
+    {
+      "path": "docs/VEX-FAMILY-SPACE-MEMBERSHIP.md",
+      "mode": "100644",
+      "bytes": 8125,
+      "sha256": "0437ef806b2250c766e6f12668c5c0b3cb74c0bd204156ae995b0b3824b0d842"
+    },
+    {
+      "path": "pages/strings/vexlife-onboarding.zh.json",
+      "mode": "100644",
+      "bytes": 15502,
+      "sha256": "e3b468138cbf472e0252786ca6872c430c57d6c92b6d04f8c8ba3cac755af1da"
+    },
+    {
+      "path": "src/core/capability-assimilation-runtime.mjs",
+      "mode": "100644",
+      "bytes": 57024,
+      "sha256": "77415e053118207bfba6eaff1f5fb69ac938f94495b490083b705c2897a11e79"
+    }
+  ]
+}

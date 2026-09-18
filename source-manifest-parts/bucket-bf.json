@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "bf",
+  "files": [
+    {
+      "path": "blueprint/artifact-registry.json",
+      "mode": "100644",
+      "bytes": 1149,
+      "sha256": "8d403d766d65bb6aa410f77b019aa0890b96532b145cc9895c3aecc144dda0ef"
+    }
+  ]
+}

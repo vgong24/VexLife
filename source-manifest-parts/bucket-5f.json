@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "5f",
+  "files": [
+    {
+      "path": "src/core/conversation.mjs",
+      "mode": "100644",
+      "bytes": 26585,
+      "sha256": "6d456969c1e5801426a09f53535bf1f2b51171c126368835045b0fc5e491bca6"
+    }
+  ]
+}

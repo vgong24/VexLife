@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "f2",
+  "files": [
+    {
+      "path": "reference/browser/modules/browser-random-uuid.js",
+      "mode": "100644",
+      "bytes": 1925,
+      "sha256": "171c4039384b837a93a7a31258997b7434444cc20a13d605d951bbe6a47323e3"
+    }
+  ]
+}

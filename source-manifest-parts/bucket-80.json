@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "80",
+  "files": [
+    {
+      "path": "docs/CULTURE.md",
+      "mode": "100644",
+      "bytes": 4806,
+      "sha256": "1b5a606f744ae22e4be5e8f7853a1bd383b0dd2a1136f4861b4377567a0d1653"
+    },
+    {
+      "path": "scripts/score-context-continuity.mjs",
+      "mode": "100644",
+      "bytes": 55875,
+      "sha256": "e5fd84b24f2c00167edc4dd91db847f738739e0462cce6dbba9ed0257918dc8d"
+    }
+  ]
+}

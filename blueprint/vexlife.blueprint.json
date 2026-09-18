@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "vexlife.universal-blueprint/v0",
+  "blueprintRef": "blueprint.vexlife.universal.001",
+  "version": "0.4.0-foundation-rc1",
+  "contractVersion": 1,
+  "composition": "CANONICAL_FRAGMENT_COMPOSITION",
+  "includes": {
+    "product": "blueprint/fragments/product.json",
+    "invariants": "blueprint/fragments/invariants.json",
+    "stateDomains": "blueprint/fragments/state-domains.json",
+    "roles": "blueprint/fragments/roles.json",
+    "permissions": "blueprint/fragments/permissions.json",
+    "actions": [
+      "blueprint/fragments/actions.json",
+      "blueprint/fragments/actions/security-access-preview.json"
+    ],
+    "terrain": "blueprint/fragments/terrain.json",
+    "platforms": "blueprint/fragments/platform-bindings.json",
+    "tests": [
+      "blueprint/fragments/tests.json",
+      "blueprint/fragments/tests/security-access-preview.json"
+    ],
+    "registryRefs": "blueprint/fragments/registry-refs.json",
+    "navigationContinuity": "blueprint/navigation-continuity-registry.json",
+    "evolution": "blueprint/evolution-registry.json",
+    "intentOrchestration": "blueprint/intent-orchestration-registry.json",
+    "intentScheduler": "blueprint/intent-scheduler-registry.json",
+    "runtimeRecovery": "blueprint/runtime-recovery-registry.json",
+    "concernWatch": "blueprint/concern-watch-registry.json",
+    "buildAdmission": "blueprint/build-admission-registry.json",
+    "components": "blueprint/fragments/components.json",
+    "screens": [
+      "blueprint/fragments/screens/shell.json",
+      "blueprint/fragments/screens/chat.json",
+      "blueprint/fragments/screens/living-journal.json",
+      "blueprint/fragments/screens/relationships.json",
+      "blueprint/fragments/screens/purpose-workspace.json",
+      "blueprint/fragments/screens/terrain.json",
+      "blueprint/fragments/screens/health.json",
+      "blueprint/fragments/screens/guide-overlay.json",
+      "blueprint/fragments/screens/cdr-s5-closed-alpha.json"
+    ],
+    "registrationExtensions": [
+      "blueprint/purpose-workspace/registration.json"
+    ],
+    "securityAccessPreview": "blueprint/security-access-preview-registry.json",
+    "homeBridge": "blueprint/home-bridge-registry.json",
+    "androidRemoteVessel": "blueprint/android-remote-vessel-registry.json"
+  }
+}

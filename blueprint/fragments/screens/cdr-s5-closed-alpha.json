@@ -1,0 +1,153 @@
+{
+  "screenRef": "screen.vexlife.cdr-s5-closed-alpha",
+  "routeRef": "route.cdr-s5-closed-alpha",
+  "titleStringRef": "screen.cdr-s5-closed-alpha.title",
+  "stateSelectorRefs": [],
+  "regions": [
+    {
+      "regionRef": "region.cdr-s5-closed-alpha.journey",
+      "labelStringRef": "cdr-s5.closed-alpha.region",
+      "elements": [
+        {
+          "elementRef": "element.cdr-s5.closed-alpha.reference-status",
+          "kind": "REFERENCE_SUMMARY",
+          "labelStringRef": "cdr-s5.closed-alpha.reference",
+          "conceptRef": "concept.element.cdr-s5.closed-alpha.reference-status",
+          "interactionRef": "interaction.cdr-s5.closed-alpha.reference-status",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.cdr-s5.reference-observed",
+          "accessibility": {
+            "role": "status",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.cdr-s5.closed-alpha.reference-status"
+          },
+          "testRefs": [
+            "test.cdr-s5.closed-alpha-no-effect"
+          ]
+        },
+        {
+          "elementRef": "element.cdr-s5.closed-alpha.consent",
+          "kind": "ACTION",
+          "labelStringRef": "cdr-s5.closed-alpha.consent",
+          "actionRef": "action.cdr-s5.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.cdr-s5.closed-alpha.consent",
+          "interactionRef": "interaction.cdr-s5.closed-alpha.consent",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.cdr-s5.reference-transition",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.cdr-s5.closed-alpha.consent"
+          },
+          "testRefs": [
+            "test.cdr-s5.closed-alpha-consent-privacy"
+          ]
+        },
+        {
+          "elementRef": "element.cdr-s5.closed-alpha.invitation",
+          "kind": "ACTION",
+          "labelStringRef": "cdr-s5.closed-alpha.invitation",
+          "actionRef": "action.cdr-s5.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.cdr-s5.closed-alpha.invitation",
+          "interactionRef": "interaction.cdr-s5.closed-alpha.invitation",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.cdr-s5.reference-transition",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.cdr-s5.closed-alpha.invitation"
+          },
+          "testRefs": [
+            "test.cdr-s5.closed-alpha-consent-privacy"
+          ]
+        },
+        {
+          "elementRef": "element.cdr-s5.closed-alpha.route-privacy",
+          "kind": "REFERENCE_SUMMARY",
+          "labelStringRef": "cdr-s5.closed-alpha.route-privacy",
+          "conceptRef": "concept.element.cdr-s5.closed-alpha.route-privacy",
+          "interactionRef": "interaction.cdr-s5.closed-alpha.route-privacy",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.cdr-s5.reference-observed",
+          "accessibility": {
+            "role": "status",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.cdr-s5.closed-alpha.route-privacy"
+          },
+          "testRefs": [
+            "test.cdr-s5.closed-alpha-currentness-delivery"
+          ]
+        },
+        {
+          "elementRef": "element.cdr-s5.closed-alpha.support",
+          "kind": "ACTION",
+          "labelStringRef": "cdr-s5.closed-alpha.support",
+          "actionRef": "action.cdr-s5.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.cdr-s5.closed-alpha.support",
+          "interactionRef": "interaction.cdr-s5.closed-alpha.support",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.cdr-s5.reference-transition",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.cdr-s5.closed-alpha.support"
+          },
+          "testRefs": [
+            "test.cdr-s5.closed-alpha-recovery-localization-accessibility"
+          ]
+        },
+        {
+          "elementRef": "element.cdr-s5.closed-alpha.withdraw",
+          "kind": "ACTION",
+          "labelStringRef": "cdr-s5.closed-alpha.withdraw",
+          "actionRef": "action.cdr-s5.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.cdr-s5.closed-alpha.withdraw",
+          "interactionRef": "interaction.cdr-s5.closed-alpha.withdraw",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.cdr-s5.reference-transition",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.cdr-s5.closed-alpha.withdraw"
+          },
+          "testRefs": [
+            "test.cdr-s5.closed-alpha-recovery-localization-accessibility"
+          ]
+        },
+        {
+          "elementRef": "element.cdr-s5.closed-alpha.reset",
+          "kind": "ACTION",
+          "labelStringRef": "cdr-s5.closed-alpha.reset",
+          "actionRef": "action.cdr-s5.reference.reset",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.cdr-s5.closed-alpha.reset",
+          "interactionRef": "interaction.cdr-s5.closed-alpha.reset",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.cdr-s5.reference-reset",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.cdr-s5.closed-alpha.reset"
+          },
+          "testRefs": [
+            "test.cdr-s5.closed-alpha-recovery-localization-accessibility"
+          ]
+        }
+      ],
+      "conceptRef": "concept.region.cdr-s5-closed-alpha.journey",
+      "navigationNodeRef": "nav.region.cdr-s5-closed-alpha.journey"
+    }
+  ],
+  "testRefs": [
+    "test.cdr-s5.closed-alpha-no-effect",
+    "test.cdr-s5.closed-alpha-consent-privacy",
+    "test.cdr-s5.closed-alpha-currentness-delivery",
+    "test.cdr-s5.closed-alpha-recovery-localization-accessibility"
+  ],
+  "conceptRef": "concept.screen.vexlife.cdr-s5-closed-alpha",
+  "navigationNodeRef": "nav.screen.vexlife.cdr-s5-closed-alpha"
+}

@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "vexlife.vnav00.synthetic-fixture/v1",
+  "fixtureRef": "fixture.vexlife.vnav00.synthetic.tiny-town.001",
+  "featureRef": "feature.vexlife.companion-navigation",
+  "addressedConversationFeatureRef": "feature.vexlife.addressed-conversation",
+  "routePlanRef": "route-plan.vnav00.synthetic.001",
+  "mapPack": {
+    "mapPackRef": "map-pack.vnav00.synthetic.tiny-town.001",
+    "generation": "synthetic-001",
+    "currentness": "CURRENT",
+    "sourceRefs": [
+      "source.synthetic.vnav00.tiny-town"
+    ],
+    "licenseRef": "license.synthetic.content-absent"
+  },
+  "router": {
+    "adapterRef": "adapter.vexlife.vnav00.synthetic-router.v1",
+    "currentness": "CURRENT",
+    "externalDependencyMaterialized": false
+  },
+  "traffic": {
+    "available": false,
+    "currentness": "UNKNOWN"
+  },
+  "privacy": {
+    "privacyRef": "privacy.vnav00.synthetic.ephemeral-only",
+    "rawGpsRetention": "EPHEMERAL",
+    "rawSearchRetention": "SESSION",
+    "memoryPromotion": false
+  },
+  "effectBoundary": {
+    "realGpsRead": false,
+    "networkEffect": false,
+    "vehicleControl": false,
+    "humanMessageSend": false
+  },
+  "graph": {
+    "nodes": [
+      { "nodeRef": "place.synthetic.a", "x": 0, "y": 0 },
+      { "nodeRef": "place.synthetic.b", "x": 1, "y": 0 },
+      { "nodeRef": "place.synthetic.c", "x": 2, "y": 0 },
+      { "nodeRef": "place.synthetic.d", "x": 3, "y": 0 },
+      { "nodeRef": "place.synthetic.e", "x": 2, "y": 1 }
+    ],
+    "edges": [
+      { "from": "place.synthetic.a", "to": "place.synthetic.b", "distanceMeters": 100 },
+      { "from": "place.synthetic.b", "to": "place.synthetic.c", "distanceMeters": 120 },
+      { "from": "place.synthetic.c", "to": "place.synthetic.d", "distanceMeters": 100 },
+      { "from": "place.synthetic.b", "to": "place.synthetic.e", "distanceMeters": 80 },
+      { "from": "place.synthetic.e", "to": "place.synthetic.d", "distanceMeters": 80 }
+    ]
+  },
+  "origin": {
+    "nodeRef": "place.synthetic.a",
+    "sourceClass": "EXACT_COORDINATE"
+  },
+  "destination": {
+    "nodeRef": "place.synthetic.d",
+    "sourceClass": "EXACT_COORDINATE",
+    "coordinateTrust": "RESOLVED_LOCAL"
+  },
+  "syntheticGpsTrace": [
+    { "observationRef": "gps.synthetic.001", "observationClass": "GPS_FIX", "x": 0.02, "y": 0.01, "accuracyMeters": 5 },
+    { "observationRef": "gps.synthetic.002", "observationClass": "GPS_FIX", "x": 1.01, "y": 0.02, "accuracyMeters": 5 },
+    { "observationRef": "gps.synthetic.003", "observationClass": "GPS_FIX", "x": 1.98, "y": 0.03, "accuracyMeters": 6 },
+    { "observationRef": "gps.synthetic.004", "observationClass": "GPS_FIX", "x": 2.98, "y": 0.01, "accuracyMeters": 5 }
+  ],
+  "howMuchLonger": {
+    "atNodeRef": "place.synthetic.c",
+    "speedMps": 10
+  },
+  "attention": {
+    "largeContextQuestion": "Explain the architecture in detail while the next maneuver is close.",
+    "nextCriticalManeuverMeters": 60,
+    "deferThresholdMeters": 100
+  },
+  "preparedMessage": {
+    "state": "MESSAGE_PREPARED",
+    "sent": false,
+    "humanSpeakerRef": "person.synthetic.user",
+    "vexAuthorRef": "companion.synthetic.vex",
+    "recipientRefs": [
+      "person.synthetic.family-contact"
+    ]
+  },
+  "detourCandidate": {
+    "candidateRef": "place-candidate.synthetic.flowers.001",
+    "nodeRef": "place.synthetic.c"
+  },
+  "network": {
+    "available": false,
+    "localMapDataSufficient": true
+  },
+  "routeSourceRefs": [
+    "source.synthetic.vnav00.route-graph"
+  ]
+}

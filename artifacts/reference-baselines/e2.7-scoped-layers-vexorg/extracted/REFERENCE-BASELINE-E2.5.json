@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "vexlife.design-reference-baseline/v1",
+  "baselineCandidateRef": "design-baseline.vexlife.e2.5.accumulated-space-travel",
+  "state": "HUMAN_APPROVED_REFERENCE_BASELINE",
+  "truthClass": "A_B_VARIANT_PROPOSAL",
+  "implementationState": "NOT_IMPLEMENTED",
+  "reviewLineage": [
+    "E1",
+    "E2",
+    "E2.1",
+    "E2.2",
+    "E2.3",
+    "E2.4",
+    "E2.5"
+  ],
+  "rule": "NEW_EPOCH = PRIOR_BASELINE + PRESERVE_SIGNALS + REJECTED_PATTERNS + NEW_HYPOTHESES",
+  "confirmedPreserveSignals": [
+    {
+      "signal": "KEEP_ONE_PAGE_NO_INSTALL_LOW_BURDEN_REVIEW_LOOP",
+      "basis": "E1 explicit positive feedback; durable confirmed preserve signal",
+      "revisable": true
+    },
+    {
+      "signal": "LIGHT_DARK_SAME_INTERACTIVE_STATE",
+      "basis": "explicit human request; do not duplicate screenshot walls",
+      "revisable": true
+    },
+    {
+      "signal": "SINGLE_STAGE_INTERACTIVE_PLUS_SPARSE_SNAPSHOTS",
+      "basis": "explicit human request for clickable mock plus stored receipts",
+      "revisable": true
+    },
+    {
+      "signal": "VEXTREME_MARK_SUMMONS_VEX",
+      "basis": "explicit human refinement: Vex is Home; mark brings Vex forward",
+      "revisable": true
+    },
+    {
+      "signal": "OVERLAY_DRAWERS_DO_NOT_CONSUME_CANVAS",
+      "basis": "explicit rejection of tabs/rails that shrink content width",
+      "revisable": true
+    },
+    {
+      "signal": "MOMENTUM_REQUIRES_RELEASE",
+      "basis": "explicit correction: gesture release is the inverse; no sticky Move mode",
+      "revisable": true
+    },
+    {
+      "signal": "WORLD_GEOMETRY_IS_SOURCE_TRUTH",
+      "basis": "explicit request for anchored physical relationships; viewport changes camera only",
+      "revisable": true
+    },
+    {
+      "signal": "CENTER_IS_CURRENT_CONTEXT",
+      "basis": "explicit E2.4 feedback: center helps orient",
+      "revisable": true
+    },
+    {
+      "signal": "NODE_SPACING_SUPPORTS_ORIENTATION",
+      "basis": "explicit E2.4 feedback: liked node spacing",
+      "revisable": true
+    },
+    {
+      "signal": "VISIBLE_CHOICE_BUDGET_MAX_8",
+      "basis": "explicit earlier burden guidance: nest beyond eight rather than compress",
+      "revisable": true
+    },
+    {
+      "signal": "FULL_JOURNEY_PRESERVED_VISIBLE_RECENT_MAX_5",
+      "basis": "explicit E2.4 feedback: preserve history, display only latest five actions",
+      "revisable": true
+    },
+    {
+      "signal": "NODE_ENTRY_USES_SPATIAL_TRAVEL_TRANSITION",
+      "basis": "explicit E2.4 feedback: zoom into node and reveal next layer like space travel",
+      "revisable": true
+    }
+  ],
+  "provisionalPreserveSignals": [
+    {
+      "signal": "COMPANION_FIRST_CONTINUITY_OPTIONAL_WORKSPACE_MACHINERY",
+      "basis": "E1 systemic convergence"
+    },
+    {
+      "signal": "ONE_VISIBLE_VEX_IDENTITY_INTERNAL_ROLES_STAY_INTERNAL",
+      "basis": "E1 systemic convergence"
+    },
+    {
+      "signal": "FLOATING_OR_AMBIENT_VEX_PRESENCE_WITH_CONTEXTUAL_MENU",
+      "basis": "review-earned direction; still being refined"
+    },
+    {
+      "signal": "CONTENT_SURFACES_OWN_CANVAS_CONTEXTUAL_CONTROLS",
+      "basis": "E1 systemic convergence"
+    },
+    {
+      "signal": "SEMANTIC_DEPTH_NOT_PIXEL_ZOOM",
+      "basis": "E2.4 requested layered depth; E2.5 adds physical travel"
+    },
+    {
+      "signal": "JOURNEY_IS_NOT_RENDER_CACHE",
+      "basis": "E2.4 requested navigation memory / cache distinction"
+    },
+    {
+      "signal": "EMBEDDED_SURFACE_DOES_NOT_BREAK_TERRAIN",
+      "basis": "E2.4 requested in-place page expansion"
+    },
+    {
+      "signal": "ONE_SEMANTIC_TREE_MULTIPLE_PROJECTIONS",
+      "basis": "E2.4 exploration; not yet chosen as permanent UX"
+    }
+  ],
+  "rejectedOrRegressedPatterns": [
+    "SIDE_BY_SIDE_FULL_SCREEN_BOARD_COMPARISON",
+    "PERMANENT_TABS_OR_RAILS_THAT_SHRINK_CANVAS",
+    "GUIDE_AS_SEPARATE_DEFAULT_PERSONA",
+    "PERSISTENT_MOVE_MODE_WITH_DONE_BUTTON",
+    "VIEWPORT_STRETCHES_WORLD_GEOMETRY",
+    "UNBOUNDED_VISIBLE_JOURNEY_TRAIL",
+    "CLICK_ONLY_INSTANT_LAYER_REPLACEMENT_WITHOUT_SPATIAL_TRAVEL"
+  ],
+  "approvalMeaning": "If the human likes E2.5 as a whole, this candidate may become the reference design baseline for later epochs. That does not make it accepted VexLife implementation.",
+  "approvalEvidence": "Human review: E2.5 is a good foundational baseline; navigation feels smooth and intuitive.",
+  "approvalDateLocal": "2026-08-09"
+}

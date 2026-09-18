@@ -1,0 +1,46 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.public-learning",
+    "path": "src/core/public-learning.mjs",
+    "role": "Pure public-learning projection validator/compiler over accepted VexLife registries; owns public-only grouping identity and public-safe Atlas projection without canonical product-state authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint/public-learning-registry.json",
+      "blueprint/public-learning/strings/*.json",
+      "module.vexlife.core.blueprint",
+      "module.vexlife.core.registry",
+      "module.vexlife.core.atlas"
+    ],
+    "writes": [],
+    "consumers": [
+      "module.vexlife.script.build-public-learning-projection"
+    ],
+    "tests": [
+      "test/public-learning-projection.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/public-learning-registry.json",
+      "blueprint/public-learning/strings/*.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.build-public-learning-projection",
+    "path": "scripts/build-public-learning-projection.mjs",
+    "role": "Writes a deterministic noncanonical public-learning projection from an explicit caller-supplied source binding; it performs no GitHub lookup, publication, Pages deployment or product effect.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.public-learning"
+    ],
+    "writes": [
+      "generated/public-learning/*.json"
+    ],
+    "tests": [
+      "test/public-learning-projection.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/public-learning.mjs",
+      "blueprint/public-learning-registry.json",
+      "blueprint/public-learning/strings/*.json"
+    ]
+  }
+]

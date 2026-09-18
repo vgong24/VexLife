@@ -1,0 +1,27 @@
+et.closest('.node');openTerrainContext(e.clientX,e.clientY,node?.dataset.nodeId||null)});
+let longPressTimer=null;terrain.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){clearTimeout(longPressTimer);longPressTimer=setTimeout(()=>openTerrainContext(e.clientX,e.clientY,e.target.closest('.node')?.dataset.nodeId||null),560)}});terrain.addEventListener('pointerup',()=>clearTimeout(longPressTimer));terrain.addEventListener('pointercancel',()=>clearTimeout(longPressTimer));
+$$('[data-context-action]').forEach(b=>b.onclick=async()=>{
+  const action=b.dataset.contextAction,nodeId=tctx.dataset.nodeId||null;
+  if(action==='fit'){setCamera(defaultCamera(),true);resetIntent()}
+  else if(action==='center'){const c=defaultCamera();setCamera(c,true)}
+  else if(action==='projection'){const order=['fan','rings','carousel'];state.geometry=order[(order.indexOf(state.geometry)+1)%order.length];render()}
+  else if(action==='workspace'){state.workspaceMode=!state.workspaceMode;render();toast(state.workspaceMode?'Projection workspace enabled · canonical relationships unchanged':'Projection workspace disabled')}
+  else if(action==='reset-layout'){state.localOffsets={};render();toast('Local projection arrangement reset')}
+  else if(action==='view-ledger'&&nodeId&&tree[nodeId]?.kind==='person'){closeTerrainContext();await travel(nodeId,'in');return}
+  else if(action==='propose-move'&&nodeId&&tree[nodeId]?.kind==='person'){
+    const p=tree[nodeId].person||{};
+    state.orgProposals[nodeId]={label:`Proposed temporary move from ${p.team||'current team'} to Project Aurora`,status:'PENDING_PERSON_ACKNOWLEDGMENT',target:'Project Aurora'};
+    toast('Move proposal created · pending human acknowledgment · assignment unchanged')
+  }
+  closeTerrainContext()
+});
+
+let nodeArrange=null;
+terrain.addEventListener('pointerdown',e=>{const node=e.target.closest('.node');if(!state.workspaceMode||!node||e.button!==0)return;const id=node.dataset.nodeId,p=fixedRects(tree[state.current]).find(x=>x.id===id);if(!p)return;e.stopPropagation();nodeArrange={id,pid:e.pointerId,startX:e.clientX,startY:e.clientY,base:{...(state.localOffsets[id]||{x:0,y:0})},scale:camera.scale};node.setPointerCapture(e.pointerId)});
+terrain.addEventListener('pointermove',e=>{if(!nodeArrange||e.pointerId!==nodeArrange.pid)return;state.localOffsets[nodeArrange.id]={x:nodeArrange.base.x+(e.clientX-nodeArrange.startX)/nodeArrange.scale,y:nodeArrange.base.y+(e.clientY-nodeArrange.startY)/nodeArrange.scale};render(false);setCamera(camera,false)});
+terrain.addEventListener('pointerup',e=>{if(nodeArrange&&e.pointerId===nodeArrange.pid){nodeArrange=null;toast('Local projection moved · relationships remain semantic source truth')}});
+
+window.addEventListener('resize',()=>{if(!state.transitioning)setCamera(defaultCamera(),false)});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(state.drawer){setDrawer(false)}else if($('#presenceMenu').classList.contains('show'))closePresenceMenu();else if($('#terrainContext').classList.contains('show'))closeTerrainContext();else if(parentOf[state.current])up()}});
+touchWarm(state.current);recenterRecentWindow();render(false);setCamera(defaultCamera(),false);renderIntent();
+})();
+</script></body></html>

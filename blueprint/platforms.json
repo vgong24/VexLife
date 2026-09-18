@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "vexlife.platform-registry/v0",
+  "platforms": [
+    {
+      "id": "browser",
+      "platformRef": "platform.browser",
+      "language": "JavaScript/TypeScript",
+      "ui": "Semantic DOM",
+      "state": "StateCell-compatible observable store"
+    },
+    {
+      "id": "android",
+      "platformRef": "platform.android",
+      "language": "Kotlin",
+      "ui": "Jetpack Compose",
+      "state": "StateFlow"
+    },
+    {
+      "id": "ios",
+      "platformRef": "platform.ios",
+      "language": "Swift",
+      "ui": "SwiftUI",
+      "state": "Observation/AsyncSequence"
+    },
+    {
+      "id": "windows",
+      "platformRef": "platform.windows",
+      "language": "Kotlin or C#",
+      "ui": "Compose Desktop or WinUI",
+      "state": "StateFlow or equivalent"
+    },
+    {
+      "id": "macos",
+      "platformRef": "platform.macos",
+      "language": "Swift or Kotlin",
+      "ui": "SwiftUI or Compose Desktop",
+      "state": "Observation/StateFlow"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "vexlife.patient0.familiarity-live-work.synthetic-preflight/v2",
+  "allocationRef": "github.issue.vexlife.36",
+  "scopeRef": "scope.patient0.p8p9.contract-only",
+  "allowedSourceRefs": [
+    "github.issue.vexlife.36",
+    "github.issue.vextreme-sdk.706"
+  ],
+  "familiarityTransition": {
+    "priorState": "EPHEMERAL",
+    "observedState": "FAMILIARITY",
+    "noticed": true,
+    "durableMemoryPromotion": false
+  },
+  "relationshipBoundary": {
+    "recognitionObserved": true,
+    "authenticationEstablished": false,
+    "authorizationEstablished": false,
+    "standingRelationshipAuthorityState": "HELD"
+  },
+  "workClass": "SYNTHETIC_PREFLIGHT",
+  "expectedCandidateStates": {
+    "p8": "P8_CANDIDATE_READY_FOR_EXTERNAL_ASSURANCE",
+    "p9": "P9_CANDIDATE_INCOMPLETE"
+  },
+  "finalStageDispositionMintedByVexLife": false,
+  "externalSourceVerificationRequired": true,
+  "freshIndependentAssuranceRequired": true,
+  "heldEffects": [
+    "durableMemoryPromotion",
+    "relationshipStandingAuthority",
+    "personalDataScopeWidening",
+    "unboundedFileOrRepositoryAccess",
+    "trainingWeightMutation",
+    "automaticDreamOrRhythmPromotion",
+    "publication",
+    "p10Graduation",
+    "p11Release"
+  ],
+  "privatePayloadIncluded": false
+}

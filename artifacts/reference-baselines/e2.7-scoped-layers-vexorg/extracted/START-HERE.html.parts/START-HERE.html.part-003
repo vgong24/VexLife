@@ -1,0 +1,43 @@
+transition:bottom .08s linear}.zoom-mark{position:absolute;left:3px;width:20px;border-top:1px solid var(--warn);opacity:.8}.zoom-mark.enter{bottom:78%}.zoom-mark.parent{bottom:9%}.zoom-mark-label{position:absolute;left:31px;white-space:nowrap;font:700 8px var(--mono);letter-spacing:.04em;color:var(--faint)}.zoom-mark-label.enter{bottom:calc(78% - 5px)}.zoom-mark-label.parent{bottom:calc(9% - 5px)}.zoom-percent{font:700 8px var(--mono);color:var(--faint);text-align:center}.zoom-auto{width:78px;position:absolute;left:0;top:278px;border:1px solid var(--line);background:color-mix(in srgb,var(--surface) 94%,transparent);border-radius:999px;padding:6px 7px;font-size:8px;line-height:1.1}.zoom-auto label{display:flex;align-items:center;gap:4px;white-space:nowrap}.zoom-auto small{display:none}
+.adjacent{position:absolute;left:12px;right:12px;bottom:12px;z-index:26;display:flex;justify-content:space-between;gap:12px;pointer-events:none}.adjacent-card{pointer-events:auto;width:min(220px,36%);border:1px solid var(--line);background:color-mix(in srgb,var(--surface) 91%,transparent);backdrop-filter:blur(12px);border-radius:13px;padding:9px 10px;text-align:left;color:var(--muted);transition:transform .15s ease,border-color .15s ease}.adjacent-card:hover{border-color:var(--strong);transform:translateY(-2px)}.adjacent-card.next{text-align:right}.adjacent-card strong{display:block;color:var(--text);font-size:11px}.adjacent-card small{font-size:9px}
+.terrain-context{position:fixed;z-index:120;min-width:210px;border:1px solid var(--line);background:var(--overlay);border-radius:13px;box-shadow:var(--shadow);padding:6px;display:none}.terrain-context.show{display:block}.terrain-context .context-title{font:700 9px var(--mono);letter-spacing:.08em;color:var(--faint);padding:7px 8px 5px}.terrain-context button{width:100%;border:0;background:transparent;border-radius:8px;padding:8px 9px;text-align:left;font-size:10px}.terrain-context button:hover{background:var(--raised)}.terrain-context .hint{padding:6px 8px;color:var(--faint);font-size:9px;border-top:1px solid var(--line);margin-top:4px}
+.workspace-badge{position:absolute;right:12px;top:58px;z-index:25;border:1px solid var(--line);background:color-mix(in srgb,var(--surface) 90%,transparent);border-radius:999px;padding:6px 8px;font:700 8px var(--mono);letter-spacing:.06em;color:var(--faint);display:none}.workspace-badge.show{display:block}
+
+.toast{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);z-index:80;border:1px solid var(--line);background:var(--overlay);border-radius:999px;padding:7px 11px;font-size:10px;display:none}.toast.show{display:block}
+.mobile .vex{left:10px;right:10px;top:auto;bottom:82px;width:auto;height:300px;opacity:1}.mobile .vex.ambient{height:56px;width:auto}.mobile .presence-menu{right:10px;bottom:390px}.mobile .focus.surface{width:590px}@media(max-width:760px){.review{padding:9px}.review-head h1{font-size:36px}.controls{position:sticky;top:0;z-index:100}}
+
+/* E2.7 — scope-aware interaction */
+.app,.terrain,.drawer,.vex-body,.presence-menu,.terrain-context,.scroll-scope{overscroll-behavior:contain}
+.scroll-scope{scrollbar-gutter:stable}
+.scope-chip{position:absolute;right:12px;top:12px;z-index:26;font:700 9px var(--mono);letter-spacing:.06em;border:1px solid var(--line);background:color-mix(in srgb,var(--surface) 91%,transparent);border-radius:999px;padding:6px 8px;color:var(--muted);pointer-events:none}
+.scope-chip strong{color:var(--text)}
+.focus.surface{overscroll-behavior:contain}
+.embed-body.scroll-scope{max-height:190px;overflow:auto}
+.vex-body{overscroll-behavior:contain}
+
+/* Vex four-corner resize — direct gesture, no persistent resize mode */
+.vex{display:grid;grid-template-rows:58px minmax(0,1fr) auto}
+.vex.ambient{display:block}
+.vex-body{height:auto;min-height:0}
+.resize-handle{position:absolute;width:18px;height:18px;z-index:4;opacity:.14;transition:opacity .12s ease;touch-action:none}
+.vex:hover .resize-handle,.resize-handle:focus-visible{opacity:.8}
+.resize-handle::before,.resize-handle::after{content:"";position:absolute;background:var(--strong);border-radius:2px}
+.resize-handle::before{width:10px;height:1px}.resize-handle::after{width:1px;height:10px}
+.resize-handle.nw{left:2px;top:2px;cursor:nwse-resize}.resize-handle.ne{right:2px;top:2px;cursor:nesw-resize}
+.resize-handle.sw{left:2px;bottom:2px;cursor:nesw-resize}.resize-handle.se{right:2px;bottom:2px;cursor:nwse-resize}
+.resize-handle.nw::before,.resize-handle.sw::before{left:2px}.resize-handle.ne::before,.resize-handle.se::before{right:2px}
+.resize-handle.nw::after,.resize-handle.ne::after{top:2px}.resize-handle.sw::after,.resize-handle.se::after{bottom:2px}
+.resize-handle.nw::before,.resize-handle.ne::before{top:2px}.resize-handle.sw::before,.resize-handle.se::before{bottom:2px}
+.resize-handle.nw::after,.resize-handle.sw::after{left:2px}.resize-handle.ne::after,.resize-handle.se::after{right:2px}
+.mobile .resize-handle{display:none}
+
+/* VexOrg mock surfaces */
+.org-banner{margin-top:10px;border:1px solid var(--line);background:var(--raised);border-radius:12px;padding:9px}
+.org-banner strong{display:block;font-size:11px}.org-banner small{color:var(--muted);font-size:9px;line-height:1.4}
+.org-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
+.org-card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px;font-size:10px}
+.org-card strong{display:block;margin-bottom:3px}.org-card small{color:var(--muted);line-height:1.35}
+.org-ledger{margin-top:9px;border-top:1px solid var(--line);padding-top:8px}
+.org-entry{border:1px solid var(--line);background:var(--raised);border-radius:9px;padding:7px;margin:5px 0;font-size:9px}
+.org-entry strong{display:block}.org-entry small{color:var(--muted)}
+.privacy-boundary{border:1px solid color-mix(in srgb,var(--info) 65%,var(--line));background:color-mix(in srgb,var(--info) 8%,var(--surface));border-radius:10px;padding:8px;margin-top:8px;font-size:9px;li

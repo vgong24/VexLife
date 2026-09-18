@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "a7",
+  "files": [
+    {
+      "path": "blueprint/fragments/screens/health.json",
+      "mode": "100644",
+      "bytes": 5965,
+      "sha256": "0aab1ed486ce57bd2bfe1f6a21fde846d46d105662cd7c607d52d0ad0b7866e6"
+    },
+    {
+      "path": "test/companion-navigation.test.mjs",
+      "mode": "100644",
+      "bytes": 16256,
+      "sha256": "c9069bb729ec2a16f46829d993480bd4d394da7662006fb794132bd4797e4d1e"
+    },
+    {
+      "path": "test/e27-convergence.test.mjs",
+      "mode": "100644",
+      "bytes": 5699,
+      "sha256": "9d29168ee64dc4ca6226cb02752d1eb76d8834213e302b41fe4cc29d324d30a9"
+    },
+    {
+      "path": "test/experience-review-human.test.mjs",
+      "mode": "100644",
+      "bytes": 3771,
+      "sha256": "b6f4458a986b40d3570bb3265d5c1b099623d2876a30ecedcc985cbf1e4200ea"
+    }
+  ]
+}
