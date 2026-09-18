@@ -88,6 +88,17 @@ function exactKeys(value, allowed, label) {
   return value;
 }
 
+function boundedKeys(value, allowed, label) {
+  if (!isObject(value)) {
+    fail('FAMILY_HOST_INPUT_INVALID', `${label} must be one object`);
+  }
+  const extras = Object.keys(value).filter((key) => !allowed.has(key));
+  if (extras.length > 0) {
+    fail('FAMILY_HOST_UNTRUSTED_FIELD', `${label} contains untrusted field ${extras.sort()[0]}`);
+  }
+  return value;
+}
+
 function ref(value, label) {
   if (typeof value !== 'string' || !REF.test(value)) {
     fail('FAMILY_HOST_INPUT_INVALID', `${label} must be one safe opaque ref`);
@@ -272,7 +283,7 @@ export function deriveFamilyEstablishmentIdentity({
 
 export function hostFamily(input = {}) {
   exactKeys(input, REQUEST_KEYS, 'Host request');
-  exactKeys(input.faults, FAULT_KEYS, 'Host request faults');
+  boundedKeys(input.faults, FAULT_KEYS, 'Host request faults');
 
   const observedAt = time(input.observedAt, 'observedAt');
   const instanceRef = stable(input.instanceRef, 'instanceRef');
