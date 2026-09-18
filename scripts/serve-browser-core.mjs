@@ -424,6 +424,18 @@ function familyRoomAudienceProjection(binding) {
   })));
 }
 
+function heldFamilyRoomBootstrap(failureCode = 'FAMILY_SESSION_AUTHORITY_UNAVAILABLE') {
+  return Object.freeze({
+    schemaVersion: BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
+    state: 'HELD_UNAVAILABLE',
+    truthClass: 'HELD_UNAVAILABLE',
+    currentPrincipalRef: null,
+    rooms: Object.freeze([]),
+    workStatus: normalizedFamilyWorkStatus(null),
+    failureCode
+  });
+}
+
 export async function resolveCurrentFamilyRoomBootstrap({
   request,
   familyHome,
@@ -431,11 +443,22 @@ export async function resolveCurrentFamilyRoomBootstrap({
   nowProvider,
   resolveFamilyWorkProjection = null
 } = {}) {
-  const authority = await currentFamilyConversationAuthority(
-    resolveAuthority,
-    request,
-    { operation: 'LIST', intent: Object.freeze({}) }
-  );
+  let authority;
+  try {
+    authority = await currentFamilyConversationAuthority(
+      resolveAuthority,
+      request,
+      { operation: 'LIST', intent: Object.freeze({}) }
+    );
+  } catch (error) {
+    if (
+      error instanceof BrowserFamilyConversationServerError
+      && error.code === 'FAMILY_SESSION_AUTHORITY_UNAVAILABLE'
+    ) {
+      return heldFamilyRoomBootstrap(error.code);
+    }
+    throw error;
+  }
   const now = currentFamilyConversationTime(nowProvider);
   const durable = listConversationChannelBindings({
     home: familyHome,
@@ -445,18 +468,27 @@ export async function resolveCurrentFamilyRoomBootstrap({
   for (const channel of durable.channels ?? []) {
     const binding = channel?.familySpaceBinding;
     if (!binding || binding.audienceKind !== 'GROUP') continue;
-    const visible = listBrowserFamilyChannels({
-      home: familyHome,
-      intent: {
-        spaceRef: binding.spaceRef,
-        expectedMembershipGeneration: binding.membershipGeneration
-      },
-      channels: [channel],
-      membership: authority.membership,
-      lease: authority.lease,
-      currentRevocationGeneration: authority.currentRevocationGeneration,
-      now
-    });
+    let visible;
+    try {
+      visible = listBrowserFamilyChannels({
+        home: familyHome,
+        intent: {
+          spaceRef: binding.spaceRef,
+          expectedMembershipGeneration: binding.membershipGeneration
+        },
+        channels: [channel],
+        membership: authority.membership,
+        lease: authority.lease,
+        currentRevocationGeneration: authority.currentRevocationGeneration,
+        now
+      });
+    } catch (error) {
+      if (
+        error instanceof BrowserFamilyConversationBridgeError
+        && ['BROWSER_FAMILY_BRIDGE_STALE', 'BROWSER_FAMILY_BRIDGE_DENIED'].includes(error.code)
+      ) continue;
+      throw error;
+    }
     if (
       visible?.state !== 'CURRENT'
       || !Array.isArray(visible.channels)

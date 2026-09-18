@@ -11,7 +11,7 @@ export const familyRoomSuite = Object.freeze({
     assert(host.dataset.truthClass === snapshot.truthClass, 'Family room DOM truth class does not match controller truth');
     if (snapshot.state === 'HELD_UNAVAILABLE') {
       assert(app.familyRoom.roomCount() === 0, 'Held Family room fabricated a live channel');
-      assert(app.state.dataTruthClass === 'CURRENT_SYNTHETIC_REFERENCE', 'Held Family projection promoted synthetic reference data to live');
+      assert(snapshot.truthClass === 'HELD_UNAVAILABLE', 'Held Family projection did not preserve its explicit held truth class');
       checks.push('FAM-UI-00 unavailable server authority remains visibly held and cannot fabricate a live Family room');
     } else if (snapshot.state === 'CURRENT') {
       const view = app.familyRoom.snapshot();

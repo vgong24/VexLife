@@ -214,7 +214,7 @@ test('VF06-01 default work projection is held without disabling Family truth',as
   assert.equal(bootstrap.rooms[0].audience.length,3);
 });
 
-test('VF06-02 same-origin bootstrap fails closed without current server session authority',async(t)=>{
+test('VF06-02 same-origin bootstrap projects an explicit held state without current server session authority',async(t)=>{
   const {home}=fixture(t);
   const server=createVexLifeBrowserServer({
     companionBridge:fakeCompanion(),
@@ -223,8 +223,14 @@ test('VF06-02 same-origin bootstrap fails closed without current server session 
   });
   const base=await listen(server,t);
   const response=await fetch(base+BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH);
-  assert.equal(response.status,503);
+  assert.equal(response.status,200);
   const body=await response.json();
+  assert.equal(body.schemaVersion,BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA);
+  assert.equal(body.state,'HELD_UNAVAILABLE');
+  assert.equal(body.truthClass,'HELD_UNAVAILABLE');
+  assert.equal(body.currentPrincipalRef,null);
+  assert.deepEqual(body.rooms,[]);
+  assert.equal(body.workStatus.state,'HELD_UNAVAILABLE');
   assert.equal(body.failureCode,'FAMILY_SESSION_AUTHORITY_UNAVAILABLE');
 });
 

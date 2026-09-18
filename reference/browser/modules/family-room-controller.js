@@ -92,6 +92,26 @@ export function normalizeFamilyRoomBootstrap(value) {
   if (!object(value) || value.schemaVersion !== BOOTSTRAP_SCHEMA) {
     throw new TypeError('Family room bootstrap schema is invalid');
   }
+  if (value.state === 'HELD_UNAVAILABLE') {
+    if (
+      value.truthClass !== 'HELD_UNAVAILABLE'
+      || value.currentPrincipalRef !== null
+      || !Array.isArray(value.rooms)
+      || value.rooms.length !== 0
+      || !text(value.failureCode)
+    ) {
+      throw new TypeError('Held Family room bootstrap truth is invalid');
+    }
+    return Object.freeze({
+      schemaVersion: BOOTSTRAP_SCHEMA,
+      state: 'HELD_UNAVAILABLE',
+      truthClass: 'HELD_UNAVAILABLE',
+      currentPrincipalRef: null,
+      rooms: Object.freeze([]),
+      workStatus: normalizedWorkStatus(value.workStatus),
+      failureCode: value.failureCode
+    });
+  }
   if (!['CURRENT', 'EMPTY'].includes(value.state) || value.truthClass !== 'CURRENT_LIVE_FAMILY') {
     throw new TypeError('Family room bootstrap truth is invalid');
   }
