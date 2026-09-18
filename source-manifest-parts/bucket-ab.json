@@ -15,6 +15,12 @@
       "sha256": "53312e61bbdc6ed2977b8c9ca1d3d90cd19ba38e9305c0f478556ec50d0ce0aa"
     },
     {
+      "path": "src/core/family-membership-runtime.mjs",
+      "mode": "100644",
+      "bytes": 16637,
+      "sha256": "6c8f73a3c36820db8f92c7c189f5eb80653b80b00dd04c2907a616a6a47bf37d"
+    },
+    {
       "path": "src/core/family-space-store.mjs",
       "mode": "100644",
       "bytes": 28110,
