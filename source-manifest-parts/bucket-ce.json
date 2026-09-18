@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/integration/family-room-suite.js",
       "mode": "100644",
-      "bytes": 2512,
-      "sha256": "97e50795634e6c5810051f097fc0d38b9bb020f77c17da987fe2375eab30773b"
+      "bytes": 4414,
+      "sha256": "62fca7c199b208808bbe961b2538e87f18e13a8374d198e8d75cf696223cf478"
     },
     {
       "path": "src/core/family-conversation.mjs",
