@@ -743,11 +743,23 @@ export function revokeFamilyInvitation(input = {}) {
   return withWriter(paths, invitationRef, instanceRef, observedAt, () => {
     const record = current(paths, invitationRef);
     if (!record) fail('FAMILY_INVITATION_NOT_FOUND', 'Family invitation is unavailable');
-    if (record.revision !== revision(input.expectedInvitationRevision, 'expectedInvitationRevision')) {
-      fail('FAMILY_INVITATION_STALE', 'Family invitation revision is stale');
+    const expectedInvitationRevision = revision(
+      input.expectedInvitationRevision,
+      'expectedInvitationRevision'
+    );
+    if (
+      record.state === 'REVOKED'
+      && record.revision === expectedInvitationRevision + 1
+      && record.transitionRef === 'transition.vex-family.invitation.revoke'
+    ) {
+      return Object.freeze({
+        state: 'IDEMPOTENT_CURRENT',
+        record,
+        effects: Object.freeze({ invitationStateMutation: false })
+      });
     }
-    if (record.state === 'REVOKED') {
-      return Object.freeze({ state: 'IDEMPOTENT_CURRENT', record, effects: Object.freeze({ invitationStateMutation: false }) });
+    if (record.revision !== expectedInvitationRevision) {
+      fail('FAMILY_INVITATION_STALE', 'Family invitation revision is stale');
     }
     if (record.state !== 'PENDING') {
       fail('FAMILY_INVITATION_TERMINAL', 'only a PENDING invitation may be revoked');
@@ -802,11 +814,23 @@ export function expireFamilyInvitation(input = {}) {
   return withWriter(paths, invitationRef, instanceRef, observedAt, () => {
     const record = current(paths, invitationRef);
     if (!record) fail('FAMILY_INVITATION_NOT_FOUND', 'Family invitation is unavailable');
-    if (record.revision !== revision(input.expectedInvitationRevision, 'expectedInvitationRevision')) {
-      fail('FAMILY_INVITATION_STALE', 'Family invitation revision is stale');
+    const expectedInvitationRevision = revision(
+      input.expectedInvitationRevision,
+      'expectedInvitationRevision'
+    );
+    if (
+      record.state === 'EXPIRED'
+      && record.revision === expectedInvitationRevision + 1
+      && record.transitionRef === 'transition.vex-family.invitation.expire'
+    ) {
+      return Object.freeze({
+        state: 'IDEMPOTENT_CURRENT',
+        record,
+        effects: Object.freeze({ invitationStateMutation: false })
+      });
     }
-    if (record.state === 'EXPIRED') {
-      return Object.freeze({ state: 'IDEMPOTENT_CURRENT', record, effects: Object.freeze({ invitationStateMutation: false }) });
+    if (record.revision !== expectedInvitationRevision) {
+      fail('FAMILY_INVITATION_STALE', 'Family invitation revision is stale');
     }
     if (record.state !== 'PENDING') {
       fail('FAMILY_INVITATION_TERMINAL', 'only a PENDING invitation may expire');
