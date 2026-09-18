@@ -552,6 +552,14 @@ function familyManager({
   return Object.freeze({ record, actor });
 }
 
+function familyMembershipRefFor(spaceRef, principalRef) {
+  return `membership.vex-family.${semanticHash({
+    schemaVersion: 'vexlife.family-membership-identity/v1',
+    spaceRef,
+    principalRef
+  }).slice(0, 32)}`;
+}
+
 function invitationRefFor({
   spaceRef,
   inviterMembershipRef,
@@ -612,27 +620,30 @@ export function issueFamilyInvitation(input = {}) {
   exactKeys(input, ISSUE_KEYS, 'issue invitation input');
   boundedKeys(input.faults, FAULT_KEYS, 'issue invitation faults');
 
+  const spaceRef = ref(input.spaceRef, 'spaceRef');
+  const inviterPrincipalRef = ref(input.inviterPrincipalRef, 'inviterPrincipalRef');
+  const expectedFamilyRecordSha256 = sha(
+    input.expectedFamilyRecordSha256,
+    'expectedFamilyRecordSha256'
+  );
+  const expectedFamilyRevision = revision(input.expectedRevision, 'expectedRevision');
+  const expectedMembershipGeneration = revision(
+    input.expectedMembershipGeneration,
+    'expectedMembershipGeneration'
+  );
+  const idempotencyKey = ref(input.idempotencyKey, 'idempotencyKey');
   const issuedAt = time(input.issuedAt, 'issuedAt');
   const expiresAt = time(input.expiresAt, 'expiresAt');
   if (Date.parse(expiresAt) <= Date.parse(issuedAt)) {
     fail('FAMILY_INVITATION_INPUT_INVALID', 'expiresAt must be after issuedAt');
   }
 
-  const manager = familyManager({
-    home: input.home,
-    spaceRef: input.spaceRef,
-    actorPrincipalRef: input.inviterPrincipalRef,
-    expectedFamilyRecordSha256: input.expectedFamilyRecordSha256,
-    expectedRevision: input.expectedRevision,
-    expectedMembershipGeneration: input.expectedMembershipGeneration
-  });
-
-  const idempotencyKey = ref(input.idempotencyKey, 'idempotencyKey');
+  const inviterMembershipRef = familyMembershipRefFor(spaceRef, inviterPrincipalRef);
   const invitationRef = invitationRefFor({
-    spaceRef: manager.record.spaceRef,
-    inviterMembershipRef: manager.actor.membershipRef,
-    expectedFamilyRecordSha256: manager.record.recordSha256,
-    expectedMembershipGeneration: manager.record.membershipGeneration,
+    spaceRef,
+    inviterMembershipRef,
+    expectedFamilyRecordSha256,
+    expectedMembershipGeneration,
     idempotencyKey
   });
   const paths = pathsFor(input.home, invitationRef);
@@ -643,18 +654,21 @@ export function issueFamilyInvitation(input = {}) {
   return withWriter(paths, invitationRef, instanceRef, issuedAt, () => {
     const existing = current(paths, invitationRef);
     const semantics = {
-      spaceRef: manager.record.spaceRef,
-      inviterPrincipalRef: manager.actor.principalRef,
-      inviterMembershipRef: manager.actor.membershipRef,
-      expectedFamilyRecordSha256: manager.record.recordSha256,
-      expectedFamilyRevision: manager.record.revision,
-      expectedMembershipGeneration: manager.record.membershipGeneration,
+      spaceRef,
+      inviterPrincipalRef,
+      inviterMembershipRef,
+      expectedFamilyRecordSha256,
+      expectedFamilyRevision,
+      expectedMembershipGeneration,
       issuedAt,
       expiresAt
     };
     if (existing) {
       if (!sameIssueSemantics(existing, semantics)) {
-        fail('FAMILY_INVITATION_CONFLICT', 'idempotent invitation identity already has different canonical issue semantics');
+        fail(
+          'FAMILY_INVITATION_CONFLICT',
+          'idempotent invitation identity already has different canonical issue semantics'
+        );
       }
       return Object.freeze({
         state: existing.state === 'PENDING' ? 'IDEMPOTENT_CURRENT' : 'EXISTING_TERMINAL',
@@ -670,6 +684,21 @@ export function issueFamilyInvitation(input = {}) {
           publicationMutation: false
         })
       });
+    }
+
+    const manager = familyManager({
+      home: input.home,
+      spaceRef,
+      actorPrincipalRef: inviterPrincipalRef,
+      expectedFamilyRecordSha256,
+      expectedRevision: expectedFamilyRevision,
+      expectedMembershipGeneration
+    });
+    if (manager.actor.membershipRef !== inviterMembershipRef) {
+      fail(
+        'FAMILY_INVITATION_FAMILY_STALE',
+        'derived inviter membership identity does not match current Family source'
+      );
     }
 
     const record = hash({
@@ -710,7 +739,6 @@ export function issueFamilyInvitation(input = {}) {
     });
   });
 }
-
 export function readFamilyInvitation(input = {}) {
   exactKeys(input, READ_KEYS, 'read invitation input');
   const invitationRef = ref(input.invitationRef, 'invitationRef');
