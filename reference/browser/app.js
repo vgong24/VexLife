@@ -110,6 +110,7 @@ function visibleVexName(){return t('vex.visible.name');}
 function canonicalRoleLabel(key){const role=roles[key];return role?.labelRef?t(role.labelRef):role?.label??String(key??'');}
 function vexRoleQualifier(key){const label=canonicalRoleLabel(key);const name=visibleVexName();const qualifier=label.split(name).join(' ').replace(/[\s·•—–:：-]+/g,' ').trim();return qualifier||label;}
 function visibleRoleLabel(key){const role=roles[key];if(key==='victor'||!role?.actorRef||role.actorRef.startsWith('person.'))return canonicalRoleLabel(key);return `${visibleVexName()} · ${vexRoleQualifier(key)}`;}
+function familyComposerIdentity(channel,currentPrincipalRef=familyRoom?.snapshot?.().currentPrincipalRef??null){const memberKeys=Array.isArray(channel?.memberKeys)?channel.memberKeys:[];if(channel?.familyRoomProjection!==true)return{selfRoleKey:'victor',recipientKeys:memberKeys.filter((key)=>key!=='victor'),currentPrincipalRef:null};const selfRoleKey=typeof currentPrincipalRef==='string'&&currentPrincipalRef?memberKeys.find((key)=>roles[key]?.actorRef===currentPrincipalRef)??null:null;return{selfRoleKey,recipientKeys:selfRoleKey?memberKeys.filter((key)=>key!==selfRoleKey):[],currentPrincipalRef:currentPrincipalRef??null};}
 function messageByRef(messageRef){for(const list of messages.values()){const message=list.find((candidate)=>candidate.messageRef===messageRef);if(message)return message;}return null;}
 function projectVisibleVexIdentity(){
   for(const button of $$('#channelTabs [data-channel-ref]')){
@@ -137,9 +138,20 @@ function projectVisibleVexIdentity(){
     const recipients=message.recipientKeys.map(visibleRoleLabel).join(', ');
     header.textContent=`${speaker} → ${recipients}`;
   }
-  const recipients=channel.memberKeys.filter((key)=>key!=='victor').map(visibleRoleLabel);
+  const composerIdentity=familyComposerIdentity(channel);
+  const recipients=composerIdentity.recipientKeys.map(visibleRoleLabel);
   const composerAddress=$('#composerAddress');
-  if(composerAddress)composerAddress.textContent=`${visibleRoleLabel('victor')} → ${recipients.join(', ')}`;
+  if(composerAddress){
+    if(composerIdentity.selfRoleKey){
+      composerAddress.textContent=`${visibleRoleLabel(composerIdentity.selfRoleKey)} → ${recipients.join(', ')}`;
+      composerAddress.dataset.composerIdentityState='CURRENT';
+    }else{
+      composerAddress.textContent=t('family-room.state.held');
+      composerAddress.dataset.composerIdentityState='HELD_UNAVAILABLE';
+    }
+    if(composerIdentity.currentPrincipalRef)composerAddress.dataset.currentPrincipalRef=composerIdentity.currentPrincipalRef;
+    else delete composerAddress.dataset.currentPrincipalRef;
+  }
   const contextRows=$$('#contextSummary .context-row');
   const channelValue=contextRows[2]?.querySelector('strong');
   if(channelValue)channelValue.textContent=channel.kind==='DIRECT'&&channel.roleKey!=='victor'?`${visibleRoleLabel('victor')} → ${visibleRoleLabel(channel.roleKey)}`:t(channel.labelRef);
@@ -242,7 +254,7 @@ globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;i
 chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();navigation.enableBrowserHistory();renderLivingJournalArchiveControls();applyLocalization();guide.setOpen(state.guideOpen);guide.addMessage('guide',{contentRef:'guide.intro'});projectFrame();
 void familyRoom.refresh();
 
-globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout};
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout};
 if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('./integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}
 
 // [VXG RealForever]

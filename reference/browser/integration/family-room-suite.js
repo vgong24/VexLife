@@ -28,6 +28,32 @@ export const familyRoomSuite = Object.freeze({
     assert(!document.querySelector('#contextSurface').hidden, 'Family room projection is not inside the existing contextual Chat surface');
     assert(document.querySelector('.e27-terrain'), 'Family room projection replaced Terrain instead of remaining contextual');
     checks.push('FAM-UI-01 Family remains a contextual Chat projection over Terrain, not a second app shell');
+
+    assert(typeof app.familyComposerIdentity === 'function', 'Family composer identity projection is unavailable');
+    const nonVictorKey='family-non-victor-integration';
+    const familyVexKey='family-vex-non-victor-integration';
+    const nonVictorRef='person.alex';
+    const priorNonVictor=app.roles[nonVictorKey];
+    const priorFamilyVex=app.roles[familyVexKey];
+    try {
+      app.roles[nonVictorKey]={actorRef:nonVictorRef,label:'Alex',avatar:'A',familyRoomProjection:true};
+      app.roles[familyVexKey]={actorRef:'lineage.vex.family.integration',labelRef:'family-room.vex',avatar:'V',familyRoomProjection:true};
+      const identity=app.familyComposerIdentity({
+        kind:'GROUP',
+        familyRoomProjection:true,
+        memberKeys:['victor',nonVictorKey,familyVexKey]
+      },nonVictorRef);
+      assert(identity.selfRoleKey===nonVictorKey,'Non-Victor Family principal was not selected as composer self');
+      assert(identity.recipientKeys.includes('victor'),'Victor was incorrectly removed from a non-Victor Family recipient projection');
+      assert(!identity.recipientKeys.includes(nonVictorKey),'Current non-Victor Family principal remained in its own recipient projection');
+      assert(app.visibleRoleLabel(identity.selfRoleKey)==='Alex','Composer source label did not use the current non-Victor principal role');
+      assert(identity.recipientKeys.map(app.visibleRoleLabel).includes(app.visibleRoleLabel('victor')),'Displayed recipient labels do not retain Victor for the non-Victor speaker');
+      checks.push('FAM-UI-02 non-Victor currentPrincipalRef drives composer self and excludes only the actual current speaker');
+    } finally {
+      if(priorNonVictor===undefined)delete app.roles[nonVictorKey];else app.roles[nonVictorKey]=priorNonVictor;
+      if(priorFamilyVex===undefined)delete app.roles[familyVexKey];else app.roles[familyVexKey]=priorFamilyVex;
+    }
+
     state.familyRoomProofState = snapshot.state;
     return { suiteRef:this.suiteRef, state:'PASS', checks };
   }

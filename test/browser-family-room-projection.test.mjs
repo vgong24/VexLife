@@ -10,6 +10,7 @@ import { createFamilyChannel } from '../src/core/family-conversation.mjs';
 import { materializeConversationChannel } from '../src/core/conversation-store.mjs';
 import { createVexCoreFamilySessionAuthorityResolver } from '../src/core/vex-core-family-session-authority.mjs';
 import {
+  BROWSER_FAMILY_CONVERSATION_API_PATH,
   BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH,
   BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
   createVexLifeBrowserServer,
@@ -143,6 +144,62 @@ function fixture(t){
   return {home,record,resolver};
 }
 
+function resolverForPrincipal(principalRef,deviceRef){
+  const suffix=principalRef.split('.').at(-1);
+  const offer=createPairingOffer({
+    pairingRef:'pairing.vf06-'+suffix,
+    homeNodeRef:HOME,
+    homePublicKey:'home-public-key-vf06',
+    oneTimeNonceHash:'nonce-vf06-'+suffix,
+    humanFingerprint:'fingerprint-vf06-'+suffix,
+    requestedCapabilityRefs:[CAP],
+    expiresAt:T9
+  });
+  const paired=approvePairing({
+    offer,
+    principalRef,
+    deviceRef,
+    devicePublicKey:'device-public-key-vf06-'+suffix,
+    approvedCapabilityRefs:[CAP],
+    approvedBy:PRINCIPAL,
+    approvedAt:T0,
+    expectedFingerprint:'fingerprint-vf06-'+suffix
+  });
+  const lease=issueCapabilityLease({
+    leaseRef:'lease.vf06-'+suffix,
+    membership:paired.membership,
+    requestedCapabilityRefs:[CAP],
+    projectRefs:[],
+    issuedAt:T0,
+    expiresAt:T9,
+    revocationGeneration:0
+  });
+  const projection=Object.freeze({
+    schemaVersion:'vextreme.vex-core.home-session-authority/v1',
+    state:'CURRENT',
+    stableSessionBindingRef:'session-binding.vf06-'+suffix,
+    principalRef,
+    deviceRef,
+    homeRef:HOME,
+    currentRevocationGeneration:0,
+    securityMembershipRef:'membership.security.vf06-'+suffix,
+    securityAuthenticationReceiptRef:'authentication.vf06-'+suffix,
+    securityAuthorizationReceiptRef:'authority.vf06-'+suffix,
+    securityLeaseRef:'lease.security.vf06-'+suffix,
+    safetyStateDigest:'safety-state.vf06-'+suffix,
+    safetyEvaluationRef:'owner-evaluation.vf06-'+suffix,
+    allowedProductCapabilityRefs:Object.freeze([CAP]),
+    membership:paired.membership,
+    lease,
+    sourceReceiptRefs:Object.freeze(['receipt.vf06-'+suffix]),
+    currentnessRefs:Object.freeze(['currentness.vf06-'+suffix]),
+    effects:EFFECTS
+  });
+  return createVexCoreFamilySessionAuthorityResolver({
+    resolveVexCoreAuthority:async()=>projection
+  });
+}
+
 function fakeCompanion(){
   return Object.freeze({
     status(){return Object.freeze({state:'TEST_ONLY'});},
@@ -255,6 +312,54 @@ test('VF06-03 stale durable Family channel binding is not projected as current',
   });
   assert.equal(bootstrap.state,'EMPTY');
   assert.deepEqual(bootstrap.rooms,[]);
+});
+
+test('VF06-04 non-Victor authenticated Family APPEND keeps current principal as canonical speaker without browser authority fields',async(t)=>{
+  const {home,record}=fixture(t);
+  const nonVictorPrincipal='person.alex';
+  const resolver=resolverForPrincipal(nonVictorPrincipal,'device.vf06-alex');
+  const bootstrap=await resolveCurrentFamilyRoomBootstrap({
+    request:{headers:{}},
+    familyHome:home,
+    resolveAuthority:resolver,
+    nowProvider:()=>T1
+  });
+  assert.equal(bootstrap.state,'CURRENT');
+  assert.equal(bootstrap.currentPrincipalRef,nonVictorPrincipal);
+  assert.equal(bootstrap.rooms[0].audience.some((member)=>member.principalRef===PRINCIPAL),true);
+
+  const server=createVexLifeBrowserServer({
+    companionBridge:fakeCompanion(),
+    familyConversationHome:home,
+    familyConversationNow:()=>T1,
+    familyConversationInstanceRef:'instance.vf06.non-victor-http',
+    resolveFamilyConversationAuthority:resolver
+  });
+  const base=await listen(server,t);
+  const requestBody={
+    operation:'APPEND',
+    intent:{
+      spaceRef:SPACE,
+      channelRef:CHANNEL,
+      content:'Non-Victor Family attribution proof.',
+      expectedMembershipGeneration:record.membershipGeneration,
+      idempotencyKey:'vf06-non-victor-append'
+    }
+  };
+  assert.equal(Object.hasOwn(requestBody,'principalRef'),false);
+  assert.equal(Object.hasOwn(requestBody.intent,'principalRef'),false);
+  assert.equal(Object.hasOwn(requestBody.intent,'membership'),false);
+  assert.equal(Object.hasOwn(requestBody.intent,'lease'),false);
+
+  const response=await fetch(base+BROWSER_FAMILY_CONVERSATION_API_PATH,{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify(requestBody)
+  });
+  assert.equal(response.status,200);
+  const body=await response.json();
+  assert.equal(body.message.speakerRef,nonVictorPrincipal);
+  assert.equal(body.message.recipientRefs.includes(PRINCIPAL),true);
 });
 
 // [VXG RealForever]
