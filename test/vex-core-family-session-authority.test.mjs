@@ -131,7 +131,7 @@ function setupFamily(t) {
     spaceRef: SPACE,
     ownerPrincipalRef: 'principal.victor',
     ownerPrincipalBindingRef: 'principal-binding.victor',
-    familyCompanionLineageRef: 'lineage.vex-family.vex-core-authority-test',
+    familyCompanionLineageRef: 'lineage.vex.family.vex-core-authority-test',
     observedAt: T0,
     instanceRef: 'instance.vex-core-authority.family-create'
   }).record;
