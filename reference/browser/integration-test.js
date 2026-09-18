@@ -10,6 +10,7 @@ import { crossFeatureSuite } from './integration/cross-feature-suite.js';
 import { identityLocalizationSuite } from './integration/identity-localization-suite.js';
 import { globalizationSemanticRelaySuite } from './integration/globalization-semantic-relay-suite.js';
 import { securityAccessPreviewSuite } from './integration/security-access-android-preview-suite.js';
+import { familyRoomSuite } from './integration/family-room-suite.js';
 
 export const MANDATORY_SUITE_REFS = Object.freeze([
   'suite.vexlife.browser.root-contract/v1',
@@ -23,7 +24,8 @@ export const MANDATORY_SUITE_REFS = Object.freeze([
   'suite.vexlife.browser.cross-feature/v1',
   'suite.vexlife.browser.identity-localization/v1',
   'suite.vexlife.browser.globalization-semantic-relay/v1',
-  'suite.vexlife.browser.security-access-android-preview/v1'
+  'suite.vexlife.browser.security-access-android-preview/v1',
+  'suite.vexlife.browser.family-room/v1'
 ]);
 
 export const MANDATORY_SUITES = Object.freeze([
@@ -38,7 +40,8 @@ export const MANDATORY_SUITES = Object.freeze([
   crossFeatureSuite,
   identityLocalizationSuite,
   globalizationSemanticRelaySuite,
-  securityAccessPreviewSuite
+  securityAccessPreviewSuite,
+  familyRoomSuite
 ]);
 
 // Stable carried-truth index retained by the composition owner so source-managed

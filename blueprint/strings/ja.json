@@ -341,5 +341,19 @@
   "security-access.reason.authenticator-runtime-required": "承認済みの認証ランタイムが必要です。",
   "security-access.reason.runtime-data-unavailable": "信頼済みデバイスのランタイムデータは接続されていません。",
   "security-access.reason.recovery-runtime-required": "復旧ランタイムは接続されていません。",
-  "security-access.guide.explanation": "この「セキュリティとアクセス」は読み取り専用のプレビューです。私は選択肢を説明できますが、このプレビューから認証、自己承認、スマートフォンのペアリング、資格情報の作成、デバイスの取り消し、復旧設定の変更はできません。"
+  "security-access.guide.explanation": "この「セキュリティとアクセス」は読み取り専用のプレビューです。私は選択肢を説明できますが、このプレビューから認証、自己承認、スマートフォンのペアリング、資格情報の作成、デバイスの取り消し、復旧設定の変更はできません。",
+  "family-room.eyebrow": "ファミリールーム",
+  "family-room.title": "Vex-Family",
+  "family-room.state.live": "● ライブ・ファミリー",
+  "family-room.state.empty": "現在のファミリールームはありません",
+  "family-room.state.held": "ファミリーは利用できません",
+  "family-room.audience": "現在のファミリーメンバー {count} 人 + Vex に表示",
+  "family-room.audience.held": "現在のファミリー権限が確立するまで対象者は利用できません",
+  "family-room.work.current": "Vex の作業 · 実行中 {active} · 待機中 {pending}",
+  "family-room.work.held": "Vex の作業状態は利用できません · 人同士のチャットは独立して継続します",
+  "family-room.open": "ファミリールームを開く",
+  "family-room.refresh": "ファミリーを更新",
+  "family-room.channel": "ファミリー",
+  "family-room.vex": "ファミリー",
+  "family-room.composer.available": "Vex の作業が待機中または実行中でもファミリーチャットは利用できます"
 }

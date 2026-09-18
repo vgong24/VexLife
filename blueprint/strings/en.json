@@ -341,5 +341,19 @@
   "security-access.reason.authenticator-runtime-required": "Requires the accepted authenticator runtime.",
   "security-access.reason.runtime-data-unavailable": "No trusted-device runtime data is connected.",
   "security-access.reason.recovery-runtime-required": "Recovery runtime is not connected.",
-  "security-access.guide.explanation": "This Security & Access view is a read-only preview. I can explain the options, but I cannot authenticate you, authorize myself, pair a phone, create credentials, revoke a device, or change recovery from this preview."
+  "security-access.guide.explanation": "This Security & Access view is a read-only preview. I can explain the options, but I cannot authenticate you, authorize myself, pair a phone, create credentials, revoke a device, or change recovery from this preview.",
+  "family-room.eyebrow": "FAMILY ROOM",
+  "family-room.title": "Vex-Family",
+  "family-room.state.live": "● LIVE FAMILY",
+  "family-room.state.empty": "No current Family room",
+  "family-room.state.held": "Family unavailable",
+  "family-room.audience": "Visible to {count} current Family members + Vex",
+  "family-room.audience.held": "Audience unavailable until current Family authority is established",
+  "family-room.work.current": "Vex work · {active} active · {pending} queued",
+  "family-room.work.held": "Vex work status unavailable · human chat remains independent",
+  "family-room.open": "Open Family room",
+  "family-room.refresh": "Refresh Family",
+  "family-room.channel": "Family",
+  "family-room.vex": "Family",
+  "family-room.composer.available": "Family chat stays available while Vex work is queued or running"
 }
