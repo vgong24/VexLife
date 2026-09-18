@@ -13,6 +13,12 @@
       "mode": "100755",
       "bytes": 10537,
       "sha256": "e7f502301ea4c5fe17e085ee01e6284f3fe93efd85fea959032e3a48d8d53eb9"
+    },
+    {
+      "path": "test/vex-core-family-session-authority.test.mjs",
+      "mode": "100644",
+      "bytes": 12503,
+      "sha256": "ff43a3bb88ec645ea3981a78145fbf665554b6368dab8f35da607bdc8d32e5d7"
     }
   ]
 }
