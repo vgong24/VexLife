@@ -3,6 +3,12 @@
   "bucketId": "0a",
   "files": [
     {
+      "path": "docs/VEX-FAMILY-MEMBERSHIP-RUNTIME.md",
+      "mode": "100644",
+      "bytes": 3032,
+      "sha256": "a028004712cd0b12707d81f1b72391cc3c7f9cfaf8fde7a99121130b8167062d"
+    },
+    {
       "path": "src/core/living-journal-memory-projection.mjs",
       "mode": "100644",
       "bytes": 10727,
