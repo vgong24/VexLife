@@ -277,5 +277,33 @@
       "blueprint/**",
       "generated/architecture/**"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.family-membership-runtime",
+    "path": "src/core/family-membership-runtime.mjs",
+    "role": "Owner-aligned Family membership transition runtime that composes canonical Family Space and Conversation owners for recoverable self-Leave, immutable generation-successor GROUP channels, and bounded FROM_JOIN history projection without browser-authored identity or a second membership/conversation store.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.family-space-store",
+      "src/core/family-conversation.mjs",
+      "module.vexlife.core.conversation-store",
+      "module.vexlife.core.utils",
+      "state.family-space",
+      "state.channels",
+      "state.messages"
+    ],
+    "writes": [
+      "Vex Home family-spaces/** only through module.vexlife.core.family-space-store",
+      "Vex Home conversations/channels/** only through module.vexlife.core.conversation-store"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/vex-family-membership-runtime.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEX-FAMILY-MEMBERSHIP-RUNTIME.md",
+      "src/core/browser-family-conversation-bridge.mjs",
+      "scripts/serve-browser-core.mjs"
+    ]
   }
 ]
