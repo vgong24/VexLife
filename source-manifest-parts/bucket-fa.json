@@ -31,6 +31,12 @@
       "mode": "100644",
       "bytes": 3779,
       "sha256": "c8c866cdc1fa32e5abf81104025fcdb94170120c3750aefa949654c605311024"
+    },
+    {
+      "path": "test/vex-family-join-runtime.test.mjs",
+      "mode": "100644",
+      "bytes": 14166,
+      "sha256": "ee6780e9b975a4eb44dc12f8842671f706cd30a9787a19a203d38bff5eac47d0"
     }
   ]
 }

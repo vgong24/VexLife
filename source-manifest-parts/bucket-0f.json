@@ -5,8 +5,8 @@
     {
       "path": "blueprint/module-registry/governance-and-bridge.json",
       "mode": "100644",
-      "bytes": 11933,
-      "sha256": "15ace4f96f0997a4d365f34987df4bb79af9e4107f6518ad2eef3c3155950782"
+      "bytes": 13371,
+      "sha256": "4234a68413b1cff8b8c22a3978299eaa453f8e805836630afa4d4c53d2d63c50"
     },
     {
       "path": "reference/browser/integration/journey-suite.js",
