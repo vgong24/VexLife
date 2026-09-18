@@ -348,7 +348,57 @@ test('FIS-11 invitation persistence does not mutate Family membership or convers
   assert.equal(issued.effects.publicationMutation, false);
 });
 
-test('FIS-12 early expiry fails closed', (t) => {
+test('FIS-12 exact revoke retry recognizes the already committed N-to-N+1 terminal transition', (t) => {
+  const f = family(t);
+  const issued = issueFamilyInvitation(issueInput(f));
+  const input = {
+    home: f.home,
+    invitationRef: issued.record.invitationRef,
+    actorPrincipalRef: 'principal.victor',
+    expectedInvitationRevision: 0,
+    expectedFamilyRecordSha256: f.record.recordSha256,
+    expectedFamilyRevision: f.record.revision,
+    expectedMembershipGeneration: f.record.membershipGeneration,
+    observedAt: T2,
+    sourceReceiptRefs: ['receipt.family.invite.revoke'],
+    currentnessRefs: ['currentness.family.invite.revoke'],
+    instanceRef: 'instance.invite.revoke.retry',
+    faults: {}
+  };
+  const first = revokeFamilyInvitation(input);
+  const retry = revokeFamilyInvitation({
+    ...input,
+    instanceRef: 'instance.invite.revoke.retry.two'
+  });
+  assert.equal(first.record.revision, 1);
+  assert.equal(retry.state, 'IDEMPOTENT_CURRENT');
+  assert.equal(retry.record.recordSha256, first.record.recordSha256);
+  assert.equal(retry.effects.invitationStateMutation, false);
+});
+
+test('FIS-13 exact expiry retry recognizes the already committed N-to-N+1 terminal transition', (t) => {
+  const f = family(t);
+  const issued = issueFamilyInvitation(issueInput(f));
+  const input = {
+    home: f.home,
+    invitationRef: issued.record.invitationRef,
+    expectedInvitationRevision: 0,
+    observedAt: T3,
+    instanceRef: 'instance.invite.expire.retry',
+    faults: {}
+  };
+  const first = expireFamilyInvitation(input);
+  const retry = expireFamilyInvitation({
+    ...input,
+    instanceRef: 'instance.invite.expire.retry.two'
+  });
+  assert.equal(first.record.revision, 1);
+  assert.equal(retry.state, 'IDEMPOTENT_CURRENT');
+  assert.equal(retry.record.recordSha256, first.record.recordSha256);
+  assert.equal(retry.effects.invitationStateMutation, false);
+});
+
+test('FIS-14 early expiry fails closed', (t) => {
   const f = family(t);
   const issued = issueFamilyInvitation(issueInput(f));
   assert.throws(
