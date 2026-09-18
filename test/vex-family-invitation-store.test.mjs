@@ -304,7 +304,36 @@ test('FIS-08 Family currentness changes do not let stale issuance authority pass
   );
 });
 
-test('FIS-09 export is content-safe and does not invent invitee or delivery truth', (t) => {
+test('FIS-09 durable exact issue retry survives a later unrelated Family generation', (t) => {
+  const f = family(t);
+  const prior = f.record;
+  const issued = issueFamilyInvitation(issueInput(f));
+  f.record = addFamilyMember({
+    home: f.home,
+    spaceRef: SPACE,
+    actorPrincipalRef: 'principal.victor',
+    principalRef: 'principal.casey',
+    principalBindingRef: 'principal-binding.vex.family.casey',
+    role: 'MEMBER',
+    expectedRevision: f.record.revision,
+    expectedMembershipGeneration: f.record.membershipGeneration,
+    observedAt: T2,
+    instanceRef: 'instance.invite.fixture.advance-after-issue'
+  }).record;
+
+  const retry = issueFamilyInvitation(issueInput({
+    home: f.home,
+    record: prior
+  }, {
+    instanceRef: 'instance.invite.issue.recover-after-family-advance'
+  }));
+  assert.equal(retry.state, 'IDEMPOTENT_CURRENT');
+  assert.equal(retry.record.invitationRef, issued.record.invitationRef);
+  assert.equal(retry.record.recordSha256, issued.record.recordSha256);
+  assert.equal(retry.effects.invitationStateMutation, false);
+});
+
+test('FIS-10 export is content-safe and does not invent invitee or delivery truth', (t) => {
   const f = family(t);
   const issued = issueFamilyInvitation(issueInput(f));
   const exported = exportFamilyInvitation({
@@ -319,7 +348,7 @@ test('FIS-09 export is content-safe and does not invent invitee or delivery trut
   assert.equal(Object.hasOwn(exported.invitation, 'deliveryState'), false);
 });
 
-test('FIS-10 ACCEPTED and DECLINED are schema states but not caller transitions in this first owner', (t) => {
+test('FIS-11 ACCEPTED and DECLINED are schema states but not caller transitions in this first owner', (t) => {
   assert.deepEqual(
     FAMILY_INVITATION_STATES,
     ['PENDING', 'ACCEPTED', 'DECLINED', 'REVOKED', 'EXPIRED']
@@ -333,7 +362,7 @@ test('FIS-10 ACCEPTED and DECLINED are schema states but not caller transitions 
   );
 });
 
-test('FIS-11 invitation persistence does not mutate Family membership or conversation state', (t) => {
+test('FIS-12 invitation persistence does not mutate Family membership or conversation state', (t) => {
   const f = family(t);
   const before = readFamilySpace({ home: f.home, spaceRef: SPACE }).record;
   const issued = issueFamilyInvitation(issueInput(f));
@@ -348,7 +377,7 @@ test('FIS-11 invitation persistence does not mutate Family membership or convers
   assert.equal(issued.effects.publicationMutation, false);
 });
 
-test('FIS-12 exact revoke retry recognizes the already committed N-to-N+1 terminal transition', (t) => {
+test('FIS-13 exact revoke retry recognizes the already committed N-to-N+1 terminal transition', (t) => {
   const f = family(t);
   const issued = issueFamilyInvitation(issueInput(f));
   const input = {
@@ -376,7 +405,7 @@ test('FIS-12 exact revoke retry recognizes the already committed N-to-N+1 termin
   assert.equal(retry.effects.invitationStateMutation, false);
 });
 
-test('FIS-13 exact expiry retry recognizes the already committed N-to-N+1 terminal transition', (t) => {
+test('FIS-14 exact expiry retry recognizes the already committed N-to-N+1 terminal transition', (t) => {
   const f = family(t);
   const issued = issueFamilyInvitation(issueInput(f));
   const input = {
@@ -398,7 +427,7 @@ test('FIS-13 exact expiry retry recognizes the already committed N-to-N+1 termin
   assert.equal(retry.effects.invitationStateMutation, false);
 });
 
-test('FIS-14 early expiry fails closed', (t) => {
+test('FIS-15 early expiry fails closed', (t) => {
   const f = family(t);
   const issued = issueFamilyInvitation(issueInput(f));
   assert.throws(
