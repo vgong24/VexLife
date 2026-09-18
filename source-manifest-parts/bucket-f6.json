@@ -9,6 +9,12 @@
       "sha256": "6df36f60ca2bd4598886f9d45cdaf837706d2bc500fa63ed7abf17908ec58e79"
     },
     {
+      "path": "docs/VEX-FAMILY-HOST-ESTABLISHMENT.md",
+      "mode": "100644",
+      "bytes": 3961,
+      "sha256": "21d93f6c28db9d78e311ef5039c795b998966d2374f7aea6d16509bbb9d1087f"
+    },
+    {
       "path": "fixtures/patient0-familiarity-live-work/synthetic-preflight.v1.json",
       "mode": "100644",
       "bytes": 1262,

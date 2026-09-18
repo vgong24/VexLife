@@ -9,6 +9,12 @@
       "sha256": "0aab1ed486ce57bd2bfe1f6a21fde846d46d105662cd7c607d52d0ad0b7866e6"
     },
     {
+      "path": "src/core/family-host-runtime.mjs",
+      "mode": "100644",
+      "bytes": 12393,
+      "sha256": "7ee3ea6957e5570338b7d67ba5777ad1c83e580f9a44941089a54e2b12a84c2a"
+    },
+    {
       "path": "test/companion-navigation.test.mjs",
       "mode": "100644",
       "bytes": 16256,
