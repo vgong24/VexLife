@@ -12,12 +12,15 @@ import {
 import {
   FAMILY_INVITATION_STATES,
   FamilyInvitationStoreError,
+  acceptFamilyInvitation,
   expireFamilyInvitation,
   exportFamilyInvitation,
   issueFamilyInvitation,
   readFamilyInvitation,
   revokeFamilyInvitation
 } from '../src/core/family-invitation-store.mjs';
+import { createFamilyChannel } from '../src/core/family-conversation.mjs';
+import { materializeConversationChannel } from '../src/core/conversation-store.mjs';
 
 const T0 = '2026-09-18T10:00:00.000Z';
 const T1 = '2026-09-18T10:05:00.000Z';
@@ -443,4 +446,76 @@ test('FIS-15 early expiry fails closed', (t) => {
       error instanceof FamilyInvitationStoreError
       && error.code === 'FAMILY_INVITATION_NOT_EXPIRED'
   );
+});
+
+
+test('FIS-16 ACCEPTED finalization requires exact durable Family add + GROUP channel truth', (t) => {
+  const f=family(t);
+  const issued=issueFamilyInvitation(issueInput(f));
+  const added=addFamilyMember({
+    home:f.home,spaceRef:SPACE,actorPrincipalRef:'principal.victor',principalRef:'principal.alex',
+    principalBindingRef:'principal-binding.vex.family.alex',role:'MEMBER',
+    expectedRevision:f.record.revision,expectedMembershipGeneration:f.record.membershipGeneration,
+    observedAt:T2,instanceRef:'instance.invite.accept.add'
+  });
+  const current=added.record;
+  const channel=createFamilyChannel({
+    channelRef:'channel.vex-family.accepted',threadRef:'thread.vex-family.accepted',
+    familySpaceRecord:current,labelStringRef:'family-room.channel',createdAt:T2
+  });
+  materializeConversationChannel({home:f.home,channel,instanceRef:'instance.invite.accept.channel',observedAt:T2});
+  const accepted=acceptFamilyInvitation({
+    home:f.home,invitationRef:issued.record.invitationRef,expectedInvitationRevision:0,
+    acceptedPrincipalRef:'principal.alex',acceptedPrincipalBindingRef:'principal-binding.vex.family.alex',
+    expectedAcceptedFamilyRecordSha256:current.recordSha256,expectedAcceptedFamilyRevision:current.revision,
+    expectedAcceptedMembershipGeneration:current.membershipGeneration,acceptedChannelRef:channel.channelRef,
+    acceptedAt:T2,observedAt:T2,instanceRef:'instance.invite.accept.finalize',faults:{}
+  });
+  assert.equal(accepted.state,'INVITATION_ACCEPTED');
+  assert.equal(accepted.record.state,'ACCEPTED');
+  assert.equal(accepted.record.acceptedPrincipalRefOrNull,'principal.alex');
+  assert.equal(accepted.record.acceptedMembershipGenerationOrNull,current.membershipGeneration);
+  assert.equal(accepted.record.acceptedChannelRefOrNull,channel.channelRef);
+  assert.equal(accepted.effects.familyMembershipMutation,false);
+  assert.equal(accepted.effects.conversationMutation,false);
+});
+
+test('FIS-17 ACCEPTED finalization cannot fabricate membership/channel', (t) => {
+  const f=family(t);
+  const issued=issueFamilyInvitation(issueInput(f));
+  assert.throws(
+    ()=>acceptFamilyInvitation({
+      home:f.home,invitationRef:issued.record.invitationRef,expectedInvitationRevision:0,
+      acceptedPrincipalRef:'principal.alex',acceptedPrincipalBindingRef:'principal-binding.vex.family.alex',
+      expectedAcceptedFamilyRecordSha256:f.record.recordSha256,expectedAcceptedFamilyRevision:f.record.revision,
+      expectedAcceptedMembershipGeneration:f.record.membershipGeneration,acceptedChannelRef:'channel.vex-family.missing',
+      acceptedAt:T2,observedAt:T2,instanceRef:'instance.invite.accept.invalid',faults:{}
+    }),
+    (error)=>error instanceof FamilyInvitationStoreError&&error.code==='FAMILY_INVITATION_ACCEPTANCE_RESULT_MISMATCH'
+  );
+});
+
+test('FIS-18 acceptance may finalize after wall-clock expiry only when canonical add occurred pre-expiry', (t) => {
+  const f=family(t);
+  const issued=issueFamilyInvitation(issueInput(f,{expiresAt:'2026-09-18T10:30:00.000Z'}));
+  const added=addFamilyMember({
+    home:f.home,spaceRef:SPACE,actorPrincipalRef:'principal.victor',principalRef:'principal.alex',
+    principalBindingRef:'principal-binding.vex.family.alex',role:'MEMBER',
+    expectedRevision:f.record.revision,expectedMembershipGeneration:f.record.membershipGeneration,
+    observedAt:T2,instanceRef:'instance.invite.accept.pre-expiry'
+  });
+  const channel=createFamilyChannel({
+    channelRef:'channel.vex-family.pre-expiry',threadRef:'thread.vex-family.pre-expiry',
+    familySpaceRecord:added.record,labelStringRef:'family-room.channel',createdAt:T2
+  });
+  materializeConversationChannel({home:f.home,channel,instanceRef:'instance.invite.accept.pre-expiry.channel',observedAt:T2});
+  const accepted=acceptFamilyInvitation({
+    home:f.home,invitationRef:issued.record.invitationRef,expectedInvitationRevision:0,
+    acceptedPrincipalRef:'principal.alex',acceptedPrincipalBindingRef:'principal-binding.vex.family.alex',
+    expectedAcceptedFamilyRecordSha256:added.record.recordSha256,expectedAcceptedFamilyRevision:added.record.revision,
+    expectedAcceptedMembershipGeneration:added.record.membershipGeneration,acceptedChannelRef:channel.channelRef,
+    acceptedAt:T2,observedAt:T3,instanceRef:'instance.invite.accept.late-finalize',faults:{}
+  });
+  assert.equal(accepted.record.state,'ACCEPTED');
+  assert.equal(accepted.record.acceptedAtOrNull,T2);
 });

@@ -5,9 +5,13 @@ import path from 'node:path';
 import {
   readFamilySpace
 } from './family-space-store.mjs';
+import {
+  readConversationChannelBinding
+} from './conversation-store.mjs';
 import { semanticHash } from './utils.mjs';
 
-export const FAMILY_INVITATION_SCHEMA = 'vexlife.family-invitation/v1';
+export const FAMILY_INVITATION_SCHEMA_V1 = 'vexlife.family-invitation/v1';
+export const FAMILY_INVITATION_SCHEMA = 'vexlife.family-invitation/v2';
 export const FAMILY_INVITATION_HEAD_SCHEMA = 'vexlife.family-invitation-head/v1';
 export const FAMILY_INVITATION_RECEIPT_SCHEMA = 'vexlife.family-invitation-commit-receipt/v1';
 export const FAMILY_INVITATION_WRITER_SCHEMA = 'vexlife.family-invitation-writer/v1';
@@ -61,11 +65,26 @@ const EXPIRE_KEYS = new Set([
   'instanceRef',
   'faults'
 ]);
+const ACCEPT_KEYS = new Set([
+  'home',
+  'invitationRef',
+  'expectedInvitationRevision',
+  'acceptedPrincipalRef',
+  'acceptedPrincipalBindingRef',
+  'expectedAcceptedFamilyRecordSha256',
+  'expectedAcceptedFamilyRevision',
+  'expectedAcceptedMembershipGeneration',
+  'acceptedChannelRef',
+  'acceptedAt',
+  'observedAt',
+  'instanceRef',
+  'faults'
+]);
 const READ_KEYS = new Set(['home', 'invitationRef', 'observedAt']);
 const EXPORT_KEYS = new Set(['home', 'invitationRef', 'observedAt']);
 const RECOVERY_KEYS = new Set(['home', 'invitationRef', 'expectedAbandonedInstanceRef']);
 const FAULT_KEYS = new Set(['failBeforeHeadRename', 'failAfterHeadRenameBeforeReceipt']);
-const RECORD_KEYS = new Set([
+const RECORD_KEYS_V1 = new Set([
   'schemaVersion',
   'invitationRef',
   'spaceRef',
@@ -87,6 +106,17 @@ const RECORD_KEYS = new Set([
   'updatedAt',
   'recordSha256'
 ]);
+const ACCEPTANCE_RECORD_KEYS = Object.freeze([
+  'acceptedPrincipalRefOrNull',
+  'acceptedPrincipalBindingRefOrNull',
+  'acceptedMembershipRefOrNull',
+  'acceptedFamilyRecordSha256OrNull',
+  'acceptedFamilyRevisionOrNull',
+  'acceptedMembershipGenerationOrNull',
+  'acceptedChannelRefOrNull',
+  'acceptedAtOrNull'
+]);
+const RECORD_KEYS_V2 = new Set([...RECORD_KEYS_V1, ...ACCEPTANCE_RECORD_KEYS]);
 const HEAD_KEYS = new Set([
   'schemaVersion',
   'invitationRef',
@@ -382,10 +412,12 @@ function withWriter(paths, invitationRef, instanceRef, observedAt, fn) {
 }
 
 function validateRecord(value) {
-  exactKeys(value, RECORD_KEYS, 'invitation record');
-  if (value.schemaVersion !== FAMILY_INVITATION_SCHEMA || !FAMILY_INVITATION_STATES.includes(value.state)) {
+  const isV1 = value?.schemaVersion === FAMILY_INVITATION_SCHEMA_V1;
+  const isV2 = value?.schemaVersion === FAMILY_INVITATION_SCHEMA;
+  if ((!isV1 && !isV2) || !FAMILY_INVITATION_STATES.includes(value?.state)) {
     fail('FAMILY_INVITATION_CORRUPT', 'Family invitation record schema/state is invalid');
   }
+  exactKeys(value, isV2 ? RECORD_KEYS_V2 : RECORD_KEYS_V1, 'invitation record');
   const core = structuredClone(value);
   delete core.recordSha256;
   if (!SHA.test(value.recordSha256 ?? '') || semanticHash(core) !== value.recordSha256) {
@@ -415,6 +447,21 @@ function validateRecord(value) {
   refs(value.sourceReceiptRefs, 'record sourceReceiptRefs');
   refs(value.currentnessRefs, 'record currentnessRefs');
   time(value.updatedAt, 'record updatedAt');
+  if (isV2) {
+    const acceptanceValues = ACCEPTANCE_RECORD_KEYS.map((key) => value[key]);
+    if (value.state === 'ACCEPTED') {
+      ref(value.acceptedPrincipalRefOrNull, 'record acceptedPrincipalRefOrNull');
+      ref(value.acceptedPrincipalBindingRefOrNull, 'record acceptedPrincipalBindingRefOrNull');
+      ref(value.acceptedMembershipRefOrNull, 'record acceptedMembershipRefOrNull');
+      sha(value.acceptedFamilyRecordSha256OrNull, 'record acceptedFamilyRecordSha256OrNull');
+      revision(value.acceptedFamilyRevisionOrNull, 'record acceptedFamilyRevisionOrNull');
+      revision(value.acceptedMembershipGenerationOrNull, 'record acceptedMembershipGenerationOrNull');
+      ref(value.acceptedChannelRefOrNull, 'record acceptedChannelRefOrNull');
+      time(value.acceptedAtOrNull, 'record acceptedAtOrNull');
+    } else if (acceptanceValues.some((entry) => entry !== null)) {
+      fail('FAMILY_INVITATION_CORRUPT', 'non-ACCEPTED invitation carries acceptance result identity');
+    }
+  }
   return Object.freeze(value);
 }
 
@@ -592,9 +639,15 @@ function sameIssueSemantics(record, expected) {
   );
 }
 
+function acceptanceFields(record) {
+  if (record.schemaVersion !== FAMILY_INVITATION_SCHEMA) return {};
+  return Object.fromEntries(ACCEPTANCE_RECORD_KEYS.map((key) => [key, record[key]]));
+}
+
 function nextRecord(record, state, transitionRef, observedAt, sourceReceiptRefs, currentnessRefs) {
   return hash({
-    schemaVersion: FAMILY_INVITATION_SCHEMA,
+    schemaVersion: record.schemaVersion,
+    ...acceptanceFields(record),
     invitationRef: record.invitationRef,
     spaceRef: record.spaceRef,
     inviterPrincipalRef: record.inviterPrincipalRef,
@@ -720,7 +773,15 @@ export function issueFamilyInvitation(input = {}) {
       transitionRef: 'transition.vex-family.invitation.issue',
       sourceReceiptRefs,
       currentnessRefs,
-      updatedAt: issuedAt
+      updatedAt: issuedAt,
+      acceptedPrincipalRefOrNull: null,
+      acceptedPrincipalBindingRefOrNull: null,
+      acceptedMembershipRefOrNull: null,
+      acceptedFamilyRecordSha256OrNull: null,
+      acceptedFamilyRevisionOrNull: null,
+      acceptedMembershipGenerationOrNull: null,
+      acceptedChannelRefOrNull: null,
+      acceptedAtOrNull: null
     }, 'recordSha256');
     const committed = persist(paths, record, instanceRef, input.faults);
     return Object.freeze({
@@ -897,6 +958,251 @@ export function expireFamilyInvitation(input = {}) {
   });
 }
 
+
+function acceptanceResultMatches(record, {
+  acceptedPrincipalRef,
+  acceptedPrincipalBindingRef,
+  expectedAcceptedFamilyRecordSha256,
+  expectedAcceptedFamilyRevision,
+  expectedAcceptedMembershipGeneration,
+  acceptedChannelRef,
+  acceptedAt
+}) {
+  return (
+    record.schemaVersion === FAMILY_INVITATION_SCHEMA
+    && record.state === 'ACCEPTED'
+    && record.acceptedPrincipalRefOrNull === acceptedPrincipalRef
+    && record.acceptedPrincipalBindingRefOrNull === acceptedPrincipalBindingRef
+    && record.acceptedFamilyRecordSha256OrNull === expectedAcceptedFamilyRecordSha256
+    && record.acceptedFamilyRevisionOrNull === expectedAcceptedFamilyRevision
+    && record.acceptedMembershipGenerationOrNull === expectedAcceptedMembershipGeneration
+    && record.acceptedChannelRefOrNull === acceptedChannelRef
+    && record.acceptedAtOrNull === acceptedAt
+  );
+}
+
+export function acceptFamilyInvitation(input = {}) {
+  exactKeys(input, ACCEPT_KEYS, 'accept invitation input');
+  boundedKeys(input.faults, FAULT_KEYS, 'accept invitation faults');
+
+  const invitationRef = ref(input.invitationRef, 'invitationRef');
+  const expectedInvitationRevision = revision(
+    input.expectedInvitationRevision,
+    'expectedInvitationRevision'
+  );
+  const acceptedPrincipalRef = ref(input.acceptedPrincipalRef, 'acceptedPrincipalRef');
+  const acceptedPrincipalBindingRef = ref(
+    input.acceptedPrincipalBindingRef,
+    'acceptedPrincipalBindingRef'
+  );
+  const expectedAcceptedFamilyRecordSha256 = sha(
+    input.expectedAcceptedFamilyRecordSha256,
+    'expectedAcceptedFamilyRecordSha256'
+  );
+  const expectedAcceptedFamilyRevision = revision(
+    input.expectedAcceptedFamilyRevision,
+    'expectedAcceptedFamilyRevision'
+  );
+  const expectedAcceptedMembershipGeneration = revision(
+    input.expectedAcceptedMembershipGeneration,
+    'expectedAcceptedMembershipGeneration'
+  );
+  const acceptedChannelRef = ref(input.acceptedChannelRef, 'acceptedChannelRef');
+  const acceptedAt = time(input.acceptedAt, 'acceptedAt');
+  const observedAt = time(input.observedAt, 'observedAt');
+  const instanceRef = ref(input.instanceRef, 'instanceRef');
+  const paths = pathsFor(input.home, invitationRef);
+
+  return withWriter(paths, invitationRef, instanceRef, observedAt, () => {
+    const record = current(paths, invitationRef);
+    if (!record) fail('FAMILY_INVITATION_NOT_FOUND', 'Family invitation is unavailable');
+
+    const acceptedFacts = {
+      acceptedPrincipalRef,
+      acceptedPrincipalBindingRef,
+      expectedAcceptedFamilyRecordSha256,
+      expectedAcceptedFamilyRevision,
+      expectedAcceptedMembershipGeneration,
+      acceptedChannelRef,
+      acceptedAt
+    };
+
+    if (
+      record.revision === expectedInvitationRevision + 1
+      && acceptanceResultMatches(record, acceptedFacts)
+    ) {
+      return Object.freeze({
+        state: 'IDEMPOTENT_CURRENT',
+        record,
+        effects: Object.freeze({
+          invitationStateMutation: false,
+          familyMembershipMutation: false,
+          conversationMutation: false,
+          networkDelivery: false,
+          relationshipsMutation: false,
+          modelInvocation: false,
+          memoryMutation: false,
+          publicationMutation: false
+        })
+      });
+    }
+
+    if (record.revision !== expectedInvitationRevision) {
+      fail('FAMILY_INVITATION_STALE', 'Family invitation revision is stale');
+    }
+    if (record.state !== 'PENDING') {
+      fail('FAMILY_INVITATION_TERMINAL', 'only a PENDING invitation may become ACCEPTED');
+    }
+    if (Date.parse(acceptedAt) >= Date.parse(record.expiresAt)) {
+      fail(
+        'FAMILY_INVITATION_EXPIRY_REQUIRED',
+        'Family membership acceptance must have occurred before invitation expiry'
+      );
+    }
+
+    const snapshot = readFamilySpace({ home: input.home, spaceRef: record.spaceRef });
+    if (snapshot.state !== 'CURRENT' || !snapshot.record) {
+      fail('FAMILY_INVITATION_FAMILY_NOT_FOUND', 'accepted Family result is unavailable');
+    }
+    const family = snapshot.record;
+    if (
+      family.recordSha256 !== expectedAcceptedFamilyRecordSha256
+      || family.revision !== expectedAcceptedFamilyRevision
+      || family.membershipGeneration !== expectedAcceptedMembershipGeneration
+      || family.revision !== record.expectedFamilyRevision + 1
+      || family.membershipGeneration !== record.expectedMembershipGeneration + 1
+      || family.priorRecordSha256 !== record.expectedFamilyRecordSha256
+    ) {
+      fail(
+        'FAMILY_INVITATION_ACCEPTANCE_RESULT_MISMATCH',
+        'Family result is not the exact invitation-bound N-to-N+1 membership transition'
+      );
+    }
+
+    const member = family.members.find(
+      (candidate) => candidate.principalRef === acceptedPrincipalRef && candidate.status === 'ACTIVE'
+    );
+    if (
+      !member
+      || member.principalBindingRef !== acceptedPrincipalBindingRef
+      || member.role !== FAMILY_INVITATION_FIRST_SLICE_ROLE
+      || member.historyVisibilityPolicyRef !== FAMILY_INVITATION_HISTORY_POLICY
+      || member.joinedAt !== acceptedAt
+      || family.transitionRef !== `transition.vex-family.member.add.${member.membershipRef}`
+    ) {
+      fail(
+        'FAMILY_INVITATION_ACCEPTANCE_RESULT_MISMATCH',
+        'accepted member identity is not the exact invitation-bound Family add result'
+      );
+    }
+
+    const inviter = family.members.find(
+      (candidate) =>
+        candidate.principalRef === record.inviterPrincipalRef
+        && candidate.membershipRef === record.inviterMembershipRef
+        && candidate.status === 'ACTIVE'
+    );
+    if (!inviter || !['OWNER', 'ADMIN'].includes(inviter.role)) {
+      fail(
+        'FAMILY_INVITATION_ACCEPTANCE_RESULT_MISMATCH',
+        'invitation manager is not preserved in the exact accepted Family result'
+      );
+    }
+
+    const channelProjection = readConversationChannelBinding({
+      home: input.home,
+      channelRef: acceptedChannelRef
+    });
+    const channel = channelProjection.channel;
+    const binding = channel?.familySpaceBinding;
+    const boundMember = binding?.audienceMemberBindings?.find(
+      (candidate) => candidate.principalRef === acceptedPrincipalRef
+    );
+    if (
+      channelProjection.state !== 'CURRENT'
+      || !channel
+      || channel.kind !== 'GROUP'
+      || binding?.audienceKind !== 'GROUP'
+      || binding.spaceRef !== family.spaceRef
+      || binding.familySpaceRecordSha256 !== family.recordSha256
+      || binding.membershipGeneration !== family.membershipGeneration
+      || binding.historyVisibilityPolicyRef !== FAMILY_INVITATION_HISTORY_POLICY
+      || !boundMember
+      || boundMember.membershipRef !== member.membershipRef
+      || boundMember.principalBindingRef !== member.principalBindingRef
+    ) {
+      fail(
+        'FAMILY_INVITATION_ACCEPTANCE_RESULT_MISMATCH',
+        'accepted channel is not bound to the exact accepted Family generation'
+      );
+    }
+
+    const acceptanceFingerprint = semanticHash({
+      schemaVersion: 'vexlife.family-invitation-acceptance-result/v1',
+      invitationRef,
+      acceptedPrincipalRef,
+      acceptedPrincipalBindingRef,
+      acceptedMembershipRef: member.membershipRef,
+      acceptedFamilyRecordSha256: family.recordSha256,
+      acceptedFamilyRevision: family.revision,
+      acceptedMembershipGeneration: family.membershipGeneration,
+      acceptedChannelRef,
+      acceptedAt
+    });
+    const next = hash({
+      schemaVersion: FAMILY_INVITATION_SCHEMA,
+      invitationRef: record.invitationRef,
+      spaceRef: record.spaceRef,
+      inviterPrincipalRef: record.inviterPrincipalRef,
+      inviterMembershipRef: record.inviterMembershipRef,
+      offeredRole: record.offeredRole,
+      expectedFamilyRecordSha256: record.expectedFamilyRecordSha256,
+      expectedFamilyRevision: record.expectedFamilyRevision,
+      expectedMembershipGeneration: record.expectedMembershipGeneration,
+      historyVisibilityPolicyRef: record.historyVisibilityPolicyRef,
+      issuedAt: record.issuedAt,
+      expiresAt: record.expiresAt,
+      state: 'ACCEPTED',
+      revision: record.revision + 1,
+      priorRecordSha256: record.recordSha256,
+      transitionRef: 'transition.vex-family.invitation.accept',
+      sourceReceiptRefs: combineRefs(
+        record.sourceReceiptRefs,
+        [`receipt.vex-family.invitation-acceptance.${acceptanceFingerprint.slice(0, 32)}`]
+      ),
+      currentnessRefs: combineRefs(
+        record.currentnessRefs,
+        [`currentness.vex-family.invitation-acceptance.${acceptanceFingerprint.slice(0, 32)}`]
+      ),
+      updatedAt: observedAt,
+      acceptedPrincipalRefOrNull: acceptedPrincipalRef,
+      acceptedPrincipalBindingRefOrNull: acceptedPrincipalBindingRef,
+      acceptedMembershipRefOrNull: member.membershipRef,
+      acceptedFamilyRecordSha256OrNull: family.recordSha256,
+      acceptedFamilyRevisionOrNull: family.revision,
+      acceptedMembershipGenerationOrNull: family.membershipGeneration,
+      acceptedChannelRefOrNull: acceptedChannelRef,
+      acceptedAtOrNull: acceptedAt
+    }, 'recordSha256');
+
+    const committed = persist(paths, next, instanceRef, input.faults);
+    return Object.freeze({
+      state: 'INVITATION_ACCEPTED',
+      ...committed,
+      effects: Object.freeze({
+        invitationStateMutation: true,
+        familyMembershipMutation: false,
+        conversationMutation: false,
+        networkDelivery: false,
+        relationshipsMutation: false,
+        modelInvocation: false,
+        memoryMutation: false,
+        publicationMutation: false
+      })
+    });
+  });
+}
+
 export function exportFamilyInvitation(input = {}) {
   exactKeys(input, EXPORT_KEYS, 'export invitation input');
   const projection = readFamilyInvitation(input);
@@ -962,8 +1268,9 @@ export function recoverAbandonedFamilyInvitationWriter(input = {}) {
   });
 }
 
-// ACCEPTED and DECLINED remain schema states reserved for a later Join orchestration
-// owner that can consume invitee-authenticated authority and prove cross-writer recovery.
-// This persistence owner intentionally exposes no public transition into those states.
+// ACCEPTED remains owned by this persistence owner but may be finalized only from
+// already-durable canonical Family membership + GROUP-channel truth. The Join runtime
+// supplies no membership authority to this store; the store independently reads back
+// the exact N-to-N+1 result before committing ACCEPTED. DECLINED remains reserved.
 
 // [VXG RealForever]
