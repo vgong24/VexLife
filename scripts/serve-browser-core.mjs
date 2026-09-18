@@ -67,6 +67,8 @@ export const BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH = '/api/v1/relationships
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_LIST_MAX = 256;
 export const BROWSER_FAMILY_CONVERSATION_API_PATH = '/api/v1/family/conversation';
+export const BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH = '/api/v1/family/bootstrap';
+export const BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA = 'vexlife.browser-family-room-bootstrap/v1';
 export const BROWSER_FAMILY_CONVERSATION_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_FAMILY_CONVERSATION_LIST_MAX = 1000;
 const RELATIONSHIPS_PERSISTENCE_REQUEST_KEYS = new Set(['localOwnerBinding', 'input']);
@@ -380,6 +382,154 @@ function familyConversationFailurePayload(error) {
   });
 }
 
+
+function normalizedFamilyWorkStatus(value) {
+  if (value == null) {
+    return Object.freeze({
+      state: 'HELD_UNAVAILABLE',
+      pendingCount: null,
+      activeCount: null,
+      sourceRef: null
+    });
+  }
+  if (
+    typeof value !== 'object'
+    || Array.isArray(value)
+    || value.state !== 'CURRENT'
+    || !Number.isSafeInteger(value.pendingCount)
+    || value.pendingCount < 0
+    || !Number.isSafeInteger(value.activeCount)
+    || value.activeCount < 0
+    || typeof value.sourceRef !== 'string'
+    || value.sourceRef.length === 0
+  ) {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_WORK_PROJECTION_UNAVAILABLE',
+      'Family work projection is not current canonical scheduler truth',
+      503
+    );
+  }
+  return Object.freeze({
+    state: 'CURRENT',
+    pendingCount: value.pendingCount,
+    activeCount: value.activeCount,
+    sourceRef: value.sourceRef
+  });
+}
+
+function familyRoomAudienceProjection(binding) {
+  return Object.freeze(binding.audienceMemberBindings.map((member) => Object.freeze({
+    principalRef: member.principalRef,
+    role: member.role
+  })));
+}
+
+function heldFamilyRoomBootstrap(failureCode = 'FAMILY_SESSION_AUTHORITY_UNAVAILABLE') {
+  return Object.freeze({
+    schemaVersion: BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
+    state: 'HELD_UNAVAILABLE',
+    truthClass: 'HELD_UNAVAILABLE',
+    currentPrincipalRef: null,
+    rooms: Object.freeze([]),
+    workStatus: normalizedFamilyWorkStatus(null),
+    failureCode
+  });
+}
+
+export async function resolveCurrentFamilyRoomBootstrap({
+  request,
+  familyHome,
+  resolveAuthority,
+  nowProvider,
+  resolveFamilyWorkProjection = null
+} = {}) {
+  let authority;
+  try {
+    authority = await currentFamilyConversationAuthority(
+      resolveAuthority,
+      request,
+      { operation: 'LIST', intent: Object.freeze({}) }
+    );
+  } catch (error) {
+    if (
+      error instanceof BrowserFamilyConversationServerError
+      && error.code === 'FAMILY_SESSION_AUTHORITY_UNAVAILABLE'
+    ) {
+      return heldFamilyRoomBootstrap(error.code);
+    }
+    throw error;
+  }
+  const now = currentFamilyConversationTime(nowProvider);
+  const durable = listConversationChannelBindings({
+    home: familyHome,
+    limit: BROWSER_FAMILY_CONVERSATION_LIST_MAX
+  });
+  const rooms = [];
+  for (const channel of durable.channels ?? []) {
+    const binding = channel?.familySpaceBinding;
+    if (!binding || binding.audienceKind !== 'GROUP') continue;
+    let visible;
+    try {
+      visible = listBrowserFamilyChannels({
+        home: familyHome,
+        intent: {
+          spaceRef: binding.spaceRef,
+          expectedMembershipGeneration: binding.membershipGeneration
+        },
+        channels: [channel],
+        membership: authority.membership,
+        lease: authority.lease,
+        currentRevocationGeneration: authority.currentRevocationGeneration,
+        now
+      });
+    } catch (error) {
+      if (
+        error instanceof BrowserFamilyConversationBridgeError
+        && ['BROWSER_FAMILY_BRIDGE_STALE', 'BROWSER_FAMILY_BRIDGE_DENIED'].includes(error.code)
+      ) continue;
+      throw error;
+    }
+    if (
+      visible?.state !== 'CURRENT'
+      || !Array.isArray(visible.channels)
+      || visible.channels.length !== 1
+      || visible.channels[0].channelRef !== channel.channelRef
+    ) continue;
+    rooms.push(Object.freeze({
+      spaceRef: binding.spaceRef,
+      channelRef: channel.channelRef,
+      threadRef: channel.threadRef,
+      kind: channel.kind,
+      membershipGeneration: binding.membershipGeneration,
+      audience: familyRoomAudienceProjection(binding),
+      familyCompanionLineageRef: binding.familyCompanionLineageRef,
+      familyCompanionIncluded: binding.familyCompanionIncluded === true
+    }));
+  }
+  rooms.sort((left, right) =>
+    left.spaceRef < right.spaceRef ? -1
+      : left.spaceRef > right.spaceRef ? 1
+        : left.channelRef < right.channelRef ? -1
+          : left.channelRef > right.channelRef ? 1 : 0
+  );
+  let workStatus = normalizedFamilyWorkStatus(null);
+  if (typeof resolveFamilyWorkProjection === 'function') {
+    workStatus = normalizedFamilyWorkStatus(await resolveFamilyWorkProjection(Object.freeze({
+      request,
+      principalRef: authority.membership.principalRef,
+      rooms: Object.freeze([...rooms])
+    })));
+  }
+  return Object.freeze({
+    schemaVersion: BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
+    state: rooms.length > 0 ? 'CURRENT' : 'EMPTY',
+    truthClass: 'CURRENT_LIVE_FAMILY',
+    currentPrincipalRef: authority.membership.principalRef,
+    rooms: Object.freeze(rooms),
+    workStatus
+  });
+}
+
 async function currentFamilyConversationAuthority(resolveAuthority, request, admitted) {
   if (typeof resolveAuthority !== 'function') {
     throw new BrowserFamilyConversationServerError(
@@ -538,7 +688,8 @@ export function createVexLifeBrowserServer({
   familyConversationHome = home,
   resolveFamilyConversationAuthority = null,
   familyConversationNow = () => new Date().toISOString(),
-  familyConversationInstanceRef = 'instance.vexlife.browser-family-server'
+  familyConversationInstanceRef = 'instance.vexlife.browser-family-server',
+  resolveFamilyWorkProjection = null
 } = {}) {
   return http.createServer(async (request, response) => {
     try {
@@ -663,6 +814,27 @@ export function createVexLifeBrowserServer({
               null
             );
           sendJson(response, typed.httpStatus, browserRelationshipsRuntimeFailurePayload(typed));
+        }
+        return;
+      }
+
+      if (url.pathname === BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const result = await resolveCurrentFamilyRoomBootstrap({
+            request,
+            familyHome: familyConversationHome,
+            resolveAuthority: resolveFamilyConversationAuthority,
+            nowProvider: familyConversationNow,
+            resolveFamilyWorkProjection
+          });
+          sendJson(response, 200, result);
+        } catch (error) {
+          sendJson(response, familyConversationHttpStatus(error), familyConversationFailurePayload(error));
         }
         return;
       }

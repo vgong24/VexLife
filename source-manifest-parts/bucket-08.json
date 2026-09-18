@@ -3,6 +3,12 @@
   "bucketId": "08",
   "files": [
     {
+      "path": "test/browser-family-room-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 12739,
+      "sha256": "b2347719235768f4a721968acc274eb58394c83dd3613f8c634f9ed5c430a488"
+    },
+    {
       "path": "test/experience-guidance-devex-perception.test.mjs",
       "mode": "100644",
       "bytes": 15329,
