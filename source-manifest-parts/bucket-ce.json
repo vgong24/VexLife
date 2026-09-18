@@ -9,6 +9,12 @@
       "sha256": "8b87734f096543df04561677b688acc5bfe2f0723ca8fd780688a31836af9cd7"
     },
     {
+      "path": "reference/browser/integration/family-room-suite.js",
+      "mode": "100644",
+      "bytes": 2512,
+      "sha256": "97e50795634e6c5810051f097fc0d38b9bb020f77c17da987fe2375eab30773b"
+    },
+    {
       "path": "src/core/family-conversation.mjs",
       "mode": "100644",
       "bytes": 17741,
