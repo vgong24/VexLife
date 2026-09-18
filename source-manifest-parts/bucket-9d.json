@@ -21,6 +21,12 @@
       "sha256": "ff8a4b36e0ffa6bd4684ae8ac1af6e195b0d4211adb26a6f951aa9a5e176d392"
     },
     {
+      "path": "src/core/family-join-runtime.mjs",
+      "mode": "100644",
+      "bytes": 11165,
+      "sha256": "29f8401fe51602bd822b842e9de57bbee0177911433c85dd27d25074d29c5b2f"
+    },
+    {
       "path": "test/model-turn-witness.test.mjs",
       "mode": "100644",
       "bytes": 5935,

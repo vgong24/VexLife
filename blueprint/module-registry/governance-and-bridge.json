@@ -333,12 +333,14 @@
   {
     "moduleRef": "module.vexlife.core.family-invitation-store",
     "path": "src/core/family-invitation-store.mjs",
-    "role": "Canonical local Family invitation/consent persistence owner for deterministic targetless MEMBER invitations, exact Family-manager issuance/revocation currentness, expiry, immutable state history and writer recovery without becoming the Join membership orchestrator.",
+    "role": "Canonical local Family invitation/consent persistence owner for deterministic targetless MEMBER invitations, exact manager issuance/revocation/expiry, immutable state history, writer recovery, and ACCEPTED result finalization only after canonical Family membership/channel truth already exists.",
     "platformScope": "NODE_DESKTOP_HOST",
     "reads": [
       "module.vexlife.core.family-space-store",
+      "module.vexlife.core.conversation-store",
       "module.vexlife.core.utils",
-      "state.family-space"
+      "state.family-space",
+      "state.channels"
     ],
     "writes": [
       "Vex Home family-invitations/** only through the Family invitation writer lease"
@@ -349,7 +351,34 @@
     ],
     "changeMap": [
       "docs/VEX-FAMILY-INVITATIONS.md",
-      "future Join orchestration consumer only after this owner is accepted"
+      "module.vexlife.core.family-join-runtime"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.family-join-runtime",
+    "path": "src/core/family-join-runtime.mjs",
+    "role": "Owner-aligned server-side Join orchestrator that consumes accepted invitation, Host principal-binding, Family Space, Family Conversation and Conversation Store owners to admit one invitee exactly once, recover only the exact invitation-bound N-to-N+1 add, materialize the deterministic successor GROUP channel, and finalize invitation ACCEPTED without becoming a second canonical store.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.family-invitation-store",
+      "module.vexlife.core.family-host-runtime",
+      "module.vexlife.core.family-space-store",
+      "module.vexlife.core.family-membership-runtime",
+      "src/core/family-conversation.mjs",
+      "module.vexlife.core.conversation-store",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [
+      "Vex Home family-spaces/** only through module.vexlife.core.family-space-store",
+      "Vex Home conversations/channels/** only through module.vexlife.core.conversation-store",
+      "Vex Home family-invitations/** only through module.vexlife.core.family-invitation-store"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/vex-family-join-runtime.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEX-FAMILY-INVITATIONS.md"
     ]
   }
 ]
