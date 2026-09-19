@@ -54,6 +54,10 @@ import {
   readBrowserFamilyConversation
 } from '../src/core/browser-family-conversation-bridge.mjs';
 import {
+  BrowserFamilyLifecycleBridgeError,
+  executeBrowserFamilyLifecycle
+} from '../src/core/browser-family-lifecycle-bridge.mjs';
+import {
   ConversationStoreError,
   listConversationChannelBindings,
   readConversationChannelBinding
@@ -68,12 +72,16 @@ export const BROWSER_RELATIONSHIPS_PERSISTENCE_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_LIST_MAX = 256;
 export const BROWSER_FAMILY_CONVERSATION_API_PATH = '/api/v1/family/conversation';
 export const BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH = '/api/v1/family/bootstrap';
+export const BROWSER_FAMILY_LIFECYCLE_API_PATH = '/api/v1/family/lifecycle';
 export const BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA = 'vexlife.browser-family-room-bootstrap/v1';
 export const BROWSER_FAMILY_CONVERSATION_MAX_BODY_BYTES = 16 * 1024;
+export const BROWSER_FAMILY_LIFECYCLE_MAX_BODY_BYTES = 8 * 1024;
 export const BROWSER_FAMILY_CONVERSATION_LIST_MAX = 1000;
 const RELATIONSHIPS_PERSISTENCE_REQUEST_KEYS = new Set(['localOwnerBinding', 'input']);
 const FAMILY_CONVERSATION_REQUEST_KEYS = new Set(['operation', 'intent']);
 const FAMILY_CONVERSATION_OPERATIONS = new Set(['APPEND', 'READ', 'LIST']);
+const FAMILY_LIFECYCLE_REQUEST_KEYS = new Set(['operation', 'intent']);
+const FAMILY_LIFECYCLE_OPERATIONS = new Set(['HOST', 'JOIN', 'LEAVE']);
 
 function readRelationshipsRuntimeSourceJson(sourceRoot, relativePath, label) {
   const file = path.resolve(sourceRoot, relativePath);
@@ -342,6 +350,120 @@ function admitFamilyConversationRequest(value) {
     throw familyConversationRequestError('Family conversation intent must be one object');
   }
   return Object.freeze({ operation: value.operation, intent: value.intent });
+}
+
+function familyLifecycleRequestError(message, httpStatus = 400) {
+  return new BrowserFamilyLifecycleBridgeError(
+    'FAMILY_LIFECYCLE_REQUEST_NOT_ADMITTED',
+    message,
+    httpStatus
+  );
+}
+
+function admitFamilyLifecycleRequest(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw familyLifecycleRequestError('Family lifecycle request must be one object');
+  }
+  const keys = Object.keys(value);
+  if (
+    keys.length !== FAMILY_LIFECYCLE_REQUEST_KEYS.size
+    || keys.some((key) => !FAMILY_LIFECYCLE_REQUEST_KEYS.has(key))
+  ) {
+    throw familyLifecycleRequestError('Family lifecycle request must contain only operation and intent');
+  }
+  if (!FAMILY_LIFECYCLE_OPERATIONS.has(value.operation)) {
+    throw familyLifecycleRequestError('Family lifecycle operation is not admitted');
+  }
+  if (!value.intent || typeof value.intent !== 'object' || Array.isArray(value.intent)) {
+    throw familyLifecycleRequestError('Family lifecycle intent must be one object');
+  }
+  return Object.freeze({ operation: value.operation, intent: value.intent });
+}
+
+function familyLifecycleHttpStatus(error) {
+  if (Number.isInteger(error?.httpStatus)) return error.httpStatus;
+  if (error instanceof BrowserFamilyLifecycleBridgeError) return 409;
+  return 500;
+}
+
+function familyLifecycleFailurePayload(error) {
+  if (error instanceof BrowserFamilyLifecycleBridgeError) {
+    return Object.freeze({
+      schemaVersion: 'vexlife.browser-family-lifecycle-http-failure/v1',
+      state: 'HELD_FAMILY_LIFECYCLE_FAILURE',
+      failureCode: error.code,
+      message: error.message
+    });
+  }
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-family-lifecycle-http-failure/v1',
+    state: 'HELD_FAMILY_LIFECYCLE_FAILURE',
+    failureCode: 'FAMILY_LIFECYCLE_SERVER_FAILED',
+    message: 'Family lifecycle request failed safely'
+  });
+}
+
+async function currentFamilyLifecycleAuthority(resolveAuthority, request, admitted) {
+  if (typeof resolveAuthority !== 'function') {
+    throw new BrowserFamilyLifecycleBridgeError(
+      'FAMILY_LIFECYCLE_AUTHORITY_UNAVAILABLE',
+      'Family lifecycle requires a server-owned authenticated authority resolver',
+      503
+    );
+  }
+  let authority;
+  try {
+    authority = await resolveAuthority(Object.freeze({
+      request,
+      operation: admitted.operation,
+      intent: admitted.intent
+    }));
+  } catch {
+    throw new BrowserFamilyLifecycleBridgeError(
+      'FAMILY_LIFECYCLE_AUTHORITY_UNAVAILABLE',
+      'Family lifecycle authenticated authority is unavailable',
+      503
+    );
+  }
+  if (!authority || typeof authority !== 'object' || Array.isArray(authority)) {
+    throw new BrowserFamilyLifecycleBridgeError(
+      'FAMILY_LIFECYCLE_AUTHORITY_UNAVAILABLE',
+      'Family lifecycle authenticated authority is unavailable',
+      503
+    );
+  }
+  return authority;
+}
+
+async function performFamilyLifecycleHttpRequest({
+  request,
+  familyHome,
+  resolveAuthority,
+  nowProvider,
+  instanceRef
+}) {
+  const admitted = admitFamilyLifecycleRequest(await readBoundedJson(request, {
+    maxBytes: BROWSER_FAMILY_LIFECYCLE_MAX_BODY_BYTES,
+    formError: familyLifecycleRequestError,
+    requestLabel: 'Family lifecycle request'
+  }));
+  const authority = await currentFamilyLifecycleAuthority(resolveAuthority, request, admitted);
+  const now = currentFamilyConversationTime(nowProvider);
+  if (typeof instanceRef !== 'string' || instanceRef.length === 0) {
+    throw new BrowserFamilyLifecycleBridgeError(
+      'FAMILY_LIFECYCLE_SERVER_INSTANCE_UNAVAILABLE',
+      'Family lifecycle server writer identity is unavailable',
+      503
+    );
+  }
+  return executeBrowserFamilyLifecycle({
+    home: familyHome,
+    operation: admitted.operation,
+    intent: admitted.intent,
+    currentAuthorityProjection: authority,
+    observedAt: now,
+    instanceRef
+  });
 }
 
 function familyConversationHttpStatus(error) {
@@ -689,6 +811,10 @@ export function createVexLifeBrowserServer({
   resolveFamilyConversationAuthority = null,
   familyConversationNow = () => new Date().toISOString(),
   familyConversationInstanceRef = 'instance.vexlife.browser-family-server',
+  familyLifecycleHome = home,
+  resolveFamilyLifecycleAuthority = null,
+  familyLifecycleNow = () => new Date().toISOString(),
+  familyLifecycleInstanceRef = 'instance.vexlife.browser-family-lifecycle',
   resolveFamilyWorkProjection = null
 } = {}) {
   return http.createServer(async (request, response) => {
@@ -814,6 +940,27 @@ export function createVexLifeBrowserServer({
               null
             );
           sendJson(response, typed.httpStatus, browserRelationshipsRuntimeFailurePayload(typed));
+        }
+        return;
+      }
+
+      if (url.pathname === BROWSER_FAMILY_LIFECYCLE_API_PATH) {
+        if (request.method !== 'POST') {
+          response.writeHead(405, { Allow: 'POST', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const result = await performFamilyLifecycleHttpRequest({
+            request,
+            familyHome: familyLifecycleHome,
+            resolveAuthority: resolveFamilyLifecycleAuthority,
+            nowProvider: familyLifecycleNow,
+            instanceRef: familyLifecycleInstanceRef
+          });
+          sendJson(response, 200, result);
+        } catch (error) {
+          sendJson(response, familyLifecycleHttpStatus(error), familyLifecycleFailurePayload(error));
         }
         return;
       }

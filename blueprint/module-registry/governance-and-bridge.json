@@ -380,5 +380,35 @@
     "changeMap": [
       "docs/VEX-FAMILY-INVITATIONS.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.browser-family-lifecycle-bridge",
+    "path": "src/core/browser-family-lifecycle-bridge.mjs",
+    "role": "Server-owned Family lifecycle composition for Host, Join and self-Leave that derives protected identity/currentness/channel inputs from accepted owners rather than browser authority.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.family-host-runtime",
+      "module.vexlife.core.family-join-runtime",
+      "module.vexlife.core.family-membership-runtime",
+      "module.vexlife.core.family-invitation-store",
+      "module.vexlife.core.family-space-store",
+      "module.vexlife.core.conversation-store"
+    ],
+    "writes": [
+      "Vex Home family-spaces/** only through accepted Family Host/Join/Leave owners",
+      "Vex Home conversations/channels/** only through accepted Family Conversation/Conversation Store owners",
+      "Vex Home family-invitations/** only through module.vexlife.core.family-invitation-store"
+    ],
+    "loadedBy": [
+      "scripts/serve-browser-core.mjs"
+    ],
+    "tests": [
+      "test/browser-family-lifecycle-bridge.test.mjs",
+      "test/browser-family-lifecycle-http-route.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEX-FAMILY-LIFECYCLE-BRIDGE.md",
+      "scripts/serve-browser-core.mjs"
+    ]
   }
 ]
