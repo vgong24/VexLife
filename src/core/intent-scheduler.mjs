@@ -1662,10 +1662,10 @@ export class SingleWorkerIntentScheduler {
       if (!(priorEpoch < dueEpoch && restoreEpoch >= dueEpoch)) continue;
       if (reconciledRefs.has(due.dueRef)) throw new Error('scheduler missed-host due was already reconciled');
       const transitioned = evolveSchedulerDueRecord(due, { lifecycle: 'DUE', currentness: 'CURRENT', observedAt: restoreObservedAt });
-      const transition = buildSchedulerDueTransition(working, 'DUE_REACHED', due, transitioned, restoreObservedAt, input.sourceRefs ?? due.sourceRefs);
+      const transition = buildSchedulerDueTransition(working, 'DUE_REACHED', due, transitioned, restoreObservedAt, due.sourceRefs);
       dueTransitions.push(transition);
       reconciliations.push(buildMissedHostReconciliation(due, transitioned, {
-        priorObservedAt, restoreObservedAt, sourceRefs: input.sourceRefs ?? due.sourceRefs
+        priorObservedAt, restoreObservedAt, sourceRefs: due.sourceRefs
       }));
       working = { ...working, dueTransitionLedger: [...(working.dueTransitionLedger ?? []), transition] };
     }
