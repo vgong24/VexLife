@@ -20,6 +20,15 @@ const experienceFoundation = JSON.parse(fs.readFileSync(
   'utf8'
 ));
 
+const capabilityRegistry = JSON.parse(fs.readFileSync(
+  new URL('../blueprint/capability-registry.json', import.meta.url),
+  'utf8'
+));
+const conversationSource = fs.readFileSync(
+  new URL('../src/core/conversation.mjs', import.meta.url),
+  'utf8'
+);
+
 const currentFrameRef = 'frame.browser.screen.vexlife.terrain.route.terrain';
 const helpProposal = buildGuidanceProposal({
   proposalRef: 'proposal.efx02.current.terrain-help',
@@ -527,6 +536,81 @@ test('EFX02-15 is deterministic, deeply immutable, content-addressed, and perfor
     'networkEffect',
     'persistenceEffect'
   ]);
+});
+
+
+test('FTA-02/03/04 /announce is one source-managed no-effect command identity without message delivery', () => {
+  const projection = slash({
+    kind: 'KNOWN_COMMAND',
+    command: '/announce',
+    suggestion: null
+  });
+  assert.equal(projection.routeDisposition, 'REGISTERED_COMMAND_PROJECTED');
+  assert.equal(projection.commandProjectionOrNull.commandRef, 'command.vexlife.announce');
+  assert.equal(projection.commandProjectionOrNull.capabilityRef, 'conversation.announce');
+  assert.equal(projection.commandProjectionOrNull.projectedLiteralOrNull, '/announce');
+  assert.equal(projection.commandProjectionOrNull.actionRefOrNull, null);
+  assert.equal(projection.commandProjectionOrNull.processRefOrNull, null);
+  assert.equal(projection.commandProjectionOrNull.permissionGranted, false);
+  assert.equal(projection.commandProjectionOrNull.executionRequested, false);
+  assert.equal(projection.commandProjectionOrNull.executionPerformed, false);
+  assert.equal(projection.boundaries.announceCommandIdentityMeansMessageDelivery, false);
+  assert.equal(projection.effectEvidence.modelTurnRequested, false);
+  assert.equal(projection.effectEvidence.modelTurnCreated, false);
+  assert.equal(projection.effectEvidence.persistenceEffect, false);
+  assert.equal(projection.effectEvidence.networkEffect, false);
+  assert.throws(() => slash({
+    kind: 'KNOWN_COMMAND',
+    command: '/announce',
+    suggestion: null
+  }, { requestOverrides: { message: 'raw human announcement text must not enter classification' } }), /cannot contain/);
+  assert.equal(JSON.stringify(projection).includes('raw human announcement text'), false);
+});
+
+test('FTA-05 conversation.announce is generic requestable vocabulary and claims no executable send action', () => {
+  const capability = capabilityRegistry.capabilities.find(
+    (item) => item.capabilityRef === 'conversation.announce'
+  );
+  assert.ok(capability);
+  assert.equal(capability.defaultStage, 'REQUESTABLE');
+  assert.deepEqual(capability.actionRefs, []);
+  assert.equal(capability.permissionRef, 'permission.none');
+  assert.equal(capability.effectClass, 'CONVERSATION_ANNOUNCEMENT_REQUEST');
+  assert.equal(JSON.stringify(capability).toLowerCase().includes('family'), false);
+  assert.equal(JSON.stringify(capability).includes('action.conversation.send'), false);
+});
+
+test('FTA-06 the five prior accepted command bindings remain byte-semantically unchanged in identity', () => {
+  const expected = [
+    ['command.vexlife.describe', 'capability.describe', '/describe'],
+    ['command.vexlife.help', 'help.render', '/help'],
+    ['command.vexlife.resolve-process', 'process.resolve', '/resolve'],
+    ['command.vexlife.search', 'capability.search', '/search'],
+    ['command.vexlife.where', 'context.where', '/where']
+  ];
+  assert.equal(experienceFoundation.commandBindings.length, 6);
+  for (const [commandRef, capabilityRef, alias] of expected) {
+    const binding = experienceFoundation.commandBindings.find((item) => item.commandRef === commandRef);
+    assert.ok(binding, commandRef);
+    assert.equal(binding.capabilityRef, capabilityRef);
+    assert.equal(binding.actionRefOrNull, null);
+    assert.equal(binding.processRefOrNull, null);
+    assert.deepEqual(binding.aliases, [{
+      literal: alias,
+      formRef: EXPERIENCE_COMMAND_SLASH_FORM_REF
+    }]);
+  }
+});
+
+test('FTA-07/08 Conversation acknowledgement semantics remain source-owned and distinct', () => {
+  assert.match(
+    conversationSource,
+    /const ACKNOWLEDGEMENT_STATES = new Set\(\['NOT_REQUESTED', 'PENDING', 'ACKNOWLEDGED', 'UNKNOWN'\]\);/
+  );
+  assert.match(conversationSource, /cannot acknowledge before delivery/);
+  assert.match(conversationSource, /cannot record understanding before acknowledgement/);
+  assert.equal(conversationSource.includes('acceptedAssignment'), false);
+  assert.equal(conversationSource.includes('assignmentRef'), false);
 });
 
 // [VXG RealForever][EFX-02]

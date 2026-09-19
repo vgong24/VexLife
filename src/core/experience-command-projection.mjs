@@ -27,6 +27,11 @@ const EXPERIENCE_COMMAND_OPERATOR_PLATFORM_REFS = Object.freeze([
 ]);
 const EXPERIENCE_COMMAND_OWNER_CONTRACT = Object.freeze([
   Object.freeze({
+    commandRef: 'command.vexlife.announce',
+    capabilityRef: 'conversation.announce',
+    alias: '/announce'
+  }),
+  Object.freeze({
     commandRef: 'command.vexlife.describe',
     capabilityRef: 'capability.describe',
     alias: '/describe'
@@ -53,6 +58,7 @@ const EXPERIENCE_COMMAND_OWNER_CONTRACT = Object.freeze([
   })
 ]);
 const REQUIRED_NON_COLLAPSE_RULES = Object.freeze([
+  'ANNOUNCE_COMMAND_IDENTITY != MESSAGE_DELIVERY',
   'COMMAND_BINDING != EFFECT_AUTHORITY',
   'SLASH_STRING != COMMAND_IDENTITY',
   'SLASH_STRING != HUMAN_MESSAGE',
@@ -458,6 +464,7 @@ export function projectExperienceCommand({
       unknownCommandCreatesModelTurn: false,
       notCommandGrantsOrdinaryMessageAuthority: false,
       commandBindingGrantsEffectAuthority: false,
+      announceCommandIdentityMeansMessageDelivery: false,
       modelToolFormGrantsSemanticAction: false,
       guidanceRelevanceGrantsCommandPermission: false,
       privateHumanMemoryProjected: false

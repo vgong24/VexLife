@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { Atlas } from '../src/core/atlas.mjs';
 import { buildIdentityIndex, loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
 import {
+  acceptIntentAssignment,
   appendReceipt,
   cancelIntentBranch,
   createIntentEnvelope,
@@ -252,6 +253,19 @@ function authorization() {
     effectDisposition: 'EFFECT_ENVELOPE_BOUND',
     effectEnvelopeRef: 'effect-envelope.authorization.test',
     decisionRef: 'decision.authorization.test'
+  };
+}
+
+function assignment(workNodeRef, overrides = {}) {
+  return {
+    assignmentRef: `assignment.${workNodeRef}`,
+    sourceIntentRef: 'intent.test.root',
+    workNodeRef,
+    assigneeRef: 'person.test.assignee',
+    acceptingActorRef: 'person.test.human',
+    acceptedAt: '2026-07-31T00:00:04.000Z',
+    sourceRefs: ['source.assignment.test'],
+    ...overrides
   };
 }
 
@@ -708,6 +722,157 @@ test('T15 full gate and supported manifest registrations remain source-managed',
   assert.ok(['vexlife.source-manifest/v2', 'vexlife.source-manifest/v3'].includes(manifest.schemaVersion));
   assert.equal(fs.existsSync(path.join(root, 'scripts/intent-check.mjs')), true);
   assert.equal(fs.existsSync(path.join(root, 'blueprint/intent-trust-snapshot.json')), true);
+});
+
+
+test('FTA-09 accepted assignment is first-class, source-managed, immutable, and separately fingerprinted', () => {
+  const work = node('work.test.assignment-first-class');
+  const candidate = graph([work], { proposedPlans: [plan()] });
+  assert.equal(Object.hasOwn(candidate, 'acceptedAssignments'), false);
+  const accepted = acceptIntentAssignment(candidate, assignment(work.workNodeRef), registry);
+  assert.equal(accepted.changed, true);
+  assert.equal(accepted.assignment.assignmentState, 'CURRENT');
+  assert.equal(accepted.assignment.acceptanceBasis, 'ORIGINATING_HUMAN_ACCEPTED');
+  assert.equal(accepted.assignment.authorityDisposition, 'NO_AUTHORITY');
+  assert.equal(accepted.assignment.effectDisposition, 'NO_EFFECTS');
+  assert.equal(accepted.graph.acceptedAssignments.length, 1);
+  assert.equal(isDeeplyFrozen(accepted.graph), true);
+  assert.notEqual(accepted.graph.semanticFingerprint, candidate.semanticFingerprint);
+  assert.equal(validate(accepted.graph).state, 'PLAN_VALIDATED');
+});
+
+test('FTA-10 a proposed plan or untrusted model actor alone cannot create accepted assignment', () => {
+  const work = node('work.test.assignment-no-model');
+  const planned = graph([work], { proposedPlans: [plan()] });
+  assert.equal(Object.hasOwn(planned, 'acceptedAssignments'), false);
+  assert.throws(
+    () => acceptIntentAssignment(planned, assignment(work.workNodeRef, {
+      acceptingActorRef: 'vex.test'
+    }), registry),
+    /originating human|bounded authorized actor/
+  );
+});
+
+test('FTA-11 assignment binds exact current work node, scalar assignee, and accepting human or authorized actor', () => {
+  const work = node('work.test.assignment-binding');
+  const authorized = {
+    ...authorization(),
+    authorizationRef: 'authorization.test.assignment-acceptor',
+    actorRef: 'vex.authorized.assignment',
+    decisionRef: 'decision.authorization.assignment',
+    effectEnvelopeRef: 'effect-envelope.authorization.assignment'
+  };
+  const candidate = graph([work], { authorizations: [authorized] });
+  const accepted = acceptIntentAssignment(candidate, assignment(work.workNodeRef, {
+    acceptingActorRef: authorized.actorRef
+  }), registry);
+  assert.equal(accepted.assignment.workNodeRef, work.workNodeRef);
+  assert.equal(accepted.assignment.assigneeRef, 'person.test.assignee');
+  assert.equal(accepted.assignment.acceptingActorRef, authorized.actorRef);
+  assert.equal(accepted.assignment.acceptanceBasis, 'AUTHORIZED_ACTOR_ACCEPTED');
+
+  assert.throws(() => acceptIntentAssignment(candidate, assignment('work.test.absent'), registry), /absent work node/);
+  assert.throws(() => acceptIntentAssignment(candidate, assignment(work.workNodeRef, {
+    sourceIntentRef: 'intent.test.other'
+  }), registry), /sourceIntentRef must match/);
+  assert.throws(() => acceptIntentAssignment(candidate, assignment(work.workNodeRef, {
+    assigneeRef: ['person.test.a', 'person.test.b']
+  }), registry), /assigneeRef must be one stable scalar ref/);
+
+  const settled = graph([node('work.test.assignment-settled', { state: 'COMPLETED' })]);
+  assert.throws(
+    () => acceptIntentAssignment(settled, assignment('work.test.assignment-settled'), registry),
+    /is not current in state COMPLETED/
+  );
+});
+
+test('FTA-12 duplicate or conflicting current assignment fails closed', () => {
+  const work = node('work.test.assignment-conflict');
+  const candidate = graph([work]);
+  const first = acceptIntentAssignment(candidate, assignment(work.workNodeRef), registry);
+  assert.throws(
+    () => acceptIntentAssignment(first.graph, assignment(work.workNodeRef), registry),
+    /duplicate accepted assignment ref/
+  );
+  assert.throws(
+    () => acceptIntentAssignment(first.graph, assignment(work.workNodeRef, {
+      assignmentRef: 'assignment.work.test.assignment-conflict.second',
+      assigneeRef: 'person.test.other-assignee'
+    }), registry),
+    /conflicting current assignment/
+  );
+});
+
+test('FTA-13 settled, cancelled, or superseded work cannot retain a false current assignment', () => {
+  const work = node('work.test.assignment-lifecycle', { state: 'READY' });
+  const candidate = acceptIntentAssignment(graph([work]), assignment(work.workNodeRef), registry).graph;
+  const cancelled = recordIntentTransition(candidate, {
+    transitionRef: 'transition.test.assignment.cancel',
+    workNodeRef: work.workNodeRef,
+    priorState: 'READY',
+    nextState: 'CANCELLED',
+    reason: 'assignment owner cancelled work',
+    actorRef: 'person.test.human',
+    actorRoleRef: 'role.vex.operations',
+    processRef: 'process.vexlife.intent.converge-parent',
+    sourceRefs: ['source.assignment.cancel'],
+    createdAt: '2026-07-31T00:05:00.000Z'
+  }, registry).graph;
+  assert.equal(cancelled.acceptedAssignments[0].assignmentState, 'SETTLED');
+  assert.equal(cancelled.acceptedAssignments[0].settledByWorkStateOrNull, 'CANCELLED');
+
+  const verifying = node('work.test.assignment-complete', { state: 'VERIFYING' });
+  const assigned = acceptIntentAssignment(graph([verifying]), assignment(verifying.workNodeRef), registry).graph;
+  const completed = recordIntentTransition(assigned, {
+    transitionRef: 'transition.test.assignment.complete',
+    workNodeRef: verifying.workNodeRef,
+    priorState: 'VERIFYING',
+    nextState: 'COMPLETED',
+    reason: 'work proof completed independently of assignment',
+    actorRef: 'vex.test',
+    actorRoleRef: 'role.vex.developer',
+    processRef: 'process.vexlife.intent.verify-transition',
+    sourceRefs: ['source.assignment.complete'],
+    createdAt: '2026-07-31T00:06:00.000Z'
+  }, registry).graph;
+  assert.equal(completed.acceptedAssignments[0].assignmentState, 'SETTLED');
+  assert.equal(completed.acceptedAssignments[0].settledByWorkStateOrNull, 'COMPLETED');
+
+  const superseded = recordIntentTransition(completed, {
+    transitionRef: 'transition.test.assignment.supersede',
+    workNodeRef: verifying.workNodeRef,
+    priorState: 'COMPLETED',
+    nextState: 'SUPERSEDED',
+    reason: 'later accepted work superseded settled node',
+    actorRef: 'person.test.human',
+    actorRoleRef: 'role.vex.operations',
+    processRef: 'process.vexlife.intent.converge-parent',
+    sourceRefs: ['source.assignment.supersede'],
+    createdAt: '2026-07-31T00:07:00.000Z'
+  }, registry).graph;
+  assert.notEqual(superseded.acceptedAssignments[0].assignmentState, 'CURRENT');
+});
+
+test('FTA-14 accepted assignment creates neither completion receipt nor implicit effect authority', () => {
+  const work = node('work.test.assignment-no-effect');
+  const candidate = graph([work]);
+  const accepted = acceptIntentAssignment(candidate, assignment(work.workNodeRef), registry);
+  assert.equal(accepted.graph.receipts.length, 0);
+  assert.equal(accepted.assignment.authorityDisposition, 'NO_AUTHORITY');
+  assert.equal(accepted.assignment.effectDisposition, 'NO_EFFECTS');
+  assert.equal(Object.hasOwn(accepted.assignment, 'effectEnvelopeRef'), false);
+  assert.equal(Object.hasOwn(accepted.assignment, 'completionReceiptRef'), false);
+  assert.equal(accepted.graph.nodes[0].state, work.state);
+});
+
+test('FTA-15 prior Intent Workgraphs remain validator-compatible and fingerprint-stable when no assignment exists', () => {
+  const work = node('work.test.assignment-compat');
+  const first = graph([work]);
+  const second = graph([work]);
+  assert.equal(Object.hasOwn(first, 'acceptedAssignments'), false);
+  assert.equal(first.semanticFingerprint, second.semanticFingerprint);
+  assert.equal(validate(first).state, 'PLAN_VALIDATED');
+  assert.equal(validate(second).state, 'PLAN_VALIDATED');
 });
 
 // [VXG RealForever]
