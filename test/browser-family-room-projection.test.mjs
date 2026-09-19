@@ -589,7 +589,8 @@ test('VF07C1-06 real same-origin Host/Join/Leave consumes the accepted server li
   assert.equal(hosted.ok, true);
   const spaceRef = hosted.body.result.spaceRef;
   assert.match(spaceRef, /^space\.vex\.family\./u);
-  assert.equal(controller.snapshot().state, 'CURRENT');
+  assert.equal(controller.snapshot().state, 'EMPTY');
+  assert.deepEqual(controller.snapshot().rooms, []);
   assert.equal(controller.snapshot().currentPrincipalRef, PRINCIPAL);
 
   const family = readFamilySpace({ home, spaceRef }).record;
