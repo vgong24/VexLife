@@ -428,12 +428,7 @@ export function formIntentStewardshipRequestProjection(graph, options = {}) {
     SDK_PROCESS_SOURCE_REF
   ]);
   const materialUnknownRefs = canonicalRefs([
-    ...(semanticEvidence.continuity.materialUnknownRefs ?? []),
-    ...(semanticEvidence.outcome.intentSatisfied ? [] : (
-      semanticEvidence.outcome.intentSatisfactionEvidenceRefOrNull
-        ? []
-        : ['missing-producer.intent.stewardship.root-intent-satisfaction']
-    ))
+    ...(semanticEvidence.continuity.materialUnknownRefs ?? [])
   ]);
   const requestDraft = {
     schemaVersion:SDK_REQUEST_SCHEMA,
