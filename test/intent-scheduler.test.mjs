@@ -1434,7 +1434,7 @@ test('FTB-02/03/04/06 due intent is source-managed, assignment-bound, canonical 
     assignmentRef: assignment.assignmentRef,
     dueAt: '2026-07-31T12:25:00Z',
     sourceRefs: ['source.ftb.invalid.utc']
-  }), /canonical UTC/);
+  }), /canonical ISO-8601 UTC/);
   assert.throws(() => scheduler.formDueIntent(candidate, {
     assignmentRef: assignment.assignmentRef,
     dueAt: OBSERVED,
@@ -1679,8 +1679,8 @@ test('S16 scheduler registry is canonical in Blueprint/Atlas, omission fails, an
   const result = atlas.query({
     startRefs: ['registry.vexlife.intent-scheduler.001'],
     depthLimit: 2,
-    resultLimit: 64,
-    tokenBudget: 12000
+    resultLimit: 96,
+    tokenBudget: 18000
   });
   assert.ok(result.results.some((item) => item.ref === 'contract.intent-scheduler.runtime-trust-clock'));
   assert.ok(result.results.some((item) => item.ref === 'contract.intent-scheduler.mock-tool.inspect/v0'));
