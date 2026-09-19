@@ -9,6 +9,12 @@
       "sha256": "c4364d889ba4ff14f16ca6c622893c44c58a2b3b304989dbf4dec0b9ab9c9c5e"
     },
     {
+      "path": "docs/VEX-FAMILY-LIFECYCLE-BRIDGE.md",
+      "mode": "100644",
+      "bytes": 3105,
+      "sha256": "a692d0b4ff8d1620fff3b5d02516fb8288fbe64a653ca3a20222c7ee9013e78a"
+    },
+    {
       "path": "reference/browser/integration/cross-feature-suite.js",
       "mode": "100644",
       "bytes": 10837,
