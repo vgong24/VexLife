@@ -1110,6 +1110,195 @@ function compactPendingRootState(aggregate) {
   };
 }
 
+const DUE_TERMINAL_LIFECYCLES = new Set(['SUPERSEDED', 'CANCELLED', 'SETTLED']);
+
+function validateSchedulerDueRecord(record, schedulerRegistry) {
+  const contract = schedulerRegistry?.dueIntentContract;
+  const requiredFields = contract?.requiredFields ?? [
+    'dueRef', 'assignmentRef', 'assignmentFingerprint', 'sourceIntentRef', 'workNodeRef',
+    'assigneeRef', 'graphFingerprint', 'dueAt', 'formedAt', 'observedAt', 'sourceRefs',
+    'currentness', 'lifecycle', 'semanticFingerprint'
+  ];
+  const missing = requiredFields.filter((field) =>
+    record?.[field] === undefined || record?.[field] === null || record?.[field] === ''
+  );
+  if (missing.length) throw new Error(`scheduler due record missing required fields: ${missing.join(', ')}`);
+  const candidate = clone(record);
+  const fingerprint = candidate.semanticFingerprint;
+  delete candidate.semanticFingerprint;
+  if (semanticHash(candidate) !== fingerprint) throw new Error('scheduler due record semantic fingerprint mismatch');
+  for (const field of ['dueRef', 'assignmentRef', 'sourceIntentRef', 'workNodeRef', 'assigneeRef', 'graphFingerprint']) {
+    if (typeof record[field] !== 'string' || record[field].trim().length === 0 || /\s/u.test(record[field])) {
+      throw new Error(`scheduler due record ${field} must be one stable scalar ref`);
+    }
+  }
+  if (!Array.isArray(record.sourceRefs) || record.sourceRefs.length === 0 ||
+      record.sourceRefs.some((item) => typeof item !== 'string' || !item)) {
+    throw new Error('scheduler due record sourceRefs must be non-empty stable refs');
+  }
+  for (const field of ['dueAt', 'formedAt', 'observedAt']) {
+    const epoch = parseCanonicalTimestamp(record[field], `scheduler due ${field}`);
+    if (new Date(epoch).toISOString() !== record[field]) {
+      throw new Error(`scheduler due ${field} must be canonical UTC`);
+    }
+  }
+  if (!['CURRENT', 'TERMINAL'].includes(record.currentness)) throw new Error('scheduler due currentness is invalid');
+  if (!['SCHEDULED', 'DUE', 'SUPERSEDED', 'CANCELLED', 'SETTLED'].includes(record.lifecycle)) {
+    throw new Error('scheduler due lifecycle is invalid');
+  }
+  const formedEpoch = parseCanonicalTimestamp(record.formedAt, 'scheduler due formedAt');
+  const observedEpoch = parseCanonicalTimestamp(record.observedAt, 'scheduler due observedAt');
+  const dueEpoch = parseCanonicalTimestamp(record.dueAt, 'scheduler due dueAt');
+  if (formedEpoch > observedEpoch) {
+    throw new Error('scheduler due formedAt cannot be later than observedAt');
+  }
+  if (record.lifecycle === 'SCHEDULED' && dueEpoch <= observedEpoch) {
+    throw new Error('scheduled dueAt must remain later than observedAt');
+  }
+  if (DUE_TERMINAL_LIFECYCLES.has(record.lifecycle) !== (record.currentness === 'TERMINAL')) {
+    throw new Error('scheduler due lifecycle/currentness mismatch');
+  }
+  return record;
+}
+
+function validateSchedulerDueTransition(transition, index, priorTransition, schedulerRegistry) {
+  if (!transition || transition.schemaVersion !== 'vexlife.intent-scheduler-due-transition/v1' ||
+      !transition.transitionRef || !transition.transitionType || !transition.dueRef ||
+      !Number.isInteger(transition.sequence) || transition.sequence !== index ||
+      transition.priorTransitionFingerprint !== (priorTransition?.semanticFingerprint ?? null) ||
+      !Array.isArray(transition.sourceRefs) || !transition.observedAt || !transition.nextDue) {
+    throw new Error('scheduler due transition is malformed or out of sequence');
+  }
+  const candidate = clone(transition);
+  const fingerprint = candidate.semanticFingerprint;
+  delete candidate.semanticFingerprint;
+  if (semanticHash(candidate) !== fingerprint) throw new Error('scheduler due transition semantic fingerprint mismatch');
+  parseCanonicalTimestamp(transition.observedAt, 'scheduler due transition observedAt');
+  validateSchedulerDueRecord(transition.nextDue, schedulerRegistry);
+  if (transition.nextDue.dueRef !== transition.dueRef) throw new Error('scheduler due transition ref binding mismatch');
+  return transition;
+}
+
+function replaySchedulerDueLedger(ledger = [], schedulerRegistry = null) {
+  if (!Array.isArray(ledger)) throw new Error('scheduler due transition ledger must be an array');
+  const records = new Map();
+  let priorTransition = null;
+  for (const [index, transition] of ledger.entries()) {
+    validateSchedulerDueTransition(transition, index, priorTransition, schedulerRegistry);
+    const prior = records.get(transition.dueRef) ?? null;
+    if (transition.transitionType === 'FORMED') {
+      if (prior || transition.priorDueFingerprint !== null || transition.nextDue.lifecycle !== 'SCHEDULED' ||
+          transition.nextDue.currentness !== 'CURRENT') {
+        throw new Error('scheduler due formation transition is conflicting or malformed');
+      }
+      const live = [...records.values()].filter((item) => item.currentness === 'CURRENT');
+      if (live.some((item) =>
+        item.assignmentRef === transition.nextDue.assignmentRef ||
+        item.workNodeRef === transition.nextDue.workNodeRef)) {
+        throw new Error('scheduler due formation conflicts with an existing current due');
+      }
+    } else {
+      if (!prior || prior.currentness !== 'CURRENT' ||
+          transition.priorDueFingerprint !== prior.semanticFingerprint) {
+        throw new Error('scheduler due transition does not bind the exact current due');
+      }
+      for (const field of ['assignmentRef', 'assignmentFingerprint', 'sourceIntentRef', 'workNodeRef', 'assigneeRef']) {
+        if (prior[field] !== transition.nextDue[field]) {
+          throw new Error(`scheduler due transition changed immutable ${field}`);
+        }
+      }
+      if (transition.transitionType === 'DUE_REACHED') {
+        if (prior.lifecycle !== 'SCHEDULED' || transition.nextDue.lifecycle !== 'DUE' ||
+            transition.nextDue.currentness !== 'CURRENT') {
+          throw new Error('scheduler due-reached transition is invalid');
+        }
+      } else if (transition.transitionType === 'SUPERSEDED') {
+        if (transition.nextDue.lifecycle !== 'SUPERSEDED' || transition.nextDue.currentness !== 'TERMINAL') {
+          throw new Error('scheduler due supersession transition is invalid');
+        }
+      } else if (transition.transitionType === 'CANCELLED') {
+        if (transition.nextDue.lifecycle !== 'CANCELLED' || transition.nextDue.currentness !== 'TERMINAL') {
+          throw new Error('scheduler due cancellation transition is invalid');
+        }
+      } else if (transition.transitionType === 'SETTLED') {
+        if (transition.nextDue.lifecycle !== 'SETTLED' || transition.nextDue.currentness !== 'TERMINAL') {
+          throw new Error('scheduler due settlement transition is invalid');
+        }
+      } else {
+        throw new Error(`unknown scheduler due transition ${transition.transitionType}`);
+      }
+    }
+    records.set(transition.dueRef, clone(transition.nextDue));
+    priorTransition = transition;
+  }
+  return [...records.values()].sort((left, right) => left.dueRef.localeCompare(right.dueRef));
+}
+
+function validateMissedHostReconciliationLedger(reconciliations = [], dueRecords = []) {
+  if (!Array.isArray(reconciliations)) throw new Error('scheduler missed-host reconciliation ledger must be an array');
+  const seen = new Set();
+  const dueByRef = new Map(dueRecords.map((item) => [item.dueRef, item]));
+  for (const receipt of reconciliations) {
+    if (!receipt || receipt.schemaVersion !== 'vexlife.intent-scheduler-missed-host-reconciliation/v1' ||
+        !receipt.reconciliationRef || !receipt.dueRef ||
+        receipt.reconciliationClass !== 'DUE_ELAPSED_ACROSS_SCHEDULER_OBSERVATION_GAP' ||
+        receipt.currentness !== 'CURRENT') {
+      throw new Error('scheduler missed-host reconciliation receipt is malformed');
+    }
+    const candidate = clone(receipt);
+    const fingerprint = candidate.semanticFingerprint;
+    delete candidate.semanticFingerprint;
+    if (semanticHash(candidate) !== fingerprint) {
+      throw new Error('scheduler missed-host reconciliation fingerprint mismatch');
+    }
+    if (seen.has(receipt.dueRef)) throw new Error('scheduler missed-host reconciliation is not once-only');
+    seen.add(receipt.dueRef);
+    const due = dueByRef.get(receipt.dueRef);
+    if (!due || due.lifecycle !== 'DUE' || due.currentness !== 'CURRENT' ||
+        receipt.assignmentRef !== due.assignmentRef || receipt.assignmentFingerprint !== due.assignmentFingerprint ||
+        receipt.workNodeRef !== due.workNodeRef || receipt.dueAt !== due.dueAt) {
+      throw new Error('scheduler missed-host reconciliation is detached from exact due truth');
+    }
+    const prior = parseCanonicalTimestamp(receipt.priorObservedAt, 'scheduler missed-host priorObservedAt');
+    const restored = parseCanonicalTimestamp(receipt.restoreObservedAt, 'scheduler missed-host restoreObservedAt');
+    const dueAt = parseCanonicalTimestamp(receipt.dueAt, 'scheduler missed-host dueAt');
+    if (!(prior < dueAt && restored >= dueAt && restored > prior)) {
+      throw new Error('scheduler missed-host reconciliation clock crossing is invalid');
+    }
+    for (const field of [
+      'modelInference', 'modelWorkerLease', 'conversationAppend', 'notificationSend',
+      'humanAttentionInboxMutation', 'calendarEventCreation', 'effectAuthorityGrant',
+      'familySpecificAuthorityGrant'
+    ]) {
+      if (receipt.effectBoundary?.[field] !== false) {
+        throw new Error('scheduler missed-host reconciliation cannot carry effect authority or delivery');
+      }
+    }
+  }
+}
+
+function applySchedulerDueEvent(next, event, schedulerRegistry) {
+  const transitions = event.dueTransitions ?? [];
+  if (!Array.isArray(transitions)) throw new Error('scheduler dueTransitions must be an array');
+  if (transitions.length) {
+    next.dueTransitionLedger = [...(next.dueTransitionLedger ?? []), ...clone(transitions)];
+  } else if (!Array.isArray(next.dueTransitionLedger)) {
+    next.dueTransitionLedger = [];
+  }
+  next.dueRecords = replaySchedulerDueLedger(next.dueTransitionLedger ?? [], schedulerRegistry);
+  const reconciliations = event.missedHostReconciliations ?? [];
+  if (!Array.isArray(reconciliations)) throw new Error('scheduler missedHostReconciliations must be an array');
+  if (reconciliations.length) {
+    next.missedHostReconciliationLedger = [
+      ...(next.missedHostReconciliationLedger ?? []),
+      ...clone(reconciliations)
+    ];
+  } else if (!Array.isArray(next.missedHostReconciliationLedger)) {
+    next.missedHostReconciliationLedger = [];
+  }
+  validateMissedHostReconciliationLedger(next.missedHostReconciliationLedger, next.dueRecords);
+}
+
 export function createInitialSchedulerAggregate() {
   const aggregate = {
     schemaVersion: 'vexlife.intent-scheduler-aggregate/v1',
@@ -1130,6 +1319,9 @@ export function createInitialSchedulerAggregate() {
     resource: null,
     runtimeTrust: null,
     observedClock: null,
+    dueTransitionLedger: [],
+    dueRecords: [],
+    missedHostReconciliationLedger: [],
     canonicalCheckpoints: [],
     checkpointPointerLedger: [],
     checkpointPointers: [],
@@ -1334,8 +1526,13 @@ export function reduceSchedulerAggregate(current, event, {
         });
       }
       break;
+    case 'DUE_LEDGER_UPDATED':
+      applySchedulerDueEvent(next, event, schedulerRegistry);
+      if (event.observedClock) next.observedClock = clone(event.observedClock);
+      break;
     case 'CLOCK_ADVANCED':
       next.observedClock = clone(event.observedClock);
+      applySchedulerDueEvent(next, event, schedulerRegistry);
       break;
     case 'RELAY_SYNC':
       next.relayLedger = clone(event.relayLedger);
@@ -1450,6 +1647,11 @@ export function createIntentSchedulerState({
   if (JSON.stringify(projectedCheckpoints) !== JSON.stringify(aggregate.checkpoints ?? [])) {
     throw new Error('scheduler checkpoint projections differ from immutable checkpoint/pointer truth');
   }
+  const replayedDues = replaySchedulerDueLedger(aggregate.dueTransitionLedger ?? [], schedulerRegistry);
+  if (JSON.stringify(replayedDues) !== JSON.stringify(aggregate.dueRecords ?? [])) {
+    throw new Error('scheduler due current projection differs from immutable due transition replay');
+  }
+  validateMissedHostReconciliationLedger(aggregate.missedHostReconciliationLedger ?? [], replayedDues);
   const replayedClaims = replayRecoveryClaimLedger(aggregate.recoveryClaimLedger ?? [], aggregate, {
     recoveryClaimReceiptValidator,
     validateFinalSchedulerState: true,
@@ -1520,6 +1722,11 @@ export function createIntentSchedulerState({
       nextSafeAction: item.nextSafeAction
     })),
     observedClock: current.observedClock ? clone(current.observedClock) : null,
+    due: {
+      current: (current.dueRecords ?? []).filter((item) => item.currentness === 'CURRENT').map((item) => clone(item)),
+      transitionCount: (current.dueTransitionLedger ?? []).length,
+      missedHostReconciliationCount: (current.missedHostReconciliationLedger ?? []).length
+    },
     continuations: current.continuations.map((item) => clone(item)),
     pendingPreemption: current.pendingPreemption ? {
       incomingWorkNodeRef: current.pendingPreemption.incomingWorkNodeRef,

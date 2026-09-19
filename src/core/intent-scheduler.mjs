@@ -32,6 +32,7 @@ import {
 } from './state.mjs';
 import { validateIntentWorkgraph } from './intent-validation.mjs';
 import {
+  buildAcceptedAssignmentFingerprint,
   buildGraphSnapshotFingerprint,
   buildIntentFingerprint
 } from './intent-workgraph.mjs';
@@ -1195,6 +1196,176 @@ function consumeAdmission(queue, {
   });
 }
 
+function canonicalSchedulerUtc(value, label) {
+  const epoch = parseCanonicalTimestamp(value, label);
+  if (new Date(epoch).toISOString() !== value) throw new Error(`${label} must be canonical UTC`);
+  return epoch;
+}
+
+function schedulerDueContract(schedulerRegistry) {
+  const contract = schedulerRegistry?.dueIntentContract;
+  const required = [
+    'dueRef', 'assignmentRef', 'assignmentFingerprint', 'sourceIntentRef', 'workNodeRef',
+    'assigneeRef', 'graphFingerprint', 'dueAt', 'formedAt', 'observedAt', 'sourceRefs',
+    'currentness', 'lifecycle', 'semanticFingerprint'
+  ];
+  if (!contract || contract.contractRef !== 'contract.intent-scheduler.due-intent/v1' ||
+      contract.clockRef !== 'clock.intent-scheduler.canonical-utc' ||
+      !required.every((field) => contract.requiredFields?.includes(field)) ||
+      contract.reconciliationClass !== 'DUE_ELAPSED_ACROSS_SCHEDULER_OBSERVATION_GAP') {
+    throw new Error('scheduler due-intent contract is missing, substituted, or incomplete');
+  }
+  return contract;
+}
+
+function assertCanonicalDueGraph(graph) {
+  if (!graph?.semanticFingerprint || buildGraphSnapshotFingerprint(graph) !== graph.semanticFingerprint) {
+    throw new Error('scheduler due binding requires exact immutable Workgraph fingerprint');
+  }
+}
+
+function resolveSchedulerDueAssignment(graph, assignmentRef, { requireCurrent = true } = {}) {
+  assertCanonicalDueGraph(graph);
+  const matches = (graph.acceptedAssignments ?? []).filter((item) => item.assignmentRef === assignmentRef);
+  if (matches.length !== 1) throw new Error('scheduler due requires one exact accepted assignment');
+  const assignment = matches[0];
+  if (buildAcceptedAssignmentFingerprint(assignment) !== assignment.semanticFingerprint) {
+    throw new Error('scheduler due accepted assignment fingerprint is invalid');
+  }
+  const node = (graph.nodes ?? []).find((item) => item.workNodeRef === assignment.workNodeRef);
+  if (!node) throw new Error('scheduler due accepted assignment work node is absent');
+  const conflictingCurrent = (graph.acceptedAssignments ?? []).filter((item) =>
+    item.workNodeRef === assignment.workNodeRef && item.assignmentState === 'CURRENT'
+  );
+  if (conflictingCurrent.length > 1) throw new Error('scheduler due accepted assignment is conflicting or ambiguous');
+  const terminalNode = ['COMPLETED', 'CONVERGED', 'CLOSED', 'SUPERSEDED', 'CANCELLED'].includes(node.state);
+  const current = assignment.assignmentState === 'CURRENT' && !terminalNode;
+  if (requireCurrent && !current) throw new Error('scheduler due accepted assignment is not current');
+  if (assignment.sourceIntentRef !== graph.rootIntentRef) {
+    throw new Error('scheduler due accepted assignment source intent is stale');
+  }
+  return { assignment, node, current };
+}
+
+function schedulerDueEffectBoundary() {
+  return {
+    modelInference: false,
+    modelWorkerLease: false,
+    conversationAppend: false,
+    notificationSend: false,
+    humanAttentionInboxMutation: false,
+    calendarEventCreation: false,
+    effectAuthorityGrant: false,
+    familySpecificAuthorityGrant: false
+  };
+}
+
+function buildSchedulerDueRecord({ assignment, graph, dueAt, formedAt, observedAt, sourceRefs }) {
+  canonicalSchedulerUtc(dueAt, 'scheduler dueAt');
+  canonicalSchedulerUtc(formedAt, 'scheduler due formedAt');
+  canonicalSchedulerUtc(observedAt, 'scheduler due observedAt');
+  const core = {
+    schemaVersion: 'vexlife.intent-scheduler-due-record/v1',
+    assignmentRef: assignment.assignmentRef,
+    assignmentFingerprint: assignment.semanticFingerprint,
+    sourceIntentRef: assignment.sourceIntentRef,
+    workNodeRef: assignment.workNodeRef,
+    assigneeRef: assignment.assigneeRef,
+    graphFingerprint: graph.semanticFingerprint,
+    dueAt,
+    formedAt,
+    observedAt,
+    sourceRefs: canonicalRefs(sourceRefs),
+    currentness: 'CURRENT',
+    lifecycle: 'SCHEDULED'
+  };
+  const dueRef = `due.intent-scheduler.${semanticHash(core).slice(0, 32)}`;
+  const record = { dueRef, ...core };
+  record.semanticFingerprint = semanticHash(record);
+  return freeze(record);
+}
+
+function evolveSchedulerDueRecord(prior, { lifecycle, currentness, observedAt }) {
+  canonicalSchedulerUtc(observedAt, 'scheduler due transition observedAt');
+  const next = {
+    ...clone(prior),
+    observedAt,
+    currentness,
+    lifecycle
+  };
+  delete next.semanticFingerprint;
+  next.semanticFingerprint = semanticHash(next);
+  return freeze(next);
+}
+
+function buildSchedulerDueTransition(aggregate, transitionType, priorDue, nextDue, observedAt, sourceRefs) {
+  const priorTransition = aggregate.dueTransitionLedger?.at(-1) ?? null;
+  const core = {
+    schemaVersion: 'vexlife.intent-scheduler-due-transition/v1',
+    transitionType,
+    sequence: aggregate.dueTransitionLedger?.length ?? 0,
+    priorTransitionFingerprint: priorTransition?.semanticFingerprint ?? null,
+    dueRef: nextDue.dueRef,
+    priorDueFingerprint: priorDue?.semanticFingerprint ?? null,
+    observedAt,
+    sourceRefs: canonicalRefs(sourceRefs),
+    effectBoundary: schedulerDueEffectBoundary(),
+    nextDue: clone(nextDue)
+  };
+  const transitionRef = `transition.intent-scheduler.due.${transitionType.toLowerCase().replaceAll('_', '-')}.${semanticHash(core).slice(0, 32)}`;
+  const transition = { transitionRef, ...core };
+  transition.semanticFingerprint = semanticHash(transition);
+  return freeze(transition);
+}
+
+function assertDueAssignmentLineage(due, graph, { requireCurrent = true } = {}) {
+  const resolved = resolveSchedulerDueAssignment(graph, due.assignmentRef, { requireCurrent });
+  const assignment = resolved.assignment;
+  for (const field of ['assignmentRef', 'sourceIntentRef', 'workNodeRef', 'assigneeRef']) {
+    if (due[field] !== assignment[field]) throw new Error(`scheduler due ${field} lineage is stale`);
+  }
+  if (due.assignmentFingerprint !== assignment.semanticFingerprint) {
+    throw new Error('scheduler due assignment fingerprint lineage is stale');
+  }
+  return resolved;
+}
+
+function currentSchedulerDue(aggregate, dueRef) {
+  const matches = (aggregate.dueRecords ?? []).filter((item) =>
+    item.dueRef === dueRef && item.currentness === 'CURRENT'
+  );
+  if (matches.length !== 1) throw new Error('scheduler due current record is absent or ambiguous');
+  return matches[0];
+}
+
+function buildMissedHostReconciliation(priorDue, transitionedDue, {
+  priorObservedAt, restoreObservedAt, sourceRefs
+}) {
+  const core = {
+    schemaVersion: 'vexlife.intent-scheduler-missed-host-reconciliation/v1',
+    reconciliationClass: 'DUE_ELAPSED_ACROSS_SCHEDULER_OBSERVATION_GAP',
+    dueRef: transitionedDue.dueRef,
+    dueFingerprint: transitionedDue.semanticFingerprint,
+    assignmentRef: transitionedDue.assignmentRef,
+    assignmentFingerprint: transitionedDue.assignmentFingerprint,
+    sourceIntentRef: transitionedDue.sourceIntentRef,
+    workNodeRef: transitionedDue.workNodeRef,
+    assigneeRef: transitionedDue.assigneeRef,
+    graphFingerprint: transitionedDue.graphFingerprint,
+    dueAt: transitionedDue.dueAt,
+    priorDueFingerprint: priorDue.semanticFingerprint,
+    priorObservedAt,
+    restoreObservedAt,
+    sourceRefs: canonicalRefs(sourceRefs),
+    currentness: 'CURRENT',
+    effectBoundary: schedulerDueEffectBoundary()
+  };
+  const reconciliationRef = `reconciliation.intent-scheduler.missed-host.${semanticHash(core).slice(0, 32)}`;
+  const receipt = { reconciliationRef, ...core };
+  receipt.semanticFingerprint = semanticHash(receipt);
+  return freeze(receipt);
+}
+
 export class SingleWorkerIntentScheduler {
   #workerRef;
   #instanceRef;
@@ -1205,6 +1376,8 @@ export class SingleWorkerIntentScheduler {
   #completionVerifier;
   #state;
   #runtimeRecoveryRegistry;
+  #restoredAggregateFingerprint;
+  #restoredObservedAt;
 
   constructor({
     workerRef,
@@ -1230,6 +1403,8 @@ export class SingleWorkerIntentScheduler {
     if (this.#relay) this.#relay.bindSchedulerOwnership(this.#instanceRef, this.#relayCapability);
     this.#completionVerifier = completionVerifier ?? new DeterministicFakeCompletionVerifier({ schedulerRegistry });
     this.#runtimeRecoveryRegistry = runtimeRecoveryRegistry;
+    this.#restoredAggregateFingerprint = schedulerAggregate?.semanticFingerprint ?? null;
+    this.#restoredObservedAt = schedulerAggregate?.observedClock?.observedAt ?? null;
     const recoveryClaimReceiptValidator = runtimeRecoveryRegistry
       ? (value) => validateSchedulerRecoveryClaimReceipt(value, { registry: runtimeRecoveryRegistry })
       : null;
@@ -1251,6 +1426,8 @@ export class SingleWorkerIntentScheduler {
   get aggregate() { return this.#state.aggregate.value; }
   get continuations() { return clone(this.#state.aggregate.value.continuations); }
   get pendingRoots() { return clone(this.#state.aggregate.value.pendingRootIntents ?? []); }
+  get dues() { return clone(this.#state.aggregate.value.dueRecords ?? []); }
+  get missedHostReconciliations() { return clone(this.#state.aggregate.value.missedHostReconciliationLedger ?? []); }
   get projections() { return this.#state; }
 
   recoveryClaimCurrentness(checkpointRef, { observedAt } = {}) {
@@ -1313,25 +1490,202 @@ export class SingleWorkerIntentScheduler {
     return next;
   }
 
-  advanceObservedClock({ observedAt, eventRef = `clock.intent-scheduler.advance.${this.generation}` }) {
-    const current = this.#state.aggregate.value.observedClock?.observedAt;
-    const nextEpoch = parseCanonicalTimestamp(observedAt, 'scheduler observed clock');
-    if (current && nextEpoch < parseCanonicalTimestamp(current, 'current scheduler observed clock')) {
+  formDueIntent(graph, input = {}) {
+    const contract = schedulerDueContract(this.#schedulerRegistry);
+    for (const field of contract.prohibitedCallerFields ?? []) {
+      if (Object.hasOwn(input, field)) throw new Error(`scheduler due caller cannot author ${field}`);
+    }
+    const aggregate = this.#state.aggregate.value;
+    const clock = aggregate.observedClock?.observedAt;
+    if (!clock) throw new Error('scheduler due formation requires canonical observed clock truth');
+    const observedAt = input.observedAt ?? clock;
+    const formedAt = input.formedAt ?? observedAt;
+    if (observedAt !== clock) throw new Error('scheduler due formation observedAt must equal the canonical scheduler clock');
+    const observedEpoch = canonicalSchedulerUtc(observedAt, 'scheduler due formation observedAt');
+    const formedEpoch = canonicalSchedulerUtc(formedAt, 'scheduler due formation formedAt');
+    const dueEpoch = canonicalSchedulerUtc(input.dueAt, 'scheduler due formation dueAt');
+    if (formedEpoch > observedEpoch || dueEpoch <= observedEpoch) {
+      throw new Error('scheduler dueAt must be later than the canonical observed clock at formation');
+    }
+    const { assignment } = resolveSchedulerDueAssignment(graph, input.assignmentRef, { requireCurrent: true });
+    const live = (aggregate.dueRecords ?? []).filter((item) => item.currentness === 'CURRENT');
+    if (live.some((item) => item.assignmentRef === assignment.assignmentRef || item.workNodeRef === assignment.workNodeRef)) {
+      throw new Error('scheduler permits one current due per exact assignment/work node');
+    }
+    const due = buildSchedulerDueRecord({
+      assignment, graph, dueAt: input.dueAt, formedAt, observedAt, sourceRefs: input.sourceRefs
+    });
+    const transition = buildSchedulerDueTransition(aggregate, 'FORMED', null, due, observedAt, input.sourceRefs);
+    this.#commit({
+      type: 'DUE_LEDGER_UPDATED',
+      transitionRef: transition.transitionRef,
+      dueTransitions: [transition]
+    });
+    return { changed: true, due: clone(due), transition: clone(transition) };
+  }
+
+  rescheduleDueIntent(graph, input = {}) {
+    const contract = schedulerDueContract(this.#schedulerRegistry);
+    for (const field of contract.prohibitedCallerFields ?? []) {
+      if (Object.hasOwn(input, field)) throw new Error(`scheduler due caller cannot author ${field}`);
+    }
+    const aggregate = this.#state.aggregate.value;
+    const prior = currentSchedulerDue(aggregate, input.dueRef);
+    assertDueAssignmentLineage(prior, graph, { requireCurrent: true });
+    const observedAt = input.observedAt ?? aggregate.observedClock?.observedAt;
+    if (!observedAt || observedAt !== aggregate.observedClock?.observedAt) {
+      throw new Error('scheduler due reschedule requires exact current canonical clock');
+    }
+    const dueEpoch = canonicalSchedulerUtc(input.dueAt, 'scheduler rescheduled dueAt');
+    const observedEpoch = canonicalSchedulerUtc(observedAt, 'scheduler due reschedule observedAt');
+    if (dueEpoch <= observedEpoch || input.dueAt === prior.dueAt) {
+      throw new Error('scheduler reschedule requires a distinct future canonical dueAt');
+    }
+    const superseded = evolveSchedulerDueRecord(prior, {
+      lifecycle: 'SUPERSEDED', currentness: 'TERMINAL', observedAt
+    });
+    const first = buildSchedulerDueTransition(aggregate, 'SUPERSEDED', prior, superseded, observedAt, input.sourceRefs);
+    const intermediate = { ...aggregate, dueTransitionLedger: [...(aggregate.dueTransitionLedger ?? []), first] };
+    const { assignment } = resolveSchedulerDueAssignment(graph, prior.assignmentRef, { requireCurrent: true });
+    const successor = buildSchedulerDueRecord({
+      assignment, graph, dueAt: input.dueAt, formedAt: input.formedAt ?? observedAt, observedAt, sourceRefs: input.sourceRefs
+    });
+    const second = buildSchedulerDueTransition(intermediate, 'FORMED', null, successor, observedAt, input.sourceRefs);
+    this.#commit({
+      type: 'DUE_LEDGER_UPDATED',
+      transitionRef: second.transitionRef,
+      dueTransitions: [first, second]
+    });
+    return { changed: true, superseded: clone(superseded), due: clone(successor), transitions: [clone(first), clone(second)] };
+  }
+
+  cancelDueIntent(graph, input = {}) {
+    const aggregate = this.#state.aggregate.value;
+    const prior = currentSchedulerDue(aggregate, input.dueRef);
+    assertDueAssignmentLineage(prior, graph, { requireCurrent: true });
+    const observedAt = input.observedAt ?? aggregate.observedClock?.observedAt;
+    if (!observedAt || observedAt !== aggregate.observedClock?.observedAt) {
+      throw new Error('scheduler due cancellation requires exact current canonical clock');
+    }
+    const cancelled = evolveSchedulerDueRecord(prior, { lifecycle: 'CANCELLED', currentness: 'TERMINAL', observedAt });
+    const transition = buildSchedulerDueTransition(aggregate, 'CANCELLED', prior, cancelled, observedAt, input.sourceRefs);
+    this.#commit({ type: 'DUE_LEDGER_UPDATED', transitionRef: transition.transitionRef, dueTransitions: [transition] });
+    return { changed: true, due: clone(cancelled), transition: clone(transition) };
+  }
+
+  reconcileDueAssignments(graph, { observedAt = null, sourceRefs = [] } = {}) {
+    const aggregate = this.#state.aggregate.value;
+    const currentClock = aggregate.observedClock?.observedAt;
+    const at = observedAt ?? currentClock;
+    if (!at || at !== currentClock) throw new Error('scheduler due assignment reconciliation requires exact current clock');
+    const transitions = [];
+    let working = aggregate;
+    for (const due of (aggregate.dueRecords ?? []).filter((item) => item.currentness === 'CURRENT')) {
+      const lineage = assertDueAssignmentLineage(due, graph, { requireCurrent: false });
+      if (lineage.current) continue;
+      const settled = evolveSchedulerDueRecord(due, { lifecycle: 'SETTLED', currentness: 'TERMINAL', observedAt: at });
+      const transition = buildSchedulerDueTransition(working, 'SETTLED', due, settled, at, sourceRefs);
+      transitions.push(transition);
+      working = { ...working, dueTransitionLedger: [...(working.dueTransitionLedger ?? []), transition] };
+    }
+    if (!transitions.length) return { changed: false, transitions: [] };
+    this.#commit({ type: 'DUE_LEDGER_UPDATED', transitionRef: transitions.at(-1).transitionRef, dueTransitions: transitions });
+    return { changed: true, transitions: transitions.map(clone) };
+  }
+
+  advanceObservedClock({ observedAt, eventRef = `clock.intent-scheduler.advance.${this.generation}`, graph = null }) {
+    const aggregate = this.#state.aggregate.value;
+    const current = aggregate.observedClock?.observedAt;
+    const nextEpoch = canonicalSchedulerUtc(observedAt, 'scheduler observed clock');
+    if (current && nextEpoch < canonicalSchedulerUtc(current, 'current scheduler observed clock')) {
       throw new Error('scheduler observed clock must advance monotonically');
+    }
+    const liveDues = (aggregate.dueRecords ?? []).filter((item) => item.currentness === 'CURRENT');
+    if (liveDues.length && !graph) throw new Error('scheduler due clock crossing requires current Workgraph assignment truth');
+    const dueTransitions = [];
+    let working = aggregate;
+    for (const due of liveDues) {
+      const lineage = assertDueAssignmentLineage(due, graph, { requireCurrent: false });
+      let transitionType = null;
+      let nextDue = null;
+      if (!lineage.current) {
+        transitionType = 'SETTLED';
+        nextDue = evolveSchedulerDueRecord(due, { lifecycle: 'SETTLED', currentness: 'TERMINAL', observedAt });
+      } else if (due.lifecycle === 'SCHEDULED' && nextEpoch >= canonicalSchedulerUtc(due.dueAt, 'scheduler dueAt')) {
+        transitionType = 'DUE_REACHED';
+        nextDue = evolveSchedulerDueRecord(due, { lifecycle: 'DUE', currentness: 'CURRENT', observedAt });
+      }
+      if (!transitionType) continue;
+      const transition = buildSchedulerDueTransition(working, transitionType, due, nextDue, observedAt, due.sourceRefs);
+      dueTransitions.push(transition);
+      working = { ...working, dueTransitionLedger: [...(working.dueTransitionLedger ?? []), transition] };
     }
     const receipt = observedClockReceipt(observedAt, eventRef);
     this.#commit({
       type: 'CLOCK_ADVANCED',
       transitionRef: `transition.intent-scheduler.clock.${this.generation}.${receipt.semanticFingerprint.slice(0, 12)}`,
-      observedClock: receipt
+      observedClock: receipt,
+      dueTransitions
     });
     return {
-      changed: current !== observedAt,
+      changed: current !== observedAt || dueTransitions.length > 0,
       observedClock: clone(receipt),
+      dueTransitions: dueTransitions.map(clone),
+      dues: this.dues,
       health: clone(this.#state.health.value)
     };
   }
 
+  reconcileMissedHost(graph, input = {}) {
+    const contract = schedulerDueContract(this.#schedulerRegistry);
+    for (const field of contract.prohibitedCallerFields ?? []) {
+      if (Object.hasOwn(input, field)) throw new Error(`scheduler missed-host caller cannot author ${field}`);
+    }
+    const aggregate = this.#state.aggregate.value;
+    if (!this.#restoredAggregateFingerprint || aggregate.semanticFingerprint !== this.#restoredAggregateFingerprint ||
+        aggregate.observedClock?.observedAt !== this.#restoredObservedAt) {
+      throw new Error('missed-host reconciliation requires the untouched persisted scheduler restore state');
+    }
+    const priorObservedAt = aggregate.observedClock?.observedAt;
+    if (!priorObservedAt) throw new Error('missed-host reconciliation requires prior canonical scheduler observation');
+    const restoreObservedAt = input.observedAt;
+    const restoreEpoch = canonicalSchedulerUtc(restoreObservedAt, 'scheduler restore observedAt');
+    const priorEpoch = canonicalSchedulerUtc(priorObservedAt, 'scheduler prior observedAt');
+    if (restoreEpoch <= priorEpoch) throw new Error('scheduler restore observation must be later than prior scheduler observation');
+    const reconciledRefs = new Set((aggregate.missedHostReconciliationLedger ?? []).map((item) => item.dueRef));
+    const dueTransitions = [];
+    const reconciliations = [];
+    let working = aggregate;
+    for (const due of (aggregate.dueRecords ?? []).filter((item) => item.currentness === 'CURRENT' && item.lifecycle === 'SCHEDULED')) {
+      assertDueAssignmentLineage(due, graph, { requireCurrent: true });
+      const dueEpoch = canonicalSchedulerUtc(due.dueAt, 'scheduler missed-host dueAt');
+      if (!(priorEpoch < dueEpoch && restoreEpoch >= dueEpoch)) continue;
+      if (reconciledRefs.has(due.dueRef)) throw new Error('scheduler missed-host due was already reconciled');
+      const transitioned = evolveSchedulerDueRecord(due, { lifecycle: 'DUE', currentness: 'CURRENT', observedAt: restoreObservedAt });
+      const transition = buildSchedulerDueTransition(working, 'DUE_REACHED', due, transitioned, restoreObservedAt, due.sourceRefs);
+      dueTransitions.push(transition);
+      reconciliations.push(buildMissedHostReconciliation(due, transitioned, {
+        priorObservedAt, restoreObservedAt, sourceRefs: due.sourceRefs
+      }));
+      working = { ...working, dueTransitionLedger: [...(working.dueTransitionLedger ?? []), transition] };
+    }
+    if (!dueTransitions.length) throw new Error('missed-host reconciliation requires an exact persisted due crossing');
+    const clockReceipt = observedClockReceipt(restoreObservedAt, input.eventRef ?? `clock.intent-scheduler.restore.${this.generation}`);
+    this.#commit({
+      type: 'CLOCK_ADVANCED',
+      transitionRef: `transition.intent-scheduler.restore.${this.generation}.${clockReceipt.semanticFingerprint.slice(0, 12)}`,
+      observedClock: clockReceipt,
+      dueTransitions,
+      missedHostReconciliations: reconciliations
+    });
+    return {
+      changed: true,
+      observedClock: clone(clockReceipt),
+      dueTransitions: dueTransitions.map(clone),
+      reconciliations: reconciliations.map(clone),
+      dues: this.dues
+    };
+  }
   enqueueRootIntent(graph, { schedulingClass: rootSchedulingClass = 'NORMAL' } = {}) {
     const current = this.#state.aggregate.value;
     const rootIntent = createPendingRootIntent(graph, {
