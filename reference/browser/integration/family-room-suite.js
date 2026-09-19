@@ -29,6 +29,23 @@ export const familyRoomSuite = Object.freeze({
     assert(document.querySelector('.e27-terrain'), 'Family room projection replaced Terrain instead of remaining contextual');
     checks.push('FAM-UI-01 Family remains a contextual Chat projection over Terrain, not a second app shell');
 
+    const lifecycleControls=document.querySelector('#familyLifecycleControls');
+    assert(lifecycleControls,'Family lifecycle controls are not projected inside the existing Family card');
+    assert(typeof app.familyRoom.hostFamily==='function','Family Host consumer action is unavailable');
+    assert(typeof app.familyRoom.joinFamily==='function','Family Join consumer action is unavailable');
+    assert(typeof app.familyRoom.leaveFamily==='function','Family Leave consumer action is unavailable');
+    const hostButton=document.querySelector('#familyHostButton');
+    const joinInput=document.querySelector('#familyJoinInvitationRef');
+    const joinButton=document.querySelector('#familyJoinButton');
+    const leaveButton=document.querySelector('#familyLeaveButton');
+    assert(hostButton&&joinInput&&joinButton&&leaveButton,'Family lifecycle native controls are incomplete');
+    assert(joinInput.getAttribute('type')==='text','Join control does not use a native text input');
+    assert(!lifecycleControls.textContent.includes('principalRef'),'Family lifecycle controls leaked principal authority vocabulary');
+    if(snapshot.state==='HELD_UNAVAILABLE'){
+      assert(hostButton.disabled&&joinInput.disabled&&joinButton.disabled&&leaveButton.disabled,'Held Family lifecycle controls remained actionable');
+    }
+    checks.push('FAM-UI-03 Host/Join/Leave stay inside the existing Family projection and emit no browser identity authority');
+
     assert(typeof app.familyComposerIdentity === 'function', 'Family composer identity projection is unavailable');
     const nonVictorKey='family-non-victor-integration';
     const familyVexKey='family-vex-non-victor-integration';

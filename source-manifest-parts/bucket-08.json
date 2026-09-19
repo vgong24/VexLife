@@ -5,8 +5,8 @@
     {
       "path": "test/browser-family-room-projection.test.mjs",
       "mode": "100644",
-      "bytes": 12739,
-      "sha256": "b2347719235768f4a721968acc274eb58394c83dd3613f8c634f9ed5c430a488"
+      "bytes": 22342,
+      "sha256": "30f36c9545074372d6f2a9229fa1c4bd1560c18157bc2a87a410c7d48e0e9eff"
     },
     {
       "path": "test/experience-guidance-devex-perception.test.mjs",
