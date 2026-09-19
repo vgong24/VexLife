@@ -1406,6 +1406,24 @@ function dueScheduler(schedulerAggregate = null) {
   return scheduler;
 }
 
+function coordinatedRehashMissedHostAggregate(aggregate, mutateReceipt, { readdress = true } = {}) {
+  const tampered = structuredClone(aggregate);
+  const receipt = tampered.missedHostReconciliationLedger?.[0];
+  if (!receipt) throw new Error('coordinated rehash fixture requires one reconciliation receipt');
+  mutateReceipt(receipt);
+  delete receipt.semanticFingerprint;
+  if (readdress) {
+    delete receipt.reconciliationRef;
+    const refCore = structuredClone(receipt);
+    receipt.reconciliationRef =
+      `reconciliation.intent-scheduler.missed-host.${semanticHash(refCore).slice(0, 32)}`;
+  }
+  receipt.semanticFingerprint = semanticHash(receipt);
+  delete tampered.semanticFingerprint;
+  tampered.semanticFingerprint = semanticHash(tampered);
+  return tampered;
+}
+
 test('FTB-02/03/04/06 due intent is source-managed, assignment-bound, canonical UTC, and future-only', () => {
   const candidate = assignedDueGraph('work.scheduler.due.binding');
   const scheduler = dueScheduler();
@@ -1652,6 +1670,145 @@ test('FTB-12/13/14 persisted due restore earns exactly-once missed-host reconcil
   delete tampered.semanticFingerprint;
   tampered.semanticFingerprint = semanticHash(tampered);
   assert.throws(() => dueScheduler(tampered), /due current projection differs/);
+});
+
+
+test('RPI-00..12 missed-host reconciliation restore is bound to exact replayed due lineage', () => {
+  const workRef = 'work.scheduler.due.replay-integrity';
+  const candidate = assignedDueGraph(workRef);
+  const source = dueScheduler();
+  const formed = source.formDueIntent(candidate, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.replay-integrity']
+  });
+  const persisted = structuredClone(source.aggregate);
+  const restored = dueScheduler(persisted);
+  const result = restored.reconcileMissedHost(candidate, {
+    observedAt: '2026-07-31T12:30:00.000Z',
+    eventRef: 'clock.scheduler.due.replay-integrity.restore',
+    sourceRefs: ['source.caller.cannot-rewrite-replay-lineage']
+  });
+  assert.equal(result.reconciliations.length, 1);
+
+  const canonical = structuredClone(restored.aggregate);
+  const receipt = canonical.missedHostReconciliationLedger[0];
+  const currentDue = canonical.dueRecords.find((item) => item.dueRef === receipt.dueRef);
+  assert.ok(currentDue);
+  for (const field of schedulerRegistry.missedHostReconciliationContract.requiredFields) {
+    assert.equal(Object.hasOwn(receipt, field), true, `required reconciliation field ${field}`);
+  }
+
+  assert.equal(receipt.dueFingerprint, currentDue.semanticFingerprint);
+  for (const field of [
+    'assignmentRef', 'assignmentFingerprint', 'sourceIntentRef',
+    'workNodeRef', 'assigneeRef', 'graphFingerprint', 'dueAt'
+  ]) assert.equal(receipt[field], currentDue[field], `current due binding ${field}`);
+
+  const dueReachedMatches = canonical.dueTransitionLedger.filter((transition) =>
+    transition.transitionType === 'DUE_REACHED' &&
+    transition.dueRef === receipt.dueRef &&
+    transition.nextDue.semanticFingerprint === receipt.dueFingerprint
+  );
+  assert.equal(dueReachedMatches.length, 1);
+  const dueReached = dueReachedMatches[0];
+  assert.equal(receipt.priorDueFingerprint, dueReached.priorDueFingerprint);
+  assert.equal(receipt.restoreObservedAt, dueReached.observedAt);
+  assert.equal(receipt.restoreObservedAt, currentDue.observedAt);
+
+  const priorMatches = canonical.dueTransitionLedger.filter((transition) =>
+    transition.dueRef === receipt.dueRef &&
+    transition.nextDue.semanticFingerprint === receipt.priorDueFingerprint
+  );
+  assert.equal(priorMatches.length, 1);
+  const priorDue = priorMatches[0].nextDue;
+  assert.equal(priorDue.lifecycle, 'SCHEDULED');
+  assert.equal(priorDue.currentness, 'CURRENT');
+  assert.ok(priorMatches[0].sequence < dueReached.sequence);
+  for (const field of [
+    'dueRef', 'assignmentRef', 'assignmentFingerprint', 'sourceIntentRef',
+    'workNodeRef', 'assigneeRef', 'graphFingerprint', 'dueAt', 'formedAt'
+  ]) assert.equal(priorDue[field], currentDue[field], `prior due lineage ${field}`);
+
+  assert.deepEqual(receipt.sourceRefs, priorDue.sourceRefs);
+  assert.deepEqual(receipt.sourceRefs, currentDue.sourceRefs);
+  assert.deepEqual(receipt.sourceRefs, dueReached.sourceRefs);
+  assert.deepEqual(receipt.effectBoundary, schedulerRegistry.dueIntentContract.effectBoundary);
+
+  assert.ok(Date.parse(priorDue.observedAt) <= Date.parse(receipt.priorObservedAt));
+  assert.ok(Date.parse(receipt.priorObservedAt) < Date.parse(receipt.dueAt));
+  assert.ok(Date.parse(receipt.dueAt) <= Date.parse(receipt.restoreObservedAt));
+  assert.ok(Date.parse(receipt.restoreObservedAt) > Date.parse(receipt.priorObservedAt));
+
+  const refCore = structuredClone(receipt);
+  delete refCore.reconciliationRef;
+  delete refCore.semanticFingerprint;
+  assert.equal(
+    receipt.reconciliationRef,
+    `reconciliation.intent-scheduler.missed-host.${semanticHash(refCore).slice(0, 32)}`
+  );
+
+  assert.doesNotThrow(() => dueScheduler(structuredClone(canonical)));
+
+  const duplicate = structuredClone(canonical);
+  duplicate.missedHostReconciliationLedger.push(structuredClone(receipt));
+  delete duplicate.semanticFingerprint;
+  duplicate.semanticFingerprint = semanticHash(duplicate);
+  assert.throws(() => dueScheduler(duplicate), /reconciliation is not once-only/);
+
+  assert.equal(formed.due.semanticFingerprint, persisted.dueRecords[0].semanticFingerprint);
+});
+
+test('RPI adversarial coordinated rehash cannot substitute missed-host reconciliation lineage', () => {
+  const workRef = 'work.scheduler.due.replay-integrity-adversarial';
+  const candidate = assignedDueGraph(workRef);
+  const source = dueScheduler();
+  source.formDueIntent(candidate, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.replay-integrity.adversarial']
+  });
+  const restored = dueScheduler(structuredClone(source.aggregate));
+  restored.reconcileMissedHost(candidate, {
+    observedAt: '2026-07-31T12:30:00.000Z',
+    eventRef: 'clock.scheduler.due.replay-integrity-adversarial.restore'
+  });
+  const canonical = structuredClone(restored.aggregate);
+  assert.doesNotThrow(() => dueScheduler(structuredClone(canonical)));
+
+  const mutations = [
+    ['dueFingerprint', (receipt) => { receipt.dueFingerprint = semanticHash({ tampered: 'dueFingerprint' }); }],
+    ['priorDueFingerprint', (receipt) => { receipt.priorDueFingerprint = semanticHash({ tampered: 'priorDueFingerprint' }); }],
+    ['sourceIntentRef', (receipt) => { receipt.sourceIntentRef = 'intent.scheduler.tampered'; }],
+    ['workNodeRef', (receipt) => { receipt.workNodeRef = 'work.scheduler.due.tampered'; }],
+    ['assigneeRef', (receipt) => { receipt.assigneeRef = 'person.tampered.assignee'; }],
+    ['graphFingerprint', (receipt) => { receipt.graphFingerprint = semanticHash({ tampered: 'graphFingerprint' }); }],
+    ['assignmentRef', (receipt) => { receipt.assignmentRef = 'assignment.scheduler.due.tampered'; }],
+    ['assignmentFingerprint', (receipt) => { receipt.assignmentFingerprint = semanticHash({ tampered: 'assignmentFingerprint' }); }],
+    ['sourceRefs', (receipt) => { receipt.sourceRefs = ['source.ftb.replay-integrity.tampered']; }],
+    ['restoreObservedAt', (receipt) => { receipt.restoreObservedAt = '2026-07-31T12:31:00.000Z'; }],
+    ['missingRequiredField', (receipt) => { delete receipt.sourceIntentRef; }]
+  ];
+  for (const [label, mutate] of mutations) {
+    const tampered = coordinatedRehashMissedHostAggregate(canonical, mutate);
+    assert.throws(
+      () => dueScheduler(tampered),
+      /scheduler missed-host reconciliation/,
+      `coordinated rehash must reject ${label}`
+    );
+  }
+
+  const tamperedRef = coordinatedRehashMissedHostAggregate(
+    canonical,
+    (receipt) => {
+      receipt.reconciliationRef = 'reconciliation.intent-scheduler.missed-host.coordinated-rehash';
+    },
+    { readdress: false }
+  );
+  assert.throws(
+    () => dueScheduler(tamperedRef),
+    /reference is not content-addressed from exact receipt core/
+  );
 });
 
 test('S16 scheduler registry is canonical in Blueprint/Atlas, omission fails, and the complete no-effect loop passes', () => {
