@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 4568,
       "sha256": "7d2f433a5181f73850160ee393f3c9d724c1cb758db631ae59409fb02cfe3c1d"
+    },
+    {
+      "path": "test/browser-family-lifecycle-http-route.test.mjs",
+      "mode": "100644",
+      "bytes": 7713,
+      "sha256": "033f1661091718d79b03767101b39b26d5b971ad5bca02c927a9b00facc17908"
     }
   ]
 }

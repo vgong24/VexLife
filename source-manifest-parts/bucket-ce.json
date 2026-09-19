@@ -15,6 +15,12 @@
       "sha256": "62fca7c199b208808bbe961b2538e87f18e13a8374d198e8d75cf696223cf478"
     },
     {
+      "path": "src/core/browser-family-lifecycle-bridge.mjs",
+      "mode": "100644",
+      "bytes": 13560,
+      "sha256": "2e722cbcd73c080b34e7f8e2a5e48e554e5e7d69890bdbd6a4b1bb141c631ff4"
+    },
+    {
       "path": "src/core/family-conversation.mjs",
       "mode": "100644",
       "bytes": 17741,
