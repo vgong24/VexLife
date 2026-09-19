@@ -186,6 +186,13 @@ export function createFamilyRoomController({
   documentRef = globalThis.document,
   bootstrapPath = '/api/v1/family/bootstrap',
   conversationPath = '/api/v1/family/conversation',
+  lifecyclePath = '/api/v1/family/lifecycle',
+  idempotencyKeyFactory = () => {
+    const random = String(
+      globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+    ).toLowerCase().replace(/[^a-z0-9.-]/gu, '');
+    return `intent.vex.family.host.${random}`.slice(0, 192);
+  },
   onChange = () => {}
 } = {}) {
   if (!state || !Array.isArray(projects) || !roles || !Array.isArray(channels) || !messages) {
@@ -195,8 +202,12 @@ export function createFamilyRoomController({
     throw new TypeError('Family room controller requires existing Chat projection functions');
   }
   if (typeof fetchImpl !== 'function') throw new TypeError('Family room controller requires fetch');
+  if (typeof idempotencyKeyFactory !== 'function') {
+    throw new TypeError('Family room controller requires a lifecycle idempotency-key factory');
+  }
 
   let snapshot = heldSnapshot();
+  let lifecycle = Object.freeze({ state: 'IDLE', operation: null, failureCode: null });
   let bound = false;
   const roomByChannel = new Map();
   const injectedRoleKeys = new Set();
@@ -308,6 +319,67 @@ export function createFamilyRoomController({
     return true;
   }
 
+  function setLifecycleState(stateValue, operation = null, failureCode = null) {
+    lifecycle = Object.freeze({ state: stateValue, operation, failureCode });
+    render();
+    onChange();
+    return lifecycle;
+  }
+
+  async function executeLifecycle(operation, intent) {
+    setLifecycleState('RUNNING', operation, null);
+    try {
+      const response = await fetchImpl(lifecyclePath, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ operation, intent })
+      });
+      let body = null;
+      try { body = await response.json(); } catch {}
+      if (!response.ok) {
+        setLifecycleState(
+          'HELD_UNAVAILABLE',
+          operation,
+          body?.failureCode ?? 'FAMILY_LIFECYCLE_UNAVAILABLE'
+        );
+        return Object.freeze({ ok: false, body });
+      }
+      await refresh();
+      setLifecycleState('SUCCEEDED', operation, null);
+      return Object.freeze({ ok: true, body });
+    } catch {
+      setLifecycleState('HELD_UNAVAILABLE', operation, 'FAMILY_LIFECYCLE_UNAVAILABLE');
+      return Object.freeze({ ok: false, body: null });
+    }
+  }
+
+  async function hostFamily() {
+    const idempotencyKey = idempotencyKeyFactory();
+    if (!text(idempotencyKey)) {
+      setLifecycleState('HELD_UNAVAILABLE', 'HOST', 'FAMILY_LIFECYCLE_INPUT_INVALID');
+      return Object.freeze({ ok: false, body: null });
+    }
+    return executeLifecycle('HOST', { idempotencyKey });
+  }
+
+  async function joinFamily(invitationRef) {
+    const value = typeof invitationRef === 'string' ? invitationRef.trim() : '';
+    if (!value) {
+      setLifecycleState('HELD_UNAVAILABLE', 'JOIN', 'FAMILY_LIFECYCLE_INPUT_INVALID');
+      return Object.freeze({ ok: false, body: null });
+    }
+    return executeLifecycle('JOIN', { invitationRef: value });
+  }
+
+  async function leaveFamily() {
+    const entry = roomByChannel.get(state.channelRef) ?? roomByChannel.values().next().value;
+    if (!entry?.room?.spaceRef) {
+      setLifecycleState('HELD_UNAVAILABLE', 'LEAVE', 'FAMILY_LIFECYCLE_CURRENT_FAMILY_UNAVAILABLE');
+      return Object.freeze({ ok: false, body: null });
+    }
+    return executeLifecycle('LEAVE', { spaceRef: entry.room.spaceRef });
+  }
+
   async function refresh() {
     try {
       const response = await fetchImpl(bootstrapPath, { method: 'GET', headers: { accept: 'application/json' } });
@@ -388,6 +460,76 @@ export function createFamilyRoomController({
     }
   }
 
+  function renderLifecycleControls(host, room) {
+    const controls = documentRef.createElement('fieldset');
+    controls.id = 'familyLifecycleControls';
+    controls.className = 'family-lifecycle-controls';
+
+    const legend = documentRef.createElement('legend');
+    legend.textContent = t('family-room.lifecycle.heading');
+    controls.append(legend);
+
+    const running = lifecycle.state === 'RUNNING';
+    const authorityHeld = snapshot.state === 'HELD_UNAVAILABLE';
+
+    const hostButton = documentRef.createElement('button');
+    hostButton.id = 'familyHostButton';
+    hostButton.type = 'button';
+    hostButton.textContent = t('family-room.lifecycle.host');
+    hostButton.disabled = running || authorityHeld || snapshot.state !== 'EMPTY';
+    hostButton.addEventListener('click', () => { void hostFamily(); });
+    controls.append(hostButton);
+
+    const joinLabel = documentRef.createElement('label');
+    joinLabel.htmlFor = 'familyJoinInvitationRef';
+    joinLabel.textContent = t('family-room.lifecycle.join.label');
+    const joinInput = documentRef.createElement('input');
+    joinInput.id = 'familyJoinInvitationRef';
+    joinInput.type = 'text';
+    joinInput.autocomplete = 'off';
+    joinInput.placeholder = t('family-room.lifecycle.join.placeholder');
+    joinInput.disabled = running || authorityHeld;
+    const joinButton = documentRef.createElement('button');
+    joinButton.id = 'familyJoinButton';
+    joinButton.type = 'button';
+    joinButton.textContent = t('family-room.lifecycle.join');
+    const syncJoinButton = () => {
+      joinButton.disabled = running || authorityHeld || !joinInput.value.trim();
+    };
+    joinInput.addEventListener('input', syncJoinButton);
+    joinButton.addEventListener('click', () => { void joinFamily(joinInput.value); });
+    syncJoinButton();
+    controls.append(joinLabel, joinInput, joinButton);
+
+    const leaveButton = documentRef.createElement('button');
+    leaveButton.id = 'familyLeaveButton';
+    leaveButton.type = 'button';
+    leaveButton.textContent = t('family-room.lifecycle.leave');
+    leaveButton.disabled = running || authorityHeld || !room;
+    leaveButton.addEventListener('click', () => { void leaveFamily(); });
+    controls.append(leaveButton);
+
+    const lifecycleState = documentRef.createElement('p');
+    lifecycleState.id = 'familyLifecycleStatus';
+    lifecycleState.setAttribute('role', 'status');
+    lifecycleState.setAttribute('aria-live', 'polite');
+    lifecycleState.dataset.state = lifecycle.state;
+    if (lifecycle.failureCode) lifecycleState.dataset.failureCode = lifecycle.failureCode;
+    const statusKey = lifecycle.state === 'RUNNING'
+      ? 'family-room.lifecycle.working'
+      : lifecycle.state === 'SUCCEEDED'
+        ? 'family-room.lifecycle.success'
+        : lifecycle.state === 'HELD_UNAVAILABLE'
+          ? 'family-room.lifecycle.failed'
+          : authorityHeld
+            ? 'family-room.lifecycle.held'
+            : 'family-room.lifecycle.ready';
+    lifecycleState.textContent = t(statusKey);
+    controls.append(lifecycleState);
+
+    host.append(controls);
+  }
+
   function render() {
     if (!documentRef) return snapshot;
     const host = ensureStatusHost(documentRef);
@@ -433,6 +575,7 @@ export function createFamilyRoomController({
     action.disabled = snapshot.state === 'EMPTY';
     action.addEventListener('click', () => { if (room) openFirstRoom(); else void refresh(); });
     host.append(action);
+    renderLifecycleControls(host, room);
 
     if (room) {
       host.dataset.spaceRef = room.spaceRef;
@@ -469,6 +612,10 @@ export function createFamilyRoomController({
     refresh,
     render,
     openFirstRoom,
+    hostFamily,
+    joinFamily,
+    leaveFamily,
+    lifecycleStatus: () => lifecycle,
     snapshot: () => snapshot,
     roomCount: () => roomByChannel.size,
     isFamilyChannel: (channelRef = state.channelRef) => roomByChannel.has(channelRef)

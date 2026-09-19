@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/integration/family-room-suite.js",
       "mode": "100644",
-      "bytes": 4414,
-      "sha256": "62fca7c199b208808bbe961b2538e87f18e13a8374d198e8d75cf696223cf478"
+      "bytes": 5866,
+      "sha256": "36ad92f2299b3f484efcbf1ac811d54e31c66bf6ca3de45270a60db28b354384"
     },
     {
       "path": "src/core/browser-family-lifecycle-bridge.mjs",
