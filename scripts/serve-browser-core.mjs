@@ -965,7 +965,8 @@ export function createVexLifeBrowserServer({
         return;
       }
 
-–b‡W&ÂçF†æÖRÓÓÒ%$õu4U%ôdÔ”Å•õ$ôôÕô$ôõE5E$ô•õD‚’°        if (request.method !== 'GET') {
+      if (url.pathname === BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH) {
+        if (request.method !== 'GET') {
           response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
           response.end();
           return;
