@@ -17,7 +17,11 @@ import {
   recordIntentTransition,
   resolveKnownIntent
 } from '../src/core/intent-workgraph.mjs';
-import { projectIntentStatus } from '../src/core/intent-projection.mjs';
+import {
+  formIntentStewardshipRequestProjection,
+  inspectIntentStewardshipProjection,
+  projectIntentStatus
+} from '../src/core/intent-projection.mjs';
 import {
   validateIntentRegistry,
   validateIntentTrustSnapshot,
@@ -874,6 +878,227 @@ test('FTA-15 prior Intent Workgraphs remain validator-compatible and fingerprint
   assert.equal(first.semanticFingerprint, second.semanticFingerprint);
   assert.equal(validate(first).state, 'PLAN_VALIDATED');
   assert.equal(validate(second).state, 'PLAN_VALIDATED');
+});
+
+
+function stewardshipCausalFixture() {
+  const work = node('work.test.stewardship-causal', {
+    state: 'READY',
+    roleRef: 'role.vex.developer',
+    capabilityEnvelopeRef: 'capability-envelope.stewardship-causal',
+    effectEnvelopeRef: 'effect-envelope.stewardship-causal',
+    returnRouteRef: 'return-route.stewardship-causal'
+  });
+  const initial = graph([work], { proposedPlans: [plan()] });
+  const accepted = acceptIntentAssignment(initial, assignment(work.workNodeRef, {
+    assigneeRef: 'vex.stewardship.causal'
+  }), registry).graph;
+  const currentWork = accepted.nodes.find((item) => item.workNodeRef === work.workNodeRef);
+  const schedulerEvidence = {
+    sourceRefs: ['source.scheduler.stewardship-causal'],
+    occupancy: {
+      occupancyRef: 'occupancy.stewardship-causal',
+      occupancyFingerprint: 'c'.repeat(64),
+      actorRef: 'vex.stewardship.causal',
+      actorClass: 'VEX_AI',
+      workNodeRef: currentWork.workNodeRef,
+      graphFingerprint: accepted.semanticFingerprint,
+      roleRef: currentWork.roleRef,
+      currentness: 'CURRENT',
+      lifecycle: 'ACTIVE'
+    },
+    capabilityLease: {
+      leaseRef: 'lease.capability.stewardship-causal',
+      leaseFingerprint: 'd'.repeat(64),
+      workNodeRef: currentWork.workNodeRef,
+      graphFingerprint: accepted.semanticFingerprint,
+      envelopeRef: currentWork.capabilityEnvelopeRef,
+      currentness: 'CURRENT',
+      lifecycle: 'ACTIVE'
+    },
+    effectLease: {
+      leaseRef: 'lease.effect.stewardship-causal',
+      leaseFingerprint: 'e'.repeat(64),
+      workNodeRef: currentWork.workNodeRef,
+      graphFingerprint: accepted.semanticFingerprint,
+      envelopeRef: currentWork.effectEnvelopeRef,
+      effectDisposition: 'NO_EFFECTS',
+      currentness: 'CURRENT',
+      lifecycle: 'ACTIVE'
+    }
+  };
+  const semanticEvidence = {
+    intent: {
+      producerRef: 'process.multivex.structured-intention-representation.v2',
+      producerFingerprint: '1'.repeat(64),
+      sourceRefs: ['process.multivex.structured-intention-representation.v2', 'source.intent.protected-outcome'],
+      currentness: 'CURRENT',
+      protectedOutcomeRefs: ['outcome.stewardship.lower-monthly-cost'],
+      constraintRefs: ['constraint.stewardship.no-risk-tonight']
+    },
+    pathFrontier: {
+      producerRef: 'process.multivex.structured-intention-representation.v2',
+      producerFingerprint: '2'.repeat(64),
+      sourceRefs: [
+        'process.multivex.structured-intention-representation.v2',
+        'github.issue.vextreme-sdk.461',
+        'source.path.stewardship-current'
+      ],
+      currentness: 'CURRENT',
+      activePathRefOrNull: 'path.stewardship.current',
+      minimalSafePathRefOrNull: 'path.stewardship.current',
+      recommendedPathRefOrNull: 'path.stewardship.current',
+      alternatePathRefs: [],
+      heldPathRefs: ['path.stewardship.later'],
+      decisionPathRefOrNull: 'path.stewardship.later',
+      pathEvidenceRefs: ['evidence.stewardship.path'],
+      recommendationBasisRefs: ['basis.stewardship.current-first'],
+      whatWouldChangeRecommendationRefs: ['trigger.stewardship.prerequisite'],
+      decisionNeed: 'CHOICE'
+    },
+    continuity: {
+      producerRef: 'contract.vextreme.vex-continuity-stream.v1',
+      producerFingerprint: '3'.repeat(64),
+      sourceRefs: ['contract.vextreme.vex-continuity-stream.v1', 'source.continuity.frame'],
+      currentness: 'CURRENT',
+      openLoopRefs: ['open-loop.stewardship.later'],
+      heldOpportunityRefs: ['opportunity.stewardship.later'],
+      waitingExternalRefs: [],
+      refreshTriggerRefs: ['trigger.stewardship.source-change'],
+      continuityCurrentness: 'CURRENT',
+      materialUnknownRefs: []
+    },
+    timing: {
+      producerRef: 'github.issue.vextreme-sdk.461',
+      producerFingerprint: '4'.repeat(64),
+      sourceRefs: ['github.issue.vextreme-sdk.461', 'source.timing.explicit-not-now'],
+      currentness: 'CURRENT',
+      readinessState: 'NOT_NOW',
+      readinessEvidenceClass: 'EXPLICIT_USER_SIGNAL',
+      readinessEvidenceRefs: ['evidence.stewardship.not-now'],
+      reminderConsentState: 'NOT_OFFERED',
+      resurfaceMode: 'ON_EXPLICIT_TRIGGER',
+      safeUntilOrNull: null,
+      reactivationTriggerRefs: ['trigger.stewardship.user-ready'],
+      interruptPolicyRefOrNull: 'policy.stewardship.nonurgent'
+    },
+    authority: {
+      producerRef: 'SCA-00',
+      producerFingerprint: '5'.repeat(64),
+      sourceRefs: ['SCA-00', 'source.authority.current'],
+      currentness: 'CURRENT',
+      externalAuthorityRequired: false
+    },
+    outcome: {
+      producerRef: 'foundation.multivex.operations.reversible-completion.v1',
+      producerFingerprint: '6'.repeat(64),
+      sourceRefs: ['foundation.multivex.operations.reversible-completion.v1', 'source.outcome.current'],
+      currentness: 'CURRENT',
+      effectProposedRefOrNull: null,
+      effectResultRefOrNull: null,
+      outcomeVerificationRefOrNull: null,
+      intentSatisfied: false,
+      intentSatisfactionEvidenceRefOrNull: null,
+      residualOpenLoopRefs: ['open-loop.stewardship.later']
+    }
+  };
+  return {
+    graph: accepted,
+    options: {
+      registry,
+      registeredProcessRefs,
+      registeredRoleRefs,
+      trustSnapshot: trustSnapshot(accepted),
+      workNodeRef: currentWork.workNodeRef,
+      assignmentRef: accepted.acceptedAssignments[0].assignmentRef,
+      schedulerEvidence,
+      semanticEvidence,
+      caseRef: 'case.vexlife.stewardship.first-causal'
+    }
+  };
+}
+
+test('VS-C1 exact source-bound evidence forms one no-effect Stewardship adapter request from Intent Orchestration', () => {
+  const { graph: candidate, options: projectionOptions } = stewardshipCausalFixture();
+  const projection = formIntentStewardshipRequestProjection(candidate, projectionOptions);
+  assert.equal(projection.projectionRef, 'projection.intent.stewardship-request');
+  assert.equal(projection.request.intent.rootIntentionRef, candidate.rootIntentRef);
+  assert.deepEqual(projection.request.continuity.activeWorkRefs, [projectionOptions.workNodeRef]);
+  assert.equal(projection.request.responsibility.currentOccupancyOrNull.occupancyRef, projectionOptions.schedulerEvidence.occupancy.occupancyRef);
+  assert.equal(projection.request.responsibility.requiredRoleRefOrNull, candidate.nodes[0].roleRef);
+  assert.equal(projection.executionAuthority, 'NONE');
+  assert.equal(projection.effectAuthority, 'NONE');
+  assert.equal(projection.adapterReceipt.executionAuthority, 'NONE');
+  assert.equal(projection.adapterReceipt.effectAuthority, 'NONE');
+  assert.equal(projection.nextSafeAction.authority, 'NO_EXECUTION_AUTHORITY');
+});
+
+test('VS-C2 missing protected-outcome producer fails closed rather than manufacturing request truth', () => {
+  const { graph: candidate, options: projectionOptions } = stewardshipCausalFixture();
+  delete projectionOptions.semanticEvidence.intent;
+  const inspection = inspectIntentStewardshipProjection(candidate, projectionOptions);
+  assert.equal(inspection.ok, false);
+  assert.ok(inspection.missingProducerRefs.includes('missing-producer.intent.stewardship.protected-outcome-or-constraint'));
+  assert.throws(
+    () => formIntentStewardshipRequestProjection(candidate, projectionOptions),
+    /INTENT_STEWARDSHIP_REQUEST_PROJECTION_INVALID/
+  );
+});
+
+test('VS-C3 work-node or attributed-plan identity cannot be silently substituted for a Stewardship path', () => {
+  const first = stewardshipCausalFixture();
+  first.options.semanticEvidence.pathFrontier.recommendedPathRefOrNull = first.options.workNodeRef;
+  assert.ok(inspectIntentStewardshipProjection(first.graph, first.options).errors.includes('STEWARDSHIP_WORK_NODE_REF_USED_AS_PATH_REF'));
+
+  const second = stewardshipCausalFixture();
+  second.options.semanticEvidence.pathFrontier.recommendedPathRefOrNull = second.graph.proposedPlans[0].planContentRef;
+  assert.ok(inspectIntentStewardshipProjection(second.graph, second.options).errors.includes('STEWARDSHIP_PLAN_REF_USED_AS_PATH_REF'));
+});
+
+test('VS-C4 absent Continuity Stream producer cannot silently become empty open/held state', () => {
+  const { graph: candidate, options: projectionOptions } = stewardshipCausalFixture();
+  delete projectionOptions.semanticEvidence.continuity;
+  const inspection = inspectIntentStewardshipProjection(candidate, projectionOptions);
+  assert.equal(inspection.ok, false);
+  assert.ok(inspection.missingProducerRefs.includes('missing-producer.intent.stewardship.continuity-frame'));
+});
+
+test('VS-C5 inferred timing cannot declare human readiness or explicit NOT_NOW', () => {
+  const ready = stewardshipCausalFixture();
+  ready.options.semanticEvidence.timing.readinessState = 'READY_NOW';
+  ready.options.semanticEvidence.timing.readinessEvidenceClass = 'INFERRED_CANDIDATE';
+  assert.ok(inspectIntentStewardshipProjection(ready.graph, ready.options).errors.includes('STEWARDSHIP_INFERRED_READINESS_CANNOT_DECLARE_READY'));
+
+  const notNow = stewardshipCausalFixture();
+  notNow.options.semanticEvidence.timing.readinessEvidenceClass = 'INFERRED_CANDIDATE';
+  assert.ok(inspectIntentStewardshipProjection(notNow.graph, notNow.options).errors.includes('STEWARDSHIP_INFERENCE_CANNOT_DECLARE_NOT_NOW'));
+});
+
+test('VS-C6 stale scheduler occupancy fails before the adapter request is formed', () => {
+  const { graph: candidate, options: projectionOptions } = stewardshipCausalFixture();
+  projectionOptions.schedulerEvidence.occupancy.currentness = 'STALE';
+  const inspection = inspectIntentStewardshipProjection(candidate, projectionOptions);
+  assert.equal(inspection.ok, false);
+  assert.ok(inspection.errors.includes('STEWARDSHIP_SCHEDULER_OCCUPANCY_NOT_CURRENT_ACTIVE'));
+});
+
+test('VS-C7 work completion evidence cannot self-certify whole-intent satisfaction', () => {
+  const { graph: candidate, options: projectionOptions } = stewardshipCausalFixture();
+  projectionOptions.semanticEvidence.outcome.intentSatisfied = true;
+  projectionOptions.semanticEvidence.outcome.intentSatisfactionEvidenceRefOrNull = null;
+  assert.ok(inspectIntentStewardshipProjection(candidate, projectionOptions).errors.includes('STEWARDSHIP_INTENT_SATISFACTION_REQUIRES_EXPLICIT_EVIDENCE'));
+
+  projectionOptions.semanticEvidence.outcome.intentSatisfactionEvidenceRefOrNull = 'verification.work-node.same';
+  projectionOptions.semanticEvidence.outcome.outcomeVerificationRefOrNull = 'verification.work-node.same';
+  assert.ok(inspectIntentStewardshipProjection(candidate, projectionOptions).errors.includes('STEWARDSHIP_WORK_COMPLETION_CANNOT_SELF_CERTIFY_INTENT_SATISFACTION'));
+});
+
+test('VS-C8 current assignment remains no-authority/no-effects through first causal projection', () => {
+  const { graph: candidate, options: projectionOptions } = stewardshipCausalFixture();
+  const projection = formIntentStewardshipRequestProjection(candidate, projectionOptions);
+  assert.equal(projection.adapterInput.localBindings.assignment.authorityDisposition, 'NO_AUTHORITY');
+  assert.equal(projection.adapterInput.localBindings.assignment.effectDisposition, 'NO_EFFECTS');
+  assert.equal(projection.adapterInput.localBindings.assignment.assignmentState, 'CURRENT');
 });
 
 // [VXG RealForever]

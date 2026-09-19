@@ -237,4 +237,71 @@ Passing the shared-core tests proves only these deterministic source contracts.
 It does not prove review acceptance, native conformance, execution authority,
 merge authority, or public-release approval.
 
+
+## Stewardship first causal request projection
+
+'projection.intent.stewardship-request' is the Intent Orchestration-owned, no-effect request assembly seam for the accepted VS-FND foundation.
+
+It does not move Stewardship semantic ownership into Intent Orchestration. It binds current local operational evidence and consumes explicit source-bound semantic evidence from the rightful owners:
+
+~~~text
+Intent Workgraph
+  root intent
+  current work node
+  exact return route
+  CURRENT accepted assignment
+
+Intent Scheduler
+  CURRENT + ACTIVE occupancy
+  CURRENT + ACTIVE capability lease
+  CURRENT + ACTIVE effect lease
+
+Structured Intention / Stewardship meaning
+  protected outcome / constraint refs
+  path-frontier provenance
+
+Continuity Stream + EWA
+  open/held/waiting/refresh/currentness evidence
+
+Anticipatory / Mutual Stewardship sources
+  explicit decision timing / readiness / consent evidence
+
+SCA / rightful authority owner
+  external-authority requirement
+
+Completion / RCE / explicit intent-satisfaction owner
+  effect result / verification / whole-intent satisfaction evidence
+~~~
+
+The projector then forms the exact input for:
+
+~~~text
+adapter.vexlife.stewardship-orchestration.v1
+-> process.multivex.operations.stewardship-orchestration.v1
+-> recommendation-only route receipt
+-> exact workNode.returnRouteRef
+~~~
+
+Permanent boundaries:
+
+~~~text
+INTENT_ORCHESTRATION != EFFECT_AUTHORITY
+INTENT_SCHEDULER != STEWARDSHIP
+SCHEDULER_EVIDENCE != STEWARDSHIP_DECISION
+STEWARDSHIP_REQUEST_PROJECTION != STEWARDSHIP_SEMANTIC_OWNER
+WORK_NODE_REF != PATH_REF
+PLAN_CONTENT_REF != RECOMMENDED_PATH_BY_IMPLICATION
+INFERRED_READINESS != HUMAN_READINESS
+REMINDER_CONSENT != REMINDER_SCHEDULING_AUTHORITY
+WORK_COMPLETION != INTENT_SATISFACTION
+EMPTY_CONTINUITY_SET != PROVEN_ABSENCE
+STEWARDSHIP_RECOMMENDATION != TRANSITION_EXECUTION
+ROUTE_RECEIPT != EFFECT_PERMISSION
+~~~
+
+Missing or stale producer evidence fails closed before request formation. In particular, absence of a current Continuity Stream frame cannot silently become empty openLoopRefs or heldOpportunityRefs, and graph terminality cannot silently become intentSatisfied=true.
+
+The VexLife projector does not vendor or reimplement the SDK composer. Exact cross-repository proof must execute the accepted SDK source by immutable reference in a qualified no-effect proof environment.
+
+
 <!-- [VXG RealForever] -->
