@@ -5,8 +5,8 @@
     {
       "path": "blueprint/capability-registry.json",
       "mode": "100644",
-      "bytes": 20712,
-      "sha256": "bf45089222a806520b29b49319842c5baf6a1a82c14eaf9623436605dae564c2"
+      "bytes": 21816,
+      "sha256": "6b5e58f0cd83d24415d83bb6a318df24935054970353965614f16977d0c3aaec"
     },
     {
       "path": "blueprint/model-turn-formation-browser/strings/zh.json",

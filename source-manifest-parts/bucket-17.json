@@ -23,8 +23,8 @@
     {
       "path": "test/experience-command-projection.test.mjs",
       "mode": "100644",
-      "bytes": 19124,
-      "sha256": "057c4238ad4f134909f45a4c44a0aab8f2a3c8675f62ed879b440ba1a85e0afd"
+      "bytes": 23421,
+      "sha256": "5ea1e78c465b4cbb48e870dfb209f7957ad705a6b6cde2f116c44782929cf063"
     },
     {
       "path": "test/orientation-governance.test.mjs",
