@@ -609,8 +609,10 @@ test('FTA-07/08 Conversation acknowledgement semantics remain source-owned and d
   );
   assert.match(conversationSource, /cannot acknowledge before delivery/);
   assert.match(conversationSource, /cannot record understanding before acknowledgement/);
+  assert.equal(conversationSource.toLowerCase().includes('agreement'), false);
   assert.equal(conversationSource.includes('acceptedAssignment'), false);
   assert.equal(conversationSource.includes('assignmentRef'), false);
+  assert.equal(conversationSource.toLowerCase().includes('completion'), false);
 });
 
 // [VXG RealForever][EFX-02]

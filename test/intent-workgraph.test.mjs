@@ -763,6 +763,7 @@ test('FTA-11 assignment binds exact current work node, scalar assignee, and acce
     effectEnvelopeRef: 'effect-envelope.authorization.assignment'
   };
   const candidate = graph([work], { authorizations: [authorized] });
+  assert.equal(Object.hasOwn(candidate, 'acceptedAssignments'), false);
   const accepted = acceptIntentAssignment(candidate, assignment(work.workNodeRef, {
     acceptingActorRef: authorized.actorRef
   }), registry);
