@@ -87,7 +87,7 @@ function baseInput() {
         effectDisposition: 'NO_EFFECTS'
       },
       occupancy: {
-        occupancyRef: 'occcupancy.stewardship.test',
+        occupancyRef: 'occupancy.stewardship.test',
         occupancyFingerprint: H.occupancy,
         actorRef: 'vex.stewardship.test',
         actorClass: 'VEX_AI',
@@ -125,7 +125,7 @@ function baseInput() {
         rootIntentionRef: 'intent.stewardship.test',
         protectedOutcomeRefs: ['outcome.stewardship.test'],
         constraintRefs: ['constraint.stewardship.no-effects'],
-        intentSourceRefs: ['github.issue.vexlife.549']
+        sourceRefs: ['github.issue.vexlife.549']
       },
       pathFrontier: {
         activePathRefOrNull: 'path.stewardship.current',
@@ -150,7 +150,6 @@ function baseInput() {
       },
       timing: {
         readinessState: 'NOT_NOW',
-        readinessEvidenceClass: 'EXPLICIT_USER_SIGNAL',
         readinessEvidenceClass: 'EXPLICIT_USER_SIGNAL',
         readinessEvidenceRefs: ['evidence.stewardship.not-now'],
         reminderConsentState: 'ACCEPTED',

@@ -83,7 +83,7 @@ function localShape(local, errors) {
 
 export function validateStewardshipAdapterInput(input) {
   const errors = [];
-  add(errors, exact(input, ['schemaVersion','sdkBinding','localBindings','requestDrafg']), 'ADAPTER_INPUT_SHAPE_INVALID');
+  add(errors, exact(input, ['schemaVersion','sdkBinding','localBindings','requestDraft']), 'ADAPTER_INPUT_SHAPE_INVALID');
   if (!exact(input, ['schemaVersion','sdkBinding','localBindings','requestDraft'])) return { ok:false, errors };
   add(errors, input.schemaVersion === ADAPTER_INPUT_SCHEMA, 'ADAPTER_SCHEMA_INVALID');
   add(errors, exact(input.sdkBinding, ['processRef','profileRef','acceptedMergeRef','runtimeSourceRef','processSourceRef']), 'SDK_BINDING_SHAPE_INVALID');
