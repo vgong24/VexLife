@@ -179,6 +179,7 @@ const STEWARDSHIP_RESURFACE_MODES = Object.freeze([
   'WHEN_PREREQUISITE_COMPLETES', 'URGENT_ONLY', 'MANUAL_ONLY'
 ]);
 const STEWARDSHIP_DECISION_NEEDS = Object.freeze(['NONE', 'CHOICE', 'DISCUSSION']);
+const STEWARDSHIP_ACTOR_CLASSES = Object.freeze(['HUMAN','VEX_AI','DETERMINISTIC_SERVICE','INSTITUTION','EXTERNAL_PROFESSIONAL','EXTERNAL_AUTHORITY']);
 const FP64 = /^[a-f0-9]{64}$/u;
 
 const canonicalRefs = (value = []) => [...new Set(value)].sort();
@@ -232,16 +233,28 @@ function validateSchedulerEvidence(graph, work, assignment, schedulerEvidence, e
   if (!stableRefs(schedulerEvidence.sourceRefs) || schedulerEvidence.sourceRefs.length === 0) {
     errors.push('STEWARDSHIP_SCHEDULER_SOURCE_REFS_INVALID');
   }
+  const admission = schedulerEvidence.admissionReceipt;
   const occupancy = schedulerEvidence.occupancy;
   const capabilityLease = schedulerEvidence.capabilityLease;
   const effectLease = schedulerEvidence.effectLease;
-  if (!occupancy || occupancy.currentness !== 'CURRENT' || occupancy.lifecycle !== 'ACTIVE') {
+  if (!admission ||
+      admission.schemaVersion !== 'vexlife.intent-scheduler-admission-receipt/v1' ||
+      admission.currentness !== 'CURRENT' || admission.lifecycle !== 'ACTIVE') {
+    errors.push('STEWARDSHIP_SCHEDULER_ADMISSION_NOT_CURRENT_ACTIVE');
+  }
+  if (!occupancy ||
+      occupancy.schemaVersion !== 'vexlife.intent-scheduler-occupancy/v1' ||
+      occupancy.currentness !== 'CURRENT' || occupancy.lifecycle !== 'ACTIVE') {
     errors.push('STEWARDSHIP_SCHEDULER_OCCUPANCY_NOT_CURRENT_ACTIVE');
   }
-  if (!capabilityLease || capabilityLease.currentness !== 'CURRENT' || capabilityLease.lifecycle !== 'ACTIVE') {
+  if (!capabilityLease ||
+      capabilityLease.schemaVersion !== 'vexlife.intent-capability-lease/v1' ||
+      capabilityLease.currentness !== 'CURRENT' || capabilityLease.lifecycle !== 'ACTIVE') {
     errors.push('STEWARDSHIP_CAPABILITY_LEASE_NOT_CURRENT_ACTIVE');
   }
-  if (!effectLease || effectLease.currentness !== 'CURRENT' || effectLease.lifecycle !== 'ACTIVE') {
+  if (!effectLease ||
+      effectLease.schemaVersion !== 'vexlife.intent-effect-lease/v1' ||
+      effectLease.currentness !== 'CURRENT' || effectLease.lifecycle !== 'ACTIVE') {
     errors.push('STEWARDSHIP_EFFECT_LEASE_NOT_CURRENT_ACTIVE');
   }
   if (occupancy && (
@@ -258,15 +271,31 @@ function validateSchedulerEvidence(graph, work, assignment, schedulerEvidence, e
   if (effectLease && (
     effectLease.workNodeRef !== work.workNodeRef ||
     effectLease.graphFingerprint !== graph.semanticFingerprint ||
-    effectLease.envelopeRef !== work.effectEnvelopeRef
+    effectLease.envelopeRef !== work.effectEnvelopeRef ||
+    !['NO_EFFECTS','EFFECT_ENVELOPE_BOUND'].includes(effectLease.effectDisposition)
   )) errors.push('STEWARDSHIP_EFFECT_LEASE_BINDING_MISMATCH');
   for (const [label, fingerprint] of [
-    ['OCCUPANCY', occupancy?.occupancyFingerprint],
-    ['CAPABILITY_LEASE', capabilityLease?.leaseFingerprint],
-    ['EFFECT_LEASE', effectLease?.leaseFingerprint]
+    ['OCCUPANCY', occupancy?.semanticFingerprint],
+    ['CAPABILITY_LEASE', capabilityLease?.semanticFingerprint],
+    ['EFFECT_LEASE', effectLease?.semanticFingerprint]
   ]) {
     if (!FP64.test(fingerprint ?? '')) errors.push('STEWARDSHIP_' + label + '_FINGERPRINT_INVALID');
   }
+  if (admission && occupancy && capabilityLease && effectLease && (
+    admission.graphRef !== graph.graphRef ||
+    admission.graphFingerprint !== graph.semanticFingerprint ||
+    admission.workNodeRef !== work.workNodeRef ||
+    admission.nodeFingerprint !== work.semanticFingerprint ||
+    admission.occupancyRef !== occupancy.occupancyRef ||
+    admission.occupancyFingerprint !== occupancy.semanticFingerprint ||
+    admission.capabilityEnvelopeRef !== work.capabilityEnvelopeRef ||
+    admission.capabilityLeaseRef !== capabilityLease.leaseRef ||
+    admission.capabilityLeaseFingerprint !== capabilityLease.semanticFingerprint ||
+    admission.effectEnvelopeRef !== work.effectEnvelopeRef ||
+    admission.effectLeaseRef !== effectLease.leaseRef ||
+    admission.effectLeaseFingerprint !== effectLease.semanticFingerprint ||
+    admission.returnRouteRef !== work.returnRouteRef
+  )) errors.push('STEWARDSHIP_SCHEDULER_ADMISSION_BINDING_MISMATCH');
 }
 
 function validateStewardshipSemanticEvidence(graph, work, semanticEvidence, contract, errors) {
@@ -342,8 +371,13 @@ function validateStewardshipSemanticEvidence(graph, work, semanticEvidence, cont
   }
 
   const authority = semanticEvidence?.authority;
-  if (authority && typeof authority.externalAuthorityRequired !== 'boolean') {
-    errors.push('STEWARDSHIP_EXTERNAL_AUTHORITY_REQUIRED_INVALID');
+  if (authority) {
+    if (typeof authority.externalAuthorityRequired !== 'boolean') {
+      errors.push('STEWARDSHIP_EXTERNAL_AUTHORITY_REQUIRED_INVALID');
+    }
+    if (!STEWARDSHIP_ACTOR_CLASSES.includes(authority.actorClass)) {
+      errors.push('STEWARDSHIP_ACTOR_CLASS_NOT_SOURCE_BOUND');
+    }
   }
 
   const outcome = semanticEvidence?.outcome;
@@ -476,7 +510,7 @@ export function formIntentStewardshipRequestProjection(graph, options = {}) {
       currentOccupancyOrNull:{
         occupancyRef:schedulerEvidence.occupancy.occupancyRef,
         roleRef:work.roleRef,
-        actorClass:schedulerEvidence.occupancy.actorClass,
+        actorClass:semanticEvidence.authority.actorClass,
         capabilityRefs:[work.capabilityEnvelopeRef],
         capabilityState:'CURRENT',
         authorityState:'CURRENT'
@@ -526,9 +560,36 @@ export function formIntentStewardshipRequestProjection(graph, options = {}) {
         authorityDisposition:assignment.authorityDisposition,
         effectDisposition:assignment.effectDisposition
       },
-      occupancy:{...schedulerEvidence.occupancy},
-      capabilityLease:{...schedulerEvidence.capabilityLease},
-      effectLease:{...schedulerEvidence.effectLease},
+      occupancy:{
+        occupancyRef:schedulerEvidence.occupancy.occupancyRef,
+        occupancyFingerprint:schedulerEvidence.occupancy.semanticFingerprint,
+        actorRef:schedulerEvidence.occupancy.actorRef,
+        actorClass:semanticEvidence.authority.actorClass,
+        workNodeRef:schedulerEvidence.occupancy.workNodeRef,
+        graphFingerprint:schedulerEvidence.occupancy.graphFingerprint,
+        roleRef:schedulerEvidence.occupancy.roleRef,
+        currentness:schedulerEvidence.occupancy.currentness,
+        lifecycle:schedulerEvidence.occupancy.lifecycle
+      },
+      capabilityLease:{
+        leaseRef:schedulerEvidence.capabilityLease.leaseRef,
+        leaseFingerprint:schedulerEvidence.capabilityLease.semanticFingerprint,
+        workNodeRef:schedulerEvidence.capabilityLease.workNodeRef,
+        graphFingerprint:schedulerEvidence.capabilityLease.graphFingerprint,
+        envelopeRef:schedulerEvidence.capabilityLease.envelopeRef,
+        currentness:schedulerEvidence.capabilityLease.currentness,
+        lifecycle:schedulerEvidence.capabilityLease.lifecycle
+      },
+      effectLease:{
+        leaseRef:schedulerEvidence.effectLease.leaseRef,
+        leaseFingerprint:schedulerEvidence.effectLease.semanticFingerprint,
+        workNodeRef:schedulerEvidence.effectLease.workNodeRef,
+        graphFingerprint:schedulerEvidence.effectLease.graphFingerprint,
+        envelopeRef:schedulerEvidence.effectLease.envelopeRef,
+        effectDisposition:schedulerEvidence.effectLease.effectDisposition,
+        currentness:schedulerEvidence.effectLease.currentness,
+        lifecycle:schedulerEvidence.effectLease.lifecycle
+      },
       sourceRefs:canonicalRefs([
         ...(work.sourceRefs ?? []),
         ...(assignment.sourceRefs ?? []),

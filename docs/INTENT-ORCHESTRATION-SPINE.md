@@ -252,9 +252,14 @@ Intent Workgraph
   CURRENT accepted assignment
 
 Intent Scheduler
-  CURRENT + ACTIVE occupancy
+  exact CURRENT + ACTIVE admission receipt
+  CURRENT + ACTIVE occupancy identity/fingerprint
   CURRENT + ACTIVE capability lease
   CURRENT + ACTIVE effect lease
+
+SCA / rightful authority source
+  actor class for the bound occupancy
+  external-authority requirement
 
 Structured Intention / Stewardship meaning
   protected outcome / constraint refs
@@ -266,8 +271,7 @@ Continuity Stream + EWA
 Anticipatory / Mutual Stewardship sources
   explicit decision timing / readiness / consent evidence
 
-SCA / rightful authority owner
-  external-authority requirement
+The Scheduler proves which actor currently occupies the role; it does not author the actor-class semantic. The actor class is supplied by the source-bound authority evidence and is then bound to the exact Scheduler occupancy before the adapter request is formed.
 
 Completion / RCE / explicit intent-satisfaction owner
   effect result / verification / whole-intent satisfaction evidence
@@ -288,6 +292,7 @@ Permanent boundaries:
 INTENT_ORCHESTRATION != EFFECT_AUTHORITY
 INTENT_SCHEDULER != STEWARDSHIP
 SCHEDULER_EVIDENCE != STEWARDSHIP_DECISION
+SCHEDULER_OCCUPANCY_IDENTITY != ACTOR_CLASS_SOURCE
 STEWARDSHIP_REQUEST_PROJECTION != STEWARDSHIP_SEMANTIC_OWNER
 WORK_NODE_REF != PATH_REF
 PLAN_CONTENT_REF != RECOMMENDED_PATH_BY_IMPLICATION

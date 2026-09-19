@@ -897,10 +897,10 @@ function stewardshipCausalFixture() {
   const schedulerEvidence = {
     sourceRefs: ['source.scheduler.stewardship-causal'],
     occupancy: {
+      schemaVersion: 'vexlife.intent-scheduler-occupancy/v1',
       occupancyRef: 'occupancy.stewardship-causal',
-      occupancyFingerprint: 'c'.repeat(64),
+      semanticFingerprint: 'c'.repeat(64),
       actorRef: 'vex.stewardship.causal',
-      actorClass: 'VEX_AI',
       workNodeRef: currentWork.workNodeRef,
       graphFingerprint: accepted.semanticFingerprint,
       roleRef: currentWork.roleRef,
@@ -908,8 +908,9 @@ function stewardshipCausalFixture() {
       lifecycle: 'ACTIVE'
     },
     capabilityLease: {
+      schemaVersion: 'vexlife.intent-capability-lease/v1',
       leaseRef: 'lease.capability.stewardship-causal',
-      leaseFingerprint: 'd'.repeat(64),
+      semanticFingerprint: 'd'.repeat(64),
       workNodeRef: currentWork.workNodeRef,
       graphFingerprint: accepted.semanticFingerprint,
       envelopeRef: currentWork.capabilityEnvelopeRef,
@@ -917,8 +918,9 @@ function stewardshipCausalFixture() {
       lifecycle: 'ACTIVE'
     },
     effectLease: {
+      schemaVersion: 'vexlife.intent-effect-lease/v1',
       leaseRef: 'lease.effect.stewardship-causal',
-      leaseFingerprint: 'e'.repeat(64),
+      semanticFingerprint: 'e'.repeat(64),
       workNodeRef: currentWork.workNodeRef,
       graphFingerprint: accepted.semanticFingerprint,
       envelopeRef: currentWork.effectEnvelopeRef,
@@ -926,6 +928,24 @@ function stewardshipCausalFixture() {
       currentness: 'CURRENT',
       lifecycle: 'ACTIVE'
     }
+  };
+  schedulerEvidence.admissionReceipt = {
+    schemaVersion: 'vexlife.intent-scheduler-admission-receipt/v1',
+    graphRef: accepted.graphRef,
+    graphFingerprint: accepted.semanticFingerprint,
+    workNodeRef: currentWork.workNodeRef,
+    nodeFingerprint: currentWork.semanticFingerprint,
+    occupancyRef: schedulerEvidence.occupancy.occupancyRef,
+    occupancyFingerprint: schedulerEvidence.occupancy.semanticFingerprint,
+    capabilityEnvelopeRef: currentWork.capabilityEnvelopeRef,
+    capabilityLeaseRef: schedulerEvidence.capabilityLease.leaseRef,
+    capabilityLeaseFingerprint: schedulerEvidence.capabilityLease.semanticFingerprint,
+    effectEnvelopeRef: currentWork.effectEnvelopeRef,
+    effectLeaseRef: schedulerEvidence.effectLease.leaseRef,
+    effectLeaseFingerprint: schedulerEvidence.effectLease.semanticFingerprint,
+    returnRouteRef: currentWork.returnRouteRef,
+    currentness: 'CURRENT',
+    lifecycle: 'ACTIVE'
   };
   const semanticEvidence = {
     intent: {
@@ -987,6 +1007,7 @@ function stewardshipCausalFixture() {
       producerFingerprint: '5'.repeat(64),
       sourceRefs: ['SCA-00', 'source.authority.current'],
       currentness: 'CURRENT',
+      actorClass: 'VEX_AI',
       externalAuthorityRequired: false
     },
     outcome: {
@@ -1100,6 +1121,28 @@ test('VS-C8 current assignment remains no-authority/no-effects through first cau
   assert.equal(projection.adapterInput.localBindings.assignment.authorityDisposition, 'NO_AUTHORITY');
   assert.equal(projection.adapterInput.localBindings.assignment.effectDisposition, 'NO_EFFECTS');
   assert.equal(projection.adapterInput.localBindings.assignment.assignmentState, 'CURRENT');
+});
+
+test('VS-C9 Scheduler proves occupancy identity while actor class remains source-bound authority evidence', () => {
+  const { graph: candidate, options: projectionOptions } = stewardshipCausalFixture();
+  delete projectionOptions.semanticEvidence.authority.actorClass;
+  assert.ok(
+    inspectIntentStewardshipProjection(candidate, projectionOptions).errors.includes('STEWARDSHIP_ACTOR_CLASS_NOT_SOURCE_BOUND')
+  );
+
+  const valid = stewardshipCausalFixture();
+  valid.options.schedulerEvidence.occupancy.actorClass = 'HUMAN';
+  const projection = formIntentStewardshipRequestProjection(valid.graph, valid.options);
+  assert.equal(projection.adapterInput.localBindings.occupancy.actorClass, 'VEX_AI');
+  assert.equal(projection.request.responsibility.currentOccupancyOrNull.actorClass, 'VEX_AI');
+});
+
+test('VS-C10 Scheduler admission receipt must bind exact current occupancy and leases', () => {
+  const { graph: candidate, options: projectionOptions } = stewardshipCausalFixture();
+  projectionOptions.schedulerEvidence.admissionReceipt.occupancyFingerprint = '0'.repeat(64);
+  assert.ok(
+    inspectIntentStewardshipProjection(candidate, projectionOptions).errors.includes('STEWARDSHIP_SCHEDULER_ADMISSION_BINDING_MISMATCH')
+  );
 });
 
 // [VXG RealForever]
