@@ -252,6 +252,8 @@ function makeHome(root, label) {
   return { home, ...identity };
 }
 
+const DELAYED_SUCCESS_TIMEOUT_MS = 2000;
+
 function baseTurn(homeIdentity, endpoint, overrides = {}) {
   return {
     ...homeIdentity,
@@ -766,7 +768,8 @@ async function proof() {
       {
         threadRef: noClobberThreadRef,
         instanceRef: ref('instance.vexlife.failure-receipt.owner'),
-        turnRef: ref('turn.vexlife.failure-receipt.owner')
+        turnRef: ref('turn.vexlife.failure-receipt.owner'),
+        timeoutMs: DELAYED_SUCCESS_TIMEOUT_MS
       }
     );
     const noClobberContenderRef = ref('turn.vexlife.failure-receipt.contender');
@@ -913,12 +916,14 @@ async function proof() {
     const concurrentFirst = baseTurn(concurrentHome, `http://127.0.0.1:${loopback.port}/delay/`, {
       instanceRef: ref('instance.vexlife.concurrent.first'),
       threadRef: concurrentThreadRef,
-      turnRef: ref('turn.vexlife.concurrent.first')
+      turnRef: ref('turn.vexlife.concurrent.first'),
+      timeoutMs: DELAYED_SUCCESS_TIMEOUT_MS
     });
     const concurrentSecond = baseTurn(concurrentHome, `http://127.0.0.1:${loopback.port}/delay/`, {
       instanceRef: ref('instance.vexlife.concurrent.second'),
       threadRef: concurrentThreadRef,
-      turnRef: ref('turn.vexlife.concurrent.second')
+      turnRef: ref('turn.vexlife.concurrent.second'),
+      timeoutMs: DELAYED_SUCCESS_TIMEOUT_MS
     });
     const concurrentCallsBefore = loopback.calls.length;
     const concurrentOutputs = await Promise.all([
