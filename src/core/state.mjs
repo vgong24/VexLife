@@ -1234,45 +1234,123 @@ function replaySchedulerDueLedger(ledger = [], schedulerRegistry = null) {
   return [...records.values()].sort((left, right) => left.dueRef.localeCompare(right.dueRef));
 }
 
-function validateMissedHostReconciliationLedger(reconciliations = [], dueRecords = []) {
+function validateMissedHostReconciliationLedger(
+  reconciliations = [],
+  dueRecords = [],
+  dueTransitionLedger = [],
+  schedulerRegistry = null
+) {
   if (!Array.isArray(reconciliations)) throw new Error('scheduler missed-host reconciliation ledger must be an array');
+  if (!Array.isArray(dueTransitionLedger)) throw new Error('scheduler due transition ledger must be an array');
+  const contract = schedulerRegistry?.missedHostReconciliationContract ?? null;
+  const expectedEffectBoundary = schedulerRegistry?.dueIntentContract?.effectBoundary ?? null;
+  if (reconciliations.length && (!contract || !Array.isArray(contract.requiredFields) || !expectedEffectBoundary)) {
+    throw new Error('scheduler missed-host reconciliation requires source-managed registry contracts');
+  }
   const seen = new Set();
   const dueByRef = new Map(dueRecords.map((item) => [item.dueRef, item]));
   for (const receipt of reconciliations) {
-    if (!receipt || receipt.schemaVersion !== 'vexlife.intent-scheduler-missed-host-reconciliation/v1' ||
+    if (!receipt || receipt.schemaVersion !== contract.receiptSchemaVersion ||
         !receipt.reconciliationRef || !receipt.dueRef ||
-        receipt.reconciliationClass !== 'DUE_ELAPSED_ACROSS_SCHEDULER_OBSERVATION_GAP' ||
+        receipt.reconciliationClass !== contract.reconciliationClass ||
         receipt.currentness !== 'CURRENT') {
       throw new Error('scheduler missed-host reconciliation receipt is malformed');
     }
+    for (const field of contract.requiredFields) {
+      if (!Object.hasOwn(receipt, field) || receipt[field] === undefined) {
+        throw new Error(`scheduler missed-host reconciliation missing required field ${field}`);
+      }
+    }
+
     const candidate = clone(receipt);
     const fingerprint = candidate.semanticFingerprint;
     delete candidate.semanticFingerprint;
     if (semanticHash(candidate) !== fingerprint) {
       throw new Error('scheduler missed-host reconciliation fingerprint mismatch');
     }
+
+    const refCore = clone(receipt);
+    delete refCore.reconciliationRef;
+    delete refCore.semanticFingerprint;
+    const expectedReconciliationRef =
+      `reconciliation.intent-scheduler.missed-host.${semanticHash(refCore).slice(0, 32)}`;
+    if (receipt.reconciliationRef !== expectedReconciliationRef) {
+      throw new Error('scheduler missed-host reconciliation reference is not content-addressed from exact receipt core');
+    }
+
     if (seen.has(receipt.dueRef)) throw new Error('scheduler missed-host reconciliation is not once-only');
     seen.add(receipt.dueRef);
+
     const due = dueByRef.get(receipt.dueRef);
     if (!due || due.lifecycle !== 'DUE' || due.currentness !== 'CURRENT' ||
-        receipt.assignmentRef !== due.assignmentRef || receipt.assignmentFingerprint !== due.assignmentFingerprint ||
-        receipt.workNodeRef !== due.workNodeRef || receipt.dueAt !== due.dueAt) {
-      throw new Error('scheduler missed-host reconciliation is detached from exact due truth');
+        receipt.dueFingerprint !== due.semanticFingerprint ||
+        receipt.assignmentRef !== due.assignmentRef ||
+        receipt.assignmentFingerprint !== due.assignmentFingerprint ||
+        receipt.sourceIntentRef !== due.sourceIntentRef ||
+        receipt.workNodeRef !== due.workNodeRef ||
+        receipt.assigneeRef !== due.assigneeRef ||
+        receipt.graphFingerprint !== due.graphFingerprint ||
+        receipt.dueAt !== due.dueAt) {
+      throw new Error('scheduler missed-host reconciliation is detached from exact replayed due truth');
     }
+
+    const dueReachedMatches = dueTransitionLedger.filter((transition) =>
+      transition.transitionType === 'DUE_REACHED' &&
+      transition.dueRef === receipt.dueRef &&
+      transition.nextDue?.semanticFingerprint === receipt.dueFingerprint
+    );
+    if (dueReachedMatches.length !== 1) {
+      throw new Error('scheduler missed-host reconciliation requires exactly one matching DUE_REACHED transition');
+    }
+    const dueReached = dueReachedMatches[0];
+    if (JSON.stringify(dueReached.nextDue) !== JSON.stringify(due) ||
+        receipt.priorDueFingerprint !== dueReached.priorDueFingerprint ||
+        receipt.restoreObservedAt !== dueReached.observedAt ||
+        receipt.restoreObservedAt !== due.observedAt) {
+      throw new Error('scheduler missed-host reconciliation DUE_REACHED lineage mismatch');
+    }
+
+    const priorMatches = dueTransitionLedger.filter((transition) =>
+      transition.dueRef === receipt.dueRef &&
+      transition.nextDue?.semanticFingerprint === receipt.priorDueFingerprint
+    );
+    if (priorMatches.length !== 1 || priorMatches[0].sequence >= dueReached.sequence) {
+      throw new Error('scheduler missed-host reconciliation prior due fingerprint does not resolve uniquely');
+    }
+    const priorDue = priorMatches[0].nextDue;
+    if (priorDue.lifecycle !== 'SCHEDULED' || priorDue.currentness !== 'CURRENT') {
+      throw new Error('scheduler missed-host reconciliation prior due is not exact SCHEDULED/CURRENT truth');
+    }
+    for (const field of [
+      'dueRef', 'assignmentRef', 'assignmentFingerprint', 'sourceIntentRef',
+      'workNodeRef', 'assigneeRef', 'graphFingerprint', 'dueAt', 'formedAt'
+    ]) {
+      if (priorDue[field] !== due[field]) {
+        throw new Error(`scheduler missed-host reconciliation prior due changed immutable ${field}`);
+      }
+    }
+
+    const exactSourceRefs = JSON.stringify(receipt.sourceRefs);
+    if (!Array.isArray(receipt.sourceRefs) ||
+        exactSourceRefs !== JSON.stringify(due.sourceRefs) ||
+        exactSourceRefs !== JSON.stringify(priorDue.sourceRefs) ||
+        exactSourceRefs !== JSON.stringify(dueReached.sourceRefs)) {
+      throw new Error('scheduler missed-host reconciliation source lineage mismatch');
+    }
+
+    const priorDueObserved = parseCanonicalTimestamp(
+      priorDue.observedAt,
+      'scheduler missed-host prior due observedAt'
+    );
     const prior = parseCanonicalTimestamp(receipt.priorObservedAt, 'scheduler missed-host priorObservedAt');
     const restored = parseCanonicalTimestamp(receipt.restoreObservedAt, 'scheduler missed-host restoreObservedAt');
     const dueAt = parseCanonicalTimestamp(receipt.dueAt, 'scheduler missed-host dueAt');
-    if (!(prior < dueAt && restored >= dueAt && restored > prior)) {
+    if (!(priorDueObserved <= prior && prior < dueAt && dueAt <= restored && restored > prior)) {
       throw new Error('scheduler missed-host reconciliation clock crossing is invalid');
     }
-    for (const field of [
-      'modelInference', 'modelWorkerLease', 'conversationAppend', 'notificationSend',
-      'humanAttentionInboxMutation', 'calendarEventCreation', 'effectAuthorityGrant',
-      'familySpecificAuthorityGrant'
-    ]) {
-      if (receipt.effectBoundary?.[field] !== false) {
-        throw new Error('scheduler missed-host reconciliation cannot carry effect authority or delivery');
-      }
+
+    if (semanticHash(receipt.effectBoundary) !== semanticHash(expectedEffectBoundary)) {
+      throw new Error('scheduler missed-host reconciliation effect boundary is not exact source-managed no-effect truth');
     }
   }
 }
@@ -1296,7 +1374,12 @@ function applySchedulerDueEvent(next, event, schedulerRegistry) {
   } else if (!Array.isArray(next.missedHostReconciliationLedger)) {
     next.missedHostReconciliationLedger = [];
   }
-  validateMissedHostReconciliationLedger(next.missedHostReconciliationLedger, next.dueRecords);
+  validateMissedHostReconciliationLedger(
+    next.missedHostReconciliationLedger,
+    next.dueRecords,
+    next.dueTransitionLedger,
+    schedulerRegistry
+  );
 }
 
 export function createInitialSchedulerAggregate() {
@@ -1651,7 +1734,12 @@ export function createIntentSchedulerState({
   if (JSON.stringify(replayedDues) !== JSON.stringify(aggregate.dueRecords ?? [])) {
     throw new Error('scheduler due current projection differs from immutable due transition replay');
   }
-  validateMissedHostReconciliationLedger(aggregate.missedHostReconciliationLedger ?? [], replayedDues);
+  validateMissedHostReconciliationLedger(
+    aggregate.missedHostReconciliationLedger ?? [],
+    replayedDues,
+    aggregate.dueTransitionLedger ?? [],
+    schedulerRegistry
+  );
   const replayedClaims = replayRecoveryClaimLedger(aggregate.recoveryClaimLedger ?? [], aggregate, {
     recoveryClaimReceiptValidator,
     validateFinalSchedulerState: true,
