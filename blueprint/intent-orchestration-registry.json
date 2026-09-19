@@ -128,8 +128,33 @@
         "decisionRef",
         "semanticFingerprint"
       ]
+    },
+    "assignment": {
+      "contractRef": "contract.intent.accepted-assignment",
+      "requiredFields": [
+        "assignmentRef",
+        "sourceIntentRef",
+        "workNodeRef",
+        "assigneeRef",
+        "acceptingActorRef",
+        "acceptanceBasis",
+        "acceptedAt",
+        "sourceRefs",
+        "authorityDisposition",
+        "effectDisposition",
+        "assignmentState",
+        "semanticFingerprint"
+      ]
     }
   },
+  "acceptedAssignmentStates": [
+    "CURRENT",
+    "SETTLED"
+  ],
+  "assignmentAcceptanceBases": [
+    "ORIGINATING_HUMAN_ACCEPTED",
+    "AUTHORIZED_ACTOR_ACCEPTED"
+  ],
   "authorityDispositions": [
     "NO_AUTHORITY",
     "AUTHORIZED_BOUNDED",
@@ -362,6 +387,10 @@
     {
       "projectionRef": "projection.intent.next-safe-action",
       "brief": "Exactly one proposed next safe action with no execution authority."
+    },
+    {
+      "projectionRef": "projection.intent.accepted-assignment",
+      "brief": "Explicit accepted assignment binding one current work node to one assignee and one accepting human or bounded-authorized actor without completion or effect authority."
     }
   ],
   "successorBoundaries": [

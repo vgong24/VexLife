@@ -93,6 +93,15 @@ export function buildAttributedProjectionFingerprint(input) {
   return semanticHash(snapshot);
 }
 
+export function buildAcceptedAssignmentFingerprint(input) {
+  const snapshot = clone(input);
+  delete snapshot.semanticFingerprint;
+  delete snapshot.assignmentState;
+  delete snapshot.settledByWorkStateOrNull;
+  snapshot.sourceRefs = canonicalSet(snapshot.sourceRefs);
+  return semanticHash(snapshot);
+}
+
 export function buildWorkNodeFingerprint(input) {
   const snapshot = normalizedNodeSnapshot(input);
   delete snapshot.workNodeRef;
@@ -160,7 +169,7 @@ export function createIntentTrustSnapshot(input, registry) {
 }
 
 function projectionRef(item) {
-  return item.interpretationRef ?? item.planRef ?? item.authorizationRef ?? '';
+  return item.interpretationRef ?? item.planRef ?? item.authorizationRef ?? item.assignmentRef ?? '';
 }
 
 export function buildGraphSnapshotFingerprint(graph) {
@@ -173,7 +182,7 @@ export function buildGraphSnapshotFingerprint(graph) {
   );
   const receipts = [...(graph.receipts ?? [])].sort((left, right) =>
     String(left?.receiptRef ?? '').localeCompare(String(right?.receiptRef ?? '')));
-  return semanticHash({
+  const snapshot = {
     graphRef: graph.graphRef,
     rootIntentRef: graph.rootIntentRef,
     intentFingerprint: graph.intent.semanticFingerprint,
@@ -190,7 +199,12 @@ export function buildGraphSnapshotFingerprint(graph) {
       .map(([field, refs]) => [field, canonicalSet(refs)])),
     currentPointers: graph.currentPointers,
     createdAt: graph.createdAt
-  });
+  };
+  if (Object.hasOwn(graph, 'acceptedAssignments')) {
+    snapshot.acceptedAssignments = [...(graph.acceptedAssignments ?? [])]
+      .sort((left, right) => String(left?.assignmentRef ?? '').localeCompare(String(right?.assignmentRef ?? '')));
+  }
+  return semanticHash(snapshot);
 }
 
 function currentPointers(nodes, transitions, receipts) {
@@ -287,6 +301,123 @@ export function createAttributedAuthorization(input, registry) {
   return createAttributedProjection(input, registry, 'authorization', 'attributed authorization');
 }
 
+export function createAcceptedAssignment(input, graph, registry) {
+  const contract = registry?.attributedProjectionContracts?.assignment;
+  if (!contract) throw new Error('intent registry missing accepted assignment contract');
+  const requiredInputFields = [
+    'assignmentRef',
+    'sourceIntentRef',
+    'workNodeRef',
+    'assigneeRef',
+    'acceptingActorRef',
+    'acceptedAt',
+    'sourceRefs'
+  ];
+  requireFields(input, requiredInputFields, 'accepted assignment');
+  for (const field of ['assignmentRef', 'sourceIntentRef', 'workNodeRef', 'assigneeRef', 'acceptingActorRef']) {
+    if (typeof input[field] !== 'string' || input[field].trim().length === 0 || /\s/u.test(input[field])) {
+      throw new Error(`accepted assignment ${field} must be one stable scalar ref`);
+    }
+  }
+  if (!Array.isArray(input.sourceRefs) || input.sourceRefs.length === 0 ||
+      input.sourceRefs.some((ref) => typeof ref !== 'string' || ref.trim().length === 0)) {
+    throw new Error('accepted assignment sourceRefs must be non-empty stable refs');
+  }
+  if (Number.isNaN(Date.parse(input.acceptedAt))) {
+    throw new Error('accepted assignment acceptedAt must be a timestamp');
+  }
+  if (input.sourceIntentRef !== graph?.rootIntentRef) {
+    throw new Error('accepted assignment sourceIntentRef must match the exact workgraph root intent');
+  }
+  const node = (graph?.nodes ?? []).find((item) => item.workNodeRef === input.workNodeRef);
+  if (!node) throw new Error(`accepted assignment references absent work node ${input.workNodeRef}`);
+  if ((registry?.cancellationSettledStates ?? []).includes(node.state)) {
+    throw new Error(`accepted assignment work node ${input.workNodeRef} is not current in state ${node.state}`);
+  }
+
+  let acceptanceBasis = null;
+  if (input.acceptingActorRef === graph.intent?.originSpeakerRef) {
+    acceptanceBasis = 'ORIGINATING_HUMAN_ACCEPTED';
+  } else {
+    const authorizations = (graph?.authorizations ?? []).filter((item) =>
+      item.sourceIntentRef === graph.rootIntentRef &&
+      item.actorRef === input.acceptingActorRef &&
+      item.authorityDisposition === 'AUTHORIZED_BOUNDED'
+    );
+    if (authorizations.length > 1) {
+      throw new Error('accepted assignment accepting actor authorization is ambiguous');
+    }
+    if (authorizations.length === 1) acceptanceBasis = 'AUTHORIZED_ACTOR_ACCEPTED';
+  }
+  if (!(registry?.assignmentAcceptanceBases ?? []).includes(acceptanceBasis)) {
+    throw new Error('accepted assignment requires the originating human or one bounded authorized actor');
+  }
+
+  const candidate = {
+    assignmentRef: input.assignmentRef,
+    sourceIntentRef: input.sourceIntentRef,
+    workNodeRef: input.workNodeRef,
+    assigneeRef: input.assigneeRef,
+    acceptingActorRef: input.acceptingActorRef,
+    acceptanceBasis,
+    acceptedAt: input.acceptedAt,
+    sourceRefs: canonicalSet(input.sourceRefs),
+    authorityDisposition: 'NO_AUTHORITY',
+    effectDisposition: 'NO_EFFECTS',
+    assignmentState: 'CURRENT',
+    settledByWorkStateOrNull: null
+  };
+  if (!(registry?.acceptedAssignmentStates ?? []).includes(candidate.assignmentState)) {
+    throw new Error('intent registry does not admit CURRENT accepted assignments');
+  }
+  candidate.semanticFingerprint = assertFingerprint(
+    input.semanticFingerprint,
+    buildAcceptedAssignmentFingerprint(candidate),
+    'accepted assignment'
+  );
+  requireFields(candidate, contract.requiredFields, 'accepted assignment');
+  return deepFreeze(candidate);
+}
+
+function settleAcceptedAssignments(assignments, stateByNodeRef, registry) {
+  if (!Array.isArray(assignments)) return undefined;
+  const settledStates = new Set(registry?.cancellationSettledStates ?? []);
+  return assignments.map((assignment) => {
+    const nextWorkState = stateByNodeRef.get(assignment.workNodeRef);
+    if (assignment.assignmentState !== 'CURRENT' || !settledStates.has(nextWorkState)) {
+      return clone(assignment);
+    }
+    return {
+      ...clone(assignment),
+      assignmentState: 'SETTLED',
+      settledByWorkStateOrNull: nextWorkState
+    };
+  });
+}
+
+export function acceptIntentAssignment(graph, input, registry) {
+  const normalized = createAcceptedAssignment(input, graph, registry);
+  const existing = graph?.acceptedAssignments ?? [];
+  if (existing.some((item) => item.assignmentRef === normalized.assignmentRef)) {
+    throw new Error(`duplicate accepted assignment ref ${normalized.assignmentRef}`);
+  }
+  const currentForNode = existing.filter((item) =>
+    item.workNodeRef === normalized.workNodeRef && item.assignmentState === 'CURRENT'
+  );
+  if (currentForNode.length > 0) {
+    throw new Error(`conflicting current assignment for ${normalized.workNodeRef}`);
+  }
+  const next = {
+    ...clone(graph),
+    acceptedAssignments: [...clone(existing), clone(normalized)]
+  };
+  return {
+    changed: true,
+    assignment: normalized,
+    graph: formGraphSnapshot(next)
+  };
+}
+
 export function createWorkNode(input, registry) {
   const dependencyRefs = canonicalSet(input.dependencyRefs);
   const initialState = input.initialState ?? registry?.allowedFormationStates?.[0];
@@ -358,6 +489,7 @@ export function createIntentWorkgraph({
   interpretations = [],
   proposedPlans = [],
   authorizations = [],
+  acceptedAssignments = undefined,
   transitions = [],
   receipts = [],
   bindingRefs = {},
@@ -381,7 +513,15 @@ export function createIntentWorkgraph({
     bindingRefs: Object.fromEntries(Object.entries(bindingRefs).map(([field, refs]) => [field, canonicalSet(refs)])),
     createdAt
   };
-  return formGraphSnapshot(normalized, semanticFingerprint);
+  if (!Array.isArray(acceptedAssignments) || acceptedAssignments.length === 0) {
+    return formGraphSnapshot(normalized, semanticFingerprint);
+  }
+  let current = formGraphSnapshot(normalized);
+  for (const assignment of acceptedAssignments) {
+    current = acceptIntentAssignment(current, assignment, registry).graph;
+  }
+  assertFingerprint(semanticFingerprint, current.semanticFingerprint, 'intent workgraph');
+  return current;
 }
 
 export function appendReceipt(graph, receipt, registry) {
@@ -422,14 +562,22 @@ export function recordIntentTransition(graph, transition, registry) {
   const nodes = graph.nodes.map((item) => item.workNodeRef === node.workNodeRef
     ? { ...clone(item), state: normalized.nextState }
     : clone(item));
+  const next = {
+    ...clone(graph),
+    nodes,
+    transitions: [...clone(graph.transitions), clone(normalized)]
+  };
+  if (Object.hasOwn(graph, 'acceptedAssignments')) {
+    next.acceptedAssignments = settleAcceptedAssignments(
+      graph.acceptedAssignments,
+      new Map([[node.workNodeRef, normalized.nextState]]),
+      registry
+    );
+  }
   return {
     changed: true,
     transition: normalized,
-    graph: formGraphSnapshot({
-      ...clone(graph),
-      nodes,
-      transitions: [...clone(graph.transitions), clone(normalized)]
-    })
+    graph: formGraphSnapshot(next)
   };
 }
 
@@ -489,11 +637,21 @@ export function cancelIntentBranch(graph, workNodeRef, transitionInput, registry
     ? { ...clone(node), state: stateByNodeRef.get(node.workNodeRef) }
     : clone(node));
   const current = transitions.length
-    ? formGraphSnapshot({
-      ...clone(graph),
-      nodes,
-      transitions: [...clone(graph.transitions), ...clone(transitions)]
-    })
+    ? (() => {
+        const next = {
+          ...clone(graph),
+          nodes,
+          transitions: [...clone(graph.transitions), ...clone(transitions)]
+        };
+        if (Object.hasOwn(graph, 'acceptedAssignments')) {
+          next.acceptedAssignments = settleAcceptedAssignments(
+            graph.acceptedAssignments,
+            stateByNodeRef,
+            registry
+          );
+        }
+        return formGraphSnapshot(next);
+      })()
     : graph;
   return {
     changed: transitions.length > 0,

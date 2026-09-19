@@ -17,6 +17,7 @@
     "EXPERIENCE_PATTERN != FEATURE",
     "INTERACTION_FORM != SEMANTIC_MEANING",
     "COMMAND_BINDING != EFFECT_AUTHORITY",
+    "ANNOUNCE_COMMAND_IDENTITY != MESSAGE_DELIVERY",
     "SLASH_STRING != COMMAND_IDENTITY",
     "SLASH_STRING != HUMAN_MESSAGE",
     "UNKNOWN_SLASH_COMMAND != MODEL_TURN",
@@ -197,6 +198,16 @@
     }
   ],
   "commandBindings": [
+    {
+      "commandRef": "command.vexlife.announce",
+      "purpose": "Classify one generic conversation-announcement request without delivering a message or granting effect authority.",
+      "capabilityRef": "conversation.announce",
+      "actionRefOrNull": null,
+      "processRefOrNull": null,
+      "aliases": [
+        {"literal": "/announce", "formRef": "form.vexlife.operator.slash-alias"}
+      ]
+    },
     {
       "commandRef": "command.vexlife.search",
       "purpose": "Find a registered capability/source/semantic identity without moving navigation presence.",

@@ -310,6 +310,34 @@
       "resourceClass": "GPU_HEAVY_EXPLICIT_LEASE"
     },
     {
+      "capabilityRef": "conversation.announce",
+      "purpose": "Request an ordinary addressed Conversation announcement through an authorized consumer while command identity, effect authority, and delivery remain separate.",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "CONVERSATION_ANNOUNCEMENT_REQUEST",
+      "defaultStage": "REQUESTABLE",
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.developer",
+        "role.vex.guide",
+        "role.vex.operations",
+        "role.vex.root-hub"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "resourceClass": "CPU_LIGHT",
+      "notes": [
+        "generic request contract only; no executable send action is claimed",
+        "authorized delivery remains an ordinary addressed Conversation message through existing Conversation persistence",
+        "scheduling, notification, calendar, onboarding, and consumer projections remain separate"
+      ]
+    },
+    {
       "capabilityRef": "capability.search",
       "purpose": "Find canonical capability candidates from task terms and registered relationships without executing them.",
       "sourceOfTruth": "blueprint/capability-registry.json",
