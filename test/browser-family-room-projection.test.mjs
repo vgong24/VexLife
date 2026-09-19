@@ -152,7 +152,7 @@ function fixture(t){
   return {home,record,resolver};
 }
 
-function resolverForPrincipal(principalRef,deviceRef){
+function vexCoreProjectionForPrincipal(principalRef,deviceRef){
   const suffix=principalRef.split('.').at(-1);
   const offer=createPairingOffer({
     pairingRef:'pairing.vf06-'+suffix,
@@ -523,7 +523,10 @@ test('VF07C1-05 lifecycle failure remains held and never synthesizes success', a
 test('VF07C1-06 real same-origin Host/Join/Leave consumes the accepted server lifecycle bridge', async t => {
   const home = tempHome(t);
   let now = T0;
-  let currentResolver = resolverForPrincipal(PRINCIPAL, DEVICE);
+  let currentProjection = vexCoreProjectionForPrincipal(PRINCIPAL, DEVICE);
+  const currentConversationResolver = createVexCoreFamilySessionAuthorityResolver({
+    resolveVexCoreAuthority: async () => currentProjection
+  });
   const lifecycleCalls = [];
 
   const resolveLifecycleAuthority = async context => {
@@ -531,9 +534,13 @@ test('VF07C1-06 real same-origin Host/Join/Leave consumes the accepted server li
       operation: context.operation,
       intent: structuredClone(context.intent)
     }));
-    return currentResolver(context);
+    return Object.freeze({
+      membership: currentProjection.membership,
+      lease: currentProjection.lease,
+      currentRevocationGeneration: currentProjection.currentRevocationGeneration
+    });
   };
-  const resolveConversationAuthority = async context => currentResolver(context);
+  const resolveConversationAuthority = async context => currentConversationResolver(context);
 
   const server = createVexLifeBrowserServer({
     companionBridge: fakeCompanion(),
@@ -598,7 +605,7 @@ test('VF07C1-06 real same-origin Host/Join/Leave consumes the accepted server li
   }).record;
 
   now = T2;
-  currentResolver = resolverForPrincipal('person.alex', 'device.vf06-alex');
+  currentProjection = vexCoreProjectionForPrincipal('person.alex', 'device.vf06-alex');
   const joined = await controller.joinFamily(invitation.invitationRef);
   assert.equal(joined.ok, true);
   assert.equal(controller.snapshot().state, 'CURRENT');
