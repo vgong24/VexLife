@@ -25,6 +25,8 @@ import { composeSemanticRelay } from '../src/core/conversation.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+const DELAYED_SUCCESS_TIMEOUT_MS = 1000;
+
 function ref(prefix) { return `${prefix}.${crypto.randomUUID()}`; }
 function temp(label) { return fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-g01-${label}-`)); }
 function makeHome(label) {
@@ -1102,8 +1104,8 @@ test('one atomic writer lease prevents concurrent thread forks and releases for 
   const service=await server();
   const home=makeHome('concurrent-writers');
   const threadRef=ref('thread.concurrent');
-  const first=turn(home,service.endpoint('delay'),{threadRef,instanceRef:ref('instance.first'),turnRef:ref('turn.first')});
-  const second=turn(home,service.endpoint('delay'),{threadRef,instanceRef:ref('instance.second'),turnRef:ref('turn.second')});
+  const first=turn(home,service.endpoint('delay'),{threadRef,instanceRef:ref('instance.first'),turnRef:ref('turn.first'),timeoutMs:DELAYED_SUCCESS_TIMEOUT_MS});
+  const second=turn(home,service.endpoint('delay'),{threadRef,instanceRef:ref('instance.second'),turnRef:ref('turn.second'),timeoutMs:DELAYED_SUCCESS_TIMEOUT_MS});
   try {
     const results=await Promise.allSettled([
       performLivedCompanionTurn(first),
@@ -1621,7 +1623,8 @@ test('canonical first failure receipt is no-clobber and follow-ups bind its exac
   const owner = turn(home, service.endpoint('delay'), {
     threadRef,
     instanceRef: ref('instance.failure-receipt.owner'),
-    turnRef: ref('turn.failure-receipt.owner')
+    turnRef: ref('turn.failure-receipt.owner'),
+    timeoutMs: DELAYED_SUCCESS_TIMEOUT_MS
   });
   const contenderBase = turn(home, service.endpoint(), {
     threadRef,
