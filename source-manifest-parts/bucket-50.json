@@ -17,8 +17,8 @@
     {
       "path": "test/browser-family-lifecycle-bridge.test.mjs",
       "mode": "100644",
-      "bytes": 8859,
-      "sha256": "46d4f50c4fa1befb5e17661e3e297de4f02e8a44c115b1801a64ec035203f7b2"
+      "bytes": 13129,
+      "sha256": "caaa949a8e78befaa32bfe845466ea12bae463a391bcf64cbfb0c790728d86cc"
     }
   ]
 }

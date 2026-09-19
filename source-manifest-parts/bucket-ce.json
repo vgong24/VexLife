@@ -17,8 +17,8 @@
     {
       "path": "src/core/browser-family-lifecycle-bridge.mjs",
       "mode": "100644",
-      "bytes": 11241,
-      "sha256": "e0a9f560345ef90e5f335f1a77b8e0d2d8909666c89ed0c7745b4a709e263d30"
+      "bytes": 13560,
+      "sha256": "2e722cbcd73c080b34e7f8e2a5e48e554e5e7d69890bdbd6a4b1bb141c631ff4"
     },
     {
       "path": "src/core/family-conversation.mjs",
