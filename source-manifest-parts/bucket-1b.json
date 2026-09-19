@@ -9,6 +9,12 @@
       "sha256": "0136ddb5ed5c1b3deb0f0025230fb48cfd3aa79dde811a25b86ac588677f494e"
     },
     {
+      "path": "docs/STEWARDSHIP-ORCHESTRATION-ADAPTER.md",
+      "mode": "100644",
+      "bytes": 5611,
+      "sha256": "969eee98c22fd8227f9f3962efb52cd88e3e51cdad795709363c11d6360bdcaa"
+    },
+    {
       "path": "docs/VEX-FAMILY-COMPANION-RUNTIME.md",
       "mode": "100644",
       "bytes": 11076,
