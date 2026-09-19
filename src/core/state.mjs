@@ -1146,6 +1146,15 @@ function validateSchedulerDueRecord(record, schedulerRegistry) {
   if (!['SCHEDULED', 'DUE', 'SUPERSEDED', 'CANCELLED', 'SETTLED'].includes(record.lifecycle)) {
     throw new Error('scheduler due lifecycle is invalid');
   }
+  const formedEpoch = parseCanonicalTimestamp(record.formedAt, 'scheduler due formedAt');
+  const observedEpoch = parseCanonicalTimestamp(record.observedAt, 'scheduler due observedAt');
+  const dueEpoch = parseCanonicalTimestamp(record.dueAt, 'scheduler due dueAt');
+  if (formedEpoch > observedEpoch) {
+    throw new Error('scheduler due formedAt cannot be later than observedAt');
+  }
+  if (record.lifecycle === 'SCHEDULED' && dueEpoch <= observedEpoch) {
+    throw new Error('scheduled dueAt must remain later than observedAt');
+  }
   if (DUE_TERMINAL_LIFECYCLES.has(record.lifecycle) !== (record.currentness === 'TERMINAL')) {
     throw new Error('scheduler due lifecycle/currentness mismatch');
   }
