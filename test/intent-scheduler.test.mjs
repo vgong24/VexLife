@@ -1547,6 +1547,13 @@ test('FTB-10 reschedule and cancel preserve immutable due transition lineage', (
     dueAt: '2026-07-31T12:20:00.000Z',
     sourceRefs: ['source.ftb.lifecycle.first']
   });
+  assert.throws(() => scheduler.rescheduleDueIntent(candidate, {
+    dueRef: first.due.dueRef,
+    dueAt: '2026-07-31T12:30:00.000Z',
+    formedAt: '2026-07-31T12:31:00.000Z',
+    sourceRefs: ['source.ftb.lifecycle.invalid-chronology']
+  }), /formedAt cannot be later than observedAt/);
+
   const rescheduled = scheduler.rescheduleDueIntent(candidate, {
     dueRef: first.due.dueRef,
     dueAt: '2026-07-31T12:30:00.000Z',
@@ -1620,11 +1627,12 @@ test('FTB-12/13/14 persisted due restore earns exactly-once missed-host reconcil
   const reconciled = restored.reconcileMissedHost(candidate, {
     observedAt: '2026-07-31T12:30:00.000Z',
     eventRef: 'clock.scheduler.due.restore.fresh',
-    sourceRefs: ['source.ftb.restore']
+    sourceRefs: ['source.caller.must-not-rewrite-persisted-lineage']
   });
   assert.equal(reconciled.reconciliations.length, 1);
   assert.equal(reconciled.reconciliations[0].reconciliationClass,
     'DUE_ELAPSED_ACROSS_SCHEDULER_OBSERVATION_GAP');
+  assert.deepEqual(reconciled.reconciliations[0].sourceRefs, ['source.ftb.restore']);
   assert.ok(Object.values(reconciled.reconciliations[0].effectBoundary).every((value) => value === false));
   assert.equal(restored.dues[0].lifecycle, 'DUE');
   assert.equal(restored.missedHostReconciliations.length, 1);
