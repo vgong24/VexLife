@@ -162,6 +162,77 @@ scheduler cannot self-certify it. A platform without thermal telemetry uses
 consumes supplied deterministic snapshots and does not probe or mutate a real
 machine.
 
+## Due intent and missed-host reconciliation
+
+FT-B extends the existing single Intent Scheduler owner; it does not create a
+reminder service, second task graph, notification system, calendar owner,
+Conversation writer, or Family-specific backend.
+
+A scheduler-owned due record is formed only from one exact **CURRENT**
+`acceptedAssignment` in the canonical Intent Workgraph. The record binds:
+
+```text
+dueRef
+assignmentRef
+assignmentFingerprint
+sourceIntentRef
+workNodeRef
+assigneeRef
+graphFingerprint
+dueAt
+formedAt
+observedAt
+sourceRefs
+currentness
+lifecycle
+semanticFingerprint
+```
+
+`dueAt` must be canonical UTC and strictly later than the scheduler's canonical
+observed clock at formation. Missing, ambiguous, conflicting, settled,
+cancelled, superseded, or otherwise non-current assignment/work truth fails
+closed. Only one current due may exist for one exact assignment/work node.
+Reschedule closes the prior current due as `SUPERSEDED` and forms a distinct
+successor; cancellation closes it as `CANCELLED`; assignment/work settlement
+closes it as `SETTLED`. The append-only due transition ledger is replayed into
+the aggregate current projection, so current due truth is never a second store.
+
+Advancing `clock.intent-scheduler.canonical-utc` across a scheduled `dueAt` may
+change scheduler truth from `SCHEDULED` to `DUE`. That transition performs no
+model inference or worker lease, Conversation append, notification send,
+`HUMAN_ATTENTION_INBOX` mutation, calendar event creation, effect-authority
+grant, or Family-specific authority grant. Repeating the same due/clock state
+does not append another due transition.
+
+A restored persisted aggregate may derive exactly one reconciliation receipt
+with class:
+
+```text
+DUE_ELAPSED_ACROSS_SCHEDULER_OBSERVATION_GAP
+```
+
+only when persisted current due truth existed before restore, the prior
+canonical observed clock was earlier than `dueAt`, a later fresh restore
+observation is at/after `dueAt`, the same accepted assignment/work lineage is
+still current, and no prior reconciliation for that due is present. The
+reconciliation says only that the due boundary elapsed across scheduler
+observations. Callers cannot author `missedHost=true`, `overdue`, lifecycle, or
+currentness. No machine power-off, user absence, notification delivery, message
+send, or task execution claim is created.
+
+Permanent boundaries:
+
+```text
+DUE_TIME != NOTIFICATION
+DUE_INTENT != EFFECT_AUTHORITY
+DUE != EXECUTED
+MISSED_HOST_RECONCILIATION != NOTIFICATION_DELIVERY
+OVERDUE_ON_RESTORE != PROOF_DEVICE_WAS_OFF
+ASSIGNMENT != COMPLETION
+FAMILY_CONSUMER != GENERIC_SCHEDULER_OWNER
+SCHEDULER_CLOCK != CALENDAR_OWNER
+```
+
 ## Checkpoint and recovery
 
 A checkpoint derives active context, source, admission, worker and lease lineage
