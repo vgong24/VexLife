@@ -17,6 +17,7 @@ import {
   resolveCurrentFamilyRoomBootstrap
 } from '../scripts/serve-browser-core.mjs';
 import {
+  createFamilyRoomController,
   familyRoomViewModel,
   normalizeFamilyRoomBootstrap
 } from '../reference/browser/modules/family-room-controller.js';
@@ -360,6 +361,155 @@ test('VF06-04 non-Victor authenticated Family APPEND keeps current principal as 
   const body=await response.json();
   assert.equal(body.message.speakerRef,nonVictorPrincipal);
   assert.equal(body.message.recipientRefs.includes(PRINCIPAL),true);
+});
+
+
+function syntheticController({ bootstrap, lifecycleResponse = { status: 200, body: { state: 'CURRENT' } } } = {}) {
+  const requests = [];
+  let currentBootstrap = bootstrap ?? {
+    schemaVersion: BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
+    state: 'EMPTY',
+    truthClass: 'CURRENT_LIVE_FAMILY',
+    currentPrincipalRef: PRINCIPAL,
+    rooms: [],
+    workStatus: {
+      state: 'HELD_UNAVAILABLE',
+      pendingCount: null,
+      activeCount: null,
+      sourceRef: null
+    },
+    failureCode: null
+  };
+  const response = (status, body) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    async json() { return body; }
+  });
+  const fetchImpl = async (url, init = {}) => {
+    if (url === '/api/v1/family/bootstrap') return response(200, currentBootstrap);
+    if (url === '/api/v1/family/conversation') return response(200, { messages: [] });
+    if (url === '/api/v1/family/lifecycle') {
+      const body = JSON.parse(init.body);
+      requests.push(body);
+      return response(lifecycleResponse.status, lifecycleResponse.body);
+    }
+    throw new Error('unexpected synthetic URL ' + url);
+  };
+  const state = { channelRef: null };
+  const projects = [{
+    projectRef: 'project.vexlife.root-hub',
+    threads: [{ threadRef: 'thread.root-hub.welcome' }]
+  }];
+  const controller = createFamilyRoomController({
+    state,
+    projects,
+    roles: {},
+    channels: [],
+    messages: new Map(),
+    conversationKey: (...values) => values.join(':'),
+    t: (key) => key,
+    navigation: {},
+    chat: {
+      selectThread() {},
+      selectChannel() {},
+      renderMessages() {}
+    },
+    fetchImpl,
+    documentRef: null,
+    idempotencyKeyFactory: () => 'intent.vex.family.host.synthetic'
+  });
+  return {
+    controller,
+    requests,
+    setBootstrap(value) { currentBootstrap = value; }
+  };
+}
+
+test('VF07C1-00/01/02/03 contract-first lifecycle intents contain only bounded browser fields', async () => {
+  const synthetic = syntheticController();
+  await synthetic.controller.refresh();
+
+  const host = await synthetic.controller.hostFamily();
+  assert.equal(host.ok, true);
+  const join = await synthetic.controller.joinFamily('invitation.vex.family.synthetic');
+  assert.equal(join.ok, true);
+
+  assert.deepEqual(synthetic.requests[0], {
+    operation: 'HOST',
+    intent: { idempotencyKey: 'intent.vex.family.host.synthetic' }
+  });
+  assert.deepEqual(synthetic.requests[1], {
+    operation: 'JOIN',
+    intent: { invitationRef: 'invitation.vex.family.synthetic' }
+  });
+
+  const serialized = JSON.stringify(synthetic.requests);
+  for (const forbidden of [
+    'principalRef',
+    'principalBindingRef',
+    'membershipRef',
+    'expectedRevision',
+    'expectedMembershipGeneration',
+    'familyCompanionLineageRef',
+    'threadRef',
+    'channelRef',
+    'successorChannelRef'
+  ]) assert.equal(serialized.includes(forbidden), false, forbidden);
+});
+
+test('VF07C1-04 Leave consumes only the current server-projected Family spaceRef', async () => {
+  const bootstrap = {
+    schemaVersion: BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
+    state: 'CURRENT',
+    truthClass: 'CURRENT_LIVE_FAMILY',
+    currentPrincipalRef: PRINCIPAL,
+    rooms: [{
+      spaceRef: SPACE,
+      channelRef: CHANNEL,
+      threadRef: 'thread.vf07c1.synthetic',
+      kind: 'GROUP',
+      membershipGeneration: 3,
+      audience: [{ principalRef: PRINCIPAL, role: 'OWNER' }],
+      familyCompanionLineageRef: 'lineage.vex.family.vf07c1.synthetic',
+      familyCompanionIncluded: true
+    }],
+    workStatus: {
+      state: 'HELD_UNAVAILABLE',
+      pendingCount: null,
+      activeCount: null,
+      sourceRef: null
+    },
+    failureCode: null
+  };
+  const synthetic = syntheticController({ bootstrap });
+  await synthetic.controller.refresh();
+  const left = await synthetic.controller.leaveFamily();
+  assert.equal(left.ok, true);
+  assert.deepEqual(synthetic.requests[0], {
+    operation: 'LEAVE',
+    intent: { spaceRef: SPACE }
+  });
+});
+
+test('VF07C1-05 lifecycle failure remains held and never synthesizes success', async () => {
+  const synthetic = syntheticController({
+    lifecycleResponse: {
+      status: 503,
+      body: {
+        state: 'HELD_FAMILY_LIFECYCLE_FAILURE',
+        failureCode: 'FAMILY_LIFECYCLE_AUTHORITY_UNAVAILABLE'
+      }
+    }
+  });
+  await synthetic.controller.refresh();
+  const result = await synthetic.controller.hostFamily();
+  assert.equal(result.ok, false);
+  assert.deepEqual(synthetic.controller.lifecycleStatus(), {
+    state: 'HELD_UNAVAILABLE',
+    operation: 'HOST',
+    failureCode: 'FAMILY_LIFECYCLE_AUTHORITY_UNAVAILABLE'
+  });
+  assert.equal(synthetic.requests.length, 1);
 });
 
 // [VXG RealForever]
