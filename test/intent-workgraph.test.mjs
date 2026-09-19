@@ -1031,6 +1031,7 @@ test('VS-C1 exact source-bound evidence forms one no-effect Stewardship adapter 
   assert.equal(projection.adapterReceipt.executionAuthority, 'NONE');
   assert.equal(projection.adapterReceipt.effectAuthority, 'NONE');
   assert.equal(projection.nextSafeAction.authority, 'NO_EXECUTION_AUTHORITY');
+  assert.deepEqual(projection.request.continuity.materialUnknownRefs, []);
 });
 
 test('VS-C2 missing protected-outcome producer fails closed rather than manufacturing request truth', () => {
