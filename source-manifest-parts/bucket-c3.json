@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 44293,
       "sha256": "93ce6dc08f2b99939e47b7d44f03343aade2c8c7b018129fa5642a565a1ff549"
+    },
+    {
+      "path": "src/core/stewardship-orchestration-adapter.mjs",
+      "mode": "100644",
+      "bytes": 18119,
+      "sha256": "8016655110be0c086d906371573d9a8e102f523f9f11c8a779a0b13251d97da8"
     }
   ]
 }
