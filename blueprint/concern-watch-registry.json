@@ -416,7 +416,7 @@
       "admissionSchemaVersion": "vexlife.intent-scheduler-admission-receipt/v1",
       "admissionContractRef": "contract.intent-scheduler.admission-fields",
       "intentRegistryRef": "registry.vexlife.intent-orchestration.001",
-      "intentRegistryFingerprint": "aed18a92f797a4245637914dba9c5a23cd6910204a2c3922b2a61987bc85514a",
+      "intentRegistryFingerprint": "8ed10f95b436d617924767c6bbbb1b78196c16c0e47710ddc0f8e95b82a23a9d",
       "schedulerRegistryRef": "registry.vexlife.intent-scheduler.001",
       "schedulerRegistryFingerprint": "bc55cb03b2e80fb25cff3fd9a415539c1ed47cce42608f7c85ccb3e9787fdb06",
       "registeredProcessRefsFingerprint": "527dcdbef2a5dc9c1c2eb442b16b7356d514ba4247a0358149320ffbc228172f",
