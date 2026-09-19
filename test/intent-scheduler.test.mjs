@@ -21,10 +21,13 @@ import {
   WorkerLeaseAuthority
 } from '../src/core/intent-scheduler.mjs';
 import {
+  acceptIntentAssignment,
+  buildGraphSnapshotFingerprint,
   createIntentEnvelope,
   createIntentTrustSnapshot,
   createIntentWorkgraph,
-  createWorkNode
+  createWorkNode,
+  recordIntentTransition
 } from '../src/core/intent-workgraph.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
 import {
@@ -1364,6 +1367,450 @@ test('S22 generated receipt paths reject absolute, traversal, non-generated and 
   }
 });
 
+
+function dueAssignmentInput(candidate, workNodeRef, overrides = {}) {
+  return {
+    assignmentRef: `assignment.scheduler.due.${workNodeRef}`,
+    sourceIntentRef: candidate.rootIntentRef,
+    workNodeRef,
+    assigneeRef: 'person.test.assignee',
+    acceptingActorRef: candidate.intent.originSpeakerRef,
+    acceptedAt: '2026-07-31T12:04:00.000Z',
+    sourceRefs: ['source.assignment.scheduler.due.test'],
+    ...overrides
+  };
+}
+
+function assignedDueGraph(workNodeRef = 'work.scheduler.due') {
+  const candidate = graph([workNode(workNodeRef)]);
+  return acceptIntentAssignment(
+    candidate,
+    dueAssignmentInput(candidate, workNodeRef),
+    intentRegistry
+  ).graph;
+}
+
+function dueScheduler(schedulerAggregate = null) {
+  const scheduler = new SingleWorkerIntentScheduler({
+    workerRef: 'worker.model.test.primary',
+    schedulerInstanceRef: `scheduler.instance.due.${++schedulerInstanceSequence}`,
+    schedulerRegistry,
+    schedulerAggregate
+  });
+  if (!schedulerAggregate) {
+    scheduler.advanceObservedClock({
+      observedAt: OBSERVED,
+      eventRef: `clock.scheduler.due.initial.${schedulerInstanceSequence}`
+    });
+  }
+  return scheduler;
+}
+
+function coordinatedRehashMissedHostAggregate(aggregate, mutateReceipt, { readdress = true } = {}) {
+  const tampered = structuredClone(aggregate);
+  const receipt = tampered.missedHostReconciliationLedger?.[0];
+  if (!receipt) throw new Error('coordinated rehash fixture requires one reconciliation receipt');
+  mutateReceipt(receipt);
+  delete receipt.semanticFingerprint;
+  if (readdress) {
+    delete receipt.reconciliationRef;
+    const refCore = structuredClone(receipt);
+    receipt.reconciliationRef =
+      `reconciliation.intent-scheduler.missed-host.${semanticHash(refCore).slice(0, 32)}`;
+  }
+  receipt.semanticFingerprint = semanticHash(receipt);
+  delete tampered.semanticFingerprint;
+  tampered.semanticFingerprint = semanticHash(tampered);
+  return tampered;
+}
+
+test('FTB-02/03/04/06 due intent is source-managed, assignment-bound, canonical UTC, and future-only', () => {
+  const candidate = assignedDueGraph('work.scheduler.due.binding');
+  const scheduler = dueScheduler();
+  const formed = scheduler.formDueIntent(candidate, {
+    assignmentRef: 'assignment.scheduler.due.work.scheduler.due.binding',
+    dueAt: '2026-07-31T12:20:00.000Z',
+    formedAt: OBSERVED,
+    observedAt: OBSERVED,
+    sourceRefs: ['source.ftb.due.binding']
+  });
+  const assignment = candidate.acceptedAssignments[0];
+  assert.equal(formed.due.assignmentRef, assignment.assignmentRef);
+  assert.equal(formed.due.assignmentFingerprint, assignment.semanticFingerprint);
+  assert.equal(formed.due.sourceIntentRef, assignment.sourceIntentRef);
+  assert.equal(formed.due.workNodeRef, assignment.workNodeRef);
+  assert.equal(formed.due.assigneeRef, assignment.assigneeRef);
+  assert.equal(formed.due.graphFingerprint, candidate.semanticFingerprint);
+  assert.equal(formed.due.dueAt, '2026-07-31T12:20:00.000Z');
+  assert.equal(formed.due.formedAt, OBSERVED);
+  assert.equal(formed.due.observedAt, OBSERVED);
+  assert.deepEqual(formed.due.sourceRefs, ['source.ftb.due.binding']);
+  assert.equal(formed.due.currentness, 'CURRENT');
+  assert.equal(formed.due.lifecycle, 'SCHEDULED');
+  assert.equal(scheduler.projections.runtime.value.due.current.length, 1);
+  assert.throws(() => scheduler.formDueIntent(candidate, {
+    assignmentRef: assignment.assignmentRef,
+    dueAt: '2026-07-31T12:25:00Z',
+    sourceRefs: ['source.ftb.invalid.utc']
+  }), /canonical ISO-8601 UTC/);
+  assert.throws(() => scheduler.formDueIntent(candidate, {
+    assignmentRef: assignment.assignmentRef,
+    dueAt: OBSERVED,
+    sourceRefs: ['source.ftb.invalid.past']
+  }), /later than the canonical observed clock/);
+});
+
+test('FTB-05/07 due formation fails closed for missing, settled, ambiguous, and duplicate current assignment truth', () => {
+  const workRef = 'work.scheduler.due.fail-closed';
+  const unassigned = graph([workNode(workRef)]);
+  const scheduler = dueScheduler();
+  assert.throws(() => scheduler.formDueIntent(unassigned, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.missing']
+  }), /one exact accepted assignment/);
+
+  const assigned = acceptIntentAssignment(
+    unassigned,
+    dueAssignmentInput(unassigned, workRef),
+    intentRegistry
+  ).graph;
+  scheduler.formDueIntent(assigned, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.current']
+  });
+  assert.throws(() => scheduler.formDueIntent(assigned, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:30:00.000Z',
+    sourceRefs: ['source.ftb.duplicate']
+  }), /one current due/);
+
+  const settled = recordIntentTransition(assigned, {
+    transitionRef: 'transition.scheduler.due.fail-closed.cancel',
+    workNodeRef: workRef,
+    priorState: 'READY',
+    nextState: 'CANCELLED',
+    reason: 'scheduler due test cancellation',
+    actorRef: 'vex.test',
+    actorRoleRef: 'role.vex.developer',
+    processRef: 'process.vexlife.intent.verify-transition',
+    sourceRefs: ['source.ftb.settled'],
+    createdAt: '2026-07-31T12:06:00.000Z'
+  }, intentRegistry).graph;
+  const settledScheduler = dueScheduler();
+  assert.throws(() => settledScheduler.formDueIntent(settled, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.settled']
+  }), /not current/);
+
+  const second = acceptIntentAssignment(unassigned, dueAssignmentInput(unassigned, workRef, {
+    assignmentRef: `assignment.scheduler.due.${workRef}.second`
+  }), intentRegistry).graph;
+  const ambiguous = structuredClone(assigned);
+  ambiguous.acceptedAssignments.push(structuredClone(second.acceptedAssignments[0]));
+  ambiguous.semanticFingerprint = buildGraphSnapshotFingerprint(ambiguous);
+  const ambiguousScheduler = dueScheduler();
+  assert.throws(() => ambiguousScheduler.formDueIntent(ambiguous, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.ambiguous']
+  }), /conflicting or ambiguous/);
+});
+
+test('FTB-08/09 clock crossing exposes scheduler due truth only and replay is deterministic', () => {
+  const candidate = assignedDueGraph('work.scheduler.due.clock');
+  const scheduler = dueScheduler();
+  const formed = scheduler.formDueIntent(candidate, {
+    assignmentRef: 'assignment.scheduler.due.work.scheduler.due.clock',
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.clock']
+  });
+  const before = scheduler.aggregate.dueTransitionLedger.length;
+  const early = scheduler.advanceObservedClock({
+    observedAt: '2026-07-31T12:19:00.000Z',
+    eventRef: 'clock.scheduler.due.early',
+    graph: candidate
+  });
+  assert.equal(early.dueTransitions.length, 0);
+  assert.equal(scheduler.dues.find((item) => item.dueRef === formed.due.dueRef).lifecycle, 'SCHEDULED');
+
+  const crossed = scheduler.advanceObservedClock({
+    observedAt: '2026-07-31T12:20:00.000Z',
+    eventRef: 'clock.scheduler.due.crossed',
+    graph: candidate
+  });
+  assert.equal(crossed.dueTransitions.length, 1);
+  assert.equal(crossed.dueTransitions[0].transitionType, 'DUE_REACHED');
+  assert.ok(Object.values(crossed.dueTransitions[0].effectBoundary).every((value) => value === false));
+  assert.equal(scheduler.dues.find((item) => item.dueRef === formed.due.dueRef).lifecycle, 'DUE');
+  const after = scheduler.aggregate.dueTransitionLedger.length;
+  assert.equal(after, before + 1);
+
+  const replay = scheduler.advanceObservedClock({
+    observedAt: '2026-07-31T12:20:00.000Z',
+    eventRef: 'clock.scheduler.due.crossed',
+    graph: candidate
+  });
+  assert.equal(replay.dueTransitions.length, 0);
+  assert.equal(scheduler.aggregate.dueTransitionLedger.length, after);
+});
+
+test('FTB-10 reschedule and cancel preserve immutable due transition lineage', () => {
+  const candidate = assignedDueGraph('work.scheduler.due.lifecycle');
+  const scheduler = dueScheduler();
+  const first = scheduler.formDueIntent(candidate, {
+    assignmentRef: 'assignment.scheduler.due.work.scheduler.due.lifecycle',
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.lifecycle.first']
+  });
+  assert.throws(() => scheduler.rescheduleDueIntent(candidate, {
+    dueRef: first.due.dueRef,
+    dueAt: '2026-07-31T12:30:00.000Z',
+    formedAt: '2026-07-31T12:31:00.000Z',
+    sourceRefs: ['source.ftb.lifecycle.invalid-chronology']
+  }), /formedAt cannot be later than observedAt/);
+
+  const rescheduled = scheduler.rescheduleDueIntent(candidate, {
+    dueRef: first.due.dueRef,
+    dueAt: '2026-07-31T12:30:00.000Z',
+    sourceRefs: ['source.ftb.lifecycle.second']
+  });
+  assert.equal(rescheduled.superseded.lifecycle, 'SUPERSEDED');
+  assert.equal(rescheduled.superseded.currentness, 'TERMINAL');
+  assert.notEqual(rescheduled.due.dueRef, first.due.dueRef);
+  assert.equal(rescheduled.due.lifecycle, 'SCHEDULED');
+  assert.deepEqual(rescheduled.transitions.map((item) => item.transitionType), ['SUPERSEDED', 'FORMED']);
+  assert.equal(scheduler.aggregate.dueTransitionLedger.length, 3);
+
+  const cancelled = scheduler.cancelDueIntent(candidate, {
+    dueRef: rescheduled.due.dueRef,
+    sourceRefs: ['source.ftb.lifecycle.cancel']
+  });
+  assert.equal(cancelled.due.lifecycle, 'CANCELLED');
+  assert.equal(cancelled.due.currentness, 'TERMINAL');
+  assert.equal(scheduler.aggregate.dueTransitionLedger.length, 4);
+  assert.equal(scheduler.dues.filter((item) => item.currentness === 'CURRENT').length, 0);
+});
+
+test('FTB-11 assignment settlement closes current due before a later clock can expose DUE', () => {
+  const workRef = 'work.scheduler.due.assignment-settlement';
+  const assigned = assignedDueGraph(workRef);
+  const scheduler = dueScheduler();
+  const due = scheduler.formDueIntent(assigned, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.assignment.settlement']
+  }).due;
+  const settled = recordIntentTransition(assigned, {
+    transitionRef: 'transition.scheduler.due.assignment-settlement.cancel',
+    workNodeRef: workRef,
+    priorState: 'READY',
+    nextState: 'CANCELLED',
+    reason: 'assignment work settled before due',
+    actorRef: 'vex.test',
+    actorRoleRef: 'role.vex.developer',
+    processRef: 'process.vexlife.intent.verify-transition',
+    sourceRefs: ['source.ftb.assignment.settlement'],
+    createdAt: '2026-07-31T12:10:00.000Z'
+  }, intentRegistry).graph;
+  const advanced = scheduler.advanceObservedClock({
+    observedAt: '2026-07-31T12:25:00.000Z',
+    eventRef: 'clock.scheduler.due.assignment-settlement',
+    graph: settled
+  });
+  assert.deepEqual(advanced.dueTransitions.map((item) => item.transitionType), ['SETTLED']);
+  assert.equal(scheduler.dues.find((item) => item.dueRef === due.dueRef).lifecycle, 'SETTLED');
+});
+
+test('FTB-12/13/14 persisted due restore earns exactly-once missed-host reconciliation without delivery claims', () => {
+  const candidate = assignedDueGraph('work.scheduler.due.restore');
+  const source = dueScheduler();
+  const formed = source.formDueIntent(candidate, {
+    assignmentRef: 'assignment.scheduler.due.work.scheduler.due.restore',
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.restore']
+  });
+  const persisted = structuredClone(source.aggregate);
+  const restored = dueScheduler(persisted);
+  assert.equal(restored.dues[0].semanticFingerprint, formed.due.semanticFingerprint);
+
+  assert.throws(() => dueScheduler(persisted).reconcileMissedHost(candidate, {
+    observedAt: '2026-07-31T12:30:00.000Z',
+    missedHost: true,
+    sourceRefs: ['source.ftb.restore']
+  }), /caller cannot author missedHost/);
+
+  const reconciled = restored.reconcileMissedHost(candidate, {
+    observedAt: '2026-07-31T12:30:00.000Z',
+    eventRef: 'clock.scheduler.due.restore.fresh',
+    sourceRefs: ['source.caller.must-not-rewrite-persisted-lineage']
+  });
+  assert.equal(reconciled.reconciliations.length, 1);
+  assert.equal(reconciled.reconciliations[0].reconciliationClass,
+    'DUE_ELAPSED_ACROSS_SCHEDULER_OBSERVATION_GAP');
+  assert.deepEqual(reconciled.reconciliations[0].sourceRefs, ['source.ftb.restore']);
+  assert.ok(Object.values(reconciled.reconciliations[0].effectBoundary).every((value) => value === false));
+  assert.equal(restored.dues[0].lifecycle, 'DUE');
+  assert.equal(restored.missedHostReconciliations.length, 1);
+  assert.throws(() => restored.reconcileMissedHost(candidate, {
+    observedAt: '2026-07-31T12:31:00.000Z',
+    sourceRefs: ['source.ftb.restore']
+  }), /untouched persisted scheduler restore state/);
+
+  const restoredAgain = dueScheduler(structuredClone(restored.aggregate));
+  assert.throws(() => restoredAgain.reconcileMissedHost(candidate, {
+    observedAt: '2026-07-31T12:40:00.000Z',
+    sourceRefs: ['source.ftb.restore']
+  }), /exact persisted due crossing/);
+
+  const tampered = structuredClone(restored.aggregate);
+  tampered.dueRecords[0].lifecycle = 'SCHEDULED';
+  delete tampered.semanticFingerprint;
+  tampered.semanticFingerprint = semanticHash(tampered);
+  assert.throws(() => dueScheduler(tampered), /due current projection differs/);
+});
+
+
+test('RPI-00..12 missed-host reconciliation restore is bound to exact replayed due lineage', () => {
+  const workRef = 'work.scheduler.due.replay-integrity';
+  const candidate = assignedDueGraph(workRef);
+  const source = dueScheduler();
+  const formed = source.formDueIntent(candidate, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.replay-integrity']
+  });
+  const persisted = structuredClone(source.aggregate);
+  const restored = dueScheduler(persisted);
+  const result = restored.reconcileMissedHost(candidate, {
+    observedAt: '2026-07-31T12:30:00.000Z',
+    eventRef: 'clock.scheduler.due.replay-integrity.restore',
+    sourceRefs: ['source.caller.cannot-rewrite-replay-lineage']
+  });
+  assert.equal(result.reconciliations.length, 1);
+
+  const canonical = structuredClone(restored.aggregate);
+  const receipt = canonical.missedHostReconciliationLedger[0];
+  const currentDue = canonical.dueRecords.find((item) => item.dueRef === receipt.dueRef);
+  assert.ok(currentDue);
+  for (const field of schedulerRegistry.missedHostReconciliationContract.requiredFields) {
+    assert.equal(Object.hasOwn(receipt, field), true, `required reconciliation field ${field}`);
+  }
+
+  assert.equal(receipt.dueFingerprint, currentDue.semanticFingerprint);
+  for (const field of [
+    'assignmentRef', 'assignmentFingerprint', 'sourceIntentRef',
+    'workNodeRef', 'assigneeRef', 'graphFingerprint', 'dueAt'
+  ]) assert.equal(receipt[field], currentDue[field], `current due binding ${field}`);
+
+  const dueReachedMatches = canonical.dueTransitionLedger.filter((transition) =>
+    transition.transitionType === 'DUE_REACHED' &&
+    transition.dueRef === receipt.dueRef &&
+    transition.nextDue.semanticFingerprint === receipt.dueFingerprint
+  );
+  assert.equal(dueReachedMatches.length, 1);
+  const dueReached = dueReachedMatches[0];
+  assert.equal(receipt.priorDueFingerprint, dueReached.priorDueFingerprint);
+  assert.equal(receipt.restoreObservedAt, dueReached.observedAt);
+  assert.equal(receipt.restoreObservedAt, currentDue.observedAt);
+
+  const priorMatches = canonical.dueTransitionLedger.filter((transition) =>
+    transition.dueRef === receipt.dueRef &&
+    transition.nextDue.semanticFingerprint === receipt.priorDueFingerprint
+  );
+  assert.equal(priorMatches.length, 1);
+  const priorDue = priorMatches[0].nextDue;
+  assert.equal(priorDue.lifecycle, 'SCHEDULED');
+  assert.equal(priorDue.currentness, 'CURRENT');
+  assert.ok(priorMatches[0].sequence < dueReached.sequence);
+  for (const field of [
+    'dueRef', 'assignmentRef', 'assignmentFingerprint', 'sourceIntentRef',
+    'workNodeRef', 'assigneeRef', 'graphFingerprint', 'dueAt', 'formedAt'
+  ]) assert.equal(priorDue[field], currentDue[field], `prior due lineage ${field}`);
+
+  assert.deepEqual(receipt.sourceRefs, priorDue.sourceRefs);
+  assert.deepEqual(receipt.sourceRefs, currentDue.sourceRefs);
+  assert.deepEqual(receipt.sourceRefs, dueReached.sourceRefs);
+  assert.deepEqual(receipt.effectBoundary, schedulerRegistry.dueIntentContract.effectBoundary);
+
+  assert.ok(Date.parse(priorDue.observedAt) <= Date.parse(receipt.priorObservedAt));
+  assert.ok(Date.parse(receipt.priorObservedAt) < Date.parse(receipt.dueAt));
+  assert.ok(Date.parse(receipt.dueAt) <= Date.parse(receipt.restoreObservedAt));
+  assert.ok(Date.parse(receipt.restoreObservedAt) > Date.parse(receipt.priorObservedAt));
+
+  const refCore = structuredClone(receipt);
+  delete refCore.reconciliationRef;
+  delete refCore.semanticFingerprint;
+  assert.equal(
+    receipt.reconciliationRef,
+    `reconciliation.intent-scheduler.missed-host.${semanticHash(refCore).slice(0, 32)}`
+  );
+
+  assert.doesNotThrow(() => dueScheduler(structuredClone(canonical)));
+
+  const duplicate = structuredClone(canonical);
+  duplicate.missedHostReconciliationLedger.push(structuredClone(receipt));
+  delete duplicate.semanticFingerprint;
+  duplicate.semanticFingerprint = semanticHash(duplicate);
+  assert.throws(() => dueScheduler(duplicate), /reconciliation is not once-only/);
+
+  assert.equal(formed.due.semanticFingerprint, persisted.dueRecords[0].semanticFingerprint);
+});
+
+test('RPI adversarial coordinated rehash cannot substitute missed-host reconciliation lineage', () => {
+  const workRef = 'work.scheduler.due.replay-integrity-adversarial';
+  const candidate = assignedDueGraph(workRef);
+  const source = dueScheduler();
+  source.formDueIntent(candidate, {
+    assignmentRef: `assignment.scheduler.due.${workRef}`,
+    dueAt: '2026-07-31T12:20:00.000Z',
+    sourceRefs: ['source.ftb.replay-integrity.adversarial']
+  });
+  const restored = dueScheduler(structuredClone(source.aggregate));
+  restored.reconcileMissedHost(candidate, {
+    observedAt: '2026-07-31T12:30:00.000Z',
+    eventRef: 'clock.scheduler.due.replay-integrity-adversarial.restore'
+  });
+  const canonical = structuredClone(restored.aggregate);
+  assert.doesNotThrow(() => dueScheduler(structuredClone(canonical)));
+
+  const mutations = [
+    ['dueFingerprint', (receipt) => { receipt.dueFingerprint = semanticHash({ tampered: 'dueFingerprint' }); }],
+    ['priorDueFingerprint', (receipt) => { receipt.priorDueFingerprint = semanticHash({ tampered: 'priorDueFingerprint' }); }],
+    ['sourceIntentRef', (receipt) => { receipt.sourceIntentRef = 'intent.scheduler.tampered'; }],
+    ['workNodeRef', (receipt) => { receipt.workNodeRef = 'work.scheduler.due.tampered'; }],
+    ['assigneeRef', (receipt) => { receipt.assigneeRef = 'person.tampered.assignee'; }],
+    ['graphFingerprint', (receipt) => { receipt.graphFingerprint = semanticHash({ tampered: 'graphFingerprint' }); }],
+    ['assignmentRef', (receipt) => { receipt.assignmentRef = 'assignment.scheduler.due.tampered'; }],
+    ['assignmentFingerprint', (receipt) => { receipt.assignmentFingerprint = semanticHash({ tampered: 'assignmentFingerprint' }); }],
+    ['sourceRefs', (receipt) => { receipt.sourceRefs = ['source.ftb.replay-integrity.tampered']; }],
+    ['restoreObservedAt', (receipt) => { receipt.restoreObservedAt = '2026-07-31T12:31:00.000Z'; }],
+    ['missingRequiredField', (receipt) => { delete receipt.sourceIntentRef; }]
+  ];
+  for (const [label, mutate] of mutations) {
+    const tampered = coordinatedRehashMissedHostAggregate(canonical, mutate);
+    assert.throws(
+      () => dueScheduler(tampered),
+      /scheduler missed-host reconciliation/,
+      `coordinated rehash must reject ${label}`
+    );
+  }
+
+  const tamperedRef = coordinatedRehashMissedHostAggregate(
+    canonical,
+    (receipt) => {
+      receipt.reconciliationRef = 'reconciliation.intent-scheduler.missed-host.coordinated-rehash';
+    },
+    { readdress: false }
+  );
+  assert.throws(
+    () => dueScheduler(tamperedRef),
+    /reference is not content-addressed from exact receipt core/
+  );
+});
+
 test('S16 scheduler registry is canonical in Blueprint/Atlas, omission fails, and the complete no-effect loop passes', () => {
   const validation = validateBlueprint(bundle);
   assert.equal(validation.ok, true, validation.errors.join('\n'));
@@ -1375,6 +1822,8 @@ test('S16 scheduler registry is canonical in Blueprint/Atlas, omission fails, an
     'system.vexlife.intent-scheduler',
     'source.blueprint.intent-scheduler-registry',
     'contract.intent-scheduler.runtime-trust-clock',
+    'contract.intent-scheduler.due-intent/v1',
+    'contract.intent-scheduler.missed-host-reconciliation/v1',
     'clock.intent-scheduler.canonical-utc',
     'tool.mock.inspect',
     'effect.mock.read',
@@ -1387,8 +1836,8 @@ test('S16 scheduler registry is canonical in Blueprint/Atlas, omission fails, an
   const result = atlas.query({
     startRefs: ['registry.vexlife.intent-scheduler.001'],
     depthLimit: 2,
-    resultLimit: 64,
-    tokenBudget: 12000
+    resultLimit: 96,
+    tokenBudget: 18000
   });
   assert.ok(result.results.some((item) => item.ref === 'contract.intent-scheduler.runtime-trust-clock'));
   assert.ok(result.results.some((item) => item.ref === 'contract.intent-scheduler.mock-tool.inspect/v0'));
