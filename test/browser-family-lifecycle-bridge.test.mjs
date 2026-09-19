@@ -9,7 +9,10 @@ import {
   issueFamilyInvitation,
   readFamilyInvitation
 } from '../src/core/family-invitation-store.mjs';
-import { readFamilySpace } from '../src/core/family-space-store.mjs';
+import {
+  addFamilyMember,
+  readFamilySpace
+} from '../src/core/family-space-store.mjs';
 import { createFamilyChannel } from '../src/core/family-conversation.mjs';
 import {
   listConversationChannelBindings,
@@ -19,11 +22,15 @@ import {
   BrowserFamilyLifecycleBridgeError,
   executeBrowserFamilyLifecycle
 } from '../src/core/browser-family-lifecycle-bridge.mjs';
+import {
+  leaveFamilyAndContinueConversation
+} from '../src/core/family-membership-runtime.mjs';
 
 const T0='2026-09-18T12:00:00.000Z';
 const T1='2026-09-18T12:05:00.000Z';
 const T2='2026-09-18T12:10:00.000Z';
 const T3='2026-09-18T12:15:00.000Z';
+const T4='2026-09-18T12:20:00.000Z';
 const T9='2026-09-18T13:00:00.000Z';
 
 function hash(value,field){
@@ -102,6 +109,20 @@ function issue(home,hosted,{expiresAt=T9}={}){
     instanceRef:'instance.vf07c0.invite',
     faults:{}
   }).record;
+}
+
+function exactGroup(home,record){
+  const matches=listConversationChannelBindings({home,limit:1000}).channels.filter(channel=>{
+    const binding=channel.familySpaceBinding;
+    return channel.kind==='GROUP'
+      && binding?.audienceKind==='GROUP'
+      && binding.spaceRef===record.spaceRef
+      && binding.membershipGeneration===record.membershipGeneration
+      && binding.familySpaceRecordSha256===record.recordSha256
+      && binding.familyCompanionLineageRef===record.familyCompanionLineageRef;
+  });
+  assert.equal(matches.length,1);
+  return matches[0];
 }
 
 test('LFB-00 rejects browser-authored protected authority fields',t=>{
@@ -189,6 +210,93 @@ test('LFB-07 LEAVE derives current revision generation channel and self principa
 
   const after=readFamilySpace({home,spaceRef:hosted.spaceRef}).record;
   assert.equal(after.members.find(m=>m.principalRef==='principal.alex').status,'LEFT');
+
+  const retry=lifecycle(
+    home,'LEAVE',{spaceRef:hosted.spaceRef},
+    authority('alex'),T4,'instance.vf07c0.leave-retry'
+  );
+  assert.equal(retry.result.state,'RECOVERED_CHANNEL_CONTINUATION');
+  assert.equal(retry.result.membershipTransitionPerformed,false);
+  assert.equal(retry.result.channelRef,left.result.channelRef);
+  assert.equal(
+    readFamilySpace({home,spaceRef:hosted.spaceRef}).record.recordSha256,
+    after.recordSha256
+  );
+});
+
+test('LFB-07A browser retry recovers post-membership interruption without replaying LEAVE',t=>{
+  const {home,host:hosted}=host(t);
+  const invitation=issue(home,hosted);
+  lifecycle(home,'JOIN',{invitationRef:invitation.invitationRef},authority('alex'),T2,'instance.vf07c0.join-interrupt');
+  const before=readFamilySpace({home,spaceRef:hosted.spaceRef}).record;
+  const prior=exactGroup(home,before);
+
+  assert.throws(
+    ()=>leaveFamilyAndContinueConversation({
+      home,
+      spaceRef:before.spaceRef,
+      priorChannelRef:prior.channelRef,
+      currentPrincipalRef:'principal.alex',
+      expectedRevision:before.revision,
+      expectedMembershipGeneration:before.membershipGeneration,
+      observedAt:T3,
+      instanceRef:'instance.vf07c0.owner-interrupt',
+      faults:{failAfterMembershipTransition:true}
+    }),
+    error=>error?.code==='FAMILY_MEMBERSHIP_RUNTIME_CHANNEL_CONTINUATION_REQUIRED'
+  );
+
+  const durable=readFamilySpace({home,spaceRef:hosted.spaceRef}).record;
+  assert.equal(durable.membershipGeneration,before.membershipGeneration+1);
+  assert.equal(durable.members.find(m=>m.principalRef==='principal.alex').status,'LEFT');
+
+  const recovered=lifecycle(
+    home,'LEAVE',{spaceRef:hosted.spaceRef},
+    authority('alex'),T4,'instance.vf07c0.bridge-recovery'
+  );
+  assert.equal(recovered.result.state,'RECOVERED_CHANNEL_CONTINUATION');
+  assert.equal(recovered.result.membershipTransitionPerformed,false);
+  assert.equal(recovered.result.priorChannelRef,prior.channelRef);
+  assert.equal(recovered.result.membershipGeneration,durable.membershipGeneration);
+  assert.equal(
+    readFamilySpace({home,spaceRef:hosted.spaceRef}).record.recordSha256,
+    durable.recordSha256
+  );
+});
+
+test('LFB-07B later unrelated generation rejects stale browser LEAVE recovery',t=>{
+  const {home,host:hosted}=host(t);
+  const invitation=issue(home,hosted);
+  lifecycle(home,'JOIN',{invitationRef:invitation.invitationRef},authority('alex'),T2,'instance.vf07c0.join-stale');
+  lifecycle(home,'LEAVE',{spaceRef:hosted.spaceRef},authority('alex'),T3,'instance.vf07c0.leave-stale');
+  const afterLeave=readFamilySpace({home,spaceRef:hosted.spaceRef}).record;
+
+  const unrelated=addFamilyMember({
+    home,
+    spaceRef:hosted.spaceRef,
+    actorPrincipalRef:'principal.victor',
+    principalRef:'principal.casey',
+    principalBindingRef:'principal-binding.casey',
+    expectedRevision:afterLeave.revision,
+    expectedMembershipGeneration:afterLeave.membershipGeneration,
+    observedAt:T4,
+    instanceRef:'instance.vf07c0.unrelated-add'
+  }).record;
+  assert.equal(unrelated.membershipGeneration,afterLeave.membershipGeneration+1);
+
+  assert.throws(
+    ()=>lifecycle(
+      home,'LEAVE',{spaceRef:hosted.spaceRef},
+      authority('alex'),T4,'instance.vf07c0.leave-stale-retry'
+    ),
+    error=>error instanceof BrowserFamilyLifecycleBridgeError
+      && error.code==='BROWSER_FAMILY_LIFECYCLE_LEAVE_RECOVERY_STALE'
+      && error.httpStatus===409
+  );
+  assert.equal(
+    readFamilySpace({home,spaceRef:hosted.spaceRef}).record.recordSha256,
+    unrelated.recordSha256
+  );
 });
 
 test('LFB-08 ambiguous current GROUP truth fails closed before Leave mutation',t=>{

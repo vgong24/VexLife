@@ -5,6 +5,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { semanticHash } from '../src/core/utils.mjs';
+import { issueFamilyInvitation } from '../src/core/family-invitation-store.mjs';
+import { readFamilySpace } from '../src/core/family-space-store.mjs';
 import {
   BROWSER_FAMILY_CONVERSATION_API_PATH,
   BROWSER_FAMILY_LIFECYCLE_API_PATH,
@@ -12,6 +14,9 @@ import {
 } from '../scripts/serve-browser.mjs';
 
 const T0='2026-09-18T12:00:00.000Z';
+const T1='2026-09-18T12:05:00.000Z';
+const T2='2026-09-18T12:10:00.000Z';
+const T3='2026-09-18T12:15:00.000Z';
 const T9='2026-09-18T13:00:00.000Z';
 
 function hash(value,field){
@@ -19,14 +24,16 @@ function hash(value,field){
   return Object.freeze({...core,[field]:semanticHash(core)});
 }
 
-function authority(){
+function authority(name='victor'){
+  const principalRef='principal.'+name;
+  const deviceRef='device.'+name;
   const membership=hash({
     schemaVersion:'vexlife.bridge-device-membership/v1',
-    membershipRef:'membership.home.victor',
+    membershipRef:'membership.home.'+name,
     homeNodeRef:'home.vf07c0.http',
-    principalRef:'principal.victor',
-    deviceRef:'device.victor',
-    devicePublicKey:'public-key-victor',
+    principalRef,
+    deviceRef,
+    devicePublicKey:'public-key-'+name,
     capabilityRefs:['capability.family'],
     approvedBy:'principal.victor',
     approvedAt:'2026-09-18T11:50:00.000Z',
@@ -35,10 +42,10 @@ function authority(){
   },'membershipHash');
   const lease=hash({
     schemaVersion:'vexlife.bridge-capability-lease/v1',
-    leaseRef:'lease.family.victor.1',
+    leaseRef:'lease.family.'+name+'.1',
     homeNodeRef:'home.vf07c0.http',
-    principalRef:'principal.victor',
-    deviceRef:'device.victor',
+    principalRef,
+    deviceRef,
     capabilityRefs:['capability.family'],
     projectRefs:['project.vex-family'],
     issuedAt:'2026-09-18T11:50:00.000Z',
@@ -119,6 +126,73 @@ test('LFB-10 HTTP HOST uses dedicated server lifecycle authority and rejects bro
   });
   assert.equal(forged.status,400);
   assert.equal(forged.body.failureCode,'BROWSER_FAMILY_LIFECYCLE_UNTRUSTED_FIELD');
+});
+
+test('LFB-10 HTTP repeated LEAVE reaches accepted no-replay recovery path',async t=>{
+  const home=tempHome(t);
+  let current=authority('victor');
+  let now=T0;
+  const server=createVexLifeBrowserServer({
+    companionBridge:fakeCompanion(),
+    familyConversationHome:home,
+    familyLifecycleHome:home,
+    familyLifecycleNow:()=>now,
+    familyLifecycleInstanceRef:'instance.vf07c0.http-retry',
+    resolveFamilyLifecycleAuthority:async()=>current
+  });
+  const base=await listen(server,t);
+
+  const hosted=await post(base,{
+    operation:'HOST',
+    intent:{idempotencyKey:'intent.vf07c0.http-retry-host'}
+  });
+  assert.equal(hosted.status,200);
+  const family=readFamilySpace({home,spaceRef:hosted.body.result.spaceRef}).record;
+  const invitation=issueFamilyInvitation({
+    home,
+    spaceRef:family.spaceRef,
+    inviterPrincipalRef:'principal.victor',
+    expectedFamilyRecordSha256:family.recordSha256,
+    expectedRevision:family.revision,
+    expectedMembershipGeneration:family.membershipGeneration,
+    idempotencyKey:'invite.vf07c0.http.alex',
+    issuedAt:T1,
+    expiresAt:T9,
+    sourceReceiptRefs:['receipt.vf07c0.http.issue'],
+    currentnessRefs:['currentness.vf07c0.http.issue'],
+    instanceRef:'instance.vf07c0.http.issue',
+    faults:{}
+  }).record;
+
+  current=authority('alex');
+  now=T2;
+  const joined=await post(base,{
+    operation:'JOIN',
+    intent:{invitationRef:invitation.invitationRef}
+  });
+  assert.equal(joined.status,200);
+
+  now=T3;
+  const first=await post(base,{
+    operation:'LEAVE',
+    intent:{spaceRef:family.spaceRef}
+  });
+  assert.equal(first.status,200);
+  assert.equal(first.body.result.membershipTransitionPerformed,true);
+  const afterFirst=readFamilySpace({home,spaceRef:family.spaceRef}).record;
+
+  const retry=await post(base,{
+    operation:'LEAVE',
+    intent:{spaceRef:family.spaceRef}
+  });
+  assert.equal(retry.status,200);
+  assert.equal(retry.body.result.state,'RECOVERED_CHANNEL_CONTINUATION');
+  assert.equal(retry.body.result.membershipTransitionPerformed,false);
+  assert.equal(retry.body.result.channelRef,first.body.result.channelRef);
+  assert.equal(
+    readFamilySpace({home,spaceRef:family.spaceRef}).record.recordSha256,
+    afterFirst.recordSha256
+  );
 });
 
 test('LFB-10 production-default lifecycle authority absence fails closed',async t=>{

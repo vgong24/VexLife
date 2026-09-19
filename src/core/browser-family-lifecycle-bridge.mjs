@@ -160,6 +160,47 @@ function currentFamilyGroup(home, record) {
   );
 }
 
+function leaveTransitionRef(member) {
+  return `transition.vex-family.member.leave.${member.membershipRef}`;
+}
+
+function priorLeaveGroup(home, record, principalRef) {
+  if (
+    !Number.isSafeInteger(record.revision)
+    || record.revision < 1
+    || !Number.isSafeInteger(record.membershipGeneration)
+    || record.membershipGeneration < 1
+    || typeof record.priorRecordSha256 !== 'string'
+  ) {
+    fail(
+      'BROWSER_FAMILY_LIFECYCLE_LEAVE_RECOVERY_STALE',
+      'Current Family state does not expose an exact prior LEAVE recovery coordinate',
+      409
+    );
+  }
+  const expectedMembershipGeneration = record.membershipGeneration - 1;
+  const matches = channels(home).filter((channel) => {
+    const binding = channel?.familySpaceBinding;
+    return channel?.kind === 'GROUP'
+      && binding?.audienceKind === 'GROUP'
+      && binding.spaceRef === record.spaceRef
+      && binding.membershipGeneration === expectedMembershipGeneration
+      && binding.familySpaceRecordSha256 === record.priorRecordSha256
+      && binding.familyCompanionLineageRef === record.familyCompanionLineageRef
+      && Array.isArray(binding.audienceMemberBindings)
+      && binding.audienceMemberBindings.some((member) => member.principalRef === principalRef);
+  });
+  if (matches.length !== 1) {
+    fail(
+      'BROWSER_FAMILY_LIFECYCLE_LEAVE_RECOVERY_STALE',
+      'Prior Family GROUP channel for LEAVE recovery is missing or ambiguous',
+      409,
+      { candidateCount: matches.length }
+    );
+  }
+  return matches[0];
+}
+
 function safeHost(result) {
   return Object.freeze({
     state: result.state,
@@ -319,25 +360,49 @@ export function executeBrowserFamilyLifecycle({
       );
     }
     const member = family.record.members.find(
-      (candidate) =>
-        candidate.principalRef === principalRef
-        && candidate.status === 'ACTIVE'
+      (candidate) => candidate.principalRef === principalRef
     );
     if (!member) {
       fail(
         'BROWSER_FAMILY_LIFECYCLE_MEMBER_DENIED',
-        'Authenticated principal is not an active member of this Family',
+        'Authenticated principal is not a member of this Family',
         403
       );
     }
-    const prior = currentFamilyGroup(home, family.record);
+
+    let prior;
+    let expectedRevision;
+    let expectedMembershipGeneration;
+    if (member.status === 'ACTIVE') {
+      prior = currentFamilyGroup(home, family.record);
+      expectedRevision = family.record.revision;
+      expectedMembershipGeneration = family.record.membershipGeneration;
+    } else if (member.status === 'LEFT') {
+      if (family.record.transitionRef !== leaveTransitionRef(member)) {
+        fail(
+          'BROWSER_FAMILY_LIFECYCLE_LEAVE_RECOVERY_STALE',
+          'Current Family state is not the exact immediate self-LEAVE child',
+          409
+        );
+      }
+      prior = priorLeaveGroup(home, family.record, principalRef);
+      expectedRevision = family.record.revision - 1;
+      expectedMembershipGeneration = family.record.membershipGeneration - 1;
+    } else {
+      fail(
+        'BROWSER_FAMILY_LIFECYCLE_MEMBER_DENIED',
+        'Authenticated principal is not active or exactly recoverable after self-LEAVE',
+        403
+      );
+    }
+
     const left = leaveFamilyAndContinueConversation({
       home,
       spaceRef: family.record.spaceRef,
       priorChannelRef: prior.channelRef,
       currentPrincipalRef: principalRef,
-      expectedRevision: family.record.revision,
-      expectedMembershipGeneration: family.record.membershipGeneration,
+      expectedRevision,
+      expectedMembershipGeneration,
       observedAt,
       instanceRef: `${writerRef}.leave`,
       faults: {}
