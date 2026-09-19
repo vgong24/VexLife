@@ -203,6 +203,11 @@ function vexCoreProjectionForPrincipal(principalRef,deviceRef){
     currentnessRefs:Object.freeze(['currentness.vf06-'+suffix]),
     effects:EFFECTS
   });
+  return projection;
+}
+
+function resolverForPrincipal(principalRef,deviceRef){
+  const projection=vexCoreProjectionForPrincipal(principalRef,deviceRef);
   return createVexCoreFamilySessionAuthorityResolver({
     resolveVexCoreAuthority:async()=>projection
   });
