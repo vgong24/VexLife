@@ -5,7 +5,12 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { approvePairing, createPairingOffer, issueCapabilityLease } from '../src/core/home-bridge.mjs';
-import { addFamilyMember, createFamilySpace } from '../src/core/family-space-store.mjs';
+import {
+  addFamilyMember,
+  createFamilySpace,
+  readFamilySpace
+} from '../src/core/family-space-store.mjs';
+import { issueFamilyInvitation } from '../src/core/family-invitation-store.mjs';
 import { createFamilyChannel } from '../src/core/family-conversation.mjs';
 import { materializeConversationChannel } from '../src/core/conversation-store.mjs';
 import { createVexCoreFamilySessionAuthorityResolver } from '../src/core/vex-core-family-session-authority.mjs';
@@ -24,6 +29,8 @@ import {
 
 const T0='2026-09-18T03:40:00.000Z';
 const T1='2026-09-18T03:41:00.000Z';
+const T2='2026-09-18T03:42:00.000Z';
+const T3='2026-09-18T03:43:00.000Z';
 const T9='2026-09-18T09:40:00.000Z';
 const HOME='vex-home.device.vf06-test';
 const DEVICE='device.vf06-test';
@@ -510,6 +517,135 @@ test('VF07C1-05 lifecycle failure remains held and never synthesizes success', a
     failureCode: 'FAMILY_LIFECYCLE_AUTHORITY_UNAVAILABLE'
   });
   assert.equal(synthetic.requests.length, 1);
+});
+
+
+test('VF07C1-06 real same-origin Host/Join/Leave consumes the accepted server lifecycle bridge', async t => {
+  const home = tempHome(t);
+  let now = T0;
+  let currentResolver = resolverForPrincipal(PRINCIPAL, DEVICE);
+  const lifecycleCalls = [];
+
+  const resolveLifecycleAuthority = async context => {
+    lifecycleCalls.push(Object.freeze({
+      operation: context.operation,
+      intent: structuredClone(context.intent)
+    }));
+    return currentResolver(context);
+  };
+  const resolveConversationAuthority = async context => currentResolver(context);
+
+  const server = createVexLifeBrowserServer({
+    companionBridge: fakeCompanion(),
+    familyConversationHome: home,
+    familyConversationNow: () => now,
+    familyConversationInstanceRef: 'instance.vf07c1.real-conversation',
+    resolveFamilyConversationAuthority: resolveConversationAuthority,
+    familyLifecycleHome: home,
+    familyLifecycleNow: () => now,
+    familyLifecycleInstanceRef: 'instance.vf07c1.real-lifecycle',
+    resolveFamilyLifecycleAuthority: resolveLifecycleAuthority
+  });
+  const base = await listen(server, t);
+  const fetchImpl = (url, init = {}) => fetch(new URL(url, base), init);
+
+  const state = { channelRef: null };
+  const projects = [{
+    projectRef: 'project.vexlife.root-hub',
+    threads: [{ threadRef: 'thread.root-hub.welcome' }]
+  }];
+  const controller = createFamilyRoomController({
+    state,
+    projects,
+    roles: {},
+    channels: [],
+    messages: new Map(),
+    conversationKey: (...values) => values.join(':'),
+    t: key => key,
+    navigation: {},
+    chat: {
+      selectThread() {},
+      selectChannel(channel) { state.channelRef = channel.channelRef; },
+      renderMessages() {}
+    },
+    fetchImpl,
+    documentRef: null,
+    idempotencyKeyFactory: () => 'intent.vex.family.host.real'
+  });
+
+  const hosted = await controller.hostFamily();
+  assert.equal(hosted.ok, true);
+  const spaceRef = hosted.body.result.spaceRef;
+  assert.match(spaceRef, /^space\.vex\.family\./u);
+  assert.equal(controller.snapshot().state, 'CURRENT');
+  assert.equal(controller.snapshot().currentPrincipalRef, PRINCIPAL);
+
+  const family = readFamilySpace({ home, spaceRef }).record;
+  const invitation = issueFamilyInvitation({
+    home,
+    spaceRef,
+    inviterPrincipalRef: PRINCIPAL,
+    expectedFamilyRecordSha256: family.recordSha256,
+    expectedRevision: family.revision,
+    expectedMembershipGeneration: family.membershipGeneration,
+    idempotencyKey: 'invite.vf07c1.real.alex',
+    issuedAt: T1,
+    expiresAt: T9,
+    sourceReceiptRefs: ['receipt.vf07c1.real.issue'],
+    currentnessRefs: ['currentness.vf07c1.real.issue'],
+    instanceRef: 'instance.vf07c1.real.issue',
+    faults: {}
+  }).record;
+
+  now = T2;
+  currentResolver = resolverForPrincipal('person.alex', 'device.vf06-alex');
+  const joined = await controller.joinFamily(invitation.invitationRef);
+  assert.equal(joined.ok, true);
+  assert.equal(controller.snapshot().state, 'CURRENT');
+  assert.equal(controller.snapshot().currentPrincipalRef, 'person.alex');
+  assert.equal(
+    readFamilySpace({ home, spaceRef }).record.members
+      .find(member => member.principalRef === 'person.alex')?.status,
+    'ACTIVE'
+  );
+
+  now = T3;
+  const left = await controller.leaveFamily();
+  assert.equal(left.ok, true);
+  assert.equal(left.body.result.membershipTransitionPerformed, true);
+  assert.equal(
+    readFamilySpace({ home, spaceRef }).record.members
+      .find(member => member.principalRef === 'person.alex')?.status,
+    'LEFT'
+  );
+
+  assert.deepEqual(lifecycleCalls, [
+    {
+      operation: 'HOST',
+      intent: { idempotencyKey: 'intent.vex.family.host.real' }
+    },
+    {
+      operation: 'JOIN',
+      intent: { invitationRef: invitation.invitationRef }
+    },
+    {
+      operation: 'LEAVE',
+      intent: { spaceRef }
+    }
+  ]);
+
+  const emittedIntent = JSON.stringify(lifecycleCalls);
+  for (const forbidden of [
+    'principalRef',
+    'principalBindingRef',
+    'membershipRef',
+    'expectedRevision',
+    'expectedMembershipGeneration',
+    'familyCompanionLineageRef',
+    'threadRef',
+    'channelRef',
+    'successorChannelRef'
+  ]) assert.equal(emittedIntent.includes(forbidden), false, forbidden);
 });
 
 // [VXG RealForever]
