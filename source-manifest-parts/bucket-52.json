@@ -11,8 +11,8 @@
     {
       "path": "docs/INTENT-ORCHESTRATION-SPINE.md",
       "mode": "100644",
-      "bytes": 12498,
-      "sha256": "2d783b1a79f144074f41dc7d570ae4e41139de35af0df000910411ae294463aa"
+      "bytes": 12916,
+      "sha256": "336e631401358ae53dd1051b31e90f12f601a608056559d2721e04fa0873a12f"
     },
     {
       "path": "test/fixtures/orientation/accepted-main.json",
