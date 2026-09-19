@@ -147,6 +147,14 @@
       ]
     }
   },
+  "acceptedAssignmentStates": [
+    "CURRENT",
+    "SETTLED"
+  ],
+  "assignmentAcceptanceBases": [
+    "ORIGINATING_HUMAN_ACCEPTED",
+    "AUTHORIZED_ACTOR_ACCEPTED"
+  ],
   "authorityDispositions": [
     "NO_AUTHORITY",
     "AUTHORIZED_BOUNDED",
@@ -183,204 +191,50 @@
     "HELD_UNKNOWN"
   ],
   "lifecycleStateRefs": [
-    {
-      "state": "CAPTURED",
-      "ref": "lifecycle.intent.captured"
-    },
-    {
-      "state": "NEEDS_CLARIFICATION",
-      "ref": "lifecycle.intent.needs-clarification"
-    },
-    {
-      "state": "DECOMPOSED",
-      "ref": "lifecycle.intent.decomposed"
-    },
-    {
-      "state": "PLAN_VALIDATED",
-      "ref": "lifecycle.intent.plan-validated"
-    },
-    {
-      "state": "WAITING_DEPENDENCIES",
-      "ref": "lifecycle.intent.waiting-dependencies"
-    },
-    {
-      "state": "READY",
-      "ref": "lifecycle.intent.ready"
-    },
-    {
-      "state": "WAITING_RESOURCE",
-      "ref": "lifecycle.intent.waiting-resource"
-    },
-    {
-      "state": "CONTEXT_ADMITTED",
-      "ref": "lifecycle.intent.context-admitted"
-    },
-    {
-      "state": "RUNNING",
-      "ref": "lifecycle.intent.running"
-    },
-    {
-      "state": "WAITING_TOOL",
-      "ref": "lifecycle.intent.waiting-tool"
-    },
-    {
-      "state": "WAITING_HUMAN",
-      "ref": "lifecycle.intent.waiting-human"
-    },
-    {
-      "state": "VERIFYING",
-      "ref": "lifecycle.intent.verifying"
-    },
-    {
-      "state": "COMPLETED",
-      "ref": "lifecycle.intent.completed"
-    },
-    {
-      "state": "CONVERGED",
-      "ref": "lifecycle.intent.converged"
-    },
-    {
-      "state": "CLOSED",
-      "ref": "lifecycle.intent.closed"
-    },
-    {
-      "state": "BLOCKED",
-      "ref": "lifecycle.intent.blocked"
-    },
-    {
-      "state": "FAILED_RECOVERABLE",
-      "ref": "lifecycle.intent.failed-recoverable"
-    },
-    {
-      "state": "PAUSED_AT_CHECKPOINT",
-      "ref": "lifecycle.intent.paused-at-checkpoint"
-    },
-    {
-      "state": "SUPERSEDED",
-      "ref": "lifecycle.intent.superseded"
-    },
-    {
-      "state": "CANCELLED",
-      "ref": "lifecycle.intent.cancelled"
-    },
-    {
-      "state": "HELD_UNKNOWN",
-      "ref": "lifecycle.intent.held-unknown"
-    }
+    { "state": "CAPTURED", "ref": "lifecycle.intent.captured" },
+    { "state": "NEEDS_CLARIFICATION", "ref": "lifecycle.intent.needs-clarification" },
+    { "state": "DECOMPOSED", "ref": "lifecycle.intent.decomposed" },
+    { "state": "PLAN_VALIDATED", "ref": "lifecycle.intent.plan-validated" },
+    { "state": "WAITING_DEPENDENCIES", "ref": "lifecycle.intent.waiting-dependencies" },
+    { "state": "READY", "ref": "lifecycle.intent.ready" },
+    { "state": "WAITING_RESOURCE", "ref": "lifecycle.intent.waiting-resource" },
+    { "state": "CONTEXT_ADMITTED", "ref": "lifecycle.intent.context-admitted" },
+    { "state": "RUNNING", "ref": "lifecycle.intent.running" },
+    { "state": "WAITING_TOOL", "ref": "lifecycle.intent.waiting-tool" },
+    { "state": "WAITING_HUMAN", "ref": "lifecycle.intent.waiting-human" },
+    { "state": "VERIFYING", "ref": "lifecycle.intent.verifying" },
+    { "state": "COMPLETED", "ref": "lifecycle.intent.completed" },
+    { "state": "CONVERGED", "ref": "lifecycle.intent.converged" },
+    { "state": "CLOSED", "ref": "lifecycle.intent.closed" },
+    { "state": "BLOCKED", "ref": "lifecycle.intent.blocked" },
+    { "state": "FAILED_RECOVERABLE", "ref": "lifecycle.intent.failed-recoverable" },
+    { "state": "PAUSED_AT_CHECKPOINT", "ref": "lifecycle.intent.paused-at-checkpoint" },
+    { "state": "SUPERSEDED", "ref": "lifecycle.intent.superseded" },
+    { "state": "CANCELLED", "ref": "lifecycle.intent.cancelled" },
+    { "state": "HELD_UNKNOWN", "ref": "lifecycle.intent.held-unknown" }
   ],
   "allowedFormationStates": [
     "CAPTURED"
   ],
   "allowedTransitions": {
-    "CAPTURED": [
-      "NEEDS_CLARIFICATION",
-      "DECOMPOSED",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "NEEDS_CLARIFICATION": [
-      "DECOMPOSED",
-      "WAITING_HUMAN",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "DECOMPOSED": [
-      "PLAN_VALIDATED",
-      "NEEDS_CLARIFICATION",
-      "BLOCKED",
-      "CANCELLED"
-    ],
-    "PLAN_VALIDATED": [
-      "WAITING_DEPENDENCIES",
-      "READY",
-      "BLOCKED",
-      "CANCELLED"
-    ],
-    "WAITING_DEPENDENCIES": [
-      "READY",
-      "BLOCKED",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "READY": [
-      "WAITING_RESOURCE",
-      "CONTEXT_ADMITTED",
-      "RUNNING",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "WAITING_RESOURCE": [
-      "READY",
-      "CONTEXT_ADMITTED",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "CONTEXT_ADMITTED": [
-      "RUNNING",
-      "WAITING_TOOL",
-      "WAITING_HUMAN",
-      "CANCELLED"
-    ],
-    "RUNNING": [
-      "WAITING_TOOL",
-      "WAITING_HUMAN",
-      "VERIFYING",
-      "FAILED_RECOVERABLE",
-      "PAUSED_AT_CHECKPOINT",
-      "CANCELLED"
-    ],
-    "WAITING_TOOL": [
-      "RUNNING",
-      "VERIFYING",
-      "FAILED_RECOVERABLE",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "WAITING_HUMAN": [
-      "READY",
-      "RUNNING",
-      "VERIFYING",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "VERIFYING": [
-      "COMPLETED",
-      "FAILED_RECOVERABLE",
-      "BLOCKED",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "COMPLETED": [
-      "CONVERGED",
-      "CLOSED",
-      "SUPERSEDED"
-    ],
-    "CONVERGED": [
-      "CLOSED",
-      "SUPERSEDED"
-    ],
-    "FAILED_RECOVERABLE": [
-      "READY",
-      "PAUSED_AT_CHECKPOINT",
-      "BLOCKED",
-      "CANCELLED"
-    ],
-    "PAUSED_AT_CHECKPOINT": [
-      "READY",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "BLOCKED": [
-      "READY",
-      "CANCELLED",
-      "HELD_UNKNOWN"
-    ],
-    "HELD_UNKNOWN": [
-      "NEEDS_CLARIFICATION",
-      "READY",
-      "BLOCKED",
-      "CANCELLED"
-    ],
+    "CAPTURED": ["NEEDS_CLARIFICATION", "DECOMPOSED", "CANCELLED", "HELD_UNKNOWN"],
+    "NEEDS_CLARIFICATION": ["DECOMPOSED", "WAITING_HUMAN", "CANCELLED", "HELD_UNKNOWN"],
+    "DECOMPOSED": ["PLAN_VALIDATED", "NEEDS_CLARIFICATION", "BLOCKED", "CANCELLED"],
+    "PLAN_VALIDATED": ["WAITING_DEPENDENCIES", "READY", "BLOCKED", "CANCELLED"],
+    "WAITING_DEPENDENCIES": ["READY", "BLOCKED", "CANCELLED", "HELD_UNKNOWN"],
+    "READY": ["WAITING_RESOURCE", "CONTEXT_ADMITTED", "RUNNING", "CANCELLED", "HELD_UNKNOWN"],
+    "WAITING_RESOURCE": ["READY", "CONTEXT_ADMITTED", "CANCELLED", "HELD_UNKNOWN"],
+    "CONTEXT_ADMITTED": ["RUNNING", "WAITING_TOOL", "WAITING_HUMAN", "CANCELLED"],
+    "RUNNING": ["WAITING_TOOL", "WAITING_HUMAN", "VERIFYING", "FAILED_RECOVERABLE", "PAUSED_AT_CHECKPOINT", "CANCELLED"],
+    "WAITING_TOOL": ["RUNNING", "VERIFYING", "FAILED_RECOVERABLE", "CANCELLED", "HELD_UNKNOWN"],
+    "WAITING_HUMAN": ["READY", "RUNNING", "VERIFYING", "CANCELLED", "HELD_UNKNOWN"],
+    "VERIFYING": ["COMPLETED", "FAILED_RECOVERABLE", "BLOCKED", "CANCELLED", "HELD_UNKNOWN"],
+    "COMPLETED": ["CONVERGED", "CLOSED", "SUPERSEDED"],
+    "CONVERGED": ["CLOSED", "SUPERSEDED"],
+    "FAILED_RECOVERABLE": ["READY", "PAUSED_AT_CHECKPOINT", "BLOCKED", "CANCELLED"],
+    "PAUSED_AT_CHECKPOINT": ["READY", "CANCELLED", "HELD_UNKNOWN"],
+    "BLOCKED": ["READY", "CANCELLED", "HELD_UNKNOWN"],
+    "HELD_UNKNOWN": ["NEEDS_CLARIFICATION", "READY", "BLOCKED", "CANCELLED"],
     "CLOSED": [],
     "SUPERSEDED": [],
     "CANCELLED": []
@@ -393,85 +247,27 @@
     "CANCELLED"
   ],
   "cancellationPolicy": {
-    "CAPTURED": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "NEEDS_CLARIFICATION": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "DECOMPOSED": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "PLAN_VALIDATED": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "WAITING_DEPENDENCIES": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "READY": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "WAITING_RESOURCE": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "CONTEXT_ADMITTED": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "RUNNING": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "WAITING_TOOL": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "WAITING_HUMAN": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "VERIFYING": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "COMPLETED": {
-      "mode": "PRESERVE_SETTLED"
-    },
-    "CONVERGED": {
-      "mode": "PRESERVE_SETTLED"
-    },
-    "CLOSED": {
-      "mode": "PRESERVE_SETTLED"
-    },
-    "BLOCKED": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "FAILED_RECOVERABLE": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "PAUSED_AT_CHECKPOINT": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    },
-    "SUPERSEDED": {
-      "mode": "PRESERVE_SETTLED"
-    },
-    "CANCELLED": {
-      "mode": "PRESERVE_SETTLED"
-    },
-    "HELD_UNKNOWN": {
-      "mode": "TRANSITION",
-      "targetState": "CANCELLED"
-    }
+    "CAPTURED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "NEEDS_CLARIFICATION": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "DECOMPOSED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "PLAN_VALIDATED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_DEPENDENCIES": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "READY": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_RESOURCE": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "CONTEXT_ADMITTED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "RUNNING": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_TOOL": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "WAITING_HUMAN": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "VERIFYING": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "COMPLETED": { "mode": "PRESERVE_SETTLED" },
+    "CONVERGED": { "mode": "PRESERVE_SETTLED" },
+    "CLOSED": { "mode": "PRESERVE_SETTLED" },
+    "BLOCKED": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "FAILED_RECOVERABLE": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "PAUSED_AT_CHECKPOINT": { "mode": "TRANSITION", "targetState": "CANCELLED" },
+    "SUPERSEDED": { "mode": "PRESERVE_SETTLED" },
+    "CANCELLED": { "mode": "PRESERVE_SETTLED" },
+    "HELD_UNKNOWN": { "mode": "TRANSITION", "targetState": "CANCELLED" }
   },
   "terminalStates": [
     "CLOSED",
@@ -571,18 +367,9 @@
     "HELD_UNKNOWN"
   ],
   "receiptStateRefs": [
-    {
-      "state": "PROVEN",
-      "ref": "receipt-state.intent.proven"
-    },
-    {
-      "state": "REJECTED",
-      "ref": "receipt-state.intent.rejected"
-    },
-    {
-      "state": "HELD_UNKNOWN",
-      "ref": "receipt-state.intent.held-unknown"
-    }
+    { "state": "PROVEN", "ref": "receipt-state.intent.proven" },
+    { "state": "REJECTED", "ref": "receipt-state.intent.rejected" },
+    { "state": "HELD_UNKNOWN", "ref": "receipt-state.intent.held-unknown" }
   ],
   "receiptCurrentnessStates": [
     "CURRENT",
@@ -611,13 +398,5 @@
     "Intent Orchestration 3/3 Burden Release and Continuity Evolution Router is registration-only and held.",
     "Native platform adoption remains held pending accepted shared contracts.",
     "No model weight training, removal, activation, or direct tool authority is granted."
-  ],
-  "acceptedAssignmentStates": [
-    "CURRENT",
-    "SETTLED"
-  ],
-  "assignmentAcceptanceBases": [
-    "ORIGINATING_HUMAN_ACCEPTED",
-    "AUTHORIZED_ACTOR_ACCEPTED"
   ]
 }

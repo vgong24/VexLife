@@ -100,100 +100,56 @@
       "formRef": "form.vexlife.human.button",
       "formKind": "BUTTON",
       "consumerClass": "HUMAN",
-      "platformRefs": [
-        "platform.browser",
-        "platform.windows",
-        "platform.macos",
-        "platform.android",
-        "platform.ios"
-      ],
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
       "purpose": "Visible primary or secondary action control."
     },
     {
       "formRef": "form.vexlife.human.icon-action",
       "formKind": "ICON_ACTION",
       "consumerClass": "HUMAN",
-      "platformRefs": [
-        "platform.browser",
-        "platform.windows",
-        "platform.macos",
-        "platform.android",
-        "platform.ios"
-      ],
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
       "purpose": "Compact visible action with a stable accessible name."
     },
     {
       "formRef": "form.vexlife.human.menu-item",
       "formKind": "MENU_ITEM",
       "consumerClass": "HUMAN",
-      "platformRefs": [
-        "platform.browser",
-        "platform.windows",
-        "platform.macos",
-        "platform.android",
-        "platform.ios"
-      ],
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
       "purpose": "Action projected inside a menu, overflow or contextual choice surface."
     },
     {
       "formRef": "form.vexlife.human.vessel-action",
       "formKind": "VESSEL_ACTION",
       "consumerClass": "HUMAN",
-      "platformRefs": [
-        "platform.browser",
-        "platform.windows",
-        "platform.macos",
-        "platform.android",
-        "platform.ios"
-      ],
+      "platformRefs": ["platform.browser", "platform.windows", "platform.macos", "platform.android", "platform.ios"],
       "purpose": "Action projected through one stable adaptive VexLife vessel."
     },
     {
       "formRef": "form.vexlife.native.control",
       "formKind": "NATIVE_CONTROL",
       "consumerClass": "HUMAN",
-      "platformRefs": [
-        "platform.windows",
-        "platform.macos",
-        "platform.android",
-        "platform.ios"
-      ],
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.ios"],
       "purpose": "Platform-native control that preserves the canonical semantic action."
     },
     {
       "formRef": "form.vexlife.operator.slash-alias",
       "formKind": "SLASH_ALIAS",
       "consumerClass": "OPERATOR",
-      "platformRefs": [
-        "platform.windows",
-        "platform.macos",
-        "platform.android",
-        "platform.browser"
-      ],
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.browser"],
       "purpose": "Typed control-plane alias for a registered command; never canonical command identity or an ordinary model turn."
     },
     {
       "formRef": "form.vexlife.operator.model-tool",
       "formKind": "MODEL_TOOL",
       "consumerClass": "OPERATOR",
-      "platformRefs": [
-        "platform.windows",
-        "platform.macos",
-        "platform.android",
-        "platform.browser"
-      ],
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.browser"],
       "purpose": "Structured tool projection for an admitted model/operator capability."
     },
     {
       "formRef": "form.vexlife.voice.action",
       "formKind": "VOICE_ACTION",
       "consumerClass": "HUMAN",
-      "platformRefs": [
-        "platform.windows",
-        "platform.macos",
-        "platform.android",
-        "platform.ios"
-      ],
+      "platformRefs": ["platform.windows", "platform.macos", "platform.android", "platform.ios"],
       "purpose": "Voice expression of an existing semantic action under the same capability/authority contract."
     }
   ],
@@ -202,66 +158,42 @@
       "patternRef": "pattern.vexlife.first-run-empty-state",
       "patternKind": "FIRST_RUN_EMPTY_STATE",
       "purpose": "Explain an empty or unestablished state and expose one safe next action without fabricating content.",
-      "formRefs": [
-        "form.vexlife.human.button",
-        "form.vexlife.native.control",
-        "form.vexlife.human.vessel-action"
-      ],
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.native.control", "form.vexlife.human.vessel-action"],
       "defaultExposureRef": "exposure.vexlife.primary"
     },
     {
       "patternRef": "pattern.vexlife.action-decision",
       "patternKind": "ACTION_DECISION",
       "purpose": "Show one semantic action with availability, typed reason and recovery rather than a context-free disabled control.",
-      "formRefs": [
-        "form.vexlife.human.button",
-        "form.vexlife.human.menu-item",
-        "form.vexlife.human.vessel-action",
-        "form.vexlife.native.control"
-      ],
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.human.menu-item", "form.vexlife.human.vessel-action", "form.vexlife.native.control"],
       "defaultExposureRef": "exposure.vexlife.primary"
     },
     {
       "patternRef": "pattern.vexlife.transaction",
       "patternKind": "TRANSACTION",
       "purpose": "Compose intention, review/confirmation, bounded effect, receipt and recovery without collapsing those stages.",
-      "formRefs": [
-        "form.vexlife.human.button",
-        "form.vexlife.native.control",
-        "form.vexlife.voice.action"
-      ],
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.native.control", "form.vexlife.voice.action"],
       "defaultExposureRef": "exposure.vexlife.contextual"
     },
     {
       "patternRef": "pattern.vexlife.selection-detail",
       "patternKind": "SELECTION_DETAIL",
       "purpose": "Keep a stable entity selection distinct from the contextual detail projection shown for it.",
-      "formRefs": [
-        "form.vexlife.human.menu-item",
-        "form.vexlife.native.control"
-      ],
+      "formRefs": ["form.vexlife.human.menu-item", "form.vexlife.native.control"],
       "defaultExposureRef": "exposure.vexlife.contextual"
     },
     {
       "patternRef": "pattern.vexlife.progressive-disclosure",
       "patternKind": "PROGRESSIVE_DISCLOSURE",
       "purpose": "Keep ordinary human paths calm while preserving explicit advanced or diagnostic descent.",
-      "formRefs": [
-        "form.vexlife.human.button",
-        "form.vexlife.human.menu-item",
-        "form.vexlife.human.vessel-action"
-      ],
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.human.menu-item", "form.vexlife.human.vessel-action"],
       "defaultExposureRef": "exposure.vexlife.secondary"
     },
     {
       "patternRef": "pattern.vexlife.preference",
       "patternKind": "PREFERENCE",
       "purpose": "Represent reversible local presentation/arrangement choice without mutating canonical semantic topology.",
-      "formRefs": [
-        "form.vexlife.human.button",
-        "form.vexlife.human.menu-item",
-        "form.vexlife.native.control"
-      ],
+      "formRefs": ["form.vexlife.human.button", "form.vexlife.human.menu-item", "form.vexlife.native.control"],
       "defaultExposureRef": "exposure.vexlife.secondary"
     }
   ],
@@ -273,10 +205,7 @@
       "actionRefOrNull": null,
       "processRefOrNull": null,
       "aliases": [
-        {
-          "literal": "/announce",
-          "formRef": "form.vexlife.operator.slash-alias"
-        }
+        {"literal": "/announce", "formRef": "form.vexlife.operator.slash-alias"}
       ]
     },
     {
@@ -286,10 +215,7 @@
       "actionRefOrNull": null,
       "processRefOrNull": null,
       "aliases": [
-        {
-          "literal": "/search",
-          "formRef": "form.vexlife.operator.slash-alias"
-        }
+        {"literal": "/search", "formRef": "form.vexlife.operator.slash-alias"}
       ]
     },
     {
@@ -299,10 +225,7 @@
       "actionRefOrNull": null,
       "processRefOrNull": null,
       "aliases": [
-        {
-          "literal": "/describe",
-          "formRef": "form.vexlife.operator.slash-alias"
-        }
+        {"literal": "/describe", "formRef": "form.vexlife.operator.slash-alias"}
       ]
     },
     {
@@ -312,10 +235,7 @@
       "actionRefOrNull": null,
       "processRefOrNull": null,
       "aliases": [
-        {
-          "literal": "/resolve",
-          "formRef": "form.vexlife.operator.slash-alias"
-        }
+        {"literal": "/resolve", "formRef": "form.vexlife.operator.slash-alias"}
       ]
     },
     {
@@ -325,10 +245,7 @@
       "actionRefOrNull": null,
       "processRefOrNull": null,
       "aliases": [
-        {
-          "literal": "/where",
-          "formRef": "form.vexlife.operator.slash-alias"
-        }
+        {"literal": "/where", "formRef": "form.vexlife.operator.slash-alias"}
       ]
     },
     {
@@ -338,10 +255,7 @@
       "actionRefOrNull": null,
       "processRefOrNull": null,
       "aliases": [
-        {
-          "literal": "/help",
-          "formRef": "form.vexlife.operator.slash-alias"
-        }
+        {"literal": "/help", "formRef": "form.vexlife.operator.slash-alias"}
       ]
     }
   ],
@@ -351,15 +265,7 @@
   },
   "sourceMapPolicy": {
     "referenceOnly": true,
-    "forbiddenFieldNames": [
-      "content",
-      "message",
-      "prompt",
-      "providerPayload",
-      "rawText",
-      "secret",
-      "credential"
-    ]
+    "forbiddenFieldNames": ["content", "message", "prompt", "providerPayload", "rawText", "secret", "credential"]
   },
   "revisionPolicy": {
     "includeStringCatalogValues": false,
