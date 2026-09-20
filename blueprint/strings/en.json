@@ -366,5 +366,11 @@
   "family-room.lifecycle.held": "Current Family authority is unavailable",
   "family-room.channel": "Family",
   "family-room.vex": "Family",
-  "family-room.composer.available": "Family chat stays available while Vex work is queued or running"
+  "family-room.composer.available": "Family chat stays available while Vex work is queued or running",
+  "composer.command.ready": "Command input · submitting checks it locally before any message is sent.",
+  "composer.command.announce.shortcut": "Prepare announcement",
+  "composer.command.announce.requestable": "Announcement request recognized · no message was sent.",
+  "composer.command.unknown": "Unknown command {command} · no message was sent.",
+  "composer.command.malformed": "Commands must be one slash token · no message was sent.",
+  "composer.command.known-held": "{command} is recognized but is not available from this composer · no message was sent."
 }

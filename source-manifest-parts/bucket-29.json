@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/integration/contextual-conversation-suite.js",
       "mode": "100644",
-      "bytes": 11392,
-      "sha256": "4eea6140e338e60b099e7ded22c880c319d566ee7e0321ae436ec465b525f61f"
+      "bytes": 16184,
+      "sha256": "09d9f372f56923f897d50e84c6549abdfbb06e5036b803ee9f616754be4ea8e0"
     },
     {
       "path": "reference/browser/modules/experience-gallery-controller.js",

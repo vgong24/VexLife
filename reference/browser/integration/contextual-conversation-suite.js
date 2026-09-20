@@ -37,7 +37,90 @@ export const contextualConversationSuite = Object.freeze({
     assert(document.querySelector('.e27-terrain'), 'D06 chat replaced Terrain body');
     const q5=await runQ5ContextWorkspaceProof({app,helpers:{delay,assert},viewportClass:'WIDE'});checks.push(...q5.checks);
     const input = document.querySelector('#messageInput'); const composer = document.querySelector('#composer'); const send = composer.querySelector('button[type="submit"]');
-    const list = selectedMessageList(app); const count = list.length; input.value = 'integration.unsent'; input.dispatchEvent(new Event('input', { bubbles:true })); composer.requestSubmit(); await delay(220);
+
+    const list = selectedMessageList(app);
+    const commandBaselineCount = list.length;
+    const commandPendingBefore = app.chat.pendingReplyCount();
+    const shortcut = document.querySelector('#announceShortcutButton');
+    assert(shortcut && shortcut.type === 'button' && shortcut.getAttribute('aria-controls') === 'messageInput',
+      'FTD-09 announce shortcut is not a bounded native button');
+    shortcut.click(); await delay(0);
+    assert(input.value === '/announce' && document.activeElement === input,
+      'FTD-09 announce shortcut did not insert exact literal and retain composer focus');
+    assert(list.length === commandBaselineCount && app.chat.pendingReplyCount() === commandPendingBefore,
+      'FTD-09 shortcut performed a message/model effect');
+    assert(send.disabled === false && composer.dataset.submitMode === 'COMMAND_CHECK',
+      'FTD-01 slash command is not routed through local command-check submit mode');
+    composer.requestSubmit(); await delay(0);
+    let commandState = app.chat.composerCommandState();
+    assert(commandState.state === 'ANNOUNCE_REQUESTABLE'
+      && commandState.commandRef === 'command.vexlife.announce'
+      && commandState.capabilityRef === 'conversation.announce'
+      && typeof commandState.sourceBindingRef === 'string'
+      && commandState.permissionGranted === false
+      && commandState.executionRequested === false
+      && commandState.executionPerformed === false
+      && commandState.messageDeliveryPerformed === false,
+      'FTD-06 exact /announce did not preserve the accepted request-only source binding');
+    assert(list.length === commandBaselineCount && app.chat.pendingReplyCount() === commandPendingBefore,
+      'FTD-08 /announce appended a message or created a model turn');
+
+    input.value = '/unknown-command'; input.dispatchEvent(new Event('input', { bubbles:true }));
+    composer.requestSubmit(); await delay(0);
+    commandState = app.chat.composerCommandState();
+    assert(commandState.state === 'UNKNOWN_COMMAND'
+      && list.length === commandBaselineCount
+      && app.chat.pendingReplyCount() === commandPendingBefore,
+      'FTD-04 unknown slash command escaped local rejection');
+
+    input.value = '/announce later'; input.dispatchEvent(new Event('input', { bubbles:true }));
+    composer.requestSubmit(); await delay(0);
+    commandState = app.chat.composerCommandState();
+    assert(commandState.state === 'MALFORMED_SLASH'
+      && list.length === commandBaselineCount
+      && app.chat.pendingReplyCount() === commandPendingBefore,
+      'FTD-05 malformed slash command escaped local rejection');
+
+    input.value = '/where'; input.dispatchEvent(new Event('input', { bubbles:true }));
+    composer.requestSubmit(); await delay(0);
+    commandState = app.chat.composerCommandState();
+    assert(commandState.state === 'KNOWN_COMMAND_HELD'
+      && commandState.commandRef === 'command.vexlife.where'
+      && list.length === commandBaselineCount,
+      'FTD-03 known non-announce command escaped bounded hold');
+
+    const capabilityResponse = await fetch('../../blueprint/capability-registry.json');
+    assert(capabilityResponse.ok, 'FTD-07 capability registry unavailable');
+    const capabilityRegistry = await capabilityResponse.json();
+    const announceCapability = capabilityRegistry.capabilities.find((item) => item.capabilityRef === 'conversation.announce');
+    assert(announceCapability?.defaultStage === 'REQUESTABLE'
+      && Array.isArray(announceCapability.actionRefs)
+      && announceCapability.actionRefs.length === 0
+      && announceCapability.permissionRef === 'permission.none',
+      'FTD-07 browser widened request-only announcement capability');
+
+    for (const lang of ['en','ja','zh']) {
+      const response = await fetch('../../blueprint/strings/' + lang + '.json');
+      assert(response.ok, 'FTD-11 ' + lang + ' catalog unavailable');
+      const catalog = await response.json();
+      for (const key of [
+        'composer.command.ready',
+        'composer.command.announce.shortcut',
+        'composer.command.announce.requestable',
+        'composer.command.unknown',
+        'composer.command.malformed',
+        'composer.command.known-held'
+      ]) assert(catalog[key] && !catalog[key].startsWith('composer.command.'), 'FTD-11 ' + lang + ' fallback ' + key);
+    }
+    assert(document.querySelector('#composerHint')?.getAttribute('role') === 'status'
+      && document.querySelector('#composerHint')?.getAttribute('aria-live') === 'polite',
+      'FTD-12 composer command status is not an accessible polite live region');
+    checks.push(
+      'FTD-01..08 command routing precedes message creation and keeps /announce request-only with zero message/model effect',
+      'FTD-09..12 accessible shortcut, localized command states and local reject semantics remain bounded'
+    );
+
+    const count = list.length; input.value = 'integration.unsent'; input.dispatchEvent(new Event('input', { bubbles:true })); composer.requestSubmit(); await delay(220);
     assert(list.length === count, 'D07 unavailable submit appended message'); assert(send.disabled, 'D07 unavailable send not disabled'); assert(app.state.unsentLocalDraft?.state === 'UNSENT_LOCAL_DRAFT', 'D07 unsent draft truth missing');
     checks.push('D06 conversation is a contextual projection over Terrain with canonical action.view.select provenance','D07 truthful unavailable draft semantics survive direct-root composition');
 
