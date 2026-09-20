@@ -96,6 +96,23 @@ function requireGitOid(value, label, code = 'ACTIVATED_BINDING_HANDOFF_MISMATCH'
 function sha256Bytes(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
+async function sha256FileStream(filePath, expectedSize, label) {
+  const hash = crypto.createHash('sha256');
+  let bytes = 0;
+  try {
+    const stream = fs.createReadStream(filePath, { highWaterMark: 1024 * 1024 });
+    for await (const chunk of stream) {
+      bytes += chunk.length;
+      hash.update(chunk);
+    }
+  } catch (error) {
+    fail('ACTIVATED_ARTIFACT_CONTENT_SEAL_MISMATCH', `Could not stream activated artifact member: ${label}`, { cause: error?.message ?? String(error) });
+  }
+  if (bytes !== expectedSize) {
+    fail('ACTIVATED_ARTIFACT_CONTENT_SEAL_MISMATCH', `Activated artifact member changed while being read: ${label}`, { expectedBytes: expectedSize, actualBytes: bytes });
+  }
+  return Object.freeze({ bytes, sha256: hash.digest('hex') });
+}
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value && typeof value === 'object') {
@@ -506,11 +523,10 @@ export async function verifyActivatedArtifactCustody({ binding, modelDirectory }
   for (const name of actualNames) {
     const filePath = path.join(modelRoot, name);
     const stat = assertRegularNonLink(filePath, 'ACTIVATED_ARTIFACT_MEMBER_SET_MISMATCH', `Activated artifact member ${name}`);
-    const bytes = fs.readFileSync(filePath);
-    if (bytes.length !== stat.size) fail('ACTIVATED_ARTIFACT_CONTENT_SEAL_MISMATCH', `Activated artifact member changed while being read: ${name}`);
-    const digest = sha256Bytes(bytes);
-    rows.push({ path: name, bytes: bytes.length, sha256: digest });
-    totalBytes += bytes.length;
+    const streamed = await sha256FileStream(filePath, stat.size, name);
+    const digest = streamed.sha256;
+    rows.push({ path: name, bytes: streamed.bytes, sha256: digest });
+    totalBytes += streamed.bytes;
     const providerExpected = binding.artifact.providerVerifiedMembers?.[name];
     if (providerExpected && providerExpected !== digest) {
       fail('ACTIVATED_ARTIFACT_PROVIDER_MEMBER_MISMATCH', `Provider-verified activated artifact member no longer matches: ${name}`);

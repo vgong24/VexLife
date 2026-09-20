@@ -171,6 +171,36 @@ test('M4B04-M4B05 private locator is not model identity and exact fixture conten
   assert.notEqual(modelDirectory, binding.artifact.artifactRef);
 });
 
+// M4B05/A006 regression: exact custody hashing must stream large members rather than materialize one whole Buffer.
+test('M4B05 custody verifier uses streaming SHA-256 and preserves exact content-set semantics', async () => {
+  const source = fs.readFileSync(path.join(ROOT, 'src', 'core', 'activated-model-runtime-binding.mjs'), 'utf8');
+  const custodyStart = source.indexOf('export async function verifyActivatedArtifactCustody');
+  const custodyEnd = source.indexOf('\nfunction exactRuntimeArguments', custodyStart);
+  assert.ok(custodyStart >= 0 && custodyEnd > custodyStart);
+  const custodySource = source.slice(custodyStart, custodyEnd);
+  assert.match(custodySource, /await sha256FileStream\(filePath, stat\.size, name\)/u);
+  assert.doesNotMatch(custodySource, /fs\.readFileSync\(filePath\)/u);
+
+  const streamStart = source.indexOf('async function sha256FileStream');
+  const streamEnd = source.indexOf('\nfunction canonicalize', streamStart);
+  assert.ok(streamStart >= 0 && streamEnd > streamStart);
+  const streamSource = source.slice(streamStart, streamEnd);
+  assert.match(streamSource, /fs\.createReadStream\(filePath/u);
+
+  const binding = baseBinding();
+  const root = tempDir('custody-stream');
+  const largeFixture = Buffer.alloc((5 * 1024 * 1024) + 137, 0x5a);
+  const { modelDirectory } = makeFixtureArtifact(binding, root, {
+    'config.json': '{"model":"fixture"}\n',
+    'model.safetensors': largeFixture,
+    'tokenizer.json': '{"tokenizer":"fixture"}\n'
+  });
+  const receipt = await verifyActivatedArtifactCustody({ binding, modelDirectory });
+  assert.equal(receipt.contentSetSha256, binding.artifact.contentSetSha256);
+  assert.equal(receipt.totalBytes, binding.artifact.totalBytes);
+  assert.equal(receipt.memberRows.find((row) => row.path === 'model.safetensors')?.bytes, largeFixture.length);
+});
+
 // M4B06: accepted provider member hash and aggregate seal fail independently and typed.
 test('M4B06 wrong provider member and wrong aggregate seal fail closed', async () => {
   const root = tempDir('custody-fail');
