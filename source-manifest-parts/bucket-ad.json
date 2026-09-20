@@ -9,10 +9,22 @@
       "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
     },
     {
+      "path": "src/core/intent-scheduler-runtime-snapshot.mjs",
+      "mode": "100644",
+      "bytes": 14936,
+      "sha256": "3ca1a6f6d00f158eda2c4eeaf16005959a9199af1e888fe145fe85b335e9d47f"
+    },
+    {
       "path": "src/core/model-connection-atlas.mjs",
       "mode": "100644",
       "bytes": 16047,
       "sha256": "176eb087c03f7028ee9c80dfeb8e4a9e68c1c390383bb44266d051190d488ced"
+    },
+    {
+      "path": "test/generic-follow-through-runtime-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 23041,
+      "sha256": "fcec8e0e9b1dabd3cd58a3d95d97783d79e4f2d3c4a7f8b2f804b065171a739c"
     },
     {
       "path": "test/vex-family-conversation-store.test.mjs",
