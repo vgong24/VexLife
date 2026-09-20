@@ -16,6 +16,7 @@ import {
   createConcernWatchEvidenceConsumptionReceipt,
   createHumanAttentionRequest,
   createRecoveryConcernEvidence,
+  createSchedulerDueConcernObservation,
   deriveConcernSubject,
   evaluateConcernThreshold,
   formConcernAdmissionReview,
@@ -25,7 +26,9 @@ import {
   recordConcernSchedulerAdmission,
   recordHumanAttentionRequest,
   recordRecoveryConcernEvidence,
+  recordSchedulerDueConcernObservation,
   recordThresholdEvaluation,
+  reconcileSchedulerDueConcern,
   reopenConcernFromRecurrence,
   restoreConcernAggregate,
   runDeterministicConcernWatchJourney,
@@ -35,8 +38,12 @@ import {
   validateConcernWatchRegistry,
   validateIntegratedConcernWatchReceipt
 } from '../src/core/concern-watch.mjs';
-import { admitIntentSchedulerQueue } from '../src/core/intent-scheduler.mjs';
 import {
+  SingleWorkerIntentScheduler,
+  admitIntentSchedulerQueue
+} from '../src/core/intent-scheduler.mjs';
+import {
+  acceptIntentAssignment,
   createIntentEnvelope,
   createIntentTrustSnapshot,
   createIntentWorkgraph,
@@ -1030,5 +1037,249 @@ test('adversarial scope, hidden hold, forged subject, caller urgency, stale sche
   detached.recurrencePriorConcernAggregateRef = 'aggregate.detached.parallel-fixture';
   assert.equal(validateIntegratedConcernWatchReceipt(detached, { registry }).ok, false);
 });
+
+
+let ftcSchedulerSequence = 0;
+
+function ftcDueFixture(suffix, { cross = true, missedHost = false } = {}) {
+  const proposal = testSchedulerProposal(`ftc.${suffix}`);
+  const assignmentRef = `assignment.concern-watch.ftc.${suffix}`;
+  const workgraph = acceptIntentAssignment(proposal.workgraph, {
+    assignmentRef,
+    sourceIntentRef: proposal.intent.intentRef,
+    workNodeRef: proposal.node.workNodeRef,
+    assigneeRef: 'person.test.assignee',
+    acceptingActorRef: proposal.intent.originSpeakerRef,
+    acceptedAt: at(1),
+    sourceRefs: [`source.concern-watch.ftc.assignment.${suffix}`]
+  }, schedulerContext.intentRegistry).graph;
+  const scheduler = new SingleWorkerIntentScheduler({
+    workerRef: 'worker.model.test.primary',
+    schedulerInstanceRef: `scheduler.instance.concern-watch.ftc.${++ftcSchedulerSequence}`,
+    schedulerRegistry: schedulerContext.schedulerRegistry
+  });
+  scheduler.advanceObservedClock({
+    observedAt: at(2),
+    eventRef: `clock.concern-watch.ftc.${suffix}.initial`
+  });
+  const formed = scheduler.formDueIntent(workgraph, {
+    assignmentRef,
+    dueAt: at(5),
+    formedAt: at(2),
+    observedAt: at(2),
+    sourceRefs: [`source.concern-watch.ftc.due.${suffix}`]
+  });
+  if (missedHost) {
+    const restored = new SingleWorkerIntentScheduler({
+      workerRef: 'worker.model.test.primary',
+      schedulerInstanceRef: `scheduler.instance.concern-watch.ftc.restore.${++ftcSchedulerSequence}`,
+      schedulerRegistry: schedulerContext.schedulerRegistry,
+      schedulerAggregate: structuredClone(scheduler.aggregate)
+    });
+    restored.reconcileMissedHost(workgraph, {
+      observedAt: at(7),
+      eventRef: `clock.concern-watch.ftc.${suffix}.restore`
+    });
+    return { proposal, workgraph, scheduler: restored, due: formed.due, assignmentRef };
+  }
+  if (cross) {
+    scheduler.advanceObservedClock({
+      observedAt: at(5),
+      eventRef: `clock.concern-watch.ftc.${suffix}.due`,
+      graph: workgraph
+    });
+  }
+  return { proposal, workgraph, scheduler, due: formed.due, assignmentRef };
+}
+
+function ftcObservationInput(fixture, overrides = {}) {
+  return {
+    schedulerAggregate: fixture.scheduler.aggregate,
+    schedulerRegistry: schedulerContext.schedulerRegistry,
+    intentRegistry: schedulerContext.intentRegistry,
+    workgraph: fixture.workgraph,
+    dueRef: fixture.due.dueRef,
+    aboutScopeRef: 'project.vexlife',
+    ...overrides
+  };
+}
+
+function ftcWaitingHumanFixture(suffix = 'waiting') {
+  const fixture = ftcDueFixture(suffix);
+  const input = ftcObservationInput(fixture);
+  const observation = createSchedulerDueConcernObservation(input, { registry });
+  const subject = deriveConcernSubject({
+    observations: [observation],
+    subjectKind: 'FOLLOW_THROUGH_DUE'
+  }, { registry });
+  let aggregate = createConcernAggregate({ subject, formedAt: at(1) }, { registry });
+  aggregate = recordSchedulerDueConcernObservation(aggregate, input, { registry }).aggregate;
+  const threshold = evaluateConcernThreshold(aggregate, { observedAt: at(6) }, { registry });
+  aggregate = recordThresholdEvaluation(aggregate, threshold, { registry }).aggregate;
+  const request = createHumanAttentionRequest(aggregate, {
+    whyVictorIsNeeded: 'One accepted assignment is now due.',
+    smallestDecisionOrEvidence: 'Acknowledge, reschedule, or cancel the due follow-through.',
+    availableOptions: [
+      'option.follow-through.acknowledge',
+      'option.follow-through.reschedule',
+      'option.follow-through.cancel'
+    ],
+    recommendedOption: 'option.follow-through.acknowledge',
+    consequenceOfWaiting: 'The accepted assignment remains due.',
+    safeUntil: at(30),
+    returnRouteRef: fixture.proposal.node.returnRouteRef,
+    formedAt: at(7)
+  }, { registry });
+  aggregate = recordHumanAttentionRequest(aggregate, request, { registry }).aggregate;
+  return { ...fixture, input, observation, subject, aggregate, threshold, request };
+}
+
+test('FTC-00/02/03 source-managed due-attention contract and rule remain exact', () => {
+  const validation = validateConcernWatchRegistry(registry);
+  assert.equal(validation.ok, true, validation.errors.join('; '));
+  assert.equal(registry.contractIdentities.length, 14);
+  assert.equal(registry.dueAttentionContract.contractRef, 'contract.vexlife.concern-scheduler-due-attention/v1');
+  assert.equal(registry.thresholdPolicy.dueAttentionRule.ruleRef, 'rule.concern-watch.scheduler-due-attention.001');
+  assert.equal(registry.thresholdPolicy.dueAttentionRule.outcome, 'HUMAN_ATTENTION_REQUIRED');
+  assert.ok(Object.values(registry.dueAttentionContract.effectBoundary).every((value) => value === false));
+});
+
+test('FTC-04/05/07 pre-due or caller-authored due attention fails closed', () => {
+  const scheduled = ftcDueFixture('predue', { cross: false });
+  assert.throws(
+    () => createSchedulerDueConcernObservation(ftcObservationInput(scheduled), { registry }),
+    /CURRENT DUE/
+  );
+  assert.throws(() => createConcernObservation({
+    sourceRef: 'service.intent-scheduler',
+    sourceFingerprint: semanticHash({ forged: 'due' }),
+    sourceRangeOrEventRef: 'transition.intent-scheduler.due.forged',
+    observedAt: at(5),
+    observerRef: 'observer.concern-watch.scheduler-due',
+    aboutScopeRef: 'project.vexlife',
+    concernClass: 'FOLLOW_THROUGH_DUE',
+    signalClass: 'SCHEDULER_DUE',
+    certaintyClass: 'VERIFIED',
+    impactClass: 'LOW',
+    reversibilityClass: 'FULLY_REVERSIBLE',
+    humanAttentionClass: 'ONLY_IF_THRESHOLD_MET',
+    evidenceOriginClass: 'EXTERNAL_SOURCE',
+    evidenceRefs: ['due.forged'],
+    unknownRefs: [],
+    policySignals: registry.dueAttentionContract.observationPolicySignals
+  }, { registry }), /source-managed due-attention adapter/);
+});
+
+test('FTC-06/08/10/11 exact DUE earns one Concern Watch human-attention projection without external effect', () => {
+  const fixture = ftcWaitingHumanFixture('exact-due');
+  assert.equal(fixture.observation.concernClass, 'FOLLOW_THROUGH_DUE');
+  assert.equal(fixture.observation.signalClass, 'SCHEDULER_DUE');
+  assert.equal(fixture.observation.schedulerDueEvidence.dueRef, fixture.due.dueRef);
+  assert.equal(fixture.observation.schedulerDueEvidence.missedHostReconciliationRef, null);
+  assert.ok(Object.values(fixture.observation.schedulerDueEvidence.effectBoundary).every((value) => value === false));
+  assert.equal(fixture.threshold.ruleRef, 'rule.concern-watch.scheduler-due-attention.001');
+  assert.equal(fixture.threshold.outcome, 'HUMAN_ATTENTION_REQUIRED');
+  assert.equal(fixture.threshold.recommendedPriorityClass, 'NORMAL');
+  assert.equal(fixture.aggregate.state, 'WAITING_HUMAN');
+  const projection = projectConcernAggregate(fixture.aggregate, { registry });
+  assert.equal(
+    projection.views.HUMAN_ATTENTION_INBOX.humanAttentionRequestRef,
+    fixture.request.humanAttentionRequestRef
+  );
+  const duplicate = recordSchedulerDueConcernObservation(fixture.aggregate, fixture.input, { registry });
+  assert.equal(duplicate.changed, false);
+  assert.equal(duplicate.outcome, 'NO_CHANGE_REQUIRED');
+});
+
+test('FTC-A02/A03/A04/A05/A06 coordinated due-lineage substitutions reject', () => {
+  const fixture = ftcDueFixture('adversarial');
+  for (const mutate of [
+    (aggregate) => { aggregate.dueRecords[0].assignmentRef = 'assignment.forged'; },
+    (aggregate) => { aggregate.dueRecords[0].semanticFingerprint = '0'.repeat(64); },
+    (aggregate) => {
+      const transition = aggregate.dueTransitionLedger.find((item) => item.transitionType === 'DUE_REACHED');
+      transition.effectBoundary.notificationSend = true;
+    }
+  ]) {
+    const tampered = structuredClone(fixture.scheduler.aggregate);
+    mutate(tampered);
+    const core = structuredClone(tampered);
+    delete core.semanticFingerprint;
+    tampered.semanticFingerprint = semanticHash(core);
+    assert.throws(
+      () => createSchedulerDueConcernObservation({
+        ...ftcObservationInput(fixture),
+        schedulerAggregate: tampered
+      }, { registry }),
+      /scheduler|due|effect|fingerprint|replay/i
+    );
+  }
+  const noReached = structuredClone(fixture.scheduler.aggregate);
+  noReached.dueTransitionLedger = noReached.dueTransitionLedger.filter((item) => item.transitionType !== 'DUE_REACHED');
+  const noReachedCore = structuredClone(noReached);
+  delete noReachedCore.semanticFingerprint;
+  noReached.semanticFingerprint = semanticHash(noReachedCore);
+  assert.throws(
+    () => createSchedulerDueConcernObservation({
+      ...ftcObservationInput(fixture),
+      schedulerAggregate: noReached
+    }, { registry }),
+    /due current projection|DUE_REACHED|scheduler/i
+  );
+});
+
+test('FTC-07/A10/A12 exact missed-host reconciliation feeds the same due-attention rule once', () => {
+  const fixture = ftcDueFixture('missed-host', { missedHost: true });
+  const input = ftcObservationInput(fixture);
+  const observation = createSchedulerDueConcernObservation(input, { registry });
+  assert.ok(observation.schedulerDueEvidence.missedHostReconciliationRef);
+  assert.equal(
+    observation.sourceRangeOrEventRef,
+    observation.schedulerDueEvidence.missedHostReconciliationRef
+  );
+  const subject = deriveConcernSubject({
+    observations: [observation],
+    subjectKind: 'FOLLOW_THROUGH_DUE'
+  }, { registry });
+  let aggregate = createConcernAggregate({ subject, formedAt: at(1) }, { registry });
+  aggregate = recordSchedulerDueConcernObservation(aggregate, input, { registry }).aggregate;
+  const threshold = evaluateConcernThreshold(aggregate, { observedAt: at(8) }, { registry });
+  assert.equal(threshold.ruleRef, 'rule.concern-watch.scheduler-due-attention.001');
+  assert.equal(threshold.outcome, 'HUMAN_ATTENTION_REQUIRED');
+  const duplicate = recordSchedulerDueConcernObservation(aggregate, input, { registry });
+  assert.equal(duplicate.changed, false);
+});
+
+test('FTC-09/A13 terminal due truth closes WAITING_HUMAN attention without deleting history', () => {
+  const fixture = ftcWaitingHumanFixture('terminal');
+  fixture.scheduler.advanceObservedClock({
+    observedAt: at(9),
+    eventRef: 'clock.concern-watch.ftc.terminal.after-attention',
+    graph: fixture.workgraph
+  });
+  fixture.scheduler.cancelDueIntent(fixture.workgraph, {
+    dueRef: fixture.due.dueRef,
+    sourceRefs: ['source.concern-watch.ftc.terminal.cancel']
+  });
+  const reconciled = reconcileSchedulerDueConcern(fixture.aggregate, {
+    schedulerAggregate: fixture.scheduler.aggregate,
+    schedulerRegistry: schedulerContext.schedulerRegistry,
+    dueRef: fixture.due.dueRef,
+    closedByRef: 'role.vex.operations'
+  }, { registry });
+  assert.equal(reconciled.changed, true);
+  assert.equal(reconciled.aggregate.state, 'RESOLVED');
+  assert.ok(reconciled.aggregate.observations.length > 0);
+  assert.ok(reconciled.aggregate.events.length > fixture.aggregate.events.length);
+  assert.equal(projectConcernAggregate(reconciled.aggregate, { registry }).views.HUMAN_ATTENTION_INBOX, null);
+});
+
+test('FTC-14/15 accepted FT-B scheduler and existing CW0-CW18 proof remain compatible', () => {
+  assert.equal(integrated.receipt.externalEffectsExecuted, false);
+  assert.equal(integrated.receipt.modelTurnsExecuted, 0);
+  assert.equal(validateIntegratedConcernWatchReceipt(integrated.receipt, { registry }).ok, true);
+  assert.deepEqual(registry.integratedJourney.proofRefs, Array.from({ length: 19 }, (_, index) => `CW${index}`));
+});
+
 
 // [VXG RealForever]

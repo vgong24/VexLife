@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.concern-watch-registry/v1",
   "registryRef": "registry.vexlife.concern-watch.001",
-  "registryVersion": 3,
+  "registryVersion": 4,
   "systemRef": "system.vexlife.concern-watch",
   "canonicalSourceRef": "source.blueprint.concern-watch-registry",
   "canonicalSource": {
@@ -44,6 +44,10 @@
     {
       "contractRef": "contract.vexlife.concern-scheduler-authority-evidence/v1",
       "contractKind": "EXTERNAL_SCHEDULER_REVALIDATION_EVIDENCE"
+    },
+    {
+      "contractRef": "contract.vexlife.concern-scheduler-due-attention/v1",
+      "contractKind": "SOURCE_MANAGED_SCHEDULER_DUE_ATTENTION_EVIDENCE"
     },
     {
       "contractRef": "contract.vexlife.concern-human-attention/v1",
@@ -104,7 +108,8 @@
       "RESOURCE_RISK",
       "SAFETY_RISK",
       "SCOPE_RISK",
-      "USER_BURDEN"
+      "USER_BURDEN",
+      "FOLLOW_THROUGH_DUE"
     ],
     "identityIncludes": [
       "subjectKind",
@@ -135,7 +140,8 @@
       "RECOVERY_HOLD",
       "RESOURCE_PRESSURE",
       "SAFETY_OR_INTEGRITY",
-      "SCOPE_OR_AUTHORITY"
+      "SCOPE_OR_AUTHORITY",
+      "FOLLOW_THROUGH_DUE"
     ],
     "signalClasses": [
       "EXTERNAL_NOTICE",
@@ -143,7 +149,8 @@
       "HUMAN_STATEMENT",
       "MODEL_INFERENCE",
       "RECOVERY_HOLD",
-      "RESOURCE_SIGNAL"
+      "RESOURCE_SIGNAL",
+      "SCHEDULER_DUE"
     ],
     "certaintyClasses": [
       "UNKNOWN",
@@ -293,7 +300,7 @@
   "thresholdPolicy": {
     "contractRef": "contract.vexlife.concern-threshold-policy/v1",
     "policyRef": "policy.concern-watch.threshold.001",
-    "policyVersion": 2,
+    "policyVersion": 3,
     "currentness": "CURRENT",
     "callerOverrideAllowed": false,
     "certaintyScores": {
@@ -374,7 +381,21 @@
       "costOfFalseAlarm",
       "relatedOpenConcernOrWork"
     ],
-    "thresholdCrossingGrantsExecutionAuthority": false
+    "thresholdCrossingGrantsExecutionAuthority": false,
+    "dueAttentionRule": {
+      "ruleRef": "rule.concern-watch.scheduler-due-attention.001",
+      "contractRef": "contract.vexlife.concern-scheduler-due-attention/v1",
+      "concernClass": "FOLLOW_THROUGH_DUE",
+      "signalClass": "SCHEDULER_DUE",
+      "requiredCertaintyClass": "VERIFIED",
+      "requiredHumanAttentionClass": "ONLY_IF_THRESHOLD_MET",
+      "requiredEvidenceOriginClass": "EXTERNAL_SOURCE",
+      "recommendedPriorityClass": "NORMAL",
+      "outcome": "HUMAN_ATTENTION_REQUIRED",
+      "preDueEligible": false,
+      "externalEffectsAuthorized": false,
+      "callerOverrideAllowed": false
+    }
   },
   "schedulerIntegration": {
     "admissionContractRef": "contract.vexlife.concern-scheduler-admission/v1",
@@ -571,5 +592,64 @@
     "no live identity or clock activation",
     "no model-weight change or activation",
     "no public release"
-  ]
+  ],
+  "dueAttentionContract": {
+    "contractRef": "contract.vexlife.concern-scheduler-due-attention/v1",
+    "schemaVersion": "vexlife.concern-scheduler-due-attention-evidence/v1",
+    "sourceRef": "service.intent-scheduler",
+    "observerRef": "observer.concern-watch.scheduler-due",
+    "schedulerRegistryRef": "registry.vexlife.intent-scheduler.001",
+    "intentRegistryRef": "registry.vexlife.intent-orchestration.001",
+    "requiredDueFields": [
+      "dueRef",
+      "assignmentRef",
+      "assignmentFingerprint",
+      "sourceIntentRef",
+      "workNodeRef",
+      "assigneeRef",
+      "graphFingerprint",
+      "dueAt",
+      "formedAt",
+      "observedAt",
+      "sourceRefs",
+      "currentness",
+      "lifecycle",
+      "semanticFingerprint"
+    ],
+    "requiredCurrentness": "CURRENT",
+    "requiredLifecycle": "DUE",
+    "requiredTransitionType": "DUE_REACHED",
+    "terminalLifecycles": [
+      "SETTLED",
+      "CANCELLED",
+      "SUPERSEDED"
+    ],
+    "missedHostReconciliationClass": "DUE_ELAPSED_ACROSS_SCHEDULER_OBSERVATION_GAP",
+    "currentAcceptedAssignmentRequired": true,
+    "callerAuthoredDueAllowed": false,
+    "callerAuthoredMissedHostAllowed": false,
+    "effectBoundary": {
+      "modelInference": false,
+      "modelWorkerLease": false,
+      "conversationAppend": false,
+      "notificationSend": false,
+      "humanAttentionInboxMutation": false,
+      "calendarEventCreation": false,
+      "effectAuthorityGrant": false,
+      "familySpecificAuthorityGrant": false
+    },
+    "observationPolicySignals": {
+      "deadlineOrTimeSensitivity": "IMMINENT",
+      "rateOfChange": "STABLE",
+      "resourcePressure": "NONE",
+      "activeRecoveryOrIncident": false,
+      "availableAuthority": false,
+      "availableCapability": false,
+      "humanAttentionCost": "LOW",
+      "costOfWaiting": "MEDIUM",
+      "costOfFalseAlarm": "LOW",
+      "relatedOpenConcernRefs": [],
+      "relatedOpenWorkRefs": []
+    }
+  }
 }
