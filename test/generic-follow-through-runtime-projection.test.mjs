@@ -303,7 +303,7 @@ test('GRP-08/15/16 fresh product Family bootstrap consumes healthy owner truth a
       spaceRef: SPACE,
       ownerPrincipalRef: PRINCIPAL,
       ownerPrincipalBindingRef: 'principal-binding.generic-runtime-product',
-      familyCompanionLineageRef: 'lineage.vex.generic-runtime-test',
+      familyCompanionLineageRef: 'lineage.vex.family.generic-runtime-test',
       observedAt: T0,
       instanceRef: 'instance.generic-runtime.family-create'
     }).record;
