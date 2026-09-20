@@ -55,8 +55,13 @@ export const contextualConversationSuite = Object.freeze({
     let commandState = app.chat.composerCommandState();
     assert(commandState.state === 'ANNOUNCE_REQUESTABLE'
       && commandState.commandRef === 'command.vexlife.announce'
-      && typeof commandState.projectionRef === 'string',
-      'FTD-06 exact /announce did not project the accepted command identity');
+      && commandState.capabilityRef === 'conversation.announce'
+      && typeof commandState.sourceBindingRef === 'string'
+      && commandState.permissionGranted === false
+      && commandState.executionRequested === false
+      && commandState.executionPerformed === false
+      && commandState.messageDeliveryPerformed === false,
+      'FTD-06 exact /announce did not preserve the accepted request-only source binding');
     assert(list.length === commandBaselineCount && app.chat.pendingReplyCount() === commandPendingBefore,
       'FTD-08 /announce appended a message or created a model turn');
 
