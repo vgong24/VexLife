@@ -3,6 +3,12 @@
   "bucketId": "df",
   "files": [
     {
+      "path": "blueprint/activated-model-runtime-bindings.json",
+      "mode": "100644",
+      "bytes": 3284,
+      "sha256": "f8e7b982e8655d6747f0002c1fbb953892b6e8600b15ed1dde27bb83df9729f2"
+    },
+    {
       "path": "blueprint/fragments/screens/living-journal.json",
       "mode": "100644",
       "bytes": 17652,

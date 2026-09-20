@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "vexlife.activated-model-runtime-bindings/v1",
+  "registryRef": "registry.vexlife.activated-model-runtime-bindings.001",
+  "selectionClass": "EXACT_EXTERNAL_ACTIVATION_PROJECTION",
+  "bindings": [
+    {
+      "bindingRef": "binding.vexlife.activated-m4.mlx.macos-victor.20260920a",
+      "state": "ACTIVE_ACCEPTED",
+      "modelRef": "model.vex.m4.small.g2.base.368e89e5ca219fab",
+      "modelProfileRef": "model-profile.vex.m4.small.g2.certified.20260920A",
+      "activationEvidenceRef": "github.issue.vextreme-sdk.1331.comment.5748056308",
+      "distributionTrustEvidenceRef": "github.issue.vextreme-sdk.244.comment.5748057753",
+      "firstWakeEvidenceRef": "github.issue.vextreme-sdk.1513.comment.5748050100",
+      "artifactCustodyEvidenceRef": "github.issue.vextreme-sdk.1394.comment.5747979171",
+      "runtimeAdapterEvidenceRef": "github.issue.vextreme-sdk.636.comment.5747980407",
+      "artifact": {
+        "artifactRef": "artifact.vex.m2.qwen3.5-4b-mlx-4bit.32f3e8ec",
+        "adapterClass": "MLX_SAFETENSORS_ARTIFACT",
+        "contentSetAlgorithm": "SHA256_JSON_SORTED_PATH_BYTES_SHA256_V1",
+        "contentSetSha256": "368e89e5ca219fab3398c1830e982ef5a8a949bac1a17b8f3320bdb1e512d9cf",
+        "memberCount": 12,
+        "totalBytes": 3061132920,
+        "expectedMemberNames": [
+          ".gitattributes",
+          "README.md",
+          "chat_template.jinja",
+          "config.json",
+          "model.safetensors",
+          "model.safetensors.index.json",
+          "preprocessor_config.json",
+          "processor_config.json",
+          "tokenizer.json",
+          "tokenizer_config.json",
+          "video_preprocessor_config.json",
+          "vocab.json"
+        ],
+        "providerVerifiedMembers": {
+          "model.safetensors": "5fb9acd0246866381cf8c5c354c6db1019f6498eec4ccb4f5edcc71ffeacb2db",
+          "tokenizer.json": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4"
+        }
+      },
+      "runtime": {
+        "runtimeAdapterRef": "adapter.runtime.mlx.macos-victor.001",
+        "runtimeClass": "MLX_LM_DIRECT_RUNTIME",
+        "transportClass": "MLX_LM_OPENAI_NUMERIC_LOOPBACK",
+        "platform": "darwin",
+        "architecture": "arm64",
+        "pythonVersion": "3.14.7",
+        "mlxLmVersion": "0.32.0",
+        "mlxLmSourceCommit": "170a11c58ce7d22a720901a2535adb0c218b871b",
+        "host": "127.0.0.1",
+        "port": 18084,
+        "origin": "http://127.0.0.1:18084",
+        "healthPath": "/health",
+        "modelsPath": "/v1/models",
+        "chatPath": "/v1/chat/completions",
+        "requestModel": "default_model",
+        "qualificationClass": "NEUTRAL_ZERO_TOKEN_OPENAI_BINDING",
+        "startupTimeoutMs": 180000,
+        "allowedBrowserOrigin": "http://127.0.0.1:18110"
+      },
+      "browserBinding": {
+        "endpointEnvironment": "VEXLIFE_COMPANION_ENDPOINT",
+        "modelEnvironment": "VEXLIFE_COMPANION_MODEL",
+        "existingServerScript": "scripts/serve-browser.mjs"
+      },
+      "effects": {
+        "activation": false,
+        "succession": false,
+        "training": false,
+        "weightMutation": false,
+        "memoryMutation": false,
+        "publication": false,
+        "modelDownload": false,
+        "artifactMutation": false
+      }
+    }
+  ]
+}
