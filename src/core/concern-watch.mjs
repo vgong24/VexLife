@@ -246,11 +246,9 @@ function validateFinalizedSemanticObject(value, label) {
 
 function validateSchedulerDueRecordIdentity(due, label = 'scheduler due') {
   validateFinalizedSemanticObject(due, label);
-  const core = clone(due);
-  delete core.dueRef;
-  delete core.semanticFingerprint;
-  const expectedRef = `due.intent-scheduler.${semanticHash(core).slice(0, 32)}`;
-  if (due.dueRef !== expectedRef) throw new Error(`${label} reference is not content-addressed`);
+  if (!requireString(due.dueRef, `${label}.dueRef`).startsWith('due.intent-scheduler.')) {
+    throw new Error(`${label} reference is not a Scheduler due ref`);
+  }
   return due;
 }
 
@@ -263,6 +261,30 @@ function validateSchedulerDueTransitionIdentity(transition, label = 'scheduler d
     `transition.intent-scheduler.due.${transition.transitionType.toLowerCase().replaceAll('_', '-')}.${semanticHash(core).slice(0, 32)}`;
   if (transition.transitionRef !== expectedRef) throw new Error(`${label} reference is not content-addressed`);
   return transition;
+}
+
+function validateSchedulerDueFormation(aggregate, dueRef, contract) {
+  const formations = (aggregate.dueTransitionLedger ?? []).filter((item) =>
+    item.dueRef === dueRef && item.transitionType === 'FORMED'
+  );
+  if (formations.length !== 1) throw new Error('scheduler due requires one exact FORMATION transition');
+  const formation = validateSchedulerDueTransitionIdentity(formations[0], 'scheduler due formation transition');
+  const scheduledDue = validateSchedulerDueRecordIdentity(formation.nextDue, 'scheduler formed due');
+  if (scheduledDue.lifecycle !== 'SCHEDULED' || scheduledDue.currentness !== 'CURRENT') {
+    throw new Error('scheduler due formation must bind one CURRENT SCHEDULED due');
+  }
+  const core = clone(scheduledDue);
+  delete core.dueRef;
+  delete core.semanticFingerprint;
+  const expectedRef = `due.intent-scheduler.${semanticHash(core).slice(0, 32)}`;
+  if (scheduledDue.dueRef !== expectedRef || scheduledDue.dueRef !== dueRef) {
+    throw new Error('scheduler formed due reference is not content-addressed from formation truth');
+  }
+  if (formation.priorDueFingerprint !== null) {
+    throw new Error('scheduler due formation must not claim a prior due fingerprint');
+  }
+  assertExactFalseEffectBoundary(formation.effectBoundary, contract.effectBoundary, 'FORMED due effectBoundary');
+  return { formation, scheduledDue };
 }
 
 function validateMissedHostIdentity(receipt, label = 'scheduler missed-host reconciliation') {
@@ -347,6 +369,7 @@ function schedulerDueAttentionEvidenceCore(input, registry) {
   if (due.currentness !== contract.requiredCurrentness || due.lifecycle !== contract.requiredLifecycle) {
     throw new Error('due-attention requires exact CURRENT DUE Scheduler truth');
   }
+  const { scheduledDue } = validateSchedulerDueFormation(schedulerAggregate, dueRef, contract);
   exactCurrentDueAssignment(due, workgraph, intentRegistry);
 
   const transitions = (schedulerAggregate.dueTransitionLedger ?? []).filter((item) =>
@@ -354,6 +377,9 @@ function schedulerDueAttentionEvidenceCore(input, registry) {
   );
   if (transitions.length !== 1) throw new Error('due-attention requires one exact DUE_REACHED transition');
   const transition = validateSchedulerDueTransitionIdentity(transitions[0]);
+  if (transition.priorDueFingerprint !== scheduledDue.semanticFingerprint) {
+    throw new Error('DUE_REACHED transition does not bind the exact formed Scheduler due');
+  }
   if (transition.nextDue?.semanticFingerprint !== due.semanticFingerprint ||
       transition.nextDue?.dueRef !== due.dueRef) {
     throw new Error('DUE_REACHED transition does not bind the exact current due');
@@ -1738,6 +1764,7 @@ function schedulerTerminalDueClosureEvidence(input, registry) {
   const matches = (schedulerAggregate.dueRecords ?? []).filter((item) => item.dueRef === dueRef);
   if (matches.length !== 1) throw new Error('due-attention closure requires one exact Scheduler due record');
   const due = validateSchedulerDueRecordIdentity(matches[0], 'terminal scheduler due');
+  validateSchedulerDueFormation(schedulerAggregate, dueRef, contract);
   if (due.currentness !== 'TERMINAL' || !contract.terminalLifecycles.includes(due.lifecycle)) {
     throw new Error('due-attention closure requires terminal settled/cancelled/superseded due truth');
   }
