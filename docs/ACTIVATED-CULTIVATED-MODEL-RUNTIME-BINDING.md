@@ -132,6 +132,29 @@ VEXLIFE_COMPANION_MODEL=default_model
 
 Those values are set server-side by `scripts/resume-vex.mjs` only after exact runtime qualification. User-supplied values for those or other model/provider selectors are rejected before any runtime or browser effect.
 
+## Pre-qualification runtime ownership and cleanup
+
+A newly spawned MLX process is provisional until neutral qualification commits. The caller binds one exact `runtimeAttemptRef`; that attempt owns the fresh detached process group only for the pre-commit interval.
+
+```text
+spawned
+!= qualified
+!= Home-owned
+
+new exact spawn
+-> attempt-owned provisional process group
+-> health + neutral qualification
+-> success: write qualified runtime/Home receipt and transfer durable ownership to that Home receipt
+-> failure before commit: re-read exact PID/PGID/command identity
+-> terminate only that exact detached process group
+-> verify PID no longer live
+-> return the original typed qualification failure plus cleanup evidence
+```
+
+If exact ownership cannot be re-established, cleanup fails closed as `ACTIVATED_RUNTIME_PRECOMMIT_CLEANUP_FAILED`; the source does not kill a process by port or executable name alone. A runtime that was already committed to a matching Home receipt is not treated as a provisional child and is not automatically terminated merely because a later requalification fails.
+
+This is the narrow Model Sovereignty consumer seam required to prevent a failed binding attempt from leaking its own fresh MLX process. It is **not** a replacement for the Native Worker Supervisor, Intent Scheduler/resource leases, Durable Lane Runtime, Continuity Stream, or a general host-resource monitor.
+
 ## Neutral qualification
 
 Runtime qualification is intentionally not a lived companion turn. It performs:
@@ -198,6 +221,7 @@ ACTIVATED_RUNTIME_HOST_MISMATCH
 ACTIVATED_RUNTIME_VERSION_PROBE_FAILED
 ACTIVATED_RUNTIME_ENDPOINT_OWNERSHIP_CONFLICT
 ACTIVATED_RUNTIME_MODEL_IDENTITY_QUALIFICATION_FAILED
+ACTIVATED_RUNTIME_PRECOMMIT_CLEANUP_FAILED
 ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT
 ```
 

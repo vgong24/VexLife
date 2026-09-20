@@ -386,6 +386,115 @@ test('M4B09-M4B10-M4B15-M4B16 first start persists Home binding; restart reuses 
   assert.equal(JSON.parse(fs.readFileSync(path.join(home, 'config', 'home.json'), 'utf8')).homeRef, 'home.test.runtime.001');
 });
 
+// M4B07/M4B17/A008: a newly spawned runtime remains attempt-owned until qualification commits.
+test('M4B07-M4B17 qualification failure retires exact newly spawned runtime before returning the original typed failure', async () => {
+  const binding = baseBinding();
+  const root = tempDir('precommit-cleanup');
+  const home = makeHome('precommit-cleanup');
+  const { modelDirectory } = makeFixtureArtifact(binding, root);
+  const pythonExecutable = makePython(root);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const runtimeAttemptRef = 'attempt.vexlife.test.m4.precommit-cleanup.001';
+  let alive = false;
+  let cleanupCalls = 0;
+  const error = await startOrResumeActivatedModelRuntime({
+    home,
+    binding,
+    sourceIdentity: SOURCE_IDENTITY,
+    handoffBytes: handoff.bytes,
+    handoffSha256: handoff.digest,
+    runtimeAttemptRef,
+    environment: {},
+    hooks: {
+      host: { platform: 'darwin', architecture: 'arm64' },
+      versionProbe: async () => ({ pythonVersion: '3.14.7', mlxLmVersion: '0.32.0', prefix: path.dirname(pythonExecutable), executable: pythonExecutable }),
+      processAlive: () => alive,
+      processMatches: () => false,
+      spawnRuntime: async () => { alive = true; return 43001; },
+      terminateRuntime: async ({ pid, runtimeAttemptRef: observedAttempt }) => {
+        cleanupCalls += 1;
+        assert.equal(pid, 43001);
+        assert.equal(observedAttempt, runtimeAttemptRef);
+        alive = false;
+        return {
+          schemaVersion: 'vexlife.activated-model-runtime-precommit-cleanup/v1',
+          runtimeAttemptRef,
+          pid,
+          processGroupId: pid,
+          state: 'RETIRED_VERIFIED',
+          exactOwnershipVerified: true,
+          signalSent: 'SIGTERM',
+          escalated: false,
+          verifiedNotLive: true
+        };
+      },
+      fetchImpl: async (url) => {
+        if (url.endsWith('/health')) return alive ? jsonResponse({ status: 'ok' }) : jsonResponse({ status: 'unavailable' }, 503);
+        if (url.endsWith('/v1/models')) return { ok: true, status: 200, async json() { throw new Error('synthetic non-json'); } };
+        throw new Error(`unexpected URL ${url}`);
+      },
+      sleep: async () => {},
+      now: () => '2026-09-20T23:43:30.228Z'
+    }
+  }).then(() => null, (caught) => caught);
+  assert.equal(errorCode(error), 'ACTIVATED_RUNTIME_MODEL_IDENTITY_QUALIFICATION_FAILED');
+  assert.equal(error.detail.runtimeAttemptRef, runtimeAttemptRef);
+  assert.equal(error.detail.runtimeCleanup.verifiedNotLive, true);
+  assert.equal(cleanupCalls, 1);
+  assert.equal(alive, false);
+  assert.equal(fs.existsSync(path.join(home, 'config', 'model.json')), false);
+  assert.equal(fs.existsSync(path.join(home, 'runtime', 'initialization', 'receipt.json')), false);
+});
+
+test('M4B17 unverified precommit cleanup escalates rather than claiming safe terminal cleanup', async () => {
+  const binding = baseBinding();
+  const root = tempDir('precommit-cleanup-held');
+  const home = makeHome('precommit-cleanup-held');
+  const { modelDirectory } = makeFixtureArtifact(binding, root);
+  const pythonExecutable = makePython(root);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const runtimeAttemptRef = 'attempt.vexlife.test.m4.precommit-cleanup.held.001';
+  let alive = false;
+  const error = await startOrResumeActivatedModelRuntime({
+    home,
+    binding,
+    sourceIdentity: SOURCE_IDENTITY,
+    handoffBytes: handoff.bytes,
+    handoffSha256: handoff.digest,
+    runtimeAttemptRef,
+    environment: {},
+    hooks: {
+      host: { platform: 'darwin', architecture: 'arm64' },
+      versionProbe: async () => ({ pythonVersion: '3.14.7', mlxLmVersion: '0.32.0', prefix: path.dirname(pythonExecutable), executable: pythonExecutable }),
+      processAlive: () => alive,
+      processMatches: () => false,
+      spawnRuntime: async () => { alive = true; return 43002; },
+      terminateRuntime: async () => ({
+        schemaVersion: 'vexlife.activated-model-runtime-precommit-cleanup/v1',
+        runtimeAttemptRef,
+        pid: 43002,
+        state: 'OWNERSHIP_NOT_PROVEN',
+        exactOwnershipVerified: false,
+        signalSent: null,
+        escalated: false,
+        verifiedNotLive: false
+      }),
+      fetchImpl: async (url) => {
+        if (url.endsWith('/health')) return alive ? jsonResponse({ status: 'ok' }) : jsonResponse({ status: 'unavailable' }, 503);
+        if (url.endsWith('/v1/models')) return { ok: true, status: 200, async json() { throw new Error('synthetic non-json'); } };
+        throw new Error(`unexpected URL ${url}`);
+      },
+      sleep: async () => {},
+      now: () => '2026-09-20T23:43:30.228Z'
+    }
+  }).then(() => null, (caught) => caught);
+  assert.equal(errorCode(error), 'ACTIVATED_RUNTIME_PRECOMMIT_CLEANUP_FAILED');
+  assert.equal(error.detail.runtimeAttemptRef, runtimeAttemptRef);
+  assert.equal(error.detail.originalFailure.code, 'ACTIVATED_RUNTIME_MODEL_IDENTITY_QUALIFICATION_FAILED');
+  assert.equal(error.detail.runtimeCleanup.verifiedNotLive, false);
+  assert.equal(fs.existsSync(path.join(home, 'config', 'model.json')), false);
+});
+
 // M4B07: wrong served model path is not accepted merely because endpoint is healthy.
 test('M4B07 healthy loopback with wrong served materialization fails exact identity qualification', async () => {
   const binding = baseBinding();

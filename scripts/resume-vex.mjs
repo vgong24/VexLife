@@ -18,15 +18,19 @@ const SOURCE_ROOT = path.resolve(HERE, '..');
 const REGISTRY_PATH = path.join(SOURCE_ROOT, 'blueprint', 'activated-model-runtime-bindings.json');
 const MODULE_PATH = path.join(SOURCE_ROOT, 'src', 'core', 'activated-model-runtime-binding.mjs');
 const args = process.argv.slice(2);
-const ALLOWED_FLAGS = new Set(['--home', '--handoff', '--handoff-sha256', '--plan-only']);
+const ALLOWED_FLAGS = new Set(['--home', '--handoff', '--handoff-sha256', '--runtime-attempt-ref', '--plan-only']);
 
-function fail(code, message, exitCode = 2) {
-  console.log(JSON.stringify({
+function fail(code, message, exitCode = 2, detail = null) {
+  const result = {
     schemaVersion: 'vexlife.activated-model-resume-result/v1',
     state: 'FAILED_SAFE',
     code,
     message
-  }));
+  };
+  if (detail?.runtimeAttemptRef) result.runtimeAttemptRef = detail.runtimeAttemptRef;
+  if (detail?.originalFailure) result.originalFailure = detail.originalFailure;
+  if (detail?.runtimeCleanup) result.runtimeCleanup = detail.runtimeCleanup;
+  console.log(JSON.stringify(result));
   process.exit(exitCode);
 }
 
@@ -59,6 +63,7 @@ function parseArguments() {
     home: path.resolve(values.get('--home') ?? process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife')),
     handoff: handoff === null ? null : path.resolve(handoff),
     handoffSha256,
+    runtimeAttemptRef: values.get('--runtime-attempt-ref') ?? null,
     planOnly: values.has('--plan-only')
   });
 }
@@ -113,7 +118,8 @@ async function main() {
     binding,
     sourceIdentity,
     handoffBytes,
-    handoffSha256: options.handoffSha256
+    handoffSha256: options.handoffSha256,
+    runtimeAttemptRef: options.runtimeAttemptRef
   });
 
   console.log(JSON.stringify({
@@ -125,6 +131,8 @@ async function main() {
     endpoint: runtime.endpoint,
     requestModel: runtime.requestModel,
     runtimeDisposition: runtime.runtimeDisposition,
+    runtimeAttemptRef: runtime.runtimeAttemptRef,
+    runtimeStartedByAttemptRef: runtime.runtimeStartedByAttemptRef,
     receiptRef: runtime.receiptRef,
     browserScript: binding.browserBinding.existingServerScript
   }));
@@ -153,7 +161,7 @@ main().catch((error) => {
   const code = error instanceof ActivatedModelRuntimeBindingError
     ? error.code
     : 'ACTIVATED_MODEL_RESUME_FAILED_SAFE';
-  fail(code, error?.message ?? 'Activated model resume failed safely', 6);
+  fail(code, error?.message ?? 'Activated model resume failed safely', 6, error instanceof ActivatedModelRuntimeBindingError ? error.detail : null);
 });
 
 // [VXG RealForever]

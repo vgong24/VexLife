@@ -591,13 +591,56 @@ function defaultProcessAlive(pid) {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
 
-function defaultProcessMatches({ pid, pythonExecutable, args }) {
-  if (process.platform !== 'darwin' || !defaultProcessAlive(pid)) return false;
-  const result = spawnSync('/bin/ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8', shell: false });
-  if (result.error || result.status !== 0) return false;
-  const observed = String(result.stdout ?? '').trim();
+function defaultProcessIdentity({ pid, pythonExecutable, args }) {
+  if (process.platform !== 'darwin' || !defaultProcessAlive(pid)) return null;
+  const result = spawnSync('/bin/ps', ['-p', String(pid), '-o', 'pid=,pgid=,command='], { encoding: 'utf8', shell: false });
+  if (result.error || result.status !== 0) return null;
+  const match = /^\s*(\d+)\s+(\d+)\s+(.*)$/u.exec(String(result.stdout ?? '').trim());
+  if (!match) return null;
+  const observedPid = Number(match[1]);
+  const pgid = Number(match[2]);
+  const command = match[3];
   const expected = [pythonExecutable, ...args].join(' ');
-  return observed === expected;
+  return Object.freeze({
+    pid: observedPid,
+    pgid,
+    commandMatches: command === expected,
+    exactOwnedDetachedGroup: observedPid === pid && pgid === pid && command === expected
+  });
+}
+
+function defaultProcessMatches({ pid, pythonExecutable, args }) {
+  return defaultProcessIdentity({ pid, pythonExecutable, args })?.exactOwnedDetachedGroup === true;
+}
+
+async function defaultTerminateRuntime({ pid, pythonExecutable, args, runtimeAttemptRef, sleep }) {
+  const base = {
+    schemaVersion: 'vexlife.activated-model-runtime-precommit-cleanup/v1',
+    runtimeAttemptRef,
+    pid,
+    processGroupId: null,
+    exactOwnershipVerified: false,
+    signalSent: null,
+    escalated: false,
+    verifiedNotLive: false
+  };
+  if (!defaultProcessAlive(pid)) return Object.freeze({ ...base, state: 'ALREADY_NOT_LIVE', verifiedNotLive: true });
+  const initial = defaultProcessIdentity({ pid, pythonExecutable, args });
+  if (!initial?.exactOwnedDetachedGroup) return Object.freeze({ ...base, state: 'OWNERSHIP_NOT_PROVEN' });
+  const owned = { ...base, processGroupId: initial.pgid, exactOwnershipVerified: true };
+  try { process.kill(-initial.pgid, 'SIGTERM'); }
+  catch (error) { return Object.freeze({ ...owned, state: 'SIGTERM_FAILED', errorClass: error?.name ?? 'Error', errorMessage: error?.message ?? String(error) }); }
+  for (let index = 0; index < 80 && defaultProcessAlive(pid); index += 1) await sleep(100);
+  if (!defaultProcessAlive(pid)) return Object.freeze({ ...owned, state: 'RETIRED_VERIFIED', signalSent: 'SIGTERM', verifiedNotLive: true });
+  const beforeEscalation = defaultProcessIdentity({ pid, pythonExecutable, args });
+  if (!beforeEscalation?.exactOwnedDetachedGroup || beforeEscalation.pgid !== initial.pgid) {
+    return Object.freeze({ ...owned, state: 'IDENTITY_CHANGED_BEFORE_ESCALATION', signalSent: 'SIGTERM' });
+  }
+  try { process.kill(-initial.pgid, 'SIGKILL'); }
+  catch (error) { return Object.freeze({ ...owned, state: 'SIGKILL_FAILED', signalSent: 'SIGTERM', escalated: true, errorClass: error?.name ?? 'Error', errorMessage: error?.message ?? String(error) }); }
+  for (let index = 0; index < 50 && defaultProcessAlive(pid); index += 1) await sleep(100);
+  const verifiedNotLive = !defaultProcessAlive(pid);
+  return Object.freeze({ ...owned, state: verifiedNotLive ? 'RETIRED_VERIFIED' : 'RETIREMENT_NOT_VERIFIED', signalSent: 'SIGKILL', escalated: true, verifiedNotLive });
 }
 
 function defaultSpawnRuntime({ pythonExecutable, args, home }) {
@@ -686,6 +729,7 @@ function runtimeHooks(input = {}) {
     processAlive: input.processAlive ?? defaultProcessAlive,
     processMatches: input.processMatches ?? defaultProcessMatches,
     spawnRuntime: input.spawnRuntime ?? defaultSpawnRuntime,
+    terminateRuntime: input.terminateRuntime ?? defaultTerminateRuntime,
     sleep: input.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
     now: input.now ?? (() => new Date().toISOString()),
     host: input.host ?? { platform: process.platform, architecture: process.arch }
@@ -725,10 +769,13 @@ export async function startOrResumeActivatedModelRuntime({
   sourceIdentity,
   handoffBytes = null,
   handoffSha256 = null,
+  runtimeAttemptRef = null,
   environment = process.env,
   hooks: hookInput = {}
 }) {
   const hooks = runtimeHooks(hookInput);
+  const effectiveRuntimeAttemptRef = runtimeAttemptRef ?? `attempt.vexlife.activated-m4-runtime.local.${crypto.randomUUID()}`;
+  requireStableRef(effectiveRuntimeAttemptRef, 'runtimeAttemptRef', 'ACTIVATED_RUNTIME_ATTEMPT_INVALID');
   if (hooks.host.platform !== binding.runtime.platform || hooks.host.architecture !== binding.runtime.architecture) {
     fail('ACTIVATED_RUNTIME_HOST_MISMATCH', 'Activated M4 binding is admitted only on the accepted darwin/arm64 host profile', { expected: `${binding.runtime.platform}/${binding.runtime.architecture}`, actual: `${hooks.host.platform}/${hooks.host.architecture}` });
   }
@@ -759,20 +806,75 @@ export async function startOrResumeActivatedModelRuntime({
   }
   let pid = null;
   let runtimeDisposition = null;
+  let startedNewRuntime = false;
+  let runtimeStartedByAttemptRef = effectiveRuntimeAttemptRef;
   if (runtimeReceiptReusable(priorReceipt, { binding, sourceDigests, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks })) {
     pid = priorReceipt.runtime.pid;
     runtimeDisposition = 'REUSED_EXACT_OWNED_MLX_RUNTIME';
+    runtimeStartedByAttemptRef = priorReceipt.runtime?.startedByAttemptRef ?? priorReceipt.runtimeAttemptRef ?? effectiveRuntimeAttemptRef;
   } else {
     if (await endpointHealthy(hooks.fetchImpl, binding, 1200)) {
       fail('ACTIVATED_RUNTIME_ENDPOINT_OWNERSHIP_CONFLICT', 'Numeric-loopback endpoint is already occupied without matching current Home ownership evidence');
     }
-    try { pid = await hooks.spawnRuntime({ pythonExecutable, args, home: resolvedHome }); }
-    catch (error) { fail('ACTIVATED_RUNTIME_START_FAILED', 'Failed to start exact accepted MLX runtime', { cause: error?.message ?? String(error) }); }
+    try {
+      const spawned = await hooks.spawnRuntime({ pythonExecutable, args, home: resolvedHome, runtimeAttemptRef: effectiveRuntimeAttemptRef });
+      pid = Number.isInteger(spawned) ? spawned : spawned?.pid;
+    } catch (error) {
+      fail('ACTIVATED_RUNTIME_START_FAILED', 'Failed to start exact accepted MLX runtime', { cause: error?.message ?? String(error), runtimeAttemptRef: effectiveRuntimeAttemptRef });
+    }
+    if (!Number.isInteger(pid) || pid <= 0) {
+      fail('ACTIVATED_RUNTIME_START_FAILED', 'Exact accepted MLX runtime returned no usable PID', { runtimeAttemptRef: effectiveRuntimeAttemptRef });
+    }
     runtimeDisposition = 'STARTED_NEW_EXACT_MLX_RUNTIME';
-    await waitForHealthy(binding, pid, hooks);
+    startedNewRuntime = true;
   }
 
-  const qualification = await qualifyActivatedMlxRuntime({ binding, modelDirectory, fetchImpl: hooks.fetchImpl });
+  let qualification;
+  try {
+    if (startedNewRuntime) await waitForHealthy(binding, pid, hooks);
+    qualification = await qualifyActivatedMlxRuntime({ binding, modelDirectory, fetchImpl: hooks.fetchImpl });
+  } catch (error) {
+    if (!startedNewRuntime) throw error;
+    let runtimeCleanup;
+    try {
+      runtimeCleanup = await hooks.terminateRuntime({
+        pid,
+        pythonExecutable,
+        args,
+        runtimeAttemptRef: effectiveRuntimeAttemptRef,
+        sleep: hooks.sleep
+      });
+    } catch (cleanupError) {
+      runtimeCleanup = {
+        schemaVersion: 'vexlife.activated-model-runtime-precommit-cleanup/v1',
+        runtimeAttemptRef: effectiveRuntimeAttemptRef,
+        pid,
+        state: 'CLEANUP_ERROR',
+        exactOwnershipVerified: false,
+        verifiedNotLive: false,
+        errorClass: cleanupError?.name ?? 'Error',
+        errorMessage: cleanupError?.message ?? String(cleanupError)
+      };
+    }
+    if (runtimeCleanup?.verifiedNotLive !== true) {
+      fail('ACTIVATED_RUNTIME_PRECOMMIT_CLEANUP_FAILED', 'New exact MLX runtime failed before qualification and cleanup could not be verified', {
+        runtimeAttemptRef: effectiveRuntimeAttemptRef,
+        originalFailure: {
+          code: error instanceof ActivatedModelRuntimeBindingError ? error.code : 'ACTIVATED_RUNTIME_START_FAILED',
+          message: error?.message ?? String(error)
+        },
+        runtimeCleanup
+      });
+    }
+    if (error instanceof ActivatedModelRuntimeBindingError) {
+      error.detail = { ...(error.detail ?? {}), runtimeAttemptRef: effectiveRuntimeAttemptRef, runtimeCleanup };
+      throw error;
+    }
+    fail('ACTIVATED_RUNTIME_START_FAILED', error?.message ?? 'New exact MLX runtime failed before qualification', {
+      runtimeAttemptRef: effectiveRuntimeAttemptRef,
+      runtimeCleanup
+    });
+  }
   const formedAt = hooks.now();
   const receiptRef = `receipt.vexlife.activated-model-runtime.${semanticHash({ bindingRef: binding.bindingRef, homeRef: homeIdentity.homeRef, formedAt, pid, sourceDigests }).slice(0, 24)}`;
   const receipt = {
@@ -789,6 +891,7 @@ export async function startOrResumeActivatedModelRuntime({
     artifactCustodyEvidenceRef: binding.artifactCustodyEvidenceRef,
     runtimeAdapterRef: binding.runtime.runtimeAdapterRef,
     runtimeClass: binding.runtime.runtimeClass,
+    runtimeAttemptRef: effectiveRuntimeAttemptRef,
     bindingSemanticSha256: bindingSemanticSha(binding),
     registrySha256: sourceDigests.registrySha256,
     moduleSha256: sourceDigests.moduleSha256,
@@ -800,7 +903,7 @@ export async function startOrResumeActivatedModelRuntime({
     handoffRef: locators.handoff?.handoffRef ?? locators.handoffRef ?? priorConfig?.handoffRef ?? null,
     handoffSha256: locators.handoffSha256 ?? priorConfig?.handoffSha256 ?? null,
     custody,
-    runtime: { pid, disposition: runtimeDisposition, arguments: args },
+    runtime: { pid, disposition: runtimeDisposition, startedByAttemptRef: runtimeStartedByAttemptRef, ownerAfterQualification: 'VEX_HOME_RUNTIME_RECEIPT', arguments: args },
     endpoint: binding.runtime.origin,
     requestModel: binding.runtime.requestModel,
     qualification,
@@ -831,6 +934,7 @@ export async function startOrResumeActivatedModelRuntime({
     requestModel: binding.runtime.requestModel,
     runtimePid: pid,
     runtimeDisposition,
+    runtimeStartedByAttemptRef,
     qualificationReceiptRef: receiptRef,
     handoffRef: receipt.handoffRef,
     handoffSha256: receipt.handoffSha256,
@@ -846,6 +950,8 @@ export async function startOrResumeActivatedModelRuntime({
     endpoint: binding.runtime.origin,
     requestModel: binding.runtime.requestModel,
     runtimeDisposition,
+    runtimeAttemptRef: effectiveRuntimeAttemptRef,
+    runtimeStartedByAttemptRef,
     receiptRef,
     browserEnvironment: Object.freeze({
       [binding.browserBinding.endpointEnvironment]: binding.runtime.origin,
