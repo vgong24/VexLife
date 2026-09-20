@@ -23,8 +23,8 @@
     {
       "path": "test/generic-follow-through-runtime-projection.test.mjs",
       "mode": "100644",
-      "bytes": 15280,
-      "sha256": "931ebd73dfa1c29ebeccfd702b40679f1d8f4a67529a3b7786e3700a9e0a2618"
+      "bytes": 22490,
+      "sha256": "11c6b78ed966f72420fd7829d9cd43295c472bd44fe4bead4b0a1dc9f9f7e9ef"
     },
     {
       "path": "test/vex-family-conversation-store.test.mjs",
