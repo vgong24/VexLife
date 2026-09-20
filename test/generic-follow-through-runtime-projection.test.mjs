@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { approvePairing, createPairingOffer, issueCapabilityLease } from '../src/core/home-bridge.mjs';
-import { createFamilySpace } from '../src/core/family-space-store.mjs';
+import { addFamilyMember, createFamilySpace } from '../src/core/family-space-store.mjs';
 import { createFamilyChannel } from '../src/core/family-conversation.mjs';
 import { materializeConversationChannel } from '../src/core/conversation-store.mjs';
 import {
@@ -279,7 +279,7 @@ test('GRP-08/15/16 fresh product Family bootstrap consumes healthy owner truth a
     import path from 'node:path';
     import { readGenericFollowThroughRuntimeProjection } from ${JSON.stringify(producerUrl)};
     import { createVexLifeBrowserServer } from ${JSON.stringify(serverUrl)};
-    import { createFamilySpace } from ${JSON.stringify(familySpaceUrl)};
+    import { addFamilyMember, createFamilySpace } from ${JSON.stringify(familySpaceUrl)};
     import { createFamilyChannel } from ${JSON.stringify(familyConversationUrl)};
     import { materializeConversationChannel } from ${JSON.stringify(conversationStoreUrl)};
     import { approvePairing, createPairingOffer, issueCapabilityLease } from ${JSON.stringify(homeBridgeUrl)};
@@ -298,7 +298,7 @@ test('GRP-08/15/16 fresh product Family bootstrap consumes healthy owner truth a
     const THREAD = ${JSON.stringify(FAMILY_THREAD_REF)};
 
     const projection = readGenericFollowThroughRuntimeProjection({ home });
-    const record = createFamilySpace({
+    let record = createFamilySpace({
       home,
       spaceRef: SPACE,
       ownerPrincipalRef: PRINCIPAL,
@@ -306,6 +306,17 @@ test('GRP-08/15/16 fresh product Family bootstrap consumes healthy owner truth a
       familyCompanionLineageRef: 'lineage.vex.family.generic-runtime-test',
       observedAt: T0,
       instanceRef: 'instance.generic-runtime.family-create'
+    }).record;
+    record = addFamilyMember({
+      home,
+      spaceRef: SPACE,
+      actorPrincipalRef: PRINCIPAL,
+      principalRef: 'principal.family.generic-runtime-peer',
+      principalBindingRef: 'principal-binding.generic-runtime-peer',
+      expectedRevision: record.revision,
+      expectedMembershipGeneration: record.membershipGeneration,
+      observedAt: '2026-09-20T06:00:30.000Z',
+      instanceRef: 'instance.generic-runtime.family-add-peer'
     }).record;
     const channel = createFamilyChannel({
       channelRef: CHANNEL,
