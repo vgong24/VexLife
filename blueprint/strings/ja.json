@@ -366,5 +366,11 @@
   "family-room.lifecycle.held": "現在のファミリー権限は利用できません",
   "family-room.channel": "ファミリー",
   "family-room.vex": "ファミリー",
-  "family-room.composer.available": "Vex の作業が待機中または実行中でもファミリーチャットは利用できます"
+  "family-room.composer.available": "Vex の作業が待機中または実行中でもファミリーチャットは利用できます",
+  "composer.command.ready": "コマンド入力 · 送信すると、メッセージを送る前にローカルで確認します。",
+  "composer.command.announce.shortcut": "お知らせを準備",
+  "composer.command.announce.requestable": "お知らせリクエストを認識しました · メッセージは送信されていません。",
+  "composer.command.unknown": "不明なコマンド {command} · メッセージは送信されていません。",
+  "composer.command.malformed": "コマンドは 1 つのスラッシュトークンで入力してください · メッセージは送信されていません。",
+  "composer.command.known-held": "{command} は認識されていますが、この入力欄では利用できません · メッセージは送信されていません。"
 }

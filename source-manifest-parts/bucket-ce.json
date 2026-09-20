@@ -5,8 +5,8 @@
     {
       "path": "blueprint/concern-watch-registry.json",
       "mode": "100644",
-      "bytes": 18097,
-      "sha256": "1f2d50da1cef2994dd8af6db4bc626a0273d1666eb705595c3575b60e2e7bd0b"
+      "bytes": 20902,
+      "sha256": "3499b7ea3f05cf046999ef263560eb393fc635409c959b6384e94d5668cbd42c"
     },
     {
       "path": "reference/browser/integration/family-room-suite.js",

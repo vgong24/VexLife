@@ -14,7 +14,10 @@ import { loadRelationshipsCdrPersistenceBinding } from './modules/relationships-
 import { createRelationshipsPersistenceHttpClient } from './modules/relationships-persistence-http-client.js';
 import { createSecurityAccessController } from './modules/security-access-controller.js';
 
-const { blueprint, experience, featureRegistry, designTokens, catalogs } = await loadBrowserBundle('../../');
+const { blueprint, experience, featureRegistry, experienceFoundation, designTokens, catalogs } = await loadBrowserBundle('../../');
+const capabilityRegistryResponse = await fetch('../../blueprint/capability-registry.json');
+if (!capabilityRegistryResponse.ok) throw new Error(`Unable to load capability-registry.json: HTTP ${capabilityRegistryResponse.status}`);
+const capabilityRegistry = await capabilityRegistryResponse.json();
 const relationshipsReference = await loadRelationshipsReference('../../');
 const relationshipsPersistenceBindingResult = await loadRelationshipsCdrPersistenceBinding();
 const relationshipsPersistenceBinding = relationshipsPersistenceBindingResult.state === 'BOUND_CURRENT'
@@ -178,7 +181,7 @@ navigation=createNavigationController({
   }
 });
 navigation.seedCurrentJourney(initialTerrainRef);
-chat=createChatController({state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation});
+chat=createChatController({state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation,experienceFoundation,capabilityRegistry});
 familyRoom=createFamilyRoomController({state,projects,roles,channels,messages,conversationKey,t,navigation,chat,onChange:()=>queueMicrotask(()=>projectFrame())});
 familyRoom.bind();
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});

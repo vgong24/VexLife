@@ -1,11 +1,13 @@
 import { canonicalize, semanticHash } from './utils.mjs';
 import { admitIntentSchedulerQueue } from './intent-scheduler.mjs';
 import {
+  buildGraphSnapshotFingerprint,
   createIntentEnvelope,
   createIntentTrustSnapshot,
   createIntentWorkgraph,
   createWorkNode
 } from './intent-workgraph.mjs';
+import { createIntentSchedulerState } from './state.mjs';
 import { createResourceSnapshot } from './resource-admission.mjs';
 import { createSchedulerRuntimeTrustSnapshot } from './scheduler-runtime-trust.mjs';
 
@@ -221,6 +223,278 @@ function normalizePolicySignals(input = {}) {
   return normalized;
 }
 
+
+function isSchedulerDueObservation(value) {
+  return value?.concernClass === 'FOLLOW_THROUGH_DUE' || value?.signalClass === 'SCHEDULER_DUE';
+}
+
+function assertExactFalseEffectBoundary(value, expected, label) {
+  requireObject(value, label);
+  if (semanticHash(value) !== semanticHash(expected) ||
+      Object.values(value).some((entry) => entry !== false)) {
+    throw new Error(`${label} is not the exact all-false Scheduler due effect boundary`);
+  }
+}
+
+function validateFinalizedSemanticObject(value, label) {
+  const object = clone(requireObject(value, label));
+  const fingerprint = requireFingerprint(object.semanticFingerprint, `${label}.semanticFingerprint`);
+  delete object.semanticFingerprint;
+  if (semanticHash(object) !== fingerprint) throw new Error(`${label} semantic fingerprint is forged`);
+  return value;
+}
+
+function validateSchedulerDueRecordIdentity(due, label = 'scheduler due') {
+  validateFinalizedSemanticObject(due, label);
+  if (!requireString(due.dueRef, `${label}.dueRef`).startsWith('due.intent-scheduler.')) {
+    throw new Error(`${label} reference is not a Scheduler due ref`);
+  }
+  return due;
+}
+
+function validateSchedulerDueTransitionIdentity(transition, label = 'scheduler due transition') {
+  validateFinalizedSemanticObject(transition, label);
+  const core = clone(transition);
+  delete core.transitionRef;
+  delete core.semanticFingerprint;
+  const expectedRef =
+    `transition.intent-scheduler.due.${transition.transitionType.toLowerCase().replaceAll('_', '-')}.${semanticHash(core).slice(0, 32)}`;
+  if (transition.transitionRef !== expectedRef) throw new Error(`${label} reference is not content-addressed`);
+  return transition;
+}
+
+function validateSchedulerDueFormation(aggregate, dueRef, contract) {
+  const formations = (aggregate.dueTransitionLedger ?? []).filter((item) =>
+    item.dueRef === dueRef && item.transitionType === 'FORMED'
+  );
+  if (formations.length !== 1) throw new Error('scheduler due requires one exact FORMATION transition');
+  const formation = validateSchedulerDueTransitionIdentity(formations[0], 'scheduler due formation transition');
+  const scheduledDue = validateSchedulerDueRecordIdentity(formation.nextDue, 'scheduler formed due');
+  if (scheduledDue.lifecycle !== 'SCHEDULED' || scheduledDue.currentness !== 'CURRENT') {
+    throw new Error('scheduler due formation must bind one CURRENT SCHEDULED due');
+  }
+  const core = clone(scheduledDue);
+  delete core.dueRef;
+  delete core.semanticFingerprint;
+  const expectedRef = `due.intent-scheduler.${semanticHash(core).slice(0, 32)}`;
+  if (scheduledDue.dueRef !== expectedRef || scheduledDue.dueRef !== dueRef) {
+    throw new Error('scheduler formed due reference is not content-addressed from formation truth');
+  }
+  if (formation.priorDueFingerprint !== null) {
+    throw new Error('scheduler due formation must not claim a prior due fingerprint');
+  }
+  assertExactFalseEffectBoundary(formation.effectBoundary, contract.effectBoundary, 'FORMED due effectBoundary');
+  return { formation, scheduledDue };
+}
+
+function validateMissedHostIdentity(receipt, label = 'scheduler missed-host reconciliation') {
+  validateFinalizedSemanticObject(receipt, label);
+  const core = clone(receipt);
+  delete core.reconciliationRef;
+  delete core.semanticFingerprint;
+  const expectedRef = `reconciliation.intent-scheduler.missed-host.${semanticHash(core).slice(0, 32)}`;
+  if (receipt.reconciliationRef !== expectedRef) throw new Error(`${label} reference is not content-addressed`);
+  return receipt;
+}
+
+function exactSchedulerSourceContext(input, registry, { requireWorkgraph = true } = {}) {
+  requireObject(input, 'scheduler due-attention source');
+  const contract = requireObject(registry.dueAttentionContract, 'due-attention contract');
+  const authority = requireObject(registry.schedulerIntegration.externalSchedulerAuthority, 'external scheduler authority contract');
+  const schedulerRegistry = clone(requireObject(input.schedulerRegistry, 'due-attention Scheduler registry'));
+  if (schedulerRegistry.registryRef !== contract.schedulerRegistryRef ||
+      schedulerRegistry.registryRef !== authority.schedulerRegistryRef ||
+      semanticHash(schedulerRegistry) !== authority.schedulerRegistryFingerprint) {
+    throw new Error('due-attention Scheduler registry is not exact current source-managed truth');
+  }
+  const schedulerAggregate = clone(requireObject(input.schedulerAggregate, 'due-attention Scheduler aggregate'));
+  createIntentSchedulerState({ aggregate: schedulerAggregate, schedulerRegistry });
+
+  if (!requireWorkgraph) return { contract, authority, schedulerRegistry, schedulerAggregate };
+
+  const intentRegistry = clone(requireObject(input.intentRegistry, 'due-attention Intent registry'));
+  if (intentRegistry.registryRef !== contract.intentRegistryRef ||
+      intentRegistry.registryRef !== authority.intentRegistryRef ||
+      semanticHash(intentRegistry) !== authority.intentRegistryFingerprint) {
+    throw new Error('due-attention Intent registry is not exact current source-managed truth');
+  }
+  const workgraph = clone(requireObject(input.workgraph, 'due-attention Workgraph'));
+  if (workgraph.semanticFingerprint !== buildGraphSnapshotFingerprint(workgraph)) {
+    throw new Error('due-attention Workgraph fingerprint is stale or forged');
+  }
+  return { contract, authority, schedulerRegistry, schedulerAggregate, intentRegistry, workgraph };
+}
+
+function exactCurrentDueAssignment(due, workgraph, intentRegistry) {
+  if (workgraph.semanticFingerprint !== due.graphFingerprint) {
+    throw new Error('scheduler due Workgraph fingerprint lineage is stale');
+  }
+  const assignments = (workgraph.acceptedAssignments ?? []).filter((item) =>
+    item.assignmentRef === due.assignmentRef
+  );
+  if (assignments.length !== 1) throw new Error('scheduler due accepted assignment is absent or ambiguous');
+  const assignment = assignments[0];
+  if (assignment.assignmentState !== 'CURRENT') throw new Error('scheduler due accepted assignment is not CURRENT');
+  const currentForNode = (workgraph.acceptedAssignments ?? []).filter((item) =>
+    item.workNodeRef === assignment.workNodeRef && item.assignmentState === 'CURRENT'
+  );
+  if (currentForNode.length !== 1) throw new Error('scheduler due current assignment is conflicting or ambiguous');
+  const node = (workgraph.nodes ?? []).find((item) => item.workNodeRef === assignment.workNodeRef);
+  if (!node) throw new Error('scheduler due accepted assignment work node is absent');
+  const terminalStates = new Set(intentRegistry.cancellationSettledStates ?? []);
+  if (terminalStates.has(node.state)) throw new Error('scheduler due accepted assignment work node is terminal');
+  for (const field of ['assignmentRef', 'sourceIntentRef', 'workNodeRef', 'assigneeRef']) {
+    if (due[field] !== assignment[field]) throw new Error(`scheduler due ${field} lineage is stale`);
+  }
+  if (due.assignmentFingerprint !== assignment.semanticFingerprint) {
+    throw new Error('scheduler due assignment fingerprint lineage is stale');
+  }
+  if (due.sourceIntentRef !== workgraph.rootIntentRef) {
+    throw new Error('scheduler due source intent lineage is stale');
+  }
+  return assignment;
+}
+
+function schedulerDueAttentionEvidenceCore(input, registry) {
+  const {
+    contract, schedulerRegistry, schedulerAggregate, intentRegistry, workgraph
+  } = exactSchedulerSourceContext(input, registry);
+  const dueRef = requireString(input.dueRef, 'dueRef');
+  const dueMatches = (schedulerAggregate.dueRecords ?? []).filter((item) => item.dueRef === dueRef);
+  if (dueMatches.length !== 1) throw new Error('due-attention requires one exact Scheduler due record');
+  const due = validateSchedulerDueRecordIdentity(dueMatches[0]);
+  for (const field of contract.requiredDueFields) {
+    if (!Object.hasOwn(due, field)) throw new Error(`scheduler due missing source-managed field ${field}`);
+  }
+  if (due.currentness !== contract.requiredCurrentness || due.lifecycle !== contract.requiredLifecycle) {
+    throw new Error('due-attention requires exact CURRENT DUE Scheduler truth');
+  }
+  const { scheduledDue } = validateSchedulerDueFormation(schedulerAggregate, dueRef, contract);
+  exactCurrentDueAssignment(due, workgraph, intentRegistry);
+
+  const transitions = (schedulerAggregate.dueTransitionLedger ?? []).filter((item) =>
+    item.dueRef === dueRef && item.transitionType === contract.requiredTransitionType
+  );
+  if (transitions.length !== 1) throw new Error('due-attention requires one exact DUE_REACHED transition');
+  const transition = validateSchedulerDueTransitionIdentity(transitions[0]);
+  if (transition.priorDueFingerprint !== scheduledDue.semanticFingerprint) {
+    throw new Error('DUE_REACHED transition does not bind the exact formed Scheduler due');
+  }
+  if (transition.nextDue?.semanticFingerprint !== due.semanticFingerprint ||
+      transition.nextDue?.dueRef !== due.dueRef) {
+    throw new Error('DUE_REACHED transition does not bind the exact current due');
+  }
+  if (transition.observedAt !== due.observedAt) {
+    throw new Error('DUE_REACHED chronology does not bind the current due');
+  }
+  if (semanticHash(transition.sourceRefs) !== semanticHash(due.sourceRefs)) {
+    throw new Error('DUE_REACHED sourceRefs do not bind the current due');
+  }
+  assertExactFalseEffectBoundary(transition.effectBoundary, contract.effectBoundary, 'DUE_REACHED effectBoundary');
+
+  const reconciliations = (schedulerAggregate.missedHostReconciliationLedger ?? []).filter((item) =>
+    item.dueRef === dueRef
+  );
+  if (reconciliations.length > 1) throw new Error('due-attention found duplicate missed-host reconciliation truth');
+  const reconciliation = reconciliations[0] ? validateMissedHostIdentity(reconciliations[0]) : null;
+  if (reconciliation) {
+    if (reconciliation.schemaVersion !== 'vexlife.intent-scheduler-missed-host-reconciliation/v1' ||
+        reconciliation.reconciliationClass !== contract.missedHostReconciliationClass ||
+        reconciliation.currentness !== 'CURRENT' ||
+        reconciliation.dueFingerprint !== due.semanticFingerprint ||
+        reconciliation.priorDueFingerprint !== transition.priorDueFingerprint ||
+        reconciliation.restoreObservedAt !== transition.observedAt ||
+        semanticHash(reconciliation.sourceRefs) !== semanticHash(due.sourceRefs)) {
+      throw new Error('missed-host reconciliation does not bind the exact current due lineage');
+    }
+    for (const field of [
+      'assignmentRef', 'assignmentFingerprint', 'sourceIntentRef',
+      'workNodeRef', 'assigneeRef', 'graphFingerprint', 'dueAt'
+    ]) if (reconciliation[field] !== due[field]) {
+      throw new Error(`missed-host reconciliation ${field} lineage is stale`);
+    }
+    if (!(Date.parse(reconciliation.priorObservedAt) < Date.parse(reconciliation.dueAt) &&
+          Date.parse(reconciliation.dueAt) <= Date.parse(reconciliation.restoreObservedAt))) {
+      throw new Error('missed-host reconciliation chronology is invalid');
+    }
+    assertExactFalseEffectBoundary(
+      reconciliation.effectBoundary,
+      contract.effectBoundary,
+      'missed-host reconciliation effectBoundary'
+    );
+  }
+
+  return {
+    schemaVersion: contract.schemaVersion,
+    contractRef: contract.contractRef,
+    sourceRef: contract.sourceRef,
+    schedulerAggregateFingerprint: schedulerAggregate.semanticFingerprint,
+    schedulerRegistryRef: schedulerRegistry.registryRef,
+    schedulerRegistryFingerprint: semanticHash(schedulerRegistry),
+    intentRegistryRef: intentRegistry.registryRef,
+    intentRegistryFingerprint: semanticHash(intentRegistry),
+    workgraphRef: workgraph.graphRef,
+    workgraphFingerprint: workgraph.semanticFingerprint,
+    dueRef: due.dueRef,
+    dueFingerprint: due.semanticFingerprint,
+    assignmentRef: due.assignmentRef,
+    assignmentFingerprint: due.assignmentFingerprint,
+    sourceIntentRef: due.sourceIntentRef,
+    workNodeRef: due.workNodeRef,
+    assigneeRef: due.assigneeRef,
+    graphFingerprint: due.graphFingerprint,
+    dueAt: due.dueAt,
+    dueObservedAt: due.observedAt,
+    dueTransitionRef: transition.transitionRef,
+    dueTransitionFingerprint: transition.semanticFingerprint,
+    missedHostReconciliationRef: reconciliation?.reconciliationRef ?? null,
+    missedHostReconciliationFingerprint: reconciliation?.semanticFingerprint ?? null,
+    sourceRefs: clone(due.sourceRefs),
+    currentness: due.currentness,
+    lifecycle: due.lifecycle,
+    effectBoundary: clone(contract.effectBoundary),
+    causalEvidence: {
+      schedulerAggregate,
+      schedulerRegistry,
+      intentRegistry,
+      workgraph
+    }
+  };
+}
+
+function validateSchedulerDueAttentionEvidence(evidence, registry) {
+  assertContentAddressed(
+    evidence,
+    'dueAttentionEvidenceRef',
+    'concern-scheduler-due-attention',
+    'scheduler due-attention evidence'
+  );
+  const expected = contentAddressed(
+    schedulerDueAttentionEvidenceCore({
+      schedulerAggregate: evidence.causalEvidence?.schedulerAggregate,
+      schedulerRegistry: evidence.causalEvidence?.schedulerRegistry,
+      intentRegistry: evidence.causalEvidence?.intentRegistry,
+      workgraph: evidence.causalEvidence?.workgraph,
+      dueRef: evidence.dueRef
+    }, registry),
+    'dueAttentionEvidenceRef',
+    'concern-scheduler-due-attention'
+  );
+  if (semanticHash(expected) !== semanticHash(evidence)) {
+    throw new Error('scheduler due-attention evidence is stale, substituted, or forged');
+  }
+  return evidence;
+}
+
+function exactSchedulerDueEvidenceRefs(evidence) {
+  return [
+    evidence.dueAttentionEvidenceRef,
+    evidence.dueRef,
+    evidence.dueTransitionRef,
+    evidence.missedHostReconciliationRef
+  ].filter(Boolean).sort();
+}
+
 function normalizeSubjectBinding(binding, label) {
   requireObject(binding, label);
   return {
@@ -250,8 +524,15 @@ function exactSubjectBinding(actual, subject, observation) {
   }
 }
 
-function observationCore(input, registry) {
+function observationCore(input, registry, { allowSchedulerDue = false } = {}) {
   requireObject(input, 'concern observation');
+  const schedulerDue = isSchedulerDueObservation(input);
+  if (schedulerDue && !allowSchedulerDue) {
+    throw new Error('scheduler due observations must be formed by the source-managed due-attention adapter');
+  }
+  if (schedulerDue && !(input.concernClass === 'FOLLOW_THROUGH_DUE' && input.signalClass === 'SCHEDULER_DUE')) {
+    throw new Error('scheduler due observation class and signal must remain exact');
+  }
   for (const field of FORBIDDEN_OBSERVATION_FIELDS) {
     if (Object.hasOwn(input, field)) throw new Error(`concern observation cannot author ${field}`);
   }
@@ -285,6 +566,29 @@ function observationCore(input, registry) {
       sourceAdmissionFingerprint: requireFingerprint(input.subjectBinding.sourceAdmissionFingerprint, 'subjectBinding.sourceAdmissionFingerprint')
     };
   } else core.subjectBinding = null;
+  if (schedulerDue) {
+    const contract = requireObject(registry.dueAttentionContract, 'due-attention contract');
+    const evidence = validateSchedulerDueAttentionEvidence(
+      clone(requireObject(input.schedulerDueEvidence, 'schedulerDueEvidence')),
+      registry
+    );
+    if (core.sourceRef !== contract.sourceRef ||
+        core.sourceFingerprint !== evidence.dueFingerprint ||
+        core.sourceRangeOrEventRef !== (evidence.missedHostReconciliationRef ?? evidence.dueTransitionRef) ||
+        core.observerRef !== contract.observerRef ||
+        core.certaintyClass !== registry.thresholdPolicy.dueAttentionRule.requiredCertaintyClass ||
+        core.impactClass !== 'LOW' ||
+        core.reversibilityClass !== 'FULLY_REVERSIBLE' ||
+        core.humanAttentionClass !== registry.thresholdPolicy.dueAttentionRule.requiredHumanAttentionClass ||
+        core.evidenceOriginClass !== registry.thresholdPolicy.dueAttentionRule.requiredEvidenceOriginClass ||
+        semanticHash(core.evidenceRefs) !== semanticHash(exactSchedulerDueEvidenceRefs(evidence)) ||
+        semanticHash(core.policySignals) !== semanticHash(contract.observationPolicySignals)) {
+      throw new Error('scheduler due observation does not match the exact source-managed due-attention contract');
+    }
+    core.schedulerDueEvidence = evidence;
+  } else if (input.schedulerDueEvidence != null) {
+    throw new Error('non-due concern observation cannot carry scheduler due-attention evidence');
+  }
   if (input.recurrenceBinding != null) {
     requireObject(input.recurrenceBinding, 'recurrenceBinding');
     core.recurrenceBinding = {
@@ -311,13 +615,88 @@ export function validateConcernObservation(observation, { registry } = {}) {
   const source = registryOrThrow(registry);
   const errors = [];
   try {
-    const expected = createConcernObservation(withoutIdentity(observation, 'concernObservationRef'), { registry: source });
+    const schedulerDue = isSchedulerDueObservation(observation);
+    const expected = contentAddressed(
+      observationCore(withoutIdentity(observation, 'concernObservationRef'), source, { allowSchedulerDue: schedulerDue }),
+      'concernObservationRef',
+      'concern-observation',
+      observation.concernObservationRef
+    );
     if (semanticHash(expected) !== semanticHash(observation)) errors.push('concern observation canonical content mismatch');
     for (const field of CONCERN_OBSERVATION_REQUIRED_FIELDS) if (!Object.hasOwn(observation, field)) errors.push(`concern observation missing ${field}`);
   } catch (error) {
     errors.push(error.message);
   }
   return { ok: errors.length === 0, errors };
+}
+
+
+export function createSchedulerDueConcernObservation(input, { registry } = {}) {
+  const source = registryOrThrow(registry);
+  const evidence = contentAddressed(
+    schedulerDueAttentionEvidenceCore(input, source),
+    'dueAttentionEvidenceRef',
+    'concern-scheduler-due-attention'
+  );
+  const contract = source.dueAttentionContract;
+  const rule = source.thresholdPolicy.dueAttentionRule;
+  const reconciliation = evidence.missedHostReconciliationRef == null
+    ? null
+    : evidence.causalEvidence.schedulerAggregate.missedHostReconciliationLedger
+      .find((item) => item.reconciliationRef === evidence.missedHostReconciliationRef);
+  return contentAddressed(
+    observationCore({
+      sourceRef: contract.sourceRef,
+      sourceFingerprint: evidence.dueFingerprint,
+      sourceRangeOrEventRef: evidence.missedHostReconciliationRef ?? evidence.dueTransitionRef,
+      observedAt: reconciliation?.restoreObservedAt ?? evidence.dueObservedAt,
+      observerRef: contract.observerRef,
+      aboutScopeRef: requireString(input.aboutScopeRef, 'aboutScopeRef'),
+      concernClass: rule.concernClass,
+      signalClass: rule.signalClass,
+      certaintyClass: rule.requiredCertaintyClass,
+      impactClass: 'LOW',
+      reversibilityClass: 'FULLY_REVERSIBLE',
+      humanAttentionClass: rule.requiredHumanAttentionClass,
+      evidenceOriginClass: rule.requiredEvidenceOriginClass,
+      evidenceRefs: exactSchedulerDueEvidenceRefs(evidence),
+      unknownRefs: [],
+      policySignals: clone(contract.observationPolicySignals),
+      subjectBinding: input.subjectBinding ?? null,
+      recurrenceBinding: input.recurrenceBinding ?? null,
+      schedulerDueEvidence: evidence
+    }, source, { allowSchedulerDue: true }),
+    'concernObservationRef',
+    'concern-observation'
+  );
+}
+
+export function recordSchedulerDueConcernObservation(aggregate, input, { registry } = {}) {
+  const source = registryOrThrow(registry);
+  validateConcernAggregate(aggregate, { registry: source });
+  const observation = createSchedulerDueConcernObservation(input, { registry: source });
+  const sameRef = aggregate.observations.find((item) =>
+    item.concernObservationRef === observation.concernObservationRef
+  );
+  if (sameRef) {
+    if (sameRef.semanticFingerprint !== observation.semanticFingerprint) {
+      throw new Error('same scheduler due observation ref has different meaning');
+    }
+    return { aggregate, observation, changed: false, outcome: 'NO_CHANGE_REQUIRED' };
+  }
+  observationMatchesSubject(aggregate, observation);
+  const newEvidence = observation.evidenceRefs.filter((ref) => !aggregate.evidenceRefs.includes(ref));
+  if (newEvidence.length === 0) {
+    return { aggregate, observation, changed: false, outcome: 'NO_CHANGE_REQUIRED' };
+  }
+  const next = appendEvent(
+    aggregate,
+    'OBSERVATION_RECORDED',
+    { observation },
+    observation.observedAt,
+    source
+  );
+  return { aggregate: next, observation, changed: true, outcome: next.outcome };
 }
 
 export function deriveConcernSubject({ observations, subjectKind }, { registry } = {}) {
@@ -618,6 +997,16 @@ function thresholdDecision(aggregate, observedAt, registry) {
     highRule.allowedReversibilityClasses.includes(item.reversibilityClass)
   ) ?? null;
   const humanRequired = aggregate.observations.some((item) => ['DECISION_REQUIRED', 'IMMEDIATE_SAFETY'].includes(item.humanAttentionClass));
+  const dueRule = registry.thresholdPolicy.dueAttentionRule;
+  const dueAttentionObservation = independent.find((item) =>
+    item.concernClass === dueRule.concernClass &&
+    item.signalClass === dueRule.signalClass &&
+    item.certaintyClass === dueRule.requiredCertaintyClass &&
+    item.humanAttentionClass === dueRule.requiredHumanAttentionClass &&
+    item.evidenceOriginClass === dueRule.requiredEvidenceOriginClass &&
+    item.schedulerDueEvidence?.currentness === registry.dueAttentionContract.requiredCurrentness &&
+    item.schedulerDueEvidence?.lifecycle === registry.dueAttentionContract.requiredLifecycle
+  ) ?? null;
   const standardCrossed = stats.independentEvidenceCount >= standard.minimumIndependentEvidence &&
     stats.recurrenceCount >= standard.minimumRecurrenceCount && stats.spacingSatisfied &&
     severityRank(registry.thresholdPolicy.certaintyScores, stats.certaintyClass) >= severityRank(registry.thresholdPolicy.certaintyScores, standard.minimumCertaintyClass) &&
@@ -626,7 +1015,11 @@ function thresholdDecision(aggregate, observedAt, registry) {
   let outcome = 'WATCH_DORMANT';
   let ruleRef = null;
   let thresholdCrossed = false;
-  if (highConsequenceObservation) {
+  if (dueAttentionObservation) {
+    thresholdCrossed = true;
+    ruleRef = dueRule.ruleRef;
+    outcome = dueRule.outcome;
+  } else if (highConsequenceObservation) {
     thresholdCrossed = true;
     ruleRef = highRule.ruleRef;
     outcome = humanRequired ? 'HUMAN_ATTENTION_REQUIRED' : 'THRESHOLD_MET_ADMISSION_REVIEW';
@@ -658,7 +1051,9 @@ function thresholdDecision(aggregate, observedAt, registry) {
     ruleRef,
     thresholdCrossed,
     outcome,
-    recommendedPriorityClass: priorityRecommendation(stats, registry),
+    recommendedPriorityClass: dueAttentionObservation
+      ? dueRule.recommendedPriorityClass
+      : priorityRecommendation(stats, registry),
     highConsequenceObservationRef: highConsequenceObservation?.concernObservationRef ?? null,
     executionAuthorityGranted: false,
     modelRepetitionRaisedUrgency: false
@@ -1141,6 +1536,9 @@ function appendEvent(aggregate, type, payload, occurredAt, registry) {
 export function recordConcernObservation(aggregate, observation, { registry } = {}) {
   const source = registryOrThrow(registry);
   validateConcernAggregate(aggregate, { registry: source });
+  if (isSchedulerDueObservation(observation)) {
+    throw new Error('scheduler due observations must be recorded through the source-managed due-attention adapter');
+  }
   const validation = validateConcernObservation(observation, { registry: source });
   if (!validation.ok) throw new Error(validation.errors.join('; '));
   const sameRef = aggregate.observations.find((item) => item.concernObservationRef === observation.concernObservationRef);
@@ -1357,6 +1755,64 @@ export function recordRecoveryConcernEvidence(aggregate, evidence, { registry } 
   }
   const next = appendEvent(aggregate, 'RECOVERY_EVIDENCE_RECORDED', { recoveryEvidence: evidence }, evidence.observedAt, source);
   return { aggregate: next, changed: true, outcome: next.outcome };
+}
+
+
+function schedulerTerminalDueClosureEvidence(input, registry) {
+  const { contract, schedulerAggregate } = exactSchedulerSourceContext(input, registry, { requireWorkgraph: false });
+  const dueRef = requireString(input.dueRef, 'dueRef');
+  const matches = (schedulerAggregate.dueRecords ?? []).filter((item) => item.dueRef === dueRef);
+  if (matches.length !== 1) throw new Error('due-attention closure requires one exact Scheduler due record');
+  const due = validateSchedulerDueRecordIdentity(matches[0], 'terminal scheduler due');
+  validateSchedulerDueFormation(schedulerAggregate, dueRef, contract);
+  if (due.currentness !== 'TERMINAL' || !contract.terminalLifecycles.includes(due.lifecycle)) {
+    throw new Error('due-attention closure requires terminal settled/cancelled/superseded due truth');
+  }
+  const transitionType = due.lifecycle === 'CANCELLED'
+    ? 'CANCELLED'
+    : due.lifecycle === 'SUPERSEDED'
+      ? 'SUPERSEDED'
+      : 'SETTLED';
+  const transitions = (schedulerAggregate.dueTransitionLedger ?? []).filter((item) =>
+    item.dueRef === dueRef && item.transitionType === transitionType
+  );
+  if (transitions.length !== 1) throw new Error('due-attention closure requires one exact terminal due transition');
+  const transition = validateSchedulerDueTransitionIdentity(transitions[0], 'terminal scheduler due transition');
+  if (transition.nextDue?.semanticFingerprint !== due.semanticFingerprint ||
+      transition.nextDue?.dueRef !== due.dueRef) {
+    throw new Error('terminal due transition does not bind exact terminal due truth');
+  }
+  assertExactFalseEffectBoundary(transition.effectBoundary, contract.effectBoundary, 'terminal due effectBoundary');
+  return { due, transition };
+}
+
+export function reconcileSchedulerDueConcern(aggregate, input, { registry } = {}) {
+  const source = registryOrThrow(registry);
+  validateConcernAggregate(aggregate, { registry: source });
+  if (aggregate.state === 'RESOLVED' &&
+      aggregate.closures.at(-1)?.evidenceRefs?.includes(input.dueRef)) {
+    return { aggregate, changed: false, outcome: 'NO_CHANGE_REQUIRED' };
+  }
+  if (aggregate.state !== 'WAITING_HUMAN') {
+    throw new Error('due-attention terminal reconciliation requires WAITING_HUMAN current concern');
+  }
+  const latestDueObservation = [...aggregate.observations].reverse().find(isSchedulerDueObservation);
+  if (!latestDueObservation || latestDueObservation.schedulerDueEvidence?.dueRef !== input.dueRef) {
+    throw new Error('due-attention terminal reconciliation does not bind the active due concern');
+  }
+  const { due, transition } = schedulerTerminalDueClosureEvidence(input, source);
+  const latestHuman = aggregate.humanAttentionRequests.at(-1);
+  if (!latestHuman || Date.parse(transition.observedAt) < Date.parse(latestHuman.formedAt)) {
+    throw new Error('terminal due transition predates current human-attention request');
+  }
+  const closure = createConcernClosureReceipt(aggregate, {
+    disposition: 'RESOLVED_NO_RECURRENCE_EXPECTED',
+    evidenceRefs: [due.dueRef, transition.transitionRef],
+    closedByRef: requireString(input.closedByRef, 'closedByRef'),
+    closedAt: transition.observedAt
+  }, { registry: source });
+  const next = closeConcern(aggregate, closure, { registry: source }).aggregate;
+  return { aggregate: next, closure, changed: true, outcome: next.outcome };
 }
 
 export function createConcernClosureReceipt(aggregate, input, { registry } = {}) {
@@ -2103,7 +2559,7 @@ export function validateConcernWatchRegistry(registry) {
   }
   const contracts = registry.contractIdentities ?? [];
   const contractRefs = contracts.map((item) => item.contractRef);
-  if (contracts.length !== 13 || new Set(contractRefs).size !== contracts.length || contracts.some((item) => !item.contractKind)) {
+  if (contracts.length !== 14 || new Set(contractRefs).size !== contracts.length || contracts.some((item) => !item.contractKind)) {
     errors.push('registry contract identities are incomplete or duplicated');
   }
   if (semanticHash(registry.observationContract?.requiredFields) !== semanticHash(CONCERN_OBSERVATION_REQUIRED_FIELDS)) errors.push('observation required fields drifted from implementation');
@@ -2113,6 +2569,7 @@ export function validateConcernWatchRegistry(registry) {
   for (const contractRef of [
     registry.observationContract?.contractRef, registry.subjectContract?.contractRef,
     registry.lifecycleContract?.contractRef, registry.thresholdPolicy?.contractRef,
+    registry.dueAttentionContract?.contractRef,
     registry.schedulerIntegration?.admissionContractRef, registry.humanAttentionContract?.contractRef,
     registry.schedulerIntegration?.externalSchedulerAuthority?.evidenceContractRef,
     registry.closureContract?.contractRef, registry.projectionContract?.contractRef,
@@ -2175,6 +2632,43 @@ export function validateConcernWatchRegistry(registry) {
       externalSchedulerAuthority?.callerAuthoredCurrentnessAllowed !== false ||
       externalSchedulerAuthority?.liveClockRequired !== false) {
     errors.push('external scheduler authority contract is incomplete or permits self-attestation');
+  }
+
+  const dueAttentionContract = registry.dueAttentionContract;
+  const dueAttentionRule = registry.thresholdPolicy?.dueAttentionRule;
+  if (dueAttentionContract?.contractRef !== 'contract.vexlife.concern-scheduler-due-attention/v1' ||
+      dueAttentionContract?.schemaVersion !== 'vexlife.concern-scheduler-due-attention-evidence/v1' ||
+      dueAttentionContract?.sourceRef !== 'service.intent-scheduler' ||
+      dueAttentionContract?.observerRef !== 'observer.concern-watch.scheduler-due' ||
+      dueAttentionContract?.schedulerRegistryRef !== externalSchedulerAuthority?.schedulerRegistryRef ||
+      dueAttentionContract?.intentRegistryRef !== externalSchedulerAuthority?.intentRegistryRef ||
+      dueAttentionContract?.requiredCurrentness !== 'CURRENT' ||
+      dueAttentionContract?.requiredLifecycle !== 'DUE' ||
+      dueAttentionContract?.requiredTransitionType !== 'DUE_REACHED' ||
+      semanticHash(dueAttentionContract?.terminalLifecycles) !== semanticHash(['SETTLED', 'CANCELLED', 'SUPERSEDED']) ||
+      dueAttentionContract?.missedHostReconciliationClass !== 'DUE_ELAPSED_ACROSS_SCHEDULER_OBSERVATION_GAP' ||
+      dueAttentionContract?.currentAcceptedAssignmentRequired !== true ||
+      dueAttentionContract?.callerAuthoredDueAllowed !== false ||
+      dueAttentionContract?.callerAuthoredMissedHostAllowed !== false ||
+      Object.values(dueAttentionContract?.effectBoundary ?? {}).some((value) => value !== false) ||
+      !registry.subjectContract?.subjectKinds?.includes('FOLLOW_THROUGH_DUE') ||
+      !registry.vocabularies?.concernClasses?.includes('FOLLOW_THROUGH_DUE') ||
+      !registry.vocabularies?.signalClasses?.includes('SCHEDULER_DUE')) {
+    errors.push('scheduler due-attention evidence contract is incomplete or collapses Scheduler authority');
+  }
+  if (dueAttentionRule?.ruleRef !== 'rule.concern-watch.scheduler-due-attention.001' ||
+      dueAttentionRule?.contractRef !== dueAttentionContract?.contractRef ||
+      dueAttentionRule?.concernClass !== 'FOLLOW_THROUGH_DUE' ||
+      dueAttentionRule?.signalClass !== 'SCHEDULER_DUE' ||
+      dueAttentionRule?.requiredCertaintyClass !== 'VERIFIED' ||
+      dueAttentionRule?.requiredHumanAttentionClass !== 'ONLY_IF_THRESHOLD_MET' ||
+      dueAttentionRule?.requiredEvidenceOriginClass !== 'EXTERNAL_SOURCE' ||
+      dueAttentionRule?.recommendedPriorityClass !== 'NORMAL' ||
+      dueAttentionRule?.outcome !== 'HUMAN_ATTENTION_REQUIRED' ||
+      dueAttentionRule?.preDueEligible !== false ||
+      dueAttentionRule?.externalEffectsAuthorized !== false ||
+      dueAttentionRule?.callerOverrideAllowed !== false) {
+    errors.push('source-managed scheduler due-attention threshold rule is malformed');
   }
   if (registry.projectionContract?.changedOnly !== true || registry.projectionContract?.derivedFromOneReplayedAggregate !== true ||
       registry.projectionContract?.normalProjectionContainsRawObservationHistory !== false ||
