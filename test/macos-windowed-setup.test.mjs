@@ -115,7 +115,7 @@ test('MAC-WIN-01/02 controller vocabulary is closed and unknown actions fail bef
 test('MAC-WIN-02 Bash 3.2 host-preflight PID fallback remains nounset-safe', () => {
   assert.match(backend, /\.vexlife-host-eligibility-\$\{BASHPID:-\$\$\}-\$\{RANDOM\}-\$\{RANDOM\}/u);
   assert.doesNotMatch(backend, /\.vexlife-host-eligibility-\$\{BASHPID\}-/u);
-  const probe = spawnSync('/bin/bash', ['-c', 'set -u; unset BASHPID 2>/dev/null || true; p="/tmp/.vexlife-host-eligibility-${BASHPID:-$}-${RANDOM}-${RANDOM}"; test -n "$p"; printf "%s\\n" "$p"'], { encoding: 'utf8' });
+  const probe = spawnSync('/bin/bash', ['-c', 'set -u; unset BASHPID 2>/dev/null || true; p="/tmp/.vexlife-host-eligibility-${BASHPID:-$$}-${RANDOM}-${RANDOM}"; test -n "$p"; printf "%s\\n" "$p"'], { encoding: 'utf8' });
   assert.equal(probe.status, 0, probe.stderr || probe.stdout);
   assert.match(probe.stdout, /\.vexlife-host-eligibility-[0-9]+-[0-9]+-[0-9]+/u);
 });
