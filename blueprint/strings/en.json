@@ -349,7 +349,7 @@
   "family-room.state.held": "Family unavailable",
   "family-room.audience": "Visible to {count} current Family members + Vex",
   "family-room.audience.held": "Audience unavailable until current Family authority is established",
-  "family-room.work.current": "Vex work · {active} active · {pending} queued",
+  "family-room.work.current": "Vex work · {active} active · {pending} queued · {due} due · {attention} need attention",
   "family-room.work.held": "Vex work status unavailable · human chat remains independent",
   "family-room.open": "Open Family room",
   "family-room.refresh": "Refresh Family",

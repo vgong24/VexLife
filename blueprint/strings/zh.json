@@ -349,7 +349,7 @@
   "family-room.state.held": "家庭暂不可用",
   "family-room.audience": "对当前 {count} 位家庭成员 + Vex 可见",
   "family-room.audience.held": "在当前家庭权限建立前，受众信息不可用",
-  "family-room.work.current": "Vex 工作 · {active} 个进行中 · {pending} 个排队中",
+  "family-room.work.current": "Vex 工作 · {active} 个进行中 · {pending} 个排队中 · {due} 个已到期 · {attention} 个需注意",
   "family-room.work.held": "Vex 工作状态不可用 · 人类聊天仍可独立继续",
   "family-room.open": "打开家庭房间",
   "family-room.refresh": "刷新家庭",

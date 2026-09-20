@@ -349,7 +349,7 @@
   "family-room.state.held": "ファミリーは利用できません",
   "family-room.audience": "現在のファミリーメンバー {count} 人 + Vex に表示",
   "family-room.audience.held": "現在のファミリー権限が確立するまで対象者は利用できません",
-  "family-room.work.current": "Vex の作業 · 実行中 {active} · 待機中 {pending}",
+  "family-room.work.current": "Vex の作業 · 実行中 {active} · 待機中 {pending} · 期限到来 {due} · 要確認 {attention}",
   "family-room.work.held": "Vex の作業状態は利用できません · 人同士のチャットは独立して継続します",
   "family-room.open": "ファミリールームを開く",
   "family-room.refresh": "ファミリーを更新",

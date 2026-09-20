@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { approvePairing, createPairingOffer, issueCapabilityLease } from '../src/core/home-bridge.mjs';
 import {
@@ -14,8 +15,30 @@ import { issueFamilyInvitation } from '../src/core/family-invitation-store.mjs';
 import { createFamilyChannel } from '../src/core/family-conversation.mjs';
 import { materializeConversationChannel } from '../src/core/conversation-store.mjs';
 import { createVexCoreFamilySessionAuthorityResolver } from '../src/core/vex-core-family-session-authority.mjs';
+import { loadBlueprint } from '../src/core/blueprint.mjs';
+import {
+  acceptIntentAssignment,
+  createIntentEnvelope,
+  createIntentWorkgraph,
+  createWorkNode
+} from '../src/core/intent-workgraph.mjs';
+import { SingleWorkerIntentScheduler } from '../src/core/intent-scheduler.mjs';
+import { createInitialSchedulerAggregate } from '../src/core/state.mjs';
+import {
+  createConcernAggregate,
+  createHumanAttentionRequest,
+  createSchedulerDueConcernObservation,
+  deriveConcernSubject,
+  evaluateConcernThreshold,
+  recordHumanAttentionRequest,
+  recordSchedulerDueConcernObservation,
+  recordThresholdEvaluation
+} from '../src/core/concern-watch.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
 import {
   BROWSER_FAMILY_CONVERSATION_API_PATH,
+  BROWSER_FAMILY_FOLLOW_THROUGH_RUNTIME_SCHEMA,
+  BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF,
   BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH,
   BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
   createVexLifeBrowserServer,
@@ -26,6 +49,12 @@ import {
   familyRoomViewModel,
   normalizeFamilyRoomBootstrap
 } from '../reference/browser/modules/family-room-controller.js';
+
+const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const SOURCE_BUNDLE=loadBlueprint(ROOT);
+const INTENT_REGISTRY=SOURCE_BUNDLE.intentRegistry;
+const SCHEDULER_REGISTRY=SOURCE_BUNDLE.schedulerRegistry;
+const CONCERN_REGISTRY=SOURCE_BUNDLE.blueprint.concernWatch;
 
 const T0='2026-09-18T03:40:00.000Z';
 const T1='2026-09-18T03:41:00.000Z';
@@ -238,10 +267,13 @@ test('VF06-00 server-owned bootstrap projects only current visible Family truth'
     resolveAuthority:resolver,
     nowProvider:()=>T1,
     resolveFamilyWorkProjection:async()=>({
+      schemaVersion:BROWSER_FAMILY_FOLLOW_THROUGH_RUNTIME_SCHEMA,
       state:'CURRENT',
-      pendingCount:2,
-      activeCount:1,
-      sourceRef:'scheduler.vf06-test'
+      currentness:'CURRENT',
+      sourceRef:'projection.generic-follow-through.empty-test',
+      workgraphs:[],
+      schedulerAggregates:[],
+      concernAggregates:[]
     })
   });
   assert.equal(bootstrap.schemaVersion,BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA);
@@ -252,7 +284,10 @@ test('VF06-00 server-owned bootstrap projects only current visible Family truth'
   assert.equal(bootstrap.rooms[0].audience.length,3);
   assert.equal(bootstrap.rooms[0].familyCompanionIncluded,true);
   assert.equal(bootstrap.rooms[0].familyCompanionLineageRef,'lineage.vex.family.vf06-test');
-  assert.deepEqual(bootstrap.workStatus,{state:'CURRENT',pendingCount:2,activeCount:1,sourceRef:'scheduler.vf06-test'});
+  assert.deepEqual(bootstrap.workStatus,{
+    state:'CURRENT',pendingCount:0,activeCount:0,dueCount:0,attentionCount:0,
+    sourceRef:BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF
+  });
   const serialized=JSON.stringify(bootstrap);
   assert.equal(serialized.includes('lease.vf06-home'),false);
   assert.equal(serialized.includes('device-public-key-vf06'),false);
@@ -260,15 +295,171 @@ test('VF06-00 server-owned bootstrap projects only current visible Family truth'
   const normalized=normalizeFamilyRoomBootstrap(bootstrap);
   const view=familyRoomViewModel(normalized);
   assert.deepEqual(view,{
-    state:'CURRENT',
-    truthClass:'CURRENT_LIVE_FAMILY',
-    roomCount:1,
-    audienceCount:3,
-    familyVexCount:1,
-    workState:'CURRENT',
-    pendingCount:2,
-    activeCount:1
+    state:'CURRENT',truthClass:'CURRENT_LIVE_FAMILY',roomCount:1,audienceCount:3,familyVexCount:1,
+    workState:'CURRENT',pendingCount:0,activeCount:0,dueCount:0,attentionCount:0
   });
+});
+
+
+function familyBindingRefs(nodes){
+  return Object.fromEntries(INTENT_REGISTRY.bindingFields.map((field)=>[
+    field,[...new Set(nodes.flatMap((item)=>Array.isArray(item[field])?item[field]:[item[field]]).filter(Boolean))].sort()
+  ]));
+}
+function familyFollowThroughGraph(suffix,{channelRef=CHANNEL,threadRef='thread.vex-family.vf06-test',originSpeakerRef=PRINCIPAL}={}){
+  const intentRef='intent.family-follow-through.'+suffix;
+  const intent=createIntentEnvelope({
+    intentRef,originMessageRef:'message.'+intentRef,originSpeakerRef,recipientRoleRef:'role.vex.companion',
+    projectRef:'project.vexlife.root-hub',threadRef,channelRef,
+    originalContentHash:semanticHash({suffix,channelRef,threadRef}),
+    desiredOutcome:{intentKey:'FAMILY_FOLLOW_THROUGH_TEST',summary:'Exercise Family follow-through projection'},
+    constraints:['NO_EXTERNAL_EFFECTS'],createdAt:T0,sourceLineageRef:'lineage.family-follow-through.'+suffix
+  },INTENT_REGISTRY);
+  const makeNode=(name)=>createWorkNode({
+    workNodeRef:'work-node.family-follow-through.'+suffix+'.'+name,rootIntentRef:intentRef,
+    purpose:'Family follow-through '+name,processRef:'process.vexlife.intent.validate-workgraph',state:'READY',
+    dependencyRefs:[],childRefs:[],roleRef:'role.vex.companion',priorityClass:'NORMAL',
+    applicableCultureRefs:['foundation.vexlife.state-relay.v1'],applicableLessonRefs:[],applicableBurdenReleaseRefs:[],
+    capabilityEnvelopeRef:'capability-envelope.family-follow-through.'+suffix+'.'+name,
+    effectEnvelopeRef:'effect-envelope.family-follow-through.'+suffix+'.'+name,
+    resourceEnvelopeRef:'resource-envelope.family-follow-through.'+suffix+'.'+name,
+    expectedTransitionRef:'expected-transition.family-follow-through.'+suffix+'.'+name,
+    completionGateRefs:['completion-gate.family-follow-through.'+suffix+'.'+name],
+    returnRouteRef:'return-route.family-follow-through.'+suffix+'.'+name,
+    sourceRefs:['source.family-follow-through.'+suffix+'.'+name],createdAt:T0
+  },INTENT_REGISTRY);
+  const nodes=[makeNode('active'),makeNode('queued')];
+  let graph=createIntentWorkgraph({
+    graphRef:'intent-workgraph.family-follow-through.'+suffix,intent,nodes,transitions:[],receipts:[],
+    bindingRefs:familyBindingRefs(nodes),createdAt:T0
+  },INTENT_REGISTRY);
+  for(const node of nodes){
+    graph=acceptIntentAssignment(graph,{
+      assignmentRef:'assignment.family-follow-through.'+suffix+'.'+node.workNodeRef.split('.').at(-1),
+      sourceIntentRef:intentRef,workNodeRef:node.workNodeRef,assigneeRef:'lineage.vex.family.vf06-test',
+      acceptingActorRef:originSpeakerRef,acceptedAt:T0,sourceRefs:['source.assignment.family-follow-through.'+suffix]
+    },INTENT_REGISTRY).graph;
+  }
+  return {intent,nodes,graph};
+}
+function familySchedulerAggregate(graph){
+  const aggregate=createInitialSchedulerAggregate();
+  const entries=graph.nodes.map((node)=>({
+    workNodeRef:node.workNodeRef,nodeFingerprint:node.semanticFingerprint,purpose:node.purpose,
+    priorityClass:node.priorityClass,schedulingClass:'NORMAL',readySinceGeneration:1,deferralCount:0,
+    fairnessSourceBinding:{graphFingerprint:graph.semanticFingerprint,nodeFingerprint:node.semanticFingerprint},
+    admitted:true,reasonRefs:[]
+  }));
+  aggregate.phase='RUNNING'; aggregate.generation=1;
+  aggregate.queue={...aggregate.queue,state:'ADMITTED',lifecycle:'LEASED',currentness:'CURRENT',generation:1,
+    graphRef:graph.graphRef,graphFingerprint:graph.semanticFingerprint,logicalReady:structuredClone(entries),
+    admittedReady:structuredClone(entries),blocked:[],selected:structuredClone(entries[0])};
+  aggregate.active={schemaVersion:'vexlife.intent-worker-lease/v1',workerRef:'worker.family-follow-through.test',
+    workNodeRef:graph.nodes[0].workNodeRef,graphFingerprint:graph.semanticFingerprint,schedulerGeneration:1,
+    lifecycle:'ACTIVE',currentness:'CURRENT'};
+  delete aggregate.semanticFingerprint; aggregate.semanticFingerprint=semanticHash(aggregate);
+  return aggregate;
+}
+function dueAndAttentionForGraph(graph){
+  const scheduler=new SingleWorkerIntentScheduler({
+    workerRef:'worker.family-follow-through.due',schedulerInstanceRef:'scheduler.family-follow-through.due',
+    schedulerRegistry:SCHEDULER_REGISTRY
+  });
+  scheduler.advanceObservedClock({observedAt:T0,eventRef:'clock.family-follow-through.initial'});
+  const formed=scheduler.formDueIntent(graph,{
+    assignmentRef:graph.acceptedAssignments[1].assignmentRef,dueAt:T2,formedAt:T0,observedAt:T0,
+    sourceRefs:['source.family-follow-through.due']
+  });
+  scheduler.advanceObservedClock({observedAt:T2,eventRef:'clock.family-follow-through.due',graph});
+  const input={schedulerAggregate:scheduler.aggregate,schedulerRegistry:SCHEDULER_REGISTRY,
+    intentRegistry:INTENT_REGISTRY,workgraph:graph,dueRef:formed.due.dueRef,aboutScopeRef:SPACE};
+  const observation=createSchedulerDueConcernObservation(input,{registry:CONCERN_REGISTRY});
+  const subject=deriveConcernSubject({observations:[observation],subjectKind:'FOLLOW_THROUGH_DUE'},{registry:CONCERN_REGISTRY});
+  let aggregate=createConcernAggregate({subject,formedAt:T0},{registry:CONCERN_REGISTRY});
+  aggregate=recordSchedulerDueConcernObservation(aggregate,input,{registry:CONCERN_REGISTRY}).aggregate;
+  const threshold=evaluateConcernThreshold(aggregate,{observedAt:T2},{registry:CONCERN_REGISTRY});
+  aggregate=recordThresholdEvaluation(aggregate,threshold,{registry:CONCERN_REGISTRY}).aggregate;
+  const request=createHumanAttentionRequest(aggregate,{
+    whyVictorIsNeeded:'One Family-scoped accepted assignment is due.',
+    smallestDecisionOrEvidence:'Acknowledge, reschedule, or cancel the due follow-through.',
+    availableOptions:['option.follow-through.acknowledge','option.follow-through.reschedule','option.follow-through.cancel'],
+    recommendedOption:'option.follow-through.acknowledge',consequenceOfWaiting:'The accepted Family-scoped assignment remains due.',
+    safeUntil:T9,returnRouteRef:graph.nodes[1].returnRouteRef,formedAt:T3
+  },{registry:CONCERN_REGISTRY});
+  aggregate=recordHumanAttentionRequest(aggregate,request,{registry:CONCERN_REGISTRY}).aggregate;
+  return {schedulerAggregate:scheduler.aggregate,concernAggregate:aggregate};
+}
+function currentFamilyGenericSnapshot(graph){
+  const due=dueAndAttentionForGraph(graph);
+  return {schemaVersion:BROWSER_FAMILY_FOLLOW_THROUGH_RUNTIME_SCHEMA,state:'CURRENT',currentness:'CURRENT',
+    sourceRef:'projection.generic-follow-through.test',workgraphs:[graph],
+    schedulerAggregates:[familySchedulerAggregate(graph),due.schedulerAggregate],concernAggregates:[due.concernAggregate]};
+}
+
+test('FTE-02/03/05 exact generic owners project only current Family-scoped compact truth',async(t)=>{
+  const {home,resolver}=fixture(t); const family=familyFollowThroughGraph('current');
+  const bootstrap=await resolveCurrentFamilyRoomBootstrap({
+    request:{headers:{}},familyHome:home,resolveAuthority:resolver,nowProvider:()=>T3,
+    resolveFamilyWorkProjection:async()=>currentFamilyGenericSnapshot(family.graph)
+  });
+  assert.equal(bootstrap.state,'CURRENT'); assert.equal(bootstrap.currentPrincipalRef,PRINCIPAL);
+  assert.deepEqual(bootstrap.workStatus,{state:'CURRENT',pendingCount:1,activeCount:1,dueCount:1,attentionCount:1,
+    sourceRef:BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF});
+  const serialized=JSON.stringify(bootstrap.workStatus);
+  for(const forbidden of ['workNodeRef','assignmentRef','schedulerAggregate','concernAggregate','evidenceRefs','semanticFingerprint'])
+    assert.equal(serialized.includes(forbidden),false,forbidden);
+});
+
+test('FTE-04 private/non-Family Workgraph cannot leak into Family work projection',async(t)=>{
+  const {home,resolver}=fixture(t); const family=familyFollowThroughGraph('family');
+  const privateWork=familyFollowThroughGraph('private',{channelRef:'channel.private.follow-through',threadRef:'thread.private.follow-through'});
+  const familySnapshot=currentFamilyGenericSnapshot(family.graph);
+  const privateSnapshot=currentFamilyGenericSnapshot(privateWork.graph);
+  const combined={schemaVersion:BROWSER_FAMILY_FOLLOW_THROUGH_RUNTIME_SCHEMA,state:'CURRENT',currentness:'CURRENT',
+    sourceRef:'projection.generic-follow-through.combined-test',workgraphs:[family.graph,privateWork.graph],
+    schedulerAggregates:[...familySnapshot.schedulerAggregates,...privateSnapshot.schedulerAggregates],
+    concernAggregates:[...familySnapshot.concernAggregates,...privateSnapshot.concernAggregates]};
+  const bootstrap=await resolveCurrentFamilyRoomBootstrap({
+    request:{headers:{}},familyHome:home,resolveAuthority:resolver,nowProvider:()=>T3,
+    resolveFamilyWorkProjection:async()=>combined
+  });
+  assert.deepEqual(bootstrap.workStatus,{state:'CURRENT',pendingCount:1,activeCount:1,dueCount:1,attentionCount:1,
+    sourceRef:BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF});
+});
+
+test('FTE-06/07 active/due Family work does not block deterministic human Family message delivery',async(t)=>{
+  const {home,record,resolver}=fixture(t); const family=familyFollowThroughGraph('human-chat');
+  const server=createVexLifeBrowserServer({
+    companionBridge:fakeCompanion(),familyConversationHome:home,familyConversationNow:()=>T3,
+    familyConversationInstanceRef:'instance.fte.human-chat',resolveFamilyConversationAuthority:resolver,
+    resolveFamilyWorkProjection:async()=>currentFamilyGenericSnapshot(family.graph)
+  });
+  const base=await listen(server,t);
+  const bootstrap=await (await fetch(base+BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH)).json();
+  assert.equal(bootstrap.workStatus.activeCount,1); assert.equal(bootstrap.workStatus.dueCount,1);
+  assert.equal(bootstrap.workStatus.attentionCount,1);
+  const response=await fetch(base+BROWSER_FAMILY_CONVERSATION_API_PATH,{
+    method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({operation:'APPEND',intent:{spaceRef:SPACE,channelRef:CHANNEL,
+      content:'Humans continue while Vex work is active and due.',
+      expectedMembershipGeneration:record.membershipGeneration,idempotencyKey:'fte-human-chat-during-ai-work'}})
+  });
+  assert.equal(response.status,200); const body=await response.json();
+  assert.equal(body.message.speakerRef,PRINCIPAL);
+  assert.equal(body.message.content,'Humans continue while Vex work is active and due.');
+});
+
+test('FTE-08 invalid generic truth holds only work projection while Family truth stays current',async(t)=>{
+  const {home,resolver}=fixture(t); const family=familyFollowThroughGraph('invalid');
+  const snapshot=currentFamilyGenericSnapshot(family.graph);
+  snapshot.schedulerAggregates[0]=structuredClone(snapshot.schedulerAggregates[0]);
+  snapshot.schedulerAggregates[0].semanticFingerprint='0'.repeat(64);
+  const bootstrap=await resolveCurrentFamilyRoomBootstrap({
+    request:{headers:{}},familyHome:home,resolveAuthority:resolver,nowProvider:()=>T3,
+    resolveFamilyWorkProjection:async()=>snapshot
+  });
+  assert.equal(bootstrap.state,'CURRENT'); assert.equal(bootstrap.rooms.length,1);
+  assert.deepEqual(bootstrap.workStatus,{state:'HELD_UNAVAILABLE',pendingCount:null,activeCount:null,dueCount:null,attentionCount:null,sourceRef:null});
 });
 
 test('VF06-01 default work projection is held without disabling Family truth',async(t)=>{
@@ -388,6 +579,8 @@ function syntheticController({ bootstrap, lifecycleResponse = { status: 200, bod
       state: 'HELD_UNAVAILABLE',
       pendingCount: null,
       activeCount: null,
+      dueCount: null,
+      attentionCount: null,
       sourceRef: null
     },
     failureCode: null
@@ -489,6 +682,8 @@ test('VF07C1-04 Leave consumes only the current server-projected Family spaceRef
       state: 'HELD_UNAVAILABLE',
       pendingCount: null,
       activeCount: null,
+      dueCount: null,
+      attentionCount: null,
       sourceRef: null
     },
     failureCode: null
