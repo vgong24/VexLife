@@ -202,7 +202,7 @@ canonicalize_home() {
 controller_host_eligibility_state() {
   local selected_home="$1" probe_home="" output state attempt
   for attempt in 1 2 3; do
-    probe_home="${selected_home%/}/.vexlife-host-eligibility-${BASHPID:-$}-${RANDOM}-${RANDOM}"
+    probe_home="${selected_home%/}/.vexlife-host-eligibility-${BASHPID:-$$}-${RANDOM}-${RANDOM}"
     [ ! -e "$probe_home" ] && break
     probe_home=""
   done
