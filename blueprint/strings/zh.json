@@ -366,5 +366,11 @@
   "family-room.lifecycle.held": "当前家庭权限不可用",
   "family-room.channel": "家庭",
   "family-room.vex": "家庭",
-  "family-room.composer.available": "即使 Vex 工作正在排队或运行，家庭聊天仍保持可用"
+  "family-room.composer.available": "即使 Vex 工作正在排队或运行，家庭聊天仍保持可用",
+  "composer.command.ready": "命令输入 · 提交时会先在本地检查，不会先发送消息。",
+  "composer.command.announce.shortcut": "准备公告",
+  "composer.command.announce.requestable": "已识别公告请求 · 未发送任何消息。",
+  "composer.command.unknown": "未知命令 {command} · 未发送任何消息。",
+  "composer.command.malformed": "命令必须是单个斜杠标记 · 未发送任何消息。",
+  "composer.command.known-held": "已识别 {command}，但此输入框暂不提供该命令 · 未发送任何消息。"
 }

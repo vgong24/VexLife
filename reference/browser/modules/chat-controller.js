@@ -3,6 +3,7 @@ import {
   projectBrowserModelTurnFormation,
   renderModelTurnFormationDisclosure
 } from './model-turn-formation-disclosure.js';
+import { projectExperienceCommand } from '../../../src/core/experience-command-projection.mjs';
 
 const PROJECT_NODE = {
   'project.self-development': 'element.project.self-development',
@@ -18,7 +19,7 @@ const THREAD_NODE = {
   'thread.root-hub.welcome': 'element.thread.root-welcome'
 };
 
-export function createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation }) {
+export function createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation, experienceFoundation }) {
   const currentProject = () => projects.find((project) => project.projectRef === state.projectRef) || projects[0];
   const currentThread = () => currentProject().threads.find((thread) => thread.threadRef === state.threadRef) || currentProject().threads[0];
   const channelsForThread = (projectRef = state.projectRef, threadRef = state.threadRef) =>
@@ -36,6 +37,160 @@ export function createChatController({ state, projects, roles, channels, message
   let pendingSemanticRelayAction = null;
   let pendingSemanticRelayScope = null;
   let semanticRelayAttention = null;
+
+  const foundationProbe = projectExperienceCommand({
+    experienceFoundation,
+    request: {
+      kind: 'CLASSIFIER_RECEIPT',
+      classification: { kind: 'NOT_COMMAND', command: null, suggestion: null }
+    }
+  });
+  if (foundationProbe.routeDisposition !== 'NOT_COMMAND' || foundationProbe.effects !== false || foundationProbe.authorityGranted !== false) {
+    throw new Error('browser composer requires exact no-effect Experience Command foundation');
+  }
+  const commandAliasIndex = new Map(
+    experienceFoundation.commandBindings.flatMap((binding) =>
+      binding.aliases.map((alias) => [alias.literal, binding])
+    )
+  );
+  let composerCommandState = Object.freeze({
+    state: 'IDLE',
+    command: null,
+    commandRef: null,
+    projectionRef: null
+  });
+
+  function resetComposerCommandState() {
+    composerCommandState = Object.freeze({
+      state: 'IDLE',
+      command: null,
+      commandRef: null,
+      projectionRef: null
+    });
+  }
+
+  function setComposerCommandState(state, {
+    command = null,
+    commandRef = null,
+    projectionRef = null
+  } = {}) {
+    composerCommandState = Object.freeze({ state, command, commandRef, projectionRef });
+  }
+
+  function classifyComposerCommand(content) {
+    if (!content.startsWith('/')) {
+      return Object.freeze({
+        kind: 'CLASSIFIER_RECEIPT',
+        classification: Object.freeze({ kind: 'NOT_COMMAND', command: null, suggestion: null })
+      });
+    }
+    if (/\s/u.test(content)) {
+      return Object.freeze({ kind: 'MALFORMED_SLASH_LOCAL_REJECT', command: content });
+    }
+    const binding = commandAliasIndex.get(content) ?? null;
+    return Object.freeze({
+      kind: 'CLASSIFIER_RECEIPT',
+      classification: Object.freeze({
+        kind: binding ? 'KNOWN_COMMAND' : 'UNKNOWN_COMMAND',
+        command: content,
+        suggestion: null
+      }),
+      binding
+    });
+  }
+
+  function projectComposerCommand(content) {
+    const local = classifyComposerCommand(content);
+    if (local.kind === 'MALFORMED_SLASH_LOCAL_REJECT') {
+      return Object.freeze({
+        handled: true,
+        state: Object.freeze({
+          state: 'MALFORMED_SLASH',
+          command: local.command,
+          commandRef: null,
+          projectionRef: null
+        })
+      });
+    }
+
+    if (local.classification.kind === 'KNOWN_COMMAND' &&
+        local.binding?.commandRef !== 'command.vexlife.announce') {
+      return Object.freeze({
+        handled: true,
+        state: Object.freeze({
+          state: 'KNOWN_COMMAND_HELD',
+          command: local.classification.command,
+          commandRef: local.binding.commandRef,
+          projectionRef: null
+        })
+      });
+    }
+
+    const projection = projectExperienceCommand({
+      experienceFoundation,
+      request: {
+        kind: 'CLASSIFIER_RECEIPT',
+        classification: local.classification
+      }
+    });
+
+    if (projection.routeDisposition === 'NOT_COMMAND') {
+      return Object.freeze({ handled: false, projection });
+    }
+
+    if (projection.routeDisposition === 'LOCAL_REJECT_UNKNOWN_COMMAND') {
+      return Object.freeze({
+        handled: true,
+        state: Object.freeze({
+          state: 'UNKNOWN_COMMAND',
+          command: local.classification.command,
+          commandRef: null,
+          projectionRef: projection.projectionRef
+        })
+      });
+    }
+
+    const command = projection.commandProjectionOrNull;
+    if (
+      projection.routeDisposition !== 'REGISTERED_COMMAND_PROJECTED' ||
+      command?.commandRef !== 'command.vexlife.announce' ||
+      command?.capabilityRef !== 'conversation.announce' ||
+      command?.permissionGranted !== false ||
+      command?.executionRequested !== false ||
+      command?.executionPerformed !== false ||
+      projection.effects !== false ||
+      projection.authorityGranted !== false ||
+      projection.boundaries?.announceCommandIdentityMeansMessageDelivery !== false
+    ) {
+      throw new Error('browser /announce projection widened command authority or delivery semantics');
+    }
+    return Object.freeze({
+      handled: true,
+      state: Object.freeze({
+        state: 'ANNOUNCE_REQUESTABLE',
+        command: local.classification.command,
+        commandRef: command.commandRef,
+        projectionRef: projection.projectionRef
+      })
+    });
+  }
+
+  function composerCommandStatusText() {
+    if (composerCommandState.state === 'ANNOUNCE_REQUESTABLE') {
+      return t('composer.command.announce.requestable');
+    }
+    if (composerCommandState.state === 'UNKNOWN_COMMAND') {
+      return t('composer.command.unknown', { command: composerCommandState.command });
+    }
+    if (composerCommandState.state === 'MALFORMED_SLASH') {
+      return t('composer.command.malformed');
+    }
+    if (composerCommandState.state === 'KNOWN_COMMAND_HELD') {
+      return t('composer.command.known-held', { command: composerCommandState.command });
+    }
+    return null;
+  }
+
   const isVexAvailable = () => state.vexAvailability === 'AVAILABLE';
   const channelIsAvailable = (channel = currentChannel()) =>
     channel.roleKey === 'companion' ? companionBindingState === 'BOUND' : isVexAvailable();
@@ -415,19 +570,26 @@ export function createChatController({ state, projects, roles, channels, message
       count: channel.memberKeys.length
     });
     const available = channelIsAvailable(channel);
-    const availabilityRef = available
-      ? 'composer.availability.available'
-      : draft
-        ? 'composer.availability.unavailable-draft'
-        : 'composer.availability.unavailable';
-    $('#composerHint').textContent = `${t(availabilityRef)} · ${channelHint}`;
+    const slashCandidate = input.value.trim().startsWith('/');
+    const commandStatus = composerCommandStatusText();
+    const availabilityRef = slashCandidate
+      ? 'composer.command.ready'
+      : available
+        ? 'composer.availability.available'
+        : draft
+          ? 'composer.availability.unavailable-draft'
+          : 'composer.availability.unavailable';
+    $('#composerHint').textContent = `${commandStatus ?? t(availabilityRef)} · ${channelHint}`;
     form.dataset.availabilityState = available ? 'AVAILABLE' : 'UNAVAILABLE';
+    form.dataset.commandState = composerCommandState.state;
+    form.dataset.submitMode = slashCandidate ? 'COMMAND_CHECK' : 'MESSAGE_SEND';
     if (channel.roleKey === 'companion') form.dataset.companionBindingState = companionBindingState;
     else delete form.dataset.companionBindingState;
     form.dataset.draftState = draft?.state ?? 'NONE';
     input.dataset.draftState = draft?.state ?? 'NONE';
-    sendButton.disabled = !available;
-    sendButton.setAttribute('aria-disabled', String(!available));
+    const submitAvailable = available || slashCandidate;
+    sendButton.disabled = !submitAvailable;
+    sendButton.setAttribute('aria-disabled', String(!submitAvailable));
     renderSemanticRelayAttention();
   }
 
@@ -596,15 +758,40 @@ export function createChatController({ state, projects, roles, channels, message
   $('#messageInput').addEventListener('input', (event) => {
     const channel = currentChannel();
     const existing = draftForChannel(channel);
-    if (!channelIsAvailable(channel) || existing) setLocalDraft(channel, event.target.value);
+    const slashCandidate = event.target.value.trim().startsWith('/');
+    resetComposerCommandState();
+    if (slashCandidate) {
+      if (existing) state.unsentLocalDraft = null;
+    } else if (!channelIsAvailable(channel) || existing) {
+      setLocalDraft(channel, event.target.value);
+    }
     renderComposerTruth();
   });
+
+  const announceShortcutButton = $('#announceShortcutButton');
+  if (announceShortcutButton) {
+    announceShortcutButton.addEventListener('click', () => {
+      const input = $('#messageInput');
+      input.value = '/announce';
+      input.dispatchEvent(new Event('input', { bubbles:true }));
+      input.focus();
+    });
+  }
 
   $('#composer').addEventListener('submit', async (event) => {
     event.preventDefault();
     const input = $('#messageInput');
     const content = input.value.trim();
     if (!content) return;
+    const commandRoute = projectComposerCommand(content);
+    if (commandRoute.handled) {
+      const channel = currentChannel();
+      setLocalDraft(channel, '');
+      composerCommandState = commandRoute.state;
+      renderComposerTruth();
+      return;
+    }
+    resetComposerCommandState();
     const channel = currentChannel();
     if (channel.roleKey === 'companion' && companionBindingState === 'UNKNOWN') await refreshCompanionAvailability();
     if (!channelIsAvailable(channel)) {
@@ -674,6 +861,7 @@ export function createChatController({ state, projects, roles, channels, message
       ? structuredClone(semanticRelayAttention.publicAttention)
       : null,
     companionBindingState: () => companionBindingState,
+    composerCommandState: () => structuredClone(composerCommandState),
     pendingReplyCount: () => pendingReplyTimers.size
   };
 }
