@@ -9,6 +9,12 @@
       "sha256": "ef4ccce50ea8beaf131a1d3c29187c8a356ce759f068dd29987211807c072ffa"
     },
     {
+      "path": "src/core/generic-follow-through-runtime-projection.mjs",
+      "mode": "100644",
+      "bytes": 5401,
+      "sha256": "f6b8909947845372bdecb49dac6870a487ead01e3bcf091ba1350aea1c623e64"
+    },
+    {
       "path": "test/family-space-store.test.mjs",
       "mode": "100644",
       "bytes": 17836,
