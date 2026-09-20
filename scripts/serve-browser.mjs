@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import http from 'node:http';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -7,6 +8,8 @@ import {
   createVexLifeBrowserServer as createCoreVexLifeBrowserServer,
 } from './serve-browser-core.mjs';
 export * from './serve-browser-core.mjs';
+
+import { createGenericFollowThroughRuntimeProjectionResolver } from '../src/core/generic-follow-through-runtime-projection.mjs';
 
 import {
   BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES,
@@ -17,6 +20,7 @@ import {
 } from '../src/core/browser-relationships-invitation-product-bridge.mjs';
 
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
+const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 export const BROWSER_RELATIONSHIPS_INVITATION_REQUEST_MAX_BYTES = BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES * 2;
 
 function sendJson(response, statusCode, value) {
@@ -71,10 +75,21 @@ export function createVexLifeBrowserServer(options = {}) {
   }
   const {
     relationshipsInvitationProductBridge = createBrowserRelationshipsInvitationProductBridge(),
+    genericFollowThroughRuntimeHome = home,
+    resolveFamilyWorkProjection: callerSuppliedFamilyWorkProjection,
     ...coreOptions
   } = options;
+  if (callerSuppliedFamilyWorkProjection !== undefined) {
+    throw new TypeError('Production VexLife browser follow-through projection is source-managed and cannot be caller supplied');
+  }
   const invitationBridge = invitationBridgeOrThrow(relationshipsInvitationProductBridge);
-  const coreServer = createCoreVexLifeBrowserServer(coreOptions);
+  const resolveFamilyWorkProjection = createGenericFollowThroughRuntimeProjectionResolver({
+    home: path.resolve(genericFollowThroughRuntimeHome)
+  });
+  const coreServer = createCoreVexLifeBrowserServer({
+    ...coreOptions,
+    resolveFamilyWorkProjection
+  });
   const coreHandlers = coreServer.listeners('request');
   if (coreHandlers.length !== 1 || typeof coreHandlers[0] !== 'function') {
     throw new Error('VexLife browser core request handler is unavailable');
