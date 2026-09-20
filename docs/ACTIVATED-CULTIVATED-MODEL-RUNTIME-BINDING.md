@@ -100,9 +100,9 @@ Before every runtime start or reuse, VexLife opens the exact private directory a
 1. The root member names must equal the exact 12-member list, with no missing or extra member.
 2. Every member must be one regular non-symlink file.
 3. Each member SHA-256 and byte size is computed.
-4. Rows are code-point sorted and represented as compact JSON objects with `{path, bytes, sha256}`.
-5. SHA-256 of that compact JSON must equal the accepted content-set seal.
-6. Member count and total bytes must equal the accepted values.
+4. Rows are sorted by raw/code-point member name, matching the accepted upstream custody contract.
+5. The aggregate seal material is the exact UTF-8 concatenation `name + "|" + size + "|" + sha256 + "\\n"` for each sorted member.
+6. SHA-256 of that line-oriented seal material must equal the accepted content-set seal; member count and total bytes must also equal the accepted values.
 7. Provider-verified `model.safetensors` and `tokenizer.json` hashes must still match.
 
 There is no download, overwrite, repair, rematerialization, or provider fallback in this route. A mismatch returns the exact recovery predicate to restore current accepted custody outside this owner.

@@ -76,7 +76,7 @@ function makeFixtureArtifact(binding, root, entries = {
   binding.artifact.expectedMemberNames = rows.map((row) => row.path);
   binding.artifact.memberCount = rows.length;
   binding.artifact.totalBytes = rows.reduce((sum, row) => sum + row.bytes, 0);
-  binding.artifact.contentSetSha256 = sha256(Buffer.from(JSON.stringify(rows), 'utf8'));
+  binding.artifact.contentSetSha256 = sha256(Buffer.from(rows.map((row) => `${row.path}|${row.bytes}|${row.sha256}\n`).join(''), 'utf8'));
   binding.artifact.providerVerifiedMembers = {
     'model.safetensors': rows.find((row) => row.path === 'model.safetensors')?.sha256,
     'tokenizer.json': rows.find((row) => row.path === 'tokenizer.json')?.sha256
@@ -180,6 +180,8 @@ test('M4B05 custody verifier uses streaming SHA-256 and preserves exact content-
   const custodySource = source.slice(custodyStart, custodyEnd);
   assert.match(custodySource, /await sha256FileStream\(filePath, stat\.size, name\)/u);
   assert.doesNotMatch(custodySource, /fs\.readFileSync\(filePath\)/u);
+  assert.match(custodySource, /sealMaterial = rows\.map/u);
+  assert.doesNotMatch(custodySource, /JSON\.stringify\(rows\)/u);
 
   const streamStart = source.indexOf('async function sha256FileStream');
   const streamEnd = source.indexOf('\nfunction canonicalize', streamStart);

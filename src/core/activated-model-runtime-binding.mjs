@@ -533,7 +533,8 @@ export async function verifyActivatedArtifactCustody({ binding, modelDirectory }
     }
   }
   rows.sort((a,b) => codePointSort(a.path,b.path));
-  const seal = sha256Bytes(Buffer.from(JSON.stringify(rows), 'utf8'));
+  const sealMaterial = rows.map((row) => `${row.path}|${row.bytes}|${row.sha256}\n`).join('');
+  const seal = sha256Bytes(Buffer.from(sealMaterial, 'utf8'));
   if (rows.length !== binding.artifact.memberCount || totalBytes !== binding.artifact.totalBytes || seal !== binding.artifact.contentSetSha256) {
     fail('ACTIVATED_ARTIFACT_CONTENT_SEAL_MISMATCH', 'Activated model content-set seal no longer matches exact accepted custody', {
       expectedMemberCount: binding.artifact.memberCount,
