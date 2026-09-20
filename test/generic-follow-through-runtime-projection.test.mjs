@@ -62,7 +62,8 @@ const FAMILY_CHANNEL_REF = 'channel.generic-runtime.product';
 const FAMILY_THREAD_REF = 'thread.generic-runtime.product';
 
 function tempHome(t, label) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-grp-${label}-`));
+  const rawRoot = fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-grp-${label}-`));
+  const root = fs.realpathSync.native(rawRoot);
   const home = path.join(root, 'home');
   fs.mkdirSync(home, { recursive: true });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
