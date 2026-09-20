@@ -23,8 +23,8 @@
     {
       "path": "test/intent-workgraph.test.mjs",
       "mode": "100644",
-      "bytes": 39625,
-      "sha256": "d02eff1edb1f267277836b223add4ff3b1586df653688d50e29dc193a44165ea"
+      "bytes": 53265,
+      "sha256": "0f4f0391541986171b981082b1befc7e249cc578aaf787bf22d8d66e9025431d"
     },
     {
       "path": "test/navigation-continuity.test.mjs",
