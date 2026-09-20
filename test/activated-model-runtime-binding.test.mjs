@@ -114,7 +114,7 @@ function makeHandoff(binding, modelDirectory, pythonExecutable, sourceIdentity =
       registrySha256: sourceIdentity.registrySha256,
       moduleSha256: sourceIdentity.moduleSha256
     },
-    privateLocators: { modelDirectory, pythonExecutable }
+    privateLocators: { modelDirectory, pythonExecutable, pythonEnvironmentRoot: path.dirname(pythonExecutable) }
   };
   const bytes = Buffer.from(`${JSON.stringify(handoff, null, 2)}\n`, 'utf8');
   return { handoff, bytes, digest: sha256(bytes) };
@@ -290,7 +290,7 @@ test('M4B09-M4B10-M4B15-M4B16 first start persists Home binding; restart reuses 
   };
   const commonHooks = {
     host: { platform: 'darwin', architecture: 'arm64' },
-    versionProbe: async () => ({ pythonVersion: '3.14.7', mlxLmVersion: '0.32.0' }),
+    versionProbe: async () => ({ pythonVersion: '3.14.7', mlxLmVersion: '0.32.0', prefix: path.dirname(pythonExecutable), executable: pythonExecutable }),
     fetchImpl,
     processMatches: ({ pid }) => pid === currentPid && oldAlive,
     sleep: async () => {},
@@ -372,6 +372,86 @@ test('M4B07 healthy loopback with wrong served materialization fails exact ident
       }
     }),
     (error) => errorCode(error) === 'ACTIVATED_RUNTIME_MODEL_IDENTITY_QUALIFICATION_FAILED'
+  );
+});
+
+
+// M4B06/M4B17: consume the accepted retained-trainer launcher contract, including a final venv symlink when its runtime prefix remains inside the exact environment.
+test('M4B06 preserved trainer venv symlink launcher is accepted only with exact in-environment prefix', async () => {
+  const binding = baseBinding();
+  const root = tempDir('python-symlink');
+  const home = makeHome('python-symlink');
+  const { modelDirectory } = makeFixtureArtifact(binding, root);
+  const environmentRoot = path.join(root, 'trainer-env');
+  const bin = path.join(environmentRoot, 'venv', 'bin');
+  fs.mkdirSync(bin, { recursive: true });
+  const target = path.join(root, 'system-python3.14');
+  fs.writeFileSync(target, '#!/bin/sh\nexit 0\n', { mode: 0o700 });
+  const pythonExecutable = path.join(bin, 'python');
+  fs.symlinkSync(target, pythonExecutable);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  handoff.handoff.privateLocators.pythonEnvironmentRoot = environmentRoot;
+  handoff.bytes = Buffer.from(`${JSON.stringify(handoff.handoff, null, 2)}\n`, 'utf8');
+  handoff.digest = sha256(handoff.bytes);
+  let spawned = false;
+  const fetchImpl = async (url, options = {}) => {
+    if (url.endsWith('/health')) return spawned ? jsonResponse({ status: 'ok' }) : jsonResponse({ status: 'unavailable' }, 503);
+    if (url.endsWith('/v1/models')) return jsonResponse({ object: 'list', data: [{ id: path.resolve(modelDirectory), object: 'model' }] });
+    if (url.endsWith('/v1/chat/completions')) return jsonResponse({ model: JSON.parse(options.body).model, choices: [{ message: { content: '' } }] });
+    throw new Error(`unexpected URL ${url}`);
+  };
+  const result = await startOrResumeActivatedModelRuntime({
+    home,
+    binding,
+    sourceIdentity: SOURCE_IDENTITY,
+    handoffBytes: handoff.bytes,
+    handoffSha256: handoff.digest,
+    environment: {},
+    hooks: {
+      host: { platform: 'darwin', architecture: 'arm64' },
+      versionProbe: async () => ({ pythonVersion: '3.14.7', mlxLmVersion: '0.32.0', prefix: path.join(environmentRoot, 'venv'), executable: pythonExecutable }),
+      fetchImpl,
+      processAlive: () => spawned,
+      processMatches: () => false,
+      spawnRuntime: async () => { spawned = true; return 42001; },
+      sleep: async () => {},
+      now: () => '2026-09-20T09:45:00.000Z'
+    }
+  });
+  assert.equal(result.runtimeDisposition, 'STARTED_NEW_EXACT_MLX_RUNTIME');
+  const config = JSON.parse(fs.readFileSync(path.join(home, 'config', 'model.json'), 'utf8'));
+  assert.equal(config.privatePythonEnvironmentRootPath, path.resolve(environmentRoot));
+});
+
+test('M4B06 preserved trainer launcher fails closed when Python prefix escapes its exact environment root', async () => {
+  const binding = baseBinding();
+  const root = tempDir('python-prefix-escape');
+  const home = makeHome('python-prefix-escape');
+  const { modelDirectory } = makeFixtureArtifact(binding, root);
+  const environmentRoot = path.join(root, 'trainer-env');
+  fs.mkdirSync(environmentRoot, { recursive: true });
+  const pythonExecutable = makePython(environmentRoot);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  await assert.rejects(
+    startOrResumeActivatedModelRuntime({
+      home,
+      binding,
+      sourceIdentity: SOURCE_IDENTITY,
+      handoffBytes: handoff.bytes,
+      handoffSha256: handoff.digest,
+      environment: {},
+      hooks: {
+        host: { platform: 'darwin', architecture: 'arm64' },
+        versionProbe: async () => ({ pythonVersion: '3.14.7', mlxLmVersion: '0.32.0', prefix: path.join(root, 'outside-env'), executable: pythonExecutable }),
+        fetchImpl: async () => { throw new Error('must fail before endpoint'); },
+        processAlive: () => false,
+        processMatches: () => false,
+        spawnRuntime: async () => { throw new Error('must fail before runtime'); },
+        sleep: async () => {},
+        now: () => '2026-09-20T09:45:00.000Z'
+      }
+    }),
+    (error) => errorCode(error) === 'ACTIVATED_RUNTIME_VERSION_PROBE_FAILED'
   );
 });
 

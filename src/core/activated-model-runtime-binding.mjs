@@ -130,6 +130,46 @@ function assertDirectoryNonLink(dirPath, code, label) {
   if (stat.isSymbolicLink() || !stat.isDirectory()) fail(code, `${label} must be one directory and must not be a symlink`);
   return stat;
 }
+function assertPathInside(root, target, code, label) {
+  const rootReal = fs.realpathSync(root);
+  const absolute = path.resolve(target);
+  const relative = path.relative(rootReal, absolute);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) fail(code, `${label} must be inside the accepted Python environment root`);
+  let cursor = rootReal;
+  const parts = relative.split(path.sep).filter(Boolean);
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    cursor = path.join(cursor, parts[index]);
+    let stat;
+    try { stat = fs.lstatSync(cursor); }
+    catch { fail(code, `${label} ancestor is unavailable`); }
+    if (stat.isSymbolicLink() || !stat.isDirectory()) fail(code, `${label} ancestor must be a non-symlink directory`);
+  }
+  return { rootReal, absolute };
+}
+function assertPythonLauncher(pythonExecutable, pythonEnvironmentRoot) {
+  const code = 'ACTIVATED_RUNTIME_VERSION_PROBE_FAILED';
+  assertDirectoryNonLink(pythonEnvironmentRoot, code, 'Accepted Python environment root');
+  const { rootReal, absolute } = assertPathInside(pythonEnvironmentRoot, pythonExecutable, code, 'Accepted Python launcher');
+  let stat;
+  try { stat = fs.lstatSync(absolute); }
+  catch { fail(code, 'Accepted Python launcher is unavailable'); }
+  if (!stat.isFile() && !stat.isSymbolicLink()) fail(code, 'Accepted Python launcher must be a regular file or final symlink');
+  try { fs.accessSync(absolute, fs.constants.X_OK); }
+  catch { fail(code, 'Accepted Python launcher is not executable'); }
+  let realPath;
+  try { realPath = fs.realpathSync(absolute); }
+  catch { fail(code, 'Accepted Python launcher target is unavailable'); }
+  let realStat;
+  try { realStat = fs.statSync(realPath); }
+  catch { fail(code, 'Accepted Python launcher target is unavailable'); }
+  if (!realStat.isFile()) fail(code, 'Accepted Python launcher target must be a regular file');
+  return Object.freeze({ pythonExecutable: absolute, pythonEnvironmentRoot: rootReal, pythonExecutableRealPath: realPath, launcherIsSymlink: stat.isSymbolicLink() });
+}
+function pathInside(root, target) {
+  const rootResolved = path.resolve(root);
+  const targetResolved = path.resolve(target);
+  return targetResolved === rootResolved || targetResolved.startsWith(`${rootResolved}${path.sep}`);
+}
 function exactEqual(actual, expected, label, code = 'ACTIVATED_BINDING_SOURCE_INVALID') {
   if (actual !== expected) fail(code, `${label} does not match the accepted binding`, { expected, actual });
 }
@@ -342,7 +382,8 @@ function parseHandoff({ handoffBytes, handoffSha256, binding, sourceIdentity }) 
   const privateLocators = requireObject(handoff.privateLocators, 'handoff.privateLocators', 'ACTIVATED_BINDING_HANDOFF_MISMATCH');
   const modelDirectory = normalizeAbs(privateLocators.modelDirectory, 'handoff.privateLocators.modelDirectory');
   const pythonExecutable = normalizeAbs(privateLocators.pythonExecutable, 'handoff.privateLocators.pythonExecutable');
-  return Object.freeze({ handoff, handoffSha256: actualDigest, modelDirectory, pythonExecutable });
+  const pythonEnvironmentRoot = normalizeAbs(privateLocators.pythonEnvironmentRoot, 'handoff.privateLocators.pythonEnvironmentRoot');
+  return Object.freeze({ handoff, handoffSha256: actualDigest, modelDirectory, pythonExecutable, pythonEnvironmentRoot });
 }
 
 function homePaths(home) {
@@ -386,14 +427,15 @@ function activatedConfigState(config, binding, sourceDigests) {
   };
   const mismatches = Object.entries(required).filter(([key, expected]) => config[key] !== expected).map(([key]) => key);
   if (mismatches.length > 0) return { state: 'STALE', mismatches };
-  if (!path.isAbsolute(config.privateMaterializationPath ?? '') || !path.isAbsolute(config.privatePythonExecutablePath ?? '')) return { state: 'STALE', mismatches: ['privateLocators'] };
+  if (!path.isAbsolute(config.privateMaterializationPath ?? '') || !path.isAbsolute(config.privatePythonExecutablePath ?? '') || !path.isAbsolute(config.privatePythonEnvironmentRootPath ?? '')) return { state: 'STALE', mismatches: ['privateLocators'] };
   return { state: 'CURRENT' };
 }
 
 function privateLocatorsFromConfig(config) {
   return {
     modelDirectory: path.resolve(config.privateMaterializationPath),
-    pythonExecutable: path.resolve(config.privatePythonExecutablePath)
+    pythonExecutable: path.resolve(config.privatePythonExecutablePath),
+    pythonEnvironmentRoot: path.resolve(config.privatePythonEnvironmentRootPath)
   };
 }
 
@@ -509,13 +551,22 @@ function exactRuntimeArguments(binding, modelDirectory) {
 }
 
 async function defaultVersionProbe(pythonExecutable) {
-  const py = spawnSync(pythonExecutable, ['--version'], { encoding: 'utf8', shell: false, windowsHide: true });
-  if (py.error || py.status !== 0) fail('ACTIVATED_RUNTIME_VERSION_PROBE_FAILED', 'Accepted Python executable version could not be established');
-  const pythonText = `${py.stdout ?? ''}\n${py.stderr ?? ''}`;
-  const pythonMatch = /Python\s+([0-9]+\.[0-9]+\.[0-9]+)/u.exec(pythonText);
-  const mlx = spawnSync(pythonExecutable, ['-c', 'import importlib.metadata as m; print(m.version("mlx-lm"))'], { encoding: 'utf8', shell: false, windowsHide: true });
-  if (mlx.error || mlx.status !== 0) fail('ACTIVATED_RUNTIME_VERSION_PROBE_FAILED', 'Accepted mlx-lm version could not be established');
-  return { pythonVersion: pythonMatch?.[1] ?? null, mlxLmVersion: String(mlx.stdout ?? '').trim() };
+  const probeCode = [
+    'import json, platform, sys',
+    'import importlib.metadata as m',
+    'import mlx',
+    'import mlx_lm',
+    'print(json.dumps({"pythonVersion": platform.python_version(), "mlxLmVersion": m.version("mlx-lm"), "prefix": sys.prefix, "executable": sys.executable}))'
+  ].join('; ');
+  const probe = spawnSync(pythonExecutable, ['-c', probeCode], {
+    encoding: 'utf8', shell: false, windowsHide: true,
+    env: { ...process.env, PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1' }
+  });
+  if (probe.error || probe.status !== 0) fail('ACTIVATED_RUNTIME_VERSION_PROBE_FAILED', 'Accepted Python/mlx-lm environment could not be established');
+  let payload;
+  try { payload = JSON.parse(String(probe.stdout ?? '').trim().split(/\r?\n/u).filter(Boolean).at(-1)); }
+  catch { fail('ACTIVATED_RUNTIME_VERSION_PROBE_FAILED', 'Accepted Python/mlx-lm environment returned invalid probe evidence'); }
+  return payload;
 }
 
 function defaultProcessAlive(pid) {
@@ -634,11 +685,11 @@ async function waitForHealthy(binding, pid, hooks) {
   fail('ACTIVATED_RUNTIME_START_FAILED', 'MLX runtime did not become healthy before source-bounded startup timeout');
 }
 
-function runtimeReceiptReusable(prior, { binding, sourceDigests, pythonExecutable, modelDirectory, args, hooks }) {
+function runtimeReceiptReusable(prior, { binding, sourceDigests, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks }) {
   if (!prior || prior.schemaVersion !== ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA || prior.state !== 'ACTIVATED_MODEL_RUNTIME_QUALIFIED') return false;
   if (prior.bindingRef !== binding.bindingRef || prior.modelRef !== binding.modelRef || prior.modelProfileRef !== binding.modelProfileRef) return false;
   if (prior.registrySha256 !== sourceDigests.registrySha256 || prior.moduleSha256 !== sourceDigests.moduleSha256) return false;
-  if (prior.privateMaterializationPath !== modelDirectory || prior.privatePythonExecutablePath !== pythonExecutable) return false;
+  if (prior.privateMaterializationPath !== modelDirectory || prior.privatePythonExecutablePath !== pythonExecutable || prior.privatePythonEnvironmentRootPath !== pythonEnvironmentRoot) return false;
   if (!Number.isInteger(prior.runtime?.pid) || prior.runtime.pid <= 0 || !hooks.processAlive(prior.runtime.pid)) return false;
   return hooks.processMatches({ pid: prior.runtime.pid, pythonExecutable, args });
 }
@@ -672,12 +723,16 @@ export async function startOrResumeActivatedModelRuntime({
   const locators = resolvePrivateLocators({ config: priorConfig, handoffBytes, handoffSha256, binding, sourceIdentity });
   const modelDirectory = path.resolve(locators.modelDirectory);
   const pythonExecutable = path.resolve(locators.pythonExecutable);
-  assertRegularNonLink(pythonExecutable, 'ACTIVATED_RUNTIME_VERSION_PROBE_FAILED', 'Accepted Python executable');
+  const pythonEnvironmentRoot = path.resolve(locators.pythonEnvironmentRoot);
+  const launcher = assertPythonLauncher(pythonExecutable, pythonEnvironmentRoot);
 
   const custody = await verifyActivatedArtifactCustody({ binding, modelDirectory });
   const versions = await hooks.versionProbe(pythonExecutable);
   if (versions?.pythonVersion !== binding.runtime.pythonVersion || versions?.mlxLmVersion !== binding.runtime.mlxLmVersion) {
     fail('ACTIVATED_RUNTIME_VERSION_PROBE_FAILED', 'Python/mlx-lm runtime versions do not match the accepted runtime adapter', { expectedPython: binding.runtime.pythonVersion, actualPython: versions?.pythonVersion ?? null, expectedMlxLm: binding.runtime.mlxLmVersion, actualMlxLm: versions?.mlxLmVersion ?? null });
+  }
+  if (typeof versions?.prefix !== 'string' || !path.isAbsolute(versions.prefix) || !pathInside(launcher.pythonEnvironmentRoot, versions.prefix)) {
+    fail('ACTIVATED_RUNTIME_VERSION_PROBE_FAILED', 'Python runtime prefix is not inside the exact preserved trainer environment');
   }
 
   const args = exactRuntimeArguments(binding, modelDirectory);
@@ -687,7 +742,7 @@ export async function startOrResumeActivatedModelRuntime({
   }
   let pid = null;
   let runtimeDisposition = null;
-  if (runtimeReceiptReusable(priorReceipt, { binding, sourceDigests, pythonExecutable, modelDirectory, args, hooks })) {
+  if (runtimeReceiptReusable(priorReceipt, { binding, sourceDigests, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks })) {
     pid = priorReceipt.runtime.pid;
     runtimeDisposition = 'REUSED_EXACT_OWNED_MLX_RUNTIME';
   } else {
@@ -724,6 +779,7 @@ export async function startOrResumeActivatedModelRuntime({
     formedAt,
     privateMaterializationPath: modelDirectory,
     privatePythonExecutablePath: pythonExecutable,
+    privatePythonEnvironmentRootPath: pythonEnvironmentRoot,
     handoffRef: locators.handoff?.handoffRef ?? locators.handoffRef ?? priorConfig?.handoffRef ?? null,
     handoffSha256: locators.handoffSha256 ?? priorConfig?.handoffSha256 ?? null,
     custody,
@@ -753,6 +809,7 @@ export async function startOrResumeActivatedModelRuntime({
     moduleSha256: sourceDigests.moduleSha256,
     privateMaterializationPath: modelDirectory,
     privatePythonExecutablePath: pythonExecutable,
+    privatePythonEnvironmentRootPath: pythonEnvironmentRoot,
     endpoint: binding.runtime.origin,
     requestModel: binding.runtime.requestModel,
     runtimePid: pid,
