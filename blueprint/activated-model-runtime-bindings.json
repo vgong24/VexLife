@@ -16,7 +16,7 @@
       "artifact": {
         "artifactRef": "artifact.vex.m2.qwen3.5-4b-mlx-4bit.32f3e8ec",
         "adapterClass": "MLX_SAFETENSORS_ARTIFACT",
-        "contentSetAlgorithm": "SHA256_JSON_SORTED_PATH_BYTES_SHA256_V1",
+        "contentSetAlgorithm": "SHA256_RAW_LEXICAL_NAME_SIZE_SHA256_LINES_V1",
         "contentSetSha256": "368e89e5ca219fab3398c1830e982ef5a8a949bac1a17b8f3320bdb1e512d9cf",
         "memberCount": 12,
         "totalBytes": 3061132920,

@@ -231,7 +231,7 @@ export function validateActivatedModelRuntimeBindingRegistry(registry) {
     const artifact = requireObject(binding.artifact, 'binding.artifact');
     exactEqual(artifact.artifactRef, EXACT_ARTIFACT_REF, 'artifact.artifactRef');
     exactEqual(artifact.adapterClass, 'MLX_SAFETENSORS_ARTIFACT', 'artifact.adapterClass');
-    exactEqual(artifact.contentSetAlgorithm, 'SHA256_JSON_SORTED_PATH_BYTES_SHA256_V1', 'artifact.contentSetAlgorithm');
+    exactEqual(artifact.contentSetAlgorithm, 'SHA256_RAW_LEXICAL_NAME_SIZE_SHA256_LINES_V1', 'artifact.contentSetAlgorithm');
     exactEqual(artifact.contentSetSha256, EXACT_ARTIFACT_SEAL, 'artifact.contentSetSha256');
     exactEqual(artifact.memberCount, EXACT_ARTIFACT_MEMBER_COUNT, 'artifact.memberCount');
     exactEqual(artifact.totalBytes, EXACT_ARTIFACT_TOTAL_BYTES, 'artifact.totalBytes');
