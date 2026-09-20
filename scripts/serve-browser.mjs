@@ -9,8 +9,6 @@ import {
 } from './serve-browser-core.mjs';
 export * from './serve-browser-core.mjs';
 
-import { createGenericFollowThroughRuntimeProjectionResolver } from '../src/core/generic-follow-through-runtime-projection.mjs';
-
 import {
   BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES,
   BROWSER_RELATIONSHIPS_INVITATION_PRODUCT_API_PATH,
@@ -69,6 +67,21 @@ function invitationBridgeOrThrow(value) {
   return value;
 }
 
+function sourceManagedGenericFollowThroughResolver(runtimeHome) {
+  const homeRoot = path.resolve(runtimeHome);
+  let resolverPromise = null;
+  return async function resolveFamilyWorkProjection() {
+    if (resolverPromise === null) {
+      resolverPromise = import('../src/core/generic-follow-through-runtime-projection.mjs')
+        .then(({ createGenericFollowThroughRuntimeProjectionResolver }) =>
+          createGenericFollowThroughRuntimeProjectionResolver({ home: homeRoot }));
+    }
+    const resolver = await resolverPromise;
+    return resolver();
+  };
+}
+
+
 export function createVexLifeBrowserServer(options = {}) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new TypeError('VexLife browser server options must be one object');
@@ -83,9 +96,9 @@ export function createVexLifeBrowserServer(options = {}) {
     throw new TypeError('Production VexLife browser follow-through projection is source-managed and cannot be caller supplied');
   }
   const invitationBridge = invitationBridgeOrThrow(relationshipsInvitationProductBridge);
-  const resolveFamilyWorkProjection = createGenericFollowThroughRuntimeProjectionResolver({
-    home: path.resolve(genericFollowThroughRuntimeHome)
-  });
+  const resolveFamilyWorkProjection = sourceManagedGenericFollowThroughResolver(
+    genericFollowThroughRuntimeHome
+  );
   const coreServer = createCoreVexLifeBrowserServer({
     ...coreOptions,
     resolveFamilyWorkProjection
