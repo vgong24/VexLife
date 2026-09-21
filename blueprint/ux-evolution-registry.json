@@ -164,7 +164,8 @@
         "reference/browser/app.js"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
-      "retirementDisposition": "NOT_ELIGIBLE"
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
     },
     {
       "semanticRef": "feature.vexlife.screen-aware-guide",
@@ -195,7 +196,8 @@
         "reference/browser/app.js"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
-      "retirementDisposition": "NOT_ELIGIBLE"
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
     },
     {
       "semanticRef": "feature.vexlife.terrain",
@@ -228,7 +230,8 @@
         "reference/browser/app.js"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
-      "retirementDisposition": "NOT_ELIGIBLE"
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
     },
     {
       "semanticRef": "feature.vexlife.contextual-workspace",
@@ -256,7 +259,8 @@
         "reference/browser/app.js"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
-      "retirementDisposition": "NOT_ELIGIBLE"
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
     },
     {
       "semanticRef": "feature.vexlife.runtime-failure-recovery",
@@ -287,7 +291,8 @@
         "reference/browser/app.js"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
-      "retirementDisposition": "NOT_ELIGIBLE"
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
     },
     {
       "semanticRef": "feature.vexlife.security-access",
@@ -314,7 +319,8 @@
         "reference/browser/app.js"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
-      "retirementDisposition": "NOT_ELIGIBLE"
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
     },
     {
       "semanticRef": "feature.vexlife.living-journal",
@@ -346,7 +352,8 @@
         "reference/browser/app.js"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
-      "retirementDisposition": "NOT_ELIGIBLE"
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
     }
   ],
   "findingInputs": [
@@ -628,5 +635,36 @@
       ],
       "mutationAllowedInE0A": false
     }
-  ]
+  ],
+  "inspectionProjection": {
+    "projectionRef": "projection.vexlife.ux-evolution.inspection",
+    "projectionClass": "READ_ONLY_INSPECTION_PROJECTION",
+    "purpose": "Let a human or Vex inspect UX migration ancestry, state, parity, findings, source and evidence without making the inspection surface a semantic or migration owner.",
+    "consumerClasses": [
+      "HUMAN",
+      "VEX"
+    ],
+    "activationClass": "EXPLICIT_INSPECTION_ONLY",
+    "surfaceRefs": [
+      "surface.vexlife.experience-gallery",
+      "surface.vexlife.render-lab"
+    ],
+    "pathFields": [
+      "semanticRef",
+      "referenceProjectionRefs",
+      "evolutionProjectionRefs",
+      "migrationLifecycleState",
+      "parityState",
+      "findingRefs",
+      "sourceRefs",
+      "evidenceRefs"
+    ],
+    "sourceManaged": true,
+    "readOnly": true,
+    "grantsAuthority": false,
+    "canonicalRegistry": false,
+    "appShell": false,
+    "alwaysVisibleEngineeringDashboard": false,
+    "missingEvidenceState": "PENDING_EXPLICIT_WITNESS"
+  }
 }

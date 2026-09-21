@@ -26,6 +26,14 @@ Render Lab is the accepted `MOCK_ONLY_VISUAL_SPECIMEN_SURFACE`; it is not produc
 
 E0-A consumes both as supporting UX context and mutates neither.
 
+## Read-only UX Evolution inspection projection
+
+E0-A preserves one explicit inspection chain for humans and Vex:
+
+`semanticRef -> Reference projection -> Evolution projection -> migration state -> parity state -> findings -> source/evidence`
+
+The inspection projection is source-managed, explicit-invocation-only and read-only. Experience Gallery and Render Lab may present this chain as inspection surfaces, but neither becomes the canonical migration registry, a second app shell, action authority, or an always-visible engineering dashboard. Missing lived evidence remains visibly pending rather than inferred.
+
 ## Findings and witness
 
 All 21 `UXF-*` findings remain migration inputs. Static source cannot fabricate lived closure. Visual Assurance stays with `github.issue.vexlife.625`; Evolution comparison requires an exact candidate head.
