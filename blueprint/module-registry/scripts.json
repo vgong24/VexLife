@@ -862,7 +862,7 @@
     "role": "Emit deterministic E0-A UX migration and projection coverage accounting without changing browser behavior or semantic state ownership.",
     "platformScope": "BUILD_TIME",
     "reads": [
-      "registry.vexlife.ux-evolution.001",
+      "blueprint/ux-evolution-registry.json",
       "module.vexlife.core.ux-evolution"
     ],
     "writes": [],

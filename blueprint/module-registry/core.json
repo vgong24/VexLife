@@ -1345,7 +1345,7 @@
     "role": "Validate the E0-A UX projection-migration membrane, parity accounting, cutover gates, finding witness evidence, supporting UX-surface boundaries, and deterministic coverage without taking semantic feature/state ownership.",
     "platformScope": "UNIVERSAL",
     "reads": [
-      "registry.vexlife.ux-evolution.001",
+      "blueprint/ux-evolution-registry.json",
       "registry.vexlife.features.001"
     ],
     "writes": [],
