@@ -3,6 +3,12 @@
   "bucketId": "17",
   "files": [
     {
+      "path": "blueprint/ux-evolution-registry.json",
+      "mode": "100644",
+      "bytes": 21119,
+      "sha256": "563af7dd4604b993b7df3095621dc1154e8888801370bdd8622e19be644450f7"
+    },
+    {
       "path": "reference/browser/modules/public-learning-controller-activated.js",
       "mode": "100644",
       "bytes": 5361,

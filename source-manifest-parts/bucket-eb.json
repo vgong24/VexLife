@@ -15,6 +15,12 @@
       "sha256": "c09a16c78e67eae90abf371867053419f85674ebd02e976fd2183f91152b1a22"
     },
     {
+      "path": "scripts/ux-evolution-report.mjs",
+      "mode": "100644",
+      "bytes": 1587,
+      "sha256": "d09d2c85b569dd516479994e2dd71c1463f47e829eb469c36ea39c94ffd358ce"
+    },
+    {
       "path": "src/core/navigation-continuity-registry.mjs",
       "mode": "100644",
       "bytes": 4316,

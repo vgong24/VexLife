@@ -1,0 +1,670 @@
+{
+  "schemaVersion": "vexlife.ux-evolution-registry/v1",
+  "registryRef": "registry.vexlife.ux-evolution.001",
+  "sourceVersionRef": "source-version.vexlife.ux-evolution.e0-a.001",
+  "stageRef": "stage.vexlife.ux-evolution.e0-a",
+  "purpose": "Account for UX projection migration without duplicating semantic state, feature, experience, continuity, Memory, relationship, navigation or renderer authority.",
+  "ownership": {
+    "owns": [
+      "REFERENCE_BASELINE_BINDING",
+      "PROJECTION_MIGRATION_ACCOUNTING",
+      "PARITY_ACCOUNTING",
+      "FINDING_WITNESS_ACCOUNTING",
+      "CUTOVER_RETIREMENT_ACCOUNTING"
+    ],
+    "doesNotOwn": [
+      "FEATURE_SEMANTICS",
+      "EXPERIENCE_SEMANTICS",
+      "JOURNEY_STATE",
+      "TERRAIN_STATE",
+      "CONVERSATION_STATE",
+      "MEMORY",
+      "RELATIONSHIP_STATE",
+      "CONTINUITY_MODEL_EVOLUTION",
+      "BROWSER_RENDERER_RUNTIME"
+    ]
+  },
+  "referenceBaseline": {
+    "baselineRef": "baseline.vexlife.reference.20260921.e0",
+    "projectionClass": "REFERENCE_PROJECTION",
+    "repository": "vgong24/VexLife",
+    "main": "09f43a7a173b5a5c48506a6addcfc7407b6bb92a",
+    "tree": "95f74fa641ca0e5b89abc9f289dc162e795d177d",
+    "historicalVisualSpecimenCommit": "098ad8dda78e8133f341a7856ffcf0645a3aa40e",
+    "liveSourceOutranksSnapshot": true
+  },
+  "projectionClasses": [
+    "REFERENCE_PROJECTION",
+    "EVOLUTION_PROJECTION"
+  ],
+  "invariants": [
+    "DUAL_PROJECTION != DUAL_STATE_OWNERSHIP",
+    "CUTOVER != RETIREMENT",
+    "ROLLBACK_PROJECTION != ROLLBACK_USER_DATA",
+    "NEW_FORM != NEW_MEANING",
+    "NEW_VISUAL_AFFORDANCE != NEW_SEMANTIC_CAPABILITY"
+  ],
+  "designLaws": [
+    {
+      "designLawRef": "law.ux-evolution.one-semantic-state-owner",
+      "statement": "Migration accounting never creates a new semantic state owner."
+    },
+    {
+      "designLawRef": "law.ux-evolution.one-active-renderer",
+      "statement": "At most one renderer is active for a migrated surface at a time; shadow comparison is evidence, not dual live authority."
+    },
+    {
+      "designLawRef": "law.ux-evolution.rollback-projection-not-user-data",
+      "statement": "Projection rollback changes presentation selection only; it never rewinds or forks user data."
+    },
+    {
+      "designLawRef": "law.ux-evolution.new-form-not-new-meaning",
+      "statement": "Presentation changes do not create semantic capability unless separately admitted by its rightful owner."
+    }
+  ],
+  "dispositions": [
+    "KEEP",
+    "REDESIGN_PRESENTATION",
+    "MOVE",
+    "MERGE",
+    "REPLACE",
+    "DEPRECATE",
+    "REMOVE",
+    "NEW",
+    "HELD"
+  ],
+  "migrationLifecycleStates": [
+    "REFERENCE_FROZEN",
+    "SOURCE_MAPPED",
+    "DESIGN_AGREED",
+    "SHADOW_IMPLEMENTED",
+    "SEMANTIC_PARITY_CHECKED",
+    "ACCESSIBILITY_RECOVERY_CHECKED",
+    "HUMAN_WALKED",
+    "CUTOVER_READY",
+    "CUTOVER_DEFAULT",
+    "REFERENCE_FALLBACK_AVAILABLE",
+    "RETIREMENT_REVIEW",
+    "RETIRED"
+  ],
+  "parityDimensions": [
+    "SEMANTIC",
+    "TRUTH_CURRENTNESS",
+    "STATE_EFFECT_OWNERSHIP",
+    "RECOVERY_NAVIGATION",
+    "ACCESSIBILITY"
+  ],
+  "parityStates": [
+    "NOT_ASSESSED",
+    "PARTIAL",
+    "SATISFIED",
+    "FAILED",
+    "HELD"
+  ],
+  "findingLifecycleStates": [
+    "OPEN",
+    "REPRODUCED",
+    "SOURCE_MAPPED",
+    "DESIGN_TARGET_BOUND",
+    "EVOLUTION_WITNESSED",
+    "HUMAN_ACCEPTED",
+    "CLOSED"
+  ],
+  "coverageClassifications": [
+    "LOST",
+    "HELD",
+    "INTENTIONALLY_UNAVAILABLE",
+    "NOT_YET_MIGRATED",
+    "SHADOW_MIGRATION",
+    "VALID_MULTI_PROJECTION",
+    "NEW",
+    "CUTOVER_OCCURRED",
+    "DUPLICATE_UNRESOLVED"
+  ],
+  "cutoverDispositions": [
+    "NOT_PROPOSED",
+    "HOLD_REFERENCE",
+    "CUTOVER_PROPOSED",
+    "CUTOVER_ACCEPTED",
+    "CUTOVER_REJECTED"
+  ],
+  "retirementDispositions": [
+    "NOT_ELIGIBLE",
+    "KEEP_FALLBACK",
+    "RETIRE_PROPOSED",
+    "RETIRE_ACCEPTED",
+    "RETIRE_REJECTED"
+  ],
+  "migrationRecords": [
+    {
+      "semanticRef": "feature.vexlife.addressed-conversation",
+      "referenceProjectionRefs": [
+        "projection.chat.current",
+        "projection.context.map"
+      ],
+      "evolutionProjectionRefs": [],
+      "disposition": "HELD",
+      "migrationLifecycleState": "SOURCE_MAPPED",
+      "parityState": "NOT_ASSESSED",
+      "designLawRefs": [
+        "law.ux-evolution.one-semantic-state-owner",
+        "law.ux-evolution.new-form-not-new-meaning"
+      ],
+      "findingRefs": [
+        "UXF-ZIR-00",
+        "UXF-ZIR-02",
+        "UXF-ZIR-03"
+      ],
+      "semanticOwnerRefs": [
+        "module.vexlife.core.conversation",
+        "module.vexlife.browser.chat-controller"
+      ],
+      "sourceRefs": [
+        "blueprint/feature-registry.json",
+        "reference/browser/app.js"
+      ],
+      "cutoverDisposition": "NOT_PROPOSED",
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
+    },
+    {
+      "semanticRef": "feature.vexlife.screen-aware-guide",
+      "referenceProjectionRefs": [
+        "projection.guide.screen-frame"
+      ],
+      "evolutionProjectionRefs": [],
+      "disposition": "HELD",
+      "migrationLifecycleState": "SOURCE_MAPPED",
+      "parityState": "NOT_ASSESSED",
+      "designLawRefs": [
+        "law.ux-evolution.one-semantic-state-owner",
+        "law.ux-evolution.new-form-not-new-meaning"
+      ],
+      "findingRefs": [
+        "UXF-ZIR-01",
+        "UXF-BUG-00",
+        "UXF-MJE-04",
+        "UXF-SSN-02"
+      ],
+      "semanticOwnerRefs": [
+        "module.vexlife.core.navigation",
+        "module.vexlife.browser.guide-controller"
+      ],
+      "sourceRefs": [
+        "blueprint/feature-registry.json",
+        "blueprint/experience-registry.json",
+        "reference/browser/app.js"
+      ],
+      "cutoverDisposition": "NOT_PROPOSED",
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
+    },
+    {
+      "semanticRef": "feature.vexlife.terrain",
+      "referenceProjectionRefs": [
+        "projection.terrain.current",
+        "projection.terrain.list-alternative"
+      ],
+      "evolutionProjectionRefs": [],
+      "disposition": "HELD",
+      "migrationLifecycleState": "SOURCE_MAPPED",
+      "parityState": "NOT_ASSESSED",
+      "designLawRefs": [
+        "law.ux-evolution.one-semantic-state-owner",
+        "law.ux-evolution.new-form-not-new-meaning"
+      ],
+      "findingRefs": [
+        "UXF-TDO-00",
+        "UXF-TDO-01",
+        "UXF-SSN-00",
+        "UXF-SSN-01",
+        "UXF-SSN-03"
+      ],
+      "semanticOwnerRefs": [
+        "module.vexlife.core.terrain",
+        "module.vexlife.browser.terrain-controller"
+      ],
+      "sourceRefs": [
+        "blueprint/feature-registry.json",
+        "blueprint/experience-registry.json",
+        "reference/browser/app.js"
+      ],
+      "cutoverDisposition": "NOT_PROPOSED",
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
+    },
+    {
+      "semanticRef": "feature.vexlife.contextual-workspace",
+      "referenceProjectionRefs": [
+        "projection.context.map",
+        "projection.terrain.current"
+      ],
+      "evolutionProjectionRefs": [],
+      "disposition": "HELD",
+      "migrationLifecycleState": "SOURCE_MAPPED",
+      "parityState": "NOT_ASSESSED",
+      "designLawRefs": [
+        "law.ux-evolution.one-semantic-state-owner",
+        "law.ux-evolution.new-form-not-new-meaning"
+      ],
+      "findingRefs": [
+        "UXF-CWH-00",
+        "UXF-CWH-01"
+      ],
+      "semanticOwnerRefs": [
+        "module.vexlife.browser.adapter"
+      ],
+      "sourceRefs": [
+        "blueprint/feature-registry.json",
+        "reference/browser/app.js"
+      ],
+      "cutoverDisposition": "NOT_PROPOSED",
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
+    },
+    {
+      "semanticRef": "feature.vexlife.runtime-failure-recovery",
+      "referenceProjectionRefs": [
+        "projection.runtime-recovery.health",
+        "projection.runtime-recovery.guide",
+        "projection.runtime-recovery.terrain"
+      ],
+      "evolutionProjectionRefs": [],
+      "disposition": "HELD",
+      "migrationLifecycleState": "SOURCE_MAPPED",
+      "parityState": "NOT_ASSESSED",
+      "designLawRefs": [
+        "law.ux-evolution.one-semantic-state-owner",
+        "law.ux-evolution.new-form-not-new-meaning"
+      ],
+      "findingRefs": [
+        "UXF-CWH-02",
+        "UXF-CWH-03"
+      ],
+      "semanticOwnerRefs": [
+        "module.vexlife.core.runtime-failure",
+        "module.vexlife.core.recovery-policy",
+        "module.vexlife.core.runtime-recovery"
+      ],
+      "sourceRefs": [
+        "blueprint/feature-registry.json",
+        "reference/browser/app.js"
+      ],
+      "cutoverDisposition": "NOT_PROPOSED",
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
+    },
+    {
+      "semanticRef": "feature.vexlife.security-access",
+      "referenceProjectionRefs": [
+        "projection.health.security-access-preview"
+      ],
+      "evolutionProjectionRefs": [],
+      "disposition": "HELD",
+      "migrationLifecycleState": "SOURCE_MAPPED",
+      "parityState": "NOT_ASSESSED",
+      "designLawRefs": [
+        "law.ux-evolution.one-semantic-state-owner",
+        "law.ux-evolution.new-form-not-new-meaning"
+      ],
+      "findingRefs": [
+        "UXF-CWH-04"
+      ],
+      "semanticOwnerRefs": [
+        "module.vexlife.core.security-access-projection",
+        "module.vexlife.browser.security-access-controller"
+      ],
+      "sourceRefs": [
+        "blueprint/feature-registry.json",
+        "reference/browser/app.js"
+      ],
+      "cutoverDisposition": "NOT_PROPOSED",
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
+    },
+    {
+      "semanticRef": "feature.vexlife.living-journal",
+      "referenceProjectionRefs": [
+        "projection.living-journal.lived-book"
+      ],
+      "evolutionProjectionRefs": [],
+      "disposition": "HELD",
+      "migrationLifecycleState": "SOURCE_MAPPED",
+      "parityState": "NOT_ASSESSED",
+      "designLawRefs": [
+        "law.ux-evolution.one-semantic-state-owner",
+        "law.ux-evolution.new-form-not-new-meaning"
+      ],
+      "findingRefs": [
+        "UXF-MJE-00",
+        "UXF-MJE-01",
+        "UXF-MJE-02",
+        "UXF-MJE-03"
+      ],
+      "semanticOwnerRefs": [
+        "module.vexlife.browser.living-journal-controller",
+        "module.vexlife.core.living-journal-memory-projection",
+        "module.vexlife.core.living-journal-memory-archive"
+      ],
+      "sourceRefs": [
+        "blueprint/feature-registry.json",
+        "blueprint/experience-registry.json",
+        "reference/browser/app.js"
+      ],
+      "cutoverDisposition": "NOT_PROPOSED",
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": []
+    }
+  ],
+  "findingInputs": [
+    {
+      "findingRef": "UXF-ZIR-00",
+      "summary": "mixed PROJECT/THREAD/RESOURCE visual grammar",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-ZIR-01",
+      "summary": "deterministic Guide visually impersonates real Companion",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-ZIR-02",
+      "summary": "Open conversation reads like Talk to current Vex",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-ZIR-03",
+      "summary": "message speaker/audience grammar is weak",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-BUG-00",
+      "summary": "Guide × failed to close in lived walk",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-TDO-00",
+      "summary": "right-click Terrain controls are useful but undiscoverable",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-TDO-01",
+      "summary": "visible/touch/keyboard/screen-reader equivalent is unclear",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-CWH-00",
+      "summary": "contextual workspace opens too small and requires manual repair",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-CWH-01",
+      "summary": "sticky layout controls dominate content",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-CWH-02",
+      "summary": "Health leads with internal states rather than consequence/recovery",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-CWH-03",
+      "summary": "Health lacks coherent icon+color+word state language",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-CWH-04",
+      "summary": "Security & Access buttons escape shared component/theming grammar",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-MJE-00",
+      "summary": "Living Journal exists but is hard to discover",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-MJE-01",
+      "summary": "Journal is cramped inside Terrain-owned overlay",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-MJE-02",
+      "summary": "Journal exposes excessive simultaneous controls",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-MJE-03",
+      "summary": "global vs Journal display-language purpose is unclear",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-MJE-04",
+      "summary": "walkthrough capability becomes persistent screen chrome",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-SSN-00",
+      "summary": "Terrain is treated as permanent wallpaper",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-SSN-01",
+      "summary": "Up / Close / hidden Terrain / zoom create competing navigation meanings",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-SSN-02",
+      "summary": "Vex presence collides with Local Vex as inspected subject",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    },
+    {
+      "findingRef": "UXF-SSN-03",
+      "summary": "ordinary content scroll must never cause semantic exit",
+      "witnessState": "OPEN",
+      "sourceState": "OPEN_OR_REPRODUCED_REQUIRES_FRESH_WITNESS"
+    }
+  ],
+  "visualAssurance": {
+    "ownerRef": "github.issue.vexlife.625",
+    "referenceCaptureMayRunInParallel": true,
+    "evolutionCandidateRequiresExactHead": true,
+    "requiredViewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "scenarios": [
+      {
+        "scenarioRef": "UXE-VIS-00",
+        "summary": "Terrain default/current focus"
+      },
+      {
+        "scenarioRef": "UXE-VIS-01",
+        "summary": "Terrain contextual controls + non-pointer route"
+      },
+      {
+        "scenarioRef": "UXE-VIS-02",
+        "summary": "Living Journal synthetic/current/held truth"
+      },
+      {
+        "scenarioRef": "UXE-VIS-03",
+        "summary": "immersive Journal + semantic Back exact-frame restoration"
+      },
+      {
+        "scenarioRef": "UXE-VIS-04",
+        "summary": "Vex companion presence vs Local Vex inspected subject"
+      },
+      {
+        "scenarioRef": "UXE-VIS-05",
+        "summary": "Guide close/minimize/restore"
+      },
+      {
+        "scenarioRef": "UXE-VIS-06",
+        "summary": "Health unavailable → consequence + next safe action"
+      },
+      {
+        "scenarioRef": "UXE-VIS-07",
+        "summary": "work-ready workspace; configuration non-obstructive"
+      },
+      {
+        "scenarioRef": "UXE-VIS-08",
+        "summary": "speaker / recipient / audience clarity"
+      },
+      {
+        "scenarioRef": "UXE-VIS-09",
+        "summary": "private → shared → private transition"
+      },
+      {
+        "scenarioRef": "UXE-VIS-10",
+        "summary": "context-accountability correction route"
+      }
+    ],
+    "requiredEvidenceClasses": [
+      "SCREENSHOT",
+      "DOM_ARIA_SNAPSHOT",
+      "KEYBOARD_FOCUS_TRACE",
+      "JOURNEY_CURRENT_FRAME_BEFORE_AFTER",
+      "CONSOLE_NETWORK_SUMMARY",
+      "BOUNDED_PERFORMANCE_OBSERVATION",
+      "LIMITATIONS_DOES_NOT_PROVE"
+    ]
+  },
+  "stagePolicy": {
+    "browserBehaviorChange": false,
+    "cutoverAllowed": false,
+    "referenceRemainsDefault": true,
+    "livingJournalRendererMutationAllowed": false,
+    "modelRuntimeEffectAllowed": false,
+    "trainingEffectAllowed": false,
+    "memoryMutationAllowed": false
+  },
+  "supportingUxSurfaces": [
+    {
+      "surfaceRef": "surface.vexlife.experience-gallery",
+      "surfaceClass": "READ_ONLY_VISIBILITY_PROJECTION",
+      "purpose": "Expose current accepted Feature, Experience, Foundation and Guidance identities without becoming their canonical owner.",
+      "acceptedLifecycleRef": "github.pull.vexlife.462",
+      "humanEntry": "••• → Experience Gallery",
+      "presentationRef": "#experience-gallery",
+      "currentSourceBindings": [
+        {
+          "path": "reference/browser/modules/experience-gallery-controller.js",
+          "blobSha": "54941882442796d55eca215e82c6374c07cf3ce3"
+        },
+        {
+          "path": "reference/browser/experience-gallery.css",
+          "blobSha": "7e722261b4fec5e6ecdf83478d14eeb287289043"
+        },
+        {
+          "path": "reference/browser/modules/browser-bundle.js",
+          "blobSha": "f3fdc561ba03bf2313bb75d764e639673779e4d5"
+        },
+        {
+          "path": "test/experience-gallery.test.mjs",
+          "blobSha": "d9d170f8ec66a9191148218dbcad97b3d37d61ee"
+        }
+      ],
+      "authoritativeFor": [
+        "CURRENT_ACCEPTED_UX_VISIBILITY",
+        "SOURCE_PROOF_LINK_VISIBILITY"
+      ],
+      "notAuthoritativeFor": [
+        "CANONICAL_REGISTRY",
+        "SEMANTIC_MEANING",
+        "PRODUCT_ROUTE",
+        "ACTION_AUTHORITY",
+        "MIGRATION_STATE",
+        "CUTOVER"
+      ],
+      "mutationAllowedInE0A": false
+    },
+    {
+      "surfaceRef": "surface.vexlife.render-lab",
+      "surfaceClass": "MOCK_ONLY_VISUAL_SPECIMEN_SURFACE",
+      "purpose": "Provide human-facing visual specimens while keeping mock controls inert and separate from live effects.",
+      "acceptedLifecycleRef": "github.pull.vexlife.480",
+      "humanEntry": "Render Lab",
+      "presentationRef": null,
+      "currentSourceBindings": [
+        {
+          "path": "reference/browser/modules/render-lab-controller.js",
+          "blobSha": "7846d7adc10e40ee3e52a72a6dc392ad8a2fc665"
+        },
+        {
+          "path": "reference/browser/render-lab.css",
+          "blobSha": "dd5a052978d00ec2680a0d2d986e710ea61605f5"
+        },
+        {
+          "path": "reference/browser/modules/browser-bundle.js",
+          "blobSha": "f3fdc561ba03bf2313bb75d764e639673779e4d5"
+        },
+        {
+          "path": "test/render-lab.test.mjs",
+          "blobSha": "8035ef1d4a94c962be1f6f3bb44748d687d4461b"
+        }
+      ],
+      "authoritativeFor": [
+        "MOCK_VISUAL_SPECIMEN"
+      ],
+      "notAuthoritativeFor": [
+        "CANONICAL_REGISTRY",
+        "PRODUCT_STATE",
+        "ACTION_AUTHORITY",
+        "LIVE_PRODUCT_EFFECT",
+        "MIGRATION_STATE",
+        "CUTOVER"
+      ],
+      "mutationAllowedInE0A": false
+    }
+  ],
+  "inspectionProjection": {
+    "projectionRef": "projection.vexlife.ux-evolution.inspection",
+    "projectionClass": "READ_ONLY_INSPECTION_PROJECTION",
+    "purpose": "Let a human or Vex inspect UX migration ancestry, state, parity, findings, source and evidence without making the inspection surface a semantic or migration owner.",
+    "consumerClasses": [
+      "HUMAN",
+      "VEX"
+    ],
+    "activationClass": "EXPLICIT_INSPECTION_ONLY",
+    "surfaceRefs": [
+      "surface.vexlife.experience-gallery",
+      "surface.vexlife.render-lab"
+    ],
+    "pathFields": [
+      "semanticRef",
+      "referenceProjectionRefs",
+      "evolutionProjectionRefs",
+      "migrationLifecycleState",
+      "parityState",
+      "findingRefs",
+      "sourceRefs",
+      "evidenceRefs"
+    ],
+    "sourceManaged": true,
+    "readOnly": true,
+    "grantsAuthority": false,
+    "canonicalRegistry": false,
+    "appShell": false,
+    "alwaysVisibleEngineeringDashboard": false,
+    "missingEvidenceState": "PENDING_EXPLICIT_WITNESS"
+  }
+}
