@@ -55,7 +55,7 @@
         "modelsPath": "/v1/models",
         "chatPath": "/v1/chat/completions",
         "requestModel": "default_model",
-        "qualificationClass": "NEUTRAL_ZERO_TOKEN_OPENAI_BINDING",
+        "qualificationClass": "NEUTRAL_ONE_TOKEN_OPENAI_BINDING",
         "startupTimeoutMs": 180000,
         "allowedBrowserOrigin": "http://127.0.0.1:18110"
       },

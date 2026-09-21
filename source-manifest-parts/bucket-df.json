@@ -5,8 +5,8 @@
     {
       "path": "blueprint/activated-model-runtime-bindings.json",
       "mode": "100644",
-      "bytes": 3289,
-      "sha256": "289aad0f7bca9e54ce1c169a1f1b84962a0ce1392939667c62b83e2aae5641d5"
+      "bytes": 3288,
+      "sha256": "8a41ddcd32f4d8addf82d877de54947cecbc67c2e06e2c6680303004ff585966"
     },
     {
       "path": "blueprint/fragments/screens/living-journal.json",

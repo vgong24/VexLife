@@ -17,8 +17,8 @@
     {
       "path": "test/activated-model-runtime-binding.test.mjs",
       "mode": "100644",
-      "bytes": 33539,
-      "sha256": "a5c50dd9de9d1cfae269650f2c62226e66bab8270918ab88fbbbd69279156405"
+      "bytes": 33806,
+      "sha256": "bbc8b89c053b18a617f2bf3936e58a0fad44f7a62af11ba03b2af6267cff86bb"
     },
     {
       "path": "test/public-learning-navigation-continuity.test.mjs",

@@ -225,7 +225,7 @@ test('M4B06 wrong provider member and wrong aggregate seal fail closed', async (
 });
 
 // M4B07/M4B08: qualification is loopback, identity-bound, and zero-lived-effect.
-test('M4B07-M4B08 neutral loopback qualification binds exact served path and default_model without a lived turn', async () => {
+test('M4B07-M4B08 neutral one-token loopback qualification binds exact served path and default_model without a lived turn', async () => {
   const binding = baseBinding();
   const root = tempDir('qualify');
   const modelDirectory = path.join(root, 'private-model');
@@ -240,7 +240,12 @@ test('M4B07-M4B08 neutral loopback qualification binds exact served path and def
   const post = trace.find((entry) => entry.url.endsWith('/v1/chat/completions'));
   const request = JSON.parse(post.options.body);
   assert.deepEqual(request.messages, [{ role: 'user', content: '' }]);
-  assert.equal(request.max_tokens, 0);
+  assert.equal(request.max_tokens, 1);
+  assert.equal(request.temperature, 0);
+  assert.equal(request.seed, 0);
+  assert.equal(result.qualificationInferenceTokensRequested, 1);
+  assert.equal(result.qualificationInferenceEffect, true);
+  assert.equal(result.qualificationOutputPersisted, false);
   assert.equal(Object.hasOwn(request, 'system'), false);
 });
 

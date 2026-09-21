@@ -163,12 +163,12 @@ Runtime qualification is intentionally not a lived companion turn. It performs:
 ```text
 GET /health
 GET /v1/models
-POST /v1/chat/completions with an empty user content and max_tokens=0
+POST /v1/chat/completions with an empty user content, max_tokens=1, temperature=0, seed=0
 ```
 
 The pinned `mlx-lm 0.32.0` server scans the Hugging Face Hub cache before appending its local `--model` path to `/v1/models`. A missing default user cache therefore throws inside that handler after HTTP 200. VexLife does not create or inspect the user's shared Hugging Face cache to satisfy this probe. Every fresh MLX child instead receives a source-owned `HF_HUB_CACHE` pointing at an intentionally empty Home-local runtime directory. This makes cache enumeration deterministic/no-network while preserving the exact local `--model` entry that `/v1/models` appends.
 
-The exact private materialization must appear exactly once in `/v1/models`, and the OpenAI-compatible response must identify `default_model`. The qualification request contains no persona prompt, no `You are Vex` identity instruction, no Memory content, no transcript, and no natural Victor-authored message. Its receipt explicitly records zero lived-conversation, Memory, training, activation, and succession effects.
+The exact private materialization must appear exactly once in `/v1/models`, and the OpenAI-compatible response must identify `default_model`. The pinned `mlx-lm 0.32.0` HTTP validator accepts `max_tokens=0`, but its batch generator rejects zero-token requests after accepting the HTTP request. VexLife therefore uses one deterministic technical qualification token (`max_tokens=1`, `temperature=0`, `seed=0`). That token is an explicit runtime-inference qualification effect, not a lived companion turn: the generated content is discarded and never persisted into Home, Memory, transcript, or shared lived evidence. The request contains no persona prompt, no `You are Vex` identity instruction, no Memory content, no transcript, and no natural Victor-authored message. Its receipt records `qualificationInferenceEffect=true`, `qualificationOutputPersisted=false`, and zero lived-conversation, Memory, training, activation, and succession effects.
 
 Only after this qualification succeeds does the command start the unchanged `scripts/serve-browser.mjs` with the exact server-owned endpoint/model binding.
 

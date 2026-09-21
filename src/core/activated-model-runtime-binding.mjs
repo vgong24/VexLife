@@ -260,7 +260,7 @@ export function validateActivatedModelRuntimeBindingRegistry(registry) {
     exactEqual(runtime.modelsPath, '/v1/models', 'runtime.modelsPath');
     exactEqual(runtime.chatPath, '/v1/chat/completions', 'runtime.chatPath');
     exactEqual(runtime.requestModel, 'default_model', 'runtime.requestModel');
-    exactEqual(runtime.qualificationClass, 'NEUTRAL_ZERO_TOKEN_OPENAI_BINDING', 'runtime.qualificationClass');
+    exactEqual(runtime.qualificationClass, 'NEUTRAL_ONE_TOKEN_OPENAI_BINDING', 'runtime.qualificationClass');
     if (!Number.isSafeInteger(runtime.startupTimeoutMs) || runtime.startupTimeoutMs < 1000 || runtime.startupTimeoutMs > 600000) {
       fail('ACTIVATED_BINDING_SOURCE_INVALID', 'runtime.startupTimeoutMs must be a bounded safe integer');
     }
@@ -703,7 +703,9 @@ export async function qualifyActivatedMlxRuntime({ binding, modelDirectory, fetc
   const qualificationRequest = {
     model: binding.runtime.requestModel,
     messages: [{ role: 'user', content: '' }],
-    max_tokens: 0,
+    max_tokens: 1,
+    temperature: 0,
+    seed: 0,
     stream: false
   };
   const completion = await requestJson(fetchImpl, `${binding.runtime.origin}${binding.runtime.chatPath}`, {
@@ -724,6 +726,9 @@ export async function qualifyActivatedMlxRuntime({ binding, modelDirectory, fetc
     neutralRequestSha256: semanticHash(qualificationRequest),
     responseModel: completion.model,
     actualHttpCall: true,
+    qualificationInferenceTokensRequested: 1,
+    qualificationInferenceEffect: true,
+    qualificationOutputPersisted: false,
     livedConversationEffect: false,
     personaEffect: false,
     memoryEffect: false,
