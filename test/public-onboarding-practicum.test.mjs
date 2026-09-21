@@ -47,10 +47,10 @@ test('the exact claimed authored surface exists', () => {
   }
 });
 
-test('EN, JA and ZH catalogs retain exact 166-key parity', () => {
+test('EN, JA and ZH catalogs retain exact 176-key parity', () => {
   const catalogs = Object.fromEntries(LOCALES.map((locale) => [locale, readJson(`pages/strings/vexlife-onboarding.${locale}.json`)]));
   const englishKeys = sorted(Object.keys(catalogs.en.strings));
-  assert.equal(englishKeys.length, 166);
+  assert.equal(englishKeys.length, 176);
   for (const locale of LOCALES) {
     const catalog = catalogs[locale];
     assert.equal(catalog.schemaVersion, 'vexlife.public-onboarding.strings/v1');
@@ -127,6 +127,44 @@ test('accepted current platform and distribution truth is explicit and non-colla
   assert.match(review, /qualifiedPlatformClaim=WINDOWS_10_11_X64_NVIDIA_AND_MACOS_ARM64_APPLE_M4_PRO_SOURCE_LOCAL/u);
   assert.match(review, /repositoryVisibilityDisposition=CURRENT_PUBLIC__NO_MUTATION_BY_THIS_LANE/u);
   assert.match(review, /UNSIGNED_LOCAL_RELEASE_CANDIDATE != PUBLIC_GITHUB_RELEASE/u);
+});
+
+test('Family public onboarding stays zero-effect and owner-correct', () => {
+  const html = read('pages/vexlife-onboarding.html');
+  const en = readJson('pages/strings/vexlife-onboarding.en.json').strings;
+  const featureRegistry = readJson('blueprint/feature-registry.json');
+  const experienceRegistry = readJson('blueprint/experience-registry.json');
+  const family = featureRegistry.features.find((feature) => feature.featureRef === 'feature.vexlife.vex-family');
+  const visible = [
+    en['family.eyebrow'],
+    en['family.title'],
+    en['family.body'],
+    en['family.host.title'],
+    en['family.host.body'],
+    en['family.join.title'],
+    en['family.join.body'],
+    en['family.existing.title'],
+    en['family.existing.body'],
+    en['family.boundary']
+  ].join('\n');
+
+  assert.match(html, /id="family"/u);
+  assert.match(visible, /Host a family/u);
+  assert.match(visible, /server-owned lifecycle action/u);
+  assert.match(visible, /canonical invitation reference/u);
+  assert.match(visible, /outside-human invitation delivery/u);
+  assert.match(visible, /Family-visible is not Internet-public/u);
+  assert.match(visible, /generic owners/u);
+  assert.match(visible, /no calendar or notification ownership/u);
+  assert.match(visible, /no real-human Family validation/u);
+
+  assert.equal(family?.humanIntroduction?.disposition, 'DISCOVERABLE_ONLY');
+  assert.equal(family?.humanIntroduction?.routeState, 'CURRENT');
+  assert.equal(family?.humanIntroduction?.planRefOrNull, null);
+  assert.equal(
+    (experienceRegistry.featureWalkthroughPlans ?? []).some((plan) => plan.featureRef === 'feature.vexlife.vex-family'),
+    false
+  );
 });
 
 test('the page remains readable without JavaScript', () => {
