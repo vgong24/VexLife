@@ -11,8 +11,8 @@
     {
       "path": "pages/strings/vexlife-onboarding.zh.json",
       "mode": "100644",
-      "bytes": 15502,
-      "sha256": "e3b468138cbf472e0252786ca6872c430c57d6c92b6d04f8c8ba3cac755af1da"
+      "bytes": 16782,
+      "sha256": "fcf48ac2939102a429527b7c1a4b0d174895ce2813fb298981e09e680592111d"
     },
     {
       "path": "src/core/capability-assimilation-runtime.mjs",
