@@ -446,6 +446,25 @@ test('M4B07-M4B17 qualification failure retires exact newly spawned runtime befo
   assert.equal(fs.existsSync(path.join(home, 'runtime', 'initialization', 'receipt.json')), false);
 });
 
+test('M4B17 A008-R001 runtime ownership and mlx models discovery regressions stay closed', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'src', 'core', 'activated-model-runtime-binding.mjs'), 'utf8');
+  const identityStart = source.indexOf('function defaultProcessIdentity');
+  const identityEnd = source.indexOf('\nfunction defaultProcessMatches', identityStart);
+  assert.ok(identityStart >= 0 && identityEnd > identityStart);
+  const identitySource = source.slice(identityStart, identityEnd);
+  assert.match(identitySource, /fs\.realpathSync\(pythonExecutable\)/u);
+  assert.match(identitySource, /command === expectedLauncher \|\| command === expectedCanonical/u);
+  assert.match(identitySource, /pgid === pid && commandMatches/u);
+
+  const spawnStart = source.indexOf('function defaultSpawnRuntime');
+  const spawnEnd = source.indexOf('\nasync function requestJson', spawnStart);
+  assert.ok(spawnStart >= 0 && spawnEnd > spawnStart);
+  const spawnSource = source.slice(spawnStart, spawnEnd);
+  assert.match(spawnSource, /mlx-hf-hub-cache/u);
+  assert.match(spawnSource, /HF_HUB_CACHE: hubCache/u);
+  assert.doesNotMatch(spawnSource, /\.cache\/huggingface\/hub/u);
+});
+
 test('M4B17 unverified precommit cleanup escalates rather than claiming safe terminal cleanup', async () => {
   const binding = baseBinding();
   const root = tempDir('precommit-cleanup-held');

@@ -600,12 +600,17 @@ function defaultProcessIdentity({ pid, pythonExecutable, args }) {
   const observedPid = Number(match[1]);
   const pgid = Number(match[2]);
   const command = match[3];
-  const expected = [pythonExecutable, ...args].join(' ');
+  let canonicalPythonExecutable = pythonExecutable;
+  try { canonicalPythonExecutable = fs.realpathSync(pythonExecutable); } catch {}
+  const expectedLauncher = [pythonExecutable, ...args].join(' ');
+  const expectedCanonical = [canonicalPythonExecutable, ...args].join(' ');
+  const commandMatches = command === expectedLauncher || command === expectedCanonical;
   return Object.freeze({
     pid: observedPid,
     pgid,
-    commandMatches: command === expected,
-    exactOwnedDetachedGroup: observedPid === pid && pgid === pid && command === expected
+    commandMatches,
+    executableIdentity: command === expectedCanonical ? 'CANONICAL_TARGET' : command === expectedLauncher ? 'ADMITTED_LAUNCHER' : 'MISMATCH',
+    exactOwnedDetachedGroup: observedPid === pid && pgid === pid && commandMatches
   });
 }
 
@@ -646,10 +651,19 @@ async function defaultTerminateRuntime({ pid, pythonExecutable, args, runtimeAtt
 function defaultSpawnRuntime({ pythonExecutable, args, home }) {
   const logs = path.join(home, 'runtime');
   fs.mkdirSync(logs, { recursive: true });
+  const hubCache = path.join(logs, 'mlx-hf-hub-cache');
+  fs.mkdirSync(hubCache, { recursive: true, mode: 0o700 });
   const outFd = fs.openSync(path.join(logs, 'mlx-lm-server.out.log'), 'a');
   const errFd = fs.openSync(path.join(logs, 'mlx-lm-server.err.log'), 'a');
   return new Promise((resolve, reject) => {
-    const child = spawn(pythonExecutable, args, { cwd: path.dirname(pythonExecutable), detached: true, windowsHide: true, shell: false, stdio: ['ignore', outFd, errFd] });
+    const child = spawn(pythonExecutable, args, {
+      cwd: path.dirname(pythonExecutable),
+      detached: true,
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', outFd, errFd],
+      env: { ...process.env, HF_HUB_CACHE: hubCache }
+    });
     const close = () => { try { fs.closeSync(outFd); } catch {}; try { fs.closeSync(errFd); } catch {}; };
     child.once('error', (error) => { close(); reject(error); });
     child.once('spawn', () => {

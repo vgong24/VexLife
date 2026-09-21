@@ -146,6 +146,7 @@ new exact spawn
 -> health + neutral qualification
 -> success: write qualified runtime/Home receipt and transfer durable ownership to that Home receipt
 -> failure before commit: re-read exact PID/PGID/command identity
+-> treat the admitted preserved-trainer Python launcher and its canonical realpath target as the same executable identity while requiring every MLX argument to match exactly
 -> terminate only that exact detached process group
 -> verify PID no longer live
 -> return the original typed qualification failure plus cleanup evidence
@@ -164,6 +165,8 @@ GET /health
 GET /v1/models
 POST /v1/chat/completions with an empty user content and max_tokens=0
 ```
+
+The pinned `mlx-lm 0.32.0` server scans the Hugging Face Hub cache before appending its local `--model` path to `/v1/models`. A missing default user cache therefore throws inside that handler after HTTP 200. VexLife does not create or inspect the user's shared Hugging Face cache to satisfy this probe. Every fresh MLX child instead receives a source-owned `HF_HUB_CACHE` pointing at an intentionally empty Home-local runtime directory. This makes cache enumeration deterministic/no-network while preserving the exact local `--model` entry that `/v1/models` appends.
 
 The exact private materialization must appear exactly once in `/v1/models`, and the OpenAI-compatible response must identify `default_model`. The qualification request contains no persona prompt, no `You are Vex` identity instruction, no Memory content, no transcript, and no natural Victor-authored message. Its receipt explicitly records zero lived-conversation, Memory, training, activation, and succession effects.
 
