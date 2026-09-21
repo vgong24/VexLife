@@ -5,8 +5,8 @@
     {
       "path": "pages/strings/vexlife-onboarding.en.json",
       "mode": "100644",
-      "bytes": 16312,
-      "sha256": "12b6db7d951a5b8358d8e63900eee1342cf277ca36521212e9e8d306a1ab76ef"
+      "bytes": 17620,
+      "sha256": "fafa6fc7ebac4dc6494cb3b4bca27739d5b07d445d5855a95cf3d85d51b3286d"
     },
     {
       "path": "src/core/vex-initialization.mjs",
