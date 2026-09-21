@@ -67,120 +67,23 @@ function invitationBridgeOrThrow(value) {
   return value;
 }
 
-function compactFamilyWorkProjection(genericRuntimeSnapshot, {
-  principalRef,
-  rooms
-} = {}, expectedSchemaVersion) {
-  if (
-    !genericRuntimeSnapshot
-    || typeof genericRuntimeSnapshot !== 'object'
-    || Array.isArray(genericRuntimeSnapshot)
-    || genericRuntimeSnapshot.schemaVersion !== expectedSchemaVersion
-    || genericRuntimeSnapshot.state !== 'CURRENT'
-    || genericRuntimeSnapshot.currentness !== 'CURRENT'
-    || typeof genericRuntimeSnapshot.sourceRef !== 'string'
-    || genericRuntimeSnapshot.sourceRef.length === 0
-    || !Array.isArray(genericRuntimeSnapshot.workgraphs)
-    || !Array.isArray(genericRuntimeSnapshot.schedulerAggregates)
-    || typeof principalRef !== 'string'
-    || principalRef.length === 0
-    || !Array.isArray(rooms)
-  ) {
-    throw new Error('Generic follow-through runtime projection is unavailable for Family work status');
-  }
-
-  const roomByChannelRef = new Map();
-  for (const room of rooms) {
-    if (
-      !room
-      || typeof room !== 'object'
-      || room.kind !== 'GROUP'
-      || typeof room.channelRef !== 'string'
-      || typeof room.threadRef !== 'string'
-      || !Array.isArray(room.audience)
-      || !room.audience.some((member) => member?.principalRef === principalRef)
-      || roomByChannelRef.has(room.channelRef)
-    ) {
-      throw new Error('Family work scope is unavailable or ambiguous');
-    }
-    roomByChannelRef.set(room.channelRef, room);
-  }
-
-  const assignmentsByGraphFingerprint = new Map();
-  for (const graph of genericRuntimeSnapshot.workgraphs) {
-    const room = roomByChannelRef.get(graph?.intent?.channelRef) ?? null;
-    if (!room || graph?.intent?.threadRef !== room.threadRef) continue;
-    const visibleActorRefs = new Set([
-      ...room.audience.map((member) => member?.principalRef).filter(Boolean),
-      room.familyCompanionLineageRef
-    ]);
-    if (!visibleActorRefs.has(graph?.intent?.originSpeakerRef)) continue;
-    const nodeRefs = new Set((graph.nodes ?? []).map((node) => node?.workNodeRef).filter(Boolean));
-    const currentAssignments = new Set();
-    for (const assignment of graph.acceptedAssignments ?? []) {
-      if (
-        assignment?.assignmentState === 'CURRENT'
-        && assignment.sourceIntentRef === graph.rootIntentRef
-        && nodeRefs.has(assignment.workNodeRef)
-      ) currentAssignments.add(assignment.workNodeRef);
-    }
-    assignmentsByGraphFingerprint.set(graph.semanticFingerprint, currentAssignments);
-  }
-
-  const pendingRefs = new Set();
-  const activeRefs = new Set();
-  for (const aggregate of genericRuntimeSnapshot.schedulerAggregates) {
-    const queueAssignments = assignmentsByGraphFingerprint.get(aggregate?.queue?.graphFingerprint) ?? null;
-    if (queueAssignments) {
-      if (aggregate.queue?.currentness !== 'CURRENT') {
-        throw new Error('Family-scoped Scheduler queue is not current');
-      }
-      for (const entry of aggregate.queue.admittedReady ?? []) {
-        if (queueAssignments.has(entry?.workNodeRef)) pendingRefs.add(entry.workNodeRef);
-      }
-    }
-    const activeAssignments = assignmentsByGraphFingerprint.get(aggregate?.active?.graphFingerprint) ?? null;
-    if (activeAssignments?.has(aggregate?.active?.workNodeRef)) {
-      activeRefs.add(aggregate.active.workNodeRef);
-      pendingRefs.delete(aggregate.active.workNodeRef);
-    }
-  }
-
-  return Object.freeze({
-    state: 'CURRENT',
-    pendingCount: pendingRefs.size,
-    activeCount: activeRefs.size,
-    sourceRef: genericRuntimeSnapshot.sourceRef
-  });
-}
-
 function sourceManagedGenericFollowThroughResolver(runtimeHome) {
   const homeRoot = path.resolve(runtimeHome);
   let resolverPromise = null;
-  return async function resolveFamilyWorkProjection(scope = {}) {
+  return async function resolveFamilyWorkProjection() {
     try {
       if (resolverPromise === null) {
         resolverPromise = import('../src/core/generic-follow-through-runtime-projection.mjs')
-          .then(({
-            createGenericFollowThroughRuntimeProjectionResolver,
-            GENERIC_FOLLOW_THROUGH_RUNTIME_PROJECTION_SCHEMA
-          }) => Object.freeze({
-            schemaVersion: GENERIC_FOLLOW_THROUGH_RUNTIME_PROJECTION_SCHEMA,
-            resolve: createGenericFollowThroughRuntimeProjectionResolver({ home: homeRoot })
-          }));
+          .then(({ createGenericFollowThroughRuntimeProjectionResolver }) =>
+            createGenericFollowThroughRuntimeProjectionResolver({ home: homeRoot }));
       }
-      const binding = await resolverPromise;
-      return compactFamilyWorkProjection(
-        await binding.resolve(),
-        scope,
-        binding.schemaVersion
-      );
+      const resolve = await resolverPromise;
+      return await resolve();
     } catch {
       return null;
     }
   };
 }
-
 
 export function createVexLifeBrowserServer(options = {}) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
