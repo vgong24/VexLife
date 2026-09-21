@@ -12,7 +12,7 @@
       "path": "test/build-health-review-evidence.test.mjs",
       "mode": "100644",
       "bytes": 19388,
-      "sha256": "def0fdf9327d7c2d2cfd423dff69e4747ae45235536730c997e6ebe65c43c066"
+      "sha256": "def0fdf9327f7c2d2cfd423dff69e4747ae45235536730c997e6ebe65c43c066"
     },
     {
       "path": "test/relationships-invitation-currentness-fixture.mjs",
@@ -23,8 +23,8 @@
     {
       "path": "test/ux-evolution.test.mjs",
       "mode": "100644",
-      "bytes": 3499,
-      "sha256": "87ca93a2569fa6fb65e0196cda3677bcda3a9498b325385e8e8a2013f484cb0f"
+      "bytes": 4266,
+      "sha256": "64c8fb4ea16d77bc4814d5ff2c98db7fb6777e10a9c94fdb56dc0e2419cf388b"
     }
   ]
 }

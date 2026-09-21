@@ -5,8 +5,8 @@
     {
       "path": "docs/UX-EVOLUTION-FOUNDATION.md",
       "mode": "100644",
-      "bytes": 2034,
-      "sha256": "ddcf2bc4bc6887b7cabeb4baeb7151860a129fe941ecb8bae24a43496e8b2f5c"
+      "bytes": 2650,
+      "sha256": "91941d1c2da5c0d2b7f7a994794540a18108660e019e994b5991e6d56f9d92b0"
     },
     {
       "path": "scripts/g04b-native-provisioning-worker.mjs",
