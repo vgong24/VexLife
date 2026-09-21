@@ -2357,7 +2357,7 @@
         "disposition": "DISCOVERABLE_ONLY",
         "routeState": "CURRENT",
         "planRefOrNull": null,
-        "rationale": "The accepted Family-room projection already exposes current/held truth, current audience, one Family Vex, work status and Open/Refresh directly in the existing Chat surface. Effectful Host/Join/Leave and later follow-through actions remain separately owned and are not implied by discoverability."
+        "rationale": "The accepted Family-room projection now exposes current/held truth, current audience, one Family Vex, current generic follow-through work status, and visible Host/Join/Leave controls directly in the existing Chat surface. Discoverability remains descriptive only: membership lifecycle stays server-owned, follow-through stays generic-owner-owned, and this registration grants neither lifecycle nor follow-through effect authority."
       },
       "canonicalNodeRefs": [
         "screen.vexlife.chat",
@@ -2388,6 +2388,7 @@
       "moduleRefs": [
         "module.vexlife.core.family-space-store",
         "module.vexlife.core.browser-family-conversation-bridge",
+        "module.vexlife.core.browser-family-lifecycle-bridge",
         "module.vexlife.core.family-group-context-runtime",
         "module.vexlife.core.family-companion-runtime",
         "module.vexlife.core.conversation-store",
@@ -2403,7 +2404,18 @@
         "family-room.work.held",
         "family-room.open",
         "family-room.refresh",
-        "family-room.composer.available"
+        "family-room.composer.available",
+        "family-room.lifecycle.heading",
+        "family-room.lifecycle.host",
+        "family-room.lifecycle.join.label",
+        "family-room.lifecycle.join.placeholder",
+        "family-room.lifecycle.join",
+        "family-room.lifecycle.leave",
+        "family-room.lifecycle.ready",
+        "family-room.lifecycle.working",
+        "family-room.lifecycle.success",
+        "family-room.lifecycle.failed",
+        "family-room.lifecycle.held"
       ],
       "testRefs": [
         "test.channel.membership",
@@ -2447,9 +2459,9 @@
         "projection.intent-scheduler.runtime"
       ],
       "knownGaps": [
-        "Host, Join and Leave Family membership mutations have no accepted browser action in this registration and remain separately owned.",
-        "Announcement, assignment, reminder, calendar and due-intent follow-through remain outside this feature registration until a generic accepted owner is source-placed.",
-        "Public onboarding remains owned by ONB-DIST and real-human validation remains separately held."
+        "Outside-human Family invitation delivery and consent remain separately held; accepted Join consumes a supplied canonical invitation reference and this registration grants no recruitment or contact authority.",
+        "Generic calendar ownership remains absent; accepted due and attention counts are descriptive follow-through truth and do not grant notification, calendar, Scheduler or Concern Watch effect authority.",
+        "Public onboarding remains owned by ONB-DIST and real-human Family validation remains separately held."
       ]
     }
   ]

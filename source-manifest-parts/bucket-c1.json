@@ -5,8 +5,8 @@
     {
       "path": "blueprint/feature-registry.json",
       "mode": "100644",
-      "bytes": 101285,
-      "sha256": "d0b84a37008128e951ebb5483ec955b6c660706284e3a432136f1bf1fcca9985"
+      "bytes": 102050,
+      "sha256": "016ba7cd9f38ad0442846cdf04c83f56e48e3a70e639a416b1f8fc06db35e678"
     },
     {
       "path": "blueprint/purpose-workspace/registration.json",
