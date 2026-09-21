@@ -855,5 +855,25 @@
       "package.json",
       "docs/G05-RUNTIME-AUTHORITY-SUBSTRATE.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.ux-evolution-report",
+    "path": "scripts/ux-evolution-report.mjs",
+    "role": "Emit deterministic E0-A UX migration and projection coverage accounting without changing browser behavior or semantic state ownership.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.ux-evolution.001",
+      "module.vexlife.core.ux-evolution"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/ux-evolution.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/ux-evolution-registry.json",
+      "src/core/ux-evolution.mjs",
+      "docs/UX-EVOLUTION-FOUNDATION.md"
+    ]
   }
 ]

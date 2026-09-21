@@ -1338,5 +1338,29 @@
       "scripts/serve-browser.mjs",
       "docs/CAPABILITY-ASSIMILATION-RUNTIME.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.ux-evolution",
+    "path": "src/core/ux-evolution.mjs",
+    "role": "Validate the E0-A UX projection-migration membrane, parity accounting, cutover gates, finding witness evidence, supporting UX-surface boundaries, and deterministic coverage without taking semantic feature/state ownership.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.ux-evolution.001",
+      "registry.vexlife.features.001"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.ux-evolution-report"
+    ],
+    "tests": [
+      "test/ux-evolution.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/ux-evolution-registry.json",
+      "scripts/ux-evolution-report.mjs",
+      "docs/UX-EVOLUTION-FOUNDATION.md",
+      "reference/browser/modules/experience-gallery-controller.js",
+      "reference/browser/modules/render-lab-controller.js"
+    ]
   }
 ]
