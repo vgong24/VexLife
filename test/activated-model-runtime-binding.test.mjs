@@ -452,9 +452,10 @@ test('M4B17 A008-R001 runtime ownership and mlx models discovery regressions sta
   const identityEnd = source.indexOf('\nfunction defaultProcessMatches', identityStart);
   assert.ok(identityStart >= 0 && identityEnd > identityStart);
   const identitySource = source.slice(identityStart, identityEnd);
-  assert.match(identitySource, /fs\.realpathSync\(pythonExecutable\)/u);
-  assert.match(identitySource, /command === expectedLauncher \|\| command === expectedCanonical/u);
-  assert.match(identitySource, /pgid === pid && commandMatches/u);
+  assert.match(identitySource, /expectedArgvTail/u);
+  assert.match(identitySource, /command\.endsWith\(expectedArgvTail\)/u);
+  assert.match(identitySource, /observedPid === pid && pgid === pid && commandMatches/u);
+  assert.doesNotMatch(identitySource, /fs\.realpathSync\(pythonExecutable\)/u);
 
   const spawnStart = source.indexOf('function defaultSpawnRuntime');
   const spawnEnd = source.indexOf('\nasync function requestJson', spawnStart);
