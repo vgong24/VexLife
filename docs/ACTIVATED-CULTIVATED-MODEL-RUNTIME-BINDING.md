@@ -146,7 +146,7 @@ new exact spawn
 -> health + neutral qualification
 -> success: write qualified runtime/Home receipt and transfer durable ownership to that Home receipt
 -> failure before commit: re-read exact PID/PGID/command identity
--> treat the admitted preserved-trainer Python launcher and its canonical realpath target as the same executable identity while requiring every MLX argument to match exactly
+-> for the PID returned by this exact spawn, require PGID == PID and require the complete MLX argv tail to match exactly; do not treat macOS process-title rewriting of the interpreter path as a different process
 -> terminate only that exact detached process group
 -> verify PID no longer live
 -> return the original typed qualification failure plus cleanup evidence
