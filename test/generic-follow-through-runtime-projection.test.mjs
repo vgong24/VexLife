@@ -43,7 +43,7 @@ import {
   readGenericFollowThroughRuntimeProjection
 } from '../src/core/generic-follow-through-runtime-projection.mjs';
 import { canonicalize, semanticHash } from '../src/core/utils.mjs';
-import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import { BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF, createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_BUNDLE = loadBlueprint(ROOT);
@@ -441,10 +441,14 @@ test('GRP-08/15/16 fresh product Family bootstrap consumes healthy owner truth a
   assert.equal(observed.healthy.body.state, 'CURRENT');
   assert.equal(observed.healthy.body.rooms.length, 1);
   assert.equal(observed.healthy.body.rooms[0].channelRef, FAMILY_CHANNEL_REF);
-  assert.equal(observed.healthy.body.workStatus.state, 'CURRENT');
-  assert.equal(Number.isSafeInteger(observed.healthy.body.workStatus.pendingCount), true);
-  assert.equal(Number.isSafeInteger(observed.healthy.body.workStatus.activeCount), true);
-  assert.equal(observed.healthy.body.workStatus.sourceRef, GENERIC_FOLLOW_THROUGH_RUNTIME_PROJECTION_SOURCE_REF);
+  assert.deepEqual(observed.healthy.body.workStatus, {
+    state: 'CURRENT',
+    pendingCount: 0,
+    activeCount: 0,
+    dueCount: 1,
+    attentionCount: 1,
+    sourceRef: BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF
+  });
 
   for (const held of [observed.stale, observed.corrupt, observed.missing]) {
     assert.equal(held.status, 200);
@@ -455,6 +459,8 @@ test('GRP-08/15/16 fresh product Family bootstrap consumes healthy owner truth a
       state: 'HELD_UNAVAILABLE',
       pendingCount: null,
       activeCount: null,
+      dueCount: null,
+      attentionCount: null,
       sourceRef: null
     });
   }
