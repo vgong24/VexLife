@@ -18,6 +18,8 @@ function heldSnapshot(failureCode = 'FAMILY_SESSION_AUTHORITY_UNAVAILABLE') {
       state: 'HELD_UNAVAILABLE',
       pendingCount: null,
       activeCount: null,
+      dueCount: null,
+      attentionCount: null,
       sourceRef: null
     }),
     failureCode
@@ -71,6 +73,8 @@ function normalizedWorkStatus(value) {
       state: 'HELD_UNAVAILABLE',
       pendingCount: null,
       activeCount: null,
+      dueCount: null,
+      attentionCount: null,
       sourceRef: null
     });
   }
@@ -78,12 +82,16 @@ function normalizedWorkStatus(value) {
     value.state !== 'CURRENT'
     || !count(value.pendingCount)
     || !count(value.activeCount)
+    || !count(value.dueCount)
+    || !count(value.attentionCount)
     || !text(value.sourceRef)
   ) throw new TypeError('Family room work status is not current');
   return Object.freeze({
     state: 'CURRENT',
     pendingCount: value.pendingCount,
     activeCount: value.activeCount,
+    dueCount: value.dueCount,
+    attentionCount: value.attentionCount,
     sourceRef: value.sourceRef
   });
 }
@@ -146,7 +154,9 @@ export function familyRoomViewModel(snapshot) {
     familyVexCount: room?.familyCompanionIncluded === true ? 1 : 0,
     workState: snapshot.workStatus.state,
     pendingCount: snapshot.workStatus.pendingCount,
-    activeCount: snapshot.workStatus.activeCount
+    activeCount: snapshot.workStatus.activeCount,
+    dueCount: snapshot.workStatus.dueCount,
+    attentionCount: snapshot.workStatus.attentionCount
   });
 }
 
@@ -564,9 +574,17 @@ export function createFamilyRoomController({
     work.textContent = snapshot.workStatus.state === 'CURRENT'
       ? t('family-room.work.current', {
           active: snapshot.workStatus.activeCount,
-          pending: snapshot.workStatus.pendingCount
+          pending: snapshot.workStatus.pendingCount,
+          due: snapshot.workStatus.dueCount,
+          attention: snapshot.workStatus.attentionCount
         })
       : t('family-room.work.held');
+    if (snapshot.workStatus.state === 'CURRENT') {
+      work.dataset.pendingCount = String(snapshot.workStatus.pendingCount);
+      work.dataset.activeCount = String(snapshot.workStatus.activeCount);
+      work.dataset.dueCount = String(snapshot.workStatus.dueCount);
+      work.dataset.attentionCount = String(snapshot.workStatus.attentionCount);
+    }
     host.append(work);
 
     const action = documentRef.createElement('button');

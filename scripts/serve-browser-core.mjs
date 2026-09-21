@@ -62,6 +62,13 @@ import {
   listConversationChannelBindings,
   readConversationChannelBinding
 } from '../src/core/conversation-store.mjs';
+import {
+  buildAcceptedAssignmentFingerprint,
+  buildGraphSnapshotFingerprint,
+  buildWorkNodeFingerprint
+} from '../src/core/intent-workgraph.mjs';
+import { createIntentSchedulerState } from '../src/core/state.mjs';
+import { projectConcernAggregate } from '../src/core/concern-watch.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
@@ -74,6 +81,8 @@ export const BROWSER_FAMILY_CONVERSATION_API_PATH = '/api/v1/family/conversation
 export const BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH = '/api/v1/family/bootstrap';
 export const BROWSER_FAMILY_LIFECYCLE_API_PATH = '/api/v1/family/lifecycle';
 export const BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA = 'vexlife.browser-family-room-bootstrap/v1';
+export const BROWSER_FAMILY_FOLLOW_THROUGH_RUNTIME_SCHEMA = 'vexlife.generic-follow-through-runtime-projection/v1';
+export const BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF = 'projection.vexlife.family-follow-through.001';
 export const BROWSER_FAMILY_CONVERSATION_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_FAMILY_LIFECYCLE_MAX_BODY_BYTES = 8 * 1024;
 export const BROWSER_FAMILY_CONVERSATION_LIST_MAX = 1000;
@@ -511,6 +520,8 @@ function normalizedFamilyWorkStatus(value) {
       state: 'HELD_UNAVAILABLE',
       pendingCount: null,
       activeCount: null,
+      dueCount: null,
+      attentionCount: null,
       sourceRef: null
     });
   }
@@ -522,12 +533,15 @@ function normalizedFamilyWorkStatus(value) {
     || value.pendingCount < 0
     || !Number.isSafeInteger(value.activeCount)
     || value.activeCount < 0
-    || typeof value.sourceRef !== 'string'
-    || value.sourceRef.length === 0
+    || !Number.isSafeInteger(value.dueCount)
+    || value.dueCount < 0
+    || !Number.isSafeInteger(value.attentionCount)
+    || value.attentionCount < 0
+    || value.sourceRef !== BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF
   ) {
     throw new BrowserFamilyConversationServerError(
       'FAMILY_WORK_PROJECTION_UNAVAILABLE',
-      'Family work projection is not current canonical scheduler truth',
+      'Family work projection is not current source-bound generic follow-through truth',
       503
     );
   }
@@ -535,7 +549,241 @@ function normalizedFamilyWorkStatus(value) {
     state: 'CURRENT',
     pendingCount: value.pendingCount,
     activeCount: value.activeCount,
+    dueCount: value.dueCount,
+    attentionCount: value.attentionCount,
     sourceRef: value.sourceRef
+  });
+}
+
+function currentFamilyRoomScope(principalRef, rooms) {
+  if (typeof principalRef !== 'string' || principalRef.length === 0 || !Array.isArray(rooms) || rooms.length === 0) {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_WORK_SCOPE_UNAVAILABLE',
+      'Family follow-through projection requires one current principal and visible Family room',
+      503
+    );
+  }
+  const roomByChannelRef = new Map();
+  for (const room of rooms) {
+    if (
+      room?.kind !== 'GROUP'
+      || typeof room.channelRef !== 'string'
+      || typeof room.threadRef !== 'string'
+      || typeof room.familyCompanionLineageRef !== 'string'
+      || !Array.isArray(room.audience)
+      || !room.audience.some((member) => member?.principalRef === principalRef)
+      || roomByChannelRef.has(room.channelRef)
+    ) {
+      throw new BrowserFamilyConversationServerError(
+        'FAMILY_WORK_SCOPE_UNAVAILABLE',
+        'Family follow-through projection requires exact current visible Family audience truth',
+        503
+      );
+    }
+    roomByChannelRef.set(room.channelRef, room);
+  }
+  return roomByChannelRef;
+}
+
+function validateGenericFamilyWorkgraph(graph, roomByChannelRef) {
+  if (!graph || typeof graph !== 'object' || Array.isArray(graph)
+      || graph.semanticFingerprint !== buildGraphSnapshotFingerprint(graph)) {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_WORK_SOURCE_INVALID',
+      'Generic follow-through Workgraph is stale or forged',
+      503
+    );
+  }
+  const room = roomByChannelRef.get(graph.intent?.channelRef) ?? null;
+  if (!room || graph.intent?.threadRef !== room.threadRef) return null;
+  const visibleActorRefs = new Set([
+    ...room.audience.map((member) => member.principalRef),
+    room.familyCompanionLineageRef
+  ]);
+  if (!visibleActorRefs.has(graph.intent?.originSpeakerRef)) return null;
+
+  const nodesByRef = new Map((graph.nodes ?? []).map((node) => [node.workNodeRef, node]));
+  for (const node of nodesByRef.values()) {
+    if (node.semanticFingerprint !== buildWorkNodeFingerprint(node)) {
+      throw new BrowserFamilyConversationServerError(
+        'FAMILY_WORK_SOURCE_INVALID',
+        'Generic follow-through Workgraph node fingerprint is invalid',
+        503
+      );
+    }
+  }
+  const currentAssignments = new Map();
+  for (const assignment of graph.acceptedAssignments ?? []) {
+    if (assignment.semanticFingerprint !== buildAcceptedAssignmentFingerprint(assignment)) {
+      throw new BrowserFamilyConversationServerError(
+        'FAMILY_WORK_SOURCE_INVALID',
+        'Generic follow-through accepted assignment fingerprint is invalid',
+        503
+      );
+    }
+    if (assignment.assignmentState !== 'CURRENT') continue;
+    if (
+      assignment.sourceIntentRef !== graph.rootIntentRef
+      || !nodesByRef.has(assignment.workNodeRef)
+      || currentAssignments.has(assignment.workNodeRef)
+    ) {
+      throw new BrowserFamilyConversationServerError(
+        'FAMILY_WORK_SOURCE_INVALID',
+        'Generic follow-through current assignment lineage is invalid or ambiguous',
+        503
+      );
+    }
+    currentAssignments.set(assignment.workNodeRef, assignment);
+  }
+  return Object.freeze({ graph, room, nodesByRef, currentAssignments });
+}
+
+function concernFamilyWorkNodeRef(aggregate, projection, eligibleGraphFingerprints) {
+  const admission = aggregate.schedulerAdmissions?.at(-1) ?? null;
+  if (
+    projection.meaning?.workNodeRef
+    && admission?.workgraphFingerprint
+    && eligibleGraphFingerprints.has(admission.workgraphFingerprint)
+  ) return projection.meaning.workNodeRef;
+
+  for (const observation of [...(aggregate.observations ?? [])].reverse()) {
+    const due = observation?.schedulerDueEvidence;
+    if (
+      due?.workNodeRef
+      && due?.graphFingerprint
+      && eligibleGraphFingerprints.has(due.graphFingerprint)
+    ) return due.workNodeRef;
+  }
+  return null;
+}
+
+export function projectFamilyFollowThroughStatus({
+  genericRuntimeSnapshot,
+  principalRef,
+  rooms,
+  sourceBundle = loadBlueprint(root)
+} = {}) {
+  if (
+    !genericRuntimeSnapshot
+    || typeof genericRuntimeSnapshot !== 'object'
+    || Array.isArray(genericRuntimeSnapshot)
+    || genericRuntimeSnapshot.schemaVersion !== BROWSER_FAMILY_FOLLOW_THROUGH_RUNTIME_SCHEMA
+    || genericRuntimeSnapshot.state !== 'CURRENT'
+    || genericRuntimeSnapshot.currentness !== 'CURRENT'
+    || typeof genericRuntimeSnapshot.sourceRef !== 'string'
+    || genericRuntimeSnapshot.sourceRef.length === 0
+    || !Array.isArray(genericRuntimeSnapshot.workgraphs)
+    || !Array.isArray(genericRuntimeSnapshot.schedulerAggregates)
+    || !Array.isArray(genericRuntimeSnapshot.concernAggregates)
+  ) {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_WORK_SOURCE_UNAVAILABLE',
+      'Generic follow-through runtime projection is unavailable or not current',
+      503
+    );
+  }
+
+  const roomByChannelRef = currentFamilyRoomScope(principalRef, rooms);
+  const eligibleByFingerprint = new Map();
+  const eligibleNodeRefs = new Set();
+  for (const graph of genericRuntimeSnapshot.workgraphs) {
+    const eligible = validateGenericFamilyWorkgraph(graph, roomByChannelRef);
+    if (!eligible) continue;
+    if (eligibleByFingerprint.has(graph.semanticFingerprint)) {
+      throw new BrowserFamilyConversationServerError(
+        'FAMILY_WORK_SOURCE_INVALID',
+        'Generic follow-through Workgraph projection is duplicated',
+        503
+      );
+    }
+    eligibleByFingerprint.set(graph.semanticFingerprint, eligible);
+    for (const workNodeRef of eligible.currentAssignments.keys()) eligibleNodeRefs.add(workNodeRef);
+  }
+
+  const activeRefs = new Set();
+  const pendingRefs = new Set();
+  const dueRefs = new Set();
+  const suppliedGraphFingerprints = new Set(
+    genericRuntimeSnapshot.workgraphs.map((graph) => graph?.semanticFingerprint).filter(Boolean)
+  );
+  for (const aggregate of genericRuntimeSnapshot.schedulerAggregates) {
+    createIntentSchedulerState({ aggregate, schedulerRegistry: sourceBundle.schedulerRegistry });
+    if (aggregate.queue?.currentness !== 'CURRENT') {
+      throw new BrowserFamilyConversationServerError(
+        'FAMILY_WORK_SOURCE_INVALID',
+        'Generic Scheduler aggregate is not current',
+        503
+      );
+    }
+
+    const queueGraph = aggregate.queue?.graphFingerprint
+      ? eligibleByFingerprint.get(aggregate.queue.graphFingerprint) ?? null
+      : null;
+    if (aggregate.queue?.graphFingerprint && !suppliedGraphFingerprints.has(aggregate.queue.graphFingerprint)) {
+      throw new BrowserFamilyConversationServerError(
+        'FAMILY_WORK_SOURCE_INVALID',
+        'Generic Scheduler queue is detached from its exact Workgraph',
+        503
+      );
+    }
+    if (queueGraph) {
+      for (const entry of aggregate.queue.admittedReady ?? []) {
+        const node = queueGraph.nodesByRef.get(entry.workNodeRef);
+        if (!node || entry.nodeFingerprint !== node.semanticFingerprint) {
+          throw new BrowserFamilyConversationServerError(
+            'FAMILY_WORK_SOURCE_INVALID',
+            'Generic Scheduler admitted queue entry is stale or substituted',
+            503
+          );
+        }
+        if (queueGraph.currentAssignments.has(entry.workNodeRef)) pendingRefs.add(entry.workNodeRef);
+      }
+    }
+
+    if (aggregate.active) {
+      const activeGraph = eligibleByFingerprint.get(aggregate.active.graphFingerprint) ?? null;
+      if (activeGraph?.currentAssignments.has(aggregate.active.workNodeRef)) {
+        activeRefs.add(aggregate.active.workNodeRef);
+        pendingRefs.delete(aggregate.active.workNodeRef);
+      }
+    }
+
+    for (const due of aggregate.dueRecords ?? []) {
+      if (due.currentness !== 'CURRENT' || due.lifecycle !== 'DUE') continue;
+      const dueGraph = eligibleByFingerprint.get(due.graphFingerprint) ?? null;
+      const assignment = dueGraph?.currentAssignments.get(due.workNodeRef) ?? null;
+      if (
+        assignment
+        && due.assignmentRef === assignment.assignmentRef
+        && due.assignmentFingerprint === assignment.semanticFingerprint
+      ) dueRefs.add(due.workNodeRef);
+    }
+  }
+
+  const attentionRefs = new Set();
+  const concernRegistry = sourceBundle.blueprint?.concernWatch;
+  if (!concernRegistry) {
+    throw new BrowserFamilyConversationServerError(
+      'FAMILY_WORK_SOURCE_INVALID',
+      'Canonical Concern Watch registry is unavailable',
+      503
+    );
+  }
+  const eligibleGraphFingerprints = new Set(eligibleByFingerprint.keys());
+  for (const aggregate of genericRuntimeSnapshot.concernAggregates) {
+    const projection = projectConcernAggregate(aggregate, { registry: concernRegistry });
+    if (!projection.views?.HUMAN_ATTENTION_INBOX) continue;
+    const workNodeRef = concernFamilyWorkNodeRef(aggregate, projection, eligibleGraphFingerprints);
+    if (workNodeRef && eligibleNodeRefs.has(workNodeRef)) attentionRefs.add(workNodeRef);
+  }
+
+  return normalizedFamilyWorkStatus({
+    state: 'CURRENT',
+    pendingCount: pendingRefs.size,
+    activeCount: activeRefs.size,
+    dueCount: dueRefs.size,
+    attentionCount: attentionRefs.size,
+    sourceRef: BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF
   });
 }
 
@@ -635,12 +883,21 @@ export async function resolveCurrentFamilyRoomBootstrap({
           : left.channelRef > right.channelRef ? 1 : 0
   );
   let workStatus = normalizedFamilyWorkStatus(null);
-  if (typeof resolveFamilyWorkProjection === 'function') {
-    workStatus = normalizedFamilyWorkStatus(await resolveFamilyWorkProjection(Object.freeze({
-      request,
-      principalRef: authority.membership.principalRef,
-      rooms: Object.freeze([...rooms])
-    })));
+  if (typeof resolveFamilyWorkProjection === 'function' && rooms.length > 0) {
+    try {
+      const genericRuntimeSnapshot = await resolveFamilyWorkProjection(Object.freeze({
+        request,
+        principalRef: authority.membership.principalRef,
+        rooms: Object.freeze([...rooms])
+      }));
+      workStatus = projectFamilyFollowThroughStatus({
+        genericRuntimeSnapshot,
+        principalRef: authority.membership.principalRef,
+        rooms
+      });
+    } catch {
+      workStatus = normalizedFamilyWorkStatus(null);
+    }
   }
   return Object.freeze({
     schemaVersion: BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,

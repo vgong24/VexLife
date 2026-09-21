@@ -9,6 +9,26 @@ export const familyRoomSuite = Object.freeze({
     assert(host, 'Family room status projection was not rendered inside Chat');
     assert(['CURRENT','EMPTY','HELD_UNAVAILABLE'].includes(snapshot.state), 'Family room truth state is invalid');
     assert(host.dataset.truthClass === snapshot.truthClass, 'Family room DOM truth class does not match controller truth');
+    if (snapshot.workStatus.state === 'CURRENT') {
+      assert(Number.isSafeInteger(snapshot.workStatus.pendingCount) && snapshot.workStatus.pendingCount >= 0,
+        'FTE-02 Family work pending projection is invalid');
+      assert(Number.isSafeInteger(snapshot.workStatus.activeCount) && snapshot.workStatus.activeCount >= 0,
+        'FTE-02 Family work active projection is invalid');
+      assert(Number.isSafeInteger(snapshot.workStatus.dueCount) && snapshot.workStatus.dueCount >= 0,
+        'FTE-05 Family due projection is invalid');
+      assert(Number.isSafeInteger(snapshot.workStatus.attentionCount) && snapshot.workStatus.attentionCount >= 0,
+        'FTE-05 Family attention projection is invalid');
+      const serializedWork = JSON.stringify(snapshot.workStatus);
+      for (const forbidden of ['workNodeRef','assignmentRef','schedulerAggregate','concernAggregate','evidenceRefs']) {
+        assert(!serializedWork.includes(forbidden), 'FTE-02 raw generic follow-through truth leaked into Family browser');
+      }
+      checks.push('FTE-02/05 Family browser receives only compact source-bound generic follow-through counts');
+    } else {
+      assert(snapshot.workStatus.state === 'HELD_UNAVAILABLE',
+        'FTE-08 unavailable generic work truth did not fail closed visibly');
+      checks.push('FTE-08 missing generic follow-through truth remains visibly held rather than becoming zero work');
+    }
+
     if (snapshot.state === 'HELD_UNAVAILABLE') {
       assert(app.familyRoom.roomCount() === 0, 'Held Family room fabricated a live channel');
       assert(snapshot.truthClass === 'HELD_UNAVAILABLE', 'Held Family projection did not preserve its explicit held truth class');

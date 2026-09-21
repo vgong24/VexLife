@@ -5,8 +5,8 @@
     {
       "path": "blueprint/strings/ja.json",
       "mode": "100644",
-      "bytes": 29096,
-      "sha256": "b4dfbc6ee11273b648ffae9127fd68aa3c0e5a29f27dcf6b1ea9f2f9717b9b16"
+      "bytes": 29143,
+      "sha256": "e99bf0d2ef4f03aae6204f11846412680e1679b65741bd2d65f3db97a8a3e4fd"
     },
     {
       "path": "scripts/build-public-learning-projection.mjs",
