@@ -3,6 +3,12 @@
   "bucketId": "07",
   "files": [
     {
+      "path": "docs/UX-EVOLUTION-FOUNDATION.md",
+      "mode": "100644",
+      "bytes": 2034,
+      "sha256": "ddcf2bc4bc6887b7cabeb4baeb7151860a129fe941ecb8bae24a43496e8b2f5c"
+    },
+    {
       "path": "scripts/g04b-native-provisioning-worker.mjs",
       "mode": "100644",
       "bytes": 4977,

@@ -5,8 +5,8 @@
     {
       "path": "blueprint/module-registry/scripts.json",
       "mode": "100644",
-      "bytes": 28379,
-      "sha256": "37810386a537b31b3ebbbf36948fbaa4650b665677347741ab5fc80ea8dd1bbf"
+      "bytes": 29029,
+      "sha256": "d355c58d91d0bb4afb944a1757536d230fdd7799c3ac0a70647a5c67a2021bb3"
     },
     {
       "path": "test/relationships-runtime-status-visible.test.mjs",
