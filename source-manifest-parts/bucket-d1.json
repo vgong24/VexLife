@@ -5,8 +5,8 @@
     {
       "path": "pages/strings/vexlife-onboarding.ja.json",
       "mode": "100644",
-      "bytes": 20130,
-      "sha256": "cec11c20c639ec63dfb6113015c8d0a906b805ab7fda632a7d45cd2d0be15568"
+      "bytes": 21797,
+      "sha256": "1dec031b9e46bcc1d9101aa6333c890b7c5e8250f345d19070f94f57b2d5acd5"
     },
     {
       "path": "scripts/recovery-status.mjs",
