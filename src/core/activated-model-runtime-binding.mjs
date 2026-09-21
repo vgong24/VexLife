@@ -600,16 +600,13 @@ function defaultProcessIdentity({ pid, pythonExecutable, args }) {
   const observedPid = Number(match[1]);
   const pgid = Number(match[2]);
   const command = match[3];
-  let canonicalPythonExecutable = pythonExecutable;
-  try { canonicalPythonExecutable = fs.realpathSync(pythonExecutable); } catch {}
-  const expectedLauncher = [pythonExecutable, ...args].join(' ');
-  const expectedCanonical = [canonicalPythonExecutable, ...args].join(' ');
-  const commandMatches = command === expectedLauncher || command === expectedCanonical;
+  const expectedArgvTail = ` ${args.join(' ')}`;
+  const commandMatches = command.endsWith(expectedArgvTail);
   return Object.freeze({
     pid: observedPid,
     pgid,
     commandMatches,
-    executableIdentity: command === expectedCanonical ? 'CANONICAL_TARGET' : command === expectedLauncher ? 'ADMITTED_LAUNCHER' : 'MISMATCH',
+    processTitleExecutableIgnored: true,
     exactOwnedDetachedGroup: observedPid === pid && pgid === pid && commandMatches
   });
 }
