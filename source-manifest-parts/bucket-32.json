@@ -3,6 +3,12 @@
   "bucketId": "32",
   "files": [
     {
+      "path": "blueprint/companion-availability-reentry-registry.json",
+      "mode": "100644",
+      "bytes": 2402,
+      "sha256": "6adc08acde919c8aae090fbcbd0836a389315a526aa9a29f7767c126abe4f369"
+    },
+    {
       "path": "blueprint/intent-orchestration-registry.json",
       "mode": "100644",
       "bytes": 17372,

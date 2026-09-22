@@ -9,6 +9,12 @@
       "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
     },
     {
+      "path": "src/core/companion-availability-reentry.mjs",
+      "mode": "100644",
+      "bytes": 12736,
+      "sha256": "477838226e27c318209f1c62e392aaaa70c4394ec3ec6f5b2bfa45ce60610584"
+    },
+    {
       "path": "src/core/intent-scheduler-runtime-snapshot.mjs",
       "mode": "100644",
       "bytes": 14936,
