@@ -21,6 +21,12 @@
       "sha256": "0865f0be6f1e13825145f2548b6ff547cc4917e88c308e3ce3916a681db790c1"
     },
     {
+      "path": "reference/browser/evolution/projection-host.js",
+      "mode": "100644",
+      "bytes": 2721,
+      "sha256": "40d0d3eff055cecc517fd3fa3c30b5fe422ce99bc0626de013ab217589194615"
+    },
+    {
       "path": "reference/browser/relationships/app.css",
       "mode": "100644",
       "bytes": 3828,

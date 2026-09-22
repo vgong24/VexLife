@@ -1342,7 +1342,7 @@
   {
     "moduleRef": "module.vexlife.core.ux-evolution",
     "path": "src/core/ux-evolution.mjs",
-    "role": "Validate the E0-A UX projection-migration membrane, parity accounting, cutover gates, finding witness evidence, supporting UX-surface boundaries, and deterministic coverage without taking semantic feature/state ownership.",
+    "role": "Validate E0-A migration accounting and E0-B pre-boot projection-host selection without taking semantic state, renderer, user-data, cutover or publication ownership.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "blueprint/ux-evolution-registry.json",
@@ -1350,17 +1350,23 @@
     ],
     "writes": [],
     "loadedBy": [
-      "module.vexlife.script.ux-evolution-report"
+      "module.vexlife.script.ux-evolution-report",
+      "module.vexlife.script.serve-browser",
+      "module.vexlife.browser.evolution-projection-host"
     ],
     "tests": [
-      "test/ux-evolution.test.mjs"
+      "test/ux-evolution.test.mjs",
+      "test/ux-evolution-host.test.mjs"
     ],
     "changeMap": [
       "blueprint/ux-evolution-registry.json",
       "scripts/ux-evolution-report.mjs",
       "docs/UX-EVOLUTION-FOUNDATION.md",
       "reference/browser/modules/experience-gallery-controller.js",
-      "reference/browser/modules/render-lab-controller.js"
+      "reference/browser/modules/render-lab-controller.js",
+      "scripts/serve-browser.mjs",
+      "reference/browser/evolution/index.html",
+      "reference/browser/evolution/projection-host.js"
     ]
   }
 ]
