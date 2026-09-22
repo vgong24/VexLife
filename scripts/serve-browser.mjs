@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,6 +8,10 @@ import { fileURLToPath } from 'node:url';
 import {
   createVexLifeBrowserServer as createCoreVexLifeBrowserServer,
 } from './serve-browser-core.mjs';
+import {
+  assertUxEvolutionRegistry,
+  resolveUxProjectionHostSelection,
+} from '../src/core/ux-evolution.mjs';
 export * from './serve-browser-core.mjs';
 
 import {
@@ -17,6 +22,8 @@ import {
   createBrowserRelationshipsInvitationProductBridge,
 } from '../src/core/browser-relationships-invitation-product-bridge.mjs';
 
+const uxEvolutionRegistry = JSON.parse(fs.readFileSync(new URL('../blueprint/ux-evolution-registry.json', import.meta.url), 'utf8'));
+assertUxEvolutionRegistry(uxEvolutionRegistry);
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 export const BROWSER_RELATIONSHIPS_INVITATION_REQUEST_MAX_BYTES = BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES * 2;
@@ -120,6 +127,29 @@ export function createVexLifeBrowserServer(options = {}) {
       await coreHandler(request, response);
       return;
     }
+    const projectionParam = uxEvolutionRegistry.projectionHost.selectionQueryParam;
+    if ((request.method === 'GET' || request.method === 'HEAD') && url.pathname === '/' && url.searchParams.has(projectionParam)) {
+      const selection = resolveUxProjectionHostSelection(uxEvolutionRegistry, {
+        requestedProjection: url.searchParams.get(projectionParam),
+        localExecution: true,
+      });
+      if (selection.state !== 'PASS') {
+        sendJson(response, 400, selection);
+        return;
+      }
+      const target = new URL(selection.route, 'http://127.0.0.1');
+      for (const [key, value] of url.searchParams) {
+        if (key !== projectionParam) target.searchParams.append(key, value);
+      }
+      response.writeHead(302, {
+        Location: target.pathname + target.search,
+        'Cache-Control': 'no-store',
+        'X-VexLife-Projection': selection.selectedProjection,
+      });
+      response.end();
+      return;
+    }
+
     if (url.pathname !== BROWSER_RELATIONSHIPS_INVITATION_PRODUCT_API_PATH) {
       await coreHandler(request, response);
       return;

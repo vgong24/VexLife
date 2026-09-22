@@ -76,7 +76,7 @@
   {
     "moduleRef": "module.vexlife.script.serve-browser",
     "path": "scripts/serve-browser.mjs",
-    "role": "Dependency-free localhost browser reference server with current server-owned Companion runtime policy, including direct compatibility, adopted read-only capability assimilation, canonical E2 tool-free baseline, Relationships, and Living Journal Memory routes.",
+    "role": "Dependency-free loopback browser server with current server-owned runtime routes plus E0-B pre-boot projection selection that preserves Reference default and admits Evolution only by explicit local/dev request.",
     "platformScope": "BROWSER",
     "reads": [
       "reference/browser/**",
@@ -86,7 +86,9 @@
       "registry.vexlife.intent-scheduler.001",
       "module.vexlife.core.capability-assimilation-runtime",
       "module.vexlife.core.model-connection-turn-composer",
-      "module.vexlife.core.browser-prompt-context-runtime"
+      "module.vexlife.core.browser-prompt-context-runtime",
+      "blueprint/ux-evolution-registry.json",
+      "module.vexlife.core.ux-evolution"
     ],
     "writes": [],
     "loadedBy": [
@@ -97,7 +99,8 @@
       "test/browser-living-journal-memory-http-route.test.mjs",
       "test/capability-assimilation-runtime.test.mjs",
       "test/browser-model-connection-server-composition.test.mjs",
-      "test/browser-prompt-context-runtime.test.mjs"
+      "test/browser-prompt-context-runtime.test.mjs",
+      "test/ux-evolution-host.test.mjs"
     ],
     "changeMap": [
       "src/core/capability-assimilation-runtime.mjs",
@@ -106,7 +109,9 @@
       "src/core/browser-prompt-context-runtime.mjs",
       "blueprint/module-registry/browser-prompt-context-runtime.json",
       "blueprint/module-registry/model-connection.json",
-      "docs/CAPABILITY-ASSIMILATION-RUNTIME.md"
+      "docs/CAPABILITY-ASSIMILATION-RUNTIME.md",
+      "reference/browser/evolution/index.html",
+      "reference/browser/evolution/projection-host.js"
     ]
   },
   {

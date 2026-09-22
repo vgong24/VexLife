@@ -666,5 +666,39 @@
     "appShell": false,
     "alwaysVisibleEngineeringDashboard": false,
     "missingEvidenceState": "PENDING_EXPLICIT_WITNESS"
+  },
+  "projectionHost": {
+    "schemaVersion": "vexlife.ux-projection-host/v1",
+    "hostRef": "host.vexlife.ux-evolution.e0-b.001",
+    "stageRef": "stage.vexlife.ux-evolution.e0-b",
+    "selectionQueryParam": "projection",
+    "defaultProjection": "REFERENCE_PROJECTION",
+    "selectionValues": {
+      "reference": "REFERENCE_PROJECTION",
+      "evolution": "EVOLUTION_PROJECTION"
+    },
+    "routes": {
+      "REFERENCE_PROJECTION": "/reference/browser/",
+      "EVOLUTION_PROJECTION": "/reference/browser/evolution/"
+    },
+    "evolutionSelectionAuthority": "EXPLICIT_LOCAL_DEV_ONLY",
+    "localExecutionClasses": [
+      "LOOPBACK_HTTP"
+    ],
+    "rendererTransitionClass": "DOCUMENT_NAVIGATION",
+    "oneActiveRenderer": true,
+    "priorRendererDisposition": "DOCUMENT_UNLOADED",
+    "referenceDefaultPreserved": true,
+    "evolutionHostState": "INERT_NO_MIGRATED_SURFACES",
+    "migratedSemanticRefs": [],
+    "sharedSemanticOwnerPolicy": "UNCHANGED_RIGHTFUL_OWNERS",
+    "selectionPersistence": "NONE",
+    "evolutionHostLoadsReferenceRenderer": false,
+    "dualRendererMountAllowed": false,
+    "semanticStateOwnerMutation": false,
+    "userDataFork": false,
+    "userHistoryRollbackOnProjectionRollback": false,
+    "publicationAuthority": false,
+    "cutoverAuthority": false
   }
 }
