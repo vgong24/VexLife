@@ -9,6 +9,12 @@
       "sha256": "a96b67ae3ea27d92beb94b110b1d1570d64635d8cdc90e73d4a1173b20b61117"
     },
     {
+      "path": "reference/browser/evolution/living-journal.css",
+      "mode": "100644",
+      "bytes": 7596,
+      "sha256": "6dabb04f35a9d2ad9eb54d5a1ac9ad371c899021ef333f5f692a70a055bed0bc"
+    },
+    {
       "path": "scripts/experience-review-seeded.mjs",
       "mode": "100644",
       "bytes": 9685,

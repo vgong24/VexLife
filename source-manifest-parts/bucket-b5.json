@@ -3,6 +3,12 @@
   "bucketId": "b5",
   "files": [
     {
+      "path": "reference/browser/evolution/living-journal-projection.js",
+      "mode": "100644",
+      "bytes": 20078,
+      "sha256": "d04ba160ad21248842fc64ca44afab3e37f3df6d32000ee220c781c3c6ccd248"
+    },
+    {
       "path": "scripts/recovery-simulate.mjs",
       "mode": "100644",
       "bytes": 196410,
