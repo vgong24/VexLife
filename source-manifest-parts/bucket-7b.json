@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 6265,
       "sha256": "f1728a2436dee4c9f101f2fa8de045f4d71835fccea1a2d36d308607ff2578b0"
+    },
+    {
+      "path": "test/ux-evolution-host.test.mjs",
+      "mode": "100644",
+      "bytes": 6820,
+      "sha256": "464d9903ae5a2185b0b0dbb7b03522036c482162399747af53bc73c0e7f7c877"
     }
   ]
 }
