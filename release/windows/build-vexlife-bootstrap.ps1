@@ -5,9 +5,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ExpectedSha256 = 'a09867eb2e827cb3f4ca84b11eae87420ba58738e4dec68de8b11cce3cd84eca'
-$ExpectedBytes = 8765440
-$ExpectedTarName = 'vexlife-source-3d2ef4c81a5b6b5a7ba717178fb3479511299e08.tar'
+$ExpectedSha256 = '9949cfe2e95ff59f039e38b7d5c4285b4d2752f01de1904c7bb1db7275caabad'
+$ExpectedBytes = 11151360
+$ExpectedTarName = 'vexlife-source-6a73b49fad78711261fc50aeae8e8cbe62c11da9.tar'
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $Node = (Get-Command node.exe -ErrorAction Stop).Source
 $IExpress = Join-Path $env:SystemRoot 'System32\iexpress.exe'

@@ -11,8 +11,8 @@
     {
       "path": "release/windows/bootstrap.ps1",
       "mode": "100644",
-      "bytes": 4023,
-      "sha256": "53312e61bbdc6ed2977b8c9ca1d3d90cd19ba38e9305c0f478556ec50d0ce0aa"
+      "bytes": 4024,
+      "sha256": "5bc0e4cc84ec497215d838d946be869076f14f11e7d4682b8a298dd6fc38533d"
     },
     {
       "path": "src/core/family-membership-runtime.mjs",
