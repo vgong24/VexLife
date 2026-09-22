@@ -41,8 +41,8 @@
     {
       "path": "test/release-bootstrap-package.test.mjs",
       "mode": "100644",
-      "bytes": 11739,
-      "sha256": "61dfa2d94682d17e06e2dfbf22fb2340c9335fd56782094eefe54995d00b1b08"
+      "bytes": 11993,
+      "sha256": "f47a218e45f155d8554fc337f59e47fe637a95cd988b25e792ad50e88e29d241"
     }
   ]
 }
