@@ -679,7 +679,7 @@
     },
     "routes": {
       "REFERENCE_PROJECTION": "/reference/browser/",
-      "EVOLUTION_PROJECTION": "/reference/browser/evolution/"
+      "EVOLUTION_PROJECTION": "/reference/browser/evolution/index.html"
     },
     "evolutionSelectionAuthority": "EXPLICIT_LOCAL_DEV_ONLY",
     "localExecutionClasses": [

@@ -20,7 +20,7 @@ function validateProjectionHostContract(r,e){
   add(e,h?.selectionQueryParam==='projection','PROJECTION_HOST_QUERY_INVALID');
   add(e,h?.defaultProjection==='REFERENCE_PROJECTION','PROJECTION_HOST_REFERENCE_DEFAULT_REQUIRED');
   add(e,h?.selectionValues?.reference==='REFERENCE_PROJECTION'&&h?.selectionValues?.evolution==='EVOLUTION_PROJECTION','PROJECTION_HOST_SELECTION_VALUES_INVALID');
-  add(e,h?.routes?.REFERENCE_PROJECTION==='/reference/browser/'&&h?.routes?.EVOLUTION_PROJECTION==='/reference/browser/evolution/','PROJECTION_HOST_ROUTES_INVALID');
+  add(e,h?.routes?.REFERENCE_PROJECTION==='/reference/browser/'&&h?.routes?.EVOLUTION_PROJECTION==='/reference/browser/evolution/index.html','PROJECTION_HOST_ROUTES_INVALID');
   add(e,h?.evolutionSelectionAuthority==='EXPLICIT_LOCAL_DEV_ONLY','PROJECTION_HOST_LOCAL_DEV_AUTHORITY_REQUIRED');
   add(e,exactSet(h?.localExecutionClasses,['LOOPBACK_HTTP']),'PROJECTION_HOST_LOCAL_EXECUTION_INVALID');
   add(e,h?.rendererTransitionClass==='DOCUMENT_NAVIGATION','PROJECTION_HOST_DOCUMENT_NAVIGATION_REQUIRED');

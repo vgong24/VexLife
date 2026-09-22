@@ -47,7 +47,7 @@ test('Evolution requires explicit local/dev selection', () => {
   const admitted = resolveUxProjectionHostSelection(registry, { requestedProjection: 'evolution', localExecution: true });
   assert.equal(admitted.state, 'PASS');
   assert.equal(admitted.selectedProjection, 'EVOLUTION_PROJECTION');
-  assert.equal(admitted.route, '/reference/browser/evolution/');
+  assert.equal(admitted.route, '/reference/browser/evolution/index.html');
   assert.equal(admitted.selectionClass, 'EXPLICIT_LOCAL_DEV');
   assert.equal(admitted.oneActiveRenderer, true);
   assert.equal(admitted.priorRendererDisposition, 'DOCUMENT_UNLOADED');
@@ -109,7 +109,7 @@ test('real loopback server keeps Reference default and routes explicit Evolution
 
   const evolutionResponse = await fetch(`${serverUrl}/?projection=evolution`, { redirect: 'manual' });
   assert.equal(evolutionResponse.status, 302);
-  assert.equal(evolutionResponse.headers.get('location'), '/reference/browser/evolution/');
+  assert.equal(evolutionResponse.headers.get('location'), '/reference/browser/evolution/index.html');
   assert.equal(evolutionResponse.headers.get('x-vexlife-projection'), 'EVOLUTION_PROJECTION');
 
   const referenceResponse = await fetch(`${serverUrl}/?projection=reference`, { redirect: 'manual' });
@@ -122,7 +122,7 @@ test('real loopback server keeps Reference default and routes explicit Evolution
   assert.equal(blockedReceipt.state, 'BLOCKED');
   assert.equal(blockedReceipt.reason, 'UNKNOWN_PROJECTION_SELECTION');
 
-  const hostDocument = await fetch(`${serverUrl}/reference/browser/evolution/`);
+  const hostDocument = await fetch(`${serverUrl}/reference/browser/evolution/index.html`);
   assert.equal(hostDocument.status, 200);
   assert.match(await hostDocument.text(), /VexLife Evolution Host/);
 });
