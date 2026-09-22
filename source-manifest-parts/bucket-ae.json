@@ -5,8 +5,8 @@
     {
       "path": "release/windows/build-vexlife-bootstrap.ps1",
       "mode": "100644",
-      "bytes": 7506,
-      "sha256": "f4fd0189c4eade92f6937e89686a156186076d2b60cf9c8f14f0422b03d8e416"
+      "bytes": 7576,
+      "sha256": "07b5a04bfee58557c6033eacdb632f939af9c78447f13a0ee0cd0b6485d99aac"
     },
     {
       "path": "test/foundation-training-plan.test.mjs",
