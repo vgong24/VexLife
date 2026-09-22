@@ -121,10 +121,10 @@ FILE2="package-plan.json"
 FILE3="release-notice-receipt.json"
 FILE4="source-archive-receipt.json"
 "@
-  $SedText = $SedText.Replace("`r`n", "`n").Replace("`n", "`r`n")
   [System.IO.File]::WriteAllText($Sed, $SedText, (New-Object System.Text.UTF8Encoding($false)))
-  & $IExpress /N /Q $Sed
-  if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $Target -PathType Leaf)) { throw 'IExpress did not form the unsigned Windows bootstrap candidate.' }
+  $IExpressArguments = '/N /Q "{0}"' -f $Sed
+  $IExpressProcess = Start-Process -FilePath $IExpress -ArgumentList $IExpressArguments -Wait -PassThru
+  if ($IExpressProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $Target -PathType Leaf)) { throw 'IExpress did not form the unsigned Windows bootstrap candidate.' }
 
   $ArtifactSha256 = Get-Sha256Lower $Target
   $ArtifactBytes = (Get-Item -LiteralPath $Target).Length
