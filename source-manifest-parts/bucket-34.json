@@ -17,8 +17,8 @@
     {
       "path": "release/macos/VexLifeSetupLauncher.sh",
       "mode": "100755",
-      "bytes": 3534,
-      "sha256": "a2ee98168a9bcac883122ec06d4886c24f8a48bbbc87e66ae55bda10f265fcdb"
+      "bytes": 3535,
+      "sha256": "9e7a4a077729cef00b6230aa5ce2f65208c95132400f118b0c2c5bd6f243c105"
     },
     {
       "path": "src/core/browser-relationships-invitation-product-bridge.mjs",
