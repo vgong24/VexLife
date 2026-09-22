@@ -9,17 +9,17 @@ export const REPOSITORY_ROOT = path.resolve(HERE, '../..');
 export const QUALIFIED_OUTPUT_ROOT = path.join(REPOSITORY_ROOT, 'generated', 'release-bootstrap-packages');
 
 export const FROZEN_RELEASE_SOURCE = Object.freeze({
-  releaseCandidateFreezeRef: 'freeze.onb-dist.vexlife.release-candidate.20260902.3d2ef4c8',
-  sourceCommit: '3d2ef4c81a5b6b5a7ba717178fb3479511299e08',
-  sourceTree: '8f8f945e8a448b191f85dfc327c135f54a296398',
-  sourceTarFilename: 'vexlife-source-3d2ef4c81a5b6b5a7ba717178fb3479511299e08.tar',
-  sourceTarSha256: 'a09867eb2e827cb3f4ca84b11eae87420ba58738e4dec68de8b11cce3cd84eca',
-  sourceTarBytes: 8765440,
-  r1TaskRef: 'task.onb-dist.vexlife.current-unsigned-release-reference.r1.001.a4b5ed24-e2b4-49bd-881a-3aefb34f3302',
-  r1AttemptRef: 'attempt.onb-dist.vexlife.current-unsigned-release-reference.r1.001.a002.d745c8f0-3ae0-454d-9540-2bfbe45eb50c',
-  r2TaskRef: 'task.onb-dist.vexlife.current-unsigned-release-reproduction.r2.001.e5f802e4-a2b0-4ac3-b28c-53858df93ff2',
-  r2AttemptRef: 'attempt.onb-dist.vexlife.current-unsigned-release-reproduction.r2.001.a003.af70c9e8-b221-43f3-bdbe-93ef1703e4ca',
-  r1R2TerminalReceiptRef: 'github.issue.vextreme-sdk.914.comment.5506554191',
+  releaseCandidateFreezeRef: 'freeze.onb-dist.vexlife.release-candidate.20260921.6a73b49f',
+  sourceCommit: '6a73b49fad78711261fc50aeae8e8cbe62c11da9',
+  sourceTree: '8cdb1e0c1f54ae526a3012c6e5c4feae9ba2be5f',
+  sourceTarFilename: 'vexlife-source-6a73b49fad78711261fc50aeae8e8cbe62c11da9.tar',
+  sourceTarSha256: '9949cfe2e95ff59f039e38b7d5c4285b4d2752f01de1904c7bb1db7275caabad',
+  sourceTarBytes: 11151360,
+  r1TaskRef: 'task.onb-dist.current-source-reproducibility.r1.6a73b49f',
+  r1AttemptRef: 'attempt.onb-dist.current-source-reproducibility.r1.a001.20260921',
+  r2TaskRef: 'task.onb-dist.current-source-reproducibility.r2.6a73b49f',
+  r2AttemptRef: 'attempt.onb-dist.current-source-reproducibility.r2.a001.20260921',
+  r1R2TerminalReceiptRef: 'github.issue.vexlife.635.comment.5770160855',
 });
 
 export const PACKAGING_SOURCE_PATHS = Object.freeze([
