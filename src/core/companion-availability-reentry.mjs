@@ -137,12 +137,13 @@ export function formCompanionReentryPlan({ registry, availability, binding, runt
   if (!validateCompanionAvailabilityRegistry(registry)) throw new TypeError('companion availability registry is invalid');
   const currentBinding = validateCompanionBindingInput(binding);
   const runtime = validateCompanionRuntimeObservation(runtimeObservation);
-  if (!object(availability) || availability.schemaVersion !== COMPANION_AVAILABILITY_SCHEMA || availability.availabilityState !== 'RECOVERABLE' || availability.recoveryClass !== 'SAFE_REENTRY_AVAILABLE') return null;
-  if (availability.bindingRef !== currentBinding.bindingRef || availability.homeRef !== currentBinding.homeRef || availability.runtimeObservationRef !== runtime.observationRef) throw new TypeError('availability/reentry inputs do not bind the same exact foreign evidence');
+  const canonicalAvailability = compileCompanionAvailability({ registry, binding: currentBinding, runtimeObservation: runtime });
+  if (!object(availability) || stable(availability) !== stable(canonicalAvailability)) return null;
+  if (canonicalAvailability.availabilityState !== 'RECOVERABLE' || canonicalAvailability.recoveryClass !== 'SAFE_REENTRY_AVAILABLE') return null;
   if (runtime.currentness !== 'CURRENT' || currentBinding.currentness !== 'CURRENT' || runtime.safeReentryState !== 'AVAILABLE') return null;
   const identity = {
     actionRef: COMPANION_REENTRY_ACTION_REF,
-    availabilityProjectionRef: availability.projectionRef,
+    availabilityProjectionRef: canonicalAvailability.projectionRef,
     bindingRef: currentBinding.bindingRef,
     homeRef: currentBinding.homeRef,
     companionLineageRef: currentBinding.companionLineageRef,
