@@ -2,11 +2,11 @@
 param()
 
 $ErrorActionPreference = 'Stop'
-$ExpectedCommit = '3d2ef4c81a5b6b5a7ba717178fb3479511299e08'
-$ExpectedTree = '8f8f945e8a448b191f85dfc327c135f54a296398'
-$ExpectedTarSha256 = 'a09867eb2e827cb3f4ca84b11eae87420ba58738e4dec68de8b11cce3cd84eca'
-$ExpectedTarBytes = 8765440
-$TarName = 'vexlife-source-3d2ef4c81a5b6b5a7ba717178fb3479511299e08.tar'
+$ExpectedCommit = '6a73b49fad78711261fc50aeae8e8cbe62c11da9'
+$ExpectedTree = '8cdb1e0c1f54ae526a3012c6e5c4feae9ba2be5f'
+$ExpectedTarSha256 = '9949cfe2e95ff59f039e38b7d5c4285b4d2752f01de1904c7bb1db7275caabad'
+$ExpectedTarBytes = 11151360
+$TarName = 'vexlife-source-6a73b49fad78711261fc50aeae8e8cbe62c11da9.tar'
 
 function Stop-Held([string]$Message) {
   throw "VexLife setup package stopped: $Message"

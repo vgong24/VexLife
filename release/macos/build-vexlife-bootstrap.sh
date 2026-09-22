@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-EXPECTED_SHA256='a09867eb2e827cb3f4ca84b11eae87420ba58738e4dec68de8b11cce3cd84eca'
-EXPECTED_BYTES='8765440'
-EXPECTED_TAR_NAME='vexlife-source-3d2ef4c81a5b6b5a7ba717178fb3479511299e08.tar'
+EXPECTED_SHA256='9949cfe2e95ff59f039e38b7d5c4285b4d2752f01de1904c7bb1db7275caabad'
+EXPECTED_BYTES='11151360'
+EXPECTED_TAR_NAME='vexlife-source-6a73b49fad78711261fc50aeae8e8cbe62c11da9.tar'
 
 usage() { printf 'Usage: %s --source-tar <path> [--out <relative-subdirectory>]\n' "$0"; }
 SOURCE_TAR=''
