@@ -10,12 +10,12 @@ source TAR.
 ## Immutable input
 
 ```text
-sourceCommit=3d2ef4c81a5b6b5a7ba717178fb3479511299e08
-sourceTree=8f8f945e8a448b191f85dfc327c135f54a296398
-sourceTarSha256=a09867eb2e827cb3f4ca84b11eae87420ba58738e4dec68de8b11cce3cd84eca
-sourceTarBytes=8765440
+sourceCommit=6a73b49fad78711261fc50aeae8e8cbe62c11da9
+sourceTree=8cdb1e0c1f54ae526a3012c6e5c4feae9ba2be5f
+sourceTarSha256=9949cfe2e95ff59f039e38b7d5c4285b4d2752f01de1904c7bb1db7275caabad
+sourceTarBytes=11151360
 R1_MAC_BYTES == R2_WINDOWS_BYTES
-terminalReceipt=github.issue.vextreme-sdk.914.comment.5506554191
+terminalReceipt=github.issue.vexlife.635.comment.5770160855
 ```
 
 The packaging tooling may advance after that source freeze. The payload source does
@@ -55,7 +55,7 @@ From repository source:
 ```text
 node scripts/release-bootstrap-package.mjs \
   --platform windows|macos \
-  --source-tar <exact-a09867-tar> \
+  --source-tar <exact-9949cfe2-tar> \
   --out <relative-subdirectory>
 ```
 
@@ -68,7 +68,7 @@ On a qualified Windows host:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\release\windows\build-vexlife-bootstrap.ps1 `
-  -SourceTar <exact-a09867-tar>
+  -SourceTar <exact-9949cfe2-tar>
 ```
 
 The current container candidate uses Windows IExpress to make one unsigned
@@ -85,7 +85,7 @@ if the outer container records host-specific metadata.
 On a qualified Mac:
 
 ```bash
-bash release/macos/build-vexlife-bootstrap.sh --source-tar <exact-a09867-tar>
+bash release/macos/build-vexlife-bootstrap.sh --source-tar <exact-9949cfe2-tar>
 ```
 
 The builder forms an unsigned `VexLife Setup.app` carrying the exact TAR and puts it
