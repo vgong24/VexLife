@@ -12,6 +12,7 @@ const exactSet=(a,b)=>unique(a)&&a.length===b.length&&b.every(x=>a.includes(x));
 const idx=s=>MIGRATION_LIFECYCLE.indexOf(s);
 const add=(e,ok,c)=>{if(!ok)e.push(c);};
 const HOST_PROJECTION_CLASSES=new Set(['REFERENCE_PROJECTION','EVOLUTION_PROJECTION']);
+const SHADOW_MIGRATION_SEMANTIC_REFS=new Set(['feature.vexlife.living-journal']);
 function validateProjectionHostContract(r,e){
   const h=r?.projectionHost;
   add(e,h?.schemaVersion==='vexlife.ux-projection-host/v1','PROJECTION_HOST_SCHEMA_INVALID');
@@ -27,8 +28,31 @@ function validateProjectionHostContract(r,e){
   add(e,h?.oneActiveRenderer===true,'PROJECTION_HOST_ONE_ACTIVE_RENDERER_REQUIRED');
   add(e,h?.priorRendererDisposition==='DOCUMENT_UNLOADED','PROJECTION_HOST_PRIOR_RENDERER_UNLOAD_REQUIRED');
   add(e,h?.referenceDefaultPreserved===true,'PROJECTION_HOST_REFERENCE_DEFAULT_PRESERVATION_REQUIRED');
-  add(e,h?.evolutionHostState==='INERT_NO_MIGRATED_SURFACES','PROJECTION_HOST_INERT_STATE_REQUIRED');
-  add(e,Array.isArray(h?.migratedSemanticRefs)&&h.migratedSemanticRefs.length===0,'PROJECTION_HOST_MIGRATED_SEMANTICS_FORBIDDEN');
+  const hostState=h?.evolutionHostState;
+  const migrated=h?.migratedSemanticRefs;
+  add(e,['INERT_NO_MIGRATED_SURFACES','SHADOW_MIGRATED_SURFACES'].includes(hostState),'PROJECTION_HOST_STATE_INVALID');
+  if(hostState==='INERT_NO_MIGRATED_SURFACES'){
+    add(e,Array.isArray(migrated)&&migrated.length===0,'PROJECTION_HOST_INERT_MIGRATED_SEMANTICS_FORBIDDEN');
+  }else{
+    add(e,unique(migrated)&&migrated.length>0&&migrated.every(ref=>SHADOW_MIGRATION_SEMANTIC_REFS.has(ref)),'PROJECTION_HOST_SHADOW_SEMANTICS_INVALID');
+    const s=h?.shadowProjection;
+    add(e,s?.semanticRef==='feature.vexlife.living-journal','PROJECTION_HOST_SHADOW_SEMANTIC_REF_INVALID');
+    add(e,s?.projectionRef==='projection.living-journal.evolution-shadow','PROJECTION_HOST_SHADOW_PROJECTION_REF_INVALID');
+    add(e,s?.stateOwnerPolicy==='UNCHANGED_SERVICE_CONTEXT','PROJECTION_HOST_SHADOW_STATE_OWNER_INVALID');
+    add(e,s?.memoryOwnerPolicy==='UNCHANGED_ACCEPTED_MEMORY_OWNERS','PROJECTION_HOST_SHADOW_MEMORY_OWNER_INVALID');
+    add(e,s?.journeyOwnerPolicy==='UNCHANGED_NAVIGATION_JOURNEY_OWNER','PROJECTION_HOST_SHADOW_JOURNEY_OWNER_INVALID');
+    add(e,s?.referenceFallbackRequired===true,'PROJECTION_HOST_SHADOW_REFERENCE_FALLBACK_REQUIRED');
+    add(e,s?.oneActiveRendererRequired===true,'PROJECTION_HOST_SHADOW_ONE_RENDERER_REQUIRED');
+    add(e,s?.exactSourceFrameRequiredForExactBack===true,'PROJECTION_HOST_SHADOW_EXACT_BACK_REQUIRED');
+    add(e,s?.localMarginaliaDurability==='SESSION_ONLY_NON_MEMORY','PROJECTION_HOST_SHADOW_MARGINALIA_INVALID');
+    add(e,s?.newSemanticCapabilityAuthority===false,'PROJECTION_HOST_SHADOW_NEW_SEMANTICS_FORBIDDEN');
+    add(e,s?.cutoverAuthority===false&&s?.retirementAuthority===false,'PROJECTION_HOST_SHADOW_LIFECYCLE_AUTHORITY_FORBIDDEN');
+    add(e,s?.browserBehaviorChangeScope==='EVOLUTION_LOCAL_DEV_ONLY','PROJECTION_HOST_SHADOW_SCOPE_INVALID');
+    const record=(r?.migrationRecords??[]).find(x=>x.semanticRef===s?.semanticRef);
+    add(e,record?.evolutionProjectionRefs?.includes(s?.projectionRef)===true,'PROJECTION_HOST_SHADOW_RECORD_BINDING_MISSING');
+    add(e,idx(record?.migrationLifecycleState)>=idx('SHADOW_IMPLEMENTED'),'PROJECTION_HOST_SHADOW_RECORD_STATE_INVALID');
+    add(e,['PARTIAL','SATISFIED'].includes(record?.parityState),'PROJECTION_HOST_SHADOW_PARITY_STATE_INVALID');
+  }
   add(e,h?.sharedSemanticOwnerPolicy==='UNCHANGED_RIGHTFUL_OWNERS','PROJECTION_HOST_OWNER_POLICY_INVALID');
   add(e,h?.selectionPersistence==='NONE','PROJECTION_HOST_SELECTION_PERSISTENCE_FORBIDDEN');
   add(e,h?.evolutionHostLoadsReferenceRenderer===false,'PROJECTION_HOST_REFERENCE_RENDERER_LOAD_FORBIDDEN');

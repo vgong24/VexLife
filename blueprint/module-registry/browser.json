@@ -513,10 +513,11 @@
   {
     "moduleRef": "module.vexlife.browser.evolution-host-document",
     "path": "reference/browser/evolution/index.html",
-    "role": "Local/dev-only inert E0-B Evolution projection document. It mounts no Reference adapter or migrated semantic surface and provides only an explicit return to Reference.",
+    "role": "Local/dev-only E0-B/LJ-01 Evolution document hosting the bounded Living Journal shadow while Reference stays the default/fallback document and remains unloaded.",
     "platformScope": "BROWSER",
     "reads": [
-      "reference/browser/evolution/projection-host.js"
+      "reference/browser/evolution/projection-host.js",
+      "reference/browser/evolution/living-journal.css"
     ],
     "writes": [],
     "loadedBy": [
@@ -526,20 +527,28 @@
       "test/ux-evolution-host.test.mjs"
     ],
     "changeMap": [
-      "reference/browser/evolution/projection-host.js"
+      "reference/browser/evolution/projection-host.js",
+      "reference/browser/evolution/living-journal-projection.js",
+      "reference/browser/evolution/living-journal.css"
     ]
   },
   {
     "moduleRef": "module.vexlife.browser.evolution-projection-host",
     "path": "reference/browser/evolution/projection-host.js",
-    "role": "Validates explicit loopback-only Evolution selection against the canonical UX Evolution registry and emits one in-page inert-host receipt without semantic, user-data, cutover or publication effects.",
+    "role": "Validates explicit loopback-only Evolution selection and mounts the bounded Living Journal shadow by consuming existing Journal/Memory/archive/walkthrough owners without semantic, user-data, cutover or publication ownership.",
     "platformScope": "BROWSER",
     "reads": [
       "blueprint/ux-evolution-registry.json",
-      "module.vexlife.core.ux-evolution"
+      "blueprint/feature-registry.json",
+      "blueprint/experience-registry.json",
+      "blueprint/strings/en.json",
+      "blueprint/strings/ja.json",
+      "blueprint/strings/zh.json",
+      "module.vexlife.core.ux-evolution",
+      "module.vexlife.browser.evolution-living-journal-shadow"
     ],
     "writes": [
-      "in-page E0-B host receipt only"
+      "in-page Evolution host receipt only"
     ],
     "loadedBy": [
       "reference/browser/evolution/index.html"
@@ -549,7 +558,57 @@
     ],
     "changeMap": [
       "src/core/ux-evolution.mjs",
-      "scripts/serve-browser.mjs"
+      "reference/browser/evolution/living-journal-projection.js",
+      "reference/browser/evolution/living-journal.css"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.evolution-living-journal-shadow",
+    "path": "reference/browser/evolution/living-journal-projection.js",
+    "role": "LJ-01 Evolution-only presentation adapter that reuses the accepted Living Journal controller, current/held Memory and committed-day archive APIs, source-managed walkthrough runner, and Reference semantic-frame input without becoming a Journal, Memory, Journey or persistence owner.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/modules/living-journal-controller.js",
+      "reference/browser/modules/living-journal-demo-data.js",
+      "reference/browser/modules/feature-walkthrough-runner.js",
+      "blueprint/feature-registry.json",
+      "blueprint/experience-registry.json",
+      "module.vexlife.core.browser-living-journal-memory-bridge"
+    ],
+    "writes": [
+      "ephemeral in-page Journal marginalia only",
+      "Guide-local walkthrough preference via accepted feature-walkthrough owner"
+    ],
+    "loadedBy": [
+      "module.vexlife.browser.evolution-projection-host"
+    ],
+    "tests": [
+      "test/ux-evolution-host.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/evolution/index.html",
+      "reference/browser/evolution/living-journal.css",
+      "blueprint/ux-evolution-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.evolution-living-journal-styles",
+    "path": "reference/browser/evolution/living-journal.css",
+    "role": "Immersive LJ-01 shadow presentation grammar: reading-first stage, contextual tools, compact Vex presence, >=48px primary controls, compact one-page flow and reduced-motion equivalence.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/design-tokens.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "reference/browser/evolution/index.html"
+    ],
+    "tests": [
+      "test/ux-evolution-host.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/evolution/index.html",
+      "reference/browser/evolution/living-journal-projection.js"
     ]
   }
 ]

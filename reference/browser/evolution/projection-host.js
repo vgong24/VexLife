@@ -1,57 +1,12 @@
-import {
-  assertUxEvolutionRegistry,
-  resolveUxProjectionHostSelection,
-} from '../../../src/core/ux-evolution.mjs';
-
-const registryResponse = await fetch('../../../blueprint/ux-evolution-registry.json', { cache: 'no-store' });
-if (!registryResponse.ok) throw new Error(`Unable to load ux-evolution-registry.json: HTTP ${registryResponse.status}`);
-const registry = await registryResponse.json();
-const validation = assertUxEvolutionRegistry(registry);
-const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
-const selection = resolveUxProjectionHostSelection(registry, {
-  requestedProjection: 'evolution',
-  localExecution: loopbackHosts.has(globalThis.location.hostname),
-});
-
-const root = document.querySelector('#evolutionHost');
-const status = document.querySelector('#hostStatus');
-const rendererState = document.querySelector('#rendererState');
-const selectedProjection = document.querySelector('#selectedProjection');
-const ownerState = document.querySelector('#ownerState');
-const cutoverState = document.querySelector('#cutoverState');
-
-root.dataset.hostState = selection.state;
-root.dataset.activeRendererCount = selection.state === 'PASS' ? '1' : '0';
-selectedProjection.textContent = selection.selectedProjection ?? 'NONE';
-rendererState.textContent = selection.state === 'PASS'
-  ? 'One active inert Evolution renderer; Reference document is not mounted'
-  : 'Blocked — local/dev selection was not admitted';
-ownerState.textContent = registry.projectionHost.sharedSemanticOwnerPolicy;
-cutoverState.textContent = registry.projectionHost.cutoverAuthority ? 'Authorized' : 'Not authorized';
-status.textContent = selection.state === 'PASS'
-  ? 'Inert Evolution host active. No migrated semantic surfaces, persistence, user-data fork, publication or cutover.'
-  : `Evolution host blocked: ${selection.reason}`;
-
-const receipt = Object.freeze({
-  schemaVersion: 'vexlife.ux-evolution-browser-host-receipt/v1',
-  hostRef: registry.projectionHost.hostRef,
-  registryRef: validation.registryRef,
-  stageRef: registry.projectionHost.stageRef,
-  state: selection.state,
-  reason: selection.reason,
-  selectedProjection: selection.selectedProjection,
-  defaultProjection: selection.defaultProjection,
-  selectionClass: selection.selectionClass ?? null,
-  oneActiveRenderer: selection.oneActiveRenderer,
-  activeRendererCount: selection.state === 'PASS' ? 1 : 0,
-  referenceRendererMounted: false,
-  migratedSemanticRefs: [...registry.projectionHost.migratedSemanticRefs],
-  semanticStateOwnerMutation: false,
-  userDataFork: false,
-  userHistoryRollback: false,
-  publicationAuthority: false,
-  cutoverAuthority: false,
-});
-globalThis.__VEXLIFE_EVOLUTION_HOST__ = receipt;
-
+import { assertUxEvolutionRegistry, resolveUxProjectionHostSelection } from '../../../src/core/ux-evolution.mjs';
+import { LIVING_JOURNAL_FEATURE_REF, mountLivingJournalEvolutionShadow } from './living-journal-projection.js';
+async function loadJson(path){const response=await fetch(path,{cache:'no-store'});if(!response.ok)throw new Error(`Unable to load ${path}: HTTP ${response.status}`);return response.json()}
+const registry=await loadJson('../../../blueprint/ux-evolution-registry.json'),validation=assertUxEvolutionRegistry(registry),loopbackHosts=new Set(['127.0.0.1','localhost','::1','[::1]']),selection=resolveUxProjectionHostSelection(registry,{requestedProjection:'evolution',localExecution:loopbackHosts.has(globalThis.location.hostname)}),root=document.querySelector('#evolutionHost'),status=document.querySelector('#hostStatus');
+if(selection.state!=='PASS')throw new Error(`Evolution host blocked: ${selection.reason}`);
+if(!registry.projectionHost.migratedSemanticRefs.includes(LIVING_JOURNAL_FEATURE_REF))throw new Error('Living Journal shadow is not registered as the active migrated semantic');
+const language=new URLSearchParams(globalThis.location.search).get('lang'),locale=['en','ja','zh'].includes(language)?language:'en';document.documentElement.lang=locale;
+const[featureRegistry,experience,strings]=await Promise.all([loadJson('../../../blueprint/feature-registry.json'),loadJson('../../../blueprint/experience-registry.json'),loadJson(`../../../blueprint/strings/${locale}.json`)]);
+const shadow=mountLivingJournalEvolutionShadow({registry,featureRegistry,experience,strings,searchParams:new URLSearchParams(globalThis.location.search)});globalThis.__VEXLIFE_LJ_EVOLUTION_SHADOW__=shadow;await shadow.ready;const shadowReceipt=shadow.snapshot();
+root.dataset.hostState='PASS';root.dataset.activeRendererCount='1';root.dataset.migratedSemanticRef=LIVING_JOURNAL_FEATURE_REF;status.textContent='Living Journal Evolution shadow active. Reference remains the default/fallback; no cutover or semantic-owner mutation is authorized.';
+globalThis.__VEXLIFE_EVOLUTION_HOST__=Object.freeze({schemaVersion:'vexlife.ux-evolution-browser-host-receipt/v1',hostRef:registry.projectionHost.hostRef,registryRef:validation.registryRef,stageRef:registry.projectionHost.stageRef,state:'PASS',reason:null,selectedProjection:selection.selectedProjection,defaultProjection:selection.defaultProjection,selectionClass:selection.selectionClass,oneActiveRenderer:selection.oneActiveRenderer,activeRendererCount:1,priorRendererDisposition:selection.priorRendererDisposition,referenceRendererMounted:false,migratedSemanticRefs:[...registry.projectionHost.migratedSemanticRefs],shadowProjectionRef:registry.projectionHost.shadowProjection.projectionRef,shadowState:shadowReceipt.state,sourceFrameBound:shadowReceipt.sourceFrameBound,semanticStateOwnerMutation:false,userDataFork:false,userHistoryRollback:false,publicationAuthority:false,cutoverAuthority:false});
 // [VXG RealForever]

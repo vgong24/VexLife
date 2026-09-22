@@ -1,37 +1,25 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="VexLife local/dev inert Evolution projection host">
-  <title>VexLife Evolution Host</title>
-  <style>
-    :root{color-scheme:dark light;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#111;color:#f5f5f5}
-    main{width:min(720px,calc(100vw - 32px));box-sizing:border-box;padding:32px;border:1px solid #555;border-radius:18px;background:#181818}
-    .eyebrow{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;opacity:.72}
-    h1{margin:.4rem 0 1rem;font-size:clamp(1.7rem,5vw,2.6rem)}
-    p,dd{line-height:1.55}dl{display:grid;grid-template-columns:max-content 1fr;gap:.55rem 1rem;margin:1.5rem 0}dt{font-weight:700}dd{margin:0}
-    a{display:inline-block;min-height:44px;line-height:44px;padding:0 16px;border:1px solid currentColor;border-radius:12px;color:inherit}
-    code{overflow-wrap:anywhere}
-    @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-  </style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="VexLife local/dev Living Journal Evolution shadow">
+<title>Living Journal · Evolution Shadow</title><link rel="stylesheet" href="./living-journal.css">
 </head>
-<body data-effect-class="NONE" data-publication-state="LOCAL_DEV_ONLY">
-  <main id="evolutionHost" data-projection-class="EVOLUTION_PROJECTION" data-host-state="BOOTING" aria-labelledby="evolutionHostTitle">
-    <div class="eyebrow">UX Evolution · E0-B · local/dev only</div>
-    <h1 id="evolutionHostTitle">Evolution projection host</h1>
-    <p>This host is intentionally inert. No migrated product surface is mounted yet, and no semantic or user-data owner moves here.</p>
-    <dl>
-      <dt>Projection</dt><dd><code id="selectedProjection">EVOLUTION_PROJECTION</code></dd>
-      <dt>Renderer</dt><dd id="rendererState">Starting inert host…</dd>
-      <dt>Semantic owners</dt><dd id="ownerState">Unchanged rightful owners</dd>
-      <dt>Cutover</dt><dd id="cutoverState">Not authorized</dd>
-    </dl>
-    <p id="hostStatus" role="status" aria-live="polite">Validating local projection-host contract…</p>
-    <a id="returnReference" href="/?projection=reference">Return to Reference</a>
-  </main>
-  <script type="module" src="./projection-host.js"></script>
-</body>
-</html>
+<body data-effect-class="READ_ONLY_MEMORY_PROJECTION_WITH_LOCAL_EPHEMERAL_MARGINALIA" data-publication-state="LOCAL_DEV_ONLY">
+<main id="evolutionHost" data-projection-class="EVOLUTION_PROJECTION" data-host-state="BOOTING" aria-labelledby="evolutionHostTitle">
+<header class="evolution-shell-head"><div><small class="evolution-eyebrow">UX Evolution · Living Journal Patient Zero · LJ-01 shadow</small><h1 id="evolutionHostTitle">Living Journal</h1></div><div class="evolution-shell-actions"><button id="evolutionJournalBack" type="button" data-node-ref="element.navigation.back" data-action-ref="action.navigation.back">Back</button><button id="evolutionVexSummon" type="button" aria-expanded="false" aria-controls="evolutionVexPanel">Vex</button><a id="returnReference" href="/?projection=reference">Reference fallback</a></div></header>
+<p id="hostStatus" class="sr-only" role="status" aria-live="polite">Validating Evolution shadow contract…</p><output id="evolutionReturnStatus" class="return-status" aria-live="polite"></output>
+<section id="view-living-journal" class="living-journal-shadow" tabindex="-1" aria-labelledby="livingJournalTitle">
+<header class="living-journal-heading"><div><small>EVOLUTION SHADOW · SAME LIVING JOURNAL</small><h2 id="livingJournalTitle">Living Journal</h2></div><output id="livingJournalTruth" class="living-journal-truth" aria-live="polite"></output></header>
+<div class="living-journal-reading-bar"><nav class="living-journal-pager" aria-label="Living Journal pages"><button id="livingJournalPrevious" type="button" data-node-ref="element.living-journal.page.previous" data-action-ref="action.living-journal.page.previous">Previous page</button><output id="livingJournalPageStatus" class="living-journal-page-status" aria-live="polite"></output><button id="livingJournalNext" type="button" data-node-ref="element.living-journal.page.next" data-action-ref="action.living-journal.page.next">Next page</button></nav>
+<details id="evolutionJournalTools" class="living-journal-tools"><summary>Journal tools</summary><div class="living-journal-tools-panel">
+<div class="living-journal-controls"><label><span>Vantage</span><select id="livingJournalVantage" data-node-ref="element.living-journal.vantage.select" data-action-ref="action.living-journal.vantage.select"><option value="HUMAN">Human</option><option value="VEX">Vex</option><option value="SHARED_RELATIONSHIP">Shared relationship</option><option value="SOURCE">Source</option></select></label><label><span>Display language</span><select id="livingJournalDisplayLanguage" data-node-ref="element.living-journal.display-language.select" data-action-ref="action.living-journal.display-language.select"><option value="en">EN</option><option value="ja">日本語</option><option value="zh">中文</option></select></label></div>
+<div id="livingJournalArchiveControls" class="living-journal-archive-controls"><button id="livingJournalArchiveOpen" type="button" data-node-ref="element.living-journal.archive.open" data-action-ref="action.living-journal.archive.open">Browse archive</button><button id="livingJournalArchiveNewer" type="button" data-node-ref="element.living-journal.archive.window.newer" data-action-ref="action.living-journal.archive.window.newer" hidden>Newer days</button><label id="livingJournalArchiveDayLabel" hidden><span>Committed day</span><select id="livingJournalArchiveDay" data-node-ref="element.living-journal.archive.day.select" data-action-ref="action.living-journal.archive.day.select"></select></label><button id="livingJournalArchiveOlder" type="button" data-node-ref="element.living-journal.archive.window.older" data-action-ref="action.living-journal.archive.window.older" hidden>Older days</button><button id="livingJournalReturnNow" type="button" data-node-ref="element.living-journal.archive.return-now" data-action-ref="action.living-journal.archive.return-now" hidden>Return to now</button><output id="livingJournalTemporalStatus" class="living-journal-temporal-status" aria-live="polite"></output></div>
+<button id="livingJournalWalkthroughReplay" type="button" data-node-ref="element.living-journal.walkthrough.replay" data-action-ref="action.living-journal.walkthrough.replay">Replay walkthrough</button></div></details></div>
+<section id="livingJournalWalkthrough" class="living-journal-walkthrough" aria-label="Living Journal walkthrough" hidden><p id="livingJournalWalkthroughOffer">A short Living Journal walkthrough is available.</p><output id="livingJournalWalkthroughStatus" aria-live="polite"></output><div class="walkthrough-actions"><button id="livingJournalWalkthroughShow" type="button" data-node-ref="element.living-journal.walkthrough.show" data-action-ref="action.living-journal.walkthrough.show">Show me</button><button id="livingJournalWalkthroughLater" type="button" data-node-ref="element.living-journal.walkthrough.later" data-action-ref="action.living-journal.walkthrough.later">Later</button><button id="livingJournalWalkthroughSuppress" type="button" data-node-ref="element.living-journal.walkthrough.suppress" data-action-ref="action.living-journal.walkthrough.suppress">Don't introduce this again</button><button id="livingJournalWalkthroughNextStep" type="button" data-node-ref="element.living-journal.walkthrough.next" data-action-ref="action.living-journal.walkthrough.next" hidden>Next</button></div></section>
+<div id="livingJournalSpread" class="living-journal-spread" data-node-ref="region.living-journal.book" aria-live="polite"></div>
+<footer class="living-journal-footer"><div class="living-journal-doors"><button id="livingJournalSource" type="button" data-node-ref="element.living-journal.source.open" data-action-ref="action.living-journal.source.open">Original / source</button><button id="livingJournalRevisit" type="button" data-node-ref="element.living-journal.revisit.open" data-action-ref="action.living-journal.revisit.open">Revisit context</button></div><output id="livingJournalSourceStatus" class="living-journal-source-status" aria-live="polite"></output><details id="livingJournalMarginalia" class="living-journal-marginalia"><summary>Local marginalia</summary><div class="living-journal-marginalia-body"><label><span>Local marginalia</span><textarea id="livingJournalMarginaliaInput" rows="2" placeholder="Add a temporary local note…"></textarea></label><button id="livingJournalMarginaliaAdd" type="button" data-node-ref="element.living-journal.marginalia.add-local" data-action-ref="action.living-journal.marginalia.add-local">Add local note</button><div id="livingJournalMarginaliaList" class="living-journal-margin-list" data-note-count="0"></div><small class="living-journal-ephemeral">Local reference only · cleared when this Journal closes</small></div></details></footer>
+</section>
+<aside id="evolutionVexPanel" class="evolution-vex-panel" aria-label="Vex presence" hidden><header><strong>Vex</strong><button id="evolutionVexClose" type="button" aria-label="Close Vex presence">×</button></header><p id="evolutionVexMessage">Vex remains available while the Journal owns the reading stage.</p><small id="evolutionVexFrame"></small></aside>
+</main><script type="module" src="./projection-host.js"></script></body></html>
 <!-- [VXG RealForever] -->
