@@ -201,9 +201,10 @@ test('host builders bind RPB-10 build environment and deterministic pre-containe
   assert.match(windows, /IExpressSha256/u);
   assert.match(windows, /IExpressVersion/u);
   assert.match(windows, /Sort-Object/u);
-  assert.equal(windows.includes('$IExpressProcess = Start-Process -FilePath $IExpress -ArgumentList $IExpressArguments -Wait -PassThru'), true);
-  assert.equal(windows.includes('$IExpressArguments = \'/N /Q "{0}"\' -f $Sed'), true);
-  assert.match(windows, /\$IExpressProcess\.ExitCode/u);
+  assert.match(windows, /spawnSync\(iexpress, \['\/N', '\/Q', sed\]/u);
+  assert.equal(windows.includes("& $Node $IExpressRunnerPath $IExpress $Sed"), true);
+  assert.match(windows, /\$IExpressExitCode\s*=\s*\$LASTEXITCODE/u);
+  assert.doesNotMatch(windows, /Start-Process\s+-FilePath\s+\$IExpress/u);
   assert.doesNotMatch(windows, /&\s+\$IExpress\s+\/N\s+\/Q\s+\$Sed/u);
 
   assert.match(macos, /sw_vers -productVersion/u);
