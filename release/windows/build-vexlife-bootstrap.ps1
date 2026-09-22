@@ -122,9 +122,21 @@ FILE3="release-notice-receipt.json"
 FILE4="source-archive-receipt.json"
 "@
   [System.IO.File]::WriteAllText($Sed, $SedText, (New-Object System.Text.UTF8Encoding($false)))
-  $IExpressArguments = '/N /Q "{0}"' -f $Sed
-  $IExpressProcess = Start-Process -FilePath $IExpress -ArgumentList $IExpressArguments -Wait -PassThru
-  if ($IExpressProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $Target -PathType Leaf)) { throw 'IExpress did not form the unsigned Windows bootstrap candidate.' }
+  $IExpressRunnerPath = Join-Path $Stage 'run-iexpress.cjs'
+  $IExpressRunnerSource = @'
+const { spawnSync } = require('node:child_process');
+const [iexpress, sed] = process.argv.slice(2);
+const result = spawnSync(iexpress, ['/N', '/Q', sed], { stdio: 'inherit', windowsHide: true });
+if (result.error) {
+  console.error(result.error.message);
+  process.exit(127);
+}
+process.exit(Number.isInteger(result.status) ? result.status : 126);
+'@
+  [System.IO.File]::WriteAllText($IExpressRunnerPath, $IExpressRunnerSource, (New-Object System.Text.UTF8Encoding($false)))
+  & $Node $IExpressRunnerPath $IExpress $Sed
+  $IExpressExitCode = $LASTEXITCODE
+  if ($IExpressExitCode -ne 0 -or -not (Test-Path -LiteralPath $Target -PathType Leaf)) { throw 'IExpress did not form the unsigned Windows bootstrap candidate.' }
 
   $ArtifactSha256 = Get-Sha256Lower $Target
   $ArtifactBytes = (Get-Item -LiteralPath $Target).Length
