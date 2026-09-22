@@ -23,8 +23,8 @@
     {
       "path": "release/macos/build-vexlife-bootstrap.sh",
       "mode": "100755",
-      "bytes": 7703,
-      "sha256": "361ce7c254edbb3f09b0e6093b271dd3532c711a84f600c202de251111cd9b2f"
+      "bytes": 7704,
+      "sha256": "2c40f95f1388521141e602680cace8a57631e4861705a9acd5075b35590d9217"
     },
     {
       "path": "test/g05-runtime-authority-substrate.test.mjs",
