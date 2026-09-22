@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "18",
+  "files": [
+    {
+      "path": "src/core/ux-evolution.mjs",
+      "mode": "100644",
+      "bytes": 9516,
+      "sha256": "c2d52ecea88760e847c6660b195360766b27676e4c1fa50550ddd6846c0fdb65"
+    }
+  ]
+}
