@@ -1,11 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-EXPECTED_COMMIT='3d2ef4c81a5b6b5a7ba717178fb3479511299e08'
-EXPECTED_TREE='8f8f945e8a448b191f85dfc327c135f54a296398'
-EXPECTED_SHA256='a09867eb2e827cb3f4ca84b11eae87420ba58738e4dec68de8b11cce3cd84eca'
-EXPECTED_BYTES='8765440'
-TAR_NAME='vexlife-source-3d2ef4c81a5b6b5a7ba717178fb3479511299e08.tar'
+EXPECTED_COMMIT='6a73b49fad78711261fc50aeae8e8cbe62c11da9'
+EXPECTED_TREE='8cdb1e0c1f54ae526a3012c6e5c4feae9ba2be5f'
+EXPECTED_SHA256='9949cfe2e95ff59f039e38b7d5c4285b4d2752f01de1904c7bb1db7275caabad'
+EXPECTED_BYTES='11151360'
+TAR_NAME='vexlife-source-6a73b49fad78711261fc50aeae8e8cbe62c11da9.tar'
 
 fail() { printf 'VexLife setup package stopped: %s\n' "$1" >&2; exit 2; }
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
