@@ -201,6 +201,7 @@ test('host builders bind RPB-10 build environment and deterministic pre-containe
   assert.match(windows, /IExpressSha256/u);
   assert.match(windows, /IExpressVersion/u);
   assert.match(windows, /Sort-Object/u);
+  assert.equal(windows.includes('$SedText = $SedText.Replace("`r`n", "`n").Replace("`n", "`r`n")'), true);
 
   assert.match(macos, /sw_vers -productVersion/u);
   assert.match(macos, /sw_vers -buildVersion/u);
