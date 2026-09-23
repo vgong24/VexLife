@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "vexlife.vex-reboot-cross-platform-current-model-matrix/v1",
+  "matrixRef": "matrix.vexlife.vex-reboot.vr07.cross-platform-current-model.001",
+  "purpose": "Describe only owner-current Reboot proof cells; do not invent a Cartesian platform/model matrix or runtime authority.",
+  "cells": [
+    {
+      "cellRef": "P0_G0_WINDOWS",
+      "modelClass": "G0_RELEASE_QUALIFIED",
+      "platform": "win32",
+      "architecture": "x64",
+      "state": "SUPPORTED_CURRENT_SOURCE",
+      "proofClass": "REAL_HOST_REQUIRED",
+      "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
+      "runtimeRef": "runtime.llama-cpp.server.b10107.windows-x86-64.cuda12.4",
+      "requestModel": "Qwen3.5-4B-Q4_K_M",
+      "endpointOrigin": "http://127.0.0.1:18080",
+      "sourceRefs": [
+        "blueprint/vex-operational-profiles.json"
+      ],
+      "realHostEvidenceRequired": true,
+      "fallbackToOtherModelAllowed": false
+    },
+    {
+      "cellRef": "P1_G0_MACOS",
+      "modelClass": "G0_RELEASE_QUALIFIED",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "state": "SUPPORTED_CURRENT_SOURCE",
+      "proofClass": "REAL_HOST_REQUIRED",
+      "profileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001",
+      "runtimeRef": "runtime.llama-cpp.server.b10107.macos-arm64.metal",
+      "requestModel": "Qwen3.5-4B-Q4_K_M",
+      "endpointOrigin": "http://127.0.0.1:18080",
+      "sourceRefs": [
+        "blueprint/vex-operational-profiles.json"
+      ],
+      "realHostEvidenceRequired": true,
+      "fallbackToOtherModelAllowed": false
+    },
+    {
+      "cellRef": "P2_M4_MACOS",
+      "modelClass": "ACTIVATED_CULTIVATED_M4",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "state": "CURRENT_OWNER_PATH",
+      "proofClass": "REAL_HOST_REQUIRED",
+      "profileRef": null,
+      "bindingOwnerRef": "github.issue.vexlife.595",
+      "runtimeOwnerRef": "github.issue.vextreme-sdk.636",
+      "runtimeAdapterRef": "adapter.runtime.mlx.macos-victor.001",
+      "runtimeClass": "MLX_LM_DIRECT_RUNTIME",
+      "ownerCurrentness": "EXTERNAL_REQUIRED",
+      "sourceRefs": [
+        "github.issue.vexlife.595",
+        "github.issue.vextreme-sdk.636"
+      ],
+      "realHostEvidenceRequired": true,
+      "fallbackToOtherModelAllowed": false
+    },
+    {
+      "cellRef": "P3_M4_WINDOWS",
+      "modelClass": "ACTIVATED_CULTIVATED_M4",
+      "platform": "win32",
+      "architecture": "x64",
+      "state": "NOT_APPLICABLE_NOT_PROVEN",
+      "proofClass": "NOT_APPLICABLE",
+      "profileRef": null,
+      "bindingOwnerRef": null,
+      "runtimeOwnerRef": null,
+      "runtimeAdapterRef": null,
+      "runtimeClass": null,
+      "ownerCurrentness": "NO_CURRENT_OWNER",
+      "sourceRefs": [],
+      "realHostEvidenceRequired": false,
+      "fallbackToOtherModelAllowed": false
+    }
+  ],
+  "requiredInvariants": [
+    "PRESERVE_EXACT_HOME",
+    "PRESERVE_COMPANION_LINEAGE",
+    "PRESERVE_MODEL_AND_GENERATION_BINDING",
+    "INITIAL_READY_REQUIRES_CURRENT_OWNED_QUALIFIED_RUNTIME",
+    "CONTROLLED_UNAVAILABLE_PRECEDES_RECOVERY",
+    "CANONICAL_RECOVERABLE_PRECEDES_REQUEST",
+    "ONE_EXACT_DELEGATED_RECOVERY_REQUEST",
+    "RIGHTFUL_PLATFORM_OWNER_PERFORMS_EFFECT",
+    "FRESH_OWNED_QUALIFIED_OBSERVATION_PRECEDES_READY",
+    "ONE_REAL_COMPANION_TURN_AFTER_RECOVERY",
+    "NO_ORPHAN_DUPLICATE_OR_FOREIGN_PROCESS",
+    "NO_FALLBACK_MODEL_OR_GENERATION"
+  ],
+  "nonCollapseLaws": [
+    "SUPPORTED_VARIANT != REQUIRED_CARTESIAN_PRODUCT",
+    "M4_WINDOWS_NOT_CURRENTLY_OWNED != G0_FALLBACK_ALLOWED",
+    "STATIC_PROFILE_VALIDATION != REAL_HOST_RECOVERY_PROOF",
+    "PROOF_MATRIX != RUNTIME_EFFECT_AUTHORITY"
+  ]
+}
