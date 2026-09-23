@@ -6,7 +6,19 @@ import {
   BrowserCompanionBridgeError,
   createBrowserCompanionBridge
 } from '../src/core/browser-companion-bridge.mjs';
+import {
+  acceptRecovery,
+  SCHEMAS
+} from '../scripts/companion-recovery-effect-proof.mjs';
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import { compileCompanionAvailability } from '../src/core/companion-availability-reentry.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const recoveryContract = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/companion-recovery-effect-contract.json'), 'utf8'));
+const availabilityRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/companion-availability-reentry-registry.json'), 'utf8'));
 
 async function withServer(options, run) {
   const server = createVexLifeBrowserServer(options);
@@ -181,27 +193,50 @@ test('VR03 rejects foreign or malformed owner results and hides unknown owner im
   });
 });
 
-test('VR03 recovery result may carry a current VR02 acceptance but never lived acceptance', async () => {
+test('VR03 recovery result accepts the exact current VR02 acceptance shape and never lived acceptance', async () => {
   const input = request();
-  const accepted = {
-    schemaVersion: 'vexlife.companion-recovery-acceptance/v1',
-    truthClass: 'SAME_BINDING_RECOVERY_ACCEPTED_READY',
-    requestRef: input.requestRef,
-    reentryPlanRef: input.reentryPlanRef,
+  const binding = {
+    schemaVersion: 'vexlife.companion-binding-input/v1',
+    truthClass: 'FOREIGN_CANONICAL_COMPANION_BINDING',
     bindingRef: input.bindingRef,
     homeRef: input.homeRef,
     companionLineageRef: input.companionLineageRef,
     modelRefOrNull: input.modelRefOrNull,
     generationRefOrNull: input.generationRefOrNull,
-    runtimeAdapterRef: input.runtimeAdapterRef,
-    effectOwnerRef: 'owner.runtime.vr03',
-    ownerEffectReceiptRef: 'receipt.runtime.vr03',
-    ownerEffectProofClass: 'REAL_HOST',
-    postRecoveryAvailabilityRef: 'projection.vexlife.companion-availability.post',
-    postRecoveryRuntimeObservationRef: 'observation.vr03.post',
-    availabilityState: 'READY',
-    livedEndToEndAccepted: false
+    bindingState: 'BOUND',
+    currentness: 'CURRENT',
+    sourceRefs: ['source.binding.vr03']
   };
+  const postObservation = {
+    schemaVersion: 'vexlife.companion-runtime-adapter-observation/v1',
+    truthClass: 'FOREIGN_PLATFORM_RUNTIME_OBSERVATION',
+    observationRef: 'observation.vr03.post',
+    adapterRef: input.runtimeAdapterRef,
+    bindingRef: input.bindingRef,
+    homeRef: input.homeRef,
+    runtimeOwnershipState: 'EXACT_OWNED',
+    runtimeState: 'HEALTHY',
+    qualificationState: 'CURRENT',
+    safeReentryState: 'NOT_AVAILABLE',
+    currentness: 'CURRENT',
+    evidenceRefs: ['evidence.runtime.vr03.post']
+  };
+  const canonicalReady = compileCompanionAvailability({
+    registry: availabilityRegistry,
+    binding,
+    runtimeObservation: postObservation
+  });
+  assert.equal(canonicalReady.availabilityState, 'READY');
+  const accepted = acceptRecovery(
+    recoveryContract,
+    availabilityRegistry,
+    input,
+    ownerReceipt(input),
+    binding,
+    postObservation
+  );
+  assert.equal(Object.hasOwn(accepted, 'reentryPlanRef'), false);
+
   await withServer({
     companionBridge: fakeCompanion(async () => accepted)
   }, async (base) => {
@@ -212,6 +247,7 @@ test('VR03 recovery result may carry a current VR02 acceptance but never lived a
     });
     assert.equal(response.status, 200);
     const body = await response.json();
+    assert.deepEqual(body, accepted);
     assert.equal(body.livedEndToEndAccepted, false);
     assert.equal(body.availabilityState, 'READY');
   });

@@ -262,11 +262,21 @@ export function validateBrowserCompanionRecoveryRequest(value) {
   return Object.freeze(structuredClone(value));
 }
 
-function requireRecoveryResultIdentity(result, request) {
-  for (const key of ['requestRef','reentryPlanRef','bindingRef','homeRef','companionLineageRef','modelRefOrNull','generationRefOrNull','runtimeAdapterRef']) {
+function requireRecoveryResultIdentity(result, request, { requireReentryPlanRef = false } = {}) {
+  const keys = ['requestRef','bindingRef','homeRef','companionLineageRef','modelRefOrNull','generationRefOrNull','runtimeAdapterRef'];
+  if (requireReentryPlanRef) keys.splice(1, 0, 'reentryPlanRef');
+  for (const key of keys) {
     if ((result[key] ?? null) !== (request[key] ?? null)) {
       throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_RESULT_INVALID', `Recovery owner result ${key} does not match the request`, 502);
     }
+  }
+}
+
+function exactRecoveryResultFields(value, expected, label) {
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  if (actual.length !== wanted.length || actual.some((key, index) => key !== wanted[index])) {
+    throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_RESULT_INVALID', `${label} fields do not match the accepted contract`, 502);
   }
 }
 
@@ -274,8 +284,8 @@ export function validateBrowserCompanionRecoveryResult(value, request) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_RESULT_INVALID', 'Recovery owner result must be one typed object', 502);
   }
-  requireRecoveryResultIdentity(value, request);
   if (value.schemaVersion === 'vexlife.companion-recovery-owner-receipt/v1') {
+    requireRecoveryResultIdentity(value, request, { requireReentryPlanRef: true });
     if (
       value.truthClass !== 'FOREIGN_RIGHTFUL_RUNTIME_OWNER_RECEIPT'
       || !safePortableRef(value.effectOwnerRef)
@@ -293,6 +303,13 @@ export function validateBrowserCompanionRecoveryResult(value, request) {
     return Object.freeze(structuredClone(value));
   }
   if (value.schemaVersion === 'vexlife.companion-recovery-acceptance/v1') {
+    exactRecoveryResultFields(value, [
+      'schemaVersion','truthClass','requestRef','effectOwnerRef','ownerEffectReceiptRef','ownerEffectProofClass',
+      'postRecoveryAvailabilityRef','postRecoveryRuntimeObservationRef','bindingRef','homeRef','companionLineageRef',
+      'modelRefOrNull','generationRefOrNull','runtimeAdapterRef','availabilityState','livedEndToEndAccepted',
+      'recoveryAcceptanceRef','semanticFingerprint'
+    ], 'Recovery acceptance');
+    requireRecoveryResultIdentity(value, request);
     if (
       value.truthClass !== 'SAME_BINDING_RECOVERY_ACCEPTED_READY'
       || !safePortableRef(value.effectOwnerRef)
@@ -300,6 +317,8 @@ export function validateBrowserCompanionRecoveryResult(value, request) {
       || !['SYNTHETIC','REAL_HOST'].includes(value.ownerEffectProofClass)
       || !safePortableRef(value.postRecoveryAvailabilityRef)
       || !safePortableRef(value.postRecoveryRuntimeObservationRef)
+      || !safePortableRef(value.recoveryAcceptanceRef)
+      || !SHA256_PATTERN.test(value.semanticFingerprint)
       || value.availabilityState !== 'READY'
       || value.livedEndToEndAccepted !== false
     ) {
