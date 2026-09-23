@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 15907,
       "sha256": "66910c3d0bc3abf154553ad4d6a52ee166326e8affaf17c65f9e76b29ba31fd8"
+    },
+    {
+      "path": "test/ux-evolution-shell-scaffold.test.mjs",
+      "mode": "100644",
+      "bytes": 5970,
+      "sha256": "c5bccbafbbb1ce1abd8f691c3ab0421e18c6c3ec756b657a083d257d3a624ec6"
     }
   ]
 }
