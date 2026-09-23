@@ -3,6 +3,12 @@
   "bucketId": "c1",
   "files": [
     {
+      "path": "blueprint/companion-auto-reentry-policy.json",
+      "mode": "100644",
+      "bytes": 1157,
+      "sha256": "89f5330bd47c447135329cc2ae8799c382e2587fac0dc2235dece04c828c701f"
+    },
+    {
       "path": "blueprint/feature-registry.json",
       "mode": "100644",
       "bytes": 102050,

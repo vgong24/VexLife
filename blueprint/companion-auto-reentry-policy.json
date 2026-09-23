@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "vexlife.companion-auto-reentry-policy/v1",
+  "policyRef": "policy.vexlife.companion-auto-reentry.001",
+  "contractVersion": 1,
+  "requestSchema": "vexlife.companion-recovery-request/v1",
+  "ownerRouteSchema": "vexlife.companion-recovery-owner-route/v1",
+  "outputSchema": "vexlife.companion-auto-reentry-decision/v1",
+  "eligibleAvailabilityState": "RECOVERABLE",
+  "eligibleRecoveryClass": "SAFE_REENTRY_AVAILABLE",
+  "exactActionRef": "action.companion.reenter-current-binding",
+  "automaticRequestFormationEnabled": true,
+  "decisionStates": [
+    "NO_EFFECT_READY",
+    "RETRY_IN_PROGRESS",
+    "FORM_RECOVERY_REQUEST",
+    "REQUEST_ALREADY_IN_FLIGHT",
+    "HELD"
+  ],
+  "noAutomaticEffectStates": [
+    "READY",
+    "STARTING",
+    "ACTION_REQUIRED",
+    "UNAVAILABLE",
+    "HELD"
+  ],
+  "forbiddenEffects": [
+    "PROCESS_START_STOP",
+    "MODEL_SELECTION",
+    "MODEL_SWAP",
+    "ARTIFACT_DOWNLOAD",
+    "MODEL_ACTIVATION",
+    "TRAINING_OR_WEIGHT_MUTATION",
+    "HOME_REBUILD_OR_DELETE",
+    "MEMORY_MUTATION",
+    "REPAIR",
+    "UNKNOWN_PROCESS_TERMINATION",
+    "FALLBACK_GENERATION"
+  ],
+  "effectAuthorityGranted": false
+}
