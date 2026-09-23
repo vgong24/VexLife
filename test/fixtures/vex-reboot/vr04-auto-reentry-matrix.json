@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.vex-reboot-vr04-auto-reentry-matrix/v1",
+  "matrixRef": "matrix.vexlife.vex-reboot.vr04.auto-reentry.001",
+  "rows": [
+    {"rowRef":"A0_READY","expected":"NO_EFFECT_READY"},
+    {"rowRef":"A1_STARTING","expected":"RETRY_IN_PROGRESS"},
+    {"rowRef":"A2_RECOVERABLE_CURRENT_ROUTE","expected":"FORM_RECOVERY_REQUEST"},
+    {"rowRef":"A3_ACTION_REQUIRED","expected":"HELD"},
+    {"rowRef":"A4_UNAVAILABLE","expected":"HELD"},
+    {"rowRef":"A5_HELD","expected":"HELD"},
+    {"rowRef":"A6_STALE_OWNER_ROUTE","expected":"HELD"},
+    {"rowRef":"A7_FOREIGN_OWNER_ROUTE","expected":"HELD"},
+    {"rowRef":"A8_SAME_REQUEST_ALREADY_IN_FLIGHT","expected":"REQUEST_ALREADY_IN_FLIGHT"},
+    {"rowRef":"A9_FOREIGN_REQUEST_IN_FLIGHT","expected":"HELD"},
+    {"rowRef":"A10_REQUEST_PROJECTION_MISMATCH","expected":"HELD"},
+    {"rowRef":"A11_REPEAT_IDENTICAL_INPUT","expected":"DETERMINISTIC_SAME_DECISION"}
+  ]
+}

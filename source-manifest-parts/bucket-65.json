@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 94693,
       "sha256": "3207c18cef903ec10ac2fc61ecd6e771928e7d357aff588508a3f5529ad45b83"
+    },
+    {
+      "path": "test/fixtures/vex-reboot/vr04-auto-reentry-matrix.json",
+      "mode": "100644",
+      "bytes": 929,
+      "sha256": "ce05d270aea73ce4f4ae523750ac397f5147f4cb9f0e6179265adc4f03a6d1b7"
     }
   ]
 }

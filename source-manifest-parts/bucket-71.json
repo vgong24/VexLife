@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 11223,
       "sha256": "813122473c1cd5915426588df9a4369b6ab4a20a2bfdbee7ce0d163a763c5a25"
+    },
+    {
+      "path": "test/companion-auto-reentry-policy.test.mjs",
+      "mode": "100644",
+      "bytes": 8622,
+      "sha256": "252c048d625df710a0ebc7c0bd5fb1a77971b5c4b9dc224cadb7c6d50735225f"
     }
   ]
 }
