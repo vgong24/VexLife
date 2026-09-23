@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "vexlife.companion-availability-reentry-registry/v1",
+  "registryRef": "registry.vexlife.companion-availability-reentry.001",
+  "registryVersion": 1,
+  "purpose": "Derive one canonical Companion availability and recovery classification from foreign binding/runtime evidence, and form a bounded same-binding safe-reentry plan without becoming the model, process, conversation, Home, recovery-policy or renderer owner.",
+  "stateOwnersConsumed": [
+    "state.model",
+    "state.runtime-recovery"
+  ],
+  "foreignOwnerClasses": [
+    "CANONICAL_HOME_AND_COMPANION_LINEAGE",
+    "MODEL_RUNTIME_BINDING",
+    "PLATFORM_RUNTIME_ADAPTER",
+    "CONVERSATION_CONTINUITY",
+    "GENERIC_RUNTIME_RECOVERY_POLICY"
+  ],
+  "availabilityStates": [
+    "READY",
+    "STARTING",
+    "RECOVERABLE",
+    "ACTION_REQUIRED",
+    "UNAVAILABLE",
+    "HELD"
+  ],
+  "recoveryClasses": [
+    "NONE_REQUIRED",
+    "RETRY_IN_PROGRESS",
+    "SAFE_REENTRY_AVAILABLE",
+    "SETUP_REQUIRED",
+    "REPAIR_REQUIRED",
+    "OWNERSHIP_CONFLICT",
+    "BINDING_REVALIDATION_REQUIRED",
+    "HUMAN_DECISION_REQUIRED",
+    "HELD"
+  ],
+  "semanticActionRef": "action.companion.reenter-current-binding",
+  "inputSchemas": {
+    "binding": "vexlife.companion-binding-input/v1",
+    "runtimeObservation": "vexlife.companion-runtime-adapter-observation/v1"
+  },
+  "outputSchemas": {
+    "availability": "vexlife.companion-availability/v1",
+    "reentryPlan": "vexlife.companion-reentry-plan/v1"
+  },
+  "nonCollapseLaws": [
+    "BINDING != LIVENESS",
+    "LIVENESS != QUALIFICATION",
+    "QUALIFICATION != MODEL_ACTIVATION",
+    "PROCESS_RESTART != LINEAGE_RESTART",
+    "REENTRY != MODEL_SELECTION",
+    "REENTRY != MODEL_SWAP",
+    "REENTRY != DOWNLOAD",
+    "REENTRY != REPAIR",
+    "UNKNOWN_PROCESS_OWNER != SAFE_TO_KILL",
+    "M4_BOUND_HOME != G0_FALLBACK_AUTHORITY",
+    "AVAILABILITY_PROJECTION != EFFECT_AUTHORITY",
+    "REENTRY_PLAN != PROCESS_EXECUTION"
+  ],
+  "heldBoundaries": [
+    "no renderer or browser presentation ownership",
+    "no low-level process start/stop implementation",
+    "no model identity, selection, swap, activation or training ownership",
+    "no Home or Memory mutation",
+    "no conversation persistence ownership",
+    "no silent fallback to another binding or generation",
+    "no unknown-process termination",
+    "no automatic effect authority from a READY or RECOVERABLE projection"
+  ]
+}

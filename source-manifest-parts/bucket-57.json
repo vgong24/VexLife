@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 23054,
       "sha256": "429786d54ea6c5a307d1fb49c956d1989a4d0f2ae46ffdd36ffa93aaa8164abf"
+    },
+    {
+      "path": "test/companion-availability-reentry.test.mjs",
+      "mode": "100644",
+      "bytes": 8043,
+      "sha256": "5211eff133b98d612fce7c7ff78391927b9c95c8dfa21d06ab562e0ca7bc4a03"
     }
   ]
 }

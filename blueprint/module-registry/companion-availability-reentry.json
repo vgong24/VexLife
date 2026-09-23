@@ -1,0 +1,21 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.companion-availability-reentry",
+    "path": "src/core/companion-availability-reentry.mjs",
+    "role": "Derive one canonical source-bound Companion availability and same-binding safe-reentry plan from foreign binding/runtime observations without becoming a renderer, model identity owner, process owner, conversation owner or effect authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.companion-availability-reentry.001",
+      "state.model",
+      "state.runtime-recovery"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/companion-availability-reentry.test.mjs"
+    ],
+    "changeMap": [
+      "docs/COMPANION-AVAILABILITY-AND-REENTRY.md"
+    ]
+  }
+]
