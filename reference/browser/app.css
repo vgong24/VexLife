@@ -86,3 +86,20 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
 
 /* globalization-semantic-relay */
 .semantic-relay-disclosure{margin-top:8px;border:1px solid var(--line);border-radius:10px;background:var(--raised);font-size:10px;color:var(--muted)}.semantic-relay-disclosure summary{min-height:44px;display:flex;align-items:center;padding:8px 10px;color:var(--text);font-weight:700;cursor:pointer}.semantic-relay-grid{display:grid;gap:5px;padding:8px 10px 10px}.semantic-relay-row{display:grid;grid-template-columns:minmax(112px,.8fr) minmax(0,1.4fr);gap:8px;align-items:start}.semantic-relay-row span{color:var(--faint)}.semantic-relay-row strong{font:650 9px/1.35 var(--mono);overflow-wrap:anywhere;color:var(--text)}.semantic-relay-attention{grid-column:1/-1;margin-top:8px;border:1px solid var(--warn);border-radius:11px;padding:10px;background:color-mix(in srgb,var(--warn) 8%,var(--raised));color:var(--text)}.semantic-relay-attention>strong{display:block}.semantic-relay-attention>p{margin:4px 0 8px;color:var(--muted);font-size:10px}.semantic-relay-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.semantic-relay-actions button{min-height:44px;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 10px}.semantic-relay-actions button[data-relay-action="CONFIRM"]{border-color:var(--info)}@media(max-width:760px){.semantic-relay-row{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){.semantic-relay-disclosure,.semantic-relay-attention,.semantic-relay-actions button{animation:none!important;transition:none!important}}
+
+
+/* UX Evolution post-acceptance shell scaffold */
+.uxe-projection-control{display:grid;gap:6px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.uxe-projection-control label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.uxe-projection-control select{min-height:44px}
+.uxe-projection-control output{font-size:12px;opacity:.76}
+#surfaceMenu [data-ux-surface-ref][data-evolution-state="HELD_NOT_MIGRATED"]:disabled{opacity:.48;cursor:not-allowed}
+.uxe-active-surface-host{position:fixed;z-index:35;inset:76px 18px 18px;background:var(--surface,#111);border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.28);overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr)}
+.uxe-active-surface-host[hidden]{display:none}
+.uxe-active-surface-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.uxe-active-surface-heading h1{margin:3px 0 0;font-size:clamp(24px,3vw,38px)}
+.uxe-active-surface-actions{display:flex;gap:8px;align-items:center}
+.uxe-active-surface-actions button{min-width:48px;min-height:48px}
+.uxe-active-surface-body{min-height:0;overflow:auto;padding:18px;outline:none}
+#app[data-ux-projection="EVOLUTION_PROJECTION"][data-evolution-surface-active="true"] #view-terrain{visibility:hidden;pointer-events:none}
+@media(max-width:760px){.uxe-active-surface-host{inset:64px 8px 8px;border-radius:14px}.uxe-active-surface-heading{padding:14px;gap:10px}.uxe-active-surface-body{padding:12px}}

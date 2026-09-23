@@ -83,10 +83,18 @@
 
   <div id="surfaceMenu" class="e27-surface-menu" hidden>
     <strong>Current surface</strong>
-    <button id="openConversation" type="button" data-node-ref="element.nav.chat">Open conversation</button>
-    <button id="openHealth" type="button" data-node-ref="element.nav.health">Health / source truth</button>
-    <button id="openLivingJournal" type="button" data-node-ref="element.living-journal.open" data-i18n="living-journal.open">Open Living Journal</button>
-    <button id="openWorkspace" type="button" data-i18n="region.projects.label">Projects</button>
+    <div id="uxProjectionControl" class="uxe-projection-control">
+      <label for="uxProjectionSelect">Projection</label>
+      <select id="uxProjectionSelect" aria-describedby="uxProjectionStatus">
+        <option value="REFERENCE_PROJECTION">Reference</option>
+        <option value="EVOLUTION_PROJECTION">Evolution</option>
+      </select>
+      <output id="uxProjectionStatus" role="status">Reference · default</output>
+    </div>
+    <button id="openConversation" type="button" data-node-ref="element.nav.chat" data-ux-surface-ref="surface.vexlife.conversation">Open conversation</button>
+    <button id="openHealth" type="button" data-node-ref="element.nav.health" data-ux-surface-ref="surface.vexlife.health">Health / source truth</button>
+    <button id="openLivingJournal" type="button" data-node-ref="element.living-journal.open" data-i18n="living-journal.open" data-ux-surface-ref="surface.vexlife.living-journal">Open Living Journal</button>
+    <button id="openWorkspace" type="button" data-i18n="region.projects.label" data-ux-surface-ref="surface.vexlife.workspace">Projects</button>
     <button id="terrainCenter" type="button" data-node-ref="element.terrain.center-current-context" data-i18n="terrain.center-current-context">Center current context</button>
     <div id="terrainAdaptationMenu" class="e28-adaptation-menu">
       <strong data-i18n="terrain.adaptation.controls">Layout adaptation</strong>
@@ -99,6 +107,21 @@
     </div>
     <label>Language <select id="languageSelect" data-node-ref="element.language.selector" aria-label="Language" data-i18n-aria-label="language.selector.aria"><option value="en">EN</option><option value="zh">中文</option><option value="ja">日本語</option></select></label>
   </div>
+
+  <section id="evolutionActiveSurfaceHost" class="uxe-active-surface-host" hidden aria-hidden="true" data-node-ref="region.shell.evolution-active-surface">
+    <header class="uxe-active-surface-heading">
+      <div>
+        <small>EVOLUTION · ACTIVE SURFACE</small>
+        <h1 id="evolutionActiveSurfaceTitle">Active surface</h1>
+        <output id="evolutionActiveSurfaceStatus" role="status"></output>
+      </div>
+      <div class="uxe-active-surface-actions">
+        <button id="evolutionReferenceFallback" type="button">Reference</button>
+        <button id="evolutionActiveSurfaceClose" type="button" aria-label="Close active surface">×</button>
+      </div>
+    </header>
+    <div id="evolutionActiveSurfaceBody" class="uxe-active-surface-body" tabindex="-1"></div>
+  </section>
 
   <div id="terrainContext" class="e27-terrain-context" hidden>
     <strong data-i18n="terrain.controls">Terrain controls</strong>
