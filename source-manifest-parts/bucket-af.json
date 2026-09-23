@@ -11,8 +11,8 @@
     {
       "path": "test/companion-recovery-effect-proof.test.mjs",
       "mode": "100644",
-      "bytes": 5581,
-      "sha256": "dbba836c593338e02bc1400910cc3012166fc01b8f59c8da81e6df5471283bd0"
+      "bytes": 6800,
+      "sha256": "672ea7d8069bbfe00dc41d8614f9d8008d634641ec1a82017ce8fb2af644c140"
     }
   ]
 }
