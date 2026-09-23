@@ -9,6 +9,12 @@
       "sha256": "540d03c8ed3eed4ea922caab95026a6df0852b83892917dfe810d8e7354eee56"
     },
     {
+      "path": "docs/COMPANION-AUTO-REENTRY-POLICY.md",
+      "mode": "100644",
+      "bytes": 1833,
+      "sha256": "018b346e14f1d699a09c767fccd2df5d8a5e3583359bc5d0c7aa85f551710350"
+    },
+    {
       "path": "test/relationships-runtime-status-visible.test.mjs",
       "mode": "100644",
       "bytes": 12222,
