@@ -9,6 +9,12 @@
       "sha256": "35c984bd6df8a1d78ea3489265ffcf679f6b75383f9ff9c545485146bba218b9"
     },
     {
+      "path": "scripts/companion-recovery-effect-proof.mjs",
+      "mode": "100644",
+      "bytes": 8145,
+      "sha256": "abb1b21794f189fb353fb2c2607ac60fcf8c2cc7bb9313efba8d665d948e8baf"
+    },
+    {
       "path": "src/core/source-manifest.mjs",
       "mode": "100644",
       "bytes": 22841,
