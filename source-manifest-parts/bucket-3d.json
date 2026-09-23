@@ -9,6 +9,12 @@
       "sha256": "5e76ef69e75962e5c66c28701af0d92e95c9fac133780b5df6b1a36edea4db1a"
     },
     {
+      "path": "docs/COMPANION-AVAILABILITY-AND-REENTRY.md",
+      "mode": "100644",
+      "bytes": 2584,
+      "sha256": "771cd6da75fd4612b9d31ea0abb1815124ed577f5ce9cca88d54c2b0d2716326"
+    },
+    {
       "path": "docs/FRIEND-RELATIONSHIP-PERSISTENCE-ADOPTION.md",
       "mode": "100644",
       "bytes": 2845,

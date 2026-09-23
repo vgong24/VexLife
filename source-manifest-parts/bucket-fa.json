@@ -3,6 +3,12 @@
   "bucketId": "fa",
   "files": [
     {
+      "path": "blueprint/module-registry/companion-availability-reentry.json",
+      "mode": "100644",
+      "bytes": 755,
+      "sha256": "f9035784e83bbcff09d9752683e25a08b55fb781e9441425dc8df51c416bdd72"
+    },
+    {
       "path": "reference/browser/public-learning/app.js",
       "mode": "100644",
       "bytes": 1406,
