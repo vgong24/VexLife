@@ -9,6 +9,12 @@
       "sha256": "deacbdeb0deb79b5eabcda20c6303e18b72e0f7a25b273a8c1f2619942ccf28a"
     },
     {
+      "path": "docs/VEX-FAMILY-SECURITY-PERCEPTION.md",
+      "mode": "100644",
+      "bytes": 9349,
+      "sha256": "c062ee57255eee52d962f51d59240d56849a1d7849f0d9dc913c9ad9781ce8c4"
+    },
+    {
       "path": "src/core/interface-builder.mjs",
       "mode": "100644",
       "bytes": 8289,

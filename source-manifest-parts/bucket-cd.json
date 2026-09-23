@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 2095,
       "sha256": "eab19c485415aa9a987c4a2fc658494e7cf8c5e811acc8873b46b8bef9544522"
+    },
+    {
+      "path": "test/vex-family-security-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 15944,
+      "sha256": "0709c7ef4a0908794fd569d0be471bffeb02d020b6947cc5841fd963d1c8fdfc"
     }
   ]
 }
