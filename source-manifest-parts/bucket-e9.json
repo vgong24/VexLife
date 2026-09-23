@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "e9",
+  "files": [
+    {
+      "path": "src/core/family-security-projection.mjs",
+      "mode": "100644",
+      "bytes": 16893,
+      "sha256": "b603ea659f787375f0ae9efcd348e1ae625cff02e2ad206b51596adacba82459"
+    }
+  ]
+}
