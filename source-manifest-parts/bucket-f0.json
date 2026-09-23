@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 9150,
       "sha256": "f534ad8a1f7b60e0bcc0c5a80c1f9dd0301cc9f07efeacfc8d0509a6932e9918"
+    },
+    {
+      "path": "test/fixtures/vex-reboot/vr02-recovery-effect-matrix.json",
+      "mode": "100644",
+      "bytes": 1182,
+      "sha256": "0131d4b11e9ea76fdf955ea3f16cf75420fe84ba7fa41f690a20ebeb00b6f7a8"
     }
   ]
 }
