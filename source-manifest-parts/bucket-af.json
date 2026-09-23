@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 164,
       "sha256": "e1f6322edde30fc0e852b98f0faa81f7466f8b7d5ff08d01d7fb46d61c62b2b9"
+    },
+    {
+      "path": "test/companion-recovery-effect-proof.test.mjs",
+      "mode": "100644",
+      "bytes": 5345,
+      "sha256": "efb15254d43dfc6842e25da4f7b6973857ad2daf02ffb82923a3d8587e180990"
     }
   ]
 }

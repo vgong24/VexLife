@@ -9,6 +9,12 @@
       "sha256": "ce323764800f3a42e709d2cad3dd403fd844a51096ea4eb5a2f36757afbc7fd0"
     },
     {
+      "path": "docs/COMPANION-RECOVERY-EFFECT-CONTRACT.md",
+      "mode": "100644",
+      "bytes": 3396,
+      "sha256": "fc36fc520677980333132307622066765ce9ab4ea5af4461a19b5b48b2147a45"
+    },
+    {
       "path": "src/core/atlas.mjs",
       "mode": "100644",
       "bytes": 6817,

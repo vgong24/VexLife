@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "vexlife.companion-recovery-effect-contract/v1",
+  "contractRef": "contract.vexlife.companion-recovery-effect.001",
+  "contractVersion": 1,
+  "purpose": "Bind one canonical RECOVERABLE same-binding reentry plan to one external rightful-owner recovery request, require an exact owner receipt plus fresh post-effect runtime observation, and keep lived end-to-end acceptance distinct from synthetic proof.",
+  "sourceSchemas": {
+    "availability": "vexlife.companion-availability/v1",
+    "reentryPlan": "vexlife.companion-reentry-plan/v1"
+  },
+  "outputSchemas": {
+    "recoveryRequest": "vexlife.companion-recovery-request/v1",
+    "ownerReceipt": "vexlife.companion-recovery-owner-receipt/v1",
+    "recoveryAcceptance": "vexlife.companion-recovery-acceptance/v1",
+    "realTurnReceipt": "vexlife.companion-real-turn-receipt/v1",
+    "livedAcceptance": "vexlife.companion-recovery-lived-acceptance/v1"
+  },
+  "actionRef": "action.companion.reenter-current-binding",
+  "requiredExecutionDisposition": "DELEGATE_TO_RIGHTFUL_RUNTIME_ADAPTER",
+  "performedDisposition": "PERFORMED_SAME_BINDING_REENTRY",
+  "requiredPostRecoveryAvailability": "READY",
+  "syntheticProofClass": "SYNTHETIC",
+  "realHostProofClass": "REAL_HOST",
+  "realHostRequired": [
+    "INITIAL_HEALTHY_QUALIFIED_RUNTIME",
+    "CONTROLLED_RUNTIME_UNAVAILABLE",
+    "RIGHTFUL_OWNER_SAME_BINDING_REENTRY",
+    "NO_ORPHAN_OR_DUPLICATE_PROCESS",
+    "FRESH_POST_RECOVERY_QUALIFICATION",
+    "POST_RECOVERY_REAL_COMPANION_TURN"
+  ],
+  "syntheticAllowed": [
+    "HEALTHY_READY_CLASSIFICATION",
+    "STOPPED_RECOVERABLE_CLASSIFICATION",
+    "REQUEST_IDENTITY_AND_IDEMPOTENCY",
+    "FOREIGN_OR_STALE_OWNER_RECEIPT_REJECTION",
+    "POST_EFFECT_OBSERVATION_REQUIRED",
+    "READY_RECOMPUTATION_FROM_FRESH_OBSERVATION",
+    "SYNTHETIC_TURN_CANNOT_SATISFY_LIVED_ACCEPTANCE",
+    "FAILURE_MATRIX_CLASSIFICATION"
+  ],
+  "nonCollapseLaws": [
+    "RECOVERABLE != RECOVERED",
+    "RECOVERY_REQUESTED != RECOVERY_PERFORMED",
+    "REENTRY_PLAN != PROCESS_EXECUTION",
+    "PROCESS_STARTED != QUALIFIED",
+    "QUALIFIED != READY_UNTIL_FRESH_AVAILABILITY_RECOMPUTED",
+    "READY != REAL_COMPANION_TURN",
+    "ONE_HAPPY_PATH != FAILURE_MATRIX_COMPLETE",
+    "RUNTIME_EFFECT_RECEIPT != REBOOT_SELF_CERTIFICATION"
+  ],
+  "heldBoundaries": [
+    "no process start/stop implementation",
+    "no runtime-effect authority minting",
+    "no activated-model binding ownership",
+    "no model selection/swap/download/activation/training ownership",
+    "no Home or Memory mutation",
+    "no browser/UI presentation ownership",
+    "no conversation persistence ownership",
+    "no synthetic proof promoted to real-host lived acceptance"
+  ]
+}
