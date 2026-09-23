@@ -10,6 +10,8 @@ import { composeSemanticRelay } from './conversation.mjs';
 
 export const BROWSER_COMPANION_API_PATH = '/api/v1/companion/turn';
 export const BROWSER_COMPANION_STATUS_PATH = '/api/v1/companion/status';
+export const BROWSER_COMPANION_RECOVERY_PATH = '/api/v1/companion/recovery';
+export const BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_COMPANION_PROFILE_REF = 'model-profile.vexlife.browser-companion.local';
 export const BROWSER_COMPANION_MAX_CONTENT_CHARS = 32 * 1024;
 
@@ -24,6 +26,27 @@ const REQUEST_KEYS = new Set([
   'semanticRelayAction'
 ]);
 const PORTABLE_REF_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
+const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
+const RECOVERY_REQUEST_KEYS = new Set([
+  'schemaVersion',
+  'truthClass',
+  'contractRef',
+  'actionRef',
+  'availabilityProjectionRef',
+  'reentryPlanRef',
+  'idempotencyKey',
+  'bindingRef',
+  'homeRef',
+  'companionLineageRef',
+  'modelRefOrNull',
+  'generationRefOrNull',
+  'runtimeAdapterRef',
+  'runtimeObservationRef',
+  'effectAuthorityGranted',
+  'executionDisposition',
+  'requestRef',
+  'requestSha256'
+]);
 
 function ref(prefix) {
   return `${prefix}.${crypto.randomUUID()}`;
@@ -205,6 +228,88 @@ export function validateBrowserCompanionRequest(value) {
   });
 }
 
+export function validateBrowserCompanionRecoveryRequest(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_REQUEST_NOT_ADMITTED', 'Companion recovery request must be one JSON object', 400);
+  }
+  const keys = Object.keys(value);
+  if (keys.length !== RECOVERY_REQUEST_KEYS.size || keys.some((key) => !RECOVERY_REQUEST_KEYS.has(key))) {
+    throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_REQUEST_NOT_ADMITTED', 'Companion recovery request fields do not match the accepted VR-02 contract', 400);
+  }
+  if (
+    value.schemaVersion !== 'vexlife.companion-recovery-request/v1'
+    || value.truthClass !== 'SAME_BINDING_RECOVERY_REQUEST'
+    || value.contractRef !== 'contract.vexlife.companion-recovery-effect.001'
+    || value.actionRef !== 'action.companion.reenter-current-binding'
+    || value.effectAuthorityGranted !== false
+    || value.executionDisposition !== 'DELEGATE_TO_RIGHTFUL_RUNTIME_ADAPTER'
+  ) {
+    throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_REQUEST_NOT_ADMITTED', 'Companion recovery request contract identity is invalid', 400);
+  }
+  for (const key of ['availabilityProjectionRef','reentryPlanRef','bindingRef','homeRef','companionLineageRef','runtimeAdapterRef','runtimeObservationRef','requestRef']) {
+    if (!safePortableRef(value[key])) {
+      throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_REQUEST_NOT_ADMITTED', `Companion recovery request ${key} is invalid`, 400);
+    }
+  }
+  for (const key of ['modelRefOrNull','generationRefOrNull']) {
+    if (!(value[key] === null || safePortableRef(value[key]))) {
+      throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_REQUEST_NOT_ADMITTED', `Companion recovery request ${key} is invalid`, 400);
+    }
+  }
+  if (!/^companion-reentry:[0-9a-f]{64}$/u.test(value.idempotencyKey) || !SHA256_PATTERN.test(value.requestSha256)) {
+    throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_REQUEST_NOT_ADMITTED', 'Companion recovery request idempotency or digest is invalid', 400);
+  }
+  return Object.freeze(structuredClone(value));
+}
+
+function requireRecoveryResultIdentity(result, request) {
+  for (const key of ['requestRef','reentryPlanRef','bindingRef','homeRef','companionLineageRef','modelRefOrNull','generationRefOrNull','runtimeAdapterRef']) {
+    if ((result[key] ?? null) !== (request[key] ?? null)) {
+      throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_RESULT_INVALID', `Recovery owner result ${key} does not match the request`, 502);
+    }
+  }
+}
+
+export function validateBrowserCompanionRecoveryResult(value, request) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_RESULT_INVALID', 'Recovery owner result must be one typed object', 502);
+  }
+  requireRecoveryResultIdentity(value, request);
+  if (value.schemaVersion === 'vexlife.companion-recovery-owner-receipt/v1') {
+    if (
+      value.truthClass !== 'FOREIGN_RIGHTFUL_RUNTIME_OWNER_RECEIPT'
+      || !safePortableRef(value.effectOwnerRef)
+      || !safePortableRef(value.effectReceiptRef)
+      || !Array.isArray(value.sourceRefs)
+      || value.sourceRefs.length === 0
+      || value.sourceRefs.some((ref) => !safePortableRef(ref))
+      || new Set(value.sourceRefs).size !== value.sourceRefs.length
+      || value.disposition !== 'PERFORMED_SAME_BINDING_REENTRY'
+      || value.postRecoveryObservationRequired !== true
+      || !['SYNTHETIC','REAL_HOST'].includes(value.proofClass)
+    ) {
+      throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_RESULT_INVALID', 'Recovery owner receipt is incomplete or untrusted', 502);
+    }
+    return Object.freeze(structuredClone(value));
+  }
+  if (value.schemaVersion === 'vexlife.companion-recovery-acceptance/v1') {
+    if (
+      value.truthClass !== 'SAME_BINDING_RECOVERY_ACCEPTED_READY'
+      || !safePortableRef(value.effectOwnerRef)
+      || !safePortableRef(value.ownerEffectReceiptRef)
+      || !['SYNTHETIC','REAL_HOST'].includes(value.ownerEffectProofClass)
+      || !safePortableRef(value.postRecoveryAvailabilityRef)
+      || !safePortableRef(value.postRecoveryRuntimeObservationRef)
+      || value.availabilityState !== 'READY'
+      || value.livedEndToEndAccepted !== false
+    ) {
+      throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_RESULT_INVALID', 'Recovery acceptance is incomplete or untrusted', 502);
+    }
+    return Object.freeze(structuredClone(value));
+  }
+  throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_RESULT_INVALID', 'Recovery owner returned an unsupported schema', 502);
+}
+
 const SEMANTIC_RELAY_ATTENTION_SCHEMA = 'vexlife.browser-semantic-relay-attention/v1';
 
 function semanticRelayAttentionPayload(input, composed) {
@@ -301,6 +406,7 @@ export function createBrowserCompanionBridge({
   modelConnectionComposer = null,
   promptContextResolver = null,
   promptContextAuthorityVerifier = null,
+  recoveryOwner = null,
   instanceRef = ref('instance.vexlife.browser-companion')
 }) {
   if (!safePortableRef(instanceRef)) {
@@ -318,6 +424,9 @@ export function createBrowserCompanionBridge({
   }
   if ((promptContextResolver !== null || promptContextAuthorityVerifier !== null) && typeof promptContextAuthorityVerifier !== 'function') {
     throw new BrowserCompanionBridgeError('COMPANION_PROMPT_CONTEXT_AUTHORITY_INVALID', 'Prompt context requires one independently server-owned authority verifier', 500);
+  }
+  if (recoveryOwner !== null && typeof recoveryOwner?.recover !== 'function') {
+    throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_INVALID', 'Companion recovery owner must expose recover(request)', 500);
   }
 
   function status() {
@@ -346,6 +455,20 @@ export function createBrowserCompanionBridge({
         profileRef: binding.profileRef,
         failureCode: typed.code
       });
+    }
+  }
+
+  async function performRecovery(input) {
+    const request = validateBrowserCompanionRecoveryRequest(input);
+    if (recoveryOwner === null) {
+      throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_UNAVAILABLE', 'Companion recovery owner is unavailable', 503);
+    }
+    try {
+      const result = await recoveryOwner.recover(request);
+      return validateBrowserCompanionRecoveryResult(result, request);
+    } catch (error) {
+      if (error instanceof BrowserCompanionBridgeError) throw error;
+      throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_FAILED', 'Companion recovery failed safely', 500, error?.message ?? String(error));
     }
   }
 
@@ -548,7 +671,27 @@ export function createBrowserCompanionBridge({
     }
   }
 
-  return Object.freeze({ binding, instanceRef, status, performTurn });
+  return Object.freeze({ binding, instanceRef, status, performRecovery, performTurn });
+}
+
+export function browserCompanionRecoveryFailurePayload(error) {
+  const typed = error instanceof BrowserCompanionBridgeError
+    ? error
+    : new BrowserCompanionBridgeError('COMPANION_RECOVERY_FAILED', 'Companion recovery failed safely', 500);
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-companion-recovery-failure/v1',
+    state: 'HELD',
+    truthClass: 'CURRENT_LOCAL_RECOVERY_FAILURE',
+    failureCode: typed.code,
+    message: typed.message,
+    effects: Object.freeze({
+      runtimeEffectPerformed: false,
+      processStartStopPerformed: false,
+      modelIdentityMutationPerformed: false,
+      homeMutationPerformed: false,
+      memoryMutationPerformed: false
+    })
+  });
 }
 
 export function browserCompanionFailurePayload(error) {
