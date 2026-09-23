@@ -75,16 +75,22 @@ test('real loopback canonical shell exposes local Evolution selector without cha
   await page.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__?.uxProjectionShell));
   assert.equal(await page.locator('#uxProjectionSelect').inputValue(),'REFERENCE_PROJECTION');
   assert.equal(await page.evaluate(()=>globalThis.__VEXLIFE_APP__.uxProjectionShell.snapshot().referenceDefault),true);
+  await page.locator('#surfaceMenuButton').click();
+  await page.locator('#openConversation').click();
+  await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.state.contextProjection==='chat');
+  assert.equal(await page.locator('#view-chat').isHidden(),false);
+  assert.equal(await page.locator('#contextSurface').isHidden(),false);
+  await page.locator('#surfaceMenuButton').click();
   await page.locator('#uxProjectionSelect').selectOption('EVOLUTION_PROJECTION');
   await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.state.uxProjection==='EVOLUTION_PROJECTION');
+  assert.equal(await page.locator('#contextSurface').isHidden(),true,'Reference context renderer must be hidden in Evolution mode');
   for(const id of ['openConversation','openHealth','openLivingJournal','openWorkspace']){
     assert.equal(await page.locator('#'+id).isDisabled(),true,`${id} must be held in Evolution until migrated`);
   }
   assert.match(await page.locator('#uxProjectionStatus').textContent(),/Evolution/);
   await page.locator('#uxProjectionSelect').selectOption('REFERENCE_PROJECTION');
   await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.state.uxProjection==='REFERENCE_PROJECTION');
-  await page.locator('#openConversation').click();
-  await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.state.contextProjection==='chat');
+  assert.equal(await page.locator('#contextSurface').isHidden(),false,'Reference context renderer must restore without changing semantic state');
   assert.equal(await page.locator('#view-chat').isHidden(),false);
 });
  
