@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "vexlife.vex-reboot-vr02-proof-matrix/v1",
+  "matrixRef": "matrix.vexlife.vex-reboot.vr02.recovery-effect.001",
+  "syntheticRows": [
+    {"rowRef":"S0_HEALTHY_READY","expected":"READY_NO_REQUEST"},
+    {"rowRef":"S1_STOPPED_RECOVERABLE","expected":"REQUEST_FORMED"},
+    {"rowRef":"S2_FOREIGN_OWNER_RECEIPT","expected":"REJECT"},
+    {"rowRef":"S3_STALE_POST_OBSERVATION","expected":"REJECT"},
+    {"rowRef":"S4_FRESH_POST_OBSERVATION","expected":"RECOVERED_READY_NOT_LIVED"},
+    {"rowRef":"S5_SYNTHETIC_TURN","expected":"REJECT_LIVED_ACCEPTANCE"},
+    {"rowRef":"S6_UNKNOWN_OWNERSHIP","expected":"NO_REQUEST"},
+    {"rowRef":"S7_PORT_CONFLICT","expected":"NO_REQUEST"}
+  ],
+  "realHostRows": [
+    {"rowRef":"R0_INITIAL_HEALTHY","required":true},
+    {"rowRef":"R1_CONTROLLED_UNAVAILABLE","required":true},
+    {"rowRef":"R2_RIGHTFUL_OWNER_REENTRY","required":true},
+    {"rowRef":"R3_NO_ORPHAN_DUPLICATE","required":true},
+    {"rowRef":"R4_POST_RECOVERY_QUALIFICATION","required":true},
+    {"rowRef":"R5_REAL_COMPANION_TURN","required":true},
+    {"rowRef":"R6_SLEEP_WAKE","required":true},
+    {"rowRef":"R7_PORT_PROCESS_OWNERSHIP","required":true}
+  ]
+}

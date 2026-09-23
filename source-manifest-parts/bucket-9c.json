@@ -3,6 +3,12 @@
   "bucketId": "9c",
   "files": [
     {
+      "path": "blueprint/companion-recovery-effect-contract.json",
+      "mode": "100644",
+      "bytes": 2694,
+      "sha256": "c39fb2b46a9b2f1c6fee7962694e26d72315604196ca1dd9959597396bf8cf0b"
+    },
+    {
       "path": "src/core/browser-relationships-persistence-bridge.mjs",
       "mode": "100644",
       "bytes": 12614,
