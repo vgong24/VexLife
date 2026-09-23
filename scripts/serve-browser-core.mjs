@@ -7,8 +7,11 @@ import { fileURLToPath } from 'node:url';
 import {
   BROWSER_COMPANION_API_PATH,
   BROWSER_COMPANION_STATUS_PATH,
+  BROWSER_COMPANION_RECOVERY_PATH,
+  BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES,
   BrowserCompanionBridgeError,
   browserCompanionFailurePayload,
+  browserCompanionRecoveryFailurePayload,
   createBrowserCompanionBridge,
   loadBrowserCompanionHomeIdentity
 } from '../src/core/browser-companion-bridge.mjs';
@@ -233,6 +236,9 @@ function sendJson(response, statusCode, value) {
 
 function companionRequestError(message, httpStatus) {
   return new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', message, httpStatus);
+}
+function companionRecoveryRequestError(message, httpStatus) {
+  return new BrowserCompanionBridgeError('COMPANION_RECOVERY_REQUEST_NOT_ADMITTED', message, httpStatus);
 }
 
 function livingJournalMemoryRequestError(message, httpStatus) {
@@ -1085,6 +1091,32 @@ export function createVexLifeBrowserServer({
           return;
         }
         sendJson(response, 200, companionBridge.status());
+        return;
+      }
+
+      if (url.pathname === BROWSER_COMPANION_RECOVERY_PATH) {
+        if (request.method !== 'POST') {
+          response.writeHead(405, { Allow: 'POST', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          if (typeof companionBridge?.performRecovery !== 'function') {
+            throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_UNAVAILABLE', 'Companion recovery owner is unavailable', 503);
+          }
+          const input = await readBoundedJson(request, {
+            maxBytes: BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES,
+            formError: companionRecoveryRequestError,
+            requestLabel: 'Companion recovery request'
+          });
+          const result = await companionBridge.performRecovery(input);
+          sendJson(response, 200, result);
+        } catch (error) {
+          const typed = error instanceof BrowserCompanionBridgeError
+            ? error
+            : new BrowserCompanionBridgeError('COMPANION_RECOVERY_FAILED', 'Companion recovery failed safely', 500);
+          sendJson(response, typed.httpStatus, browserCompanionRecoveryFailurePayload(typed));
+        }
         return;
       }
 
