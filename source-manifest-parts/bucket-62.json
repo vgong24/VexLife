@@ -23,8 +23,8 @@
     {
       "path": "scripts/vex-reboot-auto-reentry-proof.mjs",
       "mode": "100644",
-      "bytes": 9054,
-      "sha256": "ddadec5b89cc14a22e2ff84fce4416022507193e34971af037305e210bb00f20"
+      "bytes": 10545,
+      "sha256": "6b67930b368fb1f6cedf51af5ba4d291ee1bb192b6b98f61f1db1f081c7176ac"
     }
   ]
 }

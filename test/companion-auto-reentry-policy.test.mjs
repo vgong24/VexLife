@@ -170,6 +170,20 @@ test('VR04 recovery request must match the exact current availability projection
   assert.equal(result.reasonCode, 'RECOVERY_REQUEST_NOT_CURRENT');
 });
 
+test('VR04 rejects forged same-projection requests with substituted identity or digest', () => {
+  const { availability, request, route } = recoveryFixture();
+  for (const forged of [
+    { ...request, homeRef: 'home.foreign' },
+    { ...request, modelRefOrNull: 'model.foreign' },
+    { ...request, requestSha256: '0'.repeat(64) },
+    { ...request, requestRef: 'request.vexlife.companion-recovery.' + '0'.repeat(32) }
+  ]) {
+    const result = decideAutoReentry({ policy, availability, recoveryRequest: forged, ownerRoute: route });
+    assert.equal(result.state, 'HELD');
+    assert.equal(result.reasonCode, 'RECOVERY_REQUEST_NOT_CURRENT');
+  }
+});
+
 test('VR04 ACTION_REQUIRED, UNAVAILABLE and HELD never auto-delegate', () => {
   const currentBinding = binding();
   const observations = [

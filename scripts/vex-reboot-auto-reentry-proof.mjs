@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,19 +69,48 @@ export function validateAutoReentryOwnerRoute(route, request) {
   return Object.freeze(structuredClone(route));
 }
 
+function canonicalRecoveryRequestDigest(request) {
+  const core = {
+    schemaVersion: request.schemaVersion,
+    truthClass: request.truthClass,
+    contractRef: request.contractRef,
+    actionRef: request.actionRef,
+    availabilityProjectionRef: request.availabilityProjectionRef,
+    reentryPlanRef: request.reentryPlanRef,
+    idempotencyKey: request.idempotencyKey,
+    bindingRef: request.bindingRef,
+    homeRef: request.homeRef,
+    companionLineageRef: request.companionLineageRef,
+    modelRefOrNull: request.modelRefOrNull,
+    generationRefOrNull: request.generationRefOrNull,
+    runtimeAdapterRef: request.runtimeAdapterRef,
+    runtimeObservationRef: request.runtimeObservationRef,
+    effectAuthorityGranted: request.effectAuthorityGranted,
+    executionDisposition: request.executionDisposition
+  };
+  return crypto.createHash('sha256').update(JSON.stringify(core, Object.keys(core).sort())).digest('hex');
+}
+
 function requestMatchesAvailability(policy, availability, request) {
-  return Boolean(
-    object(request)
-    && request.schemaVersion === policy.requestSchema
-    && request.truthClass === 'SAME_BINDING_RECOVERY_REQUEST'
-    && request.actionRef === policy.exactActionRef
-    && request.availabilityProjectionRef === availability.projectionRef
-    && request.runtimeObservationRef === availability.runtimeObservationRef
-    && request.effectAuthorityGranted === false
-    && request.executionDisposition === 'DELEGATE_TO_RIGHTFUL_RUNTIME_ADAPTER'
-    && nonempty(request.requestRef)
-    && nonempty(request.idempotencyKey)
-  );
+  if (
+    !object(request)
+    || request.schemaVersion !== policy.requestSchema
+    || request.truthClass !== 'SAME_BINDING_RECOVERY_REQUEST'
+    || request.contractRef !== 'contract.vexlife.companion-recovery-effect.001'
+    || request.actionRef !== policy.exactActionRef
+    || request.availabilityProjectionRef !== availability.projectionRef
+    || request.runtimeObservationRef !== availability.runtimeObservationRef
+    || request.effectAuthorityGranted !== false
+    || request.executionDisposition !== 'DELEGATE_TO_RIGHTFUL_RUNTIME_ADAPTER'
+    || !nonempty(request.reentryPlanRef)
+    || !/^companion-reentry:[0-9a-f]{64}$/u.test(request.idempotencyKey ?? '')
+  ) return false;
+  for (const key of ['bindingRef','homeRef','companionLineageRef','modelRefOrNull','generationRefOrNull','runtimeAdapterRef']) {
+    if ((request[key] ?? null) !== (availability[key] ?? null)) return false;
+  }
+  const digest = canonicalRecoveryRequestDigest(request);
+  return request.requestSha256 === digest
+    && request.requestRef === `request.vexlife.companion-recovery.${digest.slice(0, 32)}`;
 }
 
 export function decideAutoReentry({

@@ -11,8 +11,8 @@
     {
       "path": "test/companion-auto-reentry-policy.test.mjs",
       "mode": "100644",
-      "bytes": 8622,
-      "sha256": "252c048d625df710a0ebc7c0bd5fb1a77971b5c4b9dc224cadb7c6d50735225f"
+      "bytes": 9275,
+      "sha256": "6a1f36318e90b3fda2a06f0cf84b29ebc8a96f7e93aa9defab5033d072c28600"
     }
   ]
 }
