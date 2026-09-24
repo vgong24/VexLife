@@ -23,8 +23,8 @@
     {
       "path": "reference/browser/modules/chat-controller.js",
       "mode": "100644",
-      "bytes": 48725,
-      "sha256": "6f008123a057c05ded0b0e9e210a91cbe91909f71d923bbb47f2ea670db72bc3"
+      "bytes": 48647,
+      "sha256": "5280186aff71d6ddcb0a92d8c5effcf4ab29dde1a853041892067e168021cafc"
     },
     {
       "path": "test/fixtures/orientation/public-active.json",
