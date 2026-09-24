@@ -885,6 +885,9 @@ test('VFS02-00/09 runtime sources trusted security awareness and durable recover
     const second = runtimeHarness(fx, service, schedulerB, {
       familySecurityAwarenessFor: async () => { throw new Error('durable recovery must not re-run security projection'); }
     });
+    const reconstructedQueue = second.runtime.queue(request);
+    assert.equal(reconstructedQueue.state, 'RECOVERY_REQUIRED');
+    assert.equal(reconstructedQueue.modelCallPerformed, false);
     const recovered = await second.runtime.runSelected(request);
     assert.equal(recovered.state, 'COMPLETED');
     assert.equal(recovered.modelCallPerformed, false);
