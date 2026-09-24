@@ -15,6 +15,7 @@ import {
   createBrowserCompanionBridge,
   loadBrowserCompanionHomeIdentity
 } from '../src/core/browser-companion-bridge.mjs';
+import { compileCompanionAvailability } from '../src/core/companion-availability-reentry.mjs';
 import {
   CAPABILITY_ASSIMILATION_MODES,
   createCapabilityAssimilationRuntime
@@ -77,6 +78,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH = '/api/v1/relationships/persistence';
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_LIST_MAX = 256;
@@ -142,6 +144,77 @@ export function loadBrowserRelationshipsRuntimeSources(sourceRoot = root) {
       'CDR S5 registry'
     )
   });
+}
+
+function readCompanionAvailabilityRegistry(sourceRoot) {
+  const file = path.resolve(sourceRoot, 'blueprint/companion-availability-reentry-registry.json');
+  try {
+    const stat = fs.lstatSync(file);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error('availability registry must be one regular non-link file');
+    }
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_AVAILABILITY_SOURCE_UNAVAILABLE',
+      'Companion availability source is unavailable',
+      503,
+      error?.message ?? String(error)
+    );
+  }
+}
+
+export function createServerOwnedCompanionAvailabilityResolver({
+  sourceRoot = root,
+  resolveCompanionBinding = null,
+  resolveCompanionRuntimeObservation = null,
+  availabilityCompiler = compileCompanionAvailability
+} = {}) {
+  if (resolveCompanionBinding !== null && typeof resolveCompanionBinding !== 'function') {
+    throw new TypeError('Companion availability binding provider must be one function');
+  }
+  if (resolveCompanionRuntimeObservation !== null && typeof resolveCompanionRuntimeObservation !== 'function') {
+    throw new TypeError('Companion availability runtime-observation provider must be one function');
+  }
+  if (typeof availabilityCompiler !== 'function') {
+    throw new TypeError('Companion availability compiler must be one function');
+  }
+  return async function resolveCompanionAvailability() {
+    if (resolveCompanionBinding === null || resolveCompanionRuntimeObservation === null) {
+      throw new BrowserCompanionBridgeError(
+        'COMPANION_AVAILABILITY_PROVIDER_UNAVAILABLE',
+        'Companion availability providers are unavailable',
+        503
+      );
+    }
+    try {
+      const binding = await resolveCompanionBinding();
+      const runtimeObservation = await resolveCompanionRuntimeObservation();
+      const registry = readCompanionAvailabilityRegistry(sourceRoot);
+      const availability = availabilityCompiler({ registry, binding, runtimeObservation });
+      if (
+        !availability ||
+        availability.schemaVersion !== 'vexlife.companion-availability/v1' ||
+        availability.truthClass !== 'SOURCE_BOUND_COMPANION_AVAILABILITY' ||
+        availability.effectAuthorityGranted !== false ||
+        availability.rendererAuthorityGranted !== false ||
+        availability.modelIdentityAuthorityGranted !== false ||
+        availability.processAuthorityGranted !== false ||
+        availability.conversationAuthorityGranted !== false
+      ) {
+        throw new Error('canonical Companion availability projection is incomplete');
+      }
+      return availability;
+    } catch (error) {
+      if (error instanceof BrowserCompanionBridgeError) throw error;
+      throw new BrowserCompanionBridgeError(
+        'COMPANION_AVAILABILITY_NOT_CURRENT',
+        'Canonical Companion availability is unavailable',
+        503,
+        error?.message ?? String(error)
+      );
+    }
+  };
 }
 
 export function createServerOwnedBrowserCompanionBridge({
@@ -1069,6 +1142,10 @@ export function createVexLifeBrowserServer({
     localOwnerBinding
   }),
   resolveHomeIdentity = () => loadBrowserCompanionHomeIdentity(home),
+  companionAvailabilitySourceRoot = staticRoot,
+  resolveCompanionBinding = null,
+  resolveCompanionRuntimeObservation = null,
+  companionAvailabilityCompiler = compileCompanionAvailability,
   createLivingJournalMemoryBridge = (identity) => createBrowserLivingJournalMemoryBridge({ identity }),
   familyConversationHome = home,
   resolveFamilyConversationAuthority = null,
@@ -1080,9 +1157,36 @@ export function createVexLifeBrowserServer({
   familyLifecycleInstanceRef = 'instance.vexlife.browser-family-lifecycle',
   resolveFamilyWorkProjection = null
 } = {}) {
+  const resolveCompanionAvailability = createServerOwnedCompanionAvailabilityResolver({
+    sourceRoot: companionAvailabilitySourceRoot,
+    resolveCompanionBinding,
+    resolveCompanionRuntimeObservation,
+    availabilityCompiler: companionAvailabilityCompiler
+  });
   return http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url, `http://${request.headers.host || `127.0.0.1:${port}`}`);
+
+      if (url.pathname === BROWSER_COMPANION_AVAILABILITY_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          sendJson(response, 200, await resolveCompanionAvailability());
+        } catch (error) {
+          const typed = error instanceof BrowserCompanionBridgeError
+            ? error
+            : new BrowserCompanionBridgeError(
+              'COMPANION_AVAILABILITY_FAILED',
+              'Companion availability failed safely',
+              500
+            );
+          sendJson(response, typed.httpStatus, browserCompanionFailurePayload(typed));
+        }
+        return;
+      }
 
       if (url.pathname === BROWSER_COMPANION_STATUS_PATH) {
         if (request.method !== 'GET') {
