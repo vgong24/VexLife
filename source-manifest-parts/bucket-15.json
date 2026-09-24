@@ -23,8 +23,8 @@
     {
       "path": "test/vex-family-prompt-materialization.test.mjs",
       "mode": "100644",
-      "bytes": 15417,
-      "sha256": "2cda61b2abff18cc590c49d9b96603bae57872195f87bcc240ab59c649b79afc"
+      "bytes": 24424,
+      "sha256": "52e3a19c3578e651fe969ffbdee869c11f216d56d4b52630973432449ba893f3"
     }
   ]
 }
