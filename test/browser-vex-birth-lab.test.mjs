@@ -3,33 +3,63 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
-  VEX_BIRTH_ACTIVE_GENERATION_REF,
+  VEX_BIRTH_COMPANION_AVAILABILITY_PATH,
   annotationDispositionForRange,
   buildVexBirthLabProjection,
   buildVexBirthStatusZipEntries,
   buildVexBirthSupportArtifacts,
   encodeStoredZip,
-  normalizeVexBirthCompanionStatus,
+  normalizeVexBirthCompanionAvailability,
   setVexBirthTrainingDisposition,
   supportSelectedExcerpt,
   toggleVexBirthSupportOnly
 } from '../reference/browser/modules/vex-birth-lab-controller.js';
 
-test('Slice B projects truthful BOUND G0 baseline without claiming neural training', () => {
+function availability(overrides = {}) {
+  const availabilityState = overrides.availabilityState ?? 'READY';
+  return {
+    schemaVersion: 'vexlife.companion-availability/v1',
+    truthClass: 'SOURCE_BOUND_COMPANION_AVAILABILITY',
+    registryRef: 'registry.vexlife.companion-availability-reentry.001',
+    bindingRef: 'binding.browser-vex-birth.test',
+    homeRef: 'home.browser-vex-birth.test',
+    companionLineageRef: 'lineage.browser-vex-birth.test',
+    modelRefOrNull: 'model.browser-vex-birth.m4',
+    generationRefOrNull: 'generation.browser-vex-birth.m4',
+    runtimeAdapterRef: 'adapter.runtime.browser-vex-birth.test',
+    runtimeObservationRef: 'observation.browser-vex-birth.test',
+    availabilityState,
+    recoveryClass: overrides.recoveryClass ?? (availabilityState === 'READY' ? 'NONE_REQUIRED' : 'REPAIR_REQUIRED'),
+    reasonCode: overrides.reasonCode ?? 'BROWSER_VEX_BIRTH_TEST',
+    bindingState: overrides.bindingState ?? 'BOUND',
+    runtimeOwnershipState: overrides.runtimeOwnershipState ?? 'EXACT_OWNED',
+    runtimeState: overrides.runtimeState ?? 'HEALTHY',
+    qualificationState: overrides.qualificationState ?? 'CURRENT',
+    sourceRefs: ['source.browser-vex-birth.test'],
+    effectAuthorityGranted: false,
+    rendererAuthorityGranted: false,
+    modelIdentityAuthorityGranted: false,
+    processAuthorityGranted: false,
+    conversationAuthorityGranted: false,
+    projectionRef: 'projection.vexlife.companion-availability.browser-vex-birth-test',
+    projectionSha256: 'b'.repeat(64),
+    ...overrides
+  };
+}
+
+test('Slice B projects canonical READY source-bound M4 baseline without claiming neural training', () => {
   const projection = buildVexBirthLabProjection({
-    companionStatus: {
-      schemaVersion: 'vexlife.browser-companion-status/v1',
-      state: 'BOUND',
-      truthClass: 'CURRENT_LOCAL_RUNTIME_BINDING',
-      profileRef: 'model-profile.vexlife.browser-companion.local'
-    },
+    companionAvailability: availability(),
     baselineClosed: false,
     baselineExchangeCount: 1
   });
 
+  assert.equal(VEX_BIRTH_COMPANION_AVAILABILITY_PATH, '/api/v1/companion/availability');
   assert.equal(projection.currentChapter, 'MEET_G0');
   assert.equal(projection.currentVBStage, 'VB2');
-  assert.equal(projection.activeGenerationRef, VEX_BIRTH_ACTIVE_GENERATION_REF);
+  assert.equal(projection.companionAvailabilityState, 'READY');
+  assert.equal(projection.activeGenerationRef, 'generation.browser-vex-birth.m4');
+  assert.equal(projection.activeModelRefOrNull, 'model.browser-vex-birth.m4');
   assert.equal(projection.modelBindingState, 'BOUND');
   assert.equal(projection.trainingEffectTruth, 'PRE_EXECUTION_NO_EFFECT');
   assert.equal(projection.sourceCurrentness, 'UNKNOWN');
@@ -37,16 +67,27 @@ test('Slice B projects truthful BOUND G0 baseline without claiming neural traini
   assert.ok(projection.heldActions.some((entry) => entry.actionRef.includes('annotation.train')));
 });
 
-test('unavailable Companion truth never becomes synthetic G0', () => {
-  const status = normalizeVexBirthCompanionStatus({
-    state: 'HOME_UNAVAILABLE',
-    failureCode: 'COMPANION_HOME_UNAVAILABLE'
-  });
-  const projection = buildVexBirthLabProjection({ companionStatus: status });
+test('non-READY canonical Companion truth never becomes a synthetic Birth turn', () => {
+  const current = normalizeVexBirthCompanionAvailability(availability({
+    availabilityState: 'ACTION_REQUIRED',
+    recoveryClass: 'REPAIR_REQUIRED',
+    reasonCode: 'HOME_UNAVAILABLE',
+    bindingState: 'HOME_UNAVAILABLE'
+  }));
+  const projection = buildVexBirthLabProjection({ companionAvailability: current });
   assert.equal(projection.currentChapter, 'PREPARE');
   assert.equal(projection.currentVBStage, 'VB1');
+  assert.equal(projection.companionAvailabilityState, 'ACTION_REQUIRED');
   assert.equal(projection.modelBindingState, 'HOME_UNAVAILABLE');
-  assert.ok(projection.blockers.some((message) => message.includes('no synthetic G0 reply')));
+  assert.ok(projection.blockers.some((message) => message.includes('no real Birth turn')));
+
+  assert.throws(
+    () => normalizeVexBirthCompanionAvailability({
+      schemaVersion: 'vexlife.browser-companion-status/v1',
+      state: 'BOUND'
+    }),
+    /canonical Companion availability|schema\/truth\/state/
+  );
 });
 
 test('training dispositions are mutually exclusive while SUPPORT_ONLY remains independent', () => {
@@ -74,32 +115,32 @@ test('support export includes only explicitly SUPPORT_ONLY-marked exchange conte
     {
       rangeRef: 'range.vex-birth.test.001',
       humanContent: 'selected human text',
-      companionContent: 'selected G0 text'
+      companionContent: 'selected model text'
     },
     {
       rangeRef: 'range.vex-birth.test.002',
       humanContent: 'private other human text',
-      companionContent: 'private other G0 text'
+      companionContent: 'private other model text'
     }
   ];
   const annotations = toggleVexBirthSupportOnly([], turns[0].rangeRef);
   const excerpt = supportSelectedExcerpt(turns, annotations);
   assert.match(excerpt, /selected human text/);
-  assert.match(excerpt, /selected G0 text/);
+  assert.match(excerpt, /selected model text/);
   assert.doesNotMatch(excerpt, /private other human text/);
-  assert.doesNotMatch(excerpt, /private other G0 text/);
+  assert.doesNotMatch(excerpt, /private other model text/);
 });
 
 test('status package is non-executable and raw transcript is excluded by default', () => {
   const projection = buildVexBirthLabProjection({
-    companionStatus: { state: 'BOUND' },
+    companionAvailability: availability(),
     baselineClosed: true,
     cultivationExchangeCount: 1
   });
   const turns = [{
     rangeRef: 'range.vex-birth.test.001',
     humanContent: 'bounded support excerpt',
-    companionContent: 'bounded G0 excerpt'
+    companionContent: 'bounded model excerpt'
   }];
   const annotations = toggleVexBirthSupportOnly([], turns[0].rangeRef);
   const artifacts = buildVexBirthSupportArtifacts({
@@ -133,7 +174,7 @@ test('status package is non-executable and raw transcript is excluded by default
 
 test('explicit support excerpt may coexist with held-out training disposition without training consent collapse', () => {
   const projection = buildVexBirthLabProjection({
-    companionStatus: { state: 'BOUND' },
+    companionAvailability: availability(),
     baselineClosed: true
   });
   const turns = [{
