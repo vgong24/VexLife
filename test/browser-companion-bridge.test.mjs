@@ -215,6 +215,7 @@ test('Health consumes canonical Companion availability only on explicit Health o
 
   assert.match(app, /#openHealth'\)\.addEventListener\('click',[\s\S]*routeCurrentSurface\('surface\.vexlife\.health',\(\)=>void openHealth\(\)\)/u);
   assert.match(app, /action==='health'\)void openHealth\(\)/u);
+  assert.match(app, /vexlife:open-context'[\s\S]*context==='health'\)void openHealth\(\)/u);
 
   const bootstrapStart = app.indexOf('chat.renderProjectRail();chat.renderChannels();');
   const globalExportStart = app.indexOf('globalThis.__VEXLIFE_APP__=');
