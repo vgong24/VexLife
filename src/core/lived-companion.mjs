@@ -1810,7 +1810,7 @@ function exactFamilySecurityAwareness(value, frontier) {
     }
     return false;
   };
-  if (inspect(value.sessionSecurity)) {
+  if (inspect(value)) {
     familyPromptFailure('Family security awareness contains raw authority material');
   }
   return Object.freeze(structuredClone(value));
