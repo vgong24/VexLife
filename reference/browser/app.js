@@ -17,6 +17,7 @@ import { createRelationshipsController, loadRelationshipsReference } from './mod
 import { loadRelationshipsCdrPersistenceBinding } from './modules/relationships-cdr-persistence-binding-client.js';
 import { createRelationshipsPersistenceHttpClient } from './modules/relationships-persistence-http-client.js';
 import { createSecurityAccessController } from './modules/security-access-controller.js';
+import { CONVERSATION_EVOLUTION_SURFACE_REF, createConversationEvolutionAdapter } from './evolution/conversation-projection.js';
 
 const { blueprint, experience, featureRegistry, experienceFoundation, designTokens, catalogs } = await loadBrowserBundle('../../');
 const capabilityRegistryResponse = await fetch('../../blueprint/capability-registry.json');
@@ -60,6 +61,8 @@ const uxEvolutionAdapters=new Map();
 const uxShellSurfaceByRef=new Map(uxEvolutionShellScaffold.surfaceInventory.map(surface=>[surface.surfaceRef,Object.freeze({...surface})]));
 const uxMigrationBySemanticRef=new Map(uxEvolutionRegistry.migrationRecords.map(record=>[record.semanticRef,record]));
 const uxLoopbackHostnames=new Set(['127.0.0.1','localhost','::1','[::1]']);
+const UX_CONVERSATION_STYLESHEET_REF='ux-evolution-conversation';
+function ensureConversationEvolutionStylesheet(){const href=new URL('./evolution/conversation.css',import.meta.url).href;const existing=document.querySelector('link[data-ux-evolution-stylesheet="'+UX_CONVERSATION_STYLESHEET_REF+'"]');if(existing){if(existing.href!==href)throw new Error('Conversation Evolution stylesheet binding drift');return existing}const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.uxEvolutionStylesheet=UX_CONVERSATION_STYLESHEET_REF;document.head.append(link);return link}
 state.uxProjection=UX_REFERENCE_PROJECTION;
 state.uxActiveSurfaceRef=null;
 const LIVING_JOURNAL_MEMORY_API_PATH='/api/v1/living-journal/memory';
@@ -241,6 +244,8 @@ navigation=createNavigationController({
 });
 navigation.seedCurrentJourney(initialTerrainRef);
 chat=createChatController({state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation,experienceFoundation,capabilityRegistry});
+ensureConversationEvolutionStylesheet();
+registerEvolutionSurfaceAdapter(CONVERSATION_EVOLUTION_SURFACE_REF,createConversationEvolutionAdapter({state,chat,roles,messages,conversationKey,t}));
 familyRoom=createFamilyRoomController({state,projects,roles,channels,messages,conversationKey,t,navigation,chat,onChange:()=>queueMicrotask(()=>projectFrame())});
 familyRoom.bind();
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});

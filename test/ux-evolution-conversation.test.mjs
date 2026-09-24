@@ -9,6 +9,7 @@ import {
 
 const source=fs.readFileSync(new URL('../reference/browser/evolution/conversation-projection.js',import.meta.url),'utf8');
 const css=fs.readFileSync(new URL('../reference/browser/evolution/conversation.css',import.meta.url),'utf8');
+const app=fs.readFileSync(new URL('../reference/browser/app.js',import.meta.url),'utf8');
 
 function fixture({availabilityState='READY',group=false}={}){
   const project={projectRef:'project.self-development',stringRef:'project.self-development.name'};
@@ -90,6 +91,14 @@ test('presentation makes feed/composer primary and context secondary with compac
   assert.match(css,/@media\(max-width:760px\)/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
   assert.doesNotMatch(css,/family-room/);
+});
+
+test('accepted app.js seam registers the same canonical Conversation adapter and stylesheet',()=>{
+  assert.match(app,/createConversationEvolutionAdapter/);
+  assert.match(app,/CONVERSATION_EVOLUTION_SURFACE_REF/);
+  assert.match(app,/registerEvolutionSurfaceAdapter\(CONVERSATION_EVOLUTION_SURFACE_REF,createConversationEvolutionAdapter\(\{state,chat,roles,messages,conversationKey,t\}\)\)/);
+  assert.match(app,/new URL\('\.\/evolution\/conversation\.css',import\.meta\.url\)/);
+  assert.doesNotMatch(app,/defineEvolutionSurfaceAdapter/);
 });
 
 // [VXG RealForever]
