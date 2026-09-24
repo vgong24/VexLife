@@ -184,6 +184,7 @@ function projectVisibleVexIdentity(){
   if(visibleToValue)visibleToValue.textContent=channel.memberKeys.map(visibleRoleLabel).join(' · ');
 }
 async function refreshHealthCompanionAvailability(){
+  healthCompanionAvailability=null;
   healthCompanionAvailabilityReadState='LOADING';
   healthCompanionAvailabilityFailureCode=null;
   renderHealth();
