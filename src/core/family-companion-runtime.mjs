@@ -412,6 +412,12 @@ function deliveryReceipt({
     membershipGenerationAtDelivery,
     promptMaterializationReceiptRef: promptReceipt.receiptRef,
     promptMaterializationReceiptFingerprint: promptReceipt.semanticFingerprint,
+    ...(promptReceipt.familySecurityAwarenessIncluded === true ? {
+      familySecurityProjectionRef: promptReceipt.familySecurityProjectionRef,
+      familySecurityProjectionFingerprint: promptReceipt.familySecurityProjectionFingerprint,
+      familySecurityProviderBoundaryCurrentnessVerified:
+        promptReceipt.familySecurityProviderBoundaryCurrentnessVerified === true
+    } : {}),
     promptProviderBoundaryCurrentnessVerified: promptReceipt.providerBoundaryCurrentnessVerified === true,
     promptProviderBoundarySourceBindingsVerified: promptReceipt.providerBoundarySourceBindingsVerified === true,
     modelProvenance: model,
@@ -525,6 +531,12 @@ function exactPausedFamilyRecovery(scheduler, request, identity, responseEvent) 
       receipt.responseEventSha256 !== responseEvent.eventSha256 ||
       receipt.promptMaterializationReceiptRef !== recovery.promptMaterializationReceipt?.receiptRef ||
       receipt.promptMaterializationReceiptFingerprint !== recovery.promptMaterializationReceipt?.semanticFingerprint ||
+      (receipt.familySecurityProjectionRef ?? null) !==
+        (recovery.promptMaterializationReceipt?.familySecurityProjectionRef ?? null) ||
+      (receipt.familySecurityProjectionFingerprint ?? null) !==
+        (recovery.promptMaterializationReceipt?.familySecurityProjectionFingerprint ?? null) ||
+      (receipt.familySecurityProviderBoundaryCurrentnessVerified ?? false) !==
+        (recovery.promptMaterializationReceipt?.familySecurityProviderBoundaryCurrentnessVerified ?? false) ||
       semanticHash(receipt.modelProvenance) !== semanticHash(recovery.modelProvenance)) {
     fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'paused Family delivery provenance is inconsistent');
   }
@@ -553,6 +565,7 @@ export class FamilyCompanionRuntime {
   #applicableCultureRefs;
   #admissionOptionsFor;
   #contextInputFor;
+  #familySecurityAwarenessFor;
   #completionEvidenceFor;
   #endpointProfile;
   #inference;
@@ -574,6 +587,7 @@ export class FamilyCompanionRuntime {
     applicableCultureRefs = ['foundation.vexlife.state-relay.v1'],
     admissionOptionsFor,
     contextInputFor,
+    familySecurityAwarenessFor = null,
     completionEvidenceFor,
     endpointProfile = null,
     inference = requestLivedCompanionInference,
@@ -586,6 +600,9 @@ export class FamilyCompanionRuntime {
     }
     for (const [name, value] of Object.entries({ admissionOptionsFor, contextInputFor, completionEvidenceFor, inference, clock })) {
       if (typeof value !== 'function') fail('FAMILY_COMPANION_RUNTIME_CONFIG_INVALID', `${name} must be one function`);
+    }
+    if (familySecurityAwarenessFor !== null && typeof familySecurityAwarenessFor !== 'function') {
+      fail('FAMILY_COMPANION_RUNTIME_CONFIG_INVALID', 'familySecurityAwarenessFor must be one source-managed function or null');
     }
     for (const method of ['enqueueRootIntent', 'admit', 'leaseSelected', 'cancelQueuedRootIntent', 'cancelActive', 'checkpoint', 'resume', 'completeActive']) {
       if (typeof scheduler?.[method] !== 'function') {
@@ -611,6 +628,7 @@ export class FamilyCompanionRuntime {
     this.#applicableCultureRefs = [...applicableCultureRefs];
     this.#admissionOptionsFor = admissionOptionsFor;
     this.#contextInputFor = contextInputFor;
+    this.#familySecurityAwarenessFor = familySecurityAwarenessFor;
     this.#completionEvidenceFor = completionEvidenceFor;
     this.#endpointProfile = endpointProfile;
     this.#inference = inference;
@@ -1119,10 +1137,27 @@ export class FamilyCompanionRuntime {
         leasedContext: leased.contextLease,
         observedAt
       });
+      const familySecurityAwarenessFor = this.#familySecurityAwarenessFor === null
+        ? null
+        : async ({ frontier: securityFrontier, phase, observedAt: securityObservedAt }) => {
+          const securityCurrent = currentFamilyOwners({
+            home: this.#home,
+            request,
+            requireTrigger: true
+          });
+          return this.#familySecurityAwarenessFor({
+            request,
+            current: securityCurrent,
+            frontier: securityFrontier,
+            phase,
+            observedAt: securityObservedAt
+          });
+        };
       const materialization = await materializeFamilyPromptContext({
         home: this.#home,
         frontier,
         contextLease: familyContextLease,
+        familySecurityAwarenessFor,
         observedAt
       });
       const response = await this.#inference({

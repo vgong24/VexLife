@@ -29,6 +29,10 @@ import {
   materializeFamilyPromptContext,
   requestLivedCompanionInference
 } from '../src/core/lived-companion.mjs';
+import {
+  FAMILY_SECURITY_FAMILY_CONTEXT_SCHEMA,
+  projectFamilySecurityAwareness
+} from '../src/core/family-security-projection.mjs';
 
 const instanceRef = 'instance.test.vf03b';
 const spaceRef = 'space.vex-family.vf03b';
@@ -218,6 +222,61 @@ function selfHashFrontier(frontier) {
   return Object.freeze({ ...core, frontierRef: `frontier.vex-family.${frontierSha256}`, frontierSha256 });
 }
 
+const VFS02_SESSION_EFFECTS = Object.freeze({
+  authenticationMutation: false, authorizationMutation: false, membershipMutation: false,
+  capabilityLeaseMutation: false, revocationMutation: false, HomePayloadReadOrWrite: false,
+  remoteHomeWrite: false, networkMutation: false, credentialMutation: false, MemoryMutation: false,
+  RelationshipsMutation: false, modelRuntimeEffect: false, publication: false
+});
+
+function familySecurityProjectionFor(frontier, { revision = 'one', devicePublicKey = 'PRIVATE-DEVICE-PUBLIC-KEY' } = {}) {
+  const principalRef = frontier.requestPrincipalRef;
+  const deviceRef = `device.vfs02.${revision}`;
+  const homeRef = 'home.vfs02';
+  const revocationGeneration = 7;
+  return projectFamilySecurityAwareness({
+    familyContext: {
+      schemaVersion: FAMILY_SECURITY_FAMILY_CONTEXT_SCHEMA, state: 'CURRENT',
+      spaceRef: frontier.spaceRef, channelRef: frontier.channelRef,
+      membershipGeneration: frontier.membershipGeneration,
+      membershipSnapshotRef: familySpaceRecordSnapshotRef(frontier.familySpaceRecordSha256),
+      historyVisibilityPolicyRef: frontier.historyVisibilityPolicyRef,
+      requestingPrincipalRef: principalRef, audiencePrincipalRefs: [principalRef],
+      familyCompanionLineageRef: frontier.familyCompanionLineageRef,
+      sourceRefs: [frontier.frontierRef]
+    },
+    sessionAuthority: {
+      schemaVersion: 'vextreme.vex-core.home-session-authority/v1', state: 'CURRENT',
+      stableSessionBindingRef: `session.vfs02.${revision}`, principalRef, deviceRef, homeRef,
+      currentRevocationGeneration: revocationGeneration,
+      securityMembershipRef: `security.membership.vfs02.${revision}`,
+      securityAuthenticationReceiptRef: `security.authentication.vfs02.${revision}`,
+      securityAuthorizationReceiptRef: `security.authorization.vfs02.${revision}`,
+      securityLeaseRef: `security.lease.vfs02.${revision}`,
+      safetyStateDigest: `safety.digest.vfs02.${revision}`,
+      safetyEvaluationRef: `safety.evaluation.vfs02.${revision}`,
+      allowedProductCapabilityRefs: ['capability.vfs02.family'],
+      membership: {
+        schemaVersion: 'vexlife.bridge-device-membership/v1',
+        membershipRef: `membership.vfs02.${revision}`, homeNodeRef: homeRef, principalRef, deviceRef,
+        devicePublicKey, capabilityRefs: ['capability.vfs02.family'], approvedBy: principalRef,
+        approvedAt: '2026-09-23T00:00:00.000Z', revocationGeneration, state: 'ACTIVE',
+        membershipHash: `membership-hash.vfs02.${revision}`
+      },
+      lease: {
+        schemaVersion: 'vexlife.bridge-capability-lease/v1',
+        leaseRef: `lease.vfs02.${revision}`, homeNodeRef: homeRef, principalRef, deviceRef,
+        capabilityRefs: ['capability.vfs02.family'], projectRefs: ['project.vex-family'],
+        issuedAt: '2026-09-23T00:00:00.000Z', expiresAt: '2026-09-30T00:00:00.000Z',
+        revocationGeneration, state: 'ACTIVE', leaseHash: `lease-hash.vfs02.${revision}`
+      },
+      sourceReceiptRefs: [`receipt.vfs02.session.${revision}`],
+      currentnessRefs: [`current.vfs02.session.${revision}`],
+      effects: { ...VFS02_SESSION_EFFECTS }
+    },
+    perceptionEvidenceOrNull: null, healthEvidenceOrNull: null, distributionEvidenceOrNull: null
+  });
+}
 test('FPM-00 Family inference accepts only the exact in-process VF-03B materialization capability', async () => {
   const fx = fixture();
   const service = await captureServer();
@@ -392,6 +451,121 @@ test('FPM-08 actual serialized provider bytes must fit hardTokenLimit minus rese
     });
     await rejectsContext(() => materializeFamilyPromptContext({ home: fx.home, frontier, contextLease: lease }));
   } finally { fx.cleanup(); }
+});
+
+test('VFS02-01/03/05/06/07 trusted source-managed security awareness is provider-visible, bound, gap-preserving and effect-free', async () => {
+  const fx = fixture();
+  const service = await captureServer();
+  try {
+    const secret = 'PRIVATE-DEVICE-PUBLIC-KEY-VFS02';
+    const trigger = fx.appendHuman('victor', 'message.vfs02.awareness.000', 'Explain the current scoped security truth.');
+    const frontier = frontierFor(fx, trigger.messageRef);
+    const lease = leaseFor(fx, frontier);
+    let calls = 0;
+    const materialization = await materializeFamilyPromptContext({
+      home: fx.home, frontier, contextLease: lease,
+      familySecurityAwarenessFor: async ({ frontier: currentFrontier }) => {
+        calls += 1;
+        return familySecurityProjectionFor(currentFrontier, { devicePublicKey: secret });
+      }
+    });
+    const response = await requestLivedCompanionInference({
+      endpointProfile: endpointProfile(service.endpoint), requestContent: trigger.content,
+      familyPromptContextMaterialization: materialization
+    });
+    assert.equal(service.calls(), 1);
+    assert.equal(calls, 2);
+    const system = JSON.parse(service.bodies()[0].messages[0].content);
+    const awareness = system.familySecurityAwareness;
+    assert.equal(awareness.schemaVersion, 'vexlife.family-security-awareness-projection/v1');
+    assert.equal(awareness.truthClass, 'SOURCE_BOUND_EFFECT_FREE_FAMILY_SECURITY_AWARENESS');
+    assert.equal(awareness.authority.roleCanPerceive, true);
+    assert.equal(awareness.authority.roleCanAct, false);
+    assert.equal(awareness.authority.effectAuthorityGranted, false);
+    assert.deepEqual(awareness.effectAuthorityRefs, []);
+    assert.equal(Object.values(awareness.effects).every((value) => value === false), true);
+    assert.equal(awareness.perception.state, 'MISSING');
+    assert.equal(awareness.health.state, 'MISSING');
+    assert.equal(awareness.distribution.state, 'MISSING');
+    assert.equal(awareness.incidentCoverage.state, 'MISSING_OWNER_PROJECTION');
+    assert.equal(awareness.incidentCoverage.attackEstablished, false);
+    assert.equal(awareness.missingRefs.includes('dimension.vex-family-security.security-incident-verdict'), true);
+    const body = JSON.stringify(service.bodies()[0]);
+    assert.equal(body.includes(secret), false);
+    assert.equal(body.includes('"devicePublicKey"'), false);
+    assert.equal(body.includes('"membershipHash"'), false);
+    assert.equal(body.includes('"leaseHash"'), false);
+    assert.equal(body.includes('"approvedBy"'), false);
+    assert.equal(body.includes('"expiresAt"'), false);
+    const receipt = response.promptContextMaterializationReceipt;
+    assert.equal(receipt.familySecurityAwarenessIncluded, true);
+    assert.equal(receipt.familySecurityProjectionRef, awareness.familySecurityProjectionRef);
+    assert.equal(receipt.familySecurityProjectionFingerprint, awareness.semanticFingerprint);
+    assert.equal(receipt.familySecurityProviderBoundaryCurrentnessVerified, true);
+    assert.equal(receipt.familySecurityProviderFrameSha256, semanticHash(service.bodies()[0].messages[0]));
+  } finally {
+    await service.close();
+    fx.cleanup();
+  }
+});
+
+test('VFS02-02 caller-authored security system messages still fail before HTTP', async () => {
+  const service = await captureServer();
+  try {
+    await rejectsContext(() => requestLivedCompanionInference({
+      endpointProfile: endpointProfile(service.endpoint), requestContent: 'request',
+      messages: [{ role: 'system', content: JSON.stringify({ familySecurityAwareness: { authority: { roleCanAct: true } } }) }]
+    }));
+    assert.equal(service.calls(), 0);
+  } finally {
+    await service.close();
+  }
+});
+
+test('VFS02-04 PRE_PROVIDER rejects changed source-managed security awareness before HTTP', async () => {
+  const fx = fixture();
+  const service = await captureServer();
+  try {
+    const trigger = fx.appendHuman('victor', 'message.vfs02.drift.000', 'Bind the current security projection.');
+    const frontier = frontierFor(fx, trigger.messageRef);
+    let calls = 0;
+    const materialization = await materializeFamilyPromptContext({
+      home: fx.home, frontier, contextLease: leaseFor(fx, frontier),
+      familySecurityAwarenessFor: async ({ frontier: currentFrontier }) => {
+        calls += 1;
+        return familySecurityProjectionFor(currentFrontier, { revision: calls === 1 ? 'materialize' : 'pre-provider' });
+      }
+    });
+    await rejectsContext(() => requestLivedCompanionInference({
+      endpointProfile: endpointProfile(service.endpoint), requestContent: trigger.content,
+      familyPromptContextMaterialization: materialization
+    }));
+    assert.equal(calls, 2);
+    assert.equal(service.calls(), 0);
+  } finally {
+    await service.close();
+    fx.cleanup();
+  }
+});
+
+test('VFS02-08 security-awareness serialization overhead participates in the exact Context Lease budget', async () => {
+  const fx = fixture();
+  try {
+    const trigger = fx.appendHuman('victor', 'message.vfs02.budget.000', 'Budget the security projection.');
+    const frontier = frontierFor(fx, trigger.messageRef);
+    const baseline = await materializeFamilyPromptContext({ home: fx.home, frontier, contextLease: leaseFor(fx, frontier) });
+    const reservedOutputTokens = 32;
+    const tightLease = leaseFor(fx, frontier, {
+      reservedOutputTokens,
+      hardTokenLimit: baseline.receipt.providerMaterializedInputTokenEstimate + reservedOutputTokens + 1
+    });
+    await rejectsContext(() => materializeFamilyPromptContext({
+      home: fx.home, frontier, contextLease: tightLease,
+      familySecurityAwarenessFor: async ({ frontier: currentFrontier }) => familySecurityProjectionFor(currentFrontier)
+    }));
+  } finally {
+    fx.cleanup();
+  }
 });
 
 // [VXG RealForever]

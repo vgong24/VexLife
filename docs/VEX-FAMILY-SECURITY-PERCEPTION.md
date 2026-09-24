@@ -287,6 +287,70 @@ The focused suite `test/vex-family-security-projection.test.mjs` covers VFS01-00
 22 zero protected effects by construction
 ```
 
+## VFS-02 trusted Companion awareness bridge
+
+VFS-02 connects the accepted VFS-01 projection to the existing trusted Family prompt-materialization boundary without creating a second security producer, second context selector, browser-authored security frame, or effect path.
+
+```text
+FamilyCompanionRuntime
+  -> source-managed familySecurityAwarenessFor(...)
+  -> materializeFamilyPromptContext(...)
+     -> validate exact VFS-01 schema / fingerprint / Family frontier binding
+     -> serialize awareness only inside the trusted source-managed system frame
+     -> include awareness bytes in provider token accounting
+     -> bind projection ref / fingerprint into the materialization receipt
+  -> requestLivedCompanionInference(...)
+     -> PRE_PROVIDER Family source replay
+     -> PRE_PROVIDER security-awareness producer replay
+     -> exact projection identity + exact provider bytes must remain unchanged
+     -> only then HTTP
+```
+
+The adapter is optional at the core runtime boundary so accepted pre-VFS-02 Family behavior remains unchanged when no source-managed security producer is connected. A caller/browser/model cannot supply the projection, system frame, or receipt through the Family request.
+
+Permanent VFS-02 law:
+
+```text
+ContextLease ref != model-visible security awareness
+caller-authored security message != trusted security awareness
+security awareness != security authority
+security awareness != incident verdict
+security awareness != effect authority
+MISSING / UNKNOWN != SAFE
+ROLE_CAN_PERCEIVE != ROLE_CAN_ACT
+```
+
+The trusted materializer accepts only one content-addressed `vexlife.family-security-awareness-projection/v1` value whose Family identity matches the exact current frontier and whose authority remains:
+
+```text
+roleCanPerceive=true
+roleCanAct=false
+effectAuthorityGranted=false
+selfCertificationAllowed=false
+attackAttributionAllowed=false
+effectAuthorityRefs=[]
+effects=ALL_FALSE
+```
+
+Raw Home-Bridge membership/lease objects and `devicePublicKey` are rejected from the provider-visible awareness frame. Opaque source/evidence refs emitted by VFS-01 remain allowed.
+
+The materialization receipt and Family delivery/recovery receipts preserve the exact security projection ref/fingerprint. A durable response recovery reuses the checkpoint-bound provider-verified receipt and does not replay model inference or re-author security truth.
+
+VFS-02 focused proof is source-placed inside the existing Family prompt/runtime suites:
+
+```text
+VFS02-00 runtime obtains awareness only from the source-managed in-process producer
+VFS02-01 trusted materialization makes scoped awareness provider-visible
+VFS02-02 caller-authored security/system messages and cloned capabilities remain rejected before HTTP
+VFS02-03 exact projection ref/fingerprint is bound into materialization/provider evidence
+VFS02-04 PRE_PROVIDER security projection drift rejects before HTTP
+VFS02-05 missing producer/incident dimensions remain typed missing/unknown, never SAFE
+VFS02-06 raw membership/lease/devicePublicKey/private authority material is absent from provider bytes
+VFS02-07 roleCanAct=false, effectAuthorityRefs=[], effects=ALL_FALSE end-to-end
+VFS02-08 provider token budget includes security-awareness serialization overhead
+VFS02-09 delivery/recovery preserves the exact security binding without model replay or authority inflation
+VFS02-10 existing Family/direct Companion regression behavior remains required
+```
 ## Staging boundary
 
 ```text
