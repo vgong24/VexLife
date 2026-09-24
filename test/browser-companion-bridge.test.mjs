@@ -162,6 +162,7 @@ test('browser source never routes companion channel through simulatedReply', () 
   const selectChannelSource = chat.slice(chat.indexOf('function selectChannel'), chat.indexOf('function renderPresence'));
   assert.doesNotMatch(selectChannelSource, /refreshCompanionAvailability\(\)/u);
   assert.match(chat, /channel\.roleKey === 'companion' && !channelIsAvailable\(channel\) && !companionTurnPending[\s\S]*await refreshCompanionAvailability\(\);/u);
+  assert.match(chat, /const submitAvailable = slashCandidate \|\| \(channel\.roleKey === 'companion' \? !companionTurnPending : available\);/u);
   assert.doesNotMatch(birth, /controller\.refreshStatus\(\);\s+return controller;/u);
   assert.match(birth, /function open\(\)[\s\S]*refreshStatus\(\);/u);
   assert.doesNotMatch(chat, /endpoint\s*:/u);

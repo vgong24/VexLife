@@ -785,7 +785,7 @@ export function createChatController({ state, projects, roles, channels, message
     }
     form.dataset.draftState = draft?.state ?? 'NONE';
     input.dataset.draftState = draft?.state ?? 'NONE';
-    const submitAvailable = available || slashCandidate;
+    const submitAvailable = slashCandidate || (channel.roleKey === 'companion' ? !companionTurnPending : available);
     sendButton.disabled = !submitAvailable;
     sendButton.setAttribute('aria-disabled', String(!submitAvailable));
     renderSemanticRelayAttention();
