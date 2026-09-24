@@ -513,71 +513,58 @@
   {
     "moduleRef": "module.vexlife.browser.evolution-host-document",
     "path": "reference/browser/evolution/index.html",
-    "role": "Local/dev-only E0-B/LJ-01 Evolution document hosting the bounded Living Journal shadow while Reference stays the default/fallback document and remains unloaded.",
+    "role": "Legacy Evolution URL compatibility document that redirects into the canonical VexLife shell; it owns no Journal title, navigation, semantic state, renderer, Memory, Journey, Vex or publication behavior.",
     "platformScope": "BROWSER",
-    "reads": [
-      "reference/browser/evolution/projection-host.js",
-      "reference/browser/evolution/living-journal.css"
-    ],
+    "reads": [],
     "writes": [],
-    "loadedBy": [
-      "module.vexlife.script.serve-browser"
-    ],
-    "tests": [
-      "test/ux-evolution-host.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/evolution/projection-host.js",
-      "reference/browser/evolution/living-journal-projection.js",
-      "reference/browser/evolution/living-journal.css"
-    ]
-  },
-  {
-    "moduleRef": "module.vexlife.browser.evolution-projection-host",
-    "path": "reference/browser/evolution/projection-host.js",
-    "role": "Validates explicit loopback-only Evolution selection and mounts the bounded Living Journal shadow by consuming existing Journal/Memory/archive/walkthrough owners without semantic, user-data, cutover or publication ownership.",
-    "platformScope": "BROWSER",
-    "reads": [
-      "blueprint/ux-evolution-registry.json",
-      "blueprint/feature-registry.json",
-      "blueprint/experience-registry.json",
-      "blueprint/strings/en.json",
-      "blueprint/strings/ja.json",
-      "blueprint/strings/zh.json",
-      "module.vexlife.core.ux-evolution",
-      "module.vexlife.browser.evolution-living-journal-shadow"
-    ],
-    "writes": [
-      "in-page Evolution host receipt only"
-    ],
-    "loadedBy": [
-      "reference/browser/evolution/index.html"
-    ],
+    "loadedBy": [],
     "tests": [
       "test/ux-evolution-host.test.mjs"
     ],
     "changeMap": [
       "src/core/ux-evolution.mjs",
+      "blueprint/ux-evolution-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.evolution-projection-host",
+    "path": "reference/browser/evolution/projection-host.js",
+    "role": "Journal-owned registration helper that binds one Living Journal presentation adapter into the accepted shell-owned active-surface host without becoming a semantic, state, navigation, Memory, cutover or publication owner.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/ux-evolution-registry.json",
+      "blueprint/ux-evolution-shell-scaffold.json",
+      "module.vexlife.browser.evolution-living-journal-shadow"
+    ],
+    "writes": [
+      "canonical shell runtime adapter-registration map only"
+    ],
+    "loadedBy": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/ux-evolution-host.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js",
       "reference/browser/evolution/living-journal-projection.js",
-      "reference/browser/evolution/living-journal.css"
+      "blueprint/ux-evolution-registry.json",
+      "blueprint/ux-evolution-shell-scaffold.json"
     ]
   },
   {
     "moduleRef": "module.vexlife.browser.evolution-living-journal-shadow",
     "path": "reference/browser/evolution/living-journal-projection.js",
-    "role": "LJ-01 Evolution-only presentation adapter that reuses the accepted Living Journal controller, current/held Memory and committed-day archive APIs, source-managed walkthrough runner, and Reference semantic-frame input without becoming a Journal, Memory, Journey or persistence owner.",
+    "role": "LJ-01 presentation-only active-surface adapter that moves and reuses the canonical Living Journal view/controller under the shell host, preserving canonical Memory/archive/source/revisit/walkthrough/marginalia and Journey ownership with zero user-data fork.",
     "platformScope": "BROWSER",
     "reads": [
+      "reference/browser/app.js",
       "reference/browser/modules/living-journal-controller.js",
-      "reference/browser/modules/living-journal-demo-data.js",
-      "reference/browser/modules/feature-walkthrough-runner.js",
-      "blueprint/feature-registry.json",
-      "blueprint/experience-registry.json",
-      "module.vexlife.core.browser-living-journal-memory-bridge"
+      "blueprint/ux-evolution-registry.json",
+      "blueprint/ux-evolution-shell-scaffold.json"
     ],
     "writes": [
-      "ephemeral in-page Journal marginalia only",
-      "Guide-local walkthrough preference via accepted feature-walkthrough owner"
+      "ephemeral DOM placement/style state only; canonical Journal owners retain semantic effects"
     ],
     "loadedBy": [
       "module.vexlife.browser.evolution-projection-host"
@@ -586,7 +573,6 @@
       "test/ux-evolution-host.test.mjs"
     ],
     "changeMap": [
-      "reference/browser/evolution/index.html",
       "reference/browser/evolution/living-journal.css",
       "blueprint/ux-evolution-registry.json"
     ]
@@ -594,20 +580,20 @@
   {
     "moduleRef": "module.vexlife.browser.evolution-living-journal-styles",
     "path": "reference/browser/evolution/living-journal.css",
-    "role": "Immersive LJ-01 shadow presentation grammar: reading-first stage, contextual tools, compact Vex presence, >=48px primary controls, compact one-page flow and reduced-motion equivalence.",
+    "role": "Shell-scoped Living Journal Evolution presentation grammar layered over the canonical Journal DOM: reading-first layout, >=48px controls, compact flow and reduced-motion equivalence without standalone shell chrome.",
     "platformScope": "BROWSER",
     "reads": [
+      "reference/browser/app.css",
       "blueprint/design-tokens.json"
     ],
     "writes": [],
     "loadedBy": [
-      "reference/browser/evolution/index.html"
+      "module.vexlife.browser.evolution-living-journal-shadow"
     ],
     "tests": [
       "test/ux-evolution-host.test.mjs"
     ],
     "changeMap": [
-      "reference/browser/evolution/index.html",
       "reference/browser/evolution/living-journal-projection.js"
     ]
   }

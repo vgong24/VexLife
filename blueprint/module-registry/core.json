@@ -1342,7 +1342,7 @@
   {
     "moduleRef": "module.vexlife.core.ux-evolution",
     "path": "src/core/ux-evolution.mjs",
-    "role": "Validate E0 migration accounting, local/dev projection-host selection and LJ-01 shadow admission without taking Journal, Memory, Journey, renderer-state, user-data, cutover or publication ownership.",
+    "role": "Validate E0 migration accounting plus canonical-shell Reference/Evolution selection and Living Journal active-surface admission without taking Journal, Memory, Journey, renderer-state, user-data, cutover or publication ownership.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "blueprint/ux-evolution-registry.json",

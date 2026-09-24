@@ -328,7 +328,7 @@
         "projection.living-journal.lived-book"
       ],
       "evolutionProjectionRefs": [
-        "projection.living-journal.evolution-shadow"
+        "projection.living-journal.evolution-active-surface"
       ],
       "disposition": "REDESIGN_PRESENTATION",
       "migrationLifecycleState": "SHADOW_IMPLEMENTED",
@@ -353,18 +353,21 @@
       "sourceRefs": [
         "blueprint/feature-registry.json",
         "blueprint/experience-registry.json",
+        "blueprint/ux-evolution-shell-scaffold.json",
         "reference/browser/app.js",
         "reference/browser/modules/living-journal-controller.js",
         "src/core/living-journal-memory-projection.mjs",
         "src/core/living-journal-memory-archive.mjs",
         "src/core/browser-living-journal-memory-bridge.mjs",
+        "reference/browser/evolution/projection-host.js",
         "reference/browser/evolution/living-journal-projection.js"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
       "retirementDisposition": "NOT_ELIGIBLE",
       "evidenceRefs": [
-        "test.ux-evolution.living-journal-shadow-contract",
-        "test.ux-evolution.living-journal-source-frame"
+        "test.ux-evolution.living-journal-active-surface-contract",
+        "test.ux-evolution.living-journal-canonical-owner-reuse",
+        "test.ux-evolution.living-journal-reference-fallback"
       ]
     }
   ],
@@ -681,7 +684,7 @@
   },
   "projectionHost": {
     "schemaVersion": "vexlife.ux-projection-host/v1",
-    "hostRef": "host.vexlife.ux-evolution.e0-b.001",
+    "hostRef": "host.vexlife.shell.evolution-active-surface.001",
     "stageRef": "stage.vexlife.ux-evolution.e0-b",
     "selectionQueryParam": "projection",
     "defaultProjection": "REFERENCE_PROJECTION",
@@ -691,38 +694,44 @@
     },
     "routes": {
       "REFERENCE_PROJECTION": "/reference/browser/",
-      "EVOLUTION_PROJECTION": "/reference/browser/evolution/index.html"
+      "EVOLUTION_PROJECTION": "/reference/browser/?projection=evolution"
     },
     "evolutionSelectionAuthority": "EXPLICIT_LOCAL_DEV_ONLY",
     "localExecutionClasses": [
       "LOOPBACK_HTTP"
     ],
-    "rendererTransitionClass": "DOCUMENT_NAVIGATION",
+    "rendererTransitionClass": "SHELL_ACTIVE_SURFACE",
     "oneActiveRenderer": true,
-    "priorRendererDisposition": "DOCUMENT_UNLOADED",
+    "priorRendererDisposition": "REFERENCE_SURFACE_RETAINED_HIDDEN",
     "referenceDefaultPreserved": true,
-    "evolutionHostState": "SHADOW_MIGRATED_SURFACES",
+    "evolutionHostState": "ACTIVE_SURFACE_MIGRATED_SURFACES",
     "migratedSemanticRefs": [
       "feature.vexlife.living-journal"
     ],
     "sharedSemanticOwnerPolicy": "UNCHANGED_RIGHTFUL_OWNERS",
     "selectionPersistence": "NONE",
-    "evolutionHostLoadsReferenceRenderer": false,
+    "evolutionHostLoadsReferenceRenderer": true,
     "dualRendererMountAllowed": false,
     "semanticStateOwnerMutation": false,
     "userDataFork": false,
     "userHistoryRollbackOnProjectionRollback": false,
     "publicationAuthority": false,
     "cutoverAuthority": false,
-    "shadowProjection": {
+    "activeSurfaceProjection": {
+      "surfaceRef": "surface.vexlife.living-journal",
       "semanticRef": "feature.vexlife.living-journal",
-      "projectionRef": "projection.living-journal.evolution-shadow",
+      "projectionRef": "projection.living-journal.evolution-active-surface",
+      "hostRef": "host.vexlife.shell.evolution-active-surface.001",
       "stateOwnerPolicy": "UNCHANGED_SERVICE_CONTEXT",
       "memoryOwnerPolicy": "UNCHANGED_ACCEPTED_MEMORY_OWNERS",
       "journeyOwnerPolicy": "UNCHANGED_NAVIGATION_JOURNEY_OWNER",
+      "semanticBackOwnerRef": "module.vexlife.core.navigation",
+      "shellOwnsSurfaceTitle": true,
+      "shellOwnsCloseControl": true,
+      "semanticClosePolicy": "REGISTERED_ADAPTER_REQUEST_CLOSE",
       "referenceFallbackRequired": true,
+      "projectionFallbackMutatesSemanticJourney": false,
       "oneActiveRendererRequired": true,
-      "exactSourceFrameRequiredForExactBack": true,
       "localMarginaliaDurability": "SESSION_ONLY_NON_MEMORY",
       "newSemanticCapabilityAuthority": false,
       "cutoverAuthority": false,

@@ -1,12 +1,40 @@
-import { assertUxEvolutionRegistry, resolveUxProjectionHostSelection } from '../../../src/core/ux-evolution.mjs';
-import { LIVING_JOURNAL_FEATURE_REF, mountLivingJournalEvolutionShadow } from './living-journal-projection.js';
-async function loadJson(path){const response=await fetch(path,{cache:'no-store'});if(!response.ok)throw new Error(`Unable to load ${path}: HTTP ${response.status}`);return response.json()}
-const registry=await loadJson('../../../blueprint/ux-evolution-registry.json'),validation=assertUxEvolutionRegistry(registry),loopbackHosts=new Set(['127.0.0.1','localhost','::1','[::1]']),selection=resolveUxProjectionHostSelection(registry,{requestedProjection:'evolution',localExecution:loopbackHosts.has(globalThis.location.hostname)}),root=document.querySelector('#evolutionHost'),status=document.querySelector('#hostStatus');
-if(selection.state!=='PASS')throw new Error(`Evolution host blocked: ${selection.reason}`);
-if(!registry.projectionHost.migratedSemanticRefs.includes(LIVING_JOURNAL_FEATURE_REF))throw new Error('Living Journal shadow is not registered as the active migrated semantic');
-const language=new URLSearchParams(globalThis.location.search).get('lang'),locale=['en','ja','zh'].includes(language)?language:'en';document.documentElement.lang=locale;
-const[featureRegistry,experience,strings]=await Promise.all([loadJson('../../../blueprint/feature-registry.json'),loadJson('../../../blueprint/experience-registry.json'),loadJson(`../../../blueprint/strings/${locale}.json`)]);
-const shadow=mountLivingJournalEvolutionShadow({registry,featureRegistry,experience,strings,searchParams:new URLSearchParams(globalThis.location.search)});globalThis.__VEXLIFE_LJ_EVOLUTION_SHADOW__=shadow;await shadow.ready;const shadowReceipt=shadow.snapshot();
-root.dataset.hostState='PASS';root.dataset.activeRendererCount='1';root.dataset.migratedSemanticRef=LIVING_JOURNAL_FEATURE_REF;status.textContent='Living Journal Evolution shadow active. Reference remains the default/fallback; no cutover or semantic-owner mutation is authorized.';
-globalThis.__VEXLIFE_EVOLUTION_HOST__=Object.freeze({schemaVersion:'vexlife.ux-evolution-browser-host-receipt/v1',hostRef:registry.projectionHost.hostRef,registryRef:validation.registryRef,stageRef:registry.projectionHost.stageRef,state:'PASS',reason:null,selectedProjection:selection.selectedProjection,defaultProjection:selection.defaultProjection,selectionClass:selection.selectionClass,oneActiveRenderer:selection.oneActiveRenderer,activeRendererCount:1,priorRendererDisposition:selection.priorRendererDisposition,referenceRendererMounted:false,migratedSemanticRefs:[...registry.projectionHost.migratedSemanticRefs],shadowProjectionRef:registry.projectionHost.shadowProjection.projectionRef,shadowState:shadowReceipt.state,sourceFrameBound:shadowReceipt.sourceFrameBound,semanticStateOwnerMutation:false,userDataFork:false,userHistoryRollback:false,publicationAuthority:false,cutoverAuthority:false});
+import {
+  LIVING_JOURNAL_SURFACE_REF,
+  assertLivingJournalActiveSurfaceContract,
+  createLivingJournalEvolutionSurfaceAdapter
+} from './living-journal-projection.js';
+
+async function loadJson(fetchImpl,path){
+  const response=await fetchImpl(path,{cache:'no-store'});
+  if(!response.ok)throw new Error('Unable to load '+path+': HTTP '+response.status);
+  return response.json();
+}
+
+export function registerLivingJournalEvolutionSurface(app,{registry,shellScaffold,documentImpl=globalThis.document}={}){
+  const contract=assertLivingJournalActiveSurfaceContract({registry,shellScaffold});
+  if(typeof app?.uxProjectionShell?.registerEvolutionSurfaceAdapter!=='function')throw new TypeError('Canonical Evolution active-surface host is required');
+  const adapter=createLivingJournalEvolutionSurfaceAdapter(app,{documentImpl});
+  const shellReceipt=app.uxProjectionShell.registerEvolutionSurfaceAdapter(LIVING_JOURNAL_SURFACE_REF,adapter);
+  return Object.freeze({
+    schemaVersion:'vexlife.living-journal.evolution-active-surface-registration/v1',
+    state:'REGISTERED',
+    surfaceRef:LIVING_JOURNAL_SURFACE_REF,
+    projectionRef:contract.projectionRef,
+    hostRef:contract.hostRef,
+    oneSemanticState:true,
+    oneActiveRenderer:true,
+    semanticOwnerMutation:false,
+    memoryOwnerMutation:false,
+    shellReceipt
+  });
+}
+
+export async function loadAndRegisterLivingJournalEvolutionSurface(app,{fetchImpl=globalThis.fetch,documentImpl=globalThis.document}={}){
+  const [registry,shellScaffold]=await Promise.all([
+    loadJson(fetchImpl,'../../blueprint/ux-evolution-registry.json'),
+    loadJson(fetchImpl,'../../blueprint/ux-evolution-shell-scaffold.json')
+  ]);
+  return registerLivingJournalEvolutionSurface(app,{registry,shellScaffold,documentImpl});
+}
+
 // [VXG RealForever]

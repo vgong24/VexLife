@@ -1,34 +1,141 @@
-import { createLivingJournalController } from '../modules/living-journal-controller.js';
-import { createLivingJournalDemoData } from '../modules/living-journal-demo-data.js';
-import { FEATURE_WALKTHROUGH_RUNNER_STATES, createFeatureWalkthroughRunner, createLocalStorageFeatureWalkthroughPreferenceStore } from '../modules/feature-walkthrough-runner.js';
-export const LIVING_JOURNAL_EVOLUTION_PROJECTION_REF='projection.living-journal.evolution-shadow';
+export const LIVING_JOURNAL_EVOLUTION_PROJECTION_REF='projection.living-journal.evolution-active-surface';
 export const LIVING_JOURNAL_FEATURE_REF='feature.vexlife.living-journal';
-const MEMORY_API='/api/v1/living-journal/memory',ARCHIVE_API='/api/v1/living-journal/archive',MEMORY_TRUTHS=new Set(['CURRENT_MEMORY_REFERENCE','MEMORY_REFERENCE_HELD']);
-const SOURCE_FRAME_FIELDS=Object.freeze([['sourcePrimaryStageScreenRef','primaryStageScreenRef'],['sourceScreenRef','screenRef'],['sourceRouteRef','routeRef'],['sourceContextProjection','contextProjection'],['sourceProjectRef','projectRef'],['sourceThreadRef','threadRef'],['sourceChannelRef','channelRef'],['sourceSelectedNodeRef','selectedNodeRef']]);
-const ZERO_EFFECTS=Object.freeze({homeMutated:false,memoryMutated:false,semanticAcceptanceCreated:false,firstPersonAuthorityGranted:false,modelCalled:false,translationCalled:false,networkCalled:false,trainingRan:false,modelWeightsChanged:false,publicationPerformed:false});
-const q=(selector)=>document.querySelector(selector),clone=(value)=>structuredClone(value),nonempty=(value)=>typeof value==='string'&&value.length>0;let mounted=false;
-function format(template,params={}){return String(template).replace(/\{([a-zA-Z0-9_]+)\}/gu,(_,key)=>Object.hasOwn(params,key)?String(params[key]):`{${key}}`)}function translator(strings){return(ref,params={})=>format(strings?.[ref]??ref,params)}
-export function readLivingJournalSourceFrame(input=new URLSearchParams()){const params=input instanceof URLSearchParams?input:new URLSearchParams(input),bound=SOURCE_FRAME_FIELDS.every(([query])=>params.has(query)),frame={};for(const[query,key]of SOURCE_FRAME_FIELDS){const raw=params.get(query);frame[key]=raw===null||raw===''?null:raw}return Object.freeze({schemaVersion:'vexlife.living-journal.shadow-source-frame/v1',bound,reason:bound?null:'SOURCE_FRAME_INPUT_INCOMPLETE',frame:Object.freeze(frame)})}
-export function deriveLivingJournalShadowFrame(sourceFrame){const source=sourceFrame?.frame??{};return Object.freeze({primaryStageScreenRef:source.primaryStageScreenRef??'screen.vexlife.terrain',screenRef:'screen.vexlife.living-journal',routeRef:'route.living-journal',contextProjection:'living-journal',projectRef:source.projectRef??null,threadRef:source.threadRef??null,channelRef:source.channelRef??null,selectedNodeRef:source.selectedNodeRef??null})}
-export function createLivingJournalShadowReturnReceipt(sourceFrame,reason='BACK'){return Object.freeze({schemaVersion:'vexlife.living-journal.shadow-return/v1',state:sourceFrame?.bound===true?'READY':'HELD',reason:sourceFrame?.bound===true?null:'SOURCE_FRAME_INPUT_INCOMPLETE',returnClass:reason,actionRef:'action.navigation.back',before:deriveLivingJournalShadowFrame(sourceFrame),after:clone(sourceFrame?.frame??{}),canonicalJourneyOwnerRef:'module.vexlife.core.navigation',canonicalJourneyMutationPerformed:false,referenceFallbackRequired:true,userDataRollbackPerformed:false})}
-export function assertLivingJournalShadowContract(registry){const host=registry?.projectionHost,shadow=host?.shadowProjection,record=registry?.migrationRecords?.find(item=>item.semanticRef===LIVING_JOURNAL_FEATURE_REF),errors=[],require=(value,code)=>{if(!value)errors.push(code)};require(host?.defaultProjection==='REFERENCE_PROJECTION','REFERENCE_DEFAULT_REQUIRED');require(host?.evolutionHostState==='SHADOW_MIGRATED_SURFACES','SHADOW_HOST_STATE_REQUIRED');require(host?.oneActiveRenderer===true&&host?.dualRendererMountAllowed===false,'ONE_ACTIVE_RENDERER_REQUIRED');require(host?.priorRendererDisposition==='DOCUMENT_UNLOADED','PRIOR_RENDERER_UNLOAD_REQUIRED');require(host?.evolutionHostLoadsReferenceRenderer===false,'REFERENCE_RENDERER_MUST_STAY_UNLOADED');require(host?.cutoverAuthority===false&&host?.publicationAuthority===false,'CUTOVER_PUBLICATION_FORBIDDEN');require(host?.migratedSemanticRefs?.length===1&&host.migratedSemanticRefs[0]===LIVING_JOURNAL_FEATURE_REF,'MIGRATED_SEMANTIC_REF_INVALID');require(shadow?.projectionRef===LIVING_JOURNAL_EVOLUTION_PROJECTION_REF,'SHADOW_PROJECTION_REF_INVALID');require(shadow?.stateOwnerPolicy==='UNCHANGED_SERVICE_CONTEXT','STATE_OWNER_POLICY_INVALID');require(shadow?.memoryOwnerPolicy==='UNCHANGED_ACCEPTED_MEMORY_OWNERS','MEMORY_OWNER_POLICY_INVALID');require(shadow?.journeyOwnerPolicy==='UNCHANGED_NAVIGATION_JOURNEY_OWNER','JOURNEY_OWNER_POLICY_INVALID');require(shadow?.exactSourceFrameRequiredForExactBack===true,'EXACT_BACK_CONTRACT_REQUIRED');require(shadow?.localMarginaliaDurability==='SESSION_ONLY_NON_MEMORY','MARGINALIA_BOUNDARY_INVALID');require(shadow?.newSemanticCapabilityAuthority===false,'NEW_SEMANTICS_FORBIDDEN');require(record?.evolutionProjectionRefs?.includes(LIVING_JOURNAL_EVOLUTION_PROJECTION_REF)===true,'MIGRATION_RECORD_BINDING_REQUIRED');require(record?.migrationLifecycleState==='SHADOW_IMPLEMENTED','SHADOW_IMPLEMENTED_REQUIRED');require(record?.parityState==='PARTIAL','PARTIAL_PARITY_REQUIRED');require(record?.semanticOwnerRefs?.every(ref=>!ref.includes('ux-evolution'))===true,'UX_EVOLUTION_CANNOT_OWN_JOURNAL_SEMANTICS');if(errors.length){const error=new Error('LIVING_JOURNAL_SHADOW_CONTRACT_INVALID:'+errors.join('|'));error.errors=errors;throw error}return Object.freeze({state:'PASS',projectionRef:shadow.projectionRef,semanticRef:shadow.semanticRef})}
-const safeJson=(response)=>response.json().catch(()=>null);
-export function mountLivingJournalEvolutionShadow({registry,featureRegistry,experience,strings,searchParams=new URLSearchParams(globalThis.location?.search??''),fetchImpl=globalThis.fetch,historyImpl=globalThis.history,storage=globalThis.localStorage}={}){if(mounted)throw new Error('Living Journal Evolution shadow may mount only once per document');mounted=true;const contract=assertLivingJournalShadowContract(registry),t=translator(strings),sourceFrame=readLivingJournalSourceFrame(searchParams),shadowFrame=deriveLivingJournalShadowFrame(sourceFrame),state={projectRef:sourceFrame.frame.projectRef,threadRef:sourceFrame.frame.threadRef,channelRef:sourceFrame.frame.channelRef,selectedNodeRef:sourceFrame.frame.selectedNodeRef,journey:[]};let memoryState='UNREQUESTED',memoryFailureCode=null,archiveState='UNREQUESTED',archiveFailureCode=null,currentPacket=null,archivePacket=null,memoryPromise=null,archiveController=null,lastSourcePacket=null,lastRevisitPacket=null,lastReturnReceipt=null,vexExpanded=false,activeWalkthroughRun=null,lastWalkthroughProjection=null;const requestCounts={memory:0,archive:0};
-function updateReturnStatus(value){const node=q('#evolutionReturnStatus');if(node)node.textContent=value??''}function renderVex(){const panel=q('#evolutionVexPanel'),button=q('#evolutionVexSummon'),frame=q('#evolutionVexFrame');if(panel)panel.hidden=!vexExpanded;if(button)button.setAttribute('aria-expanded',String(vexExpanded));if(frame)frame.textContent=`${shadowFrame.screenRef} · ${shadowFrame.selectedNodeRef??'no selected node'}`}function setVexMessage(value){const node=q('#evolutionVexMessage');if(node)node.textContent=value}
-function requestBack(reason='BACK'){lastReturnReceipt=createLivingJournalShadowReturnReceipt(sourceFrame,reason);if(lastReturnReceipt.state!=='READY'){updateReturnStatus('Exact semantic Back is held until the source frame is explicitly bound.');return clone(lastReturnReceipt)}if(!historyImpl||typeof historyImpl.back!=='function'||Number(historyImpl.length??0)<2){lastReturnReceipt=Object.freeze({...lastReturnReceipt,state:'HELD',reason:'BROWSER_HISTORY_RETURN_UNAVAILABLE'});updateReturnStatus('Exact source frame is bound, but browser history return is unavailable. Use Reference fallback without claiming exact Back.');return clone(lastReturnReceipt)}updateReturnStatus('Returning to the exact prior Reference history entry…');queueMicrotask(()=>historyImpl.back());return clone(lastReturnReceipt)}
-const journal=createLivingJournalController({state,data:createLivingJournalDemoData(),t,navigation:{semanticFrame:()=>clone(shadowFrame)},onSourceOpen:(packet)=>{lastSourcePacket=clone(packet);vexExpanded=true;setVexMessage('Source provenance is available without turning the Journal into the Memory owner.');renderVex()},onRevisit:(packet)=>{lastRevisitPacket=clone(packet);requestBack('REVISIT_CONTEXT')}});
-function renderArchiveControls(){const packet=archivePacket,archive=packet?.truthClass==='COMMITTED_MEMORY_ARCHIVE',open=q('#livingJournalArchiveOpen'),newer=q('#livingJournalArchiveNewer'),older=q('#livingJournalArchiveOlder'),day=q('#livingJournalArchiveDay'),label=q('#livingJournalArchiveDayLabel'),now=q('#livingJournalReturnNow'),status=q('#livingJournalTemporalStatus');if(open)open.hidden=archive;if(newer){newer.hidden=!archive;newer.disabled=!archive||Number(packet?.dayOffset||0)===0}if(older){older.hidden=!archive;older.disabled=!archive||packet?.nextDayOffset===null}if(label)label.hidden=!archive;if(now)now.hidden=!archive;if(day&&archive){const selected=packet.selectedDay?.dailyStratumSha256??'';day.replaceChildren(...packet.days.map(item=>{const option=document.createElement('option');option.value=item.dailyStratumSha256;option.textContent=item.calendarDateRef;option.selected=item.dailyStratumSha256===selected;return option}));day.disabled=packet.days.length===0}if(status){if(!archive)status.textContent=t('living-journal.archive.current-status');else if(packet.selectedDay)status.textContent=t('living-journal.archive.historical-status',{date:packet.selectedDay.calendarDateRef});else status.textContent=t('living-journal.archive.no-days')}}
-async function loadMemory(){if(memoryPromise)return memoryPromise;if(!nonempty(state.threadRef)){memoryState='UNBOUND_SOURCE_FRAME_SYNTHETIC_REFERENCE';memoryFailureCode='SOURCE_THREAD_REF_UNBOUND';renderArchiveControls();return Object.freeze({state:memoryState,truthClass:journal.snapshot().truthClass,failureCode:memoryFailureCode})}memoryState='LOADING';memoryFailureCode=null;requestCounts.memory+=1;memoryPromise=(async()=>{try{const response=await fetchImpl(MEMORY_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({threadRef:state.threadRef,maxPages:24})}),payload=await safeJson(response);if(!response.ok){const error=new Error('Living Journal Memory read failed safely');error.code=payload?.failureCode??'LIVING_JOURNAL_MEMORY_READ_FAILED';throw error}journal.setData(payload);const snap=journal.snapshot();if(!MEMORY_TRUTHS.has(snap.truthClass))throw new Error('Living Journal Memory route returned a non-Memory truth class');currentPacket=clone(payload);archivePacket=null;archiveState='UNREQUESTED';archiveFailureCode=null;memoryState=snap.truthClass==='CURRENT_MEMORY_REFERENCE'?'CURRENT':'HELD';renderArchiveControls();return Object.freeze({state:memoryState,truthClass:snap.truthClass,failureCode:null})}catch(error){journal.restoreInitialData();currentPacket=null;archivePacket=null;memoryState='UNAVAILABLE_SYNTHETIC_REFERENCE';memoryFailureCode=nonempty(error?.code)?error.code:'LIVING_JOURNAL_MEMORY_READ_FAILED';renderArchiveControls();return Object.freeze({state:memoryState,truthClass:journal.snapshot().truthClass,failureCode:memoryFailureCode})}finally{memoryPromise=null}})();return memoryPromise}
-async function loadArchive({dayOffset=0,selectedDailyStratumSha256=null}={}){if(!nonempty(state.threadRef)){archiveState='UNAVAILABLE';archiveFailureCode='SOURCE_THREAD_REF_UNBOUND';renderArchiveControls();return Object.freeze({state:archiveState,truthClass:journal.snapshot().truthClass,failureCode:archiveFailureCode})}archiveController?.abort();archiveController=new AbortController();archiveState='LOADING';archiveFailureCode=null;requestCounts.archive+=1;const request=async(selection)=>{const body={threadRef:state.threadRef,maxDays:7,dayOffset,maxPages:24};if(selection)body.selectedDailyStratumSha256=selection;const response=await fetchImpl(ARCHIVE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:archiveController.signal}),payload=await safeJson(response);if(!response.ok){const error=new Error('Living Journal archive read failed safely');error.code=payload?.failureCode??'LIVING_JOURNAL_ARCHIVE_READ_FAILED';throw error}return payload};try{let payload=await request(selectedDailyStratumSha256);if(!selectedDailyStratumSha256&&payload?.days?.length)payload=await request(payload.days[0].dailyStratumSha256);journal.setData(payload);archivePacket=clone(payload);archiveState=payload.selectedDay?'HISTORICAL_DAY':'INDEX';archiveFailureCode=null;renderArchiveControls();return Object.freeze({state:archiveState,truthClass:payload.selectedDay?'COMMITTED_MEMORY_AT_DAY':'COMMITTED_MEMORY_ARCHIVE',failureCode:null})}catch(error){if(error?.name==='AbortError')return Object.freeze({state:'SUPERSEDED',truthClass:journal.snapshot().truthClass,failureCode:null});archiveState='UNAVAILABLE';archiveFailureCode=nonempty(error?.code)?error.code:'LIVING_JOURNAL_ARCHIVE_READ_FAILED';renderArchiveControls();return Object.freeze({state:archiveState,truthClass:journal.snapshot().truthClass,failureCode:archiveFailureCode})}}
-async function returnToNow(){archiveController?.abort();archiveController=null;archivePacket=null;archiveState='UNREQUESTED';archiveFailureCode=null;if(currentPacket!==null){try{journal.setData(clone(currentPacket));memoryState=journal.snapshot().truthClass==='CURRENT_MEMORY_REFERENCE'?'CURRENT':'HELD';renderArchiveControls();return journal.snapshot()}catch{currentPacket=null}}await loadMemory();return journal.snapshot()}
-const preferenceStore=createLocalStorageFeatureWalkthroughPreferenceStore(storage),walkthrough=createFeatureWalkthroughRunner({featureRegistry,experience,preferenceStore,currentFrame:()=>clone(shadowFrame),evaluateTarget:(targetRef)=>{const element=document.querySelector(`[data-node-ref="${CSS.escape(targetRef)}"]`);return element?{state:'AVAILABLE',actionRef:element.dataset.actionRef??null,bindingRequired:false,targetBindingOrNull:null}:{state:'UNAVAILABLE',actionRef:null,bindingRequired:false,targetBindingOrNull:null}}});
-function planReplayable(){const feature=featureRegistry?.features?.find(item=>item.featureRef===LIVING_JOURNAL_FEATURE_REF),plan=experience?.featureWalkthroughPlans?.find(item=>item.planRef===feature?.humanIntroduction?.planRefOrNull);return plan?.replayable===true}
-function renderWalkthrough(){const route=walkthrough.offer(LIVING_JOURNAL_FEATURE_REF),panel=q('#livingJournalWalkthrough'),replay=q('#livingJournalWalkthroughReplay'),next=q('#livingJournalWalkthroughNextStep'),status=q('#livingJournalWalkthroughStatus'),automatic=['READY','DEFERRED'].includes(route.state)&&activeWalkthroughRun===null;if(panel)panel.hidden=!automatic&&activeWalkthroughRun===null;if(replay)replay.hidden=!planReplayable()||['HELD','NOT_REQUIRED','UNAVAILABLE'].includes(route.state);if(next)next.hidden=activeWalkthroughRun===null;if(status)status.textContent=activeWalkthroughRun?'Walkthrough active.':route.state==='DEFERRED'?'Walkthrough deferred. Replay remains available.':route.state==='SUPPRESSED'?'Automatic introduction suppressed. Replay remains available.':route.state==='ACKNOWLEDGED'?'Walkthrough learned. Replay remains available.':'Walkthrough ready.';return route}
-function projectWalkthroughStage(){if(!activeWalkthroughRun)return null;const projection=walkthrough.stage(activeWalkthroughRun);lastWalkthroughProjection=clone(projection);if(projection.state===FEATURE_WALKTHROUGH_RUNNER_STATES.ACTIVE){vexExpanded=true;setVexMessage(t(projection.stage.contentStringRef));renderVex()}return projection}
-function startWalkthrough(){const run=walkthrough.showMe(LIVING_JOURNAL_FEATURE_REF);if(run.state===FEATURE_WALKTHROUGH_RUNNER_STATES.ACTIVE){activeWalkthroughRun=run;projectWalkthroughStage()}renderWalkthrough();return clone(run)}
-function nextWalkthrough(){if(!activeWalkthroughRun)return Object.freeze({state:'NO_ACTIVE_RUN'});const next=walkthrough.advance(activeWalkthroughRun);if(next.state!==FEATURE_WALKTHROUGH_RUNNER_STATES.ACTIVE){activeWalkthroughRun=null;renderWalkthrough();return clone(next)}const projection=walkthrough.stage(next);if(projection.state===FEATURE_WALKTHROUGH_RUNNER_STATES.PLAN_STAGES_EXHAUSTED){walkthrough.acknowledge(LIVING_JOURNAL_FEATURE_REF);activeWalkthroughRun=null;lastWalkthroughProjection=clone(projection);vexExpanded=false;setVexMessage('Walkthrough learned. Replay remains available without persistent onboarding chrome.');renderVex();renderWalkthrough();return clone(projection)}activeWalkthroughRun=next;projectWalkthroughStage();renderWalkthrough();return clone(projection)}
-function laterWalkthrough(){activeWalkthroughRun=null;const result=walkthrough.later(LIVING_JOURNAL_FEATURE_REF);renderWalkthrough();return clone(result)}function suppressWalkthrough(){activeWalkthroughRun=null;const result=walkthrough.suppress(LIVING_JOURNAL_FEATURE_REF);renderWalkthrough();return clone(result)}
-q('#evolutionJournalBack')?.addEventListener('click',()=>requestBack('BACK'));const back=q('#evolutionJournalBack');if(back){back.disabled=!sourceFrame.bound;back.setAttribute('aria-disabled',String(!sourceFrame.bound))}q('#evolutionVexSummon')?.addEventListener('click',()=>{vexExpanded=!vexExpanded;renderVex()});q('#evolutionVexClose')?.addEventListener('click',()=>{vexExpanded=false;renderVex();q('#evolutionVexSummon')?.focus({preventScroll:true})});q('#livingJournalArchiveOpen')?.addEventListener('click',()=>{void loadArchive({dayOffset:0})});q('#livingJournalArchiveOlder')?.addEventListener('click',()=>{if(archivePacket?.nextDayOffset!=null)void loadArchive({dayOffset:archivePacket.nextDayOffset})});q('#livingJournalArchiveNewer')?.addEventListener('click',()=>{if(archivePacket)void loadArchive({dayOffset:Math.max(0,Number(archivePacket.dayOffset||0)-7)})});q('#livingJournalArchiveDay')?.addEventListener('change',event=>{if(archivePacket)void loadArchive({dayOffset:Number(archivePacket.dayOffset||0),selectedDailyStratumSha256:event.currentTarget.value})});q('#livingJournalReturnNow')?.addEventListener('click',()=>{void returnToNow()});q('#livingJournalWalkthroughShow')?.addEventListener('click',startWalkthrough);q('#livingJournalWalkthroughLater')?.addEventListener('click',laterWalkthrough);q('#livingJournalWalkthroughSuppress')?.addEventListener('click',suppressWalkthrough);q('#livingJournalWalkthroughReplay')?.addEventListener('click',startWalkthrough);q('#livingJournalWalkthroughNextStep')?.addEventListener('click',nextWalkthrough);
-journal.open({selectedNodeRef:state.selectedNodeRef});renderArchiveControls();renderWalkthrough();renderVex();q('#view-living-journal')?.focus({preventScroll:true});if(!sourceFrame.bound)updateReturnStatus('Shadow opened without a bound Reference source frame; exact Back stays disabled.');const ready=Promise.resolve(loadMemory());
-function snapshot(){const route=walkthrough.offer(LIVING_JOURNAL_FEATURE_REF);return clone({schemaVersion:'vexlife.living-journal.evolution-shadow-receipt/v1',state:'SHADOW_ACTIVE',semanticRef:LIVING_JOURNAL_FEATURE_REF,projectionRef:contract.projectionRef,sourceFrameBound:sourceFrame.bound,sourceFrame:sourceFrame.frame,currentFrame:shadowFrame,journal:journal.snapshot(),memoryState,memoryFailureCode,archiveState,archiveFailureCode,requestCounts:{...requestCounts},duplicateWorkObserved:false,activeRendererCount:1,referenceRendererMounted:false,oneActiveRenderer:true,vexPresence:{available:true,expanded:vexExpanded},walkthrough:{routeState:route.state,activeRunRef:activeWalkthroughRun?.runRef??null,lastProjection:lastWalkthroughProjection},lastSourcePacket,lastRevisitPacket,lastReturnReceipt,semanticStateOwnerMutation:false,userDataFork:false,userHistoryRollback:false,effects:{...ZERO_EFFECTS}})}return Object.freeze({ready,snapshot,loadMemory,loadArchive,returnToNow,requestBack,startWalkthrough,nextWalkthrough,laterWalkthrough,suppressWalkthrough,journal})}
+export const LIVING_JOURNAL_SURFACE_REF='surface.vexlife.living-journal';
+export const LIVING_JOURNAL_SHELL_HOST_REF='host.vexlife.shell.evolution-active-surface.001';
+
+const clone=(value)=>structuredClone(value);
+const requireValue=(ok,errors,code)=>{if(!ok)errors.push(code);};
+
+export function assertLivingJournalActiveSurfaceContract({registry,shellScaffold}={}){
+  const errors=[];
+  const host=registry?.projectionHost;
+  const projection=host?.activeSurfaceProjection;
+  const record=registry?.migrationRecords?.find((item)=>item.semanticRef===LIVING_JOURNAL_FEATURE_REF);
+  const surface=shellScaffold?.surfaceInventory?.find((item)=>item.surfaceRef===LIVING_JOURNAL_SURFACE_REF);
+  requireValue(shellScaffold?.activeSurfaceHost?.hostRef===LIVING_JOURNAL_SHELL_HOST_REF,errors,'SHELL_HOST_REF_INVALID');
+  requireValue(shellScaffold?.activeSurfaceHost?.shellOwnsSurfaceTitle===true,errors,'SHELL_TITLE_OWNERSHIP_REQUIRED');
+  requireValue(shellScaffold?.activeSurfaceHost?.shellOwnsCloseControl===true,errors,'SHELL_CLOSE_OWNERSHIP_REQUIRED');
+  requireValue(shellScaffold?.activeSurfaceHost?.semanticCloseOwnerPolicy==='REGISTERED_ADAPTER_REQUEST_CLOSE',errors,'SHELL_CLOSE_DELEGATION_REQUIRED');
+  requireValue(shellScaffold?.invariants?.oneSemanticState===true,errors,'ONE_SEMANTIC_STATE_REQUIRED');
+  requireValue(shellScaffold?.invariants?.oneActiveRenderer===true,errors,'ONE_ACTIVE_RENDERER_REQUIRED');
+  requireValue(surface?.semanticRef===LIVING_JOURNAL_FEATURE_REF,errors,'JOURNAL_SURFACE_INVENTORY_INVALID');
+  requireValue(host?.hostRef===LIVING_JOURNAL_SHELL_HOST_REF,errors,'REGISTRY_HOST_REF_INVALID');
+  requireValue(host?.defaultProjection==='REFERENCE_PROJECTION',errors,'REFERENCE_DEFAULT_REQUIRED');
+  requireValue(host?.rendererTransitionClass==='SHELL_ACTIVE_SURFACE',errors,'ACTIVE_SURFACE_TRANSITION_REQUIRED');
+  requireValue(host?.priorRendererDisposition==='REFERENCE_SURFACE_RETAINED_HIDDEN',errors,'REFERENCE_SURFACE_RETENTION_REQUIRED');
+  requireValue(host?.oneActiveRenderer===true&&host?.dualRendererMountAllowed===false,errors,'ONE_RENDERER_REQUIRED');
+  requireValue(host?.evolutionHostLoadsReferenceRenderer===true,errors,'CANONICAL_SHELL_DOCUMENT_REQUIRED');
+  requireValue(projection?.surfaceRef===LIVING_JOURNAL_SURFACE_REF,errors,'ACTIVE_SURFACE_REF_INVALID');
+  requireValue(projection?.semanticRef===LIVING_JOURNAL_FEATURE_REF,errors,'ACTIVE_SURFACE_SEMANTIC_REF_INVALID');
+  requireValue(projection?.projectionRef===LIVING_JOURNAL_EVOLUTION_PROJECTION_REF,errors,'ACTIVE_SURFACE_PROJECTION_REF_INVALID');
+  requireValue(projection?.stateOwnerPolicy==='UNCHANGED_SERVICE_CONTEXT',errors,'STATE_OWNER_POLICY_INVALID');
+  requireValue(projection?.memoryOwnerPolicy==='UNCHANGED_ACCEPTED_MEMORY_OWNERS',errors,'MEMORY_OWNER_POLICY_INVALID');
+  requireValue(projection?.journeyOwnerPolicy==='UNCHANGED_NAVIGATION_JOURNEY_OWNER',errors,'JOURNEY_OWNER_POLICY_INVALID');
+  requireValue(projection?.semanticBackOwnerRef==='module.vexlife.core.navigation',errors,'SEMANTIC_BACK_OWNER_INVALID');
+  requireValue(projection?.shellOwnsSurfaceTitle===true&&projection?.shellOwnsCloseControl===true,errors,'SHELL_CHROME_OWNERSHIP_INVALID');
+  requireValue(projection?.semanticClosePolicy==='REGISTERED_ADAPTER_REQUEST_CLOSE',errors,'SEMANTIC_CLOSE_POLICY_INVALID');
+  requireValue(projection?.referenceFallbackRequired===true&&projection?.projectionFallbackMutatesSemanticJourney===false,errors,'REFERENCE_FALLBACK_BOUNDARY_INVALID');
+  requireValue(projection?.localMarginaliaDurability==='SESSION_ONLY_NON_MEMORY',errors,'MARGINALIA_BOUNDARY_INVALID');
+  requireValue(projection?.newSemanticCapabilityAuthority===false,errors,'NEW_SEMANTICS_FORBIDDEN');
+  requireValue(projection?.cutoverAuthority===false&&projection?.retirementAuthority===false,errors,'LIFECYCLE_AUTHORITY_FORBIDDEN');
+  requireValue(record?.evolutionProjectionRefs?.includes(LIVING_JOURNAL_EVOLUTION_PROJECTION_REF)===true,errors,'MIGRATION_RECORD_BINDING_REQUIRED');
+  requireValue(record?.migrationLifecycleState==='SHADOW_IMPLEMENTED',errors,'SHADOW_IMPLEMENTED_REQUIRED');
+  requireValue(record?.semanticOwnerRefs?.every((ref)=>!ref.includes('ux-evolution'))===true,errors,'UX_EVOLUTION_CANNOT_OWN_JOURNAL_SEMANTICS');
+  if(errors.length){
+    const error=new Error('LIVING_JOURNAL_ACTIVE_SURFACE_CONTRACT_INVALID:'+errors.join('|'));
+    error.errors=errors;
+    throw error;
+  }
+  return Object.freeze({state:'PASS',surfaceRef:LIVING_JOURNAL_SURFACE_REF,semanticRef:LIVING_JOURNAL_FEATURE_REF,projectionRef:LIVING_JOURNAL_EVOLUTION_PROJECTION_REF,hostRef:LIVING_JOURNAL_SHELL_HOST_REF});
+}
+
+function assertCanonicalApp(app){
+  if(!app||typeof app!=='object')throw new TypeError('Canonical VexLife app is required');
+  if(typeof app.openLivingJournal!=='function')throw new TypeError('Canonical openLivingJournal() is required');
+  if(typeof app.projectFrame!=='function')throw new TypeError('Canonical projectFrame() is required');
+  if(typeof app.navigation?.back!=='function')throw new TypeError('Canonical navigation owner is required');
+  if(typeof app.livingJournal?.close!=='function')throw new TypeError('Canonical Living Journal owner is required');
+}
+function ensureStylesheet(documentImpl){
+  if(!documentImpl?.head||typeof documentImpl.createElement!=='function')return null;
+  const existing=documentImpl.querySelector?.('link[data-vexlife-lj-evolution-style="true"]');
+  if(existing)return existing;
+  const link=documentImpl.createElement('link');
+  link.rel='stylesheet';
+  link.href=new URL('./living-journal.css',import.meta.url).href;
+  link.dataset.vexlifeLjEvolutionStyle='true';
+  documentImpl.head.append(link);
+  return link;
+}
+function restoreNode(session){
+  const {view,originalParent,originalNextSibling}=session;
+  view.classList?.remove('living-journal-evolution-active-surface');
+  if(view.dataset)delete view.dataset.evolutionSurfacePresentation;
+  if(originalNextSibling&&originalNextSibling.parentNode===originalParent&&typeof originalParent.insertBefore==='function')originalParent.insertBefore(view,originalNextSibling);
+  else if(typeof originalParent.appendChild==='function')originalParent.appendChild(view);
+}
+
+export function createLivingJournalEvolutionSurfaceAdapter(app,{documentImpl=globalThis.document}={}){
+  assertCanonicalApp(app);
+  let session=null;
+  const snapshot=()=>Object.freeze({
+    schemaVersion:'vexlife.living-journal.evolution-active-surface-receipt/v1',
+    state:session?'MOUNTED':'IDLE',
+    surfaceRef:LIVING_JOURNAL_SURFACE_REF,
+    semanticRef:LIVING_JOURNAL_FEATURE_REF,
+    projectionRef:LIVING_JOURNAL_EVOLUTION_PROJECTION_REF,
+    oneSemanticState:true,
+    oneActiveRenderer:true,
+    canonicalJournalOwnerReused:true,
+    canonicalNavigationOwnerReused:true,
+    memoryOwnerMutation:false,
+    userDataFork:false,
+    publicationAuthority:false,
+    cutoverAuthority:false
+  });
+  async function mount({body,surfaceRef,semanticRef,projection}={}){
+    if(surfaceRef!==LIVING_JOURNAL_SURFACE_REF||semanticRef!==LIVING_JOURNAL_FEATURE_REF||projection!=='EVOLUTION_PROJECTION')throw new Error('Living Journal active-surface mount binding mismatch');
+    if(!body||typeof body.replaceChildren!=='function')throw new TypeError('Shell active-surface body is required');
+    if(session)throw new Error('Living Journal Evolution surface is already mounted');
+    const view=documentImpl?.querySelector?.('#view-living-journal');
+    if(!view||!view.parentNode)throw new Error('Canonical Living Journal view is unavailable');
+    ensureStylesheet(documentImpl);
+    const originalParent=view.parentNode;
+    const originalNextSibling=view.nextSibling??null;
+    await app.openLivingJournal({loadMemory:true});
+    view.hidden=false;
+    if(view.dataset)view.dataset.evolutionSurfacePresentation='true';
+    view.classList?.add('living-journal-evolution-active-surface');
+    body.replaceChildren(view);
+    session={body,view,originalParent,originalNextSibling};
+    app.projectFrame();
+    view.focus?.({preventScroll:true});
+    return snapshot();
+  }
+  async function requestClose({reason='SHELL_CLOSE'}={}){
+    if(!session)return Object.freeze({state:'CLOSED',reason:'NO_ACTIVE_JOURNAL_SURFACE',surfaceRef:LIVING_JOURNAL_SURFACE_REF,semanticNavigationMutation:false});
+    const closing=session;
+    session=null;
+    restoreNode(closing);
+    if(reason==='REFERENCE_FALLBACK'){
+      app.projectFrame();
+      return Object.freeze({state:'CLOSED',reason,surfaceRef:LIVING_JOURNAL_SURFACE_REF,referenceFallback:true,semanticNavigationMutation:false,canonicalJournalStatePreserved:true,userDataRollbackPerformed:false});
+    }
+    app.livingJournal.close();
+    const backReceipt=app.navigation.back();
+    app.projectFrame();
+    return Object.freeze({
+      state:'CLOSED',
+      reason,
+      surfaceRef:LIVING_JOURNAL_SURFACE_REF,
+      referenceFallback:false,
+      semanticNavigationMutation:Boolean(backReceipt?.changed),
+      canonicalJourneyOwnerRef:'module.vexlife.core.navigation',
+      canonicalBackReceipt:clone(backReceipt??{}),
+      userDataRollbackPerformed:false
+    });
+  }
+  return Object.freeze({mount,requestClose,snapshot});
+}
+
 // [VXG RealForever]
