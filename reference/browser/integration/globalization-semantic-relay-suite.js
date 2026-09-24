@@ -132,6 +132,33 @@ export const globalizationSemanticRelaySuite = Object.freeze({
       assert(button.dataset.actionRef === expected.actionRef, `GPT-03 ${button.dataset.relayAction} action identity drifted`);
       assert(button.dataset.permissionRef === expected.permissionRef, `GPT-03 ${button.dataset.relayAction} permission identity drifted`);
     }
+    const canonicalReadyAvailabilityResponse = () => new Response(JSON.stringify({
+      schemaVersion:'vexlife.companion-availability/v1',
+      truthClass:'SOURCE_BOUND_COMPANION_AVAILABILITY',
+      registryRef:'registry.vexlife.companion-availability-reentry.001',
+      bindingRef:'binding.browser.globalization-proof',
+      homeRef:'home.browser.globalization-proof',
+      companionLineageRef:'lineage.browser.globalization-proof',
+      modelRefOrNull:'model.browser.globalization-proof',
+      generationRefOrNull:'generation.browser.globalization-proof',
+      runtimeAdapterRef:'adapter.runtime.browser.globalization-proof',
+      runtimeObservationRef:'observation.browser.globalization-proof',
+      availabilityState:'READY',
+      recoveryClass:'NONE_REQUIRED',
+      reasonCode:'GPT03_CANONICAL_READY_FIXTURE',
+      bindingState:'BOUND',
+      runtimeOwnershipState:'EXACT_OWNED',
+      runtimeState:'HEALTHY',
+      qualificationState:'CURRENT',
+      sourceRefs:['source.browser.globalization-proof'],
+      effectAuthorityGranted:false,
+      rendererAuthorityGranted:false,
+      modelIdentityAuthorityGranted:false,
+      processAuthorityGranted:false,
+      conversationAuthorityGranted:false,
+      projectionRef:'projection.vexlife.companion-availability.globalization-proof',
+      projectionSha256:'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+    }), { status:200, headers:{'content-type':'application/json'} });
     const originalFetch = globalThis.fetch;
     const decisionFetchCalls = [];
     globalThis.fetch = async (url, options = {}) => {
@@ -153,7 +180,7 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     panel = document.querySelector('.semantic-relay-attention');
 
     globalThis.fetch = async (url, options = {}) => {
-      if (String(url).includes('/api/v1/companion/status')) return new Response(JSON.stringify({ state:'BOUND' }), { status:200, headers:{'content-type':'application/json'} });
+      if (String(url).includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
       decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
       return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
     };
@@ -182,7 +209,7 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     assert(decisionFetchCalls.length === 0, 'GPT-03 CORRECT crossed the companion send boundary before explicit human resubmit');
 
     globalThis.fetch = async (url, options = {}) => {
-      if (String(url).includes('/api/v1/companion/status')) return new Response(JSON.stringify({ state:'BOUND' }), { status:200, headers:{'content-type':'application/json'} });
+      if (String(url).includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
       decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
       return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
     };

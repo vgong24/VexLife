@@ -6,7 +6,8 @@ import {
   validateVexBirthAnnotationSet
 } from '../../../src/core/vex-birth-lab.mjs';
 
-export const VEX_BIRTH_COMPANION_STATUS_PATH = '/api/v1/companion/status';
+export const VEX_BIRTH_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
+export const VEX_BIRTH_COMPANION_STATUS_PATH = VEX_BIRTH_COMPANION_AVAILABILITY_PATH;
 export const VEX_BIRTH_COMPANION_TURN_PATH = '/api/v1/companion/turn';
 export const VEX_BIRTH_ACTIVE_GENERATION_REF = 'generation.vex-foundation.g0';
 export const VEX_BIRTH_SESSION_TRUTH_CLASS = 'LOCAL_SLICE_B_CANDIDATE_STATE';
@@ -17,12 +18,13 @@ const TRAINING_DISPOSITIONS = Object.freeze([
   'HELD_OUT',
   'DO_NOT_TRAIN'
 ]);
-const STATUS_STATES = new Set([
-  'BOUND',
-  'UNBOUND',
-  'HOME_UNAVAILABLE',
-  'MISCONFIGURED',
-  'UNKNOWN'
+const AVAILABILITY_STATES = new Set([
+  'READY',
+  'STARTING',
+  'RECOVERABLE',
+  'ACTION_REQUIRED',
+  'UNAVAILABLE',
+  'HELD'
 ]);
 const ZIP_TEXT_ENCODER = new TextEncoder();
 const ZIP_CRC_TABLE = (() => {
@@ -64,24 +66,78 @@ function freezeAnnotations(value) {
   );
 }
 
-export function normalizeVexBirthCompanionStatus(value) {
-  const state = STATUS_STATES.has(value?.state) ? value.state : 'UNKNOWN';
-  return Object.freeze({
-    schemaVersion: value?.schemaVersion ?? 'vexlife.browser-companion-status/v1',
-    state,
-    truthClass: value?.truthClass ?? 'CURRENT_LOCAL_RUNTIME_BINDING',
-    profileRef: value?.profileRef ?? 'model-profile.vexlife.browser-companion.local',
-    failureCode: value?.failureCode ?? null
-  });
+function birthAvailabilityNonempty(value) {
+  return typeof value === 'string' && value.length > 0;
 }
 
-function modelTruthClass(status) {
-  switch (status.state) {
-    case 'BOUND': return 'REAL_LOCAL_G0_BOUND';
-    case 'HOME_UNAVAILABLE': return 'G0_HOME_UNAVAILABLE';
-    case 'MISCONFIGURED': return 'G0_RUNTIME_MISCONFIGURED';
-    case 'UNBOUND': return 'G0_RUNTIME_UNBOUND';
-    default: return 'G0_RUNTIME_UNKNOWN';
+export function normalizeVexBirthCompanionAvailability(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('Vex Birth requires one canonical Companion availability object');
+  }
+  if (
+    value.schemaVersion !== 'vexlife.companion-availability/v1'
+    || value.truthClass !== 'SOURCE_BOUND_COMPANION_AVAILABILITY'
+    || !AVAILABILITY_STATES.has(value.availabilityState)
+  ) {
+    throw new TypeError('Vex Birth Companion availability schema/truth/state is invalid');
+  }
+  for (const key of [
+    'registryRef',
+    'bindingRef',
+    'homeRef',
+    'companionLineageRef',
+    'runtimeAdapterRef',
+    'runtimeObservationRef',
+    'recoveryClass',
+    'reasonCode',
+    'bindingState',
+    'runtimeOwnershipState',
+    'runtimeState',
+    'qualificationState',
+    'projectionRef'
+  ]) {
+    if (!birthAvailabilityNonempty(value[key])) throw new TypeError(`Vex Birth availability.${key} is required`);
+  }
+  if (!/^[0-9a-f]{64}$/u.test(value.projectionSha256 ?? '')) {
+    throw new TypeError('Vex Birth availability projectionSha256 is invalid');
+  }
+  for (const key of ['modelRefOrNull', 'generationRefOrNull']) {
+    if (value[key] !== null && !birthAvailabilityNonempty(value[key])) {
+      throw new TypeError(`Vex Birth availability.${key} must be null or one ref`);
+    }
+  }
+  if (
+    !Array.isArray(value.sourceRefs)
+    || value.sourceRefs.some((ref) => !birthAvailabilityNonempty(ref))
+    || new Set(value.sourceRefs).size !== value.sourceRefs.length
+  ) {
+    throw new TypeError('Vex Birth availability sourceRefs are invalid');
+  }
+  for (const key of [
+    'effectAuthorityGranted',
+    'rendererAuthorityGranted',
+    'modelIdentityAuthorityGranted',
+    'processAuthorityGranted',
+    'conversationAuthorityGranted'
+  ]) {
+    if (value[key] !== false) throw new TypeError(`Vex Birth availability.${key} must remain false`);
+  }
+  return Object.freeze(structuredClone(value));
+}
+
+export function normalizeVexBirthCompanionStatus(value) {
+  return normalizeVexBirthCompanionAvailability(value);
+}
+
+function modelTruthClass(availability) {
+  if (!availability) return 'MODEL_AVAILABILITY_UNOBSERVED';
+  switch (availability.availabilityState) {
+    case 'READY': return 'SOURCE_BOUND_MODEL_READY';
+    case 'STARTING': return 'SOURCE_BOUND_MODEL_STARTING';
+    case 'RECOVERABLE': return 'SOURCE_BOUND_MODEL_RECOVERABLE';
+    case 'ACTION_REQUIRED': return 'SOURCE_BOUND_MODEL_ACTION_REQUIRED';
+    case 'UNAVAILABLE': return 'SOURCE_BOUND_MODEL_UNAVAILABLE';
+    default: return 'SOURCE_BOUND_MODEL_HELD';
   }
 }
 
@@ -99,84 +155,65 @@ function heldTrainingActions(reason) {
 }
 
 export function buildVexBirthLabProjection({
-  companionStatus,
+  companionAvailability = null,
   baselineClosed = false,
   baselineExchangeCount = 0,
   cultivationExchangeCount = 0,
   birthSessionRef = 'birth-session.vex-birth-lab.slice-b.local'
 } = {}) {
-  const status = normalizeVexBirthCompanionStatus(companionStatus);
-  const bound = status.state === 'BOUND';
-  const currentVBStage = !bound ? 'VB1' : baselineClosed ? 'VB3' : 'VB2';
+  const availability = companionAvailability === null
+    ? null
+    : normalizeVexBirthCompanionAvailability(companionAvailability);
+  const availabilityState = availability?.availabilityState ?? 'HELD';
+  const ready = availabilityState === 'READY';
+  const recoveryAvailable = availabilityState === 'RECOVERABLE'
+    && availability?.recoveryClass === 'SAFE_REENTRY_AVAILABLE';
+  const currentVBStage = !ready ? 'VB1' : baselineClosed ? 'VB3' : 'VB2';
   const currentChapter = projectVexBirthHumanChapter(currentVBStage);
   const availableActions = [
-    action('action.birth.status.inspect', 'Refresh G0 binding', 'READ_ONLY'),
-    action(
-      'action.birth.support.copy',
-      'Copy support context',
-      'LOCAL_EXPORT',
-      'permission.birth.support-export'
-    ),
-    action(
-      'action.birth.status-package.generate',
-      'Generate status ZIP',
-      'LOCAL_EXPORT',
-      'permission.birth.support-export'
-    )
+    action('action.birth.status.inspect', 'Refresh Companion availability', 'READ_ONLY'),
+    action('action.birth.support.copy', 'Copy support context', 'LOCAL_EXPORT', 'permission.birth.support-export'),
+    action('action.birth.status-package.generate', 'Generate status ZIP', 'LOCAL_EXPORT', 'permission.birth.support-export')
   ];
   const heldActions = [];
   const blockers = [];
   const unknowns = ['source.currentness.browser-self-attestation-unavailable'];
-
+  if (!availability) unknowns.push('companion.availability.current-projection-unavailable');
   let primaryAction;
-  if (!bound) {
-    primaryAction = action(
-      'action.birth.runtime.verify',
-      'Verify local G0 binding',
-      'READ_ONLY'
-    );
-    blockers.push(
-      `Local Companion binding is ${status.state}; no synthetic G0 reply is available.`
-    );
-    heldActions.push(...heldTrainingActions(
-      'A real bound G0 and accepted untaught baseline are required first.'
-    ));
+  if (!ready) {
+    primaryAction = action('action.birth.runtime.verify', 'Verify canonical Companion availability', 'READ_ONLY');
+    blockers.push(`Canonical Companion availability is ${availabilityState}; no real Birth turn is admitted.`);
+    heldActions.push(...heldTrainingActions('Canonical READY Companion availability and an accepted untaught baseline are required first.'));
   } else if (!baselineClosed) {
-    primaryAction = action(
-      'action.birth.baseline.finish',
-      'Finish untaught baseline witness',
-      'LOCAL_APPEND',
-      'permission.birth.baseline-witness'
-    );
-    heldActions.push(...heldTrainingActions(
-      'Finish the untaught G0 baseline witness before forming training selections.'
-    ));
+    primaryAction = action('action.birth.baseline.finish', 'Finish untaught baseline witness', 'LOCAL_APPEND', 'permission.birth.baseline-witness');
+    heldActions.push(...heldTrainingActions('Finish the untaught baseline witness before forming training selections.'));
   } else {
-    primaryAction = action(
-      'action.birth.cultivation.finish',
-      'Continue cultivation',
-      'LOCAL_CANDIDATE_APPEND',
-      'permission.birth.cultivation-annotate'
-    );
+    primaryAction = action('action.birth.cultivation.finish', 'Continue cultivation', 'LOCAL_CANDIDATE_APPEND', 'permission.birth.cultivation-annotate');
   }
-
   return Object.freeze({
     schemaVersion: VEX_BIRTH_LAB_STATE_SCHEMA,
     truthClass: VEX_BIRTH_SESSION_TRUTH_CLASS,
     birthSessionRef,
     currentChapter,
     currentVBStage,
-    activeGenerationRef: VEX_BIRTH_ACTIVE_GENERATION_REF,
+    activeGenerationRef: availability?.generationRefOrNull ?? null,
+    activeModelRefOrNull: availability?.modelRefOrNull ?? null,
     candidateGenerationRefOrNull: null,
-    modelTruthClass: modelTruthClass(status),
-    modelBindingState: status.state,
+    modelTruthClass: modelTruthClass(availability),
+    modelBindingState: availability?.bindingState ?? 'UNKNOWN',
+    companionAvailabilityState: availabilityState,
+    companionRecoveryClass: availability?.recoveryClass ?? 'HELD',
+    companionRecoveryAvailable: recoveryAvailable,
+    availabilityProjectionRefOrNull: availability?.projectionRef ?? null,
+    runtimeState: availability?.runtimeState ?? 'UNKNOWN',
+    qualificationState: availability?.qualificationState ?? 'UNKNOWN',
     trainingEffectTruth: 'PRE_EXECUTION_NO_EFFECT',
     sourceCurrentness: 'UNKNOWN',
     availableActions: Object.freeze([...availableActions, primaryAction]),
     heldActions: Object.freeze(heldActions),
     blockers: Object.freeze(blockers),
     unknowns: Object.freeze(unknowns),
-    latestEvidenceRefs: Object.freeze([]),
+    latestEvidenceRefs: Object.freeze([...(availability?.sourceRefs ?? [])]),
     completionClaimAllowed: false,
     baselineClosed,
     baselineExchangeCount,
@@ -744,9 +781,8 @@ export function createVexBirthLabController({
     birthSessionRef: portableRef(
       'birth-session.vex-birth-lab'
     ),
-    companionStatus: normalizeVexBirthCompanionStatus({
-      state: 'UNKNOWN'
-    }),
+    companionAvailability: null,
+    companionAvailabilityFailureCode: 'COMPANION_AVAILABILITY_UNOBSERVED',
     baselineClosed: false,
     turns: [],
     annotations: [],
@@ -759,7 +795,7 @@ export function createVexBirthLabController({
 
   function projection() {
     return buildVexBirthLabProjection({
-      companionStatus: state.companionStatus,
+      companionAvailability: state.companionAvailability,
       baselineClosed: state.baselineClosed,
       baselineExchangeCount: state.turns.filter(
         (turn) => turn.phase === 'BASELINE'
@@ -799,10 +835,11 @@ export function createVexBirthLabController({
     if (!state.turns.length) {
       const empty = document.createElement('div');
       empty.className = 'vbl-empty';
+      const current = projection();
       empty.textContent =
-        state.companionStatus.state === 'BOUND'
-          ? 'No baseline exchange yet. Your first real G0 turn will appear here.'
-          : 'G0 is not currently available here. No synthetic reply will be substituted.';
+        current.companionAvailabilityState === 'READY'
+          ? 'No baseline exchange yet. Your first real source-bound Companion turn will appear here.'
+          : 'Canonical Companion availability is not READY. No synthetic reply will be substituted.';
       feed.append(empty);
       return;
     }
@@ -838,61 +875,34 @@ export function createVexBirthLabController({
     q('#vblStage').textContent = current.currentVBStage;
     q('#vblModelState').textContent =
       current.modelBindingState;
-    q('#vblTruthBanner').textContent =
-      current.modelBindingState === 'BOUND'
-        ? `Vex · Generation G0 · ${
-            state.baselineClosed
-              ? 'Cultivation candidate session'
-              : 'Untaught baseline'
-          } · neural training NOT STARTED`
-        : `G0 ${current.modelBindingState
-            .toLowerCase()
-            .replaceAll('_', ' ')} — no synthetic reply substituted.`;
+    const ready = current.companionAvailabilityState === 'READY';
+    const generationLabel = current.activeGenerationRef ?? 'generation unavailable';
+    q('#vblTruthBanner').textContent = ready
+      ? `Vex · ${generationLabel} · ${state.baselineClosed ? 'Cultivation candidate session' : 'Untaught baseline'} · neural training NOT STARTED`
+      : `Companion ${current.companionAvailabilityState.toLowerCase().replaceAll('_', ' ')} · ${generationLabel} — no synthetic reply substituted.`;
     q('#vblGuideTruth').textContent =
-      `Real local Companion binding is ${
-        current.modelBindingState
-      }. Training effect truth remains ${
-        current.trainingEffectTruth
-      }.`;
-    q('#vblGuideNext').textContent =
-      current.primaryAction.label;
-    q('#vblBaselineBadge').textContent =
-      state.baselineClosed ? 'CLOSED' : 'OPEN';
-    q('#vblModeEyebrow').textContent =
-      state.baselineClosed
-        ? 'CULTIVATION'
-        : 'UNTAUGHT BASELINE';
-    q('#vblModeTitle').textContent =
-      state.baselineClosed
-        ? 'Cultivate deliberately'
-        : 'Meet G0 before teaching';
-    q('#vblModeExplanation').textContent =
-      state.baselineClosed
-        ? 'Nothing is selected for neural formation by default. Mark only the exchanges that actually express a lesson, counterexample, held-out check, exclusion, or support excerpt.'
-        : 'Nothing in this Birth session has changed neural weights. Ask what you naturally want to ask before teaching anything. Baseline exchanges cannot become training selections in Slice B.';
-
-    const bound = current.modelBindingState === 'BOUND';
-    q('#vblSend').disabled = !bound || state.busy;
-    q('#vblInput').disabled = !bound || state.busy;
+      `Canonical Companion availability is ${current.companionAvailabilityState}; binding is ${current.modelBindingState}. Training effect truth remains ${current.trainingEffectTruth}.`;
+    q('#vblGuideNext').textContent = current.primaryAction.label;
+    q('#vblBaselineBadge').textContent = state.baselineClosed ? 'CLOSED' : 'OPEN';
+    q('#vblModeEyebrow').textContent = state.baselineClosed ? 'CULTIVATION' : 'UNTAUGHT BASELINE';
+    q('#vblModeTitle').textContent = state.baselineClosed ? 'Cultivate deliberately' : 'Meet the current Companion before teaching';
+    q('#vblModeExplanation').textContent = state.baselineClosed
+      ? 'Nothing is selected for neural formation by default. Mark only the exchanges that actually express a lesson, counterexample, held-out check, exclusion, or support excerpt.'
+      : 'Nothing in this Birth session has changed neural weights. Ask what you naturally want to ask before teaching anything. Baseline exchanges cannot become training selections in Slice B.';
+    q('#vblSend').disabled = !ready || state.busy;
+    q('#vblInput').disabled = !ready || state.busy;
     q('#vblComposerHint').textContent = state.busy
-      ? 'Waiting for the real local G0 response…'
-      : bound
-        ? (
-            state.baselineClosed
-              ? 'Real G0 conversation · mark exchanges explicitly after they return.'
-              : 'Untaught G0 · baseline questions are never auto-selected for training.'
-          )
-        : 'Waiting for a verified local G0 binding.';
-
-    const baselineTurns = state.turns.filter(
-      (turn) => turn.phase === 'BASELINE'
-    ).length;
-    q('#vblFinishBaseline').disabled =
-      state.baselineClosed
-      || baselineTurns === 0
-      || !bound;
-    q('#vblFinishBaseline').hidden =
-      state.baselineClosed;
+      ? 'Waiting for the real local Companion response…'
+      : ready
+        ? (state.baselineClosed
+          ? `Real ${generationLabel} conversation · mark exchanges explicitly after they return.`
+          : `Untaught ${generationLabel} · baseline questions are never auto-selected for training.`)
+        : current.companionRecoveryAvailable
+          ? 'Same-binding recovery is available; Birth remains held until canonical READY.'
+          : 'Waiting for canonical READY Companion availability.';
+    const baselineTurns = state.turns.filter((turn) => turn.phase === 'BASELINE').length;
+    q('#vblFinishBaseline').disabled = state.baselineClosed || baselineTurns === 0 || !ready;
+    q('#vblFinishBaseline').hidden = state.baselineClosed;
 
     for (const item of root.querySelectorAll(
       '[data-vbl-map]'
@@ -908,37 +918,27 @@ export function createVexBirthLabController({
 
   async function refreshStatus() {
     try {
-      const response = await fetchImpl(
-        VEX_BIRTH_COMPANION_STATUS_PATH,
-        {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-          cache: 'no-store'
-        }
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      state.companionStatus =
-        normalizeVexBirthCompanionStatus(
-          await response.json()
-        );
+      const response = await fetchImpl(VEX_BIRTH_COMPANION_AVAILABILITY_PATH, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      state.companionAvailability = normalizeVexBirthCompanionAvailability(await response.json());
+      state.companionAvailabilityFailureCode = null;
     } catch {
-      state.companionStatus =
-        normalizeVexBirthCompanionStatus({
-          state: 'UNKNOWN',
-          failureCode: 'COMPANION_STATUS_UNAVAILABLE'
-        });
+      state.companionAvailability = null;
+      state.companionAvailabilityFailureCode = 'COMPANION_AVAILABILITY_UNAVAILABLE';
     }
     state.lastStatusObservedAt = now();
     render();
-    return state.companionStatus;
+    return state.companionAvailability ? structuredClone(state.companionAvailability) : null;
   }
 
   async function sendTurn(content) {
-    if (state.companionStatus.state !== 'BOUND') {
+    if (state.companionAvailability?.availabilityState !== 'READY') {
       throw new Error(
-        'Real local G0 is not bound; no synthetic turn is allowed.'
+        'Canonical Companion availability is not READY; no synthetic turn is allowed.'
       );
     }
 
@@ -1001,7 +1001,7 @@ export function createVexBirthLabController({
       return Object.freeze(structuredClone(turn));
     } finally {
       state.busy = false;
-      render();
+      await refreshStatus();
     }
   }
 
@@ -1010,11 +1010,11 @@ export function createVexBirthLabController({
       (turn) => turn.phase === 'BASELINE'
     ).length;
     if (
-      state.companionStatus.state !== 'BOUND'
+      state.companionAvailability?.availabilityState !== 'READY'
       || baselineTurns === 0
     ) {
       throw new Error(
-        'At least one real untaught G0 exchange is required before baseline closure.'
+        'At least one real untaught READY Companion exchange is required before baseline closure.'
       );
     }
     state.baselineClosed = true;
@@ -1143,6 +1143,16 @@ export function createVexBirthLabController({
       currentVBStage: current.currentVBStage,
       activeGenerationRef:
         current.activeGenerationRef,
+      activeModelRefOrNull:
+        current.activeModelRefOrNull,
+      companionAvailabilityState:
+        current.companionAvailabilityState,
+      companionRecoveryClass:
+        current.companionRecoveryClass,
+      companionRecoveryAvailable:
+        current.companionRecoveryAvailable,
+      availabilityProjectionRefOrNull:
+        current.availabilityProjectionRefOrNull,
       modelBindingState:
         current.modelBindingState,
       trainingEffectTruth:
@@ -1168,6 +1178,7 @@ export function createVexBirthLabController({
     open,
     close,
     refreshStatus,
+    refreshAvailability: refreshStatus,
     sendTurn,
     finishBaseline,
     projection,
@@ -1223,7 +1234,6 @@ export function installVexBirthLab() {
     }
   });
 
-  controller.refreshStatus();
   return controller;
 }
 
