@@ -170,6 +170,61 @@ test('browser source never routes companion channel through simulatedReply', () 
   assert.match(server, /createBrowserCompanionBridge/u);
 });
 
+test('Health consumes canonical Companion availability only on explicit Health open or refresh', () => {
+  const app = fs.readFileSync(path.join(ROOT, 'reference/browser/app.js'), 'utf8');
+  assert.match(app, /BROWSER_COMPANION_AVAILABILITY_PATH[\s\S]*normalizeBrowserCompanionAvailability/u);
+
+  const refreshStart = app.indexOf('async function refreshHealthCompanionAvailability');
+  const openStart = app.indexOf('async function openHealth');
+  const renderStart = app.indexOf('function renderHealth');
+  const setWorkspaceStart = app.indexOf('function setWorkspaceOpen');
+  assert.ok(refreshStart >= 0 && openStart > refreshStart && renderStart > openStart && setWorkspaceStart > renderStart);
+
+  const refreshSource = app.slice(refreshStart, openStart);
+  assert.match(refreshSource, /fetch\(BROWSER_COMPANION_AVAILABILITY_PATH,\{method:'GET',cache:'no-store'\}\)/u);
+  assert.equal((refreshSource.match(/fetch\(/gu) ?? []).length, 1);
+  assert.match(refreshSource, /normalizeBrowserCompanionAvailability\(await response\.json\(\)\)/u);
+  assert.match(refreshSource, /COMPANION_AVAILABILITY_INVALID/u);
+  assert.doesNotMatch(refreshSource, /\/api\/v1\/companion\/status/u);
+  assert.doesNotMatch(refreshSource, /\/api\/v1\/companion\/recovery/u);
+  assert.doesNotMatch(refreshSource, /method:'POST'/u);
+
+  const openSource = app.slice(openStart, renderStart);
+  assert.match(openSource, /openContext\('health'\)/u);
+  assert.match(openSource, /await refreshHealthCompanionAvailability\(\)/u);
+
+  const renderSource = app.slice(renderStart, setWorkspaceStart);
+  for (const field of [
+    'availabilityState',
+    'bindingState',
+    'modelRefOrNull',
+    'generationRefOrNull',
+    'runtimeOwnershipState',
+    'runtimeState',
+    'qualificationState',
+    'recoveryClass',
+    'reasonCode',
+    'runtimeAdapterRef',
+    'runtimeObservationRef'
+  ]) {
+    assert.match(renderSource, new RegExp(field));
+  }
+  assert.match(renderSource, /companionAvailability:availability/u);
+  assert.match(renderSource, /executed:false/u);
+  assert.doesNotMatch(renderSource, /modelReceipt:\{state:'UNAVAILABLE',executed:false,currentness:'UNKNOWN'\}/u);
+
+  assert.match(app, /#openHealth'\)\.addEventListener\('click',[\s\S]*routeCurrentSurface\('surface\.vexlife\.health',\(\)=>void openHealth\(\)\)/u);
+  assert.match(app, /action==='health'\)void openHealth\(\)/u);
+
+  const bootstrapStart = app.indexOf('chat.renderProjectRail();chat.renderChannels();');
+  const globalExportStart = app.indexOf('globalThis.__VEXLIFE_APP__=');
+  assert.ok(bootstrapStart >= 0 && globalExportStart > bootstrapStart);
+  const bootstrapSource = app.slice(bootstrapStart, globalExportStart);
+  assert.doesNotMatch(bootstrapSource, /refreshHealthCompanionAvailability\(\)/u);
+
+  assert.match(app, /openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot/u);
+});
+
 function semanticRelayInput(overrides = {}) {
   return {
     relayRef: 'relay.browser-companion-test',
