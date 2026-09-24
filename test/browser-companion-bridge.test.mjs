@@ -148,13 +148,23 @@ test('browser companion delegates the visible turn to G01 and persists its exact
 
 test('browser source never routes companion channel through simulatedReply', () => {
   const chat = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/chat-controller.js'), 'utf8');
+  const birth = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/vex-birth-lab-controller.js'), 'utf8');
   const serverEntry = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser.mjs'), 'utf8');
   const serverCore = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
   const server = `${serverEntry}\n${serverCore}`;
   assert.match(chat, /channel\.roleKey === 'companion'[\s\S]*requestRealCompanionReply/u);
   assert.match(chat, /simulatedReply\(channel, frameAtSend\)[\s\S]*channel\.roleKey === 'companion'\) return false/u);
   assert.match(chat, /fetch\('\/api\/v1\/companion\/turn'/u);
-  assert.match(chat, /channel\.roleKey === 'companion' \? companionBindingState === 'BOUND' : isVexAvailable\(\)/u);
+  assert.match(chat, /channel\.roleKey === 'companion'[\s\S]*browserCompanionAvailabilityAllowsTurn\(companionAvailability\) && !companionTurnPending[\s\S]*isVexAvailable\(\)/u);
+  assert.doesNotMatch(chat, /if \(currentChannel\(\)\?\.roleKey === 'companion'\) void refreshCompanionAvailability\(\);\s+return \{/u);
+  const selectThreadSource = chat.slice(chat.indexOf('function selectThread'), chat.indexOf('function renderChannels'));
+  assert.doesNotMatch(selectThreadSource, /refreshCompanionAvailability\(\)/u);
+  const selectChannelSource = chat.slice(chat.indexOf('function selectChannel'), chat.indexOf('function renderPresence'));
+  assert.doesNotMatch(selectChannelSource, /refreshCompanionAvailability\(\)/u);
+  assert.match(chat, /channel\.roleKey === 'companion' && !channelIsAvailable\(channel\) && !companionTurnPending[\s\S]*await refreshCompanionAvailability\(\);/u);
+  assert.match(chat, /const submitAvailable = slashCandidate \|\| \(channel\.roleKey === 'companion' \? !companionTurnPending : available\);/u);
+  assert.doesNotMatch(birth, /controller\.refreshStatus\(\);\s+return controller;/u);
+  assert.match(birth, /function open\(\)[\s\S]*refreshStatus\(\);/u);
   assert.doesNotMatch(chat, /endpoint\s*:/u);
   assert.match(server, /VEXLIFE_COMPANION_ENDPOINT/u);
   assert.match(server, /createBrowserCompanionBridge/u);

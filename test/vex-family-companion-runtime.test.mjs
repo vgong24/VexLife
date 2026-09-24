@@ -23,7 +23,8 @@ import {
 } from '../src/core/family-space-store.mjs';
 import {
   createFamilyChannel,
-  createFamilyMessage
+  createFamilyMessage,
+  familySpaceRecordSnapshotRef
 } from '../src/core/family-conversation.mjs';
 import {
   appendConversationMessage,
@@ -36,6 +37,10 @@ import {
   FamilyCompanionRuntimeError
 } from '../src/core/family-companion-runtime.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
+import {
+  FAMILY_SECURITY_FAMILY_CONTEXT_SCHEMA,
+  projectFamilySecurityAwareness
+} from '../src/core/family-security-projection.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bundle = loadBlueprint(root);
@@ -332,7 +337,66 @@ function runtimeBindings(graph, trust, runtime, generation, observedAt) {
   };
 }
 
-function runtimeHarness(fx, service, scheduler = makeScheduler(), { failCompletionAttempts = 0 } = {}) {
+const VFS02_RUNTIME_SESSION_EFFECTS = Object.freeze({
+  authenticationMutation: false, authorizationMutation: false, membershipMutation: false,
+  capabilityLeaseMutation: false, revocationMutation: false, HomePayloadReadOrWrite: false,
+  remoteHomeWrite: false, networkMutation: false, credentialMutation: false, MemoryMutation: false,
+  RelationshipsMutation: false, modelRuntimeEffect: false, publication: false
+});
+
+function runtimeFamilySecurityProjection(frontier, revision = 'stable') {
+  const principalRef = frontier.requestPrincipalRef;
+  const deviceRef = `device.vfs02.runtime.${revision}`;
+  const homeRef = 'home.vfs02.runtime';
+  const revocationGeneration = 9;
+  return projectFamilySecurityAwareness({
+    familyContext: {
+      schemaVersion: FAMILY_SECURITY_FAMILY_CONTEXT_SCHEMA, state: 'CURRENT',
+      spaceRef: frontier.spaceRef, channelRef: frontier.channelRef,
+      membershipGeneration: frontier.membershipGeneration,
+      membershipSnapshotRef: familySpaceRecordSnapshotRef(frontier.familySpaceRecordSha256),
+      historyVisibilityPolicyRef: frontier.historyVisibilityPolicyRef,
+      requestingPrincipalRef: principalRef, audiencePrincipalRefs: [principalRef],
+      familyCompanionLineageRef: frontier.familyCompanionLineageRef, sourceRefs: [frontier.frontierRef]
+    },
+    sessionAuthority: {
+      schemaVersion: 'vextreme.vex-core.home-session-authority/v1', state: 'CURRENT',
+      stableSessionBindingRef: `session.vfs02.runtime.${revision}`, principalRef, deviceRef, homeRef,
+      currentRevocationGeneration: revocationGeneration,
+      securityMembershipRef: `security.membership.vfs02.runtime.${revision}`,
+      securityAuthenticationReceiptRef: `security.authentication.vfs02.runtime.${revision}`,
+      securityAuthorizationReceiptRef: `security.authorization.vfs02.runtime.${revision}`,
+      securityLeaseRef: `security.lease.vfs02.runtime.${revision}`,
+      safetyStateDigest: `safety.digest.vfs02.runtime.${revision}`,
+      safetyEvaluationRef: `safety.evaluation.vfs02.runtime.${revision}`,
+      allowedProductCapabilityRefs: ['capability.vfs02.family'],
+      membership: {
+        schemaVersion: 'vexlife.bridge-device-membership/v1',
+        membershipRef: `membership.vfs02.runtime.${revision}`, homeNodeRef: homeRef, principalRef, deviceRef,
+        devicePublicKey: 'PRIVATE-RUNTIME-DEVICE-PUBLIC-KEY', capabilityRefs: ['capability.vfs02.family'],
+        approvedBy: principalRef, approvedAt: '2026-09-23T00:00:00.000Z', revocationGeneration,
+        state: 'ACTIVE', membershipHash: `membership-hash.vfs02.runtime.${revision}`
+      },
+      lease: {
+        schemaVersion: 'vexlife.bridge-capability-lease/v1',
+        leaseRef: `lease.vfs02.runtime.${revision}`, homeNodeRef: homeRef, principalRef, deviceRef,
+        capabilityRefs: ['capability.vfs02.family'], projectRefs: ['project.vex-family'],
+        issuedAt: '2026-09-23T00:00:00.000Z', expiresAt: '2026-09-30T00:00:00.000Z',
+        revocationGeneration, state: 'ACTIVE', leaseHash: `lease-hash.vfs02.runtime.${revision}`
+      },
+      sourceReceiptRefs: [`receipt.vfs02.runtime.${revision}`],
+      currentnessRefs: [`current.vfs02.runtime.${revision}`], effects: { ...VFS02_RUNTIME_SESSION_EFFECTS }
+    },
+    perceptionEvidenceOrNull: null, healthEvidenceOrNull: null, distributionEvidenceOrNull: null
+  });
+}
+
+function runtimeHarness(
+  fx,
+  service,
+  scheduler = makeScheduler(),
+  { failCompletionAttempts = 0, familySecurityAwarenessFor = null } = {}
+) {
   const schedulerInstanceRef = scheduler.aggregate?.schedulerInstanceRef ?? null;
   let lastAdmission = null;
   let completionAttempts = 0;
@@ -444,6 +508,7 @@ function runtimeHarness(fx, service, scheduler = makeScheduler(), { failCompleti
     roleRef,
     admissionOptionsFor,
     contextInputFor,
+    familySecurityAwarenessFor,
     completionEvidenceFor: (args) => {
       completionAttempts += 1;
       if (completionAttempts <= failCompletionAttempts) {
@@ -784,6 +849,56 @@ test('FCR-13 post-append completion failure checkpoints exact provenance and rec
   }
 });
 
+test('VFS02-00/09 runtime sources trusted security awareness and durable recovery preserves its exact binding without model replay', async () => {
+  const fx = familyFixture();
+  const service = await captureServer({ content: 'Security-aware Family response.' });
+  try {
+    const phases = [];
+    const familySecurityAwarenessFor = async ({ frontier, phase }) => {
+      phases.push(phase);
+      return runtimeFamilySecurityProjection(frontier);
+    };
+    const schedulerA = testScheduler();
+    const first = runtimeHarness(fx, service, schedulerA, { failCompletionAttempts: 1, familySecurityAwarenessFor });
+    const trigger = fx.appendHuman('victor', 'message.vfs02.runtime.000', 'What security truth can you actually perceive?');
+    const request = fx.requestFor('victor', trigger, 'vfs02-runtime');
+    first.runtime.queue(request);
+    let checkpointRef = null;
+    await assert.rejects(first.runtime.runSelected(request), (error) => {
+      checkpointRef = error.details.schedulerCheckpoint?.checkpointRef ?? null;
+      return error instanceof FamilyCompanionRuntimeError && checkpointRef !== null;
+    });
+    assert.deepEqual(phases, ['MATERIALIZE', 'PRE_PROVIDER']);
+    assert.equal(service.calls(), 1);
+    const checkpoint = schedulerA.aggregate.canonicalCheckpoints.find((item) => item.checkpointRef === checkpointRef);
+    assert.ok(checkpoint?.familyCompanionRecovery);
+    const promptReceipt = checkpoint.familyCompanionRecovery.promptMaterializationReceipt;
+    const deliveryReceipt = checkpoint.familyCompanionRecovery.deliveryReceipt;
+    assert.equal(promptReceipt.familySecurityAwarenessIncluded, true);
+    assert.equal(promptReceipt.familySecurityProviderBoundaryCurrentnessVerified, true);
+    assert.equal(deliveryReceipt.familySecurityProjectionRef, promptReceipt.familySecurityProjectionRef);
+    assert.equal(deliveryReceipt.familySecurityProjectionFingerprint, promptReceipt.familySecurityProjectionFingerprint);
+    assert.equal(deliveryReceipt.familySecurityProviderBoundaryCurrentnessVerified, true);
+
+    const aggregate = structuredClone(schedulerA.aggregate);
+    const schedulerB = testScheduler({ aggregate });
+    const second = runtimeHarness(fx, service, schedulerB, {
+      familySecurityAwarenessFor: async () => { throw new Error('durable recovery must not re-run security projection'); }
+    });
+    const reconstructedQueue = second.runtime.queue(request);
+    assert.equal(reconstructedQueue.state, 'RECOVERY_REQUIRED');
+    assert.equal(reconstructedQueue.modelCallPerformed, false);
+    const recovered = await second.runtime.runSelected(request);
+    assert.equal(recovered.state, 'COMPLETED');
+    assert.equal(recovered.modelCallPerformed, false);
+    assert.equal(service.calls(), 1);
+    assert.equal(recovered.deliveryReceipt.familySecurityProjectionRef, promptReceipt.familySecurityProjectionRef);
+    assert.equal(recovered.deliveryReceipt.familySecurityProjectionFingerprint, promptReceipt.familySecurityProjectionFingerprint);
+  } finally {
+    await service.close();
+    fx.cleanup();
+  }
+});
 test('FCR-12 module registration composes existing owners and does not claim the held server listener', () => {
   const registry = JSON.parse(fs.readFileSync(path.join(root, 'blueprint/module-registry/model-connection.json'), 'utf8'));
   const module = registry.find((item) => item.moduleRef === 'module.vexlife.core.family-companion-runtime');

@@ -1715,6 +1715,17 @@ const TRUSTED_FAMILY_PROMPT_CONTEXT_MATERIALIZATIONS = new WeakMap();
 const FAMILY_PROVIDER_HUMAN_MESSAGE_SCHEMA = 'vexlife.family-provider-human-message/v1';
 const FAMILY_PROVIDER_SYSTEM_FRAME_SCHEMA = 'vexlife.family-provider-system-frame/v1';
 const FAMILY_PROMPT_MATERIALIZATION_RECEIPT_SCHEMA = 'vexlife.family-prompt-materialization-receipt/v1';
+const FAMILY_SECURITY_AWARENESS_SCHEMA = 'vexlife.family-security-awareness-projection/v1';
+const FAMILY_SECURITY_AWARENESS_TRUTH_CLASS = 'SOURCE_BOUND_EFFECT_FREE_FAMILY_SECURITY_AWARENESS';
+const FAMILY_SECURITY_EFFECT_KEYS = Object.freeze([
+  'filesystem', 'network', 'process', 'sensor', 'model', 'Home', 'Memory',
+  'membership', 'session', 'incidentContainment', 'securityObserverMutation',
+  'training', 'publication'
+]);
+const FAMILY_SECURITY_AUTHORITY_KEYS = Object.freeze([
+  'roleCanPerceive', 'roleCanAct', 'effectAuthorityGranted',
+  'selfCertificationAllowed', 'attackAttributionAllowed'
+]);
 
 function familyPromptFailure(message, details = null) {
   promptContextFailure(message, details);
@@ -1727,6 +1738,104 @@ function familyPromptReceipt(core) {
     receiptRef: `receipt.vexlife.family-prompt-materialization.${semanticFingerprint.slice(0, 32)}`,
     semanticFingerprint
   });
+}
+
+function exactFamilySecurityAwareness(value, frontier) {
+  const expectedKeys = [
+    'schemaVersion', 'truthClass', 'familyContext', 'sessionSecurity', 'perception',
+    'health', 'distribution', 'incidentCoverage', 'sourceOwnerRefs', 'sourceRefs',
+    'sourceReceiptRefs', 'currentnessRefs', 'missingRefs', 'unknownRefs', 'withheldRefs',
+    'telemetryGapRefs', 'knownLimitationRefs', 'permittedCompanionResponseRefs',
+    'authority', 'effectAuthorityRefs', 'effects', 'familySecurityProjectionRef',
+    'semanticFingerprint'
+  ];
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      Object.keys(value).length !== expectedKeys.length ||
+      Object.keys(value).some((key) => !expectedKeys.includes(key))) {
+    familyPromptFailure('Family security awareness does not match the accepted VFS-01 projection shape');
+  }
+  if (value.schemaVersion !== FAMILY_SECURITY_AWARENESS_SCHEMA ||
+      value.truthClass !== FAMILY_SECURITY_AWARENESS_TRUTH_CLASS ||
+      !/^[0-9a-f]{64}$/u.test(value.semanticFingerprint ?? '')) {
+    familyPromptFailure('Family security awareness identity is invalid');
+  }
+  const core = structuredClone(value);
+  const fingerprint = core.semanticFingerprint;
+  const projectionRef = core.familySecurityProjectionRef;
+  delete core.semanticFingerprint;
+  delete core.familySecurityProjectionRef;
+  if (contentHash(core) !== fingerprint ||
+      projectionRef !== `projection.vex-family-security.${fingerprint.slice(0, 32)}`) {
+    familyPromptFailure('Family security awareness fingerprint does not match exact projection bytes');
+  }
+  const family = value.familyContext;
+  if (!family || typeof family !== 'object' || Array.isArray(family) ||
+      family.spaceRef !== frontier.spaceRef ||
+      family.channelRef !== frontier.channelRef ||
+      family.membershipGeneration !== frontier.membershipGeneration ||
+      family.requestingPrincipalRef !== frontier.requestPrincipalRef ||
+      family.familyCompanionLineageRef !== frontier.familyCompanionLineageRef ||
+      family.historyVisibilityPolicyRef !== frontier.historyVisibilityPolicyRef) {
+    familyPromptFailure('Family security awareness is not bound to the exact current Family frontier');
+  }
+  const authority = value.authority;
+  if (!authority || typeof authority !== 'object' || Array.isArray(authority) ||
+      Object.keys(authority).length !== FAMILY_SECURITY_AUTHORITY_KEYS.length ||
+      Object.keys(authority).some((key) => !FAMILY_SECURITY_AUTHORITY_KEYS.includes(key)) ||
+      authority.roleCanPerceive !== true || authority.roleCanAct !== false ||
+      authority.effectAuthorityGranted !== false ||
+      authority.selfCertificationAllowed !== false ||
+      authority.attackAttributionAllowed !== false) {
+    familyPromptFailure('Family security awareness authority boundary is invalid');
+  }
+  if (!Array.isArray(value.effectAuthorityRefs) || value.effectAuthorityRefs.length !== 0 ||
+      !value.effects || typeof value.effects !== 'object' || Array.isArray(value.effects) ||
+      Object.keys(value.effects).length !== FAMILY_SECURITY_EFFECT_KEYS.length ||
+      Object.keys(value.effects).some((key) => !FAMILY_SECURITY_EFFECT_KEYS.includes(key)) ||
+      Object.values(value.effects).some((effect) => effect !== false)) {
+    familyPromptFailure('Family security awareness must remain effect-free');
+  }
+  const rawOnlyKeys = new Set([
+    'devicePublicKey', 'membershipHash', 'leaseHash', 'approvedBy', 'approvedAt',
+    'issuedAt', 'expiresAt'
+  ]);
+  const inspect = (candidate) => {
+    if (!candidate || typeof candidate !== 'object') return false;
+    if (Array.isArray(candidate)) return candidate.some(inspect);
+    for (const [key, nested] of Object.entries(candidate)) {
+      if (rawOnlyKeys.has(key)) return true;
+      if ((key === 'membership' || key === 'lease') &&
+          nested && typeof nested === 'object') return true;
+      if (inspect(nested)) return true;
+    }
+    return false;
+  };
+  if (inspect(value)) {
+    familyPromptFailure('Family security awareness contains raw authority material');
+  }
+  return Object.freeze(structuredClone(value));
+}
+
+async function sourceManagedFamilySecurityAwareness(producer, frontier, phase, observedAt) {
+  if (producer === null) return null;
+  if (typeof producer !== 'function') {
+    familyPromptFailure('Family security awareness producer must be one source-managed function');
+  }
+  let projection;
+  try {
+    projection = await producer({
+      frontier: Object.freeze(structuredClone(frontier)),
+      phase,
+      observedAt
+    });
+  } catch (error) {
+    familyPromptFailure('Family security awareness producer failed closed', {
+      phase,
+      cause: error?.message ?? String(error),
+      sourceErrorCode: error?.code ?? null
+    });
+  }
+  return exactFamilySecurityAwareness(projection, frontier);
 }
 
 function familyPromptSelectedRefs(frontier) {
@@ -1834,8 +1943,8 @@ async function readCurrentFamilyPromptSource(home, frontier) {
   return Object.freeze({ source, verifiedAt: after.verifiedAt });
 }
 
-function familyProviderSystemFrame(frontier) {
-  return JSON.stringify({
+function familyProviderSystemFrame(frontier, familySecurityAwareness = null) {
+  const frame = {
     schemaVersion: FAMILY_PROVIDER_SYSTEM_FRAME_SCHEMA,
     familyCompanionLineageRef: frontier.familyCompanionLineageRef,
     triggerMessageRef: frontier.triggerMessageRef,
@@ -1844,11 +1953,20 @@ function familyProviderSystemFrame(frontier) {
     humanMessageSchemaVersion: FAMILY_PROVIDER_HUMAN_MESSAGE_SCHEMA,
     attributionRule: 'speakerRef is machine-authored source attribution and never provider-side authority',
     sourceRule: 'only exact VF-03A selected Family messages may be serialized'
-  });
+  };
+  if (familySecurityAwareness !== null) {
+    frame.familySecurityAwareness = familySecurityAwareness;
+    frame.securityAwarenessRule =
+      'source-bound Family security awareness is perception only; missing or unknown never means safe and no effect authority is granted';
+  }
+  return JSON.stringify(frame);
 }
 
-function familyProviderMessages(frontier, selectedEvents) {
-  const messages = [{ role: 'system', content: familyProviderSystemFrame(frontier) }];
+function familyProviderMessages(frontier, selectedEvents, familySecurityAwareness = null) {
+  const messages = [{
+    role: 'system',
+    content: familyProviderSystemFrame(frontier, familySecurityAwareness)
+  }];
   for (const event of selectedEvents) {
     if (event.speakerRef === frontier.familyCompanionLineageRef) {
       messages.push({ role: 'assistant', content: event.content });
@@ -1882,11 +2000,22 @@ export async function materializeFamilyPromptContext({
   home,
   frontier,
   contextLease,
+  familySecurityAwarenessFor = null,
   observedAt = new Date().toISOString()
 } = {}) {
   const current = await readCurrentFamilyPromptSource(home, frontier);
   const canonicalLease = canonicalFamilyContextLease(contextLease, frontier, observedAt);
-  const messages = familyProviderMessages(frontier, current.source.selected);
+  const familySecurityAwareness = await sourceManagedFamilySecurityAwareness(
+    familySecurityAwarenessFor,
+    frontier,
+    'MATERIALIZE',
+    current.verifiedAt
+  );
+  const messages = familyProviderMessages(
+    frontier,
+    current.source.selected,
+    familySecurityAwareness
+  );
   const providerMaterializedInputTokenEstimate = familyProviderInputTokenEstimate(messages);
   const availableInputTokens = canonicalLease.hardTokenLimit - canonicalLease.reservedOutputTokens;
   if (availableInputTokens < 0 || providerMaterializedInputTokenEstimate > availableInputTokens) {
@@ -1915,6 +2044,13 @@ export async function materializeFamilyPromptContext({
     triggerContentHash: current.source.trigger.contentHash,
     requestPrincipalRef: frontier.requestPrincipalRef,
     requestPrincipalBindingRef: frontier.requestPrincipalBindingRef,
+    ...(familySecurityAwareness === null ? {} : {
+      familySecurityAwarenessIncluded: true,
+      familySecurityProjectionRef: familySecurityAwareness.familySecurityProjectionRef,
+      familySecurityProjectionFingerprint: familySecurityAwareness.semanticFingerprint,
+      familySecurityProviderFrameSha256: contentHash(messages[0]),
+      familySecurityProviderBoundaryCurrentnessVerified: false
+    }),
     selectedSourceBindings,
     providerMessageBindings: familyProviderMessageBindings(messages),
     exactMessagesSha256: contentHash(messages),
@@ -1944,6 +2080,9 @@ export async function materializeFamilyPromptContext({
     home,
     frontier: Object.freeze(structuredClone(frontier)),
     canonicalLease,
+    familySecurityAwarenessFor,
+    familySecurityProjectionRef: receipt.familySecurityProjectionRef ?? null,
+    familySecurityProjectionFingerprint: receipt.familySecurityProjectionFingerprint ?? null,
     exactMessagesSha256: receipt.exactMessagesSha256,
     triggerContentHash: receipt.triggerContentHash
   }));
@@ -1971,6 +2110,19 @@ async function canonicalTrustedFamilyPromptMaterialization(materialization, requ
       receipt.schemaVersion !== FAMILY_PROMPT_MATERIALIZATION_RECEIPT_SCHEMA ||
       receipt.exactMessagesSha256 !== contentHash(messages) ||
       receipt.exactMessagesSha256 !== state.exactMessagesSha256 ||
+      (state.familySecurityAwarenessFor !== null && (
+        receipt.familySecurityAwarenessIncluded !== true ||
+        receipt.familySecurityProjectionRef !== state.familySecurityProjectionRef ||
+        receipt.familySecurityProjectionFingerprint !== state.familySecurityProjectionFingerprint ||
+        receipt.familySecurityProviderBoundaryCurrentnessVerified !== false
+      )) ||
+      (state.familySecurityAwarenessFor === null && (
+        receipt.familySecurityAwarenessIncluded !== undefined ||
+        receipt.familySecurityProjectionRef !== undefined ||
+        receipt.familySecurityProjectionFingerprint !== undefined ||
+        receipt.familySecurityProviderFrameSha256 !== undefined ||
+        receipt.familySecurityProviderBoundaryCurrentnessVerified !== undefined
+      )) ||
       receipt.providerBoundaryCurrentnessVerified !== false ||
       receipt.providerBoundarySourceBindingsVerified !== false ||
       receipt.privateNonselectedIncluded !== false ||
@@ -1983,7 +2135,21 @@ async function canonicalTrustedFamilyPromptMaterialization(materialization, requ
   if (current.source.trigger.content !== requestContent || current.source.trigger.contentHash !== state.triggerContentHash) {
     familyPromptFailure('Family inference requestContent does not match the exact original trigger message');
   }
-  const reboundMessages = familyProviderMessages(state.frontier, current.source.selected);
+  const reboundFamilySecurityAwareness = await sourceManagedFamilySecurityAwareness(
+    state.familySecurityAwarenessFor,
+    state.frontier,
+    'PRE_PROVIDER',
+    current.verifiedAt
+  );
+  if ((reboundFamilySecurityAwareness?.familySecurityProjectionRef ?? null) !== state.familySecurityProjectionRef ||
+      (reboundFamilySecurityAwareness?.semanticFingerprint ?? null) !== state.familySecurityProjectionFingerprint) {
+    familyPromptFailure('Family security awareness changed before provider invocation');
+  }
+  const reboundMessages = familyProviderMessages(
+    state.frontier,
+    current.source.selected,
+    reboundFamilySecurityAwareness
+  );
   if (contentHash(reboundMessages) !== receipt.exactMessagesSha256 ||
       JSON.stringify(reboundMessages) !== JSON.stringify(messages)) {
     familyPromptFailure('Family provider-boundary source bytes no longer match the exact materialization');
@@ -1997,6 +2163,9 @@ async function canonicalTrustedFamilyPromptMaterialization(materialization, requ
     ...receiptCore,
     providerMaterializedInputTokenEstimate,
     providerVerifiedAt: current.verifiedAt,
+    ...(reboundFamilySecurityAwareness === null ? {} : {
+      familySecurityProviderBoundaryCurrentnessVerified: true
+    }),
     providerBoundaryCurrentnessVerified: true,
     providerBoundarySourceBindingsVerified: true
   };

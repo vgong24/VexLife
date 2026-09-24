@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 1149,
       "sha256": "8d403d766d65bb6aa410f77b019aa0890b96532b145cc9895c3aecc144dda0ef"
+    },
+    {
+      "path": "test/vex-reboot-cross-platform-proof.test.mjs",
+      "mode": "100644",
+      "bytes": 4965,
+      "sha256": "37ff5d599a95f12026ca1b301c4f5553c8c7bc796f69971fdb71d3ce10c9e386"
     }
   ]
 }

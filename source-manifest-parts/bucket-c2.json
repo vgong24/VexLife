@@ -11,8 +11,8 @@
     {
       "path": "src/core/family-companion-runtime.mjs",
       "mode": "100644",
-      "bytes": 52142,
-      "sha256": "d08c5c2c657a906f8ee4ef2fd79d8b0e14f31726dad155c598a44ea9ff0cf2cd"
+      "bytes": 54016,
+      "sha256": "051182997c627b110c81648dcec00ac1f9cef812ec0d854c671f1113603aede1"
     },
     {
       "path": "test/g04b-native-training-terminal.test.mjs",

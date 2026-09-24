@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "vexlife.ux-evolution-shell-scaffold/v1",
+  "scaffoldRef": "scaffold.vexlife.ux-evolution.shell.001",
+  "ownerRef": "github.issue.vexlife.682",
+  "parentRef": "github.issue.vexlife.624",
+  "humanWalkRef": "github.issue.vexlife.625.comment.5790157998",
+  "projectionSelector": {
+    "defaultProjection": "REFERENCE_PROJECTION",
+    "values": [
+      "REFERENCE_PROJECTION",
+      "EVOLUTION_PROJECTION"
+    ],
+    "localDevOnly": true,
+    "selectionPersistence": "NONE",
+    "discoverySurface": "Current surface",
+    "controlId": "uxProjectionSelect",
+    "statusId": "uxProjectionStatus"
+  },
+  "surfaceInventory": [
+    {
+      "surfaceRef": "surface.vexlife.conversation",
+      "semanticRef": "feature.vexlife.addressed-conversation",
+      "title": "Conversation",
+      "controlId": "openConversation"
+    },
+    {
+      "surfaceRef": "surface.vexlife.health",
+      "semanticRef": "feature.vexlife.runtime-failure-recovery",
+      "title": "Health / source truth",
+      "controlId": "openHealth"
+    },
+    {
+      "surfaceRef": "surface.vexlife.living-journal",
+      "semanticRef": "feature.vexlife.living-journal",
+      "title": "Living Journal",
+      "controlId": "openLivingJournal"
+    },
+    {
+      "surfaceRef": "surface.vexlife.workspace",
+      "semanticRef": "feature.vexlife.contextual-workspace",
+      "title": "Projects",
+      "controlId": "openWorkspace"
+    }
+  ],
+  "evolutionEnablement": {
+    "requiresEvolutionProjectionRef": true,
+    "requiresRegisteredAdapter": true,
+    "acceptedLifecycleStates": [
+      "SHADOW_IMPLEMENTED",
+      "SEMANTIC_PARITY_CHECKED",
+      "ACCESSIBILITY_RECOVERY_CHECKED",
+      "HUMAN_WALKED",
+      "CUTOVER_READY",
+      "CUTOVER_DEFAULT",
+      "REFERENCE_FALLBACK_AVAILABLE"
+    ],
+    "enabledState": "ENABLED",
+    "heldState": "HELD_NOT_MIGRATED"
+  },
+  "activeSurfaceHost": {
+    "hostRef": "host.vexlife.shell.evolution-active-surface.001",
+    "elementId": "evolutionActiveSurfaceHost",
+    "titleElementId": "evolutionActiveSurfaceTitle",
+    "statusElementId": "evolutionActiveSurfaceStatus",
+    "bodyElementId": "evolutionActiveSurfaceBody",
+    "closeElementId": "evolutionActiveSurfaceClose",
+    "referenceFallbackElementId": "evolutionReferenceFallback",
+    "oneActiveSurface": true,
+    "shellOwnsSurfaceTitle": true,
+    "shellOwnsCloseControl": true,
+    "semanticCloseOwnerPolicy": "REGISTERED_ADAPTER_REQUEST_CLOSE",
+    "ordinaryContentScrollSemanticExit": false
+  },
+  "invariants": {
+    "referenceDefault": true,
+    "oneSemanticState": true,
+    "oneActiveRenderer": true,
+    "permanentV1V2Fork": false,
+    "duplicateSemanticOwners": false,
+    "cutoverAuthority": false,
+    "referenceRetirementAuthority": false,
+    "publicationAuthority": false
+  }
+}

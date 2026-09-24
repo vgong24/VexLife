@@ -11,6 +11,89 @@ import { identityLocalizationSuite } from './integration/identity-localization-s
 import { globalizationSemanticRelaySuite } from './integration/globalization-semantic-relay-suite.js';
 import { securityAccessPreviewSuite } from './integration/security-access-android-preview-suite.js';
 import { familyRoomSuite } from './integration/family-room-suite.js';
+import {
+  BROWSER_COMPANION_AVAILABILITY_PATH as CHAT_COMPANION_AVAILABILITY_PATH,
+  browserCompanionAvailabilityAllowsTurn,
+  browserCompanionRecoveryAvailable,
+  normalizeBrowserCompanionAvailability
+} from './modules/chat-controller.js';
+import {
+  VEX_BIRTH_COMPANION_AVAILABILITY_PATH,
+  buildVexBirthLabProjection,
+  normalizeVexBirthCompanionAvailability
+} from './modules/vex-birth-lab-controller.js';
+
+function vr05AvailabilityFixture(overrides = {}) {
+  const availabilityState = overrides.availabilityState ?? 'READY';
+  const recoveryClass = overrides.recoveryClass ?? (availabilityState === 'READY'
+    ? 'NONE_REQUIRED'
+    : availabilityState === 'RECOVERABLE'
+      ? 'SAFE_REENTRY_AVAILABLE'
+      : availabilityState === 'STARTING'
+        ? 'RETRY_IN_PROGRESS'
+        : 'HELD');
+  return Object.freeze({
+    schemaVersion: 'vexlife.companion-availability/v1',
+    truthClass: 'SOURCE_BOUND_COMPANION_AVAILABILITY',
+    registryRef: 'registry.vexlife.companion-availability-reentry.001',
+    bindingRef: 'binding.integration.vr05',
+    homeRef: 'home.integration.vr05',
+    companionLineageRef: 'lineage.integration.vr05',
+    modelRefOrNull: 'model.integration.m4',
+    generationRefOrNull: 'generation.integration.m4',
+    runtimeAdapterRef: 'adapter.runtime.integration.vr05',
+    runtimeObservationRef: 'observation.integration.vr05',
+    availabilityState,
+    recoveryClass,
+    reasonCode: overrides.reasonCode ?? 'VR05_SYNTHETIC_CONTRACT_FIXTURE',
+    bindingState: overrides.bindingState ?? 'BOUND',
+    runtimeOwnershipState: overrides.runtimeOwnershipState ?? 'EXACT_OWNED',
+    runtimeState: overrides.runtimeState ?? (availabilityState === 'RECOVERABLE' ? 'STOPPED' : 'HEALTHY'),
+    qualificationState: overrides.qualificationState ?? (availabilityState === 'RECOVERABLE' ? 'STALE' : 'CURRENT'),
+    sourceRefs: ['source.integration.vr05'],
+    effectAuthorityGranted: false,
+    rendererAuthorityGranted: false,
+    modelIdentityAuthorityGranted: false,
+    processAuthorityGranted: false,
+    conversationAuthorityGranted: false,
+    projectionRef: 'projection.vexlife.companion-availability.integrationvr05',
+    projectionSha256: 'a'.repeat(64),
+    ...overrides
+  });
+}
+
+export const vr05CanonicalAvailabilityConsumerSuite = Object.freeze({
+  suiteRef: 'suite.vexlife.browser.vr05-canonical-availability-consumers/v1',
+  async run({ helpers }) {
+    const { assert } = helpers;
+    const checks = [];
+    const check = (condition, label) => { assert(condition, label); checks.push(label); };
+    const ready = vr05AvailabilityFixture();
+    check(CHAT_COMPANION_AVAILABILITY_PATH === '/api/v1/companion/availability', 'VR05 Chat consumes canonical availability endpoint');
+    check(VEX_BIRTH_COMPANION_AVAILABILITY_PATH === '/api/v1/companion/availability', 'VR05 Birth consumes canonical availability endpoint');
+    check(normalizeBrowserCompanionAvailability(ready).availabilityState === 'READY', 'VR05 Chat accepts canonical READY envelope');
+    check(browserCompanionAvailabilityAllowsTurn(ready) === true, 'VR05 READY permits Chat turn');
+    for (const availabilityState of ['STARTING', 'RECOVERABLE', 'ACTION_REQUIRED', 'UNAVAILABLE', 'HELD']) {
+      check(browserCompanionAvailabilityAllowsTurn(vr05AvailabilityFixture({ availabilityState })) === false, `VR05 ${availabilityState} holds Chat turn`);
+    }
+    const recoverable = vr05AvailabilityFixture({ availabilityState: 'RECOVERABLE', recoveryClass: 'SAFE_REENTRY_AVAILABLE', runtimeState: 'STOPPED', qualificationState: 'STALE' });
+    check(browserCompanionRecoveryAvailable(recoverable) === true, 'VR05 RECOVERABLE exposes semantic recovery availability');
+    let legacyBoundRejected = false;
+    try { normalizeBrowserCompanionAvailability({ schemaVersion: 'vexlife.browser-companion-status/v1', state: 'BOUND' }); } catch { legacyBoundRejected = true; }
+    check(legacyBoundRejected, 'VR05 legacy BOUND status cannot substitute for canonical availability');
+    check(normalizeVexBirthCompanionAvailability(ready).generationRefOrNull === 'generation.integration.m4', 'VR05 Birth accepts source-bound M4 generation');
+    const birthReady = buildVexBirthLabProjection({ companionAvailability: ready });
+    check(birthReady.companionAvailabilityState === 'READY', 'VR05 Birth projects canonical READY');
+    check(birthReady.activeGenerationRef === 'generation.integration.m4', 'VR05 Birth generation identity is source-bound');
+    check(birthReady.activeModelRefOrNull === 'model.integration.m4', 'VR05 Birth model identity is source-bound');
+    check(birthReady.currentVBStage === 'VB2', 'VR05 Birth READY admits untaught baseline stage');
+    const birthRecoverable = buildVexBirthLabProjection({ companionAvailability: recoverable });
+    check(birthRecoverable.currentVBStage === 'VB1', 'VR05 Birth RECOVERABLE does not admit a real turn');
+    check(birthRecoverable.companionRecoveryAvailable === true, 'VR05 Birth carries semantic recovery availability');
+    check(birthRecoverable.trainingEffectTruth === 'PRE_EXECUTION_NO_EFFECT', 'VR05 recovery truth grants no training effect');
+    return Object.freeze({ suiteRef: 'suite.vexlife.browser.vr05-canonical-availability-consumers/v1', state: 'PASS', checks: Object.freeze(checks) });
+  }
+});
 
 export const MANDATORY_SUITE_REFS = Object.freeze([
   'suite.vexlife.browser.root-contract/v1',
@@ -20,6 +103,7 @@ export const MANDATORY_SUITE_REFS = Object.freeze([
   'suite.vexlife.browser.feature-perceptibility/v1',
   'suite.vexlife.browser.terrain/v1',
   'suite.vexlife.browser.contextual-conversation/v1',
+  'suite.vexlife.browser.vr05-canonical-availability-consumers/v1',
   'suite.vexlife.browser.living-journal/v1',
   'suite.vexlife.browser.cross-feature/v1',
   'suite.vexlife.browser.identity-localization/v1',
@@ -36,6 +120,7 @@ export const MANDATORY_SUITES = Object.freeze([
   featurePerceptibilitySuite,
   terrainSuite,
   contextualConversationSuite,
+  vr05CanonicalAvailabilityConsumerSuite,
   livingJournalSuite,
   crossFeatureSuite,
   identityLocalizationSuite,

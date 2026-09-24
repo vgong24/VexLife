@@ -9,6 +9,12 @@
       "sha256": "86362997a7b2ef0be60c1c0047e6f86b2dfc8c2e21241fd9c0efe7903ed1e97c"
     },
     {
+      "path": "test/fixtures/vex-reboot/vr07-cross-platform-current-model-matrix.json",
+      "mode": "100644",
+      "bytes": 3732,
+      "sha256": "d1879858a63b244aa9c4edce1f74592b6dfc291d9131d7ded733f7c42919af7e"
+    },
+    {
       "path": "test/native-worker-supervisor-a06.test.mjs",
       "mode": "100644",
       "bytes": 27990,
@@ -17,8 +23,8 @@
     {
       "path": "test/vex-family-prompt-materialization.test.mjs",
       "mode": "100644",
-      "bytes": 15417,
-      "sha256": "2cda61b2abff18cc590c49d9b96603bae57872195f87bcc240ab59c649b79afc"
+      "bytes": 24541,
+      "sha256": "1304167e6b1918268c98ab1e6d213650e2b295c205fbbb1b6603ff7965d371fb"
     }
   ]
 }
