@@ -183,6 +183,7 @@ test('Health consumes canonical Companion availability only on explicit Health o
   const refreshSource = app.slice(refreshStart, openStart);
   assert.match(refreshSource, /fetch\(BROWSER_COMPANION_AVAILABILITY_PATH,\{method:'GET',cache:'no-store'\}\)/u);
   assert.equal((refreshSource.match(/fetch\(/gu) ?? []).length, 1);
+  assert.match(refreshSource, /healthCompanionAvailability=null;[\s\S]*healthCompanionAvailabilityReadState='LOADING'/u);
   assert.match(refreshSource, /normalizeBrowserCompanionAvailability\(await response\.json\(\)\)/u);
   assert.match(refreshSource, /COMPANION_AVAILABILITY_INVALID/u);
   assert.doesNotMatch(refreshSource, /\/api\/v1\/companion\/status/u);
