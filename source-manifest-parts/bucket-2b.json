@@ -15,6 +15,12 @@
       "sha256": "f9090d3a2ac5755ab4fbe625b56eef8f361182ab962e62d2c96f07338e5c1634"
     },
     {
+      "path": "scripts/vex-reboot-cross-platform-proof.mjs",
+      "mode": "100644",
+      "bytes": 8208,
+      "sha256": "40267f6e15ff999d112712e120b06774422e5bcbdf4beffbe45f922d17669e2c"
+    },
+    {
       "path": "test/feature-perceptibility-guide-runner.test.mjs",
       "mode": "100644",
       "bytes": 12880,
