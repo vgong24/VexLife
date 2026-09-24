@@ -493,8 +493,10 @@ test('VFS02-01/03/05/06/07 trusted source-managed security awareness is provider
     const body = JSON.stringify(service.bodies()[0]);
     assert.equal(body.includes(secret), false);
     assert.equal(body.includes('"devicePublicKey"'), false);
-    assert.equal(body.includes('"membership":'), false);
-    assert.equal(body.includes('"lease":'), false);
+    assert.equal(body.includes('"membershipHash"'), false);
+    assert.equal(body.includes('"leaseHash"'), false);
+    assert.equal(body.includes('"approvedBy"'), false);
+    assert.equal(body.includes('"expiresAt"'), false);
     const receipt = response.promptContextMaterializationReceipt;
     assert.equal(receipt.familySecurityAwarenessIncluded, true);
     assert.equal(receipt.familySecurityProjectionRef, awareness.familySecurityProjectionRef);

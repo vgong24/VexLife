@@ -1795,17 +1795,24 @@ function exactFamilySecurityAwareness(value, frontier) {
       Object.values(value.effects).some((effect) => effect !== false)) {
     familyPromptFailure('Family security awareness must remain effect-free');
   }
-  const forbidden = new Set(['membership', 'lease', 'devicePublicKey']);
+  const rawOnlyKeys = new Set([
+    'devicePublicKey', 'membershipHash', 'leaseHash', 'approvedBy', 'approvedAt',
+    'issuedAt', 'expiresAt'
+  ]);
   const inspect = (candidate) => {
     if (!candidate || typeof candidate !== 'object') return false;
     if (Array.isArray(candidate)) return candidate.some(inspect);
     for (const [key, nested] of Object.entries(candidate)) {
-      if (forbidden.has(key)) return true;
+      if (rawOnlyKeys.has(key)) return true;
+      if ((key === 'membership' || key === 'lease') &&
+          nested && typeof nested === 'object') return true;
       if (inspect(nested)) return true;
     }
     return false;
   };
-  if (inspect(value)) familyPromptFailure('Family security awareness contains raw authority material');
+  if (inspect(value.sessionSecurity)) {
+    familyPromptFailure('Family security awareness contains raw authority material');
+  }
   return Object.freeze(structuredClone(value));
 }
 
@@ -2037,12 +2044,13 @@ export async function materializeFamilyPromptContext({
     triggerContentHash: current.source.trigger.contentHash,
     requestPrincipalRef: frontier.requestPrincipalRef,
     requestPrincipalBindingRef: frontier.requestPrincipalBindingRef,
-    familySecurityAwarenessIncluded: familySecurityAwareness !== null,
-    familySecurityProjectionRef: familySecurityAwareness?.familySecurityProjectionRef ?? null,
-    familySecurityProjectionFingerprint: familySecurityAwareness?.semanticFingerprint ?? null,
-    familySecurityProviderFrameSha256:
-      familySecurityAwareness === null ? null : contentHash(messages[0]),
-    familySecurityProviderBoundaryCurrentnessVerified: false,
+    ...(familySecurityAwareness === null ? {} : {
+      familySecurityAwarenessIncluded: true,
+      familySecurityProjectionRef: familySecurityAwareness.familySecurityProjectionRef,
+      familySecurityProjectionFingerprint: familySecurityAwareness.semanticFingerprint,
+      familySecurityProviderFrameSha256: contentHash(messages[0]),
+      familySecurityProviderBoundaryCurrentnessVerified: false
+    }),
     selectedSourceBindings,
     providerMessageBindings: familyProviderMessageBindings(messages),
     exactMessagesSha256: contentHash(messages),
@@ -2073,8 +2081,8 @@ export async function materializeFamilyPromptContext({
     frontier: Object.freeze(structuredClone(frontier)),
     canonicalLease,
     familySecurityAwarenessFor,
-    familySecurityProjectionRef: receipt.familySecurityProjectionRef,
-    familySecurityProjectionFingerprint: receipt.familySecurityProjectionFingerprint,
+    familySecurityProjectionRef: receipt.familySecurityProjectionRef ?? null,
+    familySecurityProjectionFingerprint: receipt.familySecurityProjectionFingerprint ?? null,
     exactMessagesSha256: receipt.exactMessagesSha256,
     triggerContentHash: receipt.triggerContentHash
   }));
@@ -2102,10 +2110,19 @@ async function canonicalTrustedFamilyPromptMaterialization(materialization, requ
       receipt.schemaVersion !== FAMILY_PROMPT_MATERIALIZATION_RECEIPT_SCHEMA ||
       receipt.exactMessagesSha256 !== contentHash(messages) ||
       receipt.exactMessagesSha256 !== state.exactMessagesSha256 ||
-      receipt.familySecurityAwarenessIncluded !== (state.familySecurityAwarenessFor !== null) ||
-      receipt.familySecurityProjectionRef !== state.familySecurityProjectionRef ||
-      receipt.familySecurityProjectionFingerprint !== state.familySecurityProjectionFingerprint ||
-      receipt.familySecurityProviderBoundaryCurrentnessVerified !== false ||
+      (state.familySecurityAwarenessFor !== null && (
+        receipt.familySecurityAwarenessIncluded !== true ||
+        receipt.familySecurityProjectionRef !== state.familySecurityProjectionRef ||
+        receipt.familySecurityProjectionFingerprint !== state.familySecurityProjectionFingerprint ||
+        receipt.familySecurityProviderBoundaryCurrentnessVerified !== false
+      )) ||
+      (state.familySecurityAwarenessFor === null && (
+        receipt.familySecurityAwarenessIncluded !== undefined ||
+        receipt.familySecurityProjectionRef !== undefined ||
+        receipt.familySecurityProjectionFingerprint !== undefined ||
+        receipt.familySecurityProviderFrameSha256 !== undefined ||
+        receipt.familySecurityProviderBoundaryCurrentnessVerified !== undefined
+      )) ||
       receipt.providerBoundaryCurrentnessVerified !== false ||
       receipt.providerBoundarySourceBindingsVerified !== false ||
       receipt.privateNonselectedIncluded !== false ||
@@ -2146,7 +2163,9 @@ async function canonicalTrustedFamilyPromptMaterialization(materialization, requ
     ...receiptCore,
     providerMaterializedInputTokenEstimate,
     providerVerifiedAt: current.verifiedAt,
-    familySecurityProviderBoundaryCurrentnessVerified: reboundFamilySecurityAwareness !== null,
+    ...(reboundFamilySecurityAwareness === null ? {} : {
+      familySecurityProviderBoundaryCurrentnessVerified: true
+    }),
     providerBoundaryCurrentnessVerified: true,
     providerBoundarySourceBindingsVerified: true
   };

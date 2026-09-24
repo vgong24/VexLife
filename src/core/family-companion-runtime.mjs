@@ -412,10 +412,12 @@ function deliveryReceipt({
     membershipGenerationAtDelivery,
     promptMaterializationReceiptRef: promptReceipt.receiptRef,
     promptMaterializationReceiptFingerprint: promptReceipt.semanticFingerprint,
-    familySecurityProjectionRef: promptReceipt.familySecurityProjectionRef ?? null,
-    familySecurityProjectionFingerprint: promptReceipt.familySecurityProjectionFingerprint ?? null,
-    familySecurityProviderBoundaryCurrentnessVerified:
-      promptReceipt.familySecurityProviderBoundaryCurrentnessVerified === true,
+    ...(promptReceipt.familySecurityAwarenessIncluded === true ? {
+      familySecurityProjectionRef: promptReceipt.familySecurityProjectionRef,
+      familySecurityProjectionFingerprint: promptReceipt.familySecurityProjectionFingerprint,
+      familySecurityProviderBoundaryCurrentnessVerified:
+        promptReceipt.familySecurityProviderBoundaryCurrentnessVerified === true
+    } : {}),
     promptProviderBoundaryCurrentnessVerified: promptReceipt.providerBoundaryCurrentnessVerified === true,
     promptProviderBoundarySourceBindingsVerified: promptReceipt.providerBoundarySourceBindingsVerified === true,
     modelProvenance: model,
@@ -529,12 +531,12 @@ function exactPausedFamilyRecovery(scheduler, request, identity, responseEvent) 
       receipt.responseEventSha256 !== responseEvent.eventSha256 ||
       receipt.promptMaterializationReceiptRef !== recovery.promptMaterializationReceipt?.receiptRef ||
       receipt.promptMaterializationReceiptFingerprint !== recovery.promptMaterializationReceipt?.semanticFingerprint ||
-      receipt.familySecurityProjectionRef !==
+      (receipt.familySecurityProjectionRef ?? null) !==
         (recovery.promptMaterializationReceipt?.familySecurityProjectionRef ?? null) ||
-      receipt.familySecurityProjectionFingerprint !==
+      (receipt.familySecurityProjectionFingerprint ?? null) !==
         (recovery.promptMaterializationReceipt?.familySecurityProjectionFingerprint ?? null) ||
-      receipt.familySecurityProviderBoundaryCurrentnessVerified !==
-        (recovery.promptMaterializationReceipt?.familySecurityProviderBoundaryCurrentnessVerified === true) ||
+      (receipt.familySecurityProviderBoundaryCurrentnessVerified ?? false) !==
+        (recovery.promptMaterializationReceipt?.familySecurityProviderBoundaryCurrentnessVerified ?? false) ||
       semanticHash(receipt.modelProvenance) !== semanticHash(recovery.modelProvenance)) {
     fail('FAMILY_COMPANION_RECOVERY_CORRUPT', 'paused Family delivery provenance is inconsistent');
   }
