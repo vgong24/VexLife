@@ -2,7 +2,11 @@ import { loadBrowserBundle } from './modules/browser-bundle.js';
 import { createDemoData } from './modules/demo-data.js';
 import { $, $$, compileInterfaceEntries, loadJson } from './modules/dom.js';
 import { createNavigationController } from './modules/navigation-controller.js';
-import { createChatController } from './modules/chat-controller.js';
+import {
+  BROWSER_COMPANION_AVAILABILITY_PATH,
+  createChatController,
+  normalizeBrowserCompanionAvailability
+} from './modules/chat-controller.js';
 import { createFamilyRoomController } from './modules/family-room-controller.js';
 import { createTerrainController } from './modules/terrain-controller.js';
 import { createGuideController, GUIDE_INTENTS } from './modules/guide-controller.js';
@@ -46,6 +50,10 @@ state.view = 'terrain';
 state.contextProjection = null;
 state.workspaceOpen = false;
 state.dataTruthClass = 'CURRENT_SYNTHETIC_REFERENCE';
+let healthCompanionAvailability=null;
+let healthCompanionAvailabilityReadState='UNREQUESTED';
+let healthCompanionAvailabilityFailureCode=null;
+const healthCompanionAvailabilitySnapshot=()=>healthCompanionAvailability?structuredClone(healthCompanionAvailability):null;
 const UX_REFERENCE_PROJECTION='REFERENCE_PROJECTION',UX_EVOLUTION_PROJECTION='EVOLUTION_PROJECTION';
 const UX_EVOLUTION_LIFECYCLE_STATES=new Set(uxEvolutionShellScaffold.evolutionEnablement.acceptedLifecycleStates);
 const uxEvolutionAdapters=new Map();
@@ -175,7 +183,43 @@ function projectVisibleVexIdentity(){
   const visibleToValue=contextRows[3]?.querySelector('strong');
   if(visibleToValue)visibleToValue.textContent=channel.memberKeys.map(visibleRoleLabel).join(' · ');
 }
-function renderHealth(){const frame=navigation.semanticFrame(),evidenceClass=state.dataTruthClass==='CURRENT_SYNTHETIC_REFERENCE'?'STATIC_REFERENCE_SYNTHETIC':'LOCAL_MEMORY_PROJECTION';$('#technicalHealth').textContent=JSON.stringify({healthState:'ATTENTION',evidenceClass,dataTruthClass:state.dataTruthClass,presentationContractRef:rootContract.contractRef,presentationFoundation:'EXACT_E2_7_ROOT_BODY',primaryStageScreenRef:'screen.vexlife.terrain',contextProjection:state.contextProjection,platformRef:'platform.browser',repositoryReceipt:{state:'NOT_RUN',executed:false,currentness:'UNKNOWN'},modelReceipt:{state:'UNAVAILABLE',executed:false,currentness:'UNKNOWN'},currentScreenFrame:frame,fullJourneyCount:navigation.fullJourney().length,rawPointerLogging:false,designTokenRef:designTokens.tokenSetRef},null,2);}
+async function refreshHealthCompanionAvailability(){
+  healthCompanionAvailabilityReadState='LOADING';
+  healthCompanionAvailabilityFailureCode=null;
+  renderHealth();
+  try{
+    const response=await fetch(BROWSER_COMPANION_AVAILABILITY_PATH,{method:'GET',cache:'no-store'});
+    if(!response.ok){
+      healthCompanionAvailabilityFailureCode=`COMPANION_AVAILABILITY_HTTP_${response.status}`;
+      throw new Error(healthCompanionAvailabilityFailureCode);
+    }
+    try{
+      healthCompanionAvailability=normalizeBrowserCompanionAvailability(await response.json());
+    }catch{
+      healthCompanionAvailabilityFailureCode='COMPANION_AVAILABILITY_INVALID';
+      throw new Error(healthCompanionAvailabilityFailureCode);
+    }
+    healthCompanionAvailabilityReadState='CURRENT';
+  }catch{
+    healthCompanionAvailability=null;
+    healthCompanionAvailabilityReadState='UNAVAILABLE';
+    if(!healthCompanionAvailabilityFailureCode)healthCompanionAvailabilityFailureCode='COMPANION_AVAILABILITY_UNAVAILABLE';
+  }
+  renderHealth();
+  return healthCompanionAvailabilitySnapshot();
+}
+async function openHealth(){
+  openContext('health');
+  await refreshHealthCompanionAvailability();
+  return healthCompanionAvailabilitySnapshot();
+}
+function renderHealth(){
+  const frame=navigation.semanticFrame(),evidenceClass=state.dataTruthClass==='CURRENT_SYNTHETIC_REFERENCE'?'STATIC_REFERENCE_SYNTHETIC':'LOCAL_MEMORY_PROJECTION',availability=healthCompanionAvailabilitySnapshot();
+  const modelReceipt=availability
+    ? {state:availability.availabilityState,executed:false,currentness:healthCompanionAvailabilityReadState,bindingState:availability.bindingState,modelRefOrNull:availability.modelRefOrNull,generationRefOrNull:availability.generationRefOrNull,runtimeOwnershipState:availability.runtimeOwnershipState,runtimeState:availability.runtimeState,qualificationState:availability.qualificationState,recoveryClass:availability.recoveryClass,reasonCode:availability.reasonCode,runtimeAdapterRef:availability.runtimeAdapterRef,runtimeObservationRef:availability.runtimeObservationRef}
+    : {state:'UNAVAILABLE',executed:false,currentness:healthCompanionAvailabilityReadState==='UNREQUESTED'?'UNKNOWN':healthCompanionAvailabilityReadState,failureCodeOrNull:healthCompanionAvailabilityFailureCode};
+  $('#technicalHealth').textContent=JSON.stringify({healthState:'ATTENTION',evidenceClass,dataTruthClass:state.dataTruthClass,presentationContractRef:rootContract.contractRef,presentationFoundation:'EXACT_E2_7_ROOT_BODY',primaryStageScreenRef:'screen.vexlife.terrain',contextProjection:state.contextProjection,platformRef:'platform.browser',repositoryReceipt:{state:'NOT_RUN',executed:false,currentness:'UNKNOWN'},modelReceipt,companionAvailability:availability,companionAvailabilityReadState:healthCompanionAvailabilityReadState,companionAvailabilityFailureCodeOrNull:healthCompanionAvailabilityFailureCode,currentScreenFrame:frame,fullJourneyCount:navigation.fullJourney().length,rawPointerLogging:false,designTokenRef:designTokens.tokenSetRef},null,2);
+}
 function setWorkspaceOpen(open){state.workspaceOpen=Boolean(open);$('#projectRail').open=state.workspaceOpen;$('#projectRail').setAttribute('aria-hidden',String(!state.workspaceOpen));if(state.workspaceOpen)guide?.avoidDeclaredControls();}
 function openContext(context,nodeRef=`element.nav.${context}`){navigation.openContext(context,nodeRef,'action.view.select');projectFrame();}
 function returnToTerrain(nodeRef='element.nav.terrain',actionRef='action.view.select'){if(state.contextProjection==='living-journal')livingJournal?.close();if(state.contextProjection==='relationships')relationships?.close();navigation.returnToPrimaryStage(nodeRef,actionRef);setWorkspaceOpen(false);projectFrame();}
@@ -272,7 +316,7 @@ $('#terrainFullJourneyToggle').addEventListener('click',()=>terrain.openJourney(
 $('#surfaceMenuButton').addEventListener('click',(event)=>{event.stopPropagation();const open=$('#surfaceMenu').hidden;$('#surfaceMenu').hidden=!open;$('#surfaceMenuButton').setAttribute('aria-expanded',String(open));});
 const openLivingJournal=async({loadMemory=true}={})=>{restoreLivingJournalPresentDefault();livingJournal.open({selectedNodeRef:state.selectedNodeRef});navigation.openContext('living-journal','element.living-journal.open','action.living-journal.open');projectFrame();if(loadMemory){await loadLivingJournalMemory();projectFrame();}return livingJournal.snapshot();};
 $('#openConversation').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.conversation',()=>openContext('chat'));toggleSurfaceMenu(false);});
-$('#openHealth').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.health',()=>openContext('health'));toggleSurfaceMenu(false);});
+$('#openHealth').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.health',()=>void openHealth());toggleSurfaceMenu(false);});
 $('#openLivingJournal').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.living-journal',()=>void openLivingJournal());toggleSurfaceMenu(false);});
 $('#openWorkspace').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.workspace',()=>{openContext('chat');setWorkspaceOpen(true)});toggleSurfaceMenu(false);});
 $('#uxProjectionSelect').addEventListener('change',event=>{void setUxProjection(event.currentTarget.value)});
@@ -283,14 +327,14 @@ $('#livingJournalWalkthroughShow').addEventListener('click',()=>patientZeroWalkt
 $('#contextWorkspaceDock').addEventListener('change',(event)=>setContextWorkspaceDock(event.currentTarget.value));$('#contextWorkspaceSplit').addEventListener('change',(event)=>setContextWorkspaceSplitFocus(event.currentTarget.checked));$('#contextWorkspaceReset').addEventListener('click',resetContextWorkspaceLayout);$$('[data-context-workspace-resize-corner][data-node-ref^="element.context-workspace.resize."]').forEach((handle)=>{handle.addEventListener('pointerdown',beginContextWorkspaceResize);handle.addEventListener('keydown',keyboardContextWorkspaceResize)});globalThis.addEventListener('resize',applyContextWorkspaceLayout);
 $('#languageSelect').addEventListener('change',(event)=>{state.language=event.target.value;localStorage.setItem('vexlife.language',state.language);navigation.navigate('element.language.selector',{},'action.language.select');applyLocalization();});$('#architectureButton').addEventListener('click',()=>{guide.setOpen(true);guide.askIntent(GUIDE_INTENTS.ARCHITECTURE);});
 document.addEventListener('vexlife:open-context',(event)=>openContext(event.detail?.context==='health'?'health':'chat'));
-$$('[data-terrain-context]').forEach((button)=>button.addEventListener('click',()=>{const action=button.dataset.terrainContext;if(action==='center')terrain.centerOn();else if(action==='projection')terrain.cycleProjection();else if(action==='workspace')terrain.toggleWorkspace();else if(action==='chat')openContext('chat');else if(action==='health')openContext('health');closeTerrainContext();}));
+$$('[data-terrain-context]').forEach((button)=>button.addEventListener('click',()=>{const action=button.dataset.terrainContext;if(action==='center')terrain.centerOn();else if(action==='projection')terrain.cycleProjection();else if(action==='workspace')terrain.toggleWorkspace();else if(action==='chat')openContext('chat');else if(action==='health')void openHealth();closeTerrainContext();}));
 document.addEventListener('pointerdown',(event)=>{if(!event.target.closest('#surfaceMenu,#surfaceMenuButton'))toggleSurfaceMenu(false);if(!event.target.closest('#terrainContext'))closeTerrainContext();});
 globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;if(!$('#terrainContext').hidden)closeTerrainContext();else if(!$('#surfaceMenu').hidden)toggleSurfaceMenu(false);else if(state.contextProjection)returnToTerrain('element.nav.terrain','action.navigation.back');else if($('#terrainJourneyDrawer').getAttribute('aria-hidden')!=='true')terrain.closeJourney();else terrain.up();});globalThis.addEventListener('popstate',()=>navigation.back());
 
 chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();navigation.enableBrowserHistory();renderLivingJournalArchiveControls();applyLocalization();guide.setOpen(state.guideOpen);guide.addMessage('guide',{contentRef:'guide.intro'});projectFrame();
 void familyRoom.refresh();
 
-globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,uxProjectionShell};
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,uxProjectionShell};
 if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('./integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}
 
 // [VXG RealForever]
