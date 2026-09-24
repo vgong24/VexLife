@@ -164,6 +164,30 @@ function readCompanionAvailabilityRegistry(sourceRoot) {
   }
 }
 
+function companionAvailabilityFailurePayload(error) {
+  const typed = error instanceof BrowserCompanionBridgeError
+    ? error
+    : new BrowserCompanionBridgeError(
+      'COMPANION_AVAILABILITY_FAILED',
+      'Companion availability failed safely',
+      500
+    );
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-companion-availability-failure/v1',
+    state: 'HELD',
+    truthClass: 'CURRENT_LOCAL_AVAILABILITY_FAILURE',
+    failureCode: typed.code,
+    message: typed.message,
+    effects: Object.freeze({
+      runtimeEffectPerformed: false,
+      processStartStopPerformed: false,
+      modelIdentityMutationPerformed: false,
+      homeMutationPerformed: false,
+      memoryMutationPerformed: false
+    })
+  });
+}
+
 export function createServerOwnedCompanionAvailabilityResolver({
   sourceRoot = root,
   resolveCompanionBinding = null,
@@ -1183,7 +1207,7 @@ export function createVexLifeBrowserServer({
               'Companion availability failed safely',
               500
             );
-          sendJson(response, typed.httpStatus, browserCompanionFailurePayload(typed));
+          sendJson(response, typed.httpStatus, companionAvailabilityFailurePayload(typed));
         }
         return;
       }
