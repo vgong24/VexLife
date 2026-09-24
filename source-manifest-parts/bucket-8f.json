@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 9315,
       "sha256": "25d23bd1dfd0902c5742a3977f24a0184727d523930df70d138764d9d5e77841"
+    },
+    {
+      "path": "test/browser-companion-availability-http-route.test.mjs",
+      "mode": "100644",
+      "bytes": 7535,
+      "sha256": "912d9f0a67c14076b1fcf5d2072280cd24f6bd1f67765426d45d3a0cd692a7cb"
     }
   ]
 }
