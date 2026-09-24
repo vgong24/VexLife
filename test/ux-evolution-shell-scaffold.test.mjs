@@ -52,6 +52,11 @@ test('shell owns one reusable active-surface frame and semantic close remains de
   assert.match(css,/data-evolution-surface-active="true"/);
 });
 
+test('shell scaffold preserves accessibility margin for existing adaptation controls',()=>{
+  assert.match(css,/\\.e28-adaptation-why>summary\\{[^}]*min-height:48px/);
+  assert.match(css,/#terrainAdaptationUndo\\{min-height:48px\\}\\.e28-adaptation-preference\\{min-height:48px\\}/);
+});
+
 test('current main truthfully holds all Evolution menu surfaces until adapters/migrations are current',()=>{
   for(const surface of contract.surfaceInventory){
     const record=registry.migrationRecords.find(x=>x.semanticRef===surface.semanticRef);

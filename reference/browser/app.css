@@ -55,8 +55,8 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
 .e28-adaptation-state{margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;min-height:28px;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font:700 8px var(--mono);letter-spacing:.05em;color:var(--muted);background:var(--raised)}
 .e28-adaptation-state[data-adaptation-state="PINNED"]{border-color:var(--warn);color:var(--text)}.e28-adaptation-state[data-adaptation-state="UNDONE"]{border-color:var(--info);color:var(--text)}.e28-adaptation-state[data-adaptation-state="ADAPTATION_OFF"]{opacity:.78}
 .e28-adaptation-menu{border-top:1px solid var(--line);margin-top:6px;padding-top:6px}.e28-adaptation-menu>strong{padding:5px 7px}
-.e28-adaptation-why{border:1px solid var(--line);border-radius:9px;margin:4px 0;background:var(--raised)}.e28-adaptation-why>summary{list-style:none;display:flex;align-items:center;min-height:44px;padding:8px 9px;font-size:10px;cursor:pointer}.e28-adaptation-why>summary::-webkit-details-marker{display:none}.e28-adaptation-why>summary::after{content:'+';margin-left:auto}.e28-adaptation-why[open]>summary::after{content:'−'}
-.e28-adaptation-why p{margin:0;padding:0 9px 9px;font-size:9px;line-height:1.4;color:var(--muted)}#terrainAdaptationUndo{min-height:44px}.e28-adaptation-preference{min-height:44px}
+.e28-adaptation-why{border:1px solid var(--line);border-radius:9px;margin:4px 0;background:var(--raised)}.e28-adaptation-why>summary{list-style:none;display:flex;align-items:center;min-height:48px;padding:8px 9px;font-size:10px;cursor:pointer}.e28-adaptation-why>summary::-webkit-details-marker{display:none}.e28-adaptation-why>summary::after{content:'+';margin-left:auto}.e28-adaptation-why[open]>summary::after{content:'−'}
+.e28-adaptation-why p{margin:0;padding:0 9px 9px;font-size:9px;line-height:1.4;color:var(--muted)}#terrainAdaptationUndo{min-height:48px}.e28-adaptation-preference{min-height:48px}
 @media(prefers-reduced-motion:reduce){.e28-adaptation-state,.e28-adaptation-menu,.e28-adaptation-why{transition:none!important;animation:none!important}}
 
 /* E2.8 Q2 mobile-native Terrain projection grammar */
