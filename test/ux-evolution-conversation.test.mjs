@@ -40,11 +40,11 @@ const HELD_SECURITY_STATUS=Object.freeze({
   effectAuthorityGranted:false
 });
 
-function fixture({availabilityState='READY',group=false,securityStatus=CURRENT_SECURITY_STATUS}={}){
+function fixture({availabilityState='READY',group=false,family=false,securityStatus=CURRENT_SECURITY_STATUS}={}){
   const project={projectRef:'project.self-development',stringRef:'project.self-development.name'};
   const thread={threadRef:'thread.self-development.open-conversation',stringRef:'thread.open-conversation.name'};
   const direct={projectRef:project.projectRef,threadRef:thread.threadRef,channelRef:'channel.self-development.companion',labelRef:'channel.companion.name',kind:'DIRECT',roleKey:'companion',memberKeys:['victor','companion']};
-  const groupChannel={projectRef:project.projectRef,threadRef:thread.threadRef,channelRef:'channel.self-development.group',labelRef:'channel.group.name',kind:'GROUP',roleKey:'guide',memberKeys:['victor','companion','guide']};
+  const groupChannel={projectRef:project.projectRef,threadRef:thread.threadRef,channelRef:'channel.self-development.group',labelRef:'channel.group.name',kind:'GROUP',roleKey:'guide',memberKeys:['victor','companion','guide'],familyRoomProjection:family};
   const current=group?groupChannel:direct;
   const channels=[direct,groupChannel];
   const roles={victor:{actorRef:'person.victor-gong',label:'Victor'},companion:{actorRef:'role.vex.companion',label:'Vex Companion'},guide:{actorRef:'role.vex.guide',label:'Vex Guide'}};
@@ -93,13 +93,18 @@ test('group semantics remain available without dominating ordinary direct conver
   assert.equal(direct.audience.length,2);
   assert.equal(group.channelKind,'GROUP');
   assert.deepEqual(group.audience.map((item)=>item.actorRef),['person.victor-gong','role.vex.companion','role.vex.guide']);
-  assert.deepEqual(group.familySecurityStatus,CURRENT_SECURITY_STATUS);
-  assert.equal(group.familySecurityStatus.roleCanAct,false);
-  assert.equal(group.familySecurityStatus.effectAuthorityGranted,false);
+  assert.equal(group.familySecurityStatus,null);
 });
 
-test('Family security remains a group-only presentation input and never gates Conversation availability',()=>{
-  const group=projectConversationEvolutionState(fixture({group:true,securityStatus:HELD_SECURITY_STATUS}));
+test('Family-marked group consumes the canonical browser-safe security status without acquiring authority',()=>{
+  const family=projectConversationEvolutionState(fixture({group:true,family:true}));
+  assert.deepEqual(family.familySecurityStatus,CURRENT_SECURITY_STATUS);
+  assert.equal(family.familySecurityStatus.roleCanAct,false);
+  assert.equal(family.familySecurityStatus.effectAuthorityGranted,false);
+});
+
+test('Family security remains a presentation input and never gates Conversation availability',()=>{
+  const group=projectConversationEvolutionState(fixture({group:true,family:true,securityStatus:HELD_SECURITY_STATUS}));
   assert.equal(group.familySecurityStatus.state,'HELD_UNAVAILABLE');
   assert.equal(group.familySecurityStatus.attackEstablished,'UNKNOWN');
   assert.equal(group.familySecurityStatus.roleCanAct,false);

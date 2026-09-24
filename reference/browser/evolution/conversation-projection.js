@@ -34,7 +34,7 @@ function clone(value) {
 }
 
 function canonicalFamilySecurityStatus(binding, channel) {
-  if (channel.kind !== 'GROUP') return null;
+  if (channel.kind !== 'GROUP' || channel.familyRoomProjection !== true) return null;
   const familyRoom = binding.familyRoom ?? globalThis.__VEXLIFE_APP__?.familyRoom ?? null;
   if (!familyRoom || typeof familyRoom.snapshot !== 'function') return null;
   const snapshot = familyRoom.snapshot();
