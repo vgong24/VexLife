@@ -1054,8 +1054,6 @@ export function createChatController({ state, projects, roles, channels, message
     if (group) selectChannel(group, 'element.channel.group');
   });
 
-  if (currentChannel()?.roleKey === 'companion') void refreshCompanionAvailability();
-
   return {
     currentProject,
     currentThread,

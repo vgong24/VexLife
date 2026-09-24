@@ -1234,7 +1234,6 @@ export function installVexBirthLab() {
     }
   });
 
-  controller.refreshStatus();
   return controller;
 }
 
