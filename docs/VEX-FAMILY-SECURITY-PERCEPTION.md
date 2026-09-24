@@ -372,3 +372,48 @@ VFS-01 does not modify the Family Companion runtime, Family browser server, gene
 VFS-02 must freshly source-place the then-current Companion context producer seam rather than pre-binding today's plausible `FamilyCompanionRuntime.contextInputFor(...)` hook.
 
 <!-- [VEX-FAMILY][SECURITY][VFS01][EFFECT-FREE-AWARENESS][VXG RealForever] -->
+
+## VFS-03A visible Family security status
+
+VFS-03A projects a compact, consumer-only security status inside the accepted Family-room presentation. It consumes the exact VFS-01 projection shape but does not expose that full projection to the browser.
+
+```text
+source-managed Family security projection
+  -> server validates exact schema/fingerprint/current Family binding
+  -> server rejects authority/effect/attack inflation and raw authority material
+  -> compact browser-safe securityStatus
+  -> existing #familyRoomProjection
+```
+
+The compact status contains only:
+
+```text
+state=CURRENT | HELD_UNAVAILABLE
+projectionRefOrNull
+projectionFingerprintOrNull
+sessionCurrent=true | UNKNOWN
+missingCount
+unknownCount
+withheldCount
+telemetryGapCount
+incidentCoverageStateOrNull
+attackEstablished=false | UNKNOWN
+roleCanAct=false
+effectAuthorityGranted=false
+```
+
+A missing resolver, stale/mismatched projection, forged fingerprint, authority inflation, raw membership/lease material, or attack-attribution inflation holds only the visible security status. It does not fabricate a Family failure or disable independent human Family chat/work/lifecycle truth.
+
+Permanent law:
+
+```text
+VISIBLE_SECURITY_STATUS != SECURITY_AUTHORITY
+SECURITY_INFORMATION_CURRENT != EVERYTHING_IS_SAFE
+MISSING_OR_UNKNOWN != SAFE
+ROLE_CAN_PERCEIVE != ROLE_CAN_ACT
+COMPANION_AVAILABILITY != SECURITY_STATUS
+VEX_EXPLANATION != EFFECT_AUTHORITY
+```
+
+Human copy distinguishes current, limited and unavailable information and always states that the projection is scoped evidence rather than a safety certification. The browser does not create a security producer, a second Family room, a second Vex vessel, or a universal SAFE/CLEAR enum.
+
