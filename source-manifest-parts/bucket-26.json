@@ -9,6 +9,12 @@
       "sha256": "c1923db71d440bfd87852df1890a37e371d2d1f1cf50ccdd1456d6fd4c86a13e"
     },
     {
+      "path": "reference/browser/evolution/conversation-projection.js",
+      "mode": "100644",
+      "bytes": 19423,
+      "sha256": "1dbdea8b042962db5f18fbce1383c05113b6c4a5ab686950b53cede86735aa64"
+    },
+    {
       "path": "test/model-turn-formation-atlas.test.mjs",
       "mode": "100644",
       "bytes": 4720,

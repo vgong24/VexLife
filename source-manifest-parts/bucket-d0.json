@@ -9,6 +9,12 @@
       "sha256": "9c50323491d04b1de08c375999b05836653f1ff78a4d46542355cb77642db5e7"
     },
     {
+      "path": "reference/browser/evolution/conversation.css",
+      "mode": "100644",
+      "bytes": 5405,
+      "sha256": "28bb5b6383342125edb049c861168dfaf2764600f4e626ba3a141f370fcf5b2e"
+    },
+    {
       "path": "scripts/intent-plan.mjs",
       "mode": "100644",
       "bytes": 2303,
