@@ -526,7 +526,6 @@ export function createChatController({ state, projects, roles, channels, message
     renderMessages(true);
     updateComposer();
     renderContext();
-    if (channel.roleKey === 'companion') void refreshCompanionAvailability();
   }
 
   function renderPresence() {
