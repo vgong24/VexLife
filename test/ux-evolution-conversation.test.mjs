@@ -11,7 +11,36 @@ const source=fs.readFileSync(new URL('../reference/browser/evolution/conversatio
 const css=fs.readFileSync(new URL('../reference/browser/evolution/conversation.css',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../reference/browser/app.js',import.meta.url),'utf8');
 
-function fixture({availabilityState='READY',group=false}={}){
+const CURRENT_SECURITY_STATUS=Object.freeze({
+  state:'CURRENT',
+  projectionRefOrNull:'projection.family-security.current',
+  projectionFingerprintOrNull:'a'.repeat(64),
+  sessionCurrent:true,
+  missingCount:1,
+  unknownCount:0,
+  withheldCount:0,
+  telemetryGapCount:0,
+  incidentCoverageStateOrNull:'SCOPED_CURRENT',
+  attackEstablished:false,
+  roleCanAct:false,
+  effectAuthorityGranted:false
+});
+const HELD_SECURITY_STATUS=Object.freeze({
+  state:'HELD_UNAVAILABLE',
+  projectionRefOrNull:null,
+  projectionFingerprintOrNull:null,
+  sessionCurrent:'UNKNOWN',
+  missingCount:null,
+  unknownCount:null,
+  withheldCount:null,
+  telemetryGapCount:null,
+  incidentCoverageStateOrNull:null,
+  attackEstablished:'UNKNOWN',
+  roleCanAct:false,
+  effectAuthorityGranted:false
+});
+
+function fixture({availabilityState='READY',group=false,securityStatus=CURRENT_SECURITY_STATUS}={}){
   const project={projectRef:'project.self-development',stringRef:'project.self-development.name'};
   const thread={threadRef:'thread.self-development.open-conversation',stringRef:'thread.open-conversation.name'};
   const direct={projectRef:project.projectRef,threadRef:thread.threadRef,channelRef:'channel.self-development.companion',labelRef:'channel.companion.name',kind:'DIRECT',roleKey:'companion',memberKeys:['victor','companion']};
@@ -28,7 +57,8 @@ function fixture({availabilityState='READY',group=false}={}){
   const state={projectRef:project.projectRef,threadRef:thread.threadRef,channelRef:current.channelRef,selectedNodeRef:'element.thread.open-conversation',vexAvailability:'AVAILABLE',unsentLocalDraft:group?null:{state:'UNSENT_LOCAL_DRAFT',channelRef:direct.channelRef,content:'still local',queued:false,accepted:false}};
   const availability={availabilityState,bindingState:'BOUND',recoveryClass:availabilityState==='RECOVERABLE'?'SAFE_REENTRY_AVAILABLE':'NONE',modelRefOrNull:'model.local.current',generationRefOrNull:'generation.m4',runtimeAdapterRef:'runtime.adapter.local'};
   const chat={currentProject:()=>project,currentThread:()=>thread,currentChannel:()=>current,channelsForThread:()=>channels,roleLabel:(key)=>roles[key]?.label??key,selectChannel:()=>{},companionAvailabilityState:()=>availabilityState,companionAvailability:()=>structuredClone(availability),companionRecoveryAvailable:()=>availabilityState==='RECOVERABLE'};
-  return {state,chat,roles,messages,conversationKey,t};
+  const familyRoom={snapshot:()=>({securityStatus:structuredClone(securityStatus)})};
+  return {state,chat,roles,messages,conversationKey,t,familyRoom};
 }
 
 test('Conversation projection preserves canonical direct addressing and unsent draft truth',()=>{
@@ -43,6 +73,7 @@ test('Conversation projection preserves canonical direct addressing and unsent d
   assert.deepEqual(projected.messages[0].recipients.map((item)=>item.actorRef),['role.vex.companion']);
   assert.equal(projected.draft.state,'UNSENT_LOCAL_DRAFT');
   assert.equal(projected.draft.content,'still local');
+  assert.equal(projected.familySecurityStatus,null);
 });
 
 test('RECOVERABLE remains recovery truth and never becomes READY turn authority',()=>{
@@ -62,6 +93,19 @@ test('group semantics remain available without dominating ordinary direct conver
   assert.equal(direct.audience.length,2);
   assert.equal(group.channelKind,'GROUP');
   assert.deepEqual(group.audience.map((item)=>item.actorRef),['person.victor-gong','role.vex.companion','role.vex.guide']);
+  assert.deepEqual(group.familySecurityStatus,CURRENT_SECURITY_STATUS);
+  assert.equal(group.familySecurityStatus.roleCanAct,false);
+  assert.equal(group.familySecurityStatus.effectAuthorityGranted,false);
+});
+
+test('Family security remains a group-only presentation input and never gates Conversation availability',()=>{
+  const group=projectConversationEvolutionState(fixture({group:true,securityStatus:HELD_SECURITY_STATUS}));
+  assert.equal(group.familySecurityStatus.state,'HELD_UNAVAILABLE');
+  assert.equal(group.familySecurityStatus.attackEstablished,'UNKNOWN');
+  assert.equal(group.familySecurityStatus.roleCanAct,false);
+  assert.equal(group.familySecurityStatus.effectAuthorityGranted,false);
+  assert.equal(group.availability.state,'AVAILABLE');
+  assert.equal(group.availability.readyForRealTurn,true);
 });
 
 test('adapter stays a presentation/delegation layer with no second runtime, recovery, state or close owner',()=>{
@@ -70,6 +114,9 @@ test('adapter stays a presentation/delegation layer with no second runtime, reco
   assert.match(source,/semanticOwnerRef:\s*'module\.vexlife\.core\.conversation'/);
   assert.match(source,/interactionOwnerRef:\s*'module\.vexlife\.browser\.chat-controller'/);
   assert.match(source,/binding\.chat\.selectChannel/);
+  assert.match(source,/binding\.familyRoom \?\? globalThis\.__VEXLIFE_APP__\?\.familyRoom/);
+  assert.match(source,/family-room\.security\.(?:current|limited|unavailable|gaps|scope)/);
+  assert.doesNotMatch(source,/familySecurityStatus.*readyForRealTurn|readyForRealTurn.*familySecurityStatus/);
   assert.match(source,/#composer/);
   assert.match(source,/#messageInput/);
   assert.deepEqual(Object.keys(createConversationEvolutionAdapter(fixture())),['mount']);
@@ -87,6 +134,7 @@ test('presentation makes feed/composer primary and context secondary with compac
   assert.match(css,/conversation-evolution__feed/);
   assert.match(css,/conversation-evolution__composer/);
   assert.match(css,/conversation-evolution__context/);
+  assert.match(css,/conversation-evolution__security/);
   assert.match(css,/min-height:44px/);
   assert.match(css,/@media\(max-width:760px\)/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);

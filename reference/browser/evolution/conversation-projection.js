@@ -33,6 +33,14 @@ function clone(value) {
   return value === undefined ? undefined : structuredClone(value);
 }
 
+function canonicalFamilySecurityStatus(binding, channel) {
+  if (channel.kind !== 'GROUP') return null;
+  const familyRoom = binding.familyRoom ?? globalThis.__VEXLIFE_APP__?.familyRoom ?? null;
+  if (!familyRoom || typeof familyRoom.snapshot !== 'function') return null;
+  const snapshot = familyRoom.snapshot();
+  return snapshot?.securityStatus ? clone(snapshot.securityStatus) : null;
+}
+
 function participant(binding, keyOrRef) {
   if (binding.roles[keyOrRef]) {
     return Object.freeze({
@@ -88,6 +96,7 @@ export function projectConversationEvolutionState(input) {
   const availability = companion ? chat.companionAvailability() : null;
   const availabilityState = companion ? chat.companionAvailabilityState() : (state.vexAvailability === 'AVAILABLE' ? 'AVAILABLE' : 'UNAVAILABLE');
   const draft = state.unsentLocalDraft?.channelRef === channel.channelRef ? clone(state.unsentLocalDraft) : null;
+  const familySecurityStatus = canonicalFamilySecurityStatus(binding, channel);
   return Object.freeze({
     schemaVersion: 'vexlife.ux-evolution.conversation-projection/v1',
     surfaceRef: CONVERSATION_EVOLUTION_SURFACE_REF,
@@ -124,6 +133,7 @@ export function projectConversationEvolutionState(input) {
       runtimeAdapterRef: availability?.runtimeAdapterRef ?? null
     }),
     draft,
+    familySecurityStatus,
     messages: list.map((message) => projectMessage(binding, channel, message))
   });
 }
@@ -255,6 +265,38 @@ export function createConversationEvolutionAdapter(input) {
         const group = el(document, 'aside', 'conversation-evolution__group');
         group.dataset.groupSemantics = 'CURRENT_CHANNEL_ONLY';
         group.append(el(document, 'strong', null, 'Group audience'), el(document, 'span', null, snapshot.audience.map((item) => item.label).join(' · ')));
+        if (snapshot.familySecurityStatus) {
+          const security = el(document, 'section', 'conversation-evolution__security');
+          const status = snapshot.familySecurityStatus;
+          security.dataset.familySecurityState = status.state;
+          security.dataset.roleCanAct = String(status.roleCanAct);
+          security.dataset.effectAuthorityGranted = String(status.effectAuthorityGranted);
+          const securityLabel = el(document, 'strong', null, binding.t('family-room.security.label'));
+          const securitySummary = el(document, 'span');
+          if (status.state === 'CURRENT') {
+            const limited = status.missingCount + status.unknownCount + status.withheldCount + status.telemetryGapCount > 0;
+            securitySummary.textContent = binding.t(limited ? 'family-room.security.limited' : 'family-room.security.current');
+            if (limited) {
+              security.append(
+                securityLabel,
+                securitySummary,
+                el(document, 'small', null, binding.t('family-room.security.gaps', {
+                  missing: status.missingCount,
+                  unknown: status.unknownCount,
+                  withheld: status.withheldCount,
+                  telemetry: status.telemetryGapCount
+                }))
+              );
+            } else {
+              security.append(securityLabel, securitySummary);
+            }
+          } else {
+            securitySummary.textContent = binding.t('family-room.security.unavailable');
+            security.append(securityLabel, securitySummary);
+          }
+          security.append(el(document, 'small', null, binding.t('family-room.security.scope')));
+          group.append(security);
+        }
         root.append(group);
       }
 
