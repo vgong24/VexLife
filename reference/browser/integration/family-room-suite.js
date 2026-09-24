@@ -29,6 +29,27 @@ export const familyRoomSuite = Object.freeze({
       checks.push('FTE-08 missing generic follow-through truth remains visibly held rather than becoming zero work');
     }
 
+    const securityNode = host.querySelector('[data-family-security-state]');
+    assert(securityNode, 'VFS03-09 Family security status is not rendered inside the existing Family card');
+    assert(securityNode.dataset.familySecurityState === snapshot.securityStatus.state,
+      'VFS03-09 Family security DOM state does not match compact server truth');
+    assert(snapshot.securityStatus.roleCanAct === false && snapshot.securityStatus.effectAuthorityGranted === false,
+      'VFS03-04 visible security status inflated effect authority');
+    if (snapshot.securityStatus.state === 'CURRENT') {
+      for (const key of ['missingCount','unknownCount','withheldCount','telemetryGapCount']) {
+        assert(Number.isSafeInteger(snapshot.securityStatus[key]) && snapshot.securityStatus[key] >= 0,
+          'VFS03-05 compact Family security gap count is invalid');
+      }
+      assert(snapshot.securityStatus.attackEstablished === false,
+        'VFS03-06 visible Family security status invented attack attribution');
+    } else {
+      assert(snapshot.securityStatus.state === 'HELD_UNAVAILABLE',
+        'VFS03-00 unavailable Family security truth did not fail closed visibly');
+    }
+    assert(!/\b(?:SAFE|CLEAR)\b/u.test(securityNode.textContent),
+      'VFS03-08 Family security UI rendered universal SAFE/CLEAR assurance');
+    checks.push('VFS03-00/04/05/06/08/09 visible Family security status stays compact, fail-closed and non-authoritative');
+
     if (snapshot.state === 'HELD_UNAVAILABLE') {
       assert(app.familyRoom.roomCount() === 0, 'Held Family room fabricated a live channel');
       assert(snapshot.truthClass === 'HELD_UNAVAILABLE', 'Held Family projection did not preserve its explicit held truth class');
