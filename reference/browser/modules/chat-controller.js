@@ -18,6 +18,95 @@ const THREAD_NODE = {
   'thread.root-hub.welcome': 'element.thread.root-welcome'
 };
 
+export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
+
+const BROWSER_COMPANION_AVAILABILITY_STATES = new Set([
+  'READY',
+  'STARTING',
+  'RECOVERABLE',
+  'ACTION_REQUIRED',
+  'UNAVAILABLE',
+  'HELD'
+]);
+const BROWSER_COMPANION_AVAILABILITY_AUTHORITY_FIELDS = Object.freeze([
+  'effectAuthorityGranted',
+  'rendererAuthorityGranted',
+  'modelIdentityAuthorityGranted',
+  'processAuthorityGranted',
+  'conversationAuthorityGranted'
+]);
+
+function availabilityNonempty(value) {
+  return typeof value === 'string' && value.length > 0;
+}
+
+export function normalizeBrowserCompanionAvailability(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('Companion availability must be one object');
+  }
+  if (
+    value.schemaVersion !== 'vexlife.companion-availability/v1'
+    || value.truthClass !== 'SOURCE_BOUND_COMPANION_AVAILABILITY'
+    || !BROWSER_COMPANION_AVAILABILITY_STATES.has(value.availabilityState)
+  ) {
+    throw new TypeError('Companion availability schema/truth/state is invalid');
+  }
+  for (const key of [
+    'registryRef',
+    'bindingRef',
+    'homeRef',
+    'companionLineageRef',
+    'runtimeAdapterRef',
+    'runtimeObservationRef',
+    'recoveryClass',
+    'reasonCode',
+    'bindingState',
+    'runtimeOwnershipState',
+    'runtimeState',
+    'qualificationState',
+    'projectionRef'
+  ]) {
+    if (!availabilityNonempty(value[key])) throw new TypeError(`Companion availability.${key} is required`);
+  }
+  if (!/^[0-9a-f]{64}$/u.test(value.projectionSha256 ?? '')) {
+    throw new TypeError('Companion availability projectionSha256 is invalid');
+  }
+  for (const key of ['modelRefOrNull', 'generationRefOrNull']) {
+    if (value[key] !== null && !availabilityNonempty(value[key])) {
+      throw new TypeError(`Companion availability.${key} must be null or one ref`);
+    }
+  }
+  if (
+    !Array.isArray(value.sourceRefs)
+    || value.sourceRefs.some((ref) => !availabilityNonempty(ref))
+    || new Set(value.sourceRefs).size !== value.sourceRefs.length
+  ) {
+    throw new TypeError('Companion availability sourceRefs are invalid');
+  }
+  for (const key of BROWSER_COMPANION_AVAILABILITY_AUTHORITY_FIELDS) {
+    if (value[key] !== false) throw new TypeError(`Companion availability.${key} must remain false`);
+  }
+  return Object.freeze(structuredClone(value));
+}
+
+export function browserCompanionAvailabilityAllowsTurn(value) {
+  try {
+    return normalizeBrowserCompanionAvailability(value).availabilityState === 'READY';
+  } catch {
+    return false;
+  }
+}
+
+export function browserCompanionRecoveryAvailable(value) {
+  try {
+    const current = normalizeBrowserCompanionAvailability(value);
+    return current.availabilityState === 'RECOVERABLE'
+      && current.recoveryClass === 'SAFE_REENTRY_AVAILABLE';
+  } catch {
+    return false;
+  }
+}
+
 export function createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation, experienceFoundation, capabilityRegistry }) {
   const currentProject = () => projects.find((project) => project.projectRef === state.projectRef) || projects[0];
   const currentThread = () => currentProject().threads.find((thread) => thread.threadRef === state.threadRef) || currentProject().threads[0];
@@ -31,7 +120,9 @@ export function createChatController({ state, projects, roles, channels, message
     .find((project) => project.projectRef === message.projectRef)
     ?.threads.find((thread) => thread.threadRef === message.threadRef);
   const pendingReplyTimers = new Set();
-  let companionBindingState = 'UNKNOWN';
+  let companionAvailability = null;
+  let companionAvailabilityReadState = 'UNKNOWN';
+  let companionTurnPending = false;
   let pendingSemanticRelayInput = null;
   let pendingSemanticRelayAction = null;
   let pendingSemanticRelayScope = null;
@@ -285,8 +376,15 @@ export function createChatController({ state, projects, roles, channels, message
   }
 
   const isVexAvailable = () => state.vexAvailability === 'AVAILABLE';
+  const companionAvailabilitySnapshot = () => companionAvailability
+    ? structuredClone(companionAvailability)
+    : null;
+  const companionAvailabilityState = () =>
+    companionAvailability?.availabilityState ?? companionAvailabilityReadState;
   const channelIsAvailable = (channel = currentChannel()) =>
-    channel.roleKey === 'companion' ? companionBindingState === 'BOUND' : isVexAvailable();
+    channel.roleKey === 'companion'
+      ? browserCompanionAvailabilityAllowsTurn(companionAvailability) && !companionTurnPending
+      : isVexAvailable();
   const draftForChannel = (channel = currentChannel()) =>
     state.unsentLocalDraft?.channelRef === channel.channelRef ? state.unsentLocalDraft : null;
   const semanticRelayScope = (channel = currentChannel()) => Object.freeze({
@@ -676,8 +774,17 @@ export function createChatController({ state, projects, roles, channels, message
     form.dataset.availabilityState = available ? 'AVAILABLE' : 'UNAVAILABLE';
     form.dataset.commandState = composerCommandState.state;
     form.dataset.submitMode = slashCandidate ? 'COMMAND_CHECK' : 'MESSAGE_SEND';
-    if (channel.roleKey === 'companion') form.dataset.companionBindingState = companionBindingState;
-    else delete form.dataset.companionBindingState;
+    if (channel.roleKey === 'companion') {
+      form.dataset.companionBindingState = companionAvailability?.bindingState ?? 'UNKNOWN';
+      form.dataset.companionAvailabilityState = companionAvailabilityState();
+      form.dataset.companionRecoveryAvailable = String(browserCompanionRecoveryAvailable(companionAvailability));
+      form.dataset.companionTurnPending = String(companionTurnPending);
+    } else {
+      delete form.dataset.companionBindingState;
+      delete form.dataset.companionAvailabilityState;
+      delete form.dataset.companionRecoveryAvailable;
+      delete form.dataset.companionTurnPending;
+    }
     form.dataset.draftState = draft?.state ?? 'NONE';
     input.dataset.draftState = draft?.state ?? 'NONE';
     const submitAvailable = available || slashCandidate;
@@ -747,21 +854,39 @@ export function createChatController({ state, projects, roles, channels, message
   }
 
   async function refreshCompanionAvailability() {
-    if (currentChannel()?.roleKey !== 'companion') return companionBindingState;
+    if (currentChannel()?.roleKey !== 'companion') return companionAvailabilitySnapshot();
+    companionAvailabilityReadState = 'LOADING';
+    updateComposer();
     try {
-      const response = await fetch('/api/v1/companion/status', { method: 'GET', cache: 'no-store' });
-      const body = await response.json();
-      companionBindingState = response.ok && body?.state === 'BOUND' ? 'BOUND' : 'UNAVAILABLE';
+      const response = await fetch(BROWSER_COMPANION_AVAILABILITY_PATH, { method: 'GET', cache: 'no-store' });
+      if (!response.ok) throw new Error(`Companion availability HTTP ${response.status}`);
+      companionAvailability = normalizeBrowserCompanionAvailability(await response.json());
+      companionAvailabilityReadState = companionAvailability.availabilityState;
     } catch {
-      companionBindingState = 'UNAVAILABLE';
+      companionAvailability = null;
+      companionAvailabilityReadState = 'UNAVAILABLE';
     }
     updateComposer();
-    return companionBindingState;
+    return companionAvailabilitySnapshot();
+  }
+
+  function restoreCompanionDraft(channel, content, sourceMessage = null) {
+    const list = listForChannel(channel);
+    if (sourceMessage) {
+      const index = list.findIndex((candidate) => candidate.messageRef === sourceMessage.messageRef);
+      if (index >= 0) list.splice(index, 1);
+    }
+    setLocalDraft(channel, content);
+    if (currentChannel()?.channelRef === channel.channelRef) {
+      const input = $('#messageInput');
+      if (input) input.value = content;
+    }
+    renderMessages();
   }
 
   async function requestRealCompanionReply(channel, content, frameAtSend, { sourceMessage = null, semanticRelayInput = null, semanticRelayAction = null } = {}) {
     if (channel.roleKey !== 'companion') return false;
-    companionBindingState = 'BUSY';
+    companionTurnPending = true;
     updateComposer();
     try {
       const response = await fetch('/api/v1/companion/turn', {
@@ -786,7 +911,6 @@ export function createChatController({ state, projects, roles, channels, message
           const index = list.findIndex((candidate) => candidate.messageRef === sourceMessage.messageRef);
           if (index >= 0) list.splice(index, 1);
         }
-        companionBindingState = 'BOUND';
         setLocalDraft(channel, content);
         const input = $('#messageInput');
         if (input) input.value = content;
@@ -801,8 +925,7 @@ export function createChatController({ state, projects, roles, channels, message
         return false;
       }
       if (!response.ok || body?.state !== 'TURN_COMPLETED' || body?.truthClass !== 'CURRENT_LOCAL_MODEL' || typeof body.content !== 'string' || !body.content) {
-        companionBindingState = 'UNAVAILABLE';
-        updateComposer();
+        restoreCompanionDraft(channel, content, sourceMessage);
         return false;
       }
       const list = listForChannel(channel);
@@ -824,13 +947,13 @@ export function createChatController({ state, projects, roles, channels, message
         const messageKey = keyForChannel(channel);
         state.unread.set(messageKey, (state.unread.get(messageKey) || 0) + 1);
       }
-      companionBindingState = 'BOUND';
-      updateComposer();
       return true;
     } catch {
-      companionBindingState = 'UNAVAILABLE';
-      updateComposer();
+      restoreCompanionDraft(channel, content, sourceMessage);
       return false;
+    } finally {
+      companionTurnPending = false;
+      await refreshCompanionAvailability();
     }
   }
 
@@ -886,7 +1009,9 @@ export function createChatController({ state, projects, roles, channels, message
     }
     resetComposerCommandState();
     const channel = currentChannel();
-    if (channel.roleKey === 'companion' && companionBindingState === 'UNKNOWN') await refreshCompanionAvailability();
+    if (channel.roleKey === 'companion' && !channelIsAvailable(channel) && !companionTurnPending) {
+      await refreshCompanionAvailability();
+    }
     if (!channelIsAvailable(channel)) {
       setLocalDraft(channel, input.value);
       renderComposerTruth();
@@ -953,7 +1078,10 @@ export function createChatController({ state, projects, roles, channels, message
     semanticRelayAttention: () => semanticRelayAttention?.publicAttention && semanticRelayScopeMatches(semanticRelayAttention.scope)
       ? structuredClone(semanticRelayAttention.publicAttention)
       : null,
-    companionBindingState: () => companionBindingState,
+    companionBindingState: () => companionAvailability?.bindingState ?? 'UNKNOWN',
+    companionAvailabilityState,
+    companionAvailability: companionAvailabilitySnapshot,
+    companionRecoveryAvailable: () => browserCompanionRecoveryAvailable(companionAvailability),
     composerCommandState: () => structuredClone(composerCommandState),
     pendingReplyCount: () => pendingReplyTimers.size
   };
