@@ -24,6 +24,8 @@ Living Journal uses this seam to present only #livingJournalOptionsOpen in the a
 
 The layer preserves visible dismissal, Escape dismissal, focus entry/return, viewport confinement, compact sheet/full-screen adaptation, and no semantic navigation on presentation dismissal.
 
+Archive access remains discoverable inside this options layer to preserve Feature Perceptibility and historical truth access without turning archive navigation into permanent primary-reader chrome.
+
 ### Entry feed
 
 #livingJournalSpread identifies component.vexlife.journal.entry-feed and is the single Journal reader scroll owner.
