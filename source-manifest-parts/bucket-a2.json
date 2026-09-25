@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/modules/living-journal-controller.js",
       "mode": "100644",
-      "bytes": 38886,
-      "sha256": "10791ca4aaefc76e1516b6fa34b0854102a18b7723004a8be3762975758a5930"
+      "bytes": 38881,
+      "sha256": "9a851745d6292bd930021119884f9c8006d98e42f100dea1ca0e68374129552d"
     },
     {
       "path": "scripts/scheduler-check.mjs",
