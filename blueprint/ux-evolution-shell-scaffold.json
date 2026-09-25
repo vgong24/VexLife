@@ -122,14 +122,44 @@
       "focusReturnRequired": true,
       "viewportConfinementRequired": true,
       "optionalDeclaredDragHandle": true,
-      "semanticNavigationOnDismiss": false
+      "semanticNavigationOnDismiss": false,
+      "backDismisses": true,
+      "backSemantics": "PRESENTATION_DISMISS_WITHOUT_HISTORY_NAVIGATION"
     },
     "categorizedMenuRows": {
       "sectionClass": "e29-menu-section",
       "rowClass": "e29-menu-row",
       "copyClass": "e29-menu-row-copy",
-      "controlClass": "e29-menu-row-control"
+      "controlClass": "e29-menu-row-control",
+      "valueClass": "e29-menu-row-value",
+      "availabilityClass": "e29-menu-row-availability",
+      "availabilityStates": [
+        "AVAILABLE",
+        "HELD",
+        "UNAVAILABLE",
+        "UNKNOWN"
+      ],
+      "shape": "category -> row(label,current value/control,optional explanation,availability/currentness)"
     },
-    "productSemanticOwnership": false
+    "productSemanticOwnership": false,
+    "availableSpace": {
+      "publisherModule": "reference/browser/modules/transient-presentation-controller.js",
+      "publisherExport": "bindAvailableSpaceContract",
+      "hostElementId": "evolutionActiveSurfaceHost",
+      "bodyElementId": "evolutionActiveSurfaceBody",
+      "cssCustomProperties": [
+        "--uxe-available-inline-size",
+        "--uxe-available-block-size"
+      ],
+      "shellOwns": [
+        "outer-host-insets",
+        "shell-header-chrome"
+      ],
+      "surfaceOwns": [
+        "internal-presentation-grammar",
+        "content-scroll-policy"
+      ],
+      "doubleViewportAssumptionForbidden": true
+    }
   }
 }
