@@ -165,7 +165,7 @@ test('real loopback shared presentation proves desktop and compact focus, dismis
     await page.goto(url+'/reference/browser/',{waitUntil:'networkidle'});
     const initial=await page.evaluate(async({mode})=>{
       const {bindAvailableSpaceContract,createTransientPresentationController}=await import('/reference/browser/modules/transient-presentation-controller.js');
-      const trigger=document.createElement('button');trigger.id='e29-test-trigger';trigger.textContent='Options';
+      const trigger=document.createElement('button');trigger.id='e29-test-trigger';trigger.textContent='Options';trigger.style.cssText='position:fixed;z-index:300;left:4px;top:4px';
       const surface=document.createElement('section');surface.id='e29-test-surface';surface.className='e29-forward-layer';surface.hidden=true;surface.setAttribute('role','dialog');
       surface.innerHTML='<header class="e29-forward-layer-header"><strong>Options</strong><button class="e29-forward-layer-drag-handle" type="button" aria-label="Move">↕</button><button id="e29-test-close" class="e29-forward-layer-dismiss" type="button" aria-label="Close">×</button></header><div class="e29-forward-layer-body"><section class="e29-menu-section"><div class="e29-menu-row" data-availability="AVAILABLE"><div class="e29-menu-row-copy"><strong>Reading</strong><small>Presentation only</small></div><span class="e29-menu-row-value">Original</span><span class="e29-menu-row-availability" aria-label="Availability: AVAILABLE">AVAILABLE</span><button id="e29-test-control" class="e29-menu-row-control" type="button" autofocus>Set</button></div></section></div>';
       document.body.append(trigger,surface);trigger.focus();
