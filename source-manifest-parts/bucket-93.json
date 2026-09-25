@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 2686,
       "sha256": "f8924a20a6b8f2b5a35c0533834e12ac03f69d7a0597df03d658aea052a2066f"
+    },
+    {
+      "path": "reference/browser/shared-presentation.mjs",
+      "mode": "100644",
+      "bytes": 11306,
+      "sha256": "534e637ae70fc5da45b200f89121a8cecf65f4520d0b57dc0d1d62f354fac0c7"
     }
   ]
 }
