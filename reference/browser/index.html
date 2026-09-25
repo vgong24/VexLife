@@ -185,9 +185,9 @@
       <details><summary data-node-ref="element.health.technical-toggle" data-i18n="health.technical">Technical details</summary><pre id="technicalHealth"></pre></details>
     </section>
     <section id="view-living-journal" data-node-ref="screen.vexlife.living-journal" hidden tabindex="-1">
-      <header class="living-journal-heading" data-journal-hierarchy="SECONDARY"><div><small data-i18n="living-journal.eyebrow">LIVING JOURNAL · SYNTHETIC REFERENCE</small><h1 data-i18n="screen.living-journal.title">Living Journal</h1></div><output id="livingJournalTruth" class="living-journal-truth" aria-live="polite"></output></header>
-      <nav class="living-journal-pager" data-journal-hierarchy="SECONDARY" aria-label="Living Journal pages"><button id="livingJournalPrevious" type="button" data-node-ref="element.living-journal.page.previous" data-i18n="living-journal.previous">Previous page</button><output id="livingJournalPageStatus" class="living-journal-page-status" aria-live="polite"></output><button id="livingJournalNext" type="button" data-node-ref="element.living-journal.page.next" data-i18n="living-journal.next">Next page</button></nav>
-      <div id="livingJournalSpread" class="living-journal-spread" data-node-ref="region.living-journal.book" data-journal-hierarchy="PRIMARY" aria-live="polite"></div>
+      <header class="living-journal-heading" data-journal-hierarchy="SECONDARY"><div class="living-journal-title"><small data-i18n="living-journal.eyebrow">LIVING JOURNAL · SYNTHETIC REFERENCE</small><h1 data-i18n="screen.living-journal.title">Living Journal</h1></div><div class="living-journal-heading-actions"><output id="livingJournalTruth" class="living-journal-truth" aria-live="polite"></output><button id="livingJournalOptionsOpen" type="button" aria-controls="livingJournalTools" aria-expanded="false" data-shared-presentation-owner="github.issue.vexlife.703" data-i18n="living-journal.options">Journal options</button></div></header>
+      <nav class="living-journal-pager living-journal-window-controls" data-journal-hierarchy="SECONDARY" aria-label="Living Journal history window"><button id="livingJournalPrevious" type="button" data-node-ref="element.living-journal.page.previous">Newer entries</button><output id="livingJournalPageStatus" class="living-journal-page-status" aria-live="polite"></output><button id="livingJournalNext" type="button" data-node-ref="element.living-journal.page.next">More history</button></nav>
+      <div id="livingJournalSpread" class="living-journal-spread living-journal-entry-feed scroll-scope" data-node-ref="region.living-journal.book" data-journal-hierarchy="PRIMARY" aria-live="polite"></div>
       <footer class="living-journal-footer">
         <div class="living-journal-context-actions" data-journal-hierarchy="CONTEXTUAL">
           <div class="living-journal-doors"><button id="livingJournalSource" type="button" data-node-ref="element.living-journal.source.open" data-journal-hierarchy="INSPECT" data-i18n="living-journal.source" aria-describedby="livingJournalSourceHelp">Inspect source</button><button id="livingJournalRevisit" type="button" data-node-ref="element.living-journal.revisit.open" data-journal-hierarchy="CONTEXTUAL" data-i18n="living-journal.revisit" aria-describedby="livingJournalRevisitHelp">Return to context</button></div>
@@ -205,8 +205,8 @@
             <output id="livingJournalTemporalStatus" class="living-journal-temporal-status" aria-live="polite"></output>
           </div>
         </div>
-        <details id="livingJournalTools" class="living-journal-tools" data-journal-hierarchy="SECONDARY">
-          <summary data-i18n="living-journal.options">Journal options</summary>
+        <section id="livingJournalTools" class="living-journal-tools e29-forward-layer" role="dialog" aria-modal="true" aria-labelledby="livingJournalOptionsTitle" aria-hidden="true" hidden data-shared-presentation-owner="github.issue.vexlife.703">
+          <header class="e29-forward-layer-header"><button id="livingJournalOptionsDrag" class="e29-forward-layer-drag-handle" type="button" aria-label="Move Journal options">↕</button><strong id="livingJournalOptionsTitle" data-i18n="living-journal.options">Journal options</strong><button id="livingJournalOptionsClose" class="e29-forward-layer-dismiss" type="button" aria-label="Close Journal options">×</button></header>
           <div class="living-journal-tools-body">
             <small class="living-journal-options-help" data-i18n="living-journal.options.help">Reference language, walkthrough, and temporary scratch notes.</small>
             <section class="living-journal-tool-group" data-journal-hierarchy="SETTINGS">
@@ -214,20 +214,8 @@
               <div class="living-journal-controls"><label><span data-i18n="living-journal.display-language">Reference language</span><select id="livingJournalDisplayLanguage" data-node-ref="element.living-journal.display-language.select"><option value="ORIGINAL" data-i18n="living-journal.original-language">Original language</option><option value="en">EN</option><option value="ja">日本語</option><option value="zh">中文</option></select></label></div>
               <small class="living-journal-language-help" data-i18n="living-journal.display-language.help">Original follows each entry's authored language. Alternate views are local reference projections and do not change the source.</small>
             </section>
-            <details id="livingJournalMarginalia" class="living-journal-marginalia" data-journal-hierarchy="CONTEXTUAL"><summary data-i18n="living-journal.marginalia">Scratch note (this visit)</summary><div class="living-journal-marginalia-body"><label><span data-i18n="living-journal.marginalia">Scratch note (this visit)</span><textarea id="livingJournalMarginaliaInput" rows="2" data-i18n-placeholder="living-journal.marginalia.placeholder"></textarea></label><button id="livingJournalMarginaliaAdd" type="button" data-node-ref="element.living-journal.marginalia.add-local" data-i18n="living-journal.marginalia.add">Add scratch note</button><div id="livingJournalMarginaliaList" class="living-journal-margin-list" data-note-count="0"></div><small class="living-journal-ephemeral" data-i18n="living-journal.marginalia.ephemeral">Temporary to this Journal visit · not Memory · cleared when the Journal closes</small></div></details>
-            <section id="livingJournalWalkthrough" class="living-journal-walkthrough" data-journal-hierarchy="ONBOARDING" aria-label="Living Journal walkthrough" hidden>
-              <p id="livingJournalWalkthroughOffer" data-i18n="feature-walkthrough.living-journal.offer">A short Living Journal walkthrough is available.</p>
-              <output id="livingJournalWalkthroughStatus" aria-live="polite"></output>
-              <div class="living-journal-walkthrough-actions">
-                <button id="livingJournalWalkthroughShow" type="button" data-node-ref="element.living-journal.walkthrough.show" data-i18n="feature-walkthrough.show-me">Show me</button>
-                <button id="livingJournalWalkthroughLater" type="button" data-node-ref="element.living-journal.walkthrough.later" data-i18n="feature-walkthrough.later">Later</button>
-                <button id="livingJournalWalkthroughSuppress" type="button" data-node-ref="element.living-journal.walkthrough.suppress" data-i18n="feature-walkthrough.dont-introduce-again">Don't introduce this again</button>
-                <button id="livingJournalWalkthroughReplay" type="button" data-node-ref="element.living-journal.walkthrough.replay" data-i18n="feature-walkthrough.replay">Replay walkthrough</button>
-                <button id="livingJournalWalkthroughNextStep" type="button" data-node-ref="element.living-journal.walkthrough.next" data-i18n="feature-walkthrough.next">Next</button>
-              </div>
-            </section>
-          </div>
-        </details>
+            <details id="livingJournalMarginalia" class="living-journal-marginalia" data-journal-hierarchy="CONTEXTUAL"><summary data-i18n="living-journal.marginalia">Scratch note (this visit)</summary><div class="living-journal-marginalia-body"><label><span data-i18n="living-journal.marginalia">Scratch note (this visit)</span><textarea id="livingJournalMarginaliaInput" rows="2" data-i18n-placeholder="living-journal.marginalia.placeholder"></textarea></label><button id="livingJournalMarginaliaAdd" type="button" data-node-ref="element.living-journal.marginalia.add-local" data-i18n="living-journal.marginalia.add">Add scratch note</button><div id="livingJournalMarginaliaList" class="living-journal-margin-list" data-note-count="0"></div><small class="living-journal-ephemeral" data-i18n="living-journal.marginalia.ephemeral">Temporary to this Journal visit · not Memory · cleared when the Journal closes</small></div>
+        </section>
       </footer>
     </section>
   </aside>

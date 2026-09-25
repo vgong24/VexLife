@@ -18,3 +18,14 @@
 #evolutionActiveSurfaceBody .living-journal-evolution-active-surface[data-layout-class="PHONE_ONE_PAGE"] .living-journal-truth{max-width:100%}
 @media(prefers-reduced-motion:reduce){#evolutionActiveSurfaceBody .living-journal-evolution-active-surface,#evolutionActiveSurfaceBody .living-journal-evolution-active-surface *,#evolutionActiveSurfaceBody .living-journal-evolution-active-surface *::before,#evolutionActiveSurfaceBody .living-journal-evolution-active-surface *::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 /* [VXG RealForever] */
+
+/* Journal reader/feed convergence over the canonical Evolution host. */
+#evolutionActiveSurfaceBody:has(#view-living-journal.living-journal-evolution-active-surface){overflow:hidden;padding:0}
+#evolutionActiveSurfaceBody .living-journal-evolution-active-surface{height:100%;min-height:0;overflow:hidden;grid-template-rows:auto auto minmax(0,1fr) auto;align-content:stretch;padding:6px 8px 8px;gap:7px}
+#evolutionActiveSurfaceBody .living-journal-evolution-active-surface .living-journal-entry-feed{min-height:0;overflow-y:auto;overflow-x:hidden;border-radius:18px}
+#evolutionActiveSurfaceBody .living-journal-evolution-active-surface .living-journal-page{min-height:0!important;overflow:visible!important;padding:12px 14px!important;border-radius:14px!important}
+#evolutionActiveSurfaceBody .living-journal-evolution-active-surface .living-journal-heading>div:first-child{display:flex}
+#evolutionActiveSurfaceBody .living-journal-evolution-active-surface .living-journal-heading{justify-content:initial;padding-right:0}
+#evolutionActiveSurfaceBody .living-journal-evolution-active-surface[data-layout-class="COMPACT_READER"]{padding:4px 5px 6px}
+#evolutionActiveSurfaceBody .living-journal-evolution-active-surface[data-layout-class="COMPACT_READER"] .living-journal-page{padding:10px!important}
+
