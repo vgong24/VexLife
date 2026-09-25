@@ -90,15 +90,18 @@ function assertData(data){
 export function createLivingJournalController({state,data,t,navigation,onSourceOpen=()=>{},onRevisit=()=>{}}){
   let journalData=assertData(data);
   const initialData=journalData;
-  const journal={open:false,pageIndex:0,vantage:'HUMAN',displayLanguage:'en',openedNodeRef:null,sourceDoorRef:null,sourceDoorRefs:[],lastSourcePacket:null,lastRevisitPacket:null,marginalia:new Map(),renderCount:0};
-  let scrollTimer=null;
+  const ORIGINAL_LANGUAGE_MODE='ORIGINAL';
+  const WIDE_SPREAD_MIN_INLINE=1120;
+  const PHONE_MAX_INLINE=760;
+  const journal={open:false,pageIndex:0,vantage:'HUMAN',displayLanguage:ORIGINAL_LANGUAGE_MODE,openedNodeRef:null,sourceDoorRef:null,sourceDoorRefs:[],lastSourcePacket:null,lastRevisitPacket:null,marginalia:new Map(),renderCount:0};
   const memoryMode=()=>MEMORY_TRUTHS.has(journalData.truthClass);
   const archiveMode=()=>journalData.truthClass===ARCHIVE_TRUTH;
   const sourceBoundMode=()=>memoryMode()||archiveMode();
   const dataMode=()=>journalData.truthClass===MEMORY_HELD_TRUTH?'MEMORY_HELD':archiveMode()?'ARCHIVE':memoryMode()?'MEMORY':'SYNTHETIC';
   const pageList=()=>archiveMode()?(journalData.selectedDay?.pages??[]):journalData.pages;
   const pageCount=()=>pageList().length;
-  const layoutClass=()=>innerWidth>=1000?'WIDE_SPREAD':innerWidth<=760?'PHONE_ONE_PAGE':'NARROW_ONE_PAGE';
+  const journalInlineSize=()=>{const measured=Number(q('#view-living-journal')?.clientWidth??0);return measured>0?measured:Math.max(0,Number(globalThis.innerWidth)||0);};
+  const layoutClass=()=>{const width=journalInlineSize();return width>=WIDE_SPREAD_MIN_INLINE?'WIDE_SPREAD':width<=PHONE_MAX_INLINE?'PHONE_ONE_PAGE':'NARROW_ONE_PAGE';};
   const reducedMotion=()=>globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches===true;
   const clampIndex=(index)=>pageCount()===0?0:Math.max(0,Math.min(pageCount()-1,Number(index)||0));
   const currentPage=()=>pageCount()===0?null:pageList()[journal.pageIndex]??null;
@@ -111,7 +114,7 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   function projection(page){
     if(archiveMode())return{mode:'ARCHIVE',pageRef:page.pageRef,statementRef:page.statementRef,summary:page.summary,summaryHash:page.summaryHash,sourceRefs:sourceRefsFor(page),dailyStratumRef:page.dailyStratumRef,dailyStratumSha256:page.dailyStratumSha256,dayRef:page.dayRef,dayIndex:page.dayIndex,sourceConversationHeadSha256AtDay:page.sourceConversationHeadSha256AtDay,sourceScoreHeadSha256AtDay:page.sourceScoreHeadSha256AtDay,sourceSemanticAuthorityHeadSha256AtDay:page.sourceSemanticAuthorityHeadSha256AtDay,temporalTruthClass:page.temporalTruthClass,currentNowEvaluated:page.currentNowEvaluated,sourceDescent:journalData.selectedDay?.sourceDescent};
     if(memoryMode())return{mode:'MEMORY',pageRef:page.pageRef,statementRef:page.statementRef,summary:page.summary,summaryHash:page.summaryHash,current:page.current,acceptedForContinuity:page.acceptedForContinuity,consentState:page.consentState,...memoryCurrentnessFor(page),sourceRefs:sourceRefsFor(page),sourceDescent:page.sourceDescent};
-    const language=DISPLAY_LANGUAGES.includes(journal.displayLanguage)?journal.displayLanguage:'en';
+    const language=journal.displayLanguage===ORIGINAL_LANGUAGE_MODE?(DISPLAY_LANGUAGES.includes(page.source.originalLanguage)?page.source.originalLanguage:'en'):(DISPLAY_LANGUAGES.includes(journal.displayLanguage)?journal.displayLanguage:'en');
     const localized=page.display[language]??page.display.en;
     return{mode:'SYNTHETIC',pageRef:page.pageRef,eventRef:page.eventRef,sequence:page.sequence,source:page.source,thenRef:page.thenRef,then:localized.then,later:localized.later,now:localized.now,vantage:journal.vantage,vantageText:localized.vantages[journal.vantage],displayLanguage:language};
   }
@@ -119,7 +122,6 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     if(pageCount()===0)return[];
     const kind=layoutClass(),i=journal.pageIndex;
     if(kind==='WIDE_SPREAD')return[i,...(i+1<pageCount()?[i+1]:[])];
-    if(kind==='PHONE_ONE_PAGE')return[i-1,i,i+1].filter((index)=>index>=0&&index<pageCount());
     return[i];
   }
   function visiblePageCount(){if(pageCount()===0)return 0;return layoutClass()==='WIDE_SPREAD'?Math.min(2,pageCount()-journal.pageIndex):1;}
@@ -178,38 +180,33 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     for(const note of notes){const item=document.createElement('p');item.className='living-journal-margin-note';item.dataset.localOnly='true';item.textContent=note.content;host.append(item);}
     host.dataset.noteCount=String(notes.length);
   }
-  function scrollCurrentIntoView(){
-    if(layoutClass()!=='PHONE_ONE_PAGE'||pageCount()===0)return;
-    const spread=q('#livingJournalSpread'),current=spread?.querySelector(`[data-page-index="${journal.pageIndex}"]`);
-    if(!spread||!current)return;
-    spread.scrollTo({left:current.offsetLeft,behavior:reducedMotion()?'auto':'smooth'});
-  }
   function render(){
     const root=q('#view-living-journal');if(!root)return snapshot();
     const spread=q('#livingJournalSpread'),status=q('#livingJournalPageStatus'),truth=q('#livingJournalTruth'),sourceStatus=q('#livingJournalSourceStatus');
-    root.dataset.layoutClass=layoutClass();root.dataset.truthClass=journalData.truthClass;root.dataset.dataMode=dataMode();root.dataset.open=String(journal.open);
+    const layout=layoutClass(),inlineSize=journalInlineSize();root.dataset.layoutClass=layout;root.dataset.availableInlineSize=String(Math.round(inlineSize));root.dataset.truthClass=journalData.truthClass;root.dataset.dataMode=dataMode();root.dataset.open=String(journal.open);
     if(truth)truth.textContent=archiveMode()?t('living-journal.archive.historical-status',{date:journalData.selectedDay?.calendarDateRef??''}):memoryMode()?journalData.truthClass:t('living-journal.reference-label');
     if(status)status.textContent=t('living-journal.page-status',{current:pageCount()?journal.pageIndex+1:0,total:pageCount()});
     const prev=q('#livingJournalPrevious'),next=q('#livingJournalNext');if(prev)prev.disabled=pageCount()===0||journal.pageIndex===0;if(next)next.disabled=pageCount()===0||journal.pageIndex===pageCount()-1;
     const vantage=q('#livingJournalVantage');if(vantage){vantage.value=journal.vantage;vantage.disabled=sourceBoundMode();vantage.setAttribute('aria-disabled',String(sourceBoundMode()));}
     const language=q('#livingJournalDisplayLanguage');if(language){language.value=journal.displayLanguage;language.disabled=sourceBoundMode();language.setAttribute('aria-disabled',String(sourceBoundMode()));}
-    if(spread){spread.replaceChildren(...renderedIndices().map((index)=>renderPage(index)));spread.dataset.visiblePageCount=String(visiblePageCount());spread.dataset.renderedPageCount=String(renderedIndices().length);requestAnimationFrame(scrollCurrentIntoView);}
+    if(spread){const indices=renderedIndices();spread.replaceChildren(...indices.map((index)=>renderPage(index)));spread.dataset.visiblePageCount=String(visiblePageCount());spread.dataset.renderedPageCount=String(indices.length);}
     if(sourceStatus){const page=currentPage();if(!page||!journal.sourceDoorRef)sourceStatus.textContent='';else if(sourceBoundMode())sourceStatus.textContent=`${t('living-journal.source-status')}: ${journal.sourceDoorRefs.join(' · ')}`;else sourceStatus.textContent=`${t('living-journal.source-status')}: ${page.source.originalLanguage} · ${journal.sourceDoorRef} · ${page.source.originalText}`;}
     renderMarginalia();journal.renderCount+=1;return snapshot();
   }
   function setMarginaliaExpanded(expanded){const panel=q('#livingJournalMarginalia');if(panel)panel.open=Boolean(expanded);}
-  function resetLocalProjectionState(){journal.pageIndex=0;journal.vantage='HUMAN';journal.displayLanguage='en';journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.lastSourcePacket=null;journal.lastRevisitPacket=null;journal.marginalia=new Map();setMarginaliaExpanded(false);}
+  function setToolsExpanded(expanded){const panel=q('#livingJournalTools');if(panel)panel.open=Boolean(expanded);}
+  function resetLocalProjectionState(){journal.pageIndex=0;journal.vantage='HUMAN';journal.displayLanguage=ORIGINAL_LANGUAGE_MODE;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.lastSourcePacket=null;journal.lastRevisitPacket=null;journal.marginalia=new Map();setMarginaliaExpanded(false);setToolsExpanded(false);}
   function setData(nextData){assertData(nextData);journalData=nextData;resetLocalProjectionState();if(journal.open)render();return snapshot();}
   function restoreInitialData(){return setData(initialData);}
   function open({selectedNodeRef=state.selectedNodeRef}={}){
-    journal.open=true;journal.openedNodeRef=selectedNodeRef;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.lastSourcePacket=null;journal.lastRevisitPacket=null;journal.marginalia=new Map();journal.pageIndex=clampIndex(journal.pageIndex);setMarginaliaExpanded(false);render();return snapshot();
+    journal.open=true;journal.openedNodeRef=selectedNodeRef;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.lastSourcePacket=null;journal.lastRevisitPacket=null;journal.marginalia=new Map();journal.pageIndex=clampIndex(journal.pageIndex);setMarginaliaExpanded(false);setToolsExpanded(false);render();return snapshot();
   }
-  function close(){journal.open=false;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.marginalia=new Map();setMarginaliaExpanded(false);renderMarginalia();return snapshot();}
+  function close(){journal.open=false;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.marginalia=new Map();setMarginaliaExpanded(false);setToolsExpanded(false);renderMarginalia();return snapshot();}
   function setPage(index){if(pageCount()===0)return snapshot();const next=clampIndex(index);if(next===journal.pageIndex)return snapshot();journal.pageIndex=next;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];render();return snapshot();}
   const previous=()=>setPage(journal.pageIndex-1);
   const next=()=>setPage(journal.pageIndex+1);
   function selectVantage(value){if(sourceBoundMode())throw new Error('Living Journal source-bound projection has no admitted vantage-text projection');if(!VANTAGES.includes(value))throw new Error(`Unsupported Living Journal vantage: ${value}`);journal.vantage=value;render();return snapshot();}
-  function selectDisplayLanguage(value){if(sourceBoundMode())throw new Error('Living Journal source-bound projection has no admitted display-language projection');if(!DISPLAY_LANGUAGES.includes(value))throw new Error(`Unsupported Living Journal display language: ${value}`);journal.displayLanguage=value;render();return snapshot();}
+  function selectDisplayLanguage(value){if(sourceBoundMode())throw new Error('Living Journal source-bound projection has no admitted display-language projection');if(value!==ORIGINAL_LANGUAGE_MODE&&!DISPLAY_LANGUAGES.includes(value))throw new Error(`Unsupported Living Journal display language: ${value}`);journal.displayLanguage=value;render();return snapshot();}
   function openSource(){
     const page=currentPage();if(!page)return snapshot();
     if(sourceBoundMode()){
@@ -230,7 +227,8 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     const page=currentPage(),synthetic=!sourceBoundMode()&&page;
     const effectSource=sourceBoundMode()?journalData.effects:{};
     const currentness=memoryMode()&&page?memoryCurrentnessFor(page):null;
-    return structuredClone({truthClass:journalData.truthClass,dataMode:dataMode(),open:journal.open,pageIndex:journal.pageIndex,pageRef:page?.pageRef??null,eventRef:synthetic?page.eventRef:null,statementRef:sourceBoundMode()&&page?page.statementRef:null,pageCount:pageCount(),vantage:journal.vantage,displayLanguage:journal.displayLanguage,vantageProjectionAvailable:!sourceBoundMode(),displayLanguageProjectionAvailable:!sourceBoundMode(),openedNodeRef:journal.openedNodeRef,sourceDoorRef:journal.sourceDoorRef,sourceDoorRefs:[...journal.sourceDoorRefs],lastSourcePacket:journal.lastSourcePacket,lastRevisitPacket:journal.lastRevisitPacket,marginaliaCount:page?(journal.marginalia.get(page.pageRef)??[]).length:0,totalMarginaliaCount:[...journal.marginalia.values()].reduce((sum,notes)=>sum+notes.length,0),layoutClass:layoutClass(),visiblePageCount:visiblePageCount(),renderedPageRefs:renderedIndices().map((index)=>pageList()[index].pageRef),reducedMotion:reducedMotion(),realMemoryLoaded:journalData.realMemoryLoaded,realJournalBodyLoaded:journalData.realJournalBodyLoaded,modelCalled:sourceBoundMode()?effectSource.modelCalled===true:journalData.modelCalled,translationCalled:sourceBoundMode()?effectSource.translationCalled===true:journalData.translationCalled,networkCalled:sourceBoundMode()?effectSource.networkCalled===true:journalData.networkCalled,persisted:sourceBoundMode()?effectSource.homeMutated===true||effectSource.memoryMutated===true:journalData.persisted,published:sourceBoundMode()?effectSource.publicationPerformed===true:journalData.published,canonicalThenIdentity:canonicalThenIdentity(),originalLanguage:synthetic?page.source.originalLanguage:null,sourceRef:synthetic?page.source.sourceRef:null,originalText:synthetic?page.source.originalText:null,summary:sourceBoundMode()&&page?page.summary:null,summaryHash:sourceBoundMode()&&page?page.summaryHash:null,archiveTotalCommittedDays:archiveMode()?journalData.totalCommittedDays:null,archiveDayOffset:archiveMode()?journalData.dayOffset:null,archiveNextDayOffset:archiveMode()?journalData.nextDayOffset:null,archiveDays:archiveMode()?structuredClone(journalData.days):[],archiveSelectedDayRef:archiveMode()?journalData.selectedDay?.dayRef??null:null,archiveSelectedDailyStratumSha256:archiveMode()?journalData.selectedDay?.dailyStratumSha256??null:null,archiveCalendarDateRef:archiveMode()?journalData.selectedDay?.calendarDateRef??null:null,archiveTemporalTruthClass:archiveMode()&&journalData.selectedDay?ARCHIVE_DAY_TRUTH:null,archiveCurrentNowEvaluated:archiveMode()&&journalData.selectedDay?false:null,currentDailyStratumRef:currentness?.currentDailyStratumRef??null,currentDailyStratumSha256:currentness?.currentDailyStratumSha256??null,dayRef:currentness?.dayRef??null,dayIndex:currentness?.dayIndex??null,sourceConversationHeadSha256:currentness?.sourceConversationHeadSha256??null,sourceScoreHeadSha256:currentness?.sourceScoreHeadSha256??null,sourceSemanticAuthorityHeadSha256:currentness?.sourceSemanticAuthorityHeadSha256??null,renderCount:journal.renderCount});
+    const projected=synthetic?projection(page):null;
+    return structuredClone({truthClass:journalData.truthClass,dataMode:dataMode(),open:journal.open,pageIndex:journal.pageIndex,pageRef:page?.pageRef??null,eventRef:synthetic?page.eventRef:null,statementRef:sourceBoundMode()&&page?page.statementRef:null,pageCount:pageCount(),vantage:journal.vantage,displayLanguage:journal.displayLanguage,resolvedDisplayLanguage:projected?.displayLanguage??null,availableInlineSize:journalInlineSize(),vantageProjectionAvailable:!sourceBoundMode(),displayLanguageProjectionAvailable:!sourceBoundMode(),openedNodeRef:journal.openedNodeRef,sourceDoorRef:journal.sourceDoorRef,sourceDoorRefs:[...journal.sourceDoorRefs],lastSourcePacket:journal.lastSourcePacket,lastRevisitPacket:journal.lastRevisitPacket,marginaliaCount:page?(journal.marginalia.get(page.pageRef)??[]).length:0,totalMarginaliaCount:[...journal.marginalia.values()].reduce((sum,notes)=>sum+notes.length,0),layoutClass:layoutClass(),visiblePageCount:visiblePageCount(),renderedPageRefs:renderedIndices().map((index)=>pageList()[index].pageRef),reducedMotion:reducedMotion(),realMemoryLoaded:journalData.realMemoryLoaded,realJournalBodyLoaded:journalData.realJournalBodyLoaded,modelCalled:sourceBoundMode()?effectSource.modelCalled===true:journalData.modelCalled,translationCalled:sourceBoundMode()?effectSource.translationCalled===true:journalData.translationCalled,networkCalled:sourceBoundMode()?effectSource.networkCalled===true:journalData.networkCalled,persisted:sourceBoundMode()?effectSource.homeMutated===true||effectSource.memoryMutated===true:journalData.persisted,published:sourceBoundMode()?effectSource.publicationPerformed===true:journalData.published,canonicalThenIdentity:canonicalThenIdentity(),originalLanguage:synthetic?page.source.originalLanguage:null,sourceRef:synthetic?page.source.sourceRef:null,originalText:synthetic?page.source.originalText:null,summary:sourceBoundMode()&&page?page.summary:null,summaryHash:sourceBoundMode()&&page?page.summaryHash:null,archiveTotalCommittedDays:archiveMode()?journalData.totalCommittedDays:null,archiveDayOffset:archiveMode()?journalData.dayOffset:null,archiveNextDayOffset:archiveMode()?journalData.nextDayOffset:null,archiveDays:archiveMode()?structuredClone(journalData.days):[],archiveSelectedDayRef:archiveMode()?journalData.selectedDay?.dayRef??null:null,archiveSelectedDailyStratumSha256:archiveMode()?journalData.selectedDay?.dailyStratumSha256??null:null,archiveCalendarDateRef:archiveMode()?journalData.selectedDay?.calendarDateRef??null:null,archiveTemporalTruthClass:archiveMode()&&journalData.selectedDay?ARCHIVE_DAY_TRUTH:null,archiveCurrentNowEvaluated:archiveMode()&&journalData.selectedDay?false:null,currentDailyStratumRef:currentness?.currentDailyStratumRef??null,currentDailyStratumSha256:currentness?.currentDailyStratumSha256??null,dayRef:currentness?.dayRef??null,dayIndex:currentness?.dayIndex??null,sourceConversationHeadSha256:currentness?.sourceConversationHeadSha256??null,sourceScoreHeadSha256:currentness?.sourceScoreHeadSha256??null,sourceSemanticAuthorityHeadSha256:currentness?.sourceSemanticAuthorityHeadSha256??null,renderCount:journal.renderCount});
   }
   function bind(){
     q('#livingJournalPrevious')?.addEventListener('click',previous);q('#livingJournalNext')?.addEventListener('click',next);
@@ -239,7 +237,6 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     q('#livingJournalSource')?.addEventListener('click',openSource);q('#livingJournalRevisit')?.addEventListener('click',revisit);
     q('#livingJournalMarginaliaAdd')?.addEventListener('click',()=>{const input=q('#livingJournalMarginaliaInput');addMarginalia(input?.value);if(input)input.value='';});
     q('#view-living-journal')?.addEventListener('keydown',(event)=>{if(['INPUT','TEXTAREA','SELECT'].includes(event.target?.tagName))return;if(event.key==='ArrowLeft'){event.preventDefault();previous();}else if(event.key==='ArrowRight'){event.preventDefault();next();}});
-    q('#livingJournalSpread')?.addEventListener('scroll',()=>{if(layoutClass()!=='PHONE_ONE_PAGE'||pageCount()===0)return;clearTimeout(scrollTimer);scrollTimer=setTimeout(()=>{const spread=q('#livingJournalSpread'),pages=[...(spread?.querySelectorAll('.living-journal-page')??[])];if(!spread||!pages.length)return;const center=spread.scrollLeft+spread.clientWidth/2;let closest=pages[0],distance=Infinity;for(const page of pages){const pageCenter=page.offsetLeft+page.offsetWidth/2,nextDistance=Math.abs(pageCenter-center);if(nextDistance<distance){distance=nextDistance;closest=page;}}const index=Number(closest.dataset.pageIndex);if(Number.isInteger(index)&&index!==journal.pageIndex){journal.pageIndex=clampIndex(index);journal.sourceDoorRef=null;journal.sourceDoorRefs=[];render();}},120);});
     globalThis.addEventListener('resize',()=>{if(journal.open)render();});
   }
   bind();
