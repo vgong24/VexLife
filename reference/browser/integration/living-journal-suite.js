@@ -40,7 +40,7 @@ export async function runLivingJournalProof({app,helpers:{delay,assert},viewport
   assert(surfaceRect&&journalRect&&journalRect.top>=surfaceRect.top-1&&journalRect.bottom<=surfaceRect.bottom+1,'J03 Journal escapes contextual surface');
   for(const selector of ['#contextWorkspaceDock','#contextWorkspaceSplit','#contextWorkspaceStatus','#contextWorkspaceReset']){const control=document.querySelector(selector),rect=control?.getBoundingClientRect();assert(control&&control.getClientRects().length===0&&(!rect||(!rect.width&&!rect.height)),'J03 reading mode leaked effective generic workspace chrome '+selector);}
   const closeRect=document.querySelector('#contextSurfaceClose')?.getBoundingClientRect();assert(closeRect&&closeRect.width>=44&&closeRect.height>=44,'J03 reading-mode close affordance unavailable');
-  assert(spreadRect?.height>=(snap.layoutClass==='PHONE_ONE_PAGE'?250:280),'J03 reading stage is compressed');
+  {const minimum=snap.layoutClass==='PHONE_ONE_PAGE'?300:360;assert(spreadRect?.height>=minimum,`J03 reading stage is compressed: ${JSON.stringify({layoutClass:snap.layoutClass,minimum,spreadHeight:spreadRect?.height??null,journalHeight:journalRect?.height??null,surfaceHeight:surfaceRect?.height??null,availableInlineSize:snap.availableInlineSize})}`);}
   const visiblePages=[...spread.querySelectorAll('.living-journal-page')];assert(visiblePages.every((page)=>getComputedStyle(page).overflowY==='visible'),'J03 page-local nested vertical scrolling remains active');checks.push('J03');
 
   const targetSelectors=['#livingJournalPrevious','#livingJournalNext','#livingJournalSource','#livingJournalRevisit'];
