@@ -14,7 +14,7 @@ Do not make Vantage, archive navigation, source inspection, semantic return cont
 
 ### Active-surface adapter mount context
 
-Adapters receive body, actions, surfaceRef, semanticRef, and projection. body is the shell-owned active-surface body. actions is the shell-owned action row. A surface may compose one concise surface affordance into actions. The surface must restore moved canonical DOM during close/fallback. Semantic close remains owned by the registered adapter requestClose contract.
+Adapters receive body, surfaceRef, semanticRef, projection, and—when shell presentation composition is available—actions. body is the shell-owned active-surface body. actions is the optional shell-owned action row used only for presentation composition. Semantic-only consumers may omit actions; the adapter must still preserve canonical mount, Reference fallback, Close, and Journey ownership. A surface may compose one concise surface affordance into actions when present. The surface must restore moved canonical DOM during close/fallback. Semantic close remains owned by the registered adapter requestClose contract.
 
 Living Journal uses this seam to present only #livingJournalOptionsOpen in the active header. The shell Reference and Close controls remain shell-owned but are composed into the Journal options layer while Journal is mounted.
 

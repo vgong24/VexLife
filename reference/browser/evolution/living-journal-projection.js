@@ -107,28 +107,30 @@ export function createLivingJournalEvolutionSurfaceAdapter(app,{documentImpl=glo
   async function mount({body,actions,surfaceRef,semanticRef,projection}={}){
     if(surfaceRef!==LIVING_JOURNAL_SURFACE_REF||semanticRef!==LIVING_JOURNAL_FEATURE_REF||projection!=='EVOLUTION_PROJECTION')throw new Error('Living Journal active-surface mount binding mismatch');
     if(!body||typeof body.replaceChildren!=='function')throw new TypeError('Shell active-surface body is required');
-    if(!actions||typeof actions.prepend!=='function')throw new TypeError('Shell active-surface actions row is required');
     if(session)throw new Error('Living Journal Evolution surface is already mounted');
     const view=documentImpl?.querySelector?.('#view-living-journal');
-    const optionsButton=documentImpl?.querySelector?.('#livingJournalOptionsOpen');
-    const surfaceActions=documentImpl?.querySelector?.('#livingJournalSurfaceActions');
-    const referenceFallback=documentImpl?.querySelector?.('#evolutionReferenceFallback');
-    const closeButton=documentImpl?.querySelector?.('#evolutionActiveSurfaceClose');
-    if(!view||!view.parentNode||!optionsButton||!optionsButton.parentNode||!surfaceActions||!referenceFallback||!referenceFallback.parentNode||!closeButton||!closeButton.parentNode)throw new Error('Living Journal shell composition controls are unavailable');
+    if(!view||!view.parentNode)throw new Error('Canonical Living Journal view is unavailable');
+    const optionsButton=documentImpl?.querySelector?.('#livingJournalOptionsOpen')??null;
+    const surfaceActions=documentImpl?.querySelector?.('#livingJournalSurfaceActions')??null;
+    const referenceFallback=documentImpl?.querySelector?.('#evolutionReferenceFallback')??null;
+    const closeButton=documentImpl?.querySelector?.('#evolutionActiveSurfaceClose')??null;
+    const presentationComposed=Boolean(actions&&typeof actions.prepend==='function'&&optionsButton?.parentNode&&surfaceActions&&referenceFallback?.parentNode&&closeButton?.parentNode);
     ensureStylesheet(documentImpl);
     const originalParent=view.parentNode,originalNextSibling=view.nextSibling??null;
-    const optionsParent=optionsButton.parentNode,optionsNextSibling=optionsButton.nextSibling??null;
-    const referenceParent=referenceFallback.parentNode,referenceNextSibling=referenceFallback.nextSibling??null;
-    const closeParent=closeButton.parentNode,closeNextSibling=closeButton.nextSibling??null,closeText=closeButton.textContent;
+    const optionsParent=presentationComposed?optionsButton.parentNode:null,optionsNextSibling=presentationComposed?(optionsButton.nextSibling??null):null;
+    const referenceParent=presentationComposed?referenceFallback.parentNode:null,referenceNextSibling=presentationComposed?(referenceFallback.nextSibling??null):null;
+    const closeParent=presentationComposed?closeButton.parentNode:null,closeNextSibling=presentationComposed?(closeButton.nextSibling??null):null,closeText=presentationComposed?closeButton.textContent:null;
     await app.openLivingJournal({loadMemory:true});
     view.hidden=false;
     if(view.dataset)view.dataset.evolutionSurfacePresentation='true';
     view.classList?.add('living-journal-evolution-active-surface');
-    actions.prepend(optionsButton);
-    surfaceActions.append(referenceFallback,closeButton);
-    closeButton.textContent='Close';
+    if(presentationComposed){
+      actions.prepend(optionsButton);
+      surfaceActions.append(referenceFallback,closeButton);
+      closeButton.textContent='Close';
+    }
     body.replaceChildren(view);
-    session={body,view,originalParent,originalNextSibling,optionsButton,optionsParent,optionsNextSibling,referenceFallback,referenceParent,referenceNextSibling,closeButton,closeParent,closeNextSibling,closeText};
+    session={body,view,originalParent,originalNextSibling,optionsButton,optionsParent,optionsNextSibling,referenceFallback,referenceParent,referenceNextSibling,closeButton,closeParent,closeNextSibling,closeText,presentationComposed};
     app.projectFrame();
     view.focus?.({preventScroll:true});
     return snapshot();
