@@ -163,7 +163,7 @@ test('real loopback shared presentation proves desktop and compact focus, dismis
       document.body.append(trigger,surface);trigger.focus();
       const controller=createTransientPresentationController({surface,trigger,dismissControl:surface.querySelector('#e29-test-close'),dragHandle:surface.querySelector('.e29-forward-layer-drag-handle'),draggable:true});
       trigger.click();await Promise.resolve();
-      const host=document.querySelector('#evolutionActiveSurfaceHost');host.hidden=false;host.setAttribute('aria-hidden','false');
+      const host=document.querySelector('#evolutionActiveSurfaceHost');host.hidden=false;host.setAttribute('aria-hidden','false');const referenceControl=document.querySelector('#evolutionReferenceFallback');referenceControl.hidden=false;
       const shellHeader=document.querySelector('.uxe-active-surface-heading').getBoundingClientRect();
       const reference=document.querySelector('#evolutionReferenceFallback').getBoundingClientRect();
       const close=document.querySelector('#evolutionActiveSurfaceClose').getBoundingClientRect();
