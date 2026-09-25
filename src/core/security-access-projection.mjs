@@ -1,4 +1,33 @@
-const INPUT_KEYS = new Set(['runtimeState', 'previewVisible']);
+const INPUT_KEYS = new Set(['runtimeState', 'previewVisible', 'convergenceProjection']);
+
+const CONVERGENCE_SCHEMA = 'vexlife.security-access-convergence/v1';
+const CONVERGENCE_TRUTH_CLASS = 'FAMILY_SECURITY_CONTRACT_BOUND_CONSUMER_PROJECTION';
+const CONVERGENCE_STATES = new Set([
+  'CURRENT', 'STALE', 'UNKNOWN', 'COMPROMISED', 'RECOVERY_REQUIRED', 'HELD'
+]);
+const CONVERGENCE_OWNER_REFS = Object.freeze([
+  'github.issue.vexlife.492',
+  'github.issue.vextreme-sdk.232',
+  'github.issue.vextreme-sdk.717'
+]);
+const CONVERGENCE_KEYS = new Set([
+  'schemaVersion', 'truthClass', 'homeRef', 'principalRef', 'state',
+  'sourceOwnerRefs', 'sourceRefs', 'currentnessRefs', 'reasonRefs', 'missingOwnerRefs',
+  'deviceAccess', 'sessionSecurity', 'recoveryPolicy', 'realIntegrationComplete',
+  'effectAuthorityRefs', 'effectAuthorityGranted', 'effects'
+]);
+const DEVICE_ACCESS_KEYS = new Set([
+  'trustedDeviceRefs', 'compromisedDeviceRefs', 'capabilityRefs',
+  'revocationGenerationRefOrNull', 'recoveryPorchStateOrNull'
+]);
+const SESSION_SECURITY_KEYS = new Set([
+  'currentSessionCountOrNull', 'affectedDeviceRefOrNull', 'affectedScopeRefOrNull',
+  'generationInvalidationObservedOrNull'
+]);
+const RECOVERY_POLICY_KEYS = new Set([
+  'compromiseStateOrNull', 'availableFactorClassRefs', 'recoveryDispositionOrNull',
+  'recoveredOwnerStateOrNull', 'humanChoiceRequired'
+]);
 
 export const SECURITY_ACCESS_EFFECT_FIELDS = Object.freeze([
   'realPasskeyRegistration','realWebAuthnEffect','realTOTPEnrollment','totpSecretStorage',
@@ -14,8 +43,153 @@ const statusStringRef = (runtimeState) =>
     ? 'security-access.status.backend-unavailable'
     : 'security-access.status.preview';
 
+const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+const ref = (value) => typeof value === 'string' && value.length > 0;
+const nullableRef = (value) => value === null || ref(value);
+const countOrNull = (value) => value === null || (Number.isSafeInteger(value) && value >= 0);
+
+function exactKeys(value, allowed, label) {
+  if (!object(value)) throw new TypeError(`${label} must be an object`);
+  const keys = Object.keys(value);
+  const extra = keys.filter((key) => !allowed.has(key));
+  if (extra.length) throw new Error(`${label} rejects unregistered field ${extra[0]}`);
+  for (const key of allowed) if (!Object.hasOwn(value, key)) throw new Error(`${label} missing field ${key}`);
+}
+
+function uniqueRefs(values, label) {
+  if (!Array.isArray(values) || new Set(values).size !== values.length || values.some((value) => !ref(value))) {
+    throw new TypeError(`${label} must be unique non-empty refs`);
+  }
+  return Object.freeze([...values].sort());
+}
+
 function allFalseEffects() {
   return Object.freeze(Object.fromEntries(SECURITY_ACCESS_EFFECT_FIELDS.map((field) => [field, false])));
+}
+
+function heldConvergenceSummary() {
+  return Object.freeze({
+    state: 'HELD',
+    sourceProjectionAvailable: false,
+    trustedDeviceCountOrNull: null,
+    compromisedDeviceCountOrNull: null,
+    capabilityRefCountOrNull: null,
+    currentSessionCountOrNull: null,
+    recoveryDispositionOrNull: null,
+    humanChoiceRequiredOrNull: null,
+    sourceOwnerRefs: Object.freeze([]),
+    sourceRefs: Object.freeze([]),
+    currentnessRefs: Object.freeze([]),
+    reasonRefs: Object.freeze([]),
+    missingOwnerRefs: Object.freeze([]),
+    realIntegrationComplete: false,
+    effectAuthorityGranted: false
+  });
+}
+
+function validateDeviceAccess(value) {
+  if (value === null) return null;
+  exactKeys(value, DEVICE_ACCESS_KEYS, 'Security & Access device convergence facts');
+  return Object.freeze({
+    trustedDeviceRefs: uniqueRefs(value.trustedDeviceRefs, 'trustedDeviceRefs'),
+    compromisedDeviceRefs: uniqueRefs(value.compromisedDeviceRefs, 'compromisedDeviceRefs'),
+    capabilityRefs: uniqueRefs(value.capabilityRefs, 'capabilityRefs'),
+    revocationGenerationRefOrNull: nullableRef(value.revocationGenerationRefOrNull)
+      ? value.revocationGenerationRefOrNull
+      : (() => { throw new TypeError('revocationGenerationRefOrNull is invalid'); })(),
+    recoveryPorchStateOrNull: nullableRef(value.recoveryPorchStateOrNull)
+      ? value.recoveryPorchStateOrNull
+      : (() => { throw new TypeError('recoveryPorchStateOrNull is invalid'); })()
+  });
+}
+
+function validateSessionSecurity(value) {
+  if (value === null) return null;
+  exactKeys(value, SESSION_SECURITY_KEYS, 'Security & Access session convergence facts');
+  if (!countOrNull(value.currentSessionCountOrNull)) throw new TypeError('currentSessionCountOrNull is invalid');
+  if (!nullableRef(value.affectedDeviceRefOrNull)) throw new TypeError('affectedDeviceRefOrNull is invalid');
+  if (!nullableRef(value.affectedScopeRefOrNull)) throw new TypeError('affectedScopeRefOrNull is invalid');
+  if (![true, false, null].includes(value.generationInvalidationObservedOrNull)) {
+    throw new TypeError('generationInvalidationObservedOrNull is invalid');
+  }
+  return Object.freeze({ ...value });
+}
+
+function validateRecoveryPolicy(value) {
+  if (value === null) return null;
+  exactKeys(value, RECOVERY_POLICY_KEYS, 'Security & Access recovery convergence facts');
+  if (!nullableRef(value.compromiseStateOrNull)) throw new TypeError('compromiseStateOrNull is invalid');
+  if (!nullableRef(value.recoveryDispositionOrNull)) throw new TypeError('recoveryDispositionOrNull is invalid');
+  if (!nullableRef(value.recoveredOwnerStateOrNull)) throw new TypeError('recoveredOwnerStateOrNull is invalid');
+  if (typeof value.humanChoiceRequired !== 'boolean') throw new TypeError('humanChoiceRequired must be boolean');
+  return Object.freeze({
+    ...value,
+    availableFactorClassRefs: uniqueRefs(value.availableFactorClassRefs, 'availableFactorClassRefs')
+  });
+}
+
+function normalizeConvergenceProjection(value) {
+  if (value == null) return heldConvergenceSummary();
+  exactKeys(value, CONVERGENCE_KEYS, 'Security & Access convergence projection');
+  if (value.schemaVersion !== CONVERGENCE_SCHEMA) throw new Error('Security & Access convergence schema drift');
+  if (value.truthClass !== CONVERGENCE_TRUTH_CLASS) throw new Error('Security & Access convergence truth class drift');
+  if (!ref(value.homeRef) || !ref(value.principalRef)) throw new Error('Security & Access convergence identity is invalid');
+  if (!CONVERGENCE_STATES.has(value.state)) throw new Error('Security & Access convergence state is invalid');
+
+  const sourceOwnerRefs = uniqueRefs(value.sourceOwnerRefs, 'sourceOwnerRefs');
+  const sourceRefs = uniqueRefs(value.sourceRefs, 'sourceRefs');
+  const currentnessRefs = uniqueRefs(value.currentnessRefs, 'currentnessRefs');
+  const reasonRefs = uniqueRefs(value.reasonRefs, 'reasonRefs');
+  const missingOwnerRefs = uniqueRefs(value.missingOwnerRefs, 'missingOwnerRefs');
+
+  const deviceAccess = validateDeviceAccess(value.deviceAccess);
+  const sessionSecurity = validateSessionSecurity(value.sessionSecurity);
+  const recoveryPolicy = validateRecoveryPolicy(value.recoveryPolicy);
+
+  if (!Array.isArray(value.effectAuthorityRefs) || value.effectAuthorityRefs.length !== 0) {
+    throw new Error('Security & Access convergence effect authority refs must remain empty');
+  }
+  if (value.effectAuthorityGranted !== false) {
+    throw new Error('Security & Access convergence effect authority must remain false');
+  }
+  exactKeys(value.effects, new Set(SECURITY_ACCESS_EFFECT_FIELDS), 'Security & Access convergence effects');
+  if (Object.values(value.effects).some((effect) => effect !== false)) {
+    throw new Error('Security & Access convergence effects must remain false');
+  }
+  if (typeof value.realIntegrationComplete !== 'boolean') {
+    throw new TypeError('Security & Access convergence realIntegrationComplete must be boolean');
+  }
+  const exactOwnerSet = sourceOwnerRefs.length === CONVERGENCE_OWNER_REFS.length
+    && sourceOwnerRefs.every((ownerRef, index) => ownerRef === CONVERGENCE_OWNER_REFS[index]);
+  const expectedRealIntegrationComplete = value.state === 'CURRENT'
+    && missingOwnerRefs.length === 0
+    && deviceAccess !== null
+    && sessionSecurity !== null
+    && recoveryPolicy !== null
+    && exactOwnerSet
+    && sourceRefs.length === 3
+    && currentnessRefs.length === 3;
+  if (value.realIntegrationComplete !== expectedRealIntegrationComplete) {
+    throw new Error('Security & Access convergence real integration truth is inconsistent');
+  }
+
+  return Object.freeze({
+    state: value.state,
+    sourceProjectionAvailable: true,
+    trustedDeviceCountOrNull: deviceAccess ? deviceAccess.trustedDeviceRefs.length : null,
+    compromisedDeviceCountOrNull: deviceAccess ? deviceAccess.compromisedDeviceRefs.length : null,
+    capabilityRefCountOrNull: deviceAccess ? deviceAccess.capabilityRefs.length : null,
+    currentSessionCountOrNull: sessionSecurity?.currentSessionCountOrNull ?? null,
+    recoveryDispositionOrNull: recoveryPolicy?.recoveryDispositionOrNull ?? null,
+    humanChoiceRequiredOrNull: recoveryPolicy?.humanChoiceRequired ?? null,
+    sourceOwnerRefs,
+    sourceRefs,
+    currentnessRefs,
+    reasonRefs,
+    missingOwnerRefs,
+    realIntegrationComplete: value.realIntegrationComplete,
+    effectAuthorityGranted: false
+  });
 }
 
 export function validateSecurityAccessRegistry(registry) {
@@ -42,7 +216,11 @@ function normalizeInput(registry, input = {}) {
   if (!(registry.executableFirstSliceStates ?? []).includes(runtimeState)) throw new Error(`Security & Access state ${runtimeState} is held outside the first slice`);
   const previewVisible = input.previewVisible ?? registry.flag.safeDefault === 'FLAG_VISIBLE_PREVIEW';
   if (typeof previewVisible !== 'boolean') throw new TypeError('Security & Access previewVisible must be boolean');
-  return { runtimeState, previewVisible };
+  return {
+    runtimeState,
+    previewVisible,
+    convergence: normalizeConvergenceProjection(input.convergenceProjection ?? null)
+  };
 }
 
 export function projectSecurityAccessPreview(registry, input = {}) {
@@ -62,6 +240,7 @@ export function projectSecurityAccessPreview(registry, input = {}) {
     statusStringRef: statusStringRef(normalized.runtimeState),
     trustedDevicesState: 'NO_RUNTIME_DATA_AVAILABLE',
     recoveryState: 'NOT_CONFIGURED_HERE',
+    ownerConvergence: normalized.convergence,
     heldActions: Object.freeze(registry.heldActions.map((item) => Object.freeze({
       actionKey: item.actionKey,
       labelStringRef: item.labelStringRef,

@@ -11,8 +11,8 @@
     {
       "path": "src/core/security-access-projection.mjs",
       "mode": "100644",
-      "bytes": 5208,
-      "sha256": "c806ebc2228a977794cef24cd294bea4a637e6c1cdc3b81a9751c759e3c7a8a2"
+      "bytes": 14023,
+      "sha256": "d52a1f00b18fe7d9c33f17c36195aaf7d5905dec57b967208c3db068f73fd46e"
     },
     {
       "path": "test/experience-review-kit.test.mjs",
