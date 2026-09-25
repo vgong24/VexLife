@@ -158,6 +158,20 @@ test('malformed or effect-inflated convergence input fails closed rather than be
     () => projectSecurityAccessPreview(registry, { convergenceProjection: inconsistent }),
     /real integration truth is inconsistent/
   );
+
+  const missingFacts = convergence('CURRENT', { deviceAccess: null });
+  assert.throws(
+    () => projectSecurityAccessPreview(registry, { convergenceProjection: missingFacts }),
+    /real integration truth is inconsistent/
+  );
+
+  const wrongOwnerSet = convergence('CURRENT', {
+    sourceOwnerRefs: ['github.issue.vextreme-sdk.717']
+  });
+  assert.throws(
+    () => projectSecurityAccessPreview(registry, { convergenceProjection: wrongOwnerSet }),
+    /real integration truth is inconsistent/
+  );
 });
 
 test('typed runtime bridge cannot authenticate, authorize or perform protected effects', () => {
