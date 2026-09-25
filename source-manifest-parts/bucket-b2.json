@@ -21,6 +21,12 @@
       "sha256": "0e526021d03cb4ca501ff64513061a215044122ceaacb0e618f0b19016aafd66"
     },
     {
+      "path": "src/core/security-access-convergence.mjs",
+      "mode": "100644",
+      "bytes": 9456,
+      "sha256": "aaada8ea698d5b4f4928d057755987181a262c34b7d6e458cbe4803a7ebc6fa6"
+    },
+    {
       "path": "test/experience-guidance-human-projection.test.mjs",
       "mode": "100644",
       "bytes": 26286,
