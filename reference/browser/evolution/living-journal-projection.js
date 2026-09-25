@@ -67,12 +67,20 @@ function ensureStylesheet(documentImpl){
   documentImpl.head.append(link);
   return link;
 }
+function restoreElement(node,parent,nextSibling){
+  if(!node||!parent)return;
+  if(nextSibling&&nextSibling.parentNode===parent&&typeof parent.insertBefore==='function')parent.insertBefore(node,nextSibling);
+  else if(typeof parent.appendChild==='function')parent.appendChild(node);
+}
 function restoreNode(session){
-  const {view,originalParent,originalNextSibling}=session;
+  const {view,originalParent,originalNextSibling,optionsButton,optionsParent,optionsNextSibling,referenceFallback,referenceParent,referenceNextSibling,closeButton,closeParent,closeNextSibling,closeText}=session;
   view.classList?.remove('living-journal-evolution-active-surface');
   if(view.dataset)delete view.dataset.evolutionSurfacePresentation;
-  if(originalNextSibling&&originalNextSibling.parentNode===originalParent&&typeof originalParent.insertBefore==='function')originalParent.insertBefore(view,originalNextSibling);
-  else if(typeof originalParent.appendChild==='function')originalParent.appendChild(view);
+  restoreElement(view,originalParent,originalNextSibling);
+  restoreElement(optionsButton,optionsParent,optionsNextSibling);
+  restoreElement(referenceFallback,referenceParent,referenceNextSibling);
+  if(closeButton)closeButton.textContent=closeText;
+  restoreElement(closeButton,closeParent,closeNextSibling);
 }
 
 export function createLivingJournalEvolutionSurfaceAdapter(app,{documentImpl=globalThis.document}={}){
@@ -91,23 +99,36 @@ export function createLivingJournalEvolutionSurfaceAdapter(app,{documentImpl=glo
     memoryOwnerMutation:false,
     userDataFork:false,
     publicationAuthority:false,
-    cutoverAuthority:false
+    cutoverAuthority:false,
+    singleVisibleSurfaceHeader:true,
+    primaryPresentation:'ENTRY_FEED',
+    primaryReportChromeVisible:false
   });
-  async function mount({body,surfaceRef,semanticRef,projection}={}){
+  async function mount({body,actions,surfaceRef,semanticRef,projection}={}){
     if(surfaceRef!==LIVING_JOURNAL_SURFACE_REF||semanticRef!==LIVING_JOURNAL_FEATURE_REF||projection!=='EVOLUTION_PROJECTION')throw new Error('Living Journal active-surface mount binding mismatch');
     if(!body||typeof body.replaceChildren!=='function')throw new TypeError('Shell active-surface body is required');
+    if(!actions||typeof actions.prepend!=='function')throw new TypeError('Shell active-surface actions row is required');
     if(session)throw new Error('Living Journal Evolution surface is already mounted');
     const view=documentImpl?.querySelector?.('#view-living-journal');
-    if(!view||!view.parentNode)throw new Error('Canonical Living Journal view is unavailable');
+    const optionsButton=documentImpl?.querySelector?.('#livingJournalOptionsOpen');
+    const surfaceActions=documentImpl?.querySelector?.('#livingJournalSurfaceActions');
+    const referenceFallback=documentImpl?.querySelector?.('#evolutionReferenceFallback');
+    const closeButton=documentImpl?.querySelector?.('#evolutionActiveSurfaceClose');
+    if(!view||!view.parentNode||!optionsButton||!optionsButton.parentNode||!surfaceActions||!referenceFallback||!referenceFallback.parentNode||!closeButton||!closeButton.parentNode)throw new Error('Living Journal shell composition controls are unavailable');
     ensureStylesheet(documentImpl);
-    const originalParent=view.parentNode;
-    const originalNextSibling=view.nextSibling??null;
+    const originalParent=view.parentNode,originalNextSibling=view.nextSibling??null;
+    const optionsParent=optionsButton.parentNode,optionsNextSibling=optionsButton.nextSibling??null;
+    const referenceParent=referenceFallback.parentNode,referenceNextSibling=referenceFallback.nextSibling??null;
+    const closeParent=closeButton.parentNode,closeNextSibling=closeButton.nextSibling??null,closeText=closeButton.textContent;
     await app.openLivingJournal({loadMemory:true});
     view.hidden=false;
     if(view.dataset)view.dataset.evolutionSurfacePresentation='true';
     view.classList?.add('living-journal-evolution-active-surface');
+    actions.prepend(optionsButton);
+    surfaceActions.append(referenceFallback,closeButton);
+    closeButton.textContent='Close';
     body.replaceChildren(view);
-    session={body,view,originalParent,originalNextSibling};
+    session={body,view,originalParent,originalNextSibling,optionsButton,optionsParent,optionsNextSibling,referenceFallback,referenceParent,referenceNextSibling,closeButton,closeParent,closeNextSibling,closeText};
     app.projectFrame();
     view.focus?.({preventScroll:true});
     return snapshot();
@@ -116,6 +137,7 @@ export function createLivingJournalEvolutionSurfaceAdapter(app,{documentImpl=glo
     if(!session)return Object.freeze({state:'CLOSED',reason:'NO_ACTIVE_JOURNAL_SURFACE',surfaceRef:LIVING_JOURNAL_SURFACE_REF,semanticNavigationMutation:false});
     const closing=session;
     session=null;
+    app.livingJournal.dismissOptions?.('SURFACE_TRANSITION');
     restoreNode(closing);
     if(reason==='REFERENCE_FALLBACK'){
       app.projectFrame();

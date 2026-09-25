@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/evolution/living-journal-projection.js",
       "mode": "100644",
-      "bytes": 9338,
-      "sha256": "82ad96cfb71425f9c0dc30b601ba8330387ac983ad86a38a3714ef81e7c2598b"
+      "bytes": 11247,
+      "sha256": "a65a1d543ba0b70d9afe233e577cfa2110f2d0f6f15b632bca5158780147a94e"
     },
     {
       "path": "scripts/recovery-simulate.mjs",

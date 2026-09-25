@@ -96,8 +96,8 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   const ORIGINAL_LANGUAGE_MODE='ORIGINAL';
   const PHONE_MAX_INLINE=760;
   const WIDE_READER_MIN_INLINE=1280;
-  const COMPACT_ENTRY_WINDOW_TARGET=8;
-  const DEFAULT_ENTRY_WINDOW_TARGET=10;
+  const COMPACT_ENTRY_WINDOW_TARGET=12;
+  const DEFAULT_ENTRY_WINDOW_TARGET=12;
   const WIDE_ENTRY_WINDOW_TARGET=12;
   const journal={open:false,pageIndex:0,windowStart:0,vantage:'HUMAN',displayLanguage:ORIGINAL_LANGUAGE_MODE,openedNodeRef:null,sourceDoorRef:null,sourceDoorRefs:[],lastSourcePacket:null,lastRevisitPacket:null,marginalia:new Map(),renderCount:0};
   let optionsPresentation=null;
@@ -141,70 +141,17 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   }
   function visiblePageCount(){return renderedIndices().length;}
   function renderPage(index){
-    const view=projection(pageList()[index]);
-    const article=document.createElement('article');
-    article.className='living-journal-page living-journal-entry';
-    article.tabIndex=0;
-    article.dataset.pageRef=view.pageRef;
-    article.dataset.pageIndex=String(index);
-    article.dataset.current=String(index===journal.pageIndex);
-    article.dataset.truthClass=journalData.truthClass;
-    if(view.eventRef)article.dataset.eventRef=view.eventRef;
-    if(view.statementRef)article.dataset.statementRef=view.statementRef;
-    if(index===journal.pageIndex)article.setAttribute('aria-current','true');
-    if(view.mode==='MEMORY'){
-      article.dataset.currentDailyStratumRef=view.currentDailyStratumRef;
-      article.dataset.currentDailyStratumSha256=view.currentDailyStratumSha256;
-      article.dataset.dayRef=view.dayRef;
-      article.dataset.dayIndex=String(view.dayIndex);
-      article.dataset.sourceConversationHeadSha256=view.sourceConversationHeadSha256;
-      article.dataset.sourceScoreHeadSha256=view.sourceScoreHeadSha256;
-      article.dataset.sourceSemanticAuthorityHeadSha256=view.sourceSemanticAuthorityHeadSha256;
-    }
-    if(view.mode==='ARCHIVE'){
-      article.dataset.dailyStratumRef=view.dailyStratumRef;
-      article.dataset.dailyStratumSha256=view.dailyStratumSha256;
-      article.dataset.dayRef=view.dayRef;
-      article.dataset.dayIndex=String(view.dayIndex);
-      article.dataset.temporalTruthClass=view.temporalTruthClass;
-      article.dataset.currentNowEvaluated='false';
-    }
-    const header=document.createElement('header');
-    header.className='living-journal-entry-header';
-    const stamp=document.createElement('div');
-    stamp.className='living-journal-entry-stamp';
-    const date=document.createElement('span');
-    date.className='living-journal-entry-date';
-    date.textContent=view.entryDate??(view.mode==='MEMORY'?'Current day':'Date unavailable');
-    const clock=view.entryTimestamp?document.createElement('time'):document.createElement('span');
-    clock.className='living-journal-entry-time';
-    clock.textContent=view.entryTimestamp?view.entryTimestamp.slice(11,16):'Time unavailable';
-    if(view.entryTimestamp)clock.dateTime=view.entryTimestamp;
-    const title=document.createElement('h2');
-    title.className='living-journal-entry-title';
-    title.textContent=view.entryTitle;
-    stamp.append(date,clock);header.append(stamp,title);article.append(header);
-    const detail=document.createElement('details');
-    detail.className='living-journal-entry-detail';
-    const detailSummary=document.createElement('summary');
-    detailSummary.textContent=view.mode==='SYNTHETIC'?'Entry detail':'Source detail';
-    const body=document.createElement('div');
-    body.className='living-journal-entry-detail-body';
-    if(view.mode==='SYNTHETIC'){
-      const timeSection=(kind,text,currentness=null)=>{const section=document.createElement('section');section.className=`living-journal-time ${kind}`;section.dataset.temporalClass=kind.toUpperCase();if(currentness)section.dataset.currentness=currentness;const label=document.createElement('strong');label.textContent=t(`living-journal.${kind}`);const p=document.createElement('p');p.textContent=text;section.append(label,p);return section;};
-      const vantage=document.createElement('blockquote');vantage.className='living-journal-vantage';vantage.dataset.vantage=view.vantage;vantage.textContent=view.vantageText;
-      const source=document.createElement('footer');source.className='living-journal-source-line';source.textContent=`${t('living-journal.original-language')}: ${view.source.originalLanguage} · ${view.source.sourceRef}`;
-      body.append(timeSection('then',view.then),vantage,timeSection('later',view.later),timeSection('now',view.now,'DERIVED_CURRENT'),source);
-    }else{
-      const summary=document.createElement('section');summary.className='living-journal-time living-journal-memory-summary';if(view.mode==='ARCHIVE'){summary.dataset.memoryState='HISTORICAL_COMMITTED';summary.dataset.temporalTruthClass=ARCHIVE_DAY_TRUTH;summary.dataset.currentNowEvaluated='false';}else summary.dataset.memoryState='CURRENT_ACCEPTED';
-      const text=document.createElement('p');text.textContent=view.summary;summary.append(text);
-      const source=document.createElement('footer');source.className='living-journal-source-line';source.dataset.rawSourceContentIncluded='false';source.textContent=`${t('living-journal.source-status')}: ${view.sourceRefs.join(' · ')}`;
-      body.append(summary,source);
-    }
-    detail.append(detailSummary,body);article.append(detail);
-    article.addEventListener('click',(event)=>{if(event.target.closest('button,select,textarea,input,a,summary,details'))return;setPage(index);});
-    article.addEventListener('keydown',(event)=>{if(event.target!==article||!['Enter',' '].includes(event.key))return;event.preventDefault();setPage(index);});
-    return article;
+    const view=projection(pageList()[index]),article=document.createElement('article');
+    article.className='living-journal-page living-journal-entry';article.tabIndex=0;article.dataset.pageRef=view.pageRef;article.dataset.pageIndex=String(index);article.dataset.current=String(index===journal.pageIndex);article.dataset.truthClass=journalData.truthClass;article.dataset.componentRef='component.vexlife.journal.entry-cell';
+    if(view.eventRef)article.dataset.eventRef=view.eventRef;if(view.statementRef)article.dataset.statementRef=view.statementRef;if(index===journal.pageIndex)article.setAttribute('aria-current','true');
+    if(view.mode==='MEMORY'){article.dataset.currentDailyStratumRef=view.currentDailyStratumRef;article.dataset.currentDailyStratumSha256=view.currentDailyStratumSha256;article.dataset.dayRef=view.dayRef;article.dataset.dayIndex=String(view.dayIndex);article.dataset.sourceConversationHeadSha256=view.sourceConversationHeadSha256;article.dataset.sourceScoreHeadSha256=view.sourceScoreHeadSha256;article.dataset.sourceSemanticAuthorityHeadSha256=view.sourceSemanticAuthorityHeadSha256;}
+    if(view.mode==='ARCHIVE'){article.dataset.dailyStratumRef=view.dailyStratumRef;article.dataset.dailyStratumSha256=view.dailyStratumSha256;article.dataset.dayRef=view.dayRef;article.dataset.dayIndex=String(view.dayIndex);article.dataset.temporalTruthClass=view.temporalTruthClass;article.dataset.currentNowEvaluated='false';}
+    if(view.mode==='SYNTHETIC')article.dataset.sourceRef=view.source.sourceRef;
+    const header=document.createElement('header'),stamp=document.createElement('div'),date=document.createElement('span'),clock=view.entryTimestamp?document.createElement('time'):document.createElement('span'),title=document.createElement('h2');
+    header.className='living-journal-entry-header';stamp.className='living-journal-entry-stamp';date.className='living-journal-entry-date';date.textContent=view.entryDate??(view.mode==='MEMORY'?'Current day':'Date unavailable');clock.className='living-journal-entry-time';clock.textContent=view.entryTimestamp?view.entryTimestamp.slice(11,16):'Time unavailable';if(view.entryTimestamp)clock.dateTime=view.entryTimestamp;title.className='living-journal-entry-title';title.textContent=view.entryTitle;stamp.append(date,clock);header.append(stamp,title);
+    const preview=document.createElement('p');preview.className='living-journal-entry-preview';preview.textContent=view.mode==='SYNTHETIC'?view.then:view.summary;article.append(header,preview);
+    if(view.mode==='SYNTHETIC'){const detail=document.createElement('details'),summary=document.createElement('summary'),body=document.createElement('div');detail.className='living-journal-entry-detail';summary.textContent='Read entry';body.className='living-journal-entry-detail-body';const paragraph=(kind,text,currentness=null)=>{const p=document.createElement('p');p.className='living-journal-entry-continuation';p.dataset.temporalClass=kind;if(currentness)p.dataset.currentness=currentness;p.textContent=text;return p;};body.append(paragraph('LATER',view.later),paragraph('NOW',view.now,'DERIVED_CURRENT'));detail.append(summary,body);article.append(detail);}
+    article.addEventListener('click',(event)=>{if(event.target.closest('button,select,textarea,input,a,summary,details'))return;setPage(index);});article.addEventListener('keydown',(event)=>{if(event.target!==article||!['Enter',' '].includes(event.key))return;event.preventDefault();setPage(index);});return article;
   }
   function renderMarginalia(){
     const host=q('#livingJournalMarginaliaList');if(!host)return;
@@ -231,13 +178,14 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
   }
   function setMarginaliaExpanded(expanded){const panel=q('#livingJournalMarginalia');if(panel)panel.open=Boolean(expanded);}
   function setToolsExpanded(expanded){const panel=q('#livingJournalTools');if(!panel)return;if(optionsPresentation){expanded?optionsPresentation.show({focus:false}):optionsPresentation.dismiss('JOURNAL_STATE_RESET',{restore:false});}else{panel.hidden=!Boolean(expanded);panel.setAttribute('aria-hidden',String(!expanded));}}
-  function resetLocalProjectionState(){journal.pageIndex=0;journal.windowStart=0;journal.vantage='HUMAN';journal.displayLanguage=ORIGINAL_LANGUAGE_MODE;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.lastSourcePacket=null;journal.lastRevisitPacket=null;journal.marginalia=new Map();setMarginaliaExpanded(false);setToolsExpanded(false);}
+  function dismissOptions(reason='PROGRAMMATIC_DISMISS'){if(optionsPresentation)optionsPresentation.dismiss(reason,{restore:false});else setToolsExpanded(false);return snapshot();}
+  function resetLocalProjectionState(){journal.pageIndex=0;journal.windowStart=0;journal.vantage='HUMAN';journal.displayLanguage=ORIGINAL_LANGUAGE_MODE;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.lastSourcePacket=null;journal.lastRevisitPacket=null;journal.marginalia=new Map();setMarginaliaExpanded(false);dismissOptions('JOURNAL_STATE_RESET');}
   function setData(nextData){assertData(nextData);journalData=nextData;resetLocalProjectionState();if(journal.open)render();return snapshot();}
   function restoreInitialData(){return setData(initialData);}
   function open({selectedNodeRef=state.selectedNodeRef}={}){
     journal.open=true;journal.openedNodeRef=selectedNodeRef;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.lastSourcePacket=null;journal.lastRevisitPacket=null;journal.marginalia=new Map();journal.pageIndex=clampIndex(journal.pageIndex);journal.windowStart=0;setMarginaliaExpanded(false);setToolsExpanded(false);render();return snapshot();
   }
-  function close(){journal.open=false;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.marginalia=new Map();setMarginaliaExpanded(false);setToolsExpanded(false);renderMarginalia();return snapshot();}
+  function close(){journal.open=false;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];journal.marginalia=new Map();setMarginaliaExpanded(false);dismissOptions('JOURNAL_CLOSE');renderMarginalia();return snapshot();}
   function setPage(index){if(pageCount()===0)return snapshot();const next=clampIndex(index),size=Math.max(1,readerWindowSize());journal.pageIndex=next;if(next<journal.windowStart||next>=journal.windowStart+size)journal.windowStart=Math.floor(next/size)*size;journal.sourceDoorRef=null;journal.sourceDoorRefs=[];render();return snapshot();}
   const previous=()=>setPage(journal.pageIndex-1);
   const next=()=>setPage(journal.pageIndex+1);
@@ -283,7 +231,7 @@ export function createLivingJournalController({state,data,t,navigation,onSourceO
     globalThis.addEventListener('resize',()=>{if(journal.open)render();});
   }
   bind();
-  return{open,close,render,snapshot,previous,next,loadPrevious,loadMore,setPage,setData,restoreInitialData,selectVantage,selectDisplayLanguage,openSource,revisit,addMarginalia,canonicalThenIdentity};
+  return{open,close,render,snapshot,previous,next,loadPrevious,loadMore,setPage,setData,restoreInitialData,selectVantage,selectDisplayLanguage,openSource,revisit,addMarginalia,dismissOptions,canonicalThenIdentity};
 }
 
 // [VXG RealForever]

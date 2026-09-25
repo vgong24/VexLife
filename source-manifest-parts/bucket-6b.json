@@ -3,6 +3,12 @@
   "bucketId": "6b",
   "files": [
     {
+      "path": "docs/UX-EVOLUTION-LIVING-JOURNAL-PRESENTATION.md",
+      "mode": "100644",
+      "bytes": 3523,
+      "sha256": "61b314df3fb7770835c02e91411ce3ab39924fca276398916326c7df59b0ebcf"
+    },
+    {
       "path": "reference/browser/modules/experience-guidance-human-projection.js",
       "mode": "100644",
       "bytes": 29692,
