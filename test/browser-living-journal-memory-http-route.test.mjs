@@ -288,6 +288,7 @@ test('Living Journal controller preserves HELD as a distinct zero-page real-Memo
       published: false,
       pages: Object.freeze([Object.freeze({
         pageRef: 'page.synthetic.proof', eventRef: 'event.synthetic.proof', thenRef: 'then.synthetic.proof', sequence: 0,
+        entry: Object.freeze({ occurredAt: '2026-09-21T08:42:00-07:00', title: 'Synthetic held-proof entry' }),
         source: Object.freeze({ sourceRef: 'source.synthetic.proof', originalLanguage: 'en', originalText: 'synthetic proof source' }),
         display: Object.freeze({ en: Object.freeze({ then: 'then', later: 'later', now: 'now', vantages: Object.freeze({ HUMAN: 'human', VEX: 'vex', SHARED_RELATIONSHIP: 'shared', SOURCE: 'source' }) }) })
       })])

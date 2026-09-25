@@ -11,8 +11,8 @@
     {
       "path": "test/browser-living-journal-memory-http-route.test.mjs",
       "mode": "100644",
-      "bytes": 16559,
-      "sha256": "dea850ff2ebfeb153fd4d4847051a353288737ddf115a14200994dd35f752fc6"
+      "bytes": 16671,
+      "sha256": "96190a5e34f6024f6cd90c9d15f7dbf38b2f07495172b35ae1b45238fff6dcde"
     },
     {
       "path": "test/browser-relationships-persistence-bridge.test.mjs",
