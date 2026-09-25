@@ -71,6 +71,83 @@
     "semanticCloseOwnerPolicy": "REGISTERED_ADAPTER_REQUEST_CLOSE",
     "ordinaryContentScrollSemanticExit": false
   },
+  "presentationContract": {
+    "repairOwnerRef": "github.issue.vexlife.703",
+    "experienceClassificationRef": "github.issue.vexlife.704.comment.5827351944",
+    "experienceBinding": {
+      "patternRefs": [
+        "pattern.vexlife.action-decision",
+        "pattern.vexlife.progressive-disclosure",
+        "pattern.vexlife.preference"
+      ],
+      "formRefs": [
+        "form.vexlife.human.button",
+        "form.vexlife.human.icon-action",
+        "form.vexlife.human.menu-item",
+        "form.vexlife.human.vessel-action"
+      ],
+      "componentRef": "component.vexlife.action-vessel",
+      "recoveryExposureRef": "exposure.vexlife.recovery",
+      "availabilityRefs": [
+        "availability.vexlife.available",
+        "availability.vexlife.held",
+        "availability.vexlife.unavailable",
+        "availability.vexlife.unknown"
+      ]
+    },
+    "activeSurfaceHeader": {
+      "presentationMode": "COMPACT_ONE_ROW",
+      "shellOwnedFields": [
+        "surface-title",
+        "reference-fallback",
+        "close-dismiss"
+      ],
+      "minimumActionTargetPx": 48,
+      "statusPresentation": "SUBORDINATE_INLINE_OR_COMPACT",
+      "contentPriority": "PRIMARY"
+    },
+    "availableSpace": {
+      "publisherModule": "reference/browser/shared-presentation.mjs",
+      "publisherExport": "bindAvailableSpace",
+      "cssCustomProperties": [
+        "--uxe-available-inline-size",
+        "--uxe-available-block-size"
+      ],
+      "shellOwns": [
+        "outer-host-insets",
+        "shell-header-chrome"
+      ],
+      "surfaceOwns": [
+        "internal-presentation-grammar",
+        "content-scroll-policy"
+      ],
+      "doubleViewportAssumptionForbidden": true
+    },
+    "forwardPanel": {
+      "publisherModule": "reference/browser/shared-presentation.mjs",
+      "publisherExport": "createForwardPanel",
+      "platformProjection": "BROWSER_NATIVE_DIALOG",
+      "visibleDismissRequired": true,
+      "escapeDismissRequired": true,
+      "backAdapter": "EXPLICIT_CLOSE_WITHOUT_HISTORY_NAVIGATION",
+      "focusEntry": "FIRST_DECLARED_OR_DISMISS",
+      "focusReturn": "OPENING_TRIGGER",
+      "viewportConstraint": "SAFE_DYNAMIC_VIEWPORT",
+      "desktopPresentation": "FLOATING_PANEL",
+      "compactPresentation": "SHEET",
+      "smallViewportPresentation": "FULL_SCREEN_SHEET",
+      "reducedMotionEquivalent": true,
+      "dragHandle": "OPTIONAL_DECLARED",
+      "semanticNavigationOnDismiss": false,
+      "productSemanticAuthority": false
+    },
+    "categorizedContent": {
+      "publisherModule": "reference/browser/shared-presentation.mjs",
+      "publisherExport": "renderCategorizedRows",
+      "shape": "category -> row(label,currentValueOrControl,optionalExplanation,availabilityCurrentness)",
+      "productSemanticAuthority": false
+    }
+  },
   "invariants": {
     "referenceDefault": true,
     "oneSemanticState": true,
