@@ -73,6 +73,8 @@ import {
 } from '../src/core/intent-workgraph.mjs';
 import { createIntentSchedulerState } from '../src/core/state.mjs';
 import { projectConcernAggregate } from '../src/core/concern-watch.mjs';
+import { FAMILY_SECURITY_AWARENESS_SCHEMA } from '../src/core/family-security-projection.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
@@ -88,6 +90,28 @@ export const BROWSER_FAMILY_LIFECYCLE_API_PATH = '/api/v1/family/lifecycle';
 export const BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA = 'vexlife.browser-family-room-bootstrap/v1';
 export const BROWSER_FAMILY_FOLLOW_THROUGH_RUNTIME_SCHEMA = 'vexlife.generic-follow-through-runtime-projection/v1';
 export const BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF = 'projection.vexlife.family-follow-through.001';
+const FAMILY_SECURITY_AWARENESS_TRUTH_CLASS = 'SOURCE_BOUND_EFFECT_FREE_FAMILY_SECURITY_AWARENESS';
+const FAMILY_SECURITY_TOP_LEVEL_KEYS = Object.freeze([
+  'schemaVersion', 'truthClass', 'familyContext', 'sessionSecurity', 'perception',
+  'health', 'distribution', 'incidentCoverage', 'sourceOwnerRefs', 'sourceRefs',
+  'sourceReceiptRefs', 'currentnessRefs', 'missingRefs', 'unknownRefs', 'withheldRefs',
+  'telemetryGapRefs', 'knownLimitationRefs', 'permittedCompanionResponseRefs',
+  'authority', 'effectAuthorityRefs', 'effects', 'familySecurityProjectionRef',
+  'semanticFingerprint'
+]);
+const FAMILY_SECURITY_AUTHORITY_KEYS = Object.freeze([
+  'roleCanPerceive', 'roleCanAct', 'effectAuthorityGranted',
+  'selfCertificationAllowed', 'attackAttributionAllowed'
+]);
+const FAMILY_SECURITY_EFFECT_KEYS = Object.freeze([
+  'filesystem', 'network', 'process', 'sensor', 'model', 'Home', 'Memory',
+  'membership', 'session', 'incidentContainment', 'securityObserverMutation',
+  'training', 'publication'
+]);
+const FAMILY_SECURITY_RAW_ONLY_KEYS = new Set([
+  'devicePublicKey', 'membershipHash', 'leaseHash', 'approvedBy', 'approvedAt',
+  'issuedAt', 'expiresAt'
+]);
 export const BROWSER_FAMILY_CONVERSATION_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_FAMILY_LIFECYCLE_MAX_BODY_BYTES = 8 * 1024;
 export const BROWSER_FAMILY_CONVERSATION_LIST_MAX = 1000;
@@ -890,6 +914,165 @@ export function projectFamilyFollowThroughStatus({
   });
 }
 
+function heldFamilySecurityStatus() {
+  return Object.freeze({
+    state: 'HELD_UNAVAILABLE',
+    projectionRefOrNull: null,
+    projectionFingerprintOrNull: null,
+    sessionCurrent: 'UNKNOWN',
+    missingCount: null,
+    unknownCount: null,
+    withheldCount: null,
+    telemetryGapCount: null,
+    incidentCoverageStateOrNull: null,
+    attackEstablished: 'UNKNOWN',
+    roleCanAct: false,
+    effectAuthorityGranted: false
+  });
+}
+
+function sameSortedRefs(left, right) {
+  if (!Array.isArray(left) || !Array.isArray(right) || new Set(left).size !== left.length) return false;
+  const a = [...left].sort();
+  const b = [...right].sort();
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+function familySecurityContainsRawAuthority(value) {
+  if (!value || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return value.some(familySecurityContainsRawAuthority);
+  for (const [key, nested] of Object.entries(value)) {
+    if (FAMILY_SECURITY_RAW_ONLY_KEYS.has(key)) return true;
+    if ((key === 'membership' || key === 'lease') && nested && typeof nested === 'object') return true;
+    if (familySecurityContainsRawAuthority(nested)) return true;
+  }
+  return false;
+}
+
+function currentFamilySecurityStatus(value, current) {
+  if (
+    !value
+    || typeof value !== 'object'
+    || Array.isArray(value)
+    || Object.keys(value).length !== FAMILY_SECURITY_TOP_LEVEL_KEYS.length
+    || Object.keys(value).some((key) => !FAMILY_SECURITY_TOP_LEVEL_KEYS.includes(key))
+    || value.schemaVersion !== FAMILY_SECURITY_AWARENESS_SCHEMA
+    || value.truthClass !== FAMILY_SECURITY_AWARENESS_TRUTH_CLASS
+    || !/^[0-9a-f]{64}$/u.test(value.semanticFingerprint ?? '')
+  ) throw new Error('Family security projection identity is invalid');
+
+  const core = structuredClone(value);
+  const fingerprint = core.semanticFingerprint;
+  const projectionRef = core.familySecurityProjectionRef;
+  delete core.semanticFingerprint;
+  delete core.familySecurityProjectionRef;
+  if (
+    semanticHash(core) !== fingerprint
+    || projectionRef !== `projection.vex-family-security.${fingerprint.slice(0, 32)}`
+  ) throw new Error('Family security projection fingerprint is invalid');
+
+  const family = value.familyContext;
+  if (
+    !family
+    || typeof family !== 'object'
+    || Array.isArray(family)
+    || family.spaceRef !== current.spaceRef
+    || family.channelRef !== current.channelRef
+    || family.membershipGeneration !== current.membershipGeneration
+    || family.membershipSnapshotRef !== current.membershipSnapshotRef
+    || family.historyVisibilityPolicyRef !== current.historyVisibilityPolicyRef
+    || family.requestingPrincipalRef !== current.requestingPrincipalRef
+    || family.familyCompanionLineageRef !== current.familyCompanionLineageRef
+    || !sameSortedRefs(family.audiencePrincipalRefs, current.audiencePrincipalRefs)
+  ) throw new Error('Family security projection is not bound to the exact current Family context');
+
+  const authority = value.authority;
+  if (
+    !authority
+    || typeof authority !== 'object'
+    || Array.isArray(authority)
+    || Object.keys(authority).length !== FAMILY_SECURITY_AUTHORITY_KEYS.length
+    || Object.keys(authority).some((key) => !FAMILY_SECURITY_AUTHORITY_KEYS.includes(key))
+    || authority.roleCanPerceive !== true
+    || authority.roleCanAct !== false
+    || authority.effectAuthorityGranted !== false
+    || authority.selfCertificationAllowed !== false
+    || authority.attackAttributionAllowed !== false
+  ) throw new Error('Family security projection authority boundary is invalid');
+
+  if (
+    !value.effects
+    || typeof value.effects !== 'object'
+    || Array.isArray(value.effects)
+    || Object.keys(value.effects).length !== FAMILY_SECURITY_EFFECT_KEYS.length
+    || Object.keys(value.effects).some((key) => !FAMILY_SECURITY_EFFECT_KEYS.includes(key))
+    || Object.values(value.effects).some((effect) => effect !== false)
+    || !Array.isArray(value.effectAuthorityRefs)
+    || value.effectAuthorityRefs.length !== 0
+  ) throw new Error('Family security projection must remain effect-free');
+
+  if (
+    value.sessionSecurity?.principalRef !== current.requestingPrincipalRef
+    || value.incidentCoverage?.attackEstablished !== false
+  ) throw new Error('Family security projection currentness or incident boundary is invalid');
+
+  for (const key of ['missingRefs', 'unknownRefs', 'withheldRefs', 'telemetryGapRefs']) {
+    if (
+      !Array.isArray(value[key])
+      || new Set(value[key]).size !== value[key].length
+      || value[key].some((entry) => typeof entry !== 'string' || entry.length === 0)
+    ) throw new Error(`Family security projection ${key} are invalid`);
+  }
+  if (familySecurityContainsRawAuthority(value)) {
+    throw new Error('Family security projection contains raw authority material');
+  }
+
+  return Object.freeze({
+    state: 'CURRENT',
+    projectionRefOrNull: projectionRef,
+    projectionFingerprintOrNull: fingerprint,
+    sessionCurrent: true,
+    missingCount: value.missingRefs.length,
+    unknownCount: value.unknownRefs.length,
+    withheldCount: value.withheldRefs.length,
+    telemetryGapCount: value.telemetryGapRefs.length,
+    incidentCoverageStateOrNull: typeof value.incidentCoverage?.state === 'string'
+      ? value.incidentCoverage.state
+      : null,
+    attackEstablished: false,
+    roleCanAct: false,
+    effectAuthorityGranted: false
+  });
+}
+
+async function resolveFamilySecurityStatus({
+  resolveProjection,
+  request,
+  room,
+  binding,
+  principalRef
+} = {}) {
+  if (!room || !binding || typeof resolveProjection !== 'function') return heldFamilySecurityStatus();
+  const current = Object.freeze({
+    spaceRef: binding.spaceRef,
+    channelRef: room.channelRef,
+    membershipGeneration: binding.membershipGeneration,
+    membershipSnapshotRef: binding.membershipSnapshotRef,
+    historyVisibilityPolicyRef: binding.historyVisibilityPolicyRef,
+    requestingPrincipalRef: principalRef,
+    audiencePrincipalRefs: Object.freeze(
+      binding.audienceMemberBindings.map((member) => member.principalRef).sort()
+    ),
+    familyCompanionLineageRef: binding.familyCompanionLineageRef
+  });
+  try {
+    const projection = await resolveProjection(Object.freeze({ request, current }));
+    return currentFamilySecurityStatus(projection, current);
+  } catch {
+    return heldFamilySecurityStatus();
+  }
+}
+
 function familyRoomAudienceProjection(binding) {
   return Object.freeze(binding.audienceMemberBindings.map((member) => Object.freeze({
     principalRef: member.principalRef,
@@ -905,6 +1088,7 @@ function heldFamilyRoomBootstrap(failureCode = 'FAMILY_SESSION_AUTHORITY_UNAVAIL
     currentPrincipalRef: null,
     rooms: Object.freeze([]),
     workStatus: normalizedFamilyWorkStatus(null),
+    securityStatus: heldFamilySecurityStatus(),
     failureCode
   });
 }
@@ -914,7 +1098,8 @@ export async function resolveCurrentFamilyRoomBootstrap({
   familyHome,
   resolveAuthority,
   nowProvider,
-  resolveFamilyWorkProjection = null
+  resolveFamilyWorkProjection = null,
+  resolveFamilySecurityProjection = null
 } = {}) {
   let authority;
   try {
@@ -938,6 +1123,7 @@ export async function resolveCurrentFamilyRoomBootstrap({
     limit: BROWSER_FAMILY_CONVERSATION_LIST_MAX
   });
   const rooms = [];
+  const securityBindingByChannel = new Map();
   for (const channel of durable.channels ?? []) {
     const binding = channel?.familySpaceBinding;
     if (!binding || binding.audienceKind !== 'GROUP') continue;
@@ -978,6 +1164,7 @@ export async function resolveCurrentFamilyRoomBootstrap({
       familyCompanionLineageRef: binding.familyCompanionLineageRef,
       familyCompanionIncluded: binding.familyCompanionIncluded === true
     }));
+    securityBindingByChannel.set(channel.channelRef, binding);
   }
   rooms.sort((left, right) =>
     left.spaceRef < right.spaceRef ? -1
@@ -1002,13 +1189,22 @@ export async function resolveCurrentFamilyRoomBootstrap({
       workStatus = normalizedFamilyWorkStatus(null);
     }
   }
+  const primaryRoom = rooms[0] ?? null;
+  const securityStatus = await resolveFamilySecurityStatus({
+    resolveProjection: resolveFamilySecurityProjection,
+    request,
+    room: primaryRoom,
+    binding: primaryRoom ? securityBindingByChannel.get(primaryRoom.channelRef) : null,
+    principalRef: authority.membership.principalRef
+  });
   return Object.freeze({
     schemaVersion: BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
     state: rooms.length > 0 ? 'CURRENT' : 'EMPTY',
     truthClass: 'CURRENT_LIVE_FAMILY',
     currentPrincipalRef: authority.membership.principalRef,
     rooms: Object.freeze(rooms),
-    workStatus
+    workStatus,
+    securityStatus
   });
 }
 
@@ -1179,7 +1375,8 @@ export function createVexLifeBrowserServer({
   resolveFamilyLifecycleAuthority = null,
   familyLifecycleNow = () => new Date().toISOString(),
   familyLifecycleInstanceRef = 'instance.vexlife.browser-family-lifecycle',
-  resolveFamilyWorkProjection = null
+  resolveFamilyWorkProjection = null,
+  resolveFamilySecurityProjection = null
 } = {}) {
   const resolveCompanionAvailability = createServerOwnedCompanionAvailabilityResolver({
     sourceRoot: companionAvailabilitySourceRoot,
@@ -1394,7 +1591,8 @@ export function createVexLifeBrowserServer({
             familyHome: familyConversationHome,
             resolveAuthority: resolveFamilyConversationAuthority,
             nowProvider: familyConversationNow,
-            resolveFamilyWorkProjection
+            resolveFamilyWorkProjection,
+            resolveFamilySecurityProjection
           });
           sendJson(response, 200, result);
         } catch (error) {

@@ -17,8 +17,8 @@
     {
       "path": "reference/browser/modules/family-room-controller.js",
       "mode": "100644",
-      "bytes": 23594,
-      "sha256": "fda7e95ae3f09efc1c87ff71f52938db4d5e1feabb29e716f3b94c4fce7f8230"
+      "bytes": 28586,
+      "sha256": "152addd5bd5b6d5e743c04b90d52e27f39975d606c43ee458fe141345c99a66e"
     },
     {
       "path": "scripts/module-describe.mjs",
