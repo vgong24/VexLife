@@ -58,10 +58,12 @@ test('shell scaffold preserves accessibility margin for existing adaptation cont
   assert.match(css,/#terrainAdaptationUndo\{min-height:48px\}\.e28-adaptation-preference\{min-height:48px\}/);
 });
 
-test('current main truthfully holds all Evolution menu surfaces until adapters/migrations are current',()=>{
+test('shell derives Evolution menu availability from each registered migration instead of assuming every surface is held',()=>{
   for(const surface of contract.surfaceInventory){
     const record=registry.migrationRecords.find(x=>x.semanticRef===surface.semanticRef);
-    assert.equal(record.evolutionProjectionRefs.length,0);
+    assert.ok(record,`missing migration record for ${surface.semanticRef}`);
+    assert.ok(Array.isArray(record.evolutionProjectionRefs));
+    assert.ok(record.evolutionProjectionRefs.every((ref)=>typeof ref==='string'&&ref.length>0));
   }
   assert.match(app,/HELD_NOT_MIGRATED/);
   assert.match(app,/button\.disabled=state\.uxProjection===UX_EVOLUTION_PROJECTION&&surfaceState\.state!=='ENABLED'/);
@@ -90,8 +92,10 @@ test('real loopback canonical shell exposes local Evolution selector without cha
   await page.locator('#uxProjectionSelect').selectOption('EVOLUTION_PROJECTION');
   await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.state.uxProjection==='EVOLUTION_PROJECTION');
   assert.equal(await page.locator('#contextSurface').isHidden(),true,'Reference context renderer must be hidden in Evolution mode');
-  for(const id of ['openConversation','openHealth','openLivingJournal','openWorkspace']){
-    assert.equal(await page.locator('#'+id).isDisabled(),true,`${id} must be held in Evolution until migrated`);
+  for(const surface of contract.surfaceInventory){
+    const record=registry.migrationRecords.find(x=>x.semanticRef===surface.semanticRef);
+    const expectedDisabled=record.evolutionProjectionRefs.length===0;
+    assert.equal(await page.locator('#'+surface.controlId).isDisabled(),expectedDisabled,`${surface.controlId} availability must follow its migration record`);
   }
   assert.match(await page.locator('#uxProjectionStatus').textContent(),/Evolution/);
   await page.locator('#uxProjectionSelect').selectOption('REFERENCE_PROJECTION');
