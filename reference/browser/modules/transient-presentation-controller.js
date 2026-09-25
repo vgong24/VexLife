@@ -183,13 +183,53 @@ export function createTransientPresentationController({
       height: drag.height,
       ...viewportSnapshot(windowRef),
       margin,
-      minUÚYˆZ[’ZYÚˆJNÂˆÝ\™˜XÙKœÝ[K›YH	Û™^›Y\ÂˆÝ\™˜XÙKœÝ[KÜH	Û™^Ü\ÂˆÝ\™˜XÙKœÝ[KÚYH	Û™^ÚY\ÂˆÝ\™˜XÙKœÝ[KšZYÚH	Û™^šZYÚ\ÂˆÝ\™˜XÙKœÝ[KœšYÚH	Ø]]ÉÎÂˆÝ\™˜XÙKœÝ[K˜›ÝÛHH	Ø]]ÉÎÂˆB‚ˆ[˜Ý[Ûˆ[™˜YÊ]™[
-HÂˆYˆ
-Y˜YÈ]™[œÚ[\’YOOH˜YËœÚ[\’Y
-H™]\›ŽÂˆ˜YÒ[™OËœ™[X\ÙTÚ[\Ø\\™OËŠ]™[œÚ[\’Y
-NÂˆ˜YÈH[Âˆ\S[ÙJ
-NÂˆB‚ˆšYÙÙ\Ë˜Y]™[\Ý[™\ËŠ	ØÛXÚÉËÙÙÛJNÂˆ\ÛZ\ÜÐÛÛ›ÛË˜Y]™[\Ý[™\ËŠ	ØÛXÚÉË
+      minWidth,
+      minHeight
+    });
+    surface.style.left = `${next.left}px`;
+    surface.style.top = `${next.top}px`;
+    surface.style.width = `${next.width}px`;
+    surface.style.height = `${next.height}px`;
+    surface.style.right = 'auto';
+    surface.style.bottom = 'auto';
+  }
 
-HOˆ\ÛZ\ÜÊ	ÑTÓRTÔ×ÐÓÓ•“Ó	ÊJNÂˆØÝ[Y[™YË˜Y]™[\Ý[™\ËŠ	ÚÙ^YÝÛ‰ËÛ’Ù^QÝÛ‹YJNÂˆÚ[™ÝÔ™YË˜Y]™[\Ý[™\ËŠ	Ü™\Ú^™IË\S[ÙJNÂˆ˜YÒ[™OË˜Y]™[\Ý[™\ËŠ	ÜÚ[\™ÝÛ‰Ë™YÚ[‘˜YÊNÂˆ˜YÒ[™OË˜Y]™[\Ý[™\ËŠ	ÜÚ[\›[Ý™IË[Ý™Q˜YÊNÂˆ˜YÒ[™OË˜Y]™[\Ý[™\ËŠ	ÜÚ[\\	Ë[™˜YÊNÂˆ˜YÒ[™OË˜Y]™[\Ý[™\ËŠ	ÜÚ[\˜Ø[˜Ù[	Ë[™˜YÊNÂˆÝ\™˜XÙKœÙ]]šX]J	Ø\šXKZY[‰ËÝš[™Ê[Ü[ŠJNÂˆÝ\™˜XÙK™]\Ù]œ™\Ù[][Û”Ý]HHÜ[ˆÈ	ÓÔS‰Èˆ	ÐÓÔÑQ	ÎÂˆ\S[ÙJ
-NÂ‚ˆ™]\›ˆØš™XÝ™œ™Y^™JÂˆÚÝËˆ\ÛZ\ÜËˆÙÙÛKˆ\S[ÙKˆÛ˜\ÚÝˆ\Ý›ÞJ
-HÂˆšYÙÙ\Ëœ™[[Ý™Q]™[\Ý[™\ËŠ	ØÛXÚÉËÙÙÛJNÂˆØÝ[Y[™YËœ™[[Ý™Q]™[\Ý[™\ËŠ	ÚÙ^YÝÛ‰ËÛ’Ù^QÝÛ‹YJNÂˆÚ[™ÝÔ™YËœ™[[Ý™Q]™[\Ý[™\ËŠ	Ü™\Ú^™IË\S[ÙJNÂˆ˜YÒ[™OËœ™[[Ý™Q]™[\Ý[™\ËŠ	ÜÚ[\™ÝÛ‰Ë™YÚ[‘˜YÊNÂˆ˜YÒ[™OËœ™[[Ý™Q]™[\Ý[™\ËŠ	ÜÚ[\›[Ý™IË[Ý™Q˜YÊNÂˆ˜YÒ[™OËœ™[[Ý™Q]™[\Ý[™\ËŠ	ÜÚ[\\	Ë[™˜YÊNÂˆ˜YÒ[™OËœ™[[Ý™Q]™[\Ý[™\ËŠ	ÜÚ[\˜Ø[˜Ù[	Ë[™˜YÊNÂˆ˜YÈH[ÂˆBˆJNÂŸB‚‹ËÈÕ–È™X[›Ü™]™\—B
+  function endDrag(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    dragHandle?.releasePointerCapture?.(event.pointerId);
+    drag = null;
+    applyMode();
+  }
+
+  trigger?.addEventListener?.('click', toggle);
+  dismissControl?.addEventListener?.('click', () => dismiss('DISMISS_CONTROL'));
+  documentRef?.addEventListener?.('keydown', onKeyDown, true);
+  windowRef?.addEventListener?.('resize', applyMode);
+  dragHandle?.addEventListener?.('pointerdown', beginDrag);
+  dragHandle?.addEventListener?.('pointermove', moveDrag);
+  dragHandle?.addEventListener?.('pointerup', endDrag);
+  dragHandle?.addEventListener?.('pointercancel', endDrag);
+  surface.setAttribute('aria-hidden', String(!open));
+  surface.dataset.presentationState = open ? 'OPEN' : 'CLOSED';
+  applyMode();
+
+  return Object.freeze({
+    show,
+    dismiss,
+    toggle,
+    applyMode,
+    snapshot,
+    destroy() {
+      trigger?.removeEventListener?.('click', toggle);
+      documentRef?.removeEventListener?.('keydown', onKeyDown, true);
+      windowRef?.removeEventListener?.('resize', applyMode);
+      dragHandle?.removeEventListener?.('pointerdown', beginDrag);
+      dragHandle?.removeEventListener?.('pointermove', moveDrag);
+      dragHandle?.removeEventListener?.('pointerup', endDrag);
+      dragHandle?.removeEventListener?.('pointercancel', endDrag);
+      drag = null;
+    }
+  });
+}
+
+// [VXG RealForever]
