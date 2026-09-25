@@ -5,6 +5,11 @@ const CONVERGENCE_TRUTH_CLASS = 'FAMILY_SECURITY_CONTRACT_BOUND_CONSUMER_PROJECT
 const CONVERGENCE_STATES = new Set([
   'CURRENT', 'STALE', 'UNKNOWN', 'COMPROMISED', 'RECOVERY_REQUIRED', 'HELD'
 ]);
+const CONVERGENCE_OWNER_REFS = Object.freeze([
+  'github.issue.vexlife.492',
+  'github.issue.vextreme-sdk.232',
+  'github.issue.vextreme-sdk.717'
+]);
 const CONVERGENCE_KEYS = new Set([
   'schemaVersion', 'truthClass', 'homeRef', 'principalRef', 'state',
   'sourceOwnerRefs', 'sourceRefs', 'currentnessRefs', 'reasonRefs', 'missingOwnerRefs',
@@ -154,7 +159,17 @@ function normalizeConvergenceProjection(value) {
   if (typeof value.realIntegrationComplete !== 'boolean') {
     throw new TypeError('Security & Access convergence realIntegrationComplete must be boolean');
   }
-  if (value.realIntegrationComplete && (value.state !== 'CURRENT' || missingOwnerRefs.length !== 0)) {
+  const exactOwnerSet = sourceOwnerRefs.length === CONVERGENCE_OWNER_REFS.length
+    && sourceOwnerRefs.every((ownerRef, index) => ownerRef === CONVERGENCE_OWNER_REFS[index]);
+  const expectedRealIntegrationComplete = value.state === 'CURRENT'
+    && missingOwnerRefs.length === 0
+    && deviceAccess !== null
+    && sessionSecurity !== null
+    && recoveryPolicy !== null
+    && exactOwnerSet
+    && sourceRefs.length === 3
+    && currentnessRefs.length === 3;
+  if (value.realIntegrationComplete !== expectedRealIntegrationComplete) {
     throw new Error('Security & Access convergence real integration truth is inconsistent');
   }
 
