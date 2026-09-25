@@ -3,6 +3,7 @@ const DEFAULT_MIN_WIDTH = 280;
 const DEFAULT_MIN_HEIGHT = 180;
 const COMPACT_SHEET_MAX_WIDTH = 760;
 const COMPACT_FULL_SCREEN_MAX_WIDTH = 480;
+const AVAILABLE_SPACE_BINDINGS = new WeakMap();
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
   '[href]',
@@ -59,6 +60,51 @@ function viewportSnapshot(win) {
     viewportWidth: Math.max(0, Number(win?.innerWidth) || 0),
     viewportHeight: Math.max(0, Number(win?.innerHeight) || 0)
   };
+}
+
+
+export function bindAvailableSpaceContract({
+  host,
+  body = host?.querySelector?.('.uxe-active-surface-body'),
+  windowRef = body?.ownerDocument?.defaultView ?? globalThis
+} = {}) {
+  if (!host || typeof host.dispatchEvent !== 'function') throw new TypeError('active-surface host is required');
+  if (!body || typeof body.getBoundingClientRect !== 'function') throw new TypeError('active-surface body is required');
+  const prior = AVAILABLE_SPACE_BINDINGS.get(host);
+  if (prior) return prior;
+
+  let observer = null;
+  function snapshot() {
+    const rect = body.getBoundingClientRect();
+    const inlineSize = Math.max(0, Math.round(rect.width * 100) / 100);
+    const blockSize = Math.max(0, Math.round(rect.height * 100) / 100);
+    body.style.setProperty('--uxe-available-inline-size', `${inlineSize}px`);
+    body.style.setProperty('--uxe-available-block-size', `${blockSize}px`);
+    body.dataset.uxeAvailableInlineSize = String(inlineSize);
+    body.dataset.uxeAvailableBlockSize = String(blockSize);
+    const detail = Object.freeze({ inlineSize, blockSize });
+    const CustomEventRef = windowRef?.CustomEvent;
+    if (typeof CustomEventRef === 'function') host.dispatchEvent(new CustomEventRef('vexlife:available-space',{detail}));
+    return detail;
+  }
+
+  if (typeof windowRef?.ResizeObserver === 'function') {
+    observer = new windowRef.ResizeObserver(snapshot);
+    observer.observe(body);
+  }
+  windowRef?.addEventListener?.('resize', snapshot, { passive: true });
+  snapshot();
+
+  const binding = Object.freeze({
+    snapshot,
+    disconnect() {
+      observer?.disconnect();
+      windowRef?.removeEventListener?.('resize', snapshot);
+      AVAILABLE_SPACE_BINDINGS.delete(host);
+    }
+  });
+  AVAILABLE_SPACE_BINDINGS.set(host, binding);
+  return binding;
 }
 
 export function createTransientPresentationController({
@@ -155,6 +201,10 @@ export function createTransientPresentationController({
     return open ? dismiss('TRIGGER_TOGGLE') : show();
   }
 
+  function back() {
+    return dismiss('BACK');
+  }
+
   function snapshot() {
     return Object.freeze({ open, mode: mode(), draggable: draggable === true && Boolean(dragHandle) });
   }
@@ -216,6 +266,7 @@ export function createTransientPresentationController({
   return Object.freeze({
     show,
     dismiss,
+    back,
     toggle,
     applyMode,
     snapshot,
