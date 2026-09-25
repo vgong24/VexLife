@@ -103,3 +103,143 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
 .uxe-active-surface-body{min-height:0;overflow:auto;padding:18px;outline:none}
 #app[data-ux-projection="EVOLUTION_PROJECTION"][data-evolution-surface-active="true"] #view-terrain{visibility:hidden;pointer-events:none}
 @media(max-width:760px){.uxe-active-surface-host{inset:64px 8px 8px;border-radius:14px}.uxe-active-surface-heading{padding:14px;gap:10px}.uxe-active-surface-body{padding:12px}}
+/* #703 shared presentation proposal — [VXG RealForever] */
+/* Compact active-surface chrome: shell owns identity/actions, content gets the space. */
+.uxe-active-surface-host{
+  --uxe-active-surface-header-block-size:56px;
+  --uxe-active-surface-inline-gutter:12px;
+  --uxe-active-surface-block-gutter:10px;
+}
+.uxe-active-surface-heading{
+  min-height:var(--uxe-active-surface-header-block-size);
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  padding:4px 8px 4px 12px;
+}
+.uxe-active-surface-heading>div:first-child{
+  min-width:0;
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+}
+.uxe-active-surface-heading small{display:none}
+.uxe-active-surface-heading h1{
+  min-width:0;
+  margin:0;
+  font:700 18px/1.2 var(--sans);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.uxe-active-surface-heading output{
+  min-width:0;
+  color:var(--muted);
+  font:650 10px/1.25 var(--mono);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.uxe-active-surface-actions{display:flex;gap:6px;align-items:center}
+.uxe-active-surface-actions button{
+  min-width:48px;
+  min-height:48px;
+  border:1px solid var(--strong);
+  border-radius:10px;
+  background:var(--raised);
+  color:var(--text);
+  padding:6px 10px;
+  font-weight:700;
+}
+#evolutionActiveSurfaceClose{width:48px;padding:0;font-size:20px;line-height:1}
+.uxe-active-surface-body{
+  min-height:0;
+  min-width:0;
+  overflow:auto;
+  padding:var(--uxe-active-surface-block-gutter) var(--uxe-active-surface-inline-gutter);
+  container-type:inline-size;
+  overscroll-behavior:contain;
+}
+
+/* Generic forward-dimensional browser presentation; semantic ownership stays with the caller. */
+.uxe-forward-panel{
+  --uxe-panel-shift-x:0px;
+  --uxe-panel-shift-y:0px;
+  width:min(680px,calc(100dvw - 32px));
+  max-width:calc(100dvw - 16px);
+  max-height:calc(100dvh - 32px);
+  margin:auto;
+  padding:0;
+  border:1px solid var(--strong);
+  border-radius:18px;
+  background:var(--surface);
+  color:var(--text);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  transform:translate3d(var(--uxe-panel-shift-x),var(--uxe-panel-shift-y),0);
+  transition:opacity var(--motion-duration-fast) ease,transform var(--motion-duration-fast) var(--motion-ease-responsive);
+}
+.uxe-forward-panel::backdrop{background:rgba(0,0,0,.54);backdrop-filter:blur(2px)}
+.uxe-forward-panel-frame{display:grid;grid-template-rows:auto minmax(0,1fr);max-height:inherit;min-height:0}
+.uxe-forward-panel-header{
+  min-height:56px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:4px 6px 4px 14px;
+  border-bottom:1px solid var(--line);
+  background:var(--surface);
+}
+.uxe-forward-panel-title{min-width:0;margin:0;font:700 18px/1.2 var(--sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uxe-forward-panel-controls{display:flex;align-items:center;gap:4px}
+.uxe-forward-panel-controls button{min-width:48px;min-height:48px;border:1px solid var(--strong);border-radius:10px;background:var(--raised);color:var(--text)}
+.uxe-forward-panel-dismiss{font-size:20px;line-height:1}
+.uxe-forward-panel-drag-handle{cursor:grab;touch-action:none;font:700 16px/1 var(--mono)}
+.uxe-forward-panel-drag-handle:active{cursor:grabbing}
+.uxe-forward-panel-body{min-height:0;overflow:auto;padding:12px;overscroll-behavior:contain;scrollbar-gutter:stable}
+
+/* Reusable categorized content rows/cells. */
+.uxe-setting-category{display:grid;gap:6px;padding:4px 0 14px}
+.uxe-setting-category+.uxe-setting-category{border-top:1px solid var(--line);padding-top:14px}
+.uxe-setting-category-title{margin:0 0 2px;font:750 10px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.uxe-setting-row{display:grid;grid-template-columns:minmax(130px,.9fr) minmax(0,1.1fr) auto;gap:8px 12px;align-items:center;min-height:48px;padding:7px 8px;border-radius:10px}
+.uxe-setting-row:hover{background:var(--raised)}
+.uxe-setting-label{font-weight:700;min-width:0}
+.uxe-setting-value{min-width:0;justify-self:stretch}
+.uxe-setting-value :is(button,select,input){min-height:44px;max-width:100%}
+.uxe-setting-explanation{grid-column:1/-2;margin:0;color:var(--muted);font-size:11px;line-height:1.4}
+.uxe-setting-availability{justify-self:end;border:1px solid var(--line);border-radius:999px;padding:4px 7px;color:var(--muted);font:700 9px/1 var(--mono);letter-spacing:.04em}
+.uxe-setting-row[data-availability="HELD"] .uxe-setting-availability,
+.uxe-setting-row[data-availability="UNAVAILABLE"] .uxe-setting-availability{border-color:var(--warn);color:var(--warn)}
+.uxe-setting-row[data-availability="UNKNOWN"] .uxe-setting-availability{opacity:.72}
+
+@media(max-width:760px){
+  .uxe-active-surface-host{inset:64px 8px 8px;--uxe-active-surface-header-block-size:56px;--uxe-active-surface-inline-gutter:8px;--uxe-active-surface-block-gutter:8px}
+  .uxe-active-surface-heading{padding:4px 6px 4px 10px;gap:6px}
+  .uxe-active-surface-heading>div:first-child{display:block}
+  .uxe-active-surface-heading h1{font-size:16px}
+  .uxe-active-surface-heading output{display:block;font-size:9px;margin-top:1px}
+  .uxe-active-surface-actions{gap:4px}
+  .uxe-active-surface-actions #evolutionReferenceFallback{min-width:72px;padding-inline:8px}
+  .uxe-forward-panel[data-uxe-presentation="SHEET"]{
+    width:100dvw;
+    max-width:100dvw;
+    max-height:min(88dvh,760px);
+    margin:auto 0 0;
+    border-radius:18px 18px 0 0;
+    transform:none;
+  }
+  .uxe-forward-panel[data-uxe-presentation="SHEET"] .uxe-forward-panel-drag-handle{display:none}
+  .uxe-setting-row{grid-template-columns:minmax(0,1fr) auto;gap:6px 10px}
+  .uxe-setting-value{grid-column:1/-1;grid-row:2}
+  .uxe-setting-explanation{grid-column:1/-1;grid-row:3}
+  .uxe-setting-availability{grid-column:2;grid-row:1}
+}
+@media(max-width:420px),(max-height:560px){
+  .uxe-forward-panel[data-uxe-presentation="SHEET"]{height:100dvh;max-height:100dvh;border-radius:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .uxe-forward-panel,.uxe-forward-panel::backdrop,.uxe-forward-panel *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+}
