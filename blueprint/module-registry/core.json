@@ -1342,7 +1342,7 @@
   {
     "moduleRef": "module.vexlife.core.ux-evolution",
     "path": "src/core/ux-evolution.mjs",
-    "role": "Validate E0-A migration accounting and E0-B pre-boot projection-host selection without taking semantic state, renderer, user-data, cutover or publication ownership.",
+    "role": "Validate E0 migration accounting plus canonical-shell Reference/Evolution selection and Living Journal active-surface admission without taking Journal, Memory, Journey, renderer-state, user-data, cutover or publication ownership.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "blueprint/ux-evolution-registry.json",
@@ -1366,7 +1366,11 @@
       "reference/browser/modules/render-lab-controller.js",
       "scripts/serve-browser.mjs",
       "reference/browser/evolution/index.html",
-      "reference/browser/evolution/projection-host.js"
+      "reference/browser/evolution/projection-host.js",
+      "reference/browser/evolution/living-journal-projection.js",
+      "reference/browser/evolution/living-journal.css",
+      "test/ux-evolution-host.test.mjs",
+      "test/ux-evolution.test.mjs"
     ]
   }
 ]
