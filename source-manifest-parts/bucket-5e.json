@@ -11,8 +11,8 @@
     {
       "path": "scripts/browser-integration.mjs",
       "mode": "100644",
-      "bytes": 20399,
-      "sha256": "cf465c88b8d657671e4456d3a42a9630e95cb57403fe71571a78731f5d3dec1b"
+      "bytes": 21225,
+      "sha256": "7ff5b11ef361c1a1e3029efcb62d3b19ce5fcbcf681317f08e39755472e307bf"
     }
   ]
 }

@@ -170,6 +170,17 @@ if (playwright) {
           assert(canonicalInput&&canonicalSend&&evolutionInput&&evolutionSend,'Conversation composer seams must exist');
           assert(evolutionInput.value===canonicalInput.value,'Evolution composer must project canonical input truth');
           assert(evolutionSend.disabled===canonicalSend.disabled,'Evolution submit availability must mirror canonical composer');
+          let draftExercise='NOT_APPLICABLE_READY';
+          if(!canonicalReady){
+            const draftProbe='Conversation Evolution local draft proof';
+            evolutionInput.value=draftProbe;
+            evolutionInput.dispatchEvent(new Event('input',{bubbles:true}));
+            await delay(12);
+            assert(canonicalInput.value===draftProbe,'Evolution input must write through the canonical composer seam');
+            assert(app.state.unsentLocalDraft?.channelRef===channel.channelRef,'unavailable Conversation input must preserve the canonical local draft channel');
+            assert(app.state.unsentLocalDraft?.content===draftProbe,'unavailable Conversation input must preserve exact canonical local draft content');
+            draftExercise='PRESERVED_UNSENT_LOCAL_DRAFT';
+          }
           const channelButton=root.querySelector('.conversation-evolution__channel'),channelRect=channelButton?.getBoundingClientRect(),sendRect=evolutionSend.getBoundingClientRect();
           assert((channelRect?.height??0)>=44&&sendRect.height>=44,'Conversation controls must retain >=44px target height');
           assert(matchMedia('(prefers-reduced-motion: reduce)').matches===reducedMotionValue,'Conversation motion media state mismatch');
@@ -182,7 +193,7 @@ if (playwright) {
           app.chat.renderChannels();app.chat.renderMessages(true);await delay(24);
           assert(body.childElementCount===0,'closed Conversation renderer remounted after Reference structural update');
           assert(app.uxProjectionShell.snapshot().activeSurfaceRef===null,'Reference structural update reactivated Conversation surface');
-          return Object.freeze({state:'PASS',viewportClass:viewportClassValue,reducedMotion:reducedMotionValue,semanticOwnerRef:root.dataset.semanticOwnerRef,interactionOwnerRef:root.dataset.interactionOwnerRef,canonicalReady,projectedReady,channelKind:channel?.kind??null,channelTargetHeight:channelRect?.height??0,sendTargetHeight:sendRect.height,postCloseBodyChildCount:body.childElementCount,journeyUnchanged:true,realCompanionTurnExecuted:false});
+          return Object.freeze({state:'PASS',viewportClass:viewportClassValue,reducedMotion:reducedMotionValue,semanticOwnerRef:root.dataset.semanticOwnerRef,interactionOwnerRef:root.dataset.interactionOwnerRef,canonicalReady,projectedReady,channelKind:channel?.kind??null,draftExercise,channelTargetHeight:channelRect?.height??0,sendTargetHeight:sendRect.height,postCloseBodyChildCount:body.childElementCount,journeyUnchanged:true,realCompanionTurnExecuted:false});
         },{viewportClassValue:viewportClass,reducedMotionValue:reducedMotion});
         return{viewport,viewportClass,proof,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
       }finally{await proofPage.close();}
