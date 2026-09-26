@@ -3,6 +3,12 @@
   "bucketId": "b7",
   "files": [
     {
+      "path": "blueprint/presentation-graph-registry.json",
+      "mode": "100644",
+      "bytes": 5806,
+      "sha256": "277490c587a0c9dec831017d86506d8c17206a19afbe7209b575d34bff4faf9c"
+    },
+    {
       "path": "install/vexlife-setup.sh",
       "mode": "100755",
       "bytes": 20582,

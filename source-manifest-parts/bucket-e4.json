@@ -15,6 +15,12 @@
       "sha256": "67edffd8a6645681a88e343a2d5f6d044e6ce5b63fe318f267b0a49cc481a0a7"
     },
     {
+      "path": "scripts/presentation-graph.mjs",
+      "mode": "100644",
+      "bytes": 16202,
+      "sha256": "792591acacf848e02954730cbe37a7f1261fe91555dbdffa1e59ead6a72084fb"
+    },
+    {
       "path": "src/core/build-admission.mjs",
       "mode": "100644",
       "bytes": 82949,

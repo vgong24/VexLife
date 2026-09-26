@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 8561,
       "sha256": "9042328a204e29445fd9cc35befb51e824a0aaf39b5f04e1e683aa0747148109"
+    },
+    {
+      "path": "scripts/presentation-graph-observer.mjs",
+      "mode": "100644",
+      "bytes": 16323,
+      "sha256": "d14fa0949db57da890c22cc64a1eb6fb5a3836e5554a8c870a9d06bc155fe81c"
     }
   ]
 }

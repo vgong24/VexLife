@@ -31,6 +31,12 @@
       "mode": "100644",
       "bytes": 17215,
       "sha256": "cd0012fe81e892e1c47df482b146967a0a33ec4821e56f03114ba6acefc84bbd"
+    },
+    {
+      "path": "test/presentation-graph.test.mjs",
+      "mode": "100644",
+      "bytes": 8416,
+      "sha256": "e7c1d275a961ff08812dc1be8d543007e44421f701b0446e42e22e012953c937"
     }
   ]
 }
