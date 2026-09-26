@@ -513,43 +513,88 @@
   {
     "moduleRef": "module.vexlife.browser.evolution-host-document",
     "path": "reference/browser/evolution/index.html",
-    "role": "Local/dev-only inert E0-B Evolution projection document. It mounts no Reference adapter or migrated semantic surface and provides only an explicit return to Reference.",
+    "role": "Legacy Evolution URL compatibility document that redirects into the canonical VexLife shell; it owns no Journal title, navigation, semantic state, renderer, Memory, Journey, Vex or publication behavior.",
     "platformScope": "BROWSER",
-    "reads": [
-      "reference/browser/evolution/projection-host.js"
-    ],
+    "reads": [],
     "writes": [],
-    "loadedBy": [
-      "module.vexlife.script.serve-browser"
-    ],
-    "tests": [
-      "test/ux-evolution-host.test.mjs"
-    ],
-    "changeMap": [
-      "reference/browser/evolution/projection-host.js"
-    ]
-  },
-  {
-    "moduleRef": "module.vexlife.browser.evolution-projection-host",
-    "path": "reference/browser/evolution/projection-host.js",
-    "role": "Validates explicit loopback-only Evolution selection against the canonical UX Evolution registry and emits one in-page inert-host receipt without semantic, user-data, cutover or publication effects.",
-    "platformScope": "BROWSER",
-    "reads": [
-      "blueprint/ux-evolution-registry.json",
-      "module.vexlife.core.ux-evolution"
-    ],
-    "writes": [
-      "in-page E0-B host receipt only"
-    ],
-    "loadedBy": [
-      "reference/browser/evolution/index.html"
-    ],
+    "loadedBy": [],
     "tests": [
       "test/ux-evolution-host.test.mjs"
     ],
     "changeMap": [
       "src/core/ux-evolution.mjs",
-      "scripts/serve-browser.mjs"
+      "blueprint/ux-evolution-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.evolution-projection-host",
+    "path": "reference/browser/evolution/projection-host.js",
+    "role": "Journal-owned registration helper that binds one Living Journal presentation adapter into the accepted shell-owned active-surface host without becoming a semantic, state, navigation, Memory, cutover or publication owner.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/ux-evolution-registry.json",
+      "blueprint/ux-evolution-shell-scaffold.json",
+      "module.vexlife.browser.evolution-living-journal-shadow"
+    ],
+    "writes": [
+      "canonical shell runtime adapter-registration map only"
+    ],
+    "loadedBy": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/ux-evolution-host.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/app.js",
+      "reference/browser/evolution/living-journal-projection.js",
+      "blueprint/ux-evolution-registry.json",
+      "blueprint/ux-evolution-shell-scaffold.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.evolution-living-journal-shadow",
+    "path": "reference/browser/evolution/living-journal-projection.js",
+    "role": "LJ-01 presentation-only active-surface adapter that moves and reuses the canonical Living Journal view/controller under the shell host, preserving canonical Memory/archive/source/revisit/walkthrough/marginalia and Journey ownership with zero user-data fork.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.js",
+      "reference/browser/modules/living-journal-controller.js",
+      "blueprint/ux-evolution-registry.json",
+      "blueprint/ux-evolution-shell-scaffold.json"
+    ],
+    "writes": [
+      "ephemeral DOM placement/style state only; canonical Journal owners retain semantic effects"
+    ],
+    "loadedBy": [
+      "module.vexlife.browser.evolution-projection-host"
+    ],
+    "tests": [
+      "test/ux-evolution-host.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/evolution/living-journal.css",
+      "blueprint/ux-evolution-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.evolution-living-journal-styles",
+    "path": "reference/browser/evolution/living-journal.css",
+    "role": "Shell-scoped Living Journal Evolution presentation grammar layered over the canonical Journal DOM: reading-first layout, >=48px controls, compact flow and reduced-motion equivalence without standalone shell chrome.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.css",
+      "blueprint/design-tokens.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.browser.evolution-living-journal-shadow"
+    ],
+    "tests": [
+      "test/ux-evolution-host.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/evolution/living-journal-projection.js"
     ]
   }
 ]

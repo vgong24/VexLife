@@ -10,7 +10,7 @@ import {
   acceptRecovery,
   SCHEMAS
 } from '../scripts/companion-recovery-effect-proof.mjs';
-import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
+import { BROWSER_COMPANION_RECOVERY_ACTION_PATH, createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
 import { compileCompanionAvailability } from '../src/core/companion-availability-reentry.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -80,6 +80,41 @@ function ownerReceipt(input, overrides = {}) {
   };
 }
 
+
+function binding(overrides = {}) {
+  return {
+    schemaVersion: 'vexlife.companion-binding-input/v1',
+    truthClass: 'FOREIGN_CANONICAL_COMPANION_BINDING',
+    bindingRef: 'binding.vr06.action',
+    homeRef: 'home.vr06.action',
+    companionLineageRef: 'lineage.vr06.action',
+    modelRefOrNull: 'model.vr06.action',
+    generationRefOrNull: 'generation.vr06.action',
+    bindingState: 'BOUND',
+    currentness: 'CURRENT',
+    sourceRefs: ['source.binding.vr06.action'],
+    ...overrides
+  };
+}
+
+function runtimeObservation(overrides = {}) {
+  return {
+    schemaVersion: 'vexlife.companion-runtime-adapter-observation/v1',
+    truthClass: 'FOREIGN_PLATFORM_RUNTIME_OBSERVATION',
+    observationRef: 'observation.vr06.action.stopped',
+    adapterRef: 'adapter.runtime.vr06.action',
+    bindingRef: 'binding.vr06.action',
+    homeRef: 'home.vr06.action',
+    runtimeOwnershipState: 'NO_OWNED_RUNTIME',
+    runtimeState: 'STOPPED',
+    qualificationState: 'STALE',
+    safeReentryState: 'AVAILABLE',
+    currentness: 'CURRENT',
+    evidenceRefs: ['evidence.runtime.vr06.action'],
+    ...overrides
+  };
+}
+
 function fakeCompanion(recover) {
   return createBrowserCompanionBridge({
     endpoint: null,
@@ -87,6 +122,103 @@ function fakeCompanion(recover) {
     recoveryOwner: recover ? { recover } : null
   });
 }
+
+
+test('VR06 server-owned recovery action exposes only a bounded source binding and privately forms the exact VR02 request', async () => {
+  const calls = [];
+  await withServer({
+    resolveCompanionBinding: async () => binding(),
+    resolveCompanionRuntimeObservation: async () => runtimeObservation(),
+    companionBridge: fakeCompanion(async (input) => {
+      calls.push(structuredClone(input));
+      return ownerReceipt(input);
+    })
+  }, async (base) => {
+    const bindingResponse = await fetch(base + BROWSER_COMPANION_RECOVERY_ACTION_PATH);
+    assert.equal(bindingResponse.status, 200);
+    const action = await bindingResponse.json();
+    assert.deepEqual(Object.keys(action).sort(), [
+      'actionRef',
+      'availabilityProjectionRef',
+      'effectAuthorityGranted',
+      'schemaVersion',
+      'truthClass'
+    ]);
+    assert.equal(action.schemaVersion, 'vexlife.browser-companion-recovery-action-binding/v1');
+    assert.equal(action.truthClass, 'SOURCE_BOUND_COMPANION_RECOVERY_ACTION');
+    assert.equal(action.actionRef, 'action.companion.reenter-current-binding');
+    assert.equal(action.effectAuthorityGranted, false);
+    for (const hidden of ['reentryPlanRef','idempotencyKey','requestRef','requestSha256','runtimeObservationRef']) {
+      assert.equal(Object.hasOwn(action, hidden), false);
+    }
+
+    const invoke = await fetch(base + BROWSER_COMPANION_RECOVERY_ACTION_PATH, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(action)
+    });
+    assert.equal(invoke.status, 200);
+    const result = await invoke.json();
+    assert.equal(calls.length, 1);
+    const exactRequest = calls[0];
+    assert.equal(exactRequest.schemaVersion, 'vexlife.companion-recovery-request/v1');
+    assert.equal(exactRequest.actionRef, action.actionRef);
+    assert.equal(exactRequest.availabilityProjectionRef, action.availabilityProjectionRef);
+    assert.equal(exactRequest.effectAuthorityGranted, false);
+    assert.match(exactRequest.idempotencyKey, /^companion-reentry:[0-9a-f]{64}$/u);
+    assert.match(exactRequest.requestSha256, /^[0-9a-f]{64}$/u);
+    assert.equal(result.requestRef, exactRequest.requestRef);
+  });
+});
+
+test('VR06 recovery action rejects stale or authority-inflated consumer bindings before recovery delegation', async () => {
+  let observation = runtimeObservation();
+  let calls = 0;
+  await withServer({
+    resolveCompanionBinding: async () => binding(),
+    resolveCompanionRuntimeObservation: async () => observation,
+    companionBridge: fakeCompanion(async (input) => { calls += 1; return ownerReceipt(input); })
+  }, async (base) => {
+    const initial = await fetch(base + BROWSER_COMPANION_RECOVERY_ACTION_PATH);
+    assert.equal(initial.status, 200);
+    const action = await initial.json();
+
+    const forged = await fetch(base + BROWSER_COMPANION_RECOVERY_ACTION_PATH, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...action, runtimeEffectAuthority: true })
+    });
+    assert.equal(forged.status, 400);
+
+    observation = runtimeObservation({ observationRef: 'observation.vr06.action.new' });
+    const stale = await fetch(base + BROWSER_COMPANION_RECOVERY_ACTION_PATH, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(action)
+    });
+    assert.equal(stale.status, 409);
+    assert.equal((await stale.json()).failureCode, 'COMPANION_RECOVERY_ACTION_STALE');
+  });
+  assert.equal(calls, 0);
+});
+
+test('VR06 recovery action is unavailable unless fresh canonical truth is RECOVERABLE SAFE_REENTRY_AVAILABLE', async () => {
+  await withServer({
+    resolveCompanionBinding: async () => binding(),
+    resolveCompanionRuntimeObservation: async () => runtimeObservation({
+      observationRef: 'observation.vr06.action.ready',
+      runtimeOwnershipState: 'EXACT_OWNED',
+      runtimeState: 'HEALTHY',
+      qualificationState: 'CURRENT',
+      safeReentryState: 'NOT_AVAILABLE'
+    }),
+    companionBridge: fakeCompanion(async (input) => ownerReceipt(input))
+  }, async (base) => {
+    const response = await fetch(base + BROWSER_COMPANION_RECOVERY_ACTION_PATH);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).failureCode, 'COMPANION_RECOVERY_ACTION_NOT_AVAILABLE');
+  });
+});
 
 test('VR03 route forwards one exact admitted recovery request to the injected rightful owner', async () => {
   const calls = [];

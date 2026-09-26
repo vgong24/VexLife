@@ -6,6 +6,73 @@ const FAMILY_NODE_REF = 'element.channel.group';
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const text = (value) => typeof value === 'string' && value.length > 0;
 const count = (value) => Number.isSafeInteger(value) && value >= 0;
+const fingerprint = (value) => typeof value === 'string' && /^[0-9a-f]{64}$/u.test(value);
+
+function heldSecurityStatus() {
+  return Object.freeze({
+    state: 'HELD_UNAVAILABLE',
+    projectionRefOrNull: null,
+    projectionFingerprintOrNull: null,
+    sessionCurrent: 'UNKNOWN',
+    missingCount: null,
+    unknownCount: null,
+    withheldCount: null,
+    telemetryGapCount: null,
+    incidentCoverageStateOrNull: null,
+    attackEstablished: 'UNKNOWN',
+    roleCanAct: false,
+    effectAuthorityGranted: false
+  });
+}
+
+function normalizedSecurityStatus(value) {
+  if (value == null) return heldSecurityStatus();
+  if (!object(value)) throw new TypeError('Family security status is invalid');
+  if (value.state === 'HELD_UNAVAILABLE') {
+    if (
+      value.projectionRefOrNull !== null
+      || value.projectionFingerprintOrNull !== null
+      || value.sessionCurrent !== 'UNKNOWN'
+      || value.missingCount !== null
+      || value.unknownCount !== null
+      || value.withheldCount !== null
+      || value.telemetryGapCount !== null
+      || value.incidentCoverageStateOrNull !== null
+      || value.attackEstablished !== 'UNKNOWN'
+      || value.roleCanAct !== false
+      || value.effectAuthorityGranted !== false
+    ) throw new TypeError('Held Family security status is invalid');
+    return heldSecurityStatus();
+  }
+  if (
+    value.state !== 'CURRENT'
+    || !text(value.projectionRefOrNull)
+    || !fingerprint(value.projectionFingerprintOrNull)
+    || value.sessionCurrent !== true
+    || !count(value.missingCount)
+    || !count(value.unknownCount)
+    || !count(value.withheldCount)
+    || !count(value.telemetryGapCount)
+    || (value.incidentCoverageStateOrNull !== null && !text(value.incidentCoverageStateOrNull))
+    || value.attackEstablished !== false
+    || value.roleCanAct !== false
+    || value.effectAuthorityGranted !== false
+  ) throw new TypeError('Current Family security status is invalid');
+  return Object.freeze({
+    state: 'CURRENT',
+    projectionRefOrNull: value.projectionRefOrNull,
+    projectionFingerprintOrNull: value.projectionFingerprintOrNull,
+    sessionCurrent: true,
+    missingCount: value.missingCount,
+    unknownCount: value.unknownCount,
+    withheldCount: value.withheldCount,
+    telemetryGapCount: value.telemetryGapCount,
+    incidentCoverageStateOrNull: value.incidentCoverageStateOrNull,
+    attackEstablished: false,
+    roleCanAct: false,
+    effectAuthorityGranted: false
+  });
+}
 
 function heldSnapshot(failureCode = 'FAMILY_SESSION_AUTHORITY_UNAVAILABLE') {
   return Object.freeze({
@@ -22,6 +89,7 @@ function heldSnapshot(failureCode = 'FAMILY_SESSION_AUTHORITY_UNAVAILABLE') {
       attentionCount: null,
       sourceRef: null
     }),
+    securityStatus: heldSecurityStatus(),
     failureCode
   });
 }
@@ -117,6 +185,7 @@ export function normalizeFamilyRoomBootstrap(value) {
       currentPrincipalRef: null,
       rooms: Object.freeze([]),
       workStatus: normalizedWorkStatus(value.workStatus),
+      securityStatus: normalizedSecurityStatus(value.securityStatus),
       failureCode: value.failureCode
     });
   }
@@ -140,6 +209,7 @@ export function normalizeFamilyRoomBootstrap(value) {
     currentPrincipalRef: value.currentPrincipalRef,
     rooms,
     workStatus: normalizedWorkStatus(value.workStatus),
+    securityStatus: normalizedSecurityStatus(value.securityStatus),
     failureCode: null
   });
 }
@@ -156,7 +226,12 @@ export function familyRoomViewModel(snapshot) {
     pendingCount: snapshot.workStatus.pendingCount,
     activeCount: snapshot.workStatus.activeCount,
     dueCount: snapshot.workStatus.dueCount,
-    attentionCount: snapshot.workStatus.attentionCount
+    attentionCount: snapshot.workStatus.attentionCount,
+    securityState: snapshot.securityStatus.state,
+    securityMissingCount: snapshot.securityStatus.missingCount,
+    securityUnknownCount: snapshot.securityStatus.unknownCount,
+    securityWithheldCount: snapshot.securityStatus.withheldCount,
+    securityTelemetryGapCount: snapshot.securityStatus.telemetryGapCount
   });
 }
 
@@ -586,6 +661,48 @@ export function createFamilyRoomController({
       work.dataset.attentionCount = String(snapshot.workStatus.attentionCount);
     }
     host.append(work);
+
+    const security = documentRef.createElement('div');
+    security.className = 'family-room-security-status';
+    security.dataset.familySecurityState = snapshot.securityStatus.state;
+    const securityLabel = documentRef.createElement('strong');
+    securityLabel.textContent = t('family-room.security.label');
+    const securitySummary = documentRef.createElement('p');
+    if (snapshot.securityStatus.state === 'CURRENT') {
+      const limited = (
+        snapshot.securityStatus.missingCount
+        + snapshot.securityStatus.unknownCount
+        + snapshot.securityStatus.withheldCount
+        + snapshot.securityStatus.telemetryGapCount
+      ) > 0;
+      securitySummary.textContent = t(
+        limited ? 'family-room.security.limited' : 'family-room.security.current'
+      );
+      security.dataset.missingCount = String(snapshot.securityStatus.missingCount);
+      security.dataset.unknownCount = String(snapshot.securityStatus.unknownCount);
+      security.dataset.withheldCount = String(snapshot.securityStatus.withheldCount);
+      security.dataset.telemetryGapCount = String(snapshot.securityStatus.telemetryGapCount);
+      security.dataset.attackEstablished = 'false';
+      if (limited) {
+        const gaps = documentRef.createElement('p');
+        gaps.textContent = t('family-room.security.gaps', {
+          missing: snapshot.securityStatus.missingCount,
+          unknown: snapshot.securityStatus.unknownCount,
+          withheld: snapshot.securityStatus.withheldCount,
+          telemetry: snapshot.securityStatus.telemetryGapCount
+        });
+        security.append(securityLabel, securitySummary, gaps);
+      } else {
+        security.append(securityLabel, securitySummary);
+      }
+    } else {
+      securitySummary.textContent = t('family-room.security.unavailable');
+      security.append(securityLabel, securitySummary);
+    }
+    const securityScope = documentRef.createElement('p');
+    securityScope.textContent = t('family-room.security.scope');
+    security.append(securityScope);
+    host.append(security);
 
     const action = documentRef.createElement('button');
     action.type = 'button';

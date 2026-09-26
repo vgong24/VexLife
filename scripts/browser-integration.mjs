@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -51,9 +52,25 @@ try {
 }
 
 if (playwright) {
+  const integrationHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-browser-integration-home-'));
+  const integrationDeviceRef = 'device.browser.integration';
+  const integrationLineageRef = 'companion.lineage.browser.integration';
+  fs.mkdirSync(path.join(integrationHome, 'config'), { recursive: true });
+  fs.mkdirSync(path.join(integrationHome, 'devices'), { recursive: true });
+  fs.writeFileSync(path.join(integrationHome, 'config', 'home.json'), `${JSON.stringify({
+    schemaVersion: 'vexlife.home/v0',
+    homeRef: 'home.browser.integration',
+    currentDeviceRef: integrationDeviceRef,
+    currentCompanionLineageRef: integrationLineageRef
+  }, null, 2)}\n`);
+  fs.writeFileSync(path.join(integrationHome, 'devices', `${integrationDeviceRef}.json`), `${JSON.stringify({
+    deviceRef: integrationDeviceRef,
+    companionLineageRef: integrationLineageRef
+  }, null, 2)}\n`);
+
   const server = spawn(process.execPath, ['scripts/serve-browser.mjs'], {
     cwd: ROOT,
-    env: { ...process.env, VEXLIFE_PORT: '0' },
+    env: { ...process.env, VEXLIFE_PORT: '0', VEXLIFE_HOME: integrationHome },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   server.stdout.setEncoding('utf8');
@@ -112,15 +129,30 @@ if (playwright) {
     const q5WideRecovered=await compactPage.evaluate(()=>{const app=globalThis.__VEXLIFE_APP__;const result={workspace:app.contextWorkspaceSnapshot(),semanticFrame:JSON.stringify(app.navigation.semanticFrame()),journey:JSON.stringify(app.navigation.fullJourney()),adaptation:JSON.stringify(app.terrain.adaptationSnapshot()),terrainRef:app.terrain.currentRef()};app.resetContextWorkspaceLayout();app.returnToTerrain();return result});
     const q5WorkspaceInverse={state:q5Compact?.state==='PASS'&&q5Wide.workspace?.resolved?.viewportClass==='WIDE'&&q5Wide.workspace?.resolved?.mode==='DOCK_LEFT'&&q5Wide.workspace?.resolved?.splitFocusApplied===true&&q5CompactRecovered.workspace?.resolved?.mode==='COMPACT_SHEET'&&q5CompactRecovered.workspace?.resolved?.splitFocusApplied===false&&q5WideRecovered.workspace?.resolved?.mode==='DOCK_LEFT'&&q5WideRecovered.workspace?.resolved?.splitFocusApplied===true&&[q5Wide,q5CompactRecovered,q5WideRecovered].every(x=>JSON.stringify(x.workspace?.preferred)===JSON.stringify(q5Compact.preferred)&&x.semanticFrame===q5Compact.semanticFrame&&x.journey===q5Compact.journey&&x.adaptation===q5Compact.adaptation&&x.terrainRef===q5Compact.terrainRef)?'PASS':'FAIL',wide:q5Wide.workspace,recoveredCompact:q5CompactRecovered.workspace,recoveredWide:q5WideRecovered.workspace};
     await compactPage.close();
-    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && q5Compact?.state === 'PASS' && q5WorkspaceInverse.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 ? 'PASS' : 'FAILED';
+    const runJournalViewportProof=async(viewport,viewportClass)=>{
+      const proofConsoleErrors=[],proofPageErrors=[],proofPage=await browser.newPage({viewport});
+      proofPage.on('console',(message)=>{if(message.type()==='error')proofConsoleErrors.push(message.text());});
+      proofPage.on('pageerror',(error)=>proofPageErrors.push(error.message));
+      try{
+        await proofPage.goto(serverUrl+'/reference/browser/',{waitUntil:'networkidle',timeout:30000});
+        await proofPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
+        const proof=await proofPage.evaluate(async(viewportClassValue)=>{const {runLivingJournalProof}=await import('./integration/living-journal-suite.js');const assert=(condition,message)=>{if(!condition)throw new Error(message);};const delay=(ms)=>new Promise((resolve)=>setTimeout(resolve,ms));return runLivingJournalProof({app:globalThis.__VEXLIFE_APP__,helpers:{delay,assert},viewportClass:viewportClassValue});},viewportClass);
+        return{viewport,viewportClass,proof,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
+      }finally{await proofPage.close();}
+    };
+    const journalDesktop=await runJournalViewportProof({width:1440,height:900},'DESKTOP');
+    const journalCompact=await runJournalViewportProof({width:390,height:844},'COMPACT');
+    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && q5Compact?.state === 'PASS' && q5WorkspaceInverse.state === 'PASS' && journalDesktop.proof?.state === 'PASS' && journalCompact.proof?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 && journalDesktop.consoleErrors.length === 0 && journalDesktop.pageErrors.length === 0 && journalCompact.consoleErrors.length === 0 && journalCompact.pageErrors.length === 0 ? 'PASS' : 'FAILED';
     finish({
       ...baseReceipt,
       state,
       currentness: 'CURRENT',
       browser: { name: browser.browserType().name(), version: browser.version() },
-      consoleErrors:[...consoleErrors,...compactConsoleErrors],
-      pageErrors:[...pageErrors,...compactPageErrors],
+      consoleErrors:[...consoleErrors,...compactConsoleErrors,...journalDesktop.consoleErrors,...journalCompact.consoleErrors],
+      pageErrors:[...pageErrors,...compactPageErrors,...journalDesktop.pageErrors,...journalCompact.pageErrors],
       integration,
+      journalDesktop,
+      journalCompact,
       livedDCompact,
       q2Compact,
       q2ViewportInverse,
@@ -140,6 +172,7 @@ if (playwright) {
   } finally {
     await browser?.close().catch(() => {});
     server.kill();
+    fs.rmSync(integrationHome, { recursive: true, force: true });
   }
 }
 

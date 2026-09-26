@@ -5,14 +5,14 @@
     {
       "path": "blueprint/experience-registry.json",
       "mode": "100644",
-      "bytes": 30216,
-      "sha256": "e95ac87cf0c5d4df87afa76dd045287d2774e32a80bc94cde8ff4337b6961486"
+      "bytes": 29954,
+      "sha256": "ffe4d31828f71c7701b9038714a750adf7949937123ee99440ce25975a805c80"
     },
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 47978,
-      "sha256": "906e9da0e9add1e8d42f7ab7a530090bf5d5e7f4e4afb7d0eca7413d0744f313"
+      "bytes": 48242,
+      "sha256": "37b3d8ba192f4c212cdf428172f48922bff25235036fda926c5b047e61252ca7"
     },
     {
       "path": "docs/PURPOSE-WORKSPACE-AND-EXPERIENCE-TOPOLOGY.md",

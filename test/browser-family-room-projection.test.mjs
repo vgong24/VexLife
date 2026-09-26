@@ -36,6 +36,11 @@ import {
 } from '../src/core/concern-watch.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 import {
+  FAMILY_SECURITY_FAMILY_CONTEXT_SCHEMA,
+  FAMILY_SECURITY_PERCEPTION_EVIDENCE_SCHEMA,
+  projectFamilySecurityAwareness
+} from '../src/core/family-security-projection.mjs';
+import {
   BROWSER_FAMILY_CONVERSATION_API_PATH,
   BROWSER_FAMILY_FOLLOW_THROUGH_RUNTIME_SCHEMA,
   BROWSER_FAMILY_FOLLOW_THROUGH_SOURCE_REF,
@@ -178,7 +183,7 @@ function fixture(t){
   const resolver=createVexCoreFamilySessionAuthorityResolver({
     resolveVexCoreAuthority:async()=>projection
   });
-  return {home,record,resolver};
+  return {home,record,resolver,channel,sessionProjection:projection};
 }
 
 function vexCoreProjectionForPrincipal(principalRef,deviceRef){
@@ -249,6 +254,77 @@ function fakeCompanion(){
   });
 }
 
+function familySecurityProjectionFor({
+  record,
+  channel,
+  sessionProjection,
+  perceptionEvidenceOrNull = null
+}) {
+  return projectFamilySecurityAwareness({
+    familyContext: {
+      schemaVersion: FAMILY_SECURITY_FAMILY_CONTEXT_SCHEMA,
+      state: 'CURRENT',
+      spaceRef: record.spaceRef,
+      channelRef: channel.channelRef,
+      membershipGeneration: record.membershipGeneration,
+      membershipSnapshotRef: channel.familySpaceBinding.membershipSnapshotRef,
+      historyVisibilityPolicyRef: channel.familySpaceBinding.historyVisibilityPolicyRef,
+      requestingPrincipalRef: sessionProjection.principalRef,
+      audiencePrincipalRefs: channel.familySpaceBinding.audienceMemberBindings.map((member) => member.principalRef),
+      familyCompanionLineageRef: channel.familySpaceBinding.familyCompanionLineageRef,
+      sourceRefs: ['source.vfs03.family.current']
+    },
+    sessionAuthority: sessionProjection,
+    perceptionEvidenceOrNull,
+    healthEvidenceOrNull: null,
+    distributionEvidenceOrNull: null
+  });
+}
+
+function rehashFamilySecurityProjection(value) {
+  const core = structuredClone(value);
+  delete core.semanticFingerprint;
+  delete core.familySecurityProjectionRef;
+  const semanticFingerprint = semanticHash(core);
+  return {
+    ...core,
+    familySecurityProjectionRef: `projection.vex-family-security.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  };
+}
+
+function vfs03PerceptionEvidence() {
+  return {
+    schemaVersion: FAMILY_SECURITY_PERCEPTION_EVIDENCE_SCHEMA,
+    truthClass: 'FOREIGN_PERCEPTION_OWNER_EVIDENCE',
+    ownerRef: 'github.issue.vextreme-sdk.243',
+    sourceProjectionRef: 'projection.vfs03.perception.current',
+    currentness: 'CURRENT',
+    sourceReceiptRefs: ['receipt.vfs03.perception.current'],
+    sourceRefs: ['source.vfs03.perception.current'],
+    gapEntries: [{
+      gapRef: 'gap.vfs03.perception.withheld',
+      gapState: 'WITHHELD',
+      currentness: 'CURRENT',
+      sourceRef: 'source.vfs03.perception.withheld',
+      sourceOwnerRef: 'github.issue.vextreme-sdk.243'
+    }],
+    withheldRefs: ['withheld.vfs03.perception.signal'],
+    knownLimitationRefs: [],
+    effectAuthorized: false,
+    effects: {
+      filesystem: false,
+      network: false,
+      process: false,
+      sensor: false,
+      model: false,
+      memory: false,
+      training: false,
+      publication: false
+    }
+  };
+}
+
 async function listen(server,t){
   await new Promise((resolve,reject)=>{
     server.once('error',reject);
@@ -258,6 +334,100 @@ async function listen(server,t){
   const address=server.address();
   return 'http://127.0.0.1:'+String(address.port);
 }
+
+test('VFS03-00/01 exact source-managed projection becomes compact CURRENT status while absence remains held',async(t)=>{
+  const {home,record,resolver,channel,sessionProjection}=fixture(t);
+  const held=await resolveCurrentFamilyRoomBootstrap({
+    request:{headers:{}},familyHome:home,resolveAuthority:resolver,nowProvider:()=>T1
+  });
+  assert.equal(held.state,'CURRENT');
+  assert.equal(held.securityStatus.state,'HELD_UNAVAILABLE');
+  assert.equal(held.securityStatus.roleCanAct,false);
+  assert.equal(held.securityStatus.effectAuthorityGranted,false);
+
+  const projection=familySecurityProjectionFor({record,channel,sessionProjection});
+  let observedCurrent=null;
+  const current=await resolveCurrentFamilyRoomBootstrap({
+    request:{headers:{}},familyHome:home,resolveAuthority:resolver,nowProvider:()=>T1,
+    resolveFamilySecurityProjection:async({current:securityCurrent})=>{
+      observedCurrent=securityCurrent;
+      return projection;
+    }
+  });
+  assert.equal(current.securityStatus.state,'CURRENT');
+  assert.equal(current.securityStatus.projectionRefOrNull,projection.familySecurityProjectionRef);
+  assert.equal(current.securityStatus.projectionFingerprintOrNull,projection.semanticFingerprint);
+  assert.equal(current.securityStatus.sessionCurrent,true);
+  assert.equal(current.securityStatus.attackEstablished,false);
+  assert.equal(current.securityStatus.roleCanAct,false);
+  assert.equal(current.securityStatus.effectAuthorityGranted,false);
+  assert.equal(observedCurrent.membershipSnapshotRef,channel.familySpaceBinding.membershipSnapshotRef);
+  assert.equal(observedCurrent.historyVisibilityPolicyRef,channel.familySpaceBinding.historyVisibilityPolicyRef);
+  assert.deepEqual(observedCurrent.audiencePrincipalRefs,
+    channel.familySpaceBinding.audienceMemberBindings.map((member)=>member.principalRef).sort());
+});
+
+test('VFS03-02/03/04/06 malformed, stale, authority-inflated or attack-inflated projections hold only security status',async(t)=>{
+  const {home,record,resolver,channel,sessionProjection}=fixture(t);
+  const exact=familySecurityProjectionFor({record,channel,sessionProjection});
+  const cases=[
+    ['family-space-mismatch',()=>{const value=structuredClone(exact);value.familyContext.spaceRef='space.vex-family.other';return rehashFamilySecurityProjection(value);}],
+    ['forged-fingerprint',()=>({...structuredClone(exact),semanticFingerprint:'0'.repeat(64)})],
+    ['role-can-act-inflation',()=>{const value=structuredClone(exact);value.authority.roleCanAct=true;return rehashFamilySecurityProjection(value);}],
+    ['effect-inflation',()=>{const value=structuredClone(exact);value.effects.network=true;return rehashFamilySecurityProjection(value);}],
+    ['attack-inflation',()=>{const value=structuredClone(exact);value.incidentCoverage.attackEstablished=true;return rehashFamilySecurityProjection(value);}]
+  ];
+  for(const [label,form] of cases){
+    const bootstrap=await resolveCurrentFamilyRoomBootstrap({
+      request:{headers:{}},familyHome:home,resolveAuthority:resolver,nowProvider:()=>T1,
+      resolveFamilySecurityProjection:async()=>form()
+    });
+    assert.equal(bootstrap.state,'CURRENT',label);
+    assert.equal(bootstrap.rooms.length,1,label);
+    assert.equal(bootstrap.securityStatus.state,'HELD_UNAVAILABLE',label);
+    assert.equal(bootstrap.securityStatus.roleCanAct,false,label);
+    assert.equal(bootstrap.securityStatus.effectAuthorityGranted,false,label);
+  }
+});
+
+test('VFS03-05/06/07 compact status preserves typed gaps and excludes raw authority material',async(t)=>{
+  const {home,record,resolver,channel,sessionProjection}=fixture(t);
+  const projection=familySecurityProjectionFor({
+    record,channel,sessionProjection,perceptionEvidenceOrNull:vfs03PerceptionEvidence()
+  });
+  const bootstrap=await resolveCurrentFamilyRoomBootstrap({
+    request:{headers:{}},familyHome:home,resolveAuthority:resolver,nowProvider:()=>T1,
+    resolveFamilySecurityProjection:async()=>projection
+  });
+  assert.equal(bootstrap.securityStatus.state,'CURRENT');
+  assert.equal(bootstrap.securityStatus.missingCount,3);
+  assert.equal(bootstrap.securityStatus.unknownCount,2);
+  assert.equal(bootstrap.securityStatus.withheldCount,1);
+  assert.equal(bootstrap.securityStatus.telemetryGapCount,1);
+  assert.equal(bootstrap.securityStatus.incidentCoverageStateOrNull,'MISSING_OWNER_PROJECTION');
+  assert.equal(bootstrap.securityStatus.attackEstablished,false);
+  const serialized=JSON.stringify(bootstrap);
+  for(const forbidden of [
+    'devicePublicKey','membershipHash','leaseHash','approvedBy','approvedAt','issuedAt','expiresAt',
+    'homeBridgeMembershipRef','homeBridgeLeaseRef'
+  ]) assert.equal(serialized.includes(forbidden),false,forbidden);
+  assert.equal(Object.hasOwn(bootstrap,'companionAvailability'),false);
+});
+
+test('VFS03-08 EN/JA/ZH copy keeps visible status scoped and non-certifying',()=>{
+  const required=[
+    'family-room.security.label','family-room.security.current','family-room.security.limited',
+    'family-room.security.unavailable','family-room.security.gaps','family-room.security.scope'
+  ];
+  for(const locale of ['en','ja','zh']){
+    const strings=JSON.parse(fs.readFileSync(path.join(ROOT,'blueprint','strings',locale+'.json'),'utf8'));
+    for(const key of required) assert.equal(typeof strings[key],'string',locale+':'+key);
+  }
+  const en=JSON.parse(fs.readFileSync(path.join(ROOT,'blueprint','strings','en.json'),'utf8'));
+  const visible=required.map((key)=>en[key]).join(' ');
+  assert.doesNotMatch(visible,/\bSAFE\b|\bCLEAR\b/u);
+  assert.match(en['family-room.security.scope'],/not a safety certification/u);
+});
 
 test('VF06-00 server-owned bootstrap projects only current visible Family truth',async(t)=>{
   const {home,resolver}=fixture(t);
@@ -296,7 +466,9 @@ test('VF06-00 server-owned bootstrap projects only current visible Family truth'
   const view=familyRoomViewModel(normalized);
   assert.deepEqual(view,{
     state:'CURRENT',truthClass:'CURRENT_LIVE_FAMILY',roomCount:1,audienceCount:3,familyVexCount:1,
-    workState:'CURRENT',pendingCount:0,activeCount:0,dueCount:0,attentionCount:0
+    workState:'CURRENT',pendingCount:0,activeCount:0,dueCount:0,attentionCount:0,
+    securityState:'HELD_UNAVAILABLE',securityMissingCount:null,securityUnknownCount:null,
+    securityWithheldCount:null,securityTelemetryGapCount:null
   });
 });
 
@@ -438,6 +610,7 @@ test('FTE-06/07 active/due Family work does not block deterministic human Family
   const bootstrap=await (await fetch(base+BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH)).json();
   assert.equal(bootstrap.workStatus.activeCount,1); assert.equal(bootstrap.workStatus.dueCount,1);
   assert.equal(bootstrap.workStatus.attentionCount,1);
+  assert.equal(bootstrap.securityStatus.state,'HELD_UNAVAILABLE');
   const response=await fetch(base+BROWSER_FAMILY_CONVERSATION_API_PATH,{
     method:'POST',headers:{'content-type':'application/json'},
     body:JSON.stringify({operation:'APPEND',intent:{spaceRef:SPACE,channelRef:CHANNEL,

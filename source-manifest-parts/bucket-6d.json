@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/modules/navigation-controller.js",
       "mode": "100644",
-      "bytes": 8788,
-      "sha256": "44321f837cff4ee022e522e42c9efa9a0358deabbb830d2fda6eebbe11942097"
+      "bytes": 10783,
+      "sha256": "8210843d340f3d670dfcd72ee1949dc624831c8a29e2811eb54d6f85af9c5ef5"
     },
     {
       "path": "src/core/implementation-plan.mjs",

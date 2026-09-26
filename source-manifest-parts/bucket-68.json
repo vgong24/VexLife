@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "68",
+  "files": [
+    {
+      "path": "test/security-access-convergence.test.mjs",
+      "mode": "100644",
+      "bytes": 6464,
+      "sha256": "f1c509867056d8aabce8ad7c68b6f584b12507ae3d54ffd518ecb6064f599db4"
+    }
+  ]
+}

@@ -880,5 +880,50 @@
       "src/core/ux-evolution.mjs",
       "docs/UX-EVOLUTION-FOUNDATION.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.presentation-graph",
+    "path": "scripts/presentation-graph.mjs",
+    "role": "Compile shadow Presentation Graph, typed canonical-identity views, reachability, Navigation/motion references, test obligations and behavior-witness projections without becoming a semantic owner.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "module.vexlife.core.blueprint",
+      "registry.vexlife.features.001",
+      "registry.vexlife.navigation-continuity.001",
+      "blueprint/presentation-graph-registry.json"
+    ],
+    "writes": [
+      "generated/presentation/**"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/presentation-graph.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/presentation-graph-registry.json",
+      "docs/VEX-PRESENTATION-GRAPH.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.presentation-graph-observer",
+    "path": "scripts/presentation-graph-observer.mjs",
+    "role": "Collect bounded timestamp-first semantic/presentation events, explicit-coordinate-space geometry and optional ExecutionContext projections without raw-pointer surveillance or Journey ownership.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "blueprint/presentation-graph-registry.json",
+      "reference/browser/**",
+      "module.vexlife.browser.navigation-controller"
+    ],
+    "writes": [
+      "generated/health/presentation-runtime-trace.json"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/presentation-graph-observer.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/presentation-graph.mjs",
+      "docs/VEX-PRESENTATION-GRAPH.md"
+    ]
   }
 ]
