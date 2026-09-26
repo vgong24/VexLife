@@ -11,8 +11,8 @@
     {
       "path": "test/browser-companion-recovery-http-route.test.mjs",
       "mode": "100644",
-      "bytes": 10024,
-      "sha256": "5eb6f8bfd96cf9d6e514423fc918b996ea056dcf904d94a125de1ffe835f97ee"
+      "bytes": 15509,
+      "sha256": "ba1d6004076ab08946fd47b4b4534c310aee15d0195b026a99a5b426f4336453"
     }
   ]
 }
