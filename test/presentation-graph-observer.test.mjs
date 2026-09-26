@@ -147,3 +147,37 @@ test('bounded trace drops oldest events instead of becoming an unbounded telemet
   assert.deepEqual(trace.events.map((item) => item.eventClass), ['LAYOUT_SETTLED', 'PRESENTATION_UNMOUNT']);
   assert.equal(trace.rawPointerLogging, false);
 });
+
+
+test('geometry rejects negative dimensions and invalid occlusion evidence', () => {
+  assert.throws(() => createGeometrySnapshot({
+    coordinateSpace: 'PARENT_CONTAINER',
+    parentRect: { x: 0, y: 0, width: 100, height: 100 },
+    elementRect: { x: 0, y: 0, width: -1, height: 20 }
+  }, { allowedCoordinateSpaces: coordinateSpaces }), /non-negative/u);
+
+  assert.throws(() => createGeometrySnapshot({
+    coordinateSpace: 'PARENT_CONTAINER',
+    parentRect: { x: 0, y: 0, width: 100, height: 100 },
+    elementRect: { x: 0, y: 0, width: 10, height: 10 },
+    occlusionFraction: 1.1
+  }, { allowedCoordinateSpaces: coordinateSpaces }), /occlusionFraction/u);
+
+  assert.throws(() => createGeometrySnapshot({
+    coordinateSpace: 'PARENT_CONTAINER',
+    parentRect: { x: 0, y: 0, width: 100, height: 100 },
+    elementRect: { x: 0, y: 0, width: 10, height: 10 },
+    targetWidth: 'not-a-number'
+  }, { allowedCoordinateSpaces: coordinateSpaces }), /targetWidth/u);
+});
+
+test('observer rejects regressing event timestamps instead of deriving negative time', () => {
+  const observer = createPresentationObserver({
+    eventClasses,
+    coordinateSpaces,
+    clock: clockFrom(['2026-09-26T00:00:00.250Z', '2026-09-26T00:00:00.000Z']),
+    maxEvents: 8
+  });
+  observer.record({ eventClass: 'PRESENTATION_MOUNT' });
+  assert.throws(() => observer.record({ eventClass: 'LAYOUT_SETTLED' }), /timestamps must be monotonic/u);
+});
