@@ -145,7 +145,12 @@ test('presentation placement cycles fail closed', () => {
 
 test('reachability cycles fail closed', () => {
   const fixture = fixtureRegistry();
-  fixture.reachabilityPaths[0].steps.push('presentation.fixture.journal-options');
+  fixture.reachabilityPaths[0].steps = [
+    'presentation.fixture.journal-options',
+    'presentation.fixture.journal-history',
+    'presentation.fixture.journal-options',
+    'element.living-journal.archive.open'
+  ];
   assert.throws(() => compilePresentationGraph(bundle, fixture), /reachability cycle/u);
 });
 
