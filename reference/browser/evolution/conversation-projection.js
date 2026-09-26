@@ -371,7 +371,13 @@ export function createConversationEvolutionAdapter(input) {
     observer?.disconnect();
     if (typeof document.defaultView?.MutationObserver === 'function') {
       observer = new document.defaultView.MutationObserver((mutations) => {
-        if (!body.isConnected) return;
+        if (!body.isConnected || binding.state.uxActiveSurfaceRef !== CONVERSATION_EVOLUTION_SURFACE_REF) {
+          if (binding.state.uxActiveSurfaceRef !== CONVERSATION_EVOLUTION_SURFACE_REF) {
+            observer?.disconnect();
+            observer = null;
+          }
+          return;
+        }
         const structural = mutations.some(({ target }) => target === referenceFeed || referenceFeed?.contains(target) || target === referenceChannels || referenceChannels?.contains(target));
         if (structural) render();
         else {

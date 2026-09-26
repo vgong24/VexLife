@@ -179,4 +179,10 @@ test('real accepted Shared Shell production composition enables the current Conv
   assert.match(app,/ensureConversationEvolutionStylesheet\(\)/);
 });
 
+
+test('closed Conversation surface observer cannot remount an inactive renderer',()=>{
+  assert.match(source,/binding\.state\.uxActiveSurfaceRef !== CONVERSATION_EVOLUTION_SURFACE_REF/);
+  assert.match(source,/observer\?\.disconnect\(\)/);
+});
+
 // [VXG RealForever]
