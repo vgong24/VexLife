@@ -142,17 +142,66 @@ if (playwright) {
     };
     const journalDesktop=await runJournalViewportProof({width:1440,height:900},'DESKTOP');
     const journalCompact=await runJournalViewportProof({width:390,height:844},'COMPACT');
-    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && q5Compact?.state === 'PASS' && q5WorkspaceInverse.state === 'PASS' && journalDesktop.proof?.state === 'PASS' && journalCompact.proof?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 && journalDesktop.consoleErrors.length === 0 && journalDesktop.pageErrors.length === 0 && journalCompact.consoleErrors.length === 0 && journalCompact.pageErrors.length === 0 ? 'PASS' : 'FAILED';
+    const runConversationEvolutionViewportProof=async(viewport,viewportClass,reducedMotion)=>{
+      const proofConsoleErrors=[],proofPageErrors=[],proofPage=await browser.newPage({viewport});
+      proofPage.on('console',(message)=>{if(message.type()==='error')proofConsoleErrors.push(message.text());});
+      proofPage.on('pageerror',(error)=>proofPageErrors.push(error.message));
+      try{
+        await proofPage.emulateMedia({reducedMotion:reducedMotion?'reduce':'no-preference'});
+        await proofPage.goto(serverUrl+'/reference/browser/?projection=evolution',{waitUntil:'networkidle',timeout:30000});
+        await proofPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
+        const proof=await proofPage.evaluate(async({viewportClassValue,reducedMotionValue})=>{
+          const app=globalThis.__VEXLIFE_APP__,delay=(ms)=>new Promise((resolve)=>setTimeout(resolve,ms)),assert=(condition,message)=>{if(!condition)throw new Error(message);};
+          const surfaceRef='surface.vexlife.conversation',beforeFrame=JSON.stringify(app.navigation.semanticFrame()),beforeJourney=JSON.stringify(app.navigation.fullJourney()),shellBefore=app.uxProjectionShell.snapshot();
+          assert(shellBefore.projection==='EVOLUTION_PROJECTION','Conversation proof requires Evolution projection');
+          assert(shellBefore.surfaceStates?.[surfaceRef]?.state==='ENABLED','Conversation surface must be enabled from accepted source');
+          const open=await app.uxProjectionShell.openEvolutionSurface(surfaceRef);await delay(24);
+          const shellOpen=app.uxProjectionShell.snapshot(),body=document.querySelector('#evolutionActiveSurfaceBody'),root=body?.querySelector('.conversation-evolution'),context=document.querySelector('#contextSurface');
+          assert(open?.state==='OPEN'&&shellOpen.activeSurfaceRef===surfaceRef,'Conversation surface did not open through canonical shell');
+          assert(body&&root&&body.querySelectorAll('.conversation-evolution').length===1,'Conversation Evolution must mount exactly one root');
+          assert(context?.hidden===true,'Reference context must be hidden while Evolution Conversation is active');
+          assert(root.dataset.semanticOwnerRef==='module.vexlife.core.conversation','Conversation semantic owner changed');
+          assert(root.dataset.interactionOwnerRef==='module.vexlife.browser.chat-controller','Conversation interaction owner changed');
+          assert(root.dataset.oneSemanticState==='true','Conversation one-semantic-state contract missing');
+          const channel=app.chat.currentChannel(),availability=root.querySelector('.conversation-evolution__availability'),canonicalReady=channel?.roleKey==='companion'&&app.chat.companionAvailabilityState()==='READY',projectedReady=availability?.dataset.readyForRealTurn==='true';
+          assert(projectedReady===canonicalReady,'Evolution real-turn readiness diverges from canonical Companion READY truth');
+          if(channel?.kind==='DIRECT')assert(root.querySelector('.conversation-evolution__security')===null,'Direct Conversation must not render Family security chrome');
+          const canonicalInput=document.querySelector('#messageInput'),canonicalSend=document.querySelector('#composer button[type="submit"]'),evolutionInput=root.querySelector('.conversation-evolution__input'),evolutionSend=root.querySelector('.conversation-evolution__send');
+          assert(canonicalInput&&canonicalSend&&evolutionInput&&evolutionSend,'Conversation composer seams must exist');
+          assert(evolutionInput.value===canonicalInput.value,'Evolution composer must project canonical input truth');
+          assert(evolutionSend.disabled===canonicalSend.disabled,'Evolution submit availability must mirror canonical composer');
+          const channelButton=root.querySelector('.conversation-evolution__channel'),channelRect=channelButton?.getBoundingClientRect(),sendRect=evolutionSend.getBoundingClientRect();
+          assert((channelRect?.height??0)>=44&&sendRect.height>=44,'Conversation controls must retain >=44px target height');
+          assert(matchMedia('(prefers-reduced-motion: reduce)').matches===reducedMotionValue,'Conversation motion media state mismatch');
+          const feed=root.querySelector('.conversation-evolution__feed'),activeBeforeScroll=shellOpen.activeSurfaceRef;if(feed){feed.scrollTop=Math.max(0,feed.scrollHeight-feed.clientHeight);feed.dispatchEvent(new Event('scroll'));await delay(12);}
+          assert(app.uxProjectionShell.snapshot().activeSurfaceRef===activeBeforeScroll,'ordinary Conversation content scroll changed semantic surface');
+          const close=await app.uxProjectionShell.closeEvolutionActiveSurface('CONVERSATION_BROWSER_PROOF');await delay(24);
+          assert(close?.state==='CLOSED'&&app.uxProjectionShell.snapshot().activeSurfaceRef===null,'Conversation shell close did not release active surface');
+          assert(body.childElementCount===0,'Conversation shell close must empty active-surface body');
+          assert(JSON.stringify(app.navigation.semanticFrame())===beforeFrame&&JSON.stringify(app.navigation.fullJourney())===beforeJourney,'Conversation presentation open/close mutated canonical Journey');
+          app.chat.renderChannels();app.chat.renderMessages(true);await delay(24);
+          assert(body.childElementCount===0,'closed Conversation renderer remounted after Reference structural update');
+          assert(app.uxProjectionShell.snapshot().activeSurfaceRef===null,'Reference structural update reactivated Conversation surface');
+          return Object.freeze({state:'PASS',viewportClass:viewportClassValue,reducedMotion:reducedMotionValue,semanticOwnerRef:root.dataset.semanticOwnerRef,interactionOwnerRef:root.dataset.interactionOwnerRef,canonicalReady,projectedReady,channelKind:channel?.kind??null,channelTargetHeight:channelRect?.height??0,sendTargetHeight:sendRect.height,postCloseBodyChildCount:body.childElementCount,journeyUnchanged:true,realCompanionTurnExecuted:false});
+        },{viewportClassValue:viewportClass,reducedMotionValue:reducedMotion});
+        return{viewport,viewportClass,proof,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
+      }finally{await proofPage.close();}
+    };
+    const conversationDesktop=await runConversationEvolutionViewportProof({width:1440,height:900},'DESKTOP',false);
+    const conversationCompact=await runConversationEvolutionViewportProof({width:390,height:844},'COMPACT',true);
+    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && q5Compact?.state === 'PASS' && q5WorkspaceInverse.state === 'PASS' && journalDesktop.proof?.state === 'PASS' && journalCompact.proof?.state === 'PASS' && conversationDesktop.proof?.state === 'PASS' && conversationCompact.proof?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 && journalDesktop.consoleErrors.length === 0 && journalDesktop.pageErrors.length === 0 && journalCompact.consoleErrors.length === 0 && journalCompact.pageErrors.length === 0 && conversationDesktop.consoleErrors.length === 0 && conversationDesktop.pageErrors.length === 0 && conversationCompact.consoleErrors.length === 0 && conversationCompact.pageErrors.length === 0 ? 'PASS' : 'FAILED';
     finish({
       ...baseReceipt,
       state,
       currentness: 'CURRENT',
       browser: { name: browser.browserType().name(), version: browser.version() },
-      consoleErrors:[...consoleErrors,...compactConsoleErrors,...journalDesktop.consoleErrors,...journalCompact.consoleErrors],
-      pageErrors:[...pageErrors,...compactPageErrors,...journalDesktop.pageErrors,...journalCompact.pageErrors],
+      consoleErrors:[...consoleErrors,...compactConsoleErrors,...journalDesktop.consoleErrors,...journalCompact.consoleErrors,...conversationDesktop.consoleErrors,...conversationCompact.consoleErrors],
+      pageErrors:[...pageErrors,...compactPageErrors,...journalDesktop.pageErrors,...journalCompact.pageErrors,...conversationDesktop.pageErrors,...conversationCompact.pageErrors],
       integration,
       journalDesktop,
       journalCompact,
+      conversationDesktop,
+      conversationCompact,
       livedDCompact,
       q2Compact,
       q2ViewportInverse,
