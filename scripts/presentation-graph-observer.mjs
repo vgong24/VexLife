@@ -48,7 +48,15 @@ function normalizeRect(rect) {
   for (const [key, value] of Object.entries(output)) {
     if (!Number.isFinite(value)) throw new Error(`rect.${key} must be finite`);
   }
+  if (output.width < 0 || output.height < 0) throw new Error('rect width/height must be non-negative');
   return output;
+}
+
+function finiteNonNegativeOrNull(value, label) {
+  if (value === null || value === undefined) return null;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) throw new Error(`${label} must be finite and non-negative`);
+  return number;
 }
 
 function right(rect) { return rect.x + rect.width; }
@@ -97,6 +105,13 @@ export function createGeometrySnapshot({
   if (allowedCoordinateSpaces && !allowedCoordinateSpaces.includes(coordinateSpace)) {
     throw new Error(`unsupported coordinateSpace ${coordinateSpace}`);
   }
+  if (!Array.isArray(occlusionRefs) || occlusionRefs.some((ref) => typeof ref !== 'string' || !ref) || new Set(occlusionRefs).size !== occlusionRefs.length) {
+    throw new Error('occlusionRefs must be unique non-empty strings');
+  }
+  const normalizedOcclusionFraction = Number(occlusionFraction);
+  if (!Number.isFinite(normalizedOcclusionFraction) || normalizedOcclusionFraction < 0 || normalizedOcclusionFraction > 1) {
+    throw new Error('occlusionFraction must be finite within [0,1]');
+  }
   const normalized = {
     viewportRect: normalizeRect(viewportRect),
     windowRect: normalizeRect(windowRect),
@@ -127,10 +142,10 @@ export function createGeometrySnapshot({
     outOfBoundsPx,
     declaredParentRef,
     observedParentRef,
-    targetWidth: targetWidth === null ? null : Number(targetWidth),
-    targetHeight: targetHeight === null ? null : Number(targetHeight),
+    targetWidth: finiteNonNegativeOrNull(targetWidth, 'targetWidth'),
+    targetHeight: finiteNonNegativeOrNull(targetHeight, 'targetHeight'),
     occlusionRefs: [...occlusionRefs],
-    occlusionFraction: Number(occlusionFraction)
+    occlusionFraction: normalizedOcclusionFraction
   });
 }
 
@@ -212,7 +227,11 @@ export function createPresentationObserver({
     if (RAW_INPUT_NAMES.has(eventClass)) throw new Error(`raw input event is not a canonical presentation event: ${eventClass}`);
     if (!allowed.has(eventClass)) throw new Error(`unsupported presentation event class ${eventClass}`);
     const formedAt = clock();
-    canonicalTimestamp(formedAt, 'formedAt');
+    const formedAtEpoch = canonicalTimestamp(formedAt, 'formedAt');
+    const prior = events.at(-1) ?? null;
+    if (prior && formedAtEpoch < canonicalTimestamp(prior.formedAt, 'prior.formedAt')) {
+      throw new Error('presentation event timestamps must be monotonic');
+    }
     sequence += 1;
     const event = freeze({
       schemaVersion: 'vexlife.runtime-presentation-event/v1',
@@ -239,7 +258,9 @@ export function createPresentationObserver({
     const start = events.find((event) => event.eventRef === startEventRef);
     const end = events.find((event) => event.eventRef === endEventRef);
     if (!start || !end) throw new Error('duration endpoints must exist in current bounded trace');
-    return canonicalTimestamp(end.formedAt, 'end.formedAt') - canonicalTimestamp(start.formedAt, 'start.formedAt');
+    const duration = canonicalTimestamp(end.formedAt, 'end.formedAt') - canonicalTimestamp(start.formedAt, 'start.formedAt');
+    if (duration < 0) throw new Error('duration endpoints are not chronological');
+    return duration;
   }
 
   return Object.freeze({
