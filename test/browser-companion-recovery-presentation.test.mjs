@@ -263,13 +263,24 @@ test('VR06 Reference composer exposes truthful recoverable action on desktop and
       const refreshed = await page.evaluate(async () => {
         const app = globalThis.__VEXLIFE_APP__;
         app.openContext('chat');
+        const project = app.projects.find((candidate) => candidate.projectRef === 'project.self-development');
+        const thread = project?.threads.find((candidate) => candidate.threadRef === 'thread.self-development.open-conversation');
+        const channel = app.channels.find((candidate) => candidate.channelRef === 'channel.self-development.companion');
+        if (!project || !thread || !channel) throw new Error('VR06 canonical Companion conversation target is unavailable');
+        app.chat.selectThread(project, thread, 'element.thread.open-conversation');
+        app.chat.selectChannel(channel, 'element.channel.companion');
         await app.chat.refreshCompanionAvailability();
         return {
+          channelRef: app.chat.currentChannel().channelRef,
           state: app.chat.companionAvailabilityState(),
           recoverable: app.chat.companionRecoveryAvailable()
         };
       });
-      assert.deepEqual(refreshed, { state: 'RECOVERABLE', recoverable: true });
+      assert.deepEqual(refreshed, {
+        channelRef: 'channel.self-development.companion',
+        state: 'RECOVERABLE',
+        recoverable: true
+      });
       await page.locator('#messageInput').waitFor({ state: 'visible', timeout: 5000 });
 
       const draft = 'Keep this exact unsent draft through recovery';
