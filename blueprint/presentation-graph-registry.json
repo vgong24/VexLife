@@ -1,0 +1,146 @@
+{
+  "schemaVersion": "vexlife.presentation-graph-registry/v1",
+  "registryRef": "registry.vexlife.presentation-graph.001",
+  "registryVersion": 1,
+  "foundationRef": "foundation.vexlife.presentation-graph.001",
+  "canonicalSourceRef": "source.blueprint.presentation-graph-registry",
+  "canonicalSource": {
+    "sourceRef": "source.blueprint.presentation-graph-registry",
+    "path": "blueprint/presentation-graph-registry.json",
+    "sourceClass": "SOURCE_MANAGED_BLUEPRINT"
+  },
+  "ownerRef": "github.issue.vexlife.719",
+  "parentRef": "github.issue.vexlife.624",
+  "purpose": "Normalize VexLife presentation anatomy, typed identity views, reachability, runtime observation and proof lineage over existing canonical semantic owners without becoming a second semantic owner.",
+  "effects": false,
+  "nonCollapseRules": [
+    "PRESENTATION_GRAPH != SEMANTIC_OWNER",
+    "REGISTERED != PLACED",
+    "PLACED != CURRENTLY_VISIBLE",
+    "CAPABILITY_EXISTS != PRIMARY_CHROME",
+    "UI_TYPED_ID != NEW_CANONICAL_IDENTITY",
+    "SEMANTIC_CURRENT_CONTEXT != INTERACTION_SOURCE",
+    "GESTURE_REF != RAW_PLATFORM_EVENT",
+    "GEOMETRY != SEMANTIC_CONTEXT",
+    "MOTION != NEW_PRODUCT_STATE",
+    "JOURNEY_PROJECTION != JOURNEY_AUTHORITY",
+    "RESPONSIVE_PROJECTION != PREFERENCE_REWRITE",
+    "LOCALIZATION != IDENTITY_MUTATION",
+    "SCREENSHOT != SEMANTIC_MAP",
+    "RUNTIME_OBSERVER != JOURNEY_AUTHORITY",
+    "EXECUTION_CONTEXT != PRESENTATION_HIERARCHY",
+    "TEST_PASS != HUMAN_ACCEPTANCE"
+  ],
+  "identityPolicy": {
+    "canonicalElementIdentityField": "elementRef",
+    "typedElementProjectionPrefix": "UIElementID",
+    "canonicalScreenIdentityField": "screenRef",
+    "typedScreenProjectionPrefix": "UIScreenID",
+    "platformAutomationIdIsCanonical": false,
+    "displayLabelIsCanonical": false
+  },
+  "existingOwnerRefs": {
+    "experienceFoundationRef": "foundation.vexlife.experience.001",
+    "navigationContinuityRegistryRef": "registry.vexlife.navigation-continuity.001",
+    "featureRegistryRef": "registry.vexlife.features.001",
+    "journeyOwnerModuleRef": "module.vexlife.core.journey",
+    "browserNavigationOwnerModuleRef": "module.vexlife.browser.navigation-controller",
+    "schedulerRegistryRef": "registry.vexlife.intent-scheduler.001",
+    "humanAssuranceOwnerRef": "github.issue.vexlife.625"
+  },
+  "coordinateSpaces": [
+    "VIEWPORT",
+    "WINDOW",
+    "SCREEN",
+    "ACTIVE_SURFACE",
+    "PARENT_CONTAINER",
+    "NORMALIZED_PARENT"
+  ],
+  "reachabilityStates": [
+    "NOT_REGISTERED",
+    "REGISTERED_UNPLACED",
+    "PLACED_UNAVAILABLE",
+    "REACHABLE_VIA_SECONDARY_PATH",
+    "CURRENTLY_RENDERED",
+    "CURRENTLY_EXECUTABLE"
+  ],
+  "runtimeEventClasses": [
+    "SEMANTIC_SCREEN_ENTER",
+    "SEMANTIC_SCREEN_EXIT",
+    "PRESENTATION_MOUNT",
+    "PRESENTATION_UNMOUNT",
+    "TRANSIENT_LAYER_OPEN",
+    "TRANSIENT_LAYER_CLOSE",
+    "ELEMENT_ACTIVATED",
+    "FOCUS_ENTER",
+    "FOCUS_EXIT",
+    "STATE_PROJECTION_CHANGE",
+    "LAYOUT_SETTLED",
+    "VIEWPORT_CHANGED"
+  ],
+  "runtimeObservationPolicy": {
+    "eventTimestampPrimary": true,
+    "durationDerivedOnly": true,
+    "rawPointerLogging": false,
+    "continuousDomDump": false,
+    "boundedEventLimit": 256,
+    "geometryAtMeaningfulBoundaries": true
+  },
+  "executionContextContract": {
+    "requiredFields": [
+      "executionContextRef",
+      "parentExecutionContextRefOrNull",
+      "concurrencyGroupRefOrNull",
+      "ownerScreenRefOrNull",
+      "ownerComponentRefOrNull",
+      "ownerActionRefOrNull",
+      "supervisionPolicy",
+      "cancellationScopeRefOrNull",
+      "startedAt",
+      "endedAtOrNull",
+      "terminalStateOrNull",
+      "failureClassOrNull"
+    ],
+    "screenParentIsExecutionParent": false,
+    "componentParentIsExecutionParent": false
+  },
+  "graphContracts": {
+    "presentationGraphRef": "contract.presentation-graph.normalized-ir/v1",
+    "identityProjectionRef": "contract.presentation-graph.ui-identity-registry/v1",
+    "reachabilityGraphRef": "contract.presentation-graph.reachability/v1",
+    "motionProjectionRef": "contract.presentation-graph.motion-projection/v1",
+    "runtimeTraceRef": "contract.presentation-graph.runtime-trace/v1",
+    "geometrySnapshotRef": "contract.presentation-graph.geometry-snapshot/v1",
+    "testObligationRef": "contract.presentation-graph.test-obligation/v1",
+    "behaviorWitnessRef": "contract.presentation-graph.behavior-witness/v1",
+    "captureEvidenceRef": "contract.presentation-graph.capture-evidence-binding/v1"
+  },
+  "generatedProjections": {
+    "uiIdentityRegistry": "generated/presentation/ui-identity-registry.json",
+    "presentationGraph": "generated/presentation/presentation-graph.json",
+    "navigationProjection": "generated/presentation/navigation-projection.json",
+    "reachabilityGraph": "generated/presentation/reachability-graph.json",
+    "presentationStateManifest": "generated/presentation/presentation-state-manifest.json",
+    "motionProjection": "generated/presentation/motion-projection.json",
+    "testObligations": "generated/presentation/test-obligations.json",
+    "behaviorWitnesses": "generated/presentation/behavior-witnesses.json",
+    "platformCoverage": "generated/presentation/platform-coverage.json",
+    "runtimeTrace": "generated/health/presentation-runtime-trace.json"
+  },
+  "presentationNodes": [],
+  "placements": [],
+  "reachabilityPaths": [],
+  "testObligations": [],
+  "behaviorWitnesses": [],
+  "patientZero": {
+    "specimenRefs": [
+      "github.issue.vexlife.703",
+      "github.issue.vexlife.626"
+    ],
+    "screenRef": "screen.vexlife.living-journal",
+    "archiveElementRef": "element.living-journal.archive.open",
+    "integrationState": "PENDING_CURRENT_PRODUCER_THRESHOLD",
+    "syntheticFixtureMayProveCompilerContract": true,
+    "syntheticFixtureMayProveRealIntegration": false
+  }
+}
