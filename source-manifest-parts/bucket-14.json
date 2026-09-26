@@ -15,6 +15,12 @@
       "sha256": "e7f502301ea4c5fe17e085ee01e6284f3fe93efd85fea959032e3a48d8d53eb9"
     },
     {
+      "path": "test/browser-companion-recovery-presentation.test.mjs",
+      "mode": "100644",
+      "bytes": 14006,
+      "sha256": "6cde6e712d8db64042cfa75ef1f3e5842e36efc6ec33b2453202f0986a261285"
+    },
+    {
       "path": "test/vex-core-family-session-authority.test.mjs",
       "mode": "100644",
       "bytes": 12503,
