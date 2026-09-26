@@ -71,6 +71,9 @@ test('Conversation projection preserves canonical direct addressing and unsent d
   assert.equal(projected.interactionOwnerRef,'module.vexlife.browser.chat-controller');
   assert.equal(projected.oneSemanticState,true);
   assert.equal(projected.channelKind,'DIRECT');
+  assert.equal(projected.projectLabel,'Self Development');
+  assert.equal(projected.threadLabel,'Open conversation');
+  assert.equal(projected.channelLabel,'Victor → Vex Companion');
   assert.deepEqual(projected.audience.map((item)=>item.actorRef),['person.victor-gong','role.vex.companion']);
   assert.equal(projected.messages[0].speaker.actorRef,'person.victor-gong');
   assert.deepEqual(projected.messages[0].recipients.map((item)=>item.actorRef),['role.vex.companion']);
@@ -183,6 +186,23 @@ test('real accepted Shared Shell production composition enables the current Conv
 test('closed Conversation surface observer cannot remount an inactive renderer',()=>{
   assert.match(source,/binding\.state\.uxActiveSurfaceRef !== CONVERSATION_EVOLUTION_SURFACE_REF/);
   assert.match(source,/observer\?\.disconnect\(\)/);
+});
+
+
+test('direct presentation collapses implementation-role chrome while preserving canonical context identities',()=>{
+  assert.match(source,/continuousDirect = snapshot\.channelKind === 'DIRECT'/);
+  assert.match(source,/continuousDirect \? 'Vex' : snapshot\.channelLabel/);
+  assert.match(source,/participantValue\.actorRef\.startsWith\('role\.vex\.'\)/);
+  assert.match(source,/snapshot\.projectLabel} · \$\{snapshot\.projectRef/);
+  assert.match(source,/snapshot\.threadLabel} · \$\{snapshot\.threadRef/);
+  assert.match(source,/snapshot\.channelLabel} · \$\{snapshot\.channelRef/);
+  assert.match(source,/conversation-evolution__context-routes/);
+});
+
+test('whole Conversation surface owns terminal reachability while feed remains an internal scroll scope',()=>{
+  assert.match(css,/\.conversation-evolution\{[^}]*height:100%[^}]*overflow-y:auto/s);
+  assert.match(css,/conversation-evolution__feed\{[^}]*overflow:auto/s);
+  assert.match(css,/conversation-evolution__context-routes/);
 });
 
 // [VXG RealForever]
