@@ -160,3 +160,27 @@ test('graph revision is deterministic for the same source inputs', () => {
   const second = compilePresentationGraph(bundle, registry);
   assert.equal(first.graphRevision, second.graphRevision);
 });
+
+
+test('dangling presentation parents fail closed', () => {
+  const fixture = fixtureRegistry();
+  fixture.presentationNodes[1].parentPresentationRefOrNull = 'presentation.fixture.missing-parent';
+  assert.throws(() => compilePresentationGraph(bundle, fixture), /missing presentation parent/u);
+});
+
+test('reachability paths must terminate at the declared target', () => {
+  const fixture = fixtureRegistry();
+  fixture.reachabilityPaths[0].steps = [
+    'presentation.fixture.journal-options',
+    'presentation.fixture.journal-history'
+  ];
+  assert.throws(() => compilePresentationGraph(bundle, fixture), /must terminate at target/u);
+});
+
+test('placements cannot move a canonical element onto another screen', () => {
+  const fixture = fixtureRegistry();
+  const otherScreen = bundle.blueprint.screens.find((screen) => screen.screenRef !== fixture.placements[0].screenRef);
+  assert.ok(otherScreen);
+  fixture.placements[0].screenRef = otherScreen.screenRef;
+  assert.throws(() => compilePresentationGraph(bundle, fixture), /canonical owner screen/u);
+});
