@@ -21,6 +21,12 @@
       "sha256": "a90ee2bac19e22dc9d51268a0013e42e9442a4ec20ba30cc3c635b0ef4714d78"
     },
     {
+      "path": "test/presentation-graph-observer.test.mjs",
+      "mode": "100644",
+      "bytes": 7639,
+      "sha256": "6faa791231d3eca3cb44d9fce2dcaddd4b16a2dc0eedb5602ba2f85e9a1af51c"
+    },
+    {
       "path": "test/score-context-continuity.test.mjs",
       "mode": "100644",
       "bytes": 55877,

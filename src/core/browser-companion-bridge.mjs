@@ -97,6 +97,81 @@ export class BrowserCompanionBridgeError extends Error {
   }
 }
 
+
+export function validateBrowserCompanionRecoveryEffectContract(value) {
+  return Boolean(
+    value
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && value.schemaVersion === 'vexlife.companion-recovery-effect-contract/v1'
+    && value.contractRef === 'contract.vexlife.companion-recovery-effect.001'
+    && value.actionRef === 'action.companion.reenter-current-binding'
+    && value.requiredExecutionDisposition === 'DELEGATE_TO_RIGHTFUL_RUNTIME_ADAPTER'
+    && value.performedDisposition === 'PERFORMED_SAME_BINDING_REENTRY'
+    && value.requiredPostRecoveryAvailability === 'READY'
+    && value.syntheticProofClass === 'SYNTHETIC'
+    && value.realHostProofClass === 'REAL_HOST'
+    && Array.isArray(value.nonCollapseLaws)
+    && value.nonCollapseLaws.includes('RECOVERY_REQUESTED != RECOVERY_PERFORMED')
+    && value.nonCollapseLaws.includes('READY != REAL_COMPANION_TURN')
+    && Array.isArray(value.realHostRequired)
+    && value.realHostRequired.length > 0
+  );
+}
+
+export function formBrowserCompanionRecoveryRequest(contract, availability, reentryPlan) {
+  if (!validateBrowserCompanionRecoveryEffectContract(contract)) {
+    throw new TypeError('Companion recovery effect contract is invalid');
+  }
+  if (
+    availability?.availabilityState !== 'RECOVERABLE'
+    || availability?.recoveryClass !== 'SAFE_REENTRY_AVAILABLE'
+    || reentryPlan?.executionDisposition !== contract.requiredExecutionDisposition
+    || reentryPlan?.effectAuthorityGranted !== false
+    || reentryPlan?.automaticExecutionAuthorized !== false
+    || reentryPlan?.actionRef !== contract.actionRef
+    || reentryPlan?.availabilityProjectionRef !== availability?.projectionRef
+  ) {
+    return null;
+  }
+  for (const key of [
+    'bindingRef',
+    'homeRef',
+    'companionLineageRef',
+    'modelRefOrNull',
+    'generationRefOrNull',
+    'runtimeAdapterRef'
+  ]) {
+    if ((reentryPlan[key] ?? null) !== (availability[key] ?? null)) return null;
+  }
+  const core = {
+    schemaVersion: 'vexlife.companion-recovery-request/v1',
+    truthClass: 'SAME_BINDING_RECOVERY_REQUEST',
+    contractRef: contract.contractRef,
+    actionRef: contract.actionRef,
+    availabilityProjectionRef: availability.projectionRef,
+    reentryPlanRef: reentryPlan.planRef,
+    idempotencyKey: reentryPlan.idempotencyKey,
+    bindingRef: reentryPlan.bindingRef,
+    homeRef: reentryPlan.homeRef,
+    companionLineageRef: reentryPlan.companionLineageRef,
+    modelRefOrNull: reentryPlan.modelRefOrNull,
+    generationRefOrNull: reentryPlan.generationRefOrNull,
+    runtimeAdapterRef: reentryPlan.runtimeAdapterRef,
+    runtimeObservationRef: reentryPlan.runtimeObservationRef,
+    effectAuthorityGranted: false,
+    executionDisposition: contract.requiredExecutionDisposition
+  };
+  const requestSha256 = crypto.createHash('sha256')
+    .update(JSON.stringify(core, Object.keys(core).sort()))
+    .digest('hex');
+  return Object.freeze({
+    ...core,
+    requestRef: `request.vexlife.companion-recovery.${requestSha256.slice(0, 32)}`,
+    requestSha256
+  });
+}
+
 export function resolveBrowserCompanionRuntimeBinding({ endpoint = null, model = null } = {}) {
   if ((endpoint === null || endpoint === '') && (model === null || model === '')) {
     return Object.freeze({ state: 'UNBOUND', profileRef: BROWSER_COMPANION_PROFILE_REF, endpoint: null, model: null });
