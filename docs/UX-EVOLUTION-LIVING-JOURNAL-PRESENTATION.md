@@ -57,3 +57,14 @@ No presentation seam here grants Memory, Home, model, network, training, publica
 ## DevEx rule
 
 Prefer extending a named seam/component contract over adding a one-off selector or second container. Future surface-level actions should consume the adapter actions seam. Transient menus/dialogs should consume the qualified forward-layer. Lists/feeds should declare one scroll owner and reusable cells. New semantic capabilities must route to the rightful semantic owner instead of hiding inside presentation code.
+
+## P4 human-convergence refinement
+
+The P4 lived review preserves the entry-reader direction and tightens composition:
+
+- `Close` remains an immediate Shared Shell surface action and is never buried inside Journal Options.
+- `Options` remains secondary; when reparented into the shell action row it retains an explicit portable base component contract.
+- The Journal options transient is constrained to the actual current Journal host (`#evolutionActiveSurfaceBody` in Evolution; the current contextual parent in Reference), with viewport geometry only as fallback.
+- Testimony preview and `Read entry` progressive disclosure live inside one intrinsic entry cell; fixed descendant offsets are not the containment mechanism.
+- The entry feed remains the ordinary Journal content-scroll owner, while transient body scrolling remains local to the transient layer.
+

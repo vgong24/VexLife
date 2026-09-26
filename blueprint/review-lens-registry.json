@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.review-lens-registry/v0",
   "registryRef": "registry.vexlife.review-lenses.001",
-  "registryVersion": 1,
+  "registryVersion": 2,
   "purpose": "Make architecture, culture and whole-system review obligations executable instead of relying on memory.",
   "lenses": [
     {
@@ -65,6 +65,32 @@
         "designTokenRefs",
         "interactionStateRefs",
         "platformBindingRefs"
+      ]
+    },
+    {
+      "lensRef": "lens.vexlife.visual-composition-and-containment",
+      "purpose": "Prove that visible components remain contained, reparenting-safe, hierarchically legible and reachable across desktop and compact composition.",
+      "requiredQuestions": [
+        "Which presentation owns containment, and which element is the actual geometric constraint host?",
+        "Which coordinate space, stacking-context owner, clip policy and scroll owner govern this layer?",
+        "Does intrinsic child content grow or wrap inside its owning cell without paint escaping the component boundary?",
+        "Does a portable component preserve its base visual and interaction contract after valid DOM reparenting?",
+        "Are immediate surface actions visibly distinct from secondary options and contextual controls?",
+        "Can the complete surface, including terminal context and actions, be reached without a hidden outer-scroll dependency?",
+        "Do long localized strings, compact layouts and reduced motion preserve containment and hierarchy?"
+      ],
+      "requiredEvidence": [
+        "containerOwnerRef",
+        "coordinateSpace",
+        "constraintHostRef",
+        "stackingContextOwnerRef",
+        "clipPolicy",
+        "scrollOwnerRef",
+        "intrinsicSizingEvidence",
+        "reparentingInvariantEvidence",
+        "actionHierarchyEvidence",
+        "desktopCompactEvidence",
+        "longLocalizedContentEvidence"
       ]
     },
     {

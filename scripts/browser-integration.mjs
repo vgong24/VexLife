@@ -165,7 +165,12 @@ if (playwright) {
           assert(root.dataset.oneSemanticState==='true','Conversation one-semantic-state contract missing');
           const channel=app.chat.currentChannel(),availability=root.querySelector('.conversation-evolution__availability'),canonicalReady=channel?.roleKey==='companion'&&app.chat.companionAvailabilityState()==='READY',projectedReady=availability?.dataset.readyForRealTurn==='true';
           assert(projectedReady===canonicalReady,'Evolution real-turn readiness diverges from canonical Companion READY truth');
-          if(channel?.kind==='DIRECT')assert(root.querySelector('.conversation-evolution__security')===null,'Direct Conversation must not render Family security chrome');
+          if(channel?.kind==='DIRECT'){
+            assert(root.querySelector('.conversation-evolution__security')===null,'Direct Conversation must not render Family security chrome');
+            assert(root.dataset.presentationMode==='CONTINUOUS_VEX_RELATIONSHIP','Direct Conversation must use continuous Vex presentation');
+            assert(root.querySelector('.conversation-evolution__hero h2')?.textContent==='Vex','Direct Conversation primary title must normalize to Vex');
+            assert(root.querySelector('.conversation-evolution__address')===null,'Direct Conversation must keep implementation addressing out of primary chrome');
+          }
           const canonicalInput=document.querySelector('#messageInput'),canonicalSend=document.querySelector('#composer button[type="submit"]'),evolutionInput=root.querySelector('.conversation-evolution__input'),evolutionSend=root.querySelector('.conversation-evolution__send');
           assert(canonicalInput&&canonicalSend&&evolutionInput&&evolutionSend,'Conversation composer seams must exist');
           assert(evolutionInput.value===canonicalInput.value,'Evolution composer must project canonical input truth');
@@ -181,10 +186,20 @@ if (playwright) {
             assert(app.state.unsentLocalDraft?.content===draftProbe,'unavailable Conversation input must preserve exact canonical local draft content');
             draftExercise='PRESERVED_UNSENT_LOCAL_DRAFT';
           }
+          const contextInspector=root.querySelector('.conversation-evolution__context');if(channel?.kind==='DIRECT')contextInspector.open=true;await delay(8);
           const channelButton=root.querySelector('.conversation-evolution__channel'),channelRect=channelButton?.getBoundingClientRect(),sendRect=evolutionSend.getBoundingClientRect();
           assert((channelRect?.height??0)>=44&&sendRect.height>=44,'Conversation controls must retain >=44px target height');
+          if(channel?.kind==='DIRECT'){
+            const contextText=contextInspector.textContent,project=app.chat.currentProject(),thread=app.chat.currentThread();
+            assert(contextText.includes(project.projectRef)&&contextText.includes(thread.threadRef)&&contextText.includes(channel.channelRef),'Direct Conversation context inspector must retain canonical project/thread/channel identities');
+            assert(root.querySelector('.conversation-evolution__context-routes .conversation-evolution__channels')!==null,'Direct routing controls must remain available contextually');
+          }
           assert(matchMedia('(prefers-reduced-motion: reduce)').matches===reducedMotionValue,'Conversation motion media state mismatch');
           const feed=root.querySelector('.conversation-evolution__feed'),activeBeforeScroll=shellOpen.activeSurfaceRef;if(feed){feed.scrollTop=Math.max(0,feed.scrollHeight-feed.clientHeight);feed.dispatchEvent(new Event('scroll'));await delay(12);}
+          root.scrollTop=Math.max(0,root.scrollHeight-root.clientHeight);root.dispatchEvent(new Event('scroll'));await delay(12);
+          const rootRect=root.getBoundingClientRect(),contextRect=contextInspector.getBoundingClientRect();
+          assert(contextRect.bottom<=rootRect.bottom+1&&contextRect.top>=rootRect.top-1,'Conversation terminal context inspector is not reachable through the whole-surface scroll owner');
+          assert(getComputedStyle(root).overflowY==='auto','Conversation root must own whole-surface terminal reachability');
           assert(app.uxProjectionShell.snapshot().activeSurfaceRef===activeBeforeScroll,'ordinary Conversation content scroll changed semantic surface');
           const close=await app.uxProjectionShell.closeEvolutionActiveSurface('CONVERSATION_BROWSER_PROOF');await delay(24);
           assert(close?.state==='CLOSED'&&app.uxProjectionShell.snapshot().activeSurfaceRef===null,'Conversation shell close did not release active surface');
@@ -193,7 +208,7 @@ if (playwright) {
           app.chat.renderChannels();app.chat.renderMessages(true);await delay(24);
           assert(body.childElementCount===0,'closed Conversation renderer remounted after Reference structural update');
           assert(app.uxProjectionShell.snapshot().activeSurfaceRef===null,'Reference structural update reactivated Conversation surface');
-          return Object.freeze({state:'PASS',viewportClass:viewportClassValue,reducedMotion:reducedMotionValue,semanticOwnerRef:root.dataset.semanticOwnerRef,interactionOwnerRef:root.dataset.interactionOwnerRef,canonicalReady,projectedReady,channelKind:channel?.kind??null,draftExercise,channelTargetHeight:channelRect?.height??0,sendTargetHeight:sendRect.height,postCloseBodyChildCount:body.childElementCount,journeyUnchanged:true,realCompanionTurnExecuted:false});
+          return Object.freeze({state:'PASS',viewportClass:viewportClassValue,reducedMotion:reducedMotionValue,semanticOwnerRef:root.dataset.semanticOwnerRef,interactionOwnerRef:root.dataset.interactionOwnerRef,presentationMode:root.dataset.presentationMode,primaryTitle:root.querySelector('.conversation-evolution__hero h2')?.textContent??null,canonicalReady,projectedReady,channelKind:channel?.kind??null,channelRoleKey:channel?.roleKey??null,draftExercise,channelTargetHeight:channelRect?.height??0,sendTargetHeight:sendRect.height,wholeSurfaceScrollOwner:getComputedStyle(root).overflowY,contextReachable:true,postCloseBodyChildCount:body.childElementCount,journeyUnchanged:true,realCompanionTurnExecuted:false});
         },{viewportClassValue:viewportClass,reducedMotionValue:reducedMotion});
         return{viewport,viewportClass,proof,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
       }finally{await proofPage.close();}

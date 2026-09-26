@@ -189,3 +189,22 @@ test('placements cannot move a canonical element onto another screen', () => {
   fixture.placements[0].screenRef = otherScreen.screenRef;
   assert.throws(() => compilePresentationGraph(bundle, fixture), /canonical owner screen/u);
 });
+
+
+test('P4 containment contract separates semantic parent from explicit geometric constraint ownership', () => {
+  const transient = registry.presentationNodes.find((item) => item.presentationRef === 'presentation.vexlife.shared-shell.transient-forward-layer');
+  assert.equal(transient.presentationContract.coordinateSpace, 'EXPLICIT_HOST');
+  assert.equal(transient.presentationContract.constraintHostPolicy, 'CALLER_DECLARED_WITH_VIEWPORT_FALLBACK');
+  assert.equal(transient.presentationContract.stackingContextOwnerRef, 'presentation.vexlife.shared-shell.active-surface-host');
+  assert.equal(transient.presentationContract.scrollOwnerRefOrNull, 'presentation.vexlife.shared-shell.transient-body');
+  assert.ok(registry.coordinateSpaces.includes('EXPLICIT_HOST'));
+});
+
+test('P4 Conversation normalization registers presentation graph nodes without new semantic authority', () => {
+  for (const ref of ['presentation.vexlife.conversation.active-surface','presentation.vexlife.conversation.primary-feed','presentation.vexlife.conversation.composer','presentation.vexlife.conversation.audience','presentation.vexlife.conversation.context-inspector']) assert.ok(registry.presentationNodes.some((item) => item.presentationRef === ref), ref);
+  const active = registry.presentationNodes.find((item) => item.presentationRef === 'presentation.vexlife.conversation.active-surface');
+  assert.equal(active.presentationContract.semanticOwnerModuleRef, 'module.vexlife.core.conversation');
+  assert.equal(active.presentationContract.interactionOwnerModuleRef, 'module.vexlife.browser.chat-controller');
+  assert.equal(active.presentationContract.productSemanticOwnership, false);
+});
+
