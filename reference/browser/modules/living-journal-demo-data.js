@@ -5,6 +5,7 @@ const PAGES=Object.freeze([
     pageRef:'journal.page.synthetic.001',
     eventRef:'event.synthetic.living-journal.001',
     sequence:1,
+    entry:Object.freeze({occurredAt:'2026-09-21T08:42:00-07:00',title:'A difficult problem was named'}),
     source:Object.freeze({sourceRef:'source.synthetic.living-journal.001',originalLanguage:'en',originalText:'Synthetic source fragment: a difficult problem was named without collapsing it.',truthClass:'CURRENT_SYNTHETIC_REFERENCE'}),
     thenRef:'then.synthetic.living-journal.001',
     display:Object.freeze({
@@ -17,6 +18,7 @@ const PAGES=Object.freeze([
     pageRef:'journal.page.synthetic.002',
     eventRef:'event.synthetic.living-journal.002',
     sequence:2,
+    entry:Object.freeze({occurredAt:'2026-09-21T10:15:00-07:00',title:'One event stayed one event across different vantages'}),
     source:Object.freeze({sourceRef:'source.synthetic.living-journal.002',originalLanguage:'ja',originalText:'合成ソース断片：同じ出来事を、違う立場から見ても同じ出来事として保った。',truthClass:'CURRENT_SYNTHETIC_REFERENCE'}),
     thenRef:'then.synthetic.living-journal.002',
     display:Object.freeze({
@@ -29,6 +31,7 @@ const PAGES=Object.freeze([
     pageRef:'journal.page.synthetic.003',
     eventRef:'event.synthetic.living-journal.003',
     sequence:3,
+    entry:Object.freeze({occurredAt:'2026-09-22T07:30:00-07:00',title:'Later meaning stayed beside the original event'}),
     source:Object.freeze({sourceRef:'source.synthetic.living-journal.003',originalLanguage:'zh',originalText:'合成来源片段：后来增加的意义没有改写当时发生的事。',truthClass:'CURRENT_SYNTHETIC_REFERENCE'}),
     thenRef:'then.synthetic.living-journal.003',
     display:Object.freeze({
@@ -41,6 +44,7 @@ const PAGES=Object.freeze([
     pageRef:'journal.page.synthetic.004',
     eventRef:'event.synthetic.living-journal.004',
     sequence:4,
+    entry:Object.freeze({occurredAt:'2026-09-22T18:05:00-07:00',title:'A scratch note stayed temporary'}),
     source:Object.freeze({sourceRef:'source.synthetic.living-journal.004',originalLanguage:'en',originalText:'Synthetic source fragment: a temporary margin note stayed temporary.',truthClass:'CURRENT_SYNTHETIC_REFERENCE'}),
     thenRef:'then.synthetic.living-journal.004',
     display:Object.freeze({

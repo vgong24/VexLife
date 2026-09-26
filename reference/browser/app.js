@@ -17,6 +17,7 @@ import { createRelationshipsController, loadRelationshipsReference } from './mod
 import { loadRelationshipsCdrPersistenceBinding } from './modules/relationships-cdr-persistence-binding-client.js';
 import { createRelationshipsPersistenceHttpClient } from './modules/relationships-persistence-http-client.js';
 import { createSecurityAccessController } from './modules/security-access-controller.js';
+import { loadAndRegisterLivingJournalEvolutionSurface } from './evolution/projection-host.js';
 
 const { blueprint, experience, featureRegistry, experienceFoundation, designTokens, catalogs } = await loadBrowserBundle('../../');
 const capabilityRegistryResponse = await fetch('../../blueprint/capability-registry.json');
@@ -60,7 +61,8 @@ const uxEvolutionAdapters=new Map();
 const uxShellSurfaceByRef=new Map(uxEvolutionShellScaffold.surfaceInventory.map(surface=>[surface.surfaceRef,Object.freeze({...surface})]));
 const uxMigrationBySemanticRef=new Map(uxEvolutionRegistry.migrationRecords.map(record=>[record.semanticRef,record]));
 const uxLoopbackHostnames=new Set(['127.0.0.1','localhost','::1','[::1]']);
-state.uxProjection=UX_REFERENCE_PROJECTION;
+const uxInitialProjectionParam=new URLSearchParams(globalThis.location?.search??'').get('projection');
+state.uxProjection=uxInitialProjectionParam==='evolution'&&uxLoopbackHostnames.has(globalThis.location?.hostname??'')?UX_EVOLUTION_PROJECTION:UX_REFERENCE_PROJECTION;
 state.uxActiveSurfaceRef=null;
 const LIVING_JOURNAL_MEMORY_API_PATH='/api/v1/living-journal/memory';
 const LIVING_JOURNAL_ARCHIVE_API_PATH='/api/v1/living-journal/archive';
@@ -330,12 +332,14 @@ $('#languageSelect').addEventListener('change',(event)=>{state.language=event.ta
 document.addEventListener('vexlife:open-context',(event)=>{if(event.detail?.context==='health')void openHealth();else openContext('chat');});
 $$('[data-terrain-context]').forEach((button)=>button.addEventListener('click',()=>{const action=button.dataset.terrainContext;if(action==='center')terrain.centerOn();else if(action==='projection')terrain.cycleProjection();else if(action==='workspace')terrain.toggleWorkspace();else if(action==='chat')openContext('chat');else if(action==='health')void openHealth();closeTerrainContext();}));
 document.addEventListener('pointerdown',(event)=>{if(!event.target.closest('#surfaceMenu,#surfaceMenuButton'))toggleSurfaceMenu(false);if(!event.target.closest('#terrainContext'))closeTerrainContext();});
-globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;if(!$('#terrainContext').hidden)closeTerrainContext();else if(!$('#surfaceMenu').hidden)toggleSurfaceMenu(false);else if(state.contextProjection)returnToTerrain('element.nav.terrain','action.navigation.back');else if($('#terrainJourneyDrawer').getAttribute('aria-hidden')!=='true')terrain.closeJourney();else terrain.up();});globalThis.addEventListener('popstate',()=>navigation.back());
+globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;if(!$('#terrainContext').hidden)closeTerrainContext();else if(!$('#surfaceMenu').hidden)toggleSurfaceMenu(false);else if(state.uxActiveSurfaceRef){void closeEvolutionActiveSurface('SHELL_ESCAPE');}else if(state.contextProjection)returnToTerrain('element.nav.terrain','action.navigation.back');else if($('#terrainJourneyDrawer').getAttribute('aria-hidden')!=='true')terrain.closeJourney();else terrain.up();});globalThis.addEventListener('popstate',()=>navigation.back());
 
 chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();navigation.enableBrowserHistory();renderLivingJournalArchiveControls();applyLocalization();guide.setOpen(state.guideOpen);guide.addMessage('guide',{contentRef:'guide.intro'});projectFrame();
 void familyRoom.refresh();
 
 globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,uxProjectionShell};
+await loadAndRegisterLivingJournalEvolutionSurface(globalThis.__VEXLIFE_APP__);
+projectFrame();
 if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('./integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}
 
 // [VXG RealForever]

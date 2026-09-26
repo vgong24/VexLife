@@ -80,5 +80,56 @@
     "cutoverAuthority": false,
     "referenceRetirementAuthority": false,
     "publicationAuthority": false
+  },
+  "sharedPresentation": {
+    "ownerRef": "github.issue.vexlife.703",
+    "experienceFoundationClassificationRef": "github.issue.vexlife.704.comment.5827343906",
+    "experienceFoundationRef": "foundation.vexlife.experience.001",
+    "primitiveRefs": {
+      "patterns": [
+        "pattern.vexlife.action-decision",
+        "pattern.vexlife.progressive-disclosure",
+        "pattern.vexlife.preference"
+      ],
+      "forms": [
+        "form.vexlife.human.button",
+        "form.vexlife.human.icon-action",
+        "form.vexlife.human.menu-item",
+        "form.vexlife.human.vessel-action"
+      ],
+      "component": "component.vexlife.action-vessel",
+      "recoveryExposure": "exposure.vexlife.recovery"
+    },
+    "compactActiveSurfaceHeader": {
+      "shellOwnsTitle": true,
+      "maximumRows": 1,
+      "minimumActionTargetPx": 48,
+      "className": "e29-surface-header"
+    },
+    "transientForwardLayer": {
+      "controllerModule": "reference/browser/modules/transient-presentation-controller.js",
+      "surfaceClass": "e29-forward-layer",
+      "headerClass": "e29-forward-layer-header",
+      "bodyClass": "e29-forward-layer-body",
+      "presentationModes": [
+        "FLOATING",
+        "SHEET",
+        "FULL_SCREEN"
+      ],
+      "visibleDismissRequired": true,
+      "escapeDismisses": true,
+      "focusEntryRequired": true,
+      "focusReturnRequired": true,
+      "viewportConfinementRequired": true,
+      "optionalDeclaredDragHandle": true,
+      "semanticNavigationOnDismiss": false
+    },
+    "categorizedMenuRows": {
+      "sectionClass": "e29-menu-section",
+      "rowClass": "e29-menu-row",
+      "copyClass": "e29-menu-row-copy",
+      "controlClass": "e29-menu-row-control"
+    },
+    "productSemanticOwnership": false
   }
 }
