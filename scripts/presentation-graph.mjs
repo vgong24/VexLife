@@ -138,9 +138,13 @@ export function compilePresentationGraph(bundle, registry = loadPresentationRegi
     regionRefs: (s.regions ?? []).map((r) => r.regionRef)
   }));
   const elements = [...m.elements.values()].map((e) => {
-    if (e.actionRef && !e.permissionRef) throw new Error(`${e.elementRef} is action-bearing without permission binding`);
-    if (e.actionRef && !m.actions.has(e.actionRef)) throw new Error(`${e.elementRef} references missing action ${e.actionRef}`);
-    if (e.permissionRef && !m.permissions.has(e.permissionRef)) throw new Error(`${e.elementRef} references missing permission ${e.permissionRef}`);
+    const action = e.actionRef ? m.actions.get(e.actionRef) ?? null : null;
+    if (e.actionRef && !action) throw new Error(`${e.elementRef} references missing action ${e.actionRef}`);
+    const resolvedPermissionRef = e.permissionRef ?? action?.permissionRef ?? null;
+    if (e.actionRef && !resolvedPermissionRef) throw new Error(`${e.elementRef} is action-bearing without permission binding`);
+    if (resolvedPermissionRef && !m.permissions.has(resolvedPermissionRef)) {
+      throw new Error(`${e.elementRef} references missing permission ${resolvedPermissionRef}`);
+    }
     return {
       elementRef: e.elementRef,
       typedRef: typed(registry.identityPolicy.typedElementProjectionPrefix, e.elementRef),
@@ -152,7 +156,9 @@ export function compilePresentationGraph(bundle, registry = loadPresentationRegi
       elementKind: e.kind,
       actionRef: e.actionRef ?? null,
       interactionRef: e.interactionRef ?? null,
-      permissionRef: e.permissionRef ?? null,
+      permissionRef: resolvedPermissionRef,
+      elementPermissionRefOrNull: e.permissionRef ?? null,
+      permissionBindingSource: e.permissionRef ? 'ELEMENT' : (action?.permissionRef ? 'ACTION' : null),
       navigationRef: e.navigationRef ?? null,
       journeyEventTypeRef: e.journeyEventTypeRef ?? null,
       featureRefs: featureRefs(bundle, [e.screenRef,e.regionRef,e.elementRef,e.conceptRef]),
