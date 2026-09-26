@@ -596,5 +596,51 @@
     "changeMap": [
       "reference/browser/evolution/living-journal-projection.js"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.evolution-conversation-shadow",
+    "path": "reference/browser/evolution/conversation-projection.js",
+    "role": "Conversation presentation-only active-surface adapter that projects and delegates to the canonical Conversation/chat owners under the accepted Shared Shell, preserving addressed participants, READY/RECOVERABLE truth, unsent local draft truth and Family-security presentation input without becoming a semantic, runtime, recovery, security or navigation owner.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.js",
+      "reference/browser/modules/chat-controller.js",
+      "blueprint/ux-evolution-registry.json",
+      "blueprint/ux-evolution-shell-scaffold.json"
+    ],
+    "writes": [
+      "ephemeral DOM placement/style state only; canonical Conversation/chat owners retain semantic effects"
+    ],
+    "loadedBy": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/ux-evolution-conversation.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/evolution/conversation.css",
+      "blueprint/ux-evolution-registry.json"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.evolution-conversation-styles",
+    "path": "reference/browser/evolution/conversation.css",
+    "role": "Shell-scoped Conversation Evolution presentation grammar for feed, composer, addressing, availability and secondary context with compact and reduced-motion equivalence and no semantic ownership.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "reference/browser/app.css",
+      "blueprint/design-tokens.json"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "reference/browser/app.js"
+    ],
+    "tests": [
+      "test/ux-evolution-conversation.test.mjs"
+    ],
+    "changeMap": [
+      "reference/browser/evolution/conversation-projection.js",
+      "reference/browser/app.js"
+    ]
   }
 ]

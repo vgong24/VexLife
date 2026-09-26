@@ -17,15 +17,21 @@ test('E0/LJ-01 validates against the canonical shell active-surface host with ze
   assert.equal(r.projectionHostState,'ACTIVE_SURFACE_MIGRATED_SURFACES');
 });
 
-test('migration accounting remains non-owner while Living Journal alone has an Evolution active-surface presentation',()=>{
+test('migration accounting remains non-owner while Journal and Conversation have bounded Evolution active-surface presentations',()=>{
   const records=load().migrationRecords;
   const journal=records.find(x=>x.semanticRef==='feature.vexlife.living-journal');
+  const conversation=records.find(x=>x.semanticRef==='feature.vexlife.addressed-conversation');
   assert.equal(journal.disposition,'REDESIGN_PRESENTATION');
   assert.equal(journal.migrationLifecycleState,'SHADOW_IMPLEMENTED');
   assert.equal(journal.parityState,'PARTIAL');
   assert.deepEqual(journal.evolutionProjectionRefs,['projection.living-journal.evolution-active-surface']);
   assert.ok(journal.semanticOwnerRefs.every(x=>!x.includes('ux-evolution')));
-  for(const record of records.filter(x=>x!==journal)){
+  assert.equal(conversation.disposition,'REDESIGN_PRESENTATION');
+  assert.equal(conversation.migrationLifecycleState,'SHADOW_IMPLEMENTED');
+  assert.equal(conversation.parityState,'PARTIAL');
+  assert.deepEqual(conversation.evolutionProjectionRefs,['projection.conversation.evolution-shadow']);
+  assert.ok(conversation.semanticOwnerRefs.every(x=>!x.includes('ux-evolution')));
+  for(const record of records.filter(x=>x!==journal&&x!==conversation)){
     assert.equal(record.disposition,'HELD');
     assert.equal(record.migrationLifecycleState,'SOURCE_MAPPED');
     assert.equal(record.evolutionProjectionRefs.length,0);
@@ -35,8 +41,8 @@ test('migration accounting remains non-owner while Living Journal alone has an E
 
 test('coverage contains one bounded migration and no loss or cutover',()=>{
   const r=deriveProjectionCoverageReport(load());
-  assert.equal(r.counts.HELD,6);
-  assert.equal(r.counts.SHADOW_MIGRATION,1);
+  assert.equal(r.counts.HELD,5);
+  assert.equal(r.counts.SHADOW_MIGRATION,2);
   assert.equal(r.counts.LOST,0);
   assert.equal(r.counts.NEW,0);
   assert.equal(r.counts.CUTOVER_OCCURRED,0);

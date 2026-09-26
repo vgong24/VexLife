@@ -18,6 +18,7 @@ import { loadRelationshipsCdrPersistenceBinding } from './modules/relationships-
 import { createRelationshipsPersistenceHttpClient } from './modules/relationships-persistence-http-client.js';
 import { createSecurityAccessController } from './modules/security-access-controller.js';
 import { loadAndRegisterLivingJournalEvolutionSurface } from './evolution/projection-host.js';
+import { CONVERSATION_EVOLUTION_SURFACE_REF, createConversationEvolutionAdapter } from './evolution/conversation-projection.js';
 import { bindAvailableSpaceContract } from './modules/transient-presentation-controller.js';
 
 const { blueprint, experience, featureRegistry, experienceFoundation, designTokens, catalogs } = await loadBrowserBundle('../../');
@@ -63,6 +64,8 @@ let uxAvailableSpaceBinding=null;
 const uxShellSurfaceByRef=new Map(uxEvolutionShellScaffold.surfaceInventory.map(surface=>[surface.surfaceRef,Object.freeze({...surface})]));
 const uxMigrationBySemanticRef=new Map(uxEvolutionRegistry.migrationRecords.map(record=>[record.semanticRef,record]));
 const uxLoopbackHostnames=new Set(['127.0.0.1','localhost','::1','[::1]']);
+const UX_CONVERSATION_STYLESHEET_REF='ux-evolution-conversation';
+function ensureConversationEvolutionStylesheet(){const href=new URL('./evolution/conversation.css',import.meta.url).href;const existing=document.querySelector('link[data-ux-evolution-stylesheet="'+UX_CONVERSATION_STYLESHEET_REF+'"]');if(existing){if(existing.href!==href)throw new Error('Conversation Evolution stylesheet binding drift');return existing}const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.uxEvolutionStylesheet=UX_CONVERSATION_STYLESHEET_REF;document.head.append(link);return link}
 const uxInitialProjectionParam=new URLSearchParams(globalThis.location?.search??'').get('projection');
 state.uxProjection=uxInitialProjectionParam==='evolution'&&uxLoopbackHostnames.has(globalThis.location?.hostname??'')?UX_EVOLUTION_PROJECTION:UX_REFERENCE_PROJECTION;
 state.uxActiveSurfaceRef=null;
@@ -342,6 +345,8 @@ chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.render
 void familyRoom.refresh();
 
 globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,uxProjectionShell};
+ensureConversationEvolutionStylesheet();
+registerEvolutionSurfaceAdapter(CONVERSATION_EVOLUTION_SURFACE_REF,createConversationEvolutionAdapter({state,chat,roles,messages,conversationKey,t}));
 await loadAndRegisterLivingJournalEvolutionSurface(globalThis.__VEXLIFE_APP__);
 projectFrame();
 if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('./integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}

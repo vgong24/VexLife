@@ -142,10 +142,12 @@
         "projection.chat.current",
         "projection.context.map"
       ],
-      "evolutionProjectionRefs": [],
-      "disposition": "HELD",
-      "migrationLifecycleState": "SOURCE_MAPPED",
-      "parityState": "NOT_ASSESSED",
+      "evolutionProjectionRefs": [
+        "projection.conversation.evolution-shadow"
+      ],
+      "disposition": "REDESIGN_PRESENTATION",
+      "migrationLifecycleState": "SHADOW_IMPLEMENTED",
+      "parityState": "PARTIAL",
       "designLawRefs": [
         "law.ux-evolution.one-semantic-state-owner",
         "law.ux-evolution.new-form-not-new-meaning"
@@ -161,11 +163,18 @@
       ],
       "sourceRefs": [
         "blueprint/feature-registry.json",
-        "reference/browser/app.js"
+        "reference/browser/app.js",
+        "blueprint/ux-evolution-shell-scaffold.json",
+        "reference/browser/evolution/conversation-projection.js",
+        "reference/browser/evolution/conversation.css"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
       "retirementDisposition": "NOT_ELIGIBLE",
-      "evidenceRefs": []
+      "evidenceRefs": [
+        "test.ux-evolution.conversation-active-surface-contract",
+        "test.ux-evolution.conversation-canonical-owner-reuse",
+        "test.ux-evolution.conversation-reference-fallback"
+      ]
     },
     {
       "semanticRef": "feature.vexlife.screen-aware-guide",
