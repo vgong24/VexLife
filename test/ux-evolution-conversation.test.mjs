@@ -10,6 +10,9 @@ import {
 const source=fs.readFileSync(new URL('../reference/browser/evolution/conversation-projection.js',import.meta.url),'utf8');
 const css=fs.readFileSync(new URL('../reference/browser/evolution/conversation.css',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../reference/browser/app.js',import.meta.url),'utf8');
+const registry=JSON.parse(fs.readFileSync(new URL('../blueprint/ux-evolution-registry.json',import.meta.url),'utf8'));
+const shellScaffold=JSON.parse(fs.readFileSync(new URL('../blueprint/ux-evolution-shell-scaffold.json',import.meta.url),'utf8'));
+const browserModules=JSON.parse(fs.readFileSync(new URL('../blueprint/module-registry/browser.json',import.meta.url),'utf8'));
 
 const CURRENT_SECURITY_STATUS=Object.freeze({
   state:'CURRENT',
@@ -152,6 +155,26 @@ test('accepted app.js seam registers the same canonical Conversation adapter and
   assert.match(app,/registerEvolutionSurfaceAdapter\(CONVERSATION_EVOLUTION_SURFACE_REF,createConversationEvolutionAdapter\(\{state,chat,roles,messages,conversationKey,t\}\)\)/);
   assert.match(app,/new URL\('\.\/evolution\/conversation\.css',import\.meta\.url\)/);
   assert.doesNotMatch(app,/defineEvolutionSurfaceAdapter/);
+});
+
+
+test('real accepted Shared Shell production composition enables the current Conversation shadow',()=>{
+  const surface=shellScaffold.surfaceInventory.find(x=>x.surfaceRef===CONVERSATION_EVOLUTION_SURFACE_REF);
+  const migration=registry.migrationRecords.find(x=>x.semanticRef==='feature.vexlife.addressed-conversation');
+  const adapterModule=browserModules.find(x=>x.path==='reference/browser/evolution/conversation-projection.js');
+  const styleModule=browserModules.find(x=>x.path==='reference/browser/evolution/conversation.css');
+  assert.equal(surface?.semanticRef,'feature.vexlife.addressed-conversation');
+  assert.equal(migration?.disposition,'REDESIGN_PRESENTATION');
+  assert.equal(migration?.migrationLifecycleState,'SHADOW_IMPLEMENTED');
+  assert.equal(migration?.parityState,'PARTIAL');
+  assert.deepEqual(migration?.evolutionProjectionRefs,['projection.conversation.evolution-shadow']);
+  assert.ok(shellScaffold.evolutionEnablement.acceptedLifecycleStates.includes(migration.migrationLifecycleState));
+  assert.equal(adapterModule?.moduleRef,'module.vexlife.browser.evolution-conversation-shadow');
+  assert.ok(adapterModule?.loadedBy.includes('reference/browser/app.js'));
+  assert.equal(styleModule?.moduleRef,'module.vexlife.browser.evolution-conversation-styles');
+  assert.ok(styleModule?.loadedBy.includes('reference/browser/app.js'));
+  assert.match(app,/registerEvolutionSurfaceAdapter\(CONVERSATION_EVOLUTION_SURFACE_REF,createConversationEvolutionAdapter/);
+  assert.match(app,/ensureConversationEvolutionStylesheet\(\)/);
 });
 
 // [VXG RealForever]
