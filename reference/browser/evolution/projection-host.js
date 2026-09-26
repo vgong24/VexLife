@@ -1,57 +1,40 @@
 import {
-  assertUxEvolutionRegistry,
-  resolveUxProjectionHostSelection,
-} from '../../../src/core/ux-evolution.mjs';
+  LIVING_JOURNAL_SURFACE_REF,
+  assertLivingJournalActiveSurfaceContract,
+  createLivingJournalEvolutionSurfaceAdapter
+} from './living-journal-projection.js';
 
-const registryResponse = await fetch('../../../blueprint/ux-evolution-registry.json', { cache: 'no-store' });
-if (!registryResponse.ok) throw new Error(`Unable to load ux-evolution-registry.json: HTTP ${registryResponse.status}`);
-const registry = await registryResponse.json();
-const validation = assertUxEvolutionRegistry(registry);
-const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
-const selection = resolveUxProjectionHostSelection(registry, {
-  requestedProjection: 'evolution',
-  localExecution: loopbackHosts.has(globalThis.location.hostname),
-});
+async function loadJson(fetchImpl,path){
+  const response=await fetchImpl(path,{cache:'no-store'});
+  if(!response.ok)throw new Error('Unable to load '+path+': HTTP '+response.status);
+  return response.json();
+}
 
-const root = document.querySelector('#evolutionHost');
-const status = document.querySelector('#hostStatus');
-const rendererState = document.querySelector('#rendererState');
-const selectedProjection = document.querySelector('#selectedProjection');
-const ownerState = document.querySelector('#ownerState');
-const cutoverState = document.querySelector('#cutoverState');
+export function registerLivingJournalEvolutionSurface(app,{registry,shellScaffold,documentImpl=globalThis.document}={}){
+  const contract=assertLivingJournalActiveSurfaceContract({registry,shellScaffold});
+  if(typeof app?.uxProjectionShell?.registerEvolutionSurfaceAdapter!=='function')throw new TypeError('Canonical Evolution active-surface host is required');
+  const adapter=createLivingJournalEvolutionSurfaceAdapter(app,{documentImpl});
+  const shellReceipt=app.uxProjectionShell.registerEvolutionSurfaceAdapter(LIVING_JOURNAL_SURFACE_REF,adapter);
+  return Object.freeze({
+    schemaVersion:'vexlife.living-journal.evolution-active-surface-registration/v1',
+    state:'REGISTERED',
+    surfaceRef:LIVING_JOURNAL_SURFACE_REF,
+    projectionRef:contract.projectionRef,
+    hostRef:contract.hostRef,
+    oneSemanticState:true,
+    oneActiveRenderer:true,
+    semanticOwnerMutation:false,
+    memoryOwnerMutation:false,
+    shellReceipt
+  });
+}
 
-root.dataset.hostState = selection.state;
-root.dataset.activeRendererCount = selection.state === 'PASS' ? '1' : '0';
-selectedProjection.textContent = selection.selectedProjection ?? 'NONE';
-rendererState.textContent = selection.state === 'PASS'
-  ? 'One active inert Evolution renderer; Reference document is not mounted'
-  : 'Blocked — local/dev selection was not admitted';
-ownerState.textContent = registry.projectionHost.sharedSemanticOwnerPolicy;
-cutoverState.textContent = registry.projectionHost.cutoverAuthority ? 'Authorized' : 'Not authorized';
-status.textContent = selection.state === 'PASS'
-  ? 'Inert Evolution host active. No migrated semantic surfaces, persistence, user-data fork, publication or cutover.'
-  : `Evolution host blocked: ${selection.reason}`;
-
-const receipt = Object.freeze({
-  schemaVersion: 'vexlife.ux-evolution-browser-host-receipt/v1',
-  hostRef: registry.projectionHost.hostRef,
-  registryRef: validation.registryRef,
-  stageRef: registry.projectionHost.stageRef,
-  state: selection.state,
-  reason: selection.reason,
-  selectedProjection: selection.selectedProjection,
-  defaultProjection: selection.defaultProjection,
-  selectionClass: selection.selectionClass ?? null,
-  oneActiveRenderer: selection.oneActiveRenderer,
-  activeRendererCount: selection.state === 'PASS' ? 1 : 0,
-  referenceRendererMounted: false,
-  migratedSemanticRefs: [...registry.projectionHost.migratedSemanticRefs],
-  semanticStateOwnerMutation: false,
-  userDataFork: false,
-  userHistoryRollback: false,
-  publicationAuthority: false,
-  cutoverAuthority: false,
-});
-globalThis.__VEXLIFE_EVOLUTION_HOST__ = receipt;
+export async function loadAndRegisterLivingJournalEvolutionSurface(app,{fetchImpl=globalThis.fetch,documentImpl=globalThis.document}={}){
+  const [registry,shellScaffold]=await Promise.all([
+    loadJson(fetchImpl,'../../blueprint/ux-evolution-registry.json'),
+    loadJson(fetchImpl,'../../blueprint/ux-evolution-shell-scaffold.json')
+  ]);
+  return registerLivingJournalEvolutionSurface(app,{registry,shellScaffold,documentImpl});
+}
 
 // [VXG RealForever]

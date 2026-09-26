@@ -327,19 +327,23 @@
       "referenceProjectionRefs": [
         "projection.living-journal.lived-book"
       ],
-      "evolutionProjectionRefs": [],
-      "disposition": "HELD",
-      "migrationLifecycleState": "SOURCE_MAPPED",
-      "parityState": "NOT_ASSESSED",
+      "evolutionProjectionRefs": [
+        "projection.living-journal.evolution-active-surface"
+      ],
+      "disposition": "REDESIGN_PRESENTATION",
+      "migrationLifecycleState": "SHADOW_IMPLEMENTED",
+      "parityState": "PARTIAL",
       "designLawRefs": [
         "law.ux-evolution.one-semantic-state-owner",
-        "law.ux-evolution.new-form-not-new-meaning"
+        "law.ux-evolution.new-form-not-new-meaning",
+        "law.ux-evolution.rollback-projection-not-user-data"
       ],
       "findingRefs": [
         "UXF-MJE-00",
         "UXF-MJE-01",
         "UXF-MJE-02",
-        "UXF-MJE-03"
+        "UXF-MJE-03",
+        "UXF-MJE-04"
       ],
       "semanticOwnerRefs": [
         "module.vexlife.browser.living-journal-controller",
@@ -349,11 +353,22 @@
       "sourceRefs": [
         "blueprint/feature-registry.json",
         "blueprint/experience-registry.json",
-        "reference/browser/app.js"
+        "blueprint/ux-evolution-shell-scaffold.json",
+        "reference/browser/app.js",
+        "reference/browser/modules/living-journal-controller.js",
+        "src/core/living-journal-memory-projection.mjs",
+        "src/core/living-journal-memory-archive.mjs",
+        "src/core/browser-living-journal-memory-bridge.mjs",
+        "reference/browser/evolution/projection-host.js",
+        "reference/browser/evolution/living-journal-projection.js"
       ],
       "cutoverDisposition": "NOT_PROPOSED",
       "retirementDisposition": "NOT_ELIGIBLE",
-      "evidenceRefs": []
+      "evidenceRefs": [
+        "test.ux-evolution.living-journal-active-surface-contract",
+        "test.ux-evolution.living-journal-canonical-owner-reuse",
+        "test.ux-evolution.living-journal-reference-fallback"
+      ]
     }
   ],
   "findingInputs": [
@@ -669,7 +684,7 @@
   },
   "projectionHost": {
     "schemaVersion": "vexlife.ux-projection-host/v1",
-    "hostRef": "host.vexlife.ux-evolution.e0-b.001",
+    "hostRef": "host.vexlife.shell.evolution-active-surface.001",
     "stageRef": "stage.vexlife.ux-evolution.e0-b",
     "selectionQueryParam": "projection",
     "defaultProjection": "REFERENCE_PROJECTION",
@@ -679,26 +694,49 @@
     },
     "routes": {
       "REFERENCE_PROJECTION": "/reference/browser/",
-      "EVOLUTION_PROJECTION": "/reference/browser/evolution/index.html"
+      "EVOLUTION_PROJECTION": "/reference/browser/?projection=evolution"
     },
     "evolutionSelectionAuthority": "EXPLICIT_LOCAL_DEV_ONLY",
     "localExecutionClasses": [
       "LOOPBACK_HTTP"
     ],
-    "rendererTransitionClass": "DOCUMENT_NAVIGATION",
+    "rendererTransitionClass": "SHELL_ACTIVE_SURFACE",
     "oneActiveRenderer": true,
-    "priorRendererDisposition": "DOCUMENT_UNLOADED",
+    "priorRendererDisposition": "REFERENCE_SURFACE_RETAINED_HIDDEN",
     "referenceDefaultPreserved": true,
-    "evolutionHostState": "INERT_NO_MIGRATED_SURFACES",
-    "migratedSemanticRefs": [],
+    "evolutionHostState": "ACTIVE_SURFACE_MIGRATED_SURFACES",
+    "migratedSemanticRefs": [
+      "feature.vexlife.living-journal"
+    ],
     "sharedSemanticOwnerPolicy": "UNCHANGED_RIGHTFUL_OWNERS",
     "selectionPersistence": "NONE",
-    "evolutionHostLoadsReferenceRenderer": false,
+    "evolutionHostLoadsReferenceRenderer": true,
     "dualRendererMountAllowed": false,
     "semanticStateOwnerMutation": false,
     "userDataFork": false,
     "userHistoryRollbackOnProjectionRollback": false,
     "publicationAuthority": false,
-    "cutoverAuthority": false
+    "cutoverAuthority": false,
+    "activeSurfaceProjection": {
+      "surfaceRef": "surface.vexlife.living-journal",
+      "semanticRef": "feature.vexlife.living-journal",
+      "projectionRef": "projection.living-journal.evolution-active-surface",
+      "hostRef": "host.vexlife.shell.evolution-active-surface.001",
+      "stateOwnerPolicy": "UNCHANGED_SERVICE_CONTEXT",
+      "memoryOwnerPolicy": "UNCHANGED_ACCEPTED_MEMORY_OWNERS",
+      "journeyOwnerPolicy": "UNCHANGED_NAVIGATION_JOURNEY_OWNER",
+      "semanticBackOwnerRef": "module.vexlife.core.navigation",
+      "shellOwnsSurfaceTitle": true,
+      "shellOwnsCloseControl": true,
+      "semanticClosePolicy": "REGISTERED_ADAPTER_REQUEST_CLOSE",
+      "referenceFallbackRequired": true,
+      "projectionFallbackMutatesSemanticJourney": false,
+      "oneActiveRendererRequired": true,
+      "localMarginaliaDurability": "SESSION_ONLY_NON_MEMORY",
+      "newSemanticCapabilityAuthority": false,
+      "cutoverAuthority": false,
+      "retirementAuthority": false,
+      "browserBehaviorChangeScope": "EVOLUTION_LOCAL_DEV_ONLY"
+    }
   }
 }

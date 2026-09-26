@@ -3,8 +3,37 @@ import { $$ } from './dom.js';
 export const RECENT_JOURNEY_LIMIT = 5;
 
 const MAX_BACK_STACK = 128;
+export const BROWSER_HISTORY_STATE_SCHEMA_VERSION = 'vexlife.semantic-browser-history/v1';
+const BROWSER_HISTORY_CONTEXTS = new Set([null, 'chat', 'health', 'living-journal']);
 const cloneFrame = (frame) => structuredClone(frame);
 const frameEquals = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const nullableRef = (value) => value === null || (typeof value === 'string' && value.length > 0);
+function validatedBrowserHistoryFrame(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const contextProjection = value.contextProjection;
+  if (!BROWSER_HISTORY_CONTEXTS.has(contextProjection)) return null;
+  const expectedScreenRef = contextProjection ? `screen.vexlife.${contextProjection}` : 'screen.vexlife.terrain';
+  const expectedRouteRef = contextProjection ? `route.${contextProjection}` : 'route.terrain';
+  if (value.primaryStageScreenRef !== 'screen.vexlife.terrain' || value.screenRef !== expectedScreenRef || value.routeRef !== expectedRouteRef) return null;
+  for (const key of ['projectRef', 'threadRef', 'channelRef', 'selectedNodeRef']) if (!nullableRef(value[key])) return null;
+  return cloneFrame({
+    primaryStageScreenRef: value.primaryStageScreenRef,
+    screenRef: value.screenRef,
+    routeRef: value.routeRef,
+    contextProjection,
+    projectRef: value.projectRef,
+    threadRef: value.threadRef,
+    channelRef: value.channelRef,
+    selectedNodeRef: value.selectedNodeRef
+  });
+}
+function browserHistoryState(frame) {
+  return { vexlifeSemantic: true, schemaVersion: BROWSER_HISTORY_STATE_SCHEMA_VERSION, semanticFrame: cloneFrame(frame) };
+}
+function browserHistoryFrame(value) {
+  if (!value || value.vexlifeSemantic !== true || value.schemaVersion !== BROWSER_HISTORY_STATE_SCHEMA_VERSION) return null;
+  return validatedBrowserHistoryFrame(value.semanticFrame);
+}
 
 export function journeyWindow(events, start = null, size = RECENT_JOURNEY_LIMIT) {
   if (!Array.isArray(events)) throw new TypeError('events must be an array');
@@ -99,7 +128,7 @@ export function createNavigationController({ state, elementByRef, getProject, ge
           after
         });
     if (frameChanged && browserHistoryEnabled && globalThis.history?.pushState) {
-      globalThis.history.pushState({ vexlifeSemantic: true }, '', globalThis.location?.href);
+      globalThis.history.pushState(browserHistoryState(after), '', globalThis.location?.href);
     }
     onFrameChange(after);
     return journey.event;
@@ -114,10 +143,19 @@ export function createNavigationController({ state, elementByRef, getProject, ge
     state.view = 'terrain'; state.contextProjection = context; state.projectRef = frame.projectRef ?? state.projectRef; state.threadRef = frame.threadRef ?? state.threadRef; state.channelRef = frame.channelRef ?? state.channelRef; state.selectedNodeRef = frame.selectedNodeRef ?? state.selectedNodeRef;
   }
   function back() {
-    const target = backStack.pop(); if (!target) return { changed: false, reason: 'BACK_STACK_EMPTY', frame: semanticFrame() };
+    const target = backStack.pop() ?? (browserHistoryEnabled ? browserHistoryFrame(globalThis.history?.state) : null);
+    if (!target) return { changed: false, reason: 'BACK_STACK_EMPTY', frame: semanticFrame() };
     const before = semanticFrame(); applyFrame(target); const after = semanticFrame(); const journey = appendJourney({ elementRef: target.selectedNodeRef, actionRef: 'action.navigation.back', before, after }); onFrameChange(after); return { changed: !frameEquals(before, after), frame: cloneFrame(after), journeyEvent: journey.event };
   }
-  function enableBrowserHistory() { if (!globalThis.history?.replaceState || !globalThis.history?.pushState) return false; backStack.splice(0); globalThis.history.replaceState({ vexlifeSemantic: true }, '', globalThis.location?.href); browserHistoryEnabled = true; return true; }
+  function enableBrowserHistory() {
+    if (!globalThis.history?.replaceState || !globalThis.history?.pushState) return false;
+    const restoredFrame = browserHistoryFrame(globalThis.history.state);
+    if (restoredFrame) { applyFrame(restoredFrame); onFrameChange(restoredFrame); }
+    backStack.splice(0);
+    globalThis.history.replaceState(browserHistoryState(semanticFrame()), '', globalThis.location?.href);
+    browserHistoryEnabled = true;
+    return true;
+  }
   function recentJourney(limit = RECENT_JOURNEY_LIMIT) { if (!Number.isInteger(limit) || limit < 1) throw new TypeError('limit must be a positive integer'); return state.journey.slice(-limit).map((event) => structuredClone(event)); }
   const fullJourney = () => state.journey.map((event) => structuredClone(event));
   const journeyProjection = (limit = RECENT_JOURNEY_LIMIT) => ({ fullEventCount: state.journey.length, recentTrajectory: recentJourney(limit) });

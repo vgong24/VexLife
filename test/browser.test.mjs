@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
 import { conversationKey, createDemoData } from '../reference/browser/modules/demo-data.js';
+import { BROWSER_HISTORY_STATE_SCHEMA_VERSION, createNavigationController } from '../reference/browser/modules/navigation-controller.js';
 
 const bundle = loadBlueprint(); const registry = compileRegistryPack(bundle); const browserRoot = new URL('../reference/browser/', import.meta.url);
 const html = fs.readFileSync(new URL('index.html', browserRoot), 'utf8'); const app = fs.readFileSync(new URL('app.js', browserRoot), 'utf8'); const css = fs.readFileSync(new URL('app.css', browserRoot), 'utf8');
@@ -19,6 +20,25 @@ test('current semantic owners remain present beneath the E2.7 body',()=>{for(con
 test('demo conversations remain relation-owned browser evidence',()=>{const data=createDemoData({storage:{getItem:()=>null},loadJson:(_key,fallback)=>fallback});for(const channel of data.channels){const project=data.projects.find((candidate)=>candidate.projectRef===channel.projectRef);assert.ok(project?.threads.some((thread)=>thread.threadRef===channel.threadRef));const key=conversationKey(channel.projectRef,channel.threadRef,channel.channelRef);assert.ok(data.messages.has(key));for(const message of data.messages.get(key)){assert.equal(message.projectRef,channel.projectRef);assert.equal(message.threadRef,channel.threadRef);assert.equal(message.channelRef,channel.channelRef)}}});
 test('required localization remains available',()=>{for(const ref of ['product.vexlife.name','vex.visible.name','vex.summon','terrain.reset','terrain.center-current-context','composer.send','health.reference.summary','guide.answer.current'])for(const language of bundle.blueprint.product.requiredLanguages)assert.ok(bundle.strings[language][ref],`${language} missing ${ref}`);assert.match(app,/data-i18n-aria-label/)});
 test('integration source proves direct-root and carried truth',()=>{const integration=fs.readFileSync(new URL('integration-test.js',browserRoot),'utf8');for(const marker of ['exact E2.7 body is the first rendered product surface','canonical VexLife topology is projected into the E2.7 body','UNSENT_LOCAL_DRAFT','semantic auto-entry remains opt-in','one visible Vex occupies the E2.7 ambient vessel',"state:'PASS'"])assert.match(integration,new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))});
+test('semantic browser history restores an exact frame after document reload',()=>{
+  const savedHistory=Object.getOwnPropertyDescriptor(globalThis,'history'),savedLocation=Object.getOwnPropertyDescriptor(globalThis,'location');
+  const calls=[];const history={state:null,replaceState(value,_unused,url){this.state=structuredClone(value);calls.push({kind:'replace',value:structuredClone(value),url});},pushState(value,_unused,url){this.state=structuredClone(value);calls.push({kind:'push',value:structuredClone(value),url});}};
+  Object.defineProperty(globalThis,'history',{configurable:true,writable:true,value:history});Object.defineProperty(globalThis,'location',{configurable:true,writable:true,value:{href:'http://127.0.0.1/reference/browser/'}});
+  try{
+    const initial={view:'terrain',contextProjection:null,projectRef:'project.vexlife.root-hub',threadRef:'thread.root-hub.welcome',channelRef:'channel.root-hub.welcome.root',selectedNodeRef:'terrain.project.root-hub',journey:[]};
+    const navigation=createNavigationController({state:initial,elementByRef:new Map(),getProject:()=>null,getThread:()=>null,getChannel:()=>null});
+    assert.equal(navigation.enableBrowserHistory(),true);navigation.openContext('chat','element.nav.chat','action.view.select');const expected=navigation.semanticFrame();const persisted=structuredClone(history.state);
+    assert.equal(persisted.schemaVersion,BROWSER_HISTORY_STATE_SCHEMA_VERSION);assert.deepEqual(persisted.semanticFrame,expected);
+    const reloaded={view:'terrain',contextProjection:null,projectRef:'project.vexlife.root-hub',threadRef:'thread.root-hub.welcome',channelRef:'channel.root-hub.welcome.root',selectedNodeRef:'terrain.project.root-hub',journey:[]};history.state=persisted;let restoredFrame=null;
+    const restored=createNavigationController({state:reloaded,elementByRef:new Map(),getProject:()=>null,getThread:()=>null,getChannel:()=>null,onFrameChange:(frame)=>{restoredFrame=structuredClone(frame);}});
+    assert.equal(restored.enableBrowserHistory(),true);assert.deepEqual(restored.semanticFrame(),expected);assert.deepEqual(restoredFrame,expected);assert.equal(reloaded.journey.length,0);assert.deepEqual(history.state.semanticFrame,expected);
+    history.state={vexlifeSemantic:true,schemaVersion:BROWSER_HISTORY_STATE_SCHEMA_VERSION,semanticFrame:{...expected,screenRef:'screen.vexlife.health'}};const malformed={...reloaded,contextProjection:null};const rejected=createNavigationController({state:malformed,elementByRef:new Map(),getProject:()=>null,getThread:()=>null,getChannel:()=>null});rejected.enableBrowserHistory();assert.equal(rejected.semanticFrame().contextProjection,null);
+  }finally{
+    if(savedHistory)Object.defineProperty(globalThis,'history',savedHistory);else delete globalThis.history;
+    if(savedLocation)Object.defineProperty(globalThis,'location',savedLocation);else delete globalThis.location;
+  }
+});
+
 test('browser server serves direct root app',async(t)=>{const child=spawn(process.execPath,['scripts/serve-browser.mjs'],{cwd:new URL('..',import.meta.url),env:{...process.env,VEXLIFE_PORT:'0'},stdio:['ignore','pipe','pipe']});t.after(()=>child.kill());child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');const serverUrl=await Promise.race([new Promise((resolve,reject)=>{let stderr='';child.stderr.on('data',(chunk)=>stderr+=chunk);child.stdout.on('data',(chunk)=>{const match=chunk.match(/http:\/\/127\.0\.0\.1:\d+/);if(match)resolve(match[0])});child.once('exit',(code)=>reject(new Error(`browser server exited ${code}: ${stderr}`)));child.once('error',reject)}),delay(5000,undefined,{ref:false}).then(()=>{throw new Error('browser server did not become ready')})]);const rootResponse=await fetch(`${serverUrl}/`,{redirect:'manual'});assert.equal(rootResponse.status,302);const doc=await fetch(new URL(rootResponse.headers.get('location'),serverUrl));assert.equal(doc.status,200);assert.match(await doc.text(),/<title>VexLife Terrain<\/title>/);const appResponse=await fetch(new URL('app.js',doc.url));assert.equal(appResponse.status,200);assert.doesNotMatch(await appResponse.text(),/e27-terrain-convergence\.js/)});
 
 // [VXG RealForever]

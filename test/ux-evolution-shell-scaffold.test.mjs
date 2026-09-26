@@ -18,7 +18,11 @@ const repositoryRoot=fileURLToPath(new URL('..',import.meta.url));
 const uxe703ForeignJournal=Object.freeze({
   repository:'https://github.com/vgong24/VexLife.git',
   branch:'VXG-092426-lj-reader-dco-clean',
-  head:'8cc03d0e1dedc9d2d6863bee324c58501a85307b',
+  finalizationParentHead:'e17756dfe7c61028b592b1da738b5e143183b433',
+  finalizationPaths:Object.freeze([
+    'source-manifest-parts/bucket-39.json',
+    'test/ux-evolution-shell-scaffold.test.mjs'
+  ]),
   appJsBlob:'7ef5540dd6b6b072ee03cbcd2d69a477859abd8e'
 });
 const uxe703OwnedProductPaths=Object.freeze([
@@ -232,8 +236,15 @@ test('exact PR718 app.js composition exercises the real shared available-space l
   const tempRoot=fs.mkdtempSync(path.join(os.tmpdir(),'vexlife-uxe703-production-composition-'));
   t.after(()=>fs.rmSync(tempRoot,{recursive:true,force:true}));
   const composedRoot=path.join(tempRoot,'VexLife');
-  execFileSync('git',['clone','--quiet','--depth','1','--branch',uxe703ForeignJournal.branch,uxe703ForeignJournal.repository,composedRoot],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
-  assert.equal(git(composedRoot,['rev-parse','HEAD']),uxe703ForeignJournal.head,'foreign #626 head moved; production composition must be re-grounded');
+  execFileSync('git',['clone','--quiet','--depth','2','--branch',uxe703ForeignJournal.branch,uxe703ForeignJournal.repository,composedRoot],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
+  const observedForeignHead=git(composedRoot,['rev-parse','HEAD']);
+  assert.equal(git(composedRoot,['rev-parse','HEAD^']),uxe703ForeignJournal.finalizationParentHead,'foreign #626 finalization parent moved; production composition must be re-grounded');
+  const observedFinalizationPaths=git(composedRoot,['diff-tree','--no-commit-id','--name-only','-r','HEAD']).split('\n').filter(Boolean).sort();
+  assert.deepEqual(observedFinalizationPaths,[...uxe703ForeignJournal.finalizationPaths].sort(),'foreign #626 finalization membrane moved; production composition must be re-grounded');
+  if(process.env.VEXLIFE_PR_NUMBER==='718'&&process.env.VEXLIFE_BRANCH===uxe703ForeignJournal.branch){
+    assert.match(process.env.VEXLIFE_CANDIDATE_HEAD_SHA??'',/^[0-9a-f]{40}$/u,'source-managed exact PR718 candidate head is required');
+    assert.equal(observedForeignHead,process.env.VEXLIFE_CANDIDATE_HEAD_SHA,'foreign #626 exact candidate head mismatch');
+  }
   assert.equal(git(composedRoot,['rev-parse','HEAD:reference/browser/app.js']),uxe703ForeignJournal.appJsBlob,'foreign #626 app.js blob drifted');
   const foreignApp=fs.readFileSync(path.join(composedRoot,'reference/browser/app.js'),'utf8');
   assert.match(foreignApp,/bindAvailableSpaceContract/);
