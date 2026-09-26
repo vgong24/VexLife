@@ -46,6 +46,11 @@ function validateRegistry(registry) {
   unique(registry.testObligations, 'obligationRef', 'testObligations');
   unique(registry.behaviorWitnesses, 'witnessRef', 'behaviorWitnesses');
   const parents = new Map((registry.presentationNodes ?? []).map((n) => [n.presentationRef, n.parentPresentationRefOrNull ?? null]));
+  for (const [presentationRef, parentRef] of parents) {
+    if (parentRef && !parents.has(parentRef)) {
+      throw new Error(`${presentationRef} references missing presentation parent ${parentRef}`);
+    }
+  }
   for (const start of parents.keys()) {
     const visited = new Set();
     for (let cur = start; cur; cur = parents.get(cur) ?? null) {
@@ -90,7 +95,13 @@ function validateExtensions(bundle, registry, m) {
   const slots = new Map((bundle.blueprint.components ?? []).map((c) => [c.componentRef, new Set((c.slots ?? []).map((s) => s.slotRef))]));
   for (const p of registry.placements ?? []) {
     if (!m.screens.has(p.screenRef)) throw new Error(`${p.placementRef} references missing screen ${p.screenRef}`);
-    if (p.elementRefOrNull && !m.elements.has(p.elementRefOrNull)) throw new Error(`${p.placementRef} references missing element ${p.elementRefOrNull}`);
+    if (p.elementRefOrNull) {
+      const element = m.elements.get(p.elementRefOrNull);
+      if (!element) throw new Error(`${p.placementRef} references missing element ${p.elementRefOrNull}`);
+      if (element.screenRef !== p.screenRef) {
+        throw new Error(`${p.placementRef} places ${p.elementRefOrNull} on ${p.screenRef} but canonical owner screen is ${element.screenRef}`);
+      }
+    }
     if (p.parentPresentationRefOrNull && !nodes.has(p.parentPresentationRefOrNull)) throw new Error(`${p.placementRef} references missing presentation parent ${p.parentPresentationRefOrNull}`);
     if (p.componentRefOrNull && !m.components.has(p.componentRefOrNull)) throw new Error(`${p.placementRef} references missing component ${p.componentRefOrNull}`);
     if (p.slotRefOrNull && !p.componentRefOrNull) throw new Error(`${p.placementRef} cannot bind slot without component`);
@@ -101,6 +112,9 @@ function validateExtensions(bundle, registry, m) {
     if (!REACHABILITY.has(r.state)) throw new Error(`${r.reachabilityRef} has unsupported state ${r.state}`);
     if (!known(r.targetRef)) throw new Error(`${r.reachabilityRef} target is unknown: ${r.targetRef}`);
     if (!Array.isArray(r.steps) || !r.steps.length) throw new Error(`${r.reachabilityRef} steps must be non-empty`);
+    if (r.steps.at(-1) !== r.targetRef) {
+      throw new Error(`${r.reachabilityRef} must terminate at target ${r.targetRef}`);
+    }
     const seen = new Set();
     for (const step of r.steps) {
       if (!known(step)) throw new Error(`${r.reachabilityRef} step is unknown: ${step}`);
