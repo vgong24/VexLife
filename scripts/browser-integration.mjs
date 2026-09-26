@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -51,9 +52,25 @@ try {
 }
 
 if (playwright) {
+  const integrationHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-browser-integration-home-'));
+  const integrationDeviceRef = 'device.browser.integration';
+  const integrationLineageRef = 'companion.lineage.browser.integration';
+  fs.mkdirSync(path.join(integrationHome, 'config'), { recursive: true });
+  fs.mkdirSync(path.join(integrationHome, 'devices'), { recursive: true });
+  fs.writeFileSync(path.join(integrationHome, 'config', 'home.json'), `${JSON.stringify({
+    schemaVersion: 'vexlife.home/v0',
+    homeRef: 'home.browser.integration',
+    currentDeviceRef: integrationDeviceRef,
+    currentCompanionLineageRef: integrationLineageRef
+  }, null, 2)}\n`);
+  fs.writeFileSync(path.join(integrationHome, 'devices', `${integrationDeviceRef}.json`), `${JSON.stringify({
+    deviceRef: integrationDeviceRef,
+    companionLineageRef: integrationLineageRef
+  }, null, 2)}\n`);
+
   const server = spawn(process.execPath, ['scripts/serve-browser.mjs'], {
     cwd: ROOT,
-    env: { ...process.env, VEXLIFE_PORT: '0' },
+    env: { ...process.env, VEXLIFE_PORT: '0', VEXLIFE_HOME: integrationHome },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   server.stdout.setEncoding('utf8');
@@ -155,6 +172,7 @@ if (playwright) {
   } finally {
     await browser?.close().catch(() => {});
     server.kill();
+    fs.rmSync(integrationHome, { recursive: true, force: true });
   }
 }
 
