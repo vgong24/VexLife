@@ -17,8 +17,8 @@
     {
       "path": "scripts/presentation-graph.mjs",
       "mode": "100644",
-      "bytes": 15610,
-      "sha256": "a037d9c6f6f3752224bc0a38ab4b05822a2a1a8e18b0b295bc3f461d761c323b"
+      "bytes": 16202,
+      "sha256": "792591acacf848e02954730cbe37a7f1261fe91555dbdffa1e59ead6a72084fb"
     },
     {
       "path": "src/core/build-admission.mjs",
