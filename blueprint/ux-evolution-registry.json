@@ -715,7 +715,8 @@
     "referenceDefaultPreserved": true,
     "evolutionHostState": "ACTIVE_SURFACE_MIGRATED_SURFACES",
     "migratedSemanticRefs": [
-      "feature.vexlife.living-journal"
+      "feature.vexlife.living-journal",
+      "feature.vexlife.addressed-conversation"
     ],
     "sharedSemanticOwnerPolicy": "UNCHANGED_RIGHTFUL_OWNERS",
     "selectionPersistence": "NONE",

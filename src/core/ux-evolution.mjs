@@ -12,7 +12,7 @@ const exactSet=(a,b)=>unique(a)&&a.length===b.length&&b.every(x=>a.includes(x));
 const idx=s=>MIGRATION_LIFECYCLE.indexOf(s);
 const add=(e,ok,c)=>{if(!ok)e.push(c);};
 const HOST_PROJECTION_CLASSES=new Set(['REFERENCE_PROJECTION','EVOLUTION_PROJECTION']);
-const ACTIVE_SURFACE_MIGRATION_SEMANTIC_REFS=new Set(['feature.vexlife.living-journal']);
+const ACTIVE_SURFACE_MIGRATION_SEMANTIC_REFS=new Set(['feature.vexlife.living-journal','feature.vexlife.addressed-conversation']);
 function validateProjectionHostContract(r,e){
   const h=r?.projectionHost;
   add(e,h?.schemaVersion==='vexlife.ux-projection-host/v1','PROJECTION_HOST_SCHEMA_INVALID');
