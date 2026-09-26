@@ -19,6 +19,15 @@ const THREAD_NODE = {
 };
 
 export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
+export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recovery-action';
+
+const BROWSER_COMPANION_RECOVERY_ACTION_BINDING_KEYS = new Set([
+  'schemaVersion',
+  'truthClass',
+  'actionRef',
+  'availabilityProjectionRef',
+  'effectAuthorityGranted'
+]);
 
 const BROWSER_COMPANION_AVAILABILITY_STATES = new Set([
   'READY',
@@ -107,6 +116,59 @@ export function browserCompanionRecoveryAvailable(value) {
   }
 }
 
+export function normalizeBrowserCompanionRecoveryActionBinding(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('Companion recovery action binding must be one object');
+  }
+  const keys = Object.keys(value);
+  if (
+    keys.length !== BROWSER_COMPANION_RECOVERY_ACTION_BINDING_KEYS.size
+    || keys.some((key) => !BROWSER_COMPANION_RECOVERY_ACTION_BINDING_KEYS.has(key))
+    || value.schemaVersion !== 'vexlife.browser-companion-recovery-action-binding/v1'
+    || value.truthClass !== 'SOURCE_BOUND_COMPANION_RECOVERY_ACTION'
+    || value.actionRef !== 'action.companion.reenter-current-binding'
+    || !availabilityNonempty(value.availabilityProjectionRef)
+    || value.effectAuthorityGranted !== false
+  ) {
+    throw new TypeError('Companion recovery action binding is invalid');
+  }
+  return Object.freeze(structuredClone(value));
+}
+
+export async function requestBrowserCompanionRecoveryAction({
+  fetchImpl = fetch,
+  expectedAvailabilityProjectionRef
+} = {}) {
+  if (typeof fetchImpl !== 'function') throw new TypeError('Companion recovery requires fetch');
+  if (!availabilityNonempty(expectedAvailabilityProjectionRef)) {
+    throw new TypeError('Companion recovery requires the current availability projection');
+  }
+
+  const bindingResponse = await fetchImpl(BROWSER_COMPANION_RECOVERY_ACTION_PATH, {
+    method: 'GET',
+    cache: 'no-store'
+  });
+  if (!bindingResponse?.ok) {
+    throw new Error(`Companion recovery action HTTP ${bindingResponse?.status ?? 'UNKNOWN'}`);
+  }
+  const action = normalizeBrowserCompanionRecoveryActionBinding(await bindingResponse.json());
+  if (action.availabilityProjectionRef !== expectedAvailabilityProjectionRef) {
+    throw new Error('Companion recovery action binding is stale relative to visible availability');
+  }
+
+  const invokeResponse = await fetchImpl(BROWSER_COMPANION_RECOVERY_ACTION_PATH, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify(action)
+  });
+  if (!invokeResponse?.ok) {
+    throw new Error(`Companion recovery action POST HTTP ${invokeResponse?.status ?? 'UNKNOWN'}`);
+  }
+  const result = await invokeResponse.json();
+  return Object.freeze({ action, result: structuredClone(result) });
+}
+
 export function createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation, experienceFoundation, capabilityRegistry }) {
   const currentProject = () => projects.find((project) => project.projectRef === state.projectRef) || projects[0];
   const currentThread = () => currentProject().threads.find((thread) => thread.threadRef === state.threadRef) || currentProject().threads[0];
@@ -123,6 +185,8 @@ export function createChatController({ state, projects, roles, channels, message
   let companionAvailability = null;
   let companionAvailabilityReadState = 'UNKNOWN';
   let companionTurnPending = false;
+  let companionRecoveryPending = false;
+  let companionRecoveryFailure = false;
   let pendingSemanticRelayInput = null;
   let pendingSemanticRelayAction = null;
   let pendingSemanticRelayScope = null;
@@ -748,41 +812,80 @@ export function createChatController({ state, projects, roles, channels, message
     $('#newMessagesButton').hidden = count === 0;
   }
 
+  function recoveryButton() {
+    let button = $('#companionRecoveryButton');
+    if (button) return button;
+    const form = $('#composer');
+    const footer = $('.e27-composer-footer', form);
+    const sendButton = $('button[type="submit"]', footer);
+    button = document.createElement('button');
+    button.id = 'companionRecoveryButton';
+    button.type = 'button';
+    button.hidden = true;
+    button.setAttribute('aria-controls', 'messageInput');
+    button.setAttribute('aria-describedby', 'composerHint');
+    button.addEventListener('click', () => { void requestCompanionRecovery(); });
+    footer.insertBefore(button, sendButton);
+    return button;
+  }
+
   function renderComposerTruth() {
     const channel = currentChannel();
     const draft = draftForChannel(channel);
     const form = $('#composer');
     const input = $('#messageInput');
     const sendButton = $('#composer button[type="submit"]');
+    const recoveryActionButton = recoveryButton();
     const channelHint = t('composer.channel-hint', {
       kind: t(channel.kind === 'GROUP' ? 'channel.kind.group' : 'channel.kind.direct'),
       count: channel.memberKeys.length
     });
     const available = channelIsAvailable(channel);
+    const recoveryAvailable = channel.roleKey === 'companion'
+      && browserCompanionRecoveryAvailable(companionAvailability);
     const slashCandidate = input.value.trim().startsWith('/');
     const commandStatus = composerCommandStatusText();
     const availabilityRef = slashCandidate
       ? 'composer.command.ready'
       : available
         ? 'composer.availability.available'
-        : draft
-          ? 'composer.availability.unavailable-draft'
-          : 'composer.availability.unavailable';
-    $('#composerHint').textContent = `${commandStatus ?? t(availabilityRef)} · ${channelHint}`;
+        : recoveryAvailable
+          ? draft
+            ? 'composer.availability.recoverable-draft'
+            : 'composer.availability.recoverable'
+          : draft
+            ? 'composer.availability.unavailable-draft'
+            : 'composer.availability.unavailable';
+    const recoveryStatus = channel.roleKey === 'companion'
+      ? companionRecoveryPending
+        ? t('composer.recovery.pending')
+        : companionRecoveryFailure
+          ? t('composer.recovery.failed')
+          : null
+      : null;
+    $('#composerHint').textContent = `${commandStatus ?? recoveryStatus ?? t(availabilityRef)} · ${channelHint}`;
     form.dataset.availabilityState = available ? 'AVAILABLE' : 'UNAVAILABLE';
     form.dataset.commandState = composerCommandState.state;
     form.dataset.submitMode = slashCandidate ? 'COMMAND_CHECK' : 'MESSAGE_SEND';
     if (channel.roleKey === 'companion') {
       form.dataset.companionBindingState = companionAvailability?.bindingState ?? 'UNKNOWN';
       form.dataset.companionAvailabilityState = companionAvailabilityState();
-      form.dataset.companionRecoveryAvailable = String(browserCompanionRecoveryAvailable(companionAvailability));
+      form.dataset.companionRecoveryAvailable = String(recoveryAvailable);
+      form.dataset.companionRecoveryPending = String(companionRecoveryPending);
       form.dataset.companionTurnPending = String(companionTurnPending);
     } else {
       delete form.dataset.companionBindingState;
       delete form.dataset.companionAvailabilityState;
       delete form.dataset.companionRecoveryAvailable;
+      delete form.dataset.companionRecoveryPending;
       delete form.dataset.companionTurnPending;
     }
+    recoveryActionButton.hidden = !recoveryAvailable || slashCandidate;
+    recoveryActionButton.disabled = companionRecoveryPending;
+    recoveryActionButton.setAttribute('aria-disabled', String(companionRecoveryPending));
+    recoveryActionButton.textContent = t(companionRecoveryPending
+      ? 'composer.recovery.pending'
+      : 'composer.recovery.action');
     form.dataset.draftState = draft?.state ?? 'NONE';
     input.dataset.draftState = draft?.state ?? 'NONE';
     const submitAvailable = slashCandidate || (channel.roleKey === 'companion' ? !companionTurnPending : available);
@@ -860,12 +963,43 @@ export function createChatController({ state, projects, roles, channels, message
       if (!response.ok) throw new Error(`Companion availability HTTP ${response.status}`);
       companionAvailability = normalizeBrowserCompanionAvailability(await response.json());
       companionAvailabilityReadState = companionAvailability.availabilityState;
+      if (companionAvailability.availabilityState === 'READY') companionRecoveryFailure = false;
     } catch {
       companionAvailability = null;
       companionAvailabilityReadState = 'UNAVAILABLE';
     }
     updateComposer();
     return companionAvailabilitySnapshot();
+  }
+
+  async function requestCompanionRecovery() {
+    const channel = currentChannel();
+    if (channel?.roleKey !== 'companion' || companionRecoveryPending) return false;
+
+    if (!browserCompanionRecoveryAvailable(companionAvailability)) {
+      await refreshCompanionAvailability();
+    }
+    if (!browserCompanionRecoveryAvailable(companionAvailability)) return false;
+
+    const input = $('#messageInput');
+    if (input.value.length > 0) setLocalDraft(channel, input.value);
+
+    companionRecoveryPending = true;
+    companionRecoveryFailure = false;
+    renderComposerTruth();
+    try {
+      await requestBrowserCompanionRecoveryAction({
+        fetchImpl: fetch,
+        expectedAvailabilityProjectionRef: companionAvailability.projectionRef
+      });
+      return true;
+    } catch {
+      companionRecoveryFailure = true;
+      return false;
+    } finally {
+      companionRecoveryPending = false;
+      await refreshCompanionAvailability();
+    }
   }
 
   function restoreCompanionDraft(channel, content, sourceMessage = null) {
