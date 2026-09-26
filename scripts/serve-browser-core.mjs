@@ -13,9 +13,11 @@ import {
   browserCompanionFailurePayload,
   browserCompanionRecoveryFailurePayload,
   createBrowserCompanionBridge,
+  formBrowserCompanionRecoveryRequest,
+  validateBrowserCompanionRecoveryEffectContract,
   loadBrowserCompanionHomeIdentity
 } from '../src/core/browser-companion-bridge.mjs';
-import { compileCompanionAvailability } from '../src/core/companion-availability-reentry.mjs';
+import { compileCompanionAvailability, formCompanionReentryPlan } from '../src/core/companion-availability-reentry.mjs';
 import {
   CAPABILITY_ASSIMILATION_MODES,
   createCapabilityAssimilationRuntime
@@ -81,6 +83,11 @@ const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
 export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
+export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recovery-action';
+export const BROWSER_COMPANION_RECOVERY_ACTION_MAX_BODY_BYTES = 4 * 1024;
+export const BROWSER_COMPANION_RECOVERY_ACTION_BINDING_SCHEMA = 'vexlife.browser-companion-recovery-action-binding/v1';
+const BROWSER_COMPANION_RECOVERY_ACTION_TRUTH_CLASS = 'SOURCE_BOUND_COMPANION_RECOVERY_ACTION';
+const BROWSER_COMPANION_RECOVERY_ACTION_KEYS = new Set(['schemaVersion','truthClass','actionRef','availabilityProjectionRef','effectAuthorityGranted']);
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_API_PATH = '/api/v1/relationships/persistence';
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_RELATIONSHIPS_PERSISTENCE_LIST_MAX = 256;
@@ -265,6 +272,151 @@ export function createServerOwnedCompanionAvailabilityResolver({
   };
 }
 
+
+function readCompanionRecoveryEffectContract(sourceRoot) {
+  const file = path.resolve(sourceRoot, 'blueprint/companion-recovery-effect-contract.json');
+  try {
+    const stat = fs.lstatSync(file);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error('recovery effect contract must be one regular non-link file');
+    }
+    const contract = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!validateBrowserCompanionRecoveryEffectContract(contract)) {
+      throw new Error('recovery effect contract is not current');
+    }
+    return contract;
+  } catch (error) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_RECOVERY_ACTION_SOURCE_UNAVAILABLE',
+      'Companion recovery action source is unavailable',
+      503,
+      error?.message ?? String(error)
+    );
+  }
+}
+
+function admitCompanionRecoveryActionBinding(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_RECOVERY_ACTION_NOT_ADMITTED',
+      'Companion recovery action must be one source-bound binding object',
+      400
+    );
+  }
+  const keys = Object.keys(value);
+  if (
+    keys.length !== BROWSER_COMPANION_RECOVERY_ACTION_KEYS.size
+    || keys.some((key) => !BROWSER_COMPANION_RECOVERY_ACTION_KEYS.has(key))
+    || value.schemaVersion !== BROWSER_COMPANION_RECOVERY_ACTION_BINDING_SCHEMA
+    || value.truthClass !== BROWSER_COMPANION_RECOVERY_ACTION_TRUTH_CLASS
+    || value.actionRef !== 'action.companion.reenter-current-binding'
+    || typeof value.availabilityProjectionRef !== 'string'
+    || value.availabilityProjectionRef.length === 0
+    || value.effectAuthorityGranted !== false
+  ) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_RECOVERY_ACTION_NOT_ADMITTED',
+      'Companion recovery action binding is not admitted',
+      400
+    );
+  }
+  return Object.freeze(structuredClone(value));
+}
+
+export function createServerOwnedCompanionRecoveryActionResolver({
+  sourceRoot = root,
+  resolveCompanionBinding = null,
+  resolveCompanionRuntimeObservation = null,
+  availabilityCompiler = compileCompanionAvailability,
+  reentryPlanFormer = formCompanionReentryPlan,
+  recoveryRequestFormer = formBrowserCompanionRecoveryRequest
+} = {}) {
+  if (resolveCompanionBinding !== null && typeof resolveCompanionBinding !== 'function') {
+    throw new TypeError('Companion recovery action binding provider must be one function');
+  }
+  if (resolveCompanionRuntimeObservation !== null && typeof resolveCompanionRuntimeObservation !== 'function') {
+    throw new TypeError('Companion recovery action runtime-observation provider must be one function');
+  }
+  if (typeof availabilityCompiler !== 'function' || typeof reentryPlanFormer !== 'function' || typeof recoveryRequestFormer !== 'function') {
+    throw new TypeError('Companion recovery action semantic formers must be functions');
+  }
+
+  async function resolveCurrent() {
+    if (resolveCompanionBinding === null || resolveCompanionRuntimeObservation === null) {
+      throw new BrowserCompanionBridgeError(
+        'COMPANION_RECOVERY_ACTION_PROVIDER_UNAVAILABLE',
+        'Companion recovery action providers are unavailable',
+        503
+      );
+    }
+    try {
+      const binding = await resolveCompanionBinding();
+      const runtimeObservation = await resolveCompanionRuntimeObservation();
+      const registry = readCompanionAvailabilityRegistry(sourceRoot);
+      const contract = readCompanionRecoveryEffectContract(sourceRoot);
+      const availability = availabilityCompiler({ registry, binding, runtimeObservation });
+      const reentryPlan = reentryPlanFormer({ registry, availability, binding, runtimeObservation });
+      if (
+        availability?.availabilityState !== 'RECOVERABLE'
+        || availability?.recoveryClass !== 'SAFE_REENTRY_AVAILABLE'
+        || !reentryPlan
+        || reentryPlan.actionRef !== contract.actionRef
+        || reentryPlan.effectAuthorityGranted !== false
+      ) {
+        throw new BrowserCompanionBridgeError(
+          'COMPANION_RECOVERY_ACTION_NOT_AVAILABLE',
+          'Companion recovery action is not currently available',
+          409
+        );
+      }
+      const actionBinding = Object.freeze({
+        schemaVersion: BROWSER_COMPANION_RECOVERY_ACTION_BINDING_SCHEMA,
+        truthClass: BROWSER_COMPANION_RECOVERY_ACTION_TRUTH_CLASS,
+        actionRef: contract.actionRef,
+        availabilityProjectionRef: availability.projectionRef,
+        effectAuthorityGranted: false
+      });
+      return Object.freeze({ contract, availability, reentryPlan, actionBinding });
+    } catch (error) {
+      if (error instanceof BrowserCompanionBridgeError) throw error;
+      throw new BrowserCompanionBridgeError(
+        'COMPANION_RECOVERY_ACTION_NOT_CURRENT',
+        'Companion recovery action is not current',
+        503,
+        error?.message ?? String(error)
+      );
+    }
+  }
+
+  return Object.freeze({
+    async binding() {
+      return (await resolveCurrent()).actionBinding;
+    },
+    async request(input) {
+      const admitted = admitCompanionRecoveryActionBinding(input);
+      const current = await resolveCurrent();
+      for (const key of BROWSER_COMPANION_RECOVERY_ACTION_KEYS) {
+        if (admitted[key] !== current.actionBinding[key]) {
+          throw new BrowserCompanionBridgeError(
+            'COMPANION_RECOVERY_ACTION_STALE',
+            'Companion recovery action binding is stale',
+            409
+          );
+        }
+      }
+      const request = recoveryRequestFormer(current.contract, current.availability, current.reentryPlan);
+      if (!request) {
+        throw new BrowserCompanionBridgeError(
+          'COMPANION_RECOVERY_ACTION_NOT_CURRENT',
+          'Companion recovery request could not be formed from current owner evidence',
+          409
+        );
+      }
+      return request;
+    }
+  });
+}
+
 export function createServerOwnedBrowserCompanionBridge({
   sourceRoot = root,
   companionHome = home,
@@ -360,6 +512,9 @@ function companionRequestError(message, httpStatus) {
 }
 function companionRecoveryRequestError(message, httpStatus) {
   return new BrowserCompanionBridgeError('COMPANION_RECOVERY_REQUEST_NOT_ADMITTED', message, httpStatus);
+}
+function companionRecoveryActionRequestError(message, httpStatus) {
+  return new BrowserCompanionBridgeError('COMPANION_RECOVERY_ACTION_NOT_ADMITTED', message, httpStatus);
 }
 
 function livingJournalMemoryRequestError(message, httpStatus) {
@@ -1384,6 +1539,12 @@ export function createVexLifeBrowserServer({
     resolveCompanionRuntimeObservation,
     availabilityCompiler: companionAvailabilityCompiler
   });
+  const companionRecoveryAction = createServerOwnedCompanionRecoveryActionResolver({
+    sourceRoot: companionAvailabilitySourceRoot,
+    resolveCompanionBinding,
+    resolveCompanionRuntimeObservation,
+    availabilityCompiler: companionAvailabilityCompiler
+  });
   return http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url, `http://${request.headers.host || `127.0.0.1:${port}`}`);
@@ -1405,6 +1566,36 @@ export function createVexLifeBrowserServer({
               500
             );
           sendJson(response, typed.httpStatus, companionAvailabilityFailurePayload(typed));
+        }
+        return;
+      }
+
+      if (url.pathname === BROWSER_COMPANION_RECOVERY_ACTION_PATH) {
+        if (!['GET', 'POST'].includes(request.method)) {
+          response.writeHead(405, { Allow: 'GET, POST', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          if (request.method === 'GET') {
+            sendJson(response, 200, await companionRecoveryAction.binding());
+            return;
+          }
+          if (typeof companionBridge?.performRecovery !== 'function') {
+            throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_UNAVAILABLE', 'Companion recovery owner is unavailable', 503);
+          }
+          const input = await readBoundedJson(request, {
+            maxBytes: BROWSER_COMPANION_RECOVERY_ACTION_MAX_BODY_BYTES,
+            formError: companionRecoveryActionRequestError,
+            requestLabel: 'Companion recovery action'
+          });
+          const exactRequest = await companionRecoveryAction.request(input);
+          sendJson(response, 200, await companionBridge.performRecovery(exactRequest));
+        } catch (error) {
+          const typed = error instanceof BrowserCompanionBridgeError
+            ? error
+            : new BrowserCompanionBridgeError('COMPANION_RECOVERY_ACTION_FAILED', 'Companion recovery action failed safely', 500);
+          sendJson(response, typed.httpStatus, browserCompanionRecoveryFailurePayload(typed));
         }
         return;
       }
