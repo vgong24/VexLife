@@ -250,7 +250,12 @@ test('VR06 Reference composer exposes truthful recoverable action on desktop and
 
       await page.goto(serverUrl + '/reference/browser/', { waitUntil: 'networkidle', timeout: 30000 });
       await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 30000 });
-      await page.evaluate(async () => globalThis.__VEXLIFE_APP__.chat.refreshCompanionAvailability());
+      await page.evaluate(async () => {
+        const app = globalThis.__VEXLIFE_APP__;
+        app.openContext('chat');
+        await app.chat.refreshCompanionAvailability();
+      });
+      await page.locator('#messageInput').waitFor({ state: 'visible', timeout: 5000 });
 
       const draft = 'Keep this exact unsent draft through recovery';
       await page.locator('#messageInput').fill(draft);
