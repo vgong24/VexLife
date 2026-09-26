@@ -18,8 +18,8 @@ const repositoryRoot=fileURLToPath(new URL('..',import.meta.url));
 const uxe703ForeignJournal=Object.freeze({
   repository:'https://github.com/vgong24/VexLife.git',
   branch:'VXG-092426-lj-reader-dco-clean',
-  head:'2441bc57db5e282faaa7e798a43c4014728d4aa2',
-  appJsBlob:'637bdb259fb4b56d5e0a59486b11fb5485ec8b76'
+  head:'8cc03d0e1dedc9d2d6863bee324c58501a85307b',
+  appJsBlob:'7ef5540dd6b6b072ee03cbcd2d69a477859abd8e'
 });
 const uxe703OwnedProductPaths=Object.freeze([
   'blueprint/ux-evolution-shell-scaffold.json',
