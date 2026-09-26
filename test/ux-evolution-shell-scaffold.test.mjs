@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {spawn} from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import {execFileSync,spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
 import {bindAvailableSpaceContract,constrainTransientRect,resolveTransientPresentationMode} from '../reference/browser/modules/transient-presentation-controller.js';
 
@@ -10,6 +13,28 @@ const registry=JSON.parse(fs.readFileSync(new URL('../blueprint/ux-evolution-reg
 const html=fs.readFileSync(new URL('../reference/browser/index.html',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../reference/browser/app.js',import.meta.url),'utf8');
 const css=fs.readFileSync(new URL('../reference/browser/app.css',import.meta.url),'utf8');
+
+const repositoryRoot=fileURLToPath(new URL('..',import.meta.url));
+const uxe703ForeignJournal=Object.freeze({
+  repository:'https://github.com/vgong24/VexLife.git',
+  branch:'VXG-092426-lj-reader-dco-clean',
+  head:'8cc03d0e1dedc9d2d6863bee324c58501a85307b',
+  appJsBlob:'7ef5540dd6b6b072ee03cbcd2d69a477859abd8e'
+});
+const uxe703OwnedProductPaths=Object.freeze([
+  'blueprint/ux-evolution-shell-scaffold.json',
+  'reference/browser/app.css',
+  'reference/browser/modules/transient-presentation-controller.js'
+]);
+function git(cwd,args){return execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim()}
+function overlayExact703ProductBytes(targetRoot){
+  for(const relative of uxe703OwnedProductPaths){
+    const source=path.join(repositoryRoot,relative),target=path.join(targetRoot,relative);
+    fs.mkdirSync(path.dirname(target),{recursive:true});
+    fs.copyFileSync(source,target);
+    assert.equal(fs.readFileSync(target).equals(fs.readFileSync(source)),true,`#703 composition byte drift: ${relative}`);
+  }
+}
 
 test('post-acceptance shell scaffold preserves Reference default and one-owner laws',()=>{
   assert.equal(contract.schemaVersion,'vexlife.ux-evolution-shell-scaffold/v1');
@@ -200,6 +225,138 @@ test('real loopback shared presentation proves desktop and compact focus, dismis
     assert.deepEqual(await page.evaluate(()=>({href:location.href,historyLength:history.length})),beforeBack,'presentation Back must not navigate');
     await page.close();
   }
+});
+
+
+test('exact PR718 app.js composition exercises the real shared available-space lifecycle',async t=>{
+  const tempRoot=fs.mkdtempSync(path.join(os.tmpdir(),'vexlife-uxe703-production-composition-'));
+  t.after(()=>fs.rmSync(tempRoot,{recursive:true,force:true}));
+  const composedRoot=path.join(tempRoot,'VexLife');
+  execFileSync('git',['clone','--quiet','--depth','1','--branch',uxe703ForeignJournal.branch,uxe703ForeignJournal.repository,composedRoot],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
+  assert.equal(git(composedRoot,['rev-parse','HEAD']),uxe703ForeignJournal.head,'foreign #626 head moved; production composition must be re-grounded');
+  assert.equal(git(composedRoot,['rev-parse','HEAD:reference/browser/app.js']),uxe703ForeignJournal.appJsBlob,'foreign #626 app.js blob drifted');
+  const foreignApp=fs.readFileSync(path.join(composedRoot,'reference/browser/app.js'),'utf8');
+  assert.match(foreignApp,/bindAvailableSpaceContract/);
+  assert.match(foreignApp,/state\.uxActiveSurfaceRef&&state\.uxActiveSurfaceRef!==surfaceRef\)await closeEvolutionActiveSurface\('SURFACE_CHANGE'\)/);
+  assert.match(foreignApp,/requested===UX_REFERENCE_PROJECTION&&state\.uxActiveSurfaceRef\)await closeEvolutionActiveSurface\('REFERENCE_FALLBACK'\)/);
+  overlayExact703ProductBytes(composedRoot);
+
+  const child=spawn(process.execPath,['scripts/serve-browser.mjs'],{cwd:composedRoot,env:{...process.env,VEXLIFE_PORT:'0'},stdio:['ignore','pipe','pipe']});
+  t.after(()=>child.kill());
+  child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
+  const url=await Promise.race([
+    new Promise((resolve,reject)=>{let err='';child.stderr.on('data',c=>err+=c);child.stdout.on('data',c=>{const m=c.match(/http:\/\/127\.0\.0\.1:\d+/);if(m)resolve(m[0])});child.once('exit',code=>reject(new Error(`browser server exited ${code}: ${err}`)));child.once('error',reject)}),
+    delay(8000,undefined,{ref:false}).then(()=>{throw new Error('composed production browser server did not become ready')})
+  ]);
+  const {chromium}=await import('playwright');const browser=await chromium.launch({headless:true});t.after(()=>browser.close());
+  const page=await browser.newPage({viewport:{width:1280,height:800}});
+  await page.goto(url+'/reference/browser/',{waitUntil:'networkidle'});
+  await page.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__?.uxProjectionShell));
+
+  const proof=await page.evaluate(async()=>{
+    const app=globalThis.__VEXLIFE_APP__,surfaceRef='surface.vexlife.living-journal';
+    const host=document.querySelector('#evolutionActiveSurfaceHost'),body=document.querySelector('#evolutionActiveSurfaceBody');
+    const availableEvents=[];host.addEventListener('vexlife:available-space',event=>availableEvents.push({...event.detail}));
+    let held=true,mountCalls=0,closeCalls=0;
+    app.uxProjectionShell.registerEvolutionSurfaceAdapter(surfaceRef,{
+      async mount({body:mountBody}){mountCalls+=1;const marker=document.createElement('div');marker.id='uxe703-production-proof-marker';marker.textContent='production lifecycle proof';mountBody.append(marker)},
+      requestClose(){closeCalls+=1;return held?{state:'HELD',reason:'PROOF_HELD'}:{state:'CLOSED',reason:'PROOF_CLOSE'}}
+    });
+    const projection=await app.uxProjectionShell.setProjection('EVOLUTION_PROJECTION');
+    const opened=await app.uxProjectionShell.openEvolutionSurface(surfaceRef);
+    await new Promise(resolve=>setTimeout(resolve,20));
+    const openedSnapshot={
+      projection:projection.state,
+      opened:opened.state,
+      active:app.uxProjectionShell.snapshot().activeSurfaceRef,
+      hostHidden:host.hidden,
+      inline:Number(body.dataset.uxeAvailableInlineSize),
+      block:Number(body.dataset.uxeAvailableBlockSize),
+      overflowY:getComputedStyle(body).overflowY,
+      padding:getComputedStyle(body).padding,
+      events:availableEvents.length,
+      mountCalls
+    };
+    const heldReceipt=await app.uxProjectionShell.closeEvolutionActiveSurface('PROOF_HELD');
+    const beforeHeldResize=availableEvents.length;
+    dispatchEvent(new Event('resize'));await new Promise(resolve=>setTimeout(resolve,20));
+    const heldSnapshot={
+      state:heldReceipt.state,
+      active:app.uxProjectionShell.snapshot().activeSurfaceRef,
+      hostHidden:host.hidden,
+      beforeResize:beforeHeldResize,
+      afterResize:availableEvents.length,
+      closeCalls
+    };
+    held=false;
+    const closedReceipt=await app.uxProjectionShell.closeEvolutionActiveSurface('PROOF_CLOSE');
+    const beforeClosedResize=availableEvents.length;
+    dispatchEvent(new Event('resize'));await new Promise(resolve=>setTimeout(resolve,20));
+    const closedSnapshot={
+      state:closedReceipt.state,
+      active:app.uxProjectionShell.snapshot().activeSurfaceRef,
+      hostHidden:host.hidden,
+      beforeResize:beforeClosedResize,
+      afterResize:availableEvents.length,
+      closeCalls
+    };
+    const reopened=await app.uxProjectionShell.openEvolutionSurface(surfaceRef);
+    await new Promise(resolve=>setTimeout(resolve,20));
+    const beforeReopenResize=availableEvents.length;
+    dispatchEvent(new Event('resize'));await new Promise(resolve=>setTimeout(resolve,20));
+    const reopenedSnapshot={
+      state:reopened.state,
+      active:app.uxProjectionShell.snapshot().activeSurfaceRef,
+      beforeResize:beforeReopenResize,
+      afterResize:availableEvents.length,
+      mountCalls
+    };
+    const fallback=await app.uxProjectionShell.setProjection('REFERENCE_PROJECTION');
+    const beforeFallbackResize=availableEvents.length;
+    dispatchEvent(new Event('resize'));await new Promise(resolve=>setTimeout(resolve,20));
+    const fallbackSnapshot={
+      state:fallback.state,
+      projection:app.uxProjectionShell.snapshot().projection,
+      active:app.uxProjectionShell.snapshot().activeSurfaceRef,
+      hostHidden:host.hidden,
+      beforeResize:beforeFallbackResize,
+      afterResize:availableEvents.length,
+      closeCalls
+    };
+    return {openedSnapshot,heldSnapshot,closedSnapshot,reopenedSnapshot,fallbackSnapshot};
+  });
+  assert.equal(proof.openedSnapshot.projection,'PASS');
+  assert.equal(proof.openedSnapshot.opened,'OPEN');
+  assert.equal(proof.openedSnapshot.active,'surface.vexlife.living-journal');
+  assert.equal(proof.openedSnapshot.hostHidden,false);
+  assert.ok(proof.openedSnapshot.inline>0&&proof.openedSnapshot.block>0,'real production open did not publish positive available-space dimensions');
+  assert.equal(proof.openedSnapshot.overflowY,'hidden');
+  assert.equal(proof.openedSnapshot.padding,'0px');
+  assert.ok(proof.openedSnapshot.events>=2,'real production open did not publish initial + post-mount available-space snapshots');
+  assert.equal(proof.openedSnapshot.mountCalls,1);
+
+  assert.equal(proof.heldSnapshot.state,'HELD');
+  assert.equal(proof.heldSnapshot.active,'surface.vexlife.living-journal');
+  assert.equal(proof.heldSnapshot.hostHidden,false);
+  assert.equal(proof.heldSnapshot.afterResize,proof.heldSnapshot.beforeResize+1,'HELD close must retain exactly one available-space binding');
+
+  assert.equal(proof.closedSnapshot.state,'CLOSED');
+  assert.equal(proof.closedSnapshot.active,null);
+  assert.equal(proof.closedSnapshot.hostHidden,true);
+  assert.equal(proof.closedSnapshot.afterResize,proof.closedSnapshot.beforeResize,'actual close must disconnect available-space binding');
+
+  assert.equal(proof.reopenedSnapshot.state,'OPEN');
+  assert.equal(proof.reopenedSnapshot.active,'surface.vexlife.living-journal');
+  assert.equal(proof.reopenedSnapshot.afterResize,proof.reopenedSnapshot.beforeResize+1,'reopen must create one fresh binding without duplicate listeners');
+  assert.equal(proof.reopenedSnapshot.mountCalls,2);
+
+  assert.equal(proof.fallbackSnapshot.state,'PASS');
+  assert.equal(proof.fallbackSnapshot.projection,'REFERENCE_PROJECTION');
+  assert.equal(proof.fallbackSnapshot.active,null);
+  assert.equal(proof.fallbackSnapshot.hostHidden,true);
+  assert.equal(proof.fallbackSnapshot.afterResize,proof.fallbackSnapshot.beforeResize,'Reference fallback must release the production available-space binding');
+  assert.equal(proof.fallbackSnapshot.closeCalls,3);
+  await page.close();
 });
 
 // [VXG RealForever]
