@@ -97,6 +97,8 @@ test('group semantics remain available without dominating ordinary direct conver
   assert.equal(group.channelKind,'GROUP');
   assert.deepEqual(group.audience.map((item)=>item.actorRef),['person.victor-gong','role.vex.companion','role.vex.guide']);
   assert.equal(group.familySecurityStatus,null);
+  assert.equal(group.availability.state,'AVAILABLE');
+  assert.equal(group.availability.readyForRealTurn,false);
 });
 
 test('Family-marked group consumes the canonical browser-safe security status without acquiring authority',()=>{
@@ -113,7 +115,7 @@ test('Family security remains a presentation input and never gates Conversation 
   assert.equal(group.familySecurityStatus.roleCanAct,false);
   assert.equal(group.familySecurityStatus.effectAuthorityGranted,false);
   assert.equal(group.availability.state,'AVAILABLE');
-  assert.equal(group.availability.readyForRealTurn,true);
+  assert.equal(group.availability.readyForRealTurn,false);
 });
 
 test('adapter stays a presentation/delegation layer with no second runtime, recovery, state or close owner',()=>{

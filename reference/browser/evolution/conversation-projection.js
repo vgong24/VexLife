@@ -124,7 +124,7 @@ export function projectConversationEvolutionState(input) {
     })),
     availability: Object.freeze({
       state: availabilityState,
-      readyForRealTurn: companion ? availabilityState === 'READY' : state.vexAvailability === 'AVAILABLE',
+      readyForRealTurn: companion && availabilityState === 'READY',
       recoveryAvailable: companion ? chat.companionRecoveryAvailable() === true : false,
       bindingState: availability?.bindingState ?? null,
       recoveryClass: availability?.recoveryClass ?? null,
