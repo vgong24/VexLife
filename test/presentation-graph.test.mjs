@@ -77,9 +77,14 @@ function fixtureRegistry() {
 test('current source compiles stable typed views without replacing canonical element identity', () => {
   const compiled = compilePresentationGraph(bundle, registry);
   const archive = compiled.uiIdentityRegistry.elements.find((item) => item.elementRef === 'element.living-journal.archive.open');
+  const home = compiled.uiIdentityRegistry.elements.find((item) => item.elementRef === 'element.nav.home');
   assert.ok(archive);
+  assert.ok(home);
   assert.equal(archive.typedRef, 'UIElementID.LivingJournalArchiveOpen');
   assert.equal(archive.elementRef, 'element.living-journal.archive.open');
+  assert.equal(home.permissionRef, 'permission.none');
+  assert.equal(home.elementPermissionRefOrNull, null);
+  assert.equal(home.permissionBindingSource, 'ACTION');
   assert.equal(compiled.uiIdentityRegistry.canonicalElementIdentityField, 'elementRef');
   assert.equal(compiled.presentationGraph.semanticAuthority, false);
 });
@@ -104,6 +109,26 @@ test('synthetic Patient Zero fixture proves placement, secondary reachability an
   ]);
   assert.equal(compiled.behaviorWitnesses.witnesses[0].state, 'UNKNOWN');
   assert.equal(compiled.behaviorWitnesses.witnesses[0].currentness, 'UNPROVEN_REAL_INTEGRATION');
+});
+
+test('canonical action permission satisfies the binding when the element does not duplicate it', () => {
+  const compiled = compilePresentationGraph(bundle, registry);
+  const home = compiled.uiIdentityRegistry.elements.find((item) => item.elementRef === 'element.nav.home');
+  assert.equal(home.elementPermissionRefOrNull, null);
+  assert.equal(home.permissionRef, 'permission.none');
+  assert.equal(home.permissionBindingSource, 'ACTION');
+});
+
+test('action-bearing element without element or action permission still fails closed', () => {
+  const broken = structuredClone(bundle);
+  const home = broken.blueprint.screens
+    .flatMap((screen) => screen.regions)
+    .flatMap((region) => region.elements)
+    .find((element) => element.elementRef === 'element.nav.home');
+  const action = broken.blueprint.actions.find((item) => item.actionRef === 'action.navigation.home');
+  home.permissionRef = null;
+  action.permissionRef = null;
+  assert.throws(() => compilePresentationGraph(broken, registry), /action-bearing without permission binding/u);
 });
 
 test('invalid slot placement fails closed', () => {
