@@ -1,12 +1,12 @@
 {
-  "schemaVersion": "vexlife.activated-model-runtime-bindings/v1",
-  "registryRef": "registry.vexlife.activated-model-runtime-bindings.001",
+  "schemaVersion": "vexlife.activated-model-runtime-bindings/v2",
+  "registryRef": "registry.vexlife.activated-model-runtime-bindings.002",
   "selectionClass": "EXACT_EXTERNAL_ACTIVATION_PROJECTION",
   "bindings": [
     {
-      "bindingRef": "binding.vexlife.activated-m4.mlx.macos-victor.post-w5.20260926a",
+      "bindingRef": "binding.vexlife.activated-m4.mlx.macos-victor.post-w5.20260927a",
       "state": "ACTIVE_ACCEPTED",
-      "companionLineageRef": "lineage.vex.m4.generation-2-learner",
+      "modelLineageRef": "lineage.vex.m4.generation-2-learner",
       "generationRef": "generation.vex.m4.generation-2",
       "modelRef": "model.vex.m4.small.g2.base.368e89e5ca219fab",
       "modelProfileRef": "model-profile.vex.m4.small.g2.certified.20260920A",
