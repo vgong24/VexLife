@@ -151,6 +151,16 @@ VEXLIFE_COMPANION_ENDPOINT=http://127.0.0.1:18084
 VEXLIFE_COMPANION_MODEL=default_model
 ```
 
+The browser model value above is the source-owned MLX/OpenAI transport request alias, not the activated product binding identity. Permanent:
+
+```text
+bindingRef != runtime.requestModel
+bindingRef = product/runtime-binding identity
+runtime.requestModel = transport compatibility alias
+```
+
+The completed Browser Companion turn therefore records the exact transport model `default_model`; the cultivated lived-evidence index separately binds both the activated `bindingRef` and `runtimeRequestModel`. No transport alias may masquerade as the product binding identity.
+
 Those values are set server-side by `scripts/resume-vex.mjs` only after exact runtime qualification. User-supplied values for those or other model/provider selectors are rejected before any runtime or browser effect.
 
 ## Pre-qualification runtime ownership and cleanup
@@ -225,7 +235,7 @@ A runtime PID may change. The persisted binding must continue to match the exact
 
 The first Victor-authored browser message must travel through the unchanged Browser Companion and Lived Companion path exactly once. This source extension does not inject a scripted acceptance conversation.
 
-After that existing bridge returns one exact `vexlife.browser-companion-turn/v1` object, `formCultivatedFirstLivedTurnEvidence()` forms one content-addressed `vexlife.cultivated-first-lived-turn-evidence/v1` index. It binds the exact runtime receipt, browser-turn receipt digest, durable request/response event refs and hashes, conversation head, prompt-context receipt, and model-turn witness. It copies no transcript and performs no replay.
+After that existing bridge returns one exact `vexlife.browser-companion-turn/v1` object, `formCultivatedFirstLivedTurnEvidence()` forms one content-addressed `vexlife.cultivated-first-lived-turn-evidence/v1` index. The browser turn must report the exact source-owned runtime transport request model (`default_model`); the evidence index separately binds the activated product `bindingRef`, `runtimeRequestModel`, exact runtime receipt, browser-turn receipt digest, durable request/response event refs and hashes, conversation head, prompt-context receipt, and model-turn witness. It copies no transcript and performs no replay.
 
 The resulting `sharedEvidenceRef` is the one evidence identity for VC13 terminal evidence, the #1515 J1 input, continuity advancement, and future post-wake evolution.
 
