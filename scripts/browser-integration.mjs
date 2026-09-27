@@ -491,7 +491,11 @@ if (playwright) {
           if(channel?.kind==='DIRECT'){
             const contextText=contextInspector.textContent,project=app.chat.currentProject(),thread=app.chat.currentThread();
             assert(contextText.includes(project.projectRef)&&contextText.includes(thread.threadRef)&&contextText.includes(channel.channelRef),'Direct Conversation context inspector must retain canonical project/thread/channel identities');
-            assert(root.querySelector('.conversation-evolution__context-routes .conversation-evolution__channels')!==null,'Direct routing controls must remain available contextually');
+            if(channel.roleKey==='companion'){
+              assert(root.querySelector('.conversation-evolution__context-routes .conversation-evolution__channels')!==null,'Companion routing controls must remain available contextually');
+            }else{
+              assert(root.querySelector(':scope > .conversation-evolution__channels')!==null,'Non-Companion direct routing controls must remain explicitly available');
+            }
           }
           assert(matchMedia('(prefers-reduced-motion: reduce)').matches===reducedMotionValue,'Conversation motion media state mismatch');
           const feed=root.querySelector('.conversation-evolution__feed'),activeBeforeScroll=shellOpen.activeSurfaceRef;if(feed){feed.scrollTop=Math.max(0,feed.scrollHeight-feed.clientHeight);feed.dispatchEvent(new Event('scroll'));await delay(12);}
