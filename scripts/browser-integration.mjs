@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -34,6 +35,172 @@ function finish(receipt, exitCode) {
   writeJson(receiptPath, receipt);
   console.log(JSON.stringify(receipt, null, 2));
   process.exitCode = exitCode;
+}
+
+// P4R2 uses the existing browser, server and canonical controllers. The evidence
+// pattern follows Vextreme scripts/screenshot-institutional.js and
+// lib/screenshot-evidence.js at 0776ad1261ca5d11404b09d6fc1638bbce6e8b8f:
+// deterministic named states, settled assets, real controls, errors and overflow.
+// No Atlas selectors, page semantics, alternate server or production mock enter.
+async function runJournalProductProof(page, viewport, errors) {
+  const screenshots = [], checks = [];
+  const surfaceRef = 'surface.vexlife.living-journal';
+  const assert = (condition, message) => { if (!condition) throw new Error(message); };
+  const treeFor = (ref) => execFileSync('git', ['rev-parse', `${ref}^{tree}`], { cwd: ROOT, encoding: 'utf8' }).trim();
+  const binding = {
+    candidateHead: baseReceipt.candidateHeadSha,
+    candidateTree: treeFor(baseReceipt.candidateHeadSha),
+    testedCheckout: baseReceipt.testedCheckoutSha,
+    testedTree: treeFor(baseReceipt.testedCheckoutSha),
+    sourceTreeSha256: source.treeSha256,
+    viewport,
+    evidenceClass: 'REAL_BROWSER_SYNTHETIC_REFERENCE_INPUT',
+    realMemoryRead: false,
+    humanAccepted: false
+  };
+  const capture = async (state, inputProvenance) => {
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await Promise.all(Array.from(document.images, async (image) => {
+        if (!image.complete) await new Promise((resolve) => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        });
+        if (!image.naturalWidth) throw new Error('P4R2 image failed to load');
+        if (image.decode) await image.decode();
+      }));
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
+    const observed = await page.evaluate(() => {
+      const app = globalThis.__VEXLIFE_APP__, root = document.querySelector('#view-living-journal');
+      const visible = (element) => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
+      return {
+        locale: document.documentElement.lang || 'und',
+        theme: document.documentElement.dataset.theme || 'default',
+        activeSurface: app.uxProjectionShell.snapshot().activeSurfaceRef,
+        projection: app.uxProjectionShell.snapshot().projection,
+        truthMode: root.dataset.dataMode,
+        truthClass: root.dataset.truthClass,
+        visibleActionLabels: Array.from(document.querySelectorAll('#evolutionActiveSurfaceHost button, #view-living-journal summary, #livingJournalTools button')).filter(visible).map((element) => (element.getAttribute('aria-label') || element.textContent).trim()),
+        selectedEntry: root.querySelector('[aria-current="true"]')?.dataset.pageRef ?? null,
+        disclosureStates: Array.from(root.querySelectorAll('.living-journal-entry-detail'), (element) => ({ pageRef: element.closest('article').dataset.pageRef, open: element.open })),
+        optionsOpen: !document.querySelector('#livingJournalTools').hidden,
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth, root.scrollWidth - root.clientWidth),
+        actualViewport: { width: innerWidth, height: innerHeight }
+      };
+    });
+    assert(observed.activeSurface === surfaceRef && observed.projection === 'EVOLUTION_PROJECTION', 'P4R2 screenshot surface binding failed');
+    assert(observed.actualViewport.width === viewport.width && observed.actualViewport.height === viewport.height, 'P4R2 screenshot viewport mismatch');
+    assert(observed.horizontalOverflow <= 1, 'P4R2 Journal horizontal overflow');
+    const png = await page.screenshot({ type: 'png', animations: 'disabled' });
+    assert(png.length <= 1500000 && screenshots.reduce((n, s) => n + s.bytes, 0) + png.length <= 6000000, 'P4R2 screenshot evidence size exceeded; no image was truncated');
+    screenshots.push({
+      ...binding, ...observed, state, inputProvenance,
+      filename: `journal-${state}-${observed.locale}-${observed.theme}-${viewport.width}.png`,
+      consoleErrors: [...errors.consoleErrors], pageErrors: [...errors.pageErrors],
+      mimeType: 'image/png', encoding: 'base64', bytes: png.length,
+      sha256: createHash('sha256').update(png).digest('hex'), data: png.toString('base64')
+    });
+  };
+  try {
+    await page.evaluate(async () => {
+      const app = globalThis.__VEXLIFE_APP__;
+      app.livingJournal.restoreInitialData();
+      app.returnToTerrain();
+      await app.uxProjectionShell.setProjection('EVOLUTION_PROJECTION');
+      const result = await app.uxProjectionShell.openEvolutionSurface('surface.vexlife.living-journal');
+      if (result.state !== 'OPEN') throw new Error('P4R2 canonical Journal did not open');
+      // Explicit fixture restoration after the adapter's unavailable Memory read.
+      // This is the accepted reference fixture, never a production fallback.
+      app.livingJournal.restoreInitialData();
+      globalThis.__VEXLIFE_P4R2_JOURNAL_INPUTS__ = [];
+      for (const type of ['click', 'keydown']) document.addEventListener(type, (event) => {
+        if (event.target.matches('.living-journal-entry-detail>summary')) {
+          globalThis.__VEXLIFE_P4R2_JOURNAL_INPUTS__.push({ type, key: event.key ?? null, trusted: event.isTrusted });
+        }
+      }, { capture: true });
+    });
+    const initialIdentity = await page.evaluate(() => globalThis.__VEXLIFE_APP__.livingJournal.canonicalThenIdentity());
+    const root = page.locator('#view-living-journal');
+    const detail = root.locator('.living-journal-entry-detail').first();
+    const summary = detail.locator('summary');
+    assert(await summary.isVisible() && !(await detail.evaluate((element) => element.open)), 'P4R2 real disclosure is absent or not initially closed');
+    await capture('default', 'ACCEPTED_SYNTHETIC_REFERENCE_FIXTURE');
+    await summary.click();
+    assert(await detail.evaluate((element) => element.open), 'P4R2 pointer did not open native details');
+    const geometry = await detail.evaluate((element) => {
+      const article = element.closest('article'), body = element.querySelector('.living-journal-entry-detail-body');
+      const a = article.getBoundingClientRect(), b = body.getBoundingClientRect(), trigger = element.querySelector('summary');
+      return {
+        contained: b.left >= a.left && b.right <= a.right + 1 && b.top >= a.top && b.bottom <= a.bottom + 1,
+        bodyVisible: body.getClientRects().length > 0,
+        cellOverflow: article.scrollWidth - article.clientWidth,
+        targetHeight: trigger.getBoundingClientRect().height,
+        bodyFont: parseFloat(getComputedStyle(body.querySelector('p')).fontSize),
+        previewFont: parseFloat(getComputedStyle(article.querySelector('.living-journal-entry-preview')).fontSize),
+        titleFont: parseFloat(getComputedStyle(article.querySelector('.living-journal-entry-title')).fontSize)
+      };
+    });
+    assert(geometry.contained && geometry.bodyVisible && geometry.cellOverflow <= 1, 'P4R2 opened body escaped its entry cell');
+    assert(geometry.targetHeight >= 44 && geometry.bodyFont >= 16 && geometry.previewFont >= 16 && geometry.titleFont >= 21, 'P4R2 entry violates registered readability/target scale');
+    checks.push({ name: 'trusted-pointer-open-and-intrinsic-containment', ...geometry });
+    await capture('expanded-pointer', 'ACCEPTED_SYNTHETIC_REFERENCE_FIXTURE');
+    await summary.press('Enter');
+    assert(!(await detail.evaluate((element) => element.open)), 'P4R2 Enter did not collapse native details');
+    await root.locator('.living-journal-entry').first().focus();
+    let reached = false;
+    for (let count = 0; count < 24; count += 1) {
+      await page.keyboard.press('Tab');
+      if (await summary.evaluate((element) => document.activeElement === element)) { reached = true; break; }
+    }
+    assert(reached, 'P4R2 disclosure cannot be reached through Tab navigation');
+    await page.keyboard.press('Space');
+    assert(await detail.evaluate((element) => element.open), 'P4R2 Space did not expand focused native details');
+    const focus = await summary.evaluate((element) => ({ retained: document.activeElement === element, outlinePx: parseFloat(getComputedStyle(element).outlineWidth), focusVisible: element.matches(':focus-visible') }));
+    assert(focus.retained && focus.focusVisible && focus.outlinePx >= 3, 'P4R2 keyboard focus is not visible and retained');
+    checks.push({ name: 'tab-enter-space-native-disclosure', ...focus });
+    await capture('expanded-keyboard', 'ACCEPTED_SYNTHETIC_REFERENCE_FIXTURE');
+    const inputs = await page.evaluate(() => globalThis.__VEXLIFE_P4R2_JOURNAL_INPUTS__);
+    assert(inputs.some((event) => event.type === 'click' && event.trusted) && inputs.some((event) => event.key === 'Enter' && event.trusted) && inputs.some((event) => event.key === ' ' && event.trusted), 'P4R2 trusted input witnesses are incomplete');
+    checks.push({ name: 'actual-input-provenance', events: inputs });
+    const optionsButton = page.locator('#livingJournalOptionsOpen');
+    await optionsButton.click();
+    assert(await page.locator('#livingJournalTools').isVisible(), 'P4R2 pointer Options did not open');
+    await capture('options', 'ACCEPTED_SYNTHETIC_REFERENCE_FIXTURE');
+    await page.keyboard.press('Escape');
+    assert(!(await page.locator('#livingJournalTools').isVisible()), 'P4R2 Escape did not dismiss Options');
+    assert(await optionsButton.evaluate((element) => document.activeElement === element), 'P4R2 Options did not return focus');
+    assert(await page.evaluate((identity) => globalThis.__VEXLIFE_APP__.livingJournal.canonicalThenIdentity() === identity, initialIdentity), 'P4R2 presentation controls changed canonical testimony');
+    checks.push({ name: 'pointer-options-escape-focus-and-source-identity', state: 'PASS' });
+    await page.evaluate(async () => {
+      const { createLivingJournalProofFixture } = await import('./integration/living-journal-suite.js');
+      globalThis.__VEXLIFE_APP__.livingJournal.setData(createLivingJournalProofFixture('SUMMARY_ONLY'));
+    });
+    assert(await root.locator('.living-journal-entry').count() === 1 && await root.locator('.living-journal-entry-detail').count() === 0, 'P4R2 summary-only source acquired a false disclosure');
+    assert(await root.locator('.living-journal-entry-title').isVisible(), 'P4R2 source-bound summary is not readable');
+    await capture('summary-only', 'SYNTHETIC_MEMORY_SCHEMA_FIXTURE__NOT_REAL_MEMORY_OR_ACCEPTANCE');
+    checks.push({ name: 'honest-summary-only-cell', state: 'PASS', realMemory: false });
+    await page.evaluate(async () => {
+      const { createLivingJournalProofFixture } = await import('./integration/living-journal-suite.js');
+      globalThis.__VEXLIFE_APP__.livingJournal.setData(createLivingJournalProofFixture('LONG_TEXT'));
+    });
+    await root.locator('.living-journal-entry-detail>summary').first().click();
+    assert(await root.locator('.living-journal-entry').evaluateAll((entries) => entries.every((element) => element.scrollWidth <= element.clientWidth + 1)), 'P4R2 long Latin/CJK text overflowed an entry');
+    await capture('long-text', 'SYNTHETIC_LONG_LATIN_CJK_CONTRACT_FIXTURE');
+    checks.push({ name: 'long-text-and-cjk-intrinsic-wrap', state: 'PASS' });
+    assert(errors.consoleErrors.length === 0 && errors.pageErrors.length === 0, 'P4R2 browser errors were observed');
+    assert(screenshots.length === 6, 'P4R2 screenshot matrix is incomplete');
+    return { state: 'PASS', ...binding, checks, screenshots };
+  } catch (error) {
+    return { state: 'FAILED', ...binding, checks, screenshots, error: error instanceof Error ? error.message : String(error) };
+  } finally {
+    await page.evaluate(async () => {
+      const app = globalThis.__VEXLIFE_APP__;
+      app.livingJournal.restoreInitialData();
+      await app.uxProjectionShell.closeEvolutionActiveSurface('P4R2_PROOF_COMPLETE');
+      await app.uxProjectionShell.setProjection('REFERENCE_PROJECTION');
+    }).catch(() => {});
+  }
 }
 
 let playwright;
@@ -137,10 +304,11 @@ if (playwright) {
         await proofPage.goto(serverUrl+'/reference/browser/',{waitUntil:'networkidle',timeout:30000});
         await proofPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
         const proof=await proofPage.evaluate(async(viewportClassValue)=>{const {runLivingJournalProof}=await import('./integration/living-journal-suite.js');const assert=(condition,message)=>{if(!condition)throw new Error(message);};const delay=(ms)=>new Promise((resolve)=>setTimeout(resolve,ms));return runLivingJournalProof({app:globalThis.__VEXLIFE_APP__,helpers:{delay,assert},viewportClass:viewportClassValue});},viewportClass);
-        return{viewport,viewportClass,proof,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
+        const productExperience=await runJournalProductProof(proofPage,viewport,{consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors});
+        return{viewport,viewportClass,proof,productExperience,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
       }finally{await proofPage.close();}
     };
-    const journalDesktop=await runJournalViewportProof({width:1440,height:900},'DESKTOP');
+    const journalDesktop=await runJournalViewportProof({width:1440,height:1000},'DESKTOP');
     const journalCompact=await runJournalViewportProof({width:390,height:844},'COMPACT');
     const runConversationEvolutionViewportProof=async(viewport,viewportClass,reducedMotion)=>{
       const proofConsoleErrors=[],proofPageErrors=[],proofPage=await browser.newPage({viewport});
@@ -215,7 +383,7 @@ if (playwright) {
     };
     const conversationDesktop=await runConversationEvolutionViewportProof({width:1440,height:900},'DESKTOP',false);
     const conversationCompact=await runConversationEvolutionViewportProof({width:390,height:844},'COMPACT',true);
-    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && q5Compact?.state === 'PASS' && q5WorkspaceInverse.state === 'PASS' && journalDesktop.proof?.state === 'PASS' && journalCompact.proof?.state === 'PASS' && conversationDesktop.proof?.state === 'PASS' && conversationCompact.proof?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 && journalDesktop.consoleErrors.length === 0 && journalDesktop.pageErrors.length === 0 && journalCompact.consoleErrors.length === 0 && journalCompact.pageErrors.length === 0 && conversationDesktop.consoleErrors.length === 0 && conversationDesktop.pageErrors.length === 0 && conversationCompact.consoleErrors.length === 0 && conversationCompact.pageErrors.length === 0 ? 'PASS' : 'FAILED';
+    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && q5Compact?.state === 'PASS' && q5WorkspaceInverse.state === 'PASS' && journalDesktop.proof?.state === 'PASS' && journalCompact.proof?.state === 'PASS' && journalDesktop.productExperience?.state === 'PASS' && journalCompact.productExperience?.state === 'PASS' && conversationDesktop.proof?.state === 'PASS' && conversationCompact.proof?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 && journalDesktop.consoleErrors.length === 0 && journalDesktop.pageErrors.length === 0 && journalCompact.consoleErrors.length === 0 && journalCompact.pageErrors.length === 0 && conversationDesktop.consoleErrors.length === 0 && conversationDesktop.pageErrors.length === 0 && conversationCompact.consoleErrors.length === 0 && conversationCompact.pageErrors.length === 0 ? 'PASS' : 'FAILED';
     finish({
       ...baseReceipt,
       state,
