@@ -25,8 +25,8 @@ There is no implicit switch from G0 to M4 and no silent fallback from M4 to G0.
 The source registry is `blueprint/activated-model-runtime-bindings.json`. It admits exactly one mapping:
 
 ```text
-bindingRef=binding.vexlife.activated-m4.mlx.macos-victor.post-w5.20260926a
-companionLineageRef=lineage.vex.m4.generation-2-learner
+bindingRef=binding.vexlife.activated-m4.mlx.macos-victor.post-w5.20260927a
+modelLineageRef=lineage.vex.m4.generation-2-learner
 generationRef=generation.vex.m4.generation-2
 modelRef=model.vex.m4.small.g2.base.368e89e5ca219fab
 modelProfileRef=model-profile.vex.m4.small.g2.certified.20260920A
@@ -63,6 +63,24 @@ scripts/initialize-vex.mjs
 ```
 
 No Browser Companion, Lived Companion, prompt-context, continuity, browser-server, model-bundle, operational-profile, reference UI, or Source Manifest source is changed.
+
+## Identity domains
+
+The v2 binding deliberately separates two non-interchangeable identities:
+
+```text
+Home.currentCompanionLineageRef = companion-lineage.vexlife.*
+modelLineageRef = lineage.vex.m4.generation-2-learner
+```
+
+```text
+MODEL_LINEAGE != COMPANION_LINEAGE
+MODEL_BINDING_CHANGE != COMPANION_IDENTITY_REWRITE
+```
+
+The Home manifest and its current device must agree on the Home-derived companion lineage. The activated-M4 registry never dictates that companion identity. Digest-bound handoff, persisted model configuration, runtime receipt, and lived-turn evidence carry both identities so currentness can be checked without collapsing them.
+
+Version-1 handoff/config/runtime-receipt bytes are not reinterpreted under the corrected semantics. A first v2 bind requires the exact v2 handoff, which provides explicit currentization rather than silent repair.
 
 ## First binding
 
@@ -201,7 +219,7 @@ served materialization identity
 OpenAI-compatible request-model identity
 ```
 
-A runtime PID may change. The persisted binding must continue to match the exact `homeRef`, `companionLineageRef`, `generationRef`, active-model identity, current custody/runtime refs, existing thread, durable event ancestry, conversation head, prompt-context reconstruction, and continuity/recovery owners. A Home/device lineage mismatch fails closed before runtime effect.
+A runtime PID may change. The persisted binding must continue to match the exact `homeRef`, Home-derived `companionLineageRef`, cultivated `modelLineageRef`, `generationRef`, active-model identity, current custody/runtime refs, existing thread, durable event ancestry, conversation head, prompt-context reconstruction, and continuity/recovery owners. Home and current-device companion lineage must agree with each other; model lineage is a separate developmental identity and must never rewrite Home identity. A Home/device disagreement fails closed before runtime effect.
 
 ## First natural lived turn
 

@@ -4,19 +4,19 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 
-export const ACTIVATED_MODEL_RUNTIME_BINDINGS_SCHEMA = 'vexlife.activated-model-runtime-bindings/v1';
-export const ACTIVATED_MODEL_CUSTODY_HANDOFF_SCHEMA = 'vexlife.activated-model-custody-handoff/v1';
-export const ACTIVATED_MODEL_CONFIGURATION_SCHEMA = 'vexlife.activated-model-configuration/v1';
-export const ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA = 'vexlife.activated-model-runtime-receipt/v1';
-export const CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_SCHEMA = 'vexlife.cultivated-first-lived-turn-evidence/v1';
+export const ACTIVATED_MODEL_RUNTIME_BINDINGS_SCHEMA = 'vexlife.activated-model-runtime-bindings/v2';
+export const ACTIVATED_MODEL_CUSTODY_HANDOFF_SCHEMA = 'vexlife.activated-model-custody-handoff/v2';
+export const ACTIVATED_MODEL_CONFIGURATION_SCHEMA = 'vexlife.activated-model-configuration/v2';
+export const ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA = 'vexlife.activated-model-runtime-receipt/v2';
+export const CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_SCHEMA = 'vexlife.cultivated-first-lived-turn-evidence/v2';
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 const GIT_OID = /^[0-9a-f]{40,64}$/u;
 const LOOPBACK_ORIGIN = /^http:\/\/127\.0\.0\.1:(\d{1,5})$/u;
 const STABLE_REF = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$/u;
-const EXACT_REGISTRY_REF = 'registry.vexlife.activated-model-runtime-bindings.001';
-const EXACT_BINDING_REF = 'binding.vexlife.activated-m4.mlx.macos-victor.post-w5.20260926a';
-const EXACT_COMPANION_LINEAGE_REF = 'lineage.vex.m4.generation-2-learner';
+const EXACT_REGISTRY_REF = 'registry.vexlife.activated-model-runtime-bindings.002';
+const EXACT_BINDING_REF = 'binding.vexlife.activated-m4.mlx.macos-victor.post-w5.20260927a';
+const EXACT_MODEL_LINEAGE_REF = 'lineage.vex.m4.generation-2-learner';
 const EXACT_GENERATION_REF = 'generation.vex.m4.generation-2';
 const EXACT_MODEL_REF = 'model.vex.m4.small.g2.base.368e89e5ca219fab';
 const EXACT_MODEL_PROFILE_REF = 'model-profile.vex.m4.small.g2.certified.20260920A';
@@ -223,7 +223,7 @@ export function validateActivatedModelRuntimeBindingRegistry(registry) {
     const binding = requireObject(registry.bindings[0], 'registry.bindings[0]');
     exactEqual(binding.bindingRef, EXACT_BINDING_REF, 'binding.bindingRef');
     exactEqual(binding.state, 'ACTIVE_ACCEPTED', 'binding.state');
-    exactEqual(binding.companionLineageRef, EXACT_COMPANION_LINEAGE_REF, 'binding.companionLineageRef');
+    exactEqual(binding.modelLineageRef, EXACT_MODEL_LINEAGE_REF, 'binding.modelLineageRef');
     exactEqual(binding.generationRef, EXACT_GENERATION_REF, 'binding.generationRef');
     exactEqual(binding.modelRef, EXACT_MODEL_REF, 'binding.modelRef');
     exactEqual(binding.modelProfileRef, EXACT_MODEL_PROFILE_REF, 'binding.modelProfileRef');
@@ -331,7 +331,7 @@ export function activatedBindingSemanticIdentity(binding) {
   return Object.freeze({
     bindingRef: binding.bindingRef,
     state: binding.state,
-    companionLineageRef: binding.companionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -378,7 +378,8 @@ function parseHandoff({ handoffBytes, handoffSha256, binding, sourceIdentity, ho
   const exact = {
     bindingRef: binding.bindingRef,
     homeRef: homeIdentity.homeRef,
-    companionLineageRef: binding.companionLineageRef,
+    companionLineageRef: homeIdentity.companionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -433,14 +434,13 @@ function readHomeIdentity(home, binding) {
   const currentDeviceRef = requireStableRef(manifest.currentDeviceRef, 'home.currentDeviceRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
   if (currentDeviceRef.includes('/') || currentDeviceRef.includes('\\')) fail('ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Home current device ref is not a safe device filename identity');
   const companionLineageRef = requireStableRef(manifest.currentCompanionLineageRef, 'home.currentCompanionLineageRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
-  exactEqual(companionLineageRef, binding.companionLineageRef, 'home.currentCompanionLineageRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
   const devicePath = path.join(home, 'devices', `${currentDeviceRef}.json`);
   const deviceStat = assertRegularNonLink(devicePath, 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Current device identity');
   if (deviceStat.size > 2 * 1024 * 1024) fail('ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Current device identity is unexpectedly large');
   const device = readJson(devicePath, 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
   exactEqual(device.schemaVersion, 'vexlife.device-installation/v0', 'device.schemaVersion', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
   exactEqual(device.deviceRef, currentDeviceRef, 'device.deviceRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
-  exactEqual(device.companionLineageRef, binding.companionLineageRef, 'device.companionLineageRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
+  exactEqual(device.companionLineageRef, companionLineageRef, 'device.companionLineageRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
   return { paths, homeRef, currentDeviceRef, companionLineageRef, manifest, device };
 }
 
@@ -449,7 +449,8 @@ function activatedConfigState(config, binding, sourceDigests, homeIdentity) {
   const required = {
     bindingRef: binding.bindingRef,
     homeRef: homeIdentity.homeRef,
-    companionLineageRef: binding.companionLineageRef,
+    companionLineageRef: homeIdentity.companionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -501,7 +502,8 @@ export async function planActivatedModelResume({
       state: 'RESUME_PERSISTED_ACTIVATED_BINDING',
       homeRef: homeIdentity.homeRef,
       bindingRef: binding.bindingRef,
-      companionLineageRef: binding.companionLineageRef,
+      companionLineageRef: homeIdentity.companionLineageRef,
+      modelLineageRef: binding.modelLineageRef,
       generationRef: binding.generationRef,
       modelRef: binding.modelRef,
       modelProfileRef: binding.modelProfileRef,
@@ -524,7 +526,8 @@ export async function planActivatedModelResume({
     state: 'FIRST_BIND_FROM_EXACT_HANDOFF',
     homeRef: homeIdentity.homeRef,
     bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
+    companionLineageRef: homeIdentity.companionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -790,9 +793,9 @@ async function waitForHealthy(binding, pid, hooks) {
   fail('ACTIVATED_RUNTIME_START_FAILED', 'MLX runtime did not become healthy before source-bounded startup timeout');
 }
 
-function runtimeReceiptReusable(prior, { binding, sourceDigests, homeRef, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks }) {
+function runtimeReceiptReusable(prior, { binding, sourceDigests, homeRef, companionLineageRef, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks }) {
   if (!prior || prior.schemaVersion !== ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA || prior.state !== 'ACTIVATED_MODEL_RUNTIME_QUALIFIED') return false;
-  if (prior.bindingRef !== binding.bindingRef || prior.homeRef !== homeRef || prior.companionLineageRef !== binding.companionLineageRef || prior.generationRef !== binding.generationRef || prior.modelRef !== binding.modelRef || prior.modelProfileRef !== binding.modelProfileRef) return false;
+  if (prior.bindingRef !== binding.bindingRef || prior.homeRef !== homeRef || prior.companionLineageRef !== companionLineageRef || prior.modelLineageRef !== binding.modelLineageRef || prior.generationRef !== binding.generationRef || prior.modelRef !== binding.modelRef || prior.modelProfileRef !== binding.modelProfileRef) return false;
   if (prior.registrySha256 !== sourceDigests.registrySha256 || prior.moduleSha256 !== sourceDigests.moduleSha256) return false;
   if (prior.privateMaterializationPath !== modelDirectory || prior.privatePythonExecutablePath !== pythonExecutable || prior.privatePythonEnvironmentRootPath !== pythonEnvironmentRoot) return false;
   if (!Number.isInteger(prior.runtime?.pid) || prior.runtime.pid <= 0 || !hooks.processAlive(prior.runtime.pid)) return false;
@@ -852,7 +855,7 @@ export async function startOrResumeActivatedModelRuntime({
   let runtimeDisposition = null;
   let startedNewRuntime = false;
   let runtimeStartedByAttemptRef = effectiveRuntimeAttemptRef;
-  if (runtimeReceiptReusable(priorReceipt, { binding, sourceDigests, homeRef: homeIdentity.homeRef, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks })) {
+  if (runtimeReceiptReusable(priorReceipt, { binding, sourceDigests, homeRef: homeIdentity.homeRef, companionLineageRef: homeIdentity.companionLineageRef, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks })) {
     pid = priorReceipt.runtime.pid;
     runtimeDisposition = 'REUSED_EXACT_OWNED_MLX_RUNTIME';
     runtimeStartedByAttemptRef = priorReceipt.runtime?.startedByAttemptRef ?? priorReceipt.runtimeAttemptRef ?? effectiveRuntimeAttemptRef;
@@ -926,7 +929,8 @@ export async function startOrResumeActivatedModelRuntime({
     receiptRef,
     state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
     bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
+    companionLineageRef: homeIdentity.companionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -962,7 +966,8 @@ export async function startOrResumeActivatedModelRuntime({
     state: 'BOUND_ACTIVATED_CULTIVATED_MODEL',
     bindingRef: binding.bindingRef,
     homeRef: homeIdentity.homeRef,
-    companionLineageRef: binding.companionLineageRef,
+    companionLineageRef: homeIdentity.companionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -995,7 +1000,8 @@ export async function startOrResumeActivatedModelRuntime({
   return Object.freeze({
     bindingRef: binding.bindingRef,
     homeRef: homeIdentity.homeRef,
-    companionLineageRef: binding.companionLineageRef,
+    companionLineageRef: homeIdentity.companionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -1021,9 +1027,10 @@ export function formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingRe
   }
   const runtimeBindingReceiptRef = requireStableRef(runtimeBindingReceipt.receiptRef, 'runtimeBindingReceipt.receiptRef', 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID');
   const homeRef = requireStableRef(runtimeBindingReceipt.homeRef, 'runtimeBindingReceipt.homeRef', 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID');
+  const companionLineageRef = requireStableRef(runtimeBindingReceipt.companionLineageRef, 'runtimeBindingReceipt.companionLineageRef', 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID');
   const exactRuntimeReceiptIdentity = {
     bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -1058,7 +1065,8 @@ export function formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingRe
     schemaVersion: CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_SCHEMA,
     bindingRef: binding.bindingRef,
     homeRef,
-    companionLineageRef: binding.companionLineageRef,
+    companionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     activationEvidenceRef: binding.activationEvidenceRef,
     distributionTrustEvidenceRef: binding.distributionTrustEvidenceRef,

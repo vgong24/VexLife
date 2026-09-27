@@ -51,7 +51,7 @@ function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
-function makeHome(label = 'home', lineageRef = 'lineage.vex.m4.generation-2-learner') {
+function makeHome(label = 'home', lineageRef = 'companion-lineage.vexlife.test-home') {
   const home = tempDir(label);
   const deviceRef = `device.vexlife.test.${label}.001`;
   writeJson(path.join(home, 'config', 'home.json'), {
@@ -117,7 +117,8 @@ function makeHandoff(binding, modelDirectory, pythonExecutable, sourceIdentity =
     handoffRef: 'handoff.test.activated-m4.001',
     bindingRef: binding.bindingRef,
     homeRef: home === null ? 'home.test.fixture.001' : JSON.parse(fs.readFileSync(path.join(home, 'config', 'home.json'), 'utf8')).homeRef,
-    companionLineageRef: binding.companionLineageRef,
+    companionLineageRef: home === null ? 'companion-lineage.vexlife.fixture' : JSON.parse(fs.readFileSync(path.join(home, 'config', 'home.json'), 'utf8')).currentCompanionLineageRef,
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -173,7 +174,8 @@ function livedRuntimeReceipt(binding, homeRef = 'home.test.lived.001') {
     state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
     bindingRef: binding.bindingRef,
     homeRef,
-    companionLineageRef: binding.companionLineageRef,
+    companionLineageRef: 'companion-lineage.vexlife.lived-fixture',
+    modelLineageRef: binding.modelLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
@@ -197,15 +199,30 @@ test('M4B02 exact accepted activated-M4 registry validates and has one binding',
   assert.equal(result.binding.modelRef, 'model.vex.m4.small.g2.base.368e89e5ca219fab');
   assert.equal(result.binding.modelProfileRef, 'model-profile.vex.m4.small.g2.certified.20260920A');
   assert.equal(result.binding.runtime.runtimeAdapterRef, 'adapter.runtime.mlx.macos-victor.post-w5.001');
-  assert.equal(result.binding.companionLineageRef, 'lineage.vex.m4.generation-2-learner');
+  assert.equal(result.binding.modelLineageRef, 'lineage.vex.m4.generation-2-learner');
   assert.equal(result.binding.generationRef, 'generation.vex.m4.generation-2');
 });
 
 
-// Post-W5 currentization: Home identity and device identity must agree with the accepted cultivated lineage before any handoff/runtime effect.
-test('M4B02 current Home and device lineage are required before activated-M4 binding', async () => {
+// Post-W5 correction: Home/device companion identity is preserved and distinct from cultivated model lineage.
+test('M4B02 current Home and device companion lineage agree while cultivated model lineage remains separate', async () => {
   const binding = baseBinding();
-  const home = makeHome('wrong-lineage', 'companion-lineage.vexlife.wrong');
+  const home = makeHome('preserved-lineage', 'companion-lineage.vexlife.preserved');
+  await assert.rejects(
+    planActivatedModelResume({
+      home,
+      binding,
+      sourceDigests: { registrySha256: SOURCE_IDENTITY.registrySha256, moduleSha256: SOURCE_IDENTITY.moduleSha256 },
+      sourceIdentity: SOURCE_IDENTITY,
+      environment: {}
+    }),
+    (error) => errorCode(error) === 'ACTIVATED_MODEL_HANDOFF_REQUIRED'
+  );
+  const homeManifest = JSON.parse(fs.readFileSync(path.join(home, 'config', 'home.json'), 'utf8'));
+  const devicePath = path.join(home, 'devices', `${homeManifest.currentDeviceRef}.json`);
+  const device = JSON.parse(fs.readFileSync(devicePath, 'utf8'));
+  device.companionLineageRef = 'companion-lineage.vexlife.foreign-device';
+  writeJson(devicePath, device);
   await assert.rejects(
     planActivatedModelResume({
       home,
@@ -216,6 +233,7 @@ test('M4B02 current Home and device lineage are required before activated-M4 bin
     }),
     (error) => errorCode(error) === 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT'
   );
+  assert.equal(binding.modelLineageRef, 'lineage.vex.m4.generation-2-learner');
 });
 
 // M4B03: model/profile/provider/endpoint choice is not an environment injection surface.
@@ -756,7 +774,7 @@ test('M4B13 runtime receipt Home and exact semantic identity must remain current
   };
   for (const [field, value] of [
     ['homeRef', ''],
-    ['companionLineageRef', 'lineage.vex.foreign.fixture'],
+    ['modelLineageRef', 'lineage.vex.foreign.fixture'],
     ['generationRef', 'generation.vex.foreign.fixture'],
     ['artifactCustodyEvidenceRef', 'github.issue.vextreme-sdk.1394.comment.5747979171'],
     ['runtimeAdapterRef', 'adapter.runtime.mlx.macos-victor.001'],
