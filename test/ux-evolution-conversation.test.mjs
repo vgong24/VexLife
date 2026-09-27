@@ -189,9 +189,10 @@ test('closed Conversation surface observer cannot remount an inactive renderer',
 });
 
 
-test('direct presentation collapses implementation-role chrome while preserving canonical context identities',()=>{
-  assert.match(source,/continuousDirect = snapshot\.channelKind === 'DIRECT'/);
-  assert.match(source,/continuousDirect \? 'Vex' : snapshot\.channelLabel/);
+test('only the direct Companion relationship collapses implementation-role chrome while preserving canonical addressing elsewhere',()=>{
+  assert.match(source,/relationshipDirect = snapshot\.channelKind === 'DIRECT' && snapshot\.channelRoleKey === 'companion'/);
+  assert.match(source,/relationshipDirect \? 'Vex' : snapshot\.channelLabel/);
+  assert.match(source,/EXPLICIT_DIRECT_ADDRESS/);
   assert.match(source,/participantValue\.actorRef\.startsWith\('role\.vex\.'\)/);
   assert.match(source,/snapshot\.projectLabel} · \$\{snapshot\.projectRef/);
   assert.match(source,/snapshot\.threadLabel} · \$\{snapshot\.threadRef/);

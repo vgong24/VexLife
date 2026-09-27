@@ -229,6 +229,15 @@ async function runConversationProductProof(page, viewport, errors) {
   try {
     const before = await page.evaluate(async () => {
       const app = globalThis.__VEXLIFE_APP__;
+      // Product evidence targets the canonical direct Companion relationship, not
+      // whichever direct implementation-role channel happened to seed the page.
+      const project = app.projects.find((item) => item.projectRef === 'project.self-development');
+      const thread = project?.threads.find((item) => item.threadRef === 'thread.self-development.open-conversation');
+      if (!project || !thread) throw new Error('P4R2 canonical Self Development Conversation source is unavailable');
+      app.chat.selectThread(project, thread, 'element.thread.open-conversation');
+      const companion = app.chat.channelsForThread(project.projectRef, thread.threadRef).find((item) => item.kind === 'DIRECT' && item.roleKey === 'companion');
+      if (!companion) throw new Error('P4R2 canonical direct Companion channel is unavailable');
+      app.chat.selectChannel(companion, 'element.channel.companion');
       const original = {frame: JSON.stringify(app.navigation.semanticFrame()), journey: JSON.stringify(app.navigation.fullJourney())};
       const result = await app.uxProjectionShell.openEvolutionSurface('surface.vexlife.conversation');
       if (result.state !== 'OPEN') throw new Error('P4R2 canonical Conversation did not open');
@@ -242,7 +251,8 @@ async function runConversationProductProof(page, viewport, errors) {
     const input = root.locator('textarea');
     const summary = root.locator('.conversation-evolution__context>summary');
     const context = root.locator('.conversation-evolution__context');
-    assert(await root.getAttribute('data-presentation-mode') === 'CONTINUOUS_VEX_RELATIONSHIP', 'P4R2 default Conversation is not the direct relationship');
+    assert(await root.getAttribute('data-presentation-mode') === 'CONTINUOUS_VEX_RELATIONSHIP', 'P4R2 product Conversation is not the direct Companion relationship');
+    assert(await page.evaluate(() => globalThis.__VEXLIFE_APP__.chat.currentChannel()?.roleKey === 'companion'), 'P4R2 product proof is not bound to the canonical Companion channel');
     assert(await root.locator('.conversation-evolution__hero h2').innerText() === 'Vex', 'P4R2 relationship title is not Vex');
     assert(!(await context.evaluate((element) => element.open)), 'P4R2 default context must be secondary and closed');
     const empty = await root.getAttribute('data-feed-state') === 'EMPTY';
@@ -450,9 +460,15 @@ if (playwright) {
           assert(projectedReady===canonicalReady,'Evolution real-turn readiness diverges from canonical Companion READY truth');
           if(channel?.kind==='DIRECT'){
             assert(root.querySelector('.conversation-evolution__security')===null,'Direct Conversation must not render Family security chrome');
-            assert(root.dataset.presentationMode==='CONTINUOUS_VEX_RELATIONSHIP','Direct Conversation must use continuous Vex presentation');
-            assert(root.querySelector('.conversation-evolution__hero h2')?.textContent==='Vex','Direct Conversation primary title must normalize to Vex');
-            assert(root.querySelector('.conversation-evolution__address')===null,'Direct Conversation must keep implementation addressing out of primary chrome');
+            if(channel.roleKey==='companion'){
+              assert(root.dataset.presentationMode==='CONTINUOUS_VEX_RELATIONSHIP','Companion Conversation must use continuous Vex presentation');
+              assert(root.querySelector('.conversation-evolution__hero h2')?.textContent==='Vex','Companion Conversation primary title must normalize to Vex');
+              assert(root.querySelector('.conversation-evolution__address')===null,'Companion Conversation must keep implementation addressing out of primary chrome');
+            }else{
+              assert(root.dataset.presentationMode==='EXPLICIT_DIRECT_ADDRESS','Non-Companion direct Conversation must preserve explicit addressing');
+              assert(root.querySelector('.conversation-evolution__hero h2')?.textContent===app.t(channel.labelRef),'Non-Companion direct Conversation must preserve its canonical channel identity');
+              assert(root.querySelector('.conversation-evolution__address')!==null,'Non-Companion direct Conversation must retain primary addressing truth');
+            }
           }
           const canonicalInput=document.querySelector('#messageInput'),canonicalSend=document.querySelector('#composer button[type="submit"]'),evolutionInput=root.querySelector('.conversation-evolution__input'),evolutionSend=root.querySelector('.conversation-evolution__send');
           assert(canonicalInput&&canonicalSend&&evolutionInput&&evolutionSend,'Conversation composer seams must exist');
