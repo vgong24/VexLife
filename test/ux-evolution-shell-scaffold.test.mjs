@@ -180,7 +180,7 @@ test('shared presentation CSS exposes compact shell controls and reusable forwar
   assert.match(css,/\.e29-menu-row-availability\{/);
   assert.match(css,/prefers-reduced-motion:reduce\)\{\.e29-forward-layer,\.e29-forward-layer \*\{[^}]*transition:none!important/);
   assert.match(css,/#app\[data-ux-projection="EVOLUTION_PROJECTION"\]\[data-evolution-surface-active="true"\] #guideWindow\.e27-vex\{display:none\}/);
-  assert.match(css,/@media\(max-width:760px\)[\s\S]*\.uxe-active-surface-heading output\{display:none\}/);
+  assert.match(css,/@media\(max-width:760px\)[\s\S]*\.uxe-active-surface-heading output\{[^}]*width:1px[^}]*clip:rect\(0 0 0 0\)[^}]*white-space:nowrap/);
 });
 
 test('real loopback shared presentation proves desktop and compact focus, dismissal and constraints',async t=>{
