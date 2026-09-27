@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/evolution/conversation-projection.js",
       "mode": "100644",
-      "bytes": 26331,
-      "sha256": "57b9879f7643da0bb5c26e55afcd055a4f00c6d80fc38a5f6965ab9c2aadd8f8"
+      "bytes": 27265,
+      "sha256": "f9f7ab00281d5a87a1be06e95ca948f8ce1ebfc29550cbca91348bf0cd5ee0ac"
     },
     {
       "path": "test/model-turn-formation-atlas.test.mjs",
