@@ -191,9 +191,16 @@ function renderMessage(document, message, { relationshipDirect = false } = {}) {
   return article;
 }
 
-function composerTruth(snapshot, canonical, value) {
+function composerTruth(snapshot, canonical, value, binding) {
   const slash = value.trim().startsWith('/');
-  const hint = canonical.hint?.textContent || (
+  const relationshipDirect = snapshot.channelKind === 'DIRECT' && snapshot.channelRoleKey === 'companion';
+  const relationshipAvailabilityRef = snapshot.availability.readyForRealTurn
+    ? 'composer.availability.available'
+    : snapshot.availability.recoveryAvailable
+      ? snapshot.draft ? 'composer.availability.recoverable-draft' : 'composer.availability.recoverable'
+      : snapshot.draft ? 'composer.availability.unavailable-draft' : 'composer.availability.unavailable';
+  const relationshipHint = relationshipDirect && !slash ? binding.t(relationshipAvailabilityRef) : null;
+  const hint = relationshipHint || canonical.hint?.textContent || (
     slash ? 'Command input · canonical browser checks before any message is sent.'
       : snapshot.availability.readyForRealTurn ? 'Ready for a real turn · sending still requires your explicit action.'
         : snapshot.draft ? 'Unavailable · this text remains an unsent local draft.'
@@ -352,7 +359,7 @@ export function createConversationEvolutionAdapter(input) {
       send.dataset.presentationFocusKey = 'send';
       const syncComposer = () => {
         const current = projectConversationEvolutionState(binding);
-        const truth = composerTruth(current, canonical, textarea.value);
+        const truth = composerTruth(current, canonical, textarea.value, binding);
         composer.dataset.availabilityState = current.availability.state;
         composer.dataset.readyForRealTurn = String(current.availability.readyForRealTurn);
         composer.dataset.recoveryAvailable = String(current.availability.recoveryAvailable);
@@ -434,7 +441,7 @@ export function createConversationEvolutionAdapter(input) {
           const mountedSend = mounted?.querySelector('.conversation-evolution__send');
           if (mounted && mountedInput && mountedHint && mountedSend) {
             const current = projectConversationEvolutionState(binding);
-            const truth = composerTruth(current, canonical, mountedInput.value);
+            const truth = composerTruth(current, canonical, mountedInput.value, binding);
             mounted.dataset.availabilityState = current.availability.state;
             mounted.dataset.readyForRealTurn = String(current.availability.readyForRealTurn);
             mounted.dataset.recoveryAvailable = String(current.availability.recoveryAvailable);

@@ -215,6 +215,8 @@ test('presentation continuity stays ephemeral and delegates draft truth to the c
   assert.match(source,/canonical.input.dispatchEvent/);
   assert.match(source,/composerAddress.htmlFor = 'conversationEvolutionMessage'/);
   assert.match(source,/binding.t\('context.visible-to'\)/);
+  assert.match(source,/relationshipAvailabilityRef/);
+  assert.match(source,/binding\.t\(relationshipAvailabilityRef\)/);
   assert.match(css,/conversation-evolution__feed\[hidden\]\{display:none\}/);
   assert.match(css,/font:400 17px\/1\.55/);
   assert.match(css,/outline:3px solid var\(--info\)/);
