@@ -31,10 +31,14 @@ export function constrainTransientRect({
   height,
   viewportWidth,
   viewportHeight,
+  constraintLeft = 0,
+  constraintTop = 0,
   margin = DEFAULT_MARGIN,
   minWidth = DEFAULT_MIN_WIDTH,
   minHeight = DEFAULT_MIN_HEIGHT
 }) {
+  const safeConstraintLeft = finiteNumber(constraintLeft, 0);
+  const safeConstraintTop = finiteNumber(constraintTop, 0);
   const safeMargin = Math.max(0, finiteNumber(margin, DEFAULT_MARGIN));
   const safeViewportWidth = Math.max(0, finiteNumber(viewportWidth, 0));
   const safeViewportHeight = Math.max(0, finiteNumber(viewportHeight, 0));
@@ -44,10 +48,12 @@ export function constrainTransientRect({
   const floorHeight = Math.min(Math.max(0, finiteNumber(minHeight, DEFAULT_MIN_HEIGHT)), availableHeight);
   const nextWidth = Math.min(Math.max(floorWidth, finiteNumber(width, floorWidth)), availableWidth);
   const nextHeight = Math.min(Math.max(floorHeight, finiteNumber(height, floorHeight)), availableHeight);
-  const maxLeft = Math.max(safeMargin, safeViewportWidth - safeMargin - nextWidth);
-  const maxTop = Math.max(safeMargin, safeViewportHeight - safeMargin - nextHeight);
-  const nextLeft = Math.min(Math.max(safeMargin, finiteNumber(left, safeMargin)), maxLeft);
-  const nextTop = Math.min(Math.max(safeMargin, finiteNumber(top, safeMargin)), maxTop);
+  const minLeft = safeConstraintLeft + safeMargin;
+  const minTop = safeConstraintTop + safeMargin;
+  const maxLeft = Math.max(minLeft, safeConstraintLeft + safeViewportWidth - safeMargin - nextWidth);
+  const maxTop = Math.max(minTop, safeConstraintTop + safeViewportHeight - safeMargin - nextHeight);
+  const nextLeft = Math.min(Math.max(minLeft, finiteNumber(left, minLeft)), maxLeft);
+  const nextTop = Math.min(Math.max(minTop, finiteNumber(top, minTop)), maxTop);
   return Object.freeze({ left: nextLeft, top: nextTop, width: nextWidth, height: nextHeight });
 }
 
@@ -56,11 +62,10 @@ function firstFocusable(surface) {
 }
 
 function viewportSnapshot(win) {
-  return {
-    viewportWidth: Math.max(0, Number(win?.innerWidth) || 0),
-    viewportHeight: Math.max(0, Number(win?.innerHeight) || 0)
-  };
+  return { left:0, top:0, viewportWidth:Math.max(0,Number(win?.innerWidth)||0), viewportHeight:Math.max(0,Number(win?.innerHeight)||0), coordinateSpace:'VIEWPORT', hostRef:'viewport' };
 }
+function resolvedConstraintSnapshot(constraintHost,surface,win){const host=typeof constraintHost==='function'?constraintHost():constraintHost;if(!host||host===surface||typeof host.getBoundingClientRect!=='function')return viewportSnapshot(win);const r=host.getBoundingClientRect();return{left:finiteNumber(r.left,0),top:finiteNumber(r.top,0),viewportWidth:Math.max(0,finiteNumber(r.width,0)),viewportHeight:Math.max(0,finiteNumber(r.height,0)),coordinateSpace:'EXPLICIT_HOST',hostRef:host.id?`#${host.id}`:(host.dataset?.nodeRef??'explicit-host')};}
+function applySurfaceRect(surface,rect){surface.style.left=`${rect.left}px`;surface.style.top=`${rect.top}px`;surface.style.width=`${rect.width}px`;surface.style.height=`${rect.height}px`;surface.style.right='auto';surface.style.bottom='auto';}
 
 
 export function bindAvailableSpaceContract({
@@ -116,6 +121,7 @@ export function createTransientPresentationController({
   onDismiss = null,
   windowRef = globalThis,
   documentRef = globalThis.document,
+  constraintHost = null,
   margin = DEFAULT_MARGIN,
   minWidth = DEFAULT_MIN_WIDTH,
   minHeight = DEFAULT_MIN_HEIGHT
@@ -128,38 +134,16 @@ export function createTransientPresentationController({
   let drag = null;
   let open = !surface.hidden;
 
-  function mode() {
-    return resolveTransientPresentationMode({ viewportWidth: windowRef?.innerWidth ?? 0 });
-  }
+  const constraint=()=>resolvedConstraintSnapshot(constraintHost,surface,windowRef);
+  function mode(){return resolveTransientPresentationMode({viewportWidth:constraint().viewportWidth});}
 
-  function applyMode() {
-    const nextMode = mode();
-    surface.dataset.presentationMode = nextMode;
-    if (nextMode !== 'FLOATING') {
-      surface.style.removeProperty('left');
-      surface.style.removeProperty('top');
-      surface.style.removeProperty('width');
-      surface.style.removeProperty('height');
-      return nextMode;
-    }
-    const rect = surface.getBoundingClientRect();
-    const next = constrainTransientRect({
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-      ...viewportSnapshot(windowRef),
-      margin,
-      minWidth,
-      minHeight
-    });
-    surface.style.left = `${next.left}px`;
-    surface.style.top = `${next.top}px`;
-    surface.style.width = `${next.width}px`;
-    surface.style.height = `${next.height}px`;
-    surface.style.right = 'auto';
-    surface.style.bottom = 'auto';
-    return nextMode;
+  function applyMode(){
+    const bounds=constraint(),nextMode=resolveTransientPresentationMode({viewportWidth:bounds.viewportWidth});
+    surface.dataset.presentationMode=nextMode;surface.dataset.constraintSpace=bounds.coordinateSpace;surface.dataset.constraintHostRef=bounds.hostRef;
+    surface.style.setProperty('--e29-constraint-inline-size',`${bounds.viewportWidth}px`);surface.style.setProperty('--e29-constraint-block-size',`${bounds.viewportHeight}px`);
+    if(nextMode==='FULL_SCREEN'){applySurfaceRect(surface,{left:bounds.left,top:bounds.top,width:bounds.viewportWidth,height:bounds.viewportHeight});return nextMode;}
+    if(nextMode==='SHEET'){const inset=Math.min(8,Math.max(0,bounds.viewportWidth/4),Math.max(0,bounds.viewportHeight/4)),width=Math.max(0,bounds.viewportWidth-inset*2),height=Math.max(0,Math.min(bounds.viewportHeight*.72,620,bounds.viewportHeight-inset*2));applySurfaceRect(surface,{left:bounds.left+inset,top:bounds.top+bounds.viewportHeight-inset-height,width,height});return nextMode;}
+    const rect=surface.getBoundingClientRect();const next=constrainTransientRect({left:rect.left,top:rect.top,width:rect.width,height:rect.height,viewportWidth:bounds.viewportWidth,viewportHeight:bounds.viewportHeight,constraintLeft:bounds.left,constraintTop:bounds.top,margin,minWidth,minHeight});applySurfaceRect(surface,next);return nextMode;
   }
 
   function focusSurface() {
@@ -206,7 +190,7 @@ export function createTransientPresentationController({
   }
 
   function snapshot() {
-    return Object.freeze({ open, mode: mode(), draggable: draggable === true && Boolean(dragHandle) });
+    const bounds=constraint();return Object.freeze({ open, mode:resolveTransientPresentationMode({viewportWidth:bounds.viewportWidth}), draggable:draggable===true&&Boolean(dragHandle), constraintSpace:bounds.coordinateSpace, constraintHostRef:bounds.hostRef });
   }
 
   function onKeyDown(event) {
@@ -231,17 +215,15 @@ export function createTransientPresentationController({
       top: drag.top + (event.clientY - drag.y),
       width: drag.width,
       height: drag.height,
-      ...viewportSnapshot(windowRef),
+      viewportWidth: constraint().viewportWidth,
+      viewportHeight: constraint().viewportHeight,
+      constraintLeft: constraint().left,
+      constraintTop: constraint().top,
       margin,
       minWidth,
       minHeight
     });
-    surface.style.left = `${next.left}px`;
-    surface.style.top = `${next.top}px`;
-    surface.style.width = `${next.width}px`;
-    surface.style.height = `${next.height}px`;
-    surface.style.right = 'auto';
-    surface.style.bottom = 'auto';
+    applySurfaceRect(surface,next);
   }
 
   function endDrag(event) {

@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/modules/transient-presentation-controller.js",
       "mode": "100644",
-      "bytes": 10020,
-      "sha256": "aa47a412f6aad464f08df512c3b4dd0d6f5be9fdc4f8cd225f23bef494f37961"
+      "bytes": 11809,
+      "sha256": "e90c46987d9509abf7683d1c48db41ca9dd01a26952c861a0cb6bab0f4aac2cf"
     },
     {
       "path": "test/capability-assimilation-runtime.test.mjs",

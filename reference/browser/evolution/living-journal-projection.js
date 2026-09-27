@@ -73,14 +73,12 @@ function restoreElement(node,parent,nextSibling){
   else if(typeof parent.appendChild==='function')parent.appendChild(node);
 }
 function restoreNode(session){
-  const {view,originalParent,originalNextSibling,optionsButton,optionsParent,optionsNextSibling,referenceFallback,referenceParent,referenceNextSibling,closeButton,closeParent,closeNextSibling,closeText}=session;
+  const {view,originalParent,originalNextSibling,optionsButton,optionsParent,optionsNextSibling,surfaceActions,surfaceActionsWasHidden}=session;
   view.classList?.remove('living-journal-evolution-active-surface');
   if(view.dataset)delete view.dataset.evolutionSurfacePresentation;
   restoreElement(view,originalParent,originalNextSibling);
   restoreElement(optionsButton,optionsParent,optionsNextSibling);
-  restoreElement(referenceFallback,referenceParent,referenceNextSibling);
-  if(closeButton)closeButton.textContent=closeText;
-  restoreElement(closeButton,closeParent,closeNextSibling);
+  if(surfaceActions)surfaceActions.hidden=surfaceActionsWasHidden;
 }
 
 export function createLivingJournalEvolutionSurfaceAdapter(app,{documentImpl=globalThis.document}={}){
@@ -114,23 +112,21 @@ export function createLivingJournalEvolutionSurfaceAdapter(app,{documentImpl=glo
     const surfaceActions=documentImpl?.querySelector?.('#livingJournalSurfaceActions')??null;
     const referenceFallback=documentImpl?.querySelector?.('#evolutionReferenceFallback')??null;
     const closeButton=documentImpl?.querySelector?.('#evolutionActiveSurfaceClose')??null;
-    const presentationComposed=Boolean(actions&&typeof actions.prepend==='function'&&optionsButton?.parentNode&&surfaceActions&&referenceFallback?.parentNode&&closeButton?.parentNode);
+    const presentationComposed=Boolean(actions&&typeof actions.insertBefore==='function'&&optionsButton?.parentNode&&surfaceActions&&referenceFallback?.parentNode===actions&&closeButton?.parentNode===actions);
     ensureStylesheet(documentImpl);
     const originalParent=view.parentNode,originalNextSibling=view.nextSibling??null;
     const optionsParent=presentationComposed?optionsButton.parentNode:null,optionsNextSibling=presentationComposed?(optionsButton.nextSibling??null):null;
-    const referenceParent=presentationComposed?referenceFallback.parentNode:null,referenceNextSibling=presentationComposed?(referenceFallback.nextSibling??null):null;
-    const closeParent=presentationComposed?closeButton.parentNode:null,closeNextSibling=presentationComposed?(closeButton.nextSibling??null):null,closeText=presentationComposed?closeButton.textContent:null;
+    const surfaceActionsWasHidden=presentationComposed?surfaceActions.hidden:false;
     await app.openLivingJournal({loadMemory:true});
     view.hidden=false;
     if(view.dataset)view.dataset.evolutionSurfacePresentation='true';
     view.classList?.add('living-journal-evolution-active-surface');
     if(presentationComposed){
-      actions.prepend(optionsButton);
-      surfaceActions.append(referenceFallback,closeButton);
-      closeButton.textContent='Close';
+      actions.insertBefore(optionsButton,closeButton);
+      surfaceActions.hidden=true;
     }
     body.replaceChildren(view);
-    session={body,view,originalParent,originalNextSibling,optionsButton,optionsParent,optionsNextSibling,referenceFallback,referenceParent,referenceNextSibling,closeButton,closeParent,closeNextSibling,closeText,presentationComposed};
+    session={body,view,originalParent,originalNextSibling,optionsButton,optionsParent,optionsNextSibling,surfaceActions,surfaceActionsWasHidden,presentationComposed};
     app.projectFrame();
     view.focus?.({preventScroll:true});
     return snapshot();

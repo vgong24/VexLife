@@ -282,3 +282,22 @@ The real reconnection must re-ground the accepted/current #703 Shared Shell and 
 Screenshots may remain useful as optional source-bound visual evidence. They are never semantic or route authority.
 
 <!-- [VEXLIFE-UX-EVOLUTION][719][PRESENTATION-GRAPH-FOUNDATION][ARCHITECTURE][VXG RealForever] -->
+
+## P4 visual composition and containment contract
+
+P4 human convergence made the geometric contract explicit. Presentation ancestry is semantic structure; it is not an implicit CSS containing block.
+
+```text
+SEMANTIC_PARENT != GEOMETRIC_CONSTRAINT_HOST
+PRESENTATION_PARENT != STACKING_CONTEXT_OWNER
+PRESENTATION_PARENT != SCROLL_OWNER
+PORTABLE_COMPONENT != ANCESTOR_SELECTOR_COINCIDENCE
+VALID_REPARENTING_PRESERVES_BASE_COMPONENT_CONTRACT
+CONTENT_CELL_OWNS_INTRINSIC_CHILD_SIZE
+OVERFLOW_REQUIRES_EXPLICIT_OWNER_AND_REASON
+```
+
+A transient or portable presentation declares or exposes its coordinate space, explicit runtime constraint host (with documented viewport fallback), stacking-context owner, elevation role, clip policy, scroll owner, intrinsic sizing policy, overflow policy, and reparenting invariant. The shared transient controller resolves geometry from the caller-declared host; viewport geometry is a fallback, not an assumption created by semantic ancestry.
+
+Journal entry cells grow around wrapped testimony and own continuation disclosure. Conversation keeps canonical project/thread/channel identities while direct human presentation treats those routing identities as contextual provenance rather than primary relationship chrome.
+
