@@ -1019,7 +1019,7 @@ export function formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingRe
   if (runtimeBindingReceipt.schemaVersion !== ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA || runtimeBindingReceipt.state !== 'ACTIVATED_MODEL_RUNTIME_QUALIFIED') {
     fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'Shared lived-turn evidence requires one exact qualified activated-runtime receipt');
   }
-  if (runtimeBindingReceipt.bindingRef !== binding.bindingRef || runtimeBindingReceipt.modelRef !== binding.modelRef || runtimeBindingReceipt.modelProfileRef !== binding.modelProfileRef) {
+  if (runtimeBindingReceipt.bindingRef !== binding.bindingRef || runtimeBindingReceipt.companionLineageRef !== binding.companionLineageRef || runtimeBindingReceipt.generationRef !== binding.generationRef || runtimeBindingReceipt.modelRef !== binding.modelRef || runtimeBindingReceipt.modelProfileRef !== binding.modelProfileRef) {
     fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'Runtime receipt does not bind the exact activated M4 identity');
   }
   if (browserTurnReceipt.schemaVersion !== 'vexlife.browser-companion-turn/v1' || browserTurnReceipt.state !== 'TURN_COMPLETED' || browserTurnReceipt.actualHttpCall !== true || browserTurnReceipt.loopbackOnly !== true) {

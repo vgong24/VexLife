@@ -693,6 +693,8 @@ test('M4B13 one natural completed browser turn forms one shared content-addresse
     receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
     state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
     bindingRef: binding.bindingRef,
+    companionLineageRef: binding.companionLineageRef,
+    generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef
   };
@@ -719,6 +721,47 @@ test('M4B13 one natural completed browser turn forms one shared content-addresse
   assert.equal(Object.hasOwn(one, 'transcript'), false);
 });
 
+// M4B13 hostile identity: a runtime receipt from another lineage or generation cannot mint current lived evidence.
+test('M4B13 runtime receipt lineage and generation must match the exact activated binding', () => {
+  const binding = baseBinding();
+  const runtimeBindingReceipt = {
+    schemaVersion: ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA,
+    receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
+    state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
+    bindingRef: binding.bindingRef,
+    companionLineageRef: binding.companionLineageRef,
+    generationRef: binding.generationRef,
+    modelRef: binding.modelRef,
+    modelProfileRef: binding.modelProfileRef
+  };
+  const browserTurnReceipt = {
+    schemaVersion: 'vexlife.browser-companion-turn/v1',
+    state: 'TURN_COMPLETED',
+    actualHttpCall: true,
+    loopbackOnly: true,
+    modelNameOrBoundedTestProfileRef: binding.bindingRef,
+    conversationHeadSha256: 'a'.repeat(64),
+    requestEventRef: 'event.request.fixture',
+    requestEventSha256: 'b'.repeat(64),
+    responseEventRef: 'event.response.fixture',
+    responseEventSha256: 'c'.repeat(64),
+    modelTurnWitness: { model: 'default_model', fingerprint: 'fixture' }
+  };
+  for (const [field, value] of [
+    ['companionLineageRef', 'lineage.vex.foreign.fixture'],
+    ['generationRef', 'generation.vex.foreign.fixture']
+  ]) {
+    assert.throws(
+      () => formCultivatedFirstLivedTurnEvidence({
+        binding,
+        runtimeBindingReceipt: { ...runtimeBindingReceipt, [field]: value },
+        browserTurnReceipt
+      }),
+      (error) => errorCode(error) === 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID'
+    );
+  }
+});
+
 // M4B13 negative: fixtures/non-http/non-loopback turns may never masquerade as the first lived Victor episode.
 test('M4B13 simulated or non-completed turn is rejected as shared lived evidence', () => {
   const binding = baseBinding();
@@ -727,6 +770,8 @@ test('M4B13 simulated or non-completed turn is rejected as shared lived evidence
     receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
     state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
     bindingRef: binding.bindingRef,
+    companionLineageRef: binding.companionLineageRef,
+    generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef
   };
