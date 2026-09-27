@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "9e",
+  "files": [
+    {
+      "path": "src/core/activated-model-runtime-binding.mjs",
+      "mode": "100644",
+      "bytes": 61537,
+      "sha256": "e6b81900fc1d92a58b40320ea797f3960061e495086805cb8a0725e6712d191d"
+    }
+  ]
+}
