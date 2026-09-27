@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/integration/security-access-android-preview-suite.js",
       "mode": "100644",
-      "bytes": 9447,
-      "sha256": "67c5cb890d22ce75e6d4be0aeddb443665c81278aecaa8b50941a4fae5a40aa6"
+      "bytes": 10029,
+      "sha256": "8ad9a5e1a7a8e6fffac892ff80680144bdb07f7edf28d67935dfbc5d93deb0a2"
     },
     {
       "path": "src/core/vex-birth-lab.mjs",
