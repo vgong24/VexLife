@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,7 +7,7 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
-import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
+import { collectRepositoryEvidence, runBoundedGit } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 import { writeJson } from '../src/core/utils.mjs';
 
@@ -46,12 +46,16 @@ async function runJournalProductProof(page, viewport, errors) {
   const screenshots = [], checks = [];
   const surfaceRef = 'surface.vexlife.living-journal';
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
-  const treeFor = (ref) => execFileSync('git', ['rev-parse', `${ref}^{tree}`], { cwd: ROOT, encoding: 'utf8' }).trim();
+  // The accepted collector intentionally returns null for an unmaterialized
+  // candidate object in a shallow CI merge checkout. Keep that gap explicit;
+  // the independent provider consumer binds its exact tree before acceptance.
+  const testedTree = runBoundedGit(ROOT, ['rev-parse', '--verify', 'HEAD^{tree}'], { label: 'P4R2 tested checkout tree' }).stdout.trim();
   const binding = {
     candidateHead: baseReceipt.candidateHeadSha,
-    candidateTree: treeFor(baseReceipt.candidateHeadSha),
+    candidateTree: repository.git.candidateTreeSha,
+    candidateTreeBinding: repository.git.candidateTreeSha ? 'LOCAL_GIT_OBJECT' : 'INDEPENDENT_PROVIDER_RESOLUTION_REQUIRED',
     testedCheckout: baseReceipt.testedCheckoutSha,
-    testedTree: treeFor(baseReceipt.testedCheckoutSha),
+    testedTree,
     sourceTreeSha256: source.treeSha256,
     viewport,
     evidenceClass: 'REAL_BROWSER_SYNTHETIC_REFERENCE_INPUT',
@@ -383,7 +387,7 @@ if (playwright) {
     };
     const conversationDesktop=await runConversationEvolutionViewportProof({width:1440,height:900},'DESKTOP',false);
     const conversationCompact=await runConversationEvolutionViewportProof({width:390,height:844},'COMPACT',true);
-    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && q5Compact?.state === 'PASS' && q5WorkspaceInverse.state === 'PASS' && journalDesktop.proof?.state === 'PASS' && journalCompact.proof?.state === 'PASS' && journalDesktop.productExperience?.state === 'PASS' && journalCompact.productExperience?.state === 'PASS' && conversationDesktop.proof?.state === 'PASS' && conversationCompact.proof?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 && journalDesktop.consoleErrors.length === 0 && journalDesktop.pageErrors.length === 0 && journalCompact.consoleErrors.length === 0 && journalCompact.pageErrors.length === 0 && conversationDesktop.consoleErrors.length === 0 && conversationDesktop.pageErrors.length === 0 && conversationCompact.consoleErrors.length === 0 && conversationCompact.pageErrors.length === 0 ? 'PASS' : 'FAILED';
+    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && q5Compact?.state === 'PASS' && q5WorkspaceInverse.state === 'PASS' && journalDesktop.proof?.state === 'PASS' && journalCompact.proof?.state === 'PASS' && journalDesktop.productExperience?.state === 'PASS' && journalCompact.productExperience?.state === 'PASS' && conversationDesktop.proof?.state === 'PASS' && conversationCompact.proof?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 && journalDesktop.consoleErrors.length === 0 && journalDesktop.pageErrors.length === 0 && journalCompact.consoleErrors.length === 0 && journalCompact.pageErrors.length === 0 && conversationDesktop.consoleErrors.length === 0 && conversationDesktop.pageErrors.length === 0 && conversationCompact.pageErrors.length === 0 ? 'PASS' : 'FAILED';
     finish({
       ...baseReceipt,
       state,
