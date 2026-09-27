@@ -54,7 +54,7 @@ runtimeAdapterEvidenceRef=github.issue.vextreme-sdk.636.comment.5842887202
 runtimeAdapterRef=adapter.runtime.mlx.macos-victor.post-w5.001
 ```
 
-The persisted Home-local activated configuration and runtime receipt now bind `companionLineageRef` and `generationRef` in addition to the model/profile/custody/runtime tuple. An older pre-W5 activated configuration therefore becomes stale and fails closed; it is not silently migrated or treated as current.
+The persisted Home-local activated configuration and runtime receipt now bind `HomeRef`, `companionLineageRef`, and `generationRef` in addition to the model/profile/custody/runtime tuple. An older pre-W5 activated configuration therefore becomes stale and fails closed; it is not silently migrated or treated as current.
 
 `HomeRef` remains host-derived from the current Home and is never source-invented. Before any handoff or runtime action, the current Home manifest and its current device must agree with the source-pinned cultivated lineage.
 

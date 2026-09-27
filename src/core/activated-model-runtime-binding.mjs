@@ -441,9 +441,10 @@ function readHomeIdentity(home, binding) {
   return { paths, homeRef, deviceRef: manifest.currentDeviceRef, companionLineageRef: manifest.currentCompanionLineageRef, manifest };
 }
 
-function activatedConfigState(config, binding, sourceDigests) {
+function activatedConfigState(config, binding, sourceDigests, homeRef) {
   if (!config || config.schemaVersion !== ACTIVATED_MODEL_CONFIGURATION_SCHEMA || config.state !== 'BOUND_ACTIVATED_CULTIVATED_MODEL') return { state: 'NOT_ACTIVATED_CONFIG' };
   const required = {
+    homeRef,
     bindingRef: binding.bindingRef,
     companionLineageRef: binding.companionLineageRef,
     generationRef: binding.generationRef,
@@ -489,7 +490,7 @@ export async function planActivatedModelResume({
   const resolvedHome = path.resolve(home);
   const homeIdentity = readHomeIdentity(resolvedHome, binding);
   const config = fs.existsSync(homeIdentity.paths.modelConfig) ? readJson(homeIdentity.paths.modelConfig) : null;
-  const current = activatedConfigState(config, binding, sourceDigests);
+  const current = activatedConfigState(config, binding, sourceDigests, homeIdentity.homeRef);
   if (current.state === 'CURRENT') {
     if (handoffBytes !== null || handoffSha256 !== null) fail('ACTIVATED_MODEL_HANDOFF_ALREADY_CONSUMED', 'This Home is already explicitly bound to activated M4; another handoff is forbidden');
     return Object.freeze({
@@ -956,6 +957,7 @@ export async function startOrResumeActivatedModelRuntime({
   writeJsonAtomic(homeIdentity.paths.modelConfig, {
     schemaVersion: ACTIVATED_MODEL_CONFIGURATION_SCHEMA,
     state: 'BOUND_ACTIVATED_CULTIVATED_MODEL',
+    homeRef: homeIdentity.homeRef,
     bindingRef: binding.bindingRef,
     companionLineageRef: binding.companionLineageRef,
     generationRef: binding.generationRef,

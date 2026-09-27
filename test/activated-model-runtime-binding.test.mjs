@@ -297,6 +297,36 @@ test('M4B09-M4B16-M4B17 plan requires handoff once and refuses stale/no-fallback
   );
 });
 
+// Persisted activated binding is Home-specific; copying a current-looking config into another Home must fail closed.
+test('M4B20 copied activated config with foreign HomeRef is stale', async () => {
+  const binding = baseBinding();
+  const root = tempDir('foreign-home-config');
+  const home = makeHome('foreign-home-config');
+  const { modelDirectory } = makeFixtureArtifact(binding, root);
+  const pythonExecutable = makePython(root);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const sourceDigests = { registrySha256: SOURCE_IDENTITY.registrySha256, moduleSha256: SOURCE_IDENTITY.moduleSha256 };
+  const first = await planActivatedModelResume({
+    home, binding, sourceDigests, sourceIdentity: SOURCE_IDENTITY,
+    handoffBytes: handoff.bytes, handoffSha256: handoff.digest, environment: {}
+  });
+  assert.equal(first.state, 'FIRST_BIND_FROM_EXACT_HANDOFF');
+  writeJson(path.join(home, 'config', 'model.json'), {
+    schemaVersion: ACTIVATED_MODEL_CONFIGURATION_SCHEMA,
+    state: 'BOUND_ACTIVATED_CULTIVATED_MODEL',
+    homeRef: 'home.foreign.001',
+    bindingRef: binding.bindingRef,
+    companionLineageRef: binding.companionLineageRef,
+    generationRef: binding.generationRef,
+    modelRef: binding.modelRef,
+    modelProfileRef: binding.modelProfileRef
+  });
+  await assert.rejects(
+    planActivatedModelResume({ home, binding, sourceDigests, sourceIdentity: SOURCE_IDENTITY, environment: {} }),
+    (error) => errorCode(error) === 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT'
+  );
+});
+
 // M4B06/M4B17: a digest-bound handoff cannot be silently retargeted to another head/profile/artifact/runtime.
 test('M4B06 exact digest-bound handoff rejects source identity mismatch', async () => {
   const binding = baseBinding();
@@ -368,6 +398,7 @@ test('M4B09-M4B10-M4B15-M4B16 first start persists Home binding; restart reuses 
   assert.equal(first.browserEnvironment.VEXLIFE_COMPANION_MODEL, 'default_model');
   const configPath = path.join(home, 'config', 'model.json');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  assert.equal(config.homeRef, 'home.test.runtime.001');
   assert.equal(config.companionLineageRef, binding.companionLineageRef);
   assert.equal(config.generationRef, binding.generationRef);
   assert.equal(config.modelRef, binding.modelRef);
