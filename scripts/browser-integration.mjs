@@ -387,14 +387,22 @@ if (playwright) {
     };
     const conversationDesktop=await runConversationEvolutionViewportProof({width:1440,height:900},'DESKTOP',false);
     const conversationCompact=await runConversationEvolutionViewportProof({width:390,height:844},'COMPACT',true);
-    const state = integration?.state === 'PASS' && livedDCompact?.state === 'PASS' && q2Compact?.state === 'PASS' && q2ViewportInverse.state === 'PASS' && q5Compact?.state === 'PASS' && q5WorkspaceInverse.state === 'PASS' && journalDesktop.proof?.state === 'PASS' && journalCompact.proof?.state === 'PASS' && journalDesktop.productExperience?.state === 'PASS' && journalCompact.productExperience?.state === 'PASS' && conversationDesktop.proof?.state === 'PASS' && conversationCompact.proof?.state === 'PASS' && consoleErrors.length === 0 && pageErrors.length === 0 && compactConsoleErrors.length === 0 && compactPageErrors.length === 0 && journalDesktop.consoleErrors.length === 0 && journalDesktop.pageErrors.length === 0 && journalCompact.consoleErrors.length === 0 && journalCompact.pageErrors.length === 0 && conversationDesktop.consoleErrors.length === 0 && conversationDesktop.pageErrors.length === 0 && conversationCompact.pageErrors.length === 0 ? 'PASS' : 'FAILED';
+    const viewportProofs = [journalDesktop, journalCompact, conversationDesktop, conversationCompact];
+    const allConsoleErrors = [...consoleErrors, ...compactConsoleErrors, ...viewportProofs.flatMap((item) => item.consoleErrors)];
+    const allPageErrors = [...pageErrors, ...compactPageErrors, ...viewportProofs.flatMap((item) => item.pageErrors)];
+    const requiredProofs = [
+      integration, livedDCompact, q2Compact, q2ViewportInverse, q5Compact, q5WorkspaceInverse,
+      ...viewportProofs.map((item) => item.proof),
+      journalDesktop.productExperience, journalCompact.productExperience
+    ];
+    const state = requiredProofs.every((proof) => proof?.state === 'PASS') && allConsoleErrors.length === 0 && allPageErrors.length === 0 ? 'PASS' : 'FAILED';
     finish({
       ...baseReceipt,
       state,
       currentness: 'CURRENT',
       browser: { name: browser.browserType().name(), version: browser.version() },
-      consoleErrors:[...consoleErrors,...compactConsoleErrors,...journalDesktop.consoleErrors,...journalCompact.consoleErrors,...conversationDesktop.consoleErrors,...conversationCompact.consoleErrors],
-      pageErrors:[...pageErrors,...compactPageErrors,...journalDesktop.pageErrors,...journalCompact.pageErrors,...conversationDesktop.pageErrors,...conversationCompact.pageErrors],
+      consoleErrors: allConsoleErrors,
+      pageErrors: allPageErrors,
       integration,
       journalDesktop,
       journalCompact,
