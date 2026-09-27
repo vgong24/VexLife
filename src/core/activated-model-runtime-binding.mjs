@@ -790,9 +790,9 @@ async function waitForHealthy(binding, pid, hooks) {
   fail('ACTIVATED_RUNTIME_START_FAILED', 'MLX runtime did not become healthy before source-bounded startup timeout');
 }
 
-function runtimeReceiptReusable(prior, { binding, sourceDigests, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks }) {
+function runtimeReceiptReusable(prior, { binding, sourceDigests, homeRef, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks }) {
   if (!prior || prior.schemaVersion !== ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA || prior.state !== 'ACTIVATED_MODEL_RUNTIME_QUALIFIED') return false;
-  if (prior.bindingRef !== binding.bindingRef || prior.homeRef == null || prior.companionLineageRef !== binding.companionLineageRef || prior.generationRef !== binding.generationRef || prior.modelRef !== binding.modelRef || prior.modelProfileRef !== binding.modelProfileRef) return false;
+  if (prior.bindingRef !== binding.bindingRef || prior.homeRef !== homeRef || prior.companionLineageRef !== binding.companionLineageRef || prior.generationRef !== binding.generationRef || prior.modelRef !== binding.modelRef || prior.modelProfileRef !== binding.modelProfileRef) return false;
   if (prior.registrySha256 !== sourceDigests.registrySha256 || prior.moduleSha256 !== sourceDigests.moduleSha256) return false;
   if (prior.privateMaterializationPath !== modelDirectory || prior.privatePythonExecutablePath !== pythonExecutable || prior.privatePythonEnvironmentRootPath !== pythonEnvironmentRoot) return false;
   if (!Number.isInteger(prior.runtime?.pid) || prior.runtime.pid <= 0 || !hooks.processAlive(prior.runtime.pid)) return false;
@@ -852,7 +852,7 @@ export async function startOrResumeActivatedModelRuntime({
   let runtimeDisposition = null;
   let startedNewRuntime = false;
   let runtimeStartedByAttemptRef = effectiveRuntimeAttemptRef;
-  if (runtimeReceiptReusable(priorReceipt, { binding, sourceDigests, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks })) {
+  if (runtimeReceiptReusable(priorReceipt, { binding, sourceDigests, homeRef: homeIdentity.homeRef, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks })) {
     pid = priorReceipt.runtime.pid;
     runtimeDisposition = 'REUSED_EXACT_OWNED_MLX_RUNTIME';
     runtimeStartedByAttemptRef = priorReceipt.runtime?.startedByAttemptRef ?? priorReceipt.runtimeAttemptRef ?? effectiveRuntimeAttemptRef;

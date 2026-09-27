@@ -401,6 +401,26 @@ test('M4B09-M4B10-M4B15-M4B16 first start persists Home binding; restart reuses 
   assert.equal(fs.existsSync(path.join(home, 'runtime', 'initialization', 'receipt.json')), true);
   assert.equal(fs.existsSync(path.join(home, 'recovery', 'vex-initialization-receipt.json')), true);
 
+  const runtimeReceiptPath = path.join(home, 'runtime', 'initialization', 'receipt.json');
+  const runtimeReceipt = JSON.parse(fs.readFileSync(runtimeReceiptPath, 'utf8'));
+  assert.equal(runtimeReceipt.homeRef, 'home.test.runtime.001');
+  writeJson(runtimeReceiptPath, { ...runtimeReceipt, homeRef: 'home.test.foreign.001' });
+  await assert.rejects(
+    startOrResumeActivatedModelRuntime({
+      home,
+      binding,
+      sourceIdentity: SOURCE_IDENTITY,
+      environment: {},
+      hooks: {
+        ...commonHooks,
+        processAlive: (pid) => pid === currentPid && oldAlive,
+        spawnRuntime: async () => { throw new Error('foreign-Home receipt must not be reused'); }
+      }
+    }),
+    (error) => errorCode(error) === 'ACTIVATED_RUNTIME_ENDPOINT_OWNERSHIP_CONFLICT'
+  );
+  writeJson(runtimeReceiptPath, runtimeReceipt);
+
   const second = await startOrResumeActivatedModelRuntime({
     home,
     binding,
