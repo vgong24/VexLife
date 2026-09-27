@@ -40,23 +40,7 @@ pythonVersion=3.14.7
 mlxLmVersion=0.32.0
 ```
 
-The post-W5 activation reconciliation, Distribution Trust profile, first-wake, fresh custody, and fresh runtime-adapter evidence refs are source-pinned in the same record. The current custody input is github.issue.vextreme-sdk.1394.comment.5842886988 and the current load/infer-eligibility input is github.issue.vextreme-sdk.636.comment.5842887202. Changing any identity requires another accepted source lifecycle; no command-line argument or environment variable can select a substitute model, endpoint, provider, profile, or artifact.
-
-
-## Post-W5 source currentization
-
-This source generation is a fresh-main currentization of the historical #595 implementation; it does not merge or replay the historical branch or A011. The binding identity is new because the accepted upstream owner tuple changed after W5:
-
-```text
-activationEvidenceRef=github.issue.vextreme-sdk.1331.comment.5842984175
-artifactCustodyEvidenceRef=github.issue.vextreme-sdk.1394.comment.5842886988
-runtimeAdapterEvidenceRef=github.issue.vextreme-sdk.636.comment.5842887202
-runtimeAdapterRef=adapter.runtime.mlx.macos-victor.post-w5.001
-```
-
-The persisted Home-local activated configuration and runtime receipt now bind `HomeRef`, `companionLineageRef`, and `generationRef` in addition to the model/profile/custody/runtime tuple. An older pre-W5 activated configuration therefore becomes stale and fails closed; it is not silently migrated or treated as current.
-
-`HomeRef` remains host-derived from the current Home and is never source-invented. Before any handoff or runtime action, the current Home manifest and its current device must agree with the source-pinned cultivated lineage.
+The activation, Distribution Trust, first-wake, fresh post-W5 custody, and fresh post-W5 runtime-adapter evidence refs are source-pinned in the same record. Changing any identity requires another accepted source lifecycle; no command-line argument or environment variable can select a substitute model, endpoint, provider, profile, or artifact.
 
 ## Authored boundary
 
@@ -84,13 +68,13 @@ No Browser Companion, Lived Companion, prompt-context, continuity, browser-serve
 
 The first accepted host execution requires all of the following:
 
-1. An existing Vex Home established by the existing bootstrap owner whose `vexlife.home/v0` manifest and current device both bind `lineage.vex.m4.generation-2-learner`.
+1. An existing Vex Home established by the existing bootstrap owner, with `schemaVersion=vexlife.home/v0`, a stable `homeRef`, a current device record, and `currentCompanionLineageRef=lineage.vex.m4.generation-2-learner` on both Home and device identity.
 2. The exact candidate source head/tree and exact registry/module file digests.
 3. One digest-bound `vexlife.activated-model-custody-handoff/v1` envelope.
 4. The private absolute path of the already-custodied 12-member model directory.
 5. The private absolute path of the Python 3.14.7 executable carrying `mlx-lm` 0.32.0.
 
-The handoff carries private machine locators, but those locators are not semantic model identity. The envelope is admitted only when all activation/profile/custody/runtime refs, artifact seal fields, runtime versions, candidate source identity, and envelope SHA-256 exactly match the source binding and package manifest.
+The handoff binds the current `homeRef`, cultivated Companion lineage, generation, model/profile, current custody, and current post-W5 runtime-adapter identity. It also carries private machine locators, but those locators are not semantic model identity. The envelope is admitted only when all activation/profile/custody/runtime refs, artifact seal fields, runtime versions, candidate source identity, and envelope SHA-256 exactly match the source binding and package manifest.
 
 Use the acceptance package launcher from the exact candidate checkout:
 
@@ -217,7 +201,7 @@ served materialization identity
 OpenAI-compatible request-model identity
 ```
 
-A runtime PID may change. The Vex Home, active-model identity, existing companion lineage/thread, durable event ancestry, conversation head, prompt-context reconstruction, and continuity/recovery owners do not change.
+A runtime PID may change. The persisted binding must continue to match the exact `homeRef`, `companionLineageRef`, `generationRef`, active-model identity, current custody/runtime refs, existing thread, durable event ancestry, conversation head, prompt-context reconstruction, and continuity/recovery owners. A Home/device lineage mismatch fails closed before runtime effect.
 
 ## First natural lived turn
 

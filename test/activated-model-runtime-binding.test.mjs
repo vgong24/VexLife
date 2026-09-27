@@ -22,9 +22,6 @@ import {
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const REGISTRY_PATH = path.join(ROOT, 'blueprint', 'activated-model-runtime-bindings.json');
-const EXPECTED_COMPANION_LINEAGE_REF = 'lineage.vex.m4.generation-2-learner';
-const EXPECTED_GENERATION_REF = 'generation.vex.m4.generation-2';
-
 const SOURCE_IDENTITY = Object.freeze({
   schemaVersion: 'vexlife.activated-model-runtime-source-identity/v1',
   repository: 'vgong24/VexLife',
@@ -53,19 +50,33 @@ function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
-function makeHome(label = 'home', companionLineageRef = EXPECTED_COMPANION_LINEAGE_REF) {
+function makeHome(label = 'home', lineageRef = 'lineage.vex.m4.generation-2-learner') {
   const home = tempDir(label);
-  const deviceRef = `device.test.${label}.001`;
+  const deviceRef = `device.vexlife.test.${label}.001`;
   writeJson(path.join(home, 'config', 'home.json'), {
     schemaVersion: 'vexlife.home/v0',
     homeRef: `home.test.${label}.001`,
+    familyRef: 'vex-family.test',
+    createdAt: '2026-09-26T00:00:00.000Z',
     currentDeviceRef: deviceRef,
-    currentCompanionLineageRef: companionLineageRef
+    currentCompanionLineageRef: lineageRef,
+    cultureManifestRef: 'culture/manifest.json',
+    modelConfigurationRef: 'config/model.json'
   });
   writeJson(path.join(home, 'devices', `${deviceRef}.json`), {
-    schemaVersion: 'vexlife.device/v0',
+    schemaVersion: 'vexlife.device-installation/v0',
+    personRef: 'person.test',
+    familyRef: 'vex-family.test',
     deviceRef,
-    companionLineageRef
+    deviceName: 'fixture',
+    platform: 'darwin',
+    architecture: 'arm64',
+    companionLineageRef: lineageRef,
+    rhythmRef: 'rhythm.test',
+    scoreProjectionRef: 'score-projection.test',
+    currentInstanceRef: null,
+    createdAt: '2026-09-26T00:00:00.000Z',
+    identityStatement: 'fixture'
   });
   return home;
 }
@@ -99,11 +110,12 @@ function makePython(root) {
   fs.writeFileSync(pythonExecutable, '#!/bin/sh\nexit 0\n', { mode: 0o700 });
   return pythonExecutable;
 }
-function makeHandoff(binding, modelDirectory, pythonExecutable, sourceIdentity = SOURCE_IDENTITY) {
+function makeHandoff(binding, modelDirectory, pythonExecutable, sourceIdentity = SOURCE_IDENTITY, home = null) {
   const handoff = {
     schemaVersion: ACTIVATED_MODEL_CUSTODY_HANDOFF_SCHEMA,
     handoffRef: 'handoff.test.activated-m4.001',
     bindingRef: binding.bindingRef,
+    homeRef: home === null ? 'home.test.fixture.001' : JSON.parse(fs.readFileSync(path.join(home, 'config', 'home.json'), 'utf8')).homeRef,
     companionLineageRef: binding.companionLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
@@ -158,11 +170,28 @@ test('M4B02 exact accepted activated-M4 registry validates and has one binding',
   const raw = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));
   const result = validateActivatedModelRuntimeBindingRegistry(raw);
   assert.equal(result.ok, true, result.errors.join('; '));
-  assert.equal(result.binding.companionLineageRef, EXPECTED_COMPANION_LINEAGE_REF);
-  assert.equal(result.binding.generationRef, EXPECTED_GENERATION_REF);
   assert.equal(result.binding.modelRef, 'model.vex.m4.small.g2.base.368e89e5ca219fab');
   assert.equal(result.binding.modelProfileRef, 'model-profile.vex.m4.small.g2.certified.20260920A');
   assert.equal(result.binding.runtime.runtimeAdapterRef, 'adapter.runtime.mlx.macos-victor.post-w5.001');
+  assert.equal(result.binding.companionLineageRef, 'lineage.vex.m4.generation-2-learner');
+  assert.equal(result.binding.generationRef, 'generation.vex.m4.generation-2');
+});
+
+
+// Post-W5 currentization: Home identity and device identity must agree with the accepted cultivated lineage before any handoff/runtime effect.
+test('M4B02 current Home and device lineage are required before activated-M4 binding', async () => {
+  const binding = baseBinding();
+  const home = makeHome('wrong-lineage', 'companion-lineage.vexlife.wrong');
+  await assert.rejects(
+    planActivatedModelResume({
+      home,
+      binding,
+      sourceDigests: { registrySha256: SOURCE_IDENTITY.registrySha256, moduleSha256: SOURCE_IDENTITY.moduleSha256 },
+      sourceIdentity: SOURCE_IDENTITY,
+      environment: {}
+    }),
+    (error) => errorCode(error) === 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT'
+  );
 });
 
 // M4B03: model/profile/provider/endpoint choice is not an environment injection surface.
@@ -271,7 +300,7 @@ test('M4B09-M4B16-M4B17 plan requires handoff once and refuses stale/no-fallback
   const home = makeHome('plan');
   const { modelDirectory } = makeFixtureArtifact(binding, root);
   const pythonExecutable = makePython(root);
-  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable, SOURCE_IDENTITY, home);
   const sourceDigests = { registrySha256: SOURCE_IDENTITY.registrySha256, moduleSha256: SOURCE_IDENTITY.moduleSha256 };
 
   await assert.rejects(
@@ -286,39 +315,7 @@ test('M4B09-M4B16-M4B17 plan requires handoff once and refuses stale/no-fallback
     schemaVersion: ACTIVATED_MODEL_CONFIGURATION_SCHEMA,
     state: 'BOUND_ACTIVATED_CULTIVATED_MODEL',
     bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
-    generationRef: binding.generationRef,
     modelRef: 'model.wrong',
-    modelProfileRef: binding.modelProfileRef
-  });
-  await assert.rejects(
-    planActivatedModelResume({ home, binding, sourceDigests, sourceIdentity: SOURCE_IDENTITY, environment: {} }),
-    (error) => errorCode(error) === 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT'
-  );
-});
-
-// Persisted activated binding is Home-specific; copying a current-looking config into another Home must fail closed.
-test('M4B20 copied activated config with foreign HomeRef is stale', async () => {
-  const binding = baseBinding();
-  const root = tempDir('foreign-home-config');
-  const home = makeHome('foreign-home-config');
-  const { modelDirectory } = makeFixtureArtifact(binding, root);
-  const pythonExecutable = makePython(root);
-  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
-  const sourceDigests = { registrySha256: SOURCE_IDENTITY.registrySha256, moduleSha256: SOURCE_IDENTITY.moduleSha256 };
-  const first = await planActivatedModelResume({
-    home, binding, sourceDigests, sourceIdentity: SOURCE_IDENTITY,
-    handoffBytes: handoff.bytes, handoffSha256: handoff.digest, environment: {}
-  });
-  assert.equal(first.state, 'FIRST_BIND_FROM_EXACT_HANDOFF');
-  writeJson(path.join(home, 'config', 'model.json'), {
-    schemaVersion: ACTIVATED_MODEL_CONFIGURATION_SCHEMA,
-    state: 'BOUND_ACTIVATED_CULTIVATED_MODEL',
-    homeRef: 'home.foreign.001',
-    bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
-    generationRef: binding.generationRef,
-    modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef
   });
   await assert.rejects(
@@ -334,7 +331,7 @@ test('M4B06 exact digest-bound handoff rejects source identity mismatch', async 
   const home = makeHome('handoff');
   const { modelDirectory } = makeFixtureArtifact(binding, root);
   const pythonExecutable = makePython(root);
-  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable, SOURCE_IDENTITY, home);
   const parsed = JSON.parse(handoff.bytes);
   parsed.source.candidateHead = 'a'.repeat(40);
   const badBytes = Buffer.from(`${JSON.stringify(parsed, null, 2)}\n`);
@@ -360,7 +357,7 @@ test('M4B09-M4B10-M4B15-M4B16 first start persists Home binding; restart reuses 
   const home = makeHome('runtime');
   const { modelDirectory } = makeFixtureArtifact(binding, root);
   const pythonExecutable = makePython(root);
-  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable, SOURCE_IDENTITY, home);
   let spawned = false;
   let currentPid = 41001;
   let oldAlive = false;
@@ -398,14 +395,31 @@ test('M4B09-M4B10-M4B15-M4B16 first start persists Home binding; restart reuses 
   assert.equal(first.browserEnvironment.VEXLIFE_COMPANION_MODEL, 'default_model');
   const configPath = path.join(home, 'config', 'model.json');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  assert.equal(config.homeRef, 'home.test.runtime.001');
-  assert.equal(config.companionLineageRef, binding.companionLineageRef);
-  assert.equal(config.generationRef, binding.generationRef);
   assert.equal(config.modelRef, binding.modelRef);
   assert.equal(config.automaticFallback, false);
   assert.equal(config.privateMaterializationPath, path.resolve(modelDirectory));
   assert.equal(fs.existsSync(path.join(home, 'runtime', 'initialization', 'receipt.json')), true);
   assert.equal(fs.existsSync(path.join(home, 'recovery', 'vex-initialization-receipt.json')), true);
+
+  const runtimeReceiptPath = path.join(home, 'runtime', 'initialization', 'receipt.json');
+  const runtimeReceipt = JSON.parse(fs.readFileSync(runtimeReceiptPath, 'utf8'));
+  assert.equal(runtimeReceipt.homeRef, 'home.test.runtime.001');
+  writeJson(runtimeReceiptPath, { ...runtimeReceipt, homeRef: 'home.test.foreign.001' });
+  await assert.rejects(
+    startOrResumeActivatedModelRuntime({
+      home,
+      binding,
+      sourceIdentity: SOURCE_IDENTITY,
+      environment: {},
+      hooks: {
+        ...commonHooks,
+        processAlive: (pid) => pid === currentPid && oldAlive,
+        spawnRuntime: async () => { throw new Error('foreign-Home receipt must not be reused'); }
+      }
+    }),
+    (error) => errorCode(error) === 'ACTIVATED_RUNTIME_ENDPOINT_OWNERSHIP_CONFLICT'
+  );
+  writeJson(runtimeReceiptPath, runtimeReceipt);
 
   const second = await startOrResumeActivatedModelRuntime({
     home,
@@ -448,7 +462,7 @@ test('M4B07-M4B17 qualification failure retires exact newly spawned runtime befo
   const home = makeHome('precommit-cleanup');
   const { modelDirectory } = makeFixtureArtifact(binding, root);
   const pythonExecutable = makePython(root);
-  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable, SOURCE_IDENTITY, home);
   const runtimeAttemptRef = 'attempt.vexlife.test.m4.precommit-cleanup.001';
   let alive = false;
   let cleanupCalls = 0;
@@ -527,7 +541,7 @@ test('M4B17 unverified precommit cleanup escalates rather than claiming safe ter
   const home = makeHome('precommit-cleanup-held');
   const { modelDirectory } = makeFixtureArtifact(binding, root);
   const pythonExecutable = makePython(root);
-  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable, SOURCE_IDENTITY, home);
   const runtimeAttemptRef = 'attempt.vexlife.test.m4.precommit-cleanup.held.001';
   let alive = false;
   const error = await startOrResumeActivatedModelRuntime({
@@ -605,7 +619,7 @@ test('M4B06 preserved trainer venv symlink launcher is accepted only with exact 
   fs.writeFileSync(target, '#!/bin/sh\nexit 0\n', { mode: 0o700 });
   const pythonExecutable = path.join(bin, 'python');
   fs.symlinkSync(target, pythonExecutable);
-  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable, SOURCE_IDENTITY, home);
   handoff.handoff.privateLocators.pythonEnvironmentRoot = environmentRoot;
   handoff.bytes = Buffer.from(`${JSON.stringify(handoff.handoff, null, 2)}\n`, 'utf8');
   handoff.digest = sha256(handoff.bytes);
@@ -647,7 +661,7 @@ test('M4B06 preserved trainer launcher fails closed when Python prefix escapes i
   const environmentRoot = path.join(root, 'trainer-env');
   fs.mkdirSync(environmentRoot, { recursive: true });
   const pythonExecutable = makePython(environmentRoot);
-  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable);
+  const handoff = makeHandoff(binding, modelDirectory, pythonExecutable, SOURCE_IDENTITY, home);
   await assert.rejects(
     startOrResumeActivatedModelRuntime({
       home,
@@ -679,8 +693,6 @@ test('M4B13 one natural completed browser turn forms one shared content-addresse
     receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
     state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
     bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
-    generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef
   };
@@ -715,8 +727,6 @@ test('M4B13 simulated or non-completed turn is rejected as shared lived evidence
     receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
     state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
     bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
-    generationRef: binding.generationRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef
   };
@@ -733,22 +743,6 @@ test('M4B13 simulated or non-completed turn is rejected as shared lived evidence
       }
     }),
     (error) => errorCode(error) === 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID'
-  );
-});
-
-// Current Home identity must agree with the source-pinned cultivated lineage before any handoff or runtime effect.
-test('M4B19 current Home lineage mismatch fails closed before runtime selection', async () => {
-  const binding = baseBinding();
-  const home = makeHome('lineage-mismatch', 'lineage.vex.other');
-  await assert.rejects(
-    planActivatedModelResume({
-      home,
-      binding,
-      sourceDigests: { registrySha256: SOURCE_IDENTITY.registrySha256, moduleSha256: SOURCE_IDENTITY.moduleSha256 },
-      sourceIdentity: SOURCE_IDENTITY,
-      environment: {}
-    }),
-    (error) => errorCode(error) === 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT'
   );
 });
 

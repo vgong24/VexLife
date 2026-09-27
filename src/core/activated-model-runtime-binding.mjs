@@ -15,6 +15,7 @@ const GIT_OID = /^[0-9a-f]{40,64}$/u;
 const LOOPBACK_ORIGIN = /^http:\/\/127\.0\.0\.1:(\d{1,5})$/u;
 const STABLE_REF = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$/u;
 const EXACT_REGISTRY_REF = 'registry.vexlife.activated-model-runtime-bindings.001';
+const EXACT_BINDING_REF = 'binding.vexlife.activated-m4.mlx.macos-victor.post-w5.20260926a';
 const EXACT_COMPANION_LINEAGE_REF = 'lineage.vex.m4.generation-2-learner';
 const EXACT_GENERATION_REF = 'generation.vex.m4.generation-2';
 const EXACT_MODEL_REF = 'model.vex.m4.small.g2.base.368e89e5ca219fab';
@@ -220,7 +221,7 @@ export function validateActivatedModelRuntimeBindingRegistry(registry) {
       fail('ACTIVATED_BINDING_SOURCE_INVALID', 'registry.bindings must contain exactly one accepted external activation projection');
     }
     const binding = requireObject(registry.bindings[0], 'registry.bindings[0]');
-    requireStableRef(binding.bindingRef, 'binding.bindingRef');
+    exactEqual(binding.bindingRef, EXACT_BINDING_REF, 'binding.bindingRef');
     exactEqual(binding.state, 'ACTIVE_ACCEPTED', 'binding.state');
     exactEqual(binding.companionLineageRef, EXACT_COMPANION_LINEAGE_REF, 'binding.companionLineageRef');
     exactEqual(binding.generationRef, EXACT_GENERATION_REF, 'binding.generationRef');
@@ -363,7 +364,7 @@ export function assertNoActivatedRuntimeSelectionInjection(environment = process
   return true;
 }
 
-function parseHandoff({ handoffBytes, handoffSha256, binding, sourceIdentity }) {
+function parseHandoff({ handoffBytes, handoffSha256, binding, sourceIdentity, homeIdentity }) {
   if (!Buffer.isBuffer(handoffBytes)) fail('ACTIVATED_MODEL_HANDOFF_REQUIRED', 'The first activated-M4 bind requires one digest-bound custody handoff');
   requireSha(handoffSha256, 'handoffSha256', 'ACTIVATED_BINDING_HANDOFF_DIGEST_MISMATCH');
   const actualDigest = sha256Bytes(handoffBytes);
@@ -376,6 +377,7 @@ function parseHandoff({ handoffBytes, handoffSha256, binding, sourceIdentity }) 
   requireStableRef(handoff.handoffRef, 'handoff.handoffRef', 'ACTIVATED_BINDING_HANDOFF_MISMATCH');
   const exact = {
     bindingRef: binding.bindingRef,
+    homeRef: homeIdentity.homeRef,
     companionLineageRef: binding.companionLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
@@ -426,26 +428,27 @@ function readHomeIdentity(home, binding) {
   const stat = assertRegularNonLink(paths.homeManifest, 'HOME_NOT_ESTABLISHED', 'Home identity');
   if (stat.size > 2 * 1024 * 1024) fail('HOME_NOT_ESTABLISHED', 'Home identity is unexpectedly large');
   const manifest = readJson(paths.homeManifest, 'HOME_NOT_ESTABLISHED');
-  if (manifest.schemaVersion !== 'vexlife.home/v0') fail('ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Existing Home identity schema is not current');
-  const homeRef = manifest.homeRef ?? null;
-  requireStableRef(homeRef, 'home.homeRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
-  requireStableRef(manifest.currentDeviceRef, 'home.currentDeviceRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
-  if (manifest.currentDeviceRef.includes('/') || manifest.currentDeviceRef.includes('\\')) fail('ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Home current device ref is not a safe device filename identity');
-  requireStableRef(manifest.currentCompanionLineageRef, 'home.currentCompanionLineageRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
-  exactEqual(manifest.currentCompanionLineageRef, binding.companionLineageRef, 'home.currentCompanionLineageRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
-  const devicePath = path.join(home, 'devices', `${manifest.currentDeviceRef}.json`);
-  assertRegularNonLink(devicePath, 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Current device identity');
+  exactEqual(manifest.schemaVersion, 'vexlife.home/v0', 'home.schemaVersion', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
+  const homeRef = requireStableRef(manifest.homeRef, 'home.homeRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
+  const currentDeviceRef = requireStableRef(manifest.currentDeviceRef, 'home.currentDeviceRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
+  if (currentDeviceRef.includes('/') || currentDeviceRef.includes('\\')) fail('ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Home current device ref is not a safe device filename identity');
+  const companionLineageRef = requireStableRef(manifest.currentCompanionLineageRef, 'home.currentCompanionLineageRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
+  exactEqual(companionLineageRef, binding.companionLineageRef, 'home.currentCompanionLineageRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
+  const devicePath = path.join(home, 'devices', `${currentDeviceRef}.json`);
+  const deviceStat = assertRegularNonLink(devicePath, 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Current device identity');
+  if (deviceStat.size > 2 * 1024 * 1024) fail('ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Current device identity is unexpectedly large');
   const device = readJson(devicePath, 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
-  exactEqual(device.deviceRef, manifest.currentDeviceRef, 'device.deviceRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
+  exactEqual(device.schemaVersion, 'vexlife.device-installation/v0', 'device.schemaVersion', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
+  exactEqual(device.deviceRef, currentDeviceRef, 'device.deviceRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
   exactEqual(device.companionLineageRef, binding.companionLineageRef, 'device.companionLineageRef', 'ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT');
-  return { paths, homeRef, deviceRef: manifest.currentDeviceRef, companionLineageRef: manifest.currentCompanionLineageRef, manifest };
+  return { paths, homeRef, currentDeviceRef, companionLineageRef, manifest, device };
 }
 
-function activatedConfigState(config, binding, sourceDigests, homeRef) {
+function activatedConfigState(config, binding, sourceDigests, homeIdentity) {
   if (!config || config.schemaVersion !== ACTIVATED_MODEL_CONFIGURATION_SCHEMA || config.state !== 'BOUND_ACTIVATED_CULTIVATED_MODEL') return { state: 'NOT_ACTIVATED_CONFIG' };
   const required = {
-    homeRef,
     bindingRef: binding.bindingRef,
+    homeRef: homeIdentity.homeRef,
     companionLineageRef: binding.companionLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
@@ -490,16 +493,16 @@ export async function planActivatedModelResume({
   const resolvedHome = path.resolve(home);
   const homeIdentity = readHomeIdentity(resolvedHome, binding);
   const config = fs.existsSync(homeIdentity.paths.modelConfig) ? readJson(homeIdentity.paths.modelConfig) : null;
-  const current = activatedConfigState(config, binding, sourceDigests, homeIdentity.homeRef);
+  const current = activatedConfigState(config, binding, sourceDigests, homeIdentity);
   if (current.state === 'CURRENT') {
     if (handoffBytes !== null || handoffSha256 !== null) fail('ACTIVATED_MODEL_HANDOFF_ALREADY_CONSUMED', 'This Home is already explicitly bound to activated M4; another handoff is forbidden');
     return Object.freeze({
       schemaVersion: 'vexlife.activated-model-resume-plan/v1',
       state: 'RESUME_PERSISTED_ACTIVATED_BINDING',
       homeRef: homeIdentity.homeRef,
+      bindingRef: binding.bindingRef,
       companionLineageRef: binding.companionLineageRef,
       generationRef: binding.generationRef,
-      bindingRef: binding.bindingRef,
       modelRef: binding.modelRef,
       modelProfileRef: binding.modelProfileRef,
       artifactRef: binding.artifact.artifactRef,
@@ -515,14 +518,14 @@ export async function planActivatedModelResume({
     fail('ACTIVATED_MODEL_HOME_BINDING_NOT_CURRENT', 'Existing activated-M4 Home binding is stale and cannot silently fall back or self-repair', { mismatches: current.mismatches });
   }
   if (handoffBytes === null || handoffSha256 === null) fail('ACTIVATED_MODEL_HANDOFF_REQUIRED', 'First activated-M4 binding requires the exact digest-bound activation/custody handoff');
-  parseHandoff({ handoffBytes, handoffSha256, binding, sourceIdentity });
+  parseHandoff({ handoffBytes, handoffSha256, binding, sourceIdentity, homeIdentity });
   return Object.freeze({
     schemaVersion: 'vexlife.activated-model-resume-plan/v1',
     state: 'FIRST_BIND_FROM_EXACT_HANDOFF',
     homeRef: homeIdentity.homeRef,
+    bindingRef: binding.bindingRef,
     companionLineageRef: binding.companionLineageRef,
     generationRef: binding.generationRef,
-    bindingRef: binding.bindingRef,
     modelRef: binding.modelRef,
     modelProfileRef: binding.modelProfileRef,
     artifactRef: binding.artifact.artifactRef,
@@ -787,20 +790,20 @@ async function waitForHealthy(binding, pid, hooks) {
   fail('ACTIVATED_RUNTIME_START_FAILED', 'MLX runtime did not become healthy before source-bounded startup timeout');
 }
 
-function runtimeReceiptReusable(prior, { binding, sourceDigests, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks }) {
+function runtimeReceiptReusable(prior, { binding, sourceDigests, homeRef, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks }) {
   if (!prior || prior.schemaVersion !== ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA || prior.state !== 'ACTIVATED_MODEL_RUNTIME_QUALIFIED') return false;
-  if (prior.bindingRef !== binding.bindingRef || prior.modelRef !== binding.modelRef || prior.modelProfileRef !== binding.modelProfileRef) return false;
+  if (prior.bindingRef !== binding.bindingRef || prior.homeRef !== homeRef || prior.companionLineageRef !== binding.companionLineageRef || prior.generationRef !== binding.generationRef || prior.modelRef !== binding.modelRef || prior.modelProfileRef !== binding.modelProfileRef) return false;
   if (prior.registrySha256 !== sourceDigests.registrySha256 || prior.moduleSha256 !== sourceDigests.moduleSha256) return false;
   if (prior.privateMaterializationPath !== modelDirectory || prior.privatePythonExecutablePath !== pythonExecutable || prior.privatePythonEnvironmentRootPath !== pythonEnvironmentRoot) return false;
   if (!Number.isInteger(prior.runtime?.pid) || prior.runtime.pid <= 0 || !hooks.processAlive(prior.runtime.pid)) return false;
   return hooks.processMatches({ pid: prior.runtime.pid, pythonExecutable, args });
 }
 
-function resolvePrivateLocators({ config, handoffBytes, handoffSha256, binding, sourceIdentity }) {
+function resolvePrivateLocators({ config, handoffBytes, handoffSha256, binding, sourceIdentity, homeIdentity }) {
   if (config?.schemaVersion === ACTIVATED_MODEL_CONFIGURATION_SCHEMA && config?.state === 'BOUND_ACTIVATED_CULTIVATED_MODEL') {
     return { ...privateLocatorsFromConfig(config), handoffSha256: config.handoffSha256 ?? null, handoffRef: config.handoffRef ?? null };
   }
-  const parsed = parseHandoff({ handoffBytes, handoffSha256, binding, sourceIdentity });
+  const parsed = parseHandoff({ handoffBytes, handoffSha256, binding, sourceIdentity, homeIdentity });
   return parsed;
 }
 
@@ -825,7 +828,7 @@ export async function startOrResumeActivatedModelRuntime({
   const resolvedHome = path.resolve(home);
   const homeIdentity = readHomeIdentity(resolvedHome, binding);
   const priorConfig = fs.existsSync(homeIdentity.paths.modelConfig) ? readJson(homeIdentity.paths.modelConfig) : null;
-  const locators = resolvePrivateLocators({ config: priorConfig, handoffBytes, handoffSha256, binding, sourceIdentity });
+  const locators = resolvePrivateLocators({ config: priorConfig, handoffBytes, handoffSha256, binding, sourceIdentity, homeIdentity });
   const modelDirectory = path.resolve(locators.modelDirectory);
   const pythonExecutable = path.resolve(locators.pythonExecutable);
   const pythonEnvironmentRoot = path.resolve(locators.pythonEnvironmentRoot);
@@ -849,7 +852,7 @@ export async function startOrResumeActivatedModelRuntime({
   let runtimeDisposition = null;
   let startedNewRuntime = false;
   let runtimeStartedByAttemptRef = effectiveRuntimeAttemptRef;
-  if (runtimeReceiptReusable(priorReceipt, { binding, sourceDigests, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks })) {
+  if (runtimeReceiptReusable(priorReceipt, { binding, sourceDigests, homeRef: homeIdentity.homeRef, pythonExecutable, pythonEnvironmentRoot, modelDirectory, args, hooks })) {
     pid = priorReceipt.runtime.pid;
     runtimeDisposition = 'REUSED_EXACT_OWNED_MLX_RUNTIME';
     runtimeStartedByAttemptRef = priorReceipt.runtime?.startedByAttemptRef ?? priorReceipt.runtimeAttemptRef ?? effectiveRuntimeAttemptRef;
@@ -957,8 +960,8 @@ export async function startOrResumeActivatedModelRuntime({
   writeJsonAtomic(homeIdentity.paths.modelConfig, {
     schemaVersion: ACTIVATED_MODEL_CONFIGURATION_SCHEMA,
     state: 'BOUND_ACTIVATED_CULTIVATED_MODEL',
-    homeRef: homeIdentity.homeRef,
     bindingRef: binding.bindingRef,
+    homeRef: homeIdentity.homeRef,
     companionLineageRef: binding.companionLineageRef,
     generationRef: binding.generationRef,
     modelRef: binding.modelRef,
@@ -1016,7 +1019,7 @@ export function formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingRe
   if (runtimeBindingReceipt.schemaVersion !== ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA || runtimeBindingReceipt.state !== 'ACTIVATED_MODEL_RUNTIME_QUALIFIED') {
     fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'Shared lived-turn evidence requires one exact qualified activated-runtime receipt');
   }
-  if (runtimeBindingReceipt.bindingRef !== binding.bindingRef || runtimeBindingReceipt.companionLineageRef !== binding.companionLineageRef || runtimeBindingReceipt.generationRef !== binding.generationRef || runtimeBindingReceipt.modelRef !== binding.modelRef || runtimeBindingReceipt.modelProfileRef !== binding.modelProfileRef) {
+  if (runtimeBindingReceipt.bindingRef !== binding.bindingRef || runtimeBindingReceipt.modelRef !== binding.modelRef || runtimeBindingReceipt.modelProfileRef !== binding.modelProfileRef) {
     fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'Runtime receipt does not bind the exact activated M4 identity');
   }
   if (browserTurnReceipt.schemaVersion !== 'vexlife.browser-companion-turn/v1' || browserTurnReceipt.state !== 'TURN_COMPLETED' || browserTurnReceipt.actualHttpCall !== true || browserTurnReceipt.loopbackOnly !== true) {
