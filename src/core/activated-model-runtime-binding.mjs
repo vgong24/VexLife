@@ -1019,8 +1019,25 @@ export function formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingRe
   if (runtimeBindingReceipt.schemaVersion !== ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA || runtimeBindingReceipt.state !== 'ACTIVATED_MODEL_RUNTIME_QUALIFIED') {
     fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'Shared lived-turn evidence requires one exact qualified activated-runtime receipt');
   }
-  if (runtimeBindingReceipt.bindingRef !== binding.bindingRef || runtimeBindingReceipt.companionLineageRef !== binding.companionLineageRef || runtimeBindingReceipt.generationRef !== binding.generationRef || runtimeBindingReceipt.modelRef !== binding.modelRef || runtimeBindingReceipt.modelProfileRef !== binding.modelProfileRef) {
-    fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'Runtime receipt does not bind the exact activated M4 identity');
+  const runtimeBindingReceiptRef = requireStableRef(runtimeBindingReceipt.receiptRef, 'runtimeBindingReceipt.receiptRef', 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID');
+  const homeRef = requireStableRef(runtimeBindingReceipt.homeRef, 'runtimeBindingReceipt.homeRef', 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID');
+  const exactRuntimeReceiptIdentity = {
+    bindingRef: binding.bindingRef,
+    companionLineageRef: binding.companionLineageRef,
+    generationRef: binding.generationRef,
+    modelRef: binding.modelRef,
+    modelProfileRef: binding.modelProfileRef,
+    activationEvidenceRef: binding.activationEvidenceRef,
+    distributionTrustEvidenceRef: binding.distributionTrustEvidenceRef,
+    artifactRef: binding.artifact.artifactRef,
+    artifactContentSetSha256: binding.artifact.contentSetSha256,
+    artifactCustodyEvidenceRef: binding.artifactCustodyEvidenceRef,
+    runtimeAdapterRef: binding.runtime.runtimeAdapterRef,
+    runtimeClass: binding.runtime.runtimeClass,
+    bindingSemanticSha256: bindingSemanticSha(binding)
+  };
+  for (const [key, expected] of Object.entries(exactRuntimeReceiptIdentity)) {
+    exactEqual(runtimeBindingReceipt[key], expected, `runtimeBindingReceipt.${key}`, 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID');
   }
   if (browserTurnReceipt.schemaVersion !== 'vexlife.browser-companion-turn/v1' || browserTurnReceipt.state !== 'TURN_COMPLETED' || browserTurnReceipt.actualHttpCall !== true || browserTurnReceipt.loopbackOnly !== true) {
     fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'First lived evidence requires one actual completed loopback browser-companion turn');
@@ -1040,6 +1057,7 @@ export function formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingRe
   const index = {
     schemaVersion: CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_SCHEMA,
     bindingRef: binding.bindingRef,
+    homeRef,
     companionLineageRef: binding.companionLineageRef,
     generationRef: binding.generationRef,
     activationEvidenceRef: binding.activationEvidenceRef,
@@ -1050,7 +1068,7 @@ export function formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingRe
     modelProfileRef: binding.modelProfileRef,
     artifactRef: binding.artifact.artifactRef,
     runtimeAdapterRef: binding.runtime.runtimeAdapterRef,
-    runtimeBindingReceiptRef: runtimeBindingReceipt.receiptRef,
+    runtimeBindingReceiptRef,
     browserTurnReceiptSha256,
     conversationHeadSha256: browserTurnReceipt.conversationHeadSha256,
     requestEventRef: browserTurnReceipt.requestEventRef,

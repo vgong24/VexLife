@@ -10,6 +10,7 @@ import {
   ACTIVATED_MODEL_CUSTODY_HANDOFF_SCHEMA,
   ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA,
   ActivatedModelRuntimeBindingError,
+  activatedBindingSemanticIdentity,
   assertNoActivatedRuntimeSelectionInjection,
   formCultivatedFirstLivedTurnEvidence,
   loadActivatedModelRuntimeBindingRegistry,
@@ -164,6 +165,29 @@ function exactRuntimeFetch(binding, modelDirectory, trace = []) {
 function errorCode(error) {
   return error instanceof ActivatedModelRuntimeBindingError ? error.code : null;
 }
+
+function livedRuntimeReceipt(binding, homeRef = 'home.test.lived.001') {
+  return {
+    schemaVersion: ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA,
+    receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
+    state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
+    bindingRef: binding.bindingRef,
+    homeRef,
+    companionLineageRef: binding.companionLineageRef,
+    generationRef: binding.generationRef,
+    modelRef: binding.modelRef,
+    modelProfileRef: binding.modelProfileRef,
+    activationEvidenceRef: binding.activationEvidenceRef,
+    distributionTrustEvidenceRef: binding.distributionTrustEvidenceRef,
+    artifactRef: binding.artifact.artifactRef,
+    artifactContentSetSha256: binding.artifact.contentSetSha256,
+    artifactCustodyEvidenceRef: binding.artifactCustodyEvidenceRef,
+    runtimeAdapterRef: binding.runtime.runtimeAdapterRef,
+    runtimeClass: binding.runtime.runtimeClass,
+    bindingSemanticSha256: semanticHash(activatedBindingSemanticIdentity(binding))
+  };
+}
+
 
 // M4B02: the public source registry is an exact projection of already accepted upstream identities.
 test('M4B02 exact accepted activated-M4 registry validates and has one binding', () => {
@@ -688,16 +712,7 @@ test('M4B06 preserved trainer launcher fails closed when Python prefix escapes i
 // M4B13: one completed lived turn becomes one content-addressed index; no transcript/replay store is created.
 test('M4B13 one natural completed browser turn forms one shared content-addressed evidence index without replay', () => {
   const binding = baseBinding();
-  const runtimeBindingReceipt = {
-    schemaVersion: ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA,
-    receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
-    state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
-    bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
-    generationRef: binding.generationRef,
-    modelRef: binding.modelRef,
-    modelProfileRef: binding.modelProfileRef
-  };
+  const runtimeBindingReceipt = livedRuntimeReceipt(binding);
   const browserTurnReceipt = {
     schemaVersion: 'vexlife.browser-companion-turn/v1',
     state: 'TURN_COMPLETED',
@@ -718,22 +733,14 @@ test('M4B13 one natural completed browser turn forms one shared content-addresse
   assert.equal(one.transcriptCopied, false);
   assert.equal(one.replayPerformed, false);
   assert.equal(one.conversationHeadSha256, browserTurnReceipt.conversationHeadSha256);
+  assert.equal(one.homeRef, runtimeBindingReceipt.homeRef);
   assert.equal(Object.hasOwn(one, 'transcript'), false);
 });
 
 // M4B13 hostile identity: a runtime receipt from another lineage or generation cannot mint current lived evidence.
-test('M4B13 runtime receipt lineage and generation must match the exact activated binding', () => {
+test('M4B13 runtime receipt Home and exact semantic identity must remain current', () => {
   const binding = baseBinding();
-  const runtimeBindingReceipt = {
-    schemaVersion: ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA,
-    receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
-    state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
-    bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
-    generationRef: binding.generationRef,
-    modelRef: binding.modelRef,
-    modelProfileRef: binding.modelProfileRef
-  };
+  const runtimeBindingReceipt = livedRuntimeReceipt(binding);
   const browserTurnReceipt = {
     schemaVersion: 'vexlife.browser-companion-turn/v1',
     state: 'TURN_COMPLETED',
@@ -748,8 +755,12 @@ test('M4B13 runtime receipt lineage and generation must match the exact activate
     modelTurnWitness: { model: 'default_model', fingerprint: 'fixture' }
   };
   for (const [field, value] of [
+    ['homeRef', ''],
     ['companionLineageRef', 'lineage.vex.foreign.fixture'],
-    ['generationRef', 'generation.vex.foreign.fixture']
+    ['generationRef', 'generation.vex.foreign.fixture'],
+    ['artifactCustodyEvidenceRef', 'github.issue.vextreme-sdk.1394.comment.5747979171'],
+    ['runtimeAdapterRef', 'adapter.runtime.mlx.macos-victor.001'],
+    ['bindingSemanticSha256', 'f'.repeat(64)]
   ]) {
     assert.throws(
       () => formCultivatedFirstLivedTurnEvidence({
@@ -765,16 +776,7 @@ test('M4B13 runtime receipt lineage and generation must match the exact activate
 // M4B13 negative: fixtures/non-http/non-loopback turns may never masquerade as the first lived Victor episode.
 test('M4B13 simulated or non-completed turn is rejected as shared lived evidence', () => {
   const binding = baseBinding();
-  const runtimeBindingReceipt = {
-    schemaVersion: ACTIVATED_MODEL_RUNTIME_RECEIPT_SCHEMA,
-    receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
-    state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
-    bindingRef: binding.bindingRef,
-    companionLineageRef: binding.companionLineageRef,
-    generationRef: binding.generationRef,
-    modelRef: binding.modelRef,
-    modelProfileRef: binding.modelProfileRef
-  };
+  const runtimeBindingReceipt = livedRuntimeReceipt(binding);
   assert.throws(
     () => formCultivatedFirstLivedTurnEvidence({
       binding,
